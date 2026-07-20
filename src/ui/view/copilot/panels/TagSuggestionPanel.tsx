@@ -25,9 +25,9 @@ const CONFIDENCE_TIERS = [
 
 const CATEGORY_CLASS: Record<string, string> = {
 	topic: 'pktw-bg-accent/10 pktw-text-accent',
-	keyword: 'pktw-bg-blue-500/10 pktw-text-blue-500',
+	keyword: 'pktw-bg-pk-info-bg pktw-text-pk-info',
 };
-const CATEGORY_DEFAULT_CLASS = 'pktw-bg-orange-500/10 pktw-text-orange-500';
+const CATEGORY_DEFAULT_CLASS = 'pktw-bg-pk-warning-bg pktw-text-pk-warning';
 
 export const TagSuggestionPanel: React.FC<TagSuggestionPanelProps> = ({
 	result, file, onClose,
@@ -138,7 +138,7 @@ export const TagSuggestionPanel: React.FC<TagSuggestionPanelProps> = ({
 					if (tierSuggestions.length === 0) return null;
 					return (
 						<div key={tier.label} className="pktw-mb-4">
-							<span className="pktw-text-[10px] pktw-font-bold pktw-uppercase pktw-text-muted-foreground pktw-tracking-wider">
+							<span className="pktw-text-pk-xs pktw-font-bold pktw-uppercase pktw-text-muted-foreground pktw-tracking-wider">
 								{tier.label}
 							</span>
 							<div className="pktw-mt-1.5 pktw-space-y-1">
@@ -146,7 +146,7 @@ export const TagSuggestionPanel: React.FC<TagSuggestionPanelProps> = ({
 									const status = statuses[suggestion.tag] ?? 'pending';
 									const isEditing = editingTag === suggestion.tag;
 									const rowClass = status === 'accepted'
-										? 'pktw-bg-[var(--pk-success)]/5'
+										? 'pktw-bg-pk-success-bg'
 										: status === 'rejected'
 											? 'pktw-bg-muted/50 pktw-opacity-50'
 											: 'hover:pktw-bg-muted';
@@ -160,9 +160,9 @@ export const TagSuggestionPanel: React.FC<TagSuggestionPanelProps> = ({
 												<div className="pktw-flex pktw-items-center pktw-gap-1.5">
 													{isEditing ? (
 														<div className="pktw-flex pktw-items-center pktw-gap-1">
-															<span className="pktw-text-[13px] pktw-text-muted-foreground">#</span>
+															<span className="pktw-text-pk-md pktw-text-muted-foreground">#</span>
 															<input
-																className="pktw-text-[13px] pktw-bg-transparent pktw-border-b pktw-border-accent pktw-outline-none pktw-font-semibold pktw-w-40"
+																className="pktw-text-pk-md pktw-bg-transparent pktw-border-b pktw-border-accent pktw-outline-none pktw-font-semibold pktw-w-40"
 																value={editValue}
 																onChange={e => setEditValue(e.target.value)}
 																onKeyDown={e => {
@@ -177,17 +177,17 @@ export const TagSuggestionPanel: React.FC<TagSuggestionPanelProps> = ({
 														</div>
 													) : (
 														<>
-															<span className="pktw-text-[13px] pktw-font-semibold pktw-text-accent">#{suggestion.tag}</span>
+															<span className="pktw-text-pk-md pktw-font-semibold pktw-text-accent">#{suggestion.tag}</span>
 															<span className={`pktw-text-[8px] pktw-font-bold pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-uppercase ${categoryClass}`}>
 																{suggestion.category}
 															</span>
-															<span className="pktw-text-[10px] pktw-text-muted-foreground/60">
+															<span className="pktw-text-pk-xs pktw-text-muted-foreground/60">
 																{Math.round(suggestion.confidence * 100)}%
 															</span>
 														</>
 													)}
 												</div>
-												<span className="pktw-text-[11px] pktw-text-muted-foreground pktw-block pktw-mt-0.5">
+												<span className="pktw-text-pk-sm pktw-text-muted-foreground pktw-block pktw-mt-0.5">
 													{suggestion.reason}
 												</span>
 											</div>
@@ -196,7 +196,7 @@ export const TagSuggestionPanel: React.FC<TagSuggestionPanelProps> = ({
 												<div className="pktw-flex pktw-items-center pktw-gap-0.5 pktw-flex-shrink-0">
 													<Button
 														variant="ghost" size="sm"
-														className={`pktw-h-6 pktw-w-6 pktw-p-0 ${status === 'accepted' ? 'pktw-text-[var(--pk-success)]' : ''}`}
+														className={`pktw-h-6 pktw-w-6 pktw-p-0 ${status === 'accepted' ? 'pktw-text-pk-success' : ''}`}
 														onClick={() => setTagStatus(suggestion.tag, status === 'accepted' ? 'pending' : 'accepted')}
 													>
 														<Check className="pktw-w-3.5 pktw-h-3.5" />

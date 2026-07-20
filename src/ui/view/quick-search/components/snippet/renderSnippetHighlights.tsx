@@ -40,9 +40,9 @@ export function renderHighlightSpans(result: HighlightResult, opts?: { cap?: boo
 			parts.push(<span key={`t-${lastEnd}`}>{result.text.slice(lastEnd, span.start)}</span>);
 		}
 		const className = span.type === 'fuzzy'
-			? 'pktw-bg-blue-50 pktw-text-blue-800 pktw-underline pktw-decoration-dashed'
+			? 'pktw-bg-pk-info-bg pktw-text-pk-info-text pktw-underline pktw-decoration-dashed'
 			: span.type === 'stem'
-				? 'pktw-bg-amber-50 pktw-text-amber-800'
+				? 'pktw-bg-pk-warning-bg pktw-text-pk-warning-text'
 				: 'pktw-bg-pk-warning-bg pktw-text-pk-warning-text';
 		parts.push(
 			<mark key={`h-${span.start}`} className={className}>

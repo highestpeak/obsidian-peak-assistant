@@ -196,7 +196,7 @@ export const CopilotReviewHistoryContent: React.FC<ContentProps> = ({ scope, cur
 							variant="ghost"
 							size="sm"
 							onClick={onBackToPicker}
-							className="pktw-gap-1.5 pktw-text-[12px] pktw-text-pk-foreground-muted hover:pktw-text-pk-accent"
+							className="pktw-gap-1.5 pktw-text-pk-base pktw-text-pk-foreground-muted hover:pktw-text-pk-accent"
 							title="Back to Copilot picker"
 						>
 							<ArrowLeft className="pktw-h-[14px] pktw-w-[14px]" />
@@ -208,14 +208,14 @@ export const CopilotReviewHistoryContent: React.FC<ContentProps> = ({ scope, cur
 					</div>
 					<div className="pktw-flex pktw-min-w-0 pktw-flex-col">
 						<span className="pktw-text-[18px] pktw-font-bold pktw-text-pk-foreground pktw-leading-tight">{headerMeta.title}</span>
-						<span className="pktw-text-[12px] pktw-text-pk-foreground-muted pktw-mt-0.5">{subtitleText}</span>
+						<span className="pktw-text-pk-base pktw-text-pk-foreground-muted pktw-mt-0.5">{subtitleText}</span>
 					</div>
 				</div>
 				<Button
 					variant="ghost"
 					size="sm"
 					onClick={() => setRefreshTick(t => t + 1)}
-					className="pktw-gap-1.5 pktw-text-[12px] pktw-text-pk-foreground-muted"
+					className="pktw-gap-1.5 pktw-text-pk-base pktw-text-pk-foreground-muted"
 				>
 					<RefreshCw className="pktw-h-[14px] pktw-w-[14px]" />
 					Refresh
@@ -255,7 +255,7 @@ export const CopilotReviewHistoryContent: React.FC<ContentProps> = ({ scope, cur
 						value={query}
 						onChange={e => setQuery(e.target.value)}
 						autoFocus
-						className="pktw-h-7 pktw-flex-1 pktw-border-0 pktw-bg-transparent pktw-px-0 pktw-text-[13px] focus-visible:pktw-ring-0 focus-visible:pktw-ring-offset-0"
+						className="pktw-h-7 pktw-flex-1 pktw-border-0 pktw-bg-transparent pktw-px-0 pktw-text-pk-md focus-visible:pktw-ring-0 focus-visible:pktw-ring-offset-0"
 					/>
 				</div>
 			</div>
@@ -266,13 +266,13 @@ export const CopilotReviewHistoryContent: React.FC<ContentProps> = ({ scope, cur
 				style={{ userSelect: 'text' }}
 			>
 				{loading ? (
-					<div className="pktw-text-[13px] pktw-text-pk-foreground-muted pktw-italic pktw-py-8 pktw-text-center">Loading…</div>
+					<div className="pktw-text-pk-md pktw-text-pk-foreground-muted pktw-italic pktw-py-8 pktw-text-center">Loading…</div>
 				) : filtered.length === 0 ? (
 					<div className="pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-py-16 pktw-text-center pktw-text-pk-foreground-muted">
 						<div className="pktw-w-12 pktw-h-12 pktw-rounded-full pktw-bg-pk-background-secondary pktw-flex pktw-items-center pktw-justify-center pktw-mb-3">
 							<History className="pktw-w-5 pktw-h-5 pktw-text-pk-foreground-faint" />
 						</div>
-						<div className="pktw-text-[13px]">
+						<div className="pktw-text-pk-md">
 							{query
 								? 'No reviews match your filter.'
 								: scope === 'vault'
@@ -326,7 +326,7 @@ function ScopeTab({ active, onClick, label, hint }: { active: boolean; onClick: 
 			)}
 		>
 			<span>{label}</span>
-			{hint ? <span className="pktw-text-[11px] pktw-text-pk-foreground-faint pktw-font-mono pktw-truncate pktw-max-w-[200px]">{hint}</span> : null}
+			{hint ? <span className="pktw-text-pk-sm pktw-text-pk-foreground-faint pktw-font-mono pktw-truncate pktw-max-w-[200px]">{hint}</span> : null}
 		</button>
 	);
 }
@@ -346,13 +346,13 @@ function ReviewGroup({
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-gap-2">
 			<div className="pktw-flex pktw-items-baseline pktw-gap-2.5 pktw-mb-1">
-				<span className="pktw-text-[14px] pktw-font-semibold pktw-text-pk-foreground">
+				<span className="pktw-text-pk-lg pktw-font-semibold pktw-text-pk-foreground">
 					{head.subjectBasename || subjectPath}
 				</span>
-				<span className="pktw-text-[11px] pktw-text-pk-foreground-faint pktw-font-mono pktw-truncate pktw-min-w-0">
+				<span className="pktw-text-pk-sm pktw-text-pk-foreground-faint pktw-font-mono pktw-truncate pktw-min-w-0">
 					{subjectPath}
 				</span>
-				<span className="pktw-ml-auto pktw-text-[11px] pktw-text-pk-foreground-muted pktw-shrink-0">
+				<span className="pktw-ml-auto pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-shrink-0">
 					{records.length} review{records.length === 1 ? '' : 's'}
 				</span>
 			</div>
@@ -390,15 +390,15 @@ function ReviewRow({
 				<Icon className="pktw-h-[14px] pktw-w-[14px] pktw-text-pk-foreground-faint pktw-shrink-0" />
 				<div className="pktw-flex pktw-min-w-0 pktw-flex-1 pktw-flex-col">
 					<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-min-w-0">
-						<span className="pktw-text-[13px] pktw-font-medium pktw-text-pk-foreground pktw-truncate group-hover:pktw-text-pk-accent">
+						<span className="pktw-text-pk-md pktw-font-medium pktw-text-pk-foreground pktw-truncate group-hover:pktw-text-pk-accent">
 							{record.headline}
 						</span>
-						<span className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-shrink-0">
+						<span className="pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-shrink-0">
 							· {relativeTime(record.completedAt)}
 						</span>
 						<ReviewStatusBadge status={record.status} />
 					</div>
-					<div className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-mt-0.5">
+					<div className="pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-mt-0.5">
 						{record.mini}
 					</div>
 				</div>

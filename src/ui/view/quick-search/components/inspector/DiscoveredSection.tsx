@@ -12,12 +12,12 @@ const TYPE_BADGE: Record<
 > = {
 	SEM: {
 		label: 'SEM',
-		className: 'pktw-bg-purple-100 pktw-text-purple-700',
+		className: 'pktw-bg-pk-accent-tint pktw-text-pk-accent-text',
 		description: 'Semantic — content covers related concepts (from indexed embeddings, not a link).',
 	},
 	'CO-CITE': {
 		label: 'CO-CITE',
-		className: 'pktw-bg-blue-100 pktw-text-blue-700',
+		className: 'pktw-bg-pk-info-bg pktw-text-pk-info-text',
 		description: 'Co-cited — both notes are referenced by the same other notes.',
 	},
 	// UNLINKED is a passive hint ("your text mentions this note by name but you
@@ -102,7 +102,7 @@ export const DiscoveredSection: React.FC<DiscoveredSectionProps> = ({
 								{item.label}
 							</span>
 
-							<span className="pktw-text-[10px] pktw-text-pk-accent pktw-shrink-0">
+							<span className="pktw-text-pk-xs pktw-text-pk-accent pktw-shrink-0">
 								{scorePercent}%
 							</span>
 
@@ -132,7 +132,7 @@ export const DiscoveredSection: React.FC<DiscoveredSectionProps> = ({
 						</div>
 
 						{item.whyText && (
-							<span className="pktw-text-[10px] pktw-text-pk-foreground-muted pktw-leading-tight pktw-line-clamp-1">
+							<span className="pktw-text-pk-xs pktw-text-pk-foreground-muted pktw-leading-tight pktw-line-clamp-1">
 								{item.whyText}
 							</span>
 						)}
@@ -144,7 +144,7 @@ export const DiscoveredSection: React.FC<DiscoveredSectionProps> = ({
 				<Button
 					variant="ghost"
 					size="xs"
-					className="pktw-shadow-none pktw-h-5 pktw-px-0 pktw-text-[10px] pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground-muted pktw-self-start"
+					className="pktw-shadow-none pktw-h-5 pktw-px-0 pktw-text-pk-xs pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground-muted pktw-self-start"
 					onClick={() => setExpanded(true)}
 				>
 					See {remaining} more ↓

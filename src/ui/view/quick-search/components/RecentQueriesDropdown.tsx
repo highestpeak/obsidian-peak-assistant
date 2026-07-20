@@ -19,7 +19,7 @@ export const RecentQueriesDropdown: React.FC<RecentQueriesDropdownProps> = ({
 	return (
 		<div className="pktw-px-4 pktw-py-2">
 			<div className="pktw-flex pktw-items-center pktw-justify-between pktw-mb-1.5">
-				<span className="pktw-text-[10px] pktw-font-medium pktw-uppercase pktw-tracking-widest pktw-text-pk-foreground-muted">
+				<span className="pktw-text-pk-xs pktw-font-medium pktw-uppercase pktw-tracking-widest pktw-text-pk-foreground-muted">
 					Recent searches
 				</span>
 				<Button
@@ -29,8 +29,7 @@ export const RecentQueriesDropdown: React.FC<RecentQueriesDropdownProps> = ({
 						e.stopPropagation();
 						onClear();
 					}}
-					style={{ cursor: 'pointer' }}
-					className="pktw-shadow-none pktw-h-5 pktw-px-1.5 pktw-text-[10px] pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground"
+					className="pktw-shadow-none pktw-h-5 pktw-px-1.5 pktw-text-pk-xs pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground pktw-cursor-pointer"
 				>
 					<X className="pktw-w-3 pktw-h-3 pktw-mr-0.5" />
 					Clear

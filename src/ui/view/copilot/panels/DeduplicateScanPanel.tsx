@@ -99,15 +99,15 @@ export const DeduplicateScanPanel: React.FC<DeduplicateScanPanelProps> = ({
 							<div className="pktw-px-3.5 pktw-py-2 pktw-bg-secondary pktw-border-b pktw-border-border pktw-flex pktw-items-center pktw-justify-between">
 								<div className="pktw-flex pktw-items-center pktw-gap-1.5">
 									<Copy className="pktw-w-3 pktw-h-3 pktw-text-muted-foreground" />
-									<span className="pktw-text-[11px] pktw-text-muted-foreground pktw-font-mono">{group.hash.slice(0, 8)}...</span>
+									<span className="pktw-text-pk-sm pktw-text-muted-foreground pktw-font-mono">{group.hash.slice(0, 8)}...</span>
 									<span className="pktw-text-[9px] pktw-text-muted-foreground/60">{activeFiles.length} identical files</span>
 								</div>
 								<div className="pktw-flex pktw-items-center pktw-gap-1">
-									<Button variant="ghost" size="sm" className="pktw-h-6 pktw-text-[10px] pktw-px-2" onClick={() => keepNewest(group)}>
+									<Button variant="ghost" size="sm" className="pktw-h-6 pktw-text-pk-xs pktw-px-2" onClick={() => keepNewest(group)}>
 										<Trash2 className="pktw-w-3 pktw-h-3 pktw-mr-1" />
 										Keep Newest
 									</Button>
-									<Button variant="ghost" size="sm" className="pktw-h-6 pktw-text-[10px] pktw-px-2" onClick={() => mergeIntoOne(group)}>
+									<Button variant="ghost" size="sm" className="pktw-h-6 pktw-text-pk-xs pktw-px-2" onClick={() => mergeIntoOne(group)}>
 										<Merge className="pktw-w-3 pktw-h-3 pktw-mr-1" />
 										Merge
 									</Button>
@@ -121,9 +121,9 @@ export const DeduplicateScanPanel: React.FC<DeduplicateScanPanelProps> = ({
 										onClick={() => { void vault.openNote(file.path, { newLeaf: false }); }}
 									>
 										<FileText className="pktw-w-3 pktw-h-3 pktw-text-muted-foreground pktw-flex-shrink-0" />
-										<span className="pktw-text-[12px] pktw-text-accent pktw-truncate pktw-flex-1">{file.path}</span>
-										<span className="pktw-text-[10px] pktw-text-muted-foreground/60 pktw-flex-shrink-0">{formatSize(file.size)}</span>
-										<span className="pktw-text-[10px] pktw-text-muted-foreground/40 pktw-flex-shrink-0">{formatDate(file.modified)}</span>
+										<span className="pktw-text-pk-base pktw-text-accent pktw-truncate pktw-flex-1">{file.path}</span>
+										<span className="pktw-text-pk-xs pktw-text-muted-foreground/60 pktw-flex-shrink-0">{formatSize(file.size)}</span>
+										<span className="pktw-text-pk-xs pktw-text-muted-foreground/40 pktw-flex-shrink-0">{formatDate(file.modified)}</span>
 										{fi === 0 && (
 											<span className="pktw-text-[8px] pktw-font-bold pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-bg-accent/10 pktw-text-accent pktw-flex-shrink-0">NEWEST</span>
 										)}

@@ -71,7 +71,7 @@ export const AddEvidencePanel: React.FC<AddEvidencePanelProps> = ({
 				<SelectableRow key={i} checked={selected.has(i)} onClick={() => toggle(i)}>
 					<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-mb-1">
 						<span
-							className="pktw-text-[13px] pktw-font-semibold pktw-text-accent pktw-cursor-pointer hover:pktw-underline pktw-inline-flex pktw-items-center pktw-gap-1"
+							className="pktw-text-pk-md pktw-font-semibold pktw-text-accent pktw-cursor-pointer hover:pktw-underline pktw-inline-flex pktw-items-center pktw-gap-1"
 							onClick={(e) => { e.stopPropagation(); void vault.openNote(item.sourcePath, { newLeaf: false }); }}
 						>
 							{item.sourceTitle}
@@ -81,7 +81,7 @@ export const AddEvidencePanel: React.FC<AddEvidencePanelProps> = ({
 							{Math.round(item.relevance * 100)}%
 						</span>
 					</div>
-					<span className="pktw-text-[11px] pktw-text-muted-foreground pktw-italic pktw-block pktw-mt-1 pktw-pl-2.5 pktw-border-l-2 pktw-border-border pktw-leading-relaxed">
+					<span className="pktw-text-pk-sm pktw-text-muted-foreground pktw-italic pktw-block pktw-mt-1 pktw-pl-2.5 pktw-border-l-2 pktw-border-border pktw-leading-relaxed">
 						{item.quote}
 					</span>
 				</SelectableRow>

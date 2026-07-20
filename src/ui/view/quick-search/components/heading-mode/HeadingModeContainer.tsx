@@ -57,7 +57,7 @@ const FooterTotalMatches: React.FC<{ tree: HeadingTreeNode[]; queryText: string 
 	if (!queryText) return null;
 	const total = totalMatches(tree);
 	return (
-		<span className="pktw-px-4 pktw-py-1 pktw-text-[11px] pktw-text-pk-text-tertiary pktw-border-t pktw-border-pk-border/40">
+		<span className="pktw-px-4 pktw-py-1 pktw-text-pk-sm pktw-text-pk-text-tertiary pktw-border-t pktw-border-pk-border/40">
 			{HEADING_MODE_STRINGS.totalMatchesLabel(total)}
 		</span>
 	);

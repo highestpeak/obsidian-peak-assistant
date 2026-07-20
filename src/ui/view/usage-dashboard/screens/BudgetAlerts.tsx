@@ -114,11 +114,11 @@ function MonthlyBudgetCard({
 
 	return (
 		<section className="pk-dash-card pk-dash-card--pad">
-			<div className="pk-dash-card__head" style={{ padding: 0, border: 'none' }}>
+			<div className="pk-dash-card__head pktw-p-0 pktw-border-0">
 				<span className="pk-dash-card__title">{strings.title}</span>
 				<span className="pk-badge pk-badge--soft">{cycleBadge}</span>
 			</div>
-			<div className="pk-stack" style={{ marginTop: 12 }}>
+			<div className="pk-stack pktw-mt-3">
 				<Field label={strings.fieldLabel} hint={strings.fieldHint}>
 					<NumberField
 						value={budget.monthlyUsd}
@@ -133,8 +133,8 @@ function MonthlyBudgetCard({
 
 				{pace ? (
 					<div>
-						<div className="pk-trio__row" style={{ alignItems: 'baseline' }}>
-							<span className="pk-muted" style={{ fontSize: 11 }}>{strings.breakdown}</span>
+						<div className="pk-trio__row pktw-items-baseline">
+							<span className="pk-muted pktw-text-pk-sm">{strings.breakdown}</span>
 							<span className="pk-strong pk-mono">
 								{formatUsd(pace.used)} / {formatUsd(pace.projected)} / {formatUsd(pace.remaining)}
 							</span>
@@ -155,7 +155,7 @@ function MonthlyBudgetCard({
 					<div className="pk-dash-empty">{strings.noBudget}</div>
 				)}
 
-				<div style={{ display: 'flex', gap: 8 }}>
+				<div className="pktw-flex pktw-gap-2">
 					<button
 						type="button"
 						className="pk-btn pk-btn--primary pk-btn--sm"
@@ -218,13 +218,13 @@ function AlertRulesCard({
 
 	return (
 		<section className="pk-dash-card pk-dash-card--pad">
-			<div className="pk-dash-card__head" style={{ padding: 0, border: 'none' }}>
+			<div className="pk-dash-card__head pktw-p-0 pktw-border-0">
 				<span className="pk-dash-card__title">{strings.title}</span>
 				<button type="button" className="pk-btn pk-btn--ghost pk-btn--sm">
 					{strings.editThresholds}
 				</button>
 			</div>
-			<div className="pk-stack" style={{ marginTop: 6 }}>
+			<div className="pk-stack pktw-mt-1.5">
 				{rules.map((rule) => {
 					const meta = strings.rules[rule.kind];
 					if (!meta) return null;
@@ -253,7 +253,7 @@ function AlertRulesCard({
 					);
 				})}
 			</div>
-			<div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
+			<div className="pktw-mt-3 pktw-flex pktw-gap-2 pktw-items-center">
 				<button
 					type="button"
 					className="pk-btn pk-btn--sm"
@@ -286,33 +286,33 @@ function ModelDefaultsCard({
 		{
 			key: 'quick',
 			label: strings.tabs.quick,
-			icon: <span style={{ color: 'var(--pk-success)' }}>⚡</span>,
+			icon: <span className="pktw-text-pk-success">⚡</span>,
 			config: harness.localFastConfig,
 		},
 		{
 			key: 'deep',
 			label: strings.tabs.deep,
-			icon: <span style={{ color: 'var(--pk-info)' }}>⌖</span>,
+			icon: <span className="pktw-text-pk-info">⌖</span>,
 			config: harness.localDeepConfig,
 		},
 		{
 			key: 'premium',
 			label: strings.tabs.premium,
-			icon: <span style={{ color: 'var(--pk-warning)' }}>★</span>,
+			icon: <span className="pktw-text-pk-warning">★</span>,
 			config: harness.onlineConfig,
 		},
 	];
 
 	return (
 		<section className="pk-dash-card pk-dash-card--pad">
-			<div className="pk-dash-card__head" style={{ padding: 0, border: 'none' }}>
+			<div className="pk-dash-card__head pktw-p-0 pktw-border-0">
 				<span className="pk-dash-card__title">{strings.title}</span>
 				<button type="button" className="pk-btn pk-btn--ghost pk-btn--sm">
 					{strings.manage}
 				</button>
 			</div>
-			<span className="pk-muted" style={{ fontSize: 12, marginTop: 4 }}>{strings.sub}</span>
-			<div className="pk-stack" style={{ marginTop: 14 }}>
+			<span className="pk-muted pktw-text-pk-base pktw-mt-1">{strings.sub}</span>
+			<div className="pk-stack pktw-mt-3.5">
 				{tiers.map((tier) => {
 					if (!tier.config) {
 						return (
@@ -390,7 +390,7 @@ function PreviewBudgetCard({
 					usedPct={pace?.percentUsed ?? 0.355}
 					tone="warn"
 				/>
-				<div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+				<div className="pktw-flex pktw-gap-1.5 pktw-mt-1">
 					<button type="button" className="pk-btn pk-btn--sm">{strings.openOptimization}</button>
 					<button type="button" className="pk-btn pk-btn--ghost pk-btn--sm">{strings.snooze}</button>
 				</div>
@@ -409,11 +409,11 @@ function PreviewContextCard({
 			<div className="pk-preview-card__head">{strings.label}</div>
 			<div className="pk-preview-card pk-preview-card--warn">
 				<div className="pk-trio__row">
-					<span className="pk-strong" style={{ color: 'var(--pk-warning)' }}>{strings.headline}</span>
+					<span className="pk-strong pktw-text-pk-warning">{strings.headline}</span>
 					<span className="pk-badge pk-badge--warn">{strings.badge}</span>
 				</div>
-				<div className="pk-muted" style={{ fontSize: 12 }}>{strings.body}</div>
-				<div style={{ display: 'flex', gap: 6 }}>
+				<div className="pk-muted pktw-text-pk-base">{strings.body}</div>
+				<div className="pktw-flex pktw-gap-1.5">
 					<button type="button" className="pk-btn pk-btn--primary pk-btn--sm">{strings.compactNow}</button>
 					<button type="button" className="pk-btn pk-btn--ghost pk-btn--sm">{strings.dismiss}</button>
 				</div>
@@ -432,7 +432,7 @@ function PreviewAgentReceipt({
 			<div className="pk-preview-card__head">{strings.label}</div>
 			<div className="pk-preview-card">
 				<div className="pk-strong">{strings.headline}</div>
-				<div className="pk-muted" style={{ fontSize: 12 }}>{strings.body}</div>
+				<div className="pk-muted pktw-text-pk-base">{strings.body}</div>
 				<div>
 					<button type="button" className="pk-btn pk-btn--sm">{strings.openTrace}</button>
 				</div>

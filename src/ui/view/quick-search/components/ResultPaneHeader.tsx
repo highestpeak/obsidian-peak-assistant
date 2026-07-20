@@ -58,7 +58,7 @@ const GraphPresetSegmented: React.FC = () => {
 						title={title}
 						onClick={() => setPreset(id)}
 						className={cn(
-							'pktw-relative pktw-inline-flex pktw-items-center pktw-px-3 pktw-py-1 pktw-rounded-full pktw-text-[11px] pktw-font-medium',
+							'pktw-relative pktw-inline-flex pktw-items-center pktw-px-3 pktw-py-1 pktw-rounded-full pktw-text-pk-sm pktw-font-medium',
 							active
 								? 'pktw-text-white'
 								: 'pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-transition-colors',
@@ -95,7 +95,7 @@ const SemanticToggle: React.FC = () => {
 	const toggle = useVaultSearchStore((s) => s.toggleGraphShowSemantic);
 	return (
 		<label
-			className="pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-cursor-pointer pktw-select-none pktw-text-[11px] pktw-text-pk-foreground-muted"
+			className="pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-cursor-pointer pktw-select-none pktw-text-pk-sm pktw-text-pk-foreground-muted"
 			title="Layer semantic-similarity edges on top of the current preset. Uses pre-indexed embeddings — instant, no AI credits, no network."
 		>
 			<input
@@ -114,11 +114,10 @@ const SemanticToggle: React.FC = () => {
 			>
 				<span
 					className={cn(
-						'pktw-absolute pktw-top-0.5 pktw-left-0.5 pktw-w-3 pktw-h-3 pktw-bg-white pktw-rounded-full',
+						'pktw-absolute pktw-top-0.5 pktw-left-0.5 pktw-w-3 pktw-h-3 pktw-bg-white pktw-rounded-full pktw-shadow-pk-card',
 						'pktw-transition-transform',
 						on ? 'pktw-translate-x-[14px]' : 'pktw-translate-x-0',
 					)}
-					style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.15)' }}
 				/>
 			</span>
 			<span>Semantic</span>
@@ -178,7 +177,7 @@ export const ViewModeToggle: React.FC = () => {
 			transition={{ type: 'spring', stiffness: 500, damping: 34 }}
 		/>
 	);
-	const optBase = 'pktw-relative pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1 pktw-rounded-full pktw-text-[11px] pktw-font-medium';
+	const optBase = 'pktw-relative pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1 pktw-rounded-full pktw-text-pk-sm pktw-font-medium';
 	const activeLabel = 'pktw-relative pktw-z-10 pktw-text-white';
 	const idleLabel = 'pktw-relative pktw-z-10 pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-transition-colors';
 	return (
@@ -224,7 +223,7 @@ export const ViewModeToggle: React.FC = () => {
 export const ResultDensityToggle: React.FC = () => {
 	const density = useVaultSearchStore((s) => s.resultDensity);
 	const setDensity = useVaultSearchStore((s) => s.setResultDensity);
-	const optBase = 'pktw-relative pktw-inline-flex pktw-items-center pktw-px-3 pktw-py-1 pktw-rounded-full pktw-text-[11px] pktw-font-medium';
+	const optBase = 'pktw-relative pktw-inline-flex pktw-items-center pktw-px-3 pktw-py-1 pktw-rounded-full pktw-text-pk-sm pktw-font-medium';
 	const activeLabel = 'pktw-text-white';
 	const idleLabel = 'pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-transition-colors';
 	return (

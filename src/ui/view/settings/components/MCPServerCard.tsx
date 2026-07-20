@@ -5,6 +5,7 @@ import { cn } from '@/ui/react/lib/utils';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { MCPServerConfig, MCPConnectionStatus } from '@/core/types/mcp';
 import { useServiceContext } from '@/ui/context/ServiceContext';
+import { FieldRow } from './FieldRow';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -18,15 +19,6 @@ export interface MCPServerCardProps {
 
 const INPUT_CLS = 'pktw-w-full pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-px-2.5 pktw-py-1.5 pktw-text-sm pktw-outline-none focus:pktw-border-pk-accent pktw-transition-colors';
 
-function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
-	return (
-		<div className="pktw-grid pktw-items-center pktw-gap-3" style={{ gridTemplateColumns: '130px 1fr' }}>
-			<span className="pktw-text-xs pktw-text-pk-foreground-faint">{label}</span>
-			{children}
-		</div>
-	);
-}
-
 // ---------------------------------------------------------------------------
 // Status indicator
 // ---------------------------------------------------------------------------
@@ -34,9 +26,9 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
 function StatusDot({ status, toolCount, error }: { status: MCPConnectionStatus; toolCount: number; error?: string }) {
 	const colors: Record<MCPConnectionStatus, string> = {
 		disconnected: 'pktw-bg-pk-foreground-faint',
-		connecting: 'pktw-bg-yellow-400 pktw-animate-pulse',
-		connected: 'pktw-bg-green-500',
-		error: 'pktw-bg-red-500',
+		connecting: 'pktw-bg-pk-warning pktw-animate-pulse',
+		connected: 'pktw-bg-pk-success',
+		error: 'pktw-bg-pk-error',
 	};
 	const labels: Record<MCPConnectionStatus, string> = {
 		disconnected: 'Disconnected',
@@ -48,7 +40,7 @@ function StatusDot({ status, toolCount, error }: { status: MCPConnectionStatus; 
 	return (
 		<div className="pktw-flex pktw-items-center pktw-gap-1.5">
 			<div className={cn('pktw-w-2 pktw-h-2 pktw-rounded-full', colors[status])} />
-			<span className="pktw-text-[11px] pktw-text-pk-foreground-faint">{labels[status]}</span>
+			<span className="pktw-text-pk-sm pktw-text-pk-foreground-faint">{labels[status]}</span>
 		</div>
 	);
 }
@@ -118,7 +110,7 @@ export function MCPServerCard({ config, onUpdate, onDelete }: MCPServerCardProps
 				<span className="pktw-text-sm pktw-font-medium pktw-flex-1">
 					{config.name}
 				</span>
-				<span className="pktw-text-[11px] pktw-text-pk-foreground-faint pktw-uppercase">
+				<span className="pktw-text-pk-sm pktw-text-pk-foreground-faint pktw-uppercase">
 					{config.transport}
 				</span>
 				<StatusDot status={connStatus} toolCount={toolCount} error={errorMsg} />
@@ -217,7 +209,7 @@ export function MCPServerCard({ config, onUpdate, onDelete }: MCPServerCardProps
 							variant="ghost"
 							size="sm"
 							onClick={() => onDelete(config.id)}
-							className="pktw-text-red-500 hover:pktw-text-red-600 hover:pktw-bg-red-500/10"
+							className="pktw-text-pk-error hover:pktw-text-pk-error-text hover:pktw-bg-pk-error-bg"
 						>
 							<Trash2 size={14} />
 						</Button>

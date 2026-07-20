@@ -341,7 +341,7 @@ export const AIQueryRewritePanel: React.FC<AIQueryRewritePanelProps> = ({
 						<button
 							type="button"
 							onClick={() => setShowContext((v) => !v)}
-							className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-[11px] pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground"
+							className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-pk-sm pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground"
 						>
 							{showContext ? <ChevronUp className="pktw-w-3 pktw-h-3" /> : <ChevronDown className="pktw-w-3 pktw-h-3" />}
 							{showContext ? 'Hide context' : 'Show context'}
@@ -350,7 +350,7 @@ export const AIQueryRewritePanel: React.FC<AIQueryRewritePanelProps> = ({
 							<button
 								type="button"
 								onClick={() => setShowTrace((v) => !v)}
-								className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-[11px] pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground"
+								className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-pk-sm pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground"
 								title={`Total ${state.data.trace[state.data.trace.length - 1]?.tMs ?? 0}ms across ${state.data.trace.length} stages`}
 							>
 								{showTrace ? <ChevronUp className="pktw-w-3 pktw-h-3" /> : <ChevronDown className="pktw-w-3 pktw-h-3" />}
@@ -364,7 +364,7 @@ export const AIQueryRewritePanel: React.FC<AIQueryRewritePanelProps> = ({
 					type="button"
 					onClick={load}
 					disabled={state.kind === 'loading'}
-					className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-[11px] pktw-text-pk-accent hover:pktw-opacity-80 disabled:pktw-opacity-40"
+					className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-pk-sm pktw-text-pk-accent hover:pktw-opacity-80 disabled:pktw-opacity-40"
 				>
 					<RefreshCw className={cn('pktw-w-3 pktw-h-3', state.kind === 'loading' && 'pktw-animate-spin')} />
 					Try again
@@ -399,7 +399,7 @@ const CandidateCard: React.FC<{
 	>
 		<span
 			className={cn(
-				'pktw-absolute pktw-top-1.5 pktw-right-2 pktw-text-[10px] pktw-font-mono pktw-px-1.5 pktw-py-px pktw-rounded',
+				'pktw-absolute pktw-top-1.5 pktw-right-2 pktw-text-pk-xs pktw-font-mono pktw-px-1.5 pktw-py-px pktw-rounded',
 				focused ? 'pktw-bg-pk-accent pktw-text-white' : 'pktw-bg-pk-surface-sunken pktw-text-pk-foreground-muted',
 			)}
 		>
@@ -408,10 +408,10 @@ const CandidateCard: React.FC<{
 		<div className="pktw-text-[12.5px] pktw-font-semibold pktw-text-pk-foreground pktw-pr-6 pktw-mb-1">
 			{title}
 		</div>
-		<div className="pktw-font-mono pktw-text-[11px] pktw-text-pk-accent pktw-bg-pk-accent-tint pktw-px-2 pktw-py-1 pktw-rounded pktw-mb-1 pktw-break-all">
+		<div className="pktw-font-mono pktw-text-pk-sm pktw-text-pk-accent pktw-bg-pk-accent-tint pktw-px-2 pktw-py-1 pktw-rounded pktw-mb-1 pktw-break-all">
 			{query}
 		</div>
-		<div className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-leading-snug">
+		<div className="pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-leading-snug">
 			{reason}
 		</div>
 	</div>
@@ -426,7 +426,7 @@ const CandidateCard: React.FC<{
 const IdleEmptyBody: React.FC<{ onGoAnyway: () => void; onClose: () => void }> = ({ onGoAnyway, onClose }) => (
 	<div className="pktw-flex pktw-flex-col pktw-items-center pktw-py-10 pktw-px-8 pktw-text-center pktw-gap-3">
 		<Sparkles className="pktw-w-8 pktw-h-8 pktw-text-pk-accent-soft" />
-		<div className="pktw-text-[13px] pktw-font-semibold pktw-text-pk-foreground">Give me something to work with</div>
+		<div className="pktw-text-pk-md pktw-font-semibold pktw-text-pk-foreground">Give me something to work with</div>
 		<div className="pktw-text-[11.5px] pktw-text-pk-foreground-muted pktw-leading-relaxed pktw-max-w-[380px]">
 			Type a few words, browse a couple of results, or open a related file — then hit Suggest again. Right now I have no signal about what you're looking for.
 		</div>
@@ -434,14 +434,14 @@ const IdleEmptyBody: React.FC<{ onGoAnyway: () => void; onClose: () => void }> =
 			<button
 				type="button"
 				onClick={onClose}
-				className="pktw-text-[11px] pktw-px-3 pktw-py-1.5 pktw-rounded-md pktw-border pktw-border-pk-border hover:pktw-bg-pk-surface-sunken pktw-text-pk-foreground"
+				className="pktw-text-pk-sm pktw-px-3 pktw-py-1.5 pktw-rounded-md pktw-border pktw-border-pk-border hover:pktw-bg-pk-surface-sunken pktw-text-pk-foreground"
 			>
 				Got it, let me browse
 			</button>
 			<button
 				type="button"
 				onClick={onGoAnyway}
-				className="pktw-text-[11px] pktw-px-3 pktw-py-1.5 pktw-rounded-md pktw-text-pk-accent hover:pktw-underline"
+				className="pktw-text-pk-sm pktw-px-3 pktw-py-1.5 pktw-rounded-md pktw-text-pk-accent hover:pktw-underline"
 			>
 				Try anyway
 			</button>
@@ -498,7 +498,7 @@ const FallbackBanner: React.FC<{
 		raw ? `\n--- raw response ---\n${raw}` : '',
 	].join('\n');
 	return (
-		<div className="pktw-mx-3 pktw-mb-2 pktw-px-3 pktw-py-2 pktw-text-[11px] pktw-bg-pk-warning-bg pktw-border pktw-border-pk-warning/20 pktw-rounded-md">
+		<div className="pktw-mx-3 pktw-mb-2 pktw-px-3 pktw-py-2 pktw-text-pk-sm pktw-bg-pk-warning-bg pktw-border pktw-border-pk-warning/20 pktw-rounded-md">
 			<div className="pktw-flex pktw-items-start pktw-gap-2">
 				<AlertTriangle className="pktw-w-3.5 pktw-h-3.5 pktw-mt-0.5 pktw-flex-none pktw-text-pk-warning" />
 				<div className="pktw-flex-1 pktw-min-w-0">
@@ -542,7 +542,7 @@ const LoadingBody: React.FC<{ trace: LoadingTrace[] }> = ({ trace }) => {
 		<div className="pktw-flex pktw-flex-col pktw-items-center pktw-py-8 pktw-px-6 pktw-gap-3">
 			<div className="pktw-flex pktw-items-center pktw-gap-2.5">
 				<div className="pktw-w-4 pktw-h-4 pktw-border-2 pktw-border-pk-accent pktw-border-t-transparent pktw-rounded-full pktw-animate-spin" />
-				<div className="pktw-text-[12px] pktw-text-pk-foreground pktw-font-medium">
+				<div className="pktw-text-pk-base pktw-text-pk-foreground pktw-font-medium">
 					{current?.label ?? 'Reading your browsing…'}
 				</div>
 			</div>
@@ -589,9 +589,9 @@ const ErrorBody: React.FC<{
 	const copyText = `${message}${rawBlock}`;
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-items-start pktw-p-4 pktw-gap-3">
-			<div className="pktw-flex pktw-items-start pktw-gap-2 pktw-text-pk-error pktw-text-[12px] pktw-w-full">
+			<div className="pktw-flex pktw-items-start pktw-gap-2 pktw-text-pk-error pktw-text-pk-base pktw-w-full">
 				<AlertTriangle className="pktw-w-4 pktw-h-4 pktw-mt-0.5 pktw-flex-none" />
-				<pre className="pktw-flex-1 pktw-whitespace-pre-wrap pktw-break-words pktw-font-mono pktw-text-[11px] pktw-m-0 pktw-text-pk-error">{message}</pre>
+				<pre className="pktw-flex-1 pktw-whitespace-pre-wrap pktw-break-words pktw-font-mono pktw-text-pk-sm pktw-m-0 pktw-text-pk-error">{message}</pre>
 				<CopyButton text={copyText} label="Copy error" className="pktw-flex-none" />
 			</div>
 			{error.kind === 'schema-error' && error.raw && (
@@ -602,7 +602,7 @@ const ErrorBody: React.FC<{
 					<button
 						type="button"
 						onClick={onOpenAISetup}
-						className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-[11px] pktw-px-3 pktw-py-1.5 pktw-rounded-md pktw-bg-pk-accent pktw-text-white hover:pktw-opacity-90"
+						className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-pk-sm pktw-px-3 pktw-py-1.5 pktw-rounded-md pktw-bg-pk-accent pktw-text-white hover:pktw-opacity-90"
 					>
 						Open AI Setup
 					</button>
@@ -611,7 +611,7 @@ const ErrorBody: React.FC<{
 					<button
 						type="button"
 						onClick={onRetry}
-						className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-[11px] pktw-text-pk-accent hover:pktw-underline"
+						className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-pk-sm pktw-text-pk-accent hover:pktw-underline"
 					>
 						<RefreshCw className="pktw-w-3 pktw-h-3" /> Retry
 					</button>

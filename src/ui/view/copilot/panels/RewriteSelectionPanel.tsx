@@ -47,8 +47,8 @@ export const RewriteSelectionPanel: React.FC<RewriteSelectionPanelProps> = ({
 				rightLabel="Rewritten"
 				leftText={original}
 				rightText={result}
-				leftDotClass="pktw-bg-[var(--pk-error)] pktw-opacity-60"
-				rightDotClass="pktw-bg-[var(--pk-success)] pktw-opacity-60"
+				leftDotClass="pktw-bg-pk-error pktw-opacity-60"
+				rightDotClass="pktw-bg-pk-success pktw-opacity-60"
 			/>
 		</CopilotPanelShell>
 	);

@@ -146,7 +146,7 @@ export const V2Footer: React.FC<{
 						} ${
 							v2View === id
 								? 'pktw-bg-pk-accent pktw-text-pk-accent-fg'
-								: 'pktw-text-pk-foreground-muted hover:pktw-bg-gray-100'
+								: 'pktw-text-pk-foreground-muted hover:pktw-bg-pk-surface-sunken'
 						}`}
 					>
 						<Icon className="pktw-w-3.5 pktw-h-3.5" />
@@ -160,7 +160,7 @@ export const V2Footer: React.FC<{
 						className={`pktw-flex pktw-items-center pktw-px-1.5 pktw-py-1.5 pktw-rounded-r-lg pktw-transition-all pktw-cursor-pointer pktw-border-l pktw-border-pk-border ${
 							showToc
 								? 'pktw-bg-pk-accent/10 pktw-text-pk-accent'
-								: 'pktw-text-pk-foreground-muted hover:pktw-bg-gray-100'
+								: 'pktw-text-pk-foreground-muted hover:pktw-bg-pk-surface-sunken'
 						}`}
 						title="Table of Contents"
 					>
@@ -174,7 +174,7 @@ export const V2Footer: React.FC<{
 						className={`pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-rounded-lg pktw-transition-all pktw-cursor-pointer ${
 							v2View === id
 								? 'pktw-bg-pk-accent pktw-text-pk-accent-fg'
-								: 'pktw-text-pk-foreground-muted hover:pktw-bg-gray-100'
+								: 'pktw-text-pk-foreground-muted hover:pktw-bg-pk-surface-sunken'
 						}`}
 					>
 						<Icon className="pktw-w-3.5 pktw-h-3.5" />
@@ -199,10 +199,10 @@ export const V2Footer: React.FC<{
 						onClick={handleDefaultCopy}
 						onMouseEnter={startHoverTimer}
 						onMouseLeave={startHideTimer}
-						className="pktw-p-1.5 pktw-text-pk-text-secondary hover:pktw-bg-gray-100 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
+						className="pktw-p-1.5 pktw-text-pk-text-secondary hover:pktw-bg-pk-surface-sunken pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
 						title={copied ? 'Copied!' : copyLabel}
 					>
-						{copied ? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-green-600" /> : <Copy className="pktw-w-3.5 pktw-h-3.5" />}
+						{copied ? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-success" /> : <Copy className="pktw-w-3.5 pktw-h-3.5" />}
 					</div>
 					{showCopyMenu && (
 						<div
@@ -218,12 +218,12 @@ export const V2Footer: React.FC<{
 									className={`pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-cursor-pointer pktw-transition-colors ${
 										id === defaultCopyTarget
 											? 'pktw-text-pk-accent pktw-font-medium pktw-bg-pk-accent/5'
-											: 'pktw-text-pk-foreground hover:pktw-bg-gray-50'
+											: 'pktw-text-pk-foreground hover:pktw-bg-pk-surface-sunken'
 									}`}
 								>
 									<Icon className="pktw-w-3.5 pktw-h-3.5" />
 									<span>{label}</span>
-									{copied === id && <Check className="pktw-w-3 pktw-h-3 pktw-text-green-600 pktw-ml-auto" />}
+									{copied === id && <Check className="pktw-w-3 pktw-h-3 pktw-text-pk-success pktw-ml-auto" />}
 								</div>
 							))}
 						</div>
@@ -231,7 +231,7 @@ export const V2Footer: React.FC<{
 				</div>
 				<div
 					onClick={onSave}
-					className="pktw-p-1.5 pktw-text-pk-text-secondary hover:pktw-bg-gray-100 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
+					className="pktw-p-1.5 pktw-text-pk-text-secondary hover:pktw-bg-pk-surface-sunken pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
 					title="Save to Vault"
 				>
 					<Save className="pktw-w-3.5 pktw-h-3.5" />
@@ -239,7 +239,7 @@ export const V2Footer: React.FC<{
 				{hasGraphData && onSaveGraph && (
 					<div
 						onClick={onSaveGraph}
-						className="pktw-p-1.5 pktw-text-pk-text-secondary hover:pktw-bg-gray-100 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
+						className="pktw-p-1.5 pktw-text-pk-text-secondary hover:pktw-bg-pk-surface-sunken pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
 						title="Save Graph to Vault"
 					>
 						<Download className="pktw-w-3.5 pktw-h-3.5" />
@@ -250,7 +250,7 @@ export const V2Footer: React.FC<{
 						onClick={() => {
 							host.openVaultPath(lastSavedPath, { newLeaf: false });
 						}}
-						className="pktw-p-1.5 pktw-text-pk-text-secondary hover:pktw-bg-gray-100 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
+						className="pktw-p-1.5 pktw-text-pk-text-secondary hover:pktw-bg-pk-surface-sunken pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
 						title="Open saved analysis note"
 					>
 						<FileSearch className="pktw-w-3.5 pktw-h-3.5" />
@@ -272,7 +272,7 @@ export const V2Footer: React.FC<{
 					className={`pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-rounded-lg pktw-transition-all pktw-cursor-pointer ${
 						showContinueAnalysis
 							? 'pktw-bg-pk-accent/10 pktw-text-pk-accent'
-							: 'pktw-text-pk-foreground-muted hover:pktw-bg-gray-100'
+							: 'pktw-text-pk-foreground-muted hover:pktw-bg-pk-surface-sunken'
 					}`}
 				>
 					<MessageSquare className="pktw-w-3.5 pktw-h-3.5" />

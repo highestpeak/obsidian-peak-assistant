@@ -54,7 +54,7 @@ export function CostEstimationContent({ onRun, onSkip, onCancel, estimatePromise
 			{!estimate && !error && <LoadingSpinner />}
 
 			{error && (
-				<span className="pktw-block pktw-text-sm pktw-text-red-600 pktw-mb-4">
+				<span className="pktw-block pktw-text-sm pktw-text-pk-error pktw-mb-4">
 					Failed to calculate estimate: {error}
 				</span>
 			)}

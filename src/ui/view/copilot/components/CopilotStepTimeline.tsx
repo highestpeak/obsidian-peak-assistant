@@ -29,15 +29,15 @@ export const CopilotStepTimeline: React.FC<CopilotStepTimelineProps> = ({ steps,
 				onClick={() => setCollapsed(false)}
 				className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-1.5 pktw-px-2 pktw-w-full pktw-text-left pktw-bg-transparent pktw-border pktw-border-border pktw-rounded-md hover:pktw-bg-muted/50 pktw-transition-colors pktw-cursor-pointer"
 			>
-				<div className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-bg-green-100 pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0">
-					<Check className="pktw-w-2.5 pktw-h-2.5 pktw-text-green-600" />
+				<div className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-bg-pk-success-bg pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0">
+					<Check className="pktw-w-2.5 pktw-h-2.5 pktw-text-pk-success" />
 				</div>
 				<span className="pktw-text-xs pktw-text-muted-foreground">
 					{steps.length} steps completed
 				</span>
 				<span className="pktw-flex-1" />
 				{totalDuration !== null && (
-					<span className="pktw-text-[10px] pktw-text-muted-foreground pktw-font-mono pktw-tabular-nums">
+					<span className="pktw-text-pk-xs pktw-text-muted-foreground pktw-font-mono pktw-tabular-nums">
 						{totalDuration.toFixed(1)}s
 					</span>
 				)}
@@ -54,7 +54,7 @@ export const CopilotStepTimeline: React.FC<CopilotStepTimelineProps> = ({ steps,
 					className="pktw-flex pktw-items-center pktw-gap-1 pktw-py-1 pktw-px-2 pktw-w-full pktw-text-left pktw-bg-transparent pktw-border-b pktw-border-border hover:pktw-bg-muted/50 pktw-transition-colors pktw-cursor-pointer"
 				>
 					<ChevronDown className="pktw-w-3 pktw-h-3 pktw-text-muted-foreground" />
-					<span className="pktw-text-[10px] pktw-text-muted-foreground">collapse</span>
+					<span className="pktw-text-pk-xs pktw-text-muted-foreground">collapse</span>
 				</button>
 			)}
 			<div className="pktw-py-1">

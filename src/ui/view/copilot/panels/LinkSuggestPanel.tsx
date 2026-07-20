@@ -68,7 +68,7 @@ export const LinkSuggestPanel: React.FC<LinkSuggestPanelProps> = ({
 			}]}
 		>
 			<SuggestionSummaryBox count={result.links.length}>
-				potential links · <span className="pktw-font-semibold pktw-text-accent">{outgoingCount}</span> outgoing · <span className="pktw-font-semibold pktw-text-[var(--pk-success)]">{incomingCount}</span> incoming
+				potential links · <span className="pktw-font-semibold pktw-text-accent">{outgoingCount}</span> outgoing · <span className="pktw-font-semibold pktw-text-pk-success">{incomingCount}</span> incoming
 			</SuggestionSummaryBox>
 
 			{result.links.length === 0 && <PanelEmptyState message="No link candidates found." />}
@@ -76,12 +76,12 @@ export const LinkSuggestPanel: React.FC<LinkSuggestPanelProps> = ({
 			{result.links.map((link, i) => (
 				<SelectableRow key={i} checked={selected.has(i)} onClick={() => toggle(i)}>
 					<div className="pktw-flex pktw-items-center pktw-gap-1.5">
-						<span className="pktw-text-[13px] pktw-font-semibold pktw-text-accent">[[{link.target}]]</span>
+						<span className="pktw-text-pk-md pktw-font-semibold pktw-text-accent">[[{link.target}]]</span>
 						<DirectionBadge direction={link.type} />
 					</div>
-					<span className="pktw-text-[11px] pktw-text-muted-foreground pktw-block pktw-mt-0.5">{link.reason}</span>
+					<span className="pktw-text-pk-sm pktw-text-muted-foreground pktw-block pktw-mt-0.5">{link.reason}</span>
 					{link.context && (
-						<span className="pktw-text-[11px] pktw-text-muted-foreground/60 pktw-italic pktw-block pktw-mt-1 pktw-pl-2.5 pktw-border-l-2 pktw-border-border">
+						<span className="pktw-text-pk-sm pktw-text-muted-foreground/60 pktw-italic pktw-block pktw-mt-1 pktw-pl-2.5 pktw-border-l-2 pktw-border-border">
 							...{link.context}...
 						</span>
 					)}

@@ -67,7 +67,7 @@ const ChevronCell: React.FC<{ hasChildren: boolean; isExpanded: boolean; onToggl
 };
 
 const RangeBadge: React.FC<{ lineStart: number; lineEnd: number }> = ({ lineStart, lineEnd }) => (
-	<span className="pktw-text-[10px] pktw-font-mono pktw-text-pk-text-tertiary pktw-shrink-0 pktw-tabular-nums">
+	<span className="pktw-text-pk-xs pktw-font-mono pktw-text-pk-text-tertiary pktw-shrink-0 pktw-tabular-nums">
 		{lineStart}-{lineEnd}
 	</span>
 );
@@ -77,7 +77,7 @@ const MatchBadge: React.FC<{ count: number; isActive: boolean }> = ({ count, isA
 	return (
 		<span
 			className={cn(
-				'pktw-text-[10px] pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded-full pktw-whitespace-nowrap pktw-shrink-0',
+				'pktw-text-pk-xs pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded-full pktw-whitespace-nowrap pktw-shrink-0',
 				isActive
 					? 'pktw-bg-pk-accent-tint pktw-text-pk-accent'
 					: 'pktw-bg-pk-surface-2 pktw-text-pk-text-secondary',

@@ -6,13 +6,13 @@ export const DiffLegend: React.FC<{
 	removedLabel?: string;
 	addedLabel?: string;
 }> = ({ removedLabel = 'Removed', addedLabel = 'Added' }) => (
-	<div className="pktw-flex pktw-items-center pktw-gap-3 pktw-text-xs pktw-text-[var(--pk-text-secondary)]">
+	<div className="pktw-flex pktw-items-center pktw-gap-3 pktw-text-xs pktw-text-pk-text-secondary">
 		<span className="pktw-inline-flex pktw-items-center pktw-gap-1">
-			<span className="pktw-w-2 pktw-h-2 pktw-rounded-full pktw-bg-[var(--pk-error)]" />
+			<span className="pktw-w-2 pktw-h-2 pktw-rounded-full pktw-bg-pk-error" />
 			{removedLabel}
 		</span>
 		<span className="pktw-inline-flex pktw-items-center pktw-gap-1">
-			<span className="pktw-w-2 pktw-h-2 pktw-rounded-full pktw-bg-[var(--pk-success)]" />
+			<span className="pktw-w-2 pktw-h-2 pktw-rounded-full pktw-bg-pk-success" />
 			{addedLabel}
 		</span>
 	</div>
@@ -51,14 +51,14 @@ export const SideBySideSection: React.FC<{
 				<div className={`pktw-w-1.5 pktw-h-1.5 pktw-rounded-full ${leftDotClass}`} />
 				<span className="pktw-text-[9px] pktw-font-bold pktw-uppercase pktw-tracking-wider pktw-text-muted-foreground">{leftLabel}</span>
 			</div>
-			<div className="pktw-text-[13px] pktw-leading-relaxed pktw-whitespace-pre-wrap">{leftText}</div>
+			<div className="pktw-text-pk-md pktw-leading-relaxed pktw-whitespace-pre-wrap">{leftText}</div>
 		</div>
 		<div className="pktw-p-4">
 			<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-mb-2.5">
 				<div className={`pktw-w-1.5 pktw-h-1.5 pktw-rounded-full ${rightDotClass}`} />
 				<span className="pktw-text-[9px] pktw-font-bold pktw-uppercase pktw-tracking-wider pktw-text-muted-foreground">{rightLabel}</span>
 			</div>
-			<div className="pktw-text-[13px] pktw-leading-relaxed pktw-whitespace-pre-wrap">{rightText}</div>
+			<div className="pktw-text-pk-md pktw-leading-relaxed pktw-whitespace-pre-wrap">{rightText}</div>
 		</div>
 	</div>
 );

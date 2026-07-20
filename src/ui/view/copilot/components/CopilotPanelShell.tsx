@@ -83,7 +83,7 @@ export const CopilotPanelShell: React.FC<CopilotPanelShellProps> = ({
 						</span>
 					)}
 				</div>
-				{subtitle && <span className="pktw-text-[11px] pktw-text-muted-foreground">{subtitle}</span>}
+				{subtitle && <span className="pktw-text-pk-sm pktw-text-muted-foreground">{subtitle}</span>}
 			</div>
 
 			<div className="pktw-flex-1 pktw-overflow-y-auto pktw-p-5">
@@ -92,7 +92,7 @@ export const CopilotPanelShell: React.FC<CopilotPanelShellProps> = ({
 
 			<div className="pktw-flex pktw-items-center pktw-justify-end pktw-gap-2 pktw-px-5 pktw-py-3 pktw-border-t pktw-border-border pktw-bg-secondary">
 				{footerSummary && (
-					<span className="pktw-text-[11px] pktw-text-muted-foreground pktw-mr-auto">{footerSummary}</span>
+					<span className="pktw-text-pk-sm pktw-text-muted-foreground pktw-mr-auto">{footerSummary}</span>
 				)}
 				<Button variant="ghost" onClick={onClose}>{closeLabel}</Button>
 				{actions.map((action, i) => {

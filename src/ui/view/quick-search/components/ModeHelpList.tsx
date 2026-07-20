@@ -73,14 +73,14 @@ export const ModeHelpList: React.FC<ModeHelpListProps> = ({ onSelectMode, select
 							)}>
 								{mode.name}
 							</span>
-							<span className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-leading-tight pktw-mt-0.5">
+							<span className="pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-leading-tight pktw-mt-0.5">
 								{mode.description}
 							</span>
 						</div>
 						{/* Prefix badge */}
 						{mode.prefix && (
 							<span className={cn(
-								'pktw-flex-shrink-0 pktw-text-[11px] pktw-font-mono pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-border',
+								'pktw-flex-shrink-0 pktw-text-pk-sm pktw-font-mono pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-border',
 								isSelected
 									? 'pktw-bg-pk-accent-muted pktw-text-pk-accent pktw-border-pk-accent/30'
 									: 'pktw-bg-pk-surface-raised pktw-text-pk-foreground-muted pktw-border-pk-border'
@@ -94,7 +94,7 @@ export const ModeHelpList: React.FC<ModeHelpListProps> = ({ onSelectMode, select
 
 			{/* Query syntax operators section */}
 			<div className="pktw-px-4 pktw-pt-3 pktw-pb-1">
-				<span className="pktw-text-[10px] pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-text-pk-foreground-muted">
+				<span className="pktw-text-pk-xs pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-text-pk-foreground-muted">
 					Query Operators
 				</span>
 			</div>
@@ -103,10 +103,10 @@ export const ModeHelpList: React.FC<ModeHelpListProps> = ({ onSelectMode, select
 					key={op.prefix}
 					className="pktw-flex pktw-items-center pktw-gap-3 pktw-px-4 pktw-py-1.5"
 				>
-					<span className="pktw-flex-shrink-0 pktw-text-[11px] pktw-font-mono pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-border pktw-bg-pk-surface-raised pktw-text-pk-foreground-muted pktw-border-pk-border">
+					<span className="pktw-flex-shrink-0 pktw-text-pk-sm pktw-font-mono pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-border pktw-bg-pk-surface-raised pktw-text-pk-foreground-muted pktw-border-pk-border">
 						{op.prefix}
 					</span>
-					<span className="pktw-text-[11px] pktw-text-pk-foreground-muted">
+					<span className="pktw-text-pk-sm pktw-text-pk-foreground-muted">
 						{op.description}
 					</span>
 				</div>

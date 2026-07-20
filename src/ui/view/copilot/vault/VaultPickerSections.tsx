@@ -104,7 +104,7 @@ export const VaultReviewHistoryList: React.FC<{
 	}
 	if (records.length === 0) {
 		return (
-			<span className="pktw-block pktw-rounded-lg pktw-border pktw-border-dashed pktw-border-border pktw-px-3 pktw-py-2 pktw-text-[11px] pktw-text-muted-foreground">
+			<span className="pktw-block pktw-rounded-lg pktw-border pktw-border-dashed pktw-border-border pktw-px-3 pktw-py-2 pktw-text-pk-sm pktw-text-muted-foreground">
 				No vault reviews yet. Run one to start building history.
 			</span>
 		);
@@ -131,7 +131,7 @@ export const VaultReviewHistoryList: React.FC<{
 							<span className="pktw-truncate">{r.headline?.trim() || (r.mode === 'fast' ? `${MODE_LABELS.fast} vault review` : 'Vault review')}</span>
 							<span className="pktw-shrink-0 pktw-text-muted-foreground">· {relativeTime(r.completedAt)}</span>
 						</span>
-						<span className="pktw-text-[10px] pktw-text-muted-foreground">
+						<span className="pktw-text-pk-xs pktw-text-muted-foreground">
 							{r.clusterCount} cluster{r.clusterCount === 1 ? '' : 's'} · {r.gapCount} gap{r.gapCount === 1 ? '' : 's'} · {r.actionCount} action{r.actionCount === 1 ? '' : 's'} · {r.insightCount} insight{r.insightCount === 1 ? '' : 's'}
 						</span>
 					</div>

@@ -189,7 +189,7 @@ export const SaveDialog: React.FC<ResultSaveDialogProps> = ({ onClose }) => {
 					/>
 
 					{/* Preview */}
-					<div className="pktw-bg-violet-50 pktw-border pktw-border-violet-200 pktw-rounded-md pktw-p-3">
+					<div className="pktw-bg-pk-accent-tint pktw-border pktw-border-pk-accent pktw-rounded-md pktw-p-3">
 						<span className="pktw-text-xs pktw-text-muted-foreground pktw-mb-1 pktw-block">Full path:</span>
 						<span className="pktw-text-sm pktw-text-foreground pktw-font-mono pktw-block">
 							{folderPath ? `${folderPath}/` : ''}

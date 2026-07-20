@@ -9,9 +9,9 @@ import { CopilotPanelShell } from '@/ui/view/copilot/components/CopilotPanelShel
 import { FindingCard, PanelEmptyState, type SeverityConfig } from '@/ui/view/copilot/components/FindingsBodyParts';
 
 const PRIORITY_CONFIG: Record<string, SeverityConfig> = {
-	high: { icon: AlertTriangle, label: 'High', bg: 'pktw-bg-[var(--pk-error)]/10', text: 'pktw-text-[var(--pk-error)]', order: 0 },
-	medium: { icon: AlertCircle, label: 'Medium', bg: 'pktw-bg-[var(--pk-warning)]/10', text: 'pktw-text-[var(--pk-warning)]', order: 1 },
-	low: { icon: Info, label: 'Low', bg: 'pktw-bg-[var(--pk-info)]/10', text: 'pktw-text-[var(--pk-info)]', order: 2 },
+	high: { icon: AlertTriangle, label: 'High', bg: 'pktw-bg-pk-error/10', text: 'pktw-text-pk-error', order: 0 },
+	medium: { icon: AlertCircle, label: 'Medium', bg: 'pktw-bg-pk-warning/10', text: 'pktw-text-pk-warning', order: 1 },
+	low: { icon: Info, label: 'Low', bg: 'pktw-bg-pk-info/10', text: 'pktw-text-pk-info', order: 2 },
 };
 
 interface KnowledgeGapsPanelProps {
@@ -57,17 +57,17 @@ export const KnowledgeGapsPanel: React.FC<KnowledgeGapsPanelProps> = ({
 					const config = PRIORITY_CONFIG[gap.priority] ?? PRIORITY_CONFIG.low;
 					return (
 						<FindingCard key={i} config={config} title={gap.topic}>
-							<span className="pktw-text-[11px] pktw-text-muted-foreground pktw-leading-relaxed pktw-block pktw-mb-2">
+							<span className="pktw-text-pk-sm pktw-text-muted-foreground pktw-leading-relaxed pktw-block pktw-mb-2">
 								{gap.description}
 							</span>
 							<div className="pktw-flex pktw-items-center pktw-justify-between">
-								<span className="pktw-text-[10px] pktw-text-muted-foreground/60">
+								<span className="pktw-text-pk-xs pktw-text-muted-foreground/60">
 									Suggested: {gap.suggestedTitle}
 								</span>
 								<Button
 									variant="ghost"
 									size="sm"
-									className="pktw-h-6 pktw-text-[10px] pktw-gap-1"
+									className="pktw-h-6 pktw-text-pk-xs pktw-gap-1"
 									onClick={() => handleCreate(gap.suggestedTitle, gap.description)}
 								>
 									<FilePlus className="pktw-w-3 pktw-h-3" />

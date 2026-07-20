@@ -323,7 +323,7 @@ const FolderRow: React.FC<RowProps & { folder: TreeFolder; collapsed: boolean }>
 					)}
 				/>
 			</button>
-			<FolderIcon className="pktw-w-3.5 pktw-h-3.5 pktw-mr-1.5 pktw-flex-none" style={{ color: '#a78bfa' }} />
+			<FolderIcon className="pktw-w-3.5 pktw-h-3.5 pktw-mr-1.5 pktw-flex-none pktw-text-pk-accent" />
 			{/* Wrap name+count in a min-w-0 flex row so the badge stays right
 			    next to the name (not pushed to the row's far edge). Long names
 			    still truncate before the badge; short names see the count
@@ -331,8 +331,7 @@ const FolderRow: React.FC<RowProps & { folder: TreeFolder; collapsed: boolean }>
 			<div className="pktw-flex-1 pktw-min-w-0 pktw-flex pktw-items-center pktw-gap-1.5">
 				<span className="pktw-truncate pktw-min-w-0">{folder.name}</span>
 				<span
-					className="pktw-flex-none pktw-inline-flex pktw-items-center pktw-justify-center pktw-h-4 pktw-min-w-[18px] pktw-px-1.5 pktw-rounded-full pktw-text-[10px] pktw-font-semibold pktw-tabular-nums"
-					style={{ background: 'var(--pk-accent-tint, #ede9fe)', color: 'var(--pk-accent, #7c3aed)' }}
+					className="pktw-flex-none pktw-inline-flex pktw-items-center pktw-justify-center pktw-h-4 pktw-min-w-[18px] pktw-px-1.5 pktw-rounded-full pktw-text-pk-xs pktw-font-semibold pktw-tabular-nums pktw-bg-pk-accent-tint pktw-text-pk-accent"
 					title={`${folder.fileCount} matching file${folder.fileCount === 1 ? '' : 's'} in this folder`}
 				>
 					{folder.fileCount}
@@ -399,7 +398,7 @@ const FileRow: React.FC<RowProps & { file: TreeFile }> = ({
 				    of their sibling folders; otherwise child files would render
 				    to the LEFT of their parent folder's text — reads as wrong
 				    hierarchy. Matches Obsidian's File Explorer treatment. */}
-				<span className="pktw-flex-none" style={{ width: CHEVRON_SLOT_PX }} aria-hidden="true" />
+				<span className="pktw-flex-none pktw-w-4" aria-hidden="true" />
 				<IntensityDot result={file.result} />
 				<FileIcon className="pktw-w-3.5 pktw-h-3.5 pktw-mr-1.5 pktw-text-pk-foreground-muted pktw-flex-none" />
 				<span className="pktw-flex-1 pktw-truncate">{displayName}</span>
@@ -444,7 +443,7 @@ const FileRow: React.FC<RowProps & { file: TreeFile }> = ({
 				</div>
 				<div
 					className={cn(
-						'pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-[11px]',
+						'pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-pk-sm',
 						anchor ? 'pktw-text-pk-accent' : 'pktw-text-pk-foreground-faint',
 					)}
 				>
@@ -452,7 +451,7 @@ const FileRow: React.FC<RowProps & { file: TreeFile }> = ({
 					<span className="pktw-truncate">{anchor ?? 'body only'}</span>
 				</div>
 				{snippetText && (
-					<div className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-truncate">
+					<div className="pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-truncate">
 						{snippetText}
 					</div>
 				)}
@@ -495,8 +494,7 @@ const HitBadge: React.FC<{ count: number }> = ({ count }) => {
 	if (count <= 1) return null;
 	return (
 		<span
-			className="pktw-inline-flex pktw-items-center pktw-justify-center pktw-h-4 pktw-min-w-[16px] pktw-px-1.5 pktw-rounded-full pktw-text-[10px] pktw-font-semibold pktw-tabular-nums"
-			style={{ background: 'var(--pk-accent-tint, #ede9fe)', color: 'var(--pk-accent, #7c3aed)' }}
+			className="pktw-inline-flex pktw-items-center pktw-justify-center pktw-h-4 pktw-min-w-[16px] pktw-px-1.5 pktw-rounded-full pktw-text-pk-xs pktw-font-semibold pktw-tabular-nums pktw-bg-pk-accent-tint pktw-text-pk-accent"
 		>
 			{count}
 		</span>

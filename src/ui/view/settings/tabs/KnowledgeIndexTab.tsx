@@ -111,12 +111,12 @@ function IndexReadinessSection({ settings }: { settings: MyPluginSettings }) {
                     desc="On-disk index database."
                     right={snap.storeReady ? (
                         <Chip variant="success">
-                            <Check size={11} style={{ marginRight: 4 }} />
+                            <Check size={11} className="pktw-mr-1" />
                             Ready
                         </Chip>
                     ) : (
                         <Chip variant="warning">
-                            <AlertTriangle size={11} style={{ marginRight: 4 }} />
+                            <AlertTriangle size={11} className="pktw-mr-1" />
                             Not initialized
                         </Chip>
                     )}
@@ -136,12 +136,12 @@ function IndexReadinessSection({ settings }: { settings: MyPluginSettings }) {
                     desc="Files that need an update to reflect current content."
                     right={snap.missingChanged > 0 ? (
                         <Chip variant="warning">
-                            <AlertTriangle size={11} style={{ marginRight: 4 }} />
+                            <AlertTriangle size={11} className="pktw-mr-1" />
                             {snap.missingChanged} to update
                         </Chip>
                     ) : (
                         <Chip variant="success">
-                            <Check size={11} style={{ marginRight: 4 }} />
+                            <Check size={11} className="pktw-mr-1" />
                             Up to date
                         </Chip>
                     )}
@@ -152,7 +152,7 @@ function IndexReadinessSection({ settings }: { settings: MyPluginSettings }) {
                     desc="Whether meaning-based search can run."
                     right={snap.semanticReady ? (
                         <Chip variant="success">
-                            <Check size={11} style={{ marginRight: 4 }} />
+                            <Check size={11} className="pktw-mr-1" />
                             Provider connected
                         </Chip>
                     ) : (
@@ -268,7 +268,7 @@ function IndexLevelConfirmBanner({
                 <span className="pktw-text-sm pktw-font-semibold pktw-text-pk-foreground">
                     Switch to {formatIndexLevel(to)}?
                 </span>
-                <span className="pktw-text-[11px] pktw-text-pk-foreground-faint">
+                <span className="pktw-text-pk-sm pktw-text-pk-foreground-faint">
                     Currently {formatIndexLevel(from)}.{' '}
                     {isUpgrade
                         ? 'Confirming will start a staged re-index in the background and may take a while.'
@@ -438,8 +438,8 @@ function IndexBehaviorSection({
                 />
 
                 <div
-                    className="pk-row"
-                    style={{ gridTemplateColumns: '32px 1fr', alignItems: 'start', rowGap: 12 }}
+                    className="pk-row pktw-gap-y-3"
+                    style={{ gridTemplateColumns: '32px 1fr', alignItems: 'start' }}
                 >
                     <Row.Icon><FileText size={16} /></Row.Icon>
                     <Row.Body>
@@ -497,9 +497,8 @@ function DocTypeChips({
                     <span
                         key={key}
                         data-selected={enabled ? 'true' : 'false'}
-                        className="pk-pill"
+                        className="pk-pill pktw-cursor-pointer"
                         onClick={() => onToggle(key, !enabled)}
-                        style={{ cursor: 'pointer' }}
                     >
                         {label}
                     </span>
@@ -662,7 +661,7 @@ function AIAnalysisSection({
                     desc="Word counts Peak targets when generating summaries."
                     meta={summary}
                 >
-                    <FormGrid style={{ padding: 4 }}>
+                    <FormGrid className="pktw-p-1">
                         <FormRow>
                             <FormRow.Label>
                                 Session summary word count

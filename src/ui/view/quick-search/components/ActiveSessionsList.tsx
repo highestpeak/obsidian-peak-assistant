@@ -82,7 +82,7 @@ const SessionCard: React.FC<{
 			{isPlanReady && (
 				<span
 					onClick={(e) => { e.stopPropagation(); onRestore(session.id); }}
-					className="pktw-text-[11px] pktw-font-semibold pktw-text-pk-info-text pktw-bg-pk-info-bg pktw-border pktw-border-pk-highlight-info-border pktw-px-2.5 pktw-py-1 pktw-rounded-md pktw-shrink-0 pktw-cursor-pointer hover:pktw-bg-pk-highlight-info pktw-transition-colors"
+					className="pktw-text-pk-sm pktw-font-semibold pktw-text-pk-info-text pktw-bg-pk-info-bg pktw-border pktw-border-pk-highlight-info-border pktw-px-2.5 pktw-py-1 pktw-rounded-md pktw-shrink-0 pktw-cursor-pointer hover:pktw-bg-pk-highlight-info pktw-transition-colors"
 				>
 					Review Plan →
 				</span>
@@ -132,7 +132,7 @@ export const ActiveSessionsList: React.FC<ActiveSessionsListProps> = ({ onRestor
 
     return (
         <div className="pktw-px-4 pktw-mt-3">
-            <span className="pktw-block pktw-text-[10px] pktw-font-medium pktw-uppercase pktw-tracking-widest pktw-text-pk-foreground-muted pktw-mb-2">
+            <span className="pktw-block pktw-text-pk-xs pktw-font-medium pktw-uppercase pktw-tracking-widest pktw-text-pk-foreground-muted pktw-mb-2">
                 Active
             </span>
             <div className="pktw-flex pktw-flex-col pktw-gap-1.5">

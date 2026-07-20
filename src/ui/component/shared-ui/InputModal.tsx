@@ -68,7 +68,7 @@ export const InputModal: React.FC<InputModalProps> = ({
 							}}
 						/>
 						{errors.value && (
-							<p className="pktw-text-xs pktw-text-red-500 pktw-mt-1">
+							<p className="pktw-text-xs pktw-text-pk-error pktw-mt-1">
 								{errors.value.message}
 							</p>
 						)}

@@ -188,7 +188,7 @@ export const InsightInlineChat: React.FC<InsightInlineChatProps> = ({
 		<div className="pktw-mt-3 pktw-rounded-lg pktw-border pktw-border-pk-accent/40 pktw-bg-background pktw-p-3" style={{ userSelect: 'text' }}>
 			<div className="pktw-mb-2 pktw-flex pktw-items-center pktw-gap-2">
 				<Sparkles className="pktw-h-3.5 pktw-w-3.5 pktw-text-pk-accent" />
-				<span className="pktw-text-[12px] pktw-font-semibold pktw-text-foreground">
+				<span className="pktw-text-pk-base pktw-font-semibold pktw-text-foreground">
 					{mode === 'draft-proposal' ? 'Draft edits from this insight' : 'Follow-up about this insight'}
 				</span>
 				<span className="pktw-flex-1" />
@@ -208,7 +208,7 @@ export const InsightInlineChat: React.FC<InsightInlineChatProps> = ({
 					{history.map((turn, i) => (
 						<div key={i} className="pktw-flex pktw-flex-col pktw-gap-1">
 							<span className={cn(
-								'pktw-text-[10px] pktw-font-semibold pktw-uppercase pktw-tracking-wider',
+								'pktw-text-pk-xs pktw-font-semibold pktw-uppercase pktw-tracking-wider',
 								turn.role === 'user' ? 'pktw-text-pk-accent' : 'pktw-text-muted-foreground',
 							)}>
 								{turn.role === 'user' ? 'You' : 'Assistant'}
@@ -216,7 +216,7 @@ export const InsightInlineChat: React.FC<InsightInlineChatProps> = ({
 							{turn.role === 'user' ? (
 								<span className="pktw-text-sm pktw-leading-relaxed pktw-text-foreground pktw-whitespace-pre-wrap">{turn.text}</span>
 							) : (
-								<StreamdownIsolated className="pktw-text-sm pktw-leading-relaxed pktw-text-foreground">
+								<StreamdownIsolated className="pktw-text-pk-lg pktw-leading-relaxed pktw-text-foreground">
 									{turn.text}
 								</StreamdownIsolated>
 							)}
@@ -224,10 +224,10 @@ export const InsightInlineChat: React.FC<InsightInlineChatProps> = ({
 					))}
 					{streaming && (
 						<div className="pktw-flex pktw-flex-col pktw-gap-1">
-							<span className="pktw-text-[10px] pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-text-muted-foreground">
+							<span className="pktw-text-pk-xs pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-text-muted-foreground">
 								Assistant
 							</span>
-							<StreamdownIsolated className="pktw-text-sm pktw-leading-relaxed pktw-text-foreground" isAnimating>
+							<StreamdownIsolated className="pktw-text-pk-lg pktw-leading-relaxed pktw-text-foreground" isAnimating>
 								{streaming}
 							</StreamdownIsolated>
 						</div>
@@ -236,13 +236,13 @@ export const InsightInlineChat: React.FC<InsightInlineChatProps> = ({
 			)}
 
 			{error && (
-				<div className="pktw-mb-2 pktw-rounded-md pktw-bg-red-50/70 pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-text-red-700 dark:pktw-bg-red-950/30 dark:pktw-text-red-300">
+				<div className="pktw-mb-2 pktw-rounded-md pktw-bg-pk-error-bg pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-text-pk-error-text">
 					{error}
 				</div>
 			)}
 
 			{readOnly ? (
-				<div className="pktw-rounded-md pktw-border pktw-border-dashed pktw-border-border pktw-px-3 pktw-py-2 pktw-text-[11px] pktw-text-muted-foreground">
+				<div className="pktw-rounded-md pktw-border pktw-border-dashed pktw-border-border pktw-px-3 pktw-py-2 pktw-text-pk-sm pktw-text-muted-foreground">
 					Historical conversation — read-only.
 				</div>
 			) : (

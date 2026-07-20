@@ -7,9 +7,9 @@ import { CopilotPanelShell } from '@/ui/view/copilot/components/CopilotPanelShel
 import { CollapsibleSection, StatStrip } from '@/ui/view/copilot/components/FindingsBodyParts';
 
 const PRIORITY_CONFIG: Record<string, { icon: LucideIcon; bg: string; text: string }> = {
-	high: { icon: AlertTriangle, bg: 'pktw-bg-[var(--pk-error)]/10', text: 'pktw-text-[var(--pk-error)]' },
-	medium: { icon: AlertCircle, bg: 'pktw-bg-[var(--pk-warning)]/10', text: 'pktw-text-[var(--pk-warning)]' },
-	low: { icon: Info, bg: 'pktw-bg-[var(--pk-info)]/10', text: 'pktw-text-[var(--pk-info)]' },
+	high: { icon: AlertTriangle, bg: 'pktw-bg-pk-error/10', text: 'pktw-text-pk-error' },
+	medium: { icon: AlertCircle, bg: 'pktw-bg-pk-warning/10', text: 'pktw-text-pk-warning' },
+	low: { icon: Info, bg: 'pktw-bg-pk-info/10', text: 'pktw-text-pk-info' },
 };
 
 const REC_TYPE_LABELS: Record<string, string> = {
@@ -60,8 +60,8 @@ export const CheckTaskListPanel: React.FC<CheckTaskListPanelProps> = ({ result, 
 										{REC_TYPE_LABELS[rec.type] ?? rec.type}
 									</span>
 								</div>
-								<span className="pktw-text-[12px] pktw-font-medium pktw-block">{rec.description}</span>
-								<span className="pktw-text-[11px] pktw-text-muted-foreground pktw-block pktw-mt-0.5">
+								<span className="pktw-text-pk-base pktw-font-medium pktw-block">{rec.description}</span>
+								<span className="pktw-text-pk-sm pktw-text-muted-foreground pktw-block pktw-mt-0.5">
 									{rec.suggestedAction}
 								</span>
 							</div>
@@ -80,14 +80,14 @@ export const CheckTaskListPanel: React.FC<CheckTaskListPanelProps> = ({ result, 
 								<PriorityIcon className="pktw-w-2.5 pktw-h-2.5" />
 							</div>
 							<div className="pktw-flex-1 pktw-min-w-0">
-								<span className="pktw-text-[12px] pktw-block">{task.text}</span>
-								<span className="pktw-text-[10px] pktw-text-muted-foreground/60 pktw-block pktw-mt-0.5">
+								<span className="pktw-text-pk-base pktw-block">{task.text}</span>
+								<span className="pktw-text-pk-xs pktw-text-muted-foreground/60 pktw-block pktw-mt-0.5">
 									{task.priorityReason}
 									{task.isOverdue && task.dueDate && ` — Overdue: ${task.dueDate}`}
 									{task.isStale && task.staleReason && ` — ${task.staleReason}`}
 								</span>
 								{task.blockers.length > 0 && (
-									<span className="pktw-text-[10px] pktw-text-[var(--pk-warning)] pktw-block pktw-mt-0.5">
+									<span className="pktw-text-pk-xs pktw-text-pk-warning pktw-block pktw-mt-0.5">
 										Blocked: {task.blockers.join(', ')}
 									</span>
 								)}

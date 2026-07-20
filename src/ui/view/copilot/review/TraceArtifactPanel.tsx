@@ -42,23 +42,23 @@ function formatDuration(ms: number): string {
 
 function TraceIcon({ item }: { item: TraceArtifact }) {
 	if (item.status === 'running') return <Loader2 className="pktw-h-3.5 pktw-w-3.5 pktw-animate-spin pktw-text-pk-accent" />;
-	if (item.status === 'error') return <XCircle className="pktw-h-3.5 pktw-w-3.5 pktw-text-red-600" />;
-	if (item.kind === 'observe') return <CheckCircle2 className="pktw-h-3.5 pktw-w-3.5 pktw-text-green-600" />;
-	if (item.kind === 'plan') return <ClipboardList className="pktw-h-3.5 pktw-w-3.5 pktw-text-indigo-600" />;
+	if (item.status === 'error') return <XCircle className="pktw-h-3.5 pktw-w-3.5 pktw-text-pk-error" />;
+	if (item.kind === 'observe') return <CheckCircle2 className="pktw-h-3.5 pktw-w-3.5 pktw-text-pk-success" />;
+	if (item.kind === 'plan') return <ClipboardList className="pktw-h-3.5 pktw-w-3.5 pktw-text-pk-indigo" />;
 	if (item.kind === 'finding') return <NotebookPen className="pktw-h-3.5 pktw-w-3.5 pktw-text-muted-foreground" />;
 	if (item.kind === 'round-header') return <Flag className="pktw-h-3.5 pktw-w-3.5 pktw-text-pk-accent" />;
-	if (item.kind === 'budget-warning') return <AlertTriangle className="pktw-h-3.5 pktw-w-3.5 pktw-text-amber-600" />;
-	if (item.kind === 'propose-insight') return <Brain className="pktw-h-3.5 pktw-w-3.5 pktw-text-amber-600" />;
-	if (item.kind === 'propose-change') return <RefreshCw className="pktw-h-3.5 pktw-w-3.5 pktw-text-green-600" />;
+	if (item.kind === 'budget-warning') return <AlertTriangle className="pktw-h-3.5 pktw-w-3.5 pktw-text-pk-warning" />;
+	if (item.kind === 'propose-insight') return <Brain className="pktw-h-3.5 pktw-w-3.5 pktw-text-pk-warning" />;
+	if (item.kind === 'propose-change') return <RefreshCw className="pktw-h-3.5 pktw-w-3.5 pktw-text-pk-success" />;
 	if (item.kind === 'propose-source') return <FileText className="pktw-h-3.5 pktw-w-3.5 pktw-text-pk-accent" />;
 	if (item.kind === 'propose-chat-followup') return <Sparkles className="pktw-h-3.5 pktw-w-3.5 pktw-text-pk-accent" />;
-	if (item.kind === 'submit-review') return <CheckCircle2 className="pktw-h-3.5 pktw-w-3.5 pktw-text-green-600" />;
+	if (item.kind === 'submit-review') return <CheckCircle2 className="pktw-h-3.5 pktw-w-3.5 pktw-text-pk-success" />;
 	if (item.kind === 'call') return <Wrench className="pktw-h-3.5 pktw-w-3.5 pktw-text-pk-accent" />;
-	if (item.kind === 'read') return <FileSearch className="pktw-h-3.5 pktw-w-3.5 pktw-text-green-600" />;
-	if (item.kind === 'insight') return <Brain className="pktw-h-3.5 pktw-w-3.5 pktw-text-amber-600" />;
-	if (item.kind === 'revise') return <RefreshCw className="pktw-h-3.5 pktw-w-3.5 pktw-text-green-600" />;
+	if (item.kind === 'read') return <FileSearch className="pktw-h-3.5 pktw-w-3.5 pktw-text-pk-success" />;
+	if (item.kind === 'insight') return <Brain className="pktw-h-3.5 pktw-w-3.5 pktw-text-pk-warning" />;
+	if (item.kind === 'revise') return <RefreshCw className="pktw-h-3.5 pktw-w-3.5 pktw-text-pk-success" />;
 	if (item.kind === 'prepare') return <FileText className="pktw-h-3.5 pktw-w-3.5 pktw-text-pk-accent" />;
-	if (item.status === 'done') return <CheckCircle2 className="pktw-h-3.5 pktw-w-3.5 pktw-text-green-600" />;
+	if (item.status === 'done') return <CheckCircle2 className="pktw-h-3.5 pktw-w-3.5 pktw-text-pk-success" />;
 	return <Circle className="pktw-h-3.5 pktw-w-3.5 pktw-text-muted-foreground" />;
 }
 
@@ -74,8 +74,8 @@ function formatTraceTime(timestamp: number | undefined): string {
 
 function statusClass(status: TraceArtifact['status']): string {
 	if (status === 'running') return 'pktw-bg-pk-accent/10 pktw-text-pk-accent';
-	if (status === 'error') return 'pktw-bg-red-500/10 pktw-text-red-600';
-	if (status === 'done') return 'pktw-bg-green-500/10 pktw-text-green-700 dark:pktw-text-green-400';
+	if (status === 'error') return 'pktw-bg-pk-error-bg pktw-text-pk-error-text';
+	if (status === 'done') return 'pktw-bg-pk-success-bg pktw-text-pk-success-text';
 	if (status === 'cancelled') return 'pktw-bg-muted pktw-text-muted-foreground';
 	return 'pktw-bg-muted pktw-text-muted-foreground';
 }
@@ -122,7 +122,7 @@ const TraceRow: React.FC<TraceRowProps> = ({ item, expanded, hasConnector, inden
 		indented && 'pktw-pl-6',
 		item.kind === 'finding' && 'pktw-italic pktw-opacity-80',
 	)}>
-		<span className="pktw-pt-0.5 pktw-text-[10px] pktw-font-mono pktw-tabular-nums pktw-text-muted-foreground">
+		<span className="pktw-pt-0.5 pktw-text-pk-xs pktw-font-mono pktw-tabular-nums pktw-text-muted-foreground">
 			{formatTraceTime(item.timestamp)}
 		</span>
 		<div className="pktw-relative pktw-flex pktw-justify-center">
@@ -132,7 +132,7 @@ const TraceRow: React.FC<TraceRowProps> = ({ item, expanded, hasConnector, inden
 			<span className={cn(
 				'pktw-z-10 pktw-flex pktw-h-5 pktw-w-5 pktw-items-center pktw-justify-center pktw-rounded-full pktw-border pktw-border-border pktw-bg-background',
 				item.status === 'running' && 'pktw-border-pk-accent/40 pktw-bg-pk-accent/10',
-				item.status === 'error' && 'pktw-border-red-300 pktw-bg-red-50 dark:pktw-bg-red-950/30',
+				item.status === 'error' && 'pktw-border-pk-error pktw-bg-pk-error-bg',
 				item.kind === 'round-header' && 'pktw-border-pk-accent pktw-bg-pk-accent/15',
 			)}>
 				<TraceIcon item={item} />
@@ -140,17 +140,17 @@ const TraceRow: React.FC<TraceRowProps> = ({ item, expanded, hasConnector, inden
 		</div>
 		<div className={cn(
 			'pktw-min-w-0 pktw-pb-3',
-			item.status === 'error' && 'pktw-rounded-md pktw-bg-red-50/70 pktw-p-2 dark:pktw-bg-red-950/20',
+			item.status === 'error' && 'pktw-rounded-md pktw-bg-pk-error-bg pktw-p-2',
 			item.kind === 'round-header' && 'pktw-font-semibold',
 		)}>
 			<div className="pktw-flex pktw-min-w-0 pktw-flex-wrap pktw-items-center pktw-gap-1.5">
 				<span className={cn(
 					'pktw-text-xs pktw-font-semibold pktw-text-foreground',
-					item.kind === 'round-header' && 'pktw-text-[13px] pktw-text-pk-accent',
+					item.kind === 'round-header' && 'pktw-text-pk-md pktw-text-pk-accent',
 				)}>{item.label}</span>
 				{item.badge && (
 					<span className={cn(
-						'pktw-inline-flex pktw-items-center pktw-gap-1 pktw-rounded-full pktw-bg-pk-accent/10 pktw-px-2 pktw-py-0.5 pktw-text-[10px] pktw-font-medium pktw-text-pk-accent',
+						'pktw-inline-flex pktw-items-center pktw-gap-1 pktw-rounded-full pktw-bg-pk-accent/10 pktw-px-2 pktw-py-0.5 pktw-text-pk-xs pktw-font-medium pktw-text-pk-accent',
 						expanded ? 'pktw-break-all' : 'pktw-max-w-[160px] pktw-truncate',
 					)}>
 						<Sparkles className="pktw-h-3 pktw-w-3 pktw-shrink-0" />
@@ -164,7 +164,7 @@ const TraceRow: React.FC<TraceRowProps> = ({ item, expanded, hasConnector, inden
 				)}
 			</div>
 			{(item.detail || item.summary) && (
-				<span className="pktw-mt-1 pktw-block pktw-text-[11px] pktw-leading-relaxed pktw-text-muted-foreground">
+				<span className="pktw-mt-1 pktw-block pktw-text-pk-sm pktw-leading-relaxed pktw-text-muted-foreground">
 					{item.detail ?? item.summary}
 				</span>
 			)}
@@ -200,7 +200,7 @@ const GroupBlock: React.FC<GroupBlockProps> = ({ anchor, children, expanded, exp
 
 	return (
 		<div className="pktw-trace-enter pktw-grid pktw-grid-cols-[52px_18px_minmax(0,1fr)] pktw-gap-2">
-			<span className="pktw-pt-0.5 pktw-text-[10px] pktw-font-mono pktw-tabular-nums pktw-text-muted-foreground">
+			<span className="pktw-pt-0.5 pktw-text-pk-xs pktw-font-mono pktw-tabular-nums pktw-text-muted-foreground">
 				{formatTraceTime(anchor.timestamp)}
 			</span>
 			<div className="pktw-relative pktw-flex pktw-justify-center">
@@ -240,7 +240,7 @@ const GroupBlock: React.FC<GroupBlockProps> = ({ anchor, children, expanded, exp
 							<span className="pktw-text-xs pktw-font-semibold pktw-text-foreground">{anchor.label}</span>
 							{anchor.badge && (
 								<span className={cn(
-									'pktw-inline-flex pktw-items-center pktw-gap-1 pktw-rounded-full pktw-bg-pk-accent/10 pktw-px-2 pktw-py-0.5 pktw-text-[10px] pktw-font-medium pktw-text-pk-accent',
+									'pktw-inline-flex pktw-items-center pktw-gap-1 pktw-rounded-full pktw-bg-pk-accent/10 pktw-px-2 pktw-py-0.5 pktw-text-pk-xs pktw-font-medium pktw-text-pk-accent',
 									expandedDetails ? 'pktw-break-all' : 'pktw-max-w-[220px] pktw-truncate',
 								)}>
 									<Sparkles className="pktw-h-3 pktw-w-3 pktw-shrink-0" />
@@ -248,7 +248,7 @@ const GroupBlock: React.FC<GroupBlockProps> = ({ anchor, children, expanded, exp
 								</span>
 							)}
 							{childSummary && !expanded && (
-								<span className="pktw-rounded-full pktw-bg-muted pktw-px-1.5 pktw-py-0.5 pktw-text-[10px] pktw-text-muted-foreground">
+								<span className="pktw-rounded-full pktw-bg-muted pktw-px-1.5 pktw-py-0.5 pktw-text-pk-xs pktw-text-muted-foreground">
 									{childSummary}
 								</span>
 							)}
@@ -259,7 +259,7 @@ const GroupBlock: React.FC<GroupBlockProps> = ({ anchor, children, expanded, exp
 							)}
 						</div>
 						{(anchor.detail || anchor.summary) && (
-							<span className="pktw-mt-1 pktw-block pktw-text-[11px] pktw-leading-relaxed pktw-text-muted-foreground">
+							<span className="pktw-mt-1 pktw-block pktw-text-pk-sm pktw-leading-relaxed pktw-text-muted-foreground">
 								{anchor.detail ?? anchor.summary}
 							</span>
 						)}
@@ -330,7 +330,7 @@ export const TraceArtifactPanel: React.FC<{
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-px-4 pktw-py-3">
 			{summaryLabel && (
-				<div className="pktw-mb-3 pktw-flex pktw-items-center pktw-gap-2 pktw-rounded-md pktw-bg-muted/40 pktw-px-3 pktw-py-2 pktw-text-[11px] pktw-text-foreground">
+				<div className="pktw-mb-3 pktw-flex pktw-items-center pktw-gap-2 pktw-rounded-md pktw-bg-muted/40 pktw-px-3 pktw-py-2 pktw-text-pk-sm pktw-text-foreground">
 					<Clock className="pktw-h-3.5 pktw-w-3.5 pktw-text-pk-accent" />
 					<span>{summaryLabel}</span>
 				</div>

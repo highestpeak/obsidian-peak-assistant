@@ -20,7 +20,7 @@ export function ReviewStatusBadge({ status, hideOnCompleted = true, className }:
 	return (
 		<span
 			className={cn(
-				'pktw-inline-flex pktw-items-center pktw-gap-1 pktw-rounded pktw-px-1.5 pktw-py-0.5 pktw-text-[10px] pktw-font-medium pktw-leading-none',
+				'pktw-inline-flex pktw-items-center pktw-gap-1 pktw-rounded pktw-px-1.5 pktw-py-0.5 pktw-text-pk-xs pktw-font-medium pktw-leading-none',
 				config.classes,
 				className,
 			)}
@@ -41,31 +41,31 @@ function getStatusConfig(status: string): {
 			return {
 				label: 'Cancelled',
 				icon: Ban,
-				classes: 'pktw-bg-amber-500/10 pktw-text-amber-600 dark:pktw-text-amber-400',
+				classes: 'pktw-bg-pk-warning-bg pktw-text-pk-warning-text',
 			};
 		case 'error':
 			return {
 				label: 'Error',
 				icon: AlertTriangle,
-				classes: 'pktw-bg-red-500/10 pktw-text-red-600 dark:pktw-text-red-400',
+				classes: 'pktw-bg-pk-error-bg pktw-text-pk-error-text',
 			};
 		case 'running':
 			return {
 				label: 'Running',
 				icon: Loader2,
-				classes: 'pktw-bg-blue-500/10 pktw-text-blue-600 dark:pktw-text-blue-400',
+				classes: 'pktw-bg-pk-info-bg pktw-text-pk-info-text',
 			};
 		case 'awaiting-next-round':
 			return {
 				label: 'Paused',
 				icon: PauseCircle,
-				classes: 'pktw-bg-indigo-500/10 pktw-text-indigo-600 dark:pktw-text-indigo-400',
+				classes: 'pktw-bg-pk-indigo-bg pktw-text-pk-indigo',
 			};
 		case 'completed':
 			return {
 				label: 'Completed',
 				icon: CheckCircle2,
-				classes: 'pktw-bg-emerald-500/10 pktw-text-emerald-600 dark:pktw-text-emerald-400',
+				classes: 'pktw-bg-pk-success-bg pktw-text-pk-success-text',
 			};
 		default:
 			return null;

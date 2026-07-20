@@ -214,7 +214,7 @@ export function ModelCombobox({ value, onChange, providerKind, allowFreeText, pl
 								{group.label && (
 									<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-sticky pktw-top-0 pktw-bg-popover">
 										<span className="pktw-w-1.5 pktw-h-1.5 pktw-rounded-full pktw-bg-pk-accent" />
-										<span className="pktw-text-[10px] pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-text-pk-muted-foreground">
+										<span className="pktw-text-pk-xs pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-text-pk-muted-foreground">
 											{group.label}
 										</span>
 									</div>
@@ -247,7 +247,7 @@ export function ModelCombobox({ value, onChange, providerKind, allowFreeText, pl
 						{flatFiltered.length === 0 && (
 							<div className="pktw-px-3 pktw-py-3 pktw-text-xs pktw-text-pk-muted-foreground pktw-text-center">
 								{allowFreeText && query.trim()
-									? (<>No matches &mdash; press <kbd className="pktw-px-1 pktw-py-0.5 pktw-rounded pktw-bg-pk-border/40 pktw-text-[10px]">Enter</kbd> to use <span className="pktw-font-mono pktw-text-pk-accent">{query.trim()}</span></>)
+									? (<>No matches &mdash; press <kbd className="pktw-px-1 pktw-py-0.5 pktw-rounded pktw-bg-pk-border/40 pktw-text-pk-xs">Enter</kbd> to use <span className="pktw-font-mono pktw-text-pk-accent">{query.trim()}</span></>)
 									: 'No models found'
 								}
 							</div>

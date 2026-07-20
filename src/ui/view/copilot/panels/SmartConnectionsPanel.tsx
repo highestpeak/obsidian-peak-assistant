@@ -27,7 +27,7 @@ interface SmartConnectionsPanelProps {
 
 const formatScore = (score: number) => {
 	const pct = Math.round(score * 100);
-	if (pct >= 80) return { label: `${pct}%`, className: 'pktw-text-[var(--pk-success)]' };
+	if (pct >= 80) return { label: `${pct}%`, className: 'pktw-text-pk-success' };
 	if (pct >= 50) return { label: `${pct}%`, className: 'pktw-text-accent' };
 	return { label: `${pct}%`, className: 'pktw-text-muted-foreground' };
 };
@@ -98,17 +98,17 @@ export const SmartConnectionsPanel: React.FC<SmartConnectionsPanelProps> = ({
 						>
 							<div className={`pktw-w-4 pktw-h-4 pktw-rounded pktw-border-2 pktw-flex pktw-items-center pktw-justify-center pktw-flex-shrink-0 pktw-mt-0.5 pktw-transition-all ${
 								isInserted
-									? 'pktw-bg-[var(--pk-success)] pktw-border-[var(--pk-success)] pktw-text-white'
+									? 'pktw-bg-pk-success pktw-border-pk-success pktw-text-white'
 									: isChecked
-										? 'pktw-bg-accent pktw-border-accent pktw-text-white pktw-text-[10px]'
+										? 'pktw-bg-accent pktw-border-accent pktw-text-white pktw-text-pk-xs'
 										: 'pktw-border-border'
 							}`}>
 								{(isChecked || isInserted) && <Check className="pktw-w-2.5 pktw-h-2.5" />}
 							</div>
 							<div className="pktw-flex-1 pktw-min-w-0">
 								<div className="pktw-flex pktw-items-center pktw-gap-1.5">
-									<span className="pktw-text-[13px] pktw-font-semibold pktw-text-accent pktw-truncate">{conn.title}</span>
-									<span className={`pktw-text-[10px] pktw-font-bold ${scoreInfo.className}`}>{scoreInfo.label}</span>
+									<span className="pktw-text-pk-md pktw-font-semibold pktw-text-accent pktw-truncate">{conn.title}</span>
+									<span className={`pktw-text-pk-xs pktw-font-bold ${scoreInfo.className}`}>{scoreInfo.label}</span>
 									<ExternalLink
 										className="pktw-w-3 pktw-h-3 pktw-text-muted-foreground pktw-opacity-0 group-hover:pktw-opacity-100 pktw-flex-shrink-0 pktw-cursor-pointer"
 										onClick={(e) => { e.stopPropagation(); void vault.openNote(conn.path, { newLeaf: false }); }}
@@ -126,8 +126,8 @@ export const SmartConnectionsPanel: React.FC<SmartConnectionsPanelProps> = ({
 										))}
 									</div>
 								)}
-								<span className="pktw-text-[10px] pktw-text-muted-foreground/40 pktw-block pktw-mt-1 pktw-truncate">{conn.path}</span>
-								<span className="pktw-text-[10px] pktw-text-accent/70 pktw-block pktw-mt-0.5 pktw-italic">
+								<span className="pktw-text-pk-xs pktw-text-muted-foreground/40 pktw-block pktw-mt-1 pktw-truncate">{conn.path}</span>
+								<span className="pktw-text-pk-xs pktw-text-accent/70 pktw-block pktw-mt-0.5 pktw-italic">
 									Link: [[{conn.suggestedLinkText}]]
 								</span>
 							</div>

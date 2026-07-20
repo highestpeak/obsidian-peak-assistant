@@ -83,7 +83,7 @@ export const VaultSummaryPanel: React.FC<VaultSummaryPanelProps> = ({
 				{ label: 'Save as Note', icon: FileText, onClick: handleInsertAsNote },
 			]}
 		>
-			<div className="pktw-p-4 pktw-bg-secondary pktw-rounded-lg pktw-border-l-3 pktw-border-l-accent pktw-text-[13px] pktw-leading-relaxed pktw-mb-4">
+			<div className="pktw-p-4 pktw-bg-secondary pktw-rounded-lg pktw-border-l-3 pktw-border-l-accent pktw-text-pk-md pktw-leading-relaxed pktw-mb-4">
 				{result.narrative}
 			</div>
 
@@ -96,11 +96,11 @@ export const VaultSummaryPanel: React.FC<VaultSummaryPanelProps> = ({
 							onClick={() => setExpandedGroup(isExpanded ? null : i)}
 						>
 							<FolderOpen className="pktw-w-3.5 pktw-h-3.5 pktw-text-accent pktw-flex-shrink-0" />
-							<span className="pktw-text-[13px] pktw-font-semibold pktw-flex-1">{group.topic}</span>
-							<span className="pktw-text-[10px] pktw-text-muted-foreground pktw-tabular-nums">{group.notes.length} notes</span>
+							<span className="pktw-text-pk-md pktw-font-semibold pktw-flex-1">{group.topic}</span>
+							<span className="pktw-text-pk-xs pktw-text-muted-foreground pktw-tabular-nums">{group.notes.length} notes</span>
 						</div>
 						<div className="pktw-px-3.5 pktw-py-2.5">
-							<span className="pktw-text-[11px] pktw-text-muted-foreground pktw-leading-relaxed pktw-block pktw-mb-2">{group.summary}</span>
+							<span className="pktw-text-pk-sm pktw-text-muted-foreground pktw-leading-relaxed pktw-block pktw-mb-2">{group.summary}</span>
 							{isExpanded && (
 								<div className="pktw-mt-2 pktw-border-t pktw-border-border pktw-pt-2">
 									{group.notes.map((note, j) => (
@@ -110,8 +110,8 @@ export const VaultSummaryPanel: React.FC<VaultSummaryPanelProps> = ({
 											onClick={() => { void vault.openNote(note.path, { newLeaf: false }); }}
 										>
 											<FileText className="pktw-w-3 pktw-h-3 pktw-text-muted-foreground pktw-flex-shrink-0" />
-											<span className="pktw-text-[11px] pktw-font-semibold pktw-flex-1 pktw-truncate">{note.title}</span>
-											<span className="pktw-text-[10px] pktw-text-muted-foreground/40 pktw-flex-shrink-0">{note.modifiedDate}</span>
+											<span className="pktw-text-pk-sm pktw-font-semibold pktw-flex-1 pktw-truncate">{note.title}</span>
+											<span className="pktw-text-pk-xs pktw-text-muted-foreground/40 pktw-flex-shrink-0">{note.modifiedDate}</span>
 										</div>
 									))}
 								</div>

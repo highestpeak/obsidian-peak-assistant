@@ -117,7 +117,7 @@ export function TabsTrigger({ value, count, title, subtitle, className, children
 			>
 				<span className={cn('pktw-text-sm', isActive ? 'pktw-font-bold' : 'pktw-font-semibold')}>{title ?? children}</span>
 				{subtitle ? (
-					<span className={cn('pktw-text-[11px]', isActive ? 'pktw-text-pk-accent-text pktw-opacity-80' : 'pktw-text-pk-foreground-faint')}>
+					<span className={cn('pktw-text-pk-sm', isActive ? 'pktw-text-pk-accent-text pktw-opacity-80' : 'pktw-text-pk-foreground-faint')}>
 						{subtitle}
 					</span>
 				) : null}

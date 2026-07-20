@@ -10,9 +10,9 @@ import { CopilotPanelShell, type CopilotPanelAction } from '@/ui/view/copilot/co
 import { SeverityIcon, SeverityBadge, type SeverityConfig } from '@/ui/view/copilot/components/FindingsBodyParts';
 
 const SEVERITY_CONFIG: Record<string, SeverityConfig> = {
-	error: { icon: AlertCircle, label: 'Error', bg: 'pktw-bg-[var(--pk-error)]/10', text: 'pktw-text-[var(--pk-error)]' },
-	warning: { icon: AlertTriangle, label: 'Warning', bg: 'pktw-bg-[var(--pk-warning)]/10', text: 'pktw-text-[var(--pk-warning)]' },
-	info: { icon: Info, label: 'Info', bg: 'pktw-bg-[var(--pk-info)]/10', text: 'pktw-text-[var(--pk-info)]' },
+	error: { icon: AlertCircle, label: 'Error', bg: 'pktw-bg-pk-error/10', text: 'pktw-text-pk-error' },
+	warning: { icon: AlertTriangle, label: 'Warning', bg: 'pktw-bg-pk-warning/10', text: 'pktw-text-pk-warning' },
+	info: { icon: Info, label: 'Info', bg: 'pktw-bg-pk-info/10', text: 'pktw-text-pk-info' },
 };
 
 interface ReviewPanelProps {
@@ -112,7 +112,7 @@ export const ReviewPanel: React.FC<ReviewPanelProps> = ({
 				</div>
 			)}
 
-			<div className="pktw-p-3 pktw-bg-secondary pktw-rounded-lg pktw-mb-4 pktw-text-[13px] pktw-leading-relaxed pktw-border-l-3 pktw-border-l-accent">
+			<div className="pktw-p-3 pktw-bg-secondary pktw-rounded-lg pktw-mb-4 pktw-text-pk-md pktw-leading-relaxed pktw-border-l-3 pktw-border-l-accent">
 				{result.overall}
 			</div>
 
@@ -128,18 +128,18 @@ export const ReviewPanel: React.FC<ReviewPanelProps> = ({
 								<SeverityBadge config={config} />
 							</div>
 							<span className="pktw-text-xs pktw-text-muted-foreground pktw-block pktw-mb-1.5 pktw-leading-relaxed">{section.feedback}</span>
-							<div className="pktw-flex pktw-items-start pktw-gap-1.5 pktw-text-[11px] pktw-bg-secondary pktw-p-2 pktw-rounded-md pktw-border-l-2 pktw-border-l-accent pktw-leading-relaxed">
+							<div className="pktw-flex pktw-items-start pktw-gap-1.5 pktw-text-pk-sm pktw-bg-secondary pktw-p-2 pktw-rounded-md pktw-border-l-2 pktw-border-l-accent pktw-leading-relaxed">
 								<Lightbulb className="pktw-w-3.5 pktw-h-3.5 pktw-text-accent pktw-flex-shrink-0 pktw-mt-0.5" />
 								<span>{section.suggestion}</span>
 							</div>
 							<div className="pktw-mt-2">
 								{isFixed ? (
-									<span className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-[10px] pktw-font-semibold pktw-px-2.5 pktw-py-1 pktw-rounded pktw-bg-[var(--pk-success)]/10 pktw-text-[var(--pk-success)]">
+									<span className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-pk-xs pktw-font-semibold pktw-px-2.5 pktw-py-1 pktw-rounded pktw-bg-pk-success/10 pktw-text-pk-success">
 										<Check className="pktw-w-3 pktw-h-3" /> Fixed
 									</span>
 								) : (
 									<span
-										className="pktw-text-[10px] pktw-font-semibold pktw-px-2.5 pktw-py-1 pktw-rounded pktw-border pktw-border-accent pktw-bg-accent/10 pktw-text-accent pktw-cursor-pointer hover:pktw-bg-accent hover:pktw-text-white pktw-transition-all pktw-inline-flex pktw-items-center pktw-gap-1"
+										className="pktw-text-pk-xs pktw-font-semibold pktw-px-2.5 pktw-py-1 pktw-rounded pktw-border pktw-border-accent pktw-bg-accent/10 pktw-text-accent pktw-cursor-pointer hover:pktw-bg-accent hover:pktw-text-white pktw-transition-all pktw-inline-flex pktw-items-center pktw-gap-1"
 										onClick={() => handleFix(i)}
 									>
 										<Wrench className="pktw-w-3 pktw-h-3" /> Fix

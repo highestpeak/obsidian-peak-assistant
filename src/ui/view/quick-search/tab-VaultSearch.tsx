@@ -44,9 +44,9 @@ const NoRecentlyAccessedState: React.FC = () => (
  * doc's recommended UI change.
  */
 const FilterSyntaxHint: React.FC<{ variant: 'browse' | 'results' }> = ({ variant }) => {
-	const chip = 'pktw-inline-flex pktw-items-center pktw-rounded pktw-bg-pk-surface-2 pktw-px-1.5 pktw-py-0.5 pktw-font-mono pktw-text-[10px] pktw-text-pk-text-secondary';
+	const chip = 'pktw-inline-flex pktw-items-center pktw-rounded pktw-bg-pk-surface-2 pktw-px-1.5 pktw-py-0.5 pktw-font-mono pktw-text-pk-xs pktw-text-pk-text-secondary';
 	return (
-		<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-4 pktw-py-1.5 pktw-text-[11px] pktw-text-pk-text-tertiary">
+		<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-4 pktw-py-1.5 pktw-text-pk-sm pktw-text-pk-text-tertiary">
 			<Filter className="pktw-h-3 pktw-w-3 pktw-shrink-0 pktw-opacity-70" />
 			<span className="pktw-shrink-0">
 				{variant === 'browse' ? 'Narrow it down:' : 'Too many results? Try:'}
@@ -350,7 +350,7 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 									<div className="pktw-flex pktw-justify-end pktw-px-3 pktw-py-1.5">
 										<button
 											type="button"
-											className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-[11px] pktw-text-pk-foreground-faint hover:pktw-text-pk-foreground pktw-transition"
+											className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-pk-sm pktw-text-pk-foreground-faint hover:pktw-text-pk-foreground pktw-transition"
 											onClick={() => void copyDebugTrace(lastDebugRunIdRef.current)}
 											aria-label="Copy debug trace for this search"
 										>

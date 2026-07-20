@@ -259,8 +259,7 @@ export const RecentAIAnalysis: React.FC<{
                 <Button
                     size="sm"
                     variant="ghost"
-                    style={{ cursor: 'pointer' }}
-                    className="pktw-h-7 pktw-px-2 pktw-text-xs"
+                    className="pktw-h-7 pktw-px-2 pktw-text-xs pktw-cursor-pointer"
                     onClick={clearHistory}
                     title="Clear history metadata (keep files)"
                 >
@@ -291,7 +290,7 @@ export const RecentAIAnalysis: React.FC<{
                 {recentRecords.length === 0 && autoSaveEnabled ? (
                     <div className="pktw-py-4 pktw-px-2 pktw-text-center pktw-text-xs pktw-text-pk-foreground-muted">
                         <p className="pktw-mb-1">Auto-save is on. No saved analyses yet.</p>
-                        <p className="pktw-text-[11px] pktw-opacity-90">Completed analyses will be saved to <code className="pktw-bg-pk-background pktw-px-1 pktw-rounded">{saveFolder}</code></p>
+                        <p className="pktw-text-pk-sm pktw-opacity-90">Completed analyses will be saved to <code className="pktw-bg-pk-background pktw-px-1 pktw-rounded">{saveFolder}</code></p>
                     </div>
                 ) : null}
                 {recentRecords.map((item) => (
@@ -305,9 +304,8 @@ export const RecentAIAnalysis: React.FC<{
                             pktw-transition-all
                             hover:pktw-border-pk-accent hover:pktw-shadow-md
                             hover:pktw-bg-pk-accent
-                            pktw-group
+                            pktw-group pktw-cursor-pointer
                         `}
-                        style={{ cursor: 'pointer' }}
                     >
                         <div className="pktw-flex pktw-flex-col pktw-p-2 pktw-gap-1.5 pktw-text-left">
                             <div className="pktw-flex pktw-items-start pktw-justify-between pktw-gap-2">
@@ -328,7 +326,7 @@ export const RecentAIAnalysis: React.FC<{
                                 </div>
                                 <span
                                     className="
-                                        pktw-text-[10px] pktw-text-pk-foreground-muted pktw-mt-0.5
+                                        pktw-text-pk-xs pktw-text-pk-foreground-muted pktw-mt-0.5
                                         pktw-whitespace-nowrap pktw-tabular-nums
                                         group-hover:pktw-text-pk-accent-soft
                                     "
@@ -338,7 +336,7 @@ export const RecentAIAnalysis: React.FC<{
                             </div>
                             <div
                                 className="
-                                    pktw-text-[11px] pktw-text-pk-foreground-muted pktw-truncate pktw-opacity-80
+                                    pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-truncate pktw-opacity-80
                                     group-hover:pktw-text-pk-accent-soft
                                 "
                             >

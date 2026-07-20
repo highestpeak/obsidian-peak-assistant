@@ -41,13 +41,13 @@ interface WritingPlanPanelProps {
 }
 
 const PRIORITY_STYLES: Record<string, string> = {
-	high: 'pktw-bg-red-500/10 pktw-text-red-400',
-	medium: 'pktw-bg-yellow-500/10 pktw-text-yellow-500',
-	low: 'pktw-bg-blue-500/10 pktw-text-blue-400',
+	high: 'pktw-bg-pk-error-bg pktw-text-pk-error-text',
+	medium: 'pktw-bg-pk-warning-bg pktw-text-pk-warning-text',
+	low: 'pktw-bg-pk-info-bg pktw-text-pk-info-text',
 };
 
 const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-	<span className="pktw-text-[10px] pktw-uppercase pktw-tracking-wider pktw-text-muted-foreground pktw-font-semibold pktw-block pktw-mb-2">
+	<span className="pktw-text-pk-xs pktw-uppercase pktw-tracking-wider pktw-text-muted-foreground pktw-font-semibold pktw-block pktw-mb-2">
 		{children}
 	</span>
 );
@@ -115,7 +115,7 @@ export const WritingPlanPanel: React.FC<WritingPlanPanelProps> = ({ result, onCl
 		>
 			<div className="pktw-mb-4">
 				<span className="pktw-text-base pktw-font-bold pktw-block">{result.title}</span>
-				<span className="pktw-text-[12px] pktw-text-muted-foreground pktw-block pktw-mt-1 pktw-leading-relaxed">{result.summary}</span>
+				<span className="pktw-text-pk-base pktw-text-muted-foreground pktw-block pktw-mt-1 pktw-leading-relaxed">{result.summary}</span>
 			</div>
 
 			<div className="pktw-mb-4">
@@ -123,14 +123,14 @@ export const WritingPlanPanel: React.FC<WritingPlanPanelProps> = ({ result, onCl
 				{result.outline.map((section, i) => (
 					<div key={i} className="pktw-border pktw-border-border pktw-rounded-lg pktw-mb-2 pktw-overflow-hidden">
 						<div className="pktw-flex pktw-items-center pktw-justify-between pktw-px-3 pktw-py-2 pktw-bg-secondary">
-							<span className="pktw-text-[12px] pktw-font-semibold">{section.section}</span>
+							<span className="pktw-text-pk-base pktw-font-semibold">{section.section}</span>
 							<span className="pktw-text-[9px] pktw-text-muted-foreground pktw-font-mono">~{section.estimatedWords}w</span>
 						</div>
 						<div className="pktw-px-3 pktw-py-2">
 							{section.keyPoints.map((point, j) => (
 								<div key={j} className="pktw-flex pktw-items-start pktw-gap-1.5 pktw-py-0.5">
-									<span className="pktw-text-muted-foreground pktw-text-[10px] pktw-mt-0.5">-</span>
-									<span className="pktw-text-[11px]">{point}</span>
+									<span className="pktw-text-muted-foreground pktw-text-pk-xs pktw-mt-0.5">-</span>
+									<span className="pktw-text-pk-sm">{point}</span>
 								</div>
 							))}
 							{section.existingSources.length > 0 && (
@@ -159,12 +159,12 @@ export const WritingPlanPanel: React.FC<WritingPlanPanelProps> = ({ result, onCl
 							<AlertTriangle className="pktw-w-3 pktw-h-3 pktw-flex-shrink-0 pktw-mt-0.5 pktw-text-muted-foreground" />
 							<div className="pktw-flex-1 pktw-min-w-0">
 								<div className="pktw-flex pktw-items-center pktw-gap-1.5">
-									<span className="pktw-text-[12px] pktw-font-semibold">{gap.topic}</span>
+									<span className="pktw-text-pk-base pktw-font-semibold">{gap.topic}</span>
 									<span className={`pktw-text-[8px] pktw-font-bold pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-uppercase ${PRIORITY_STYLES[gap.priority] ?? ''}`}>
 										{gap.priority}
 									</span>
 								</div>
-								<span className="pktw-text-[11px] pktw-text-muted-foreground pktw-block pktw-mt-0.5">{gap.description}</span>
+								<span className="pktw-text-pk-sm pktw-text-muted-foreground pktw-block pktw-mt-0.5">{gap.description}</span>
 							</div>
 						</div>
 					))}
@@ -183,10 +183,10 @@ export const WritingPlanPanel: React.FC<WritingPlanPanelProps> = ({ result, onCl
 							<FileText className="pktw-w-3 pktw-h-3 pktw-text-muted-foreground pktw-flex-shrink-0 pktw-mt-0.5" />
 							<div className="pktw-flex-1 pktw-min-w-0">
 								<div className="pktw-flex pktw-items-center pktw-gap-1.5">
-									<span className="pktw-text-[12px] pktw-font-semibold pktw-text-accent">{src.title}</span>
+									<span className="pktw-text-pk-base pktw-font-semibold pktw-text-accent">{src.title}</span>
 									<ExternalLink className="pktw-w-3 pktw-h-3 pktw-text-muted-foreground pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity" />
 								</div>
-								<span className="pktw-text-[10px] pktw-text-muted-foreground pktw-block pktw-mt-0.5">{src.relevance}</span>
+								<span className="pktw-text-pk-xs pktw-text-muted-foreground pktw-block pktw-mt-0.5">{src.relevance}</span>
 							</div>
 						</div>
 					))}

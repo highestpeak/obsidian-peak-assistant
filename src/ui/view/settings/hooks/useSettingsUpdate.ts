@@ -49,7 +49,7 @@ export function useSettingsUpdate(
 			await plugin.saveSettings();
 
 			// Dispatch settings updated event
-			eventBus.dispatch(new SettingsUpdatedEvent());
+			eventBus.dispatch(new SettingsUpdatedEvent(plugin.settings));
 		},
 		[plugin, eventBus]
 	);
@@ -196,4 +196,3 @@ export function useSettingsUpdate(
  * Type for the return value of useSettingsUpdate hook
  */
 export type SettingsUpdates = ReturnType<typeof useSettingsUpdate>;
-

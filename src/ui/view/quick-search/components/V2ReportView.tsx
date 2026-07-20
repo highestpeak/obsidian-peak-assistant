@@ -112,7 +112,7 @@ const SectionBlock: React.FC<{
 			{/* Header */}
 			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3">
 				{/* Status indicator */}
-				{section.status === 'done' && <CheckCircle className="pktw-w-4 pktw-h-4 pktw-text-green-500 pktw-shrink-0" />}
+				{section.status === 'done' && <CheckCircle className="pktw-w-4 pktw-h-4 pktw-text-pk-success pktw-shrink-0" />}
 				{section.status === 'generating' && <Loader2 className="pktw-w-4 pktw-h-4 pktw-text-pk-accent pktw-animate-spin pktw-shrink-0" />}
 				{section.status === 'pending' && <Clock className="pktw-w-4 pktw-h-4 pktw-text-pk-border-light pktw-shrink-0" />}
 				<span className="pktw-text-sm pktw-font-semibold pktw-text-pk-foreground pktw-flex-1 pktw-line-clamp-2" title={section.title}>
@@ -123,7 +123,7 @@ const SectionBlock: React.FC<{
 						{annotations.map((a) => (
 							<span
 								key={a.id}
-								className="pktw-text-[10px] pktw-px-1 pktw-py-0.5 pktw-rounded pktw-bg-[--interactive-accent] pktw-text-[--text-on-accent] pktw-cursor-default"
+								className="pktw-text-pk-xs pktw-px-1 pktw-py-0.5 pktw-rounded pktw-bg-[--interactive-accent] pktw-text-[--text-on-accent] pktw-cursor-default"
 								title={`[${a.type}] ${a.comment}`}
 							>
 								{ANNOTATION_TYPE_SYMBOL[a.type]}
@@ -139,7 +139,7 @@ const SectionBlock: React.FC<{
 						className="pktw-w-7 pktw-h-7 pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-background pktw-flex pktw-items-center pktw-justify-center pktw-cursor-pointer hover:pktw-bg-pk-highlight pktw-transition-colors"
 						title="Copy section"
 					>
-						{copied ? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-green-600" /> : <Copy className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-muted" />}
+						{copied ? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-success" /> : <Copy className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-muted" />}
 					</div>
 					<div
 						onClick={handleRegenerate}
@@ -203,7 +203,7 @@ const SectionBlock: React.FC<{
 
 {/* Error */}
 			{section.status === 'error' && section.error && (
-				<div className="pktw-text-xs pktw-text-red-500 pktw-mt-2">{section.error}</div>
+				<div className="pktw-text-xs pktw-text-pk-error pktw-mt-2">{section.error}</div>
 			)}
 
 			{/* Annotation toolbar */}
@@ -218,7 +218,7 @@ const SectionBlock: React.FC<{
 								key={t}
 								variant={annotationType === t ? 'default' : 'outline'}
 								size="sm"
-								className="pktw-text-[10px] pktw-px-1.5 pktw-py-0.5 pktw-h-6"
+								className="pktw-text-pk-xs pktw-px-1.5 pktw-py-0.5 pktw-h-6"
 								onClick={() => setAnnotationType(t)}
 							>
 								{ANNOTATION_TYPE_SYMBOL[t]} {t}
@@ -432,7 +432,7 @@ function ReportDebugTraceButton(): React.ReactElement | null {
 		<div className="pktw-flex pktw-justify-end pktw-px-2 pktw-pb-1">
 			<button
 				type="button"
-				className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-[11px] pktw-text-pk-foreground-faint hover:pktw-text-pk-foreground pktw-transition"
+				className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-pk-sm pktw-text-pk-foreground-faint hover:pktw-text-pk-foreground pktw-transition"
 				title="Copy analyze report debug trace"
 				aria-label="Copy analyze report debug trace"
 				onClick={() => {

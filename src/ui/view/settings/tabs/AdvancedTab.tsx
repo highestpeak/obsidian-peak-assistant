@@ -6,13 +6,18 @@
  */
 
 import React, { useState } from 'react';
-import { Bug, Cog, FileText, Folder, HardDrive, Inbox, MessageSquare, Microscope, Sparkles, User, Wand2, type LucideIcon } from 'lucide-react';
+import { Bug, Cog, FileText, Folder, HardDrive, Inbox, MessageSquare, Microscope, Palette, Sparkles, User, Wand2, type LucideIcon } from 'lucide-react';
 import { Row, FormRow, FormGrid, Button } from '@/ui/components/primitives';
 import { Input } from '@/ui/component/shared-ui/input';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { Switch } from '@/ui/component/shared-ui/switch';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { DEFAULT_DEBUG_TRACE_SETTINGS, type DebugTraceSettings } from '@/core/config/settingsTypes';
+import {
+    DEFAULT_DEBUG_TRACE_SETTINGS,
+    normalizeCodeBlockTheme,
+    type CodeBlockThemeId,
+    type DebugTraceSettings,
+} from '@/core/config/settingsTypes';
 import {
 	AI_PATH_SUBFOLDERS,
 	getAIAnalysisFolder,
@@ -44,7 +49,7 @@ export function AdvancedTab({ settings, settingsUpdates }: AdvancedTabProps) {
                     <Wand2 className="pktw-w-4 pktw-h-4 pktw-shrink-0 pktw-mt-0.5 pktw-text-pk-accent" />
                     <div className="pktw-flex-1 pktw-flex pktw-flex-col pktw-gap-0.5">
                         <span className="pktw-text-sm pktw-font-semibold pktw-text-pk-foreground">Re-run setup wizard</span>
-                        <span className="pktw-text-[11px] pktw-text-pk-foreground-faint">
+                        <span className="pktw-text-pk-sm pktw-text-pk-foreground-faint">
                             Let the setup assistant re-pick tier bindings from your current environment.
                         </span>
                     </div>
@@ -57,6 +62,29 @@ export function AdvancedTab({ settings, settingsUpdates }: AdvancedTabProps) {
                 sub="Peak keeps plugin-owned folders under the chat root by default. Advanced users can override individual paths below."
             >
                 <StorageSection settings={settings} settingsUpdates={settingsUpdates} />
+            </SettingsSection>
+
+            <SettingsSection title={advCopy.appearance.sectionTitle} sub={advCopy.appearance.sectionSub}>
+                <div className="pkset-row-list">
+                    <SettingsRow
+                        icon={Palette}
+                        title={advCopy.appearance.codeTheme.title}
+                        desc={advCopy.appearance.codeTheme.desc}
+                        right={
+                            <select
+                                className="pktw-text-sm pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-px-2.5 pktw-py-1.5"
+                                value={normalizeCodeBlockTheme(settings.codeBlockTheme)}
+                                onChange={(e) => settingsUpdates.update('codeBlockTheme', e.target.value as CodeBlockThemeId)}
+                            >
+                                <option value="github-dark">{advCopy.appearance.codeTheme.options.githubDark}</option>
+                                <option value="one-dark-pro">{advCopy.appearance.codeTheme.options.oneDarkPro}</option>
+                                <option value="nord">{advCopy.appearance.codeTheme.options.nord}</option>
+                                <option value="dracula">{advCopy.appearance.codeTheme.options.dracula}</option>
+                                <option value="vitesse-dark">{advCopy.appearance.codeTheme.options.vitesseDark}</option>
+                            </select>
+                        }
+                    />
+                </div>
             </SettingsSection>
 
             <SettingsSection title="Maintenance" sub="Manual operations Peak does not run automatically.">
@@ -192,7 +220,7 @@ function DebugTracesSection({
                             desc="Prompt / context / tool payload text is embedded in the receipt. Do NOT share verbatim."
                             right={<Switch checked={dt.includeRawContent} onChange={(v) => update('includeRawContent', v)} />}
                         />
-                        <div className="pktw-text-[11px] pktw-text-pk-warning pktw-px-3">
+                        <div className="pktw-text-pk-sm pktw-text-pk-warning pktw-px-3">
                             Full local retains raw prompt / context / tool arguments. It may include vault content and account information. Do not share Full-local receipts.
                         </div>
                     </>
@@ -346,7 +374,7 @@ function SdkProcessDisclosure({
             desc="Claude Agent SDK subprocess CLI path, pool size, and warmup."
             meta="3 fields"
         >
-            <FormGrid style={{ padding: 4 }}>
+            <FormGrid className="pktw-p-1">
                 <FormRow>
                     <FormRow.Label>
                         CLI path override

@@ -80,24 +80,24 @@ const KindColumn: React.FC<{
 	if (occurrences.length === 0) {
 		return (
 			<span className="pktw-flex pktw-flex-col pktw-gap-1 pktw-flex-1 pktw-min-w-0">
-				<span className="pktw-text-[10px] pktw-uppercase pktw-tracking-wide pktw-text-pk-text-tertiary">{title}</span>
+				<span className="pktw-text-pk-xs pktw-uppercase pktw-tracking-wide pktw-text-pk-text-tertiary">{title}</span>
 				<span className="pktw-text-xs pktw-text-pk-text-tertiary">{emptyText}</span>
 			</span>
 		);
 	}
 	return (
 		<span className="pktw-flex pktw-flex-col pktw-gap-1 pktw-flex-1 pktw-min-w-0">
-			<span className="pktw-text-[10px] pktw-uppercase pktw-tracking-wide pktw-text-pk-text-tertiary">{title}</span>
+			<span className="pktw-text-pk-xs pktw-uppercase pktw-tracking-wide pktw-text-pk-text-tertiary">{title}</span>
 			{Array.from(buckets.entries()).map(([bucketKey, list]) => (
 				<span key={bucketKey} className="pktw-flex pktw-flex-col pktw-gap-0.5">
-					<span className="pktw-text-[10px] pktw-text-pk-text-tertiary pktw-truncate" title={bucketKey}>{bucketKey}</span>
+					<span className="pktw-text-pk-xs pktw-text-pk-text-tertiary pktw-truncate" title={bucketKey}>{bucketKey}</span>
 					{list.map((occ, i) => (
 						<span
 							key={`${occ.line}-${i}`}
 							onClick={() => onOpenLine(occ.line)}
 							className="pktw-flex pktw-items-baseline pktw-gap-2 pktw-text-xs pktw-cursor-pointer hover:pktw-bg-pk-surface-2 pktw-px-1 pktw-rounded"
 						>
-							<span className="pktw-font-mono pktw-text-[10px] pktw-text-pk-text-tertiary pktw-tabular-nums pktw-shrink-0">{occ.line}</span>
+							<span className="pktw-font-mono pktw-text-pk-xs pktw-text-pk-text-tertiary pktw-tabular-nums pktw-shrink-0">{occ.line}</span>
 							<span className="pktw-truncate pktw-min-w-0 pktw-text-pk-text-secondary">→ {occ.target}</span>
 						</span>
 					))}
@@ -133,7 +133,7 @@ export const LinkPositionsFooter: React.FC<LinkPositionsFooterProps> = ({ filePa
 		<span className={cn(
 			'pktw-flex pktw-flex-col pktw-border-t pktw-border-pk-border/40 pktw-bg-pk-surface-sunken/30',
 		)}>
-			<span className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1 pktw-text-[11px] pktw-text-pk-text-secondary">
+			<span className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1 pktw-text-pk-sm pktw-text-pk-text-secondary">
 				<Link2 className="pktw-w-3 pktw-h-3 pktw-opacity-70" />
 				{HEADING_MODE_STRINGS.linksFooterTitle}
 			</span>

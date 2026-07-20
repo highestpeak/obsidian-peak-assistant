@@ -60,7 +60,7 @@ const SectionCard: React.FC<{
 			</span>
 			<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-mb-1">
 				{sec.visualType && sec.visualType !== 'none' && (
-					<span className="pktw-px-1.5 pktw-py-0.5 pktw-text-[9px] pktw-font-medium pktw-bg-gray-100 pktw-text-pk-foreground-muted pktw-rounded">
+					<span className="pktw-px-1.5 pktw-py-0.5 pktw-text-[9px] pktw-font-medium pktw-bg-pk-surface-sunken pktw-text-pk-foreground-muted pktw-rounded">
 						{VISUAL_TYPE_LABELS[sec.visualType] ?? sec.visualType}
 					</span>
 				)}
@@ -82,7 +82,7 @@ const SectionCard: React.FC<{
 		{/* Delete */}
 		<div
 			onClick={() => onRemove(sec.id)}
-			className="pktw-p-1 pktw-rounded pktw-text-pk-border group-hover:pktw-text-pk-foreground-muted hover:!pktw-text-red-500 pktw-cursor-pointer pktw-transition-colors pktw-shrink-0"
+			className="pktw-p-1 pktw-rounded pktw-text-pk-border group-hover:pktw-text-pk-foreground-muted hover:!pktw-text-pk-error pktw-cursor-pointer pktw-transition-colors pktw-shrink-0"
 		>
 			<Trash2 className="pktw-w-3 pktw-h-3" />
 		</div>
@@ -147,10 +147,10 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 				</motion.div>
 				<FileText className="pktw-w-4 pktw-h-4 pktw-text-pk-accent" />
 				<span className="pktw-text-xs pktw-font-semibold pktw-text-pk-text-primary">Report Outline</span>
-				<span className="pktw-text-[10px] pktw-text-pk-foreground-muted">{sections.length} sections</span>
+				<span className="pktw-text-pk-xs pktw-text-pk-foreground-muted">{sections.length} sections</span>
 				<div className="pktw-flex-1" />
 				{planApproved && (
-					<span className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-px-2 pktw-py-0.5 pktw-text-[10px] pktw-font-medium pktw-text-emerald-700 pktw-bg-emerald-50 pktw-border pktw-border-emerald-200 pktw-rounded-full">
+					<span className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-px-2 pktw-py-0.5 pktw-text-pk-xs pktw-font-medium pktw-text-pk-success-text pktw-bg-pk-success-bg pktw-border pktw-border-[var(--pk-success-border)] pktw-rounded-full">
 						<Check className="pktw-w-3 pktw-h-3" />
 						Approved
 					</span>
@@ -172,7 +172,7 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 								{/* Overview */}
 								{overview && (
 									<div className="pktw-bg-pk-background pktw-rounded-lg pktw-p-3 pktw-border pktw-border-pk-border pktw-mb-3">
-										<StreamdownIsolated isAnimating={false} className="pktw-text-sm pktw-text-pk-foreground-muted">
+										<StreamdownIsolated isAnimating={false} className="pktw-text-pk-lg pktw-text-pk-foreground-muted">
 											{overview}
 										</StreamdownIsolated>
 									</div>
@@ -200,7 +200,7 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 											className="pktw-mb-2 pktw-ml-1"
 										>
 											{/* Role header */}
-											<div className={`pktw-pl-3 pktw-border-l-2 ${role.bgColor.split(' ')[1] ?? 'pktw-border-gray-200'}`}>
+											<div className={`pktw-pl-3 pktw-border-l-2 ${role.bgColor.split(' ')[1] ?? 'pktw-border-pk-border'}`}>
 												<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-py-1">
 													{(() => { const RIcon = ROLE_ICON_MAP[role.key]; return RIcon ? <RIcon className={`pktw-w-3.5 pktw-h-3.5 ${role.color}`} /> : null; })()}
 													<span className={`pktw-text-xs pktw-font-semibold ${role.color}`}>{role.label}</span>
@@ -225,7 +225,7 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 													{!planApproved && (
 														<div
 															onClick={() => addPlanSection(role.key)}
-															className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-py-1.5 pktw-px-3 pktw-text-[11px] pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-cursor-pointer hover:pktw-bg-pk-accent-tint pktw-rounded-lg pktw-transition-colors"
+															className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-py-1.5 pktw-px-3 pktw-text-pk-sm pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-cursor-pointer hover:pktw-bg-pk-accent-tint pktw-rounded-lg pktw-transition-colors"
 														>
 															<Plus className="pktw-w-3 pktw-h-3" />
 															<span>Add section</span>
@@ -239,10 +239,10 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 
 								{/* Missing roles warning */}
 								{missingRequired.length > 0 && (
-									<div className="pktw-ml-1 pktw-pl-3 pktw-border-l-2 pktw-border-red-200 pktw-py-2">
+									<div className="pktw-ml-1 pktw-pl-3 pktw-border-l-2 pktw-border-[var(--pk-error-border)] pktw-py-2">
 										<div className="pktw-flex pktw-items-center pktw-gap-1.5">
-											<AlertTriangle className="pktw-w-3.5 pktw-h-3.5 pktw-text-red-400" />
-											<span className="pktw-text-[10px] pktw-text-red-500">
+											<AlertTriangle className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-error" />
+											<span className="pktw-text-pk-xs pktw-text-pk-error">
 												Missing: {missingRequired.map((r) => r.label).join(', ')}
 											</span>
 										</div>
@@ -251,7 +251,7 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 
 								{/* Uncovered optional roles hint */}
 								{MISSION_ROLES.filter((r) => !r.required && !coveredRoles.has(r.key)).length > 0 && (
-									<div className="pktw-ml-1 pktw-pl-3 pktw-border-l-2 pktw-border-gray-100 pktw-py-1.5">
+									<div className="pktw-ml-1 pktw-pl-3 pktw-border-l-2 pktw-border-pk-border-soft pktw-py-1.5">
 										<span className="pktw-text-[9px] pktw-text-pk-foreground-muted">
 											Not covered: {MISSION_ROLES.filter((r) => !r.required && !coveredRoles.has(r.key)).map((r) => {
 									const RIcon = ROLE_ICON_MAP[r.key];
@@ -329,7 +329,7 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 							return (
 								<span
 									key={sec.id}
-									className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-px-2 pktw-py-0.5 pktw-text-[10px] pktw-text-pk-foreground-muted pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded"
+									className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-px-2 pktw-py-0.5 pktw-text-pk-xs pktw-text-pk-foreground-muted pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded"
 								>
 									{role && (() => { const RIcon = ROLE_ICON_MAP[role.key]; return RIcon ? <RIcon className={`pktw-w-3 pktw-h-3 ${role.color}`} /> : null; })()}
 									{sec.title}

@@ -21,7 +21,7 @@ export const DiffView: React.FC<DiffViewProps> = ({ original, modified, classNam
                     return (
                         <span
                             key={i}
-                            className="pktw-bg-[var(--pk-error-muted)] pktw-text-[var(--pk-error)] pktw-line-through"
+                            className="pktw-bg-pk-error-muted pktw-text-pk-error pktw-line-through"
                         >
                             {seg.text}
                         </span>
@@ -30,7 +30,7 @@ export const DiffView: React.FC<DiffViewProps> = ({ original, modified, classNam
                 return (
                     <span
                         key={i}
-                        className="pktw-bg-[var(--pk-success-muted)] pktw-text-[var(--pk-success)]"
+                        className="pktw-bg-pk-success-muted pktw-text-pk-success"
                     >
                         {seg.text}
                     </span>

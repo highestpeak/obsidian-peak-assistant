@@ -182,6 +182,21 @@ export interface SettingsStrings {
             dataFolder: { title: string; desc: string };
             chatRoot: { title: string; desc: string };
         };
+        appearance: {
+            sectionTitle: string;
+            sectionSub: string;
+            codeTheme: {
+                title: string;
+                desc: string;
+                options: {
+                    githubDark: string;
+                    oneDarkPro: string;
+                    nord: string;
+                    dracula: string;
+                    vitesseDark: string;
+                };
+            };
+        };
         general: {
             sectionTitle: string;
             attachmentHandling: { title: string; desc: string };

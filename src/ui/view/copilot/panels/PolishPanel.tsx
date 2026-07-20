@@ -58,7 +58,7 @@ export const PolishPanel: React.FC<PolishPanelProps> = ({
 			)}
 			<DiffSection original={original} modified={result} />
 			{!onBack && (
-				<div className="pktw-flex pktw-gap-3 pktw-mt-3 pktw-text-[10px] pktw-text-muted-foreground">
+				<div className="pktw-flex pktw-gap-3 pktw-mt-3 pktw-text-pk-xs pktw-text-muted-foreground">
 					<span>{wordDelta}</span>
 				</div>
 			)}

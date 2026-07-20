@@ -41,7 +41,7 @@ interface SectionDetailPaneProps {
 
 const SectionHeader: React.FC<{ section: ActiveSection }> = ({ section }) => (
 	<span className="pktw-flex pktw-flex-col pktw-gap-1 pktw-px-4 pktw-py-3 pktw-border-b pktw-border-pk-border/40">
-		<span className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-[10px] pktw-font-mono pktw-text-pk-text-tertiary pktw-tabular-nums">
+		<span className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-pk-xs pktw-font-mono pktw-text-pk-text-tertiary pktw-tabular-nums">
 			<span className="pktw-uppercase pktw-tracking-wide">H{section.level}</span>
 			<span>{section.lineStart}{HEADING_MODE_STRINGS.sectionRangeSeparator}{section.lineEnd}</span>
 			{section.matchCount > 0 && (
@@ -82,7 +82,7 @@ const SnippetLine: React.FC<{
 				isActive ? 'pktw-bg-pk-accent-tint' : 'hover:pktw-bg-pk-surface-2',
 			)}
 		>
-			<span className="pktw-shrink-0 pktw-font-mono pktw-text-[10px] pktw-text-pk-text-tertiary pktw-tabular-nums pktw-w-8 pktw-text-right">
+			<span className="pktw-shrink-0 pktw-font-mono pktw-text-pk-xs pktw-text-pk-text-tertiary pktw-tabular-nums pktw-w-8 pktw-text-right">
 				{snippet.line}
 			</span>
 			<span className="pktw-min-w-0 pktw-flex-1 pktw-text-pk-text-secondary pktw-whitespace-normal pktw-break-words pktw-leading-snug">

@@ -286,7 +286,7 @@ export const CopilotPickerContent: React.FC<{
 							<ListChecks className="pktw-w-4 pktw-h-4" />
 						</span>
 						<span>
-							<span className="pktw-flex pktw-items-center pktw-gap-1 pktw-text-[13px] pktw-font-semibold pktw-text-pk-foreground">
+							<span className="pktw-flex pktw-items-center pktw-gap-1 pktw-text-pk-md pktw-font-semibold pktw-text-pk-foreground">
 								Show all capabilities <ChevronRight className="pktw-w-3 pktw-h-3" />
 							</span>
 							<span className="pktw-block pktw-text-[11.5px] pktw-text-pk-foreground-muted">
@@ -366,14 +366,14 @@ function PickerSectionTitle({
 	return (
 		<div className="pktw-flex pktw-items-center pktw-justify-between pktw-mb-3">
 			<div className="pktw-inline-flex pktw-items-center pktw-gap-2">
-				<span className="pktw-text-[14px] pktw-font-semibold pktw-text-pk-foreground">{title}</span>
+				<span className="pktw-text-pk-lg pktw-font-semibold pktw-text-pk-foreground">{title}</span>
 				{badge ? <Pill variant="warning" size="sm" className="pktw-uppercase pktw-tracking-wider">{badge}</Pill> : null}
 			</div>
 			{link ? (
 				<button
 					type="button"
 					onClick={link.onClick}
-					className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-[12px] pktw-font-semibold pktw-text-pk-info hover:pktw-underline pktw-bg-transparent pktw-border-0 pktw-p-0 pktw-cursor-pointer"
+					className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-pk-base pktw-font-semibold pktw-text-pk-info hover:pktw-underline pktw-bg-transparent pktw-border-0 pktw-p-0 pktw-cursor-pointer"
 				>
 					{link.label}
 					<ChevronRight className="pktw-w-3 pktw-h-3" />
@@ -398,14 +398,14 @@ function MetadataLine({
 }) {
 	if (activeTab === 'vault') {
 		return (
-			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-[12px] pktw-text-pk-foreground-muted">
+			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-pk-base pktw-text-pk-foreground-muted">
 				<VaultContextLine fingerprint={vaultFingerprint} lastRecord={vaultLastRecord} />
 			</div>
 		);
 	}
 	if (activeTab === 'setting') {
 		return (
-			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-[12px] pktw-text-pk-foreground-muted">
+			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-pk-base pktw-text-pk-foreground-muted">
 				<span>System environment</span>
 				<span className="pktw-text-pk-foreground-faint">·</span>
 				<span>providers</span>
@@ -420,7 +420,7 @@ function MetadataLine({
 	}
 	// Document tab
 	return (
-		<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-[12px] pktw-text-pk-foreground-muted pktw-min-w-0">
+		<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-pk-base pktw-text-pk-foreground-muted pktw-min-w-0">
 			{ctx?.file.path ? (
 				<>
 					<span className="pktw-font-mono pktw-truncate">{ctx.file.path}</span>
@@ -490,8 +490,8 @@ function DocumentReviewHistory({
 				<span className="pktw-w-10 pktw-h-10 pktw-rounded-full pktw-bg-pk-surface pktw-border pktw-border-pk-border pktw-text-pk-foreground-faint pktw-flex pktw-items-center pktw-justify-center pktw-mb-2.5">
 					<History className="pktw-w-4 pktw-h-4" />
 				</span>
-				<span className="pktw-text-[13px] pktw-font-semibold pktw-text-pk-foreground">No reviews of this note yet</span>
-				<span className="pktw-text-[12px] pktw-text-pk-foreground-muted">Run Auto or Fast to start one.</span>
+				<span className="pktw-text-pk-md pktw-font-semibold pktw-text-pk-foreground">No reviews of this note yet</span>
+				<span className="pktw-text-pk-base pktw-text-pk-foreground-muted">Run Auto or Fast to start one.</span>
 			</div>
 		);
 	}
@@ -510,7 +510,7 @@ function DocumentReviewHistory({
 					</span>
 					<div className="pktw-min-w-0">
 						<div className="pktw-flex pktw-items-baseline pktw-gap-2 pktw-min-w-0">
-							<span className="pktw-text-[13px] pktw-font-semibold pktw-text-pk-foreground pktw-truncate">
+							<span className="pktw-text-pk-md pktw-font-semibold pktw-text-pk-foreground pktw-truncate">
 								{r.headline?.trim() || `${MODE_LABELS[r.mode as ReviewMode] ?? MODE_LABELS.complete} review`}
 							</span>
 							<span className="pktw-text-[11.5px] pktw-text-pk-foreground-faint pktw-shrink-0">{relativeTime(r.completedAt)}</span>
@@ -537,7 +537,7 @@ function SettingDiagnosticsList() {
 			<span className="pktw-w-10 pktw-h-10 pktw-rounded-full pktw-bg-pk-surface pktw-border pktw-border-pk-border pktw-text-pk-foreground-faint pktw-flex pktw-items-center pktw-justify-center pktw-mb-2.5">
 				<Sliders className="pktw-w-4 pktw-h-4" />
 			</span>
-			<div className="pktw-text-[13px] pktw-font-semibold pktw-text-pk-foreground pktw-mb-1">No diagnostics yet</div>
+			<div className="pktw-text-pk-md pktw-font-semibold pktw-text-pk-foreground pktw-mb-1">No diagnostics yet</div>
 			<div className="pktw-text-[11.5px] pktw-text-pk-foreground-muted pktw-max-w-[280px]">
 				Run System Check to see provider health, index integrity, and prompt status here.
 			</div>
@@ -562,7 +562,7 @@ function SuggestedIntents({
 
 	if (top.length === 0) {
 		return (
-			<span className="pktw-block pktw-rounded-lg pktw-border pktw-border-dashed pktw-border-pk-border pktw-px-4 pktw-py-8 pktw-text-center pktw-text-[12px] pktw-text-pk-foreground-muted">
+			<span className="pktw-block pktw-rounded-lg pktw-border pktw-border-dashed pktw-border-pk-border pktw-px-4 pktw-py-8 pktw-text-center pktw-text-pk-base pktw-text-pk-foreground-muted">
 				No actions registered for this scope yet.
 			</span>
 		);

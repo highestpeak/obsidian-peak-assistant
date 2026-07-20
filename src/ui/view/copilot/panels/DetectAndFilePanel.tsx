@@ -69,11 +69,11 @@ export const DetectAndFilePanel: React.FC<DetectAndFilePanelProps> = ({
 						className="pktw-border pktw-border-border pktw-rounded-lg pktw-mb-2.5 pktw-overflow-hidden"
 					>
 						<div className="pktw-flex pktw-items-center pktw-gap-2.5 pktw-px-3.5 pktw-py-2.5 pktw-bg-secondary pktw-border-b pktw-border-border">
-							<div className="pktw-w-[22px] pktw-h-[22px] pktw-rounded-full pktw-bg-accent/10 pktw-text-accent pktw-flex pktw-items-center pktw-justify-center pktw-text-[11px] pktw-font-bold pktw-flex-shrink-0">
+							<div className="pktw-w-[22px] pktw-h-[22px] pktw-rounded-full pktw-bg-accent/10 pktw-text-accent pktw-flex pktw-items-center pktw-justify-center pktw-text-pk-sm pktw-font-bold pktw-flex-shrink-0">
 								{i + 1}
 							</div>
 							<span
-								className="pktw-text-[13px] pktw-font-semibold pktw-text-accent pktw-truncate pktw-cursor-pointer hover:pktw-underline"
+								className="pktw-text-pk-md pktw-font-semibold pktw-text-accent pktw-truncate pktw-cursor-pointer hover:pktw-underline"
 								onClick={() => { void vault.openNote(suggestion.path, { newLeaf: false }); }}
 							>
 								{suggestion.title}
@@ -84,13 +84,13 @@ export const DetectAndFilePanel: React.FC<DetectAndFilePanelProps> = ({
 							</span>
 						</div>
 						<div className="pktw-px-3.5 pktw-py-2.5">
-							<span className="pktw-text-[11px] pktw-text-muted-foreground pktw-block pktw-mb-2">{suggestion.reason}</span>
-							<div className="pktw-p-2 pktw-bg-muted pktw-rounded pktw-text-[11px] pktw-font-mono pktw-whitespace-pre-wrap pktw-max-h-[100px] pktw-overflow-y-auto pktw-mb-2">
+							<span className="pktw-text-pk-sm pktw-text-muted-foreground pktw-block pktw-mb-2">{suggestion.reason}</span>
+							<div className="pktw-p-2 pktw-bg-muted pktw-rounded pktw-text-pk-sm pktw-font-mono pktw-whitespace-pre-wrap pktw-max-h-[100px] pktw-overflow-y-auto pktw-mb-2">
 								{suggestion.formattedText.slice(0, 300)}
 							</div>
 							<Button
 								size="sm"
-								className="pktw-h-7 pktw-text-[11px] pktw-gap-1"
+								className="pktw-h-7 pktw-text-pk-sm pktw-gap-1"
 								onClick={() => handleAppend(suggestion.path, suggestion.formattedText)}
 							>
 								<Check className="pktw-w-3 pktw-h-3" />
@@ -103,16 +103,16 @@ export const DetectAndFilePanel: React.FC<DetectAndFilePanelProps> = ({
 
 			{result.fallbackAction && (
 				<div className="pktw-mt-4 pktw-pt-4 pktw-border-t pktw-border-border">
-					<span className="pktw-text-[10px] pktw-font-medium pktw-uppercase pktw-tracking-widest pktw-text-muted-foreground pktw-block pktw-mb-2">
+					<span className="pktw-text-pk-xs pktw-font-medium pktw-uppercase pktw-tracking-widest pktw-text-muted-foreground pktw-block pktw-mb-2">
 						Or create a new note
 					</span>
 					<div className="pktw-flex pktw-items-center pktw-gap-2">
-						<span className="pktw-text-[12px]">{result.fallbackAction.suggestedTitle}</span>
-						<span className="pktw-text-[10px] pktw-text-muted-foreground">in {result.fallbackAction.suggestedFolder}/</span>
+						<span className="pktw-text-pk-base">{result.fallbackAction.suggestedTitle}</span>
+						<span className="pktw-text-pk-xs pktw-text-muted-foreground">in {result.fallbackAction.suggestedFolder}/</span>
 						<Button
 							variant="outline"
 							size="sm"
-							className="pktw-h-7 pktw-text-[11px] pktw-gap-1 pktw-ml-auto"
+							className="pktw-h-7 pktw-text-pk-sm pktw-gap-1 pktw-ml-auto"
 							onClick={handleCreateNew}
 						>
 							<FilePlus className="pktw-w-3 pktw-h-3" />

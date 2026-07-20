@@ -90,7 +90,7 @@ export function PickerReadinessCard({
 					<h2 className="pktw-m-0 pktw-mt-0.5 pktw-mb-1.5 pktw-text-[17px] pktw-font-bold pktw-leading-tight pktw-text-pk-foreground">
 						{title}
 					</h2>
-					<div className="pktw-text-[13px] pktw-leading-snug pktw-text-pk-foreground-muted pktw-mb-3.5">
+					<div className="pktw-text-pk-md pktw-leading-snug pktw-text-pk-foreground-muted pktw-mb-3.5">
 						{description}
 					</div>
 					<div className="pktw-flex pktw-flex-wrap pktw-gap-2">
@@ -119,7 +119,7 @@ export function PickerReadinessCard({
 									: 'ghost'
 						}
 						className={cn(
-							'pktw-w-full pktw-h-10 pktw-px-3 pktw-gap-2 pktw-font-semibold pktw-text-[13px]',
+							'pktw-w-full pktw-h-10 pktw-px-3 pktw-gap-2 pktw-font-semibold pktw-text-pk-md',
 							// Primary → use brand accent (purple), not the shadcn 'primary' alias
 							// which maps to --pk-info (blue). Mockup spec calls for accent.
 							btn.variant === 'primary' && 'pktw-bg-pk-accent pktw-text-pk-accent-fg hover:pktw-bg-pk-accent-hover pktw-border-pk-accent',
@@ -134,7 +134,7 @@ export function PickerReadinessCard({
 					<Button
 						variant="ghost"
 						onClick={onCustomize}
-						className="pktw-w-full pktw-h-9 pktw-gap-2 pktw-justify-center pktw-text-pk-foreground-muted pktw-text-[13px]"
+						className="pktw-w-full pktw-h-9 pktw-gap-2 pktw-justify-center pktw-text-pk-foreground-muted pktw-text-pk-md"
 					>
 						<Sliders className="pktw-w-4 pktw-h-4" />
 						Customize
@@ -194,9 +194,9 @@ export interface SuggestedIntentRowProps {
 const intentToneClass: Record<NonNullable<SuggestedIntentRowProps['tone']>, string> = {
 	accent: 'pktw-bg-pk-accent-tint pktw-text-pk-accent',
 	indigo: 'pktw-bg-pk-indigo-bg pktw-text-pk-indigo-text',
-	cyan: 'pktw-bg-cyan-100 pktw-text-cyan-700 dark:pktw-bg-cyan-900/30 dark:pktw-text-cyan-300',
-	orange: 'pktw-bg-orange-100 pktw-text-orange-700 dark:pktw-bg-orange-900/30 dark:pktw-text-orange-300',
-	pink: 'pktw-bg-pink-100 pktw-text-pink-700 dark:pktw-bg-pink-900/30 dark:pktw-text-pink-300',
+	cyan: 'pktw-bg-pk-info-bg pktw-text-pk-info',
+	orange: 'pktw-bg-pk-warning-bg pktw-text-pk-warning',
+	pink: 'pktw-bg-pk-accent-tint pktw-text-pk-accent',
 };
 
 export function SuggestedIntentRow({
@@ -223,8 +223,8 @@ export function SuggestedIntentRow({
 				<Icon className="pktw-w-4 pktw-h-4" />
 			</span>
 			<span className="pktw-flex pktw-flex-col pktw-flex-1 pktw-min-w-0 pktw-gap-1">
-				<span className="pktw-text-[13.5px] pktw-font-semibold pktw-text-pk-foreground pktw-truncate pktw-leading-tight">{title}</span>
-				<span className="pktw-text-[12px] pktw-text-pk-foreground-muted pktw-truncate pktw-leading-tight">{subtitle}</span>
+				<span className="pktw-text-pk-md-plus pktw-font-semibold pktw-text-pk-foreground pktw-truncate pktw-leading-tight">{title}</span>
+				<span className="pktw-text-pk-base pktw-text-pk-foreground-muted pktw-truncate pktw-leading-tight">{subtitle}</span>
 			</span>
 			{pill ? <Pill variant={pill.variant} className="pktw-shrink-0">{pill.label}</Pill> : null}
 			<span className="pktw-text-pk-foreground-faint pktw-shrink-0 pktw-text-lg pktw-leading-none pktw-ml-1" aria-hidden>

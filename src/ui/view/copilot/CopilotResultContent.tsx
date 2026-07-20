@@ -241,7 +241,7 @@ const LoadingView: React.FC<{
 			{autoStatus && (
 				<span className="pktw-text-xs pktw-text-muted-foreground">{autoStatus}</span>
 			)}
-			<span className="pktw-text-[10px] pktw-text-muted-foreground/50">{elapsed}s</span>
+			<span className="pktw-text-pk-xs pktw-text-muted-foreground/50">{elapsed}s</span>
 			<Button variant="ghost" size="sm" onClick={onCancel} className="pktw-mt-2">
 				<X className="pktw-w-3.5 pktw-h-3.5 pktw-mr-1" />
 				Cancel
@@ -270,7 +270,7 @@ const StreamingView: React.FC<{
 					<Loader2 className="pktw-w-4 pktw-h-4 pktw-animate-spin pktw-text-accent" />
 					<span className="pktw-text-sm pktw-font-medium">{label}</span>
 					<span className="pktw-flex-1" />
-					<span className="pktw-text-[10px] pktw-text-muted-foreground pktw-font-mono">{elapsed}s</span>
+					<span className="pktw-text-pk-xs pktw-text-muted-foreground pktw-font-mono">{elapsed}s</span>
 				</div>
 				<span className="pktw-block pktw-mt-1 pktw-text-xs pktw-text-muted-foreground">
 					Analyzing context, running tools, then preparing reviewable output. No changes are applied automatically.
@@ -331,7 +331,7 @@ const CancelledView: React.FC<{ onBack: () => void }> = ({ onBack }) => (
 
 const UsageFooter: React.FC<{ usage: ActionUsage }> = ({ usage }) => (
 	<div className="pktw-flex pktw-justify-end pktw-px-4 pktw-py-2 pktw-border-t pktw-border-border">
-		<span className="pktw-text-[10px] pktw-text-muted-foreground">
+		<span className="pktw-text-pk-xs pktw-text-muted-foreground">
 			{usage.inputTokens.toLocaleString()} in + {usage.outputTokens.toLocaleString()} out tokens
 		</span>
 	</div>

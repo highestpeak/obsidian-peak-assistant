@@ -124,8 +124,8 @@ function MaintenanceGroup({
     return (
         <div>
             <span
-                className="pktw-text-[11px] pktw-uppercase pktw-tracking-wider pktw-font-semibold pktw-text-pk-foreground-faint"
-                style={{ display: 'block', marginBottom: 8 }}
+                className="pktw-text-pk-sm pktw-uppercase pktw-tracking-wider pktw-font-semibold pktw-text-pk-foreground-faint pktw-mb-2"
+                style={{ display: 'block' }}
             >
                 {title}
             </span>
@@ -166,7 +166,7 @@ function DangerZone({ actions }: { actions: DangerAction[] }) {
             <summary>
                 <Row disclosure>
                     <Row.Icon>
-                        <ShieldAlert size={16} style={{ color: 'var(--pk-error-text)' }} />
+                        <ShieldAlert size={16} className="pktw-text-pk-error-text" />
                     </Row.Icon>
                     <Row.Body>
                         <Row.Title>Danger zone</Row.Title>
@@ -174,7 +174,7 @@ function DangerZone({ actions }: { actions: DangerAction[] }) {
                     </Row.Body>
                     <Row.Right>
                         <Row.Meta>{actions.length} actions</Row.Meta>
-                        <ChevronDown size={14} style={{ color: 'var(--pk-text-tertiary)' }} />
+                        <ChevronDown size={14} className="pktw-text-pk-text-tertiary" />
                     </Row.Right>
                 </Row>
             </summary>

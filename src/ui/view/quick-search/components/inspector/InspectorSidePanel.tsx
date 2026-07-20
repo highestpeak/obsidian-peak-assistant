@@ -24,7 +24,7 @@ const InspectorSnippetBlock: React.FC<{ currentPath: string }> = ({ currentPath 
 	if (!result?.highlight?.text) return null;
 	return (
 		<div className="pktw-px-4 pktw-py-2.5 pktw-border-b pktw-border-pk-border pktw-bg-pk-surface-sunken/40">
-			<div className="pktw-text-[13px] pktw-leading-relaxed pktw-text-pk-foreground pktw-line-clamp-4">
+			<div className="pktw-text-pk-md pktw-leading-relaxed pktw-text-pk-foreground pktw-line-clamp-4">
 				{renderSnippetContent(result.highlight)}
 			</div>
 		</div>

@@ -166,7 +166,7 @@ function RecommendationsColumn({
 			)}
 			{result?.source ? (
 				<div className="pk-dash-card__head" style={{ borderTop: '1px solid var(--pk-border-soft)', borderBottom: 0 }}>
-					<span className="pk-subtle" style={{ fontSize: 11 }}>
+					<span className="pk-subtle pktw-text-pk-sm">
 						{result.source === 'llm' ? strings.sourceLlm : strings.sourceRules}
 					</span>
 					<span />
@@ -188,7 +188,7 @@ function ProjectionCard({
 	if (!result) {
 		return (
 			<section className="pk-dash-card pk-dash-card--pad">
-				<div className="pk-dash-card__head" style={{ padding: 0, border: 'none' }}>
+				<div className="pk-dash-card__head pktw-p-0 pktw-border-0">
 					<span className="pk-dash-card__title">{strings.title}</span>
 				</div>
 				<div className="pk-dash-empty">—</div>
@@ -208,20 +208,20 @@ function ProjectionCard({
 	const budgetUsd = projection.budgetUsd > 0 ? `$${projection.budgetUsd.toFixed(2)}` : '$—';
 	return (
 		<section className="pk-dash-card pk-dash-card--pad">
-			<div className="pk-dash-card__head" style={{ padding: 0, border: 'none' }}>
+			<div className="pk-dash-card__head pktw-p-0 pktw-border-0">
 				<span className="pk-dash-card__title">{strings.title}</span>
 				<span className="pk-dash-card__sub">{cycleLabel}</span>
 			</div>
-			<div style={{ marginTop: 14 }}>
+			<div className="pktw-mt-3.5">
 				<div className="pk-trio__label">{strings.withoutChanges}</div>
-				<div className="pk-strong pk-mono" style={{ fontSize: 24 }}>
+				<div className="pk-strong pk-mono pktw-text-[24px]">
 					${projection.withoutChangesUsd.toFixed(2)}
 				</div>
 			</div>
-			<div style={{ marginTop: 10 }}>
+			<div className="pktw-mt-2.5">
 				<div className="pk-trio__label">{strings.withApplied}</div>
-				<div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-					<div className="pk-strong pk-mono" style={{ fontSize: 24, color: 'var(--pk-success)' }}>
+				<div className="pktw-flex pktw-items-baseline pktw-gap-2">
+					<div className="pk-strong pk-mono pktw-text-[24px] pktw-text-pk-success">
 						${projection.withAppliedUsd.toFixed(2)}
 					</div>
 					<span className="pk-kpi-delta pk-kpi-delta--up pk-mono">{savingsLine}</span>
@@ -229,7 +229,7 @@ function ProjectionCard({
 			</div>
 			{projection.budgetUsd > 0 ? (
 				<>
-					<div style={{ marginTop: 12 }}>
+					<div className="pktw-mt-3">
 						<PaceBar
 							usedPct={projection.withAppliedUsd / projection.budgetUsd}
 							projectedPct={projection.withoutChangesUsd / projection.budgetUsd}
@@ -265,7 +265,7 @@ function ScenarioCard({
 	if (scenarios.length === 0) {
 		return (
 			<section className="pk-dash-card pk-dash-card--pad">
-				<div className="pk-dash-card__head" style={{ padding: 0, border: 'none' }}>
+				<div className="pk-dash-card__head pktw-p-0 pktw-border-0">
 					<span className="pk-dash-card__title">{strings.title}</span>
 					<span className="pk-dash-card__sub">{strings.sub}</span>
 				</div>
@@ -275,11 +275,11 @@ function ScenarioCard({
 	}
 	return (
 		<section className="pk-dash-card pk-dash-card--pad">
-			<div className="pk-dash-card__head" style={{ padding: 0, border: 'none' }}>
+			<div className="pk-dash-card__head pktw-p-0 pktw-border-0">
 				<span className="pk-dash-card__title">{strings.title}</span>
 				<span className="pk-dash-card__sub">{strings.sub}</span>
 			</div>
-			<div style={{ marginTop: 14 }}>
+			<div className="pktw-mt-3.5">
 				<ScenarioRadio
 					scenarios={scenarios}
 					value={value}

@@ -38,12 +38,12 @@ export interface TextStreamPanelProps {
 
 const bodyClassFor = (bodyStyle: 'callout' | 'left-bordered' | 'plain'): string => {
 	if (bodyStyle === 'callout') {
-		return 'pktw-p-4 pktw-bg-secondary pktw-rounded-lg pktw-border-l-3 pktw-border-l-accent pktw-text-[13px] pktw-leading-relaxed pktw-whitespace-pre-wrap';
+		return 'pktw-p-4 pktw-bg-secondary pktw-rounded-lg pktw-border-l-3 pktw-border-l-accent pktw-text-pk-md pktw-leading-relaxed pktw-whitespace-pre-wrap';
 	}
 	if (bodyStyle === 'left-bordered') {
-		return 'pktw-border-l-3 pktw-border-l-accent pktw-pl-4 pktw-py-2 pktw-text-[13px] pktw-leading-relaxed pktw-whitespace-pre-wrap';
+		return 'pktw-border-l-3 pktw-border-l-accent pktw-pl-4 pktw-py-2 pktw-text-pk-md pktw-leading-relaxed pktw-whitespace-pre-wrap';
 	}
-	return 'pktw-text-[13px] pktw-leading-relaxed pktw-whitespace-pre-wrap pktw-mb-4';
+	return 'pktw-text-pk-md pktw-leading-relaxed pktw-whitespace-pre-wrap pktw-mb-4';
 };
 
 /**
@@ -85,7 +85,7 @@ export const TextStreamPanel: React.FC<TextStreamPanelProps> = ({
 		>
 			<div className={bodyClassFor(bodyStyle)}>{body}</div>
 			{wordCount !== null && (
-				<div className="pktw-mt-2 pktw-text-[10px] pktw-text-muted-foreground">{wordCount} words</div>
+				<div className="pktw-mt-2 pktw-text-pk-xs pktw-text-muted-foreground">{wordCount} words</div>
 			)}
 			{sections.map((section, sIdx) => (
 				<CollapsibleSection
@@ -117,8 +117,8 @@ const CollapsibleSection: React.FC<{
 					? <ChevronDown className="pktw-w-3.5 pktw-h-3.5 pktw-text-muted-foreground" />
 					: <ChevronRight className="pktw-w-3.5 pktw-h-3.5 pktw-text-muted-foreground" />
 				}
-				{section.warn && <AlertTriangle className="pktw-w-3 pktw-h-3 pktw-text-[var(--pk-warning)]" />}
-				<span className="pktw-text-[11px] pktw-font-semibold pktw-text-muted-foreground pktw-uppercase pktw-tracking-wider">
+				{section.warn && <AlertTriangle className="pktw-w-3 pktw-h-3 pktw-text-pk-warning" />}
+				<span className="pktw-text-pk-sm pktw-font-semibold pktw-text-muted-foreground pktw-uppercase pktw-tracking-wider">
 					{section.label} ({section.count})
 				</span>
 			</div>
@@ -130,16 +130,16 @@ const CollapsibleSection: React.FC<{
 							className={`pktw-flex pktw-items-start pktw-gap-2 pktw-py-1.5 pktw-transition-colors pktw-group${item.onClick ? ' pktw-cursor-pointer hover:pktw-text-accent' : ''}`}
 							onClick={item.onClick}
 						>
-							<span className="pktw-text-[10px] pktw-text-muted-foreground/40 pktw-w-4 pktw-text-right pktw-flex-shrink-0">{i + 1}</span>
+							<span className="pktw-text-pk-xs pktw-text-muted-foreground/40 pktw-w-4 pktw-text-right pktw-flex-shrink-0">{i + 1}</span>
 							<div className="pktw-flex-1 pktw-min-w-0">
 								<div className="pktw-flex pktw-items-center pktw-gap-1.5">
-									<span className="pktw-text-[12px] pktw-text-accent pktw-truncate">{item.title}</span>
+									<span className="pktw-text-pk-base pktw-text-accent pktw-truncate">{item.title}</span>
 									{item.onClick && (
 										<ExternalLink className="pktw-w-3 pktw-h-3 pktw-text-muted-foreground pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity pktw-flex-shrink-0" />
 									)}
 								</div>
 								{item.subtitle && (
-									<span className="pktw-text-[10px] pktw-text-muted-foreground/60 pktw-block pktw-mt-0.5">
+									<span className="pktw-text-pk-xs pktw-text-muted-foreground/60 pktw-block pktw-mt-0.5">
 										{item.subtitle}
 									</span>
 								)}

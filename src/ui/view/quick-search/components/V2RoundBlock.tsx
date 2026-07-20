@@ -98,22 +98,22 @@ export const V2RoundBlock: React.FC<V2RoundBlockProps> = ({
 				{/* Stats */}
 				<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-shrink-0">
 					{duration && (
-						<span className="pktw-text-[10px] pktw-text-pk-foreground-muted pktw-font-mono pktw-tabular-nums">
+						<span className="pktw-text-pk-xs pktw-text-pk-foreground-muted pktw-font-mono pktw-tabular-nums">
 							{duration}
 						</span>
 					)}
 					{sources.length > 0 && (
-						<span className="pktw-text-[10px] pktw-text-pk-foreground-muted">
+						<span className="pktw-text-pk-xs pktw-text-pk-foreground-muted">
 							{sources.length} src
 						</span>
 					)}
 					{hasSections && (
-						<span className="pktw-text-[10px] pktw-text-pk-foreground-muted">
+						<span className="pktw-text-pk-xs pktw-text-pk-foreground-muted">
 							{sections.length} sec
 						</span>
 					)}
 					{tokenStr && (
-						<span className="pktw-text-[10px] pktw-text-pk-foreground-muted pktw-font-mono">
+						<span className="pktw-text-pk-xs pktw-text-pk-foreground-muted pktw-font-mono">
 							{tokenStr}
 						</span>
 					)}
@@ -122,7 +122,7 @@ export const V2RoundBlock: React.FC<V2RoundBlockProps> = ({
 				{/* Report link for frozen rounds with sections */}
 				{!isCurrent && hasSections && (
 					<span
-						className="pktw-flex pktw-items-center pktw-gap-0.5 pktw-text-[10px] pktw-text-pk-accent pktw-font-medium pktw-cursor-pointer hover:pktw-underline pktw-shrink-0"
+						className="pktw-flex pktw-items-center pktw-gap-0.5 pktw-text-pk-xs pktw-text-pk-accent pktw-font-medium pktw-cursor-pointer hover:pktw-underline pktw-shrink-0"
 						onClick={(e) => {
 							e.stopPropagation();
 							setV2View('report');

@@ -27,7 +27,7 @@ interface SemanticLinkSuggestPanelProps {
 
 const formatScore = (score: number) => {
 	const pct = Math.round(score * 100);
-	if (pct >= 80) return { label: `${pct}%`, className: 'pktw-text-[var(--pk-success)]' };
+	if (pct >= 80) return { label: `${pct}%`, className: 'pktw-text-pk-success' };
 	if (pct >= 50) return { label: `${pct}%`, className: 'pktw-text-accent' };
 	return { label: `${pct}%`, className: 'pktw-text-muted-foreground' };
 };
@@ -83,11 +83,11 @@ export const SemanticLinkSuggestPanel: React.FC<SemanticLinkSuggestPanelProps> =
 					return (
 						<SelectableRow key={i} checked={selected.has(i)} onClick={() => toggle(i)}>
 							<div className="pktw-flex pktw-items-center pktw-gap-1.5">
-								<span className="pktw-text-[13px] pktw-font-semibold pktw-text-accent pktw-truncate">[[{suggestion.title}]]</span>
-								<span className={`pktw-text-[10px] pktw-font-bold ${scoreInfo.className}`}>{scoreInfo.label}</span>
+								<span className="pktw-text-pk-md pktw-font-semibold pktw-text-accent pktw-truncate">[[{suggestion.title}]]</span>
+								<span className={`pktw-text-pk-xs pktw-font-bold ${scoreInfo.className}`}>{scoreInfo.label}</span>
 								<DirectionBadge direction={suggestion.direction} label={{ out: 'out', in: 'in' }} />
 							</div>
-							<span className="pktw-text-[11px] pktw-text-muted-foreground pktw-block pktw-mt-0.5 pktw-truncate">
+							<span className="pktw-text-pk-sm pktw-text-muted-foreground pktw-block pktw-mt-0.5 pktw-truncate">
 								{suggestion.path}
 							</span>
 						</SelectableRow>

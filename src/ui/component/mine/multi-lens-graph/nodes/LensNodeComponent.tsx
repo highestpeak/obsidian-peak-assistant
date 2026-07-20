@@ -54,12 +54,12 @@ export const LensNodeComponent = memo(({ data }: NodeProps<LensNode>) => {
 			title={titleParts}
 		>
 			<span className={`pktw-font-medium pktw-text-[#2e3338] ${
-				isImportant || isHub ? 'pktw-text-sm' : 'pktw-text-[13px]'
+				isImportant || isHub ? 'pktw-text-sm' : 'pktw-text-pk-md'
 			}`}>
 				{data.label}
 			</span>
 			{showSummary && (
-				<span className="pktw-block pktw-text-[10px] pktw-text-pk-foreground-muted pktw-mt-0.5 pktw-max-w-[200px] pktw-truncate">
+				<span className="pktw-block pktw-text-pk-xs pktw-text-pk-foreground-muted pktw-mt-0.5 pktw-max-w-[200px] pktw-truncate">
 					{data.summary}
 				</span>
 			)}

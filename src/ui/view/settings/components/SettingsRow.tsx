@@ -78,7 +78,7 @@ export function SettingsDisclosure({
 						{meta !== undefined && <Row.Meta>{meta}</Row.Meta>}
 						<ChevronDown
 							size={14}
-							style={{ color: 'var(--pk-text-tertiary)' }}
+							className="pktw-text-pk-text-tertiary"
 						/>
 					</Row.Right>
 				</Row>

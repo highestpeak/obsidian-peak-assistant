@@ -30,11 +30,11 @@ export function AddProfileGrid({ onSelect, onCancel, existingKinds }: AddProfile
                     const alreadyExists = existingKinds.has(kind);
                     return (
                         <div key={kind}
-                             className="pktw-flex pktw-flex-col pktw-items-center pktw-gap-1.5 pktw-p-3 pktw-rounded-lg pktw-border pktw-border-pk-border pktw-cursor-pointer hover:pktw-border-[var(--pk-accent)] hover:pktw-shadow-md pktw-transition-all pktw-duration-200"
+                             className="pktw-flex pktw-flex-col pktw-items-center pktw-gap-1.5 pktw-p-3 pktw-rounded-lg pktw-border pktw-border-pk-border pktw-cursor-pointer hover:pktw-border-pk-accent hover:pktw-shadow-md pktw-transition-all pktw-duration-200"
                              onClick={() => onSelect(kind)}>
                             <ProviderIcon kind={kind} size={36} />
                             <span className="pktw-text-xs pktw-font-medium">{meta.label}</span>
-                            <span className="pktw-text-[10px] pktw-text-pk-foreground-faint">
+                            <span className="pktw-text-pk-xs pktw-text-pk-foreground-faint">
                                 {alreadyExists && showAll ? 'already configured' : meta.desc}
                             </span>
                         </div>
@@ -43,7 +43,7 @@ export function AddProfileGrid({ onSelect, onCancel, existingKinds }: AddProfile
             </div>
             {hasExisting && !showAll && (
                 <span
-                    className="pktw-block pktw-text-center pktw-text-[11px] pktw-text-pk-muted-foreground pktw-mt-3 pktw-cursor-pointer hover:pktw-text-pk-foreground pktw-transition-colors"
+                    className="pktw-block pktw-text-center pktw-text-pk-sm pktw-text-pk-muted-foreground pktw-mt-3 pktw-cursor-pointer hover:pktw-text-pk-foreground pktw-transition-colors"
                     onClick={() => setShowAll(true)}
                 >
                     Add another instance of existing provider

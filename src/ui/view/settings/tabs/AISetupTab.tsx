@@ -244,17 +244,17 @@ function BehaviorPickerRow(props: BehaviorPickerRowProps) {
                 <div ref={wrapRef} className="pktw-relative">
                     <button
                         type="button"
-                        className="pk-pill"
+                        className="pk-pill pktw-gap-1"
                         onClick={() => setOpen((v) => !v)}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        style={{ display: 'inline-flex', alignItems: 'center' }}
                     >
                         {display ? props.changeLabel : props.setupLabel}
                         <ChevronDown size={12} />
                     </button>
                     {open && (
                         <div
-                            className="pktw-absolute pktw-z-50"
-                            style={{ right: 0, top: '100%', marginTop: 4 }}
+                            className="pktw-absolute pktw-z-50 pktw-mt-1"
+                            style={{ right: 0, top: '100%' }}
                         >
                             <RoleModelPicker
                                 activeConfig={activeConfig}

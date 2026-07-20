@@ -171,8 +171,8 @@ export const SearchResultRow: React.FC<{
 		>
 			{/* Leading accent bar */}
 			<div
-				className="pktw-absolute pktw-left-0 pktw-top-0 pktw-bottom-0 pktw-w-1 pktw-rounded-r-full"
-				style={{ backgroundColor: 'var(--pk-accent)', opacity: isSelected ? 1 : 0 }}
+				className="pktw-absolute pktw-left-0 pktw-top-0 pktw-bottom-0 pktw-w-1 pktw-rounded-r-full pktw-bg-pk-accent"
+				style={{ opacity: isSelected ? 1 : 0 }}
 			/>
 
 			{/* Open in new tab button — floats top-right on row hover */}
@@ -202,21 +202,20 @@ export const SearchResultRow: React.FC<{
 					    Trailing element is flex-shrink-0 so it never squeezes the title. */}
 					<div className="pktw-flex pktw-items-baseline pktw-gap-2 pktw-min-w-0">
 						<span
-							className="pktw-flex-1 pktw-min-w-0 pktw-font-semibold pktw-text-pk-text-primary pktw-truncate"
-							style={{ fontWeight: 800, fontSize: '1.2rem', lineHeight: '1.2' }}
+							className="pktw-flex-1 pktw-min-w-0 pktw-font-extrabold pktw-text-pk-text-primary pktw-truncate pktw-text-[1.2rem] pktw-leading-[1.2]"
 							title={displayTitle}
 						>
 							{renderHighlightSpans(titleHighlight)}
 						</span>
 						{scorePercent != null ? (
 							<span
-								className="pktw-flex-shrink-0 pktw-text-[10px] pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded-full pktw-bg-pk-accent-tint pktw-text-pk-accent pktw-whitespace-nowrap"
+								className="pktw-flex-shrink-0 pktw-text-pk-xs pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded-full pktw-bg-pk-accent-tint pktw-text-pk-accent pktw-whitespace-nowrap"
 								title="Relative to the top match in this result set"
 							>
 								{scorePercent}%
 							</span>
 						) : modifiedText ? (
-							<span className="pktw-flex-shrink-0 pktw-text-[10px] pktw-text-pk-text-tertiary pktw-whitespace-nowrap">
+							<span className="pktw-flex-shrink-0 pktw-text-pk-xs pktw-text-pk-text-tertiary pktw-whitespace-nowrap">
 								{modifiedText}
 							</span>
 						) : null}
@@ -236,7 +235,7 @@ export const SearchResultRow: React.FC<{
 					)}
 
 					{!isCompact && (
-						<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-mt-1 pktw-text-[10px] pktw-text-pk-text-tertiary pktw-min-w-0 pktw-opacity-60 group-hover:pktw-opacity-100 pktw-transition-opacity">
+						<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-mt-1 pktw-text-pk-xs pktw-text-pk-text-tertiary pktw-min-w-0 pktw-opacity-60 group-hover:pktw-opacity-100 pktw-transition-opacity">
 							<span className="pktw-truncate" title={result.path}>{shortPath}</span>
 							{scorePercent != null && modifiedText && (
 								<>

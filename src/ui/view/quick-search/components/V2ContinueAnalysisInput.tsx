@@ -84,7 +84,7 @@ export const V2ContinueAnalysisInput: React.FC<V2ContinueAnalysisInputProps> = (
                                 className={`pktw-flex-none pktw-p-2 pktw-rounded-lg pktw-transition-colors pktw-cursor-pointer ${
                                     input.trim()
                                         ? 'pktw-text-white pktw-bg-pk-accent hover:pktw-bg-pk-accent-hover'
-                                        : 'pktw-text-pk-foreground-muted pktw-bg-gray-100'
+                                        : 'pktw-text-pk-foreground-muted pktw-bg-pk-surface-sunken'
                                 }`}
                             >
                                 <Send className="pktw-w-4 pktw-h-4" />
@@ -103,7 +103,7 @@ export const V2ContinueAnalysisInput: React.FC<V2ContinueAnalysisInputProps> = (
                                             animate={{ opacity: 1, scale: 1 }}
                                             transition={{ delay: i * 0.05 }}
                                             onClick={() => handleSubmit(s)}
-                                            className="pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-text-pk-foreground-muted pktw-bg-gray-100 hover:pktw-bg-purple-100 hover:pktw-text-pk-accent pktw-rounded-full pktw-transition-colors pktw-cursor-pointer"
+                                            className="pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-text-pk-foreground-muted pktw-bg-pk-surface-sunken hover:pktw-bg-pk-accent-tint hover:pktw-text-pk-accent pktw-rounded-full pktw-transition-colors pktw-cursor-pointer"
                                         >
                                             {s}
                                         </motion.div>

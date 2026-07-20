@@ -54,14 +54,14 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 			</div>
 
 			<div className="pktw-mb-4">
-				<span className="pktw-text-sm pktw-text-gray-700 pktw-leading-relaxed">
+				<span className="pktw-text-sm pktw-text-pk-text-secondary pktw-leading-relaxed">
 					{message}
 				</span>
 			</div>
 
 			{requireConfirmationText && (
 				<div className="pktw-mb-6">
-					<label className="pktw-block pktw-text-sm pktw-font-medium pktw-text-gray-700 pktw-mb-2">
+					<label className="pktw-block pktw-text-sm pktw-font-medium pktw-text-pk-text-secondary pktw-mb-2">
 						Type "{requireConfirmationText}" to confirm:
 					</label>
 					<Input
@@ -87,7 +87,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 				<Button
 					onClick={handleConfirm}
 					disabled={requireConfirmationText ? confirmationInput !== requireConfirmationText : false}
-					className="pktw-px-4 pktw-py-2 pktw-text-sm pktw-font-medium pktw-rounded-lg pktw-bg-red-500 hover:pktw-bg-red-600 pktw-text-white disabled:pktw-opacity-50 disabled:pktw-cursor-not-allowed disabled:hover:pktw-bg-red-500"
+					className="pktw-px-4 pktw-py-2 pktw-text-sm pktw-font-medium pktw-rounded-lg pktw-bg-pk-error hover:pktw-bg-pk-error-text pktw-text-white disabled:pktw-opacity-50 disabled:pktw-cursor-not-allowed disabled:hover:pktw-bg-pk-error"
 				>
 					{confirmText}
 				</Button>

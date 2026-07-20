@@ -140,7 +140,7 @@ export function RoleModelPicker({ role, activeConfig, profiles, onSelect, onClea
     return (
         <div className="pktw-w-[320px] pktw-max-h-[380px] pktw-flex pktw-flex-col pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-popover pktw-shadow-lg">
             {isFastRole && (
-                <div className="pktw-flex pktw-items-start pktw-gap-2 pktw-px-3 pktw-py-2 pktw-text-[11px] pktw-bg-pk-warning-bg pktw-text-pk-warning-text pktw-border-b pktw-border-pk-border">
+                <div className="pktw-flex pktw-items-start pktw-gap-2 pktw-px-3 pktw-py-2 pktw-text-pk-sm pktw-bg-pk-warning-bg pktw-text-pk-warning-text pktw-border-b pktw-border-pk-border">
                     <AlertTriangle className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-mt-px" />
                     <span>Use <b>Haiku</b> here — roughly 12× cheaper than Sonnet for the Fast role.</span>
                 </div>
@@ -165,7 +165,7 @@ export function RoleModelPicker({ role, activeConfig, profiles, onSelect, onClea
                     <div key={group.profile.id}>
                         <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-pt-2 pktw-pb-1">
                             <ProviderIcon kind={group.profile.kind as any} size={14} />
-                            <span className="pktw-text-[10px] pktw-font-semibold pktw-text-pk-foreground-faint pktw-uppercase pktw-tracking-wider">
+                            <span className="pktw-text-pk-xs pktw-font-semibold pktw-text-pk-foreground-faint pktw-uppercase pktw-tracking-wider">
                                 {group.profile.name}
                             </span>
                         </div>

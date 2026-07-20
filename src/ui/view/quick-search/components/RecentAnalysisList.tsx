@@ -33,12 +33,12 @@ const AnalysisRow: React.FC<{
 				<span className="pktw-text-sm pktw-font-medium pktw-text-pk-foreground pktw-truncate pktw-block group-hover:pktw-text-pk-accent pktw-transition-colors">
 					{title}
 				</span>
-				<span className="pktw-text-[11px] pktw-text-pk-foreground-muted">
+				<span className="pktw-text-pk-sm pktw-text-pk-foreground-muted">
 					{record.sources_count != null ? `${record.sources_count} sources · ` : ''}
 					{humanReadableTime(record.created_at_ts)}
 				</span>
 			</div>
-			<span className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-shrink-0">
+			<span className="pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-shrink-0">
 				{humanReadableTime(record.created_at_ts)}
 			</span>
 		</div>
@@ -123,7 +123,7 @@ export const RecentAnalysisList: React.FC<RecentAnalysisListProps> = ({
 
 	return (
 		<div className="pktw-border-t pktw-border-pk-border/50 pktw-mt-2 pktw-px-4">
-			<span className="pktw-block pktw-text-[10px] pktw-font-medium pktw-uppercase pktw-tracking-widest pktw-text-pk-foreground-muted pktw-pt-4 pktw-pb-2">
+			<span className="pktw-block pktw-text-pk-xs pktw-font-medium pktw-uppercase pktw-tracking-widest pktw-text-pk-foreground-muted pktw-pt-4 pktw-pb-2">
 				Recent
 			</span>
 			<div className="pktw-flex pktw-flex-col">

@@ -80,7 +80,7 @@ export function LensEdgeComponent(props: EdgeProps<LensEdge>) {
 							pointerEvents: 'none',
 							zIndex: 10,
 						}}
-						className="pktw-text-[10px] pktw-text-pk-foreground pktw-bg-white/95 pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-shadow-sm pktw-max-w-[180px] pktw-text-center pktw-leading-tight"
+						className="pktw-text-pk-xs pktw-text-pk-foreground pktw-bg-white/95 pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-shadow-sm pktw-max-w-[180px] pktw-text-center pktw-leading-tight"
 					>
 						{fullLabel}
 					</div>
@@ -92,7 +92,7 @@ export function LensEdgeComponent(props: EdgeProps<LensEdge>) {
 							pointerEvents: 'none',
 							color: style.labelColor,
 						}}
-						className="pktw-text-[10px] pktw-font-medium pktw-bg-white/90 pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-shadow-[0_0_2px_rgba(0,0,0,0.08)]"
+						className="pktw-text-pk-xs pktw-font-medium pktw-bg-white/90 pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-shadow-[0_0_2px_rgba(0,0,0,0.08)]"
 					>
 						{shortLabel}
 					</div>

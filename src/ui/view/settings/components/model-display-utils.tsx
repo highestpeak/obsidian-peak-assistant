@@ -12,16 +12,16 @@ export function formatCtx(maxCtx?: number): string | null {
 export function CapTags({ caps }: { caps?: ModelCapabilities }) {
     if (!caps) return null;
     const tags: { label: string; cls: string }[] = [];
-    if (caps.reasoning) tags.push({ label: 'reason', cls: 'pktw-bg-yellow-500/20 pktw-text-yellow-700 dark:pktw-text-yellow-400' });
-    if (caps.vision) tags.push({ label: 'vision', cls: 'pktw-bg-blue-500/20 pktw-text-blue-700 dark:pktw-text-blue-400' });
-    if (caps.webSearch) tags.push({ label: 'search', cls: 'pktw-bg-green-500/20 pktw-text-green-700 dark:pktw-text-green-400' });
+    if (caps.reasoning) tags.push({ label: 'reason', cls: 'pktw-bg-pk-warning-bg pktw-text-pk-warning-text' });
+    if (caps.vision) tags.push({ label: 'vision', cls: 'pktw-bg-pk-info-bg pktw-text-pk-info-text' });
+    if (caps.webSearch) tags.push({ label: 'search', cls: 'pktw-bg-pk-success-bg pktw-text-pk-success-text' });
     const ctx = formatCtx(caps.maxCtx);
     if (ctx) tags.push({ label: ctx, cls: 'pktw-bg-pk-border/40 pktw-text-pk-muted-foreground' });
     if (tags.length === 0) return null;
     return (
         <span className="pktw-flex pktw-gap-1 pktw-shrink-0">
             {tags.map((t) => (
-                <span key={t.label} className={cn('pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-text-[10px] pktw-font-medium pktw-leading-none', t.cls)}>
+                <span key={t.label} className={cn('pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-text-pk-xs pktw-font-medium pktw-leading-none', t.cls)}>
                     {t.label}
                 </span>
             ))}

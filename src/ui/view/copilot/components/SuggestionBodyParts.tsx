@@ -5,7 +5,7 @@ import { Check } from 'lucide-react';
 export const SuggestionCheckbox: React.FC<{ checked: boolean }> = ({ checked }) => (
 	<div className={`pktw-w-4 pktw-h-4 pktw-rounded pktw-border-2 pktw-flex pktw-items-center pktw-justify-center pktw-flex-shrink-0 pktw-mt-0.5 pktw-transition-all ${
 		checked
-			? 'pktw-bg-accent pktw-border-accent pktw-text-white pktw-text-[10px]'
+			? 'pktw-bg-accent pktw-border-accent pktw-text-white pktw-text-pk-xs'
 			: 'pktw-border-border'
 	}`}>
 		{checked && <Check className="pktw-w-2.5 pktw-h-2.5" />}
@@ -35,7 +35,7 @@ export const DirectionBadge: React.FC<{ direction: 'outgoing' | 'incoming'; labe
 	<span className={`pktw-text-[8px] pktw-font-bold pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-uppercase ${
 		direction === 'outgoing'
 			? 'pktw-bg-accent/10 pktw-text-accent'
-			: 'pktw-bg-[var(--pk-success)]/10 pktw-text-[var(--pk-success)]'
+			: 'pktw-bg-pk-success/10 pktw-text-pk-success'
 	}`}>
 		{direction === 'outgoing' ? label.out : label.in}
 	</span>
@@ -46,7 +46,7 @@ export const SuggestionSummaryBox: React.FC<{
 	count: number;
 	children: React.ReactNode;
 }> = ({ count, children }) => (
-	<div className="pktw-flex pktw-items-center pktw-gap-3 pktw-p-3 pktw-bg-secondary pktw-rounded-lg pktw-mb-3 pktw-text-[11px] pktw-text-muted-foreground">
+	<div className="pktw-flex pktw-items-center pktw-gap-3 pktw-p-3 pktw-bg-secondary pktw-rounded-lg pktw-mb-3 pktw-text-pk-sm pktw-text-muted-foreground">
 		<span className="pktw-text-lg pktw-font-bold pktw-text-accent">{count}</span>
 		<span>{children}</span>
 	</div>

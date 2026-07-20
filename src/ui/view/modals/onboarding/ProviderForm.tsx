@@ -154,12 +154,12 @@ export function AddProviderForm({
 
             {/* Test result */}
             {testResult === 'success' && (
-                <span className="pktw-text-xs pktw-text-green-600 pktw-flex pktw-items-center pktw-gap-1">
+                <span className="pktw-text-xs pktw-text-pk-success pktw-flex pktw-items-center pktw-gap-1">
                     <Check size={12} /> Connection successful
                 </span>
             )}
             {testResult === 'fail' && (
-                <span className="pktw-text-xs pktw-text-red-500 pktw-flex pktw-items-center pktw-gap-1">
+                <span className="pktw-text-xs pktw-text-pk-error pktw-flex pktw-items-center pktw-gap-1">
                     <X size={12} /> Connection failed — check key and try again
                 </span>
             )}
@@ -215,7 +215,7 @@ export function SavedProfileRow({ profile, onDelete, onChange }: SavedProfileRow
                 <Icon size={14} className="pktw-text-[--text-muted] pktw-shrink-0" />
                 <span className="pktw-flex-1 pktw-text-sm pktw-text-[--text-normal] pktw-truncate">{profile.name}</span>
                 {isActive && (
-                    <span className="pktw-text-[10px] pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-bg-green-100 pktw-text-green-700">active</span>
+                    <span className="pktw-text-pk-xs pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-bg-pk-success-bg pktw-text-pk-success-text">active</span>
                 )}
                 <ChevronRight size={13} className={cn('pktw-text-[--text-muted] pktw-transition-transform', expanded && 'pktw-rotate-90')} />
             </div>
@@ -244,16 +244,16 @@ export function SavedProfileRow({ profile, onDelete, onChange }: SavedProfileRow
                         <Button size="sm" onClick={handleSave} disabled={!apiKey.trim()}>Save</Button>
                     </div>
                     {testResult === 'success' && (
-                        <span className="pktw-text-xs pktw-text-green-600 pktw-flex pktw-items-center pktw-gap-1"><Check size={12} /> OK</span>
+                        <span className="pktw-text-xs pktw-text-pk-success pktw-flex pktw-items-center pktw-gap-1"><Check size={12} /> OK</span>
                     )}
                     {testResult === 'fail' && (
-                        <span className="pktw-text-xs pktw-text-red-500 pktw-flex pktw-items-center pktw-gap-1"><X size={12} /> Failed</span>
+                        <span className="pktw-text-xs pktw-text-pk-error pktw-flex pktw-items-center pktw-gap-1"><X size={12} /> Failed</span>
                     )}
                     <div className="pktw-flex pktw-gap-2 pktw-pt-1">
                         {!isActive && (
                             <Button variant="ghost" size="sm" onClick={handleSetActive} className="pktw-text-xs">Set Active</Button>
                         )}
-                        <Button variant="ghost" size="sm" onClick={onDelete} className="pktw-text-xs pktw-text-red-500 hover:pktw-text-red-600 pktw-gap-1">
+                        <Button variant="ghost" size="sm" onClick={onDelete} className="pktw-text-xs pktw-text-pk-error hover:pktw-text-pk-error-text pktw-gap-1">
                             <Trash2 size={12} /> Delete
                         </Button>
                     </div>

@@ -123,13 +123,13 @@ function clusterIconFor(name: string): { Icon: LucideIcon; toneClass: string } {
 	if (/(ai|llm|agent|model|engineer|context)/.test(n))
 		return { Icon: Brain, toneClass: 'pktw-bg-pk-accent-tint pktw-text-pk-accent' };
 	if (/(search|retriev|index|embedding|rank)/.test(n))
-		return { Icon: Search, toneClass: 'pktw-bg-cyan-100 dark:pktw-bg-cyan-900/30 pktw-text-cyan-700 dark:pktw-text-cyan-300' };
+		return { Icon: Search, toneClass: 'pktw-bg-pk-info-bg pktw-text-pk-info' };
 	if (/(design|ux|ui|product|component)/.test(n))
-		return { Icon: Palette, toneClass: 'pktw-bg-orange-100 dark:pktw-bg-orange-900/30 pktw-text-orange-700 dark:pktw-text-orange-300' };
+		return { Icon: Palette, toneClass: 'pktw-bg-pk-warning-bg pktw-text-pk-warning' };
 	if (/(personal|daily|note|reading|habit|life)/.test(n))
 		return { Icon: User, toneClass: 'pktw-bg-pk-warning-bg pktw-text-pk-warning' };
 	if (/(travel|trip|place|food)/.test(n))
-		return { Icon: Briefcase, toneClass: 'pktw-bg-orange-100 dark:pktw-bg-orange-900/30 pktw-text-orange-700 dark:pktw-text-orange-300' };
+		return { Icon: Briefcase, toneClass: 'pktw-bg-pk-warning-bg pktw-text-pk-warning' };
 	return { Icon: Share2, toneClass: 'pktw-bg-pk-indigo-bg pktw-text-pk-indigo-text' };
 }
 
@@ -324,7 +324,7 @@ export const VaultAutoRunContent: React.FC<{
 					<ShieldCheck className="pktw-w-7 pktw-h-7" strokeWidth={1.6} />
 				</div>
 				<div className="pktw-min-w-0">
-					<h2 className="pktw-m-0 pktw-mb-1 pktw-text-[20px] pktw-font-bold pktw-text-pk-foreground pktw-leading-tight">
+					<h2 className="pktw-m-0 pktw-mb-1 pktw-text-pk-2xl pktw-font-bold pktw-text-pk-foreground pktw-leading-tight">
 						{readOnly ? 'Vault Review · History' : 'Vault Review'}
 						{snapshot && snapshot.rounds[0]?.startedAt && (
 							<span className="pktw-text-pk-foreground-muted pktw-font-bold pktw-ml-1.5">
@@ -390,7 +390,7 @@ export const VaultAutoRunContent: React.FC<{
 
 			{/* ─── Footer ─── */}
 			<div className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-3 pktw-px-7 pktw-py-3.5 pktw-border-t pktw-border-pk-border pktw-bg-pk-background-secondary">
-				<div className="pktw-inline-flex pktw-items-center pktw-gap-2 pktw-text-pk-foreground-muted pktw-text-[12px] pktw-min-w-0">
+				<div className="pktw-inline-flex pktw-items-center pktw-gap-2 pktw-text-pk-foreground-muted pktw-text-pk-base pktw-min-w-0">
 					{activeTab === 'trace' ? (
 						<>
 							<span className="pktw-w-7 pktw-h-7 pktw-rounded-full pktw-bg-pk-background-secondary pktw-text-pk-accent pktw-flex pktw-items-center pktw-justify-center">
@@ -456,16 +456,16 @@ function RunningStatus() {
 
 function SectionLabel({ children, sub }: { children: React.ReactNode; sub?: string }) {
 	return (
-		<div className="pktw-text-[14px] pktw-font-semibold pktw-text-pk-foreground pktw-mt-6 pktw-mb-2.5">
+		<div className="pktw-text-pk-lg pktw-font-semibold pktw-text-pk-foreground pktw-mt-6 pktw-mb-2.5">
 			{children}
-			{sub ? <span className="pktw-ml-2 pktw-text-[12px] pktw-font-medium pktw-text-pk-foreground-muted">{sub}</span> : null}
+			{sub ? <span className="pktw-ml-2 pktw-text-pk-base pktw-font-medium pktw-text-pk-foreground-muted">{sub}</span> : null}
 		</div>
 	);
 }
 
 function ModalBreadcrumb({ items }: { items: Array<{ label: string; onClick?: () => void }> }) {
 	return (
-		<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-text-[12px] pktw-text-pk-foreground-muted">
+		<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-text-pk-base pktw-text-pk-foreground-muted">
 			{items.map((it, i) => (
 				<React.Fragment key={i}>
 					{i > 0 && <ChevronRight className="pktw-w-3 pktw-h-3 pktw-text-pk-foreground-faint" />}
@@ -499,8 +499,8 @@ function AgentTraceRail({ trace, summary }: { trace: TraceArtifact[]; summary?: 
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-gap-3.5">
 			<div className="pktw-flex pktw-items-center pktw-justify-between">
-				<div className="pktw-text-[14px] pktw-font-semibold pktw-text-pk-foreground">
-					Agent trace <span className="pktw-ml-1 pktw-text-[12px] pktw-font-medium pktw-text-pk-foreground-muted">(live)</span>
+				<div className="pktw-text-pk-lg pktw-font-semibold pktw-text-pk-foreground">
+					Agent trace <span className="pktw-ml-1 pktw-text-pk-base pktw-font-medium pktw-text-pk-foreground-muted">(live)</span>
 				</div>
 				<RunningStatus />
 			</div>
@@ -517,7 +517,7 @@ function AgentTraceRail({ trace, summary }: { trace: TraceArtifact[]; summary?: 
 					const desc = traceDescription(t);
 					return (
 						<div key={t.id ?? i} className="pktw-grid pktw-grid-cols-[52px_22px_minmax(0,1fr)] pktw-gap-2 pktw-items-start">
-							<span className="pktw-text-[11px] pktw-text-pk-foreground-faint pktw-tabular-nums pktw-pt-0.5 pktw-text-right pktw-pr-2">
+							<span className="pktw-text-pk-sm pktw-text-pk-foreground-faint pktw-tabular-nums pktw-pt-0.5 pktw-text-right pktw-pr-2">
 								{t.timestamp ? new Date(t.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''}
 							</span>
 							<span
@@ -531,7 +531,7 @@ function AgentTraceRail({ trace, summary }: { trace: TraceArtifact[]; summary?: 
 								{isInProgress ? <Save className="pktw-w-3 pktw-h-3" strokeWidth={2.5} /> : <Check className="pktw-w-3 pktw-h-3" strokeWidth={3} />}
 							</span>
 							<div className="pktw-min-w-0">
-								<div className="pktw-text-[13px] pktw-font-semibold pktw-text-pk-foreground">{traceTitle(t)}</div>
+								<div className="pktw-text-pk-md pktw-font-semibold pktw-text-pk-foreground">{traceTitle(t)}</div>
 								{desc && (
 									<div className="pktw-text-[11.5px] pktw-text-pk-foreground-muted pktw-leading-snug pktw-mt-0.5 pktw-whitespace-pre-line">
 										{desc}
@@ -542,7 +542,7 @@ function AgentTraceRail({ trace, summary }: { trace: TraceArtifact[]; summary?: 
 					);
 				})}
 				{trace.length === 0 && (
-					<div className="pktw-text-[12px] pktw-text-pk-foreground-muted pktw-italic">Trace will appear as the agent runs.</div>
+					<div className="pktw-text-pk-base pktw-text-pk-foreground-muted pktw-italic">Trace will appear as the agent runs.</div>
 				)}
 			</div>
 		</div>
@@ -591,7 +591,7 @@ const OverviewPanel: React.FC<{
 					<div>
 						<div className="pktw-text-[18px] pktw-font-bold pktw-text-pk-foreground pktw-mt-1 pktw-mb-2.5 pktw-leading-tight">{headlineTitle}</div>
 						{headlineBody && (
-							<div className="pktw-text-[13px] pktw-leading-relaxed pktw-text-pk-foreground">
+							<div className="pktw-text-pk-md pktw-leading-relaxed pktw-text-pk-foreground">
 								<StreamdownIsolated>{headlineBody}</StreamdownIsolated>
 							</div>
 						)}
@@ -638,8 +638,8 @@ const OverviewPanel: React.FC<{
 							<Target className="pktw-w-[18px] pktw-h-[18px]" />
 						</div>
 						<div>
-							<div className="pktw-text-[13.5px] pktw-text-pk-foreground pktw-leading-snug">
-								<span className="pktw-font-semibold pktw-uppercase pktw-text-[11px] pktw-tracking-wide pktw-text-pk-accent-text pktw-mr-2">{topAction.priority}</span>
+							<div className="pktw-text-pk-md-plus pktw-text-pk-foreground pktw-leading-snug">
+								<span className="pktw-font-semibold pktw-uppercase pktw-text-pk-sm pktw-tracking-wide pktw-text-pk-accent-text pktw-mr-2">{topAction.priority}</span>
 								{topAction.title}
 							</div>
 							{topAction.estimatedImpact && (
@@ -681,7 +681,7 @@ function SnapshotCard({ Icon, tone, label, value, valueSuffix, sub }: {
 		switch (tone) {
 			case 'indigo': return 'pktw-bg-pk-indigo-bg pktw-text-pk-indigo-text';
 			case 'success': return 'pktw-bg-pk-success-bg pktw-text-pk-success';
-			case 'orange': return 'pktw-bg-orange-100 dark:pktw-bg-orange-900/30 pktw-text-orange-700 dark:pktw-text-orange-300';
+			case 'orange': return 'pktw-bg-pk-warning-bg pktw-text-pk-warning';
 			default: return 'pktw-bg-pk-accent-tint pktw-text-pk-accent';
 		}
 	})();
@@ -691,10 +691,10 @@ function SnapshotCard({ Icon, tone, label, value, valueSuffix, sub }: {
 				<Icon className="pktw-w-4 pktw-h-4" />
 			</span>
 			<div>
-				<div className="pktw-text-[12px] pktw-text-pk-foreground-muted pktw-font-medium">{label}</div>
+				<div className="pktw-text-pk-base pktw-text-pk-foreground-muted pktw-font-medium">{label}</div>
 				<div className="pktw-text-[22px] pktw-font-bold pktw-text-pk-foreground pktw-tabular-nums pktw-leading-tight">
 					{value}
-					{valueSuffix ? <span className="pktw-text-[14px] pktw-font-medium pktw-text-pk-foreground-faint">{valueSuffix}</span> : null}
+					{valueSuffix ? <span className="pktw-text-pk-lg pktw-font-medium pktw-text-pk-foreground-faint">{valueSuffix}</span> : null}
 				</div>
 				<div className="pktw-text-[11.5px] pktw-text-pk-foreground-muted">{sub}</div>
 			</div>
@@ -721,7 +721,7 @@ function ChangedChip({ badge, value, label, formatPercent }: {
 		<div className="pktw-grid pktw-grid-cols-[auto_1fr] pktw-gap-2.5 pktw-items-center pktw-px-3.5 pktw-py-3 pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-rounded-[10px]">
 			<ChangedBadge badge={badge} />
 			<div>
-				<div className={cn('pktw-text-[16px] pktw-font-bold pktw-tabular-nums', valueClass)}>{display}</div>
+				<div className={cn('pktw-text-pk-xl pktw-font-bold pktw-tabular-nums', valueClass)}>{display}</div>
 				<div className="pktw-text-[11.5px] pktw-text-pk-foreground-muted">{label}</div>
 			</div>
 		</div>
@@ -827,28 +827,28 @@ const ClustersPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> =
 									<Icon className="pktw-w-5 pktw-h-5" />
 								</span>
 								<div className="pktw-min-w-0">
-									<div className="pktw-text-[13.5px] pktw-font-semibold pktw-text-pk-foreground pktw-truncate">{display}</div>
+									<div className="pktw-text-pk-md-plus pktw-font-semibold pktw-text-pk-foreground pktw-truncate">{display}</div>
 									<div className="pktw-text-[11.5px] pktw-text-pk-foreground-muted pktw-leading-snug pktw-line-clamp-2">
 										{c.dominantTopics.slice(0, 4).join(', ') || 'No dominant topics detected'}
 									</div>
 								</div>
 							</div>
 							<div>
-								<div className="pktw-text-[14px] pktw-font-semibold pktw-tabular-nums pktw-text-pk-foreground">{c.memberCount}</div>
-								<div className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-tabular-nums">({pct}%)</div>
+								<div className="pktw-text-pk-lg pktw-font-semibold pktw-tabular-nums pktw-text-pk-foreground">{c.memberCount}</div>
+								<div className="pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-tabular-nums">({pct}%)</div>
 							</div>
 							<div>
-								<div className="pktw-text-[14px] pktw-font-semibold pktw-tabular-nums pktw-text-pk-foreground-muted pktw-inline-flex pktw-items-center pktw-gap-1">
+								<div className="pktw-text-pk-lg pktw-font-semibold pktw-tabular-nums pktw-text-pk-foreground-muted pktw-inline-flex pktw-items-center pktw-gap-1">
 									<Minus className="pktw-w-3 pktw-h-3" />
 									—
 								</div>
-								<div className="pktw-text-[11px] pktw-text-pk-foreground-muted">No 14d data</div>
+								<div className="pktw-text-pk-sm pktw-text-pk-foreground-muted">No 14d data</div>
 							</div>
 							<div>
 								<Pill variant={statusInfo.variant} className="pktw-mb-1">{statusInfo.label}</Pill>
-								<div className="pktw-text-[11px] pktw-text-pk-foreground-muted">{statusInfo.sub}</div>
+								<div className="pktw-text-pk-sm pktw-text-pk-foreground-muted">{statusInfo.sub}</div>
 							</div>
-							<div className="pktw-text-[12px] pktw-leading-relaxed pktw-text-pk-foreground pktw-overflow-hidden">
+							<div className="pktw-text-pk-base pktw-leading-relaxed pktw-text-pk-foreground pktw-overflow-hidden">
 								{c.topNodes.slice(0, 3).map((n, i) => (
 									<React.Fragment key={n.path}>
 										{i > 0 && ' '}
@@ -872,14 +872,14 @@ const ClustersPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> =
 								<selectedIcon.Icon className="pktw-w-5 pktw-h-5" />
 							</span>
 							<div>
-								<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-[14px] pktw-font-bold pktw-text-pk-foreground pktw-mb-1">
+								<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-pk-lg pktw-font-bold pktw-text-pk-foreground pktw-mb-1">
 									{selectedDisplay}
 									<Pill variant="success">Central</Pill>
 								</div>
 								<div className="pktw-text-[11.5px] pktw-text-pk-foreground-muted pktw-leading-snug">
 									{selectedCluster.dominantTopics.slice(0, 3).join(', ') || 'No dominant topics'}
 								</div>
-								<div className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-mt-1.5">
+								<div className="pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-mt-1.5">
 									{selectedCluster.memberCount} notes · density {selectedCluster.internalDensity.toFixed(2)}
 								</div>
 							</div>
@@ -891,12 +891,12 @@ const ClustersPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> =
 									? selectedCluster.dominantTopics.slice(0, 6).map(t => (
 										<span key={t} className="pktw-px-2.5 pktw-py-0.5 pktw-rounded-full pktw-bg-pk-accent-tint pktw-text-pk-accent-text pktw-text-[11.5px] pktw-font-medium">{t}</span>
 									))
-									: <span className="pktw-text-[12px] pktw-text-pk-foreground-muted">—</span>}
+									: <span className="pktw-text-pk-base pktw-text-pk-foreground-muted">—</span>}
 							</div>
 						</div>
 						<div>
 							<DetailLabel>Top hubs</DetailLabel>
-							<div className="pktw-flex pktw-flex-col pktw-gap-1.5 pktw-text-[12px]">
+							<div className="pktw-flex pktw-flex-col pktw-gap-1.5 pktw-text-pk-base">
 								{selectedCluster.topNodes.slice(0, 4).map(n => (
 									<button
 										key={n.path}
@@ -914,7 +914,7 @@ const ClustersPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> =
 						</div>
 						<div>
 							<DetailLabel>Cluster health</DetailLabel>
-							<div className="pktw-flex pktw-flex-col pktw-gap-1.5 pktw-text-[12px]">
+							<div className="pktw-flex pktw-flex-col pktw-gap-1.5 pktw-text-pk-base">
 								<div className="pktw-flex pktw-justify-between"><span className="pktw-text-pk-foreground-muted">Density</span><span className="pktw-font-medium">{selectedCluster.internalDensity.toFixed(2)}</span></div>
 								<div className="pktw-flex pktw-justify-between"><span className="pktw-text-pk-foreground-muted">Members</span><span className="pktw-font-medium">{selectedCluster.memberCount}</span></div>
 								<div className="pktw-flex pktw-justify-between"><span className="pktw-text-pk-foreground-muted">Hubs</span><span className="pktw-font-medium">{selectedCluster.topNodes.length}</span></div>
@@ -930,8 +930,8 @@ const ClustersPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> =
 					)}
 
 					<div className="pktw-flex pktw-items-center pktw-justify-between pktw-pt-3.5 pktw-mt-3.5 pktw-border-t pktw-border-pk-border-soft pktw-gap-3.5">
-						<span className="pktw-text-[12px] pktw-text-pk-foreground-muted pktw-font-medium">Representative notes</span>
-						<div className="pktw-flex-1 pktw-flex pktw-flex-wrap pktw-gap-2.5 pktw-text-[12px] pktw-min-w-0">
+						<span className="pktw-text-pk-base pktw-text-pk-foreground-muted pktw-font-medium">Representative notes</span>
+						<div className="pktw-flex-1 pktw-flex pktw-flex-wrap pktw-gap-2.5 pktw-text-pk-base pktw-min-w-0">
 							{(membersLoading ? [] : members).slice(0, 6).map((m, i, arr) => (
 								<React.Fragment key={m.path}>
 									<button
@@ -1017,11 +1017,11 @@ function GapCardHeader({ Icon, headline, title, confidence, source }: {
 			</div>
 			<div>
 				{headline && <div className="pktw-text-[12.5px] pktw-text-pk-foreground-muted pktw-font-medium pktw-mt-1 pktw-mb-0.5">{headline}</div>}
-				<div className="pktw-text-[16px] pktw-font-bold pktw-text-pk-foreground pktw-leading-tight">{title}</div>
+				<div className="pktw-text-pk-xl pktw-font-bold pktw-text-pk-foreground pktw-leading-tight">{title}</div>
 			</div>
 			<div className="pktw-text-right pktw-min-w-[70px] pktw-self-center">
 				<div className="pktw-text-[10.5px] pktw-text-pk-foreground-muted pktw-font-bold pktw-uppercase pktw-tracking-wider pktw-mb-1">Confidence</div>
-				<div className={cn('pktw-text-[14px] pktw-font-bold pktw-tabular-nums', conf.class)}>{conf.pct}%</div>
+				<div className={cn('pktw-text-pk-lg pktw-font-bold pktw-tabular-nums', conf.class)}>{conf.pct}%</div>
 			</div>
 			<div className="pktw-text-right pktw-min-w-[80px] pktw-self-center">
 				<div className="pktw-text-[10.5px] pktw-text-pk-foreground-muted pktw-font-bold pktw-uppercase pktw-tracking-wider pktw-mb-1">Source</div>
@@ -1035,11 +1035,11 @@ function StructuralHoleCard({ gap }: { gap: { id: string; title: string; body: s
 	return (
 		<div id={`vault-gap-${gap.id}`} className="pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-rounded-2xl pktw-px-5 pktw-py-[18px]">
 			<GapCardHeader Icon={GitFork} headline="Structural holes" title={gap.title} confidence={gap.confidence} source="Graph analysis" />
-			<div className="pktw-text-[13px] pktw-text-pk-foreground-muted pktw-leading-relaxed pktw-mb-3.5">
+			<div className="pktw-text-pk-md pktw-text-pk-foreground-muted pktw-leading-relaxed pktw-mb-3.5">
 				<StreamdownIsolated>{gap.body}</StreamdownIsolated>
 			</div>
 			<div className="pktw-grid pktw-grid-cols-[auto_1fr_auto_auto] pktw-gap-3 pktw-items-center pktw-mb-[18px]">
-				<span className="pktw-text-[12px] pktw-text-pk-foreground-muted pktw-font-medium">Bridge score</span>
+				<span className="pktw-text-pk-base pktw-text-pk-foreground-muted pktw-font-medium">Bridge score</span>
 				<div className="pktw-h-1.5 pktw-bg-pk-surface-sunken pktw-rounded-full pktw-overflow-hidden">
 					<div className="pktw-h-full pktw-bg-pk-accent pktw-rounded-full" style={{ width: '28%' }} />
 				</div>
@@ -1093,14 +1093,14 @@ function DanglingRefsCard({ gaps }: { gaps: Array<{ id: string; title: string; b
 				confidence={gaps[0]?.confidence ?? 'medium'}
 				source="Reference scan"
 			/>
-			<div className="pktw-text-[13px] pktw-text-pk-foreground-muted pktw-mb-3.5">Notes that are referenced but under-documented.</div>
+			<div className="pktw-text-pk-md pktw-text-pk-foreground-muted pktw-mb-3.5">Notes that are referenced but under-documented.</div>
 			<table className="pktw-w-full pktw-border-collapse">
 				<thead>
 					<tr>
-						<th className="pktw-text-left pktw-text-[11px] pktw-text-pk-foreground-muted pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-py-2 pktw-px-3 pktw-border-b pktw-border-pk-border-soft">Note</th>
-						<th className="pktw-text-left pktw-text-[11px] pktw-text-pk-foreground-muted pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-py-2 pktw-px-3 pktw-border-b pktw-border-pk-border-soft">Cited by</th>
-						<th className="pktw-text-left pktw-text-[11px] pktw-text-pk-foreground-muted pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-py-2 pktw-px-3 pktw-border-b pktw-border-pk-border-soft">Why it matters</th>
-						<th className="pktw-text-right pktw-text-[11px] pktw-text-pk-foreground-muted pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-py-2 pktw-px-3 pktw-border-b pktw-border-pk-border-soft">Action</th>
+						<th className="pktw-text-left pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-py-2 pktw-px-3 pktw-border-b pktw-border-pk-border-soft">Note</th>
+						<th className="pktw-text-left pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-py-2 pktw-px-3 pktw-border-b pktw-border-pk-border-soft">Cited by</th>
+						<th className="pktw-text-left pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-py-2 pktw-px-3 pktw-border-b pktw-border-pk-border-soft">Why it matters</th>
+						<th className="pktw-text-right pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-py-2 pktw-px-3 pktw-border-b pktw-border-pk-border-soft">Action</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -1132,13 +1132,13 @@ function StaleHubsCard({ gaps }: { gaps: Array<{ id: string; title: string; body
 				confidence={gaps[0]?.confidence ?? 'medium'}
 				source="Activity scan"
 			/>
-			<div className="pktw-text-[13px] pktw-text-pk-foreground-muted pktw-mb-3.5">Important hubs that haven't been updated recently.</div>
+			<div className="pktw-text-pk-md pktw-text-pk-foreground-muted pktw-mb-3.5">Important hubs that haven't been updated recently.</div>
 			<table className="pktw-w-full pktw-border-collapse">
 				<thead>
 					<tr>
-						<th className="pktw-text-left pktw-text-[11px] pktw-text-pk-foreground-muted pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-py-2 pktw-px-3 pktw-border-b pktw-border-pk-border-soft">Note</th>
-						<th className="pktw-text-left pktw-text-[11px] pktw-text-pk-foreground-muted pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-py-2 pktw-px-3 pktw-border-b pktw-border-pk-border-soft">Why it matters</th>
-						<th className="pktw-text-right pktw-text-[11px] pktw-text-pk-foreground-muted pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-py-2 pktw-px-3 pktw-border-b pktw-border-pk-border-soft">Action</th>
+						<th className="pktw-text-left pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-py-2 pktw-px-3 pktw-border-b pktw-border-pk-border-soft">Note</th>
+						<th className="pktw-text-left pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-py-2 pktw-px-3 pktw-border-b pktw-border-pk-border-soft">Why it matters</th>
+						<th className="pktw-text-right pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-py-2 pktw-px-3 pktw-border-b pktw-border-pk-border-soft">Action</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -1165,7 +1165,7 @@ function GenericGapCard({ gap, title, Icon }: {
 	return (
 		<div id={`vault-gap-${gap.id}`} className="pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-rounded-2xl pktw-px-5 pktw-py-[18px]">
 			<GapCardHeader Icon={Icon} headline={title} title={gap.title} confidence={gap.confidence} source="Agent analysis" />
-			<div className="pktw-text-[13px] pktw-text-pk-foreground-muted pktw-leading-relaxed">
+			<div className="pktw-text-pk-md pktw-text-pk-foreground-muted pktw-leading-relaxed">
 				<StreamdownIsolated>{gap.body}</StreamdownIsolated>
 			</div>
 		</div>
@@ -1189,14 +1189,14 @@ const ActionsPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> = 
 
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-gap-2.5">
-			<div className="pktw-flex pktw-items-center pktw-gap-2.5 pktw-px-4 pktw-py-2.5 pktw-bg-pk-info-bg pktw-border pktw-border-blue-200 dark:pktw-border-blue-800 pktw-text-pk-info-text pktw-rounded-[10px] pktw-text-[12.5px] pktw-font-medium pktw-mb-1">
+			<div className="pktw-flex pktw-items-center pktw-gap-2.5 pktw-px-4 pktw-py-2.5 pktw-bg-pk-info-bg pktw-border pktw-border-[var(--pk-info-border)] pktw-text-pk-info-text pktw-rounded-[10px] pktw-text-[12.5px] pktw-font-medium pktw-mb-1">
 				<Info className="pktw-w-4 pktw-h-4 pktw-text-pk-info" />
 				<span>No vault changes will be applied automatically. Every restructure stays dry-run until approved.</span>
 			</div>
 
 			<div className="pktw-flex pktw-items-center pktw-justify-between pktw-mb-3 pktw-gap-3 pktw-flex-wrap">
-				<div className="pktw-text-[14px] pktw-font-semibold pktw-text-pk-foreground">
-					Prioritized action queue <span className="pktw-text-[12px] pktw-text-pk-foreground-muted pktw-font-medium pktw-ml-1.5">(Phase 1: text-only recommendations)</span>
+				<div className="pktw-text-pk-lg pktw-font-semibold pktw-text-pk-foreground">
+					Prioritized action queue <span className="pktw-text-pk-base pktw-text-pk-foreground-muted pktw-font-medium pktw-ml-1.5">(Phase 1: text-only recommendations)</span>
 				</div>
 				<div className="pktw-inline-flex pktw-items-center pktw-gap-1.5">
 					{(['all', 'high', 'medium', 'low'] as const).map(f => (
@@ -1204,7 +1204,7 @@ const ActionsPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> = 
 							key={f}
 							onClick={() => setFilter(f)}
 							className={cn(
-								'pktw-px-3 pktw-py-1 pktw-rounded-full pktw-border pktw-text-[12px] pktw-font-semibold pktw-cursor-pointer',
+								'pktw-px-3 pktw-py-1 pktw-rounded-full pktw-border pktw-text-pk-base pktw-font-semibold pktw-cursor-pointer',
 								filter === f
 									? 'pktw-text-pk-accent-text pktw-bg-pk-accent-tint pktw-border-pk-accent-soft'
 									: 'pktw-text-pk-foreground-muted pktw-bg-pk-surface pktw-border-pk-border-soft hover:pktw-text-pk-foreground',
@@ -1273,7 +1273,7 @@ function ActionCard({ action, rank }: {
 			</div>
 			<div className="pktw-min-w-0">
 				<div className="pktw-mb-1.5"><Pill variant={tagVariant}>{tagLabel}</Pill></div>
-				<div className="pktw-text-[14px] pktw-font-semibold pktw-text-pk-foreground pktw-mb-1 pktw-leading-snug">{action.title}</div>
+				<div className="pktw-text-pk-lg pktw-font-semibold pktw-text-pk-foreground pktw-mb-1 pktw-leading-snug">{action.title}</div>
 				<div className="pktw-text-[12.5px] pktw-text-pk-foreground-muted pktw-mb-2 pktw-leading-snug">{action.rationale}</div>
 				{validNotes.length > 0 && (
 					<div className="pktw-flex pktw-flex-wrap pktw-gap-1.5 pktw-mt-1">
@@ -1283,7 +1283,7 @@ function ActionCard({ action, rank }: {
 							</button>
 						))}
 						{validNotes.length > 5 && (
-							<span className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-self-center">+{validNotes.length - 5} more</span>
+							<span className="pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-self-center">+{validNotes.length - 5} more</span>
 						)}
 					</div>
 				)}
@@ -1291,15 +1291,15 @@ function ActionCard({ action, rank }: {
 			<div className="pktw-flex pktw-flex-col pktw-items-end pktw-gap-3.5 pktw-min-w-[210px]">
 				<div className="pktw-grid pktw-grid-cols-3 pktw-gap-4 pktw-text-right pktw-text-[11.5px]">
 					<div>
-						<div className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-font-medium pktw-mb-1">Affected notes</div>
-						<div className="pktw-text-[16px] pktw-font-bold pktw-text-pk-foreground pktw-tabular-nums">{validNotes.length}</div>
+						<div className="pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-font-medium pktw-mb-1">Affected notes</div>
+						<div className="pktw-text-pk-xl pktw-font-bold pktw-text-pk-foreground pktw-tabular-nums">{validNotes.length}</div>
 					</div>
 					<div>
-						<div className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-font-medium pktw-mb-1">Est. impact</div>
+						<div className="pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-font-medium pktw-mb-1">Est. impact</div>
 						<div><Pill variant={tagVariant}>{action.priority === 'high' ? 'High' : action.priority === 'medium' ? 'Medium' : 'Low'}</Pill></div>
 					</div>
 					<div>
-						<div className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-font-medium pktw-mb-1">Status</div>
+						<div className="pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-font-medium pktw-mb-1">Status</div>
 						<div><Pill variant="neutral">Planned</Pill></div>
 					</div>
 				</div>
@@ -1343,13 +1343,13 @@ const SourcesPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> = 
 				{/* Filter column */}
 				<aside className="pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-rounded-2xl pktw-p-3.5">
 					<div className="pktw-mb-4">
-						<div className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-font-bold pktw-uppercase pktw-tracking-wider pktw-mb-2">Source groups</div>
+						<div className="pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-font-bold pktw-uppercase pktw-tracking-wider pktw-mb-2">Source groups</div>
 						<div className="pktw-flex pktw-flex-col">
 							<SourceGroupItem label="All sources" count={sources.length} active />
 						</div>
 					</div>
 					<div>
-						<div className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-font-bold pktw-uppercase pktw-tracking-wider pktw-mb-2">Confidence</div>
+						<div className="pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-font-bold pktw-uppercase pktw-tracking-wider pktw-mb-2">Confidence</div>
 						{(['high', 'medium', 'low'] as const).map(c => (
 							<label key={c} className="pktw-flex pktw-items-center pktw-justify-between pktw-px-1 pktw-py-1 pktw-text-[12.5px] pktw-text-pk-foreground pktw-cursor-pointer">
 								<span className="pktw-flex pktw-items-center pktw-gap-2">
@@ -1371,10 +1371,10 @@ const SourcesPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> = 
 				{/* Table */}
 				<div className="pktw-min-w-0">
 					<div className="pktw-flex pktw-items-center pktw-justify-between pktw-mb-3 pktw-gap-3">
-						<div className="pktw-text-[14px] pktw-font-semibold pktw-text-pk-foreground">{visible.length} sources</div>
+						<div className="pktw-text-pk-lg pktw-font-semibold pktw-text-pk-foreground">{visible.length} sources</div>
 					</div>
 					<div className="pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-rounded-2xl pktw-overflow-hidden">
-						<div className="pktw-grid pktw-grid-cols-[2fr_1.4fr_1fr_2.2fr] pktw-gap-3 pktw-px-4 pktw-py-2.5 pktw-bg-pk-background-secondary pktw-border-b pktw-border-pk-border-soft pktw-text-[11px] pktw-text-pk-foreground-muted pktw-font-bold pktw-uppercase pktw-tracking-wider">
+						<div className="pktw-grid pktw-grid-cols-[2fr_1.4fr_1fr_2.2fr] pktw-gap-3 pktw-px-4 pktw-py-2.5 pktw-bg-pk-background-secondary pktw-border-b pktw-border-pk-border-soft pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-font-bold pktw-uppercase pktw-tracking-wider">
 							<div>Note</div>
 							<div>Used in</div>
 							<div>Confidence</div>
@@ -1394,12 +1394,12 @@ const SourcesPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> = 
 									)}
 								>
 									<div className="pktw-min-w-0">
-										<div className="pktw-text-[13px] pktw-text-pk-info pktw-font-medium pktw-truncate">[[{basename(s.path)}]]</div>
+										<div className="pktw-text-pk-md pktw-text-pk-info pktw-font-medium pktw-truncate">[[{basename(s.path)}]]</div>
 										<div className="pktw-text-[11.5px] pktw-text-pk-foreground-muted pktw-font-mono pktw-truncate">{s.path}</div>
 									</div>
 									<div className="pktw-text-pk-foreground pktw-leading-snug pktw-line-clamp-2">{s.relevance || '—'}</div>
 									<div><Pill variant={confPill} size="sm">{c}</Pill></div>
-									<div className="pktw-text-pk-foreground-muted pktw-text-[12px] pktw-leading-snug pktw-line-clamp-2">{s.excerpt || '—'}</div>
+									<div className="pktw-text-pk-foreground-muted pktw-text-pk-base pktw-leading-snug pktw-line-clamp-2">{s.excerpt || '—'}</div>
 								</button>
 							);
 						})}
@@ -1410,20 +1410,20 @@ const SourcesPanel: React.FC<{ snapshot: VaultReviewSessionSnapshot | null }> = 
 				{selected && (
 					<aside className="pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-rounded-2xl pktw-p-4">
 						<div className="pktw-flex pktw-items-center pktw-justify-between pktw-mb-3">
-							<div className="pktw-text-[13px] pktw-font-semibold pktw-text-pk-foreground">Source preview</div>
+							<div className="pktw-text-pk-md pktw-font-semibold pktw-text-pk-foreground">Source preview</div>
 							<div className="pktw-inline-flex pktw-gap-1.5 pktw-text-pk-foreground-faint">
 								<IconButton aria-label="Expand"><Maximize2 className="pktw-w-3.5 pktw-h-3.5" /></IconButton>
 								<IconButton aria-label="Pin"><Pin className="pktw-w-3.5 pktw-h-3.5" /></IconButton>
 							</div>
 						</div>
-						<div className="pktw-text-[14px] pktw-font-bold pktw-text-pk-accent-text pktw-mb-1">[[{basename(selected.path)}]]</div>
+						<div className="pktw-text-pk-lg pktw-font-bold pktw-text-pk-accent-text pktw-mb-1">[[{basename(selected.path)}]]</div>
 						<div className="pktw-text-[11.5px] pktw-text-pk-foreground-muted pktw-font-mono pktw-mb-3">{selected.path}</div>
-						<div className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-font-bold pktw-uppercase pktw-tracking-wider pktw-mt-3.5 pktw-mb-1.5">Why cited</div>
+						<div className="pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-font-bold pktw-uppercase pktw-tracking-wider pktw-mt-3.5 pktw-mb-1.5">Why cited</div>
 						<div className="pktw-text-[12.5px] pktw-text-pk-foreground pktw-leading-relaxed">{selected.relevance || '—'}</div>
 						{selected.excerpt && (
 							<>
-								<div className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-font-bold pktw-uppercase pktw-tracking-wider pktw-mt-3.5 pktw-mb-1.5">Excerpt</div>
-								<div className="pktw-text-[12px] pktw-text-pk-foreground pktw-bg-pk-background-secondary pktw-rounded-[10px] pktw-px-3 pktw-py-2.5 pktw-leading-snug">{selected.excerpt}</div>
+								<div className="pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-font-bold pktw-uppercase pktw-tracking-wider pktw-mt-3.5 pktw-mb-1.5">Excerpt</div>
+								<div className="pktw-text-pk-base pktw-text-pk-foreground pktw-bg-pk-background-secondary pktw-rounded-[10px] pktw-px-3 pktw-py-2.5 pktw-leading-snug">{selected.excerpt}</div>
 							</>
 						)}
 						<Button onClick={() => void openNote(selected.path)} variant="outline" className="pktw-w-full pktw-mt-4">
@@ -1463,15 +1463,15 @@ const TracePanel: React.FC<{
 		<div className="pktw-grid pktw-grid-cols-[minmax(0,1fr)_320px] pktw-gap-5">
 			<div className="pktw-min-w-0">
 				<div className="pktw-flex pktw-items-center pktw-mb-3.5">
-					<span className="pktw-text-[14px] pktw-font-semibold pktw-text-pk-foreground">Agent trace</span>
+					<span className="pktw-text-pk-lg pktw-font-semibold pktw-text-pk-foreground">Agent trace</span>
 					<span className="pktw-ml-1.5 pktw-text-[12.5px] pktw-font-medium pktw-text-pk-foreground-muted">(ReAct timeline)</span>
 					{!traceSummary?.finished && (
-						<span className="pktw-ml-2.5 pktw-px-2 pktw-py-0.5 pktw-rounded-full pktw-bg-pk-accent-tint pktw-text-pk-accent-text pktw-text-[11px] pktw-font-semibold">live</span>
+						<span className="pktw-ml-2.5 pktw-px-2 pktw-py-0.5 pktw-rounded-full pktw-bg-pk-accent-tint pktw-text-pk-accent-text pktw-text-pk-sm pktw-font-semibold">live</span>
 					)}
 				</div>
 
 				<div className="pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-rounded-2xl pktw-overflow-hidden">
-					<div className="pktw-grid pktw-grid-cols-[90px_32px_1.5fr_1.7fr_70px] pktw-gap-2.5 pktw-px-4 pktw-py-2.5 pktw-bg-pk-background-secondary pktw-border-b pktw-border-pk-border-soft pktw-text-[11px] pktw-text-pk-foreground-muted pktw-font-bold pktw-uppercase pktw-tracking-wider">
+					<div className="pktw-grid pktw-grid-cols-[90px_32px_1.5fr_1.7fr_70px] pktw-gap-2.5 pktw-px-4 pktw-py-2.5 pktw-bg-pk-background-secondary pktw-border-b pktw-border-pk-border-soft pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-font-bold pktw-uppercase pktw-tracking-wider">
 						<div>Time</div>
 						<div></div>
 						<div>Step</div>
@@ -1497,9 +1497,9 @@ const TracePanel: React.FC<{
 									isSelected ? 'pktw-bg-pk-accent-tint pktw-shadow-[inset_0_0_0_2px_var(--pk-accent-soft)] pktw-relative pktw-z-[1]' : 'hover:pktw-bg-pk-background-secondary',
 								)}
 							>
-								<div className="pktw-text-[12px] pktw-tabular-nums pktw-text-pk-foreground-muted">{t.timestamp ? new Date(t.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''}</div>
+								<div className="pktw-text-pk-base pktw-tabular-nums pktw-text-pk-foreground-muted">{t.timestamp ? new Date(t.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''}</div>
 								<div><span className={cn('pktw-w-[26px] pktw-h-[26px] pktw-rounded-full pktw-flex pktw-items-center pktw-justify-center pktw-mx-auto', iconBg)}><StatusIcon className="pktw-w-3 pktw-h-3" strokeWidth={2.6} /></span></div>
-								<div className="pktw-text-[13px] pktw-font-semibold pktw-text-pk-foreground">{traceTitle(t)}</div>
+								<div className="pktw-text-pk-md pktw-font-semibold pktw-text-pk-foreground">{traceTitle(t)}</div>
 								<div>
 									<div className="pktw-text-pk-foreground pktw-leading-snug">{desc.split('\n')[0] || '—'}</div>
 								</div>
@@ -1521,7 +1521,7 @@ const TracePanel: React.FC<{
 			<aside className="pktw-bg-pk-surface pktw-border pktw-border-pk-border-soft pktw-rounded-2xl pktw-p-4">
 				<div className="pktw-flex pktw-items-center pktw-justify-between pktw-mb-3.5">
 					<div>
-						<span className="pktw-text-[13px] pktw-font-semibold pktw-text-pk-foreground">Step details</span>
+						<span className="pktw-text-pk-md pktw-font-semibold pktw-text-pk-foreground">Step details</span>
 						<span className="pktw-ml-1.5 pktw-text-[11.5px] pktw-text-pk-foreground-muted">{selectedIdx + 1} of {trace.length}</span>
 					</div>
 					<div className="pktw-inline-flex pktw-gap-0.5">
@@ -1534,7 +1534,7 @@ const TracePanel: React.FC<{
 					</div>
 				</div>
 
-				<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-[13px] pktw-font-semibold pktw-mb-3">
+				<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-pk-md pktw-font-semibold pktw-mb-3">
 					<span>{traceTitle(selected)}</span>
 					{selectedIdx < trace.length - 1 || traceSummary?.finished ? (
 						<Pill variant="success">Completed</Pill>
@@ -1544,12 +1544,12 @@ const TracePanel: React.FC<{
 				</div>
 
 				<div className="pktw-text-[10.5px] pktw-text-pk-foreground-muted pktw-font-bold pktw-uppercase pktw-tracking-wider pktw-mb-1.5">Description</div>
-				<div className="pktw-text-[12px] pktw-text-pk-foreground pktw-leading-relaxed pktw-mb-3.5 pktw-whitespace-pre-line">
+				<div className="pktw-text-pk-base pktw-text-pk-foreground pktw-leading-relaxed pktw-mb-3.5 pktw-whitespace-pre-line">
 					{traceDescription(selected) || '—'}
 				</div>
 
 				<div className="pktw-text-[10.5px] pktw-text-pk-foreground-muted pktw-font-bold pktw-uppercase pktw-tracking-wider pktw-mt-3.5 pktw-mb-1.5">Tool</div>
-				<div className="pktw-flex pktw-justify-between pktw-items-center pktw-bg-pk-background-secondary pktw-border pktw-border-pk-border-soft pktw-rounded-[10px] pktw-px-2.5 pktw-py-1.5 pktw-font-mono pktw-text-[12px] pktw-text-pk-foreground">
+				<div className="pktw-flex pktw-justify-between pktw-items-center pktw-bg-pk-background-secondary pktw-border pktw-border-pk-border-soft pktw-rounded-[10px] pktw-px-2.5 pktw-py-1.5 pktw-font-mono pktw-text-pk-base pktw-text-pk-foreground">
 					<span>{selected.kind ?? 'step'}</span>
 					<button className="pktw-p-0.5 pktw-bg-transparent pktw-border-0 pktw-text-pk-foreground-faint pktw-cursor-pointer">
 						<Copy className="pktw-w-3.5 pktw-h-3.5" />
@@ -1558,12 +1558,12 @@ const TracePanel: React.FC<{
 
 				<div className="pktw-grid pktw-grid-cols-2 pktw-gap-2 pktw-mt-3.5">
 					<div className="pktw-px-3 pktw-py-2.5 pktw-border pktw-border-pk-border-soft pktw-rounded-[10px]">
-						<div className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-mb-0.5">Token estimate</div>
-						<div className="pktw-text-[13px] pktw-font-semibold pktw-text-pk-foreground pktw-tabular-nums">~{formatNumber(tokenEst)} tokens</div>
+						<div className="pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-mb-0.5">Token estimate</div>
+						<div className="pktw-text-pk-md pktw-font-semibold pktw-text-pk-foreground pktw-tabular-nums">~{formatNumber(tokenEst)} tokens</div>
 					</div>
 					<div className="pktw-px-3 pktw-py-2.5 pktw-border pktw-border-pk-border-soft pktw-rounded-[10px]">
-						<div className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-mb-0.5">Total duration</div>
-						<div className="pktw-text-[13px] pktw-font-semibold pktw-text-pk-foreground pktw-tabular-nums">{formatDuration(totalDur)}</div>
+						<div className="pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-mb-0.5">Total duration</div>
+						<div className="pktw-text-pk-md pktw-font-semibold pktw-text-pk-foreground pktw-tabular-nums">{formatDuration(totalDur)}</div>
 					</div>
 				</div>
 			</aside>

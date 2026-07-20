@@ -92,14 +92,14 @@ export const ExtractConceptsPanel: React.FC<ExtractConceptsPanelProps> = ({
 				result.concepts.map((concept, i) => (
 					<SelectableRow key={i} checked={selected.has(i)} onClick={() => toggle(i)}>
 						<div className="pktw-flex pktw-items-center pktw-gap-2">
-							<span className="pktw-text-[13px] pktw-font-semibold">{concept.term}</span>
+							<span className="pktw-text-pk-md pktw-font-semibold">{concept.term}</span>
 							{concept.category && (
 								<span className="pktw-text-[8px] pktw-font-bold pktw-uppercase pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-bg-accent/10 pktw-text-accent pktw-tracking-wider">
 									{concept.category}
 								</span>
 							)}
 						</div>
-						<span className="pktw-text-[11px] pktw-text-muted-foreground pktw-block pktw-mt-0.5 pktw-leading-relaxed">
+						<span className="pktw-text-pk-sm pktw-text-muted-foreground pktw-block pktw-mt-0.5 pktw-leading-relaxed">
 							{concept.definition}
 						</span>
 					</SelectableRow>

@@ -89,13 +89,13 @@ export const ConnectedSection: React.FC<ConnectedSectionProps> = ({
 							</span>
 
 							{showBadge && (
-								<span className="pktw-text-[10px] pktw-text-pk-foreground-muted pktw-shrink-0">
+								<span className="pktw-text-pk-xs pktw-text-pk-foreground-muted pktw-shrink-0">
 									{scorePercent}%
 								</span>
 							)}
 
 							{link.convergenceCount > 3 && (
-								<span className="pktw-text-[10px] pktw-text-pk-foreground-muted pktw-bg-pk-surface-sunken pktw-px-1 pktw-rounded pktw-shrink-0">
+								<span className="pktw-text-pk-xs pktw-text-pk-foreground-muted pktw-bg-pk-surface-sunken pktw-px-1 pktw-rounded pktw-shrink-0">
 									{link.convergenceCount} refs
 								</span>
 							)}
@@ -115,7 +115,7 @@ export const ConnectedSection: React.FC<ConnectedSectionProps> = ({
 						</div>
 
 						{link.contextSnippet && (
-							<span className="pktw-text-[10px] pktw-text-pk-foreground-muted pktw-pl-5 pktw-leading-tight pktw-line-clamp-1">
+							<span className="pktw-text-pk-xs pktw-text-pk-foreground-muted pktw-pl-5 pktw-leading-tight pktw-line-clamp-1">
 								{link.contextSnippet}
 							</span>
 						)}
@@ -127,7 +127,7 @@ export const ConnectedSection: React.FC<ConnectedSectionProps> = ({
 				<Button
 					variant="ghost"
 					size="xs"
-					className="pktw-shadow-none pktw-h-5 pktw-px-0 pktw-text-[10px] pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground-muted pktw-self-start"
+					className="pktw-shadow-none pktw-h-5 pktw-px-0 pktw-text-pk-xs pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground-muted pktw-self-start"
 					onClick={() => setExpanded(true)}
 				>
 					See {remaining} more ↓

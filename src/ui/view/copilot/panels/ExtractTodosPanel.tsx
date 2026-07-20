@@ -79,7 +79,7 @@ export const ExtractTodosPanel: React.FC<ExtractTodosPanelProps> = ({ result, on
 					<Filter className="pktw-w-3 pktw-h-3 pktw-text-muted-foreground pktw-flex-shrink-0" />
 					{allTags.length > 0 && (
 						<select
-							className="pktw-text-[11px] pktw-bg-secondary pktw-border pktw-border-border pktw-rounded pktw-px-2 pktw-py-1"
+							className="pktw-text-pk-sm pktw-bg-secondary pktw-border pktw-border-border pktw-rounded pktw-px-2 pktw-py-1"
 							value={filterTag ?? ''}
 							onChange={(e) => setFilterTag(e.target.value || null)}
 						>
@@ -89,7 +89,7 @@ export const ExtractTodosPanel: React.FC<ExtractTodosPanelProps> = ({ result, on
 					)}
 					{allFolders.length > 1 && (
 						<select
-							className="pktw-text-[11px] pktw-bg-secondary pktw-border pktw-border-border pktw-rounded pktw-px-2 pktw-py-1"
+							className="pktw-text-pk-sm pktw-bg-secondary pktw-border pktw-border-border pktw-rounded pktw-px-2 pktw-py-1"
 							value={filterFolder ?? ''}
 							onChange={(e) => setFilterFolder(e.target.value || null)}
 						>
@@ -107,7 +107,7 @@ export const ExtractTodosPanel: React.FC<ExtractTodosPanelProps> = ({ result, on
 					<div key={filePath} className="pktw-mb-4">
 						<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-mb-1.5">
 							<FileText className="pktw-w-3 pktw-h-3 pktw-text-muted-foreground" />
-							<span className="pktw-text-[11px] pktw-font-semibold pktw-text-muted-foreground pktw-truncate">{filePath}</span>
+							<span className="pktw-text-pk-sm pktw-font-semibold pktw-text-muted-foreground pktw-truncate">{filePath}</span>
 							<span className="pktw-text-[9px] pktw-text-muted-foreground/50 pktw-flex-shrink-0">({todos.length})</span>
 						</div>
 						{todos.map((todo, i) => (
@@ -117,7 +117,7 @@ export const ExtractTodosPanel: React.FC<ExtractTodosPanelProps> = ({ result, on
 								onClick={() => { void vault.openNote(filePath, { newLeaf: false }); }}
 							>
 								<CheckSquare className="pktw-w-3 pktw-h-3 pktw-text-accent pktw-flex-shrink-0 pktw-mt-0.5" />
-								<span className="pktw-text-[12px] pktw-flex-1 pktw-min-w-0">{todo.text}</span>
+								<span className="pktw-text-pk-base pktw-flex-1 pktw-min-w-0">{todo.text}</span>
 								<span className="pktw-text-[9px] pktw-text-muted-foreground/40 pktw-flex-shrink-0 pktw-font-mono">L{todo.lineNumber}</span>
 							</div>
 						))}

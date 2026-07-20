@@ -80,12 +80,12 @@ function SourceItem({ source, onClick }: { source: V2Source; onClick: (e: React.
             <FileText className="pktw-w-3 pktw-h-3 pktw-text-[--text-muted] pktw-shrink-0" />
             <span className="pktw-truncate pktw-flex-1">{source.title}</span>
             {refCount > 0 && (
-                <span className="pktw-text-[10px] pktw-px-1 pktw-rounded pktw-bg-[--interactive-accent] pktw-text-[--text-on-accent]">
+                <span className="pktw-text-pk-xs pktw-px-1 pktw-rounded pktw-bg-[--interactive-accent] pktw-text-[--text-on-accent]">
                     x{refCount}
                 </span>
             )}
             {source.reasoning && (
-                <span className="pktw-hidden group-hover:pktw-inline pktw-text-[10px] pktw-text-[--text-muted] pktw-max-w-[200px] pktw-truncate">
+                <span className="pktw-hidden group-hover:pktw-inline pktw-text-pk-xs pktw-text-[--text-muted] pktw-max-w-[200px] pktw-truncate">
                     {source.reasoning}
                 </span>
             )}
@@ -159,7 +159,7 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
                             onClick={() => setViewMode(id)}
                             className={`pktw-flex pktw-items-center pktw-gap-1 pktw-px-2 pktw-py-1 pktw-text-xs pktw-font-medium pktw-rounded pktw-cursor-pointer pktw-transition-colors ${
                                 viewMode === id
-                                    ? 'pktw-bg-gray-100 pktw-text-pk-text-primary'
+                                    ? 'pktw-bg-pk-surface-sunken pktw-text-pk-text-primary'
                                     : 'pktw-text-pk-foreground-muted hover:pktw-bg-pk-background'
                             }`}
                         >

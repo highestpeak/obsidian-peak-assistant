@@ -96,7 +96,7 @@ const TabButton: React.FC<{
 			>
 				<TabIcon tab={tab.id} />
 				{tab.label}
-				<span className="pktw-rounded-full pktw-bg-muted pktw-px-1.5 pktw-py-0.5 pktw-text-[10px] pktw-text-muted-foreground">
+				<span className="pktw-rounded-full pktw-bg-muted pktw-px-1.5 pktw-py-0.5 pktw-text-pk-xs pktw-text-muted-foreground">
 					{tab.count}
 				</span>
 			</Button>
@@ -141,7 +141,7 @@ const InsightsTocPopover: React.FC<{
 
 	return (
 		<div className="pktw-max-h-[420px] pktw-overflow-y-auto pktw-rounded-md pktw-border pktw-border-border pktw-bg-popover pktw-p-2 pktw-shadow-lg">
-			<div className="pktw-px-2 pktw-py-1 pktw-text-[10px] pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-text-muted-foreground">
+			<div className="pktw-px-2 pktw-py-1 pktw-text-pk-xs pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-text-muted-foreground">
 				Insights · {trees.length} · {totalSections} section{totalSections === 1 ? '' : 's'}
 			</div>
 			{trees.map((tree, treeIdx) => (
@@ -176,7 +176,7 @@ const InsightsTocPopover: React.FC<{
 										}
 									}}
 									className={cn(
-										'pktw-cursor-pointer pktw-truncate pktw-rounded-r pktw-py-0.5 pktw-pr-2 pktw-text-left pktw-text-[11px] pktw-text-muted-foreground transition-colors hover:pktw-text-pk-accent hover:pktw-bg-pk-accent/8',
+										'pktw-cursor-pointer pktw-truncate pktw-rounded-r pktw-py-0.5 pktw-pr-2 pktw-text-left pktw-text-pk-sm pktw-text-muted-foreground transition-colors hover:pktw-text-pk-accent hover:pktw-bg-pk-accent/8',
 										section.level === 1 && 'pktw-pl-2 pktw-font-medium pktw-text-foreground/90',
 										section.level === 2 && 'pktw-pl-3',
 										section.level === 3 && 'pktw-pl-5',
@@ -300,8 +300,8 @@ export const CopilotReviewShell: React.FC<CopilotReviewShellProps> = ({
 				</div>
 				<div className="pktw-flex pktw-items-center pktw-gap-2">
 					{running && (
-						<span className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-rounded-full pktw-bg-green-500/10 pktw-px-2 pktw-py-1 pktw-text-[11px] pktw-text-green-600">
-							<span className="pktw-h-1.5 pktw-w-1.5 pktw-rounded-full pktw-bg-green-500" />
+						<span className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-rounded-full pktw-bg-pk-success-bg pktw-px-2 pktw-py-1 pktw-text-pk-sm pktw-text-pk-success-text">
+							<span className="pktw-h-1.5 pktw-w-1.5 pktw-rounded-full pktw-bg-pk-success" />
 							Running
 						</span>
 					)}
@@ -333,7 +333,7 @@ export const CopilotReviewShell: React.FC<CopilotReviewShellProps> = ({
 				<span className="pktw-flex-1" />
 				{activeTab === 'changes' && artifacts.changes.length > 0 && (
 					<div className="pktw-flex pktw-items-center pktw-gap-3">
-						<span className="pktw-text-[11px] pktw-text-muted-foreground">
+						<span className="pktw-text-pk-sm pktw-text-muted-foreground">
 							{totalBlockCount} block{totalBlockCount === 1 ? '' : 's'} · {selectedBlockCount} accepted · {rejectedBlockCount} rejected
 						</span>
 						{hasOriginalContent && (
@@ -341,7 +341,7 @@ export const CopilotReviewShell: React.FC<CopilotReviewShellProps> = ({
 								<Button
 									size="sm"
 									variant={changesViewMode === 'whole-doc' ? 'secondary' : 'ghost'}
-									className="pktw-h-7 pktw-gap-1 pktw-px-2 pktw-text-[11px]"
+									className="pktw-h-7 pktw-gap-1 pktw-px-2 pktw-text-pk-sm"
 									onClick={() => setChangesViewMode('whole-doc')}
 									title="See the full document with proposed changes overlaid"
 								>
@@ -351,7 +351,7 @@ export const CopilotReviewShell: React.FC<CopilotReviewShellProps> = ({
 								<Button
 									size="sm"
 									variant={changesViewMode === 'blocks' ? 'secondary' : 'ghost'}
-									className="pktw-h-7 pktw-gap-1 pktw-px-2 pktw-text-[11px]"
+									className="pktw-h-7 pktw-gap-1 pktw-px-2 pktw-text-pk-sm"
 									onClick={() => setChangesViewMode('blocks')}
 									title="See only the changed blocks"
 								>
@@ -375,7 +375,7 @@ export const CopilotReviewShell: React.FC<CopilotReviewShellProps> = ({
 					)}>
 						<div className="pktw-border-b pktw-border-border pktw-px-4 pktw-py-3">
 							<span className="pktw-block pktw-text-xs pktw-font-semibold">Agent trace</span>
-							<span className="pktw-mt-0.5 pktw-block pktw-text-[11px] pktw-text-muted-foreground">Live ReAct steps and tool calls</span>
+							<span className="pktw-mt-0.5 pktw-block pktw-text-pk-sm pktw-text-muted-foreground">Live ReAct steps and tool calls</span>
 						</div>
 						<TraceArtifactPanel trace={artifacts.trace} summary={traceSummary} />
 					</div>

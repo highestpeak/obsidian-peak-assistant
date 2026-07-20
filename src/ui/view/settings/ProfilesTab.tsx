@@ -11,6 +11,7 @@ import type { SettingsUpdates } from './hooks/useSettingsUpdate';
 import { StatusBar } from './components/StatusBar';
 import { ProfileCard } from './components/ProfileCard';
 import { AddProfileGrid } from './components/AddProfileGrid';
+import { FieldRow as SharedFieldRow } from './components/FieldRow';
 import { cn } from '@/ui/react/lib/utils';
 import { Button } from '@/ui/component/shared-ui/button';
 
@@ -20,13 +21,10 @@ import { Button } from '@/ui/component/shared-ui/button';
 
 const INPUT_CLS = 'pktw-w-full pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-px-2.5 pktw-py-1.5 pktw-text-sm pktw-outline-none focus:pktw-border-pk-accent pktw-transition-colors';
 
+// ProfilesTab keeps a 160px label column (wider than the 130px default) until
+// the settings label-column width is unified by design.
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
-    return (
-        <div className="pktw-grid pktw-items-center pktw-gap-3" style={{ gridTemplateColumns: '160px 1fr' }}>
-            <span className="pktw-text-xs pktw-text-pk-foreground-faint">{label}</span>
-            {children}
-        </div>
-    );
+    return <SharedFieldRow label={label} labelWidth="160px">{children}</SharedFieldRow>;
 }
 
 // ---------------------------------------------------------------------------
@@ -178,11 +176,11 @@ export function ProfilesTab({ settings, settingsUpdates, hideStatusBar = false }
                         <span className="pktw-text-sm pktw-font-semibold pktw-text-pk-foreground">
                             Advanced model controls
                         </span>
-                        <span className="pktw-text-[11px] pktw-text-pk-foreground-faint">
+                        <span className="pktw-text-pk-sm pktw-text-pk-foreground-faint">
                             Temperature, top-p, reasoning effort, timeouts.
                         </span>
                     </div>
-                    <span className="pktw-ml-auto pktw-text-[11px] pktw-text-pk-foreground-faint">
+                    <span className="pktw-ml-auto pktw-text-pk-sm pktw-text-pk-foreground-faint">
                         6 fields
                     </span>
                 </div>
@@ -207,7 +205,7 @@ export function ProfilesTab({ settings, settingsUpdates, hideStatusBar = false }
                                                 {(outputControl.temperature ?? 1).toFixed(1)}
                                             </span>
                                         </div>
-                                        <span className="pktw-text-[10px] pktw-text-pk-foreground-faint">Lower = more focused, higher = more creative</span>
+                                        <span className="pktw-text-pk-xs pktw-text-pk-foreground-faint">Lower = more focused, higher = more creative</span>
                                     </div>
                                 </FieldRow>
                                 <FieldRow label="Top P">
@@ -222,7 +220,7 @@ export function ProfilesTab({ settings, settingsUpdates, hideStatusBar = false }
                                                 {(outputControl.topP ?? 0.9).toFixed(2)}
                                             </span>
                                         </div>
-                                        <span className="pktw-text-[10px] pktw-text-pk-foreground-faint">Nucleus sampling threshold</span>
+                                        <span className="pktw-text-pk-xs pktw-text-pk-foreground-faint">Nucleus sampling threshold</span>
                                     </div>
                                 </FieldRow>
                                 <FieldRow label="Reasoning Effort">

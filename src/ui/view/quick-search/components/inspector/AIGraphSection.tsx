@@ -69,14 +69,14 @@ export const AIGraphSection: React.FC<AIGraphSectionProps> = ({
 							<span className="pktw-text-xs pktw-font-medium pktw-text-pk-foreground pktw-truncate" title={pastResult.query ?? ''}>
 								{pastResult.query ?? '(untitled)'}
 							</span>
-							<span className="pktw-text-[10px] pktw-text-pk-foreground-muted">
+							<span className="pktw-text-pk-xs pktw-text-pk-foreground-muted">
 								{pastResult.graph_nodes_count ?? 0} nodes · {pastResult.graph_edges_count ?? 0} edges · {humanReadableTime(pastResult.created_at_ts)}
 							</span>
 						</div>
 						<Button
 							variant="ghost"
 							size="xs"
-							className="pktw-shadow-none pktw-h-6 pktw-px-1.5 pktw-text-[10px] pktw-text-pk-accent hover:pktw-bg-pk-accent-tint pktw-shrink-0"
+							className="pktw-shadow-none pktw-h-6 pktw-px-1.5 pktw-text-pk-xs pktw-text-pk-accent hover:pktw-bg-pk-accent-tint pktw-shrink-0"
 							onClick={handleOpenPastResult}
 							title="Open in new window"
 						>
@@ -100,7 +100,7 @@ export const AIGraphSection: React.FC<AIGraphSectionProps> = ({
 					<Network className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" />
 					Generate AI Graph
 				</Button>
-				<span className="pktw-text-[10px] pktw-text-pk-foreground-muted pktw-pl-1">Uses AI credits</span>
+				<span className="pktw-text-pk-xs pktw-text-pk-foreground-muted pktw-pl-1">Uses AI credits</span>
 			</div>
 		</div>
 	);

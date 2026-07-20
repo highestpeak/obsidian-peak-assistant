@@ -3,7 +3,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/ui/react/lib/utils';
 
 const pillVariants = cva(
-	'pktw-inline-flex pktw-items-center pktw-gap-1 pktw-rounded-full pktw-px-2 pktw-py-0.5 pktw-text-[11px] pktw-font-semibold pktw-leading-none pktw-whitespace-nowrap',
+	'pktw-inline-flex pktw-items-center pktw-gap-1 pktw-rounded-full pktw-px-2 pktw-py-0.5 pktw-text-pk-sm pktw-font-semibold pktw-leading-none pktw-whitespace-nowrap',
 	{
 		variants: {
 			variant: {
@@ -17,8 +17,8 @@ const pillVariants = cva(
 				outline: 'pktw-bg-transparent pktw-text-pk-foreground-muted pktw-border pktw-border-pk-border',
 			},
 			size: {
-				sm: 'pktw-px-1.5 pktw-py-px pktw-text-[10px]',
-				md: 'pktw-px-2 pktw-py-0.5 pktw-text-[11px]',
+				sm: 'pktw-px-1.5 pktw-py-px pktw-text-pk-xs',
+				md: 'pktw-px-2 pktw-py-0.5 pktw-text-pk-sm',
 			},
 		},
 		defaultVariants: {

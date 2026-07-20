@@ -39,7 +39,7 @@ const AnimatedSparkles: React.FC<{ isAnimating: boolean }> = ({ isAnimating }) =
 			{/* Ring background - only shown during animation */}
 			{isAnimating && (
 				<div
-					className="pktw-absolute pktw-inset-0 pktw-rounded-full pktw-border pktw-border-blue-200"
+					className="pktw-absolute pktw-inset-0 pktw-rounded-full pktw-border pktw-border-[var(--pk-info-border)]"
 					style={{
 						borderWidth: '1px',
 					}}

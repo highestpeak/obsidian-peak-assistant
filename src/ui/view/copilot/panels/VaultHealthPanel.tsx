@@ -60,7 +60,7 @@ export const VaultHealthPanel: React.FC<VaultHealthPanelProps> = ({
 					return (
 						<div
 							key={tab.id}
-							className={`pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-4 pktw-py-2 pktw-cursor-pointer pktw-text-[11px] pktw-font-semibold pktw-transition-colors pktw-border-b-2 ${
+							className={`pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-4 pktw-py-2 pktw-cursor-pointer pktw-text-pk-sm pktw-font-semibold pktw-transition-colors pktw-border-b-2 ${
 								isActive
 									? 'pktw-border-accent pktw-text-accent'
 									: 'pktw-border-transparent pktw-text-muted-foreground hover:pktw-text-foreground'
@@ -97,10 +97,10 @@ export const VaultHealthPanel: React.FC<VaultHealthPanelProps> = ({
 							>
 								<FileQuestion className="pktw-w-3.5 pktw-h-3.5 pktw-text-muted-foreground pktw-flex-shrink-0" />
 								<div className="pktw-flex-1 pktw-min-w-0">
-									<span className="pktw-text-[12px] pktw-font-semibold pktw-block pktw-truncate">{orphan.title}</span>
-									<span className="pktw-text-[10px] pktw-text-muted-foreground/60 pktw-block pktw-truncate">{orphan.path}</span>
+									<span className="pktw-text-pk-base pktw-font-semibold pktw-block pktw-truncate">{orphan.title}</span>
+									<span className="pktw-text-pk-xs pktw-text-muted-foreground/60 pktw-block pktw-truncate">{orphan.path}</span>
 								</div>
-								<span className="pktw-text-[10px] pktw-text-muted-foreground/40 pktw-flex-shrink-0">{orphan.lastModified}</span>
+								<span className="pktw-text-pk-xs pktw-text-muted-foreground/40 pktw-flex-shrink-0">{orphan.lastModified}</span>
 							</div>
 						))
 					)
@@ -117,14 +117,14 @@ export const VaultHealthPanel: React.FC<VaultHealthPanelProps> = ({
 								<div className="pktw-px-3.5 pktw-py-2 pktw-bg-secondary pktw-border-b pktw-border-border">
 									<div className="pktw-flex pktw-items-center pktw-gap-1.5">
 										<Copy className="pktw-w-3 pktw-h-3 pktw-text-muted-foreground" />
-										<span className="pktw-text-[11px] pktw-text-muted-foreground">{dup.reason}</span>
+										<span className="pktw-text-pk-sm pktw-text-muted-foreground">{dup.reason}</span>
 									</div>
 								</div>
 								<div className="pktw-px-3.5 pktw-py-2">
 									{dup.paths.map((path, j) => (
 										<div
 											key={j}
-											className="pktw-text-[12px] pktw-text-accent pktw-py-1 pktw-cursor-pointer hover:pktw-underline"
+											className="pktw-text-pk-base pktw-text-accent pktw-py-1 pktw-cursor-pointer hover:pktw-underline"
 											onClick={() => openNote(path)}
 										>
 											{path}
@@ -150,10 +150,10 @@ export const VaultHealthPanel: React.FC<VaultHealthPanelProps> = ({
 							>
 								<Clock className="pktw-w-3.5 pktw-h-3.5 pktw-text-muted-foreground pktw-flex-shrink-0" />
 								<div className="pktw-flex-1 pktw-min-w-0">
-									<span className="pktw-text-[12px] pktw-font-semibold pktw-block pktw-truncate">{item.title}</span>
-									<span className="pktw-text-[10px] pktw-text-muted-foreground/60 pktw-block pktw-truncate">{item.path}</span>
+									<span className="pktw-text-pk-base pktw-font-semibold pktw-block pktw-truncate">{item.title}</span>
+									<span className="pktw-text-pk-xs pktw-text-muted-foreground/60 pktw-block pktw-truncate">{item.path}</span>
 								</div>
-								<span className="pktw-text-[10px] pktw-text-muted-foreground/40 pktw-flex-shrink-0">{item.daysSinceModified}d ago</span>
+								<span className="pktw-text-pk-xs pktw-text-muted-foreground/40 pktw-flex-shrink-0">{item.daysSinceModified}d ago</span>
 							</div>
 						))
 					)
@@ -170,14 +170,14 @@ export const VaultHealthPanel: React.FC<VaultHealthPanelProps> = ({
 								<div className="pktw-px-3.5 pktw-py-2 pktw-bg-secondary pktw-border-b pktw-border-border">
 									<div className="pktw-flex pktw-items-center pktw-gap-1.5">
 										<Tags className="pktw-w-3 pktw-h-3 pktw-text-muted-foreground" />
-										<span className="pktw-text-[12px] pktw-font-semibold">{item.tag}</span>
+										<span className="pktw-text-pk-base pktw-font-semibold">{item.tag}</span>
 									</div>
 								</div>
 								<div className="pktw-px-3.5 pktw-py-2 pktw-flex pktw-flex-wrap pktw-gap-1.5">
 									{item.variants.map((variant, j) => (
 										<span
 											key={j}
-											className="pktw-text-[10px] pktw-px-2 pktw-py-0.5 pktw-rounded pktw-bg-muted pktw-text-muted-foreground pktw-border pktw-border-border"
+											className="pktw-text-pk-xs pktw-px-2 pktw-py-0.5 pktw-rounded pktw-bg-muted pktw-text-muted-foreground pktw-border pktw-border-border"
 										>
 											{variant}
 										</span>
@@ -191,7 +191,7 @@ export const VaultHealthPanel: React.FC<VaultHealthPanelProps> = ({
 
 			{/* Footer */}
 			<div className="pktw-flex pktw-items-center pktw-justify-end pktw-gap-2 pktw-px-5 pktw-py-3 pktw-border-t pktw-border-border pktw-bg-secondary">
-				<span className="pktw-text-[11px] pktw-text-muted-foreground pktw-mr-auto">
+				<span className="pktw-text-pk-sm pktw-text-muted-foreground pktw-mr-auto">
 					{totalIssues} total issues found
 				</span>
 				<Button variant="ghost" onClick={onClose}>Dismiss</Button>

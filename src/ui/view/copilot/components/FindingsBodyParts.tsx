@@ -40,7 +40,7 @@ export const FindingCard: React.FC<{
 	<div className="pktw-border pktw-border-border pktw-rounded-lg pktw-mb-2.5 pktw-overflow-hidden">
 		<div className="pktw-flex pktw-items-center pktw-gap-2.5 pktw-px-3.5 pktw-py-2.5 pktw-bg-secondary pktw-border-b pktw-border-border">
 			<SeverityIcon config={config} />
-			<span className="pktw-text-[13px] pktw-font-semibold pktw-flex-1">{title}</span>
+			<span className="pktw-text-pk-md pktw-font-semibold pktw-flex-1">{title}</span>
 			<SeverityBadge config={config} />
 		</div>
 		<div className="pktw-px-3.5 pktw-py-2.5">
@@ -71,7 +71,7 @@ export const CollapsibleSection: React.FC<{
 				{open
 					? <ChevronDown className="pktw-w-3.5 pktw-h-3.5 pktw-text-muted-foreground" />
 					: <ChevronRight className="pktw-w-3.5 pktw-h-3.5 pktw-text-muted-foreground" />}
-				<span className="pktw-text-[11px] pktw-font-semibold pktw-text-muted-foreground pktw-uppercase pktw-tracking-wider">
+				<span className="pktw-text-pk-sm pktw-font-semibold pktw-text-muted-foreground pktw-uppercase pktw-tracking-wider">
 					{title}{count !== undefined ? ` (${count})` : ''}
 				</span>
 			</div>
@@ -98,9 +98,9 @@ export const StatStrip: React.FC<{ stats: StatTileConfig[] }> = ({ stats }) => (
 		{stats.map((s, i) => (
 			<div key={i} className="pktw-text-center">
 				<span className={cn(
-					'pktw-text-[16px] pktw-font-bold pktw-block',
-					s.tone === 'success' && 'pktw-text-emerald-600',
-					s.tone === 'error' && 'pktw-text-[var(--pk-error)]',
+					'pktw-text-pk-xl pktw-font-bold pktw-block',
+					s.tone === 'success' && 'pktw-text-pk-success',
+					s.tone === 'error' && 'pktw-text-pk-error',
 				)}>
 					{s.value}
 				</span>

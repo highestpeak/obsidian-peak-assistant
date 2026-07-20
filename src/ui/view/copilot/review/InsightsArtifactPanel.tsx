@@ -12,9 +12,9 @@ import {
 } from './insightSections';
 
 function severityClass(severity: InsightArtifact['severity']): string {
-	if (severity === 'high') return 'pktw-border-red-300 pktw-bg-red-50/60 dark:pktw-bg-red-950/20';
-	if (severity === 'medium') return 'pktw-border-amber-300 pktw-bg-amber-50/60 dark:pktw-bg-amber-950/20';
-	if (severity === 'low') return 'pktw-border-blue-300 pktw-bg-blue-50/60 dark:pktw-bg-blue-950/20';
+	if (severity === 'high') return 'pktw-border-[var(--pk-error-border)] pktw-bg-pk-error-bg';
+	if (severity === 'medium') return 'pktw-border-[var(--pk-warning-border)] pktw-bg-pk-warning-bg';
+	if (severity === 'low') return 'pktw-border-[var(--pk-info-border)] pktw-bg-pk-info-bg';
 	return 'pktw-border-border pktw-bg-muted/30 dark:pktw-bg-muted/15';
 }
 
@@ -103,7 +103,7 @@ export const InsightsArtifactPanel: React.FC<{
 							{tree && (tree.preamble || tree.sections.length > 0) ? (
 								<>
 									{tree.preamble && (
-										<StreamdownIsolated className="pktw-text-sm pktw-leading-relaxed pktw-text-foreground">
+										<StreamdownIsolated className="pktw-text-pk-lg pktw-leading-relaxed pktw-text-foreground">
 											{tree.preamble.chunk}
 										</StreamdownIsolated>
 									)}
@@ -113,14 +113,14 @@ export const InsightsArtifactPanel: React.FC<{
 											id={insightSectionAnchorId(insight.id, section.slug)}
 											className="pktw-scroll-mt-4"
 										>
-											<StreamdownIsolated className="pktw-text-sm pktw-leading-relaxed pktw-text-foreground">
+											<StreamdownIsolated className="pktw-text-pk-lg pktw-leading-relaxed pktw-text-foreground">
 												{section.chunk}
 											</StreamdownIsolated>
 										</div>
 									))}
 								</>
 							) : (
-								<StreamdownIsolated className="pktw-text-sm pktw-leading-relaxed pktw-text-foreground">
+								<StreamdownIsolated className="pktw-text-pk-lg pktw-leading-relaxed pktw-text-foreground">
 									{insight.body}
 								</StreamdownIsolated>
 							)}
@@ -131,7 +131,7 @@ export const InsightsArtifactPanel: React.FC<{
 								{insight.provenance.map(source => (
 									<span
 										key={`${insight.id}-${source.capabilityId}-${source.sourcePath ?? source.label}`}
-										className="pktw-rounded-full pktw-bg-muted pktw-px-2 pktw-py-0.5 pktw-text-[10px] pktw-text-muted-foreground"
+										className="pktw-rounded-full pktw-bg-muted pktw-px-2 pktw-py-0.5 pktw-text-pk-xs pktw-text-muted-foreground"
 									>
 										{source.label}
 									</span>
@@ -156,7 +156,7 @@ export const InsightsArtifactPanel: React.FC<{
 												<ActionIcon kind={action.kind} />
 												{action.label}
 												{turns > 0 && (
-													<span className="pktw-ml-1 pktw-rounded-full pktw-bg-pk-accent/15 pktw-px-1.5 pktw-text-[10px] pktw-text-pk-accent">
+													<span className="pktw-ml-1 pktw-rounded-full pktw-bg-pk-accent/15 pktw-px-1.5 pktw-text-pk-xs pktw-text-pk-accent">
 														{Math.floor(turns / 2) || 1}
 													</span>
 												)}
@@ -177,7 +177,7 @@ export const InsightsArtifactPanel: React.FC<{
 												<ActionIcon kind={action.kind} />
 												{action.label}
 												{turns > 0 && (
-													<span className="pktw-ml-1 pktw-rounded-full pktw-bg-pk-accent/15 pktw-px-1.5 pktw-text-[10px] pktw-text-pk-accent">
+													<span className="pktw-ml-1 pktw-rounded-full pktw-bg-pk-accent/15 pktw-px-1.5 pktw-text-pk-xs pktw-text-pk-accent">
 														{Math.floor(turns / 2) || 1}
 													</span>
 												)}
@@ -231,7 +231,7 @@ export const InsightsArtifactPanel: React.FC<{
 							<div key={f.id} className="pktw-flex pktw-flex-col pktw-gap-0.5">
 								<span className="pktw-text-sm pktw-font-medium pktw-text-foreground">{f.question}</span>
 								{f.rationale && (
-									<span className="pktw-text-[11px] pktw-text-muted-foreground">{f.rationale}</span>
+									<span className="pktw-text-pk-sm pktw-text-muted-foreground">{f.rationale}</span>
 								)}
 							</div>
 						))}

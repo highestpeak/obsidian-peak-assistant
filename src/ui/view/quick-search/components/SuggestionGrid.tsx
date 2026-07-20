@@ -14,7 +14,7 @@ function highlightVariables(text: string): React.ReactNode[] {
             return (
                 <span
                     key={i}
-                    className="pktw-bg-[var(--pk-warning-muted)] pktw-text-[var(--pk-warning)] pktw-px-0.5 pktw-rounded-sm"
+                    className="pktw-bg-pk-warning-muted pktw-text-pk-warning pktw-px-0.5 pktw-rounded-sm"
                 >
                     {part}
                 </span>
@@ -48,7 +48,7 @@ const SuggestionCard: React.FC<{
 				'pktw-cursor-pointer pktw-transition-all pktw-group',
 			)}
 		>
-			<span className="pktw-text-[13px] pktw-font-semibold pktw-text-pk-foreground pktw-leading-snug group-hover:pktw-text-pk-accent pktw-transition-colors">
+			<span className="pktw-text-pk-md pktw-font-semibold pktw-text-pk-foreground pktw-leading-snug group-hover:pktw-text-pk-accent pktw-transition-colors">
 				{actionLabel}
 			</span>
 			{context && (
@@ -57,7 +57,7 @@ const SuggestionCard: React.FC<{
 				</span>
 			)}
 			{scopeTag && (
-				<span className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-[10px] pktw-font-mono pktw-text-pk-accent pktw-bg-pk-accent-soft pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-w-fit">
+				<span className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-pk-xs pktw-font-mono pktw-text-pk-accent pktw-bg-pk-accent-soft pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-w-fit">
 					{scopeTag}
 				</span>
 			)}
@@ -79,7 +79,7 @@ export const SuggestionGrid: React.FC<SuggestionGridProps> = ({ suggestions, onS
 
     return (
         <div className="pktw-px-4">
-            <span className="pktw-block pktw-text-[10px] pktw-font-medium pktw-uppercase pktw-tracking-widest pktw-text-pk-foreground-muted pktw-mb-2">
+            <span className="pktw-block pktw-text-pk-xs pktw-font-medium pktw-uppercase pktw-tracking-widest pktw-text-pk-foreground-muted pktw-mb-2">
                 Suggested for you
             </span>
             <div className="pktw-grid pktw-grid-cols-2 pktw-gap-2">

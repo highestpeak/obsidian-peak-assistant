@@ -162,12 +162,12 @@ const LineRow: React.FC<{
 	dimmed?: boolean;
 }> = ({ lineNumber, prefix, text, tone, dimmed }) => {
 	const bg =
-		tone === 'added' ? 'pktw-bg-emerald-500/10' :
-		tone === 'removed' ? 'pktw-bg-rose-500/10' :
+		tone === 'added' ? 'pktw-bg-pk-success-bg' :
+		tone === 'removed' ? 'pktw-bg-pk-error-bg' :
 		'';
 	const fg =
-		tone === 'added' ? 'pktw-text-emerald-800 dark:pktw-text-emerald-300' :
-		tone === 'removed' ? 'pktw-text-rose-800 dark:pktw-text-rose-300' :
+		tone === 'added' ? 'pktw-text-pk-success-text' :
+		tone === 'removed' ? 'pktw-text-pk-error-text' :
 		'pktw-text-foreground';
 	return (
 		<div
@@ -178,14 +178,14 @@ const LineRow: React.FC<{
 			)}
 			style={{ userSelect: 'text' }}
 		>
-			<span className="pktw-pr-2 pktw-py-0.5 pktw-text-right pktw-font-mono pktw-text-[11px] pktw-text-muted-foreground/70 pktw-tabular-nums pktw-select-none">
+			<span className="pktw-pr-2 pktw-py-0.5 pktw-text-right pktw-font-mono pktw-text-pk-sm pktw-text-muted-foreground/70 pktw-tabular-nums pktw-select-none">
 				{lineNumber}
 			</span>
-			<span className="pktw-py-0.5 pktw-text-center pktw-font-mono pktw-text-[11px] pktw-text-muted-foreground pktw-select-none">
+			<span className="pktw-py-0.5 pktw-text-center pktw-font-mono pktw-text-pk-sm pktw-text-muted-foreground pktw-select-none">
 				{prefix}
 			</span>
 			<span
-				className={cn('pktw-py-0.5 pktw-pl-1 pktw-pr-3 pktw-whitespace-pre-wrap pktw-break-words pktw-font-mono pktw-text-[12px] pktw-leading-relaxed', fg)}
+				className={cn('pktw-py-0.5 pktw-pl-1 pktw-pr-3 pktw-whitespace-pre-wrap pktw-break-words pktw-font-mono pktw-text-pk-base pktw-leading-relaxed', fg)}
 				style={{ userSelect: 'text' }}
 			>
 				{text.length === 0 ? ' ' : text}
@@ -220,8 +220,8 @@ const AcceptRejectButtons: React.FC<{
 				size="sm"
 				variant={!deselected ? 'default' : 'outline'}
 				className={cn(
-					'pktw-h-7 pktw-gap-1 pktw-px-2 pktw-text-[11px]',
-					!deselected && 'pktw-bg-emerald-600 hover:pktw-bg-emerald-700 pktw-text-white',
+					'pktw-h-7 pktw-gap-1 pktw-px-2 pktw-text-pk-sm',
+					!deselected && 'pktw-bg-pk-success hover:pktw-bg-pk-success-text pktw-text-white',
 				)}
 				onClick={onAccept}
 				title="Accept this change when applying"
@@ -233,8 +233,8 @@ const AcceptRejectButtons: React.FC<{
 				size="sm"
 				variant={deselected ? 'default' : 'outline'}
 				className={cn(
-					'pktw-h-7 pktw-gap-1 pktw-px-2 pktw-text-[11px]',
-					deselected && 'pktw-bg-rose-600 hover:pktw-bg-rose-700 pktw-text-white',
+					'pktw-h-7 pktw-gap-1 pktw-px-2 pktw-text-pk-sm',
+					deselected && 'pktw-bg-pk-error hover:pktw-bg-pk-error-text pktw-text-white',
 				)}
 				onClick={onReject}
 				title="Skip this change when applying"
@@ -262,11 +262,11 @@ const BlockCard: React.FC<{
 			'pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-2 pktw-border-b pktw-border-border',
 			deselected ? 'pktw-bg-muted/40' : 'pktw-bg-pk-accent/5',
 		)}>
-			<span className="pktw-text-[12px] pktw-font-medium pktw-text-foreground" style={{ userSelect: 'text' }}>
+			<span className="pktw-text-pk-base pktw-font-medium pktw-text-foreground" style={{ userSelect: 'text' }}>
 				{heading}
 			</span>
 			<span className="pktw-flex-1" />
-			<span className="pktw-text-[10px] pktw-text-muted-foreground">
+			<span className="pktw-text-pk-xs pktw-text-muted-foreground">
 				{editCount} edit{editCount === 1 ? '' : 's'}
 			</span>
 			<AcceptRejectButtons deselected={deselected} onAccept={onAccept} onReject={onReject} />
@@ -347,7 +347,7 @@ const WholeDocChangesView: React.FC<{
 							'pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-1.5',
 							isDeselected ? 'pktw-bg-muted/40' : 'pktw-bg-pk-accent/5',
 						)}>
-							<span className="pktw-text-[12px] pktw-font-medium pktw-text-foreground" style={{ userSelect: 'text' }}>
+							<span className="pktw-text-pk-base pktw-font-medium pktw-text-foreground" style={{ userSelect: 'text' }}>
 								{heading}
 							</span>
 							<span className="pktw-flex-1" />

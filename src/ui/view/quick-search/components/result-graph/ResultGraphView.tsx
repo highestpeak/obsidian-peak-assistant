@@ -751,7 +751,7 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 	}, [subgraph]);
 
 	return (
-		<div className="pktw-relative pktw-w-full pktw-h-full pktw-overflow-hidden" style={{ minHeight: 420 }}>
+		<div className="pktw-relative pktw-w-full pktw-h-full pktw-overflow-hidden pktw-min-h-[420px]">
 			<div ref={containerRef} className="pktw-absolute pktw-inset-0" />
 			{emptyMessage && (
 				<div className="pktw-absolute pktw-inset-0 pktw-flex pktw-items-center pktw-justify-center pktw-p-6 pktw-text-sm pktw-text-pk-text-tertiary">
@@ -805,7 +805,7 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 				);
 			})()}
 			{overflowCount > 0 && (
-				<span className="pktw-absolute pktw-bottom-2 pktw-left-1/2 pktw--translate-x-1/2 pktw-rounded-md pktw-bg-pk-surface-raised pktw-px-3 pktw-py-1 pktw-text-[11px] pktw-text-pk-text-tertiary pktw-border pktw-border-pk-border pktw-z-10">
+				<span className="pktw-absolute pktw-bottom-2 pktw-left-1/2 pktw--translate-x-1/2 pktw-rounded-md pktw-bg-pk-surface-raised pktw-px-3 pktw-py-1 pktw-text-pk-sm pktw-text-pk-text-tertiary pktw-border pktw-border-pk-border pktw-z-10">
 					{`Showing top ${NODE_CAP} of ${NODE_CAP + overflowCount} results`}
 				</span>
 			)}

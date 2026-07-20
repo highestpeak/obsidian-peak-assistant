@@ -116,7 +116,7 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 						{loadingSteps.map((s) => (
 							<div key={s.id} className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-1 pktw-px-1">
 								{s.status === 'done' ? (
-									<CheckCircle2 className="pktw-w-4 pktw-h-4 pktw-text-green-500 pktw-shrink-0" />
+									<CheckCircle2 className="pktw-w-4 pktw-h-4 pktw-text-pk-success pktw-shrink-0" />
 								) : s.status === 'running' ? (
 									<Loader2 className="pktw-w-4 pktw-h-4 pktw-text-pk-accent pktw-animate-spin pktw-shrink-0" />
 								) : (
@@ -126,7 +126,7 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 									{s.label}
 								</span>
 								{s.detail && (
-									<span className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-truncate pktw-flex-1 pktw-min-w-0">
+									<span className="pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-truncate pktw-flex-1 pktw-min-w-0">
 										{s.detail}
 									</span>
 								)}
@@ -231,7 +231,7 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 				</ReactFlow>
 			</div>
 			{graphData?.insights?.[activeLens === 'bridge' ? 'bridges' : activeLens as 'topology' | 'timeline'] && (
-				<div className="pktw-px-4 pktw-py-3 pktw-mb-2 pktw-mx-3 pktw-text-[13px] pktw-leading-relaxed pktw-text-pk-foreground-muted pktw-border pktw-border-pk-border pktw-bg-pk-background pktw-rounded-lg">
+				<div className="pktw-px-4 pktw-py-3 pktw-mb-2 pktw-mx-3 pktw-text-pk-md pktw-leading-relaxed pktw-text-pk-foreground-muted pktw-border pktw-border-pk-border pktw-bg-pk-background pktw-rounded-lg">
 					{graphData.insights[activeLens === 'bridge' ? 'bridges' : activeLens as 'topology' | 'timeline']}
 				</div>
 			)}

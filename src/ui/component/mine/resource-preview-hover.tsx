@@ -62,6 +62,7 @@ export const ResourcePreviewHover: React.FC<ResourcePreviewHoverProps> = ({
 
 	// Determine source and resource kind
 	const source = resource?.source || filePath || '';
+	const previewUri = resource?.previewUri?.trim() || '';
 	const resourceKind: ResourceKind | undefined = resource?.kind;
 	const isUrlResource = isUrl(source);
 
@@ -109,6 +110,16 @@ export const ResourcePreviewHover: React.FC<ResourcePreviewHoverProps> = ({
 
 		const loadPreview = async () => {
 			try {
+				// Gallery/debug fixtures and already-resolved remote resources can provide
+				// a visual-only preview without pretending the URI is the durable source.
+				// Prefer it before Vault I/O so hover never probes a non-existent mock path.
+				if (previewUri && shouldShowImagePreview()) {
+					setPreviewContent(previewUri);
+					setIsImagePreview(true);
+					setIsPdfPreview(false);
+					return;
+				}
+
 				// Handle URL resources
 				if (isUrlResource) {
 					if (shouldShowImagePreview()) {
@@ -191,7 +202,7 @@ export const ResourcePreviewHover: React.FC<ResourcePreviewHoverProps> = ({
 				blobUrlRef.current = null;
 			}
 		};
-	}, [source, resourceKind, isUrlResource, vaultPreview, enabled, isHovered, detectedFileType]);
+	}, [source, previewUri, resourceKind, isUrlResource, vaultPreview, enabled, isHovered, detectedFileType]);
 
 	if (!enabled || !source) {
 		return <>{children}</>;

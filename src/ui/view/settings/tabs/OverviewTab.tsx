@@ -30,13 +30,13 @@ function statusChip(status: Status, labels: ReadinessCopy): React.ReactNode {
     if (status === 'optional') return <Chip variant="neutral">{labels.statusLabels.optional}</Chip>;
     if (status === 'ready') return (
         <Chip variant="success">
-            <Check size={11} style={{ marginRight: 4 }} />
+            <Check size={11} className="pktw-mr-1" />
             {labels.statusLabels.ready}
         </Chip>
     );
     return (
         <Chip variant="warning">
-            <AlertTriangle size={11} style={{ marginRight: 4 }} />
+            <AlertTriangle size={11} className="pktw-mr-1" />
             {labels.statusLabels.needsAttention}
         </Chip>
     );
@@ -132,7 +132,7 @@ export function OverviewTab({ settings, onSwitchTab }: OverviewTabProps) {
                                 {r.value ? (
                                     r.muted ? <Row.Meta>{r.value}</Row.Meta> : <Row.Value>{r.value}</Row.Value>
                                 ) : <Row.Meta>—</Row.Meta>}
-                                <ChevronRight size={14} style={{ color: 'var(--pk-text-tertiary)' }} />
+                                <ChevronRight size={14} className="pktw-text-pk-text-tertiary" />
                             </Row.Right>
                         </Row>
                     ))}

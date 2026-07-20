@@ -8,6 +8,7 @@ import { ProviderIcon, PROVIDER_LABELS } from './ProviderIcon';
 import { ModelCombobox } from './ModelCombobox';
 import { testProviderConnection } from '@/core/providers/testProviderConnection';
 import { uiHttpClient } from '@/ui/util/uiHttpClient';
+import { FieldRow } from './FieldRow';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -29,23 +30,13 @@ const ALL_KINDS: ProfileKind[] = ['anthropic', 'openai', 'google', 'perplexity',
 function SectionTitle({ label }: { label: string }) {
     return (
         <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mt-4 pktw-mb-2">
-            <span className="pktw-text-[11px] pktw-uppercase pktw-tracking-wider pktw-font-semibold pktw-text-pk-foreground-faint pktw-whitespace-nowrap">
+            <span className="pktw-text-pk-sm pktw-uppercase pktw-tracking-wider pktw-font-semibold pktw-text-pk-foreground-faint pktw-whitespace-nowrap">
                 {label}
             </span>
             <div className="pktw-flex-1 pktw-h-px pktw-bg-pk-border" />
         </div>
     );
 }
-
-function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
-    return (
-        <div className="pktw-grid pktw-items-center pktw-gap-3" style={{ gridTemplateColumns: '130px 1fr' }}>
-            <span className="pktw-text-xs pktw-text-pk-foreground-faint">{label}</span>
-            {children}
-        </div>
-    );
-}
-
 
 const INPUT_CLS = 'pktw-w-full pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-px-2.5 pktw-py-1.5 pktw-text-sm pktw-outline-none focus:pktw-border-pk-accent pktw-transition-colors';
 
@@ -96,7 +87,7 @@ function MoreMenu({ profile, onToggleEnabled, onDelete }: {
                     </button>
                     <button
                         type="button"
-                        className="pktw-w-full pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-text-red-500 pktw-cursor-pointer pktw-border-0 pktw-bg-transparent pktw-shadow-none pktw-rounded-none pktw-transition-colors hover:pktw-bg-pk-error-muted"
+                        className="pktw-w-full pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-text-pk-error pktw-cursor-pointer pktw-border-0 pktw-bg-transparent pktw-shadow-none pktw-rounded-none pktw-transition-colors hover:pktw-bg-pk-error-muted"
                         onClick={(e) => { e.stopPropagation(); onDelete(profile.id); setOpen(false); }}
                     >
                         Delete
@@ -150,15 +141,15 @@ export function ProfileCard({
                     <div className="pktw-flex pktw-items-center pktw-gap-2">
                         <span className="pktw-text-sm pktw-font-bold pktw-truncate">{profile.name}</span>
                     </div>
-                    <span className="pktw-text-[11px] pktw-text-pk-muted-foreground pktw-truncate pktw-block">{subtitle}</span>
+                    <span className="pktw-text-pk-sm pktw-text-pk-muted-foreground pktw-truncate pktw-block">{subtitle}</span>
                 </div>
 
                 <Button
                     variant="ghost" size="sm"
                     className={cn(
                         'pktw-text-xs pktw-gap-1 pktw-shrink-0',
-                        testResult === 'success' && 'pktw-text-green-500',
-                        testResult === 'fail' && 'pktw-text-red-500',
+                        testResult === 'success' && 'pktw-text-pk-success',
+                        testResult === 'fail' && 'pktw-text-pk-error',
                         !testResult && 'pktw-text-pk-muted-foreground',
                     )}
                     onClick={handleTest}

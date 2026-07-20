@@ -19,7 +19,7 @@ function ProgressBar({ value, max }: { value: number; max: number }) {
 	return (
 		<div className="pktw-w-full pktw-bg-muted pktw-rounded-full pktw-h-2 pktw-overflow-hidden">
 			<div
-				className="pktw-bg-blue-500 pktw-h-2 pktw-rounded-full pktw-transition-all pktw-duration-300"
+				className="pktw-bg-pk-info pktw-h-2 pktw-rounded-full pktw-transition-all pktw-duration-300"
 				style={{ width: `${pct}%` }}
 			/>
 		</div>
