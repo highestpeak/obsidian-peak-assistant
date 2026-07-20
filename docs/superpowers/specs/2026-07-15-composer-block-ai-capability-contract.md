@@ -2,7 +2,9 @@
 
 **Status:** product contract and implementation roadmap  
 **Date:** 2026-07-15  
+**Updated:** 2026-07-20 — message-embedded run artifacts, anchored streaming review, and accepted-transaction linkage
 **Related mock:** [`docs/gstack/peak-composer-editing-view-2026-07-09/index.html`](../../gstack/peak-composer-editing-view-2026-07-09/index.html)  
+**Current IA lab:** [`docs/gstack/peak-composer-editing-view-2026-07-09/intelligence-ia-lab.html`](../../gstack/peak-composer-editing-view-2026-07-09/intelligence-ia-lab.html)
 **Parent design:** [`2026-07-09-peak-composer-editing-view.md`](2026-07-09-peak-composer-editing-view.md)
 
 ## 1. Why This Contract Exists
@@ -51,10 +53,11 @@ Every costly generation exposes real progress:
 1. queued and context assembled;
 2. model streaming or source patches arriving;
 3. preview repeatedly re-rendered;
-4. generation complete, still unwritten;
-5. explicit accept writes the Markdown or native file.
+4. generation complete and collected into a transient `ProposedChangeSet`, still unwritten;
+5. Review navigates the pending changes in document source order;
+6. explicit acceptance writes each Markdown or native-file change and creates one independent History transaction for that accepted change.
 
-History stores accepted transactions, not every hover or abandoned candidate. Candidate history may stay in the session cache so the user can reopen an expensive generation before the review session ends.
+History stores accepted transactions, not findings, pending previews, rejected changes, stale changes, hovers, or abandoned candidates. A costly unresolved candidate may stay in the active session cache so the user can reopen it before the review session ends without presenting it as document history.
 
 ## 3. Capability Classes
 
@@ -108,33 +111,111 @@ Normal in-place editing without AI. Task checkboxes, table cells, headings, link
 | Dataview / query block | Preview/source; run; copy result; change display mode | Query error; expensive scan; better grouping/filter | Patch one clause and rerun | Query source remains Markdown; results are derived |
 | PDF / media embed | Open; fullscreen; page/time jump; annotate; copy reference | Relevant page/segment; missing citation; extract table/image | Generate anchored notes or citations | Original attachment is immutable; annotations and references are separate data |
 
-## 6. What Copilot Review Generates
+## 6. Findings, Proposed Changes, and Review
 
-Copilot Review scans the document and emits typed findings, not a universal action toolbar. Each finding contains:
+Copilot must not collapse “something may be worth doing” and “content is ready to be written” into one object. The contract has three separate types.
 
-- `anchor`: block id and source range;
+### 6.1 `SuggestionFinding`
+
+A `SuggestionFinding` is an evidence-backed opportunity surfaced in the Copilot Brief. It does not contain an accepted document mutation and is not part of History.
+
+- `id`: stable finding id;
+- `anchor`: block id, source range, and source revision when the finding is local;
 - `kind`: claim, evidence, structure, style, link, visual, math, task, metadata, or native-object;
-- `evidence`: the matched text, structural signal, broken reference, or cross-note relation;
-- `proposedAction`: a capability id compatible with the anchored block;
-- `confidence` and `costClass`;
-- `previewMode`: inline diff, vertical transform, inserted object, or incremental native patch;
-- `status`: queued, generating, ready, accepted, rejected, or stale.
+- `evidence`: matched text, structural signal, broken reference, or cross-note relation;
+- `proposedAction`: a compatible capability id;
+- `confidence`, `costClass`, and a user-readable reason for surfacing it now;
+- `status`: `visible`, `snoozed`, `dismissed`, `consumed`, or `stale`.
 
-A suggestion is visible only when its capability supports that block and its evidence threshold passes. Users can also invoke any fixed compatible operation manually without waiting for Review.
+A finding is visible only when its capability supports the target and its evidence threshold passes. Selecting it starts or updates a Copilot collaboration session; it does not silently create a document patch. Users may also invoke any fixed compatible operation manually without waiting for a finding.
+
+### 6.2 `ProposedChangeSet`
+
+A `ProposedChangeSet` is the transient review result of one Copilot run. It freezes the run envelope and groups one or more typed changes without claiming that any of them has been written.
+
+- `id`, `runId`, capability id, and optional originating finding ids;
+- frozen context revision and target/source revisions used by the run;
+- `changes: ProposedChange[]`;
+- `activeChangeId` for Review navigation;
+- `status`: `generating`, `reviewing`, `resolved`, or `cancelled`;
+- optional session-cache retention metadata for costly generation.
+
+The change set belongs to the transient Review stage inside Copilot. It is not a third top-level Intelligence tab and it is not History.
+
+### 6.3 `ProposedChange`
+
+A `ProposedChange` is one atomic, independently reviewable candidate inside a change set.
+
+- `id` and parent `changeSetId`;
+- `anchor`: target object, source range, source revision, and adapter-specific locator;
+- `sourceOrder`: a stable document-order key supplied by the source adapter;
+- `operation`: rewrite, insert, delete, metadata patch, vertical transform, or native-object patch;
+- `before`, typed patch payload, and renderable proposed state;
+- `previewMode`: inline diff, vertical transform, inserted object, or incremental native patch;
+- `status`: `pending`, `accepted`, `rejected`, or `stale`;
+- evidence/provenance needed to explain the change and create an accepted receipt.
+
+Accepting or rejecting one change must not implicitly resolve unrelated changes in the set. A finding may produce no change, one change, or many changes.
+
+### 6.4 Source-order navigator
+
+Review uses the document, not the sidecar list, as the spatial truth source:
+
+1. order changes by the adapter-provided `sourceOrder`, never by suggestion rank, confidence, or generation arrival time;
+2. show `current / total` plus `上一处` and `下一处` controls;
+3. navigation scrolls and focuses the real target object and updates the sidecar explanation together;
+4. navigation does not mutate the frozen run context, create a new chat message, or rerank the Copilot Brief;
+5. accepting or rejecting the current change advances to the next unresolved change when one exists;
+6. the navigator remains stable when resolved changes are retained for this review session.
+
+Text changes use a unified inline diff at the anchor. Structural transforms remain vertical. A modal may provide a larger unified or before/after inspection surface, but it does not replace the anchored document preview.
+
+### 6.5 Stale and source-revision rules
+
+- Every accept revalidates the target source revision and adapter locator.
+- If the user edits an overlapping target after generation, only the affected pending change becomes `stale`; unrelated changes remain reviewable.
+- A stale change cannot be accepted. The user may discard it or regenerate it against the new source.
+- Moving the cursor or navigating between changes does not make a change stale.
+- If an adapter cannot safely relocate a target, it must fail closed and explain why rather than writing at a guessed position.
+
+### 6.6 Run artifacts and accepted transactions
+
+One Copilot Run may retain local `Changes`, `Insights`, `Sources`, and a redacted `Trace`, all keyed by stable `runId`. These are execution/review artifacts, not top-level Intelligence work surfaces and not document history. Trace contains only verifiable capability/tool actions, source references, produced artifacts, validation results, status, timing and errors; it must not persist or expose hidden prompts, raw reasoning, thinking tokens, or chain-of-thought. Runtime strategy labels such as `Fast Lookup` remain metadata rather than product capabilities.
+
+The run record and History use separate records with bidirectional references. The run record may store `acceptedTransactionIds`; each accepted History transaction stores `originRunId`, `changeSetId`, and `changeId`. Accepting two changes from the same set creates two independently locatable, diffable, and rollbackable transactions. Rejected, stale, abandoned, preview-only, insight, source, and trace artifacts may remain under the run/session retention policy, but never become History transactions.
 
 ## 7. Intelligence Dock Ownership
 
-### Copilot
+### Top-level ownership
 
-Conversationally changes the article. The composer is fixed at the bottom and automatically includes the focused object, nearby content, high-confidence Ambient relations, and the user's explicit attachments. There is no persistent `当前块 / 本节 / 全文` selector; context is visible and editable through one context button.
+Intelligence has exactly two top-level work surfaces:
 
-### Ambient
+1. **Copilot** — awareness, collaboration, capability execution, and transient review;
+2. **History** — accepted document transactions and rollback.
 
-Shows Current Work State, inferred intent, Session Thought Trace, and Related Push. Ambient does not own editing history and does not silently write Markdown. It supplies context signals that can become Copilot Review evidence.
+Ambient is not an equal third tab. Review is also not an equal third top-level tab.
+
+### Copilot Brief and Ambient runtime
+
+The Ambient runtime continuously evaluates current work state, related material, recent work, and unplaced thoughts. Its user-facing projection is the default Copilot Brief: ranked next moves, related material, and unplaced thoughts, with refresh, dismiss, and “why now” controls.
+
+Internal labels such as `Current Work State`, `Session Thought Trace`, model trace, or Ambient pipeline names are not primary UI navigation. The Brief describes what may help, why it is relevant now, and what will happen if the user chooses it. Ambient does not silently write Markdown and does not append every refresh as a conversation message.
+
+### Copilot collaboration session
+
+The collaboration session discusses and executes a concrete task. Its composer is fixed at the bottom and automatically includes the focused object, nearby content, high-confidence Ambient relations, and the user's explicit attachments. There is no persistent `当前块 / 本节 / 全文` selector; context is visible and editable through context chips and one context picker. The complete composer is shown in the collaboration session, not on the passive Brief or while Review controls own the footer.
+
+The Q&A flow represents a run with one receipt and its key insight. That same message expands into the run artifact browser: `Changes / Insights / Sources / Trace` switch in place, ordinary entries render immediately below the receipt, and long content expands inline. Ordinary artifacts do not open a modal or a separate workbench. A dedicated wide view is allowed only for relationship graphs or similarly spatial artifacts that cannot be understood at thread width. The four categories never become permanent tabs or an unbounded tool-log feed.
+
+### Transient Review
+
+When a run creates a `ProposedChangeSet`, Copilot enters a transient Review stage. Candidates stream and re-render at their real document anchors. Review freezes the run context, exposes source-order previous/next navigation, and lets the user accept, reject, regenerate, or inspect each proposed change. The document anchors are the review truth source; the sidecar explains the active change and provides controls rather than duplicating the candidate. Pending, rejected, and stale changes never appear in History.
 
 ### History
 
-An equal third tab. It shows accepted transactions as a timeline, filters session/document/Git history, locates the changed object, renders Markdown/native before-after state, and supports rollback. Expensive unaccepted generations may be kept only for the current review session.
+History is the second top-level work surface. It shows accepted transactions as a timeline, locates the changed object, renders Markdown/native unified or before-after state, and supports rollback. Each accepted receipt records action, target, time, scope, diff/typed patch, provenance (`user`, `AI-assisted and accepted`, `user-adjusted AI`, or `system rollback`), source revisions, and its parent run/change-set/change IDs. History can return to and expand the originating run receipt, while the receipt's artifact browser can open each accepted transaction; this linkage never merges their storage or lifecycle.
+
+Direct user edits and accepted AI-assisted changes are visibly distinguishable. Rollback appends an inverse transaction; it does not erase the original receipt. Session/document/Git adapters may enrich History, but conversation messages, findings, model traces, pending candidates, rejections, and session-cache generations are not accepted document history.
 
 ## 8. Implementation Model
 
@@ -150,27 +231,74 @@ type ComposerCapability = {
   guard(context: ComposerBlockContext): CapabilityGuard;
   run(envelope: ComposerRunEnvelope): AsyncIterable<ComposerPatchEvent>;
 };
+
+type SuggestionFinding = {
+  id: string;
+  anchor?: ComposerSourceAnchor;
+  kind: FindingKind;
+  evidence: FindingEvidence;
+  proposedAction: ComposerCapability['id'];
+  confidence: number;
+  costClass: ComposerCapability['cost'];
+  reasonNow: string;
+  status: 'visible' | 'snoozed' | 'dismissed' | 'consumed' | 'stale';
+};
+
+type ProposedChange = {
+  id: string;
+  changeSetId: string;
+  anchor: ComposerSourceAnchor;
+  sourceOrder: ComposerSourceOrder;
+  operation: ComposerPatchOperation;
+  patch: ComposerTypedPatch;
+  preview: ComposerCapability['preview'];
+  status: 'pending' | 'accepted' | 'rejected' | 'stale';
+};
+
+type ProposedChangeSet = {
+  id: string;
+  runId: string;
+  contextRevision: string;
+  changes: ProposedChange[];
+  activeChangeId?: string;
+  status: 'generating' | 'reviewing' | 'resolved' | 'cancelled';
+};
 ```
 
-The app layer owns the capability registry and adapters. Markdown, Base, Canvas, Excalidraw, Mermaid, and attachment adapters produce typed patches; UI only renders patch events and asks for acceptance.
+The app layer owns the capability registry, Ambient runtime projection, run envelope, proposed change-set lifecycle, and adapters. Markdown, Base, Canvas, Excalidraw, Mermaid, and attachment adapters produce typed patches and stable source-order locators; UI renders findings, patch events, and review state, then asks for explicit acceptance.
 
 ## 9. Mock Status and Roadmap Boundary
 
-### Demonstrated in the static mock
+### Demonstrated across the full mock and current IA lab
 
 - one-click toggle for insert, comment, and AI surfaces;
 - vertical list/table/formula comparison;
 - timed image generation before a real generated bitmap appears;
 - incremental Mermaid, Canvas, and Excalidraw preview updates;
 - compact Base rows and chips;
-- Copilot, Ambient, and History as three explicit Intelligence modes;
-- Current Work State, Session Thought Trace, Related Push, history timeline, and diff/rollback UI;
+- Copilot and History as the two top-level Intelligence work surfaces;
+- Ambient-derived next moves, related material, and unplaced thoughts projected into Copilot rather than exposed as a third tab;
+- a task-oriented collaboration session with shared capability/context composer;
+- one fixture `ProposedChangeSet` with eight independently statused changes, source-order previous/next navigation, editor-local targets, accept/reject controls, and History write-through;
+- accepted History timeline, provenance tags, unified/before-after diff, locate, and rollback UI;
 - cross-block text selection and focused-block context.
 
-### Still production roadmap
+The IA lab proves interaction semantics, not production persistence: source ranges, revisions, change identity, history storage, model output, and adapters are deterministic fixtures.
+
+### Next integration iteration
+
+- choose the owner-approved adaptive or explicit-stage navigation variant without changing the underlying lifecycle contract;
+- replace fixture source order and change IDs with adapter-owned locators and durable run-envelope identities;
+- make stale detection overlap-aware and preserve unaffected pending changes;
+- bind per-change acceptance and batch grouping to app-owned transaction/History ports;
+- retain the verified Brief, collaboration, Review, History, and narrow fixed-drawer behavior when merging into the shared mock.
+
+### Production roadmap
 
 - CodeMirror source-range adapters and transaction tests;
 - typed capability registry and evidence-based suggestion engine;
+- stable source-order keys, range relocation, overlap detection, and fail-closed stale validation;
+- durable run envelope, `ProposedChangeSet`, accepted receipt, and inverse-transaction schemas;
 - real model streaming and generation persistence;
 - complete Base/Canvas/Excalidraw adapters;
 - attachment pipeline for generated images, crop, annotation, and captions;
@@ -183,9 +311,18 @@ The app layer owns the capability registry and adapters. Markdown, Base, Canvas,
 
 1. No block receives an incompatible generic AI operation.
 2. Every contextual suggestion explains its evidence.
-3. Every proposed content change renders as its real target object.
-4. Complex comparisons are vertical and readable at the Composer document width.
-5. Incremental native edits visibly re-render before acceptance.
-6. No accepted operation loses valid Markdown or native-file source.
-7. Copilot, Ambient, and History retain separate ownership and visual hierarchy.
-8. A user can reopen a recent expensive candidate during the active review session without paying for a second generation.
+3. A `SuggestionFinding`, `ProposedChangeSet`, `ProposedChange`, and accepted History receipt are distinct objects with distinct statuses.
+4. Every proposed content change renders at its real target object before acceptance.
+5. Complex comparisons are vertical and readable at the Composer document width.
+6. Incremental native edits visibly re-render before acceptance.
+7. Review exposes stable `current / total`, previous/next source-order navigation, and per-change accept/reject without mutating the frozen run context.
+8. An overlapping source edit marks only the affected pending change stale, and no stale change can be accepted.
+9. Intelligence exposes only Copilot and History as top-level work surfaces; Ambient is a runtime projected into the Copilot Brief, and Review is transient inside Copilot.
+10. The full composer appears in the collaboration session, while Review uses review-specific controls.
+11. History contains only accepted direct or AI-assisted document transactions; rollback appends an inverse transaction and preserves the original receipt.
+12. No accepted operation loses valid Markdown or native-file source.
+13. A user can reopen a recent expensive unresolved candidate during the active review session without paying for a second generation or misclassifying it as History.
+14. Every accepted `ProposedChange` creates one independently addressable History transaction, with bidirectional run/change/transaction links.
+15. Run-local Insights, Sources, redacted Trace, rejected changes, and preview artifacts never become History transactions or permanent product tabs.
+16. Trace exposes only verifiable actions and artifacts; no UI or persisted record exposes chain-of-thought or promotes runtime metadata such as `Fast Lookup` into a user capability.
+17. The same Copilot run receipt owns compact summary, category switching, visible artifact rows, and inline long-content expansion; ordinary artifacts never require a modal, while a wide view is reserved for genuinely spatial artifacts.

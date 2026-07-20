@@ -25,6 +25,7 @@ here are fetched on demand when an agent works in a relevant area.
 | Rule | Topic | Status |
 |---|---|---|
 | [ui-design.md](./ui-design.md) | The single design-system reference — tokens, primitive catalog, primitive usage decisions, Obsidian CSS defense, JSX-mock fidelity. 5 sections with section anchors. | ✅ enforced |
+| [prompt-input-consistency.md](./prompt-input-consistency.md) | Chat Studio、Composer sidecar 与未来输入面共享 PromptInput 内核、触发/键盘语法和单层 focus owner；surface runtime 保持隔离。 | ✅ enforced |
 | [configurability.md](./configurability.md) | No inline i18n / regex / label maps / color or style configs in logic files; route through `templates/config/` or `core/constant.ts` | ✅ enforced |
 | [root-docs.md](./root-docs.md) | Root `docs/*.html` pages are final-state manuals, not work logs; includes rules for status language, dense tables, long paths, Mermaid, formulas, and viewport QA. | ✅ enforced |
 | [spec-and-tests.md](./spec-and-tests.md) | Spec / design doc 与其 acceptance criteria / test 文件清单 / bad-case 复现都写在同一份文档，不拆到独立的 test-plan.md / verification.md / qa.md。 | ✅ enforced |

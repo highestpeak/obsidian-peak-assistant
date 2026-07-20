@@ -25,6 +25,7 @@ Gate 9: answer-action priority and responsive overflow aligned.
 
 - three-column standalone Chat Studio shell;
 - existing `--pk-*` light/dark tokens, typography, radius, borders, and 4px spacing grid;
+- the canonical cross-surface [`Prompt Input Consistency`](../../conventions/prompt-input-consistency.md) contract: Chat Studio owns the visual baseline while other surfaces reuse the input kernel and grammar without inheriting Chat-specific runtime state;
 - Pinned → Projects → Recent navigation with realistic list volume, opaque state-aware row menus, visible title typing, and drag-to-project feedback;
 - split project-row interaction: the chevron only expands/collapses, while the project name opens a project home with conversations, stars, resources, plans, and a project-scoped Composer; the compact pass preserves all of those surfaces while replacing the four boxed stat cards with a quieter inline summary; the standalone hero-level “Edit description” action is removed, while the description itself remains directly editable and offers an explicit AI rewrite draft that never saves automatically;
 - one Composer DOM instance changes placement by state: the project home places it in the centre flow after project identity and before project collections, with the same short-greeting + three editable starters mental model as new chat; an active conversation restores it below the scrolling message canvas;

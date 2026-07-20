@@ -8,6 +8,14 @@
 
 Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding → 配置 → Chat → Search → Graph 每个环节都能跑通，体验完整。同时推进技术债清理和架构重构。
 
+## 2026-07-20 · Chat Studio UI completion
+
+- [x] Message hierarchy：Reasoning 保持轻量 disclosure；历史与流式 tool calls 统一进入独立 Agent Run，多个步骤自动展开；Diagnostic Trace 仅在真实 spans 存在时出现。
+- [x] Rich content：表格长链接改为可读最小宽度 + 局部横向滚动；Mermaid inline 自适应消息宽度，当前窗口真全屏并只复制 diagram SVG；全屏 viewer 支持指针拖动、以光标为锚点的滚轮缩放、工具条缩小 / 放大 / 复位，以及键盘 `+` / `-` / `0` / 方向键；修复 diagram SVG 全宽规则误伤工具按钮导致图标放大 / 越界；代码主题继续由 Settings 配置。
+- [x] Artifacts / media：单轮多图片 / 多视频改为全宽自适应 gallery；同批图片 lightbox 支持前后按钮、左右键和序号；支持产物继续使用连续紧凑清单。无 URL 的 video / audio、生成中 diagram 与 Base 不再形成等高空卡片；附件与正文 wikilink 复用 Vault 内容预览。
+- [x] Composer / layout：附件只显示文件名并保留完整路径帮助文本；explicit wikilink 与 shelf 同步；Convert-to-project 与正文 / Composer 共用阅读宽度。
+- [x] QA：生产组件画廊覆盖连续 topic、三步 Agent Run、5-span trace、表格、代码、Mermaid，以及单轮 4 image / 3 video / 3 audio 和多 table / CSV / code / document / diagram / Base receipts；`npm run test` 212/212 通过，生产构建通过；既有 Chat Studio 视觉回归已完成，本轮 Mermaid viewport 数值测试通过，Obsidian 主窗口因应用自身无响应暂未完成新增交互的鼠标复核。
+
 ## Phases
 
 | Phase | Content | Status |
@@ -2332,3 +2340,140 @@ V1 landing（07-07）后一天真机试用出的三条根子问题：
 
 - 组合面板 = 按需升级（改 `COPILOT_SUGGESTIONS` 可切永远组合 / 换挂载块）。
 - diff 粒度 = 字级零依赖 LCS（整词级需引入中文分词；字级下复合词共享字会轻微碎裂）。
+
+## 2026-07-16 · Chat Studio 完整实施（spec 2026-07-15 全量落地）
+
+**上下文**：按 `docs/superpowers/specs/2026-07-15-chat-studio-complete-implementation-spec.md` 在同一 session 完成 Stage 0 审计 + Track A–G 全部 MUST 轨道。生产代码，非 mock。未 commit。
+
+### Track A · Domain & persistence
+- 新契约 `src/core/types/chat-studio.ts`：`ModelSelection`（auto/fixed + `normalizeModelSelection` 向后兼容）、`ExplicitContextRef`、`TurnSourceScope`/`SourceReceipt`、`TurnExecutionReceipt`、`ChatArtifactReceipt`、`ChatAssistantDefinition`、`ProjectPlanRef`、draft key helpers。
+- SQLite：4 张新表（`chat_assistant` / `chat_project_plan` / `chat_turn_receipt` / `chat_artifact_receipt`）+ `chat_message` 加 `status`/`meta_json` 列（ALTER TABLE 兼容迁移）+ 4 个新 repo + SqliteStoreManager 接线。
+- `ChatStore`：conversation meta_json 全字段打包/解包（顺带修复 conversationType/focusFolder/outputControl/attachment override 的既有 round-trip 丢失）、pin/archive（archived_rel_path 原地标记）、`listRecentConversationMetas`、assistant/plan/receipt 存取。
+- `ChatProjectSummaryDoc`：新增用户所有的 `## Description`/`## Instructions` 分节，系统摘要（Short/Full Summary）独立 owner；`saveProject` 重写时回读保留用户分节（RUN-05）。
+- `AssistantService`（`service-assistant.ts`）经 AIServiceManager 组合；`ProjectService` 加 description/instructions/plans CRUD；`ConversationService` 加 pin/archive/modelSelection/assistant/receipt 方法。
+- RUN-01：`VaultRetrievalPort` + `chatToolBuilder` 真实 `vault_search` tool（SearchClient hybrid 检索，main.ts 组合适配器）；`SourceReceiptCollector` 记录实际 vault/web queries+documents。
+- `ChatConversationRun` abort → `cancelled`（不再一律 failed）。
+- 配置体系：`templates/config/chat-studio.json` + `chatStudioStrings.ts` + Provider/hook；新 PromptId `chat-assistant-draft` / `project-description-draft` + 模板。
+
+### Track B · Shell & 左栏（agent）
+右栏只在有 activeConversation 时挂载（SHELL-04）、splitter 键盘 4px/双击复位/宽度 localStorage 持久化、<894px 响应式折叠、左栏新 IA（New chat → Search KB → Pinned → Projects → Recent）、Quick Search 原生 handoff（后改为 `QuickSearchLauncherPort` 窄端口修复 t11p 边界守卫）、chevron/name 拆分、完整行菜单（pin/rename/move/archive/delete）、View All 标题+类型 AND picker、拖拽入项目反馈。
+
+### Track C · Composer V2（本人）
+- `composerStore`：单一 owner，`new`/`project:<id>`/`conversation:<id>` draft 隔离 + localStorage 恢复 + File attachments per-key 内存缓存 + reply anchor / revision / workflow / source switches / model+assistant overrides。
+- `+`/`[[`/`/` 唯一职责：`[[` 选择同时生成 explicitRef（经 attachments 管道真实进请求）；`/` 行首触发 workflow 面板（只列真实存在的 Plan）；`@` 触发已移除（本轮不占用）。
+- Sources popover：项目「始终」badge + Vault/Web 独立开关，Vault 未接线时诚实 unavailable。
+- `ComposerModelSelector`：profile-qualified 搜索/分组、capability AND filter、context/output floor（unknown 不通过）、Use Auto、清筛选；`modelPickerData.ts` 纯函数层复用 modelRegistry（无第二套 catalog）。
+- Auto 修复（RUN gate 2）：`useChatSession` 停止 hydrate 写回，模型持久化只走 selector → `updateConversationModelSelection`。
+- Assistant picker + AI 起草 builder（draft 永不自动保存）。
+- 提交链路：`TurnExecutionReceipt` 持久化（requested vs actual sources、effectiveModel、cancelled/timeout/error 状态区分）、消息级 replyTo/revisionOf 关系持久化、失败保留草稿、首发绑定 overrides 并迁移 switch 状态。
+- 删除假控件：Mic、Role pills（RUN-07）；启动态 greeting+3 starters 只回填草稿（C-EMPTY）。
+
+### Track D · 消息与产物（agent）
+中央 `messageActionRegistry`（core 5 + adaptive 5 + destructive delete）、ResizeObserver 反向优先级 overflow、Trace 仅本消息 debugRunId（无 fallback，无则 disabled+原因）、Save to Vault 内联回执+Open、Copy/Copy Markdown/Copy JSON 语义分离、用户消息 Edit & resend（revision 关系）、suggested next 回填主 Composer、`MessageInlineFollowup` 删除、`ArtifactReceiptCard`（availableActions 驱动）、queued/permission 状态、默认 Assistant 无重复身份。
+
+### Track E · 项目主页（agent）
+紧凑 identity + inline stats + 项目 greeting/starters/Composer（draft 自动 scope 到 project key，首发自动建项目会话）+ 四 tabs；description 就地编辑 + AI 起草共用一个 draft、显式 Save/Cancel、系统摘要独立展示；Plans durable CRUD（conversation/vault-backed source、状态迁移、进度）。
+
+### Track F · 右栏（agent）
+Outline/Resources 双 tab；`outlineModel.ts` 纯模型（topic 分组、process/error 节点、artifact anchors）；IntersectionObserver scroll spy（ownerDocument）；Resources direction×type AND filter + 空态区分；FENCE_RE regex 推断彻底移除（receipt 驱动）；会话切换重置 selection。
+
+### Track G · 集成
+- Save to Vault → 真实 `ChatArtifactReceipt` producer（RUN-06 闭环：生成→保存→回执→右栏/项目 Resources 可恢复）。
+- Header 补项目归属次级文本 + aria-live 最终标题宣告。
+- 旧 sidebar outline leaf 在 Studio 打开时隐藏（消除双索引 owner）。
+- `QuickSearchLauncherPort` 修复 `useServiceContext().plugin` 越界。
+- 删除 `NewConversationTypePicker`；Composer DOM 同刻 1 实例（3 个互斥路由分支）。
+
+### 验证
+- `npm run test` 205/205（含 6 套新增：contracts/composer/message-actions/left-column/project-home/right-index）；`npm run build` 通过；tsc 无新增错误（既有噪声不变）；mock validate.mjs + qa-gate2 160 项通过。
+- **未完成**：Obsidian 实机手测被 macOS Screen Recording 权限阻塞（待 owner 授权后补）；permission card UI 未做（runtime 无 permission 事件，做了即假控件——诚实跳过并记录）。
+
+## 2026-07-17/18 · Chat Studio 实机视觉对齐 + 全量 review 修复 + legacy Home 移除
+
+**上下文**：接上条实施。实机（computer-use 驱动 Obsidian，DevTools console 执行命令）逐面截图与 `docs/gstack/chat-studio-interactive-2026-07-13/` mock 复刻对比、修视觉偏差；随后对整个未提交 changeset 做三区并行 code review 并修高危项；最后按 owner 要求删掉 legacy Home。全程未 commit，HEAD 仍 `b3c925bb`。
+
+### 实机视觉对齐（~40 项偏差，全部 匹配/接近）
+- 左栏：New chat / Search 从"控件盒"回归 mock 导航行（新增 `NavRow.tsx` 原子防三列漂移）、时间戳 hover 换 ⋯ 菜单、section 头统一 uppercase+count、去 PROJECTS 级折叠。
+- 右栏 Conversation Index：删标题行 → topline=搜索+收起、分组头可折叠、条目两行、footer count、Resources 空态文案与 type 筛选下拉修复、收起/恢复经 Header PanelRight 闭环。
+- Composer：输入字体 mono→sans 13px（`codemirror.css` `!important`）、发送圆钮常驻禁用态、模型选择器 anatomy（Use Auto/筛选收起/能力标签/分组）、`/`+`[[` 选中态浅色、消息级模型 chip 短名+短时间。
+- 消息区：宽窗动作自适应内联（config 值被误当每按钮宽度，480→92）、孤儿 More 展开器移除、More 菜单两行条目+红色 Delete、**暗色代码块白底修复**（streamdown shadow host 补 `:host-context(.theme-dark)` HSL 映射）。
+- 项目主页/起始态：**蓝色 CTA 根因**=shadcn `Button variant=default` 消费 Minimal 主题蓝 token → 换 primitives 紫色 primary；PROJECT eyebrow+avatar+去斜体描述+stats 竖线分隔、greeting 黑粗大字、starters 移到 composer 后带 icon pill、**tabs 紫色下划线**（`obsidian-reset.css` 的 `button::after` halo-kill 吃掉 → `content:'' !important`）。
+- Shell/响应式：popout 收养 vs mount-time ResizeObserver/Radix Portal 绑错 document 的**同一根因家族**——ReactRenderer doc-keyed remount + `onResize` 重渲染修复；实测拖窗实时跟随、<894 折叠/恢复、View all 弹窗（原语级：Radix `data-state="open"` vs CSS 等 `data-open` + shell 缺定位，此前从未显示成功）。
+- ui-design.md §2.4 登记 5 个新 pk-btn modifier（pkchat-starter / projhero__action / projdesc-btn / projdesc-ai / projsection__action）。
+
+### 全量 review 修复（三区并行审计 → opus 修复）
+- **HIGH（数据损坏）**：新会话首发绑定固定模型时 `updateConversationModelSelection` 缺 `legacyProvider`，`activeProvider` 列被写成 profile id → 该会话后续模型/provider 解析全坏。`useInputSubmit.ts` 补传，`providerKindForProfile` 提为 `modelPickerData.ts` 共享导出（Composer 去重）。
+- 非响应式 strings：`MessageViewItem`/`DateSeparator`/`ToolCallSummary` 模块级缓存改回 `useChatStudioStrings()` hook。
+- popout confirm：`ProjectsSection` 删除确认从 module `document` 改 `ownerDocument.defaultView`（否则弹主窗口）。
+- receipt 诚实：`web_search` 只记 query → 从回答引用 URL 提取 source 进 `TurnExecutionReceipt`（provider 无结构化 source，`extractWebSourcesFromText` + 约束注释 + 新测试）。
+- RUN-05 闭环：项目 `## Instructions` 用户分节此前从未进 prompt → `ConvSummarySlot` + `context-memory.md` 三个 Handlebars `{{#if}}` 条件块接通（用户 Description/Instructions vs 系统 Summary 分离，压缩档保留指令）。
+- abort 判定：`ChatConversationRun` regex `/abort|cancelled/` 误判 provider 错误为用户取消 → 改结构化信号（`AbortError` name 优先，regex 仅 `\baborted\b` 兜底）。
+- 硬编码文案清零：Plans 菜单/NewPlanModal、ArtifactReceiptCard、AssistantBuilderModal、shell drawer/splitter/aria label 全迁 `chat-studio.json`（新增 `shell`/`assistantBuilder`/`projectPlans`/`artifactReceipt` group + `leftColumn` aria key）。
+- LOW：死 `'@'` 分支删除、`ChatProject` unused-import hack 删除、注释与代码对齐、`VAULT_SEARCH_TOP_K` → `core/constant.ts`。
+- 审计确认干净：SQLite DDL 幂等迁移（旧库安全）、popout remount 无泄漏、CSS token/scoping/!important 无重复无死选择器、config↔TS↔组件三方一致。
+
+### Legacy Home 移除（owner 要求"直接用新的"）
+- 删 `view-Home.tsx`；`ViewMode.HOME`/`setHome`/`openChatHome`（port+实现）全链路清零（grep 零残留）。
+- 初始态与 `reset()` 均落 `STANDALONE_CONVERSATION` + 默认 pending new-chat（`DEFAULT_PENDING_NEW_CHAT`）→ 打开 Chat Studio 直接是 greeting+Composer+starters 起始态；`setPendingConversation(null)` 死角回落默认态；`viewMode` 类型收窄非空。
+
+### 验证
+- `npm run build` 通过；`npm run test` 205/205；实机确认新开 Chat Studio 直落新 start state（无 legacy 2×2 卡片）。
+- **有意 defer**：raw `<button>` 面式替换、ViewAllPicker 内联样式、CSS 双 scoping 写法统一（外观债）、Instructions 的 UI 编辑入口（数据路径已通，编辑器是产品决策）、permission card（同上）。
+
+## 2026-07-18 · 全插件一致性专项(字体/颜色/token 治理)+ 规则入册
+
+**上下文**:owner 反馈"字体还是怪、一直存在"并要求全界面一致性 review + 修复 + 规则落 docs。三个 sonnet 并行审计(CSS 层/TSX token 绕过/排版逃逸口)→ 四个 opus 修复批次(文件集互不相交)→ 实机截图回归(含暗色)。全程未 commit,HEAD 仍 `b3c925bb`。
+
+### 根因级修复(字体"一直怪"的最终解释链)
+- **root pin 被级联反杀**:`tailwind.css` 自己的 `.pktw-root { font-family: var(--font-interface) }`(pre-token 时代遗留)在 bundle 中排在 obsidian-reset root pin 之后、同优先级后者胜——前一天的 pin 实际全程无效。删除该声明,root typography 单一真源收敛 obsidian-reset.css;bundle 级 grep 验证 `--font-interface` 仅剩 `.peak-serendipity-hint`(编辑器 gutter,故意)。
+- **死 @import**:`tailwind.css` 中段的 `@import codemirror.css` 位置非法被静默忽略(= 当初 orphan 的根因),删除;顶部 import 列表是唯一闸门,规则入册 §2.6。
+- **消息正文排版契约断裂**:streamdown shadow `:host` 显式 `--font-interface + 1rem` 拦断继承 → chat 正文/reasoning/insights/V2 报告等 6 个消费面全部 16px 界面字体。删 font-size、font-family 改 inherit,`.pkchat-msg__body` 的 `--pk-text-lg-plus`(14.5px)+ root pin 立即接管全部消费面。
+
+### 审计发现 → 修复批次(HIGH/MED 全清)
+- **批次1(机械字号)**:`pktw-text-[Npx]` 同值 447 处 → `pktw-text-pk-*` token 类(99 文件,零视觉变化);config 补 `pk-md-plus`/`pk-lg-plus`;离阶值(8/9/10.5/11.5/12.5/17/18/22)122 处登记豁免不动;ResultTreeView 暗色 accent 硬编码修复。
+- **批次2(逃逸口)**:ReactRenderer 源头双 class(`pktw-root`+`peak-design-root`,8 个受影响面尽职调查零误伤,顺带修好 ViewAllPicker 无样式 input);4 个零 scope 裸 Modal 补 `pktw-root`+token 兜底;MorningBriefingModal 迁 ReactRenderer;WikilinkHoverCard/Mermaid 全屏 portal 归轨 `portalHostForDocument`(popout 安全);injectBasesButton 双上下文变量修复。
+- **批次3(CSS 层)**:mermaid `g.thinking/.verified/...` 裸全局选择器(带 !important 泄漏全 vault)加 `[data-streamdown-root]` 限定;dashboard-charts `:where()` 特异性塌陷(§4.5 已知陷阱复发,分页/KPI 按钮生产塌陷)改 `:is()` + 删被遮蔽死 `.pk-btn` 家族;幽灵 token `--pk-text-on-accent`/`--pk-motion-base` 清零(→ `--pk-accent-fg`/`--pk-transition-*`);27 处错误兜底值删除;codemirror 蓝紫系 → `--pk-info`/新增 `--pk-accent-secondary`;tailwind.css 死 CSS 332 行删除。
+- **批次4(语义色+静态样式)**:裸调色板类 217 处 → 语义 token 类(red→error/green→success/amber→warning/blue→info/purple→accent/gray→foreground 族,暗色自动翻转=本批核心收益);裸 `[var(--pk-*)]` 类 91 处语义化;静态 inline style 全量转类(动态值保留);FieldRow 三胞胎提取共享组件;ContextMenu portal 改 `usePortalContainer()`;peak-components 例外登记表补齐;6 处 streamdown wrapper `pktw-text-sm`(原生 14px)→ `pktw-text-pk-lg`(同值显式化)。追加:HealthScoreEngine `scoreColorClass` 语义化。
+
+### 实机回归(computer-use 截图逐面看)
+- 亮色:消息正文 14.5px 密度对比明显、composer 实打字 sans、View all 输入框边框回归、Settings 全 tab(双 class 全量启用零误伤)、Quick Search、FieldRow 网格——全部通过。
+- 暗色:`app.changeTheme('obsidian')` 切换(原值 `system` 已还原)→ **全面正确翻转**。过程发现 computer-use MCP 截图对 popout 端陈旧帧(computedStyle 已暗、截图死活亮),原生 `screencapture` 对质定案;教训存 memory。
+- 未及:dashboard 分页按钮(History 无数据)、wikilink hover 卡触发条件(代码级已验,实机待下轮)。
+
+### 规则入册(docs/conventions/ui-design.md,9 处)
+§1.2 字号 token 类唯一性 + `pktw-text-sm`≠token 命名陷阱;§1.3 禁裸调色板/bracket-var/幽灵兜底 + Obsidian 兜底习语边界;§1.4 离阶豁免登记表;§1.5 例外表 +4 行;§1.6 streamdown"颜色独立、排版继承"契约;§2.6 @import 闸门 + bundle 为证;§4.1 root pin 单一声明纪律 + 当日复发回归档;§4.5 `:where()` 复发实例;§4.7 scope-class 契约表 + portal 铁律。
+
+### 验证
+- `npm run build` ✅;`npm run test` 205/205 ✅;终验 grep 六项全绿(interface-font 竞争者 0、调色板残留 0、同值任意字号 0、mermaid 泄漏 0、幽灵 token 0)。
+- tsc 既有噪声不变(审计确认 4 处 pre-existing 类型错误在未触碰行)。tree:193 M + 3 D + 36 ??,零 commit,owner 自审后提交。
+
+## 2026-07-19 · Chat Studio UI 全组件收口 + 生产组件画廊
+
+**上下文**：owner 要求把 Chat Studio 尚未完成的 UI 一次性收口，并允许用 mock 数据反复查看所有消息组件。实现的是生产组件驱动的 QA 会话，不是另建一套 HTML 样式，也不把 mock receipt 冒充成真实媒体生成能力。全程未 commit，并保留原有 dirty worktree。
+
+### 生产组件画廊
+
+- 新命令 `Peak Assistant: Chat Studio: Rebuild Component Gallery`：精确清理上一次带 `peak.chat-studio.component-gallery.v1` 标签的画廊，重建 `[QA] Chat Studio Component Gallery` 并打开 Chat Studio；不调用付费模型。
+- 同一会话覆盖用户附件、Markdown 表格、TypeScript / JSON / Bash、公式、Mermaid、Reasoning、Agent Run、五层 Diagnostic Trace、completed / failed / cancelled message，以及 image / video / audio / table / code / diagram / Base / document receipts 的 ready / saved / generating / needs-permission / failed 状态。
+- fixture 采用 `Rich → Agent → Media → States → Rich` 的非连续重复 topic，专门验证 Outline 严格倒序和“只聚合连续消息”；Resources 同时覆盖 Referenced / Generated、Audio / Music 与 Video。
+
+### 根因修复
+
+- `chat_message.topic` 与 `toolCalls` 原先未完整 round-trip，导致 reload 后 Outline 分组与 Agent Run 丢失；SQLite repo 现在持久化 topic 和 toolCalls，Vault ChatStore 从 `meta_json` 恢复工具调用。
+- 移除只弹 Notice、没有真实删除链路的假 Delete message action。
+- Streamdown 的 Shiki token 选择受系统 `prefers-color-scheme` 影响：在亮色 macOS + 深色 code shell 下会取 GitHub Light token，造成深字黑底。shadow host 明确消费 `--shiki-dark`，并保留 Settings 中五套主题即时切换。
+- 消息附件和 Composer 引用统一只显示 `displayName / basename`；完整路径仅保留在内部 source 和 hover help。Composer wikilink 破坏或删除时，配对 context shelf 同步移除。
+- Resources 增加 audio / video 独立 kind 与筛选；ready 的音视频 receipt 即使没有可播放 URI，也有诚实的 media placeholder。
+- `ChatResourceRef` 增加视觉用 `previewUri`；消息图片与 hover 优先使用已解析 preview，不再探测不存在的 mock Vault 路径。
+
+### 文档与实机验证
+
+- 新增 `docs/testing/chat-studio-component-gallery.md`，并从 `11-feature-chat-studio-ui-ux.html` 与能力测试清单双向链接；清单补画廊启动、audio/video Resources 和代码主题验收。
+- Obsidian 1.12.7 popout 实测：22 个 Outline items 严格按新到旧；18 个 Resources（Referenced / Generated 各 9）；`[[` 菜单位于 Composer 上方且键盘高亮可见；选择后正文与 shelf 只显示短文件名，编辑链接后 shelf 立即消失；验收草稿已清空。
+- 实测 Settings → Peak Assistant → Advanced → Message appearance 存在 GitHub Dark / One Dark Pro / Nord / Dracula / Vitesse Dark；画廊代码、表格、公式、Mermaid、Agent Run、Diagnostic Trace 和媒体 receipts 均在真实组件中渲染。
+- 整窗 `Reload app without saving` 暴露并修复 `UserProfileService.init()` 的 Vault 缓存 / 文件系统竞态：已有文件在缓存尚不可见时 `create()` 抛 `File already exists`，现在把该精确竞态视为幂等成功，其他错误仍上抛；新增 `user-profile-init-race` 正反测试。完整重启后插件正常注册命令，不重建 fixture 直接打开旧画廊，Outline topic 与 Agent Run 均从持久化数据恢复。
+
+### 验证
+
+- 定向测试：11 个 Chat Studio / code-theme 测试全部通过；新增 `user-profile-init-race` 通过。
+- `npm run test`：211 / 211 通过；`npm run build` 与 bundle syntax check 通过。仅有 Browserslist 数据过期提示，不影响构建。

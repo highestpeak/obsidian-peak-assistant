@@ -13,16 +13,33 @@ The current direction borrows Feishu Docs' block-level smoothness without copyin
 - Intelligence sidecar CSS: `/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/gstack/peak-composer-editing-view-2026-07-09/intelligence.css`
 - Intelligence component: `/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/gstack/peak-composer-editing-view-2026-07-09/intelligence-panel.js`
 - Lightweight Intelligence lab: `/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/gstack/peak-composer-editing-view-2026-07-09/intelligence-lab.html`
+- Intelligence lab CSS: `/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/gstack/peak-composer-editing-view-2026-07-09/intelligence-lab.css`
+- Intelligence lab state model: `/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/gstack/peak-composer-editing-view-2026-07-09/intelligence-lab.js`
+- Current Intelligence IA lab: `/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/gstack/peak-composer-editing-view-2026-07-09/intelligence-ia-lab.html`
+- Intelligence IA lab CSS / state / QA: `intelligence-ia-lab.css`, `intelligence-ia-lab.js`, `intelligence-ia-lab.qa.mjs`
+- Extracted lab graph surface: `vault-relation-graph.js`, `vault-relation-graph.css` (fixture renderer only; not the production React/Cytoscape shared surface)
+- Current graph/header previews: `preview-intelligence-ia-c-graph-parity.png`, `preview-intelligence-ia-c-session-header.png`
 - JS: `/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/gstack/peak-composer-editing-view-2026-07-09/mock.js`
 - Assets: `/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/gstack/peak-composer-editing-view-2026-07-09/assets`
 - Design spec: `/Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/superpowers/specs/2026-07-09-peak-composer-editing-view.md`
 - Intelligence sidecar contract: [`2026-07-15-composer-intelligence-sidecar-ui.md`](../../superpowers/specs/2026-07-15-composer-intelligence-sidecar-ui.md)
+- Copilot + Ambient workbench decision: [`copilot-ambient-consolidation-review-2026-07-17.md`](./copilot-ambient-consolidation-review-2026-07-17.md)
 - Block-AI preview screenshots (live mock, 2026-07-11 final): `preview-blockai-capsule.png`, `preview-blockai-combined.png`, `preview-blockai-input-morph.png`, `preview-blockai-inplace-diff.png`, `preview-blockai-rewrite-accepted.png`, `preview-blockai-insert-card.png`, `preview-blockai-formula-menu.png`
 - Other preview screenshots (regenerated 2026-07-11 against the current interaction model): `preview-overview.png`, `preview-interaction-insert.png`, `preview-ai-streaming.png`, `preview-ai-diff.png`, `preview-ai-menu.png`, `preview-ai-rollback.png`, `preview-formula.png`, `preview-table.png`, `preview-native.png`, `preview-atlas-links.png`, `preview-atlas-insights.png`, `preview-atlas-mermaid.png`, `preview-atlas-embed.png`, `preview-image-lightgallery.png`, `preview-image.png`, `preview-contextual-ai-actions.png`, `preview-comment-editor.png`, `preview-insert-under-block.png`, `preview-drag-reorder.png`, `preview-native-followup-content.png`
 
 Open `index.html` directly in a browser. No dev server is required.
 
-For Intelligence-only iteration, open `intelligence-lab.html` instead. It mounts the exact same panel component and behavior against seven representative Markdown blocks, keeping browser snapshots small. `?mode=copilot`, `?mode=ambient`, and `?mode=history` open a specific panel directly. Use the full `index.html` only for the final integration pass; the article itself is not virtualized, so cross-block text selection remains intact.
+For the current Intelligence-only IA exploration, open `intelligence-ia-lab.html`. It compares three navigation expressions over the same state machine and transaction data:
+
+- `?variant=adaptive&mode=copilot&stage=brief` — A, recommended adaptive Copilot opening on proactive suggestions;
+- `?variant=adaptive&stage=session` — a task-named collaboration session with the full Chat Studio-compatible composer;
+- `?variant=adaptive&stage=review` — transient multi-change review with previous/next document navigation;
+- `?variant=staged&stage=brief` — B, the explicit `建议 / 协作 / 审阅` comparison;
+- `?variant=hybrid&stage=brief` — C, the current fusion candidate: A-like quiet content plus a progressive `建议 / 进行中 / 待审` queue only while work exists;
+- `?variant=hybrid&stage=brief&fresh=1` — C at rest, where the queue stays hidden until a task begins;
+- `?mode=history` — accepted-write ledger and transaction modal.
+
+The older `intelligence-lab.html` remains an iteration archive for the v7 fixed `工作台 / 对话` experiment. Neither lab silently changes `intelligence-panel.js`, `intelligence.css`, or the large `index.html` mock. Merging a chosen direction remains an explicit owner decision.
 
 Design exploration: `ai-menu-variants.html` (+ `preview-ai-menu-variants.png`) compares four shapes for the block AI action menu (命令菜单 / Prompt-first / 极简动作条 / 主次分明); `ai-menu-mock.html` is the isolated iteration rig where the final block-AI interaction was tuned before folding it into the live mock. The older 2026-07-11 “insertion preview card” decision is retained below as history only; the current mock deliberately replaces it with real draft objects in the document flow.
 
@@ -39,20 +56,56 @@ The Excalidraw preview is rendered with `rough.js` from extracted real text node
 
 ## Interaction Model
 
-### Current canonical pass (2026-07-15)
+### Current Copilot lifecycle exploration (2026-07-18)
 
-This is the active interaction contract. It supersedes any older paragraph in this README that describes an additive result as a green explanatory card.
+This is an IA exploration, not yet the production baseline. All three variants keep only `Copilot / History` at the top and share the same proactive data, task session, `ProposedChangeSet`, composer contract, and accepted History transactions.
+
+2026-07-20 clarification: the earlier `Changes / Insights / Sources / Trace` vocabulary survives only inside one Copilot Run. These are not permanent product tabs. The same Copilot receipt shows the compact summary and key insight, then expands in place into a run artifact browser; accepted writes remain separate History transactions.
+
+| Variant | User-visible structure | Strength | Main risk |
+| --- | --- | --- | --- |
+| A · Adaptive Copilot (quiet reference) | proactive brief → task-named session → transient review; no permanent secondary tabs | feels like one collaborator and minimizes mode tax | back, task naming, and state restoration must stay unambiguous |
+| B · Explicit lifecycle | fixed `建议 / 协作 / 审阅` rail; composer only in 协作 | makes lifecycle stages easier to learn | adds navigation weight and can drift back toward a dashboard |
+| C · Progressive queues (fusion candidate) | starts like A; when work exists, a light `建议 / 进行中 / 待审` queue appears in one stable location | keeps A's quiet reading state while making B's destinations visible exactly when useful | counts must describe real queues, and the rail must not become an always-on stepper |
+
+Ambient is a system initiative and ranking runtime, conversation is the collaboration medium, the composer is an input primitive, and Review is a pending transaction state. They are not equal product tabs. C is the current fusion candidate; A and B remain reference extremes until owner review. No variant may restore an independent Ambient tab or use a different change/history model.
 
 - **One chrome grammar at two levels:** the left edge is only for press-and-hold drag. `在下方插入 / 评论 / AI 建议` live together in a block-tail row. Formula micro-cards reuse the same controls and can be press-dragged inside their formula group, so the parent formula group and each individual formula no longer invent different button counts or top-right shortcuts.
 - **AI generates real draft objects, not explanation cards:** additions appear at their real insertion point as a paragraph, heading/list, editable table, rendered KaTeX, or actual generated image. A reusable transaction footer carries generation status and `接受 / 丢弃`; accepted content becomes an ordinary editable block with its own controls.
 - **Object transforms are real, vertical review surfaces:** list/checklist reorder, list-to-table, formula split, and table transpose put the original object above and the proposed object below. This keeps wide tables and long formulas readable; accepting replaces the source object in place.
 - **Image generation has visible cost and progress:** “生成示意图 / 生成配图” first renders a timed planning/generation state, then reveals the real project-bound bitmap `assets/ai-knowledge-workflow-illustration.png`. The result remains unwritten until accepted and then uses the existing lightGallery viewer.
 - **Native objects are inspectable and incrementally editable:** Mermaid, JSON Canvas, and Excalidraw have `预览 / 源码 / 复制源码 / 复制图像` controls. The AI increment path modifies node/edge or element data in small timed steps and re-renders before an explicit accept or restore.
-- **The right dock has three explicit modes in one quiet shell:** `Copilot` is a bottom-composer conversation surface with automatic context; `Ambient` shows one Current Work State and one timely primary push while trace and weaker relations stay folded; `History` lists accepted transactions and opens a vertical source diff with locate and rollback. Copilot no longer asks the user to choose current block/section/document before every request.
+- **The right dock has two top-level surfaces:** `Copilot` follows a `brief → task session → transient review` lifecycle; `History` keeps a scannable accepted-transaction timeline and opens detail in a modal. Ambient remains an internal inference runtime, not a user-facing tab.
+- **Copilot separates live context from run context:** one system event in the conversation follows the active object, selection, nearby content and Ambient relations. Sending freezes that state into an immutable run snapshot; later editor focus changes affect only the next run and never rewrite the context of an in-flight or accepted transaction.
+- **Copilot messages have distinct jobs without becoming a card wall:** the thread demonstrates user instructions, AI replies, automatic recommendations, tool/context feedback, processing state and accepted-write receipts as flat timeline events. A user instruction carries an immutable inline quote of the selected text or target block, including its title and excerpt; clicking it locates the referenced document position. A new clue promoted into the active session is an ordinary recommendation message with a direct preview, inline expansion, ignore and `带入下一轮`; bringing it in only updates action/context chips and never auto-runs. The same clues must not reappear in a separate `session-clues` list or external detail panel.
+- **Every run leaves one expandable receipt, not four permanent result tabs:** the receipt updates in place with run status, target, duration and change / insight / source counts, plus at most one key insight in the Q&A flow. Expanding that same message reveals a run-local artifact browser where `Changes / Insights / Sources / Trace` switch in place and their entries are immediately visible. Long text expands inline; ordinary entries do not open a modal. Trace defaults folded and contains only verifiable actions, artifacts, validation and errors—never chain-of-thought. `Fast Lookup` remains runtime metadata rather than user-facing navigation. A wide explorer is reserved for relationship graphs and similarly spatial artifacts that cannot be understood in the narrow thread.
+- **Voice creates a draft, never a surprise run:** the microphone control lives in the bottom composer, shows requesting/listening/transcribing/error states, and inserts the transcript at the current draft position without auto-running a capability. The fixture proves the interaction only; production must choose an Obsidian/Electron transcription adapter and permission policy.
+- **The input shell follows one project-wide contract:** the lab maps its action/context chips and document run semantics onto the Chat Studio composer grammar—one focus-owning shell, shared `--pk-*` tokens, 14px editor inset, soft footer divider and common control states—without inheriting Chat-specific stores or submit runtime. See [`Prompt Input Consistency`](../../conventions/prompt-input-consistency.md).
+- **Capabilities stay next to the task-session composer:** quick actions, `全部能力`, voice and the input shell are absent from brief and review. `全部能力` stays at the recommendation row's right edge and opens a searchable picker. Choosing a capability creates an action chip; text, link, link-graph and concurrent-note commands create context chips. Running produces a `ProposedChangeSet` instead of result cards in the thread.
+- **Copilot defaults to one proactive brief:** `接下来可能要做 / 相关材料 / 还没安放的想法` render as vertically stacked, long-list sections in one scroll. Selecting an item or supplying an intent enters a task-named session without auto-running. A run with pending patches enters Review, where `改动 N / Total` and previous/next synchronize with editor-local previews. Brief refresh updates the snapshot in place and never appends chat messages.
+- **Live generation and review stay on the document:** as a run streams, rewrite candidates, insertions, transforms and native patches render at their real anchors. Once a candidate is reviewable, `上一处 / 下一处 / 接受 / 拒绝` operate on those anchored previews; an incomplete streaming candidate cannot be accepted. The sidecar carries status, navigation and explanation rather than a duplicate result card.
+- **Related materials use a two-level evidence graph:** brief shows a restrained local projection containing the current block and its strongest source neighbours, with one flat selected-source detail row. `打开完整图` opens a wide explorer whose `星群 / 流 ↓ / 流 → / 文件夹 / 环绕` presets, Orbit-to-Semantic rule, reference/semantic edge grammar, wheel/pointer viewport, fit, Mermaid export and PNG export now correspond to Vault Search Graph. Selection survives the compact/explorer transition; `查看来源` and `带入协作` remain host actions and neither writes to the document. The lab graph is extracted from the sidecar state file so the interaction can be tested independently, but its static fixture coordinates must never become production graph data.
+- **The sidecar header is centered chrome, not a badge card:** `Intelligence / 正在跟随正文` is geometrically centered in the panel; the spark is an unboxed 18px mark and the close action remains edge-aligned. Session/review leading icons keep their hit area without a permanent square border, and task title/action tops share one alignment axis.
+- **History is a dated authorship-aware ledger:** rows are grouped by day and distinguish `你直接编辑`, `AI 辅助 · 你已接受`, `AI 后调整`, and `系统回滚`. Selecting a row opens a transaction modal. Its default view marks additions and deletions in place in one source-ordered context; `Before / After` shows the complete snapshots. Unsafe old rollback is withheld when later edits make direct inversion destructive.
+- **Run records and History link without collapsing into one store:** every accepted change creates its own addressable transaction, even when several transactions are visually grouped by one run/change set. The run record behind the message browser keeps `acceptedTransactionIds`; History keeps the originating run/change IDs, so navigation works in both directions and returns to the originating receipt. Rejected candidates, Sources, Insights and Trace never enter History.
+- **Sensing is separate from execution:** `off / smart / continuous` only controls proactive snapshot refresh. Auto-run is an independent, default-off policy; even when enabled it may only produce read-only analysis or pending candidates. No sensing or auto-run mode may auto-accept or write Markdown/native source.
 - **Responsive behavior is a sidecar, never document content:** above `1180px` Intelligence occupies the stable right column; below it the same surface is a fixed right-side drawer with its own close action, bounded height, and off-canvas closed state. It never falls below the Markdown article or expands the page width.
 - **History boundary:** the mock demonstrates in-session rollback and a Git-compatible history surface. Production should persist accepted patches in Git when present, or in a vault-local review log when Git is unavailable; the Markdown/native file remains the authoritative content.
 
 The per-type operation contract is maintained separately in [`Composer Block AI Capability Contract`](../../superpowers/specs/2026-07-15-composer-block-ai-capability-contract.md). It distinguishes fixed block tools, evidence-triggered Copilot Review suggestions, and incremental native-object generation.
+
+### Vault Graph reuse boundary
+
+The lab now proves the graph interaction as an independently mounted surface, but it does **not** prove production component reuse yet.
+
+| Layer | Current status | Boundary |
+| --- | --- | --- |
+| `src/service/search/graph/resultSubgraph.ts` | implemented and tested | structural Vault graph data contract |
+| `ResultGraphView.tsx` | implemented, but bound to Vault Search store/context | extract its controlled canvas/layout core; do not import the search host into Composer |
+| `vault-relation-graph.js` | interactive lab fixture | validates preset/semantic/selection/export behavior only; hard-coded nodes/coordinates never ship |
+| Composer graph adapter + shared controlled surface | production target, not implemented | one app-owned immutable snapshot feeds compact and explorer projections |
+
+Production reuse means stable node/edge IDs, locked edge kinds, the five preset grammar and one renderer/layout implementation. Vault Search keeps search/store/hub-navigation actions; Composer keeps source inspection, context-chip assembly and task-session actions. `MultiLensGraph` is a different AI-analysis graph domain and is not the source contract for this surface.
 
 The mock intentionally removes the old top insert/image/table/native command cluster and the earlier proof-like labels such as "real attachment" or "plain Markdown table." The top strip is only a quiet view/source status area. The useful actions now live where the user works:
 
@@ -60,16 +113,16 @@ The mock intentionally removes the old top insert/image/table/native command clu
 
 - The entire document paper is now **one editing host**, not a collection of nested `contenteditable` islands. Text can be selected from a title through paragraphs, lists, quotes, callouts, and back again; buttons, object toolbars, inputs, and generated review UI are explicitly non-editable chrome.
 - A non-collapsed selection opens a compact floating text toolbar: **评论 / 润色 / 精简 / 扩写 / 问 AI**. It states whether the selection spans several blocks. Cross-block AI is deliberately additive: it creates a reviewable patch at the selection end instead of silently replacing multiple Markdown ranges. A comment is attached with the same multi-block scope.
-- Editing a text block marks its local AI hint as refreshing, then re-runs the type-and-signal rule against current rendered text. The original Markdown source shown in Ambient remains untouched until an explicit writeback action.
+- Editing a text block marks its local AI hint as refreshing, then re-runs the type-and-signal rule against current rendered text. Markdown shown in a source preview or Copilot projection remains untouched until an explicit writeback action.
 - Object tools remain local and hover-only. The table toolbar now sits in the gap above the table rather than over its header. Native filenames and source paths are hidden in reading state and are revealed by the focused block's **展开源格式** action.
-- Visual noise is reduced: the document is a flatter reading canvas, the type scale is normalized, hover is a subtle left-edge/focus treatment, and the accepted-patch marker moves to Ambient history rather than remaining in the body forever.
+- Visual noise is reduced: the document is a flatter reading canvas, the type scale is normalized, hover is a subtle left-edge/focus treatment, and accepted patches move to History rather than leaving permanent body markers.
 - Status badges are no longer absolutely positioned over prose. Claim / Evidence / Decision / issue state lives in a dedicated row at the start of its own block; `AI 建议 · N` has a separate block-tail hover row, with a stable hit target so it can be reached and clicked.
 - AI output has a third, object-aware branch in addition to prose rewrite and additive insertion: **Frontmatter** changes values/tags in place with red/green review states; **lists** insert or reorder real bullets in place; **formula cards** render old-versus-new LaTeX and accept into the same formula card. Formula explanation is an arrowed symbol map rather than a dense paragraph; formula extraction from prose renders a candidate KaTeX block.
 
 - every document block exposes one quiet left-side affordance on hover: the press-and-hold drag handle. Insertion, comments, and contextual AI share one reachable tail row below the selected block; source detail stays in the compact bottom strip;
-- **focus is click/edit-based, not hover-based**: hover only reveals local affordances; the Ambient "当前块" and the bottom source strip update when the user clicks a block, edits its content, or uses one of its controls, so panel actions always target the block the user actually interacted with;
+- **focus is click/edit-based, not hover-based**: hover only reveals local affordances; the Copilot workbench scope and the bottom source strip update when the user clicks a block, edits its content, or uses one of its controls, so panel actions always target the block the user actually interacted with;
 - left-side block controls now have a wider invisible hover corridor, so moving from the text block to the control rail does not collapse the toolbar;
-- the frontmatter metadata block has no move/remove controls and refuses drag, because frontmatter must stay unique and at the top of the file; insertion remains local while comments and AI remain available through selection, block suggestions, and Ambient;
+- the frontmatter metadata block has no move/remove controls and refuses drag, because frontmatter must stay unique and at the top of the file; insertion remains local while comments and AI remain available through selection, block suggestions, and the Copilot workbench;
 - left-side controls have a generous leave delay, so they remain reachable while the pointer travels from prose to the rail. The move handle remains press-and-hold drag only; it does not open a movement-command popover. Dragging near the top/bottom of the viewport auto-scrolls the document, and the AI hint pill / object toolbars hide while a drag is active;
 - the block-tail `在下方插入` action is the only insert toggle. One click opens an inline insert strip under the current block for paragraph, heading, list, quote, callout, formula, image, table, Base, Canvas, Excalidraw, and one AI draft action; a second click closes it. Choosing a type now creates a real editable draft object with the corresponding Markdown/native embed seed instead of only showing a toast;
 - **no floating overlay tray**: hovering a block reveals a compact "AI 建议 · N" pill in the inter-block gap. It is not permanently active and it remains visible long enough to be reached. Clicking it opens an **in-flow block AI menu below the block** that pushes content instead of overlapping it;
@@ -85,7 +138,7 @@ The mock intentionally removes the old top insert/image/table/native command clu
   - **rewrite** (润色改写 / 改短标题 / 扩写原则 / 改 Callout 类型, and custom instructions on a text block) streams the candidate **in place onto the paragraph itself**, then renders a real **word-level diff on the prose** — deleted words struck red, inserted words highlighted green, right where the text lives (Notion / Google-Docs style, not a line-by-line code diff) — with a `−N +N` change count and an 接受 / 还原 / 重试 review bar. 接受 writes the text and drops the diff marks; 还原 restores the original;
   - **insert** (提出追问 / 转成表格 / 公式解释 / 链接卡 / Copilot 补一段, and anything on an object block) streams into a **green "新增 · 生成到块下方" preview card** below the block, with 接受写入 / 重试 / 丢弃. It never touches the original text, because the output is additive;
   - both are persistent (dismissed only by their own buttons, Esc, or a newer AI task — not by hover) and both stay unwritten until accepted;
-- accepting a patch adds an entry to the Ambient "最近 AI 写入" rollback trail, where each entry has a one-click 回滚; reading state does not keep a permanent "AI patch" label on the prose;
+- accepting a patch adds an entry to the History transaction ledger, where each entry can be located, reviewed and rolled back; reading state does not keep a permanent "AI patch" label on the prose;
 - comments are real inline editors. A comment can be typed, saved, and attached to the current block as Copilot context. Like insert and AI surfaces, one click opens it and the next click closes it; hover never closes it;
 - checklist text is editable in place separately from the checkbox state;
 - formula cards have their own micro block controls, and a micro AI card opens **inside the formula card it explains**, not at the bottom of the whole math section;
@@ -93,7 +146,7 @@ The mock intentionally removes the old top insert/image/table/native command clu
 - the table block has a **cell selection model**: clicking a cell marks it current; Tab/Enter move between cells; 排序 actually sorts by the current column, 对齐 cycles alignment on the current column, and "- 行" deletes the selected row (falling back to the last row). Format/formula/transpose/CSV remain narrated previews. The toolbar floats above the table without covering the header row;
 - Base, Canvas, and Excalidraw blocks each appear as full-width vertical document blocks; their AI buttons (生成周报 / 总结节点 / 提取流程) open suggestion cards under the same label as the button;
 - Esc closes the topmost open surface in order: selection toolbar / selection review → link popover → draft block → AI input (collapse back to pills) → AI menu → insert strip → insight panel → comment editor → rewrite-review / insert card → lightGallery;
-- Intelligence follows the focused block. Copilot owns conversational edits, Ambient owns inferred work state and related knowledge, and History owns accepted transactions and rollback. On narrow widths the dock remains available as a right-side drawer rather than disappearing.
+- Intelligence follows the focused block. Copilot owns the user-visible workbench, conversation and execution; Ambient runtime supplies inferred work state, related knowledge and ranking behind that workbench; History owns accepted transactions and rollback. On narrow widths the dock remains available as a right-side drawer rather than disappearing.
 
 ## Block AI Interaction (2026-07-11 final)
 
@@ -121,7 +174,7 @@ This is the record of the multi-round block-AI design discussion and the decisio
 
 - Notion AI: inline AI can be invoked by highlighting text or using AI blocks; generated edits can be accepted, discarded, or retried, and AI blocks can use page/workspace context.
 - Feishu Docs: documents are treated as block-managed content; AI QuickView and AI-backed comments emphasize staying inside the document context instead of moving the user to a separate chat surface.
-- Composer adaptation: AI is exposed as contextual block actions, not a permanent page-level toolbar. Ambient remains the persistent context panel, while the most likely actions appear beside the hovered block.
+- Composer adaptation: AI is exposed as contextual block actions, not a permanent page-level toolbar. Copilot keeps a full editing workbench as its default body, while the most likely actions also appear beside the focused block and, after entering conversation, in the quick-capability row above the composer.
 
 ## AI Suggestion Rules
 
@@ -150,7 +203,7 @@ The mock now treats AI chips as contextual suggestions, not a fixed command grou
 - Feishu-style block editing is a reference, but fake collaboration chrome is out.
 - Atlas Panel owns outline/search/gallery/comment navigation, so Composer does not duplicate those columns.
 - Text formatting stays in Markdown syntax, native shortcuts, and Obsidian behavior.
-- Rich object controls are attached to the hovered block/object, with Ambient remembering the last interacted block without leaving a permanent active outline in the document.
+- Rich object controls are attached to the hovered block/object, with the Intelligence focus projection remembering the last interacted block without leaving a permanent active outline in the document.
 - Formulas should render as formulas while preserving original Markdown/LaTeX source.
 - Obsidian-native assets appear as first-class vertical blocks: Base, Canvas, Excalidraw, and attachments.
 - Native assets stay in their original file formats; Peak only owns the rendering shell, adapter entry points, review controls, and rollback path.
@@ -201,18 +254,66 @@ Called out so a reviewer does not mistake absence for a decision:
 
 ## Verification
 
-Checked on 2026-07-15 for the rebuilt Intelligence sidecar:
+Checked on 2026-07-20 for the independent Intelligence IA lab:
 
-- Playwright Chromium at `1500x1040`, `962x998`, and `390x844`; Copilot, Ambient, and History all render and switch with zero console errors.
-- At `962x998` and `390x844`, the open panel is `position: fixed` on the right; closing moves its full bounding box beyond the viewport and reopening restores it without page-width overflow.
-- Copilot contextual starter -> populated prompt -> generated transaction summary was exercised at `390x844`; the bottom composer remains reachable and the result scrolls inside the panel.
-- Ambient renders one primary push plus folded relations/trace; History renders a vertical timeline and vertical before/after Markdown diff.
+- `node --check intelligence-ia-lab.js`, `node --check vault-relation-graph.js`, and `node --check intelligence-ia-lab.qa.mjs` pass; the browser QA completes with zero console errors.
+- The QA matrix covers adaptive brief/session/review, History, staged brief/session/review, progressive-queue active/session/review/fresh states, the local/expanded related-material graph, and narrow review/graph drawers.
+- Brief has no full composer. Session preserves the project PromptInput contract: the textarea has no inner border/outline, the shell owns the focus ring, and horizontal input padding is `14px`.
+- `全部能力` opens the searchable capability registry; a selection becomes an action chip and does not auto-run. Voice writes only an editable draft.
+- Review starts at `改动 2 / 8`; previous/next changes the editor anchor, the highlight follows the target block rather than the whole paper, and accepting a change creates a History transaction.
+- Compact/explorer graph revision and node identity continuity are asserted. All five Vault presets, Orbit/Semantic coupling, reference/semantic edge filtering, folder groups, fit/zoom, Mermaid/PNG export, hover neighbourhood, Escape/focus restoration, modal width and narrow inspector stacking are exercised.
+- Header geometry is asserted: title group center delta is `0px`, the spark has transparent background and `0px` border, and session title/back/action top deltas are `0px`.
+- At narrow width, Intelligence remains a fixed right-side drawer. It never drops below or widens the document.
+- Visual QA deliberately emits only `preview-intelligence-ia-c-session-header.png` and `preview-intelligence-ia-c-graph-parity.png`; other states are DOM/behavior assertions to keep iteration fast.
+- Not yet verified: a production Composer adapter over `ResultSubgraphOutput`, a shared controlled React/Cytoscape surface, or real Quick Search/Composer use of the same component. The current extraction is lab-only proof.
+
+### Archived v7 fixed-rail verification
+
+The following record is retained as historical evidence for `intelligence-lab.html`; it is not the current navigation baseline:
+
+- `node --check intelligence-lab.js`; HTML IDs are unique, exactly two `[data-mode]` tabs exist, the v6 shelf state/events are absent, CSS braces balance, and `git diff --check` is clean for the lab/docs files.
+- Playwright Chromium at `900x998` and `390x844` completed with zero console errors and no horizontal page overflow.
+- Copilot opens in `workbench`: all three sections are present in one body scroll, with `38 / 37 / 19` initial totals and `2 / 3 / 1` visible summary rows. Quick capabilities, picker and composer are absent from the visible workbench.
+- `工作台 / 对话` stays at the same `419×39px` rail position across both bodies. Pointer and ArrowLeft/ArrowRight switching update selection and URL; conversation alone reveals quick capabilities and composer.
+- A workbench refresh kept the body in workbench, changed the queue from `94` to `98`, left the hidden conversation at four thread events, and reported `+7 新线索 · 3 条已归档` instead of creating a chat message.
+- Choosing `Base 使用判断.md` switched to conversation, added the `补上依据` action chip, a concrete `相关材料 · Base 使用判断` context chip and editable draft, while keeping the thread at four events and not starting a run.
+- History hides all Copilot mounts and renders nine transactions across five date groups. Its modal diff/rollback fixture remains unchanged from the verified v5 transaction model.
+- At `390x844`, Intelligence remains a `fixed` full-width right drawer. Workbench uses the full body without an input dock; conversation pins the composer to the viewport bottom.
+- `output/playwright/intelligence-v7-copilot-workbench.png` predates the fixed secondary rail and is archived interaction evidence, not the current visual baseline. This correction was verified through DOM geometry and interaction state without producing another screenshot.
+
+## Next Intelligence Lab Handoff
+
+The IA lab remains the current review surface, with C as the fusion candidate and A/B retained as boundary references; no variant is the production baseline yet. The v7 fixed rail and v6 fixed shelf are archived evidence only. The large mock remains intentionally unchanged. Porting a selected shell into `intelligence-panel.js` / `intelligence.css` requires an explicit merge decision; when that happens, wire `mock.js` to the active block, Ambient brief snapshot, task-session controller, `ProposedChangeSet`, and editor transaction adapter rather than copying fixture timers, fixed counts, or in-memory state. Preserve these boundaries during the eventual merge:
+
+- keep all 17 capability IDs distinct and keep the picker next to the bottom composer;
+- separate the live-context projection from the immutable run snapshot, and bind accepted History transactions to that snapshot;
+- preserve the event-kind model instead of flattening context, user prompts, AI replies, recommendations, and action receipts into one generic chat bubble;
+- project an automatically discovered clue for the active session as one stable recommendation message item with inline preview/expand, ignore and `带入下一轮`; update that item in place as evidence changes, and never build a parallel session-clues list, shelf or external detail panel;
+- implement microphone capture behind a production adapter with explicit permission, cancellation, transcript review, and draft-only semantics; do not make Web Speech or the lab timer the source of truth;
+- keep `全部能力` fixed at the recommendation row's right edge;
+- keep results and progress in the document; the sidecar carries intent, context, status, and receipts;
+- keep Ambient inference separate from Copilot execution and accepted History, while projecting its latest snapshot into the Copilot brief;
+- keep `Changes / Insights / Sources / Trace` scoped to one stable run ID; make the same receipt expand into an in-message artifact browser with category switching, visible rows and inline long-content disclosure. Ordinary artifacts never open a modal; only relationship graphs and similarly spatial content may use an explicit wide view. Trace stays redacted to verifiable actions/artifacts, and `Fast Lookup` remains runtime metadata;
+- preserve brief/session/review state independently, including snapshot, draft, chips, thread, active change, and scroll position; background refresh never forces a stage change;
+- render `接下来可能要做 / 相关材料 / 还没安放的想法` in one brief scroll, with stable IDs and long-list windowing rather than category tabs or nested scrollers;
+- build one app-owned Composer graph snapshot adapter over `ResultSubgraphOutput`; a refresh builds once, and compact/explorer consume the same immutable revision and stable node IDs;
+- extract a neutral controlled graph surface from the store-bound `ResultGraphView` so Quick Search and Composer share element projection, the five presets, Semantic filtering, Cytoscape lifecycle and fit/zoom instead of copying them;
+- keep Vault Search toolbar/store/hub navigation in its host and Composer `查看来源 / 带入协作` in the Composer host; resolve the current `hub_constituent` render/isolation discrepancy before locking shared acceptance tests;
+- implement one source-ordered `ProposedChangeSet` navigator synchronized with editor-local review surfaces, with stale-target checks and batch-aware History grouping;
+- stream every candidate at its real document anchor and make previous/next/accept/reject operate on those anchored previews; do not render a duplicate sidecar result list;
+- keep Run records and History as separate stores with bidirectional run/change/transaction links; every accepted change remains an independently locatable and rollbackable transaction, while rejected and non-writing run artifacts stay out of History. Returning from History must focus and expand the originating receipt, not open a generic Run detail modal;
+- implement sensing `off / smart / continuous` independently from auto-run and enforce a runtime guard that no mode can auto-accept or write;
+- do not port the obsolete fixed `工作台 / 对话` rail; the full composer belongs only to the task session and must retain its draft/chips/caret when the user leaves and returns;
+- port the date-grouped, origin-aware transaction timeline and modal whose default is source-ordered in-place changes and whose alternate view is `Before / After`;
+- make rollback append-only, source-range aware, and guarded by a current-content conflict check, with Markdown/native files remaining authoritative;
+- capture direct editor transactions as first-class History entries instead of inferring every accepted write came from AI;
+- retain a stable right column above `1180px` and a closable fixed right drawer below it.
 
 Checked on 2026-07-14 (current consolidation pass; the earlier 2026-07-11 browser run covered the block-AI result model):
 
 - `node --check mock.js`
 - required Intelligence/source-strip DOM IDs are unique and present; CSS brace balance is zero
-- the stale four-tab sidebar API is absent; the active API is `Copilot / Ambient + History`
+- the stale four-tab sidebar API is absent in the older full `index.html` mock, which still exposes its pre-consolidation `Copilot / Ambient + History` shell; this is not the v6 lab target
 - insert-menu choices create real editable draft blocks; formula micro-blocks participate in pointer drag reorder
 - Playwright Chromium at `1500x1040`, no `pageerror` / console errors during the scripted interaction run
 - real image asset loads; vendored `lightGallery`, `lg-thumbnail`, `lg-zoom`, and `lazysizes` load from `file://`
@@ -220,11 +321,11 @@ Checked on 2026-07-14 (current consolidation pass; the earlier 2026-07-11 browse
 - contextual AI quick actions are generated for all 39 document blocks (32 original + 7 Atlas-coverage additions); hovering shows only the "AI 建议 · N" pill in the inter-block gap (no overlay covers neighboring content), and every chip shows an evidence-citing trigger reason in the AI menu and card (`preview-contextual-ai-actions.png`)
 - every Atlas-filterable kind is present and AI-hoverable: vault/external link paragraphs, footnote, embed, PDF attachment, mermaid (rendered by local `mermaid.min.js`), 6 insight micro cards with provenance, and 4 clickable issue pills (`preview-atlas-links.png`, `preview-atlas-insights.png`, `preview-atlas-mermaid.png`, `preview-atlas-embed.png`)
 - issue pills open fix suggestion cards: stale link → 修复失效链接（改链候选）、unresolved anchor → 重定位锚点、missing source → 补来源、metadata warning → 规范属性
-- rewrite chips stream in place then render a word-level diff (red del / green ins) with a `−N +N` count and 接受 / 还原 / 重试; 接受 writes the text and records an Ambient rollback entry without leaving a permanent body pill (`preview-blockai-inplace-diff.png`, `preview-blockai-rewrite-accepted.png`)
+- rewrite chips stream in place then render a word-level diff (red del / green ins) with a `−N +N` count and 接受 / 还原 / 重试; 接受 writes the text and creates a History transaction without leaving a permanent body pill (`preview-blockai-inplace-diff.png`, `preview-blockai-rewrite-accepted.png`)
 - additive chips (and Copilot 生成) stream into a green "新增 · 生成到块下方" preview card with 接受写入 / 重试 / 丢弃, leaving the original text untouched (`preview-blockai-insert-card.png`)
 - both result surfaces survive hovering other blocks; each closes only via its own buttons, Esc, or replacement by a new AI task
 - the inter-block `AI 建议 · N` pill opens the capsule menu; the pills collapse into a one-line input when 指令 is clicked, and blocks with a Copilot suggestion show the combined card (`preview-blockai-capsule.png`, `preview-blockai-input-morph.png`, `preview-blockai-combined.png`)
-- Intelligence 当前块 follows click/edit focus, not hover; Copilot and Ambient actions act on the focused block
+- Intelligence 当前块 follows click/edit focus, not hover; Copilot actions and projection suggestions act on the focused block
 - every formula micro-card has its own capsule menu, and its insert card opens inside the formula card it explains (`preview-formula.png`, `preview-blockai-formula-menu.png`)
 - table cell click sets the current cell; Tab/Enter move between cells; sort/align/row-delete act on the current column/row (`preview-table.png`)
 - image 标注 toggles a non-destructive overlay pin and no longer opens the block comment editor
@@ -233,7 +334,7 @@ Checked on 2026-07-14 (current consolidation pass; the earlier 2026-07-11 browse
 - toast feedback moved to the bottom-right corner so it no longer covers the reading column
 - inline insert strip appears under the selected block, now with explicit Base/Canvas/Excalidraw entries
 - comment input can be typed, saved to the block, and persists across hover
-- continuous-canvas pass: one root editing host, a five-action cross-block selection toolbar, explicit non-editable UI chrome, on-demand source detail, and a narrow-screen Ambient drawer. This pass was statically checked with `node --check`, a single-host assertion, and CSS brace validation; refresh the already-open mock to exercise the browser-level selection path.
+- continuous-canvas pass: one root editing host, a five-action cross-block selection toolbar, explicit non-editable UI chrome, on-demand source detail, and a narrow-screen Intelligence drawer. This pass was statically checked with `node --check`, a single-host assertion, and CSS brace validation; refresh the already-open mock to exercise the browser-level selection path.
 - Esc closes AI menu → insert strip → comment editor → suggestion card → lightGallery in that order
 - table hover toolbar does not cover the table header
 - all preview screenshots regenerated from the current build (the previous 07-09 set showed the removed permanent AI strips)

@@ -59,6 +59,7 @@ Four-layer architecture: `app/` → `service/` → `core/` → `ui/`
 Detailed conventions live in `docs/conventions/`. Read `docs/conventions/README.md` for the index and how to add new rules. Each pointer below is intentionally one line — open the linked file for the rule itself.
 
 - **UI design system** — tokens, primitive catalog, primitive usage decisions, Obsidian CSS defense, JSX-mock fidelity. One file, 5 sections, section-anchored. [`ui-design.md`](./docs/conventions/ui-design.md)
+- **Prompt input consistency** — Chat Studio、Composer sidecar 与未来输入面共享 PromptInput 内核、trigger/keyboard grammar 和单层 focus owner；各自 runtime/state 保持隔离。[`prompt-input-consistency.md`](./docs/conventions/prompt-input-consistency.md)
 - **Configurability** — no inline i18n / regex / label maps / color, thresholds, weights, timing knobs, or style configs; route through `templates/config/` plus a documented domain fallback when needed. [`configurability.md`](./docs/conventions/configurability.md)
 - **Root docs** — final-state `docs/*.html` manuals, not work logs; status language, dense tables, long paths, Mermaid, formulas, and viewport QA rules. [`root-docs.md`](./docs/conventions/root-docs.md)
 - **Spec + tests one doc** — spec 与 acceptance criteria / test 文件清单 / bad-case 复现写在同一份 `docs/superpowers/specs/*.md`，不拆到 `test-plan.md` / `qa.md`。[`spec-and-tests.md`](./docs/conventions/spec-and-tests.md)

@@ -54,6 +54,8 @@ Spec: `docs/superpowers/specs/2026-05-22-design-system-migration.md`. Visual con
 </div>
 ```
 
+**Font sizes: only the `pk-*` fontSize utilities are token classes** — `pktw-text-pk-xs`(10) `pk-sm`(11) `pk-base`(12) `pk-md`(13) `pk-md-plus`(13.5) `pk-lg`(14) `pk-lg-plus`(14.5) `pk-xl`(16) `pk-2xl`(20) `pk-3xl`(28). Tailwind's native `pktw-text-xs/sm/base/lg/xl/…` classes also exist but are **rem-based Tailwind defaults** (`text-sm` = 0.875rem = 14px, `text-xs` = 12px), NOT pk tokens — the names look token-ish but belong to a different scale that additionally stretches with the root font size. Never use a native size class to express a design-system size, and never write `pktw-text-[13px]` for a value that exists on the ladder (the 2026-07-18 sweep converted 447 such uses).
+
 **Use `var(--pk-*)` directly when Tailwind is awkward** (inline styles, dynamic computed values, CSS-in-JS):
 
 ```tsx
@@ -80,7 +82,23 @@ color: var(--pk-text-primary, var(--text-normal, #2e3338));
 
 // ❌ component-local tokens — this is how --vr-* / --accent etc. happened
 .my-modal { --my-modal-accent: #abc; }
+
+// ❌ raw Tailwind palette classes — frozen hex, never flips with .theme-dark
+<span className="pktw-text-red-500 pktw-bg-gray-100" />
+// → pktw-text-pk-error / pktw-bg-pk-surface-sunken (map by SEMANTIC role:
+//   red→error, green/emerald→success, amber/yellow→warning, blue→info,
+//   purple/violet→accent, gray→foreground-muted/-faint or surface/border)
+
+// ❌ bracket-var when a semantic utility exists — invisible to grep, invites drift
+<span className="pktw-text-[var(--pk-text-secondary)]" />  // → pktw-text-pk-text-secondary
+
+// ❌ ghost-token fallback — the token was never defined, the fallback silently
+//    becomes the permanent value and dark mode never flips
+color: var(--pk-text-on-accent, #ffffff);   /* no such token; wanted --pk-accent-fg */
+transition: var(--pk-motion-base, 240ms);   /* no such token; wanted --pk-transition-slow */
 ```
+
+The `var(--pk-x, var(--obsidian-y))` two-step fallback is permitted **only** for rules that can genuinely apply outside `.pktw-root`/`.peak-design-root` scope (CodeMirror tooltips mounted in Obsidian's editor DOM, style that runs before scope classes attach). Inside scoped surfaces, write the bare token — a fallback there is dead code that eventually lies (dashboard-charts shipped 27 wrong fallback values that would have applied silently if the scope ever changed).
 
 ### 1.4 Token reference
 
@@ -100,6 +118,16 @@ color: var(--pk-text-primary, var(--text-normal, #2e3338));
 - `--pk-text-lg-plus` (14.5px) — chat message body, conversation header title
 
 Prefer the base scale; reach for half-steps only when the mock genuinely needs them.
+
+**Off-ladder registry (2026-07-18)** — sizes that ship in current UI but are deliberately NOT on the ladder. Don't add new ones; converging these needs a design pass (candidate tokens: `pk-2xs` ~8-9px micro-badges, `pk-title` 17-18px panel titles, `pk-stat` 22px numerals):
+
+| Size | Where | Role |
+|---|---|---|
+| 8px / 9px (~42 uses) | copilot panels (`WritingPlanPanel`, `TagSuggestionPanel`, `SuggestionBodyParts`, …) | micro uppercase category badges |
+| 9.5 / 10.5 / 11.5 / 12.5px (~77 uses) | `VaultAutoRunContent`, `file-atlas.css`, quick-search | dense data tables / mock-exact half-steps |
+| 15px | `.pk-modal-shell__title` | modal title between lg/xl |
+| 17px / 18px | `PickerReadinessCard`, `VaultAutoRunContent`, `CopilotReviewHistoryContent`, `.pkonb-section__title`, `.pkset-head__title` | panel-level titles |
+| 22px | `VaultAutoRunContent` stats, `.pkonb-hero__title` | large stat numerals / hero |
 
 **Provider brand hues — `--pk-prov-*`**: each provider has a `base` (hex) and `-soft` (rgba ~0.18 light / ~0.22 dark) variant. Same hex in light + dark; only `-soft` alpha bumps in dark.
 
@@ -129,12 +157,18 @@ Prefer the base scale; reach for half-steps only when the mock genuinely needs t
 | Mermaid status colors | `streamdown.css` | Inside shadow DOM, status-encoded |
 | Tooltip black | `ControlSettingItem.tsx` | Intentional `#000` for high-contrast hover tooltip |
 | Animation gradient stops | `AnimatedSparkles.tsx` | Decorative gradient, status-encoded |
+| Provider icon gradients | `ProviderIcon.tsx` `ICON_GRADIENTS` | duplicate truth vs `--pk-prov-*` — pending design decision which set wins; do NOT merge silently |
+| File Atlas type/badge palette | `file-atlas.css` | replication-mode mock-exact; known gap: no `.theme-dark` branch |
+| Toggle knob white + URL-thumb gradient | `peak-components.css` (registered in its file-header exception list) | knob is white in both themes; thumb gradient is decorative |
+| Result graph palette | `ResultGraphView.tsx` cytoscape stylesheet | third-party canvas renderer can't consume CSS custom properties |
 
 When adding to this list, document the reason inline (one-line comment near the hex).
 
-### 1.6 Streamdown is a separate token system
+### 1.6 Streamdown is a separate COLOR token system — but typography INHERITS
 
-Streamdown renders markdown inside its own Shadow DOM with shadcn-style HSL tokens (`--background`, `--foreground`, `--primary`, etc.) — these are NOT `--pk-*` tokens and should not be replaced. Mapping documented at the top of `src/styles/streamdown-shadow-host.css`. When updating peak tokens, eyeball markdown surfaces to confirm they still feel "of the same family".
+Streamdown renders markdown inside its own Shadow DOM with shadcn-style HSL tokens (`--background`, `--foreground`, `--primary`, etc.) — these **color** tokens are NOT `--pk-*` and should not be replaced. Mapping documented at the top of `src/styles/streamdown-shadow-host.css`. When updating peak tokens, eyeball markdown surfaces to confirm they still feel "of the same family".
+
+**Typography is different (2026-07-18)**: the shadow `:host` must NOT declare `font-family` or `font-size`. It previously pinned `var(--font-interface)` + `1rem`, which cut the inheritance chain and rendered every markdown body (chat messages, reasoning, insights, quick-search reports — 6 surfaces) at 16px in the vault's interface font while the surrounding chrome ran `--pk-font-sans` at 13-14px — the single most visible "fonts feel off" source. Inherited font properties and custom properties DO cross the shadow boundary, so the light-DOM wrapper decides: `.pkchat-msg__body` → `--pk-text-lg-plus` (14.5px); insight/report panels → their body size class. Never reintroduce a font pin in `streamdown-shadow-host.css` (`streamdown-isolated-css.ts` is build-generated from it — edit only the source).
 
 ### 1.7 File map
 
@@ -369,6 +403,13 @@ When a mock spec differs from a base primitive's defaults, add a surface modifie
 | `pkchat-role-pill` | `pk-pill` | Grid-cell fill (`width: 100%`, `justify-content: center`), `xs` font, nowrap+ellipsis — for the 3×2 role grid in the run-settings popover |
 | `pkchat-msg__model-chip` | `pk-chip--accent` | Mono font + 11.5px size + right margin — `<Chip variant="accent" className="pkchat-msg__model-chip">` for the per-message model identifier |
 | `pkchat-msg__mode-badge` | `pk-chip--accent` | Smaller font (xs) + tighter padding + uppercase — `<Chip variant="accent" className="pkchat-msg__mode-badge">` for the inline Agent / Plan badge in the message head row |
+| `pkchat-starter` | `pk-btn` (`--ghost`) | Pill starter chip: 30px height, pill radius, transparent + soft border, `sm`/400 weight, 13px icon — the start-state prompt starters below the composer |
+| `pkchat-projhero__action` | `pk-btn` (`--primary`) | Project-hero primary action at mock 30px: 30px height, `0 10px` padding, radius-md, `sm` font, 13px icon — "New conversation" in the project identity hero |
+| `pkchat-projdesc-btn` | `pk-btn` | Shared 27px sizing for the three description-editor buttons (AI / Cancel / Save): 27px height, `0 8px` padding, radius-sm, `sm` font, 12px icon |
+| `pkchat-projdesc-ai` | `pk-btn` | Adds accent-tint fill + accent text + accent border on top of `pkchat-projdesc-btn` — the "Draft with AI" description-editor button |
+| `pkchat-projsection__action` | `pk-btn` (`--ghost`) | Section-head secondary action at 26px: 26px height, `space-1` padding, radius-sm, secondary text, `sm` font, 13px icon — "New conversation" / "Add resource" / "New plan" |
+| `pkstudio-picker-search` | search input | Mock `.compact-search` idiom (30px pill + focus ring) for the ViewAll conversation-picker filter input; `<input>` box props `!important` (bare-tag defense) like `.pkchat-idx__search` |
+| `pkstudio-picker-row` | `pkstudio-nav-row` density | 30px result row for the ViewAll picker: 13px `--pk-font-sans` label + trailing 10px mono uppercase `--pk-text-tertiary` type tag (`__label` / `__tag` slots) |
 
 Add yours here when you introduce a new surface modifier.
 
@@ -384,6 +425,8 @@ Keep call-sites grep-able by always using the `pk-*` prefix.
 `peak-components.css` is imported from `src/styles/tailwind.css` immediately after `peak-tokens.css` and `peak-variables.css` (depends on tokens, must precede Tailwind utilities so per-component overrides in Tailwind classes can still win specificity). Tailwind compiles to `styles.tailwind.css`; `scripts/concat-css.mjs` concatenates into final plugin `styles.css`.
 
 If you add new primitives, append them to this doc and to `peak-components.css` (same section ordering). Don't introduce parallel `.peak-*` or `.kb-*` namespaces — keep `pk-*` as the one prefix.
+
+**The `@import` list at the very top of `src/styles/tailwind.css` is the ONLY gate into the bundle.** Per CSS spec, an `@import` placed below the first style rule is silently ignored — this is exactly how `codemirror.css` shipped orphaned for months while looking imported (a mid-file `@import` at old line 112). When adding a stylesheet: import it in the top block, then verify a distinctive selector actually appears in built `styles.css` (`grep 'your-selector' styles.css`). Source-level review is not proof; the bundle is.
 
 ---
 
@@ -542,6 +585,10 @@ These are **unscoped bare-tag selectors** with no class qualifier. They apply to
 
 **Rule**: every scoped UI surface (modal / panel / overlay) MUST add the `peak-design-root` class on its outermost element. That class triggers the reset defined in `src/styles/obsidian-reset.css`.
 
+**Root font pin (2026-07-18)**: the reset also pins `font-family: var(--pk-font-sans)` + `font-size: var(--pk-text-md)` + antialiasing on `.pktw-root, .peak-design-root`. Declaring the token (§1) is NOT enough — without a root-level *application*, every surface inherits Obsidian's `--font-interface`, which vaults routinely customize (the discovery vault ran "PingFang MO" + two custom CJK faces, making every panel look subtly alien no matter how correct the leaf styles were). Leaf `--pk-font-mono` rules still override. Portal surfaces get the pin via the `pk-portal-host` scope root (`ReactRenderer.portalHostForDocument`).
+
+**The pin only holds while it is the bundle's ONLY root `font-family` declaration.** Regression (2026-07-18, same day the pin landed): `tailwind.css`'s own `.pktw-root` isolation block still carried `font-family: var(--font-interface, …)` from the pre-token era. A file's body rules concatenate AFTER its `@import`s, so that declaration sat later in the cascade at equal specificity and silently re-un-pinned every surface — visual spot-checks missed it because PingFang's Latin glyphs resemble SF Pro. Verify at the bundle: `grep -o 'font-family:var(--font-interface[^;]*' styles.css` must return only the documented Obsidian-embedded exemptions (currently `.peak-serendipity-hint`, an editor-gutter widget that SHOULD follow the editor font). Any new rule setting `font-family` on `.pktw-root`/`.peak-design-root` outside `obsidian-reset.css` is a review-blocking error.
+
 ### 4.2 Why our scoped CSS often loses
 
 We write `.peak-vault-modal .vr-tab { border: 1px solid transparent }` on `<button class="vr-tab">`. Specificity is `(0,2,0)` — we should win. But three things conspire against us:
@@ -633,6 +680,8 @@ The Design System Unification (PR-0) scoped every `.pk-*` primitive with `:where
 
 **Fix**: use plain comma-scoping `.pktw-root .pk-foo, .peak-design-root .pk-foo` — `(0,2,0)` per branch, beats the reset. See commit `7ad6d20`. **Do not re-introduce `:where()` for primitives that share a tag with reset rules.**
 
+**Recurred 2026-07-18** in `dashboard-charts.css`, which wrapped its entire file in `:where(.peak-design-root.usage-dashboard)` — the pager (`.pk-pager__btn`) and KPI (`.pk-kpi-action`) `<button>`s collapsed in production exactly as described above (the reset's `height: auto !important` + bg/border/padding blanking won at `(0,1,1)` vs `(0,1,0)`). Fixed by swapping the wrapper to `:is()`. Review heuristic: `:where()` in a file that styles any `<button>`/`<input>`-rendered component is an automatic red flag.
+
 ### 4.6 Why this is a recurring trap
 
 - Most components look fine in isolation (storybook / mock HTML opened in browser) because there's no Obsidian to inject
@@ -640,6 +689,17 @@ The Design System Unification (PR-0) scoped every `.pk-*` primitive with `:where
 - There's no project-level reset that new code can opt into without remembering `peak-design-root`
 
 ### 4.7 Do
+
+**Scope-class contract (2026-07-18)**:
+
+| Class | Grants | Use on |
+|---|---|---|
+| `pktw-root` | `--pk-*` tokens + root font pin (family / 13px base / smoothing) | every plugin surface — including hand-built `extends Modal` DOM that keeps Obsidian's native `mod-cta`/`mod-warning` button chrome |
+| `peak-design-root` | all of the above PLUS the bare-tag reset (`obsidian-reset.css`) | fully design-system surfaces (pixel-perfect React UI) |
+
+`ReactRenderer.render()` and `portalHostForDocument()` stamp **both** classes automatically (2026-07-18) — React surfaces need no manual class wiring. Hand-built Obsidian `Modal` subclasses must `contentEl.addClass('pktw-root')` themselves; add `peak-design-root` only if the modal does NOT rely on Obsidian's native button styling. `--font-interface` is legitimate only on surfaces living inside Obsidian's own UI (editor gutter, status bar).
+
+**Portals**: never `createPortal(x, document.body)`. Use `usePortalContainer()` (provided by every `ReactRenderer` tree) or `portalHostForDocument(el.ownerDocument)` — the host carries both scope classes, is per-Document (popout-safe), and is `isConnected`-rechecked. A bare-body portal loses every token: `var(--pk-*)` resolves to nothing, not just "wrong font".
 
 ```tsx
 // 1. Add peak-design-root to your modal / panel root

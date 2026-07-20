@@ -74,7 +74,7 @@
 | 工具/产物 | [`2026-05-10-chat-tool-infrastructure-design.md`](./2026-05-10-chat-tool-infrastructure-design.md) | 工具运行背景；产物 UI 契约以本文为准 |
 | 相邻运行时要求 | [`2026-07-05-chat-product-requirements-claude-handoff.md`](../plans/2026-07-05-chat-product-requirements-claude-handoff.md) | 只吸收仍有效的 Current Work State / rich generation 要求；不要整份重跑 |
 | 旧视觉探索 | [`chat-focused-redesign-2026-05-29/`](../../gstack/chat-focused-redesign-2026-05-29/) | Historical design exploration；其中旧 mode、voice、inline follow-up 不直接执行 |
-| 文档编辑 Composer | [`2026-07-09-peak-composer-editing-view.md`](./2026-07-09-peak-composer-editing-view.md)、[`2026-07-15-composer-block-ai-capability-contract.md`](./2026-07-15-composer-block-ai-capability-contract.md) | 另一产品 surface；不得与 Chat Composer 合并 |
+| 文档编辑 Composer | [`2026-07-09-peak-composer-editing-view.md`](./2026-07-09-peak-composer-editing-view.md)、[`2026-07-15-composer-block-ai-capability-contract.md`](./2026-07-15-composer-block-ai-capability-contract.md) | 另一产品 surface；不得共享 Chat-specific state、draft、submit pipeline 或 runtime，但必须复用 shared PromptInput kernel、trigger/keyboard grammar 与视觉 primitives（见 [`prompt-input-consistency.md`](../../conventions/prompt-input-consistency.md)） |
 
 > 交接风险：本文和当前交互包在此 checkout 中可能仍是未跟踪文件。同一 checkout 的新 session 可以读取；新 worktree、换机器或只从 commit 创建的 session 可能看不到。开始跨 worktree 交接前，owner 需要显式 stage/commit 或把这些文件带入目标工作区；执行者不得自行 commit。
 

@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Peak Composer · Copilot IA Variants</title>
+  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="../../../src/styles/peak-tokens.css" />
+  <link rel="stylesheet" href="intelligence-ia-lab.css" />
+  <link rel="stylesheet" href="vault-relation-graph.css" />
+</head>
+<body class="theme-light">
+  <svg class="icon-sprite" aria-hidden="true">
+    <symbol id="ia-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"></path><path d="M14 3v5h5"></path></symbol>
+    <symbol id="ia-check" viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"></path></symbol>
+    <symbol id="ia-spark" viewBox="0 0 24 24"><path d="M12 3l1.7 5.3L17 10l-5.3 1.7L10 17l-1.7-5.3L3 10l5.3-1.7z"></path><path d="m19 15 .8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"></path></symbol>
+    <symbol id="ia-message" viewBox="0 0 24 24"><path d="M5 5h14v11H8l-3 3z"></path><path d="M9 9h6M9 12h4"></path></symbol>
+    <symbol id="ia-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v6h6M12 7v5l3 2"></path></symbol>
+    <symbol id="ia-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"></path></symbol>
+    <symbol id="ia-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></symbol>
+    <symbol id="ia-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path></symbol>
+    <symbol id="ia-arrow-up" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"></path></symbol>
+    <symbol id="ia-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></symbol>
+    <symbol id="ia-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"></path></symbol>
+    <symbol id="ia-chevron-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"></path></symbol>
+    <symbol id="ia-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></symbol>
+    <symbol id="ia-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5"></path><path d="M6.1 8.2A7 7 0 0 1 18.6 7M17.9 15.8A7 7 0 0 1 5.4 17"></path></symbol>
+    <symbol id="ia-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12"></path><circle cx="12" cy="12" r="2.5"></circle></symbol>
+    <symbol id="ia-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1.1l2-2A5 5 0 0 0 12 4l-1.1 1.1"></path><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"></path></symbol>
+    <symbol id="ia-pin" viewBox="0 0 24 24"><path d="m12 17 5-5-2-2 1-4-2-2-4 1-2-2-5 5 4 4-4 4 1 1 4-4zM12 17l-1 5"></path></symbol>
+    <symbol id="ia-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle></symbol>
+    <symbol id="ia-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></symbol>
+    <symbol id="ia-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><circle cx="12" cy="12" r="8"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path></symbol>
+    <symbol id="ia-undo" viewBox="0 0 24 24"><path d="m9 14-4-4 4-4"></path><path d="M5 10h11a4 4 0 0 1 0 8h-1"></path></symbol>
+    <symbol id="ia-command" viewBox="0 0 24 24"><path d="M9 6V5a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v14a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z"></path></symbol>
+    <symbol id="ia-network" viewBox="0 0 24 24"><circle cx="5" cy="6" r="2"></circle><circle cx="19" cy="7" r="2"></circle><circle cx="8" cy="18" r="2"></circle><circle cx="18" cy="18" r="2"></circle><path d="m7 7 9.8-.2M6.2 7.7l1.1 8.2M10 18h6M18.6 9l-.4 7"></path></symbol>
+    <symbol id="ia-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"></path><circle cx="3.5" cy="6" r=".8"></circle><circle cx="3.5" cy="12" r=".8"></circle><circle cx="3.5" cy="18" r=".8"></circle></symbol>
+    <symbol id="ia-folder" viewBox="0 0 24 24"><path d="M3 6h7l2 2h9v10H3z"></path><path d="M3 6v12"></path></symbol>
+    <symbol id="ia-expand" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5"></path><path d="m3 8 6-6M21 8l-6-6M21 16l-6 6M3 16l6 6"></path></symbol>
+    <symbol id="ia-zoom-in" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m15.5 15.5 5 5M10.5 7.5v6M7.5 10.5h6"></path></symbol>
+    <symbol id="ia-zoom-out" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m15.5 15.5 5 5M7.5 10.5h6"></path></symbol>
+    <symbol id="ia-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2"></rect><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"></path></symbol>
+    <symbol id="ia-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="2"></circle><path d="m21 15-4-4L5 20"></path></symbol>
+    <symbol id="ia-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 22h4"></path><path d="M8.5 15.5A7 7 0 1 1 15.5 15.5c-.9.7-1.4 1.5-1.5 2.5h-4c-.1-1-.6-1.8-1.5-2.5Z"></path></symbol>
+    <symbol id="ia-route" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2"></circle><circle cx="18" cy="6" r="2"></circle><path d="M8 18h2a4 4 0 0 0 4-4V10a4 4 0 0 1 4-4M6 16V8"></path></symbol>
+    <symbol id="ia-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></symbol>
+  </svg>
+
+  <main class="composer-app peak-design-root is-panel-open" id="composer-app">
+    <header class="top-strip">
+      <div class="view-title">
+        <span class="view-icon"><svg><use href="#ia-file"></use></svg></span>
+        <span><strong>Composer View</strong><small>PKM 产品类别分析.md</small></span>
+      </div>
+      <div class="prototype-variants" role="group" aria-label="IA 方案">
+        <small>IA 方案</small>
+        <button type="button" data-variant="adaptive">A · 自适应</button>
+        <button type="button" data-variant="staged">B · 显式阶段</button>
+        <button type="button" data-variant="hybrid">C · 融合</button>
+      </div>
+      <div class="top-actions">
+        <span class="saved-state"><svg><use href="#ia-check"></use></svg>已保存</span>
+        <button class="panel-toggle" type="button" data-panel-toggle aria-expanded="true"><svg><use href="#ia-spark"></use></svg>Intelligence</button>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <section class="document-stage" aria-label="可编辑文档">
+        <article class="paper" id="paper" contenteditable="true" spellcheck="true">
+          <section class="doc-block frontmatter-block" data-block-id="metadata" data-block-title="Frontmatter metadata">
+            <span>created</span><strong>2023-10-15 21:45</strong>
+            <span>updated</span><strong>2026-07-18 14:32</strong>
+            <span>tags</span><strong><em>pkm</em><em>composer</em><em>ai-assisted</em></strong>
+          </section>
+          <section class="doc-block" data-block-id="title" data-block-title="文档标题"><h1>PKM 产品类别分析：从信息获取到输出</h1></section>
+          <section class="doc-block" data-block-id="positioning" data-block-title="Composer 定位段落"><p>这个 Composer 视图把 Markdown 变成更顺手的工作台，同时保留源文件、链接与原生对象。图片、表格、公式、Base、Canvas 与 Excalidraw 都能在正文中继续编辑。</p></section>
+          <section class="doc-block" data-block-id="structure-heading" data-block-title="章节标题"><h2>1. 知识库不是单一目录，而是多种结构叠加</h2></section>
+          <section class="doc-block" data-block-id="structure" data-block-title="知识库结构段落"><p>知识库的结构应由要存储、重组和输出的知识决定。碎片化思想适合网络结构，系统课程适合树形结构；真正重要的是内容之后还能被找到、组合并重新输出。</p></section>
+          <section class="doc-block" data-block-id="structure-list" data-block-title="知识结构列表">
+            <ul><li><strong>网络结构：</strong>承接滑箱笔记、论文旁批与临时判断。</li><li><strong>树形结构：</strong>承接系统学习、书籍章节与项目文档。</li><li><strong>跨库链接：</strong>保留来源、引用和迁移差异。</li></ul>
+          </section>
+          <section class="doc-block is-current" data-block-id="ai-sidecar" data-block-title="AI 旁路段落"><p>AI 应该贴在当前块旁边：知道当前块的源范围与 Markdown 语法，自动参考 <span class="vault-link" contenteditable="false">[[知识库]]</span>，把候选修改放回正文原位，并在接受前保持可回滚。</p></section>
+          <section class="doc-block" data-block-id="conclusion" data-block-title="小节结论"><p>因此，编辑器里的 AI 价值不在于生成更多文字，而在于让每一次建议都能被定位、判断和撤销。</p></section>
+        </article>
+        <aside class="live-change-nav" id="live-change-nav" hidden aria-live="polite"></aside>
+      </section>
+
+      <button class="drawer-scrim" type="button" data-panel-close aria-label="关闭 Intelligence"></button>
+
+      <aside class="intelligence-sidecar" id="intelligence-panel" aria-label="Intelligence">
+        <header class="sidecar-header">
+          <div class="sidecar-presence">
+            <span class="presence-icon"><svg><use href="#ia-spark"></use></svg></span>
+            <span><strong>Intelligence</strong><small><i></i>正在跟随正文</small></span>
+          </div>
+          <button class="icon-button" type="button" data-panel-close aria-label="关闭 Intelligence"><svg><use href="#ia-x"></use></svg></button>
+        </header>
+
+        <nav class="primary-tabs" role="tablist" aria-label="Intelligence 工作面">
+          <button type="button" role="tab" data-mode="copilot" aria-selected="true"><svg><use href="#ia-message"></use></svg>Copilot</button>
+          <button type="button" role="tab" data-mode="history" aria-selected="false"><svg><use href="#ia-history"></use></svg>History <b id="history-count">9</b></button>
+        </nav>
+
+        <nav class="stage-tabs" id="stage-tabs" role="tablist" aria-label="Copilot 工作队列">
+          <button id="queue-tab-brief" type="button" role="tab" data-stage="brief" aria-controls="sidecar-content"><span data-stage-label>建议</span><b id="brief-stage-count">94</b></button>
+          <button id="queue-tab-session" type="button" role="tab" data-stage="session" aria-controls="sidecar-content"><span data-stage-label>协作</span><b id="session-stage-count">4</b></button>
+          <button id="queue-tab-review" type="button" role="tab" data-stage="review" aria-controls="sidecar-content"><span data-stage-label>审阅</span><b id="review-count">8</b></button>
+        </nav>
+
+        <section class="sidecar-content" id="sidecar-content" role="tabpanel" tabindex="-1"></section>
+
+        <section class="session-dock" id="session-dock" aria-label="Copilot 输入区" hidden>
+          <div class="quick-actions" id="quick-actions">
+            <button type="button" data-capability="correct-content">修正内容</button>
+            <button type="button" data-capability="add-evidence">补上依据</button>
+            <button type="button" data-capability="suggest-links-graph">图谱建议链接</button>
+            <button class="all-capabilities" type="button" data-open-capabilities><svg><use href="#ia-command"></use></svg>全部能力</button>
+          </div>
+          <div class="prompt-input-shell" id="prompt-input-shell">
+            <div class="prompt-context" id="prompt-context"></div>
+            <textarea id="prompt-input" rows="1" placeholder="描述要改什么，或输入 / 选择能力…"></textarea>
+            <div class="prompt-footer">
+              <div class="prompt-tools">
+                <button class="icon-button" type="button" data-add-context aria-label="添加上下文"><svg><use href="#ia-plus"></use></svg></button>
+                <button class="icon-button" type="button" data-voice aria-label="语音输入"><svg><use href="#ia-mic"></use></svg></button>
+              </div>
+              <div class="prompt-run">
+                <button class="model-button" type="button">自动模型 <svg><use href="#ia-chevron-down"></use></svg></button>
+                <button class="send-button" type="button" data-send aria-label="发送" disabled><svg><use href="#ia-arrow-up"></use></svg></button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </div>
+
+    <footer class="source-bar">
+      <span><svg><use href="#ia-check"></use></svg>Markdown 已保存</span>
+      <span id="source-status">当前块 · AI 旁路段落</span>
+      <code id="source-preview">AI 应该贴在当前块旁边，并把候选修改放回正文原位。</code>
+    </footer>
+  </main>
+
+  <dialog class="capability-dialog" id="capability-dialog" aria-labelledby="capability-title">
+    <div class="dialog-shell">
+      <header><span><strong id="capability-title">全部能力</strong><small>选择后进入输入框，不会自动运行</small></span><button class="icon-button" type="button" data-close-dialog aria-label="关闭"><svg><use href="#ia-x"></use></svg></button></header>
+      <label class="picker-search"><svg><use href="#ia-search"></use></svg><input id="capability-search" type="search" placeholder="搜索能力、结果或英文名称" /></label>
+      <div class="capability-results" id="capability-results"></div>
+    </div>
+  </dialog>
+
+  <dialog class="history-dialog" id="history-dialog" aria-labelledby="history-dialog-title">
+    <div class="history-dialog-shell" id="history-dialog-content"></div>
+  </dialog>
+
+  <dialog class="graph-dialog" id="graph-dialog" aria-labelledby="graph-dialog-title">
+    <div class="graph-dialog-shell" id="graph-dialog-content"></div>
+  </dialog>
+
+  <dialog class="run-dialog" id="run-dialog" aria-labelledby="run-dialog-title">
+    <div class="run-dialog-shell" id="run-dialog-content"></div>
+  </dialog>
+
+  <div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+  <script src="vault-relation-graph.js"></script>
+  <script src="intelligence-ia-lab.js"></script>
+</body>
+</html>
