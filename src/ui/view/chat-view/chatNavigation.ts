@@ -116,14 +116,6 @@ export function createChatNavigation(deps: ChatNavigationDeps): ChatNavigationPo
 		dispatchSelectionChanged(null, null);
 	};
 
-	const openChatHome = async (): Promise<void> => {
-		useChatViewStore.getState().setHome();
-		useChatDataStore.getState().setActiveProject(null);
-		useChatDataStore.getState().setActiveConversation(null);
-		await revealChatView();
-		dispatchSelectionChanged(null, null);
-	};
-
 	return {
 		revealChatView,
 		openConversationInChat,
@@ -134,6 +126,5 @@ export function createChatNavigation(deps: ChatNavigationDeps): ChatNavigationPo
 		openProjectConversationsListInChat,
 		openAllProjectsInChat,
 		openAllConversationsInChat,
-		openChatHome,
 	};
 }

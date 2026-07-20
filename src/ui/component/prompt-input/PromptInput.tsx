@@ -27,7 +27,7 @@ interface PromptInputContextValue {
 	autocompletion: {
 		contextItems: any[];
 		onLoadContextItems?: (query: string, currentFolder?: string) => Promise<any[]>;
-		onMenuItemSelect?: (triggerChar: string, selectedItem: any) => void;
+		onMenuItemSelect?: (triggerChar: string, selectedItem: any, resolvedText?: string) => void;
 		folderStack?: string[];
 		onFolderUp?: () => void;
 	};
@@ -56,7 +56,7 @@ export interface PromptInputProps extends Omit<HTMLAttributes<HTMLFormElement>, 
 	// Autocompletion data
 	contextItems?: any[];
 	onLoadContextItems?: (query: string, currentFolder?: string) => Promise<any[]>;
-	onMenuItemSelect?: (triggerChar: string, selectedItem: any) => void;
+	onMenuItemSelect?: (triggerChar: string, selectedItem: any, resolvedText?: string) => void;
 	folderStack?: string[];
 	onFolderUp?: () => void;
 	onTextChange?: (text: string, tags: Array<{ type: 'context' | 'prompt'; text: string; start: number; end: number; }>) => void;

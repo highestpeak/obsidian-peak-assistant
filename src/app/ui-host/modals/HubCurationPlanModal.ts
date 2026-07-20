@@ -13,6 +13,10 @@ export class HubCurationPlanModal extends Modal {
 
 	onOpen(): void {
 		this.contentEl.empty();
+		// Bare-DOM modal: opt into `pktw-root` ONLY (not `peak-design-root`) so
+		// the `--pk-*` tokens + design font pin resolve, WITHOUT the bare-tag
+		// reset stripping Obsidian's native button chrome this modal relies on.
+		this.contentEl.addClass('pktw-root');
 		this.modalEl.addClass('peak-hub-curation-plan-modal');
 		this.modalEl.style.width = '720px';
 		this.modalEl.style.maxWidth = '92vw';
@@ -63,13 +67,13 @@ export class HubCurationPlanModal extends Modal {
 			const th = trHead.createEl('th', { text: label });
 			th.style.textAlign = 'left';
 			th.style.padding = '4px 6px';
-			th.style.borderBottom = '1px solid var(--background-modifier-border)';
+			th.style.borderBottom = '1px solid var(--pk-border, var(--background-modifier-border))';
 		}
 
 		const tbody = table.createEl('tbody');
 		for (const d of this.plan.decisions) {
 			const tr = tbody.createEl('tr');
-			tr.style.borderBottom = '1px solid var(--background-modifier-border)';
+			tr.style.borderBottom = '1px solid var(--pk-border, var(--background-modifier-border))';
 			const cells = [
 				d.action,
 				d.hubPath,

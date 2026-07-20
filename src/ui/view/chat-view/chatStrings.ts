@@ -22,6 +22,7 @@ export interface ChatStrings {
 		deleteConversationConfirmBody: string;
 		deleteConversationConfirmCta: string;
 		deleteConversationConfirmCancel: string;
+		restoreRightLabel: string;
 	};
 	composer: {
 		placeholder: string;

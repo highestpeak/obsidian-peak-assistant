@@ -4,11 +4,9 @@ import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { DEFAULT_AI_SERVICE_SETTINGS } from '@/core/config/settingsTypes';
 import { DateSeparator } from '../DateSeparator';
 import { useModels } from '@/ui/hooks/useModels';
-import {
-	MessageViewItem,
-	MessageItemProps,
-} from './MessageViewItem';
+import { MessageViewItem, MessageItemProps } from './MessageViewItem';
 import { useChatStrings } from '../../chatStringsContext';
+import type { ChatMessage } from '@/service/chat/types';
 
 /** Get date-only string for comparison */
 function getDateOnly(ts: number | undefined): string {
@@ -18,9 +16,11 @@ function getDateOnly(ts: number | undefined): string {
 }
 
 /**
- * MessageListRenderer — message list using the 2026-05-29 retained
- * document-style message rendering. Replaces the legacy MessageListRenderer
- * + MessageViewItem path. Streaming and dataflow behavior unchanged.
+ * MessageListRenderer — message list with:
+ *   • date separators between days
+ *   • per-message identity attribution (passes the previous assistant
+ *     message so MessageViewItem can decide whether to show the
+ *     model-attribution identity chip — MSG-01)
  */
 export const MessageListRenderer: React.FC = () => {
 	const strings = useChatStrings();
@@ -37,6 +37,7 @@ export const MessageListRenderer: React.FC = () => {
 
 	const savedMessagesToRender: Array<MessageItemProps> = useMemo(() => {
 		const result: Array<MessageItemProps> = [];
+		let lastAssistant: ChatMessage | undefined;
 		messages.forEach((message) => {
 			result.push({
 				message,
@@ -49,7 +50,11 @@ export const MessageListRenderer: React.FC = () => {
 					isToolSequenceActive: false,
 				},
 				isLastMessage: false,
+				previousAssistantMessage: lastAssistant,
 			});
+			if (message.role === 'assistant') {
+				lastAssistant = message;
+			}
 		});
 		if (result.length > 0) {
 			result[result.length - 1].isLastMessage = true;

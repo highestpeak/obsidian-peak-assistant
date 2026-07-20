@@ -12,51 +12,58 @@
   50% { opacity: 0.5; fill-opacity: 0.55; }
 }
 
-/* MindFlow node states - Mermaid adds :::classname to node groups */
-g.thinking rect,
-g.thinking polygon,
-g.thinking path,
-rect.thinking,
-polygon.thinking,
-path.thinking {
+/* MindFlow node states - Mermaid adds :::classname to node groups.
+   Scoped to [data-streamdown-root]: this file is concatenated into the global
+   styles.css bundle, where a bare `g.thinking { …!important }` would match ANY
+   mermaid node vault-wide (Obsidian's own diagrams, user SVGs). The
+   [data-streamdown-root] ancestor exists in BOTH render modes — the shadow
+   container (StreamdownIsolated shadow mode) and the fallback root div (light
+   DOM) both carry the attribute — so the prefix contains the rules to our
+   surface while still matching in the shadow-injected stylesheet. */
+[data-streamdown-root] g.thinking rect,
+[data-streamdown-root] g.thinking polygon,
+[data-streamdown-root] g.thinking path,
+[data-streamdown-root] rect.thinking,
+[data-streamdown-root] polygon.thinking,
+[data-streamdown-root] path.thinking {
   stroke: #a855f7 !important;
   stroke-width: 2px !important;
   fill: #f3e8ff !important;
 }
-g.thinking,
-g.node.thinking,
-g.thinking rect,
-g.thinking polygon,
-g.thinking path {
+[data-streamdown-root] g.thinking,
+[data-streamdown-root] g.node.thinking,
+[data-streamdown-root] g.thinking rect,
+[data-streamdown-root] g.thinking polygon,
+[data-streamdown-root] g.thinking path {
   animation: mindflow-blink-strong 1.2s ease-in-out infinite;
 }
-g.exploring rect,
-g.exploring polygon,
-g.exploring path,
-rect.exploring,
-polygon.exploring,
-path.exploring {
+[data-streamdown-root] g.exploring rect,
+[data-streamdown-root] g.exploring polygon,
+[data-streamdown-root] g.exploring path,
+[data-streamdown-root] rect.exploring,
+[data-streamdown-root] polygon.exploring,
+[data-streamdown-root] path.exploring {
   stroke: #60a5fa !important;
   stroke-width: 2px !important;
   fill: #dbeafe !important;
 }
-g.exploring,
-g.node.exploring,
-g.exploring rect,
-g.exploring polygon,
-g.exploring path {
+[data-streamdown-root] g.exploring,
+[data-streamdown-root] g.node.exploring,
+[data-streamdown-root] g.exploring rect,
+[data-streamdown-root] g.exploring polygon,
+[data-streamdown-root] g.exploring path {
   animation: mindflow-blink-soft 1.2s ease-in-out infinite;
 }
-g.verified rect,
-g.verified polygon,
-g.verified path {
-  stroke: #22c55e !important;
+[data-streamdown-root] g.verified rect,
+[data-streamdown-root] g.verified polygon,
+[data-streamdown-root] g.verified path {
+  stroke: var(--pk-success, #22c55e) !important;
   stroke-width: 2px !important;
   fill: #dcfce7 !important;
 }
-g.pruned rect,
-g.pruned polygon,
-g.pruned path {
+[data-streamdown-root] g.pruned rect,
+[data-streamdown-root] g.pruned polygon,
+[data-streamdown-root] g.pruned path {
   stroke: #6b7280 !important;
   fill: #f3f4f6 !important;
   opacity: 0.5;

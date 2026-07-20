@@ -147,6 +147,9 @@ export function parseInferCreatedAtStringToMs(raw: string): number | undefined {
 	return Number.isNaN(t) ? undefined : t;
 }
 
+/** Short English month abbreviations, indexed by `Date.getMonth()`. */
+const SHORT_MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
+
 /**
  * Format date relative to now
  * Uses timezone-aware date comparison based on today's 0:00
@@ -172,9 +175,28 @@ export function formatRelativeDate(timestamp: number): string {
 	} else if (diffDays < 7) {
 		return `${diffDays} days ago`;
 	} else {
-		const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-		return `${monthNames[dateObj.getMonth()]} ${dateObj.getDate()}`;
+		return `${SHORT_MONTH_NAMES[dateObj.getMonth()]} ${dateObj.getDate()}`;
 	}
+}
+
+/**
+ * Compact trailing timestamp for Chat Studio left-column nav rows.
+ * Mirrors the mock `.row-time` values (`11:20` today, `Jul 7` older):
+ *  - today (>= local midnight) → clock time `HH:mm` (zero-padded, 24h)
+ *  - any earlier day           → short month/day (e.g. `Jul 7`)
+ * Returns '' for missing/zero timestamps so the caller can omit the slot.
+ */
+export function formatNavRowTime(timestamp: number): string {
+	if (!Number.isFinite(timestamp) || timestamp <= 0) return '';
+	const dateObj = new Date(timestamp);
+	const now = new Date();
+	const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+	if (timestamp >= todayMidnight) {
+		const hh = String(dateObj.getHours()).padStart(2, '0');
+		const mm = String(dateObj.getMinutes()).padStart(2, '0');
+		return `${hh}:${mm}`;
+	}
+	return `${SHORT_MONTH_NAMES[dateObj.getMonth()]} ${dateObj.getDate()}`;
 }
 
 /**

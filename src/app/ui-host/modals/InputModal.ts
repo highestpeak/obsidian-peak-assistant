@@ -24,6 +24,10 @@ export class InputModal extends Modal {
 	onOpen(): void {
 		const { contentEl } = this;
 		contentEl.empty();
+		// Bare-DOM modal: `pktw-root` ONLY (tokens + font pin). This modal
+		// builds its OK/Cancel row with Obsidian's `new Setting().setCta()`
+		// native buttons, so the `peak-design-root` reset must NOT apply here.
+		contentEl.addClass('pktw-root');
 		contentEl.addClass('peak-input-modal');
 		
 		const titleEl = contentEl.createDiv({ cls: 'peak-input-modal__title' });

@@ -11,6 +11,7 @@ import type { LLMUsage, LLMStreamEvent } from '@/core/providers/types';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { ChatDataStore } from '@/ui/store/chatDataStore';
 import { runChatConversation } from '@/service/chat/ChatConversationRun';
+import type { SourceReceiptCollector } from '@/service/chat/tools/sourceReceiptCollector';
 
 export interface StreamChatOptions {
 	conversation: ChatConversation;
@@ -21,6 +22,8 @@ export interface StreamChatOptions {
 	onComplete?: (message: ChatMessage, usage?: LLMUsage) => void;
 	onError?: (error: unknown) => void;
 	abortSignal?: AbortSignal;
+	/** Per-turn actual-source receipt accumulator (chat-studio RUN-02). */
+	receipts?: SourceReceiptCollector;
 }
 
 export interface StreamChatResult {
@@ -161,6 +164,7 @@ export function useStreamChat() {
 			onComplete,
 			onError,
 			abortSignal,
+			receipts,
 		} = options;
 
 		// Create assistant message ID for streaming
@@ -186,6 +190,7 @@ export function useStreamChat() {
 				project,
 				userContent,
 				attachments,
+				receipts,
 			});
 
 			// Process stream events

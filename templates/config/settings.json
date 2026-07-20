@@ -283,6 +283,21 @@
         "desc": "Root folder for Peak-owned AI data. Prompts, Skills, Attachments, Hub-Summaries and DataStore derive from it by default."
       }
     },
+    "appearance": {
+      "sectionTitle": "Message appearance",
+      "sectionSub": "Control how rich AI responses are rendered in Chat Studio.",
+      "codeTheme": {
+        "title": "Code block theme",
+        "desc": "Syntax colours used for code in messages, reasoning, and reports. Changes apply immediately.",
+        "options": {
+          "githubDark": "GitHub Dark (recommended)",
+          "oneDarkPro": "One Dark Pro",
+          "nord": "Nord",
+          "dracula": "Dracula",
+          "vitesseDark": "Vitesse Dark"
+        }
+      }
+    },
     "general": {
       "sectionTitle": "General",
       "attachmentHandling": {

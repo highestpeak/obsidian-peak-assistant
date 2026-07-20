@@ -1,103 +1,400 @@
-import React, { useState } from 'react';
+/**
+ * ToolCallSummary — the assistant turn's Agent Run surface.
+ *
+ * This component deliberately does not render model reasoning. It owns two
+ * execution layers only:
+ *   1. the user-readable tool timeline (what the agent did), and
+ *   2. an optional diagnostic span stack (why the runtime did it).
+ *
+ * `message.reasoning` remains a separate, quiet disclosure in MessageViewItem.
+ * Keeping those surfaces distinct prevents provider reasoning text from being
+ * mistaken for a real agent/tool trace.
+ */
 
-const TOOL_LABELS: Record<string, { label: string; icon: string }> = {
-	vault_search: { label: 'Searched vault', icon: '\uD83D\uDD0D' },
-	local_search_whole_vault: { label: 'Searched vault', icon: '\uD83D\uDD0D' },
-	vault_read_note: { label: 'Read note', icon: '\uD83D\uDCC4' },
-	content_reader: { label: 'Read note', icon: '\uD83D\uDCC4' },
-	vault_grep: { label: 'Searched text', icon: '\uD83D\uDD0E' },
-	graph_traversal: { label: 'Explored graph', icon: '\uD83D\uDD50' },
-	find_path: { label: 'Found path', icon: '\uD83D\uDD17' },
-	find_key_nodes: { label: 'Found key notes', icon: '\u2B50' },
-	inspect_note_context: { label: 'Inspected context', icon: '\uD83D\uDD2C' },
-	explore_folder: { label: 'Explored folder', icon: '\uD83D\uDCC1' },
-	submit_plan: { label: 'Submitted plan', icon: '\uD83D\uDCCB' },
-	submit_final_answer: { label: 'Finished', icon: '\u2705' },
-	'context-pipeline:assemble': { label: 'Building context', icon: '\uD83D\uDCE6' },
-	'context-pipeline:build-slots': { label: 'Preparing slots', icon: '\uD83E\uDDE9' },
-	'context-pipeline:budget-govern': { label: 'Budget check', icon: '\uD83D\uDCCA' },
-};
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+	AlertTriangle,
+	BarChart,
+	Bug,
+	Check,
+	CheckCircle2,
+	ChevronDown,
+	ClipboardList,
+	FileSearch,
+	FileText,
+	Folder,
+	Loader2,
+	Microscope,
+	Network,
+	Package,
+	Puzzle,
+	Route,
+	Search,
+	Settings,
+	Star,
+	Workflow,
+} from 'lucide-react';
+import { Button } from '@/ui/components/primitives';
+import type { DebugRun, DebugRunStatus, DebugSpan } from '@/core/debug-trace';
+import { useChatStudioStrings } from '../chatStudioStringsContext';
+import type { ChatStudioStrings } from '../chatStudioStrings';
 
-function getToolDisplay(toolName: string) {
-	return TOOL_LABELS[toolName] ?? { label: toolName, icon: '\u2699\uFE0F' };
+interface ToolDisplay {
+	label: string;
+	icon: React.ComponentType<{ className?: string }>;
 }
 
-interface ToolCall {
+// Icons stay in code because React components cannot live in JSON. Human labels
+// remain config-driven through chat-studio.json.
+const TOOL_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+	vault_search: Search,
+	local_search_whole_vault: Search,
+	vault_read_note: FileText,
+	content_reader: FileText,
+	vault_grep: FileSearch,
+	graph_traversal: Network,
+	find_path: Route,
+	find_key_nodes: Star,
+	inspect_note_context: Microscope,
+	explore_folder: Folder,
+	submit_plan: ClipboardList,
+	submit_final_answer: CheckCircle2,
+	'context-pipeline:assemble': Package,
+	'context-pipeline:build-slots': Puzzle,
+	'context-pipeline:budget-govern': BarChart,
+};
+
+function getToolDisplay(toolName: string, strings: ChatStudioStrings): ToolDisplay {
+	const labels = strings.messages.toolLabels ?? {};
+	return {
+		label: labels[toolName] ?? toolName,
+		icon: TOOL_ICONS[toolName] ?? Settings,
+	};
+}
+
+export interface AgentToolCall {
 	toolName: string;
-	input?: any;
-	output?: any;
+	input?: unknown;
+	output?: unknown;
 	isActive?: boolean;
+	startedAt?: number;
+	finishedAt?: number;
 }
 
 interface Props {
-	toolCalls: ToolCall[];
+	toolCalls: AgentToolCall[];
 	isStreaming?: boolean;
+	/** Runtime-only, retention-bounded diagnostic data for this exact turn. */
+	debugRun?: DebugRun;
+	/** Extra truthful run metadata prepared by the message renderer. */
+	meta?: string[];
 }
 
-export const ToolCallSummary: React.FC<Props> = ({ toolCalls, isStreaming }) => {
-	const [expanded, setExpanded] = useState(false);
-	const completed = toolCalls.filter(tc => !tc.isActive);
-	const active = toolCalls.find(tc => tc.isActive);
+type AgentRunVisualStatus = 'running' | 'completed' | 'failed' | 'cancelled';
 
-	// Build summary text
-	const summaryParts = completed.map(tc => getToolDisplay(tc.toolName).label);
-	const uniqueParts = [...new Set(summaryParts)];
-	const summaryText = uniqueParts.join(', ');
+export const ToolCallSummary: React.FC<Props> = ({
+	toolCalls,
+	isStreaming = false,
+	debugRun,
+	meta = [],
+}) => {
+	const strings = useChatStudioStrings();
+	const visualStatus = resolveRunStatus(isStreaming, debugRun?.status, toolCalls);
+	const [expanded, setExpanded] = useState(
+		isStreaming || toolCalls.length > 1 || visualStatus === 'failed',
+	);
+	const toolSpans = useMemo(
+		() => debugRun?.spans.filter((span) => span.kind === 'tool.call') ?? [],
+		[debugRun],
+	);
 
-	if (isStreaming && active) {
-		const display = getToolDisplay(active.toolName);
-		const inputPreview = typeof active.input === 'string' ? active.input
-			: active.input?.query ?? active.input?.note_path ?? active.input?.start_note_path ?? '';
-		return (
-			<div className="pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1 pktw-rounded-md pktw-bg-pk-accent-muted pktw-border pktw-border-pk-border pktw-text-[11px] pktw-text-muted-foreground pktw-mb-1.5">
-				<span className="pktw-animate-pulse">{display.icon}</span>
-				<span>{display.label}</span>
-				{inputPreview && <span className="pktw-font-medium pktw-text-foreground">{String(inputPreview).slice(0, 40)}</span>}
-				{completed.length > 0 && <><span>&middot;</span><span>{completed.length} completed</span></>}
-			</div>
-		);
-	}
+	useEffect(() => {
+		if (isStreaming || toolCalls.length > 1 || visualStatus === 'failed') {
+			setExpanded(true);
+		}
+	}, [isStreaming, toolCalls.length, visualStatus]);
 
-	if (completed.length === 0) return null;
+	if (toolCalls.length === 0) return null;
+
+	const stepWord = toolCalls.length === 1
+		? strings.messages.agentRunStepSingular
+		: strings.messages.agentRunStepPlural;
+	const statusLabel = getRunStatusLabel(visualStatus, strings);
+	const runDuration = getRunDurationLabel(debugRun);
+	const metaParts = [`${toolCalls.length} ${stepWord}`, ...meta];
+	if (runDuration && !metaParts.includes(runDuration)) metaParts.push(runDuration);
 
 	return (
-		<div className="pktw-mb-1.5">
-			<div
-				className="pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1 pktw-rounded-md pktw-bg-pk-background-secondary pktw-border pktw-border-pk-border pktw-text-[11px] pktw-text-muted-foreground pktw-cursor-pointer hover:pktw-bg-pk-hover pktw-transition-colors"
-				onClick={() => setExpanded(!expanded)}
+		<section
+			className="pkchat-agent-run"
+			data-state={visualStatus}
+			data-expanded={expanded ? 'true' : 'false'}
+		>
+			<Button
+				type="button"
+				variant="ghost"
+				size="sm"
+				className="pkchat-agent-run__trigger"
+				onClick={() => setExpanded((value) => !value)}
+				aria-expanded={expanded}
+				aria-label={`${strings.messages.agentRunTitle}: ${statusLabel}`}
 			>
-				<span>{'\u2699\uFE0F'}</span>
-				<span>{summaryText}</span>
-				<span>&middot;</span>
-				<span className="pktw-font-semibold pktw-text-foreground">{completed.length} steps</span>
-				<span className={`pktw-text-[8px] pktw-text-muted-foreground pktw-transition-transform ${expanded ? 'pktw-rotate-180' : ''}`}>{'\u25BE'}</span>
-			</div>
+				<RunStatusIcon status={visualStatus} />
+				<span className="pkchat-agent-run__title">
+					<strong>{strings.messages.agentRunTitle}</strong>
+					<small>{statusLabel}</small>
+				</span>
+				<span className="pkchat-agent-run__meta">{metaParts.join(' · ')}</span>
+				<ChevronDown className="pkchat-agent-run__chevron" />
+			</Button>
 
 			{expanded && (
-				<div className="pktw-py-1">
-					{completed.map((tc, i) => {
-						const display = getToolDisplay(tc.toolName);
-						const inputPreview = typeof tc.input === 'string' ? tc.input
-							: tc.input?.query ?? tc.input?.note_path ?? tc.input?.start_note_path ?? '';
-						const resultPreview = getResultPreview(tc);
-						return (
-							<div key={i} className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-py-0.5 pktw-text-[11px] pktw-text-muted-foreground">
-								<span className="pktw-w-3.5 pktw-text-center pktw-text-[10px]">{display.icon}</span>
-								<span className="pktw-font-medium pktw-text-foreground">{display.label}</span>
-								{inputPreview && <span className="pktw-text-muted-foreground/60 pktw-italic">{String(inputPreview).slice(0, 50)}</span>}
-								{resultPreview && <span className="pktw-ml-auto pktw-text-[10px] pktw-text-[var(--pk-success)] pktw-whitespace-nowrap">{resultPreview}</span>}
-							</div>
-						);
-					})}
+				<div className="pkchat-agent-run__body">
+					<div className="pkchat-agent-run__timeline">
+						{toolCalls.map((toolCall, index) => (
+							<AgentStepRow
+								key={`${toolCall.toolName}-${index}`}
+								call={toolCall}
+								index={index}
+								span={matchToolSpan(toolCall, index, toolSpans)}
+								strings={strings}
+							/>
+						))}
+					</div>
+					{debugRun && debugRun.spans.length > 0 && (
+						<AgentTrace run={debugRun} strings={strings} />
+					)}
+				</div>
+			)}
+		</section>
+	);
+};
+
+const RunStatusIcon: React.FC<{ status: AgentRunVisualStatus }> = ({ status }) => {
+	if (status === 'running') {
+		return (
+			<span className="pkchat-agent-run__status" aria-hidden="true">
+				<Loader2 className="pktw-animate-spin" />
+			</span>
+		);
+	}
+	if (status === 'failed') {
+		return (
+			<span className="pkchat-agent-run__status" aria-hidden="true">
+				<AlertTriangle />
+			</span>
+		);
+	}
+	return (
+		<span className="pkchat-agent-run__status" aria-hidden="true">
+			<Workflow />
+		</span>
+	);
+};
+
+const AgentStepRow: React.FC<{
+	call: AgentToolCall;
+	index: number;
+	span?: DebugSpan;
+	strings: ChatStudioStrings;
+}> = ({ call, index, span, strings }) => {
+	const display = getToolDisplay(call.toolName, strings);
+	const ToolIcon = display.icon;
+	const error = getToolError(call, span);
+	const state = call.isActive ? 'running' : error ? 'failed' : 'completed';
+	const inputPreview = extractInputPreview(call.input) || span?.input?.excerpt || '';
+	const resultPreview = getResultPreview(call, span, strings);
+	const duration = getToolDurationLabel(call, span);
+
+	return (
+		<div className="pkchat-agent-step" data-state={state}>
+			<span className="pkchat-agent-step__rail" aria-hidden="true">
+				<span className="pkchat-agent-step__node">
+					{state === 'running' ? <Loader2 className="pktw-animate-spin" /> : state === 'failed' ? <AlertTriangle /> : <Check />}
+				</span>
+			</span>
+			<span className="pkchat-agent-step__tool-icon" aria-hidden="true">
+				<ToolIcon />
+			</span>
+			<span className="pkchat-agent-step__content">
+				<span className="pkchat-agent-step__topline">
+					<strong>{display.label}</strong>
+					{duration && <small>{duration}</small>}
+				</span>
+				{inputPreview && <span className="pkchat-agent-step__input">{inputPreview}</span>}
+				{error ? (
+					<span className="pkchat-agent-step__result pkchat-agent-step__result--error">{error}</span>
+				) : resultPreview ? (
+					<span className="pkchat-agent-step__result">{resultPreview}</span>
+				) : null}
+			</span>
+			<span className="pkchat-agent-step__index" aria-hidden="true">{index + 1}</span>
+		</div>
+	);
+};
+
+const AgentTrace: React.FC<{ run: DebugRun; strings: ChatStudioStrings }> = ({ run, strings }) => {
+	const [open, setOpen] = useState(false);
+	const rows = useMemo(() => buildTraceRows(run.spans), [run.spans]);
+	const spanWord = rows.length === 1
+		? strings.messages.agentTraceSpanSingular
+		: strings.messages.agentTraceSpanPlural;
+
+	return (
+		<div className="pkchat-agent-trace" data-open={open ? 'true' : 'false'}>
+			<Button
+				type="button"
+				variant="ghost"
+				size="sm"
+				className="pkchat-agent-trace__trigger"
+				onClick={() => setOpen((value) => !value)}
+				aria-expanded={open}
+			>
+				<Bug />
+				<span>{strings.messages.agentTraceTitle}</span>
+				<small>{rows.length} {spanWord}</small>
+				<ChevronDown />
+			</Button>
+			{open && (
+				<div className="pkchat-agent-trace__stack">
+					{rows.map(({ span, depth }) => (
+						<div
+							key={span.spanId}
+							className="pkchat-agent-trace__span"
+							data-depth={depth}
+							data-state={span.error ? 'failed' : 'completed'}
+						>
+							<span className="pkchat-agent-trace__span-node" aria-hidden="true" />
+							<span className="pkchat-agent-trace__span-copy">
+								<strong>{span.name}</strong>
+								<small>{span.kind}</small>
+								{span.error?.message && <em>{span.error.message}</em>}
+							</span>
+							<span className="pkchat-agent-trace__span-time">{formatDurationMs(span.durationMs)}</span>
+						</div>
+					))}
 				</div>
 			)}
 		</div>
 	);
 };
 
-function getResultPreview(tc: ToolCall): string | null {
-	if (!tc.output) return null;
-	if (typeof tc.output === 'object' && tc.output.results) return `${tc.output.results.length} found`;
-	if (typeof tc.output === 'string' && tc.output.length > 0) return `${(tc.output.length / 1000).toFixed(1)}k chars`;
+function resolveRunStatus(
+	isStreaming: boolean,
+	debugStatus: DebugRunStatus | undefined,
+	toolCalls: AgentToolCall[],
+): AgentRunVisualStatus {
+	if (isStreaming || debugStatus === 'running' || toolCalls.some((call) => call.isActive)) return 'running';
+	if (debugStatus === 'failed' || toolCalls.some((call) => getToolError(call))) return 'failed';
+	if (debugStatus === 'cancelled') return 'cancelled';
+	return 'completed';
+}
+
+function getRunStatusLabel(status: AgentRunVisualStatus, strings: ChatStudioStrings): string {
+	if (status === 'running') return strings.messages.agentRunRunning;
+	if (status === 'failed') return strings.messages.agentRunFailed;
+	if (status === 'cancelled') return strings.messages.agentRunCancelled;
+	return strings.messages.agentRunCompleted;
+}
+
+function matchToolSpan(call: AgentToolCall, index: number, spans: readonly DebugSpan[]): DebugSpan | undefined {
+	const exact = spans.find((span) => span.name === call.toolName || span.name.endsWith(call.toolName));
+	return exact ?? spans[index];
+}
+
+function extractInputPreview(input: unknown): string {
+	if (typeof input === 'string') return cleanPreview(input, 110);
+	if (!input || typeof input !== 'object') return '';
+	const value = input as Record<string, unknown>;
+	const preferred = value.query
+		?? value.note_path
+		?? value.path
+		?? value.start_note_path
+		?? value.folder
+		?? value.prompt
+		?? '';
+	if (typeof preferred === 'string') return cleanPreview(preferred, 110);
+	try {
+		return cleanPreview(JSON.stringify(value), 110);
+	} catch {
+		return '';
+	}
+}
+
+function getResultPreview(
+	call: AgentToolCall,
+	span: DebugSpan | undefined,
+	strings: ChatStudioStrings,
+): string | null {
+	if (span?.output?.excerpt) return cleanPreview(span.output.excerpt, 90);
+	if (!call.output) return null;
+	if (typeof call.output === 'object') {
+		const output = call.output as Record<string, unknown>;
+		if (Array.isArray(output.results)) {
+			return `${output.results.length} ${strings.messages.agentResultFound}`;
+		}
+		if (typeof output.summary === 'string') return cleanPreview(output.summary, 90);
+		return strings.messages.agentResultComplete;
+	}
+	if (typeof call.output === 'string') {
+		const length = call.output.length;
+		if (length <= 90) return cleanPreview(call.output, 90);
+		return `${(length / 1000).toFixed(1)}k ${strings.messages.agentResultCharacters}`;
+	}
+	return strings.messages.agentResultComplete;
+}
+
+function getToolError(call: AgentToolCall, span?: DebugSpan): string | null {
+	if (span?.error?.message) return span.error.message;
+	if (!call.output || typeof call.output !== 'object') return null;
+	const output = call.output as Record<string, unknown>;
+	if (typeof output.error === 'string') return output.error;
+	if (output.success === false && typeof output.message === 'string') return output.message;
 	return null;
+}
+
+function getToolDurationLabel(call: AgentToolCall, span?: DebugSpan): string | null {
+	if (span && span.durationMs >= 0) return formatDurationMs(span.durationMs);
+	if (typeof call.startedAt !== 'number' || typeof call.finishedAt !== 'number') return null;
+	if (call.finishedAt <= call.startedAt) return null;
+	return formatDurationMs(call.finishedAt - call.startedAt);
+}
+
+function getRunDurationLabel(run?: DebugRun): string | null {
+	if (!run?.endedAt || run.endedAt <= run.startedAt) return null;
+	return formatDurationMs(run.endedAt - run.startedAt);
+}
+
+function formatDurationMs(ms: number): string {
+	if (ms < 100) return '<0.1s';
+	if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
+	const minutes = Math.floor(ms / 60_000);
+	const seconds = Math.round((ms % 60_000) / 1000);
+	return `${minutes}m ${seconds}s`;
+}
+
+function cleanPreview(value: string, limit: number): string {
+	const compact = value.replace(/\s+/g, ' ').trim();
+	if (compact.length <= limit) return compact;
+	return `${compact.slice(0, Math.max(0, limit - 1))}…`;
+}
+
+function buildTraceRows(spans: readonly DebugSpan[]): Array<{ span: DebugSpan; depth: number }> {
+	const ordered = [...spans].sort((left, right) => left.startedAt - right.startedAt);
+	const byId = new Map(ordered.map((span) => [span.spanId, span]));
+	return ordered.map((span) => ({ span, depth: getSpanDepth(span, byId) }));
+}
+
+function getSpanDepth(span: DebugSpan, byId: Map<string, DebugSpan>): number {
+	let depth = 0;
+	let parentId = span.parentSpanId;
+	const visited = new Set<string>();
+	while (parentId && depth < 4 && !visited.has(parentId)) {
+		visited.add(parentId);
+		const parent = byId.get(parentId);
+		if (!parent) break;
+		depth += 1;
+		parentId = parent.parentSpanId;
+	}
+	return depth;
 }

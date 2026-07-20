@@ -2,7 +2,43 @@ import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from '../ddl';
 import { sql } from 'kysely';
 import type { ChatMessage } from '@/core/types/chat';
+import { MessageStatus } from '@/core/types/chat';
 import { hashMD5 } from '@/core/utils/hash-utils';
+
+/**
+ * Build the persisted meta_json blob for a message (turn relationships).
+ * Returns null when there is nothing to persist so legacy rows stay null.
+ */
+export function buildMessageMetaJson(msg: ChatMessage): string | null {
+	const extras: Record<string, unknown> = {};
+	if (msg.replyToMessageId) extras.replyToMessageId = msg.replyToMessageId;
+	if (msg.branchFromMessageId) extras.branchFromMessageId = msg.branchFromMessageId;
+	if (msg.revisionOfMessageId) extras.revisionOfMessageId = msg.revisionOfMessageId;
+	// Tool calls drive the persisted Agent Run surface. Previously they only
+	// lived on the in-memory streaming message, so the entire execution timeline
+	// disappeared after switching conversations or reloading Obsidian.
+	if (msg.toolCalls && msg.toolCalls.length > 0) extras.toolCalls = msg.toolCalls;
+	if (Object.keys(extras).length === 0) return null;
+	try {
+		return JSON.stringify(extras);
+	} catch {
+		// A provider may return a non-serializable tool payload. Keep the durable
+		// relationship metadata instead of failing the whole message write.
+		delete extras.toolCalls;
+		return Object.keys(extras).length > 0 ? JSON.stringify(extras) : null;
+	}
+}
+
+/**
+ * Persist only FINAL non-success statuses (error/cancelled/timeout) so a
+ * reload can render the failure receipt. Null = completed (legacy default).
+ */
+function buildPersistedStatus(msg: ChatMessage): string | null {
+	if (msg.status === MessageStatus.ERROR || msg.status === MessageStatus.CANCELLED || msg.status === MessageStatus.TIMEOUT) {
+		return msg.status;
+	}
+	return null;
+}
 
 /**
  * Repository for chat_message table.
@@ -34,6 +70,7 @@ export class ChatMessageRepo {
 		created_at_zone: string;
 		model: string | null;
 		provider: string | null;
+		topic: string | null;
 		starred: number;
 		is_error: number;
 		is_visible: number;
@@ -41,6 +78,8 @@ export class ChatMessageRepo {
 		token_usage_json: string | null;
 		thinking: string | null;
 		suggested_followups_json: string | null;
+		status: string | null;
+		meta_json: string | null;
 	}): Promise<void> {
 		await this.db
 			.insertInto('chat_message')
@@ -51,7 +90,7 @@ export class ChatMessageRepo {
 	/**
 	 * Update existing chat message by message_id.
 	 */
-	async updateByMessageId(messageId: string, updates: Partial<Pick<DbSchema['chat_message'], 'conversation_id' | 'role' | 'content_hash' | 'created_at_ts' | 'created_at_zone' | 'model' | 'provider' | 'starred' | 'is_error' | 'is_visible' | 'gen_time_ms' | 'token_usage_json' | 'thinking' | 'suggested_followups_json'>>): Promise<void> {
+	async updateByMessageId(messageId: string, updates: Partial<Pick<DbSchema['chat_message'], 'conversation_id' | 'role' | 'content_hash' | 'created_at_ts' | 'created_at_zone' | 'model' | 'provider' | 'topic' | 'starred' | 'is_error' | 'is_visible' | 'gen_time_ms' | 'token_usage_json' | 'thinking' | 'suggested_followups_json' | 'status' | 'meta_json'>>): Promise<void> {
 		await this.db
 			.updateTable('chat_message')
 			.set(updates)
@@ -75,6 +114,7 @@ export class ChatMessageRepo {
 				created_at_zone: msg.createdAtZone,
 				model: msg.model ?? null,
 				provider: msg.provider ?? null,
+				topic: msg.topic?.trim() || null,
 				starred: msg.starred ? 1 : 0,
 				is_error: msg.isErrorMessage ? 1 : 0,
 				is_visible: msg.isVisible !== false ? 1 : 0,
@@ -84,30 +124,15 @@ export class ChatMessageRepo {
 				suggested_followups_json: msg.suggestedFollowups && msg.suggestedFollowups.length > 0
 					? JSON.stringify(msg.suggestedFollowups)
 					: null,
+				status: buildPersistedStatus(msg),
+				meta_json: buildMessageMetaJson(msg),
 			};
 
 			const exists = await this.existsByMessageId(msg.id);
 
 			if (exists) {
-				// Update existing message
-				await this.updateByMessageId(msg.id, {
-					conversation_id: conversationId,
-					role: msg.role,
-					content_hash: hashMD5(msg.content),
-					created_at_ts: msg.createdAtTimestamp,
-					created_at_zone: msg.createdAtZone,
-					model: msg.model ?? null,
-					provider: msg.provider ?? null,
-					starred: msg.starred ? 1 : 0,
-					is_error: msg.isErrorMessage ? 1 : 0,
-					is_visible: msg.isVisible !== false ? 1 : 0,
-					gen_time_ms: msg.genTimeMs ?? null,
-					token_usage_json: msg.tokenUsage ? JSON.stringify(msg.tokenUsage) : null,
-					thinking: msg.reasoning?.content ?? null,
-					suggested_followups_json: msg.suggestedFollowups && msg.suggestedFollowups.length > 0
-						? JSON.stringify(msg.suggestedFollowups)
-						: null,
-				});
+				const { message_id: _id, ...updates } = messageData;
+				await this.updateByMessageId(msg.id, updates);
 			} else {
 				// Insert new message
 				await this.insert(messageData);

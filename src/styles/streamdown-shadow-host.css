@@ -43,8 +43,12 @@
   width: 100%;
   min-height: 1em;
   overflow: visible;
-  font-family: var(--font-interface, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
-  font-size: 1rem;
+  /* Inherit font-family + font-size from the light-DOM ancestor (message body /
+     report section / insight panel) instead of hard-pinning Obsidian's
+     --font-interface at 16px. The design-system root pin (--pk-font-sans) and the
+     per-surface size (e.g. .pkchat-msg__body → --pk-text-lg-plus 14.5px) then flow
+     into the shadow tree. Deleting the font-size line lets it inherit too. */
+  font-family: inherit;
   line-height: 1.5;
   background-color: transparent;
   color: hsl(var(--foreground));
@@ -86,6 +90,66 @@
   --pk-accent-hover: var(--pk-accent-hover);
   --pk-accent-muted: var(--pk-accent-muted);
   --pk-accent-fg: var(--pk-accent-fg);
+
+  /* Syntax colours are configurable, while the surrounding workbench stays a
+     neutral GitHub-like charcoal in both app themes. This avoids pairing a
+     user-selected dark palette with a bright or strongly tinted code shell. */
+  --sd-code-shell: 215 28% 7%;
+  --sd-code-header: 215 21% 11%;
+  --sd-code-border: 213 13% 22%;
+  --sd-code-muted: 213 9% 58%;
+  --sd-code-foreground: 210 17% 82%;
+  --sd-block-accent: 262 83% 58%;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Dark-theme token mapping (fixes generic rich surfaces in Obsidian dark theme).
+ *
+ * Root cause: the shadcn HSL tokens above are hard-coded to LIGHT values with no
+ * dark counterpart. Streamdown's code-block BODY container is
+ * `<div … class="… border border-border bg-background p-4 …" data-streamdown="code-block-body">`
+ * so its background resolves to `hsl(var(--background))` = white. Obsidian's dark
+ * theme is signalled by `.theme-dark` on <body> (an ancestor of this shadow host),
+ * NOT by the OS `prefers-color-scheme` — so nothing here ever flipped these tokens.
+ * The code workbench itself stays on the neutral dark canvas declared above.
+ *
+ * Fix (CSS-variable mapping only — §1.6): remap the shadcn tokens to dark values
+ * via `:host-context(.theme-dark)` (supported in Obsidian's Chromium runtime). This
+ * turns `bg-background` / `bg-muted` / `bg-card` / `border` / `text-foreground` and
+ * the table / blockquote surfaces dark. Canonical shadcn dark palette.
+ *
+ * NOT fixed here (would be a bigger change — diagnose only per task scope): the
+ * streamdown-generated `.dark:` shiki overrides are gated on
+ * `@media (prefers-color-scheme:dark)`, i.e. OS-driven, not `.theme-dark`-driven.
+ * Peak supplies the selected dark Shiki theme to both theme slots, so code
+ * tokens remain stable regardless. A deeper change would rebuild Streamdown
+ * with darkMode keyed to `.theme-dark`.
+ * ───────────────────────────────────────────────────────────────────────────── */
+:host-context(.theme-dark) {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 210 40% 98%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 212.7 26.8% 83.9%;
+  --sd-code-shell: 215 28% 7%;
+  --sd-code-header: 215 21% 11%;
+  --sd-code-border: 213 13% 22%;
+  --sd-code-muted: 213 9% 58%;
+  --sd-code-foreground: 210 17% 82%;
 }
 
 .streamdown-wrapper {
@@ -100,27 +164,171 @@
   line-height: inherit;
 }
 
-/* Modern block styling per official docs (code, table, mermaid) */
+/* Rich output blocks share one editor-like workbench language: 10px frame,
+   36px control rail, compact controls, and a content-specific canvas. */
 [data-streamdown="code-block"] {
-  border-radius: var(--radius);
-  border: 1px solid hsl(var(--border));
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  margin: 1.1em 0;
+  overflow: hidden;
+  gap: 0 !important;
+  padding: 0 !important;
+  border-radius: 10px;
+  border: 1px solid hsl(var(--sd-code-border));
+  background: hsl(var(--sd-code-shell));
+  box-shadow: none;
+}
+
+[data-streamdown="code-block-header"] {
+  height: 36px !important;
+  padding: 0 12px !important;
+  border-bottom: 1px solid hsl(var(--sd-code-border));
+  background: hsl(var(--sd-code-header));
+  color: hsl(var(--sd-code-muted));
+}
+
+[data-streamdown="code-block-header"]::before,
+[data-streamdown="mermaid-block"] > div:first-child::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  margin-right: 8px;
+  border-radius: 999px;
+  background: hsl(var(--sd-block-accent));
+}
+
+[data-streamdown="code-block-header"] > span,
+[data-streamdown="mermaid-block"] > div:first-child > span {
+  margin-left: 0 !important;
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.065em;
+  text-transform: uppercase;
+}
+
+[data-streamdown="code-block-actions"],
+[data-streamdown="mermaid-block-actions"] {
+  gap: 2px !important;
+  padding: 0 8px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+}
+
+[data-streamdown="code-block-body"] {
+  padding: 14px 16px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: hsl(var(--sd-code-shell)) !important;
+  color: hsl(var(--sd-code-foreground));
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+
+[data-streamdown="code-block-body"] pre {
+  margin: 0;
+  background: transparent !important;
+  color: inherit;
+}
+
+[data-streamdown="code-block-body"] code {
+  color: inherit;
+}
+
+/* Streamdown keys its generated `.dark:` token rule to the operating-system
+   media query. Obsidian can use a light OS appearance while the code workbench
+   deliberately stays dark, which previously paired GitHub Light token values
+   (`--sdm-c`) with this charcoal canvas. Every theme exposed in Peak settings
+   is a dark Shiki theme, so the workbench must consistently consume the
+   selected `--shiki-dark` token regardless of the OS preference. */
+[data-streamdown="code-block-body"] span[style*="--shiki-dark"] {
+  color: var(--shiki-dark) !important;
+}
+
+[data-streamdown="code-block-body"] code > span::before {
+  color: hsl(var(--sd-code-muted) / 0.68) !important;
 }
 
 [data-streamdown="mermaid-block"] {
-  border-radius: var(--radius);
+  margin: 1.1em 0;
+  overflow: hidden;
+  gap: 0 !important;
+  padding: 0 !important;
+  border-radius: 10px;
   border: 1px solid hsl(var(--border));
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  background: hsl(var(--background));
+  box-shadow: none;
+}
+
+[data-streamdown="mermaid-block"] > div:first-child {
+  height: 36px !important;
+  padding: 0 12px !important;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--muted) / 0.45);
+}
+
+[data-streamdown="mermaid-block"] > div:last-child {
+  min-height: 0;
+  padding: 12px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: hsl(var(--muted) / 0.12) !important;
+}
+
+[data-streamdown="mermaid"] [aria-label="Mermaid chart"] > svg {
+  display: block;
+  width: 100% !important;
+  max-width: none !important;
+  height: auto !important;
+  max-height: 420px;
+}
+
+[data-streamdown="mermaid"] {
+  width: 100%;
+  min-width: 0;
+}
+
+[data-streamdown="mermaid"] [aria-label="Mermaid chart"] {
+  width: 100%;
+  min-width: 0;
 }
 
 /* ── Tables ── */
 [data-streamdown="table-wrapper"] {
   overflow-x: auto;
   overflow-y: hidden;
-  border-radius: 6px;
+  gap: 0 !important;
+  padding: 0 !important;
+  border-radius: 10px;
   border: 1px solid hsl(var(--border));
-  margin: 0.75em 0;
+  margin: 1.1em 0;
   width: 100%;
+  background: hsl(var(--background));
+  box-shadow: none;
+}
+
+[data-streamdown="table-wrapper"] > div:first-child {
+  min-height: 34px;
+  padding: 0 8px;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--muted) / 0.45);
+}
+
+[data-streamdown="table-wrapper"] > div:first-child::before {
+  content: '';
+  width: 13px;
+  height: 11px;
+  margin-right: auto;
+  border: 1px solid hsl(var(--muted-foreground) / 0.72);
+  border-radius: 2px;
+  background:
+    linear-gradient(to right, transparent 31%, hsl(var(--muted-foreground) / 0.5) 31%, hsl(var(--muted-foreground) / 0.5) 38%, transparent 38%, transparent 65%, hsl(var(--muted-foreground) / 0.5) 65%, hsl(var(--muted-foreground) / 0.5) 72%, transparent 72%),
+    linear-gradient(to bottom, transparent 44%, hsl(var(--muted-foreground) / 0.5) 44%, hsl(var(--muted-foreground) / 0.5) 56%, transparent 56%);
+}
+
+[data-streamdown="table-wrapper"] > div:last-child {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: hsl(var(--background)) !important;
 }
 
 [data-streamdown="table"] {
@@ -130,49 +338,129 @@
 
 [data-streamdown="table"] th,
 [data-streamdown="table"] td {
-  padding: 8px 12px;
+  padding: 9px 12px;
   text-align: left;
   border-bottom: 1px solid hsl(var(--border));
+  vertical-align: top;
+  line-height: 1.5;
 }
 
 [data-streamdown="table"] th {
-  font-weight: 600;
-  background: hsl(var(--muted));
+  font-size: 12.5px;
+  font-weight: 650;
+  color: hsl(var(--foreground));
+  background: hsl(var(--muted) / 0.62);
 }
 
-[data-streamdown="table"] tr:nth-child(even) td {
+[data-streamdown="table"] td {
+  font-size: 13.5px;
+  min-width: 112px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+
+[data-streamdown="table"] td a,
+[data-streamdown="table"] td [data-streamdown="link"],
+[data-streamdown="table"] td button {
+  display: inline !important;
+  width: auto !important;
+  max-width: none !important;
+  height: auto !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+/* Streamdown renders safety-checked external links as buttons. Long URLs should
+   stay readable without expanding into a tall one-character column. */
+[data-streamdown="table"] td a[data-streamdown="link"],
+[data-streamdown="table"] td button[data-streamdown="link"] {
+  display: inline-block !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis;
+  white-space: nowrap !important;
+  vertical-align: bottom;
+}
+
+/* Preserve a readable URL measure. The wrapper owns horizontal overflow, so
+   linked cells should scroll instead of collapsing into one-character lines. */
+[data-streamdown="table"] td:has(a[href]),
+[data-streamdown="table"] td:has([data-streamdown="link"]),
+[data-streamdown="table"] td:has(button) {
+  min-width: 220px;
+}
+
+[data-streamdown="table"] th:not(:last-child),
+[data-streamdown="table"] td:not(:last-child) {
+  border-right: 1px solid hsl(var(--border) / 0.78);
+}
+
+[data-streamdown="table"] tbody tr:hover td {
   background: hsl(var(--muted) / 0.3);
 }
 
+[data-streamdown="table"] tbody tr:last-child td {
+  border-bottom: 0;
+}
+
 [data-streamdown="table-header"] {
-  background: linear-gradient(to bottom, hsl(var(--muted)), hsl(var(--border) / 0.5));
-  padding: 4px 8px;
-  font-size: 0.75rem;
-  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--muted) / 0.62);
 }
 
 [data-streamdown="blockquote"] {
-  border-radius: calc(var(--radius) - 2px);
-  border-left-width: 4px;
+  border-radius: 0;
+  border-left-width: 2px;
+  background: transparent;
 }
 
 /* Buttons: light background + subtle border (no harsh grey/black) */
 [data-streamdown="code-block-copy-button"],
 [data-streamdown="code-block-download-button"],
-[data-streamdown="table-wrapper"] button,
+[data-streamdown="table-wrapper"] > div:first-child button,
 [data-streamdown="mermaid-block"] button {
-  border-radius: calc(var(--radius) - 2px);
-  /* background-color: hsl(var(--background)); */
+  flex: 0 0 26px;
+  width: 26px !important;
+  min-width: 26px !important;
+  max-width: 26px !important;
+  height: 26px !important;
+  min-height: 26px !important;
+  max-height: 26px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  border-radius: 6px;
   background-color: transparent;
-  /* border: 1px solid hsl(var(--border)); */
   border: none;
   color: hsl(var(--muted-foreground));
   transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
 
+[data-streamdown="mermaid-block"] button > svg {
+  display: block;
+  flex: 0 0 15px;
+  width: 15px !important;
+  min-width: 15px !important;
+  max-width: 15px !important;
+  height: 15px !important;
+  min-height: 15px !important;
+  max-height: 15px !important;
+}
+
+[data-streamdown="mermaid-block-actions"] {
+  max-width: calc(100% - 24px);
+  overflow: hidden;
+}
+
 [data-streamdown="code-block-copy-button"]:hover,
 [data-streamdown="code-block-download-button"]:hover,
-[data-streamdown="table-wrapper"] button:hover,
+[data-streamdown="table-wrapper"] > div:first-child button:hover,
 [data-streamdown="mermaid-block"] button:hover {
   background-color: hsl(var(--muted) / 0.8);
   color: hsl(var(--foreground));
@@ -180,10 +468,21 @@
 
 [data-streamdown="code-block-copy-button"]:focus-visible,
 [data-streamdown="code-block-download-button"]:focus-visible,
-[data-streamdown="table-wrapper"] button:focus-visible,
+[data-streamdown="table-wrapper"] > div:first-child button:focus-visible,
 [data-streamdown="mermaid-block"] button:focus-visible {
   outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
+}
+
+[data-streamdown="code-block-copy-button"],
+[data-streamdown="code-block-download-button"] {
+  color: hsl(var(--sd-code-muted)) !important;
+}
+
+[data-streamdown="code-block-copy-button"]:hover,
+[data-streamdown="code-block-download-button"]:hover {
+  color: hsl(0 0% 100%) !important;
+  background: hsl(0 0% 100% / 0.08) !important;
 }
 
 /* Wikilinks: classic blue underlined link, no box, pointer cursor (remarkWikilink plugin) */
@@ -219,11 +518,12 @@ a[href^="obsidian://open"]:hover,
   border: 1px solid hsl(var(--border));
 }
 
-/* Hide the dropdown panels by default */
+/* Mermaid actions are capabilities, not hover-only decoration. Keep them
+   visible at rest and increase contrast on block hover. */
 [data-streamdown="mermaid-block"] > .flex.items-center.justify-end,
 [data-streamdown="mermaid-block"] .absolute.z-10.flex.flex-col.rounded-md {
-  opacity: 0;
-  pointer-events: none;
+  opacity: 0.72;
+  pointer-events: auto;
   transition: opacity 0.15s ease;
 }
 
@@ -231,7 +531,6 @@ a[href^="obsidian://open"]:hover,
 [data-streamdown="mermaid-block"]:hover > .flex.items-center.justify-end,
 [data-streamdown="mermaid-block"]:hover .absolute.z-10.flex.flex-col.rounded-md {
   opacity: 1;
-  pointer-events: auto;
 }
 
 /* ── Paragraphs ── */
@@ -246,6 +545,23 @@ a[href^="obsidian://open"]:hover,
 [data-streamdown-root] blockquote,
 [data-streamdown-root] .math-display {
   max-width: 100%;
+}
+
+/* Images stay part of the prose column instead of reading as glossy cards.
+   Natural dimensions are preserved, while very tall generations remain
+   scannable inside the conversation viewport. */
+[data-streamdown-root] img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 540px;
+  margin: 0.9em 0;
+  object-fit: contain;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  background: hsl(var(--background));
+  box-shadow: none;
 }
 
 /* ── TOC filter ── */

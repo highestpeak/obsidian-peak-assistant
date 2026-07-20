@@ -82,8 +82,26 @@ export async function runChatConversation<T = unknown>(
 		payload = await options.send();
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
-		recorder.recordError(message, false);
-		recorder.finish('failed');
+		// chat-studio RUN-03: user/timeout aborts finish as 'cancelled', not
+		// 'failed', so run status stays consistent with message/tool receipts.
+		// Timeout aborts also land here; the TurnExecutionReceipt distinguishes
+		// timeout from manual cancel at the receipt layer.
+		//
+		// Classify STRUCTURALLY: a genuine abort surfaces as an error /
+		// DOMException named 'AbortError' (aborted fetch, AI SDK re-throw).
+		// Trust that name first. The message-text fallback fires ONLY when no
+		// name is present, and matches abort phrasing alone — deliberately NOT
+		// "cancelled", which providers also emit for server-side FAILURES that
+		// must trace as 'failed', not as a user cancel.
+		const errName =
+			typeof err === 'object' && err !== null && 'name' in err
+				? String((err as { name: unknown }).name)
+				: undefined;
+		const isAbort =
+			errName === 'AbortError' ||
+			(errName === undefined && /\baborted\b/i.test(message));
+		recorder.recordError(message, isAbort);
+		recorder.finish(isAbort ? 'cancelled' : 'failed');
 		throw err;
 	}
 

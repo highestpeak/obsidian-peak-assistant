@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { ChatConversation, ChatProject, ChatMessage } from '@/service/chat/types';
 import { ConversationUpdatedEvent, ViewEventType } from '@/core/eventBus';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
+import type { ProjectPlanRef, ChatArtifactReceipt } from '@/core/types/chat-studio';
 
 export interface StarredEntry {
 	conversation: ChatConversation;
@@ -14,6 +15,17 @@ export interface ResourceAttachmentEntry {
 	message: ChatMessage;
 	resource: string;
 	resourceLabel: string;
+}
+
+export interface ProjectResourceRow {
+	kind: 'attachment' | 'artifact';
+	id: string;
+	title: string;
+	subtitle?: string;
+	openTarget?: string;
+	timestamp: number;
+	attachment?: ResourceAttachmentEntry;
+	artifact?: ChatArtifactReceipt;
 }
 
 /**
@@ -138,15 +150,88 @@ export function useProjectLoad(projectId: string | null) {
 	// Get summary text
 	const summaryText = project ? getProjectSummaryText(project) : undefined;
 
+	// Plans + artifact receipts (chat-studio §9 / §9.1 / PROJ-04 / Resources tab)
+	const [plans, setPlans] = useState<ProjectPlanRef[]>([]);
+	const [artifactReceipts, setArtifactReceipts] = useState<ChatArtifactReceipt[]>([]);
+
+	const reloadPlans = useCallback(async () => {
+		if (!project || !manager) return;
+		try {
+			const rows = await manager.proj.listPlans(project.meta.id);
+			setPlans(rows);
+		} catch {
+			setPlans([]);
+		}
+	}, [project, manager]);
+
+	useEffect(() => { void reloadPlans(); }, [reloadPlans]);
+
+	useEffect(() => {
+		const loadArtifacts = async () => {
+			if (!project || !manager) return;
+			try {
+				const rows = await manager.conv.listArtifactReceiptsByProject(project.meta.id);
+				setArtifactReceipts(rows);
+			} catch {
+				setArtifactReceipts([]);
+			}
+		};
+		void loadArtifacts();
+	}, [project, manager]);
+
+	// Merged Resources projection (attachments + generated artifact receipts).
+	const resourceRows = useMemo<ProjectResourceRow[]>(() => {
+		return mergeResourceRows(resources, artifactReceipts);
+	}, [resources, artifactReceipts]);
+
 	return {
 		// Data
 		project,
 		conversations,
 		starredEntries,
 		resources,
+		resourceRows,
 		totalMessages,
 		summaryText,
+		plans,
+		reloadPlans,
+		artifactReceipts,
 	};
+}
+
+/**
+ * Merge attachment rows + artifact receipts into a unified Resources projection
+ * (chat-studio §9 Resources tab). Kept pure so it's independently testable.
+ */
+export function mergeResourceRows(
+	attachments: ResourceAttachmentEntry[],
+	artifacts: ChatArtifactReceipt[],
+): ProjectResourceRow[] {
+	const rows: ProjectResourceRow[] = [];
+
+	for (const a of attachments) {
+		rows.push({
+			kind: 'attachment',
+			id: `att:${a.conversation.meta.id}:${a.message.id}:${a.resource}`,
+			title: a.resourceLabel,
+			subtitle: a.conversation.meta.title,
+			openTarget: a.resource,
+			timestamp: a.message.createdAtTimestamp ?? 0,
+			attachment: a,
+		});
+	}
+	for (const r of artifacts) {
+		rows.push({
+			kind: 'artifact',
+			id: `art:${r.artifactId}`,
+			title: r.title,
+			subtitle: r.kind,
+			openTarget: r.vaultPath ?? r.externalUri ?? r.uri,
+			timestamp: r.createdAt,
+			artifact: r,
+		});
+	}
+	return rows.sort((a, b) => b.timestamp - a.timestamp);
 }
 
 /**

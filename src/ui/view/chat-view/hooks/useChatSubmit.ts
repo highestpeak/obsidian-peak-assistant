@@ -9,6 +9,14 @@ import type { ChatConversation, ChatMessage, ChatProject } from '@/service/chat/
 import { MessageStatus } from '@/service/chat/types';
 import { TopicAggregationService } from '@/service/chat/TopicAggregationService';
 import { MESSAGE_TIMEOUT_MS } from '@/core/constant';
+import { SourceReceiptCollector } from '@/service/chat/tools/sourceReceiptCollector';
+import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import {
+	emptySourceScope,
+	type ExplicitContextRef,
+	type TurnExecutionReceipt,
+	type TurnSourceScope,
+} from '@/core/types/chat-studio';
 
 /** Engagement window for `continuation` outcome events (PR-Chat-4 §11.4). */
 const CONTINUATION_WINDOW_MS = 60_000;
@@ -18,6 +26,16 @@ export interface ChatSubmitOptions {
 	files: File[];
 	conversation: ChatConversation | null;
 	project: ChatProject | null;
+	/** Explicit context refs from the draft shelf ([[docs]], links). */
+	explicitRefs?: ExplicitContextRef[];
+	/** Targeted follow-up parent (chat-studio §7.8). */
+	replyToMessageId?: string;
+	/** Edit-and-resend revision source (§7.7). */
+	revisionOfMessageId?: string;
+	/** Workflow chip active for this turn (e.g. 'plan'). */
+	workflowId?: string;
+	/** Requested source scope snapshot for the turn receipt (RUN-02). */
+	requestedSources?: TurnSourceScope;
 }
 
 /**
@@ -141,7 +159,7 @@ export function useChatSubmit() {
 	 * Submit a chat message and handle the complete flow.
 	 * Tracks message lifecycle status: sending -> completed/error/timeout/cancelled.
 	 */
-	const submitMessage = useCallback(async (options: ChatSubmitOptions): Promise<void> => {
+	const submitMessage = useCallback(async (options: ChatSubmitOptions): Promise<ChatConversation | null> => {
 		const { text, files, conversation: inputConversation, project } = options;
 
 		// Record input text in session history for Ctrl+Up/Down recall (#81)
@@ -153,11 +171,14 @@ export function useChatSubmit() {
 		const conversation = inputConversation || await ensureConversation();
 		if (!conversation) {
 			console.error('[useChatSubmit] Failed to ensure conversation');
-			return;
+			return null;
 		}
 		// Create user message with sending status
 		const userMessage = createUserMessage(conversation, text);
 		userMessage.status = MessageStatus.SENDING;
+		// Turn relationships (chat-studio §12.1) — persisted with the message.
+		if (options.replyToMessageId) userMessage.replyToMessageId = options.replyToMessageId;
+		if (options.revisionOfMessageId) userMessage.revisionOfMessageId = options.revisionOfMessageId;
 
 		// PR-Chat-4 §11.4 — record a `continuation` outcome event if the user
 		// sent this follow-up within 60s of the previous assistant completion.
@@ -226,18 +247,33 @@ export function useChatSubmit() {
 
 		// Capture start time for usage durationMs (§11.6).
 		const streamStartMs = Date.now();
+		const requestId = generateUuidWithoutHyphens();
+
+		// Actual-source receipt accumulator (RUN-02): tools record real
+		// vault/web queries and documents into this collector during the run.
+		const receipts = new SourceReceiptCollector();
+
+		// Explicit vault/url refs become real request context — they flow
+		// through the same attachment/resource loading pipeline instead of
+		// being plain [[text]] hints (chat-studio F4).
+		const explicitRefSources = (options.explicitRefs ?? [])
+			.filter((ref) => ref.kind === 'vault-file' || ref.kind === 'vault-folder' || ref.kind === 'url')
+			.map((ref) => ref.uri);
 
 		// Stream chat (use conversationWithUserMessage which includes the user message)
-		// Note: The userMessage already saved above includes resources, so we don't need to pass attachments
-		// to streamChat since the resources are already in the conversation messages
 		const streamResult = await streamChat({
 			conversation: conversationWithUserMessage, // Use conversation with user message
 			project: project,
 			userContent: text,
-			attachments: resources.map(resource => resource.source),
+			attachments: [...resources.map(resource => resource.source), ...explicitRefSources],
 			abortSignal: abortControllerRef.current.signal,
+			receipts,
 		});
 		clearTimeout(timeoutId);
+		// Capture the abort reason BEFORE clearing so cancel vs timeout is
+		// distinguishable in message status + turn receipt (RUN-03).
+		const abortedSignal = abortControllerRef.current?.signal;
+		const abortReason = abortedSignal?.aborted ? String(abortedSignal.reason ?? 'cancelled') : null;
 		// Clear abort controller
 		abortControllerRef.current = null;
 
@@ -245,8 +281,13 @@ export function useChatSubmit() {
 		// If streaming was interrupted, finalMessage might be null, but we should still
 		// save any partial content from the streaming state
 		if (streamResult.finalMessage) {
-			// Determine assistant message status based on error/cancellation
-			if (streamResult.finalMessage.isErrorMessage) {
+			// RUN-03: cancel/timeout must NOT be recorded as completed. Partial
+			// output is kept but the persisted status tells the truth.
+			if (abortReason === 'timeout') {
+				streamResult.finalMessage.status = MessageStatus.TIMEOUT;
+			} else if (abortReason) {
+				streamResult.finalMessage.status = MessageStatus.CANCELLED;
+			} else if (streamResult.finalMessage.isErrorMessage) {
 				streamResult.finalMessage.status = MessageStatus.ERROR;
 			} else {
 				streamResult.finalMessage.status = MessageStatus.COMPLETED;
@@ -305,6 +346,43 @@ export function useChatSubmit() {
 			// No final message — clear streaming state as fallback
 			useChatDataStore.getState().clearStreaming();
 		}
+
+		// Persist the turn execution receipt (chat-studio §12.1 / RUN-02):
+		// requested vs actual sources, effective model, final status. Fire and
+		// forget — receipt persistence must never block the send flow.
+		const receiptStatus: TurnExecutionReceipt['status'] =
+			abortReason === 'timeout' ? 'timeout'
+			: abortReason ? 'cancelled'
+			: streamResult.finalMessage?.isErrorMessage ? 'error'
+			: 'completed';
+		const receipt: TurnExecutionReceipt = {
+			requestId,
+			messageId: streamResult.finalMessage?.id ?? userMessage.id,
+			conversationId: conversation.meta.id,
+			effectiveModel: {
+				provider: streamResult.finalMessage?.provider ?? actualProvider ?? '',
+				modelId: streamResult.finalMessage?.model ?? actualModel ?? '',
+			},
+			assistantId: conversation.meta.assistantId,
+			workflowId: options.workflowId,
+			requestedSources: options.requestedSources ?? emptySourceScope(conversation.meta.projectId ?? null),
+			actualSources: receipts.snapshot(),
+			status: receiptStatus,
+			artifactIds: [],
+			startedAt: streamStartMs,
+			finishedAt: Date.now(),
+			...(receiptStatus === 'error' && streamResult.finalMessage
+				? { error: { code: 'stream-error', message: streamResult.finalMessage.content.slice(0, 500), recoverable: true } }
+				: {}),
+			...(receiptStatus === 'timeout'
+				? { error: { code: 'timeout', message: 'No response within the timeout window', recoverable: true } }
+				: {}),
+		};
+		void manager.conv.saveTurnReceipt(receipt).catch((err) => {
+			console.warn('[useChatSubmit] saveTurnReceipt failed:', err);
+		});
+
+		return conversation;
 		// Note: manager and updateConv are intentionally omitted from dependencies
 		// manager is a stable reference from context, updateConv is from useStreamChat hook
 	}, [ensureConversation, createUserMessage, streamChat]);

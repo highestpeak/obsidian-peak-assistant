@@ -67,13 +67,13 @@ export function CapabilitySuggestion({ message }: { message: ChatMessage }) {
 	const Icon = config.icon;
 
 	return (
-		<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mt-2 pktw-px-3 pktw-py-2 pktw-rounded-lg pktw-bg-[--background-secondary] pktw-border pktw-border-[--background-modifier-border] pktw-text-xs">
-			<Icon className="pktw-w-3.5 pktw-h-3.5 pktw-text-[--text-muted] pktw-flex-shrink-0" />
-			<span className="pktw-text-[--text-muted]">{config.description}</span>
+		<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mt-2 pktw-min-h-[38px] pktw-px-2 pktw-py-1.5 pktw-rounded-md pktw-bg-pk-surface-raised pktw-border pktw-border-pk-border-soft pktw-text-pk-sm">
+			<Icon className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-text-tertiary pktw-flex-shrink-0" />
+			<span className="pktw-flex-1 pktw-min-w-0 pktw-text-pk-text-secondary">{config.description}</span>
 			<Button
 				variant="outline"
 				size="sm"
-				className="pktw-ml-auto pktw-h-6 pktw-text-[11px]"
+				className="pktw-ml-auto pktw-h-6 pktw-text-pk-sm"
 				onClick={() => {
 					config.enableAction();
 					setDismissed(true);
@@ -83,7 +83,7 @@ export function CapabilitySuggestion({ message }: { message: ChatMessage }) {
 			</Button>
 			<button
 				onClick={() => setDismissed(true)}
-				className="pktw-p-0.5 pktw-rounded hover:pktw-bg-[--background-modifier-hover] pktw-text-[--text-muted]"
+				className="pktw-p-0.5 pktw-rounded hover:pktw-bg-pk-surface-sunken pktw-text-pk-text-tertiary"
 				aria-label="Dismiss"
 			>
 				<X className="pktw-w-3 pktw-h-3" />

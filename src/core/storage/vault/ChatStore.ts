@@ -28,6 +28,14 @@ import type { ChatResourceRef } from '@/core/types/chat';
 import { DEFAULT_AI_SERVICE_SETTINGS } from '@/core/config/settingsTypes';
 import { buildTimestampedName } from '@/core/utils/id-utils';
 import { ResourceKind } from '@/core/document/types';
+import { MessageStatus } from '@/core/types/chat';
+import {
+	normalizeModelSelection,
+	type ChatAssistantDefinition,
+	type ChatArtifactReceipt,
+	type ProjectPlanRef,
+	type TurnExecutionReceipt,
+} from '@/core/types/chat-studio';
 
 export class ChatStorageService {
 	private readonly rootFolder: string;
@@ -50,7 +58,18 @@ export class ChatStorageService {
 
 		const summaryFilePath = joinPath(projectFolder, CHAT_PROJECT_SUMMARY_FILENAME);
 		const initSummaryFile = getFileRef(summaryFilePath, this.app);
+		// Preserve user-owned sections when the caller (e.g. system summary
+		// refresh) does not carry them: re-read the existing doc first.
+		let existingDescription = context?.description;
+		let existingInstructions = context?.instructions;
+		if (existingDescription === undefined || existingInstructions === undefined) {
+			const existing = initSummaryFile ? ChatProjectSummaryDoc.parse(await this.app.vault.read(initSummaryFile)) : null;
+			if (existingDescription === undefined) existingDescription = existing?.description ?? '';
+			if (existingInstructions === undefined) existingInstructions = existing?.instructions ?? '';
+		}
 		const summaryContent = ChatProjectSummaryDoc.buildMarkdown({
+			description: existingDescription,
+			instructions: existingInstructions,
 			shortSummary: context?.shortSummary ?? '',
 			fullSummary: context?.fullSummary ?? '',
 		});
@@ -141,8 +160,21 @@ export class ChatStorageService {
 		}
 
 		if (this.dbReady) {
+			// Pack ALL non-column meta into meta_json so nothing is lost on
+			// round-trip (chat-studio DATA-01). Every key here must be unpacked
+			// in readConversationMeta.
 			const metaExtras: Record<string, unknown> = {};
 			if (updatedMeta.customSystemPrompt) metaExtras.customSystemPrompt = updatedMeta.customSystemPrompt;
+			if (updatedMeta.conversationType) metaExtras.conversationType = updatedMeta.conversationType;
+			if (updatedMeta.focusFolder) metaExtras.focusFolder = updatedMeta.focusFolder;
+			if (updatedMeta.outputControlOverride) metaExtras.outputControlOverride = updatedMeta.outputControlOverride;
+			if (updatedMeta.attachmentHandlingOverride) metaExtras.attachmentHandlingOverride = updatedMeta.attachmentHandlingOverride;
+			if (updatedMeta.assistantId) metaExtras.assistantId = updatedMeta.assistantId;
+			if (updatedMeta.modelSelection) metaExtras.modelSelection = updatedMeta.modelSelection;
+			if (updatedMeta.pinned) {
+				metaExtras.pinned = true;
+				metaExtras.pinnedAt = updatedMeta.pinnedAt ?? now;
+			}
 			const metaJson = Object.keys(metaExtras).length > 0 ? JSON.stringify(metaExtras) : null;
 
 			await sqliteStoreManager
@@ -258,6 +290,14 @@ export class ChatStorageService {
 			try { metaExtras = JSON.parse(convRow.meta_json); } catch { /* ignore parse errors */ }
 		}
 
+		return ChatStorageService.rowToConversationMeta(convRow, metaExtras);
+	}
+
+	/** Map a chat_conversation row + parsed meta_json extras to ChatConversationMeta. */
+	static rowToConversationMeta(
+		convRow: DbSchema['chat_conversation'],
+		metaExtras: Record<string, unknown>
+	): ChatConversationMeta {
 		return {
 			id: convRow.conversation_id,
 			title: convRow.title,
@@ -273,6 +313,17 @@ export class ChatStorageService {
 			contextLastMessageIndex: convRow.context_last_message_index ?? undefined,
 			fileRelPath: convRow.file_rel_path,
 			customSystemPrompt: (metaExtras.customSystemPrompt as string) ?? undefined,
+			conversationType: (metaExtras.conversationType as ChatConversationMeta['conversationType']) ?? undefined,
+			focusFolder: (metaExtras.focusFolder as string) ?? undefined,
+			outputControlOverride: (metaExtras.outputControlOverride as ChatConversationMeta['outputControlOverride']) ?? undefined,
+			attachmentHandlingOverride: (metaExtras.attachmentHandlingOverride as ChatConversationMeta['attachmentHandlingOverride']) ?? undefined,
+			assistantId: (metaExtras.assistantId as string) ?? undefined,
+			modelSelection: metaExtras.modelSelection
+				? normalizeModelSelection(metaExtras.modelSelection)
+				: undefined,
+			pinned: metaExtras.pinned === true ? true : undefined,
+			pinnedAt: typeof metaExtras.pinnedAt === 'number' ? metaExtras.pinnedAt : undefined,
+			archived: convRow.archived_rel_path != null ? true : undefined,
 		};
 	}
 
@@ -323,6 +374,8 @@ export class ChatStorageService {
 		const summaryDocModel = ChatProjectSummaryDoc.parse(summaryRaw);
 		return {
 			lastUpdatedTimestamp: projectMeta.updatedAtTimestamp,
+			description: summaryDocModel.description || undefined,
+			instructions: summaryDocModel.instructions || undefined,
 			shortSummary: summaryDocModel.shortSummary || undefined,
 			fullSummary: summaryDocModel.fullSummary || undefined,
 		};
@@ -358,6 +411,24 @@ export class ChatStorageService {
 			}
 		}
 		return result;
+	}
+
+	/**
+	 * Fast meta-only listing of recent conversations across all projects
+	 * (no vault file reads). Used by the left column Recent/Pinned sections
+	 * and the View All picker.
+	 */
+	async listRecentConversationMetas(limit?: number, includeArchived: boolean = false): Promise<ChatConversationMeta[]> {
+		if (!this.dbReady) return [];
+		const convRepo = sqliteStoreManager.getChatConversationRepo();
+		const rows = await convRepo.listRecent(includeArchived, limit);
+		return rows.map((row) => {
+			let metaExtras: Record<string, unknown> = {};
+			if (row.meta_json) {
+				try { metaExtras = JSON.parse(row.meta_json); } catch { /* ignore */ }
+			}
+			return ChatStorageService.rowToConversationMeta(row, metaExtras);
+		});
 	}
 
 	async countConversations(projectId: string | null): Promise<number> {
@@ -420,6 +491,7 @@ export class ChatStorageService {
 					}
 				} catch { /* ignore */ }
 			}
+			ChatStorageService.applyPersistedMessageExtras(msg, row);
 			return msg;
 		});
 
@@ -605,8 +677,32 @@ export class ChatStorageService {
 					summaryNotePath: r.summary_note_rel_path ?? undefined,
 				}));
 			}
+			ChatStorageService.applyPersistedMessageExtras(msg, row);
 			return msg;
 		});
+	}
+
+	/**
+	 * Unpack persisted status + meta_json (turn relationships) onto a message.
+	 * Null status = completed (legacy rows).
+	 */
+	private static applyPersistedMessageExtras(msg: ChatMessage, row: DbSchema['chat_message']): void {
+		if (row.status === MessageStatus.ERROR || row.status === MessageStatus.CANCELLED || row.status === MessageStatus.TIMEOUT) {
+			msg.status = row.status as MessageStatus;
+		}
+		if (!row.meta_json) return;
+		try {
+			const extras = JSON.parse(row.meta_json) as Record<string, unknown>;
+			if (typeof extras.replyToMessageId === 'string') msg.replyToMessageId = extras.replyToMessageId;
+			if (typeof extras.branchFromMessageId === 'string') msg.branchFromMessageId = extras.branchFromMessageId;
+			if (typeof extras.revisionOfMessageId === 'string') msg.revisionOfMessageId = extras.revisionOfMessageId;
+			if (Array.isArray(extras.toolCalls)) {
+				msg.toolCalls = extras.toolCalls.filter((value): value is NonNullable<ChatMessage['toolCalls']>[number] => {
+					if (!value || typeof value !== 'object') return false;
+					return typeof (value as { toolName?: unknown }).toolName === 'string';
+				});
+			}
+		} catch { /* ignore parse errors */ }
 	}
 
 	private static collectAllMarkdownMessages(docModel: ChatConversationDocModel): Array<{
@@ -760,7 +856,10 @@ export class ChatStorageService {
 			const messageRepo = sqliteStoreManager.getChatMessageRepo();
 			await messageRepo.deleteByConversationIds(conversationIds);
 			await convRepo.deleteByConversationIds(conversationIds);
+			await sqliteStoreManager.getChatTurnReceiptRepo().deleteByConversationIds(conversationIds);
+			await sqliteStoreManager.getChatArtifactReceiptRepo().deleteByConversationIds(conversationIds);
 		}
+		await sqliteStoreManager.getChatProjectPlanRepo().deleteByProjectId(projectId);
 
 		const folder = await this.getProjectFolder(projectId);
 		if (folder) {
@@ -781,11 +880,204 @@ export class ChatStorageService {
 		const messageRepo = sqliteStoreManager.getChatMessageRepo();
 		await messageRepo.deleteByConversationIds([conversationId]);
 		await convRepo.deleteByConversationIds([conversationId]);
+		await sqliteStoreManager.getChatTurnReceiptRepo().deleteByConversationIds([conversationId]);
+		await sqliteStoreManager.getChatArtifactReceiptRepo().deleteByConversationIds([conversationId]);
 	}
 
 	async countMessages(conversationId: string): Promise<number> {
 		if (!this.dbReady) return 0;
 		const messageRepo = sqliteStoreManager.getChatMessageRepo();
 		return messageRepo.countByConversation(conversationId);
+	}
+
+	// Chat Studio durable contracts (2026-07-15 spec §12) ======================
+
+	/** Pin/unpin a conversation in the left column. */
+	async setConversationPinned(conversationId: string, pinned: boolean): Promise<void> {
+		await this.upsertConversationMeta(conversationId, {
+			pinned: pinned || undefined,
+			pinnedAt: pinned ? Date.now() : undefined,
+		});
+	}
+
+	/**
+	 * Archive/restore a conversation. Archive marks archived_rel_path with the
+	 * current file path (file stays in place); listByProject filters archived
+	 * rows out by default.
+	 */
+	async setConversationArchived(conversationId: string, archived: boolean): Promise<void> {
+		if (!this.dbReady) return;
+		const convRepo = sqliteStoreManager.getChatConversationRepo();
+		const row = await convRepo.getById(conversationId);
+		if (!row) throw new Error(`Conversation not found: ${conversationId}`);
+		await convRepo.updateFilePath(row.conversation_id, row.file_rel_path, archived ? row.file_rel_path : null);
+	}
+
+	// Assistants ---------------------------------------------------------------
+
+	async saveAssistant(definition: ChatAssistantDefinition): Promise<void> {
+		if (!this.dbReady) return;
+		await sqliteStoreManager.getChatAssistantRepo().upsert({
+			assistant_id: definition.id,
+			name: definition.name,
+			definition_json: JSON.stringify(definition),
+			created_at_ts: definition.createdAt,
+			updated_at_ts: definition.updatedAt,
+			archived: definition.archived ? 1 : 0,
+		});
+	}
+
+	async readAssistant(assistantId: string): Promise<ChatAssistantDefinition | null> {
+		if (!this.dbReady) return null;
+		const row = await sqliteStoreManager.getChatAssistantRepo().getById(assistantId);
+		return row ? ChatStorageService.parseAssistantRow(row) : null;
+	}
+
+	async listAssistants(includeArchived: boolean = false): Promise<ChatAssistantDefinition[]> {
+		if (!this.dbReady) return [];
+		const rows = await sqliteStoreManager.getChatAssistantRepo().list(includeArchived);
+		return rows
+			.map((row) => ChatStorageService.parseAssistantRow(row))
+			.filter((a): a is ChatAssistantDefinition => a !== null);
+	}
+
+	async deleteAssistant(assistantId: string): Promise<void> {
+		if (!this.dbReady) return;
+		await sqliteStoreManager.getChatAssistantRepo().deleteById(assistantId);
+	}
+
+	private static parseAssistantRow(row: DbSchema['chat_assistant']): ChatAssistantDefinition | null {
+		try {
+			const parsed = JSON.parse(row.definition_json) as ChatAssistantDefinition;
+			parsed.archived = row.archived === 1;
+			return parsed;
+		} catch {
+			return null;
+		}
+	}
+
+	// Project plans ------------------------------------------------------------
+
+	async saveProjectPlan(plan: ProjectPlanRef): Promise<void> {
+		if (!this.dbReady) return;
+		await sqliteStoreManager.getChatProjectPlanRepo().upsert({
+			plan_id: plan.id,
+			project_id: plan.projectId,
+			title: plan.title,
+			status: plan.status,
+			source_json: JSON.stringify(plan.source),
+			progress_json: plan.progress ? JSON.stringify(plan.progress) : null,
+			updated_at_ts: plan.updatedAt,
+		});
+	}
+
+	async listProjectPlans(projectId: string, includeArchived: boolean = false): Promise<ProjectPlanRef[]> {
+		if (!this.dbReady) return [];
+		const rows = await sqliteStoreManager.getChatProjectPlanRepo().listByProject(projectId, includeArchived);
+		return rows
+			.map((row) => ChatStorageService.parsePlanRow(row))
+			.filter((p): p is ProjectPlanRef => p !== null);
+	}
+
+	async deleteProjectPlan(planId: string): Promise<void> {
+		if (!this.dbReady) return;
+		await sqliteStoreManager.getChatProjectPlanRepo().deleteById(planId);
+	}
+
+	private static parsePlanRow(row: DbSchema['chat_project_plan']): ProjectPlanRef | null {
+		try {
+			return {
+				id: row.plan_id,
+				projectId: row.project_id,
+				title: row.title,
+				status: row.status as ProjectPlanRef['status'],
+				source: JSON.parse(row.source_json) as ProjectPlanRef['source'],
+				progress: row.progress_json ? JSON.parse(row.progress_json) as ProjectPlanRef['progress'] : undefined,
+				updatedAt: row.updated_at_ts,
+			};
+		} catch {
+			return null;
+		}
+	}
+
+	// Turn receipts --------------------------------------------------------------
+
+	async saveTurnReceipt(receipt: TurnExecutionReceipt): Promise<void> {
+		if (!this.dbReady) return;
+		await sqliteStoreManager.getChatTurnReceiptRepo().upsert({
+			request_id: receipt.requestId,
+			conversation_id: receipt.conversationId,
+			message_id: receipt.messageId,
+			run_id: receipt.runId ?? null,
+			status: receipt.status,
+			receipt_json: JSON.stringify(receipt),
+			started_at_ts: receipt.startedAt,
+			finished_at_ts: receipt.finishedAt ?? null,
+		});
+	}
+
+	async readTurnReceiptByMessage(messageId: string): Promise<TurnExecutionReceipt | null> {
+		if (!this.dbReady) return null;
+		const row = await sqliteStoreManager.getChatTurnReceiptRepo().getByMessageId(messageId);
+		return row ? ChatStorageService.parseJsonOrNull<TurnExecutionReceipt>(row.receipt_json) : null;
+	}
+
+	async listTurnReceipts(conversationId: string): Promise<TurnExecutionReceipt[]> {
+		if (!this.dbReady) return [];
+		const rows = await sqliteStoreManager.getChatTurnReceiptRepo().listByConversation(conversationId);
+		return rows
+			.map((row) => ChatStorageService.parseJsonOrNull<TurnExecutionReceipt>(row.receipt_json))
+			.filter((r): r is TurnExecutionReceipt => r !== null);
+	}
+
+	// Artifact receipts ----------------------------------------------------------
+
+	async saveArtifactReceipt(receipt: ChatArtifactReceipt): Promise<void> {
+		if (!this.dbReady) return;
+		await sqliteStoreManager.getChatArtifactReceiptRepo().upsert({
+			artifact_id: receipt.artifactId,
+			run_id: receipt.runId,
+			message_id: receipt.messageId,
+			conversation_id: receipt.conversationId,
+			project_id: receipt.projectId ?? null,
+			direction: receipt.direction,
+			kind: receipt.kind,
+			state: receipt.state,
+			title: receipt.title,
+			receipt_json: JSON.stringify(receipt),
+			created_at_ts: receipt.createdAt,
+		});
+	}
+
+	async listArtifactReceiptsByConversation(conversationId: string): Promise<ChatArtifactReceipt[]> {
+		if (!this.dbReady) return [];
+		const rows = await sqliteStoreManager.getChatArtifactReceiptRepo().listByConversation(conversationId);
+		return rows
+			.map((row) => ChatStorageService.parseJsonOrNull<ChatArtifactReceipt>(row.receipt_json))
+			.filter((r): r is ChatArtifactReceipt => r !== null);
+	}
+
+	async listArtifactReceiptsByMessage(messageId: string): Promise<ChatArtifactReceipt[]> {
+		if (!this.dbReady) return [];
+		const rows = await sqliteStoreManager.getChatArtifactReceiptRepo().listByMessage(messageId);
+		return rows
+			.map((row) => ChatStorageService.parseJsonOrNull<ChatArtifactReceipt>(row.receipt_json))
+			.filter((r): r is ChatArtifactReceipt => r !== null);
+	}
+
+	async listArtifactReceiptsByProject(projectId: string): Promise<ChatArtifactReceipt[]> {
+		if (!this.dbReady) return [];
+		const rows = await sqliteStoreManager.getChatArtifactReceiptRepo().listByProject(projectId);
+		return rows
+			.map((row) => ChatStorageService.parseJsonOrNull<ChatArtifactReceipt>(row.receipt_json))
+			.filter((r): r is ChatArtifactReceipt => r !== null);
+	}
+
+	private static parseJsonOrNull<T>(json: string): T | null {
+		try {
+			return JSON.parse(json) as T;
+		} catch {
+			return null;
+		}
 	}
 }

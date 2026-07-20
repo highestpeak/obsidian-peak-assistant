@@ -163,6 +163,59 @@ export interface Database {
 		attachment_summary: string | null;
 		topic: string | null;
 		suggested_followups_json: string | null;
+		/** Final persisted lifecycle status: completed | error | cancelled | timeout. Null = completed (legacy). */
+		status: string | null;
+		/** JSON blob for turn relationships (replyTo/branchFrom/revisionOf) and future extras. */
+		meta_json: string | null;
+	};
+	/** Durable user-owned Chat Assistant definitions (chat-studio §8.6). */
+	chat_assistant: {
+		assistant_id: string;
+		name: string;
+		/** Full ChatAssistantDefinition JSON. */
+		definition_json: string;
+		created_at_ts: number;
+		updated_at_ts: number;
+		archived: number;
+	};
+	/** Durable project plan refs (chat-studio §9.1); source is conversation- or vault-backed. */
+	chat_project_plan: {
+		plan_id: string;
+		project_id: string;
+		title: string;
+		status: string;
+		/** ProjectPlanSource JSON. */
+		source_json: string;
+		/** { completed, total } JSON or null. */
+		progress_json: string | null;
+		updated_at_ts: number;
+	};
+	/** Per-turn execution receipts (chat-studio §12.1). */
+	chat_turn_receipt: {
+		request_id: string;
+		conversation_id: string;
+		message_id: string;
+		run_id: string | null;
+		status: string;
+		/** Full TurnExecutionReceipt JSON. */
+		receipt_json: string;
+		started_at_ts: number;
+		finished_at_ts: number | null;
+	};
+	/** Chat artifact receipts joining ArtifactPort refs to conversations (chat-studio §12.2). */
+	chat_artifact_receipt: {
+		artifact_id: string;
+		run_id: string;
+		message_id: string;
+		conversation_id: string;
+		project_id: string | null;
+		direction: string;
+		kind: string;
+		state: string;
+		title: string;
+		/** Full ChatArtifactReceipt JSON. */
+		receipt_json: string;
+		created_at_ts: number;
 	};
 	chat_message_resource: {
 		id: string;
@@ -765,6 +818,56 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		CREATE INDEX IF NOT EXISTS idx_chat_star_conversation_id ON chat_star(conversation_id);
 	`);
 
+	// Chat Studio durable contracts (2026-07-15 spec §12)
+	db.exec(`
+		CREATE TABLE IF NOT EXISTS chat_assistant (
+			assistant_id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			definition_json TEXT NOT NULL,
+			created_at_ts INTEGER NOT NULL,
+			updated_at_ts INTEGER NOT NULL,
+			archived INTEGER NOT NULL DEFAULT 0
+		);
+		CREATE TABLE IF NOT EXISTS chat_project_plan (
+			plan_id TEXT PRIMARY KEY,
+			project_id TEXT NOT NULL,
+			title TEXT NOT NULL,
+			status TEXT NOT NULL,
+			source_json TEXT NOT NULL,
+			progress_json TEXT,
+			updated_at_ts INTEGER NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_chat_project_plan_project_id ON chat_project_plan(project_id);
+		CREATE TABLE IF NOT EXISTS chat_turn_receipt (
+			request_id TEXT PRIMARY KEY,
+			conversation_id TEXT NOT NULL,
+			message_id TEXT NOT NULL,
+			run_id TEXT,
+			status TEXT NOT NULL,
+			receipt_json TEXT NOT NULL,
+			started_at_ts INTEGER NOT NULL,
+			finished_at_ts INTEGER
+		);
+		CREATE INDEX IF NOT EXISTS idx_chat_turn_receipt_conversation_id ON chat_turn_receipt(conversation_id);
+		CREATE INDEX IF NOT EXISTS idx_chat_turn_receipt_message_id ON chat_turn_receipt(message_id);
+		CREATE TABLE IF NOT EXISTS chat_artifact_receipt (
+			artifact_id TEXT PRIMARY KEY,
+			run_id TEXT NOT NULL,
+			message_id TEXT NOT NULL,
+			conversation_id TEXT NOT NULL,
+			project_id TEXT,
+			direction TEXT NOT NULL,
+			kind TEXT NOT NULL,
+			state TEXT NOT NULL,
+			title TEXT NOT NULL,
+			receipt_json TEXT NOT NULL,
+			created_at_ts INTEGER NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_chat_artifact_receipt_conversation_id ON chat_artifact_receipt(conversation_id);
+		CREATE INDEX IF NOT EXISTS idx_chat_artifact_receipt_message_id ON chat_artifact_receipt(message_id);
+		CREATE INDEX IF NOT EXISTS idx_chat_artifact_receipt_project_id ON chat_artifact_receipt(project_id);
+	`);
+
 	db.exec(`
 		CREATE TABLE IF NOT EXISTS ai_analysis_record (
 			id TEXT PRIMARY KEY,
@@ -1099,6 +1202,8 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 	// ── Schema evolution: add columns (idempotent) ──
 	try { db.exec('ALTER TABLE chat_message ADD COLUMN topic TEXT'); } catch { /* column already exists */ }
 	try { db.exec('ALTER TABLE chat_message ADD COLUMN suggested_followups_json TEXT'); } catch { /* column already exists */ }
+	try { db.exec('ALTER TABLE chat_message ADD COLUMN status TEXT'); } catch { /* column already exists */ }
+	try { db.exec('ALTER TABLE chat_message ADD COLUMN meta_json TEXT'); } catch { /* column already exists */ }
 
 	// ── Structural analysis columns on mobius_node (idempotent) ──
 	try { db.exec('ALTER TABLE mobius_node ADD COLUMN betweenness_centrality REAL'); } catch { /* column already exists */ }

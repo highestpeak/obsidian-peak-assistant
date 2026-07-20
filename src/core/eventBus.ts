@@ -1,5 +1,6 @@
 import type { AppHandle } from '@/core/ports/AppHandle';
 import type { ChatConversation } from '@/core/types/chat-vault';
+import type { MyPluginSettings } from '@/core/config/settingsTypes';
 
 /**
  * Custom events for view communication
@@ -61,7 +62,7 @@ export class ScrollToMessageEvent extends ViewEvent {
 }
 
 export class SettingsUpdatedEvent extends ViewEvent {
-	constructor() {
+	constructor(public readonly settings: MyPluginSettings) {
 		super(ViewEventType.SETTINGS_UPDATED);
 	}
 }

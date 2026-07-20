@@ -1,6 +1,7 @@
 import type { AppHandle } from '@/core/ports/AppHandle';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { ChatProject, ChatProjectMeta } from './types';
+import type { ProjectPlanRef } from '@/core/types/chat-studio';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
 import { DEFAULT_SUMMARY } from '@/core/constant';
 import { PromptService } from '@/service/prompt/PromptService';
@@ -106,6 +107,71 @@ export class ProjectService {
 	 */
 	async deleteProject(projectId: string): Promise<void> {
 		await this.storage.deleteProject(projectId);
+	}
+
+	/**
+	 * Update the USER-OWNED project description (chat-studio RUN-05). Only
+	 * called from an explicit user Save — AI drafts stay in UI state until
+	 * the user confirms.
+	 */
+	async updateProjectDescription(projectId: string, description: string): Promise<ChatProject> {
+		return this.updateUserOwnedContext(projectId, { description });
+	}
+
+	/** Update the USER-OWNED project instructions. */
+	async updateProjectInstructions(projectId: string, instructions: string): Promise<ChatProject> {
+		return this.updateUserOwnedContext(projectId, { instructions });
+	}
+
+	private async updateUserOwnedContext(
+		projectId: string,
+		patch: { description?: string; instructions?: string }
+	): Promise<ChatProject> {
+		const project = await this.storage.readProject(projectId);
+		if (!project) throw new Error('Project not found');
+		const updatedMeta: ChatProjectMeta = {
+			...project.meta,
+			updatedAtTimestamp: Date.now(),
+		};
+		return this.storage.saveProject(updatedMeta, {
+			...project.context,
+			lastUpdatedTimestamp: Date.now(),
+			...patch,
+		});
+	}
+
+	// Project plans (chat-studio §9.1) — durable refs, not tool steps ---------
+
+	async listPlans(projectId: string): Promise<ProjectPlanRef[]> {
+		return this.storage.listProjectPlans(projectId);
+	}
+
+	async createPlan(input: {
+		projectId: string;
+		title: string;
+		source: ProjectPlanRef['source'];
+		status?: ProjectPlanRef['status'];
+	}): Promise<ProjectPlanRef> {
+		const plan: ProjectPlanRef = {
+			id: generateUuidWithoutHyphens(),
+			projectId: input.projectId,
+			title: input.title,
+			status: input.status ?? 'planned',
+			source: input.source,
+			updatedAt: Date.now(),
+		};
+		await this.storage.saveProjectPlan(plan);
+		return plan;
+	}
+
+	async updatePlan(plan: ProjectPlanRef): Promise<ProjectPlanRef> {
+		const updated: ProjectPlanRef = { ...plan, updatedAt: Date.now() };
+		await this.storage.saveProjectPlan(updated);
+		return updated;
+	}
+
+	async deletePlan(planId: string): Promise<void> {
+		await this.storage.deleteProjectPlan(planId);
 	}
 
 	/**

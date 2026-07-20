@@ -54,6 +54,15 @@
 	--pk-accent-text:        #6d28d9;
 	--pk-accent-fg:          #ffffff;
 
+	/* ── accent-secondary (violet #8b5cf6) ─────────────────────────────── */
+	/* Source of truth for the violet used by the CodeMirror context-tag chip
+	   (codemirror.css) and the IntelligenceFrame pulseGlow border (tailwind.css).
+	   Kept identical in light + dark on purpose — both surfaces render the same
+	   violet today, so this is a de-dup, not a theme change. */
+	--pk-accent-secondary:        #8b5cf6;
+	--pk-accent-secondary-tint:   rgba(139, 92, 246, 0.1);
+	--pk-accent-secondary-border: rgba(139, 92, 246, 0.2);
+
 	/* ── semantic ───────────────────────────────────────────────────────── */
 	--pk-success:            #22c55e;
 	--pk-success-bg:         rgba(34, 197, 94, 0.12);
@@ -192,6 +201,14 @@
 	--pk-accent-soft:        rgba(167, 139, 250, 0.30);
 	--pk-accent-text:        #c4b5fd;
 	--pk-accent-fg:          #1e1b2e;
+
+	/* ── accent-secondary (violet #8b5cf6) ─────────────────────────────── */
+	/* Identical to light on purpose — see the light block note. The CM
+	   context-tag chip and pulseGlow border render the same violet in both
+	   themes; this keeps that behaviour byte-for-byte. */
+	--pk-accent-secondary:        #8b5cf6;
+	--pk-accent-secondary-tint:   rgba(139, 92, 246, 0.1);
+	--pk-accent-secondary-border: rgba(139, 92, 246, 0.2);
 
 	/* ── semantic ───────────────────────────────────────────────────────── */
 	--pk-success:            #4ade80;

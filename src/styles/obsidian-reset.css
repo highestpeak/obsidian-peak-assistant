@@ -10,6 +10,22 @@
  * Add new tags here as we discover Obsidian-injected ones.
  */
 
+/* Root font pin — the design system's own typeface, NOT Obsidian's
+   `--font-interface`. The vault may run a custom interface font (Minimal /
+   Style Settings); without this pin every plugin surface inherits it and no
+   leaf-level fix can ever look consistent. Mirrors the mock's root rule
+   (`mock.css .peak-design-root`: family + 13px base + antialiasing).
+   `.pktw-root` is included because ReactRenderer stamps it on every view
+   root — surfaces like the Studio left column have no `.peak-design-root`
+   ancestor of their own. Leaf `--pk-font-mono` rules still override. */
+.pktw-root,
+.peak-design-root {
+	font-family: var(--pk-font-sans);
+	font-size: var(--pk-text-md);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
 .peak-design-root *,
 .peak-design-root *::before,
 .peak-design-root *::after {

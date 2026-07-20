@@ -10,6 +10,46 @@ import { composeQuickSearchHost } from '@/app/search/composeQuickSearchHost';
 import { composeCopilotReviewDeps } from '@/app/copilot/composeCopilotReviewDeps';
 import { composeHeadingModeDeps } from '@/app/search/composeHeadingModeDeps';
 import { composeResultSubgraphDeps } from '@/app/search/composeResultSubgraphDeps';
+import { openQuickSearch } from '@/app/commands/PeakCommandActions';
+import type { QuickSearchLauncherPort } from '@/core/ports/QuickSearchLauncherPort';
+
+/**
+ * chat-studio L-SEARCH-01/02: narrow Quick Search handoff. The hotkey hint
+ * comes from the REAL command binding (Obsidian hotkeyManager) — no
+ * hardcoded ⌘K badges when the user has no binding.
+ */
+function composeQuickSearchLauncher(appContext: AppContext): QuickSearchLauncherPort {
+	return {
+		open: () => openQuickSearch(),
+		hotkeyHint: () => resolveQuickSearchHotkeyHint(appContext.plugin, 'peak-quick-search'),
+	};
+}
+
+function resolveQuickSearchHotkeyHint(plugin: unknown, commandLocalId: string): string | null {
+	try {
+		const p = plugin as { app?: any; manifest?: { id: string } };
+		const hotkeyManager: any = p?.app?.hotkeyManager;
+		if (!hotkeyManager) return null;
+		const fullId = `${p.manifest?.id}:${commandLocalId}`;
+		const record = hotkeyManager.getHotkeys?.(fullId) ?? hotkeyManager.getDefaultHotkeys?.(fullId);
+		const first = Array.isArray(record) ? record[0] : null;
+		if (!first || !first.key) return null;
+		const mods: string[] = Array.isArray(first.modifiers) ? first.modifiers : String(first.modifiers ?? '').split(',');
+		return formatHotkeyHint(mods, first.key);
+	} catch {
+		return null;
+	}
+}
+
+function formatHotkeyHint(mods: string[], key: string): string {
+	const isMac = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform);
+	const symbolMap: Record<string, string> = isMac
+		? { Mod: '⌘', Meta: '⌘', Ctrl: '⌃', Alt: '⌥', Shift: '⇧' }
+		: { Mod: 'Ctrl', Meta: 'Ctrl', Ctrl: 'Ctrl', Alt: 'Alt', Shift: 'Shift' };
+	const parts = mods.filter(Boolean).map((m) => symbolMap[m] ?? m);
+	parts.push(key.toUpperCase());
+	return isMac ? parts.join('') : parts.join('+');
+}
 
 /**
  * Factory function to create React elements wrapped with ServiceProvider.
@@ -78,6 +118,7 @@ export function createReactElementWithServices<T extends Record<string, any>>(
 			debugTracePort: appContext.runtimeRegistry.tryGetDebugTracePort(),
 			headingMode: composeHeadingModeDeps(appContext),
 			resultSubgraph: composeResultSubgraphDeps(),
+			quickSearchLauncher: composeQuickSearchLauncher(appContext),
 			children: React.createElement(Component, props as T)
 		}
 	);

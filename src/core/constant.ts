@@ -418,6 +418,11 @@ export const MAX_PROJECTS_DISPLAY = 10;
 export const MAX_CONVERSATIONS_PER_PROJECT = 10;
 
 /**
+ * Number of top vault-search hits the chat `vault_search` tool returns per query.
+ */
+export const VAULT_SEARCH_TOP_K = 8;
+
+/**
  * Minimum number of messages required for title generation.
  * Need at least user message + assistant response to generate a meaningful title.
  */

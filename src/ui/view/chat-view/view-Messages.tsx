@@ -9,8 +9,9 @@ import { Composer } from './components/Composer';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useScrollManager, scrollToBottom as scrollToBottomUtil } from '../shared/scroll-utils';
 import { useAutoScroll } from './hooks/useAutoScroll';
-import { NewConversationStartHero } from './components/NewConversationTypePicker';
 import { ChatStringsProvider } from './chatStringsContext';
+import { ChatStudioStringsProvider, useChatStudioStrings } from './chatStudioStringsContext';
+import { ChatStartState, ChatStarters } from './components/composer/ChatStartState';
 
 /**
  * Messages view — the retained chat surface (header + body + composer).
@@ -39,12 +40,30 @@ import { ChatStringsProvider } from './chatStringsContext';
  */
 export const MessagesViewComponent: React.FC = () => (
 	<ChatStringsProvider>
-		<MessagesViewInner />
+		<ChatStudioStringsProvider>
+			<MessagesViewInner />
+		</ChatStudioStringsProvider>
 	</ChatStringsProvider>
 );
 
+const EmptyThreadHero: React.FC = () => {
+	const studioStrings = useChatStudioStrings();
+	return (
+		<div className="peak-design-root pkchat-shell">
+			<div className="pkchat-center">
+				<div className="pktw-flex pktw-items-center pktw-justify-center pktw-h-full pktw-min-h-[400px]">
+					<span className="pktw-text-2xl pktw-font-light pktw-text-muted-foreground pktw-text-center">
+						{studioStrings.greeting.emptyThread}
+					</span>
+				</div>
+			</div>
+		</div>
+	);
+};
+
 const MessagesViewInner: React.FC = () => {
 	const { eventBus } = useServiceContext();
+	const studioStrings = useChatStudioStrings();
 	const pendingConversation = useChatViewStore().pendingConversation;
 	const activeConversation = useChatDataStore((state) => state.activeConversation);
 
@@ -91,14 +110,24 @@ const MessagesViewInner: React.FC = () => {
 	// is replaced by type-immediately. `resolveChatExecutionStrategy` decides
 	// tools/plan-prompt without any UI selection. `/plan ` slash-prefix stays
 	// as the per-message planning opt-in.
+	// New-conversation start state (chat-studio §7.1): short configurable
+	// greeting + max 3 starters that only fill the editable draft, above a
+	// visually centered single Composer.
 	if (pendingConversation) {
+		const startScope = pendingConversation.project ? 'project' : 'newChat';
 		return (
 			<div className="peak-design-root pkchat-shell">
 				<div className="pkchat-center">
-					<div className="pkchat-body pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-gap-3">
-						<NewConversationStartHero />
-						<div className="pktw-w-full pktw-max-w-[760px]">
+					<div className="pkchat-header">
+						<span className="pkchat-header__title">
+							{studioStrings.projectHome.newChatHeaderTitle}
+						</span>
+					</div>
+					<div className="pkchat-body pktw-flex pktw-flex-col pktw-items-center pktw-justify-center">
+						<div className="pktw-w-full pktw-max-w-[760px] pktw-flex pktw-flex-col">
+							<ChatStartState scope={startScope} />
 							<Composer />
+							<ChatStarters scope={startScope} />
 						</div>
 					</div>
 				</div>
@@ -108,17 +137,7 @@ const MessagesViewInner: React.FC = () => {
 
 	// No active and no pending conversation — empty hero.
 	if (!activeConversation) {
-		return (
-			<div className="peak-design-root pkchat-shell">
-				<div className="pkchat-center">
-					<div className="pktw-flex pktw-items-center pktw-justify-center pktw-h-full pktw-min-h-[400px]">
-						<span className="pktw-text-2xl pktw-font-light pktw-text-muted-foreground pktw-text-center">
-							Ready when you are.
-						</span>
-					</div>
-				</div>
-			</div>
-		);
+		return <EmptyThreadHero />;
 	}
 
 	return (

@@ -18,12 +18,15 @@ import {
 	ChatResourceRef,
 } from './types';
 import type { ConversationType } from './conversation-types';
+import type { ChatArtifactReceipt, ModelSelection, TurnExecutionReceipt } from '@/core/types/chat-studio';
+import type { VaultRetrievalPort } from '@/core/ports/VaultRetrievalPort';
+import type { SourceReceiptCollector } from './tools/sourceReceiptCollector';
 import { PromptService } from '@/service/prompt/PromptService';
 import { UserProfileService } from '@/service/chat/context/UserProfileService';
 import { PromptId } from '@/core/types/prompt';
 import { ResourceSummaryService } from './context/ResourceSummaryService';
 import { ContextPipeline } from './context/ContextPipeline';
-import type { DebugRunHandle, DebugTracePort } from '@/core/debug-trace';
+import type { DebugRun, DebugRunHandle, DebugTracePort } from '@/core/debug-trace';
 import { ChatProfile } from './context/profiles/ChatProfile';
 import { SessionContextService } from '@/service/context/SessionContextService';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
@@ -62,6 +65,7 @@ export class ConversationService {
 	private readonly resourceLoaderManager: ResourceLoaderManager;
 	private debugTracePort: DebugTracePort | null = null;
 	private lastDebugRunId: string | null = null;
+	private vaultRetrievalPort: VaultRetrievalPort | null = null;
 
 	constructor(
 		private readonly app: AppHandle,
@@ -89,12 +93,37 @@ export class ConversationService {
 	}
 
 	/**
+	 * Wire the real Vault retrieval port (app layer, after SearchClient init).
+	 * While null, Vault Search is UNAVAILABLE: no tool is built and the UI
+	 * must reflect that (chat-studio RUN-01).
+	 */
+	setVaultRetrievalPort(port: VaultRetrievalPort | null): void {
+		this.vaultRetrievalPort = port;
+	}
+
+	isVaultSearchAvailable(): boolean {
+		return this.vaultRetrievalPort !== null;
+	}
+
+	/**
 	 * The runId of the most recent chat turn's debug trace (if enabled and a
 	 * turn completed). UI surfaces reach for this when the user clicks
 	 * "Copy debug trace" on the latest assistant message.
 	 */
 	getLastDebugRunId(): string | null {
 		return this.lastDebugRunId;
+	}
+
+	/**
+	 * Read the span-level diagnostic trace for a specific assistant turn.
+	 *
+	 * The recorder is intentionally in-memory and retention-bounded, so callers
+	 * must treat an absent run as a normal "trace expired / tracing disabled"
+	 * state. Keeping this lookup on ConversationService preserves the app-owned
+	 * DebugTracePort boundary instead of letting React reach into the recorder.
+	 */
+	getDebugRun(runId: string): DebugRun | undefined {
+		return this.debugTracePort?.getRun(runId);
 	}
 
 	async listConversations(projectId: string | null, limit?: number, offset?: number): Promise<ChatConversation[]> {
@@ -165,8 +194,11 @@ export class ConversationService {
 		project?: ChatProject | null;
 		userContent: string;
 		attachments?: string[];
+		/** Per-turn actual-source receipt accumulator (chat-studio RUN-02). */
+		receipts?: SourceReceiptCollector;
 	}): AsyncGenerator<LLMStreamEvent> {
 		const self = this;
+		if (params.project && params.receipts) params.receipts.markProjectIncluded();
 		return (async function* (): AsyncGenerator<LLMStreamEvent> {
 			// 2026-07 F.B follow-up (Debt-2): `/plan ` prefix opts a single message
 			// into planning mode without touching the persisted conversationType or
@@ -220,6 +252,10 @@ export class ConversationService {
 					app: self.app,
 					pluginId: self.pluginId,
 					enableWebSearch: self.chatState.isWebSearchEnabled(),
+					enableVaultSearch: self.chatState.isVaultSearchEnabled(),
+					vaultRetrieval: self.vaultRetrievalPort,
+					vaultScopeFolder: params.conversation.meta.focusFolder,
+					receipts: params.receipts,
 				},
 				modelCapabilities: prepared.modelCapabilities,
 			});
@@ -482,6 +518,97 @@ export class ConversationService {
 			activeProvider: params.provider,
 			updatedAtTimestamp: Date.now(),
 		});
+	}
+
+	/**
+	 * Persist the explicit ModelSelection (chat-studio §8.5 / RUN gate 2).
+	 * `auto` clears the legacy concrete-model mirror so a reload cannot
+	 * misread the conversation as fixed; `fixed` mirrors modelId/provider into
+	 * the legacy columns for backward compatibility with old readers.
+	 */
+	async updateConversationModelSelection(params: {
+		conversationId: string;
+		selection: ModelSelection;
+		/** provider kind for the legacy mirror when selection is fixed */
+		legacyProvider?: string;
+	}): Promise<void> {
+		const sel = params.selection;
+		await this.storage.upsertConversationMeta(params.conversationId, {
+			modelSelection: sel,
+			activeModel: sel.mode === 'fixed' ? sel.modelId : '',
+			activeProvider: sel.mode === 'fixed' ? (params.legacyProvider ?? sel.profileId) : '',
+			updatedAtTimestamp: Date.now(),
+		});
+	}
+
+	/** Persist the conversation-level Assistant binding (chat-studio §8.6). */
+	async updateConversationAssistant(params: {
+		conversationId: string;
+		assistantId?: string;
+	}): Promise<void> {
+		await this.storage.upsertConversationMeta(params.conversationId, {
+			assistantId: params.assistantId || undefined,
+			updatedAtTimestamp: Date.now(),
+		});
+		const updatedConversation = await this.storage.readConversation(params.conversationId, false);
+		if (updatedConversation) {
+			EventBus.getInstance(this.app).dispatch(new ConversationUpdatedEvent({ conversation: updatedConversation }));
+		}
+	}
+
+	/** Pin/unpin a conversation in the left column (chat-studio §6.3). */
+	async setConversationPinned(conversationId: string, pinned: boolean): Promise<void> {
+		await this.storage.setConversationPinned(conversationId, pinned);
+		const updatedConversation = await this.storage.readConversation(conversationId, false);
+		if (updatedConversation) {
+			EventBus.getInstance(this.app).dispatch(new ConversationUpdatedEvent({ conversation: updatedConversation }));
+		}
+	}
+
+	/** Archive/restore a conversation (file stays in place; hidden from lists). */
+	async setConversationArchived(conversationId: string, archived: boolean): Promise<void> {
+		await this.storage.setConversationArchived(conversationId, archived);
+		const updatedConversation = await this.storage.readConversation(conversationId, false);
+		if (updatedConversation) {
+			EventBus.getInstance(this.app).dispatch(new ConversationUpdatedEvent({ conversation: updatedConversation }));
+		}
+	}
+
+	/** Fast meta-only recent conversation listing across all projects. */
+	async listRecentConversationMetas(limit?: number): Promise<ChatConversationMeta[]> {
+		return this.storage.listRecentConversationMetas(limit);
+	}
+
+	// Turn receipts (chat-studio §12.1) ---------------------------------------
+
+	async saveTurnReceipt(receipt: TurnExecutionReceipt): Promise<void> {
+		await this.storage.saveTurnReceipt(receipt);
+	}
+
+	async readTurnReceiptByMessage(messageId: string): Promise<TurnExecutionReceipt | null> {
+		return this.storage.readTurnReceiptByMessage(messageId);
+	}
+
+	async listTurnReceipts(conversationId: string): Promise<TurnExecutionReceipt[]> {
+		return this.storage.listTurnReceipts(conversationId);
+	}
+
+	// Artifact receipts (chat-studio §12.2) ------------------------------------
+
+	async saveArtifactReceipt(receipt: ChatArtifactReceipt): Promise<void> {
+		await this.storage.saveArtifactReceipt(receipt);
+	}
+
+	async listArtifactReceiptsByMessage(messageId: string): Promise<ChatArtifactReceipt[]> {
+		return this.storage.listArtifactReceiptsByMessage(messageId);
+	}
+
+	async listArtifactReceiptsByConversation(conversationId: string): Promise<ChatArtifactReceipt[]> {
+		return this.storage.listArtifactReceiptsByConversation(conversationId);
+	}
+
+	async listArtifactReceiptsByProject(projectId: string): Promise<ChatArtifactReceipt[]> {
+		return this.storage.listArtifactReceiptsByProject(projectId);
 	}
 
 	async updateConversationOutputControl(params: {
@@ -769,4 +896,3 @@ function stripPlanPrefix(userContent: string): string {
 	const remainder = trimmedLeading.replace(/^\/plan[ \t\r\n]+/i, '');
 	return remainder;
 }
-

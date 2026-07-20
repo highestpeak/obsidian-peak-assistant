@@ -15,11 +15,17 @@ export class ConvSummarySlot implements ContextSlot {
     if (!conv) return { data: null, tokens: 0, compressionLevel: 0 };
 
     const projectSummary = project?.context?.fullSummary || project?.context?.shortSummary;
+    // RUN-05: user-owned project description/instructions must reach the model,
+    // even when the system has not generated a summary yet.
+    const projectDescription = (project?.context?.description || '').trim();
+    const projectInstructions = (project?.context?.instructions || '').trim();
     const convSummary = conv.context?.fullSummary || conv.context?.shortSummary;
 
     const templateVars = {
-      hasProject: !!project && !!projectSummary,
+      hasProject: !!project && (!!projectSummary || !!projectDescription || !!projectInstructions),
       projectName: project?.meta.name || '',
+      projectDescription,
+      projectInstructions,
       projectSummary: projectSummary || '',
       projectResources: (project?.context?.resourceIndex || []).map(r => ({
         displayName: r.title || r.id,
@@ -48,6 +54,9 @@ export class ConvSummarySlot implements ContextSlot {
       const conv = templateVars;
       const shortText = [
         conv.hasProject ? `Project: ${conv.projectName}` : '',
+        // RUN-05: user instructions are directives — keep them even when the
+        // rest of the project context is compressed away.
+        conv.projectInstructions ? `Instructions: ${conv.projectInstructions}` : '',
         conv.hasConversation ? `Summary: ${conv.conversationSummary.slice(0, 200)}` : '',
       ].filter(Boolean).join('\n');
       return { data: { text: shortText, templateVars }, tokens: estimateTokensFromText(shortText), compressionLevel: 1 };

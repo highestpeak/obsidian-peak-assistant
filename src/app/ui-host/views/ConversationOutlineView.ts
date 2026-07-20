@@ -2,7 +2,7 @@ import { type IconName } from 'obsidian';
 import { ReactItemViewHost } from '@/app/ui-host/ReactItemViewHost';
 import { createReactElementWithServices } from '@/app/ui-host/ReactElementFactory';
 import { ConversationOutlinePanel } from '@/ui/view/conversation-outline-view/ConversationOutlineView';
-import { CHAT_VIEW_TYPE, CONVERSATION_OUTLINE_VIEW_TYPE } from '@/app/ui-host/views/types';
+import { CHAT_STUDIO_VIEW_TYPE, CHAT_VIEW_TYPE, CONVERSATION_OUTLINE_VIEW_TYPE } from '@/app/ui-host/views/types';
 
 export { CONVERSATION_OUTLINE_VIEW_TYPE };
 
@@ -38,8 +38,13 @@ export class ConversationOutlineView extends ReactItemViewHost {
 	}
 
 	private checkChatViewAndUpdateVisibility(): void {
-		const hasChatView = this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE).length > 0;
-		this.containerEl.style.display = hasChatView ? '' : 'none';
+		// Show the sidebar outline ONLY for the legacy Chat view. Chat Studio
+		// mounts ConversationIndex inside its own right column — showing this
+		// leaf at the same time would create a second index owner for the same
+		// conversation (chat-studio §5.1 single-owner rule).
+		const hasLegacyChatView = this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE).length > 0;
+		const hasStudio = this.app.workspace.getLeavesOfType(CHAT_STUDIO_VIEW_TYPE).length > 0;
+		this.containerEl.style.display = hasLegacyChatView && !hasStudio ? '' : 'none';
 	}
 
 	protected renderElement(): React.ReactElement {

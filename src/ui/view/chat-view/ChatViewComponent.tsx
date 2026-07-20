@@ -4,7 +4,6 @@ import { AllProjectsViewComponent } from './view-AllProjects';
 import { ProjectOverviewViewComponent } from './view-ProjectOverview';
 import { ProjectConversationsListViewComponent } from './view-ProjectConversationsList';
 import { MessagesViewComponent } from './view-Messages';
-import { HomeViewComponent } from './view-Home';
 import { SelectionChangedEvent, ShowToastEvent, ViewEventType } from '@/core/eventBus';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { Toaster, toast as sonnerToast } from 'sonner';
@@ -78,18 +77,9 @@ export const ChatViewComponent: React.FC<ChatViewComponentProps> = () => {
 		};
 	}, [eventBus]);
 
-	// Render body content based on viewMode
-	if (!viewMode) {
-		console.error('No view mode selected');
-		return null;
-	}
-
+	// Render body content based on viewMode (always a concrete mode — see chatViewStore).
 	const renderContent = () => {
 		switch (viewMode) {
-			case ViewMode.HOME:
-				return (
-					<HomeViewComponent />
-				);
 			case ViewMode.ALL_PROJECTS:
 				return (
 					<AllProjectsViewComponent />

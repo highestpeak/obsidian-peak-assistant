@@ -29,7 +29,17 @@
    Token discipline:
      - Production token names only (see component-primitives.md for
        mock→production rename table)
-     - No inline hex except the modal overlay scrim (intentional)
+     - No inline hex, with these registered exceptions (each hardcoded
+       on purpose and commented at its call site):
+         · modal overlay scrim — intentional darkening layer.
+         · .pk-toggle knob (~line 455) — #ffffff fill + rgba(0,0,0,.2)
+           shadow: a physical white puck that must read the same in both
+           themes (a token that flips would break the "on" state).
+         · .pk-attach-url__thumb (~lines 3878-3883) — #5c4ed8 base +
+           purple linear-gradient + rgba(255,255,255,.85) text: fixed
+           brand-preview chrome for link cards, theme-independent by design.
+         · .pk-attach-url__favicon (~line 3900) — #fff plate so
+           transparent/dark favicons stay visible in both themes.
      - No Obsidian theme variables
    ═════════════════════════════════════════════════════════════════════════════ */
 
@@ -278,7 +288,7 @@
 
 :is(.pktw-root, .peak-design-root) .pk-btn--primary {
   background: var(--pk-accent) !important;
-  color: #ffffff;
+  color: var(--pk-accent-fg);
   border-color: var(--pk-accent) !important;
 }
 
@@ -452,6 +462,8 @@
   left: 2px;
   width: 16px;
   height: 16px;
+  /* Registered exception: white puck + soft shadow, hardcoded so the toggle
+     knob reads identically in light and dark themes (see file-head list). */
   background: #ffffff;
   border-radius: 50%;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
@@ -466,6 +478,24 @@
   transform: translateX(16px);
 }
 
+
+/* ── pk-portal-host ─────────────────────────────────────────────────────────
+   The per-Document scope root ReactRenderer appends to <body> as the default
+   Radix portal target (Modal / Popover / DropdownMenu). It exists only to carry
+   the inherited --pk-* tokens + obsidian-reset defense into portaled surfaces;
+   it must NEVER generate a layout box, so fixed/absolute Radix surfaces position
+   against the viewport rather than this node. Styles-neutral: static, no size,
+   no paint. Selector targets the host itself (it IS the scope root), so it can't
+   nest under `:is(.pktw-root, .peak-design-root)`.
+   ─────────────────────────────────────────────────────────────────────────── */
+.pk-portal-host {
+  position: static;
+  width: auto;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
 
 /* ── pk-modal ───────────────────────────────────────────────────────────────
    Overlay + shell + head/body/foot subparts. Overlay scrim is intentionally
@@ -485,8 +515,23 @@
   overflow-y: auto;
 }
 
-:is(.pktw-root, .peak-design-root) .pk-modal-overlay[data-open="true"] {
+:is(.pktw-root, .peak-design-root) .pk-modal-overlay[data-open="true"],
+:is(.pktw-root, .peak-design-root) .pk-modal-overlay[data-state="open"] {
   display: flex;
+}
+
+/* Radix Dialog renders Overlay and Content as portal siblings (Modal.tsx), so
+   the shell cannot rely on the overlay's flex centering the way the static
+   mock markup does. `[data-state]` only exists on Radix-rendered shells, so
+   static/mock usage keeps the in-flow layout. */
+:is(.pktw-root, .peak-design-root) .pk-modal-shell[data-state] {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: calc(var(--pk-z-modal) + 1);
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
 }
 
 :is(.pktw-root, .peak-design-root) .pk-modal-shell {
@@ -911,6 +956,7 @@
    ─────────────────────────────────────────────────────────────────────────── */
 
 :is(.pktw-root, .peak-design-root) .pkchat-shell {
+  --pk-chat-reading-width: 760px;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   height: 100%;
@@ -950,22 +996,37 @@
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
-  padding: var(--pk-space-3) var(--pk-space-5);
+  flex: 0 0 44px;
+  height: 44px;
+  padding: 0 var(--pk-space-4);
   border-bottom: 1px solid var(--pk-border-soft);
   background: var(--pk-surface);
-  flex-shrink: 0;
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-header__title {
+  min-width: 0;
   font-size: var(--pk-text-lg);
-  font-weight: 600;
+  font-weight: 650;
   color: var(--pk-text-primary);
-  line-height: 1.4;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Title + scope wrap (mock .conversation-title-wrap). */
+:is(.pktw-root, .peak-design-root) .pkchat-header__titlewrap {
+  display: flex;
+  align-items: baseline;
+  gap: var(--pk-space-2);
   min-width: 0;
-  flex: 0 1 auto;
+}
+
+/* Scope label next to the title (shared with project-home's "Project home"
+   scope). Merged once here. */
+:is(.pktw-root, .peak-design-root) .pkchat-header__scope {
+  flex: 0 0 auto;
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-sm);
 }
 
 /* `pkchat-header__spacer` removed (2026-06-02): the mock has action icons hug
@@ -973,11 +1034,10 @@
    next to the title via the parent flex layout. */
 
 :is(.pktw-root, .peak-design-root) .pkchat-header__actions {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 2px;
-  flex-shrink: 0;
-  margin-right: auto;
+  flex: 0 0 auto;
+  margin-left: var(--pk-space-1);
 }
 
 /* Reuse .pk-icon-btn for the header action buttons (no new icon-button shape). */
@@ -1002,9 +1062,15 @@
   padding: var(--pk-space-3) var(--pk-space-5) var(--pk-space-5);
   flex-shrink: 0;
   background: var(--pk-surface);
+  display: flex;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-composer {
+  width: min(100%, var(--pk-chat-reading-width));
+  max-width: var(--pk-chat-reading-width);
+  box-sizing: border-box;
   border: 1px solid var(--pk-border-accent);
   border-radius: var(--pk-radius-lg);
   background: var(--pk-surface);
@@ -1018,18 +1084,27 @@
   box-shadow: 0 0 0 3px var(--pk-accent-tint);
 }
 
+/* Keep the conversation-growth suggestion on the same reading rail as the
+   messages and composer. It is a lightweight notice, not a viewport banner. */
+:is(.pktw-root, .peak-design-root) .pkchat-convert-project {
+  width: min(calc(100% - (var(--pk-space-5) * 2)), var(--pk-chat-reading-width));
+  max-width: var(--pk-chat-reading-width);
+  margin-inline: auto;
+  box-sizing: border-box;
+}
+
 :is(.pktw-root, .peak-design-root) .pkchat-composer__editor {
-  padding: var(--pk-space-3) var(--pk-space-4) var(--pk-space-2);
-  min-height: 56px;
+  padding: 12px 14px 8px;
+  min-height: 46px;
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-composer__foot {
-  padding: 10px 12px;
+  padding: 4px 7px;
   border-top: 1px solid var(--pk-border-soft);
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
-  min-height: 52px;
+  min-height: 40px;
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-composer__foot-left {
@@ -1053,6 +1128,35 @@
   gap: var(--pk-space-2);
 }
 
+/* Context / Vault picker. Explicit classes beat Obsidian's global button skin
+   and avoid dynamic Tailwind arbitrary-value utilities disappearing from the
+   production CSS bundle. Keyboard selection is stronger than hover so the row
+   remains visible while the user moves through results with arrow keys. */
+:is(.pktw-root, .peak-design-root) .pkchat-context-menu {
+  background: var(--pk-surface-overlay) !important;
+  border-color: var(--pk-border-strong) !important;
+  color: var(--pk-text-primary);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-context-menu__item {
+  background: transparent !important;
+  color: var(--pk-text-primary) !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-context-menu__item:hover {
+  background: var(--pk-state-hover) !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-context-menu__item[data-selected="true"] {
+  background: var(--pk-state-selected) !important;
+  color: var(--pk-accent-text) !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-context-menu__item[data-selected="true"] > div > div:first-child {
+  background: var(--pk-accent-tint) !important;
+  color: var(--pk-accent-text) !important;
+}
+
 /* ── pkchat-run-chip ────────────────────────────────────────────────────────
    The single mode/model/ctx affordance — clicking opens the run settings
    popover.
@@ -1066,10 +1170,10 @@
 :is(.pktw-root, .peak-design-root) .pkchat-run-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 30px !important;
-  min-height: 30px !important;
-  padding: 0 12px !important;
+  gap: 5px;
+  height: 28px !important;
+  min-height: 28px !important;
+  padding: 0 9px !important;
   border-radius: var(--pk-radius-pill);
   background: var(--pk-surface);
   border: 1px solid var(--pk-border);
@@ -1080,6 +1184,19 @@
   transition: background var(--pk-transition-fast),
               border-color var(--pk-transition-fast),
               color var(--pk-transition-fast);
+}
+
+/* [C10-6] Source trigger is the borderless variant (mock .source-chip). */
+:is(.pktw-root, .peak-design-root) .pkchat-run-chip--ghost {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--pk-text-secondary);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-run-chip--ghost:hover,
+:is(.pktw-root, .peak-design-root) .pkchat-run-chip--ghost[data-state="open"] {
+  background: var(--pk-state-hover) !important;
+  border-color: transparent !important;
+  color: var(--pk-text-primary);
 }
 
 /* Hover / open state intentionally does NOT fill the chip with accent-soft —
@@ -1125,10 +1242,10 @@
    ─────────────────────────────────────────────────────────────────────────── */
 
 :is(.pktw-root, .peak-design-root) .pkchat-send {
-  width: 32px !important;
-  height: 32px !important;
-  min-height: 32px !important;
-  min-width: 32px !important;
+  width: 30px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  min-width: 30px !important;
   border-radius: var(--pk-radius-full) !important;
   background: var(--pk-accent) !important;
   border: 0 !important;
@@ -1147,16 +1264,17 @@
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-send:disabled {
-  background: var(--pk-surface-sunken);
+  background: var(--pk-surface-sunken) !important;
   color: var(--pk-text-tertiary);
-  cursor: not-allowed;
+  cursor: default;
 }
 
 .pktw-root .pkchat-send > svg,
 .peak-design-root .pkchat-send > svg,
 :is(.pktw-root, .peak-design-root) .pkchat-send .icon {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
+  stroke-width: 1.8;
 }
 
 /* Stop variant (streaming).
@@ -1381,16 +1499,20 @@
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-runpop__row-ico {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  background: var(--pk-surface-sunken);
+  border-radius: 6px;
   color: var(--pk-text-secondary);
   flex-shrink: 0;
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-runpop__row-ico > svg {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
+  stroke-width: 1.7;
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-runpop__row-body {
@@ -1411,9 +1533,10 @@
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-runpop__row-sub {
-  font-size: 11.5px;
+  font-size: 10px;
+  line-height: 1.35;
   color: var(--pk-text-tertiary);
-  font-family: var(--pk-font-mono);
+  font-family: var(--pk-font-sans);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1434,36 +1557,39 @@
   flex-shrink: 0;
 }
 
-/* Toggle switch on context rows */
+/* Toggle switch on context rows (mock source switch 25×15, knob 9). */
 :is(.pktw-root, .peak-design-root) .pkchat-runpop__switch {
-  width: 30px;
-  height: 18px;
-  border-radius: var(--pk-radius-pill);
-  background: var(--pk-border);
   position: relative;
+  width: 25px;
+  height: 15px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-surface-sunken);
+  border: 1px solid var(--pk-border-strong);
   flex-shrink: 0;
-  transition: background var(--pk-transition-fast);
+  transition: background var(--pk-transition-fast), border-color var(--pk-transition-fast);
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-runpop__switch::after {
   content: "";
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--pk-surface);
   position: absolute;
   top: 2px;
   left: 2px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-  transition: left var(--pk-transition-fast);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--pk-text-tertiary);
+  box-shadow: none;
+  transition: transform var(--pk-transition-fast), background var(--pk-transition-fast);
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-runpop__row--toggle[data-on="true"] .pkchat-runpop__switch {
-  background: var(--pk-accent);
+  background: var(--pk-accent-soft);
+  border-color: var(--pk-accent);
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-runpop__row--toggle[data-on="true"] .pkchat-runpop__switch::after {
-  left: 14px;
+  background: var(--pk-accent);
+  transform: translateX(10px);
 }
 
 /* Ctx chip on Tools row */
@@ -1522,40 +1648,33 @@
   overflow: hidden;
 }
 
-:is(.pktw-root, .peak-design-root) .pkchat-idx__head {
+/* [R1] Topline row (replaces old head/title/head-actions). */
+:is(.pktw-root, .peak-design-root) .pkchat-idx__topline {
   display: flex;
   align-items: center;
   gap: var(--pk-space-2);
-  padding: 10px var(--pk-space-3) 8px;
-  border-bottom: 1px solid var(--pk-border-soft);
+  flex: 0 0 44px;
+  padding: 7px var(--pk-space-2) 7px var(--pk-space-3);
   flex-shrink: 0;
 }
 
-:is(.pktw-root, .peak-design-root) .pkchat-idx__title {
-  font-size: var(--pk-text-lg);
-  font-weight: 650;
-  color: var(--pk-text-primary);
-}
-
-:is(.pktw-root, .peak-design-root) .pkchat-idx__head-actions {
-  margin-left: auto;
-  display: inline-flex;
-  gap: 2px;
-}
-
 :is(.pktw-root, .peak-design-root) .pkchat-idx__search {
-  margin: var(--pk-space-2) var(--pk-space-3) var(--pk-space-1);
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
-  gap: var(--pk-space-2);
+  gap: 7px;
   height: 30px;
   padding: 0 var(--pk-space-2);
   border: 1px solid var(--pk-border);
   border-radius: var(--pk-radius-md);
   background: var(--pk-surface);
   color: var(--pk-text-tertiary);
-  font-size: var(--pk-text-sm);
-  flex-shrink: 0;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-idx__search:focus-within {
+  border-color: var(--pk-border-accent);
+  box-shadow: 0 0 0 2px var(--pk-accent-tint);
 }
 
 /* Obsidian's bare-tag `input { border / background / padding / border-radius
@@ -1569,7 +1688,7 @@
   border: 0 !important;
   outline: none !important;
   color: var(--pk-text-primary);
-  font-size: var(--pk-text-sm);
+  font-size: var(--pk-text-base);
   padding: 0 !important;
   border-radius: 0 !important;
   box-shadow: none !important;
@@ -1602,9 +1721,11 @@
    they read as a header nav, and the active underline aligns flush with the
    label width. */
 :is(.pktw-root, .peak-design-root) .pkchat-idx__tabs {
-  margin: 0 var(--pk-space-3) var(--pk-space-2);
+  margin: 0 var(--pk-space-3);
+  flex: 0 0 38px;
   flex-shrink: 0;
   display: flex;
+  align-items: flex-end;
   gap: var(--pk-space-4);
   border-bottom: 1px solid var(--pk-border-soft);
 }
@@ -1635,8 +1756,10 @@
    exactly (text + 2px tail) so it reads as the underline of a word, not
    a chip border. */
 :is(.pktw-root, .peak-design-root) .pkchat-idx__tab-label {
-  display: inline-block;
-  padding: 10px 0;
+  display: flex;
+  align-items: center;
+  height: 38px;
+  padding: 0;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
   transition: border-color var(--pk-transition-fast);
@@ -1644,38 +1767,11 @@
 
 :is(.pktw-root, .peak-design-root) .pkchat-idx__tab--active {
   color: var(--pk-text-primary);
-  font-weight: 600;
+  font-weight: 650;
 }
 :is(.pktw-root, .peak-design-root) .pkchat-idx__tab--active .pkchat-idx__tab-label {
   border-bottom-color: var(--pk-text-primary);
 }
-
-/* ⌘K keyboard hint in the search box. Matches the sidebar's badge so the
-   two surfaces read as the same "find" affordance. */
-:is(.pktw-root, .peak-design-root) .pkchat-idx__kbd {
-  display: inline-flex;
-  align-items: center;
-  font-family: var(--pk-font-mono);
-  font-size: 10px;
-  color: var(--pk-text-tertiary);
-  padding: 1px 5px;
-  border: 1px solid var(--pk-border);
-  border-radius: 4px;
-  background: var(--pk-surface);
-  line-height: 1.2;
-  flex-shrink: 0;
-}
-
-:is(.pktw-root, .peak-design-root) .pkchat-idx__filters {
-  display: flex;
-  gap: var(--pk-space-2);
-  flex-wrap: wrap;
-  margin: 0 var(--pk-space-4) var(--pk-space-2);
-  flex-shrink: 0;
-}
-
-/* `.pkchat-idx__filter` (artifact/message filter chips) migrated to <Pill>
-   primitive. Wrapper `.pkchat-idx__filters` above still controls layout. */
 
 :is(.pktw-root, .peak-design-root) .pkchat-idx__list {
   flex: 1 1 auto;
@@ -1690,27 +1786,21 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--pk-space-6) var(--pk-space-4);
+  gap: var(--pk-space-2);
+  height: 100%;
+  padding: var(--pk-space-5);
   text-align: center;
   color: var(--pk-text-tertiary);
-  font-size: var(--pk-text-sm);
-  line-height: 1.5;
-  gap: var(--pk-space-2);
 }
-
-:is(.pktw-root, .peak-design-root) .pkchat-idx__section-header {
-  display: flex;
-  align-items: center;
-  gap: var(--pk-space-2);
-  margin: var(--pk-space-3) var(--pk-space-1) var(--pk-space-2);
-  font-size: var(--pk-text-xs);
-  font-weight: 700;
+:is(.pktw-root, .peak-design-root) .pkchat-idx__empty-title {
   color: var(--pk-text-primary);
-  text-transform: none;
+  font-size: var(--pk-text-lg);
+  font-weight: 600;
 }
-
-:is(.pktw-root, .peak-design-root) .pkchat-idx__section-header:first-child {
-  margin-top: 0;
+:is(.pktw-root, .peak-design-root) .pkchat-idx__empty-sub {
+  font-size: var(--pk-text-base);
+  color: var(--pk-text-tertiary);
+  line-height: 1.5;
 }
 
 /* `.pkchat-idx__count-pill` (section count badge) migrated to
@@ -1719,13 +1809,14 @@
 /* dead block 1791-2304 removed during 2026-06-03 redesign */
 
 :is(.pktw-root, .peak-design-root) .pkchat-idx__foot {
-  border-top: 1px solid var(--pk-border-soft);
-  padding: var(--pk-space-2) var(--pk-space-4);
   display: flex;
   align-items: center;
-  gap: var(--pk-space-2);
-  font-size: var(--pk-text-xs);
+  justify-content: space-between;
+  flex: 0 0 36px;
+  padding: 0 var(--pk-space-3);
+  border-top: 1px solid var(--pk-border-soft);
   color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-sm);
   flex-shrink: 0;
 }
 
@@ -1744,13 +1835,11 @@
 :is(.pktw-root, .peak-design-root) .pkchat-msg-list {
   display: flex;
   flex-direction: column;
-  /* Container widens enough for side-by-side bubble layout (user right,
-     assistant left). Per-message width caps live on .pkchat-msg below. */
-  width: 100%;
-  max-width: 880px;
+  width: min(100%, var(--pk-chat-reading-width));
+  max-width: var(--pk-chat-reading-width);
   margin: 0 auto;
-  padding: var(--pk-space-4) var(--pk-space-5) var(--pk-space-6);
-  gap: var(--pk-space-6);
+  padding: var(--pk-space-4) var(--pk-space-5) var(--pk-space-5);
+  gap: 18px;
   box-sizing: border-box;
 }
 
@@ -1765,12 +1854,14 @@
   max-width: 100%;
 }
 
-/* User message: right-aligned bubble, narrower max-width (iMessage style).
-   Head row is hidden — bubble alone carries identity via position+color. */
+/* User message: a quiet right-aligned document beat, not a second input box.
+   Position carries identity; removing the filled capsule keeps the assistant
+   response as the dominant reading surface. */
 :is(.pktw-root, .peak-design-root) .pkchat-msg--user {
   align-self: flex-end;
-  max-width: min(70%, 520px);
+  max-width: min(82%, 620px);
   width: auto;
+  gap: var(--pk-space-1);
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-msg--user .pkchat-msg__head {
@@ -1839,20 +1930,44 @@
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-msg--user .pkchat-msg__body {
-  background: var(--pk-surface-sunken);
-  border: 1px solid var(--pk-border);
-  border-radius: 10px;
-  padding: 12px 14px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 3px 0;
   font-size: var(--pk-text-lg);
+  line-height: 1.6;
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-msg__meta-row {
   display: flex;
   align-items: center;
-  gap: var(--pk-space-2);
+  flex-wrap: nowrap;
+  min-width: 0;
+  gap: 2px;
+  min-height: 24px;
   color: var(--pk-text-tertiary);
   font-size: var(--pk-text-sm);
-  flex-wrap: wrap;
+}
+
+/* [M5] User action row: right-aligned + hover-reveal. */
+:is(.pktw-root, .peak-design-root) .pkchat-msg__meta-row--user {
+  justify-content: flex-end;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg--user:hover .pkchat-msg__meta-row--user,
+:is(.pktw-root, .peak-design-root) .pkchat-msg__meta-row--user:focus-within {
+  opacity: 1;
+}
+
+/* [N8] Compact (icon-only) core when the row is very narrow. */
+:is(.pktw-root, .peak-design-root) .pkchat-msg__meta-row--compact .pkchat-msg__action:not(.pkchat-msg__action--more) > span {
+  display: none;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg__meta-row--compact .pkchat-msg__action:not(.pkchat-msg__action--more) {
+  width: 26px;
+  padding: 0;
+  justify-content: center;
 }
 
 /* `.pkchat-msg__model-chip` composes <Chip variant="accent"> + mono font +
@@ -1863,11 +1978,20 @@
    color so the model identifier still reads as branded. */
 :is(.pktw-root, .peak-design-root) .pkchat-msg__model-chip {
   font-family: var(--pk-font-mono);
-  font-size: 11.5px;
+  font-size: 10px !important;
+  padding: 2px 6px !important;
   margin-right: var(--pk-space-1);
   user-select: text;
   background: var(--pk-accent-tint) !important;
   border-color: transparent !important;
+}
+
+/* [M6] Short clock time (mock .message-time). */
+:is(.pktw-root, .peak-design-root) .pkchat-msg__time {
+  flex: 0 0 auto;
+  margin-right: var(--pk-space-2);
+  color: var(--pk-text-tertiary);
+  white-space: nowrap;
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-msg__sep {
@@ -1891,7 +2015,7 @@
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-msg__action:hover {
-  background: var(--pk-surface-sunken);
+  background: var(--pk-state-hover);
   color: var(--pk-text-primary);
 }
 
@@ -1899,16 +2023,22 @@
   color: var(--pk-error);
 }
 
+/* [M6] Adaptive (non-core) actions use the tertiary tone. */
+:is(.pktw-root, .peak-design-root) .pkchat-msg__action--adaptive {
+  color: var(--pk-text-tertiary);
+}
+
 :is(.pktw-root, .peak-design-root) .pkchat-msg__action > svg {
-  width: 13px;
-  height: 13px;
-  flex: 0 0 13px;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  stroke-width: 1.8;
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-msg__action--more {
-  margin-left: auto;
-  width: 24px;
-  padding: 0;
+  width: 26px !important;
+  min-width: 26px !important;
+  padding: 0 !important;
   justify-content: center;
 }
 
@@ -1936,7 +2066,7 @@
   background: var(--pk-surface);
   border: 1px solid var(--pk-border);
   color: var(--pk-text-primary);
-  font-size: 12.5px;
+  font-size: 12.5px; /* off-ladder registered, mock-exact */
   font-family: inherit;
   cursor: pointer;
   transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
@@ -1949,30 +2079,37 @@
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-msg__suggest-chip > svg {
-  width: 13px;
-  height: 13px;
-  flex: 0 0 13px;
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-msg__suggest-more {
   display: inline-flex;
   align-items: center;
-  gap: var(--pk-space-1);
+  gap: 3px;
   height: 28px;
-  padding: 0 var(--pk-space-3);
-  border-radius: var(--pk-radius-pill);
+  padding: 0 7px;
+  border-radius: var(--pk-radius-sm);
   background: transparent;
   border: 0;
   color: var(--pk-text-secondary);
-  font-size: 12.5px;
+  font-size: var(--pk-text-sm);
   font-family: inherit;
   cursor: pointer;
   transition: background-color 120ms ease, color 120ms ease;
 }
 
-:is(.pktw-root, .peak-design-root) .pkchat-msg__suggest-more:hover {
+:is(.pktw-root, .peak-design-root) .pkchat-msg__suggest-more:hover,
+:is(.pktw-root, .peak-design-root) .pkchat-msg__suggest-more[aria-expanded="true"] {
   color: var(--pk-text-primary);
-  background: var(--pk-surface-sunken);
+  background: var(--pk-state-hover);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-msg__suggest-more > svg {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
 }
 
 /* Group label inside the suggest "More…" popover (FOLLOW-UP / ACTIONS) */
@@ -2083,7 +2220,7 @@
   border-radius: var(--pk-radius-pill);
   background: var(--pk-accent-soft);
   color: var(--pk-accent-hover, var(--pk-accent));
-  font-size: 11.5px;
+  font-size: 11.5px; /* off-ladder registered, mock-exact */
   font-weight: 600;
   border: 1px solid var(--pk-border-accent);
 }
@@ -2321,9 +2458,9 @@
 }
 
 :is(.pktw-root, .peak-design-root) .pkonb-section__title {
-  /* Mock .h2 = 18px / 1.35 / weight 600. Token --pk-text-xl is 16px so we
-     pick the next-up scale token (--pk-text-2xl = 20px) and clamp via
-     line-height. Using a fixed px would violate design-token rules. */
+  /* Mock .h2 = 18px / 1.35 / weight 600. 18px sits between --pk-text-xl
+     (16px) and --pk-text-2xl (20px) — off-ladder, kept mock-exact as a
+     fixed px (registered off-ladder value). */
   font-size: 18px;
   font-weight: 600;
   color: var(--pk-text-primary);
@@ -3797,6 +3934,8 @@
   width: 120px;
   flex-shrink: 0;
   position: relative;
+  /* Registered exception: fixed brand-preview gradient + text, hardcoded and
+     theme-independent by design (see file-head list). */
   background-color: #5c4ed8;
   background-image: linear-gradient(135deg, #cdc4f3 0%, #8676d8 100%);
   display: flex;
@@ -3819,6 +3958,8 @@
   width: 36px;
   height: 36px;
   border-radius: 6px;
+  /* Registered exception: white plate so transparent/dark favicons stay
+     visible in both themes (see file-head list). */
   background: #fff;
   padding: 4px;
   object-fit: contain;
@@ -3836,77 +3977,110 @@
 
 :is(.pktw-root, .peak-design-root) .pkchat-idx-row {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 6px 8px;
-  border-radius: 8px;
+  align-items: center;
+  gap: var(--pk-space-2);
   background: transparent;
   border: 0;
+  border-radius: var(--pk-radius-sm);
   width: 100%;
   text-align: left;
   cursor: pointer;
-  color: var(--pk-text-primary);
+  color: var(--pk-text-secondary);
   transition: background var(--pk-transition-fast);
 }
 :is(.pktw-root, .peak-design-root) .pkchat-idx-row:hover {
-  background: var(--pk-accent-tint);
+  background: var(--pk-state-hover);
 }
 
-/* Topic-head icon is now the toggle; the row no longer carries a chev
-   gutter. Cursor + subtle color shift mark it as interactive. */
-:is(.pktw-root, .peak-design-root) .pkchat-idx-topic__toggle {
+/* Outline row geometry (mock .index-row): 24px left indent aligns the icon
+   under the topic chevron; 34px min row. */
+:is(.pktw-root, .peak-design-root) .pkchat-idx-row[data-outline-kind] {
+  position: relative;
+  min-height: 34px !important;
+  padding: 4px var(--pk-space-1) 4px var(--pk-space-6);
+}
+/* Resource row geometry (mock .artifact-row): 44px min row. */
+:is(.pktw-root, .peak-design-root) .pkchat-idx-row--artifact {
+  position: relative;
+  min-height: 44px !important;
+  padding: 6px var(--pk-space-2);
+}
+
+/* [R3] Collapsible topic head (mock .topic-head) — replaces the old orphan
+   toggle rules. */
+:is(.pktw-root, .peak-design-root) .pkchat-idx-topic__head {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-1);
+  width: 100%;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 0 var(--pk-space-1);
+  color: var(--pk-text-primary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--pk-radius-sm);
+  text-align: left;
   cursor: pointer;
-  color: var(--pk-text-secondary);
-  transition: color var(--pk-transition-fast);
+  font-size: var(--pk-text-base);
+  font-weight: 650;
 }
-:is(.pktw-root, .peak-design-root) .pkchat-idx-topic__head:hover .pkchat-idx-topic__toggle {
-  color: var(--pk-accent-text);
+:is(.pktw-root, .peak-design-root) .pkchat-idx-topic__head:hover {
+  background: var(--pk-state-hover);
 }
-
-/* 26x26 avatar square (U / P / !) — replaces the old purple-tinted letter
-   badge with a softer rounded square per the locked design. */
-:is(.pktw-root, .peak-design-root) .pkchat-idx-row__avatar {
-  width: 26px;
-  height: 26px;
-  flex-shrink: 0;
-  border-radius: 7px;
+:is(.pktw-root, .peak-design-root) .pkchat-idx-topic__toggle {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 600;
-  background: var(--pk-surface-sunken);
+  flex-shrink: 0;
   color: var(--pk-text-secondary);
 }
-:is(.pktw-root, .peak-design-root) .pkchat-idx-row__avatar[data-role="user"] {
-  background: var(--pk-accent-tint);
-  color: var(--pk-accent-text);
+:is(.pktw-root, .peak-design-root) .pkchat-idx-topic__toggle > svg {
+  width: 14px;
+  height: 14px;
 }
-:is(.pktw-root, .peak-design-root) .pkchat-idx-row__avatar[data-role="error"] {
-  background: rgba(220, 38, 38, 0.12);
-  color: #b91c1c;
+:is(.pktw-root, .peak-design-root) .pkchat-idx-topic__name {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-idx-topic__count {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-xs);
+  font-weight: 500;
 }
 
-/* 26x26 main icon container — used by topic rows (chat bubble) and
-   artifact rows (file-type icon). The icon SVG inside renders ~15px. */
+/* [R4] 26x26 main icon container (resource base size). Outline overrides to
+   20px below. The icon SVG inside renders 14px. */
 :is(.pktw-root, .peak-design-root) .pkchat-idx-row__icon {
   width: 26px;
   height: 26px;
-  flex-shrink: 0;
-  border-radius: 7px;
+  flex: 0 0 26px;
+  border-radius: var(--pk-radius-md);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   color: var(--pk-text-secondary);
 }
 :is(.pktw-root, .peak-design-root) .pkchat-idx-row__icon > svg {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
 }
-
-:is(.pktw-root, .peak-design-root) .pkchat-idx-row__icon--artifact {
-  background: var(--pk-accent-tint);
-  color: var(--pk-accent-text);
+/* Resource icon surface (mock .artifact-icon). */
+:is(.pktw-root, .peak-design-root) .pkchat-idx-row--artifact .pkchat-idx-row__icon {
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-secondary);
+}
+/* Outline icon (mock .index-kind): transparent / tertiary, 20x20 rounded. */
+:is(.pktw-root, .peak-design-root) .pkchat-idx-row[data-outline-kind] .pkchat-idx-row__icon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--pk-text-tertiary);
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-idx-row__body {
@@ -3915,24 +4089,19 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding-top: 2px;
 }
 :is(.pktw-root, .peak-design-root) .pkchat-idx-row__title {
   font-size: var(--pk-text-sm);
-  color: var(--pk-text-primary);
+  color: var(--pk-text-secondary);
   line-height: 1.4;
   overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-:is(.pktw-root, .peak-design-root) .pkchat-idx-row__desc {
-  font-size: var(--pk-text-xs);
-  color: var(--pk-text-tertiary);
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* Resource title (N5 / mock .artifact-title): base size, primary. */
+:is(.pktw-root, .peak-design-root) .pkchat-idx-row--artifact .pkchat-idx-row__title {
+  font-size: var(--pk-text-base);
+  color: var(--pk-text-primary);
 }
 :is(.pktw-root, .peak-design-root) .pkchat-idx-row__sub {
   font-size: var(--pk-text-xs);
@@ -3961,60 +4130,57 @@
   padding-top: 4px;
   white-space: nowrap;
 }
+/* Outline subline is the faint time/type line (mock .index-time). */
+:is(.pktw-root, .peak-design-root) .pkchat-idx-row[data-outline-kind] .pkchat-idx-row__sub {
+  color: var(--pk-text-faint);
+}
+/* Starred-turn badge — right-aligned accent star on outline message rows. The
+   11px filled glyph reads as a marker without competing with the row label;
+   `flex: 0 0 auto` keeps it from stealing width from the truncating title. */
+:is(.pktw-root, .peak-design-root) .pkchat-idx-row__star {
+  flex: 0 0 auto;
+  width: 11px;
+  height: 11px;
+  margin-left: var(--pk-space-1);
+  color: var(--pk-accent);
+}
 
 /* Topic block — collapsible group. Indent alone carries the parent-child
    relationship; the earlier vguide line read as noise in a narrow rail. */
 :is(.pktw-root, .peak-design-root) .pkchat-idx-topic {
   position: relative;
 }
-
-/* Progress capsule on the right of the topic header. Shows the topic's
-   relative position in the conversation timeline (its message span as a
-   fraction of total messages). 64×5 to match Mock 01. */
-:is(.pktw-root, .peak-design-root) .pkchat-idx-topic__progress {
-  width: 64px;
-  height: 5px;
-  flex-shrink: 0;
-  background: var(--pk-surface-sunken);
-  border-radius: 999px;
-  overflow: hidden;
-  margin-top: 10px;
-}
-:is(.pktw-root, .peak-design-root) .pkchat-idx-topic__progress-fill {
-  height: 100%;
-  background: var(--pk-accent);
-  border-radius: 999px;
+/* Topic block spacing (mock .topic). */
+:is(.pktw-root, .peak-design-root) .pkchat-idx-topic + .pkchat-idx-topic {
+  margin-top: var(--pk-space-1);
 }
 
-/* Nested rows — indented 14px past the parent's row padding (8px). The
-   nested icon column thus sits 14px in from the parent topic's icon
-   column, signalling containment without burning the 28px the original
-   layout used. The 1px vguide at x=21 falls just outside the nested
-   icon (which starts at x=8+14=22) — reads as a left rail. */
-:is(.pktw-root, .peak-design-root) .pkchat-idx-topic__nested {
-  padding-left: 14px;
-}
-
-/* Section header used in the Artifacts tab (kind groups). */
+/* [N2] Section header (mock .section-label): 24px row, right-aligned count. */
 :is(.pktw-root, .peak-design-root) .pkchat-idx-group-header {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
-  padding: 14px 8px 4px;
+  align-items: center;
+  height: 24px;
+  padding: 0 var(--pk-space-1);
   font-size: var(--pk-text-xs);
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--pk-text-tertiary);
 }
-:is(.pktw-root, .peak-design-root) .pkchat-idx-group-header:first-child {
-  padding-top: 4px;
-}
 :is(.pktw-root, .peak-design-root) .pkchat-idx-group-header__count {
+  margin-left: auto;
   color: var(--pk-text-tertiary);
   font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
+}
+
+/* [N2] Resource direction sections (mock .artifact-group). */
+:is(.pktw-root, .peak-design-root) .pkchat-idx-resgroup + .pkchat-idx-resgroup {
+  margin-top: var(--pk-space-3);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-idx-resgroup .pkchat-idx-row--artifact + .pkchat-idx-row--artifact {
+  margin-top: var(--pk-space-1);
 }
 
 
@@ -4183,4 +4349,3045 @@
   color: var(--pk-text-tertiary);
   font-size: var(--pk-text-xs);
   line-height: 1.35;
+}
+
+/* ── pkchat-shelf ───────────────────────────────────────────────────────────
+   Composer explicit context shelf (chat-studio §8.2): reply anchor, workflow,
+   [[doc]] / file / URL chips. Renders only when non-empty.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:is(.pktw-root, .peak-design-root) .pkchat-shelf {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pk-space-1);
+  padding: var(--pk-space-2) var(--pk-space-4) 0;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-shelf__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 4px 0 7px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-surface-sunken);
+  border: 1px solid var(--pk-border-soft);
+  font-size: var(--pk-text-sm);
+  color: var(--pk-text-secondary);
+  max-width: 260px;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-shelf__chip[data-variant="accent"] {
+  max-width: 340px;
+  color: var(--pk-accent-text);
+  background: var(--pk-accent-tint);
+  border-color: var(--pk-border-accent);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-shelf__chip[data-variant="accent"] .pkchat-shelf__chip-ico svg {
+  color: var(--pk-accent-text);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-shelf__chip-ico svg {
+  width: 11px;
+  height: 11px;
+  display: block;
+  color: var(--pk-text-tertiary);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-shelf__chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-shelf__chip-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px !important;
+  min-height: 16px !important;
+  padding: 0 !important;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--pk-text-tertiary);
+  cursor: pointer;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-shelf__chip-x:hover {
+  background: var(--pk-accent-soft);
+  color: var(--pk-accent-text);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-shelf__chip-x svg {
+  width: 10px;
+  height: 10px;
+}
+
+/* Non-default assistant chip stays visibly bound (chat-studio §8.6). */
+:is(.pktw-root, .peak-design-root) .pkchat-run-chip[data-nondefault="true"] {
+  border-color: var(--pk-border-accent);
+  color: var(--pk-accent-text);
+}
+
+/* ── pkchat-idx (chat-studio Track F additions) ─────────────────────────────
+   Outline/Resources right-index: filter chips, active scroll-spy row,
+   locate flash, row action affordance.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:is(.pktw-root, .peak-design-root) .pkchat-idx__list-inner {
+  display: flex;
+  flex-direction: column;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-idx-row--active {
+  background: var(--pk-accent-tint);
+  box-shadow: inset 2px 0 0 var(--pk-accent);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-idx-row__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--pk-space-2);
+  background: transparent;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-idx-row__action {
+  opacity: 0;
+  transition: opacity var(--pk-transition-fast);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-idx-row:hover .pkchat-idx-row__action,
+:is(.pktw-root, .peak-design-root) .pkchat-idx-row:focus-within .pkchat-idx-row__action {
+  opacity: 1;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-idx-target-flash {
+  animation: pkchat-idx-flash 1.2s ease-out 1;
+}
+
+@keyframes pkchat-idx-flash {
+  0% { background-color: var(--pk-accent-soft); }
+  100% { background-color: transparent; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Chat Studio visual-replication — APPEND blocks (merged 2026-07-17)
+   New selectors only; REPLACE/DELETE deltas were applied in place above.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── SHELL: studio column surfaces + splitter (css-shell.css N1/N4) ── */
+/* ── [N1 + N4] APPEND — Chat Studio shell chrome (splitter + column surfaces).
+   New block; suggest placing near the other pkchat-studio / shell rules (or at
+   end of the pkchat section). Column *widths* stay inline in ChatStudioView.tsx
+   (dynamic drag values) — only bg/border/splitter live here. ───────────────── */
+
+/* N4 — left/right columns: --pk-bg-secondary surface + --pk-border-soft edge
+   (mock .studio-left / .studio-right). Replaces the old inline
+   `pktw-border-r/l pktw-border-border` (which used --pk-border, not -soft). */
+:is(.pktw-root, .peak-design-root) .pkchat-studio__left {
+  background: var(--pk-bg-secondary);
+  border-right: 1px solid var(--pk-border-soft);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-studio__right {
+  background: var(--pk-bg-secondary);
+  border-left: 1px solid var(--pk-border-soft);
+}
+
+/* N1 — splitter: 4px hit area, transparent at rest; a 2px-inset ::after bar
+   tints to --pk-accent-soft on hover / keyboard focus / active drag (mock
+   .splitter + .splitter.is-dragging → here `[data-dragging="true"]`). Replaces
+   the old `pktw-w-1.5` (6px) + always-on `pktw-bg-border/60`. */
+:is(.pktw-root, .peak-design-root) .pkchat-studio__splitter {
+  position: relative;
+  z-index: 4;
+  flex-shrink: 0;
+  width: 4px;
+  height: 100%;
+  cursor: col-resize;
+  outline: none;
+  background: transparent;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-studio__splitter::after {
+  content: '';
+  position: absolute;
+  inset: 0 1px;
+  background: transparent;
+  transition: background var(--pk-transition-fast);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-studio__splitter:hover::after,
+:is(.pktw-root, .peak-design-root) .pkchat-studio__splitter:focus-visible::after,
+:is(.pktw-root, .peak-design-root) .pkchat-studio__splitter[data-dragging="true"]::after {
+  background: var(--pk-accent-soft);
+}
+
+/* ── LEFT COLUMN (css-left-column.css) ── */
+/* ── Top command tools (mock `.studio-left .left-tools`, mock.css:1884-1891) ── */
+.pktw-root .pkstudio-left-tools,
+.peak-design-root .pkstudio-left-tools {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  padding: 7px var(--pk-space-2) 5px;
+}
+
+/* ── Sidebar command row (mock `.sidebar-command`, mock.css:1893-1935) ──
+   New chat / Search knowledge base — a nav row, NOT a filled CTA. */
+.pktw-root .pkstudio-sidebar-command,
+.peak-design-root .pkstudio-sidebar-command {
+  display: flex !important;
+  align-items: center;
+  gap: var(--pk-space-2);
+  width: 100% !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 0 var(--pk-space-2) !important;
+  color: var(--pk-text-secondary);
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: var(--pk-radius-sm) !important;
+  cursor: pointer;
+  text-align: left;
+  font-size: var(--pk-text-base);
+}
+
+.pktw-root .pkstudio-sidebar-command.pkstudio-sidebar-command--primary,
+.peak-design-root .pkstudio-sidebar-command.pkstudio-sidebar-command--primary {
+  color: var(--pk-text-primary);
+  font-weight: 600;
+}
+
+.pktw-root .pkstudio-sidebar-command:hover,
+.peak-design-root .pkstudio-sidebar-command:hover {
+  color: var(--pk-text-primary);
+  background: var(--pk-state-hover) !important;
+}
+
+.pktw-root .pkstudio-sidebar-command svg,
+.peak-design-root .pkstudio-sidebar-command svg {
+  flex: 0 0 15px;
+  width: 15px;
+  height: 15px;
+}
+
+/* label span (mock `.sidebar-command span:nth-child(2)`) */
+.pktw-root .pkstudio-sidebar-command__label,
+.peak-design-root .pkstudio-sidebar-command__label {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* kbd hint (mock `.sidebar-command kbd`, mock.css:1932-1935) — NO border/bg */
+.pktw-root .pkstudio-sidebar-command__kbd,
+.peak-design-root .pkstudio-sidebar-command__kbd {
+  flex: 0 0 auto;
+  color: var(--pk-text-faint);
+  font: 10px/1 var(--pk-font-mono);
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+/* ── Scroll content wrapper (mock `.left-content`, mock.css:239-241) ── */
+.pktw-root .pkstudio-left-content,
+.peak-design-root .pkstudio-left-content {
+  padding: var(--pk-space-1) var(--pk-space-2) var(--pk-space-3);
+}
+
+/* ── Section spacing (mock `.nav-section + .nav-section`, mock.css:243-245) ── */
+.pktw-root .pkstudio-nav-section + .pkstudio-nav-section,
+.peak-design-root .pkstudio-nav-section + .pkstudio-nav-section {
+  margin-top: var(--pk-space-3);
+}
+
+/* ── Section header (mock `.section-label`, mock.css:247-263, 1937-1946) ── */
+.pktw-root .pkstudio-section-label,
+.peak-design-root .pkstudio-section-label {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 var(--pk-space-2);
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-xs);
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.pktw-root .pkstudio-section-label__lead,
+.peak-design-root .pkstudio-section-label__lead {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pktw-root .pkstudio-section-label__lead svg,
+.peak-design-root .pkstudio-section-label__lead svg {
+  flex: 0 0 11px;
+  width: 11px;
+  height: 11px;
+}
+
+/* count (mock `.section-label span:last-child`, mock.css:259-263) */
+.pktw-root .pkstudio-section-label__count,
+.peak-design-root .pkstudio-section-label__count {
+  margin-left: auto;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+/* New-project add affordance — hover-reveal, sits after the count. Not in the
+   mock (mock has no create-project entry); production keeps the existing entry
+   per the L5 ruling. Reserves a small fixed slot so the header height is stable. */
+.pktw-root .pkstudio-section-label__add,
+.peak-design-root .pkstudio-section-label__add {
+  flex: 0 0 auto;
+  margin-left: var(--pk-space-1);
+}
+
+/* ── View-all link (mock `.section-link`, mock.css:1094-1111) — NO underline ── */
+.pktw-root .pkstudio-section-link,
+.peak-design-root .pkstudio-section-link {
+  margin-left: auto;
+  padding: 2px 4px !important;
+  color: var(--pk-text-tertiary);
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: var(--pk-radius-sm) !important;
+  cursor: pointer;
+  font-size: var(--pk-text-xs);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.pktw-root .pkstudio-section-link:hover,
+.peak-design-root .pkstudio-section-link:hover {
+  color: var(--pk-text-primary);
+  background: var(--pk-state-hover) !important;
+}
+
+/* ── Time-group sub-header (mock `.subsection-label`, mock.css:1948-1955) ── */
+.pktw-root .pkstudio-subsection-label,
+.peak-design-root .pkstudio-subsection-label {
+  display: flex;
+  align-items: center;
+  height: 22px;
+  padding-left: 10px;
+  color: var(--pk-text-faint);
+  font-size: var(--pk-text-xs);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* group spacing (mock `.recent-group + .recent-group`, mock.css:1957-1959) */
+.pktw-root .pkstudio-recent-group + .pkstudio-recent-group,
+.peak-design-root .pkstudio-recent-group + .pkstudio-recent-group {
+  margin-top: 4px;
+}
+
+/* ── ViewAll picker (project-list §L-RECENT-02..05) ─────────────────────────
+   Modal-body idiom for the conversation picker. Filter input mirrors the mock
+   `.compact-search` (30px pill + focus ring); result rows reuse the 30px nav-row
+   density with a 10px mono type tag. The picker mounts inside a Radix Modal —
+   after the ReactRenderer portal-host fix the surface is token-scoped, but the
+   raw <input>/<button> still need the bare-tag defense (Obsidian's `input`/
+   `button` chrome leaks even inside the scope), so the input box props are
+   !important like `.pkchat-idx__search`. Surface modifier registered in
+   ui-design.md §2.4. ── */
+.pktw-root .pkstudio-picker-search,
+.peak-design-root .pkstudio-picker-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  min-width: 0;
+  padding: 0 var(--pk-space-2);
+  color: var(--pk-text-tertiary);
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-surface);
+}
+.pktw-root .pkstudio-picker-search:focus-within,
+.peak-design-root .pkstudio-picker-search:focus-within {
+  border-color: var(--pk-border-accent);
+  box-shadow: 0 0 0 2px var(--pk-accent-tint);
+}
+.pktw-root .pkstudio-picker-search > svg,
+.peak-design-root .pkstudio-picker-search > svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+}
+.pktw-root .pkstudio-picker-search input,
+.peak-design-root .pkstudio-picker-search input {
+  flex: 1;
+  min-width: 0;
+  color: var(--pk-text-primary);
+  font-size: 13px;
+  background: transparent !important;
+  border: 0 !important;
+  outline: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  height: auto !important;
+}
+.pktw-root .pkstudio-picker-search input::placeholder,
+.peak-design-root .pkstudio-picker-search input::placeholder {
+  color: var(--pk-text-tertiary);
+}
+
+/* Result row — 30px nav-row density; <button>, so background/border are set
+   above the `.peak-design-root button` reset by the (0,2,0) scoped selector. */
+.pktw-root .pkstudio-picker-row,
+.peak-design-root .pkstudio-picker-row {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  width: 100%;
+  height: 30px;
+  min-height: 30px;
+  padding: 0 var(--pk-space-2);
+  text-align: left;
+  cursor: pointer;
+  color: var(--pk-text-primary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--pk-radius-sm);
+  transition: background var(--pk-transition-fast);
+}
+.pktw-root .pkstudio-picker-row:hover,
+.peak-design-root .pkstudio-picker-row:hover {
+  background: var(--pk-state-hover);
+}
+.pktw-root .pkstudio-picker-row > svg,
+.peak-design-root .pkstudio-picker-row > svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  color: var(--pk-text-tertiary);
+}
+.pktw-root .pkstudio-picker-row__label,
+.peak-design-root .pkstudio-picker-row__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--pk-font-sans);
+  font-size: 13px;
+  color: var(--pk-text-primary);
+}
+.pktw-root .pkstudio-picker-row__tag,
+.peak-design-root .pkstudio-picker-row__tag {
+  flex: 0 0 auto;
+  color: var(--pk-text-tertiary);
+  font: 10px/1.2 var(--pk-font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.pktw-root .pkstudio-picker-empty,
+.peak-design-root .pkstudio-picker-empty {
+  padding: var(--pk-space-6) 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--pk-text-tertiary);
+}
+
+/* ── Nav row (mock `.nav-row`, mock.css:265-327) — rendered as <div>, so no
+   !important needed (Obsidian doesn't style bare div/span). ── */
+.pktw-root .pkstudio-nav-row,
+.peak-design-root .pkstudio-nav-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  width: 100%;
+  height: 30px;
+  min-width: 0;
+  padding: 0 var(--pk-space-2);
+  color: var(--pk-text-secondary);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: var(--pk-radius-sm);
+  cursor: pointer;
+}
+
+.pktw-root .pkstudio-nav-row:hover,
+.peak-design-root .pkstudio-nav-row:hover {
+  color: var(--pk-text-primary);
+  background: var(--pk-state-hover);
+}
+
+.pktw-root .pkstudio-nav-row.is-selected,
+.peak-design-root .pkstudio-nav-row.is-selected {
+  color: var(--pk-text-primary);
+  background: var(--pk-state-selected);
+}
+
+.pktw-root .pkstudio-nav-row.is-selected::before,
+.peak-design-root .pkstudio-nav-row.is-selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 2px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--pk-accent);
+}
+
+/* child row (mock `.nav-row.is-child`, mock.css:307-313, 1981-1983) — 30px
+   indent + tertiary icon; REPLACES the invented dot indicator (new-finding 3). */
+.pktw-root .pkstudio-nav-row.is-child,
+.peak-design-root .pkstudio-nav-row.is-child {
+  padding-left: 30px;
+}
+
+.pktw-root .pkstudio-nav-row.is-child svg,
+.peak-design-root .pkstudio-nav-row.is-child svg {
+  color: var(--pk-text-tertiary);
+}
+
+/* leading icon slot (mock `.nav-leading`, mock.css:1961-1975) */
+.pktw-root .pkstudio-nav-leading,
+.peak-design-root .pkstudio-nav-leading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 15px;
+  width: 15px;
+  color: var(--pk-text-tertiary);
+}
+
+.pktw-root .pkstudio-nav-leading svg,
+.peak-design-root .pkstudio-nav-leading svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* label (mock `.nav-row .row-label`, mock.css:315-321) */
+.pktw-root .pkstudio-row-label,
+.peak-design-root .pkstudio-row-label {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* trailing 42px slot (mock `.row-trailing`, mock.css:1985-1993) */
+.pktw-root .pkstudio-row-trailing,
+.peak-design-root .pkstudio-row-trailing {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 100%;
+}
+
+/* timestamp (mock `.nav-row .row-time`, mock.css:323-327) */
+.pktw-root .pkstudio-row-time,
+.peak-design-root .pkstudio-row-time {
+  flex: 0 0 auto;
+  color: var(--pk-text-faint);
+  font-size: var(--pk-text-xs);
+}
+
+/* row "…" menu button (mock `.row-menu`, mock.css:1995-2011) */
+.pktw-root .pkstudio-row-menu,
+.peak-design-root .pkstudio-row-menu {
+  position: absolute;
+  right: 0;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+  padding: 0 !important;
+  color: var(--pk-text-secondary);
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: var(--pk-radius-sm) !important;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.pktw-root .pkstudio-row-menu svg,
+.peak-design-root .pkstudio-row-menu svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* hover: swap time out, menu in (mock.css:2013-2025) */
+.pktw-root .pkstudio-nav-row:hover .pkstudio-row-time,
+.peak-design-root .pkstudio-nav-row:hover .pkstudio-row-time,
+.pktw-root .pkstudio-nav-row:focus-within .pkstudio-row-time,
+.peak-design-root .pkstudio-nav-row:focus-within .pkstudio-row-time {
+  opacity: 0;
+}
+
+.pktw-root .pkstudio-nav-row:hover .pkstudio-row-menu,
+.peak-design-root .pkstudio-nav-row:hover .pkstudio-row-menu,
+.pktw-root .pkstudio-nav-row:focus-within .pkstudio-row-menu,
+.peak-design-root .pkstudio-nav-row:focus-within .pkstudio-row-menu,
+.pktw-root .pkstudio-nav-row.is-selected .pkstudio-row-menu:hover,
+.peak-design-root .pkstudio-nav-row.is-selected .pkstudio-row-menu:hover {
+  opacity: 1;
+}
+
+.pktw-root .pkstudio-row-menu:hover,
+.peak-design-root .pkstudio-row-menu:hover {
+  background: var(--pk-state-hover) !important;
+}
+
+/* ── Project row (mock `.nav-row.is-project`, mock.css:302-305, 1977-1979,
+   3571-3630) — disclosure + open + persistent menu, gap 0, padding 0 4px. ── */
+.pktw-root .pkstudio-nav-row.is-project,
+.peak-design-root .pkstudio-nav-row.is-project {
+  gap: 0;
+  padding: 0 4px;
+  color: var(--pk-text-primary);
+  font-weight: 600;
+}
+
+.pktw-root .pkstudio-project-disclosure,
+.peak-design-root .pkstudio-project-disclosure {
+  display: grid !important;
+  place-items: center;
+  flex: 0 0 22px;
+  width: 22px !important;
+  height: 28px !important;
+  min-width: 22px !important;
+  min-height: 28px !important;
+  padding: 0 !important;
+  color: inherit;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: var(--pk-radius-sm) !important;
+  cursor: pointer;
+}
+
+.pktw-root .pkstudio-project-disclosure svg,
+.peak-design-root .pkstudio-project-disclosure svg {
+  width: 12px;
+  height: 12px;
+}
+
+.pktw-root .pkstudio-project-disclosure:hover,
+.peak-design-root .pkstudio-project-disclosure:hover {
+  background: var(--pk-state-hover) !important;
+}
+
+.pktw-root .pkstudio-project-open,
+.peak-design-root .pkstudio-project-open {
+  display: flex !important;
+  align-items: center;
+  flex: 1 1 auto;
+  gap: 6px;
+  min-width: 0;
+  height: 28px !important;
+  min-height: 28px !important;
+  padding: 0 !important;
+  color: inherit;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: var(--pk-radius-sm) !important;
+  text-align: left;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+/* project row menu is in-flow (mock.css:3617-3623) */
+.pktw-root .pkstudio-nav-row.is-project > .pkstudio-row-menu,
+.peak-design-root .pkstudio-nav-row.is-project > .pkstudio-row-menu {
+  position: static;
+  display: grid !important;
+  place-items: center;
+  flex: 0 0 24px;
+  width: 24px !important;
+}
+
+/* ── RIGHT COLUMN: filterbar + type dropdown (css-right-column.css R7/N-family) ── */
+:is(.pktw-root, .peak-design-root) .pkchat-idx__filterbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 36px;
+  padding: 5px var(--pk-space-3) 3px;
+  flex-shrink: 0;
+}
+
+/* direction Segmented — compact surface override (mock .direction-filter). */
+:is(.pktw-root, .peak-design-root) .pkchat-idx__filterbar .pk-segmented {
+  border: 0;
+  padding: 2px;
+  border-radius: var(--pk-radius-sm);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-idx__filterbar .pk-segmented__opt {
+  height: 24px !important;
+  min-height: 24px !important;
+  padding: 0 7px;
+  font-size: var(--pk-text-xs);
+  border-radius: 5px;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-idx__filterbar .pk-segmented__opt[data-selected="true"] {
+  box-shadow: var(--pk-shadow-sm);
+}
+
+/* type dropdown trigger (mock .type-filter-trigger). */
+:is(.pktw-root, .peak-design-root) .pkchat-idx__type-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 0;
+  height: 28px !important;
+  min-height: 28px !important;
+  margin-left: auto;
+  padding: 0 6px;
+  color: var(--pk-text-tertiary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--pk-radius-sm);
+  cursor: pointer;
+  font-size: var(--pk-text-xs);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-idx__type-trigger:hover,
+:is(.pktw-root, .peak-design-root) .pkchat-idx__type-trigger[aria-expanded="true"] {
+  color: var(--pk-text-primary);
+  background: var(--pk-state-hover);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-idx__type-trigger-label {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-idx__type-trigger > svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+/* type dropdown menu — mounts on .pk-popover surface (mock .type-filter-menu). */
+:is(.pktw-root, .peak-design-root) .pkchat-idx__type-menu {
+  width: 228px;
+  max-height: min(420px, calc(100vh - 80px));
+  padding: 5px;
+  overflow: auto;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-idx__type-option {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 32px !important;
+  padding: 3px 7px;
+  color: var(--pk-text-secondary);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: var(--pk-radius-sm);
+  cursor: pointer;
+  font-size: var(--pk-text-sm);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-idx__type-option:hover,
+:is(.pktw-root, .peak-design-root) .pkchat-idx__type-option[data-selected="true"] {
+  color: var(--pk-text-primary);
+  background: var(--pk-state-hover);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-idx__type-option-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--pk-text-tertiary);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-idx__type-option-icon > svg {
+  width: 13px;
+  height: 13px;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-idx__type-option-label {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-idx__type-option-check {
+  width: 14px;
+  height: 14px;
+  color: var(--pk-accent-text);
+}
+
+/* ── MESSAGES: danger menu-item + two-line more-item (css-messages.css M8/N7) ── */
+/* ── [M8] APPEND — destructive (Delete) item is red at rest inside the ⋯ menu.
+   (mock has no delete; destructive convention: static red + error-bg hover.) */
+.pktw-root .pk-pop-item.pkchat-msg__action--danger,
+.peak-design-root .pk-pop-item.pkchat-msg__action--danger {
+  color: var(--pk-error);
+}
+.pktw-root .pk-pop-item.pkchat-msg__action--danger:hover,
+.peak-design-root .pk-pop-item.pkchat-msg__action--danger:hover {
+  color: var(--pk-error);
+  background: var(--pk-error-bg);
+}
+.pktw-root .pk-pop-item.pkchat-msg__action--danger > svg,
+.peak-design-root .pk-pop-item.pkchat-msg__action--danger > svg {
+  color: var(--pk-error);
+}
+
+
+/* ── [N7] APPEND — two-line ⋯ menu item (label + detail) ─────────────────────
+   (mock `.message-action-menu > button`, mock.css:3720-3768.) A pk-pop-item
+   variant: grid 24px+1fr, min-height 34. */
+.pktw-root .pk-pop-item.pkchat-msg-more-item,
+.peak-design-root .pk-pop-item.pkchat-msg-more-item {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 5px 7px;
+}
+.pktw-root .pkchat-msg-more-item > svg,
+.peak-design-root .pkchat-msg-more-item > svg {
+  justify-self: center;
+}
+.pktw-root .pkchat-msg-more-item__text,
+.peak-design-root .pkchat-msg-more-item__text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pktw-root .pkchat-msg-more-item__text strong,
+.peak-design-root .pkchat-msg-more-item__text strong {
+  color: var(--pk-text-primary);
+  font-size: var(--pk-text-sm);
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.pktw-root .pkchat-msg-more-item__text small,
+.peak-design-root .pkchat-msg-more-item__text small {
+  margin-top: 2px;
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-xs);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ── MESSAGES: reasoning / agent-run / state chips / artifact receipts ── */
+/* Provider reasoning is intentionally NOT a card. It is secondary prose that
+   opens from a quiet inline disclosure, then follows a single left guide. The
+   visually stronger bordered surface below is reserved for real agent runs. */
+.pktw-root .pkchat-reasoning,
+.peak-design-root .pkchat-reasoning {
+  width: 100%;
+  margin: 0 0 12px;
+}
+.pktw-root .pkchat-reasoning-row,
+.peak-design-root .pkchat-reasoning-row {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  width: auto !important;
+  min-height: 28px !important;
+  padding: 0 2px !important;
+  color: var(--pk-text-tertiary);
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: var(--pk-radius-sm) !important;
+  box-shadow: none !important;
+  text-align: left;
+  transition: color 120ms ease;
+}
+.pktw-root .pkchat-reasoning-row:hover,
+.peak-design-root .pkchat-reasoning-row:hover {
+  color: var(--pk-text-primary);
+  background: transparent !important;
+}
+.pktw-root .pkchat-reasoning-row:focus-visible,
+.peak-design-root .pkchat-reasoning-row:focus-visible {
+  outline: 2px solid var(--pk-accent) !important;
+  outline-offset: 2px;
+}
+.pktw-root .pkchat-reasoning[data-state="open"] .pkchat-reasoning-row,
+.peak-design-root .pkchat-reasoning[data-state="open"] .pkchat-reasoning-row {
+  color: var(--pk-text-secondary);
+  background: transparent !important;
+}
+.pktw-root .pkchat-reasoning-row > svg:first-child,
+.peak-design-root .pkchat-reasoning-row > svg:first-child {
+  width: 14px !important;
+  height: 14px !important;
+  flex: 0 0 14px;
+  padding: 0;
+  color: currentColor;
+  background: transparent;
+  border: 0;
+  stroke-width: 1.7;
+}
+.pktw-root .pkchat-reasoning-row > svg:last-child,
+.peak-design-root .pkchat-reasoning-row > svg:last-child {
+  width: 12px !important;
+  height: 12px !important;
+  flex: 0 0 12px;
+  margin-left: 1px;
+  color: currentColor;
+}
+.pktw-root .pkchat-reasoning-row__text,
+.peak-design-root .pkchat-reasoning-row__text {
+  min-width: 0;
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  overflow: hidden;
+}
+.pktw-root .pkchat-reasoning-row__text strong,
+.peak-design-root .pkchat-reasoning-row__text strong {
+  color: currentColor;
+  font-size: var(--pk-text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pktw-root .pkchat-reasoning-row__text small,
+.peak-design-root .pkchat-reasoning-row__text small {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  color: currentColor;
+  font-size: var(--pk-text-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pktw-root .pkchat-reasoning-row__text small::before,
+.peak-design-root .pkchat-reasoning-row__text small::before {
+  content: '·';
+  margin-right: 6px;
+}
+.pktw-root .pkchat-reasoning-content,
+.peak-design-root .pkchat-reasoning-content {
+  max-height: min(320px, 44vh);
+  margin-top: 4px !important;
+  padding: 4px 4px 4px 19px !important;
+  overflow-y: auto;
+  border: 0 !important;
+  border-left: 1px solid var(--pk-border-strong) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--pk-text-secondary) !important;
+  font-size: var(--pk-text-sm) !important;
+  line-height: 1.6;
+}
+
+/* Agent run is a factual execution surface: compact summary at rest, connected
+   tool steps when open, and a separate nested diagnostic trace only when the
+   runtime still owns spans for this exact turn. */
+:is(.pktw-root, .peak-design-root) .pkchat-agent-run {
+  width: 100%;
+  margin: 0 0 14px;
+  overflow: hidden;
+  background: var(--pk-surface);
+  border: 1px solid var(--pk-border-soft);
+  border-radius: var(--pk-radius-md);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-agent-run__trigger {
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-start !important;
+  gap: 8px;
+  width: 100% !important;
+  min-height: 38px !important;
+  height: auto !important;
+  padding: 5px 9px !important;
+  color: var(--pk-text-secondary);
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-run__trigger:hover {
+  background: var(--pk-surface-sunken) !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-agent-run__status {
+  display: grid;
+  place-items: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  color: var(--pk-accent-text);
+  background: var(--pk-accent-soft);
+  border-radius: 7px;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-run__status > svg {
+  width: 13px;
+  height: 13px;
+  stroke-width: 1.8;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-run[data-state="failed"] .pkchat-agent-run__status {
+  color: var(--pk-error-text);
+  background: var(--pk-error-bg);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-run[data-state="cancelled"] .pkchat-agent-run__status {
+  color: var(--pk-text-tertiary);
+  background: var(--pk-surface-sunken);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-agent-run__title {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-run__title strong {
+  color: var(--pk-text-primary);
+  font-size: var(--pk-text-sm);
+  font-weight: 650;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-run__title small {
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-xs);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-run__title small::before {
+  content: '·';
+  margin-right: 7px;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-run[data-state="running"] .pkchat-agent-run__title small {
+  color: var(--pk-accent-text);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-run[data-state="failed"] .pkchat-agent-run__title small {
+  color: var(--pk-error-text);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-agent-run__meta {
+  min-width: 0;
+  margin-left: auto;
+  color: var(--pk-text-tertiary);
+  font: var(--pk-text-xs)/1.3 var(--pk-font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-run__chevron {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+  color: var(--pk-text-tertiary);
+  transition: transform 140ms ease;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-run[data-expanded="true"] .pkchat-agent-run__chevron {
+  transform: rotate(180deg);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-agent-run__body {
+  border-top: 1px solid var(--pk-border-soft);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-run__timeline {
+  padding: 6px 9px 7px;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px 24px minmax(0, 1fr) 20px;
+  align-items: start;
+  gap: 7px;
+  min-height: 40px;
+  padding: 5px 0;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-step__rail {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-self: stretch;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-step:not(:last-child) .pkchat-agent-step__rail::after {
+  content: '';
+  position: absolute;
+  top: 16px;
+  bottom: -11px;
+  left: 50%;
+  width: 1px;
+  background: var(--pk-border);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-step__node {
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  color: var(--pk-success);
+  background: var(--pk-success-bg);
+  border-radius: var(--pk-radius-full);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-step__node > svg {
+  width: 10px;
+  height: 10px;
+  stroke-width: 2;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-step[data-state="running"] .pkchat-agent-step__node {
+  color: var(--pk-accent-text);
+  background: var(--pk-accent-soft);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-step[data-state="failed"] .pkchat-agent-step__node {
+  color: var(--pk-error-text);
+  background: var(--pk-error-bg);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-step__tool-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-top: -4px;
+  color: var(--pk-text-secondary);
+  background: var(--pk-surface-sunken);
+  border-radius: 6px;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-step__tool-icon > svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 1.7;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-step__content {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-step__topline {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-step__topline strong {
+  color: var(--pk-text-primary);
+  font-size: var(--pk-text-sm);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-step__topline small,
+:is(.pktw-root, .peak-design-root) .pkchat-agent-step__input,
+:is(.pktw-root, .peak-design-root) .pkchat-agent-step__result {
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-xs);
+  line-height: 1.4;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-step__input,
+:is(.pktw-root, .peak-design-root) .pkchat-agent-step__result {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-step__result {
+  color: var(--pk-success-text);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-step__result--error {
+  color: var(--pk-error-text);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-step__index {
+  color: var(--pk-text-tertiary);
+  font: var(--pk-text-xs)/16px var(--pk-font-mono);
+  text-align: right;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-agent-trace {
+  border-top: 1px solid var(--pk-border-soft);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-trace__trigger {
+  display: flex !important;
+  justify-content: flex-start !important;
+  gap: 7px;
+  width: 100% !important;
+  min-height: 32px !important;
+  height: auto !important;
+  padding: 5px 10px !important;
+  color: var(--pk-text-tertiary) !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  font-size: var(--pk-text-xs) !important;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-trace__trigger:hover {
+  color: var(--pk-text-secondary) !important;
+  background: var(--pk-surface-sunken) !important;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-trace__trigger > svg {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-trace__trigger > small {
+  margin-left: auto;
+  font: var(--pk-text-xs)/1 var(--pk-font-mono);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-trace__trigger > svg:last-child {
+  transition: transform 140ms ease;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-trace[data-open="true"] .pkchat-agent-trace__trigger > svg:last-child {
+  transform: rotate(180deg);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-trace__stack {
+  padding: 4px 9px 7px;
+  background: var(--pk-surface-sunken);
+  border-top: 1px solid var(--pk-border-soft);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-trace__span {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 6px;
+  min-height: 26px;
+  padding: 4px 2px;
+  border-left: 1px solid var(--pk-border);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-trace__span[data-depth="1"] { margin-left: 14px; }
+:is(.pktw-root, .peak-design-root) .pkchat-agent-trace__span[data-depth="2"] { margin-left: 28px; }
+:is(.pktw-root, .peak-design-root) .pkchat-agent-trace__span[data-depth="3"] { margin-left: 42px; }
+:is(.pktw-root, .peak-design-root) .pkchat-agent-trace__span[data-depth="4"] { margin-left: 56px; }
+:is(.pktw-root, .peak-design-root) .pkchat-agent-trace__span-node {
+  width: 5px;
+  height: 5px;
+  margin: 5px 0 0 -5px;
+  background: var(--pk-text-tertiary);
+  border-radius: var(--pk-radius-full);
+  box-shadow: 0 0 0 2px var(--pk-surface-sunken);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-trace__span[data-state="failed"] .pkchat-agent-trace__span-node {
+  background: var(--pk-error);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-trace__span-copy {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  overflow: hidden;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-trace__span-copy strong {
+  color: var(--pk-text-secondary);
+  font-size: var(--pk-text-xs);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-trace__span-copy small,
+:is(.pktw-root, .peak-design-root) .pkchat-agent-trace__span-copy em,
+:is(.pktw-root, .peak-design-root) .pkchat-agent-trace__span-time {
+  color: var(--pk-text-tertiary);
+  font: var(--pk-text-xs)/1.35 var(--pk-font-mono);
+  white-space: nowrap;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-agent-trace__span-copy em {
+  color: var(--pk-error-text);
+  font-family: var(--pk-font-sans);
+  font-style: normal;
+}
+
+
+/* ── [N3] APPEND — message status chips (mock `.message-state-row`, :2671) ───
+   Bordered mono chips, per-state colour driven by [data-state]. */
+.pktw-root .pkchat-msg-state-row,
+.peak-design-root .pkchat-msg-state-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: var(--pk-space-1);
+}
+.pktw-root .pkchat-msg-state,
+.peak-design-root .pkchat-msg-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pk-space-1);
+  height: 24px;
+  padding: 0 7px;
+  color: var(--pk-text-secondary);
+  background: var(--pk-surface-sunken);
+  border: 1px solid var(--pk-border-soft);
+  border-radius: var(--pk-radius-sm);
+  font: var(--pk-text-xs)/1 var(--pk-font-mono);
+}
+.pktw-root .pkchat-msg-state[data-state="streaming"],
+.peak-design-root .pkchat-msg-state[data-state="streaming"],
+.pktw-root .pkchat-msg-state[data-state="sending"],
+.peak-design-root .pkchat-msg-state[data-state="sending"],
+.pktw-root .pkchat-msg-state[data-state="queued"],
+.peak-design-root .pkchat-msg-state[data-state="queued"] {
+  color: var(--pk-info-text);
+  background: var(--pk-info-bg);
+  border-color: var(--pk-info-border);
+}
+.pktw-root .pkchat-msg-state[data-state="error"],
+.peak-design-root .pkchat-msg-state[data-state="error"] {
+  color: var(--pk-error-text);
+  background: var(--pk-error-bg);
+  border-color: var(--pk-error-border);
+}
+.pktw-root .pkchat-msg-state[data-state="timeout"],
+.peak-design-root .pkchat-msg-state[data-state="timeout"],
+.pktw-root .pkchat-msg-state[data-state="permission"],
+.peak-design-root .pkchat-msg-state[data-state="permission"] {
+  color: var(--pk-warning-text);
+  background: var(--pk-warning-bg);
+  border-color: var(--pk-warning-border);
+}
+.pktw-root .pkchat-msg-state[data-state="cancelled"],
+.peak-design-root .pkchat-msg-state[data-state="cancelled"] {
+  color: var(--pk-text-secondary);
+}
+.pktw-root .pkchat-msg-state__retry,
+.peak-design-root .pkchat-msg-state__retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 24px;
+  padding: 0 6px;
+  background: transparent;
+  border: 0;
+  color: var(--pk-accent-text);
+  font-size: var(--pk-text-xs);
+  cursor: pointer;
+}
+.pktw-root .pkchat-msg-state__retry:hover,
+.peak-design-root .pkchat-msg-state__retry:hover {
+  text-decoration: underline;
+}
+
+
+/* ── Artifact receipts ───────────────────────────────────────────────────────
+   Visual media gets a real preview surface. Supporting artifacts share one
+   compact list so mixed output does not turn into an equal-height card wall. */
+.pktw-root .pkchat-msg__artifacts,
+.peak-design-root .pkchat-msg__artifacts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  align-items: start;
+  gap: 10px;
+  margin-top: var(--pk-space-2);
+}
+.pktw-root .pkchat-msg__artifacts[data-layout="visual-only"],
+.peak-design-root .pkchat-msg__artifacts[data-layout="visual-only"],
+.pktw-root .pkchat-msg__artifacts[data-layout="list-only"],
+.peak-design-root .pkchat-msg__artifacts[data-layout="list-only"],
+.pktw-root .pkchat-msg__artifacts[data-layout="gallery"],
+.peak-design-root .pkchat-msg__artifacts[data-layout="gallery"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.pktw-root .pkchat-msg__artifact-media,
+.peak-design-root .pkchat-msg__artifact-media {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--pk-space-2);
+  align-items: start;
+  min-width: 0;
+}
+.pktw-root .pkchat-msg__artifact-media:not([data-count="1"]),
+.peak-design-root .pkchat-msg__artifact-media:not([data-count="1"]) {
+  grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
+}
+.pktw-root .pkchat-msg__artifact-list,
+.peak-design-root .pkchat-msg__artifact-list {
+  min-width: 0;
+  overflow: hidden;
+  background: var(--pk-surface);
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-md);
+}
+.pktw-root .pkchat-artifact-receipt,
+.peak-design-root .pkchat-artifact-receipt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pk-space-2);
+  min-width: 0;
+  min-height: 52px;
+  padding: 7px var(--pk-space-2);
+  background: var(--pk-surface);
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-md);
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+.pktw-root .pkchat-artifact-receipt:has(.pkchat-artifact-receipt__preview),
+.peak-design-root .pkchat-artifact-receipt:has(.pkchat-artifact-receipt__preview) {
+  padding-top: 0;
+}
+.pktw-root .pkchat-artifact-receipt__preview,
+.peak-design-root .pkchat-artifact-receipt__preview {
+  min-width: 0;
+  margin: 0 calc(var(--pk-space-2) * -1);
+  overflow: hidden;
+  background: var(--pk-surface-sunken);
+  border-bottom: 1px solid var(--pk-border-soft);
+  border-radius: var(--pk-radius-md) var(--pk-radius-md) 0 0;
+}
+.pktw-root .pkchat-artifact-receipt__preview--image,
+.peak-design-root .pkchat-artifact-receipt__preview--image,
+.pktw-root .pkchat-artifact-receipt__preview--video,
+.peak-design-root .pkchat-artifact-receipt__preview--video {
+  height: auto;
+  aspect-ratio: 16 / 9;
+}
+.pktw-root button.pkchat-artifact-receipt__preview--image,
+.peak-design-root button.pkchat-artifact-receipt__preview--image {
+  position: relative;
+  display: block !important;
+  width: calc(100% + (var(--pk-space-2) * 2)) !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  cursor: zoom-in;
+}
+.pktw-root .pkchat-artifact-receipt__preview--image > img,
+.peak-design-root .pkchat-artifact-receipt__preview--image > img,
+.pktw-root .pkchat-artifact-receipt__preview--video > video,
+.peak-design-root .pkchat-artifact-receipt__preview--video > video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pktw-root .pkchat-artifact-receipt__preview-zoom,
+.peak-design-root .pkchat-artifact-receipt__preview-zoom {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: #fff;
+  background: rgb(18 22 31 / 72%);
+  border: 1px solid rgb(255 255 255 / 24%);
+  border-radius: 7px;
+  opacity: 0;
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+.pktw-root .pkchat-artifact-receipt__preview--image:hover .pkchat-artifact-receipt__preview-zoom,
+.peak-design-root .pkchat-artifact-receipt__preview--image:hover .pkchat-artifact-receipt__preview-zoom,
+.pktw-root .pkchat-artifact-receipt__preview--image:focus-visible .pkchat-artifact-receipt__preview-zoom,
+.peak-design-root .pkchat-artifact-receipt__preview--image:focus-visible .pkchat-artifact-receipt__preview-zoom {
+  opacity: 1;
+}
+.pktw-root .pkchat-artifact-receipt__preview-zoom > svg,
+.peak-design-root .pkchat-artifact-receipt__preview-zoom > svg {
+  width: 14px;
+  height: 14px;
+}
+.pktw-root .pkchat-artifact-receipt__preview--audio,
+.peak-design-root .pkchat-artifact-receipt__preview--audio {
+  display: flex;
+  align-items: center;
+  min-height: 52px;
+  padding: 8px 10px;
+}
+.pktw-root .pkchat-artifact-receipt__preview--audio > audio,
+.peak-design-root .pkchat-artifact-receipt__preview--audio > audio {
+  width: 100%;
+  height: 32px;
+}
+.pktw-root .pkchat-artifact-receipt__preview--text,
+.peak-design-root .pkchat-artifact-receipt__preview--text {
+  max-height: 104px;
+  padding: 9px 10px;
+  overflow: auto;
+  color: var(--pk-text-secondary);
+  font-size: var(--pk-text-xs);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.pktw-root .pkchat-artifact-receipt[data-kind="code"] .pkchat-artifact-receipt__preview--text,
+.peak-design-root .pkchat-artifact-receipt[data-kind="code"] .pkchat-artifact-receipt__preview--text {
+  font-family: var(--pk-font-mono);
+}
+.pktw-root .pkchat-artifact-receipt:hover,
+.peak-design-root .pkchat-artifact-receipt:hover {
+  border-color: var(--pk-border-strong);
+  background: var(--pk-surface-raised);
+}
+.pktw-root .pkchat-artifact-receipt__head,
+.peak-design-root .pkchat-artifact-receipt__head {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  min-width: 0;
+}
+.pktw-root .pkchat-artifact-receipt__icon,
+.peak-design-root .pkchat-artifact-receipt__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 17px;
+  color: var(--pk-accent-text);
+}
+.pktw-root .pkchat-artifact-receipt__icon > svg,
+.peak-design-root .pkchat-artifact-receipt__icon > svg {
+  width: 17px;
+  height: 17px;
+}
+.pktw-root .pkchat-artifact-receipt__title-block,
+.peak-design-root .pkchat-artifact-receipt__title-block {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.pktw-root .pkchat-artifact-receipt__title,
+.peak-design-root .pkchat-artifact-receipt__title {
+  color: var(--pk-text-primary);
+  font-size: var(--pk-text-sm);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.pktw-root .pkchat-artifact-receipt__path,
+.peak-design-root .pkchat-artifact-receipt__path {
+  margin-top: 3px;
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-xs);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.pktw-root .pkchat-artifact-receipt__error,
+.peak-design-root .pkchat-artifact-receipt__error {
+  margin-top: 3px;
+  color: var(--pk-error-text);
+  font-size: var(--pk-text-xs);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.pktw-root .pkchat-artifact-receipt__badge,
+.peak-design-root .pkchat-artifact-receipt__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--pk-border-soft);
+  border-radius: var(--pk-radius-sm);
+  font-size: var(--pk-text-xs);
+  color: var(--pk-text-tertiary);
+  background: var(--pk-surface-sunken);
+}
+.pktw-root .pkchat-artifact-receipt__badge--ready,
+.peak-design-root .pkchat-artifact-receipt__badge--ready,
+.pktw-root .pkchat-artifact-receipt__badge--saved,
+.peak-design-root .pkchat-artifact-receipt__badge--saved {
+  color: var(--pk-info-text);
+  background: var(--pk-info-bg);
+  border-color: var(--pk-info-border);
+}
+.pktw-root .pkchat-artifact-receipt__badge--busy,
+.peak-design-root .pkchat-artifact-receipt__badge--busy {
+  color: var(--pk-text-secondary);
+}
+.pktw-root .pkchat-artifact-receipt__badge--warn,
+.peak-design-root .pkchat-artifact-receipt__badge--warn {
+  color: var(--pk-warning-text);
+  background: var(--pk-warning-bg);
+  border-color: var(--pk-warning-border);
+}
+.pktw-root .pkchat-artifact-receipt__actions,
+.peak-design-root .pkchat-artifact-receipt__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--pk-space-1);
+  padding-top: 6px;
+  border-top: 1px solid var(--pk-border-soft);
+}
+.pktw-root .pkchat-artifact-receipt__action-btn,
+.peak-design-root .pkchat-artifact-receipt__action-btn {
+  min-height: 24px !important;
+  height: 24px !important;
+  padding: 0 6px !important;
+  color: var(--pk-text-secondary) !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: var(--pk-radius-sm) !important;
+  font-size: var(--pk-text-xs) !important;
+  box-shadow: none !important;
+}
+.pktw-root .pkchat-artifact-receipt__action-btn:hover,
+.peak-design-root .pkchat-artifact-receipt__action-btn:hover {
+  color: var(--pk-text-primary) !important;
+  background: var(--pk-state-hover) !important;
+}
+
+/* Receipt composition: visual media earns a preview card; everything else is
+   a dense, continuous artifact list instead of an equal-height card mosaic. */
+:is(.pktw-root, .peak-design-root) .pkchat-msg__artifact-media .pkchat-artifact-receipt {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg__artifact-media .pkchat-artifact-receipt__preview {
+  width: 100%;
+  margin: 0;
+  border-radius: 0;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg__artifact-media button.pkchat-artifact-receipt__preview--image {
+  width: 100% !important;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg__artifact-media .pkchat-artifact-receipt__head {
+  padding: 9px 10px;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg__artifact-media .pkchat-artifact-receipt__actions {
+  padding: 6px 8px;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-msg__artifact-list .pkchat-artifact-receipt {
+  border: 0;
+  border-bottom: 1px solid var(--pk-border-soft);
+  border-radius: 0;
+  background: transparent;
+  transition: background-color 120ms ease;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg__artifact-list .pkchat-artifact-receipt:last-child {
+  border-bottom: 0;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg__artifact-list .pkchat-artifact-receipt:hover {
+  background: var(--pk-state-hover);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg__artifact-list .pkchat-artifact-receipt[data-layout="compact"] {
+  flex-direction: row;
+  align-items: center;
+  min-height: 43px;
+  gap: 8px;
+  padding: 7px 10px;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg__artifact-list .pkchat-artifact-receipt[data-layout="compact"] .pkchat-artifact-receipt__head {
+  flex: 1;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg__artifact-list .pkchat-artifact-receipt[data-layout="compact"] .pkchat-artifact-receipt__actions {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  padding: 0;
+  border-top: 0;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg__artifact-list .pkchat-artifact-receipt[data-layout="rich"] {
+  gap: 0;
+  padding: 0;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg__artifact-list .pkchat-artifact-receipt[data-layout="rich"] .pkchat-artifact-receipt__head {
+  padding: 8px 10px;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg__artifact-list .pkchat-artifact-receipt[data-layout="rich"] .pkchat-artifact-receipt__preview {
+  margin: 0;
+  border-top: 1px solid var(--pk-border-soft);
+  border-bottom: 0;
+  border-radius: 0;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg__artifact-list .pkchat-artifact-receipt[data-layout="rich"] .pkchat-artifact-receipt__preview--text {
+  max-height: 68px;
+  padding: 7px 10px;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg__artifact-list .pkchat-artifact-receipt[data-layout="rich"] .pkchat-artifact-receipt__preview--audio {
+  min-height: 46px;
+  padding: 6px 9px;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg__artifact-list .pkchat-artifact-receipt[data-layout="rich"] .pkchat-artifact-receipt__actions {
+  padding: 5px 8px;
+}
+
+/* Successful states read as quiet metadata. Warnings remain highlighted. */
+:is(.pktw-root, .peak-design-root) .pkchat-msg__artifact-list .pkchat-artifact-receipt__badge {
+  height: 18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg__artifact-list .pkchat-artifact-receipt__badge--ready,
+:is(.pktw-root, .peak-design-root) .pkchat-msg__artifact-list .pkchat-artifact-receipt__badge--saved {
+  color: var(--pk-info-text);
+  background: transparent;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg__artifact-list .pkchat-artifact-receipt__badge--warn {
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--pk-warning-border);
+  background: var(--pk-warning-bg);
+}
+
+/* Image receipts open into the correct Obsidian window (including popouts). */
+:is(.pktw-root, .peak-design-root) .pkchat-image-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: rgb(12 15 22 / 88%);
+  backdrop-filter: blur(8px);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-image-lightbox__stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: min(94vw, 1280px);
+  max-height: 92vh;
+  color: rgb(255 255 255 / 82%);
+  font-size: var(--pk-text-sm);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-image-lightbox__caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  width: min(100%, 760px);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-image-lightbox__caption > span:last-child {
+  flex: 0 0 auto;
+  color: rgb(255 255 255 / 56%);
+  font-variant-numeric: tabular-nums;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-image-lightbox__stage > img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(92vh - 36px);
+  object-fit: contain;
+  border-radius: var(--pk-radius-md);
+  box-shadow: 0 18px 60px rgb(0 0 0 / 44%);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-image-lightbox__close {
+  position: fixed !important;
+  top: 18px;
+  right: 18px;
+  z-index: 1;
+  width: 36px !important;
+  height: 36px !important;
+  color: #fff !important;
+  background: rgb(255 255 255 / 10%) !important;
+  border: 1px solid rgb(255 255 255 / 18%) !important;
+  border-radius: var(--pk-radius-md) !important;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-image-lightbox__close:hover {
+  background: rgb(255 255 255 / 18%) !important;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-image-lightbox__close svg {
+  width: 17px;
+  height: 17px;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-image-lightbox__nav {
+  position: fixed !important;
+  top: 50%;
+  z-index: 1;
+  width: 40px !important;
+  height: 52px !important;
+  color: #fff !important;
+  background: rgb(255 255 255 / 10%) !important;
+  border: 1px solid rgb(255 255 255 / 18%) !important;
+  border-radius: var(--pk-radius-md) !important;
+  transform: translateY(-50%);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-image-lightbox__nav:hover {
+  background: rgb(255 255 255 / 18%) !important;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-image-lightbox__nav--previous {
+  left: 18px;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-image-lightbox__nav--next {
+  right: 18px;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-image-lightbox__nav svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Rare message-adjacent surfaces share the same quiet receipt language. */
+:is(.pktw-root, .peak-design-root) .pkchat-msg__identity {
+  display: flex;
+  align-items: center;
+  min-height: 20px;
+  margin-bottom: -4px;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg__identity-chip {
+  max-width: 260px;
+  padding: 1px 6px !important;
+  color: var(--pk-text-tertiary) !important;
+  background: transparent !important;
+  border-color: var(--pk-border-soft) !important;
+  font-size: var(--pk-text-xs) !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg__save-receipt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 5px 8px;
+  color: var(--pk-success-text);
+  background: var(--pk-success-bg);
+  border: 1px solid var(--pk-success-border);
+  border-radius: var(--pk-radius-md);
+  font-size: var(--pk-text-xs);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg__save-receipt > span {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg__save-receipt-open {
+  height: 22px;
+  padding: 0 6px;
+  color: var(--pk-success-text);
+  background: transparent;
+  border: 0;
+  border-radius: var(--pk-radius-sm);
+  font-size: var(--pk-text-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg__save-receipt-open:hover {
+  background: var(--pk-state-hover);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-msg__receipt-slot {
+  min-width: 0;
+  width: 100%;
+}
+
+/* ── COMPOSER: model picker (css-composer.css C4) ── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   [C4] Model picker — new pkchat-modelpick__* family.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Filters toggle (collapsed by default) */
+.pktw-root .pkchat-modelpick__filter,
+.peak-design-root .pkchat-modelpick__filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 34px !important;
+  padding: 0 8px !important;
+  color: var(--pk-text-secondary);
+  background: var(--pk-surface) !important;
+  border: 1px solid var(--pk-border-soft) !important;
+  border-radius: var(--pk-radius-md) !important;
+  cursor: pointer;
+  font-size: var(--pk-text-xs);
+}
+.pktw-root .pkchat-modelpick__filter:hover,
+.peak-design-root .pkchat-modelpick__filter:hover,
+.pktw-root .pkchat-modelpick__filter[aria-expanded="true"],
+.peak-design-root .pkchat-modelpick__filter[aria-expanded="true"],
+.pktw-root .pkchat-modelpick__filter[data-active="true"],
+.peak-design-root .pkchat-modelpick__filter[data-active="true"] {
+  color: var(--pk-accent-text);
+  border-color: var(--pk-border-accent) !important;
+  background: var(--pk-accent-tint) !important;
+}
+.pktw-root .pkchat-modelpick__filter > svg,
+.peak-design-root .pkchat-modelpick__filter > svg {
+  width: 13px;
+  height: 13px;
+}
+.pktw-root .pkchat-modelpick__filter em,
+.peak-design-root .pkchat-modelpick__filter em {
+  display: grid;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  place-items: center;
+  color: var(--pk-accent-text);
+  background: var(--pk-surface);
+  border-radius: var(--pk-radius-pill);
+  font: 9px/1 var(--pk-font-mono);
+  font-style: normal;
+}
+
+/* Filter panel */
+.pktw-root .pkchat-modelpick__panel,
+.peak-design-root .pkchat-modelpick__panel {
+  position: relative;
+  display: grid;
+  gap: 7px;
+  margin: 0 0 7px;
+  padding: 8px;
+  background: var(--pk-surface-raised);
+  border: 1px solid var(--pk-border-soft);
+  border-radius: var(--pk-radius-md);
+}
+.pktw-root .pkchat-modelpick__filter-row,
+.peak-design-root .pkchat-modelpick__filter-row {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+}
+.pktw-root .pkchat-modelpick__filter-row > span,
+.peak-design-root .pkchat-modelpick__filter-row > span {
+  color: var(--pk-text-tertiary);
+  font-size: 10px;
+}
+.pktw-root .pkchat-modelpick__filter-clear,
+.peak-design-root .pkchat-modelpick__filter-clear {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  color: var(--pk-text-tertiary);
+  cursor: pointer;
+  font-size: 10px;
+}
+.pktw-root .pkchat-modelpick__filter-clear:hover,
+.peak-design-root .pkchat-modelpick__filter-clear:hover {
+  color: var(--pk-text-primary);
+}
+
+/* Provider monogram box — shared by model rows + auto row */
+.pktw-root .pkchat-modelpick__mono,
+.peak-design-root .pkchat-modelpick__mono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  background: var(--pk-surface-sunken);
+  border-radius: 7px;
+  color: var(--pk-text-secondary);
+  font-size: var(--pk-text-xs);
+  font-weight: 700;
+}
+
+/* Auto (prominent) row */
+.pktw-root .pkchat-modelpick__auto,
+.peak-design-root .pkchat-modelpick__auto {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 46px !important;
+  margin: 5px 0 7px;
+  padding: 5px 8px !important;
+  text-align: left;
+  background: transparent !important;
+  border: 1px solid var(--pk-border-soft) !important;
+  border-radius: var(--pk-radius-md) !important;
+  cursor: pointer;
+}
+.pktw-root .pkchat-modelpick__auto:hover,
+.peak-design-root .pkchat-modelpick__auto:hover {
+  background: var(--pk-state-hover) !important;
+}
+.pktw-root .pkchat-modelpick__auto[data-selected="true"],
+.peak-design-root .pkchat-modelpick__auto[data-selected="true"] {
+  border-color: var(--pk-border-accent) !important;
+  background: var(--pk-accent-tint) !important;
+}
+
+/* Capability note */
+.pktw-root .pkchat-modelpick__note,
+.peak-design-root .pkchat-modelpick__note {
+  margin: 7px 0 2px;
+  padding: 8px;
+  color: var(--pk-text-tertiary);
+  background: var(--pk-surface-raised);
+  border: 1px solid var(--pk-border-soft);
+  border-radius: var(--pk-radius-md);
+  font-size: var(--pk-text-xs);
+  line-height: 1.45;
+}
+
+/* Group */
+.pktw-root .pkchat-modelpick__group + .pkchat-modelpick__group,
+.peak-design-root .pkchat-modelpick__group + .pkchat-modelpick__group {
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid var(--pk-border-soft);
+}
+.pktw-root .pkchat-modelpick__group-label,
+.peak-design-root .pkchat-modelpick__group-label {
+  display: block;
+  padding: 6px 8px 5px;
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-xs);
+  font-weight: 650;
+}
+
+/* Model row */
+.pktw-root .pkchat-modelpick__row,
+.peak-design-root .pkchat-modelpick__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 66px !important;
+  padding: 5px 8px !important;
+  text-align: left;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: var(--pk-radius-md) !important;
+  cursor: pointer;
+}
+.pktw-root .pkchat-modelpick__row:hover,
+.peak-design-root .pkchat-modelpick__row:hover,
+.pktw-root .pkchat-modelpick__row[data-selected="true"],
+.peak-design-root .pkchat-modelpick__row[data-selected="true"] {
+  background: var(--pk-state-hover) !important;
+}
+
+/* Neutral capability tags (mono pills; catalog-declared only) */
+.pktw-root .pkchat-modelpick__cap-row,
+.peak-design-root .pkchat-modelpick__cap-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+.pktw-root .pkchat-modelpick__cap,
+.peak-design-root .pkchat-modelpick__cap {
+  padding: 2px 5px;
+  color: var(--pk-text-secondary);
+  background: var(--pk-surface-sunken);
+  border: 1px solid var(--pk-border-soft);
+  border-radius: var(--pk-radius-pill);
+  font: 10px/1.15 var(--pk-font-mono);
+}
+
+/* ── COMPOSER: assistant picker (C7) ── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   [C7] Assistant picker — pkchat-assist__* + pkchat-assist-create.
+   ───────────────────────────────────────────────────────────────────────────── */
+.pktw-root .pkchat-assist__group-label,
+.peak-design-root .pkchat-assist__group-label {
+  display: block;
+  padding: 6px 8px 5px;
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-xs);
+  font-weight: 650;
+}
+.pktw-root .pkchat-assist__mono,
+.peak-design-root .pkchat-assist__mono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  background: var(--pk-surface-sunken);
+  border-radius: 7px;
+  color: var(--pk-text-secondary);
+}
+.pktw-root .pkchat-assist__row,
+.peak-design-root .pkchat-assist__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 46px !important;
+  padding: 5px 8px !important;
+  text-align: left;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: var(--pk-radius-md) !important;
+  cursor: pointer;
+}
+.pktw-root .pkchat-assist__row:hover,
+.peak-design-root .pkchat-assist__row:hover,
+.pktw-root .pkchat-assist__row[data-selected="true"],
+.peak-design-root .pkchat-assist__row[data-selected="true"] {
+  background: var(--pk-state-hover) !important;
+}
+.pktw-root .pkchat-assist-create,
+.peak-design-root .pkchat-assist-create {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px !important;
+  margin: 7px 0 1px;
+  padding: 6px 8px !important;
+  text-align: left;
+  color: var(--pk-accent-text);
+  background: var(--pk-accent-tint) !important;
+  border: 1px solid var(--pk-border-accent) !important;
+  border-radius: var(--pk-radius-md) !important;
+  cursor: pointer;
+}
+
+/* ── COMPOSER: plus menu (C9) ── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   [C9] Plus menu — pkchat-plusmenu__* .
+   ───────────────────────────────────────────────────────────────────────────── */
+.pktw-root .pkchat-plusmenu__row,
+.peak-design-root .pkchat-plusmenu__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 38px !important;
+  padding: 5px 8px !important;
+  text-align: left;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: var(--pk-radius-md) !important;
+  cursor: pointer;
+}
+.pktw-root .pkchat-plusmenu__row:hover,
+.peak-design-root .pkchat-plusmenu__row:hover {
+  background: var(--pk-state-hover) !important;
+}
+.pktw-root .pkchat-plusmenu__mono,
+.peak-design-root .pkchat-plusmenu__mono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  background: var(--pk-surface-sunken);
+  border-radius: var(--pk-radius-md);
+  color: var(--pk-text-secondary);
+}
+
+/* ── COMPOSER: sources popover container + flat rows (C10) ── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   [C10] Sources popover — flat rows, icon boxes, subtitle head, smaller switch.
+   pkchat-runpop* is consumed ONLY by ComposerSourcesPopover, so these REPLACE
+   the existing blocks safely.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Container 300→310, padding 12→6 (mock .source-popover) */
+.pktw-root .pkchat-runpop--sources,
+.peak-design-root .pkchat-runpop--sources {
+  gap: 2px;
+  width: 310px;
+  max-width: 310px;
+  padding: 6px;
+}
+
+/* Head gains a border-bottom + subtitle; title 14 → 11px (mock source head) */
+.pktw-root .pkchat-runpop--sources .pkchat-runpop__head,
+.peak-design-root .pkchat-runpop--sources .pkchat-runpop__head {
+  padding: 7px 8px 8px;
+  border-bottom: 1px solid var(--pk-border-soft);
+}
+.pktw-root .pkchat-runpop--sources .pkchat-runpop__title,
+.peak-design-root .pkchat-runpop--sources .pkchat-runpop__title {
+  font-size: var(--pk-text-sm);
+  font-weight: 600;
+}
+.pktw-root .pkchat-runpop--sources .pkchat-runpop__sub,
+.peak-design-root .pkchat-runpop--sources .pkchat-runpop__sub {
+  font-size: 10px;
+}
+
+/* Flat row variant — double-class compound so it beats the card base + its
+   :hover / [data-selected] rules regardless of source order. */
+.pktw-root .pkchat-runpop__row.pkchat-runpop__row--flat,
+.peak-design-root .pkchat-runpop__row.pkchat-runpop__row--flat {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  margin-top: 2px;
+  padding: 4px 6px !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: var(--pk-radius-sm) !important;
+}
+.pktw-root .pkchat-runpop__row.pkchat-runpop__row--flat:hover,
+.peak-design-root .pkchat-runpop__row.pkchat-runpop__row--flat:hover {
+  background: var(--pk-state-hover) !important;
+  border: 0 !important;
+}
+.pktw-root .pkchat-runpop__row.pkchat-runpop__row--flat[data-selected="true"],
+.peak-design-root .pkchat-runpop__row.pkchat-runpop__row--flat[data-selected="true"] {
+  background: transparent !important;
+  border: 0 !important;
+}
+.pktw-root .pkchat-runpop__row.pkchat-runpop__row--flat:disabled,
+.peak-design-root .pkchat-runpop__row.pkchat-runpop__row--flat:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+/* ── PROJECT HOME (css-project-home.css) ── */
+/* ── pkchat-start-greeting (P4) ──────────────────────────────────────────────
+   Two-line start-state greeting: title (22px/650) + tertiary subtitle.
+   Project variant drops the title to 18px and tightens spacing.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:is(.pktw-root, .peak-design-root) .pkchat-start-greeting {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-start-greeting__title {
+  display: block;
+  color: var(--pk-text-primary);
+  font-size: 22px;          /* no token — literal per mock .new-chat-greeting strong */
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-start-greeting__subtitle {
+  display: block;
+  margin-top: 5px;
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-sm);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-start-greeting--project {
+  margin-bottom: 12px;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-start-greeting--project .pkchat-start-greeting__title {
+  font-size: 18px;          /* no token — literal per mock .project-chat-greeting strong */
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-start-greeting--project .pkchat-start-greeting__subtitle {
+  margin-top: 3px;
+}
+
+
+/* ── pkchat-starters (P5, new-5) ─────────────────────────────────────────────
+   Starter pills, placed AFTER the composer. Draft-present state fades them out
+   (opacity + translate) instead of unmounting so the composer does not jump.
+   Buttons are <Button variant="ghost" className="pkchat-starter">.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:is(.pktw-root, .peak-design-root) .pkchat-starters {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+  transition: opacity var(--pk-transition-fast), transform var(--pk-transition-fast);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-starters--project {
+  margin-top: 10px;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-starters[data-has-draft="true"] {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-3px);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-btn.pkchat-starter {
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 0 9px !important;
+  gap: 6px;
+  border: 1px solid var(--pk-border) !important;
+  border-radius: var(--pk-radius-pill) !important;
+  background: transparent !important;
+  color: var(--pk-text-secondary);
+  font-size: var(--pk-text-sm);
+  font-weight: 400;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-btn.pkchat-starter:hover:not(:disabled) {
+  color: var(--pk-text-primary);
+  background: var(--pk-state-hover) !important;
+  border-color: var(--pk-border-strong) !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-btn.pkchat-starter svg {
+  width: 13px !important;
+  height: 13px !important;
+}
+
+
+/* ── pkchat-projhero (P3) ────────────────────────────────────────────────────
+   3-column identity hero: [34px icon] [copy: eyebrow/name/description] [actions].
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:is(.pktw-root, .peak-design-root) .pkchat-projhero {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projhero--editing {
+  align-items: flex-start;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projhero--editing .pkchat-projhero__icon,
+:is(.pktw-root, .peak-design-root) .pkchat-projhero--editing .pkchat-projhero__actions {
+  margin-top: 4px;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projhero__icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: var(--pk-accent-text);
+  background: var(--pk-accent-tint);
+  border: 1px solid var(--pk-border-accent);
+  border-radius: var(--pk-radius-md);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projhero__icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projhero__copy {
+  min-width: 0;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projhero__eyebrow {
+  display: block;
+  color: var(--pk-text-tertiary);
+  font: 9px/1.2 var(--pk-font-mono);
+  letter-spacing: 0.08em;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projhero__name {
+  display: block;
+  margin-top: 2px;
+  color: var(--pk-text-primary);
+  font-size: 18px;          /* no token — literal per mock .project-hero-copy > strong */
+  font-weight: 680;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projhero__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Primary "New conversation" action — <Button variant="primary"> at mock 30px. */
+:is(.pktw-root, .peak-design-root) .pk-btn.pkchat-projhero__action {
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 0 10px !important;
+  gap: 6px;
+  border-radius: var(--pk-radius-md) !important;
+  font-size: var(--pk-text-sm);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-btn.pkchat-projhero__action svg {
+  width: 13px !important;
+  height: 13px !important;
+}
+
+
+/* ── pkchat-projdesc (P2, P9) ────────────────────────────────────────────────
+   Description display (no italic; hover pencil+label affordance) + raised
+   editor panel with label, textarea, and accent-tint AI button.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:is(.pktw-root, .peak-design-root) .pkchat-projdesc-display {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 3px 0 0;
+  padding: 0 !important;
+  color: var(--pk-text-secondary);
+  background: transparent !important;
+  border: 0 !important;
+  cursor: text;
+  font-size: var(--pk-text-sm);
+  line-height: 1.55;
+  text-align: left;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projdesc-display > span:first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projdesc-display--empty > span:first-child {
+  color: var(--pk-text-tertiary);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projdesc-affordance {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 3px;
+  margin-top: 1px;
+  color: var(--pk-text-tertiary);
+  opacity: 0;
+  transition: opacity var(--pk-transition-fast);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projdesc-affordance svg {
+  width: 12px;
+  height: 12px;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projdesc-affordance small {
+  font-size: 10px;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projdesc-display:hover .pkchat-projdesc-affordance,
+:is(.pktw-root, .peak-design-root) .pkchat-projdesc-display:focus-visible .pkchat-projdesc-affordance {
+  opacity: 1;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projdesc-display:focus-visible {
+  outline: 1px solid var(--pk-border-accent);
+  outline-offset: 3px;
+  border-radius: var(--pk-radius-sm);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projdesc-editor {
+  display: grid;
+  gap: 6px;
+  margin-top: 7px;
+  padding: 9px;
+  background: var(--pk-surface-raised);
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-md);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projdesc-editor__label {
+  color: var(--pk-text-tertiary);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projdesc-editor__input {
+  width: 100%;
+  min-height: 58px;
+  resize: vertical;
+  padding: 7px 8px !important;
+  color: var(--pk-text-primary);
+  background: var(--pk-surface) !important;
+  border: 1px solid var(--pk-border) !important;
+  border-radius: var(--pk-radius-sm) !important;
+  font: inherit;
+  font-size: var(--pk-text-sm);
+  line-height: 1.55;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projdesc-editor__input:focus {
+  border-color: var(--pk-border-accent) !important;
+  outline: 2px solid var(--pk-accent-tint);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projdesc-editor__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projdesc-editor__hint {
+  color: var(--pk-text-tertiary);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projdesc-editor__actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Shared 27px sizing for the three editor buttons (AI / Cancel / Save). */
+:is(.pktw-root, .peak-design-root) .pk-btn.pkchat-projdesc-btn {
+  height: 27px !important;
+  min-height: 27px !important;
+  padding: 0 8px !important;
+  gap: 4px;
+  border-radius: var(--pk-radius-sm) !important;
+  font-size: var(--pk-text-sm);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-btn.pkchat-projdesc-btn svg {
+  width: 12px !important;
+  height: 12px !important;
+}
+
+/* AI button skin: accent-tint fill + accent text + accent border (mock). */
+:is(.pktw-root, .peak-design-root) .pk-btn.pkchat-projdesc-ai {
+  color: var(--pk-accent-text);
+  background: var(--pk-accent-tint) !important;
+  border: 1px solid var(--pk-border-accent) !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-btn.pkchat-projdesc-ai:hover:not(:disabled) {
+  color: var(--pk-accent-text);
+  background: var(--pk-accent-tint) !important;
+  border-color: var(--pk-border-accent) !important;
+}
+
+
+/* ── pkchat-projstats (P10) ──────────────────────────────────────────────────
+   Four inline counters separated by thin vertical rules, indented to align
+   with the hero copy column (49px = 38px icon col + 11px gap).
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:is(.pktw-root, .peak-design-root) .pkchat-projstats {
+  display: flex;
+  align-items: center;
+  margin: 12px 0 0 49px;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projstats > span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 0 12px;
+  border-left: 1px solid var(--pk-border-soft);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projstats > span:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projstats strong {
+  color: var(--pk-text-primary);
+  font-size: var(--pk-text-sm);
+  font-weight: 700;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projstats small {
+  color: var(--pk-text-tertiary);
+  font-size: 10px;
+}
+
+@media (max-width: 1120px) {
+  :is(.pktw-root, .peak-design-root) .pkchat-projstats {
+    margin-left: 0;
+  }
+}
+
+
+/* ── pkchat-projtabs (P6) ────────────────────────────────────────────────────
+   Tab bar; active tab uses an ::after underline (immune to the border-style
+   reset that was blanking `pktw-border-b-2`). Buttons need height !important.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:is(.pktw-root, .peak-design-root) .pkchat-projtabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--pk-border-soft);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projtabs__tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0 9px !important;
+  color: var(--pk-text-tertiary);
+  background: transparent !important;
+  border: 0 !important;
+  cursor: pointer;
+  font-size: var(--pk-text-sm);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projtabs__tab:hover {
+  color: var(--pk-text-primary);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projtabs__tab[data-active="true"] {
+  color: var(--pk-text-primary);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projtabs__tab[data-active="true"]::after {
+  /* !important beats obsidian-reset.css `button::after { content:none !important }`
+     (the halo-kill rule) — this ::after is an intentional underline, not a theme halo. */
+  content: '' !important;
+  display: block !important;
+  position: absolute;
+  right: 7px;
+  bottom: -1px;
+  left: 7px;
+  height: 2px;
+  background: var(--pk-accent);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projtabs__tab:focus-visible {
+  outline: none;
+  color: var(--pk-text-primary);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projtabs__count {
+  color: var(--pk-text-faint);
+  font-size: 10px;
+}
+
+
+/* ── pkchat-projsection (P7, new-3) ──────────────────────────────────────────
+   Section head (title + desc + optional secondary action) shared by all four
+   project tab panels.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:is(.pktw-root, .peak-design-root) .pkchat-projsection {
+  padding-top: 9px;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projsection__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 34px;
+  margin-bottom: 5px;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projsection__title {
+  display: block;
+  color: var(--pk-text-primary);
+  font-size: var(--pk-text-base);
+  font-weight: 600;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projsection__desc {
+  display: block;
+  margin-top: 2px;
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-xs);
+}
+
+/* Secondary action ("New conversation" / "Add resource" / "New plan"). */
+:is(.pktw-root, .peak-design-root) .pk-btn.pkchat-projsection__action {
+  height: 26px !important;
+  min-height: 26px !important;
+  padding: 0 var(--pk-space-1) !important;
+  gap: var(--pk-space-2);
+  color: var(--pk-text-secondary);
+  font-size: var(--pk-text-sm);
+  border-radius: var(--pk-radius-sm) !important;
+  flex: 0 0 auto;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-btn.pkchat-projsection__action svg {
+  width: 13px !important;
+  height: 13px !important;
+}
+
+
+/* ── pkchat-projlist / pkchat-projrow (P7, new-3) ────────────────────────────
+   Single bordered container; two-row rows: [26px icon seat] [title + meta]
+   [chevron / hover delete]. Row is a <button> → geometry needs !important.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:is(.pktw-root, .peak-design-root) .pkchat-projlist {
+  overflow: hidden;
+  border: 1px solid var(--pk-border-soft);
+  border-radius: var(--pk-radius-md);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projrow {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 8px;
+  width: 100% !important;
+  min-height: 44px !important;
+  padding: 6px 9px !important;
+  color: var(--pk-text-secondary);
+  text-align: left;
+  background: var(--pk-surface) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  cursor: pointer;
+}
+
+/* Plan rows carry a 28px right cell (icon-button) per mock. */
+:is(.pktw-root, .peak-design-root) .pkchat-projrow--plan {
+  grid-template-columns: 28px minmax(0, 1fr) 28px;
+  cursor: default;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projrow + .pkchat-projrow {
+  border-top: 1px solid var(--pk-border-soft) !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projrow:hover {
+  background: var(--pk-state-hover) !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projrow__icon {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  color: var(--pk-text-secondary);
+  background: var(--pk-surface-sunken);
+  border-radius: 7px;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projrow__icon svg {
+  width: 13px;
+  height: 13px;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projrow__copy {
+  min-width: 0;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projrow__title {
+  display: block;
+  color: var(--pk-text-primary);
+  font-size: var(--pk-text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projrow__meta {
+  display: block;
+  margin-top: 2px;
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Right cell: chevron by default, swaps to a delete affordance on row hover. */
+:is(.pktw-root, .peak-design-root) .pkchat-projrow__end {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  justify-self: end;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projrow__chevron {
+  width: 13px;
+  height: 13px;
+  color: var(--pk-text-tertiary);
+  transition: opacity var(--pk-transition-fast);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projrow__delete {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  color: var(--pk-text-tertiary);
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  cursor: pointer;
+  transition: opacity var(--pk-transition-fast);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projrow__delete svg {
+  width: 13px;
+  height: 13px;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projrow:hover .pkchat-projrow__delete {
+  opacity: 1;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projrow:hover .pkchat-projrow__delete:hover {
+  color: var(--pk-error-text);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projrow:hover .pkchat-projrow__chevron {
+  opacity: 0;
+}
+
+/* Plan progress bar (new-3). */
+:is(.pktw-root, .peak-design-root) .pkchat-projprogress {
+  display: block;
+  height: 3px;
+  margin-top: 7px;
+  overflow: hidden;
+  background: var(--pk-surface-sunken);
+  border-radius: var(--pk-radius-pill);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projprogress > i {
+  display: block;
+  height: 100%;
+  background: var(--pk-accent);
+  border-radius: inherit;
+}
+
+/* Plan-row right icon-button (open plan). */
+:is(.pktw-root, .peak-design-root) .pkchat-projrow__iconbtn {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  justify-self: end;
+  color: var(--pk-text-tertiary);
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  cursor: pointer;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projrow__iconbtn:hover {
+  color: var(--pk-text-primary);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-projrow__iconbtn svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* Empty state inside a tab panel. */
+:is(.pktw-root, .peak-design-root) .pkchat-projempty {
+  padding: 22px;
+  color: var(--pk-text-tertiary);
+  text-align: center;
+  font-size: var(--pk-text-sm);
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   Mermaid fullscreen overlay relocation host
+   ─────────────────────────────────────────────────────────────────────────
+   The Streamdown mermaid fullscreen overlay (`.fixed.inset-0 … bg-background/95
+   backdrop-blur-sm`) is relocated OUT of the shadow root by
+   `setupMermaidFullscreenEscape` (src/ui/component/mine/StreamdownIsolated.tsx)
+   so `position: fixed` escapes transformed chat-row ancestors and covers the
+   viewport. The escape destination is a `data-streamdown-root
+   .peak-mermaid-fullscreen-portal` wrapper appended into
+   `portalHostForDocument()` (a `.pktw-root .peak-design-root` scope):
+
+     - `data-streamdown-root` on this wrapper re-activates the GLOBAL streamdown
+       Tailwind utilities on the overlay (`.fixed`, `.inset-0`, `.z-50`,
+       `.bg-background/95`, `.backdrop-blur-sm`, the control buttons, the SVG
+       sizing) — they are all keyed on a `[data-streamdown-root]` ancestor.
+     - Those utilities read the shadcn HSL vars (`hsl(var(--background)/…)`),
+       which live only on the shadow `:host` and are GONE outside it. We redefine
+       them here from the peak palette (same lockstep values as
+       src/styles/streamdown-isolated-css.ts `:host` / `:host-context(.theme-dark)`),
+       so light + dark both resolve to the design system's colours.
+
+   Scope is intentionally limited to `.peak-mermaid-fullscreen-portal` per the
+   convention (append-only, class-scoped block).
+   ═════════════════════════════════════════════════════════════════════════ */
+.peak-mermaid-fullscreen-portal {
+  /* Light (default + no-theme-class fallback) — mirrors streamdown :host. */
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 222.2 47.4% 11.2%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 222.2 84% 4.9%;
+  --radius: 0.5rem;
+}
+
+.theme-dark .peak-mermaid-fullscreen-portal {
+  /* Dark — mirrors streamdown :host-context(.theme-dark). */
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 210 40% 98%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 212.7 26.8% 83.9%;
+}
+
+/* Correct-window Mermaid fullscreen. Streamdown portals to the module-global
+   document, which is wrong for detached Obsidian windows, so the chat renderer
+   captures that action and renders this viewport-owned surface instead. */
+:is(.pktw-root, .peak-design-root) .pkchat-mermaid-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 42px;
+  background: rgb(247 248 251 / 96%);
+  backdrop-filter: blur(8px);
+}
+.theme-dark :is(.pktw-root, .peak-design-root) .pkchat-mermaid-fullscreen {
+  background: rgb(12 15 22 / 96%);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-mermaid-fullscreen__canvas {
+	position: relative;
+	width: min(94vw, 1480px);
+	height: min(88vh, 980px);
+	overflow: hidden;
+	touch-action: none;
+	user-select: none;
+	cursor: grab;
+	outline: none;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-mermaid-fullscreen__canvas.is-dragging {
+	cursor: grabbing;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-mermaid-fullscreen__canvas:focus-visible {
+	box-shadow: 0 0 0 2px var(--pk-accent);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-mermaid-fullscreen__content {
+	display: grid;
+	place-items: center;
+	width: 100%;
+	height: 100%;
+	transform-origin: center center;
+	will-change: transform;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-mermaid-fullscreen__content > svg {
+	display: block;
+	width: 100% !important;
+	height: 100% !important;
+	max-width: none !important;
+	max-height: none !important;
+	pointer-events: none;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-mermaid-fullscreen__toolbar {
+	position: fixed;
+	top: 18px;
+	left: 18px;
+	z-index: 1;
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	padding: 4px;
+	color: var(--pk-text-primary);
+	background: var(--pk-surface-raised);
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-md);
+	box-shadow: var(--pk-shadow-card);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-mermaid-fullscreen__toolbar button {
+	width: 32px !important;
+	height: 32px !important;
+	min-width: 32px !important;
+	padding: 0 !important;
+	color: inherit !important;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-mermaid-fullscreen__toolbar button:hover {
+	background: var(--pk-state-hover) !important;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-mermaid-fullscreen__toolbar svg {
+	width: 16px;
+	height: 16px;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-mermaid-fullscreen__scale {
+	min-width: 48px;
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+	text-align: center;
+	color: var(--pk-text-secondary);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-mermaid-fullscreen__toolbar-separator {
+	width: 1px;
+	height: 18px;
+	margin: 0 2px;
+	background: var(--pk-border);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-mermaid-fullscreen__hint {
+	position: fixed;
+	left: 50%;
+	bottom: 18px;
+	transform: translateX(-50%);
+	padding: 6px 10px;
+	font-size: 12px;
+	line-height: 1.3;
+	color: var(--pk-text-secondary);
+	background: var(--pk-surface-raised);
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-full);
+	box-shadow: var(--pk-shadow-card);
+	pointer-events: none;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-mermaid-fullscreen__close {
+  position: fixed !important;
+  top: 18px;
+  right: 18px;
+  width: 36px !important;
+  height: 36px !important;
+  color: var(--pk-text-primary) !important;
+  background: var(--pk-surface-raised) !important;
+  border: 1px solid var(--pk-border) !important;
+  border-radius: var(--pk-radius-md) !important;
+	box-shadow: var(--pk-shadow-card) !important;
+	z-index: 1;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-mermaid-fullscreen__close:hover {
+  background: var(--pk-state-hover) !important;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-mermaid-fullscreen__close svg {
+  width: 17px;
+  height: 17px;
 }

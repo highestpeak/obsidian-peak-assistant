@@ -10,6 +10,7 @@ import { PromptService } from '@/service/prompt/PromptService';
 import { PromptId, PromptInfo, PromptVariables } from '@/core/types/prompt';
 import { ProjectService } from './service-project';
 import { ConversationService } from './service-conversation';
+import { AssistantService } from './service-assistant';
 import {
 	AIServiceSettings,
 	DEFAULT_AI_SERVICE_SETTINGS,
@@ -63,6 +64,7 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 	private promptService: PromptService;
 	private _projectService?: ProjectService;
 	private _conversationService?: ConversationService;
+	private _assistantService?: AssistantService;
 	private resourceSummaryService: ResourceSummaryService;
 	private profileService?: UserProfileService;
 	private contextUpdateService?: ContextUpdateService;
@@ -75,6 +77,11 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 	get conv(): ConversationService {
 		if (!this._conversationService) throw new Error('ConversationService not initialized. Call init() first.');
 		return this._conversationService;
+	}
+
+	get assistant(): AssistantService {
+		if (!this._assistantService) throw new Error('AssistantService not initialized. Call init() first.');
+		return this._assistantService;
 	}
 
 	/** Public accessor for PromptService. */
@@ -210,6 +217,7 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 			this.pluginId,
 			this.profileService,
 		);
+		this._assistantService = new AssistantService(this.storage);
 
 		// Wire ContextPipeline into ConversationService
 		const contextPipeline = new ContextPipeline([
@@ -317,6 +325,7 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 			this.pluginId,
 			this.profileService,
 		);
+		this._assistantService = new AssistantService(this.storage);
 
 		// Wire ContextPipeline into refreshed ConversationService
 		const refreshedPipeline = new ContextPipeline([

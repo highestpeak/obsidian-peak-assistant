@@ -1,374 +1,125 @@
-import React, { useRef, useState } from 'react';
-import {
-	ChevronDown,
-	Send,
-	Mic,
-	Loader2,
-	HelpCircle,
-	Microscope,
-	Pen,
-	CheckSquare,
-	Code,
-	Sparkles,
-	Database,
-	Globe,
-	Plus,
-} from 'lucide-react';
+import React, { useRef } from 'react';
+import { ArrowUp, Loader2, Workflow } from 'lucide-react';
 import {
 	PromptInput,
 	PromptInputBody,
 	PromptInputAttachments,
-	usePromptInputContext,
 	type PromptInputEditorHandle,
 } from '@/ui/component/prompt-input';
 import { cn } from '@/ui/react/lib/utils';
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-	IconButton,
-	Pill,
-} from '@/ui/components/primitives';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useChatViewStore } from '../store/chatViewStore';
+import { useComposerStore } from '../store/composerStore';
 import { useContextSearch } from '../hooks/useContextSearch';
 import { useInputKeyboard } from '../hooks/useInputKeyboard';
 import { useInputSubmit } from '../hooks/useInputSubmit';
 import { PromptEnhanceSuggestion } from './PromptEnhanceSuggestion';
 import { useChatStrings } from '../chatStringsContext';
+import { useChatStudioStrings } from '../chatStudioStringsContext';
+import { useServiceContext } from '@/ui/context/ServiceContext';
+import { providerKindForProfile } from '@/ui/component/model-picker/modelPickerData';
+import { normalizeModelSelection, AUTO_MODEL_SELECTION, type ModelSelection } from '@/core/types/chat-studio';
+import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import type { NavigableMenuItem } from '@/ui/component/mine/NavigableMenu';
+import {
+	mergeVaultReferenceDraft,
+	reconcileVaultReferencesWithText,
+} from '@/ui/component/prompt-input/promptMenuSelection';
+import { ComposerContextShelf } from './composer/ComposerContextShelf';
+import { ComposerDraftSync } from './composer/ComposerDraftSync';
+import { ComposerPlusMenu } from './composer/ComposerPlusMenu';
+import { ComposerSourcesPopover } from './composer/ComposerSourcesPopover';
+import { ComposerModelSelector } from './composer/ComposerModelSelector';
+import { ComposerAssistantSelector } from './composer/ComposerAssistantSelector';
+
+/**
+ * Composer V2 — the single live editor of Chat Studio (chat-studio §8).
+ *
+ * Ownership map (§8.3): `+` = resources, `[[` = Vault refs (wikilink text +
+ * explicit context ref), `/` = workflows (real ones only), Sources popover =
+ * project/Vault/Web scope, model + assistant chips = engine/identity.
+ * `@` is unassigned this round. No Mic (no transcription runtime), no role
+ * pills (no role dispatch) — fake controls were removed per RUN-07.
+ */
 
 // ---------------------------------------------------------------------------
-// Helpers wired into PromptInput context
-// ---------------------------------------------------------------------------
-
-const InputClearHandler: React.FC<{ isSending: boolean }> = ({ isSending }) => {
-	const inputContext = usePromptInputContext();
-	const prevRef = useRef(isSending);
-	React.useEffect(() => {
-		if (!prevRef.current && isSending) {
-			inputContext.textInput.clear();
-			inputContext.attachments.clear();
-		}
-		prevRef.current = isSending;
-	}, [isSending, inputContext]);
-	return null;
-};
-
-const InsertToInputHandler: React.FC = () => {
-	const { textInput, focusInput } = usePromptInputContext();
-	React.useEffect(() => {
-		const fn = (text: string) => {
-			const current = textInput.value;
-			const prefix = current && !current.endsWith('\n') ? '\n' : '';
-			textInput.setInput(current + prefix + text);
-			focusInput();
-		};
-		useChatViewStore.getState().setInsertToInput(fn);
-		return () => useChatViewStore.getState().setInsertToInput(null);
-	}, [textInput, focusInput]);
-	return null;
-};
-
-// ---------------------------------------------------------------------------
-// Run-chip popover — single affordance for mode/model/role/context.
-// Only renders sections backed by real state (role local selection,
-// model auto-routing, vault/web search toggles). Coming-soon stub rows were
-// removed in T11U to avoid false affordances. The Chat/Agent/Plan mode
-// picker was retired 2026-07 (F.B); every session runs as agent now.
-// ---------------------------------------------------------------------------
-
-type RunRole = 'default' | 'researcher' | 'writer' | 'planner' | 'coder';
-
-const RunChip: React.FC = () => {
-	const strings = useChatStrings();
-	const [open, setOpen] = useState(false);
-	// 2026-07 F.B: Chat/Agent/Plan mode picker retired. Every session runs as
-	// agent — chatMode still lives on the store for persisted-conversation
-	// backward compat but is no longer user-selectable from Composer.
-	const selectedModel = useChatViewStore((s) => s.selectedModel);
-	const enableVaultSearch = useChatViewStore((s) => s.enableVaultSearch);
-	const setEnableVaultSearch = useChatViewStore((s) => s.setEnableVaultSearch);
-	const enableWebSearch = useChatViewStore((s) => s.enableWebSearch);
-	const setEnableWebSearch = useChatViewStore((s) => s.setEnableWebSearch);
-	const currentTags = useChatViewStore((s) => s.currentInputTags);
-	const ctxCount = currentTags.filter((t) => t.type === 'context').length;
-
-	// Role is not yet wired through to message dispatch (no role field on
-	// outgoing messages). We keep selection local so users get visual
-	// feedback; PR-Chat-5+ will route this into the system prompt.
-	const [role, setRole] = useState<RunRole>('default');
-
-	const ROLE_OPTIONS: Array<{ id: RunRole; label: string; icon: React.ReactNode }> = [
-		{ id: 'default', label: strings.runSettings.roleDefault, icon: <HelpCircle /> },
-		{ id: 'researcher', label: strings.runSettings.roleResearcher, icon: <Microscope /> },
-		{ id: 'writer', label: strings.runSettings.roleWriter, icon: <Pen /> },
-		{ id: 'planner', label: strings.runSettings.rolePlanner, icon: <CheckSquare /> },
-		{ id: 'coder', label: strings.runSettings.roleCoder, icon: <Code /> },
-	];
-
-	const modelSummary = selectedModel
-		? `${selectedModel.provider}/${selectedModel.modelId}`
-		: strings.composer.runChipModelAuto;
-
-	return (
-		<Popover open={open} onOpenChange={setOpen}>
-			<PopoverTrigger asChild>
-				<button
-					type="button"
-					className="pkchat-run-chip"
-					data-state={open ? 'open' : 'closed'}
-					aria-label={strings.composer.runChipLabel}
-				>
-					{/*
-					  Trigger shows 2 segments post-F.B: model · ctx.
-					  Mode was retired 2026-07 (every session is agent).
-					*/}
-					<span className="pkchat-run-chip__mid">
-						{selectedModel ? selectedModel.modelId : strings.composer.runChipModelAuto}
-					</span>
-					<span className="pkchat-run-chip__sep">·</span>
-					<span className="pkchat-run-chip__ctx">
-						{ctxCount} {strings.composer.runChipCtxSuffix}
-					</span>
-					<ChevronDown />
-				</button>
-			</PopoverTrigger>
-			<PopoverContent align="end" side="top" sideOffset={8}>
-				<div className="pkchat-runpop">
-					<div className="pkchat-runpop__head">
-						<span className="pkchat-runpop__title">
-							{strings.runSettings.title}
-						</span>
-						<span className="pkchat-runpop__sub">
-							{strings.runSettings.subtitle}
-						</span>
-					</div>
-
-					{/* Role ─────────────────────────────────────── */}
-					<div>
-						<span className="pkchat-runpop__label">
-							{strings.runSettings.fieldRole}
-						</span>
-						<div className="pkchat-runpop__role-grid">
-							{ROLE_OPTIONS.map((opt) => {
-								const isActive = opt.id === role;
-								return (
-									<Pill
-										key={opt.id}
-										className="pkchat-role-pill"
-										selected={isActive}
-										onClick={() => setRole(opt.id)}
-									>
-										<span className="pkchat-runpop__role-ico">{opt.icon}</span>
-										<span>{opt.label}</span>
-									</Pill>
-								);
-							})}
-						</div>
-						<div className="pkchat-runpop__hint">
-							{strings.runSettings.roleHint}
-						</div>
-					</div>
-
-					{/* Model routing ────────────────────────────── */}
-					<div>
-						<span className="pkchat-runpop__label">
-							{strings.runSettings.fieldModel}
-						</span>
-						<div
-							className="pkchat-runpop__row"
-							data-selected={!selectedModel ? 'true' : undefined}
-						>
-							<span className="pkchat-runpop__row-ico"><Sparkles /></span>
-							<span className="pkchat-runpop__row-body">
-								<span className="pkchat-runpop__row-name">
-									{strings.runSettings.modelAutoTitle}
-								</span>
-								<span className="pkchat-runpop__row-sub">
-									{selectedModel ? modelSummary : strings.composer.runChipModelAuto}
-								</span>
-							</span>
-							{!selectedModel && (
-								<span className="pkchat-runpop__row-dot" aria-hidden />
-							)}
-						</div>
-					</div>
-
-					{/* Context ──────────────────────────────────── */}
-					<div>
-						<span className="pkchat-runpop__label">
-							{strings.runSettings.fieldContext}
-						</span>
-						<button
-							type="button"
-							className="pkchat-runpop__row pkchat-runpop__row--toggle"
-							data-on={enableVaultSearch ? 'true' : undefined}
-							onClick={() => setEnableVaultSearch(!enableVaultSearch)}
-						>
-							<span className="pkchat-runpop__row-ico"><Database /></span>
-							<span className="pkchat-runpop__row-body">
-								<span className="pkchat-runpop__row-name">
-									{strings.runSettings.contextVaultSearch}
-								</span>
-							</span>
-							<span className="pkchat-runpop__switch" aria-hidden />
-						</button>
-						<button
-							type="button"
-							className="pkchat-runpop__row pkchat-runpop__row--toggle"
-							data-on={enableWebSearch ? 'true' : undefined}
-							onClick={() => setEnableWebSearch(!enableWebSearch)}
-						>
-							<span className="pkchat-runpop__row-ico"><Globe /></span>
-							<span className="pkchat-runpop__row-body">
-								<span className="pkchat-runpop__row-name">
-									{strings.runSettings.contextWebSearch}
-								</span>
-							</span>
-							<span className="pkchat-runpop__switch" aria-hidden />
-						</button>
-					</div>
-				</div>
-			</PopoverContent>
-		</Popover>
-	);
-};
-
-// ---------------------------------------------------------------------------
-// ComposerFootLeft — tools cluster shown left of the run-chip / send.
-//
-// Only renders affordances backed by real handlers (per §6.3 — no placeholder
-// "coming soon" disabled icons):
-//   • Paperclip → opens file-picker via PromptInputContext.attachments.openFileDialog
-//   • Database  → toggles `enableVaultSearch` in chatViewStore (active when on)
-//
-// The mock also shows a `+` and a "context grid" icon. Those are intentionally
-// omitted until they map to concrete actions distinct from what's already
-// reachable via the run-chip popover — the popover already exposes vault
-// search + context, so duplicating them here without a unique meaning would
-// just confuse.
-// ---------------------------------------------------------------------------
-
-const ComposerFootLeft: React.FC = () => {
-	const strings = useChatStrings();
-	const { attachments } = usePromptInputContext();
-
-	/*
-	 * Footer-left simplified to a single `+` affordance opening file attach
-	 * (2026-06-03). Removed:
-	 *   • Paperclip — collapsed into `+` since both opened file dialog
-	 *   • Plus (insert @) — `[[` already opens the Obsidian link picker for
-	 *     context insertion, so a dedicated icon was redundant
-	 *   • Database (vault search) / LayoutGrid (web search) — already
-	 *     accessible via the run-chip popover's Context toggles; surfacing
-	 *     them in two places confused users on which one was canonical
-	 */
-	return (
-		<div className="pkchat-composer__foot-left">
-			<IconButton
-				label={strings.composer.attachLabel}
-				title={strings.composer.attachLabel}
-				onClick={() => attachments.openFileDialog()}
-			>
-				<Plus />
-			</IconButton>
-		</div>
-	);
-};
-
-// ---------------------------------------------------------------------------
-// SendControls — mic + primary send/cancel button. Mic is always rendered to
-// match the locked composer mock (image 28); previously these two affordances
-// swapped based on `hasInput` which made the layout feel inconsistent.
+// Send / Stop — send appears with input; stop replaces it while streaming.
 // ---------------------------------------------------------------------------
 
 interface SendButtonProps {
 	status: 'ready' | 'submitted' | 'streaming';
+	hasInput: boolean;
 	onCancel?: () => void | Promise<void>;
 }
 
-const SendButton: React.FC<SendButtonProps> = ({ status, onCancel }) => {
+const SendButton: React.FC<SendButtonProps> = ({ status, hasInput, onCancel }) => {
 	const strings = useChatStrings();
-	const { textInput } = usePromptInputContext();
-	const hasInput = textInput.value.trim().length > 0;
-	const isStreaming = status === 'streaming';
-	const isSubmitting = status === 'submitted';
 
-	const micButton = (
-		<IconButton
-			label={strings.composer.voiceLabel}
-			title={strings.composer.voiceLabel}
-			disabled
-		>
-			<Mic />
-		</IconButton>
-	);
-
-	if (isStreaming) {
+	if (status === 'streaming') {
 		return (
-			<>
-				{micButton}
-				<button
-					type="button"
-					className="pkchat-send pkchat-send--stop"
-					aria-label={strings.composer.cancelLabel}
-					onClick={async (e) => {
-						e.preventDefault();
-						e.stopPropagation();
-						if (onCancel) await onCancel();
-					}}
-				>
-					{/* Stop mark: a 9×9 filled square (per locked composer mock).
-					   Lucide <Square /> renders as a stroked outline which read as
-					   "outlined box" rather than "stop". Inline span gives a solid
-					   filled square that matches the locked design. */}
-					<span className="pkchat-send__stop-mark" aria-hidden />
-				</button>
-			</>
-		);
-	}
-
-	if (isSubmitting) {
-		return (
-			<>
-				{micButton}
-				<button
-					type="button"
-					className="pkchat-send"
-					aria-label={strings.composer.sendLabel}
-					disabled
-				>
-					<Loader2 className="pktw-animate-spin" />
-				</button>
-			</>
-		);
-	}
-
-	if (!hasInput) {
-		// No text → only mic, send is hidden (would do nothing anyway).
-		return micButton;
-	}
-
-	return (
-		<>
-			{micButton}
 			<button
-				type="submit"
-				className="pkchat-send"
-				aria-label={strings.composer.sendLabel}
+				type="button"
+				className="pkchat-send pkchat-send--stop"
+				aria-label={strings.composer.cancelLabel}
+				onClick={async (e) => {
+					e.preventDefault();
+					e.stopPropagation();
+					if (onCancel) await onCancel();
+				}}
 			>
-				<Send />
+				<span className="pkchat-send__stop-mark" aria-hidden />
 			</button>
-		</>
+		);
+	}
+
+	if (status === 'submitted') {
+		return (
+			<button type="button" className="pkchat-send" aria-label={strings.composer.sendLabel} disabled>
+				<Loader2 className="pktw-animate-spin" />
+			</button>
+		);
+	}
+
+	// Send stays resident even with an empty input (chat-studio composer mock):
+	// disabled = neutral sunken circle, ready = solid accent circle. It never
+	// unmounts, so the footer's right edge doesn't reflow as the user types.
+	return (
+		<button
+			type="submit"
+			className="pkchat-send"
+			aria-label={strings.composer.sendLabel}
+			disabled={!hasInput}
+		>
+			<ArrowUp />
+		</button>
 	);
 };
 
 // ---------------------------------------------------------------------------
-// Composer — root composer for the retained chat surface.
+// Model / Assistant binding helpers
+// ---------------------------------------------------------------------------
+
+function useCurrentModelSelection(): ModelSelection {
+	const activeConversation = useChatDataStore((s) => s.activeConversation);
+	const activeKey = useComposerStore((s) => s.activeKey);
+	const draft = useComposerStore((s) => s.drafts[activeKey]);
+	if (activeConversation) {
+		return normalizeModelSelection(activeConversation.meta.modelSelection, {
+			activeModel: activeConversation.meta.activeModel,
+			activeProvider: activeConversation.meta.activeProvider,
+		});
+	}
+	return draft?.modelOverride ?? AUTO_MODEL_SELECTION;
+}
+
+// ---------------------------------------------------------------------------
+// Composer — root composer for Chat Studio.
 // ---------------------------------------------------------------------------
 
 export const Composer: React.FC = () => {
 	const strings = useChatStrings();
+	const studioStrings = useChatStudioStrings();
+	const { manager } = useServiceContext();
 	const activeConversation = useChatDataStore((s) => s.activeConversation);
 
 	const textareaRef = useRef<PromptInputEditorHandle>(null);
@@ -377,7 +128,6 @@ export const Composer: React.FC = () => {
 	const {
 		isSending,
 		status,
-		placeholder,
 		handleSubmit,
 		handleCancelStream,
 		handleTextChange,
@@ -392,8 +142,114 @@ export const Composer: React.FC = () => {
 	} = useContextSearch();
 	useInputKeyboard(textareaRef, activeConversation?.meta?.id ?? null);
 
+	const modelSelection = useCurrentModelSelection();
+	// Rules of Hooks: always call the store selector, then pick between
+	// conversation-bound and draft-override values (the selector must not sit
+	// behind a conditional — activeConversation toggling would change hook count).
+	const draftAssistantOverride = useComposerStore((s) => s.drafts[s.activeKey]?.assistantOverride ?? undefined);
+	const assistantId = activeConversation
+		? activeConversation.meta.assistantId
+		: draftAssistantOverride;
+
+	const activeKey = useComposerStore((s) => s.activeKey);
+	const draftText = useComposerStore((s) => s.drafts[s.activeKey]?.text ?? '');
+	const hasInput = draftText.trim().length > 0;
+
+	// Only REAL workflows appear in the `/` palette (RUN-07 truthfulness).
+	const slashItems: NavigableMenuItem[] = [
+		{
+			id: 'plan',
+			label: studioStrings.composer.workflowPlanLabel,
+			description: studioStrings.composer.workflowPlanDescription,
+			icon: <Workflow />,
+			value: 'plan',
+		},
+	];
+
+	const onMenuItemSelect = (trigger: string, item: NavigableMenuItem, resolvedText?: string) => {
+		if (trigger === '/') {
+			useComposerStore.getState().updateDraft({ workflowId: item.value });
+			return;
+		}
+		if (trigger === '[[' && !item.showArrow && item.value) {
+			const path = item.value;
+			const ref = {
+				id: generateUuidWithoutHyphens(),
+				kind: 'vault-file' as const,
+				uri: path,
+				title: path.split('/').pop() ?? path,
+			};
+			const store = useComposerStore.getState();
+			const current = store.getDraft();
+			const merged = mergeVaultReferenceDraft(
+				{ text: current.text, explicitRefs: current.explicitRefs },
+				resolvedText ?? current.text,
+				ref,
+			);
+			store.updateDraft(merged);
+		}
+		handleMenuSelect(trigger, item);
+	};
+
+	const onModelSelect = async (selection: ModelSelection) => {
+		if (!activeConversation) {
+			useComposerStore.getState().updateDraft({ modelOverride: selection });
+			if (selection.mode === 'fixed') {
+				const kind = providerKindForProfile(selection.profileId);
+				useChatViewStore.getState().setSelectedModel(kind ?? selection.profileId, selection.modelId);
+			} else {
+				useChatViewStore.getState().clearSelectedModel();
+			}
+			return;
+		}
+		const legacyProvider = selection.mode === 'fixed' ? providerKindForProfile(selection.profileId) : undefined;
+		await manager.conv.updateConversationModelSelection({
+			conversationId: activeConversation.meta.id,
+			selection,
+			legacyProvider,
+		});
+		if (selection.mode === 'fixed') {
+			useChatViewStore.getState().setSelectedModel(legacyProvider ?? selection.profileId, selection.modelId);
+		} else {
+			useChatViewStore.getState().clearSelectedModel();
+		}
+		const updated = await manager.readConversation(activeConversation.meta.id, false);
+		if (updated) {
+			updated.messages = useChatDataStore.getState().activeConversation?.messages ?? [];
+			useChatDataStore.getState().setActiveConversation(updated);
+			useChatDataStore.getState().updateConversation(updated);
+		}
+	};
+
+	const onAssistantSelect = async (nextAssistantId: string | undefined) => {
+		if (!activeConversation) {
+			useComposerStore.getState().updateDraft({ assistantOverride: nextAssistantId ?? null });
+			return;
+		}
+		await manager.conv.updateConversationAssistant({
+			conversationId: activeConversation.meta.id,
+			assistantId: nextAssistantId,
+		});
+		const updated = await manager.readConversation(activeConversation.meta.id, false);
+		if (updated) {
+			updated.messages = useChatDataStore.getState().activeConversation?.messages ?? [];
+			useChatDataStore.getState().setActiveConversation(updated);
+			useChatDataStore.getState().updateConversation(updated);
+		}
+	};
+
+	const onTextChange = (text: string, tags: Parameters<typeof handleTextChange>[1]) => {
+		const store = useComposerStore.getState();
+		const current = store.getDraft(activeKey);
+		store.updateDraft({
+			text,
+			explicitRefs: reconcileVaultReferencesWithText(text, current.explicitRefs),
+		}, activeKey);
+		handleTextChange(text, tags);
+	};
+
 	return (
-		<div className="pkchat-composer-wrap">
+		<div className="pkchat-composer-wrap" data-composer-root="true">
 			<PromptInput
 				className={cn('pkchat-composer', `pkchat-composer--${status}`)}
 				globalDrop
@@ -402,42 +258,45 @@ export const Composer: React.FC = () => {
 				onSubmit={handleSubmit}
 				contextItems={menuContextItems}
 				onLoadContextItems={handleSearchContext}
-				onMenuItemSelect={handleMenuSelect}
+				onMenuItemSelect={onMenuItemSelect}
 				folderStack={folderStack}
 				onFolderUp={handleFolderUp}
-				onTextChange={handleTextChange}
+				onTextChange={onTextChange}
 			>
-				<InputClearHandler isSending={isSending} />
-				<InsertToInputHandler />
+				<ComposerDraftSync />
+				<ComposerContextShelf />
 				<PromptInputAttachments />
 				{status === 'streaming' && (
 					<div className="pkchat-composer__status" role="status" aria-live="polite">
 						<Loader2 className="pkchat-composer__status-spinner" />
 						<span>{strings.composer.streamingStatus}</span>
+						{hasInput && (
+							<span className="pktw-text-pk-xs pktw-text-pk-muted-foreground">
+								{studioStrings.composer.queuedHint}
+							</span>
+						)}
 					</div>
 				)}
 				<div className="pkchat-composer__editor">
 					<PromptInputBody
 						ref={textareaRef}
 						inputRef={inputFocusRef}
-						placeholder={placeholder ?? strings.composer.placeholder}
+						placeholder={studioStrings.composer.placeholder}
+						slashItems={slashItems}
+						onTextChange={onTextChange}
 					/>
-					{/*
-					  PromptEnhanceSuggestion is nested INSIDE the editor div so
-					  it acts as an inline footnote at the bottom of the editor
-					  area, not as a separate toolbar row between editor and
-					  footer. Per the locked composer mock (image 21), Enhance
-					  is a subtle hint hugging the editor — moving it out caused
-					  the composer to feel "stretched" with two rows of chrome.
-					*/}
 					<PromptEnhanceSuggestion />
 				</div>
 
 				<div className="pkchat-composer__foot">
-					<ComposerFootLeft />
+					<div className="pkchat-composer__foot-left">
+						<ComposerPlusMenu insertAtCaret={(text) => textareaRef.current?.insertText(text)} />
+						<ComposerSourcesPopover />
+					</div>
 					<div className="pkchat-composer__foot-right">
-						<RunChip />
-						<SendButton status={status} onCancel={handleCancelStream} />
+						<ComposerAssistantSelector assistantId={assistantId} onSelect={onAssistantSelect} />
+						<ComposerModelSelector selection={modelSelection} onSelect={onModelSelect} />
+						<SendButton status={status} hasInput={hasInput} onCancel={handleCancelStream} />
 					</div>
 				</div>
 			</PromptInput>

@@ -19,6 +19,10 @@ export class BuildUserProfileProgressModal extends Modal {
 	onOpen(): void {
 		const { contentEl } = this;
 		contentEl.empty();
+		// Bare-DOM modal: `pktw-root` ONLY (tokens + font pin) — the reset that
+		// `peak-design-root` triggers would strip the `mod-warning` Cancel
+		// button's native Obsidian styling.
+		contentEl.addClass('pktw-root');
 		contentEl.createEl('h2', { text: 'Building User Profile' });
 		this.progressEl = contentEl.createEl('p', { cls: 'peak-build-profile-progress' });
 		this.progressEl.setText('Preparing...');

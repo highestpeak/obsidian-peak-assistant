@@ -4,7 +4,21 @@
 ## Project Context
 
 ### Project: {{projectName}}
+{{#if projectDescription}}
+
+**Description (user-provided):**
+{{projectDescription}}
+{{/if}}
+{{#if projectInstructions}}
+
+**Instructions (user-provided — follow these):**
+{{projectInstructions}}
+{{/if}}
+{{#if projectSummary}}
+
+**Summary (auto-generated):**
 {{projectSummary}}
+{{/if}}
 {{#if projectResources.length}}
 
 ### Project Resources

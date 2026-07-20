@@ -449,7 +449,7 @@
 }
 
 .pkfa-type-toggle svg { width: 13px; height: 13px; }
-.peak-file-atlas-modal.pkfa-root .pkfa-type-toggle.is-on { color: #7c3aed !important; background: #f1eaff !important; border-color: #dccbff !important; }
+.peak-file-atlas-modal.pkfa-root .pkfa-type-toggle.is-on { color: var(--pk-accent) !important; background: #f1eaff !important; border-color: #dccbff !important; }
 
 /* ---------- main split ---------- */
 .pkfa-main { min-height: 0; display: grid; grid-template-columns: minmax(0, 60fr) minmax(0, 40fr); background: var(--pk-surface); }
@@ -574,7 +574,7 @@
 .pkfa-type-block .pkfa-icon { color: #667085; background: #f8f9fc; border-color: #eceff5; }
 .pkfa-type-resource .pkfa-icon { color: #2d6cdf; background: #edf4ff; border-color: #cfe0ff; }
 .pkfa-type-task .pkfa-icon { color: #23845e; background: #e8f7ef; border-color: #b7ead2; }
-.pkfa-type-insight .pkfa-icon { color: #7c3aed; background: #f1eaff; border-color: #dccbff; }
+.pkfa-type-insight .pkfa-icon { color: var(--pk-accent); background: #f1eaff; border-color: #dccbff; }
 .pkfa-type-issue .pkfa-icon { color: #9a6408; background: #fff4dc; border-color: #f7d58f; }
 
 /* badge palettes */
@@ -588,7 +588,7 @@
 .pkfa-badge--media { color: #2d6cdf; background: #edf4ff; border-color: #cfe0ff; }
 .pkfa-badge--vault { color: #087a80; background: #e7f7f8; border-color: #b6e6ea; }
 .pkfa-badge--external { color: #2d6cdf; background: #edf4ff; border-color: #cfe0ff; }
-.pkfa-badge--insight { color: #7c3aed; background: #f1eaff; border-color: #dccbff; }
+.pkfa-badge--insight { color: var(--pk-accent); background: #f1eaff; border-color: #dccbff; }
 .pkfa-badge--issue { color: #9a6408; background: #fff4dc; border-color: #f7d58f; }
 .pkfa-badge--draw { color: #087a80; background: #e7f7f8; border-color: #b6e6ea; }
 

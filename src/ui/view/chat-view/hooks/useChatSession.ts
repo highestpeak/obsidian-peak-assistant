@@ -4,7 +4,7 @@ import { useChatViewStore } from '../store/chatViewStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { DEFAULT_AI_SERVICE_SETTINGS } from '@/core/config/settingsTypes';
 import { getLLMOutputControlSettingKeys } from '@/core/providers/types';
-import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import { normalizeModelSelection } from '@/core/types/chat-studio';
 
 /**
  * Reload conversation meta only (no messages), preserving existing messages.
@@ -74,23 +74,21 @@ export const useChatSession = () => {
         const override = activeConversation?.meta.outputControlOverride || {};
         setLlmOutputControlSettings({ ...globalDefault, ...override });
 
-        // Priority: conversation model > default model
-        const globalDefaultModel = manager?.getSettings().defaultModel;
-        const overrideModel = activeConversation?.meta.activeModel ? {
-            provider: activeConversation.meta.activeProvider || globalDefaultModel?.provider || DEFAULT_AI_SERVICE_SETTINGS.defaultModel.provider!,
-            modelId: activeConversation.meta.activeModel || globalDefaultModel?.modelId || DEFAULT_AI_SERVICE_SETTINGS.defaultModel.modelId!,
-        } : undefined;
-        if (overrideModel) {
-            setSelectedModel(overrideModel.provider, overrideModel.modelId);
-        } else if (globalDefaultModel) {
-            setSelectedModel(globalDefaultModel.provider, globalDefaultModel.modelId);
+        // Model hydration (chat-studio §8.5 / RUN gate 2): the persisted
+        // ModelSelection is the truth. Auto stays Auto — we do NOT hydrate a
+        // concrete model into the store (the old flow wrote the hydrated model
+        // back and silently destroyed the Auto choice). Fixed selections
+        // hydrate the display store; persistence only happens through the
+        // explicit model selector action, never as a hydration side effect.
+        const selection = normalizeModelSelection(activeConversation.meta.modelSelection, {
+            activeModel: activeConversation.meta.activeModel,
+            activeProvider: activeConversation.meta.activeProvider,
+        });
+        if (selection.mode === 'fixed') {
+            const providerKind = activeConversation.meta.activeProvider || selection.profileId;
+            setSelectedModel(providerKind, selection.modelId);
         } else {
-            // Post-F.B: fall back to the default assistant profile regardless of
-            // the legacy `conversationType.kind` — routing by mode was retired.
-            const defaultConfig = ProfileRegistry.getInstance().getActiveAgentConfig();
-            if (defaultConfig) {
-                setSelectedModel(defaultConfig.profile.kind, defaultConfig.modelId);
-            }
+            useChatViewStore.getState().clearSelectedModel();
         }
     }, [activeConversation, manager, setAttachmentHandlingMode, setLlmOutputControlSettings, setSelectedModel]);
 
@@ -155,29 +153,10 @@ export const useChatSession = () => {
         return () => unsubscribe();
     }, [manager, activeConversation]);
 
-    useEffect(() => {
-        const unsubscribe = useChatViewStore.subscribe(
-            async (state, prevState) => {
-                if (state.selectedModel === prevState.selectedModel) {
-                    return;
-                }
-                if (!activeConversation) {
-                    return;
-                }
-
-                // Update conversation model
-                await manager.conv.updateConversationModel({
-                    conversationId: activeConversation.meta.id,
-                    modelId: state.selectedModel?.modelId!,
-                    provider: state.selectedModel?.provider!,
-                });
-
-                // Reload meta only, preserving messages + staleness guard
-                await reloadConversationMetaOnly(manager, activeConversation.meta.id);
-            }
-        );
-        return () => unsubscribe();
-    }, [manager, activeConversation]);
-
+    // NOTE (chat-studio RUN gate 2): the legacy selectedModel→conversation
+    // writeback subscription was removed. It persisted whatever hydration put
+    // in the store, which turned every reload into a forced fixed-model write
+    // and made Auto unrecoverable. Model persistence now flows exclusively
+    // through ComposerModelSelector → updateConversationModelSelection.
 };
 

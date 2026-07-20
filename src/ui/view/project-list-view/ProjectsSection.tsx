@@ -4,18 +4,15 @@ import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useChatNavigation } from '@/ui/view/chat-view/useChatNavigation';
 import { hydrateProjects as hydrateProjectsFromManager, showContextMenu } from './utils';
 import { InputModal } from '@/ui/component/shared-ui/InputModal';
-import { Button } from '@/ui/component/shared-ui/button';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { ChevronDown, ChevronRight, Folder, FolderOpen, Plus, MoreHorizontal } from 'lucide-react';
-// Note: Project row uses Folder/FolderOpen as the SOLE expand toggle —
-// the redundant chevron was dropped 2026-06-04 per design unification with
-// the right-rail Conversation Index. ChevronDown/ChevronRight remain in
-// scope for the section header collapse (PROJECTS uppercase row).
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { ViewEventType, ConversationUpdatedEvent, ConversationCreatedEvent } from '@/core/eventBus';
-import { DEFAULT_NEW_CONVERSATION_TITLE, MAX_CONVERSATIONS_DISPLAY, MAX_PROJECTS_DISPLAY, MAX_CONVERSATIONS_PER_PROJECT } from '@/core/constant';
+import { DEFAULT_NEW_CONVERSATION_TITLE, MAX_CONVERSATIONS_PER_PROJECT, MAX_PROJECTS_DISPLAY } from '@/core/constant';
 import { ConversationList } from './ConversationsSection';
+import { showToast } from '@/ui/utils/toast';
+import { useChatStudioLeftStrings } from './chatStudioLeftStringsContext';
 
 interface ProjectItemProps {
 	project: ChatProject;
@@ -24,6 +21,7 @@ interface ProjectItemProps {
 	typewriterEnabled: Map<string, boolean>;
 	onTypewriterComplete: (conversationId: string) => void;
 	onDeleteConversation?: (conversation: ChatConversation) => void;
+	onMenuAction?: () => void;
 }
 
 const ProjectItem: React.FC<ProjectItemProps> = ({
@@ -33,12 +31,12 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 	typewriterEnabled,
 	onTypewriterComplete,
 	onDeleteConversation,
+	onMenuAction,
 }) => {
-	const { manager, vaultNavigation } = useServiceContext();
+	const strings = useChatStudioLeftStrings();
+	const { manager, vaultNavigation, eventBus } = useServiceContext();
 	const chatNavigation = useChatNavigation();
-	// Directly access store in component
 	const {
-		projects,
 		activeConversation,
 		activeProject,
 		setActiveProject,
@@ -50,8 +48,8 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 
 	const conversationsToShow = conversations.slice(0, MAX_CONVERSATIONS_PER_PROJECT);
 	const hasMoreConversations = conversations.length > MAX_CONVERSATIONS_PER_PROJECT;
+	const isProjectSelected = activeProject?.meta.id === project.meta.id;
 
-	// State for input modal
 	const [inputModalOpen, setInputModalOpen] = useState(false);
 	const [inputModalConfig, setInputModalConfig] = useState<{
 		message: string;
@@ -61,27 +59,24 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 		hintText?: string;
 		submitButtonText?: string;
 	} | null>(null);
+	const [isDragOver, setIsDragOver] = useState(false);
 
-	// Check if conversation is active
 	const isConversationActive = useCallback((conversation: ChatConversation): boolean => {
 		return activeConversation?.meta.id === conversation.meta.id;
 	}, [activeConversation]);
 
-	// Handlers
-	const handleProjectHeaderClick = async () => {
-		// Capture state BEFORE toggling — we use it to decide whether the click
-		// is an "expand" (open the project overview as well) or a "collapse"
-		// (just flip the state). Without this guard, the collapse path would
-		// fire SELECTION_CHANGED via openProjectOverviewInChat, which
-		// ProjectListView's listener interprets as "expand this project if not
-		// already expanded" — instantly re-expanding what we just collapsed.
-		const wasExpanded = isExpanded;
+	// LEFT-03: chevron ONLY toggles expand/collapse; project name opens the
+	// project home. Both are focusable with separate aria-labels.
+	const handleChevronClick = useCallback((e: React.MouseEvent) => {
+		e.stopPropagation();
 		toggleProjectExpanded(project.meta.id);
+	}, [project.meta.id, toggleProjectExpanded]);
+
+	const handleNameClick = useCallback(async (e: React.MouseEvent) => {
+		e.stopPropagation();
 		setActiveProject(project);
-		if (!wasExpanded) {
-			await chatNavigation.openProjectOverviewInChat(project);
-		}
-	};
+		await chatNavigation.openProjectOverviewInChat(project);
+	}, [chatNavigation, project, setActiveProject]);
 
 	const handleConversationClick = async (conversation: ChatConversation) => {
 		await chatNavigation.openConversationInChat(conversation);
@@ -97,21 +92,16 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 
 	const handleEditProjectName = useCallback((projectItem: ChatProject) => {
 		setInputModalConfig({
-			message: 'Rename Project',
-			placeholderText: 'Project name',
+			message: strings.menuRename,
+			placeholderText: strings.projectNamePlaceholder,
 			initialValue: projectItem.meta.name,
 			onSubmit: async (newName: string | null) => {
 				if (!newName || !newName.trim()) return;
-
 				try {
-					const updatedProject = await manager.proj.renameProject(projectItem.meta.id, newName.trim());
-
-					// Update project in store
-					updateProject(updatedProject);
-
-					// Update activeProject if this is the active one - this will trigger re-render everywhere
+					const updated = await manager.proj.renameProject(projectItem.meta.id, newName.trim());
+					updateProject(updated);
 					if (activeProject?.meta.id === projectItem.meta.id) {
-						setActiveProject(updatedProject);
+						setActiveProject(updated);
 					}
 				} catch (error) {
 					console.error('Failed to rename project', error);
@@ -119,139 +109,229 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 			},
 		});
 		setInputModalOpen(true);
-	}, [manager, updateProject, activeProject, setActiveProject]);
+	}, [manager, updateProject, activeProject, setActiveProject, strings.menuRename]);
 
-	const handleEditConversationTitle = useCallback((
-		projectItem: ChatProject | null,
-		conversation: ChatConversation
-	) => {
+	const handleEditConversationTitle = useCallback((conversation: ChatConversation) => {
 		setInputModalConfig({
-			message: 'Rename Conversation',
-			placeholderText: 'Conversation title',
+			message: strings.menuRename,
+			placeholderText: strings.conversationTitlePlaceholder,
 			initialValue: conversation.meta.title,
 			onSubmit: async (newTitle: string | null) => {
 				if (!newTitle || !newTitle.trim()) return;
-
 				try {
 					await manager.conv.updateConversationTitle({
 						conversationId: conversation.meta.id,
 						title: newTitle.trim(),
 					});
 					const updatedConversation = await manager.readConversation(conversation.meta.id, false);
-					if (!updatedConversation) {
-						throw new Error('Failed to update conversation title');
-					}
-
-					// Update conversation in store
+					if (!updatedConversation) throw new Error('Failed to reload conversation');
 					updateConversation(updatedConversation);
-
-					// Update active conversation if it's the active one - React components will auto-update
-					if (isConversationActive(conversation)) {
-						setActiveConversation(updatedConversation);
-					}
+					if (isConversationActive(conversation)) setActiveConversation(updatedConversation);
 				} catch (error) {
 					console.error('Failed to update conversation title', error);
 				}
 			},
 		});
 		setInputModalOpen(true);
-	}, [manager, updateConversation, isConversationActive, setActiveConversation]);
+	}, [manager, updateConversation, isConversationActive, setActiveConversation, strings.menuRename]);
 
-	// Menu item configurations
-	const projectMenuItems = useCallback((projectItem: ChatProject) => [
-		{
-			title: 'Rename project',
-			icon: 'pencil',
-			onClick: () => handleEditProjectName(projectItem),
-		},
-		{
-			title: 'Delete project',
+	// Project row menu — hide unsupported actions entirely (no disabled slots).
+	// `ownerDoc` is the triggering element's document so confirm() lands on the
+	// correct window (popped-out Chat Studio has its own document).
+	const projectMenuItems = useCallback((projectItem: ChatProject, ownerDoc: Document) => {
+		const items: Array<{ title: string; icon: string; onClick: () => void | Promise<void> }> = [
+			{
+				title: strings.menuNewConversation,
+				icon: 'plus',
+				onClick: () => void handleNewConversation(),
+			},
+			{
+				title: strings.menuRename,
+				icon: 'pencil',
+				onClick: () => handleEditProjectName(projectItem),
+			},
+		];
+		if (projectItem.meta.folderPath) {
+			items.push({
+				title: strings.menuOpenFolder,
+				icon: 'folder-open',
+				onClick: async () => {
+					try {
+						await vaultNavigation.openSourceFile({ path: projectItem.meta.folderPath! } as any);
+					} catch (err) {
+						console.warn('Open project folder failed', err);
+					}
+				},
+			});
+		}
+		items.push({
+			title: strings.menuDelete,
 			icon: 'trash',
 			onClick: async () => {
+				const win = ownerDoc.defaultView ?? window;
+				const ok = win.confirm(`${strings.deleteProjectConfirmTitle}\n\n${strings.deleteProjectConfirmBody}`);
+				if (!ok) return;
 				await manager.proj.deleteProject(projectItem.meta.id);
-				// Remove from store
-				const { projects: currentProjects, setProjects: updateProjects, activeProject: currentActive, setActiveProject: setActive } = useChatDataStore.getState();
-				const updated = Array.from(currentProjects.values()).filter(p => p.meta.id !== projectItem.meta.id);
-				updateProjects(updated);
-				if (currentActive?.meta.id === projectItem.meta.id) {
-					setActive(null);
-				}
+				const { projects: currentProjects, setProjects, activeProject: current, setActiveProject: setActive } = useChatDataStore.getState();
+				const updated = Array.from(currentProjects.values()).filter((p) => p.meta.id !== projectItem.meta.id);
+				setProjects(updated);
+				if (current?.meta.id === projectItem.meta.id) setActive(null);
+				onMenuAction?.();
 			},
-		},
-	], [manager, handleEditProjectName]);
+		});
+		return items;
+	}, [handleEditProjectName, manager, onMenuAction, strings, vaultNavigation]);
 
-	const conversationMenuItems = useCallback((conversation: ChatConversation) => {
-		const projectItem = conversation.meta.projectId ? projects.get(conversation.meta.projectId) || null : null;
-		return [
+	// Conversation row menu — LEFT-04 full action registry.
+	// `ownerDoc` threads the triggering element's document to confirm() (popout).
+	const conversationMenuItems = useCallback((conversation: ChatConversation, ownerDoc: Document) => {
+		const meta = conversation.meta;
+		const items: Array<{ title: string; icon: string; onClick: () => void | Promise<void> }> = [
 			{
-				title: 'Edit title',
-				icon: 'pencil',
-				onClick: () => handleEditConversationTitle(projectItem, conversation),
+				title: meta.pinned ? strings.menuUnpin : strings.menuPin,
+				icon: meta.pinned ? 'pin-off' : 'pin',
+				onClick: async () => {
+					await manager.conv.setConversationPinned(meta.id, !meta.pinned);
+					onMenuAction?.();
+				},
 			},
 			{
-				title: 'Open source file',
+				title: strings.menuRename,
+				icon: 'pencil',
+				onClick: () => handleEditConversationTitle(conversation),
+			},
+			{
+				title: strings.menuRemoveFromProject,
+				icon: 'folder-minus',
+				onClick: async () => {
+					await manager.conv.moveToProject({ conversationId: meta.id });
+					onMenuAction?.();
+				},
+			},
+			{
+				title: strings.menuOpenSource,
 				icon: 'file-text',
 				onClick: async () => {
 					await vaultNavigation.openSourceFile(conversation.file);
 				},
 			},
 			{
-				title: 'Delete',
+				title: meta.archived ? strings.menuRestore : strings.menuArchive,
+				icon: meta.archived ? 'archive-restore' : 'archive',
+				onClick: async () => {
+					await manager.conv.setConversationArchived(meta.id, !meta.archived);
+					onMenuAction?.();
+				},
+			},
+			{
+				title: strings.menuDelete,
 				icon: 'trash',
 				onClick: async () => {
-					await manager.conv.deleteConversation(conversation.meta.id);
-					const { conversations: current, setConversations: updateConversations, activeConversation: active, setActiveConversation: setActive } = useChatDataStore.getState();
-					const updated = Array.from(current.values()).filter(c => c.meta.id !== conversation.meta.id);
-					updateConversations(updated);
-					if (active?.meta.id === conversation.meta.id) {
-						setActive(null);
-					}
-					// Refresh project conversations via callback
+					const win = ownerDoc.defaultView ?? window;
+					const ok = win.confirm(`${strings.deleteConfirmTitle}\n\n${strings.deleteConfirmBody}`);
+					if (!ok) return;
+					await manager.conv.deleteConversation(meta.id);
+					const { conversations: current, setConversations, activeConversation: active, setActiveConversation } = useChatDataStore.getState();
+					const updated = Array.from(current.values()).filter((c) => c.meta.id !== meta.id);
+					setConversations(updated);
+					if (active?.meta.id === meta.id) setActiveConversation(null);
 					onDeleteConversation?.(conversation);
+					onMenuAction?.();
 				},
 			},
 		];
-	}, [vaultNavigation, manager, projects, handleEditConversationTitle, onDeleteConversation]);
+		return items;
+	}, [handleEditConversationTitle, manager, onDeleteConversation, onMenuAction, strings, vaultNavigation]);
 
 	const handleContextMenu = (
 		e: React.MouseEvent,
 		type: 'project' | 'conversation',
 		item: ChatProject | ChatConversation
 	) => {
+		const ownerDoc = e.currentTarget?.ownerDocument ?? document;
 		const menuItems = type === 'project'
-			? projectMenuItems(item as ChatProject)
-			: conversationMenuItems(item as ChatConversation);
+			? projectMenuItems(item as ChatProject, ownerDoc)
+			: conversationMenuItems(item as ChatConversation, ownerDoc);
 		showContextMenu(e, menuItems);
+	};
+
+	// LEFT-03 drag-conversation-into-project — visible dragover highlight,
+	// accepted flash + error notice.
+	const handleDragOver = (e: React.DragEvent) => {
+		if (!e.dataTransfer.types.includes('application/x-peak-conversation-id')) return;
+		e.preventDefault();
+		e.dataTransfer.dropEffect = 'move';
+		setIsDragOver(true);
+	};
+	const handleDragLeave = () => setIsDragOver(false);
+	const handleDrop = async (e: React.DragEvent) => {
+		e.preventDefault();
+		setIsDragOver(false);
+		const conversationId = e.dataTransfer.getData('application/x-peak-conversation-id');
+		if (!conversationId) return;
+		try {
+			await manager.conv.moveToProject({ conversationId, projectId: project.meta.id });
+			showToast.success(`${strings.moveToProjectSuccessPrefix} ${project.meta.name}`, { eventBus });
+			onMenuAction?.();
+		} catch (err) {
+			showToast.error(strings.moveFailedLabel, {
+				eventBus,
+				description: err instanceof Error ? err.message : 'Unknown error',
+			});
+		}
 	};
 
 	return (
 		<div
-			className="pktw-flex pktw-flex-col pktw-mb-0.5"
+			className={cn(
+				'pktw-flex pktw-flex-col pktw-mb-0.5 pktw-rounded pktw-transition-colors',
+				isDragOver && 'pktw-bg-[color:var(--pk-accent-tint)]'
+			)}
 			data-project-id={project.meta.id}
+			onDragOver={handleDragOver}
+			onDragLeave={handleDragLeave}
+			onDrop={(e) => void handleDrop(e)}
 		>
-			{/* Project Header */}
-			<div
-				className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-2 pktw-py-1.5 pktw-rounded pktw-cursor-pointer pktw-bg-transparent pktw-transition-colors pktw-min-h-8 pktw-select-none hover:pktw-bg-muted pktw-group"
-				onClick={handleProjectHeaderClick}
-				onContextMenu={(e) => handleContextMenu(e, 'project', project)}
-			>
-				{isExpanded ? (
-					<FolderOpen className="pktw-w-4 pktw-h-4 pktw-shrink-0 pktw-text-foreground pktw-transition-colors" />
-				) : (
-					<Folder className="pktw-w-4 pktw-h-4 pktw-shrink-0 pktw-text-foreground pktw-transition-colors" />
-				)}
-				<span
-					className="pktw-flex-1 pktw-min-w-0 pktw-text-sm pktw-text-foreground pktw-truncate"
-					title={project.meta.name}
+			{/* Project row (mock `.nav-row.is-project`) — disclosure toggles
+			    expand, the open button navigates to project home, the persistent
+			    "…" button (hover-revealed) opens the project action menu (which
+			    still carries "New conversation" — mock has no inline create row). */}
+			<div className={cn('pkstudio-nav-row', 'is-project', isProjectSelected && 'is-selected')}>
+				<button
+					type="button"
+					className="pkstudio-project-disclosure"
+					aria-label={(isExpanded ? strings.ariaCollapseProject : strings.ariaExpandProject).replace('{name}', project.meta.name)}
+					aria-expanded={isExpanded}
+					onClick={handleChevronClick}
+					onContextMenu={(e) => handleContextMenu(e, 'project', project)}
 				>
-					{project.meta.name}
-				</span>
+					{isExpanded ? <ChevronDown aria-hidden /> : <ChevronRight aria-hidden />}
+				</button>
+				<button
+					type="button"
+					className="pkstudio-project-open"
+					aria-label={strings.ariaOpenProject.replace('{name}', project.meta.name)}
+					onClick={(e) => void handleNameClick(e)}
+					onContextMenu={(e) => handleContextMenu(e, 'project', project)}
+				>
+					<span className="pkstudio-nav-leading" aria-hidden>
+						{isExpanded ? <FolderOpen /> : <Folder />}
+					</span>
+					<span className="pkstudio-row-label" title={project.meta.name}>
+						{project.meta.name}
+					</span>
+				</button>
+				<button
+					type="button"
+					className="pkstudio-row-menu"
+					aria-label={strings.projectMenuLabel}
+					onClick={(e) => handleContextMenu(e, 'project', project)}
+				>
+					<MoreHorizontal aria-hidden />
+				</button>
 			</div>
 
-			{/* Conversations — single level of indent (16px) anchored by a
-			    1px guide line dropping from beneath the folder icon. This
-			    replaces the previous ml-7 outer + ml-7 inner stacking that
-			    pushed conversation rows ~56px in from the panel edge. */}
+			{/* Conversations */}
 			<div className={cn(
 				'pktw-flex pktw-flex-col pktw-gap-px pktw-overflow-hidden pktw-transition-all pktw-duration-150 pktw-ease-in-out',
 				'pkproj-children',
@@ -259,41 +339,20 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 					? 'pktw-max-h-[5000px] pktw-opacity-100 pktw-mt-0.5 pointer-events-auto'
 					: 'pktw-max-h-0 pktw-opacity-0 pktw-mt-0 pointer-events-none'
 			)}>
-				{/* New conversation button */}
-				<div
-					className="pktw-w-full pktw-px-2 pktw-py-1.5 pktw-rounded pktw-text-[13px] pktw-min-h-7 pktw-mb-0.5 pktw-bg-transparent pktw-text-muted-foreground hover:pktw-bg-muted hover:pktw-text-foreground pktw-transition-colors pktw-cursor-pointer pktw-flex pktw-items-center"
-					onClick={(e) => {
-						e.stopPropagation();
-						handleNewConversation();
-					}}
-					role="button"
-					tabIndex={0}
-					onKeyDown={(e) => {
-						if (e.key === 'Enter' || e.key === ' ') {
-							e.preventDefault();
-							e.stopPropagation();
-							handleNewConversation();
-						}
-					}}
-				>
-					+ New conversation
-				</div>
-
-				{/* Render conversations — no extra wrapper indent; the
-				    .pkproj-children left padding + guide handles nesting. */}
 				<ConversationList
 					conversations={conversationsToShow}
 					activeConversation={activeConversation}
 					typewriterEnabled={typewriterEnabled}
-					onConversationClick={(conv) => {
-						handleConversationClick(conv);
-					}}
+					onConversationClick={handleConversationClick}
 					onContextMenu={(e, conv) => {
 						e.stopPropagation();
 						handleContextMenu(e, 'conversation', conv);
 					}}
+					onDragStart={(e, conv) => {
+						e.dataTransfer.setData('application/x-peak-conversation-id', conv.meta.id);
+						e.dataTransfer.effectAllowed = 'move';
+					}}
 					onTypewriterComplete={(conversationId) => onTypewriterComplete(conversationId)}
-					showIndicator={true}
 				/>
 
 				{hasMoreConversations && (
@@ -301,17 +360,15 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 						className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-my-1 pktw-rounded-md pktw-text-muted-foreground pktw-text-xs pktw-transition-all pktw-cursor-pointer hover:pktw-bg-muted hover:pktw-text-foreground"
 						onClick={(e) => {
 							e.stopPropagation();
-							// Show all conversations for this project in list view
 							void chatNavigation.openProjectConversationsListInChat(project);
 						}}
 					>
 						<MoreHorizontal className="pktw-w-3.5 pktw-h-3.5" />
-						<span className="pktw-flex-1">See more</span>
+						<span className="pktw-flex-1">{strings.seeMoreLabel}</span>
 					</div>
 				)}
 			</div>
 
-			{/* Input Modal */}
 			{inputModalConfig && (
 				<InputModal
 					open={inputModalOpen}
@@ -329,25 +386,19 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 };
 
 interface ProjectsSectionProps {
-	/** Optional case-insensitive filter applied to project name. */
 	query?: string;
+	onMenuAction?: () => void;
 }
 
-/**
- * Projects section component
- */
-export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ query = '' }) => {
+export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ query = '', onMenuAction }) => {
+	const strings = useChatStudioLeftStrings();
 	const { manager, eventBus } = useServiceContext();
 	const chatNavigation = useChatNavigation();
 	const {
 		projects,
 		expandedProjects,
-		isProjectsCollapsed,
-		toggleProjectsCollapsed,
 	} = useChatDataStore();
-	const [projectConversations, setProjectConversations] = useState<
-		Map<string, ChatConversation[]>
-	>(new Map());
+	const [projectConversations, setProjectConversations] = useState<Map<string, ChatConversation[]>>(new Map());
 	const [typewriterEnabled, setTypewriterEnabled] = useState<Map<string, boolean>>(new Map());
 	const [inputModalOpen, setInputModalOpen] = useState(false);
 	const [inputModalConfig, setInputModalConfig] = useState<{
@@ -359,7 +410,6 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ query = '' }) 
 		submitButtonText?: string;
 	} | null>(null);
 
-	// Load conversations for a project
 	const loadProjectConversations = useCallback(
 		async (project: ChatProject) => {
 			const conversations = await manager.conv.listConversations(project.meta.id);
@@ -373,43 +423,32 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ query = '' }) 
 				next.set(project.meta.id, conversations);
 				return next;
 			});
-			// Sync conversations to store so they can be found by ID
-			// Use getState() to get latest conversations without causing dependency loop
-			const { conversations: currentConversations, setConversations: updateConversations } = useChatDataStore.getState();
+			const { conversations: currentConversations, setConversations } = useChatDataStore.getState();
 			const allConversations = new Map(currentConversations);
-			conversations.forEach(conv => {
-				allConversations.set(conv.meta.id, conv);
-			});
-			updateConversations(Array.from(allConversations.values()));
+			conversations.forEach((conv) => allConversations.set(conv.meta.id, conv));
+			setConversations(Array.from(allConversations.values()));
 			return conversations;
 		},
 		[manager]
 	);
 
-	// Load conversations when project is expanded
 	useEffect(() => {
 		expandedProjects.forEach((projectId) => {
 			const project = projects.get(projectId);
-			if (project) {
-				// Always reload to get latest data (handles external updates)
-				loadProjectConversations(project);
-			}
+			if (project) void loadProjectConversations(project);
 		});
 	}, [expandedProjects, projects, loadProjectConversations]);
 
-	// Listen for conversation updates and reload project conversations if needed
 	useEffect(() => {
 		const unsubscribeUpdated = eventBus.on<ConversationUpdatedEvent>(
 			ViewEventType.CONVERSATION_UPDATED,
 			async (event) => {
 				const conversation = event.conversation;
-				// Enable typewriter effect for this conversation
-				setTypewriterEnabled(prev => {
+				setTypewriterEnabled((prev) => {
 					const next = new Map(prev);
 					next.set(conversation.meta.id, true);
 					return next;
 				});
-				// If conversation belongs to a project and that project is expanded, reload its conversations
 				if (conversation.meta.projectId) {
 					const project = projects.get(conversation.meta.projectId);
 					if (project && expandedProjects.has(conversation.meta.projectId)) {
@@ -422,8 +461,7 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ query = '' }) 
 		const unsubscribeCreated = eventBus.on<ConversationCreatedEvent>(
 			ViewEventType.CONVERSATION_CREATED,
 			(event) => {
-				// Enable typewriter effect for new conversation
-				setTypewriterEnabled(prev => {
+				setTypewriterEnabled((prev) => {
 					const next = new Map(prev);
 					next.set(event.conversationId, true);
 					return next;
@@ -438,7 +476,7 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ query = '' }) 
 	}, [eventBus, projects, expandedProjects, loadProjectConversations]);
 
 	const handleTypewriterComplete = useCallback((conversationId: string) => {
-		setTypewriterEnabled(prev => {
+		setTypewriterEnabled((prev) => {
 			const next = new Map(prev);
 			next.delete(conversationId);
 			return next;
@@ -447,10 +485,10 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ query = '' }) 
 
 	const handleDeleteConversation = useCallback((conversation: ChatConversation) => {
 		if (conversation.meta.projectId) {
-			setProjectConversations(prev => {
+			setProjectConversations((prev) => {
 				const next = new Map(prev);
 				const projConvs = next.get(conversation.meta.projectId!) || [];
-				next.set(conversation.meta.projectId!, projConvs.filter(c => c.meta.id !== conversation.meta.id));
+				next.set(conversation.meta.projectId!, projConvs.filter((c) => c.meta.id !== conversation.meta.id));
 				return next;
 			});
 		}
@@ -458,10 +496,10 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ query = '' }) 
 
 	const handleCreateProject = () => {
 		setInputModalConfig({
-			message: 'Create Project',
-			placeholderText: 'Project name',
-			hintText: 'Projects keep chats, files, and custom instructions in one place. Use them for ongoing work, or just to keep things tidy.',
-			submitButtonText: 'Create project',
+			message: strings.createProjectTitle,
+			placeholderText: strings.projectNamePlaceholder,
+			hintText: strings.createProjectHint,
+			submitButtonText: strings.createProjectSubmit,
 			onSubmit: async (name: string | null) => {
 				if (!name || !name.trim()) return;
 				await manager.proj.createProject({ name: name.trim() });
@@ -471,7 +509,7 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ query = '' }) 
 		setInputModalOpen(true);
 	};
 
-	const { projectsToShow, hasMoreProjects } = useMemo(() => {
+	const { projectsToShow, hasMoreProjects, totalProjects } = useMemo(() => {
 		const q = query.trim().toLowerCase();
 		const list = Array.from(projects.values())
 			.filter((p) => !q || (p.meta.name || '').toLowerCase().includes(q))
@@ -483,44 +521,32 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ query = '' }) 
 		return {
 			projectsToShow: list.slice(0, MAX_PROJECTS_DISPLAY),
 			hasMoreProjects: list.length > MAX_PROJECTS_DISPLAY,
+			totalProjects: list.length,
 		};
 	}, [projects, query]);
 
 	return (
-		<div className="pktw-flex pktw-flex-col">
-			{/* Header */}
-			<div
-				className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-2 pktw-cursor-pointer pktw-rounded pktw-transition-all hover:pktw-bg-muted hover:pktw-shadow-sm pktw-group"
-				onClick={() => toggleProjectsCollapsed()}
-			>
-				<div className="pktw-flex pktw-items-center pktw-gap-2">
-					{isProjectsCollapsed ? (
-						<ChevronRight className="pktw-w-3 pktw-h-3 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
-					) : (
-						<ChevronDown className="pktw-w-3 pktw-h-3 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-foreground pktw-transition-colors" />
-					)}
-					<h3 className="pktw-flex-1 pktw-m-0 pktw-text-[11px] pktw-font-semibold pktw-text-muted-foreground pktw-uppercase pktw-tracking-wider">Projects</h3>
-				</div>
+		<div className="pkstudio-nav-section">
+			{/* Section header (mock `.section-label`) — label + count, no section-
+			    level chevron/collapse (mock has none; per-project chevrons only).
+			    The New-project affordance is hover-revealed to the right. */}
+			<div className="pkstudio-section-label pktw-group">
+				<span className="pkstudio-section-label__lead">{strings.projectsHeader}</span>
+				<span className="pkstudio-section-label__count">{totalProjects}</span>
 				<IconButton
-					size="lg"
-					className="pktw-shrink-0 pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity"
+					size="md"
+					className="pkstudio-section-label__add pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity"
 					onClick={(e) => {
 						e.stopPropagation();
 						handleCreateProject();
 					}}
-					title="New Project"
+					title={strings.newProjectLabel}
 				>
 					<Plus className="pktw-text-foreground" />
 				</IconButton>
 			</div>
 
-			{/* Projects List */}
-			<div className={cn(
-				'pktw-flex pktw-flex-col pktw-gap-px pktw-overflow-hidden pktw-transition-all pktw-duration-150 pktw-ease-in-out',
-				isProjectsCollapsed
-					? 'pktw-max-h-0 pktw-opacity-0'
-					: 'pktw-max-h-[5000px] pktw-opacity-100'
-			)}>
+			<div className="pktw-flex pktw-flex-col pktw-gap-px">
 				{projectsToShow.map((project) => (
 					<ProjectItem
 						key={project.meta.id}
@@ -530,23 +556,23 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ query = '' }) 
 						typewriterEnabled={typewriterEnabled}
 						onTypewriterComplete={handleTypewriterComplete}
 						onDeleteConversation={handleDeleteConversation}
+						onMenuAction={onMenuAction}
 					/>
 				))}
 
 				{hasMoreProjects && (
 					<div
-						className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-2 pktw-my-1 pktw-rounded-md pktw-text-muted-foreground pktw-text-[13px] pktw-transition-all pktw-cursor-pointer hover:pktw-bg-muted hover:pktw-text-foreground"
+						className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-2 pktw-my-1 pktw-rounded-md pktw-text-muted-foreground pktw-text-pk-md pktw-transition-all pktw-cursor-pointer hover:pktw-bg-muted hover:pktw-text-foreground"
 						onClick={() => {
 							void chatNavigation.openAllProjectsInChat();
 						}}
 					>
 						<MoreHorizontal className="pktw-w-4 pktw-h-4" />
-						<span className="pktw-flex-1">See more</span>
+						<span className="pktw-flex-1">{strings.seeMoreLabel}</span>
 					</div>
 				)}
 			</div>
 
-			{/* Modal */}
 			{inputModalConfig && (
 				<InputModal
 					open={inputModalOpen}

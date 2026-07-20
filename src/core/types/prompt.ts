@@ -142,6 +142,8 @@ export enum PromptId {
 	ChatTopicAggregation = 'chat-topic-aggregation',
 	ChatSuggestFollowups = 'chat-suggest-followups',
 	ChatSuggestActions = 'chat-suggest-actions',
+	ChatAssistantDraft = 'chat-assistant-draft',
+	ProjectDescriptionDraft = 'project-description-draft',
 
 	// Ambient context / session intelligence
 	WorkingThemeInference = 'working-theme-inference',
@@ -622,6 +624,15 @@ export interface PromptVariables {
 	};
 	[PromptId.ChatSuggestActions]: {
 		messages: string;
+	};
+	[PromptId.ChatAssistantDraft]: {
+		userPrompt: string;
+	};
+	[PromptId.ProjectDescriptionDraft]: {
+		projectName: string;
+		generatedSummary: string;
+		conversationTitles: string;
+		currentDescription: string;
 	};
 
 	// Ambient context / session intelligence

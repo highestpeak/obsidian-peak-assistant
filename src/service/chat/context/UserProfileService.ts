@@ -38,7 +38,18 @@ export class UserProfileService {
 		}
 		const file = getFileRef(this.contextFilePath, this.app);
 		if (!file) {
-			await this.app.vault.create(this.contextFilePath, '# User Profile\n\n');
+			try {
+				await this.app.vault.create(this.contextFilePath, '# User Profile\n\n');
+			} catch (error) {
+				// During an Obsidian multi-window/full reload, the adapter can already
+				// see the file on disk before the Vault path cache exposes it here.
+				// Treat the resulting create race as success; initialization only needs
+				// the canonical file to exist and must remain idempotent across windows.
+				const message = error instanceof Error ? error.message : String(error);
+				if (/already exists?/i.test(message)) return;
+				if (getFileRef(this.contextFilePath, this.app)) return;
+				throw error;
+			}
 		}
 	}
 

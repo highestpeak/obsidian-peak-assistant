@@ -90,10 +90,10 @@ export function scoreLabel(score: number): 'Excellent' | 'Good' | 'Needs Attenti
 	return 'Critical';
 }
 
-/** Map a score to a Tailwind color class (green/blue/amber/red). */
+/** Map a score to a semantic color class (success/info/warning/error — dark-adaptive). */
 export function scoreColorClass(score: number): string {
-	if (score >= 90) return 'pktw-text-green-500';
-	if (score >= 70) return 'pktw-text-blue-500';
-	if (score >= 50) return 'pktw-text-amber-500';
-	return 'pktw-text-red-500';
+	if (score >= 90) return 'pktw-text-pk-success';
+	if (score >= 70) return 'pktw-text-pk-info';
+	if (score >= 50) return 'pktw-text-pk-warning';
+	return 'pktw-text-pk-error';
 }

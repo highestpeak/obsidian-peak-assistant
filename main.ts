@@ -424,6 +424,23 @@ export default class MyPlugin extends Plugin {
 				},
 			});
 		}
+		// Visual QA fixture for the production Chat Studio renderer. This command
+		// deliberately sits outside the surface-open gateway: invoking it writes
+		// one clearly marked, replaceable QA conversation and its receipts before
+		// opening the Studio. The action only rebuilds records carrying its exact
+		// custom fixture marker, so user conversations are never deleted.
+		this.addCommand({
+			id: 'peak-chat-studio-component-gallery',
+			name: 'Chat Studio: Rebuild Component Gallery',
+			callback: () => {
+				void (async () => {
+					const { openChatStudioComponentGallery } = await import(
+						'@/app/commands/ChatStudioGalleryActions'
+					);
+					await openChatStudioComponentGallery();
+				})();
+			},
+		});
 		// Hub Curation commands. Not routed through CommandGateway because they
 		// are low-frequency background actions with independent runtime deps.
 		// See docs/superpowers/specs/2026-07-03-hub-generation-agent.md §Component 9.
@@ -900,6 +917,28 @@ export default class MyPlugin extends Plugin {
 
 		this.searchClient = new SearchClient(this.app, this.aiServiceManager, this.settings.search);
 		await this.searchClient.init();
+
+		// chat-studio RUN-01: wire real Vault retrieval into the chat tool
+		// layer. App-owned adapter over SearchClient; while unwired the
+		// Composer Vault Search switch renders unavailable.
+		const searchClientRef = this.searchClient;
+		this.aiServiceManager.conv.setVaultRetrievalPort({
+			search: async (query, opts) => {
+				const response = await searchClientRef.search({
+					text: query,
+					scopeMode: opts?.scopeFolder ? 'inFolder' : 'all',
+					scopeValue: opts?.scopeFolder ? { folderPath: opts.scopeFolder } : undefined,
+					topK: opts?.topK,
+					searchMode: 'hybrid',
+				});
+				return response.items.map((item) => ({
+					id: item.id,
+					path: item.path,
+					title: item.title,
+					snippet: item.highlight?.text ?? item.content?.slice(0, 300),
+				}));
+			},
+		});
 
 		// T10 / T13-followup (2026-07-02): construct the cascade worker
 		// BEFORE the search update listener so the listener can hold a

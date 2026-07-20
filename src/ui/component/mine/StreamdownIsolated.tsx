@@ -6,12 +6,16 @@ import {
 	Streamdown,
 	defaultRehypePlugins,
 	defaultRemarkPlugins,
+	type Components,
 } from 'streamdown';
 import type { PluggableList } from 'unified';
 import type { WikilinkPort } from '@/core/ports/WikilinkPort';
 import type { VaultNavigationPort } from '@/core/ports/VaultNavigationPort';
 import type { ChatVaultWriterPort } from '@/core/ports/ChatVaultWriterPort';
+import { SettingsUpdatedEvent, ViewEventType } from '@/core/eventBus';
+import { normalizeCodeBlockTheme, type CodeBlockThemeId } from '@/core/config/settingsTypes';
 import { useServiceContext } from '@/ui/context/ServiceContext';
+import { portalHostForDocument } from '@/ui/react/ReactRenderer';
 import { STREAMDOWN_ISOLATED_CSS } from '@/styles/streamdown-isolated-css';
 import { remarkWikilink } from './streamdown';
 import { getAIBasesFolder } from '@/core/config/folderPaths';
@@ -25,6 +29,16 @@ import {
 import { mermaid } from "@streamdown/mermaid";
 import { cjk } from "@streamdown/cjk";
 import { code } from "@streamdown/code";
+import { RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { Button } from '@/ui/components/primitives';
+import { useChatStudioStrings } from '@/ui/view/chat-view/chatStudioStringsContext';
+import {
+	MERMAID_INITIAL_VIEWPORT,
+	MERMAID_SCALE_STEP,
+	panMermaidViewport,
+	type MermaidViewport,
+	zoomMermaidViewport,
+} from './mermaidViewport';
 
 // import { math } from "@streamdown/math";
 import { createMathPlugin } from '@streamdown/math';
@@ -44,6 +58,22 @@ const MERMAID_FULLSCREEN_PORTAL_CLASS = 'peak-mermaid-fullscreen-portal';
 export const MERMAID_PART = 'mermaid-container';
 
 const MERMAID_BLOCK_SELECTOR = '[data-streamdown="mermaid-block"]';
+
+const ReadableTableCell: React.FC<React.ComponentPropsWithoutRef<'td'> & { node?: unknown }> = ({
+	node: _node,
+	style,
+	...props
+}) => (
+	<td
+		{...props}
+		data-streamdown="table-cell"
+		style={{ ...style, minWidth: '220px' }}
+	/>
+);
+
+const STREAMDOWN_COMPONENTS: Components = {
+	td: ReadableTableCell,
+};
 
 /** Set part attribute on all mermaid blocks in shadow so host can style via ::part(mermaid-container). */
 function injectMermaidPart(shadowRoot: ShadowRoot): void {
@@ -166,8 +196,16 @@ function injectBasesButton(block: HTMLElement, deps: BasesInjectionDeps): void {
 	btn.setAttribute('data-peak-bases-save', '1');
 	btn.title = 'Save this YAML to a new .base file and open it in Obsidian';
 	// Inline styles so both shadow-scoped and fallback (light-DOM) paths
-	// look consistent without leaking Obsidian button chrome. The palette
-	// mirrors the streamdown copy/download button hover states.
+	// look consistent without leaking Obsidian button chrome.
+	//
+	// Use `--pk-*` tokens, NOT shadcn `hsl(var(--border/--background/--foreground))`:
+	// the shadcn HSL triplets are defined only on the shadow `:host`, so on the
+	// FallbackStreamdown (light-DOM) path they resolve to nothing and the button
+	// loses its border/background/text colour. `--pk-*` tokens resolve in BOTH
+	// contexts — they cascade from the `.pktw-root` view ancestor into the
+	// shadow tree (custom properties inherit across the shadow boundary) and are
+	// present directly on the light-DOM root. Obsidian globals are the last-ditch
+	// fallback so the button is never invisible.
 	btn.style.cssText = [
 		'position:absolute',
 		'top:8px',
@@ -177,9 +215,9 @@ function injectBasesButton(block: HTMLElement, deps: BasesInjectionDeps): void {
 		'font-size:11px',
 		'font-weight:600',
 		'border-radius:6px',
-		'border:1px solid hsl(var(--border))',
-		'background-color:hsl(var(--background))',
-		'color:hsl(var(--foreground))',
+		'border:1px solid var(--pk-border, var(--background-modifier-border))',
+		'background-color:var(--pk-surface, var(--background-primary))',
+		'color:var(--pk-text-primary, var(--text-normal))',
 		'cursor:pointer',
 		'box-shadow:0 1px 2px rgba(0,0,0,0.06)',
 	].join(';');
@@ -212,6 +250,37 @@ function setupBasesButtons(root: ShadowRoot | HTMLElement, deps: BasesInjectionD
 	return () => observer.disconnect();
 }
 
+/**
+ * Streamdown renders safety-checked links as buttons. Obsidian's inherited
+ * button chrome can collapse a long URL into a nearly one-character column,
+ * so normalize only links that actually live inside table receipts. Inline
+ * layout properties are intentional here: this must work in both the isolated
+ * shadow root and the light-DOM fallback regardless of host theme selectors.
+ */
+function normalizeTableLinks(root: ShadowRoot | HTMLElement): void {
+	root.querySelectorAll<HTMLElement>('[data-streamdown="link"]').forEach((link) => {
+		const cell = link.closest<HTMLElement>('td');
+		if (!cell) return;
+		link.style.setProperty('display', 'inline-block', 'important');
+		link.style.setProperty('width', 'auto', 'important');
+		link.style.setProperty('max-width', '100%', 'important');
+		link.style.setProperty('height', 'auto', 'important');
+		link.style.setProperty('overflow', 'hidden', 'important');
+		link.style.setProperty('text-overflow', 'ellipsis', 'important');
+		link.style.setProperty('white-space', 'nowrap', 'important');
+		link.style.setProperty('word-break', 'normal', 'important');
+		if (!link.title) link.title = link.textContent?.trim() ?? '';
+		cell.style.setProperty('min-width', '220px', 'important');
+	});
+}
+
+function setupReadableTableLinks(root: ShadowRoot | HTMLElement): () => void {
+	normalizeTableLinks(root);
+	const observer = new MutationObserver(() => normalizeTableLinks(root));
+	observer.observe(root, { childList: true, subtree: true });
+	return () => observer.disconnect();
+}
+
 /** Min length for STREAMDOWN_ISOLATED_CSS to be considered complete (host + streamdown Tailwind + KaTeX). */
 const MIN_ISOLATED_CSS_LENGTH = 5000;
 
@@ -224,13 +293,42 @@ const linkSafety = {
 		url.startsWith('#block-'),
 };
 
-/** Move Mermaid fullscreen overlay from shadow to body so it covers viewport. */
+/**
+ * Per-`Document` styled host for the relocated Mermaid fullscreen overlay.
+ * Lives inside `portalHostForDocument(doc)` (a `.pktw-root .peak-design-root`
+ * scope in the CORRECT window) and carries `data-streamdown-root` so the global
+ * streamdown Tailwind utilities (`.fixed`, `.inset-0`, `.bg-background/95`, the
+ * control buttons…) re-activate on the overlay once it is moved out of the
+ * shadow. The `.peak-mermaid-fullscreen-portal` class (peak-components.css)
+ * redefines the shadcn HSL vars from `--pk-*` tokens so `hsl(var(--background))`
+ * & friends resolve outside the shadow `:host`. One host per Document, reused.
+ */
+function mermaidFullscreenHost(doc: Document): HTMLElement {
+	const portalHost = portalHostForDocument(doc);
+	const existing = portalHost.querySelector<HTMLElement>(`:scope > .${MERMAID_FULLSCREEN_PORTAL_CLASS}`);
+	if (existing && existing.isConnected) return existing;
+	const wrap = doc.createElement('div');
+	wrap.className = MERMAID_FULLSCREEN_PORTAL_CLASS;
+	wrap.setAttribute('data-streamdown-root', '');
+	portalHost.appendChild(wrap);
+	return wrap;
+}
+
+/**
+ * Move the Mermaid fullscreen overlay out of the shadow so `position: fixed`
+ * escapes transformed chat-row ancestors and covers the viewport. The OLD
+ * target was the bare `document.body`, which (1) sits outside any
+ * `[data-streamdown-root]` scope so the overlay's Tailwind + shadcn HSL vars
+ * (defined on the shadow `:host`) stop resolving — leaving it transparent /
+ * unstyled — and (2) is the WRONG window's body in a detached popout. We now
+ * relocate into the scoped, correct-window `mermaidFullscreenHost(doc)` wrapper.
+ */
 function setupMermaidFullscreenEscape(shadowRoot: ShadowRoot): () => void {
+	const doc = shadowRoot.host.ownerDocument;
 	const observer = new MutationObserver(() => {
 		const fullscreen = shadowRoot.querySelector('.fixed.inset-0');
 		if (fullscreen && fullscreen.parentNode === shadowRoot) {
-			fullscreen.classList.add(MERMAID_FULLSCREEN_PORTAL_CLASS);
-			document.body.appendChild(fullscreen);
+			mermaidFullscreenHost(doc).appendChild(fullscreen);
 		}
 	});
 	observer.observe(shadowRoot, { childList: true, subtree: true });
@@ -245,20 +343,50 @@ export type StreamdownIsolatedProps = {
 	onClick?: React.MouseEventHandler<HTMLDivElement>;
 };
 
+type FallbackStreamdownProps = StreamdownIsolatedProps & {
+	codeBlockTheme: CodeBlockThemeId;
+};
+
+function codeBlockThemePair(theme: CodeBlockThemeId): [CodeBlockThemeId, CodeBlockThemeId] {
+	return [theme, theme];
+}
+
+/** Keep already-mounted message renderers in sync with Settings changes. */
+function useLiveCodeBlockTheme(): CodeBlockThemeId {
+	const { eventBus, settings } = useServiceContext();
+	const [theme, setTheme] = useState(() => normalizeCodeBlockTheme(settings.codeBlockTheme));
+
+	useEffect(() => {
+		setTheme(normalizeCodeBlockTheme(settings.codeBlockTheme));
+	}, [settings.codeBlockTheme]);
+
+	useEffect(() => eventBus.on<SettingsUpdatedEvent>(ViewEventType.SETTINGS_UPDATED, (event) => {
+		setTheme(normalizeCodeBlockTheme(event.settings.codeBlockTheme));
+	}), [eventBus]);
+
+	return theme;
+}
+
 /** Fallback: render Streamdown in Light DOM when Shadow is unavailable. */
 function FallbackStreamdown({
 	children,
 	isAnimating,
 	className,
 	onClick,
-}: StreamdownIsolatedProps) {
+	codeBlockTheme,
+}: FallbackStreamdownProps) {
 	const { wikilink, vaultNavigation, chatVaultWriter, settings } = useServiceContext();
 	const rootFolder = settings.ai.rootFolder;
 	const fallbackRootRef = useRef<HTMLDivElement | null>(null);
 	useEffect(() => {
 		const root = fallbackRootRef.current;
 		if (!root) return;
-		return setupBasesButtons(root, { rootFolder, chatVaultWriter, vaultNavigation });
+		const cleanupBases = setupBasesButtons(root, { rootFolder, chatVaultWriter, vaultNavigation });
+		const cleanupTableLinks = setupReadableTableLinks(root);
+		return () => {
+			cleanupBases();
+			cleanupTableLinks();
+		};
 	}, [rootFolder, chatVaultWriter, vaultNavigation]);
 	const handleClickCapture = React.useCallback(
 		(evt: React.MouseEvent<HTMLDivElement>) => {
@@ -278,6 +406,7 @@ function FallbackStreamdown({
 			onClickCapture={handleClickCapture}
 		>
 			<Streamdown
+				components={STREAMDOWN_COMPONENTS}
 				isAnimating={isAnimating}
 				rehypePlugins={rehypePlugins}
 				remarkPlugins={remarkPlugins}
@@ -287,7 +416,7 @@ function FallbackStreamdown({
 					cjk: cjk,
 					code: code
 				}}
-				shikiTheme={["one-dark-pro", "one-dark-pro"]}
+				shikiTheme={codeBlockThemePair(codeBlockTheme)}
 				controls={{
 					table: true,
 					code: true,
@@ -314,15 +443,281 @@ const HOVER_DEBOUNCE_MS = 180;
 const HOVER_CLOSE_DELAY_MS = 100;
 
 type HoverState = { path: string; rect: DOMRect; preview: PreviewResult | null; loading: boolean };
+type MermaidFullscreenState = { svg: string; label: string; ownerDocument: Document };
+const MERMAID_KEYBOARD_PAN_STEP = 40;
+
+const MERMAID_FULLSCREEN_BOUND_FLAG = 'peakMermaidFullscreenBound';
+
+function findMermaidDiagramSvg(block: HTMLElement | null): SVGSVGElement | undefined {
+	if (!block) return undefined;
+	return Array.from(block.querySelectorAll<SVGSVGElement>('[data-streamdown="mermaid"] svg'))
+		.find((candidate) => !candidate.closest('button'));
+}
+
+function setupMermaidFullscreenButtons(
+	root: ShadowRoot | HTMLElement,
+	ownerDocument: Document,
+	open: (state: MermaidFullscreenState) => void,
+): () => void {
+	const listeners = new Map<HTMLButtonElement, EventListener>();
+	const bindButtons = () => {
+		root.querySelectorAll<HTMLElement>('[data-streamdown="mermaid-block-actions"]').forEach((actions) => {
+			const buttons = actions.querySelectorAll<HTMLButtonElement>('button');
+			const button = buttons.item(buttons.length - 1);
+			if (!button || button.dataset[MERMAID_FULLSCREEN_BOUND_FLAG]) return;
+			button.dataset[MERMAID_FULLSCREEN_BOUND_FLAG] = 'true';
+			const listener: EventListener = (rawEvent) => {
+				const event = rawEvent as MouseEvent;
+				const block = button.closest<HTMLElement>(MERMAID_BLOCK_SELECTOR);
+				const svg = findMermaidDiagramSvg(block);
+				const label = button.getAttribute('aria-label')?.trim()
+					|| button.getAttribute('title')?.trim();
+				if (!svg || !label) return;
+				event.preventDefault();
+				event.stopImmediatePropagation();
+				open({ svg: svg.outerHTML, label, ownerDocument });
+			};
+			button.addEventListener('click', listener, true);
+			listeners.set(button, listener);
+		});
+	};
+	bindButtons();
+	const observer = new MutationObserver(bindButtons);
+	observer.observe(root, { childList: true, subtree: true });
+	return () => {
+		observer.disconnect();
+		for (const [button, listener] of listeners) {
+			button.removeEventListener('click', listener, true);
+			delete button.dataset[MERMAID_FULLSCREEN_BOUND_FLAG];
+		}
+	};
+}
+
+function fullscreenMermaidFromEvent(
+	event: MouseEvent,
+	path: EventTarget[],
+	ownerDocument: Document,
+	open: (state: MermaidFullscreenState) => void,
+): boolean {
+	const button = path.find((node): node is HTMLButtonElement => {
+		if (!node || typeof node !== 'object') return false;
+		return (node as Element).nodeType === 1 && (node as Element).tagName === 'BUTTON';
+	});
+	if (!button) return false;
+	const actions = button.closest<HTMLElement>('[data-streamdown="mermaid-block-actions"]');
+	if (!actions || actions.querySelector('button:last-of-type') !== button) return false;
+	const block = button.closest<HTMLElement>(MERMAID_BLOCK_SELECTOR);
+	const svg = findMermaidDiagramSvg(block ?? null);
+	// Streamdown currently exposes the control name through aria-label rather
+	// than title. Keep title as a compatibility fallback for older releases.
+	const label = button.getAttribute('aria-label')?.trim()
+		|| button.getAttribute('title')?.trim();
+	if (!svg || !label) return false;
+	event.preventDefault();
+	event.stopImmediatePropagation();
+	open({ svg: svg.outerHTML, label, ownerDocument });
+	return true;
+}
+
+const MermaidFullscreenDialog: React.FC<{
+	state: MermaidFullscreenState;
+	onClose: () => void;
+}> = ({ state, onClose }) => {
+	const strings = useChatStudioStrings().mermaidFullscreen;
+	const [viewport, setViewport] = useState<MermaidViewport>(MERMAID_INITIAL_VIEWPORT);
+	const [dragging, setDragging] = useState(false);
+	const canvasRef = useRef<HTMLDivElement | null>(null);
+	const viewportRef = useRef(viewport);
+	const dragRef = useRef<{
+		pointerId: number;
+		clientX: number;
+		clientY: number;
+		originX: number;
+		originY: number;
+	} | null>(null);
+	viewportRef.current = viewport;
+
+	useEffect(() => {
+		const body = state.ownerDocument.body;
+		const previousOverflow = body.style.overflow;
+		body.style.overflow = 'hidden';
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.key === 'Escape') onClose();
+		};
+		state.ownerDocument.addEventListener('keydown', handleKeyDown);
+		return () => {
+			body.style.overflow = previousOverflow;
+			state.ownerDocument.removeEventListener('keydown', handleKeyDown);
+		};
+	}, [state.ownerDocument, onClose]);
+
+	const zoomTo = useCallback((requestedScale: number, anchor?: { clientX: number; clientY: number }) => {
+		setViewport((current) => {
+			if (!anchor || !canvasRef.current) return zoomMermaidViewport(current, requestedScale);
+			const rect = canvasRef.current.getBoundingClientRect();
+			return zoomMermaidViewport(current, requestedScale, {
+				x: anchor.clientX - rect.left - rect.width / 2,
+				y: anchor.clientY - rect.top - rect.height / 2,
+			});
+		});
+	}, []);
+
+	const resetViewport = useCallback(() => {
+		setViewport(MERMAID_INITIAL_VIEWPORT);
+	}, []);
+
+	const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+		if (event.button !== 0) return;
+		event.preventDefault();
+		event.currentTarget.setPointerCapture(event.pointerId);
+		dragRef.current = {
+			pointerId: event.pointerId,
+			clientX: event.clientX,
+			clientY: event.clientY,
+			originX: viewportRef.current.x,
+			originY: viewportRef.current.y,
+		};
+		setDragging(true);
+	};
+
+	const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+		const drag = dragRef.current;
+		if (!drag || drag.pointerId !== event.pointerId) return;
+		setViewport((current) => panMermaidViewport(
+			{ ...current, x: drag.originX, y: drag.originY },
+			event.clientX - drag.clientX,
+			event.clientY - drag.clientY,
+		));
+	};
+
+	const finishPointerDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+		if (dragRef.current?.pointerId !== event.pointerId) return;
+		if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+			event.currentTarget.releasePointerCapture(event.pointerId);
+		}
+		dragRef.current = null;
+		setDragging(false);
+	};
+
+	const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+		event.preventDefault();
+		const factor = Math.exp(-event.deltaY * 0.0015);
+		zoomTo(viewportRef.current.scale * factor, {
+			clientX: event.clientX,
+			clientY: event.clientY,
+		});
+	};
+
+	const handleCanvasKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+		if (event.key === '+' || event.key === '=') zoomTo(viewportRef.current.scale + MERMAID_SCALE_STEP);
+		else if (event.key === '-') zoomTo(viewportRef.current.scale - MERMAID_SCALE_STEP);
+		else if (event.key === '0') resetViewport();
+		else if (event.key === 'ArrowLeft') setViewport((current) => panMermaidViewport(current, -MERMAID_KEYBOARD_PAN_STEP, 0));
+		else if (event.key === 'ArrowRight') setViewport((current) => panMermaidViewport(current, MERMAID_KEYBOARD_PAN_STEP, 0));
+		else if (event.key === 'ArrowUp') setViewport((current) => panMermaidViewport(current, 0, -MERMAID_KEYBOARD_PAN_STEP));
+		else if (event.key === 'ArrowDown') setViewport((current) => panMermaidViewport(current, 0, MERMAID_KEYBOARD_PAN_STEP));
+		else return;
+		event.preventDefault();
+	};
+
+	return (
+		<div
+			className="pkchat-mermaid-fullscreen"
+			role="dialog"
+			aria-modal="true"
+			aria-label={state.label}
+			onClick={onClose}
+		>
+			<div
+				className="pkchat-mermaid-fullscreen__toolbar"
+				onClick={(event) => event.stopPropagation()}
+			>
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon"
+					aria-label={strings.zoomOutLabel}
+					title={strings.zoomOutLabel}
+					onClick={() => zoomTo(viewportRef.current.scale - MERMAID_SCALE_STEP)}
+				>
+					<ZoomOut />
+				</Button>
+				<span className="pkchat-mermaid-fullscreen__scale" aria-live="polite">
+					{Math.round(viewport.scale * 100)}%
+				</span>
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon"
+					aria-label={strings.zoomInLabel}
+					title={strings.zoomInLabel}
+					onClick={() => zoomTo(viewportRef.current.scale + MERMAID_SCALE_STEP)}
+				>
+					<ZoomIn />
+				</Button>
+				<span className="pkchat-mermaid-fullscreen__toolbar-separator" />
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon"
+					aria-label={strings.resetLabel}
+					title={strings.resetLabel}
+					onClick={resetViewport}
+				>
+					<RotateCcw />
+				</Button>
+			</div>
+			<Button
+				type="button"
+				variant="ghost"
+				size="icon"
+				className="pkchat-mermaid-fullscreen__close"
+				aria-label={strings.closeLabel}
+				title={strings.closeLabel}
+				onClick={(event) => {
+					event.stopPropagation();
+					onClose();
+				}}
+			>
+				<X />
+			</Button>
+			<div
+				ref={canvasRef}
+				className={`pkchat-mermaid-fullscreen__canvas${dragging ? ' is-dragging' : ''}`}
+				role="group"
+				tabIndex={0}
+				aria-label={strings.canvasLabel}
+				title={strings.hint}
+				onClick={(event) => event.stopPropagation()}
+				onPointerDown={handlePointerDown}
+				onPointerMove={handlePointerMove}
+				onPointerUp={finishPointerDrag}
+				onPointerCancel={finishPointerDrag}
+				onWheel={handleWheel}
+				onKeyDown={handleCanvasKeyDown}
+			>
+				<div
+					className="pkchat-mermaid-fullscreen__content"
+					style={{ transform: `translate3d(${viewport.x}px, ${viewport.y}px, 0) scale(${viewport.scale})` }}
+					dangerouslySetInnerHTML={{ __html: state.svg }}
+				/>
+			</div>
+			<div className="pkchat-mermaid-fullscreen__hint">{strings.hint}</div>
+		</div>
+	);
+};
 
 export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => {
 	const { vaultPreview, wikilink, vaultNavigation, chatVaultWriter, settings } = useServiceContext();
+	const codeBlockTheme = useLiveCodeBlockTheme();
+	const shikiTheme = React.useMemo(() => codeBlockThemePair(codeBlockTheme), [codeBlockTheme]);
 	const basesDeps: BasesInjectionDeps = { rootFolder: settings.ai.rootFolder, chatVaultWriter, vaultNavigation };
 	const { children: rawChildren, isAnimating = false, className, onClick } = props;
 	// Strip inline $...$ (not $$...$$) to prevent KaTeX from rendering product names as math
 	const children = rawChildren.replace(/(?<!\$)\$(?!\$)([^$\n]+?)\$(?!\$)/g, '$1');
 	const [useFallback, setUseFallback] = useState(false);
 	const [hoverState, setHoverState] = useState<HoverState | null>(null);
+	const [mermaidFullscreen, setMermaidFullscreen] = useState<MermaidFullscreenState | null>(null);
 	const hostRef = useRef<HTMLDivElement | null>(null);
 	const rootRef = useRef<Root | null>(null);
 	const cleanupRef = useRef<(() => void) | null>(null);
@@ -381,16 +776,25 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 			const root = createRoot(container);
 			(rootRef as React.MutableRefObject<Root | null>).current = root;
 			const cleanupFullscreen = setupMermaidFullscreenEscape(shadow);
+			const cleanupFullscreenButtons = setupMermaidFullscreenButtons(
+				shadow,
+				host.ownerDocument,
+				setMermaidFullscreen,
+			);
 			const cleanupPart = setupMermaidPartInjection(shadow);
 			const cleanupBases = setupBasesButtons(shadow, basesDeps);
+			const cleanupTableLinks = setupReadableTableLinks(shadow);
 			cleanupRef.current = () => {
 				cleanupFullscreen();
+				cleanupFullscreenButtons();
 				cleanupPart();
 				cleanupBases();
+				cleanupTableLinks();
 			};
 			// Capture-phase listener on shadow root so we see clicks before Streamdown's button handler.
 			const clickHandler = (e: MouseEvent) => {
 				const composedPath = e.composedPath?.() ?? [];
+				if (fullscreenMermaidFromEvent(e, composedPath, host.ownerDocument, setMermaidFullscreen)) return;
 				const linkEl = findLinkInPath(composedPath);
 				if (linkEl && handleWikilinkClick(linkEl, e, wikilink, vaultNavigation)) return;
 				// Delegate to optional onClick prop passed by caller.
@@ -467,6 +871,7 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 		if (root) {
 			root.render(
 				<Streamdown
+					components={STREAMDOWN_COMPONENTS}
 					isAnimating={isAnimating}
 					rehypePlugins={rehypePlugins}
 					remarkPlugins={remarkPlugins}
@@ -476,7 +881,7 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 						cjk: cjk,
 						code: code
 					}}
-					shikiTheme={["one-dark-pro", "one-dark-pro"]}
+					shikiTheme={shikiTheme}
 					controls={{
 						table: true,
 						code: true,
@@ -499,7 +904,7 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 				</Streamdown>
 			);
 		}
-	}, [children, isAnimating, useFallback]);
+	}, [children, isAnimating, shikiTheme, useFallback]);
 
 	// Load wikilink preview when hover target is set (shadow mode only).
 	useEffect(() => {
@@ -525,9 +930,10 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 		if (closeDelayRef.current) clearTimeout(closeDelayRef.current);
 		closeDelayRef.current = null;
 	}, []);
+	const closeMermaidFullscreen = useCallback(() => setMermaidFullscreen(null), []);
 
 	if (useFallback) {
-		return <FallbackStreamdown {...props} />;
+		return <FallbackStreamdown {...props} codeBlockTheme={codeBlockTheme} />;
 	}
 
 	return (
@@ -551,8 +957,16 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 						onClose={handleHoverClose}
 						onEnterCard={handleEnterCard}
 					/>,
-					document.body
+					// Portal into the scoped, correct-window host — NOT the bare
+					// `document.body`. The card's inline `var(--pk-*)` colours only
+					// resolve inside a `.pktw-root .peak-design-root` scope, and the
+					// global `document` would target the MAIN window under a popout.
+					portalHostForDocument(hostRef.current?.ownerDocument ?? document)
 				)}
+			{mermaidFullscreen && createPortal(
+				<MermaidFullscreenDialog state={mermaidFullscreen} onClose={closeMermaidFullscreen} />,
+				portalHostForDocument(mermaidFullscreen.ownerDocument),
+			)}
 		</>
 	);
 };

@@ -9,7 +9,8 @@
     "deleteConversationConfirmTitle": "Delete this conversation?",
     "deleteConversationConfirmBody": "This removes the conversation from your vault and cannot be undone.",
     "deleteConversationConfirmCta": "Delete",
-    "deleteConversationConfirmCancel": "Cancel"
+    "deleteConversationConfirmCancel": "Cancel",
+    "restoreRightLabel": "Show conversation index"
   },
   "composer": {
     "placeholder": "Ask anything…",

@@ -107,7 +107,10 @@ interface OpenHandler {
 	(resource: ChatResourceRef): void | Promise<void>;
 }
 
-export const MessageAttachmentsList: React.FC<{ message: ChatMessage }> = ({ message }) => {
+export const MessageAttachmentsList: React.FC<{
+	message: ChatMessage;
+	align?: 'start' | 'end';
+}> = ({ message, align = 'end' }) => {
 	const { vaultNavigation } = useServiceContext();
 	const resources = message.resources ?? [];
 	const groups = useMemo(() => classify(resources), [resources]);
@@ -126,8 +129,8 @@ export const MessageAttachmentsList: React.FC<{ message: ChatMessage }> = ({ mes
 	return (
 		<div
 			className={cn(
-				// Right-aligned cluster (matches bubble right edge). gap 8.
-				'pktw-flex pktw-flex-col pktw-gap-2 pktw-items-end pktw-w-full pktw-min-w-0 pktw-ml-auto',
+				'pktw-flex pktw-flex-col pktw-gap-2 pktw-w-full pktw-min-w-0',
+				align === 'end' ? 'pktw-items-end pktw-ml-auto' : 'pktw-items-start pktw-mr-auto',
 			)}
 			style={{ maxWidth: 520 }}
 		>
@@ -237,7 +240,7 @@ interface ImageTileProps {
 }
 
 function ImageTile({ image, onOpen, height, fullWidth, overlayText }: ImageTileProps) {
-	const alt = image.source.split('/').pop() || 'image';
+	const alt = image.displayName || image.source.split('/').pop() || 'image';
 	return (
 		<ResourcePreviewHover resource={image} previewClassName="pktw-z-[100]">
 			<button
@@ -251,7 +254,7 @@ function ImageTile({ image, onOpen, height, fullWidth, overlayText }: ImageTileP
 				aria-label={alt}
 			>
 				<img
-					src={image.source}
+					src={image.previewUri || image.source}
 					alt={alt}
 					className="pktw-w-full pktw-h-full pktw-object-cover pktw-block"
 				/>
@@ -310,7 +313,7 @@ interface FileCardProps {
 }
 
 function FileCard({ resource, onOpen, compact }: FileCardProps) {
-	const filename = resource.source.split('/').pop() || resource.source;
+	const filename = resource.displayName || resource.source.split('/').pop() || resource.source;
 	const badge = badgeStyleForKind(resource.kind, resource.source);
 	const badgePx = compact ? 30 : 36;
 	return (
@@ -326,26 +329,22 @@ function FileCard({ resource, onOpen, compact }: FileCardProps) {
 					e.stopPropagation();
 					void onOpen(resource);
 				}}
+				title={resource.source}
 			>
 				<span
-					className="pktw-inline-flex pktw-items-center pktw-justify-center pktw-text-white pktw-font-bold pktw-shrink-0"
+					className="pktw-inline-flex pktw-items-center pktw-justify-center pktw-text-white pktw-font-bold pktw-shrink-0 pktw-tracking-[0.02em] pktw-rounded-lg"
 					style={{
 						width: badgePx,
 						height: badgePx,
 						background: badge.bg,
 						fontSize: compact ? 10 : 11,
-						letterSpacing: '0.02em',
-						borderRadius: 8,
 					}}
 				>
 					{badge.label}
 				</span>
 				<div className="pktw-flex-1 pktw-min-w-0">
-					<div className="pktw-text-[13px] pktw-font-medium pktw-text-foreground pktw-truncate">
+					<div className="pktw-text-pk-md pktw-font-medium pktw-text-foreground pktw-truncate">
 						{filename}
-					</div>
-					<div className="pktw-text-[11px] pktw-text-muted-foreground pktw-truncate">
-						{resource.source}
 					</div>
 				</div>
 			</button>
@@ -359,23 +358,23 @@ interface FileChipProps {
 }
 
 function FileChip({ resource, onOpen }: FileChipProps) {
-	const filename = resource.source.split('/').pop() || resource.source;
+	const filename = resource.displayName || resource.source.split('/').pop() || resource.source;
 	const badge = badgeStyleForKind(resource.kind, resource.source);
 	return (
 		<ResourcePreviewHover resource={resource} previewClassName="pktw-z-[100]">
 			<button
 				type="button"
-				className="pk-attach-chip pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-text-[12px] pktw-text-foreground pktw-cursor-pointer"
+				className="pk-attach-chip pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-text-pk-base pktw-text-foreground pktw-cursor-pointer"
 				style={{ height: 26, maxWidth: 210 }}
 				onClick={(e) => {
 					e.stopPropagation();
 					void onOpen(resource);
 				}}
-				title={filename}
+				title={resource.source}
 			>
 				<span
-					className="pktw-shrink-0"
-					style={{ width: 6, height: 6, borderRadius: 999, background: badge.bg }}
+					className="pktw-shrink-0 pktw-w-1.5 pktw-h-1.5 pktw-rounded-full"
+					style={{ background: badge.bg }}
 				/>
 				<span className="pktw-truncate">{filename}</span>
 			</button>
@@ -498,12 +497,12 @@ function UrlCard({ resource, onOpen }: { resource: ChatResourceRef; onOpen: Open
 					{!thumb && <Globe style={{ width: 28, height: 28 }} />}
 				</span>
 				<div className="pktw-p-3 pktw-min-w-0 pktw-flex-1">
-					<div className="pktw-text-[11px] pktw-text-muted-foreground pktw-flex pktw-items-center pktw-gap-1 pktw-mb-0.5">
+					<div className="pktw-text-pk-sm pktw-text-muted-foreground pktw-flex pktw-items-center pktw-gap-1 pktw-mb-0.5">
 						<Globe className="pktw-w-3 pktw-h-3" />
 						<span className="pktw-truncate">{host}</span>
 					</div>
 					<div
-						className="pktw-text-[13px] pktw-font-medium pktw-text-foreground pktw-mb-0.5"
+						className="pktw-text-pk-md pktw-font-medium pktw-text-foreground pktw-mb-0.5"
 						style={{
 							display: '-webkit-box',
 							WebkitLineClamp: 2,
@@ -513,7 +512,7 @@ function UrlCard({ resource, onOpen }: { resource: ChatResourceRef; onOpen: Open
 					>
 						{title}
 					</div>
-					<div className="pktw-text-[11px] pktw-text-muted-foreground pktw-truncate">
+					<div className="pktw-text-pk-sm pktw-text-muted-foreground pktw-truncate">
 						{resource.source}
 					</div>
 				</div>
@@ -530,7 +529,7 @@ function UrlChip({ resource, onOpen }: { resource: ChatResourceRef; onOpen: Open
 		<ResourcePreviewHover resource={resource} enabled={false} previewClassName="pktw-z-[100]">
 			<button
 				type="button"
-				className="pk-attach-chip pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-text-[12px] pktw-text-foreground pktw-cursor-pointer"
+				className="pk-attach-chip pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-text-pk-base pktw-text-foreground pktw-cursor-pointer"
 				style={{ height: 26, maxWidth: 210 }}
 				onClick={(e) => {
 					e.stopPropagation();
@@ -539,8 +538,8 @@ function UrlChip({ resource, onOpen }: { resource: ChatResourceRef; onOpen: Open
 				title={resource.source}
 			>
 				<span
-					className="pktw-shrink-0"
-					style={{ width: 6, height: 6, borderRadius: 999, background: '#0d9488' }}
+					className="pktw-shrink-0 pktw-w-1.5 pktw-h-1.5 pktw-rounded-full"
+					style={{ background: 'var(--pk-teal)' }}
 				/>
 				<span className="pktw-truncate">{pathDisplay}</span>
 			</button>

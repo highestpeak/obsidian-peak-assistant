@@ -1,5 +1,5 @@
 import { App, Modal } from 'obsidian';
-import { createRoot, Root } from 'react-dom/client';
+import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { useMorningBriefingStore } from '@/ui/store/morningBriefingStore';
 import { AppContext } from '@/app/context/AppContext';
 import { createReactElementWithServices } from '@/app/ui-host/ReactElementFactory';
@@ -12,9 +12,16 @@ import { createReactElementWithServices } from '@/app/ui-host/ReactElementFactor
  * `BriefingCard` consumes `useServiceContext()` for `vaultNavigation`;
  * rendering a raw `<MorningBriefingPanel>` would crash with
  * "useServiceContext must be used within ServiceProvider".
+ *
+ * Rendered through `ReactRenderer` (not a bare `createRoot`) so the subtree is
+ * wrapped in `PortalContainerProvider` — any Radix primitive inside the panel
+ * then portals to the scoped, correct-window host instead of a bare `body`
+ * (where `--pk-*` tokens fail to resolve and popout windows get the wrong
+ * `document`). `ReactRenderer` also stamps `pktw-root` + `peak-design-root` on
+ * the render target, preserving the previous root-class behaviour.
  */
 export class MorningBriefingModal extends Modal {
-	private root: Root | null = null;
+	private reactRenderer: ReactRenderer | null = null;
 
 	constructor(app: App, private readonly appContext: AppContext) {
 		super(app);
@@ -24,7 +31,6 @@ export class MorningBriefingModal extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 		contentEl.addClass('peak-morning-briefing-modal');
-		contentEl.addClass('pktw-root');
 
 		// Set modal width
 		this.modalEl.style.maxWidth = '520px';
@@ -33,8 +39,8 @@ export class MorningBriefingModal extends Modal {
 		// Dynamic import to avoid circular dependencies
 		const { MorningBriefingPanel } = await import('@/ui/view/morning-briefing/MorningBriefingPanel');
 
-		this.root = createRoot(contentEl);
-		this.root.render(
+		this.reactRenderer = new ReactRenderer(contentEl);
+		this.reactRenderer.render(
 			createReactElementWithServices(
 				MorningBriefingPanel,
 				{ onDismiss: () => this.close() },
@@ -44,9 +50,9 @@ export class MorningBriefingModal extends Modal {
 	}
 
 	onClose(): void {
-		if (this.root) {
-			this.root.unmount();
-			this.root = null;
+		if (this.reactRenderer) {
+			this.reactRenderer.unmount();
+			this.reactRenderer = null;
 		}
 		this.contentEl.empty();
 		useMorningBriefingStore.getState().dismiss();

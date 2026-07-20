@@ -18,6 +18,10 @@ import { ChatConversationRepo } from './repositories/ChatConversationRepo';
 import { ChatMessageRepo } from './repositories/ChatMessageRepo';
 import { ChatMessageResourceRepo } from './repositories/ChatMessageResourceRepo';
 import { ChatStarRepo } from './repositories/ChatStarRepo';
+import { ChatAssistantRepo } from './repositories/ChatAssistantRepo';
+import { ChatProjectPlanRepo } from './repositories/ChatProjectPlanRepo';
+import { ChatTurnReceiptRepo } from './repositories/ChatTurnReceiptRepo';
+import { ChatArtifactReceiptRepo } from './repositories/ChatArtifactReceiptRepo';
 import { AIAnalysisRepo } from './repositories/AIAnalysisRepo';
 import { QueryPatternRepo } from './repositories/QueryPatternRepo';
 import { UserProfileProcessedHashRepo } from './repositories/UserProfileProcessedHashRepo';
@@ -85,6 +89,10 @@ export class SqliteStoreManager {
 	private chatMessageRepo: ChatMessageRepo | null = null;
 	private chatMessageResourceRepo: ChatMessageResourceRepo | null = null;
 	private chatStarRepo: ChatStarRepo | null = null;
+	private chatAssistantRepo: ChatAssistantRepo | null = null;
+	private chatProjectPlanRepo: ChatProjectPlanRepo | null = null;
+	private chatTurnReceiptRepo: ChatTurnReceiptRepo | null = null;
+	private chatArtifactReceiptRepo: ChatArtifactReceiptRepo | null = null;
 	private aiAnalysisRepo: AIAnalysisRepo | null = null;
 	private queryPatternRepo: QueryPatternRepo | null = null;
 	private cascadeDebtRepoChat: CascadeDebtRepo | null = null;
@@ -224,6 +232,10 @@ export class SqliteStoreManager {
 		this.chatMessageRepo = new ChatMessageRepo(metaKdb);
 		this.chatMessageResourceRepo = new ChatMessageResourceRepo(metaKdb);
 		this.chatStarRepo = new ChatStarRepo(metaKdb);
+		this.chatAssistantRepo = new ChatAssistantRepo(metaKdb);
+		this.chatProjectPlanRepo = new ChatProjectPlanRepo(metaKdb);
+		this.chatTurnReceiptRepo = new ChatTurnReceiptRepo(metaKdb);
+		this.chatArtifactReceiptRepo = new ChatArtifactReceiptRepo(metaKdb);
 		this.aiAnalysisRepo = new AIAnalysisRepo(metaKdb);
 		this.queryPatternRepo = new QueryPatternRepo(metaKdb);
 
@@ -269,6 +281,10 @@ export class SqliteStoreManager {
 	getChatMessageRepo(): ChatMessageRepo { return this.requireRepo(this.chatMessageRepo); }
 	getChatMessageResourceRepo(): ChatMessageResourceRepo { return this.requireRepo(this.chatMessageResourceRepo); }
 	getChatStarRepo(): ChatStarRepo { return this.requireRepo(this.chatStarRepo); }
+	getChatAssistantRepo(): ChatAssistantRepo { return this.requireRepo(this.chatAssistantRepo); }
+	getChatProjectPlanRepo(): ChatProjectPlanRepo { return this.requireRepo(this.chatProjectPlanRepo); }
+	getChatTurnReceiptRepo(): ChatTurnReceiptRepo { return this.requireRepo(this.chatTurnReceiptRepo); }
+	getChatArtifactReceiptRepo(): ChatArtifactReceiptRepo { return this.requireRepo(this.chatArtifactReceiptRepo); }
 	getAIAnalysisRepo(): AIAnalysisRepo { return this.requireRepo(this.aiAnalysisRepo); }
 	getQueryPatternRepo(): QueryPatternRepo { return this.requireRepo(this.queryPatternRepo); }
 	getAmbientPushRepo(): AmbientPushRepo { return this.requireRepo(this.ambientPushRepo); }
@@ -331,6 +347,7 @@ export class SqliteStoreManager {
 		this.mobiusNodeRepoChat = this.mobiusEdgeRepoChat = this.mobiusOperationRepo = this.cascadeDebtRepoChat = null;
 		this.chatProjectRepo = this.chatConversationRepo = this.chatMessageRepo = null;
 		this.chatMessageResourceRepo = this.chatStarRepo = this.aiAnalysisRepo = this.queryPatternRepo = null;
+		this.chatAssistantRepo = this.chatProjectPlanRepo = this.chatTurnReceiptRepo = this.chatArtifactReceiptRepo = null;
 	}
 }
 

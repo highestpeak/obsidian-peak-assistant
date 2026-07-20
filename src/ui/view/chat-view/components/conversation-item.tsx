@@ -60,7 +60,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
 					{conversation.meta.title}
 				</span>
 				{showDate && conversation.meta.createdAtTimestamp && (
-					<span className="pktw-text-[11px] pktw-text-muted-foreground pktw-flex-shrink-0 pktw-whitespace-nowrap">
+					<span className="pktw-text-pk-sm pktw-text-muted-foreground pktw-flex-shrink-0 pktw-whitespace-nowrap">
 						{formatRelativeDate(conversation.meta.createdAtTimestamp)}
 					</span>
 				)}
@@ -119,7 +119,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
 					)}
 				>
 					<span
-						className="pktw-inline-flex pktw-items-center pktw-rounded pktw-px-1.5 pktw-py-0.5 pktw-text-[10px] pktw-font-medium"
+						className="pktw-inline-flex pktw-items-center pktw-rounded pktw-px-1.5 pktw-py-0.5 pktw-text-pk-xs pktw-font-medium"
 						style={{ backgroundColor: badgeColor.bg, color: badgeColor.fg }}
 					>
 						{typeLabel}

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { ExternalLink, RefreshCw } from 'lucide-react';
+import { ExternalLink, RefreshCw, PanelRight } from 'lucide-react';
 import { IconButton } from '@/ui/components/primitives';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useChatStrings } from '../chatStringsContext';
+import { useChatViewStore } from '../store/chatViewStore';
 
 export interface HeaderProps {}
 
@@ -28,12 +29,17 @@ export const Header: React.FC<HeaderProps> = () => {
 	const strings = useChatStrings();
 	const { manager, vaultNavigation } = useServiceContext();
 	const activeConversation = useChatDataStore((s) => s.activeConversation);
+	const activeProject = useChatDataStore((s) => s.activeProject);
+	// Non-null only in Chat Studio when the right column is user-collapsed and
+	// restorable (S5). Renders the PanelRight restore button; hidden otherwise.
+	const restoreRight = useChatViewStore((s) => s.studioRestoreRight);
 	const [isRegenerating, setIsRegenerating] = useState(false);
 
 	if (!activeConversation) return null;
 
 	const title = activeConversation.meta.title || activeConversation.meta.id;
 	const hasSource = Boolean(activeConversation.file);
+	const projectName = activeProject?.meta.name ?? null;
 
 	const handleOpenSource = async () => {
 		if (!activeConversation.file) return;
@@ -64,7 +70,21 @@ export const Header: React.FC<HeaderProps> = () => {
 	 */
 	return (
 		<div className="pkchat-header">
-			<span className="pkchat-header__title" title={title}>{title}</span>
+			<div className="pkchat-header__titlewrap">
+				<span className="pkchat-header__title" title={title}>{title}</span>
+				{projectName && (
+					<span
+						className="pkchat-header__scope pktw-truncate pktw-max-w-[160px]"
+						title={projectName}
+					>
+						{projectName}
+					</span>
+				)}
+			</div>
+			{/* SR: announce ONLY the final persisted title (typewriter is
+			    display-only in the left column, so this fires once per
+			    regeneration, not per character — §6.4/§7.2). */}
+			<span aria-live="polite" className="pktw-sr-only">{title}</span>
 			<div className="pkchat-header__actions">
 				{hasSource && (
 					<IconButton
@@ -83,6 +103,15 @@ export const Header: React.FC<HeaderProps> = () => {
 				>
 					<RefreshCw className={isRegenerating ? 'pktw-animate-spin' : undefined} />
 				</IconButton>
+				{restoreRight && (
+					<IconButton
+						label={strings.header.restoreRightLabel}
+						title={strings.header.restoreRightLabel}
+						onClick={restoreRight}
+					>
+						<PanelRight />
+					</IconButton>
+				)}
 			</div>
 		</div>
 	);

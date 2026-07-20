@@ -1,6 +1,19 @@
-import React, { useCallback, useMemo, useState } from 'react';
+/**
+ * MessageViewItem — document-style message rendering (chat-studio §7.3–7.8).
+ *
+ * Track D rewrite: consumes the shared `messageActionRegistry` and the
+ * artifact receipt slot. Identity is calm-by-default (no avatar / no name
+ * header for the default assistant); a small identity chip appears only
+ * when the conversation has a non-default assistant OR the model attribution
+ * changes from the previous assistant message.
+ *
+ * Nothing renders an inline composer under a message any more (spec §15).
+ * Targeted follow-up / suggested-next chips route to the single main
+ * Composer via `useComposerStore.setReplyAnchor + fillDraftText + requestComposerFocus`.
+ */
+
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/ui/react/lib/utils';
-import { Bug, Check, Copy, RefreshCw, Star, GitBranch } from 'lucide-react';
 import { useDebugTraceCopy } from '@/ui/hooks/useDebugTraceCopy';
 import { ChatMessage, ChatConversation } from '@/service/chat/types';
 import { useChatViewStore } from '../../store/chatViewStore';
@@ -14,7 +27,7 @@ import {
 	ReasoningContent,
 	ReasoningTrigger,
 } from '@/ui/component/ai-elements';
-import { Chip } from '@/ui/components/primitives';
+import { Chip, Modal } from '@/ui/components/primitives';
 import { AnimatedSparkles, StreamdownIsolated } from '@/ui/component/mine';
 import { ModelInfoForSwitch } from '@/core/providers/types';
 import { formatTimestampLocale } from '@/core/utils/date-utils';
@@ -24,10 +37,21 @@ import { CapabilitySuggestion } from './CapabilitySuggestion';
 import { MessageStatusIndicator } from './MessageStatusIndicator';
 import { MessageSuggestedNext } from './MessageSuggestedNext';
 import { MessageMorePopover } from './MessageMorePopover';
-import { MessageInlineFollowup } from './MessageInlineFollowup';
+import { ArtifactReceiptCard, getArtifactReceiptLayout } from './ArtifactReceiptCard';
 import { useChatStrings } from '../../chatStringsContext';
+import { useChatStudioStrings } from '../../chatStudioStringsContext';
 import { getMessageReceiptRenderer } from '../../integration/messageReceiptSlot';
 import { Notice } from 'obsidian';
+import { useComposerStore } from '../../store/composerStore';
+import type { ChatStudioStrings } from '../../chatStudioStrings';
+import {
+	computeActionLayout,
+	getApplicableActions,
+	type MessageActionContext,
+	type MessageActionDefinition,
+} from '../../actions/messageActionRegistry';
+import type { ChatArtifactReceipt } from '@/core/types/chat-studio';
+import type { ChatAssistantDefinition } from '@/core/types/chat-studio';
 
 interface StreamingState {
 	isStreaming: boolean;
@@ -48,26 +72,68 @@ export interface MessageItemProps {
 	streamingState?: StreamingState;
 	isLastMessage?: boolean;
 	models?: ModelInfoForSwitch[];
+	/** Prior assistant message (for model-attribution identity — MSG-01). */
+	previousAssistantMessage?: ChatMessage;
 }
 
-/** Tiny helper for the inline meta dot. */
-const MetaDot: React.FC = () => <span className="pkchat-msg__dot">·</span>;
+// ── Module cache: assistant name lookup ──────────────────────────────────────
+const assistantNameCache = new Map<string, string>();
 
-/**
- * MessageViewItem — document-style message rendering for the 2026-05-29
- * retained chat design.
- *
- * Anatomy (assistant):
- *   .pkchat-msg
- *     ├─ __head    avatar + name + inline meta (tools / tokens / duration)
- *     ├─ __body    markdown content + reasoning + tool calls
- *     ├─ __meta-row  model chip + timestamp + Copy/Regenerate/Star/More
- *     └─ __suggest   suggested-next chips (max 2 inline + More popover)
- *
- * For user messages the body wears the sunken-surface bubble look; meta row
- * is omitted by design — user actions are surfaced via right-click + the
- * shared composer.
- */
+// ── Short clock-time formatter (MSG / M3) ────────────────────────────────────
+// Message rows show only the wall-clock time (mock `.message-time` → "11:20");
+// the calendar day is carried by the date-separator, and the full localized
+// timestamp stays available on the `title` hover. 24h, user locale.
+function formatTimeShort(timestamp: number): string {
+	try {
+		return new Date(timestamp).toLocaleTimeString(undefined, {
+			hour: '2-digit',
+			minute: '2-digit',
+			hour12: false,
+		});
+	} catch {
+		return '';
+	}
+}
+
+// ── Short model label (MSG / M4) ─────────────────────────────────────────────
+// Mock `.model-chip` shows only the model short name ("gpt-5"), not the provider
+// prefix or the full catalog id (OpenRouter ids embed a second `openai/` path
+// segment → three ugly segments). Prefer the catalog displayName; fall back to
+// the last path segment. Full `provider/model` stays on the `title` hover.
+function resolveModelShortName(
+	model: string | undefined,
+	provider: string | undefined,
+	models: ModelInfoForSwitch[] | undefined,
+): { label: string; title: string } | null {
+	if (!model) return null;
+	const display = models?.find((m) => m.id === model)?.displayName;
+	const label = display || model.split('/').pop() || model;
+	const title = provider ? `${provider}/${model}` : model;
+	return { label, title };
+}
+
+// ── Reasoning disclosure copy (MSG / M7) ─────────────────────────────────────
+// `.reasoning-row` is a compact inline disclosure: <strong>Analysis</strong> +
+// <small> status. We inject that structure through ReasoningTrigger's
+// `getThinkingMessage` slot so the copy remains config-driven and the completed,
+// timed, and streaming states share one stable visual rhythm. The disclosure chrome is owned by
+// `.pkchat-reasoning-row`.
+function buildReasoningMessage(studioStrings: ChatStudioStrings) {
+	return (isStreaming: boolean, duration?: number): React.ReactNode => {
+		const m = studioStrings.messages;
+		let sub: string;
+		if (isStreaming) sub = m.reasoningStreaming;
+		else if (typeof duration === 'number' && duration > 0) sub = `${duration}${m.reasoningDurationSuffix}`;
+		else sub = m.reasoningHint;
+		return (
+			<span className="pkchat-reasoning-row__text">
+				<strong>{m.reasoningTitle}</strong>
+				{sub && <small>{sub}</small>}
+			</span>
+		);
+	};
+}
+
 export const MessageViewItem: React.FC<MessageItemProps> = ({
 	message,
 	streamingState = {
@@ -79,56 +145,73 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 		isToolSequenceActive: false,
 	},
 	isLastMessage = false,
+	previousAssistantMessage,
+	models,
 }) => {
 	const strings = useChatStrings();
-	const { manager, eventBus, chatVaultWriter, settingsActions, usageServices } = useServiceContext();
+	const studioStrings = useChatStudioStrings();
+	const { manager, eventBus, chatVaultWriter, settingsActions, usageServices, vaultNavigation } =
+		useServiceContext();
 	const chatNavigation = useChatNavigation();
 	const openSettings = settingsActions.openSettings;
 	const activeConversation = useChatDataStore((s) => s.activeConversation);
 	const activeProject = useChatDataStore((s) => s.activeProject);
 
 	const [copied, setCopied] = useState(false);
-	const [showInlineFollowup, setShowInlineFollowup] = useState(false);
 	const [showRawModal, setShowRawModal] = useState(false);
+	const [saveReceipt, setSaveReceipt] = useState<{ path: string } | null>(null);
+	const [assistantIdentity, setAssistantIdentity] = useState<ChatAssistantDefinition | null>(null);
 
-	// PR-Chat-4 hook: external consumers (Usage Dashboard) can inject an inline
-	// cost/duration receipt. Read once per render — registry is module-local so
-	// no React state churn.
 	const ReceiptRenderer = getMessageReceiptRenderer();
 
 	const isUser = message.role === 'user';
-	const displayContent = message.content;
 
-	const handleCopy = useCallback(async () => {
+	// ── Assistant identity resolution (MSG-01, §7.3) ──────────────────────
+	useEffect(() => {
+		if (isUser) return;
+		const assistantId = activeConversation?.meta.assistantId;
+		if (!assistantId || assistantId === 'default') {
+			setAssistantIdentity(null);
+			return;
+		}
+		let cancelled = false;
+		void (async () => {
+			try {
+				const cached = assistantNameCache.get(assistantId);
+				if (cached) {
+					if (!cancelled) setAssistantIdentity({ id: assistantId, name: cached } as ChatAssistantDefinition);
+				}
+				const def = await manager.assistant.get(assistantId);
+				if (cancelled) return;
+				if (def) {
+					assistantNameCache.set(def.id, def.name);
+					setAssistantIdentity(def);
+				}
+			} catch {
+				/* identity is decorative; ignore lookup errors */
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [isUser, activeConversation?.meta.assistantId, manager]);
+
+	// ── Copy helpers ──────────────────────────────────────────────────────
+	const copyText = useCallback(async (text: string) => {
 		try {
-			await navigator.clipboard.writeText(String(message.content ?? ''));
+			await navigator.clipboard.writeText(text);
 			setCopied(true);
 			setTimeout(() => setCopied(false), 2000);
+			return true;
 		} catch (err) {
 			console.error('[MessageItem] Copy failed:', err);
+			return false;
 		}
-	}, [message.content]);
-
-	const handleCopyJson = useCallback(async () => {
-		try {
-			await navigator.clipboard.writeText(JSON.stringify(message, null, 2));
-			setCopied(true);
-			setTimeout(() => setCopied(false), 2000);
-		} catch (err) {
-			console.error('[MessageItem] Copy JSON failed:', err);
-		}
-	}, [message]);
+	}, []);
 
 	const copyDebugTrace = useDebugTraceCopy();
-	const handleCopyDebugTrace = useCallback(() => {
-		// Prefer the debugRunId snapshotted onto this specific message when
-		// it was created; fall back to the most recent recorded run only if
-		// no id was attached (older messages persisted before debug tracing
-		// existed, or turns run with the recorder off).
-		const runId = message.debugRunId ?? manager.conv.getLastDebugRunId();
-		void copyDebugTrace(runId);
-	}, [copyDebugTrace, manager, message.debugRunId]);
 
+	// ── Star ──────────────────────────────────────────────────────────────
 	const handleToggleStar = useCallback(async () => {
 		if (!activeConversation) return;
 		const next = !message.starred;
@@ -147,8 +230,8 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 		eventBus.dispatch(new ConversationUpdatedEvent({ conversation: updatedConv }));
 	}, [activeConversation, manager, eventBus, message.id, message.starred]);
 
+	// ── Regenerate ────────────────────────────────────────────────────────
 	const { streamChat } = useStreamChat();
-
 	const handleRegenerate = useCallback(async () => {
 		if (!activeConversation) return;
 		const messageIndex = activeConversation.messages.findIndex((m) => m.id === message.id);
@@ -188,17 +271,9 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 		}
 	}, [activeConversation, activeProject, streamChat, manager, message.id]);
 
-	/**
-	 * Save the message body to a fresh markdown note in the vault and emit a
-	 * `vault_save` outcome event so the Usage Dashboard's MPG metric counts it
-	 * as a "useful" message.
-	 *
-	 * Target folder: `strings.message.vaultSaveDefaultFolder` (template-overridable;
-	 * defaults to "Peak Chat Saves"). The note name uses an ISO-derived timestamp
-	 * so multiple saves of the same conversation don't collide.
-	 */
-	const handleSaveToVault = useCallback(async () => {
-		if (!activeConversation) return;
+	// ── Save to Vault (with inline receipt, §7.7) ─────────────────────────
+	const handleSaveToVault = useCallback(async (): Promise<string | null> => {
+		if (!activeConversation) return null;
 		const folderRaw = (strings.message.vaultSaveDefaultFolder || 'Peak Chat Saves').trim();
 		const titleSlug = (activeConversation.meta.title || 'chat')
 			.replace(/[\\/:*?"<>|#^[\]]/g, '')
@@ -220,8 +295,6 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 		const body = String(message.content ?? '');
 		try {
 			const path = await chatVaultWriter.saveChatMessageToFolder(folderRaw, fileNameWithExt, front + body);
-
-			// Best-effort telemetry — failure here must NOT block UX.
 			try {
 				await usageServices?.outcome.recordVaultSave(
 					message.id,
@@ -231,14 +304,50 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 			} catch (telemetryErr) {
 				console.warn('[MessageItem] recordVaultSave failed:', telemetryErr);
 			}
-
+			setSaveReceipt({ path });
+			// RUN-06 / F5: a vault save is a REAL artifact producer — persist a
+			// ChatArtifactReceipt so the right-index Resources and the project
+			// Resources tab can recover it after reload. Fire-and-forget.
+			void manager.conv.saveArtifactReceipt({
+				artifactId: `vault-save-${message.id}`,
+				runId: message.debugRunId ?? `manual-save-${message.id}`,
+				messageId: message.id,
+				conversationId: activeConversation.meta.id,
+				projectId: activeConversation.meta.projectId,
+				direction: 'generated',
+				kind: 'document',
+				title: fileNameWithExt,
+				vaultPath: path,
+				state: 'saved',
+				availableActions: ['open'],
+				createdAt: Date.now(),
+			}).catch((receiptErr) => {
+				console.warn('[MessageItem] saveArtifactReceipt failed:', receiptErr);
+			});
 			new Notice(strings.message.vaultSaveSuccess);
+			return path;
 		} catch (err) {
 			console.error('[MessageItem] Save to vault failed:', err);
 			new Notice(strings.message.vaultSaveFailed);
+			return null;
 		}
-	}, [activeConversation, chatVaultWriter, message.id, message.content, message.model, message.provider, message.createdAtTimestamp, strings.message.vaultSaveDefaultFolder, strings.message.vaultSaveSuccess, strings.message.vaultSaveFailed]);
+	}, [
+		activeConversation,
+		chatVaultWriter,
+		manager,
+		message.id,
+		message.content,
+		message.model,
+		message.provider,
+		message.debugRunId,
+		message.createdAtTimestamp,
+		strings.message.vaultSaveDefaultFolder,
+		strings.message.vaultSaveSuccess,
+		strings.message.vaultSaveFailed,
+		usageServices,
+	]);
 
+	// ── Branch ────────────────────────────────────────────────────────────
 	const handleBranch = useCallback(async () => {
 		if (!activeConversation) return;
 		try {
@@ -253,17 +362,67 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 		} catch (err) {
 			console.error('[MessageItem] Branch failed:', err);
 		}
-	}, [activeConversation, activeProject, manager, eventBus, chatNavigation, message.id]);
+	}, [activeConversation, activeProject, manager, chatNavigation, message.id]);
 
-	// ── Meta row derived bits ────────────────────────────────────────────
-	const modelChipText = useMemo(() => {
-		if (!message.model) return null;
-		const prefix = message.provider ? `${message.provider}/` : '';
-		return `${prefix}${message.model}`;
-	}, [message.model, message.provider]);
+	// ── Composer bridge: targeted follow-up / edit-and-resend ─────────────
+	const requestReplyToMessage = useCallback(() => {
+		const store = useComposerStore.getState();
+		const preview = String(message.content ?? '').trim().slice(0, 80);
+		store.setReplyAnchor({
+			messageId: message.id,
+			preview: preview || studioStrings.messages.replyAnchorFallback,
+		});
+		store.requestComposerFocus();
+	}, [message.id, message.content, studioStrings.messages.replyAnchorFallback]);
+
+	const requestEditResend = useCallback(() => {
+		const store = useComposerStore.getState();
+		store.updateDraft({ text: String(message.content ?? ''), revisionOfMessageId: message.id });
+		store.requestComposerFocus();
+	}, [message.id, message.content]);
+
+	// ── Build the action registry context ─────────────────────────────────
+	const actionCtx = useMemo<MessageActionContext>(() => ({
+		message,
+		copyText,
+		copyDebugTrace: async (runId: string) => {
+			await copyDebugTrace(runId);
+		},
+		toggleStar: handleToggleStar,
+		regenerate: handleRegenerate,
+		branch: handleBranch,
+		saveToVault: async () => handleSaveToVault(),
+		openRawModal: () => setShowRawModal(true),
+		requestReplyToMessage,
+		requestEditResend,
+	}), [
+		message,
+		copyText,
+		copyDebugTrace,
+		handleToggleStar,
+		handleRegenerate,
+		handleBranch,
+		handleSaveToVault,
+		requestReplyToMessage,
+		requestEditResend,
+	]);
+
+	// ── Meta row derived bits ─────────────────────────────────────────────
+	const modelChip = useMemo(
+		() => resolveModelShortName(message.model, message.provider, models),
+		[message.model, message.provider, models],
+	);
+	const modelChipText = modelChip?.label ?? null;
+	const modelChipTitle = modelChip?.title ?? undefined;
 
 	const timestampText = useMemo(() => {
 		if (!message.createdAtTimestamp) return null;
+		return formatTimeShort(message.createdAtTimestamp);
+	}, [message.createdAtTimestamp]);
+
+	// Full localized timestamp kept for the `title` hover only (M3).
+	const timestampTitle = useMemo(() => {
+		if (!message.createdAtTimestamp) return undefined;
 		const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 		return formatTimestampLocale(message.createdAtTimestamp, tz);
 	}, [message.createdAtTimestamp]);
@@ -279,148 +438,146 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 		);
 	}, [message.tokenUsage]);
 
-	/*
-	 * Head meta — assembled from two sources so the row stays populated even
-	 * after streaming ends:
-	 *   • streamingState.currentToolCalls — live count during agent runs
-	 *   • message.toolCalls.length — persisted count read from the saved
-	 *     ChatMessage (LLM parsed it back out of the markdown on load)
-	 *   • message.tokenUsage — totalTokens persisted alongside the message
-	 *   • message.genTimeMs — generation duration in ms (assistant only)
-	 *
-	 * Previously the row was only populated from `streamingState`, so once
-	 * the stream finalised and the streamingState was reset, the row went
-	 * empty (see Image 2 in the 2026-06-02 chat audit). Reading from the
-	 * persisted message fields keeps the head consistent across reloads.
-	 */
-	const toolCount =
-		streamingState.currentToolCalls.length > 0
-			? streamingState.currentToolCalls.length
-			: (message.toolCalls?.length ?? 0);
-
 	const durationMs = message.genTimeMs ?? 0;
 
-	const inlineHeadMeta: string[] = [];
-	if (toolCount > 0) {
-		inlineHeadMeta.push(
-			`${toolCount} ${
-				toolCount === 1
-					? strings.message.toolsSingular
-					: strings.message.toolsPlural
-			}`
-		);
-	}
+	const agentRunMeta: string[] = [];
 	if (tokenCount != null && tokenCount > 0) {
-		// k-format large counts for compactness (1234 → "1.2k").
 		const tokenDisplay =
 			tokenCount >= 1000
 				? `${(tokenCount / 1000).toFixed(1).replace(/\.0$/, '')}k`
 				: String(tokenCount);
-		inlineHeadMeta.push(`${tokenDisplay} ${strings.message.tokensSuffix}`);
+		agentRunMeta.push(`${tokenDisplay} ${strings.message.tokensSuffix}`);
 	}
 	if (durationMs > 0) {
-		// Show as `8.4s` for sub-minute durations, `2m 14s` beyond.
 		const secs = durationMs / 1000;
 		const durStr =
-			secs < 60
-				? `${secs.toFixed(1)}s`
-				: `${Math.floor(secs / 60)}m ${Math.round(secs % 60)}s`;
-		inlineHeadMeta.push(durStr);
+			secs < 60 ? `${secs.toFixed(1)}s` : `${Math.floor(secs / 60)}m ${Math.round(secs % 60)}s`;
+		agentRunMeta.push(durStr);
 	}
+
+	const debugRun = useMemo(() => {
+		if (!message.debugRunId) return undefined;
+		return manager.conv.getDebugRun(message.debugRunId);
+	}, [manager, message.debugRunId, streamingState.isStreaming, streamingState.currentToolCalls.length]);
 
 	const shouldShowLoader =
 		streamingState.isStreaming &&
-		!displayContent &&
+		!message.content &&
 		!streamingState.isReasoningActive &&
 		!streamingState.isToolSequenceActive;
+	const reasoningContent = streamingState.reasoningContent || message.reasoning?.content || '';
+	const agentToolCalls = streamingState.currentToolCalls.length > 0
+		? streamingState.currentToolCalls
+		: message.toolCalls ?? [];
+
+	// ── Identity chip (MSG-01) ────────────────────────────────────────────
+	const showIdentityChip = !isUser && shouldShowIdentityChip({
+		message,
+		previousAssistantMessage,
+		assistantIdentity,
+	});
+
+	// ── Artifact receipts (MSG-05) ────────────────────────────────────────
+	const [artifactReceipts, setArtifactReceipts] = useState<ChatArtifactReceipt[]>([]);
+	useEffect(() => {
+		if (isUser) return;
+		let cancelled = false;
+		const load = async () => {
+			try {
+				const receipts = await manager.conv.listArtifactReceiptsByMessage(message.id);
+				if (!cancelled) setArtifactReceipts(receipts ?? []);
+			} catch (err) {
+				console.warn('[MessageItem] listArtifactReceiptsByMessage failed', err);
+			}
+		};
+		void load();
+		// Refresh when streaming completes for this message.
+		return () => {
+			cancelled = true;
+		};
+	}, [isUser, message.id, streamingState.isStreaming, manager]);
 
 	// ── User render ──────────────────────────────────────────────────────
 	if (isUser) {
 		return (
-			<article
-				className={cn('pkchat-msg', 'pkchat-msg--user')}
-				data-message-id={message.id}
-				data-message-role={message.role}
-			>
-				<div className="pkchat-msg__head">
-					<div className="pkchat-msg__avatar pkchat-msg__avatar--user">U</div>
-					<div className="pkchat-msg__name">{strings.message.youName}</div>
-					{timestampText && (
-						<span className="pkchat-msg__head-meta">{timestampText}</span>
-					)}
-				</div>
-				{message.resources && message.resources.length > 0 && (
-					<MessageAttachmentsList message={message} />
-				)}
-				<div className="pkchat-msg__body">
-					{displayContent ? (
-						<StreamdownIsolated
-							className="pktw-select-text"
-							isAnimating={false}
-						>
-							{String(displayContent)}
-						</StreamdownIsolated>
-					) : null}
-				</div>
-				<MessageStatusIndicator status={message.status} className="pktw-mt-1" />
-			</article>
+			<UserMessageBody
+				message={message}
+				actionCtx={actionCtx}
+				studioStrings={studioStrings}
+			/>
 		);
 	}
 
 	// ── Assistant render ─────────────────────────────────────────────────
+	const applicable = getApplicableActions(message);
+	const visualArtifactReceipts = artifactReceipts.filter((receipt) => getArtifactReceiptLayout(receipt) === 'visual');
+	const supportingArtifactReceipts = artifactReceipts.filter((receipt) => getArtifactReceiptLayout(receipt) !== 'visual');
+	const artifactLayout = visualArtifactReceipts.length > 1
+		? 'gallery'
+		: visualArtifactReceipts.length > 0 && supportingArtifactReceipts.length > 0
+		? 'split'
+		: visualArtifactReceipts.length > 0 ? 'visual-only' : 'list-only';
+	const renderArtifactReceipt = (receipt: ChatArtifactReceipt) => (
+		<ArtifactReceiptCard
+			key={receipt.artifactId}
+			receipt={receipt}
+			galleryReceipts={visualArtifactReceipts}
+			handlers={{
+				open: (rc) => {
+					if (rc.vaultPath) void vaultNavigation.openVaultPath(rc.vaultPath);
+					else if (rc.externalUri) vaultNavigation.openExternalUrl(rc.externalUri);
+				},
+				copy: (rc) => {
+					if (rc.preview?.text) void copyText(rc.preview.text);
+					else if (rc.uri) void copyText(rc.uri);
+				},
+				retry: () => void handleRegenerate(),
+			}}
+		/>
+	);
+	// UI measures width in AssistantActionRow; here we just prepare data.
 	return (
 		<article
 			className="pkchat-msg"
 			data-message-id={message.id}
 			data-message-role={message.role}
 		>
-			<div className="pkchat-msg__head">
-				<div className="pkchat-msg__avatar">P</div>
-				<div className="pkchat-msg__name">{strings.message.assistantName}</div>
-				{/*
-				  Agent badge: shown whenever the message had tool calls (which
-				  only happens in agent runs). Heuristic — no `runMode` field is
-				  persisted on the message yet, but tool-call presence is a
-				  reliable proxy. When/if runMode lands, swap this condition.
-				*/}
-				{toolCount > 0 && (
-					<Chip variant="accent" className="pkchat-msg__mode-badge">
-						{strings.composer.runChipModeAgent}
-					</Chip>
-				)}
-				{inlineHeadMeta.length > 0 && (
-					<span className="pkchat-msg__head-meta">
-						{inlineHeadMeta.map((bit, i) => (
-							<React.Fragment key={i}>
-								{i > 0 && <MetaDot />}
-								{bit}
-							</React.Fragment>
-						))}
-					</span>
-				)}
-			</div>
+			{showIdentityChip && (
+				<AssistantIdentityChip
+					assistantName={assistantIdentity?.name}
+					model={message.model}
+					provider={message.provider}
+				/>
+			)}
 
 			<div className="pkchat-msg__body">
-				{streamingState.reasoningContent && (
+				{reasoningContent && (
 					<Reasoning
 						isStreaming={streamingState.isReasoningActive}
 						defaultOpen={streamingState.isStreaming}
-						className="pktw-w-full pktw-mb-0"
+						className="pkchat-reasoning pktw-w-full pktw-mb-0"
 					>
-						<ReasoningTrigger />
-						<ReasoningContent>{streamingState.reasoningContent}</ReasoningContent>
+						<ReasoningTrigger
+							className="pkchat-reasoning-row"
+							getThinkingMessage={buildReasoningMessage(studioStrings)}
+						/>
+						<ReasoningContent className="pkchat-reasoning-content">
+							{reasoningContent}
+						</ReasoningContent>
 					</Reasoning>
 				)}
 
-				{streamingState.currentToolCalls.length > 0 && (
+				{agentToolCalls.length > 0 && (
 					<ToolCallSummary
-						toolCalls={streamingState.currentToolCalls.map((call) => ({
+						toolCalls={agentToolCalls.map((call) => ({
 							toolName: call.toolName,
 							input: call.input,
 							output: call.output,
-							isActive: call.isActive ?? false,
+							isActive: 'isActive' in call ? call.isActive ?? false : false,
 						}))}
 						isStreaming={streamingState.isStreaming}
+						debugRun={debugRun}
+						meta={agentRunMeta}
 					/>
 				)}
 
@@ -432,24 +589,49 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 					</div>
 				) : null}
 
-				{!shouldShowLoader && displayContent ? (
+				{!shouldShowLoader && message.content ? (
 					<StreamdownIsolated
 						className="pktw-select-text"
 						isAnimating={streamingState.isStreaming}
 					>
-						{String(displayContent)}
+						{String(message.content)}
 					</StreamdownIsolated>
 				) : null}
 			</div>
 
-			{/*
-			  Inline receipt slot — Usage Dashboard worktree (or any consumer)
-			  may register a renderer via `registerMessageReceiptRenderer` to
-			  attach a cost/duration/feedback strip under the message body.
-			  `usageLogId` is left `null` until the chat-side metadata-write
-			  plumbing lifts the PK through `chat_messages` (PR-Chat-4 §11.6
-			  notes this gap).
-			*/}
+			{message.resources && message.resources.length > 0 && (
+				<MessageAttachmentsList message={message} align="start" />
+			)}
+
+			{artifactReceipts.length > 0 && (
+				<div className="pkchat-msg__artifacts" data-layout={artifactLayout}>
+					{visualArtifactReceipts.length > 0 && (
+						<div className="pkchat-msg__artifact-media" data-count={visualArtifactReceipts.length}>
+							{visualArtifactReceipts.map(renderArtifactReceipt)}
+						</div>
+					)}
+					{supportingArtifactReceipts.length > 0 && (
+						<div className="pkchat-msg__artifact-list">
+							{supportingArtifactReceipts.map(renderArtifactReceipt)}
+						</div>
+					)}
+				</div>
+			)}
+
+			{saveReceipt && (
+				<div className="pkchat-msg__save-receipt">
+					<span>{strings.message.vaultSaveSuccess}: {saveReceipt.path}</span>
+					<button
+						type="button"
+						className="pkchat-msg__save-receipt-open"
+						onClick={() => void vaultNavigation.openVaultPath(saveReceipt.path)}
+						aria-label={studioStrings.messages.openSavedLabel}
+					>
+						{studioStrings.messages.openSavedLabel}
+					</button>
+				</div>
+			)}
+
 			{ReceiptRenderer && activeConversation && !streamingState.isStreaming && (
 				<div className="pkchat-msg__receipt-slot">
 					{ReceiptRenderer({
@@ -465,112 +647,34 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 			)}
 
 			{!streamingState.isStreaming && (
-				<div className="pkchat-msg__meta-row">
-					{modelChipText && (
-						<Chip variant="accent" className="pkchat-msg__model-chip">
-							{modelChipText}
-						</Chip>
-					)}
-					{timestampText && <span>{timestampText}</span>}
-					{(modelChipText || timestampText) && <span className="pkchat-msg__sep">·</span>}
-
-					<button
-						type="button"
-						className="pkchat-msg__action"
-						onClick={handleCopy}
-						title={copied ? strings.message.copiedLabel : strings.message.copyLabel}
-					>
-						{copied ? <Check /> : <Copy />}
-						<span>{copied ? strings.message.copiedLabel : strings.message.copyLabel}</span>
-					</button>
-
-					<button
-						type="button"
-						className="pkchat-msg__action"
-						onClick={handleRegenerate}
-						title={strings.message.regenerateLabel}
-					>
-						<RefreshCw />
-						<span>{strings.message.regenerateLabel}</span>
-					</button>
-
-					<button
-						type="button"
-						className="pkchat-msg__action"
-						onClick={handleToggleStar}
-						title={
-							message.starred
-								? strings.message.unstarLabel
-								: strings.message.starLabel
-						}
-					>
-						<Star
-							className={cn(message.starred && 'pktw-fill-current pktw-text-red-500')}
-						/>
-						<span>
-							{message.starred
-								? strings.message.unstarLabel
-								: strings.message.starLabel}
-						</span>
-					</button>
-
-					<button
-						type="button"
-						className="pkchat-msg__action"
-						onClick={handleBranch}
-						title={strings.message.branchLabel}
-					>
-						<GitBranch />
-						<span>{strings.message.branchLabel}</span>
-					</button>
-
-					<button
-						type="button"
-						className="pkchat-msg__action"
-						onClick={handleCopyDebugTrace}
-						title="Copy debug trace"
-					>
-						<Bug />
-						<span>Trace</span>
-					</button>
-
-					<MessageMorePopover
-						onViewRaw={() => setShowRawModal(true)}
-						onCopyMarkdown={handleCopy}
-						onCopyJson={handleCopyJson}
-						onSaveToVault={handleSaveToVault}
-						onReplyInline={() => setShowInlineFollowup(true)}
-					/>
-				</div>
+				<AssistantActionRow
+					message={message}
+					actions={applicable}
+					actionCtx={actionCtx}
+					studioStrings={studioStrings}
+					modelChipText={modelChipText}
+					modelChipTitle={modelChipTitle}
+					timestampText={timestampText}
+					timestampTitle={timestampTitle}
+					copied={copied}
+				/>
 			)}
 
 			{isLastMessage && !streamingState.isStreaming && !message.isErrorMessage && (
 				<MessageSuggestedNext
+					message={message}
 					suggestions={message.suggestedFollowups}
-					onSelect={(q) => {
-						const submit = useChatViewStore.getState().submitAction;
-						if (submit) submit(q);
-					}}
-					onSaveToNote={handleSaveToVault}
-					onAskCustom={() => setShowInlineFollowup(true)}
-					/*
-					 * MIGRATION-DEFERRED: Rewrite-simply / Create-checklist
-					 * ACTIONS rows. Need a service-layer entry point —
-					 * `manager.actions.rewriteSimply(messageId)` and
-					 * `manager.actions.createChecklist(messageId)`. Slots in
-					 * MessageSuggestedNext render only when their handler is
-					 * supplied, so omitting them here keeps the popover honest
-					 * until the wiring lands.
-					 */
+					studioStrings={studioStrings}
+					onSaveToNote={() => void handleSaveToVault()}
 				/>
 			)}
 
-			{showInlineFollowup && (
-				<MessageInlineFollowup onClose={() => setShowInlineFollowup(false)} />
-			)}
-
 			{showRawModal && (
-				<RawMessageModal message={message} onClose={() => setShowRawModal(false)} />
+				<RawMessageModal
+					message={message}
+					title={strings.message.viewRawTitle}
+					onClose={() => setShowRawModal(false)}
+				/>
 			)}
 
 			{message.isErrorMessage &&
@@ -580,25 +684,240 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 					<button
 						type="button"
 						className="pkchat-msg__action"
-						onClick={() => {
-							openSettings();
-						}}
+						onClick={() => openSettings()}
 					>
 						{strings.message.openSettingsLabel}
 					</button>
 				)}
 
+			<MessageStatusIndicator
+				status={message.status}
+				className="pktw-mt-1"
+				onRetry={() => void handleRegenerate()}
+				labels={{
+					queued: studioStrings.messages.queuedLabel,
+					permission: studioStrings.messages.permissionTitle,
+					error: studioStrings.messages.errorLabel,
+					cancelled: studioStrings.messages.cancelledLabel,
+					timeout: studioStrings.messages.timeoutLabel,
+					retry: studioStrings.messages.actionRetry,
+				}}
+			/>
+		</article>
+	);
+};
+
+// ── User message body (kept small — extract per ui-design conventions) ──────
+
+const UserMessageBody: React.FC<{
+	message: ChatMessage;
+	actionCtx: MessageActionContext;
+	studioStrings: ChatStudioStrings;
+}> = ({ message, actionCtx, studioStrings }) => {
+	const applicable = getApplicableActions(message);
+	const persistent = applicable.filter((a) => a.persistent);
+	const overflow = applicable.filter((a) => !a.persistent);
+	// M5: the user bubble carries no chrome by default (mock `.user-message`
+	// has no head / meta / action row). The action row still renders for
+	// reachability (spec §7.7) but is hover-revealed via CSS — the calm bubble
+	// is the resting state.
+	return (
+		<article
+			className={cn('pkchat-msg', 'pkchat-msg--user')}
+			data-message-id={message.id}
+			data-message-role={message.role}
+		>
+			{message.resources && message.resources.length > 0 && (
+				<MessageAttachmentsList message={message} align="end" />
+			)}
+			<div className="pkchat-msg__body">
+				{message.content ? (
+					<StreamdownIsolated className="pktw-select-text" isAnimating={false}>
+						{String(message.content)}
+					</StreamdownIsolated>
+				) : null}
+			</div>
+			<div className="pkchat-msg__meta-row pkchat-msg__meta-row--user">
+				{persistent.map((action) => (
+					<ActionButton key={action.id} action={action} ctx={actionCtx} studioStrings={studioStrings} />
+				))}
+				<MessageMorePopover overflow={overflow} ctx={actionCtx} studioStrings={studioStrings} />
+			</div>
 			<MessageStatusIndicator status={message.status} className="pktw-mt-1" />
 		</article>
 	);
 };
 
-// ── Raw-message viewer modal ─────────────────────────────────────────────
+// ── Assistant identity chip (MSG-01) ─────────────────────────────────────────
 
-import { Modal } from '@/ui/components/primitives';
+const AssistantIdentityChip: React.FC<{
+	assistantName?: string | null;
+	model?: string;
+	provider?: string;
+}> = ({ assistantName, model, provider }) => {
+	const label = assistantName
+		? assistantName
+		: [provider, model].filter(Boolean).join('/');
+	if (!label) return null;
+	return (
+		<div className="pkchat-msg__identity">
+			<Chip variant="neutral" className="pkchat-msg__identity-chip">
+				<span>{label}</span>
+			</Chip>
+		</div>
+	);
+};
 
-const RawMessageModal: React.FC<{ message: ChatMessage; onClose: () => void }> = ({
+/**
+ * Show identity chip when:
+ *   • conversation has a non-default assistantId (already fetched into
+ *     `assistantIdentity`), OR
+ *   • this message's provider/model differs from the previous assistant
+ *     message's — model attribution change (§7.3).
+ */
+function shouldShowIdentityChip({
 	message,
+	previousAssistantMessage,
+	assistantIdentity,
+}: {
+	message: ChatMessage;
+	previousAssistantMessage?: ChatMessage;
+	assistantIdentity: ChatAssistantDefinition | null;
+}): boolean {
+	if (assistantIdentity) return true;
+	if (!previousAssistantMessage) return false;
+	return (
+		previousAssistantMessage.model !== message.model ||
+		previousAssistantMessage.provider !== message.provider
+	);
+}
+
+// ── Assistant action row — measured with ResizeObserver ──────────────────────
+
+const MORE_TRIGGER_PX = 28;
+
+const AssistantActionRow: React.FC<{
+	message: ChatMessage;
+	actions: MessageActionDefinition[];
+	actionCtx: MessageActionContext;
+	studioStrings: ChatStudioStrings;
+	modelChipText: string | null;
+	modelChipTitle?: string;
+	timestampText: string | null;
+	timestampTitle?: string;
+	copied: boolean;
+}> = ({ actions, actionCtx, studioStrings, modelChipText, modelChipTitle, timestampText, timestampTitle }) => {
+	const containerRef = useRef<HTMLDivElement | null>(null);
+	const [availableWidth, setAvailableWidth] = useState<number>(1200);
+
+	useEffect(() => {
+		const el = containerRef.current;
+		if (!el) return;
+		const ownerWin = el.ownerDocument?.defaultView ?? window;
+		const RO = (ownerWin as unknown as { ResizeObserver?: typeof ResizeObserver }).ResizeObserver
+			?? (window as unknown as { ResizeObserver: typeof ResizeObserver }).ResizeObserver;
+		if (!RO) return;
+		const ro = new RO((entries: ResizeObserverEntry[]) => {
+			for (const entry of entries) {
+				setAvailableWidth(entry.contentRect.width);
+			}
+		});
+		ro.observe(el);
+		return () => ro.disconnect();
+	}, []);
+
+	// M1: the row is nowrap (mock `.message-meta`) so over-inlining would clip.
+	// Reserve the LEFT meta chunk (short model chip + short timestamp) AND the
+	// persistent core buttons, then hand only the remaining width to the pure
+	// adaptive-fit algorithm. `messageActionMinInlinePx` is the per-adaptive
+	// width; `messageActionCorePx` is the (narrower) per-core reserve.
+	const perActionPx = studioStrings.density.messageActionMinInlinePx || 92;
+	const corePx = studioStrings.density.messageActionCorePx || 66;
+	const persistentCount = actions.filter((a) => a.persistent).length;
+	const leftMetaPx = (modelChipText ? 96 : 0) + (timestampText ? 52 : 0);
+	const metaReservePx = leftMetaPx + persistentCount * corePx + 16;
+	const usableWidth = Math.max(0, availableWidth - metaReservePx);
+	const layout = computeActionLayout(usableWidth, actions, perActionPx, MORE_TRIGGER_PX);
+
+	// N8: when even the labelled core buttons can't fit alongside the left meta,
+	// drop the core to icon-only (mock `.is-compact-core`) rather than clipping.
+	const COMPACT_CORE_PX = 28;
+	const compact = availableWidth - leftMetaPx - MORE_TRIGGER_PX < persistentCount * COMPACT_CORE_PX;
+
+	return (
+		<div
+			className={cn('pkchat-msg__meta-row', compact && 'pkchat-msg__meta-row--compact')}
+			ref={containerRef}
+		>
+			{modelChipText && (
+				<Chip variant="accent" className="pkchat-msg__model-chip" title={modelChipTitle}>
+					{modelChipText}
+				</Chip>
+			)}
+			{timestampText && (
+				<span className="pkchat-msg__time" title={timestampTitle}>
+					{timestampText}
+				</span>
+			)}
+
+			{layout.inline.map((action) => (
+				<ActionButton
+					key={action.id}
+					action={action}
+					ctx={actionCtx}
+					studioStrings={studioStrings}
+				/>
+			))}
+			<MessageMorePopover
+				overflow={layout.overflow}
+				ctx={actionCtx}
+				studioStrings={studioStrings}
+			/>
+		</div>
+	);
+};
+
+// ── Single action button ─────────────────────────────────────────────────────
+
+const ActionButton: React.FC<{
+	action: MessageActionDefinition;
+	ctx: MessageActionContext;
+	studioStrings: ChatStudioStrings;
+}> = ({ action, ctx, studioStrings }) => {
+	const Icon = action.icon;
+	// Star toggles its label at render time based on message.starred state.
+	const rawLabel = action.label(studioStrings);
+	const label = action.id === 'star' && ctx.message.starred
+		? studioStrings.messages.actionUnstar
+		: rawLabel;
+	const disabledReason = action.disabledReason?.(ctx.message, studioStrings) ?? null;
+	const disabled = disabledReason != null;
+	return (
+		<button
+			type="button"
+			className={cn(
+				'pkchat-msg__action',
+				!action.persistent && 'pkchat-msg__action--adaptive',
+				disabled && 'pkchat-msg__action--disabled',
+				action.id === 'star' && ctx.message.starred && 'pkchat-msg__action--starred',
+			)}
+			onClick={() => !disabled && void action.execute(ctx)}
+			title={disabled ? disabledReason! : label}
+			aria-label={label}
+			aria-disabled={disabled}
+			disabled={disabled}
+		>
+			<Icon className={ctx.message.starred && action.id === 'star' ? 'pktw-fill-current pktw-text-pk-error' : undefined} />
+			<span>{label}</span>
+		</button>
+	);
+};
+
+// ── Raw-message viewer modal ─────────────────────────────────────────────────
+
+const RawMessageModal: React.FC<{ message: ChatMessage; title: string; onClose: () => void }> = ({
+	message,
+	title,
 	onClose,
 }) => {
 	const raw = JSON.stringify(message, null, 2);
@@ -606,23 +925,12 @@ const RawMessageModal: React.FC<{ message: ChatMessage; onClose: () => void }> =
 		<Modal open onOpenChange={(open) => { if (!open) onClose(); }}>
 			<Modal.Content width="wide">
 				<Modal.Header>
-					<Modal.Title>{strings.message.viewRawTitle}</Modal.Title>
+					<Modal.Title>{title}</Modal.Title>
 					<Modal.Close />
 				</Modal.Header>
 				<Modal.Body>
 					<pre
-						style={{
-							margin: 0,
-							maxHeight: '60vh',
-							overflow: 'auto',
-							fontFamily: 'var(--pk-font-mono)',
-							fontSize: '12px',
-							background: 'var(--pk-surface-sunken)',
-							padding: 'var(--pk-space-3)',
-							borderRadius: 'var(--pk-radius-sm)',
-							whiteSpace: 'pre-wrap',
-							wordBreak: 'break-word',
-						}}
+						className="pktw-m-0 pktw-max-h-[60vh] pktw-overflow-auto pktw-font-[family-name:var(--pk-font-mono)] pktw-text-pk-base pktw-bg-pk-surface-sunken pktw-p-pk-3 pktw-rounded-pk-sm pktw-whitespace-pre-wrap pktw-break-words"
 					>
 						{raw}
 					</pre>

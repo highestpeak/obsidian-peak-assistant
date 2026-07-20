@@ -83,7 +83,7 @@ export const PromptEnhanceSuggestion: React.FC = () => {
 		return (
 			<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-pb-1">
 				<Loader2 className="pktw-w-3 pktw-h-3 pktw-animate-spin pktw-text-muted-foreground" />
-				<span className="pktw-text-[11px] pktw-text-muted-foreground">Enhancing prompt...</span>
+				<span className="pktw-text-pk-sm pktw-text-muted-foreground">Enhancing prompt...</span>
 			</div>
 		);
 	}
@@ -96,8 +96,7 @@ export const PromptEnhanceSuggestion: React.FC = () => {
 	 */
 	return (
 		<div
-			className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-3"
-			style={{ paddingBottom: 4, paddingTop: 2, lineHeight: 1.2 }}
+			className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-pb-1 pktw-pt-0.5 pktw-leading-[1.2]"
 		>
 			<a
 				role="button"
@@ -109,14 +108,9 @@ export const PromptEnhanceSuggestion: React.FC = () => {
 						handleEnhance();
 					}
 				}}
-				className="pktw-cursor-pointer pktw-inline-flex pktw-items-center pktw-gap-1"
-				style={{
-					fontSize: 11,
-					color: 'var(--pk-accent-text)',
-					fontWeight: 500,
-				}}
+				className="pktw-cursor-pointer pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-pk-sm pktw-text-pk-accent-text pktw-font-medium"
 			>
-				<Wand2 style={{ width: 11, height: 11 }} />
+				<Wand2 className="pktw-w-[11px] pktw-h-[11px]" />
 				<span>Enhance prompt?</span>
 			</a>
 			<a
@@ -129,8 +123,7 @@ export const PromptEnhanceSuggestion: React.FC = () => {
 						handleDismiss();
 					}
 				}}
-				className="pktw-cursor-pointer"
-				style={{ fontSize: 11, color: 'var(--pk-text-tertiary)' }}
+				className="pktw-cursor-pointer pktw-text-pk-sm pktw-text-pk-text-tertiary"
 			>
 				dismiss
 			</a>

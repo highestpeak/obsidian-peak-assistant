@@ -24,6 +24,10 @@ export class CopilotCommandCenterModal extends Modal {
 
 	onOpen(): void {
 		this.contentEl.empty();
+		// Bare-DOM modal: `pktw-root` ONLY (tokens + font pin). The plan/goal
+		// phases use Obsidian `new Setting().setCta()` native buttons, so the
+		// `peak-design-root` reset must NOT strip their chrome.
+		this.contentEl.addClass('pktw-root');
 		this.modalEl.addClass('peak-copilot-command-center-modal');
 		this.modalEl.style.width = '640px';
 		this.modalEl.style.maxWidth = '92vw';
@@ -95,7 +99,7 @@ export class CopilotCommandCenterModal extends Modal {
 		this.contentEl.createEl('p', { text: this.plan.summary }).style.marginBottom = '8px';
 		const restate = this.contentEl.createEl('p', { text: `Goal (as understood): ${this.plan.goalRestatement}` });
 		restate.style.fontStyle = 'italic';
-		restate.style.color = 'var(--text-muted)';
+		restate.style.color = 'var(--pk-text-secondary, var(--text-muted))';
 		restate.style.marginBottom = '12px';
 
 		const stepsEl = this.contentEl.createEl('ol');
@@ -106,16 +110,16 @@ export class CopilotCommandCenterModal extends Modal {
 			const line1 = li.createEl('div');
 			line1.createEl('strong', { text: step.commandLabel });
 			line1.appendChild(document.createTextNode(step.readOnly ? '  · read-only' : '  · writes'));
-			li.createEl('div', { text: step.rationale, cls: 'peak-cmdcenter-rationale' }).style.color = 'var(--text-muted)';
+			li.createEl('div', { text: step.rationale, cls: 'peak-cmdcenter-rationale' }).style.color = 'var(--pk-text-secondary, var(--text-muted))';
 			if (step.reviewHint) {
-				li.createEl('div', { text: `Review: ${step.reviewHint}` }).style.color = 'var(--text-muted)';
+				li.createEl('div', { text: `Review: ${step.reviewHint}` }).style.color = 'var(--pk-text-secondary, var(--text-muted))';
 			}
 		}
 
 		const confidenceLine = this.contentEl.createEl('div');
 		confidenceLine.style.margin = '12px 0';
 		confidenceLine.style.fontSize = '12px';
-		confidenceLine.style.color = 'var(--text-muted)';
+		confidenceLine.style.color = 'var(--pk-text-secondary, var(--text-muted))';
 		confidenceLine.setText(`Planner confidence: ${(this.plan.confidence * 100).toFixed(0)}%`);
 
 		const buttonRow = this.contentEl.createDiv();

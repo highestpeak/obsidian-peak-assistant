@@ -9,9 +9,14 @@ export { CHAT_STUDIO_VIEW_TYPE };
 /**
  * ChatStudioView — all-in-one three-column chat workspace. Hosts
  * ChatStudioPanel which renders ConversationList | ChatViewComponent
- * | ConversationIndex side by side in a single leaf. Opened in a detached
- * window via `workspace.getLeaf('window')` so the user can place it
- * alongside the main Obsidian window while writing.
+ * | ConversationIndex side by side in a single leaf.
+ *
+ * Opened as a main-area tab and then moved to its own window via
+ * `workspace.moveLeafToPopout` (see `ViewManager.openChatStudio`), which
+ * re-uses Obsidian's native popout migration rather than `getLeaf('window')`.
+ * The leaf is DOM-adopted into the popout document without rebuilding the
+ * view; `ReactItemViewHost.onResize` detects the document change and
+ * re-renders so ResizeObserver / Radix portals rebind to the popout window.
  */
 export class ChatStudioView extends ReactItemViewHost {
 	protected readonly viewType = CHAT_STUDIO_VIEW_TYPE;

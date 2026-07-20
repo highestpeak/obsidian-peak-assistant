@@ -1,42 +1,26 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { ChatConversation } from '@/service/chat/types';
+import type { ChatConversationMeta } from '@/core/types/chat';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useChatNavigation } from '@/ui/view/chat-view/useChatNavigation';
 import { showContextMenu } from './utils';
 import { InputModal } from '@/ui/component/shared-ui/InputModal';
-import { IconButton } from '@/ui/component/shared-ui/icon-button';
-import { Plus, MessageSquare } from 'lucide-react';
-import { cn } from '@/ui/react/lib/utils';
+import { MessageSquare } from 'lucide-react';
+import { formatNavRowTime } from '@/core/utils/date-utils';
+import { NavRow } from './NavRow';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { ViewEventType, ConversationUpdatedEvent, ConversationCreatedEvent } from '@/core/eventBus';
 import { useTypewriterEffect } from '@/ui/component/mine/useTypewriterEffect';
-import { TYPEWRITER_EFFECT_SPEED_MS, DEFAULT_NEW_CONVERSATION_TITLE, MAX_CONVERSATIONS_DISPLAY } from '@/core/constant';
-import { MoreHorizontal } from 'lucide-react';
+import { TYPEWRITER_EFFECT_SPEED_MS, MAX_CONVERSATIONS_DISPLAY } from '@/core/constant';
+import {
+	RECENT_BUCKET_ORDER,
+	timeBucket,
+} from '@/ui/view/chat-studio-view/chatStudioLeftLogic';
+import { useChatStudioLeftStrings } from './chatStudioLeftStringsContext';
 
-interface ConversationsSectionProps {
-	/** Optional case-insensitive filter applied to conversation title. */
-	query?: string;
-}
-
-/**
- * Bucket label by createdAt offset from "today midnight". Returns a stable key
- * (used for grouping + display). Buckets: Today / Yesterday / This week /
- * Earlier — designed to be skim-friendly in a tall sidebar, not exhaustive.
- */
-function timeBucket(ts: number, now = Date.now()): string {
-	if (!ts) return 'Earlier';
-	const start = new Date(now);
-	start.setHours(0, 0, 0, 0);
-	const startMs = start.getTime();
-	const diffDays = Math.floor((startMs - ts) / 86_400_000);
-	if (ts >= startMs) return 'Today';
-	if (diffDays < 1) return 'Yesterday';
-	if (diffDays < 7) return 'This week';
-	return 'Earlier';
-}
-
-const BUCKET_ORDER = ['Today', 'Yesterday', 'This week', 'Earlier'];
-
+// ---------------------------------------------------------------------------
+// ConversationTitle — pure, with optional typewriter (used by both Pinned /
+// Recent / project rows).
+// ---------------------------------------------------------------------------
 
 interface ConversationTitleProps {
 	title: string;
@@ -44,26 +28,24 @@ interface ConversationTitleProps {
 	onTypewriterComplete?: () => void;
 }
 
-/**
- * Pure rendering component for displaying conversation title with optional typewriter effect
- * All state management and event handling should be done in parent component
- */
-export const ConversationTitle: React.FC<ConversationTitleProps> = ({ 
-	title, 
+export const ConversationTitle: React.FC<ConversationTitleProps> = ({
+	title,
 	enableTypewriter = false,
-	onTypewriterComplete 
+	onTypewriterComplete,
 }) => {
-	// Apply typewriter effect only when enabled
 	const typewriterTitle = useTypewriterEffect({
 		text: title,
 		speed: TYPEWRITER_EFFECT_SPEED_MS,
 		enabled: enableTypewriter,
 		onComplete: onTypewriterComplete,
 	});
-
-	// If typewriter is disabled, just show the title directly
 	return <>{enableTypewriter ? typewriterTitle : title}</>;
 };
+
+// ---------------------------------------------------------------------------
+// ConversationList — reusable list of ChatConversation rows.
+// Kept public for ProjectsSection (project-scoped list).
+// ---------------------------------------------------------------------------
 
 interface ConversationListProps {
 	conversations: ChatConversation[];
@@ -72,15 +54,9 @@ interface ConversationListProps {
 	onConversationClick: (conversation: ChatConversation) => void;
 	onContextMenu: (e: React.MouseEvent, conversation: ChatConversation) => void;
 	onTypewriterComplete: (conversationId: string) => void;
-	/**
-	 * Whether to show the indicator dot (used in ProjectsSection)
-	 */
-	showIndicator?: boolean;
+	onDragStart?: (e: React.DragEvent, conversation: ChatConversation) => void;
 }
 
-/**
- * Reusable component for rendering a list of conversations
- */
 export const ConversationList: React.FC<ConversationListProps> = ({
 	conversations,
 	activeConversation,
@@ -88,84 +64,67 @@ export const ConversationList: React.FC<ConversationListProps> = ({
 	onConversationClick,
 	onContextMenu,
 	onTypewriterComplete,
-	showIndicator = false,
+	onDragStart,
 }) => {
+	const strings = useChatStudioLeftStrings();
 	return (
 		<>
 			{conversations.map((conversation) => {
-				const isActive = activeConversation?.meta.id === conversation.meta.id;
+				const meta = conversation.meta;
+				const title = meta.title || strings.untitledLabel;
 				return (
-					<div
-						key={conversation.meta.id}
-						className={cn(
-							'pktw-relative pktw-px-2 pktw-py-1.5 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors pktw-text-[13px] pktw-min-h-8 pktw-flex pktw-items-center pktw-gap-2 pktw-break-words',
-							showIndicator && 'pktw-pl-6 pktw-pr-2 before:pktw-content-[""] before:pktw-absolute before:pktw-left-2 before:pktw-top-1/2 before:pktw--translate-y-1/2 before:pktw-w-1 before:pktw-h-1 before:pktw-rounded-full before:pktw-transition-opacity',
-							// Default state
-							!isActive && 'pktw-bg-transparent pktw-text-foreground/80 hover:pktw-bg-muted hover:pktw-text-foreground',
-							// Indicator styles when showIndicator is true
-							showIndicator && !isActive && 'before:pktw-bg-muted-foreground before:pktw-opacity-40 hover:before:pktw-opacity-80',
-							showIndicator && isActive && 'before:!pktw-opacity-100',
-							// Active state — pale lavender bg + 2px left violet rail (replaces solid violet pill).
-							// Rail is drawn via ::after to avoid clashing with showIndicator's ::before dot.
-							isActive && 'after:pktw-content-[""] after:pktw-absolute after:pktw-left-0 after:pktw-top-1.5 after:pktw-bottom-1.5 after:pktw-w-[2px] after:pktw-rounded-r-sm after:pktw-bg-[color:var(--pk-accent)]'
-						)}
-						style={
-							isActive
-								? {
-										background: 'var(--pk-accent-tint)',
-										color: 'var(--pk-accent-text)',
-										fontWeight: 500,
-									}
-								: undefined
-						}
-						data-conversation-id={conversation.meta.id}
-						onClick={() => onConversationClick(conversation)}
-						onContextMenu={(e) => onContextMenu(e, conversation)}
-					>
-						<MessageSquare
-							className="pktw-shrink-0"
-							style={{
-								width: 14,
-								height: 14,
-								color: isActive
-									? 'var(--pk-accent-text)'
-									: 'var(--pk-text-tertiary)',
-							}}
-							aria-hidden
-						/>
-						<span className="pktw-flex-1 pktw-min-w-0 pktw-truncate">
+					<NavRow
+						key={meta.id}
+						isChild
+						leading={<MessageSquare aria-hidden />}
+						label={
 							<ConversationTitle
-								title={conversation.meta.title}
-								enableTypewriter={typewriterEnabled.get(conversation.meta.id) ?? false}
-								onTypewriterComplete={() => onTypewriterComplete(conversation.meta.id)}
+								title={title}
+								enableTypewriter={typewriterEnabled.get(meta.id) ?? false}
+								onTypewriterComplete={() => onTypewriterComplete(meta.id)}
 							/>
-						</span>
-						{/*
-						  Per-row date+calendar removed (2026-06-02). With time-bucket
-						  headers (Today/Yesterday/This week/Earlier) above each group
-						  the row-level repeat was redundant and competed with the
-						  conversation title for horizontal space. If a precise
-						  timestamp is needed, surface it on hover via a tooltip
-						  rather than always-visible chrome.
-						*/}
-					</div>
+						}
+						labelTitle={title}
+						time={formatNavRowTime(meta.updatedAtTimestamp || meta.createdAtTimestamp || 0)}
+						selected={activeConversation?.meta.id === meta.id}
+						draggable={!!onDragStart}
+						menuLabel={strings.rowMenuLabel}
+						dataConversationId={meta.id}
+						onClick={() => onConversationClick(conversation)}
+						onOpenMenu={(e) => onContextMenu(e, conversation)}
+						onDragStart={onDragStart ? (e) => onDragStart(e, conversation) : undefined}
+					/>
 				);
 			})}
 		</>
 	);
 };
 
-/**
- * Conversations section component
- */
-export const ConversationsSection: React.FC<ConversationsSectionProps> = ({ query = '' }) => {
-	const { manager, eventBus, vaultNavigation } = useServiceContext();
+// ---------------------------------------------------------------------------
+// ConversationsSection — Recent-only. Consumes the parent's already-split
+// recentMetas (pinned already removed, project-scoped rows excluded).
+// ---------------------------------------------------------------------------
+
+interface ConversationsSectionProps {
+	recentMetas: ChatConversationMeta[];
+	typewriterEnabled: Map<string, boolean>;
+	onTypewriterComplete: (conversationId: string) => void;
+	onViewAll: () => void;
+	onMenuAction?: () => void;
+}
+
+export const ConversationsSection: React.FC<ConversationsSectionProps> = ({
+	recentMetas,
+	typewriterEnabled,
+	onTypewriterComplete,
+	onViewAll,
+	onMenuAction,
+}) => {
+	const strings = useChatStudioLeftStrings();
+	const { manager, vaultNavigation } = useServiceContext();
 	const chatNavigation = useChatNavigation();
-	const {
-		conversations,
-		activeConversation,
-		updateConversation,
-	} = useChatDataStore();
+	const conversations = useChatDataStore((s) => s.conversations);
+	const activeConversation = useChatDataStore((s) => s.activeConversation);
 
 	const [inputModalOpen, setInputModalOpen] = useState(false);
 	const [inputModalConfig, setInputModalConfig] = useState<{
@@ -173,37 +132,51 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = ({ quer
 		onSubmit: (value: string | null) => Promise<void>;
 		initialValue?: string;
 		placeholderText?: string;
-		hintText?: string;
-		submitButtonText?: string;
 	} | null>(null);
 
-	// Track typewriter state for each conversation
-	const [typewriterEnabled, setTypewriterEnabled] = useState<Map<string, boolean>>(new Map());
+	// Recent shows only root-level (no projectId) items — project rows live in
+	// the Projects section.
+	const rootRecentMetas = useMemo(
+		() => recentMetas.filter((m) => !m.projectId),
+		[recentMetas]
+	);
 
-	const handleNewConversation = async () => {
-		await chatNavigation.openPendingConversationInChat({
-			title: DEFAULT_NEW_CONVERSATION_TITLE,
-			project: null,
+	// The Recent list caps at MAX_CONVERSATIONS_DISPLAY; the header "View all"
+	// link (always present) is the single overflow affordance — the mock has no
+	// inline "see more" row at the bottom of Recent.
+	const visibleRecent = useMemo(
+		() => rootRecentMetas.slice(0, MAX_CONVERSATIONS_DISPLAY),
+		[rootRecentMetas]
+	);
+
+	const grouped = useMemo(() => {
+		const buckets = new Map<string, ChatConversationMeta[]>();
+		visibleRecent.forEach((meta) => {
+			const key = timeBucket(meta.updatedAtTimestamp || meta.createdAtTimestamp || 0);
+			const arr = buckets.get(key) || [];
+			arr.push(meta);
+			buckets.set(key, arr);
 		});
-	};
+		return RECENT_BUCKET_ORDER
+			.filter((k) => buckets.has(k))
+			.map((k) => ({ label: bucketLabel(k, strings), items: buckets.get(k)! }));
+	}, [visibleRecent, strings]);
 
-	const handleConversationClick = async (conversation: ChatConversation) => {
-		await chatNavigation.openConversationInChat(conversation);
-	};
+	const openConversationById = useCallback(async (id: string) => {
+		const conv = conversations.get(id) ?? await manager.readConversation(id, false);
+		if (conv) await chatNavigation.openConversationInChat(conv);
+	}, [chatNavigation, conversations, manager]);
 
-	const handleEditConversationTitle = useCallback((conversation: ChatConversation) => {
+	const handleEditTitle = useCallback((id: string, currentTitle: string) => {
 		setInputModalConfig({
-			message: 'Enter conversation title',
-			placeholderText: 'Conversation title',
-			initialValue: conversation.meta.title,
-			onSubmit: async (newTitle: string | null) => {
+			message: strings.menuRename,
+			placeholderText: strings.conversationTitlePlaceholder,
+			initialValue: currentTitle,
+			onSubmit: async (newTitle) => {
 				if (!newTitle || !newTitle.trim()) return;
-
 				try {
-					// updateConversationTitle will trigger ConversationUpdatedEvent
-					// The event listener will handle updating the store and enabling typewriter effect
 					await manager.conv.updateConversationTitle({
-						conversationId: conversation.meta.id,
+						conversationId: id,
 						title: newTitle.trim(),
 					});
 				} catch (error) {
@@ -212,173 +185,109 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = ({ quer
 			},
 		});
 		setInputModalOpen(true);
-	}, [manager]);
+	}, [manager, strings.menuRename]);
 
-	// Menu item configurations
-	const conversationMenuItems = useCallback((conversation: ChatConversation) => [
-		{
-			title: 'Edit title',
+	const handleContextMenu = useCallback((e: React.MouseEvent, meta: ChatConversationMeta) => {
+		const items: Array<{ title: string; icon: string; onClick: () => void | Promise<void> }> = [];
+		items.push({
+			title: meta.pinned ? strings.menuUnpin : strings.menuPin,
+			icon: meta.pinned ? 'pin-off' : 'pin',
+			onClick: async () => {
+				await manager.conv.setConversationPinned(meta.id, !meta.pinned);
+				onMenuAction?.();
+			},
+		});
+		items.push({
+			title: strings.menuRename,
 			icon: 'pencil',
-			onClick: () => handleEditConversationTitle(conversation),
-		},
-		{
-			title: 'Open source file',
+			onClick: () => handleEditTitle(meta.id, meta.title),
+		});
+		items.push({
+			title: strings.menuOpenSource,
 			icon: 'file-text',
 			onClick: async () => {
-				await vaultNavigation.openSourceFile(conversation.file);
+				const conv = conversations.get(meta.id) ?? await manager.readConversation(meta.id, false);
+				if (conv) await vaultNavigation.openSourceFile(conv.file);
 			},
-		},
-		{
-			title: 'Delete',
+		});
+		items.push({
+			title: meta.archived ? strings.menuRestore : strings.menuArchive,
+			icon: meta.archived ? 'archive-restore' : 'archive',
+			onClick: async () => {
+				await manager.conv.setConversationArchived(meta.id, !meta.archived);
+				onMenuAction?.();
+			},
+		});
+		items.push({
+			title: strings.menuDelete,
 			icon: 'trash',
 			onClick: async () => {
-				await manager.conv.deleteConversation(conversation.meta.id);
-				const { conversations: current, setConversations: updateConversations, activeConversation: active, setActiveConversation: setActive } = useChatDataStore.getState();
-				const updated = Array.from(current.values()).filter(c => c.meta.id !== conversation.meta.id);
-				updateConversations(updated);
-				if (active?.meta.id === conversation.meta.id) {
-					setActive(null);
-				}
+				const doc = e.currentTarget?.ownerDocument ?? document;
+				const win = doc.defaultView ?? window;
+				const ok = win.confirm(`${strings.deleteConfirmTitle}\n\n${strings.deleteConfirmBody}`);
+				if (!ok) return;
+				await manager.conv.deleteConversation(meta.id);
+				const { conversations: current, setConversations, activeConversation: active, setActiveConversation } = useChatDataStore.getState();
+				const updated = Array.from(current.values()).filter((c) => c.meta.id !== meta.id);
+				setConversations(updated);
+				if (active?.meta.id === meta.id) setActiveConversation(null);
+				onMenuAction?.();
 			},
-		},
-	], [vaultNavigation, manager, handleEditConversationTitle]);
-
-	const handleContextMenu = (e: React.MouseEvent, conversation: ChatConversation) => {
-		const menuItems = conversationMenuItems(conversation);
-		showContextMenu(e, menuItems);
-	};
-
-	// Listen for conversation updates and manage typewriter effect
-	useEffect(() => {
-		const unsubscribeUpdated = eventBus.on<ConversationUpdatedEvent>(
-			ViewEventType.CONVERSATION_UPDATED,
-			async (event) => {
-				const conversation = event.conversation;
-				setTypewriterEnabled(prev => {
-					const next = new Map(prev);
-					next.set(conversation.meta.id, true);
-					return next;
-				});
-				updateConversation(conversation);
-			}
-		);
-
-		const unsubscribeCreated = eventBus.on<ConversationCreatedEvent>(
-			ViewEventType.CONVERSATION_CREATED,
-			(event) => {
-				setTypewriterEnabled(prev => {
-					const next = new Map(prev);
-					next.set(event.conversationId, true);
-					return next;
-				});
-			}
-		);
-
-		return () => {
-			unsubscribeUpdated();
-			unsubscribeCreated();
-		};
-	}, [eventBus, updateConversation]);
-
-	// Get root-level conversations (without projectId)
-	const conversationsWithoutProject = useMemo(() => {
-		const q = query.trim().toLowerCase();
-		return Array.from(conversations.values())
-			.filter((c) => !c.meta.projectId)
-			.filter((c) => !q || (c.meta.title || '').toLowerCase().includes(q))
-			.sort((a, b) => {
-				const timeA = a.meta.createdAtTimestamp || 0;
-				const timeB = b.meta.createdAtTimestamp || 0;
-				return timeB - timeA;
-			});
-	}, [conversations, query]);
-
-	const conversationsToShow = conversationsWithoutProject.slice(0, MAX_CONVERSATIONS_DISPLAY);
-	const hasMoreConversations = conversationsWithoutProject.length > MAX_CONVERSATIONS_DISPLAY;
-
-	// Group visible conversations into Today / Yesterday / This week / Earlier
-	// buckets so the sidebar reads as a timeline rather than a flat list.
-	const grouped = useMemo(() => {
-		const buckets = new Map<string, ChatConversation[]>();
-		conversationsToShow.forEach((c) => {
-			const key = timeBucket(c.meta.createdAtTimestamp || 0);
-			const arr = buckets.get(key) || [];
-			arr.push(c);
-			buckets.set(key, arr);
 		});
-		return BUCKET_ORDER
-			.filter((k) => buckets.has(k))
-			.map((k) => ({ label: k, items: buckets.get(k)! }));
-	}, [conversationsToShow]);
+		showContextMenu(e, items);
+	}, [conversations, handleEditTitle, manager, onMenuAction, strings, vaultNavigation]);
 
-	/*
-	 * Restructured 2026-06-02: previously this section had its own collapsible
-	 * "CONVERSATIONS" header (with chevron + plus). Per the locked design,
-	 * conversations sit directly under time-bucket section labels
-	 * (TODAY / YESTERDAY / THIS WEEK / EARLIER) at the same hierarchy as the
-	 * PROJECTS section above. The outer wrapper was redundant chrome.
-	 *
-	 * New-conversation `+` button now hovers over each bucket label, since
-	 * the bucket label IS the new section header. Top of the conversations
-	 * list also carries a low-noise "+ New conversation" affordance for
-	 * discoverability when the list is empty.
-	 */
 	return (
-		<div className="pktw-flex pktw-flex-col">
-			{conversationsToShow.length === 0 ? (
-				<div className="pktw-p-3 pktw-text-muted-foreground pktw-text-[13px] pktw-italic pktw-text-center">
-					{query.trim() ? 'No matching conversations' : 'No conversations'}
+		<div className="pkstudio-nav-section">
+			<div className="pkstudio-section-label">
+				<span className="pkstudio-section-label__lead">{strings.recentHeader}</span>
+				<button type="button" className="pkstudio-section-link" onClick={onViewAll}>
+					{strings.viewAllLabel}
+				</button>
+			</div>
+
+			{visibleRecent.length === 0 ? (
+				<div className="pktw-p-3 pktw-text-muted-foreground pktw-text-pk-md pktw-italic pktw-text-center">
+					{strings.recentEmpty}
 				</div>
 			) : (
-				grouped.map((bucket, idx) => (
-					<React.Fragment key={bucket.label}>
-						<div
-							className="pktw-group pktw-flex pktw-items-center pktw-justify-between pktw-px-2 pktw-pb-0.5 pktw-text-[11px] pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-text-muted-foreground"
-							style={{ paddingTop: idx === 0 ? 8 : 12 }}
-						>
-							<span>{bucket.label}</span>
-							<IconButton
-								size="md"
-								className="pktw-shrink-0 pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity"
-								onClick={(e) => {
-									e.stopPropagation();
-									handleNewConversation();
-								}}
-								title={DEFAULT_NEW_CONVERSATION_TITLE}
-							>
-								<Plus className="pktw-text-foreground" />
-							</IconButton>
+				grouped.map((bucket) => (
+					<div className="pkstudio-recent-group" key={bucket.label}>
+						<div className="pkstudio-section-label pkstudio-subsection-label">
+							<span className="pkstudio-section-label__lead">{bucket.label}</span>
 						</div>
-						<ConversationList
-							conversations={bucket.items}
-							activeConversation={activeConversation}
-							typewriterEnabled={typewriterEnabled}
-							onConversationClick={handleConversationClick}
-							onContextMenu={handleContextMenu}
-							onTypewriterComplete={(conversationId) => {
-								setTypewriterEnabled(prev => {
-									const next = new Map(prev);
-									next.delete(conversationId);
-									return next;
-								});
-							}}
-						/>
-					</React.Fragment>
+						{bucket.items.map((meta) => {
+							const title = meta.title || strings.untitledLabel;
+							return (
+								<NavRow
+									key={meta.id}
+									leading={<MessageSquare aria-hidden />}
+									label={
+										<ConversationTitle
+											title={title}
+											enableTypewriter={typewriterEnabled.get(meta.id) ?? false}
+											onTypewriterComplete={() => onTypewriterComplete(meta.id)}
+										/>
+									}
+									labelTitle={title}
+									time={formatNavRowTime(meta.updatedAtTimestamp || meta.createdAtTimestamp || 0)}
+									selected={activeConversation?.meta.id === meta.id}
+									draggable
+									menuLabel={strings.rowMenuLabel}
+									dataConversationId={meta.id}
+									onClick={() => void openConversationById(meta.id)}
+									onOpenMenu={(e) => handleContextMenu(e, meta)}
+									onDragStart={(e) => {
+										e.dataTransfer.setData('application/x-peak-conversation-id', meta.id);
+										e.dataTransfer.effectAllowed = 'move';
+									}}
+								/>
+							);
+						})}
+					</div>
 				))
 			)}
-			{hasMoreConversations && (
-				<div
-					className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-mx-2 pktw-my-1 pktw-rounded-md pktw-text-muted-foreground pktw-text-xs pktw-transition-all pktw-cursor-pointer hover:pktw-bg-muted hover:pktw-text-foreground"
-					onClick={() => {
-						void chatNavigation.openAllConversationsInChat();
-					}}
-				>
-					<MoreHorizontal className="pktw-w-3.5 pktw-h-3.5" />
-					<span className="pktw-flex-1">See more</span>
-				</div>
-			)}
 
-			{/* Modal */}
 			{inputModalConfig && (
 				<InputModal
 					open={inputModalOpen}
@@ -387,10 +296,16 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = ({ quer
 					onSubmit={inputModalConfig.onSubmit}
 					initialValue={inputModalConfig.initialValue}
 					placeholderText={inputModalConfig.placeholderText}
-					hintText={inputModalConfig.hintText}
-					submitButtonText={inputModalConfig.submitButtonText}
 				/>
 			)}
 		</div>
 	);
 };
+
+function bucketLabel(k: string, strings: ReturnType<typeof useChatStudioLeftStrings>): string {
+	if (k === 'Today') return strings.groupToday;
+	if (k === 'Yesterday') return strings.groupYesterday;
+	if (k === 'This week') return strings.groupThisWeek;
+	if (k === 'Earlier') return strings.groupEarlier;
+	return k;
+}

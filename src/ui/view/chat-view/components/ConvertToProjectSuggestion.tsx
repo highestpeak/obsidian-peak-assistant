@@ -55,7 +55,7 @@ export const ConvertToProjectSuggestion: React.FC = () => {
 
 	return (
 		<div className={cn(
-			'pktw-mx-4 pktw-mb-3 pktw-px-4 pktw-py-2.5 pktw-rounded-md',
+			'pkchat-convert-project pktw-mb-3 pktw-px-3 pktw-py-2 pktw-rounded-md',
 			'pktw-border pktw-border-dashed pktw-border-border',
 			'pktw-bg-muted/30',
 			'pktw-flex pktw-items-center pktw-gap-3',

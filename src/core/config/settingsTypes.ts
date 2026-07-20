@@ -293,6 +293,8 @@ export interface MyPluginSettings {
 	search: SearchSettings;
 	sqliteBackend?: 'auto' | 'better-sqlite3';
 	enableDevTools?: boolean;
+	/** Syntax colour palette used by fenced code blocks in rich AI messages. */
+	codeBlockTheme?: CodeBlockThemeId;
 	graphViz?: {
 		mstPruneDepth?: number;
 		skeletonBackboneOnly?: boolean;
@@ -358,12 +360,36 @@ export const DEFAULT_DEBUG_TRACE_SETTINGS: DebugTraceSettings = {
 	includeRawContent: false,
 };
 
+/**
+ * Curated Shiki themes exposed by Settings. Code blocks intentionally use one
+ * explicit dark palette in both app themes so Obsidian's theme and the OS
+ * colour scheme cannot select different syntax colours for the same message.
+ */
+export const CODE_BLOCK_THEME_IDS = [
+	'github-dark',
+	'one-dark-pro',
+	'nord',
+	'dracula',
+	'vitesse-dark',
+] as const;
+
+export type CodeBlockThemeId = typeof CODE_BLOCK_THEME_IDS[number];
+
+export const DEFAULT_CODE_BLOCK_THEME: CodeBlockThemeId = 'github-dark';
+
+export function normalizeCodeBlockTheme(value: unknown): CodeBlockThemeId {
+	if (typeof value !== 'string') return DEFAULT_CODE_BLOCK_THEME;
+	if ((CODE_BLOCK_THEME_IDS as readonly string[]).includes(value)) return value as CodeBlockThemeId;
+	return DEFAULT_CODE_BLOCK_THEME;
+}
+
 export const DEFAULT_SETTINGS: MyPluginSettings = {
 	dataStorageFolder: getAIDataStoreFolder(DEFAULT_AI_SERVICE_SETTINGS.rootFolder),
 	ai: DEFAULT_AI_SERVICE_SETTINGS,
 	search: DEFAULT_SEARCH_SETTINGS,
 	sqliteBackend: 'auto',
 	enableDevTools: false,
+	codeBlockTheme: DEFAULT_CODE_BLOCK_THEME,
 	ambientPush: undefined,
 	harnessSettings: { ...DEFAULT_HARNESS_SETTINGS },
 	debugTrace: { ...DEFAULT_DEBUG_TRACE_SETTINGS },

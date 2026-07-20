@@ -7,9 +7,9 @@
   border: none !important;
   background: transparent !important;
   font-family: inherit !important;
-  font-size: 15px !important;
-  line-height: 1.5 !important;
-  font-weight: 500 !important;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+  font-weight: 400 !important;
   color: var(--pk-text-primary, var(--text-normal)) !important;
 }
 
@@ -21,10 +21,14 @@
 /* Content area */
 .pktw-codemirror-custom .cm-content {
   padding: 0 !important;
-  line-height: 1.5 !important;
-  font-family: inherit !important;
-  font-size: 15px !important;
-  font-weight: 500 !important;
+  line-height: 1.45 !important;
+  /* Defense-in-depth: pin sans DIRECTLY (was `inherit`, which only works if the
+     parent resolved sans first). Obsidian's own CM theme can win a specificity /
+     load-order fight for `.cm-content` and re-monospace the composer input, so
+     we resolve the font here rather than depending on `.cm-scroller`. */
+  font-family: var(--pk-font-sans) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
   min-height: 60px !important;
   max-height: 200px !important;
 }
@@ -68,41 +72,49 @@
 
 /* Selection */
 .pktw-codemirror-custom .cm-selectionBackground {
-  background: rgba(59, 130, 246, 0.2) !important;
+  background: var(--pk-info-bg) !important;
 }
 
-/* Cursor */
+/* Cursor — token with literal fallback so unresolved scope keeps the current
+   look; the token also gives the dark branch (was gray-800, invisible-ish). */
 .pktw-codemirror-custom .cm-cursor {
-  border-left: 2px solid rgb(31 41 55) !important;
+  border-left: 2px solid var(--pk-text-primary, rgb(31, 41, 55)) !important;
 }
 
 .theme-dark .pktw-codemirror-custom .cm-cursor {
-  border-left: 2px solid rgb(243 244 246) !important;
+  border-left: 2px solid var(--pk-text-primary, rgb(243, 244, 246)) !important;
 }
 
 /* Placeholder */
 .pktw-codemirror-custom .cm-placeholder {
   color: var(--pk-text-tertiary, var(--text-muted)) !important;
   font-style: normal !important;
+  /* Defense-in-depth: the placeholder sets no font of its own, so a stray
+     Obsidian CM rule can leave it monospaced even when `.cm-content` is sans.
+     Pin sans + the composer's 13px here too. */
+  font-family: var(--pk-font-sans) !important;
+  font-size: 13px !important;
 }
 
-/* Context tag styling - purple */
+/* Vault references read like compact document tokens, not brand-colour tags. */
 .pktw-codemirror-custom.cm-editor .cm-context-tag,
 .pktw-codemirror-custom .cm-context-tag {
-  background-color: rgba(139, 92, 246, 0.1) !important;
-  color: rgb(139, 92, 246) !important;
-  border: 1px solid rgba(139, 92, 246, 0.2) !important;
-  border-radius: 4px !important;
-  padding: 1px 3px !important;
-  font-weight: 500 !important;
+  background-color: var(--pk-surface-sunken, var(--background-secondary)) !important;
+  color: var(--pk-text-primary, var(--text-normal)) !important;
+  border: 1px solid var(--pk-border-soft, var(--background-modifier-border)) !important;
+  border-radius: 5px !important;
+  padding: 1px 4px !important;
+	font-weight: 500 !important;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
-/* Prompt tag styling - blue */
+/* Prompt tag styling - blue (info token) */
 .pktw-codemirror-custom.cm-editor .cm-prompt-tag,
 .pktw-codemirror-custom .cm-prompt-tag {
-  background-color: rgba(59, 130, 246, 0.1) !important;
-  color: rgb(59, 130, 246) !important;
-  border: 1px solid rgba(59, 130, 246, 0.2) !important;
+  background-color: var(--pk-info-bg) !important;
+  color: var(--pk-info) !important;
+  border: 1px solid var(--pk-info-border) !important;
   border-radius: 4px !important;
   padding: 1px 3px !important;
   font-weight: 500 !important;
@@ -111,8 +123,8 @@
 /* Search tag styling - blue (matching the original InputWithOverlay) */
 .pktw-codemirror-custom.cm-editor .cm-search-tag,
 .pktw-codemirror-custom .cm-search-tag {
-  background-color: rgba(59, 130, 246, 0.15) !important;
-  color: rgb(55, 65, 81) !important;
+  background-color: var(--pk-info-bg) !important;
+  color: var(--pk-text-primary, rgb(55, 65, 81)) !important;
   border-radius: 4px !important;
   padding: 1px 2px !important;
   font-weight: inherit !important;
@@ -122,6 +134,10 @@
 .pktw-codemirror-custom .cm-scroller {
   overflow-x: hidden !important;
   overflow-y: auto !important;
+  /* CM's base theme sets `.cm-scroller { font-family: monospace }` and
+     `.cm-content { font-family: inherit }` resolves to it — pin sans here so
+     the composer input renders in the UI font. */
+  font-family: var(--pk-font-sans) !important;
 }
 
 /* Ensure proper text wrapping */
@@ -130,11 +146,14 @@
   white-space: pre-wrap !important;
 }
 
-/* Autocompletion styles */
-.cm-tooltip-autocomplete,
+/* Autocompletion styles.
+   Scoped to `.pktw-codemirror-custom` ONLY — a bare `.cm-tooltip-autocomplete`
+   alias would restyle Obsidian's own CM6 editor tooltips vault-wide with
+   `!important` once this file is in the bundle. CM mounts tooltips inside the
+   editor DOM by default, so the scoped selector reaches them. */
 .pktw-codemirror-custom .cm-tooltip-autocomplete {
-  background-color: var(--background-primary) !important;
-  border: 2px solid var(--background-modifier-border) !important;
+  background-color: var(--pk-surface, var(--background-primary)) !important;
+  border: 2px solid var(--pk-border, var(--background-modifier-border)) !important;
   border-radius: 8px !important;
   box-shadow: 0 8px 24px rgba(0,0,0,0.3) !important;
   padding: 4px !important;
@@ -147,8 +166,8 @@
 
 /* Selected item */
 .pktw-codemirror-custom .cm-tooltip-autocomplete ul li[aria-selected] {
-  background-color: var(--interactive-accent) !important;
-  color: var(--text-normal) !important;
+  background-color: var(--pk-accent, var(--interactive-accent)) !important;
+  color: var(--pk-text-primary, var(--text-normal)) !important;
   border-radius: 4px !important;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
   transform: translateY(-1px) !important;
@@ -157,14 +176,14 @@
 /* Completion item */
 .pktw-codemirror-custom .cm-completionLabel {
   font-weight: 500 !important;
-  color: var(--text-normal) !important;
+  color: var(--pk-text-primary, var(--text-normal)) !important;
 }
 
 .pktw-codemirror-custom .cm-completionDetail {
   font-style: italic !important;
   opacity: 0.6 !important;
   margin-left: 10px !important;
-  color: var(--text-muted) !important;
+  color: var(--pk-text-secondary, var(--text-muted)) !important;
 }
 
 /* Completion item layout */
@@ -174,12 +193,12 @@
   align-items: center !important;
   justify-content: space-between !important;
   cursor: pointer !important;
-  color: var(--text-normal) !important;
+  color: var(--pk-text-primary, var(--text-normal)) !important;
 }
 
 /* Completion item hover */
 .pktw-codemirror-custom .cm-tooltip-autocomplete ul li:hover {
-  background-color: var(--background-modifier-hover) !important;
+  background-color: var(--pk-state-hover, var(--background-modifier-hover)) !important;
 }
 
 /* Hide type indicators */
@@ -188,15 +207,16 @@
 }
 
 /* Info tooltip styles for completion details */
-.cm-tooltip,
+/* Scoped only — see the autocomplete note above; a bare `.cm-tooltip` here
+   would hit every tooltip in Obsidian's own editor. */
 .pktw-codemirror-custom .cm-tooltip {
-  border: 2px solid var(--background-modifier-border) !important;
+  border: 2px solid var(--pk-border, var(--background-modifier-border)) !important;
   border-radius: 8px !important;
   box-shadow: 0 8px 24px rgba(19, 19, 19, 0.3) !important;
   max-width: 400px !important;
   font-size: 14px !important;
   line-height: 1.4 !important;
-  color: var(--text-normal) !important;
+  color: var(--pk-text-primary, var(--text-normal)) !important;
   z-index: 9999 !important;
   position: absolute !important;
   word-wrap: break-word !important;

@@ -1,12 +1,20 @@
+/**
+ * MessageSuggestedNext — follow-up chips below the last assistant message
+ * (chat-studio §7.8 / MSG-10).
+ *
+ * Contract:
+ *   • Max 2 inline chips.
+ *   • Clicking a chip fills the MAIN Composer draft (fillDraftText) AND sets
+ *     a reply anchor to the producing assistant message + focuses the
+ *     composer. We never render an inline composer per §15.
+ *   • The More popover only lists real handlers. The MIGRATION-DEFERRED
+ *     rewrite/checklist stubs were removed — no ghost menu items.
+ *   • "Custom follow-up" = focus the main Composer with a reply anchor and
+ *     no pre-filled text.
+ */
+
 import React from 'react';
-import {
-	ArrowUpRight,
-	ChevronDown,
-	HelpCircle,
-	Wand2,
-	CheckSquare,
-	Pencil,
-} from 'lucide-react';
+import { ArrowUpRight, ChevronDown, HelpCircle, Pencil, ListChecks, FilePlus2 } from 'lucide-react';
 import {
 	Popover,
 	PopoverContent,
@@ -14,146 +22,125 @@ import {
 	PopoverItem,
 } from '@/ui/components/primitives';
 import { useChatStrings } from '../../chatStringsContext';
+import { useComposerStore } from '../../store/composerStore';
+import type { ChatMessage } from '@/service/chat/types';
+import type { ChatStudioStrings } from '../../chatStudioStrings';
 
 const MAX_INLINE_CHIPS = 2;
 
-/**
- * MessageSuggestedNext — follow-up question chips below the last assistant
- * message. Renders up to 2 inline chips and folds the rest into a "More…"
- * popover.
- *
- * Suggestions are generated ONCE when the assistant stream completes (see
- * useStreamChat) and persisted to sqlite, so we never regenerate on remount.
- * Older messages without persisted suggestions render only the actions row
- * (no fallback regeneration).
- */
 export interface MessageSuggestedNextProps {
-	/**
-	 * Persisted follow-up questions for this message. Empty / undefined →
-	 * the suggestion row is suppressed (only actions, if any, render).
-	 */
+	message: ChatMessage;
+	/** Persisted follow-up questions for this message. */
 	suggestions: string[] | undefined;
-	onSelect: (question: string) => void;
-	/**
-	 * Optional ACTIONS group handlers — shown in the "More…" popover below
-	 * the FOLLOW-UP overflow questions. Each renders only when supplied so
-	 * the caller can scope the menu progressively.
-	 *
-	 * MIGRATION-DEFERRED: real handlers for Rewrite / Checklist don't exist
-	 * yet — only `onAskCustom` (delegates to inline followup composer) is
-	 * wired. Other slots will light up as their service plumbing lands.
-	 * Tracked in chat surface modernization.
-	 */
-	onRewriteSimply?: () => void;
-	onCreateChecklist?: () => void;
+	/** Chat-studio config strings (answer-action prompt templates). */
+	studioStrings: ChatStudioStrings;
+	/** Optional Save-to-Vault handler; renders when supplied. */
 	onSaveToNote?: () => void;
-	onAskCustom?: () => void;
 }
 
 export const MessageSuggestedNext: React.FC<MessageSuggestedNextProps> = ({
+	message,
 	suggestions,
-	onSelect,
-	onRewriteSimply,
-	onCreateChecklist,
+	studioStrings,
 	onSaveToNote,
-	onAskCustom,
 }) => {
 	const strings = useChatStrings();
 	const resolved = suggestions ?? [];
 	const inline = resolved.slice(0, MAX_INLINE_CHIPS);
 	const overflow = resolved.slice(MAX_INLINE_CHIPS);
 
-	const actionItems = [
-		onRewriteSimply && {
-			key: 'rewrite',
-			icon: <Wand2 />,
-			label: strings.message.moreRewriteSimply,
-			onClick: onRewriteSimply,
-		},
-		onCreateChecklist && {
-			key: 'checklist',
-			icon: <CheckSquare />,
-			label: strings.message.moreCreateChecklist,
-			onClick: onCreateChecklist,
-		},
-		onSaveToNote && {
-			key: 'save',
-			icon: <ArrowUpRight />,
-			label: strings.message.moreSaveToVault,
-			onClick: onSaveToNote,
-		},
-		onAskCustom && {
-			key: 'custom',
-			icon: <Pencil />,
-			label: strings.message.moreAskCustomFollowup,
-			onClick: onAskCustom,
-		},
-	].filter(Boolean) as Array<{ key: string; icon: React.ReactNode; label: string; onClick: () => void }>;
+	const anchor = buildReplyAnchor(message, studioStrings.messages.replyAnchorFallback);
 
-	// If there are no persisted suggestions AND no actions wired, suppress
-	// the row entirely. (Suggestions may not exist for older messages
-	// generated before persistence landed — we intentionally don't backfill.)
-	if (resolved.length === 0 && actionItems.length === 0) return null;
+	const applyToComposer = (text: string) => {
+		const store = useComposerStore.getState();
+		store.setReplyAnchor(anchor);
+		if (text) store.fillDraftText(text);
+		store.requestComposerFocus();
+	};
 
-	const hasOverflow = overflow.length > 0 || actionItems.length > 0;
+	// No persisted follow-ups → render nothing. Save-to-Vault and custom
+	// follow-up stay reachable from the assistant action row, so a lone
+	// "More…" with no chips (the old orphan) is never shown (MSG / M2).
+	if (resolved.length === 0) return null;
 
 	return (
 		<div className="pkchat-msg__suggest">
-			{resolved.length > 0 && (
-				<span className="pkchat-msg__suggest-label">
-					{strings.message.suggestedNextLabel}
-				</span>
-			)}
+			<span className="pkchat-msg__suggest-label">
+				{strings.message.suggestedNextLabel}
+			</span>
 			{inline.map((q, i) => (
 				<button
 					key={i}
 					type="button"
 					className="pkchat-msg__suggest-chip"
-					onClick={() => onSelect(q)}
+					onClick={() => applyToComposer(q)}
+					aria-label={q}
 				>
 					<ArrowUpRight />
 					<span>{q}</span>
 				</button>
 			))}
-			{hasOverflow && (
-				<Popover>
-					<PopoverTrigger asChild>
-						<button type="button" className="pkchat-msg__suggest-more">
-							<span>{strings.message.suggestedNextMore}</span>
-							<ChevronDown />
-						</button>
-					</PopoverTrigger>
-					<PopoverContent align="start" sideOffset={6}>
-						{overflow.length > 0 && (
-							<>
-								<div className="pkchat-msg__suggest-section">
-									{strings.message.moreSectionFollowUp}
-								</div>
-								{overflow.map((q, i) => (
-									<PopoverItem key={i} onClick={() => onSelect(q)}>
-										<HelpCircle />
-										<span>{q}</span>
-									</PopoverItem>
-								))}
-							</>
-						)}
-						{actionItems.length > 0 && (
-							<>
-								{overflow.length > 0 && <div className="pkchat-msg__suggest-divider" />}
-								<div className="pkchat-msg__suggest-section">
-									{strings.message.moreSectionActions}
-								</div>
-								{actionItems.map((it) => (
-									<PopoverItem key={it.key} onClick={it.onClick}>
-										{it.icon}
-										<span>{it.label}</span>
-									</PopoverItem>
-								))}
-							</>
-						)}
-					</PopoverContent>
-				</Popover>
-			)}
+			<Popover>
+				<PopoverTrigger asChild>
+					<button
+						type="button"
+						className="pkchat-msg__suggest-more"
+						aria-label={strings.message.suggestedNextMore}
+					>
+						<span>{strings.message.suggestedNextMore}</span>
+						<ChevronDown />
+					</button>
+				</PopoverTrigger>
+				<PopoverContent align="start" sideOffset={6}>
+					{overflow.length > 0 && (
+						<>
+							<div className="pkchat-msg__suggest-section">
+								{strings.message.moreSectionFollowUp}
+							</div>
+							{overflow.map((q, i) => (
+								<PopoverItem key={i} onClick={() => applyToComposer(q)}>
+									<HelpCircle />
+									<span>{q}</span>
+								</PopoverItem>
+							))}
+						</>
+					)}
+					{overflow.length > 0 && <div className="pkchat-msg__suggest-divider" />}
+					<div className="pkchat-msg__suggest-section">
+						{strings.message.moreSectionActions}
+					</div>
+					{/* Answer actions — fill the main composer with a config prompt
+					    template anchored to this reply (mock §7.8 rewrite/checklist). */}
+					<PopoverItem onClick={() => applyToComposer(studioStrings.messages.rewritePrompt)}>
+						<Pencil />
+						<span>{strings.message.moreRewriteSimply}</span>
+					</PopoverItem>
+					<PopoverItem onClick={() => applyToComposer(studioStrings.messages.checklistPrompt)}>
+						<ListChecks />
+						<span>{strings.message.moreCreateChecklist}</span>
+					</PopoverItem>
+					{onSaveToNote && (
+						<PopoverItem onClick={onSaveToNote}>
+							<FilePlus2 />
+							<span>{strings.message.moreSaveToVault}</span>
+						</PopoverItem>
+					)}
+					<PopoverItem onClick={() => applyToComposer('')}>
+						<ArrowUpRight />
+						<span>{strings.message.moreAskCustomFollowup}</span>
+					</PopoverItem>
+				</PopoverContent>
+			</Popover>
 		</div>
 	);
 };
+
+/** Build a short reply anchor preview from the assistant message content. */
+function buildReplyAnchor(
+	message: ChatMessage,
+	fallbackPreview: string,
+): { messageId: string; preview: string } {
+	const src = String(message.content ?? '').trim();
+	const preview = src.length > 80 ? `${src.slice(0, 77)}…` : src || fallbackPreview;
+	return { messageId: message.id, preview };
+}

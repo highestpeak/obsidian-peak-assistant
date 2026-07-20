@@ -165,8 +165,13 @@ export const ReasoningContent = memo(
   ({ className, children, ...props }: ReasoningContentProps) => (
     <CollapsibleContent
       className={cn(
-        "pktw-mt-2 pktw-text-xs pktw-italic pktw-border-l-2 pktw-border-pk-border pktw-pl-3",
-        "data-[state=closed]:pktw-fade-out-0 data-[state=closed]:pktw-slide-out-to-top-2 data-[state=open]:pktw-slide-in-from-top-2 pktw-text-muted-foreground pktw-opacity-60 pktw-outline-none data-[state=closed]:pktw-animate-out data-[state=open]:pktw-animate-in",
+        // Single muted layer, no italic (mock defines only the `.reasoning-row`
+        // trigger — no faded-italic body). Keep xs + the left border rail +
+        // padding + open/close animations. Dropping the wrapper italic is enough
+        // to stop the Streamdown shadow content inheriting `font-style` across
+        // the boundary — there is no other italic ancestor.
+        "pktw-mt-2 pktw-text-xs pktw-border-l-2 pktw-border-pk-border pktw-pl-3",
+        "data-[state=closed]:pktw-fade-out-0 data-[state=closed]:pktw-slide-out-to-top-2 data-[state=open]:pktw-slide-in-from-top-2 pktw-text-muted-foreground pktw-outline-none data-[state=closed]:pktw-animate-out data-[state=open]:pktw-animate-in",
         className
       )}
       {...props}

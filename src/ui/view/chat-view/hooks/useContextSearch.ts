@@ -109,7 +109,8 @@ export function useContextSearch() {
 	}, [handleSearchContext]);
 
 	const handleMenuSelect = useCallback(async (triggerChar: string, selectedItem?: any) => {
-		const isContextTrigger = triggerChar === '@' || triggerChar === '[[';
+		// PromptInputBody only emits '[[' | '/' triggers; '[[' owns context refs.
+		const isContextTrigger = triggerChar === '[[';
 		if (isContextTrigger && selectedItem?.showArrow) {
 			const folderPath = selectedItem.value as string;
 			setFolderStack((prev) => [...prev, folderPath]);

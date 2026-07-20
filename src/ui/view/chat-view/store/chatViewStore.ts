@@ -5,13 +5,13 @@
 import { create } from 'zustand';
 import { ChatProject, PendingConversation, ChatConversation } from '@/service/chat/types';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
+import { DEFAULT_NEW_CONVERSATION_TITLE } from '@/core/constant';
 
 // ---------------------------------------------------------------------------
 // Types (re-exported for consumers)
 // ---------------------------------------------------------------------------
 
 export enum ViewMode {
-	HOME = 'home',
 	ALL_PROJECTS = 'all-projects',
 	ALL_CONVERSATIONS = 'all-conversations',
 	PROJECT_OVERVIEW = 'project-overview',
@@ -33,7 +33,10 @@ export interface ChatTag {
 
 interface ChatViewState {
 	// ── Navigation ──
-	viewMode: ViewMode | null;
+	// Always a concrete mode — the store never lands on a null view. Fresh mount,
+	// remount-after-unload (`reset`) and cleared pending all resolve to the
+	// STANDALONE_CONVERSATION start state with a default new-chat pending.
+	viewMode: ViewMode;
 	projectForOverview: ChatProject | null;
 	pendingConversation: PendingConversation | null;
 	initialSelectedModel: { provider: string; modelId: string } | null;
@@ -60,6 +63,13 @@ interface ChatViewState {
 	// ── Insert-to-input action (for Quote selection) ──
 	insertToInput: ((text: string) => void) | null;
 
+	// ── Chat Studio: restore collapsed right column (S5) ──
+	// Set by ChatStudioPanel while the right column is user-collapsed AND
+	// there is room to restore it; the middle-column Header renders a
+	// PanelRight button exactly when this is non-null. `null` in any non-Studio
+	// context (standalone ChatView never sets it) so the button never appears.
+	studioRestoreRight: (() => void) | null;
+
 	// ── Continuation telemetry (PR-Chat-4 §11.4) ──
 	// Set when an assistant stream completes; consulted on the next user
 	// submit so we can record a `continuation` outcome event if the user
@@ -71,7 +81,6 @@ interface ChatViewState {
 
 interface ChatViewActions {
 	// ── Navigation actions ──
-	setHome: () => void;
 	setProjectOverview: (project: ChatProject) => void;
 	setProjectConversationsList: (project: ChatProject) => void;
 	setAllProjects: () => void;
@@ -87,6 +96,8 @@ interface ChatViewActions {
 	// ── Session settings actions ──
 	setChatMode: (mode: 'chat' | 'agent' | 'plan') => void;
 	setSelectedModel: (provider: string, modelId: string) => void;
+	/** Explicit Auto: clears the concrete model so the default binding is used. */
+	clearSelectedModel: () => void;
 	setSearchActive: (active: boolean) => void;
 	setSearchProvider: (provider: 'local' | 'perplexity' | 'model-builtin') => void;
 	setEnableWebSearch: (enabled: boolean) => void;
@@ -99,6 +110,7 @@ interface ChatViewActions {
 	// ── Submit / Insert actions ──
 	setSubmitAction: (fn: ((text: string) => void) | null) => void;
 	setInsertToInput: (fn: ((text: string) => void) | null) => void;
+	setStudioRestoreRight: (fn: (() => void) | null) => void;
 	markAssistantCompleted: (messageId: string, ts?: number) => void;
 	clearAssistantCompletion: () => void;
 
@@ -133,15 +145,24 @@ const INITIAL_SESSION: Pick<ChatViewState,
 	currentInputTags: [],
 };
 
+// The start state every "no active conversation" entry point lands on: a
+// standalone new-chat pending, matching the left-column "New chat" row shape
+// (ProjectListView). Used by the initial state, `reset()` and the cleared-pending
+// branch so a fresh mount, a remount-after-unload and a cancel all behave alike.
+const DEFAULT_PENDING_NEW_CHAT: PendingConversation = {
+	title: DEFAULT_NEW_CONVERSATION_TITLE,
+	project: null,
+};
+
 // ---------------------------------------------------------------------------
 // Store
 // ---------------------------------------------------------------------------
 
 export const useChatViewStore = create<ChatViewStore>((set, get) => ({
 	// ── Navigation state ──
-	viewMode: ViewMode.HOME,
+	viewMode: ViewMode.STANDALONE_CONVERSATION,
 	projectForOverview: null,
-	pendingConversation: null,
+	pendingConversation: DEFAULT_PENDING_NEW_CHAT,
 	initialSelectedModel: null,
 
 	// ── Input history ──
@@ -155,6 +176,7 @@ export const useChatViewStore = create<ChatViewStore>((set, get) => ({
 	// ── Submit / Insert actions ──
 	submitAction: null,
 	insertToInput: null,
+	studioRestoreRight: null,
 
 	// ── Continuation telemetry ──
 	lastAssistantCompletedAt: null,
@@ -163,12 +185,6 @@ export const useChatViewStore = create<ChatViewStore>((set, get) => ({
 	// ═══════════════════════════════════════════════════════════════════════
 	// Navigation actions
 	// ═══════════════════════════════════════════════════════════════════════
-
-	setHome: () => {
-		useChatDataStore.getState().setActiveProject(null);
-		useChatDataStore.getState().setActiveConversation(null);
-		set({ viewMode: ViewMode.HOME, projectForOverview: null, pendingConversation: null });
-	},
 
 	setProjectOverview: (project: ChatProject) => {
 		useChatDataStore.getState().setActiveProject(null);
@@ -209,18 +225,14 @@ export const useChatViewStore = create<ChatViewStore>((set, get) => ({
 	},
 
 	setPendingConversation: (pending: PendingConversation | null) => {
-		if (pending) {
-			useChatDataStore.getState().setActiveConversation(null);
-			useChatDataStore.getState().setActiveProject(pending.project ?? null);
-		} else {
-			useChatDataStore.getState().setActiveConversation(null);
-			useChatDataStore.getState().setActiveProject(null);
-		}
+		// A cleared pending (null) is never a dead-end view: it resolves to the
+		// default standalone new-chat start state, same as a fresh mount.
+		const nextPending = pending ?? DEFAULT_PENDING_NEW_CHAT;
+		useChatDataStore.getState().setActiveConversation(null);
+		useChatDataStore.getState().setActiveProject(nextPending.project ?? null);
 		set({
-			pendingConversation: pending,
-			viewMode: pending
-				? (pending.project ? ViewMode.CONVERSATION_IN_PROJECT : ViewMode.STANDALONE_CONVERSATION)
-				: null,
+			pendingConversation: nextPending,
+			viewMode: nextPending.project ? ViewMode.CONVERSATION_IN_PROJECT : ViewMode.STANDALONE_CONVERSATION,
 			projectForOverview: null,
 			initialSelectedModel: null,
 		});
@@ -273,6 +285,7 @@ export const useChatViewStore = create<ChatViewStore>((set, get) => ({
 
 	setChatMode: (mode) => set({ chatMode: mode }),
 	setSelectedModel: (provider, modelId) => set({ selectedModel: { provider, modelId } }),
+	clearSelectedModel: () => set({ selectedModel: undefined }),
 	setSearchActive: (active) => set({ isSearchActive: active }),
 	setSearchProvider: (provider) => set({ searchProvider: provider }),
 	setEnableWebSearch: (enabled) => set({ enableWebSearch: enabled }),
@@ -288,6 +301,7 @@ export const useChatViewStore = create<ChatViewStore>((set, get) => ({
 
 	setSubmitAction: (fn) => set({ submitAction: fn }),
 	setInsertToInput: (fn) => set({ insertToInput: fn }),
+	setStudioRestoreRight: (fn) => set({ studioRestoreRight: fn }),
 	markAssistantCompleted: (messageId, ts) => set({
 		lastAssistantCompletedAt: ts ?? Date.now(),
 		lastAssistantMessageId: messageId,
@@ -302,12 +316,14 @@ export const useChatViewStore = create<ChatViewStore>((set, get) => ({
 	// ═══════════════════════════════════════════════════════════════════════
 
 	reset: () => {
+		// Land on the same default start state as a fresh mount, so a remount
+		// after plugin unload behaves exactly like first load.
 		useChatDataStore.getState().setActiveProject(null);
 		useChatDataStore.getState().setActiveConversation(null);
 		set({
-			viewMode: null,
+			viewMode: ViewMode.STANDALONE_CONVERSATION,
 			projectForOverview: null,
-			pendingConversation: null,
+			pendingConversation: DEFAULT_PENDING_NEW_CHAT,
 			initialSelectedModel: null,
 			inputHistory: [],
 			historyIndex: -1,

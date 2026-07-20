@@ -1,4 +1,4 @@
-import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, DEFAULT_DEBUG_TRACE_SETTINGS, DEFAULT_HARNESS_SETTINGS, DEFAULT_SEARCH_SETTINGS, DEFAULT_SETTINGS, DebugTraceSettings, HarnessSettings, MyPluginSettings, SearchSettings } from '@/core/config/settingsTypes';
+import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, DEFAULT_DEBUG_TRACE_SETTINGS, DEFAULT_HARNESS_SETTINGS, DEFAULT_SEARCH_SETTINGS, DEFAULT_SETTINGS, DebugTraceSettings, HarnessSettings, MyPluginSettings, SearchSettings, normalizeCodeBlockTheme } from '@/core/config/settingsTypes';
 import { ProviderConfig, LLMOutputControlSettings } from '@/core/providers/types';
 import { DEFAULT_AMBIENT_PUSH_SETTINGS, type AmbientPushSettings } from '@/core/types/ambient';
 import { DEFAULT_SDK_SETTINGS, type ProfileSettings } from '@/core/profiles/types';
@@ -274,6 +274,7 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 		usageTrackingEnabled: DEFAULT_SETTINGS.usageTrackingEnabled,
 		usageDetailRetentionDays: DEFAULT_SETTINGS.usageDetailRetentionDays,
 		usagePreviewEnabled: DEFAULT_SETTINGS.usagePreviewEnabled,
+		codeBlockTheme: normalizeCodeBlockTheme(raw?.codeBlockTheme),
 	};
 
 	settings.skillsFolder = resolveFolderSetting(

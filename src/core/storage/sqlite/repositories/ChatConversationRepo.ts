@@ -180,6 +180,25 @@ export class ChatConversationRepo {
 	}
 
 	/**
+	 * List recent conversations across ALL projects (left-column Recent /
+	 * Pinned / View All picker). Ordered by updated_at desc.
+	 */
+	async listRecent(
+		includeArchived: boolean = false,
+		limit?: number,
+		offset?: number
+	): Promise<DbSchema['chat_conversation'][]> {
+		let query = this.db.selectFrom('chat_conversation').selectAll();
+		if (!includeArchived) {
+			query = query.where('archived_rel_path', 'is', null);
+		}
+		query = query.orderBy('updated_at_ts', 'desc');
+		if (offset !== undefined) query = query.offset(offset);
+		if (limit !== undefined) query = query.limit(limit);
+		return query.execute();
+	}
+
+	/**
 	 * Update file path when conversation is moved/renamed.
 	 */
 	async updateFilePath(conversationId: string, newFileRelPath: string, newArchivedRelPath?: string | null): Promise<void> {

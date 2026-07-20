@@ -1,5 +1,5 @@
 // T11P (Track A): Named operations the chat surface exposes for opening
-// conversations / projects / home views from anywhere in the app. UI calls
+// conversations / projects from anywhere in the app. UI calls
 // `useChatNavigation()` which returns a `ChatNavigationPort`; app callers
 // (events, commands) call `createChatNavigation(deps)` directly.
 //
@@ -27,5 +27,4 @@ export interface ChatNavigationPort {
 	openProjectConversationsListInChat(project: ChatProject): Promise<void>;
 	openAllProjectsInChat(): Promise<void>;
 	openAllConversationsInChat(): Promise<void>;
-	openChatHome(): Promise<void>;
 }

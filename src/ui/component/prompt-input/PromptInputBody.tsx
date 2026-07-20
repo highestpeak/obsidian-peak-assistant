@@ -10,23 +10,31 @@ import { keymapExtension } from './keymap';
 import { parseTagsFromText } from '../mine/tagParser';
 import { ContextMenu } from '@/ui/view/chat-view/components/ContextMenu';
 import type { NavigableMenuItem } from '@/ui/component/mine/NavigableMenu';
+import { usePortalContainer } from '@/ui/react/PortalContainerContext';
+import { calculatePromptMenuPosition } from './promptMenuPosition';
+import { buildVaultReferenceSelection } from './promptMenuSelection';
 
 // ---------------------------------------------------------------------------
 // Trigger detection helpers
 // ---------------------------------------------------------------------------
 
 interface TriggerMatch {
-	trigger: '@' | '[[';
+	trigger: '[[' | '/';
 	query: string;
-	/** Absolute offset of the trigger start (including `@` or `[[`) */
+	/** Absolute offset of the trigger start (including `[[` or `/`) */
 	from: number;
 	/** Absolute offset of the cursor (end of the typed query) */
 	to: number;
 }
 
 /**
- * Scans the text to the left of `cursorPos` and returns a trigger match if
- * the cursor sits inside an `@query` or `[[query` span.
+ * Scans the text to the left of `cursorPos` and returns a trigger match.
+ *
+ * Owners (chat-studio §8.3):
+ * - `[[query` → compact Vault document/folder picker.
+ * - `/query` at the very start of the input → workflow palette.
+ * - `@` is deliberately NOT a trigger this round — it stays plain text until
+ *   a real Assistant/App mention source exists.
  */
 function detectTrigger(docText: string, cursorPos: number): TriggerMatch | null {
 	// Look backwards from cursor (up to 200 chars) for the trigger character
@@ -34,42 +42,31 @@ function detectTrigger(docText: string, cursorPos: number): TriggerMatch | null 
 	const start = Math.max(0, cursorPos - lookback);
 	const textBefore = docText.slice(start, cursorPos);
 
-	// Check [[ first (longer prefix)
 	const bracketIdx = textBefore.lastIndexOf('[[');
-	const atIdx = textBefore.lastIndexOf('@');
-
-	// Pick the rightmost trigger
-	const maxIdx = Math.max(bracketIdx, atIdx);
-	if (maxIdx < 0) return null;
-
-	if (bracketIdx === maxIdx) {
+	if (bracketIdx >= 0) {
 		const afterBracket = textBefore.slice(bracketIdx + 2);
-		// Bail if already closed ]]
-		if (afterBracket.includes(']]')) return null;
-		// Bail if newline between trigger and cursor
-		if (afterBracket.includes('\n')) return null;
-		return {
-			trigger: '[[',
-			query: afterBracket,
-			from: start + bracketIdx,
-			to: cursorPos,
-		};
+		// Bail if already closed ]] or newline between trigger and cursor
+		if (!afterBracket.includes(']]') && !afterBracket.includes('\n')) {
+			return {
+				trigger: '[[',
+				query: afterBracket,
+				from: start + bracketIdx,
+				to: cursorPos,
+			};
+		}
 	}
 
-	if (atIdx === maxIdx) {
-		const afterAt = textBefore.slice(atIdx + 1);
-		// Bail if there is already a closing @
-		if (afterAt.includes('@')) return null;
-		// Bail if newline between trigger and cursor
-		if (afterAt.includes('\n')) return null;
-		// Bail if the @ is preceded by a word char (e.g. email "foo@")
-		if (atIdx > 0 && /\w/.test(textBefore[atIdx - 1])) return null;
-		return {
-			trigger: '@',
-			query: afterAt,
-			from: start + atIdx,
-			to: cursorPos,
-		};
+	// Workflow palette: `/` only as the very first character of the input.
+	if (docText.startsWith('/') && cursorPos <= docText.length) {
+		const firstLineEnd = docText.indexOf('\n');
+		const lineEnd = firstLineEnd === -1 ? docText.length : firstLineEnd;
+		if (cursorPos >= 1 && cursorPos <= lineEnd) {
+			const query = docText.slice(1, cursorPos);
+			// Bail once the user typed a space — they are writing prose like "/plan foo"
+			if (!query.includes(' ')) {
+				return { trigger: '/', query, from: 0, to: cursorPos };
+			}
+		}
 	}
 
 	return null;
@@ -99,6 +96,13 @@ export interface PromptInputBodyProps extends Omit<TextareaHTMLAttributes<HTMLTe
 	placeholder?: string;
 	inputRef?: React.Ref<{ focus: () => void }>;
 	onTextChange?: (text: string, tags: Array<{ type: 'context' | 'prompt'; text: string; start: number; end: number }>) => void;
+	/**
+	 * Workflow palette entries for the `/` trigger (chat-studio §8.3). Only
+	 * REAL workflows may appear here; empty/absent = no `/` menu. Selection is
+	 * reported via onMenuItemSelect('/', item) and the trigger text is removed
+	 * from the editor (the workflow becomes a context chip, not inline text).
+	 */
+	slashItems?: NavigableMenuItem[];
 }
 
 export interface PromptInputEditorHandle {
@@ -119,6 +123,7 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 	placeholder = 'What would you like to know?',
 	inputRef,
 	onTextChange,
+	slashItems,
 	...props
 }, ref) => {
 	const { textInput, autocompletion: autocompletionData } = usePromptInputContext();
@@ -198,7 +203,7 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 	}), [focusEditor, getView]);
 
 	// ----- Shared: compute menu position from trigger coords -----
-	const computeMenuPosition = useCallback((view: EditorView, from: number): { top: number; left: number; placement?: 'top' | 'bottom' } | null => {
+	const computeMenuPosition = useCallback((view: EditorView, from: number): { top: number; left: number; placement?: 'top' | 'bottom'; maxHeight?: number } | null => {
 		const cursorPos = view.state.selection.main.head;
 		const rawCoords = view.coordsAtPos(cursorPos) ?? view.coordsAtPos(from);
 		const editorRect = view.dom.getBoundingClientRect();
@@ -214,27 +219,20 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 				right: editorRect.left + 4,
 			};
 		if (!coords) return null;
-		const minMenuHeight = 180;
-		const menuWidth = 400;
-		const viewportHeight = window.innerHeight;
-		const viewportWidth = window.innerWidth;
-		const margin = 8;
-
-		// Anchor to the actual caret/input line; CSS transform handles true menu height.
-		const spaceAbove = coords.top;
-		const spaceBelow = viewportHeight - coords.bottom;
-		const placement: 'top' | 'bottom' = spaceAbove >= minMenuHeight || spaceAbove >= spaceBelow ? 'top' : 'bottom';
-		const top = placement === 'top'
-			? Math.max(margin, coords.top - 6)
-			: Math.min(viewportHeight - margin, coords.bottom + 6);
-
-		// Horizontal: start at trigger, shift left if overflowing right edge
-		let left = coords.left;
-		if (left + menuWidth > viewportWidth - margin) {
-			left = Math.max(margin, viewportWidth - menuWidth - margin);
-		}
-
-		return { top, left, placement };
+		const ownerWindow = view.dom.ownerDocument.defaultView;
+		if (!ownerWindow) return null;
+		const visualViewport = ownerWindow.visualViewport;
+		const viewportTop = visualViewport?.offsetTop ?? 0;
+		const viewportLeft = visualViewport?.offsetLeft ?? 0;
+		return calculatePromptMenuPosition(
+			{ top: coords.top, bottom: coords.bottom, left: coords.left },
+			{
+				top: viewportTop,
+				left: viewportLeft,
+				width: visualViewport?.width ?? ownerWindow.innerWidth,
+				height: visualViewport?.height ?? ownerWindow.innerHeight,
+			},
+		);
 	}, []);
 
 	/** Shared menu open + async-load logic for both context and prompt menus. */
@@ -308,6 +306,28 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 		}, match.query.trim() ? MENU_SEARCH_DEBOUNCE_MS : 0);
 	}, []);
 
+	const slashItemsRef = useRef(slashItems);
+	slashItemsRef.current = slashItems;
+
+	// Keep PromptInput's controlled value and the Composer draft in sync before
+	// selection side-effects (such as adding an explicit Vault ref) can re-render
+	// the editor. Without this synchronous hand-off, the shelf update can replay
+	// the old `[[query]]` draft over the newly inserted `[[path]]` text.
+	const handleChange = useCallback((value: string) => {
+		textInput.setInput(value);
+
+		if (onTextChange) {
+			const parsedTags = parseTagsFromText(value);
+			const filteredTags = parsedTags.filter(tag => tag.type !== 'search') as Array<{
+				type: 'context' | 'prompt';
+				text: string;
+				start: number;
+				end: number;
+			}>;
+			onTextChange(value, filteredTags);
+		}
+	}, [textInput, onTextChange]);
+
 	// ----- Trigger detection callback (called by CM update listener) -----
 	const handleTriggerUpdate = useCallback((view: EditorView) => {
 		const cursorPos = view.state.selection.main.head;
@@ -318,6 +338,33 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 			activeTriggerKeyRef.current = '';
 			pendingKeyRef.current = '';
 			if (loadTimerRef.current) clearTimeout(loadTimerRef.current);
+			return;
+		}
+
+		// Workflow palette: local synchronous filter over real workflows only.
+		if (match.trigger === '/') {
+			const available = slashItemsRef.current ?? [];
+			if (available.length === 0) {
+				if (menuRef.current.visible) setMenu(INITIAL_MENU);
+				return;
+			}
+			const pos = computeMenuPosition(view, match.from);
+			if (!pos) return;
+			const q = match.query.toLowerCase();
+			const items = available.filter((it) =>
+				!q || it.label.toLowerCase().includes(q) || (it.description ?? '').toLowerCase().includes(q));
+			if (items.length === 0) {
+				if (menuRef.current.visible) setMenu(INITIAL_MENU);
+				return;
+			}
+			setMenu((prev) => ({
+				visible: true,
+				items,
+				selectedIndex: prev.triggerMatch?.query !== match.query ? 0 : prev.selectedIndex,
+				position: pos,
+				triggerMatch: match,
+				isLoading: false,
+			}));
 			return;
 		}
 
@@ -366,23 +413,46 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 			return;
 		}
 
+		// Workflow selection: remove the `/query` trigger text — the workflow
+		// becomes a context chip owned by the Composer, not inline prose.
+		if (match.trigger === '/') {
+			view.dispatch({
+				changes: { from: match.from, to: match.to, insert: '' },
+				selection: { anchor: match.from },
+			});
+			handleChange(view.state.doc.toString());
+			onMenuItemSelectRef.current?.(match.trigger, item);
+			setMenu(INITIAL_MENU);
+			view.focus();
+			return;
+		}
+
 		// Build insertion text
 		const value = item.value || item.label;
-		const text = match.trigger === '@' ? ` @${value}@ ` : ` [[${value}]] `;
+		const selection = buildVaultReferenceSelection(
+			view.state.doc.toString(),
+			match.from,
+			match.to,
+			value,
+		);
 
 		view.dispatch({
-			changes: { from: match.from, to: match.to, insert: text },
-			selection: { anchor: match.from + text.length },
+			changes: { from: match.from, to: match.to, insert: selection.replacement },
+			selection: { anchor: selection.cursor },
 		});
+		handleChange(selection.text);
 
 		if (onMenuItemSelectRef.current) {
-			onMenuItemSelectRef.current(match.trigger, item);
+			// Pass the resolved editor text with the selection. Composer uses it
+			// to commit the inline wikilink and explicit ref in one Zustand
+			// update, so a shelf re-render cannot expose a stale draft value.
+			onMenuItemSelectRef.current(match.trigger, item, selection.text);
 		}
 
 		setMenu(INITIAL_MENU);
 		// Refocus the editor
 		view.focus();
-	}, []);
+	}, [handleChange]);
 
 	const handleMenuClose = useCallback(() => {
 		setMenu(INITIAL_MENU);
@@ -422,25 +492,15 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 		return exts;
 	}, [tagPlugin, keymapExtension]);
 
-	// ----- onChange -----
-	const handleChange = useCallback((value: string) => {
-		textInput.setInput(value);
-
-		if (onTextChange) {
-			const parsedTags = parseTagsFromText(value);
-			const filteredTags = parsedTags.filter(tag => tag.type !== 'search') as Array<{
-				type: 'context' | 'prompt';
-				text: string;
-				start: number;
-				end: number;
-			}>;
-			onTextChange(value, filteredTags);
-		}
-	}, [textInput, onTextChange]);
-
 	// ----- Render -----
+	const containerRef = useRef<HTMLDivElement>(null);
+	// Prefer the leaf-scoped portal host (carries `.pktw-root .peak-design-root`
+	// scope classes + lives in the correct window for popout leaves); fall back
+	// to this leaf's ownerDocument body when no provider is present.
+	const portalContainer = usePortalContainer();
+	const portalTarget = portalContainer ?? containerRef.current?.ownerDocument.body ?? document.body;
 	return (
-		<div className="pktw-flex-1 pktw-min-w-0 pktw-px-3 pktw-border-0">
+		<div ref={containerRef} className="pktw-flex-1 pktw-min-w-0 pktw-border-0">
 			<CodeMirror
 				ref={codeMirrorRef}
 				value={textInput.value}
@@ -452,8 +512,13 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 				onChange={handleChange}
 				placeholder={placeholder}
 				className={cn(
-					'pktw-w-full pktw-text-[15px] pktw-leading-[1.5] pktw-font-medium pktw-codemirror-custom peak-no-native-outline',
-					'pktw-py-3',
+					// Sans + 13px/1.45 per composer mock. Effective font-family / size /
+					// weight are pinned in codemirror.css with `!important` (that beats
+					// CM's base `.cm-scroller { font-family: monospace }`); these utilities
+					// keep intent visible at the call site. Vertical padding is owned by
+					// `.pkchat-composer__editor` — no `pktw-py-*` here, or the editor pads
+					// twice (mock wants a single ~12px top inset).
+					'pktw-w-full pktw-text-pk-md pktw-leading-[1.45] pktw-font-normal pktw-codemirror-custom peak-no-native-outline',
 					className,
 				)}
 				basicSetup={{
@@ -477,22 +542,21 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 				}}
 			/>
 
-			{/* Custom context menu for @ / [[ triggers */}
+			{/* Custom context menu for [[ / slash triggers. Portal host already
+			    carries the dual scope class, so no self-wrapped `pktw-root` div. */}
 			{menu.visible && createPortal(
-				<div className="pktw-root">
-					<ContextMenu
-						items={menu.items}
-						selectedIndex={menu.selectedIndex}
-						position={menu.position}
-						isLoading={menu.isLoading}
-						onSelect={handleMenuSelect}
-						onClose={handleMenuClose}
-						onSelectedIndexChange={handleSelectedIndexChange}
-						folderStack={folderStack}
-						onFolderUp={onFolderUp}
-					/>
-				</div>,
-				document.body,
+				<ContextMenu
+					items={menu.items}
+					selectedIndex={menu.selectedIndex}
+					position={menu.position}
+					isLoading={menu.isLoading}
+					onSelect={handleMenuSelect}
+					onClose={handleMenuClose}
+					onSelectedIndexChange={handleSelectedIndexChange}
+					folderStack={folderStack}
+					onFolderUp={onFolderUp}
+				/>,
+				portalTarget,
 			)}
 		</div>
 	);

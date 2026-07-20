@@ -3,6 +3,7 @@ import { cn } from '@/ui/react/lib/utils';
 import { Button } from '@/ui/component/shared-ui/button';
 import { ChevronLeft } from 'lucide-react';
 import type { NavigableMenuItem } from '@/ui/component/mine/NavigableMenu';
+import { useChatStudioStrings } from '@/ui/view/chat-view/chatStudioStringsContext';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -12,6 +13,7 @@ export interface ContextMenuPosition {
 	top: number;
 	left: number;
 	placement?: 'top' | 'bottom';
+	maxHeight?: number;
 }
 
 export interface ContextMenuProps {
@@ -78,11 +80,13 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 	folderStack = [],
 	onFolderUp,
 }) => {
+	const strings = useChatStudioStrings();
 	const listRef = useRef<HTMLDivElement>(null);
 	const menuStyle = {
 		top: position.top,
 		left: position.left,
 		transform: position.placement === 'top' ? 'translateY(-100%)' : undefined,
+		maxHeight: position.maxHeight,
 	};
 
 	// Scroll the highlighted row into view whenever it changes
@@ -133,8 +137,10 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 			}
 		};
 
-		document.addEventListener('keydown', handler, true);
-		return () => document.removeEventListener('keydown', handler, true);
+		const ownerDocument = listRef.current?.ownerDocument;
+		if (!ownerDocument) return;
+		ownerDocument.addEventListener('keydown', handler, true);
+		return () => ownerDocument.removeEventListener('keydown', handler, true);
 	}, [selectedIndex, items, onSelect, onClose, onSelectedIndexChange, folderStack, onFolderUp]);
 
 	// Close when clicking outside
@@ -144,18 +150,20 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 				onClose();
 			}
 		};
-		document.addEventListener('mousedown', handler);
-		return () => document.removeEventListener('mousedown', handler);
+		const ownerDocument = listRef.current?.ownerDocument;
+		if (!ownerDocument) return;
+		ownerDocument.addEventListener('mousedown', handler);
+		return () => ownerDocument.removeEventListener('mousedown', handler);
 	}, [onClose]);
 
 	// ----- Empty / loading states -----
 	if (isLoading) {
 		return (
 			<div
-				className="pktw-fixed pktw-z-[10000] pktw-bg-popover pktw-border-2 pktw-border-[var(--pk-border)] pktw-rounded-lg pktw-shadow-[0_8px_24px_rgba(0,0,0,0.3)] pktw-p-3 pktw-min-w-[280px] pktw-max-w-[400px]"
+				className="pkchat-context-menu pktw-fixed pktw-z-[10000] pktw-bg-pk-surface-overlay pktw-border pktw-border-pk-border-strong pktw-rounded-lg pktw-shadow-[var(--pk-shadow-popover)] pktw-p-3 pktw-min-w-[280px] pktw-max-w-[400px]"
 				style={menuStyle}
 			>
-				<span className="pktw-text-xs pktw-text-[var(--pk-text-secondary)]">Loading...</span>
+				<span className="pktw-text-xs pktw-text-pk-text-secondary">{strings.composer.pickerLoading}</span>
 			</div>
 		);
 	}
@@ -163,10 +171,10 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 	if (items.length === 0) {
 		return (
 			<div
-				className="pktw-fixed pktw-z-[10000] pktw-bg-popover pktw-border-2 pktw-border-[var(--pk-border)] pktw-rounded-lg pktw-shadow-[0_8px_24px_rgba(0,0,0,0.3)] pktw-p-3 pktw-min-w-[280px] pktw-max-w-[400px]"
+				className="pkchat-context-menu pktw-fixed pktw-z-[10000] pktw-bg-pk-surface-overlay pktw-border pktw-border-pk-border-strong pktw-rounded-lg pktw-shadow-[var(--pk-shadow-popover)] pktw-p-3 pktw-min-w-[280px] pktw-max-w-[400px]"
 				style={menuStyle}
 			>
-				<span className="pktw-text-xs pktw-text-[var(--pk-text-secondary)]">No matching files</span>
+				<span className="pktw-text-xs pktw-text-pk-text-secondary">{strings.composer.pickerNoMatch}</span>
 			</div>
 		);
 	}
@@ -177,7 +185,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 	return (
 		<div
 			ref={listRef}
-			className="pktw-fixed pktw-z-[10000] pktw-bg-popover pktw-border-2 pktw-border-[var(--pk-border)] pktw-rounded-lg pktw-shadow-[0_8px_24px_rgba(0,0,0,0.3)] pktw-min-w-[280px] pktw-max-w-[400px] pktw-max-h-[300px] pktw-overflow-y-auto pktw-p-1"
+			role="listbox"
+			className="pkchat-context-menu pktw-fixed pktw-z-[10000] pktw-bg-pk-surface-overlay pktw-border pktw-border-pk-border-strong pktw-rounded-lg pktw-shadow-[var(--pk-shadow-popover)] pktw-min-w-[280px] pktw-max-w-[400px] pktw-max-h-[300px] pktw-overflow-y-auto pktw-p-1"
 			style={menuStyle}
 		>
 			{/* Breadcrumb bar */}
@@ -185,7 +194,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 				<button
 					type="button"
 					onClick={onFolderUp}
-					className="pktw-flex pktw-items-center pktw-gap-1 pktw-w-full pktw-px-2 pktw-py-1.5 pktw-text-[10px] pktw-text-[var(--pk-text-secondary)] hover:pktw-text-[var(--pk-text-primary)] pktw-border-b pktw-border-[var(--pk-border)] pktw-mb-1 pktw-cursor-pointer pktw-bg-transparent"
+					className="pktw-flex pktw-items-center pktw-gap-1 pktw-w-full pktw-px-2 pktw-py-1.5 pktw-text-pk-xs pktw-text-pk-text-secondary hover:pktw-text-pk-text-primary pktw-border-b pktw-border-pk-border pktw-mb-1 pktw-cursor-pointer pktw-bg-transparent"
 				>
 					<ChevronLeft className="pktw-w-3 pktw-h-3 pktw-flex-shrink-0" />
 					<span className="pktw-truncate">
@@ -193,8 +202,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 							? 'Vault'
 							: folderName(folderStack[folderStack.length - 2])}
 					</span>
-					<span className="pktw-text-[var(--pk-text-tertiary)]">/</span>
-					<span className="pktw-font-medium pktw-text-[var(--pk-text-primary)] pktw-truncate">
+					<span className="pktw-text-pk-text-tertiary">/</span>
+					<span className="pktw-font-medium pktw-text-pk-text-primary pktw-truncate">
 						{folderName(folderStack[folderStack.length - 1])}
 					</span>
 				</button>
@@ -203,7 +212,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 			{groups.map(({ group, items: groupEntries }) => (
 				<div key={group || '__ungrouped'}>
 					{group && (
-						<span className="pktw-text-[9px] pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-text-[var(--pk-text-secondary)] pktw-px-3 pktw-py-1.5 pktw-block">
+						<span className="pktw-text-[9px] pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-text-pk-text-secondary pktw-px-3 pktw-py-1.5 pktw-block">
 							{group}
 						</span>
 					)}
@@ -214,32 +223,30 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 							<Button
 								key={item.id}
 								data-ctx-index={globalIdx}
+								data-selected={isSelected ? 'true' : 'false'}
+								role="option"
+								aria-selected={isSelected}
 								variant="ghost"
 								type="button"
 								onClick={() => onSelect(item)}
 								onMouseEnter={() => onSelectedIndexChange(globalIdx)}
 								className={cn(
-									'pktw-w-full pktw-px-3 pktw-py-2 pktw-text-left pktw-text-sm pktw-transition-colors pktw-h-auto pktw-rounded',
-									'hover:pktw-bg-[var(--pk-state-hover)]',
-									isSelected && 'pktw-bg-[var(--pk-accent)] pktw-text-[var(--pk-accent-fg)]',
+									'pkchat-context-menu__item pktw-w-full pktw-px-3 pktw-py-2 pktw-text-left pktw-text-sm pktw-transition-colors pktw-h-auto pktw-rounded',
 								)}
 							>
-								<div className="pktw-flex pktw-items-start pktw-gap-2 pktw-w-full">
-									{/* Icon */}
-									<div className="pktw-flex-shrink-0 pktw-pt-0.5">
+								<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-w-full">
+									{/* Icon in a 26×26 sunken box */}
+									<div className="pktw-flex-shrink-0 pktw-w-[26px] pktw-h-[26px] pktw-rounded-[7px] pktw-bg-pk-surface-sunken pktw-flex pktw-items-center pktw-justify-center">
 										{typeof item.icon === 'function' ? item.icon(isSelected) : item.icon}
 									</div>
 
 									{/* Label + path */}
 									<div className="pktw-flex-1 pktw-min-w-0">
-										<span className="pktw-font-medium pktw-truncate pktw-block pktw-text-[var(--pk-text-primary)]">
+										<span className="pktw-font-medium pktw-truncate pktw-block pktw-text-pk-text-primary">
 											{item.label}
 										</span>
 										{item.description && (
-											<span className={cn(
-												'pktw-text-[10px] pktw-truncate pktw-block',
-												isSelected ? 'pktw-text-white/70' : 'pktw-text-[var(--pk-text-secondary)]',
-											)}>
+											<span className="pktw-text-pk-xs pktw-truncate pktw-block pktw-text-pk-text-secondary">
 												{item.description}
 											</span>
 										)}
@@ -247,22 +254,14 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
 									{/* Meta badge */}
 									{item.meta && (
-										<span className={cn(
-											'pktw-text-[9px] pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-flex-shrink-0 pktw-self-center pktw-font-medium',
-											isSelected
-												? 'pktw-bg-white/20 pktw-text-white'
-												: 'pktw-bg-[var(--pk-state-hover)] pktw-text-[var(--pk-text-secondary)]',
-										)}>
+										<span className="pktw-text-[9px] pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-flex-shrink-0 pktw-self-center pktw-font-medium pktw-bg-[var(--pk-state-hover)] pktw-text-pk-text-secondary">
 											{item.meta}
 										</span>
 									)}
 
 									{/* Folder arrow */}
 									{item.showArrow && (
-										<span className={cn(
-											'pktw-text-sm pktw-flex-shrink-0',
-											isSelected ? 'pktw-text-white' : 'pktw-text-[var(--pk-text-secondary)]',
-										)}>
+										<span className="pktw-text-sm pktw-flex-shrink-0 pktw-text-pk-text-secondary">
 											&gt;
 										</span>
 									)}
