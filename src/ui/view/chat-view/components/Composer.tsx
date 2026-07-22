@@ -1,5 +1,6 @@
-import React, { useRef } from 'react';
-import { ArrowUp, Loader2, Workflow } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { ArrowUp, FileText, ImagePlus, Loader2, Music as MusicIcon, Pencil, Video as VideoIcon, Workflow } from 'lucide-react';
+import { useComposerEditImageStore } from '../store/composerEditImageStore';
 import {
 	PromptInput,
 	PromptInputBody,
@@ -31,6 +32,8 @@ import { ComposerPlusMenu } from './composer/ComposerPlusMenu';
 import { ComposerSourcesPopover } from './composer/ComposerSourcesPopover';
 import { ComposerModelSelector } from './composer/ComposerModelSelector';
 import { ComposerAssistantSelector } from './composer/ComposerAssistantSelector';
+import { ComposerGenerateActions, type GenerateKind } from './composer/ComposerGenerateActions';
+import type { ToolAvailability } from '@/service/chat/tools/toolAvailability';
 
 /**
  * Composer V2 — the single live editor of Chat Studio (chat-studio §8).
@@ -155,7 +158,46 @@ export const Composer: React.FC = () => {
 	const draftText = useComposerStore((s) => s.drafts[s.activeKey]?.text ?? '');
 	const hasInput = draftText.trim().length > 0;
 
-	// Only REAL workflows appear in the `/` palette (RUN-07 truthfulness).
+	// `/` slash palette owns BOTH workflows (research/plan/…) and generation
+	// actions (image/video/music). Selecting a workflow adds a context chip;
+	// selecting a generation action opens the inline `ComposerGenerateActions`
+	// panel above the editor. Only REAL entries appear — generation rows are
+	// probed for tool availability and either disabled with an honest reason
+	// or omitted so we never render a "fake-clickable" action (RUN-07).
+	const [generateOpen, setGenerateOpen] = useState<{ kind: GenerateKind; mode: 'generate' | 'edit' } | null>(null);
+
+	// Insert-as-reference from an artifact card fires this store; when it
+	// ticks, open the Edit form. The form itself calls consumeIntent() so
+	// re-opens from the slash palette start fresh.
+	const editOpenRequestId = useComposerEditImageStore((s) => s.openRequestId);
+	useEffect(() => {
+		if (editOpenRequestId > 0) setGenerateOpen({ kind: 'image', mode: 'edit' });
+	}, [editOpenRequestId]);
+	const [mediaAvailability, setMediaAvailability] = useState<ToolAvailability | null>(null);
+	useEffect(() => {
+		try {
+			const records = manager.conv.getToolAvailability({
+				enableVaultSearch: false,
+				enableWebSearch: false,
+			});
+			setMediaAvailability(records.find((r) => r.toolId === 'media_generate') ?? null);
+		} catch {
+			setMediaAvailability(null);
+		}
+	}, [manager]);
+
+	const mediaReady = mediaAvailability?.state === 'available';
+	const mediaSnapshot = (() => {
+		try {
+			const svc = manager.conv.getMediaGenerationService();
+			return svc ? svc.probeSyncAvailability() : null;
+		} catch { return null; }
+	})();
+	const imageReady = mediaReady && Boolean(mediaSnapshot?.perKind.image?.anyRouteReady);
+	const videoReady = mediaReady && Boolean(mediaSnapshot?.perKind.video?.anyRouteReady);
+	const musicReady = mediaReady && Boolean(mediaSnapshot?.perKind.music?.anyRouteReady);
+	const mediaReason = mediaAvailability?.reason;
+
 	const slashItems: NavigableMenuItem[] = [
 		{
 			id: 'plan',
@@ -163,11 +205,97 @@ export const Composer: React.FC = () => {
 			description: studioStrings.composer.workflowPlanDescription,
 			icon: <Workflow />,
 			value: 'plan',
+			group: studioStrings.composer.slashGroupWorkflow,
+		},
+		{
+			id: 'generate-image',
+			label: imageReady
+				? studioStrings.composer.generateImageLabel
+				: studioStrings.composer.generateImageUnavailableLabel,
+			description: imageReady
+				? studioStrings.composer.generateImageDescription
+				: (mediaReason ?? studioStrings.composer.generateImageDescription),
+			icon: <ImagePlus />,
+			value: 'generate-image',
+			disabled: !imageReady,
+			group: studioStrings.composer.slashGroupGenerate,
+		},
+		{
+			id: 'edit-image',
+			label: imageReady
+				? studioStrings.composer.editImageLabel
+				: studioStrings.composer.editImageUnavailableLabel,
+			description: imageReady
+				? studioStrings.composer.editImageDescription
+				: (mediaReason ?? studioStrings.composer.editImageAvailabilityReason),
+			icon: <Pencil />,
+			value: 'edit-image',
+			disabled: !imageReady,
+			group: studioStrings.composer.slashGroupGenerate,
+		},
+		{
+			id: 'generate-video',
+			label: videoReady
+				? studioStrings.composer.generateVideoLabel
+				: studioStrings.composer.generateVideoUnavailableLabel,
+			description: videoReady
+				? studioStrings.composer.generateVideoDescription
+				: studioStrings.composer.generateVideoUnavailableReason,
+			icon: <VideoIcon />,
+			value: 'generate-video',
+			disabled: !videoReady,
+			group: studioStrings.composer.slashGroupGenerate,
+		},
+		{
+			id: 'generate-music',
+			label: musicReady
+				? studioStrings.composer.generateMusicLabel
+				: studioStrings.composer.generateMusicUnavailableLabel,
+			description: musicReady
+				? studioStrings.composer.generateMusicDescription
+				: studioStrings.composer.generateMusicUnavailableReason,
+			icon: <MusicIcon />,
+			value: 'generate-music',
+			disabled: !musicReady,
+			group: studioStrings.composer.slashGroupGenerate,
+		},
+		// Document generation rides the `artifact_create` runtime (Extract /
+		// Dataview / Excalidraw / drawio / Reminder + Save-to-Vault) landed
+		// in the zero-gap D-Track — no separate media runtime is required,
+		// so this entry is unconditionally available. Behaviour is workflow-
+		// style fill: the Composer draft is populated with a configurable
+		// template that guides the model to call `artifact_create` and save
+		// the result to the vault. It does NOT auto-send (COMP-09).
+		{
+			id: 'generate-document',
+			label: studioStrings.composer.generateDocumentLabel,
+			description: studioStrings.composer.generateDocumentDescription,
+			icon: <FileText />,
+			value: 'generate-document',
+			group: studioStrings.composer.slashGroupGenerate,
 		},
 	];
 
 	const onMenuItemSelect = (trigger: string, item: NavigableMenuItem, resolvedText?: string) => {
 		if (trigger === '/') {
+			if (item.disabled) return;
+			if (item.value === 'generate-image') { setGenerateOpen({ kind: 'image', mode: 'generate' }); return; }
+			if (item.value === 'edit-image') { setGenerateOpen({ kind: 'image', mode: 'edit' }); return; }
+			if (item.value === 'generate-video') { setGenerateOpen({ kind: 'video', mode: 'generate' }); return; }
+			if (item.value === 'generate-music') { setGenerateOpen({ kind: 'music', mode: 'generate' }); return; }
+			if (item.value === 'generate-document') {
+				// Workflow-style fill: drop the configured template into the
+				// draft so the user can edit before send. Never auto-sends
+				// (COMP-09). No availability probe — `artifact_create` is
+				// always registered by the D-Track producer service.
+				const store = useComposerStore.getState();
+				const current = store.getDraft();
+				const template = studioStrings.composer.generateDocumentDraftTemplate;
+				const nextText = current.text.trim() ? `${current.text.trimEnd()}\n\n${template}` : template;
+				store.updateDraft({ text: nextText });
+				return;
+			}
+			// Otherwise: a workflow — becomes a draft context chip.
 			useComposerStore.getState().updateDraft({ workflowId: item.value });
 			return;
 		}
@@ -265,6 +393,13 @@ export const Composer: React.FC = () => {
 			>
 				<ComposerDraftSync />
 				<ComposerContextShelf />
+				{generateOpen && (
+					<ComposerGenerateActions
+						kind={generateOpen.kind}
+						mode={generateOpen.mode}
+						onClose={() => setGenerateOpen(null)}
+					/>
+				)}
 				<PromptInputAttachments />
 				{status === 'streaming' && (
 					<div className="pkchat-composer__status" role="status" aria-live="polite">

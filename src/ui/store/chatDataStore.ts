@@ -39,6 +39,26 @@ export interface ToolCallInfo {
 	isActive: boolean;
 }
 
+/**
+ * B1 §5.2 R4 — a pending permission ask surfaced from the Harness stream.
+ * `resolve` is the awaited callback that unblocks the AgentLoop; the UI card
+ * calls it exactly once with the user's allow/deny decision.
+ */
+export interface PendingPermissionAsk {
+	requestId: string;
+	toolName: string;
+	stepIndex: number;
+	args?: unknown;
+	/**
+	 * MSG-07 three-state resolver: `allow` gates this one call only;
+	 * `allow-for-run` also stamps the tool name on a per-run allowlist so
+	 * subsequent asks in the same run short-circuit; `deny` skips.
+	 */
+	resolve: (decision: 'allow' | 'allow-for-run' | 'deny', reason?: string) => void;
+}
+
+export type ChatRunStatus = 'running' | 'waiting-permission' | 'completed' | 'failed' | 'cancelled' | 'timeout';
+
 interface ChatDataState {
 	// ── Entities (from projectStore) ──
 	projects: Map<string, ChatProject>;
@@ -62,6 +82,9 @@ interface ChatDataState {
 	isToolSequenceActive: boolean;
 	currentToolName: string | null;
 	isStreaming: boolean;
+	// ── Permission asks (B1 §5.2 R4) ──
+	pendingPermissionAsk: PendingPermissionAsk | null;
+	runStatus: ChatRunStatus | null;
 }
 
 interface ChatDataActions {
@@ -104,6 +127,11 @@ interface ChatDataActions {
 	endToolSequence: () => void;
 	clearToolCalls: () => void;
 
+	// ── Permission actions ──
+	setPendingPermissionAsk: (ask: PendingPermissionAsk | null) => void;
+	setRunStatus: (status: ChatRunStatus | null) => void;
+	clearPermissionState: () => void;
+
 	// ── Lifecycle ──
 	reset: () => void;
 }
@@ -132,6 +160,8 @@ const INITIAL_STATE: ChatDataState = {
 	isToolSequenceActive: false,
 	currentToolName: null,
 	isStreaming: false,
+	pendingPermissionAsk: null,
+	runStatus: null,
 };
 
 // ---------------------------------------------------------------------------
@@ -335,6 +365,15 @@ export const useChatDataStore = create<ChatDataStore>((set, get) => ({
 
 	clearToolCalls: () =>
 		set({ currentToolCalls: [], isToolSequenceActive: false, currentToolName: null }),
+
+	// ── Permission actions (B1 §5.2 R4) ──
+
+	setPendingPermissionAsk: (ask: PendingPermissionAsk | null) =>
+		set({ pendingPermissionAsk: ask }),
+
+	setRunStatus: (status: ChatRunStatus | null) => set({ runStatus: status }),
+
+	clearPermissionState: () => set({ pendingPermissionAsk: null, runStatus: null }),
 
 	// ── Lifecycle ──
 

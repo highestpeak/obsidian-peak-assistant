@@ -1,0 +1,40 @@
+{
+	"_doc": "Templates and per-type labels for the artifact_create tool (Chat Studio zero-gap Track D, 2026-07-21). Loaded via TemplateManager.loadJson(ConfigTemplateId.ArtifactCreate). Editable without recompiling.",
+	"_owner": "chat-studio-zero-gap-track-d",
+	"labels": {
+		"dataview": "Dataview query",
+		"excalidraw": "Excalidraw drawing",
+		"drawio": "draw.io diagram",
+		"extract": "Extract",
+		"reminder": "Reminder"
+	},
+	"filenames": {
+		"dataview": "dv",
+		"excalidraw": "excalidraw",
+		"drawio": "diagram",
+		"extract": "extract",
+		"reminder": "reminder"
+	},
+	"extensions": {
+		"dataview": "md",
+		"excalidraw": "excalidraw.md",
+		"drawio": "drawio",
+		"extract": "md",
+		"reminder": "md"
+	},
+	"excalidrawFrontmatter": "---\nexcalidraw-plugin: parsed\ntags:\n  - excalidraw\n---\n",
+	"excalidrawDrawingHeading": "## Drawing",
+	"reminderStatusOpen": "open",
+	"reminderStatusDone": "done",
+	"errorMessages": {
+		"dataviewInvalidQuery": "DQL must start with TABLE, LIST, TASK, or CALENDAR (case-insensitive).",
+		"dataviewEmpty": "Query body is empty.",
+		"excalidrawInvalidJson": "elementsJson is not valid JSON.",
+		"excalidrawMissingElements": "Excalidraw scene JSON must contain an `elements` array.",
+		"drawioMissingRoot": "draw.io XML must contain <mxfile> or <mxGraphModel>.",
+		"drawioParseError": "draw.io XML failed to parse.",
+		"extractEmpty": "Extract content is empty.",
+		"reminderBadDate": "dueIso is not a valid ISO-8601 timestamp.",
+		"reminderPast": "dueIso is in the past; reminders must fire in the future."
+	}
+}

@@ -18,7 +18,6 @@
 import assert from 'assert';
 import { readFileSync, existsSync } from 'fs';
 import path from 'path';
-import { MockLanguageModelV3 } from 'ai/test';
 
 import { runAgentLoop } from '@/service/agents/harness/loop/AgentLoop';
 import { TierController } from '@/service/agents/harness/tier/TierController';
@@ -31,8 +30,7 @@ import {
     createSubmitPlanState,
     VAULT_SUBMIT_PLAN_TOOL_NAME,
 } from '@/service/agents/vault/vaultHarnessTools';
-
-type GenResult = Awaited<ReturnType<NonNullable<MockLanguageModelV3['doGenerate']>>>;
+import { makeStreamModel, textStepChunks, toolStepChunks, type StepChunks } from './harness-fixtures/mockStreamModel';
 
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 
@@ -80,53 +78,26 @@ function samplePlan() {
 }
 
 function submitPlanModelBinding(planInput: any, extraCalls = 0): TierBinding {
-    let call = 0;
-    const model = new MockLanguageModelV3({
-        provider: 'mock',
-        modelId: 'vault-mock',
-        async doGenerate(): Promise<GenResult> {
-            call += 1;
-            if (call <= extraCalls) {
-                // Optional preamble tool call (vault_grep) so the loop
-                // exercises the read-tool path before submit_plan.
-                return {
-                    content: [
-                        {
-                            type: 'tool-call',
-                            toolCallId: `grep-${call}`,
-                            toolName: 'mcp__vault__vault_grep',
-                            input: JSON.stringify({ query: 'context', limit: 5 }),
-                        },
-                    ],
-                    finishReason: 'tool-calls',
-                    usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
-                    warnings: [],
-                } as GenResult;
-            }
-            if (call === extraCalls + 1) {
-                return {
-                    content: [
-                        {
-                            type: 'tool-call',
-                            toolCallId: 'plan-1',
-                            toolName: VAULT_SUBMIT_PLAN_TOOL_NAME,
-                            input: JSON.stringify(planInput),
-                        },
-                    ],
-                    finishReason: 'tool-calls',
-                    usage: { inputTokens: 30, outputTokens: 20, totalTokens: 50 },
-                    warnings: [],
-                } as GenResult;
-            }
-            // Should not reach: stopWhen must terminate before this fires.
-            return {
-                content: [{ type: 'text', text: 'unexpected extra step' }],
-                finishReason: 'stop',
-                usage: { inputTokens: 5, outputTokens: 5, totalTokens: 10 },
-                warnings: [],
-            } as GenResult;
-        },
-    });
+    const steps: StepChunks[] = [];
+    for (let i = 1; i <= extraCalls; i++) {
+        steps.push(
+            toolStepChunks({
+                toolName: 'mcp__vault__vault_grep',
+                input: { query: 'context', limit: 5 },
+                toolCallId: `grep-${i}`,
+            }),
+        );
+    }
+    steps.push(
+        toolStepChunks({
+            toolName: VAULT_SUBMIT_PLAN_TOOL_NAME,
+            input: planInput,
+            toolCallId: 'plan-1',
+        }),
+    );
+    // Overflow guard: should not be consumed because stopWhen fires first.
+    steps.push(textStepChunks({ text: 'unexpected extra step' }));
+    const model = makeStreamModel('vault-mock', steps);
     return {
         tier: 'local-deep',
         providerId: 'mock',

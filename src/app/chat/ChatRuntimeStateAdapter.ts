@@ -10,6 +10,15 @@ import type { ChatRuntimeMode, ChatRuntimeStatePort } from '@/core/ports/ChatRun
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 
 export class ChatRuntimeStateAdapter implements ChatRuntimeStatePort {
+	/**
+	 * 2026-07-21 (source-truth): supplied by the app layer after the Vault
+	 * retrieval port is wired. Returns the honest availability so
+	 * SystemPromptSlot no longer hardcodes `vaultSearchAvailable: true`.
+	 * Kept as an optional callback so tests can construct the adapter
+	 * without a full ConversationService.
+	 */
+	constructor(private readonly vaultAvailability?: () => boolean) {}
+
 	getChatMode(): ChatRuntimeMode {
 		return useChatViewStore.getState().chatMode;
 	}
@@ -20,5 +29,9 @@ export class ChatRuntimeStateAdapter implements ChatRuntimeStatePort {
 
 	isVaultSearchEnabled(): boolean {
 		return useChatViewStore.getState().enableVaultSearch;
+	}
+
+	isVaultSearchAvailable(): boolean {
+		return this.vaultAvailability ? this.vaultAvailability() : true;
 	}
 }

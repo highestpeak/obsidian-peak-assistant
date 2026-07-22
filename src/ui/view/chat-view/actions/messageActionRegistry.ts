@@ -35,7 +35,21 @@ export interface MessageActionContext {
 	message: ChatMessage;
 	/** Copy the given text to the clipboard; returns whether it succeeded. */
 	copyText(text: string): Promise<boolean>;
-	/** Called by Trace action; ctx.message.debugRunId is the only source. */
+	/**
+	 * Called by Trace action — opens the message's real trace/debug surface
+	 * (the inline AgentTrace anchored on the assistant bubble). ctx.message
+	 * .debugRunId is the ONLY source used to decide "is trace available";
+	 * the actual UI surfacing (expand + scroll) is owned by the runtime
+	 * hook the caller wires in. Copy JSON is a separate lower-priority
+	 * action in the More menu and is unaffected by this call.
+	 */
+	openTraceSurface(runId: string): void;
+	/**
+	 * Copy the JSON payload of a debug run to the clipboard. Bound to the
+	 * "Copy trace JSON" secondary action in the More menu — kept separate
+	 * from Trace so the primary Trace click is a navigation, not a
+	 * clipboard side-effect.
+	 */
 	copyDebugTrace(runId: string): Promise<void>;
 	/** Called by Star / Unstar. */
 	toggleStar(): Promise<void>;
@@ -169,9 +183,9 @@ const ACTIONS: MessageActionDefinition[] = [
 		applicable: isAssistant,
 		label: (s) => s.messages.actionTrace,
 		disabledReason: (m, s) => (m.debugRunId ? null : s.messages.noTraceReason),
-		execute: async (ctx) => {
+		execute: (ctx) => {
 			if (!ctx.message.debugRunId) return;
-			await ctx.copyDebugTrace(ctx.message.debugRunId);
+			ctx.openTraceSurface(ctx.message.debugRunId);
 		},
 	},
 
@@ -235,6 +249,23 @@ const ACTIONS: MessageActionDefinition[] = [
 		detail: (s) => s.messages.actionCopyJsonDetail,
 		execute: async (ctx) => {
 			await ctx.copyText(JSON.stringify(ctx.message, null, 2));
+		},
+	},
+	// Copy trace JSON — secondary to Trace; only surfaces when the message
+	// actually has a debugRunId, and stays low-priority so it always lives
+	// inside the More popover.
+	{
+		id: 'copy-trace-json',
+		variant: 'assistant',
+		priority: 50,
+		persistent: false,
+		icon: FileJson,
+		applicable: (m) => Boolean(m.debugRunId),
+		label: (s) => s.messages.actionCopyTraceJson,
+		detail: (s) => s.messages.actionCopyTraceJsonDetail,
+		execute: async (ctx) => {
+			if (!ctx.message.debugRunId) return;
+			await ctx.copyDebugTrace(ctx.message.debugRunId);
 		},
 	},
 

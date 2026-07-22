@@ -302,7 +302,11 @@ export type ResourceRowKind =
 	| 'code'
 	| 'diagram'
 	| 'base'
-	| 'process';
+	| 'process'
+	// Track D (2026-07-21): structured artifact_create outputs.
+	| 'dataview'
+	| 'extract'
+	| 'reminder';
 
 export type ResourceRowDirection = 'input' | 'generated';
 
@@ -338,6 +342,9 @@ export function mapArtifactKind(k: ChatArtifactKind): ResourceRowKind {
 		case 'drawing':
 		case 'canvas': return 'diagram';
 		case 'base': return 'base';
+		case 'dataview': return 'dataview';
+		case 'extract': return 'extract';
+		case 'reminder': return 'reminder';
 		default: return 'document';
 	}
 }

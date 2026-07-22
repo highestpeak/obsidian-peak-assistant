@@ -1,6 +1,6 @@
 import assert from 'assert';
 import { z } from 'zod';
-import { MockLanguageModelV3 } from 'ai/test';
+import { MockLanguageModelV3, convertArrayToReadableStream } from 'ai/test';
 import { runAgentLoop } from '@/service/agents/harness/loop/AgentLoop';
 import { TierController } from '@/service/agents/harness/tier/TierController';
 import { DEFAULT_TIER_CAPABILITIES } from '@/service/agents/harness/tier/types';
@@ -8,20 +8,44 @@ import type { TierBindings, TierBinding } from '@/service/agents/harness/tier/ty
 import type { ToolDef } from '@/service/agents/harness/tool/types';
 import { TraceBus } from '@/service/agents/harness/trace/events';
 
-type GenResult = Awaited<ReturnType<NonNullable<MockLanguageModelV3['doGenerate']>>>;
+// AI SDK v6 raw usage shape (mirrors chat-runtime-characterization.test.ts).
+// The `finish` chunk uses the raw provider representation which is later
+// normalized inside streamText. Keeping the shape here avoids brittle
+// coupling to internal helpers.
+const RAW_USAGE_STOP = {
+    inputTokens: { total: 10, noCache: 10, cacheRead: undefined, cacheWrite: undefined },
+    outputTokens: { total: 5, textTokens: 5, reasoningTokens: undefined },
+    totalTokens: 15,
+    reasoningTokens: undefined,
+    cachedInputTokens: undefined,
+};
 
+const RAW_USAGE_TOOL = {
+    inputTokens: { total: 12, noCache: 12, cacheRead: undefined, cacheWrite: undefined },
+    outputTokens: { total: 6, textTokens: 6, reasoningTokens: undefined },
+    totalTokens: 18,
+    reasoningTokens: undefined,
+    cachedInputTokens: undefined,
+};
+
+/** Mock model that emits `text` in a single delta then finishes. */
 function makeStopBinding(modelId: string, text: string): TierBinding {
     const model = new MockLanguageModelV3({
         provider: 'mock',
         modelId,
-        async doGenerate(): Promise<GenResult> {
-            return {
-                content: [{ type: 'text', text }],
-                finishReason: 'stop',
-                usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
-                warnings: [],
-            } as GenResult;
-        },
+        doStream: async () => ({
+            stream: convertArrayToReadableStream([
+                { type: 'stream-start', warnings: [] },
+                { type: 'text-start', id: 't1' },
+                { type: 'text-delta', id: 't1', delta: text },
+                { type: 'text-end', id: 't1' },
+                {
+                    type: 'finish',
+                    finishReason: { unified: 'stop', raw: 'stop' },
+                    usage: RAW_USAGE_STOP,
+                },
+            ] as any),
+        }),
     });
     return {
         tier: 'local-fast',
@@ -33,34 +57,54 @@ function makeStopBinding(modelId: string, text: string): TierBinding {
     };
 }
 
-function makeToolThenStopBinding(modelId: string, toolName: string, toolInput: any, finalText: string): TierBinding {
+/**
+ * Mock model that emits a single tool-call chunk on the first invocation,
+ * then a plain text response on the second — reproducing the classic
+ * "call tool, observe result, answer" 2-step pattern.
+ */
+function makeToolThenStopBinding(
+    modelId: string,
+    toolName: string,
+    toolInput: any,
+    finalText: string,
+): TierBinding {
     let call = 0;
     const model = new MockLanguageModelV3({
         provider: 'mock',
         modelId,
-        async doGenerate(): Promise<GenResult> {
+        doStream: async () => {
             call += 1;
             if (call === 1) {
                 return {
-                    content: [
+                    stream: convertArrayToReadableStream([
+                        { type: 'stream-start', warnings: [] },
                         {
                             type: 'tool-call',
                             toolCallId: 'tc1',
                             toolName,
                             input: JSON.stringify(toolInput),
                         },
-                    ],
-                    finishReason: 'tool-calls',
-                    usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
-                    warnings: [],
-                } as GenResult;
+                        {
+                            type: 'finish',
+                            finishReason: { unified: 'tool-calls', raw: 'tool-calls' },
+                            usage: RAW_USAGE_STOP,
+                        },
+                    ] as any),
+                };
             }
             return {
-                content: [{ type: 'text', text: finalText }],
-                finishReason: 'stop',
-                usage: { inputTokens: 12, outputTokens: 6, totalTokens: 18 },
-                warnings: [],
-            } as GenResult;
+                stream: convertArrayToReadableStream([
+                    { type: 'stream-start', warnings: [] },
+                    { type: 'text-start', id: 'ft' },
+                    { type: 'text-delta', id: 'ft', delta: finalText },
+                    { type: 'text-end', id: 'ft' },
+                    {
+                        type: 'finish',
+                        finishReason: { unified: 'stop', raw: 'stop' },
+                        usage: RAW_USAGE_TOOL,
+                    },
+                ] as any),
+            };
         },
     });
     return {
@@ -100,6 +144,7 @@ async function run(): Promise<void> {
                     tierController: controller,
                 });
                 assert.strictEqual(result.finishReason, 'stop');
+                assert.strictEqual(result.status, 'completed');
                 assert.strictEqual(result.finalText, 'final answer');
                 assert.strictEqual(result.steps.length, 1);
                 assert.strictEqual(result.tierUsage['local-fast'], 1);
@@ -123,6 +168,7 @@ async function run(): Promise<void> {
                 });
                 assert.strictEqual(exec.count, 1, 'tool should be executed once');
                 assert.strictEqual(result.finishReason, 'stop');
+                assert.strictEqual(result.status, 'completed');
                 assert.strictEqual(result.steps.length, 2);
                 assert.strictEqual(result.steps[0].toolCalls.length, 1);
                 assert.strictEqual(result.steps[0].toolResults.length, 1);
@@ -135,19 +181,35 @@ async function run(): Promise<void> {
         {
             name: 'honors maxSteps budget',
             fn: async () => {
-                // Always emits a tool call → loop never gets to stop step.
+                // Always emits a tool call → loop never reaches a final answer.
                 let calls = 0;
                 const model = new MockLanguageModelV3({
                     provider: 'mock',
                     modelId: 'loopy',
-                    async doGenerate(): Promise<GenResult> {
+                    doStream: async () => {
                         calls += 1;
                         return {
-                            content: [{ type: 'tool-call', toolCallId: `c${calls}`, toolName: 'noop', input: '{"value":"x"}' }],
-                            finishReason: 'tool-calls',
-                            usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
-                            warnings: [],
-                        } as GenResult;
+                            stream: convertArrayToReadableStream([
+                                { type: 'stream-start', warnings: [] },
+                                {
+                                    type: 'tool-call',
+                                    toolCallId: `c${calls}`,
+                                    toolName: 'noop',
+                                    input: '{"value":"x"}',
+                                },
+                                {
+                                    type: 'finish',
+                                    finishReason: { unified: 'tool-calls', raw: 'tool-calls' },
+                                    usage: {
+                                        inputTokens: { total: 1, noCache: 1, cacheRead: undefined, cacheWrite: undefined },
+                                        outputTokens: { total: 1, textTokens: 1, reasoningTokens: undefined },
+                                        totalTokens: 2,
+                                        reasoningTokens: undefined,
+                                        cachedInputTokens: undefined,
+                                    },
+                                },
+                            ] as any),
+                        };
                     },
                 });
                 const bindings: TierBindings = {
@@ -171,6 +233,7 @@ async function run(): Promise<void> {
                     budget: { maxSteps: 3, maxTokens: 10_000, maxToolCalls: 10 },
                 });
                 assert.strictEqual(result.finishReason, 'max_steps');
+                assert.strictEqual(result.status, 'completed');
                 assert.strictEqual(result.steps.length, 3);
             },
         },
@@ -190,6 +253,7 @@ async function run(): Promise<void> {
                     abortSignal: ac.signal,
                 });
                 assert.strictEqual(result.finishReason, 'abort');
+                assert.strictEqual(result.status, 'cancelled');
                 assert.strictEqual(result.steps.length, 0);
             },
         },

@@ -224,6 +224,7 @@ function testTurnReceiptJsonRoundTrip(): void {
 			vaultDocuments: [{ id: 'a', path: 'Notes/A.md', title: 'A' }],
 			webQueries: [],
 			webSources: [],
+			explicitRefsUsed: [{ id: 'r1', kind: 'vault-file', uri: 'Notes/A.md', title: 'A' }],
 		},
 		status: 'timeout',
 		artifactIds: ['art-1'],

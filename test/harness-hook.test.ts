@@ -1,38 +1,18 @@
 import assert from 'assert';
 import { z } from 'zod';
-import { MockLanguageModelV3 } from 'ai/test';
 import { runAgentLoop } from '@/service/agents/harness/loop/AgentLoop';
 import { TierController } from '@/service/agents/harness/tier/TierController';
 import { DEFAULT_TIER_CAPABILITIES } from '@/service/agents/harness/tier/types';
 import type { TierBindings, TierBinding } from '@/service/agents/harness/tier/types';
 import type { ToolDef } from '@/service/agents/harness/tool/types';
 import { HookBus } from '@/service/agents/harness/hook/HookBus';
-
-type GenResult = Awaited<ReturnType<NonNullable<MockLanguageModelV3['doGenerate']>>>;
+import { makeStreamModel, textStepChunks, toolStepChunks } from './harness-fixtures/mockStreamModel';
 
 function makeToolThenStopBinding(toolName: string, args: any, finalText = 'fin'): TierBinding {
-    let call = 0;
-    const model = new MockLanguageModelV3({
-        provider: 'mock',
-        modelId: 'mock',
-        async doGenerate(): Promise<GenResult> {
-            call += 1;
-            if (call === 1) {
-                return {
-                    content: [{ type: 'tool-call', toolCallId: 'tc1', toolName, input: JSON.stringify(args) }],
-                    finishReason: 'tool-calls',
-                    usage: { inputTokens: 5, outputTokens: 5, totalTokens: 10 },
-                    warnings: [],
-                } as GenResult;
-            }
-            return {
-                content: [{ type: 'text', text: finalText }],
-                finishReason: 'stop',
-                usage: { inputTokens: 5, outputTokens: 5, totalTokens: 10 },
-                warnings: [],
-            } as GenResult;
-        },
-    });
+    const model = makeStreamModel('mock', [
+        toolStepChunks({ toolName, input: args }),
+        textStepChunks({ text: finalText }),
+    ]);
     return {
         tier: 'local-fast',
         providerId: 'mock',
@@ -44,18 +24,7 @@ function makeToolThenStopBinding(toolName: string, args: any, finalText = 'fin')
 }
 
 function stopBinding(text: string): TierBinding {
-    const model = new MockLanguageModelV3({
-        provider: 'mock',
-        modelId: 'mock',
-        async doGenerate(): Promise<GenResult> {
-            return {
-                content: [{ type: 'text', text }],
-                finishReason: 'stop',
-                usage: { inputTokens: 5, outputTokens: 5, totalTokens: 10 },
-                warnings: [],
-            } as GenResult;
-        },
-    });
+    const model = makeStreamModel('mock', [textStepChunks({ text })]);
     return {
         tier: 'local-fast',
         providerId: 'mock',

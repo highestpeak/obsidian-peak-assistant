@@ -36,7 +36,7 @@ Four-layer architecture: `app/` → `service/` → `core/` → `ui/`
 - `IndexService` (`service/search/index/indexService.ts`) — Singleton for document embeddings, chunking, semantic edges, hub discovery
 - `MultiProviderChatService` (`core/providers/MultiProviderChatService.ts`) — Factory pattern supporting Claude, OpenAI, Google, Perplexity, Ollama, OpenRouter
 
-**Storage:** Two SQLite databases (`vault.sqlite` for search/embeddings, `chat.sqlite` for conversations) plus Vault markdown files for chat history/projects.
+**Storage:** Current production uses two SQLite databases (`vault.sqlite` for search/embeddings, `chat.sqlite` for conversations) plus Vault markdown files for chat history/projects. The accepted, not-yet-implemented persistence redesign moves machine run records to JSONL streams, keeps SQLite as rebuildable read models, and reserves Markdown for user documents/explicit exports; see [`2026-07-21-machine-record-storage-jsonl-design.md`](./docs/superpowers/specs/2026-07-21-machine-record-storage-jsonl-design.md).
 
 **State management:** Zustand for global stores (`projectStore`, `uiEventStore`), per-view scoped stores, React Context for service injection.
 

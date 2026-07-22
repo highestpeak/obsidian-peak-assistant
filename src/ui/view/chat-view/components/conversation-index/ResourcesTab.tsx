@@ -13,6 +13,9 @@ import {
 	Wrench,
 	MessageSquare,
 	ExternalLink,
+	Search,
+	Scissors,
+	BellRing,
 } from 'lucide-react';
 import {
 	formatTime,
@@ -49,6 +52,9 @@ export function iconForKind(kind: ResourceRowKind): React.ReactNode {
 		case 'base': return <Database aria-hidden />;
 		case 'process': return <Wrench aria-hidden />;
 		case 'message': return <MessageSquare aria-hidden />;
+		case 'dataview': return <Search aria-hidden />;
+		case 'extract': return <Scissors aria-hidden />;
+		case 'reminder': return <BellRing aria-hidden />;
 	}
 }
 
@@ -73,6 +79,9 @@ export interface ResourcesTabStrings {
 	typeDiagram: string;
 	typeBase: string;
 	typeProcess: string;
+	typeDataview: string;
+	typeExtract: string;
+	typeReminder: string;
 	emptyFiltered: string;
 	emptyFilteredSub?: string;
 	emptyEmpty: string;
@@ -95,12 +104,16 @@ export function kindLabel(k: ResourceRowKind, s: ResourcesTabStrings): string {
 		case 'diagram': return s.typeDiagram;
 		case 'base': return s.typeBase;
 		case 'process': return s.typeProcess;
+		case 'dataview': return s.typeDataview;
+		case 'extract': return s.typeExtract;
+		case 'reminder': return s.typeReminder;
 	}
 }
 
 /** Canonical order of the type filter / row kinds. */
 export const KIND_ORDER: ResourceRowKind[] = [
 	'message', 'image', 'audio', 'video', 'document', 'url', 'vault', 'table', 'code', 'diagram', 'base', 'process',
+	'dataview', 'extract', 'reminder',
 ];
 
 export interface ResourcesTabProps {

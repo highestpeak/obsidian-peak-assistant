@@ -18,13 +18,13 @@ const CORE = join(SRC, 'core');
 const UI = join(SRC, 'ui');
 
 const FLOORS = {
-	totalFlagged: 20, // 1 (CopilotPickerContent ui->app) + 19 (17 T11Y-8 core ports + 2 HeadingModePort type-only edges added in T5 heading-mode composition, 2026-07-07).
+	totalFlagged: 19, // 19 (17 T11Y-8 core ports + 2 HeadingModePort type-only edges added in T5 heading-mode composition, 2026-07-07). CopilotPickerContent's ui->app leak (commit 2728bf72) was routed back through ServiceContext (copilotActionRuntime + vaultReviewRuntime + RelatedNotesPanel via vaultNavigation port), returning uiApp to 0.
 	serviceCoreObsidianTypes: 0,
 	serviceCoreObsidianSideEffect: 0,
 	serviceApp: 0,
 	serviceUi: 0,
 	coreUpstream: 19, // Raised from 17 -> 19 to accept `core/ports/HeadingModePort.ts` type-only imports of `service/search/heading/*` (2026-07-07 T8).
-	uiApp: 1, // Raised from 0 -> 1 to accept CopilotPickerContent.tsx AppContext import (commit 2728bf72).
+	uiApp: 0, // Restored to 0: CopilotPickerContent no longer imports @/app/context/AppContext; runtimes flow through ServiceContext.
 } as const;
 
 const SCAN_EXTS = new Set(['.ts', '.tsx']);
@@ -97,7 +97,8 @@ function testServiceCoreFreeOfObsidianImports(): void {
 }
 
 function testUiHasNoStaticOrDynamicAppImport(): void {
-	// Raised from 0 -> 1 to accept CopilotPickerContent.tsx AppContext import (commit 2728bf72).
+	// Held at 0: the ui-layer AppContext leak introduced by commit 2728bf72
+	// (CopilotPickerContent) was routed back through ServiceContext ports.
 	const UI_APP_IMPORT_FLOOR = FLOORS.uiApp;
 	const files = walk(UI);
 	const offenders: string[] = [];

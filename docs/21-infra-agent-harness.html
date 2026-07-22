@@ -573,7 +573,7 @@ flowchart LR
   User["Obsidian user<br/>发起知识工作"] --> Surface["Product surface<br/>Chat / Search / Review / Copilot"]
   Surface --> Feature["Feature service<br/>声明任务、预算、权限、可用工具"]
   Feature --> Harness["Agent Harness<br/>loop / tier / permission / hooks / trace / context"]
-  Harness --> Model["Vercel AI SDK model<br/>generateText one step"]
+  Harness --> Model["Vercel AI SDK model<br/>streamText one step"]
   Harness --> Tools["ToolDef tools<br/>Vault / Search / MCP / subagent"]
   Harness --> Trace["TraceBus<br/>step、tool、tier、context events"]
   Tools --> Vault["Vault / SQLite / external providers"]
@@ -625,7 +625,7 @@ flowchart LR
     <section id="run">
       <h2>3. 一次 Agent run 到底发生了什么？</h2>
       <p class="lead">核心不是“模型有多聪明”，而是每一步都先经过运行时检查。</p>
-      <p class="prose">当前实现的主入口是 <code>runAgentLoop(cfg)</code>。它合并默认预算，创建或复用 <code>TraceBus</code>，触发 <code>session_start</code> hook，自动把 subagent 包装成工具，然后进入 while loop。每轮开始前先检查停止条件，选择当前 tier，过滤当前 tier 可用工具，必要时压缩上下文，再调用 Vercel AI SDK 的 <code>generateText</code>。每次调用被限制为 <code>stopWhen: stepCountIs(1)</code>，所以“继续跑几步”不是模型说了算，而是外层 loop 再决定。</p>
+      <p class="prose">当前实现的主入口是 <code>runAgentLoop(cfg)</code>。它合并默认预算，创建或复用 <code>TraceBus</code>，触发 <code>session_start</code> hook，自动把 subagent 包装成工具，然后进入 while loop。每轮开始前先检查停止条件，选择当前 tier，过滤当前 tier 可用工具，必要时压缩上下文，再调用 Vercel AI SDK 的 <code>streamText</code>——从 <code>generateText</code> 升级为流式引擎后，每一步依旧被限制为 <code>stopWhen: stepCountIs(1)</code>，外层 loop 仍是唯一继续/停止的决定者。所有下游只需在 <code>onStreamEvent</code> 单点订阅：text/reasoning delta、tool input/call/result、step finish、permission_request / permission_resolved、run_status。<code>modelSettings</code> 六个采样参数（temperature / topP / topK / maxOutputTokens / frequencyPenalty / presencePenalty）由 <code>runAgentLoop</code> 直接透传给 <code>streamText</code>。</p>
 
       <div class="figure" role="figure" aria-label="AgentLoop sequence">
         <div class="figure-title"><strong>运行时序图</strong><span>一次 run 的主要控制点</span></div>
@@ -651,12 +651,18 @@ sequenceDiagram
     L->>T: current tier
     L->>C: compactIfNeeded
     C-->>L: messages and memory blocks
-    L->>M: generateText with one-step stop
-    M-->>L: text or tool calls
+    L->>M: streamText with one-step stop + modelSettings
+    M-->>L: fullStream (text/reasoning delta, tool input/call/result, step finish)
     alt model calls tool
       L->>Trace: tool_call
       L->>P: check tool and args
-      P-->>L: allow or deny
+      alt kind edit
+        P-->>L: ask
+        L-->>Trace: permission_request (state=waiting-permission)
+        Trace-->>L: permission_resolved (allow/deny/cancelled)
+      else auto decision
+        P-->>L: allow or deny
+      end
       L->>H: pre_tool_use
       L->>Tool: execute
       Tool-->>L: ToolResult
@@ -671,9 +677,9 @@ sequenceDiagram
   L-->>F: AgentLoopResult
         </div>
         <ul class="diagram-notes">
-          <li><b>模型每次只获得一步机会。</b><code>stepCountIs(1)</code> 让外层 loop 能在每步之间重新检查预算、权限和上下文。</li>
-          <li><b>工具调用不是直通。</b>tool call 先进入 trace，再过 permission、pre hook、execute、post hook，最后才把结果交回模型。</li>
-          <li><b>状态真相在返回值和 trace。</b>调试时先看 <code>finishReason</code>、<code>steps</code>、tool traces，不要只看最后一段文本。</li>
+          <li><b>模型每次只获得一步机会。</b><code>stepCountIs(1)</code> 让外层 loop 能在每步之间重新检查预算、权限和上下文，即便 streamText 内部支持多步也不会被利用。</li>
+          <li><b>工具调用不是直通。</b>tool call 先进入 trace，再过 permission（<code>kind:'edit'</code> 走 ask 挂起，其余同步 allow/deny）、pre hook、execute、post hook，最后才把结果交回模型。</li>
+          <li><b>状态真相在事件和 trace。</b>调试时按 <code>runId</code> 串起 UI 与 trace，再看 <code>finishReason</code> / <code>AgentLoopStatus</code> / step 与 tool_result；<code>waiting-permission</code> 是运行期观察态，不是终态。</li>
         </ul>
       </div>
 
@@ -687,21 +693,36 @@ sequenceDiagram
   const tools = filterToolsForTier(effectiveTools, tier);
   const messages = await context.compactIfNeeded(...);
 
-  const result = await generateText({
+  const streamed = streamText({
     model: tier.resolve(),
     messages,
     tools: wrapToolsWithPermissionHooksAndTrace(tools),
     stopWhen: stepCountIs(1),
+    temperature: cfg.modelSettings?.temperature,
+    topP: cfg.modelSettings?.topP,
+    topK: cfg.modelSettings?.topK,
+    maxOutputTokens: cfg.modelSettings?.maxOutputTokens,
+    frequencyPenalty: cfg.modelSettings?.frequencyPenalty,
+    presencePenalty: cfg.modelSettings?.presencePenalty,
+    abortSignal: cfg.abortSignal,
   });
 
-  recordStep(result);
+  for await (const event of streamed.fullStream) {
+    onStreamEvent?.(event);   // text/reasoning delta, tool events, step finish
+  }
+
+  const step = await streamed.finalStep();
+  recordStep(step);
   tierController.onStepFinish(step);
   if (hasFinalAnswer(step)) break;
 }</code></pre>
       </div>
 
+      <h3>3.1 Run status 与终态</h3>
+      <p class="prose"><code>AgentLoopStatus</code> 收敛为四个终态：<code>completed</code>（模型给出 final answer）、<code>failed</code>（provider 报错或运行时异常）、<code>cancelled</code>（<code>abortSignal</code> / permission ask 被 cancel）、<code>timeout</code>（<code>step</code> 或 <code>total</code> 超时）。运行期还有一个可观察 live state <code>waiting-permission</code>：当 PermissionGuard 对 <code>kind:'edit'</code> 走 ask 分支时进入，收到 <code>permission_resolved</code> 后回到 <code>running</code>；abort 期间未回答的 ask 会被解析为 <code>cancelled</code>，没有挂起 resolver 时默认 deny。</p>
+
       <h3>为什么要一轮只跑一步？</h3>
-      <p class="prose">因为多步 agent 最大的问题不是“能不能调用工具”，而是“谁负责每一步之间的安全检查”。如果一次 <code>generateText</code> 放任模型自己连跑很多步，预算、权限、trace、context 压缩和 tier 升级都会被动跟在后面。当前实现把模型调用切成单步，外层 loop 就能在每次 step 之间重新检查运行条件。</p>
+      <p class="prose">因为多步 agent 最大的问题不是“能不能调用工具”，而是“谁负责每一步之间的安全检查”。如果一次 <code>streamText</code> 放任模型自己连跑很多步，预算、权限、trace、context 压缩和 tier 升级都会被动跟在后面。当前实现把模型调用切成单步，外层 loop 就能在每次 step 之间重新检查运行条件。</p>
     </section>
 
     <section id="contracts">
@@ -716,7 +737,7 @@ flowchart TB
   Start["AgentLoopConfig<br/>任务、消息、工具、预算、权限"] --> Budget["Budget gate<br/>maxSteps / maxTokens / maxToolCalls / abort"]
   Budget --> Tier["Tier gate<br/>local-fast / local-deep / online"]
   Tier --> Context["Context sidecar<br/>memory blocks + compaction"]
-  Context --> Model["Model step<br/>generateText stopWhen=1"]
+  Context --> Model["Model step<br/>streamText stopWhen=1"]
   Model --> Decision{"模型输出"}
   Decision -->|"tool call"| ToolGate["Tool gate<br/>PermissionGuard then hooks"]
   ToolGate --> Tool["ToolDef execute<br/>returns ToolResult"]
@@ -743,7 +764,7 @@ flowchart TB
       </div>
 
       <h3 id="loop-contract">4.1 Loop contract：运行一次任务需要传进什么。</h3>
-      <p class="prose"><code>AgentLoopConfig</code> 是 Harness 的主合同。它包含 <code>loopId</code>、system prompt、初始消息、工具、tier controller、预算、abort signal、trace、hooks、permission、subagents、memory 和 context。默认预算当前是 5 steps、20,000 tokens、10 tool calls。</p>
+      <p class="prose"><code>AgentLoopConfig</code> 是 Harness 的主合同。它包含 <code>loopId</code>、system prompt、初始消息、工具、tier controller、预算、abort signal、trace、hooks、permission、subagents、memory、context，以及流式订阅点 <code>onStreamEvent</code> 与采样参数 <code>modelSettings</code>。默认预算当前是 5 steps、20,000 tokens、10 tool calls。<code>loopId</code> 会作为整个 run 的 runId 贯穿到 trace <code>debugRunId</code> 与调用方的 receipt。</p>
       <table class="doc-table">
 <colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
         <thead>
@@ -755,6 +776,8 @@ flowchart TB
           <tr><td><code>permission</code></td><td>哪些工具可用，哪些写入或危险动作必须被挡住。</td><td>没有 guard 时会回到 legacy allow-all，写工具时要显式传入。</td></tr>
           <tr><td><code>trace</code></td><td>UI、测试或未来 RunEvent 怎么观察过程。</td><td>不要只靠 console 或 UI state 当调试事实。</td></tr>
           <tr><td><code>context</code> + <code>memory</code></td><td>哪些上下文块进入 system prompt，超过预算时怎么丢弃或压缩。</td><td>不要把长历史直接拼进 prompt。</td></tr>
+          <tr><td><code>onStreamEvent</code></td><td>下游订阅 text/reasoning delta、tool input/call/result、step finish、permission_request / permission_resolved、run_status 的单点。</td><td>不要在 provider adapter 或 UI store 再开第二条流；Chat 通过 <code>harnessChatRunner.ts</code> 事件翻译层复用这条。</td></tr>
+          <tr><td><code>modelSettings</code></td><td>把 outputControl 的六个采样参数（temperature / topP / topK / maxOutputTokens / frequencyPenalty / presencePenalty）透传到 <code>streamText</code>。</td><td>不要在 feature 侧另建采样通道；缺失会静默丢失用户偏好。</td></tr>
         </tbody>
       </table>
 
@@ -787,8 +810,8 @@ flowchart TB
         </tbody>
       </table>
       <div class="claim">
-        <strong>不要过度承诺</strong>
-        当前权限层不是完整的“弹窗询问用户授权 UI”。代码事实是同步 guard + hook blocking/modification。用户确认界面、可审阅 diff、apply/reject 仍属于上层产品能力或未来 RunEvent/Artifact 工作。
+        <strong>Ask 路径已经存在</strong>
+        除同步 allow / deny 外，PermissionGuard 对 <code>kind:'edit'</code> 的工具会返回 <code>ask</code>；Harness 通过 <code>permission_request</code> 事件挂起 loop（状态 <code>waiting-permission</code>），<code>await</code> 到 UI 通过 resolver 回填决定后再继续。没有 resolver 视为 deny，abort 期间未回答的 ask 记为 <code>cancelled</code>。<code>permission_resolved</code> 事件把结果通过 TraceBus 与 <code>onStreamEvent</code> 同时暴露。可审阅 diff / apply / reject 仍属于上层产品能力。
       </div>
 
       <h3 id="runtime-sidecars">4.4 Trace / Context / Subagent：让过程能被看见、缩小和隔离。</h3>
@@ -848,6 +871,12 @@ flowchart TB
           </tr>
           <tr>
             <td>8</td>
+            <td><a href="../src/service/chat/harnessChatRunner.ts"><code data-copy="src/service/chat/harnessChatRunner.ts">harnessChatRunner.ts</code></a></td>
+            <td>Chat turn 如何驱动 <code>runAgentLoop</code>：<code>onStreamEvent</code> → <code>LLMStreamEvent</code> 翻译、runId 贯通、abortSignal 直达 fetch、permission ask 事件。</td>
+            <td>Chat 是当前 Harness 最大 adopter；理解 Feature service 如何接入 Harness 就从这里读。</td>
+          </tr>
+          <tr>
+            <td>9</td>
             <td><a href="../test/harness-loop.test.ts"><code data-copy="test/harness-*.test.ts">harness-*.test.ts</code></a></td>
             <td>loop、permission、context、subagent 的当前验收行为。</td>
             <td>改 Harness 前后应该保护哪些行为。</td>
@@ -862,7 +891,7 @@ flowchart TB
       <ul class="clean">
         <li><b>不要把 Harness 当成用户功能。</b>用户侧看到的是 Agent runtime、运行状态、工具授权和结果审阅；Harness 是维护者术语。</li>
         <li><b>Command Gateway 现在不属于 Harness。</b>Gateway 在主架构手册里仍是 T12 capstone；本页只覆盖现有 Harness 运行层的行为和边界。</li>
-        <li><b>不要在 feature service 里复制 loop。</b>Chat、Search、Review 需要 agent 时通过统一 runtime 合同传任务、工具、预算、权限和订阅。</li>
+        <li><b>不要在 feature service 里复制 loop。</b>Chat 已经是 Harness 最大 adopter（通过 <code>harnessChatRunner.ts</code> 事件翻译层驱动 <code>runAgentLoop</code>）；Search、Review 需要 agent 时同样通过统一 runtime 合同传任务、工具、预算、权限和订阅。</li>
         <li><b>不要把 permission 写成 prompt。</b>需要保证的行为必须在 <code>PermissionGuard</code> 或 hooks 里实现。</li>
         <li><b>不要让工具返回任意形状。</b>工具必须用 <code>ToolResult</code>，否则模型、trace 和测试都难以判断失败是否可恢复。</li>
         <li><b>不要把旧 spec 里的全部愿景当成 runtime 合同。</b>Harness 的稳定边界是 loop、tool、permission、hook、tier、trace、context、subagent；AgentBackend / RunEvent / Artifact 的汇合要看架构层的 owner 规则。</li>
@@ -887,7 +916,7 @@ stateDiagram-v2
   Running --> MaxTokens: totalTokens >= maxTokens
   Running --> MaxTools: totalToolCalls >= maxToolCalls
   Running --> Abort: abortSignal
-  Running --> Error: generateText throws
+  Running --> Error: streamText throws
   [*] --> HookBlock: session_start block
   Stop --> [*]
   MaxSteps --> [*]

@@ -49,13 +49,30 @@ export const NavRow: React.FC<NavRowProps> = ({
 	onOpenMenu,
 	onDragStart,
 }) => {
+	// A11Y-02 — Enter/Space activates the row for keyboard users; the "…" menu
+	// button inside also needs to swallow its own key events so pressing Enter
+	// on the menu doesn't double-fire the row's onClick.
+	const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+		if (e.key === 'Enter' || e.key === ' ') {
+			// Don't hijack keystrokes that originated inside the menu button.
+			const target = e.target as HTMLElement | null;
+			if (target && target !== e.currentTarget && target.closest('.pkstudio-row-menu')) return;
+			e.preventDefault();
+			onClick();
+		}
+	};
 	return (
 		<div
 			className={cn('pkstudio-nav-row', isChild && 'is-child', selected && 'is-selected')}
 			data-conversation-id={dataConversationId}
 			draggable={draggable}
+			role="button"
+			tabIndex={0}
+			aria-current={selected ? 'true' : undefined}
+			aria-label={labelTitle}
 			onDragStart={onDragStart}
 			onClick={onClick}
+			onKeyDown={handleKeyDown}
 			onContextMenu={onOpenMenu}
 		>
 			<span className="pkstudio-nav-leading" aria-hidden>
@@ -70,7 +87,8 @@ export const NavRow: React.FC<NavRowProps> = ({
 					type="button"
 					className="pkstudio-row-menu"
 					aria-label={menuLabel}
-					onClick={onOpenMenu}
+					title={menuLabel}
+					onClick={(e) => { e.stopPropagation(); onOpenMenu(e); }}
 				>
 					<MoreHorizontal aria-hidden />
 				</button>

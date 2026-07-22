@@ -10,7 +10,10 @@ function isPromptEditor(target: KeyboardTarget): target is PromptInputEditorHand
 
 function isFocused(target: KeyboardTarget): boolean {
 	if (isPromptEditor(target)) return target.isFocused();
-	return document.activeElement === target;
+	// Detached-window safe: consult THIS textarea's own document, not the
+	// global one. In a popout the global `document` belongs to the workspace
+	// tab and never matches the popout's activeElement.
+	return target.ownerDocument.activeElement === target;
 }
 
 function getValue(target: KeyboardTarget): string {
@@ -111,7 +114,16 @@ export function useInputKeyboard(
 			}
 		};
 
-		window.addEventListener('keydown', handleKeyDown, true);
-		return () => window.removeEventListener('keydown', handleKeyDown, true);
+		// Detached-window safe: derive the target window from the editor's own
+		// DOM. Retry once after mount because refs populate after commit; if
+		// the ref is somehow still null at that point we fall through to the
+		// global window (workspace-tab default).
+		const target = textareaRef.current;
+		const rootEl = target && isPromptEditor(target)
+			? target.getRootElement()
+			: (target as HTMLTextAreaElement | null);
+		const win = (rootEl?.ownerDocument?.defaultView as (Window & typeof globalThis) | null) ?? window;
+		win.addEventListener('keydown', handleKeyDown, true);
+		return () => win.removeEventListener('keydown', handleKeyDown, true);
 	}, [textareaRef]);
 }

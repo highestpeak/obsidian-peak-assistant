@@ -1,0 +1,469 @@
+/*
+ * Composer owns the bounded, read-only relationship preview below. The wide
+ * dialog remains a mount marker for the production Vault Search Result Browser;
+ * no expanded List / Folder / Graph implementation belongs in this fixture.
+ */
+
+.vault-result-browser-reuse,
+.vault-result-browser-reuse * {
+  box-sizing: border-box;
+}
+
+.vault-result-browser-reuse svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.material-graph {
+  margin-top: 4px;
+  border-top: 1px solid var(--pk-border-soft, #ececef);
+  border-bottom: 1px solid var(--pk-border-soft, #ececef);
+}
+
+.material-graph-bar,
+.material-graph-bar > span,
+.graph-detail-actions {
+  display: flex;
+  align-items: center;
+}
+
+.material-graph-bar {
+  min-height: 36px;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 2px;
+}
+
+.material-graph-bar > span {
+  min-width: 0;
+  gap: 6px;
+}
+
+.material-graph-bar svg,
+.graph-detail-actions svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.material-graph-bar svg {
+  flex: 0 0 auto;
+  color: var(--pk-accent-text, #6d28d9);
+}
+
+.material-graph-bar strong {
+  flex: 0 0 auto;
+  font-size: var(--pk-text-xs, 10px);
+}
+
+.material-graph-bar small {
+  overflow: hidden;
+  color: var(--pk-text-tertiary, #8c8b92);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.material-graph-bar > button {
+  min-height: 26px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  padding: 0 7px;
+  color: var(--pk-accent-text, #6d28d9);
+  background: transparent;
+  border: 0;
+  border-radius: var(--pk-radius-md, 8px);
+  font-size: 9px;
+  font-weight: 650;
+}
+
+.material-graph-bar > button:hover,
+.material-graph-bar > button:focus-visible {
+  background: var(--pk-accent-tint, rgba(124, 58, 237, 0.1));
+  outline: 0;
+}
+
+.material-graph-bar > button svg {
+  width: 12px;
+  height: 12px;
+}
+
+.graph-canvas {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background-color: color-mix(in srgb, var(--pk-surface-raised, #fafafa) 72%, transparent);
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--pk-border, #e5e7eb) 72%, transparent) 0.75px, transparent 0.85px);
+  background-size: 17px 17px;
+}
+
+.graph-canvas.is-inline {
+  height: 172px;
+  border-radius: var(--pk-radius-md, 8px);
+}
+
+.graph-scene {
+  position: absolute;
+  inset: 0;
+}
+
+.graph-lines {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.graph-edge {
+  stroke: color-mix(in srgb, var(--pk-text-secondary, #6f6d75) 66%, transparent);
+  stroke-width: 0.62;
+  vector-effect: non-scaling-stroke;
+}
+
+.graph-edge.is-semantic {
+  stroke: color-mix(in srgb, var(--pk-accent, #7c3aed) 48%, transparent);
+  stroke-dasharray: 2.2 2.2;
+}
+
+.graph-lines marker path {
+  fill: color-mix(in srgb, var(--pk-text-secondary, #6f6d75) 68%, transparent);
+  stroke: none;
+}
+
+.material-node {
+  position: absolute;
+  z-index: 2;
+  top: var(--node-y);
+  left: var(--node-x);
+  min-width: 66px;
+  max-width: 112px;
+  min-height: 34px;
+  padding: 5px 7px;
+  color: var(--pk-text-primary, #25242a);
+  background: color-mix(in srgb, var(--pk-surface, #fff) 94%, var(--pk-accent-tint, #f4f0ff));
+  border: 1px solid color-mix(in srgb, var(--pk-border, #e5e7eb) 78%, var(--pk-accent, #7c3aed));
+  border-radius: var(--pk-radius-md, 8px);
+  box-shadow: 0 2px 7px rgba(34, 30, 44, 0.05);
+  transform: translate(-50%, -50%);
+  text-align: left;
+  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.material-node strong,
+.material-node small {
+  display: block;
+  overflow: hidden;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.material-node strong {
+  font-size: 9px;
+}
+
+.material-node small {
+  margin-top: 2px;
+  color: var(--pk-text-tertiary, #8c8b92);
+  font-size: 8px;
+}
+
+.material-node.is-current {
+  color: var(--pk-accent-text, #6d28d9);
+  background: color-mix(in srgb, var(--pk-accent-tint, #f4f0ff) 82%, var(--pk-surface, #fff));
+  border-color: color-mix(in srgb, var(--pk-accent, #7c3aed) 55%, var(--pk-border, #e5e7eb));
+  font-weight: 700;
+}
+
+.material-node:hover,
+.material-node:focus-visible,
+.material-node.is-selected {
+  z-index: 3;
+  border-color: var(--pk-accent, #7c3aed);
+  box-shadow: 0 0 0 2px var(--pk-accent-tint, rgba(124, 58, 237, 0.1)), 0 5px 13px rgba(34, 30, 44, 0.1);
+  outline: 0;
+  transform: translate(-50%, -50%) translateY(-1px);
+}
+
+.graph-selection-detail {
+  min-width: 0;
+}
+
+.graph-selection-detail.is-inline {
+  min-height: 70px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 10px;
+  padding: 9px 2px 10px;
+}
+
+.graph-selection-detail > strong,
+.graph-selection-detail > small,
+.graph-selection-detail > p,
+.graph-selection-detail > .graph-detail-kicker {
+  min-width: 0;
+}
+
+.graph-detail-kicker {
+  color: var(--pk-accent-text, #6d28d9);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.graph-selection-detail > strong {
+  display: block;
+  font-size: var(--pk-text-sm, 11px);
+  line-height: 1.35;
+}
+
+.graph-selection-detail > small {
+  display: block;
+  overflow: hidden;
+  color: var(--pk-text-tertiary, #8c8b92);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.graph-selection-detail > p {
+  margin: 3px 0 0;
+  color: var(--pk-text-secondary, #6f6d75);
+  font-size: 9px;
+  line-height: 1.42;
+}
+
+.graph-selection-detail.is-inline > :not(.graph-detail-actions) {
+  grid-column: 1;
+}
+
+.graph-detail-actions {
+  gap: 6px;
+}
+
+.graph-selection-detail.is-inline .graph-detail-actions {
+  grid-column: 2;
+  grid-row: 1 / 5;
+  align-self: center;
+}
+
+.graph-detail-actions button {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 8px;
+  color: var(--pk-text-secondary, #6f6d75);
+  background: var(--pk-surface, #fff);
+  border: 1px solid var(--pk-border, #e5e7eb);
+  border-radius: var(--pk-radius-md, 8px);
+  font-size: 9px;
+  font-weight: 650;
+}
+
+.graph-detail-actions button:hover,
+.graph-detail-actions button:focus-visible {
+  color: var(--pk-text-primary, #25242a);
+  background: var(--pk-surface-raised, #fafafa);
+  outline: 0;
+}
+
+.graph-detail-actions button.is-primary {
+  color: var(--pk-success-text, #15803d);
+  background: color-mix(in srgb, #e8f7ef 82%, var(--pk-surface, #fff));
+  border-color: #d8eee3;
+}
+
+.graph-dialog:has(.vault-result-browser-reuse.is-dialog) {
+  width: min(680px, calc(100vw - 32px));
+  max-width: 680px;
+  height: auto;
+  max-height: calc(100vh - 48px);
+}
+
+.graph-dialog:has(.vault-result-browser-reuse.is-dialog) .graph-dialog-shell {
+  width: 100%;
+  min-height: 0;
+}
+
+.vault-result-browser-reuse.is-dialog {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  color: var(--pk-text-primary, #25242a);
+  background: var(--pk-surface, #fff);
+}
+
+.vault-result-browser-reuse .graph-dialog-head {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--pk-border-soft, #ececef);
+}
+
+.vault-result-browser-reuse .graph-dialog-head > span,
+.vault-result-browser-reuse .graph-dialog-head strong,
+.vault-result-browser-reuse .graph-dialog-head small {
+  display: block;
+}
+
+.vault-result-browser-reuse .graph-dialog-head strong {
+  font-size: 14px;
+}
+
+.vault-result-browser-reuse .graph-dialog-head small {
+  margin-top: 3px;
+  color: var(--pk-text-tertiary, #8c8b92);
+  font-size: 10px;
+  font-weight: 450;
+}
+
+.vault-result-browser-mount {
+  display: flex;
+  align-items: center;
+  padding: 30px 36px 32px;
+  flex-direction: column;
+  text-align: center;
+}
+
+.vault-result-browser-mount > i {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 12px;
+  place-items: center;
+  color: var(--pk-accent-text, #6d28d9);
+  background: var(--pk-accent-tint, #f4f0ff);
+  border-radius: 12px;
+}
+
+.vault-result-browser-mount > i svg {
+  width: 21px;
+  height: 21px;
+}
+
+.vault-result-browser-kicker {
+  color: var(--pk-accent-text, #6d28d9);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vault-result-browser-mount > strong {
+  margin-top: 5px;
+  font-size: 17px;
+}
+
+.vault-result-browser-mount > p {
+  max-width: 480px;
+  margin: 8px 0 20px;
+  color: var(--pk-text-secondary, #6f6d75);
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.vault-result-browser-mount dl {
+  width: min(100%, 500px);
+  margin: 0;
+  text-align: left;
+  border-top: 1px solid var(--pk-border-soft, #ececef);
+}
+
+.vault-result-browser-mount dl > div {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--pk-border-soft, #ececef);
+}
+
+.vault-result-browser-mount dt,
+.vault-result-browser-mount dd {
+  margin: 0;
+  font-size: 10px;
+}
+
+.vault-result-browser-mount dt {
+  color: var(--pk-text-tertiary, #8c8b92);
+}
+
+.vault-result-browser-mount dd {
+  color: var(--pk-text-primary, #25242a);
+  font-weight: 580;
+}
+
+.vault-result-browser-note {
+  padding: 10px 18px;
+  color: var(--pk-text-tertiary, #8c8b92);
+  background: var(--pk-surface-raised, #fafafa);
+  border-top: 1px solid var(--pk-border-soft, #ececef);
+  font-size: 9px;
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .graph-dialog:has(.vault-result-browser-reuse.is-dialog) {
+    width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
+  }
+
+  .vault-result-browser-mount {
+    padding: 24px 20px 26px;
+  }
+
+  .vault-result-browser-mount dl > div {
+    grid-template-columns: 92px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 460px) {
+  .material-graph-bar small {
+    display: none;
+  }
+
+  .graph-canvas.is-inline {
+    height: 156px;
+  }
+
+  .material-node {
+    min-width: 60px;
+    max-width: 88px;
+    padding-right: 5px;
+    padding-left: 5px;
+  }
+
+  .graph-selection-detail.is-inline {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .graph-selection-detail.is-inline .graph-detail-actions {
+    grid-column: 1;
+    grid-row: auto;
+    margin-top: 5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .material-node {
+    transition: none;
+  }
+}

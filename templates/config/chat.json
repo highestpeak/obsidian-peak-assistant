@@ -144,6 +144,11 @@
     "inlineFollowupSubmit": "Send",
     "vaultSaveDefaultFolder": "Peak Chat Saves",
     "vaultSaveSuccess": "Saved to vault",
-    "vaultSaveFailed": "Could not save to vault"
+    "vaultSaveFailed": "Could not save to vault",
+    "retryFailed": "Retry failed",
+    "variantSwitcherLabel": "Answer {index} of {total}",
+    "variantPreviousLabel": "Previous answer",
+    "variantNextLabel": "Next answer",
+    "branchedFromLabel": "Branched from {title}"
   }
 }

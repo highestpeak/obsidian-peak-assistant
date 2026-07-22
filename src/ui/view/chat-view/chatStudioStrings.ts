@@ -104,8 +104,92 @@ export interface ChatStudioStrings {
 		attachLinkDescription: string;
 		attachLinkPlaceholder: string;
 		attachMenuLabel: string;
+		generateImageLabel: string;
+		generateImageDescription: string;
+		generateImageUnavailableLabel: string;
+		generateImagePromptPlaceholder: string;
+		generateImageQuantityLabel: string;
+		generateImageAspectRatioLabel: string;
+		generateImageRouteLabel: string;
+		generateImageRouteAutoOption: string;
+		generateImageRouteNativeOption: string;
+		generateImageRouteFalOption: string;
+		generateImageCostHintPrefix: string;
+		generateImageCostHintLoading: string;
+		generateImageCostHintUnavailable: string;
+		generateImageCostHintConfidenceEstimated: string;
+		generateImageCostHintConfidenceReported: string;
+		generateImageConfirmDisabledPreflightReason: string;
+		/**
+		 * E2 R1#2: pre-disclosure shown next to the Composer cost hint for
+		 * video / music. Both kinds require an on-receipt cost gate before
+		 * the provider is charged; telling the user *here* prevents the
+		 * "wait, I clicked Send and now there's ANOTHER button?" surprise
+		 * flagged by D2 concern 4.
+		 */
+		generateImageCostHintConfirmHintVideo: string;
+		generateImageCostHintConfirmHintMusic: string;
+		generateImageRouteNativeUnavailableReason: string;
+		generateImageRouteFalUnavailableReason: string;
+		/** Task E1 §R2 — Composer "+" menu Configure button label
+		 *  (rendered next to the route select when a route is unavailable). */
+		generateImageRouteConfigureLabel: string;
+		generateImageInsertLabel: string;
+		generateImageInsertTemplate: string;
+		generateVideoLabel: string;
+		generateVideoDescription: string;
+		generateVideoUnavailableLabel: string;
+		generateVideoUnavailableReason: string;
+		generateVideoPromptPlaceholder: string;
+		generateVideoInsertTemplate: string;
+		generateMusicLabel: string;
+		generateMusicDescription: string;
+		generateMusicUnavailableLabel: string;
+		generateMusicUnavailableReason: string;
+		generateMusicPromptPlaceholder: string;
+		generateMusicInsertTemplate: string;
+		generateDurationLabel: string;
+		/**
+		 * Edit-image form (zero-gap §4 A1). Panel that lets the user pick a
+		 * base image (+ optional additional refs and mask) from the current
+		 * conversation and dispatch `MediaGenerationService.produce` with
+		 * `operation:'edit'`. Refs are chosen from the user's own history —
+		 * never inferred by the LLM.
+		 */
+		editImageLabel: string;
+		editImageDescription: string;
+		editImageUnavailableLabel: string;
+		editImagePromptPlaceholder: string;
+		editImageBaseSectionLabel: string;
+		editImageMaskSectionLabel: string;
+		editImagePresetLabel: string;
+		editImagePresetDefaultOption: string;
+		editImagePresetFillOption: string;
+		editImagePresetNativeOption: string;
+		editImagePresetFillDisabledReason: string;
+		editImageMaskNoneOption: string;
+		editImageNoImagesHint: string;
+		editImageInsertLabel: string;
+		editImageRunningLabel: string;
+		editImageFailedNoticeTemplate: string;
+		editImageSuccessNoticeTemplate: string;
+		editImageBaseMissingReason: string;
+		editImageAvailabilityReason: string;
+		/** ArtifactReceiptCard image-kind extra action: prefill Edit form. */
+		insertAsReferenceLabel: string;
 		workflowPlanLabel: string;
 		workflowPlanDescription: string;
+		/**
+		 * Generate document workflow — fills the Composer draft with a
+		 * template that guides the model to produce a document note via
+		 * `artifact_create` + Save-to-Vault (never auto-sends).
+		 */
+		generateDocumentLabel: string;
+		generateDocumentDescription: string;
+		generateDocumentDraftTemplate: string;
+		/** Slash palette section headers (chat-studio §8.3): workflow vs generation actions. */
+		slashGroupWorkflow: string;
+		slashGroupGenerate: string;
 		replyingToLabel: string;
 		sourcesLabel: string;
 		sourcesMenuTitle: string;
@@ -153,6 +237,9 @@ export interface ChatStudioStrings {
 		assistantDraftHint: string;
 		assistantDuplicate: string;
 		assistantDeleteConfirm: string;
+		/** Assistant chip label suffix / badge when an ephemeral preview is active. */
+		assistantPreviewBadge: string;
+		assistantPreviewClearLabel: string;
 		workflowHeader: string;
 		sendLabel: string;
 		stopLabel: string;
@@ -173,6 +260,29 @@ export interface ChatStudioStrings {
 		approvalAlways: string;
 		approvalWrites: string;
 		approvalNever: string;
+		/** Advanced disclosure — collapsed by default; owns knowledge/tools/model fields. */
+		advancedShowLabel: string;
+		advancedHideLabel: string;
+		advancedHelperText: string;
+		fieldKnowledgeRefs: string;
+		fieldKnowledgeRefsHelp: string;
+		knowledgeRefsPlaceholder: string;
+		fieldToolAllow: string;
+		fieldToolAllowHelp: string;
+		fieldToolDeny: string;
+		fieldToolDenyHelp: string;
+		toolPolicyPlaceholder: string;
+		fieldPreferredProfile: string;
+		fieldPreferredModel: string;
+		preferredModelHelp: string;
+		saveNotice: string;
+		/** Preview-in-conversation controls (try-before-save). */
+		previewLabel: string;
+		previewHint: string;
+		previewActiveBadge: string;
+		previewClearLabel: string;
+		previewRequiresConversation: string;
+		previewRequiresName: string;
 	};
 	/** Project Plans tab (§9.1) — row menu + rename/new-plan modal copy. */
 	projectPlans: {
@@ -207,6 +317,10 @@ export interface ChatStudioStrings {
 		actionApply: string;
 		actionRetry: string;
 		actionReview: string;
+		actionConfirm: string;
+		actionCancel: string;
+		/** Task E1 §R2 — configureAction jump button on failed/needs-configuration receipts. */
+		actionConfigure: string;
 		imagePreviewLabel: string;
 		closePreviewLabel: string;
 		previousPreviewLabel: string;
@@ -219,7 +333,24 @@ export interface ChatStudioStrings {
 		badgeCancelled: string;
 		badgeStale: string;
 		badgeNeedsPermission: string;
+		badgeAwaitingConfirmation: string;
+		badgeNeedsConfiguration: string;
 		untitledFallback: string;
+		/** D2 I2 — awaiting-confirmation cost gate copy. Never a "blind
+		 *  confirm": every field the confirm card shows is a receipt-derived
+		 *  fact (never fabricated), and template-driven per configurability
+		 *  rule. */
+		confirmCostHeading: string;
+		confirmCostRouteLabel: string;
+		confirmCostProviderLabel: string;
+		confirmCostModelLabel: string;
+		confirmCostDurationLabel: string;
+		confirmCostQuantityLabel: string;
+		confirmCostEstimateLabel: string;
+		confirmCostEstimateUnavailable: string;
+		confirmCostConfidenceEstimated: string;
+		confirmCostConfidenceReported: string;
+		confirmCostDurationUnit: string;
 	};
 	mermaidFullscreen: {
 		closeLabel: string;
@@ -255,6 +386,9 @@ export interface ChatStudioStrings {
 		typeDiagram: string;
 		typeBase: string;
 		typeProcess: string;
+		typeDataview: string;
+		typeExtract: string;
+		typeReminder: string;
 		emptyFiltered: string;
 		/** Optional second line under the filtered-empty title. */
 		emptyFilteredSub?: string;
@@ -283,6 +417,9 @@ export interface ChatStudioStrings {
 		actionViewRaw: string;
 		actionCopyMarkdown: string;
 		actionCopyJson: string;
+		/** Copy trace JSON — secondary action inside the More menu (MSG-07). */
+		actionCopyTraceJson: string;
+		actionCopyTraceJsonDetail: string;
 		actionEditResend: string;
 		actionDelete: string;
 		noTraceReason: string;
@@ -316,6 +453,19 @@ export interface ChatStudioStrings {
 		cancelLabel: string;
 		dateToday: string;
 		dateYesterday: string;
+		/**
+		 * Attachment understanding badges (zero-gap C1). One-liner appended to
+		 * an attachment card so the user can see how their audio/video was
+		 * consumed by the LLM. `understandingProvider`/`understandingModel`
+		 * fill the `{provider}` / `{model}` slots where present.
+		 */
+		understandingBadgeNativeVideo: string;
+		/** slots: {model} — Transcribed via whisper-1 etc. */
+		understandingBadgeTranscribedAudio: string;
+		understandingBadgeTranscribedExtractedAudio: string;
+		understandingBadgeAttachmentOnly: string;
+		/** slots: {reason} */
+		understandingBadgeAttachmentOnlyReason: string;
 		rewritePrompt: string;
 		checklistPrompt: string;
 		actionFollowUpDetail: string;

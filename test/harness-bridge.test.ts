@@ -7,33 +7,20 @@
  */
 
 import assert from 'assert';
-import { MockLanguageModelV3 } from 'ai/test';
 import { ClaudeAgentSDKBridge } from '@/service/agents/harness-bridge/ClaudeAgentSDKBridge';
 import { TierController } from '@/service/agents/harness/tier/TierController';
 import { DEFAULT_TIER_CAPABILITIES } from '@/service/agents/harness/tier/types';
 import { DEFAULT_HARNESS_SETTINGS } from '@/core/config/settingsTypes';
 import type { TierBinding, TierBindings } from '@/service/agents/harness/tier/types';
 import type { AppHandle } from '@/core/ports/AppHandle';
-
-type GenResult = Awaited<ReturnType<NonNullable<MockLanguageModelV3['doGenerate']>>>;
+import { makeStreamModel, textStepChunks } from './harness-fixtures/mockStreamModel';
 
 // Minimal stub satisfying BridgeRunConfig.app (T11J B1: bridge no longer reads AppContext).
 const STUB_APP = {} as unknown as AppHandle;
 const STUB_PLUGIN_ID = 'peak-assistant-test';
 
 function makeBinding(text: string): TierBinding {
-    const model = new MockLanguageModelV3({
-        provider: 'mock',
-        modelId: 'mock-fast',
-        async doGenerate(): Promise<GenResult> {
-            return {
-                content: [{ type: 'text', text }],
-                finishReason: 'stop',
-                usage: { inputTokens: 8, outputTokens: 4, totalTokens: 12 },
-                warnings: [],
-            } as GenResult;
-        },
-    });
+    const model = makeStreamModel('mock-fast', [textStepChunks({ text })]);
     return {
         tier: 'local-fast',
         providerId: 'mock',

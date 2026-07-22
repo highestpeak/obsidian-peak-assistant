@@ -2,6 +2,7 @@ import type { LLMRequestMessage, ModelCapabilities } from '@/core/providers/type
 import type { ChatConversation, ChatProject, ChatMessage } from '../../types';
 import type { SessionContextService } from '@/service/context/SessionContextService';
 import type { AppHandle } from '@/core/ports/AppHandle';
+import type { ResolvedAssistant } from '../../assistant/assistantResolver';
 
 export interface SlotBuildContext {
   sessionContext: SessionContextService;
@@ -11,6 +12,14 @@ export interface SlotBuildContext {
   activeFilePath?: string;
   modelCapabilities?: ModelCapabilities;
   app: AppHandle;
+  /**
+   * B2 (plan §5.3): the pre-resolved Assistant snapshot for this turn. Null
+   * or undefined = Default assistant. Populated once in
+   * `service-conversation.streamChat` and threaded here so slots don't have
+   * to reach `AssistantService` themselves. See {@link AssistantSlot} for
+   * the primary consumer.
+   */
+  resolvedAssistant?: ResolvedAssistant | null;
   [key: string]: unknown; // buildParams from profile
 }
 

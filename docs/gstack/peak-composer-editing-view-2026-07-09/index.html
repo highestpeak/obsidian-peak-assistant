@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="vendor/lightgallery/css/lightgallery-bundle.min.css" />
 <link rel="stylesheet" href="mock.css" />
 <link rel="stylesheet" href="intelligence.css" />
+<link rel="stylesheet" href="vault-result-browser.css" />
 </head>
 <body>
 
@@ -679,8 +680,11 @@
       <section class="selection-review" id="selection-review" hidden contenteditable="false" aria-live="polite"></section>
     </section>
 
-    <aside id="ambient-panel" data-intelligence-root></aside>
+    <button class="drawer-scrim intelligence-drawer-scrim" type="button" data-panel-close data-intelligence-close aria-label="关闭 Intelligence"></button>
+    <aside id="ambient-panel" data-intelligence-root data-intelligence-host="composer" aria-hidden="false"></aside>
   </div>
+
+  <nav class="composer-change-navigator" id="composer-change-navigator" aria-label="正文候选改动导航" hidden></nav>
 
   <footer class="sourcebar" id="sourcebar">
     <button class="sourcebar-summary" type="button" data-sourcebar-toggle aria-expanded="false">
@@ -704,6 +708,8 @@
 <script src="vendor/lightgallery/lightgallery.min.js"></script>
 <script src="vendor/lightgallery/plugins/thumbnail/lg-thumbnail.min.js"></script>
 <script src="vendor/lightgallery/plugins/zoom/lg-zoom.min.js"></script>
+<script src="vault-result-browser-fixtures.js"></script>
+<script src="vault-result-browser.js"></script>
 <script src="intelligence-panel.js"></script>
 <script src="mock.js"></script>
 </body>

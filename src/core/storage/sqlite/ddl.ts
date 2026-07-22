@@ -217,6 +217,31 @@ export interface Database {
 		receipt_json: string;
 		created_at_ts: number;
 	};
+	/**
+	 * Durable media generation jobs (task C1). Persists request + preflight
+	 * + provider-side ids so the plugin can resume, cancel, or at least
+	 * re-query in-flight fal jobs after a restart.
+	 */
+	chat_media_job: {
+		job_id: string;
+		run_id: string;
+		kind: string;
+		state: string;
+		/** MediaGenerationRequest JSON. */
+		request_json: string;
+		/** MediaPreflight JSON. */
+		preflight_json: string;
+		/** Array of artifact_ids produced by this job (JSON). */
+		receipt_ids_json: string;
+		/** Provider queue request id (fal.ai request_id). */
+		provider_request_id: string | null;
+		/** Provider poll URL (fal.ai response_url). */
+		provider_response_url: string | null;
+		error_message: string | null;
+		conversation_id: string | null;
+		created_at_ts: number;
+		updated_at_ts: number;
+	};
 	chat_message_resource: {
 		id: string;
 		message_id: string;
@@ -866,6 +891,26 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		CREATE INDEX IF NOT EXISTS idx_chat_artifact_receipt_conversation_id ON chat_artifact_receipt(conversation_id);
 		CREATE INDEX IF NOT EXISTS idx_chat_artifact_receipt_message_id ON chat_artifact_receipt(message_id);
 		CREATE INDEX IF NOT EXISTS idx_chat_artifact_receipt_project_id ON chat_artifact_receipt(project_id);
+		-- Task C1 (2026-07-21): durable media generation job table. Persists
+		-- request + preflight + provider-side ids so the plugin can resume
+		-- or at least re-query in-flight fal jobs after a restart.
+		CREATE TABLE IF NOT EXISTS chat_media_job (
+			job_id                TEXT PRIMARY KEY,
+			run_id                TEXT NOT NULL,
+			kind                  TEXT NOT NULL,
+			state                 TEXT NOT NULL,
+			request_json          TEXT NOT NULL,
+			preflight_json        TEXT NOT NULL,
+			receipt_ids_json      TEXT NOT NULL,
+			provider_request_id   TEXT,
+			provider_response_url TEXT,
+			error_message         TEXT,
+			conversation_id       TEXT,
+			created_at_ts         INTEGER NOT NULL,
+			updated_at_ts         INTEGER NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_chat_media_job_state ON chat_media_job(state);
+		CREATE INDEX IF NOT EXISTS idx_chat_media_job_conversation ON chat_media_job(conversation_id);
 	`);
 
 	db.exec(`

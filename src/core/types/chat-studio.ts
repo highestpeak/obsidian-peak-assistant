@@ -96,10 +96,26 @@ export interface SourceReceipt {
 	vaultDocuments: Array<{ id: string; path: string; title: string }>;
 	webQueries: string[];
 	webSources: Array<{ id: string; url: string; title: string }>;
+	/**
+	 * B2 (plan §5.3.3): assistant `knowledgeRefs` and composer explicit refs
+	 * that were actually reached (file existed / URL survived processing).
+	 * `requestedSources.explicitRefs` is the user-side request; this list is
+	 * the runtime's honest report of which of those actually made it into
+	 * the prompt/attachments pipe. Empty array = nothing consulted, missing
+	 * legacy receipts default to `[]` on read.
+	 */
+	explicitRefsUsed: ExplicitContextRef[];
 }
 
 export function emptySourceReceipt(): SourceReceipt {
-	return { projectIncluded: false, vaultQueries: [], vaultDocuments: [], webQueries: [], webSources: [] };
+	return {
+		projectIncluded: false,
+		vaultQueries: [],
+		vaultDocuments: [],
+		webQueries: [],
+		webSources: [],
+		explicitRefsUsed: [],
+	};
 }
 
 // ── Turn relationships ───────────────────────────────────────────────────────
@@ -141,6 +157,33 @@ export interface TurnExecutionReceipt {
 	conversationId: string;
 	runId?: string;
 	effectiveModel: { profileId?: string; provider: string; modelId: string };
+	/**
+	 * COMP-05 (2026-07-21): the ModelSelection persisted on the conversation
+	 * at request time — `{ mode: 'auto' }` or `{ mode: 'fixed', ... }`.
+	 * Separate from `effectiveModel` so a reload can prove Auto stayed Auto
+	 * even though the runtime routed it to a concrete model this turn.
+	 */
+	requestedSelection?: ModelSelection;
+	/**
+	 * COMP-05: which precedence step actually served this turn. Mirrors
+	 * {@link EffectiveModelResolution.source} in the assistantResolver so
+	 * receipt readers don't have to look at the debug run to know whether
+	 * this was a fixed pick, assistant-preferred pick, Auto route, or the
+	 * `auto-default` fallback used when routing couldn't apply.
+	 */
+	modelSource?: 'conversation-fixed' | 'assistant-preferred' | 'auto-routed' | 'auto-default';
+	/**
+	 * COMP-05: short reason string from the Auto router. Present when
+	 * `modelSource === 'auto-routed'` (or when routing attempted a fallback).
+	 * Never a chain-of-thought dump — 1–2 clauses at most, e.g.
+	 * "attachments include an image; picked Claude Sonnet".
+	 */
+	routeReason?: string;
+	/**
+	 * COMP-05: machine-readable capability list the router treated as
+	 * required. `['vision']`, `['tools']`, `['vision','pdfInput']`, etc.
+	 */
+	requiredCapabilities?: string[];
 	assistantId?: string;
 	workflowId?: string;
 	requestedSources: TurnSourceScope;
@@ -156,14 +199,25 @@ export interface TurnExecutionReceipt {
 
 export type ChatArtifactKind =
 	| 'image' | 'document' | 'table' | 'dataset' | 'code' | 'diff' | 'diagram'
-	| 'drawing' | 'canvas' | 'base' | 'bundle' | 'audio' | 'video' | 'custom';
+	| 'drawing' | 'canvas' | 'base' | 'bundle' | 'audio' | 'video' | 'custom'
+	// Chat Studio zero-gap Track D (2026-07-21): structured artifact_create
+	// tool outputs. `dataview` = Dataview query note; `extract` = user-editable
+	// extract Markdown; `reminder` = persisted reminder note the app-owned
+	// ReminderSchedulerService watches. `drawing` (already listed) covers
+	// Excalidraw / draw.io files.
+	| 'dataview' | 'extract' | 'reminder';
 
 export type ChatArtifactState =
-	| 'pending' | 'generating' | 'needs-permission' | 'ready'
+	| 'pending' | 'generating' | 'awaiting-confirmation' | 'needs-permission' | 'needs-configuration' | 'ready'
 	| 'saving' | 'saved' | 'failed' | 'cancelled' | 'stale';
 
 export type ChatArtifactAction =
-	| 'preview' | 'open' | 'save' | 'download' | 'copy' | 'edit' | 'apply' | 'retry' | 'review';
+	| 'preview' | 'open' | 'save' | 'download' | 'copy' | 'edit' | 'apply' | 'retry' | 'review'
+	| 'confirm' | 'cancel' | 'configure'
+	/** Zero-gap §4 A1 — prefill the Composer Edit-image form with THIS receipt
+	 * as the base reference. UI-only (not persisted by the service) — the
+	 * MessageViewItem injects it into `availableActions` for saved images. */
+	| 'insert-as-reference';
 
 export interface ChatArtifactReceipt {
 	artifactId: string;

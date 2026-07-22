@@ -3,7 +3,6 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { chromium } from "playwright";
 
 const fileUrl = pathToFileURL(new URL("./intelligence-ia-lab.html", import.meta.url).pathname).href;
-const graphParityPreviewPath = fileURLToPath(new URL("./preview-intelligence-ia-c-graph-parity.png", import.meta.url));
 const sessionHeaderPreviewPath = fileURLToPath(new URL("./preview-intelligence-ia-c-session-header.png", import.meta.url));
 const captureScreenshots = process.env.CAPTURE_SCREENSHOTS !== "0";
 const browser = await chromium.launch({ headless: true });
@@ -140,71 +139,47 @@ await page.locator('.suggestion-menu [data-defer-suggestion]').first().click();
 assert.notEqual(await page.locator(".suggestion-row").first().getAttribute("data-suggestion-id"), firstSuggestionBefore, "defer moves the suggestion behind higher priorities");
 assert.equal(await page.locator(".suggestion-row").count(), visibleSuggestionCount, "defer preserves the visible suggestion count");
 
-assert.equal(await page.locator("#related-material-graph").isVisible(), true, "brief shows the local evidence graph");
-assert.equal(await page.locator("#related-material-graph [data-graph-node]").count(), 5, "inline graph keeps only current object and strong neighbours");
-const compactRevision = await page.locator('#related-material-graph [data-graph-surface="compact"]').getAttribute("data-graph-revision");
-const compactNodeIds = await page.locator("#related-material-graph [data-graph-node]").evaluateAll((nodes) => nodes.map((node) => node.dataset.graphNode));
-await page.locator('#related-material-graph [data-graph-node="source:base-judgement"]').click();
-assert.equal(await page.locator('#related-material-graph [data-selected-source="base-judgement"]').isVisible(), true, "node selection updates the inline evidence detail");
+const relatedMaterialPreview = page.locator("[data-related-material-preview]");
+await relatedMaterialPreview.waitFor();
+assert.equal(await relatedMaterialPreview.locator('[data-graph-surface="compact"]').count(), 1, "the sidecar retains its bounded related-material graph preview");
+assert.equal(await relatedMaterialPreview.locator("[data-graph-node]").count(), 5, "the compact preview shows the current object plus four ranked materials");
+const previewMaterialNode = relatedMaterialPreview.locator('[data-source-id]:not([data-source-id=""])').nth(1);
+const previewMaterialId = await previewMaterialNode.getAttribute("data-source-id");
+await previewMaterialNode.click();
+assert.equal(
+  await page.locator("[data-related-material-preview] [data-selected-source]").getAttribute("data-selected-source"),
+  previewMaterialId,
+  "selecting an inline graph node updates the local material detail without opening the modal",
+);
 
-const graphOpener = page.locator("[data-open-graph]");
-await graphOpener.click();
-assert.equal(await page.locator("#graph-dialog").getAttribute("open"), "", "local graph opens a wide relationship explorer");
-const graphDialogBox = await page.locator("#graph-dialog").boundingBox();
-const graphSidecarBox = await page.locator("#intelligence-panel").boundingBox();
-assert.ok(graphDialogBox && graphSidecarBox && graphDialogBox.width > graphSidecarBox.width * 1.8, "expanded graph is materially wider than the sidecar");
-assert.equal(await page.locator('#graph-dialog [data-graph-node="source:base-judgement"]').getAttribute("aria-pressed"), "true", "expanded graph preserves the selected source");
-const explorerRevision = await page.locator('#graph-dialog [data-graph-surface="explorer"]').getAttribute("data-graph-revision");
-assert.equal(explorerRevision, compactRevision, "compact and explorer consume the same graph revision");
-const explorerNodeIds = await page.locator("#graph-dialog [data-graph-node]").evaluateAll((nodes) => nodes.map((node) => node.dataset.graphNode));
-assert.ok(compactNodeIds.every((id) => explorerNodeIds.includes(id)), "compact nodes are a bounded projection of explorer nodes");
-assert.equal(explorerNodeIds.length, 6, "explorer includes the weak isolated material without changing edge kind");
-const presetIds = await page.locator("#graph-dialog [data-graph-preset]").evaluateAll((tabs) => tabs.map((tab) => tab.dataset.graphPreset));
-assert.deepEqual(presetIds, ["constellation", "flow-tb", "flow-lr", "folder", "orbit"], "graph exposes the five Vault Search presets");
-
-await page.locator('#graph-dialog [data-graph-preset="flow-tb"]').click();
-assert.equal(await page.locator('#graph-dialog [data-graph-preset="flow-tb"]').getAttribute("aria-selected"), "true", "top-down flow is a distinct preset");
-await page.locator('#graph-dialog [data-graph-preset="flow-lr"]').click();
-assert.equal(await page.locator('#graph-dialog [data-graph-preset="flow-lr"]').getAttribute("aria-selected"), "true", "left-right flow is a distinct preset");
-await page.locator('#graph-dialog [data-graph-preset="folder"]').click();
-assert.equal(await page.locator("#graph-dialog .graph-folder-group").count(), 2, "folder preset exposes full-depth folder group regions");
-await page.locator('#graph-dialog [data-graph-preset="orbit"]').click();
-assert.equal(await page.locator("#graph-dialog [data-graph-semantic]").isChecked(), true, "Orbit automatically enables Semantic like Vault Search");
-assert.ok(await page.locator("#graph-dialog .graph-edge.is-semantic").count() > 0, "semantic overlay renders dashed semantic edges");
-await page.locator('#graph-dialog [data-graph-preset="constellation"]').click();
-assert.equal(await page.locator("#graph-dialog [data-graph-semantic]").isChecked(), false, "leaving Orbit resets Semantic like Vault Search");
-assert.equal(await page.locator("#graph-dialog .graph-edge.is-semantic").count(), 0, "semantic-off keeps reference edges only");
-await page.locator("#graph-dialog [data-graph-semantic]").check();
-const edgeKinds = await page.locator("#graph-dialog [data-edge-kind]").evaluateAll((edges) => [...new Set(edges.map((edge) => edge.dataset.edgeKind))].sort());
-assert.deepEqual(edgeKinds, ["reference", "semantic"], "visible relations keep the locked reference and semantic kinds");
-
-const zoomBefore = await page.locator("#graph-dialog [data-graph-zoom-value]").textContent();
-await page.locator('#graph-dialog [data-graph-zoom="in"]').click();
-assert.notEqual(await page.locator("#graph-dialog [data-graph-zoom-value]").textContent(), zoomBefore, "explicit zoom changes the controlled viewport");
-await page.locator("#graph-dialog [data-graph-fit]").click();
-assert.match(await page.locator("#graph-dialog [data-graph-zoom-value]").textContent(), /^\d+%$/, "fit computes and reports a real viewport scale");
-
-await page.locator('#graph-dialog [data-copy-graph="relations"]').click();
-await page.waitForFunction(() => window.__peakGraphMermaid?.startsWith("flowchart TD"));
-assert.match(await page.evaluate(() => window.__peakGraphMermaid), /\|sem\|/, "Mermaid export follows the currently visible Semantic layer");
-await page.locator('#graph-dialog [data-copy-graph="image"]').click();
-await page.waitForFunction(() => window.__peakGraphImage?.startsWith("data:image/png"));
-
-await page.locator('#graph-dialog [data-graph-node="source:knowledge-base"]').hover();
-await page.waitForTimeout(120);
-assert.ok(await page.locator("#graph-dialog .material-node.is-dimmed").count() > 0, "hover highlights the closed neighborhood and dims unrelated nodes");
-await page.locator("#graph-dialog .graph-dialog-head").hover();
-await page.waitForTimeout(140);
-if (captureScreenshots) await page.screenshot({ path: graphParityPreviewPath, fullPage: true });
-await page.keyboard.press("Escape");
-await page.waitForTimeout(60);
-assert.equal(await page.locator("#graph-dialog").getAttribute("open"), null, "Escape closes the graph explorer");
-assert.equal(await page.evaluate(() => document.activeElement?.hasAttribute("data-open-graph")), true, "closing the graph restores focus to its opener");
-
-await page.locator("[data-open-graph]").click();
-await page.locator('#graph-dialog [data-use-source="base-judgement"]').click();
-assert.equal(await page.locator(".session-view").isVisible(), true, "bringing in a graph source enters the task session without running");
-assert.match(await page.locator("#prompt-context").textContent(), /相关材料 · Base 使用判断\.md/, "the selected graph node becomes a concrete source context chip");
+const materialsOpener = page.locator("[data-related-material-preview] [data-open-graph]");
+await materialsOpener.click();
+const materialsDialog = page.locator("#graph-dialog[open]");
+await materialsDialog.waitFor();
+const reusedMaterialsBrowser = materialsDialog.locator("[data-vault-result-browser-reuse]");
+await reusedMaterialsBrowser.waitFor();
+assert.match(
+  await reusedMaterialsBrowser.innerText(),
+  /Vault Search Result Browser/,
+  "the full-materials entry uses the same shared Vault Search Result Browser",
+);
+assert.equal(
+  await materialsDialog.locator("[data-result-view]").count(),
+  0,
+  "the full-materials entry has no local result-view implementation",
+);
+assert.equal(
+  await materialsDialog.locator("[data-graph-preset]").count(),
+  0,
+  "the full-materials entry has no local graph-layout implementation",
+);
+await materialsDialog.locator("[data-close-graph]").click();
+await materialsDialog.waitFor({ state: "hidden" });
+assert.equal(
+  await materialsOpener.evaluate((button) => document.activeElement === button),
+  true,
+  "closing the shared result browser restores focus to the inline preview entry",
+);
 
 await page.locator('.stage-tabs button[data-stage="session"]').click();
 assert.equal(await page.locator("#session-dock").isVisible(), true, "hybrid composer belongs only to the active task");
@@ -274,12 +249,61 @@ const runTabIds = await page.locator("[data-run-inline-tab]").evaluateAll((tabs)
 assert.equal(new Set(runTabIds).size, runTabIds.length, "stable run IDs prevent duplicate tab DOM IDs");
 assert.match(await page.locator("#live-change-nav").textContent(), /候选尚未写入/, "completed generation remains a candidate until review");
 assert.equal(Number(await page.locator("#history-count").textContent()), runHistoryBefore, "reviewable candidates still do not enter History");
-const liveTargetBefore = await page.locator(".doc-block.is-streaming-target").getAttribute("data-block-id");
+
+const reviewModeButtons = page.locator("#live-change-nav [data-review-mode]");
+assert.deepEqual(await reviewModeButtons.evaluateAll((buttons) => buttons.map((button) => button.dataset.reviewMode).sort()), ["all", "current", "original"], "document review offers current, all, and original modes in one navigator");
+const documentPins = page.locator("[data-document-change-index]");
+assert.equal(await documentPins.count(), 8, "every generated change keeps a document-local pin");
+assert.equal(await page.locator(".doc-block").evaluateAll((blocks) => blocks.filter((block) => block.querySelector("del, ins")).length), 1, "current mode projects an inline diff into exactly one document block");
+await page.locator('#live-change-nav [data-review-mode="current"]').focus();
+await page.keyboard.press("ArrowRight");
+assert.equal(await page.locator('#live-change-nav [data-review-mode="all"]').getAttribute("aria-pressed"), "true", "review mode arrow navigation switches to the next display mode");
+assert.equal(await page.evaluate(() => document.activeElement?.dataset.reviewMode), "all", "review mode arrow navigation restores focus after rerender");
+await page.keyboard.press("ArrowLeft");
+assert.equal(await page.locator('#live-change-nav [data-review-mode="current"]').getAttribute("aria-pressed"), "true", "review mode arrow navigation can return to current");
+const keyboardPinBefore = await page.locator('[data-document-change-index][aria-current="true"]').getAttribute("data-document-change-index");
+await page.locator('[data-document-change-index][aria-current="true"]').focus();
+await page.keyboard.press("ArrowDown");
+const keyboardPinAfter = await page.locator('[data-document-change-index][aria-current="true"]').getAttribute("data-document-change-index");
+assert.notEqual(keyboardPinAfter, keyboardPinBefore, "document pin arrow navigation moves to the next change anchor");
+assert.equal(await page.evaluate(() => document.activeElement?.getAttribute("data-document-change-index")), keyboardPinAfter, "document pin arrow navigation restores focus at the new anchor");
+await page.keyboard.press("ArrowUp");
+assert.equal(await page.locator('[data-document-change-index][aria-current="true"]').getAttribute("data-document-change-index"), keyboardPinBefore, "document pin arrow navigation can return to the previous anchor");
+await page.locator('#live-change-nav [data-review-mode="current"]').focus();
+await page.keyboard.press("Alt+ArrowDown");
+assert.notEqual(await page.locator('[data-document-change-index][aria-current="true"]').getAttribute("data-document-change-index"), keyboardPinBefore, "Alt+ArrowDown advances review without requiring the sidecar queue");
+await page.keyboard.press("Alt+ArrowUp");
+assert.equal(await page.locator('[data-document-change-index][aria-current="true"]').getAttribute("data-document-change-index"), keyboardPinBefore, "Alt+ArrowUp returns to the previous review anchor");
+
+await page.locator('#live-change-nav [data-review-mode="all"]').click();
+assert.equal(await documentPins.count(), 8, "all mode preserves every change anchor");
+assert.equal(await documentPins.evaluateAll((pins) => pins.every((pin) => Boolean(pin.offsetWidth || pin.offsetHeight || pin.getClientRects().length))), true, "all mode makes every document change anchor visible");
+assert.ok(await page.locator(".doc-block").evaluateAll((blocks) => blocks.filter((block) => block.querySelector("del, ins")).length) > 1, "all mode projects multiple inline diffs into their document anchors");
+
+await page.locator('#live-change-nav [data-review-mode="original"]').click();
+assert.equal(await page.locator("#paper del, #paper ins").count(), 0, "original mode restores committed text without diff markup");
+assert.equal(await documentPins.count(), 8, "original mode keeps document pins available for navigation");
+const inactivePin = page.locator('[data-document-change-index]:not([aria-current="true"])').first();
+const selectedPinIndex = await inactivePin.getAttribute("data-document-change-index");
+const selectedPinBlock = await inactivePin.evaluate((pin) => pin.closest(".doc-block")?.dataset.blockId || null);
+assert.ok(selectedPinIndex !== null && selectedPinBlock, "an inactive document pin identifies a stable change and block");
+await inactivePin.click();
+const activePin = page.locator('[data-document-change-index][aria-current="true"]');
+assert.equal(await activePin.count(), 1, "clicking a document pin selects exactly one active change");
+assert.equal(await activePin.getAttribute("data-document-change-index"), selectedPinIndex, "the clicked pin becomes the active change");
+assert.equal(await activePin.evaluate((pin) => pin.closest(".doc-block")?.dataset.blockId || null), selectedPinBlock, "the active pin remains attached to the requested document location");
+
+await page.locator('#live-change-nav [data-review-mode="current"]').click();
+const currentDiffBlocks = await page.locator(".doc-block").evaluateAll((blocks) => blocks.filter((block) => block.querySelector("del, ins")).map((block) => block.dataset.blockId));
+assert.deepEqual(currentDiffBlocks, [selectedPinBlock], "returning to current mode restores only the active pin's inline diff");
+assert.equal(await page.locator(`[data-document-change-index="${selectedPinIndex}"]`).getAttribute("aria-current"), "true", "mode switching preserves the active document change");
+
+const liveTargetBefore = await activePin.getAttribute("data-document-change-index");
 await page.locator('#live-change-nav [data-live-review-nav="next"]').click();
-const liveTargetNext = await page.locator(".doc-block.is-streaming-target").getAttribute("data-block-id");
+const liveTargetNext = await activePin.getAttribute("data-document-change-index");
 assert.notEqual(liveTargetNext, liveTargetBefore, "live next moves to the next document-local candidate");
 await page.locator('#live-change-nav [data-live-review-nav="previous"]').click();
-assert.equal(await page.locator(".doc-block.is-streaming-target").getAttribute("data-block-id"), liveTargetBefore, "live previous returns to the original candidate");
+assert.equal(await activePin.getAttribute("data-document-change-index"), liveTargetBefore, "live previous returns to the original candidate");
 
 assert.deepEqual(await currentReceipt.locator("[data-run-inline-tab]").evaluateAll((tabs) => tabs.map((tab) => tab.dataset.runInlineTab)), ["changes", "insights", "sources", "trace"], "one receipt keeps all four artifact groups as local tabs");
 assert.deepEqual(await currentReceipt.locator("[data-run-inline-tab]").evaluateAll((tabs) => tabs.map((tab) => tab.getAttribute("tabindex"))), ["0", "-1", "-1", "-1"], "the local artifact browser exposes one roving tab stop");
@@ -372,18 +396,58 @@ assert.ok(narrowSidecar.contentScrollHeight >= narrowSidecar.contentClientHeight
 assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "narrow drawer creates no horizontal overflow");
 await page.locator("#intelligence-panel [data-panel-close]").click();
 assert.equal(await page.locator("#composer-app").getAttribute("class").then((value) => value.includes("is-panel-open")), false, "drawer closes without changing document layout flow");
+const narrowReviewToolbar = await page.locator("#live-change-nav").evaluate((element) => {
+  const rect = element.getBoundingClientRect();
+  return {
+    left: rect.left,
+    right: rect.right,
+    viewport: innerWidth,
+    scrollWidth: element.scrollWidth,
+    clientWidth: element.clientWidth,
+  };
+});
+assert.ok(narrowReviewToolbar.left >= 0 && narrowReviewToolbar.right <= narrowReviewToolbar.viewport, "narrow document review toolbar stays inside the viewport");
+assert.ok(narrowReviewToolbar.scrollWidth <= narrowReviewToolbar.clientWidth + 1, "narrow document review toolbar does not overflow internally");
+assert.equal(await page.locator("#live-change-nav [data-review-mode]").count(), 3, "all three document review modes remain reachable after closing the drawer");
+assert.equal(await page.locator("[data-document-change-index]").count(), 8, "document-local pins remain available when the narrow drawer is closed");
+assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "document pins and toolbar create no narrow horizontal overflow");
 await page.locator("[data-panel-toggle]").click();
 assert.equal(await page.locator("#composer-app").getAttribute("class").then((value) => value.includes("is-panel-open")), true, "drawer reopens from stable entry");
 
 await goto("variant=hybrid&mode=copilot&stage=brief");
-await page.locator("[data-open-graph]").click();
-const narrowGraph = await page.locator("#graph-dialog").boundingBox();
-const narrowCanvas = await page.locator("#graph-dialog .graph-canvas.is-dialog").boundingBox();
-const narrowInspector = await page.locator("#graph-dialog .graph-inspector").boundingBox();
-assert.ok(narrowGraph && narrowGraph.x >= 0 && narrowGraph.x + narrowGraph.width <= 759, "narrow graph dialog stays fully inside the viewport");
-assert.ok(narrowCanvas && narrowInspector && narrowInspector.y >= narrowCanvas.y + narrowCanvas.height - 1, "narrow graph moves the inspector below the canvas");
-assert.equal(await page.locator("#graph-dialog [data-graph-preset]").count(), 5, "all five presets remain reachable in the narrow explorer");
+const narrowResultTrigger = page.locator("[data-related-material-preview] [data-open-graph]");
+await narrowResultTrigger.click();
+const narrowResultDialog = page.locator("#graph-dialog[open]");
+await narrowResultDialog.waitFor();
+const narrowReuseBoundary = narrowResultDialog.locator("[data-vault-result-browser-reuse]");
+await narrowReuseBoundary.waitFor();
+const narrowDialogBox = await narrowResultDialog.boundingBox();
+assert.ok(
+  narrowDialogBox && narrowDialogBox.x >= 0 && narrowDialogBox.x + narrowDialogBox.width <= 759,
+  "narrow shared result-browser dialog stays fully inside the viewport",
+);
+assert.match(
+  await narrowReuseBoundary.innerText(),
+  /Vault Search Result Browser/,
+  "narrow related materials preserve the shared Result Browser boundary",
+);
+assert.equal(
+  await narrowResultDialog.locator("[data-result-view]").count(),
+  0,
+  "narrow Composer mock does not duplicate Vault Search result views",
+);
+assert.equal(
+  await narrowResultDialog.locator("[data-graph-preset]").count(),
+  0,
+  "narrow Composer mock does not duplicate Vault Search graph layouts",
+);
 await page.keyboard.press("Escape");
+await narrowResultDialog.waitFor({ state: "hidden" });
+assert.equal(
+  await narrowResultTrigger.evaluate((button) => document.activeElement === button),
+  true,
+  "closing the narrow shared result browser restores focus to its entry",
+);
 
 await goto("variant=hybrid&mode=copilot&stage=session");
 const narrowReceipt = page.locator('.run-receipt[data-run-id="run-reviewed"]');
@@ -411,13 +475,12 @@ assert.ok(narrowRunPanel.documentOverflow <= 0, "narrow inline run panel creates
 assert.deepEqual(errors, [], `browser console errors: ${errors.join(" | ")}`);
 
 console.log(JSON.stringify({
-  states: ["adaptive-brief", "adaptive-session", "adaptive-review", "history", "staged-brief", "staged-session", "staged-review", "hybrid-active", "hybrid-session", "hybrid-review", "hybrid-fresh", "sensing-independent", "run-running", "run-stopped", "run-reviewable", "run-inline-four-tabs", "reviewed-run-inline-readonly", "message-clue-items", "narrow-review", "narrow-run-inline"],
+  states: ["adaptive-brief", "adaptive-session", "adaptive-review", "history", "staged-brief", "staged-session", "staged-review", "hybrid-active", "hybrid-session", "hybrid-review", "hybrid-fresh", "sensing-independent", "run-running", "run-stopped", "run-reviewable", "document-review-modes", "run-inline-four-tabs", "reviewed-run-inline-readonly", "message-clue-items", "narrow-review", "narrow-run-inline"],
   focusContract,
   headerContract,
   taskAlignment,
   screenshots: captureScreenshots ? [
     sessionHeaderPreviewPath,
-    graphParityPreviewPath,
   ] : [],
   consoleErrors: errors.length,
 }, null, 2));

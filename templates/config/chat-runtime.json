@@ -1,0 +1,12 @@
+{
+	"budget": {
+		"maxStepsWithTools": 3,
+		"maxStepsNoTools": 1,
+		"maxTokens": 20000,
+		"maxToolCalls": 10
+	},
+	"timeouts": {
+		"stepMs": 30000,
+		"totalMs": 300000
+	}
+}

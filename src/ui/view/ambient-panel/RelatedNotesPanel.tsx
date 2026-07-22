@@ -3,13 +3,14 @@ import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
 import { SessionContextService } from '@/service/context/SessionContextService';
 import type { WorkingTheme } from '@/service/context/types';
 import { Bug, FileText, Sparkles } from 'lucide-react';
-import type { App } from 'obsidian';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useDebugTraceCopy } from '@/ui/hooks/useDebugTraceCopy';
 
-interface RelatedNotesPanelProps {
-	app: App;
-}
+// UI stays app-agnostic — link opening routes through the vaultNavigation
+// port already published on ServiceContext, so we no longer need `app: App`
+// as a prop (which forced callers in `src/ui/**` to import from `@/app/**`,
+// violating the T11P / T11Q boundary).
+type RelatedNotesPanelProps = Record<string, never>;
 
 /**
  * Stable Ambient / Related Notes panel — the canonical surface for Ambient
@@ -22,11 +23,11 @@ interface RelatedNotesPanelProps {
  * this panel from the ribbon or command palette; once open, it updates in
  * place without demanding attention.
  */
-export const RelatedNotesPanel: React.FC<RelatedNotesPanelProps> = ({ app }) => {
+export const RelatedNotesPanel: React.FC<RelatedNotesPanelProps> = () => {
 	const items = useAmbientPushStore((s) => s.items);
 	const sourceFilePath = useAmbientPushStore((s) => s.sourceFilePath);
 	const [theme, setTheme] = useState<WorkingTheme | null>(null);
-	const { debugTracePort } = useServiceContext();
+	const { debugTracePort, vaultNavigation } = useServiceContext();
 	const copyDebugTrace = useDebugTraceCopy();
 
 	// Poll WorkingTheme every 15s while the panel is open. This is a stable
@@ -98,7 +99,12 @@ export const RelatedNotesPanel: React.FC<RelatedNotesPanelProps> = ({ app }) => 
 								type="button"
 								className="peak-related-notes-link"
 								onClick={() => {
-									void app.workspace.openLinkText(item.filePath, '', false);
+									// Route through vaultNavigation port instead of
+									// touching Obsidian's workspace directly. Fires-and-
+									// forgets on null port (SSR / test doubles).
+									if (vaultNavigation) {
+										void vaultNavigation.openVaultPath(item.filePath);
+									}
 								}}
 							>
 								<FileText size={12} />

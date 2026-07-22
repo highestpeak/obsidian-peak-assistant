@@ -1,0 +1,252 @@
+{
+	"defaultRoute": "auto",
+	"pollIntervalMs": 1500,
+	"pollBackoffMultiplier": 1.3,
+	"pollMaxIntervalMs": 5000,
+	"pollDeadlineMs": 300000,
+	"budget": {
+		"monthlyUsd": 20
+	},
+	"presets": {
+		"tts": {
+			"default": {
+				"provider": "fal",
+				"model": "fal-ai/kokoro/american-english",
+				"voice": "af_bella",
+				"estimatedCostUsd": 0.002,
+				"billingUnit": "run",
+				"costConfidence": "estimated"
+			}
+		},
+		"image": {
+			"default": {
+				"provider": "fal",
+				"model": "fal-ai/fast-sdxl",
+				"aspectRatio": "1:1",
+				"quantity": 1,
+				"estimatedCostUsd": 0.0023,
+				"billingUnit": "image",
+				"costConfidence": "estimated"
+			},
+			"cover-hd": {
+				"provider": "fal",
+				"model": "fal-ai/fast-sdxl",
+				"aspectRatio": "16:9",
+				"quantity": 1,
+				"estimatedCostUsd": 0.0023,
+				"billingUnit": "image",
+				"costConfidence": "estimated"
+			},
+			"native-default": {
+				"provider": "native",
+				"model": "gpt-image-1",
+				"aspectRatio": "1:1",
+				"quantity": 1,
+				"estimatedCostUsd": 0.04,
+				"billingUnit": "image",
+				"costConfidence": "estimated"
+			},
+			"native-dalle3": {
+				"provider": "native",
+				"model": "dall-e-3",
+				"aspectRatio": "1:1",
+				"quantity": 1,
+				"estimatedCostUsd": 0.04,
+				"billingUnit": "image",
+				"costConfidence": "estimated"
+			},
+			"edit-default": {
+				"provider": "fal",
+				"model": "fal-ai/nano-banana/edit",
+				"operation": "edit",
+				"quantity": 1,
+				"estimatedCostUsd": 0.039,
+				"billingUnit": "image",
+				"costConfidence": "estimated",
+				"editCodec": {
+					"imageField": "image_urls",
+					"imageMode": "list"
+				}
+			},
+			"edit-fill": {
+				"provider": "fal",
+				"model": "fal-ai/flux-pro/v1/fill",
+				"operation": "edit",
+				"quantity": 1,
+				"estimatedCostUsd": 0.05,
+				"billingUnit": "image",
+				"costConfidence": "estimated",
+				"editCodec": {
+					"imageField": "image_url",
+					"imageMode": "single",
+					"maskField": "mask_url",
+					"maskRequired": true
+				}
+			},
+			"native-edit": {
+				"provider": "native",
+				"model": "gpt-image-1",
+				"operation": "edit",
+				"quantity": 1,
+				"estimatedCostUsd": 0.04,
+				"billingUnit": "image",
+				"costConfidence": "estimated"
+			}
+		},
+		"video": {
+			"default": {
+				"provider": "fal",
+				"model": "fal-ai/veo3.1",
+				"aspectRatio": "16:9",
+				"durationSeconds": 8,
+				"maxDurationSeconds": 8,
+				"estimatedCostUsd": 3.20,
+				"billingUnit": "video",
+				"costConfidence": "estimated"
+			},
+			"fast": {
+				"provider": "fal",
+				"model": "fal-ai/veo3.1/fast",
+				"aspectRatio": "16:9",
+				"durationSeconds": 8,
+				"maxDurationSeconds": 8,
+				"estimatedCostUsd": 1.20,
+				"billingUnit": "video",
+				"costConfidence": "estimated"
+			},
+			"native-sora": {
+				"provider": "native",
+				"model": "sora-2",
+				"aspectRatio": "9:16",
+				"durationSeconds": 8,
+				"maxDurationSeconds": 12,
+				"estimatedCostUsd": 0.80,
+				"billingUnit": "video",
+				"costConfidence": "estimated"
+			},
+			"native-sora-pro": {
+				"provider": "native",
+				"model": "sora-2-pro",
+				"aspectRatio": "9:16",
+				"durationSeconds": 8,
+				"maxDurationSeconds": 12,
+				"estimatedCostUsd": 2.40,
+				"billingUnit": "video",
+				"costConfidence": "estimated"
+			}
+		},
+		"music": {
+			"default": {
+				"provider": "fal",
+				"model": "fal-ai/lyria2",
+				"durationSeconds": 30,
+				"maxDurationSeconds": 30,
+				"estimatedCostUsd": 0.10,
+				"billingUnit": "clip",
+				"costConfidence": "estimated"
+			}
+		}
+	},
+	"attachmentSubfolder": "Media",
+	"referenceLimits": {
+		"maxCount": 8,
+		"maxBytesPerImage": 8388608,
+		"allowedMimeTypes": ["image/png", "image/jpeg", "image/webp"],
+		"mimeByExtension": {
+			"png": "image/png",
+			"jpg": "image/jpeg",
+			"jpeg": "image/jpeg",
+			"webp": "image/webp"
+		}
+	},
+	"editSupportedKinds": ["image"],
+	"videoDurationEnum": {
+		"fal-ai/veo3.1": ["4s", "6s", "8s"],
+		"fal-ai/veo3.1/fast": ["4s", "6s", "8s"],
+		"fal-ai/veo3.1/lite": ["4s", "6s", "8s"]
+	},
+	"videoDurationEnumDefault": ["4s", "6s", "8s"],
+	"musicFixedDurationLabel": "Fixed ~30s (lyria2 does not accept a duration parameter — output length is set by the model).",
+	"native": {
+		"openai": {
+			"defaultBaseUrl": "https://api.openai.com",
+			"imagesPath": "/v1/images/generations",
+			"editsPath": "/v1/images/edits",
+			"editImagePartName": "image[]",
+			"editImagePartNameByModel": {
+				"dall-e-2": "image"
+			},
+			"editSupportsMask": true,
+			"editMaxImages": 16,
+			"videosPath": "/v1/videos",
+			"videoAllowedSeconds": ["4", "8", "12"],
+			"videoSizeByAspect": {
+				"9:16": "720x1280",
+				"16:9": "1280x720"
+			},
+			"videoDefaultSize": "720x1280",
+			"videoModels": ["sora-2", "sora-2-pro"],
+			"defaultPresetId": "native-default",
+			"sizeByAspect": {
+				"1:1": "1024x1024",
+				"16:9": "1792x1024",
+				"9:16": "1024x1792",
+				"4:3": "1024x1024",
+				"3:4": "1024x1024"
+			},
+			"defaultSize": "1024x1024",
+			"defaultN": 1,
+			"defaultResponseFormat": "b64_json",
+			"responseFormatByModel": {
+				"gpt-image-1": null
+			},
+			"maxQuantityByModel": {
+				"gpt-image-1": 1
+			},
+			"defaultMaxQuantity": 10,
+			"requestTimeoutMs": 120000,
+			"transcriptionsPath": "/v1/audio/transcriptions",
+			"transcriptionModel": "whisper-1"
+		}
+	},
+	"strings": {
+		"nativeNoAdapter": "No native media provider adapter is available for this kind.",
+		"nativeUnsupportedKind": "The native provider does not support {kind} generation yet.",
+		"nativeMissingProfile": "No enabled OpenAI profile with an API key is configured. Add one under Settings → Profiles.",
+		"nativeInvalidProfile": "The selected native profile {profileId} is not an enabled OpenAI profile with a valid key.",
+		"autoNoRoute": "No media provider is configured for {kind}. Route problems: {problemSummary}",
+		"falKeyMissing": "fal.ai API key is not configured. Add it under Settings → AI.",
+		"falUnsupportedKind": "fal adapter does not support {kind} generation.",
+		"falInvalidEndpoint": "Configured fal endpoint id \"{modelId}\" is malformed.",
+		"presetMissing": "No preset \"{presetId}\" configured for kind \"{kind}\".",
+		"routeMismatch": "Adapter route {actual} does not match preflight route {expected}.",
+		"toolImageSuccessPayload": "Generated {quantity} image(s) via {route} ({model}), saved to vault:\n{paths}\nreceipt ids: {receiptIds}",
+		"toolExecuteFailedGeneric": "Media generation failed for an unknown reason.",
+		"toolExecuteFailedPayload": "Media generation for {kind} failed: {reason} (code: {code}). The failure is persisted as a receipt in the message; the user can retry.",
+		"toolAsyncJobAwaitingConfirmationPayload": "Queued {kind} job {jobId} — awaiting user confirmation. Route: {route}, model: {model}, duration: {durationSeconds}s, quantity: {quantity}, estimated cost: {estimate}. The user must confirm the receipt card before any provider request is made.",
+		"toolAsyncJobQueuedPayload": "Started {kind} job {jobId} on {route} ({model}). Duration: {durationSeconds}s, quantity: {quantity}, estimated cost: {estimate}. The receipt card will update automatically when the job completes.",
+		"validateFalKeyMissingDetail": "fal.ai API key is empty. Paste a key from https://fal.ai/dashboard/keys, or switch the default route to Native.",
+		"validateFalEndpointMalformedDetail": "{kind}/{presetId} endpoint \"{modelId}\" is malformed (expected owner/model[/subpath]).",
+		"validateNativeProfileInvalidDetail": "Selected native profile \"{profileId}\" is not an enabled OpenAI profile with a valid key.",
+		"validateNativeProfileMissingDetail": "Default route is Native but no enabled OpenAI profile with an API key exists. Add one under Providers, or change the default route.",
+		"validatePresetMissingDetail": "Preset \"{presetId}\" for kind \"{kind}\" no longer exists in media-generation.json.",
+		"validateOverrideDurationPositiveDetail": "{kind}: durationSeconds must be > 0.",
+		"validateOverrideMaxDurationPositiveDetail": "{kind}: maxDurationSeconds must be > 0.",
+		"validateOverrideDurationExceedsMaxDetail": "{kind}: durationSeconds ({durationSeconds}) exceeds maxDurationSeconds ({maxDurationSeconds}).",
+		"validateOverrideQuantityPositiveIntDetail": "{kind}: quantity must be a positive integer.",
+		"validateOverrideFalEndpointMalformedDetail": "{kind} model override \"{modelId}\" is not a well-formed fal endpoint id.",
+		"validateOverrideQuantityExceedsMaxDetail": "{kind}: quantity ({quantity}) exceeds the model \"{modelId}\" maximum of {maxQuantity} — reduce the quantity or pick a different model.",
+		"preflightQuantityExceedsMaxDetail": "Requested quantity {quantity} exceeds the maximum {maxQuantity} for native model \"{modelId}\". Reduce the quantity in the request, override the model in Settings → Media Generation, or switch route to fal.",
+		"editUnsupportedKind": "Editing is only supported for {supportedKinds} — {kind} cannot be edited.",
+		"editMissingBaseImage": "Image editing needs at least one reference image. Select a base image from the conversation attachments or generated images.",
+		"editMaskNotSupported": "Preset \"{presetId}\" ({modelId}) does not accept a mask. Pick a mask-capable preset (e.g. edit-fill) or remove the mask.",
+		"editMaskRequired": "Preset \"{presetId}\" ({modelId}) requires a mask image. Add a mask or switch to a prompt-guided edit preset (e.g. edit-default).",
+		"editRouteUnsupported": "The {route} route cannot execute image edits with the current configuration.",
+		"presetOperationMismatch": "Preset \"{presetId}\" is a {presetOperation} preset but the request asked for {operation}. Pick a matching preset.",
+		"referenceResolveFailedDetail": "Reference \"{ref}\" could not be used: {reason}",
+		"toolEditSuccessPayload": "Edited image via {route} ({model}) using {referenceCount} reference image(s){maskNote}, saved to vault:\n{paths}\nreceipt ids: {receiptIds}",
+		"toolEditMaskNoteSuffix": " + mask",
+		"nativeVideoMissingProfile": "Sora video needs an enabled OpenAI profile with an API key. Add one under Settings → Providers.",
+		"soraContentDownloadFailed": "Sora video content download failed ({status}). The job completed on the provider side — retry the download from the receipt."
+	}
+}

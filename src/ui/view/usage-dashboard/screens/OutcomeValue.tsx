@@ -3,6 +3,7 @@ import type { TimeRange } from '@/service/usage/types';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { InlineTableBar, HelpAffordance } from '../components/charts';
 import type { OutcomeValueStrings } from '../UsageDashboard';
+import { useMediaLogs, type MediaLogRow } from '../hooks/useMediaLogs';
 
 export interface OutcomeValueScreenProps {
 	range: TimeRange;
@@ -136,6 +137,7 @@ export function OutcomeValueScreen({ range, strings }: OutcomeValueScreenProps) 
 
 	return (
 		<div className="pk-dash-screen">
+			<MediaGenerationSection range={range} strings={strings} />
 			<section className="pk-dash-section">
 				<div className="pk-dash-section__head">
 					<span className="pk-dash-section__title">
@@ -227,4 +229,112 @@ function formatUsd(value: number): string {
 	if (!Number.isFinite(value)) return '—';
 	const decimals = value < 1 ? 4 : 2;
 	return `$${value.toFixed(decimals)}`;
+}
+
+// ── Media-generation section (gap 2) ────────────────────────────────────────
+
+/**
+ * Media generation detail rows: kind / route / provider / model / est. cost
+ * / duration / jobId / outcome. Failure rows expand inline to reveal the
+ * error message. Cost is ALWAYS labelled "estimated" (see composeMediaGenerationService.ts).
+ */
+function MediaGenerationSection({
+	range,
+	strings,
+}: {
+	range: TimeRange;
+	strings: OutcomeValueStrings;
+}) {
+	const { rows, loading } = useMediaLogs(range);
+	const [expanded, setExpanded] = useState<Set<number>>(() => new Set());
+	const media = strings.mediaSection;
+	const toggleExpanded = (id: number) => {
+		const next = new Set(expanded);
+		if (next.has(id)) next.delete(id);
+		else next.add(id);
+		setExpanded(next);
+	};
+	const outcomeLabel = (row: MediaLogRow): string =>
+		row.outcome === 'success' ? media.outcomeSuccess
+			: row.outcome === 'failure' ? media.outcomeFailure
+				: media.outcomeUnknown;
+	const isEmpty = !loading && rows.length === 0;
+	return (
+		<section className="pk-dash-section">
+			<div className="pk-dash-section__head">
+				<span className="pk-dash-section__title">{media.title}</span>
+				<span className="pk-dash-section__sub">{media.subtitle}</span>
+			</div>
+			{loading ? (
+				<div className="pk-dash-empty">Loading…</div>
+			) : isEmpty ? (
+				<div className="pk-dash-empty">{media.empty}</div>
+			) : (
+				<table className="pk-dash-table" data-testid="usage-media-table">
+					<thead>
+						<tr>
+							<th>{media.columns.kind}</th>
+							<th>{media.columns.route}</th>
+							<th>{media.columns.provider}</th>
+							<th>{media.columns.model}</th>
+							<th className="pk-dash-table__num">{media.columns.cost}</th>
+							<th className="pk-dash-table__num">{media.columns.duration}</th>
+							<th>{media.columns.jobId}</th>
+							<th>{media.columns.outcome}</th>
+						</tr>
+					</thead>
+					<tbody>
+						{rows.map((row) => {
+							const canExpand = row.outcome === 'failure' && Boolean(row.errorMessage);
+							const isOpen = expanded.has(row.id);
+							return (
+								<React.Fragment key={row.id}>
+									<tr>
+										<td>{row.kind}</td>
+										<td>{row.route}</td>
+										<td>{row.provider}</td>
+										<td>{row.model}</td>
+										<td className="pk-dash-table__num" title={media.costEstimatedSuffix}>
+											{`${formatUsd(row.estimatedCostUsd)} ${media.costEstimatedSuffix}`}
+										</td>
+										<td className="pk-dash-table__num">
+											{row.durationSeconds > 0 ? `${row.durationSeconds.toFixed(1)}s` : '—'}
+										</td>
+										<td>
+											<span className="pktw-truncate pktw-inline-block pktw-max-w-[8rem]" title={row.jobId ?? ''}>
+												{row.jobId ?? '—'}
+											</span>
+										</td>
+										<td>
+											{canExpand ? (
+												<button
+													type="button"
+													className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-pk-error"
+													onClick={() => toggleExpanded(row.id)}
+													aria-expanded={isOpen}
+													aria-label={isOpen ? media.collapseFailureLabel : media.expandFailureLabel}
+													title={isOpen ? media.collapseFailureLabel : media.expandFailureLabel}
+												>
+													<span>{outcomeLabel(row)}</span>
+												</button>
+											) : (
+												<span>{outcomeLabel(row)}</span>
+											)}
+										</td>
+									</tr>
+									{canExpand && isOpen && (
+										<tr data-testid="usage-media-error-row">
+											<td colSpan={8} className="pktw-text-pk-xs pktw-text-pk-error">
+												{row.errorMessage}
+											</td>
+										</tr>
+									)}
+								</React.Fragment>
+							);
+						})}
+					</tbody>
+				</table>
+			)}
+		</section>
+	);
 }

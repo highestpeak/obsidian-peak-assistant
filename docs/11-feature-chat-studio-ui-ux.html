@@ -116,6 +116,7 @@
         <strong>阅读路线</strong>
         <div class="nav-group"><span class="nav-label">结构</span><a href="#discussion">讨论与目标稿</a><a href="#model">三栏模型</a><a href="#state">共享状态与尺寸</a></div>
         <div class="nav-group"><span class="nav-label">区域</span><a href="#left">左栏：项目与会话</a><a href="#center">中栏：Chat 工作面</a><a href="#composer">Composer</a><a href="#right">右栏：索引与产物</a></div>
+        <div class="nav-group"><span class="nav-label">生成 / 动作</span><a href="#assistant-builder">Assistant Builder</a><a href="#message-actions">消息动作</a><a href="#media-ui">媒体产物 UI</a><a href="#structured-artifacts">结构化产物</a><a href="#detached-a11y">Detached / A11y</a></div>
         <div class="nav-group"><span class="nav-label">行为</span><a href="#flow">跨栏交互流程</a><a href="#boundaries">体验边界</a><a href="#evidence">代码证据</a></div>
       </nav>
 
@@ -192,6 +193,10 @@
             <div class="rail-row"><strong>滚动消息体</strong><span>切换 active conversation 时同步消息数组，进入时滚到底。流式文本、reasoning 与工具调用改变时，自动滚动帮助用户继续阅读；日期分隔把跨天消息分组。</span><em>reading continuity</em></div>
             <div class="rail-row"><strong>用户消息</strong><span>以用户身份、时间、Markdown 正文、附件簇和发送状态呈现。附件仍属于产生它的消息，而非进入右栏的独立文件表。</span><em>input record</em></div>
             <div class="rail-row"><strong>助手消息</strong><span>富 Markdown / 代码可流式渲染；reasoning 可折叠；工具调用显示摘要；消息头显示工具数、token 数与耗时。最后一条正常回复可出现 capability suggestion 和建议追问。</span><em>run result</em></div>
+            <div class="rail-row"><strong>PermissionAskCard</strong><span>Harness 遇到 <code>kind:'edit'</code> 的工具（MCP mutating、<code>media_generate</code> 等）时 PermissionGuard 走 ask 分支。消息里 inline 渲染 <code>PermissionAskCard</code>，展示工具名、参数摘要与 Allow / Deny；同时消息状态行覆盖 <code>waiting-permission</code>。用户决定后 loop 从挂起恢复；abort 期间未回答的 ask 记为 <code>cancelled</code>。</span><em>双向挂起</em></div>
+            <div class="rail-row"><strong>成本确认卡</strong><span>视频 / 音乐 fal async job 在扣费前先落 <code>awaiting-confirmation</code> receipt，卡片显示真实 route / model / duration / 估算费用与 Confirm / Cancel。permission ask 与成本确认是两道独立的门，不合并为一次交互。</span><em>video / music 前置</em></div>
+            <div class="rail-row"><strong>ArtifactReceiptCard 媒体态</strong><span>persist 的 <code>ChatArtifactReceipt</code> 按状态渲染：<code>generating</code>（spinner）/ <code>saved</code>（tooltip 显示 <code>vaultPath</code>）/ <code>failed</code>（错误消息 + Retry）/ <code>needs-configuration</code>（Configure 跳 <code>configureAction</code> tab）；成功态才解析 URI 渲染 preview，失败不会伪装 ready。</span><em>media receipt</em></div>
+            <div class="rail-row"><strong>Agent Run 时间线</strong><span><code>ToolCallSummary</code> 从 <code>debugRun.spans</code> + <code>toolCalls</code> 派生，<code>AgentStepRow</code> 展示 running / failed / completed / cancelled 与每步 duration / error。所有 chat turn 走同一个 Harness runtime，fixture-driven 假 spinner 已经不再存在。</span><em>real steps</em></div>
             <div class="rail-row"><strong>消息操作</strong><span>当前生产提供 Copy、Regenerate、Star、Branch、Copy trace；<code>MessageMorePopover</code> 提供 View raw、复制 Markdown / JSON、保存到 Vault、Reply inline 与可选 Delete。目标稿不让三点永久占位：核心五项始终保留，自适应动作按定向追问、保存、原始消息、Markdown、JSON 的优先级尽量展开，空间不足才反向收入 More；菜单只显示当前隐藏项。保存默认目录为 <code>Peak Chat Saves</code>，可由文案配置改变。</span><em>reuse / audit</em></div>
             <div class="rail-row"><strong>Suggested next</strong><span><code>MessageSuggestedNext</code> 默认显示前 2 条建议，其余进入 More；More 还包含 Rewrite simply、Create checklist、Save to Note / Vault 和 Ask Custom。目标稿会复用主 Composer，而不是生成第二个输入框。</span><em>continue / transform</em></div>
             <div class="rail-row"><strong>项目主页</strong><span><code>ProjectOverviewViewComponent</code> 已有可编辑项目说明、Conversations、Starred Messages 与 Resources；目标稿额外提出 Plans，并保留完整项目主页结构，只把四格统计容器、Tabs 与列表间距压缩。目标稿不在 Hero 放置脱节的“编辑说明”按钮，而把说明文本本身作为就地编辑入口；AI 改写只产出可检查草稿，必须人工保存。同一个 Composer 内联到项目摘要之后、集合导航之前，并沿用“短问候 + 三个项目化起点”的新对话心智。项目主页没有当前会话，因此不显示右侧 Conversation Index；进入具体会话后 Composer 才回到底部、右栏才恢复。Plans 仍不是当前生产既有能力。</span><em>compact project scope</em></div>
@@ -200,14 +205,75 @@
         </section>
 
         <section id="composer">
-          <h2>Composer：把每次运行的输入和上下文放在同一个状态化工作面</h2>
-          <p class="lead">Composer 使用 PromptInput 管理文字与附件；它不是另一个 chat mode 选择器。用户从这里写内容、加材料、查看当前模型 / context 摘要，并启用两种实际工具上下文。它在新对话与项目主页中靠近页面起点，在具体会话中才固定到消息体下方。</p>
+          <h2>Composer：把每次运行的输入、上下文与生成入口放在同一个工作面</h2>
+          <p class="lead">Composer 使用 PromptInput 管理文字与附件；它不是另一个 chat mode 选择器。用户从这里写内容、加材料、查看当前模型 / context 摘要，启用工具上下文，从 <code>+</code> 打开资源三项，或从 <code>/</code> slash 打开 workflow + 生成动作。它在新对话与项目主页中靠近页面起点，在具体会话中才固定到消息体下方。</p>
           <div class="cards">
             <div class="card"><strong>目标稿 · 新对话起点</strong><span>空态以 <code>今天想推进什么？</code> 的短问候开始，接一行范围说明、居中的共享 Composer 和最多三个知识工作建议：继续最近工作、总结最近笔记、查找相关材料。点击建议只填入可编辑草稿，不自动发送；用户开始输入后建议退场。</span></div>
             <div class="card"><strong>文本与键盘</strong><span>输入内容成为本轮 user message。提交开始后，文字和附件会清空；有文字时发送按钮出现。流式中发送位变为停止按钮，旁边显示 “Planning and writing…” 的可访问状态。</span></div>
-            <div class="card"><strong>附件</strong><span>底部左侧 <code>+</code> 打开文件选择器。纸夹、第二个 plus、重复的 Vault/Web 图标都没有在底栏重复出现，避免同一能力有两个入口。</span></div>
-            <div class="card"><strong>Run chip</strong><span>触发器显示当前模型（或 Auto）和 context tag 数。弹层包含 role、模型路由摘要、Vault Search 与 Web Search；后两者是会改变 <code>chatViewStore</code> 的真实开关。</span></div>
+            <div class="card"><strong>入口语义：<code>+</code> / <code>/</code> / <code>[[</code></strong><span><code>+</code> 只承担<em>资源</em>三项：<em>Files &amp; images</em>、<em>Vault document</em>、<em>Link</em>；生成动作全部迁走。<code>/</code> slash 是<em>动作面</em>，含 WORKFLOW 组（Plan 单一命令）与 GENERATE 组（Image / Image edit / Video / Music / Document）。<code>[[</code> Vault refs 与 <code>@</code>（保留未占用）不变。任一入口下的项按 <code>ToolAvailability</code> 门控：<code>available</code> 可点，<code>unconfigured</code> / <code>unsupported</code> / <code>disconnected</code> / <code>permission-required</code> 显示逐项原因并禁用，行末 Configure 按钮按 <code>configureAction</code> 跳 <em>Media Generation</em> / <em>Profiles</em> / <em>MCP</em> / <em>Permissions</em> tab。</span></div>
+            <div class="card"><strong>Generate 表单</strong><span>点开某个 Generate 项后由 <code>ComposerGenerateActions.tsx</code> 展开 inline 表单：route（Auto / Native / fal）、model、数量（image）、宽高比（image）、duration（video / music，config 上限）、preflight 估算费用。Image edit 表单额外要求用户显式选择基图（来自会话附件或已生成图片）与可选 mask——system 不隐式推断；未提供基图时提交按钮禁用。视频、音乐、Sora native 提交后先落 <code>awaiting-confirmation</code> receipt，扣费前需二次确认。</span></div>
+            <div class="card"><strong>Run chip 与 sources</strong><span>触发器显示当前模型（或 Auto）与 context tag 数。弹层包含 role、模型路由摘要、Vault Search 与 Web Search；后两者是真实开关，且从 <code>ChatRuntimeStatePort.isVaultSearchAvailable</code> 拿真值——不再硬编码"vault 恒可用"。requested vs actual sources 分别持久化到 <code>composerStore</code>，receipt 记 <code>actualSources</code>。</span></div>
             <div class="card"><strong>可见控件的真实边界</strong><span>role 选择只保留在 Composer 本地，尚未进入 message dispatch；模型行显示的是当前路由摘要，不是模型选择器；麦克风始终 disabled。UI 设计不能把这三项当成已完成的运行能力。</span></div>
+          </div>
+        </section>
+
+        <section id="assistant-builder">
+          <h2>Assistant Builder：Advanced 区、完整生命周期与 ephemeral Preview</h2>
+          <p class="lead">Assistant 定义不只是 name + instructions。Builder 的 Advanced 区、完整生命周期与 Preview 语义在 <code>src/service/chat/assistant/</code> 与 <code>src/ui/view/settings/</code> 里，Chat Composer 顶栏 Assistant picker 只是消费端。</p>
+          <div class="cards">
+            <div class="card"><strong>Advanced 区</strong><span>Advanced 面板暴露 <code>knowledgeRefs</code>（explicit refs 流，被 <code>TurnExecutionReceipt.actualSources.explicitRefsUsed</code> 记为被真正 consulted 的 ref）、<code>toolPolicy</code>（allow + deny 列表，与 PermissionGuard 联动）、<code>preferredModel</code>（覆盖 profile 默认，仍经 <code>modelRouter</code> 能力过滤）。instructions 走 <code>AssistantSlot</code> priority 900 进 system prompt，是唯一路径——不由 Composer 或 UI 层拼进 user prompt。</span></div>
+            <div class="card"><strong>生命周期</strong><span>Builder 支持 create / edit / duplicate / archive+restore / delete / reset defaults 六种操作；archive 是软删（可 restore），delete 是硬删（不可恢复）。持久化在 settings，与 profile 分开。</span></div>
+            <div class="card"><strong>Preview = ephemeral apply-without-saving</strong><span>Preview 按钮把当前编辑草稿注册进 <code>EphemeralAssistantRegistry</code>——内存级，resolver 优先命中，reload 后消失。selector 显 "Preview" 徽标提醒；Save 才把草稿写入持久化 registry。这允许试用尚未成型的 assistant 而不污染定义列表。</span></div>
+            <div class="card"><strong>Preview 边界</strong><span>Preview assistant 只影响本会话本 turn 的 assistant resolver 结果；跨会话切换或重开 Chat 后 ephemeral 记录不会自动携带。这个语义已锁在 <code>test/assistant-builder-lifecycle.test.ts</code>；owner 侧 Obsidian 内的完整生命周期人工回归尚未跑（credential-blocked 影响真实 turn 效果观察）。</span></div>
+          </div>
+        </section>
+
+        <section id="message-actions">
+          <h2>消息动作：registry、Retry variant、Branch、permission 三态</h2>
+          <p class="lead">消息级动作不是 <code>MessageMorePopover</code> 里 hardcode 的列表。核心 5 项走 registry 优先级永远保留 inline，其余按空间自适应；不足时反向收进 More。</p>
+          <div class="cards">
+            <div class="card"><strong>核心 5 项永久 inline</strong><span>Copy / Regenerate / Star / Branch / Copy trace 由 <code>messageActionRegistry</code> priority 最高，即使 More 打开也不进溢出——避免高频动作被隐藏。空间不足时反向优先级低的动作先进 More。</span></div>
+            <div class="card"><strong>Trace 打开真实 AgentTrace</strong><span>Trace 动作按 <code>debugRunId</code> 打开真实 <code>AgentTrace</code> 面板，展示 spans 树、每步 duration 与 error；无 <code>debugRunId</code> 时降级为 copy JSON。<code>runId</code> = <code>debugRunId</code> = <code>TurnExecutionReceipt.runId</code>，可跨 UI / trace / receipt 串起。</span></div>
+            <div class="card"><strong>Retry → variant ‹N/M› 切换器</strong><span>Retry 一条助手消息不覆盖旧内容，而是新增带 <code>variantGroupId</code> + <code>variantIndex</code> + <code>isActiveVariant=true</code> 的 message；旧同组翻 <code>false</code>。UI 上助手消息头部出 ‹N/M› 切换器，切换只翻转 active 标记不复制上下文。history 只取 active variant，见 <a href="11-feature-chat-context.html#variants-branches">Chat Context §Variant 与 Branch</a>。</span></div>
+            <div class="card"><strong>Branch → 新 conversation + "Branched from" 链回</strong><span>Branch 从某条消息分叉时新建 conversation 带 <code>parentConversationId</code> + <code>parentMessageId</code>；新会话顶部显示 "Branched from …" 链，点回可切到父 conversation。model 请求不合并两条线——branch 是"从这里起独立试一条思路"，不是并行分支。</span></div>
+            <div class="card"><strong>PermissionAskCard 三按钮</strong><span>MCP mutating 工具 / <code>media_generate</code> 等 <code>kind:'edit'</code> 工具触发时，消息 inline 渲染 <code>PermissionAskCard</code> 三按钮：<em>Deny</em> / <em>Allow once</em> / <em>Allow for this run</em>；消息状态行覆盖 <code>waiting-permission</code>。<em>Allow for run</em> 的 run 级 allowlist 目前只在 <code>useStreamChat</code> 层强制（下一波下沉 harness 与 deny 语义对齐），是当前实现的收窄点。</span></div>
+            <div class="card"><strong>More 与保存</strong><span><code>MessageMorePopover</code> 承担 View raw、Copy Markdown / JSON、Save to Vault、Reply inline 与可选 Delete；保存默认 <code>Peak Chat Saves</code>（可由文案配置覆盖）。Suggested next 顶部 ≤2 条只填 Composer，其余进 More；targeted follow-up 复用主 Composer reply anchor，不生成第二个输入框。</span></div>
+          </div>
+        </section>
+
+        <section id="media-ui">
+          <h2>媒体产物 UI：batch gallery、insert-as-reference、music terms</h2>
+          <p class="lead">Chat 内媒体产物由 <code>ArtifactReceiptCard</code> 按状态渲染六态；batch 多输出与 music licensing 确认是本轮新增的重点。</p>
+          <div class="cards">
+            <div class="card"><strong>Batch 多输出 gallery + lightbox</strong><span>OpenAI / fal 一次生成多张图时，每张落 N 条独立 <code>ChatArtifactReceipt</code>，UI 组成 batch gallery；点击任一图打开 lightbox 全屏预览（<code>ownerDocument</code> 感知，在 detached popout 内也定位到正确窗口）。lightbox 关闭键盘可达。</span></div>
+            <div class="card"><strong>Insert as reference</strong><span>Saved receipt 卡上有 "Insert as reference" 动作，把这张图作为下一次 <code>/</code> Image edit 的基图挂入 Composer 附件区（走同一 <code>MediaReferenceResolver</code> 稳定引用，不复制字节）。这是 edit 迭代的官方路径——不用手动把图存下来再拖回来。</span></div>
+            <div class="card"><strong>Music terms 首次确认</strong><span>音乐生成第一次 Confirm 前，<code>ArtifactReceiptCard</code> 出 licensing checkbox（Lyria SynthID 水印 + 分发平台 AI 披露 + USCO 版权口径 + fal ToS 链接）。确认写 <code>settings.ai.mediaDefaults.musicLicensingAccepted</code>（含 <code>policyVersion</code> + <code>confirmedAt</code>）+ 该 receipt 上；后续 music 请求不再重复弹窗，除非 policy version 变。</span></div>
+            <div class="card"><strong>ArtifactReceiptCard 六态</strong><span><code>generating</code>（spinner）/ <code>awaiting-confirmation</code>（成本卡 + Confirm / Cancel）/ <code>saved</code>（tooltip 显示 <code>vaultPath</code>，成功态才解析 URI 渲染 preview）/ <code>failed</code>（错误消息 + Retry）/ <code>cancelled</code>（+ Retry）/ <code>needs-configuration</code>（Configure 跳 <code>configureAction</code> tab）。失败态禁止伪装 ready；permission ask 与成本确认是两道独立的门。</span></div>
+          </div>
+        </section>
+
+        <section id="structured-artifacts">
+          <h2>结构化产物：5 类 artifact 的 Chat 内闭环</h2>
+          <p class="lead">Chat 除了图片 / 音视频，还能通过 <code>artifact_create</code> ToolDef 产 5 类结构化产物；每一类都由 producer 校验、写盘、生成 <code>ChatArtifactReceipt</code>，被 Resources / Outline 认得。</p>
+          <div class="cards">
+            <div class="card"><strong>Dataview</strong><span><code>artifact_create(kind='dataview')</code> producer 校验 DQL <code>dataview</code> fence 有效性，写 <code>.md</code> 到 <code>ChatFolder/Artifacts/Dataview/</code>（<code>AI_PATH_SUBFOLDERS.ArtifactsDataview</code>），Open in Obsidian 直接生效。schema 与校验规则在 <code>templates/config/artifact-create.json</code>。</span></div>
+            <div class="card"><strong>Excalidraw / drawio</strong><span><code>artifact_create(kind='drawing')</code> 分流：Excalidraw producer 输出有效 <code>.excalidraw.md</code> 到 <code>ChatFolder/Artifacts/Excalidraw/</code>；drawio producer 输出有效 XML 到 <code>ChatFolder/Artifacts/DrawIO/</code>。Obsidian 打开可编辑；任一 schema / 写盘 / validate 失败渲染 failed receipt，保留原始 content 支持 retry，不静默丢。</span></div>
+            <div class="card"><strong>Extract</strong><span><code>artifact_create(kind='extract')</code> 从用户显式授权的 message / ref 生成 Markdown note，保留来源链接；写 <code>ChatFolder/Artifacts/Extracts/</code>。receipt kind <code>extract</code> 被 Resources / Outline 认。</span></div>
+            <div class="card"><strong>Reminder + scheduler</strong><span><code>artifact_create(kind='reminder')</code> 写 frontmatter（<code>title</code> / <code>due</code> / <code>source</code> / <code>status</code>）到 <code>ChatFolder/Artifacts/Reminders/</code>。<code>ReminderSchedulerService</code> 到期弹 Obsidian <code>Notice</code>，原位把文件 frontmatter <code>status</code> 从 <code>pending</code> 翻为 <code>done</code>，用户可继续编辑同一文件。</span></div>
+            <div class="card"><strong>Kind='edit' 走 PermissionGuard</strong><span>所有 <code>artifact_create</code> 调用都标 <code>kind:'edit'</code>，因此第一次运行会触发 <code>PermissionAskCard</code>；用户 Allow for run 后本 run 内后续 producer 直通。receipt kind 扩展 <code>dataview</code> / <code>extract</code> / <code>reminder</code>，Resources 分组、Outline 归类、gallery 索引都认。</span></div>
+            <div class="card"><strong>诚实边界</strong><span>15 场景由 <code>test/artifact-create-producers.test.ts</code> + <code>test/reminder-scheduler.test.ts</code> 锁定 producer 行为、schema 校验、失败回退与 scheduler 到期触发。Obsidian 内 5 类 producer 与 scheduler 的实机人工验收尚未跑——凭据不阻塞，是 Track 8 遗留的 10 条人工矩阵之一，见<a href="testing/chat-studio-capability-checklist.md#如需-a11y--视口--主题--detached-矩阵">checklist 相关段</a>。</span></div>
+          </div>
+        </section>
+
+        <section id="detached-a11y">
+          <h2>Detached 窗口与 A11y：已落地面 + 未竟的人工矩阵</h2>
+          <p class="lead">Chat Studio 支持在 Obsidian popout 独立窗口里运行，因此 UI 层必须严格用 <code>ownerDocument</code> 而不是 <code>document</code>——否则 lightbox、drop zone、focus 会全定位到主窗口。本轮把这条纪律落到 hook + 组件。</p>
+          <div class="cards">
+            <div class="card"><strong>ownerDocument 纪律</strong><span><code>useOwnerWindow</code> hook + 9 处 <code>ownerDocument</code> 修复覆盖键盘监听、drag/drop、confirm dialog、lightbox 定位、scroll-spy re-observe。任何新组件访问 <code>document</code> / <code>window</code> 都必须切成 <code>ownerDocument</code>。</span></div>
+            <div class="card"><strong>Splitter 与 NavRow 键盘化</strong><span>三栏 splitter 加 <code>role='separator'</code> + <code>aria-valuenow</code> + Home/End/Enter reset；<code>NavRow</code> 完整键盘化（左右方向 + Enter），不再只依赖鼠标。</span></div>
+            <div class="card"><strong>msg-list live region</strong><span>消息列表容器加 <code>role='log'</code> + <code>aria-live='polite'</code>，让屏幕阅读器在流式 append 时能宣告新片段，而不是保持沉默。</span></div>
+            <div class="card"><strong>图片布局分档</strong><span>batch 多图 gallery 走纯函数分档规则（1 / 2 / 3+ 图不同布局），配合 lightbox；分档规则可测，不再随消息数量随机浮动。</span></div>
+            <div class="card"><strong>诚实边界：人工矩阵未跑</strong><span>下面 4 项属于 Track 8 遗留的 10 条人工矩阵，代码已 pass 相关自动测试（<code>test/a11y-structure.test.ts</code> 等），但在 Obsidian 内的真人回归尚未完成：detached popout 键盘全流程、light / dark 双主题、894 / 1440 视口 + 125% zoom、VoiceOver。在这些矩阵跑完之前，A11y / detached 面的完整验收状态是<em>部分待人工矩阵</em>。</span></div>
           </div>
         </section>
 
@@ -218,6 +284,7 @@
             <div class="card"><strong>顶部与搜索</strong><span>Studio 的非 compact 版本显示 Conversation Index 标题、当前 tab 的搜索输入和 <code>⌘K</code> 提示。搜索只作用于内存中的当前时间线或 artifact 名，不会查询其他会话或 Vault。</span></div>
             <div class="card"><strong>Overview tab</strong><span>相邻、同名的 <code>message.topic</code> 被折为一个可开合 topic block；无 topic 的消息保持独立。第一组默认展开，topic 内的消息与 artifacts 按发生位置交错排列。</span></div>
             <div class="card"><strong>Artifacts tab</strong><span>将资源和 Markdown code fence 推导成 Images、Diagrams、Files、Code 四组。代码块因此也会成为 artifact；这里的“产物”比“已保存文件”更宽。</span></div>
+            <div class="card"><strong>Resources 面板</strong><span>从持久化的 <code>chat_artifact_receipt</code> 表读取，按方向（用户上传 / 助手产物）与类型（image / audio / video / music / file / code）筛选，可回跳到源 message。视频与音乐使用独立的 <code>mediaKind</code> 语义，不与 TTS 合并。</span></div>
             <div class="card"><strong>点击行为</strong><span>消息行和 artifact 行都会平滑滚动到中栏的源消息。artifact 不直接打开或预览文件；它的职责是解释“这一项来自哪一次对话”，不是对文件做管理。</span></div>
           </div>
           <div class="claim"><strong>右栏的正确命名</strong>它更接近 conversation recall / navigation index，而不是 Workspace、Library 或 Assets 面板。目标稿只在存在当前会话时显示；项目主页已经在中栏拥有对话、收藏、资源和计划，不再复制一套右栏目录。后续如果要做真正的 artifact 工作区，需要另建保存、打开、版本和文件归属的能力合同。</div>
@@ -243,6 +310,7 @@
             <div class="boundary-row"><strong>控件与能力不完全一致</strong><span>Vault/Web 为真实开关；role、模型行、麦克风则没有相同的执行效力。任何新 UI 应用“可操作、可解释、不可用”三种清晰状态，而不是混在一个弹层里。</span></div>
             <div class="boundary-row"><strong>Artifacts 的名称风险</strong><span>右栏把附件和代码 fence 都称为 artifact，但点击只回跳消息。若想让它成为产物库，需先补齐保存、打开、预览与生命周期，而不是仅改变视觉层级。</span></div>
             <div class="boundary-row"><strong>窗口偏好不可持久</strong><span>栏宽和 popout 都是当次 UI 状态。把 Studio 设计成长期高频工作台前，需要决定是否保存布局、是否允许折叠、窄宽度时如何给中栏保留优先级。</span></div>
+            <div class="boundary-row"><strong>媒体生成的诚实边界</strong><span>image generate / image edit（含 mask）/ video（fal + Sora native）/ music 与音视频附件理解的<em>代码链路全量落地</em>并锁在测试里：<code>MediaGenerationRequest.operation='edit'</code> + <code>MediaReferenceResolver</code>、<code>OpenAINativeVideoAdapter</code>（Sora <code>/v1/videos</code> submit/poll/download）、fal edit codec（<code>nano-banana/edit</code> / <code>flux-pro/v1/fill</code>）、<code>OpenAITranscriptionAdapter</code>（<code>whisper-1</code>）、<code>WebAudioVideoAudioExtractor</code>。Usage Dashboard 已加 "Media generation · run detail" 恒标 estimated；music licensing 首次确认写 <code>policyVersion</code> + <code>confirmedAt</code>；Settings 已加 route×kind×operation 能力矩阵与 Validate 按钮。<em>凭据阻塞未跑</em>：fal 付费 edit / video / music，OpenAI 付费 image generate / edit / Sora / whisper-1，MEDIA-04 九步实机——见 <a href="testing/chat-studio-capability-checklist.md#55-凭据阻塞项-credential-blocked-2026-07-21-晚">checklist §5.5</a>。未配置 provider 时 <code>/</code> slash Generate 组诚实禁用并给出逐路由原因。</span></div>
           </div>
           <div class="claim"><strong>做视觉方案前的产品选择</strong>先决定中栏的主对象是“一个会话线程”，还是“项目中的 AI 工作台”。当前左栏偏项目容器、右栏偏线程回忆，而中栏在两者之间切换；这个选择不明确，换皮很难真正减少杂乱感。</div>
         </section>
@@ -255,10 +323,19 @@
               <tr><td><code data-copy="src/ui/view/chat-studio-view/ChatStudioView.tsx">ChatStudioView.tsx</code></td><td>三栏容器、默认宽度、拖拽 handle 与三栏挂载关系。</td><td>不要为每栏再建状态副本；先判断尺寸是否要持久化。</td></tr>
               <tr><td><code data-copy="src/ui/view/project-list-view/ProjectListView.tsx">ProjectListView.tsx</code><br><code data-copy="src/ui/view/project-list-view/ProjectsSection.tsx">ProjectsSection.tsx</code></td><td>左栏 hydration、搜索、项目展开、新会话与菜单。</td><td>项目与独立会话的导航模型、active selection 事件。</td></tr>
               <tr><td><code data-copy="src/ui/view/chat-view/ChatViewComponent.tsx">ChatViewComponent.tsx</code><br><code data-copy="src/ui/view/chat-view/view-Messages.tsx">view-Messages.tsx</code></td><td>中栏 viewMode 路由、消息 shell、自动滚动与 pending/active 分支。</td><td>中栏主对象、各状态下 Header/Composer/右栏的可见性。</td></tr>
-              <tr><td><code data-copy="src/ui/view/chat-view/components/Composer.tsx">Composer.tsx</code></td><td>PromptInput、附件、Run chip、提交 / 停止与可见控件的执行边界。</td><td>不要把 local role 或 disabled mic 误当成请求参数。</td></tr>
-              <tr><td><code data-copy="src/ui/view/chat-view/components/ConversationIndex.tsx">ConversationIndex.tsx</code></td><td>Overview / Artifacts、topic 时间线、artifact 推导、局部搜索与回跳。</td><td>保留“从消息推导”的事实；要做文件库则单独定义能力。</td></tr>
+              <tr><td><code data-copy="src/ui/view/chat-view/components/Composer.tsx">Composer.tsx</code><br><code data-copy="src/ui/view/chat-view/components/composer/ComposerPlusMenu.tsx">ComposerPlusMenu.tsx</code></td><td>PromptInput、附件、Run chip、Plus 菜单三个 Generate 入口与 <code>ToolAvailability</code> 门控。</td><td>不要把 local role 或 disabled mic 误当成请求参数；Generate 入口的禁用理由与跳转必须走 <code>configureAction</code>。</td></tr>
+              <tr><td><code data-copy="src/ui/view/chat-view/components/messages/PermissionAskCard.tsx">PermissionAskCard.tsx</code><br><code data-copy="src/ui/view/chat-view/components/messages/ArtifactReceiptCard.tsx">ArtifactReceiptCard.tsx</code></td><td>工具授权双向挂起卡；媒体 receipt 六态渲染（含 awaiting-confirmation 成本卡与 needs-configuration Configure 跳转）。</td><td>失败态禁止伪装 ready；成本确认与 permission ask 是两道独立的门。</td></tr>
+              <tr><td><code data-copy="src/service/chat/harnessChatRunner.ts">harnessChatRunner.ts</code><br><code data-copy="src/service/chat/tools/mediaGenerateTool.ts">mediaGenerateTool.ts</code></td><td>Chat 唯一 Harness runtime；<code>media_generate</code> 工具的 preflight / 路由 / receipt 合同。</td><td>新增能力先落 <code>ToolAvailability</code> 与 receipt schema，再谈 UI。</td></tr>
+              <tr><td><code data-copy="src/service/media/MediaGenerationService.ts">MediaGenerationService.ts</code><br><code data-copy="src/service/media/MediaJobRunner.ts">MediaJobRunner.ts</code></td><td>Vault 写入唯一入口；fal durable async job 状态机；boot 时 resume 优先于 failAllUnfinished。</td><td>视频 / 音乐路径的可恢复性保证；禁止绕过 service 直接写文件。</td></tr>
+              <tr><td><code data-copy="src/ui/view/settings/tabs/MediaGenerationTab.tsx">MediaGenerationTab.tsx</code></td><td>默认 route / fal key / 输出目录 / 逐 kind preset / route×kind×operation 能力矩阵 / Validate。</td><td>所有 <code>needs-configuration</code> receipt 与 Composer 禁用行都会跳到这里。</td></tr>
+              <tr><td><code data-copy="src/service/chat/assistant/EphemeralAssistantRegistry.ts">EphemeralAssistantRegistry.ts</code><br><code data-copy="src/service/chat/assistant/assistantResolver.ts">assistantResolver.ts</code></td><td>Preview 的内存级 registry（resolver 优先命中，reload 消失）；Builder 生命周期 create/edit/duplicate/archive+restore/delete/reset。</td><td>Preview = ephemeral apply-without-saving；Save 才写持久化 registry。</td></tr>
+              <tr><td><code data-copy="src/service/chat/reminders/ReminderSchedulerService.ts">ReminderSchedulerService.ts</code><br><code data-copy="src/service/chat/artifacts/artifactProducers.ts">artifactProducers.ts</code><br><code data-copy="templates/config/artifact-create.json">artifact-create.json</code></td><td>5 类 producer（Dataview / Excalidraw / drawio / Extract / Reminder）+ scheduler；schema 与 fence 校验规则。</td><td>任一 schema/写盘/validate 失败保留原始 content 支持 retry，不静默丢。</td></tr>
+              <tr><td><code data-copy="src/ui/hooks/useOwnerWindow.ts">useOwnerWindow.ts</code></td><td>detached popout 内 <code>ownerDocument</code> 感知；键盘、drop、lightbox、scroll-spy 定位到正确窗口。</td><td>任何新组件访问 <code>document</code> / <code>window</code> 必须切成 <code>ownerDocument</code>。</td></tr>
+              <tr><td><code data-copy="src/ui/view/chat-view/components/composer/ComposerGenerateActions.tsx">ComposerGenerateActions.tsx</code><br><code data-copy="src/ui/view/chat-view/components/composer/ComposerPlusMenu.tsx">ComposerPlusMenu.tsx</code></td><td><code>/</code> slash WORKFLOW + GENERATE 组（Image / Image edit / Video / Music / Document）；<code>+</code> 仅资源三项；ToolAvailability 门控与逐项禁用原因。</td><td>Image edit 表单要求用户显式选择基图与 mask，不隐式推断；<code>+</code> 生成动作已迁走。</td></tr>
+              <tr><td><code data-copy="src/ui/view/chat-view/components/messages/MessageViewItem.tsx">MessageViewItem.tsx</code><br><code data-copy="src/core/types/chat-message-variants.ts">chat-message-variants.ts</code></td><td>消息动作 registry 优先级 + 反向 overflow；‹N/M› variant 切换器；Branch "Branched from" 链回。</td><td>核心 5 项永远 inline；Retry 版本化不覆盖旧内容；Branch 创建新 conversation 带 parent 指针。</td></tr>
             </tbody>
           </table>
+          <p class="prose" style="margin-top:14px;">相关资料：<a href="superpowers/plans/2026-07-21-chat-runtime-capability-closure-delivery.md">Chat Runtime 闭环交付报告</a>、<a href="testing/chat-studio-capability-checklist.md">Chat Studio 能力测试清单</a>。</p>
         </section>
 
         <div class="footer">相关文档：<a href="testing/chat-studio-component-gallery.md">Chat Studio 组件画廊</a>、<a href="testing/chat-studio-capability-checklist.md">Chat Studio 能力测试清单</a>、<a href="superpowers/specs/2026-07-15-chat-studio-complete-implementation-spec.md">Chat Studio 权威实施规格</a>、<a href="11-feature-chat-context.html">11 · Chat Context</a>、<a href="gstack/chat-studio-interactive-2026-07-13/discussion-synthesis.md">讨论总图</a>、<a href="12-feature-search.html">12 · Hyper Search</a>、<a href="21-infra-agent-harness.html">21 · Agent Harness</a>、<a href="index.html">Docs Index</a>。</div>

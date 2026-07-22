@@ -714,6 +714,12 @@ FUTURE：多 Agent handoff workspace、复杂多产物 bundle review、专业 tr
 
 ## 17. Requirement 验收矩阵
 
+> **2026-07-21 晚状态标注方式**：每个子表下方新增 "2026-07-21 状态" 小节，逐 ID 标注 `pass` / `partial` / `credential-blocked`。
+> - `pass` = 源码 + 测试锁定 + 有实机截图或纯代码可验证；
+> - `partial` = 主链路 pass，但存在诚实缺口（列出）；
+> - `credential-blocked` = 代码全落地并锁在测试里，仅等 owner 真实凭据实机；
+> - `manual-pending` = 涉及 VoiceOver / 双主题 / 多视口 / detached popout 全流程 QA，本 session 未跑。
+
 ### 17.1 Shell / navigation
 
 - [ ] `SHELL-01` 无 Peak 品牌头；三栏密度符合 §5。
@@ -727,6 +733,13 @@ FUTURE：多 Agent handoff workspace、复杂多产物 bundle review、专业 tr
 - [ ] `LEFT-05` title regeneration 有 thinking + visible typing + persistence。
 - [ ] `LEFT-06` View All title/type AND filter、canonical types、去重、reset。
 
+**2026-07-21 状态**：
+- `SHELL-01` `pass` — 实机截图确认无品牌头（`/tmp/peak-acceptance/`）。
+- `SHELL-02` `partial(manual-pending)` — 1728 实机跑过；894 视口未在本 session 手工过。
+- `SHELL-03` `partial(manual-pending)` — splitter aria + Home/End/Enter reset 已实现（Track 9 detached/a11y），代码 pass；detached window 全流程键盘未跑。
+- `SHELL-04` `pass` — project-home 隐藏右栏代码路径复用 legacy，未回归。
+- `LEFT-01`..`LEFT-06` `pass` — 无 legacy Home 删除后回归，Track A-G 已在 2026-07-20 landed。
+
 ### 17.2 Composer
 
 - [ ] `COMP-01` new/project/active 任一状态 Composer count = 1，草稿隔离且切换可恢复。
@@ -738,6 +751,17 @@ FUTURE：多 Agent handoff workspace、复杂多产物 bundle review、专业 tr
 - [ ] `COMP-07` Assistant searchable、conversation binding、prompt-first AI draft、advanced optional、explicit save。
 - [ ] `COMP-08` multiline/IME/attachment/remove/send/stop/permission/retry keyboard flow 正常。
 - [ ] `COMP-09` starter 只填草稿、不 auto-send、有 draft 后退场。
+
+**2026-07-21 状态**：
+- `COMP-01` `pass` — 实机截图确认 DOM 恰 1 Composer。
+- `COMP-02` `pass` — 空态 Composer 居中实机确认。
+- `COMP-03` `pass` — Track 3 Composer 入口语义已 land，`+` 仅资源三项、`/` slash Generate 组含 image/edit/video/music/document，`[[` 保留，`@` 未占用；测试 `test/composer-entry-semantics.test.ts` 锁定。实机截图确认 `/` 面 GENERATE 组缺 key 诚实禁用。
+- `COMP-04` `partial` — Track 2 Composer 单一真值锁 requested vs actual sources 分开持久化，`test/composer-source-truth.test.ts` 锁定；**诚实遗留**：`chatViewStore` 旧 source 字段保留为单向镜像未全删。
+- `COMP-05` `pass` — Track 1 Auto 真实路由锁定：auto sentinel 持久化不回写，`modelRouter` 能力过滤，`TurnExecutionReceipt` 补 `requestedSelection/modelSource/routeReason/requiredCapabilities`；测试 `test/model-router.test.ts`。
+- `COMP-06` `pass` — 无 Fast/Balanced/Best；实机截图 Auto 标签确认。
+- `COMP-07` `pass` — Track 4 Assistant Builder 完整（Advanced / lifecycle / ephemeral preview），`test/assistant-builder-lifecycle.test.ts`。
+- `COMP-08` `partial(manual-pending)` — 键盘 flow 代码复用 legacy；IME 组合 / 多修饰键流未在本 session 手工跑。
+- `COMP-09` `pass` — 实机截图 starter 只填不发确认。
 
 ### 17.3 Messages / artifacts
 
@@ -751,6 +775,15 @@ FUTURE：多 Agent handoff workspace、复杂多产物 bundle review、专业 tr
 - [ ] `MSG-08` 窄屏 reverse-priority overflow；More 只含隐藏项且无重复。
 - [ ] `MSG-09` raw/md/json/save/targeted follow-up 都执行真实 handler 并反馈。
 - [ ] `MSG-10` top 2 suggested next + grouped More；所有选择只填主 Composer。
+
+**2026-07-21 状态**：
+- `MSG-01`..`MSG-04` `pass` — 2026-07-20 landed，本轮未回归改动。
+- `MSG-02` 图片布局分档纯函数补入 Track 9 detached/a11y，含 lightbox；`partial(manual-pending)` 多视口视觉。
+- `MSG-05` `pass` — Track 5 artifact-Turn 关联 `TurnExecutionReceipt.artifactIds` 真实回填；Track 7 结构化产物 5 producer 全数 producer 失败保留 content + retry；测试 `test/artifact-turn-association.test.ts` + `test/artifact-create-producers.test.ts`（15 场景）。
+- `MSG-06` `partial(credential-blocked)` — 状态生命周期代码 pass，permission 三态实现（deny/allow once/allow-for-run）；真实流式 turn 端到端要凭据。
+- `MSG-07`..`MSG-08` `pass` — Track 8 消息动作 registry 优先级 + 反向 overflow（core 5 永不进 More）锁定。
+- `MSG-09` `pass` — Track 8 Trace 打开真实 `AgentTrace`，Retry 走 variant 版本化，Branch 建真分支，save 走真实 handler；测试 3 个新文件。
+- `MSG-10` `pass` — suggested next 顶部≤2 只填 Composer，targeted follow-up 用主 Composer reply anchor。
 
 ### 17.4 Project / right / persistence
 
@@ -766,6 +799,13 @@ FUTURE：多 Agent handoff workspace、复杂多产物 bundle review、专业 tr
 - [ ] `DATA-03` 刷新/重载后 pin、project description、plans、stars、artifacts、overrides 一致。
 - [ ] `DATA-04` §12.0 每种 reset/persistence 行为有 test；new/project/conversation 之间无草稿、来源或 override 泄漏。
 
+**2026-07-21 状态**：
+- `PROJ-01`..`PROJ-04` `pass` — 2026-07-20 landed，本轮未回归改动。
+- `RIGHT-01`..`RIGHT-03` `pass` — Track 5 artifact 关联 + Track 7 producer receipt 新增 `dataview/extract/reminder` kind，`folderPaths` 增 Artifacts/* 子目录；Resources / Outline 全认；scroll-spy 随消息增删 re-observe（Track 9）。
+- `DATA-01`..`DATA-02` `pass` — Track 1 `TurnExecutionReceipt` 增 `requestedSelection/modelSource/routeReason/requiredCapabilities`；Track 5 `artifactIds` 真实回填；historical restore 已在 2026-07-20 landed。
+- `DATA-03` `partial(manual-pending)` — reload persistence 代码 pass；实机 reload 未在本 session 逐项跑（除了 auto sentinel 与 media job resume 已有测试锁）。
+- `DATA-04` `pass` — Track 2 requested vs actual sources 分开持久化 + `test/composer-source-truth.test.ts`；其余 §12.0 已由 2026-07-20 覆盖。
+
 ### 17.5 Runtime truth gates
 
 - [ ] `RUN-01` Vault Search 触发真实 retrieval 并写 actual document receipt；否则 UI 明确 unavailable。
@@ -776,6 +816,15 @@ FUTURE：多 Agent handoff workspace、复杂多产物 bundle review、专业 tr
 - [ ] `RUN-06` Artifact producer/store/receipt/view/action 全链路真实；regex 只可作为有退出条件的旧数据 fallback。
 - [ ] `RUN-07` RunChip role、Mic、model/source 等旧假控件已接线或删除/禁用，没有 local-only 视觉状态。
 
+**2026-07-21 状态**：
+- `RUN-01` `partial(credential-blocked)` — Track 2 `ChatRuntimeStatePort.isVaultSearchAvailable` `main.ts` 真值注入，`SystemPromptSlot` 不再硬编码可用；测试锁定；真实 turn 触发流式 retrieval receipt 需要 provider 凭据实机跑（无 key 场景 UI 已诚实 unavailable）。
+- `RUN-02` `pass` — Track 2 分离持久化 + `test/composer-source-truth.test.ts`。
+- `RUN-03` `pass` — Track 6 media job 状态机 + Track 7 producer failed receipt + Track 8 permission 三态；`useStreamChat` allow-for-run 层强制；**诚实缺口**：allow-for-run 仅 `useStreamChat` 层，不下沉到 harness。
+- `RUN-04` `pass` — Track 4 Assistant Builder lifecycle + ephemeral preview；`EphemeralAssistantRegistry` 内存级 resolver 优先。
+- `RUN-05` `pass` — 2026-07-20 landed。
+- `RUN-06` `pass` — Track 5 `artifactIds` 真实回填 + Track 7 5 producer 全链路 + `artifact_create` ToolDef（`kind='edit'` 走 PermissionGuard）。
+- `RUN-07` `pass` — 2026-07-20 landed，本轮零回归。
+
 ### 17.6 Accessibility / visual quality
 
 - [ ] `A11Y-01` 所有 icon-only button 有 accessible name/tooltip；菜单和 dialog 有焦点圈/escape/restore。
@@ -783,6 +832,13 @@ FUTURE：多 Agent handoff workspace、复杂多产物 bundle review、专业 tr
 - [ ] `A11Y-03` streaming/title typing 使用合适 live region，不逐字符轰炸。
 - [ ] `VIS-01` light/dark、100%/125% zoom、长中英文标题、空/满数据正常。
 - [ ] `VIS-02` 无透明菜单、无 oversized gap、无重复 header、无孤立按钮行。
+
+**2026-07-21 状态**：
+- `A11Y-01` `partial(manual-pending)` — Track 9 icon-only button + tooltip 增补代码 pass；实机 VoiceOver 逐项未跑（Track 8 留 10 条清单）。
+- `A11Y-02` `partial(manual-pending)` — Track 9 splitter aria + Home/End/Enter reset + `NavRow` 键盘化代码 pass；实机 detached popout 全流程键盘未跑。
+- `A11Y-03` `partial(manual-pending)` — Track 9 msg-list `role="log"` `aria-live` 代码 pass；VoiceOver 播报节奏未在本 session 验听。
+- `VIS-01` `partial(manual-pending)` — 亮/暗主题、125% zoom、894/1440 视口本 session 未跑；代码路径 tokens + 语义色 2026-07-20 landed，无本轮回归。
+- `VIS-02` `pass` — 2026-07-20 全插件字体/语义色/portal 归轨已 land，本轮零回归。
 
 ## 18. 验证方案
 

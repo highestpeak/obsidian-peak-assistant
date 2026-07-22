@@ -14,7 +14,9 @@ async function main() {
 
 function makePort(configured: boolean): MediaGenerationPort {
 	return {
+		providerId: 'test',
 		isConfigured: () => configured,
+		supportedKinds: () => ['tts', 'image', 'video', 'music'],
 		async generate(req: MediaGenerationRequest) {
 			if (!configured) throw new Error('not configured');
 			return {

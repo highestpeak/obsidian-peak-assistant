@@ -90,8 +90,8 @@ export function openHarnessSetupWizard(): void {
 	new HarnessOnboardingModal(ctx, { isReRun: hasBindings }).open();
 }
 
-export function openSettingsModal(): void {
-	new SettingsModal(getContext()).open();
+export function openSettingsModal(initialTab?: import('@/ui/view/settings/types').TabId): void {
+	new SettingsModal(getContext(), initialTab).open();
 }
 
 export function openCopilotPanel(): void {
@@ -221,20 +221,37 @@ export async function materializeHubForActiveNote(): Promise<void> {
 	}
 }
 
-async function getOrBuildMediaRing() {
+/**
+ * Get the app-wired MediaGenerationService for command entry points.
+ * The service is composed once at boot in `main.ts::initSqlite()` and
+ * bound on `ConversationService`; commands reuse that same instance so
+ * they share adapter / job / receipt state with the Chat `media_generate`
+ * tool (D1 §R1).
+ *
+ * Task C1 §R5: everything media flows through this service — no more
+ * bespoke `MediaRingService` instances inside command bodies.
+ */
+async function getOrBuildMediaGenerationService() {
 	const ctx = getContext();
-	const { FalMediaAdapter } = await import('@/app/platform/media/FalMediaAdapter');
-	const { ObsidianMediaAttachmentWriter } = await import(
-		'@/app/platform/media/ObsidianMediaAttachmentWriter'
-	);
-	const { MediaRingService } = await import('@/service/media/MediaRingService');
-	const port = new FalMediaAdapter({
-		getApiKey: () => ctx.plugin.settings.ai?.falApiKey,
+	const bound = ctx.manager.conv.getMediaGenerationService?.();
+	if (bound) return bound;
+	// Fallback: if the command fires before initSqlite completes (rare —
+	// commands are usually invoked from a live UI), compose on demand
+	// using the same helper `main.ts` calls.
+	const { composeMediaGenerationService } = await import('@/app/media/composeMediaGenerationService');
+	return composeMediaGenerationService({
+		app: ctx.app,
+		getFalApiKey: () => ctx.plugin.settings.ai?.falApiKey,
+		getMediaAttachmentFolder: () => ctx.plugin.settings.ai?.mediaAttachmentFolder,
+		getRootFolder: () => ctx.plugin.settings.ai?.rootFolder ?? '',
+		getMediaSettingsOverride: () => ctx.plugin.settings.ai?.mediaDefaults,
+		saveArtifactReceipt: (r) => ctx.manager.conv.saveArtifactReceipt(r),
 	});
-	const writer = new ObsidianMediaAttachmentWriter(ctx.app);
-	const attachmentFolder =
-		ctx.plugin.settings.ai?.mediaAttachmentFolder?.trim() || '_attachments/media';
-	return new MediaRingService({ port, writer, attachmentFolder });
+}
+
+function ttsFalKeyConfigured(): boolean {
+	const key = getContext().plugin.settings.ai?.falApiKey;
+	return typeof key === 'string' && key.trim().length > 0;
 }
 
 export async function generateTtsForActiveNote(): Promise<void> {
@@ -244,8 +261,7 @@ export async function generateTtsForActiveNote(): Promise<void> {
 		new Notice('Open a note first.', 5000);
 		return;
 	}
-	const ring = await getOrBuildMediaRing();
-	if (!ring.isConfigured()) {
+	if (!ttsFalKeyConfigured()) {
 		new Notice('fal.ai API key not configured (Settings → AI → fal API key).', 6000);
 		return;
 	}
@@ -255,15 +271,22 @@ export async function generateTtsForActiveNote(): Promise<void> {
 		new Notice('Note is empty; nothing to synthesize.', 5000);
 		return;
 	}
+	const service = await getOrBuildMediaGenerationService();
 	const ui = openProgressNotice(`Generating TTS for ${file.basename}...`);
 	try {
-		const result = await ring.produce({
-			kind: 'tts',
-			prompt: text.slice(0, 8000),
-			sourceHint: `tts-${file.basename}`,
+		const outcome = await service.produce({
+			runId: `cmd-tts-${Date.now()}`,
+			request: {
+				kind: 'tts',
+				prompt: text.slice(0, 8000),
+				route: 'fal',
+				presetId: 'default',
+				sourceHint: `tts-${file.basename}`,
+			},
 		});
 		ui.hide();
-		new Notice(`TTS written to ${result.path} (${(result.bytesLength / 1024).toFixed(1)} KB)`, 8000);
+		const path = outcome.writtenPaths[0] ?? '(unknown path)';
+		new Notice(`TTS written to ${path}`, 8000);
 	} catch (err) {
 		ui.hide();
 		new Notice(`TTS failed: ${(err as Error).message}`, 10000);
@@ -277,8 +300,7 @@ export async function generateCoverImageForActiveNote(): Promise<void> {
 		new Notice('Open a note first.', 5000);
 		return;
 	}
-	const ring = await getOrBuildMediaRing();
-	if (!ring.isConfigured()) {
+	if (!ttsFalKeyConfigured()) {
 		new Notice('fal.ai API key not configured (Settings → AI → fal API key).', 6000);
 		return;
 	}
@@ -290,16 +312,23 @@ export async function generateCoverImageForActiveNote(): Promise<void> {
 		return;
 	}
 	const prompt = `Cover image for a note titled "${file.basename}". Content excerpt: ${summary}. Clean editorial illustration.`;
+	const service = await getOrBuildMediaGenerationService();
 	const ui = openProgressNotice(`Generating cover image for ${file.basename}...`);
 	try {
-		const result = await ring.produce({
-			kind: 'image',
-			prompt,
-			sourceHint: `cover-${file.basename}`,
-			aspectRatio: '16:9',
+		const outcome = await service.produce({
+			runId: `cmd-cover-${Date.now()}`,
+			request: {
+				kind: 'image',
+				prompt,
+				route: 'fal',
+				presetId: 'cover-hd',
+				aspectRatio: '16:9',
+				sourceHint: `cover-${file.basename}`,
+			},
 		});
 		ui.hide();
-		new Notice(`Cover image written to ${result.path}`, 8000);
+		const path = outcome.writtenPaths[0] ?? '(unknown path)';
+		new Notice(`Cover image written to ${path}`, 8000);
 	} catch (err) {
 		ui.hide();
 		new Notice(`Image generation failed: ${(err as Error).message}`, 10000);

@@ -1356,6 +1356,35 @@
   to { transform: rotate(360deg); }
 }
 
+/* ── pkchat-generate-panel ──────────────────────────────────────────────────
+   Inline generation form (image/video/music) opened from the `/` slash
+   palette. Rendered above the editor inside the composer shell — the same
+   focus owner still frames the surface. Vertical rhythm matches the context
+   shelf so the composer doesn't jump when the panel opens/closes.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:is(.pktw-root, .peak-design-root) .pkchat-generate-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pk-space-2);
+  padding: 8px 12px 10px;
+  border-bottom: 1px solid var(--pk-border-soft);
+  background: var(--pk-surface);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-generate-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pk-space-2);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-generate-panel__title {
+  font-size: var(--pk-text-sm);
+  font-weight: 600;
+  color: var(--pk-text-primary);
+}
+
 /* ── pkchat-runpop ──────────────────────────────────────────────────────────
    Run settings popover anchored to the run chip. Layout primitives (section
    labels, segmented mode selector) reuse PR-0 atoms where possible.
@@ -7391,3 +7420,148 @@
   width: 17px;
   height: 17px;
 }
+
+/* B1 §5.2 R4 — inline permission-ask card. Minimal chrome; E2 will polish. */
+:is(.pktw-root, .peak-design-root) .pkchat-permission-ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pk-space-2);
+  padding: var(--pk-space-3) var(--pk-space-4);
+  margin: var(--pk-space-2) auto;
+  width: min(100%, var(--pk-chat-reading-width));
+  background: var(--pk-surface-raised);
+  border: 1px solid var(--pk-border);
+  border-radius: var(--pk-radius-md);
+  box-shadow: var(--pk-shadow-card);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-permission-ask__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pk-space-1);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-permission-ask__title {
+  font-weight: 600;
+  color: var(--pk-text-primary);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-permission-ask__tool {
+  font-family: var(--pk-font-mono);
+  color: var(--pk-text-secondary);
+}
+:is(.pktw-root, .peak-design-root) .pkchat-permission-ask__args {
+  margin: 0;
+  padding: var(--pk-space-2);
+  background: var(--pk-surface-sunken);
+  border-radius: var(--pk-radius-sm);
+  color: var(--pk-text-secondary);
+  font-family: var(--pk-font-mono);
+  overflow: auto;
+  max-height: 120px;
+  white-space: pre-wrap;
+}
+:is(.pktw-root, .peak-design-root) .pkchat-permission-ask__actions {
+  display: flex;
+  gap: var(--pk-space-2);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Assistant variant switcher — compact ‹ 1/2 › mounted inside the ACTIVE
+ * bubble (spec §7.7). Non-active variant bubbles are hidden entirely via
+ * `[data-variant-active="false"]` below, so only the active member's
+ * switcher renders. Density matches action-row (28–34px row, tiny font).
+ * ─────────────────────────────────────────────────────────────────────── */
+:is(.pktw-root, .peak-design-root) .pkchat-msg__variant-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pk-space-1);
+  height: 20px;
+  padding: 0 var(--pk-space-1);
+  border-radius: var(--pk-radius-sm);
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-font-size-2xs, 10px);
+  line-height: 1;
+  user-select: none;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-msg__variant-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  border-radius: var(--pk-radius-xs, 3px);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-msg__variant-nav svg {
+  width: 12px;
+  height: 12px;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-msg__variant-nav:hover:not(:disabled) {
+  background: var(--pk-surface-hover);
+  color: var(--pk-text-primary);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-msg__variant-nav:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-msg__variant-count {
+  min-width: 24px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Non-active variant bubbles collapse entirely. Because the switcher is
+ * rendered inside every variant, the switcher inside the active bubble
+ * stays visible while its inactive siblings disappear from the flow.
+ * MessageListRenderer must NOT rely on the inactive variant's DOM being
+ * measurable — the display:none also removes it from layout. */
+:is(.pktw-root, .peak-design-root) .pkchat-msg[data-variant-active="false"] {
+  display: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Header branch chip — compact "branched from …" pill matching the mock.
+ * ─────────────────────────────────────────────────────────────────────── */
+:is(.pktw-root, .peak-design-root) .pkchat-header__branch-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pk-space-1);
+  height: 20px;
+  padding: 0 var(--pk-space-1-5, 6px);
+  border-radius: var(--pk-radius-full, 9999px);
+  background: var(--pk-surface-sunken);
+  border: 1px solid var(--pk-border-soft);
+  color: var(--pk-text-secondary);
+  font-size: var(--pk-font-size-xs, 11px);
+  line-height: 1;
+  cursor: pointer;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-header__branch-chip:hover {
+  background: var(--pk-surface-hover);
+  color: var(--pk-text-primary);
+  border-color: var(--pk-border);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Trace fallback — when the assistant produced only text but has a debug
+ * run, the Trace action still needs a target. This wraps the AgentTrace
+ * anchor in a compact affordance that doesn't intrude on the surrounding
+ * message layout.
+ * ─────────────────────────────────────────────────────────────────────── */
+:is(.pktw-root, .peak-design-root) .pkchat-msg__trace-fallback {
+  margin-top: var(--pk-space-1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pk-space-1);
+}
+

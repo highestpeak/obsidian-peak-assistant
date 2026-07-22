@@ -1,11 +1,21 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ChatMessage, ChatResourceRef } from '@/service/chat/types';
 import { ResourceKind } from '@/core/document/types';
 import { cn } from '@/ui/react/lib/utils';
-import { Globe } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileImage, Globe, X } from 'lucide-react';
 import { ResourcePreviewHover } from '@/ui/component/mine';
 import { isUrl, getExtensionFromSource } from '@/core/document/helper/FileTypeUtils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
+import { useChatStudioStrings } from '../../chatStudioStringsContext';
+import { resolveUnderstandingBadge } from './attachmentUnderstandingBadge';
+export { resolveUnderstandingBadge } from './attachmentUnderstandingBadge';
+// Pure MSG-02 layout classifier — re-exported for tree-shaking + testability.
+export {
+	decideImageLayout,
+	type ImageLayoutKind,
+	type ImageLayoutDecision,
+} from './attachmentImageLayout';
 
 /**
  * MessageAttachmentsList — renders the resource cluster attached to a chat
@@ -114,20 +124,59 @@ export const MessageAttachmentsList: React.FC<{
 	const { vaultNavigation } = useServiceContext();
 	const resources = message.resources ?? [];
 	const groups = useMemo(() => classify(resources), [resources]);
+	const rootRef = useRef<HTMLDivElement>(null);
+	const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+	const strings = useChatStudioStrings();
+
+	const openImage = useCallback((image: ChatResourceRef) => {
+		const idx = groups.images.findIndex((r) => r.id === image.id);
+		setLightboxIndex(idx >= 0 ? idx : 0);
+	}, [groups.images]);
 
 	const handleOpen = useCallback<OpenHandler>(async (resource) => {
 		const src = resource.source;
+		if (resource.kind === 'image') {
+			openImage(resource);
+			return;
+		}
 		if (isUrl(src)) {
 			vaultNavigation.openExternalUrl(src);
 			return;
 		}
 		await vaultNavigation.openVaultPath(src);
-	}, [vaultNavigation]);
+	}, [vaultNavigation, openImage]);
+
+	// A11Y-01 lightbox keyboard nav (Escape / ArrowLeft / ArrowRight),
+	// detached-window safe via the root element's ownerDocument.
+	useEffect(() => {
+		if (lightboxIndex === null) return;
+		const doc = rootRef.current?.ownerDocument ?? document;
+		const handler = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') { e.preventDefault(); setLightboxIndex(null); return; }
+			if (e.key === 'ArrowLeft') {
+				e.preventDefault();
+				setLightboxIndex((i) => (i === null ? null : (i - 1 + groups.images.length) % groups.images.length));
+			}
+			if (e.key === 'ArrowRight') {
+				e.preventDefault();
+				setLightboxIndex((i) => (i === null ? null : (i + 1) % groups.images.length));
+			}
+		};
+		doc.addEventListener('keydown', handler);
+		return () => doc.removeEventListener('keydown', handler);
+	}, [lightboxIndex, groups.images.length]);
 
 	if (resources.length === 0) return null;
 
+	const lightboxImage = lightboxIndex !== null ? groups.images[lightboxIndex] : null;
+	const lightboxTitle = lightboxImage
+		? (lightboxImage.displayName || lightboxImage.source.split('/').pop() || strings.messages.untitledFallback)
+		: '';
+	const portalDoc = rootRef.current?.ownerDocument ?? document;
+
 	return (
 		<div
+			ref={rootRef}
 			className={cn(
 				'pktw-flex pktw-flex-col pktw-gap-2 pktw-w-full pktw-min-w-0',
 				align === 'end' ? 'pktw-items-end pktw-ml-auto' : 'pktw-items-start pktw-mr-auto',
@@ -142,6 +191,66 @@ export const MessageAttachmentsList: React.FC<{
 			)}
 			{groups.files.length > 0 && (
 				<FileGroup files={groups.files} onOpen={handleOpen} />
+			)}
+			{lightboxImage && createPortal(
+				<div
+					className="pkchat-image-lightbox"
+					role="dialog"
+					aria-modal="true"
+					aria-label={lightboxTitle}
+					onClick={() => setLightboxIndex(null)}
+				>
+					<button
+						type="button"
+						className="pkchat-image-lightbox__close"
+						aria-label={strings.messages.closePreviewLabel}
+						title={strings.messages.closePreviewLabel}
+						onClick={() => setLightboxIndex(null)}
+					>
+						<X aria-hidden />
+					</button>
+					{groups.images.length > 1 && (
+						<>
+							<button
+								type="button"
+								className="pkchat-image-lightbox__nav pkchat-image-lightbox__nav--previous"
+								aria-label={strings.messages.previousPreviewLabel}
+								title={strings.messages.previousPreviewLabel}
+								onClick={(e) => {
+									e.stopPropagation();
+									setLightboxIndex((i) => (i === null ? null : (i - 1 + groups.images.length) % groups.images.length));
+								}}
+							>
+								<ChevronLeft aria-hidden />
+							</button>
+							<button
+								type="button"
+								className="pkchat-image-lightbox__nav pkchat-image-lightbox__nav--next"
+								aria-label={strings.messages.nextPreviewLabel}
+								title={strings.messages.nextPreviewLabel}
+								onClick={(e) => {
+									e.stopPropagation();
+									setLightboxIndex((i) => (i === null ? null : (i + 1) % groups.images.length));
+								}}
+							>
+								<ChevronRight aria-hidden />
+							</button>
+						</>
+					)}
+					<div className="pkchat-image-lightbox__stage" onClick={(e) => e.stopPropagation()}>
+						<img
+							src={lightboxImage.previewUri || lightboxImage.source}
+							alt={lightboxTitle}
+						/>
+						<span className="pkchat-image-lightbox__caption">
+							<span>{lightboxTitle}</span>
+							{groups.images.length > 1 && (
+								<span>{(lightboxIndex ?? 0) + 1} / {groups.images.length}</span>
+							)}
+						</span>
+					</div>
+				</div>,
+				portalDoc.body,
 			)}
 		</div>
 	);
@@ -241,32 +350,61 @@ interface ImageTileProps {
 
 function ImageTile({ image, onOpen, height, fullWidth, overlayText }: ImageTileProps) {
 	const alt = image.displayName || image.source.split('/').pop() || 'image';
+	const messageLabels = useChatStudioStrings().messages;
+	const understandingBadge = resolveUnderstandingBadge(image, messageLabels);
+	const [broken, setBroken] = useState(false);
 	return (
 		<ResourcePreviewHover resource={image} previewClassName="pktw-z-[100]">
-			<button
-				type="button"
-				className="pktw-relative pktw-overflow-hidden pktw-cursor-pointer pktw-border-0 pktw-p-0 pktw-bg-muted hover:pktw-opacity-90 pktw-transition-opacity"
-				style={{ height, width: fullWidth ? '100%' : undefined, borderRadius: 10 }}
-				onClick={(e) => {
-					e.stopPropagation();
-					void onOpen(image);
-				}}
-				aria-label={alt}
+			<div
+				className="pktw-flex pktw-flex-col pktw-gap-1"
+				style={{ width: fullWidth ? '100%' : undefined }}
 			>
-				<img
-					src={image.previewUri || image.source}
-					alt={alt}
-					className="pktw-w-full pktw-h-full pktw-object-cover pktw-block"
-				/>
-				{overlayText && (
+				<button
+					type="button"
+					className="pktw-relative pktw-overflow-hidden pktw-cursor-pointer pktw-border-0 pktw-p-0 pktw-bg-muted hover:pktw-opacity-90 pktw-transition-opacity"
+					style={{ height, width: fullWidth ? '100%' : undefined, borderRadius: 10 }}
+					onClick={(e) => {
+						e.stopPropagation();
+						void onOpen(image);
+					}}
+					aria-label={alt}
+				>
+					{broken ? (
+						<span
+							className="pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-gap-1 pktw-w-full pktw-h-full pktw-text-pk-text-tertiary"
+							data-testid="attachment-image-broken"
+							title={alt}
+						>
+							<FileImage aria-hidden style={{ width: 24, height: 24 }} />
+							<span className="pktw-text-pk-xs pktw-truncate pktw-max-w-full pktw-px-2">{alt}</span>
+						</span>
+					) : (
+						<img
+							src={image.previewUri || image.source}
+							alt={alt}
+							className="pktw-w-full pktw-h-full pktw-object-cover pktw-block"
+							onError={() => setBroken(true)}
+						/>
+					)}
+					{overlayText && (
+						<span
+							className="pktw-absolute pktw-inset-0 pktw-flex pktw-items-center pktw-justify-center pktw-text-white pktw-text-2xl pktw-font-semibold"
+							style={{ background: 'rgba(20, 20, 25, 0.55)' }}
+						>
+							{overlayText}
+						</span>
+					)}
+				</button>
+				{understandingBadge && (
 					<span
-						className="pktw-absolute pktw-inset-0 pktw-flex pktw-items-center pktw-justify-center pktw-text-white pktw-text-2xl pktw-font-semibold"
-						style={{ background: 'rgba(20, 20, 25, 0.55)' }}
+						className="pktw-text-pk-xs pktw-text-pk-text-tertiary pktw-truncate"
+						data-testid="attachment-understanding-badge"
+						title={understandingBadge}
 					>
-						{overlayText}
+						{understandingBadge}
 					</span>
 				)}
-			</button>
+			</div>
 		</ResourcePreviewHover>
 	);
 }
@@ -316,6 +454,8 @@ function FileCard({ resource, onOpen, compact }: FileCardProps) {
 	const filename = resource.displayName || resource.source.split('/').pop() || resource.source;
 	const badge = badgeStyleForKind(resource.kind, resource.source);
 	const badgePx = compact ? 30 : 36;
+	const messageLabels = useChatStudioStrings().messages;
+	const understandingBadge = resolveUnderstandingBadge(resource, messageLabels);
 	return (
 		<ResourcePreviewHover resource={resource} previewClassName="pktw-z-[100]">
 			<button
@@ -346,6 +486,15 @@ function FileCard({ resource, onOpen, compact }: FileCardProps) {
 					<div className="pktw-text-pk-md pktw-font-medium pktw-text-foreground pktw-truncate">
 						{filename}
 					</div>
+					{understandingBadge && (
+						<div
+							className="pktw-text-pk-xs pktw-text-pk-text-tertiary pktw-truncate"
+							data-testid="attachment-understanding-badge"
+							title={understandingBadge}
+						>
+							{understandingBadge}
+						</div>
+					)}
 				</div>
 			</button>
 		</ResourcePreviewHover>
@@ -360,6 +509,11 @@ interface FileChipProps {
 function FileChip({ resource, onOpen }: FileChipProps) {
 	const filename = resource.displayName || resource.source.split('/').pop() || resource.source;
 	const badge = badgeStyleForKind(resource.kind, resource.source);
+	const messageLabels = useChatStudioStrings().messages;
+	const understandingBadge = resolveUnderstandingBadge(resource, messageLabels);
+	const tooltip = understandingBadge
+		? `${resource.source} — ${understandingBadge}`
+		: resource.source;
 	return (
 		<ResourcePreviewHover resource={resource} previewClassName="pktw-z-[100]">
 			<button
@@ -370,13 +524,20 @@ function FileChip({ resource, onOpen }: FileChipProps) {
 					e.stopPropagation();
 					void onOpen(resource);
 				}}
-				title={resource.source}
+				title={tooltip}
 			>
 				<span
 					className="pktw-shrink-0 pktw-w-1.5 pktw-h-1.5 pktw-rounded-full"
 					style={{ background: badge.bg }}
 				/>
 				<span className="pktw-truncate">{filename}</span>
+				{understandingBadge && (
+					<span
+						className="pktw-shrink-0 pktw-w-1.5 pktw-h-1.5 pktw-rounded-full pktw-bg-pk-info"
+						aria-hidden="true"
+						data-testid="attachment-understanding-badge-dot"
+					/>
+				)}
 			</button>
 		</ResourcePreviewHover>
 	);

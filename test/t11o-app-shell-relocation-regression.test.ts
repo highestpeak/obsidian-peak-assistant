@@ -256,12 +256,14 @@ async function testReactElementFactoryThreadsAllPorts(): Promise<void> {
 	// The factory is now the single composition point — confirm it threads
 	// the new Track 6 ports.
 	const f = await readFile(path.join(SRC, 'app/ui-host/ReactElementFactory.tsx'), 'utf8');
+	// Note: `searchAgent` was retired in commit 03233e33 ("alien-code slimming
+	// wave") — DocSimpleAgent shortcut on ServiceContext went away with it.
+	// The remaining 7 symbols still trace the T11O Track 6 composition surface.
 	for (const sym of [
 		'vaultReviewRuntime',
 		'quickSearchBackgroundRuntime',
 		'aiAnalysisHistoryService',
 		'isMockEnv',
-		'searchAgent',
 		'settingsActions',
 		'analysisDocVaultWriter',
 		'reportSessionPort',
@@ -271,7 +273,7 @@ async function testReactElementFactoryThreadsAllPorts(): Promise<void> {
 			`ReactElementFactory must thread '${sym}' (T11O Track 6 — published on ServiceContext, must be sourced from AppContext at composition time).`,
 		);
 	}
-	console.log('PASS: reactElementFactoryThreadsAllPorts (8 Track 6 ports + 14 Track 5 inheritance points)');
+	console.log('PASS: reactElementFactoryThreadsAllPorts (7 Track 6 ports + 14 Track 5 inheritance points; searchAgent retired 03233e33)');
 }
 
 function testUiRawVaultOpFloorUnchanged(): void {

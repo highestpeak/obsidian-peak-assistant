@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Bot, Check, ChevronDown, Copy, MessageSquare, Pencil, Search, Sparkles, Trash2 } from 'lucide-react';
+import { Archive, ArchiveRestore, Bot, Check, ChevronDown, Copy, Eye, EyeOff, MessageSquare, Pencil, Search, Sparkles, Trash2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger, IconButton } from '@/ui/components/primitives';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useChatStudioStrings } from '../../chatStudioStringsContext';
 import { AssistantBuilderModal } from './AssistantBuilderModal';
 import { DEFAULT_ASSISTANT_ID, type ChatAssistantDefinition } from '@/core/types/chat-studio';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
+import { useEphemeralAssistantStore } from '../../store/ephemeralAssistantStore';
 
 /**
  * Assistant picker (chat-studio §8.6 / COMP-07).
@@ -26,25 +28,41 @@ export interface ComposerAssistantSelectorProps {
 export const ComposerAssistantSelector: React.FC<ComposerAssistantSelectorProps> = ({ assistantId, onSelect }) => {
 	const strings = useChatStudioStrings();
 	const { manager } = useServiceContext();
+	const activeConversationId = useChatDataStore((s) => s.activeConversation?.meta.id ?? null);
+	const ephemeralDraft = useEphemeralAssistantStore((s) =>
+		activeConversationId ? s.previews[activeConversationId] ?? null : null);
+	const setPreviewStore = useEphemeralAssistantStore((s) => s.setPreview);
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState('');
 	const [assistants, setAssistants] = useState<ChatAssistantDefinition[]>([]);
 	const [builderOpen, setBuilderOpen] = useState(false);
 	const [editing, setEditing] = useState<ChatAssistantDefinition | null>(null);
+	const [showArchived, setShowArchived] = useState(false);
 
 	const refresh = async () => {
-		const list = await manager.assistant.list();
+		const list = await manager.assistant.list(showArchived);
 		setAssistants(list);
 	};
 
 	useEffect(() => {
 		if (open) void refresh();
-	}, [open]);
+	}, [open, showArchived]);
 
 	const bound = assistantId && assistantId !== DEFAULT_ASSISTANT_ID
 		? assistants.find((a) => a.id === assistantId)
 		: undefined;
-	const isDefault = !bound;
+	// Ephemeral preview takes over the chip display but never persists — the
+	// underlying assistantId in conversation.meta stays intact so exiting
+	// preview instantly reverts to the durable binding.
+	const previewing = Boolean(ephemeralDraft);
+	const displayName = previewing ? ephemeralDraft?.name : bound?.name;
+	const isDefault = !previewing && !bound;
+
+	const exitPreview = () => {
+		if (!activeConversationId) return;
+		manager.conv.setEphemeralAssistant(activeConversationId, null);
+		setPreviewStore(activeConversationId, null);
+	};
 
 	const q = query.trim().toLowerCase();
 	const filtered = assistants.filter((a) =>
@@ -65,10 +83,20 @@ export const ComposerAssistantSelector: React.FC<ComposerAssistantSelectorProps>
 						className="pkchat-run-chip"
 						data-state={open ? 'open' : 'closed'}
 						data-nondefault={!isDefault ? 'true' : undefined}
+						data-preview={previewing ? 'true' : undefined}
 						aria-label={strings.composer.assistantDefaultLabel}
 					>
 						<Bot aria-hidden />
-						{!isDefault && <span className="pkchat-run-chip__mid">{bound?.name}</span>}
+						{!isDefault && displayName && (
+							<span className="pkchat-run-chip__mid">
+								{displayName}
+								{previewing && (
+									<span className="pktw-ml-1 pktw-text-pk-xs pktw-text-pk-accent-text">
+										· {strings.composer.assistantPreviewBadge}
+									</span>
+								)}
+							</span>
+						)}
 						<ChevronDown />
 					</button>
 				</PopoverTrigger>
@@ -82,6 +110,16 @@ export const ComposerAssistantSelector: React.FC<ComposerAssistantSelectorProps>
 							<span className="pktw-text-pk-xs pktw-text-pk-text-tertiary pktw-truncate">
 								{strings.composer.assistantPickerSubtitle}
 							</span>
+							{previewing && (
+								<button
+									type="button"
+									className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-pk-xs pktw-text-pk-accent-text pktw-mt-1"
+									onClick={() => { exitPreview(); setOpen(false); }}
+								>
+									<Eye className="pktw-w-3 pktw-h-3" />
+									{strings.composer.assistantPreviewClearLabel}
+								</button>
+							)}
 						</div>
 
 						<div className="pktw-flex-1 pktw-overflow-y-auto pktw-p-[7px]">
@@ -96,6 +134,16 @@ export const ComposerAssistantSelector: React.FC<ComposerAssistantSelectorProps>
 									placeholder={strings.composer.assistantPickerPlaceholder}
 									className="pktw-flex-1 pktw-min-w-0 pktw-bg-transparent pktw-border-0 pktw-outline-none pktw-text-pk-sm pktw-text-pk-text-primary placeholder:pktw-text-pk-text-tertiary"
 								/>
+								<button
+									type="button"
+									onClick={() => setShowArchived((v) => !v)}
+									aria-pressed={showArchived}
+									title={showArchived ? strings.leftColumn.menuArchive : strings.leftColumn.menuRestore}
+									aria-label={showArchived ? strings.leftColumn.menuArchive : strings.leftColumn.menuRestore}
+									className="pk-icon-btn"
+								>
+									<EyeOff className="pktw-w-3 pktw-h-3" />
+								</button>
 							</label>
 
 							{/* Built-in group — Default assistant */}
@@ -138,6 +186,11 @@ export const ComposerAssistantSelector: React.FC<ComposerAssistantSelectorProps>
 									<span className="pktw-hidden group-hover:pktw-flex pktw-items-center pktw-gap-0.5">
 										{rowAction(strings.leftColumn.menuRename, <Pencil />, () => { setEditing(assistant); setBuilderOpen(true); setOpen(false); })}
 										{rowAction(strings.composer.assistantDuplicate, <Copy />, async () => { await manager.assistant.duplicate(assistant.id); void refresh(); })}
+										{rowAction(
+											assistant.archived ? strings.leftColumn.menuRestore : strings.leftColumn.menuArchive,
+											assistant.archived ? <ArchiveRestore /> : <Archive />,
+											async () => { await manager.assistant.setArchived(assistant.id, !assistant.archived); void refresh(); },
+										)}
 										{rowAction(strings.leftColumn.menuDelete, <Trash2 />, async (e) => {
 											// Popout-safe confirm: resolve the window from the
 											// trigger's ownerDocument, never the global window (FIX 4).

@@ -77,9 +77,21 @@ export interface SettingsKnowledgeIndexActions {
 	compareSearchResults(): Promise<void>;
 }
 
+/**
+ * Optional deep-link into a specific settings tab. Passed from callers
+ * that resolved a `configureAction` (ArtifactReceiptCard, ComposerPlusMenu)
+ * through `resolveConfigureTab`. When omitted, the modal opens on its
+ * default (Overview) tab.
+ */
+export interface OpenSettingsOptions {
+	tab?: 'overview' | 'aiSetup' | 'knowledgeIndex' | 'tools' | 'mediaGeneration' | 'advanced';
+}
+
 export interface SettingsActions {
-	/** Open the plugin settings modal (legacy: T11N entry point). */
-	openSettings(): void;
+	/** Open the plugin settings modal (legacy: T11N entry point).
+	 * Task E1 — accepts an optional deep-link so `configureAction` on
+	 * receipts/composer routes users straight to the right tab. */
+	openSettings(options?: OpenSettingsOptions): void;
 	/** Activate the chat assistant view. */
 	openAssistant(): void;
 	setup: SettingsSetupActions;

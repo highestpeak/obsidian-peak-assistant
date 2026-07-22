@@ -141,6 +141,18 @@ export interface ModelCapabilities {
 	 */
 	pdfInput: boolean;
 	/**
+	 * Zero-gap C1 — whether the model natively accepts audio input as file
+	 * parts (Gemini 1.5+ family, GPT-4o audio). When false, the Composer
+	 * routes audio attachments through the transcription adapter first.
+	 */
+	audioInput?: boolean;
+	/**
+	 * Zero-gap C1 — whether the model natively accepts video input as file
+	 * parts (Gemini 1.5+ family). When false, the Composer falls back to
+	 * WebAudio audio extraction → transcription for video attachments.
+	 */
+	videoInput?: boolean;
+	/**
 	 * Whether the model supports function calling / tools
 	 */
 	tools: boolean;
@@ -211,6 +223,8 @@ export function resolveModelCapabilities(model?: { capabilities?: ModelCapabilit
 		return {
 			vision: model.capabilities.vision ?? false,
 			pdfInput: model.capabilities.pdfInput ?? false,
+			audioInput: model.capabilities.audioInput ?? false,
+			videoInput: model.capabilities.videoInput ?? false,
 			tools: model.capabilities.tools ?? false,
 			webSearch: model.capabilities.webSearch ?? false,
 			xSearch: model.capabilities.xSearch ?? false,
@@ -228,6 +242,8 @@ export function resolveModelCapabilities(model?: { capabilities?: ModelCapabilit
 	return {
 		vision: false,
 		pdfInput: false,
+		audioInput: false,
+		videoInput: false,
 		tools: false,
 		webSearch: false,
 		xSearch: false,
@@ -386,7 +402,15 @@ type RawUIStreamEvent =
 /** Agent loop stream events (plan progress, stats, debug). */
 type AgentStreamEvent =
 	{ type: 'agent-step-progress'; stepLabel: string; detail: string; taskIndex?: number; } |
-	{ type: 'agent-stats'; stats: any; };
+	{ type: 'agent-stats'; stats: any; } |
+	// B1 §5.2 R4 — Chat runtime forwards Harness permission asks + run-status
+	// transitions on the same stream so useStreamChat has one subscription
+	// surface. Payload mirrors `AgentLoopStreamEvent` for the corresponding
+	// harness event, minus loopId (Chat carries runId separately on the
+	// generator return).
+	{ type: 'chat-permission-request'; requestId: string; toolName: string; stepIndex: number; args?: unknown; reason?: string; } |
+	{ type: 'chat-permission-resolved'; requestId: string; decision: 'allow' | 'deny'; reason?: string; } |
+	{ type: 'chat-run-status'; state: 'running' | 'waiting-permission' | 'completed' | 'failed' | 'cancelled' | 'timeout'; reason?: string; };
 
 export type LLMStreamEvent =
 	(RawStreamEvent | RawUIStreamEvent | AgentStreamEvent) & {

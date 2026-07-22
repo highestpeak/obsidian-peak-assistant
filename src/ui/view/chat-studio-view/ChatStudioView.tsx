@@ -182,6 +182,9 @@ const ChatStudioPanelInner: React.FC = () => {
 					{!leftDrawerOnly && (
 						<StudioResizerHandle
 							ariaLabel={shell.resizeLeftLabel}
+							valueNow={pref.leftWidth}
+							valueMin={LEFT_LIMITS.min}
+							valueMax={LEFT_LIMITS.max}
 							onResize={onLeftResize}
 							onReset={onLeftReset}
 						/>
@@ -208,6 +211,9 @@ const ChatStudioPanelInner: React.FC = () => {
 				<>
 					<StudioResizerHandle
 						ariaLabel={shell.resizeRightLabel}
+						valueNow={pref.rightWidth}
+						valueMin={RIGHT_LIMITS.min}
+						valueMax={RIGHT_LIMITS.max}
 						onResize={onRightResize}
 						onReset={onRightReset}
 					/>
@@ -240,18 +246,26 @@ interface StudioResizerHandleProps {
 	onResize: (dx: number) => void;
 	onReset: () => void;
 	step?: number;
+	valueNow?: number;
+	valueMin?: number;
+	valueMax?: number;
 }
 
 /**
  * Splitter with mouse drag (owner-document aware for detached windows),
  * keyboard nudge (ArrowLeft / ArrowRight, 4px step by default), and
- * double-click reset (SHELL-03).
+ * double-click reset (SHELL-03). Home / End jump to min / max width.
+ * ARIA valuemin/valuemax/valuenow published so screen readers can announce
+ * the current column width.
  */
 const StudioResizerHandle: React.FC<StudioResizerHandleProps> = ({
 	ariaLabel,
 	onResize,
 	onReset,
 	step = 4,
+	valueNow,
+	valueMin,
+	valueMax,
 }) => {
 	const lastXRef = useRef<number | null>(null);
 	const [dragging, setDragging] = useState(false);
@@ -302,8 +316,18 @@ const StudioResizerHandle: React.FC<StudioResizerHandleProps> = ({
 		} else if (e.key === 'ArrowRight') {
 			e.preventDefault();
 			onResizeRef.current(step);
+		} else if (e.key === 'Home' && valueMin !== undefined && valueNow !== undefined) {
+			e.preventDefault();
+			onResizeRef.current(valueMin - valueNow);
+		} else if (e.key === 'End' && valueMax !== undefined && valueNow !== undefined) {
+			e.preventDefault();
+			onResizeRef.current(valueMax - valueNow);
+		} else if (e.key === 'Enter' || e.key === ' ') {
+			// Double-click equivalent from keyboard: reset to default.
+			e.preventDefault();
+			onReset();
 		}
-	}, [step]);
+	}, [step, valueMin, valueMax, valueNow, onReset]);
 
 	return (
 		<div
@@ -311,6 +335,9 @@ const StudioResizerHandle: React.FC<StudioResizerHandleProps> = ({
 			tabIndex={0}
 			aria-orientation="vertical"
 			aria-label={ariaLabel}
+			aria-valuemin={valueMin}
+			aria-valuemax={valueMax}
+			aria-valuenow={valueNow !== undefined ? Math.round(valueNow) : undefined}
 			className="pkchat-studio__splitter"
 			data-dragging={dragging ? 'true' : undefined}
 			onMouseDown={handleMouseDown}

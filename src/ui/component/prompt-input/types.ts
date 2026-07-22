@@ -5,7 +5,7 @@ export interface FileAttachment {
 	id: string;
 	file: File;
 	preview?: string; // Data URL for images
-	type: 'image' | 'file' | 'pdf';
+	type: 'image' | 'file' | 'pdf' | 'audio' | 'video';
 	hash?: string; // File hash for deduplication
 }
 

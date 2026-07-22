@@ -7,11 +7,15 @@ import { useChatStudioStrings } from '../../chatStudioStringsContext';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 
 /**
- * `+` menu — SOLE owner of resource attachment entry points (chat-studio
+ * `+` menu — SOLE owner of INPUT-SIDE RESOURCE entry points (chat-studio
  * §8.3 / COMP-03): files/images (native dialog), Vault document (reuses the
- * `[[` picker by inserting the trigger), external link (adds a url
- * ExplicitContextRef chip). Rows carry a monogram icon box + title + purpose
- * subtitle per the composer mock. No workflow or source toggles here.
+ * `[[` picker), external link (adds a url ExplicitContextRef chip). Rows
+ * carry a monogram icon box + title + purpose subtitle per the composer mock.
+ *
+ * Generation actions (Generate image / video / music) live on the `/` slash
+ * palette (workflow + action surface) — NOT here. Keeping the `+` menu
+ * strictly to "materials the user brings in" means the two entry points
+ * cannot mint duplicate items, and the mental model is one-hop clear.
  */
 
 export interface ComposerPlusMenuProps {
@@ -24,8 +28,15 @@ const MenuRow: React.FC<{
 	title: string;
 	description: string;
 	onClick: () => void;
-}> = ({ icon, title, description, onClick }) => (
-	<button type="button" className="pkchat-plusmenu__row" onClick={onClick}>
+	disabled?: boolean;
+}> = ({ icon, title, description, onClick, disabled }) => (
+	<button
+		type="button"
+		className="pkchat-plusmenu__row"
+		onClick={onClick}
+		disabled={disabled}
+		aria-disabled={disabled}
+	>
 		<span className="pkchat-plusmenu__mono">{icon}</span>
 		<span className="pktw-min-w-0">
 			<span className="pktw-block pktw-truncate pktw-text-pk-sm pktw-font-semibold pktw-text-pk-text-primary">{title}</span>
@@ -58,14 +69,23 @@ export const ComposerPlusMenu: React.FC<ComposerPlusMenuProps> = ({ insertAtCare
 	};
 
 	return (
-		<Popover open={open} onOpenChange={(next) => { setOpen(next); if (!next) { setLinkMode(false); setLinkValue(''); } }}>
+		<Popover
+			open={open}
+			onOpenChange={(next) => {
+				setOpen(next);
+				if (!next) {
+					setLinkMode(false);
+					setLinkValue('');
+				}
+			}}
+		>
 			<PopoverTrigger asChild>
 				<IconButton label={strings.composer.attachMenuLabel} title={strings.composer.attachMenuLabel}>
 					<Plus />
 				</IconButton>
 			</PopoverTrigger>
 			<PopoverContent align="start" side="top" sideOffset={8} className="pktw-p-0">
-				<div className="pktw-w-[280px] pktw-p-1">
+				<div className="pktw-w-[320px] pktw-p-1">
 					<MenuRow
 						icon={<Paperclip className="pktw-w-3.5 pktw-h-3.5" />}
 						title={strings.composer.attachFilesLabel}

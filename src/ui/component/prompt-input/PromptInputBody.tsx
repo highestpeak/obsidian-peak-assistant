@@ -112,6 +112,12 @@ export interface PromptInputEditorHandle {
 	setValue: (text: string) => void;
 	getValue: () => string;
 	isFocused: () => boolean;
+	/**
+	 * Return the underlying DOM element (CodeMirror view root) so callers can
+	 * resolve `ownerDocument` / `ownerDocument.defaultView` and stay
+	 * detached-window-safe (§5.3). Returns `null` before the view mounts.
+	 */
+	getRootElement: () => HTMLElement | null;
 }
 
 /**
@@ -200,6 +206,7 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 		},
 		getValue: () => getView()?.state.doc.toString() ?? '',
 		isFocused: () => getView()?.hasFocus ?? false,
+		getRootElement: () => (getView()?.dom as HTMLElement | undefined) ?? null,
 	}), [focusEditor, getView]);
 
 	// ----- Shared: compute menu position from trigger coords -----

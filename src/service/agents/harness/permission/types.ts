@@ -11,8 +11,10 @@ import type { ToolDef } from '../tool/types';
 export type PermissionMode =
     /** Read-only. Any tool that mutates state is rejected. */
     | 'read'
-    /** Auto-approve edit-class tools, ask for everything else. M2: no ask UI yet → equivalent to allow. */
+    /** Auto-approve edit-class tools, ask for everything else. */
     | 'acceptEdits'
+    /** Ask the user for every mutating tool; read tools still auto-allowed. */
+    | 'ask'
     /** Skip user prompts; deny rules still enforced. */
     | 'bypassPermissions';
 
@@ -30,7 +32,11 @@ export type ToolKind = 'read' | 'edit' | 'destructive' | 'meta';
 export interface PermissionRule {
     /** Matches against tool name. String → exact match; RegExp → pattern. */
     tool: string | RegExp;
-    effect: 'allow' | 'deny';
+    /**
+     * effect='ask' escalates the decision to an out-of-band resolver
+     * (`AgentLoopConfig.resolvePermissionAsk`); no resolver → denied by default.
+     */
+    effect: 'allow' | 'deny' | 'ask';
     /** Optional predicate against the tool args; if provided must return true to match. */
     when?: (args: unknown) => boolean;
     /** Human-readable reason, surfaced to the model when denied. */
@@ -44,7 +50,15 @@ export interface PermissionDecisionDeny {
     decision: 'deny';
     reason: string;
 }
-export type PermissionDecision = PermissionDecisionAllow | PermissionDecisionDeny;
+export interface PermissionDecisionAsk {
+    decision: 'ask';
+    /** Optional human-readable prompt to render alongside the tool name. */
+    reason?: string;
+}
+export type PermissionDecision =
+    | PermissionDecisionAllow
+    | PermissionDecisionDeny
+    | PermissionDecisionAsk;
 
 export interface PermissionConfig {
     mode: PermissionMode;

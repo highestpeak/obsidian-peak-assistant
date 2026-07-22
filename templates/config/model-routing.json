@@ -1,0 +1,28 @@
+{
+	"$schema": "./model-routing.schema.json",
+	"description": "Auto-model routing strategy (chat-studio §8.5, COMP-05). Task/context signals map to required capabilities; models are scored on tier preference. Empty candidate list = configuration error surfaced to UI, never a silent bad pick.",
+	"version": 1,
+	"tiers": [
+		{ "id": "reasoning", "preferOrder": ["openai:o3", "openai:o4-mini", "anthropic:claude-4-opus"], "when": { "longContext": true } },
+		{ "id": "vision", "preferOrder": ["anthropic:claude-4-sonnet", "openai:gpt-5", "google:gemini-2.5-pro"], "when": { "vision": true } },
+		{ "id": "tools-general", "preferOrder": ["anthropic:claude-4-sonnet", "openai:gpt-5", "anthropic:claude-4-haiku"], "when": { "toolsNeeded": true } },
+		{ "id": "general-chat", "preferOrder": ["anthropic:claude-4-sonnet", "openai:gpt-5", "anthropic:claude-4-haiku", "google:gemini-2.5-flash"], "when": {} }
+	],
+	"routing": {
+		"contextWindowSafetyFactor": 0.75,
+		"longContextRatioThreshold": 0.5,
+		"assistantPreferredWinsOverAuto": true
+	},
+	"messages": {
+		"visionRequired": "attachments include an image; picked a vision-capable model",
+		"pdfRequired": "attachments include a PDF; picked a model that accepts PDF input",
+		"toolsRequired": "tools are enabled for this turn; picked a tool-capable model",
+		"longContextRequired": "long input approaches the model context limit; picked a larger-context model",
+		"assistantPreferred": "assistant preferredModel used ({profile} / {model})",
+		"generalChat": "no special requirements; picked general chat model",
+		"tierMatch": "matched tier {tier}",
+		"fallbackTier": "no exact tier match; used {tier} fallback",
+		"noCandidates": "no enabled Profile/model satisfies the required capabilities — configure a Profile with a model that supports: {requirements}",
+		"preferredUnavailable": "assistant preferred model unavailable ({profile}/{model}); fell back to Auto"
+	}
+}

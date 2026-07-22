@@ -10,6 +10,7 @@ import type { ProfileSettings, RoleConfig } from '@/core/profiles/types';
 import type { AmbientPushSettings } from '@/core/types/ambient';
 import type { MCPServerConfig } from '@/core/types/mcp';
 import type { IndexLevel } from '@/core/search/indexTypes';
+import type { MediaExecutionRoute, MediaKind } from '@/core/types/media-generation';
 import {
 	DEFAULT_AI_ROOT_FOLDER,
 	getAIAnalysisFolder,
@@ -160,6 +161,61 @@ export interface AIServiceSettings {
 	falApiKey?: string;
 	/** Vault-relative folder where MediaRingService writes generated attachments. Default: `_attachments/media`. */
 	mediaAttachmentFolder?: string;
+	/**
+	 * Task E1 — user-editable overlay on top of the compiled
+	 * `templates/config/media-generation.json`. Populated by the
+	 * Settings → Media Generation tab; merged into the resolved
+	 * MediaGenerationConfig at boot / hot-reload via
+	 * `applyMediaSettingsOverlay`. Presence of any field means "user
+	 * override"; absence means "use config default". All fields optional
+	 * so a data.json written before E1 stays valid.
+	 */
+	mediaDefaults?: MediaSettingsOverride;
+}
+
+/**
+ * User overlay for Media Generation settings.
+ *
+ * Storage decision (Task E1): the compiled `templates/config/media-generation.json`
+ * remains the CANONICAL source for every static tuple (presets table,
+ * OpenAI adapter timings, poll intervals, string templates). This overlay
+ * stores only the small set of user-editable fields the UI can toggle
+ * WITHOUT re-emitting the whole config file. The overlay is merged into
+ * the resolved config once, inside the app-level `loadConfig` closure —
+ * downstream readers (preflight / adapters / probe) still see a single
+ * shape and are unaware of the split.
+ *
+ * Persisted in `data.json` under `ai.mediaDefaults`; missing on old
+ * installs → readers see the raw compiled defaults.
+ */
+export interface MediaSettingsOverride {
+	/** Overrides `MediaGenerationConfig.defaultRoute`. */
+	defaultRoute?: MediaExecutionRoute;
+	/** Preferred OpenAI profile id for the native route (see openaiNativeAvailabilityProbe). */
+	nativeProfileId?: string;
+	/** Per-kind default preset id override (must exist in the config's `presets[kind]` map). */
+	defaultPresetIds?: Partial<Record<MediaKind, string>>;
+	/** Small subset of preset field overrides (model id + bounds). Never a whole preset table. */
+	presetOverrides?: Partial<Record<MediaKind, {
+		model?: string;
+		aspectRatio?: string;
+		quantity?: number;
+		durationSeconds?: number;
+		maxDurationSeconds?: number;
+		voice?: string;
+	}>>;
+	/** Epoch ms of the last "Validate configuration" click; UI shows relative time. */
+	lastValidatedAt?: number;
+	/**
+	 * Zero-gap E — music licensing acceptance. Persisted after the user
+	 * checks the confirm-cost box on their first music generation. Keyed
+	 * by `musicLicensingPolicyVersion` from `templates/config/settings.json`
+	 * so bumping the policy re-prompts everyone.
+	 */
+	musicLicensingAccepted?: {
+		policyVersion: string;
+		confirmedAt: number;
+	};
 }
 
 export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {

@@ -163,6 +163,7 @@ function turn(
 			vaultDocuments: [],
 			webQueries: [],
 			webSources: [],
+			explicitRefsUsed: [],
 		},
 		status: 'completed',
 		artifactIds: [],
@@ -524,6 +525,7 @@ flowchart LR
 				vaultDocuments: [{ id: 'gallery-vault-source', path: 'kb/product/Chat Studio 设计说明.md', title: 'Chat Studio 设计说明' }],
 				webQueries: [],
 				webSources: [],
+				explicitRefsUsed: [],
 			},
 		}),
 		turn(conversationId, ids.code, base + 3 * minute, {
@@ -533,6 +535,7 @@ flowchart LR
 				vaultDocuments: [{ id: 'gallery-code-source', path: 'kb/ui/Message tokens.md', title: 'Message tokens' }],
 				webQueries: ['Mermaid accessibility'],
 				webSources: [{ id: 'gallery-web-source', url: 'https://mermaid.js.org/', title: 'Mermaid' }],
+				explicitRefsUsed: [],
 			},
 		}),
 		turn(conversationId, ids.agent, base + 5 * minute, { runId: debugRunId }),

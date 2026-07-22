@@ -8,6 +8,23 @@
 
 Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding → 配置 → Chat → Search → Graph 每个环节都能跑通，体验完整。同时推进技术债清理和架构重构。
 
+## 2026-07-21 晚 · Chat Studio 零缺口收口（9 track + runner 修复）
+
+- [x] **Track 1 · Auto 真实路由**：新 `src/service/chat/modelRouter.ts`（纯函数：能力过滤 + tier 策略）+ `templates/config/model-routing.json`（ConfigTemplateId.ModelRouting）；接线 `service-conversation.prepareChatRequest`；auto sentinel 持久化不回写；`TurnExecutionReceipt` 增 `requestedSelection/modelSource/routeReason/requiredCapabilities`；零候选硬错误。测试 `test/model-router.test.ts`。
+- [x] **Track 2 · Composer 单一真值**：`CapabilitySuggestion` 归轨 `composerStore`；`SystemPromptSlot` 不再硬编码 vault 可用；`ChatRuntimeStatePort.isVaultSearchAvailable`（`main.ts` 真值注入）；requested vs actual sources 分开持久化。诚实遗留：`chatViewStore` 旧字段保留为 composer→legacy 单向镜像（port 仍读），未全删。测试 `test/composer-source-truth.test.ts`。
+- [x] **Track 3 · Composer 入口语义**：`+` 仅资源三项（Files & images / Vault document / Link）；生成动作（image/edit/video/music/document）全部迁入 `/` slash Generate 组（宿主 `ComposerGenerateActions.tsx`，preflight/缺 key 诚实禁用逐路由原因）；`[[` 不变；`@` 保留未占用；starter 只填不发。实机截图验证。测试 `test/composer-entry-semantics.test.ts`。
+- [x] **Track 4 · Assistant Builder**：Advanced 区（`knowledgeRefs / toolPolicy` allow+deny / `preferredModel`）；生命周期 create/edit/duplicate/archive+restore/delete/reset defaults；**preview = ephemeral apply-without-saving**（`EphemeralAssistantRegistry` 内存级，resolver 优先，reload 消失，selector "Preview" 徽标）；Save 才持久化。测试 `test/assistant-builder-lifecycle.test.ts`。
+- [x] **Track 5 · Artifact-Turn 关联**：`TurnExecutionReceipt.artifactIds` 真实回填（`listArtifactReceiptsByMessage`）；repo 按 message/conversation/project/kind 查询；Gallery fixture 确认 dev-only。测试 `test/artifact-turn-association.test.ts`。
+- [x] **Track 6 · 媒体全量**：edit contract（`operation/referenceImages/maskImage` + `MediaReferenceResolver` port + `VaultMediaReferenceResolver`）；OpenAI `/v1/images/edits` multipart（`image[]/mask`，per-model part 名）；`OpenAINativeVideoAdapter`（Sora `/v1/videos` submit/poll/download，无远程 cancel→本地停）；fal edit codecs（`nano-banana/edit` `image_urls`、`flux-pro/v1/fill` `image_url+mask_url`，data URI 直传）；共享 `falPayload.ts` 消除双 adapter 漂移；batch 多输出 → N 独立 receipt + gallery；**runner 修复 latent bug**（此前 submit 传 domain request 无 `modelId`，真实调用必炸）；Composer Edit image 表单（refs 确定性来自用户选择，直接调 `service.produce`，Insert-as-reference 动作）；音视频理解链路（`MediaUnderstandingPort` / `OpenAITranscriptionAdapter` `whisper-1` 可配、`WebAudioVideoAudioExtractor` → 16k WAV、Gemini catalog 标注 `videoInput/audioInput`、发送前门禁、`ChatResourceRef.understandingSource` 4 字段 + UI 徽标）；Usage Dashboard "Media generation · run detail"（恒标 estimated）；music terms 首次确认（`policyVersion/confirmedAt` 入 settings + receipt）；Settings 矩阵 generate/edit × kind × route。测试 ~10 个 media 新文件。
+- [x] **Track 7 · 结构化产物**：`artifact_create` ToolDef（`kind='edit'` 走 PermissionGuard）+ 5 producer（Dataview `.md` fence 校验 / Excalidraw 有效 `.excalidraw.md` / drawio 有效 XML / Extract 带来源链接 / Reminder frontmatter + `ReminderSchedulerService` 到期弹 Notice + 文件 status→done 原位翻转）；`ChatArtifactKind` 增 `dataview/extract/reminder`，渲染 / Resources / Outline 全认；`folderPaths` 增 Artifacts/* 子目录；config `templates/config/artifact-create.json`。测试 `test/artifact-create-producers.test.ts`（15 场景）等。
+- [x] **Track 8 · 消息动作**：registry 优先级 + 反向 overflow（core 5 永不进 More）；Trace 打开真实 `AgentTrace`（copy JSON 降级）；**Retry → variant 版本化**（`variantGroupId/variantIndex/isActiveVariant`，history 只取 active，‹N/M› 切换器）；**Branch → 真分支**（`parentConversationId/parentMessageId`，"Branched from" 链回）；permission 三态（deny / allow once / allow-for-run，run 级 allowlist 在 `useStreamChat`）；suggested next 顶部 ≤ 2 只填 Composer；targeted follow-up 用主 Composer reply anchor。测试 3 个新文件。
+- [x] **Track 9 · Detached / A11y**：`useOwnerWindow` hook + 9 处 `ownerDocument` 修复（键盘 / drop / confirm / lightbox / scroll-spy）；splitter aria + Home/End/Enter reset；`NavRow` 键盘化；msg-list `role="log"` `aria-live`；图片布局分档纯函数 + lightbox；scroll-spy 随消息增删 re-observe；Track 7 CSS 补齐。测试 2 个新文件。
+- [x] **Runner 修复（重大）**：`run-test.js` 原 harness `require; setImmediate(exit 0)` 会强杀 async 断言 → 假绿。改为 `beforeExit` 自然退场 + `unhandledRejection` 硬失败 + 8s unref 宽限。**暴露 6 个长期假绿失败并全部修复**：AgentLoop reasoning（测试 fixture 字段错）、highlight-source-resolver `chunk_raw` 回退（生产 bug，按 2026-07-07 spec 修）、t11n/o/p/q 过时路径断言 + **`CopilotPickerContent` ui→app 真实回归**（修生产：`ServiceContext` 注入 `copilotActionRuntime`，floor 收紧回 0）。
+- [x] **测试与实机**：**264/264 test files 绿**、`npm run build` 绿、`node docs/gstack/chat-studio-interactive-2026-07-13/validate.mjs` 通过；Obsidian 1.12.7 CDP 驱动实机验收（截图在 `/tmp/peak-acceptance/`）核心面通过：boot 无 Chat Studio 错误、COMP-01 DOM 恰 1 Composer、空态居中、Auto 标签、starters 只填不发、`/` 面 WORKFLOW + GENERATE 缺 key 诚实禁用、`+` 面仅三资源、Settings Media Generation 矩阵含 Op 维度、Usage Outcome Value "Media generation · run detail" 区 + "Cost is a preset estimate — never a settled bill" 空态、console 无本轮新增错误。
+- [x] **凭据阻塞**：fal key 未配、OpenAI profile 未配、OpenRouter 欠费（402）→ 真实付费 image/edit/video(Sora+veo)/music/TTS/transcription 调用、MEDIA-04 九步、CORS 实测、真实流式 turn E2E 均待 owner 凭据。见 [capability checklist §5.5 凭据阻塞项](./testing/chat-studio-capability-checklist.md#55-凭据阻塞项-credential-blocked-2026-07-21-晚)。
+- [x] **诚实遗留**：(a) `chatViewStore` 旧 source 字段单向镜像未全删；(b) allow-for-run 仅 `useStreamChat` 层强制；(c) 原始拖拽附件（未入 vault）不能作 edit base（resolver 需稳定标识）；(d) 实机人工矩阵未跑部分：detached popout 键盘全流程、light/dark 双主题、894/1440 视口、125% zoom、VoiceOver（Track 8 代理留了 10 条人工检查点清单）；(e) "Generate document" 是 workflow fill 语义（非独立表单）。
+- [x] **交付材料**：本 session 未 commit（129 tracked files +13.5k/−11.9k + 新增文件）；final implementation note 在 `docs/superpowers/plans/2026-07-21-chat-zero-gap-closure-delivery.md`；能力清单迁移在 [`docs/testing/chat-studio-capability-checklist.md`](./testing/chat-studio-capability-checklist.md)；spec §17 46 个 ID 逐项状态见 [implementation spec §17](./superpowers/specs/2026-07-15-chat-studio-complete-implementation-spec.md#17-requirement-验收矩阵)。
+
 ## 2026-07-20 · Chat Studio UI completion
 
 - [x] Message hierarchy：Reasoning 保持轻量 disclosure；历史与流式 tool calls 统一进入独立 Agent Run，多个步骤自动展开；Diagnostic Trace 仅在真实 spans 存在时出现。
@@ -2477,3 +2494,42 @@ Outline/Resources 双 tab；`outlineModel.ts` 纯模型（topic 分组、process
 
 - 定向测试：11 个 Chat Studio / code-theme 测试全部通过；新增 `user-profile-init-race` 通过。
 - `npm run test`：211 / 211 通过；`npm run build` 与 bundle syntax check 通过。仅有 Browserslist 数据过期提示，不影响构建。
+
+## 2026-07-21 · Chat Runtime 与生成能力闭环(handoff 2026-07-20 全量交付)
+
+**上下文**:按 `docs/superpowers/plans/2026-07-20-chat-runtime-capability-closure-claude-handoff.md` 在同一 session 完成 Stage 0 只读差距审计 + Track A–E 全部实施。subagent-driven 流程:11 个任务逐个 opus 实施 → sonnet review → 修复回环(8 轮 fix,3 个 Critical),终审 opus 全分支 review 判定 Ready to merge。**未 commit**,HEAD 仍 `726f494a`;并行 session 的 composer-sidecar docs 改动原样保留。交付细节全文见 `docs/superpowers/plans/2026-07-21-chat-runtime-capability-closure-delivery.md`。
+
+### Track A · Runtime 统一
+- characterization tests(8)锁旧行为 → `AgentLoop` 升级 `streamText` 流式引擎(`onStreamEvent` 单订阅点 + permission-ask 地基,8 个既有 harness 测试零弱化)→ `ConversationService.streamChat()` 迁到唯一 Harness 运行时(`harnessChatRunner.ts` 事件翻译层,Vercel tool loop 退役)。
+- run id 贯通(RunEnvelope=AgentLoop=trace=TurnExecutionReceipt.runId,修复从未填写的旧 bug);修复 `useStreamChat` 吞 error 事件、abortSignal 未传 fetch;迁移中发现并修复 outputControl 六参数丢失回归。maxSteps/预算迁 `templates/config/chat-runtime.json`。
+
+### Track B · Tools / MCP / Assistant
+- `ToolAvailability` 纯数据层(规格类型逐字段);web 假路由修正(catalog metadata 不再抑制 fallback,native 判定单点接口);MCP 工具经 `getAllMcpToolDefs` 进 Chat + PermissionGuard ask + `PermissionAskCard` 双向挂起(允许/拒绝真实生效,abort 不泄漏)。
+- Assistant 四字段生效:`AssistantSlot`(priority 900)/knowledgeRefs→`explicitRefsUsed` receipt/toolPolicy deny-first 双层(过滤+guard)/模型三级 precedence + effectiveModel 入 receipt。
+
+### Track C · 媒体地基与路由
+- media domain types(MediaKind 四值,TTS≠music)+ `chat_media_job` 状态机表 + `MediaGenerationService`(唯一入口/唯一 writer/真实 receipt producer)+ FalMediaAdapter 全部硬编码迁 `templates/config/media-generation.json`。
+- OpenAI native image adapter(真实 `POST /v1/images/generations`,只声称 image;quantity 穿透;gpt-image-1 response_format 兼容开关)+ Auto 路由(preflight 一次性决策,执行期断言 route 一致,绝不静默换计费方)。
+
+### Track D · Chat 媒体闭环
+- `media_generate` ToolDef(availability 门控 + permission ask + Zod schema);image 同步生成 → 消息锚定 receipt → gallery/Resources(渲染时 `VaultPreviewPort.getResourcePath` 解析,持久层存 durable vault path);Composer `+` Generate 表单(route/model/数量/比例/preflight 预估费用/per-route 禁用)。
+- video/music durable async job:`MediaJobRunner`(app 层,可注入 clock)——awaiting-confirmation → 成本确认卡(真实 route/model/时长/费用)→ poll → 完成/失败/取消;boot resume **先于** failAllUnfinished;跨重启 receiptId 持久化(review 抓到的 Critical)。
+
+### Track E · Settings 与收口
+- Settings 新 Media Generation tab(默认 route/fal key/输出目录/逐 kind preset/Native 矩阵只声称 image/route×kind 可用性表/Validate 纯本地校验);configureAction 四值真实跳转(receipt Configure 按钮 + Composer 菜单)。
+- waiting-permission 可见、§5.6 五行错误文案 config 化、legacy 兼容矩阵测试(旧消息行/旧 receipt/空 data.json/旧命令)、capability checklist 状态迁移(inline 生图 AVAILABLE 待实机验收;video/music PARTIAL——MEDIA-03 门槛恢复原文,Usage Dashboard 记录与音乐授权说明未做;新增 MEDIA-04 九步实机验收清单)。
+
+### 验证
+- `npm run test` 239/239(独立复跑,新增 ≈25 测试文件);§8 指定 targeted 4/4;`npm run build` 绿。
+- 实机 Obsidian 1.12.7(computer-use 被 macOS 设置面板崩溃阻塞,改 osascript+screencapture 路线):reload 正常 boot;`+` 菜单三生成入口缺 key 诚实禁用(逐路由原因);Media Generation tab 五段全渲染;Validate 时间戳跨重启保留;真实 turn 走统一运行时(流式+Agent Run 真实 steps+无工具时诚实拒绝)。实机发现 2 个表格显示缺陷(fal Reason 空/fal-tts 误标 unsupported)修复并二次实机确认。
+- **未完成(精确阻塞)**:fal/native 真实付费生成、OpenAI CORS、lyria2/veo3 endpoint 实测——均无 key/额度;`approval:'always'` read 工具仍 auto-allow(known gap);12 项 accepted Minor 见终审记录。
+
+## 2026-07-21（追补）· video/music 完整化(MEDIA-03 清账)
+
+**上下文**:owner 要求 video/music 完整实现,并叫停 superpowers 子代理流程改为直接实施。fal endpoint 经 WebSearch 对照官方文档核实(报告落库 `docs/research/2026-07-21-fal-endpoint-verification/README.md`),schema/config 修正由并行 session 按 brief 应用,本 session 补齐断链与门槛项。
+
+- **fal schema 修正(CRITICAL×3)**:video `fal-ai/veo3/text-to-video`(已被 fal 废弃)→ `fal-ai/veo3.1` + `fast` preset;payload `duration_seconds:int` → `duration:"4s"/"6s"/"8s"` 枚举串;TTS 字段 `text`→`prompt`;music 删除 lyria2 不接受的 duration 字段(输出固定 ~30s,上限 30、表单显示固定说明);成本表按官方定价校准(video $3.20/8s、fast $1.20、music $0.10、image ~$0.0023)。两处旧值测试断言同步(video max 30→8)。
+- **Usage Dashboard 打点闭环**:发现组合根只 import 未构造 emitter 的断链——`composeMediaRuntime` 补 `MediaUsageEmitter` 闭包(dispatch `UsageRecordedViewEvent`,feature `media_generation`,`costUsd`=预估 + `metadata.costConfidence='estimated'` 不伪装账单),注入 service(sync image/TTS/cover)与 runner(async video/music);新增 4 个测试 slice(成功/失败/emitter 抛错不影响生成/async 完成记 1 条)。
+- **音乐授权说明**:Settings → Media Generation → Music 段 licensing note(fal ToS 不担保版权、SynthID 水印、平台与 EU AI Act 披露、USCO 口径、TTS 条款独立)+ fal ToS 链接;文案 config 化(settings.json `musicLicensing*` 4 键 + settingsStrings 类型)。
+- **状态迁移**:checklist MEDIA-03 六项全勾(逐项证据);视频/音乐 `PARTIAL` → `AVAILABLE`(待实机验收);handoff §0 三行、roadmap 行、交付报告 §6 追补同步。
+- **验证**:`npm run test` 239/239;`npm run build` 绿。剩余唯一边界:真实付费调用待 fal key(MEDIA-04 实机步骤)。

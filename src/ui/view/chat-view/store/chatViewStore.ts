@@ -77,6 +77,14 @@ interface ChatViewState {
 	// outcome-event message_id field.
 	lastAssistantCompletedAt: number | null;
 	lastAssistantMessageId: string | null;
+
+	// ── Trace surface routing (MSG-07) ──
+	// Set by the "Trace" message action so the target message's inline
+	// AgentTrace section auto-expands + scrolls into view. Consumers null
+	// this out after handling (open-once semantics). Distinct from any
+	// generic outline scroll — Trace routes the user to the DEBUG surface
+	// for a specific message id, not to the message body itself.
+	openTraceForMessageId: string | null;
 }
 
 interface ChatViewActions {
@@ -113,6 +121,11 @@ interface ChatViewActions {
 	setStudioRestoreRight: (fn: (() => void) | null) => void;
 	markAssistantCompleted: (messageId: string, ts?: number) => void;
 	clearAssistantCompletion: () => void;
+
+	// MSG-07: request the Trace surface for a message. Consumers ack via
+	// `clearOpenTraceRequest` after scrolling + expanding the AgentTrace.
+	requestOpenTraceForMessage: (messageId: string) => void;
+	clearOpenTraceRequest: () => void;
 
 	// ── Lifecycle ──
 	reset: () => void;
@@ -181,6 +194,9 @@ export const useChatViewStore = create<ChatViewStore>((set, get) => ({
 	// ── Continuation telemetry ──
 	lastAssistantCompletedAt: null,
 	lastAssistantMessageId: null,
+
+	// ── Trace routing ──
+	openTraceForMessageId: null,
 
 	// ═══════════════════════════════════════════════════════════════════════
 	// Navigation actions
@@ -310,6 +326,9 @@ export const useChatViewStore = create<ChatViewStore>((set, get) => ({
 		lastAssistantCompletedAt: null,
 		lastAssistantMessageId: null,
 	}),
+
+	requestOpenTraceForMessage: (messageId: string) => set({ openTraceForMessageId: messageId }),
+	clearOpenTraceRequest: () => set({ openTraceForMessageId: null }),
 
 	// ═══════════════════════════════════════════════════════════════════════
 	// Lifecycle

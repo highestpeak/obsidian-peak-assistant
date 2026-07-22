@@ -18,4 +18,12 @@ export interface ChatRuntimeStatePort {
 	getChatMode(): ChatRuntimeMode;
 	isWebSearchEnabled(): boolean;
 	isVaultSearchEnabled(): boolean;
+	/**
+	 * 2026-07-21 (source-truth): whether the Vault retrieval port is wired.
+	 * Optional so legacy adapters (tests) don't have to implement it — the
+	 * default is `true` to match the pre-fix behavior. The runtime adapter
+	 * returns the honest value from `ConversationService.isVaultSearchAvailable()`
+	 * so `SystemPromptSlot` no longer hardcodes `true`.
+	 */
+	isVaultSearchAvailable?(): boolean;
 }

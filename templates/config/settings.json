@@ -6,6 +6,7 @@
     "aiSetup": "AI Setup",
     "knowledgeIndex": "Knowledge Index",
     "tools": "Tools",
+    "mediaGeneration": "Media Generation",
     "advanced": "Advanced"
   },
   "overview": {
@@ -382,5 +383,87 @@
     "emptyHint": "No external tools configured. Add one to get started.",
     "addCta": "Add external tool",
     "defaultServerName": "New tool server"
+  },
+  "mediaGeneration": {
+    "tabIntro": {
+      "sectionTitle": "Media Generation",
+      "sectionSub": "Configure image / video / music / TTS routing. Big preset tables live in templates/config/media-generation.json — this tab exposes only the fields users typically tweak."
+    },
+    "route": {
+      "sectionTitle": "Default route",
+      "sectionSub": "Which provider Chat and Composer try first. Auto prefers Native when a compatible profile exists, otherwise falls back to fal.ai.",
+      "optionAuto": "Auto",
+      "optionNative": "Native",
+      "optionFal": "fal.ai",
+      "optionAutoDesc": "Prefer Native, fall back to fal.ai.",
+      "optionNativeDesc": "Only Native providers (OpenAI images today).",
+      "optionFalDesc": "Only fal.ai (image/video/music/TTS)."
+    },
+    "fal": {
+      "sectionTitle": "fal.ai",
+      "sectionSub": "API key and where downloaded assets are written into your vault.",
+      "keyLabel": "API key",
+      "keyDesc": "Get a key at fal.ai/dashboard/keys. Stored locally in data.json.",
+      "keyPlaceholder": "Paste your fal.ai key",
+      "attachmentFolderLabel": "Output folder",
+      "attachmentFolderDesc": "Vault-relative folder where generated media is saved. Leave empty to use the default under your Chat root.",
+      "attachmentFolderPlaceholder": "e.g. Assets/media",
+      "attachmentFolderDefaultHint": "Default: {default}"
+    },
+    "presets": {
+      "sectionTitle": "Default presets",
+      "sectionSub": "Choose which preset (from media-generation.json) each kind uses as its default, plus optional per-field overrides. Only model + bounds are editable here; the full preset table stays in templates/config.",
+      "kindImage": "Image",
+      "kindVideo": "Video",
+      "kindMusic": "Music",
+      "kindTts": "Text to speech",
+      "defaultPresetLabel": "Default preset",
+      "modelLabel": "Model",
+      "aspectRatioLabel": "Aspect ratio",
+      "quantityLabel": "Quantity",
+      "durationLabel": "Duration",
+      "durationUnit": "s",
+      "maxDurationLabel": "Max duration",
+      "voiceLabel": "Voice",
+      "resetLabel": "Reset",
+      "emptyOverridesHint": "No overrides — Chat / Composer use the preset from media-generation.json.",
+      "musicLicensingTitle": "Music licensing & commercial use",
+      "musicLicensingBody": "Commercial rights for generated music are governed by fal.ai's Terms of Service plus the upstream model's own terms (the default lyria2 endpoint is a Google Lyria model). fal does not warrant copyright ownership of outputs. Lyria audio carries a non-removable SynthID watermark identifying it as AI-generated; major distribution platforms and the EU AI Act require AI disclosure, and prompt-only music is presumed non-copyrightable under current US Copyright Office guidance. Review the provider terms before any commercial release — TTS (Kokoro, open weights, commercial use allowed) is a separate model with separate terms and is not covered by this note.",
+      "musicLicensingLinkLabel": "fal.ai Terms of Service",
+      "musicLicensingUrl": "https://fal.ai/legal/terms-of-service",
+      "musicLicensingPolicyVersion": "2026-07-21",
+      "musicLicensingConfirmCheckboxLabel": "I have read and accept the music licensing terms.",
+      "musicLicensingConfirmHint": "First-run only — this is remembered per policy version."
+    },
+    "native": {
+      "sectionTitle": "Native (OpenAI)",
+      "sectionSub": "Which OpenAI profile drives the Native route. Only OpenAI-kind profiles with an API key can serve image generation today.",
+      "noProfilesHint": "No OpenAI profile is configured. Add one under AI Setup → Providers before using the Native route.",
+      "gotoProfilesLabel": "Open Providers",
+      "profileLabel": "OpenAI profile",
+      "profileAutoOption": "Auto (first enabled OpenAI profile)",
+      "profileDisabledSuffix": " · disabled",
+      "profileNoKeySuffix": " · no key",
+      "supportedKindsLabel": "Supported kinds",
+      "supportedKindNone": "none (adapter is image-only today)"
+    },
+    "status": {
+      "sectionTitle": "Availability & validation",
+      "sectionSub": "What Chat/Composer see right now for each route × kind. Validate runs local shape checks only — it never contacts fal.ai or OpenAI, and never spends money.",
+      "routeColumnLabel": "Route",
+      "kindColumnLabel": "Kind",
+      "statusColumnLabel": "Status",
+      "reasonColumnLabel": "Reason",
+      "statusReady": "Ready",
+      "statusNotReady": "Not ready",
+      "statusUnsupported": "Not supported",
+      "validateButton": "Validate configuration",
+      "validateRunning": "Validating…",
+      "validateNeverHint": "Not validated yet.",
+      "validateLastAtLabel": "Last validated:",
+      "validateOkLabel": "All local checks passed.",
+      "validateProblemsLabel": "Local issues:",
+      "validateDisclaimer": "Validation runs locally — it checks key presence, endpoint shape, and profile availability. It does NOT reach out to fal.ai or OpenAI; a successful validation does not guarantee remote connectivity."
+    }
   }
 }

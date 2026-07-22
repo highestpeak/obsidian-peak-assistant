@@ -19,6 +19,8 @@ export class RelatedNotesView extends ReactItemViewHost {
 
 	protected renderElement(): React.ReactElement {
 		const { RelatedNotesPanel } = require('@/ui/view/ambient-panel/RelatedNotesPanel');
-		return createReactElementWithServices(RelatedNotesPanel, { app: this.app }, this.appContext);
+		// The panel now sources its link-open path from ServiceContext's
+		// `vaultNavigation` port; no direct `app` prop is needed.
+		return createReactElementWithServices(RelatedNotesPanel, {}, this.appContext);
 	}
 }

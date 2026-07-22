@@ -295,6 +295,31 @@ export interface OutcomeValueStrings {
 	empty: string;
 	unattributed: string;
 	unattributedHelp: string;
+	/**
+	 * Media-generation detail table (zero-gap §2). Cost is ALWAYS labelled
+	 * "estimated" — the media pipeline never surfaces a settled bill.
+	 */
+	mediaSection: {
+		title: string;
+		subtitle: string;
+		empty: string;
+		columns: {
+			kind: string;
+			route: string;
+			provider: string;
+			model: string;
+			cost: string;
+			duration: string;
+			jobId: string;
+			outcome: string;
+		};
+		outcomeSuccess: string;
+		outcomeFailure: string;
+		outcomeUnknown: string;
+		costEstimatedSuffix: string;
+		expandFailureLabel: string;
+		collapseFailureLabel: string;
+	};
 }
 
 export interface DashboardStrings {
@@ -395,6 +420,14 @@ export function useDashboardStrings(): DashboardStrings {
 							features: {
 								...FALLBACK_STRINGS.outcomeValue.features,
 								...(loaded.outcomeValue?.features ?? {}),
+							},
+							mediaSection: {
+								...FALLBACK_STRINGS.outcomeValue.mediaSection,
+								...(loaded.outcomeValue?.mediaSection ?? {}),
+								columns: {
+									...FALLBACK_STRINGS.outcomeValue.mediaSection.columns,
+									...(loaded.outcomeValue?.mediaSection?.columns ?? {}),
+								},
 							},
 						},
 						budgetAlerts: {

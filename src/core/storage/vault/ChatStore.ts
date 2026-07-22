@@ -175,6 +175,10 @@ export class ChatStorageService {
 				metaExtras.pinned = true;
 				metaExtras.pinnedAt = updatedMeta.pinnedAt ?? now;
 			}
+			// Branch lineage (chat-studio §7.7). Present only on conversations
+			// created via `branchFromMessage`; legacy meta stays untouched.
+			if (updatedMeta.parentConversationId) metaExtras.parentConversationId = updatedMeta.parentConversationId;
+			if (updatedMeta.parentMessageId) metaExtras.parentMessageId = updatedMeta.parentMessageId;
 			const metaJson = Object.keys(metaExtras).length > 0 ? JSON.stringify(metaExtras) : null;
 
 			await sqliteStoreManager
@@ -324,6 +328,8 @@ export class ChatStorageService {
 			pinned: metaExtras.pinned === true ? true : undefined,
 			pinnedAt: typeof metaExtras.pinnedAt === 'number' ? metaExtras.pinnedAt : undefined,
 			archived: convRow.archived_rel_path != null ? true : undefined,
+			parentConversationId: typeof metaExtras.parentConversationId === 'string' ? metaExtras.parentConversationId : undefined,
+			parentMessageId: typeof metaExtras.parentMessageId === 'string' ? metaExtras.parentMessageId : undefined,
 		};
 	}
 
@@ -452,6 +458,28 @@ export class ChatStorageService {
 		if (!this.dbReady) return;
 		const messageRepo = sqliteStoreManager.getChatMessageRepo();
 		await messageRepo.updateSuggestedFollowups(messageId, followups);
+	}
+
+	/**
+	 * Patch a message's variant metadata (chat-studio §7.7 — MSG-08). Merges
+	 * into the existing meta_json blob so replyToMessageId / toolCalls stay
+	 * intact. Undefined values remove the key.
+	 */
+	async updateMessageVariantMeta(
+		messageId: string,
+		patch: {
+			variantGroupId?: string | undefined;
+			variantIndex?: number | undefined;
+			isActiveVariant?: boolean | undefined;
+		},
+	): Promise<void> {
+		if (!this.dbReady) return;
+		const messageRepo = sqliteStoreManager.getChatMessageRepo();
+		await messageRepo.updateMetaJsonPatch(messageId, {
+			variantGroupId: patch.variantGroupId,
+			variantIndex: patch.variantIndex,
+			isActiveVariant: patch.isActiveVariant,
+		});
 	}
 
 	async listStarredMessagesByProject(projectId: string): Promise<{
@@ -696,6 +724,12 @@ export class ChatStorageService {
 			if (typeof extras.replyToMessageId === 'string') msg.replyToMessageId = extras.replyToMessageId;
 			if (typeof extras.branchFromMessageId === 'string') msg.branchFromMessageId = extras.branchFromMessageId;
 			if (typeof extras.revisionOfMessageId === 'string') msg.revisionOfMessageId = extras.revisionOfMessageId;
+			// MSG-08 — assistant variant metadata (chat-studio §7.7). Missing
+			// fields on legacy rows leave the message a single-variant one; UI
+			// keeps rendering it identically.
+			if (typeof extras.variantGroupId === 'string') msg.variantGroupId = extras.variantGroupId;
+			if (typeof extras.variantIndex === 'number') msg.variantIndex = extras.variantIndex;
+			if (typeof extras.isActiveVariant === 'boolean') msg.isActiveVariant = extras.isActiveVariant;
 			if (Array.isArray(extras.toolCalls)) {
 				msg.toolCalls = extras.toolCalls.filter((value): value is NonNullable<ChatMessage['toolCalls']>[number] => {
 					if (!value || typeof value !== 'object') return false;
@@ -1068,6 +1102,19 @@ export class ChatStorageService {
 	async listArtifactReceiptsByProject(projectId: string): Promise<ChatArtifactReceipt[]> {
 		if (!this.dbReady) return [];
 		const rows = await sqliteStoreManager.getChatArtifactReceiptRepo().listByProject(projectId);
+		return rows
+			.map((row) => ChatStorageService.parseJsonOrNull<ChatArtifactReceipt>(row.receipt_json))
+			.filter((r): r is ChatArtifactReceipt => r !== null);
+	}
+
+	/**
+	 * Zero-gap Track D (2026-07-21): reminder-scoped scan for the
+	 * ReminderSchedulerService. Filtered by `kind` at the SQL layer so a
+	 * growing artifact set does not slow the poll loop.
+	 */
+	async listArtifactReceiptsByKind(kind: string): Promise<ChatArtifactReceipt[]> {
+		if (!this.dbReady) return [];
+		const rows = await sqliteStoreManager.getChatArtifactReceiptRepo().listByKind(kind);
 		return rows
 			.map((row) => ChatStorageService.parseJsonOrNull<ChatArtifactReceipt>(row.receipt_json))
 			.filter((r): r is ChatArtifactReceipt => r !== null);

@@ -15,7 +15,18 @@ export const AI_PATH_SUBFOLDERS = {
 	DataStore: 'DataStore',
 	AIAnalysis: 'AI-Analysis',
 	Attachments: 'Attachments',
+	Media: 'Attachments/media',
 	Bases: 'Bases',
+	// Zero-gap Track D (2026-07-21): structured chat-artifact producer
+	// destinations. Every artifact_create sub-type lands under one of these
+	// subfolders so `.md` / `.excalidraw.md` / `.drawio` files stay bucketed
+	// per kind and never sprawl to the Vault root.
+	Artifacts: 'Artifacts',
+	ArtifactsDataview: 'Artifacts/Dataview',
+	ArtifactsExcalidraw: 'Artifacts/Excalidraw',
+	ArtifactsDrawio: 'Artifacts/DrawIO',
+	ArtifactsExtracts: 'Artifacts/Extracts',
+	ArtifactsReminders: 'Artifacts/Reminders',
 	ResourcesSummary: 'resources-summary-cache',
 	HubSummaries: 'Hub-Summaries',
 	ManualHubNotes: 'Manual',
@@ -76,12 +87,51 @@ export function getAIUploadFolder(rootFolder: string): string {
 }
 
 /**
+ * Default vault folder for media-generation attachments (TTS mp3, cover
+ * images, generated videos). Users can override via
+ * `settings.ai.mediaAttachmentFolder`; when unset this is the canonical
+ * ChatFolder-scoped destination. Introduced in task C1 (2026-07-21).
+ */
+export function getAIMediaFolder(rootFolder: string): string {
+	return normalizePathLocal(`${aiNormalizedRootFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.Media}`);
+}
+
+/**
  * chat-unified-mode 2026-07-05 Track C follow-up: model-generated Bases
  * (`.base`) files land here so the "Save & Open in Bases" affordance
  * on ```base fenced blocks has a deterministic destination.
  */
 export function getAIBasesFolder(rootFolder: string): string {
 	return normalizePathLocal(`${aiNormalizedRootFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.Bases}`);
+}
+
+/**
+ * Zero-gap Track D (2026-07-21): destination folders for structured
+ * `artifact_create` outputs. Pure resolvers — the writer picks the right
+ * one based on the tool `type` and joins the filename.
+ */
+export function getAIArtifactsFolder(rootFolder: string): string {
+	return normalizePathLocal(`${aiNormalizedRootFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.Artifacts}`);
+}
+
+export function getAIArtifactsDataviewFolder(rootFolder: string): string {
+	return normalizePathLocal(`${aiNormalizedRootFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.ArtifactsDataview}`);
+}
+
+export function getAIArtifactsExcalidrawFolder(rootFolder: string): string {
+	return normalizePathLocal(`${aiNormalizedRootFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.ArtifactsExcalidraw}`);
+}
+
+export function getAIArtifactsDrawioFolder(rootFolder: string): string {
+	return normalizePathLocal(`${aiNormalizedRootFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.ArtifactsDrawio}`);
+}
+
+export function getAIArtifactsExtractsFolder(rootFolder: string): string {
+	return normalizePathLocal(`${aiNormalizedRootFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.ArtifactsExtracts}`);
+}
+
+export function getAIArtifactsRemindersFolder(rootFolder: string): string {
+	return normalizePathLocal(`${aiNormalizedRootFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.ArtifactsReminders}`);
 }
 
 export function getAIResourcesSummaryFolder(rootFolder: string): string {

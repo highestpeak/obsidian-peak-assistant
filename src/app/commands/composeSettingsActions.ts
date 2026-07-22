@@ -61,7 +61,7 @@ async function startStagedFullIndexing(
 export function composeSettingsActions(appContext: AppContext): SettingsActions {
 	const app = appContext.app;
 	return {
-		openSettings: () => new SettingsModal(appContext).open(),
+		openSettings: (options) => new SettingsModal(appContext, options?.tab).open(),
 		openAssistant: () => openAssistant(),
 		setup: {
 			openHarnessWizard: () => openHarnessSetupWizard(),

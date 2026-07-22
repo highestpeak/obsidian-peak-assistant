@@ -228,7 +228,23 @@ export default class MyPlugin extends Plugin {
 		this.aiServiceManager = new AIServiceManager(
 			this.app,
 			this.settings.ai,
-			new ChatRuntimeStateAdapter(),
+			// 2026-07-21 (source-truth): expose real Vault availability to
+			// SystemPromptSlot via the port so the system prompt stops
+			// claiming Vault Search is available before the retrieval port
+			// is wired. Lazy getter — the ConversationService exists after
+			// this line, and its `isVaultSearchAvailable` flips true once
+			// `setVaultRetrievalPort` runs later in bootstrap.
+			new ChatRuntimeStateAdapter(() => {
+				try {
+					return this.aiServiceManager?.conv?.isVaultSearchAvailable() ?? false;
+				} catch {
+					// `.conv` getter throws before init(); the adapter is only
+					// consumed by SystemPromptSlot which never runs pre-init,
+					// but the try/catch prevents a stray early call from
+					// crashing.
+					return false;
+				}
+			}),
 			this.manifest.id,
 			() => this.settings.harnessSettings ?? DEFAULT_HARNESS_SETTINGS,
 			aiAnalysisHistoryService,
@@ -643,6 +659,10 @@ export default class MyPlugin extends Plugin {
 		// before a hot-reload spawns replacements.
 		const mcpClientManager = new MCPClientManager();
 		AppContext.setMcpClientManager(mcpClientManager);
+		// B1 §5.2 R3: thread the same instance into ConversationService so
+		// Chat's tool set can include connected MCP tools. No service-side
+		// singleton — the app layer owns the manager and injects it here.
+		this.aiServiceManager.conv.setMcpClientManager(mcpClientManager);
 		// Connect enabled MCP servers (non-blocking)
 		const mcpConfigs = this.settings.mcpServers ?? [];
 		for (const config of mcpConfigs) {
@@ -867,6 +887,118 @@ export default class MyPlugin extends Plugin {
 				} else {
 					console.log('[Peak Assistant] No active profile — skipping PatternDiscovery and agent pool warmup');
 				}
+				// D1 §R1/R5 + D2 §R1/§R3/§R4: compose MediaGenerationService
+				// + MediaJobRunner once at boot, bind them into
+				// ConversationService (so `media_generate` can register as a
+				// Chat ToolDef), then RESUME resumable async jobs BEFORE
+				// falling back to `failAllUnfinished` for the truly
+				// unresumable ones. This ordering is load-bearing —
+				// running jobs with a persisted providerResponseUrl must
+				// restart their poll loop, not be marked failed.
+				try {
+					const { composeMediaRuntime } = await import('@/app/media/composeMediaGenerationService');
+					const { runtime } = await composeMediaRuntime({
+						app: this.app,
+						getFalApiKey: () => this.settings.ai?.falApiKey,
+						getMediaAttachmentFolder: () => this.settings.ai?.mediaAttachmentFolder,
+						getRootFolder: () => this.settings.ai?.rootFolder ?? '',
+						// Task E1 — settings.ai.mediaDefaults is the user overlay
+						// applied inside composeMediaRuntime's loadConfig closure.
+						getMediaSettingsOverride: () => this.settings.ai?.mediaDefaults,
+						saveArtifactReceipt: (r) => this.aiServiceManager.conv.saveArtifactReceipt(r),
+						// Zero-gap §4 A1 — reference resolver reads receipt bytes
+						// via this closure; the row lives in
+						// `chat_artifact_receipt`, JSON-encoded, so we parse it
+						// once and hand back the vaultPath the resolver needs.
+						getArtifactReceipt: async (artifactId: string) => {
+							try {
+								const row = await sqliteStoreManager
+									.getChatArtifactReceiptRepo()
+									.getById(artifactId);
+								if (!row) return null;
+								const parsed = row.receipt_json
+									? JSON.parse(row.receipt_json)
+									: null;
+								return { vaultPath: parsed?.vaultPath ?? null };
+							} catch {
+								return null;
+							}
+						},
+					});
+					this.aiServiceManager.conv.setMediaGenerationService(runtime.service);
+					// Zero-gap C1 — media understanding runtime (audio/video → text)
+					// composed alongside the generation service; useChatSubmit and
+					// service-conversation both consume it from `manager.conv`.
+					this.aiServiceManager.conv.setMediaUnderstandingRuntime(runtime.understanding);
+					// D2 §R3-recovery: real resume BEFORE failAllUnfinished.
+					// Anything still `running` with a persisted poll cursor
+					// gets its poll loop restarted; anything unresumable
+					// (queued mid-submit, running without cursor) is failed
+					// with a retriable reason inside `resumeUnfinished`
+					// itself. Only truly-orphaned rows (should be zero after
+					// resume) fall to failAllUnfinished below.
+					try {
+						const resumeStats = await runtime.runner.resumeUnfinished();
+						if (resumeStats.resumed + resumeStats.failed + resumeStats.awaiting > 0) {
+							console.log(
+								`[Peak Assistant] Media job resume: ${resumeStats.resumed} resumed, `
+								+ `${resumeStats.failed} failed (retriable), `
+								+ `${resumeStats.awaiting} awaiting-confirmation preserved`,
+							);
+						}
+					} catch (e) {
+						console.warn('[Peak Assistant] Media job resume failed:', e);
+					}
+					// Safety net: any row not touched by resume (should be
+					// zero after the above ran) gets marked failed.
+					const cleared = await runtime.service
+						.getJobService()
+						.failAllUnfinished('boot: no resumable session (post-resume sweep)');
+					if (cleared > 0) {
+						console.log(`[Peak Assistant] Cleared ${cleared} zombie media job(s) at boot (post-resume)`);
+					}
+					// D2 §R1: runner owns timers — dispose on plugin unload
+					// so a hot reload cannot leak pending setTimeouts.
+					this.register(() => {
+						try { runtime.runner.dispose(); } catch { /* ignore */ }
+					});
+				} catch (e) {
+					console.warn('[Peak Assistant] MediaGenerationService compose failed:', e);
+				}
+
+				// Zero-gap Track D (2026-07-21): compose the app-owned
+				// ArtifactProducerService + ReminderSchedulerService so
+				// `artifact_create` is a real Chat tool and persisted
+				// reminder receipts fire notices at their due time.
+				try {
+					const { composeArtifactRuntime } = await import('@/app/chat/composeArtifactProducer');
+					const artifactRuntime = composeArtifactRuntime({
+						app: this.app,
+						getRootFolder: () => this.settings.ai?.rootFolder ?? '',
+						saveArtifactReceipt: (r) => this.aiServiceManager.conv.saveArtifactReceipt(r),
+						notifier: obsidianNotifier,
+						reminderSource: {
+							listReminderReceipts: () =>
+								this.aiServiceManager.conv.listArtifactReceiptsByKind('reminder'),
+							saveReceipt: (r) => this.aiServiceManager.conv.saveArtifactReceipt(r),
+						},
+						onOpenReminderFile: (vaultPath: string) => {
+							try {
+								this.app.workspace.openLinkText(vaultPath, '', false);
+							} catch (openErr) {
+								console.warn('[Peak Assistant] open reminder failed:', openErr);
+							}
+						},
+					});
+					this.aiServiceManager.conv.setArtifactProducer(artifactRuntime.producer);
+					artifactRuntime.scheduler.start();
+					this.register(() => {
+						try { artifactRuntime.scheduler.dispose(); } catch { /* ignore */ }
+					});
+				} catch (e) {
+					console.warn('[Peak Assistant] Artifact producer compose failed:', e);
+				}
+
 				console.log('[Peak Assistant] SQLite and search services initialized');
 
 				// Morning Briefing — show proactive recommendations on session start (Phase 4).

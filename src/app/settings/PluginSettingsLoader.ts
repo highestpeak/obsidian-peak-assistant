@@ -90,7 +90,68 @@ function normalizeAIServiceSettings(raw: Record<string, unknown>): AIServiceSett
 		settings.defaultOutputControl = rawAI.defaultOutputControl as LLMOutputControlSettings;
 	}
 
+	// D4 / Task E1 — fal.ai API key + attachment folder + media overrides.
+	// Previously silently dropped by normalize; users' saved values were lost
+	// on next boot. Compat: absent → default (empty key / default folder).
+	if (typeof rawAI.falApiKey === 'string') {
+		settings.falApiKey = rawAI.falApiKey;
+	}
+	if (typeof rawAI.mediaAttachmentFolder === 'string') {
+		settings.mediaAttachmentFolder = rawAI.mediaAttachmentFolder;
+	}
+	if (rawAI.mediaDefaults && typeof rawAI.mediaDefaults === 'object') {
+		settings.mediaDefaults = normalizeMediaOverride(rawAI.mediaDefaults);
+	}
+
 	return settings;
+}
+
+/**
+ * Task E1 — narrow-safe normalize for the media overlay. Silently drops
+ * unknown route values / non-string preset ids so a hand-edited data.json
+ * cannot break boot. Returns an empty object when every field is invalid;
+ * callers treat `undefined`-equivalent shape as "no overrides".
+ */
+function normalizeMediaOverride(raw: Record<string, unknown>): AIServiceSettings['mediaDefaults'] {
+	const out: NonNullable<AIServiceSettings['mediaDefaults']> = {};
+	const route = raw.defaultRoute;
+	if (route === 'auto' || route === 'native' || route === 'fal') {
+		out.defaultRoute = route;
+	}
+	if (typeof raw.nativeProfileId === 'string' && raw.nativeProfileId.trim().length > 0) {
+		out.nativeProfileId = raw.nativeProfileId.trim();
+	}
+	if (raw.defaultPresetIds && typeof raw.defaultPresetIds === 'object') {
+		const src = raw.defaultPresetIds as Record<string, unknown>;
+		const dst: Record<string, string> = {};
+		for (const kind of ['image', 'video', 'music', 'tts'] as const) {
+			const value = src[kind];
+			if (typeof value === 'string' && value.trim().length > 0) dst[kind] = value.trim();
+		}
+		if (Object.keys(dst).length > 0) out.defaultPresetIds = dst as NonNullable<typeof out.defaultPresetIds>;
+	}
+	if (raw.presetOverrides && typeof raw.presetOverrides === 'object') {
+		const src = raw.presetOverrides as Record<string, unknown>;
+		const dst: NonNullable<typeof out.presetOverrides> = {};
+		for (const kind of ['image', 'video', 'music', 'tts'] as const) {
+			const val = src[kind];
+			if (!val || typeof val !== 'object') continue;
+			const v = val as Record<string, unknown>;
+			const entry: NonNullable<NonNullable<typeof out.presetOverrides>['image']> = {};
+			if (typeof v.model === 'string' && v.model.trim().length > 0) entry.model = v.model.trim();
+			if (typeof v.aspectRatio === 'string') entry.aspectRatio = v.aspectRatio;
+			if (typeof v.quantity === 'number' && v.quantity > 0) entry.quantity = Math.max(1, Math.min(16, Math.floor(v.quantity)));
+			if (typeof v.durationSeconds === 'number' && v.durationSeconds > 0) entry.durationSeconds = v.durationSeconds;
+			if (typeof v.maxDurationSeconds === 'number' && v.maxDurationSeconds > 0) entry.maxDurationSeconds = v.maxDurationSeconds;
+			if (typeof v.voice === 'string' && v.voice.trim().length > 0) entry.voice = v.voice.trim();
+			if (Object.keys(entry).length > 0) dst[kind] = entry;
+		}
+		if (Object.keys(dst).length > 0) out.presetOverrides = dst;
+	}
+	if (typeof raw.lastValidatedAt === 'number' && Number.isFinite(raw.lastValidatedAt)) {
+		out.lastValidatedAt = raw.lastValidatedAt;
+	}
+	return out;
 }
 
 /**

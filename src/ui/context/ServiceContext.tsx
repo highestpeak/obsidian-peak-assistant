@@ -5,6 +5,7 @@ import { SearchClient } from '@/service/search/SearchClient';
 import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
 import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
 import type { VaultReviewRuntime } from '@/service/copilot/vault/VaultReviewRuntime';
+import type { CopilotActionRuntime } from '@/service/copilot/actions/CopilotActionRuntime';
 import type { QuickSearchBackgroundRuntime } from '@/service/search/background/QuickSearchBackgroundRuntime';
 import type { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import type { AnalysisDocVaultWriterPort } from '@/core/ports/AnalysisDocVaultWriterPort';
@@ -64,6 +65,13 @@ interface ServiceContextValue {
 	vaultLintRuntime: VaultLintRuntime | null;
 	ambientRuntime: AmbientRuntime | null;
 	vaultReviewRuntime: VaultReviewRuntime | null;
+	/**
+	 * Copilot action catalog runtime (registered by the plugin at boot). Null
+	 * before composition wires it. UI surfaces (CopilotPickerContent) probe
+	 * this and render an empty catalog when absent instead of importing
+	 * `@/app/context/AppContext` directly — see T11P / T11Q ui→app floor.
+	 */
+	copilotActionRuntime: CopilotActionRuntime | null;
 	quickSearchBackgroundRuntime: QuickSearchBackgroundRuntime | null;
 	aiAnalysisHistoryService: AIAnalysisHistoryService;
 	isMockEnv: boolean;
@@ -142,6 +150,7 @@ export const ServiceProvider: React.FC<{
 	vaultLintRuntime: VaultLintRuntime | null;
 	ambientRuntime: AmbientRuntime | null;
 	vaultReviewRuntime: VaultReviewRuntime | null;
+	copilotActionRuntime: CopilotActionRuntime | null;
 	quickSearchBackgroundRuntime: QuickSearchBackgroundRuntime | null;
 	aiAnalysisHistoryService: AIAnalysisHistoryService;
 	isMockEnv: boolean;
@@ -167,7 +176,7 @@ export const ServiceProvider: React.FC<{
 	headingMode?: HeadingModeDeps | null;
 	resultSubgraph?: ResultSubgraphDeps | null;
 	quickSearchLauncher?: QuickSearchLauncherPort | null;
-}> = ({ children, manager, eventBus, searchClient, plugin, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps, indexService, mcpClientManager, usageServices, debugTracePort = null, headingMode = null, resultSubgraph = null, quickSearchLauncher = null }) => {
+}> = ({ children, manager, eventBus, searchClient, plugin, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, copilotActionRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps, indexService, mcpClientManager, usageServices, debugTracePort = null, headingMode = null, resultSubgraph = null, quickSearchLauncher = null }) => {
 	const value = useMemo<ServiceContextValue>(() => ({
 		manager,
 		eventBus,
@@ -176,6 +185,7 @@ export const ServiceProvider: React.FC<{
 		vaultLintRuntime,
 		ambientRuntime,
 		vaultReviewRuntime,
+		copilotActionRuntime,
 		quickSearchBackgroundRuntime,
 		aiAnalysisHistoryService,
 		isMockEnv,
@@ -201,7 +211,7 @@ export const ServiceProvider: React.FC<{
 		headingMode,
 		resultSubgraph,
 		quickSearchLauncher,
-	}), [eventBus, manager, plugin, searchClient, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps, indexService, mcpClientManager, usageServices, debugTracePort, headingMode, resultSubgraph, quickSearchLauncher]);
+	}), [eventBus, manager, plugin, searchClient, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, copilotActionRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps, indexService, mcpClientManager, usageServices, debugTracePort, headingMode, resultSubgraph, quickSearchLauncher]);
 
 	return <ServiceContext.Provider value={value}>{children}</ServiceContext.Provider>;
 };

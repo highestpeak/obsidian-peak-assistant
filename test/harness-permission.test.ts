@@ -1,6 +1,5 @@
 import assert from 'assert';
 import { z } from 'zod';
-import { MockLanguageModelV3 } from 'ai/test';
 import { runAgentLoop } from '@/service/agents/harness/loop/AgentLoop';
 import { TierController } from '@/service/agents/harness/tier/TierController';
 import { DEFAULT_TIER_CAPABILITIES } from '@/service/agents/harness/tier/types';
@@ -8,40 +7,14 @@ import type { TierBindings, TierBinding } from '@/service/agents/harness/tier/ty
 import type { ToolDef } from '@/service/agents/harness/tool/types';
 import { PermissionGuard } from '@/service/agents/harness/permission/PermissionGuard';
 import type { PermissionRule } from '@/service/agents/harness/permission/types';
-
-type GenResult = Awaited<ReturnType<NonNullable<MockLanguageModelV3['doGenerate']>>>;
+import { makeStreamModel, textStepChunks, toolStepChunks } from './harness-fixtures/mockStreamModel';
 
 /** Mock a model that emits one tool call then a stop step. */
 function makeToolThenStopBinding(toolName: string, args: any, finalText = 'done'): TierBinding {
-    let call = 0;
-    const model = new MockLanguageModelV3({
-        provider: 'mock',
-        modelId: 'm',
-        async doGenerate(): Promise<GenResult> {
-            call += 1;
-            if (call === 1) {
-                return {
-                    content: [
-                        {
-                            type: 'tool-call',
-                            toolCallId: 'tc1',
-                            toolName,
-                            input: JSON.stringify(args),
-                        },
-                    ],
-                    finishReason: 'tool-calls',
-                    usage: { inputTokens: 5, outputTokens: 5, totalTokens: 10 },
-                    warnings: [],
-                } as GenResult;
-            }
-            return {
-                content: [{ type: 'text', text: finalText }],
-                finishReason: 'stop',
-                usage: { inputTokens: 5, outputTokens: 5, totalTokens: 10 },
-                warnings: [],
-            } as GenResult;
-        },
-    });
+    const model = makeStreamModel('m', [
+        toolStepChunks({ toolName, input: args }),
+        textStepChunks({ text: finalText }),
+    ]);
     return {
         tier: 'local-fast',
         providerId: 'mock',

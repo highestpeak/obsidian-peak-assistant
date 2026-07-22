@@ -6,3 +6,4 @@ export * from "./contentReader";
 export * from "./searchMemoryStore";
 export * from "./submitFinalAnswer";
 export * from "./contextDiscovery";
+export * from "./mediaGenerate";

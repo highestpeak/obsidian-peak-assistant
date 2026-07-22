@@ -1,4 +1,8 @@
-import { emptySourceReceipt, type SourceReceipt } from '@/core/types/chat-studio';
+import {
+	emptySourceReceipt,
+	type ExplicitContextRef,
+	type SourceReceipt,
+} from '@/core/types/chat-studio';
 
 /**
  * Per-turn accumulator for the ACTUAL sources consulted while producing an
@@ -30,6 +34,16 @@ export class SourceReceiptCollector {
 		this.receipt.webSources.push(source);
 	}
 
+	/**
+	 * B2 (plan §5.3.3): record an explicit ref (assistant knowledgeRef or
+	 * composer attachment) that actually reached the runtime attachment pipe.
+	 * Deduped by id — the resolver calls this once per surviving ref.
+	 */
+	recordExplicitRefUsed(ref: ExplicitContextRef): void {
+		if (this.receipt.explicitRefsUsed.some((r) => r.id === ref.id)) return;
+		this.receipt.explicitRefsUsed.push(ref);
+	}
+
 	snapshot(): SourceReceipt {
 		return {
 			projectIncluded: this.receipt.projectIncluded,
@@ -37,6 +51,7 @@ export class SourceReceiptCollector {
 			vaultDocuments: [...this.receipt.vaultDocuments],
 			webQueries: [...this.receipt.webQueries],
 			webSources: [...this.receipt.webSources],
+			explicitRefsUsed: [...this.receipt.explicitRefsUsed],
 		};
 	}
 }

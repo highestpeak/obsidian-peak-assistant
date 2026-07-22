@@ -22,6 +22,7 @@ import { ChatAssistantRepo } from './repositories/ChatAssistantRepo';
 import { ChatProjectPlanRepo } from './repositories/ChatProjectPlanRepo';
 import { ChatTurnReceiptRepo } from './repositories/ChatTurnReceiptRepo';
 import { ChatArtifactReceiptRepo } from './repositories/ChatArtifactReceiptRepo';
+import { ChatMediaJobRepo } from './repositories/ChatMediaJobRepo';
 import { AIAnalysisRepo } from './repositories/AIAnalysisRepo';
 import { QueryPatternRepo } from './repositories/QueryPatternRepo';
 import { UserProfileProcessedHashRepo } from './repositories/UserProfileProcessedHashRepo';
@@ -93,6 +94,7 @@ export class SqliteStoreManager {
 	private chatProjectPlanRepo: ChatProjectPlanRepo | null = null;
 	private chatTurnReceiptRepo: ChatTurnReceiptRepo | null = null;
 	private chatArtifactReceiptRepo: ChatArtifactReceiptRepo | null = null;
+	private chatMediaJobRepo: ChatMediaJobRepo | null = null;
 	private aiAnalysisRepo: AIAnalysisRepo | null = null;
 	private queryPatternRepo: QueryPatternRepo | null = null;
 	private cascadeDebtRepoChat: CascadeDebtRepo | null = null;
@@ -236,6 +238,7 @@ export class SqliteStoreManager {
 		this.chatProjectPlanRepo = new ChatProjectPlanRepo(metaKdb);
 		this.chatTurnReceiptRepo = new ChatTurnReceiptRepo(metaKdb);
 		this.chatArtifactReceiptRepo = new ChatArtifactReceiptRepo(metaKdb);
+		this.chatMediaJobRepo = new ChatMediaJobRepo(metaKdb);
 		this.aiAnalysisRepo = new AIAnalysisRepo(metaKdb);
 		this.queryPatternRepo = new QueryPatternRepo(metaKdb);
 
@@ -285,6 +288,7 @@ export class SqliteStoreManager {
 	getChatProjectPlanRepo(): ChatProjectPlanRepo { return this.requireRepo(this.chatProjectPlanRepo); }
 	getChatTurnReceiptRepo(): ChatTurnReceiptRepo { return this.requireRepo(this.chatTurnReceiptRepo); }
 	getChatArtifactReceiptRepo(): ChatArtifactReceiptRepo { return this.requireRepo(this.chatArtifactReceiptRepo); }
+	getChatMediaJobRepo(): ChatMediaJobRepo { return this.requireRepo(this.chatMediaJobRepo); }
 	getAIAnalysisRepo(): AIAnalysisRepo { return this.requireRepo(this.aiAnalysisRepo); }
 	getQueryPatternRepo(): QueryPatternRepo { return this.requireRepo(this.queryPatternRepo); }
 	getAmbientPushRepo(): AmbientPushRepo { return this.requireRepo(this.ambientPushRepo); }
@@ -348,6 +352,7 @@ export class SqliteStoreManager {
 		this.chatProjectRepo = this.chatConversationRepo = this.chatMessageRepo = null;
 		this.chatMessageResourceRepo = this.chatStarRepo = this.aiAnalysisRepo = this.queryPatternRepo = null;
 		this.chatAssistantRepo = this.chatProjectPlanRepo = this.chatTurnReceiptRepo = this.chatArtifactReceiptRepo = null;
+		this.chatMediaJobRepo = null;
 	}
 }
 

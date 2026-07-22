@@ -4,6 +4,10 @@
 // folder with a stable naming convention.
 //
 // See docs/superpowers/plans/2026-07-03-full-backlog-execution-plan.md §D4.
+//
+// NOTE: MediaAttachmentWriter has moved to src/core/ports/MediaAttachmentWriter.ts.
+// The re-export below keeps existing importers (test/media-ring-service.test.ts,
+// MediaGenerationService legacy import) working without a flag day.
 
 import type {
 	MediaGenerationPort,
@@ -11,20 +15,7 @@ import type {
 	MediaGenerationResult,
 	MediaKind,
 } from '@/core/ports/MediaGenerationPort';
-
-export interface MediaAttachmentWriter {
-	/**
-	 * Persist bytes at a vault-relative path under `attachmentFolder`.
-	 * Returns the final vault-relative path (adapter may add a collision suffix).
-	 * `basename` does NOT include an extension.
-	 */
-	writeAttachment(input: {
-		attachmentFolder: string;
-		basename: string;
-		extension: string;
-		bytes: Uint8Array;
-	}): Promise<{ path: string }>;
-}
+export type { MediaAttachmentWriter } from '@/core/ports/MediaAttachmentWriter';
 
 export interface MediaRingRequestSpec {
 	kind: MediaKind;

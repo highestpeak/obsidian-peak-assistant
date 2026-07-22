@@ -15,7 +15,6 @@ import {
 	type CopilotReviewHistoryRecord,
 } from '@/service/copilot/CopilotReviewHistoryService';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { AppContext } from '@/app/context/AppContext';
 import { type CopilotAction, type DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { getCopilotActionIcon } from '@/ui/view/copilot/copilot-action-surfaces';
 import { cn } from '@/ui/react/lib/utils';
@@ -71,11 +70,15 @@ export const CopilotPickerContent: React.FC<{
 	/** Closes the surrounding modal (used by Atlas heading-jump). */
 	onClose?: () => void;
 }> = ({ onSelect, onAuto, onOpenHistoryRecord, onOpenAllHistory, onOpenVaultRecord, ctx, initialTab, hideTabBar, onClose }) => {
-	// T11B: action catalog comes from the app-owned runtime; mounting
-	// before the runtime is bound renders an empty list rather than
-	// throwing inside React.
-	const runtime = AppContext.tryGetCopilotActionRuntime();
-	const allActions: CopilotAction[] = useMemo(() => runtime?.getAll() ?? [], [runtime]);
+	// T11B: action catalog comes from the app-owned runtime, injected via
+	// ServiceContext so this file stays inside the T11P/T11Q ui→app floor
+	// (no `@/app/**` imports in `src/ui/**`). Mounting before the runtime is
+	// bound renders an empty list rather than throwing inside React.
+	const { copilotActionRuntime, vaultReviewRuntime } = useServiceContext();
+	const allActions: CopilotAction[] = useMemo(
+		() => copilotActionRuntime?.getAll() ?? [],
+		[copilotActionRuntime],
+	);
 	const [activeTab, setActiveTab] = useState<IntentTabId>(initialTab);
 	const [query, setQuery] = useState('');
 	const [showAllByTab, setShowAllByTab] = useState<Partial<Record<IntentTabId, boolean>>>({});
@@ -104,15 +107,16 @@ export const CopilotPickerContent: React.FC<{
 
 	useEffect(() => {
 		if (activeTab !== 'vault') return;
-		const runtime = AppContext.tryGetVaultReviewRuntime();
-		if (!runtime) {
+		// vaultReviewRuntime injected via ServiceContext (see destructure at
+		// the top of this component). Null before the app layer registers it.
+		if (!vaultReviewRuntime) {
 			setVaultRecords([]);
 			setVaultRecordsLoading(false);
 			return;
 		}
 		let cancelled = false;
 		setVaultRecordsLoading(true);
-		runtime.listReports(8).then(list => {
+		vaultReviewRuntime.listReports(8).then(list => {
 			if (!cancelled) {
 				setVaultRecords(list);
 				setVaultRecordsLoading(false);
@@ -125,7 +129,7 @@ export const CopilotPickerContent: React.FC<{
 			}
 		});
 		return () => { cancelled = true; };
-	}, [activeTab]);
+	}, [activeTab, vaultReviewRuntime]);
 
 	const model = useMemo(() => buildCopilotCommandModel({
 		ctx,
@@ -189,7 +193,7 @@ export const CopilotPickerContent: React.FC<{
 					fill
 					activeMode={activeTab === 'ambient' ? 'ambient' : 'atlas'}
 					onSwitchMode={switchMode}
-					bodySlot={activeTab === 'ambient' ? <RelatedNotesPanel app={AppContext.getApp()} /> : undefined}
+					bodySlot={activeTab === 'ambient' ? <RelatedNotesPanel /> : undefined}
 				/>
 			</div>
 		);

@@ -38,6 +38,12 @@ export class PermissionGuard {
 
     /**
      * Check whether the tool may execute with these args. Pure / synchronous.
+     *
+     * May return `{ decision: 'ask' }`; the AgentLoop then suspends the tool
+     * call and awaits an external `resolvePermissionAsk` callback. Absent
+     * resolver → the loop treats ask as deny (safe fallback preserves the
+     * legacy behaviour of never surprising the user with an unattended tool
+     * invocation).
      */
     check(tool: ToolForPermission, args: unknown): PermissionDecision {
         // 1. Deny rules — always first, never overridable.
@@ -50,7 +56,7 @@ export class PermissionGuard {
             }
         }
 
-        // 2. Mode-driven prohibitions.
+        // 2. Mode-driven prohibitions (read mode blocks mutating tools).
         if (this.mode === 'read' && isMutating(tool.kind)) {
             return {
                 decision: 'deny',
@@ -58,17 +64,37 @@ export class PermissionGuard {
             };
         }
 
-        // 3. Explicit allow rule.
+        // 3. Explicit ask rule — matched before allow so an "ask exception"
+        //    can shadow the default allow. Must still be checked before mode
+        //    default in step 5.
+        for (const rule of this.rules) {
+            if (rule.effect === 'ask' && ruleMatches(rule, tool.name, args)) {
+                return {
+                    decision: 'ask',
+                    reason: rule.reason ?? `tool "${tool.name}" requires confirmation`,
+                };
+            }
+        }
+
+        // 4. Explicit allow rule.
         for (const rule of this.rules) {
             if (rule.effect === 'allow' && ruleMatches(rule, tool.name, args)) {
                 return { decision: 'allow' };
             }
         }
 
-        // 4. Mode default.
-        //    acceptEdits  → allow (auto-approve edits; ask UI not wired in M2)
+        // 5. Mode default.
+        //    ask               → mutating tools require confirmation; reads
+        //                        auto-allow to match "no surprise" invariant
+        //    acceptEdits       → allow (auto-approve edit-class tools)
         //    bypassPermissions → allow (deny rules already filtered above)
-        //    read         → allow (only mutating tools were blocked in step 2)
+        //    read              → allow (only mutating tools were blocked in step 2)
+        if (this.mode === 'ask' && isMutating(tool.kind)) {
+            return {
+                decision: 'ask',
+                reason: `tool "${tool.name}" (${tool.kind}) requires confirmation in ask mode`,
+            };
+        }
         return { decision: 'allow' };
     }
 }

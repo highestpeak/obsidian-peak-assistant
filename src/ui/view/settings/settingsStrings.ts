@@ -43,6 +43,7 @@ export interface SettingsStrings {
         aiSetup: string;
         knowledgeIndex: string;
         tools: string;
+        mediaGeneration: string;
         advanced: string;
     };
     overview: {
@@ -262,6 +263,92 @@ export interface SettingsStrings {
         emptyHint: string;
         addCta: string;
         defaultServerName: string;
+    };
+    /** Task E1 (2026-07-21) — Media Generation tab. Every user-facing string
+     *  goes through here; validation problem `detail` fields come from the
+     *  service layer verbatim (they carry per-instance context — endpoint
+     *  ids, kind labels — that a static template cannot spell out). */
+    mediaGeneration: {
+        tabIntro: {
+            sectionTitle: string;
+            sectionSub: string;
+        };
+        route: {
+            sectionTitle: string;
+            sectionSub: string;
+            optionAuto: string;
+            optionNative: string;
+            optionFal: string;
+            optionAutoDesc: string;
+            optionNativeDesc: string;
+            optionFalDesc: string;
+        };
+        fal: {
+            sectionTitle: string;
+            sectionSub: string;
+            keyLabel: string;
+            keyDesc: string;
+            keyPlaceholder: string;
+            attachmentFolderLabel: string;
+            attachmentFolderDesc: string;
+            attachmentFolderPlaceholder: string;
+            attachmentFolderDefaultHint: string;
+        };
+        presets: {
+            sectionTitle: string;
+            sectionSub: string;
+            kindImage: string;
+            kindVideo: string;
+            kindMusic: string;
+            kindTts: string;
+            defaultPresetLabel: string;
+            modelLabel: string;
+            aspectRatioLabel: string;
+            quantityLabel: string;
+            durationLabel: string;
+            durationUnit: string;
+            maxDurationLabel: string;
+            voiceLabel: string;
+            resetLabel: string;
+            emptyOverridesHint: string;
+            musicLicensingTitle: string;
+            musicLicensingBody: string;
+            musicLicensingLinkLabel: string;
+            musicLicensingUrl: string;
+            musicLicensingPolicyVersion: string;
+            musicLicensingConfirmCheckboxLabel: string;
+            musicLicensingConfirmHint: string;
+        };
+        native: {
+            sectionTitle: string;
+            sectionSub: string;
+            noProfilesHint: string;
+            gotoProfilesLabel: string;
+            profileLabel: string;
+            profileAutoOption: string;
+            profileDisabledSuffix: string;
+            profileNoKeySuffix: string;
+            supportedKindsLabel: string;
+            supportedKindNone: string;
+        };
+        status: {
+            sectionTitle: string;
+            sectionSub: string;
+            routeColumnLabel: string;
+            kindColumnLabel: string;
+            statusColumnLabel: string;
+            reasonColumnLabel: string;
+            statusReady: string;
+            statusNotReady: string;
+            statusUnsupported: string;
+            validateButton: string;
+            validateRunning: string;
+            validateNeverHint: string;
+            validateLastAtLabel: string;
+            validateOkLabel: string;
+            validateProblemsLabel: string;
+            validateDisclaimer: string;
+        };
     };
 }
 

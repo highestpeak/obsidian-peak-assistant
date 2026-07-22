@@ -9,8 +9,11 @@ export const keymapExtension = Prec.highest(keymap.of([
 		run: (view) => {
 			if (view.composing) return false; // IME is active, don't submit
 
-			// Check if there's an active NavigableMenu or ContextMenu (dropdown menus)
-			const activeMenu = document.querySelector('[data-item-id]') || document.querySelector('[data-ctx-index]') || document.querySelector('[data-prompt-index]');
+			// Check if there's an active NavigableMenu or ContextMenu (dropdown menus).
+			// Detached-window safe (§5.3): query the CM view's ownerDocument, not
+			// the global one — the popout has its own portal root.
+			const doc = view.dom.ownerDocument;
+			const activeMenu = doc.querySelector('[data-item-id]') || doc.querySelector('[data-ctx-index]') || doc.querySelector('[data-prompt-index]');
 			if (activeMenu) {
 				// Let the menu handle the Enter key
 				return false;

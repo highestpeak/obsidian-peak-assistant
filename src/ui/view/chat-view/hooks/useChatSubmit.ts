@@ -355,20 +355,70 @@ export function useChatSubmit() {
 			: abortReason ? 'cancelled'
 			: streamResult.finalMessage?.isErrorMessage ? 'error'
 			: 'completed';
+		// Zero-gap Track D (2026-07-21) — MSG-05/RUN-06: collect the artifact
+		// receipt ids produced during this turn so a reload can reconstruct
+		// the turn → artifacts join without walking every receipt in the
+		// conversation. Media_generate and artifact_create both persist their
+		// receipts before the stream returns, so a message-scoped lookup here
+		// captures the full set.
+		let artifactIdsForTurn: string[] = [];
+		if (streamResult.finalMessage?.id) {
+			try {
+				const receipts = await manager.conv.listArtifactReceiptsByMessage(
+					streamResult.finalMessage.id,
+				);
+				artifactIdsForTurn = receipts.map((r) => r.artifactId);
+			} catch (err) {
+				console.warn('[useChatSubmit] listArtifactReceiptsByMessage failed:', err);
+			}
+		}
 		const receipt: TurnExecutionReceipt = {
 			requestId,
 			messageId: streamResult.finalMessage?.id ?? userMessage.id,
 			conversationId: conversation.meta.id,
+			// A3 (§5.1 R2): fill runId so debug trace, message.debugRunId
+			// and the persisted receipt all agree on one identifier. Fixes
+			// the audit finding that receipts.runId was never populated.
+			...(streamResult.runId ? { runId: streamResult.runId } : {}),
+			// B2 (plan §5.3.5): prefer the runtime-resolved effective model
+			// over the conversation-meta guess. `streamResult.effectiveModel`
+			// comes from the assistant/model precedence resolver in
+			// service-conversation.streamChat; falling back to finalMessage
+			// / conversation.meta preserves the pre-B2 receipt when the
+			// runtime did not produce a value (e.g. abort-before-stream).
 			effectiveModel: {
-				provider: streamResult.finalMessage?.provider ?? actualProvider ?? '',
-				modelId: streamResult.finalMessage?.model ?? actualModel ?? '',
+				provider:
+					streamResult.effectiveModel?.provider
+					?? streamResult.finalMessage?.provider
+					?? actualProvider
+					?? '',
+				modelId:
+					streamResult.effectiveModel?.modelId
+					?? streamResult.finalMessage?.model
+					?? actualModel
+					?? '',
+				...(streamResult.effectiveModel?.profileId
+					? { profileId: streamResult.effectiveModel.profileId }
+					: {}),
 			},
 			assistantId: conversation.meta.assistantId,
 			workflowId: options.workflowId,
+			// COMP-05 (2026-07-21): persist the ModelSelection the user had at
+			// send time — the runtime may have routed Auto to a concrete
+			// model, but a reload must still show Auto in the picker if that
+			// was the persisted selection.
+			...(conversation.meta.modelSelection
+				? { requestedSelection: conversation.meta.modelSelection }
+				: {}),
+			...(streamResult.modelSource ? { modelSource: streamResult.modelSource } : {}),
+			...(streamResult.routeReason ? { routeReason: streamResult.routeReason } : {}),
+			...(streamResult.requiredCapabilities
+				? { requiredCapabilities: streamResult.requiredCapabilities }
+				: {}),
 			requestedSources: options.requestedSources ?? emptySourceScope(conversation.meta.projectId ?? null),
 			actualSources: receipts.snapshot(),
 			status: receiptStatus,
-			artifactIds: [],
+			artifactIds: artifactIdsForTurn,
 			startedAt: streamStartMs,
 			finishedAt: Date.now(),
 			...(receiptStatus === 'error' && streamResult.finalMessage

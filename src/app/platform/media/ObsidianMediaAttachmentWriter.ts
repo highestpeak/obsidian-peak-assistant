@@ -1,5 +1,5 @@
 import { TFile, type App } from 'obsidian';
-import type { MediaAttachmentWriter } from '@/service/media/MediaRingService';
+import type { MediaAttachmentWriter } from '@/core/ports/MediaAttachmentWriter';
 import { ensureFolder } from '@/app/platform/vault/vault-helpers';
 
 // Obsidian-side vault attachment writer for MediaRingService. Creates the

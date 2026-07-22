@@ -72,9 +72,80 @@ export interface PermissionCheckEvent {
     toolName: string;
     /** 'permission' = user permission guard; 'quarantine' = compiled-skill quarantine. */
     source: 'permission' | 'quarantine';
-    /** 'allow' | 'deny'. Deny short-circuits tool execution. */
-    decision: 'allow' | 'deny';
+    /**
+     * 'allow' | 'deny' | 'ask'. Deny short-circuits tool execution. 'ask' is
+     * emitted when the guard suspends the tool call awaiting an external
+     * resolver — the eventual allow/deny surfaces via the paired
+     * `permission_resolved` event (with the same requestId at the AgentLoop
+     * layer), not a second `permission_check`. Trace consumers that switch
+     * on this value must handle 'ask' explicitly to avoid mis-classifying a
+     * suspension as an approval.
+     */
+    decision: 'allow' | 'deny' | 'ask';
     /** Human-readable reason string surfaced by the guard. */
+    reason?: string;
+}
+
+/**
+ * Chat-facing streaming events emitted while a step is in flight. Chat needs
+ * these to drive token-by-token UI without waiting for step_finish. They fire
+ * *inside* the streamText fullStream loop, ordered per-provider.
+ */
+export interface TextDeltaEvent {
+    loopId: string;
+    stepIndex: number;
+    delta: string;
+}
+
+export interface ReasoningDeltaEvent {
+    loopId: string;
+    stepIndex: number;
+    delta: string;
+}
+
+export interface ToolInputStartEvent {
+    loopId: string;
+    stepIndex: number;
+    toolName: string;
+    toolCallId: string;
+}
+
+export interface ToolInputDeltaEvent {
+    loopId: string;
+    stepIndex: number;
+    toolCallId: string;
+    delta: string;
+}
+
+/**
+ * Emitted when PermissionGuard returns an `ask` decision and the AgentLoop
+ * suspends the tool call waiting on an external resolver.
+ */
+export interface PermissionRequestEvent {
+    loopId: string;
+    stepIndex: number;
+    requestId: string;
+    toolName: string;
+    /** Model-supplied args, forwarded verbatim (untrusted). */
+    argsSummary: unknown;
+}
+
+export interface PermissionResolvedEvent {
+    loopId: string;
+    stepIndex: number;
+    requestId: string;
+    decision: 'allow' | 'deny';
+    reason?: string;
+}
+
+/**
+ * Live run-state transitions. Emitted at least on start
+ * (`running`), on ask suspension (`waiting-permission`), on ask resolution
+ * (back to `running`), and on the final state (mirrors AgentLoopResult.status).
+ */
+export interface RunStatusEvent {
+    loopId: string;
+    state: 'running' | 'waiting-permission' | 'completed' | 'failed' | 'cancelled' | 'timeout';
     reason?: string;
 }
 
@@ -88,6 +159,13 @@ export type TraceEventMap = {
     loop_finish: { loopId: string; finishReason: string; durationMs: number };
     context_compacted: ContextCompactedEvent;
     permission_check: PermissionCheckEvent;
+    text_delta: TextDeltaEvent;
+    reasoning_delta: ReasoningDeltaEvent;
+    tool_input_start: ToolInputStartEvent;
+    tool_input_delta: ToolInputDeltaEvent;
+    permission_request: PermissionRequestEvent;
+    permission_resolved: PermissionResolvedEvent;
+    run_status: RunStatusEvent;
 };
 
 export type TraceEventName = keyof TraceEventMap;

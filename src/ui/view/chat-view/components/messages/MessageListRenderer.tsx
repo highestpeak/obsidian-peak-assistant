@@ -5,6 +5,7 @@ import { DEFAULT_AI_SERVICE_SETTINGS } from '@/core/config/settingsTypes';
 import { DateSeparator } from '../DateSeparator';
 import { useModels } from '@/ui/hooks/useModels';
 import { MessageViewItem, MessageItemProps } from './MessageViewItem';
+import { PermissionAskCard } from './PermissionAskCard';
 import { useChatStrings } from '../../chatStringsContext';
 import type { ChatMessage } from '@/service/chat/types';
 
@@ -105,7 +106,17 @@ export const MessageListRenderer: React.FC = () => {
 	}
 
 	return (
-		<div className="pkchat-msg-list">
+		<div
+			className="pkchat-msg-list"
+			// A11Y-03 — treat the assistant thread as a log region so screen
+			// readers announce new turns but do NOT re-read updated tokens
+			// on every stream tick. `aria-relevant="additions"` limits the
+			// polite announcement to newly appended nodes only.
+			role="log"
+			aria-live="polite"
+			aria-relevant="additions"
+			aria-atomic="false"
+		>
 			{savedMessagesToRender.map((item, index) => {
 				const prevItem = index > 0 ? savedMessagesToRender[index - 1] : null;
 				const currentDate = getDateOnly(item.message.createdAtTimestamp);
@@ -124,6 +135,9 @@ export const MessageListRenderer: React.FC = () => {
 			{streamingMessageToRender && (
 				<MessageViewItem {...streamingMessageToRender} models={models} />
 			)}
+			{/* B1 §5.2 R4 — inline permission ask card. Renders only when a
+			   pending permission request exists in chatDataStore. */}
+			<PermissionAskCard />
 		</div>
 	);
 };

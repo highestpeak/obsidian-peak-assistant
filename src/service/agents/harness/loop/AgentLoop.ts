@@ -1,28 +1,45 @@
 /**
- * Self-hosted agent loop driving Vercel AI SDK generateText one step at a
- * time. See spec §3.4.
+ * Self-hosted agent loop driving Vercel AI SDK `streamText` one step at a
+ * time. See spec §3.4 (structure) and the 2026-07-20 chat-runtime plan §5.1
+ * (streaming contract that this loop must satisfy so Chat can drop its
+ * bespoke Vercel wrapper and share this runtime).
  *
  * The outer while handles: tier switching, per-step token/tool/abort budget,
- * trace emission, and finalAnswer detection. Per-step model invocation +
- * tool execution is delegated to generateText with stopWhen=stepCountIs(1).
+ * trace emission, permission asks, and finalAnswer detection. Per-step model
+ * invocation + tool execution is delegated to `streamText`; we consume its
+ * `fullStream` and re-emit each chunk as both a TraceBus event and a unified
+ * `onStreamEvent` fan-out so a single Chat subscription can reconstruct the
+ * full UI timeline (token deltas, tool i/o, permission asks, step boundaries)
+ * without stitching two channels together.
  *
- * Tools are wrapped so their results round-trip through harness ToolResult
- * shape; the AI SDK sees a normal tool execute fn, so the model gets the
- * `{ ok, ...}` envelope as JSON.
+ * Tools are wrapped so their results round-trip through the harness
+ * ToolResult shape; the AI SDK sees a normal tool execute fn, so the model
+ * gets the `{ ok, ...}` envelope as JSON.
+ *
+ * Backwards compatibility:
+ *   - Non-streaming callers (VaultSearch, Copilot, subagents) do not need to
+ *     change. They ignore the new stream events and read `finalText` /
+ *     `steps` on the returned AgentLoopResult exactly as before.
+ *   - `finishReason` string values are unchanged (`abort`, `error`, `stop`,
+ *     …). A new coarse-grained `status` field is added for consumers that
+ *     want lifecycle buckets without matching every enum.
  */
 
-import { generateText, stepCountIs, tool, type ModelMessage, type ToolSet } from 'ai';
+import { streamText, tool, type ModelMessage, type ToolSet, type LanguageModelUsage } from 'ai';
 import type { ModelTier } from '../tier/types';
 import type { ToolDef, ToolExecCtx, ToolResult } from '../tool/types';
 import { TraceBus } from '../trace/events';
 import type { StepResult, ToolCallTrace, ToolResultTrace } from '../trace/events';
 import { checkSkillQuarantine } from '@/service/skills/quarantine';
-import { DEFAULT_BUDGET } from './types';
+import { DEFAULT_BUDGET, deriveAgentLoopStatus } from './types';
 import type {
     AgentLoopBudget,
     AgentLoopConfig,
     AgentLoopFinishReason,
     AgentLoopResult,
+    AgentLoopStreamEvent,
+    PermissionAskRequest,
+    PermissionAskResolution,
 } from './types';
 import { evaluateStopConditions, hasFinalAnswer } from './stopConditions';
 import { SubAgentDispatcher } from '../subagent/SubAgentDispatcher';
@@ -37,11 +54,38 @@ interface CapturedToolEvent {
     result: ToolResultTrace;
 }
 
+interface StepStreamCapture {
+    text: string;
+    reasoning: string;
+    finishReason: string;
+    usage: LanguageModelUsage | undefined;
+    responseMessages: ModelMessage[];
+    toolCalls: Array<{ toolName: string; toolCallId: string; input: unknown }>;
+    toolResults: Array<{ toolName: string; toolCallId: string; output: unknown }>;
+    errored: boolean;
+    errorMessage?: string;
+}
+
 export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResult> {
     const budget: AgentLoopBudget = { ...DEFAULT_BUDGET, ...cfg.budget };
     const trace = cfg.trace ?? new TraceBus();
     const startedAt = Date.now();
+
+    // Fan-out helper: TraceBus event + unified stream event, in one call.
+    // Chat subscribes to `onStreamEvent` alone; debug adapters keep using
+    // TraceBus. Both channels see events in identical order.
+    const fanOut = (event: AgentLoopStreamEvent) => {
+        try {
+            cfg.onStreamEvent?.(event);
+        } catch (err) {
+            console.error('[AgentLoop] onStreamEvent handler error:', err);
+        }
+    };
+
     trace.emit('loop_start', { loopId: cfg.loopId, startedAt });
+    fanOut({ type: 'loop_start', loopId: cfg.loopId, startedAt });
+    trace.emit('run_status', { loopId: cfg.loopId, state: 'running' });
+    fanOut({ type: 'run_status', loopId: cfg.loopId, state: 'running' });
 
     // Fire session_start hook before any model work. A block here aborts the
     // entire loop — the harness layer is the guarantee point, not the model.
@@ -51,16 +95,32 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
             timestamp: startedAt,
         });
         if (sessionStart.kind === 'block') {
+            const finishReason: AgentLoopFinishReason = 'hook_block';
             trace.emit('loop_finish', {
                 loopId: cfg.loopId,
-                finishReason: 'hook_block',
+                finishReason,
+                durationMs: Date.now() - startedAt,
+            });
+            trace.emit('run_status', { loopId: cfg.loopId, state: 'failed', reason: 'hook_block' });
+            fanOut({
+                type: 'run_status',
+                loopId: cfg.loopId,
+                state: 'failed',
+                reason: 'hook_block',
+            });
+            fanOut({
+                type: 'loop_finish',
+                loopId: cfg.loopId,
+                finishReason,
+                status: deriveAgentLoopStatus(finishReason),
                 durationMs: Date.now() - startedAt,
             });
             return {
                 loopId: cfg.loopId,
                 finalText: '',
                 steps: [],
-                finishReason: 'hook_block',
+                finishReason,
+                status: deriveAgentLoopStatus(finishReason),
                 tierUsage: { 'local-fast': 0, 'local-deep': 0, online: 0 },
                 totalTokens: 0,
                 totalToolCalls: 0,
@@ -119,6 +179,13 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
             tier: tier.tier,
             modelId: tier.modelId,
         });
+        fanOut({
+            type: 'step_start',
+            loopId: cfg.loopId,
+            stepIndex,
+            tier: tier.tier,
+            modelId: tier.modelId,
+        });
 
         const captured: CapturedToolEvent[] = [];
         const allowedTools = effectiveTools.filter(
@@ -126,7 +193,7 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
         );
         const toolSet: ToolSet = {};
         for (const t of allowedTools) {
-            toolSet[t.name] = wrapTool(t, cfg, tier.tier, stepIndex, trace, captured);
+            toolSet[t.name] = wrapTool(t, cfg, tier.tier, stepIndex, trace, captured, fanOut);
         }
         toolSet[ESCALATE_TOOL_NAME] = cfg.tierController.escalateTool();
 
@@ -155,19 +222,206 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
         const systemPrompt = composeSystemPrompt(baseSystemPrompt, keptBlocks);
 
         const stepStart = Date.now();
-        let result: Awaited<ReturnType<typeof generateText>>;
+        const capture: StepStreamCapture = {
+            text: '',
+            reasoning: '',
+            finishReason: 'unknown',
+            usage: undefined,
+            responseMessages: [],
+            toolCalls: [],
+            toolResults: [],
+            errored: false,
+        };
+
         try {
-            result = await generateText({
+            const streamed = streamText({
                 model: tier.resolve(),
                 system: systemPrompt || undefined,
                 messages,
                 tools: toolSet,
-                stopWhen: stepCountIs(1),
+                // stepCountIs(1) is enforced by the outer while loop; we only
+                // ask streamText for a single provider round-trip per iteration
+                // so tier switching / budget accounting happen at this layer.
+                stopWhen: () => true,
                 abortSignal: cfg.abortSignal,
+                // A3: forward optional generation knobs (temperature, topP,
+                // topK, maxOutputTokens, penalties) so callers like Chat
+                // preserve their pre-migration provider behaviour.
+                temperature: cfg.modelSettings?.temperature,
+                topP: cfg.modelSettings?.topP,
+                topK: cfg.modelSettings?.topK,
+                maxOutputTokens: cfg.modelSettings?.maxOutputTokens,
+                frequencyPenalty: cfg.modelSettings?.frequencyPenalty,
+                presencePenalty: cfg.modelSettings?.presencePenalty,
             });
+
+            // Consume the unified fullStream. Errors surface both as `error`
+            // chunks *and* as thrown exceptions from the async iterator; we
+            // handle both. Ordering follows the SDK: text-delta ↔ tool-input-*
+            // ↔ tool-call ↔ tool-result ↔ finish-step ↔ finish.
+            for await (const chunk of streamed.fullStream) {
+                switch (chunk.type) {
+                    case 'text-delta': {
+                        capture.text += chunk.text;
+                        trace.emit('text_delta', {
+                            loopId: cfg.loopId,
+                            stepIndex,
+                            delta: chunk.text,
+                        });
+                        fanOut({
+                            type: 'text_delta',
+                            loopId: cfg.loopId,
+                            stepIndex,
+                            delta: chunk.text,
+                        });
+                        break;
+                    }
+                    case 'reasoning-delta': {
+                        capture.reasoning += chunk.text;
+                        trace.emit('reasoning_delta', {
+                            loopId: cfg.loopId,
+                            stepIndex,
+                            delta: chunk.text,
+                        });
+                        fanOut({
+                            type: 'reasoning_delta',
+                            loopId: cfg.loopId,
+                            stepIndex,
+                            delta: chunk.text,
+                        });
+                        break;
+                    }
+                    case 'tool-input-start': {
+                        trace.emit('tool_input_start', {
+                            loopId: cfg.loopId,
+                            stepIndex,
+                            toolName: chunk.toolName,
+                            toolCallId: chunk.id,
+                        });
+                        fanOut({
+                            type: 'tool_input_start',
+                            loopId: cfg.loopId,
+                            stepIndex,
+                            toolName: chunk.toolName,
+                            toolCallId: chunk.id,
+                        });
+                        break;
+                    }
+                    case 'tool-input-delta': {
+                        trace.emit('tool_input_delta', {
+                            loopId: cfg.loopId,
+                            stepIndex,
+                            toolCallId: chunk.id,
+                            delta: chunk.delta,
+                        });
+                        fanOut({
+                            type: 'tool_input_delta',
+                            loopId: cfg.loopId,
+                            stepIndex,
+                            toolCallId: chunk.id,
+                            delta: chunk.delta,
+                        });
+                        break;
+                    }
+                    case 'tool-call': {
+                        // Note: TraceBus `tool_call` is also fired inside
+                        // `wrapTool.execute` for the pre-execution ordering,
+                        // to match the previous behaviour. Here we only stash
+                        // for later step aggregation.
+                        capture.toolCalls.push({
+                            toolName: (chunk as any).toolName,
+                            toolCallId: (chunk as any).toolCallId,
+                            input: (chunk as any).input,
+                        });
+                        break;
+                    }
+                    case 'tool-result': {
+                        capture.toolResults.push({
+                            toolName: (chunk as any).toolName,
+                            toolCallId: (chunk as any).toolCallId,
+                            output: (chunk as any).output,
+                        });
+                        break;
+                    }
+                    case 'finish-step': {
+                        capture.finishReason = String(chunk.finishReason ?? capture.finishReason);
+                        capture.usage = chunk.usage ?? capture.usage;
+                        break;
+                    }
+                    case 'error': {
+                        capture.errored = true;
+                        capture.errorMessage =
+                            chunk.error instanceof Error
+                                ? chunk.error.message
+                                : String(chunk.error);
+                        break;
+                    }
+                    case 'abort': {
+                        capture.errored = true;
+                        capture.errorMessage = (chunk as any).reason ?? 'aborted';
+                        break;
+                    }
+                    default:
+                        // Unhandled chunk types (start, start-step, finish,
+                        // text-start, text-end, source, file, raw, …) are
+                        // deliberately ignored — they don't map to a harness
+                        // event and don't affect step semantics.
+                        break;
+                }
+            }
+
+            // Wait for the full response promise so we get final assembled
+            // messages / usage. This resolves once the stream terminates.
+            try {
+                const responseMessages = await streamed.response;
+                capture.responseMessages = (responseMessages?.messages ?? []) as ModelMessage[];
+            } catch (err) {
+                // response promise rejects on stream error — already captured
+                // above via error chunk.
+                if (!capture.errored) {
+                    capture.errored = true;
+                    capture.errorMessage = err instanceof Error ? err.message : String(err);
+                }
+            }
+            try {
+                const finalUsage = await streamed.usage;
+                if (finalUsage) capture.usage = finalUsage;
+            } catch {
+                // usage may reject if the stream errored; ignore.
+            }
+            try {
+                const finalReason = await streamed.finishReason;
+                if (finalReason) capture.finishReason = String(finalReason);
+            } catch {
+                // ignore
+            }
         } catch (err) {
-            errorMessage = err instanceof Error ? err.message : String(err);
-            finishReason = cfg.abortSignal?.aborted ? 'abort' : 'error';
+            // streamText may throw during setup (before fullStream), or the
+            // iterator itself may throw on transport failure that isn't
+            // surfaced as an `error` chunk.
+            capture.errored = true;
+            capture.errorMessage =
+                capture.errorMessage ?? (err instanceof Error ? err.message : String(err));
+        }
+
+        // Provider-level error → break the loop with `error` / `abort`. This
+        // preserves the pre-migration finishReason values so existing callers
+        // (subagent, VaultSearch) don't observe a semantic change.
+        if (capture.errored) {
+            const aborted = !!cfg.abortSignal?.aborted;
+            errorMessage = capture.errorMessage ?? (aborted ? 'aborted' : 'stream error');
+            finishReason = aborted ? 'abort' : 'error';
+            trace.emit('run_status', {
+                loopId: cfg.loopId,
+                state: aborted ? 'cancelled' : 'failed',
+                reason: errorMessage,
+            });
+            fanOut({
+                type: 'error',
+                loopId: cfg.loopId,
+                stepIndex,
+                error: errorMessage,
+            });
             break;
         }
 
@@ -175,21 +429,21 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
         tierUsage[tier.tier] += 1;
 
         // Splice in any new assistant/tool messages produced this step.
-        const newMessages = result.response?.messages ?? [];
-        for (const m of newMessages) {
-            messages.push(m as ModelMessage);
+        for (const m of capture.responseMessages) {
+            messages.push(m);
         }
 
-        const callTraces: ToolCallTrace[] = (result.toolCalls ?? []).map((tc: any) => ({
+        const callTraces: ToolCallTrace[] = capture.toolCalls.map((tc) => ({
             toolName: String(tc.toolName),
             toolCallId: String(tc.toolCallId),
             args: tc.input,
         }));
         const resultTraces: ToolResultTrace[] = captured.map((c) => c.result);
-        // Fallback: if a tool result came back through generateText that we
-        // didn't capture (e.g. SDK retry replaced our wrapper), still record it.
-        if (resultTraces.length === 0 && Array.isArray(result.toolResults)) {
-            for (const tr of result.toolResults as any[]) {
+        // Fallback: if the SDK reported a tool result that our wrapper never
+        // saw (e.g. wrapper bypassed by retry), still record it so downstream
+        // trace consumers observe the pairing.
+        if (resultTraces.length === 0 && capture.toolResults.length > 0) {
+            for (const tr of capture.toolResults) {
                 resultTraces.push({
                     toolName: String(tr.toolName),
                     toolCallId: String(tr.toolCallId),
@@ -200,7 +454,7 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
             }
         }
 
-        const usage = result.usage ?? ({} as any);
+        const usage = capture.usage ?? ({} as LanguageModelUsage);
         const promptTokens = usage.inputTokens ?? 0;
         const completionTokens = usage.outputTokens ?? 0;
         const stepTotal = usage.totalTokens ?? promptTokens + completionTokens;
@@ -216,8 +470,8 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
             totalTokens: stepTotal,
             toolCalls: callTraces,
             toolResults: resultTraces,
-            text: result.text ?? '',
-            finishReason: String(result.finishReason ?? 'unknown'),
+            text: capture.text,
+            finishReason: capture.finishReason,
             durationMs: stepDuration,
         };
 
@@ -231,6 +485,16 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
         steps.push(step);
 
         trace.emit('step_finish', step);
+        fanOut({
+            type: 'step_finish',
+            loopId: cfg.loopId,
+            stepIndex,
+            finishReason: step.finishReason,
+            text: step.text,
+            promptTokens: step.promptTokens,
+            completionTokens: step.completionTokens,
+            totalTokens: step.totalTokens,
+        });
 
         try {
             await cfg.onStepFinish?.(step);
@@ -270,13 +534,29 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
     const last = steps[steps.length - 1];
     const finalText = last?.text ?? '';
     const durationMs = Date.now() - startedAt;
+    const status = deriveAgentLoopStatus(finishReason);
     trace.emit('loop_finish', { loopId: cfg.loopId, finishReason, durationMs });
+    trace.emit('run_status', { loopId: cfg.loopId, state: status, reason: errorMessage });
+    fanOut({
+        type: 'run_status',
+        loopId: cfg.loopId,
+        state: status,
+        reason: errorMessage,
+    });
+    fanOut({
+        type: 'loop_finish',
+        loopId: cfg.loopId,
+        finishReason,
+        status,
+        durationMs,
+    });
 
     return {
         loopId: cfg.loopId,
         finalText,
         steps,
         finishReason,
+        status,
         tierUsage,
         totalTokens,
         totalToolCalls,
@@ -310,6 +590,12 @@ function composeSystemPrompt(base: string, blocks: ReadonlyArray<MemoryBlock>): 
     return base ? `${base}\n\n${rendered}` : rendered;
 }
 
+let permissionAskCounter = 0;
+function nextPermissionRequestId(loopId: string): string {
+    permissionAskCounter += 1;
+    return `${loopId}:ask-${permissionAskCounter}`;
+}
+
 function wrapTool(
     def: ToolDef,
     cfg: AgentLoopConfig,
@@ -317,6 +603,7 @@ function wrapTool(
     stepIndex: number,
     trace: TraceBus,
     captured: CapturedToolEvent[],
+    fanOut: (event: AgentLoopStreamEvent) => void,
 ) {
     return tool({
         description: def.description,
@@ -328,6 +615,14 @@ function wrapTool(
                 args,
             };
             trace.emit('tool_call', { loopId: cfg.loopId, stepIndex, ...callTrace });
+            fanOut({
+                type: 'tool_call',
+                loopId: cfg.loopId,
+                stepIndex,
+                toolName: def.name,
+                toolCallId: info.toolCallId,
+                args,
+            });
             const start = Date.now();
 
             const finalize = (result: ToolResult): ToolResult => {
@@ -340,6 +635,16 @@ function wrapTool(
                 };
                 captured.push({ call: callTrace, result: resultTrace });
                 trace.emit('tool_result', { loopId: cfg.loopId, stepIndex, ...resultTrace });
+                fanOut({
+                    type: 'tool_result',
+                    loopId: cfg.loopId,
+                    stepIndex,
+                    toolName: def.name,
+                    toolCallId: info.toolCallId,
+                    ok: result.ok,
+                    payload: resultTrace.payload,
+                    durationMs: resultTrace.durationMs,
+                });
                 return result;
             };
 
@@ -350,19 +655,51 @@ function wrapTool(
                     { name: def.name, kind: def.kind },
                     args,
                 );
-                trace.emit('permission_check', {
-                    loopId: cfg.loopId,
-                    stepIndex,
-                    toolName: def.name,
-                    source: 'permission',
-                    decision: decision.decision === 'deny' ? 'deny' : 'allow',
-                    ...(decision.reason ? { reason: decision.reason } : {}),
-                });
                 if (decision.decision === 'deny') {
+                    trace.emit('permission_check', {
+                        loopId: cfg.loopId,
+                        stepIndex,
+                        toolName: def.name,
+                        source: 'permission',
+                        decision: 'deny',
+                        ...(decision.reason ? { reason: decision.reason } : {}),
+                    });
                     return finalize({
                         ok: false,
                         error: `permission denied: ${decision.reason}`,
                         recoverable: false,
+                    });
+                }
+
+                if (decision.decision === 'ask') {
+                    // Resolve out-of-band. Trace + fan-out the request so UI
+                    // can render an approval prompt; resolve to allow/deny.
+                    const requestId = nextPermissionRequestId(cfg.loopId);
+                    const resolution = await runPermissionAsk({
+                        cfg,
+                        def,
+                        stepIndex,
+                        requestId,
+                        args,
+                        trace,
+                        fanOut,
+                        reason: decision.reason,
+                    });
+                    if (resolution.decision === 'deny') {
+                        return finalize({
+                            ok: false,
+                            error: `permission denied: ${resolution.reason ?? 'user declined'}`,
+                            recoverable: false,
+                        });
+                    }
+                    // allow → fall through to hook + execute path
+                } else {
+                    trace.emit('permission_check', {
+                        loopId: cfg.loopId,
+                        stepIndex,
+                        toolName: def.name,
+                        source: 'permission',
+                        decision: 'allow',
                     });
                 }
             }
@@ -466,4 +803,171 @@ function wrapTool(
             return finalize(result);
         },
     });
+}
+
+/**
+ * Suspend the tool call until an external resolver answers, or the loop is
+ * aborted. Emits `permission_request` (via TraceBus + fanOut) before waiting
+ * and `permission_resolved` on completion. Missing resolver → deny; abort →
+ * deny with reason=`cancelled`; resolver throw → deny with error message.
+ * Callers see this as a synchronous decision — the AgentLoop treats the
+ * suspension window as `waiting-permission` for observability.
+ */
+async function runPermissionAsk(input: {
+    cfg: AgentLoopConfig;
+    def: ToolDef;
+    stepIndex: number;
+    requestId: string;
+    args: unknown;
+    trace: TraceBus;
+    fanOut: (event: AgentLoopStreamEvent) => void;
+    reason?: string;
+}): Promise<PermissionAskResolution> {
+    const { cfg, def, stepIndex, requestId, args, trace, fanOut, reason } = input;
+
+    // trace + fan-out the request. Emit `decision: 'ask'` — NOT a fake
+    // `'allow'`. The eventual allow/deny is reported by the `permission_resolved`
+    // event below; upstream trace consumers must not observe a spurious approval
+    // during the suspension window.
+    trace.emit('permission_check', {
+        loopId: cfg.loopId,
+        stepIndex,
+        toolName: def.name,
+        source: 'permission',
+        decision: 'ask',
+        reason: reason ?? 'ask',
+    });
+    trace.emit('permission_request', {
+        loopId: cfg.loopId,
+        stepIndex,
+        requestId,
+        toolName: def.name,
+        argsSummary: args,
+    });
+    fanOut({
+        type: 'permission_request',
+        loopId: cfg.loopId,
+        stepIndex,
+        requestId,
+        toolName: def.name,
+        argsSummary: args,
+    });
+    trace.emit('run_status', {
+        loopId: cfg.loopId,
+        state: 'waiting-permission',
+        reason: def.name,
+    });
+    fanOut({
+        type: 'run_status',
+        loopId: cfg.loopId,
+        state: 'waiting-permission',
+        reason: def.name,
+    });
+
+    const emitResolved = (resolution: PermissionAskResolution) => {
+        trace.emit('permission_resolved', {
+            loopId: cfg.loopId,
+            stepIndex,
+            requestId,
+            decision: resolution.decision,
+            reason: resolution.reason,
+        });
+        fanOut({
+            type: 'permission_resolved',
+            loopId: cfg.loopId,
+            stepIndex,
+            requestId,
+            decision: resolution.decision,
+            reason: resolution.reason,
+        });
+        // Return to running state after each ask, so downstream observers
+        // never see two `waiting-permission` events without a `running` in
+        // between.
+        trace.emit('run_status', { loopId: cfg.loopId, state: 'running' });
+        fanOut({ type: 'run_status', loopId: cfg.loopId, state: 'running' });
+    };
+
+    // No resolver → deny by default. Silent auto-allow would violate the
+    // "no surprise" invariant PermissionGuard exists to enforce.
+    if (!cfg.resolvePermissionAsk) {
+        const resolution: PermissionAskResolution = {
+            decision: 'deny',
+            reason: 'no permission resolver registered',
+        };
+        emitResolved(resolution);
+        return resolution;
+    }
+
+    const askAbortController = new AbortController();
+    const external = cfg.abortSignal;
+    const forwardAbort = () => askAbortController.abort();
+    if (external) {
+        if (external.aborted) {
+            askAbortController.abort();
+        } else {
+            external.addEventListener('abort', forwardAbort, { once: true });
+        }
+    }
+
+    const request: PermissionAskRequest = {
+        loopId: cfg.loopId,
+        stepIndex,
+        requestId,
+        toolName: def.name,
+        toolKind: def.kind,
+        args,
+        signal: askAbortController.signal,
+    };
+
+    let resolution: PermissionAskResolution;
+    try {
+        // Race the resolver against the loop's abort signal so a cancelled
+        // loop doesn't leak a pending Promise.
+        resolution = await new Promise<PermissionAskResolution>((resolve, reject) => {
+            let settled = false;
+            const onAbort = () => {
+                if (settled) return;
+                settled = true;
+                resolve({ decision: 'deny', reason: 'cancelled' });
+            };
+            if (askAbortController.signal.aborted) {
+                onAbort();
+                return;
+            }
+            askAbortController.signal.addEventListener('abort', onAbort, { once: true });
+
+            (async () => {
+                try {
+                    const answer = await cfg.resolvePermissionAsk!(request);
+                    if (settled) return;
+                    settled = true;
+                    // MSG-07 permission triage — `allow-for-run` is a UI-level
+                    // decision. From the loop's perspective it is `allow`; the
+                    // resolver caches the tool name so subsequent asks in the
+                    // same run short-circuit without re-prompting. Anything
+                    // else deny-defaults to keep the "no surprise" invariant.
+                    const isRecognisedAllow =
+                        answer && (answer.decision === 'allow' || answer.decision === 'allow-for-run');
+                    const isDeny = answer && answer.decision === 'deny';
+                    resolve(
+                        isRecognisedAllow || isDeny
+                            ? answer
+                            : { decision: 'deny', reason: 'invalid ask resolution' },
+                    );
+                } catch (err) {
+                    if (settled) return;
+                    settled = true;
+                    resolve({
+                        decision: 'deny',
+                        reason: err instanceof Error ? err.message : String(err),
+                    });
+                }
+            })();
+        });
+    } finally {
+        if (external) external.removeEventListener('abort', forwardAbort);
+    }
+
+    emitResolved(resolution);
+    return resolution;
 }

@@ -8,6 +8,7 @@ import { useServiceContext } from '@/ui/context/ServiceContext';
 import { draftKeyForConversation, emptySourceScope, type TurnSourceScope } from '@/core/types/chat-studio';
 import { providerKindForProfile } from '@/ui/component/model-picker/modelPickerData';
 import type { PromptInputMessage } from '@/ui/component/prompt-input';
+import { evaluateAttachmentUnderstanding } from './understandingGate';
 
 const PLAN_WORKFLOW_ID = 'plan';
 
@@ -49,6 +50,44 @@ export function useInputSubmit() {
 		const hasDraftContext = draft.explicitRefs.length > 0 || draft.workflowId !== null;
 		if (!message.text.trim() && message.files.length === 0 && !hasDraftContext) return;
 		if (isSending) return;
+
+		// Zero-gap C1 — send-time gate for audio/video attachments. When the
+		// current model can't read them AND no transcription runtime is
+		// configured, warn the user before spending on a call that can't
+		// possibly understand the attachment.
+		if (message.files.length > 0) {
+			try {
+				const runtime = manager.conv.getMediaUnderstandingRuntime?.() ?? null;
+				const modelInfo = await manager.getModelInfo?.(
+					activeConversation?.meta.activeModel ?? '',
+					activeConversation?.meta.activeProvider ?? '',
+				);
+				const verdict = evaluateAttachmentUnderstanding({
+					files: message.files,
+					runtime,
+					modelCapabilities: modelInfo?.capabilities ?? null,
+				});
+				if (verdict.kind === 'warn') {
+					// Detached-window safe (§5.3): route the confirm through the
+					// window that currently owns focus so the dialog surfaces in
+					// the popout, not on the workspace tab the user isn't looking
+					// at. Fall through to `true` if no confirm is available.
+					const ownerWin = (typeof document !== 'undefined'
+						? document.activeElement?.ownerDocument?.defaultView
+						: null) as (Window & typeof globalThis) | null | undefined;
+					const win = ownerWin ?? (typeof window !== 'undefined' ? window : null);
+					const proceed = win && typeof win.confirm === 'function'
+						? win.confirm(verdict.message)
+						: true;
+					if (!proceed) return;
+				}
+			} catch (e) {
+				// Never block the send on a gate error — fall through and let
+				// the service layer decide.
+				console.warn('[useInputSubmit] understanding gate failed:', e);
+			}
+		}
+
 		setIsSending(true);
 
 		// Workflow chip → per-message intent prefix consumed by the service

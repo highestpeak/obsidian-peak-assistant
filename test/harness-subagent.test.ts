@@ -1,6 +1,5 @@
 import assert from 'assert';
 import { z } from 'zod';
-import { MockLanguageModelV3 } from 'ai/test';
 import { runAgentLoop } from '@/service/agents/harness/loop/AgentLoop';
 import { TierController } from '@/service/agents/harness/tier/TierController';
 import { DEFAULT_TIER_CAPABILITIES } from '@/service/agents/harness/tier/types';
@@ -9,25 +8,20 @@ import type { ToolDef } from '@/service/agents/harness/tool/types';
 import { SubAgentDispatcher } from '@/service/agents/harness/subagent/SubAgentDispatcher';
 import { buildSubagentTool, subagentToolName } from '@/service/agents/harness/subagent/subagentTool';
 import type { SubAgentDefinition } from '@/service/agents/harness/subagent/types';
-
-type GenResult = Awaited<ReturnType<NonNullable<MockLanguageModelV3['doGenerate']>>>;
+import {
+    makeStreamModel,
+    textStepChunks,
+    toolStepChunks,
+    type StepChunks,
+} from './harness-fixtures/mockStreamModel';
 
 /**
- * A binding whose model emits a sequence of canned responses, advancing one
- * per doGenerate call. Lets us script multi-step subagent runs without
- * sharing state across the parent/child models.
+ * A binding whose model plays back scripted step chunk sequences, one per
+ * doStream call. Lets us script multi-step subagent runs without sharing
+ * state across the parent/child models.
  */
-function scriptedBinding(modelId: string, responses: GenResult[]): TierBinding {
-    let i = 0;
-    const model = new MockLanguageModelV3({
-        provider: 'mock',
-        modelId,
-        async doGenerate(): Promise<GenResult> {
-            const r = responses[Math.min(i, responses.length - 1)];
-            i += 1;
-            return r;
-        },
-    });
+function scriptedBinding(modelId: string, steps: StepChunks[]): TierBinding {
+    const model = makeStreamModel(modelId, steps);
     return {
         tier: 'local-fast',
         providerId: 'mock',
@@ -38,22 +32,19 @@ function scriptedBinding(modelId: string, responses: GenResult[]): TierBinding {
     };
 }
 
-function textResp(text: string, tokens = 10): GenResult {
-    return {
-        content: [{ type: 'text', text }],
-        finishReason: 'stop',
-        usage: { inputTokens: tokens, outputTokens: tokens, totalTokens: tokens * 2 },
-        warnings: [],
-    } as GenResult;
+function textResp(text: string, tokens = 10): StepChunks {
+    const usage = {
+        inputTokens: { total: tokens, noCache: tokens, cacheRead: undefined, cacheWrite: undefined },
+        outputTokens: { total: tokens, textTokens: tokens, reasoningTokens: undefined },
+        totalTokens: tokens * 2,
+        reasoningTokens: undefined,
+        cachedInputTokens: undefined,
+    };
+    return textStepChunks({ text, usage });
 }
 
-function toolCallResp(toolName: string, args: any, tcId = 'tc1'): GenResult {
-    return {
-        content: [{ type: 'tool-call', toolCallId: tcId, toolName, input: JSON.stringify(args) }],
-        finishReason: 'tool-calls',
-        usage: { inputTokens: 5, outputTokens: 5, totalTokens: 10 },
-        warnings: [],
-    } as GenResult;
+function toolCallResp(toolName: string, args: any, tcId = 'tc1'): StepChunks {
+    return toolStepChunks({ toolName, input: args, toolCallId: tcId });
 }
 
 function mkTool(name: string, executed: { count: number; lastArgs?: any }, payload: any = { ok: true }): ToolDef {

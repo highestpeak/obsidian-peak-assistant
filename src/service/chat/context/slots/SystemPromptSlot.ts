@@ -18,11 +18,21 @@ import { DEFAULT_RICH_OUTPUT_TYPES, loadRichOutputTypes, type RichOutputType } f
  * `@/ui/*` imports.
  */
 function buildCapabilities(chatState: ChatRuntimeStatePort) {
+  const webSearchAvailable = !!ProfileRegistry.getInstance().getActiveWebSearchProfile();
+  // 2026-07-21 (source-truth): honest availability instead of a hardcoded
+  // `true`. If the adapter doesn't expose it (legacy test adapters), the
+  // fallback stays `true` to preserve pre-fix behavior. The runtime chat
+  // adapter returns `ConversationService.isVaultSearchAvailable()` so the
+  // system prompt only claims Vault Search when the retrieval port is
+  // actually wired.
+  const vaultSearchAvailable = chatState.isVaultSearchAvailable
+    ? chatState.isVaultSearchAvailable()
+    : true;
   return {
-    webSearchAvailable: !!ProfileRegistry.getInstance().getActiveWebSearchProfile(),
-    webSearchEnabled: chatState.isWebSearchEnabled(),
-    vaultSearchAvailable: true,
-    vaultSearchEnabled: chatState.isVaultSearchEnabled(),
+    webSearchAvailable,
+    webSearchEnabled: chatState.isWebSearchEnabled() && webSearchAvailable,
+    vaultSearchAvailable,
+    vaultSearchEnabled: chatState.isVaultSearchEnabled() && vaultSearchAvailable,
   };
 }
 

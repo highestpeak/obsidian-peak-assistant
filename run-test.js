@@ -133,11 +133,24 @@ async function runOne(testFile, idx) {
     }
 
     const perTestTimeoutMs = parseInt(process.env.TEST_TIMEOUT_MS || '', 10) || 30000;
-    // Tests are synchronous assertion scripts but many leak open handles
-    // (native sqlite, intervals, etc.) and never exit naturally. Wrap the
-    // bundle in a tiny harness that forces process.exit after sync run.
+    // Completion-safe harness. The old harness forced process.exit(0) on the
+    // first setImmediate tick, which silently killed any async assertion that
+    // awaited a real timer AND swallowed unhandled promise rejections —
+    // failing tests could report green. Now:
+    //   - `beforeExit` exits 0 only after the event loop drains naturally,
+    //     so every pending await completes before the verdict.
+    //   - `unhandledRejection` is a hard failure (async asserts can't vanish).
+    //   - A grace-period forced exit (unref'd so it never holds the loop)
+    //     still bounds files that leak handles (intervals, native sqlite);
+    //     their assertions have long completed by then.
+    const graceExitMs = parseInt(process.env.TEST_GRACE_EXIT_MS || '', 10) || 8000;
     return new Promise((resolve) => {
-        const harness = `process.on('uncaughtException',(e)=>{console.error(e&&e.stack||e);process.exit(1);});require(${JSON.stringify(outFile)});setImmediate(()=>process.exit(0));`;
+        const harness =
+            `process.on('uncaughtException',(e)=>{console.error(e&&e.stack||e);process.exit(1);});` +
+            `process.on('unhandledRejection',(e)=>{console.error('[runner] unhandled rejection:',e&&e.stack||e);process.exit(1);});` +
+            `require(${JSON.stringify(outFile)});` +
+            `process.on('beforeExit',()=>process.exit(0));` +
+            `setTimeout(()=>{console.error('[runner] grace-exit: event loop still held after ${graceExitMs}ms (leaked handle?)');process.exit(0);},${graceExitMs}).unref();`;
         const child = spawn('node', ['-e', harness], { stdio: ['ignore', 'pipe', 'pipe'] });
         let stdout = '';
         let stderr = '';

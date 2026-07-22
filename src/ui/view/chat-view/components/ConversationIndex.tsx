@@ -104,9 +104,11 @@ function useScrollToMessage(): (messageId: string) => void {
  */
 function useMessageScrollSpy(dependency: unknown): string | null {
 	const portalContainer = usePortalContainer();
+	const messages = useChatDataStore((s) => s.messages);
 	const [activeId, setActiveId] = useState<string | null>(null);
 	const observerRef = useRef<IntersectionObserver | null>(null);
 	const visibleRef = useRef<Set<string>>(new Set());
+	const observedRef = useRef<Set<Element>>(new Set());
 
 	useEffect(() => {
 		const doc = portalContainer?.ownerDocument ?? document;
@@ -115,6 +117,7 @@ function useMessageScrollSpy(dependency: unknown): string | null {
 		if (!IOC) return;
 
 		visibleRef.current = new Set();
+		observedRef.current = new Set();
 
 		const recomputeActive = (): void => {
 			// Choose the earliest visible message (top of the viewport) as the
@@ -155,22 +158,44 @@ function useMessageScrollSpy(dependency: unknown): string | null {
 		});
 		observerRef.current = obs;
 
-		const attach = () => {
+		// Sync observed set with the DOM. RIGHT-02: streaming/incremental
+		// message insertion or deletion must add new targets and drop removed
+		// ones — not just observe once at mount.
+		const reconcile = () => {
 			const nodes = doc.querySelectorAll('[data-message-id]');
-			nodes.forEach((n) => obs.observe(n));
+			const current = new Set<Element>();
+			nodes.forEach((n) => current.add(n));
+			// Add new nodes.
+			current.forEach((n) => {
+				if (!observedRef.current.has(n)) {
+					obs.observe(n);
+					observedRef.current.add(n);
+				}
+			});
+			// Drop nodes that disappeared.
+			observedRef.current.forEach((n) => {
+				if (!current.has(n)) {
+					obs.unobserve(n);
+					observedRef.current.delete(n);
+					const id = (n as HTMLElement).getAttribute('data-message-id');
+					if (id) visibleRef.current.delete(id);
+				}
+			});
 		};
 		// Defer one frame so newly-rendered messages exist in the DOM.
-		win.requestAnimationFrame(attach);
+		win.requestAnimationFrame(reconcile);
 
 		return () => {
 			obs.disconnect();
 			observerRef.current = null;
+			observedRef.current.clear();
 			visibleRef.current.clear();
 		};
-		// `dependency` re-runs the spy when the conversation switches — the
-		// old observer's targets are stale after a message-array swap.
+		// `dependency` re-runs the spy when the conversation switches; the
+		// message list length change forces a reconcile so streaming turns are
+		// observed as they arrive (RIGHT-02).
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [portalContainer, dependency]);
+	}, [portalContainer, dependency, messages.length]);
 
 	return activeId;
 }
@@ -343,6 +368,9 @@ const ConversationIndexInner: React.FC<ConversationIndexProps> = ({ onCollapse, 
 		typeDiagram: rightStrings.typeDiagram,
 		typeBase: rightStrings.typeBase,
 		typeProcess: rightStrings.typeProcess,
+		typeDataview: rightStrings.typeDataview,
+		typeExtract: rightStrings.typeExtract,
+		typeReminder: rightStrings.typeReminder,
 		emptyFiltered: rightStrings.emptyFiltered,
 		emptyFilteredSub: rightStrings.emptyFilteredSub,
 		emptyEmpty: rightStrings.emptyResources,

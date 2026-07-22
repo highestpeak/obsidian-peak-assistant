@@ -123,6 +123,23 @@ export interface ChatMessage {
 	replyToMessageId?: string;
 	branchFromMessageId?: string;
 	revisionOfMessageId?: string;
+	/**
+	 * Assistant variant fields (chat-studio §7.7 — MSG-08 Retry/Regenerate).
+	 * When a user retries an assistant answer, we do NOT throw the old answer
+	 * away and we do NOT append a bare duplicate. Instead every alternative
+	 * answer to the same user turn shares a `variantGroupId`; exactly one is
+	 * `isActiveVariant === true` at any time, and the active variant is the
+	 * one used to build subsequent LLM history.
+	 *
+	 * Legacy rows without any of these fields are treated as a single-variant
+	 * group of one — always active. Legacy readers can ignore the fields; new
+	 * readers use `filterActiveVariants(messages)`.
+	 *
+	 * Persisted in chat_message.meta_json alongside the turn relationships.
+	 */
+	variantGroupId?: string;
+	variantIndex?: number;
+	isActiveVariant?: boolean;
 }
 
 export interface ChatConversationMeta {
@@ -185,6 +202,18 @@ export interface ChatConversationMeta {
 	pinnedAt?: number;
 	/** Archived flag (derived from archived_rel_path on read). */
 	archived?: boolean;
+	/**
+	 * Branch lineage (chat-studio §7.7 — Branch action).
+	 * When a conversation is created via `branchFromMessage`, we persist a
+	 * link to the source: `parentConversationId` is the conversation that was
+	 * branched from, and `parentMessageId` is the exact assistant/user
+	 * message at which the branch was taken. UI uses these to render a
+	 * "Branched from …" chip that jumps back to the parent turn. Both
+	 * absent on non-branched conversations — legacy rows stay untouched.
+	 * Persisted in meta_json.
+	 */
+	parentConversationId?: string;
+	parentMessageId?: string;
 }
 
 export interface ChatProjectMeta {
@@ -207,6 +236,24 @@ export interface ChatResourceRef {
 	/** Optional already-resolved preview URI (for generated/in-memory images). */
 	previewUri?: string;
 	summaryNotePath?: string; // Path to the resource summary note file
+	/**
+	 * Zero-gap C1 — where the LLM-visible representation of this attachment
+	 * actually came from. Persisted so UI (attachment cards, source receipts)
+	 * can show the user whether their audio/video was truly understood or
+	 * only saved as a file. Absent on non-media attachments (text/PDF).
+	 */
+	understandingSource?:
+		| 'native-video-input'
+		| 'transcript-from-audio'
+		| 'transcript-from-extracted-audio'
+		| 'attachment-only'
+		| 'none';
+	/** Provider that produced the transcript (`'openai'` etc.). */
+	understandingProvider?: string;
+	/** Model that produced the transcript (e.g. `'whisper-1'`). */
+	understandingModel?: string;
+	/** Reason the runtime degraded to `attachment-only`, if any. */
+	understandingReason?: string;
 }
 
 /**

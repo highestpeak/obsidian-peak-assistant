@@ -11,7 +11,8 @@
  * mistaken for a real agent/tool trace.
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useChatViewStore } from '../store/chatViewStore';
 import {
 	AlertTriangle,
 	BarChart,
@@ -88,6 +89,13 @@ interface Props {
 	debugRun?: DebugRun;
 	/** Extra truthful run metadata prepared by the message renderer. */
 	meta?: string[];
+	/**
+	 * The owning message id — enables MSG-07 "open trace" routing so this
+	 * component can subscribe to chatViewStore.openTraceForMessageId and
+	 * auto-expand/scroll when the user clicks the Trace message action.
+	 * Omitted from streaming placeholders where no message id is known yet.
+	 */
+	messageId?: string;
 }
 
 type AgentRunVisualStatus = 'running' | 'completed' | 'failed' | 'cancelled';
@@ -97,12 +105,15 @@ export const ToolCallSummary: React.FC<Props> = ({
 	isStreaming = false,
 	debugRun,
 	meta = [],
+	messageId,
 }) => {
 	const strings = useChatStudioStrings();
 	const visualStatus = resolveRunStatus(isStreaming, debugRun?.status, toolCalls);
 	const [expanded, setExpanded] = useState(
 		isStreaming || toolCalls.length > 1 || visualStatus === 'failed',
 	);
+	const [traceForceOpen, setTraceForceOpen] = useState(false);
+	const traceAnchorRef = useRef<HTMLDivElement | null>(null);
 	const toolSpans = useMemo(
 		() => debugRun?.spans.filter((span) => span.kind === 'tool.call') ?? [],
 		[debugRun],
@@ -114,7 +125,43 @@ export const ToolCallSummary: React.FC<Props> = ({
 		}
 	}, [isStreaming, toolCalls.length, visualStatus]);
 
-	if (toolCalls.length === 0) return null;
+	// MSG-07 — subscribe to the "open Trace" store signal. When the target
+	// message id matches ours, expand the AgentTrace section AND scroll it
+	// into view; then clear the request so subsequent clicks retrigger.
+	useEffect(() => {
+		if (!messageId) return;
+		const unsub = useChatViewStore.subscribe((state) => {
+			if (state.openTraceForMessageId !== messageId) return;
+			setExpanded(true);
+			setTraceForceOpen(true);
+			// Defer scroll one frame so the newly-expanded body has laid out.
+			requestAnimationFrame(() => {
+				traceAnchorRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+				useChatViewStore.getState().clearOpenTraceRequest();
+			});
+		});
+		return () => unsub();
+	}, [messageId]);
+
+	// Fallback: when the assistant produced no tool timeline but we DO have
+	// a debug run, still render the trace anchor so the Trace message
+	// action lands somewhere real. Without this, a text-only turn would
+	// have no visible target for the Trace click even though the debug run
+	// exists in memory.
+	if (toolCalls.length === 0) {
+		if (debugRun && debugRun.spans.length > 0) {
+			return (
+				<div
+					ref={traceAnchorRef}
+					data-message-id={messageId}
+					className="pkchat-msg__trace-fallback"
+				>
+					<AgentTrace run={debugRun} strings={strings} forceOpen={traceForceOpen} onOpenChange={(open) => { if (!open) setTraceForceOpen(false); }} />
+				</div>
+			);
+		}
+		return null;
+	}
 
 	const stepWord = toolCalls.length === 1
 		? strings.messages.agentRunStepSingular
@@ -162,7 +209,9 @@ export const ToolCallSummary: React.FC<Props> = ({
 						))}
 					</div>
 					{debugRun && debugRun.spans.length > 0 && (
-						<AgentTrace run={debugRun} strings={strings} />
+						<div ref={traceAnchorRef} data-message-id={messageId}>
+							<AgentTrace run={debugRun} strings={strings} forceOpen={traceForceOpen} onOpenChange={(open) => { if (!open) setTraceForceOpen(false); }} />
+						</div>
 					)}
 				</div>
 			)}
@@ -233,8 +282,19 @@ const AgentStepRow: React.FC<{
 	);
 };
 
-const AgentTrace: React.FC<{ run: DebugRun; strings: ChatStudioStrings }> = ({ run, strings }) => {
+const AgentTrace: React.FC<{
+	run: DebugRun;
+	strings: ChatStudioStrings;
+	forceOpen?: boolean;
+	onOpenChange?: (open: boolean) => void;
+}> = ({ run, strings, forceOpen = false, onOpenChange }) => {
 	const [open, setOpen] = useState(false);
+	// MSG-07 — parent forces this open when the Trace action targets THIS
+	// message. Local `open` is still authoritative for user clicks, but a
+	// forced open overrides the local resting state.
+	useEffect(() => {
+		if (forceOpen && !open) setOpen(true);
+	}, [forceOpen, open]);
 	const rows = useMemo(() => buildTraceRows(run.spans), [run.spans]);
 	const spanWord = rows.length === 1
 		? strings.messages.agentTraceSpanSingular
@@ -247,7 +307,13 @@ const AgentTrace: React.FC<{ run: DebugRun; strings: ChatStudioStrings }> = ({ r
 				variant="ghost"
 				size="sm"
 				className="pkchat-agent-trace__trigger"
-				onClick={() => setOpen((value) => !value)}
+				onClick={() => {
+					setOpen((value) => {
+						const next = !value;
+						onOpenChange?.(next);
+						return next;
+					});
+				}}
 				aria-expanded={open}
 			>
 				<Bug />

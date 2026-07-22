@@ -87,7 +87,7 @@ function turn(messageId: string, over: Partial<TurnExecutionReceipt> = {}): Turn
 		conversationId: 'conv-1',
 		effectiveModel: { provider: 'p', modelId: 'm' },
 		requestedSources: { project: null, vaultSearch: false, webSearch: false, explicitRefs: [] },
-		actualSources: { projectIncluded: false, vaultQueries: [], vaultDocuments: [], webQueries: [], webSources: [] },
+		actualSources: { projectIncluded: false, vaultQueries: [], vaultDocuments: [], webQueries: [], webSources: [], explicitRefsUsed: [] },
 		status: 'completed',
 		artifactIds: [],
 		startedAt: 4000,
@@ -333,6 +333,7 @@ function testResourceRowMappingDirectionAndKind(): void {
 				vaultDocuments: [{ id: 'v1', path: 'kb/eng.md', title: 'Eng' }],
 				webQueries: ['q'],
 				webSources: [{ id: 'w1', url: 'https://x/y', title: 'Y' }],
+				explicitRefsUsed: [],
 			},
 		}),
 	];

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { ExternalLink, RefreshCw, PanelRight } from 'lucide-react';
-import { IconButton } from '@/ui/components/primitives';
+import React, { useEffect, useState } from 'react';
+import { ExternalLink, GitBranch, RefreshCw, PanelRight } from 'lucide-react';
+import { Button, IconButton } from '@/ui/components/primitives';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useChatStrings } from '../chatStringsContext';
 import { useChatViewStore } from '../store/chatViewStore';
+import { useChatNavigation } from '../useChatNavigation';
 
 export interface HeaderProps {}
 
@@ -34,12 +35,42 @@ export const Header: React.FC<HeaderProps> = () => {
 	// restorable (S5). Renders the PanelRight restore button; hidden otherwise.
 	const restoreRight = useChatViewStore((s) => s.studioRestoreRight);
 	const [isRegenerating, setIsRegenerating] = useState(false);
+	const chatNavigation = useChatNavigation();
+	// MSG-08 / Branch — resolve the parent conversation's title so the
+	// "Branched from" chip shows something readable. The lookup is best-
+	// effort; on failure we fall back to the id.
+	const parentConversationId = activeConversation?.meta.parentConversationId ?? null;
+	const [parentTitle, setParentTitle] = useState<string | null>(null);
+	useEffect(() => {
+		if (!parentConversationId) { setParentTitle(null); return; }
+		let cancelled = false;
+		void (async () => {
+			try {
+				const conv = await manager.readConversation(parentConversationId, false);
+				if (!cancelled) setParentTitle(conv?.meta.title ?? parentConversationId);
+			} catch {
+				if (!cancelled) setParentTitle(parentConversationId);
+			}
+		})();
+		return () => { cancelled = true; };
+	}, [parentConversationId, manager]);
 
 	if (!activeConversation) return null;
 
 	const title = activeConversation.meta.title || activeConversation.meta.id;
 	const hasSource = Boolean(activeConversation.file);
 	const projectName = activeProject?.meta.name ?? null;
+
+	const openParentConversation = async () => {
+		if (!parentConversationId) return;
+		try {
+			const parent = await manager.readConversation(parentConversationId, true);
+			if (!parent) return;
+			await chatNavigation.openConversationInChat(parent, { loadMessages: false });
+		} catch (err) {
+			console.error('[Header] Open parent conversation failed:', err);
+		}
+	};
 
 	const handleOpenSource = async () => {
 		if (!activeConversation.file) return;
@@ -79,6 +110,26 @@ export const Header: React.FC<HeaderProps> = () => {
 					>
 						{projectName}
 					</span>
+				)}
+				{parentConversationId && (
+					<Button
+						variant="ghost"
+						size="sm"
+						className="pkchat-header__branch-chip"
+						title={strings.message.branchedFromLabel.replace(
+							'{title}',
+							parentTitle ?? parentConversationId,
+						)}
+						onClick={openParentConversation}
+					>
+						<GitBranch className="pktw-w-3 pktw-h-3" />
+						<span className="pktw-truncate pktw-max-w-[140px]">
+							{strings.message.branchedFromLabel.replace(
+								'{title}',
+								parentTitle ?? parentConversationId,
+							)}
+						</span>
+					</Button>
 				)}
 			</div>
 			{/* SR: announce ONLY the final persisted title (typewriter is

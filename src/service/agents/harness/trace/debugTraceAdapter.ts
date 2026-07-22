@@ -147,8 +147,19 @@ export function attachHarnessDebugTrace(
 				source: payload.source,
 				toolName: payload.toolName,
 			});
+			// Map guard decision → DebugDecisionKind. 'ask' is a suspension —
+			// the guard has not yet decided; the paired permission_resolved
+			// event will carry the final allow/deny. We record it as 'skip'
+			// so the debug trace shows a distinct marker (neither keep nor
+			// deny) rather than silently coalescing to an approval.
+			const debugDecision =
+				payload.decision === 'deny'
+					? 'deny'
+					: payload.decision === 'ask'
+						? 'skip'
+						: 'keep';
 			span.addDecision({
-				decision: payload.decision === 'deny' ? 'deny' : 'keep',
+				decision: debugDecision,
 				target: payload.toolName,
 				reason: payload.reason ?? payload.source,
 			});

@@ -79,11 +79,34 @@
 			"graph": "Graph",
 			"indexing": "Indexing",
 			"internal": "Internal",
-			"skill": "Skill"
+			"skill": "Skill",
+			"query_rewrite": "Query rewrite",
+			"media_generation": "Media generation"
 		},
 		"empty": "No per-feature usage in this range.",
 		"unattributed": "Unattributed",
-		"unattributedHelp": "Calls without a message_id in metadata — adoption rate cannot be computed."
+		"unattributedHelp": "Calls without a message_id in metadata — adoption rate cannot be computed.",
+		"mediaSection": {
+			"title": "Media generation · run detail",
+			"subtitle": "One row per generate/edit run. Cost is a preset estimate — never a settled bill.",
+			"empty": "No media generation runs in this range.",
+			"columns": {
+				"kind": "Kind",
+				"route": "Route",
+				"provider": "Provider",
+				"model": "Model",
+				"cost": "Est. cost",
+				"duration": "Duration",
+				"jobId": "Job",
+				"outcome": "Outcome"
+			},
+			"outcomeSuccess": "success",
+			"outcomeFailure": "failure",
+			"outcomeUnknown": "unknown",
+			"costEstimatedSuffix": "(estimated)",
+			"expandFailureLabel": "Show error",
+			"collapseFailureLabel": "Hide error"
+		}
 	},
 	"overview": {
 		"kpi": {

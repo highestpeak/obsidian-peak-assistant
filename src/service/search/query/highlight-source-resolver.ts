@@ -120,11 +120,14 @@ export class HighlightSourceResolver {
 	}
 
 	private async batchLoadChunkRaw(items: SearchResultItem[]): Promise<Map<string, string>> {
-		// Only fetch content_raw for items we might actually need it for —
-		// binary/derived types. Vault-readable items get their text from disk.
-		const chunkIds = uniqueValues(items
-			.filter(i => !isVaultReadableForItem(i))
-			.map(i => i.chunkId));
+		// Load content_raw for every item that has a chunkId. Vault-readable
+		// items typically get their text from disk (step 1), but the spec
+		// fall-through path (§Bad cases: "Vault 文件被删 → 走 chunk_raw" and
+		// "慢盘 → 超时视为 miss → 走下一个 fallback") requires chunk_raw as the
+		// second-choice source when Vault reads fail or content is missing.
+		// Post-Phase-3 markdown chunks won't have content_raw anyway, so this
+		// only matters for pre-migration data and binary/derived types.
+		const chunkIds = uniqueValues(items.map(i => i.chunkId));
 		if (chunkIds.length === 0) return new Map();
 		try {
 			const rows = await this.docChunkRepo.getByChunkIds(chunkIds);
@@ -213,11 +216,14 @@ export class HighlightSourceResolver {
 			}
 		}
 
-		// 2. Chunk raw for binary / derived types — content_raw is their
-		//    single source of truth for extracted text. Skipped for
-		//    Vault-readable paths whose read timed out: content_raw was
-		//    cleared by the Phase 3 migration so it would be empty anyway.
-		if (item.chunkId && !isVaultReadableForItem(item)) {
+		// 2. Chunk raw fallback. For binary / derived types content_raw is
+		//    their single source of truth for extracted text. For
+		//    Vault-readable types where the live read failed (timeout /
+		//    missing file), spec §Bad cases requires falling through to
+		//    chunk_raw when available before dropping to a label. Phase-3
+		//    migration clears content_raw for markdown so this branch is a
+		//    no-op there; it still catches pre-migration rows and binary types.
+		if (item.chunkId) {
 			const chunkText = ctx.chunkRawById.get(item.chunkId);
 			if (chunkText) return { text: chunkText, kind: 'chunk_raw' };
 		}

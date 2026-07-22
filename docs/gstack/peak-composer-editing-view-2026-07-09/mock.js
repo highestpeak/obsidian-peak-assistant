@@ -369,6 +369,7 @@ function setFocusedBlock(block) {
   if (bottomSource) bottomSource.textContent = source;
   if (sourcebarContext) sourcebarContext.textContent = `当前块 · ${title}`;
   if (copilotContext) copilotContext.textContent = copilotScopeText(title, kind);
+  window.PeakIntelligencePanel?.updateContext({ title, kind, source }, "#ambient-panel");
   renderFocusedHistory(block);
   if (historySourceDiff) {
     const initial = block.dataset.initialSource || source;
@@ -388,6 +389,11 @@ function showToast(message) {
 }
 
 function setLive(title, body) {
+  const sharedController = window.PeakIntelligencePanel?.controller("#ambient-panel");
+  if (sharedController) {
+    sharedController.notify(title, body);
+    return;
+  }
   if (!ambientLive) return;
   const detail = String(body).replace(/<[^>]+>/g, "").trim();
   ambientLive.innerHTML = `<svg><use href="#i-check"></use></svg><span>${escapeHtml(title)}</span>`;
@@ -399,6 +405,8 @@ function setLive(title, body) {
 }
 
 function switchAmbientView(view) {
+  const sharedController = window.PeakIntelligencePanel?.controller("#ambient-panel");
+  if (sharedController?.mode !== view) sharedController?.setMode(view, { emit: false });
   ambientTabs.forEach((tab) => {
     const selected = tab.dataset.intelligenceMode === view;
     tab.setAttribute("aria-selected", String(selected));
@@ -489,8 +497,14 @@ function runCopilotCommand() {
         ${wantsVisual ? '<div class="copilot-change-row"><span><small>新对象</small><strong>生成可继续编辑的说明图块</strong></span><div><button type="button" data-copilot-apply="visual">生成到正文</button></div></div>' : ""}
       </div>
     `;
+    showAiSuggestionCard(targetBlock, {
+      label: wantsVisual ? "Copilot 图解" : "Copilot 改写",
+      reason: "Copilot 对话运行",
+      customText: command,
+      trigger: "copilot",
+    });
     thread.scrollTop = thread.scrollHeight;
-    setLive("Copilot 已生成候选", "结果已准备放回正文原位预览；接受前不会写入 Markdown。 ");
+    setLive("Copilot 已生成候选", "结果已回到正文原位流式预览；接受前不会写入 Markdown。 ");
   }, 420);
 }
 
@@ -502,7 +516,7 @@ function renderAmbientPushCards() {
   if (!ambientPushList || !ambientTheme) return;
   const focusTitle = focusedBlock?.dataset.blockTitle || "当前文档";
   ambientTheme.innerHTML = `
-    <div><span><i></i>Current Work State</span><button type="button" data-ambient-action="theme-lock" class="${ambientThemeLocked ? "is-locked" : ""}" title="${ambientThemeLocked ? "解锁工作主题" : "锁定工作主题"}"><svg><use href="#i-lock"></use></svg></button></div>
+    <div><span><i></i>正在整理</span><button type="button" data-ambient-action="theme-lock" class="${ambientThemeLocked ? "is-locked" : ""}" title="${ambientThemeLocked ? "解锁工作主题" : "锁定工作主题"}"><svg><use href="#i-lock"></use></svg></button></div>
     <strong contenteditable="${ambientThemeLocked ? "false" : "true"}">把分散的知识管理判断整理成可验证的编辑工作流</strong>
     <p>从「${escapeHtml(focusTitle)}」、最近编辑与打开文件中推断 · 置信度 82%</p>
   `;
@@ -3498,6 +3512,7 @@ function renderMathBlocks() {
 }
 
 document.addEventListener("click", (event) => {
+  if (event.defaultPrevented) return;
   const ambientTab = event.target.closest("[data-intelligence-mode]");
   if (ambientTab) {
     event.preventDefault();
@@ -3621,6 +3636,29 @@ document.addEventListener("click", (event) => {
       trigger: "copilot",
     });
     setLive(isVisual ? "Copilot 图块已发往正文" : "Copilot patch 已发往正文", isVisual ? "图表将作为真实图像草稿出现在当前块下方。" : "正文将原地显示流式 diff，接受后才写入 Markdown。 ");
+    return;
+  }
+  const voiceInput = event.target.closest("[data-copilot-voice]");
+  if (voiceInput) {
+    event.preventDefault();
+    const input = document.getElementById("copilot-input");
+    const listening = voiceInput.getAttribute("aria-pressed") !== "true";
+    voiceInput.setAttribute("aria-pressed", String(listening));
+    voiceInput.classList.toggle("is-listening", listening);
+    if (!listening) {
+      setLive("听写已停止", "语音内容只保留在输入草稿中");
+      return;
+    }
+    setLive("正在听写", "语音会先进入输入框，不会自动运行能力");
+    window.setTimeout(() => {
+      if (voiceInput.getAttribute("aria-pressed") !== "true" || !input) return;
+      input.value = input.value || "把当前判断改清楚，并保留来源和回滚路径";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      voiceInput.setAttribute("aria-pressed", "false");
+      voiceInput.classList.remove("is-listening");
+      input.focus();
+      setLive("听写已转成草稿", "确认或编辑后再发送");
+    }, 620);
     return;
   }
   if (event.target.closest("[data-copilot-send]")) {
@@ -3761,6 +3799,7 @@ document.addEventListener("focusin", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
+  if (event.target.closest?.("[data-intelligence-root]")) return;
   if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !event.target.closest?.(".draft-input")) {
     const anchor = event.target.closest?.(".doc-block") || focusedBlock;
     if (!anchor || anchor.classList.contains("draft-block")) return;
@@ -3779,7 +3818,7 @@ document.addEventListener("keydown", (event) => {
 initHistorySnapshots();
 seedHistoryTransactions();
 switchAmbientView("copilot");
-setFocusedBlock(document.querySelector(".title-block") || document.querySelector(".paragraph-block"));
+setFocusedBlock(document.querySelector('[data-block-title="AI 旁路段落"]') || document.querySelector(".title-block") || document.querySelector(".paragraph-block"));
 initBlockBadges();
 initInsights();
 initMicroHints();
@@ -4041,23 +4080,360 @@ function initSelectionToolbar() {
 function initAmbientDock() {
   const toggle = document.getElementById("ambient-toggle");
   const app = document.querySelector(".composer-app");
-  const close = document.querySelector("[data-intelligence-close]");
+  const panel = document.getElementById("ambient-panel");
   if (!toggle || !app) return;
   const setOpen = (open) => {
     app.classList.toggle("ambient-open", open);
     toggle.setAttribute("aria-expanded", String(open));
+    window.PeakIntelligencePanel?.setOpen(open, "#ambient-panel", { restoreFocus: false });
+    if (panel) panel.toggleAttribute("inert", !open);
   };
   toggle.addEventListener("click", () => {
     setOpen(!app.classList.contains("ambient-open"));
   });
-  close?.addEventListener("click", () => setOpen(false));
+  document.querySelectorAll("[data-intelligence-close]").forEach((close) => {
+    close.addEventListener("click", () => setOpen(false));
+  });
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape" || !app.classList.contains("ambient-open")) return;
+    if (panel?.querySelector("dialog[open]")) return;
     setOpen(false);
     toggle.focus();
   });
+  setOpen(window.innerWidth > 1180);
+}
+
+/* ---------- shared adaptive Intelligence ↔ Composer host bridge ---------- */
+const intelligenceReviewState = {
+  changes: [],
+  activeIndex: 0,
+  view: "current",
+  running: false,
+  ready: false,
+  snapshots: new Map(),
+  historySnapshots: new Map(),
+};
+
+function intelligenceTargetBlock(change) {
+  if (!change?.target) return null;
+  const exact = Array.from(paper.querySelectorAll(".doc-block")).find((block) => block.dataset.blockTitle === change.target);
+  if (exact) return exact;
+  const target = change.target.replace(/段落$/, "");
+  return Array.from(paper.querySelectorAll(".doc-block")).find((block) => (block.dataset.blockTitle || "").includes(target)) || focusedBlock;
+}
+
+function intelligenceHistoryTarget(entry) {
+  const title = entry?.target?.split(" · ")[0]?.trim();
+  if (!title) return { block: null, message: "这笔事务缺少可定位的正文目标" };
+  if (title === "全文") return { block: null, message: "“全文”事务涉及多个 Markdown 范围，当前 mock 不支持一键定位" };
+
+  const candidates = Array.from(paper.querySelectorAll(".doc-block")).filter((block) => block.dataset.blockTitle === title);
+  if (!candidates.length) return { block: null, message: `当前文档里没有“${title}”对应的正文块` };
+  if (candidates.length === 1) return { block: candidates[0], message: "" };
+
+  const versions = [entry?.after, entry?.before].filter(Boolean);
+  const matched = candidates.find((block) => {
+    const source = block.dataset.source || "";
+    const visibleText = block.textContent || "";
+    return versions.some((version) => source.includes(version) || visibleText.includes(version));
+  });
+  if (matched) return { block: matched, message: "" };
+  return { block: null, message: `“${title}”存在 ${candidates.length} 个同名块，无法安全判断这笔事务的位置` };
+}
+
+function focusIntelligenceDocumentBlock(block) {
+  if (!block) return;
+  if (!block.hasAttribute("tabindex")) block.tabIndex = -1;
+  block.focus({ preventScroll: true });
+}
+
+function rememberIntelligenceHistorySnapshot(change) {
+  const block = intelligenceTargetBlock(change);
+  const snapshot = block && intelligenceReviewState.snapshots.get(block);
+  const historyId = change?.historyId || (change?.id ? `accepted-${change.id}` : "");
+  if (!block || !snapshot || !historyId) return;
+  intelligenceReviewState.historySnapshots.set(historyId, {
+    block,
+    snapshot: { html: snapshot.html, source: snapshot.source },
+  });
+}
+
+function syncIntelligenceHistoryRollbackAvailability(root) {
+  const dialog = root.querySelector(".history-dialog[open]");
+  const rollback = dialog?.querySelector("[data-rollback-history]");
+  if (!dialog || !rollback) return;
+  const controller = window.PeakIntelligencePanel?.controller(root);
+  const historyId = controller?.state?.historySelection;
+  const canRollback = Boolean(historyId && intelligenceReviewState.historySnapshots.has(historyId));
+  rollback.disabled = !canRollback;
+  rollback.setAttribute("aria-disabled", String(!canRollback));
+  const note = dialog.querySelector(".history-dialog-footer > small");
+  if (canRollback) {
+    rollback.title = "恢复到本轮写入前，并新增一笔系统回滚记录";
+    if (note) note.textContent = "将检查当前正文仍与本事务一致，再恢复本轮快照。";
+    return;
+  }
+  rollback.title = "这笔历史没有当前会话的安全快照";
+  if (note) note.textContent = "只读演示历史没有当前会话快照，因此不能安全回滚；本次运行中新接受的写入可以回滚。";
+}
+
+function recordIntelligenceRollback(root, entry) {
+  const controller = window.PeakIntelligencePanel?.controller(root);
+  const today = controller?.state?.history?.[0];
+  if (!today || !entry) return;
+  const now = new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
+  today.entries.unshift({
+    id: `rollback-${entry.id}-${Date.now()}`,
+    title: `回滚 · ${entry.title}`,
+    target: entry.target,
+    time: now,
+    delta: "rollback",
+    origin: "system",
+    originLabel: "系统回滚",
+    before: entry.after,
+    after: entry.before,
+  });
+  controller.state.historySelection = null;
+  controller.render();
+}
+
+function intelligenceTextSurface(block) {
+  if (!block) return null;
+  const kind = block.dataset.blockKind;
+  if (kind === "heading-1") return block.querySelector(":scope > h1");
+  if (kind === "heading-2") return block.querySelector(":scope > h2");
+  if (kind === "quote") return block.querySelector(":scope > blockquote");
+  return block.querySelector(":scope > p, :scope > ul, :scope > ol, :scope > .callout-body") || block;
+}
+
+function rememberIntelligenceSnapshot(block) {
+  if (!block || intelligenceReviewState.snapshots.has(block)) return;
+  intelligenceReviewState.snapshots.set(block, {
+    html: block.innerHTML,
+    source: block.dataset.source || "",
+  });
+}
+
+function clearIntelligenceReviewDecorations() {
+  paper.querySelectorAll(".is-intelligence-review-target, .is-intelligence-review-visible, .is-intelligence-streaming").forEach((block) => {
+    block.classList.remove("is-intelligence-review-target", "is-intelligence-review-visible", "is-intelligence-streaming");
+  });
+  paper.querySelectorAll("[data-intelligence-review-ui]").forEach((node) => node.remove());
+}
+
+function renderIntelligencePins(changes) {
+  const grouped = new Map();
+  changes.forEach((change, index) => {
+    const block = intelligenceTargetBlock(change);
+    if (!block) return;
+    if (!grouped.has(block)) grouped.set(block, []);
+    grouped.get(block).push({ change, index });
+  });
+  grouped.forEach((items, block) => {
+    const rail = document.createElement("span");
+    rail.className = "composer-change-pins";
+    rail.dataset.intelligenceReviewUi = "pins";
+    rail.setAttribute("contenteditable", "false");
+    items.forEach(({ change, index }) => {
+      const pin = document.createElement("button");
+      pin.type = "button";
+      pin.dataset.composerChangeIndex = String(index);
+      pin.dataset.status = change.status;
+      pin.className = index === intelligenceReviewState.activeIndex ? "is-active" : "";
+      pin.innerHTML = `<span>${String(index + 1).padStart(2, "0")}</span><i>${change.status === "accepted" ? "✓" : change.status === "rejected" ? "×" : intelligenceReviewState.running ? "…" : "•"}</i>`;
+      pin.setAttribute("aria-label", `改动 ${index + 1}：${change.title}`);
+      rail.append(pin);
+    });
+    block.append(rail);
+  });
+}
+
+function renderIntelligenceDocumentReview() {
+  clearIntelligenceReviewDecorations();
+  const nav = document.getElementById("composer-change-navigator");
+  const controller = window.PeakIntelligencePanel?.controller("#ambient-panel");
+  const changes = controller?.state?.changes || intelligenceReviewState.changes;
+  intelligenceReviewState.changes = changes;
+  if (controller?.mode !== "copilot" || !changes.length || (!intelligenceReviewState.running && !intelligenceReviewState.ready && controller?.stage !== "review")) {
+    if (nav) nav.hidden = true;
+    return;
+  }
+
+  intelligenceReviewState.activeIndex = Math.max(0, Math.min(intelligenceReviewState.activeIndex, changes.length - 1));
+  renderIntelligencePins(changes);
+  const visible = intelligenceReviewState.view === "all"
+    ? changes
+    : intelligenceReviewState.view === "original"
+      ? []
+      : [changes[intelligenceReviewState.activeIndex]];
+  visible.forEach((change) => {
+    if (!change) return;
+    const block = intelligenceTargetBlock(change);
+    if (!block) return;
+    rememberIntelligenceSnapshot(block);
+    const active = changes.indexOf(change) === intelligenceReviewState.activeIndex;
+    block.classList.add(active ? "is-intelligence-review-target" : "is-intelligence-review-visible");
+    if (active && intelligenceReviewState.running) block.classList.add("is-intelligence-streaming");
+    const preview = document.createElement("div");
+    preview.className = "composer-inline-change";
+    preview.dataset.intelligenceReviewUi = "preview";
+    preview.dataset.status = change.status;
+    preview.setAttribute("contenteditable", "false");
+    preview.innerHTML = `<header><span>${change.status === "accepted" ? "已接受" : change.status === "rejected" ? "已拒绝" : intelligenceReviewState.running ? "AI 草拟" : "候选"} · ${escapeHtml(change.title)}</span><b>${escapeHtml(change.scope)}</b></header><div><del>${escapeHtml(change.before)}</del><ins>${escapeHtml(change.after)}</ins></div>`;
+    block.append(preview);
+    if (active) block.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+
+  if (!nav) return;
+  const active = changes[intelligenceReviewState.activeIndex];
+  const inReview = controller?.stage === "review";
+  const added = Math.max(1, Math.round((active?.after || "").length / 7));
+  const removed = Math.max(0, Math.round((active?.before || "").length / 12));
+  nav.innerHTML = `<div class="composer-review-modes" role="group" aria-label="正文改动显示方式"><button type="button" data-composer-review-view="current" aria-pressed="${intelligenceReviewState.view === "current"}">当前一处</button><button type="button" data-composer-review-view="all" aria-pressed="${intelligenceReviewState.view === "all"}">全部改动</button><button type="button" data-composer-review-view="original" aria-pressed="${intelligenceReviewState.view === "original"}">原文</button></div><div class="composer-change-copy"><small>${intelligenceReviewState.view === "original" ? "原文 · 保留定位点" : intelligenceReviewState.running ? "AI 正在草拟" : active?.status === "pending" ? "候选尚未写入" : active?.status === "accepted" ? "已接受" : "已拒绝"}</small><strong>${intelligenceReviewState.activeIndex + 1} / ${changes.length}</strong><span>+${added} −${removed}</span></div><div class="composer-change-actions"><button type="button" data-composer-review-nav="previous" aria-label="上一处"><svg><use href="#i-chevron-up"></use></svg></button><button type="button" data-composer-review-nav="next" aria-label="下一处"><svg><use href="#i-chevron-down"></use></svg></button>${inReview && active?.status === "pending" ? '<button class="is-accept" type="button" data-composer-review-action="accept">接受</button><button type="button" data-composer-review-action="reject">拒绝</button>' : !inReview && !intelligenceReviewState.running ? '<button class="is-accept" type="button" data-composer-start-review>开始审阅</button>' : ""}</div>`;
+  nav.hidden = false;
+}
+
+function intelligenceCommitPlan(change) {
+  const block = intelligenceTargetBlock(change);
+  if (!block || !change?.before) return null;
+  const surface = intelligenceTextSurface(block);
+  const currentText = surface?.textContent || "";
+  const source = block.dataset.source || "";
+  if (!surface || !currentText.includes(change.before) || !source.includes(change.before)) return null;
+  return { block, surface, currentText, source };
+}
+
+function commitIntelligenceChange(change) {
+  const plan = intelligenceCommitPlan(change);
+  if (!plan) return false;
+  const { block, surface, currentText, source } = plan;
+  rememberIntelligenceSnapshot(block);
+  const snapshot = intelligenceReviewState.snapshots.get(block);
+  surface.textContent = currentText.replace(change.before, change.after);
+  block.dataset.source = source.replace(change.before, change.after);
+  markAccepted(block, change.title, () => {
+    block.innerHTML = snapshot.html;
+    block.dataset.source = snapshot.source;
+    block.classList.remove("has-ai-accepted");
+    setFocusedBlock(block);
+  });
+  setFocusedBlock(block);
+  return true;
+}
+
+function initSharedIntelligenceBridge() {
+  const root = document.getElementById("ambient-panel");
+  const nav = document.getElementById("composer-change-navigator");
+  if (!root || !nav) return;
+
+  root.addEventListener("peak:intelligence-submit", (event) => {
+    setLive("Copilot 已开始", `正在围绕「${event.detail.context?.title || "当前块"}」运行`);
+  });
+  root.addEventListener("peak:intelligence-before-review-action", (event) => {
+    if (event.detail.action === "reject") return;
+    const invalid = (event.detail.changes || []).find((change) => !intelligenceCommitPlan(change));
+    if (!invalid) return;
+    event.preventDefault();
+    const block = intelligenceTargetBlock(invalid);
+    if (block) {
+      setFocusedBlock(block);
+      block.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    showToast(`无法安全写入「${invalid.target}」：正文已偏离本轮快照`);
+  });
+  root.addEventListener("peak:intelligence-run-state", (event) => {
+    intelligenceReviewState.changes = event.detail.changes || [];
+    intelligenceReviewState.running = event.detail.status === "running";
+    intelligenceReviewState.ready = event.detail.status === "ready";
+    intelligenceReviewState.activeIndex = 0;
+    intelligenceReviewState.view = "current";
+    renderIntelligenceDocumentReview();
+  });
+  root.addEventListener("peak:intelligence-stage", (event) => {
+    if (event.detail.stage === "brief") {
+      intelligenceReviewState.running = false;
+      intelligenceReviewState.ready = false;
+    }
+    renderIntelligenceDocumentReview();
+  });
+  root.addEventListener("peak:intelligence-mode", (event) => {
+    if (event.detail.mode === "history") clearIntelligenceReviewDecorations();
+    renderIntelligenceDocumentReview();
+  });
+  root.addEventListener("peak:intelligence-review-location", (event) => {
+    intelligenceReviewState.activeIndex = event.detail.index;
+    intelligenceReviewState.changes = window.PeakIntelligencePanel?.controller(root)?.state?.changes || intelligenceReviewState.changes;
+    renderIntelligenceDocumentReview();
+  });
+  root.addEventListener("peak:intelligence-review-action", (event) => {
+    const accepted = event.detail.action === "accept-all" ? event.detail.changes : event.detail.action === "reject" ? [] : [event.detail.change];
+    accepted.filter(Boolean).forEach((change) => {
+      if (!commitIntelligenceChange(change)) return;
+      rememberIntelligenceHistorySnapshot(change);
+    });
+    intelligenceReviewState.changes = window.PeakIntelligencePanel?.controller(root)?.state?.changes || intelligenceReviewState.changes;
+    renderIntelligenceDocumentReview();
+  });
+  root.addEventListener("peak:intelligence-history-locate", (event) => {
+    const { block, message } = intelligenceHistoryTarget(event.detail.entry);
+    if (!block) return showToast(message);
+    setFocusedBlock(block);
+    focusIntelligenceDocumentBlock(block);
+    block.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+  root.addEventListener("peak:intelligence-history-rollback", (event) => {
+    const entry = event.detail.entry;
+    const rollback = entry && intelligenceReviewState.historySnapshots.get(entry.id);
+    if (!rollback) {
+      event.preventDefault();
+      return showToast("这笔记录没有当前会话的安全快照，已保持正文不变");
+    }
+    const { block, snapshot } = rollback;
+    if (entry.after && !(block.dataset.source || "").includes(entry.after)) {
+      event.preventDefault();
+      return showToast("当前正文已偏离这笔事务的写入结果，不能安全回滚");
+    }
+    block.innerHTML = snapshot.html;
+    block.dataset.source = snapshot.source;
+    block.classList.remove("has-ai-accepted");
+    intelligenceReviewState.historySnapshots.delete(entry.id);
+    setFocusedBlock(block);
+    focusIntelligenceDocumentBlock(block);
+    recordIntelligenceRollback(root, entry);
+    showToast("已恢复到本轮写入前，并记录一笔系统回滚事务");
+  });
+  root.addEventListener("peak:intelligence-open-source", (event) => showToast(`打开来源：${event.detail.source?.title || "Vault 文档"}`));
+  root.addEventListener("click", (event) => {
+    if (!event.target.closest("[data-history-id]")) return;
+    requestAnimationFrame(() => syncIntelligenceHistoryRollbackAvailability(root));
+  });
+
+  nav.addEventListener("click", (event) => {
+    const button = event.target.closest("button");
+    if (!button) return;
+    const controller = window.PeakIntelligencePanel?.controller(root);
+    if (button.dataset.composerReviewView) {
+      intelligenceReviewState.view = button.dataset.composerReviewView;
+      return renderIntelligenceDocumentReview();
+    }
+    if (button.dataset.composerReviewNav) return controller?.moveReview(button.dataset.composerReviewNav === "previous" ? -1 : 1);
+    if (button.dataset.composerReviewAction) return controller?.resolveReview(button.dataset.composerReviewAction);
+    if (button.dataset.composerStartReview !== undefined) return controller?.startReview(intelligenceReviewState.activeIndex);
+  });
+  paper.addEventListener("click", (event) => {
+    const pin = event.target.closest("[data-composer-change-index]");
+    if (!pin) return;
+    window.PeakIntelligencePanel?.controller(root)?.startReview(Number(pin.dataset.composerChangeIndex));
+  });
+
+  const controller = window.PeakIntelligencePanel?.controller(root);
+  intelligenceReviewState.changes = controller?.state?.changes || [];
+  intelligenceReviewState.activeIndex = controller?.state?.activeChangeIndex || 0;
+  intelligenceReviewState.ready = controller?.mode === "copilot" && controller?.stage === "review";
+  renderIntelligenceDocumentReview();
 }
 
 initComposerCanvas();
 initSelectionToolbar();
 initAmbientDock();
+initSharedIntelligenceBridge();

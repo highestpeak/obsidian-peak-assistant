@@ -184,7 +184,9 @@
           <a href="#context-stack">上下文堆叠</a>
           <a href="#request-flow">一次请求的代码路径</a>
           <a href="#budget">预算和压缩</a>
+          <a href="#variants-branches">Variant 与 Branch</a>
           <a href="#modes">执行策略</a>
+          <a href="#failure-recovery">失败与回退</a>
           <a href="#rich-generation">富生成</a>
         </div>
         <div class="nav-group">
@@ -249,7 +251,7 @@
 
         <section id="entry">
           <h2>Chat 由哪些能力组成</h2>
-          <p class="lead">Chat 是 Obsidian 里的工作区能力，不是一块孤立网页聊天框。主聊天视图和 Chat Studio 只是两个入口；真正影响回答质量的是会话、资源、上下文和能力开关如何一起进入请求。</p>
+          <p class="lead">Chat 是 Obsidian 里的工作区能力，不是一块孤立网页聊天框。主聊天视图和 Chat Studio 只是两个入口；真正影响回答质量的是会话、资源、上下文、能力开关和 Assistant 定义如何一起进入请求。</p>
           <div class="feature-summary">
             <div class="feature-item">
               <strong>入口 surface</strong>
@@ -264,8 +266,20 @@
               <span>composer 上传或引用的文件会转成 resource ref；非 direct 模式会先走摘要或文本降级。</span>
             </div>
             <div class="feature-item">
-              <strong>Vault / Web 能力</strong>
-              <span>能力开关和 profile 决定系统能不能使用 Vault Search、Web Search 或其他工具；用户不应该先理解内部 mode 分支。</span>
+              <strong>Vault / Web / MCP 工具</strong>
+              <span>Vault Search、Web Search、MCP server 和 <code>media_generate</code> 由统一的 <code>ToolAvailability</code> 合同管：每个工具报出 <code>state</code>（<code>available</code> / <code>unconfigured</code> / <code>unsupported</code> / <code>disconnected</code> / <code>permission-required</code>）、可读 <code>reason</code> 与 <code>configureAction</code>（profiles / mcp / media / permissions）。UI 与工具注入都读这份数据，用户不需要理解内部 mode 分支。</span>
+            </div>
+            <div class="feature-item">
+              <strong>Assistant 定义</strong>
+              <span>Composer 选中的 Assistant 一次性影响四件事：<code>instructions</code> 通过 <code>AssistantSlot</code> 进 system prompt；<code>knowledgeRefs</code> 挂入 explicit refs 流并被 receipt 记为 <code>explicitRefsUsed</code>；<code>toolPolicy</code> 的 allow/deny 与 PermissionGuard 联动；<code>preferredModel</code> 覆盖 profile 默认。</span>
+            </div>
+            <div class="feature-item">
+              <strong>Chat 内媒体生成</strong>
+              <span>Composer <code>/</code> slash 的 Generate 组（Image / Image edit / Video / Music / Document）和自然语言触发的 <code>media_generate</code> 工具共用同一条路由：preflight 决定 Native OpenAI / fal / Auto，产物是 Vault 附件 + 持久化 <code>ChatArtifactReceipt</code>，视频、音乐与 Sora native 走 durable async job（成本确认门 + poll + 可恢复）；Image edit 走 <code>MediaGenerationRequest.operation='edit'</code> + 用户显式选择的 <code>referenceImages[]</code>（+ 可选 mask）。</span>
+            </div>
+            <div class="feature-item">
+              <strong>音视频附件理解</strong>
+              <span>发送前 <code>MediaUnderstandingPort</code> 按 provider capability（<code>imageInput</code> / <code>audioInput</code> / <code>videoInput</code>）分流：Gemini 直传原生理解；无原生能力则视频经 <code>WebAudioVideoAudioExtractor</code> 抽 16kHz WAV → <code>OpenAITranscriptionAdapter</code>（<code>whisper-1</code> 可配）转 transcript 入 turn context；provider 完全无音/视频能力时发送前 UI 显式禁用，不静默丢。<code>ChatResourceRef.understandingSource</code> 4 字段（route/adapter/model/note）持久化并在消息里显徽标。</span>
             </div>
             <div class="feature-item">
               <strong>focus folder</strong>
@@ -278,7 +292,7 @@
           </div>
           <div class="claim">
             <strong>使用时的判断</strong>
-            继续追问就留在同一个 conversation；需要材料就附文件或明确引用；需要查库或查网页就打开对应能力；需要计划就直接说“先给计划”。不要把这些都理解成同级入口。
+            继续追问就留在同一个 conversation；需要材料就附文件或明确引用；需要查库、查网页、调 MCP 或让 Chat 出图就打开对应能力；能力不可用时入口会诚实禁用并给 <code>configureAction</code> 跳到对应设置面。不要把这些都理解成同级入口。
           </div>
         </section>
 
@@ -489,13 +503,16 @@
               <div class="stack-layer"><strong>conv-summary</strong><span>旧对话压缩摘要 · optional · 800 tokens</span></div>
               <div class="stack-layer"><strong>working-context</strong><span>focus folder、当前文件、工作现场 · optional · 500 tokens</span></div>
               <div class="stack-layer"><strong>recent-messages</strong><span>最近会话轮次 · required · maxRecentMessages 20</span></div>
+              <div class="stack-layer"><strong>assistant</strong><span>选中 Assistant 的 instructions 与 persona 头 · optional · priority 900 · maxTokens 2000</span></div>
               <div class="stack-layer"><strong>system-prompt</strong><span>角色、能力开关、custom prompt、focus folder · required · 1500 tokens</span></div>
               <div class="stack-layer"><strong>current user message</strong><span>用户这一次真正问的问题</span></div>
             </div>
-            <p class="read-note"><b>读图：</b>required slot 不会被 drop；optional slot 会按预算被压缩或丢弃。新增上下文应该进入这一摞，而不是绕开 pipeline 直接拼到 provider message 里。</p>
+            <p class="read-note"><b>读图：</b>required slot 不会被 drop；optional slot 会按预算被压缩或丢弃。<code>AssistantSlot</code> 位置在 <code>system-prompt</code>（priority 1000）之后、<code>recent-messages</code>（priority 950）之前，priority 900——persona 紧跟在基础规则后面，且不占用 recent-messages 与其它记忆槽。新增上下文应该进入这一摞，而不是绕开 pipeline 直接拼到 provider message 里。</p>
           </div>
           <div class="slot-list">
             <div class="slot-row"><strong>required</strong><span><code>system-prompt</code> 和 <code>recent-messages</code> 是主干：它们定义角色、能力、当前会话和最近追问。</span></div>
+            <div class="slot-row"><strong>persona</strong><span><code>assistant</code> slot 从 <code>ChatAssistantDefinition.instructions</code> 渲染 persona 提示。这是 Assistant instructions 进入 LLM 的<strong>唯一</strong>路径——Composer / React 层不会把 instructions 拼进 user prompt。</span></div>
+            <div class="slot-row"><strong>explicit refs</strong><span>Assistant 的 <code>knowledgeRefs</code> 由 <code>assistantResolver</code> 挂入 turn 的 explicit refs 流；被真正 consulted 的会被 <code>TurnExecutionReceipt.actualSources.explicitRefsUsed</code> 记下。</span></div>
             <div class="slot-row"><strong>work state</strong><span><code>working-context</code> 与 <code>activity-index</code> 负责让模型知道用户当前在哪里、刚才做过什么。</span></div>
             <div class="slot-row"><strong>retrievable context</strong><span><code>resource-index</code>、<code>prev-analysis</code>、<code>conv-summary</code> 留线索，不把所有原文都塞进本轮。</span></div>
             <div class="slot-row"><strong>budget rule</strong><span><code>ChatProfile.slots</code> 决定顺序、required、priority、maxTokens 和 maxCompressionLevel。</span></div>
@@ -504,41 +521,48 @@
 
         <section id="request-flow">
           <h2>一次请求的代码路径</h2>
-          <p class="prose">一次请求分两段：先把用户消息、附件和 context stack 准备好，再按执行策略决定是否带工具、是否加 planning prompt，最后交给 provider stream。具体文件入口放在文末“代码证据”。</p>
+          <p class="prose">Chat 只有一条统一 Harness 运行时路径：UI hook 组装 RunEnvelope → ConversationService 准备上下文与工具 → <code>harnessStreamChat</code> 把 <code>runAgentLoop</code> 的流式事件翻译成 <code>LLMStreamEvent</code> → UI 消费同一份事件流。无工具 turn 依然走同一 runtime，只是外层 loop 单 step 结束。具体文件入口放在文末“代码证据”。</p>
           <div class="figure">
             <div class="figure-title">
-              <strong>图 2 · streamChat 到 provider 的执行顺序</strong>
+              <strong>图 2 · Chat turn 的统一 Harness 执行顺序</strong>
               <span>Mermaid · sequence diagram</span>
             </div>
             <div class="mermaid">
 sequenceDiagram
-  participant UI as Chat UI
-  participant Conversation as ConversationService
-  participant Resources as ResourceSummaryService
+  participant UI as Chat UI (useChatSubmit)
+  participant Stream as useStreamChat
+  participant Run as runChatConversation
+  participant Conversation as ConversationService.streamChat
   participant Pipeline as ContextPipeline
-  participant Budget as BudgetGovernor
-  participant Tools as buildChatTools
-  participant Provider as vercelStreamChat
-  UI->>Conversation: streamChat(conversation, userContent, attachments)
-  Conversation->>Conversation: createChatMessage()
-  alt attachments and not direct
-    Conversation-->>UI: tool-call generate_summary
-    Conversation->>Resources: ensureResourceSummary()
-    Conversation-->>UI: tool-result generate_summary
+  participant Availability as ToolAvailability
+  participant Harness as harnessStreamChat / runAgentLoop
+  participant Provider as streamText (Vercel AI SDK)
+  UI->>Stream: submitMessage(userContent, attachments)
+  Stream->>Run: runChatConversation(RunEnvelope)
+  Run->>Conversation: streamChat(params)
+  Conversation->>Pipeline: prepareChatRequest(ChatProfile, buildCtx, capabilities)
+  Pipeline-->>Conversation: LLMRequestMessage[] (含 AssistantSlot / explicit refs)
+  Conversation->>Availability: resolveToolAvailability(snapshot)
+  Availability-->>Conversation: ToolAvailability[] (state / reason / configureAction)
+  Conversation->>Harness: harnessStreamChat(messages + tools + modelSettings + abortSignal)
+  loop each agent step
+    Harness->>Provider: streamText(stopWhen=1)
+    Provider-->>Harness: text / reasoning delta, tool input/call/result, step finish
+    Harness->>Harness: PermissionGuard (edit → ask event, await resolver)
   end
-  Conversation->>Pipeline: assemble(ChatProfile, buildCtx, modelCapabilities)
-  Pipeline->>Budget: fit(slots, resolvedBudget)
-  Budget-->>Pipeline: governed slots
-  Pipeline-->>Conversation: LLMRequestMessage[]
-  alt agent mode
-    Conversation->>Tools: buildChatTools(toggles, capabilities)
-  end
-  alt plan mode
-    Conversation->>Conversation: prepend PlanModeSystem prompt
-  end
-  Conversation->>Provider: messages + outputControl + tools/maxSteps
+  Harness-->>Conversation: onStreamEvent → LLMStreamEvent
+  Conversation-->>Stream: complete / error / cancelled
+  Stream-->>UI: streaming messages + TurnExecutionReceipt.runId
             </div>
-            <p class="read-note"><b>读图：</b>附件摘要事件会在 context 组装前发生；tools 是 context 准备完成后根据 mode 决定的；plan prompt 是对 system message 的额外前置。</p>
+            <p class="read-note"><b>读图：</b>Run id 贯通全链——<code>RunEnvelope.runId</code> = <code>AgentLoop.loopId</code> = trace <code>debugRunId</code> = <code>TurnExecutionReceipt.runId</code>；调试时可用同一个 id 串起 UI 消息、Agent Run 时间线与 debug trace。工具可用性来自单一 <code>resolveToolAvailability</code>；无 <code>ToolAvailability.available</code> 则不注入。<code>modelSettings</code>（temperature / topP / topK / maxOutputTokens / frequencyPenalty / presencePenalty）由 outputControl 一路透传到 <code>streamText</code>。</p>
+          </div>
+          <div class="behavior-list">
+            <div class="behavior-row"><strong>预算真源</strong><span><code>templates/config/chat-runtime.json</code> 定义 <code>budget.maxStepsWithTools</code> / <code>maxStepsNoTools</code> / <code>maxTokens</code> / <code>maxToolCalls</code> 与 <code>timeouts.stepMs</code> / <code>totalMs</code>；无工具 turn 因此仍走 Harness 但只允许一步。</span></div>
+            <div class="behavior-row"><strong>错误路径</strong><span>Provider / 运行时错误由 <code>useStreamChat</code> 转成一条 ERROR 消息 + <code>TurnExecutionReceipt.status='failed'</code> + retry 入口；不会再吞事件。</span></div>
+            <div class="behavior-row"><strong>Abort 路径</strong><span><code>abortSignal</code> 直达 <code>streamText</code> 的 fetch，收到中止后 <code>harnessStatus='cancelled'</code>、receipt 记 <code>cancelled</code>，permission ask 也会被解析为 <code>cancelled</code>。</span></div>
+            <div class="behavior-row"><strong>Permission ask</strong><span>Harness 遇到 <code>kind:'edit'</code> 的工具时 PermissionGuard 走 ask 分支，通过 <code>permission_request</code> 事件挂起 loop（状态 <code>waiting-permission</code>）；UI <code>PermissionAskCard</code> 允许/拒绝后 <code>permission_resolved</code> 回填决定，无 resolver 记 deny。三态 <code>deny</code> / <code>allow-once</code> / <code>allow-for-run</code>：前两态由 harness 消费；<code>allow-for-run</code> 的 run 级 allowlist 目前只在 <code>useStreamChat</code> 层强制（下一波下沉 harness）。</span></div>
+            <div class="behavior-row"><strong>Media edit 请求合同</strong><span>Image edit 走 <code>MediaGenerationRequest.operation='edit'</code> + <code>referenceImages[]</code>（vault / receipt 稳定引用，DB 不存 base64）+ 可选 <code>maskImage?</code>；执行期由 <code>MediaReferenceResolver</code>（<code>VaultMediaReferenceResolver</code> 读 Vault bytes）解析成 provider 需要的 bytes。基图与 mask 只来自用户显式选择的会话附件或已生成图片，system/agent 不隐式推断。原始拖拽附件（未入 Vault）暂不能作 edit base——resolver 需要稳定 content identifier，见<a href="superpowers/plans/2026-07-21-chat-zero-gap-closure-delivery.md#52-诚实遗留不算-zero-gap-完成的部分">交付报告 §5.2</a>。</span></div>
+            <div class="behavior-row"><strong>音视频理解请求合同</strong><span>发送前 <code>MediaUnderstandingPort</code> 判定 route：provider capability 含 <code>videoInput</code> / <code>audioInput</code> 时原生直传（Gemini），否则视频先经 <code>WebAudioVideoAudioExtractor</code> 抽 16kHz WAV，再交 <code>OpenAITranscriptionAdapter</code>（<code>whisper-1</code>，端点与模型可在 <code>templates/config/media-generation.json</code> 的 <code>transcriptionsPath</code> / <code>transcriptionModel</code> 覆盖）转 transcript 入 turn context。完全无 audio/video capability 时发送前 UI 明确拒绝，不静默丢。<code>ChatResourceRef.understandingSource</code> 4 字段（<code>route</code> / <code>adapter</code> / <code>model</code> / <code>note</code>）持久化，消息里出徽标。真实付费 <code>whisper-1</code> / Gemini native 调用 credential-blocked 未跑，见 checklist §5.5。</span></div>
           </div>
         </section>
 
@@ -584,18 +608,68 @@ flowchart LR
           </div>
         </section>
 
-        <section id="modes">
-          <h2>执行策略：少让用户选模式</h2>
-          <p class="lead">产品心智应该是一套 Chat：用户表达意图，系统根据能力、权限和当前请求选择执行策略。</p>
-          <div class="claim">
-            <strong>当前诚实状态</strong>
-            代码里仍有历史兼容分支：agent 路径会注入 tools；<code>/plan</code> 这类单次 planning intent 会追加 planning prompt。文档记录这个事实，是为了维护者读代码时不迷路，不是把 Chat / Agent / Plan 当成三个长期并列产品模式。
+        <section id="variants-branches">
+          <h2>Variant 与 Branch 对 history 的影响</h2>
+          <p class="lead"><code>recent-messages</code> 不是"这个 conversation 里的所有消息按时间倒序取 N 条"——message 携带 variant / branch 元数据，history 组装时按这份元数据裁剪。</p>
+          <div class="behavior-list">
+            <div class="behavior-row"><strong>Retry → variant 版本化</strong><span>Retry 一条助手消息不会覆盖旧内容，而是新增一条带 <code>variantGroupId</code>（同组共享）+ <code>variantIndex</code>（1、2、3…）+ <code>isActiveVariant=true</code> 的 message；同组旧消息被翻为 <code>isActiveVariant=false</code>。<code>RecentMessagesSlot</code> 组装 history 时只取 <code>isActiveVariant=true</code>，因此模型只看到当前 active variant 那一条。UI 侧 ‹N/M› 切换器只是切换 active 标记，不复制上下文。</span></div>
+            <div class="behavior-row"><strong>Branch → 新 conversation</strong><span>Branch 从某条消息分叉时新建 conversation，带 <code>parentConversationId</code> + <code>parentMessageId</code>；本轮 history 只从新 conversation 的消息数组取，不跨会话回溯父级。UI 顶部展示 "Branched from" 链回父 conversation，让用户手动切换查看，但模型请求不合并两条线。</span></div>
+            <div class="behavior-row"><strong>Permission 三态与 history</strong><span>permission 三态（<code>deny</code> / <code>allow-once</code> / <code>allow-for-run</code>）本身不改 history 组装，但 <code>allow-for-run</code> 需要跨多个 turn 记住 allowlist；当前实现在 <code>useStreamChat</code> 层维护这份 run-scoped allowlist，harness <code>AgentLoop.permission</code> context 尚未内置该状态。下一波会把 allow-for-run 下沉 harness，语义与 deny 对齐。</span></div>
           </div>
-          <ul>
-            <li>共享边界：所有路径都先准备同一套 context。</li>
-            <li>工具边界：只有满足模型能力、profile、开关和权限时才带 tools。</li>
-            <li>计划边界：planning 是单次意图，不应该要求用户维护一个长期“Plan mode”。</li>
-          </ul>
+          <div class="claim">
+            <strong>诚实边界</strong>
+            variant 与 branch 的数据模型（<code>variantGroupId</code> / <code>variantIndex</code> / <code>isActiveVariant</code> / <code>parentConversationId</code> / <code>parentMessageId</code>）已锁在 <code>src/core/types/chat.ts</code> 与 <code>ChatMessageRepo</code> 里；<code>test/message-variants.test.ts</code>、<code>test/conversation-branch.test.ts</code> 覆盖组装逻辑。人工在 Obsidian 内的 ‹N/M› 切换与跨 branch 阅读矩阵尚未跑（credential-blocked：真实 provider turn 需要 OpenRouter 充值或另配 profile），见<a href="superpowers/plans/2026-07-21-chat-zero-gap-closure-delivery.md#5-凭据阻塞与遗留">交付报告 §5</a>。
+          </div>
+        </section>
+
+        <section id="modes">
+          <h2>执行策略：一套 Chat，按能力路由</h2>
+          <p class="lead">产品心智是一套 Chat：用户表达意图，系统根据能力、权限和当前请求决定这一 turn 带哪些工具、走哪条路径。所有分支都共享同一个 Harness runtime 与 context pipeline。</p>
+          <div class="claim">
+            <strong>路由的三条硬约束</strong>
+            工具边界：<code>resolveToolAvailability</code> 是单一真源，只有 <code>available</code> 才注入到工具集；<code>unconfigured</code> / <code>unsupported</code> / <code>disconnected</code> / <code>permission-required</code> 都不会伪装成可用。计划边界：planning 是单次意图（例如 <code>/plan</code> 前置一段 planning prompt），不是需要用户维护的长期 mode。运行时边界：Chat 只有一个 <code>runAgentLoop</code>，无工具 turn 也走这条路，只是单 step 结束。
+          </div>
+          <h3>Auto 模型路由</h3>
+          <p class="prose">Composer 顶栏选 Auto 时，模型不是提前决定，而是由 <code>src/service/chat/modelRouter.ts</code> 的纯函数每 turn 现算一次。它按 <code>templates/config/model-routing.json</code>（<code>ConfigTemplateId.ModelRouting</code>）的 tier 策略 + 能力过滤在 profile 目录中挑第一个满足本 turn <code>requiredCapabilities</code> 的候选；零候选直接抛 <code>no-model-available</code> 硬错误，不静默降级。Auto sentinel <code>{ mode: 'auto' }</code> 持久化到会话设定但永远不会被回写成具体 model id——reload 后仍是 Auto。</p>
+          <div class="behavior-list">
+            <div class="behavior-row"><strong>请求快照</strong><span><code>service-conversation.prepareChatRequest</code> 在 turn 组装时读 <code>modelRouter</code>，把 <code>requestedSelection</code>（用户选的 Auto 或具体 model）、<code>modelSource='auto'|'user'|'assistant-preferred'</code>、<code>routeReason</code>（"tier-match" / "capability-fallback" / …）与 <code>requiredCapabilities</code>（<code>imageInput</code> / <code>audioInput</code> / <code>videoInput</code> / <code>tools</code> …）打进 <code>TurnExecutionReceipt</code>，供 message、trace 与 Usage Dashboard 事后回看。</span></div>
+            <div class="behavior-row"><strong>Assistant preferredModel</strong><span>选中 Assistant 的 <code>preferredModel</code> 覆盖 profile 默认；仍会经过 router 的能力过滤，不满足能力时降级到 tier 内其它候选并把 <code>routeReason</code> 记为覆盖失败。</span></div>
+            <div class="behavior-row"><strong>Auto 之外</strong><span>用户手选某 model 时 router 只做能力过滤，不改选择；缺能力时依旧走 <code>no-model-available</code>——不会静默换模型扣错费。</span></div>
+          </div>
+          <h3>工具可用性合同</h3>
+          <div class="behavior-list">
+            <div class="behavior-row"><strong>vault_search</strong><span>需 <code>enableVaultSearch</code> + 已注册 <code>VaultRetrievalPort</code>。缺 port → <code>unconfigured</code> + <code>configureAction='permissions'</code>。</span></div>
+            <div class="behavior-row"><strong>web_search</strong><span>只看 active Web Search profile 是否存在。<code>catalog.webSearch</code> metadata 不再抑制 fallback 注入；native 判定单点接口目前无 adapter，因此恒不可用（<code>unsupported</code>）。缺 profile → <code>unconfigured</code> + <code>configureAction='profiles'</code>。</span></div>
+            <div class="behavior-row"><strong>mcp_*</strong><span>只来自已配置且已连接的 MCP server，未连接 → <code>disconnected</code> + <code>configureAction='mcp'</code>，工具不会挂进 loop。mutating 工具默认 <code>kind:'edit'</code>，被 PermissionGuard 走 ask 分支（消息里出 <code>PermissionAskCard</code>）。</span></div>
+            <div class="behavior-row"><strong>media_generate</strong><span>由 <code>MediaGenerationProbe</code> 报告可用路由；至少一个可用 route（Native / fal）→ <code>available</code>；全部不可用 → <code>unconfigured</code> + <code>configureAction='media'</code>。工具本身 <code>kind:'edit'</code>——每次调用都会写 Vault + 计费，preflight 出一次性决策后不静默换计费方。</span></div>
+          </div>
+        </section>
+
+        <section id="failure-recovery">
+          <h2>能力不可用时用户看到什么</h2>
+          <p class="lead">失败与回退语义有单一入口——UI 显示的原因、跳转位置和可重试性都由 <code>ToolAvailability</code> 与 media receipt 的 <code>configureAction</code> 决定。</p>
+          <div class="bad-case-list">
+            <div class="bad-case">
+              <strong>缺 API key（fal / OpenAI）</strong>
+              <span>Composer <code>+</code> 菜单三行按 kind 分别显示原因（<code>missing-key</code> / <code>missing-profile</code>）并禁用；Settings → Media Generation 表内标 <code>Not ready</code>；模型不会得到 <code>media_generate</code> 工具，因此不会伪装完成。</span>
+            </div>
+            <div class="bad-case">
+              <strong>Route 不支持这个 kind</strong>
+              <span>Native OpenAI 只声称 image；video / music 请求会命中 <code>unsupported</code>——preflight 直接落 <code>needs-configuration</code> receipt，<code>ArtifactReceiptCard</code> 显示原因与 <code>configure</code> 动作跳转 <code>profiles</code> tab。</span>
+            </div>
+            <div class="bad-case">
+              <strong>Auto 无可用路由</strong>
+              <span>Preflight 无法拼出可用 route → <code>unconfigured</code> + <code>configureAction='media'</code>；receipt 状态 <code>needs-configuration</code>，用户点 Configure 打开 Media Generation tab。</span>
+            </div>
+            <div class="bad-case">
+              <strong>视频 / 音乐成本确认</strong>
+              <span>fal async job 在扣费前先落 <code>awaiting-confirmation</code> receipt，卡片展示真实 route / model / duration / 估算费用；用户点 Confirm 才切 <code>running</code>，Cancel 直接 <code>cancelled</code>。确认前零 provider 请求零扣费。</span>
+            </div>
+            <div class="bad-case">
+              <strong>Provider 失败或重启中断</strong>
+              <span>Provider 报错 → receipt 落 <code>failed</code> + 错误消息 + Retry；重启后 <code>MediaJobRunner.resumeUnfinished()</code> 优先于 <code>failAllUnfinished()</code>，凭 <code>providerRequestId</code> / <code>responseUrl</code> 恢复 poll；不可恢复的 running / queued 被幂等标 <code>failed</code>（可重试），<code>awaiting-confirmation</code> 原样保留。</span>
+            </div>
+          </div>
         </section>
 
         <section id="rich-generation">
@@ -635,7 +709,7 @@ flowchart LR
             </div>
             <div class="bad-case">
               <strong>Web Search 没有参与</strong>
-              <span>原因通常是没有 Web Search profile，或工具注入条件没满足。处理方式：配置 profile，打开 web search 开关，并确认当前请求允许工具调用。</span>
+              <span>原因通常是没有 active Web Search profile，或用户关闭了 web search 开关。处理方式：在 Settings 配置一个 Web Search profile 后重新打开开关；<code>ToolAvailability</code> 报 <code>unconfigured</code> 时 Composer Sources popover 会给出 <code>configureAction='profiles'</code> 跳转。</span>
             </div>
             <div class="bad-case">
               <strong>Focus folder 没有像硬过滤一样生效</strong>
@@ -693,8 +767,8 @@ flowchart LR
                 <td>更新“上下文堆叠”和预算解释。</td>
               </tr>
               <tr>
-                <td>工具注入从 <code>buildChatTools</code> 迁移到 Harness / ToolDef。</td>
-                <td>更新 mode 差异，并链接到 <a href="21-infra-agent-harness.html">21 Agent Harness</a>。</td>
+                <td><code>resolveToolAvailability</code> 的 state 集或 configureAction 集扩展。</td>
+                <td>更新“工具可用性合同”表与失败/回退段，并链接到 <a href="21-infra-agent-harness.html">21 Agent Harness</a>。</td>
               </tr>
               <tr>
                 <td>Context Pipeline 抽成独立 root 正稿。</td>
@@ -714,8 +788,63 @@ flowchart LR
             <tbody>
               <tr>
                 <td><code data-copy="src/service/chat/service-conversation.ts">service-conversation.ts</code></td>
-                <td><code>streamChat</code>、<code>prepareChatRequest</code>、mode/tools/plan prompt 分支。</td>
-                <td>确认请求从用户消息到 provider stream 的主路径。</td>
+                <td><code>streamChat</code>、<code>prepareChatRequest</code>、availability 解析、Harness 驱动。</td>
+                <td>确认请求从用户消息进入 Harness runtime 的主路径。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/service/chat/harnessChatRunner.ts">harnessChatRunner.ts</code></td>
+                <td><code>harnessStreamChat</code> 事件翻译、runId 贯通、abortSignal 直达 fetch、permission ask 事件。</td>
+                <td>确认 Chat 只有一个 Harness 运行时，事件订阅单点。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/service/chat/context/slots/AssistantSlot.ts">AssistantSlot.ts</code></td>
+                <td>persona 头 + instructions 渲染，priority 900、maxCompressionLevel 1。</td>
+                <td>确认 Assistant instructions 只经此 slot 进入 LLM。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/service/chat/assistant/assistantResolver.ts">assistantResolver.ts</code></td>
+                <td>knowledgeRefs → explicit refs 流；toolPolicy allow/deny；preferredModel 覆盖。</td>
+                <td>确认 Assistant 四字段在 runtime 真实生效并落到 receipt。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/service/chat/tools/toolAvailability.ts">toolAvailability.ts</code></td>
+                <td><code>resolveToolAvailability</code>、state 机、per-tool <code>configureAction</code>。</td>
+                <td>确认工具可用性是单一真源，UI 与工具注入共读。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/service/chat/tools/mediaGenerateTool.ts">mediaGenerateTool.ts</code></td>
+                <td>preflight → route 决策 → receipt；<code>kind:'edit'</code> 触发 permission。</td>
+                <td>确认 <code>media_generate</code> 工具的执行合同与产物形态。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/service/chat/modelRouter.ts">modelRouter.ts</code>、<code data-copy="templates/config/model-routing.json">model-routing.json</code></td>
+                <td>纯函数按 tier 策略 + <code>requiredCapabilities</code> 过滤 profile 目录；auto sentinel 不回写；<code>TurnExecutionReceipt</code> 上 <code>requestedSelection</code> / <code>modelSource</code> / <code>routeReason</code> / <code>requiredCapabilities</code> 字段。</td>
+                <td>确认 Auto 是每 turn 现算的路由，不是一次性挑好的默认值。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/core/ports/MediaReferenceResolver.ts">MediaReferenceResolver.ts</code>、<code data-copy="src/app/platform/media/VaultMediaReferenceResolver.ts">VaultMediaReferenceResolver.ts</code></td>
+                <td><code>MediaGenerationRequest.operation='edit'</code> 时 <code>referenceImages[]</code> / <code>maskImage?</code> 的 vault/receipt 稳定引用 → 执行期字节解析。</td>
+                <td>确认 edit 基图 / mask 只经 resolver 解析，DB 不存 base64，原始拖拽附件不能作 base。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/core/ports/MediaUnderstandingPort.ts">MediaUnderstandingPort.ts</code>、<code data-copy="src/app/platform/media/OpenAITranscriptionAdapter.ts">OpenAITranscriptionAdapter.ts</code>、<code data-copy="src/app/platform/media/WebAudioVideoAudioExtractor.ts">WebAudioVideoAudioExtractor.ts</code></td>
+                <td>发送前 provider capability 门禁；Gemini 直传或 whisper-1 transcript；<code>ChatResourceRef.understandingSource</code> 4 字段持久化。</td>
+                <td>确认音视频附件"能不能被理解"是 provider capability 事实而不是 UI 假装。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/core/types/chat.ts">chat.ts</code>（<code>variantGroupId</code> / <code>variantIndex</code> / <code>isActiveVariant</code> / <code>parentConversationId</code> / <code>parentMessageId</code>）</td>
+                <td>message-level variant 元数据与 branch conversation 指针。</td>
+                <td>确认 Retry 与 Branch 的持久化字段，以及 history 组装为何只取 active。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="src/service/media/MediaGenerationService.ts">MediaGenerationService.ts</code>、<code data-copy="src/service/media/MediaJobRunner.ts">MediaJobRunner.ts</code></td>
+                <td>Vault 写入唯一入口、fal durable async job 状态机、boot 时 resume。</td>
+                <td>确认视频/音乐 async job 生命周期与重启恢复。</td>
+              </tr>
+              <tr>
+                <td><code data-copy="templates/config/chat-runtime.json">chat-runtime.json</code></td>
+                <td>maxStepsWithTools / maxStepsNoTools / maxTokens / maxToolCalls / step 与 total 超时。</td>
+                <td>确认预算与超时的用户可覆盖真源。</td>
               </tr>
               <tr>
                 <td><code data-copy="src/service/chat/context/ContextPipeline.ts">ContextPipeline.ts</code></td>
@@ -771,8 +900,9 @@ flowchart LR
           </table>
           <div class="claim">
             <strong>下一步文档</strong>
-            这份文档已经覆盖 Chat 用到的 context stack。后续写 <code>22-infra-context-pipeline.html</code> 时，应该把 Chat 之外的 Agent、Ambient、Command Gateway 的共同上下文规则抽出来，而不是重复本页内容。
+            这份文档已经覆盖 Chat 用到的 context stack 与 Harness runtime。后续写 <code>22-infra-context-pipeline.html</code> 时，应该把 Chat 之外的 Agent、Ambient、Command Gateway 的共同上下文规则抽出来，而不是重复本页内容。
           </div>
+          <p class="read-note"><b>相关资料：</b><a href="superpowers/plans/2026-07-21-chat-runtime-capability-closure-delivery.md">Chat Runtime 闭环交付报告</a>、<a href="testing/chat-studio-capability-checklist.md">Chat Studio 能力测试清单</a>。</p>
         </section>
 
         <div class="footer">

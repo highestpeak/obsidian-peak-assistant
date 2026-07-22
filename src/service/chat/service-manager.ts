@@ -27,6 +27,7 @@ import { ContextPipeline } from './context/ContextPipeline';
 import { SystemPromptSlot } from './context/slots/SystemPromptSlot';
 import { UserProfileSlot } from './context/slots/UserProfileSlot';
 import { ConvSummarySlot } from './context/slots/ConvSummarySlot';
+import { AssistantSlot } from './context/slots/AssistantSlot';
 import { RecentMessagesSlot } from './context/slots/RecentMessagesSlot';
 import { WorkingContextSlot } from './context/slots/WorkingContextSlot';
 import { ActivityIndexSlot } from './context/slots/ActivityIndexSlot';
@@ -222,6 +223,10 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 		// Wire ContextPipeline into ConversationService
 		const contextPipeline = new ContextPipeline([
 			new SystemPromptSlot(this.promptService, this.chatRuntimeState),
+			// B2 (plan §5.3.2): AssistantSlot must be present so a
+			// conversation bound to a user assistant actually gets its
+			// instructions into the prompt.
+			new AssistantSlot(),
 			new UserProfileSlot(this.promptService, this.profileService),
 			new ConvSummarySlot(this.promptService),
 			new RecentMessagesSlot(this.promptService, this.resourceSummaryService),
@@ -330,6 +335,7 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 		// Wire ContextPipeline into refreshed ConversationService
 		const refreshedPipeline = new ContextPipeline([
 			new SystemPromptSlot(this.promptService, this.chatRuntimeState),
+			new AssistantSlot(),
 			new UserProfileSlot(this.promptService, this.profileService),
 			new ConvSummarySlot(this.promptService),
 			new RecentMessagesSlot(this.promptService, this.resourceSummaryService),

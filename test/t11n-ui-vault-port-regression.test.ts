@@ -147,15 +147,18 @@ function testUiRawVaultOpFloor(): void {
 async function testT11nInfraFilesExist(): Promise<void> {
 	const required = [
 		// Track 1 — preview port + adapter + composer
+		// (Adapters relocated from `app/adapters/**` → `app/platform/**` in a
+		// later refactor; the port-adapter-composer trio is intact, only the
+		// physical directory changed. Updated to reflect current layout.)
 		'core/ports/VaultPreviewPort.ts',
-		'app/adapters/preview/AppVaultPreviewAdapter.ts',
-		'app/adapters/preview/composeVaultPreview.ts',
+		'app/platform/preview/AppVaultPreviewAdapter.ts',
+		'app/platform/preview/composeVaultPreview.ts',
 		// Track 2 — navigation + editor commands ports + adapters + composer
 		'core/ports/VaultNavigationPort.ts',
-		'app/adapters/navigation/AppVaultNavigationAdapter.ts',
+		'app/platform/navigation/AppVaultNavigationAdapter.ts',
 		'core/ports/EditorCommandsPort.ts',
-		'app/adapters/navigation/AppEditorCommandsAdapter.ts',
-		'app/adapters/navigation/composeNavigation.ts',
+		'app/platform/navigation/AppEditorCommandsAdapter.ts',
+		'app/platform/navigation/composeNavigation.ts',
 		// Track 3 — chat-vault writer port + adapter + composer
 		'core/ports/ChatVaultWriterPort.ts',
 		'app/chat/AppChatVaultWriterAdapter.ts',

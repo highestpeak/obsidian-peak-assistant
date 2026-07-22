@@ -119,12 +119,18 @@ export const PromptInput: React.FC<PromptInputProps> = ({
 		});
 	}, []);
 
-	const getFileType = useCallback((file: File): 'image' | 'file' | 'pdf' => {
+	const getFileType = useCallback((file: File): FileAttachment['type'] => {
 		if (file.type.startsWith('image/')) {
 			return 'image';
 		}
 		if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
 			return 'pdf';
+		}
+		if (file.type.startsWith('audio/')) {
+			return 'audio';
+		}
+		if (file.type.startsWith('video/')) {
+			return 'video';
 		}
 		return 'file';
 	}, []);
@@ -315,9 +321,13 @@ export const PromptInput: React.FC<PromptInputProps> = ({
 
 	useEffect(() => {
 		if (!globalDrop) return;
-		document.addEventListener('dragover', handleDragOver);
-		document.addEventListener('drop', handleDrop);
-		return () => { document.removeEventListener('dragover', handleDragOver); document.removeEventListener('drop', handleDrop); };
+		// Detached-window safe (§5.3): the form's ownerDocument may be a popout.
+		// Attaching to the global `document` would miss drops fired inside the
+		// popout window entirely.
+		const doc = formRef.current?.ownerDocument ?? document;
+		doc.addEventListener('dragover', handleDragOver);
+		doc.addEventListener('drop', handleDrop);
+		return () => { doc.removeEventListener('dragover', handleDragOver); doc.removeEventListener('drop', handleDrop); };
 	}, [globalDrop, handleDragOver, handleDrop]);
 
 	return (

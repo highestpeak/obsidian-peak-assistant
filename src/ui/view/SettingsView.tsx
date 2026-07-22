@@ -28,6 +28,7 @@ import { OverviewTab } from './settings/tabs/OverviewTab';
 import { AISetupTab } from './settings/tabs/AISetupTab';
 import { KnowledgeIndexTab } from './settings/tabs/KnowledgeIndexTab';
 import { ToolsTab } from './settings/tabs/ToolsTab';
+import { MediaGenerationTab } from './settings/tabs/MediaGenerationTab';
 import { AdvancedTab } from './settings/tabs/AdvancedTab';
 import type { TabId } from './settings/types';
 
@@ -64,6 +65,7 @@ export function SettingsRoot({ initialTab }: { initialTab?: TabId } = {}) {
         { id: 'aiSetup', label: strings.tabs.aiSetup },
         { id: 'knowledgeIndex', label: strings.tabs.knowledgeIndex },
         { id: 'tools', label: strings.tabs.tools },
+        { id: 'mediaGeneration', label: strings.tabs.mediaGeneration },
         { id: 'advanced', label: strings.tabs.advanced },
     ];
 
@@ -108,6 +110,13 @@ export function SettingsRoot({ initialTab }: { initialTab?: TabId } = {}) {
                     )}
                     {activeTab === 'tools' && (
                         <ToolsTab settings={settings} settingsUpdates={settingsUpdates} />
+                    )}
+                    {activeTab === 'mediaGeneration' && (
+                        <MediaGenerationTab
+                            settings={settings}
+                            settingsUpdates={settingsUpdates}
+                            onSwitchTab={setActiveTab}
+                        />
                     )}
                     {activeTab === 'advanced' && (
                         <AdvancedTab settings={settings} settingsUpdates={settingsUpdates} />

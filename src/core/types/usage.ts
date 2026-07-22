@@ -1,4 +1,4 @@
-export type UsageFeature = 'chat' | 'search_analysis' | 'copilot' | 'graph' | 'indexing' | 'internal' | 'skill' | 'query_rewrite';
+export type UsageFeature = 'chat' | 'search_analysis' | 'copilot' | 'graph' | 'indexing' | 'internal' | 'skill' | 'query_rewrite' | 'media_generation';
 
 export interface UsageRecordPayload {
     sessionId: string;

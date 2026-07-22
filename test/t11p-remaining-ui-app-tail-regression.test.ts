@@ -200,18 +200,22 @@ async function testSettingsTabsHaveNoPeakCommandActionsImports(): Promise<void> 
 }
 
 async function testNewPortFilesExist(): Promise<void> {
+	// Port interfaces were consolidated into `src/core/ports/**` (unified
+	// port catalog) and platform adapters moved from `app/adapters/**` to
+	// `app/platform/**` in a subsequent boundary refactor. The trio (port +
+	// adapter + composition) is intact; only the physical directories moved.
 	const required = [
-		'service/view/ViewActivationPort.ts',
-		'service/chat/navigation/ChatNavigationPort.ts',
-		'service/navigation/WikilinkPort.ts',
-		'service/stats/VaultStatsPort.ts',
-		'service/settings/SettingsActionsPort.ts',
+		'core/ports/ViewActivationPort.ts',
+		'core/ports/ChatNavigationPort.ts',
+		'core/ports/WikilinkPort.ts',
+		'core/ports/VaultStatsPort.ts',
+		'core/ports/SettingsActionsPort.ts',
 		'ui/view/chat-view/useChatNavigation.ts',
 	];
 	const compositionFiles = [
 		'app/commands/composeSettingsActions.ts',
-		'app/adapters/navigation/AppWikilinkAdapter.ts',
-		'app/adapters/vault/AppVaultStatsAdapter.ts',
+		'app/platform/navigation/AppWikilinkAdapter.ts',
+		'app/platform/vault/AppVaultStatsAdapter.ts',
 		'app/search/composeQuickSearchHost.ts',
 	];
 	for (const rel of [...required, ...compositionFiles]) {
@@ -226,7 +230,8 @@ async function testNewPortFilesExist(): Promise<void> {
 
 function testVaultNavigationPortHasNoRawObsidianPrimitives(): void {
 	const port = require('fs').readFileSync(
-		path.join(SRC, 'service/navigation/VaultNavigationPort.ts'),
+		// Relocated with the other port interfaces into src/core/ports/**.
+		path.join(SRC, 'core/ports/VaultNavigationPort.ts'),
 		'utf8',
 	) as string;
 	const banned = [

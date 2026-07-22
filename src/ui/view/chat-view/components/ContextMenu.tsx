@@ -116,7 +116,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 					e.preventDefault();
 					e.stopPropagation();
 					e.stopImmediatePropagation();
-					if (items[selectedIndex]) {
+					if (items[selectedIndex] && !items[selectedIndex].disabled) {
 						onSelect(items[selectedIndex]);
 					}
 					break;
@@ -224,14 +224,18 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 								key={item.id}
 								data-ctx-index={globalIdx}
 								data-selected={isSelected ? 'true' : 'false'}
+								data-disabled={item.disabled ? 'true' : undefined}
 								role="option"
 								aria-selected={isSelected}
+								aria-disabled={item.disabled}
+								disabled={item.disabled}
 								variant="ghost"
 								type="button"
-								onClick={() => onSelect(item)}
+								onClick={() => { if (!item.disabled) onSelect(item); }}
 								onMouseEnter={() => onSelectedIndexChange(globalIdx)}
 								className={cn(
 									'pkchat-context-menu__item pktw-w-full pktw-px-3 pktw-py-2 pktw-text-left pktw-text-sm pktw-transition-colors pktw-h-auto pktw-rounded',
+									item.disabled && 'pktw-opacity-60 pktw-cursor-not-allowed',
 								)}
 							>
 								<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-w-full">

@@ -43,6 +43,9 @@ import { useChatStudioStrings } from '../../chatStudioStringsContext';
 import { getMessageReceiptRenderer } from '../../integration/messageReceiptSlot';
 import { Notice } from 'obsidian';
 import { useComposerStore } from '../../store/composerStore';
+import { useComposerEditImageStore } from '../../store/composerEditImageStore';
+import { useUIEventStore } from '@/ui/store/uiEventStore';
+import { resolveConfigureTab } from '@/service/media/mediaSettingsOverlay';
 import type { ChatStudioStrings } from '../../chatStudioStrings';
 import {
 	computeActionLayout,
@@ -50,6 +53,8 @@ import {
 	type MessageActionContext,
 	type MessageActionDefinition,
 } from '../../actions/messageActionRegistry';
+import { collectVariantGroup } from '@/core/types/chat-message-variants';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { ChatArtifactReceipt } from '@/core/types/chat-studio';
 import type { ChatAssistantDefinition } from '@/core/types/chat-studio';
 
@@ -156,6 +161,13 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 	const openSettings = settingsActions.openSettings;
 	const activeConversation = useChatDataStore((s) => s.activeConversation);
 	const activeProject = useChatDataStore((s) => s.activeProject);
+	// E2 R1#1: while the harness is paused on a permission ask, the
+	// streaming assistant message should visibly say "Permission required"
+	// instead of remaining stuck on the "Generating" spinner (the stream
+	// paused; nothing new is arriving). We overlay the run-status onto the
+	// message.status only for the streaming message on which the ask fired.
+	// See useStreamChat.ts:411 for the source.
+	const runStatus = useChatDataStore((s) => s.runStatus);
 
 	const [copied, setCopied] = useState(false);
 	const [showRawModal, setShowRawModal] = useState(false);
@@ -230,7 +242,7 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 		eventBus.dispatch(new ConversationUpdatedEvent({ conversation: updatedConv }));
 	}, [activeConversation, manager, eventBus, message.id, message.starred]);
 
-	// ── Regenerate ────────────────────────────────────────────────────────
+	// ── Regenerate (MSG-08: produces a real variant, not a duplicate) ─────
 	const { streamChat } = useStreamChat();
 	const handleRegenerate = useCallback(async () => {
 		if (!activeConversation) return;
@@ -248,9 +260,35 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 		if (userMessageIndex === -1) return;
 		const userMessage = activeConversation.messages[userMessageIndex];
 		try {
+			// 1. Deactivate the old assistant answer + reserve a variant slot
+			//    for the new one. Persists to sqlite so a reload after retry
+			//    sees the correct active-variant path immediately.
+			const variantSlot = await manager.conv.prepareRetryVariant({
+				conversationId: activeConversation.meta.id,
+				previousAssistantMessageId: assistantMessage.id,
+			});
+			// 2. Reflect the deactivation in the in-memory conversation so
+			//    the LLM request built from `conversationContext` below and
+			//    the UI switcher rendered on the old bubble both see the new
+			//    state without waiting for the next reload.
+			const messagesWithGroup: ChatMessage[] = activeConversation.messages.map((m) => {
+				if (m.id !== assistantMessage.id) return m;
+				return {
+					...m,
+					variantGroupId: variantSlot.variantGroupId,
+					variantIndex: m.variantIndex ?? 0,
+					isActiveVariant: false,
+				};
+			});
+			useChatViewStore.getState().setConversation({ ...activeConversation, messages: messagesWithGroup });
+			useChatDataStore.getState().setActiveConversation({ ...activeConversation, messages: messagesWithGroup });
+
+			// 3. Rebuild history WITHOUT the deactivated variant. The active
+			//    variant filter in service-conversation trims it anyway, but
+			//    slicing before the old assistant keeps the context minimal.
 			const conversationContext: ChatConversation = {
 				...activeConversation,
-				messages: activeConversation.messages.slice(0, userMessageIndex + 1),
+				messages: messagesWithGroup.slice(0, userMessageIndex + 1),
 			};
 			const streamResult = await streamChat({
 				conversation: conversationContext,
@@ -258,18 +296,27 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 				userContent: userMessage.content,
 			});
 			if (streamResult.finalMessage) {
+				// 4. Stamp the variant fields onto the new assistant answer
+				//    BEFORE persistence so meta_json captures the group.
+				const variantMessage: ChatMessage = {
+					...streamResult.finalMessage,
+					variantGroupId: variantSlot.variantGroupId,
+					variantIndex: variantSlot.variantIndex,
+					isActiveVariant: true,
+				};
 				await manager.conv.addMessage({
 					conversationId: activeConversation.meta.id,
-					message: streamResult.finalMessage,
-					model: streamResult.finalMessage.model,
-					provider: streamResult.finalMessage.provider,
+					message: variantMessage,
+					model: variantMessage.model,
+					provider: variantMessage.provider,
 					usage: streamResult.finalUsage ?? { inputTokens: -1, outputTokens: -1, totalTokens: -1 },
 				});
 			}
 		} catch (err) {
 			console.error('[MessageItem] Regenerate failed:', err);
+			new Notice(strings.message.retryFailed ?? 'Retry failed');
 		}
-	}, [activeConversation, activeProject, streamChat, manager, message.id]);
+	}, [activeConversation, activeProject, streamChat, manager, message.id, strings.message]);
 
 	// ── Save to Vault (with inline receipt, §7.7) ─────────────────────────
 	const handleSaveToVault = useCallback(async (): Promise<string | null> => {
@@ -385,6 +432,16 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 	const actionCtx = useMemo<MessageActionContext>(() => ({
 		message,
 		copyText,
+		openTraceSurface: (_runId: string) => {
+			// MSG-07: routes to the inline AgentTrace anchored on THIS
+			// message. ToolCallSummary subscribes to the chatViewStore
+			// signal, expands its trace section, and scrolls into view.
+			// The runId argument is kept in the signature for symmetry with
+			// `copyDebugTrace` but is not needed here — the message id is
+			// the addressable anchor and `debugRun` is already looked up
+			// from `manager.conv.getDebugRun(message.debugRunId)` above.
+			useChatViewStore.getState().requestOpenTraceForMessage(message.id);
+		},
 		copyDebugTrace: async (runId: string) => {
 			await copyDebugTrace(runId);
 		},
@@ -479,6 +536,15 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 
 	// ── Artifact receipts (MSG-05) ────────────────────────────────────────
 	const [artifactReceipts, setArtifactReceipts] = useState<ChatArtifactReceipt[]>([]);
+	const reloadReceipts = useCallback(async () => {
+		if (isUser) return;
+		try {
+			const receipts = await manager.conv.listArtifactReceiptsByMessage(message.id);
+			setArtifactReceipts(receipts ?? []);
+		} catch (err) {
+			console.warn('[MessageItem] listArtifactReceiptsByMessage failed', err);
+		}
+	}, [isUser, message.id, manager]);
 	useEffect(() => {
 		if (isUser) return;
 		let cancelled = false;
@@ -496,6 +562,22 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 			cancelled = true;
 		};
 	}, [isUser, message.id, streamingState.isStreaming, manager]);
+	// D2 §R1 UI observation: subscribe to `media-job-updated` events the
+	// MediaJobRunner publishes on every job state change. When the event
+	// targets this message (or has no messageId — meaning the runner does
+	// not know the ownership yet, e.g. post-resume), reload receipts.
+	// This is the minimum-noise observation channel — no parallel store.
+	useEffect(() => {
+		if (isUser) return;
+		const unsub = useUIEventStore.subscribe((state) => {
+			const event = state.lastEvent;
+			if (!event || event.type !== 'media-job-updated') return;
+			const targetMessageId = (event.payload as { messageId?: string } | undefined)?.messageId;
+			if (targetMessageId && targetMessageId !== message.id) return;
+			void reloadReceipts();
+		});
+		return () => unsub();
+	}, [isUser, message.id, reloadReceipts]);
 
 	// ── User render ──────────────────────────────────────────────────────
 	if (isUser) {
@@ -517,10 +599,20 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 		: visualArtifactReceipts.length > 0 && supportingArtifactReceipts.length > 0
 		? 'split'
 		: visualArtifactReceipts.length > 0 ? 'visual-only' : 'list-only';
-	const renderArtifactReceipt = (receipt: ChatArtifactReceipt) => (
+	const renderArtifactReceipt = (receipt: ChatArtifactReceipt) => {
+		// Zero-gap §4 A1 — inject the UI-only `insert-as-reference` action
+		// on saved image receipts so the Composer Edit form can be pre-filled
+		// from the card. Never persist this into the sink; it is a render-
+		// time affordance.
+		const canInsertAsReference =
+			receipt.kind === 'image' && receipt.state === 'saved' && Boolean(receipt.vaultPath);
+		const decoratedReceipt = canInsertAsReference && !receipt.availableActions.includes('insert-as-reference')
+			? { ...receipt, availableActions: [...receipt.availableActions, 'insert-as-reference' as const] }
+			: receipt;
+		return (
 		<ArtifactReceiptCard
 			key={receipt.artifactId}
-			receipt={receipt}
+			receipt={decoratedReceipt}
 			galleryReceipts={visualArtifactReceipts}
 			handlers={{
 				open: (rc) => {
@@ -532,15 +624,59 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 					else if (rc.uri) void copyText(rc.uri);
 				},
 				retry: () => void handleRegenerate(),
+				confirm: (rc) => {
+					const svc = manager.conv.getMediaGenerationService();
+					const jobId = (rc as ChatArtifactReceipt & { media?: { jobId?: string } }).media?.jobId;
+					if (!svc || !jobId) return;
+					void svc.confirmJob(jobId).catch((err) => {
+						new Notice(`Media confirm failed: ${err instanceof Error ? err.message : String(err)}`);
+					});
+				},
+				cancel: (rc) => {
+					const svc = manager.conv.getMediaGenerationService();
+					const jobId = (rc as ChatArtifactReceipt & { media?: { jobId?: string } }).media?.jobId;
+					if (!svc || !jobId) return;
+					void svc.cancelJob(jobId, 'user-cancelled').catch((err) => {
+						new Notice(`Media cancel failed: ${err instanceof Error ? err.message : String(err)}`);
+					});
+				},
+				configure: (rc) => {
+					// Task E1 §R2 — jump into the settings tab named by the
+					// receipt's configureAction (via the shared mediaSettingsOverlay
+					// lookup). Falls back to the Media Generation tab when the
+					// receipt does not carry a hint.
+					const media = (rc as ChatArtifactReceipt & { media?: { configureAction?: string } }).media;
+					const tab = resolveConfigureTab(media?.configureAction);
+					settingsActions.openSettings({ tab });
+				},
+				'insert-as-reference': (rc) => {
+					// Zero-gap §4 A1 — hand the receipt to the Edit Composer form.
+					if (!rc.vaultPath) return;
+					useComposerEditImageStore.getState().requestOpen({
+						base: {
+							sourceType: 'receipt',
+							ref: rc.artifactId,
+							label: rc.title,
+							mimeType: rc.contentType,
+						},
+					});
+				},
 			}}
 		/>
-	);
+		);
+	};
 	// UI measures width in AssistantActionRow; here we just prepare data.
 	return (
 		<article
 			className="pkchat-msg"
 			data-message-id={message.id}
 			data-message-role={message.role}
+			data-variant-group={message.variantGroupId ?? undefined}
+			data-variant-active={
+				message.variantGroupId
+					? message.isActiveVariant === true ? 'true' : 'false'
+					: undefined
+			}
 		>
 			{showIdentityChip && (
 				<AssistantIdentityChip
@@ -567,7 +703,7 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 					</Reasoning>
 				)}
 
-				{agentToolCalls.length > 0 && (
+				{(agentToolCalls.length > 0 || (debugRun && debugRun.spans.length > 0)) && (
 					<ToolCallSummary
 						toolCalls={agentToolCalls.map((call) => ({
 							toolName: call.toolName,
@@ -578,6 +714,7 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 						isStreaming={streamingState.isStreaming}
 						debugRun={debugRun}
 						meta={agentRunMeta}
+						messageId={message.id}
 					/>
 				)}
 
@@ -647,17 +784,25 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 			)}
 
 			{!streamingState.isStreaming && (
-				<AssistantActionRow
-					message={message}
-					actions={applicable}
-					actionCtx={actionCtx}
-					studioStrings={studioStrings}
-					modelChipText={modelChipText}
-					modelChipTitle={modelChipTitle}
-					timestampText={timestampText}
-					timestampTitle={timestampTitle}
-					copied={copied}
-				/>
+				<>
+					<AssistantVariantSwitcher
+						message={message}
+						conversation={activeConversation}
+						manager={manager}
+						strings={strings}
+					/>
+					<AssistantActionRow
+						message={message}
+						actions={applicable}
+						actionCtx={actionCtx}
+						studioStrings={studioStrings}
+						modelChipText={modelChipText}
+						modelChipTitle={modelChipTitle}
+						timestampText={timestampText}
+						timestampTitle={timestampTitle}
+						copied={copied}
+					/>
+				</>
 			)}
 
 			{isLastMessage && !streamingState.isStreaming && !message.isErrorMessage && (
@@ -691,7 +836,17 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 				)}
 
 			<MessageStatusIndicator
-				status={message.status}
+				status={
+					// E2 R1#1: when the harness pauses on a permission ask,
+					// overlay `waiting-permission` on the streaming assistant
+					// message so the indicator reads "Permission required"
+					// instead of the stale "Generating" spinner. Only applies
+					// while the message is actively streaming — for saved
+					// messages we render the persisted status verbatim.
+					streamingState.isStreaming && runStatus === 'waiting-permission'
+						? 'waiting-permission'
+						: message.status
+				}
 				className="pktw-mt-1"
 				onRetry={() => void handleRegenerate()}
 				labels={{
@@ -910,6 +1065,93 @@ const ActionButton: React.FC<{
 			<Icon className={ctx.message.starred && action.id === 'star' ? 'pktw-fill-current pktw-text-pk-error' : undefined} />
 			<span>{label}</span>
 		</button>
+	);
+};
+
+// ── Assistant variant switcher (MSG-08) ─────────────────────────────────────
+// Renders "‹ 2/3 ›" ONLY when this assistant message belongs to a variant
+// group with more than one member — retried answers to the same user turn.
+// Clicking a chevron flips `isActiveVariant` on the group via the service,
+// which persists to sqlite and updates the in-memory conversation so the
+// LLM history assembler picks the new active variant on the next turn.
+
+const AssistantVariantSwitcher: React.FC<{
+	message: ChatMessage;
+	conversation: ChatConversation | null;
+	manager: ReturnType<typeof useServiceContext>['manager'];
+	strings: ReturnType<typeof useChatStrings>;
+}> = ({ message, conversation, manager, strings }) => {
+	if (!conversation) return null;
+	if (!message.variantGroupId) return null;
+	const group = collectVariantGroup(conversation.messages, message.id);
+	if (group.length <= 1) return null;
+	const sorted = [...group].sort((a, b) => (a.variantIndex ?? 0) - (b.variantIndex ?? 0));
+	const activeMember = sorted.find((m) => m.isActiveVariant === true) ?? sorted[sorted.length - 1];
+	// We render the switcher on EVERY group member so users can navigate
+	// past a specific answer even when it isn't the active one. Position is
+	// derived from the sorted order.
+	const currentIndex = sorted.findIndex((m) => m.id === message.id);
+	if (currentIndex === -1) return null;
+
+	const switchTo = async (target: ChatMessage) => {
+		if (!target || target.isActiveVariant === true && target.id === activeMember.id) return;
+		if (!message.variantGroupId) return;
+		try {
+			await manager.conv.setActiveVariant({
+				conversationId: conversation.meta.id,
+				variantGroupId: message.variantGroupId,
+				activeMessageId: target.id,
+			});
+			// Reflect immediately in-memory — the store consumers see the
+			// active flag flip before the next reload lands.
+			const updatedMessages = conversation.messages.map((m) => {
+				if (m.variantGroupId !== message.variantGroupId) return m;
+				return { ...m, isActiveVariant: m.id === target.id };
+			});
+			const updatedConv = { ...conversation, messages: updatedMessages };
+			useChatViewStore.getState().setConversation(updatedConv);
+			useChatDataStore.getState().setActiveConversation(updatedConv);
+		} catch (err) {
+			console.error('[MessageItem] setActiveVariant failed:', err);
+		}
+	};
+
+	const previous = currentIndex > 0 ? sorted[currentIndex - 1] : null;
+	const next = currentIndex < sorted.length - 1 ? sorted[currentIndex + 1] : null;
+	const total = sorted.length;
+	const positionLabel = strings.message.variantSwitcherLabel
+		.replace('{index}', String(currentIndex + 1))
+		.replace('{total}', String(total));
+
+	return (
+		<div
+			className="pkchat-msg__variant-switcher"
+			role="group"
+			aria-label={positionLabel}
+			data-active={message.isActiveVariant === true ? 'true' : 'false'}
+		>
+			<button
+				type="button"
+				className="pkchat-msg__variant-nav"
+				onClick={() => previous && void switchTo(previous)}
+				disabled={!previous}
+				aria-label={strings.message.variantPreviousLabel}
+				title={strings.message.variantPreviousLabel}
+			>
+				<ChevronLeft />
+			</button>
+			<span className="pkchat-msg__variant-count">{positionLabel}</span>
+			<button
+				type="button"
+				className="pkchat-msg__variant-nav"
+				onClick={() => next && void switchTo(next)}
+				disabled={!next}
+				aria-label={strings.message.variantNextLabel}
+				title={strings.message.variantNextLabel}
+			>
+				<ChevronRight />
+			</button>
+		</div>
 	);
 };
 

@@ -160,6 +160,16 @@ export interface ChatStrings {
 		vaultSaveDefaultFolder: string;
 		vaultSaveSuccess: string;
 		vaultSaveFailed: string;
+		/** Notice shown when Retry / Regenerate throws (chat-studio §7.7). */
+		retryFailed: string;
+		/** ARIA label for the variant switcher (MSG-08). Formatted `{index}/{total}`. */
+		variantSwitcherLabel: string;
+		/** Tooltip on the "‹" variant-switch button. */
+		variantPreviousLabel: string;
+		/** Tooltip on the "›" variant-switch button. */
+		variantNextLabel: string;
+		/** Chip label for "Branched from <title>" on branched conversations. */
+		branchedFromLabel: string;
 	};
 }
 

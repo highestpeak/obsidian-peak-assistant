@@ -14,6 +14,13 @@ export function buildMessageMetaJson(msg: ChatMessage): string | null {
 	if (msg.replyToMessageId) extras.replyToMessageId = msg.replyToMessageId;
 	if (msg.branchFromMessageId) extras.branchFromMessageId = msg.branchFromMessageId;
 	if (msg.revisionOfMessageId) extras.revisionOfMessageId = msg.revisionOfMessageId;
+	// MSG-08 — assistant variant metadata (chat-studio §7.7). Legacy rows
+	// stay null; presence of variantGroupId alone means "this message is
+	// part of a variant group". The active flag is stored explicitly so
+	// history assembly can filter without guessing.
+	if (msg.variantGroupId) extras.variantGroupId = msg.variantGroupId;
+	if (typeof msg.variantIndex === 'number') extras.variantIndex = msg.variantIndex;
+	if (typeof msg.isActiveVariant === 'boolean') extras.isActiveVariant = msg.isActiveVariant;
 	// Tool calls drive the persisted Agent Run surface. Previously they only
 	// lived on the in-memory streaming message, so the entire execution timeline
 	// disappeared after switching conversations or reloading Obsidian.
@@ -138,6 +145,40 @@ export class ChatMessageRepo {
 				await this.insert(messageData);
 			}
 		}
+	}
+
+	/**
+	 * Update ONLY the meta_json blob for a single message (chat-studio §7.7 —
+	 * MSG-08 variant bookkeeping). Merges into any existing meta so we never
+	 * clobber replyToMessageId / branchFromMessageId / toolCalls previously
+	 * persisted for the row. Null values delete the corresponding key.
+	 */
+	async updateMetaJsonPatch(
+		messageId: string,
+		patch: Record<string, unknown>,
+	): Promise<void> {
+		const existingRow = await this.db
+			.selectFrom('chat_message')
+			.select('meta_json')
+			.where('message_id', '=', messageId)
+			.executeTakeFirst();
+		let merged: Record<string, unknown> = {};
+		if (existingRow?.meta_json) {
+			try {
+				const parsed = JSON.parse(existingRow.meta_json);
+				if (parsed && typeof parsed === 'object') merged = parsed as Record<string, unknown>;
+			} catch { /* legacy row with malformed meta_json — treat as empty */ }
+		}
+		for (const [key, value] of Object.entries(patch)) {
+			if (value === undefined || value === null) delete merged[key];
+			else merged[key] = value;
+		}
+		const nextJson = Object.keys(merged).length > 0 ? JSON.stringify(merged) : null;
+		await this.db
+			.updateTable('chat_message')
+			.set({ meta_json: nextJson })
+			.where('message_id', '=', messageId)
+			.execute();
 	}
 
 	/**

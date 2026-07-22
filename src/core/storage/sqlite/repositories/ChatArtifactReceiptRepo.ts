@@ -73,6 +73,22 @@ export class ChatArtifactReceiptRepo {
 			.execute();
 	}
 
+	/**
+	 * Zero-gap Track D (2026-07-21): scan all reminder receipts across the
+	 * database. Used by the app-owned ReminderSchedulerService to detect
+	 * pending reminders at boot + on each poll. Small table (bounded by user
+	 * behavior) so an unfiltered scan is fine; the `kind='reminder'` filter
+	 * keeps it cheap even when the artifact set grows.
+	 */
+	async listByKind(kind: string): Promise<DbSchema['chat_artifact_receipt'][]> {
+		return this.db
+			.selectFrom('chat_artifact_receipt')
+			.selectAll()
+			.where('kind', '=', kind)
+			.orderBy('created_at_ts', 'desc')
+			.execute();
+	}
+
 	async deleteByConversationIds(conversationIds: string[]): Promise<void> {
 		if (conversationIds.length === 0) return;
 		await this.db

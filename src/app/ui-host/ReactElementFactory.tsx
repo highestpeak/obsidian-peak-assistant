@@ -92,6 +92,7 @@ export function createReactElementWithServices<T extends Record<string, any>>(
 			vaultLintRuntime: appContext.runtimeRegistry.tryGetVaultLintRuntime(),
 			ambientRuntime: appContext.runtimeRegistry.tryGetAmbientRuntime(),
 			vaultReviewRuntime: appContext.runtimeRegistry.tryGetVaultReviewRuntime(),
+			copilotActionRuntime: appContext.runtimeRegistry.tryGetCopilotActionRuntime(),
 			quickSearchBackgroundRuntime: appContext.runtimeRegistry.tryGetQuickSearchBackgroundRuntime(),
 			aiAnalysisHistoryService: appContext.aiAnalysisHistoryService,
 			isMockEnv: appContext.isMockEnv,

@@ -144,6 +144,7 @@
           <span class="nav-group-title">起点</span>
           <a href="#orientation">这页解决什么</a>
           <a href="#screens">六屏各自看什么</a>
+          <a href="#media-run-detail">Media run detail</a>
         </div>
         <div class="nav-group">
           <span class="nav-group-title">数据链路</span>
@@ -171,7 +172,7 @@
       <div class="content">
         <section id="orientation">
           <h2>这页解决什么</h2>
-          <p class="lead">Peak 有 6 个 feature 会主动调 LLM（<code>chat</code>、<code>search_analysis</code>、<code>copilot</code>、<code>graph</code>、<code>indexing</code>、<code>internal</code>，加上 <code>skill</code> agent 调用共 7 类）。用户一天下来 <strong>不知道</strong> 这些调用累计花了多少 token、多少钱、有没有真正落进笔记。Usage Dashboard 把这层黑盒打开：</p>
+          <p class="lead">Peak 有 6 个 feature 会主动调 LLM（<code>chat</code>、<code>search_analysis</code>、<code>copilot</code>、<code>graph</code>、<code>indexing</code>、<code>internal</code>，加上 <code>skill</code> agent 调用与 <code>media_generation</code> 媒体产物调用共 8 类）。用户一天下来 <strong>不知道</strong> 这些调用累计花了多少 token、多少钱、有没有真正落进笔记。Usage Dashboard 把这层黑盒打开：</p>
           <div class="claim">
             <strong>核心结论</strong>
             这个面板 <em>只读</em>——它从不主动调 LLM，也不改动任何 vault 文件。它做三件事：<strong>(1) 订阅 event bus 收 usage 事件写 SQLite</strong>；<strong>(2) 定时把 <code>usage_log</code> 的详情行汇总进 <code>usage_daily</code></strong>；<strong>(3) 用聚合数据给六屏提供查询结果</strong>。Optimization 那屏是唯一可选调 LLM 的地方，规则 fallback 保证不联网也能出建议。
@@ -254,6 +255,75 @@
           </div>
         </section>
 
+        <section id="media-run-detail">
+          <h2>Media generation · run detail（Outcome Value 屏专段）</h2>
+          <p class="lead">除了 LLM token / 美元，Chat 内媒体调用（image / image edit / video / music / TTS / transcription）也会以 <code>feature='media_generation'</code> 打进 <code>usage_log</code>。Outcome Value 屏底部的 <em>Media generation · run detail</em> 段把这些行渲染成一张明细表——每次调用一行。</p>
+
+          <table class="doc-table">
+<colgroup><col style="width: 22%"><col style="width: 26%"><col></colgroup>
+            <thead>
+              <tr><th>字段</th><th>来自哪里</th><th>渲染语义</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>kind / outcome</strong></td>
+                <td><code>usage_log.action</code>（<code>image.success</code>、<code>video.failure</code>、<code>music.success</code>、<code>tts.success</code>、<code>transcription.success</code> …）split 出来</td>
+                <td>outcome 三态：<code>success</code> / <code>failure</code> / <code>unknown</code>；failure 行展开显示 <code>errorMessage</code>。</td>
+              </tr>
+              <tr>
+                <td><strong>route</strong></td>
+                <td><code>metadata.route</code>（<code>native</code> / <code>fal</code> / <code>auto→…</code>）</td>
+                <td>缺失时显示 <code>unknown</code>——不静默假设。</td>
+              </tr>
+              <tr>
+                <td><strong>provider / model</strong></td>
+                <td><code>usage_log.provider</code> + <code>usage_log.model</code></td>
+                <td>与 LLM 侧同 catalog；Sora native 显 <code>openai</code> + <code>sora-2</code>，fal veo 显 <code>fal</code> + <code>fal-ai/veo3.1</code>，等。</td>
+              </tr>
+              <tr>
+                <td><strong>operation</strong></td>
+                <td><code>metadata.presetId</code> / <code>billingUnit</code></td>
+                <td>image generate vs image edit、video vs music 通过 preset + kind 区分。</td>
+              </tr>
+              <tr>
+                <td><strong>Estimated cost</strong></td>
+                <td><code>usage_log.cost_usd</code>；<code>metadata.costConfidence</code> 恒 <code>'estimated'</code></td>
+                <td>永远标 <em>estimated</em>——presets 是本地价格快照，不是 provider 结算账单。字段级不变量在 <code>src/app/media/composeMediaGenerationService.ts</code> 与 <code>src/ui/view/usage-dashboard/hooks/useMediaLogs.ts</code> 里锁死。</td>
+              </tr>
+              <tr>
+                <td><strong>Job id</strong></td>
+                <td><code>metadata.jobId</code>（async video / music / Sora）</td>
+                <td>点开可跳到 <code>ChatArtifactReceipt</code> 或 History 屏对应行。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="claim">
+            <strong>"Cost is a preset estimate — never a settled bill"</strong>
+            这行文案是 media run detail 段的 header 副标题（<code>src/ui/view/usage-dashboard/UsageDashboard.tsx</code> L300 附近）。它防止用户把 preset 快照当成 provider 真实账单——preset 价可能过期、可能不含隐藏 fee、可能与 tier 折扣无关。要看真实账单必须去 provider dashboard。<em>只有</em> 未来某个 preset 显式把 <code>costConfidence</code> 翻成 <code>'provider-reported'</code> 时该行才不再打 estimated 徽标。
+          </div>
+
+          <div class="claim">
+            <strong>空态行为</strong>
+            当前时间范围内无 <code>feature='media_generation'</code> 的行时，媒体段显示 <em>No media generation runs recorded in this range</em>——不显示假 spinner，也不把 image / video / music 的 0 值堆成柱图假装有数据。要过滤 kind / route，暂时用 History 屏（<code>Feature filter = Media generation</code>）。
+          </div>
+
+          <h3>Music licensing 首次确认</h3>
+          <p class="prose">music 生成的第一次 Confirm 前，<code>ArtifactReceiptCard</code> 出 licensing checkbox（Lyria SynthID 水印 + 分发平台 AI 披露 + USCO 版权口径 + fal ToS 链接）。确认写两处：</p>
+          <div class="field-list">
+            <dt><code>settings.ai.mediaDefaults.musicLicensingAccepted</code></dt>
+            <dd>包含 <code>policyVersion</code> + <code>confirmedAt</code>；同 policy version 内后续 music 请求不再重复弹窗。</dd>
+            <dt><code>ChatArtifactReceipt.metadata.musicLicensing</code></dt>
+            <dd>该 receipt 上标记接受时的 policyVersion，便于事后审计。policy version 若变（例如新加一条 SynthID 说明），下次 music 请求会重新弹窗。</dd>
+          </div>
+          <p class="prose" style="margin-top: 14px;">Licensing 文案本身走 <code>templates/config/settings.json</code> <code>mediaGeneration.presets.musicLicensing*</code>（title / body / linkLabel / url / policyVersion / confirmCheckboxLabel / confirmHint），Settings → Media Generation → Music 段也稳定展示。</p>
+
+          <div class="claim">
+            <strong>关联入口</strong>
+            Settings 侧的媒体能力矩阵（Route × Kind × Operation 三维 + Validate 时间戳）在 <a href="11-feature-chat-studio-ui-ux.html#composer">Chat Studio UI/UX · Composer</a> 与 <a href="11-feature-chat-context.html#failure-recovery">Chat Context · 能力不可用时用户看到什么</a> 里详解——Usage Dashboard 只<em>展示</em>结果，不承担配置界面。
+          </div>
+        </section>
+
         <section id="recording">
           <h2>谁在写 usage 记录</h2>
           <p class="lead">所有写入都走 <strong>event bus</strong>——service 层不直接摸 SQLite。这让 UsageTracking 能作为 <em>可选</em> 服务：关掉后调用方仍能正常跑，只是没人订阅事件。</p>
@@ -294,7 +364,7 @@ flowchart LR
             <dd>结构化 output（zod 校验）。<code>action</code> 里带 schema 名，方便 History 屏识别。</dd>
           </div>
 
-          <p class="prose" style="margin-top: 22px;">Agent 调用（SDK harness）在 <code>sdkAgentPool.ts</code> L344 有独立 emit，<code>feature: 'skill'</code>。<code>embedTexts</code>（embedding 客户端）目前 <strong>没有</strong> 手动 emit——insights spec 里列作已知 gap，需要在 T13 之前补上。</p>
+          <p class="prose" style="margin-top: 22px;">Agent 调用（SDK harness）在 <code>sdkAgentPool.ts</code> L344 有独立 emit，<code>feature: 'skill'</code>。媒体调用（image / image edit / video / music / TTS / transcription）由 <code>src/app/media/composeMediaGenerationService.ts</code> 的组合根 emit，<code>feature: 'media_generation'</code>；成功 / 失败双路径都打点，成本恒标 <code>metadata.costConfidence='estimated'</code>。<code>embedTexts</code>（embedding 客户端）目前 <strong>没有</strong> 手动 emit——insights spec 里列作已知 gap，需要在 T13 之前补上。</p>
 
           <div class="claim">
             <strong>成本是本地算的，不是 provider 传的</strong>
@@ -311,7 +381,7 @@ flowchart LR
           <pre><code>usage_log (
   id                INTEGER PRIMARY KEY,
   session_id        TEXT,
-  feature           TEXT,          -- chat | search_analysis | copilot | graph | indexing | internal | skill
+  feature           TEXT,          -- chat | search_analysis | copilot | graph | indexing | internal | skill | media_generation
   action            TEXT,          -- 'queryText' | 'stream' | schema name for structured
   provider          TEXT,
   model             TEXT,
@@ -643,8 +713,18 @@ flowchart TB
               </tr>
               <tr>
                 <td><strong>Recording surface（call site）</strong></td>
-                <td><code data-copy="src/service/chat/service-manager.ts">service-manager.ts</code>（L744）<br><code data-copy="src/service/agents/core/sdkAgentPool.ts">sdkAgentPool.ts</code>（L344）</td>
-                <td><code>emitUsage()</code>：chat 各种 query 完成时；agent 完成时。</td>
+                <td><code data-copy="src/service/chat/service-manager.ts">service-manager.ts</code>（L744）<br><code data-copy="src/service/agents/core/sdkAgentPool.ts">sdkAgentPool.ts</code>（L344）<br><code data-copy="src/app/media/composeMediaGenerationService.ts">composeMediaGenerationService.ts</code><br><code data-copy="src/service/media/MediaUsageEmitter.ts">MediaUsageEmitter.ts</code></td>
+                <td><code>emitUsage()</code>：chat 各种 query 完成时；agent 完成时；媒体生成 / 编辑 / async job 完成时（emitter 抛错不影响生成）。</td>
+              </tr>
+              <tr>
+                <td><strong>Media run detail 显示</strong></td>
+                <td><code data-copy="src/ui/view/usage-dashboard/hooks/useMediaLogs.ts">useMediaLogs.ts</code><br><code data-copy="src/ui/view/usage-dashboard/screens/OutcomeValue.tsx">OutcomeValue.tsx</code>（<code>MediaGenerationSection</code>）</td>
+                <td>读 <code>feature='media_generation'</code> 行 → 拆 kind.outcome → 恒标 <em>estimated</em>。空态显 <em>No media generation runs recorded in this range</em>。</td>
+              </tr>
+              <tr>
+                <td><strong>Music licensing 确认状态</strong></td>
+                <td><code data-copy="src/ui/view/chat-view/components/messages/ArtifactReceiptCard.tsx">ArtifactReceiptCard.tsx</code>（L200-330）<br><code data-copy="templates/config/settings.json">settings.json</code>（<code>mediaGeneration.presets.musicLicensing*</code>）</td>
+                <td>首次 Confirm 前的 checkbox → 写 <code>settings.ai.mediaDefaults.musicLicensingAccepted</code>（<code>policyVersion</code> + <code>confirmedAt</code>）+ receipt <code>metadata.musicLicensing</code>。policy version 变化触发重弹。</td>
               </tr>
             </tbody>
           </table>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { cn } from '@/ui/react/lib/utils';
 import { usePromptInputContext } from './PromptInput';
-import { X, Paperclip, Image as ImageIcon, FileText, type LucideIcon } from 'lucide-react';
+import { X, Paperclip, Image as ImageIcon, FileText, Music, Film, type LucideIcon } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/ui/component/shared-ui/tooltip';
 import type { FileAttachment } from './types';
@@ -37,6 +37,12 @@ const FILE_TYPE_CONFIG: Record<FileAttachment['type'], FileTypeConfig> = {
 	},
 	file: {
 		icon: Paperclip,
+	},
+	audio: {
+		icon: Music,
+	},
+	video: {
+		icon: Film,
 	},
 };
 

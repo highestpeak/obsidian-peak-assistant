@@ -7,7 +7,7 @@
   <link rel="icon" href="data:," />
   <link rel="stylesheet" href="../../../src/styles/peak-tokens.css" />
   <link rel="stylesheet" href="intelligence-ia-lab.css" />
-  <link rel="stylesheet" href="vault-relation-graph.css" />
+  <link rel="stylesheet" href="vault-result-browser.css" />
 </head>
 <body class="theme-light">
   <svg class="icon-sprite" aria-hidden="true">
@@ -82,7 +82,7 @@
           <section class="doc-block is-current" data-block-id="ai-sidecar" data-block-title="AI 旁路段落"><p>AI 应该贴在当前块旁边：知道当前块的源范围与 Markdown 语法，自动参考 <span class="vault-link" contenteditable="false">[[知识库]]</span>，把候选修改放回正文原位，并在接受前保持可回滚。</p></section>
           <section class="doc-block" data-block-id="conclusion" data-block-title="小节结论"><p>因此，编辑器里的 AI 价值不在于生成更多文字，而在于让每一次建议都能被定位、判断和撤销。</p></section>
         </article>
-        <aside class="live-change-nav" id="live-change-nav" hidden aria-live="polite"></aside>
+        <aside class="live-change-nav" id="live-change-nav" hidden role="toolbar" aria-label="正文改动审阅"></aside>
       </section>
 
       <button class="drawer-scrim" type="button" data-panel-close aria-label="关闭 Intelligence"></button>
@@ -162,7 +162,8 @@
   </dialog>
 
   <div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
-  <script src="vault-relation-graph.js"></script>
+  <script src="vault-result-browser-fixtures.js"></script>
+  <script src="vault-result-browser.js"></script>
   <script src="intelligence-ia-lab.js"></script>
 </body>
 </html>

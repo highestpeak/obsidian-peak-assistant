@@ -12,7 +12,6 @@
  */
 
 import assert from 'assert';
-import { MockLanguageModelV3 } from 'ai/test';
 import type { ModelMessage } from 'ai';
 import { runAgentLoop } from '@/service/agents/harness/loop/AgentLoop';
 import { TierController } from '@/service/agents/harness/tier/TierController';
@@ -25,22 +24,10 @@ import {
     MemoryStore,
     createMemoryBlock,
 } from '@/service/agents/harness/memory';
-
-type GenResult = Awaited<ReturnType<NonNullable<MockLanguageModelV3['doGenerate']>>>;
+import { makeStreamModel, textStepChunks } from './harness-fixtures/mockStreamModel';
 
 function makeStopBinding(text: string): TierBinding {
-    const model = new MockLanguageModelV3({
-        provider: 'mock',
-        modelId: 'm',
-        async doGenerate(): Promise<GenResult> {
-            return {
-                content: [{ type: 'text', text }],
-                finishReason: 'stop',
-                usage: { inputTokens: 5, outputTokens: 3, totalTokens: 8 },
-                warnings: [],
-            } as GenResult;
-        },
-    });
+    const model = makeStreamModel('m', [textStepChunks({ text })]);
     return {
         tier: 'local-fast',
         providerId: 'mock',

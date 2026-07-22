@@ -141,9 +141,19 @@ export const ConfigTemplateId = {
 	Settings: 'config-settings' as const,
 	Chat: 'config-chat' as const,
 	ChatStudio: 'config-chat-studio' as const,
+	ChatRuntime: 'config-chat-runtime' as const,
+	ModelRouting: 'config-model-routing' as const,
 	Dashboard: 'config-dashboard' as const,
 	RichOutputTypes: 'config-rich-output-types' as const,
 	FileAtlas: 'config-file-atlas' as const,
+	// Task C1 (2026-07-21): Media generation runtime config — presets,
+	// routing defaults, cost estimates, poll timings. Replaces
+	// FalMediaAdapter's hardcoded model ids / voice / poll deadline.
+	MediaGeneration: 'config-media-generation' as const,
+	// Zero-gap Track D (2026-07-21): structured artifact_create tool config
+	// — per-type labels, filename stems, extensions, excalidraw skeleton
+	// frontmatter, error copy. Producer service consumes via loadJson.
+	ArtifactCreate: 'config-artifact-create' as const,
 } as const;
 
 export type ConfigTemplateId = (typeof ConfigTemplateId)[keyof typeof ConfigTemplateId];
@@ -418,9 +428,13 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	[ConfigTemplateId.Settings]: meta('config', 'settings', { expectsJson: true }),
 	[ConfigTemplateId.Chat]: meta('config', 'chat', { expectsJson: true }),
 	[ConfigTemplateId.ChatStudio]: meta('config', 'chat-studio', { expectsJson: true }),
+	[ConfigTemplateId.ChatRuntime]: meta('config', 'chat-runtime', { expectsJson: true }),
+	[ConfigTemplateId.ModelRouting]: meta('config', 'model-routing', { expectsJson: true }),
 	[ConfigTemplateId.Dashboard]: meta('config', 'dashboard', { expectsJson: true }),
 	[ConfigTemplateId.RichOutputTypes]: meta('config', 'rich-output-types', { expectsJson: true }),
 	[ConfigTemplateId.FileAtlas]: meta('config', 'file-atlas', { expectsJson: true }),
+	[ConfigTemplateId.MediaGeneration]: meta('config', 'media-generation', { expectsJson: true }),
+	[ConfigTemplateId.ArtifactCreate]: meta('config', 'artifact-create', { expectsJson: true }),
 
 	// --- Structural analysis prompts ---
 	'gap-explanation': meta('prompts', 'gap-explanation', { label: 'Gap Explanation', description: 'LLM prompt for lazy gap explanations.', group: 'indexing' }),

@@ -3,6 +3,7 @@ import { Notice } from 'obsidian';
 import { Globe, BookOpen, X } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { useChatViewStore } from '../../store/chatViewStore';
+import { useComposerStore } from '../../store/composerStore';
 import { CAPABILITY_SUGGESTION_PATTERNS } from '@/core/constant';
 import type { ChatMessage } from '@/service/chat/types';
 
@@ -15,13 +16,31 @@ interface SuggestionConfig {
 	enableAction: () => void;
 }
 
+/**
+ * 2026-07-21 (source-truth): composerStore is the single UI truth for
+ * per-draft Vault/Web toggles. Enabling a capability from the suggestion
+ * strip must write there FIRST so the next submit sees the enabled state.
+ * The chatViewStore mirror stays for pre-Composer readers (`SystemPromptSlot`
+ * reads through the chat-runtime port which is backed by chatViewStore); the
+ * mirror is kept in sync so the runtime doesn't disagree with the UI.
+ */
+function enableVaultSearchAcrossStores() {
+	useComposerStore.getState().updateDraft({ vaultSearch: true });
+	useChatViewStore.getState().setEnableVaultSearch(true);
+}
+
+function enableWebSearchAcrossStores() {
+	useComposerStore.getState().updateDraft({ webSearch: true });
+	useChatViewStore.getState().setEnableWebSearch(true);
+}
+
 const SUGGESTION_CONFIGS: Record<SuggestionKind, SuggestionConfig> = {
 	webSearch: {
 		icon: Globe,
 		label: 'Enable Web Search',
 		description: 'This might need web access.',
 		enableAction: () => {
-			useChatViewStore.getState().setEnableWebSearch(true);
+			enableWebSearchAcrossStores();
 			new Notice('Web Search enabled — try asking again');
 		},
 	},
@@ -30,14 +49,19 @@ const SUGGESTION_CONFIGS: Record<SuggestionKind, SuggestionConfig> = {
 		label: 'Enable Vault Search',
 		description: 'This might need access to your notes.',
 		enableAction: () => {
-			useChatViewStore.getState().setEnableVaultSearch(true);
+			enableVaultSearchAcrossStores();
 			new Notice('Vault Search enabled — try asking again');
 		},
 	},
 };
 
 function detectSuggestion(text: string): SuggestionKind | null {
-	const { enableWebSearch, enableVaultSearch } = useChatViewStore.getState();
+	// Read from composerStore (single truth) — chatViewStore mirror may lag
+	// behind when the composer draft was updated more recently.
+	const activeKey = useComposerStore.getState().activeKey;
+	const draft = useComposerStore.getState().drafts[activeKey];
+	const enableWebSearch = draft?.webSearch ?? useChatViewStore.getState().enableWebSearch;
+	const enableVaultSearch = draft?.vaultSearch ?? useChatViewStore.getState().enableVaultSearch;
 
 	if (!enableWebSearch) {
 		for (const pattern of CAPABILITY_SUGGESTION_PATTERNS.webSearch) {

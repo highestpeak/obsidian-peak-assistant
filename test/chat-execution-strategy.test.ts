@@ -51,7 +51,7 @@ const APP_STUB = {} as unknown as never;
 	});
 	assert.strictEqual(strategy.mode, 'default');
 	assert.strictEqual(strategy.usePlanSystemPrompt, false);
-	assert.strictEqual(Object.keys(strategy.tools).length, 0, 'no web toggle → no tools attached');
+	assert.strictEqual(strategy.tools.length, 0, 'no web toggle → no tools attached');
 	assert.strictEqual(strategy.maxSteps, 1, 'no tools → single-step turn');
 	console.log('PASS: default fresh conversation → default strategy, no tools, no plan prompt');
 }
@@ -66,7 +66,7 @@ const APP_STUB = {} as unknown as never;
 	});
 	assert.strictEqual(strategy.mode, 'plan');
 	assert.strictEqual(strategy.usePlanSystemPrompt, true, 'plan intent must prepend planning system prompt');
-	assert.strictEqual(Object.keys(strategy.tools).length, 0, 'plan intent must disable tools even when web toggle is on');
+	assert.strictEqual(strategy.tools.length, 0, 'plan intent must disable tools even when web toggle is on');
 	assert.strictEqual(strategy.maxSteps, 1);
 	console.log('PASS: /plan intent → plan strategy overrides legacy kind and web toggle');
 }
@@ -81,7 +81,7 @@ const APP_STUB = {} as unknown as never;
 	});
 	assert.strictEqual(strategy.mode, 'plan');
 	assert.strictEqual(strategy.usePlanSystemPrompt, true);
-	assert.strictEqual(Object.keys(strategy.tools).length, 0);
+	assert.strictEqual(strategy.tools.length, 0);
 	console.log('PASS: restored legacy plan conversation → plan strategy honored');
 }
 
@@ -97,11 +97,12 @@ const APP_STUB = {} as unknown as never;
 	assert.strictEqual(strategy.usePlanSystemPrompt, false);
 	// With webSearch toggle off, no tool is attached — legacy Agent no longer
 	// gates tool routing. Users must enable tools via the toggle, not a mode.
-	assert.strictEqual(Object.keys(strategy.tools).length, 0, 'legacy agent kind must not add tools when toggle off');
+	assert.strictEqual(strategy.tools.length, 0, 'legacy agent kind must not add tools when toggle off');
 	console.log('PASS: legacy agent kind does not force tool injection');
 }
 
-// Test 5: model with native webSearch capability short-circuits web_search injection
+// Test 5: with `enableWebSearch=true` but no active Web Search profile,
+// nothing is injected — irrespective of catalog `webSearch` flag (B1 §5.2 R2).
 {
 	const strategy = resolveChatExecutionStrategy({
 		planIntent: false,
@@ -109,11 +110,11 @@ const APP_STUB = {} as unknown as never;
 		toolDeps: { app: APP_STUB, pluginId: 'peak', enableWebSearch: true },
 		modelCapabilities: CAPS_NATIVE_WEB,
 	});
-	// buildChatTools drops its web_search when the model already has native
-	// coverage. Nothing else is injected, so tools should stay empty.
 	assert.strictEqual(strategy.mode, 'default');
-	assert.strictEqual(Object.keys(strategy.tools).length, 0, 'native webSearch capability must prevent tool injection');
-	console.log('PASS: native webSearch capability suppresses buildChatTools web_search tool');
+	// No ProfileRegistry seeded → no active Web Search profile → no fallback.
+	// (Catalog `webSearch:true` is no longer used as a suppression signal.)
+	assert.strictEqual(strategy.tools.length, 0, 'missing Web Search profile → no tool injected');
+	console.log('PASS: absent Web Search profile → no fallback (B1 rule)');
 }
 
 // Test 6: service-conversation.ts wire-in guard
