@@ -47,6 +47,21 @@ function maintenanceProgressMsg(prefix: string, ev: { phase: string; tenant: str
 	return `${prefix}: ${ev.tenant} · ${PHASE_LABELS[ev.phase] ?? ev.phase} · ${ev.progressTextSuffix ?? ''}`;
 }
 
+/**
+ * Guard: run the heavy whole-graph work (Mobius global maintenance — PageRank +
+ * Louvain structural analysis + semantic edges — and the pending hub-regen queue
+ * drain) automatically at startup?
+ *
+ * OFF by default. On large vaults these load the entire graph into the renderer's
+ * JS/cppgc heap and run iterative algorithms, which OOM-aborts the Electron
+ * renderer during plugin load (white-screen crash loop). They are NOT needed for
+ * search or the File Atlas graph, which read already-computed edges from the
+ * index. Both remain available on demand: the "Run Mobius maintenance" command
+ * and manual hub regeneration. Flip to `true` only once the maintenance sweep is
+ * memory-bounded (streamed instead of loaded whole).
+ */
+const AUTO_STARTUP_GRAPH_MAINTENANCE = false;
+
 export class IndexInitializer {
 	constructor(
 		private readonly app: App,
@@ -120,7 +135,7 @@ export class IndexInitializer {
 						8000,
 					);
 				}
-			} else {
+			} else if (AUTO_STARTUP_GRAPH_MAINTENANCE) {
 				await this.runMobiusMaintenanceIfDue();
 			}
 		} catch (e) {
@@ -131,7 +146,7 @@ export class IndexInitializer {
 		try {
 			const { HubRegenService } = await import('./helper/hub/hubRegenService');
 			HubRegenService.getInstance().init(() => this.settings);
-			if (sqliteStoreManager.isInitialized()) {
+			if (AUTO_STARTUP_GRAPH_MAINTENANCE && sqliteStoreManager.isInitialized()) {
 				const pendingCount = await sqliteStoreManager.getHubConstituentRepo().pendingCount();
 				if (pendingCount > 0) {
 					console.log(`[IndexInitializer] ${pendingCount} stale hub(s) queued — processing in background`);

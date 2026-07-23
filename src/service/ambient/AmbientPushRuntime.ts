@@ -88,7 +88,9 @@ export class AmbientPushRuntime implements AmbientRuntime {
 			const lastSessionTs = await this.ports.briefing.getLastSessionTimestamp(
 				now - BRIEFING_DEFAULT_LAST_SESSION_FALLBACK_MS,
 			);
+			console.log('[MEM] briefing: before loadBriefingItems');
 			const items = await this.ports.briefing.loadBriefingItems(lastSessionTs);
+			console.log(`[MEM] briefing: loaded ${items.length} items`);
 
 			// Record timestamps regardless of whether there are items
 			await this.ports.briefing.recordSessionTimestamps(now);
@@ -98,7 +100,9 @@ export class AmbientPushRuntime implements AmbientRuntime {
 			// Sort by score descending
 			items.sort((a, b) => b.score - a.score);
 
+			console.log('[MEM] briefing: before projection.showMorningBriefing');
 			this.ports.projection.showMorningBriefing(items);
+			console.log('[MEM] briefing: after projection.showMorningBriefing');
 			return true;
 		} catch (err) {
 			console.debug('[AmbientPushRuntime] Morning Briefing failed (non-critical):', err);

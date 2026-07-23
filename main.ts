@@ -81,6 +81,15 @@ import { openSettingsModal } from '@/app/commands/PeakCommandActions';
 /**
  * Primary Peak Assistant plugin entry that wires services and views.
  */
+/**
+ * Renderer-safety guard: run the proactive background features at startup?
+ * AmbientPush (related-note suggestions → search + PPR), PatternDiscovery
+ * (background AI analysis), and the SDK agent-pool warmup each kick off work
+ * right after load. OFF by default; they become on-demand until memory-bounded.
+ * Module-scoped so both `onload` and `initSqlite` (separate methods) can read it.
+ */
+const AUTO_STARTUP_PROACTIVE_BACKGROUND = false;
+
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings;
 	// eventHandler: EventDispatcher;
@@ -117,6 +126,20 @@ export default class MyPlugin extends Plugin {
 	 * Bootstraps services, views, commands, and layout handling.
 	 */
 	async onload() {
+		// ── TEMP startup mem diagnostic ──
+		try {
+			const _fs = require('fs') as typeof import('fs');
+			const _L = '/tmp/peak-startup-mem.log';
+			_fs.writeFileSync(_L, `=== onload ${Date.now()} ===\n`);
+			const _a = (s: string): void => { try { _fs.appendFileSync(_L, `${Date.now()} rss=${Math.round(process.memoryUsage().rss/1048576)}MB | ${s}\n`); } catch {} };
+			const _o = { l: console.log, w: console.warn, e: console.error };
+			const _wrap = (fn: (...a: unknown[]) => void) => (...a: unknown[]): void => { _a(a.map(x => typeof x==='string'?x:(()=>{try{return JSON.stringify(x)}catch{return String(x)}})()).join(' ').slice(0,200)); fn(...(a as [])); };
+			console.log = _wrap(_o.l); console.warn = _wrap(_o.w); console.error = _wrap(_o.e);
+			const _t = setInterval(() => _a('·'), 150);
+			setTimeout(() => { clearInterval(_t); console.log=_o.l; console.warn=_o.w; console.error=_o.e; }, 180000);
+			(this as unknown as { _peakMemMark?: (s: string) => void })._peakMemMark = _a;
+		} catch {}
+		// ──────────────────────────────
 		registerTemplateEngineHelpers();
 
 		// Route provider fetches that would otherwise be blocked by browser
@@ -130,6 +153,7 @@ export default class MyPlugin extends Plugin {
 		this.uninstallHoverMenuGlobals = installHoverMenuGlobals();
 
 		const data = await this.loadData();
+		console.log('[MEM] onload: after loadData');
 		this.settings = normalizePluginSettings(data);
 		// Initialize ProfileRegistry from persisted settings (must precede AIServiceManager)
 		const ps = this.settings.profileSettings ?? {
@@ -195,8 +219,10 @@ export default class MyPlugin extends Plugin {
 
 			// Load curator catalog for the Agent Harness onboarding wizard.
 			try {
+				console.log('[MEM] onload: before loadCuratorCatalog');
 				const { loadCuratorCatalog } = await import('@/service/agents/harness/curator');
 				await loadCuratorCatalog(this.templateManager);
+				console.log('[MEM] onload: after loadCuratorCatalog');
 			} catch (e) {
 				console.warn('[Peak Assistant] Failed to load curator catalog; harness onboarding will use fallback rules.', e);
 			}
@@ -319,7 +345,9 @@ export default class MyPlugin extends Plugin {
 		// the app layer (`AppContext.copilotReviewHistory`) with its
 		// folder-created notifier injected at construction time — no late
 		// setter, no service-side singleton.
+		console.log('[MEM] onload: before aiServiceManager.init');
 		await this.aiServiceManager.init();
+		console.log('[MEM] onload: after aiServiceManager.init');
 
 		// Debug Trace Infrastructure — one in-memory recorder per plugin load.
 		// Mode + retention read from `settings.debugTrace`; defaults keep the
@@ -699,15 +727,23 @@ export default class MyPlugin extends Plugin {
 				notifier: obsidianNotifier,
 			});
 
-			// Attempt eager init — if native module is already compatible, this is
-			// transparent to the user. If it fails (e.g. first install, ABI mismatch
-			// after Obsidian update), the plugin still loads and the user can trigger
-			// setup via the onboarding wizard command.
-			try {
-				await this.initSqlite();
-			} catch (e) {
-				console.warn('[Peak Assistant] SQLite deferred — native module not ready yet:', e);
-			}
+			// Defer SQLite + search init OFF the startup critical path.
+			// Peak's DB open is a ~600MB baseline. Loading it synchronously in
+			// onload stacks that baseline on top of other plugins' startup memory
+			// spikes — notably the Excalidraw image-cache decode, measured ~2GB
+			// transient on this vault — so the renderer's total blows past its
+			// per-process ceiling and OOM-aborts (white-screen crash loop). The
+			// plugin is built to run with SQLite deferred (mobile skips it
+			// outright), so we start it after the workspace is ready AND the
+			// initial startup spike has had time to release. Search + File Atlas
+			// warm up a few seconds after load instead of blocking / crashing it.
+			this.app.workspace.onLayoutReady(() => {
+				window.setTimeout(() => {
+					this.initSqlite().catch((e) => {
+						console.warn('[Peak Assistant] deferred SQLite init failed:', e);
+					});
+				}, 3500);
+			});
 		} else {
 			console.log('[Peak Assistant] Mobile mode: SQLite and indexing skipped');
 		}
@@ -721,7 +757,7 @@ export default class MyPlugin extends Plugin {
 		if (!ambientPushSettings || ambientPushSettings.enabled !== false) {
 			const ambientRuntime = composeAmbientRuntime(this.app);
 			AppContext.setAmbientRuntime(ambientRuntime);
-			ambientRuntime.start();
+			if (AUTO_STARTUP_PROACTIVE_BACKGROUND) ambientRuntime.start();
 
 			// Status bar indicator. D1 upgrade: prefer the LLM-inferred working
 			// context summary when available (SessionContextService.workingTheme
@@ -759,7 +795,7 @@ export default class MyPlugin extends Plugin {
 			}
 
 			// CM6 gutter hint for serendipity items (Phase 3)
-			if (!ambientPushSettings || ambientPushSettings.enableSerendipityGutter !== false) {
+			if (AUTO_STARTUP_PROACTIVE_BACKGROUND && (!ambientPushSettings || ambientPushSettings.enableSerendipityGutter !== false)) {
 				this.registerEditorExtension(serendipityGutterExtension());
 			}
 		}
@@ -779,6 +815,7 @@ export default class MyPlugin extends Plugin {
 				new HarnessOnboardingModal(appContext, { isReRun: false }).open();
 			}, 500);
 		}
+		console.log('[MEM] onload: END (returning)');
 	}
 
 	/**
@@ -792,6 +829,7 @@ export default class MyPlugin extends Plugin {
 
 		this.sqliteInitPromise = (async () => {
 			try {
+				console.log('[MEM] initSqlite: before sqliteStoreManager.init');
 				await sqliteStoreManager.init({
 					app: this.app,
 					storageFolder: this.settings.dataStorageFolder,
@@ -823,7 +861,9 @@ export default class MyPlugin extends Plugin {
 					outcome: usageOutcome,
 					optimization: usageOptimization,
 				});
+				console.log('[MEM] initSqlite: before initializeSearchService');
 				await this.initializeSearchService();
+				console.log('[MEM] initSqlite: after initializeSearchService');
 				if (this.appContext) {
 					this.appContext.searchClient = this.searchClient!;
 				}
@@ -848,6 +888,7 @@ export default class MyPlugin extends Plugin {
 				// Hub Generation runtime (Curator + Materializer + Executor + Scheduler).
 				// Must run after sqlite + AIServiceManager + TemplateManager are ready.
 				try {
+					console.log('[MEM] initSqlite: before composeHubGenerationRuntime');
 					const { composeHubGenerationRuntime } = await import('@/app/hub/composeHubGenerationRuntime');
 					const templateManager = this.aiServiceManager.getTemplateManager?.();
 					if (templateManager) {
@@ -877,15 +918,17 @@ export default class MyPlugin extends Plugin {
 					// WorkingThemeInferrer no longer reaches into AppContext.
 					(promptId, vars) => this.aiServiceManager.queryText(promptId as any, vars as any),
 				);
+				console.log('[MEM] initSqlite: before sessionContext.init');
 				await sessionContext.init();
+				console.log('[MEM] initSqlite: after sessionContext.init');
 				// Only start background AI services if an active profile is configured
 				// (invalid/missing API key causes unrecoverable subprocess crashes)
 				const hasActiveProfile = !!ProfileRegistry.getInstance().getActiveAgentProfile();
-				if (hasActiveProfile) {
+				if (hasActiveProfile && AUTO_STARTUP_PROACTIVE_BACKGROUND) {
 					initPatternSystem(this.aiServiceManager).catch((e) => console.error('[PatternDiscovery] Init failed:', e));
 					warmupPool().catch((e) => console.warn('[sdkAgentPool] warmup failed:', e));
 				} else {
-					console.log('[Peak Assistant] No active profile — skipping PatternDiscovery and agent pool warmup');
+					console.log('[Peak Assistant] PatternDiscovery + agent pool warmup skipped (renderer-safety guard / no active profile)');
 				}
 				// D1 §R1/R5 + D2 §R1/§R3/§R4: compose MediaGenerationService
 				// + MediaJobRunner once at boot, bind them into
@@ -991,7 +1034,9 @@ export default class MyPlugin extends Plugin {
 						},
 					});
 					this.aiServiceManager.conv.setArtifactProducer(artifactRuntime.producer);
+					console.log('[MEM] before artifactScheduler.start');
 					artifactRuntime.scheduler.start();
+					console.log('[MEM] after artifactScheduler.start');
 					this.register(() => {
 						try { artifactRuntime.scheduler.dispose(); } catch { /* ignore */ }
 					});
@@ -1008,16 +1053,20 @@ export default class MyPlugin extends Plugin {
 				// runtime was not bound (e.g. Ambient disabled in settings).
 				setTimeout(async () => {
 					try {
+						console.log('[MEM] briefing: timer fired');
 						const runtime = AppContext.tryGetAmbientRuntime();
 						const shouldShow = (await runtime?.tryShowMorningBriefing()) ?? false;
+						console.log(`[MEM] briefing: tryShow returned ${shouldShow}`);
 						if (shouldShow) {
 							const { MorningBriefingModal } = await import('@/app/ui-host/modals/MorningBriefingModal');
 							if (!this.appContext) return;
 							const modal = new MorningBriefingModal(this.app, this.appContext);
+							console.log('[MEM] briefing: before modal.open');
 							modal.open();
+							console.log('[MEM] briefing: after modal.open');
 						}
-					} catch {
-						// Morning briefing is non-critical
+					} catch (err) {
+						console.warn('[MEM] briefing: FAILED', err);
 					}
 				}, 3000);
 			} catch (e) {
@@ -1078,11 +1127,22 @@ export default class MyPlugin extends Plugin {
 		// singleton). Quick Search background runtime is injected so the
 		// worker can defer drain while user-facing analyses run.
 		this.cascadeWorker = new CascadeWorker(this.app, AppContext.getQuickSearchBackgroundRuntime(), this.settings.ai.rootFolder);
-		this.cascadeWorker.start();
-
 		// first init listener then initializer to avoid missing index changes
 		this.searchUpdateQueue = new SearchUpdateListener(this.app, this, this.settings.search, indexService, this.cascadeWorker, this.settings.search.indexRefreshInterval);
-		this.searchUpdateQueue.start();
+
+		// Register the vault-event listeners only after the workspace is ready.
+		// Registered directly in onload, Obsidian replays a `create` event for
+		// EVERY existing file during its initial vault scan — on a large vault
+		// that enqueues thousands of upserts and reindexes the whole graph at
+		// startup, ballooning the renderer heap to multiple GB and OOM-aborting
+		// it (the white-screen crash loop). `onLayoutReady` fires after the
+		// initial scan, so only genuine post-startup edits are picked up.
+		this.app.workspace.onLayoutReady(() => {
+			console.log('[MEM] before cascadeWorker/searchUpdateQueue start');
+			this.cascadeWorker.start();
+			this.searchUpdateQueue.start();
+			console.log('[MEM] after cascadeWorker/searchUpdateQueue start');
+		});
 
 		// Check index status and perform incremental indexing if needed
 		// This handles cases where files were modified outside Obsidian (e.g., git sync, external editors)
@@ -1099,16 +1159,31 @@ export default class MyPlugin extends Plugin {
 		// glitch must not prevent the plugin from loading, mirroring
 		// the pre-RunEnvelope try/catch behaviour that used to wrap
 		// this call.
-		try {
-			const { runIndexInitializer } = await import(
-				'@/service/search/index/indexInitializerRun'
-			);
-			await runIndexInitializer({
-				initializer: this.indexInitializer,
-				trigger: 'startup',
-			});
-		} catch (err) {
-			console.error('[Peak] startup IndexInitializer run failed:', err);
+		// Renderer-safety guard: the startup index reconcile re-indexes every
+		// file whose content-hash drifted from the index (e.g. after a git
+		// sync/checkout resets mtimes and touches content). On a large vault this
+		// walks thousands of files and accumulates the graph build unbounded in
+		// the renderer heap → multi-GB → OOM-abort (white-screen crash loop,
+		// measured ~3GB on this vault: 8794 files scanned, 1297 dirty). The
+		// plugin loads fine against the existing index without it; picking up
+		// changed files becomes the explicit "Update index" command. Flip to
+		// true only once incremental indexing is memory-bounded (batched +
+		// released between docs) and the `mobius_node.path` upsert path is fixed.
+		const AUTO_STARTUP_INDEX_RECONCILE = false;
+		if (AUTO_STARTUP_INDEX_RECONCILE) {
+			try {
+				const { runIndexInitializer } = await import(
+					'@/service/search/index/indexInitializerRun'
+				);
+				await runIndexInitializer({
+					initializer: this.indexInitializer,
+					trigger: 'startup',
+				});
+			} catch (err) {
+				console.error('[Peak] startup IndexInitializer run failed:', err);
+			}
+		} else {
+			console.log('[Peak Assistant] Startup index reconcile skipped (renderer-safety guard). Run "Update index" manually to index changed files.');
 		}
 	}
 

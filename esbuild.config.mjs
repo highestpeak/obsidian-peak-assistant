@@ -112,6 +112,10 @@ const shared = {
 		bluebirdConfigurablePlugin,
 	],
 	external: [
+		// STUB_PKGS=pkg1,pkg2 (diagnostic builds only): externalize packages so
+		// scripts/measure-eval-mem.mjs can stub them at require time and bisect
+		// module-eval memory cost. Empty in normal builds.
+		...(process.env.STUB_PKGS ?? "").split(",").filter(Boolean),
 		"obsidian",
 		"electron",
 		"better-sqlite3", // Mark as external so it loads from node_modules (native module)
@@ -153,13 +157,15 @@ const shared = {
 	treeShaking: true,
 	// Always minify: @shikijs/langs ships grammar as JSON.parse('…') in a form that can produce
 	// invalid JavaScript when esbuild emits unminified output (Obsidian eval fails: SyntaxError).
-	keepNames: !prod,
+	// BUNDLE_KEEPNAMES=1: diagnostic prod build with original function names
+	// (CPU/heap profiler stacks stay readable). ~10% larger bundle.
+	keepNames: !prod || !!process.env.BUNDLE_KEEPNAMES,
 	minify: true,
 };
 
 const mainContext = await esbuild.context({
 	...shared,
-	entryPoints: ["main.ts"],
+	entryPoints: ["entry.ts"],
 	format: "cjs",
 	outfile: "main.js",
 	metafile: true,
@@ -168,6 +174,11 @@ const mainContext = await esbuild.context({
 if (prod) {
 	const result = await mainContext.rebuild();
 	if (process.env.BUNDLE_METAFILE && result.metafile) {
+		await fs.promises.writeFile(
+			path.join(__dirname, ".esbuild-meta.json"),
+			JSON.stringify(result.metafile),
+		);
+		console.log("[Bundle] Metafile written to .esbuild-meta.json");
 		const outputs = result.metafile.outputs;
 		const outEntry = Object.keys(outputs)[0];
 		const outMeta = outEntry && outputs[outEntry];

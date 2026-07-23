@@ -25,6 +25,35 @@ import { LOUVAIN_RESOLUTION } from '@/core/constant';
 /** Module-level debounce timer for incremental dirty recompute. */
 let dirtyRecomputeTimer: ReturnType<typeof setTimeout> | null = null;
 
+/**
+ * Hard node-budget guard for structural analysis.
+ *
+ * `buildAnalysisGraph()` loads the ENTIRE mobius graph into memory and
+ * `runStructuralAnalysis` then runs Brandes betweenness centrality, which is
+ * O(V·E) in time and allocates large per-source structures. On a big vault this
+ * balloons the Electron renderer's heap to multiple GB (measured ~3.7GB) and
+ * OOM-aborts it — the white-screen crash loop during plugin startup. Above this
+ * node count we skip the analysis entirely (all triggers: startup maintenance,
+ * the >20%-dirty debounce, and manual/forced recompute). Search and the File
+ * Atlas neighborhood graph do not depend on it; hub curation / vault review
+ * degrade gracefully to no community/hole data.
+ */
+const MAX_STRUCTURAL_ANALYSIS_NODES = 4000;
+
+/** An empty analysis result (graph absent / skipped / too large). */
+function emptyStructuralAnalysisResult(): StructuralAnalysisResult {
+	return {
+		betweenness: new Map(),
+		communities: new Map(),
+		constraint: new Map(),
+		communityInfos: [],
+		structuralHoles: [],
+		modularityQ: 0,
+		analysisVersion: 0,
+		computedAt: Date.now(),
+	};
+}
+
 export interface RunStructuralAnalysisOptions {
 	forceFullRecompute?: boolean;
 	louvainResolution?: number;
@@ -37,6 +66,23 @@ export async function runStructuralAnalysis(
 	const force = options?.forceFullRecompute ?? false;
 
 	const repo = sqliteStoreManager.getStructuralAnalysisRepo();
+
+	// Renderer-safety guard (applies even to forceFullRecompute): skip the whole
+	// in-memory graph load + Brandes betweenness when the graph is too large to
+	// process without OOM-aborting the renderer. See MAX_STRUCTURAL_ANALYSIS_NODES.
+	const guardCount = await sqliteStoreManager
+		.getIndexContext('vault')
+		.selectFrom('mobius_node')
+		.select(({ fn }) => fn.countAll<number>().as('cnt'))
+		.executeTakeFirst();
+	const guardNodeTotal = Number(guardCount?.cnt ?? 0);
+	if (guardNodeTotal > MAX_STRUCTURAL_ANALYSIS_NODES) {
+		console.warn(
+			`[structural-analysis] Skipped — graph too large (${guardNodeTotal} nodes > ${MAX_STRUCTURAL_ANALYSIS_NODES}). ` +
+				`Betweenness centrality would OOM the renderer; search + File Atlas are unaffected.`,
+		);
+		return emptyStructuralAnalysisResult();
+	}
 
 	// Check freshness — skip if recent and unchanged by < 10%
 	if (!force) {
