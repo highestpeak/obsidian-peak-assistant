@@ -19,7 +19,15 @@
  *   intent, not vault primitives.
  */
 
-export interface AnalysisDocVaultWriterPort {
+import type { AiAnalysisStoreVaultAdapter } from '@/core/storage/vault/search-docs/AiAnalysisJsonStore';
+
+/**
+ * Extends `AiAnalysisStoreVaultAdapter` so the same app-layer adapter serves
+ * both the (legacy, explicit-export) Markdown writes and the JSON-store
+ * primitives (`ensureFolder` / `exists` / `create` / `read` / `listJsonPaths`)
+ * that `persistSessionToVault` now drives via `AiAnalysisJsonStore`.
+ */
+export interface AnalysisDocVaultWriterPort extends AiAnalysisStoreVaultAdapter {
 	/**
 	 * Create a new markdown file inside the given folder. The adapter
 	 * normalizes the folder path, ensures the folder exists, sanitizes

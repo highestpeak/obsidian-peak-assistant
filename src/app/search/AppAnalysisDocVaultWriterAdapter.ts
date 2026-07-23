@@ -9,7 +9,7 @@
  * port interface.
  */
 
-import { TFile } from 'obsidian';
+import { TFile, TFolder } from 'obsidian';
 import { AppContext } from '@/app/context/AppContext';
 import { SLICE_CAPS } from '@/core/constant';
 import { ensureFolder } from '@/app/platform/vault/vault-helpers';
@@ -61,5 +61,39 @@ export class AppAnalysisDocVaultWriterAdapter implements AnalysisDocVaultWriterP
 		if (file && file instanceof TFile) {
 			await app.vault.modify(file, content);
 		}
+	}
+
+	// --- AiAnalysisStoreVaultAdapter (JSON store primitives) ---
+
+	async ensureFolder(folderPath: string): Promise<void> {
+		if (!folderPath) return;
+		const app = AppContext.getInstance().app;
+		await ensureFolder(folderPath, app);
+	}
+
+	exists(path: string): boolean {
+		const app = AppContext.getInstance().app;
+		return !!app.vault.getAbstractFileByPath(path);
+	}
+
+	async create(path: string, content: string): Promise<void> {
+		const app = AppContext.getInstance().app;
+		await app.vault.create(path, content);
+	}
+
+	async read(path: string): Promise<string | null> {
+		const app = AppContext.getInstance().app;
+		const file = app.vault.getAbstractFileByPath(path);
+		if (!file || !(file instanceof TFile)) return null;
+		return app.vault.read(file);
+	}
+
+	listJsonPaths(folderPath: string): string[] {
+		const app = AppContext.getInstance().app;
+		const folder = app.vault.getAbstractFileByPath(folderPath);
+		if (!folder || !(folder instanceof TFolder)) return [];
+		return folder.children
+			.filter((child): child is TFile => child instanceof TFile && child.extension === 'json')
+			.map((child) => child.path);
 	}
 }

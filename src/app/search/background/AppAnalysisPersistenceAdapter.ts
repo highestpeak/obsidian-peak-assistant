@@ -28,6 +28,7 @@ export class AppAnalysisPersistenceAdapter implements QuickSearchAnalysisPersist
 			enableDevTools: ctx.settings.enableDevTools === true,
 			historyService: ctx.aiAnalysisHistoryService,
 			eventBus: AppContext.getEventBus(),
+			rootFolder: ctx.settings.ai.rootFolder,
 		});
 	}
 }

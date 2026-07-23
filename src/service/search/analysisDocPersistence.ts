@@ -21,15 +21,15 @@ import { AIAnalysisCompleteEvent } from '@/core/eventBus';
 import type { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import { generateDocIdFromPath } from '@/core/utils/id-utils';
 import {
-	buildMarkdown as buildAiSearchAnalysisMarkdown,
-	fromCompletedAnalysisSnapshot,
-	type BuildMarkdownOptions,
-} from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
+	buildAnalysisJsonRecord,
+	saveAnalysisJson,
+	serializeAnalysisJsonRecord,
+} from '@/core/storage/vault/search-docs/AiAnalysisJsonStore';
 import { buildV2AnalysisSnapshotFromData } from '@/core/search/v2SessionTypes';
 import type { V2SessionSnapshot } from '@/core/search/sessionSnapshot';
 import type { CompletedAnalysisSnapshot } from '@/core/storage/vault/search-docs/analysisSnapshotTypes';
 import type { AIAnalysisHistoryRecord } from '@/service/AIAnalysisHistoryService';
-import { DEFAULT_AI_ROOT_FOLDER, getAIAnalysisFolder } from '@/core/config/folderPaths';
+import { DEFAULT_AI_ROOT_FOLDER, getAIAnalysisJsonStoreFolder } from '@/core/config/folderPaths';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -40,10 +40,15 @@ export interface PersistSessionResult {
 }
 
 /**
- * Persist an analysis session to a vault markdown file.
+ * Persist an analysis session as a JSON record under
+ * `<rootFolder>/DataStore/ai-analysis/`.
  *
- * - If `existingPath` is provided, overwrites that file.
- * - Otherwise creates a new file in the configured auto-save folder.
+ * - If `existingPath` is a `.json` record, overwrites it in place.
+ * - Otherwise creates a new `.json` record and indexes it in sqlite history.
+ *
+ * Markdown is no longer written here — machine records must not be vault
+ * markdown (they ballooned Obsidian's metadata index). Markdown export is an
+ * explicit user action (see `saveAiAnalyzeResultToMarkdown` / the export UI).
  *
  * Returns the saved path, or null if auto-save is disabled / nothing to save.
  *
@@ -66,6 +71,8 @@ export async function persistSessionToVault(
 		historyService: AIAnalysisHistoryService;
 		/** T11J B3: event bus for AI_ANALYSIS_COMPLETE dispatch (was AppContext.getEventBus()). */
 		eventBus: EventBus;
+		/** AI rootFolder (settings.ai.rootFolder); derives the JSON store folder. Defaults to the plugin root. */
+		rootFolder?: string;
 	},
 ): Promise<PersistSessionResult | null> {
 	if (!snapshot.v2Active) return null;
@@ -88,20 +95,23 @@ export async function persistSessionToVault(
 
 	const query = snapshot.query;
 	const webEnabled = snapshot.webEnabled;
+	const savedAt = Date.now();
+	const startedAtMs = completedSnapshot.analysisStartedAtMs ?? savedAt;
 
-	const buildOptions: BuildMarkdownOptions = {
-		runAnalysisMode: snapshot.runAnalysisMode ?? undefined,
-		includeSteps: options.enableDevTools === true,
-	};
+	// Machine record: serialize the snapshot as a JSON record (not Markdown).
+	const jsonRecord = buildAnalysisJsonRecord(completedSnapshot, {
+		query,
+		webEnabled,
+		title: snapshot.title?.trim() || undefined,
+		savedAt,
+	});
 
-	const docModel = fromCompletedAnalysisSnapshot(completedSnapshot, query, webEnabled);
-	docModel.created = docModel.created || new Date().toISOString();
-	const content = buildAiSearchAnalysisMarkdown(docModel, buildOptions);
-
-	// Overwrite existing file
-	if (options.existingPath) {
+	// Overwrite an existing JSON record in place (re-save after restore /
+	// follow-up). Legacy `.md` existingPath falls through to a fresh JSON
+	// record — the classic Markdown note is left untouched.
+	if (options.existingPath && options.existingPath.toLowerCase().endsWith('.json')) {
 		try {
-			await options.vaultWriter.overwriteDoc(options.existingPath, content);
+			await options.vaultWriter.overwriteDoc(options.existingPath, serializeAnalysisJsonRecord(jsonRecord));
 			return { path: options.existingPath };
 		} catch (e) {
 			console.warn('[analysisDocPersistence] overwrite failed:', e);
@@ -109,25 +119,22 @@ export async function persistSessionToVault(
 		}
 	}
 
-	// Create new file
-	const defaultFolder = getAIAnalysisFolder(DEFAULT_AI_ROOT_FOLDER);
-	let folderPath = (settings.aiAnalysisAutoSaveFolder?.trim()) || defaultFolder;
+	// Create new JSON record under <rootFolder>/DataStore/ai-analysis.
+	const rootFolder = options.rootFolder?.trim() || DEFAULT_AI_ROOT_FOLDER;
+	let folderPath = getAIAnalysisJsonStoreFolder(rootFolder);
 
 	const title = snapshot.title?.trim() || query.slice(0, SLICE_CAPS.ui.analysisDisplayTitle) || 'Query';
-	const displayTitle = title.replace(/[/\\:*?"<>|]/g, '').trim().slice(0, SLICE_CAPS.ui.analysisDisplayTitleTrim);
-	const ts = Date.now();
-	const fileName = `${ts} - ${displayTitle}`;
 
 	let saved: { path: string };
 	try {
-		saved = await options.vaultWriter.createDoc({ folderPath, fileName, content });
+		saved = await saveAnalysisJson(options.vaultWriter, { folderPath, analysisStartedAtMs: startedAtMs, titleOrQuery: title, record: jsonRecord });
 	} catch (firstErr) {
 		const msg = firstErr instanceof Error ? firstErr.message : String(firstErr);
 		const isPathRelated = /folder|path|directory|create|write/i.test(msg);
 		if (isPathRelated && folderPath !== '') {
 			folderPath = '';
 			try {
-				saved = await options.vaultWriter.createDoc({ folderPath, fileName, content });
+				saved = await saveAnalysisJson(options.vaultWriter, { folderPath, analysisStartedAtMs: startedAtMs, titleOrQuery: title, record: jsonRecord });
 				// Notification surface is optional; missing reporter is fine.
 				try {
 					const reporter = options.progressReporter;
@@ -152,7 +159,7 @@ export async function persistSessionToVault(
 			vault_rel_path: saved.path,
 			query: query || null,
 			title: snapshot.title?.trim() || null,
-			created_at_ts: ts,
+			created_at_ts: savedAt,
 			web_enabled: webEnabled ? 1 : 0,
 			estimated_tokens: snapshot.usage?.totalTokens ?? null,
 			sources_count: snapshot.v2Sources.length,

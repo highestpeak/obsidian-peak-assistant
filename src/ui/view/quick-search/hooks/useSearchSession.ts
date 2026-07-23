@@ -98,6 +98,7 @@ export function persistForegroundSession(
 		enableDevTools: deps.settings.enableDevTools === true,
 		historyService: deps.historyService,
 		eventBus: deps.eventBus,
+		rootFolder: deps.settings.ai.rootFolder,
 	}).then((result) => {
 		if (result) {
 			useSearchSessionStore.getState().setAutoSaveState({ lastSavedPath: result.path });

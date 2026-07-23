@@ -8,7 +8,7 @@ import { CompletedAnalysisSnapshot, loadCompletedAnalysisSnapshot } from '../../
 import type { AnalysisMode } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import { AIAnalysisHistoryRecord } from '@/service/AIAnalysisHistoryService';
 import { humanReadableTime } from '@/core/utils/date-utils';
-import { parse as parseAiSearchAnalysisDoc, toCompletedAnalysisSnapshot } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
+import { resolveAnalysisSnapshotFromVault } from '@/core/storage/vault/search-docs/AiAnalysisJsonStore';
 import { useSharedStore } from '../../store/sharedStore';
 import { useSearchSessionStore } from '../../store/searchSessionStore';
 import { cn } from '@/ui/react/lib/utils';
@@ -118,21 +118,22 @@ export const RecentAIAnalysis: React.FC<{
     const recentListRef = useRef<HTMLDivElement>(null);
     const recentSentinelRef = useRef<HTMLDivElement>(null);
 
-    const loadSnapshotFromMarkdown = async (
+    // Loads a saved analysis for replay. New records are `.json`; legacy
+    // `AI-Analysis/*.md` files still resolve through the Markdown `parse()`
+    // path inside resolveAnalysisSnapshotFromVault.
+    const loadSnapshotFromVault = async (
         vaultRelPath: string,
         createdAtTs?: number
     ): Promise<{ snapshot: CompletedAnalysisSnapshot; query: string } | null> => {
         try {
-            let md = await host.readVaultFileText(vaultRelPath);
-            if (!md) {
-                md = await host.getAnalysisMarkdownForReplay(vaultRelPath);
+            let text = await host.readVaultFileText(vaultRelPath);
+            if (!text) {
+                text = await host.getAnalysisMarkdownForReplay(vaultRelPath);
             }
-            if (!md) return null;
-            const docModel = parseAiSearchAnalysisDoc(md);
-            const snapshot = toCompletedAnalysisSnapshot(docModel, Number.isFinite(createdAtTs) ? createdAtTs : undefined);
-            return { snapshot, query: docModel.query ?? '' };
+            if (!text) return null;
+            return resolveAnalysisSnapshotFromVault(vaultRelPath, text, Number.isFinite(createdAtTs) ? createdAtTs : undefined);
         } catch (e) {
-            console.warn('[AISearchTab] load snapshot from markdown failed:', e);
+            console.warn('[AISearchTab] load snapshot from vault failed:', e);
             return null;
         }
     };
@@ -148,7 +149,7 @@ export const RecentAIAnalysis: React.FC<{
             return;
         }
 
-        const loaded = await loadSnapshotFromMarkdown(path, Number.isFinite(createdAt) ? createdAt : undefined);
+        const loaded = await loadSnapshotFromVault(path, Number.isFinite(createdAt) ? createdAt : undefined);
         if (loaded) {
             const snapshot = {
                 ...loaded.snapshot,
@@ -234,7 +235,7 @@ export const RecentAIAnalysis: React.FC<{
     };
 
     const clearHistory = async () => {
-        const ok = window.confirm('Clear AI analysis history metadata? This will NOT delete the markdown files.');
+        const ok = window.confirm('Clear AI analysis history metadata? This will NOT delete the saved analysis files.');
         if (!ok) return;
         try {
             await aiAnalysisHistoryService.deleteAll();

@@ -232,7 +232,7 @@ export const V2Footer: React.FC<{
 				<div
 					onClick={onSave}
 					className="pktw-p-1.5 pktw-text-pk-text-secondary hover:pktw-bg-pk-surface-sunken pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
-					title="Save to Vault"
+					title="Export analysis as Markdown note"
 				>
 					<Save className="pktw-w-3.5 pktw-h-3.5" />
 				</div>

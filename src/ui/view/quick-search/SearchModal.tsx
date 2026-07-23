@@ -30,7 +30,7 @@ import { matchPatterns, type MatchedSuggestion } from '@/service/context/Pattern
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { SuggestionGrid } from './components/SuggestionGrid';
 import { ActiveSessionsList } from './components/ActiveSessionsList';
-import { parse as parseAiSearchAnalysisDoc, toCompletedAnalysisSnapshot } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
+import { resolveAnalysisSnapshotFromVault } from '@/core/storage/vault/search-docs/AiAnalysisJsonStore';
 import { RecentAnalysisList } from './components/RecentAnalysisList';
 import { RecentQueriesDropdown } from './components/RecentQueriesDropdown';
 import { createOpenSourceCallback } from './callbacks/open-source-file';
@@ -401,10 +401,14 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 									new Notice('Analysis file not found in vault.');
 									return;
 								}
-								const docModel = parseAiSearchAnalysisDoc(md);
-								const snapshot = toCompletedAnalysisSnapshot(docModel, Number.isFinite(record.created_at_ts) ? record.created_at_ts : undefined);
-								loadCompletedAnalysisSnapshot(snapshot, path);
-								const query = docModel.query ?? record.query ?? '';
+								// `.json` records resolve directly; legacy `.md` still parses.
+								const loaded = resolveAnalysisSnapshotFromVault(path, md, Number.isFinite(record.created_at_ts) ? record.created_at_ts : undefined);
+								if (!loaded) {
+									new Notice('Failed to load saved analysis.');
+									return;
+								}
+								loadCompletedAnalysisSnapshot(loaded.snapshot, path);
+								const query = loaded.query || record.query || '';
 								if (query) {
 									useSharedStore.getState().setSearchQuery(query);
 									useSearchSessionStore.setState({ query });

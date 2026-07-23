@@ -158,7 +158,7 @@ export const SaveDialog: React.FC<ResultSaveDialogProps> = ({ onClose }) => {
 				<div className="pktw-flex pktw-items-center pktw-justify-between pktw-px-5 pktw-py-4 pktw-border-b pktw-border-border">
 					<div className="pktw-flex pktw-items-center pktw-gap-2">
 						<Sparkles className="pktw-w-4 pktw-h-4 pktw-text-primary" />
-						<span className="pktw-font-semibold pktw-text-foreground">Save Analysis Results</span>
+						<span className="pktw-font-semibold pktw-text-foreground">Export Analysis as Markdown</span>
 					</div>
 					<IconButton
 						onClick={onClose}
@@ -200,7 +200,7 @@ export const SaveDialog: React.FC<ResultSaveDialogProps> = ({ onClose }) => {
 					{/* What will be saved */}
 					<div className="pktw-text-xs pktw-text-muted-foreground pktw-space-y-1">
 						<span className="pktw-font-medium pktw-block">
-							All content except the execution steps will be saved, including summaries, key topics, dashboard blocks, sources with links, the knowledge graph (Mermaid), and any available search metadata (such as query, date, or token count).
+							Exports a readable Markdown note (analyses are auto-saved as machine records separately). Includes everything except the execution steps: summaries, key topics, dashboard blocks, sources with links, the knowledge graph (Mermaid), and any available search metadata (such as query, date, or token count).
 						</span>
 					</div>
 				</div>
@@ -225,7 +225,7 @@ export const SaveDialog: React.FC<ResultSaveDialogProps> = ({ onClose }) => {
 						) : (
 							<>
 								<Save className="pktw-w-4 pktw-h-4" />
-								Save File
+								Export Markdown
 							</>
 						)}
 					</Button>

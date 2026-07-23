@@ -14,6 +14,9 @@ export const AI_PATH_SUBFOLDERS = {
 	Inbox: 'Inbox',
 	DataStore: 'DataStore',
 	AIAnalysis: 'AI-Analysis',
+	// Machine-generated AI-analysis records persist here as `.json` (not
+	// Markdown) so Obsidian's md-only metadata cache never indexes them.
+	AiAnalysisJsonStore: 'DataStore/ai-analysis',
 	Attachments: 'Attachments',
 	Media: 'Attachments/media',
 	Bases: 'Bases',
@@ -80,6 +83,11 @@ export function getAIDataStoreFolder(rootFolder: string): string {
 
 export function getAIAnalysisFolder(rootFolder: string): string {
 	return normalizePathLocal(`${aiNormalizedRootFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.AIAnalysis}`);
+}
+
+/** JSON store for machine-generated AI-analysis records (see AiAnalysisJsonStore). */
+export function getAIAnalysisJsonStoreFolder(rootFolder: string): string {
+	return normalizePathLocal(`${aiNormalizedRootFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.AiAnalysisJsonStore}`);
 }
 
 export function getAIUploadFolder(rootFolder: string): string {
