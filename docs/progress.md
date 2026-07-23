@@ -2533,3 +2533,28 @@ Outline/Resources 双 tab；`outlineModel.ts` 纯模型（topic 分组、process
 - **音乐授权说明**:Settings → Media Generation → Music 段 licensing note(fal ToS 不担保版权、SynthID 水印、平台与 EU AI Act 披露、USCO 口径、TTS 条款独立)+ fal ToS 链接;文案 config 化(settings.json `musicLicensing*` 4 键 + settingsStrings 类型)。
 - **状态迁移**:checklist MEDIA-03 六项全勾(逐项证据);视频/音乐 `PARTIAL` → `AVAILABLE`(待实机验收);handoff §0 三行、roadmap 行、交付报告 §6 追补同步。
 - **验证**:`npm run test` 239/239;`npm run build` 绿。剩余唯一边界:真实付费调用待 fal key(MEDIA-04 实机步骤)。
+
+## 2026-07-23 · 启动 OOM 白屏根治 + AI-Analysis 存储切 JSON
+
+**上下文**:owner 的 Obsidian 陷入"打开即白屏"崩溃循环(渲染进程 cppgc OOM,SIGABRT)。一整天的系统性排查(落盘 RSS 采样、CDP 外部探针、memory-infra dump、纯 Node bundle 求值测量、STUB_PKGS build 二分、素净配置对照、vault 文件夹二分)逐一枪毙了十几个候选理论(morning brief / briefing SQL / sqlite 原生内存 / WAL / vault 大二进制 / 反链面板 / 主题字体插件…),最终 owner 直觉"是我们的某个产物"命中,文件夹二分坐实。全记录见 `docs/recurring-pitfalls.md` §9。
+
+### 根因(三层叠加过天花板)
+- **主犯**:`ChatFolder/AI-Analysis/` 下 1139 个机器生成 `.md` 搜索报告(34MB 文本、2.2 万 wikilink、占全库 md 三分之一),Obsidian **每次启动**为它们重建内存态元数据/链接模型 → 2.0-2.9GB blink_gc 瞬时洪峰(60× 放大);缓存热启动无效、关反链面板无效——是核心索引本身的成本。
+- **叠加**:Peak bundle 求值 ~500MB(22MB 主包)+ Excalidraw 图片缓存,落在洪峰窗口内。
+- **环境**:整机换页灾难(swap 10.9/12GB 满)压低渲染进程有效天花板;崩溃 → 元数据缓存不落盘 → 下次全量重建 → 再崩,自锁环。
+
+### 修复
+- **两段式加载**:esbuild 入口换 `entry.ts` 壳(插件加载态 496→233MB RSS / 堆 258→50MB),真身 `main.ts` 在 layout-ready 后 RSS<1.7GB(或 120s 兜底)时动态 import,`addChild` 走 Component 生命周期。
+- **懒加载 facade**:`StreamdownIsolated`(shiki/mermaid/katex)、`AtlasGraphCanvas`(cytoscape)拆 Impl + 首渲染时 import。
+- **启动重活 gate**:reconcile / graph maintenance / proactive background / vault 事件监听挪 layout-ready / Brandes 节点数守卫,共五处。
+- **存储根治(JSONL spec 第一块切片提前落地)**:新 `AiAnalysisJsonStore`(record `{formatVersion,savedAt,query,webEnabled,title?,snapshot}`),自动保存写 `ChatFolder/DataStore/ai-analysis/*.json`(非 .md = Obsidian 零索引成本);Recent 列表/回放走 `resolveAnalysisSnapshotFromVault` 双路(.json + legacy .md);Markdown 降级为显式 "Export analysis as Markdown note"。
+- **存量迁移**:`scripts/migrate-ai-analysis.mjs` 1139/1139 零失败迁 JSON;`scripts/migrate-ai-analysis-index.mjs` 把 chat.sqlite `ai_analysis_record` 869 行改指 .json + 270 个未入索引早期报告补插 = 1139 全量可见。原始 .md 备份在 `/Users/zhangjike/Downloads/AI-Analysis-legacy-md-backup/`。
+- **诊断工具沉淀**:`scripts/measure-eval-mem.mjs`(纯 Node 测 bundle 求值内存)、`BUNDLE_METAFILE`/`BUNDLE_KEEPNAMES`/`STUB_PKGS` build 开关。
+
+### 验证
+- 全原始配置(Peak+Excalidraw+Minimal+反链面板)启动峰值 1219MB、稳定 992MB,不再崩。
+- 真机 CDP 驱动:Recent 列表呈现迁移记录,点击回放完整渲染快照(摘要块/Sources/usage);`npm run build` 绿 + 新增 `test/search-docs/AiAnalysisJsonStore.test.ts` + 20+ 相关测试全过。
+- 踩坑记录:Obsidian Modal 开在 activeWindow——有 popout 窗口时模态开进 popout,主窗口查不到;CDP 验证要遍历所有 page target。
+
+### 遗留
+- main.ts / AmbientPushRuntime 的临时 `[MEM]` 埋点稳定几天后移除;MAX_STRUCTURAL_ANALYSIS_NODES 守卫数值待改准;被 gate 的启动索引路径需按 JSONL spec 的有界化方案逐步恢复;机器 swap 满建议重启。

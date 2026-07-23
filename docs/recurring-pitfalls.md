@@ -376,6 +376,39 @@ case 'anthropic': {
 
 ---
 
+## 9. Startup white-screen crash loop — renderer cppgc OOM is a *stacking* problem, not one bug
+
+**Symptom.** Obsidian shows the vault for a second, then white-screens; relaunch repeats. macOS crash report: `EXC_CRASH (SIGABRT)` with `node::OnFatalError → cppgc::internal::Fatal → cppgc …Allocate` — the Blink/Oilpan (DOM-object) heap failed an allocation.
+
+**What it is NOT (each ruled out by measurement, 2026-07-23).** Morning-briefing modal (fires, renders 5 items, survives); briefing SQL (all `LIMIT`ed); ChatStudioGallery (only manual command/console eval); better-sqlite3 native memory (MALLOC zones stayed KB-flat in vmmap); WAL replay (no WAL present); vault-binary ingestion (copying a 582MB file into the vault moves renderer RSS 0MB); JS heap or Buffers (heapUsed flat ~360MB, `external`/`arrayBuffers` ~0 through the whole climb); DOM-node creation (~400 elements created while RSS climbed 770MB); theme/snippets/fonts/community plugins (vanilla config + zero plugins still storms).
+
+**What it IS — three stacked weights (final attribution via folder bisection).**
+1. **Peak's own vault artifacts made Obsidian's startup indexing explode**: `ChatFolder/AI-Analysis/` held 1139 machine-generated `.md` search reports (34MB text, 22k wikilinks — one third of all vault markdown, 786 of them linking the user's most-open note). Obsidian rebuilds its in-memory metadata/link model over them on EVERY start — `blink_gc/main/heap` balloons to ~2.0–2.9GB (memory-infra: 2419MB at peak, ~314MB after GC), a ~60× amplification over the raw text. A graceful quit + warm cache does NOT help (re-measured: 2874MB peak on a cache-warm start); removing the backlink pane does not help either — the cost is the core index build, not a pane. Folder bisection: quarantine `AI-Analysis` → peak 505–733MB, storm gone; restore it → 2.6GB storm returns.
+2. **Plugin module-eval weight inside that window**: Peak's 22MB bundle cost ~500MB at `require` time (plain-Node measurement, `scripts/measure-eval-mem.mjs`); Excalidraw's image cache adds its share.
+3. **Machine-wide memory pressure shrinking the ceiling**: with swap 10.9/12GB full and the compressor holding ~140GB-equivalent, the renderer died at 2.6GB in the afternoon after surviving 3.1GB peaks in the morning. Same code, different ceiling.
+
+White screen happens when 1+2 (+DevTools ≈ +1GB if open) crosses the ceiling set by 3. Every startup is a race between the storm's peak and GC. "It never used to do this" = AI-Analysis accumulating past the critical mass, not a specific commit.
+
+**Verified end state (2026-07-23)**: `AI-Analysis` moved out of the vault (kept at `/Users/zhangjike/code/my-code/mobius-highestpeak-kb-quarantine/AI-Analysis`, restorable) + two-stage entry → full original config (Peak + Excalidraw + Minimal + backlink panes) starts at **1219MB peak, 992MB settled**, Peak core boots and all services come up.
+
+**Product-level fix required (root cause owner: Peak).** Machine run records must not be written as vault markdown with dense wikilinks — 1139 report files polluted Obsidian's link graph and index at a ~60× memory amplification. This is exactly the accepted-but-unimplemented JSONL machine-record storage redesign (`docs/superpowers/specs/2026-07-21-machine-record-storage-jsonl-design.md`): move AI-Analysis sinks to JSONL/DataStore, keep Markdown only for user documents/explicit exports. Until then, new AI-Analysis files will re-accumulate toward the same cliff.
+
+**Fixes landed (working tree).**
+- Two-stage entry: `entry.ts` shell is the esbuild entry; plugin load now costs ~233MB RSS / 50MB heap (was ~496/258). The real `main.ts` graph evaluates via dynamic `import('./main')` only after layout-ready + renderer RSS < 1.7GB (or 120s cap) — off-peak by construction.
+- Lazy facades: `StreamdownIsolated.tsx` / `AtlasGraphCanvas.tsx` defer streamdown+Shiki+mermaid+KaTeX and cytoscape+layouts to first render.
+- Five startup gates from the same investigation (structural-analysis node budget, graph maintenance, index reconcile, vault-event listeners in `onLayoutReady`, proactive background) keep Peak's own post-boot work bounded.
+
+**Diagnostic toolkit (reusable).**
+- `scripts/measure-eval-mem.mjs` — module-eval memory of `main.js` in plain Node, no Obsidian. Run after any dependency change: `node --expose-gc scripts/measure-eval-mem.mjs`; add `--heap-prof` for allocation stacks.
+- `STUB_PKGS=a,b npm run build` — externalize+stub packages to bisect eval cost.
+- `BUNDLE_METAFILE=1 npm run build` — writes `.esbuild-meta.json`; aggregate per-package or trace reverse import chains.
+- Outside-process probes that survive the crash: launch `/Applications/Obsidian.app/Contents/MacOS/Obsidian --remote-debugging-port=9223 --remote-allow-origins='*'`, then CDP `Runtime.evaluate(process.memoryUsage())` polling, `Tracing.requestMemoryDump` (memory-infra allocator breakdown), and threshold-triggered `vmmap -summary` (scratchpad scripts from 2026-07-23 session).
+- Crash reports: `~/Library/Logs/DiagnosticReports/Obsidian Helper (Renderer)-*.ips`.
+
+**If it recurs**: reboot the Mac first (check `sysctl vm.swapusage` — a full swap collapses the ceiling); keep DevTools closed during startup; then look at which weight grew, not for a single culprit.
+
+---
+
 ## How to consult this doc
 
 - Bug feels familiar? `grep` this file for the symptom phrase before re-deriving the root cause.

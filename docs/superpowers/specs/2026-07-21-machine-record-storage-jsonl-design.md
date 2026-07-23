@@ -553,3 +553,15 @@ src/
 - **旧 Copilot review/report docs**：只作历史背景，不定义新 ledger。
 
 本文不授权立即删除任何旧数据。实施必须按 Phase 0–5 的验证和 rollback gate 推进。
+
+---
+
+## 附:2026-07-23 AI-Analysis 切片提前实施(事故驱动)
+
+`ChatFolder/AI-Analysis/` 的 1139 个机器生成 `.md` 报告(34MB、2.2 万 wikilink)使 Obsidian 每次启动的元数据索引产生 ~2GB blink_gc 瞬时洪峰(约 60 倍放大),叠加插件包求值与整机换页压力后触发渲染进程 cppgc OOM 白屏循环——完整测量记录见 [`docs/recurring-pitfalls.md`](../../recurring-pitfalls.md) §9。这是本文"机器记录不得写成 vault markdown"论点的实测代价上限,故 AI-Analysis 域先行切换,未等全量 Phase 推进:
+
+- **新载体**:`ChatFolder/DataStore/ai-analysis/*.json`,每次分析一个文件,记录形如 `{ formatVersion: 1, savedAt, query, webEnabled, title?, snapshot: CompletedAnalysisSnapshot }`(非 `.md` 扩展名 → Obsidian 零索引成本;实测 vault 内 582MB 二进制文件对渲染进程 RSS 无影响)。
+- **写路径**:自动保存直接写 JSON;`buildMarkdown` 保留为"显式导出为 Markdown 笔记"用户操作(符合 §8 View 与 Export 的导出定位)。
+- **读路径**:Recent AI-Analysis 列表 + 快照回放读 JSON;legacy `.md`(若存在)兼容合并列出。
+- **存量迁移**:`scripts/migrate-ai-analysis.mjs`(esbuild 现场编译 `analysis-markdown-parser` 在纯 Node 执行);2026-07-23 已迁 1139/1139 零失败,解析失败兜底路径为 `DataStore/ai-analysis/legacy-md/*.md.txt` 原文保留(本次未触发)。
+- 与 §5 目录布局的关系:`ai-analysis/` 即本文 `records/` 家族的第一个落地域;后续 Phase 推进时并入统一布局,本切片不构成偏离授权。
