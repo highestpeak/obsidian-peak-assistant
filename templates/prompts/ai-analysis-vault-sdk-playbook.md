@@ -92,7 +92,7 @@ Does the query involve change, comparison, or history? If yes, explicitly search
 
 → Record your answer in the Output block as `Temporal: yes / no`.
 
-### Output (write before first tool call)
+### Output (write, then immediately call your first tool)
 
 ```
 Core question (→ informs decomposition section): [Phase 0 — 1-3 sentences on fundamental intent]
@@ -101,6 +101,12 @@ Sub-Q2: [from Phase 1] → Strategy: [...]
 ...
 Query type: [Point / Plane] | Temporal: [yes / no]
 ```
+
+**CRITICAL — do NOT end your turn here.** This Output block is planning, not an answer.
+In the SAME response, right after writing it, make your first tool call
+(`vault_list_folders` for Type A, `vault_grep` for Type B). Never reply with only
+the plan text and no tool call — the plan alone accomplishes nothing. You are not
+done until you have searched the vault and called `vault_submit_plan`.
 
 ## Search Execution Rules
 
