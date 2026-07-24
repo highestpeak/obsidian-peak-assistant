@@ -1,9 +1,8 @@
-// Structural + behavioural regression: the TTS + cover commands must run
+// Structural + behavioural regression: the legacy TTS + cover actions must run
 // through MediaGenerationService (task-c1 §R5), not the old bespoke
 // MediaRingService construction. AppContext-touching code can't be
 // exercised directly in this test env, so we assert:
-//   1. The command IDs are registered in main.ts (guards against
-//      accidental deregistration during future refactors).
+//   1. The legacy actions are not flattened into the global command palette.
 //   2. PeakCommandActions imports the new service, not the old ring.
 //   3. The invocation shapes we intend (kind=tts route=fal presetId=default
 //      / kind=image route=fal presetId=cover-hd) are the ones present in
@@ -20,17 +19,17 @@ function read(rel: string): string {
 	return fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8');
 }
 
-async function testCommandIdsRegisteredInMain() {
+async function testLegacyMediaActionsStayOutOfPalette() {
 	const main = read('main.ts');
 	assert.ok(
-		main.includes("id: 'peak-media-tts-active-note'"),
-		'peak-media-tts-active-note must be registered in main.ts',
+		!main.includes("id: 'peak-media-tts-active-note'"),
+		'peak-media-tts-active-note must stay out of the global command palette',
 	);
 	assert.ok(
-		main.includes("id: 'peak-media-cover-active-note'"),
-		'peak-media-cover-active-note must be registered in main.ts',
+		!main.includes("id: 'peak-media-cover-active-note'"),
+		'peak-media-cover-active-note must stay out of the global command palette',
 	);
-	console.log('  ✓ media command IDs still registered in main.ts');
+	console.log('  ✓ legacy media actions stay out of the global command palette');
 }
 
 async function testCommandsUseNewMediaGenerationService() {
@@ -92,7 +91,7 @@ async function testFalKeyNoticeCopyPreserved() {
 }
 
 async function main() {
-	await testCommandIdsRegisteredInMain();
+	await testLegacyMediaActionsStayOutOfPalette();
 	await testCommandsUseNewMediaGenerationService();
 	await testCommandInvocationShape();
 	await testFalKeyNoticeCopyPreserved();

@@ -20,6 +20,15 @@ import {
 } from '@/app/commands/gateway/composeCommandGatewayBindings';
 import { PALETTE_COMMAND_MANIFESTS } from '@/app/commands/gateway/manifests';
 
+const EXPECTED_PALETTE_COMMAND_IDS = [
+	'peak-open-settings',
+	'peak-harness-setup-wizard',
+	'peak-quick-search',
+	'peak-file-atlas-open',
+	'peak-usage-dashboard',
+	'peak-open-chat-studio',
+] as const;
+
 function makeCounter(): { fn: () => void; count: () => number } {
 	let n = 0;
 	return {
@@ -30,29 +39,32 @@ function makeCounter(): { fn: () => void; count: () => number } {
 
 function makeActions(recorder: Record<string, () => void>): PaletteCommandActions {
 	return {
-		openQuickSearch: recorder.openQuickSearch,
-		openCopilotPanel: recorder.openCopilotPanel,
-		openCopilotReviewHistory: recorder.openCopilotReviewHistory,
-		openChatStudio: recorder.openChatStudio,
-		openUsageDashboard: recorder.openUsageDashboard,
-		openHarnessSetupWizard: recorder.openHarnessSetupWizard,
 		openSettingsModal: recorder.openSettingsModal,
+		openHarnessSetupWizard: recorder.openHarnessSetupWizard,
+		openQuickSearch: recorder.openQuickSearch,
+		openFileAtlas: recorder.openFileAtlas,
+		openUsageDashboard: recorder.openUsageDashboard,
+		openChatStudio: recorder.openChatStudio,
 	};
 }
 
 function testManifestCoverageMatchesBindings(): void {
 	const dummy = makeActions({
-		openQuickSearch: () => {},
-		openCopilotPanel: () => {},
-		openCopilotReviewHistory: () => {},
-		openChatStudio: () => {},
-		openUsageDashboard: () => {},
-		openHarnessSetupWizard: () => {},
 		openSettingsModal: () => {},
+		openHarnessSetupWizard: () => {},
+		openQuickSearch: () => {},
+		openFileAtlas: () => {},
+		openUsageDashboard: () => {},
+		openChatStudio: () => {},
 	});
 	const bindings = composeCommandGatewayBindings(dummy);
 	const manifestIds = Object.keys(PALETTE_COMMAND_MANIFESTS);
 	const bindingIds = bindings.map((b) => b.commandId);
+	assert.deepStrictEqual(
+		manifestIds,
+		[...EXPECTED_PALETTE_COMMAND_IDS],
+		'global command palette must stay limited to the six owner-approved entry points',
+	);
 	assert.deepStrictEqual(
 		bindingIds,
 		manifestIds,
@@ -69,13 +81,12 @@ function testManifestCoverageMatchesBindings(): void {
 
 async function testDispatchInvokesActionExactlyOnce(): Promise<void> {
 	const counters: Record<string, ReturnType<typeof makeCounter>> = {
-		openQuickSearch: makeCounter(),
-		openCopilotPanel: makeCounter(),
-		openCopilotReviewHistory: makeCounter(),
-		openChatStudio: makeCounter(),
-		openUsageDashboard: makeCounter(),
-		openHarnessSetupWizard: makeCounter(),
 		openSettingsModal: makeCounter(),
+		openHarnessSetupWizard: makeCounter(),
+		openQuickSearch: makeCounter(),
+		openFileAtlas: makeCounter(),
+		openUsageDashboard: makeCounter(),
+		openChatStudio: makeCounter(),
 	};
 	const actions = makeActions(
 		Object.fromEntries(Object.entries(counters).map(([k, c]) => [k, c.fn])) as Record<string, () => void>,
@@ -87,13 +98,12 @@ async function testDispatchInvokesActionExactlyOnce(): Promise<void> {
 
 	// Map commandId → action key. Order matches composeCommandGatewayBindings.
 	const commandToAction: Array<[string, keyof typeof counters]> = [
-		['peak-quick-search', 'openQuickSearch'],
-		['peak-copilot-open', 'openCopilotPanel'],
-		['peak-copilot-review-history', 'openCopilotReviewHistory'],
-		['peak-open-chat-studio', 'openChatStudio'],
-		['peak-usage-dashboard', 'openUsageDashboard'],
-		['peak-harness-setup-wizard', 'openHarnessSetupWizard'],
 		['peak-open-settings', 'openSettingsModal'],
+		['peak-harness-setup-wizard', 'openHarnessSetupWizard'],
+		['peak-quick-search', 'openQuickSearch'],
+		['peak-file-atlas-open', 'openFileAtlas'],
+		['peak-usage-dashboard', 'openUsageDashboard'],
+		['peak-open-chat-studio', 'openChatStudio'],
 	];
 
 	for (const [commandId, actionKey] of commandToAction) {
@@ -145,6 +155,11 @@ function testMainTsWiresGateway(): void {
 	assert.ok(
 		mainSource.includes('commandGateway.dispatch(binding.commandId)'),
 		'palette callback must go through gateway.dispatch()',
+	);
+	assert.strictEqual(
+		mainSource.match(/this\.addCommand\(/g)?.length,
+		1,
+		'main.ts must register commands only through the approved gateway binding loop',
 	);
 	console.log('PASS: mainTsWiresGateway');
 }

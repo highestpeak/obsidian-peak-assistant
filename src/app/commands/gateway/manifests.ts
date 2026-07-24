@@ -31,62 +31,10 @@ const DEFAULT_BACKEND: CapabilityManifest['backendPolicy'] = {
 	fallback: ['hermes-harness', 'claude-sdk'],
 };
 
-export const QUICK_SEARCH_MANIFEST: CapabilityManifest = {
-	id: 'ui.open.quick-search',
-	title: 'Open Quick Search',
-	description: 'Focus the Quick Search side panel so the user can search vault / chat context.',
-	inputContract: SURFACE_OPEN_INPUT,
-	outputContract: SURFACE_OPEN_OUTPUT,
-	permissionKind: 'read',
-	costTier: 'fast',
-	backendPolicy: DEFAULT_BACKEND,
-	skillRef: 'ui.surface-open.v1',
-	surfaceBinding: ['vault-search'],
-};
-
-export const COPILOT_OPEN_MANIFEST: CapabilityManifest = {
-	id: 'ui.open.copilot',
-	title: 'Open Copilot panel',
-	description: 'Focus the Copilot side panel (Document / Vault / Setting tabs).',
-	inputContract: SURFACE_OPEN_INPUT,
-	outputContract: SURFACE_OPEN_OUTPUT,
-	permissionKind: 'read',
-	costTier: 'fast',
-	backendPolicy: DEFAULT_BACKEND,
-	skillRef: 'ui.surface-open.v1',
-	surfaceBinding: ['copilot'],
-};
-
-export const COPILOT_REVIEW_HISTORY_MANIFEST: CapabilityManifest = {
-	id: 'ui.open.copilot-review-history',
-	title: 'Open Auto Review History',
-	description: 'Focus the Copilot review-history modal so the user can browse past auto-reviews.',
-	inputContract: SURFACE_OPEN_INPUT,
-	outputContract: SURFACE_OPEN_OUTPUT,
-	permissionKind: 'read',
-	costTier: 'fast',
-	backendPolicy: DEFAULT_BACKEND,
-	skillRef: 'ui.surface-open.v1',
-	surfaceBinding: ['copilot'],
-};
-
-export const CHAT_STUDIO_MANIFEST: CapabilityManifest = {
-	id: 'ui.open.chat-studio',
-	title: 'Open Chat Studio',
-	description: 'Focus the Chat Studio leaf.',
-	inputContract: SURFACE_OPEN_INPUT,
-	outputContract: SURFACE_OPEN_OUTPUT,
-	permissionKind: 'read',
-	costTier: 'fast',
-	backendPolicy: DEFAULT_BACKEND,
-	skillRef: 'ui.surface-open.v1',
-	surfaceBinding: ['chat'],
-};
-
-export const USAGE_DASHBOARD_MANIFEST: CapabilityManifest = {
-	id: 'ui.open.usage-dashboard',
-	title: 'Open Usage Dashboard',
-	description: 'Focus the Usage Dashboard leaf (spend / budget / optimization).',
+export const SETTINGS_MODAL_MANIFEST: CapabilityManifest = {
+	id: 'ui.open.settings',
+	title: 'Open Settings',
+	description: 'Open the Peak settings modal.',
 	inputContract: SURFACE_OPEN_INPUT,
 	outputContract: SURFACE_OPEN_OUTPUT,
 	permissionKind: 'read',
@@ -109,10 +57,49 @@ export const HARNESS_WIZARD_MANIFEST: CapabilityManifest = {
 	surfaceBinding: ['chat'],
 };
 
-export const SETTINGS_MODAL_MANIFEST: CapabilityManifest = {
-	id: 'ui.open.settings',
-	title: 'Open Settings',
-	description: 'Open the Peak settings modal.',
+export const QUICK_SEARCH_MANIFEST: CapabilityManifest = {
+	id: 'ui.open.quick-search',
+	title: 'Open Quick Search',
+	description: 'Focus the Quick Search side panel so the user can search vault / chat context.',
+	inputContract: SURFACE_OPEN_INPUT,
+	outputContract: SURFACE_OPEN_OUTPUT,
+	permissionKind: 'read',
+	costTier: 'fast',
+	backendPolicy: DEFAULT_BACKEND,
+	skillRef: 'ui.surface-open.v1',
+	surfaceBinding: ['vault-search'],
+};
+
+export const FILE_ATLAS_MANIFEST: CapabilityManifest = {
+	id: 'ui.open.file-atlas',
+	title: 'Open File Atlas',
+	description: 'Open the block-level Tree / Graph map for the active document.',
+	inputContract: SURFACE_OPEN_INPUT,
+	outputContract: SURFACE_OPEN_OUTPUT,
+	permissionKind: 'read',
+	costTier: 'fast',
+	backendPolicy: DEFAULT_BACKEND,
+	skillRef: 'ui.surface-open.v1',
+	surfaceBinding: ['copilot'],
+};
+
+export const USAGE_DASHBOARD_MANIFEST: CapabilityManifest = {
+	id: 'ui.open.usage-dashboard',
+	title: 'Open Usage Dashboard',
+	description: 'Focus the Usage Dashboard leaf (spend / budget / optimization).',
+	inputContract: SURFACE_OPEN_INPUT,
+	outputContract: SURFACE_OPEN_OUTPUT,
+	permissionKind: 'read',
+	costTier: 'fast',
+	backendPolicy: DEFAULT_BACKEND,
+	skillRef: 'ui.surface-open.v1',
+	surfaceBinding: ['chat'],
+};
+
+export const CHAT_STUDIO_MANIFEST: CapabilityManifest = {
+	id: 'ui.open.chat-studio',
+	title: 'Open Chat Studio',
+	description: 'Focus the Chat Studio leaf.',
 	inputContract: SURFACE_OPEN_INPUT,
 	outputContract: SURFACE_OPEN_OUTPUT,
 	permissionKind: 'read',
@@ -129,11 +116,10 @@ export const SETTINGS_MODAL_MANIFEST: CapabilityManifest = {
  * every registered command has a matching manifest.
  */
 export const PALETTE_COMMAND_MANIFESTS: Readonly<Record<string, CapabilityManifest>> = Object.freeze({
-	'peak-quick-search': QUICK_SEARCH_MANIFEST,
-	'peak-copilot-open': COPILOT_OPEN_MANIFEST,
-	'peak-copilot-review-history': COPILOT_REVIEW_HISTORY_MANIFEST,
-	'peak-open-chat-studio': CHAT_STUDIO_MANIFEST,
-	'peak-usage-dashboard': USAGE_DASHBOARD_MANIFEST,
-	'peak-harness-setup-wizard': HARNESS_WIZARD_MANIFEST,
 	'peak-open-settings': SETTINGS_MODAL_MANIFEST,
+	'peak-harness-setup-wizard': HARNESS_WIZARD_MANIFEST,
+	'peak-quick-search': QUICK_SEARCH_MANIFEST,
+	'peak-file-atlas-open': FILE_ATLAS_MANIFEST,
+	'peak-usage-dashboard': USAGE_DASHBOARD_MANIFEST,
+	'peak-open-chat-studio': CHAT_STUDIO_MANIFEST,
 });

@@ -8,8 +8,7 @@ import { buildCoreCommands } from 'src/app/commands/Register';
 import { composeCommandGatewayBindings } from '@/app/commands/gateway/composeCommandGatewayBindings';
 import {
 	openChatStudio,
-	openCopilotPanel,
-	openCopilotReviewHistory,
+	openFileAtlas,
 	openHarnessSetupWizard,
 	openQuickSearch,
 	openUsageDashboard,
@@ -170,6 +169,10 @@ export default class MyPlugin extends Plugin {
 			this.settings.profileSettings = updated;
 			void this.saveSettings();
 		});
+		// Mirror harness tier bindings into the registry so `resolveSlot` (the
+		// single model-binding resolver used by both the harness and the SDK
+		// path) sees the current Fast Lookup / Research / Stronger picks.
+		this.syncProfileRegistryTierConfigs();
 
 		// Auto-detect indexLevel for existing users who already have an embedding profile configured.
 		// Only upgrades 'fast' → 'semantic'; never downgrades an explicit user choice.
@@ -446,13 +449,12 @@ export default class MyPlugin extends Plugin {
 		const commandGateway = new CommandGateway();
 		AppContext.setCommandGateway(commandGateway);
 		const gatewayBindings = composeCommandGatewayBindings({
-			openQuickSearch,
-			openCopilotPanel,
-			openCopilotReviewHistory,
-			openChatStudio,
-			openUsageDashboard,
-			openHarnessSetupWizard,
 			openSettingsModal,
+			openHarnessSetupWizard,
+			openQuickSearch,
+			openFileAtlas,
+			openUsageDashboard,
+			openChatStudio,
 		});
 		for (const binding of gatewayBindings) {
 			commandGateway.register(binding);
@@ -468,137 +470,6 @@ export default class MyPlugin extends Plugin {
 				},
 			});
 		}
-		// Visual QA fixture for the production Chat Studio renderer. This command
-		// deliberately sits outside the surface-open gateway: invoking it writes
-		// one clearly marked, replaceable QA conversation and its receipts before
-		// opening the Studio. The action only rebuilds records carrying its exact
-		// custom fixture marker, so user conversations are never deleted.
-		this.addCommand({
-			id: 'peak-chat-studio-component-gallery',
-			name: 'Chat Studio: Rebuild Component Gallery',
-			callback: () => {
-				void (async () => {
-					const { openChatStudioComponentGallery } = await import(
-						'@/app/commands/ChatStudioGalleryActions'
-					);
-					await openChatStudioComponentGallery();
-				})();
-			},
-		});
-		// Hub Curation commands. Not routed through CommandGateway because they
-		// are low-frequency background actions with independent runtime deps.
-		// See docs/superpowers/specs/2026-07-03-hub-generation-agent.md §Component 9.
-		this.addCommand({
-			id: 'peak-hub-curate-now',
-			name: 'Curate Hubs Now',
-			callback: () => {
-				void (async () => {
-					const { curateHubsNow } = await import('@/app/commands/PeakCommandActions');
-					await curateHubsNow();
-				})();
-			},
-		});
-		this.addCommand({
-			id: 'peak-hub-materialize-active-note',
-			name: 'Materialize Hub for Active Note',
-			callback: () => {
-				void (async () => {
-					const { materializeHubForActiveNote } = await import('@/app/commands/PeakCommandActions');
-					await materializeHubForActiveNote();
-				})();
-			},
-		});
-		this.addCommand({
-			id: 'peak-hub-show-latest-plan',
-			name: 'Show Latest Hub Curation Plan',
-			callback: () => {
-				void (async () => {
-					const { showLatestHubCurationPlan } = await import('@/app/commands/PeakCommandActions');
-					await showLatestHubCurationPlan();
-				})();
-			},
-		});
-		this.addCommand({
-			id: 'peak-copilot-command-center',
-			name: 'Open Copilot Command Center',
-			callback: () => {
-				void (async () => {
-					const { openCopilotCommandCenter } = await import('@/app/commands/PeakCommandActions');
-					await openCopilotCommandCenter();
-				})();
-			},
-		});
-		this.addCommand({
-			id: 'peak-related-notes-open',
-			name: 'Open Related Notes panel',
-			callback: () => {
-				void (async () => {
-					const { openRelatedNotes } = await import('@/app/commands/PeakCommandActions');
-					openRelatedNotes();
-				})();
-			},
-		});
-		this.addCommand({
-			id: 'peak-file-atlas-open',
-			name: 'Open File Atlas',
-			callback: () => {
-				void (async () => {
-					const { openFileAtlas } = await import('@/app/commands/PeakCommandActions');
-					openFileAtlas();
-				})();
-			},
-		});
-		this.addCommand({
-			id: 'peak-copy-last-debug-trace',
-			name: 'Copy last debug trace',
-			callback: () => {
-				void (async () => {
-					const port = AppContext.tryGetDebugTracePort();
-					if (!port) {
-						new Notice('Debug tracing is not initialised.');
-						return;
-					}
-					if (!port.isEnabled()) {
-						new Notice('Debug tracing is off. Enable it in Settings → Advanced.');
-						return;
-					}
-					const recent = port.listRecent(1);
-					const run = recent[0];
-					if (!run) {
-						new Notice('No debug trace has been recorded yet.');
-						return;
-					}
-					const { copyDebugRun } = await import('@/service/debug-trace/copyDebugRun');
-					const { DEFAULT_DEBUG_TRACE_SETTINGS } = await import('@/core/config/settingsTypes');
-					await copyDebugRun(run.runId, {
-						port,
-						settings: this.settings.debugTrace ?? DEFAULT_DEBUG_TRACE_SETTINGS,
-						writeClipboard: (text) => navigator.clipboard.writeText(text),
-						notify: (m) => new Notice(m),
-					});
-				})();
-			},
-		});
-		this.addCommand({
-			id: 'peak-media-tts-active-note',
-			name: 'Generate TTS for Active Note (fal.ai)',
-			callback: () => {
-				void (async () => {
-					const { generateTtsForActiveNote } = await import('@/app/commands/PeakCommandActions');
-					await generateTtsForActiveNote();
-				})();
-			},
-		});
-		this.addCommand({
-			id: 'peak-media-cover-active-note',
-			name: 'Generate Cover Image for Active Note (fal.ai)',
-			callback: () => {
-				void (async () => {
-					const { generateCoverImageForActiveNote } = await import('@/app/commands/PeakCommandActions');
-					await generateCoverImageForActiveNote();
-				})();
-			},
-		});
 
 		// Note: `buildCoreCommands` used to be the palette table; it is
 		// intentionally left imported (see top of file) and unused so
@@ -1384,7 +1255,24 @@ export default class MyPlugin extends Plugin {
 	 * Persists current plugin settings to disk.
 	 */
 	async saveSettings() {
+		// Keep the registry's tier mirror in step with any AI Setup change
+		// before persisting, so the next resolveSlot() reflects the new picks.
+		this.syncProfileRegistryTierConfigs();
 		await this.saveData(this.settings);
+	}
+
+	/**
+	 * Push the current harness tier bindings (Fast Lookup / Research / Stronger)
+	 * into ProfileRegistry so `resolveSlot` resolves models from one source for
+	 * both the harness (`bindings.ts`) and the SDK path (`queryWithProfile`).
+	 */
+	private syncProfileRegistryTierConfigs(): void {
+		const harness = this.settings.harnessSettings ?? DEFAULT_HARNESS_SETTINGS;
+		ProfileRegistry.getInstance().setTierConfigs({
+			fast: harness.localFastConfig ?? null,
+			research: harness.localDeepConfig ?? null,
+			stronger: harness.onlineConfig ?? null,
+		});
 	}
 
 }

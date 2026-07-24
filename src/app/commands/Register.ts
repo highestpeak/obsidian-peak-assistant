@@ -6,8 +6,7 @@ import type { ViewManager } from '@/app/ui-host/views/ViewManager';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import {
 	openChatStudio,
-	openCopilotPanel,
-	openCopilotReviewHistory,
+	openFileAtlas,
 	openHarnessSetupWizard,
 	openQuickSearch,
 	openSettingsModal,
@@ -18,9 +17,8 @@ import {
  * Registers the small set of top-level commands exposed through Obsidian's command palette.
  *
  * Maintenance, indexing, dangerous operations, and nested product actions live in
- * Copilot (Document/Vault/Setting tabs) or Settings (Advanced → Maintenance)
- * instead of being flattened here. The Chat view is reachable via its sidebar
- * ribbon icon (`message-circle`), so no palette command is needed for it.
+ * their owning product surfaces or Settings (Advanced → Maintenance) instead of
+ * being flattened here.
  */
 export function buildCoreCommands(
 	settings: MyPluginSettings,
@@ -47,29 +45,9 @@ export function buildCoreCommands(
 
 	return [
 		{
-			id: 'peak-quick-search',
-			name: 'Quick Search',
-			callback: openQuickSearch,
-		},
-		{
-			id: 'peak-copilot-open',
-			name: 'Open Copilot',
-			callback: openCopilotPanel,
-		},
-		{
-			id: 'peak-copilot-review-history',
-			name: 'Open Auto Review History',
-			callback: openCopilotReviewHistory,
-		},
-		{
-			id: 'peak-open-chat-studio',
-			name: 'Open Chat Studio',
-			callback: openChatStudio,
-		},
-		{
-			id: 'peak-usage-dashboard',
-			name: 'Usage Dashboard',
-			callback: openUsageDashboard,
+			id: 'peak-open-settings',
+			name: 'Settings',
+			callback: openSettingsModal,
 		},
 		{
 			id: 'peak-harness-setup-wizard',
@@ -77,9 +55,24 @@ export function buildCoreCommands(
 			callback: openHarnessSetupWizard,
 		},
 		{
-			id: 'peak-open-settings',
-			name: 'Settings',
-			callback: openSettingsModal,
+			id: 'peak-quick-search',
+			name: 'Quick Search',
+			callback: openQuickSearch,
+		},
+		{
+			id: 'peak-file-atlas-open',
+			name: 'Open File Atlas',
+			callback: openFileAtlas,
+		},
+		{
+			id: 'peak-usage-dashboard',
+			name: 'Usage Dashboard',
+			callback: openUsageDashboard,
+		},
+		{
+			id: 'peak-open-chat-studio',
+			name: 'Open Chat Studio',
+			callback: openChatStudio,
 		},
 	];
 }

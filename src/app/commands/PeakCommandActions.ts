@@ -115,14 +115,19 @@ export function openRelatedNotes(): void {
 }
 
 /**
- * Open File Atlas — an ordered, block-level map of the current document.
- * File Atlas lives inside the existing CopilotPicker modal as its Atlas tab
- * (it replaced the old heading-filter view there), so this command opens the
- * picker with the Atlas tab active.
+ * Open File Atlas — an ordered, block-level map of the current document, with a
+ * left rail of open documents and Tree / Graph subviews. Its own modal surface
+ * now (Copilot / Ambient moved out to the Composer View).
+ *
+ * Dynamically imported (like the other heavy modals here) so the File Atlas UI —
+ * and its cytoscape graph stack + StreamdownIsolated renderer — stay OUT of the
+ * plugin's boot-time eager-load graph. Keeps boot light and the renderer's
+ * memory footprint down until the user actually opens File Atlas.
  * Design: docs/superpowers/specs/2026-07-08-file-atlas-design.md
  */
-export function openFileAtlas(): void {
-	new CopilotPickerModal(getContext(), { initialTab: 'atlas' }).open();
+export async function openFileAtlas(): Promise<void> {
+	const { FileAtlasModal } = await import('@/app/file-atlas/FileAtlasModal');
+	new FileAtlasModal(getContext()).open();
 }
 
 export async function refreshHubSummaries(): Promise<void> {

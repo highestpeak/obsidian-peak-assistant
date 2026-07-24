@@ -21,8 +21,7 @@ import type { GatewayBinding } from '@/service/capabilities/CommandGateway';
 import type { CapabilityRunContext, CapabilityExecutionOutput } from '@/service/capabilities/CapabilityRunner';
 import {
 	CHAT_STUDIO_MANIFEST,
-	COPILOT_OPEN_MANIFEST,
-	COPILOT_REVIEW_HISTORY_MANIFEST,
+	FILE_ATLAS_MANIFEST,
 	HARNESS_WIZARD_MANIFEST,
 	QUICK_SEARCH_MANIFEST,
 	SETTINGS_MODAL_MANIFEST,
@@ -48,13 +47,12 @@ const SURFACE_OPEN_SKILL: CompiledSkill = {
  * plugin-lifecycle references.
  */
 export interface PaletteCommandActions {
-	readonly openQuickSearch: () => void | Promise<void>;
-	readonly openCopilotPanel: () => void | Promise<void>;
-	readonly openCopilotReviewHistory: () => void | Promise<void>;
-	readonly openChatStudio: () => void | Promise<void>;
-	readonly openUsageDashboard: () => void | Promise<void>;
-	readonly openHarnessSetupWizard: () => void | Promise<void>;
 	readonly openSettingsModal: () => void | Promise<void>;
+	readonly openHarnessSetupWizard: () => void | Promise<void>;
+	readonly openQuickSearch: () => void | Promise<void>;
+	readonly openFileAtlas: () => void | Promise<void>;
+	readonly openUsageDashboard: () => void | Promise<void>;
+	readonly openChatStudio: () => void | Promise<void>;
 }
 
 function surfaceOpenStrategy(
@@ -76,43 +74,11 @@ export function composeCommandGatewayBindings(
 ): GatewayBinding[] {
 	return [
 		{
-			commandId: 'peak-quick-search',
-			commandLabel: 'Quick Search',
-			manifest: QUICK_SEARCH_MANIFEST,
+			commandId: 'peak-open-settings',
+			commandLabel: 'Settings',
+			manifest: SETTINGS_MODAL_MANIFEST,
 			compiledSkill: SURFACE_OPEN_SKILL,
-			execute: surfaceOpenStrategy(actions.openQuickSearch),
-			trigger: 'manual',
-		},
-		{
-			commandId: 'peak-copilot-open',
-			commandLabel: 'Open Copilot',
-			manifest: COPILOT_OPEN_MANIFEST,
-			compiledSkill: SURFACE_OPEN_SKILL,
-			execute: surfaceOpenStrategy(actions.openCopilotPanel),
-			trigger: 'manual',
-		},
-		{
-			commandId: 'peak-copilot-review-history',
-			commandLabel: 'Open Auto Review History',
-			manifest: COPILOT_REVIEW_HISTORY_MANIFEST,
-			compiledSkill: SURFACE_OPEN_SKILL,
-			execute: surfaceOpenStrategy(actions.openCopilotReviewHistory),
-			trigger: 'manual',
-		},
-		{
-			commandId: 'peak-open-chat-studio',
-			commandLabel: 'Open Chat Studio',
-			manifest: CHAT_STUDIO_MANIFEST,
-			compiledSkill: SURFACE_OPEN_SKILL,
-			execute: surfaceOpenStrategy(actions.openChatStudio),
-			trigger: 'manual',
-		},
-		{
-			commandId: 'peak-usage-dashboard',
-			commandLabel: 'Usage Dashboard',
-			manifest: USAGE_DASHBOARD_MANIFEST,
-			compiledSkill: SURFACE_OPEN_SKILL,
-			execute: surfaceOpenStrategy(actions.openUsageDashboard),
+			execute: surfaceOpenStrategy(actions.openSettingsModal),
 			trigger: 'manual',
 		},
 		{
@@ -124,11 +90,35 @@ export function composeCommandGatewayBindings(
 			trigger: 'manual',
 		},
 		{
-			commandId: 'peak-open-settings',
-			commandLabel: 'Settings',
-			manifest: SETTINGS_MODAL_MANIFEST,
+			commandId: 'peak-quick-search',
+			commandLabel: 'Quick Search',
+			manifest: QUICK_SEARCH_MANIFEST,
 			compiledSkill: SURFACE_OPEN_SKILL,
-			execute: surfaceOpenStrategy(actions.openSettingsModal),
+			execute: surfaceOpenStrategy(actions.openQuickSearch),
+			trigger: 'manual',
+		},
+		{
+			commandId: 'peak-file-atlas-open',
+			commandLabel: 'Open File Atlas',
+			manifest: FILE_ATLAS_MANIFEST,
+			compiledSkill: SURFACE_OPEN_SKILL,
+			execute: surfaceOpenStrategy(actions.openFileAtlas),
+			trigger: 'manual',
+		},
+		{
+			commandId: 'peak-usage-dashboard',
+			commandLabel: 'Usage Dashboard',
+			manifest: USAGE_DASHBOARD_MANIFEST,
+			compiledSkill: SURFACE_OPEN_SKILL,
+			execute: surfaceOpenStrategy(actions.openUsageDashboard),
+			trigger: 'manual',
+		},
+		{
+			commandId: 'peak-open-chat-studio',
+			commandLabel: 'Open Chat Studio',
+			manifest: CHAT_STUDIO_MANIFEST,
+			compiledSkill: SURFACE_OPEN_SKILL,
+			execute: surfaceOpenStrategy(actions.openChatStudio),
 			trigger: 'manual',
 		},
 	];
