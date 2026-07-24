@@ -29,12 +29,12 @@ export interface FollowupChatAgentOptions {
     enableLocalSearch?: boolean;
 }
 
-const TIER = 'local-fast';
+const TIER = 'fast';
 
 /**
  * Agent for all follow-up chats (Topic, Continue Analysis, Graph/Blocks/Sources).
  * Provides search_chat_history and search_current_result plus vault search tools.
- * Runs via the self-hosted harness (tier=local-fast).
+ * Runs via the self-hosted harness (tier=fast).
  */
 export class FollowupChatAgent {
     private readonly tools: Record<string, AgentTool>;

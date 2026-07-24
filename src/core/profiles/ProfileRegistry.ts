@@ -8,6 +8,7 @@
 
 import type { Profile, ProfileSettings, RoleConfig, SdkSettings, OpenAICompatibleEndpoint } from './types';
 import { DEFAULT_SDK_SETTINGS } from './types';
+import type { ModelSlot } from '@/core/types/model-tier';
 
 export type PersistFn = (settings: ProfileSettings) => void | Promise<void>;
 
@@ -21,6 +22,16 @@ export class ProfileRegistry {
   private activeCopilotConfig: RoleConfig | null = null;
   private activeEmbeddingConfig: RoleConfig | null = null;
   private activeWebSearchConfig: RoleConfig | null = null;
+  // Harness tier bindings (Settings → AI Setup: Fast Lookup / Research /
+  // Use stronger model). Mirrored here by the app layer (see
+  // `setTierConfigs`) so BOTH the harness (`bindings.ts`) and the SDK path
+  // (`sdkAgentPool.queryWithProfile`) resolve models from ONE source via
+  // `resolveSlot`, instead of the SDK path silently using only the legacy
+  // agent/agent-fast roles. This is what makes "Research" the single source
+  // of truth for all deep work.
+  private tierFastConfig: RoleConfig | null = null;
+  private tierResearchConfig: RoleConfig | null = null;
+  private tierStrongerConfig: RoleConfig | null = null;
   private sdkSettings: SdkSettings = { ...DEFAULT_SDK_SETTINGS };
   private customEndpoints: OpenAICompatibleEndpoint[] = [];
   private persistFn: PersistFn | null = null;
@@ -174,6 +185,53 @@ export class ProfileRegistry {
     const profile = this.profiles.find((p) => p.id === this.activeAgentFastConfig!.profileId);
     if (!profile) return null;
     return { profile, modelId: this.activeAgentFastConfig.modelId };
+  }
+
+  /** Resolve a stored RoleConfig to a live {profile, modelId}, or null. */
+  private configToBinding(cfg: RoleConfig | null): { profile: Profile; modelId: string } | null {
+    if (!cfg) return null;
+    const profile = this.profiles.find((p) => p.id === cfg.profileId);
+    return profile ? { profile, modelId: cfg.modelId } : null;
+  }
+
+  /**
+   * Mirror the harness tier bindings (Settings → AI Setup: Fast Lookup /
+   * Research / Use stronger model) into the registry. Called by the app layer
+   * at bootstrap and after every settings save so `resolveSlot` stays current.
+   * Kept as a plain setter (no persistence) because these values are OWNED by
+   * `settings.harnessSettings`; the registry only holds a read cache of them.
+   */
+  setTierConfigs(configs: { fast: RoleConfig | null; research: RoleConfig | null; stronger: RoleConfig | null }): void {
+    this.tierFastConfig = configs.fast;
+    this.tierResearchConfig = configs.research;
+    this.tierStrongerConfig = configs.stronger;
+  }
+
+  /**
+   * THE single model-binding resolver. Every consumer (harness `bindings.ts`
+   * and the SDK `queryWithProfile` path) resolves through here, so a change to
+   * any AI Setup row takes effect everywhere that slot is used.
+   *
+   * Fallback chains preserve the pre-unification behaviour:
+   *   fast          → Fast Lookup  ?? agent-fast role
+   *   research      → Research     ?? agent role
+   *   stronger      → Stronger     ?? Conversation (chat, which itself → agent)
+   *   conversation  → Conversation (chat, which itself → agent)
+   *   knowledgeIndex→ Knowledge Index (embedding)
+   */
+  resolveSlot(slot: ModelSlot): { profile: Profile; modelId: string } | null {
+    switch (slot) {
+      case 'fast':
+        return this.configToBinding(this.tierFastConfig) ?? this.getActiveAgentFastConfig();
+      case 'research':
+        return this.configToBinding(this.tierResearchConfig) ?? this.getActiveAgentConfig();
+      case 'stronger':
+        return this.configToBinding(this.tierStrongerConfig) ?? this.getActiveChatConfig();
+      case 'conversation':
+        return this.getActiveChatConfig();
+      case 'knowledgeIndex':
+        return this.getActiveEmbeddingConfig();
+    }
   }
 
   getActiveChatProfile(): Profile | null {

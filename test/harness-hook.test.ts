@@ -14,7 +14,7 @@ function makeToolThenStopBinding(toolName: string, args: any, finalText = 'fin')
         textStepChunks({ text: finalText }),
     ]);
     return {
-        tier: 'local-fast',
+        tier: 'fast',
         providerId: 'mock',
         modelId: 'mock',
         resolve: () => model,
@@ -26,7 +26,7 @@ function makeToolThenStopBinding(toolName: string, args: any, finalText = 'fin')
 function stopBinding(text: string): TierBinding {
     const model = makeStreamModel('mock', [textStepChunks({ text })]);
     return {
-        tier: 'local-fast',
+        tier: 'fast',
         providerId: 'mock',
         modelId: 'mock',
         resolve: () => model,
@@ -54,7 +54,7 @@ async function run(): Promise<void> {
             fn: async () => {
                 const bus = new HookBus();
                 const r = await bus.fire('pre_tool_use', {
-                    loopId: 'L', stepIndex: 0, tier: 'local-fast',
+                    loopId: 'L', stepIndex: 0, tier: 'fast',
                     toolName: 't', toolCallId: 'c', args: {},
                 });
                 assert.strictEqual(r.kind, 'continue');
@@ -66,8 +66,8 @@ async function run(): Promise<void> {
                 const bus = new HookBus();
                 const seen: string[] = [];
                 bus.on('pre_tool_use', (ctx) => { seen.push(ctx.toolName); }, /^vault\./);
-                await bus.fire('pre_tool_use', { loopId: 'L', stepIndex: 0, tier: 'local-fast', toolName: 'web.fetch', toolCallId: 'a', args: {} }, 'web.fetch');
-                await bus.fire('pre_tool_use', { loopId: 'L', stepIndex: 0, tier: 'local-fast', toolName: 'vault.read', toolCallId: 'b', args: {} }, 'vault.read');
+                await bus.fire('pre_tool_use', { loopId: 'L', stepIndex: 0, tier: 'fast', toolName: 'web.fetch', toolCallId: 'a', args: {} }, 'web.fetch');
+                await bus.fire('pre_tool_use', { loopId: 'L', stepIndex: 0, tier: 'fast', toolName: 'vault.read', toolCallId: 'b', args: {} }, 'vault.read');
                 assert.deepStrictEqual(seen, ['vault.read']);
             },
         },
@@ -78,7 +78,7 @@ async function run(): Promise<void> {
                 let secondRan = false;
                 bus.on('pre_tool_use', () => ({ kind: 'block', reason: 'nope' }));
                 bus.on('pre_tool_use', () => { secondRan = true; });
-                const r = await bus.fire('pre_tool_use', { loopId: 'L', stepIndex: 0, tier: 'local-fast', toolName: 't', toolCallId: 'c', args: {} }, 't');
+                const r = await bus.fire('pre_tool_use', { loopId: 'L', stepIndex: 0, tier: 'fast', toolName: 't', toolCallId: 'c', args: {} }, 't');
                 assert.strictEqual(r.kind, 'block');
                 assert.strictEqual(secondRan, false);
             },
@@ -88,7 +88,7 @@ async function run(): Promise<void> {
             fn: async () => {
                 const bus = new HookBus();
                 bus.on('pre_tool_use', () => { throw new Error('boom'); });
-                const r = await bus.fire('pre_tool_use', { loopId: 'L', stepIndex: 0, tier: 'local-fast', toolName: 't', toolCallId: 'c', args: {} }, 't');
+                const r = await bus.fire('pre_tool_use', { loopId: 'L', stepIndex: 0, tier: 'fast', toolName: 't', toolCallId: 'c', args: {} }, 't');
                 assert.strictEqual(r.kind, 'block');
                 if (r.kind === 'block') assert.match(r.reason, /boom/);
             },
@@ -97,7 +97,7 @@ async function run(): Promise<void> {
             name: 'AgentLoop: pre_tool_use block prevents execution, surfaces error',
             fn: async () => {
                 const executed = { count: 0 };
-                const bindings: TierBindings = { 'local-fast': makeToolThenStopBinding('vault.write', {}) };
+                const bindings: TierBindings = { 'fast': makeToolThenStopBinding('vault.write', {}) };
                 const controller = new TierController({ bindings, policy: { allowEscalation: false } });
                 const bus = new HookBus();
                 bus.on('pre_tool_use', () => ({ kind: 'block', reason: 'unsafe path' }), 'vault.write');
@@ -121,7 +121,7 @@ async function run(): Promise<void> {
             fn: async () => {
                 const executed = { count: 0 };
                 const bindings: TierBindings = {
-                    'local-fast': makeToolThenStopBinding('vault.read', {}),
+                    'fast': makeToolThenStopBinding('vault.read', {}),
                 };
                 const controller = new TierController({ bindings, policy: { allowEscalation: false } });
                 const bus = new HookBus();
@@ -149,7 +149,7 @@ async function run(): Promise<void> {
                 const executed = { count: 0 };
                 const blocked: string[] = [];
                 const bindings: TierBindings = {
-                    'local-fast': makeToolThenStopBinding('safe.tool', {}),
+                    'fast': makeToolThenStopBinding('safe.tool', {}),
                 };
                 const controller = new TierController({ bindings, policy: { allowEscalation: false } });
                 const bus = new HookBus();
@@ -174,7 +174,7 @@ async function run(): Promise<void> {
             name: 'AgentLoop: session_start and stop hooks fire',
             fn: async () => {
                 const events: string[] = [];
-                const bindings: TierBindings = { 'local-fast': stopBinding('hi') };
+                const bindings: TierBindings = { 'fast': stopBinding('hi') };
                 const controller = new TierController({ bindings, policy: { allowEscalation: false } });
                 const bus = new HookBus();
                 bus.on('session_start', (ctx) => { events.push(`start:${ctx.loopId}`); });
@@ -193,7 +193,7 @@ async function run(): Promise<void> {
         {
             name: 'AgentLoop: session_start block aborts loop with hook_block reason',
             fn: async () => {
-                const bindings: TierBindings = { 'local-fast': stopBinding('never') };
+                const bindings: TierBindings = { 'fast': stopBinding('never') };
                 const controller = new TierController({ bindings, policy: { allowEscalation: false } });
                 const bus = new HookBus();
                 bus.on('session_start', () => ({ kind: 'block', reason: 'maintenance' }));

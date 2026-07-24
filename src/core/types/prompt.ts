@@ -90,6 +90,8 @@ export enum PromptId {
 	AiAnalysisReportSection = 'ai-analysis-report-section',
 	/** Vault SDK playbook: system prompt for SDK vault search agent (tool instruction + type classification). */
 	VaultSdkPlaybook = 'ai-analysis-vault-sdk-playbook',
+	/** Nudge injected when the vault agent writes a planning turn but no tool call, prodding it to proceed. */
+	AiAnalysisProceedNudge = 'ai-analysis-proceed-nudge',
 	/** Continue analysis: system prompt for follow-up rounds. */
 	AiAnalysisContinueSystem = 'ai-analysis-continue-system',
 	/** Continue analysis: user prompt with previous round context. */
@@ -494,6 +496,7 @@ export interface PromptVariables {
 		blocksSummary: string;
 		evidenceList: string;
 	};
+	[PromptId.AiAnalysisProceedNudge]: Record<string, never>;
 	[PromptId.AiAnalysisContinueSystem]: Record<string, never>;
 	[PromptId.AiAnalysisContinue]: {
 		originalQuery: string;

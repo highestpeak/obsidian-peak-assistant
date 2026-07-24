@@ -16,7 +16,7 @@ function makeToolThenStopBinding(toolName: string, args: any, finalText = 'done'
         textStepChunks({ text: finalText }),
     ]);
     return {
-        tier: 'local-fast',
+        tier: 'fast',
         providerId: 'mock',
         modelId: 'm',
         resolve: () => model,
@@ -105,7 +105,7 @@ async function run(): Promise<void> {
             fn: async () => {
                 const executed = { count: 0 };
                 const bindings: TierBindings = {
-                    'local-fast': makeToolThenStopBinding('vault.delete', { value: 'x' }),
+                    'fast': makeToolThenStopBinding('vault.delete', { value: 'x' }),
                 };
                 const controller = new TierController({ bindings, policy: { allowEscalation: false } });
                 const guard = new PermissionGuard({
@@ -131,7 +131,7 @@ async function run(): Promise<void> {
             fn: async () => {
                 const executed = { count: 0 };
                 const bindings: TierBindings = {
-                    'local-fast': makeToolThenStopBinding('danger.exec', {}),
+                    'fast': makeToolThenStopBinding('danger.exec', {}),
                 };
                 const controller = new TierController({ bindings, policy: { allowEscalation: false } });
                 const guard = new PermissionGuard({
@@ -155,7 +155,7 @@ async function run(): Promise<void> {
             fn: async () => {
                 const executed = { count: 0 };
                 const bindings: TierBindings = {
-                    'local-fast': makeToolThenStopBinding('vault.write', { value: 'data' }),
+                    'fast': makeToolThenStopBinding('vault.write', { value: 'data' }),
                 };
                 const controller = new TierController({ bindings, policy: { allowEscalation: false } });
                 const guard = new PermissionGuard({ mode: 'read' });

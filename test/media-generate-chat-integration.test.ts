@@ -373,7 +373,7 @@ async function testRetryProducesNewReceipt(): Promise<void> {
     });
     const first = await tool1.execute(
         { kind: 'image', prompt: 'retry me', route: 'fal' },
-        { loopId: 'run-first', stepIndex: 0, tier: 'local-fast' as any, signal: new AbortController().signal },
+        { loopId: 'run-first', stepIndex: 0, tier: 'fast' as any, signal: new AbortController().signal },
     );
     assert.strictEqual(first.ok, true);
     if (!first.ok) throw new Error('unreachable');
@@ -390,7 +390,7 @@ async function testRetryProducesNewReceipt(): Promise<void> {
     });
     const second = await tool2.execute(
         { kind: 'image', prompt: 'retry me', route: 'fal' },
-        { loopId: 'run-second', stepIndex: 0, tier: 'local-fast' as any, signal: new AbortController().signal },
+        { loopId: 'run-second', stepIndex: 0, tier: 'fast' as any, signal: new AbortController().signal },
     );
     assert.strictEqual(second.ok, true);
     if (!second.ok) throw new Error('unreachable');

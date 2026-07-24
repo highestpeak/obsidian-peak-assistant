@@ -180,7 +180,7 @@ async function testMcpToolToToolDefRuntime(): Promise<void> {
 	// Execute smoke — passes args through the stub back.
 	const result = await echo.execute(
 		{ message: 'hi' },
-		{ loopId: 't5-test', stepIndex: 0, tier: 'online', signal: new AbortController().signal },
+		{ loopId: 't5-test', stepIndex: 0, tier: 'stronger', signal: new AbortController().signal },
 	);
 	assert.ok(result.ok, `execute failed: ${JSON.stringify(result)}`);
 	console.log('PASS: mcpToolToToolDefRuntime');

@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>24 · AI 模型路由 / 降级 · 升级规则</title>
+  <style>
+    :root {
+      --bg: #f7f8f4;
+      --paper: #ffffff;
+      --ink: #17221d;
+      --muted: #69766f;
+      --line: #d9e1d8;
+      --line-strong: #b9c7bd;
+      --green: #1f6b52;
+      --blue: #245f7a;
+      --gold: #80611f;
+      --red: #90423d;
+      --soft-green: #eef6f1;
+      --soft-blue: #eef5f7;
+      --soft-gold: #f7f2e8;
+      --code-bg: #eef2eb;
+      --code: #25352d;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; line-height: 1.72; letter-spacing: 0; }
+    a { color: var(--green); text-decoration: none; font-weight: 760; }
+    a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+
+    .page {
+      width: min(960px, calc(100vw - 64px));
+      margin: 0 auto;
+      padding: 48px 0 72px;
+    }
+
+    header {
+      width: 100%;
+      padding: 8px 0 34px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    h1 {
+      max-width: 900px;
+      margin: 14px 0 16px;
+      font-size: 48px;
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 880px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 19px;
+      line-height: 1.72;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .meta span {
+      padding: 3px 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--paper);
+    }
+
+    .doc-layout { display: block; margin-top: 28px; }
+
+    .content {
+      min-width: 0;
+    }
+
+    .side-nav {
+      position: fixed;
+      top: 92px;
+      left: calc(50vw - 764px);
+      z-index: 20;
+      width: 260px;
+      max-height: calc(100vh - 116px);
+      padding: 14px 13px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.94);
+      overflow: auto;
+      box-shadow: 0 12px 28px rgba(23, 34, 29, 0.045);
+      backdrop-filter: blur(8px);
+    }
+
+    .side-nav strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    .side-nav a {
+      display: block;
+      padding: 5px 8px;
+      border-left: 2px solid transparent;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.35;
+      border-radius: 6px;
+    }
+
+    .side-nav a.sub {
+      margin-left: 10px;
+      font-size: 13px;
+    }
+
+    .side-nav a.active {
+      border-left-color: var(--green);
+      color: var(--ink);
+      background: var(--soft-green);
+      text-decoration: none;
+    }
+
+    .side-nav .nav-note {
+      margin-top: 12px;
+      padding-top: 11px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    section {
+      width: 100%;
+      padding: 42px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 31px;
+      line-height: 1.18;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 28px 0 9px;
+      font-size: 21px;
+      line-height: 1.28;
+      letter-spacing: 0;
+    }
+
+    p { margin: 0; }
+    p + p { margin-top: 14px; }
+
+    .lead {
+      color: var(--ink);
+      font-size: 18px;
+      line-height: 1.72;
+    }
+
+    .prose {
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .claim {
+      margin: 22px 0 0;
+      padding: 16px 18px;
+      border-left: 4px solid var(--green);
+      background: var(--paper);
+      color: var(--muted);
+      box-shadow: 0 12px 26px rgba(23, 34, 29, 0.055);
+    }
+
+    .claim strong {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--ink);
+    }
+
+    .figure {
+      width: 100%;
+      max-width: 100%;
+      margin: 24px 0 0;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      overflow-x: auto;
+      box-shadow: 0 16px 36px rgba(23, 34, 29, 0.06);
+    }
+
+    .figure-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 14px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .figure-title strong {
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    .mermaid {
+      min-width: 820px;
+      text-align: center;
+    }
+
+    .mermaid svg {
+      max-width: 100%;
+      height: auto;
+    }
+
+    .read-note {
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .read-note b { color: var(--ink); }
+
+    .diagram-notes {
+      margin: 14px 0 0;
+      padding: 12px 14px 12px 30px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .diagram-notes li { margin: 3px 0; }
+    .diagram-notes b { color: var(--ink); }
+
+    ul.clean {
+      margin: 16px 0 0;
+      padding: 0 0 0 20px;
+      color: var(--muted);
+    }
+
+    ul.clean li { margin: 7px 0; }
+    ul.clean b { color: var(--ink); }
+
+    .codebox {
+      margin: 20px 0 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--code-bg);
+      overflow: hidden;
+    }
+
+    .codebox .caption {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      background: #f7f9f4;
+    }
+
+    pre {
+      margin: 0;
+      padding: 17px 18px;
+      overflow-x: auto;
+      color: var(--code);
+      font-size: 13px;
+      line-height: 1.62;
+    }
+
+    table {
+      width: 100%;
+      margin-top: 18px;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      font-size: 14px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 12px 13px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      background: #edf2eb;
+      font-weight: 800;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+    td code { color: var(--code); }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 18px;
+      margin-top: 20px;
+    }
+
+    .plain-panel {
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+    }
+
+    .plain-panel strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .plain-panel p {
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .reader-map {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .reader-map .plain-panel {
+      background: #fbfcf8;
+    }
+
+    .route {
+      margin: 18px 0 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: route;
+    }
+
+    .route li {
+      counter-increment: route;
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr);
+      gap: 10px;
+      padding: 11px 0;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .route li::before {
+      content: counter(route);
+      display: grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      color: var(--green);
+      background: var(--soft-green);
+      font-size: 12px;
+      font-weight: 820;
+    }
+
+    .route b {
+      display: block;
+      color: var(--ink);
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 999px;
+      border: 1px solid var(--line-strong);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+      white-space: nowrap;
+    }
+
+    .tag.green { color: var(--green); background: var(--soft-green); }
+    .tag.blue { color: var(--blue); background: var(--soft-blue); }
+    .tag.gold { color: var(--gold); background: var(--soft-gold); }
+    .tag.red { color: var(--red); background: #f8ecea; }
+
+    .footer {
+      width: 100%;
+      padding-top: 24px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 1440px) {
+      .side-nav { position: static; width: auto; max-height: none; margin-bottom: 24px; background: var(--paper); }
+      .side-nav a { display: inline-block; margin: 0 4px 6px 0; }
+      .side-nav a.sub { margin-left: 0; }
+    }
+
+    @media (max-width: 900px) {
+      .page { width: min(100% - 28px, 1100px); padding-top: 28px; }
+      h1 { font-size: 34px; }
+      .subtitle { font-size: 17px; }
+      .reader-map { grid-template-columns: 1fr; }
+      .two-col { grid-template-columns: 1fr; }
+      .figure { width: calc(100vw - 28px); padding: 16px; }
+    }
+  </style>  <link rel="stylesheet" href="assets/mermaid-zoom.css">
+  <link rel="stylesheet" href="assets/tables-density.css">
+  <link rel="stylesheet" href="assets/copy-path.css">
+  <style>
+    /* 24-infra supplemental: classes not in the shared base style */
+    .subtitle-list { margin: 10px 0 0; padding-left: 20px; color: var(--muted); font-size: 14px; line-height: 1.7; }
+    .subtitle-list li { margin: 3px 0; }
+    .nav-jump { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+    .nav-jump a { font-size: 12.5px; color: var(--blue); text-decoration: none; }
+    .nav-jump a:hover { text-decoration: underline; }
+    .nav-group { margin: 12px 0; }
+    .nav-group-title { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 5px; }
+    .file-tree { margin: 14px 0; padding: 18px 20px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfa; color: #25352d; font-size: 13.5px; line-height: 1.66; overflow-x: auto; box-shadow: 0 12px 28px rgba(23,34,29,0.045); }
+    .file-tree code { display: block; white-space: pre; }
+    .callout { margin: 16px 0; padding: 14px 18px; border: 1px solid var(--line); border-left: 3px solid var(--blue); border-radius: 8px; background: var(--soft-blue); }
+    .callout.warn { border-left-color: var(--gold); background: #faf6ec; }
+    .callout > strong { display: block; margin-bottom: 6px; color: var(--ink); }
+    .callout ul { margin: 6px 0 0; padding-left: 20px; }
+    .callout li { margin: 4px 0; }
+    .callout p { margin: 6px 0 0; }
+    .worked { margin: 16px 0; padding: 14px 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft-green); }
+    .worked-title { font-weight: 800; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--green); margin-bottom: 6px; }
+    .worked ul { margin: 6px 0 0; padding-left: 20px; }
+    .worked p { margin: 0 0 4px; }
+    .code-order { margin: 12px 0 0; padding-left: 22px; line-height: 1.85; }
+    .code-order li { margin: 5px 0; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="eyebrow">24 · Infrastructure · AI model routing</div>
+      <h1>AI 模型路由：每个用到 AI 的地方在用哪个模型，什么时候降级、什么时候升级。</h1>
+      <p class="subtitle">这篇写给要回答“这次 AI 调用到底跑的哪个模型？为什么？”的维护者。Peak 里所有 AI 调用都经过<strong>同一套解析</strong>——用途槽（slot）→ 起始 tier → 可选的运行时升级 → 未配置时的降级 fallback。读完你能对任意一个 AI 触点，说清它的模型来源、升级条件、降级链。</p>
+      <ul class="subtitle-list">
+        <li><strong>唯一解析入口</strong>：<code>ProfileRegistry.resolveSlot(slot)</code>——harness 与 SDK 两条路径都走它。</li>
+        <li><strong>唯一配置面</strong>：Settings → AI Setup 的五行（Conversation / Fast Lookup / Research / Use stronger model / Knowledge Index）。</li>
+      </ul>
+      <div class="meta">
+        <span>Reference doc</span>
+        <span>Root doc #24</span>
+        <span>Reader: maintainer / AI coding agent</span>
+        <span>User label: AI model routing</span>
+        <span>Code entry: <code>resolveSlot</code> · <code>TierController</code></span>
+      </div>
+    </header>
+
+    <div class="doc-layout">
+      <aside class="side-nav" aria-label="Document sections">
+        <div class="nav-jump">
+          <a href="index.html">← 文档总索引</a>
+          <a href="18-feature-provider-model-mcp-skills.html">18 · Provider/Model</a>
+          <a href="21-infra-agent-harness.html">21 · Agent Harness</a>
+        </div>
+        <strong>阅读路线</strong>
+        <div class="nav-group">
+          <span class="nav-group-title">起点</span>
+          <a href="#orientation">0. 怎么读</a>
+          <a href="#three-layers">1. 三层解析模型</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">全量映射</span>
+          <a href="#matrix">2. 所有 AI 触点 → 模型</a>
+          <a href="#slots">3. 五个槽 + 降级规则</a>
+          <a href="#escalation">4. 升级规则（cascade）</a>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-title">细节 &amp; 参考</span>
+          <a href="#walkthroughs">5. 三条路径详解</a>
+          <a href="#gaps">6. 排障 &amp; 已知 gap</a>
+          <a href="#code">7. 代码入口</a>
+        </div>
+        <div class="nav-note">主场景：桌面浏览器或编辑器预览阅读。本文只记录主阅读视口验证。</div>
+      </aside>
+
+      <div class="content">
+        <section id="orientation">
+          <h2>0. 这份文档怎么读。</h2>
+          <p class="lead">本文是 <span class="tag blue">runtime routing map</span> + <span class="tag green">source-code reading guide</span>。它不解释每个功能做什么（那在各自的 feature 文档里），只回答一件事：<strong>某个 AI 触点的模型是怎么被选出来的。</strong></p>
+          <div class="reader-map">
+            <div class="plain-panel">
+              <strong>本文读者</strong>
+              <p>要排查“这次为什么用了 deepseek-r1 而不是 qwen”、或要改模型路由的工程师 / AI coding agent。</p>
+            </div>
+            <div class="plain-panel">
+              <strong>读完能做什么</strong>
+              <p>对任意 AI 触点说清：用哪个槽、起始 tier、能不能升级、没配时降级到哪、改哪一行 Settings 生效。</p>
+            </div>
+            <div class="plain-panel">
+              <strong>本文不做什么</strong>
+              <p>不讲 Provider/Profile/MCP/Skill 五层供给（见 <a href="18-feature-provider-model-mcp-skills.html">18</a>），不讲 Harness 运行时全貌（见 <a href="21-infra-agent-harness.html">21</a>）。</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="three-layers">
+          <h2>1. 一张图：三层解析。</h2>
+          <p class="lead">任何一次 AI 调用，模型都由三层依次决定。理解这三层，整份文档就通了。</p>
+
+          <div class="figure">
+            <div class="figure-title"><strong>图 · slot → tier → fallback</strong></div>
+            <pre class="file-tree" aria-label="three-layer resolution"><code>①  用途槽 slot ────────────────────────────────────────────────
+    功能按"用途"声明自己要哪个槽：
+    fast · research · stronger · conversation · knowledgeIndex
+    （fast/research/stronger 同时是 harness 的三级 cascade tier）
+
+②  起始 tier + 运行时升级（仅 harness agent） ────────────────
+    TierController 从 preferred tier 起步，
+    某步自评分低于阈值 → 沿 fast → research → stronger 升一级
+    （只升不降，每轮上限 1 次）
+
+③  降级 fallback（解析时，非运行时） ─────────────────────────
+    resolveSlot：该槽没显式配置 → 回退到 role → 再回退到 profile 默认
+    fast     → Fast Lookup ?? agent-fast role
+    research → Research     ?? agent role
+    stronger → Stronger     ?? Conversation(chat → agent)
+    conversation → Conversation(chat → agent)
+    knowledgeIndex → Knowledge Index(embedding)</code></pre>
+          </div>
+
+          <div class="callout">
+            <strong>关键区分：升级 ≠ 降级。</strong>
+            <ul>
+              <li><b>升级（cascade / escalation）</b>是<strong>运行时</strong>行为：一次多步 agent 跑到一半，模型不确定 → 临时切到更强的 tier。只发生在走 <code>TierController</code> 的 harness agent 上（AI Analysis 及其后续对话）。</li>
+              <li><b>降级（fallback）</b>是<strong>解析时</strong>行为：某个槽你没在 Settings 里配 → <code>resolveSlot</code> 回退到旧 role，再回退到当前 profile 的默认模型。跟运行质量无关，纯粹是“没配就用替代”。</li>
+            </ul>
+          </div>
+        </section>
+
+        <section id="matrix">
+          <h2>2. 全量映射：所有用到 AI 的地方。</h2>
+          <p class="lead">按解析路径分两类：<span class="tag green">harness agent</span>（走 TierController，会升级）和 <span class="tag blue">SDK 一次性</span>（走 <code>queryWithProfile</code>，不升级）。第三类是不走对话模型的 embedding。</p>
+
+          <h3>2.1 harness agent（会升级）</h3>
+          <p class="prose">这些经 <code>TierController</code>，起始 tier 见下表，升级规则见 <a href="#escalation">§4</a>。</p>
+          <table class="dense">
+            <thead><tr><th>AI 触点</th><th>槽 / 起始 tier</th><th>升级</th><th>代码入口</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Vault Search · AI Analysis</strong>（主搜索：列文件夹→读笔记→提交计划）</td><td><code>research</code></td><td>research→stronger</td><td><code>VaultSearchAgent.ts:191</code></td></tr>
+              <tr><td><strong>Continue Analysis</strong>（追加证据轮）</td><td><code>research</code></td><td>research→stronger</td><td><code>ContinueAnalysisAgent.ts</code> → 复用 VaultSearchAgent</td></tr>
+              <tr><td><strong>AI Analysis 结果面板的后续对话</strong>（Topic / Continue / Graph / Blocks / Sources tab）</td><td><code>fast</code></td><td>fast→research→stronger</td><td><code>FollowupChatAgent.ts:32,91</code></td></tr>
+              <tr><td><strong>主 Chat 对话</strong></td><td>单 tier（贴 <code>fast</code> 槽名），模型取自 <strong>Conversation</strong></td><td>关闭（不 cascade）</td><td><code>harnessChatRunner.ts:167,176</code></td></tr>
+            </tbody>
+          </table>
+          <p class="read-note"><b>注意 Chat 的特例：</b>Chat 内部把模型绑在一个叫 <code>fast</code> 的单 tier 上，但那只是内部标签——<strong>实际模型来自 Conversation 槽</strong>（见 <a href="#slots">§3</a>），且 <code>allowEscalation:false</code>，不会升级。</p>
+
+          <h3>2.2 SDK 一次性（不升级）</h3>
+          <p class="prose">这些走 <code>queryWithProfile</code>（Claude Agent SDK），模型经 <code>resolveSlot</code> 一次性选定，<strong>没有 tier cascade</strong>。primary=<code>research</code>，fast=<code>fast</code>。</p>
+          <table class="dense">
+            <thead><tr><th>AI 触点</th><th>槽</th><th>代码入口</th></tr></thead>
+            <tbody>
+              <tr><td><strong>报告生成</strong>（AI Analysis 分段成文）</td><td><code>research</code></td><td><code>ReportOrchestrator.ts</code></td></tr>
+              <tr><td><strong>AI Graph 生成</strong></td><td><code>research</code></td><td><code>GraphAgent.ts</code></td></tr>
+              <tr><td><strong>Auto Review / Vault Review · complete 模式</strong></td><td><code>research</code></td><td><code>CopilotMetaAgentStream.ts</code> · <code>VaultMetaAgentStream.ts</code></td></tr>
+              <tr><td><strong>Auto Review / Vault Review · fast 模式</strong></td><td><code>fast</code></td><td>同上（<code>resolveProfileForMode('fast')</code>）</td></tr>
+              <tr><td><strong>Copilot 内联动作</strong>（polish/review/links…）</td><td><code>research</code></td><td><code>agent-actions.ts</code></td></tr>
+              <tr><td><strong>知识直觉 / Hub 整理</strong>（索引侧推理）</td><td><code>research</code></td><td><code>intuition.recon.ts</code> · <code>hub*Recon.ts</code></td></tr>
+              <tr><td><strong>Ambient 悬浮解释</strong></td><td><code>research</code></td><td><code>LlmAmbientExplanationAdapter.ts</code></td></tr>
+              <tr><td><strong>✦ Refine</strong>（Vault Search 查询改写）</td><td><code>fast</code></td><td><code>AIQueryRewriteService.ts</code></td></tr>
+              <tr><td><strong>自然语言搜索解析</strong>（日期/过滤）</td><td><code>fast</code></td><td><code>aiQueryParserRuntime.ts</code></td></tr>
+              <tr><td><strong>上下文压缩摘要器</strong>（所有 harness run 中途压缩）</td><td><code>fast</code></td><td><code>compactSummarizerRuntime.ts</code></td></tr>
+              <tr><td><strong>Web 搜索工具</strong></td><td>provider 取 <strong>Web Access</strong> profile；模型仍走 <code>research</code>/<code>fast</code></td><td><code>webSearchTool</code> · <code>VaultSearchAgent.ts</code></td></tr>
+            </tbody>
+          </table>
+
+          <h3>2.3 直接用 Conversation / Embedding</h3>
+          <table class="dense">
+            <thead><tr><th>AI 触点</th><th>槽</th><th>代码入口</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Chat 发送 · “Auto” 默认模型</strong></td><td><code>conversation</code></td><td><code>service-conversation.ts</code> · <code>assistantResolver.ts</code></td></tr>
+              <tr><td><strong>语义 / 向量搜索（查询时）</strong></td><td><code>knowledgeIndex</code>（embedding）</td><td><code>vector-retriever.ts</code> → <code>embedClient.ts</code></td></tr>
+              <tr><td><strong>Knowledge Index 构建 / 重建</strong></td><td><code>knowledgeIndex</code>（embedding）</td><td><code>indexService.ts</code> → <code>embedClient.ts</code></td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="slots">
+          <h2>3. 五个槽 + 降级规则。</h2>
+          <p class="lead">槽是唯一的用户配置单位（Settings → AI Setup 五行）。<code>resolveSlot</code> 是唯一解析入口——harness 的 <code>bindings.ts</code> 和 SDK 的 <code>queryWithProfile</code> 都调它，所以改一行 Settings 到处生效。</p>
+
+          <table class="dense">
+            <thead><tr><th>槽 slot</th><th>UI 行</th><th>降级 fallback 链</th><th>典型消费方</th></tr></thead>
+            <tbody>
+              <tr><td><code>fast</code></td><td>Fast Lookup</td><td>Fast Lookup 配置 → <code>agent-fast</code> role</td><td>Refine、搜索解析、Review fast、后续对话、上下文压缩</td></tr>
+              <tr><td><code>research</code></td><td>Research</td><td>Research 配置 → <code>agent</code> role</td><td><strong>AI Analysis、报告生成、Graph、Review complete、Copilot、知识直觉、Ambient</strong></td></tr>
+              <tr><td><code>stronger</code></td><td>Use stronger model</td><td>Stronger 配置 → Conversation(chat → agent)</td><td>仅作升级兜底（见 §4）</td></tr>
+              <tr><td><code>conversation</code></td><td>Conversation</td><td>Conversation(chat) → agent</td><td>主 Chat、Auto 默认</td></tr>
+              <tr><td><code>knowledgeIndex</code></td><td>Knowledge Index</td><td>Embedding profile</td><td>语义搜索、索引构建</td></tr>
+            </tbody>
+          </table>
+
+          <h3>3.1 降级规则的完整形式</h3>
+          <p class="prose">对 <code>fast</code> / <code>research</code>，SDK 路径（<code>queryWithProfile</code>）在 <code>resolveSlot</code> 之上还有一层最终兜底——回退到当前 profile 的默认模型：</p>
+          <pre class="file-tree" aria-label="fallback formula"><code>modelId =
+    resolveSlot('research')?.modelId          # ① Research 显式配置
+    ?? （resolveSlot 内部）agent role.modelId  # ② 旧 Agent role
+    ?? profile.primaryModel                    # ③ 当前 profile 默认主模型
+                                               #    （fast 槽对应 profile.fastModel）</code></pre>
+          <p class="prose">harness 路径（<code>bindings.ts</code>）里，若 <code>resolveSlot</code> 整体返回 null（该槽和其 role 都没配），该 tier 直接<strong>从 bindings 里缺席</strong>，<code>TierController</code> 会 fall-forward 到下一个已绑定的 tier（<code>resolveStartTier</code> / <code>nextBoundTier</code>）。</p>
+
+          <div class="worked">
+            <div class="worked-title">降级 · 实例</div>
+            <p>你只在 Settings 里配了 <strong>Research = OpenRouter · deepseek-r1</strong>，没单独配 Fast Lookup、没配 Stronger。此时：</p>
+            <ul>
+              <li><code>resolveSlot('research')</code> → deepseek-r1（① 命中）。</li>
+              <li><code>resolveSlot('fast')</code> → Fast Lookup 空 → 回退 <code>agent-fast</code> role；若 role 也空 → SDK 路径再回退 <code>profile.fastModel</code>。</li>
+              <li><code>resolveSlot('stronger')</code> → Stronger 空 → 回退 Conversation；Conversation 空 → 回退 agent role。</li>
+            </ul>
+          </div>
+
+          <h3>3.2 配置怎么落到槽（镜像同步）</h3>
+          <p class="prose">三个 harness tier 配置存在 <code>settings.harnessSettings.{localFastConfig, localDeepConfig, onlineConfig}</code>（字段名沿用旧名，不影响槽语义）。<code>main.ts</code> 在 bootstrap 与每次 <code>saveSettings()</code> 时经 <code>ProfileRegistry.setTierConfigs()</code> 把它们镜像进 registry，<code>resolveSlot</code> 才能读到当前值。所以改任意一行 AI Setup，保存后立即对<strong>所有</strong>路径生效。</p>
+        </section>
+
+        <section id="escalation">
+          <h2>4. 升级规则（cascade / escalation）。</h2>
+          <p class="lead">只有走 <code>TierController</code> 的 harness agent 会升级（AI Analysis、其后续对话）。SDK 一次性路径<strong>不升级</strong>。</p>
+
+          <h3>4.1 机制</h3>
+          <ul class="route">
+            <li><span><b>起步。</b>从 <code>policy.preferred</code> 的 tier 开始（AI Analysis=<code>research</code>，后续对话=<code>fast</code>）；若该 tier 未绑定，fall-forward 到下一个已绑定 tier。</span></li>
+            <li><span><b>每步自评。</b><code>onStepFinish</code> 用 <code>scoreStep</code> 给这一步打分（见公式）。</span></li>
+            <li><span><b>触发升级。</b>若 <code>allowEscalation</code> 且 未超本轮上限 且 <code>score &lt; escalationThreshold</code> → 沿 <code>fast → research → stronger</code> 升到<strong>下一个已绑定</strong> tier。</span></li>
+            <li><span><b>模型也能自己要求。</b>model 可调 <code>escalate</code> 工具（带 reason）主动升级。</span></li>
+            <li><span><b>只升不降。</b>升上去就不回落；每轮最多升 <code>maxEscalationsPerLoop</code> 次。</span></li>
+          </ul>
+
+          <h3>4.2 打分公式</h3>
+          <pre class="file-tree" aria-label="scoreStep formula"><code>score = 0.5 · schemaPassRate   # 工具调用的 schema 校验通过率
+      + 0.3 · toolSuccess      # 工具执行成功率
+      + 0.2 · language         # 文本确定性（对冲/不确定措辞扣分）
+                               # scoreStep.ts:41 · clamp 到 [0,1]
+
+升级条件： score &lt; escalationThreshold</code></pre>
+
+          <h3>4.3 当前实际生效的参数</h3>
+          <p class="prose">AI Analysis / 后续对话只向 <code>TierController</code> 传了 <code>preferred</code>，其余走 <code>DEFAULT_TIER_POLICY</code>：</p>
+          <table class="dense">
+            <thead><tr><th>参数</th><th>实际生效值</th><th>含义</th></tr></thead>
+            <tbody>
+              <tr><td><code>allowEscalation</code></td><td>true</td><td>允许升级</td></tr>
+              <tr><td><code>escalationThreshold</code></td><td>0.6</td><td>score &lt; 0.6 触发</td></tr>
+              <tr><td><code>maxEscalationsPerLoop</code></td><td>1</td><td>每轮最多升 1 级</td></tr>
+            </tbody>
+          </table>
+
+          <div class="worked">
+            <div class="worked-title">升级 · 实例</div>
+            <p>Research=deepseek-r1，Stronger=qwen3-max。跑 AI Analysis：起步 <code>research</code>（deepseek-r1）。某步一个工具 schema 校验失败 → score 掉到 ~0.35 &lt; 0.6 → 升到 <code>stronger</code>（qwen3-max）跑后续步骤。本轮已用满 1 次升级，不再升。若 Stronger 未绑定，则无处可升，继续用 research。</p>
+          </div>
+
+          <div class="callout warn">
+            <strong>⚠ 已知 gap：Settings 里的升级旋钮当前未接入。</strong>
+            <p>Settings → Profiles 有 <code>allowEscalation</code> 开关、<code>maxEscalationsPerLoop</code> 滑块（存在 <code>harnessSettings</code>，默认 threshold 0.4 / max 3），但 <code>VaultSearchAgent</code> / <code>FollowupChatAgent</code> 只向 <code>TierController</code> 传了 <code>{ preferred }</code>，<strong>没有把这些字段接进 policy</strong>。所以真正生效的是 <code>DEFAULT_TIER_POLICY</code>（0.6 / 1），UI 上调这几个旋钮当前<strong>不改变运行时行为</strong>。要让它们生效，需在构造 <code>TierController</code> 时把 <code>harnessSettings</code> 的 escalation 字段并入 <code>policy</code>。</p>
+          </div>
+        </section>
+
+        <section id="walkthroughs">
+          <h2>5. 三条典型路径详解。</h2>
+
+          <h3>5.1 一次完整的 AI Analysis</h3>
+          <p class="prose">同一次分析跨了<strong>两条解析路径</strong>，注意区分：</p>
+          <ul class="route">
+            <li><span><b>搜索阶段</b>（列文件夹、grep、读笔记、submit_plan）：harness agent，槽 <code>research</code>，可升级到 <code>stronger</code>。</span></li>
+            <li><span><b>报告生成阶段</b>（分段成文、Mermaid）：SDK <code>queryWithProfile</code>，槽 <code>research</code>，<strong>不升级</strong>。</span></li>
+            <li><span><b>结果面板后续对话</b>（Topic/Graph/…）：harness agent，槽 <code>fast</code>，可升级。</span></li>
+          </ul>
+          <p class="read-note">因为搜索与报告生成都归到 <code>research</code> 槽，改一次“Research”对整条分析链一致生效——这是 2026-07-23 统一 resolver 之后的行为；此前报告生成走独立的 <code>agent</code> role，会和搜索漂移。</p>
+
+          <h3>5.2 主 Chat 一条消息</h3>
+          <p class="prose">槽 <code>conversation</code>（= Conversation 行）。经 <code>harnessChatRunner</code> 绑成单 tier、<code>allowEscalation:false</code>——<strong>永不升级</strong>。Assistant 指定了固定模型时以 Assistant 为准，否则 Auto 默认回到 Conversation。</p>
+
+          <h3>5.3 报告生成 / Graph / Review（SDK 路径）</h3>
+          <p class="prose">全部经 <code>queryWithProfile</code>：primary=<code>resolveSlot('research')</code>，fast=<code>resolveSlot('fast')</code>。<strong>没有 tier cascade</strong>——SDK 内部可能多轮工具调用，但模型不会中途换 tier。Review 的 fast/complete 模式分别落到 <code>fast</code>/<code>research</code> 槽。</p>
+        </section>
+
+        <section id="gaps">
+          <h2>6. 排障 &amp; 已知 gap。</h2>
+          <table class="dense">
+            <thead><tr><th>现象 / 问题</th><th>解释 / 处理</th></tr></thead>
+            <tbody>
+              <tr><td>想确认某次跑的到底是哪个模型</td><td>VaultSearch 启动会发 <code>pk-debug: vault-sdk-starting</code>，带 <code>tier / modelId / providerId</code>（<code>VaultSearchAgent.ts</code>）。开 DevTools / debug trace 可见。</td></tr>
+              <tr><td>改了 Research 却发现报告生成没变</td><td>2026-07-23 前的行为（报告生成走独立 <code>agent</code> role）。统一 resolver 后已一致；若仍不一致，确认 <code>saveSettings</code> 已触发 <code>setTierConfigs</code> 镜像。</td></tr>
+              <tr><td>Settings 里调 escalation 旋钮没效果</td><td>已知 gap（见 §4.3）：这些字段当前未接入 <code>TierController</code>，实际用 <code>DEFAULT_TIER_POLICY</code>（0.6 / 1）。</td></tr>
+              <tr><td>AI Analysis 一直不升级到 Stronger</td><td>升级需要 <code>stronger</code> tier 已绑定（配了 Use stronger model，或其 fallback Conversation 有值）。都空则无处可升。</td></tr>
+              <tr><td>Chat 用的模型不是我预期的</td><td>Chat 走 <code>conversation</code> 槽（Conversation 行），不是 Fast Lookup；且不升级。</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="code">
+          <h2>7. 代码入口（读代码顺序）。</h2>
+          <ol class="code-order">
+            <li><code>src/core/types/model-tier.ts</code> — <code>ModelSlot</code>（fast/research/stronger/conversation/knowledgeIndex）与 <code>ModelTier</code>（三级 cascade tier）定义。</li>
+            <li><code>src/core/profiles/ProfileRegistry.ts</code> — <code>resolveSlot()</code> 唯一解析入口 + <code>setTierConfigs()</code> 镜像。</li>
+            <li><code>src/service/agents/harness/tier/bindings.ts</code> — harness 路径：tier → <code>resolveSlot</code>。</li>
+            <li><code>src/service/agents/core/sdkAgentPool.ts</code> — SDK 路径 <code>queryWithProfile</code>：primary/fast → <code>resolveSlot</code>。</li>
+            <li><code>src/service/agents/harness/tier/TierController.ts</code> — 升级状态机（起步、<code>onStepFinish</code>、<code>tryUpgrade</code>、<code>escalateTool</code>）。</li>
+            <li><code>src/service/agents/harness/tier/scoreStep.ts</code> — 打分公式（0.5/0.3/0.2）。</li>
+            <li><code>src/main.ts</code> — bootstrap + <code>saveSettings</code> 调 <code>syncProfileRegistryTierConfigs()</code>。</li>
+            <li>配置面：<code>src/ui/view/settings/tabs/AISetupTab.tsx</code>（五行 + 每行“Used by”悬浮）。</li>
+          </ol>
+        </section>
+      </div>
+    </div>
+  </main>
+  <script src="assets/copy-path.js" defer></script>
+</body>
+</html>

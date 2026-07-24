@@ -252,6 +252,30 @@ export interface AgentLoopConfig {
      */
     stopWhen?: (step: StepResult) => boolean | Promise<boolean>;
     /**
+     * How a step with assistant text and zero tool calls is interpreted.
+     *
+     * `true` (default) — chat-style: a bare-text step IS the final answer and
+     * ends the loop (see `hasFinalAnswer`).
+     *
+     * `false` — the loop's completion is defined SOLELY by `stopWhen` (e.g. a
+     * mandatory terminal tool such as `vault_submit_plan`). A bare-text step is
+     * then treated as an intermediate turn — typically the model narrating its
+     * plan before its first tool call, which the prompt may explicitly require
+     * ("write before first tool call"). The loop keeps going instead of
+     * mistaking that planning turn for a finished answer. Use with a caller
+     * that always supplies `stopWhen`; otherwise the loop can only end on a
+     * budget cap. `bareTextContinuationNudge` prods the model toward its next
+     * tool call so it converges quickly.
+     */
+    treatBareTextAsFinal?: boolean;
+    /**
+     * Appended as a `user` message when a bare-text step is NOT treated as
+     * final (see `treatBareTextAsFinal: false`). Nudges the model to proceed
+     * to its next tool call instead of re-emitting prose, so the loop
+     * converges. Ignored when `treatBareTextAsFinal` is true/absent.
+     */
+    bareTextContinuationNudge?: string;
+    /**
      * Hook bus invoked at session_start / stop / pre_tool_use / post_tool_use.
      * Hooks run in harness layer, not via the model — see spec §3.6.
      */

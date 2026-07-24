@@ -193,6 +193,51 @@ async function run(): Promise<void> {
       },
     },
     {
+      name: 'ProfileRegistry.resolveSlot: research prefers tier config, falls back to agent role',
+      fn: () => {
+        ProfileRegistry.resetInstance();
+        const registry = ProfileRegistry.getInstance();
+        const p = createPresetProfile('anthropic', { apiKey: 'sk' });
+        registry.load(
+          {
+            profiles: [p],
+            activeAgentConfig: { profileId: p.id, modelId: 'agent-role-model' },
+            activeAgentProfileId: null,
+            activeEmbeddingProfileId: null,
+            sdkSettings: DEFAULT_SDK_SETTINGS,
+          } as any,
+          () => {},
+        );
+        // No tier config yet → research falls back to the agent role.
+        assert.strictEqual(registry.resolveSlot('research')?.modelId, 'agent-role-model');
+        // Setting the Research tier binding makes it the single source.
+        registry.setTierConfigs({ fast: null, research: { profileId: p.id, modelId: 'research-tier-model' }, stronger: null });
+        assert.strictEqual(registry.resolveSlot('research')?.modelId, 'research-tier-model');
+      },
+    },
+    {
+      name: 'ProfileRegistry.resolveSlot: fast prefers tier config, falls back to agent-fast role',
+      fn: () => {
+        ProfileRegistry.resetInstance();
+        const registry = ProfileRegistry.getInstance();
+        const p = createPresetProfile('anthropic', { apiKey: 'sk' });
+        registry.load(
+          {
+            profiles: [p],
+            activeAgentConfig: { profileId: p.id, modelId: 'agent-model' },
+            activeAgentFastConfig: { profileId: p.id, modelId: 'agent-fast-model' },
+            activeAgentProfileId: null,
+            activeEmbeddingProfileId: null,
+            sdkSettings: DEFAULT_SDK_SETTINGS,
+          } as any,
+          () => {},
+        );
+        assert.strictEqual(registry.resolveSlot('fast')?.modelId, 'agent-fast-model');
+        registry.setTierConfigs({ fast: { profileId: p.id, modelId: 'fast-tier-model' }, research: null, stronger: null });
+        assert.strictEqual(registry.resolveSlot('fast')?.modelId, 'fast-tier-model');
+      },
+    },
+    {
       name: 'ProfileRegistry: duplicate add throws',
       fn: () => {
         ProfileRegistry.resetInstance();

@@ -48,7 +48,7 @@ function makeStopBinding(modelId: string, text: string): TierBinding {
         }),
     });
     return {
-        tier: 'local-fast',
+        tier: 'fast',
         providerId: 'mock',
         modelId,
         resolve: () => model,
@@ -108,7 +108,7 @@ function makeToolThenStopBinding(
         },
     });
     return {
-        tier: 'local-fast',
+        tier: 'fast',
         providerId: 'mock',
         modelId,
         resolve: () => model,
@@ -129,12 +129,72 @@ function alwaysStopTool(executed: { count: number }): ToolDef {
     };
 }
 
+/**
+ * Reproduces the vault-analysis prompt contract: step 1 is a text-only
+ * planning turn ("write before first tool call"), step 2 finally calls the
+ * terminal tool. Mirrors the real failure captured on 2026-07-23 where the
+ * bare-text planning turn was mistaken for a final answer.
+ */
+function makeTextThenToolBinding(
+    modelId: string,
+    planText: string,
+    toolName: string,
+    toolInput: any,
+): TierBinding {
+    let call = 0;
+    const model = new MockLanguageModelV3({
+        provider: 'mock',
+        modelId,
+        doStream: async () => {
+            call += 1;
+            if (call === 1) {
+                return {
+                    stream: convertArrayToReadableStream([
+                        { type: 'stream-start', warnings: [] },
+                        { type: 'text-start', id: 'p1' },
+                        { type: 'text-delta', id: 'p1', delta: planText },
+                        { type: 'text-end', id: 'p1' },
+                        { type: 'finish', finishReason: { unified: 'stop', raw: 'stop' }, usage: RAW_USAGE_STOP },
+                    ] as any),
+                };
+            }
+            return {
+                stream: convertArrayToReadableStream([
+                    { type: 'stream-start', warnings: [] },
+                    { type: 'tool-call', toolCallId: 'submit1', toolName, input: JSON.stringify(toolInput) },
+                    { type: 'finish', finishReason: { unified: 'tool-calls', raw: 'tool-calls' }, usage: RAW_USAGE_TOOL },
+                ] as any),
+            };
+        },
+    });
+    return {
+        tier: 'fast',
+        providerId: 'mock',
+        modelId,
+        resolve: () => model,
+        capabilities: { ...DEFAULT_TIER_CAPABILITIES },
+        estimatedSingleStepP: 0.9,
+    };
+}
+
+function submitTool(executed: { count: number }): ToolDef {
+    return {
+        name: 'submit',
+        description: 'terminal submit tool',
+        inputSchema: z.object({ ok: z.boolean() }),
+        async execute() {
+            executed.count += 1;
+            return { ok: true as const, data: { submitted: true } };
+        },
+    };
+}
+
 async function run(): Promise<void> {
     const tests: Array<{ name: string; fn: () => Promise<void> }> = [
         {
             name: 'stops on final-answer step with no tool calls',
             fn: async () => {
-                const bindings: TierBindings = { 'local-fast': makeStopBinding('m', 'final answer') };
+                const bindings: TierBindings = { 'fast': makeStopBinding('m', 'final answer') };
                 const controller = new TierController({ bindings });
                 const result = await runAgentLoop({
                     loopId: 'L1',
@@ -147,7 +207,7 @@ async function run(): Promise<void> {
                 assert.strictEqual(result.status, 'completed');
                 assert.strictEqual(result.finalText, 'final answer');
                 assert.strictEqual(result.steps.length, 1);
-                assert.strictEqual(result.tierUsage['local-fast'], 1);
+                assert.strictEqual(result.tierUsage['fast'], 1);
             },
         },
         {
@@ -155,7 +215,7 @@ async function run(): Promise<void> {
             fn: async () => {
                 const exec = { count: 0 };
                 const bindings: TierBindings = {
-                    'local-fast': makeToolThenStopBinding('m', 'noop', { value: 'hello' }, 'done'),
+                    'fast': makeToolThenStopBinding('m', 'noop', { value: 'hello' }, 'done'),
                 };
                 const controller = new TierController({ bindings });
                 const result = await runAgentLoop({
@@ -176,6 +236,81 @@ async function run(): Promise<void> {
                 assert.strictEqual(result.steps[1].toolCalls.length, 0);
                 assert.strictEqual(result.finalText, 'done');
                 assert.strictEqual(result.totalToolCalls, 1);
+            },
+        },
+        {
+            name: 'default: bare-text planning turn stops the loop (documents the bug)',
+            fn: async () => {
+                // Baseline chat behaviour: text-only step === final answer.
+                // This is exactly what broke vault analysis — the mandatory
+                // planning turn terminated the loop before any tool ran.
+                const exec = { count: 0 };
+                const bindings: TierBindings = {
+                    'fast': makeTextThenToolBinding('m', 'Phase 0-3 plan', 'submit', { ok: true }),
+                };
+                const controller = new TierController({ bindings });
+                const result = await runAgentLoop({
+                    loopId: 'BT0',
+                    systemPrompt: 'plan then call submit',
+                    initialMessages: [{ role: 'user', content: 'go' }],
+                    tools: [submitTool(exec)],
+                    tierController: controller,
+                    budget: { maxSteps: 5 },
+                    stopWhen: (step) => step.toolResults.some((r) => r.toolName === 'submit' && r.ok === true),
+                });
+                assert.strictEqual(result.steps.length, 1, 'loop stops at the bare-text planning turn');
+                assert.strictEqual(exec.count, 0, 'submit tool never runs under default behaviour');
+                assert.strictEqual(result.finishReason, 'stop');
+            },
+        },
+        {
+            name: 'treatBareTextAsFinal:false continues past the planning turn to the terminal tool',
+            fn: async () => {
+                const exec = { count: 0 };
+                const bindings: TierBindings = {
+                    'fast': makeTextThenToolBinding('m', 'Phase 0-3 plan', 'submit', { ok: true }),
+                };
+                const controller = new TierController({ bindings });
+                const result = await runAgentLoop({
+                    loopId: 'BT1',
+                    systemPrompt: 'plan then call submit',
+                    initialMessages: [{ role: 'user', content: 'go' }],
+                    tools: [submitTool(exec)],
+                    tierController: controller,
+                    budget: { maxSteps: 5 },
+                    treatBareTextAsFinal: false,
+                    bareTextContinuationNudge: 'call your next tool now',
+                    stopWhen: (step) => step.toolResults.some((r) => r.toolName === 'submit' && r.ok === true),
+                });
+                assert.strictEqual(result.steps.length, 2, 'planning turn no longer terminates the loop');
+                assert.strictEqual(result.steps[0].toolCalls.length, 0, 'step 0 is the bare-text planning turn');
+                assert.strictEqual(result.steps[1].toolCalls[0].toolName, 'submit', 'step 1 calls the terminal tool');
+                assert.strictEqual(exec.count, 1, 'submit tool executes once');
+                assert.strictEqual(result.finishReason, 'stop', 'loop ends via stopWhen, not bare text');
+            },
+        },
+        {
+            name: 'treatBareTextAsFinal:false caps consecutive bare-text turns',
+            fn: async () => {
+                // Model that never calls a tool — must still terminate via the
+                // MAX_BARE_TEXT_CONTINUATIONS backstop rather than spin forever.
+                const bindings: TierBindings = { 'fast': makeStopBinding('m', 'more prose') };
+                const controller = new TierController({ bindings });
+                const result = await runAgentLoop({
+                    loopId: 'BT2',
+                    systemPrompt: '',
+                    initialMessages: [{ role: 'user', content: 'go' }],
+                    tools: [],
+                    tierController: controller,
+                    budget: { maxSteps: 20, maxTokens: 1_000_000, maxToolCalls: 40 },
+                    treatBareTextAsFinal: false,
+                    bareTextContinuationNudge: 'call a tool',
+                    stopWhen: () => false,
+                });
+                // 3 continuations then the 4th bare-text turn trips the cap.
+                assert.strictEqual(result.steps.length, 4, 'terminates at the bare-text cap');
+                assert.strictEqual(result.finishReason, 'stop');
+                assert.ok(result.steps.length < 20, 'does not exhaust the step budget');
             },
         },
         {
@@ -213,8 +348,8 @@ async function run(): Promise<void> {
                     },
                 });
                 const bindings: TierBindings = {
-                    'local-fast': {
-                        tier: 'local-fast',
+                    'fast': {
+                        tier: 'fast',
                         providerId: 'mock',
                         modelId: 'loopy',
                         resolve: () => model,
@@ -240,7 +375,7 @@ async function run(): Promise<void> {
         {
             name: 'aborts when abort signal fires before start',
             fn: async () => {
-                const bindings: TierBindings = { 'local-fast': makeStopBinding('m', 'ignored') };
+                const bindings: TierBindings = { 'fast': makeStopBinding('m', 'ignored') };
                 const controller = new TierController({ bindings });
                 const ac = new AbortController();
                 ac.abort();
@@ -260,7 +395,7 @@ async function run(): Promise<void> {
         {
             name: 'emits trace events',
             fn: async () => {
-                const bindings: TierBindings = { 'local-fast': makeStopBinding('m', 'ok') };
+                const bindings: TierBindings = { 'fast': makeStopBinding('m', 'ok') };
                 const controller = new TierController({ bindings });
                 const bus = new TraceBus();
                 const events: string[] = [];
@@ -283,7 +418,7 @@ async function run(): Promise<void> {
             name: 'tool exception is captured as recoverable=false error',
             fn: async () => {
                 const bindings: TierBindings = {
-                    'local-fast': makeToolThenStopBinding('m', 'noop', { value: 'hi' }, 'after'),
+                    'fast': makeToolThenStopBinding('m', 'noop', { value: 'hi' }, 'after'),
                 };
                 const throwingTool: ToolDef = {
                     name: 'noop',
@@ -312,7 +447,7 @@ async function run(): Promise<void> {
             fn: async () => {
                 const exec = { count: 0 };
                 const bindings: TierBindings = {
-                    'local-fast': makeToolThenStopBinding('m', 'noop', { value: 'approved' }, 'should not be reached'),
+                    'fast': makeToolThenStopBinding('m', 'noop', { value: 'approved' }, 'should not be reached'),
                 };
                 const controller = new TierController({ bindings, policy: { allowEscalation: false } });
                 const result = await runAgentLoop({

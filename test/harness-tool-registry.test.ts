@@ -41,13 +41,13 @@ async function run(): Promise<void> {
             fn: () => {
                 const reg = new ToolRegistry();
                 reg.register(makeTool('open-all'));
-                reg.register(makeTool('online-only', ['online']));
-                reg.register(makeTool('local-fast-only', ['local-fast']));
+                reg.register(makeTool('online-only', ['stronger']));
+                reg.register(makeTool('local-fast-only', ['fast']));
 
-                const fast = reg.forTier('local-fast').map((t) => t.name).sort();
+                const fast = reg.forTier('fast').map((t) => t.name).sort();
                 assert.deepStrictEqual(fast, ['local-fast-only', 'open-all']);
 
-                const online = reg.forTier('online').map((t) => t.name).sort();
+                const online = reg.forTier('stronger').map((t) => t.name).sort();
                 assert.deepStrictEqual(online, ['online-only', 'open-all']);
             },
         },
@@ -58,7 +58,7 @@ async function run(): Promise<void> {
                 reg.register(makeTool('a'));
                 reg.register(makeTool('b'));
                 reg.register(makeTool('c'));
-                const out = reg.forTier('local-fast', ['a', 'c']).map((t) => t.name).sort();
+                const out = reg.forTier('fast', ['a', 'c']).map((t) => t.name).sort();
                 assert.deepStrictEqual(out, ['a', 'c']);
             },
         },
@@ -67,8 +67,8 @@ async function run(): Promise<void> {
             fn: () => {
                 const reg = new ToolRegistry();
                 reg.register(makeTool('a'));
-                reg.register(makeTool('b', ['online']));
-                const out = reg.forTier('local-fast', ['a', 'b']).map((t) => t.name);
+                reg.register(makeTool('b', ['stronger']));
+                const out = reg.forTier('fast', ['a', 'b']).map((t) => t.name);
                 assert.deepStrictEqual(out, ['a']);
             },
         },

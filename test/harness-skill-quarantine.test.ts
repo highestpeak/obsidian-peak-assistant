@@ -20,7 +20,7 @@ function toolThenStop(toolName: string, args: any, finalText = 'fin'): TierBindi
 		textStepChunks({ text: finalText }),
 	]);
 	return {
-		tier: 'local-fast',
+		tier: 'fast',
 		providerId: 'mock',
 		modelId: 'mock',
 		resolve: () => model,
@@ -61,7 +61,7 @@ function permissiveSkill(): CompiledSkill {
 
 async function testStrictSkillRejectsDisallowedTool(): Promise<void> {
 	const executed = { count: 0 };
-	const bindings: TierBindings = { 'local-fast': toolThenStop('vault.delete', {}) };
+	const bindings: TierBindings = { 'fast': toolThenStop('vault.delete', {}) };
 	const controller = new TierController({ bindings, policy: { allowEscalation: false } });
 
 	const result = await runAgentLoop({
@@ -83,7 +83,7 @@ async function testStrictSkillRejectsDisallowedTool(): Promise<void> {
 
 async function testStrictSkillAllowsWhitelistedTool(): Promise<void> {
 	const executed = { count: 0 };
-	const bindings: TierBindings = { 'local-fast': toolThenStop('vault.read', {}) };
+	const bindings: TierBindings = { 'fast': toolThenStop('vault.read', {}) };
 	const controller = new TierController({ bindings, policy: { allowEscalation: false } });
 
 	const result = await runAgentLoop({
@@ -103,7 +103,7 @@ async function testStrictSkillAllowsWhitelistedTool(): Promise<void> {
 
 async function testPermissiveSkillPassesThrough(): Promise<void> {
 	const executed = { count: 0 };
-	const bindings: TierBindings = { 'local-fast': toolThenStop('web.fetch', {}) };
+	const bindings: TierBindings = { 'fast': toolThenStop('web.fetch', {}) };
 	const controller = new TierController({ bindings, policy: { allowEscalation: false } });
 
 	const result = await runAgentLoop({
@@ -123,7 +123,7 @@ async function testPermissiveSkillPassesThrough(): Promise<void> {
 
 async function testNoSkillMeansLegacyBehaviour(): Promise<void> {
 	const executed = { count: 0 };
-	const bindings: TierBindings = { 'local-fast': toolThenStop('anything', {}) };
+	const bindings: TierBindings = { 'fast': toolThenStop('anything', {}) };
 	const controller = new TierController({ bindings, policy: { allowEscalation: false } });
 
 	const result = await runAgentLoop({

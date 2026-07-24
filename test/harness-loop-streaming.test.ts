@@ -58,7 +58,7 @@ import {
 
 function bindOne(modelId: string, model: MockLanguageModelV3): TierBinding {
     return {
-        tier: 'local-fast',
+        tier: 'fast',
         providerId: 'mock',
         modelId,
         resolve: () => model,
@@ -113,7 +113,7 @@ tests.push({
             ],
             textStepChunks({ text: 'done' }),
         ]);
-        const bindings: TierBindings = { 'local-fast': bindOne('m', model) };
+        const bindings: TierBindings = { 'fast': bindOne('m', model) };
         const controller = new TierController({ bindings, policy: { allowEscalation: false } });
         const exec = { count: 0 };
         const events: AgentLoopStreamEvent[] = [];
@@ -187,7 +187,7 @@ tests.push({
             }),
             textStepChunks({ text: 'done' }),
         ]);
-        const bindings: TierBindings = { 'local-fast': bindOne('m', model) };
+        const bindings: TierBindings = { 'fast': bindOne('m', model) };
         const controller = new TierController({ bindings, policy: { allowEscalation: false } });
         const exec = { count: 0 };
         const stream: AgentLoopStreamEvent[] = [];
@@ -266,7 +266,7 @@ tests.push({
         const model = makeStreamModel('m', [
             textStepChunksSplit({ deltas: ['ab', 'cd'] }),
         ]);
-        const bindings: TierBindings = { 'local-fast': bindOne('m', model) };
+        const bindings: TierBindings = { 'fast': bindOne('m', model) };
         const controller = new TierController({ bindings, policy: { allowEscalation: false } });
         const stream: AgentLoopStreamEvent[] = [];
         const bus = new TraceBus();
@@ -314,7 +314,7 @@ tests.push({
                 },
             ],
         ]);
-        const bindings: TierBindings = { 'local-fast': bindOne('m', model) };
+        const bindings: TierBindings = { 'fast': bindOne('m', model) };
         const controller = new TierController({ bindings });
         const stream: AgentLoopStreamEvent[] = [];
 
@@ -346,7 +346,7 @@ tests.push({
                 ] as any),
             }),
         });
-        const bindings: TierBindings = { 'local-fast': bindOne('boom', model) };
+        const bindings: TierBindings = { 'fast': bindOne('boom', model) };
         const controller = new TierController({ bindings, policy: { allowEscalation: false } });
 
         const result = await runAgentLoop({
@@ -371,7 +371,7 @@ tests.push({
         // when the abort signal fires. Simpler: pre-abort so streamText
         // rejects immediately.
         const model = makeStreamModel('m', [textStepChunks({ text: 'x' })]);
-        const bindings: TierBindings = { 'local-fast': bindOne('m', model) };
+        const bindings: TierBindings = { 'fast': bindOne('m', model) };
         const controller = new TierController({ bindings });
         const ac = new AbortController();
         ac.abort();
@@ -397,7 +397,7 @@ tests.push({
             toolStepChunks({ toolName: 'write', input: { value: 'v' } }),
             textStepChunks({ text: 'done' }),
         ]);
-        const bindings: TierBindings = { 'local-fast': bindOne('m', model) };
+        const bindings: TierBindings = { 'fast': bindOne('m', model) };
         const controller = new TierController({ bindings, policy: { allowEscalation: false } });
         const exec = { count: 0 };
         const guard = new PermissionGuard({ mode: 'ask' });
@@ -489,7 +489,7 @@ tests.push({
             toolStepChunks({ toolName: 'write', input: { value: 'v' } }),
             textStepChunks({ text: 'done' }),
         ]);
-        const bindings: TierBindings = { 'local-fast': bindOne('m', model) };
+        const bindings: TierBindings = { 'fast': bindOne('m', model) };
         const controller = new TierController({ bindings, policy: { allowEscalation: false } });
         const exec = { count: 0 };
         const guard = new PermissionGuard({ mode: 'ask' });
@@ -524,7 +524,7 @@ tests.push({
             toolStepChunks({ toolName: 'write', input: { value: 'v' } }),
             textStepChunks({ text: 'done' }),
         ]);
-        const bindings: TierBindings = { 'local-fast': bindOne('m', model) };
+        const bindings: TierBindings = { 'fast': bindOne('m', model) };
         const controller = new TierController({ bindings, policy: { allowEscalation: false } });
         const exec = { count: 0 };
         const guard = new PermissionGuard({ mode: 'ask' });
@@ -551,7 +551,7 @@ tests.push({
             toolStepChunks({ toolName: 'write', input: { value: 'v' } }),
             textStepChunks({ text: 'done' }),
         ]);
-        const bindings: TierBindings = { 'local-fast': bindOne('m', model) };
+        const bindings: TierBindings = { 'fast': bindOne('m', model) };
         const controller = new TierController({ bindings, policy: { allowEscalation: false } });
         const exec = { count: 0 };
         const guard = new PermissionGuard({ mode: 'ask' });
@@ -627,7 +627,7 @@ tests.push({
                 },
             }),
         ]);
-        const bindings: TierBindings = { 'local-fast': bindOne('m', model) };
+        const bindings: TierBindings = { 'fast': bindOne('m', model) };
         const controller = new TierController({ bindings });
         const result = await runAgentLoop({
             loopId: 'stream-budget',
@@ -649,7 +649,7 @@ tests.push({
             toolStepChunks({ toolName: 'write', input: { value: 'v' } }),
             textStepChunks({ text: 'done' }),
         ]);
-        const bindings: TierBindings = { 'local-fast': bindOne('m', model) };
+        const bindings: TierBindings = { 'fast': bindOne('m', model) };
         const controller = new TierController({ bindings, policy: { allowEscalation: false } });
         const exec = { count: 0 };
         const guard = new PermissionGuard({

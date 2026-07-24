@@ -64,7 +64,7 @@ export interface VaultSearchStartOptions {
 }
 
 /**
- * Harness tier: local-deep by default; TierController escalates to `online`
+ * Harness tier: `research` by default; TierController escalates to `stronger`
  * if step scores drop.
  */
 export class VaultSearchAgent {
@@ -125,6 +125,23 @@ export class VaultSearchAgent {
             }
         }
 
+        // 2b. Proceed nudge: the playbook prompt requires a text-only planning
+        //     turn before the first tool call. The harness would otherwise treat
+        //     that bare-text step as a final answer and stop before any search
+        //     runs (see AgentLoop `treatBareTextAsFinal`). We pass
+        //     `treatBareTextAsFinal: false` below and this nudge to prod the
+        //     model onward if it stalls on prose. Render failure is non-fatal —
+        //     the loop still continues on bare text without the nudge.
+        let bareTextContinuationNudge: string | undefined;
+        try {
+            bareTextContinuationNudge = await this.aiServiceManager.renderPrompt(
+                PromptId.AiAnalysisProceedNudge,
+                null,
+            );
+        } catch (err) {
+            console.warn('[VaultSearchAgent] failed to render proceed nudge', err);
+        }
+
         // 3. Tool wiring: reuse the harness-compatible vault tools + optional
         //    web search wrapper (SDK-library usage — allowed).
         const submitState = createSubmitPlanState();
@@ -171,7 +188,7 @@ export class VaultSearchAgent {
         try {
             tierController = new TierController({
                 bindings,
-                policy: { preferred: 'local-deep' },
+                policy: { preferred: 'research' },
                 loopId,
             });
         } catch (err) {
@@ -257,6 +274,11 @@ export class VaultSearchAgent {
             trace,
             budget: { maxSteps: 20, maxTokens: 200_000, maxToolCalls: 40 },
             abortSignal: opts.signal,
+            // Completion is defined SOLELY by vault_submit_plan succeeding — a
+            // text-only planning turn (which the playbook mandates before the
+            // first tool call) must not be mistaken for a final answer.
+            treatBareTextAsFinal: false,
+            bareTextContinuationNudge,
             stopWhen: (step) =>
                 step.toolResults.some(
                     (r) => r.toolName === VAULT_SUBMIT_PLAN_TOOL_NAME && r.ok === true,

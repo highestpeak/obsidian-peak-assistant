@@ -22,7 +22,7 @@ const STUB_PLUGIN_ID = 'peak-assistant-test';
 function makeBinding(text: string): TierBinding {
     const model = makeStreamModel('mock-fast', [textStepChunks({ text })]);
     return {
-        tier: 'local-fast',
+        tier: 'fast',
         providerId: 'mock',
         modelId: 'mock-fast',
         resolve: () => model,
@@ -33,9 +33,9 @@ function makeBinding(text: string): TierBinding {
 
 function makeTierController(text: string): TierController {
     const bindings: TierBindings = {
-        'local-fast': makeBinding(text),
+        'fast': makeBinding(text),
     };
-    return new TierController({ bindings, policy: { preferred: 'local-fast' } });
+    return new TierController({ bindings, policy: { preferred: 'fast' } });
 }
 
 // ─── harness path ────────────────────────────────────────────────────────────

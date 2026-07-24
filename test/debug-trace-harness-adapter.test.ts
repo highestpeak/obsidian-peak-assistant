@@ -35,7 +35,7 @@ console.log('debug-trace-harness-adapter: end-to-end mapping');
 	bus.emit('step_start', {
 		loopId: 'loop-1',
 		stepIndex: 0,
-		tier: 'local-fast',
+		tier: 'fast',
 		modelId: 'haiku-4-5',
 	});
 	bus.emit('tool_call', {
@@ -57,7 +57,7 @@ console.log('debug-trace-harness-adapter: end-to-end mapping');
 	bus.emit('step_finish', {
 		loopId: 'loop-1',
 		stepIndex: 0,
-		tier: 'local-fast',
+		tier: 'fast',
 		modelId: 'haiku-4-5',
 		providerId: 'anthropic',
 		promptTokens: 100,
@@ -71,8 +71,8 @@ console.log('debug-trace-harness-adapter: end-to-end mapping');
 	});
 	bus.emit('tier_escalate', {
 		loopId: 'loop-1',
-		from: 'local-fast',
-		to: 'local-deep',
+		from: 'fast',
+		to: 'research',
 		reason: 'self-score too low',
 		auto: true,
 	});
@@ -99,13 +99,13 @@ console.log('debug-trace-harness-adapter: end-to-end mapping');
 	assert.ok(root, 'loop span should exist');
 	assert.strictEqual(root!.params?.finishReason, 'final_answer');
 	assert.strictEqual(root!.decisions?.[0].decision, 'promote');
-	assert.ok(root!.decisions?.[0].target?.includes('local-fast→local-deep'));
+	assert.ok(root!.decisions?.[0].target?.includes('fast→research'));
 
 	// Step span exists as child of loop span
 	const step = finished.spans.find((s) => s.kind === 'model.call');
 	assert.ok(step);
 	assert.strictEqual(step!.parentSpanId, root!.spanId);
-	assert.strictEqual(step!.params?.tier, 'local-fast');
+	assert.strictEqual(step!.params?.tier, 'fast');
 	assert.strictEqual(step!.metrics?.totalTokens, 140);
 
 	// Tool span is a child of the step span
@@ -163,7 +163,7 @@ console.log('debug-trace-harness-adapter: off mode is a no-op');
 	bus.emit('step_start', {
 		loopId: 'x',
 		stepIndex: 0,
-		tier: 'local-fast',
+		tier: 'fast',
 		modelId: 'm',
 	});
 	bus.emit('loop_finish', { loopId: 'x', finishReason: 'ok', durationMs: 1 });

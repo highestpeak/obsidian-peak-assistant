@@ -5,7 +5,7 @@ import { DEFAULT_TIER_CAPABILITIES } from '@/service/agents/harness/tier/types';
 import { TraceBus } from '@/service/agents/harness/trace/events';
 import type { StepResult } from '@/service/agents/harness/trace/events';
 
-function fakeBinding(tier: 'local-fast' | 'local-deep' | 'online') {
+function fakeBinding(tier: 'fast' | 'research' | 'stronger') {
     return {
         tier,
         providerId: `provider-${tier}`,
@@ -20,7 +20,7 @@ function step(over: Partial<StepResult> = {}): StepResult {
     return {
         loopId: 'L',
         stepIndex: 0,
-        tier: 'local-fast',
+        tier: 'fast',
         modelId: 'm',
         providerId: 'p',
         promptTokens: 0,
@@ -41,23 +41,23 @@ async function run(): Promise<void> {
             name: 'starts at preferred tier when bound',
             fn: () => {
                 const bindings: TierBindings = {
-                    'local-fast': fakeBinding('local-fast'),
-                    'local-deep': fakeBinding('local-deep'),
-                    online: fakeBinding('online'),
+                    'fast': fakeBinding('fast'),
+                    'research': fakeBinding('research'),
+                    stronger: fakeBinding('stronger'),
                 };
-                const c = new TierController({ bindings, policy: { preferred: 'local-fast' } });
-                assert.strictEqual(c.currentTier(), 'local-fast');
+                const c = new TierController({ bindings, policy: { preferred: 'fast' } });
+                assert.strictEqual(c.currentTier(), 'fast');
             },
         },
         {
             name: 'falls forward when preferred tier unbound',
             fn: () => {
                 const bindings: TierBindings = {
-                    'local-deep': fakeBinding('local-deep'),
-                    online: fakeBinding('online'),
+                    'research': fakeBinding('research'),
+                    stronger: fakeBinding('stronger'),
                 };
-                const c = new TierController({ bindings, policy: { preferred: 'local-fast' } });
-                assert.strictEqual(c.currentTier(), 'local-deep');
+                const c = new TierController({ bindings, policy: { preferred: 'fast' } });
+                assert.strictEqual(c.currentTier(), 'research');
             },
         },
         {
@@ -70,8 +70,8 @@ async function run(): Promise<void> {
             name: 'auto-escalates on low score below threshold',
             fn: () => {
                 const bindings: TierBindings = {
-                    'local-fast': fakeBinding('local-fast'),
-                    online: fakeBinding('online'),
+                    'fast': fakeBinding('fast'),
+                    stronger: fakeBinding('stronger'),
                 };
                 const trace = new TraceBus();
                 let upgraded = 0;
@@ -80,7 +80,7 @@ async function run(): Promise<void> {
                     bindings,
                     trace,
                     loopId: 'L',
-                    policy: { preferred: 'local-fast', escalationThreshold: 0.95, maxEscalationsPerLoop: 1 },
+                    policy: { preferred: 'fast', escalationThreshold: 0.95, maxEscalationsPerLoop: 1 },
                 });
                 // step with one failed tool → low schema pass-rate → low score
                 const bad = step({
@@ -88,7 +88,7 @@ async function run(): Promise<void> {
                     toolResults: [{ toolName: 't', toolCallId: '1', ok: false, payload: 'err', durationMs: 1 }],
                 });
                 c.onStepFinish(bad);
-                assert.strictEqual(c.currentTier(), 'online');
+                assert.strictEqual(c.currentTier(), 'stronger');
                 assert.strictEqual(upgraded, 1);
                 assert.strictEqual(c.escalationCount(), 1);
             },
@@ -97,63 +97,63 @@ async function run(): Promise<void> {
             name: 'respects maxEscalationsPerLoop cap',
             fn: () => {
                 const bindings: TierBindings = {
-                    'local-fast': fakeBinding('local-fast'),
-                    'local-deep': fakeBinding('local-deep'),
-                    online: fakeBinding('online'),
+                    'fast': fakeBinding('fast'),
+                    'research': fakeBinding('research'),
+                    stronger: fakeBinding('stronger'),
                 };
                 const c = new TierController({
                     bindings,
-                    policy: { preferred: 'local-fast', escalationThreshold: 1.0, maxEscalationsPerLoop: 1 },
+                    policy: { preferred: 'fast', escalationThreshold: 1.0, maxEscalationsPerLoop: 1 },
                 });
                 c.onStepFinish(step({ text: "I'm not sure" }));
-                assert.strictEqual(c.currentTier(), 'local-deep');
+                assert.strictEqual(c.currentTier(), 'research');
                 c.onStepFinish(step({ text: "I'm not sure" }));
                 // cap hit → stays at local-deep
-                assert.strictEqual(c.currentTier(), 'local-deep');
+                assert.strictEqual(c.currentTier(), 'research');
             },
         },
         {
             name: 'no escalation when allowEscalation=false',
             fn: () => {
                 const bindings: TierBindings = {
-                    'local-fast': fakeBinding('local-fast'),
-                    online: fakeBinding('online'),
+                    'fast': fakeBinding('fast'),
+                    stronger: fakeBinding('stronger'),
                 };
                 const c = new TierController({
                     bindings,
-                    policy: { preferred: 'local-fast', allowEscalation: false, escalationThreshold: 1.0 },
+                    policy: { preferred: 'fast', allowEscalation: false, escalationThreshold: 1.0 },
                 });
                 c.onStepFinish(step({ text: "I'm not sure" }));
-                assert.strictEqual(c.currentTier(), 'local-fast');
+                assert.strictEqual(c.currentTier(), 'fast');
             },
         },
         {
             name: 'no escalation when already at top bound tier',
             fn: () => {
                 const bindings: TierBindings = {
-                    'local-fast': fakeBinding('local-fast'),
+                    'fast': fakeBinding('fast'),
                 };
                 const c = new TierController({
                     bindings,
-                    policy: { preferred: 'local-fast', escalationThreshold: 1.0 },
+                    policy: { preferred: 'fast', escalationThreshold: 1.0 },
                 });
                 c.onStepFinish(step({ text: "I'm not sure" }));
-                assert.strictEqual(c.currentTier(), 'local-fast');
+                assert.strictEqual(c.currentTier(), 'fast');
             },
         },
         {
             name: 'forcedScore=0 forces upgrade (escalate tool path)',
             fn: () => {
                 const bindings: TierBindings = {
-                    'local-fast': fakeBinding('local-fast'),
-                    online: fakeBinding('online'),
+                    'fast': fakeBinding('fast'),
+                    stronger: fakeBinding('stronger'),
                 };
                 const c = new TierController({
                     bindings,
-                    policy: { preferred: 'local-fast', escalationThreshold: 0.6 },
+                    policy: { preferred: 'fast', escalationThreshold: 0.6 },
                 });
                 c.onStepFinish(step({ text: 'normal answer' }), { forcedScore: 0 });
-                assert.strictEqual(c.currentTier(), 'online');
+                assert.strictEqual(c.currentTier(), 'stronger');
             },
         },
     ];

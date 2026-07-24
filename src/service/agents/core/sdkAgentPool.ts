@@ -252,10 +252,16 @@ export async function* queryWithProfile(
     const nodeInfo = await ensureNodeInfo();
 
     const registry = ProfileRegistry.getInstance();
-    const agentConfig = registry.getActiveAgentConfig();
-    const agentFastConfig = registry.getActiveAgentFastConfig();
-    const resolvedPrimary = modelRegistry.resolveApiModelId(profile.kind, agentConfig?.modelId ?? profile.primaryModel);
-    const resolvedFast = modelRegistry.resolveApiModelId(profile.kind, agentFastConfig?.modelId ?? profile.fastModel);
+    // Resolve through the single slot resolver so the SDK path uses the SAME
+    // bindings as the harness: primary = Research (localDeepConfig ?? agent
+    // role), fast = Fast Lookup (localFastConfig ?? agent-fast role). Before
+    // unification this read the agent/agent-fast roles directly and ignored the
+    // Research/Fast Lookup tier picks, so report generation / Graph / Review
+    // could silently diverge from what "Research" was set to.
+    const researchConfig = registry.resolveSlot('research');
+    const fastConfig = registry.resolveSlot('fast');
+    const resolvedPrimary = modelRegistry.resolveApiModelId(profile.kind, researchConfig?.modelId ?? profile.primaryModel);
+    const resolvedFast = modelRegistry.resolveApiModelId(profile.kind, fastConfig?.modelId ?? profile.fastModel);
     // When caller specifies a modelOverride (e.g. Fast Auto Review wants Haiku),
     // point ALL model env vars at that model so the SDK can't fall back to the
     // primary even when it requests the "sonnet" class internally.

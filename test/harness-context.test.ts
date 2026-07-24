@@ -29,7 +29,7 @@ import { makeStreamModel, textStepChunks } from './harness-fixtures/mockStreamMo
 function makeStopBinding(text: string): TierBinding {
     const model = makeStreamModel('m', [textStepChunks({ text })]);
     return {
-        tier: 'local-fast',
+        tier: 'fast',
         providerId: 'mock',
         modelId: 'm',
         resolve: () => model,
@@ -186,7 +186,7 @@ async function run(): Promise<void> {
         {
             name: 'AgentLoop emits context_compacted when memory blows past budget',
             fn: async () => {
-                const bindings: TierBindings = { 'local-fast': makeStopBinding('ok') };
+                const bindings: TierBindings = { 'fast': makeStopBinding('ok') };
                 const controller = new TierController({ bindings });
                 const bus = new TraceBus();
                 const events: ContextCompactedEvent[] = [];
@@ -231,7 +231,7 @@ async function run(): Promise<void> {
         {
             name: 'AgentLoop without context manager is unchanged (no compaction trace)',
             fn: async () => {
-                const bindings: TierBindings = { 'local-fast': makeStopBinding('ok') };
+                const bindings: TierBindings = { 'fast': makeStopBinding('ok') };
                 const controller = new TierController({ bindings });
                 const bus = new TraceBus();
                 const events: ContextCompactedEvent[] = [];

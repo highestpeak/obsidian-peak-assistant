@@ -243,7 +243,7 @@ async function testVaultSearchReceiptEquivalence(): Promise<void> {
     // is what the harness would do inside `wrapTool`.
     const result = await vaultTool.execute(
         { query: 'alpha notes' },
-        { loopId: 'run-vault', stepIndex: 0, tier: 'local-fast', signal: new AbortController().signal },
+        { loopId: 'run-vault', stepIndex: 0, tier: 'fast', signal: new AbortController().signal },
     );
     assert.strictEqual(result.ok, true);
     assert.ok(

@@ -13,7 +13,6 @@ import type { LanguageModel } from 'ai';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { createLanguageModel } from '@/core/providers/vercel/provider-factory';
 import type { HarnessSettings } from '@/core/config/settingsTypes';
-import type { RoleConfig } from '@/core/profiles/types';
 import type { ModelTier, TierBinding, TierBindings, TierCapabilities } from './types';
 import { DEFAULT_TIER_CAPABILITIES } from './types';
 
@@ -23,9 +22,9 @@ export interface TierBindingOptions {
 }
 
 const TIER_DEFAULTS: Record<ModelTier, { p: number; ctx: number }> = {
-    'local-fast': { p: 0.87, ctx: 32_768 },
-    'local-deep': { p: 0.93, ctx: 131_072 },
-    online: { p: 0.99, ctx: 200_000 },
+    fast: { p: 0.87, ctx: 32_768 },
+    research: { p: 0.93, ctx: 131_072 },
+    stronger: { p: 0.99, ctx: 200_000 },
 };
 
 function bindingFromRole(
@@ -51,38 +50,26 @@ function bindingFromRole(
 }
 
 /**
- * Resolve a HarnessSettings.tier RoleConfig to the {profile, modelId} shape
- * bindingFromRole expects. Returns null if profile lookup fails.
- */
-function resolveTierConfig(cfg: RoleConfig | null): { profile: { id: string; kind: string }; modelId: string } | null {
-    if (!cfg) return null;
-    const profile = ProfileRegistry.getInstance().getProfileById(cfg.profileId);
-    if (!profile) return null;
-    return { profile, modelId: cfg.modelId };
-}
-
-/**
  * Build the tier→binding map.
  *
- * Reads HarnessSettings tier configs first, then falls back to the existing
- * StatusBar role configs (agent-fast / agent / chat). Tiers with neither
- * source bound are absent from the result; TierController handles missing
- * tiers by falling forward to the next bound one.
+ * Resolves each tier through `ProfileRegistry.resolveSlot` — the single
+ * model-binding resolver shared with the SDK path (`queryWithProfile`). We
+ * first refresh the registry's tier mirror from the settings we were handed so
+ * the harness and any concurrent SDK call resolve identical bindings. The three
+ * cascade tiers (fast / research / stronger) ARE slots, so each maps to itself.
+ * Tiers with neither an explicit pick nor a role fallback are absent;
+ * TierController falls forward to the next bound tier.
  */
 export function defaultTierBindings(harness: HarnessSettings): TierBindings {
     const reg = ProfileRegistry.getInstance();
+    reg.setTierConfigs({
+        fast: harness.localFastConfig ?? null,
+        research: harness.localDeepConfig ?? null,
+        stronger: harness.onlineConfig ?? null,
+    });
     return {
-        'local-fast': bindingFromRole(
-            'local-fast',
-            resolveTierConfig(harness.localFastConfig) ?? reg.getActiveAgentFastConfig(),
-        ),
-        'local-deep': bindingFromRole(
-            'local-deep',
-            resolveTierConfig(harness.localDeepConfig) ?? reg.getActiveAgentConfig(),
-        ),
-        online: bindingFromRole(
-            'online',
-            resolveTierConfig(harness.onlineConfig) ?? reg.getActiveChatConfig(),
-        ),
+        fast: bindingFromRole('fast', reg.resolveSlot('fast')),
+        research: bindingFromRole('research', reg.resolveSlot('research')),
+        stronger: bindingFromRole('stronger', reg.resolveSlot('stronger')),
     };
 }

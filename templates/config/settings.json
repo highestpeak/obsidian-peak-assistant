@@ -107,26 +107,32 @@
     },
     "aiBehavior": {
       "sectionTitle": "AI behavior",
+      "usedByLabel": "Used by",
       "conversation": {
         "title": "Conversation",
-        "desc": "Chat and daily writing."
+        "desc": "Chat and daily writing.",
+        "usedBy": "The main Chat view and its “Auto” default model. Also the fallback for the ✦ Refine button (when Fast Lookup is unset) and for escalation (when “Use stronger model” is unset)."
       },
       "fastLookup": {
         "title": "Fast Lookup",
-        "desc": "Single-step replies, ~1s (works well with small local models). Also drives the ✦ Refine button in Vault Search."
+        "desc": "Single-step replies, ~1s (works well with small local models). Also drives the ✦ Refine button in Vault Search.",
+        "usedBy": "The ✦ Refine button and natural-language search parsing, the “Fast” mode of Auto/Vault Review, the follow-up chat tabs in AI Analysis results, and mid-run context compaction."
       },
       "research": {
         "title": "Research",
-        "desc": "Multi-step reasoning and long documents."
+        "desc": "Multi-step reasoning and long documents.",
+        "usedBy": "Vault Search / AI Analysis (the main run and Continue Analysis) plus most deep work: report generation, AI Graph, the “complete” mode of Auto/Vault Review, Copilot inline actions, and knowledge intuition."
       },
       "strongerModel": {
         "title": "Use stronger model when needed",
         "desc": "Cloud model used as the fallback when local tiers are not enough.",
-        "offChip": "Off"
+        "offChip": "Off",
+        "usedBy": "Escalation only: deep runs switch to this model when a step’s confidence is low (cascade must be on). No feature starts here."
       },
       "knowledgeIndex": {
         "title": "Knowledge Index",
-        "desc": "Model used to power semantic vault search."
+        "desc": "Model used to power semantic vault search.",
+        "usedBy": "Semantic / vector vault search at query time and building the search index. Not a chat model."
       },
       "change": "Change",
       "setup": "Set up",

@@ -68,8 +68,8 @@ function testRegistryStructurallySatisfiesPort(): void {
 	assert.strictEqual(port.has('z'), false);
 	assert.strictEqual(port.get('a')?.name, 'a');
 	assert.strictEqual(port.all().length, 2);
-	assert.strictEqual(port.forTier('online').length, 2);
-	assert.strictEqual(port.forTier('online', ['a']).length, 1);
+	assert.strictEqual(port.forTier('stronger').length, 2);
+	assert.strictEqual(port.forTier('stronger', ['a']).length, 1);
 	console.log('PASS: registryStructurallySatisfiesPort');
 }
 

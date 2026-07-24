@@ -174,7 +174,7 @@ function toolCtx(loopId = 'run-tool-1'): ToolExecCtx {
     return {
         loopId,
         stepIndex: 0,
-        tier: 'local-fast' as any,
+        tier: 'fast' as any,
         signal: new AbortController().signal,
     };
 }

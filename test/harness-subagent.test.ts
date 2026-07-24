@@ -23,7 +23,7 @@ import {
 function scriptedBinding(modelId: string, steps: StepChunks[]): TierBinding {
     const model = makeStreamModel(modelId, steps);
     return {
-        tier: 'local-fast',
+        tier: 'fast',
         providerId: 'mock',
         modelId,
         resolve: () => model,
@@ -69,7 +69,7 @@ async function run(): Promise<void> {
                 // parent controller binding (child uses same bindings but its
                 // own controller instance).
                 const parentBindings: TierBindings = {
-                    'local-fast': scriptedBinding('child', [textResp('child answer', 7)]),
+                    'fast': scriptedBinding('child', [textResp('child answer', 7)]),
                 };
                 const parentController = new TierController({
                     bindings: parentBindings,
@@ -116,8 +116,8 @@ async function run(): Promise<void> {
                 // uses parentController.getBindings(); we want the child to
                 // resolve to a different model. Approach: separate
                 // TierController + dispatcher injected via the tool factory.
-                const parentBindings: TierBindings = { 'local-fast': parentBinding };
-                const childBindings: TierBindings = { 'local-fast': childBinding };
+                const parentBindings: TierBindings = { 'fast': parentBinding };
+                const childBindings: TierBindings = { 'fast': childBinding };
                 const parentController = new TierController({
                     bindings: parentBindings,
                     policy: { allowEscalation: false },
@@ -180,7 +180,7 @@ async function run(): Promise<void> {
                 ]);
                 const childBinding = scriptedBinding('child', [textResp('child done')]);
 
-                const parentBindings: TierBindings = { 'local-fast': parentBinding };
+                const parentBindings: TierBindings = { 'fast': parentBinding };
                 const parentController = new TierController({
                     bindings: parentBindings,
                     policy: { allowEscalation: false },
@@ -195,16 +195,16 @@ async function run(): Promise<void> {
                 // dedicated child binding by injecting it under the same
                 // tier in a separate sub-only TierController via a custom
                 // dispatcher — but auto-inject uses the parent controller.
-                // So: put child binding under 'local-deep' and have the def
+                // So: put child binding under 'research' and have the def
                 // request that tier.
-                parentBindings['local-deep'] = childBinding;
+                parentBindings['research'] = childBinding;
 
                 const def: SubAgentDefinition = {
                     name: 'worker',
                     description: 'does work',
                     systemPrompt: 'work',
                     tools: [],
-                    tier: 'local-deep',
+                    tier: 'research',
                     maxTurns: 2,
                 };
                 const result = await runAgentLoop({
@@ -240,8 +240,8 @@ async function run(): Promise<void> {
                     toolCallResp('child.tool', { value: 'x' }),
                 ]);
                 const parentBindings: TierBindings = {
-                    'local-fast': parentBinding,
-                    'local-deep': childBinding,
+                    'fast': parentBinding,
+                    'research': childBinding,
                 };
                 const childExec = { count: 0 };
                 const parentController = new TierController({
@@ -253,7 +253,7 @@ async function run(): Promise<void> {
                     description: 'never stops',
                     systemPrompt: 'loop',
                     tools: [mkTool('child.tool', childExec)],
-                    tier: 'local-deep',
+                    tier: 'research',
                     maxTurns: 1,
                 };
                 const result = await runAgentLoop({

@@ -96,11 +96,13 @@ export interface SettingsStrings {
         };
         aiBehavior: {
             sectionTitle: string;
-            conversation: { title: string; desc: string };
-            fastLookup: { title: string; desc: string };
-            research: { title: string; desc: string };
-            strongerModel: { title: string; desc: string; offChip: string };
-            knowledgeIndex: { title: string; desc: string };
+            /** Heading shown at the top of every row's "who uses this" hover card. */
+            usedByLabel: string;
+            conversation: { title: string; desc: string; usedBy: string };
+            fastLookup: { title: string; desc: string; usedBy: string };
+            research: { title: string; desc: string; usedBy: string };
+            strongerModel: { title: string; desc: string; offChip: string; usedBy: string };
+            knowledgeIndex: { title: string; desc: string; usedBy: string };
             change: string;
             setup: string;
             fallsBack: string;

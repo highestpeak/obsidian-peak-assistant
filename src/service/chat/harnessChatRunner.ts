@@ -161,10 +161,10 @@ async function* runHarnessStream(
 	const { systemPrompt, harnessMessages } = splitSystemAndConvert(req.messages);
 
 	// Single-tier binding: Chat is unified today (no cascade), so we bind the
-	// resolved profile+model to `local-fast` and disable escalation. If future
-	// work wires a cascade for Chat, extend TierBindings here.
+	// resolved profile+model to the `fast` tier slot and disable escalation. If
+	// future work wires a cascade for Chat, extend TierBindings here.
 	const binding: TierBinding = {
-		tier: 'local-fast',
+		tier: 'fast',
 		providerId: req.profile.id ?? req.profile.kind ?? 'unknown',
 		modelId: req.modelId,
 		resolve: () => languageModel,
@@ -172,7 +172,7 @@ async function* runHarnessStream(
 		estimatedSingleStepP: 0.99,
 	};
 	const controller = new TierController({
-		bindings: { 'local-fast': binding },
+		bindings: { fast: binding },
 		policy: { allowEscalation: false, maxEscalationsPerLoop: 0 },
 		loopId: req.loopId,
 	});

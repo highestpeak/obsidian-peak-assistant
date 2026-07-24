@@ -192,7 +192,7 @@ async function run(): Promise<void> {
                     agentName: 'vault-review',
                     insight: 'compactions help on long sessions',
                     createdAt: now,
-                    metadata: { tier: 'local-deep', steps: 3 },
+                    metadata: { tier: 'research', steps: 3 },
                 });
                 assert.ok(stored.id && stored.id > 0, 'insert should return autoincrement id');
 
@@ -206,7 +206,7 @@ async function run(): Promise<void> {
                 const byAgent = await store.listByAgent('vault-review');
                 assert.strictEqual(byAgent.length, 2);
                 assert.strictEqual(byAgent[0].insight, 'compactions help on long sessions');
-                assert.deepStrictEqual(byAgent[0].metadata, { tier: 'local-deep', steps: 3 });
+                assert.deepStrictEqual(byAgent[0].metadata, { tier: 'research', steps: 3 });
                 assert.strictEqual(byAgent[1].insight, 'older insight');
                 assert.strictEqual(byAgent[1].metadata, undefined);
 

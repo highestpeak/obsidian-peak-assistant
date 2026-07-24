@@ -11,8 +11,9 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Cpu, Database, MessageSquare, Search as SearchIcon, Shield, Sparkle, Zap } from 'lucide-react';
+import { ChevronDown, Cpu, Database, Info, MessageSquare, Search as SearchIcon, Shield, Sparkle, Zap } from 'lucide-react';
 import { Row, Chip, Segmented } from '@/ui/components/primitives';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/ui/component/shared-ui/hover-card';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { RoleModelPicker } from '../components/RoleModelPicker';
 import { DEFAULT_HARNESS_SETTINGS, type MyPluginSettings, type HarnessSettings } from '@/core/config/settingsTypes';
@@ -81,11 +82,11 @@ export function AISetupTab({ settings, settingsUpdates }: AISetupTabProps) {
     const baseHarness = (): HarnessSettings => settings.harnessSettings ?? DEFAULT_HARNESS_SETTINGS;
 
     const behaviorRows: BehaviorPickerRowProps[] = [
-        { icon: MessageSquare, title: aiSetupCopy.aiBehavior.conversation.title, desc: aiSetupCopy.aiBehavior.conversation.desc, bound: chatBound, fallbackText: null, changeLabel: aiSetupCopy.aiBehavior.change, setupLabel: aiSetupCopy.aiBehavior.setup, profiles: [...cloudProfiles, ...localProfiles], onWrite: writeConversation },
-        { icon: Zap, title: aiSetupCopy.aiBehavior.fastLookup.title, desc: aiSetupCopy.aiBehavior.fastLookup.desc, bound: harness?.localFastConfig ?? null, fallbackText: aiSetupCopy.aiBehavior.fallsBack, changeLabel: aiSetupCopy.aiBehavior.change, setupLabel: aiSetupCopy.aiBehavior.setup, profiles: [...localProfiles, ...cloudProfiles], onWrite: (cfg) => writeTier('fastLookup', cfg) },
-        { icon: SearchIcon, title: aiSetupCopy.aiBehavior.research.title, desc: aiSetupCopy.aiBehavior.research.desc, bound: harness?.localDeepConfig ?? null, fallbackText: aiSetupCopy.aiBehavior.fallsBack, changeLabel: aiSetupCopy.aiBehavior.change, setupLabel: aiSetupCopy.aiBehavior.setup, profiles: [...localProfiles, ...cloudProfiles], onWrite: (cfg) => writeTier('research', cfg) },
-        { icon: Sparkle, title: aiSetupCopy.aiBehavior.strongerModel.title, desc: aiSetupCopy.aiBehavior.strongerModel.desc, bound: harness?.onlineConfig ?? null, fallbackText: aiSetupCopy.aiBehavior.strongerModel.offChip, changeLabel: aiSetupCopy.aiBehavior.change, setupLabel: aiSetupCopy.aiBehavior.setup, profiles: cloudProfiles, onWrite: (cfg) => writeTier('strongerModel', cfg) },
-        { icon: Database, title: aiSetupCopy.aiBehavior.knowledgeIndex.title, desc: aiSetupCopy.aiBehavior.knowledgeIndex.desc, bound: embeddingBound, fallbackText: null, changeLabel: aiSetupCopy.aiBehavior.change, setupLabel: aiSetupCopy.aiBehavior.setup, profiles: allProfiles, onWrite: writeEmbedding, modelFilter: isEmbeddingModel },
+        { icon: MessageSquare, title: aiSetupCopy.aiBehavior.conversation.title, desc: aiSetupCopy.aiBehavior.conversation.desc, usedBy: aiSetupCopy.aiBehavior.conversation.usedBy, bound: chatBound, fallbackText: null, changeLabel: aiSetupCopy.aiBehavior.change, setupLabel: aiSetupCopy.aiBehavior.setup, profiles: [...cloudProfiles, ...localProfiles], onWrite: writeConversation },
+        { icon: Zap, title: aiSetupCopy.aiBehavior.fastLookup.title, desc: aiSetupCopy.aiBehavior.fastLookup.desc, usedBy: aiSetupCopy.aiBehavior.fastLookup.usedBy, bound: harness?.localFastConfig ?? null, fallbackText: aiSetupCopy.aiBehavior.fallsBack, changeLabel: aiSetupCopy.aiBehavior.change, setupLabel: aiSetupCopy.aiBehavior.setup, profiles: [...localProfiles, ...cloudProfiles], onWrite: (cfg) => writeTier('fastLookup', cfg) },
+        { icon: SearchIcon, title: aiSetupCopy.aiBehavior.research.title, desc: aiSetupCopy.aiBehavior.research.desc, usedBy: aiSetupCopy.aiBehavior.research.usedBy, bound: harness?.localDeepConfig ?? null, fallbackText: aiSetupCopy.aiBehavior.fallsBack, changeLabel: aiSetupCopy.aiBehavior.change, setupLabel: aiSetupCopy.aiBehavior.setup, profiles: [...localProfiles, ...cloudProfiles], onWrite: (cfg) => writeTier('research', cfg) },
+        { icon: Sparkle, title: aiSetupCopy.aiBehavior.strongerModel.title, desc: aiSetupCopy.aiBehavior.strongerModel.desc, usedBy: aiSetupCopy.aiBehavior.strongerModel.usedBy, bound: harness?.onlineConfig ?? null, fallbackText: aiSetupCopy.aiBehavior.strongerModel.offChip, changeLabel: aiSetupCopy.aiBehavior.change, setupLabel: aiSetupCopy.aiBehavior.setup, profiles: cloudProfiles, onWrite: (cfg) => writeTier('strongerModel', cfg) },
+        { icon: Database, title: aiSetupCopy.aiBehavior.knowledgeIndex.title, desc: aiSetupCopy.aiBehavior.knowledgeIndex.desc, usedBy: aiSetupCopy.aiBehavior.knowledgeIndex.usedBy, bound: embeddingBound, fallbackText: null, changeLabel: aiSetupCopy.aiBehavior.change, setupLabel: aiSetupCopy.aiBehavior.setup, profiles: allProfiles, onWrite: writeEmbedding, modelFilter: isEmbeddingModel },
     ];
 
     return (
@@ -176,10 +177,42 @@ interface BaseRowProps {
     icon: React.ElementType;
     title: string;
     desc: string;
+    /** "Who actually consumes this binding" copy, shown in the info hover card. */
+    usedBy: string;
     bound: RoleConfig | string | null;
     fallbackText: string | null;
     changeLabel: string;
     setupLabel: string;
+}
+
+/**
+ * Info affordance next to each behavior row's title. Hovering reveals which
+ * product features actually consume this binding (and its fallback), so users
+ * can tell e.g. that "Research" is what drives Vault Search / AI Analysis.
+ */
+function UsedByHint({ title, usedBy }: { title: string; usedBy: string }) {
+    const strings = useSettingsStrings();
+    return (
+        <HoverCard openDelay={120} closeDelay={80}>
+            <HoverCardTrigger asChild>
+                <button
+                    type="button"
+                    aria-label={`${title} — ${strings.aiSetup.aiBehavior.usedByLabel}`}
+                    className="pktw-inline-flex pktw-items-center pktw-text-pk-foreground-faint hover:pktw-text-pk-foreground pktw-bg-transparent pktw-border-0 pktw-p-0 pktw-cursor-help"
+                >
+                    <Info size={13} />
+                </button>
+            </HoverCardTrigger>
+            <HoverCardContent align="start" className="pktw-w-80">
+                <span className="pktw-block pktw-text-[11px] pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-text-pk-foreground-muted pktw-mb-1">
+                    {strings.aiSetup.aiBehavior.usedByLabel}
+                </span>
+                <span className="pktw-block pktw-text-pk-sm pktw-leading-snug pktw-text-pk-foreground">
+                    {usedBy}
+                </span>
+            </HoverCardContent>
+        </HoverCard>
+    );
 }
 
 interface BehaviorPickerRowProps extends BaseRowProps {
@@ -230,7 +263,12 @@ function BehaviorPickerRow(props: BehaviorPickerRowProps) {
         <Row>
             <Row.Icon><props.icon size={16} /></Row.Icon>
             <Row.Body>
-                <Row.Title>{props.title}</Row.Title>
+                <Row.Title>
+                    <span className="pktw-inline-flex pktw-items-center pktw-gap-1.5">
+                        {props.title}
+                        <UsedByHint title={props.title} usedBy={props.usedBy} />
+                    </span>
+                </Row.Title>
                 <Row.Desc>{props.desc}</Row.Desc>
             </Row.Body>
             <Row.Right>

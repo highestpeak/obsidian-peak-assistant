@@ -42,7 +42,7 @@ console.log('debug-trace-live: harness permission_check → permission.check spa
 	bus.emit('step_start', {
 		loopId: 'loop-1',
 		stepIndex: 0,
-		tier: 'local-fast',
+		tier: 'fast',
 		modelId: 'haiku-4-5',
 	});
 	// Allow event

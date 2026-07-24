@@ -13,7 +13,7 @@ import type { LanguageModel } from 'ai';
 export type { ModelTier } from '@/core/types/model-tier';
 import type { ModelTier } from '@/core/types/model-tier';
 
-export const TIER_ORDER: readonly ModelTier[] = ['local-fast', 'local-deep', 'online'] as const;
+export const TIER_ORDER: readonly ModelTier[] = ['fast', 'research', 'stronger'] as const;
 
 export interface TierCapabilities {
     toolCalling: boolean;
@@ -45,7 +45,7 @@ export interface TierPolicy {
 }
 
 export const DEFAULT_TIER_POLICY: TierPolicy = {
-    preferred: 'local-fast',
+    preferred: 'fast',
     allowEscalation: true,
     escalationThreshold: 0.6,
     maxEscalationsPerLoop: 1,

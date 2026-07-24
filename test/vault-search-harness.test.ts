@@ -99,7 +99,7 @@ function submitPlanModelBinding(planInput: any, extraCalls = 0): TierBinding {
     steps.push(textStepChunks({ text: 'unexpected extra step' }));
     const model = makeStreamModel('vault-mock', steps);
     return {
-        tier: 'local-deep',
+        tier: 'research',
         providerId: 'mock',
         modelId: 'vault-mock',
         resolve: () => model,
@@ -128,10 +128,10 @@ function buildTools() {
 
 async function testSubmitPlanStopsLoop() {
     const plan = samplePlan();
-    const bindings: TierBindings = { 'local-deep': submitPlanModelBinding(plan) };
+    const bindings: TierBindings = { 'research': submitPlanModelBinding(plan) };
     const controller = new TierController({
         bindings,
-        policy: { preferred: 'local-deep', allowEscalation: false },
+        policy: { preferred: 'research', allowEscalation: false },
     });
     const { tools, submitState } = buildTools();
 
@@ -161,10 +161,10 @@ async function testSubmitPlanStopsLoop() {
 
 async function testTraceExposesSubmitInput() {
     const plan = samplePlan();
-    const bindings: TierBindings = { 'local-deep': submitPlanModelBinding(plan) };
+    const bindings: TierBindings = { 'research': submitPlanModelBinding(plan) };
     const controller = new TierController({
         bindings,
-        policy: { preferred: 'local-deep', allowEscalation: false },
+        policy: { preferred: 'research', allowEscalation: false },
     });
     const { tools } = buildTools();
 
@@ -212,10 +212,10 @@ async function testTraceExposesSubmitInput() {
 
 async function testReadToolThenSubmitPlan() {
     const plan = samplePlan();
-    const bindings: TierBindings = { 'local-deep': submitPlanModelBinding(plan, 1) };
+    const bindings: TierBindings = { 'research': submitPlanModelBinding(plan, 1) };
     const controller = new TierController({
         bindings,
-        policy: { preferred: 'local-deep', allowEscalation: false },
+        policy: { preferred: 'research', allowEscalation: false },
     });
     const { tools } = buildTools();
 

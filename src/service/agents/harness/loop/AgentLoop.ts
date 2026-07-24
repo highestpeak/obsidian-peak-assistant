@@ -49,6 +49,13 @@ import { renderMemoryBlocks } from '../memory/MemoryBlock';
 
 const ESCALATE_TOOL_NAME = 'escalate';
 
+/**
+ * Safety cap for `treatBareTextAsFinal === false`: after this many consecutive
+ * text-only steps with no progress toward `stopWhen`, give up and finalize
+ * rather than re-prompting a model that refuses to call its tools.
+ */
+const MAX_BARE_TEXT_CONTINUATIONS = 3;
+
 interface CapturedToolEvent {
     call: ToolCallTrace;
     result: ToolResultTrace;
@@ -121,7 +128,7 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
                 steps: [],
                 finishReason,
                 status: deriveAgentLoopStatus(finishReason),
-                tierUsage: { 'local-fast': 0, 'local-deep': 0, online: 0 },
+                tierUsage: { fast: 0, research: 0, stronger: 0 },
                 totalTokens: 0,
                 totalToolCalls: 0,
                 durationMs: Date.now() - startedAt,
@@ -131,9 +138,9 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
     }
 
     const tierUsage: Record<ModelTier, number> = {
-        'local-fast': 0,
-        'local-deep': 0,
-        online: 0,
+        fast: 0,
+        research: 0,
+        stronger: 0,
     };
 
     // Auto-inject subagent tools. The parent loop never sees subagent
@@ -160,6 +167,13 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
     let totalToolCalls = 0;
     let finishReason: AgentLoopFinishReason = 'max_steps';
     let errorMessage: string | undefined;
+
+    // When `treatBareTextAsFinal === false`, a text-only step is an
+    // intermediate planning turn rather than a final answer (see config docs).
+    // We continue the loop instead, but cap consecutive bare-text steps so a
+    // model that never calls a tool can't burn the whole step budget on prose.
+    const treatBareTextAsFinal = cfg.treatBareTextAsFinal ?? true;
+    let consecutiveBareText = 0;
 
     while (true) {
         const stop = evaluateStopConditions(
@@ -515,9 +529,23 @@ export async function runAgentLoop(cfg: AgentLoopConfig): Promise<AgentLoopResul
             }
         }
 
+        // A step that called tools resets the bare-text streak.
+        if (callTraces.length > 0) consecutiveBareText = 0;
+
         if (hasFinalAnswer(step)) {
-            finishReason = 'stop';
-            break;
+            // Chat-style callers (no domain stop condition): text == done.
+            // Terminal-tool callers (`treatBareTextAsFinal: false`) instead keep
+            // going — this bare-text step is the model's planning turn before it
+            // calls its first tool, not a finished answer. Cap the streak so a
+            // model that never calls a tool still terminates.
+            if (treatBareTextAsFinal || consecutiveBareText >= MAX_BARE_TEXT_CONTINUATIONS) {
+                finishReason = 'stop';
+                break;
+            }
+            consecutiveBareText += 1;
+            if (cfg.bareTextContinuationNudge) {
+                messages.push({ role: 'user', content: cfg.bareTextContinuationNudge });
+            }
         }
     }
 
