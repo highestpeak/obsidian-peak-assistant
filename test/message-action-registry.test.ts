@@ -70,9 +70,11 @@ function testInlinePlusOverflowNoDuplicates(): void {
 	for (const id of inlineIds) {
 		assert(!overflowIds.has(id), `action ${id} appeared in BOTH inline and overflow`);
 	}
-	// Every applicable action must appear exactly once across the two lists.
+	// Every applicable action EXCEPT sub-actions (which live in a parent's hover
+	// menu, not the row) must appear exactly once across the two lists.
+	const partitionable = actions.filter((a) => !a.subOf);
 	const total = layout.inline.length + layout.overflow.length;
-	assert.strictEqual(total, actions.length, 'layout should partition applicable actions exactly');
+	assert.strictEqual(total, partitionable.length, 'layout should partition non-sub actions exactly');
 }
 
 function testInlineDescendingPriority(): void {
@@ -92,7 +94,54 @@ function testMoreHiddenWhenAllInline(): void {
 	const msg = makeAssistantMessage({ debugRunId: 'run-1' });
 	const actions = getApplicableActions(msg).filter((a) => !a.destructive);
 	const wide = computeActionLayout(9999, actions, 40);
-	assert.strictEqual(wide.overflow.length, 0, 'wide layout must produce no overflow');
+	// Wide layout demotes NO adaptive by width; the only overflow left is the
+	// always-overflow Trace action.
+	assert(
+		wide.overflow.every((a) => a.overflowOnly),
+		'wide layout overflow must contain only overflowOnly actions',
+	);
+}
+
+// ── Sub-actions & overflowOnly semantics ─────────────────────────────────────
+
+function testSubActionsNeverInLayout(): void {
+	const msg = makeAssistantMessage({ debugRunId: 'run-1' });
+	const actions = getApplicableActions(msg).filter((a) => !a.destructive);
+	// copy-markdown / copy-json are sub-actions of copy — hover-menu only.
+	for (const id of ['copy-markdown', 'copy-json']) {
+		assert(actions.some((a) => a.id === id), `${id} must still be an applicable action`);
+	}
+	for (const width of [1, 300, 9999]) {
+		const layout = computeActionLayout(width, actions, 100, 28);
+		const ids = new Set([...layout.inline, ...layout.overflow].map((a) => a.id));
+		assert(!ids.has('copy-markdown'), `copy-markdown must never appear in layout (width ${width})`);
+		assert(!ids.has('copy-json'), `copy-json must never appear in layout (width ${width})`);
+	}
+	// And the two sub-actions declare copy as their parent.
+	assert.strictEqual(actions.find((a) => a.id === 'copy-markdown')!.subOf, 'copy');
+	assert.strictEqual(actions.find((a) => a.id === 'copy-json')!.subOf, 'copy');
+}
+
+function testTraceAlwaysOverflow(): void {
+	const msg = makeAssistantMessage({ debugRunId: 'run-1' });
+	const actions = getApplicableActions(msg).filter((a) => !a.destructive);
+	const trace = actions.find((a) => a.id === 'trace')!;
+	assert.strictEqual(trace.overflowOnly, true, 'trace must be overflowOnly');
+	assert.strictEqual(trace.persistent, false, 'trace must no longer be persistent');
+	// Even at absurd width, Trace is in overflow, never inline.
+	for (const width of [300, 9999, 100000]) {
+		const layout = computeActionLayout(width, actions, 40, 28);
+		const inlineIds = new Set(layout.inline.map((a) => a.id));
+		const overflowIds = new Set(layout.overflow.map((a) => a.id));
+		assert(!inlineIds.has('trace'), `trace must not be inline at width ${width}`);
+		assert(overflowIds.has('trace'), `trace must be in overflow at width ${width}`);
+	}
+	// Trace carries a two-line detail for the More popover.
+	assert(
+		typeof trace.detail?.(DEFAULT_CHAT_STUDIO_STRINGS) === 'string' &&
+			trace.detail!(DEFAULT_CHAT_STUDIO_STRINGS).length > 0,
+		'trace must expose a non-empty detail string',
+	);
 }
 
 function testCoreNeverInOverflow(): void {
@@ -208,6 +257,8 @@ async function run(): Promise<void> {
 		['inline + overflow contain no duplicates', testInlinePlusOverflowNoDuplicates],
 		['inline actions sorted by descending priority', testInlineDescendingPriority],
 		['More hidden when everything fits inline', testMoreHiddenWhenAllInline],
+		['sub-actions never appear in the row layout', testSubActionsNeverInLayout],
+		['Trace is overflowOnly and always in overflow', testTraceAlwaysOverflow],
 		['core actions never appear in overflow', testCoreNeverInOverflow],
 		['Trace click calls openTraceSurface not copyDebugTrace', testTraceClickCallsOpenSurface],
 		['Trace click is a no-op without debugRunId', testTraceClickNoopWithoutDebugRunId],

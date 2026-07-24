@@ -1,8 +1,6 @@
-import { Platform, Notice } from 'obsidian';
+import { Platform } from 'obsidian';
 import React, { useEffect, useMemo, useState } from 'react';
 import { RelatedNotesPanel } from '@/ui/view/ambient-panel/RelatedNotesPanel';
-import { FileAtlasPanel, type AtlasMode } from '@/ui/view/file-atlas/FileAtlasPanel';
-import type { FileAtlasHostPort } from '@/ui/view/file-atlas/FileAtlasHostPort';
 import {
 	ChevronRight,
 	History,
@@ -39,11 +37,10 @@ import {
 	settingReadiness,
 } from './PickerReadinessAdapters';
 
-// Copilot Modal tab bar — three tabs, all focused on the current document.
-// Vault Intelligence moved to Search Modal (rendered via `hideTabBar=true`,
-// initialTab='vault'). Settings moved to command palette only.
+// Copilot Modal tab bar. Atlas moved out to the standalone File Atlas surface
+// (see FileAtlasModal); Vault Intelligence lives in the Search Modal (rendered
+// via `hideTabBar=true`, initialTab='vault'); Settings is command-palette only.
 const SCOPE_TABS: Array<{ id: IntentTabId; title: string; subtitle: string; placeholder: string }> = [
-	{ id: 'atlas',    title: 'Atlas',            subtitle: '= Structure',  placeholder: 'Search this document’s blocks, links, and saved insights...' },
 	{ id: 'document', title: 'Document Copilot', subtitle: '= Copilot',    placeholder: 'Search or ask in current document... (@ note, ? help)' },
 	{ id: 'ambient',  title: 'Ambient',          subtitle: '= Related',    placeholder: 'Related notes around your cursor...' },
 ];
@@ -85,25 +82,6 @@ export const CopilotPickerContent: React.FC<{
 	const vaultState = useVaultTabState(0);
 	const [vaultRecords, setVaultRecords] = useState<VaultReviewHistoryRecord[]>([]);
 	const [vaultRecordsLoading, setVaultRecordsLoading] = useState(true);
-
-	// File Atlas (Atlas tab) reveal/clipboard go through the app-composed
-	// navigation port, keeping runtime ownership out of the UI layer.
-	const { vaultNavigation } = useServiceContext();
-	const atlasHost = useMemo<FileAtlasHostPort>(() => ({
-		revealLine: (line: number) => {
-			const path = ctx?.file.path;
-			if (path && vaultNavigation) {
-				void vaultNavigation.openVaultPathAtLine(path, { line, newLeaf: false });
-			}
-			onClose?.();
-		},
-		copyToClipboard: (text: string) => {
-			void navigator.clipboard?.writeText(text);
-		},
-		notify: (message: string) => {
-			new Notice(message);
-		},
-	}), [vaultNavigation, ctx?.file.path, onClose]);
 
 	useEffect(() => {
 		if (activeTab !== 'vault') return;
@@ -174,39 +152,6 @@ export const CopilotPickerContent: React.FC<{
 				});
 		}
 	}, [activeTab, ctx, isMobile, vaultState, onAuto, onOpenVaultRecord]);
-
-	// The three document-scoped tabs (Atlas / Copilot / Ambient) all render
-	// through the File Atlas shell so the top (path + mode-nav) is identical and
-	// only the body swaps. Copilot (document) is wired in the main return below.
-	// Not used for hideTabBar (locked-scope) or the vault / setting tabs.
-	const switchMode = (mode: AtlasMode): void =>
-		setActiveTab(mode === 'atlas' ? 'atlas' : mode === 'ambient' ? 'ambient' : 'document');
-
-	if (!hideTabBar && ctx && (activeTab === 'atlas' || activeTab === 'ambient')) {
-		return (
-			<div className="pktw-h-full pktw-bg-pk-background">
-				<FileAtlasPanel
-					filePath={ctx.file.path}
-					displayPath={ctx.file.path}
-					content={ctx.content}
-					host={atlasHost}
-					fill
-					activeMode={activeTab === 'ambient' ? 'ambient' : 'atlas'}
-					onSwitchMode={switchMode}
-					bodySlot={activeTab === 'ambient' ? <RelatedNotesPanel /> : undefined}
-				/>
-			</div>
-		);
-	}
-
-	// No active note on a doc-scoped tab: minimal empty state.
-	if (!hideTabBar && !ctx && (activeTab === 'atlas' || activeTab === 'ambient')) {
-		return (
-			<div className="pktw-flex pktw-flex-col pktw-h-full pktw-bg-pk-background pktw-items-center pktw-justify-center pktw-text-sm pktw-text-pk-foreground-muted">
-				Open a note to use File Atlas.
-			</div>
-		);
-	}
 
 	const scopeBody = (
 		<div className="pktw-flex-1 pktw-overflow-y-auto pktw-px-7 pktw-py-5 pktw-flex pktw-flex-col pktw-gap-4">
@@ -303,26 +248,10 @@ export const CopilotPickerContent: React.FC<{
 		</div>
 	);
 
-	// Copilot (document) tab: same shell as Atlas / Ambient — shared top, the
-	// scope picker as the body.
-	if (!hideTabBar && ctx && activeTab === 'document') {
-		return (
-			<div className="pktw-h-full pktw-bg-pk-background">
-				<FileAtlasPanel
-					filePath={ctx.file.path}
-					displayPath={ctx.file.path}
-					content={ctx.content}
-					host={atlasHost}
-					fill
-					activeMode="copilot"
-					onSwitchMode={switchMode}
-					bodySlot={scopeBody}
-				/>
-			</div>
-		);
-	}
+	// Ambient shows related notes as its body; every other scope uses the shared
+	// scope picker body. All tabs render under the standard segmented tab bar.
+	const body = !hideTabBar && activeTab === 'ambient' ? <RelatedNotesPanel /> : scopeBody;
 
-	// Fallback: hideTabBar (locked scope) or the vault / setting tabs.
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-bg-pk-background">
 			{!hideTabBar && (
@@ -334,7 +263,7 @@ export const CopilotPickerContent: React.FC<{
 					</TabsList>
 				</Tabs>
 			)}
-			{scopeBody}
+			{body}
 		</div>
 	);
 };

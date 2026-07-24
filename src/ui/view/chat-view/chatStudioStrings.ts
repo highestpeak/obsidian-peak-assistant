@@ -407,6 +407,8 @@ export interface ChatStudioStrings {
 	};
 	messages: {
 		actionCopy: string;
+		/** Transient confirmation label shown on the Copy button after a copy. */
+		actionCopied: string;
 		actionRetry: string;
 		actionStar: string;
 		actionUnstar: string;
@@ -473,6 +475,8 @@ export interface ChatStudioStrings {
 		actionViewRawDetail: string;
 		actionCopyMarkdownDetail: string;
 		actionCopyJsonDetail: string;
+		/** Two-line detail for Trace in the More popover. */
+		actionTraceDetail: string;
 		/** Fallback reply-anchor preview when a message has no text body (F7). */
 		replyAnchorFallback: string;
 		/** Tool-id → human label (migrated out of ToolCallSummary.tsx, N5). */

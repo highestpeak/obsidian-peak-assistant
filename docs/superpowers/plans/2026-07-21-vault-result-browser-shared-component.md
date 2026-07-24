@@ -7,9 +7,16 @@ Date: 2026-07-21
 - Accepted static-mock boundary: `index.html`, `intelligence-lab.html` and `intelligence-ia-lab.html` keep a bounded Composer-owned relationship preview. Their expanded modal shows only a Result Browser reuse slot / contract marker and does not implement or visually clone Vault Search List / Folder / Graph, toolbar, layouts or inspector.
 - Not yet implemented in the production React runtime: Quick Search still owns store-bound List / Tree / Graph components, and there is no production Composer adapter yet. The DAG below is the required migration; a mock marker is not production reuse.
 
+Terminology clarification locked on 2026-07-22:
+
+- `ResultBrowser` is an internal shared component name, not a product destination or a navigation command.
+- Composer's `打开完整视图` stays inside Composer and browses the related-material snapshot that Composer already produced.
+- Vault Search / Quick Search are component donors and sibling consumers. Composer does not navigate to them, mount their host modal/store, or rerun their query lifecycle.
+- User-facing copy remains `相关材料` and `打开完整视图`; it must not expose `ResultBrowser` as a feature name.
+
 ## Objective
 
-Extract the production Vault Search result projections into one controlled React `ResultBrowser`, then make both Quick Search and Composer Related Materials consume it through host adapters. That production component package is the only expanded-browser UI source of truth. The docs mock may retain the compact Composer preview, but its modal exposes only the integration slot/contract and never implements browser internals or becomes runtime code.
+Extract the reusable result projections from the production Vault Search / Quick Search host into one controlled React `ResultBrowser`, then make both Quick Search and Composer Related Materials consume it through separate host adapters. In Composer, the component mounts inside a Composer-owned modal and receives the already-built immutable material snapshot; opening it neither navigates to Quick Search nor triggers another search. That production component package is the only expanded-browser UI source of truth. The docs mock may retain the compact Composer preview, but its modal exposes only the integration slot/contract and never implements browser internals or becomes runtime code.
 
 ## Impact contract
 
@@ -26,6 +33,7 @@ Extract the production Vault Search result projections into one controlled React
 3. List leaf IDs equal Tree file IDs. Graph result IDs are a subset and must include root plus selected item.
 4. View, density, collapse, preset, Semantic, selection and inspector changes never trigger search or snapshot rebuild.
 5. Browser owns presentation and scoped navigation. Host adapters own query, open/reveal policy, telemetry, inspector data and task/session side effects.
+6. Composer full-view open/close, focus restoration and session actions remain Composer-owned; the shared browser cannot redirect to or activate the Quick Search host.
 
 ## Execution DAG
 

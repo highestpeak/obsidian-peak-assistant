@@ -212,6 +212,7 @@
       reviewEditing: false,
       history: HISTORY.map((group) => ({ ...group, entries: group.entries.map((item) => ({ ...item })) })),
       historySelection: null,
+      historyExpandedGroups: new Set(),
       pickerMode: "capability",
       voiceActive: false,
       graph: { selectedNodeId: "source:knowledge-base", selectedSourceId: "knowledge-base", resultView: "graph", density: "detailed", collapsedFolders: [], preset: "constellation", showSemantic: false, zoom: 1, panX: 0, panY: 0 },
@@ -412,7 +413,7 @@
             <div class="brief-head-actions"><button type="button" data-start-session>问 Copilot</button><button type="button" data-refresh-brief>${icon("refresh")}更新建议</button><details class="sensing-control"><summary><i class="${this.state.sensingMode === "off" ? "is-paused" : ""}"></i>建议更新 · ${sensingLabels[this.state.sensingMode]} ${icon("chevron-down")}</summary><div class="sensing-menu" role="group" aria-label="建议更新设置"><span class="sensing-menu-label">什么时候检查新建议</span><button type="button" role="radio" aria-checked="${this.state.sensingMode === "off"}" data-sensing-mode="off"><span><strong>仅手动</strong><small>只在你点击“更新建议”时检查</small></span><i></i></button><button type="button" role="radio" aria-checked="${this.state.sensingMode === "smart"}" data-sensing-mode="smart"><span><strong>停笔后更新 <em>推荐</em></strong><small>切换文件或停止编辑后检查</small></span><i></i></button><button type="button" role="radio" aria-checked="${this.state.sensingMode === "continuous"}" data-sensing-mode="continuous"><span><strong>编辑时定期更新</strong><small>编辑期间定期检查；消耗更多 token</small></span><i></i></button><span class="sensing-menu-label is-secondary">发现新建议后</span><button class="auto-run-setting" type="button" role="checkbox" aria-checked="${this.state.autoRun}" data-toggle-auto-run><span><strong>自动准备待审改动</strong><small>符合规则时可继续生成候选；仍需你审阅</small></span><i></i></button><small class="sensing-menu-note">任何设置都不会自动接受或写入正文</small></div></details></div>
           </header>
           <section class="brief-section"><header class="section-title"><span><strong>接下来可能要做</strong><b>38</b><small>按影响与正文顺序排序</small></span></header><div class="suggestion-list">${suggestions}</div><button class="list-more" type="button" data-expand="suggestions">${this.state.expanded.suggestions ? "收起" : "查看全部 38 条建议"}</button></section>
-          <section class="brief-section"><header class="section-title"><span><strong>相关材料</strong><b>${this.state.sources.length}</b><small>作为建议依据，不直接改正文</small></span><button class="section-action" type="button" data-refresh-brief>${icon("refresh")}刷新</button></header>${this.graph ? this.graph.renderInline() : ""}<button class="list-more" type="button" data-open-materials="list">打开 Vault Search 结果浏览器</button></section>
+          <section class="brief-section"><header class="section-title"><span><strong>相关材料</strong><b>${this.state.sources.length}</b><small>作为建议依据，不直接改正文</small></span><button class="section-action" type="button" data-refresh-brief>${icon("refresh")}刷新</button></header>${this.graph ? this.graph.renderInline() : ""}<button class="list-more" type="button" data-open-materials="list">打开完整视图</button></section>
           <section class="brief-section"><header class="section-title"><span><strong>还没安放的想法</strong><b>19</b><small>不是待办，由你决定是否写入</small></span></header><div class="thought-list">${thoughts}</div><button class="list-more" type="button" data-expand="thoughts">${this.state.expanded.thoughts ? "收起" : "查看全部 19 条想法"}</button></section>
         </div>`;
     }
@@ -431,7 +432,7 @@
         return `<div class="run-inline-list" data-kind="insights">${INSIGHTS.map((insight, index) => `<article class="run-inline-insight"><span>${icon("spark")}</span><div><small>${escapeHtml(insight.severity)} · ${insight.sourceIds.length} 项依据</small><strong>${escapeHtml(insight.title)}</strong><p>${escapeHtml(insight.body)}</p><footer><button type="button" data-use-insight="${insight.id}">继续追问</button><button type="button" data-use-insight="${insight.id}" data-as-change>生成修改</button></footer></div><b>${String(index + 1).padStart(2, "0")}</b></article>`).join("")}</div>`;
       }
       if (this.state.runTab === "sources") {
-        return `<div class="run-inline-panel-head"><span>本轮冻结的材料</span><button type="button" data-open-materials="graph">${icon("network")}在 Vault Search 中查看</button></div><div class="run-inline-list" data-kind="sources">${this.state.sources.slice(0, 3).map((source) => `<article class="run-inline-source"><div><strong>${escapeHtml(source.title)}</strong><small>${escapeHtml(source.path)}</small><p>${escapeHtml(source.reason)}</p></div><b>${source.score}%</b><footer><button type="button" data-view-source="${source.id}">${icon("eye")}查看</button><button type="button" data-use-source="${source.id}">带入下一轮</button></footer></article>`).join("")}</div>`;
+        return `<div class="run-inline-panel-head"><span>本轮冻结的材料</span><button type="button" data-open-materials="graph">${icon("network")}打开完整视图</button></div><div class="run-inline-list" data-kind="sources">${this.state.sources.slice(0, 3).map((source) => `<article class="run-inline-source"><div><strong>${escapeHtml(source.title)}</strong><small>${escapeHtml(source.path)}</small><p>${escapeHtml(source.reason)}</p></div><b>${source.score}%</b><footer><button type="button" data-view-source="${source.id}">${icon("eye")}查看</button><button type="button" data-use-source="${source.id}">带入下一轮</button></footer></article>`).join("")}</div>`;
       }
       return `<div class="run-inline-trace-note"><span>4 秒 · 1 轮</span><small>只显示可验证动作，不展示模型私有推理</small></div><ol class="run-inline-trace">${TRACE.map((step) => `<li data-status="done"><time>${step.time}</time><i>✓</i><span><strong>${escapeHtml(step.label)}</strong><small>${escapeHtml(step.detail)}</small></span></li>`).join("")}</ol>`;
     }
@@ -471,8 +472,53 @@
     }
 
     renderHistory() {
-      const groups = this.state.history.map((group) => `<section class="history-day"><header><span>${escapeHtml(group.day)}</span><time>${escapeHtml(group.date)}</time></header><div class="history-list">${group.entries.map((entry) => `<button class="history-row" type="button" data-history-id="${entry.id}" data-origin="${entry.origin}"><i class="history-dot"></i><span class="history-copy"><span class="history-title"><strong>${escapeHtml(entry.title)}</strong><em class="origin-tag">${escapeHtml(entry.originLabel)}</em></span><small>${escapeHtml(entry.target)}</small></span><span class="history-meta"><time>${escapeHtml(entry.time)}</time><b>${escapeHtml(entry.delta)}</b></span></button>`).join("")}</div></section>`).join("");
-      this.query(".sidecar-content").innerHTML = `<div class="history-view"><header class="history-heading"><div><h2>已接受写入</h2><p>按日期与来源记录真实改变，不记录建议和生成过程。</p></div><b>${this.totalHistory()} 笔事务</b></header>${groups}</div>`;
+      const groups = this.state.history.map((group) => `<section class="history-day"><header><span>${escapeHtml(group.day)}</span><time>${escapeHtml(group.date)}</time></header><div class="history-list">${this.renderHistoryDay(group.entries)}</div></section>`).join("");
+      this.query(".sidecar-content").innerHTML = `<div class="history-view"><header class="history-heading"><div><h2>文档历史</h2><p>记录你的直接编辑、AI 辅助后接受、AI 后调整与系统回滚；不记录建议和生成过程。</p></div><b>${this.totalHistory()} 笔事务</b></header>${groups}</div>`;
+    }
+
+    renderHistoryRow(entry, nested = false) {
+      return `<button class="history-row${nested ? " is-nested" : ""}" type="button" data-history-id="${entry.id}" data-origin="${entry.origin}"><i class="history-dot"></i><span class="history-copy"><span class="history-title"><strong>${escapeHtml(entry.title)}</strong><em class="origin-tag">${escapeHtml(entry.originLabel)}</em></span><small>${escapeHtml(entry.target)}</small></span><span class="history-meta"><time>${escapeHtml(entry.time)}</time><b>${escapeHtml(entry.delta)}</b></span></button>`;
+    }
+
+    renderHistoryDay(entries) {
+      const display = [];
+      for (let index = 0; index < entries.length;) {
+        const entry = entries[index];
+        if (!entry.groupId) {
+          display.push(this.renderHistoryRow(entry));
+          index += 1;
+          continue;
+        }
+        const grouped = [];
+        while (entries[index]?.groupId === entry.groupId) {
+          grouped.push(entries[index]);
+          index += 1;
+        }
+        if (grouped.length === 1) {
+          display.push(this.renderHistoryRow(grouped[0]));
+          continue;
+        }
+        const expanded = this.state.historyExpandedGroups.has(entry.groupId);
+        const label = entry.groupLabel || (entry.origin === "user" ? "连续直接编辑" : "本轮 Copilot 写入");
+        display.push(`
+          <section class="history-batch" data-origin="${escapeHtml(entry.origin)}" data-history-group="${escapeHtml(entry.groupId)}">
+            <button class="history-batch-summary" type="button" data-history-group-toggle="${escapeHtml(entry.groupId)}" aria-expanded="${expanded}">
+              <i class="history-dot"></i>
+              <span class="history-copy"><span class="history-title"><strong>${escapeHtml(label)} · ${grouped.length} 处</strong><em class="origin-tag">${escapeHtml(entry.originLabel)}</em></span><small>${grouped.length} 笔独立事务 · 展开后可逐笔查看、定位与回滚</small></span>
+              <span class="history-meta"><time>${escapeHtml(grouped[0].time)}</time><b>${grouped.length} 笔</b>${icon("chevron-down")}</span>
+            </button>
+            <div class="history-batch-entries" ${expanded ? "" : "hidden"}>${grouped.map((item) => this.renderHistoryRow(item, true)).join("")}</div>
+          </section>`);
+      }
+      return display.join("");
+    }
+
+    toggleHistoryGroup(groupId) {
+      if (!groupId) return;
+      if (this.state.historyExpandedGroups.has(groupId)) this.state.historyExpandedGroups.delete(groupId);
+      else this.state.historyExpandedGroups.add(groupId);
+      this.renderHistory();
+      requestAnimationFrame(() => this.queryAll("[data-history-group-toggle]").find((button) => button.dataset.historyGroupToggle === groupId)?.focus({ preventScroll: true }));
     }
 
     renderComposer() {
@@ -546,7 +592,7 @@
     }
 
     openGraph(view = "graph", trigger) {
-      if (!this.graph) return this.notify("Vault Search 结果浏览器尚未加载");
+      if (!this.graph) return this.notify("完整资料视图尚未加载");
       this.graphTrigger = trigger || document.activeElement;
       this.state.graph.resultView = ["list", "tree", "graph"].includes(view) ? view : "graph";
       this.renderGraphDialog();
@@ -656,10 +702,33 @@
           delta: "+1 −1",
           origin: "ai",
           originLabel: "AI 辅助 · 已接受",
+          groupId: "copilot-run-current",
+          groupLabel: "本轮 Copilot 写入",
           before: change.before,
           after: change.after,
         });
       });
+    }
+
+    recordDocumentTransaction(transaction) {
+      if (!transaction?.id || this.findHistory(transaction.id)) return;
+      const today = this.state.history[0];
+      if (!today) return;
+      today.entries.unshift({
+        id: transaction.id,
+        title: transaction.title || "文档编辑",
+        target: transaction.target || "当前文档",
+        time: transaction.time || "现在",
+        delta: transaction.delta || "+1 −1",
+        origin: transaction.origin || "user",
+        originLabel: transaction.originLabel || "你直接编辑",
+        groupId: transaction.groupId || null,
+        groupLabel: transaction.groupLabel || null,
+        before: transaction.before || "",
+        after: transaction.after || "",
+      });
+      this.renderShell();
+      if (this.state.mode === "history") this.renderHistory();
     }
 
     resolveReview(action) {
@@ -837,6 +906,7 @@
       if (button.dataset.reviewAction) return this.resolveReview(button.dataset.reviewAction);
       if (button.dataset.stopRun !== undefined) { this.state.running = false; clearTimeout(this.runTimer); this.render(); return this.notify("本轮运行已停止"); }
       if (button.dataset.redirectRun !== undefined) { const prompt = this.query(".prompt-input"); if (prompt) prompt.value = "先处理风险最高的改动"; return this.updatePromptState(); }
+      if (button.dataset.historyGroupToggle) return this.toggleHistoryGroup(button.dataset.historyGroupToggle);
       if (button.dataset.historyId) return this.openHistory(button.dataset.historyId);
       if (button.dataset.closeHistory !== undefined) return this.closeHistory();
       if (button.dataset.locateHistory !== undefined) { const entry = this.findHistory(this.state.historySelection); this.closeHistory({ restoreFocus: false }); this.emit("peak:intelligence-history-locate", { entry }); return; }

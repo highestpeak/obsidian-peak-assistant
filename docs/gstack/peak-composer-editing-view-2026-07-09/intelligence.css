@@ -1612,11 +1612,13 @@
 }
 
 .peak-intelligence-root .history-heading > b {
+  flex: 0 0 auto;
   padding: 4px 8px;
   color: var(--pk-text-secondary, #6c757d);
   background: var(--pk-surface-sunken, #f3f4f6);
   border-radius: var(--pk-radius-pill, 999px);
   font-size: 9px;
+  white-space: nowrap;
 }
 
 .peak-intelligence-root .history-day {
@@ -1652,6 +1654,56 @@
   background: var(--pk-surface-raised, #fafafa);
 }
 
+.peak-intelligence-root .history-batch {
+  border-bottom: 1px solid var(--pk-border-soft, #ececef);
+}
+
+.peak-intelligence-root .history-batch-summary {
+  width: 100%;
+  min-height: 62px;
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr) auto;
+  gap: 9px;
+  padding: 10px 3px;
+  border: 0;
+  background: color-mix(in srgb, var(--pk-surface-raised, #fafafa) 72%, transparent);
+  text-align: left;
+}
+
+.peak-intelligence-root .history-batch-summary:hover {
+  background: var(--pk-surface-raised, #f7f8fa);
+}
+
+.peak-intelligence-root .history-batch-summary .history-meta svg {
+  width: 13px;
+  height: 13px;
+  margin-top: 2px;
+  color: var(--pk-text-tertiary, #999);
+  transition: transform 140ms ease;
+}
+
+.peak-intelligence-root .history-batch-summary[aria-expanded="true"] .history-meta svg {
+  transform: rotate(180deg);
+}
+
+.peak-intelligence-root .history-batch-entries {
+  margin-left: 12px;
+  padding-left: 10px;
+  border-left: 1px solid var(--pk-border, #dfe3e8);
+}
+
+.peak-intelligence-root .history-batch-entries[hidden] {
+  display: none;
+}
+
+.peak-intelligence-root .history-batch-entries .history-row:last-child {
+  border-bottom: 0;
+}
+
+.peak-intelligence-root .history-row.is-nested {
+  min-height: 52px;
+}
+
 .peak-intelligence-root .history-dot {
   width: 7px;
   height: 7px;
@@ -1667,6 +1719,19 @@
 
 .peak-intelligence-root .history-row[data-origin="user"] .history-dot {
   background: var(--pk-info, #3b82f6);
+}
+
+.peak-intelligence-root .history-batch[data-origin="ai"] .history-dot,
+.peak-intelligence-root .history-batch[data-origin="mixed"] .history-dot {
+  background: var(--pk-accent, #7c3aed);
+}
+
+.peak-intelligence-root .history-batch[data-origin="user"] .history-dot {
+  background: var(--pk-info, #3b82f6);
+}
+
+.peak-intelligence-root .history-batch[data-origin="system"] .history-dot {
+  background: var(--pk-warning, #f59e0b);
 }
 
 .peak-intelligence-root .history-row[data-origin="system"] .history-dot {

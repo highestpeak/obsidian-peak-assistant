@@ -89,6 +89,19 @@ export interface MessageActionDefinition {
 	persistent: boolean;
 	/** Destructive actions always go to More's destructive group with confirm. */
 	destructive?: boolean;
+	/**
+	 * Always lives in the More popover (regular group), never inline, regardless
+	 * of width — for debug-grade affordances the user rarely reaches for (Trace).
+	 * Unlike `destructive`, it does not gate behind a confirm dialog.
+	 */
+	overflowOnly?: boolean;
+	/**
+	 * When set, this action is a SUB-action of the parent action id: it never
+	 * renders as a standalone row button (inline or overflow) and instead
+	 * surfaces inside the parent's hover menu (e.g. Copy Markdown / Copy JSON
+	 * hang under `copy`). `computeActionLayout` drops sub-actions entirely.
+	 */
+	subOf?: string;
 	/** Icon component (Lucide) — UI renders it inside a button. */
 	icon: React.ComponentType<{ className?: string }>;
 	/** Pure applicability check — runs against the message only. */
@@ -115,9 +128,12 @@ const isAssistant = (m: ChatMessage) => m.role === 'assistant';
 const isUser = (m: ChatMessage) => m.role === 'user';
 
 /**
- * Persistent core (assistant): Copy, Retry, Star, Branch, Trace.
+ * Persistent core (assistant): Copy, Retry, Star, Branch.
  * Priorities within core are fixed high so ordering is deterministic —
- * they never demote regardless of width.
+ * they never demote regardless of width. Trace is a debug affordance and
+ * lives in the More popover (overflowOnly), not the core row. Copy is a
+ * split button: a plain-text click plus a hover menu of Copy Markdown /
+ * Copy JSON sub-actions.
  */
 import { Copy, GitBranch, RefreshCw, Star, Bug, FilePlus2, Code, FileJson, MessageSquare, Pencil } from 'lucide-react';
 
@@ -174,21 +190,6 @@ const ACTIONS: MessageActionDefinition[] = [
 			await ctx.branch();
 		},
 	},
-	{
-		id: 'trace',
-		variant: 'assistant',
-		priority: CORE_BASE + 1,
-		persistent: true,
-		icon: Bug,
-		applicable: isAssistant,
-		label: (s) => s.messages.actionTrace,
-		disabledReason: (m, s) => (m.debugRunId ? null : s.messages.noTraceReason),
-		execute: (ctx) => {
-			if (!ctx.message.debugRunId) return;
-			ctx.openTraceSurface(ctx.message.debugRunId);
-		},
-	},
-
 	// Adaptive assistant actions — priority high → low.
 	{
 		id: 'targeted-follow-up',
@@ -225,11 +226,15 @@ const ACTIONS: MessageActionDefinition[] = [
 		detail: (s) => s.messages.actionViewRawDetail,
 		execute: (ctx) => ctx.openRawModal(),
 	},
+	// Copy Markdown / Copy JSON are SUB-actions of Copy: they never render as
+	// standalone row buttons — hovering the Copy button reveals them. A plain
+	// Copy click copies the message text; these keep structure / raw payload.
 	{
 		id: 'copy-markdown',
 		variant: 'both',
 		priority: 200,
 		persistent: false,
+		subOf: 'copy',
 		icon: Copy,
 		applicable: () => true,
 		label: (s) => s.messages.actionCopyMarkdown,
@@ -243,12 +248,32 @@ const ACTIONS: MessageActionDefinition[] = [
 		variant: 'both',
 		priority: 100,
 		persistent: false,
+		subOf: 'copy',
 		icon: FileJson,
 		applicable: () => true,
 		label: (s) => s.messages.actionCopyJson,
 		detail: (s) => s.messages.actionCopyJsonDetail,
 		execute: async (ctx) => {
 			await ctx.copyText(JSON.stringify(ctx.message, null, 2));
+		},
+	},
+	// Trace — debug affordance; the user rarely reaches for it, so it lives in
+	// the More popover (overflowOnly), grouped with Copy trace JSON at the
+	// bottom. Navigation-only: opens the inline AgentTrace, no clipboard.
+	{
+		id: 'trace',
+		variant: 'assistant',
+		priority: 60,
+		persistent: false,
+		overflowOnly: true,
+		icon: Bug,
+		applicable: isAssistant,
+		label: (s) => s.messages.actionTrace,
+		detail: (s) => s.messages.actionTraceDetail,
+		disabledReason: (m, s) => (m.debugRunId ? null : s.messages.noTraceReason),
+		execute: (ctx) => {
+			if (!ctx.message.debugRunId) return;
+			ctx.openTraceSurface(ctx.message.debugRunId);
 		},
 	},
 	// Copy trace JSON — secondary to Trace; only surfaces when the message
@@ -324,36 +349,56 @@ export function computeActionLayout(
 	perActionWidthPx: number,
 	moreTriggerPx: number = perActionWidthPx,
 ): ActionLayout {
-	const sorted = [...actions].sort((a, b) => b.priority - a.priority);
+	// Sub-actions (Copy Markdown / Copy JSON) never render as standalone row
+	// buttons — they live inside their parent's hover menu — so drop them from
+	// the layout entirely before partitioning.
+	const sorted = [...actions]
+		.filter((a) => !a.subOf)
+		.sort((a, b) => b.priority - a.priority);
 	const persistent = sorted.filter((a) => a.persistent);
 	const destructive = sorted.filter((a) => a.destructive);
-	const adaptive = sorted.filter((a) => !a.persistent && !a.destructive);
+	// overflowOnly actions (Trace) always live in the More popover, never
+	// inline, regardless of width. They render in the regular (non-destructive)
+	// group, interleaved with demoted adaptives by priority.
+	const overflowForced = sorted.filter(
+		(a) => a.overflowOnly && !a.persistent && !a.destructive,
+	);
+	const adaptive = sorted.filter(
+		(a) => !a.persistent && !a.destructive && !a.overflowOnly,
+	);
 
-	// Guard: nonsense inputs -> everything inline (persistent+adaptive) so we
-	// never lose actions from a broken measurement.
+	// Regular overflow = demoted adaptives + always-overflow actions, kept in
+	// descending priority order; destructive always trails at the very end.
+	const buildOverflow = (overflowAdaptive: MessageActionDefinition[]): MessageActionDefinition[] => {
+		const regular = [...overflowAdaptive, ...overflowForced].sort((a, b) => b.priority - a.priority);
+		return [...regular, ...destructive];
+	};
+
+	// Guard: nonsense inputs -> keep every inline-eligible action inline so we
+	// never lose actions from a broken measurement. overflowForced + destructive
+	// still route to the popover (they are never inline-eligible).
 	if (!Number.isFinite(availableWidthPx) || availableWidthPx <= 0 || perActionWidthPx <= 0) {
-		return { inline: [...persistent, ...adaptive], overflow: destructive };
+		return { inline: [...persistent, ...adaptive], overflow: buildOverflow([]) };
 	}
 
 	// How many adaptive fit without a More trigger?
 	const fitsWithoutMore = Math.max(0, Math.floor(availableWidthPx / perActionWidthPx));
-	if (fitsWithoutMore >= adaptive.length && destructive.length === 0) {
+	const needsMore =
+		fitsWithoutMore < adaptive.length || destructive.length > 0 || overflowForced.length > 0;
+	if (!needsMore) {
 		// Everything fits inline, no More needed.
 		return { inline: [...persistent, ...adaptive], overflow: [] };
 	}
 
-	// We WILL need a More button (either for demoted adaptives or for
+	// We WILL need a More button (demoted adaptives, overflowOnly, or
 	// destructive). Reserve only the ⋯ trigger's real width for it.
 	const fitsWithMore = Math.max(0, Math.floor((availableWidthPx - moreTriggerPx) / perActionWidthPx));
 	const inlineAdaptive = adaptive.slice(0, fitsWithMore);
 	const overflowAdaptive = adaptive.slice(fitsWithMore);
 
-	// Overflow order = adaptive-by-priority + destructive at the end.
-	const overflow = [...overflowAdaptive, ...destructive];
-
 	return {
 		inline: [...persistent, ...inlineAdaptive],
-		overflow,
+		overflow: buildOverflow(overflowAdaptive),
 	};
 }
 

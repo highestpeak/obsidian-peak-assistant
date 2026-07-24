@@ -160,8 +160,8 @@ const reusedMaterialsBrowser = materialsDialog.locator("[data-vault-result-brows
 await reusedMaterialsBrowser.waitFor();
 assert.match(
   await reusedMaterialsBrowser.innerText(),
-  /Vault Search Result Browser/,
-  "the full-materials entry uses the same shared Vault Search Result Browser",
+  /完整资料浏览组件/,
+  "the full-materials entry uses the shared result-browser component without exposing its internal name",
 );
 assert.equal(
   await materialsDialog.locator("[data-result-view]").count(),
@@ -428,8 +428,8 @@ assert.ok(
 );
 assert.match(
   await narrowReuseBoundary.innerText(),
-  /Vault Search Result Browser/,
-  "narrow related materials preserve the shared Result Browser boundary",
+  /完整资料浏览组件/,
+  "narrow related materials preserve the shared result-browser boundary without exposing its internal name",
 );
 assert.equal(
   await narrowResultDialog.locator("[data-result-view]").count(),

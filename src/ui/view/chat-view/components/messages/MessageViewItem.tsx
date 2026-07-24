@@ -27,7 +27,14 @@ import {
 	ReasoningContent,
 	ReasoningTrigger,
 } from '@/ui/component/ai-elements';
-import { Chip, Modal } from '@/ui/components/primitives';
+import {
+	Chip,
+	Modal,
+	Popover,
+	PopoverAnchor,
+	PopoverContent,
+	PopoverItem,
+} from '@/ui/components/primitives';
 import { AnimatedSparkles, StreamdownIsolated } from '@/ui/component/mine';
 import { ModelInfoForSwitch } from '@/core/providers/types';
 import { formatTimestampLocale } from '@/core/utils/date-utils';
@@ -54,7 +61,7 @@ import {
 	type MessageActionDefinition,
 } from '../../actions/messageActionRegistry';
 import { collectVariantGroup } from '@/core/types/chat-message-variants';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { ChatArtifactReceipt } from '@/core/types/chat-studio';
 import type { ChatAssistantDefinition } from '@/core/types/chat-studio';
 
@@ -870,8 +877,10 @@ const UserMessageBody: React.FC<{
 	studioStrings: ChatStudioStrings;
 }> = ({ message, actionCtx, studioStrings }) => {
 	const applicable = getApplicableActions(message);
-	const persistent = applicable.filter((a) => a.persistent);
-	const overflow = applicable.filter((a) => !a.persistent);
+	// Sub-actions (Copy Markdown / Copy JSON) surface in the Copy hover menu,
+	// never as their own row/overflow entries.
+	const persistent = applicable.filter((a) => a.persistent && !a.subOf);
+	const overflow = applicable.filter((a) => !a.persistent && !a.subOf);
 	// M5: the user bubble carries no chrome by default (mock `.user-message`
 	// has no head / meta / action row). The action row still renders for
 	// reachability (spec §7.7) but is hover-revealed via CSS — the calm bubble
@@ -894,7 +903,13 @@ const UserMessageBody: React.FC<{
 			</div>
 			<div className="pkchat-msg__meta-row pkchat-msg__meta-row--user">
 				{persistent.map((action) => (
-					<ActionButton key={action.id} action={action} ctx={actionCtx} studioStrings={studioStrings} />
+					<ActionButton
+						key={action.id}
+						action={action}
+						ctx={actionCtx}
+						studioStrings={studioStrings}
+						subActions={subActionsOf(applicable, action.id)}
+					/>
 				))}
 				<MessageMorePopover overflow={overflow} ctx={actionCtx} studioStrings={studioStrings} />
 			</div>
@@ -1021,6 +1036,7 @@ const AssistantActionRow: React.FC<{
 					action={action}
 					ctx={actionCtx}
 					studioStrings={studioStrings}
+					subActions={subActionsOf(actions, action.id)}
 				/>
 			))}
 			<MessageMorePopover
@@ -1032,13 +1048,128 @@ const AssistantActionRow: React.FC<{
 	);
 };
 
+// ── Sub-actions helper ───────────────────────────────────────────────────────
+
+/** Sub-actions (Copy Markdown / Copy JSON) hanging under a parent action id. */
+function subActionsOf(
+	applicable: MessageActionDefinition[],
+	parentId: string,
+): MessageActionDefinition[] {
+	return applicable.filter((a) => a.subOf === parentId);
+}
+
+// ── Split action button with a hover sub-menu (Copy → Markdown / JSON) ────────
+// The main button keeps its own click (copy plain text); hovering the whole
+// control reveals the sub-actions in a popover anchored to the button. A short
+// close delay lets the cursor cross the gap into the menu without dismissing.
+
+const HOVER_CLOSE_MS = 140;
+const COPIED_FEEDBACK_MS = 1600;
+
+const ActionSplitButton: React.FC<{
+	action: MessageActionDefinition;
+	subActions: MessageActionDefinition[];
+	ctx: MessageActionContext;
+	studioStrings: ChatStudioStrings;
+	label: string;
+}> = ({ action, subActions, ctx, studioStrings, label }) => {
+	const Icon = action.icon;
+	const [open, setOpen] = useState(false);
+	const [copied, setCopied] = useState(false);
+	const closeTimer = useRef<number | null>(null);
+	const copiedTimer = useRef<number | null>(null);
+
+	const cancelClose = () => {
+		if (closeTimer.current == null) return;
+		window.clearTimeout(closeTimer.current);
+		closeTimer.current = null;
+	};
+	const scheduleClose = () => {
+		cancelClose();
+		closeTimer.current = window.setTimeout(() => setOpen(false), HOVER_CLOSE_MS);
+	};
+	// Transient "Copied" confirmation, scoped to THIS copy control so it never
+	// lights up when the user copies an artifact or a trace elsewhere.
+	const flashCopied = () => {
+		if (copiedTimer.current != null) window.clearTimeout(copiedTimer.current);
+		setCopied(true);
+		copiedTimer.current = window.setTimeout(() => setCopied(false), COPIED_FEEDBACK_MS);
+	};
+	const runAndFlash = (fn: () => Promise<void> | void) => {
+		void Promise.resolve(fn()).then(flashCopied);
+	};
+	useEffect(() => () => {
+		cancelClose();
+		if (copiedTimer.current != null) window.clearTimeout(copiedTimer.current);
+	}, []);
+
+	const copiedLabel = studioStrings.messages.actionCopied;
+	return (
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverAnchor asChild>
+				<span
+					className="pkchat-msg__action-split"
+					onMouseEnter={() => { cancelClose(); setOpen(true); }}
+					onMouseLeave={scheduleClose}
+				>
+					<button
+						type="button"
+						className={cn(
+							'pkchat-msg__action pkchat-msg__action-split__main',
+							copied && 'pkchat-msg__action--copied',
+						)}
+						onClick={() => runAndFlash(() => action.execute(ctx))}
+						title={copied ? copiedLabel : label}
+						aria-label={copied ? copiedLabel : label}
+					>
+						{copied ? <Check /> : <Icon />}
+						<span>{copied ? copiedLabel : label}</span>
+						{!copied && <ChevronDown className="pkchat-msg__action-split__caret" aria-hidden="true" />}
+					</button>
+				</span>
+			</PopoverAnchor>
+			<PopoverContent
+				align="start"
+				sideOffset={6}
+				onOpenAutoFocus={(e) => e.preventDefault()}
+				onMouseEnter={cancelClose}
+				onMouseLeave={scheduleClose}
+			>
+				{subActions.map((sub) => {
+					const SubIcon = sub.icon;
+					const detail = sub.detail?.(studioStrings);
+					return (
+						<PopoverItem
+							key={sub.id}
+							className="pk-pop-item pkchat-msg-more-item"
+							onClick={() => { setOpen(false); runAndFlash(() => sub.execute(ctx)); }}
+						>
+							<SubIcon />
+							{detail ? (
+								<span className="pkchat-msg-more-item__text">
+									<strong>{sub.label(studioStrings)}</strong>
+									<small>{detail}</small>
+								</span>
+							) : (
+								<span>{sub.label(studioStrings)}</span>
+							)}
+						</PopoverItem>
+					);
+				})}
+			</PopoverContent>
+		</Popover>
+	);
+};
+
 // ── Single action button ─────────────────────────────────────────────────────
 
 const ActionButton: React.FC<{
 	action: MessageActionDefinition;
 	ctx: MessageActionContext;
 	studioStrings: ChatStudioStrings;
-}> = ({ action, ctx, studioStrings }) => {
+	/** Sub-actions to reveal on hover (Copy → Markdown / JSON). */
+	subActions?: MessageActionDefinition[];
+}> = ({ action, ctx, studioStrings, subActions }) => {
 	const Icon = action.icon;
 	// Star toggles its label at render time based on message.starred state.
 	const rawLabel = action.label(studioStrings);
@@ -1047,6 +1178,17 @@ const ActionButton: React.FC<{
 		: rawLabel;
 	const disabledReason = action.disabledReason?.(ctx.message, studioStrings) ?? null;
 	const disabled = disabledReason != null;
+	if (subActions && subActions.length > 0 && !disabled) {
+		return (
+			<ActionSplitButton
+				action={action}
+				subActions={subActions}
+				ctx={ctx}
+				studioStrings={studioStrings}
+				label={label}
+			/>
+		);
+	}
 	return (
 		<button
 			type="button"

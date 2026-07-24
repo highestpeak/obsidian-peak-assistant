@@ -145,8 +145,8 @@ async function assertAdaptiveShell(page, name) {
   await reusedResultBrowser.waitFor();
   assert.match(
     await reusedResultBrowser.innerText(),
-    /Vault Search Result Browser/,
-    `${name} hands related materials to the shared Vault Search Result Browser`,
+    /完整资料浏览组件/,
+    `${name} hands related materials to the shared result-browser component without exposing its internal name`,
   );
   assert.equal(
     await graphDialog.locator("[data-result-view]").count(),
@@ -254,11 +254,22 @@ async function assertAdaptiveShell(page, name) {
   assert.notEqual(await root.locator(".review-progress").innerText(), initialReviewText, `${name} review previous/next changes the active location`);
   await root.locator('[data-review-action="accept"]').click();
   assert.ok(await root.locator('.change-row[data-status="accepted"]').count() >= 1, `${name} review acceptance creates resolved state`);
+  await root.locator('[data-review-action="accept"]').click();
+  assert.ok(await root.locator('.change-row[data-status="accepted"]').count() >= 2, `${name} retains two accepted changes as independent transactions`);
 
   await root.locator('[data-mode="history"]').click();
   await root.locator(".history-view").waitFor();
   assert.equal(await root.locator(".session-dock").evaluate((element) => element.hidden), true, `${name} History never shows the composer`);
-  assert.ok(await root.locator(".history-row").count() >= 9, `${name} History exposes dated accepted-write transactions`);
+  assert.ok(await root.locator(".history-row").count() >= 9, `${name} History exposes dated document transactions`);
+  assert.match(await root.locator(".history-heading").innerText(), /文档历史[\s\S]*直接编辑[\s\S]*AI 辅助后接受[\s\S]*系统回滚/, `${name} History explains every durable document-operation origin`);
+  assert.ok(await root.locator('.history-row[data-origin="user"]').count() >= 1, `${name} History includes direct user operations`);
+  assert.ok(await root.locator('.history-row[data-origin="ai"], .history-row[data-origin="mixed"]').count() >= 1, `${name} History includes accepted AI-assisted operations`);
+  assert.ok(await root.locator('.history-row[data-origin="system"]').count() >= 1, `${name} History includes explicit rollback operations`);
+  const aiBatch = root.locator('[data-history-group="copilot-run-current"]');
+  assert.equal(await aiBatch.isVisible(), true, `${name} groups accepted changes from one Copilot run`);
+  assert.match(await aiBatch.locator(".history-batch-summary").innerText(), /本轮 Copilot 写入 · 2 处[\s\S]*2 笔独立事务/, `${name} AI batch preserves its independent transaction count`);
+  await aiBatch.locator(".history-batch-summary").click();
+  assert.equal(await aiBatch.locator(".history-row.is-nested").count(), 2, `${name} expands one Copilot group back into individual transactions`);
   const historyTrigger = root.locator(".history-row").first();
   await historyTrigger.click();
   await root.locator(".history-dialog[open]").waitFor();
@@ -367,7 +378,16 @@ async function assertIndexHostReviewBridge() {
     await page.locator(".review-view").waitFor();
     assert.equal(await page.locator("[data-composer-change-index]").count(), 4, "direct review entry hydrates all Composer change pins");
     assert.equal(await page.locator("#composer-change-navigator").isVisible(), true, "direct review entry hydrates the document navigator");
-    assert.equal(await page.locator(".doc-block.is-intelligence-review-target").count(), 1, "direct review entry projects the active inline diff");
+    assert.deepEqual(
+      await page.locator(".composer-review-modes [data-composer-review-view]").allTextContents(),
+      ["工作视图", "全部改动", "纯净阅读"],
+      "document navigator exposes work, all-changes and clean-reading states",
+    );
+    assert.equal(await page.locator(".doc-block.is-intelligence-review-target").count(), 0, "work view keeps pins and insights without expanding a candidate");
+    await page.locator('.composer-review-modes [data-composer-review-view="all"]').click();
+    assert.equal(await page.locator(".doc-block.is-intelligence-review-target").count(), 1, "all-changes view focuses one active object");
+    assert.ok(await page.locator(".composer-inline-diff-text").count() > 0, "all-changes view renders in-place text diff");
+    assert.equal(await page.locator(".composer-inline-change").count(), 0, "document review does not append a detached text candidate row");
 
     const stale = await page.evaluate(() => {
       const controller = window.PeakIntelligencePanel.controller("#ambient-panel");

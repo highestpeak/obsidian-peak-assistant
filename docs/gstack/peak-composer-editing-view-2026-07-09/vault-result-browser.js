@@ -122,11 +122,11 @@
             </span>
             <button class="icon-button" type="button" data-close-graph aria-label="关闭">${icon("x")}</button>
           </header>
-          <section class="vault-result-browser-mount" aria-label="Vault Search Result Browser 复用位置">
+          <section class="vault-result-browser-mount" aria-label="完整资料浏览组件复用位置">
             <i>${icon("network")}</i>
             <span class="vault-result-browser-kicker">复用现有组件</span>
-            <strong>Vault Search Result Browser</strong>
-            <p>列表、文件夹、图谱、工具栏、键盘导航和 Inspector 均直接由 Vault Search 提供，Composer mock 不再复制实现。</p>
+            <strong>完整资料浏览组件</strong>
+            <p>列表、文件夹、图谱、工具栏、键盘导航和详情面板复用现有 Vault Search / Quick Search 组件；这里只浏览本轮已找到的资料，不跳转，也不重新搜索。</p>
             <dl>
               <div><dt>打开视图</dt><dd>${escapeHtml(requestedView)}</dd></div>
               <div><dt>输入</dt><dd>${items.length} 项冻结材料 · 当前对象「${escapeHtml(root.label)}」</dd></div>

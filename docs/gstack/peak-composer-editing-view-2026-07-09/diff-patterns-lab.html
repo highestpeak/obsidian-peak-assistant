@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Peak Composer · Diff patterns lab</title>
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="diff-patterns-lab.css" />
+</head>
+<body data-view="all">
+<svg aria-hidden="true" class="icon-sprite">
+  <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"></path></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"></path></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12"></path><path d="m18 6-12 12"></path></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.5"></circle><path d="m7 17 4-4 3 3 2-2 3 3"></path></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"></path><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"></path></symbol>
+  <symbol id="i-table" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"></rect><path d="M4 11h16"></path><path d="M10 5v14"></path><path d="M15 5v14"></path></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h12"></path><path d="M8 12h12"></path><path d="M8 18h12"></path><circle cx="4" cy="6" r="1"></circle><circle cx="4" cy="12" r="1"></circle><circle cx="4" cy="18" r="1"></circle></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"></path><path d="M14 3v5h5"></path></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"></path></symbol>
+</svg>
+
+<header class="lab-topbar">
+  <a href="index.html"><svg><use href="#i-arrow-left"></use></svg> 返回 Composer</a>
+  <span><b>Diff 样式库</b><small>对象原位审阅 · 设计原型</small></span>
+  <strong id="pending-total">9 处待审</strong>
+</header>
+
+<div class="lab-shell">
+  <aside class="lab-rail" aria-label="Diff 类型筛选">
+    <span>查看类型</span>
+    <button class="is-active" type="button" data-filter="all">全部</button>
+    <button type="button" data-filter="text">文字与标题</button>
+    <button type="button" data-filter="structure">结构</button>
+    <button type="button" data-filter="object">对象</button>
+    <button type="button" data-filter="metadata">属性</button>
+    <p>所有候选都出现在真实对象的位置。此页只比较呈现方式，不代表生产实现已经完成。</p>
+  </aside>
+
+  <main class="lab-main">
+    <section class="lab-intro">
+      <div>
+        <span class="eyebrow">Composer review grammar</span>
+        <h1>不同对象需要不同的“原位”</h1>
+        <p>文本在句子里改；新增和删除占据真实块位置；列表、表格、图片和 Frontmatter 在对象内部标出改动。没有第二份脱离正文的候选卡。</p>
+      </div>
+      <div class="view-switch" role="group" aria-label="文档状态">
+        <button type="button" data-view="work">工作视图</button>
+        <button class="is-active" type="button" data-view="all">全部改动</button>
+        <button type="button" data-view="clean">纯净阅读</button>
+      </div>
+      <small id="view-description">所有候选在各自对象内展开；接受与拒绝只处理当前一处。</small>
+    </section>
+
+    <article class="document-sheet" id="diff-document">
+      <section class="diff-pattern" data-category="text" data-status="pending" data-pattern-id="text-replace">
+        <header><span><i>01</i> 段落改写</span><small>同一行内替换</small></header>
+        <div class="insight-line"><b>Claim · 未确认</b><span>工作视图保留的 AI 洞察</span></div>
+        <p class="document-copy">AI 不应该像远处的聊天窗口，而应该像贴在当前块旁边的编辑伙伴：<span class="inline-change"><del>用户接受之前不会真的写回文件</del><ins>候选只在真实上下文中逐项审阅，接受后才写入文件</ins></span>。</p>
+        <footer><span>文字编辑 · +8 −4</span><div><button data-decision="reject">拒绝</button><button class="accept" data-decision="accept">接受</button></div></footer>
+      </section>
+
+      <section class="diff-pattern" data-category="text" data-status="pending" data-pattern-id="heading">
+        <header><span><i>02</i> 标题改名</span><small>保持标题层级</small></header>
+        <h2>1. <span class="inline-change"><del>知识库不是单一目录</del><ins>知识库由多种结构共同组成</ins></span></h2>
+        <footer><span>Heading 2 · 标题语法不变</span><div><button data-decision="reject">拒绝</button><button class="accept" data-decision="accept">接受</button></div></footer>
+      </section>
+
+      <section class="diff-pattern inserted-pattern" data-category="structure" data-status="pending" data-pattern-id="insert">
+        <header><span><i>03</i> 新增内容块</span><small>挂载在真实插入点</small></header>
+        <div class="inserted-block"><span>新增段落</span><p>在建立复杂目录前，先确认读者下一步需要检索、比较还是输出。</p></div>
+        <footer><span>新增 · Paragraph · 尚未写入</span><div><button data-decision="reject">丢弃</button><button class="accept" data-decision="accept">插入</button></div></footer>
+      </section>
+
+      <section class="diff-pattern deleted-pattern" data-category="structure" data-status="pending" data-pattern-id="delete">
+        <header><span><i>04</i> 删除内容块</span><small>原位置保留可恢复痕迹</small></header>
+        <p class="deleted-block">这个重复段落与上一节表达相同，继续保留会削弱结构。</p>
+        <footer><span>删除 · Paragraph</span><div><button data-decision="reject">保留</button><button class="accept" data-decision="accept">删除</button></div></footer>
+      </section>
+
+      <section class="diff-pattern" data-category="text" data-status="pending" data-pattern-id="link">
+        <header><span><i>05</i> 链接与引用</span><small>文字、目标和来源分别审阅</small></header>
+        <p class="document-copy">参考 <a href="#"><span class="inline-change"><del>旧的编辑器研究</del><ins>Composer 编辑体验研究</ins></span></a>，并补充来源 <span class="citation-candidate"><svg><use href="#i-link"></use></svg> [[Composer architecture]] · §3</span>。</p>
+        <footer><span>链接文本 + Wiki 引用 · 目标地址不隐藏</span><div><button data-decision="reject">拒绝</button><button class="accept" data-decision="accept">接受</button></div></footer>
+      </section>
+
+      <section class="diff-pattern" data-category="structure" data-status="pending" data-pattern-id="list">
+        <header><span><i>06</i> List / Checklist</span><small>逐项而非复制整块</small></header>
+        <ul class="list-change">
+          <li><span class="inline-change"><del>直接搜索关键词</del><ins>按标题和正文关键词搜索</ins></span></li>
+          <li class="inserted-row"><span>新增</span>沿反向链接回到上游判断</li>
+          <li class="deleted-row">重复打开全局图谱查找</li>
+        </ul>
+        <footer><span>1 项编辑 · 1 项新增 · 1 项删除</span><div><button data-decision="reject">拒绝</button><button class="accept" data-decision="accept">接受</button></div></footer>
+      </section>
+
+      <section class="diff-pattern" data-category="object" data-status="pending" data-pattern-id="table">
+        <header><span><i>07</i> Table</span><small>改单元格，结构变更留在表内</small></header>
+        <table class="table-change">
+          <thead><tr><th>结构</th><th>适用内容</th><th>后续动作</th></tr></thead>
+          <tbody>
+            <tr><td>网络</td><td><span class="inline-change"><del>碎片内容</del><ins>碎片判断与交叉引用</ins></span></td><td>建立双链</td></tr>
+            <tr class="inserted-row"><td>时间线</td><td>进展与决策</td><td>按日期回看</td></tr>
+            <tr><td>树形</td><td>课程与书籍</td><td>维护目录</td></tr>
+          </tbody>
+        </table>
+        <footer><span>Cell patch + 新增行 · 不复制整张表</span><div><button data-decision="reject">拒绝</button><button class="accept" data-decision="accept">接受</button></div></footer>
+      </section>
+
+      <section class="diff-pattern" data-category="object" data-status="pending" data-pattern-id="image">
+        <header><span><i>08</i> Image</span><small>同一图框切换原图 / 候选</small></header>
+        <figure class="image-change" data-image-version="candidate">
+          <div class="image-frame">
+            <svg><use href="#i-image"></use></svg>
+            <span class="image-original-label">原图 · 未裁剪</span>
+            <span class="image-candidate-label">候选 · 聚焦关系图主体</span>
+          </div>
+          <figcaption><b>说明：</b><span class="inline-change"><del>知识图谱截图</del><ins>PKM 工作流中资料、笔记与输出的关系</ins></span></figcaption>
+          <div class="image-toggle"><button type="button" data-image-view="original">原图</button><button class="is-active" type="button" data-image-view="candidate">候选</button></div>
+        </figure>
+        <footer><span>像素替换用同框切换；alt / caption 仍用文字 diff</span><div><button data-decision="reject">拒绝</button><button class="accept" data-decision="accept">接受</button></div></footer>
+      </section>
+
+      <section class="diff-pattern" data-category="metadata" data-status="pending" data-pattern-id="metadata">
+        <header><span><i>09</i> Frontmatter</span><small>逐字段审阅来源</small></header>
+        <div class="frontmatter-change">
+          <div><span>updated <em>程序</em></span><strong><span class="inline-change"><del>2023-10-18</del><ins>2026-07-22</ins></span></strong></div>
+          <div><span>tags <em>AI 建议</em></span><strong><b>pkm</b><b>canvas</b><ins class="tag-insert">composer</ins></strong></div>
+          <div class="inserted-row"><span>type <em>AI 建议</em></span><strong>analysis</strong></div>
+        </div>
+        <footer><span>确定性字段由程序算；语义字段只生成候选</span><div><button data-decision="reject">拒绝</button><button class="accept" data-decision="accept">接受</button></div></footer>
+      </section>
+    </article>
+  </main>
+
+  <aside class="lab-notes">
+    <span>本轮设计结论</span>
+    <ol>
+      <li>文字替换永远回到原句。</li>
+      <li>新增和删除占据真实块位置。</li>
+      <li>表格、图片、列表和属性各自保留对象语法。</li>
+      <li>全局栏只显示状态与导航，字符统计留在具体候选。</li>
+    </ol>
+  </aside>
+</div>
+
+<nav class="review-dock" aria-label="正文审阅状态">
+  <div class="view-switch compact" role="group">
+    <button type="button" data-view="work">工作视图</button>
+    <button class="is-active" type="button" data-view="all">全部改动</button>
+    <button type="button" data-view="clean">纯净阅读</button>
+  </div>
+  <span><b id="active-change">第 1 处</b><small id="dock-copy">9 处待审</small></span>
+  <div><button type="button" data-step="previous">上一处</button><button type="button" data-step="next">下一处</button></div>
+</nav>
+
+<script src="diff-patterns-lab.js"></script>
+</body>
+</html>

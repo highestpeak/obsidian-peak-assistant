@@ -857,7 +857,7 @@
   function renderRunSources(run) {
     if (!run.sources.length) return `<div class="run-empty">本轮没有引用 Vault 来源。</div>`;
     return `
-      <div class="run-source-toolbar"><span>本轮冻结的材料快照</span><button type="button" data-open-graph-from-run>${icon("network")}在 Vault Search 中查看</button></div>
+      <div class="run-source-toolbar"><span>本轮冻结的材料快照</span><button type="button" data-open-graph-from-run>${icon("network")}打开完整视图</button></div>
       <div class="run-source-list">${run.sources.map((source) => `
         <article class="run-source-row">
           <div><strong>${escapeHtml(source.title)}</strong><small>${escapeHtml(source.path)}</small><p>${escapeHtml(source.reason)}</p></div>
@@ -1004,7 +1004,7 @@
         <section class="brief-section">
           <header class="section-title"><span><strong>相关材料</strong><b>37</b><small>作为建议依据，不直接改正文</small></span><button class="section-action" type="button" data-refresh-brief>${icon("refresh")}刷新</button></header>
           ${renderMaterialGraph()}
-          <button class="list-more" type="button" data-open-materials="list">打开 Vault Search 结果浏览器</button>
+          <button class="list-more" type="button" data-open-materials="list">打开完整视图</button>
         </section>
 
         <section class="brief-section">
@@ -1068,7 +1068,7 @@
     const visible = showAll ? run.sources : run.sources.slice(0, 3);
     const remaining = run.sources.length - 3;
     return `
-      <div class="run-inline-panel-head"><span>本轮冻结的材料</span><button type="button" data-open-graph-from-run>${icon("network")}在 Vault Search 中查看</button></div>
+      <div class="run-inline-panel-head"><span>本轮冻结的材料</span><button type="button" data-open-graph-from-run>${icon("network")}打开完整视图</button></div>
       <div class="run-inline-list" data-kind="sources">${visible.map((source) => `
         <article class="run-inline-source">
           <div><strong>${escapeHtml(source.title)}</strong><small>${escapeHtml(source.path)}</small><p>${escapeHtml(source.reason)}</p></div>

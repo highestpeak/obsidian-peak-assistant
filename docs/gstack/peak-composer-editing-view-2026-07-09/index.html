@@ -7,6 +7,7 @@
 <link rel="icon" href="data:," />
 <link rel="stylesheet" href="../../../node_modules/katex/dist/katex.min.css" />
 <link rel="stylesheet" href="vendor/lightgallery/css/lightgallery-bundle.min.css" />
+<link rel="stylesheet" href="../../../src/styles/peak-tokens.css" />
 <link rel="stylesheet" href="mock.css" />
 <link rel="stylesheet" href="intelligence.css" />
 <link rel="stylesheet" href="vault-result-browser.css" />
@@ -21,6 +22,7 @@
   <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"></path><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"></path></symbol>
   <symbol id="i-image" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.5"></circle><path d="m7 17 4-4 3 3 2-2 3 3"></path></symbol>
   <symbol id="i-table" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"></rect><path d="M4 11h16"></path><path d="M10 5v14"></path><path d="M15 5v14"></path></symbol>
+  <symbol id="i-merge-cells" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="6" rx="1"></rect><rect x="4" y="14" width="16" height="6" rx="1"></rect><path d="m9 8 3 3 3-3"></path><path d="m9 16 3-3 3 3"></path></symbol>
   <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"></path><path d="M14 3v5h5"></path></symbol>
   <symbol id="i-canvas" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"></path><path d="M8 9h4v4H8z"></path><path d="M14 11h3v5h-3z"></path><path d="M12 11h2"></path></symbol>
   <symbol id="i-draw" viewBox="0 0 24 24"><path d="M4 20c4-1 7-4 8-8"></path><path d="M12 12l7-7 2 2-7 7z"></path><path d="M13 5l6 6"></path></symbol>
@@ -34,21 +36,37 @@
   <symbol id="i-wand" viewBox="0 0 24 24"><path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8l1.4 1.4M17.8 6.2l1.4-1.4M12.2 6.2l-1.4-1.4"></path><path d="M3 21l9-9"></path><path d="M12.2 11.8l1.4 1.4"></path></symbol>
   <symbol id="i-enter" viewBox="0 0 24 24"><polyline points="9 10 4 15 9 20"></polyline><path d="M20 4v7a4 4 0 0 1-4 4H4"></path></symbol>
   <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14l-4-4 4-4"></path><path d="M5 10h11a4 4 0 0 1 0 8h-1"></path></symbol>
-  <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v6h6"></path><path d="M12 7v5l3 2"></path></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 14 4-4-4-4"></path><path d="M19 10H8a4 4 0 0 0 0 8h1"></path></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l4 2"></path></symbol>
   <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5"></path><path d="M4 17v-5h5"></path><path d="M6.1 8.2A7 7 0 0 1 18.6 7"></path><path d="M17.9 15.8A7 7 0 0 1 5.4 17"></path></symbol>
   <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></symbol>
   <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"></path><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"></path></symbol>
   <symbol id="i-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3"></path><path d="M12 19v3"></path><path d="M2 12h3"></path><path d="M19 12h3"></path><circle cx="12" cy="12" r="8"></circle></symbol>
   <symbol id="i-chevron-up" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"></path></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></symbol>
+  <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"></path></symbol>
+  <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></symbol>
+  <symbol id="i-bold" viewBox="0 0 24 24"><path d="M6 4h7a4 4 0 0 1 0 8H6z"></path><path d="M6 12h8a4 4 0 0 1 0 8H6z"></path></symbol>
+  <symbol id="i-italic" viewBox="0 0 24 24"><path d="M10 4h8"></path><path d="M6 20h8"></path><path d="m14 4-4 16"></path></symbol>
+  <symbol id="i-underline" viewBox="0 0 24 24"><path d="M6 3v7a6 6 0 0 0 12 0V3"></path><path d="M4 21h16"></path></symbol>
+  <symbol id="i-strikethrough" viewBox="0 0 24 24"><path d="M16 4H9a4 4 0 0 0-1 7.9"></path><path d="M8 20h6a4 4 0 0 0 3.8-5"></path><path d="M4 12h16"></path></symbol>
+  <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0 0 18h1.5a2 2 0 0 0 0-4H12a2 2 0 0 1 0-4h3a6 6 0 0 0 0-12z"></path><circle cx="7.5" cy="10" r="1"></circle><circle cx="9.5" cy="6.8" r="1"></circle><circle cx="14" cy="6.5" r="1"></circle></symbol>
+  <symbol id="i-highlighter" viewBox="0 0 24 24"><path d="m9 11-6 6v4h4l6-6"></path><path d="m14 4 6 6-9 9-6-6z"></path><path d="M14 4l2-2 6 6-2 2"></path></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2"></rect><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"></path></symbol>
+  <symbol id="i-edit-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="m6 16 4-4 3 3 2-2 3 3"></path><path d="m15 8 4-4 2 2-4 4-3 1z"></path></symbol>
+  <symbol id="i-rename" viewBox="0 0 24 24"><path d="M4 7V4h16v3"></path><path d="M9 20h6"></path><path d="M12 4v16"></path><path d="M4 12h4"></path><path d="M16 12h4"></path></symbol>
+  <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"></path><path d="M20 4v7h-7"></path></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10"></path><path d="M10 20V4"></path><path d="M16 20v-7"></path><path d="M22 20H2"></path></symbol>
 </svg>
 
-<main class="composer-app" aria-label="Peak Composer real-data editor mock">
+<main class="composer-app peak-design-root" aria-label="Peak Composer real-data editor mock">
   <header class="top-strip">
     <div class="view-title">
       <span class="view-icon"><svg><use href="#i-file"></use></svg></span>
       <strong>Composer View</strong>
     </div>
     <div class="top-actions">
+      <a class="pattern-lab-link" href="diff-patterns-lab.html" title="查看所有候选改动的原位呈现方式">Diff 样式库</a>
       <div class="source-state"><svg><use href="#i-check"></use></svg> Markdown 已保存</div>
       <button class="ambient-toggle" id="ambient-toggle" type="button" aria-controls="ambient-panel" aria-expanded="false" title="打开 Intelligence 面板"><svg><use href="#i-spark"></use></svg><span>Intelligence</span></button>
     </div>
@@ -57,7 +75,7 @@
   <div class="workspace">
     <section class="document-stage" aria-label="Scrollable document">
       <article class="paper editor-canvas" id="paper" contenteditable="true" spellcheck="true" aria-label="可编辑 Markdown 文档">
-        <section class="doc-block frontmatter-block" data-block-kind="metadata" data-block-title="Frontmatter metadata" data-source="---&#10;created: 2023-10-15 21:45:29&#10;updated: 2023-10-18 21:17:05&#10;tags: [pkm, information-management, canvas]&#10;---">
+        <section class="doc-block frontmatter-block" data-block-kind="metadata" data-block-title="Frontmatter metadata" data-source="---&#10;created: 2023-10-15 21:45:29&#10;updated: 2023-10-18 21:17:05&#10;tags: [pkm, information-management, canvas]&#10;aliases: [PKM 产品分析]&#10;type: analysis&#10;status: evergreen&#10;project: peak-assistant&#10;---">
           <div class="block-controls" aria-label="Block controls">
             <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
             <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
@@ -65,15 +83,56 @@
           </div>
           <button class="issue-pill" data-ai-label="规范属性" data-reason="Issue：metadata warning，updated 早于正文最后一次编辑">属性告警</button>
           <div class="metadata-grid">
-            <span>created</span><strong>2023-10-15 21:45</strong>
-            <span>updated</span><strong>2023-10-18 21:17</strong>
-            <span>tags</span>
-            <strong class="tag-row">
+            <span>created <i class="metadata-origin is-code">程序</i></span><strong>2023-10-15 21:45</strong>
+            <span>updated <i class="metadata-origin is-code">程序</i></span><strong>2023-10-18 21:17</strong>
+            <span>tags <i class="metadata-origin">人工</i></span>
+            <strong class="tag-row metadata-value">
               <span class="tag-chip">pkm</span>
               <span class="tag-chip">information-management</span>
               <span class="tag-chip">canvas</span>
             </strong>
+            <span>aliases <i class="metadata-origin">人工</i></span><strong>PKM 产品分析</strong>
+            <span>type <i class="metadata-origin is-ai">AI 建议</i></span><strong>analysis</strong>
+            <span>status <i class="metadata-origin is-ai">AI 建议</i></span><strong>evergreen</strong>
+            <span>project <i class="metadata-origin is-ai">AI 建议</i></span><strong>peak-assistant</strong>
           </div>
+          <section class="vault-property-overlay" id="vault-property-overlay" hidden contenteditable="false">
+            <section class="vault-property-library" id="vault-property-library" role="region" aria-labelledby="vault-property-title">
+              <header>
+                <span><b id="vault-property-title">Vault 属性库</b><small>全知识库字段与标签统计 · 选择后只在当前文档生成候选</small></span>
+                <button type="button" data-vault-property-action="close" aria-label="关闭属性库"><svg><use href="#i-x"></use></svg></button>
+              </header>
+              <div class="metadata-profile-summary">
+                <span><b>42</b> 个字段</span><span><b>18</b> 个标签</span><span><b>7</b> 个单次字段</span><span><b>5</b> 处类型不一致</span>
+              </div>
+              <div class="vault-property-table" role="table" aria-label="Vault 字段出现频率与添加动作">
+                <div role="row"><b role="columnheader">字段</b><b role="columnheader">覆盖率</b><b role="columnheader">发现的问题</b><b role="columnheader">加入本文</b></div>
+                <div role="row"><span><strong>tags</strong><small>规则 + AI</small></span><span>82%</span><span>2 组近义标签待合并</span><button type="button" disabled>已在本文</button></div>
+                <div role="row"><span><strong>created</strong><small>程序</small></span><span>76%</span><span>可按文件创建时间补齐</span><button type="button" disabled>已在本文</button></div>
+                <div role="row"><span><strong>updated</strong><small>程序</small></span><span>73%</span><span>可与最后编辑时间同步</span><button type="button" disabled>已在本文</button></div>
+                <div role="row"><span><strong>cssclasses</strong><small>人工 / 模板</small></span><span>18%</span><span>常用于阅读宽度与页面布局</span><button type="button" data-vault-property-key="cssclasses" data-vault-property-value="wide-page" data-vault-property-origin="人工">添加</button></div>
+                <div role="row"><span><strong>category</strong><small>AI 建议</small></span><span>11%</span><span>当前正文可归入 knowledge-management</span><button type="button" data-vault-property-key="category" data-vault-property-value="knowledge-management" data-vault-property-origin="AI 建议">添加</button></div>
+              </div>
+              <form class="vault-property-custom" id="vault-property-custom">
+                <span><b>自定义属性</b><small>任意 key / value；先生成候选，不静默写入 YAML</small></span>
+                <input name="key" aria-label="自定义属性 key" placeholder="key，例如 cssclasses" autocomplete="off" />
+                <input name="value" aria-label="自定义属性 value" placeholder="value，例如 wide-page" autocomplete="off" />
+                <button type="submit"><svg><use href="#i-plus"></use></svg>添加到本文</button>
+              </form>
+              <footer>统计范围是整个 Vault；入口跟随当前 Frontmatter，只把选中的字段作为本文候选。</footer>
+            </section>
+          </section>
+          <section class="metadata-ai-suggestions" id="metadata-ai-suggestions" hidden contenteditable="false" aria-label="AI 属性候选">
+            <header>
+              <span><b>AI 属性建议</b><small>根据正文与 Vault 关系生成 · 逐条选择</small></span>
+              <button type="button" data-metadata-action="close-suggestions" aria-label="关闭 AI 属性建议"><svg><use href="#i-x"></use></svg></button>
+            </header>
+            <div class="metadata-suggestion-list">
+              <div><span><strong>summary</strong><small>PKM 工作流与 Composer 编辑职责</small></span><button type="button" data-metadata-action="choose" data-metadata-key="summary" data-metadata-value="PKM 工作流与 Composer 编辑职责" data-metadata-origin="AI 建议">添加</button></div>
+              <div><span><strong>reviewed</strong><small>false · 由本文告警状态推断</small></span><button type="button" data-metadata-action="choose" data-metadata-key="reviewed" data-metadata-value="false" data-metadata-origin="规则建议">添加</button></div>
+            </div>
+            <footer>AI 只建议字段和值；点击“添加”后还要在 Frontmatter 中确认。</footer>
+          </section>
         </section>
 
         <section class="doc-block title-block" data-block-kind="heading-1" data-block-title="文档标题" data-source="# PKM 产品类别分析：从信息获取到输出">
@@ -263,7 +322,7 @@
           </div>
           <button class="issue-pill" data-ai-label="修复失效链接" data-reason="Issue：stale link，[[Z-旧版-PKM分类草稿]] 已不存在">失效链接 · 1</button>
           <p>
-            这一节的判断主要来自 <span class="vault-chip">[[知识库]]</span>、<span class="vault-chip">[[信息管理]]</span> 和 <span class="vault-chip">[[表格工具]]</span>；更早的结论在 <span class="vault-chip is-stale">[[Z-旧版-PKM分类草稿]]</span>，该笔记已被合并删除。
+            这一节的判断主要来自 <a class="vault-chip" href="#vault-note=知识库.md" data-vault-target="知识库.md">[[知识库]]</a>、<a class="vault-chip" href="#vault-note=信息管理.md" data-vault-target="信息管理.md">[[信息管理]]</a> 和 <a class="vault-chip" href="#vault-note=表格工具.md" data-vault-target="表格工具.md">[[表格工具]]</a>；更早的结论在 <span class="vault-chip is-stale" aria-disabled="true">[[Z-旧版-PKM分类草稿]]</span>，该笔记已被合并删除。
           </p>
         </section>
         <section class="doc-block links-block" data-block-kind="external-links" data-block-title="外部参考链接段" data-source="外部参考：InfraNodus https://infranodus.com、Heptabase https://heptabase.com，以及一篇还没整理的 https://arxiv.org/abs/2104.05006。">
@@ -275,7 +334,28 @@
             <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
           </div>
           <p>
-            外部参考：<span class="ext-chip">infranodus.com</span>、<span class="ext-chip">heptabase.com</span>，以及一篇还没整理的 <span class="ext-chip is-naked">arxiv.org/abs/2104.05006</span>。
+            外部参考：<a class="ext-chip" href="https://infranodus.com" target="_blank" rel="noopener noreferrer">infranodus.com</a>、<a class="ext-chip" href="https://heptabase.com" target="_blank" rel="noopener noreferrer">heptabase.com</a>，以及一篇还没整理的 <a class="ext-chip is-naked" href="https://arxiv.org/abs/2104.05006" target="_blank" rel="noopener noreferrer">arxiv.org/abs/2104.05006</a>。
+          </p>
+        </section>
+        <section class="doc-block paragraph-block inline-style-demo-block" data-block-kind="paragraph" data-block-title="行内样式示例" data-source="同一段里可以有 **加粗判断**、*斜体补充*、&lt;span style=&quot;text-decoration: underline&quot;&gt;下划线行动项&lt;/span&gt;、~~已失效结论~~、&lt;mark&gt;黄色标记&lt;/mark&gt; 和 &lt;span style=&quot;color: #6d4bc3&quot;&gt;主题色术语&lt;/span&gt;。AI 还可以建议把关键结论升级为新的强调样式。">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <p>
+            同一段里可以有
+            <strong class="format-token" tabindex="0" data-format-label="加粗" data-format-source="**加粗判断**">加粗判断</strong>、
+            <em class="format-token" tabindex="0" data-format-label="斜体" data-format-source="*斜体补充*">斜体补充</em>、
+            <span class="format-token html-format is-underlined" tabindex="0" data-format-label="下划线" data-format-source="&lt;span style=&quot;text-decoration: underline&quot;&gt;下划线行动项&lt;/span&gt;">下划线行动项</span>、
+            <del class="format-token" tabindex="0" data-format-label="删除线" data-format-source="~~已失效结论~~">已失效结论</del>、
+            <mark class="format-token html-format" tabindex="0" data-format-label="黄色标记" data-format-source="&lt;mark&gt;黄色标记&lt;/mark&gt;">黄色标记</mark>
+            和 <span class="format-token html-format is-colored" tabindex="0" data-format-label="文字颜色" data-format-source="&lt;span style=&quot;color: #6d4bc3&quot;&gt;主题色术语&lt;/span&gt;">主题色术语</span>。
+            AI 还可以建议把
+            <span class="format-token format-suggestion-token" tabindex="0" data-format-label="普通文字" data-format-source="关键结论" data-ai-style="建议：使用紫色文字、半粗体和淡紫色底纹，接受前只做预览。" data-ai-style-type="accent">关键结论</span>
+            升级为新的强调样式。
           </p>
         </section>
         <section class="doc-block heading-block" data-block-kind="heading-2" data-block-title="章节标题" data-source="## 3. 图算法里的公式也应该像正文一样自然">
@@ -356,7 +436,7 @@
             行内公式也要稳：阻尼系数 <span class="math-inline" data-tex="d=0.85"></span>、复杂度 <span class="math-inline" data-tex="O(V+E)"></span>、阈值 <span class="math-inline" data-tex="\tau \ge 4.0"></span> 都应该能在同一段里自然排版。
           </p>
         </section>
-        <section class="doc-block image-block" data-block-kind="image" data-block-title="路线图" data-source="![[public-image/20250703182542769.png|路线图|720]]">
+        <section class="doc-block image-block" data-block-kind="image" data-block-title="路线图" data-source="![[public-image/20250703182542769.png|路线图|720]]&#10;&#10;Auckland、Beijing、Chengdu、Qinghe County 路线图。图片操作在悬浮时出现，正文阅读状态保持干净。">
           <div class="block-controls" aria-label="Block controls">
             <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
             <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
@@ -385,13 +465,53 @@
             </a>
             <div class="object-toolbar image-toolbar">
               <button data-action="zoom-image"><svg><use href="#i-zoom"></use></svg> 全屏</button>
-              <button data-action="crop-image"><svg><use href="#i-crop"></use></svg> 裁剪</button>
-              <button data-action="annotate-image">标注</button>
+              <button data-action="edit-image"><svg><use href="#i-edit-image"></use></svg> 编辑图片</button>
+              <button data-action="rename-image"><svg><use href="#i-rename"></use></svg> 重命名</button>
+              <button data-action="easy-copy"><svg><use href="#i-copy"></use></svg> 复制</button>
               <button data-action="ai-caption"><svg><use href="#i-spark"></use></svg> 图注</button>
-              <button data-action="ai-image"><svg><use href="#i-spark"></use></svg> 生成配图</button>
+              <button data-action="ai-image"><svg><use href="#i-spark"></use></svg> AI 改图</button>
             </div>
             <figcaption>Auckland、Beijing、Chengdu、Qinghe County 路线图。图片操作在悬浮时出现，正文阅读状态保持干净。</figcaption>
           </figure>
+        </section>
+        <section class="doc-block image-layout-block" data-block-kind="image-layout" data-block-title="多图片组合布局" data-source="&lt;div class=&quot;peak-image-layout&quot; data-layout=&quot;hero&quot;&gt;&#10;  &lt;figure&gt;&lt;img src=&quot;assets/real-map-auckland-route.png&quot; alt=&quot;迁移路线总览&quot;&gt;&lt;figcaption&gt;迁移路线总览&lt;/figcaption&gt;&lt;/figure&gt;&#10;  &lt;figure&gt;&lt;img src=&quot;assets/ai-knowledge-workflow-illustration.png&quot; alt=&quot;知识工作流&quot;&gt;&lt;figcaption&gt;知识工作流&lt;/figcaption&gt;&lt;/figure&gt;&#10;  &lt;figure&gt;&lt;img src=&quot;assets/real-map-auckland-route.png&quot; alt=&quot;路线细节&quot;&gt;&lt;figcaption&gt;路线细节&lt;/figcaption&gt;&lt;/figure&gt;&#10;  &lt;figure&gt;&lt;img src=&quot;assets/ai-knowledge-workflow-illustration.png&quot; alt=&quot;整理结果&quot;&gt;&lt;figcaption&gt;整理结果&lt;/figcaption&gt;&lt;/figure&gt;&#10;&lt;/div&gt;">
+          <div class="block-controls" aria-label="Block controls">
+            <button data-action="move" title="拖动"><svg><use href="#i-grip"></use></svg></button>
+            <button data-action="insert" title="插入"><svg><use href="#i-plus"></use></svg></button>
+            <button data-action="remove" title="删除"><svg><use href="#i-minus"></use></svg></button>
+            <button data-action="comment" title="评论"><svg><use href="#i-comment"></use></svg></button>
+            <button data-action="ai" title="AI 建议"><svg><use href="#i-spark"></use></svg></button>
+          </div>
+          <div class="image-layout-shell">
+            <div class="image-layout-head" contenteditable="false">
+              <span><strong>图片组合</strong><small>HTML Block · Markdown Preview 可见</small></span>
+              <div class="image-layout-modes" role="group" aria-label="图片组合布局">
+                <button type="button" data-action="switch-image-layout" data-image-layout="grid" aria-pressed="false">网格</button>
+                <button type="button" data-action="switch-image-layout" data-image-layout="hero" aria-pressed="true">主图</button>
+                <button type="button" data-action="switch-image-layout" data-image-layout="strip" aria-pressed="false">横排</button>
+                <button type="button" data-action="switch-image-layout" data-image-layout="story" aria-pressed="false">叙事</button>
+              </div>
+            </div>
+            <div class="peak-image-layout" data-layout="hero">
+              <figure>
+                <a class="lightgallery composer-lightgallery" href="assets/real-map-auckland-route.png" data-thumbnail="assets/real-map-auckland-route.png" data-sub-html="<h2>迁移路线总览</h2>"><img src="assets/real-map-auckland-route.png" alt="迁移路线总览" /></a>
+                <figcaption>迁移路线总览</figcaption>
+              </figure>
+              <figure>
+                <a class="lightgallery composer-lightgallery" href="assets/ai-knowledge-workflow-illustration.png" data-thumbnail="assets/ai-knowledge-workflow-illustration.png" data-sub-html="<h2>知识工作流</h2>"><img src="assets/ai-knowledge-workflow-illustration.png" alt="知识工作流" /></a>
+                <figcaption>知识工作流</figcaption>
+              </figure>
+              <figure>
+                <a class="lightgallery composer-lightgallery" href="assets/real-map-auckland-route.png" data-thumbnail="assets/real-map-auckland-route.png" data-sub-html="<h2>路线细节</h2>"><img src="assets/real-map-auckland-route.png" alt="路线细节" /></a>
+                <figcaption>路线细节</figcaption>
+              </figure>
+              <figure>
+                <a class="lightgallery composer-lightgallery" href="assets/ai-knowledge-workflow-illustration.png" data-thumbnail="assets/ai-knowledge-workflow-illustration.png" data-sub-html="<h2>整理结果</h2>"><img src="assets/ai-knowledge-workflow-illustration.png" alt="整理结果" /></a>
+                <figcaption>整理结果</figcaption>
+              </figure>
+            </div>
+            <div class="image-layout-source" contenteditable="false"><svg><use href="#i-code"></use></svg><span>HTML source · <code>data-layout="hero"</code></span></div>
+          </div>
         </section>
         <section class="doc-block table-block" data-block-kind="table" data-block-title="PKM pipeline table" data-source="| 阶段 | 真实来源 | 当前动作 | 输出 |&#10;| --- | --- | --- | --- |&#10;| 信息获取 | RSS / 网页 / PDF / 视频 | 进入 inbox | 原始资料 |">
           <div class="block-controls" aria-label="Block controls">
@@ -403,18 +523,19 @@
           </div>
           <div class="table-surface">
             <div class="object-toolbar table-toolbar">
-              <button data-action="format-table">格式化</button>
               <button data-action="add-row">+ 行</button>
               <button data-action="add-column">+ 列</button>
               <button data-action="remove-row">- 行</button>
               <button data-action="align-table">对齐</button>
               <button data-action="sort-table">排序</button>
               <button data-action="formula-table">公式</button>
+              <button data-action="merge-cells">合并</button>
               <button data-action="transpose-table">转置</button>
+              <button data-action="chart-table"><svg><use href="#i-chart"></use></svg> 图表</button>
               <button data-action="paste-csv">CSV</button>
               <button data-action="ai-table"><svg><use href="#i-spark"></use></svg> 总结</button>
             </div>
-            <table class="composer-table" id="composer-table">
+            <table class="composer-table" id="composer-table" aria-label="表格：拖动文字可选文本；从单元格空白处拖动可框选；按住 Command 或 Control 点击可不连续选择">
               <colgroup>
                 <col style="width: 18%" />
                 <col style="width: 24%" />
@@ -467,7 +588,7 @@
             <button data-action="ai" title="Intelligence"><svg><use href="#i-spark"></use></svg></button>
           </div>
           <div class="mermaid-shell">
-            <div class="mermaid-head"><span><svg><use href="#i-canvas"></use></svg> Mermaid</span><strong>PKM pipeline flowchart</strong><div class="native-inline-tools"><button data-action="native-view" data-native-mode="preview">预览</button><button data-action="native-view" data-native-mode="source">源码</button><button data-action="copy-native-source">复制源码</button><button data-action="copy-native-image">复制图像</button><button data-action="ai-native" data-ai-label="补缺失分支">AI 增量编辑</button></div></div>
+            <div class="mermaid-head"><span><svg><use href="#i-canvas"></use></svg> Mermaid</span><strong>PKM pipeline flowchart</strong><div class="native-inline-tools"><button data-action="native-view" data-native-mode="preview">预览</button><button data-action="native-view" data-native-mode="source">源码</button></div></div>
             <div class="mermaid-render native-preview" id="mermaid-render" data-definition="flowchart LR&#10;  A[信息获取] --> B[inbox]&#10;  B --> C[信息管理]&#10;  C --> D[信息输出]&#10;  D --> E[知识回顾]&#10;  E --> C"><code>flowchart LR: 信息获取 → inbox → 信息管理 → 信息输出 → 知识回顾 → 信息管理</code></div>
             <pre class="native-source-pane" hidden><code id="mermaid-source-code">flowchart LR
   A[信息获取] --> B[inbox]
@@ -487,7 +608,7 @@
           </div>
           <div class="native-head">
             <div><span>Base preview</span><strong>pkm-composer.base</strong><small>有效 `.base` YAML 样例；另附 vault 中真实 `Untitled.base` 副本</small></div>
-            <div class="native-actions"><button data-action="open-native">Open original</button><button data-action="ai-native" data-ai-label="生成周报">生成周报</button><button data-action="comment">评论</button></div>
+            <div class="native-actions"><button data-action="open-native">打开原文件</button></div>
           </div>
           <div class="base-render">
             <div class="base-row head"><span>file</span><span>stage</span><span>input</span><span>output</span><span>next</span></div>
@@ -508,7 +629,7 @@
           </div>
           <div class="native-head">
             <div><span>JSON Canvas preview</span><strong>pkm-composer.canvas</strong><small>真实 `.canvas` JSON：nodes / edges / file references</small></div>
-            <div class="native-actions"><button data-action="open-native">Open canvas</button><button data-action="native-view" data-native-mode="preview">预览</button><button data-action="native-view" data-native-mode="source">源码</button><button data-action="copy-native-source">复制源码</button><button data-action="copy-native-image">复制图像</button><button data-action="ai-native" data-ai-label="补一个节点">AI 增量编辑</button></div>
+            <div class="native-actions"><button data-action="open-native">打开 Canvas</button><button data-action="native-view" data-native-mode="preview">预览</button><button data-action="native-view" data-native-mode="source">源码</button></div>
           </div>
           <div class="json-canvas-render native-preview" id="json-canvas-render" aria-label="Rendered JSON Canvas"></div>
           <pre class="native-source-pane" hidden><code id="canvas-source-code"></code></pre>
@@ -524,7 +645,7 @@
           </div>
           <div class="native-head">
             <div><span>Excalidraw preview</span><strong>101-A-产品类别分析.excalidraw.md</strong><small>从 vault 真实 Excalidraw 文件提取节点，用 RoughJS 做手绘风预览</small></div>
-            <div class="native-actions"><button data-action="open-native">Open original</button><button data-action="native-view" data-native-mode="preview">预览</button><button data-action="native-view" data-native-mode="source">源码</button><button data-action="copy-native-source">复制源码</button><button data-action="copy-native-image">复制图像</button><button data-action="ai-native" data-ai-label="补一个流程节点">AI 增量编辑</button></div>
+            <div class="native-actions"><button data-action="open-native">打开原文件</button><button data-action="native-view" data-native-mode="preview">预览</button><button data-action="native-view" data-native-mode="source">源码</button></div>
           </div>
           <svg id="excalidraw-render" class="excalidraw-render native-preview" viewBox="0 0 940 420" role="img" aria-label="Rendered Excalidraw preview"></svg>
           <pre class="native-source-pane" hidden><code id="excalidraw-source-code"></code></pre>
@@ -669,12 +790,32 @@
       </article>
 
       <div class="selection-toolbar" id="selection-toolbar" hidden contenteditable="false" aria-label="选中文本操作">
-        <span class="selection-scope" id="selection-scope">已选中</span>
-        <button type="button" data-selection-action="comment">评论</button>
-        <button type="button" data-selection-action="polish">润色</button>
-        <button type="button" data-selection-action="shorten">精简</button>
-        <button type="button" data-selection-action="expand">扩写</button>
-        <button type="button" data-selection-action="ask"><svg><use href="#i-spark"></use></svg> 问 AI</button>
+        <span class="selection-scope" id="selection-scope" hidden></span>
+        <div class="selection-format-group" role="group" aria-label="文本格式">
+          <button type="button" data-selection-format="bold" aria-label="加粗" title="加粗 · Markdown"><svg><use href="#i-bold"></use></svg></button>
+          <button type="button" data-selection-format="italic" aria-label="斜体" title="斜体 · Markdown"><svg><use href="#i-italic"></use></svg></button>
+          <button type="button" data-selection-format="underline" aria-label="下划线" title="下划线 · HTML 增强格式"><svg><use href="#i-underline"></use></svg></button>
+          <button type="button" data-selection-format="strikeThrough" aria-label="删除线" title="删除线 · Markdown"><svg><use href="#i-strikethrough"></use></svg></button>
+          <button type="button" data-selection-format="link" aria-label="给选区添加链接" title="粘贴 URL 到选区，或手动添加 Markdown / Wiki 链接"><svg><use href="#i-link"></use></svg></button>
+          <button class="selection-color-button" type="button" data-selection-format="foreColor" aria-label="文字颜色" title="文字颜色 · HTML 增强格式"><svg><use href="#i-palette"></use></svg><i class="selection-color-swatch is-text"></i></button>
+          <button class="selection-color-button" type="button" data-selection-format="hiliteColor" aria-label="标记颜色" title="Highlightr 标记颜色 · HTML 增强格式"><svg><use href="#i-highlighter"></use></svg><i class="selection-color-swatch is-highlight"></i></button>
+          <button type="button" data-selection-action="easy-copy" aria-label="复制选区" title="Easy Copy · 文本 / Markdown / HTML / 图片"><svg><use href="#i-copy"></use></svg></button>
+        </div>
+        <span class="selection-divider" aria-hidden="true"></span>
+        <button type="button" data-selection-action="comment"><svg><use href="#i-comment"></use></svg> 评论</button>
+        <span class="selection-divider selection-table-only" aria-hidden="true" hidden></span>
+        <div class="selection-table-group selection-table-only" role="group" aria-label="单元格操作" hidden>
+          <button type="button" data-selection-table-action="merge"><svg><use href="#i-merge-cells"></use></svg> 合并</button>
+          <button type="button" data-selection-table-action="clear">清除选择</button>
+        </div>
+        <span class="selection-divider" aria-hidden="true"></span>
+        <div class="selection-ai-group" role="group" aria-label="AI 文本操作">
+          <button type="button" data-selection-action="polish">润色</button>
+          <button type="button" data-selection-action="shorten">精简</button>
+          <button type="button" data-selection-action="expand">扩写</button>
+          <button type="button" data-selection-action="ask"><svg><use href="#i-spark"></use></svg> 问 AI</button>
+        </div>
+        <div class="selection-toolbar-popover" id="selection-toolbar-popover" hidden></div>
       </div>
 
       <section class="selection-review" id="selection-review" hidden contenteditable="false" aria-live="polite"></section>
@@ -687,11 +828,17 @@
   <nav class="composer-change-navigator" id="composer-change-navigator" aria-label="正文候选改动导航" hidden></nav>
 
   <footer class="sourcebar" id="sourcebar">
-    <button class="sourcebar-summary" type="button" data-sourcebar-toggle aria-expanded="false">
-      <span class="sourcebar-state"><svg><use href="#i-check"></use></svg> Markdown 已保存</span>
-      <span class="sourcebar-context" id="sourcebar-context">当前块 · 知识库结构笔记</span>
-      <svg class="sourcebar-chevron"><use href="#i-chevron-up"></use></svg>
-    </button>
+    <div class="sourcebar-main">
+      <button class="sourcebar-summary" type="button" data-sourcebar-toggle aria-expanded="false">
+        <span class="sourcebar-state"><svg><use href="#i-check"></use></svg> Markdown 已保存</span>
+        <span class="sourcebar-context" id="sourcebar-context">当前块 · 知识库结构笔记</span>
+        <svg class="sourcebar-chevron"><use href="#i-chevron-up"></use></svg>
+      </button>
+      <div class="sourcebar-transaction-controls" role="group" aria-label="文档撤销与重做">
+        <button id="composer-undo" type="button" data-transaction-action="undo" aria-label="撤销" title="没有可撤销的文档改动" disabled><svg><use href="#i-undo"></use></svg></button>
+        <button id="composer-redo" type="button" data-transaction-action="redo" aria-label="重做" title="没有可重做的文档改动" disabled><svg><use href="#i-redo"></use></svg></button>
+      </div>
+    </div>
     <div class="sourcebar-detail" id="sourcebar-detail" hidden>
       <code id="bottom-source">## 知识库结构</code>
       <button data-panel-action="source">在块内查看</button>
@@ -699,7 +846,7 @@
   </footer>
 </main>
 
-<div class="toast" id="toast" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="../../../node_modules/roughjs/bundled/rough.js"></script>
 <script src="../../../node_modules/katex/dist/katex.min.js"></script>

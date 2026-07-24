@@ -2071,6 +2071,35 @@
   justify-content: center;
 }
 
+/* Copy split button — click copies text; hover reveals Markdown / JSON. The
+   caret is a low-emphasis affordance hinting at the hover menu. */
+:is(.pktw-root, .peak-design-root) .pkchat-msg__action-split {
+  display: inline-flex;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-msg__action-split__caret {
+  width: 12px !important;
+  height: 12px !important;
+  flex: 0 0 12px !important;
+  margin-left: -2px;
+  opacity: 0.45;
+  transition: opacity 120ms ease;
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-msg__action-split:hover .pkchat-msg__action-split__caret {
+  opacity: 0.85;
+}
+
+/* Copied confirmation — success tint holds for ~1.6s after a copy. */
+:is(.pktw-root, .peak-design-root) .pkchat-msg__action--copied,
+:is(.pktw-root, .peak-design-root) .pkchat-msg__action--copied:hover {
+  color: var(--pk-success-text);
+}
+
+:is(.pktw-root, .peak-design-root) .pkchat-msg__action--copied > svg {
+  color: var(--pk-success-text);
+}
+
 :is(.pktw-root, .peak-design-root) .pkchat-msg__suggest {
   display: flex;
   align-items: center;

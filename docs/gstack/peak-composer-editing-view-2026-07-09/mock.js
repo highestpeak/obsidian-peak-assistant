@@ -24,14 +24,26 @@ let blockDragState = null;
 let suppressNextMoveClick = false;
 let focusedBlock = null;
 let currentCell = null;
-let tableSortAsc = false;
+let tableSelectionAnchor = null;
+let selectedTableCells = [];
+let selectedTableRange = null;
+let selectedTableMode = null;
+let tablePointerSelection = null;
+let suppressNextTableCellClick = false;
+let tableMergeFirstCell = null;
+let tableMergeMode = false;
 const rollbackTrail = [];
+const composerUndoStack = [];
+const composerRedoStack = [];
+let composerTransactionSequence = 0;
+let composerAiRunSequence = 0;
 const aiSuggestionHistory = [];
 let activeHistoryIndex = null;
 let ambientPushLoading = false;
 let ambientThemeLocked = true;
 let activeCapabilityId = null;
 let capabilityRunTimer = null;
+let directEditBatch = null;
 
 const copilotCapabilities = [
   { id: "connect-notes", label: "连接相关笔记", description: "合并 Graph、Wiki Link 与 backlink 信号", group: "knowledge", icon: "i-share", scope: "知识库", recommended: true, strategies: ["语义图谱", "Wiki links", "Backlinks"] },
@@ -380,7 +392,8 @@ function setFocusedBlock(block) {
 }
 
 function showToast(message) {
-  toast.textContent = message;
+  toast.classList.remove("is-transaction");
+  toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
   toast.hidden = false;
   clearTimeout(showToast.timer);
   showToast.timer = setTimeout(() => {
@@ -622,7 +635,7 @@ function escapeHtml(value) {
 function syncOpenEditorState(block) {
   if (!block) return;
   const open = block.querySelector(
-    ":scope > .insert-strip:not([hidden]), :scope > .comment-editor:not([hidden]), :scope > .insight-panel:not([hidden]), .ai-menu:not([hidden])"
+    ":scope > .insert-strip:not([hidden]), :scope > .comment-editor:not([hidden]), :scope > .insight-panel:not([hidden]), :scope > .block-copy-menu:not([hidden]), :scope > .image-tool-panel:not([hidden]), :scope > .metadata-ai-suggestions:not([hidden]), :scope > .metadata-property-draft, :scope > .vault-property-overlay:not([hidden]), .micro-block > .block-copy-menu:not([hidden]), .ai-menu:not(.block-action-bar):not([hidden])"
   );
   block.classList.toggle("has-open-editor", Boolean(open));
 }
@@ -769,6 +782,14 @@ function getAiActions(block) {
     ];
   }
 
+  if (kind === "image-layout") {
+    return [
+      suggestion("智能排版", "检测到多图 HTML Block", "根据图片比例和阅读顺序，在网格、主图、横排与叙事布局中给出可审阅建议。"),
+      suggestion("统一图注", "多图图注可对齐", "统一四张图片的图注语气，仍分别写回各自 figcaption。"),
+      suggestion("调整叙事顺序", "多图存在顺序语义", "只重排 figure，不复制附件，也不把组合展平成一张图片。"),
+    ];
+  }
+
   if (kind === "table") {
     return [
       suggestion("总结表格", "结构化数据", "总结表格结论并指出缺失字段。"),
@@ -904,6 +925,17 @@ const candidateLibrary = {
   "Frontmatter metadata::规范属性": "updated: 2023-10-18 早于正文最后一次编辑；建议更新为当前时间，并把 tags 统一为 kebab-case。",
 };
 
+const regeneratedCandidateLibrary = {
+  "路线图::生成图注": [
+    "迁移路线由 Auckland 启程，经 Beijing 转至 Chengdu 与 Qinghe County；紫色表示跨国航段，绿色表示国内衔接。",
+    "路线说明：Auckland → Beijing → Chengdu → Qinghe County。跨国段使用紫色，进入国内后的行程使用绿色。",
+  ],
+  "PKM pipeline table::总结表格": [
+    "这张表描述了一个四阶段循环：资料进入 inbox，随后被组织、输出，并在回顾后形成下一轮行动。当前仍缺少回顾结果如何重新进入获取阶段的说明。",
+    "从获取到回顾，四列已经覆盖知识工作的主链；建议补充“回流触发条件”，让闭环不只停留在概念层。",
+  ],
+};
+
 function listToTable(block) {
   const rows = sourceLines(block)
     .filter((line) => line.startsWith("- "))
@@ -924,26 +956,36 @@ function paragraphToTable(block) {
   return ["| 要点 | 内容 |", "| --- | --- |", ...clauses.map((clause, index) => `| 要点 ${index + 1} | ${clause} |`)].join("\n");
 }
 
-function buildCandidate(block, item, microTitle, customText) {
+function buildCandidate(block, item, microTitle, customText, variantIndex = 0) {
   const key = `${microTitle || block.dataset.blockTitle || ""}::${item.label}`;
-  if (candidateLibrary[key]) return candidateLibrary[key];
-  if (customText) return `按指令「${customText}」生成的候选（mock 占位）：${firstSourceLine(block).slice(0, 40)}……`;
+  const regenerated = variantIndex > 0 && regeneratedCandidateLibrary[key]?.length
+    ? regeneratedCandidateLibrary[key][(variantIndex - 1) % regeneratedCandidateLibrary[key].length]
+    : "";
+  let candidate = regenerated || candidateLibrary[key] || "";
+  if (!candidate && customText) candidate = `按指令「${customText}」生成的候选（mock 占位）：${firstSourceLine(block).slice(0, 40)}……`;
   if (item.label === "转成表格") {
-    return (block.dataset.blockKind === "list" ? listToTable(block) : "") || paragraphToTable(block);
+    candidate = (block.dataset.blockKind === "list" ? listToTable(block) : "") || paragraphToTable(block);
   }
   if (item.label === "提出追问") {
-    return `1. 这一段的结论依赖什么前提？\n2. 有没有反例能推翻“${firstSourceLine(block).slice(0, 24)}…”？`;
+    candidate = `1. 这一段的结论依赖什么前提？\n2. 有没有反例能推翻“${firstSourceLine(block).slice(0, 24)}…”？`;
   }
   if (item.label === "补一个例子") {
-    return "例子：一条播客灵感先进 inbox，再拆进“信息聚合-PKM”主题笔记，最后在周复盘里被引用——原则由此落地。";
+    candidate = "例子：一条播客灵感先进 inbox，再拆进“信息聚合-PKM”主题笔记，最后在周复盘里被引用——原则由此落地。";
   }
   if (item.label === "提取公式") {
-    return "候选公式：$score = w_1 \\cdot relevance + w_2 \\cdot recency$\n（变量含义需确认后再写入）";
+    candidate = "候选公式：$score = w_1 \\cdot relevance + w_2 \\cdot recency$\n（变量含义需确认后再写入）";
   }
   if (item.label === "变量表") {
-    return "| 符号 | 含义 |\n| --- | --- |\n| d | 阻尼系数 0.85 |\n| N | 节点总数 |\n| L(i) | 页面 i 的出链数 |";
+    candidate = "| 符号 | 含义 |\n| --- | --- |\n| d | 阻尼系数 0.85 |\n| N | 节点总数 |\n| L(i) | 页面 i 的出链数 |";
   }
-  return item.detail;
+  if (!candidate) candidate = item.detail;
+  const isDeterministicShape = ["转成表格", "提取公式", "变量表"].includes(item.label);
+  if (customText && !isDeterministicShape && !candidate.startsWith("按指令「")) {
+    candidate = `按要求「${customText}」调整：${candidate}`;
+  }
+  if (variantIndex === 0 || customText) return candidate;
+  const angle = variantIndex % 2 === 1 ? "换一种更精简的表达：" : "换一种更强调下一步行动的表达：";
+  return `${angle}${candidate}`;
 }
 
 /* ---------- word / char-level diff (folded from block-AI mock) ---------- */
@@ -1017,29 +1059,237 @@ function rewriteTargetFor(block) {
 
 /* ---------- dismiss any open AI surface (in-place review bar or insert card) ---------- */
 function closeAiCards(except) {
-  paper.querySelectorAll(".rw-review, .ins-card, .generated-draft, .metadata-review, .list-review, .list-to-table-review, .checklist-review, .vault-link-review, .formula-review, .formula-explainer, .formula-extract-review, .native-inline-review").forEach((surface) => {
+  paper.querySelectorAll(".rw-review, .ins-card, .generated-draft, .image-tool-panel[data-image-panel-mode='ai'], .metadata-review, .list-review, .list-to-table-review, .checklist-review, .vault-link-review, .formula-review, .formula-explainer, .formula-extract-review, .native-inline-review").forEach((surface) => {
     if (surface === except) return;
     if (typeof surface._dismiss === "function") surface._dismiss();
   });
 }
 
-function markAccepted(block, label, restore = null) {
+function updateComposerTransactionControls() {
+  const undoEntry = composerUndoStack.at(-1);
+  const redoEntry = composerRedoStack.at(-1);
+  document.querySelectorAll("[data-transaction-action='undo']").forEach((button) => {
+    button.disabled = !undoEntry;
+    button.title = undoEntry ? `撤销：${undoEntry.label}（⌘Z / Ctrl+Z）` : "没有可撤销的文档改动";
+    button.setAttribute("aria-label", undoEntry ? `撤销 ${undoEntry.label}` : "撤销");
+  });
+  document.querySelectorAll("[data-transaction-action='redo']").forEach((button) => {
+    button.disabled = !redoEntry;
+    button.title = redoEntry ? `重做：${redoEntry.label}（⇧⌘Z / Ctrl+Y）` : "没有可重做的文档改动";
+    button.setAttribute("aria-label", redoEntry ? `重做 ${redoEntry.label}` : "重做");
+  });
+}
+
+function showComposerTransactionNotice(state, entry) {
+  toast.classList.add("is-transaction");
+  toast.innerHTML = `
+    <span class="transaction-notice-mark"><svg><use href="#i-check"></use></svg></span>
+    <span class="transaction-notice-copy"><strong>${escapeHtml(state)}</strong><small>${escapeHtml(entry?.label || "文档事务")}</small></span>
+    <span class="transaction-notice-actions" role="group" aria-label="撤销与重做">
+      <button type="button" data-transaction-action="undo">撤销</button>
+      <button type="button" data-transaction-action="redo">重做</button>
+    </span>`;
+  toast.hidden = false;
+  updateComposerTransactionControls();
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => {
+    toast.hidden = true;
+  }, 4600);
+}
+
+function recordComposerTransaction(entry) {
+  composerUndoStack.push(entry);
+  composerRedoStack.length = 0;
+  queueMicrotask(() => showComposerTransactionNotice("改动已写入", entry));
+}
+
+function removeRollbackTransaction(entry) {
+  const index = rollbackTrail.indexOf(entry);
+  if (index >= 0) rollbackTrail.splice(index, 1);
+  activeHistoryIndex = rollbackTrail.length ? Math.max(0, Math.min(index, rollbackTrail.length - 1)) : null;
+}
+
+function focusComposerTransaction(entry) {
+  if (!entry?.block || !paper.contains(entry.block)) return;
+  setFocusedBlock(entry.block);
+  entry.block.classList.add("is-history-located");
+  setTimeout(() => entry.block.classList.remove("is-history-located"), 700);
+}
+
+function undoComposerTransaction() {
+  const entry = composerUndoStack.pop();
+  if (!entry) return;
+  entry.restore?.();
+  entry.block.dataset.source = entry.before;
+  entry.block.dataset.lastCommittedSource = entry.before;
+  removeRollbackTransaction(entry);
+  if (!rollbackTrail.some((other) => other.block === entry.block)) {
+    entry.block.classList.remove("has-ai-accepted");
+  }
+  composerRedoStack.push(entry);
+  renderRollbackTrail();
+  focusComposerTransaction(entry);
+  showComposerTransactionNotice("已撤销", entry);
+}
+
+function redoComposerTransaction() {
+  const entry = composerRedoStack.pop();
+  if (!entry) return;
+  entry.reapply?.();
+  entry.block.dataset.source = entry.after;
+  entry.block.dataset.lastCommittedSource = entry.after;
+  entry.block.classList.toggle("has-ai-accepted", entry.provenance !== "user");
+  entry.at = Date.now();
+  rollbackTrail.unshift(entry);
+  activeHistoryIndex = 0;
+  composerUndoStack.push(entry);
+  renderRollbackTrail();
+  focusComposerTransaction(entry);
+  showComposerTransactionNotice("已重做", entry);
+}
+
+function isNativeUndoTarget(target) {
+  if (!(target instanceof Element)) return false;
+  if (target.matches("input, textarea")) return true;
+  if (target.closest("input, textarea, [data-candidate-instruction]")) return true;
+  return target.isContentEditable && !target.closest("button, [contenteditable='false']");
+}
+
+function initComposerTransactionControls() {
+  [toast, sourcebar].forEach((surface) => {
+    surface.addEventListener("pointerdown", (event) => {
+      if (!event.target.closest("[data-transaction-action]")) return;
+      commitDirectEditBatch();
+    });
+    surface.addEventListener("click", (event) => {
+      const action = event.target.closest("[data-transaction-action]")?.dataset.transactionAction;
+      if (action === "undo") undoComposerTransaction();
+      if (action === "redo") redoComposerTransaction();
+    });
+  });
+  updateComposerTransactionControls();
+}
+
+function markAccepted(block, label, restore = null, reapply = null, provenance = "accepted") {
+  const aiRunId = block.dataset.aiRunId || null;
+  const isAiAccepted = provenance === "ai"
+    || (provenance !== "user" && (block.classList.contains("has-ai-card") || block.classList.contains("generated-draft")));
   block.classList.remove("has-ai-card");
-  block.classList.add("has-ai-accepted");
+  block.classList.toggle("has-ai-accepted", provenance !== "user");
   const before = block.dataset.lastCommittedSource ?? block.dataset.initialSource ?? "";
   const after = block.dataset.source || "";
-  rollbackTrail.unshift({
+  const parent = block.parentNode;
+  const nextSibling = block.nextSibling;
+  const entry = {
+    id: `composer-tx-${++composerTransactionSequence}`,
     block,
     label: label || "AI patch",
     title: block.dataset.blockTitle || "当前块",
     restore,
+    reapply: reapply || (() => {
+      if (paper.contains(block) || !parent) return;
+      parent.insertBefore(block, nextSibling?.parentNode === parent ? nextSibling : null);
+    }),
     before,
     after,
+    provenance,
     at: Date.now(),
-  });
+  };
+  rollbackTrail.unshift(entry);
+  recordComposerTransaction(entry);
   block.dataset.lastCommittedSource = after;
+  delete block.dataset.aiRunId;
   activeHistoryIndex = 0;
   renderRollbackTrail();
+  if (provenance === "user" || isAiAccepted) {
+    const stats = historyChangeStats(entry);
+    const historyOrigin = isAiAccepted ? "ai" : "user";
+    window.PeakIntelligencePanel?.controller("#ambient-panel")?.recordDocumentTransaction({
+      id: entry.id,
+      title: entry.label,
+      target: `${entry.title} · ${stats.scope} · ${stats.changedLines} 行`,
+      delta: `+${stats.added} −${stats.removed}`,
+      origin: historyOrigin,
+      originLabel: isAiAccepted ? "AI 辅助 · 已接受" : "你直接编辑",
+      groupId: isAiAccepted ? aiRunId : "composer-session-user-burst",
+      groupLabel: isAiAccepted ? "本次块内 AI 写入" : "连续直接编辑",
+      before: entry.before,
+      after: entry.after,
+    });
+  }
+}
+
+function markAiAccepted(block, item, label, restore = null, reapply = null) {
+  if (item?.runId) block.dataset.aiRunId = item.runId;
+  markAccepted(block, label || item?.label, restore, reapply, "ai");
+}
+
+function refreshDirectEditSource(block) {
+  const kind = block?.dataset.blockKind;
+  if (kind === "metadata") return refreshMetadataSource(block);
+  if (kind === "list") return refreshListSource(block);
+  if (kind === "checklist") return refreshChecklistSource(block);
+  if (kind === "links") return refreshVaultLinksSource(block);
+  if (kind === "math") return refreshMathSource(block);
+  if (kind === "table") return refreshTableSource(block, block.querySelector("table"));
+  refreshProseSource(block);
+}
+
+function directEditUnit(target) {
+  if (!(target instanceof Element)) return null;
+  if (target.matches("input, textarea") || target.closest("input, textarea")) return null;
+  if (target.closest(".rw-review, .generated-draft, .comment-editor, .selection-toolbar, .selection-review, .metadata-property-draft, .image-tool-panel, .table-tool-prompt, .table-formula-editor")) return null;
+  const anchorNode = window.getSelection()?.anchorNode;
+  const anchorElement = anchorNode?.nodeType === Node.ELEMENT_NODE ? anchorNode : anchorNode?.parentElement;
+  const scope = target === paper && anchorElement ? anchorElement : target;
+  const block = scope.closest(".doc-block");
+  if (!block || !paper.contains(block)) return null;
+  const unit = scope.closest("p, h1, h2, blockquote, li, td, th, .callout-body, .metadata-value");
+  if (!unit || !block.contains(unit)) return null;
+  return { block, unit };
+}
+
+function commitDirectEditBatch() {
+  const batch = directEditBatch;
+  directEditBatch = null;
+  if (!batch) return;
+  clearTimeout(batch.timer);
+  const afterHTML = batch.unit.innerHTML;
+  if (afterHTML === batch.beforeHTML) return;
+  refreshDirectEditSource(batch.block);
+  const restoreUnit = () => {
+    batch.unit.innerHTML = batch.beforeHTML;
+    refreshDirectEditSource(batch.block);
+  };
+  const reapplyUnit = () => {
+    batch.unit.innerHTML = afterHTML;
+    refreshDirectEditSource(batch.block);
+  };
+  markAccepted(batch.block, `直接编辑 · ${batch.block.dataset.blockTitle || "当前块"}`, restoreUnit, reapplyUnit, "user");
+}
+
+function initDirectEditTransactions() {
+  paper.addEventListener("beforeinput", (event) => {
+    const target = directEditUnit(event.target);
+    if (!target || event.inputType?.startsWith("history")) return;
+    if (directEditBatch && directEditBatch.unit !== target.unit) commitDirectEditBatch();
+    if (directEditBatch) return;
+    directEditBatch = {
+      ...target,
+      beforeHTML: target.unit.innerHTML,
+      timer: 0,
+    };
+  });
+  paper.addEventListener("input", (event) => {
+    if (!directEditBatch || event.inputType?.startsWith("history")) return;
+    refreshDirectEditSource(directEditBatch.block);
+    clearTimeout(directEditBatch.timer);
+    directEditBatch.timer = setTimeout(commitDirectEditBatch, 480);
+  });
+  paper.addEventListener("focusout", (event) => {
+    if (!directEditBatch || directEditBatch.unit.contains(event.relatedTarget)) return;
+    commitDirectEditBatch();
+  });
 }
 
 function renderKatexIn(root) {
@@ -1070,14 +1320,20 @@ function createObjectReview(className, title, detail) {
 function refreshMetadataSource(block) {
   const grid = block.querySelector(".metadata-grid");
   if (!grid) return;
-  const values = {};
+  const lines = [];
   for (let index = 0; index < grid.children.length; index += 2) {
-    const key = grid.children[index]?.textContent?.trim();
-    const value = grid.children[index + 1]?.textContent?.trim();
-    if (key && value) values[key] = value;
+    const label = grid.children[index];
+    const valueNode = grid.children[index + 1];
+    const key = label?.childNodes[0]?.textContent?.trim();
+    if (!key || !valueNode) continue;
+    if (key === "tags") {
+      const tags = Array.from(valueNode.querySelectorAll(".tag-chip")).map((tag) => tag.textContent.trim());
+      lines.push(`tags: [${tags.join(", ")}]`);
+      continue;
+    }
+    lines.push(`${key}: ${valueNode.textContent.trim()}`);
   }
-  const tags = Array.from(grid.querySelectorAll(".tag-chip")).map((tag) => tag.textContent.trim());
-  block.dataset.source = `---\ncreated: ${values.created || ""}\nupdated: ${values.updated || ""}\ntags: [${tags.join(", ")}]\n---`;
+  block.dataset.source = `---\n${lines.join("\n")}\n---`;
   if (focusedBlock === block) setFocusedBlock(block);
 }
 
@@ -1140,7 +1396,7 @@ function runMetadataPatch(block, item) {
       review.remove();
       block.classList.remove("is-ai-running");
       refreshMetadataSource(block);
-      markAccepted(block, item.label, () => {
+      markAiAccepted(block, item, item.label, () => {
         proposed.forEach((chip) => chip.remove());
         refreshMetadataSource(block);
       });
@@ -1172,7 +1428,7 @@ function runMetadataPatch(block, item) {
     review.remove();
     block.classList.remove("is-ai-running");
     refreshMetadataSource(block);
-    markAccepted(block, item.label, () => {
+    markAiAccepted(block, item, item.label, () => {
       updatedValue.textContent = original;
       if (issue && issueParent && !issue.isConnected) issueParent.insertBefore(issue, issueNext);
       refreshMetadataSource(block);
@@ -1206,7 +1462,7 @@ function runListPatch(block, item) {
       review.remove();
       block.classList.remove("is-ai-running");
       refreshListSource(block);
-      markAccepted(block, item.label, () => {
+      markAiAccepted(block, item, item.label, () => {
         candidate.remove();
         refreshListSource(block);
       });
@@ -1223,34 +1479,28 @@ function runListPatch(block, item) {
   const candidateList = list.cloneNode(false);
   ordered.forEach((node) => candidateList.appendChild(node.cloneNode(true)));
   candidateList.classList.add("suggested-list");
-  list.classList.add("is-review-original");
   review.querySelector(".object-review-head").after(document.createRange().createContextualFragment(`
-    <div class="list-compare">
-      <section class="list-compare-original"><span>原列表</span></section>
-      <span class="list-compare-arrow">→</span>
-      <section class="list-compare-suggested"><span>建议顺序</span></section>
-    </div>
+    <section class="list-transform-candidate"><span>建议顺序</span></section>
   `));
-  review.querySelector(".list-compare-original").appendChild(originalList);
-  review.querySelector(".list-compare-suggested").appendChild(candidateList);
+  review.querySelector(".list-transform-candidate").appendChild(candidateList);
   review._dismiss = () => {
-    list.classList.remove("is-review-original");
     review.remove();
     block.classList.remove("has-ai-card", "is-ai-running");
   };
   review.querySelector('[data-object-review="restore"]').addEventListener("click", review._dismiss);
   review.querySelector('[data-object-review="accept"]').addEventListener("click", () => {
+    candidateList.classList.remove("suggested-list");
     list.replaceWith(candidateList);
     review.remove();
     block.classList.remove("is-ai-running");
     refreshListSource(block);
-    markAccepted(block, item.label, () => {
+    markAiAccepted(block, item, item.label, () => {
       candidateList.replaceWith(originalList);
       refreshListSource(block);
     });
     setLive("列表已重排", "建议顺序已经原地替换旧列表，仍然只写回一条 Markdown list。 ");
   });
-  setLive("重排列表", "原列表在上、建议列表在下，纵向核对后原地替换；拒绝后只留下原列表。 ");
+  setLive("重排列表", "真实列表保持原位且只出现一次；下方只展示建议顺序，接受后才原地替换。 ");
 }
 
 function listRowsForTable(list) {
@@ -1272,13 +1522,42 @@ function tableFromRows(rows) {
 }
 
 function refreshTableSource(block, tableNode) {
+  const formulaSource = block.dataset.tableFormula ? `\n<!-- TBLFM: ${block.dataset.tableFormula} -->` : "";
+  const complex = Array.from(tableNode.querySelectorAll("th, td"))
+    .some((cell) => cell.colSpan > 1 || cell.rowSpan > 1);
+  if (complex) {
+    const serializeSection = (name, section) => {
+      if (!section) return "";
+      const rows = Array.from(section.rows).map((row) => {
+        const cells = Array.from(row.cells).map((cell) => {
+          const tag = cell.tagName.toLowerCase();
+          const span = `${cell.colSpan > 1 ? ` colspan="${cell.colSpan}"` : ""}${cell.rowSpan > 1 ? ` rowspan="${cell.rowSpan}"` : ""}`;
+          const alignment = cell.style.textAlign ? ` style="text-align: ${cell.style.textAlign}"` : "";
+          return `    <${tag}${span}${alignment}>${escapeHtml(cell.textContent.trim())}</${tag}>`;
+        }).join("\n");
+        return `  <tr>\n${cells}\n  </tr>`;
+      }).join("\n");
+      return `<${name}>\n${rows}\n</${name}>`;
+    };
+    block.dataset.source = `<table>\n${serializeSection("thead", tableNode.tHead)}\n${serializeSection("tbody", tableNode.tBodies[0])}\n</table>${formulaSource}`;
+    block.dataset.tableSourceMode = "html";
+    if (focusedBlock === block) setFocusedBlock(block);
+    return;
+  }
   const rows = Array.from(tableNode.querySelectorAll("tr")).map((row) => Array.from(row.cells).map((cell) => cell.textContent.trim()));
   if (!rows.length) return;
+  const separators = rows[0].map((_, index) => {
+    const alignment = tableNode.dataset[`align${index}`] || "left";
+    if (alignment === "center") return ":---:";
+    if (alignment === "right") return "---:";
+    return "---";
+  });
   block.dataset.source = [
     `| ${rows[0].join(" | ")} |`,
-    `| ${rows[0].map(() => "---").join(" | ")} |`,
+    `| ${separators.join(" | ")} |`,
     ...rows.slice(1).map((row) => `| ${row.join(" | ")} |`),
-  ].join("\n");
+  ].join("\n") + formulaSource;
+  block.dataset.tableSourceMode = "markdown";
   if (focusedBlock === block) setFocusedBlock(block);
 }
 
@@ -1286,23 +1565,16 @@ function runListToTable(block, item) {
   closeAiCards();
   const list = block.querySelector(":scope > ul, :scope > ol");
   if (!list) return runInsert(block, block, item);
-  const originalList = list.cloneNode(true);
+  const originalListSnapshot = list.cloneNode(true);
   const candidateTable = tableFromRows(listRowsForTable(list));
-  const review = createObjectReview("list-to-table-review", item.label, "把当前列表重写为可编辑的 Markdown 表格；建议列按阅读用途重新组织");
+  const review = createObjectReview("list-to-table-review", item.label, "原列表保留在原位；这里只审阅准备替换它的 Markdown 表格");
   review.querySelector(".object-review-head").after(document.createRange().createContextualFragment(`
-    <div class="list-compare table-transform-compare">
-      <section class="list-compare-original"><span>原列表</span></section>
-      <span class="list-compare-arrow">→</span>
-      <section class="list-compare-suggested"><span>建议表格</span></section>
-    </div>
+    <section class="table-transform-candidate"><span>建议表格</span></section>
   `));
-  review.querySelector(".list-compare-original").appendChild(originalList);
-  review.querySelector(".list-compare-suggested").appendChild(candidateTable);
-  list.classList.add("is-review-original");
+  review.querySelector(".table-transform-candidate").appendChild(candidateTable);
   list.after(review);
   block.classList.add("has-ai-card", "is-ai-running");
   review._dismiss = () => {
-    list.classList.remove("is-review-original");
     review.remove();
     block.classList.remove("has-ai-card", "is-ai-running");
   };
@@ -1314,13 +1586,13 @@ function runListToTable(block, item) {
     review.remove();
     block.classList.remove("is-ai-running");
     refreshTableSource(block, candidateTable);
-    markAccepted(block, item.label, () => {
-      candidateTable.replaceWith(originalList);
+    markAiAccepted(block, item, item.label, () => {
+      candidateTable.replaceWith(originalListSnapshot);
       refreshListSource(block);
     });
     setLive("列表已转为表格", "候选表格已原地替换原列表，三列按结构、适用内容和下一步动作组织，仍可编辑并写回 pipe table。 ");
   });
-  setLive("转成表格", "原列表在上、可编辑表格在下；接受时才把该块源改为 Markdown table。 ");
+  setLive("转成表格", "真实列表只保留一份；下方只展示候选表格，接受时才原地替换并写回 Markdown table。 ");
 }
 
 function refreshChecklistSource(block) {
@@ -1356,7 +1628,7 @@ function runChecklistReorder(block, item) {
     review.remove();
     block.classList.remove("is-ai-running");
     refreshChecklistSource(block);
-    markAccepted(block, item.label, () => { candidate.replaceWith(original); refreshChecklistSource(block); });
+    markAiAccepted(block, item, item.label, () => { candidate.replaceWith(original); refreshChecklistSource(block); });
     setLive("Checklist 已重排", "建议顺序已经原地替换；仍然保持原生 Markdown task list，并可逐项勾选。 ");
   });
   setLive("按优先级重排", "原 checklist 在上、建议顺序在下，接受后只保留重排后的 task list。 ");
@@ -1398,7 +1670,7 @@ function runVaultLinkPatch(block, item) {
     review.remove();
     block.classList.remove("is-ai-running");
     refreshVaultLinksSource(block);
-    markAccepted(block, item.label, () => { paragraph.innerHTML = original; refreshVaultLinksSource(block); });
+    markAiAccepted(block, item, item.label, () => { paragraph.innerHTML = original; refreshVaultLinksSource(block); });
     setLive("双链已原地更新", "链接文本、状态与 Markdown 源已经同步改变；不再在块下方单独写一段“建议补链”。 ");
   });
   setLive(item.label, "链接候选已经在原段落中显示：接受后直接改变 [[wikilink]] 源，拒绝后恢复原句。 ");
@@ -1414,10 +1686,10 @@ function formulaProfile(micro) {
         { label: "归一化分母", tex: "Z_j=\\sum_{V_k\\in Out(V_j)}w_{jk}" },
       ],
       terms: [
-        ["WS(V_i)", "节点 i 的最终权重"],
-        ["1-d", "随机跳转留下的基础权重"],
-        ["w_{ji}", "j 指向 i 的相似度权重"],
-        ["Z_j", "节点 j 的全部出边权重之和"],
+        ["WS(V_i)", "节点 i 的最终权重", "textrank-score", "输出"],
+        ["d", "阻尼系数；1-d 是随机跳转留下的基础权重", "damping", "共享参数"],
+        ["w_{ji}", "j 指向 i 的相似度权重", "similarity-weight", "边权"],
+        ["Z_j", "节点 j 的全部出边权重之和", "textrank-normalizer", "归一化"],
       ],
     };
   }
@@ -1429,10 +1701,10 @@ function formulaProfile(micro) {
         { label: "全局度数校正", tex: "\\frac{k_i(\\Sigma_{totC}-\\Sigma_{totD})}{(2m)^2}" },
       ],
       terms: [
-        ["\\Delta Q", "节点 i 移动带来的模块度变化"],
-        ["k_{i,inC}", "i 与目标社区 C 的内部连边"],
-        ["\\Sigma_{totC}", "社区 C 的总度数"],
-        ["2m", "全图总边权，用于归一化"],
+        ["\\Delta Q", "节点 i 移动带来的模块度变化", "louvain-gain", "输出"],
+        ["k_{i,inC}", "i 与目标社区 C 的内部连边", "louvain-inner-edge", "局部量"],
+        ["\\Sigma_{totC}", "社区 C 的总度数", "louvain-community-degree", "社区量"],
+        ["2m", "全图总边权，用于归一化", "louvain-total-weight", "全局量"],
       ],
     };
   }
@@ -1443,80 +1715,337 @@ function formulaProfile(micro) {
       { label: "入链投票 V(A)", tex: "V(A)=d\\sum_{i\\in In(A)}\\frac{PR(i)}{L(i)}" },
     ],
     terms: [
-      ["PR(A)", "页面 A 的重要性"],
-      ["d", "阻尼系数，通常取 0.85"],
-      ["In(A)", "所有指向 A 的节点"],
-      ["L(i)", "节点 i 的出链数量"],
+      ["PR(A)", "页面 A 的重要性", "pagerank-score", "输出"],
+      ["d", "阻尼系数，通常取 0.85", "damping", "共享参数"],
+      ["In(A)", "所有指向 A 的节点", "pagerank-incoming", "结构"],
+      ["L(i)", "节点 i 的出链数量", "pagerank-outdegree", "归一化"],
     ],
   };
 }
 
+function formulaDetailKey(label) {
+  if (label === "解释公式") return "explain";
+  if (label === "拆分公式") return "split";
+  if (label === "变量表") return "variables";
+  return label;
+}
+
+function syncFormulaMicroActive(micro) {
+  micro.classList.toggle("is-micro-active", Boolean(micro.querySelector(":scope > [data-formula-detail]")));
+}
+
+function focusExistingFormulaDetail(micro, key) {
+  const existing = micro.querySelector(`:scope > [data-formula-detail="${key}"]`);
+  if (!existing) return null;
+  existing.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  existing.classList.remove("is-located");
+  requestAnimationFrame(() => existing.classList.add("is-located"));
+  setTimeout(() => existing.classList.remove("is-located"), 700);
+  existing.querySelector("[data-candidate-instruction]")?.focus();
+  setLive("公式详细视图", `${micro.dataset.microTitle} 的「${existing.dataset.formulaDetailLabel}」已经展开；同公式与其他公式的详细视图都保持不变。`);
+  return existing;
+}
+
+function formulaDetailGuidance(instruction) {
+  if (!instruction) return "";
+  return `<div class="formula-detail-guidance"><svg><use href="#i-spark"></use></svg><span>按「${escapeHtml(instruction)}」调整此版本</span></div>`;
+}
+
+function createFormulaDetailReview(block, micro, item, {
+  className,
+  detail,
+  acceptLabel,
+  updateLabel = acceptLabel,
+  buildVariant,
+  onAccept,
+}) {
+  const key = formulaDetailKey(item.label);
+  const existing = focusExistingFormulaDetail(micro, key);
+  if (existing) return existing;
+
+  const review = createObjectReview(className, `${micro.dataset.microTitle} · ${item.label}`, detail);
+  review.classList.add("formula-detail-review");
+  review.dataset.formulaDetail = key;
+  review.dataset.formulaDetailLabel = item.label;
+
+  const body = document.createElement("div");
+  body.className = "formula-detail-body";
+  review.querySelector(".object-review-head").after(body);
+
+  const actions = review.querySelector(".object-review-actions");
+  actions.classList.add("formula-detail-controls");
+  actions.innerHTML = `
+    ${candidateInstructionHTML("formula-detail-instruction")}
+    <button type="button" data-formula-review="history" aria-label="查看 AI 版本历史" title="查看 AI 版本历史"><svg><use href="#i-history"></use></svg></button>
+    <div class="formula-detail-version-nav" aria-label="公式详细视图版本" hidden>
+      <button type="button" data-formula-review="previous" aria-label="上一版" title="上一版" disabled><svg><use href="#i-chevron-left"></use></svg></button>
+      <span data-formula-version>1 / 1</span>
+      <button type="button" data-formula-review="next" aria-label="下一版" title="下一版" disabled><svg><use href="#i-chevron-right"></use></svg></button>
+    </div>
+    <button type="button" data-formula-review="accept"><svg><use href="#i-check"></use></svg><span>${escapeHtml(acceptLabel)}</span></button>
+    <button type="button" data-formula-review="regenerate"><svg><use href="#i-refresh"></use></svg><span>重新生成</span></button>
+    <button type="button" data-formula-review="close">关闭</button>`;
+  const history = document.createElement("div");
+  history.className = "formula-detail-history";
+  history.hidden = true;
+  actions.after(history);
+
+  const variants = [buildVariant(0, "")];
+  let activeVariant = 0;
+  let acceptedVariant = -1;
+  const headerDetail = review.querySelector(".object-review-head small");
+  const versionNavigation = review.querySelector(".formula-detail-version-nav");
+  const versionLabel = review.querySelector("[data-formula-version]");
+  const previousButton = review.querySelector('[data-formula-review="previous"]');
+  const nextButton = review.querySelector('[data-formula-review="next"]');
+  const acceptButton = review.querySelector('[data-formula-review="accept"]');
+  const regenerateButton = review.querySelector('[data-formula-review="regenerate"]');
+
+  const setAcceptState = () => {
+    const accepted = activeVariant === acceptedVariant;
+    const label = accepted ? "已保留" : acceptedVariant >= 0 ? updateLabel : acceptLabel;
+    acceptButton.disabled = accepted;
+    acceptButton.innerHTML = `<svg><use href="#i-check"></use></svg><span>${escapeHtml(label)}</span>`;
+  };
+
+  const renderHistory = () => {
+    history.innerHTML = `
+      <div class="formula-detail-history-head"><strong>AI 版本</strong><small>${variants.length} 个候选</small></div>
+      <div class="formula-detail-history-list">
+        ${variants.map((variant, index) => `
+          <button type="button" data-formula-version-index="${index}" class="${index === activeVariant ? "is-active" : ""}">
+            <span>V${index + 1}</span>
+            <small>${escapeHtml(variant.instruction || (index === 0 ? "首次生成" : "重新生成"))}</small>
+            ${index === acceptedVariant ? '<svg aria-label="已保留"><use href="#i-check"></use></svg>' : ""}
+          </button>`).join("")}
+      </div>`;
+  };
+
+  const updateControls = () => {
+    versionLabel.textContent = `${activeVariant + 1} / ${variants.length}`;
+    versionNavigation.hidden = variants.length <= 1;
+    previousButton.disabled = activeVariant <= 0;
+    nextButton.disabled = activeVariant >= variants.length - 1;
+    setAcceptState();
+    renderHistory();
+  };
+
+  const showVariant = (index) => {
+    const variant = variants[index];
+    if (!variant) return;
+    activeVariant = index;
+    body.innerHTML = variant.bodyHTML;
+    headerDetail.textContent = variant.instruction
+      ? `${detail} · 版本 ${index + 1}/${variants.length} · 按「${variant.instruction}」调整`
+      : `${detail} · 版本 ${index + 1}/${variants.length}`;
+    review.classList.remove("is-busy", "is-regenerating");
+    renderKatexIn(body);
+    updateControls();
+  };
+
+  const setBusy = (instruction) => {
+    review.classList.add("is-busy", "is-regenerating");
+    body.innerHTML = `<div class="formula-detail-regenerating"><span></span><span></span><small>${instruction ? `正在按「${escapeHtml(instruction)}」调整…` : "正在重新生成…"}</small></div>`;
+    acceptButton.disabled = true;
+    regenerateButton.disabled = true;
+    previousButton.disabled = true;
+    nextButton.disabled = true;
+  };
+
+  const regenerate = () => {
+    if (review.classList.contains("is-regenerating")) return;
+    const instruction = review.querySelector("[data-candidate-instruction]")?.value.trim() || "";
+    const variant = buildVariant(variants.length, instruction);
+    setBusy(instruction);
+    clearTimeout(review._formulaTimer);
+    review._formulaTimer = setTimeout(() => {
+      if (!review.isConnected) return;
+      variants.push(variant);
+      activeVariant = variants.length - 1;
+      regenerateButton.disabled = false;
+      showVariant(activeVariant);
+      setLive(`${micro.dataset.microTitle} · ${item.label}`, instruction
+        ? `已按「${escapeHtml(instruction)}」生成版本 ${variants.length}；其他公式详细视图没有关闭。`
+        : `已生成版本 ${variants.length}；可继续输入要求或切换历史版本。`);
+    }, 560);
+  };
+
+  review._dismiss = () => {
+    clearTimeout(review._formulaTimer);
+    review.remove();
+    syncFormulaMicroActive(micro);
+  };
+  review._formulaVariants = variants;
+  review._showFormulaVariant = showVariant;
+
+  actions.addEventListener("click", (event) => {
+    const action = event.target.closest("[data-formula-review]")?.dataset.formulaReview;
+    if (!action) return;
+    if (action === "close") {
+      review._dismiss();
+      return;
+    }
+    if (action === "regenerate") {
+      regenerate();
+      return;
+    }
+    if (action === "previous") {
+      showVariant(activeVariant - 1);
+      return;
+    }
+    if (action === "next") {
+      showVariant(activeVariant + 1);
+      return;
+    }
+    if (action === "history") {
+      history.hidden = !history.hidden;
+      return;
+    }
+    if (action !== "accept" || acceptButton.disabled) return;
+    const shouldRemove = onAccept?.({ review, variant: variants[activeVariant], variantIndex: activeVariant }) === true;
+    if (shouldRemove || !review.isConnected) return;
+    acceptedVariant = activeVariant;
+    review.classList.add("is-pinned");
+    updateControls();
+  });
+  review.querySelector("[data-candidate-instruction]").addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" || event.isComposing) return;
+    event.preventDefault();
+    regenerate();
+  });
+  history.addEventListener("click", (event) => {
+    const choice = event.target.closest("[data-formula-version-index]");
+    if (!choice) return;
+    showVariant(Number(choice.dataset.formulaVersionIndex));
+    history.hidden = true;
+  });
+
+  micro.appendChild(review);
+  syncFormulaMicroActive(micro);
+  markEditorChrome(review);
+  showVariant(0);
+  setLive(item.label, `${micro.dataset.microTitle} 的${item.label}已在当前公式内展开；解释、拆分和变量表可同时保留。`);
+  return review;
+}
+
 function runFormulaSplit(block, micro, item) {
-  closeAiCards();
   const render = micro.querySelector(".math-render");
   if (!render) return;
   const originalTex = render.dataset.tex;
   const profile = formulaProfile(micro);
-  const review = createObjectReview("formula-review", `${micro.dataset.microTitle} · ${item.label}`, "原式在上，拆分后的可渲染公式在下");
-  review.querySelector(".object-review-head").after(document.createRange().createContextualFragment(`
-    <div class="formula-compare">
-      <section><span>原公式</span><div class="math-render formula-old" data-tex="${escapeHtml(originalTex)}"></div></section>
-      <div class="formula-arrow">→</div>
-      <section><span>拆分后</span><div class="math-render" data-tex="${escapeHtml(profile.primary)}"></div>${profile.steps.map((step) => `<div class="formula-step"><small>${escapeHtml(step.label)}</small><div class="math-render" data-tex="${escapeHtml(step.tex)}"></div></div>`).join("")}</section>
-    </div>
-  `));
-  micro.appendChild(review);
-  renderKatexIn(review);
-  micro.classList.add("is-micro-active");
-  review._dismiss = () => {
-    review.remove();
-    micro.classList.remove("is-micro-active");
-  };
-  review.querySelector('[data-object-review="restore"]').addEventListener("click", review._dismiss);
-  review.querySelector('[data-object-review="accept"]').addEventListener("click", () => {
-    render.dataset.tex = profile.primary;
-    renderKatexIn(micro);
-    const breakdown = document.createElement("div");
-    breakdown.className = "formula-breakdown";
-    breakdown.innerHTML = profile.steps.map((step) => `<div><small>${escapeHtml(step.label)}</small><div class="math-render" data-tex="${escapeHtml(step.tex)}"></div></div>`).join("");
-    render.after(breakdown);
-    renderKatexIn(breakdown);
-    review.remove();
-    micro.classList.remove("is-micro-active");
-    refreshMathSource(block);
-    markAccepted(block, `${micro.dataset.microTitle} · ${item.label}`, () => {
-      render.dataset.tex = originalTex;
+  return createFormulaDetailReview(block, micro, item, {
+    className: "formula-review",
+    detail: "原式在上，拆分后的可渲染公式在下",
+    acceptLabel: "应用拆分",
+    updateLabel: "应用此版本",
+    buildVariant: (variantIndex, instruction) => ({
+      instruction,
+      primary: profile.primary,
+      steps: profile.steps,
+      bodyHTML: `
+        ${formulaDetailGuidance(instruction)}
+        <div class="formula-compare">
+          <section><span>原公式</span><div class="math-render formula-old" data-tex="${escapeHtml(originalTex)}"></div></section>
+          <div class="formula-arrow">→</div>
+          <section><span>拆分后</span><div class="math-render" data-tex="${escapeHtml(profile.primary)}"></div>${profile.steps.map((step, index) => `<div class="formula-step"><small>${escapeHtml(step.label)}${instruction && index === 0 ? " · AI 调整" : ""}</small><div class="math-render" data-tex="${escapeHtml(step.tex)}"></div></div>`).join("")}</section>
+        </div>`,
+    }),
+    onAccept: ({ review, variant, variantIndex }) => {
+      render.dataset.tex = variant.primary;
       renderKatexIn(micro);
-      breakdown.remove();
+      const breakdown = document.createElement("div");
+      breakdown.className = "formula-breakdown";
+      breakdown.innerHTML = variant.steps.map((step) => `<div><small>${escapeHtml(step.label)}</small><div class="math-render" data-tex="${escapeHtml(step.tex)}"></div></div>`).join("");
+      render.after(breakdown);
+      renderKatexIn(breakdown);
+      review._dismiss();
       refreshMathSource(block);
-    });
-    setLive("公式已拆分", "主公式已在原位替换为拆分后的结构，原式与每一步都保留为可渲染 LaTeX。 ");
+      markAiAccepted(block, item, `${micro.dataset.microTitle} · ${item.label} · v${variantIndex + 1}`, () => {
+        render.dataset.tex = originalTex;
+        renderKatexIn(micro);
+        breakdown.remove();
+        refreshMathSource(block);
+      });
+      setLive("公式已拆分", "当前候选已在原公式位置写回；其他已展开的公式解释和变量表继续保留。");
+      return true;
+    },
   });
-  setLive("拆分公式", "公式在原卡片中展示旧式与拆分候选；接受后直接更新该公式块，而不是新增文本段。 ");
 }
 
 function runFormulaExplain(block, micro, item) {
-  closeAiCards();
   const profile = formulaProfile(micro);
-  const explainer = createObjectReview("formula-explainer", `${micro.dataset.microTitle} · ${item.label}`, "符号沿箭头展开，保留公式上下文");
-  const rows = profile.terms.map(([symbol, description], index) => `
-    <div class="formula-term"><span class="formula-term-index">${index + 1}</span><div class="math-inline" data-tex="${escapeHtml(symbol)}"></div><span class="formula-term-arrow">→</span><p>${escapeHtml(description)}</p></div>
-  `).join("");
-  explainer.querySelector(".object-review-head").after(document.createRange().createContextualFragment(`<div class="formula-term-map">${rows}</div>`));
-  micro.appendChild(explainer);
-  renderKatexIn(explainer);
-  explainer._dismiss = () => explainer.remove();
-  explainer.querySelector('[data-object-review="restore"]').textContent = "关闭";
-  explainer.querySelector('[data-object-review="restore"]').addEventListener("click", explainer._dismiss);
-  explainer.querySelector('[data-object-review="accept"]').textContent = "保留注释";
-  explainer.querySelector('[data-object-review="accept"]').addEventListener("click", () => {
-    explainer.classList.remove("is-busy");
-    explainer.classList.add("is-pinned");
-    explainer.querySelector(".object-review-actions")?.remove();
-    markAccepted(block, `${micro.dataset.microTitle} · ${item.label}`, () => explainer.remove());
-    setLive("公式注释已保留", "箭头式符号解释作为该公式的局部注释保留，可在 Ambient 回滚。 ");
+  return createFormulaDetailReview(block, micro, item, {
+    className: "formula-explainer",
+    detail: "符号沿箭头展开，保留公式上下文",
+    acceptLabel: "保留注释",
+    updateLabel: "更新注释",
+    buildVariant: (variantIndex, instruction) => ({
+      instruction,
+      bodyHTML: `
+        ${formulaDetailGuidance(instruction)}
+        <div class="formula-term-map">
+          ${profile.terms.map(([symbol, description], index) => `
+            <div class="formula-term">
+              <span class="formula-term-index">${index + 1}</span>
+              <div class="math-inline" data-tex="${escapeHtml(symbol)}"></div>
+              <span class="formula-term-arrow">→</span>
+              <p>${escapeHtml(description)}${instruction ? `；按「${escapeHtml(instruction)}」重新表述。` : ""}</p>
+            </div>`).join("")}
+        </div>`,
+    }),
+    onAccept: ({ review, variantIndex }) => {
+      markAiAccepted(block, item, `${micro.dataset.microTitle} · ${item.label} · v${variantIndex + 1}`, review._dismiss);
+      setLive("公式注释已保留", "当前解释版本已保留；仍可继续输入要求生成新版本，且不会关闭其他公式详细视图。");
+      return false;
+    },
   });
-  setLive(item.label, "公式的符号、归一化项和结果沿箭头分行解释，不再压成一段文本。 ");
+}
+
+function formulaVariableRecord(micro) {
+  const profile = formulaProfile(micro);
+  return {
+    name: micro.dataset.microTitle || "公式",
+    tex: micro.querySelector(":scope > .math-render")?.dataset.tex || profile.primary,
+    terms: profile.terms.map(([symbol, description, key, role]) => ({
+      symbol,
+      description,
+      key: key || `${micro.dataset.microTitle}-${symbol}`,
+      role: role || "变量",
+    })),
+  };
+}
+
+function runFormulaVariableTable(block, micro, item) {
+  const record = formulaVariableRecord(micro);
+  return createFormulaDetailReview(block, micro, item, {
+    className: "formula-explainer formula-variable-table",
+    detail: `当前公式 · ${record.terms.length} 个变量 · 未写入 Markdown`,
+    acceptLabel: "保留注释",
+    updateLabel: "更新注释",
+    buildVariant: (variantIndex, instruction) => ({
+      instruction,
+      bodyHTML: `
+        ${formulaDetailGuidance(instruction)}
+        <section class="formula-variable-group" data-formula-name="${escapeHtml(record.name)}">
+          <header>
+            <div><span class="formula-group-dot"></span><strong>${escapeHtml(record.name)}</strong><small>${record.terms.length} 个变量</small></div>
+            <div class="math-inline formula-group-preview" data-tex="${escapeHtml(record.tex)}"></div>
+          </header>
+          <div class="formula-variable-rows">
+            ${record.terms.map((term) => `
+              <div class="formula-variable-row">
+                <div class="formula-variable-symbol"><div class="math-inline" data-tex="${escapeHtml(term.symbol)}"></div><span>${escapeHtml(term.role)}</span></div>
+                <p>${escapeHtml(term.description)}${instruction ? `；补充要求：${escapeHtml(instruction)}。` : ""}</p>
+              </div>`).join("")}
+          </div>
+        </section>`,
+    }),
+    onAccept: ({ review, variantIndex }) => {
+      markAiAccepted(block, item, `${record.name} · 变量表 · v${variantIndex + 1}`, review._dismiss);
+      setLive("变量表已保留", `${record.name} 的当前变量说明版本已保留；仍可继续生成新版本。`);
+      return false;
+    },
+  });
 }
 
 function runExtractedFormula(block, item) {
@@ -1541,7 +2070,7 @@ function runExtractedFormula(block, item) {
     formula.innerHTML = `<span>提取出的公式</span><div class="math-render" data-tex="${tex}"></div>`;
     review.replaceWith(formula);
     renderKatexIn(formula);
-    markAccepted(block, item.label, () => formula.remove());
+    markAiAccepted(block, item, item.label, () => formula.remove());
     setLive("公式块已插入", "候选已经以渲染后的公式块写入当前段落之后，不再显示原始 LaTeX 字符串。 ");
   });
   block.classList.add("has-ai-card");
@@ -1553,6 +2082,8 @@ function showAiSuggestionCard(block, opts = {}) {
   const { label, reason = "", host = block, microTitle = "", customText = "" } = opts;
   const found = findSuggestion(block, label);
   const item = suggestion(label, reason || (customText ? "自定义指令" : found.reason), customText || found.detail);
+  item.runId = `composer-ai-run-${++composerAiRunSequence}`;
+  block.dataset.aiRunId = item.runId;
   aiSuggestionHistory.unshift({ block, item, microTitle, customText, at: Date.now() });
   aiSuggestionHistory.splice(18);
   const micro = host.closest?.(".math-card")
@@ -1565,47 +2096,112 @@ function showAiSuggestionCard(block, opts = {}) {
   if (["mermaid", "canvas", "excalidraw"].includes(block.dataset.blockKind) && ["补缺失分支", "补一个节点", "补一个流程节点"].includes(item.label)) return runNativeIncrement(block, item);
   if (item.label === "提取公式") return runExtractedFormula(block, item);
   if (micro && item.label === "拆分公式") return runFormulaSplit(block, micro, item);
-  if (micro && ["解释公式", "变量表"].includes(item.label)) return runFormulaExplain(block, micro, item);
+  if (micro && item.label === "解释公式") return runFormulaExplain(block, micro, item);
+  if (micro && item.label === "变量表") return runFormulaVariableTable(block, micro, item);
+  if (block.dataset.blockKind === "image" && item.label === "生成图注") return runImageCaption(block, item);
   const target = microTitle ? null : rewriteTargetFor(block);
   const wantsRewrite = customText ? Boolean(target) : REWRITE_LABELS.has(label) && Boolean(target);
   if (wantsRewrite) return runRewrite(block, target, item, { customText });
   return runInsert(host, block, item, { microTitle, customText });
 }
 
+function candidateInstructionHTML(className = "", value = "") {
+  return `<label class="candidate-instruction ${className}">
+    <svg aria-hidden="true"><use href="#i-wand"></use></svg>
+    <input type="text" data-candidate-instruction value="${escapeHtml(value)}" placeholder="告诉 AI 这版怎么改…" aria-label="告诉 AI 这版怎么改" autocomplete="off" />
+  </label>`;
+}
+
 /* ---------- in-place rewrite → streaming → word-level diff ---------- */
-function runRewrite(block, target, item, { customText = "" } = {}) {
+function runRewrite(block, target, item, {
+  customText = "",
+  reviewHost = block,
+  refreshSource = refreshProseSource,
+  reviewClass = "",
+  onDismiss = null,
+} = {}) {
   closeAiCards();
   block.classList.add("has-ai-card", "is-ai-running");
   if (block._rewriteOriginal == null) block._rewriteOriginal = target.textContent.trim();
   const original = block._rewriteOriginal;
-  const candidate = String(buildCandidate(block, item, "", customText)).replace(/\s*\n+\s*/g, " ").trim();
+  const buildVariant = (variantIndex, instruction = "") => ({
+    instruction: instruction.trim(),
+    candidate: String(buildCandidate(block, item, "", instruction.trim(), variantIndex)).replace(/\s*\n+\s*/g, " ").trim(),
+  });
+  const variants = [buildVariant(0, customText)];
+  let activeVariant = 0;
 
   const review = document.createElement("div");
-  review.className = "rw-review is-busy";
+  review.className = `rw-review is-busy${reviewClass ? ` ${reviewClass}` : ""}`;
   review.innerHTML = `
     <div class="rw-status"><span class="rw-dot"></span><span class="rw-label">原地改写生成中…</span> <span class="rw-count"></span></div>
+    ${candidateInstructionHTML("rw-instruction", customText)}
     <span class="rw-spacer"></span>
     <button class="rw-btn ghost" data-rw="stop">停止</button>
     <div class="rw-btns">
+      <button class="rw-btn rw-history-toggle" data-rw="history" aria-label="查看版本历史" title="查看版本历史"><svg><use href="#i-history"></use></svg></button>
+      <div class="rw-variant-nav" aria-label="AI 改写版本">
+        <button type="button" data-rw="previous" aria-label="上一版" title="上一版" disabled><svg><use href="#i-chevron-left"></use></svg></button>
+        <span data-rw-version>1 / 1</span>
+        <button type="button" data-rw="next" aria-label="下一版" title="下一版" disabled><svg><use href="#i-chevron-right"></use></svg></button>
+      </div>
       <button class="rw-btn primary" data-rw="accept"><svg><use href="#i-check"></use></svg>接受</button>
       <button class="rw-btn" data-rw="restore"><svg><use href="#i-undo"></use></svg>还原</button>
-      <button class="rw-btn ghost" data-rw="retry">重试</button>
-    </div>`;
-  block.appendChild(review);
+      <button class="rw-btn ghost" data-rw="retry">重新生成</button>
+    </div>
+    <div class="rw-version-history" hidden aria-label="AI 改写历史"></div>`;
+  reviewHost.appendChild(review);
 
   const editableFlag = target.getAttribute("contenteditable");
   target.classList.add("is-diffing");
   target.setAttribute("contenteditable", "false");
   const statusEl = review.querySelector(".rw-label");
   const countEl = review.querySelector(".rw-count");
+  const versionEl = review.querySelector("[data-rw-version]");
+  const variantNav = review.querySelector(".rw-variant-nav");
+  const previousButton = review.querySelector('[data-rw="previous"]');
+  const nextButton = review.querySelector('[data-rw="next"]');
+  const historyPanel = review.querySelector(".rw-version-history");
 
-  const finishDiff = () => {
-    const segs = diffTokens(tokenize(original), tokenize(candidate));
+  const renderVersionHistory = () => {
+    historyPanel.innerHTML = `
+      <div class="rw-version-history-head">
+        <span>版本历史</span>
+        <small>${variants.length} 个候选</small>
+      </div>
+      <div class="rw-version-history-list">
+        ${variants.map((variant, index) => {
+          const title = index === 0 ? "初始候选" : variant.instruction ? "按要求调整" : "重新生成";
+          const detail = variant.instruction || (index === 0 ? item.label : "基于上一版本生成");
+          return `
+            <button type="button" data-rw-version-index="${index}" class="${index === activeVariant ? "is-active" : ""}">
+              <span class="rw-version-badge">V${index + 1}</span>
+              <span class="rw-version-copy">
+                <strong>${title}</strong>
+                <small>${escapeHtml(detail)}</small>
+              </span>
+              <svg class="rw-version-check" aria-hidden="true"><use href="#i-check"></use></svg>
+            </button>`;
+        }).join("")}
+      </div>`;
+  };
+
+  const updateVersionControls = () => {
+    if (versionEl) versionEl.textContent = `${activeVariant + 1} / ${variants.length}`;
+    if (variantNav) variantNav.hidden = variants.length <= 1;
+    if (previousButton) previousButton.disabled = activeVariant <= 0;
+    if (nextButton) nextButton.disabled = activeVariant >= variants.length - 1;
+    renderVersionHistory();
+  };
+
+  const renderDiffFor = (variant) => {
+    const segs = diffTokens(tokenize(original), tokenize(variant.candidate));
     target.innerHTML = renderDiff(segs);
     const { del, ins } = diffCounts(segs);
     review.classList.remove("is-busy");
     statusEl.textContent = "生成完成 · 未写入";
     countEl.innerHTML = `<del>−${del}</del> <ins>+${ins}</ins>`;
+    updateVersionControls();
   };
 
   const cleanup = () => {
@@ -1619,22 +2215,37 @@ function runRewrite(block, target, item, { customText = "" } = {}) {
   review._dismiss = () => {
     target.textContent = original;
     cleanup();
+    onDismiss?.(target);
     block.classList.remove("has-ai-card", "is-ai-running");
   };
 
-  let i = 0;
-  clearInterval(review._timer);
-  review._timer = setInterval(() => {
-    i += 1;
-    target.innerHTML = escapeHtml(candidate.slice(0, i)) + '<span class="ai-caret"></span>';
-    if (i < candidate.length) return;
+  const streamVariant = (variant, isRegeneration = false) => {
     clearInterval(review._timer);
-    finishDiff();
-  }, 18);
+    review.classList.add("is-busy");
+    statusEl.textContent = isRegeneration ? "重新生成中…" : "原地改写生成中…";
+    countEl.textContent = "";
+    let i = 0;
+    review._timer = setInterval(() => {
+      i += 1;
+      target.innerHTML = escapeHtml(variant.candidate.slice(0, i)) + '<span class="ai-caret"></span>';
+      if (i < variant.candidate.length) return;
+      clearInterval(review._timer);
+      renderDiffFor(variant);
+      block.classList.remove("is-ai-running");
+    }, 18);
+  };
+
+  const showVariant = (index) => {
+    if (review.classList.contains("is-busy")) return;
+    const variant = variants[index];
+    if (!variant) return;
+    activeVariant = index;
+    renderDiffFor(variant);
+  };
 
   review.querySelector('[data-rw="stop"]').addEventListener("click", () => {
     clearInterval(review._timer);
-    finishDiff();
+    renderDiffFor(variants[activeVariant]);
     statusEl.textContent = "已停止 · 未写入";
   });
   review.querySelector('[data-rw="restore"]').addEventListener("click", () => {
@@ -1642,18 +2253,53 @@ function runRewrite(block, target, item, { customText = "" } = {}) {
     setLive("已还原", "块回到原始 Markdown，未写入任何内容。");
     showToast("已还原 · 未写入");
   });
-  review.querySelector('[data-rw="retry"]').addEventListener("click", () => {
-    cleanup();
-    block.classList.remove("is-ai-running");
-    runRewrite(block, target, item, { customText });
+  const retryRewrite = () => {
+    if (review.classList.contains("is-busy")) {
+      showToast("当前改写完成后再重新生成");
+      return;
+    }
+    const instruction = review.querySelector("[data-candidate-instruction]")?.value.trim() || customText;
+    const variant = buildVariant(variants.length, instruction);
+    variants.push(variant);
+    activeVariant = variants.length - 1;
+    block.classList.add("is-ai-running");
+    updateVersionControls();
+    streamVariant(variant, true);
+    setLive("按要求重新改写", instruction ? `正在按「${escapeHtml(instruction)}」生成版本 ${variants.length}；旧版本仍可切回。` : `正在生成版本 ${variants.length}；旧版本仍可切回。`);
+  };
+  review.querySelector('[data-rw="retry"]').addEventListener("click", retryRewrite);
+  review.querySelector("[data-candidate-instruction]").addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" || event.isComposing) return;
+    event.preventDefault();
+    retryRewrite();
+  });
+  review.querySelector('[data-rw="previous"]').addEventListener("click", () => showVariant(activeVariant - 1));
+  review.querySelector('[data-rw="next"]').addEventListener("click", () => showVariant(activeVariant + 1));
+  review.querySelector('[data-rw="history"]').addEventListener("click", () => {
+    historyPanel.hidden = !historyPanel.hidden;
+  });
+  historyPanel.addEventListener("click", (event) => {
+    const choice = event.target.closest("[data-rw-version-index]");
+    if (!choice) return;
+    showVariant(Number(choice.dataset.rwVersionIndex));
+    historyPanel.hidden = true;
   });
   review.querySelector('[data-rw="accept"]').addEventListener("click", () => {
+    const candidate = variants[activeVariant].candidate;
     target.textContent = candidate;
     block._rewriteOriginal = candidate;
     cleanup();
     block.classList.remove("is-ai-running");
-    refreshProseSource(block);
-    markAccepted(block, item.label);
+    refreshSource(block);
+    markAiAccepted(block, item, item.label, () => {
+      target.textContent = original;
+      block._rewriteOriginal = original;
+      refreshSource(block);
+    }, () => {
+      target.textContent = candidate;
+      block._rewriteOriginal = candidate;
+      refreshSource(block);
+    });
     setLive("AI 改写已接受", "候选写回当前块的 Markdown range，进入 Obsidian undo stack，可从 Ambient 回滚。");
     showToast("已接受改写 · 可在 Ambient 回滚");
   });
@@ -1662,21 +2308,93 @@ function runRewrite(block, target, item, { customText = "" } = {}) {
   block.aiTimer = setTimeout(() => block.classList.remove("is-ai-running"), 1300);
   setLive(item.label, `原地改写：${escapeHtml(item.reason)}。流式生成后在原文上按词展示 diff（红删绿增），接受前不写回文件。`);
   showToast(`${item.label}：原地改写生成中`);
+  updateVersionControls();
+  streamVariant(variants[0]);
+}
+
+function refreshImageCaptionSource(block) {
+  const caption = block.querySelector(":scope > .real-image-frame > figcaption")?.textContent.replace(/\s+/g, " ").trim() || "";
+  if (!block.dataset.imageEmbedSource) {
+    block.dataset.imageEmbedSource = (block.dataset.source || "").split(/\n\s*\n/, 1)[0].trim();
+  }
+  const embedSource = block.dataset.imageEmbedSource || block.dataset.source || "";
+  block.dataset.source = caption ? `${embedSource}\n\n${caption}` : embedSource;
+  if (focusedBlock === block) setFocusedBlock(block);
+}
+
+function runImageCaption(block, item) {
+  const frame = block.querySelector(":scope > .real-image-frame");
+  if (!frame) return runInsert(block, block, item);
+  let caption = frame.querySelector(":scope > figcaption");
+  const createdCaptionSlot = !caption;
+  if (!caption) {
+    caption = document.createElement("figcaption");
+    caption.className = "is-caption-slot";
+    frame.appendChild(caption);
+  }
+  runRewrite(block, caption, item, {
+    reviewHost: frame,
+    refreshSource: refreshImageCaptionSource,
+    reviewClass: "image-caption-review",
+    onDismiss: (target) => {
+      if (createdCaptionSlot && !target.textContent.trim()) target.remove();
+    },
+  });
+  setLive("生成图注", "候选直接在图片原有图注行内流式生成并显示 diff；没有图注时才创建图注槽位，不新增正文段落。");
 }
 
 /* ---------- additive creation: render a real draft block at the insertion point ---------- */
-function draftShape(block, item, candidate) {
+function draftShape(block, item, candidate, variantIndex = 0, instruction = "") {
+  if (block.dataset.blockKind === "base" && item.label === "生成视图") {
+    const viewName = instruction || (variantIndex % 2 === 0 ? "待推进条目" : "本周回顾");
+    const source = `views:
+  - type: table
+    name: ${viewName}
+    filters:
+      and:
+        - stage != "Reference"
+    order:
+      - file
+      - stage
+      - next`;
+    return {
+      kind: "base-view",
+      source,
+      html: `<section class="generated-base-view">
+        <header><span>Base view</span><strong>${escapeHtml(viewName)}</strong></header>
+        <div class="base-row head"><span>file</span><span>stage</span><span>next</span></div>
+        <div class="base-row"><span>知识库.md</span><span class="pill blue">Manage</span><span>建立链接和主题</span></div>
+        <div class="base-row"><span>信息管理.md</span><span class="pill green">Manage</span><span>补充回流条件</span></div>
+      </section>`,
+    };
+  }
   if (item.label === "补提纲") {
-    return { kind: "heading-2", source: "## 从输出目标反推知识结构", html: "<h2>从输出目标反推知识结构</h2><p>先定义读者要完成的判断，再决定这一节需要哪些来源、结构和可验证的结论。</p>" };
+    if (instruction) {
+      return { kind: "heading-2", source: `## 按要求重组本节\n\n围绕「${instruction}」重新组织判断、证据与下一步行动。`, html: `<h2>按要求重组本节</h2><p>围绕「${escapeHtml(instruction)}」重新组织判断、证据与下一步行动。</p>` };
+    }
+    return variantIndex % 2 === 0
+      ? { kind: "heading-2", source: "## 从输出目标反推知识结构", html: "<h2>从输出目标反推知识结构</h2><p>先定义读者要完成的判断，再决定这一节需要哪些来源、结构和可验证的结论。</p>" }
+      : { kind: "heading-2", source: "## 先明确读者任务，再组织材料", html: "<h2>先明确读者任务，再组织材料</h2><p>用读者要完成的任务约束资料选择、论证顺序与下一步行动。</p>" };
   }
   if (item.label === "生成导读问题" || item.label === "提出追问") {
-    return { kind: "list", source: "- 这节最希望读者带走的判断是什么？\n- 哪个例子能证明这个判断？\n- 读者下一步应该去哪一篇笔记继续？", html: "<ul class=\"markdown-list\"><li>这节最希望读者带走的判断是什么？</li><li>哪个例子能证明这个判断？</li><li>读者下一步应该去哪一篇笔记继续？</li></ul>" };
+    if (instruction) {
+      const source = `- 围绕「${instruction}」，本节最需要回答哪个问题？\n- 哪一处证据最需要按这个要求补强？\n- 读者完成这项判断后应该采取什么行动？`;
+      return { kind: "list", source, html: `<ul class="markdown-list"><li>围绕「${escapeHtml(instruction)}」，本节最需要回答哪个问题？</li><li>哪一处证据最需要按这个要求补强？</li><li>读者完成这项判断后应该采取什么行动？</li></ul>` };
+    }
+    return variantIndex % 2 === 0
+      ? { kind: "list", source: "- 这节最希望读者带走的判断是什么？\n- 哪个例子能证明这个判断？\n- 读者下一步应该去哪一篇笔记继续？", html: "<ul class=\"markdown-list\"><li>这节最希望读者带走的判断是什么？</li><li>哪个例子能证明这个判断？</li><li>读者下一步应该去哪一篇笔记继续？</li></ul>" }
+      : { kind: "list", source: "- 这项判断解决了读者的哪个问题？\n- 现有材料中最薄弱的证据是什么？\n- 哪个反例值得在下一段主动回应？", html: "<ul class=\"markdown-list\"><li>这项判断解决了读者的哪个问题？</li><li>现有材料中最薄弱的证据是什么？</li><li>哪个反例值得在下一段主动回应？</li></ul>" };
   }
   if (item.label === "生成示意图" || item.label === "生成配图") {
-    return { kind: "image", source: "![[assets/ai-knowledge-workflow-illustration.png|知识如何从材料形成可回滚的工作流]]", html: `<figure class="generated-figure"><a class="lightgallery" href="assets/ai-knowledge-workflow-illustration.png" data-thumbnail="assets/ai-knowledge-workflow-illustration.png"><img src="assets/ai-knowledge-workflow-illustration.png" alt="知识工作流生成示意图" /></a><figcaption>从材料、关系到成文与回看：生成图作为当前段落的视觉解释，可继续改图、评论或替换。</figcaption></figure>` };
+    const caption = instruction
+      ? `按「${instruction}」生成的新版本：继续保留材料、关系、成文与回看的完整路径。`
+      : variantIndex % 2 === 0
+      ? "从材料、关系到成文与回看：生成图作为当前段落的视觉解释，可继续改图、评论或替换。"
+      : "知识从获取进入组织，再经写作与回顾形成闭环；这版用更简洁的路径强调每一步的交接。";
+    return { kind: "image", source: `![[assets/ai-knowledge-workflow-illustration.png|${caption}]]`, html: `<figure class="generated-figure"><a class="lightgallery" href="assets/ai-knowledge-workflow-illustration.png" data-thumbnail="assets/ai-knowledge-workflow-illustration.png"><img src="assets/ai-knowledge-workflow-illustration.png" alt="知识工作流生成示意图" /></a><figcaption>${escapeHtml(caption)}</figcaption></figure>` };
   }
   if (item.label === "转成表格") {
-    const source = buildCandidate(block, item, "", "");
+    const source = candidate;
     const rows = source.split("\n").filter((line) => /^\|/.test(line) && !/---/.test(line)).map((line) => line.split("|").slice(1, -1).map((cell) => cell.trim()));
     const [header = ["要点", "内容"], ...body] = rows;
     return { kind: "table", source, html: `<table class="composer-table"><thead><tr>${header.map((cell) => `<th>${escapeHtml(cell)}</th>`).join("")}</tr></thead><tbody>${body.map((row) => `<tr>${row.map((cell) => `<td contenteditable="true">${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}</tbody></table>` };
@@ -1688,30 +2406,92 @@ function draftShape(block, item, candidate) {
   return { kind: "paragraph", source: candidate, html: `<p>${escapeHtml(candidate)}</p>` };
 }
 
+function imageGenerationStageHTML() {
+  return `<div class="image-generation-stage" role="status" aria-live="polite">
+    <div class="image-generation-preview"><span></span><span></span><span></span></div>
+    <div class="image-generation-copy"><strong data-image-generation-status>正在理解这一段需要什么图…</strong><small>分析正文关系、选择画面结构并生成附件</small><ol><li class="is-active">理解内容</li><li>构建画面</li><li>生成附件</li></ol></div>
+  </div>`;
+}
+
+function draftStreamingBodyHTML() {
+  return `<p class="generated-draft-stream" role="status" aria-live="polite"><span data-draft-stream-text></span><span class="ai-caret" aria-hidden="true"></span></p>`;
+}
+
+function structuredDraftSkeletonHTML(kind) {
+  return `<section class="generated-object-skeleton" data-generated-object-kind="${escapeHtml(kind)}" role="status" aria-live="polite">
+    <header><span></span><span></span></header>
+    <div class="generated-object-skeleton-row"><i></i><i></i><i></i></div>
+    <div class="generated-object-skeleton-row"><i></i><i></i><i></i></div>
+    <div class="generated-object-skeleton-row"><i></i><i></i><i></i></div>
+  </section>`;
+}
+
+function captureGeneratedDraftBody(draft) {
+  const controls = draft.querySelector(":scope > .block-controls");
+  const review = draft.querySelector(":scope > .generated-draft-review");
+  const nodes = [];
+  let cursor = controls?.nextSibling;
+  while (cursor && cursor !== review) {
+    nodes.push(cursor);
+    cursor = cursor.nextSibling;
+  }
+  draft._bodyNodes = nodes;
+}
+
+function replaceGeneratedDraftBody(draft, html) {
+  const review = draft.querySelector(":scope > .generated-draft-review");
+  if (!review) return;
+  draft._bodyNodes?.forEach((node) => node.remove());
+  const fragment = document.createRange().createContextualFragment(html);
+  const nodes = Array.from(fragment.childNodes);
+  review.before(fragment);
+  draft._bodyNodes = nodes;
+}
+
 function runInsert(host, block, item, { microTitle = "", customText = "" } = {}) {
   closeAiCards();
-  const candidate = String(buildCandidate(block, item, microTitle, customText));
-  const shape = draftShape(block, item, candidate);
-  const isImageGeneration = shape.kind === "image";
+  const buildVariant = (variantIndex, instruction = "") => {
+    const effectiveInstruction = instruction.trim() || (variantIndex === 0 ? customText.trim() : "");
+    const candidate = String(buildCandidate(block, item, microTitle, effectiveInstruction, variantIndex));
+    return {
+      candidate,
+      instruction: effectiveInstruction,
+      shape: draftShape(block, item, candidate, variantIndex, effectiveInstruction),
+    };
+  };
+  const firstVariant = buildVariant(0);
+  const isImageGeneration = firstVariant.shape.kind === "image";
+  const isStructuredGeneration = ["base-view", "table", "math", "chart"].includes(firstVariant.shape.kind);
   const draft = document.createElement("section");
-  draft.className = `doc-block generated-draft ${shape.kind}-block`;
-  draft.dataset.blockKind = shape.kind;
+  draft.className = `doc-block generated-draft ${firstVariant.shape.kind}-block`;
+  draft.dataset.blockKind = firstVariant.shape.kind;
   draft.dataset.blockTitle = microTitle ? `${microTitle} · ${item.label}` : item.label;
-  draft.dataset.source = shape.source;
+  draft.dataset.source = firstVariant.shape.source;
+  draft.dataset.aiRunId = item.runId;
   const generationBody = isImageGeneration
-    ? `<div class="image-generation-stage" role="status" aria-live="polite">
-        <div class="image-generation-preview"><span></span><span></span><span></span></div>
-        <div class="image-generation-copy"><strong data-image-generation-status>正在理解这一段需要什么图…</strong><small>分析正文关系、选择画面结构并生成附件</small><ol><li class="is-active">理解内容</li><li>构建画面</li><li>生成附件</li></ol></div>
-      </div>`
-    : shape.html;
+    ? imageGenerationStageHTML()
+    : isStructuredGeneration
+    ? structuredDraftSkeletonHTML(firstVariant.shape.kind)
+    : draftStreamingBodyHTML();
   draft.innerHTML = `${blockControlsHTML()}${generationBody}<div class="generated-draft-review">
     <span class="draft-status-dot"><svg><use href="#i-spark"></use></svg></span>
-    <span class="draft-status-copy"><strong data-draft-status>${isImageGeneration ? "生成中" : "AI 草稿"}</strong><small>${escapeHtml(item.label)} · 未写入 Markdown</small></span>
-    <div class="draft-review-actions"><button data-draft-result="accept"${isImageGeneration ? " disabled" : ""}><svg><use href="#i-check"></use></svg>接受</button><button data-draft-result="discard">丢弃</button></div>
+    <span class="draft-status-copy"><strong data-draft-status>${isImageGeneration ? "生成中" : "AI 生成中…"}</strong><small data-draft-status-detail>${escapeHtml(item.label)} · 正在流式生成版本 1 · 未写入 Markdown</small></span>
+    ${candidateInstructionHTML("draft-instruction")}
+    <div class="draft-review-actions">
+      <div class="draft-variant-nav" aria-label="AI 草稿版本" hidden>
+        <button type="button" data-draft-result="previous" aria-label="上一版" title="上一版" disabled><svg><use href="#i-chevron-left"></use></svg></button>
+        <span data-draft-version>1 / 1</span>
+        <button type="button" data-draft-result="next" aria-label="下一版" title="下一版" disabled><svg><use href="#i-chevron-right"></use></svg></button>
+      </div>
+      <button type="button" data-draft-result="accept" disabled><svg><use href="#i-check"></use></svg>接受</button>
+      <button type="button" data-draft-result="regenerate" disabled><svg><use href="#i-refresh"></use></svg>重新生成</button>
+      <button type="button" data-draft-result="discard">丢弃</button>
+    </div>
   </div>`;
 
   if (host.classList?.contains("micro-block")) host.appendChild(draft);
   else block.after(draft);
+  captureGeneratedDraftBody(draft);
   decorateBlock(draft);
   markEditorChrome(draft);
   renderKatexIn(draft);
@@ -1719,6 +2499,9 @@ function runInsert(host, block, item, { microTitle = "", customText = "" } = {})
   block.classList.add("has-ai-card", "is-ai-running");
   draft.classList.add("is-generating");
   draft._generationTimers = [];
+  draft._generationInterval = null;
+  draft._variants = [firstVariant];
+  draft._variantIndex = 0;
 
   const scheduleGeneration = (delay, callback) => {
     draft._generationTimers.push(setTimeout(() => {
@@ -1726,29 +2509,123 @@ function runInsert(host, block, item, { microTitle = "", customText = "" } = {})
     }, delay));
   };
 
-  draft._dismiss = () => {
+  const clearGenerationTimers = () => {
     draft._generationTimers.forEach((timer) => clearTimeout(timer));
-    draft.remove();
-    block.classList.remove("has-ai-card", "is-ai-running");
+    draft._generationTimers = [];
+    clearInterval(draft._generationInterval);
+    draft._generationInterval = null;
   };
-  draft.querySelector('[data-draft-result="discard"]').addEventListener("click", () => {
-    draft._dismiss();
-    setLive("已丢弃新块", "这个生成块没有写入 Markdown 或附件引用。 ");
-  });
-  draft.querySelector('[data-draft-result="accept"]').addEventListener("click", () => {
-    if (draft.querySelector('[data-draft-result="accept"]')?.disabled) return;
-    draft._generationTimers.forEach((timer) => clearTimeout(timer));
-    draft.classList.remove("generated-draft", "is-generating");
-    draft.querySelector(".generated-draft-review")?.remove();
-    block.classList.remove("is-ai-running");
-    markAccepted(draft, item.label, () => draft.remove());
-    setLive("新块已写入", "生成结果已经作为实际可编辑块留在文档里；它有自己的拖动、插入、评论和 AI 上下文。 ");
-    showToast("已接受新块 · 可在 Ambient 回滚");
-  });
 
-  const status = draft.querySelector("[data-draft-status]");
-  if (isImageGeneration) {
-    const stage = draft.querySelector(".image-generation-stage");
+  const setDraftBusy = (busy) => {
+    const accept = draft.querySelector('[data-draft-result="accept"]');
+    const regenerate = draft.querySelector('[data-draft-result="regenerate"]');
+    const previous = draft.querySelector('[data-draft-result="previous"]');
+    const next = draft.querySelector('[data-draft-result="next"]');
+    if (accept) accept.disabled = busy;
+    if (regenerate) regenerate.disabled = busy;
+    if (previous) previous.disabled = busy || draft._variantIndex <= 0;
+    if (next) next.disabled = busy || draft._variantIndex >= draft._variants.length - 1;
+  };
+
+  const showVariant = (variantIndex) => {
+    const variant = draft._variants[variantIndex];
+    if (!variant) return;
+    draft._variantIndex = variantIndex;
+    replaceGeneratedDraftBody(draft, variant.shape.html);
+    draft.dataset.source = variant.shape.source;
+    draft.classList.remove("is-generating", "is-regenerating");
+    const status = draft.querySelector("[data-draft-status]");
+    const detail = draft.querySelector("[data-draft-status-detail]");
+    const version = draft.querySelector("[data-draft-version]");
+    const versionNavigation = draft.querySelector(".draft-variant-nav");
+    if (status) status.textContent = variant.shape.kind === "image" ? "生成完成" : "AI 草稿";
+    if (detail) {
+      detail.textContent = variant.instruction
+        ? `${item.label} · 版本 ${variantIndex + 1}/${draft._variants.length} · 按「${variant.instruction}」生成 · 未写入`
+        : `${item.label} · 版本 ${variantIndex + 1}/${draft._variants.length} · 未写入 Markdown`;
+    }
+    if (version) version.textContent = `${variantIndex + 1} / ${draft._variants.length}`;
+    if (versionNavigation) versionNavigation.hidden = draft._variants.length <= 1;
+    renderKatexIn(draft);
+    imageGallery?.refresh?.();
+    setDraftBusy(false);
+  };
+
+  const prepareRegeneration = (nextVersion, instruction = "") => {
+    clearGenerationTimers();
+    draft.classList.add("is-generating", "is-regenerating");
+    const status = draft.querySelector("[data-draft-status]");
+    const detail = draft.querySelector("[data-draft-status-detail]");
+    if (status) status.textContent = "重新生成中…";
+    if (detail) {
+      detail.textContent = instruction
+        ? `${item.label} · 正在按「${instruction}」生成版本 ${nextVersion}`
+        : `${item.label} · 正在生成版本 ${nextVersion} · 当前版本仍未写入`;
+    }
+    setDraftBusy(true);
+    block.classList.add("is-ai-running");
+  };
+
+  const finishRegeneration = (variant) => {
+    draft._variants.push(variant);
+    showVariant(draft._variants.length - 1);
+    block.classList.remove("is-ai-running");
+    setLive("已重新生成", `新候选已成为版本 ${draft._variants.length}；上一版仍可在当前草稿内切回。`);
+    showToast(`已生成版本 ${draft._variants.length} · 尚未写入`);
+  };
+
+  const streamTextVariant = (variant, isRegeneration) => {
+    replaceGeneratedDraftBody(draft, draftStreamingBodyHTML());
+    const streamText = draft.querySelector("[data-draft-stream-text]");
+    const status = draft.querySelector("[data-draft-status]");
+    const detail = draft.querySelector("[data-draft-status-detail]");
+    const text = Array.from(variant.shape.kind === "paragraph" ? variant.candidate : variant.shape.source);
+    const targetVersion = isRegeneration ? draft._variants.length + 1 : 1;
+    const chunkSize = Math.max(1, Math.ceil(text.length / 52));
+    let cursor = 0;
+    if (status) status.textContent = isRegeneration ? "重新生成中…" : "AI 生成中…";
+    setDraftBusy(true);
+    clearInterval(draft._generationInterval);
+    draft._generationInterval = setInterval(() => {
+      cursor = Math.min(text.length, cursor + chunkSize);
+      if (streamText) streamText.textContent = text.slice(0, cursor).join("");
+      if (detail) {
+        const instructionStatus = variant.instruction ? ` · 按「${variant.instruction}」` : "";
+        detail.textContent = `${item.label} · 流式生成版本 ${targetVersion}${instructionStatus} · ${cursor}/${text.length} 字`;
+      }
+      if (cursor < text.length) return;
+      clearInterval(draft._generationInterval);
+      draft._generationInterval = null;
+      if (isRegeneration) finishRegeneration(variant);
+      else {
+        showVariant(0);
+        block.classList.remove("is-ai-running");
+      }
+    }, 24);
+  };
+
+  const runStructuredGeneration = (variant, isRegeneration) => {
+    replaceGeneratedDraftBody(draft, structuredDraftSkeletonHTML(variant.shape.kind));
+    const status = draft.querySelector("[data-draft-status]");
+    const detail = draft.querySelector("[data-draft-status-detail]");
+    const targetVersion = isRegeneration ? draft._variants.length + 1 : 1;
+    if (status) status.textContent = isRegeneration ? "重新生成中…" : "正在生成候选…";
+    if (detail) {
+      const instructionStatus = variant.instruction ? ` · 按「${variant.instruction}」` : "";
+      detail.textContent = `${item.label} · 正在构建版本 ${targetVersion}${instructionStatus}`;
+    }
+    setDraftBusy(true);
+    scheduleGeneration(1050, () => {
+      if (isRegeneration) finishRegeneration(variant);
+      else {
+        showVariant(0);
+        block.classList.remove("is-ai-running");
+      }
+    });
+  };
+
+  const runImageGeneration = (variant, isRegeneration) => {
+    if (isRegeneration) replaceGeneratedDraftBody(draft, imageGenerationStageHTML());
     const stageStatus = draft.querySelector("[data-image-generation-status]");
     const steps = Array.from(draft.querySelectorAll(".image-generation-copy li"));
     scheduleGeneration(620, () => {
@@ -1762,25 +2639,80 @@ function runInsert(host, block, item, { microTitle = "", customText = "" } = {})
       steps[2]?.classList.add("is-active");
     });
     scheduleGeneration(2050, () => {
-      stage?.replaceWith(document.createRange().createContextualFragment(shape.html));
-      draft.classList.remove("is-generating");
-      if (status) status.textContent = "生成完成";
-      const accept = draft.querySelector('[data-draft-result="accept"]');
-      if (accept) accept.disabled = false;
-      imageGallery?.refresh?.();
       steps[2]?.classList.replace("is-active", "is-done");
-      setLive("示意图已生成", "真实图像块已在插入位置渲染；接受前附件引用仍处于草稿事务。 ");
+      if (isRegeneration) finishRegeneration(variant);
+      else showVariant(0);
+      setLive("示意图已生成", "真实图像块已在插入位置渲染；接受前附件引用仍处于草稿事务。");
     });
+  };
+
+  draft._dismiss = () => {
+    clearGenerationTimers();
+    draft.remove();
+    block.classList.remove("has-ai-card", "is-ai-running");
+  };
+  draft.querySelector('[data-draft-result="discard"]').addEventListener("click", () => {
+    draft._dismiss();
+    setLive("已丢弃新块", "这个生成块没有写入 Markdown 或附件引用。 ");
+  });
+  draft.querySelector('[data-draft-result="previous"]').addEventListener("click", () => {
+    if (draft.classList.contains("is-generating")) return;
+    showVariant(draft._variantIndex - 1);
+  });
+  draft.querySelector('[data-draft-result="next"]').addEventListener("click", () => {
+    if (draft.classList.contains("is-generating")) return;
+    showVariant(draft._variantIndex + 1);
+  });
+  const regenerateDraft = () => {
+    if (draft.classList.contains("is-generating")) {
+      showToast("当前版本生成完成后再重新生成");
+      return;
+    }
+    const instruction = draft.querySelector("[data-candidate-instruction]")?.value.trim() || "";
+    const nextVariantIndex = draft._variants.length;
+    const variant = buildVariant(nextVariantIndex, instruction);
+    prepareRegeneration(nextVariantIndex + 1, instruction);
+    if (variant.shape.kind === "image") {
+      runImageGeneration(variant, true);
+      return;
+    }
+    if (["base-view", "table", "math", "chart"].includes(variant.shape.kind)) {
+      runStructuredGeneration(variant, true);
+      return;
+    }
+    streamTextVariant(variant, true);
+    setLive("重新生成中", instruction
+      ? `正在按「${escapeHtml(instruction)}」生成版本 ${nextVariantIndex + 1}；现有版本不会被覆盖。`
+      : `正在基于当前上下文生成版本 ${nextVariantIndex + 1}；现有版本不会被覆盖。`);
+  };
+  draft.querySelector('[data-draft-result="regenerate"]').addEventListener("click", regenerateDraft);
+  draft.querySelector("[data-candidate-instruction]").addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" || event.isComposing) return;
+    event.preventDefault();
+    regenerateDraft();
+  });
+  draft.querySelector('[data-draft-result="accept"]').addEventListener("click", () => {
+    if (draft.querySelector('[data-draft-result="accept"]')?.disabled) return;
+    clearGenerationTimers();
+    draft.classList.remove("generated-draft", "is-generating");
+    draft.querySelector(".generated-draft-review")?.remove();
+    block.classList.remove("has-ai-card", "is-ai-running");
+    markAiAccepted(draft, item, `${item.label} · v${draft._variantIndex + 1}`, () => draft.remove());
+    setLive("新块已写入", `当前可见的版本 ${draft._variantIndex + 1} 已作为实际可编辑块留在文档里；其他未接受版本没有写入。`);
+    showToast("已接受新块 · 可在 Ambient 回滚");
+  });
+
+  if (isImageGeneration) {
+    runImageGeneration(firstVariant, false);
+  } else if (isStructuredGeneration) {
+    runStructuredGeneration(firstVariant, false);
   } else {
-    scheduleGeneration(840, () => {
-      draft.classList.remove("is-generating");
-      if (status) status.textContent = "AI 草稿";
-    });
+    streamTextVariant(firstVariant, false);
   }
   clearTimeout(block.aiTimer);
   block.aiTimer = setTimeout(() => block.classList.remove("is-ai-running"), isImageGeneration ? 2200 : 1300);
-  setLive(item.label, `${microTitle ? escapeHtml(microTitle) + " · " : ""}${isImageGeneration ? "正在生成真实图像附件，完成前不会突然出现最终图。" : "生成结果已经出现在真实插入位置；接受前仍是未写入事务。"}`);
-  showToast(`${item.label}：${isImageGeneration ? "生成中" : "已生成草稿"}`);
+  setLive(item.label, `${microTitle ? escapeHtml(microTitle) + " · " : ""}${isImageGeneration ? "正在生成图像候选。" : isStructuredGeneration ? "正在按目标对象结构生成候选；不会先显示 prompt 或原始源码。" : "候选正在实际插入位置流式写出；完成前不可接受。"}`);
+  showToast(`${item.label}：生成中`);
 }
 
 function historyChangeStats(entry) {
@@ -1880,6 +2812,9 @@ function locateHistoryEntry(index) {
 function rollbackEntry(index) {
   const entry = rollbackTrail.splice(index, 1)[0];
   if (!entry) return;
+  const undoIndex = composerUndoStack.lastIndexOf(entry);
+  if (undoIndex >= 0) composerUndoStack.splice(undoIndex, 1);
+  composerRedoStack.length = 0;
   entry.restore?.();
   entry.block.dataset.source = entry.before;
   entry.block.dataset.lastCommittedSource = entry.before;
@@ -1888,6 +2823,7 @@ function rollbackEntry(index) {
   }
   activeHistoryIndex = rollbackTrail.length ? Math.max(0, Math.min(index, rollbackTrail.length - 1)) : null;
   renderRollbackTrail();
+  updateComposerTransactionControls();
   setFocusedBlock(entry.block);
   setLive("已回滚 AI 写入", `“${escapeHtml(entry.title)}”的「${escapeHtml(entry.label)}」已从草稿事务撤销，块回到原始 Markdown。`);
   showToast("已回滚该 AI 写入");
@@ -1920,26 +2856,41 @@ function getOrCreateAiMenuFor(host, block) {
   let menu = host.querySelector(":scope > .ai-menu");
   if (menu) return menu;
 
+  const isMicroActionBar = host.classList.contains("micro-block");
+  const isBlockActionBar = host === block || isMicroActionBar;
   menu = document.createElement("div");
-  menu.className = "ai-menu";
-  menu.hidden = true;
+  menu.className = `ai-menu${isBlockActionBar ? " block-action-bar" : ""}${isMicroActionBar ? " micro-action-bar" : ""}`;
+  menu.contentEditable = "false";
+  menu.hidden = !isBlockActionBar;
   const sugg = COPILOT_SUGGESTIONS[block.dataset.blockTitle];
-  const suggRow = sugg
+  const suggRow = sugg && !isBlockActionBar
     ? `<button class="ai-sugg" data-ai-sugg data-label="${escapeHtml(sugg.label)}">
          <span class="ai-sugg-lead"><svg><use href="#i-spark"></use></svg></span>
          <span class="ai-sugg-body"><span class="ai-sugg-txt">${escapeHtml(sugg.txt)}</span><span class="ai-sugg-meta">${escapeHtml(sugg.meta)}</span></span>
          <span class="ai-sugg-go">生成</span>
        </button>`
     : "";
+  const metadataLibraryAction = host === block && block.dataset.blockKind === "metadata"
+    ? `<button type="button" id="vault-property-trigger" data-vault-property-action="open" aria-expanded="false" aria-controls="vault-property-library" title="查看全 Vault 字段与标签统计"><svg><use href="#i-table"></use></svg><span>Vault 属性库</span></button>`
+    : "";
+  const blockActions = isBlockActionBar
+    ? `<div class="block-action-core" aria-label="Block 常用操作">
+         <button type="button" data-action="insert" title="在下方插入"><svg><use href="#i-plus"></use></svg><span>在下方插入</span></button>
+         <button type="button" data-action="easy-copy" title="Easy Copy · 复制为文本、图片、Markdown 或 HTML"><svg><use href="#i-copy"></use></svg><span>复制</span></button>
+         <button type="button" data-action="comment" title="添加块评论"><svg><use href="#i-comment"></use></svg><span>评论</span></button>
+         ${metadataLibraryAction}
+       </div><span class="block-action-divider" aria-hidden="true"></span>`
+    : "";
   menu.innerHTML = `
-    <div class="aimc${sugg ? "" : " is-bare"}">
+    <div class="aimc${sugg && !isBlockActionBar ? "" : " is-bare"}">
       ${suggRow}
       <div class="aim">
         <div class="aim-top">
+          ${blockActions}
           <span class="aim-lead"><svg><use href="#i-spark"></use></svg></span>
-          ${sugg ? '<span class="aim-quick-label">快捷</span>' : ""}
+          <span class="aim-quick-label">AI</span>
           <div class="aim-pills">${aiPillsHTML(block)}<span class="sep"></span></div>
-          <button class="aim-history-toggle" data-action="toggle-ai-history" title="查看本块生成历史"><svg><use href="#i-undo"></use></svg></button>
+          <button class="aim-history-toggle" data-action="toggle-ai-history" title="查看本块生成历史" aria-label="查看本块生成历史"><svg><use href="#i-history"></use></svg></button>
           <button class="aim-trigger" data-action="open-ai-input"><svg><use href="#i-wand"></use></svg>指令</button>
           <div class="aim-field">
             <input type="text" placeholder="让 AI 对这个块做什么？" autocomplete="off" />
@@ -1984,8 +2935,9 @@ function toggleAiHistory(button, block, host = block) {
 
 function toggleAiMenu(block, host = block) {
   const menu = getOrCreateAiMenuFor(host, block);
+  if (menu.classList.contains("block-action-bar")) return;
   const willOpen = menu.hidden;
-  paper.querySelectorAll(".ai-menu:not([hidden])").forEach((other) => {
+  paper.querySelectorAll(".ai-menu:not(.block-action-bar):not([hidden])").forEach((other) => {
     if (other === menu) return;
     other.hidden = true;
     other.querySelector(".aim")?.classList.remove("open");
@@ -2028,7 +2980,12 @@ function runCustomAi(block, input) {
     input.focus();
     return;
   }
-  menu.hidden = true;
+  if (menu.classList.contains("block-action-bar")) {
+    menu.querySelector(".aim")?.classList.remove("open");
+    input.value = "";
+  } else {
+    menu.hidden = true;
+  }
   syncOpenEditorState(block);
   showAiSuggestionCard(block, {
     label: value.length > 16 ? `${value.slice(0, 16)}…` : value,
@@ -2040,7 +2997,87 @@ function runCustomAi(block, input) {
   });
 }
 
+function blockHeadingLevel(block) {
+  if (block.dataset.blockKind === "heading-1") return 1;
+  if (block.dataset.blockKind === "heading-2") return 2;
+  return 0;
+}
+
+function sectionBlocksForHeading(block) {
+  const level = blockHeadingLevel(block);
+  if (!level) return [];
+  const blocks = [];
+  let cursor = block.nextElementSibling;
+  while (cursor?.classList.contains("doc-block")) {
+    const cursorLevel = blockHeadingLevel(cursor);
+    if (cursorLevel && cursorLevel <= level) break;
+    blocks.push(cursor);
+    cursor = cursor.nextElementSibling;
+  }
+  return blocks;
+}
+
+function ensureBlockCollapseControl(block) {
+  const controls = block.querySelector(":scope > .block-controls");
+  if (!controls || controls.querySelector('[data-action="collapse"]')) return;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.dataset.action = "collapse";
+  button.innerHTML = '<svg><use href="#i-chevron-up"></use></svg>';
+  syncBlockCollapseControl(block, button, false);
+  controls.prepend(button);
+
+  const preview = document.createElement("span");
+  preview.className = "block-collapse-preview";
+  preview.contentEditable = "false";
+  const text = (block.textContent || block.dataset.blockTitle || "当前块").replace(/\s+/g, " ").trim();
+  preview.textContent = text.length > 82 ? `${text.slice(0, 82)}…` : text;
+  block.append(preview);
+}
+
+function syncBlockCollapseControl(block, button, collapsed) {
+  const isSection = Boolean(blockHeadingLevel(block));
+  const label = collapsed
+    ? isSection ? "向下展开本节" : "向下展开当前块"
+    : isSection ? "向上收起本节" : "向上收起当前块";
+  button.title = label;
+  button.setAttribute("aria-label", label);
+  button.setAttribute("aria-expanded", String(!collapsed));
+  button.querySelector("use")?.setAttribute("href", collapsed ? "#i-chevron-down" : "#i-chevron-up");
+}
+
+function toggleBlockCollapse(block, button) {
+  const sectionBlocks = sectionBlocksForHeading(block);
+  if (sectionBlocks.length) {
+    const collapsed = block.classList.toggle("is-section-collapsed");
+    sectionBlocks.forEach((item) => item.classList.toggle("is-section-hidden", collapsed));
+    const preview = block.querySelector(":scope > .block-collapse-preview");
+    if (preview) preview.textContent = collapsed ? `已折叠 ${sectionBlocks.length} 个内容块` : "";
+    syncBlockCollapseControl(block, button, collapsed);
+    showToast(collapsed ? `已折叠本节 · ${sectionBlocks.length} 个块` : "本节已展开");
+    return;
+  }
+
+  const collapsed = block.classList.toggle("is-collapsed");
+  syncBlockCollapseControl(block, button, collapsed);
+  showToast(collapsed ? "当前块已折叠为一行" : "当前块已展开");
+}
+
+function initBlockCollapseControls() {
+  paper.querySelectorAll(":scope > .doc-block").forEach(ensureBlockCollapseControl);
+  paper.addEventListener("click", (event) => {
+    const button = event.target.closest('[data-action="collapse"]');
+    if (!button) return;
+    const block = button.closest(".doc-block");
+    if (!block) return;
+    event.preventDefault();
+    event.stopPropagation();
+    toggleBlockCollapse(block, button);
+  });
+}
+
 function decorateBlock(block) {
+  ensureBlockCollapseControl(block);
   if (block.querySelector(":scope > .block-badges")) return;
 
   const badges = document.createElement("div");
@@ -2050,33 +3087,17 @@ function decorateBlock(block) {
   badges.appendChild(stateRow);
   block.prepend(badges);
   block.querySelectorAll(":scope > .issue-pill").forEach((pill) => stateRow.appendChild(pill));
+  if (block.dataset.blockKind === "metadata") {
+    const suggestion = document.createElement("button");
+    suggestion.type = "button";
+    suggestion.className = "metadata-suggestion-trigger";
+    suggestion.dataset.metadataAction = "suggest";
+    suggestion.innerHTML = '<svg><use href="#i-spark"></use></svg>AI 属性建议 · 2';
+    stateRow.appendChild(suggestion);
+  }
 
-  const actions = getAiActions(block);
-  const tail = document.createElement("div");
-  tail.className = "block-tail-actions";
-  const insert = document.createElement("button");
-  insert.type = "button";
-  insert.className = "block-tail-plus";
-  insert.dataset.action = "insert";
-  insert.title = "在下方插入";
-  insert.innerHTML = '<svg><use href="#i-plus"></use></svg><span>在下方插入</span>';
-  const comment = document.createElement("button");
-  comment.type = "button";
-  comment.className = "block-tail-comment";
-  comment.dataset.action = "comment";
-  comment.title = "添加块评论";
-  comment.innerHTML = '<svg><use href="#i-comment"></use></svg><span>评论</span>';
-  const anchor = document.createElement("div");
-  anchor.className = "ai-anchor";
-  const hint = document.createElement("button");
-  hint.type = "button";
-  hint.className = "ai-hint";
-  hint.dataset.action = "ai";
-  hint.textContent = `AI 建议 · ${actions.length}`;
-  hint.title = actions.map((item) => `${item.label}（${item.reason}）`).join("\n");
-  anchor.appendChild(hint);
-  tail.append(insert, comment, anchor);
-  block.appendChild(tail);
+  const actionBar = getOrCreateAiMenuFor(block, block);
+  actionBar.title = "常用 Block 操作与当前 AI 建议";
 }
 
 function initBlockBadges() {
@@ -2086,6 +3107,7 @@ function initBlockBadges() {
 function blockControlsHTML() {
   return `
     <div class="block-controls" aria-label="Block controls">
+      <button data-action="collapse" title="向上收起当前块" aria-label="向上收起当前块" aria-expanded="true"><svg><use href="#i-chevron-up"></use></svg></button>
       <button data-action="move" title="按住拖动"><svg><use href="#i-grip"></use></svg></button>
       <button data-action="insert" title="在下方插入"><svg><use href="#i-plus"></use></svg></button>
     </div>
@@ -2094,31 +3116,10 @@ function blockControlsHTML() {
 
 function initMicroHints() {
   paper.querySelectorAll(".math-card.micro-block").forEach((micro) => {
-    if (micro.querySelector(":scope > .micro-tail-actions")) return;
     const block = micro.closest(".doc-block");
-    const actions = getAiActions(block);
-    const tail = document.createElement("div");
-    tail.className = "micro-tail-actions";
-    const insert = document.createElement("button");
-    insert.type = "button";
-    insert.className = "micro-tail-plus";
-  insert.dataset.action = "insert";
-    insert.title = "在该公式后插入";
-  insert.innerHTML = '<svg><use href="#i-plus"></use></svg><span>在下方插入</span>';
-    const comment = document.createElement("button");
-    comment.type = "button";
-    comment.className = "micro-tail-comment";
-    comment.dataset.action = "comment";
-    comment.title = "评论该公式";
-    comment.innerHTML = '<svg><use href="#i-comment"></use></svg><span>评论</span>';
-    const hint = document.createElement("button");
-    hint.type = "button";
-    hint.className = "ai-hint micro-ai-hint";
-    hint.dataset.action = "ai";
-    hint.textContent = `AI · ${actions.length}`;
-    hint.title = actions.map((item) => `${item.label}（${item.reason}）`).join("\n");
-    tail.append(insert, comment, hint);
-    micro.appendChild(tail);
+    if (!block) return;
+    const actionBar = getOrCreateAiMenuFor(micro, block);
+    actionBar.title = `${micro.dataset.microTitle || "公式"} · 常用操作与当前 AI 建议`;
   });
 }
 
@@ -2471,6 +3472,30 @@ function columnName(cell) {
   return header ? header.textContent.trim() : `第 ${cell.cellIndex + 1} 列`;
 }
 
+function setCurrentTableCell(cell, preserveAnchor = false) {
+  if (!cell) return null;
+  currentCell?.classList.remove("is-current-cell");
+  currentCell = cell;
+  if (!preserveAnchor) tableSelectionAnchor = cell;
+  cell.classList.add("is-current-cell");
+  return cell;
+}
+
+function ensureCurrentTableCell(preferredColumn = 1) {
+  if (currentCell?.isConnected && currentCell.closest("table") === table) return currentCell;
+  const firstRow = table?.tBodies[0]?.rows[0];
+  if (!firstRow) return null;
+  return setCurrentTableCell(firstRow.cells[preferredColumn] || firstRow.cells[0]);
+}
+
+function setTableToolPressed(action, pressed, label = "") {
+  const button = table?.closest(".table-surface")?.querySelector(`[data-action="${action}"]`);
+  if (!button) return;
+  button.classList.toggle("is-active", pressed);
+  button.setAttribute("aria-pressed", String(pressed));
+  if (label) button.title = label;
+}
+
 function addTableRow() {
   const body = table.querySelector("tbody");
   const row = document.createElement("tr");
@@ -2516,8 +3541,11 @@ function removeTableRow() {
 const alignSteps = ["left", "center", "right"];
 
 function alignTableColumn() {
-  if (!currentCell) return showToast("先点选一个单元格再切换对齐");
-  const index = currentCell.cellIndex;
+  const targetCell = ensureCurrentTableCell();
+  if (!targetCell) return showToast("表格里没有可对齐的列");
+  const block = table.closest(".doc-block");
+  const oldMarkup = table.innerHTML;
+  const index = targetCell.cellIndex;
   const current = table.dataset[`align${index}`] || "left";
   const next = alignSteps[(alignSteps.indexOf(current) + 1) % alignSteps.length];
   table.dataset[`align${index}`] = next;
@@ -2525,20 +3553,56 @@ function alignTableColumn() {
     const cell = row.cells[index];
     if (cell) cell.style.textAlign = next;
   });
-  setLive("列对齐", `“${escapeHtml(columnName(currentCell))}”列切换为 ${next}；回写时更新分隔行冒号语法（:--- / :---: / ---:）。`);
-  showToast(`列对齐：${next}`);
+  refreshComposerTableSource();
+  markAccepted(block, `表格列对齐 · ${next}`, () => {
+    table.innerHTML = oldMarkup;
+    if (current === "left") delete table.dataset[`align${index}`];
+    else table.dataset[`align${index}`] = current;
+    currentCell = null;
+    refreshComposerTableSource();
+  });
+  setTableToolPressed("align-table", true, `${columnName(targetCell)} · ${next}`);
+  setLive("列对齐已写入", `“${escapeHtml(columnName(targetCell))}”列已切换为 ${next}；Markdown 分隔行同步变为 ${next === "center" ? ":---:" : next === "right" ? "---:" : "---"}，并可从 History 回滚。`);
+  showToast(`“${columnName(targetCell)}”已${next === "center" ? "居中" : next === "right" ? "右对齐" : "左对齐"} · 可回滚`);
 }
 
 function sortTableByCurrentColumn() {
-  if (!currentCell) return showToast("先点选要排序的列中的单元格");
-  const index = currentCell.cellIndex;
+  const targetCell = ensureCurrentTableCell();
+  if (!targetCell) return showToast("表格里没有可排序的列");
+  const block = table.closest(".doc-block");
+  const oldMarkup = table.innerHTML;
+  const oldSortColumn = table.dataset.sortColumn || "";
+  const oldSortDirection = table.dataset.sortDirection || "";
+  const index = targetCell.cellIndex;
   const body = table.querySelector("tbody");
-  const rows = Array.from(body.rows);
-  tableSortAsc = !tableSortAsc;
-  rows.sort((a, b) => (a.cells[index]?.textContent || "").localeCompare(b.cells[index]?.textContent || "", "zh") * (tableSortAsc ? 1 : -1));
+  const rows = Array.from(body.rows).filter((row) => !row.classList.contains("table-formula-row"));
+  const formulaRow = body.querySelector(".table-formula-row");
+  const nextDirection = table.dataset.sortColumn === String(index) && table.dataset.sortDirection === "asc" ? "desc" : "asc";
+  rows.sort((a, b) => (a.cells[index]?.textContent || "").localeCompare(b.cells[index]?.textContent || "", "zh", { numeric: true }) * (nextDirection === "asc" ? 1 : -1));
   rows.forEach((row) => body.appendChild(row));
-  setLive("按列排序", `已按“${escapeHtml(columnName(currentCell))}”列${tableSortAsc ? "升序" : "降序"}排序。真实实现应保留表头并进入 undo stack。`);
-  showToast(`已按“${columnName(currentCell)}”${tableSortAsc ? "升序" : "降序"}排序`);
+  if (formulaRow) body.appendChild(formulaRow);
+  table.querySelectorAll("th[aria-sort]").forEach((header) => {
+    header.removeAttribute("aria-sort");
+    delete header.dataset.sortIndicator;
+  });
+  const header = table.tHead.rows[0].cells[index];
+  header.setAttribute("aria-sort", nextDirection === "asc" ? "ascending" : "descending");
+  header.dataset.sortIndicator = nextDirection === "asc" ? "↑" : "↓";
+  table.dataset.sortColumn = String(index);
+  table.dataset.sortDirection = nextDirection;
+  refreshComposerTableSource();
+  markAccepted(block, `表格排序 · ${nextDirection}`, () => {
+    table.innerHTML = oldMarkup;
+    if (oldSortColumn) table.dataset.sortColumn = oldSortColumn;
+    else delete table.dataset.sortColumn;
+    if (oldSortDirection) table.dataset.sortDirection = oldSortDirection;
+    else delete table.dataset.sortDirection;
+    currentCell = null;
+    refreshComposerTableSource();
+  });
+  setTableToolPressed("sort-table", true, `${columnName(targetCell)} · ${nextDirection}`);
+  setLive("按列排序已写入", `已按“${escapeHtml(columnName(targetCell))}”列${nextDirection === "asc" ? "升序" : "降序"}重排行；表头箭头显示当前方向，公式汇总行保持在末尾，并可从 History 回滚。`);
+  showToast(`“${columnName(targetCell)}”${nextDirection === "asc" ? "升序 ↑" : "降序 ↓"} · 可回滚`);
 }
 
 function refreshComposerTableSource() {
@@ -2572,15 +3636,451 @@ function transposeComposerTable() {
   showToast("表格已原地转置 · 可回滚");
 }
 
+function clearTableCellSelection() {
+  const rangeClasses = ["is-range-cell", "is-range-top", "is-range-right", "is-range-bottom", "is-range-left", "is-discrete-cell"];
+  table?.querySelectorAll(".is-range-cell, .is-discrete-cell").forEach((cell) => {
+    cell.classList.remove(...rangeClasses);
+    cell.removeAttribute("aria-selected");
+  });
+  selectedTableCells = [];
+  selectedTableRange = null;
+  selectedTableMode = null;
+  delete table?.dataset.cellRange;
+  delete table?.dataset.cellSelectionMode;
+}
+
+function tableCellCoordinates(cell) {
+  const rows = Array.from(table.rows);
+  return {
+    row: rows.indexOf(cell.parentElement),
+    column: cell.cellIndex,
+  };
+}
+
+function selectedTableBounds(cells = selectedTableCells) {
+  if (!cells.length) return null;
+  const positions = cells.map(tableCellCoordinates).filter(({ row, column }) => row >= 0 && column >= 0);
+  if (!positions.length) return null;
+  return {
+    rowMin: Math.min(...positions.map(({ row }) => row)),
+    rowMax: Math.max(...positions.map(({ row }) => row)),
+    colMin: Math.min(...positions.map(({ column }) => column)),
+    colMax: Math.max(...positions.map(({ column }) => column)),
+  };
+}
+
+function paintSelectedTableCells(mode = selectedTableMode || "range") {
+  const rangeClasses = ["is-range-cell", "is-range-top", "is-range-right", "is-range-bottom", "is-range-left", "is-discrete-cell"];
+  table.querySelectorAll(".is-range-cell, .is-discrete-cell").forEach((cell) => {
+    cell.classList.remove(...rangeClasses);
+    cell.removeAttribute("aria-selected");
+  });
+  if (!selectedTableCells.length) {
+    selectedTableRange = null;
+    selectedTableMode = null;
+    delete table.dataset.cellRange;
+    delete table.dataset.cellSelectionMode;
+    return;
+  }
+  selectedTableMode = mode;
+  selectedTableRange = selectedTableBounds();
+  selectedTableCells.forEach((cell) => {
+    const { row, column } = tableCellCoordinates(cell);
+    cell.classList.add("is-range-cell");
+    if (mode === "discrete") {
+      cell.classList.add("is-discrete-cell", "is-range-top", "is-range-right", "is-range-bottom", "is-range-left");
+    } else {
+      if (row === selectedTableRange.rowMin) cell.classList.add("is-range-top");
+      if (row === selectedTableRange.rowMax) cell.classList.add("is-range-bottom");
+      if (column === selectedTableRange.colMin) cell.classList.add("is-range-left");
+      if (column === selectedTableRange.colMax) cell.classList.add("is-range-right");
+    }
+    cell.setAttribute("aria-selected", "true");
+  });
+  const rowCount = selectedTableRange.rowMax - selectedTableRange.rowMin + 1;
+  const columnCount = selectedTableRange.colMax - selectedTableRange.colMin + 1;
+  table.dataset.cellRange = mode === "discrete" ? `discrete:${selectedTableCells.length}` : `${rowCount}x${columnCount}`;
+  table.dataset.cellSelectionMode = mode;
+}
+
+function toggleTableCellSelection(cell) {
+  const index = selectedTableCells.indexOf(cell);
+  if (index >= 0) selectedTableCells.splice(index, 1);
+  else selectedTableCells.push(cell);
+  tableSelectionAnchor = cell;
+  setCurrentTableCell(cell, true);
+  paintSelectedTableCells("discrete");
+  if (!selectedTableCells.length) return closeSelectionSurface();
+  setLive("不连续单元格选择", `已选择 ${selectedTableCells.length} 个单元格；继续按住 ⌘ / Ctrl 点击可追加或取消。形成完整矩形后可以合并。`);
+  scheduleSelectionToolbar();
+}
+
+function mergeableTableSelection(cells = selectedTableCells) {
+  if (cells.length < 2) return { valid: false, reason: "至少选择两个单元格" };
+  const sections = new Set(cells.map((cell) => cell.parentElement.parentElement));
+  if (sections.size !== 1) return { valid: false, reason: "表头与正文不能跨区合并" };
+  const section = cells[0].parentElement.parentElement;
+  const rows = Array.from(section.rows);
+  const rowIndexes = cells.map((cell) => rows.indexOf(cell.parentElement));
+  const columnIndexes = cells.map((cell) => cell.cellIndex);
+  const rowMin = Math.min(...rowIndexes);
+  const rowMax = Math.max(...rowIndexes);
+  const colMin = Math.min(...columnIndexes);
+  const colMax = Math.max(...columnIndexes);
+  const expected = (rowMax - rowMin + 1) * (colMax - colMin + 1);
+  if (cells.length !== expected) return { valid: false, reason: "当前是不连续选区；补齐矩形中的空缺单元格后即可合并" };
+  return { valid: true, section, rows, rowMin, rowMax, colMin, colMax };
+}
+
+function closeMergeSelectionMode(message = "") {
+  tableMergeMode = false;
+  tableMergeFirstCell = null;
+  delete table.dataset.mergeMode;
+  table.closest(".table-surface")?.querySelector("[data-table-merge-prompt]")?.remove();
+  setTableToolPressed("merge-cells", false, "合并选中的矩形单元格");
+  if (message) showToast(message);
+}
+
+function updateMergePrompt(detail) {
+  const surface = table.closest(".table-surface");
+  let prompt = surface.querySelector("[data-table-merge-prompt]");
+  if (!prompt) {
+    prompt = document.createElement("div");
+    prompt.className = "table-tool-prompt";
+    prompt.dataset.tableMergePrompt = "";
+    prompt.innerHTML = `<span><b>合并模式</b><small data-merge-detail></small></span><button type="button" data-action="cancel-merge-mode">取消</button>`;
+    table.before(prompt);
+  }
+  prompt.querySelector("[data-merge-detail]").textContent = detail;
+}
+
+function beginMergeSelectionMode() {
+  if (selectedTableCells.length > 1) return mergeSelectedCells();
+  tableMergeMode = true;
+  table.dataset.mergeMode = "true";
+  setTableToolPressed("merge-cells", true, "正在选择要合并的矩形区域");
+  clearTableCellSelection();
+  tableMergeFirstCell = currentCell?.isConnected ? currentCell : null;
+  if (tableMergeFirstCell) {
+    selectTableCellRange(tableMergeFirstCell, tableMergeFirstCell, false);
+    updateMergePrompt(`已以“${tableMergeFirstCell.textContent.trim()}”为起点；再点同一表头或正文区域中的另一个格。`);
+  } else {
+    updateMergePrompt("依次点击矩形区域的两个对角格；第二次点击后直接合并并写入 History。");
+  }
+  setLive("选择合并区域", "合并不能猜测目标。依次点两个对角格来确定矩形范围；普通 Markdown table 不支持 span，完成后该块会保真升级为原生 HTML table。");
+  showToast(tableMergeFirstCell ? "再点另一个格完成合并" : "依次点两个对角格");
+}
+
+function selectTableCellRange(anchor, target, announce = true) {
+  clearTableCellSelection();
+  if (!anchor || !target || anchor.closest("table") !== table || target.closest("table") !== table) return;
+  const rows = Array.from(table.rows);
+  const startRow = rows.indexOf(anchor.parentElement);
+  const endRow = rows.indexOf(target.parentElement);
+  if (startRow < 0 || endRow < 0) return;
+  const rowMin = Math.min(startRow, endRow);
+  const rowMax = Math.max(startRow, endRow);
+  const colMin = Math.min(anchor.cellIndex, target.cellIndex);
+  const colMax = Math.max(anchor.cellIndex, target.cellIndex);
+  for (let rowIndex = rowMin; rowIndex <= rowMax; rowIndex += 1) {
+    for (let column = colMin; column <= colMax; column += 1) {
+      const cell = rows[rowIndex]?.cells[column];
+      if (!cell) continue;
+      selectedTableCells.push(cell);
+    }
+  }
+  paintSelectedTableCells("range");
+  const rowCount = rowMax - rowMin + 1;
+  const columnCount = colMax - colMin + 1;
+  table.dataset.cellRange = `${rowCount}x${columnCount}`;
+  if (announce) {
+    setLive("表格区域已选择", `已按单元格选中 ${rowCount} 行 × ${columnCount} 列；可以继续横向、纵向或跨行列扩展。`);
+  }
+}
+
+function mergeSelectedCells() {
+  if (selectedTableCells.length < 2) return beginMergeSelectionMode();
+  const merge = mergeableTableSelection();
+  if (!merge.valid) {
+    closeMergeSelectionMode();
+    return showToast(merge.reason);
+  }
+  const { rows, rowMin, rowMax, colMin, colMax } = merge;
+  const block = table.closest(".doc-block");
+  const oldMarkup = table.innerHTML;
+  const anchor = rows[rowMin].cells[colMin];
+  const values = selectedTableCells.map((cell) => cell.textContent.trim()).filter(Boolean);
+  selectedTableCells.filter((cell) => cell !== anchor).forEach((cell) => cell.remove());
+  anchor.colSpan = colMax - colMin + 1;
+  anchor.rowSpan = rowMax - rowMin + 1;
+  anchor.textContent = values.join(" · ");
+  clearTableCellSelection();
+  closeMergeSelectionMode();
+  currentCell = anchor;
+  anchor.classList.add("is-current-cell");
+  refreshComposerTableSource();
+  markAccepted(block, "合并表格单元格", () => {
+    table.innerHTML = oldMarkup;
+    currentCell = null;
+    clearTableCellSelection();
+    refreshComposerTableSource();
+  });
+  setLive("复杂表格已保真写回", "普通 Markdown table 不支持 rowspan / colspan，因此这次变更把源升级为 Markdown 文件中的原生 HTML <table>；Composer 仍渲染同一张真实表格。 ");
+  showToast("已合并单元格 · 源格式升级为 HTML table");
+}
+
+function chartDataFromTable() {
+  const labels = [];
+  const values = [];
+  Array.from(table.tBodies[0]?.rows || []).forEach((row) => {
+    labels.push(row.cells[0]?.textContent.trim() || `第 ${labels.length + 1} 行`);
+    const count = Array.from(row.cells).slice(1).reduce((sum, cell) => {
+      const parts = cell.textContent.split(/[、，,;/]+/).map((item) => item.trim()).filter(Boolean);
+      return sum + Math.max(1, parts.length);
+    }, 0);
+    values.push(count);
+  });
+  return { labels, values };
+}
+
+function chartBlockSource(type, data) {
+  return [
+    "```chart",
+    `type: ${type}`,
+    "metric: item-count",
+    `labels: [${data.labels.join(", ")}]`,
+    `values: [${data.values.join(", ")}]`,
+    "```",
+  ].join("\n");
+}
+
+function chartSvgMarkup(type, data) {
+  const colors = ["#7057d6", "#2f7dd1", "#20a275", "#e39b32", "#d66570"];
+  const width = 680;
+  const height = 286;
+  const max = Math.max(...data.values, 1);
+  if (type === "pie") {
+    const total = data.values.reduce((sum, value) => sum + value, 0) || 1;
+    let offset = 0;
+    const slices = data.values.map((value, index) => {
+      const portion = (value / total) * 100;
+      const circle = `<circle cx="176" cy="138" r="82" pathLength="100" fill="none" stroke="${colors[index % colors.length]}" stroke-width="56" stroke-dasharray="${portion} ${100 - portion}" stroke-dashoffset="${-offset}" />`;
+      offset += portion;
+      return circle;
+    }).join("");
+    const legend = data.labels.map((label, index) => `<g transform="translate(330 ${76 + index * 42})"><rect width="12" height="12" rx="3" fill="${colors[index % colors.length]}"/><text x="22" y="11">${escapeHtml(label)} · ${data.values[index]}</text></g>`).join("");
+    return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="表格条目数量饼图"><g transform="rotate(-90 176 138)">${slices}</g><circle cx="176" cy="138" r="50" fill="#fff"/><text x="176" y="134" text-anchor="middle" class="chart-total">${total}</text><text x="176" y="154" text-anchor="middle" class="chart-sub">条目</text>${legend}</svg>`;
+  }
+  const plotLeft = 62;
+  const plotTop = 28;
+  const plotHeight = 190;
+  const step = (width - plotLeft - 30) / Math.max(1, data.labels.length);
+  const points = data.values.map((value, index) => {
+    const x = plotLeft + step * index + step / 2;
+    const y = plotTop + plotHeight - (value / max) * plotHeight;
+    return { x, y, value, label: data.labels[index] };
+  });
+  const grid = [0, .25, .5, .75, 1].map((ratio) => {
+    const y = plotTop + plotHeight * ratio;
+    const value = Math.round(max * (1 - ratio));
+    return `<path d="M${plotLeft} ${y}H${width - 24}"/><text x="50" y="${y + 4}" text-anchor="end">${value}</text>`;
+  }).join("");
+  const labels = points.map((point) => `<text x="${point.x}" y="252" text-anchor="middle">${escapeHtml(point.label)}</text>`).join("");
+  if (type === "line") {
+    const line = points.map((point) => `${point.x},${point.y}`).join(" ");
+    const dots = points.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="5"/><text x="${point.x}" y="${point.y - 11}" text-anchor="middle" class="chart-value">${point.value}</text>`).join("");
+    return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="表格条目数量折线图"><g class="chart-grid">${grid}</g><polyline class="chart-line" points="${line}"/><g class="chart-dots">${dots}</g><g class="chart-axis-labels">${labels}</g></svg>`;
+  }
+  const bars = points.map((point) => {
+    const barWidth = Math.min(72, step * .56);
+    const barHeight = plotTop + plotHeight - point.y;
+    return `<rect x="${point.x - barWidth / 2}" y="${point.y}" width="${barWidth}" height="${barHeight}" rx="7" fill="${colors[points.indexOf(point) % colors.length]}"/><text x="${point.x}" y="${point.y - 10}" text-anchor="middle" class="chart-value">${point.value}</text>`;
+  }).join("");
+  return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="表格条目数量柱状图"><g class="chart-grid">${grid}</g>${bars}<g class="chart-axis-labels">${labels}</g></svg>`;
+}
+
+function renderChartDraft(block, type) {
+  const data = block._chartData;
+  block.dataset.chartType = type;
+  block.dataset.source = chartBlockSource(type, data);
+  block.querySelectorAll("[data-chart-type]").forEach((button) => {
+    const active = button.dataset.chartType === type;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-selected", String(active));
+    button.setAttribute("aria-pressed", String(active));
+  });
+  block.querySelector("[data-chart-canvas]").innerHTML = chartSvgMarkup(type, data);
+  const source = block.querySelector("[data-chart-source]");
+  if (source) source.textContent = block.dataset.source;
+}
+
+function openTableChartDraft() {
+  const tableBlock = table.closest(".doc-block");
+  tableBlock.parentElement.querySelector(":scope > .chart-draft-block")?.remove();
+  const data = chartDataFromTable();
+  const draft = document.createElement("section");
+  draft.className = "doc-block chart-block chart-draft-block has-open-editor";
+  draft.dataset.blockKind = "chart";
+  draft.dataset.blockTitle = "PKM pipeline chart";
+  draft.contentEditable = "false";
+  draft._chartData = data;
+  draft.innerHTML = `
+    <div class="chart-draft-status"><span>新 Chart Block · 尚未写入</span><small>从表格可见内容程序统计：每阶段条目数</small></div>
+    <div class="chart-shell">
+      <div class="object-toolbar chart-mode-strip" role="tablist" aria-label="图表类型"><button type="button" role="tab" data-action="switch-chart" data-chart-type="bar">柱状图</button><button type="button" role="tab" data-action="switch-chart" data-chart-type="line">折线图</button><button type="button" role="tab" data-action="switch-chart" data-chart-type="pie">饼图</button></div>
+      <div class="chart-render" data-chart-canvas></div>
+      <div class="chart-source-contract"><span><svg><use href="#i-code"></use></svg>Markdown source</span><code data-chart-source></code><small>文件保存为 fenced chart code block；Composer renderer 显示真实图表。</small></div>
+    </div>
+    <div class="chart-draft-actions"><button type="button" data-chart-draft="cancel">取消</button><button type="button" class="is-primary" data-chart-draft="accept"><svg><use href="#i-check"></use></svg>接受为新块</button></div>
+  `;
+  tableBlock.after(draft);
+  renderChartDraft(draft, "bar");
+  draft.addEventListener("click", (event) => {
+    const action = event.target.closest("[data-chart-draft]")?.dataset.chartDraft;
+    if (action === "cancel") {
+      draft.remove();
+      return showToast("图表候选已取消");
+    }
+    if (action !== "accept") return;
+    draft.classList.remove("chart-draft-block", "has-open-editor");
+    draft.querySelector(".chart-draft-status")?.remove();
+    draft.querySelector(".chart-draft-actions")?.remove();
+    draft.dataset.initialSource = draft.dataset.source;
+    decorateBlock(draft);
+    markAccepted(draft, "表格生成图表", () => draft.remove());
+    setFocusedBlock(draft);
+    setLive("Chart Block 已写入", "Markdown 保存 fenced chart code block；Composer 通过 renderer 显示柱状图、折线图或饼图，源数据仍可检查。 ");
+    showToast("已接受 Chart Block");
+  });
+  draft.scrollIntoView({ behavior: "smooth", block: "center" });
+  setLive("表格生成图表", "先创建独立 Chart Block 候选；切换图形只改 code block 配置，接受后才写入 Markdown。 ");
+}
+
 function handleTableTool(action) {
   if (action === "transpose-table") return transposeComposerTable();
-  const messages = {
-    "format-table": ["表格自动格式化", "按 Advanced Tables 的思路：自动补齐 pipe、对齐列宽、保持 Markdown table 可读。", "已格式化 Markdown 表格"],
-    "formula-table": ["表格公式", "支持 TBLFM / spreadsheet-like 公式预览，写入前展示计算结果和源注释。", "公式预览已生成"],
+  if (action === "merge-cells") return beginMergeSelectionMode();
+  if (action === "chart-table") return openTableChartDraft();
+}
+
+function tableColumnLetter(index) {
+  let value = index + 1;
+  let label = "";
+  while (value > 0) {
+    value -= 1;
+    label = String.fromCharCode(65 + (value % 26)) + label;
+    value = Math.floor(value / 26);
+  }
+  return label;
+}
+
+function tableFormulaValues(index) {
+  return Array.from(table.tBodies[0]?.rows || [])
+    .filter((row) => !row.classList.contains("table-formula-row"))
+    .map((row) => row.cells[index]?.textContent.trim() || "");
+}
+
+function evaluateTableFormula(expression, index) {
+  const values = tableFormulaValues(index);
+  if (/^=COUNT\(/i.test(expression)) return values.filter((value) => Number.isFinite(Number(value)) && value !== "").length;
+  if (/^=COUNTUNIQUE\(/i.test(expression)) return new Set(values.filter(Boolean)).size;
+  return values.filter(Boolean).length;
+}
+
+function closeTableFormulaEditor() {
+  const editor = table.closest(".table-surface")?.querySelector("[data-table-formula-editor]");
+  editor?.remove();
+  setTableToolPressed("formula-table", false, "为当前列创建可保存的公式汇总");
+  syncOpenEditorState(table.closest(".doc-block"));
+}
+
+function openTableFormulaEditor() {
+  const targetCell = ensureCurrentTableCell();
+  if (!targetCell) return showToast("表格里没有可计算的列");
+  closeTableFormulaEditor();
+  const block = table.closest(".doc-block");
+  const surface = table.closest(".table-surface");
+  const column = targetCell.cellIndex;
+  const letter = tableColumnLetter(column);
+  const endRow = tableFormulaValues(column).length + 1;
+  const editor = document.createElement("section");
+  editor.className = "table-formula-editor";
+  editor.dataset.tableFormulaEditor = "";
+  editor.dataset.formulaColumn = String(column);
+  editor.innerHTML = `
+    <header>
+      <span><b><i>fx</i> ${escapeHtml(columnName(targetCell))}</b><small>计算结果先在此预览；应用后写入表格汇总行与 TBLFM 源注释</small></span>
+      <button type="button" data-action="close-table-formula" aria-label="关闭公式编辑器"><svg><use href="#i-x"></use></svg></button>
+    </header>
+    <div class="table-formula-body">
+      <label><span>公式</span><input data-table-formula-input value="=COUNTA(${letter}2:${letter}${endRow})" spellcheck="false" /></label>
+      <div class="table-formula-presets" aria-label="公式函数">
+        <button type="button" data-table-formula-preset="COUNTA">COUNTA</button>
+        <button type="button" data-table-formula-preset="COUNT">COUNT</button>
+        <button type="button" data-table-formula-preset="COUNTUNIQUE">COUNTUNIQUE</button>
+      </div>
+      <div class="table-formula-preview"><span>预览结果</span><strong data-table-formula-preview>${evaluateTableFormula(`=COUNTA(${letter}2:${letter}${endRow})`, column)}</strong></div>
+    </div>
+    <footer><small>作用列：${escapeHtml(columnName(targetCell))} · ${tableFormulaValues(column).length} 个正文单元格</small><button type="button" class="is-primary" data-action="apply-table-formula">应用到汇总行</button></footer>
+  `;
+  surface.appendChild(editor);
+  const input = editor.querySelector("[data-table-formula-input]");
+  const updatePreview = () => {
+    editor.querySelector("[data-table-formula-preview]").textContent = String(evaluateTableFormula(input.value.trim(), column));
   };
-  const [title, body, toastMessage] = messages[action] || messages["format-table"];
-  setLive(title, body);
-  showToast(toastMessage);
+  input.addEventListener("input", updatePreview);
+  editor.querySelectorAll("[data-table-formula-preset]").forEach((button) => {
+    button.addEventListener("click", () => {
+      input.value = `=${button.dataset.tableFormulaPreset}(${letter}2:${letter}${endRow})`;
+      updatePreview();
+      input.focus();
+    });
+  });
+  block.classList.add("has-open-editor");
+  setTableToolPressed("formula-table", true, `${columnName(targetCell)} · 公式编辑中`);
+  setLive("表格公式编辑器", `当前目标是“${escapeHtml(columnName(targetCell))}”列。COUNTA / COUNT / COUNTUNIQUE 会读取真实单元格；应用后新增汇总行，并在 Markdown 后保存可检查的 TBLFM 注释。`);
+  editor.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  input.focus();
+}
+
+function applyTableFormula() {
+  const editor = table.closest(".table-surface")?.querySelector("[data-table-formula-editor]");
+  if (!editor) return;
+  const block = table.closest(".doc-block");
+  const oldMarkup = table.innerHTML;
+  const oldFormula = block.dataset.tableFormula || "";
+  const column = Number(editor.dataset.formulaColumn);
+  const input = editor.querySelector("[data-table-formula-input]");
+  const expression = input.value.trim();
+  if (!/^=(COUNTA|COUNT|COUNTUNIQUE)\([A-Z]+\d+:[A-Z]+\d+\)$/i.test(expression)) {
+    input.setAttribute("aria-invalid", "true");
+    showToast("当前演示支持 COUNTA / COUNT / COUNTUNIQUE(range)");
+    return;
+  }
+  const result = evaluateTableFormula(expression, column);
+  let formulaRow = table.tBodies[0].querySelector(".table-formula-row");
+  if (!formulaRow) {
+    formulaRow = document.createElement("tr");
+    formulaRow.className = "table-formula-row";
+    formulaRow.innerHTML = Array.from({ length: table.tHead.rows[0].cells.length }, (_, index) => `<td>${index === 0 ? "公式汇总" : "—"}</td>`).join("");
+    table.tBodies[0].appendChild(formulaRow);
+  }
+  const resultCell = formulaRow.cells[column];
+  resultCell.textContent = String(result);
+  resultCell.classList.add("is-formula-cell");
+  resultCell.dataset.formula = expression;
+  resultCell.title = `${expression} = ${result}`;
+  block.dataset.tableFormula = `@>$${column + 1}=${expression.slice(1)}`;
+  refreshComposerTableSource();
+  closeTableFormulaEditor();
+  markAccepted(block, `表格公式 · ${expression}`, () => {
+    table.innerHTML = oldMarkup;
+    if (oldFormula) block.dataset.tableFormula = oldFormula;
+    else delete block.dataset.tableFormula;
+    currentCell = null;
+    refreshComposerTableSource();
+  });
+  setLive("表格公式已写入", `${escapeHtml(expression)} 的结果 ${result} 已进入表格汇总行；Markdown source 同步保存 TBLFM 注释，History 可恢复应用前表格。`);
+  showToast(`公式结果 ${result} 已写入 · 可回滚`);
 }
 
 function moveCellFocus(cell, dx, dy) {
@@ -2612,15 +4112,173 @@ function moveCellFocus(cell, dx, dy) {
   target.focus();
 }
 
+function tableCellAtPoint(x, y) {
+  const cell = document.elementFromPoint(x, y)?.closest?.("td, th");
+  return cell?.closest("table") === table ? cell : null;
+}
+
+function pointHitsTableCellText(cell, x, y) {
+  const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      return node.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+    },
+  });
+  let node = walker.nextNode();
+  while (node) {
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const hit = Array.from(range.getClientRects()).some((rect) =>
+      x >= rect.left - 2 && x <= rect.right + 2 && y >= rect.top - 2 && y <= rect.bottom + 2
+    );
+    if (hit) return true;
+    node = walker.nextNode();
+  }
+  return false;
+}
+
+function nativeSelectionInsideTableCell(cell) {
+  const selection = window.getSelection();
+  if (!selection || selection.isCollapsed || !selection.rangeCount) return false;
+  const range = selection.getRangeAt(0);
+  return cell.contains(range.startContainer) || cell.contains(range.endContainer);
+}
+
+function beginTablePointerSelection(event, cell) {
+  const extending = event.shiftKey && tableSelectionAnchor?.isConnected;
+  const anchor = extending ? tableSelectionAnchor : cell;
+  setCurrentTableCell(cell, extending);
+  selectTableCellRange(anchor, cell, false);
+  tablePointerSelection = {
+    pointerId: event.pointerId,
+    anchor,
+    target: cell,
+    moved: false,
+  };
+  suppressNextTableCellClick = true;
+  table.classList.add("is-cell-selecting");
+  table.setPointerCapture?.(event.pointerId);
+  window.getSelection()?.removeAllRanges();
+}
+
+function updateTablePointerSelection(event) {
+  if (!tablePointerSelection || event.pointerId !== tablePointerSelection.pointerId) return;
+  const cell = tableCellAtPoint(event.clientX, event.clientY);
+  if (!cell || cell === tablePointerSelection.target) return;
+  tablePointerSelection.target = cell;
+  tablePointerSelection.moved = true;
+  setCurrentTableCell(cell, true);
+  selectTableCellRange(tablePointerSelection.anchor, cell, false);
+}
+
+function finishTablePointerSelection(event) {
+  if (!tablePointerSelection || event.pointerId !== tablePointerSelection.pointerId) return;
+  const { pointerId } = tablePointerSelection;
+  tablePointerSelection = null;
+  table.classList.remove("is-cell-selecting");
+  if (table.hasPointerCapture?.(pointerId)) table.releasePointerCapture(pointerId);
+  window.getSelection()?.removeAllRanges();
+  const rowCount = selectedTableRange ? selectedTableRange.rowMax - selectedTableRange.rowMin + 1 : 0;
+  const columnCount = selectedTableRange ? selectedTableRange.colMax - selectedTableRange.colMin + 1 : 0;
+  setLive("表格区域已选择", `已按单元格选中 ${rowCount} 行 × ${columnCount} 列；拖动任意两个对角格即可重新圈选。`);
+  scheduleSelectionToolbar();
+  window.setTimeout(() => {
+    suppressNextTableCellClick = false;
+  }, 0);
+}
+
+function dismissTableCellSelection() {
+  if (!selectedTableCells.length) return;
+  clearTableCellSelection();
+  if (selectionState?.kind === "table-cells") closeSelectionSurface();
+}
+
 function initTableInteractions() {
   if (!table) return;
 
   table.addEventListener("focusin", (event) => {
     const cell = event.target.closest("td, th");
+    if (!cell || tablePointerSelection) return;
+    setCurrentTableCell(cell);
+  });
+
+  table.addEventListener("pointerdown", (event) => {
+    const cell = event.target.closest("td, th");
+    if (!cell || event.button !== 0 || tableMergeMode) return;
+    if (event.metaKey || event.ctrlKey) {
+      event.preventDefault();
+      window.getSelection()?.removeAllRanges();
+      suppressNextTableCellClick = true;
+      toggleTableCellSelection(cell);
+      window.setTimeout(() => {
+        suppressNextTableCellClick = false;
+      }, 0);
+      return;
+    }
+    if (event.detail > 1) {
+      dismissTableCellSelection();
+      return;
+    }
+    if (!event.shiftKey && pointHitsTableCellText(cell, event.clientX, event.clientY)) {
+      dismissTableCellSelection();
+      setCurrentTableCell(cell);
+      return;
+    }
+    event.preventDefault();
+    beginTablePointerSelection(event, cell);
+  });
+
+  table.addEventListener("pointermove", (event) => {
+    if (!tablePointerSelection) return;
+    event.preventDefault();
+    updateTablePointerSelection(event);
+  });
+
+  table.addEventListener("pointerup", finishTablePointerSelection);
+  table.addEventListener("pointercancel", finishTablePointerSelection);
+
+  table.addEventListener("dblclick", (event) => {
+    const cell = event.target.closest("td, th");
     if (!cell) return;
-    currentCell?.classList.remove("is-current-cell");
-    currentCell = cell;
-    cell.classList.add("is-current-cell");
+    dismissTableCellSelection();
+    setCurrentTableCell(cell);
+    scheduleSelectionToolbar();
+  });
+
+  table.addEventListener("click", (event) => {
+    const cell = event.target.closest("td, th");
+    if (!cell) return;
+    if (suppressNextTableCellClick) {
+      suppressNextTableCellClick = false;
+      return;
+    }
+    if (nativeSelectionInsideTableCell(cell)) {
+      dismissTableCellSelection();
+      scheduleSelectionToolbar();
+      return;
+    }
+    const priorAnchor = tableSelectionAnchor;
+    setCurrentTableCell(cell);
+    if (tableMergeMode) {
+      if (!tableMergeFirstCell) {
+        tableMergeFirstCell = cell;
+        selectTableCellRange(cell, cell, false);
+        updateMergePrompt(`已以“${cell.textContent.trim()}”为起点；再点同一区域中的另一个格。`);
+        return;
+      }
+      selectTableCellRange(tableMergeFirstCell, cell);
+      if (selectedTableCells.length < 2) {
+        updateMergePrompt("起点和终点不能是同一个格；请再点另一个格。");
+        return;
+      }
+      return mergeSelectedCells();
+    }
+    if (event.shiftKey && priorAnchor) {
+      selectTableCellRange(priorAnchor, cell);
+      scheduleSelectionToolbar();
+      return;
+    }
+    selectTableCellRange(cell, cell, false);
+    scheduleSelectionToolbar();
   });
 
   table.addEventListener("keydown", (event) => {
@@ -2635,6 +4293,59 @@ function initTableInteractions() {
       moveCellFocus(cell, 0, 1);
     }
   });
+
+  document.addEventListener("pointerdown", (event) => {
+    if (!selectedTableCells.length) return;
+    if (table.contains(event.target)) return;
+    if (event.target.closest?.("#selection-toolbar, #selection-review, [data-table-merge-prompt]")) return;
+    dismissTableCellSelection();
+  });
+}
+
+function imageLayoutSource(layout) {
+  const figures = [
+    ["assets/real-map-auckland-route.png", "迁移路线总览"],
+    ["assets/ai-knowledge-workflow-illustration.png", "知识工作流"],
+    ["assets/real-map-auckland-route.png", "路线细节"],
+    ["assets/ai-knowledge-workflow-illustration.png", "整理结果"],
+  ];
+  return [
+    `<div class="peak-image-layout" data-layout="${layout}">`,
+    ...figures.map(([src, caption]) => `  <figure><img src="${src}" alt="${caption}"><figcaption>${caption}</figcaption></figure>`),
+    "</div>",
+  ].join("\n");
+}
+
+function applyImageLayout(block, layout) {
+  const gallery = block.querySelector(".peak-image-layout");
+  if (!gallery) return;
+  gallery.dataset.layout = layout;
+  block.querySelectorAll("[data-image-layout]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.imageLayout === layout));
+  });
+  const sourceLabel = block.querySelector(".image-layout-source code");
+  if (sourceLabel) sourceLabel.textContent = `data-layout="${layout}"`;
+  block.dataset.source = imageLayoutSource(layout);
+}
+
+function switchImageLayout(block, layout) {
+  const gallery = block.querySelector(".peak-image-layout");
+  const previousLayout = gallery?.dataset.layout || "hero";
+  if (!gallery || previousLayout === layout) return;
+  const previousSource = block.dataset.source;
+  applyImageLayout(block, layout);
+  markAccepted(
+    block,
+    `图片组合切换为${({ grid: "网格", hero: "主图", strip: "横排", story: "叙事" })[layout] || layout}`,
+    () => {
+      applyImageLayout(block, previousLayout);
+      block.dataset.source = previousSource;
+    },
+    () => applyImageLayout(block, layout),
+    "user"
+  );
+  setLive("图片组合布局已更新", `四张图片仍是一个 HTML Block；Markdown Preview 直接渲染 data-layout="${layout}"，不是拆成四个游离图片块。`);
+  showToast("图片组合布局已更新 · 可撤销");
 }
 
 function selectImageMode(block, mode) {
@@ -2652,6 +4363,1183 @@ function toggleImageAnnotation(block) {
   const on = block.classList.toggle("is-annotating");
   setLive(on ? "图片标注" : "标注已收起", on ? "标注是非破坏 patch：原图不被覆盖，锚点和文字随块保存，可再交给 AI 生成说明。块评论请用左侧评论按钮。" : "标注隐藏，原图保持不变。");
   showToast(on ? "已添加示例标注" : "已收起标注");
+}
+
+function imageAssetName(block) {
+  const source = block?.dataset.source || "";
+  const wiki = source.match(/!\[\[([^|\]]+)/)?.[1];
+  const markdown = source.match(/!\[[^\]]*\]\(([^)]+)\)/)?.[1];
+  const path = wiki || markdown || "pasted-image.png";
+  return path.split("/").pop() || "pasted-image.png";
+}
+
+function imageDateStamp() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function imageExtension(name, fallback = "png") {
+  return name.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase() || fallback;
+}
+
+function semanticImageName(block, extension = imageExtension(imageAssetName(block))) {
+  const context = `${block?.dataset.blockTitle || ""} ${block?.dataset.imageContext || ""} ${focusedBlock?.dataset.blockTitle || ""}`;
+  let stem = "composer-image";
+  if (/路线|地图|route/i.test(context)) stem = "pkm-route-map";
+  else if (/知识|工作流|AI|Composer/i.test(context)) stem = "pkm-knowledge-workflow";
+  return `${stem}-${imageDateStamp()}.${extension}`;
+}
+
+function semanticImageNameVariant(block, variantIndex = 0, instruction = "") {
+  const extension = imageExtension(imageAssetName(block));
+  const context = `${block?.dataset.blockTitle || ""} ${block?.dataset.imageContext || ""}`;
+  const routeStems = ["pkm-route-map", "auckland-beijing-route", "migration-route-overview", "pkm-travel-path"];
+  const defaultStems = ["composer-image", "knowledge-workflow", "visual-note", "document-illustration"];
+  const stems = /路线|地图|route/i.test(context) ? routeStems : defaultStems;
+  const customStem = instruction
+    .toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fff]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 32);
+  const stem = customStem || stems[variantIndex % stems.length];
+  return `${stem}-${imageDateStamp()}.${extension}`;
+}
+
+function replaceImageSourceName(source, nextName) {
+  if (/!\[\[/.test(source)) return source.replace(/(!\[\[(?:[^|\]]*\/)?)[^|\]]+/, `$1${nextName}`);
+  if (/!\[[^\]]*\]\(/.test(source)) return source.replace(/(!\[[^\]]*\]\((?:[^)]*\/)?)[^)]+/, `$1${nextName}`);
+  return `![[attachments/${nextName}]]`;
+}
+
+function imageToolbarMarkup() {
+  return `
+    <div class="object-toolbar image-toolbar">
+      <button data-action="zoom-image"><svg><use href="#i-zoom"></use></svg> 全屏</button>
+      <button data-action="edit-image"><svg><use href="#i-edit-image"></use></svg> 编辑图片</button>
+      <button data-action="rename-image"><svg><use href="#i-rename"></use></svg> 重命名</button>
+      <button data-action="easy-copy"><svg><use href="#i-copy"></use></svg> 复制</button>
+      <button data-action="ai-caption"><svg><use href="#i-spark"></use></svg> 图注</button>
+      <button data-action="ai-image"><svg><use href="#i-spark"></use></svg> AI 改图</button>
+    </div>
+  `;
+}
+
+const COPY_CHROME_SELECTOR = ".block-controls,.block-badges,.block-tail-actions,.micro-controls,.micro-tail-actions,.object-toolbar,.mermaid-head,.native-inline-tools,.native-source-pane,.ai-menu,.comment-editor,.ins-card,.rw-review,.block-copy-menu,.image-tool-panel,.block-collapse-preview,.composer-change-pins";
+
+function cleanRenderedCopyClone(element) {
+  const clone = element.cloneNode(true);
+  clone.querySelectorAll(COPY_CHROME_SELECTOR).forEach((node) => node.remove());
+  clone.querySelectorAll("[id]").forEach((node) => node.removeAttribute("id"));
+  clone.removeAttribute("id");
+  clone.removeAttribute("contenteditable");
+  clone.querySelectorAll("[contenteditable]").forEach((node) => node.removeAttribute("contenteditable"));
+  clone.classList.add("easy-copy-snapshot-root");
+  return clone;
+}
+
+function renderedCopyTarget(target, ownerBlock) {
+  if (target.classList.contains("micro-block")) return target;
+  const selectorByKind = {
+    metadata: ":scope > .metadata-grid",
+    paragraph: ":scope > p",
+    "heading-1": ":scope > h1",
+    "heading-2": ":scope > h2",
+    list: ":scope > .markdown-list",
+    checklist: ":scope > .task-list",
+    quote: ":scope > blockquote",
+    callout: ":scope > .callout-shell",
+    "vault-links": ":scope > p",
+    "external-links": ":scope > p",
+    math: ":scope > .math-stack",
+    image: ":scope > .real-image-frame",
+    "image-layout": ":scope > .image-layout-shell > .peak-image-layout",
+    table: ":scope > .table-surface > .composer-table",
+    chart: ":scope > .chart-shell > .chart-render",
+    code: ":scope > pre",
+    mermaid: ":scope > .mermaid-shell > .mermaid-render",
+    base: ":scope > .base-render",
+    canvas: ":scope > .json-canvas-render",
+    excalidraw: ":scope > .excalidraw-render",
+  };
+  const selector = selectorByKind[ownerBlock.dataset.blockKind];
+  return selector ? ownerBlock.querySelector(selector) || target : target;
+}
+
+function copyPayloadForBlock(target, ownerBlock = target.closest?.(".doc-block") || target) {
+  const visualTarget = renderedCopyTarget(target, ownerBlock);
+  const clone = cleanRenderedCopyClone(visualTarget);
+  const isMicro = target.classList.contains("micro-block");
+  const formula = visualTarget.querySelector("[data-tex]")?.dataset.tex;
+  const kind = ownerBlock.dataset.blockKind;
+  const normalizedLine = (value) => String(value || "").replace(/[ \t]+/g, " ").trim();
+  let text = "";
+  if (kind === "code") {
+    text = (clone.querySelector("code")?.textContent || clone.textContent || "").replace(/\r\n?/g, "\n").replace(/^\n+|\n+$/g, "");
+  } else if (["list", "checklist"].includes(kind)) {
+    text = Array.from(clone.querySelectorAll("li"))
+      .map((item) => normalizedLine(item.textContent))
+      .filter(Boolean)
+      .join("\n");
+  } else if (kind === "table") {
+    text = Array.from(clone.querySelectorAll("tr"))
+      .map((row) => Array.from(row.cells).map((cell) => normalizedLine(cell.textContent)).join("\t"))
+      .join("\n");
+  } else if (kind === "mermaid") {
+    text = Array.from(clone.querySelectorAll("svg text"))
+      .map((node) => normalizedLine(node.textContent))
+      .filter((value, index, values) => value && values.indexOf(value) === index)
+      .join("\n");
+  } else {
+    text = normalizedLine(clone.textContent);
+  }
+  return {
+    title: isMicro ? target.dataset.microTitle || "公式" : ownerBlock.dataset.blockTitle || "Composer block",
+    text,
+    markdown: isMicro && formula ? `$$${formula}$$` : ownerBlock.dataset.source || text,
+    html: clone.innerHTML.trim(),
+    target: visualTarget,
+  };
+}
+
+function copyPayloadForSelection(state) {
+  if (state.kind === "table-cells") {
+    const selectedTable = document.createElement("table");
+    selectedTable.className = "composer-table easy-copy-selected-cells";
+    const body = document.createElement("tbody");
+    state.matrix.forEach((row) => {
+      const tr = document.createElement("tr");
+      row.forEach((value) => {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        tr.appendChild(cell);
+      });
+      body.appendChild(tr);
+    });
+    selectedTable.appendChild(body);
+    const shell = document.createElement("div");
+    shell.appendChild(selectedTable.cloneNode(true));
+    const markdownRows = state.matrix.map((row) => `| ${row.join(" | ")} |`);
+    if (markdownRows.length) {
+      markdownRows.splice(1, 0, `| ${state.matrix[0].map(() => "---").join(" | ")} |`);
+    }
+    return {
+      title: `${state.rowCount} 行 × ${state.columnCount} 列的单元格选区`,
+      text: state.text,
+      markdown: markdownRows.join("\n"),
+      html: shell.innerHTML,
+      range: state.range.cloneRange(),
+      sourceElement: table,
+      selectionFragment: selectedTable,
+      selectionRect: state.rect,
+    };
+  }
+  const shell = document.createElement("div");
+  shell.append(state.range.cloneContents());
+  const common = state.range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+    ? state.range.commonAncestorContainer
+    : state.range.commonAncestorContainer.parentElement;
+  return {
+    title: state.blocks.length > 1 ? `跨 ${state.blocks.length} 个块的选区` : "Composer 选区",
+    text: state.text,
+    markdown: state.text,
+    html: shell.innerHTML || escapeHtml(state.text),
+    range: state.range.cloneRange(),
+    sourceElement: common,
+  };
+}
+
+async function writeClipboardText(value) {
+  try {
+    await navigator.clipboard.writeText(value);
+    return true;
+  } catch (_error) {
+    const textarea = document.createElement("textarea");
+    textarea.value = value;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    const copied = document.execCommand("copy");
+    textarea.remove();
+    return copied;
+  }
+}
+
+function createRenderedSnapshot(payload) {
+  const snapshot = document.createElement("div");
+  snapshot.className = "easy-copy-selection-snapshot easy-copy-snapshot-root";
+  if (payload.selectionFragment) snapshot.append(payload.selectionFragment.cloneNode(true));
+  else snapshot.append(payload.range.cloneContents());
+  const style = getComputedStyle(payload.sourceElement);
+  ["font", "font-family", "font-size", "font-weight", "font-style", "line-height", "letter-spacing", "color", "text-align", "text-decoration"].forEach((property) => {
+    snapshot.style.setProperty(property, style.getPropertyValue(property));
+  });
+  return snapshot;
+}
+
+function selectionRasterSource(payload) {
+  const snapshot = createRenderedSnapshot(payload);
+  const host = document.createElement("div");
+  const rangeWidth = payload.selectionRect?.width || payload.range?.getBoundingClientRect().width || payload.sourceElement?.getBoundingClientRect().width || 1;
+  host.className = "easy-copy-raster-host";
+  host.style.width = `${Math.max(1, Math.ceil(rangeWidth))}px`;
+  host.append(snapshot);
+  document.body.append(host);
+  return { source: snapshot, release: () => host.remove() };
+}
+
+async function copyVisualElement(payload, panel) {
+  const fallback = payload.target ? null : selectionRasterSource(payload);
+  const source = payload.target || fallback.source;
+  try {
+    const canvas = await rasterizeRenderedElement(source);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!blob) throw new Error("PNG render failed");
+    if (window.ClipboardItem && navigator.clipboard?.write) {
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      return { ok: true, label: "复制成功", mode: "clipboard", canvas };
+    }
+    const link = document.createElement("a");
+    link.download = "peak-composer-rendered-element.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+    return { ok: true, label: "已下载 PNG", mode: "download", canvas };
+  } catch (_error) {
+    return { ok: false, label: "复制失败", mode: "error" };
+  } finally {
+    fallback?.release();
+  }
+}
+
+function inlineRenderedStyles(source, target) {
+  const computed = getComputedStyle(source);
+  for (const property of computed) {
+    target.style.setProperty(property, computed.getPropertyValue(property), computed.getPropertyPriority(property));
+  }
+  Array.from(source.children).forEach((child, index) => {
+    const targetChild = target.children[index];
+    if (targetChild) inlineRenderedStyles(child, targetChild);
+  });
+}
+
+function imageDataUrl(image) {
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = image.naturalWidth || image.width;
+    canvas.height = image.naturalHeight || image.height;
+    canvas.getContext("2d").drawImage(image, 0, 0);
+    return canvas.toDataURL("image/png");
+  } catch (_error) {
+    return image.currentSrc || image.src;
+  }
+}
+
+async function rasterizeRenderedElement(source) {
+  await document.fonts.ready;
+  const rect = source.getBoundingClientRect();
+  const width = Math.max(1, Math.ceil(rect.width));
+  const height = Math.max(1, Math.ceil(rect.height));
+  const styledClone = source.cloneNode(true);
+  inlineRenderedStyles(source, styledClone);
+  const clone = cleanRenderedCopyClone(styledClone);
+  clone.style.margin = "0";
+  clone.style.transform = "none";
+  clone.style.width = `${width}px`;
+  clone.style.minWidth = `${width}px`;
+  clone.style.maxWidth = `${width}px`;
+  clone.style.height = `${height}px`;
+  clone.style.minHeight = `${height}px`;
+  clone.style.maxHeight = `${height}px`;
+  const sourceImages = Array.from(source.querySelectorAll("img"));
+  const cloneImages = Array.from(clone.querySelectorAll("img"));
+  sourceImages.forEach((image, index) => {
+    if (cloneImages[index]) cloneImages[index].src = imageDataUrl(image);
+  });
+  const serialized = new XMLSerializer().serializeToString(clone);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="width:${width}px;height:${height}px;overflow:hidden">${serialized}</div></foreignObject></svg>`;
+  const image = new Image();
+  image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  await image.decode();
+  const canvas = document.createElement("canvas");
+  canvas.width = width * 2;
+  canvas.height = height * 2;
+  const context = canvas.getContext("2d");
+  context.scale(2, 2);
+  context.drawImage(image, 0, 0, width, height);
+  return canvas;
+}
+
+function closeCopyPanelAfterFeedback(panel) {
+  window.setTimeout(() => {
+    if (panel === selectionToolbarPopover) {
+      closeSelectionSurface();
+      return;
+    }
+    panel.hidden = true;
+    panel.closest(".micro-block")?.classList.remove("is-micro-active");
+    const block = panel.closest(".doc-block");
+    if (block) syncOpenEditorState(block);
+  }, 2200);
+}
+
+function setCopyChoiceState(choice, state, label) {
+  if (!choice) return;
+  choice.dataset.copyState = state;
+  choice.innerHTML = state === "working"
+    ? `<b>正在处理…</b><small>直接使用当前内容</small>`
+    : `<b><svg><use href="#${state === "success" ? "i-check" : "i-x"}"></use></svg>${escapeHtml(label)}</b><small>${state === "success" ? "稍后自动收起" : "请重试"}</small>`;
+}
+
+async function performCopyChoice(kind, payload, panel, choice) {
+  if (!payload || !choice || panel.dataset.copyBusy === "true") return;
+  panel.dataset.copyBusy = "true";
+  panel.querySelectorAll("[data-copy-kind]").forEach((button) => { button.disabled = true; });
+  setCopyChoiceState(choice, "working", "正在处理");
+  const result = kind === "image"
+    ? await copyVisualElement(payload, panel)
+    : { ok: await writeClipboardText(kind === "markdown" ? payload.markdown : kind === "html" ? payload.html : payload.text), label: "复制成功", mode: "clipboard" };
+  panel.querySelectorAll("[data-copy-kind]").forEach((button) => { button.disabled = false; });
+  panel.dataset.copyBusy = "false";
+  setCopyChoiceState(choice, result.ok ? "success" : "error", result.ok ? result.label : "复制失败");
+  const format = kind === "plain" ? "纯文本" : kind === "image" ? "原元素图片" : kind.toUpperCase();
+  setLive("Easy Copy", result.ok ? `${payload.title} 已按${format}立即输出；没有打开第二个预览或重新排版。` : `${payload.title} 的${format}输出被当前浏览器阻止。`);
+  showToast(result.ok ? result.label : "复制失败，请重试");
+  if (result.ok) closeCopyPanelAfterFeedback(panel);
+}
+
+function copyMenuMarkup(scopeLabel) {
+  return `
+    <header><span><b>Easy Copy</b><small>${escapeHtml(scopeLabel)} · 选择输出格式</small></span><button type="button" data-copy-close aria-label="关闭"><svg><use href="#i-x"></use></svg></button></header>
+    <div class="easy-copy-options">
+      <button type="button" data-copy-kind="plain"><b>纯文本</b><small>无样式</small></button>
+      <button type="button" data-copy-kind="image"><b>图片</b><small>原元素 1:1 快照</small></button>
+      <button type="button" data-copy-kind="markdown"><b>Markdown</b><small>保留源语法</small></button>
+      <button type="button" data-copy-kind="html"><b>HTML</b><small>保留可粘贴样式</small></button>
+    </div>
+  `;
+}
+
+function ensureElementCopyMenu(host, ownerBlock) {
+  let panel = host.querySelector(":scope > .block-copy-menu");
+  if (panel) return panel;
+  panel = document.createElement("section");
+  panel.className = "block-copy-menu";
+  panel.classList.toggle("micro-copy-menu", host.classList.contains("micro-block"));
+  panel.contentEditable = "false";
+  panel.hidden = true;
+  panel.addEventListener("click", (event) => {
+    if (event.target.closest("[data-copy-close]")) {
+      panel.hidden = true;
+      host.classList.remove("is-micro-active");
+      syncOpenEditorState(ownerBlock);
+      return;
+    }
+    const choice = event.target.closest("[data-copy-kind]");
+    if (!choice) return;
+    performCopyChoice(choice.dataset.copyKind, panel._copyPayload, panel, choice);
+  });
+  host.append(panel);
+  return panel;
+}
+
+function openBlockCopyMenu(block, target = block) {
+  const isMicro = target.classList.contains("micro-block");
+  const host = isMicro ? target : block;
+  const panel = ensureElementCopyMenu(host, block);
+  panel._copyPayload = copyPayloadForBlock(target, block);
+  panel.innerHTML = copyMenuMarkup(isMicro ? `公式 · ${target.dataset.microTitle || "当前公式"}` : "当前 Block");
+  panel.hidden = false;
+  block.querySelector(":scope > .image-tool-panel")?.setAttribute("hidden", "");
+  if (isMicro) target.classList.add("is-micro-active");
+  syncOpenEditorState(block);
+  setLive("Easy Copy", `${isMicro ? "当前公式" : "当前块"}可以立即复制为纯文本、原样图片、Markdown 或 HTML；点击后原地显示成功状态并自动收起。`);
+}
+
+function imagePanelMarkup(block, mode) {
+  const image = block.querySelector(".real-image-frame img");
+  const src = image?.currentSrc || image?.src || "";
+  const currentName = imageAssetName(block);
+  if (mode === "ai") {
+    return `
+      <header><span><b>AI 改图</b><small>${escapeHtml(currentName)}</small></span><div class="image-panel-header-actions"><button type="button" data-image-panel-action="ai-image-history" aria-label="改图历史" title="改图历史" hidden><svg><use href="#i-history"></use></svg></button><button type="button" data-image-panel-action="close" aria-label="关闭"><svg><use href="#i-x"></use></svg></button></div></header>
+      <div class="image-ai-editor">
+        <div class="image-ai-prompt" data-image-ai-prompt>
+          <label><span>你想怎么改这张图？</span><textarea rows="3" data-image-ai-instruction placeholder="例如：突出紫色跨国路线，弱化底图，并保留地点标签"></textarea></label>
+          <div class="image-ai-presets" aria-label="常用改图方式">
+            <button type="button" data-image-ai-preset="突出路线，弱化底图">突出路线</button>
+            <button type="button" data-image-ai-preset="简化背景，只保留关键地点">简化背景</button>
+            <button type="button" data-image-ai-preset="增强地点标注和路线说明">增强标注</button>
+            <button type="button" data-image-ai-preset="统一配色，提高正文阅读对比度">统一配色</button>
+          </div>
+          <button type="button" class="is-primary image-ai-generate" data-image-panel-action="generate-ai-image"><svg><use href="#i-spark"></use></svg>生成候选</button>
+        </div>
+        <div class="image-ai-generation" data-image-ai-generation hidden>${imageGenerationStageHTML()}</div>
+        <div class="image-ai-result" data-image-ai-result hidden>
+          <figure class="image-ai-preview">
+            <div class="image-ai-preview-canvas">
+              <img src="${src}" alt="AI 改图候选" data-image-ai-preview />
+              <span class="image-ai-preview-badge" data-image-ai-preview-badge></span>
+            </div>
+            <figcaption data-image-ai-summary></figcaption>
+          </figure>
+          <div class="image-ai-result-controls">
+            <div class="image-ai-variant-nav" aria-label="AI 改图版本">
+              <button type="button" data-image-panel-action="ai-image-previous" aria-label="上一版" disabled><svg><use href="#i-chevron-left"></use></svg></button>
+              <span data-image-ai-version>1 / 1</span>
+              <button type="button" data-image-panel-action="ai-image-next" aria-label="下一版" disabled><svg><use href="#i-chevron-right"></use></svg></button>
+            </div>
+            ${candidateInstructionHTML("image-ai-followup")}
+            <button type="button" data-image-panel-action="generate-ai-image"><svg><use href="#i-refresh"></use></svg>继续改</button>
+            <button type="button" class="is-primary" data-image-panel-action="accept-ai-image"><svg><use href="#i-check"></use></svg>接受</button>
+            <button type="button" data-image-panel-action="discard-ai-image">丢弃</button>
+          </div>
+          <div class="image-ai-history" hidden aria-label="AI 改图历史"></div>
+        </div>
+      </div>
+    `;
+  }
+  if (mode === "rename") {
+    return `
+      <header><span><b>重命名图片</b><small>${escapeHtml(currentName)}</small></span><div class="image-panel-header-actions"><button type="button" data-image-panel-action="rename-history" aria-label="命名历史" title="命名历史"><svg><use href="#i-history"></use></svg></button><button type="button" data-image-panel-action="close" aria-label="关闭"><svg><use href="#i-x"></use></svg></button></div></header>
+      <div class="image-rename-editor">
+        <div class="image-rename-version">
+          <button type="button" data-image-panel-action="rename-previous" aria-label="上一版" disabled><svg><use href="#i-chevron-left"></use></svg></button>
+          <span data-image-rename-version>1 / 1</span>
+          <button type="button" data-image-panel-action="rename-next" aria-label="下一版" disabled><svg><use href="#i-chevron-right"></use></svg></button>
+        </div>
+        <label class="image-rename-field"><span>新文件名</span><input type="text" data-image-rename-input /></label>
+        ${candidateInstructionHTML("image-rename-instruction")}
+        <button type="button" data-image-panel-action="regenerate-rename"><svg><use href="#i-refresh"></use></svg>重新建议</button>
+      </div>
+      <div class="image-rename-history" hidden aria-label="命名历史"></div>
+      <footer><span></span><button type="button" class="is-primary" data-image-panel-action="apply-rename">使用名称</button></footer>
+    `;
+  }
+  return `
+    <header><span><b>编辑图片</b><small>先调整预览，再保存新版本</small></span><button type="button" data-image-panel-action="close" aria-label="关闭"><svg><use href="#i-x"></use></svg></button></header>
+    <div class="image-converter-layout">
+      <figure class="image-converter-preview">
+        <div class="image-editor-canvas" data-image-crop-surface>
+          <img src="${src}" alt="图片编辑预览" data-image-converter-preview />
+          <div class="image-crop-overlay is-rectangle" data-image-crop-overlay>
+            <div class="image-crop-box" data-image-crop-box style="left:14%;top:10%;width:72%;height:72%">
+              <i data-crop-handle="nw"></i><i data-crop-handle="n"></i><i data-crop-handle="ne"></i>
+              <i data-crop-handle="e"></i><i data-crop-handle="se"></i><i data-crop-handle="s"></i>
+              <i data-crop-handle="sw"></i><i data-crop-handle="w"></i>
+            </div>
+            <svg class="image-crop-lasso" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path data-crop-lasso-path></path></svg>
+          </div>
+        </div>
+        <figcaption data-image-crop-help>拖动矩形或控制点调整裁剪范围</figcaption>
+      </figure>
+      <div class="image-converter-controls">
+        <span class="image-tool-label">裁剪</span>
+        <div class="image-tool-row">
+          <button type="button" data-image-crop-mode="rectangle" aria-pressed="true"><svg><use href="#i-crop"></use></svg>矩形裁剪</button>
+          <button type="button" data-image-crop-mode="free" aria-pressed="false">自由圈选</button>
+        </div>
+        <span class="image-tool-label">旋转与校正</span>
+        <div class="image-tool-row">
+          <button type="button" data-image-tool="rotate-left" data-image-panel-action="rotate-left" aria-label="向左旋转 90 度"><svg><use href="#i-rotate"></use></svg>向左 90°</button>
+          <button type="button" data-image-tool="rotate-right" data-image-panel-action="rotate-right" aria-label="向右旋转 90 度"><svg><use href="#i-rotate"></use></svg>向右 90°</button>
+          <button type="button" data-image-tool="flip" data-image-panel-action="flip-image">水平翻转</button>
+        </div>
+        <label class="image-quality-row"><span>校正倾斜 <b data-image-straighten-value>0°</b></span><input type="range" min="-12" max="12" value="0" step="1" data-image-straighten /></label>
+        <div class="image-tool-row"><button type="button" data-image-tool="strip" data-image-panel-action="strip-image-metadata">移除元数据</button></div>
+        <span class="image-tool-label">输出格式</span>
+        <div class="image-tool-row image-format-row">
+          <button type="button" data-image-format="webp" aria-pressed="true">WebP</button>
+          <button type="button" data-image-format="png" aria-pressed="false">PNG</button>
+          <button type="button" data-image-format="jpg" aria-pressed="false">JPEG</button>
+        </div>
+        <label class="image-quality-row"><span>压缩质量 <b data-image-quality-value>82</b></span><input type="range" min="45" max="100" value="82" data-image-quality /></label>
+        <div class="image-output-summary"><span>2472 × 1440</span><span><del>612 KB</del> <ins data-image-size>218 KB</ins></span><strong data-image-output-name>${escapeHtml(semanticImageName(block, "webp"))}</strong></div>
+      </div>
+    </div>
+    <footer><span></span><button type="button" class="is-primary" data-image-panel-action="review-convert">预览新版本</button></footer>
+  `;
+}
+
+function imageAiVariant(block, instruction, variantIndex) {
+  const filters = [
+    "contrast(1.08) saturate(1.28) brightness(1.02)",
+    "contrast(1.12) saturate(.9) brightness(1.08)",
+    "contrast(1.04) saturate(1.12) brightness(1.04) hue-rotate(-5deg)",
+    "contrast(1.14) saturate(1.05) brightness(1.02)",
+  ];
+  const summaries = [
+    "路线层级更清楚，底图信息被适度弱化。",
+    "背景更安静，地点与行程方向成为视觉重点。",
+    "地点标签和路线说明被增强，适合正文阅读。",
+    "整体配色和对比度更统一，保留原始地理信息。",
+  ];
+  const effectiveInstruction = instruction.trim();
+  return {
+    instruction: effectiveInstruction,
+    filter: filters[variantIndex % filters.length],
+    summary: effectiveInstruction || summaries[variantIndex % summaries.length],
+    name: semanticImageNameVariant(block, variantIndex + 1, effectiveInstruction || `ai-edit-${variantIndex + 1}`),
+  };
+}
+
+function renderImageAiCandidate(panel) {
+  const variants = panel._aiImageVariants || [];
+  const index = Math.max(0, Math.min(panel._aiImageIndex || 0, variants.length - 1));
+  const variant = variants[index];
+  if (!variant) return;
+  panel._aiImageIndex = index;
+  const preview = panel.querySelector("[data-image-ai-preview]");
+  const summary = panel.querySelector("[data-image-ai-summary]");
+  const badge = panel.querySelector("[data-image-ai-preview-badge]");
+  const version = panel.querySelector("[data-image-ai-version]");
+  const previous = panel.querySelector('[data-image-panel-action="ai-image-previous"]');
+  const next = panel.querySelector('[data-image-panel-action="ai-image-next"]');
+  const historyButton = panel.querySelector('[data-image-panel-action="ai-image-history"]');
+  const history = panel.querySelector(".image-ai-history");
+  if (preview) preview.style.filter = variant.filter;
+  if (summary) summary.textContent = variant.summary;
+  if (badge) badge.textContent = `候选 ${index + 1}`;
+  if (version) version.textContent = `${index + 1} / ${variants.length}`;
+  if (previous) previous.disabled = index <= 0;
+  if (next) next.disabled = index >= variants.length - 1;
+  if (historyButton) historyButton.hidden = false;
+  if (history) {
+    history.innerHTML = variants.map((item, variantIndex) => `
+      <button type="button" data-image-ai-history-index="${variantIndex}" class="${variantIndex === index ? "is-active" : ""}">
+        <span>版本 ${variantIndex + 1}</span>
+        <small>${escapeHtml(item.instruction || item.summary)}</small>
+      </button>
+    `).join("");
+  }
+}
+
+function finishImageAiGeneration(block, panel, instruction) {
+  const nextVariant = imageAiVariant(block, instruction, panel._aiImageVariants.length);
+  panel._aiImageVariants.push(nextVariant);
+  panel._aiImageIndex = panel._aiImageVariants.length - 1;
+  block._aiImageIndex = panel._aiImageIndex;
+  panel.querySelector("[data-image-ai-generation]").hidden = true;
+  panel.querySelector("[data-image-ai-result]").hidden = false;
+  panel.querySelector("[data-image-ai-prompt]").hidden = true;
+  panel.classList.remove("is-ai-generating");
+  const followup = panel.querySelector(".image-ai-followup [data-candidate-instruction]");
+  if (followup) followup.value = "";
+  renderImageAiCandidate(panel);
+  setLive("AI 改图候选已生成", `版本 ${panel._aiImageVariants.length} 仍是候选；可以继续说明怎么改、切回旧版本，或接受当前版本。`);
+  showToast(`改图版本 ${panel._aiImageVariants.length} 已生成`);
+}
+
+function generateImageAiCandidate(block, panel) {
+  if (panel.classList.contains("is-ai-generating")) return;
+  const initialInput = panel.querySelector("[data-image-ai-instruction]");
+  const followupInput = panel.querySelector(".image-ai-followup [data-candidate-instruction]");
+  const instruction = (panel._aiImageVariants.length ? followupInput?.value : initialInput?.value)?.trim() || "";
+  if (!instruction) {
+    (panel._aiImageVariants.length ? followupInput : initialInput)?.focus();
+    showToast("先写下怎么改，或选择一个预设");
+    return;
+  }
+  panel.classList.add("is-ai-generating");
+  panel.querySelector("[data-image-ai-prompt]").hidden = true;
+  panel.querySelector("[data-image-ai-result]").hidden = true;
+  panel.querySelector("[data-image-ai-generation]").hidden = false;
+  const status = panel.querySelector("[data-image-generation-status]");
+  if (status) status.textContent = panel._aiImageVariants.length ? "正在按新要求继续改图…" : "正在理解改图要求…";
+  clearTimeout(panel._aiImageTimer);
+  panel._aiImageTimer = setTimeout(() => {
+    if (panel.isConnected && !panel.hidden) finishImageAiGeneration(block, panel, instruction);
+  }, 900);
+  setLive("AI 改图生成中", `正在按「${escapeHtml(instruction)}」生成新版本；现有图片与旧候选都不会被覆盖。`);
+}
+
+function acceptImageAiCandidate(block, panel) {
+  const variant = panel._aiImageVariants?.[panel._aiImageIndex];
+  const image = block.querySelector(":scope > .real-image-frame img");
+  if (!variant || !image) return;
+  const oldSource = block.dataset.source || "";
+  const oldFilter = image.style.filter;
+  const nextSource = replaceImageSourceName(oldSource, variant.name);
+  const apply = () => {
+    block.dataset.source = nextSource;
+    image.style.filter = variant.filter;
+    image.dataset.aiEdited = "true";
+  };
+  const restore = () => {
+    block.dataset.source = oldSource;
+    image.style.filter = oldFilter;
+    delete image.dataset.aiEdited;
+  };
+  apply();
+  const item = suggestion("AI 改图", "用户确认图片候选", variant.instruction || variant.summary);
+  item.runId = panel._aiImageRunId;
+  block._aiImageIndex = panel._aiImageIndex;
+  panel.hidden = true;
+  block.classList.remove("has-ai-card", "is-ai-running");
+  syncOpenEditorState(block);
+  markAiAccepted(block, item, `AI 改图 · v${panel._aiImageIndex + 1}`, restore, apply);
+  setLive("AI 改图已接受", `当前版本已作为新附件 ${escapeHtml(variant.name)} 写入引用；原图仍可通过撤销恢复。`);
+  showToast("AI 改图已接受 · 可撤销");
+}
+
+function renderImageRenameCandidate(panel) {
+  const variants = panel._renameVariants || [];
+  const index = Math.max(0, Math.min(panel._renameIndex || 0, variants.length - 1));
+  panel._renameIndex = index;
+  const input = panel.querySelector("[data-image-rename-input]");
+  const version = panel.querySelector("[data-image-rename-version]");
+  const previous = panel.querySelector('[data-image-panel-action="rename-previous"]');
+  const next = panel.querySelector('[data-image-panel-action="rename-next"]');
+  const history = panel.querySelector(".image-rename-history");
+  if (input) input.value = variants[index] || "";
+  if (version) version.textContent = `${index + 1} / ${variants.length}`;
+  if (previous) previous.disabled = index <= 0;
+  if (next) next.disabled = index >= variants.length - 1;
+  if (history) {
+    history.innerHTML = variants.map((name, variantIndex) => `
+      <button type="button" data-image-rename-history-index="${variantIndex}" class="${variantIndex === index ? "is-active" : ""}">
+        <span>版本 ${variantIndex + 1}</span><code>${escapeHtml(name)}</code>
+      </button>
+    `).join("");
+  }
+}
+
+function applyImagePreviewTransform(panel) {
+  const preview = panel.querySelector("[data-image-converter-preview]");
+  if (!preview) return;
+  const quarterTurn = Number(panel.dataset.imageQuarterTurn || 0);
+  const straighten = Number(panel.querySelector("[data-image-straighten]")?.value || 0);
+  const flipped = panel.dataset.imageFlipped === "true";
+  preview.style.transform = `rotate(${quarterTurn + straighten}deg) scaleX(${flipped ? -1 : 1})`;
+  const label = panel.querySelector("[data-image-straighten-value]");
+  if (label) label.textContent = `${straighten > 0 ? "+" : ""}${straighten}°`;
+}
+
+function setImageCropMode(panel, mode) {
+  panel.dataset.imageCropMode = mode;
+  panel.querySelectorAll("[data-image-crop-mode]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.imageCropMode === mode)));
+  const overlay = panel.querySelector("[data-image-crop-overlay]");
+  overlay?.classList.toggle("is-rectangle", mode === "rectangle");
+  overlay?.classList.toggle("is-free", mode === "free");
+  const help = panel.querySelector("[data-image-crop-help]");
+  if (help) help.textContent = mode === "free" ? "在图片上拖动，圈出要保留的区域" : "拖动矩形或控制点调整裁剪范围";
+}
+
+function imageEditSummary(panel) {
+  const transforms = [];
+  transforms.push(panel.dataset.imageCropMode === "free" ? "自由圈选" : "矩形裁剪");
+  const quarterTurn = Number(panel.dataset.imageQuarterTurn || 0);
+  if (quarterTurn) transforms.push(`${quarterTurn > 0 ? "右转" : "左转"} ${Math.abs(quarterTurn)}°`);
+  const straighten = Number(panel.querySelector("[data-image-straighten]")?.value || 0);
+  if (straighten) transforms.push(`校正 ${straighten > 0 ? "+" : ""}${straighten}°`);
+  if (panel.dataset.imageFlipped === "true") transforms.push("水平翻转");
+  if (panel.querySelector('[data-image-tool="strip"]')?.classList.contains("is-active")) transforms.push("移除元数据");
+  return transforms.join(" / ");
+}
+
+function readImageEditState(panel) {
+  const cropBox = panel.querySelector("[data-image-crop-box]");
+  return {
+    cropMode: panel.dataset.imageCropMode || "rectangle",
+    cropRect: cropBox
+      ? {
+        left: parseFloat(cropBox.style.left) || 14,
+        top: parseFloat(cropBox.style.top) || 10,
+        width: parseFloat(cropBox.style.width) || 72,
+        height: parseFloat(cropBox.style.height) || 72,
+      }
+      : { left: 14, top: 10, width: 72, height: 72 },
+    lassoPath: panel.querySelector("[data-crop-lasso-path]")?.getAttribute("d") || "",
+    quarterTurn: Number(panel.dataset.imageQuarterTurn || 0),
+    straighten: Number(panel.querySelector("[data-image-straighten]")?.value || 0),
+    flipped: panel.dataset.imageFlipped === "true",
+    stripMetadata: panel.querySelector('[data-image-tool="strip"]')?.classList.contains("is-active") || false,
+    format: panel.querySelector("[data-image-format][aria-pressed='true']")?.dataset.imageFormat || "webp",
+    quality: Number(panel.querySelector("[data-image-quality]")?.value || 82),
+  };
+}
+
+function imageLassoPolygon(path) {
+  const points = Array.from(path.matchAll(/(?:M|L)\s*([\d.]+)\s+([\d.]+)/g))
+    .map((match) => `${match[1]}% ${match[2]}%`);
+  return points.length >= 3 ? `polygon(${points.join(",")})` : "";
+}
+
+function imageEditClipPath(state) {
+  if (state.cropMode === "free") return imageLassoPolygon(state.lassoPath);
+  const { left, top, width, height } = state.cropRect;
+  return `inset(${top}% ${Math.max(0, 100 - left - width)}% ${Math.max(0, 100 - top - height)}% ${left}%)`;
+}
+
+function applyImageEditStateToElement(image, state) {
+  if (!image || !state) return;
+  image.style.transform = `rotate(${state.quarterTurn + state.straighten}deg) scaleX(${state.flipped ? -1 : 1})`;
+  image.style.clipPath = imageEditClipPath(state);
+  image.style.filter = state.stripMetadata ? "contrast(1.02)" : "";
+}
+
+function hydrateImageEditPanel(panel, state) {
+  if (!state) return;
+  panel.dataset.imageQuarterTurn = String(state.quarterTurn || 0);
+  panel.dataset.imageFlipped = String(Boolean(state.flipped));
+  setImageCropMode(panel, state.cropMode || "rectangle");
+  const cropBox = panel.querySelector("[data-image-crop-box]");
+  if (cropBox && state.cropRect) {
+    cropBox.style.left = `${state.cropRect.left}%`;
+    cropBox.style.top = `${state.cropRect.top}%`;
+    cropBox.style.width = `${state.cropRect.width}%`;
+    cropBox.style.height = `${state.cropRect.height}%`;
+  }
+  panel.querySelector("[data-crop-lasso-path]")?.setAttribute("d", state.lassoPath || "");
+  const straighten = panel.querySelector("[data-image-straighten]");
+  if (straighten) straighten.value = String(state.straighten || 0);
+  const quality = panel.querySelector("[data-image-quality]");
+  if (quality) quality.value = String(state.quality || 82);
+  panel.querySelectorAll("[data-image-format]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.imageFormat === (state.format || "webp")));
+  });
+  panel.querySelector('[data-image-tool="flip"]')?.classList.toggle("is-active", Boolean(state.flipped));
+  panel.querySelector('[data-image-tool="strip"]')?.classList.toggle("is-active", Boolean(state.stripMetadata));
+  applyImagePreviewTransform(panel);
+  updateImageConversionSummary(panel);
+}
+
+function updateImageConversionSummary(panel) {
+  const quality = Number(panel.querySelector("[data-image-quality]")?.value || 82);
+  const format = panel.querySelector("[data-image-format][aria-pressed='true']")?.dataset.imageFormat || "webp";
+  const size = Math.round(612 * (quality / 100) * (format === "png" ? 0.86 : format === "jpg" ? 0.55 : 0.43));
+  const sizeLabel = panel.querySelector("[data-image-size]");
+  const nameLabel = panel.querySelector("[data-image-output-name]");
+  const qualityLabel = panel.querySelector("[data-image-quality-value]");
+  if (sizeLabel) sizeLabel.textContent = `${size} KB`;
+  if (nameLabel) nameLabel.textContent = semanticImageName(panel.closest(".doc-block"), format);
+  if (qualityLabel) qualityLabel.textContent = String(quality);
+}
+
+function renderImageConversionReview(block, panel) {
+  const editState = readImageEditState(panel);
+  const format = editState.format;
+  const nextName = semanticImageName(block, format);
+  const edits = imageEditSummary(panel);
+  const sourceImage = block.querySelector(":scope > .real-image-frame img");
+  panel.dataset.pendingImageName = nextName;
+  panel._pendingImageEditState = editState;
+  panel.innerHTML = `
+    <header><span><b>新图片候选</b><small>待确认</small></span><button type="button" data-image-panel-action="close" aria-label="关闭"><svg><use href="#i-x"></use></svg></button></header>
+    <figure class="image-conversion-candidate">
+      <div class="image-conversion-candidate-canvas"><img src="${sourceImage?.currentSrc || sourceImage?.src || ""}" alt="图片编辑候选" data-image-conversion-candidate /></div>
+      <figcaption>${escapeHtml(edits)}</figcaption>
+    </figure>
+    <div class="image-conversion-receipt"><span>原附件</span><del>${escapeHtml(imageAssetName(block))}</del><span>候选附件</span><ins>${escapeHtml(nextName)}</ins><span>调整</span><b>${escapeHtml(edits)}</b></div>
+    <footer><button type="button" data-image-panel-action="restore-convert">返回调整</button><button type="button" class="is-primary" data-image-panel-action="accept-convert">接受并替换引用</button></footer>
+  `;
+  applyImageEditStateToElement(panel.querySelector("[data-image-conversion-candidate]"), editState);
+}
+
+function acceptImageAssetChange(block, nextName, label, editState = null) {
+  const oldSource = block.dataset.source || "";
+  const oldEmbedSource = block.dataset.imageEmbedSource || "";
+  const oldAcceptedEditState = block.dataset.imageEditState || "";
+  const image = block.querySelector(":scope > .real-image-frame img");
+  const oldVisualState = image
+    ? { transform: image.style.transform, clipPath: image.style.clipPath, filter: image.style.filter }
+    : null;
+  const nextSource = replaceImageSourceName(oldSource, nextName);
+  const nextEmbedSource = oldEmbedSource ? replaceImageSourceName(oldEmbedSource, nextName) : "";
+  const apply = () => {
+    block.dataset.source = nextSource;
+    if (nextEmbedSource) block.dataset.imageEmbedSource = nextEmbedSource;
+    if (editState) {
+      block.dataset.imageEditState = JSON.stringify(editState);
+      applyImageEditStateToElement(image, editState);
+    }
+  };
+  const restore = () => {
+    block.dataset.source = oldSource;
+    if (oldEmbedSource) block.dataset.imageEmbedSource = oldEmbedSource;
+    else delete block.dataset.imageEmbedSource;
+    if (oldAcceptedEditState) block.dataset.imageEditState = oldAcceptedEditState;
+    else delete block.dataset.imageEditState;
+    if (image && oldVisualState) {
+      image.style.transform = oldVisualState.transform;
+      image.style.clipPath = oldVisualState.clipPath;
+      image.style.filter = oldVisualState.filter;
+    }
+  };
+  apply();
+  markAccepted(block, label, restore, apply);
+  block.querySelector(":scope > .image-tool-panel")?.setAttribute("hidden", "");
+  syncOpenEditorState(block);
+  setLive(label, `已生成新附件 ${escapeHtml(nextName)} 并替换当前引用。原附件没有被覆盖，撤销会恢复原引用。`);
+  showToast(`${label} · 可回滚`);
+}
+
+function beginImageCropInteraction(panel, event) {
+  const surface = event.target.closest("[data-image-crop-surface]");
+  if (!surface || !panel.contains(surface)) return;
+  const bounds = surface.getBoundingClientRect();
+  const point = (pointerEvent) => ({
+    x: Math.max(0, Math.min(100, ((pointerEvent.clientX - bounds.left) / bounds.width) * 100)),
+    y: Math.max(0, Math.min(100, ((pointerEvent.clientY - bounds.top) / bounds.height) * 100)),
+  });
+  if (panel.dataset.imageCropMode === "free") {
+    const path = panel.querySelector("[data-crop-lasso-path]");
+    if (!path) return;
+    event.preventDefault();
+    const points = [point(event)];
+    const move = (moveEvent) => {
+      points.push(point(moveEvent));
+      path.setAttribute("d", points.map((item, index) => `${index ? "L" : "M"} ${item.x.toFixed(1)} ${item.y.toFixed(1)}`).join(" "));
+    };
+    const finish = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", finish);
+      if (points.length > 2) path.setAttribute("d", `${path.getAttribute("d")} Z`);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", finish, { once: true });
+    return;
+  }
+
+  const box = event.target.closest("[data-image-crop-box]");
+  if (!box) return;
+  event.preventDefault();
+  const handle = event.target.closest("[data-crop-handle]")?.dataset.cropHandle || "move";
+  const start = point(event);
+  const initial = {
+    left: parseFloat(box.style.left) || 14,
+    top: parseFloat(box.style.top) || 10,
+    width: parseFloat(box.style.width) || 72,
+    height: parseFloat(box.style.height) || 72,
+  };
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+  const move = (moveEvent) => {
+    const current = point(moveEvent);
+    const dx = current.x - start.x;
+    const dy = current.y - start.y;
+    let { left, top, width, height } = initial;
+    if (handle === "move") {
+      left = clamp(initial.left + dx, 0, 100 - initial.width);
+      top = clamp(initial.top + dy, 0, 100 - initial.height);
+    } else {
+      if (handle.includes("e")) width = clamp(initial.width + dx, 12, 100 - initial.left);
+      if (handle.includes("s")) height = clamp(initial.height + dy, 12, 100 - initial.top);
+      if (handle.includes("w")) {
+        left = clamp(initial.left + dx, 0, initial.left + initial.width - 12);
+        width = initial.width + initial.left - left;
+      }
+      if (handle.includes("n")) {
+        top = clamp(initial.top + dy, 0, initial.top + initial.height - 12);
+        height = initial.height + initial.top - top;
+      }
+    }
+    box.style.left = `${left}%`;
+    box.style.top = `${top}%`;
+    box.style.width = `${width}%`;
+    box.style.height = `${height}%`;
+  };
+  const finish = () => {
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", finish);
+  };
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", finish, { once: true });
+}
+
+function ensureImageToolPanel(block) {
+  let panel = block.querySelector(":scope > .image-tool-panel");
+  if (panel) return panel;
+  panel = document.createElement("section");
+  panel.className = "image-tool-panel";
+  panel.contentEditable = "false";
+  panel.hidden = true;
+  panel._dismiss = () => {
+    clearTimeout(panel._aiImageTimer);
+    panel.hidden = true;
+    panel.classList.remove("is-ai-generating");
+    block.classList.remove("has-ai-card", "is-ai-running");
+    syncOpenEditorState(block);
+  };
+  panel.addEventListener("input", (event) => {
+    if (event.target.matches("[data-image-quality]")) updateImageConversionSummary(panel);
+    if (event.target.matches("[data-image-straighten]")) applyImagePreviewTransform(panel);
+  });
+  panel.addEventListener("pointerdown", (event) => beginImageCropInteraction(panel, event));
+  panel.addEventListener("click", (event) => {
+    const action = event.target.closest("[data-image-panel-action]")?.dataset.imagePanelAction;
+    if (action === "close") {
+      panel._dismiss();
+      return;
+    }
+    const aiPreset = event.target.closest("[data-image-ai-preset]");
+    if (aiPreset) {
+      const input = panel.querySelector("[data-image-ai-instruction]");
+      if (input) input.value = aiPreset.dataset.imageAiPreset;
+      panel.querySelectorAll("[data-image-ai-preset]").forEach((button) => button.classList.toggle("is-active", button === aiPreset));
+      return;
+    }
+    if (action === "generate-ai-image") return generateImageAiCandidate(block, panel);
+    if (action === "ai-image-previous") {
+      panel._aiImageIndex -= 1;
+      block._aiImageIndex = panel._aiImageIndex;
+      renderImageAiCandidate(panel);
+      return;
+    }
+    if (action === "ai-image-next") {
+      panel._aiImageIndex += 1;
+      block._aiImageIndex = panel._aiImageIndex;
+      renderImageAiCandidate(panel);
+      return;
+    }
+    if (action === "ai-image-history") {
+      const history = panel.querySelector(".image-ai-history");
+      if (history) history.hidden = !history.hidden;
+      return;
+    }
+    const aiHistoryChoice = event.target.closest("[data-image-ai-history-index]");
+    if (aiHistoryChoice) {
+      panel._aiImageIndex = Number(aiHistoryChoice.dataset.imageAiHistoryIndex);
+      block._aiImageIndex = panel._aiImageIndex;
+      renderImageAiCandidate(panel);
+      const history = panel.querySelector(".image-ai-history");
+      if (history) history.hidden = true;
+      return;
+    }
+    if (action === "accept-ai-image") return acceptImageAiCandidate(block, panel);
+    if (action === "discard-ai-image") {
+      panel._dismiss();
+      setLive("AI 改图已丢弃", "原图和附件引用都没有变化。");
+      return;
+    }
+    if (action === "rotate-left" || action === "rotate-right") {
+      const direction = action === "rotate-left" ? -90 : 90;
+      panel.dataset.imageQuarterTurn = String(Number(panel.dataset.imageQuarterTurn || 0) + direction);
+      applyImagePreviewTransform(panel);
+      return;
+    }
+    if (action === "flip-image") {
+      panel.dataset.imageFlipped = String(panel.dataset.imageFlipped !== "true");
+      event.target.closest("[data-image-tool]")?.classList.toggle("is-active", panel.dataset.imageFlipped === "true");
+      applyImagePreviewTransform(panel);
+      return;
+    }
+    if (action === "strip-image-metadata") {
+      event.target.closest("[data-image-tool]")?.classList.toggle("is-active");
+      return;
+    }
+    if (action === "rename-previous") {
+      panel._renameIndex -= 1;
+      block._renameIndex = panel._renameIndex;
+      renderImageRenameCandidate(panel);
+      return;
+    }
+    if (action === "rename-next") {
+      panel._renameIndex += 1;
+      block._renameIndex = panel._renameIndex;
+      renderImageRenameCandidate(panel);
+      return;
+    }
+    if (action === "rename-history") {
+      const history = panel.querySelector(".image-rename-history");
+      if (history) history.hidden = !history.hidden;
+      return;
+    }
+    if (action === "regenerate-rename") {
+      const instruction = panel.querySelector("[data-candidate-instruction]")?.value.trim() || "";
+      panel._renameVariants.push(semanticImageNameVariant(block, panel._renameVariants.length, instruction));
+      panel._renameIndex = panel._renameVariants.length - 1;
+      block._renameIndex = panel._renameIndex;
+      renderImageRenameCandidate(panel);
+      showToast(`已生成命名版本 ${panel._renameVariants.length}`);
+      return;
+    }
+    if (action === "review-convert") return renderImageConversionReview(block, panel);
+    if (action === "restore-convert") return openImageToolPanel(block, "convert", panel._pendingImageEditState);
+    if (action === "accept-convert") return acceptImageAssetChange(block, panel.dataset.pendingImageName, "图片新版本已写入", panel._pendingImageEditState);
+    if (action === "apply-rename") {
+      const value = panel.querySelector("[data-image-rename-input]")?.value.trim();
+      if (!value || !/\.[a-z0-9]+$/i.test(value)) return showToast("文件名需要包含扩展名");
+      return acceptImageAssetChange(block, value, "图片已重命名");
+    }
+    const format = event.target.closest("[data-image-format]");
+    if (format) {
+      panel.querySelectorAll("[data-image-format]").forEach((button) => button.setAttribute("aria-pressed", String(button === format)));
+      updateImageConversionSummary(panel);
+      return;
+    }
+    const cropMode = event.target.closest("[data-image-crop-mode]")?.dataset.imageCropMode;
+    if (cropMode) {
+      setImageCropMode(panel, cropMode);
+      return;
+    }
+    const tool = event.target.closest("[data-image-tool]");
+    if (tool) {
+      if (tool.dataset.imageTool === "rotate-left") panel.dataset.imageQuarterTurn = String(Number(panel.dataset.imageQuarterTurn || 0) - 90);
+      if (tool.dataset.imageTool === "rotate-right") panel.dataset.imageQuarterTurn = String(Number(panel.dataset.imageQuarterTurn || 0) + 90);
+      if (tool.dataset.imageTool === "flip") {
+        panel.dataset.imageFlipped = String(panel.dataset.imageFlipped !== "true");
+        tool.classList.toggle("is-active", panel.dataset.imageFlipped === "true");
+      }
+      if (tool.dataset.imageTool === "strip") tool.classList.toggle("is-active");
+      applyImagePreviewTransform(panel);
+      return;
+    }
+    const historyChoice = event.target.closest("[data-image-rename-history-index]");
+    if (historyChoice) {
+      panel._renameIndex = Number(historyChoice.dataset.imageRenameHistoryIndex);
+      block._renameIndex = panel._renameIndex;
+      renderImageRenameCandidate(panel);
+      const history = panel.querySelector(".image-rename-history");
+      if (history) history.hidden = true;
+      return;
+    }
+  });
+  const frame = block.querySelector(":scope > .real-image-frame");
+  if (frame) frame.after(panel);
+  else block.append(panel);
+  return panel;
+}
+
+function openImageToolPanel(block, mode = "convert", editState = null) {
+  const panel = ensureImageToolPanel(block);
+  clearTimeout(panel._aiImageTimer);
+  panel.dataset.imagePanelMode = mode;
+  panel.dataset.imageQuarterTurn = "0";
+  panel.dataset.imageFlipped = "false";
+  panel.innerHTML = imagePanelMarkup(block, mode);
+  if (mode === "ai") {
+    block._aiImageVariants ||= [];
+    panel._aiImageVariants = block._aiImageVariants;
+    panel._aiImageIndex = Math.min(block._aiImageIndex || 0, Math.max(0, panel._aiImageVariants.length - 1));
+    panel._aiImageRunId = block._aiImageRunId || `composer-ai-run-${++composerAiRunSequence}`;
+    block._aiImageRunId = panel._aiImageRunId;
+    block.classList.add("has-ai-card");
+    if (panel._aiImageVariants.length) {
+      panel.querySelector("[data-image-ai-prompt]").hidden = true;
+      panel.querySelector("[data-image-ai-result]").hidden = false;
+      renderImageAiCandidate(panel);
+    }
+  } else if (mode === "rename") {
+    block._renameVariants ||= [semanticImageName(block)];
+    panel._renameVariants = block._renameVariants;
+    panel._renameIndex = Math.min(block._renameIndex || 0, Math.max(0, panel._renameVariants.length - 1));
+    renderImageRenameCandidate(panel);
+  } else {
+    if (editState) hydrateImageEditPanel(panel, editState);
+    else {
+      setImageCropMode(panel, "rectangle");
+      applyImagePreviewTransform(panel);
+    }
+  }
+  panel.hidden = false;
+  block.querySelector(":scope > .block-copy-menu")?.setAttribute("hidden", "");
+  syncOpenEditorState(block);
+  const liveCopy = mode === "rename"
+    ? ["图片命名", "可以输入命名重点、反复生成候选，并在版本历史中左右切换。"]
+    : mode === "ai"
+    ? ["AI 改图", "先说明想怎么改或选择预设；生成后可继续追问、浏览历史版本，再决定是否接受。"]
+    : ["编辑图片", "矩形裁剪可拖动和缩放，自由圈选可直接描画；旋转使用明确的 90° 动作和小范围倾斜校正。"];
+  setLive(...liveCopy);
+}
+
+let pastedImageSequence = 0;
+
+function composerPasteContext() {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return { block: focusedBlock, range: null };
+  const range = selection.getRangeAt(0);
+  const start = range.startContainer.nodeType === Node.ELEMENT_NODE ? range.startContainer : range.startContainer.parentElement;
+  const block = start?.closest?.(".doc-block");
+  if (!block || !paper.contains(block)) return { block: focusedBlock, range: null };
+  return { block, range: range.cloneRange() };
+}
+
+function paragraphContinuation(block, fragment, source) {
+  const continuation = document.createElement("section");
+  continuation.className = "doc-block paragraph-block pasted-image-continuation";
+  continuation.dataset.blockKind = "paragraph";
+  continuation.dataset.blockTitle = `${block.dataset.blockTitle || "段落"} · 续段`;
+  continuation.dataset.source = source;
+  continuation.innerHTML = blockControlsHTML();
+  const paragraph = document.createElement("p");
+  paragraph.append(fragment);
+  continuation.append(paragraph);
+  decorateBlock(continuation);
+  markEditorChrome(continuation);
+  return continuation;
+}
+
+function placePastedImageBlock(imageBlock, insertion) {
+  const anchor = insertion?.block;
+  const range = insertion?.range;
+  const paragraph = anchor?.dataset.blockKind === "paragraph" ? anchor.querySelector(":scope > p") : null;
+  if (!paragraph || !range?.collapsed || !paragraph.contains(range.startContainer)) {
+    if (anchor?.parentElement === paper) anchor.after(imageBlock);
+    else paper.append(imageBlock);
+    return;
+  }
+
+  const beforeRange = document.createRange();
+  beforeRange.selectNodeContents(paragraph);
+  beforeRange.setEnd(range.startContainer, range.startOffset);
+  const afterRange = document.createRange();
+  afterRange.selectNodeContents(paragraph);
+  afterRange.setStart(range.startContainer, range.startOffset);
+  const beforeFragment = beforeRange.cloneContents();
+  const afterFragment = afterRange.cloneContents();
+  const beforeText = beforeRange.toString();
+  const afterText = afterRange.toString();
+
+  if (!beforeText.trim()) {
+    anchor.before(imageBlock);
+    return;
+  }
+  if (!afterText.trim()) {
+    anchor.after(imageBlock);
+    return;
+  }
+
+  paragraph.replaceChildren(beforeFragment);
+  anchor.dataset.source = beforeText.trimEnd();
+  const continuation = paragraphContinuation(anchor, afterFragment, afterText.trimStart());
+  anchor.after(imageBlock);
+  imageBlock.after(continuation);
+}
+
+function insertPastedImageBlock(file, insertion = composerPasteContext()) {
+  pastedImageSequence += 1;
+  const extension = imageExtension(file?.name || "", file?.type?.split("/")[1] || "png");
+  const objectUrl = file ? URL.createObjectURL(file) : "assets/real-map-auckland-route.png";
+  const anchor = insertion?.block || focusedBlock;
+  const block = document.createElement("section");
+  block.className = "doc-block image-block pasted-image-block";
+  block.dataset.blockKind = "image";
+  block.dataset.blockTitle = `粘贴图片 ${pastedImageSequence}`;
+  let heading = anchor;
+  while (heading && !/^heading-/.test(heading.dataset?.blockKind || "")) heading = heading.previousElementSibling;
+  block.dataset.imageContext = `${heading?.dataset.blockTitle || ""} ${anchor?.dataset.blockTitle || ""}`.trim();
+  block.dataset.source = `![[attachments/composer-pasted-image-${pastedImageSequence}.${extension}]]`;
+  block.innerHTML = `
+    ${blockControlsHTML()}
+    <figure class="real-image-frame">
+      <a class="lightgallery composer-lightgallery" href="${objectUrl}" data-thumbnail="${objectUrl}"><img src="${objectUrl}" alt="从剪贴板粘贴的图片" /></a>
+      ${imageToolbarMarkup()}
+      <figcaption>从剪贴板粘贴 · 附件仍是候选，确认命名后才写入 Vault</figcaption>
+    </figure>
+  `;
+  placePastedImageBlock(block, insertion);
+  decorateBlock(block);
+  markEditorChrome(block);
+  imageGallery?.refresh?.();
+  setFocusedBlock(block);
+  openImageToolPanel(block, "rename");
+  const panel = block.querySelector(":scope > .image-tool-panel");
+  panel?.insertAdjacentHTML("afterbegin", '<div class="image-paste-receipt"><svg><use href="#i-check"></use></svg><span><b>已读取剪贴板图片</b><small>先确认自动命名，再创建附件并写入 embed</small></span></div>');
+  block.scrollIntoView({ behavior: "smooth", block: "center" });
+  setLive("图片已粘贴", "Composer 已在正文光标位置创建图片 Block，并生成语义文件名；附件写入、重命名和 Markdown embed 将在一次事务里完成。 ");
+  showToast("图片已粘贴 · 请确认自动命名");
 }
 
 function openImageGallery(block) {
@@ -2893,6 +5781,46 @@ function linkPopoverName(target) {
   return target.textContent.trim();
 }
 
+function linkDestinationFor(target) {
+  if (target.classList.contains("footnote-ref")) {
+    return { kind: "footnote", target: "#footnote-def-1", label: "跳到脚注定义" };
+  }
+  if (target.classList.contains("vault-chip")) {
+    if (target.classList.contains("is-stale")) return null;
+    const note = target.dataset.vaultTarget || `${linkPopoverName(target).replace(/^\[\[|\]\]$/g, "")}.md`;
+    return { kind: "vault", target: note, label: `打开 ${note}` };
+  }
+  if (target.classList.contains("ext-chip")) {
+    return { kind: "external", target: target.href, label: `访问 ${target.href}` };
+  }
+  return null;
+}
+
+function openComposerLink(target) {
+  const destination = linkDestinationFor(target);
+  if (!destination) return;
+  window.dispatchEvent(new CustomEvent("peak:composer-open-link", {
+    detail: {
+      kind: destination.kind,
+      target: destination.target,
+      sourceBlock: target.closest(".doc-block")?.dataset.blockTitle || "",
+    },
+  }));
+  document.body.dataset.lastComposerNavigation = destination.target;
+  if (destination.kind === "footnote") {
+    document.querySelector(destination.target)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    showToast("已定位到脚注定义");
+    return;
+  }
+  if (destination.kind === "vault") {
+    showToast(`打开笔记 · ${destination.target}`);
+    setLive("打开知识库链接", `宿主将定位到 ${escapeHtml(destination.target)}；Composer 保留当前编辑上下文。`);
+    return;
+  }
+  window.open(destination.target, "_blank", "noopener,noreferrer");
+  showToast("已在外部浏览器打开来源");
+}
+
 function linkActionsFor(target) {
   if (target.classList.contains("footnote-ref")) {
     return [
@@ -2926,8 +5854,12 @@ function showLinkPopover(target) {
 
   const name = linkPopoverName(target);
   const actions = linkActionsFor(target);
+  const destination = linkDestinationFor(target);
+  const destinationControl = destination
+    ? `<button class="link-popover-destination" type="button" data-link-open title="${escapeHtml(destination.label)}"><svg><use href="#${destination.kind === "vault" ? "i-file" : destination.kind === "footnote" ? "i-locate" : "i-link"}"></use></svg><span><strong>${escapeHtml(name)}</strong><small>${escapeHtml(destination.label)}</small></span></button>`
+    : `<span class="link-popover-title">${escapeHtml(name)}</span>`;
   linkPopover.innerHTML =
-    `<span class="link-popover-title">${escapeHtml(name)}</span>` +
+    destinationControl +
     actions
       .map(
         (item) =>
@@ -2969,7 +5901,22 @@ function initLinkPopover() {
   linkPopover.addEventListener("pointerleave", scheduleHideLinkPopover);
   window.addEventListener("scroll", hideLinkPopover, true);
 
+  paper.addEventListener("click", (event) => {
+    const target = event.target.closest(".vault-chip:not(.is-stale), .ext-chip, .footnote-ref");
+    if (!target) return;
+    event.preventDefault();
+    openComposerLink(target);
+  });
+
   linkPopover.addEventListener("click", (event) => {
+    const open = event.target.closest("[data-link-open]");
+    if (open && linkPopoverTarget) {
+      event.preventDefault();
+      const target = linkPopoverTarget;
+      hideLinkPopover();
+      openComposerLink(target);
+      return;
+    }
     const button = event.target.closest("[data-link-action]");
     if (!button || !linkPopoverTarget) return;
 
@@ -2994,8 +5941,96 @@ function initLinkPopover() {
   });
 }
 
+const formatTokenPopover = document.createElement("div");
+formatTokenPopover.className = "format-token-popover";
+formatTokenPopover.hidden = true;
+formatTokenPopover.contentEditable = "false";
+document.body.appendChild(formatTokenPopover);
+let formatTokenTarget = null;
+let formatTokenHideTimer = null;
+
+function hideFormatTokenPopover() {
+  formatTokenPopover.hidden = true;
+  formatTokenTarget = null;
+}
+
+function scheduleHideFormatTokenPopover() {
+  clearTimeout(formatTokenHideTimer);
+  formatTokenHideTimer = setTimeout(hideFormatTokenPopover, 260);
+}
+
+function showFormatTokenPopover(target) {
+  clearTimeout(formatTokenHideTimer);
+  formatTokenTarget = target;
+  const suggestion = target.dataset.aiStyle || "";
+  formatTokenPopover.innerHTML = `
+    <header>
+      <span><b>${escapeHtml(target.dataset.formatLabel || "行内样式")}</b><small>${suggestion ? "当前样式 · AI 有新建议" : "当前样式 · 可继续编辑"}</small></span>
+      ${suggestion ? '<i><svg><use href="#i-spark"></use></svg> AI 建议</i>' : ""}
+    </header>
+    <code>${escapeHtml(target.dataset.formatSource || target.textContent.trim())}</code>
+    ${suggestion ? `<p>${escapeHtml(suggestion)}</p>` : ""}
+    <footer>
+      <button type="button" data-format-preview="text">文字色</button>
+      <button type="button" data-format-preview="highlight">标记色</button>
+      ${suggestion ? '<button type="button" class="is-ai" data-format-preview="ai"><svg><use href="#i-spark"></use></svg>预览建议</button>' : ""}
+      <button type="button" data-format-preview="reset">原样</button>
+    </footer>`;
+  formatTokenPopover.hidden = false;
+  const rect = target.getBoundingClientRect();
+  const popRect = formatTokenPopover.getBoundingClientRect();
+  let top = rect.top - popRect.height - 7;
+  if (top < 70) top = rect.bottom + 7;
+  let left = rect.left + rect.width / 2 - popRect.width / 2;
+  left = Math.max(12, Math.min(window.innerWidth - popRect.width - 12, left));
+  formatTokenPopover.style.top = `${top}px`;
+  formatTokenPopover.style.left = `${left}px`;
+}
+
+function previewFormatToken(target, mode) {
+  target.classList.remove("is-preview-text", "is-preview-highlight", "is-preview-ai");
+  if (mode !== "reset") target.classList.add(`is-preview-${mode}`);
+  const labels = {
+    text: "已预览文字色",
+    highlight: "已预览标记色",
+    ai: "已预览 AI 建议样式",
+    reset: "已恢复原样",
+  };
+  showToast(labels[mode] || "样式预览已更新");
+  showFormatTokenPopover(target);
+}
+
+function initFormatTokenPopover() {
+  paper.addEventListener("pointerover", (event) => {
+    const token = event.target.closest(".format-token");
+    if (token) showFormatTokenPopover(token);
+  });
+  paper.addEventListener("pointerout", (event) => {
+    if (event.target.closest(".format-token")) scheduleHideFormatTokenPopover();
+  });
+  paper.addEventListener("focusin", (event) => {
+    const token = event.target.closest(".format-token");
+    if (token) showFormatTokenPopover(token);
+  });
+  paper.addEventListener("focusout", (event) => {
+    if (event.target.closest(".format-token")) scheduleHideFormatTokenPopover();
+  });
+  formatTokenPopover.addEventListener("pointerenter", () => clearTimeout(formatTokenHideTimer));
+  formatTokenPopover.addEventListener("pointerleave", scheduleHideFormatTokenPopover);
+  formatTokenPopover.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-format-preview]");
+    if (!button || !formatTokenTarget) return;
+    previewFormatToken(formatTokenTarget, button.dataset.formatPreview);
+  });
+  window.addEventListener("scroll", hideFormatTokenPopover, true);
+}
+
 function closeTopSurface() {
   if (closeSelectionSurface()) return true;
+  if (!formatTokenPopover.hidden) {
+    hideFormatTokenPopover();
+    return true;
+  }
   if (!linkPopover.hidden) {
     hideLinkPopover();
     return true;
@@ -3005,7 +6040,22 @@ function closeTopSurface() {
     removeDraft(openDraft);
     return true;
   }
-  const openMenu = paper.querySelector(".ai-menu:not([hidden])");
+  const openInlineInput = paper.querySelector(".block-action-bar .aim.open");
+  if (openInlineInput) {
+    openInlineInput.classList.remove("open");
+    const input = openInlineInput.querySelector("input");
+    if (input) {
+      input.value = "";
+      input.blur();
+    }
+    return true;
+  }
+  const openVaultLibrary = paper.querySelector(".vault-property-overlay:not([hidden])");
+  if (openVaultLibrary) {
+    openVaultLibrary.querySelector("[data-vault-property-action='close']")?.click();
+    return true;
+  }
+  const openMenu = paper.querySelector(".ai-menu:not(.block-action-bar):not([hidden])");
   if (openMenu) {
     const openInput = openMenu.querySelector(".aim.open");
     if (openInput) {
@@ -3160,7 +6210,7 @@ function runNativeIncrement(block, item) {
     const restore = () => { render.dataset.definition = original; renderMermaid(); syncNativeSource(block); };
     const accept = () => {
       block.dataset.source = `\`\`\`mermaid\n${render.dataset.definition}\n\`\`\``;
-      markAccepted(block, item.label, restore);
+      markAiAccepted(block, item, item.label, restore);
       setLive("Mermaid 分支已写入", "AI 增量添加了来源校验节点和两条边，预览与 Mermaid 源码保持一致。 ");
     };
     const review = nativeReview(block, item.label, restore, accept);
@@ -3182,7 +6232,7 @@ function runNativeIncrement(block, item) {
     const restore = () => { canvasData.nodes = original.nodes; canvasData.edges = original.edges; renderCanvas(); syncNativeSource(block); };
     const accept = () => {
       block.dataset.source = `![[assets/pkm-composer.canvas]]\n<!-- ${canvasData.nodes.length} nodes / ${canvasData.edges.length} edges -->`;
-      markAccepted(block, item.label, restore);
+      markAiAccepted(block, item, item.label, restore);
       setLive("Canvas 节点已写入", "画布中新增了一个可回访问题节点和连接边，Canvas JSON 与预览已同步。 ");
     };
     const review = nativeReview(block, item.label, restore, accept);
@@ -3209,7 +6259,7 @@ function runNativeIncrement(block, item) {
     const restore = () => { excalidrawNodes.splice(0, excalidrawNodes.length, ...originalNodes); excalidrawEdges.splice(0, excalidrawEdges.length, ...originalEdges); renderExcalidraw(); syncNativeSource(block); };
     const accept = () => {
       block.dataset.source = `![[assets/101-A-产品类别分析.excalidraw.md]]\n<!-- ${excalidrawNodes.length} elements -->`;
-      markAccepted(block, item.label, restore);
+      markAiAccepted(block, item, item.label, restore);
       setLive("Excalidraw 节点已写入", "手绘图新增了来源校验节点与连接线，保留 Excalidraw 的原始元素格式。 ");
     };
     const review = nativeReview(block, item.label, restore, accept);
@@ -3244,11 +6294,15 @@ function handleAction(action, button) {
 
   if (action === "toggle-ai-history") return toggleAiHistory(button, block, micro || block);
 
+  if (action === "easy-copy" && micro) return openBlockCopyMenu(block, micro);
   if (micro) return handleMicroAction(action, micro, button, block);
 
   if (action === "save-comment") return saveComment(block);
   if (action === "cancel-comment") return cancelComment(block);
   if (action === "close-insert") return closeInsertStrip(block);
+  if (action === "cancel-merge-mode") return closeMergeSelectionMode("已取消合并");
+  if (action === "close-table-formula") return closeTableFormulaEditor();
+  if (action === "apply-table-formula") return applyTableFormula();
   if (action === "draft-commit") return commitDraft(block);
   if (action === "draft-ai") return runDraftAi(block);
   if (action === "draft-cancel") return removeDraft(block);
@@ -3281,17 +6335,26 @@ function handleAction(action, button) {
   if (action === "comment") return handleComment(block);
   if (action === "ai") return toggleAiMenu(block);
   if (action === "move") return handleMove(block);
+  if (action === "easy-copy") return openBlockCopyMenu(block);
+  if (action === "switch-chart") return renderChartDraft(block, button.dataset.chartType || "bar");
+  if (action === "switch-image-layout") return switchImageLayout(block, button.dataset.imageLayout || "hero");
   if (action === "add-row") return addTableRow();
   if (action === "add-column") return addTableColumn();
   if (action === "remove-row") return removeTableRow();
   if (action === "align-table") return alignTableColumn();
   if (action === "sort-table") return sortTableByCurrentColumn();
-  if (action === "format-table" || action === "formula-table" || action === "transpose-table") return handleTableTool(action);
+  if (action === "formula-table") return openTableFormulaEditor();
+  if (["merge-cells", "transpose-table", "chart-table"].includes(action)) return handleTableTool(action);
   if (action === "zoom-image") return selectImageMode(block, "zoom");
+  if (action === "edit-image") return openImageToolPanel(block, "convert");
+  if (action === "rename-image") return openImageToolPanel(block, "rename");
   if (action === "crop-image") return selectImageMode(block, "crop");
   if (action === "annotate-image") return toggleImageAnnotation(block);
   if (action === "ai-caption") return showAiSuggestionCard(block, { label: "生成图注", trigger: "image-toolbar" });
-  if (action === "ai-image") return showAiSuggestionCard(block, { label: "生成配图", trigger: "image-toolbar" });
+  if (action === "ai-image") {
+    closeAiCards();
+    return openImageToolPanel(block, "ai");
+  }
   if (action === "ai-table") return showAiSuggestionCard(block, { label: "总结表格", trigger: "table-toolbar" });
   if (action === "paste-csv") {
     setLive("CSV 粘贴", "CSV 会被解析成 Markdown 表格，并在写入前提供源格式预览。");
@@ -3715,7 +6778,7 @@ document.addEventListener("click", (event) => {
     if (!targetBlock) return;
     const menu = aiQuickButton.closest(".ai-menu");
     const micro = aiQuickButton.closest(".micro-block");
-    if (menu) {
+    if (menu && !menu.classList.contains("block-action-bar")) {
       menu.hidden = true;
       syncOpenEditorState(targetBlock);
     }
@@ -3799,6 +6862,18 @@ document.addEventListener("focusin", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
+  const modifier = event.metaKey || event.ctrlKey;
+  if (modifier && event.key.toLowerCase() === "z" && !isNativeUndoTarget(event.target)) {
+    event.preventDefault();
+    if (event.shiftKey) redoComposerTransaction();
+    else undoComposerTransaction();
+    return;
+  }
+  if (event.ctrlKey && !event.metaKey && event.key.toLowerCase() === "y" && !isNativeUndoTarget(event.target)) {
+    event.preventDefault();
+    redoComposerTransaction();
+    return;
+  }
   if (event.target.closest?.("[data-intelligence-root]")) return;
   if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !event.target.closest?.(".draft-input")) {
     const anchor = event.target.closest?.(".doc-block") || focusedBlock;
@@ -3817,12 +6892,15 @@ document.addEventListener("keydown", (event) => {
 
 initHistorySnapshots();
 seedHistoryTransactions();
+initComposerTransactionControls();
+initDirectEditTransactions();
 switchAmbientView("copilot");
 setFocusedBlock(document.querySelector('[data-block-title="AI 旁路段落"]') || document.querySelector(".title-block") || document.querySelector(".paragraph-block"));
 initBlockBadges();
 initInsights();
 initMicroHints();
 initLinkPopover();
+initFormatTokenPopover();
 initControlLabels();
 initBlockDragHandles();
 initTableInteractions();
@@ -3847,10 +6925,33 @@ document.getElementById("copilot-input")?.addEventListener("keydown", (event) =>
 const selectionToolbar = document.getElementById("selection-toolbar");
 const selectionScope = document.getElementById("selection-scope");
 const selectionReview = document.getElementById("selection-review");
+const selectionToolbarPopover = document.getElementById("selection-toolbar-popover");
 let selectionState = null;
 let reviewSelectionState = null;
 let selectionFrame = 0;
 let aiRefreshTimer = 0;
+
+const SELECTION_FORMAT_UNIT_SELECTOR = [
+  "p",
+  "li",
+  "td",
+  "th",
+  "blockquote",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "figcaption",
+  "code",
+  ".callout-title",
+  ".callout-body",
+  ".metadata-grid > span",
+  ".metadata-grid > strong",
+  ".base-row > span",
+  ".source-line > span",
+].join(",");
 
 function markEditorChrome(root = paper) {
   const selector = [
@@ -3865,6 +6966,8 @@ function markEditorChrome(root = paper) {
     ".ai-anchor",
     ".micro-tail-actions",
     ".object-toolbar",
+    ".block-copy-menu",
+    ".image-tool-panel",
     ".native-actions",
     ".native-inline-tools",
     ".native-inline-review",
@@ -3922,17 +7025,146 @@ function initComposerCanvas() {
 
 function refreshBlockAi(block) {
   block.classList.remove("ai-needs-refresh");
-  const hint = block.querySelector(":scope > .ai-anchor .ai-hint");
-  if (!hint) return;
   const actions = getAiActions(block);
-  hint.textContent = `AI 建议 · ${actions.length}`;
-  hint.title = actions.map((item) => `${item.label}（${item.reason}）`).join("\n");
+  const actionBar = block.querySelector(":scope > .block-action-bar");
+  const pills = actionBar?.querySelector(".aim-pills");
+  if (!actionBar || !pills) return;
+  pills.innerHTML = `${aiPillsHTML(block)}<span class="sep"></span>`;
+  actionBar.dataset.aiCount = String(actions.length);
+  actionBar.title = actions.map((item) => `${item.label}（${item.reason}）`).join("\n");
   setLive("本块建议已更新", "编辑内容后，Composer 会重新评估当前块的类型、结构和当前内容，只保留与当前块有关的短动作。");
+}
+
+function selectionFormatUnit(node) {
+  const parent = node.parentElement;
+  const block = parent?.closest?.(".doc-block");
+  if (!parent || !block) return null;
+  const unit = parent.closest(SELECTION_FORMAT_UNIT_SELECTOR);
+  if (unit && block.contains(unit)) return unit;
+  return parent;
+}
+
+function selectionTextSegments(range) {
+  const segments = [];
+  const walker = document.createTreeWalker(paper, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      if (!node.data || !node.data.trim()) return NodeFilter.FILTER_REJECT;
+      const parent = node.parentElement;
+      if (!parent?.closest(".doc-block")) return NodeFilter.FILTER_REJECT;
+      if (parent.closest('[contenteditable="false"],button,input,textarea,select,script,style')) return NodeFilter.FILTER_REJECT;
+      try {
+        return range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      } catch (_error) {
+        return NodeFilter.FILTER_REJECT;
+      }
+    },
+  });
+
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    let start = node === range.startContainer ? range.startOffset : 0;
+    let end = node === range.endContainer ? range.endOffset : node.data.length;
+    start = Math.max(0, Math.min(start, node.data.length));
+    end = Math.max(start, Math.min(end, node.data.length));
+    const selected = node.data.slice(start, end);
+    const leading = selected.match(/^\s*/)?.[0].length || 0;
+    const trailing = selected.match(/\s*$/)?.[0].length || 0;
+    start += leading;
+    end -= trailing;
+    if (end <= start) continue;
+    const unit = selectionFormatUnit(node);
+    const block = node.parentElement.closest(".doc-block");
+    if (!unit || !block) continue;
+    segments.push({ node, start, end, unit, block });
+  }
+  return segments;
+}
+
+function selectionFormatUnits(segments) {
+  const grouped = [];
+  const byUnit = new Map();
+  segments.forEach((segment) => {
+    let group = byUnit.get(segment.unit);
+    if (!group) {
+      group = { unit: segment.unit, block: segment.block, segments: [] };
+      byUnit.set(segment.unit, group);
+      grouped.push(group);
+    }
+    group.segments.push(segment);
+  });
+  return grouped.map((group) => {
+    const first = group.segments[0];
+    const last = group.segments.at(-1);
+    const range = document.createRange();
+    range.setStart(first.node, first.start);
+    range.setEnd(last.node, last.end);
+    return { ...group, range };
+  });
+}
+
+function tableCellSelectionState() {
+  if (!selectedTableCells.length || !selectedTableRange) return null;
+  const block = table.closest(".doc-block");
+  if (!block) return null;
+  const rows = Array.from(table.rows);
+  const units = selectedTableCells.map((cell) => {
+    const range = document.createRange();
+    range.selectNodeContents(cell);
+    return { unit: cell, block, segments: [], range };
+  });
+  const rects = selectedTableCells.map((cell) => cell.getBoundingClientRect());
+  const rect = {
+    left: Math.min(...rects.map((item) => item.left)),
+    right: Math.max(...rects.map((item) => item.right)),
+    top: Math.min(...rects.map((item) => item.top)),
+    bottom: Math.max(...rects.map((item) => item.bottom)),
+  };
+  rect.width = rect.right - rect.left;
+  rect.height = rect.bottom - rect.top;
+  const cellsByRow = new Map();
+  selectedTableCells.forEach((cell) => {
+    const { row, column } = tableCellCoordinates(cell);
+    if (!cellsByRow.has(row)) cellsByRow.set(row, []);
+    cellsByRow.get(row).push({ cell, column });
+  });
+  const matrix = Array.from(cellsByRow.entries())
+    .sort(([rowA], [rowB]) => rowA - rowB)
+    .map(([, cells]) => cells
+      .sort((a, b) => a.column - b.column)
+      .map(({ cell }) => cell.textContent.trim()));
+  const merge = mergeableTableSelection();
+  return {
+    kind: "table-cells",
+    range: units[0].range.cloneRange(),
+    text: matrix.map((row) => row.join("\t")).join("\n"),
+    blocks: [block],
+    segments: [],
+    units,
+    matrix,
+    rect,
+    selectionMode: selectedTableMode || "range",
+    isMergeable: merge.valid,
+    mergeReason: merge.reason || "",
+    rowCount: cellsByRow.size,
+    columnCount: new Set(selectedTableCells.map((cell) => cell.cellIndex)).size,
+  };
+}
+
+function selectionScopeText(state) {
+  if (!state?.units?.length) return "";
+  if (state.kind === "table-cells" && state.selectionMode === "discrete") return `不连续选择 · ${state.units.length} 个单元格 · ⌘/Ctrl 点击追加`;
+  if (state.kind === "table-cells") return `${state.rowCount} 行 × ${state.columnCount} 列 · ${state.units.length} 个单元格`;
+  const tags = state.units.map(({ unit }) => unit.tagName.toLowerCase());
+  if (tags.every((tag) => tag === "td" || tag === "th")) return `跨 ${state.units.length} 个单元格`;
+  if (tags.every((tag) => tag === "li")) return `跨 ${state.units.length} 个列表项`;
+  if (state.blocks.length > 1) return `跨 ${state.blocks.length} 个块 · ${state.units.length} 个片段`;
+  if (state.units.length > 1) return `跨 ${state.units.length} 个片段`;
+  return "";
 }
 
 function getSelectionState() {
   const selection = window.getSelection();
-  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return null;
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return tableCellSelectionState();
   const range = selection.getRangeAt(0);
   const anchor = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
     ? range.commonAncestorContainer
@@ -3943,13 +7175,18 @@ function getSelectionState() {
   const blocks = Array.from(paper.querySelectorAll(":scope > .doc-block"))
     .filter((block) => range.intersectsNode(block));
   if (!blocks.length) return null;
-  return { range: range.cloneRange(), text, blocks };
+  if (blocks.some((block) => block.dataset.blockKind === "code") || anchor.closest?.("pre, code, .native-source-pane")) return null;
+  const segments = selectionTextSegments(range);
+  const units = selectionFormatUnits(segments);
+  if (!units.length) return null;
+  return { range: range.cloneRange(), text, blocks, segments, units };
 }
 
 function updateSelectionToolbar() {
   selectionFrame = 0;
   const state = getSelectionState();
   if (!state) {
+    if (!selectionToolbarPopover.hidden && selectionState) return;
     paper.classList.remove("has-text-selection");
     selectionToolbar.hidden = true;
     if (selectionReview.hidden) selectionState = null;
@@ -3958,12 +7195,39 @@ function updateSelectionToolbar() {
 
   selectionState = state;
   paper.classList.add("has-text-selection");
-  selectionScope.textContent = state.blocks.length > 1 ? `跨 ${state.blocks.length} 个块` : "选中当前块";
+  document.querySelectorAll(".selection-table-only").forEach((element) => {
+    element.hidden = state.kind !== "table-cells";
+  });
+  const mergeButton = selectionToolbar.querySelector('[data-selection-table-action="merge"]');
+  if (mergeButton) {
+    mergeButton.disabled = state.kind !== "table-cells" || !state.isMergeable;
+    mergeButton.title = state.kind === "table-cells" && !state.isMergeable
+      ? state.mergeReason
+      : "合并为一个单元格；Markdown 源将保真升级为 HTML table";
+  }
+  const scope = selectionScopeText(state);
+  selectionScope.hidden = !scope;
+  selectionScope.textContent = scope;
   selectionToolbar.hidden = false;
-  const rect = state.range.getBoundingClientRect();
-  const toolbarWidth = selectionToolbar.offsetWidth || 340;
+  const rects = state.kind === "table-cells"
+    ? [state.rect]
+    : Array.from(state.range.getClientRects()).filter((rect) => rect.width > 0 && rect.height > 0);
+  const visibleRects = rects.filter((rect) => rect.bottom > 0 && rect.top < window.innerHeight);
+  const rect = visibleRects[0] || rects[0] || state.range.getBoundingClientRect();
+  const toolbarWidth = selectionToolbar.offsetWidth || 620;
   const left = Math.max(12, Math.min(window.innerWidth - toolbarWidth - 12, rect.left + rect.width / 2 - toolbarWidth / 2));
-  const top = Math.max(12, rect.top - 44);
+  const toolbarHeight = selectionToolbar.offsetHeight || 38;
+  let preferredTop = rect.top - toolbarHeight - 8;
+  if (state.kind === "table-cells") {
+    const tableRect = table.getBoundingClientRect();
+    const belowTable = tableRect.bottom + 8;
+    preferredTop = belowTable + toolbarHeight <= window.innerHeight - 12
+      ? belowTable
+      : tableRect.top - toolbarHeight - 8;
+  } else if (preferredTop < 12) {
+    preferredTop = rect.bottom + 8;
+  }
+  const top = Math.max(12, Math.min(window.innerHeight - toolbarHeight - 12, preferredTop));
   selectionToolbar.style.left = `${left}px`;
   selectionToolbar.style.top = `${top}px`;
 }
@@ -3976,11 +7240,140 @@ function scheduleSelectionToolbar() {
 function closeSelectionSurface() {
   const wasOpen = !selectionToolbar.hidden || !selectionReview.hidden;
   selectionToolbar.hidden = true;
+  selectionToolbarPopover.hidden = true;
   selectionReview.hidden = true;
   selectionState = null;
   reviewSelectionState = null;
+  document.querySelectorAll(".selection-table-only").forEach((element) => {
+    element.hidden = true;
+  });
   paper.classList.remove("has-text-selection");
   return wasOpen;
+}
+
+function selectionRange() {
+  const state = selectionState;
+  if (!state?.range || state.units.length !== 1) return null;
+  return state.units[0].range.cloneRange();
+}
+
+function restoreSelectionState() {
+  if (!selectionState?.range) return;
+  if (selectionState.kind === "table-cells") {
+    scheduleSelectionToolbar();
+    return;
+  }
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(selectionState.range.cloneRange());
+  scheduleSelectionToolbar();
+}
+
+function createSelectionWrapper(tagName, attributes = {}) {
+  const wrapper = document.createElement(tagName);
+  wrapper.dataset.selectionFormatFragment = "true";
+  Object.entries(attributes).forEach(([name, value]) => {
+    if (name === "style") Object.assign(wrapper.style, value);
+    else if (name === "className") wrapper.className = value;
+    else wrapper.setAttribute(name, value);
+  });
+  return wrapper;
+}
+
+function finishSelectionTransaction(blocks) {
+  if (selectionState?.kind === "table-cells") clearTableCellSelection();
+  blocks.forEach((block) => block.classList.add("ai-needs-refresh"));
+  closeSelectionSurface();
+  setFocusedBlock(blocks.at(-1));
+}
+
+function commitSelectionWrapper(tagName, attributes = {}) {
+  const range = selectionRange();
+  if (!range) {
+    showToast("一个链接只能落在一个段落、列表项或单元格内");
+    return false;
+  }
+  const wrapper = createSelectionWrapper(tagName, attributes);
+  wrapper.append(range.extractContents());
+  range.insertNode(wrapper);
+  finishSelectionTransaction(selectionState.blocks);
+  return true;
+}
+
+function commitSelectionUnitWrappers(tagName, attributes = {}) {
+  const state = selectionState;
+  if (!state?.units?.length) return null;
+  const units = state.units.map((unit) => ({ ...unit, range: unit.range.cloneRange() }));
+  [...units].reverse().forEach(({ range }) => {
+    const wrapper = createSelectionWrapper(tagName, attributes);
+    wrapper.append(range.extractContents());
+    range.insertNode(wrapper);
+  });
+  finishSelectionTransaction(state.blocks);
+  return { unitCount: units.length, blockCount: state.blocks.length };
+}
+
+function applySelectionFormat(format, value = "") {
+  const formats = {
+    bold: () => commitSelectionUnitWrappers("strong"),
+    italic: () => commitSelectionUnitWrappers("em"),
+    underline: () => commitSelectionUnitWrappers("span", { className: "html-format", style: { textDecoration: "underline", textUnderlineOffset: "2px" } }),
+    strikeThrough: () => commitSelectionUnitWrappers("del"),
+    foreColor: () => commitSelectionUnitWrappers("span", { className: "html-format", style: { color: value } }),
+    hiliteColor: () => commitSelectionUnitWrappers("mark", { className: "html-format", style: { backgroundColor: value } }),
+  };
+  const applied = formats[format]?.();
+  if (!applied) return;
+  const enhanced = ["underline", "foreColor", "hiliteColor"].includes(format);
+  const scope = applied.unitCount > 1 ? `已分别写入 ${applied.unitCount} 个结构片段；` : "";
+  setLive("选区格式已应用", enhanced ? `${scope}每个片段会序列化为可回到源文件的 HTML span/mark，不跨越 Markdown 结构边界。` : `${scope}每个片段使用标准 Markdown 对应语法，并合并为同一撤销事务。`);
+  showToast(enhanced ? "已应用 HTML 增强格式" : "已应用 Markdown 格式");
+}
+
+function renderSelectionPalette(format) {
+  const isText = format === "foreColor";
+  const colors = isText
+    ? [["#1f2937", "正文"], ["#7c3aed", "紫色"], ["#2563eb", "蓝色"], ["#b45309", "棕色"], ["#b42318", "红色"], ["#16845f", "绿色"]]
+    : [["#fff1a8", "重点"], ["#dff4e8", "定义"], ["#dfeaff", "资料"], ["#eee5ff", "想法"], ["#fde4e4", "风险"], ["transparent", "清除"]];
+  selectionToolbarPopover.innerHTML = `<span>${isText ? "文字颜色" : "Highlightr 标记颜色"} · 写入可移除的 HTML 增强格式</span><div class="selection-palette">${colors.map(([color, label]) => `<button type="button" data-selection-color="${color}" data-selection-color-format="${format}" style="--selection-color:${color === "transparent" ? "#fff" : color}" title="${label}" aria-label="${label}"><i>${label}</i></button>`).join("")}</div>`;
+  selectionToolbarPopover.hidden = false;
+}
+
+function renderSelectionLinkForm() {
+  selectionToolbarPopover.innerHTML = `<div class="selection-popover-head"><span>Paste URL into selection · 也可手动输入 Wiki 链接</span><button type="button" data-selection-popover-close aria-label="关闭"><svg><use href="#i-x"></use></svg></button></div><div class="selection-link-form"><input type="text" data-selection-link-input placeholder="https://… 或 [[笔记名]]" /><button type="button" data-selection-link-paste><svg><use href="#i-link"></use></svg> 粘贴 URL</button><button type="button" data-selection-link-apply>应用</button></div><small class="selection-link-hint">直接按 ⌘V 粘贴 URL，也会立即把当前选区变成链接。</small>`;
+  selectionToolbarPopover.hidden = false;
+  selectionToolbarPopover.querySelector("input")?.focus();
+}
+
+async function pasteSelectionLinkFromClipboard() {
+  const input = selectionToolbarPopover.querySelector("[data-selection-link-input]");
+  try {
+    const value = await navigator.clipboard.readText();
+    if (!/^https?:\/\/\S+$/i.test(value.trim())) throw new Error("not url");
+    if (input) input.value = value.trim();
+    showToast("已读取剪贴板 URL");
+  } catch (_error) {
+    input?.focus();
+    showToast("浏览器未开放剪贴板读取，请在输入框粘贴 URL");
+  }
+}
+
+function applySelectionLink(valueOverride = "") {
+  const input = selectionToolbarPopover.querySelector("[data-selection-link-input]");
+  const value = valueOverride.trim() || input?.value.trim();
+  if (!value) return showToast("先输入网址或 Wiki 链接");
+  const wiki = value.match(/^\[\[(.+)\]\]$/);
+  const href = wiki ? `obsidian://${wiki[1]}` : value;
+  if (!commitSelectionWrapper("a", { href, className: wiki ? "internal-link" : "external-link" })) return;
+  setLive("链接已添加", wiki ? "选区已绑定 Wiki 链接；接受写入时保留 [[…]] 语义。" : "选区已绑定 Markdown 链接；显示文字与目标地址分别保留。 ");
+  showToast(wiki ? "已添加 Wiki 链接" : "已添加链接");
+}
+
+function renderSelectionCopyMenu(state = selectionState) {
+  if (!state) return;
+  selectionToolbarPopover._copyPayload = copyPayloadForSelection(state);
+  selectionToolbarPopover.innerHTML = copyMenuMarkup(state.blocks.length > 1 ? `跨 ${state.blocks.length} 个块` : "当前选区");
+  selectionToolbarPopover.hidden = false;
 }
 
 function selectionPreviewText(text) {
@@ -4000,13 +7393,18 @@ function renderSelectionReview(action, state = selectionState) {
   const endBlock = state.blocks.at(-1);
   if (!endBlock) return;
   const isAsk = action === "ask";
+  const isTableCells = state.kind === "table-cells";
+  const scopeTitle = isTableCells ? "单元格选区" : "跨块选区";
+  const scopeDetail = isTableCells
+    ? `${state.rowCount} 行 × ${state.columnCount} 列 · ${state.units.length} 个单元格`
+    : `覆盖 ${state.blocks.length} 个内容块`;
   reviewSelectionState = state;
   selectionReview.hidden = false;
   selectionReview.dataset.selectionAction = action;
   selectionReview.innerHTML = `
     <div class="selection-review-head">
-      <span>跨块选区</span>
-      <small>覆盖 ${state.blocks.length} 个内容块</small>
+      <span>${scopeTitle}</span>
+      <small>${scopeDetail}</small>
     </div>
     <p>“${escapeHtml(selectionPreviewText(state.text))}”</p>
     ${isAsk ? '<textarea class="selection-prompt" placeholder="例如：找出这段论证缺少的前提，并补一个问题"></textarea>' : `<strong>${selectionActionLabel(action)}</strong><small>先生成候选 patch，不直接改写原文。</small>`}
@@ -4032,7 +7430,9 @@ function runSelectionReview() {
     return;
   }
   const label = action === "ask" ? (customText.length > 16 ? `${customText.slice(0, 16)}…` : customText) : selectionActionLabel(action);
-  const scope = `跨 ${state.blocks.length} 个块：${selectionPreviewText(state.text)}`;
+  const scope = state.kind === "table-cells"
+    ? `${state.rowCount} 行 × ${state.columnCount} 列：${selectionPreviewText(state.text)}`
+    : `跨 ${state.blocks.length} 个块：${selectionPreviewText(state.text)}`;
   selectionReview.hidden = true;
   selectionToolbar.hidden = true;
   reviewSelectionState = null;
@@ -4040,7 +7440,7 @@ function runSelectionReview() {
     label,
     reason: scope,
     customText: action === "ask" ? customText : "",
-    microTitle: "跨块选区",
+    microTitle: state.kind === "table-cells" ? "单元格选区" : "跨块选区",
     host: endBlock,
   });
   setLive("跨块 AI 候选", "选区没有被直接覆盖；建议以可接受、可拒绝的 patch 展示在选区末尾，便于保留 Markdown 映射。 ");
@@ -4049,12 +7449,47 @@ function runSelectionReview() {
 function initSelectionToolbar() {
   document.addEventListener("selectionchange", scheduleSelectionToolbar);
   paper.addEventListener("pointerup", scheduleSelectionToolbar);
-  selectionToolbar.addEventListener("pointerdown", (event) => event.preventDefault());
+  selectionToolbar.addEventListener("pointerdown", (event) => {
+    if (event.target.closest("input,textarea")) return;
+    event.preventDefault();
+  });
   selectionToolbar.addEventListener("click", (event) => {
+    if (event.target.closest("[data-copy-close],[data-selection-popover-close]")) {
+      selectionToolbarPopover.hidden = true;
+      restoreSelectionState();
+      return;
+    }
+    const copyChoice = event.target.closest("[data-copy-kind]");
+    if (copyChoice) return performCopyChoice(copyChoice.dataset.copyKind, selectionToolbarPopover._copyPayload, selectionToolbarPopover, copyChoice);
+    const color = event.target.closest("[data-selection-color]");
+    if (color) return applySelectionFormat(color.dataset.selectionColorFormat, color.dataset.selectionColor);
+    if (event.target.closest("[data-selection-link-paste]")) return pasteSelectionLinkFromClipboard();
+    if (event.target.closest("[data-selection-link-apply]")) return applySelectionLink();
+    const tableAction = event.target.closest("[data-selection-table-action]");
+    if (tableAction && selectionState?.kind === "table-cells") {
+      if (tableAction.dataset.selectionTableAction === "clear") {
+        clearTableCellSelection();
+        closeSelectionSurface();
+        return showToast("已清除单元格选择");
+      }
+      const merge = mergeableTableSelection();
+      if (!merge.valid) return showToast(merge.reason);
+      mergeSelectedCells();
+      closeSelectionSurface();
+      return;
+    }
+    const formatButton = event.target.closest("[data-selection-format]");
+    if (formatButton && selectionState) {
+      const format = formatButton.dataset.selectionFormat;
+      if (format === "link") return renderSelectionLinkForm();
+      if (format === "foreColor" || format === "hiliteColor") return renderSelectionPalette(format);
+      return applySelectionFormat(format);
+    }
     const button = event.target.closest("[data-selection-action]");
     if (!button || !selectionState) return;
     const state = selectionState;
     const action = button.dataset.selectionAction;
+    if (action === "easy-copy") return renderSelectionCopyMenu(state);
     if (action === "comment") {
       const block = state.blocks.at(-1);
       if (!block) return;
@@ -4074,6 +7509,154 @@ function initSelectionToolbar() {
     if (!action) return;
     if (action.dataset.selectionReview === "close") return closeSelectionSurface();
     runSelectionReview();
+  });
+}
+
+function initComposerPaste() {
+  paper.addEventListener("paste", (event) => {
+    if (event.target.closest?.("input,textarea")) return;
+    const image = Array.from(event.clipboardData?.files || []).find((file) => file.type.startsWith("image/"));
+    if (image) {
+      event.preventDefault();
+      insertPastedImageBlock(image, composerPasteContext());
+      return;
+    }
+    const state = getSelectionState();
+    const text = event.clipboardData?.getData("text/plain")?.trim() || "";
+    if (!state || !/^https?:\/\/\S+$/i.test(text)) return;
+    event.preventDefault();
+    selectionState = state;
+    applySelectionLink(text);
+  });
+}
+
+function appendMetadataCandidate(key, value, origin = "AI 建议") {
+  const block = document.querySelector(".frontmatter-block");
+  const grid = block?.querySelector(".metadata-grid");
+  if (!block || !grid) return false;
+  const existing = Array.from(grid.querySelectorAll(":scope > span"))
+    .find((label) => label.childNodes[0]?.textContent.trim() === key);
+  if (existing) {
+    existing.nextElementSibling?.scrollIntoView({ behavior: "smooth", block: "center" });
+    showToast(`“${key}” 已在当前 Frontmatter 中`);
+    return false;
+  }
+  block.querySelector(":scope > .metadata-property-draft")?.remove();
+  const draft = document.createElement("section");
+  draft.className = "metadata-property-draft";
+  draft.contentEditable = "false";
+  draft.innerHTML = `
+    <header><span><b>属性候选</b><small>${escapeHtml(origin)} · 尚未写入 YAML</small></span><button type="button" data-metadata-draft="cancel" aria-label="取消"><svg><use href="#i-x"></use></svg></button></header>
+    <div class="metadata-property-fields"><label>key<input data-metadata-draft-key value="${escapeHtml(key)}" /></label><label>value<input data-metadata-draft-value value="${escapeHtml(value)}" /></label></div>
+    <footer><span>先确认 key / value；接受后才写入 Frontmatter</span><div><button type="button" data-metadata-draft="cancel">取消</button><button type="button" class="is-primary" data-metadata-draft="accept"><svg><use href="#i-check"></use></svg>接受并写入</button></div></footer>
+  `;
+  draft.dataset.metadataOrigin = origin;
+  grid.after(draft);
+  block.classList.add("has-open-editor");
+  syncOpenEditorState(block);
+  draft.querySelector("[data-metadata-draft-value]")?.focus();
+  setLive("Frontmatter 属性候选", `“${escapeHtml(key)}”已进入逐字段审阅；接受前不会修改 Markdown。`);
+  return true;
+}
+
+function initMetadataProfile() {
+  const block = document.querySelector(".frontmatter-block");
+  const suggestions = document.getElementById("metadata-ai-suggestions");
+  const overlay = document.getElementById("vault-property-overlay");
+  const custom = document.getElementById("vault-property-custom");
+  const trigger = document.getElementById("vault-property-trigger");
+  if (!block || !suggestions || !overlay) return;
+  const closeLibrary = ({ restoreFocus = true } = {}) => {
+    overlay.hidden = true;
+    trigger?.setAttribute("aria-expanded", "false");
+    syncOpenEditorState(block);
+    if (restoreFocus) trigger?.focus();
+  };
+  document.addEventListener("click", (event) => {
+    const vaultAction = event.target.closest("[data-vault-property-action]")?.dataset.vaultPropertyAction;
+    if (vaultAction === "open") {
+      if (!overlay.hidden) return closeLibrary();
+      overlay.hidden = false;
+      trigger?.setAttribute("aria-expanded", "true");
+      syncOpenEditorState(block);
+      overlay.querySelector("[data-vault-property-key]")?.focus();
+      setLive("Vault 属性库", "入口跟随当前 Frontmatter 在属性框下方展开；统计范围仍是整个 Vault，选择字段后只为本文创建可审阅的 key / value 候选。 ");
+      return;
+    }
+    if (vaultAction === "close") return closeLibrary();
+    const property = event.target.closest("[data-vault-property-key]");
+    if (!property) return;
+    const opened = appendMetadataCandidate(property.dataset.vaultPropertyKey, property.dataset.vaultPropertyValue || "", property.dataset.vaultPropertyOrigin || "人工");
+    if (opened) closeLibrary({ restoreFocus: false });
+  });
+  custom?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const form = new FormData(custom);
+    const key = String(form.get("key") || "").trim();
+    const value = String(form.get("value") || "").trim();
+    if (!key || !value) return showToast("先填写自定义 key 和 value");
+    if (appendMetadataCandidate(key, value, "人工")) {
+      custom.reset();
+      closeLibrary({ restoreFocus: false });
+    }
+  });
+  block.addEventListener("click", (event) => {
+    const action = event.target.closest("[data-metadata-action]")?.dataset.metadataAction;
+    if (action === "suggest") {
+      suggestions.hidden = !suggestions.hidden;
+      syncOpenEditorState(block);
+      setLive("AI 属性建议", "建议与属性告警并列出现；每一项都必须先选择，再进入 key / value 审阅。 ");
+      return;
+    }
+    if (action === "close-suggestions") {
+      suggestions.hidden = true;
+      syncOpenEditorState(block);
+      return;
+    }
+    if (action === "choose") {
+      const choice = event.target.closest("[data-metadata-action='choose']");
+      if (!choice) return;
+      if (appendMetadataCandidate(choice.dataset.metadataKey, choice.dataset.metadataValue || "", choice.dataset.metadataOrigin || "AI 建议")) suggestions.hidden = true;
+      syncOpenEditorState(block);
+      return;
+    }
+    const draftAction = event.target.closest("[data-metadata-draft]")?.dataset.metadataDraft;
+    if (!draftAction) return;
+    const draft = event.target.closest(".metadata-property-draft");
+    if (!draft) return;
+    if (draftAction === "cancel") {
+      draft.remove();
+      syncOpenEditorState(block);
+      return showToast("属性候选已取消");
+    }
+    const key = draft.querySelector("[data-metadata-draft-key]")?.value.trim();
+    const value = draft.querySelector("[data-metadata-draft-value]")?.value.trim();
+    if (!key || !value) return showToast("key 和 value 不能为空");
+    const grid = block.querySelector(".metadata-grid");
+    const duplicate = Array.from(grid.querySelectorAll(":scope > span"))
+      .some((item) => item.childNodes[0]?.textContent.trim() === key);
+    if (duplicate) return showToast(`“${key}” 已在当前 Frontmatter 中`);
+    const label = document.createElement("span");
+    const origin = draft.dataset.metadataOrigin || "人工";
+    label.innerHTML = `${escapeHtml(key)} <i class="metadata-origin ${origin.includes("AI") ? "is-ai" : ""}">${escapeHtml(origin)}</i>`;
+    const committed = document.createElement("strong");
+    committed.textContent = value;
+    grid.append(label, committed);
+    draft.remove();
+    refreshMetadataSource(block);
+    markAccepted(block, `添加属性 ${key}`, () => {
+      label.remove();
+      committed.remove();
+      refreshMetadataSource(block);
+    }, () => {
+      grid.append(label, committed);
+      refreshMetadataSource(block);
+    });
+    syncOpenEditorState(block);
+    showToast(`已写入属性 · ${key}`);
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !overlay.hidden) closeLibrary();
   });
 }
 
@@ -4107,7 +7690,7 @@ function initAmbientDock() {
 const intelligenceReviewState = {
   changes: [],
   activeIndex: 0,
-  view: "current",
+  view: "work",
   running: false,
   ready: false,
   snapshots: new Map(),
@@ -4215,10 +7798,56 @@ function rememberIntelligenceSnapshot(block) {
 }
 
 function clearIntelligenceReviewDecorations() {
+  paper.querySelectorAll(".composer-inline-diff-text").forEach((node) => {
+    node.replaceWith(document.createTextNode(node.dataset.before || node.querySelector("del")?.textContent || ""));
+  });
+  paper.classList.remove("is-clean-reading", "is-reviewing-all");
   paper.querySelectorAll(".is-intelligence-review-target, .is-intelligence-review-visible, .is-intelligence-streaming").forEach((block) => {
     block.classList.remove("is-intelligence-review-target", "is-intelligence-review-visible", "is-intelligence-streaming");
   });
   paper.querySelectorAll("[data-intelligence-review-ui]").forEach((node) => node.remove());
+}
+
+function findReviewTextNode(surface, before) {
+  if (!surface || !before) return null;
+  const walker = document.createTreeWalker(surface, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      if (!node.textContent?.includes(before)) return NodeFilter.FILTER_REJECT;
+      if (node.parentElement?.closest("[contenteditable='false'], .composer-change-pins, .block-badges, .block-tail-actions")) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
+  return walker.nextNode();
+}
+
+function renderInlineIntelligenceChange(change, block, active) {
+  const surface = intelligenceTextSurface(block);
+  const textNode = findReviewTextNode(surface, change.before);
+  if (!textNode) {
+    const fallback = document.createElement("span");
+    fallback.className = "composer-inline-change-fallback";
+    fallback.dataset.intelligenceReviewUi = "fallback";
+    fallback.contentEditable = "false";
+    fallback.textContent = `${change.title} · 结构型候选请在对象原位审阅`;
+    surface?.after(fallback);
+    return;
+  }
+
+  const source = textNode.textContent || "";
+  const start = source.indexOf(change.before);
+  const range = document.createRange();
+  range.setStart(textNode, start);
+  range.setEnd(textNode, start + change.before.length);
+  const wrapper = document.createElement("span");
+  wrapper.className = "composer-inline-diff-text";
+  wrapper.dataset.before = change.before;
+  wrapper.dataset.status = change.status;
+  wrapper.contentEditable = "false";
+  const added = Math.max(1, Math.round((change.after || "").length / 7));
+  const removed = Math.max(0, Math.round((change.before || "").length / 12));
+  wrapper.innerHTML = `<del>${escapeHtml(change.before)}</del><ins>${escapeHtml(change.after)}</ins><i class="composer-inline-diff-meta">${active ? "当前 · " : ""}+${added} −${removed}</i>`;
+  range.deleteContents();
+  range.insertNode(wrapper);
 }
 
 function renderIntelligencePins(changes) {
@@ -4260,12 +7889,10 @@ function renderIntelligenceDocumentReview() {
   }
 
   intelligenceReviewState.activeIndex = Math.max(0, Math.min(intelligenceReviewState.activeIndex, changes.length - 1));
-  renderIntelligencePins(changes);
-  const visible = intelligenceReviewState.view === "all"
-    ? changes
-    : intelligenceReviewState.view === "original"
-      ? []
-      : [changes[intelligenceReviewState.activeIndex]];
+  paper.classList.toggle("is-clean-reading", intelligenceReviewState.view === "clean");
+  paper.classList.toggle("is-reviewing-all", intelligenceReviewState.view === "all");
+  if (intelligenceReviewState.view !== "clean") renderIntelligencePins(changes);
+  const visible = intelligenceReviewState.view === "all" ? changes : [];
   visible.forEach((change) => {
     if (!change) return;
     const block = intelligenceTargetBlock(change);
@@ -4274,22 +7901,27 @@ function renderIntelligenceDocumentReview() {
     const active = changes.indexOf(change) === intelligenceReviewState.activeIndex;
     block.classList.add(active ? "is-intelligence-review-target" : "is-intelligence-review-visible");
     if (active && intelligenceReviewState.running) block.classList.add("is-intelligence-streaming");
-    const preview = document.createElement("div");
-    preview.className = "composer-inline-change";
-    preview.dataset.intelligenceReviewUi = "preview";
-    preview.dataset.status = change.status;
-    preview.setAttribute("contenteditable", "false");
-    preview.innerHTML = `<header><span>${change.status === "accepted" ? "已接受" : change.status === "rejected" ? "已拒绝" : intelligenceReviewState.running ? "AI 草拟" : "候选"} · ${escapeHtml(change.title)}</span><b>${escapeHtml(change.scope)}</b></header><div><del>${escapeHtml(change.before)}</del><ins>${escapeHtml(change.after)}</ins></div>`;
-    block.append(preview);
+    renderInlineIntelligenceChange(change, block, active);
     if (active) block.scrollIntoView({ behavior: "smooth", block: "center" });
   });
 
   if (!nav) return;
   const active = changes[intelligenceReviewState.activeIndex];
   const inReview = controller?.stage === "review";
-  const added = Math.max(1, Math.round((active?.after || "").length / 7));
-  const removed = Math.max(0, Math.round((active?.before || "").length / 12));
-  nav.innerHTML = `<div class="composer-review-modes" role="group" aria-label="正文改动显示方式"><button type="button" data-composer-review-view="current" aria-pressed="${intelligenceReviewState.view === "current"}">当前一处</button><button type="button" data-composer-review-view="all" aria-pressed="${intelligenceReviewState.view === "all"}">全部改动</button><button type="button" data-composer-review-view="original" aria-pressed="${intelligenceReviewState.view === "original"}">原文</button></div><div class="composer-change-copy"><small>${intelligenceReviewState.view === "original" ? "原文 · 保留定位点" : intelligenceReviewState.running ? "AI 正在草拟" : active?.status === "pending" ? "候选尚未写入" : active?.status === "accepted" ? "已接受" : "已拒绝"}</small><strong>${intelligenceReviewState.activeIndex + 1} / ${changes.length}</strong><span>+${added} −${removed}</span></div><div class="composer-change-actions"><button type="button" data-composer-review-nav="previous" aria-label="上一处"><svg><use href="#i-chevron-up"></use></svg></button><button type="button" data-composer-review-nav="next" aria-label="下一处"><svg><use href="#i-chevron-down"></use></svg></button>${inReview && active?.status === "pending" ? '<button class="is-accept" type="button" data-composer-review-action="accept">接受</button><button type="button" data-composer-review-action="reject">拒绝</button>' : !inReview && !intelligenceReviewState.running ? '<button class="is-accept" type="button" data-composer-start-review>开始审阅</button>' : ""}</div>`;
+  const pending = changes.filter((change) => change.status === "pending").length;
+  const viewCopy = intelligenceReviewState.view === "clean"
+    ? "不显示洞察、告警与候选标记"
+    : intelligenceReviewState.view === "work"
+      ? "保留洞察与定位点，不展开候选"
+      : active?.title || "全部候选已在正文原位展开";
+  const reviewActions = inReview && active?.status === "pending"
+    ? intelligenceReviewState.view === "all"
+      ? '<button class="is-accept" type="button" data-composer-review-action="accept">接受</button><button type="button" data-composer-review-action="reject">拒绝</button>'
+      : '<button class="is-accept" type="button" data-composer-review-view="all">查看改动</button>'
+    : !inReview && !intelligenceReviewState.running
+      ? '<button class="is-accept" type="button" data-composer-start-review>审阅此处</button>'
+      : "";
+  nav.innerHTML = `<div class="composer-review-modes" role="group" aria-label="正文工作状态"><button type="button" data-composer-review-view="work" aria-pressed="${intelligenceReviewState.view === "work"}">工作视图</button><button type="button" data-composer-review-view="all" aria-pressed="${intelligenceReviewState.view === "all"}">全部改动</button><button type="button" data-composer-review-view="clean" aria-pressed="${intelligenceReviewState.view === "clean"}">纯净阅读</button></div><div class="composer-change-copy"><strong>第 ${intelligenceReviewState.activeIndex + 1} 处</strong><small>${escapeHtml(viewCopy)}</small><span class="composer-change-count">${pending} 处待审</span></div><div class="composer-change-actions"><button type="button" data-composer-review-nav="previous" aria-label="上一处"><svg><use href="#i-chevron-up"></use></svg></button><button type="button" data-composer-review-nav="next" aria-label="下一处"><svg><use href="#i-chevron-down"></use></svg></button>${reviewActions}</div>`;
   nav.hidden = false;
 }
 
@@ -4346,7 +7978,7 @@ function initSharedIntelligenceBridge() {
     intelligenceReviewState.running = event.detail.status === "running";
     intelligenceReviewState.ready = event.detail.status === "ready";
     intelligenceReviewState.activeIndex = 0;
-    intelligenceReviewState.view = "current";
+    intelligenceReviewState.view = "work";
     renderIntelligenceDocumentReview();
   });
   root.addEventListener("peak:intelligence-stage", (event) => {
@@ -4423,6 +8055,7 @@ function initSharedIntelligenceBridge() {
   paper.addEventListener("click", (event) => {
     const pin = event.target.closest("[data-composer-change-index]");
     if (!pin) return;
+    intelligenceReviewState.view = "all";
     window.PeakIntelligencePanel?.controller(root)?.startReview(Number(pin.dataset.composerChangeIndex));
   });
 
@@ -4434,6 +8067,9 @@ function initSharedIntelligenceBridge() {
 }
 
 initComposerCanvas();
+initBlockCollapseControls();
 initSelectionToolbar();
+initComposerPaste();
+initMetadataProfile();
 initAmbientDock();
 initSharedIntelligenceBridge();

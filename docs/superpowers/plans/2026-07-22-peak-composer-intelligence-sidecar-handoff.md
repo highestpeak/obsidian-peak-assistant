@@ -32,14 +32,28 @@ Copilot brief
 
 当前最高优先级决策：
 
+- 最终宿主是独立 Peak Composer View；它读写同一 Markdown/native source，但不修改现有 Obsidian Markdown CodeMirror 编辑器。
 - 顶层只有 `Copilot / History`。
 - `Ambient` 是 Copilot 背后的感知和排序 runtime，不再是第三个用户 tab。
 - Copilot 生命周期是 `brief -> session -> running -> session / review`，不是永久 stage rail。
 - 用户不说话时，Copilot 默认展示主动整理好的 brief；开始具体协作后才显示对话与输入框。
 - AI 候选改动必须回到正文实际 anchor 审阅，侧栏不保存第二份结果真相。
+- 经 additive draft runtime 生成的语义 AI 新增草稿（补充段、问题列表、生成式表格/图片候选等）必须在正文 anchor 的同一事务中提供 `告诉 AI 这版怎么改… | 上一版 / 下一版 | 接受 | 重新生成 | 丢弃`；原地 rewrite diff 的 review bar 复用同一个输入原语并由 Enter / `重新生成`提交。空输入是普通重生成；非空输入必须冻结进下一候选的 run context，在状态文案中可见，并保留在输入框里供下一轮继续编辑，但接受前不得进入 Markdown。视觉上它是正文里的内联草稿，而不是绿色嵌套卡片：正文保持中性白底和中性边框，不使用彩色左边条或悬浮阴影；只用紧凑、单基线的 review footer 标记未提交状态。单一候选不显示无效的左右箭头；存在多个候选后才显示由 `previous / count / next` 组成的 30px 分段控件，并与接受、重新生成、丢弃严格等高居中。接受前隐藏 collapse / drag / 普通 Block action row，接受成为真实 Block 后再恢复。文本候选的初次生成和重新生成都必须在真实候选正文位置逐步流式写出，带 live caret / progress；禁止先等待固定时长再一次性替换为完整段落。`重新生成`直接追加新的 review-only candidate，不得要求先丢弃再回到上方 AI action，也不得静默覆盖上一版；用户可在未写入状态比较版本，接受时只提交当前可见且已完成的版本。流式生成期间禁用接受、再次生成和版本切换，但指令框仍可编辑以准备下一次要求，丢弃始终可用。图片生成使用真实的理解/构图/附件阶段，不伪装成文字打字；确定性的排序、转置、格式转换和 object patch 继续使用重算/还原合同，不套用生成版本。
+- `列表 -> 表格`属于 structural object transform，不属于 additive draft：当前真实列表在页面上始终只显示一份且保持可读，审阅区只显示候选表格，禁止再复制一个“原列表”、箭头或 before 卡片。`替换为表格`才用候选表格原地替换当前列表；`保留原列表`只关闭候选。Undo 可以持有不可见的内部快照，但不得把快照渲染成第二份正文。
+- Composer 不假设 Obsidian 会提供一条自定义生产顶栏；原型的 `Composer View / Diff 样式库 / Markdown 已保存` 只是演示 chrome，不承载 `Undo / Redo`。一组标准 Undo2/Redo2 图标常驻在 Composer 自己的底部文档状态栏右侧，位置稳定、无事务时保持禁用。`⌘Z / Ctrl+Z` 撤销、`⇧⌘Z / Ctrl+Y` 重做始终可用；真实提交、撤销或重做后，正文画布下缘另短暂出现一条事务反馈，只显示当前有效动作和精确事务名，自动消失不清空栈。Undo 后发生新提交必须清空 Redo 分支。AI 候选未接受前只使用还原/丢弃/版本切换，不进入文档栈；焦点位于普通输入框、AI 定向重生成输入或正文编辑范围时，撤销仍由该输入控件原生处理。Block 的 History 时钟只浏览该对象的 AI 候选历史，不能改成 Undo 图标。History 仍是跨会话可审计账本，必须同时记录用户直接编辑、AI 辅助后接受、AI 后调整和显式系统回滚；它和当前会话的 Undo/Redo 游标不是同一个界面。
+- 选择工具栏把确定性格式、Paste URL、Easy Copy、评论和 AI 放在一个表面；单一语义文本片段不显示冗余范围标签，真实跨 Block、跨列表项或跨单元格才显示范围。加粗、斜体、删除线、Underline、文字色和 Highlightr 都允许覆盖跨段落 / 跨 Block / 跨 item / 跨 cell 的可见选区，但同一次操作必须编译为各语义单元内部独立的 inline patch，并共享一个事务/undo ID；严禁让格式节点包住 `p / li / ul / table / tr / td / th / doc-block`。标准格式逐单元写 Markdown，Underline/颜色/标记逐单元写显式 HTML-enhanced Markdown。链接只允许一个语义单元：向非折叠的一单元选区直接粘贴 `http(s)` URL 才包成 Markdown link，多单元选区保留普通粘贴语义。字体大小不进入工具栏。Code Block 是例外边界：选中 fence 内源码不得出现任何富文本格式动作。Easy Copy 同时支持选区、完整 Block 和可寻址公式子块，固定顺序为纯文本 / 图片 / Markdown（公式为 LaTeX）/ HTML；点击即复制并原位短暂显示对号，不再打开预览或二次确认。图片路径必须把页面上的原始可见 HTMLElement 与点击时 bounding box 直接交给 DOM-to-image adapter 生成 2× canvas/PNG。浏览器栅格化内部允许 clone/serialize，但必须锁定原 box、对用户不可见，并且只过滤编辑控件。不得重做分享卡、改变表格列宽/换行、把列表压平，或把 KaTeX 退化成源码。公式组与 PageRank / TextRank / Louvain 等每个公式子块都可单独复制。
+- Composer 直接粘贴图片是正文光标动作，不出现在既有图片的 hover 工具栏中。折叠光标处创建新的图片 Block；若光标位于段落中间，则拆为“前半段落 -> 图片 Block -> 后半续段”。随后自动生成可编辑语义文件名，审阅后才写 Vault 附件和 embed。既有图片 hover 工具栏提供 Image Converter（裁剪、旋转、翻转、尺寸、压缩、格式转换、清理元数据）、重命名、Easy Copy、AI 图注与 AI 改图。`AI 图注` 必须作用于同一图片 frame 的现有 `figcaption`：候选在该行流式生成并原位 diff，review bar 紧贴 caption 留在 figure 内；只有原本没有 caption 时才创建 caption slot。禁止把图注生成成图片块之后的新正文段落。接受后更新图片 Block 的 caption source 与 History。程序变换和 AI 语义/像素变换分轨；默认创建新附件并替换受控引用，禁止静默覆盖原图。
+- 每个 block 有左侧 disclosure control，并与其下方 drag handle 使用同样的 30×30 边框、圆角、图标粗细和点击热区。展开态显示向上箭头，表示“向上收起”；折叠态显示向下箭头，表示“向下展开”，禁止再用向左箭头。普通块折成一行，heading 折叠其 section。折叠是 Composer view state，不写回 Markdown。
+- Frontmatter 使用完整属性表面，并消费 app-owned Vault 字段/标签统计。`Vault 属性库` 的数据范围是整个 Vault，但入口只在 Frontmatter 悬浮操作栏中作为确定性动作出现，与该块的其他操作同排；禁止占用 Composer 全局顶栏，也禁止在属性框下面常驻“从全库字段中添加属性”一行。点击后属性库才在属性框下方原位展开，不打开全屏 modal；界面要明确写出“统计范围是整个 Vault”，避免局部位置被误解为本文统计。用户在属性库选择字段或自定义 key/value 后，当前文档只出现一个可编辑候选；接受后才写 YAML，禁止静默 `添加属性`。`AI 属性建议 · N` 与 `属性告警` 并列，语义字段始终逐字段审阅；确定性字段可由程序补齐。
+- 表格默认保存 pipe Markdown。`对齐`、`排序`、`公式`、`合并`、`转置`都必须产生可见、可保存、可回滚的真实结果，不能只弹 toast：未预选单元格时，对齐/排序采用一个可见默认数据列并把当前列与方向显性标出；公式用列级编辑器实时计算 `COUNTA / COUNT / COUNTUNIQUE`，接受后增加汇总行并保存可检查的 `TBLFM` 注释；合并在没有完整范围时进入明确的“两角点”矩形选择模式，不能依赖未说明的 Shift-click 规则。矩形选区合并后，由于 pipe table 不支持 `rowspan / colspan`，该块显式升级为 Markdown 文件中的原生 HTML `<table>`，并保留 undo。`图表`从表格创建独立 Chart Block 候选，支持柱状/折线/饼图；源保存为可检查的 fenced `chart` code block，Composer 负责真实渲染，接受前不写入。
 - 只有真实写入进入 History；建议、来源、洞察、Trace 和拒绝项留在 Run record。
-- 侧栏保留小型相关材料关系图；弹出的完整材料浏览器必须复用生产 Vault Search Result Browser。
+- 侧栏保留小型相关材料关系图；`打开完整视图` 仍留在 Composer 内，并挂载从 Vault Search / Quick Search 组件中抽取的 shared controlled `ResultBrowser`。它不跳转到搜索功能，也不重新检索。
+- 正文块的 `AI 建议` 与 Copilot Brief 必须投影同一个 app-owned `SuggestionFinding`，共享去重、忽略、已解决和失效状态。
+- 主动智能必须用“保留的有用结果/主动介入”与错误、打扰、stale、rollback、输入性能护栏共同评价，不能只看接受率。
 - 窄屏始终是 fixed right drawer，绝不掉到正文下面。
+- Composer 的组件一致性按“角色 + 密度 + 状态”判断，不按是否 AI 判断。Block 同行普通/AI 操作共用 28px 胶囊动作；selection/object tools 共用 28px + radius-md；disclosure/drag 共用 30×30 rail；review 共用 30px + radius-md；status chip 才使用 pill；shell/panel 使用 radius-lg。完整合同见 [`2026-07-22-peak-composer-component-consistency.md`](../specs/2026-07-22-peak-composer-component-consistency.md)。
+- PageRank / TextRank / Louvain 等可寻址公式子块不得保留“两级操作”：公式卡内只出现一条 `在下方插入 / 复制 / 评论 | 解释公式 / 拆分公式 / 变量表 / History / 指令` 操作栏，不再先显示 `AI · N` 再展开第二行。普通动作、历史、长指令以及 `解释公式 / 拆分公式 / 变量表` 全部锚定当前公式子块。点击任一公式的 `变量表`，结果必须紧贴该公式在卡内展开，只显示该公式的符号与说明；禁止投影到父公式组，禁止顺带展示其他公式，也不出现 `仅当前 / 全组`、任意多选或共享变量区。每个公式子块独立维护自己的展开状态：PageRank、TextRank、Louvain 的变量表可以同时存在，打开或关闭其中一个不得影响其他公式。若未来确有跨公式对照需求，必须在父公式组提供独立且明确命名的“跨公式比较”能力，不能借用单公式的 `变量表` 按钮。
+- `[[Vault link]]` 与外部 URL 首先必须是可导航的语义链接，不得只做成触发 AI 菜单的装饰 chip。点击 Vault link 要把精确 note/subpath/anchor 交给 Obsidian host；点击外链要保留并打开真实 URL，不能替换当前 Composer 文档。悬浮 popover 的第一项必须是 `打开 note.md` / `访问 https://…` 这类直接目标，解释关系、同步要点、抓取摘要等 AI 动作排在其后。失效 Vault link 明确禁用导航，只显示修复或移除。
 
 选定的视觉与状态 acceptance URL：
 
@@ -56,6 +70,9 @@ file:///Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obs
 # 同组件的小 DOM host
 file:///Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/gstack/peak-composer-editing-view-2026-07-09/intelligence-lab.html?mode=copilot&stage=brief
 
+# 对象原位 Diff 与三种文档状态
+file:///Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obsidian-peak-assistant/docs/gstack/peak-composer-editing-view-2026-07-09/diff-patterns-lab.html?view=all
+
 # adaptive lifecycle 状态
 .../intelligence-ia-lab.html?variant=adaptive&mode=copilot&stage=session
 .../intelligence-ia-lab.html?variant=adaptive&mode=copilot&stage=review
@@ -68,7 +85,7 @@ file:///Users/zhangjike/code/my-code/mobius-highestpeak-kb/.obsidian/plugins/obs
 
 当文档互相冲突时，按以下顺序判断：
 
-1. 本交接文件与当前 [`Composer Intelligence Sidecar UI Contract`](../specs/2026-07-15-composer-intelligence-sidecar-ui.md)。
+1. 本交接文件、当前 [`Composer Intelligence Sidecar UI Contract`](../specs/2026-07-15-composer-intelligence-sidecar-ui.md) 与 [`Composer Component Consistency Contract`](../specs/2026-07-22-peak-composer-component-consistency.md)。
 2. [`Composer Block AI Capability Contract`](../specs/2026-07-15-composer-block-ai-capability-contract.md)。
 3. 当前共享静态组件 `intelligence-panel.js` / `intelligence.css` 与 adaptive acceptance fixture。
 4. `README.md` 的 source-of-truth 与验证说明。
@@ -135,6 +152,25 @@ brief 是 Copilot 默认打开的主动工作面，不是聊天历史，也不�
 - “还没安放的想法”不是 todo；是否整理或写入由用户决定。
 - 不显示“Ambient 只负责……”这类设计说明。
 
+### SuggestionFinding 跨表面合同
+
+正文块旁的 `AI 建议` 与 Brief 中对应的推荐不是两条建议。它们以同一个 stable finding ID 和 evidence fingerprint 为真相，在两个位置投影：
+
+- 多个 detector 或 refresh 对同一 anchor、kind 和 evidence 的发现只产生一个 active finding；
+- 在任一位置 snooze、dismiss、consume 或判定 stale，另一位置立即同步；
+- dismissed 绑定当前 evidence revision，不得在每次扫描后重新出现；只有证据实质变化并重新过阈值时才能重新签发；
+- accepted AI change 或已验证 direct edit 可把 finding 标记为 consumed，并链接到 change/transaction，但 finding 本身不进入 History；
+- anchor/evidence 已变化的旧 finding 变为 stale，不能继续启动旧动作或应用旧候选；
+- hover、seen/unseen、expanded 和 scroll 只是表面状态，不能生成第二套 lifecycle owner。
+
+### Composer Block 单行操作合同
+
+- Block hover/focus 后只出现一行操作，顺序为：`在下方插入 / 复制 / 评论 / 当前 AI 快捷建议 / 历史 / 指令`。
+- 不再显示需要二次点击的 `AI 建议 · N` 入口；快捷建议在这一行直接可见、直接触发 review-only candidate。
+- 工具栏出现本身不执行 AI；只有点击某条快捷建议或提交 `指令` 才开始生成。
+- `在下方插入` 只是移动到合并行，原来的 inline insert strip、再次点击收起和 draft transaction 语义保持不变。
+- 合并行属于 Composer chrome：复制 Block 图片/内容时过滤，选中文字、干净阅读、Block 折叠时隐藏；窄宽度内部滚动，不能撑出正文横向溢出。
+
 ### 建议更新设置
 
 感知频率与执行策略必须分开。
@@ -147,6 +183,12 @@ brief 是 Copilot 默认打开的主动工作面，不是聊天历史，也不�
 - 独立开关 `自动准备待审改动`：符合策略时可以生成候选，但仍需用户审阅。
 
 任何组合都不能自动接受、自动提交或静默写入正文。UI 不再直接使用“智能 / 持续 / 自动运行”这些难懂名字。
+
+主动智能的完整评价合同由 [`Composer Intelligence Sidecar UI Contract`](../specs/2026-07-15-composer-intelligence-sidecar-ui.md#proactive-intelligence-evaluation-contract) 负责。本交接只锁定三条边界：
+
+- 北极星是每次主动介入产生、并在后续文档检查点仍保留的有用结果；
+- 错误/无依据、dismiss/ignore、stale/anchor mismatch、rollback failure 和编辑器输入退化是硬护栏；
+- 质量、自主性、Review 控制、效率、可靠性和本地性能都要分段观测，正文、prompt 和来源全文默认不为指标上传或持久化。
 
 ### Copilot session
 
@@ -249,9 +291,11 @@ session 标题来自任务本身，不使用空泛的“对话”作为页面名
 
 正文提供三种 view state：
 
-- `current`：只展开当前 active change 的完整原位 diff。
-- `all`：所有候选在各自 anchor 原位显示，仍只有一个 active change。
-- `original`：显示 committed source，不显示 pending candidate，但保留轻量定位 pin。
+- `work` / `工作视图`：显示 Composer 正文、AI insight/claim/warning 与 change pin，但不展开候选。
+- `all` / `全部改动`：所有候选在各自 anchor 原位显示，仍只有一个 active change。
+- `clean` / `纯净阅读`：显示 committed Composer rendering，不显示 AI decoration、candidate 或 pin。
+
+不再提供永久 `当前一处` 模式。点击 pin、queue 或 previous/next 仍只改变同一 `activeChangeId`；需要显示候选时切入 `全部改动` 并聚焦对象。
 
 每个候选拥有稳定、按 source order 编号的 pin。以下入口必须选择同一个 active change：
 
@@ -265,6 +309,7 @@ session 标题来自任务本身，不使用空泛的“对话”作为页面名
 表现与安全：
 
 - 文本默认在同一上下文显示删除线与新增高亮；Before / After 只是辅助检查视图。
+- list/checklist 在 item 内显示 edit/insert/delete/move；table 在 cell/row/column 内显示；image 在同一 frame 切换原图/候选并单独 diff alt/caption；Frontmatter 在 field row 内显示来源与候选。
 - 流式候选未完成时不可接受。
 - 新增内容要成为真实 paragraph、list、table、formula、image 或 native object draft，不是解释卡。
 - 接受后变成普通正文，不永久保留大号 AI 标签。
@@ -275,20 +320,22 @@ session 标题来自任务本身，不使用空泛的“对话”作为页面名
 
 ### History
 
-History 只记录真实改变：
+History 只记录真实改变；Sidecar 审阅接受与 Composer 块内 `润色改写` 等局部 AI 动作接受必须进入同一事务桥，不能只进入当前会话 Undo/Redo 栈而漏掉 History：
 
 - 用户直接编辑；
 - AI 辅助且用户已接受；
 - AI 建议后用户调整再接受；
 - 系统回滚。
 
-列表按日期分组，一眼显示作者来源、动作、目标、时间和范围，并支持很长时间线。
+列表先按日期分组，再允许把同一显式批次的相邻事务折成一行：直接编辑使用 edit-burst/session ID 显示为 `连续直接编辑 · N 处`，AI 写入使用 `runId/changeSetId` 显示为 `本轮 Copilot 写入 · N 处`。禁止只凭“时间接近”猜测批次。折叠只改变 History projection；顶部仍统计真实事务数，展开后每一笔仍显示作者来源、动作、目标、时间和范围。
 
 点击事务打开 modal，而不是在窄侧栏内永久展开长 diff。Modal 默认是 source-ordered unified inline diff，可切换完整 `Before / After`，并提供定位和安全回滚。
 
 只有当前目标仍等于该事务的 accepted snapshot 时，才允许直接 inverse rollback；后续已经修改时必须说明冲突并停止破坏性覆盖。
 
-同一 run 的多个 accepted change 可以按 batch 视觉分组，但每个 change 都是独立、可定位、可 diff、可回滚的事务。
+同一 edit burst 的多个直接编辑、以及同一 run/change set 的多个 accepted change 都可以按 batch 视觉分组，但每个 child transaction 都是独立、可定位、可 diff、可回滚的事务。组本身不能成为新的写入事实或回滚单位。
+
+Undo/Redo 复用同一批已提交事务，但只是当前编辑会话的线性游标：Undo 把最近事务移入 Redo 分支，Redo 重新应用；Undo 后的新提交清空该分支。它不删除 History receipt，也不允许把未接受候选伪装成可撤销写入。History 中的“回滚”仍追加一笔显式 inverse transaction，不能偷换成移动本地 Undo 游标。
 
 Run 与 History 双向关联：
 
@@ -297,7 +344,7 @@ Run 与 History 双向关联：
 - History 可返回并定位原 Copilot receipt。
 - rejected、stale、preview-only、Insights、Sources 和 Trace 不复制进 History。
 
-### 相关材料与 Vault Search
+### 相关材料完整视图与共享结果组件
 
 这是本轮最后一次明确纠偏，必须完整保留。
 
@@ -311,7 +358,9 @@ Run 与 History 双向关联：
 - `查看来源 / 带入协作`；
 - `打开完整视图`。
 
-只有弹出的宽幅 modal 复用生产 Vault Search Result Browser。Composer static mock 不得重新实现或仿制：
+点击 `打开完整视图` 后，用户仍留在 Composer。Composer-owned 宽幅 modal 接收当前已经生成的 immutable material snapshot，并挂载 shared controlled `ResultBrowser`；它不导航到 Vault Search / Quick Search，不接管它们的 store，也不重新执行 query。Vault Search / Quick Search 只是组件抽取来源和另一个 consumer。
+
+Composer static mock 不得重新实现或仿制：
 
 - List；
 - Folder / Tree；
@@ -328,7 +377,7 @@ Run 与 History 双向关联：
 - List / Folder 使用全部 items；Graph node cap 不能截断列表。
 - List leaf ID 与 Folder file ID 完全同源；Graph source ID 是 items source ID 的子集。
 - 侧栏预览与 explorer 使用同一 snapshot revision 和 selected source；切换 view 不重新检索。
-- Vault Search 与 Composer 共用 controlled renderers，不共享 host store。
+- Vault Search / Quick Search 与 Composer 共用 controlled renderers，不共享 host store、query lifecycle 或导航状态。
 - Vault Search 保留 query lifecycle、search store、global cursor、hub navigation 和 telemetry。
 - Composer adapter 负责 frozen snapshot、当前对象、关联理由、source inspector、context chips 和 session handoff。
 
@@ -374,9 +423,9 @@ Run 与 History 双向关联：
 | Copilot session | Copilot execution owner | thread、draft、chips、run snapshot、工具状态 |
 | Run record | app-owned run store | Changes / Insights / Sources / redacted Trace 与未接受结果 |
 | ProposedChangeSet | app-owned review controller | stable IDs、source order、revision/stale、active change |
-| Document review projection | Composer editor | anchors、pins、current/all/original、streaming draft |
+| Document review projection | Composer editor | anchors、pins、work/all/clean、streaming draft |
 | History transaction | append-only transaction owner | 只有真实写入、source snapshot、定位、回滚、provenance |
-| Related Result Browser | shared controlled UI + host adapters | renderer 同源，Quick Search / Composer host state 分离 |
+| Related Result Browser | shared controlled UI + host adapters | Composer 内嵌完整视图；renderer 同源，Quick Search / Composer host state、query 与导航分离 |
 
 关键对象不能混淆：
 
@@ -433,7 +482,7 @@ Run 与 History 双向关联：
 
 本轮成果是 owner-reviewed static design、状态合同和 QA。它不是 Obsidian production sidecar，也不证明真实 AI、voice transcription、editor write、JSONL/SQLite History、shared Result Browser 或 persistence 已接通。
 
-当前工作树包含未提交的 sidecar 波次。下一会话必须以 working tree 为准，先检查重叠文件；不得从 Git HEAD 恢复这些文件，也不得删除 untracked 的新 Result Browser fixture/QA。
+下一会话必须以开始工作时的实际 working tree 为准，先检查重叠文件并保留用户改动；不要根据本交接创建时曾经存在的 dirty-tree 状态推断当前 Git 状态。
 
 IA fixture 为了验证复杂语义，展示了更多候选改动、多 Run receipt 和较丰富的 recommendation message；shared host 的演示数据更少。合流时要对齐状态语义和 ownership，不要复制某个 fixture 的 `8 / 38 / 37 / 19` 数量、静态文案或整套 IA CSS/JS。
 
@@ -459,7 +508,8 @@ IA fixture 为了验证复杂语义，展示了更多候选改动、多 Run rece
 
 ### Phase 0：锁正文 owner
 
-- 以另一会话的完整 Composer 正文方案为 host baseline。
+- 生产宿主锁定为独立 Peak Composer View；不得把 Composer 行为装入现有 Obsidian Markdown CodeMirror editor。
+- 以 owner-reviewed 的完整 Composer 正文方案为独立 view baseline。
 - 记录它的 block IDs、focus/selection、source ranges、native object adapters、document footer 和 narrow layout。
 - 不把当前 `index.html` 的正文 wholesale 覆盖过去；当前 index 只提供 sidecar host bridge 参考。
 - 明确 protected scope：正文排版、block 编辑、Atlas 边界和 native file source ownership 不因接入 sidecar 被重做。
@@ -475,6 +525,7 @@ IA fixture 为了验证复杂语义，展示了更多候选改动、多 Run rece
 
 - 将 host 的 focused block、selection、nearby content 和 source revision 投影为 sidecar live context。
 - 保存 brief snapshot、session draft/chips/thread、review state、History state 和各自 scroll/focus。
+- 保存 block/section collapse state、selection formatting transaction、Frontmatter profile drill-in 与 `work/all/clean` document view state。
 - 生产实现使用 typed ports；static mock 可暂时保留现有 event bridge。
 
 ### Phase 3：接 brief 与 session handoff
@@ -495,7 +546,7 @@ IA fixture 为了验证复杂语义，展示了更多候选改动、多 Run rece
 
 - 使用真实 document anchors 渲染 streaming candidates。
 - 统一 `activeChangeId`、stable pins、pending queue 和 previous/next。
-- 实现 `current / all / original` projection。
+- 实现 `work / all / clean` projection。
 - accept/reject active-only，并在提交前做 source revision/stale validation。
 
 ### Phase 6：接 History
@@ -509,7 +560,8 @@ IA fixture 为了验证复杂语义，展示了更多候选改动、多 Run rece
 
 - 保留 sidecar compact graph preview。
 - 实现 Composer immutable material snapshot adapter。
-- 先抽 production controlled Result Browser，再让 Quick Search 与 Composer 两个 adapter 同时接入。
+- 先从 Vault Search / Quick Search 的 store-bound host 中抽 production controlled Result Browser，再让 Quick Search 与 Composer 两个 adapter 同时接入。
+- `打开完整视图` 在 Composer-owned modal 内消费现有 snapshot；不得跳转到搜索 host 或触发第二次检索。
 - 不把 static modal marker、vanilla renderer 或 store-bound Quick Search host 当作生产复用。
 
 ### Phase 8：响应式、可访问性与回归
@@ -532,10 +584,12 @@ IA fixture 为了验证复杂语义，展示了更多候选改动、多 Run rece
 - [ ] recommendation、tool、receipt 都使用统一 message-item grammar。
 - [ ] 每个 run 的四类 artifacts 内嵌在同一 receipt。
 - [ ] 候选改动流式出现在正文真实 anchor。
-- [ ] current/all/original、pin、queue、previous/next 共享 active change。
+- [ ] work/all/clean、pin、queue、previous/next 共享 active change。
 - [ ] History 只记录真实写入，按日期/作者展示并支持安全回滚。
 - [ ] 侧栏 compact related graph 保留。
-- [ ] expanded related modal 使用共享 Vault Search Result Browser；static mock 只显示 reuse marker。
+- [ ] expanded related modal 留在 Composer，并使用从 Vault Search / Quick Search 组件中抽取的 shared controlled ResultBrowser；不跳转、不共享 search store、不重复检索，static mock 只显示 reuse marker。
+- [ ] 正文 `AI 建议` 与 Brief 对同一 SuggestionFinding 的 dismiss/consume/stale 状态完全同步。
+- [ ] 主动智能按 retained useful outcome 与质量、自主性、控制、效率、可靠性和本地性能护栏验证，不以接受率单独判定成功。
 - [ ] 窄屏是 fixed right drawer，不掉到正文下面，不产生横向 overflow。
 - [ ] `index.html` 与 `intelligence-lab.html` 消费同一 sidecar version。
 - [ ] 未把 fixture timer、固定数据、静态坐标、内存事务或 deterministic voice 搬入生产。
@@ -566,7 +620,7 @@ CAPTURE_SCREENSHOTS=0 node docs/gstack/peak-composer-editing-view-2026-07-09/int
 - wide brief；
 - wide session；
 - run receipt expanded；
-- document review current/all/original；
+- document review work/all/clean；
 - History modal；
 - compact material graph 与 expanded reuse boundary；
 - narrow drawer close/reopen/locate document。
@@ -593,6 +647,7 @@ intelligence-ia-lab.html?variant=adaptive&mode=copilot&stage=brief
 
 目标：
 - 保留你当前完整 Composer 正文设计作为 host baseline，不 wholesale 替换正文。
+- 生产宿主是独立 Peak Composer View，不修改现有 Obsidian Markdown CodeMirror editor。
 - 把共享 Intelligence shell、brief/session/review 生命周期、正文原位 Review、History、PromptInput 和相关材料合同接进去。
 - intelligence-lab.html 继续作为同组件小 DOM 调试入口。
 - 主 host 与 lab 使用同一 sidecar implementation/version。
@@ -604,11 +659,13 @@ intelligence-ia-lab.html?variant=adaptive&mode=copilot&stage=brief
 - 一个 run 的 Changes / Insights / Sources / redacted Trace 内嵌在同一 receipt。
 - AI 候选必须回到正文真实 anchor；正文是 Review 真相。
 - History 只记录 accepted/direct/rollback transactions。
-- sidecar compact material graph 保留；expanded modal 复用 production Vault Search Result Browser，不在 Composer mock 重画 List/Folder/Graph。
+- sidecar compact material graph 保留；expanded modal 留在 Composer 内，复用从 Vault Search / Quick Search 抽取的 shared controlled ResultBrowser，不跳转到搜索 host、不重新检索，也不在 Composer mock 重画 List/Folder/Graph。
+- 正文 AI 建议与 Copilot Brief 对同一个 SuggestionFinding 共享 stable ID、去重、dismiss、consume 和 stale lifecycle。
+- 主动智能必须有 retained-usefulness 北极星和错误、打扰、stale、rollback、输入性能护栏，不能只看 acceptance rate。
 - 窄屏必须是 fixed right drawer，不能掉到正文下面。
 - 不恢复三-tab、永久工作台/对话 rail、永久 queue rail、card wall 或蓝色整栏底色。
 
-先做 read-only overlap audit，列出完整 Composer host 与 sidecar 的 ownership/DOM/state/event 冲突，再给出最小合流 DAG。确认没有覆盖用户现有正文设计后再实施。保留当前 dirty worktree 中的 sidecar 文件，不从 Git HEAD 回滚。完成后跑无截图快速 QA；只有方向收口时集中截图一次。
+先做 read-only overlap audit，列出完整 Composer host 与 sidecar 的 ownership/DOM/state/event 冲突，再给出最小合流 DAG。确认没有覆盖用户现有正文设计后再实施。开始时重新检查 working tree，保留所有用户改动，不根据本交接创建时的旧 Git 状态做恢复。完成后跑无截图快速 QA；只有方向收口时集中截图一次。
 
 交付：
 1. 合并后的 Composer mock；
@@ -620,11 +677,10 @@ intelligence-ia-lab.html?variant=adaptive&mode=copilot&stage=brief
 
 ## 本轮不应替下一会话做的决定
 
-本交接没有看到另一会话的完整 Composer source，因此没有替它决定：
+以下实现细节仍未锁定：
 
-- 使用哪一个完整 Composer HTML 作为最终 host；
-- 是否继续沿用当前 `index.html` 的正文 DOM；
-- 生产 React Composer owner 的最终文件路径；
+- 独立 Composer View 的 production React owner 最终文件路径；
+- 是否继续沿用当前 `index.html` 的正文 DOM 作为 production implementation reference；
 - shared Result Browser 的最终 package API；
 - sensing、run record、History 的最终 persistence schema。
 

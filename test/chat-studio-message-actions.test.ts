@@ -113,14 +113,23 @@ function testTraceDisabledWithoutDebugRunId(): void {
 function testLayoutWideNoOverflow(): void {
 	const msg = makeAssistantMessage({ debugRunId: 'run-1' });
 	const actions = getApplicableActions(msg).filter((a) => !a.destructive);
-	// Very wide row and small per-action width: everything adaptive fits inline.
+	// Very wide row and small per-action width: every adaptive fits inline. The
+	// only overflow left is Trace (overflowOnly) — always in the More popover.
 	const layout = computeActionLayout(10000, actions, 100);
-	assert.strictEqual(layout.overflow.length, 0, 'no overflow when width is abundant and no destructive');
-	// Persistent + all adaptive should be inline.
+	assert(
+		layout.overflow.every((a) => a.overflowOnly),
+		'wide layout overflow must contain only overflowOnly actions (Trace)',
+	);
+	// Sub-actions (copy-markdown / copy-json) never appear as row buttons.
 	const inlineIds = new Set(layout.inline.map((a) => a.id));
-	for (const a of actions) {
+	assert(!inlineIds.has('copy-markdown') && !inlineIds.has('copy-json'), 'sub-actions must not render inline');
+	// Every inline-eligible action (non-sub, non-overflowOnly) is inline.
+	for (const a of actions.filter((x) => !x.subOf && !x.overflowOnly)) {
 		assert(inlineIds.has(a.id), `expected ${a.id} inline in wide layout`);
 	}
+	// Trace is present, but in overflow — not inline.
+	assert(!inlineIds.has('trace'), 'Trace must live in overflow, not inline');
+	assert(layout.overflow.some((a) => a.id === 'trace'), 'Trace must be in overflow');
 }
 
 function testLayoutNarrowReversePriority(): void {
@@ -143,18 +152,18 @@ function testLayoutNarrowReversePriority(): void {
 		assert(!overflowIds.has(pid), `persistent ${pid} appeared in overflow`);
 	}
 
-	// Reverse-priority demotion: the LOWEST adaptive priority (copy-json,
-	// priority=100) must be in overflow before higher-priority adaptives.
-	// Since copy-json has the lowest priority, it must be demoted.
-	assert(overflowIds.has('copy-json'), 'lowest-priority copy-json should demote first');
+	// Reverse-priority demotion: the LOWEST adaptive priority (copy-trace-json,
+	// priority=50) must be in overflow before higher-priority adaptives.
+	assert(overflowIds.has('copy-trace-json'), 'lowest-priority copy-trace-json should demote first');
 }
 
 function testLayoutMoreShownOnlyWhenNeeded(): void {
 	const msg = makeAssistantMessage({ debugRunId: 'run-1' });
-	// Exclude destructive so we can verify "wide with no overflow".
-	const actions = getApplicableActions(msg).filter((a) => !a.destructive);
+	// Exclude destructive AND overflowOnly (Trace) so we can verify "wide keeps
+	// every ADAPTIVE inline" — no adaptive is demoted purely by width.
+	const actions = getApplicableActions(msg).filter((a) => !a.destructive && !a.overflowOnly);
 	const wide = computeActionLayout(10000, actions, 60);
-	assert.strictEqual(wide.overflow.length, 0, 'wide layout must not force More');
+	assert.strictEqual(wide.overflow.length, 0, 'wide layout must not demote any adaptive');
 }
 
 function testEmptyActionsSafe(): void {
@@ -169,7 +178,10 @@ function testInvalidWidthKeepsActionsInline(): void {
 	// A zero/NaN width shouldn't discard adaptive actions; treat as "unknown
 	// → keep everything inline so no user-visible action goes missing".
 	const layout = computeActionLayout(0, actions, 100);
-	assert(layout.inline.length === actions.length, 'zero width must keep all actions inline');
+	// Sub-actions and overflowOnly (Trace) are never inline-eligible; every other
+	// action must survive inline so no measurable action goes missing.
+	const inlineEligible = actions.filter((a) => !a.subOf && !a.overflowOnly);
+	assert.strictEqual(layout.inline.length, inlineEligible.length, 'zero width must keep all inline-eligible actions inline');
 }
 
 // ── Runner ───────────────────────────────────────────────────────────────────

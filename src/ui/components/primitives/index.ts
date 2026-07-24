@@ -24,6 +24,7 @@ export type { SegmentedOption, SegmentedProps } from './Segmented';
 export {
 	Popover,
 	PopoverTrigger,
+	PopoverAnchor,
 	PopoverPortal,
 	PopoverContent,
 	PopoverItem,

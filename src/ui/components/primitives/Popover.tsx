@@ -9,6 +9,13 @@ export const Popover = PopoverPrimitive.Root;
 /** Radix Popover Trigger re-export. */
 export const PopoverTrigger = PopoverPrimitive.Trigger;
 
+/**
+ * Radix Popover Anchor re-export — positions the content without hijacking the
+ * click to toggle open. Use for hover-driven popovers where the anchor element
+ * keeps its own click behaviour (e.g. the Copy split button).
+ */
+export const PopoverAnchor = PopoverPrimitive.Anchor;
+
 /** Radix Popover Portal re-export — use when explicit portal control is needed. */
 export const PopoverPortal = PopoverPrimitive.Portal;
 

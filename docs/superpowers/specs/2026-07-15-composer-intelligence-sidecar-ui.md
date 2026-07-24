@@ -37,7 +37,7 @@ Ambient 不是第三个 tab，也不是第二套 AI 系统。它是与 Copilot �
 - `index.html` 是集成主 Composer View：正文仍由主 mock 管理，`mock.js` 只把 focused block、run/review 和 accepted transaction 状态投影给共享 sidecar。
 - `intelligence-lab.html` 是消费同一共享组件的小 DOM 独立调试入口；其本地 CSS/JS 只负责 host fixture，不复制 sidecar 实现。
 - `intelligence-ia-lab.html?variant=adaptive&mode=copilot&stage=brief` 是选定的 IA acceptance fixture；其他 staged/hybrid routes 保留为 regression comparison。fixture 不是主 mock 的运行真源，也不是 production runtime。
-- 相关材料的 List / Folder / Graph browser 不属于静态 mock 真源。mock 只显示 production Vault Search Result Browser 的 reuse slot / contract marker；production React component 才是该 UI 的唯一 source of truth。
+- 相关材料的 List / Folder / Graph browser 不属于静态 mock 真源。mock 只显示 production shared `ResultBrowser` 的 reuse slot / contract marker；该组件从现有 Vault Search / Quick Search 展示组件中抽取，但完整视图仍由 Composer 在自己的 modal 中打开。production React component 才是该 UI 的唯一 source of truth。
 
 这次完成的是静态文档 mock 的组件合并。它不表示真实 Obsidian app-owned context、sensing、agent run、写入事务或持久化 runtime 已经实现。
 
@@ -128,11 +128,11 @@ Purpose: infer and continuously organize the user's current editing work in a vi
 `相关材料` 不是一排置信度卡片，也不是新的顶层工作面。它在 Copilot brief 的同一 section 内提供两层渐进披露：
 
 1. **局部图**：侧栏只展示当前正文对象、5–7 个最强材料节点和主要连接。弱关联默认隐藏；点击节点只原位更新一条材料详情，说明标题、路径、关联理由、分数及 `查看来源 / 带入协作`。它不改变 Copilot stage、不自动运行能力，也不直接写正文。
-2. **宽幅材料浏览器**：`打开完整视图` 打开明显宽于 sidecar 的 modal，并直接挂载生产 Vault Search Result Browser 的 related-material mode。`列表 / 文件夹 / 图谱`、toolbar、density、graph layouts、keyboard 和 inspector 语法全部由该生产组件提供；Composer 不实现第二套 renderer。Composer 只提供冻结的 related-material snapshot 与 host actions。窄屏 modal 接近全屏，inspector 移到内容下方，不产生横向页面滚动。
+2. **宽幅材料浏览器**：`打开完整视图` 在 Composer 内打开明显宽于 sidecar 的 modal，并挂载 shared controlled `ResultBrowser` 的 related-material mode。它浏览的是 Composer 已经找到并冻结的相关资料集合，不跳转到 Vault Search / Quick Search，也不把用户带离当前文档。`列表 / 文件夹 / 图谱`、toolbar、density、graph layouts、keyboard 和 inspector 语法由从现有搜索结果组件中抽取的共享 production component 提供；Composer 不实现第二套 renderer。Composer 只提供 related-material snapshot 与 host actions。窄屏 modal 接近全屏，inspector 移到内容下方，不产生横向页面滚动。
 
 一级视图的视觉与键盘语法沿用 Vault Search：List/Folder 可切换 compact/detailed density；Folder 保留 path hierarchy、folder-first ordering、聚合数量与 collapse state；List/Folder 的 leaf IDs 必须完全一致。Graph 才显示二级 layout controls，preset 精确锁定为 `constellation / flow-tb / flow-lr / folder / orbit`；一级 `文件夹` 与 Graph 的 `folder` layout 是两个独立状态。Graph 区分当前对象、普通材料、弱关联、引用实线和 Semantic 虚线；Orbit 自动打开 Semantic，其他 preset 自动关闭。Semantic 只切换已索引语义边，不调用模型、不走网络、不消耗 AI credit。Graph 支持 wheel/pinch zoom、drag pan、真实 fit、悬停邻域、节点选择、Mermaid 与 PNG export。
 
-“对应 Vault Search”指宽幅 modal 挂载同一个 production React Result Browser，不是外观仿制，也不是把完整 Quick Search modal、搜索请求或 `vaultSearchStore` 嵌进 Composer。侧栏仍保留独立、受限的局部关系预览；Composer 打开的宽幅浏览器消费同一份冻结 related-material snapshot。若宽幅浏览器提供搜索框，只能本地过滤该 snapshot，不能隐式发起新检索。静态 docs modal 只保留 reuse slot / contract marker，不复制或模拟完整浏览器的控件和投影。
+这里的“复用 Vault Search / Quick Search 组件”只描述组件来源，不描述导航目标。宽幅 modal 挂载同一个 production React `ResultBrowser`，但仍属于 Composer 当前工作面；它不是外观仿制，也不是把完整 Quick Search modal、搜索请求或 `vaultSearchStore` 嵌进 Composer。侧栏局部关系预览与宽幅浏览器消费同一份冻结 related-material snapshot。若宽幅浏览器提供搜索框，只能本地过滤该 snapshot，不能隐式发起新检索。静态 docs modal 只保留 reuse slot / contract marker，不复制或模拟完整浏览器的控件和投影。用户界面只使用 `相关材料`、`打开完整视图` 等产品文案，不显示内部组件名 `ResultBrowser`。
 
 关系图操作边界：
 
@@ -141,9 +141,9 @@ Purpose: infer and continuously organize the user's current editing work in a vi
 - modal 支持 Escape、关闭后恢复 opener focus；view tabs、List rows、Folder tree、Graph nodes 和 layouts 必须可键盘操作。
 - 不新增顶层 Graph tab，不让完整 Vault graph 永久占据窄 sidecar，也不把每个节点包装成 card wall。
 
-### Vault Search Result Browser 同源与复用合同
+### Shared Result Browser 同源与复用合同
 
-“Mock 标了复用入口”不等于“生产已经复用 Vault Search Result Browser”。当前状态必须按层说明：
+“Mock 标了复用入口”不等于“生产已经有 shared Result Browser”。当前状态必须按层说明：
 
 | 层 | 当前状态 |
 | --- | --- |
@@ -181,11 +181,11 @@ interface ComposerRelatedMaterialSnapshot {
 
 ```
 
-Shared projections 只负责 result rows、path tree、Cytoscape lifecycle、element projection、layout、selection、keyboard 与 viewport。Vault Search host 继续负责 query lifecycle、search store、global cursor、copy 和 hub navigation；Composer host 继续负责 immutable brief snapshot、source inspector、`查看来源`、`带入协作` 与 task session。`MultiLensGraph` 属于另一套 AI-analysis graph domain，不是这里的数据或组件合同。
+Shared projections 只负责 result rows、path tree、Cytoscape lifecycle、element projection、layout、selection、keyboard 与 viewport。Vault Search / Quick Search host 继续负责自己的 query lifecycle、search store、global cursor、copy 和 hub navigation；Composer host 继续负责 immutable brief snapshot、source inspector、`查看来源`、`带入协作` 与 task session。Composer 打开完整视图时不导航到搜索 host，也不重新 query。`MultiLensGraph` 属于另一套 AI-analysis graph domain，不是这里的数据或组件合同。
 
 #### Production Result Browser extraction boundary
 
-生产组件不是“把 Quick Search modal 搬进 Composer”，也不是让 docs fixture 进入 bundle。目标是一个 query-agnostic、controlled Result Browser；它是 List / Tree / Graph UI 的唯一 source of truth，两个宿主通过 adapter 使用它：
+生产组件不是“把 Quick Search modal 搬进 Composer”，也不是让 docs fixture 进入 bundle。目标是一个 query-agnostic、controlled `ResultBrowser`；它是 List / Tree / Graph UI 的唯一 source of truth，Composer 与 Quick Search 分别通过 host adapter 使用它。Composer 传入当前已发现的材料 snapshot，并在自己的 modal 中保留生命周期、焦点和关闭返回路径：
 
 ```ts
 interface ResultBrowserState {
@@ -254,6 +254,47 @@ Ambient runtime 不拥有聊天历史、块工具、accepted patch 或回滚。b
 
 入口摘要使用 `建议更新 · 仅手动/停笔后/编辑时`；手动动作使用 `更新建议`。设置底部固定说明：任何设置都不会自动接受或写入正文。
 
+## Proactive Intelligence Evaluation Contract
+
+主动智能不能只用建议接受率评价。提高建议数量或降低建议门槛也可能提高接受总数，同时增加打扰、错误和后续返工。北极星指标应是：
+
+> 每次主动介入产生的、在下一个文档检查点仍被保留的有用结果。
+
+“有用结果”包括用户接受并保留的变更，以及用户明确确认有帮助但不需要写入的判断；“文档检查点”至少覆盖本次 session 完成、下一次保存或重新打开后的可验证状态。所有指标必须能够按 sensing policy、finding kind、capability、document size 和来源类型分段，不能只看全局平均值。
+
+### Quality and outcome
+
+- useful finding rate、unsupported/incorrect finding rate、duplicate rate、stale rate 和 anchor mismatch rate；
+- accepted-and-retained rate、accepted-then-substantially-edited rate、rollback rate，以及 AI change 引入新问题的比例；
+- Markdown/native-file round-trip validity 和来源是否真实支持最终表述。
+
+### Autonomy and interruption
+
+- brief open、preview、ignore、dismiss、snooze、disable/sensing-policy change 的比例；
+- 同类 finding 连续被忽略或关闭的次数；
+- 主动介入后恢复原编辑任务的时间，以及用户认为出现过早、过晚或不该出现的反馈；
+- proactive finding 与 explicit user invocation 的比例。它用于判断系统是否抢走用户主导权，不作为“主动越多越好”的目标。
+
+### Review, control, and efficiency
+
+- evidence/source open rate、partial acceptance、edit-before-accept 和 rejection reason；
+- time to first useful finding、brief-to-session conversion、review completion time、steps per completed task、run cancel/retry rate；
+- Related Materials 的打开、带入协作、实际引用和最终使用率；
+- undo/rollback invocation、rollback success 和 conflict-safe refusal。
+
+### Reliability and local performance guardrails
+
+- stale apply prevented、partial write、History/source mismatch、crash recovery 和 cross-surface finding-state mismatch；
+- Composer open time、typing/input latency、background sensing CPU/memory、first-result latency、complete-result latency、model/token cost 和 cancellation stop latency；
+- 大文档和大型 Vault 下的退化必须单独统计，不能被小 fixture 的平均值掩盖。
+
+### Measurement boundary
+
+- acceptance rate 只能作为诊断指标，不能成为单一北极星；
+- 任何优化不得以提高打扰次数、隐藏错误、降低 evidence threshold 或让 rollback 更困难来换取接受率；
+- 产品护栏至少锁定 incorrect/unsupported rate、dismiss/ignore rate、stale/anchor mismatch、rollback failure 和 editor input regression；
+- 默认只记录结构化事件、时间、状态和匿名分类。正文内容、prompt、来源全文和用户输入不得为指标而上传或持久化，除非有明确的用户同意与保留策略。
+
 ## Proposed Change Set and Review Navigator
 
 Purpose: make every pending write locatable, reviewable and reversible before it becomes History.
@@ -269,9 +310,9 @@ Each change set contains:
 Review behavior:
 
 - Run 开始后，候选必须在真实正文 anchor 原位出现并随 token/source patch 流式更新：文本直接在段落上展示候选与 diff，插入/结构/native 结果挂载真实 draft object 或重渲染 preview。sidecar 不复制一份脱离正文的结果卡。
-- 第一项候选可审阅后即显示 `改动 N / Total`、`上一处 / 下一处` 和当前项 `接受 / 拒绝`；后续候选到达时按 source order 稳定插入。仍在 streaming 的候选可以停止或拒绝，但完成并通过 source-revision 校验前不得接受。
-- The navigator always shows `改动 N / Total`, `上一处` and `下一处`. Navigation follows document source order, synchronously scrolls/focuses the editor target and updates the sidecar explanation.
-- The editor-local review surface is the source of truth. Text uses a unified inline diff; list/table/formula transforms use vertical original/proposed objects; insertions mount real draft objects; native files re-render their typed patch.
+- 第一项候选可审阅后，document-owned bottom controller 立即出现；它不等待 sidecar 跳入 transient Review。controller 显示 `第 N 处`、待审数量、`上一处 / 下一处` 和当前项动作。字符、单元格或行级增删统计属于具体 anchor，不挤进全局 controller。仍在 streaming 的候选可以停止或拒绝，但完成并通过 source-revision 校验前不得接受。
+- Navigation follows document source order, synchronously scrolls/focuses the editor target and updates the sidecar explanation.
+- The editor-local review surface is the source of truth. Text uses a unified inline diff; list/table/image/Frontmatter/formula changes render inside the real object; insertions mount real draft objects; deletions remain recoverable at the original position; native files re-render their typed patch. Larger vertical or Before/After comparison is optional inspection, not the primary preview.
 - Current-change actions include `接受`, `拒绝` and `编辑后接受`. Batch actions such as `全部接受` must expose scope and require confirmation when the set crosses objects or files.
 - Accepting or rejecting the current item automatically advances to the next pending change. The user may navigate back to already handled changes without changing their status silently.
 - If the current target no longer equals its frozen source snapshot, the change becomes `stale`; Review must explain the conflict and must not destructively overwrite later edits.
@@ -282,25 +323,26 @@ Review behavior:
 
 Review 的主表面是正文，不是右侧待审列表。每个 `ProposedChange` 在真实 document anchor 上拥有一个稳定、可点击的编号 pin；编号按 `sourceOrder` 固定为 `1…N`，不会因为接受、拒绝、stream arrival 或队列筛选而重排。pin 显示 active 与 `streaming / pending / accepted / rejected / stale / error` 状态，不能只靠颜色区分。点击 pin 会选中该 `changeId`、滚动/聚焦真实 anchor，并同步右侧说明与所有辅助导航。
 
-正文 review toolbar 提供三个互斥模式，它们只改变呈现，不改变 change 状态：
+正文 bottom controller 提供三个互斥文档状态，它们只改变呈现，不改变 change 状态：
 
-- `current`：默认模式，只在正文原位渲染 active change 的完整候选/diff；其他 change 只保留轻量编号 pin 和状态。
-- `all`：在各自 anchor 原位渲染本 set 的全部候选/diff；active change 使用更强的 focus treatment，但接受/拒绝仍只作用于 active change。
-- `original`：显示当前 committed source，不显示任何 pending candidate/diff；所有 anchor 仍保留轻量编号 pin，便于定位和返回审阅。它不是 frozen before snapshot，也不会撤销已接受写入。
+- `工作视图 (work)`：默认状态。显示 Composer 渲染正文、AI insight/claim/warning 和轻量 change pins，但不展开 pending candidate/diff。这是写作与分析状态，不是 `current change` 的别名。
+- `全部改动 (all)`：在各自 anchor 原位渲染本 set 的全部候选/diff；active change 使用更强的 focus treatment，但接受/拒绝仍只作用于 active change。
+- `纯净阅读 (clean)`：只显示 Composer 渲染的 committed source，不显示 insight、claim、warning、pending diff 或 change pin。bottom controller 仍在，用户可随时返回工作或审阅。它不是 frozen before snapshot，也不会撤销已接受写入。
+
+永久 `当前一处` 模式被删除。点击正文 pin、sidecar queue 或 previous/next 会更新同一 `activeChangeId`；若用户需要看候选，controller 切入 `全部改动` 并聚焦对应对象，而不是建立第四种显示状态。
 
 右侧 `待审` queue 与正文底部 `上一处 / 下一处` navigator 都只是同一 `activeChangeId` controller 的辅助投影：它们不得拥有第二套排序、selection 或 change status。点击 queue row、编号 pin 或 previous/next 得到完全相同的 active anchor。任何 `接受 / 拒绝 / 编辑后接受` 操作只处理 active change；在 `all` 模式看到多个 diff 不等于批量选择。批量动作若存在，必须是单独命名、显示 scope 并二次确认。
 
 Keyboard 与窄屏合同：
 
-- pin 是真实 button，使用 `aria-label="改动 N / Total：动作，状态"`；`Enter / Space` 选择并定位。mode control 使用 `role="group" + aria-pressed` 的三段选择器语义，`ArrowLeft / ArrowRight` 切换模式并恢复焦点。
+- pin 是真实 button，使用 `aria-label="改动 N / Total：动作，状态"`；`Enter / Space` 选择并定位。document-state control 使用 `role="group" + aria-pressed` 的三段选择器语义，`ArrowLeft / ArrowRight` 切换状态并恢复焦点。
 - editor review chrome 获得焦点且当前不在可编辑文本/IME 时，`Alt+ArrowUp / Alt+ArrowDown` 触发 previous/next；接受和拒绝不设置单键快捷键，必须显式聚焦动作。
 - 窄屏右侧 drawer 仍只承载 queue/说明。`定位正文` 会关闭 drawer、聚焦 active anchor，并保留一个紧凑的 document-owned bottom navigator；重新打开 drawer 后保持 review mode、active change 与正文滚动位置。
-- `all` 在窄屏仍保持原位语义，但允许按 viewport 增量挂载 diff；不得因为性能退化成 sidecar-only list。`original` 必须可随时恢复 committed document reading。
+- `全部改动` 在窄屏仍保持原位语义，但允许按 viewport 增量挂载 diff；不得因为性能退化成 sidecar-only list。`纯净阅读` 必须可随时恢复 committed document reading。
 
 Document review 验收：
 
-- `current` 的正文中恰好只有 active change 展开完整 diff；切换 active 后旧 diff 收起为 pin，新 diff 原位展开。
-- `all` 展示所有可呈现 change 的原位 preview，并保持一个且仅一个 active change；`original` 不显示 candidate content，但保留所有可定位 pins。
+- `工作视图` 显示 insight/warning 与 change pins，但不展开 pending candidate；`全部改动` 展示所有可呈现 change 的原位 preview，并保持一个且仅一个 active change；`纯净阅读` 不显示 AI decoration、candidate 或 pin。
 - pin、queue row 与 previous/next 共享同一 active ID 和 source-order；任一路径选择后 editor、sidecar 和底部 navigator 同步。
 - 在三个 mode 中执行接受/拒绝都只改变 active change；其他 change 的 status、preview 与 transaction count 不变。
 - accepted/rejected/stale pin 保留到本次 Review 结束，编号不复用；stale/error 不可接受。
@@ -346,7 +388,7 @@ Acceptance fixture 与共享入口继续覆盖：
 - active session 中被显式推送的新线索使用普通 `recommendation` message item；预览、inline expand、忽略和 `带入下一轮` 都发生在该条消息内，不存在独立 session-clues 列表或外置详情面板；
 - quick capabilities、`全部能力`、voice 和共享 prompt input 只在 session 出现；
 - 一个包含多处 change 的真实 review fixture，验证 `N / Total`、previous/next、接受/拒绝、editor locator、stale 和批次完成；
-- 正文 review fixture 覆盖 `current / all / original`、稳定编号 pins、pin/queue/prev-next 同步、active-only accept/reject、键盘路径和窄屏 drawer→正文定位恢复；
+- 正文 review fixture 覆盖 `工作视图 / 全部改动 / 纯净阅读`、稳定编号 pins、pin/queue/prev-next 同步、active-only accept/reject、键盘路径和窄屏 drawer→正文定位恢复；
 - History 按日期和来源分组，使用 modal、inline diff、Before / After、定位和安全回滚；
 - 宽屏右栏和窄屏 fixed drawer 使用同一生命周期与事务语义。
 
@@ -366,7 +408,7 @@ Acceptance fixture 与共享入口继续覆盖：
 - Thread kinds: `user | assistant | recommendation | tool | receipt`；`receipt` 必须区分 compact run receipt 与 accepted transaction receipt。后台 projection refresh 不是 thread kind，细粒度 Trace 也不逐条膨胀为 thread message。
 - Session clue: `discovered -> recommendation preview -> inline-expanded / queued-for-next-run / dismissed / stale`。`queued-for-next-run` 只装配 chips/draft，不改变 lifecycle、不冻结 run snapshot，也不自动运行；同一 clue 的补充信息原位更新现有 recommendation。
 - Review set: `generating -> reviewable -> partially-accepted -> completed / cancelled`；change: `pending -> accepted / rejected / stale / error`。
-- Document review: `mode = current | all | original`，`activeChangeId = stable change ID`。pin/queue/previous/next 只发送 `selectActiveChange(changeId)`；mode switch 只改变原位 projection。Accept/reject 先读取 active ID、重新校验 source revision，再提交单项状态转换。
+- Document review: `view = work | all | clean`，`activeChangeId = stable change ID`。pin/queue/previous/next 只发送 `selectActiveChange(changeId)`；view switch 只改变原位 projection。Accept/reject 先读取 active ID、重新校验 source revision，再提交单项状态转换。
 - Selecting a brief item may preview it in place；只有显式 `讨论 / 问 Copilot / 带入协作` 才进入 session、更新 chips 并聚焦 composer，且不会自动开始 run。
 - Accepting one change writes at the frozen target and creates one addressable History transaction；同一 set 的事务共享 batch identity，其他状态都不创建事务。
 - Rollback 是 confirmed inverse transaction；原 accepted row 保留并标记已回滚。
@@ -392,7 +434,7 @@ Acceptance fixture 与共享入口继续覆盖：
 - [ ] 定义 app-owned Run record schema 与 compact receipt projection；把 Changes / Insights / Sources / redacted Trace 绑定到稳定 `runId`，由同一消息内 artifact browser 分页/虚拟化读取，并保存 active category、展开条目和滚动锚点。
 - [ ] 把 active-session clue projection 接入现有 `recommendation` event store：stable clue/message ID、inline preview/expand、dismiss/stale、`带入下一轮` chip assembly 和原位更新；不得实现第二套 session-clues collection UI。
 - [ ] 让 run stream 同步驱动正文 anchor 上的 candidate rendering、稳定 previous/next navigator 与 per-change accept/reject；禁止在 sidecar 复制第二份结果。
-- [ ] 实现 document-owned review controller：稳定 source-order pin numbering、`current/all/original` projections、active-only mutation、queue/pin/bottom-nav selection convergence、keyboard/focus announcements 和 narrow drawer locate/restore。
+- [ ] 实现 document-owned review controller：稳定 source-order pin numbering、`work/all/clean` projections、active-only mutation、queue/pin/bottom-nav selection convergence、keyboard/focus announcements 和 narrow drawer locate/restore。
 - [ ] 让同一 set 的 accepted changes 产生独立可定位、共享 batch identity 的 History transactions。
 - [ ] 建立 Run record `acceptedTransactionIds` 与 History `originRunId/changeSetId/changeId` 的双向索引；从 History 返回时定位并展开来源 receipt，而不是打开普通 Run detail modal。
 - [ ] 实现独立的 sensing `off / smart / continuous` 与 auto-run policy；加入“任何模式都不能 auto-accept/write”的 runtime guard。
@@ -400,7 +442,7 @@ Acceptance fixture 与共享入口继续覆盖：
 - [ ] 通过共享 Composer transaction port 持久化 accepted 和 debounced direct-editor transactions。
 - [ ] 选择并 app-own Obsidian/Electron microphone/transcription adapter。
 - [ ] 在 History 后添加 document-history / Git adapter，不增加顶层 UI。
-- [ ] 补键盘 focus order、drawer close、screen-reader announcement 和 interruption metrics。
+- [ ] 实现本合同的 proactive-intelligence measurement：retained useful outcome、quality/outcome、autonomy/interruption、review/control、efficiency、reliability 与 local-performance guardrails；补键盘 focus order、drawer close 和 screen-reader announcement。
 
 ## Rejected Patterns
 
@@ -417,7 +459,7 @@ Acceptance fixture 与共享入口继续覆盖：
 - 把 pending review 塞进 thread 或 History，或只保存一个无法表达多处候选改动的 draft patch。
 - 把右侧待审 queue 当成主审阅表面，让正文只被动高亮；或让 queue、pin 和 bottom navigator 各自维护 active/order/status。
 - `all` 模式中的接受/拒绝隐式作用于全部可见 diff，或让用户无法确认当前 active change。
-- `original` 隐藏所有 change anchors、显示 frozen before snapshot 冒充 committed source，或通过切换模式改变真实 change status。
+- `纯净阅读` 显示 frozen before snapshot 冒充 committed source，或通过切换状态改变真实 change status。
 - 用覆盖正文的大 badge/card 代替轻量编号 pin，或在窄屏把正文 review surface 塞进 drawer。
 - 把 `Changes / Insights / Sources / Trace` 恢复成永久 sidecar tabs，或让四类 run artifacts 与 Copilot/History 等权竞争。
 - 普通 run artifact 点击后打开 modal、新页面或独立工作台，或给 artifact browser 建立脱离 thread 的嵌套滚动区。

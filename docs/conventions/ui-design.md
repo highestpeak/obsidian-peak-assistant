@@ -949,6 +949,32 @@ If none fit, the answer is "add a primitive" (§3.5), **not** "add another `pksu
 
 **Detection signal.** `grep -c "border-radius: var(--pk-radius-pill)" src/styles/peak-components.css` — if the count climbs by more than one or two per major PR, you're proliferating. Also: file a quick chip inventory in the PR description for any surface touching ≥3 pill-shaped elements.
 
+#### Peer action consistency contract
+
+Visual consistency is evaluated by **interaction role + density + state**, not by DOM ancestry or whether an action is powered by AI. Two controls that sit in the same toolbar and perform peer actions must share the same primitive and the same geometry.
+
+For every action surface, classify each control before styling it:
+
+| Family | Intended role | Required shared properties |
+|---|---|---|
+| Toolbar action | Text/icon command inside one toolbar | height, horizontal padding, radius, resting surface, hover/focus/disabled treatment, icon size |
+| Toolbar icon action | Icon-only formatting, close, history, or navigation command | square hit target, radius, icon size, hover/focus/disabled treatment |
+| Rail control | Block disclosure, drag, or adjacent structural control | hit target, border, radius, icon weight, shadow, spacing |
+| Review action | Accept, reject, retry, restore, or cancel for one candidate | height, radius, typography and state model; semantic color may vary by intent |
+| Status chip | Non-destructive label, count, warning, provenance, or state | chip height, pill radius, label typography and semantic color mapping |
+| Toolbar / popover shell | Container around a related action group | border, surface, outer radius, shadow and internal gap |
+
+Rules:
+
+- Peer controls in one toolbar MUST be pixel-identical for all shared properties. `AI` is a capability source, not a separate button shape: an AI action may add a sparkle icon or semantic divider, but cannot silently change height, radius, resting background, or hover behavior.
+- Controls from different families SHOULD remain visually distinct. Do not turn every toolbar icon, review button and panel into a pill merely to make the page look uniform. Consistency means a stable hierarchy, not one radius everywhere.
+- Within a toolbar shell, use the inner/outer radius relationship: a `--pk-radius-lg` shell normally contains `--pk-radius-md` controls; free-standing capsule actions use `--pk-radius-pill` intentionally.
+- A semantic state may override color, border, or emphasis only: primary/accept, danger/reject, selected, disabled and success. It does not create a new geometry.
+- A surface-specific selector may position or size the group, but must not restyle peer controls one by one. If the current primitives cannot represent the toolbar action, add a dedicated primitive such as `ToolbarAction`; do not misuse `Pill`, which remains a toggleable filter.
+- Static mocks must publish a component-contract table and consume the production `--pk-*` tokens where possible. A mock-only value must name its production mapping and may not become a second token system.
+
+**Review test.** For each toolbar, compare computed `height`, `border-radius`, `padding`, `background-color`, `color`, `border`, and `outline` for every peer control in rest, hover, focus-visible, active, disabled and success states. A screenshot that merely looks close is not enough.
+
 ### 6.2 Surface migrations are all-or-nothing
 
 **Symptom.** A design-system unification PR (or wave of PRs) covers most surfaces but skips one or two for time reasons. The skipped surfaces drift further over the next quarter because every fix lands "in the style of the old system". Eventually the skipped surface is hopelessly behind, and re-migrating it is harder than the original would have been.
@@ -1056,6 +1082,9 @@ When implementing or reviewing a new UI surface, work through this list (each it
 
 **Surface drift prevention (§6)**
 - [ ] No new `pk(surface)-*-chip` / `*-pill` / `*-tag` class — use `<Chip>` or `<Pill>` (§6.1)
+- [ ] Every action surface has a role map: toolbar action / toolbar icon / rail / review action / status chip / shell (§6.1)
+- [ ] Peer actions in the same toolbar share computed height, radius, padding, resting surface, hover, focus and disabled behavior; AI actions do not introduce a second shape (§6.1)
+- [ ] Different component families keep an intentional radius hierarchy; consistency was not implemented as “make everything a pill” (§6.1)
 - [ ] If this PR is part of a design-system migration wave, every surface family is either in scope or carries a `// MIGRATION-DEFERRED` marker with tracking handle (§6.2)
 - [ ] Every `// intentionally omitted` comment has a tracking handle + mock-element reference + blocker (§6.3)
 - [ ] If the surface relies on rich data states (agent artifacts, tool calls, cost receipts), a fixture conversation exists and is exercised by the audit (§6.4)
