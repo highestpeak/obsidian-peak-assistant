@@ -53,6 +53,7 @@ Four-layer architecture: `app/` → `service/` → `core/` → `ui/`
 - Templates: register via `TemplateRegistry` / `TemplateId`, load with `TemplateManager`; prompts use `PromptId` + `PromptService`, not scattered prompt strings
 - Agents: follow `runAgentLoop` / `AgentLoop` (`service/agents/core`); reuse tool + schema patterns from existing agents; wire through `src/core/schemas/` for Zod
 - Streaming: normalize with `src/core/providers/helpers/stream-helper.ts` (`streamTransform`, etc.) and `LLMStreamEvent`; UI streaming hooks live under `ui/view/chat-view/hooks/`
+- Repo hygiene: never create scaffolding / preview harnesses / screenshot dirs in the project root. All dev-only tooling goes under `.dev/` (gitignored, not shipped — e.g. `.dev/harness/` for the File Atlas browser preview). One-off temp artifacts (frame grabs, throwaway HTML/scripts) go to the agent scratchpad, never the project. See `.dev/README.md`.
 
 ## Project Rules
 
@@ -60,6 +61,7 @@ Detailed conventions live in `docs/conventions/`. Read `docs/conventions/README.
 
 - **UI design system** — tokens, primitive catalog, primitive usage decisions, Obsidian CSS defense, JSX-mock fidelity. One file, 5 sections, section-anchored. [`ui-design.md`](./docs/conventions/ui-design.md)
 - **Prompt input consistency** — Chat Studio、Composer sidecar 与未来输入面共享 PromptInput 内核、trigger/keyboard grammar 和单层 focus owner；各自 runtime/state 保持隔离。[`prompt-input-consistency.md`](./docs/conventions/prompt-input-consistency.md)
+- **Command Palette governance** — 生产 Palette 只允许 owner 明确批准的稳定全局入口；feature-local、Work Intelligence、maintenance、debug、QA、实验性和临时动作必须留在所属 surface，并由精确 allowlist 测试防回流。[`command-palette-governance.md`](./docs/conventions/command-palette-governance.md)
 - **Configurability** — no inline i18n / regex / label maps / color, thresholds, weights, timing knobs, or style configs; route through `templates/config/` plus a documented domain fallback when needed. [`configurability.md`](./docs/conventions/configurability.md)
 - **Root docs** — final-state `docs/*.html` manuals, not work logs; status language, dense tables, long paths, Mermaid, formulas, and viewport QA rules. [`root-docs.md`](./docs/conventions/root-docs.md)
 - **Spec + tests one doc** — spec 与 acceptance criteria / test 文件清单 / bad-case 复现写在同一份 `docs/superpowers/specs/*.md`，不拆到 `test-plan.md` / `qa.md`。[`spec-and-tests.md`](./docs/conventions/spec-and-tests.md)

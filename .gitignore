@@ -57,3 +57,6 @@ output/playwright/*
 .codebase-memory/
 .playwright-cli/
 output/
+
+# Dev-only scaffolding / preview harnesses / screenshots (not shipped)
+.dev/

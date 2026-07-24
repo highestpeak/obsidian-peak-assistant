@@ -11,6 +11,7 @@
 		"dev": "npm-run-all --parallel dev:tailwind dev:streamdown dev:css dev:ts",
 		"predev:desktop": "npm run build:css",
 		"dev:desktop": "vite",
+		"harness": "vite --config .dev/harness/vite.harness.config.mts",
 		"build:tailwind": "npx tailwindcss -i src/styles/tailwind.css -o styles.tailwind.css --minify",
 		"build:streamdown": "npx tailwindcss -i src/styles/streamdown.css -o styles.streamdown.css --config tailwind.streamdown.config.js --minify",
 		"build:css": "npm run build:tailwind && npm run build:streamdown && node scripts/concat-css.mjs",

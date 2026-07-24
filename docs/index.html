@@ -112,7 +112,7 @@
 ├─ 04-configuration-and-user-views.html
 ├─ 05-use-case-playbook.html
 ├─ 11-18-feature-*.html               # 用户看得到的产品能力
-├─ 21-23-infra-*.html                 # 共享基础设施
+├─ 21-24-infra-*.html                 # 共享基础设施（24 = AI 模型路由）
 ├─ roadmap.html                       # 关键待建 / 候选 / backlog
 ├─ planned-requirements.html          # 已规划但未实现的小需求
 ├─ 90-old-root-docs/                  # 历史根目录稿
@@ -175,12 +175,20 @@
             <li><a href="18-feature-provider-model-mcp-skills.html"><strong>18 · Provider · Model · MCP · Skills</strong></a> — 五层 AI 供给：Provider / Profile / Role / MCP / Skill 各自解决什么，怎么配、怎么排障。</li>
           </ul>
 
-          <h3>基础设施（21–23）</h3>
+          <h3>跨界面交互契约</h3>
+          <p class="prose">同时约束多个产品功能、但仍处于设计阶段的长期 UX / accessibility 入口。</p>
+          <ul class="doc-list">
+            <li><a href="superpowers/specs/2026-07-24-peak-file-workspace.md"><strong>Peak File Workspace · 多文件预览与 AI 编辑</strong></a> — Image、HTML、PDF 共用 app-owned 文件工作区注册、AI sidecar、candidate review 与版本保存；Image 走安全 AI edit，HTML 走 sandboxed Source / Preview / Split，PDF 采用 native viewer + page / selection-aware companion。产品方向已决定，<strong>implementation pending / 尚未实现</strong>。快速审阅见 <a href="gstack/peak-file-workspace-2026-07-24/index.html">视觉方案</a>，代码事实见 <a href="research/2026-07-24-peak-file-workspace/README.md">能力审计</a>。</li>
+            <li><a href="superpowers/specs/2026-07-24-peak-keyboard-navigation-system.md"><strong>Peak 全键盘导航系统</strong></a> — Vault Search、AI Analysis、File Atlas、Composer View、Chat Studio 共享的 Zone → Component → Item 心智模型、焦点/选择状态、编辑器按键所有权和逐工作区键盘地图；当前是 review-ready design proposal，<strong>尚未实现、尚待 owner 审阅</strong>。快速审阅见 <a href="gstack/keyboard-navigation-system-2026-07-24/index.html">视觉报告</a>，证据见 <a href="research/2026-07-24-peak-keyboard-navigation/README.md">研究报告</a>。</li>
+          </ul>
+
+          <h3>基础设施（21–24）</h3>
           <p class="prose">功能共用的技术层，多个 feature 都会依赖。</p>
           <ul class="doc-list">
             <li><a href="21-infra-agent-harness.html"><strong>21 · Agent Harness</strong></a> — 多步 agent 的模型调用、工具权限、trace、context、停止边界。</li>
             <li><a href="22-infra-context-pipeline.html"><strong>22 · Context Pipeline</strong></a> — Chat / Agent / Ambient 如何共享上下文装配和渲染规则。</li>
             <li><a href="23-infra-search-index.html"><strong>23 · Search Index</strong></a> — SQLite 表、chunk、embedding、node/edge、维护任务。</li>
+            <li><a href="24-infra-ai-model-routing.html"><strong>24 · AI 模型路由</strong></a> — 每个用到 AI 的地方在用哪个模型（用途槽映射）、降级 fallback 规则、升级 cascade 规则；配 Settings 前先看这张全量映射。</li>
           </ul>
 
           <p class="read-note"><b>不在这张地图里：</b>关键远期设想（已决策待建、调研候选、backlog）登记在 <a href="roadmap.html">roadmap.html</a>；局部 UI 小需求登记在 <a href="planned-requirements.html">planned-requirements.html</a>。</p>

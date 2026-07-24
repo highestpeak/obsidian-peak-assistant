@@ -345,6 +345,7 @@
 	},
 	"messages": {
 		"actionCopy": "Copy",
+		"actionCopied": "Copied",
 		"actionRetry": "Retry",
 		"actionStar": "Star",
 		"actionUnstar": "Unstar",
@@ -401,6 +402,7 @@
 		"actionViewRawDetail": "Role, model, time and the raw body",
 		"actionCopyMarkdownDetail": "Keeps list and code structure",
 		"actionCopyJsonDetail": "For debugging or external workflows",
+		"actionTraceDetail": "Inspect this run's steps and spans",
 		"replyAnchorFallback": "Assistant message",
 		"toolLabels": {
 			"vault_search": "Searched vault",

@@ -1,0 +1,1482 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Peak Keyboard Navigation System</title>
+  <style>
+    :root {
+      --bg: #f4f3ef;
+      --paper: #fbfaf7;
+      --surface: #ffffff;
+      --surface-soft: #f0efea;
+      --ink: #181a1d;
+      --muted: #686b70;
+      --line: #d8d6cf;
+      --line-strong: #b8b6af;
+      --accent: #3f63d4;
+      --accent-soft: #e9edfb;
+      --violet: #7053b5;
+      --violet-soft: #eee9f8;
+      --green: #34735b;
+      --green-soft: #e5f2ec;
+      --amber: #9a6724;
+      --amber-soft: #f8eddc;
+      --red: #9e423d;
+      --red-soft: #f7e9e6;
+      --shadow: 0 18px 48px rgba(35, 37, 41, .08);
+      --radius: 12px;
+      --sidebar: 232px;
+      --content: 1180px;
+      --focus: 0 0 0 2px var(--paper), 0 0 0 5px var(--accent);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 84% 0%, rgba(63, 99, 212, .09), transparent 28rem),
+        linear-gradient(90deg, rgba(24, 26, 29, .035) 1px, transparent 1px),
+        var(--bg);
+      background-size: auto, 48px 48px, auto;
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      line-height: 1.55;
+    }
+
+    button, a { font: inherit; }
+    a { color: inherit; }
+    :focus-visible { outline: none; box-shadow: var(--focus); border-radius: 5px; }
+
+    .skip-link {
+      position: fixed;
+      z-index: 100;
+      top: 12px;
+      left: 12px;
+      padding: 8px 12px;
+      transform: translateY(-150%);
+      background: var(--ink);
+      color: var(--paper);
+      border-radius: 6px;
+    }
+    .skip-link:focus { transform: translateY(0); }
+
+    .page {
+      display: grid;
+      grid-template-columns: var(--sidebar) minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .rail {
+      position: sticky;
+      top: 0;
+      align-self: start;
+      height: 100vh;
+      border-right: 1px solid var(--line);
+      background: color-mix(in srgb, var(--paper) 92%, transparent);
+      backdrop-filter: blur(18px);
+      padding: 24px 18px;
+      overflow: auto;
+      z-index: 20;
+    }
+
+    .brand {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin: 0 6px 24px;
+    }
+    .brand-mark {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      font-size: 12px;
+      font-weight: 760;
+      letter-spacing: -.03em;
+    }
+    .brand-copy { min-width: 0; }
+    .brand-title { display: block; font-size: 13px; font-weight: 730; }
+    .brand-meta { display: block; color: var(--muted); font-size: 10px; }
+
+    .rail-label {
+      margin: 20px 8px 7px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 720;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+    }
+
+    .rail nav { display: grid; gap: 2px; }
+    .rail a {
+      display: flex;
+      align-items: center;
+      min-height: 32px;
+      padding: 6px 8px;
+      border-radius: 7px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 12px;
+    }
+    .rail a:hover,
+    .rail a[aria-current="true"] {
+      color: var(--ink);
+      background: var(--surface-soft);
+    }
+    .rail a[aria-current="true"]::before {
+      content: "";
+      width: 3px;
+      height: 14px;
+      margin-right: 7px;
+      border-radius: 2px;
+      background: var(--accent);
+    }
+
+    .rail-footer {
+      margin: 28px 6px 0;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    main { min-width: 0; }
+    .content {
+      width: min(var(--content), calc(100vw - var(--sidebar) - 64px));
+      margin: 0 auto;
+      padding: 42px 0 96px;
+    }
+
+    section { scroll-margin-top: 22px; }
+    .hero {
+      position: relative;
+      min-height: 600px;
+      display: grid;
+      align-content: center;
+      padding: 62px 0 48px;
+      overflow: hidden;
+    }
+    .eyebrow {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      width: fit-content;
+      margin-bottom: 18px;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 760;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .eyebrow::before {
+      content: "";
+      width: 24px;
+      height: 1px;
+      background: currentColor;
+    }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 {
+      max-width: 940px;
+      margin-bottom: 22px;
+      font-size: clamp(46px, 6vw, 82px);
+      line-height: .98;
+      letter-spacing: -.065em;
+      font-weight: 720;
+    }
+    .hero-sub {
+      max-width: 760px;
+      margin-bottom: 28px;
+      color: var(--muted);
+      font-size: clamp(17px, 1.8vw, 22px);
+      line-height: 1.55;
+    }
+    .status-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 4px 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 650;
+    }
+    .pill.pending {
+      border-color: color-mix(in srgb, var(--amber) 35%, var(--line));
+      background: var(--amber-soft);
+      color: var(--amber);
+    }
+    .hero-index {
+      position: absolute;
+      right: 0;
+      bottom: 64px;
+      color: color-mix(in srgb, var(--ink) 7%, transparent);
+      font-size: clamp(180px, 23vw, 340px);
+      line-height: .72;
+      font-weight: 800;
+      letter-spacing: -.12em;
+      user-select: none;
+      z-index: -1;
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, .8fr) minmax(320px, 1fr);
+      gap: 48px;
+      align-items: end;
+      margin: 92px 0 28px;
+      padding-top: 20px;
+      border-top: 1px solid var(--line-strong);
+    }
+    .section-no {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .12em;
+    }
+    h2 {
+      margin-bottom: 0;
+      font-size: clamp(30px, 4vw, 50px);
+      line-height: 1.06;
+      letter-spacing: -.045em;
+      font-weight: 690;
+    }
+    .section-lead {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .thesis {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .thesis-card,
+    .card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--paper);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, .5) inset;
+    }
+    .thesis-card { padding: 24px; min-height: 200px; }
+    .thesis-card .num {
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 760;
+      letter-spacing: .12em;
+    }
+    .thesis-card h3 {
+      margin: 46px 0 8px;
+      font-size: 20px;
+      letter-spacing: -.025em;
+    }
+    .thesis-card p { color: var(--muted); font-size: 13px; }
+
+    .grammar {
+      margin-top: 14px;
+      padding: 30px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--ink);
+      color: #f6f4ed;
+      box-shadow: var(--shadow);
+    }
+    .grammar-flow {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      align-items: stretch;
+    }
+    .grammar-step {
+      position: relative;
+      padding: 12px 26px 14px 0;
+    }
+    .grammar-step:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      top: 30px;
+      right: 16px;
+      width: 42px;
+      height: 1px;
+      background: rgba(255, 255, 255, .28);
+    }
+    .grammar-step:not(:last-child)::before {
+      content: "";
+      position: absolute;
+      z-index: 2;
+      top: 27px;
+      right: 13px;
+      width: 6px;
+      height: 6px;
+      border-top: 1px solid rgba(255,255,255,.56);
+      border-right: 1px solid rgba(255,255,255,.56);
+      transform: rotate(45deg);
+    }
+    .key {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      min-width: 34px;
+      min-height: 28px;
+      padding: 4px 8px;
+      border: 1px solid rgba(255,255,255,.24);
+      border-bottom-color: rgba(255,255,255,.45);
+      border-radius: 6px;
+      background: rgba(255,255,255,.07);
+      color: #fff;
+      font: 650 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+      box-shadow: 0 2px 0 rgba(255,255,255,.08);
+    }
+    .grammar-step strong {
+      display: block;
+      margin: 14px 0 4px;
+      font-size: 14px;
+    }
+    .grammar-step span:last-child {
+      color: rgba(255,255,255,.6);
+      font-size: 12px;
+    }
+    .grammar-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      margin-top: 24px;
+      padding-top: 18px;
+      border-top: 1px solid rgba(255,255,255,.15);
+      color: rgba(255,255,255,.72);
+      font-size: 11px;
+    }
+    .grammar-actions span { display: inline-flex; gap: 7px; align-items: center; }
+    .grammar-actions .key { min-width: 26px; min-height: 22px; padding: 3px 6px; font-size: 10px; }
+
+    .research-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .research-card {
+      min-height: 310px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+    }
+    .research-card .tag {
+      width: fit-content;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 760;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .research-card:nth-child(2) .tag { background: var(--violet-soft); color: var(--violet); }
+    .research-card:nth-child(3) .tag { background: var(--green-soft); color: var(--green); }
+    .research-card h3 {
+      margin: 36px 0 10px;
+      font-size: 22px;
+      line-height: 1.16;
+      letter-spacing: -.03em;
+    }
+    .research-card p { color: var(--muted); font-size: 13px; }
+    .research-card a {
+      margin-top: auto;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 680;
+      text-decoration: none;
+    }
+
+    .model {
+      display: grid;
+      grid-template-columns: minmax(0, .72fr) minmax(0, 1.28fr);
+      gap: 14px;
+    }
+    .stack-card { padding: 26px; }
+    .stack-card h3 { margin-bottom: 18px; font-size: 18px; }
+    .stack {
+      display: grid;
+      gap: 8px;
+    }
+    .layer {
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      min-height: 48px;
+      padding: 9px 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+    .layer span:first-child {
+      display: grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      background: var(--surface-soft);
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 750;
+    }
+    .layer strong { font-size: 12px; }
+    .layer small { color: var(--muted); font-size: 10px; }
+    .layer.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-soft);
+    }
+    .state-card { padding: 26px; }
+    .state-row {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 16px;
+      align-items: center;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .state-row:last-child { border-bottom: 0; }
+    .state-row p { margin: 0; color: var(--muted); font-size: 12px; }
+    .sample-row {
+      position: relative;
+      min-height: 38px;
+      display: flex;
+      align-items: center;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface);
+      font-size: 11px;
+    }
+    .sample-row.focused {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent);
+    }
+    .sample-row.selected { background: var(--accent-soft); }
+    .sample-row.active-item::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 8px;
+      bottom: 8px;
+      width: 3px;
+      border-radius: 3px;
+      background: var(--accent);
+    }
+
+    .surface {
+      margin-top: 28px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+    }
+    .surface-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 14px;
+      padding: 2px 4px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .surface-kicker {
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 760;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    .surface-header h3 {
+      margin: 3px 0 0;
+      font-size: 22px;
+      letter-spacing: -.03em;
+    }
+    .zone-route {
+      max-width: 54%;
+      color: var(--muted);
+      font: 600 10px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+      text-align: right;
+    }
+
+    .screen {
+      min-height: 390px;
+      display: grid;
+      gap: 7px;
+      padding: 7px;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: var(--surface-soft);
+      overflow: hidden;
+    }
+    .zone {
+      position: relative;
+      min-width: 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface);
+      overflow: hidden;
+    }
+    .zone::after {
+      content: attr(data-zone);
+      position: absolute;
+      top: 7px;
+      right: 7px;
+      display: grid;
+      place-items: center;
+      min-width: 24px;
+      height: 20px;
+      padding: 0 6px;
+      border-radius: 5px;
+      background: var(--ink);
+      color: var(--paper);
+      font: 700 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .zone.focus-zone {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-soft) inset;
+    }
+    .mini-title {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 730;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .mini-bar {
+      height: 8px;
+      border-radius: 3px;
+      background: var(--surface-soft);
+    }
+    .mini-bar + .mini-bar { margin-top: 7px; }
+    .mini-bar.w80 { width: 80%; }
+    .mini-bar.w65 { width: 65%; }
+    .mini-bar.w45 { width: 45%; }
+    .mini-bar.dark { background: color-mix(in srgb, var(--ink) 70%, var(--surface)); }
+    .mini-row {
+      display: flex;
+      gap: 7px;
+      align-items: center;
+      min-height: 29px;
+      padding: 5px 7px;
+      border-radius: 5px;
+      color: var(--muted);
+      font-size: 9px;
+    }
+    .mini-row::before {
+      content: "";
+      flex: 0 0 auto;
+      width: 7px;
+      height: 7px;
+      border: 1px solid var(--line-strong);
+      border-radius: 2px;
+      background: var(--surface);
+    }
+    .mini-row.current {
+      background: var(--accent-soft);
+      color: var(--ink);
+      box-shadow: 0 0 0 1px var(--accent) inset;
+    }
+    .mini-row.selected { background: var(--surface-soft); color: var(--ink); }
+    .mini-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      margin: 0 4px 5px 0;
+      padding: 3px 7px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      color: var(--muted);
+      font-size: 8px;
+    }
+    .mini-chip.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+    .search-box {
+      height: 34px;
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      color: var(--muted);
+      font-size: 9px;
+      box-shadow: 0 0 0 2px var(--accent-soft);
+    }
+    .node-canvas {
+      position: relative;
+      height: calc(100% - 26px);
+      min-height: 210px;
+      border-radius: 6px;
+      background:
+        radial-gradient(circle, var(--line-strong) 1px, transparent 1px),
+        var(--surface-soft);
+      background-size: 14px 14px;
+    }
+    .graph-node {
+      position: absolute;
+      width: 60px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 8px;
+    }
+    .graph-node.a { top: 18%; left: 12%; }
+    .graph-node.b { top: 42%; left: 42%; }
+    .graph-node.c { top: 16%; right: 10%; }
+    .graph-node.d { bottom: 15%; left: 25%; }
+    .graph-node.e { bottom: 12%; right: 12%; }
+    .graph-node.current {
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-soft);
+    }
+
+    .vault-screen {
+      grid-template-columns: 110px minmax(0, 1fr) 230px;
+      grid-template-rows: 42px 50px minmax(0, 1fr);
+    }
+    .vault-tabs { grid-column: 1 / -1; }
+    .vault-query { grid-column: 1 / 3; }
+    .vault-tools { grid-column: 3; }
+    .vault-results { grid-column: 1 / 3; }
+    .vault-inspector { grid-column: 3; }
+
+    .analysis-screen {
+      grid-template-columns: minmax(0, 1fr) 220px;
+      grid-template-rows: 48px 40px minmax(0, 1fr) 48px;
+    }
+    .analysis-query { grid-column: 1 / -1; }
+    .analysis-tabs { grid-column: 1 / -1; }
+    .analysis-canvas { grid-row: 3; }
+    .analysis-outline { grid-row: 3; grid-column: 2; }
+    .analysis-actions { grid-column: 1 / -1; }
+
+    .atlas-screen {
+      grid-template-columns: 160px minmax(0, 1fr) 220px;
+      grid-template-rows: 44px minmax(0, 1fr) 58px;
+    }
+    .atlas-files { grid-row: 1 / 4; }
+    .atlas-tabs { grid-column: 2 / 4; }
+    .atlas-main { grid-column: 2; }
+    .atlas-inspector { grid-column: 3; }
+    .atlas-tray { grid-column: 2 / 4; }
+
+    .composer-screen {
+      grid-template-columns: minmax(0, 1fr) 250px;
+      grid-template-rows: 43px minmax(0, 1fr) 50px;
+    }
+    .composer-header { grid-column: 1 / -1; }
+    .composer-canvas { grid-column: 1; }
+    .composer-sidecar { grid-column: 2; }
+    .composer-status { grid-column: 1 / -1; }
+    .doc-block {
+      margin: 8px auto;
+      padding: 9px 10px;
+      width: min(92%, 560px);
+      border-left: 2px solid transparent;
+      color: var(--muted);
+      font-size: 9px;
+    }
+    .doc-block.heading { color: var(--ink); font-size: 14px; font-weight: 720; }
+    .doc-block.current {
+      border-left-color: var(--accent);
+      background: var(--accent-soft);
+      box-shadow: 0 0 0 1px var(--accent) inset;
+    }
+    .selection-toolbar-demo {
+      position: absolute;
+      z-index: 3;
+      left: 50%;
+      top: 47%;
+      width: max-content;
+      max-width: calc(100% - 28px);
+      display: flex;
+      gap: 3px;
+      align-items: center;
+      padding: 5px;
+      transform: translate(-50%, -100%);
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: 0 10px 28px rgba(24, 26, 29, .16);
+      overflow: hidden;
+    }
+    .selection-toolbar-demo::after {
+      content: "CV3 · Alt+F10";
+      position: absolute;
+      right: 4px;
+      bottom: -18px;
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: var(--ink);
+      color: var(--paper);
+      font: 700 7px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .tool-key {
+      display: grid;
+      place-items: center;
+      min-width: 21px;
+      height: 21px;
+      padding: 0 5px;
+      border-radius: 4px;
+      color: var(--muted);
+      font-size: 7px;
+      font-weight: 720;
+      white-space: nowrap;
+    }
+    .tool-key.current {
+      color: var(--accent);
+      background: var(--accent-soft);
+      box-shadow: 0 0 0 1px var(--accent) inset;
+    }
+    .tool-sep {
+      width: 1px;
+      height: 14px;
+      margin: 0 2px;
+      background: var(--line);
+    }
+
+    .chat-screen {
+      grid-template-columns: 190px minmax(0, 1fr) 230px;
+      grid-template-rows: minmax(0, 1fr) 75px;
+    }
+    .chat-left { grid-row: 1 / 3; }
+    .chat-messages { grid-column: 2; }
+    .chat-composer { grid-column: 2; }
+    .chat-index { grid-column: 3; grid-row: 1 / 3; }
+    .message {
+      width: min(82%, 540px);
+      margin: 8px auto 14px;
+      padding: 10px 12px;
+      border-left: 2px solid var(--line);
+      color: var(--muted);
+      font-size: 9px;
+    }
+    .message.current {
+      border-left-color: var(--accent);
+      background: var(--accent-soft);
+      box-shadow: 0 0 0 1px var(--accent) inset;
+    }
+
+    .surface-notes {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .note {
+      min-height: 88px;
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+    .note strong { display: block; margin-bottom: 5px; font-size: 11px; }
+    .note p { margin: 0; color: var(--muted); font-size: 10px; }
+
+    .danger-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    .danger {
+      min-height: 118px;
+      padding: 18px;
+      border: 1px solid color-mix(in srgb, var(--red) 28%, var(--line));
+      border-radius: 10px;
+      background: var(--red-soft);
+    }
+    .danger strong { display: block; margin-bottom: 7px; color: var(--red); font-size: 12px; }
+    .danger p { margin: 0; color: color-mix(in srgb, var(--red) 64%, var(--ink)); font-size: 11px; }
+
+    .validation {
+      display: grid;
+      grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
+      gap: 12px;
+    }
+    .participants, .tasks { padding: 25px; }
+    .participants .big {
+      margin: 12px 0 18px;
+      color: var(--accent);
+      font-size: 70px;
+      font-weight: 760;
+      line-height: 1;
+      letter-spacing: -.07em;
+    }
+    .participants p, .tasks p { color: var(--muted); font-size: 12px; }
+    .task-list { display: grid; gap: 9px; }
+    .task {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 10px 0;
+      border-top: 1px solid var(--line);
+      font-size: 11px;
+    }
+    .task span:first-child {
+      display: grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      background: var(--surface-soft);
+      color: var(--muted);
+      font-weight: 730;
+    }
+
+    .verdict {
+      margin-top: 110px;
+      padding: 48px;
+      border-radius: 18px;
+      background: var(--ink);
+      color: #f7f5ef;
+      box-shadow: var(--shadow);
+    }
+    .verdict h2 { max-width: 850px; margin-bottom: 22px; }
+    .verdict p { max-width: 780px; color: rgba(255,255,255,.64); }
+    .verdict .big-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-top: 26px;
+    }
+    .verdict .key { background: rgba(255,255,255,.08); }
+
+    .doc-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 26px;
+    }
+    .doc-links a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 36px;
+      padding: 8px 12px;
+      border: 1px solid rgba(255,255,255,.22);
+      border-radius: 7px;
+      color: #fff;
+      text-decoration: none;
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      margin-top: 36px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    @media (max-width: 1120px) {
+      :root { --sidebar: 190px; }
+      .content { width: calc(100vw - var(--sidebar) - 38px); }
+      .section-head { grid-template-columns: 1fr; gap: 14px; }
+      .surface { overflow-x: auto; }
+      .screen { min-width: 830px; }
+    }
+
+    @media (max-width: 760px) {
+      body { background-size: auto, 32px 32px, auto; }
+      .page { display: block; }
+      .rail {
+        position: relative;
+        width: 100%;
+        height: auto;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        padding: 12px 16px;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+        overflow-x: auto;
+      }
+      .brand { flex: 0 0 auto; margin: 0 10px 0 0; }
+      .brand-copy, .rail-label, .rail-footer { display: none; }
+      .rail nav { display: flex; flex: 0 0 auto; }
+      .rail a { white-space: nowrap; }
+      .content { width: auto; padding: 24px 16px 64px; }
+      .hero { min-height: 480px; }
+      h1 { font-size: clamp(42px, 14vw, 70px); }
+      .hero-index { display: none; }
+      .thesis, .research-grid, .model, .danger-grid, .validation { grid-template-columns: 1fr; }
+      .grammar { padding: 22px; }
+      .grammar-flow { grid-template-columns: 1fr 1fr; gap: 12px; }
+      .grammar-step:not(:last-child)::after,
+      .grammar-step:not(:last-child)::before { display: none; }
+      .surface-header { display: block; }
+      .zone-route { max-width: none; margin-top: 8px; text-align: left; }
+      .surface-notes { grid-template-columns: 1fr; }
+      .verdict { padding: 30px 24px; }
+      .footer { display: block; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+
+    @media print {
+      .rail { display: none; }
+      .page { display: block; }
+      .content { width: auto; padding: 0; }
+      .hero { min-height: auto; }
+      .surface { break-inside: avoid; box-shadow: none; }
+      .screen { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到正文</a>
+  <div class="page">
+    <aside class="rail" aria-label="报告导航">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">PK</span>
+        <span class="brand-copy">
+          <span class="brand-title">Keyboard System</span>
+          <span class="brand-meta">Design review · 2026-07-24</span>
+        </span>
+      </div>
+      <div class="rail-label">System</div>
+      <nav aria-label="章节">
+        <a href="#overview">总体判断</a>
+        <a href="#grammar">核心语法</a>
+        <a href="#research">研究证据</a>
+        <a href="#focus-model">焦点模型</a>
+        <a href="#surfaces">五工作区</a>
+        <a href="#conflicts">冲突边界</a>
+        <a href="#validation">用户验证</a>
+        <a href="#verdict">最终结论</a>
+      </nav>
+      <div class="rail-footer">
+        约 14 分钟阅读<br>
+        Design only · No runtime change
+      </div>
+    </aside>
+
+    <main id="main">
+      <div class="content">
+        <section class="hero" id="overview" aria-labelledby="hero-title">
+          <span class="eyebrow">Peak Assistant · Interaction Architecture</span>
+          <h1 id="hero-title">五个工作区，<br>一套键盘语法。</h1>
+          <p class="hero-sub">
+            “几乎所有元素都可用键盘操作”不应该变成上百个要背的快捷键。
+            设计把导航拆成区域、组件、元素三个尺度，让 Vault Search、AI Analysis、
+            File Atlas、Composer View 与 Chat Studio 共享同一个方向感。
+          </p>
+          <div class="status-line" aria-label="报告状态">
+            <span class="pill pending">Design only · 未实现</span>
+            <span class="pill">5 个 in-scope 工作区</span>
+            <span class="pill">研究 + 规格 + 验证计划</span>
+            <span class="pill">排除 Usage Dashboard / Setup Wizard / Settings</span>
+          </div>
+          <span class="hero-index" aria-hidden="true">5</span>
+        </section>
+
+        <section id="grammar" aria-labelledby="grammar-title">
+          <div class="section-head">
+            <div>
+              <span class="section-no">01 / Mental model</span>
+              <h2 id="grammar-title">从“背快捷键”改成“沿层级移动”</h2>
+            </div>
+            <p class="section-lead">
+              直接 hotkey 只适合少数高频入口。完整可达性来自稳定导航路径：
+              大区域快速跳，组件逐个过，组件内部按空间结构走。
+            </p>
+          </div>
+
+          <div class="thesis">
+            <article class="thesis-card">
+              <span class="num">01</span>
+              <h3>所有动作先可导航</h3>
+              <p>忘记全部加速键，用户仍可通过 focus path 到达每个可见动作。快捷键不替代基本可达性。</p>
+            </article>
+            <article class="thesis-card">
+              <span class="num">02</span>
+              <h3>Composite 只占一站</h3>
+              <p>列表、树、tabs、toolbar、grid、graph 只占一个 Tab stop；进入后使用方向键。</p>
+            </article>
+            <article class="thesis-card">
+              <span class="num">03</span>
+              <h3>编辑器优先</h3>
+              <p>输入状态中，字符、方向键、Tab、斜杠和问号属于编辑器；应用导航不能偷键。</p>
+            </article>
+          </div>
+
+          <div class="grammar" aria-label="核心键盘语法">
+            <div class="grammar-flow">
+              <div class="grammar-step">
+                <span class="key">F6</span>
+                <strong>切区域</strong>
+                <span>pane / landmark / zone</span>
+              </div>
+              <div class="grammar-step">
+                <span class="key">Tab</span>
+                <strong>切组件</strong>
+                <span>input / toolbar / list</span>
+              </div>
+              <div class="grammar-step">
+                <span class="key">↑ ↓ ← →</span>
+                <strong>切元素</strong>
+                <span>item / tab / node / cell</span>
+              </div>
+              <div class="grammar-step">
+                <span class="key">Enter</span>
+                <strong>执行动作</strong>
+                <span>open / activate / edit</span>
+              </div>
+            </div>
+            <div class="grammar-actions">
+              <span><span class="key">Space</span>选择 / 切换</span>
+              <span><span class="key">⇧F10</span>当前元素完整动作</span>
+              <span><span class="key">Esc</span>退一层</span>
+              <span><span class="key">?</span>上下文键盘地图</span>
+              <span><span class="key">⇧F6</span>反向切区域</span>
+              <span><span class="key">Alt F10</span>Composer 选区工具栏</span>
+            </div>
+          </div>
+        </section>
+
+        <section id="research" aria-labelledby="research-title">
+          <div class="section-head">
+            <div>
+              <span class="section-no">02 / Evidence</span>
+              <h2 id="research-title">三个研究方向，指向同一件事</h2>
+            </div>
+            <p class="section-lead">
+              学术研究强调学习与记忆，产业模式强调 composite 与区域跳转，
+              用户信号强调跨 pane 的焦点断裂。答案不是更多隐藏按键，而是更可预测的焦点架构。
+            </p>
+          </div>
+
+          <div class="research-grid">
+            <article class="card research-card">
+              <span class="tag">Academic</span>
+              <h3>熟练后更快，前提是能发现、练习、记住</h3>
+              <p>
+                快捷键存在学习 crossover。KeyMap 与 Hotkey 研究说明逻辑映射、
+                动作旁提示和重复反馈影响采用；因此按钮与菜单不能被移除。
+              </p>
+              <a href="https://blainelewis.ca/static/402184a0e0a48316455cbd92cdec9c83/keymap.pdf">阅读 KeyMap 研究 →</a>
+            </article>
+            <article class="card research-card">
+              <span class="tag">Industry</span>
+              <h3>F6 跨区、Tab 跨组件、箭头走内部</h3>
+              <p>
+                W3C APG 与 VS Code 都把复杂工作台拆成多个尺度。toolbar 与 tablist
+                只占一个 Tab stop，避免几十次 Tab 才到下一栏。
+              </p>
+              <a href="https://www.w3.org/WAI/ARIA/apg/practices/keyboard-interface/">阅读 W3C APG →</a>
+            </article>
+            <article class="card research-card">
+              <span class="tag">User signal</span>
+              <h3>真正的痛点是丢焦点与跨 pane 困难</h3>
+              <p>
+                WebAIM 数据显示熟练用户大量依赖 heading、form 与 search 跳转；
+                Obsidian 社区也反复请求 pane focus 和列表/表格方向键导航。
+              </p>
+              <a href="https://webaim.org/projects/screenreadersurvey/">阅读 WebAIM 调查 →</a>
+            </article>
+          </div>
+        </section>
+
+        <section id="focus-model" aria-labelledby="focus-title">
+          <div class="section-head">
+            <div>
+              <span class="section-no">03 / Focus architecture</span>
+              <h2 id="focus-title">一个焦点，三种状态，六层所有权</h2>
+            </div>
+            <p class="section-lead">
+              Focus 是键盘指针，Selection 是集合状态，Active 是当前打开/预览。
+              这三者分开后，方向键移动不会意外执行昂贵动作或修改选择。
+            </p>
+          </div>
+
+          <div class="model">
+            <article class="card stack-card">
+              <h3>按键 dispatch 优先级</h3>
+              <div class="stack" aria-label="按键所有权层级">
+                <div class="layer active"><span>01</span><strong>IME composition</strong><small>最高优先级</small></div>
+                <div class="layer"><span>02</span><strong>Modal / popup / menu</strong><small>临时层</small></div>
+                <div class="layer"><span>03</span><strong>Editor / input</strong><small>字符与编辑键</small></div>
+                <div class="layer"><span>04</span><strong>Focused composite</strong><small>方向键</small></div>
+                <div class="layer"><span>05</span><strong>Current surface</strong><small>F6 / help</small></div>
+                <div class="layer"><span>06</span><strong>Obsidian / OS</strong><small>未消费则交还</small></div>
+              </div>
+            </article>
+            <article class="card state-card">
+              <div class="state-row">
+                <span class="sample-row focused">Focused result</span>
+                <p>下一次键盘动作的唯一目标；始终有高对比 outline。</p>
+              </div>
+              <div class="state-row">
+                <span class="sample-row selected">Selected block</span>
+                <p>已经加入集合、tray 或多选；离开焦点后仍保留。</p>
+              </div>
+              <div class="state-row">
+                <span class="sample-row active-item">Active document</span>
+                <p>当前打开、当前 tab 或 Inspector 正在预览的对象。</p>
+              </div>
+              <div class="state-row">
+                <span class="sample-row focused selected active-item">All three</span>
+                <p>允许同时存在，但不能依赖同一块背景让用户猜状态。</p>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section id="surfaces" aria-labelledby="surfaces-title">
+          <div class="section-head">
+            <div>
+              <span class="section-no">04 / Surface maps</span>
+              <h2 id="surfaces-title">五个工作区的 Zone 路线</h2>
+            </div>
+            <p class="section-lead">
+              每个示意图突出一个当前 focus zone。`F6` 沿标注顺序移动；
+              隐藏的 Inspector、drawer 或 tray 自动跳过，重开时恢复上次焦点。
+            </p>
+          </div>
+
+          <article class="surface" id="vault-search">
+            <header class="surface-header">
+              <div>
+                <span class="surface-kicker">Surface 01</span>
+                <h3>Vault Search</h3>
+              </div>
+              <div class="zone-route">VS1 Mode → VS2 Query → VS3 Tools → VS4 Results → VS5 Inspector</div>
+            </header>
+            <div class="screen vault-screen" aria-label="Vault Search 键盘区域示意">
+              <div class="zone vault-tabs" data-zone="VS1">
+                <span class="mini-chip active">Vault Search</span>
+                <span class="mini-chip">AI Analysis</span>
+              </div>
+              <div class="zone vault-query" data-zone="VS2">
+                <div class="search-box">Search across your vault…</div>
+              </div>
+              <div class="zone vault-tools" data-zone="VS3">
+                <span class="mini-chip active">List</span><span class="mini-chip">Tree</span><span class="mini-chip">Graph</span>
+              </div>
+              <div class="zone vault-results focus-zone" data-zone="VS4">
+                <span class="mini-title">Results · one Tab stop</span>
+                <div class="mini-row current">Architecture handbook</div>
+                <div class="mini-row">Chat persistence notes</div>
+                <div class="mini-row">Composer editing decisions</div>
+                <div class="mini-row">File Atlas research</div>
+              </div>
+              <div class="zone vault-inspector" data-zone="VS5">
+                <span class="mini-title">Inspector</span>
+                <div class="mini-bar dark w65"></div>
+                <div class="mini-bar w80"></div>
+                <div class="mini-bar"></div>
+                <div class="mini-bar w45"></div>
+              </div>
+            </div>
+            <div class="surface-notes">
+              <div class="note"><strong>关键校正</strong><p>Tab 不再切 Vault / AI mode；tabs 自己用左右键，Tab 回归“下一组件”。</p></div>
+              <div class="note"><strong>结果导航</strong><p>上下移动 focus，Enter 打开，Cmd/Ctrl+Enter 新 tab，Right 进入 Inspector。</p></div>
+              <div class="note"><strong>异步安全</strong><p>结果刷新只更新 preview，不夺走 query 或当前 result focus。</p></div>
+            </div>
+          </article>
+
+          <article class="surface" id="ai-analysis">
+            <header class="surface-header">
+              <div>
+                <span class="surface-kicker">Surface 02</span>
+                <h3>AI Analysis</h3>
+              </div>
+              <div class="zone-route">AA1 Query → AA2 Lifecycle → AA3 Canvas → AA4 Outline → AA5 Actions</div>
+            </header>
+            <div class="screen analysis-screen" aria-label="AI Analysis 键盘区域示意">
+              <div class="zone analysis-query" data-zone="AA1">
+                <div class="search-box">Analyse structure, evidence and contradictions…</div>
+              </div>
+              <div class="zone analysis-tabs" data-zone="AA2">
+                <span class="mini-chip">Process</span><span class="mini-chip active">Report</span><span class="mini-chip">Sources</span>
+              </div>
+              <div class="zone analysis-canvas" data-zone="AA3">
+                <span class="mini-title">Report canvas</span>
+                <div class="mini-bar dark w45"></div><div class="mini-bar"></div><div class="mini-bar w80"></div>
+                <div class="mini-bar"></div><div class="mini-bar w65"></div><br>
+                <div class="mini-bar dark w45"></div><div class="mini-bar"></div><div class="mini-bar w80"></div>
+              </div>
+              <div class="zone analysis-outline focus-zone" data-zone="AA4">
+                <span class="mini-title">Heading navigator</span>
+                <div class="mini-row current">Executive finding</div>
+                <div class="mini-row">Evidence gaps</div>
+                <div class="mini-row">Recommended next step</div>
+              </div>
+              <div class="zone analysis-actions" data-zone="AA5">
+                <span class="mini-chip">Save report</span><span class="mini-chip">Continue analysis</span><span class="mini-chip">Export</span>
+              </div>
+            </div>
+            <div class="surface-notes">
+              <div class="note"><strong>运行不偷焦点</strong><p>Process 完成后可选中 Report 并播报，但不把用户从当前控件拉走。</p></div>
+              <div class="note"><strong>Heading first</strong><p>长报告提供真实 heading navigator；Enter 跳转，正文继续支持选择与朗读。</p></div>
+              <div class="note"><strong>高风险动作</strong><p>Approve、Continue、Retry 必须聚焦具体按钮，不能绑定裸全局字母键。</p></div>
+            </div>
+          </article>
+
+          <article class="surface" id="file-atlas">
+            <header class="surface-header">
+              <div>
+                <span class="surface-kicker">Surface 03</span>
+                <h3>File Atlas</h3>
+              </div>
+              <div class="zone-route">FA1 Files → FA2 View → FA3 Atlas → FA4 Inspector → FA5 Tray</div>
+            </header>
+            <div class="screen atlas-screen" aria-label="File Atlas 键盘区域示意">
+              <div class="zone atlas-files" data-zone="FA1">
+                <span class="mini-title">File rail</span>
+                <div class="mini-row selected">Project brief.md</div>
+                <div class="mini-row">Research notes.md</div>
+                <div class="mini-row">Architecture.md</div>
+                <div class="mini-row">Interview bank.md</div>
+              </div>
+              <div class="zone atlas-tabs" data-zone="FA2">
+                <span class="mini-chip active">Tree</span><span class="mini-chip">Graph</span><span class="mini-chip">Filter</span>
+              </div>
+              <div class="zone atlas-main focus-zone" data-zone="FA3">
+                <span class="mini-title">Ordered block tree · one Tab stop</span>
+                <div class="mini-row">▾ Overview</div>
+                <div class="mini-row current">&nbsp;&nbsp;Table · comparison</div>
+                <div class="mini-row">&nbsp;&nbsp;Image · flow</div>
+                <div class="mini-row">▸ Architecture</div>
+                <div class="mini-row">▸ Open questions</div>
+              </div>
+              <div class="zone atlas-inspector" data-zone="FA4">
+                <span class="mini-title">Block inspector</span>
+                <div class="mini-bar dark w65"></div><div class="mini-bar"></div><div class="mini-bar w80"></div>
+              </div>
+              <div class="zone atlas-tray" data-zone="FA5">
+                <span class="mini-chip active">Table · comparison</span><span class="mini-chip">Image · flow</span><span class="mini-chip">Send to Copilot</span>
+              </div>
+            </div>
+            <div class="surface-notes">
+              <div class="note"><strong>树遵循标准</strong><p>上下移动，右展开/进入 child，左折叠/回 parent；Enter reveal source。</p></div>
+              <div class="note"><strong>Space 有明确语义</strong><p>在 Atlas item 上切换 Selection Tray，不与 active document 或 focus 混为一体。</p></div>
+              <div class="note"><strong>Graph 有等价列表</strong><p>空间方向键选最近节点，同时给屏幕阅读器提供结构化 node list。</p></div>
+            </div>
+          </article>
+
+          <article class="surface" id="composer-view">
+            <header class="surface-header">
+              <div>
+                <span class="surface-kicker">Surface 04</span>
+                <h3>Composer View</h3>
+              </div>
+              <div class="zone-route">CV1 Header → CV2 Canvas → CV3 Block tools → CV4 Intelligence → CV5 Status</div>
+            </header>
+            <div class="screen composer-screen" aria-label="Composer View 键盘区域示意">
+              <div class="zone composer-header" data-zone="CV1">
+                <span class="mini-chip">Project / Brief</span><span class="mini-chip">Document actions</span>
+              </div>
+              <div class="zone composer-canvas focus-zone" data-zone="CV2">
+                <span class="mini-title">Document canvas · block navigation mode</span>
+                <div class="doc-block heading">Product architecture</div>
+                <div class="doc-block">The workspace connects search, analysis and authored knowledge.</div>
+                <div class="doc-block current">真正难的不是把内容收进来，而是让每次变化都能回到原始 Markdown。</div>
+                <div class="selection-toolbar-demo" aria-label="CV3 选区上下文工具栏示意">
+                  <span class="tool-key current">B</span>
+                  <span class="tool-key"><i>I</i></span>
+                  <span class="tool-key"><u>U</u></span>
+                  <span class="tool-key"><s>S</s></span>
+                  <span class="tool-key">Link</span>
+                  <span class="tool-sep" aria-hidden="true"></span>
+                  <span class="tool-key">评论</span>
+                  <span class="tool-key">润色</span>
+                  <span class="tool-key">精简</span>
+                  <span class="tool-key">扩写</span>
+                  <span class="tool-key">问 AI</span>
+                </div>
+                <div class="doc-block">Image · evidence flow</div>
+                <div class="doc-block">Open questions and review notes.</div>
+              </div>
+              <div class="zone composer-sidecar" data-zone="CV4">
+                <span class="mini-title">Ambient Intelligence</span>
+                <div class="mini-row current">Clarify ownership boundary</div>
+                <div class="mini-row">Compare linked evidence</div>
+                <div class="mini-row">Review table consistency</div>
+              </div>
+              <div class="zone composer-status" data-zone="CV5">
+                <span class="mini-chip">Source: Vault</span><span class="mini-chip">Saved</span><span class="mini-chip">Block 3 of 8</span>
+              </div>
+            </div>
+            <div class="surface-notes">
+              <div class="note"><strong>双模式</strong><p>Text edit mode 保留编辑键；Escape 进入 block navigation，再用方向键移动 block。</p></div>
+              <div class="note"><strong>选区工具栏</strong><p>选中文本不抢焦点；Alt/⌥+F10 进入，左右键移动，Enter/Space 执行，Esc 回到原选区。</p></div>
+              <div class="note"><strong>AI 先审后改</strong><p>选区工具栏与 Sidecar 都只创建候选；Apply 经过 review boundary，不因 focus 移动改正文。</p></div>
+            </div>
+          </article>
+
+          <article class="surface" id="chat-studio">
+            <header class="surface-header">
+              <div>
+                <span class="surface-kicker">Surface 05</span>
+                <h3>Chat Studio</h3>
+              </div>
+              <div class="zone-route">CS1 Navigation → CS2 Messages → CS3 Composer → CS4 Outline / Resources</div>
+            </header>
+            <div class="screen chat-screen" aria-label="Chat Studio 键盘区域示意">
+              <div class="zone chat-left" data-zone="CS1">
+                <span class="mini-title">Pinned · Projects · Recent</span>
+                <div class="mini-row">▾ Peak Assistant</div>
+                <div class="mini-row">&nbsp;&nbsp;Keyboard system</div>
+                <div class="mini-row selected">&nbsp;&nbsp;Composer design</div>
+                <div class="mini-row">▸ Interview prep</div>
+                <div class="mini-row">Recent analysis</div>
+              </div>
+              <div class="zone chat-messages focus-zone" data-zone="CS2">
+                <span class="mini-title">Message timeline · message groups</span>
+                <div class="message">User · How should keyboard navigation work across all surfaces?</div>
+                <div class="message current">Assistant · Use one three-scale grammar, then define surface-specific zones.</div>
+                <div class="message">User · Keep editors and IME safe.</div>
+              </div>
+              <div class="zone chat-composer" data-zone="CS3">
+                <div class="search-box">Write a message…</div>
+              </div>
+              <div class="zone chat-index" data-zone="CS4">
+                <span class="mini-chip active">Outline</span><span class="mini-chip">Resources</span>
+                <div class="mini-row current">Core mental model</div>
+                <div class="mini-row">Focus architecture</div>
+                <div class="mini-row">Surface maps</div>
+                <div class="mini-row">Validation</div>
+              </div>
+            </div>
+            <div class="surface-notes">
+              <div class="note"><strong>三栏只用四站</strong><p>Header 与 splitters 通过所在 zone 的 Tab 到达，不把 F6 环切得过碎。</p></div>
+              <div class="note"><strong>消息是阅读单元</strong><p>上下移动 message group；Enter 进入正文链接和控件；Escape 回 message group。</p></div>
+              <div class="note"><strong>流式稳定</strong><p>新 token 和新消息只播报状态，不把用户从左栏、Outline 或 Composer 拉走。</p></div>
+            </div>
+          </article>
+        </section>
+
+        <section id="conflicts" aria-labelledby="conflicts-title">
+          <div class="section-head">
+            <div>
+              <span class="section-no">05 / Guardrails</span>
+              <h2 id="conflicts-title">四条红线，避免“全键盘”反而更难用</h2>
+            </div>
+            <p class="section-lead">
+              键盘系统最危险的失败不是少一个 hotkey，而是偷键、长 Tab 链、异步抢焦点和关闭后丢失位置。
+            </p>
+          </div>
+          <div class="danger-grid">
+            <article class="danger"><strong>不让每一行都进 Tab 顺序</strong><p>长列表、树和消息必须是 composite；否则完整可达会退化成几十次 Tab。</p></article>
+            <article class="danger"><strong>不在编辑状态抢裸字符</strong><p>`?`、`/`、方向键、Space 与 Home/End 在 editor/input 中由编辑器拥有。</p></article>
+            <article class="danger"><strong>不让 AI 更新移动焦点</strong><p>Process 完成、结果刷新、建议到达和消息流式更新只通过状态播报反馈。</p></article>
+            <article class="danger"><strong>不默认抢全局组合键</strong><p>五个 surface 注册 Obsidian commands；数字 direct-focus preset 只在用户选择并处理冲突后启用。</p></article>
+          </div>
+        </section>
+
+        <section id="validation" aria-labelledby="validation-title">
+          <div class="section-head">
+            <div>
+              <span class="section-no">06 / User validation</span>
+              <h2 id="validation-title">设计完成，不等于已经验证</h2>
+            </div>
+            <p class="section-lead">
+              本轮用户研究是公开资料的二手定性研究。上线前仍要让真实用户完成跨工作区任务，
+              特别验证屏幕阅读器、中文输入法、detached window 和窄屏 drawer。
+            </p>
+          </div>
+          <div class="validation">
+            <article class="card participants">
+              <span class="surface-kicker">Minimum sample</span>
+              <div class="big">5</div>
+              <p>2 位 keyboard-first Obsidian 用户，2 位键盘依赖/屏幕阅读器用户，1 位 IDE / 高级编辑器用户。</p>
+              <span class="pill pending">尚未执行</span>
+            </article>
+            <article class="card tasks">
+              <span class="surface-kicker">Cross-surface tasks</span>
+              <div class="task-list">
+                <div class="task"><span>1</span><div>Vault Search：query → result → Inspector → open</div></div>
+                <div class="task"><span>2</span><div>AI Analysis：Process → Report heading → Source → Save</div></div>
+                <div class="task"><span>3</span><div>File Atlas：file → block → Inspector → tray → Copilot</div></div>
+                <div class="task"><span>4</span><div>Composer：text → block/table → Intelligence review → text</div></div>
+                <div class="task"><span>5</span><div>Chat Studio：navigation → message → Outline → Composer → send</div></div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="verdict" id="verdict" aria-labelledby="verdict-title">
+          <span class="eyebrow">Final design verdict</span>
+          <h2 id="verdict-title">完整键盘体验是一套导航架构，不是一张巨大的快捷键表。</h2>
+          <p>
+            Peak Assistant 应该让每个动作先通过稳定焦点路径到达，再为高频入口提供可发现、可定制、
+            可冲突检查的加速键。这样五个工作区可以拥有各自专业行为，同时仍然像同一个产品。
+          </p>
+          <div class="big-line" aria-label="核心键位摘要">
+            <span class="key">F6</span>
+            <span class="key">Tab</span>
+            <span class="key">↑ ↓ ← →</span>
+            <span class="key">Enter</span>
+            <span class="key">Space</span>
+            <span class="key">⇧F10</span>
+            <span class="key">Alt F10</span>
+            <span class="key">Esc</span>
+            <span class="key">?</span>
+          </div>
+          <div class="doc-links">
+            <a href="../../superpowers/specs/2026-07-24-peak-keyboard-navigation-system.md">阅读正式规格</a>
+            <a href="../../research/2026-07-24-peak-keyboard-navigation/README.md">阅读完整研究</a>
+          </div>
+        </section>
+
+        <footer class="footer">
+          <span>Peak Assistant · Keyboard Navigation System</span>
+          <span>2026-07-24 · Design only · No production code changed</span>
+        </footer>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const links = Array.from(document.querySelectorAll('.rail nav a'));
+    const sections = links
+      .map((link) => document.querySelector(link.getAttribute('href')))
+      .filter(Boolean);
+
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (!visible) return;
+
+      links.forEach((link) => {
+        const active = link.getAttribute('href') === `#${visible.target.id}`;
+        if (active) link.setAttribute('aria-current', 'true');
+        else link.removeAttribute('aria-current');
+      });
+    }, { rootMargin: '-12% 0px -70% 0px', threshold: [0, .25, .5] });
+
+    sections.forEach((section) => observer.observe(section));
+  </script>
+</body>
+</html>

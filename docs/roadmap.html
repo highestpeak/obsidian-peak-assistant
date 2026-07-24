@@ -83,7 +83,7 @@
       <h1>状态快照：里程碑、待建、调研、远期</h1>
       <p class="subtitle">这份文档回答"项目现在在做什么、下一步做什么"。<strong>只登记关键节点</strong>——不是流水账。逐 session 的完成粒度看 <a href="progress.md"><code>progress.md</code></a>；文档索引看 <a href="index.html"><code>index.html</code></a>；调研原稿在 <code>docs/research/</code>；架构 spec 在 <code>docs/superpowers/specs/</code>；小型未实现需求登记在 <a href="planned-requirements.html"><code>planned-requirements.html</code></a>。</p>
       <div class="meta">
-        <span>Status: current · 2026-07-23</span>
+        <span>Status: current · 2026-07-24</span>
         <span>Scope: milestone-level only</span>
         <span>Updated: 手动维护 + session-end 补关键节点</span>
       </div>
@@ -272,6 +272,18 @@
                 <td>把 2026-07-15 静态 mock 的交互契约落到生产：按 Markdown / Base / Canvas / Excalidraw 类型注册固定操作；Copilot Review 只按证据产生建议；列表、表格、公式采用上下对比；图片暴露真实生成等待；Mermaid/native object 逐 patch 重渲染；Copilot / Ambient / History 三个同级 dock 视图；补齐跨 block 选区、候选历史、source-range transaction、keyboard/a11y 与长文性能验证。Markdown/native file 继续是唯一 source of truth。</td>
                 <td><a href="superpowers/specs/2026-07-15-composer-block-ai-capability-contract.md">Block AI contract</a><br><a href="superpowers/specs/2026-07-09-peak-composer-editing-view.md">Composer design</a><br><a href="gstack/peak-composer-editing-view-2026-07-09/index.html">Interactive mock</a></td>
                 <td><span class="pill gold">decided · mock/spec ready</span></td>
+              </tr>
+              <tr>
+                <td><strong>Peak File Workspace · 多文件预览与 AI 编辑</strong></td>
+                <td>把 Image、HTML、PDF 从“可读取的附件”提升为一等文件工作区：共享 file surface registry、AI sidecar、candidate review 与版本保存。Image 先完成安全 AI edit；HTML 提供 sandboxed Source / Preview / Split；PDF 保留 native viewer，并接入 page / selection-aware companion。默认不覆盖原文件，也不复制 AI runtime。</td>
+                <td><a href="superpowers/specs/2026-07-24-peak-file-workspace.md">正式方案</a><br><a href="gstack/peak-file-workspace-2026-07-24/index.html">视觉方案</a><br><a href="research/2026-07-24-peak-file-workspace/README.md">能力审计</a></td>
+                <td><span class="pill gold">decided · design/spec ready · implementation pending</span></td>
+              </tr>
+              <tr>
+                <td><strong>全键盘导航与可访问性系统</strong></td>
+                <td>让 Vault Search、AI Analysis、File Atlas、Composer View、Chat Studio 共享 <code>Zone → Component → Item</code> 导航心智：<code>F6</code> 切区域、<code>Tab</code> 切组件、方向键切元素，并覆盖选区浮动工具栏、图谱、树、Inspector、AI review、焦点恢复、IME 与 detached window；Usage Dashboard、Setup Wizard、Settings 不进入本轮完整键盘工作区范围。</td>
+                <td><a href="superpowers/specs/2026-07-24-peak-keyboard-navigation-system.md">Keyboard system spec</a><br><a href="gstack/keyboard-navigation-system-2026-07-24/index.html">视觉报告</a><br><a href="research/2026-07-24-peak-keyboard-navigation/README.md">研究报告</a></td>
+                <td><span class="pill gold">decided · design/spec ready · implementation pending</span></td>
               </tr>
               <tr>
                 <td><strong>Copilot Command Center Redesign</strong></td>

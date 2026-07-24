@@ -2558,3 +2558,31 @@ Outline/Resources 双 tab；`outlineModel.ts` 纯模型（topic 分组、process
 
 ### 遗留
 - main.ts / AmbientPushRuntime 的临时 `[MEM]` 埋点稳定几天后移除;MAX_STRUCTURAL_ANALYSIS_NODES 守卫数值待改准;被 gate 的启动索引路径需按 JSONL spec 的有界化方案逐步恢复;机器 swap 满建议重启。
+
+## 2026-07-23（下午）· File Atlas Inspector/Tree 打磨 + Copilot 命令下线
+
+**上下文**:owner 逐张截图反馈 File Atlas 的 inspector / tree 细节，一轮轮迭代打磨；均为局部 UI + 一处解析器行为，无新里程碑（不动 roadmap）。
+
+### Copilot 命令下线（保留实现）
+- 移除 `Open Copilot` palette 命令：gateway binding + `COPILOT_OPEN_MANIFEST` + `PALETTE_COMMAND_MANIFESTS` key + main.ts 接线 + 死代码 `Register.ts` 条目 + wire-in 测试同步。排查确认用户入口只有此命令（ribbon 开的是 Chat）；`CopilotPickerModal/Content`、ports、runtime、`openCopilotPanel()` 函数本体全部保留，日后可直接把 binding 加回。`⌘⇧O` 是 Obsidian 用户级配置，命令消失即失效。（其后 owner/linter 进一步把 Copilot 从 palette 彻底移除并新增 `Open File Atlas` 命令。）
+
+### Inspector — 关键字统计
+- heading 也出关键字卡：新增 `atlasTreeModel.sectionText(node)` 聚合整个 section 正文（heading 单行无词频信号），`AtlasInspector` 对 heading 用它算 `keywordsOf`。
+- chip 按词频缩放：`--kw-w = count/max`（线性，0.12 保底），CSS 用 `calc()` 驱动字号/内边距（padding 撑大、不固定高度，行不参差），字号 11→20px；计数徽标改实心 accent + `--pk-accent-fg`（对比度）。
+
+### Inspector — 逐类型预览审计
+- 去重复标题：`TITLE_IS_LABEL` 白名单——只有 title 是真名字（heading/frontmatter/link/image/embed/attachment）才显示标题；list/paragraph/quote/property/tag 等的"首行标题"隐藏，直接看预览。
+- 去重复副标题：`SUB_IS_INFORMATIVE` 白名单——只有携带计数/状态/类型的 sub 才显示（Frontmatter/List/Task/Code/Table/Callout）；`Body paragraph`/`Blockquote`/`Vault link` 等类型复述 sub 隐藏。
+- 真实渲染：`RENDERED_KINDS` 扩到 Paragraph/List/Task/Quote/Callout/Code（+Math/Mermaid）走 `StreamdownIsolated`，`**粗体**`/项目符号/复选框/代码高亮正常；新增 `dedent()` 防嵌套缩进被当代码块；Footnote 刻意回落 mono（无引用的独立脚注定义 Streamdown 会渲染空）。取舍：为满足"要渲染"打开了此前因 OOM 史谨慎关闭的散文渲染，单块按需挂载、开销有界，可回退。
+- 链接可点击：port 加 `openLink(target, sourcePath, external)`（vault → `workspace.openLinkText` 相对解析 `note#heading`；external → `vaultNavigation.openExternalUrl`）；链接卡从 `<div>` 改 `<Button>`，hover 高亮 + tooltip；mockHost 补桩。
+
+### Tree — 光标定位 + 图布局补齐
+- 按光标展开：port 加 `getCursorLine(path)`（编辑器光标行，0-based→1-based 对齐 anchor，modal 前台仍可读）；`atlasTreeModel.blockIdAtLine` 递归找包含该行的最深块；`FileAtlasPanel` reseed 用「光标块 ?? 第一个标题」，`defaultCollapsedIds` 展开其祖先路径。修根因：原来固定 `firstSelectableId`（永远第一个标题）。
+- Graph 布局补齐到与 Vault Search 一致：`FileAtlasGraph.LAYOUTS` 增 `flow-lr`(Flow →) + `folder`(Folder tree)，`flow-tb` 改标签 "Flow ↓"。共享画布 `AtlasGraphCanvasImpl` 本就实现全 5 preset，且 File Atlas 图是文档邻域 note 图（节点带 path/folder），folder 分组有意义。
+
+### Parser — 纯链接段落塌缩
+- `documentBlockParser` 新增 `isResourceOnly(raw)`（剥掉 embed/wikilink/图片/md 链接/裸 URL/tag 后无字母数字残留即判定）；段落若为纯资源且抽出资源块 → 只返回资源块、丢空壳段落；带正文的链接段落照旧保留。修 owner 截图行 9 的「Body paragraph `[[…]]` + vault link」重复。
+- 测试:`test/file-atlas-parser.test.ts` 加断言（纯链接行不产段落、带正文行保留）；`file-atlas-parser` + `command-gateway-wire-in` 全绿，`npm run build` 绿。
+
+### 状态
+- 全部改动**未 commit**。File Atlas inspector/tree/parser + Copilot 命令下线。
