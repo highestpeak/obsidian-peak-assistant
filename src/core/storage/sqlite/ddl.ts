@@ -1349,10 +1349,14 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 				INSERT OR REPLACE INTO index_state (key, value)
 				VALUES ('phase3_null_readable_content_raw_v1', '1');
 			`);
-			// VACUUM must run outside a transaction; ddl invocations are
-			// unwrapped so this is safe. Skip on failure — worst case is
-			// deferred space reclamation, not correctness.
-			try { db.exec('VACUUM'); } catch { /* vacuum optional */ }
+			// NOTE: previously ran `VACUUM` here to reclaim space. Removed —
+			// VACUUM rebuilds the whole DB file and on a large vault (~582MB)
+			// spikes the Electron renderer's native memory past 2GB during
+			// startup and OOM-aborts it (white-screen crash loop), because this
+			// migration runs while opening the DB in `initSqlite`. Space
+			// reclamation is optional ("worst case deferred, not correctness");
+			// if needed it must be a background/off-thread maintenance step, not
+			// a synchronous startup VACUUM. See project memory: startup OOM.
 		}
 	} catch {
 		// index_state may not exist on very old schemas; the CREATE above runs
