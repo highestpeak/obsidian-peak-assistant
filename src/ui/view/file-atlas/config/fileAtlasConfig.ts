@@ -57,12 +57,34 @@ export interface FileAtlasStrings {
 	viewTree: string;
 	viewGraph: string;
 	graphDisabledHint: string;
+	/** Read-only hint shown in the graph subview's atlas bar. */
+	graphReadonlyHint: string;
+	/** Tree subview hint shown in the tab row. */
+	treeHint: string;
+	graphScopeLocal: string;
+	graphScopeTwoHop: string;
+	graphSemanticLabel: string;
+	graphSearchPlaceholder: string;
+	graphSearchScope: string;
 	searchPlaceholder: string;
 	searchScope: string;
 	filtersButton: string;
+	/** Filter popover header title. */
+	filtersTitle: string;
 	filtersHeadingHint: string;
+	filtersSelectAll: string;
+	filtersClearAll: string;
 	expandAll: string;
 	collapseAll: string;
+	/** Synthetic frontmatter group row title. */
+	frontmatterTitle: string;
+	/** Inspector keyword-frequency card title. */
+	keywordsTitle: string;
+	/** Left rail (open documents) header title. */
+	railTitle: string;
+	/** Copy-button resting + copied labels. */
+	copyLabel: string;
+	copiedLabel: string;
 	reliabilityBasic: string;
 	reliabilityBasicHint: string;
 	inspectorEmpty: string;
@@ -77,12 +99,27 @@ export interface FileAtlasStrings {
 	sendToCopilotHint: string;
 }
 
+/**
+ * Stopword lists for the Inspector's naive term-frequency keyword card. Domain
+ * data (not logic) per docs/conventions/configurability.md, so it lives in the
+ * config template. `latin` drops common English function words; `cjk` drops
+ * frequent Chinese bigrams that would otherwise dominate the count.
+ */
+export interface KeywordStopwords {
+	latin: string[];
+	cjk: string[];
+}
+
 export interface FileAtlasConfig {
 	kinds: Record<string, KindConfig>;
 	filterGroups: FilterGroup[];
 	presets: PresetConfig[];
 	strings: FileAtlasStrings;
+	keywordStopwords: KeywordStopwords;
 }
+
+/** Default active preset on open — the broadest view ("All"), leftmost tab. */
+export const DEFAULT_PRESET_ID = 'all';
 
 /** Compiled fallback — mirrors templates/config/file-atlas.json exactly. */
 export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
@@ -112,11 +149,11 @@ export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
 		{ id: 'references', title: 'References' },
 	],
 	presets: [
+		{ id: 'all',       label: 'All',       kinds: ['property', 'tag', 'paragraph', 'list', 'quote', 'callout', 'task', 'table', 'code', 'math', 'mermaid', 'image', 'embed', 'attachment', 'vault-link', 'external-link', 'footnote'] as RawBlockKind[] },
 		{ id: 'overview',  label: 'Overview',  kinds: ['task', 'table', 'code', 'math', 'mermaid', 'vault-link', 'external-link', 'tag', 'footnote', 'property', 'image', 'embed', 'attachment'] as RawBlockKind[] },
 		{ id: 'reading',   label: 'Reading',   kinds: ['paragraph', 'list', 'quote', 'callout', 'task', 'image', 'table', 'mermaid'] as RawBlockKind[] },
 		{ id: 'writing',   label: 'Writing',   kinds: ['task', 'callout', 'quote'] as RawBlockKind[] },
 		{ id: 'resources', label: 'Resources', kinds: ['vault-link', 'external-link', 'tag', 'footnote', 'property', 'image', 'embed', 'attachment', 'table', 'code', 'math', 'mermaid'] as RawBlockKind[] },
-		{ id: 'all',       label: 'All',       kinds: ['property', 'tag', 'paragraph', 'list', 'quote', 'callout', 'task', 'table', 'code', 'math', 'mermaid', 'image', 'embed', 'attachment', 'vault-link', 'external-link', 'footnote'] as RawBlockKind[] },
 	],
 	strings: {
 		modeAtlas: 'Atlas',
@@ -126,12 +163,27 @@ export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
 		viewTree: 'Tree',
 		viewGraph: 'Graph',
 		graphDisabledHint: 'Graph subview arrives in a later phase',
+		graphReadonlyHint: 'Read-only neighborhood from vault links around this note',
+		treeHint: 'Outline of every block, resource & heading in this note',
+		graphScopeLocal: 'Local neighborhood',
+		graphScopeTwoHop: 'Two-hop expansion',
+		graphSemanticLabel: 'Semantic links',
+		graphSearchPlaceholder: 'Search notes in this graph...',
+		graphSearchScope: 'graph notes',
 		searchPlaceholder: "Search this document's blocks, links, and headings...",
 		searchScope: 'document',
 		filtersButton: 'Filters',
+		filtersTitle: 'Visible block types',
 		filtersHeadingHint: 'Headings always stay visible',
+		filtersSelectAll: 'Select all',
+		filtersClearAll: 'Clear all',
 		expandAll: 'Expand all',
 		collapseAll: 'Collapse all',
+		frontmatterTitle: 'Frontmatter',
+		keywordsTitle: 'Keywords · term frequency',
+		railTitle: 'Open',
+		copyLabel: 'Copy',
+		copiedLabel: 'Copied',
 		reliabilityBasic: 'Basic anchors',
 		reliabilityBasicHint:
 			'Anchors matched by content hash + heading + ordinal. Git-aware anchors arrive in a later phase.',
@@ -145,6 +197,10 @@ export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
 		trayTitle: 'Tray',
 		sendToCopilot: 'Send to Copilot',
 		sendToCopilotHint: 'Copilot handoff arrives in a later phase',
+	},
+	keywordStopwords: {
+		latin: ['the', 'and', 'for', 'that', 'this', 'with', 'you', 'are', 'but', 'not', 'can', 'has', 'was', 'from', 'into', 'per', 'its'],
+		cjk: ['一种', '一个', '自己', '的时', '时候', '就是', '可以', '这个', '那个', '起来', '一些', '然后', '但是', '这种'],
 	},
 };
 
@@ -163,6 +219,7 @@ export async function loadFileAtlasConfig(): Promise<FileAtlasConfig> {
 			filterGroups: parsed.filterGroups ?? DEFAULT_FILE_ATLAS_CONFIG.filterGroups,
 			presets: parsed.presets ?? DEFAULT_FILE_ATLAS_CONFIG.presets,
 			strings: { ...DEFAULT_FILE_ATLAS_CONFIG.strings, ...(parsed.strings ?? {}) },
+			keywordStopwords: parsed.keywordStopwords ?? DEFAULT_FILE_ATLAS_CONFIG.keywordStopwords,
 		};
 	} catch {
 		return DEFAULT_FILE_ATLAS_CONFIG;

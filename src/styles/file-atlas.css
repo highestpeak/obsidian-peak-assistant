@@ -13,9 +13,9 @@
 
 .peak-file-atlas-modal.pkfa-root {
 	display: grid;
-	grid-template-rows: 42px 44px auto 46px minmax(0, 1fr) auto;
-	height: min(900px, calc(100vh - 160px));
-	min-height: 620px;
+	grid-template-columns: 224px minmax(0, 1fr);
+	height: 100%;
+	min-height: 0;
 	background: var(--pk-surface);
 	color: var(--pk-text-primary);
 	font-family: var(--pk-font-sans);
@@ -37,31 +37,127 @@
 	line-height: 1.25 !important;
 }
 
-/*
- * Mounted inside the CopilotPicker modal body: File Atlas renders its full mock
- * chrome (path → mode-nav → search → atlas-bar → main → tray, all 6 rows) and
- * fills the picker body height instead of its own fixed modal height.
- */
-.peak-file-atlas-modal.pkfa-root.pkfa-fill {
+.pkfa-empty-state {
 	height: 100%;
-	min-height: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--pk-text-secondary);
+	font-size: var(--pk-text-base);
 }
 
-/*
- * Slot mode (Copilot / Ambient tabs): the shared top (path + mode-nav) stays,
- * and the body area is replaced by the host-provided content. Only 3 rows.
- */
-.peak-file-atlas-modal.pkfa-root.pkfa-slot-mode {
-	grid-template-rows: 42px 44px minmax(0, 1fr);
-}
-
-.pkfa-body-slot {
+/* content column (right of the rail): doc-context / tabs / body rows */
+.pkfa-content {
 	min-width: 0;
 	min-height: 0;
+	display: grid;
+	grid-template-rows: 42px 42px auto 46px minmax(0, 1fr) auto;
+	background: var(--pk-surface);
 	overflow: hidden;
-	display: flex;
-	flex-direction: column;
 }
+
+/* graph subview replaces the tree body: doc-context / tabs / graph */
+.peak-file-atlas-modal.pkfa-root[data-subview="graph"] .pkfa-content {
+	grid-template-rows: 42px 42px minmax(0, 1fr);
+}
+
+/* ---------- left file rail ---------- */
+.pkfa-rail {
+	min-width: 0;
+	min-height: 0;
+	border-right: 1px solid var(--pk-border-soft);
+	background: var(--pk-surface-raised);
+	display: grid;
+	grid-template-rows: auto minmax(0, 1fr);
+}
+
+.pkfa-rail-head { display: flex; align-items: center; gap: 8px; padding: 12px 14px 8px; }
+
+.pkfa-rail-title {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	color: var(--pk-text-secondary);
+	font-size: var(--pk-text-xs);
+	font-weight: 820;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.pkfa-rail-title svg { width: 14px; height: 14px; }
+
+.pkfa-rail-list { min-height: 0; overflow: auto; padding: 2px 8px 12px; display: grid; gap: 2px; align-content: start; }
+
+.pkfa-rail-item {
+	min-width: 0;
+	display: grid;
+	grid-template-columns: 24px minmax(0, 1fr) auto auto;
+	align-items: center;
+	gap: 8px;
+	padding: 8px;
+	border: 1px solid transparent;
+	border-radius: var(--pk-radius-md);
+	background: transparent;
+	cursor: pointer;
+	text-align: left;
+	position: relative;
+}
+
+.pkfa-rail-item:hover { background: var(--pk-state-hover); }
+.pkfa-rail-item.is-active { background: var(--pk-surface); border-color: var(--pk-border-accent); box-shadow: var(--pk-shadow-sm); }
+
+.pkfa-rail-item.is-active::before {
+	content: "";
+	position: absolute;
+	left: -1px; top: 7px; bottom: 7px;
+	width: 3px; border-radius: 3px;
+	background: var(--pk-accent);
+}
+
+.pkfa-rail-icon {
+	width: 24px; height: 24px;
+	display: grid; place-items: center;
+	border-radius: var(--pk-radius-sm);
+	border: 1px solid var(--pk-border);
+	background: var(--pk-surface);
+	color: var(--pk-text-secondary);
+	flex: 0 0 auto;
+}
+
+.pkfa-rail-icon svg { width: 13px; height: 13px; }
+.pkfa-rail-item.is-active .pkfa-rail-icon { color: var(--pk-accent); border-color: var(--pk-border-accent); background: var(--pk-accent-tint); }
+
+.pkfa-rail-name {
+	min-width: 0;
+	font-size: var(--pk-text-md);
+	font-weight: 720;
+	color: var(--pk-text-primary);
+	overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+
+.pkfa-rail-item.is-active .pkfa-rail-name { color: var(--pk-accent-text); }
+
+.pkfa-rail-dot {
+	width: 6px; height: 6px; border-radius: var(--pk-radius-full);
+	background: var(--pk-warning); flex: 0 0 auto;
+	opacity: 0; margin-right: 2px;
+}
+
+.pkfa-rail-item[data-unsaved="true"] .pkfa-rail-dot { opacity: 1; }
+
+.peak-file-atlas-modal.pkfa-root .pkfa-rail-close {
+	width: 20px !important; height: 20px !important; min-width: 20px !important;
+	display: grid; place-items: center;
+	border: 0 !important; border-radius: var(--pk-radius-sm) !important;
+	background: transparent !important; color: var(--pk-text-faint);
+	cursor: pointer; padding: 0 !important; opacity: 0;
+	flex: 0 0 auto;
+}
+
+.pkfa-rail-close svg { width: 12px; height: 12px; }
+.pkfa-rail-item:hover .pkfa-rail-close { opacity: 1; }
+.peak-file-atlas-modal.pkfa-root .pkfa-rail-close:hover { background: var(--pk-state-hover) !important; color: var(--pk-text-primary); }
+.pkfa-rail-item:hover[data-unsaved="true"] .pkfa-rail-dot { opacity: 0; }
 
 /* Global svg default (mirrors the mock's `svg { 16px; stroke-width: 1.9 }`).
    Without this, Lucide icons with no explicit size prop render at their 24px
@@ -150,77 +246,53 @@
 	border-radius: var(--pk-radius-pill);
 }
 
-/* ---------- mode nav ---------- */
-.pkfa-mode-nav {
-	display: grid;
-	grid-template-columns: 1fr 1fr 1fr;
+/* ---------- tab row: Tree / Graph subviews ---------- */
+.pkfa-tab-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 0 var(--pk-space-6);
 	border-bottom: 1px solid var(--pk-border-soft);
 	background: var(--pk-surface);
 }
 
-.peak-file-atlas-modal.pkfa-root .pkfa-mode {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--pk-space-3);
-	color: var(--pk-text-secondary);
-	border: 0 !important;
-	background: var(--pk-surface) !important;
-	padding: 0 !important;
-	border-radius: 0 !important;
-	cursor: pointer;
-	font-size: var(--pk-text-lg);
-	font-weight: 760;
-}
-
-.peak-file-atlas-modal.pkfa-root .pkfa-mode.is-active {
-	background: var(--pk-accent-tint) !important;
-	color: var(--pk-accent-text);
-}
-
-.peak-file-atlas-modal.pkfa-root .pkfa-mode:disabled {
-	color: var(--pk-text-faint);
-	cursor: not-allowed;
-}
-
-.pkfa-subview-switch {
-	height: 26px;
+.pkfa-atlas-tabs {
+	height: 30px;
 	display: inline-flex;
 	align-items: center;
 	gap: 2px;
-	padding: 2px;
-	border: 1px solid var(--pk-border-accent);
-	border-radius: var(--pk-radius-md);
-	background: var(--pk-surface);
+	padding: 3px;
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-pill);
+	background: var(--pk-surface-sunken);
+	flex: 0 0 auto;
 }
 
-.peak-file-atlas-modal.pkfa-root .pkfa-view-tab {
-	height: 20px !important;
+.peak-file-atlas-modal.pkfa-root .pkfa-atlas-tab {
+	height: 24px !important;
 	display: inline-flex;
 	align-items: center;
-	gap: 5px;
-	padding: 0 9px !important;
+	gap: 6px;
+	padding: 0 13px !important;
 	border: 0 !important;
-	border-radius: var(--pk-radius-sm) !important;
-	color: var(--pk-text-secondary);
+	border-radius: var(--pk-radius-pill) !important;
 	background: transparent !important;
-	font-size: var(--pk-text-xs);
-	font-weight: 750;
+	color: var(--pk-text-secondary);
+	font-size: var(--pk-text-md);
+	font-weight: 760;
 	cursor: pointer;
+	white-space: nowrap;
 }
 
-.pkfa-view-tab svg { width: 12px; height: 12px; }
-
-.peak-file-atlas-modal.pkfa-root .pkfa-view-tab.is-active {
-	color: var(--pk-accent-text);
-	background: var(--pk-surface) !important;
+.pkfa-atlas-tab svg { width: 13px; height: 13px; }
+.peak-file-atlas-modal.pkfa-root .pkfa-atlas-tab:hover { color: var(--pk-text-primary); }
+.peak-file-atlas-modal.pkfa-root .pkfa-atlas-tab.is-active {
+	color: var(--pk-accent-fg) !important;
+	background: var(--pk-accent) !important;
 	box-shadow: var(--pk-shadow-sm) !important;
 }
 
-.peak-file-atlas-modal.pkfa-root .pkfa-view-tab:disabled {
-	color: var(--pk-text-faint);
-	cursor: not-allowed;
-}
+.pkfa-tab-hint { color: var(--pk-text-faint); font-size: var(--pk-text-xs); font-weight: 640; }
 
 /* ---------- search band ---------- */
 .pkfa-search-band { padding: 14px var(--pk-space-6) 10px; background: var(--pk-surface); }
@@ -369,87 +441,139 @@
 .pkfa-filter-popover {
 	position: absolute;
 	left: 0;
-	top: calc(100% + 8px);
+	top: calc(100% + 9px);
 	z-index: var(--pk-z-popover);
-	width: 520px;
-	max-height: min(560px, calc(100vh - 260px));
-	padding: 12px;
+	width: 544px;
+	max-height: min(620px, calc(100vh - 220px));
+	padding: 6px;
 	border: 1px solid var(--pk-border-strong);
 	border-radius: var(--pk-radius-lg);
 	background: var(--pk-popover, var(--pk-surface-overlay));
 	box-shadow: var(--pk-shadow-popover);
 	display: grid;
-	gap: var(--pk-space-3);
-	overflow: auto;
+	grid-template-rows: auto minmax(0, 1fr) auto;
+	overflow: hidden;
 }
 
-.pkfa-filter-head {
+.pkfa-filter-popover-head {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--pk-space-3);
+	padding: 12px 12px 11px;
 	color: var(--pk-text-primary);
 	font-size: var(--pk-text-base);
-	font-weight: 780;
+	font-weight: 800;
 }
 
-.pkfa-filter-head .pkfa-hint { color: var(--pk-text-faint); font-weight: 650; font-size: var(--pk-text-xs); }
+.pkfa-filter-popover-head .pkfa-hint { color: var(--pk-text-faint); font-weight: 640; font-size: var(--pk-text-xs); }
 
-.pkfa-filter-section { display: grid; gap: 6px; padding-top: 9px; border-top: 1px solid var(--pk-border-soft); }
-.pkfa-filter-section:first-child { padding-top: 0; border-top: 0; }
+.pkfa-filter-scroll { min-height: 0; overflow: auto; padding: 2px 6px; display: grid; gap: 4px; }
+
+.pkfa-filter-section {
+	display: grid;
+	gap: 8px;
+	padding: 12px;
+	border-radius: var(--pk-radius-md);
+	background: var(--pk-surface-sunken);
+	border: 1px solid var(--pk-border-soft);
+}
 
 .pkfa-filter-section-title {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--pk-space-2);
-	color: var(--pk-text-faint);
+	color: var(--pk-text-secondary);
 	font-size: var(--pk-text-xs);
-	font-weight: 820;
+	font-weight: 840;
 	text-transform: uppercase;
+	letter-spacing: 0.05em;
 }
 
-.pkfa-filter-actions { display: inline-flex; align-items: center; gap: 4px; text-transform: none; }
+.pkfa-filter-actions { display: inline-flex; align-items: center; gap: 4px; text-transform: none; letter-spacing: 0; }
 
 .peak-file-atlas-modal.pkfa-root .pkfa-filter-action {
 	height: 21px;
-	padding: 0 7px !important;
+	padding: 0 9px !important;
 	border: 1px solid var(--pk-border) !important;
 	background: var(--pk-surface) !important;
 	color: var(--pk-text-secondary);
-	border-radius: var(--pk-radius-sm) !important;
+	border-radius: var(--pk-radius-pill) !important;
 	font-size: var(--pk-text-xs);
-	font-weight: 760;
+	font-weight: 780;
 	cursor: pointer;
 }
 
-.peak-file-atlas-modal.pkfa-root .pkfa-filter-action:hover { color: var(--pk-accent-text); border-color: var(--pk-border-accent) !important; background: var(--pk-accent-tint) !important; }
+.peak-file-atlas-modal.pkfa-root .pkfa-filter-action:hover { color: var(--pk-accent-text); border-color: var(--pk-border-accent) !important; background: var(--pk-accent-soft) !important; }
 
-.pkfa-filter-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.pkfa-filter-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
 
 .peak-file-atlas-modal.pkfa-root .pkfa-type-toggle {
 	min-width: 0;
-	height: 30px;
+	height: 34px !important;
 	display: inline-flex;
 	align-items: center;
-	gap: 7px;
-	padding: 0 8px !important;
-	/* Mock-exact colors (replication mode — the mock is the design spec and its
-	   pale-purple / cool-gray palette does not map cleanly to --pk-* tokens). */
-	border: 1px solid #e7e9f1 !important;
-	border-radius: 7px !important;
-	background: #f7f8fb !important;
-	color: #747d8c;
-	font-size: var(--pk-text-xs);
-	font-weight: 700;
+	gap: 8px;
+	padding: 0 10px 0 11px !important;
+	border: 1px solid var(--pk-border) !important;
+	border-radius: 9px !important;
+	background: var(--pk-surface) !important;
+	color: var(--pk-text-secondary);
+	font-size: var(--pk-text-base);
+	font-weight: 720;
 	cursor: pointer;
-	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
+	transition: border-color 110ms ease, background-color 110ms ease, color 110ms ease, transform 110ms ease, box-shadow 110ms ease;
 }
 
-.pkfa-type-toggle svg { width: 13px; height: 13px; }
-.peak-file-atlas-modal.pkfa-root .pkfa-type-toggle.is-on { color: var(--pk-accent) !important; background: #f1eaff !important; border-color: #dccbff !important; }
+.pkfa-type-toggle .pkfa-tt-icon { flex: 0 0 auto; display: grid; place-items: center; color: var(--pk-text-faint); }
+.pkfa-type-toggle .pkfa-tt-icon svg { width: 14px; height: 14px; }
+.pkfa-type-toggle .pkfa-tt-label { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1 1 auto; text-align: left; }
+
+.pkfa-type-toggle .pkfa-tt-check {
+	width: 16px; height: 16px; flex: 0 0 auto;
+	display: grid; place-items: center;
+	border: 1.5px solid var(--pk-border-strong);
+	border-radius: 5px;
+	background: var(--pk-surface);
+	color: transparent;
+}
+
+.pkfa-type-toggle .pkfa-tt-check svg { width: 11px; height: 11px; stroke-width: 3; }
+
+/* hover — clearly reactive */
+.peak-file-atlas-modal.pkfa-root .pkfa-type-toggle:hover {
+	border-color: var(--pk-border-accent) !important;
+	background: var(--pk-accent-tint) !important;
+	color: var(--pk-text-primary);
+	transform: translateY(-1px);
+	box-shadow: var(--pk-shadow-sm);
+}
+
+.pkfa-type-toggle:hover .pkfa-tt-icon { color: var(--pk-accent); }
+.pkfa-type-toggle:hover .pkfa-tt-check { border-color: var(--pk-border-accent); }
+
+/* on state */
+.peak-file-atlas-modal.pkfa-root .pkfa-type-toggle.is-on {
+	color: var(--pk-accent-text) !important;
+	background: var(--pk-accent-soft) !important;
+	border-color: var(--pk-border-accent) !important;
+}
+
+.pkfa-type-toggle.is-on .pkfa-tt-icon { color: var(--pk-accent); }
+.pkfa-type-toggle.is-on .pkfa-tt-check { background: var(--pk-accent); border-color: var(--pk-accent); color: var(--pk-accent-fg); }
+
+.pkfa-filter-popover-foot {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--pk-space-3);
+	padding: 10px 12px 8px;
+	border-top: 1px solid var(--pk-border-soft);
+	margin-top: 2px;
+}
+
+.pkfa-filter-foot-count { color: var(--pk-text-secondary); font-size: var(--pk-text-xs); font-weight: 720; }
 
 /* ---------- main split ---------- */
 .pkfa-main { min-height: 0; display: grid; grid-template-columns: minmax(0, 60fr) minmax(0, 40fr); background: var(--pk-surface); }
@@ -619,6 +743,20 @@
 	max-height: 260px;
 }
 
+.pkfa-prose-snippet {
+	padding: 12px 13px;
+	border: 1px solid var(--pk-border-soft);
+	background: var(--pk-surface);
+	border-radius: var(--pk-radius-md);
+	color: var(--pk-text-primary);
+	font-family: var(--pk-font-sans);
+	font-size: var(--pk-text-md);
+	line-height: 1.6 !important;
+	white-space: pre-wrap;
+	overflow: auto;
+	max-height: 300px;
+}
+
 .pkfa-meta-rows { display: grid; gap: 7px; }
 .pkfa-meta-row { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: var(--pk-space-3); align-items: baseline; font-size: var(--pk-text-base); }
 .pkfa-meta-row .pkfa-k { color: var(--pk-text-faint); font-size: var(--pk-text-xs); font-weight: 780; text-transform: uppercase; }
@@ -644,6 +782,14 @@
 }
 
 .pkfa-preview-media svg, .pkfa-preview-link svg { width: 22px; height: 22px; color: var(--pk-accent); }
+
+/* Link cards are real buttons — open the note / URL on click. */
+.pkfa-preview-link.is-clickable {
+	display: grid; width: 100%; text-align: left; cursor: pointer; font: inherit;
+	transition: background 120ms ease, border-color 120ms ease;
+}
+.pkfa-preview-link.is-clickable:hover { border-color: var(--pk-border-accent); background: var(--pk-accent-soft); }
+
 .pkfa-preview-title { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: var(--pk-text-md); font-weight: 760; }
 .pkfa-preview-sub { margin-top: 3px; color: var(--pk-text-secondary); font-size: var(--pk-text-base); overflow-wrap: anywhere; }
 .pkfa-preview-quote { padding-left: 12px; border-left: 3px solid var(--pk-border-accent); color: var(--pk-text-primary); font-size: var(--pk-text-md); line-height: 1.5 !important; white-space: pre-wrap; }
@@ -736,3 +882,230 @@
 
 .peak-file-atlas-modal.pkfa-root .pkfa-primary-btn:disabled { background: var(--pk-surface-sunken) !important; color: var(--pk-text-faint); cursor: not-allowed; }
 .pkfa-primary-btn svg { width: 16px; height: 16px; }
+
+/* ---------- frontmatter group ---------- */
+.pkfa-type-frontmatter .pkfa-icon { color: var(--pk-text-secondary); background: var(--pk-surface); border-color: var(--pk-border); }
+
+.peak-file-atlas-modal.pkfa-root .pkfa-node[data-kind="frontmatter"] {
+	background: var(--pk-surface-sunken) !important;
+	border-color: var(--pk-border-soft) !important;
+	margin-bottom: 2px;
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-node[data-kind="frontmatter"]:hover { background: var(--pk-state-hover) !important; }
+.pkfa-node[data-kind="frontmatter"] .pkfa-name { font-weight: 800; }
+
+.pkfa-kids.pkfa-frontmatter-kids {
+	margin: 0 0 4px 16px;
+	padding: 2px 0 4px;
+	border-left: 2px solid var(--pk-border-accent);
+}
+
+/* ---------- copyable preview wrapper ---------- */
+.pkfa-preview-wrap { position: relative; display: grid; gap: 0; }
+
+.pkfa-preview-toolbar {
+	position: absolute;
+	top: 6px; right: 6px;
+	z-index: 2;
+	display: inline-flex;
+	gap: 4px;
+	opacity: 0;
+	transition: opacity 110ms ease;
+}
+
+.pkfa-preview-wrap:hover .pkfa-preview-toolbar,
+.pkfa-preview-toolbar:focus-within { opacity: 1; }
+
+.peak-file-atlas-modal.pkfa-root .pkfa-copy-btn {
+	height: 24px !important;
+	padding: 0 8px !important;
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	border: 1px solid var(--pk-border) !important;
+	border-radius: var(--pk-radius-sm) !important;
+	background: var(--pk-surface) !important;
+	color: var(--pk-text-secondary);
+	font-size: var(--pk-text-xs);
+	font-weight: 720;
+	cursor: pointer;
+	box-shadow: var(--pk-shadow-sm) !important;
+}
+
+.pkfa-copy-btn svg { width: 12px; height: 12px; }
+.peak-file-atlas-modal.pkfa-root .pkfa-copy-btn:hover { color: var(--pk-accent-text); border-color: var(--pk-border-accent) !important; background: var(--pk-surface) !important; }
+.peak-file-atlas-modal.pkfa-root .pkfa-copy-btn.is-copied { color: var(--pk-success, #23845e); border-color: var(--pk-success-border, #b7ead2) !important; background: var(--pk-success-soft, #e8f7ef) !important; }
+
+/* ---------- rendered preview (mermaid / math / table / prose via Streamdown) ---------- */
+.pkfa-preview-render {
+	min-height: 48px;
+	padding: 12px;
+	border: 1px solid var(--pk-border-soft);
+	border-radius: var(--pk-radius-md);
+	background: var(--pk-surface-raised);
+	overflow: auto;
+	font-size: var(--pk-text-md);
+}
+
+.pkfa-preview-render svg { width: auto; height: auto; }
+.pkfa-preview-render [data-streamdown-root] { max-width: 100%; }
+
+/* ---------- image preview ---------- */
+.pkfa-preview-image {
+	border: 1px solid var(--pk-border-soft);
+	border-radius: var(--pk-radius-md);
+	overflow: hidden;
+	background: var(--pk-surface);
+}
+
+.pkfa-preview-image-frame {
+	position: relative;
+	aspect-ratio: 16 / 10;
+	background: var(--pk-surface-sunken);
+	display: grid;
+	place-items: center;
+}
+
+.pkfa-preview-image-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
+
+.pkfa-preview-image-meta {
+	display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+	padding: 9px 11px;
+	border-top: 1px solid var(--pk-border-soft);
+	background: var(--pk-surface-raised);
+}
+
+.pkfa-dim-chip {
+	display: inline-flex; align-items: center;
+	padding: 0 7px; height: 20px;
+	border-radius: var(--pk-radius-pill);
+	background: var(--pk-surface-sunken);
+	color: var(--pk-text-secondary);
+	font-size: var(--pk-text-xs);
+	font-weight: 760;
+}
+
+.pkfa-dim-chip.pkfa-mono { font-family: var(--pk-font-mono); font-size: 10.5px; }
+
+/* ---------- keyword frequency card ---------- */
+/* Chips are sized by term frequency: `--kw-w` (0..1, set inline per chip) scales
+   height, word size, and the count badge so magnitude reads at a glance. Baselines
+   below correspond to the least-frequent term; the deltas add up toward the top. */
+.pkfa-kw-list { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+
+.pkfa-kw-chip {
+	--kw-w: 0.5;
+	display: inline-flex; align-items: center; gap: 5px;
+	/* Chip sizes itself off its font (padding, not a fixed height) so bigger words
+	   read as bigger chips without ragged rows. `--kw-w` = count / max. */
+	padding: calc(3px + var(--kw-w) * 3px) calc(8px + var(--kw-w) * 4px);
+	border: 1px solid var(--pk-border); border-radius: var(--pk-radius-pill);
+	background: var(--pk-surface); color: var(--pk-text-primary);
+	font-size: calc(var(--pk-text-sm) + var(--kw-w) * 9px); font-weight: 680; line-height: 1.15;
+}
+
+.pkfa-kw-chip b {
+	display: inline-grid; place-items: center;
+	padding: 1px 6px;
+	border-radius: var(--pk-radius-pill); background: var(--pk-accent); color: var(--pk-accent-fg);
+	font-size: calc(9px + var(--kw-w) * 4px); font-weight: 820;
+}
+
+/* ---------- graph subview ---------- */
+.pkfa-graph { min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); background: var(--pk-surface); }
+
+.pkfa-graph-bar {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	padding: 10px var(--pk-space-6);
+	border-bottom: 1px solid var(--pk-border-soft);
+}
+
+.pkfa-graph-scope {
+	height: 30px;
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	padding: 3px;
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-pill);
+	background: var(--pk-surface-sunken);
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-graph-scope-tab {
+	height: 24px !important;
+	display: inline-flex;
+	align-items: center;
+	padding: 0 12px !important;
+	border: 0 !important;
+	border-radius: var(--pk-radius-pill) !important;
+	background: transparent !important;
+	color: var(--pk-text-secondary);
+	font-size: var(--pk-text-base);
+	font-weight: 760;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-graph-scope-tab:hover { color: var(--pk-text-primary); }
+.peak-file-atlas-modal.pkfa-root .pkfa-graph-scope-tab.is-active { color: var(--pk-accent-fg) !important; background: var(--pk-accent) !important; box-shadow: var(--pk-shadow-sm) !important; }
+
+.peak-file-atlas-modal.pkfa-root .pkfa-semantic-toggle {
+	height: 28px !important;
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	border: 0 !important;
+	background: transparent !important;
+	color: var(--pk-text-secondary);
+	font-size: var(--pk-text-base);
+	font-weight: 720;
+	cursor: pointer;
+	padding: 0 !important;
+}
+
+.pkfa-semantic-switch {
+	width: 34px; height: 20px; position: relative;
+	border-radius: var(--pk-radius-pill); background: var(--pk-border-strong);
+	flex: 0 0 auto;
+}
+
+.pkfa-semantic-switch::after {
+	content: ""; position: absolute;
+	width: 14px; height: 14px; left: 3px; top: 3px;
+	border-radius: var(--pk-radius-full); background: var(--pk-surface);
+	box-shadow: var(--pk-shadow-sm);
+	transition: transform 140ms ease;
+}
+
+.pkfa-semantic-toggle.is-on { color: var(--pk-accent-text); }
+.pkfa-semantic-toggle.is-on .pkfa-semantic-switch { background: var(--pk-accent); }
+.pkfa-semantic-toggle.is-on .pkfa-semantic-switch::after { transform: translateX(14px); }
+
+.pkfa-graph-chip {
+	height: 24px;
+	display: inline-flex;
+	align-items: center;
+	padding: 0 10px;
+	border-radius: var(--pk-radius-pill);
+	border: 1px solid var(--pk-border);
+	background: var(--pk-surface-sunken);
+	color: var(--pk-text-secondary);
+	font-size: var(--pk-text-xs);
+	font-weight: 700;
+	margin-left: auto;
+}
+
+/* Canvas host for the shared cytoscape renderer (AtlasGraphCanvas). */
+.pkfa-graph-canvas { position: relative; min-height: 0; overflow: hidden; background: var(--pk-surface); }
+
+.pkfa-graph-empty {
+	position: absolute; inset: 0;
+	display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+	padding: 24px; text-align: center;
+	color: var(--pk-text-secondary); font-size: var(--pk-text-base);
+}
+
+.pkfa-graph-empty svg { width: 28px; height: 28px; color: var(--pk-text-faint); }

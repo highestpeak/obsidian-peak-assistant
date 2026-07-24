@@ -412,6 +412,13 @@ function expandParagraph(ctx: ParseCtx, raw: string, start: number, end: number)
 		];
 	}
 
+	// A paragraph whose whole content is a single inline resource (a bare link,
+	// embed, image, or url) is fully represented by that extracted resource block —
+	// the paragraph wrapper would just duplicate the same line, so drop it and keep
+	// only the resource(s). Paragraphs that carry real prose alongside a link stay.
+	const resources = extractInlineResources(ctx, raw, start, end);
+	if (resources.length > 0 && isResourceOnly(raw)) return resources;
+
 	const out: DocumentBlock[] = [
 		finalizeLeaf(ctx, {
 			kind: RawBlockKind.Paragraph,
@@ -423,7 +430,7 @@ function expandParagraph(ctx: ParseCtx, raw: string, start: number, end: number)
 			ordinal: 0,
 		}),
 	];
-	extractInlineResources(ctx, raw, start, end).forEach((b) => out.push(b));
+	resources.forEach((b) => out.push(b));
 	return out;
 }
 
@@ -443,6 +450,24 @@ const MD_IMAGE_RE = /!\[[^\]]*\]\(([^)\s]+)[^)]*\)/g;
 const MD_LINK_RE = /(?<!!)\[[^\]]*\]\(([^)\s]+)[^)]*\)/g;
 const BARE_URL_RE = /(?<![\(<"'\]])\bhttps?:\/\/[^\s<>)\]]+/g;
 const INLINE_TAG_RE = /(?:^|\s)#([A-Za-z一-鿿][\w一-鿿/-]*)/g;
+
+/**
+ * True when a paragraph's whole content is inline resources (links / embeds /
+ * images / urls / tags) with no other prose — the extracted resource blocks fully
+ * represent it, so the paragraph wrapper is redundant. Strips every resource match
+ * (same order as {@link extractInlineResources}) and checks that no letters or
+ * digits remain.
+ */
+function isResourceOnly(raw: string): boolean {
+	const stripped = raw
+		.replace(EMBED_RE, ' ')
+		.replace(MD_IMAGE_RE, ' ')
+		.replace(WIKILINK_RE, ' ')
+		.replace(MD_LINK_RE, ' ')
+		.replace(BARE_URL_RE, ' ')
+		.replace(INLINE_TAG_RE, ' ');
+	return !/[\p{L}\p{N}]/u.test(stripped);
+}
 
 /**
  * Extract link/embed/image/url/tag blocks from a raw source slice. Line range

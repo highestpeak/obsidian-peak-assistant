@@ -185,6 +185,22 @@ ok('vault / external / embed are distinct kinds', () => {
 	assert.strictEqual(embed.length, 1, 'note embed → generic embed');
 });
 
+ok('resource-only paragraph collapses to just its resource', () => {
+	const md = [
+		'[[Z-0-备考历程#单词备考]]',
+		'',
+		'See [[Other Note]] for details.',
+	].join('\n');
+	const doc = parseDocumentBlocks(md, 'f.md');
+	const paras = findKind(doc.blocks, RawBlockKind.Paragraph);
+	const vault = findKind(doc.blocks, RawBlockKind.VaultLink);
+	// Line 1 is a bare link → no wrapping paragraph, only the vault link.
+	// Line 3 has prose around the link → paragraph kept.
+	assert.strictEqual(vault.length, 2, 'both vault links present');
+	assert.strictEqual(paras.length, 1, 'only the prose paragraph survives');
+	assert.ok(paras[0].source.includes('See'), 'surviving paragraph is the prose one');
+});
+
 // --------------------------------------------------------------------------
 // 4. Chinese content
 // --------------------------------------------------------------------------

@@ -9,6 +9,7 @@
 import React from 'react';
 import {
 	Heading as HeadingIcon,
+	Braces,
 	FileText,
 	Hash,
 	Pilcrow,
@@ -35,6 +36,7 @@ export type IconComponent = LucideIcon;
 
 const KIND_ICONS: Record<string, IconComponent> = {
 	[RawBlockKind.Heading]: HeadingIcon,
+	[RawBlockKind.Frontmatter]: Braces,
 	[RawBlockKind.Property]: FileText,
 	[RawBlockKind.Tag]: Hash,
 	[RawBlockKind.Paragraph]: Pilcrow,

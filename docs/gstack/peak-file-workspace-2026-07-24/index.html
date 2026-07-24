@@ -1,0 +1,1257 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Peak File Workspace · 多文件预览、编辑与 AI 协作</title>
+  <style>
+    :root {
+      --bg: #f2f1ed;
+      --paper: #faf9f6;
+      --surface: #fff;
+      --surface-2: #f5f4f0;
+      --surface-3: #ecebe6;
+      --ink: #1b1d20;
+      --muted: #676b70;
+      --line: #d8d6cf;
+      --line-strong: #b8b6af;
+      --accent: #4d5fc4;
+      --accent-soft: #e9ecfb;
+      --green: #2f7056;
+      --green-soft: #e5f2eb;
+      --amber: #9a6628;
+      --amber-soft: #f7ecd9;
+      --red: #9c463f;
+      --red-soft: #f7e7e4;
+      --blue: #2c668a;
+      --blue-soft: #e4eff5;
+      --shadow: 0 18px 50px rgba(29, 31, 34, .09);
+      --shadow-soft: 0 8px 24px rgba(29, 31, 34, .06);
+      --radius: 12px;
+      --content: 1120px;
+      --nav-width: 232px;
+      --focus: 0 0 0 2px var(--paper), 0 0 0 5px var(--accent);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 84% 2%, rgba(77, 95, 196, .1), transparent 32rem),
+        linear-gradient(90deg, rgba(27, 29, 32, .025) 1px, transparent 1px),
+        var(--bg);
+      background-size: auto, 48px 48px, auto;
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      line-height: 1.62;
+    }
+
+    a { color: inherit; }
+    button, a { font: inherit; }
+    button { color: inherit; }
+    :focus-visible { outline: none; box-shadow: var(--focus); border-radius: 6px; }
+    section { scroll-margin-top: 30px; }
+
+    .skip-link {
+      position: fixed;
+      z-index: 100;
+      top: 12px;
+      left: 12px;
+      padding: 8px 12px;
+      color: var(--paper);
+      background: var(--ink);
+      border-radius: 7px;
+      transform: translateY(-150%);
+    }
+    .skip-link:focus { transform: translateY(0); }
+
+    .side-nav {
+      position: fixed;
+      z-index: 30;
+      top: 26px;
+      left: max(18px, calc(50vw - (var(--content) / 2) - var(--nav-width) - 32px));
+      width: var(--nav-width);
+      max-height: calc(100vh - 52px);
+      padding: 14px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: color-mix(in srgb, var(--paper) 94%, transparent);
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(18px);
+    }
+    .nav-jump {
+      display: flex;
+      gap: 6px;
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    .nav-jump a {
+      flex: 1;
+      min-width: 0;
+      padding: 5px 7px;
+      color: var(--muted);
+      text-align: center;
+      text-decoration: none;
+      font-size: 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+    }
+    .nav-title {
+      display: block;
+      margin: 0 5px 12px;
+      font-size: 12px;
+      font-weight: 760;
+    }
+    .nav-group + .nav-group {
+      padding-top: 12px;
+      margin-top: 12px;
+      border-top: 1px solid var(--line);
+    }
+    .nav-group-title {
+      display: block;
+      margin: 0 6px 5px;
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 780;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .side-nav nav { display: grid; gap: 2px; }
+    .side-nav nav a {
+      min-height: 29px;
+      padding: 5px 7px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 11px;
+      border-radius: 6px;
+    }
+    .side-nav nav a:hover,
+    .side-nav nav a[aria-current="true"] {
+      color: var(--ink);
+      background: var(--surface-3);
+    }
+    .side-nav nav a[aria-current="true"] {
+      box-shadow: inset 3px 0 var(--accent);
+    }
+
+    main {
+      width: min(var(--content), calc(100vw - 64px));
+      margin: 0 auto;
+      padding: 52px 0 110px;
+    }
+
+    .hero {
+      min-height: 650px;
+      display: grid;
+      align-content: center;
+      padding: 54px 0 42px;
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+      margin-bottom: 18px;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 780;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+    .eyebrow::before {
+      content: "";
+      width: 26px;
+      height: 2px;
+      background: currentColor;
+    }
+    h1 {
+      max-width: 100%;
+      margin: 0;
+      font-size: clamp(42px, 5.2vw, 72px);
+      line-height: 1.02;
+      letter-spacing: -.055em;
+    }
+    .hero-copy {
+      max-width: 780px;
+      margin: 24px 0 0;
+      color: var(--muted);
+      font-size: 18px;
+    }
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 25px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 28px;
+      padding: 5px 9px;
+      white-space: nowrap;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 650;
+    }
+    .pill.status {
+      color: var(--amber);
+      border-color: color-mix(in srgb, var(--amber) 26%, var(--line));
+      background: var(--amber-soft);
+    }
+    .pill::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .claim {
+      margin-top: 38px;
+      padding: 19px 21px;
+      border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--line));
+      border-left: 4px solid var(--accent);
+      border-radius: 9px;
+      background: var(--accent-soft);
+    }
+    .claim-title {
+      margin-bottom: 5px;
+      font-size: 12px;
+      font-weight: 780;
+    }
+    .claim p { margin: 0; color: #3d4360; font-size: 14px; }
+
+    h2 {
+      margin: 0 0 10px;
+      font-size: 30px;
+      line-height: 1.15;
+      letter-spacing: -.03em;
+    }
+    h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      letter-spacing: -.015em;
+    }
+    .lead {
+      max-width: 760px;
+      margin: 0 0 25px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .chapter {
+      padding: 84px 0 14px;
+      border-top: 1px solid var(--line);
+    }
+    .chapter-num {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 780;
+      letter-spacing: .12em;
+    }
+
+    .principles {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .principle {
+      padding: 17px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--surface);
+      box-shadow: var(--shadow-soft);
+    }
+    .principle b {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 13px;
+    }
+    .principle span { color: var(--muted); font-size: 12px; }
+
+    .flow {
+      display: grid;
+      grid-template-columns: 1fr 30px 1fr 30px 1fr 30px 1fr;
+      align-items: stretch;
+      gap: 8px;
+      margin-top: 28px;
+    }
+    .flow-node {
+      min-height: 132px;
+      display: grid;
+      align-content: space-between;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--surface);
+      box-shadow: var(--shadow-soft);
+    }
+    .flow-node small { color: var(--muted); font-size: 10px; }
+    .flow-node b { font-size: 13px; }
+    .flow-node .mini {
+      min-height: 55px;
+      margin-top: 10px;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface-2);
+      color: var(--muted);
+      font-size: 10px;
+    }
+    .flow-arrow {
+      display: grid;
+      place-items: center;
+      color: var(--line-strong);
+      font-size: 22px;
+    }
+
+    .workspace {
+      margin-top: 26px;
+      overflow: hidden;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .window-bar {
+      min-height: 35px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 11px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface-2);
+    }
+    .traffic { display: flex; gap: 6px; }
+    .traffic i {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--line-strong);
+    }
+    .window-title { color: var(--muted); font-size: 10px; }
+    .workspace-toolbar {
+      min-height: 47px;
+      display: grid;
+      grid-template-columns: minmax(230px, 1fr) auto minmax(230px, 1fr);
+      align-items: center;
+      gap: 12px;
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--line);
+    }
+    .toolbar-left,
+    .toolbar-right,
+    .segmented {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .toolbar-right { justify-content: flex-end; }
+    .file-name { font-size: 12px; font-weight: 720; }
+    .file-path {
+      max-width: 230px;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 10px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .icon-btn,
+    .tool-btn,
+    .mode-btn {
+      min-height: 28px;
+      padding: 4px 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      font-size: 10px;
+      cursor: pointer;
+    }
+    .icon-btn { min-width: 28px; padding: 4px; }
+    .mode-btn[aria-pressed="true"],
+    .tool-btn.active {
+      color: var(--accent);
+      border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+      background: var(--accent-soft);
+    }
+    .workspace-body {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 280px;
+      min-height: 490px;
+    }
+    .canvas {
+      position: relative;
+      min-width: 0;
+      min-height: 490px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      background:
+        linear-gradient(45deg, rgba(27, 29, 32, .035) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(27, 29, 32, .035) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(27, 29, 32, .035) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(27, 29, 32, .035) 75%),
+        #eeede8;
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+    }
+    .sidecar {
+      min-width: 0;
+      border-left: 1px solid var(--line);
+      background: var(--paper);
+    }
+    .sidecar-tabs {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      min-height: 41px;
+      padding: 0 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .sidecar-tabs b { font-size: 10px; }
+    .sidecar-tabs span { color: var(--muted); font-size: 10px; }
+    .sidecar-content { padding: 14px; }
+    .context-chip {
+      display: inline-flex;
+      padding: 4px 7px;
+      margin-bottom: 11px;
+      color: var(--blue);
+      border: 1px solid color-mix(in srgb, var(--blue) 25%, var(--line));
+      border-radius: 999px;
+      background: var(--blue-soft);
+      font-size: 9px;
+    }
+    .sidecar-card {
+      padding: 11px;
+      margin-bottom: 9px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface);
+    }
+    .sidecar-card b { display: block; margin-bottom: 4px; font-size: 10px; }
+    .sidecar-card p { margin: 0; color: var(--muted); font-size: 9px; }
+    .prompt-box {
+      min-height: 78px;
+      padding: 10px;
+      margin-top: 12px;
+      color: var(--muted);
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      font-size: 10px;
+    }
+    .prompt-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+    }
+    .primary {
+      color: white;
+      border-color: var(--accent);
+      background: var(--accent);
+    }
+    .review-bar {
+      min-height: 49px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 11px;
+      border-top: 1px solid var(--line);
+      background: var(--surface);
+    }
+    .review-state { min-width: 0; }
+    .review-state b { display: block; font-size: 10px; }
+    .review-state span { color: var(--muted); font-size: 9px; }
+    .review-actions { display: flex; flex-wrap: wrap; gap: 5px; justify-content: flex-end; }
+
+    .image-art {
+      position: relative;
+      width: min(68%, 520px);
+      aspect-ratio: 4 / 3;
+      overflow: hidden;
+      border: 7px solid var(--surface);
+      box-shadow: 0 12px 35px rgba(27, 29, 32, .18);
+      background:
+        radial-gradient(circle at 30% 32%, rgba(255,255,255,.62), transparent 12%),
+        linear-gradient(135deg, #203b52 0%, #55758a 35%, #d4b27a 68%, #5b4e44 100%);
+    }
+    .image-art::before {
+      content: "";
+      position: absolute;
+      inset: 17% 25% 19% 14%;
+      border: 2px solid white;
+      box-shadow: 0 0 0 999px rgba(20, 24, 28, .24);
+    }
+    .image-art::after {
+      content: "Crop region · 1840 × 1280";
+      position: absolute;
+      left: 14%;
+      bottom: 11%;
+      padding: 4px 7px;
+      color: white;
+      border-radius: 4px;
+      background: rgba(20, 24, 28, .78);
+      font-size: 9px;
+    }
+
+    .html-canvas {
+      display: grid;
+      grid-template-columns: 1fr 1.12fr;
+      place-items: stretch;
+      background: #ebeae5;
+    }
+    .source-pane {
+      min-width: 0;
+      padding: 14px;
+      overflow: hidden;
+      color: #d9dee6;
+      background: #20242b;
+      font: 10px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .line { display: grid; grid-template-columns: 22px minmax(0, 1fr); }
+    .line i { color: #6d7580; font-style: normal; text-align: right; margin-right: 9px; }
+    .line mark { color: #d9dee6; background: rgba(103, 126, 240, .28); }
+    .tag { color: #8bc8ff; }
+    .attr { color: #e9b97a; }
+    .text { color: #d9dee6; }
+    .preview-pane {
+      min-width: 0;
+      margin: 15px;
+      overflow: hidden;
+      border: 1px solid #cfd2d7;
+      border-radius: 6px;
+      background: white;
+      box-shadow: var(--shadow-soft);
+    }
+    .browser-strip {
+      min-height: 33px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 7px;
+      color: #6a7077;
+      border-bottom: 1px solid #e0e2e5;
+      background: #f5f6f7;
+      font-size: 9px;
+    }
+    .url-bar {
+      flex: 1;
+      min-width: 0;
+      padding: 3px 7px;
+      overflow: hidden;
+      border: 1px solid #d8dade;
+      border-radius: 5px;
+      background: white;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .web-page { padding: 29px; color: #20242b; font-family: Georgia, serif; }
+    .web-nav { display: flex; justify-content: space-between; font: 9px ui-sans-serif, sans-serif; color: #6c7177; }
+    .web-page h4 {
+      max-width: 330px;
+      margin: 56px 0 10px;
+      font-size: 30px;
+      line-height: 1.05;
+      letter-spacing: -.04em;
+    }
+    .web-page p { max-width: 310px; color: #6c7177; font: 11px/1.5 ui-sans-serif, sans-serif; }
+    .selected-element {
+      outline: 2px solid #6478e7;
+      outline-offset: 6px;
+      position: relative;
+    }
+    .selected-element::after {
+      content: "#hero h1";
+      position: absolute;
+      top: -22px;
+      left: -7px;
+      padding: 2px 5px;
+      color: white;
+      background: #4d5fc4;
+      border-radius: 3px;
+      font: 8px ui-monospace, monospace;
+    }
+
+    .pdf-canvas {
+      grid-template-columns: 72px minmax(0, 1fr);
+      place-items: stretch;
+      background: #d8d7d2;
+    }
+    .page-rail {
+      padding: 12px 9px;
+      border-right: 1px solid #c4c3be;
+      background: #cdccc7;
+    }
+    .page-thumb {
+      display: grid;
+      place-items: center;
+      aspect-ratio: 3 / 4;
+      margin-bottom: 9px;
+      color: #8a8d91;
+      border: 1px solid #b9b8b2;
+      background: white;
+      font-size: 8px;
+    }
+    .page-thumb.active { box-shadow: 0 0 0 2px var(--accent); }
+    .pdf-stage {
+      display: grid;
+      place-items: center;
+      padding: 22px;
+      overflow: hidden;
+    }
+    .pdf-page {
+      width: min(72%, 430px);
+      min-height: 430px;
+      padding: 34px 38px;
+      color: #282b30;
+      background: white;
+      box-shadow: 0 12px 34px rgba(27, 29, 32, .2);
+      font-family: Georgia, serif;
+    }
+    .pdf-page h4 { margin: 0 0 20px; font-size: 19px; }
+    .pdf-page p { margin: 0 0 12px; font-size: 10px; line-height: 1.75; }
+    .pdf-page mark {
+      padding: 1px 0;
+      color: inherit;
+      background: #fff0a9;
+    }
+
+    .boundary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 25px;
+    }
+    .layer {
+      position: relative;
+      min-height: 160px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--surface);
+    }
+    .layer + .layer::before {
+      content: "→";
+      position: absolute;
+      top: 64px;
+      left: -17px;
+      color: var(--line-strong);
+    }
+    .layer b { display: block; margin-bottom: 7px; font-size: 12px; }
+    .layer p { margin: 0; color: var(--muted); font-size: 10px; }
+    .layer code {
+      display: block;
+      width: fit-content;
+      margin-top: 11px;
+      padding: 3px 5px;
+      border-radius: 4px;
+      background: var(--surface-2);
+      font-size: 9px;
+    }
+
+    table {
+      width: 100%;
+      margin-top: 22px;
+      border-collapse: collapse;
+      table-layout: fixed;
+      border: 1px solid var(--line);
+      background: var(--surface);
+    }
+    th, td {
+      padding: 10px 12px;
+      vertical-align: top;
+      text-align: left;
+      line-height: 1.52;
+      word-break: normal;
+      overflow-wrap: break-word;
+      hyphens: none;
+      border-bottom: 1px solid var(--line);
+      font-size: 11px;
+    }
+    th { color: var(--muted); background: var(--surface-2); font-weight: 720; }
+    tr:last-child td { border-bottom: 0; }
+    td b { font-size: 11px; }
+
+    .phase-list {
+      display: grid;
+      gap: 9px;
+      margin-top: 24px;
+    }
+    .phase {
+      display: grid;
+      grid-template-columns: 82px 1fr 190px;
+      gap: 13px;
+      align-items: start;
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+    .phase-num {
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 780;
+    }
+    .phase b { display: block; margin-bottom: 3px; font-size: 12px; }
+    .phase p { margin: 0; color: var(--muted); font-size: 10px; }
+    .phase-outcome {
+      padding-left: 12px;
+      color: var(--muted);
+      border-left: 1px solid var(--line);
+      font-size: 10px;
+    }
+
+    .footer {
+      margin-top: 86px;
+      padding-top: 23px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .footer a { color: var(--accent); }
+
+    @media (max-width: 1540px) {
+      .side-nav {
+        position: sticky;
+        top: 0;
+        left: auto;
+        width: 100%;
+        max-height: none;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 9px max(20px, calc((100vw - var(--content)) / 2));
+        border-width: 0 0 1px;
+        border-radius: 0;
+      }
+      .nav-jump, .nav-title, .nav-group-title { display: none; }
+      .side-nav nav { display: flex; gap: 4px; }
+      .nav-group, .nav-group + .nav-group { display: contents; padding: 0; margin: 0; border: 0; }
+      .side-nav nav a { white-space: nowrap; }
+    }
+
+    @media (max-width: 980px) {
+      main { width: min(100% - 28px, var(--content)); }
+      .principles, .boundary-grid { grid-template-columns: 1fr 1fr; }
+      .flow { grid-template-columns: 1fr; }
+      .flow-arrow { transform: rotate(90deg); }
+      .workspace { overflow-x: auto; }
+      .workspace > * { min-width: 880px; }
+      .phase { grid-template-columns: 70px 1fr; }
+      .phase-outcome { grid-column: 2; padding: 8px 0 0; border-left: 0; border-top: 1px solid var(--line); }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到正文</a>
+
+  <aside class="side-nav" aria-label="报告导航">
+    <div class="nav-jump">
+      <a href="../../index.html">文档索引</a>
+      <a href="../../roadmap.html">Roadmap</a>
+    </div>
+    <span class="nav-title">Peak File Workspace</span>
+    <nav>
+      <div class="nav-group">
+        <span class="nav-group-title">起点</span>
+        <a href="#overview">核心判断</a>
+        <a href="#flow">统一流程</a>
+      </div>
+      <div class="nav-group">
+        <span class="nav-group-title">工作区</span>
+        <a href="#image">Image</a>
+        <a href="#html">HTML</a>
+        <a href="#pdf">PDF</a>
+      </div>
+      <div class="nav-group">
+        <span class="nav-group-title">工程</span>
+        <a href="#architecture">Ownership</a>
+        <a href="#safety">保存与安全</a>
+      </div>
+      <div class="nav-group">
+        <span class="nav-group-title">执行</span>
+        <a href="#rollout">实施路线</a>
+        <a href="#verdict">状态结论</a>
+      </div>
+    </nav>
+  </aside>
+
+  <main id="main">
+    <header class="hero" id="overview">
+      <span class="eyebrow">Peak Assistant · Accepted product direction</span>
+      <h1>打开任何重要文件，<br>直接进入 AI 工作区。</h1>
+      <p class="hero-copy">
+        Image、HTML 和 PDF 不再只是附件或索引输入。它们拥有与文件类型匹配的中心画布，
+        但共用一套 Copilot、候选审阅、版本保存与权限语义。
+      </p>
+      <div class="meta-row">
+        <span class="pill status">Design only · implementation pending</span>
+        <span class="pill">约 9,000 字符</span>
+        <span class="pill">预计阅读 14 分钟</span>
+        <span class="pill">Desktop Obsidian</span>
+      </div>
+      <div class="claim">
+        <div class="claim-title">最重要的架构决定</div>
+        <p>
+          DocumentLoader 继续负责读取与索引；新的 app-owned File Workspace 负责 View 和安全生命周期；
+          三种文件只提供 renderer 与操作，不建立第二套 AI runtime。
+        </p>
+      </div>
+    </header>
+
+    <section class="chapter">
+      <span class="chapter-num">01 · PRODUCT MODEL</span>
+      <h2>不是三个 viewer，是一个文件工作区</h2>
+      <p class="lead">
+        用户只学习“打开、选择、操作、审阅、保存”。文件类型决定工具，不改变候选和版本心智。
+      </p>
+      <div class="principles">
+        <article class="principle">
+          <b>文件是主角</b>
+          <span>中心 renderer 保持最大面积；AI sidecar 可收起，不把工作区做成 dashboard。</span>
+        </article>
+        <article class="principle">
+          <b>候选先于写入</b>
+          <span>AI edit、HTML patch 和 destructive operation 都先进入 review。</span>
+        </article>
+        <article class="principle">
+          <b>复用现有 runtime</b>
+          <span>Media、AI Gateway、Permission、receipt 与 usage tracking 不按文件类型复制。</span>
+        </article>
+      </div>
+    </section>
+
+    <section class="chapter" id="flow">
+      <span class="chapter-num">02 · USER FLOW</span>
+      <h2>从 File Explorer 到可恢复结果</h2>
+      <p class="lead">主路径在文件 tab 内闭环，不要求用户先打开 Chat 添加附件。</p>
+      <div class="flow" aria-label="统一文件工作流">
+        <article class="flow-node">
+          <small>01 · ENTRY</small>
+          <b>打开 Vault 文件</b>
+          <div class="mini">File Explorer<br>Search / Atlas result<br>Markdown link</div>
+        </article>
+        <div class="flow-arrow" aria-hidden="true">→</div>
+        <article class="flow-node">
+          <small>02 · CONTEXT</small>
+          <b>选择对象或范围</b>
+          <div class="mini">Whole image / crop<br>DOM element / lines<br>PDF page / selection</div>
+        </article>
+        <div class="flow-arrow" aria-hidden="true">→</div>
+        <article class="flow-node">
+          <small>03 · REVIEW</small>
+          <b>查看真实候选</b>
+          <div class="mini">运行阶段<br>diff / preview<br>provider + scope</div>
+        </article>
+        <div class="flow-arrow" aria-hidden="true">→</div>
+        <article class="flow-node">
+          <small>04 · OUTCOME</small>
+          <b>接受或安全退出</b>
+          <div class="mini">Save version<br>Accept patch<br>Annotate / dismiss</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="chapter" id="image">
+      <span class="chapter-num">03 · IMAGE WORKSPACE</span>
+      <h2>当前图片就是 edit base</h2>
+      <p class="lead">
+        Crop、转换和 AI 改图都在同一画布中产生 candidate。默认另存版本；Replace original 必须先备份。
+      </p>
+      <div class="workspace" aria-label="Image Workspace mock">
+        <div class="window-bar">
+          <div class="traffic"><i></i><i></i><i></i></div>
+          <span class="window-title">Peak File Workspace · Design mock</span>
+          <span class="window-title">Image</span>
+        </div>
+        <div class="workspace-toolbar">
+          <div class="toolbar-left">
+            <button class="icon-btn" aria-label="返回">←</button>
+            <div>
+              <div class="file-name">harbour-light.png</div>
+              <div class="file-path">Assets/Photography/harbour-light.png</div>
+            </div>
+          </div>
+          <div class="segmented" aria-label="Image mode">
+            <button class="mode-btn" aria-pressed="true">View</button>
+            <button class="mode-btn" aria-pressed="false">Edit</button>
+          </div>
+          <div class="toolbar-right">
+            <button class="tool-btn active">Crop</button>
+            <button class="tool-btn">Rotate</button>
+            <button class="tool-btn">Convert</button>
+            <button class="icon-btn" aria-label="更多操作">•••</button>
+          </div>
+        </div>
+        <div class="workspace-body">
+          <div class="canvas">
+            <div class="image-art" aria-label="带裁剪区域的图片预览"></div>
+          </div>
+          <aside class="sidecar">
+            <div class="sidecar-tabs"><b>Copilot</b><span>Related</span><span>History</span></div>
+            <div class="sidecar-content">
+              <span class="context-chip">Crop region · 1840 × 1280</span>
+              <div class="sidecar-card">
+                <b>Deterministic edits</b>
+                <p>Resize, compress, convert and clean metadata without calling a model.</p>
+              </div>
+              <div class="sidecar-card">
+                <b>AI edit</b>
+                <p>Reference the selected pixels and keep the original image unchanged until review.</p>
+              </div>
+              <div class="prompt-box">Remove the small boat and extend the sunset reflection naturally.</div>
+              <div class="prompt-actions">
+                <span class="window-title">OpenAI image · estimated</span>
+                <button class="tool-btn primary">Generate</button>
+              </div>
+            </div>
+          </aside>
+        </div>
+        <div class="review-bar">
+          <div class="review-state">
+            <b>Candidate 2 of 3 · ready to review</b>
+            <span>Original file unchanged · output 2048 × 1536 PNG</span>
+          </div>
+          <div class="review-actions">
+            <button class="tool-btn">Dismiss</button>
+            <button class="tool-btn">Regenerate</button>
+            <button class="tool-btn">Save version</button>
+            <button class="tool-btn primary">Accept</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" id="html">
+      <span class="chapter-num">04 · HTML WORKSPACE</span>
+      <h2>源码与页面保持在同一个审阅回路</h2>
+      <p class="lead">
+        Source / Preview / Split 是本地 HTML 的主模式。Safe preview 默认隔离脚本与网络；外部网页交给 Obsidian Web viewer。
+      </p>
+      <div class="workspace" aria-label="HTML Workspace mock">
+        <div class="window-bar">
+          <div class="traffic"><i></i><i></i><i></i></div>
+          <span class="window-title">Peak File Workspace · Design mock</span>
+          <span class="window-title">HTML · Safe</span>
+        </div>
+        <div class="workspace-toolbar">
+          <div class="toolbar-left">
+            <button class="icon-btn" aria-label="返回">←</button>
+            <button class="icon-btn" aria-label="前进">→</button>
+            <button class="icon-btn" aria-label="刷新">↻</button>
+            <div>
+              <div class="file-name">project-brief.html</div>
+              <div class="file-path">docs/reports/project-brief.html</div>
+            </div>
+          </div>
+          <div class="segmented" aria-label="HTML mode">
+            <button class="mode-btn" aria-pressed="false">Source</button>
+            <button class="mode-btn" aria-pressed="false">Preview</button>
+            <button class="mode-btn" aria-pressed="true">Split</button>
+          </div>
+          <div class="toolbar-right">
+            <button class="tool-btn active">Safe</button>
+            <button class="tool-btn">Desktop</button>
+            <button class="tool-btn">Pick element</button>
+            <button class="icon-btn" aria-label="更多操作">•••</button>
+          </div>
+        </div>
+        <div class="workspace-body">
+          <div class="canvas html-canvas">
+            <div class="source-pane" aria-label="HTML source">
+              <div class="line"><i>38</i><span><span class="tag">&lt;section</span> <span class="attr">id</span>=<span class="text">"hero"</span><span class="tag">&gt;</span></span></div>
+              <div class="line"><i>39</i><span>&nbsp;&nbsp;<span class="tag">&lt;nav&gt;</span>Research workspace<span class="tag">&lt;/nav&gt;</span></span></div>
+              <div class="line"><i>40</i><span>&nbsp;&nbsp;<mark><span class="tag">&lt;h1&gt;</span>Turn fragments into durable knowledge<span class="tag">&lt;/h1&gt;</span></mark></span></div>
+              <div class="line"><i>41</i><span>&nbsp;&nbsp;<span class="tag">&lt;p&gt;</span>Capture evidence, think aloud, keep the source.<span class="tag">&lt;/p&gt;</span></span></div>
+              <div class="line"><i>42</i><span>&nbsp;&nbsp;<span class="tag">&lt;button&gt;</span>Open project<span class="tag">&lt;/button&gt;</span></span></div>
+              <div class="line"><i>43</i><span><span class="tag">&lt;/section&gt;</span></span></div>
+              <div class="line"><i>44</i><span>&nbsp;</span></div>
+              <div class="line"><i>45</i><span><span class="tag">&lt;script&gt;</span></span></div>
+              <div class="line"><i>46</i><span>&nbsp;&nbsp;initLocalPreview();</span></div>
+              <div class="line"><i>47</i><span><span class="tag">&lt;/script&gt;</span></span></div>
+            </div>
+            <div class="preview-pane">
+              <div class="browser-strip">
+                <span>←</span><span>→</span><span>↻</span>
+                <span class="url-bar">vault://docs/reports/project-brief.html</span>
+                <span>Safe</span>
+              </div>
+              <div class="web-page">
+                <div class="web-nav"><b>PEAK RESEARCH</b><span>Library · Projects · Capture</span></div>
+                <h4 class="selected-element">Turn fragments into durable knowledge</h4>
+                <p>Capture evidence, think aloud, and keep the original source close to every conclusion.</p>
+              </div>
+            </div>
+          </div>
+          <aside class="sidecar">
+            <div class="sidecar-tabs"><b>Copilot</b><span>Related</span><span>History</span></div>
+            <div class="sidecar-content">
+              <span class="context-chip">DOM: #hero h1 · source line 40</span>
+              <div class="sidecar-card">
+                <b>Safe preview</b>
+                <p>Scripts cannot access parent, Node, Electron, Obsidian or other Vault files.</p>
+              </div>
+              <div class="sidecar-card">
+                <b>Patch target is grounded</b>
+                <p>The element maps to a current source range. Source hash will be checked before accept.</p>
+              </div>
+              <div class="prompt-box">Make this heading more specific to private research without changing the layout.</div>
+              <div class="prompt-actions">
+                <span class="window-title">HTML patch · 1 range</span>
+                <button class="tool-btn primary">Generate patch</button>
+              </div>
+            </div>
+          </aside>
+        </div>
+        <div class="review-bar">
+          <div class="review-state">
+            <b>Patch candidate · source unchanged</b>
+            <span>1 text replacement · preview smoke check passed · no console errors</span>
+          </div>
+          <div class="review-actions">
+            <button class="tool-btn">View diff</button>
+            <button class="tool-btn">Dismiss</button>
+            <button class="tool-btn primary">Accept patch</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" id="pdf">
+      <span class="chapter-num">05 · PDF COMPANION</span>
+      <h2>保留 native PDF，补上 AI 阅读与批注</h2>
+      <p class="lead">
+        第一阶段不接管 `.pdf`。Obsidian 继续负责基础阅读；Peak sidecar 明确显示 whole document、page 或 copied selection 范围。
+      </p>
+      <div class="workspace" aria-label="PDF Companion mock">
+        <div class="window-bar">
+          <div class="traffic"><i></i><i></i><i></i></div>
+          <span class="window-title">Obsidian native PDF + Peak companion · Design mock</span>
+          <span class="window-title">PDF · original read-only</span>
+        </div>
+        <div class="workspace-toolbar">
+          <div class="toolbar-left">
+            <button class="icon-btn" aria-label="上一页">←</button>
+            <div>
+              <div class="file-name">information-foraging.pdf</div>
+              <div class="file-path">Papers/Information Retrieval/information-foraging.pdf</div>
+            </div>
+          </div>
+          <div class="segmented" aria-label="PDF page">
+            <button class="mode-btn" aria-pressed="true">Page 7 / 24</button>
+          </div>
+          <div class="toolbar-right">
+            <button class="tool-btn">−</button>
+            <button class="tool-btn">100%</button>
+            <button class="tool-btn">+</button>
+            <button class="tool-btn">Search</button>
+            <button class="icon-btn" aria-label="更多操作">•••</button>
+          </div>
+        </div>
+        <div class="workspace-body">
+          <div class="canvas pdf-canvas">
+            <div class="page-rail">
+              <div class="page-thumb">5</div>
+              <div class="page-thumb">6</div>
+              <div class="page-thumb active">7</div>
+              <div class="page-thumb">8</div>
+            </div>
+            <div class="pdf-stage">
+              <article class="pdf-page">
+                <h4>Information scent and navigation choices</h4>
+                <p>Readers estimate the value of the next action from cues that suggest what information lies beyond a link or document boundary.</p>
+                <p><mark>A strong information scent lowers the cost of deciding where to look next and when to stop searching.</mark></p>
+                <p>Interfaces can support this decision by preserving source context, showing likely relevance, and making return paths explicit.</p>
+              </article>
+            </div>
+          </div>
+          <aside class="sidecar">
+            <div class="sidecar-tabs"><b>Copilot</b><span>Related</span><span>History</span></div>
+            <div class="sidecar-content">
+              <span class="context-chip">Copied selection · page 7</span>
+              <div class="sidecar-card">
+                <b>Local text first</b>
+                <p>Use extracted page text. Upload page image or PDF binary only after explicit disclosure.</p>
+              </div>
+              <div class="sidecar-card">
+                <b>Annotation destination</b>
+                <p>information-foraging.annotations.md · linked back to page 7.</p>
+              </div>
+              <div class="prompt-box">Explain this in relation to how File Atlas should show source relevance.</div>
+              <div class="prompt-actions">
+                <span class="window-title">Page text · no binary upload</span>
+                <button class="tool-btn primary">Ask</button>
+              </div>
+            </div>
+          </aside>
+        </div>
+        <div class="review-bar">
+          <div class="review-state">
+            <b>Annotation draft · PDF unchanged</b>
+            <span>Source: page 7 · companion Markdown is the user-owned record</span>
+          </div>
+          <div class="review-actions">
+            <button class="tool-btn">Copy</button>
+            <button class="tool-btn">Dismiss</button>
+            <button class="tool-btn primary">Save annotation</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" id="architecture">
+      <span class="chapter-num">06 · OWNERSHIP</span>
+      <h2>View 生命周期在 app 层，AI runtime 不分裂</h2>
+      <p class="lead">每层只回答一种问题，避免 Loader、View 和 provider routing 互相吞并。</p>
+      <div class="boundary-grid" aria-label="File Workspace ownership layers">
+        <article class="layer">
+          <b>app</b>
+          <p>注册 extension、创建 View、管理 leaf、Vault adapter、安全和 popout lifecycle。</p>
+          <code>FileSurfaceManager</code>
+        </article>
+        <article class="layer">
+          <b>ui</b>
+          <p>共享 shell、type renderer、sidecar、selection、candidate review 和 focus。</p>
+          <code>FileWorkspaceShell</code>
+        </article>
+        <article class="layer">
+          <b>service</b>
+          <p>程序变换、AI transform、HTML patch、PDF companion 与 receipt orchestration。</p>
+          <code>FileTransformService</code>
+        </article>
+        <article class="layer">
+          <b>core</b>
+          <p>Manifest、selection、revision、capability state 和无 Obsidian 依赖的 ports。</p>
+          <code>FileSurfaceManifest</code>
+        </article>
+      </div>
+      <table>
+        <colgroup><col style="width: 180px"><col><col style="width: 33%"></colgroup>
+        <thead><tr><th>现有能力</th><th>继续拥有</th><th>明确不拥有</th></tr></thead>
+        <tbody>
+          <tr><td><b>DocumentLoader</b></td><td>读取、摘要、切块、索引</td><td>View、candidate、文件保存</td></tr>
+          <tr><td><b>Media runtime</b></td><td>图片生成/编辑与 provider preflight</td><td>Image canvas 与 file leaf</td></tr>
+          <tr><td><b>Composer</b></td><td>Markdown block transaction</td><td>独立文件 source-of-truth</td></tr>
+          <tr><td><b>AI Gateway</b></td><td>全局 provider/model routing</td><td>文件 UI 与 Vault lifecycle</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="chapter" id="safety">
+      <span class="chapter-num">07 · SOURCE OF TRUTH</span>
+      <h2>每种文件有不同真值，但同样可恢复</h2>
+      <p class="lead">一致的是审阅与权限，不是强迫所有文件采用同一种保存方式。</p>
+      <table>
+        <colgroup><col style="width: 130px"><col style="width: 28%"><col><col style="width: 28%"></colgroup>
+        <thead><tr><th>文件</th><th>Canonical source</th><th>默认接受动作</th><th>禁止</th></tr></thead>
+        <tbody>
+          <tr><td><b>Image</b></td><td>原图 + accepted version files</td><td>Save as new version</td><td>无 backup 覆盖原图</td></tr>
+          <tr><td><b>HTML</b></td><td>`.html` source</td><td>Accept reviewable patch</td><td>未校验 hash 直接写入</td></tr>
+          <tr><td><b>PDF</b></td><td>原 PDF</td><td>Save annotation companion</td><td>把 OCR 冒充原文</td></tr>
+          <tr><td><b>Run</b></td><td>machine record</td><td>Persist receipt / trace</td><td>用 Save to Vault 代替历史</td></tr>
+        </tbody>
+      </table>
+      <div class="claim">
+        <div class="claim-title">HTML 与 SVG 的安全边界</div>
+        <p>
+          Safe preview 不提供 same-origin、parent、Node、Electron、Obsidian 或 unrestricted network。
+          Interactive mode 仍在 sandbox 中，只通过 allowlisted message schema 与宿主通信。
+        </p>
+      </div>
+    </section>
+
+    <section class="chapter" id="rollout">
+      <span class="chapter-num">08 · DELIVERY</span>
+      <h2>先验证宿主边界，再逐类型接入</h2>
+      <p class="lead">这是完整方案的实施顺序，不是把未完成阶段包装成已交付 MVP。</p>
+      <div class="phase-list">
+        <article class="phase">
+          <span class="phase-num">Phase 0</span>
+          <div><b>Characterization 与四个 spike</b><p>Extension takeover、HTML sandbox、PDF companion、popout lifecycle。</p></div>
+          <div class="phase-outcome">输出 go/no-go 与最终 open mode，不动 production extension。</div>
+        </article>
+        <article class="phase">
+          <span class="phase-num">Phase 1</span>
+          <div><b>Foundation</b><p>Manifest、app-owned registry、common shell、candidate、version/save ports。</p></div>
+          <div class="phase-outcome">Feature flag 下完成生命周期与 boundary tests。</div>
+        </article>
+        <article class="phase">
+          <span class="phase-num">Phase 2</span>
+          <div><b>Image</b><p>PNG/JPEG/WebP、crop/mask、programmatic transform、AI edit、version/replace。</p></div>
+          <div class="phase-outcome">第一条真实“打开文件到安全保存”的闭环。</div>
+        </article>
+        <article class="phase">
+          <span class="phase-num">Phase 3</span>
+          <div><b>HTML</b><p>Source/Preview/Split、safe sandbox、resource resolver、element patch。</p></div>
+          <div class="phase-outcome">本地浏览器式查看与 AI source editing。</div>
+        </article>
+        <article class="phase">
+          <span class="phase-num">Phase 4</span>
+          <div><b>PDF companion</b><p>Page/selection context、OCR gate、annotation Markdown、citation/export。</p></div>
+          <div class="phase-outcome">Native PDF 不退化，AI 阅读链路闭环。</div>
+        </article>
+        <article class="phase">
+          <span class="phase-num">Phase 5</span>
+          <div><b>扩展与收口</b><p>JSON、CSV、Office、Audio、Video、SVG；清理重复 preview 路径。</p></div>
+          <div class="phase-outcome">新增文件类型不再复制 shell 或 AI runtime。</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="chapter" id="verdict">
+      <span class="chapter-num">09 · HONEST STATUS</span>
+      <h2>方向已决定，功能尚未实现</h2>
+      <p class="lead">
+        本方案、研究审计、视觉报告和 roadmap entry 已形成长期上下文。下一步是 Phase 0 spike，而不是直接宣称 Image / HTML / PDF 已成为一等文件类型。
+      </p>
+      <div class="principles">
+        <article class="principle"><b>已决定</b><span>统一 File Workspace；Image/HTML/PDF 首批；不复制 AI runtime。</span></article>
+        <article class="principle"><b>待 owner 复核</b><span>版本目录、PDF companion 命名、HTML network permission、SVG 策略。</span></article>
+        <article class="principle"><b>待实施验证</b><span>Extension takeover、sandbox、native PDF bridge、popout lifecycle。</span></article>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <p>
+        Authority：
+        <a href="../../superpowers/specs/2026-07-24-peak-file-workspace.md">正式方案</a> ·
+        <a href="../../research/2026-07-24-peak-file-workspace/README.md">当前能力审计</a> ·
+        <a href="../../roadmap.html">Roadmap</a>
+      </p>
+      <p>Peak File Workspace · 2026-07-24 · Design only / implementation pending</p>
+    </footer>
+  </main>
+
+  <script>
+    const links = Array.from(document.querySelectorAll('.side-nav nav a'));
+    const sections = links
+      .map((link) => document.querySelector(link.getAttribute('href')))
+      .filter(Boolean);
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (!visible) return;
+      for (const link of links) {
+        const current = link.getAttribute('href') === `#${visible.target.id}`;
+        link.setAttribute('aria-current', current ? 'true' : 'false');
+      }
+    }, { rootMargin: '-18% 0px -68% 0px', threshold: [0, .1, .5] });
+    for (const section of sections) observer.observe(section);
+  </script>
+</body>
+</html>
+

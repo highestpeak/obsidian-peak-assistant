@@ -1,28 +1,77 @@
 /**
  * File Atlas — tree view-model helpers (Phase 1).
  *
- * Pure functions over the parsed {@link DocumentBlock} tree: visibility
- * computation (preset kinds × search term, headings always visible), collapsed
- * count summaries, and flattening. No React, no side effects.
+ * Pure functions over the parsed {@link DocumentBlock} tree: frontmatter
+ * grouping, visibility computation (preset kinds × search term, group rows
+ * always visible), collapsed count summaries, the default fold (expand only the
+ * current node's ancestor path), and the Inspector's naive keyword frequency.
+ * No React, no side effects.
  */
 
-import type { DocumentBlock, RawBlockKind } from '@/core/document/atlas/types';
+import type { DocumentBlock, FileAtlasAnchor, RawBlockKind } from '@/core/document/atlas/types';
 import { RawBlockKind as Kind } from '@/core/document/atlas/types';
-import type { KindConfig } from './config/fileAtlasConfig';
+import type { KeywordStopwords, KindConfig } from './config/fileAtlasConfig';
+
+/** Group kinds fold like headings: they own children and show a summary collapsed. */
+export function isGroupKind(kind: RawBlockKind): boolean {
+	return kind === Kind.Heading || kind === Kind.Frontmatter;
+}
+
+/** Stable id for the synthetic frontmatter group node. */
+export const FRONTMATTER_GROUP_ID = 'fa-frontmatter-group';
+
+/**
+ * Wrap the document's leading run of Property/Tag blocks into one synthetic
+ * {@link Kind.Frontmatter} group so metadata reads (and folds) like a titled
+ * section instead of a flat list. Returns the blocks unchanged when the file
+ * has no leading frontmatter blocks. Never mutates the input.
+ */
+export function groupFrontmatter(blocks: DocumentBlock[], title: string): DocumentBlock[] {
+	let end = 0;
+	while (end < blocks.length && (blocks[end].kind === Kind.Property || blocks[end].kind === Kind.Tag)) {
+		end += 1;
+	}
+	if (end === 0) return blocks;
+
+	const children = blocks.slice(0, end);
+	const lineStart = children[0].anchor.lineStart;
+	const lineEnd = children[children.length - 1].anchor.lineEnd;
+	const anchor: FileAtlasAnchor = {
+		filePath: children[0].anchor.filePath,
+		blockId: FRONTMATTER_GROUP_ID,
+		nearestHeading: null,
+		blockType: Kind.Frontmatter,
+		ordinalInHeading: 0,
+		contentHash: '',
+		lineStart,
+		lineEnd,
+		status: 'active',
+	};
+	const group: DocumentBlock = {
+		id: FRONTMATTER_GROUP_ID,
+		kind: Kind.Frontmatter,
+		title,
+		sub: `${children.length} ${children.length === 1 ? 'property' : 'properties'}`,
+		source: children.map((c) => c.source).join('\n'),
+		anchor,
+		children,
+	};
+	return [group, ...blocks.slice(end)];
+}
 
 export interface CountSummary {
 	block: number;
 	resource: number;
 }
 
-/** Count descendants of a heading by category (for the collapsed summary). */
+/** Count descendants of a group by category (for the collapsed summary). */
 export function countDescendants(
 	node: DocumentBlock,
 	kinds: Record<string, KindConfig>
 ): CountSummary {
 	const sum: CountSummary = { block: 0, resource: 0 };
 	const walk = (child: DocumentBlock): void => {
-		if (child.kind === Kind.Heading) {
+		if (isGroupKind(child.kind)) {
 			(child.children ?? []).forEach(walk);
 			return;
 		}
@@ -35,7 +84,7 @@ export function countDescendants(
 	return sum;
 }
 
-/** "3 blocks · 2 res" summary shown on a collapsed heading row. */
+/** "3 blocks · 2 res" summary shown on a collapsed group row. */
 export function foldSummary(node: DocumentBlock, kinds: Record<string, KindConfig>): string {
 	const s = countDescendants(node, kinds);
 	const parts: string[] = [];
@@ -53,16 +102,17 @@ export function matchesSearch(node: DocumentBlock, term: string): boolean {
 export interface VisibilityResult {
 	/** Set of block ids that should render. */
 	visible: Set<string>;
-	/** Count of visible non-heading leaf blocks (for the search hit counter). */
+	/** Count of visible non-group leaf blocks (for the search hit counter). */
 	hits: number;
 }
 
 /**
  * Compute which blocks render given the visible-kind set and a search term.
  *
- * Rules (spec): headings always stay visible unless a search term is active and
- * neither the heading nor any descendant matches; a non-heading block renders
- * only when its kind is enabled AND (no search OR it matches).
+ * Rules (spec): group rows (headings + frontmatter) always stay visible unless a
+ * search term is active and neither the group nor any descendant matches; a
+ * non-group block renders only when its kind is enabled AND (no search OR it
+ * matches).
  */
 export function computeVisibility(
 	blocks: DocumentBlock[],
@@ -73,7 +123,7 @@ export function computeVisibility(
 	let hits = 0;
 
 	const visit = (node: DocumentBlock): boolean => {
-		if (node.kind === Kind.Heading) {
+		if (isGroupKind(node.kind)) {
 			let anyChild = false;
 			for (const child of node.children ?? []) {
 				if (visit(child)) anyChild = true;
@@ -96,15 +146,153 @@ export function computeVisibility(
 	return { visible, hits };
 }
 
-/** Collect every heading id in the tree (for expand/collapse-all). */
-export function collectHeadingIds(blocks: DocumentBlock[]): string[] {
+/** Collect every group id (headings + frontmatter) in the tree. */
+export function collectGroupIds(blocks: DocumentBlock[]): string[] {
 	const ids: string[] = [];
 	const walk = (list: DocumentBlock[]): void => {
 		for (const b of list) {
-			if (b.kind === Kind.Heading) ids.push(b.id);
+			if (isGroupKind(b.kind)) ids.push(b.id);
 			if (b.children) walk(b.children);
 		}
 	};
 	walk(blocks);
 	return ids;
+}
+
+/** Find a block by id anywhere in the tree. */
+export function findBlock(blocks: DocumentBlock[], id: string): DocumentBlock | null {
+	for (const b of blocks) {
+		if (b.id === id) return b;
+		if (b.children) {
+			const hit = findBlock(b.children, id);
+			if (hit) return hit;
+		}
+	}
+	return null;
+}
+
+/**
+ * The group nodes on the path from the tree root down to `targetId` (excluding
+ * the target itself). Drives the default fold: these are the sections that must
+ * stay expanded so the current block is reachable.
+ */
+export function ancestorGroupsOf(blocks: DocumentBlock[], targetId: string): DocumentBlock[] {
+	const path: DocumentBlock[] = [];
+	const found: DocumentBlock[] = [];
+	const visit = (list: DocumentBlock[]): boolean => {
+		for (const node of list) {
+			if (node.id === targetId) {
+				found.push(...path);
+				return true;
+			}
+			if (node.children) {
+				const isGroup = isGroupKind(node.kind);
+				if (isGroup) path.push(node);
+				if (visit(node.children)) return true;
+				if (isGroup) path.pop();
+			}
+		}
+		return false;
+	};
+	visit(blocks);
+	return found;
+}
+
+/**
+ * Default collapsed set: every group folds EXCEPT the ancestor path of
+ * `currentId` (and `currentId` itself when it is a group). Matches the mock —
+ * only the current level's section is open, everything else summarized.
+ */
+export function defaultCollapsedIds(blocks: DocumentBlock[], currentId: string | null): Set<string> {
+	const collapsed = new Set(collectGroupIds(blocks));
+	if (!currentId) return collapsed;
+	for (const group of ancestorGroupsOf(blocks, currentId)) collapsed.delete(group.id);
+	const current = findBlock(blocks, currentId);
+	if (current && isGroupKind(current.kind)) collapsed.delete(current.id);
+	return collapsed;
+}
+
+/**
+ * Deepest block whose 1-based line range contains `line` — used to frame the tree
+ * on the editor's cursor position. Recurses into children first so a cursor inside
+ * a heading's section resolves to the specific block under it (whose ancestor
+ * headings then expand), not the enclosing heading. Returns null if no block owns
+ * the line.
+ */
+export function blockIdAtLine(blocks: DocumentBlock[], line: number): string | null {
+	const search = (list: DocumentBlock[]): string | null => {
+		for (const b of list) {
+			if (line < b.anchor.lineStart || line > b.anchor.lineEnd) continue;
+			const child = b.children ? search(b.children) : null;
+			return child ?? b.id;
+		}
+		return null;
+	};
+	return search(blocks);
+}
+
+/** First block worth selecting/framing on open: the first heading, else the first non-group leaf. */
+export function firstSelectableId(blocks: DocumentBlock[]): string | null {
+	let firstLeaf: string | null = null;
+	const visit = (list: DocumentBlock[]): string | null => {
+		for (const node of list) {
+			if (node.kind === Kind.Heading) return node.id;
+			if (!isGroupKind(node.kind) && firstLeaf === null) firstLeaf = node.id;
+			if (node.children) {
+				const hit = visit(node.children);
+				if (hit) return hit;
+			}
+		}
+		return null;
+	};
+	return visit(blocks) ?? firstLeaf;
+}
+
+/**
+ * Concatenate a group's own source with every descendant block's source. Drives
+ * the heading keyword card: a heading's own line has almost no signal, so we roll
+ * up the whole section's prose to compute meaningful term frequencies.
+ */
+export function sectionText(node: DocumentBlock): string {
+	const parts: string[] = [];
+	const walk = (b: DocumentBlock): void => {
+		if (b.source) parts.push(b.source);
+		(b.children ?? []).forEach(walk);
+	};
+	walk(node);
+	return parts.join('\n');
+}
+
+/**
+ * Naive term-frequency keywords for a block's text — a deterministic stand-in
+ * for the real indexer (spec: "keywords computed by program"). Latin words plus
+ * CJK bigrams, stopwords dropped, ranked by count then length. Returns up to
+ * `limit` `[word, count]` pairs.
+ */
+export function keywordsOf(
+	text: string,
+	stopwords: KeywordStopwords,
+	limit = 8
+): Array<[string, number]> {
+	const stopLatin = new Set(stopwords.latin);
+	const stopCjk = new Set(stopwords.cjk);
+	const counts = new Map<string, number>();
+	const bump = (word: string): void => {
+		counts.set(word, (counts.get(word) ?? 0) + 1);
+	};
+
+	const latin = String(text).toLowerCase().match(/[a-z][a-z0-9-]{2,}/g) ?? [];
+	for (const word of latin) if (!stopLatin.has(word)) bump(word);
+
+	const cjkRuns = String(text).match(/[一-鿿]+/g) ?? [];
+	for (const run of cjkRuns) {
+		for (let i = 0; i < run.length - 1; i += 1) {
+			const bigram = run.slice(i, i + 2);
+			if (!stopCjk.has(bigram)) bump(bigram);
+		}
+	}
+
+	return [...counts.entries()]
+		.sort((a, b) => b[1] - a[1] || b[0].length - a[0].length)
+		.slice(0, limit);
 }

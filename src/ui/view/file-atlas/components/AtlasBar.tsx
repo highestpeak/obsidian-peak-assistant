@@ -7,7 +7,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { ListFilter, FoldVertical, UnfoldVertical } from 'lucide-react';
+import { ListFilter, FoldVertical, UnfoldVertical, Check } from 'lucide-react';
 import type { RawBlockKind } from '@/core/document/atlas/types';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { FileAtlasConfig } from '../config/fileAtlasConfig';
@@ -53,6 +53,10 @@ export const AtlasBar: React.FC<AtlasBarProps> = ({
 			.filter(([, cfg]) => cfg.group === groupId)
 			.map(([kind]) => kind as RawBlockKind);
 
+	const allKinds = Object.keys(config.kinds) as RawBlockKind[];
+	const onCount = allKinds.filter((k) => visibleKinds.has(k)).length;
+	const setAll = (on: boolean): void => config.filterGroups.forEach((g) => onGroupSet(g.id, on));
+
 	return (
 		<section className="pkfa-atlas-bar">
 			<div className="pkfa-preset-switch" role="tablist" aria-label="Layer presets">
@@ -85,56 +89,77 @@ export const AtlasBar: React.FC<AtlasBarProps> = ({
 				</Button>
 				{filterOpen && (
 					<div className="pkfa-filter-popover" aria-label="Type filters">
-						<div className="pkfa-filter-head">
-							<span>Visible block types</span>
+						<div className="pkfa-filter-popover-head">
+							<span>{config.strings.filtersTitle}</span>
 							<span className="pkfa-hint">{config.strings.filtersHeadingHint}</span>
 						</div>
-						{config.filterGroups.map((group) => {
-							const kinds = kindsInGroup(group.id);
-							return (
-								<section key={group.id} className="pkfa-filter-section">
-									<div className="pkfa-filter-section-title">
-										<span>{group.title}</span>
-										<span className="pkfa-filter-actions">
-											<Button
-												variant="unstyled"
-												type="button"
-												className="pkfa-filter-action"
-												onClick={() => onGroupSet(group.id, true)}
-											>
-												All
-											</Button>
-											<Button
-												variant="unstyled"
-												type="button"
-												className="pkfa-filter-action"
-												onClick={() => onGroupSet(group.id, false)}
-											>
-												None
-											</Button>
-										</span>
-									</div>
-									<div className="pkfa-filter-options">
-										{kinds.map((kind) => {
-											const Icon = iconForKind(kind);
-											const on = visibleKinds.has(kind);
-											return (
+						<div className="pkfa-filter-scroll">
+							{config.filterGroups.map((group) => {
+								const kinds = kindsInGroup(group.id);
+								return (
+									<section key={group.id} className="pkfa-filter-section">
+										<div className="pkfa-filter-section-title">
+											<span>{group.title}</span>
+											<span className="pkfa-filter-actions">
 												<Button
-													key={kind}
 													variant="unstyled"
 													type="button"
-													className={`pkfa-type-toggle${on ? ' is-on' : ''}`}
-													onClick={() => onToggleKind(kind)}
+													className="pkfa-filter-action"
+													onClick={() => onGroupSet(group.id, true)}
 												>
-													<Icon />
-													{config.kinds[kind].label}
+													All
 												</Button>
-											);
-										})}
-									</div>
-								</section>
-							);
-						})}
+												<Button
+													variant="unstyled"
+													type="button"
+													className="pkfa-filter-action"
+													onClick={() => onGroupSet(group.id, false)}
+												>
+													None
+												</Button>
+											</span>
+										</div>
+										<div className="pkfa-filter-options">
+											{kinds.map((kind) => {
+												const Icon = iconForKind(kind);
+												const on = visibleKinds.has(kind);
+												return (
+													<Button
+														key={kind}
+														variant="unstyled"
+														type="button"
+														aria-pressed={on}
+														className={`pkfa-type-toggle${on ? ' is-on' : ''}`}
+														onClick={() => onToggleKind(kind)}
+													>
+														<span className="pkfa-tt-icon">
+															<Icon />
+														</span>
+														<span className="pkfa-tt-label">{config.kinds[kind].label}</span>
+														<span className="pkfa-tt-check">
+															<Check />
+														</span>
+													</Button>
+												);
+											})}
+										</div>
+									</section>
+								);
+							})}
+						</div>
+						<div className="pkfa-filter-popover-foot">
+							<span className="pkfa-filter-foot-count">
+								{onCount} of {allKinds.length} types visible
+							</span>
+							<span className="pkfa-filter-actions">
+								<Button variant="unstyled" type="button" className="pkfa-filter-action" onClick={() => setAll(true)}>
+									{config.strings.filtersSelectAll}
+								</Button>
+								<Button variant="unstyled" type="button" className="pkfa-filter-action" onClick={() => setAll(false)}>
+									{config.strings.filtersClearAll}
+								</Button>
+							</span>
+						</div>
 					</div>
 				)}
 			</div>

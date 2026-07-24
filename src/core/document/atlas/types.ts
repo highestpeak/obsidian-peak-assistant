@@ -29,6 +29,13 @@
 export const RawBlockKind = {
 	/** Synthetic document root (the file itself). */
 	FileRoot: 'file-root',
+	/**
+	 * Synthetic collapsible container that groups the document's leading
+	 * frontmatter Property/Tag blocks under one folding title. Never emitted by
+	 * the parser — the tree view-model wraps the leading property/tag run into a
+	 * single Frontmatter node so it reads (and folds) like a heading section.
+	 */
+	Frontmatter: 'frontmatter',
 	/** A single frontmatter / properties key-value line. */
 	Property: 'property',
 	/** A tag reference (#tag or frontmatter `tags`). */

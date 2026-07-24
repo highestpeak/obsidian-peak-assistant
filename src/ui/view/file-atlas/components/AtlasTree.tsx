@@ -14,7 +14,7 @@ import { RawBlockKind } from '@/core/document/atlas/types';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { FileAtlasConfig } from '../config/fileAtlasConfig';
 import { iconForKind } from '../config/kindIcons';
-import { foldSummary } from '../atlasTreeModel';
+import { foldSummary, isGroupKind } from '../atlasTreeModel';
 
 interface AtlasTreeProps {
 	blocks: DocumentBlock[];
@@ -48,6 +48,8 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({ block, depth, ...props }) => {
 	if (!visible.has(block.id)) return null;
 
 	const isHeading = block.kind === RawBlockKind.Heading;
+	const isFrontmatter = block.kind === RawBlockKind.Frontmatter;
+	const isGroup = isGroupKind(block.kind);
 	const kindCfg = config.kinds[block.kind];
 	const isCollapsed = collapsed.has(block.id);
 	const Icon = iconForKind(block.kind);
@@ -55,7 +57,11 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({ block, depth, ...props }) => {
 
 	const badgeText = isHeading ? `H${block.level}` : kindCfg?.badge ?? block.kind;
 	const badgeClass = isHeading ? 'pkfa-badge--h' : `pkfa-badge--${kindCfg?.badgeClass ?? 'block'}`;
-	const typeClass = isHeading ? 'pkfa-type-heading' : `pkfa-type-${kindCfg?.type ?? 'block'}`;
+	const typeClass = isHeading
+		? 'pkfa-type-heading'
+		: isFrontmatter
+			? 'pkfa-type-frontmatter'
+			: `pkfa-type-${kindCfg?.type ?? 'block'}`;
 	const inTray = trayIds.has(block.id);
 
 	const onRowClick = (): void => props.onSelect(block);
@@ -79,7 +85,7 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({ block, depth, ...props }) => {
 			>
 				<span className="pkfa-line-ref">{block.anchor.lineStart}</span>
 				<div className="pkfa-node-body" style={{ paddingLeft: `${6 + depth * 16}px` }}>
-					{isHeading && hasChildren ? (
+					{isGroup && hasChildren ? (
 						<Button
 							variant="unstyled"
 							type="button"
@@ -102,7 +108,7 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({ block, depth, ...props }) => {
 						<span className="pkfa-name">{block.title}</span>
 						{block.sub && <span className="pkfa-sub">{block.sub}</span>}
 					</span>
-					{isHeading && isCollapsed && (
+					{isGroup && isCollapsed && (
 						<span className="pkfa-fold-sum">{foldSummary(block, config.kinds)}</span>
 					)}
 					<Button
@@ -118,12 +124,16 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({ block, depth, ...props }) => {
 					>
 						<Plus />
 					</Button>
-					<span className={`pkfa-badge ${badgeClass}`}>{badgeText}</span>
+					{!isFrontmatter && <span className={`pkfa-badge ${badgeClass}`}>{badgeText}</span>}
 				</div>
 			</div>
 
-			{isHeading && hasChildren && (
-				<div className={`pkfa-kids${isCollapsed ? ' is-collapsed' : ''}`}>
+			{isGroup && hasChildren && (
+				<div
+					className={`pkfa-kids${isFrontmatter ? ' pkfa-frontmatter-kids' : ''}${
+						isCollapsed ? ' is-collapsed' : ''
+					}`}
+				>
 					{block.children!.map((child) => (
 						<AtlasNode key={child.id} block={child} depth={depth + 1} {...props} />
 					))}
