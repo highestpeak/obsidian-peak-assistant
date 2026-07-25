@@ -47,5 +47,43 @@
   },
   "transaction": {
     "burstWindowMs": 800
+  },
+  "capabilities": {
+    "_doc": "WP3 capability runtime config. `actions` is keyed by stable capability id (presentation only — never a dispatch key). Typed fallbacks: src/service/composer/capabilities/capabilityConfig.ts (actions/strings/context) and src/ui/view/composer/candidates/candidateUiConfig.ts (candidateUi). Drift guard: test/composer-capability-registry.test.ts.",
+    "context": {
+      "nearbyChars": 800
+    },
+    "actions": {
+      "composer.prose.polish": {
+        "title": "润色文本",
+        "description": "改善表达与清晰度，不改变含义",
+        "lucideIcon": "sparkles",
+        "historyLabel": "AI 润色",
+        "order": 10
+      }
+    },
+    "strings": {
+      "staleSnapshot": "文档已变化——请重新打开该操作",
+      "emptyTarget": "此块没有可处理的内容",
+      "runCancelled": "已取消生成",
+      "runFailed": "生成失败"
+    },
+    "candidateUi": {
+      "accept": "接受",
+      "discard": "丢弃",
+      "regenerate": "重新生成",
+      "cancel": "取消",
+      "retry": "重试",
+      "instructionPlaceholder": "定向指令…（Enter 重新生成）",
+      "instructionAria": "Targeted instruction",
+      "streaming": "生成中…",
+      "failed": "生成失败",
+      "stale": "源已变化，需重新生成",
+      "acceptDisabledStreaming": "生成完成后才能接受",
+      "prevVariant": "上一版本",
+      "nextVariant": "下一版本",
+      "variantCounter": "{index}/{count}",
+      "unsupportedResult": "暂不支持渲染此结果类型"
+    }
   }
 }

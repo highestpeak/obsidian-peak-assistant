@@ -24,6 +24,11 @@ import { v4 as uuidv4 } from 'uuid';
 import type { CopilotActionPorts } from './CopilotActionPorts';
 import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
 import type { VaultFileRef } from '@/core/ports/VaultFileRef';
+import {
+	POLISH_COPILOT_ACTION_ID,
+	POLISH_PROMPT_ID,
+	buildPolishPromptVariables,
+} from '@/service/composer/capabilities/packs/prose';
 
 // ── Re-exported types (consumed by UI panels) ──────────────────────────
 
@@ -123,11 +128,21 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 	const resolveLinkPath = (linkText: string, sourcePath: string): string | null =>
 		linkResolver.resolveLinkPath(linkText, sourcePath);
 
+	// WP3 (2026-07-25): `polish` is now canonically defined by the Composer
+	// capability `composer.prose.polish` (service/composer/capabilities/packs/
+	// prose.ts). This Copilot projection shares the stable identity, PromptId
+	// and prompt-variable mapping instead of keeping its own copy; the legacy
+	// invocation path stays until the WP10 parity gate.
 	const polishDocumentAction: CopilotAction = {
-		id: 'polish', label: 'Polish Document', description: 'Improve clarity and style',
+		id: POLISH_COPILOT_ACTION_ID, label: 'Polish Document', description: 'Improve clarity and style',
 		iconId: 'sparkles', category: 'document',
 		relevance: (ctx) => ctx.selection ? 0.8 : ctx.wordCount > 200 ? 0.5 : 0.2,
-		execute: (ctx, signal) => streamAction(ai, PromptId.DocPolish, { content: scopedContent(ctx), title: ctx.title, scope: ctx.scope }, signal),
+		execute: (ctx, signal) => streamAction(
+			ai,
+			POLISH_PROMPT_ID,
+			buildPolishPromptVariables({ content: scopedContent(ctx), title: ctx.title, scope: ctx.scope }),
+			signal,
+		),
 	};
 
 	const formatDocumentAction: CopilotAction = {

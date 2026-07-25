@@ -12,3 +12,4 @@ export * from './candidateStore';
 export * from './historyStore';
 export * from './undoRedoStore';
 export * from './transactionHub';
+export * from './capabilities';
