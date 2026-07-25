@@ -131,6 +131,20 @@ function markerLength(source: string, from: number, to: number): number {
 }
 
 /**
+ * Content start of a list/task item unit — the offset after the `- ` / `1. ` /
+ * `- [ ] ` marker. The editable leaf for an item covers `[contentStart, to)`.
+ */
+export function listItemContentStart(source: string, unit: { from: number; to: number }): number {
+	return unit.from + markerLength(source, unit.from, unit.to);
+}
+
+/** Heading text start — the offset after the `#…# ` marker. */
+export function headingTextStart(source: string, block: { from: number; to: number }): number {
+	const m = HEADING_MARKER_RE.exec(source.slice(block.from, block.to));
+	return block.from + (m ? m[0].length : 0);
+}
+
+/**
  * mdast table-cell anchors include the surrounding `|` pipes and padding. Trim
  * them so a cell selection's range is the cell text only — never the grid.
  */

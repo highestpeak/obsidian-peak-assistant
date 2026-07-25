@@ -20,6 +20,8 @@ export * from './selection/markSerializer';
 export * from './selection/linkOps';
 export * from './selection/partitionSelection';
 export * from './clipboard/easyCopy';
+export * from './directEdit';
+export * from './blockOps';
 export * from './comment/commentModel';
 export * from './comment/commentStore';
 export * from './linkPreview/linkPreviewModel';
