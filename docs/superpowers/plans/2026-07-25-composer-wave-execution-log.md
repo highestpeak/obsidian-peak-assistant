@@ -24,7 +24,7 @@ Contract: [`2026-07-24-peak-composer-complete-implementation-handoff.md`](./2026
 | WP1 | 宿主 + source model | done | PASS | d2714a88 |
 | WP2 | transaction/History/Undo 底座 | done | PASS | e3a20d64 |
 | IF | 接口冻结 capabilityContracts.ts | done | n/a（fable authored） | 88931c20 |
-| WP3 | capability runtime | in-progress | pending | — |
+| WP3 | capability runtime | done | PASS | 064d0d04（merge，4 子 commit） |
 | WP4 | editing chrome + 文本 slice | in-progress | pending | — |
 | QA#1 | 真机中期验收（owner 在场） | pending | pending | — |
 | WP5 | Frontmatter + 公式 | pending | pending | — |
@@ -60,6 +60,12 @@ Contract: [`2026-07-24-peak-composer-complete-implementation-handoff.md`](./2026
   - **接受的合同偏差**：reparse 断言在写盘**前**执行（handoff 字面是写后）——post-write 无法撤销落盘，pre-write 才守得住"step-4 失败零持久化"；代码头注释已论证。分隔符吞噬 patch 被 block-count-delta 守卫拒绝。
   - 已知限制：superseded 历史项 rollback 拒绝（anchor-drift）而非 rebase；moveBlock 的 superseded rollback 仅支持 on-top。
   - 给 WP3/WP4 接口：`hub.commit/undo/redo/rollback/subscribe/on`、candidate 全生命周期 API、`runtime.createTransactionHub(session)`；typing burst 用稳定 groupId（blockId 每次编辑会变，分组键不用 blockId）。
+- **WP3（2026-07-25，fable 审计：PASS，merge 064d0d04）**：
+  - 越界 0（含 WP4 领地零触碰）、冻结合同零改形、禁区 grep 全 OK、worktree 内与合并后主树均 279/281 + build 绿 ✅
+  - 交付：composer surface 双镜像、definition 模型 + typed run events、app-owned runtime 全链（registry→applicability→frozen snapshot→materializer→text-patch writeback→History bridge）、生产 projection port、candidates 流式 UI + renderer registry、polish fake-port vertical slice（invoke→流式→accept→写盘→History→undo 字节精确）、polish 与 Copilot 共享 definition。
+  - **集成接线说明（集成任务用）**：`DocumentComposerRuntime.createCapabilityRuntime(session, hub)` 同时实现 projection port 与 candidate runtime port，替换 stub；chrome 先 `runtime.assembleSnapshot(target, selectionText?)` 再 actionsFor/invoke；块下方挂 `ComposerCandidateHost`（candidateId 按 anchorBlockId 从 runtime.subscribe 取）。
+  - 遗留（登记）：① stale candidate 的 regenerate 为 fail-closed（rebase 原语留 WP5+/集成）；② selection 级 range target 未在冻结 ComposerTarget 中，选区级 patch 需 WP4 selection target 落地后补 adapter 分支；③ CompiledSkill 为合成 shim，agent-mode packs 接 SkillRegistry.compile；④ 真实付费 provider 冒烟 credential-blocked（§2.4 允许）。
+  - 流程备注：isolation worktree 初始基线陈旧（4fa5bd2b），代理自行 reset 到 ae4b2567 后工作——后续 worktree 派发时任务书应显式包含"先确认基线 = 最新主分支 HEAD"步骤。
 - **接口冻结（88931c20，fable authored）**：`src/core/composer/capabilityContracts.ts`——ComposerResultKind 14 种 / ComposerContextSnapshot / ComposerActionDescriptor / ComposerCapabilityProjectionPort + stub（chrome 在 runtime 未接入前零假 AI 按钮）。WP3/WP4 只实现不改形；改形需回本 log 记录编排者决定。
 
 ## WP0 spike 结论
