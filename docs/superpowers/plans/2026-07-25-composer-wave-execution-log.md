@@ -27,7 +27,8 @@ Contract: [`2026-07-24-peak-composer-complete-implementation-handoff.md`](./2026
 | WP3 | capability runtime | done | PASS | 064d0d04（merge，4 子 commit） |
 | WP4 | editing chrome + 文本 slice | done | PASS（2 项登记偏差） | 8679f448（merge，4 子 commit） |
 | WP4.5 | 集成：AI 接线 + 富渲染 + app adapters | done | PASS | 64d958ba |
-| QA#1 | 真机中期验收（owner 在场） | pending | pending | — |
+| QA#1 | 真机中期验收 | done（2 must-fix） | 见 QA#1 段 | — |
+| FIX-1 | F1 流式重复 + F2 真机打字失效修复 | in-progress | pending | — |
 | WP5 | Frontmatter + 公式 | pending | pending | — |
 | WP6 | 表格 + Chart | pending | pending | — |
 | WP7 | 图片 + 多图布局 | pending | pending | — |
@@ -180,6 +181,27 @@ Contract: [`2026-07-24-peak-composer-complete-implementation-handoff.md`](./2026
 | CMP-A11Y | 01–02 | 各 WP 交付即达标，WP10 复核 | pending |
 | CMP-RESP | 01 | WP10 | pending |
 | CMP-GOV | 01–02 | WP10 | pending |
+
+## QA#1 真机中期验收（2026-07-26，fable 亲测，computer-use 驱动）
+
+测试载体：vault 根 `Peak Composer QA 2026-07-26.md`（专用 QA 笔记，已恢复原状保留复用）。
+
+**PASS（真机实证）**：
+- 命令 `Open document in Peak Composer` 注册可用；view 打开真实文件（12 blocks）；**active-file 跟随**（切 tab 后 Composer 自动跟随新文件）✅ CMP-HOST-01/02
+- 富 inline 渲染全套 + live-preview 翻转（focus 显源码带焦点环，blur 恢复渲染态）✅ CMP-SEL-01 可见样式
+- 单行 action row 完整（在下方插入/复制/评论 | ✨润色文本 | History/指令）；**applicability 正确**（表格块不投影 prose AI）✅ CMP-UI-02
+- **真实 provider 流式候选**出现在正确块下，定向指令输入 + 重新生成 + 接受/丢弃齐全 ✅（但见 F1）
+- accept 原子写盘（磁盘验证）→ Cmd+Z undo 字节精确恢复 → Shift+Cmd+Z redo 重应用 → 再 undo 恢复 ✅ CMP-TXN/UNDO 真机
+- 选区拖选 → selection toolbar（7 格式+copy+评论+AI 位）→ 加粗原子落盘，与相邻既有 `**`无冲突 → undo 恢复 ✅ CMP-SEL-02/03 冒烟
+- Quick Search modal（WP9a 抽取后）List 视图渲染正常 ✅ 回归冒烟
+
+**FINDINGS**：
+- **F1（must-fix）**：真实 provider 流式候选文本重复两遍（疑 stream delta 累积 + 最终全文再拼接；harness fake executor 为 canned 变体未暴露）。accept 会把重复文本写盘。
+- **F2（must-fix，blocking direct edit）**：真机中 per-block CE **打字完全不生效**——focus ring 在、字符被吞、DOM 无变化、保持焦点超 burst 窗口也不落盘；harness 浏览器同路径通过 ⇒ Obsidian 环境特异。怀疑方向：Obsidian global keymap/scope 拦截、beforeinput 受控路径在生产组合下 no-op（如 burst config 异步未就绪）、CE 属性未真正开启。
+- F3（minor，非本波次）：Today's Briefing modal 拦截 Esc/Cmd+P。
+- 未覆盖（待 F2 修复后补或 QA#2）：中文 IME、块拖动、fold 写回、link hover、评论持久化、Easy Copy 剪贴板、comment、drag 中富渲染翻转卡顿。
+
+**决定**：五路 packs 在 F1/F2 修复并真机复验前保持 blocked（F1 污染所有 AI 流式，F2 阻塞直接编辑底座）。
 
 ## 设计稿回归比对记录
 
