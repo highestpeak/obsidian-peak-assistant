@@ -9,7 +9,13 @@
 
 import type { App, EventRef, TAbstractFile, TFile } from 'obsidian';
 import { TFile as ObsidianTFile } from 'obsidian';
-import type { ComposerFileEvent, ComposerFileEventsPort, ComposerSourcePort } from '@/service/composer';
+import type {
+	ComposerFileEvent,
+	ComposerFileEventsPort,
+	ComposerSourcePort,
+	ComposerWritePort,
+} from '@/service/composer';
+import { ComposerConflictError } from '@/core/composer';
 
 /** Reads document bytes via the vault's cached read. */
 export class ObsidianComposerSourceAdapter implements ComposerSourcePort {
@@ -21,6 +27,33 @@ export class ObsidianComposerSourceAdapter implements ComposerSourcePort {
 			throw new Error(`Composer source not found: ${filePath}`);
 		}
 		return this.app.vault.cachedRead(file);
+	}
+}
+
+/**
+ * Atomic, revision-guarded write via `vault.process` (WP2). It reads the file's
+ * CURRENT bytes and refuses (throws {@link ComposerConflictError}) unless they
+ * still equal `expectedBaseText`, so a concurrent external edit can never be
+ * silently clobbered. `vault.process` performs the read+write under Obsidian's
+ * file lock, closing the read-then-modify race a bare `vault.modify` would leave.
+ */
+export class ObsidianComposerWriteAdapter implements ComposerWritePort {
+	constructor(private readonly app: App) {}
+
+	async writeSource(filePath: string, nextText: string, expectedBaseText: string): Promise<void> {
+		const file = this.app.vault.getAbstractFileByPath(filePath);
+		if (!file || !(file instanceof ObsidianTFile)) {
+			throw new Error(`Composer write target not found: ${filePath}`);
+		}
+		await this.app.vault.process(file, (current) => {
+			if (current !== expectedBaseText) {
+				throw new ComposerConflictError(
+					'revision-mismatch',
+					`Composer write conflict on ${filePath}: file changed since snapshot`,
+				);
+			}
+			return nextText;
+		});
 	}
 }
 

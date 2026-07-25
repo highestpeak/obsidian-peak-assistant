@@ -16,4 +16,5 @@ export {
 export {
 	ObsidianComposerSourceAdapter,
 	ObsidianComposerFileEventsAdapter,
+	ObsidianComposerWriteAdapter,
 } from './ObsidianComposerAdapters';

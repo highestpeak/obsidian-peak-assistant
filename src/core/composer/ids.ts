@@ -43,3 +43,42 @@ export function makeBlockId(kind: string, ordinal: number, fingerprint: string):
 export function makeUnitId(prefix: string, ...path: Array<string | number>): string {
 	return path.length ? `${prefix}-${path.join('.')}` : prefix;
 }
+
+// ── WP2: ephemeral record ids ───────────────────────────────────────────────
+// Unlike block/unit ids these identify *records* (a transaction, a candidate, a
+// history entry), not source positions, so they are unique per creation rather
+// than content-derived. `idSeq` is a pure monotonic counter for collision-free
+// ids without a uuid dependency — NOT a runtime/dependency holder (it stores no
+// services or app state), so it is not the kind of module singleton the
+// runtime-ownership rule forbids.
+
+let idSeq = 0;
+function nextSeq(): string {
+	idSeq += 1;
+	return `${Date.now().toString(36)}-${idSeq.toString(36)}`;
+}
+
+/** Fresh id for a committed transaction. */
+export function makeTransactionId(origin: string): string {
+	return `txn-${origin}-${nextSeq()}`;
+}
+
+/** Fresh id for a pending candidate. */
+export function makeCandidateId(): string {
+	return `cand-${nextSeq()}`;
+}
+
+/** Fresh id for a candidate variant. */
+export function makeVariantId(): string {
+	return `var-${nextSeq()}`;
+}
+
+/** Fresh id for a History ledger entry. */
+export function makeHistoryId(): string {
+	return `hist-${nextSeq()}`;
+}
+
+/** Fresh id for a grouping key (typing burst / AI run parent). */
+export function makeGroupId(): string {
+	return `grp-${nextSeq()}`;
+}

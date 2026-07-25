@@ -13,6 +13,17 @@ export interface ComposerSourcePort {
 	readSource(filePath: string): Promise<string>;
 }
 
+/**
+ * Atomically persists new document bytes (WP2). The write is revision-guarded:
+ * the adapter compares the file's CURRENT bytes against `expectedBaseText` and
+ * throws {@link ComposerConflictError}(`revision-mismatch`) if they differ, so a
+ * concurrent external edit can never be silently clobbered. On success the exact
+ * `nextText` bytes are what land on disk (a splice, no re-serialization).
+ */
+export interface ComposerWritePort {
+	writeSource(filePath: string, nextText: string, expectedBaseText: string): Promise<void>;
+}
+
 /** A file lifecycle event observed on the underlying store. */
 export interface ComposerFileEvent {
 	type: 'modify' | 'rename' | 'delete';

@@ -13,7 +13,11 @@
 
 import { TemplateManager } from '@/core/template/TemplateManager';
 import { ConfigTemplateId } from '@/core/template/TemplateRegistry';
-import type { ComposerBlockKind } from '@/core/composer';
+import {
+	DEFAULT_TRANSACTION_CONFIG,
+	type ComposerBlockKind,
+	type ComposerTransactionConfig,
+} from '@/core/composer';
 
 export interface ComposerStrings {
 	displayText: string;
@@ -108,5 +112,25 @@ export async function loadComposerConfig(): Promise<ComposerConfig> {
 		};
 	} catch {
 		return DEFAULT_COMPOSER_CONFIG;
+	}
+}
+
+/**
+ * Load the WP2 transaction config (`transaction` section of composer.json).
+ * Timing/grouping knobs are domain config, not code constants; this reads the
+ * runtime JSON and falls back to {@link DEFAULT_TRANSACTION_CONFIG}. The app
+ * layer passes the result into the Composer transaction runtime.
+ */
+export async function loadComposerTransactionConfig(): Promise<ComposerTransactionConfig> {
+	try {
+		const tm = TemplateManager.getInstance();
+		if (!tm) return DEFAULT_TRANSACTION_CONFIG;
+		const parsed = await tm.loadJson<{ transaction?: Partial<ComposerTransactionConfig> }>(
+			ConfigTemplateId.Composer,
+		);
+		if (!parsed || typeof parsed !== 'object' || !parsed.transaction) return DEFAULT_TRANSACTION_CONFIG;
+		return { ...DEFAULT_TRANSACTION_CONFIG, ...parsed.transaction };
+	} catch {
+		return DEFAULT_TRANSACTION_CONFIG;
 	}
 }

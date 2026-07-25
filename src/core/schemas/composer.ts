@@ -115,3 +115,100 @@ export const ComposerDocumentSnapshotSchema = z.object({
 	blocks: z.array(ComposerBlockSchema).readonly(),
 	nativeRefs: z.array(ComposerNativeRefSchema).readonly(),
 });
+
+// ── WP2: operations / transactions / candidates ─────────────────────────────
+
+export const ComposerTargetSchema = z.union([
+	z.object({ kind: z.literal('document'), documentId: z.string() }),
+	z.object({ kind: z.literal('block'), blockId: z.string() }),
+	z.object({ kind: z.literal('unit'), blockId: z.string(), unitId: z.string() }),
+]);
+
+export const ComposerOperationSchema = z.union([
+	z.object({
+		kind: z.literal('replaceRange'),
+		from: z.number().int().nonnegative(),
+		to: z.number().int().nonnegative(),
+		text: z.string(),
+	}),
+	z.object({
+		kind: z.literal('insertBlock'),
+		at: z.number().int().nonnegative(),
+		text: z.string(),
+		blockKind: ComposerBlockKindSchema.optional(),
+	}),
+	z.object({
+		kind: z.literal('removeBlock'),
+		from: z.number().int().nonnegative(),
+		to: z.number().int().nonnegative(),
+	}),
+	z.object({
+		kind: z.literal('moveBlock'),
+		from: z.number().int().nonnegative(),
+		to: z.number().int().nonnegative(),
+		insertAt: z.number().int().nonnegative(),
+	}),
+]);
+
+export const OperationStatsSchema = z.object({
+	added: z.number().int().nonnegative(),
+	removed: z.number().int().nonnegative(),
+});
+
+export const ComposerTransactionOriginSchema = z.enum([
+	'direct',
+	'deterministic',
+	'ai',
+	'system-rollback',
+]);
+
+export const ComposerTransactionSchema = z.object({
+	transactionId: z.string(),
+	documentId: z.string(),
+	baseRevision: z.string(),
+	resultRevision: z.string(),
+	origin: ComposerTransactionOriginSchema,
+	label: z.string(),
+	operations: z.array(ComposerOperationSchema).readonly(),
+	inverseOperations: z.array(ComposerOperationSchema).readonly(),
+	groupId: z.string().optional(),
+	runId: z.string().optional(),
+	stats: OperationStatsSchema,
+	target: ComposerTargetSchema.optional(),
+	committedAt: z.number(),
+});
+
+export const ProposedChangeSchema = z.object({
+	operations: z.array(ComposerOperationSchema).readonly(),
+	result: z.unknown().optional(),
+	summary: z.string().optional(),
+});
+
+export const CandidateVariantSchema = z.object({
+	variantId: z.string(),
+	provenance: z.enum(['initial', 'regeneration']),
+	status: z.enum(['streaming', 'ready', 'failed']),
+	proposedChange: ProposedChangeSchema,
+	instruction: z.string().optional(),
+	createdAt: z.number(),
+});
+
+export const ComposerCandidateStatusSchema = z.enum([
+	'streaming',
+	'ready',
+	'stale',
+	'accepted',
+	'discarded',
+	'failed',
+]);
+
+export const ComposerCandidateSchema = z.object({
+	candidateId: z.string(),
+	target: ComposerTargetSchema,
+	baseRevision: z.string(),
+	status: ComposerCandidateStatusSchema,
+	variants: z.array(CandidateVariantSchema).readonly(),
+	activeVariantId: z.string(),
+	proposedChange: ProposedChangeSchema,
+	anchorBlockId: z.string().optional(),
+});

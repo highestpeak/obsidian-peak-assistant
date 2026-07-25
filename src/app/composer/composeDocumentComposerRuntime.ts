@@ -9,15 +9,23 @@
 
 import type { App } from 'obsidian';
 import { ComposerSourceRevisionService } from '@/service/composer';
+import { loadComposerTransactionConfig } from '@/ui/view/composer';
 import {
 	ObsidianComposerFileEventsAdapter,
 	ObsidianComposerSourceAdapter,
+	ObsidianComposerWriteAdapter,
 } from './ObsidianComposerAdapters';
 import { DocumentComposerRuntime } from './DocumentComposerRuntime';
 
 export function composeDocumentComposerRuntime(app: App): DocumentComposerRuntime {
 	const source = new ObsidianComposerSourceAdapter(app);
+	const write = new ObsidianComposerWriteAdapter(app);
 	const events = new ObsidianComposerFileEventsAdapter(app);
 	const revisionService = new ComposerSourceRevisionService();
-	return new DocumentComposerRuntime(source, events, revisionService);
+	const runtime = new DocumentComposerRuntime(source, write, events, revisionService);
+	// The transaction-timing config lives in composer.json; load it asynchronously
+	// and apply once resolved. Hubs created before it lands use the compiled
+	// default (identical value, drift-guarded), so there is no race hazard.
+	void loadComposerTransactionConfig().then((config) => runtime.setTransactionConfig(config));
+	return runtime;
 }

@@ -9,6 +9,7 @@ export type { ComposerFoldStore, ComposerFoldState } from './foldStore';
 export {
 	DEFAULT_COMPOSER_CONFIG,
 	loadComposerConfig,
+	loadComposerTransactionConfig,
 	type ComposerConfig,
 	type ComposerStrings,
 } from './config/composerConfig';

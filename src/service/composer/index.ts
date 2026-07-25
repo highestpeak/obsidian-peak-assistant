@@ -7,3 +7,8 @@ export * from './documentParser';
 export * from './blockIdentity';
 export * from './sourceRevisionService';
 export * from './documentSession';
+export * from './transactionEngine';
+export * from './candidateStore';
+export * from './historyStore';
+export * from './undoRedoStore';
+export * from './transactionHub';

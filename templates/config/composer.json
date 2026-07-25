@@ -44,5 +44,8 @@
     "emptyPreview": "(empty)",
     "readOnlyBadge": "Read-only preview",
     "blocksSuffix": "blocks"
+  },
+  "transaction": {
+    "burstWindowMs": 800
   }
 }
