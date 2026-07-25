@@ -20,9 +20,9 @@ Contract: [`2026-07-24-peak-composer-complete-implementation-handoff.md`](./2026
 | --- | --- | --- | --- | --- |
 | C0 | handoff docs 落库 | done | n/a | c363f267 |
 | WP0 | Phase 0 spikes ×6 + gate | done | GO | C1 |
-| WP9a | Result Browser 抽取（独立线） | in-progress | pending | — |
-| WP1 | 宿主 + source model | in-progress | pending | — |
-| WP2 | transaction/History/Undo 底座 | pending | pending | — |
+| WP9a | Result Browser 抽取（QS 半边） | done | PASS | 7a68346a（merge，含 3 子 commit） |
+| WP1 | 宿主 + source model | done | PASS | d2714a88 |
+| WP2 | transaction/History/Undo 底座 | in-progress | pending | — |
 | WP3 | capability runtime | pending | pending | — |
 | WP4 | editing chrome + 文本 slice | pending | pending | — |
 | QA#1 | 真机中期验收（owner 在场） | pending | pending | — |
@@ -46,7 +46,14 @@ Contract: [`2026-07-24-peak-composer-complete-implementation-handoff.md`](./2026
   - graph 抽取真实性抽查：cytoscape 渲染器本已共享（AtlasGraphCanvas），shared 层为 controlled 薄壳（frozen subgraph 入参、不自建图），符合 plan §C ✅
   - 产物：worktree 分支 `worktree-agent-aa0c3a204207c38c0`（基线 2afa7100，3 commits：8a9d7004 / d07b12f2 / 8e7df077）。**合并待 WP1 审计提交后进行**（主树当前有 WP1 未提交改动）。
   - traceability：CMP-RB-01/02/04 PASS；CMP-RB-03 完成 Quick Search 半边（Composer adapter 待 WP9b 后）。
-  - 遗留：真机视觉 parity 冒烟列入 QA #1 清单（quick-search 打开 List/Tree/Graph 走一遍）。
+  - 遗留：真机视觉 parity 冒烟列入 QA #1 清单（quick-search 打开 List/Tree/Graph 走一遍）。已于 7a68346a 合并入主分支，worktree 已清理。
+- **WP1（2026-07-25，fable 审计：PASS，commit d2714a88）**：
+  - 足迹：仅 composer 四层 + 注册点 + config/styles/test/harness ✅；禁区 grep 全 OK（无 gstack import、无 getInstance、无 service singleton、无 label dispatch、service/core 零 obsidian import）✅；CodeMirror / chat Composer.tsx 零改动 ✅
+  - 全量测试 267/269（2 个既有失败，已验证与波次无关）+ build 绿 ✅；4 个新测试（roundtrip 64 断言/8 fixtures、lifecycle 15、identity 16、config 2）✅
+  - harness 截图产出成功（light/dark，22 块，0 console error）✅
+  - **WP4 前必须处理的两个偏差**：① harness token fallback 在 light 主题下渲染暗面板、正文对比度过低——WP4 做 mock 比对前先修 harness token 默认值；② 骨架期每块上方的 kind 调试标签（FRONTMATTER/HEADING…）mock 中不存在，WP4 引入正式 block chrome 时移除。
+  - 给 WP2 的接口：`ComposerDocumentSession`（fromSource/load/snapshot/isStale/reparse/refresh）、`ComposerSourceRevisionService`（revalidateAnchor→valid|drifted|missing）、`matchBlocks`（跨 revision 状态迁移必须走它，不用裸 id 相等）、patch 合同（只替换 `[from,to)` 内字节，块间分隔符在 gap 中绝不吸收，commit 后必须 reparse 断言目标块仍在）。
+  - 已知取舍：math 未加 remark-math 扩展（$$ 内空行会分块但 round-trip 仍无损），WP5 需要一等 math 节点时再加。
 
 ## WP0 spike 结论
 
