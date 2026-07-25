@@ -22,9 +22,10 @@ Contract: [`2026-07-24-peak-composer-complete-implementation-handoff.md`](./2026
 | WP0 | Phase 0 spikes ×6 + gate | done | GO | C1 |
 | WP9a | Result Browser 抽取（QS 半边） | done | PASS | 7a68346a（merge，含 3 子 commit） |
 | WP1 | 宿主 + source model | done | PASS | d2714a88 |
-| WP2 | transaction/History/Undo 底座 | in-progress | pending | — |
-| WP3 | capability runtime | pending | pending | — |
-| WP4 | editing chrome + 文本 slice | pending | pending | — |
+| WP2 | transaction/History/Undo 底座 | done | PASS | e3a20d64 |
+| IF | 接口冻结 capabilityContracts.ts | done | n/a（fable authored） | 88931c20 |
+| WP3 | capability runtime | in-progress | pending | — |
+| WP4 | editing chrome + 文本 slice | in-progress | pending | — |
 | QA#1 | 真机中期验收（owner 在场） | pending | pending | — |
 | WP5 | Frontmatter + 公式 | pending | pending | — |
 | WP6 | 表格 + Chart | pending | pending | — |
@@ -54,6 +55,12 @@ Contract: [`2026-07-24-peak-composer-complete-implementation-handoff.md`](./2026
   - **WP4 前必须处理的两个偏差**：① harness token fallback 在 light 主题下渲染暗面板、正文对比度过低——WP4 做 mock 比对前先修 harness token 默认值；② 骨架期每块上方的 kind 调试标签（FRONTMATTER/HEADING…）mock 中不存在，WP4 引入正式 block chrome 时移除。
   - 给 WP2 的接口：`ComposerDocumentSession`（fromSource/load/snapshot/isStale/reparse/refresh）、`ComposerSourceRevisionService`（revalidateAnchor→valid|drifted|missing）、`matchBlocks`（跨 revision 状态迁移必须走它，不用裸 id 相等）、patch 合同（只替换 `[from,to)` 内字节，块间分隔符在 gap 中绝不吸收，commit 后必须 reparse 断言目标块仍在）。
   - 已知取舍：math 未加 remark-math 扩展（$$ 内空行会分块但 round-trip 仍无损），WP5 需要一等 math 节点时再加。
+- **WP2（2026-07-25，fable 审计：PASS，commit e3a20d64）**：
+  - 足迹/禁区/timing（burstWindowMs 走 config）全过 ✅；全量 274/276（同 2 既有失败）+ build 绿 ✅；101 新断言（atomicity 28 / stale 14 / candidate 25 / history 21 / undo 13）✅
+  - **接受的合同偏差**：reparse 断言在写盘**前**执行（handoff 字面是写后）——post-write 无法撤销落盘，pre-write 才守得住"step-4 失败零持久化"；代码头注释已论证。分隔符吞噬 patch 被 block-count-delta 守卫拒绝。
+  - 已知限制：superseded 历史项 rollback 拒绝（anchor-drift）而非 rebase；moveBlock 的 superseded rollback 仅支持 on-top。
+  - 给 WP3/WP4 接口：`hub.commit/undo/redo/rollback/subscribe/on`、candidate 全生命周期 API、`runtime.createTransactionHub(session)`；typing burst 用稳定 groupId（blockId 每次编辑会变，分组键不用 blockId）。
+- **接口冻结（88931c20，fable authored）**：`src/core/composer/capabilityContracts.ts`——ComposerResultKind 14 种 / ComposerContextSnapshot / ComposerActionDescriptor / ComposerCapabilityProjectionPort + stub（chrome 在 runtime 未接入前零假 AI 按钮）。WP3/WP4 只实现不改形；改形需回本 log 记录编排者决定。
 
 ## WP0 spike 结论
 
