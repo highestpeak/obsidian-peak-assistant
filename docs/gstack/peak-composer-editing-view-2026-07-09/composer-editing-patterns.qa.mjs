@@ -90,7 +90,11 @@ async function screenshotBlockWithRail(page, block, path) {
 async function dragTableCells(page, startCell, endCell) {
   const [start, end] = await Promise.all([startCell.boundingBox(), endCell.boundingBox()]);
   assert.ok(start && end, "table cells are visible before pointer-range selection");
-  await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
+  // Object cell-range selection is a padding/edge gesture: begin the drag inside
+  // the cell's left padding gutter (left-aligned text starts ~11px in) so the
+  // press never lands on a glyph. Starting on the text would — by contract —
+  // hand the drag to native text selection instead.
+  await page.mouse.move(start.x + 4, start.y + start.height / 2);
   await page.mouse.down();
   await page.mouse.move(end.x + end.width / 2, end.y + end.height / 2, { steps: 8 });
   await page.mouse.up();
@@ -575,6 +579,28 @@ async function testMainEditingSurface() {
   }
   await page.locator(".top-strip").click({ position: { x: 24, y: 20 } });
   assert.equal(await tableBlock.locator(".is-range-cell").count(), 0, "clicking outside dismisses the table-cell range");
+
+  // Complementary half of the gesture contract: a drag that BEGINS on a glyph
+  // must fall through to the browser's native text selection, so the words
+  // inside a cell stay selectable — object cell-range is the padding/edge
+  // gesture, never the way to disable in-cell text selection.
+  const glyphCell = tableRows.nth(0).locator("td").nth(1);
+  const glyphRect = await glyphCell.evaluate((cell) => {
+    const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
+    let node = walker.nextNode();
+    while (node && !node.textContent.trim()) node = walker.nextNode();
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const rect = Array.from(range.getClientRects()).find((candidate) => candidate.width > 4);
+    return { left: rect.left, right: rect.right, midY: (rect.top + rect.bottom) / 2 };
+  });
+  await page.mouse.move(glyphRect.left + 1, glyphRect.midY);
+  await page.mouse.down();
+  await page.mouse.move(glyphRect.right - 1, glyphRect.midY, { steps: 6 });
+  await page.mouse.up();
+  assert.equal(await tableBlock.locator(".is-range-cell").count(), 0, "dragging across a cell's glyphs starts native text selection, not an object cell-range");
+  assert.notEqual(await page.evaluate(() => window.getSelection()?.toString().trim() || ""), "", "cell text stays natively selectable when the drag begins on a glyph");
+  await page.evaluate(() => window.getSelection()?.removeAllRanges());
 
   await tableBlock.locator('[data-action="align-table"]').evaluate((button) => button.click());
   assert.equal(await tableBlock.locator("tbody tr").first().locator("td").nth(1).evaluate((cell) => cell.style.textAlign), "center", "align works immediately on a visible default column when no cell was preselected");
