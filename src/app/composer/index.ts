@@ -18,3 +18,8 @@ export {
 	ObsidianComposerFileEventsAdapter,
 	ObsidianComposerWriteAdapter,
 } from './ObsidianComposerAdapters';
+export {
+	composeComposerCapabilityRuntime,
+	type ComposerCapabilityRuntimeFactory,
+} from './capabilities/composeComposerCapabilityRuntime';
+export { ComposerAiExecutorAdapter } from './capabilities/ComposerAiExecutorAdapter';

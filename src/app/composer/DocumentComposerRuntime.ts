@@ -15,6 +15,7 @@ import {
 	ComposerSourceRevisionService,
 	ComposerTransactionEngine,
 	ComposerTransactionHub,
+	type ComposerCapabilityDocumentRuntime,
 	type ComposerDocumentSession,
 } from '@/service/composer';
 import { DEFAULT_TRANSACTION_CONFIG, type ComposerTransactionConfig } from '@/core/composer';
@@ -24,9 +25,11 @@ import {
 	ObsidianComposerWriteAdapter,
 } from './ObsidianComposerAdapters';
 import { DocumentComposerController } from './DocumentComposerController';
+import type { ComposerCapabilityRuntimeFactory } from './capabilities/composeComposerCapabilityRuntime';
 
 export class DocumentComposerRuntime {
 	private transactionConfig: ComposerTransactionConfig;
+	private capabilityFactory: ComposerCapabilityRuntimeFactory | null = null;
 
 	constructor(
 		private readonly source: ObsidianComposerSourceAdapter,
@@ -60,6 +63,26 @@ export class DocumentComposerRuntime {
 	createTransactionHub(session: ComposerDocumentSession): ComposerTransactionHub {
 		const engine = new ComposerTransactionEngine(this.source, this.write, this.revisionService);
 		return new ComposerTransactionHub(session, { engine, config: this.transactionConfig });
+	}
+
+	/** Bind the WP3 capability runtime factory (set once by the composition root). */
+	setCapabilityRuntimeFactory(factory: ComposerCapabilityRuntimeFactory): void {
+		this.capabilityFactory = factory;
+	}
+
+	/**
+	 * The capability runtime for one open document (WP3). It implements the
+	 * frozen `ComposerCapabilityProjectionPort` — the integration pass hands it
+	 * to the editing chrome in place of `stubComposerCapabilityProjection` —
+	 * and the `ComposerCandidateRuntimePort` the candidate UI consumes.
+	 * Returns null until the composition root has bound the factory.
+	 */
+	createCapabilityRuntime(
+		session: ComposerDocumentSession,
+		hub: ComposerTransactionHub,
+	): ComposerCapabilityDocumentRuntime | null {
+		if (!this.capabilityFactory) return null;
+		return this.capabilityFactory.forDocument(session, hub);
 	}
 
 	/** Detach the shared Obsidian event listeners. Idempotent. */

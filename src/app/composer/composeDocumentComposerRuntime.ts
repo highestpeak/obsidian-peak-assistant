@@ -16,6 +16,7 @@ import {
 	ObsidianComposerWriteAdapter,
 } from './ObsidianComposerAdapters';
 import { DocumentComposerRuntime } from './DocumentComposerRuntime';
+import { composeComposerCapabilityRuntime } from './capabilities/composeComposerCapabilityRuntime';
 
 export function composeDocumentComposerRuntime(app: App): DocumentComposerRuntime {
 	const source = new ObsidianComposerSourceAdapter(app);
@@ -27,5 +28,8 @@ export function composeDocumentComposerRuntime(app: App): DocumentComposerRuntim
 	// and apply once resolved. Hubs created before it lands use the compiled
 	// default (identical value, drift-guarded), so there is no race hazard.
 	void loadComposerTransactionConfig().then((config) => runtime.setTransactionConfig(config));
+	// WP3: the capability runtime factory (registry + executor + writeback).
+	// The AI prompter is resolved lazily per run, so boot order is a non-issue.
+	runtime.setCapabilityRuntimeFactory(composeComposerCapabilityRuntime());
 	return runtime;
 }

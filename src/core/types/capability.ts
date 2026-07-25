@@ -36,7 +36,8 @@ export type CapabilitySurfaceId =
 	| 'vault-search'
 	| 'ai-analysis'
 	| 'copilot'
-	| 'web-chat';
+	| 'web-chat'
+	| 'composer';
 
 /**
  * Permission required by a capability. Aligns with the harness
