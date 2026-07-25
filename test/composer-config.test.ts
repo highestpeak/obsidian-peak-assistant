@@ -30,6 +30,14 @@ function main(): void {
 	const jsonStrings = Object.keys(json.strings ?? {}).sort();
 	check('string keys match', fbStrings.join(',') === jsonStrings.join(','), `fb=${fbStrings.length} json=${jsonStrings.length}`);
 
+	// WP4: chrome section top-level + selection sub-keys mirror the fallback.
+	const fbChrome = Object.keys(DEFAULT_COMPOSER_CONFIG.chrome).sort();
+	const jsonChrome = Object.keys(json.chrome ?? {}).filter((k) => !k.startsWith('_')).sort();
+	check('chrome keys match', fbChrome.join(',') === jsonChrome.join(','), `fb=${fbChrome.join(',')} json=${jsonChrome.join(',')}`);
+	const fbSel = Object.keys(DEFAULT_COMPOSER_CONFIG.chrome.selection).sort();
+	const jsonSel = Object.keys(json.chrome?.selection ?? {}).sort();
+	check('chrome.selection keys match', fbSel.join(',') === jsonSel.join(','), `fb=${fbSel.join(',')} json=${jsonSel.join(',')}`);
+
 	// WP2: transaction timing/grouping knobs mirror DEFAULT_TRANSACTION_CONFIG.
 	const fbTxn = Object.keys(DEFAULT_TRANSACTION_CONFIG).sort();
 	const jsonTxn = Object.keys(json.transaction ?? {}).filter((k) => !k.startsWith('_')).sort();
