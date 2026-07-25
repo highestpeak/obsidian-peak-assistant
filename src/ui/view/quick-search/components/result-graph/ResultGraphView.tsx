@@ -1,11 +1,12 @@
 /**
- * Result Graph View — the Vault Search surface over the shared graph canvas.
+ * Quick Search host adapter for the shared Result Browser Graph.
  *
- * Reads search results from the store, builds a result subgraph (baseline synth
- * → enriched via buildResultSubgraph), and renders it through the shared
- * {@link AtlasGraphCanvas} — the single cytoscape renderer used by both this
- * view and File Atlas. Search-specific behavior (AI-Suggest recorder, hub-graph
- * subview, inspector selection, open-on-double-click) lives here.
+ * Presentation lives in `@/ui/component/result-browser/graph/ResultBrowserGraph`
+ * (a controlled wrapper over the shared cytoscape canvas). This adapter owns
+ * the Quick-Search-only concerns: reading results from `vaultSearchStore`,
+ * building the result subgraph (baseline synth → enriched via
+ * `buildResultSubgraph`), the AI-Suggest behavior recorder, hub-graph subview,
+ * inspector selection, and open-on-double-click.
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { behaviorRecorder } from '@/ui/view/quick-search/rewrite/BehaviorContextRecorder';
@@ -13,10 +14,11 @@ import { useVaultSearchStore } from '../../store';
 import { buildResultSubgraph, type ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { createOpenSourceCallback } from '../../callbacks/open-source-file';
-import { AtlasGraphCanvas, type AtlasGraphPreset } from '@/ui/component/graph/AtlasGraphCanvas';
+import { ResultBrowserGraph, RESULT_BROWSER_GRAPH_NODE_CAP } from '@/ui/component/result-browser/graph/ResultBrowserGraph';
+import type { ResultBrowserGraphPreset } from '@/ui/component/result-browser/model/types';
 import type { SearchResultItem } from '@/core/search/searchTypes';
 
-const NODE_CAP = 100;
+const NODE_CAP = RESULT_BROWSER_GRAPH_NODE_CAP;
 
 /** Numeric match score of a raw search result. */
 function scoreOf(r: SearchResultItem): number {
@@ -32,7 +34,7 @@ interface ResultGraphViewProps {
 
 export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpenHubGraphSubview, onSelectForInspector }) => {
 	const results = useVaultSearchStore((s) => s.lastSearchResults);
-	const preset = useVaultSearchStore((s) => s.graphPreset) as AtlasGraphPreset;
+	const preset = useVaultSearchStore((s) => s.graphPreset) as ResultBrowserGraphPreset;
 	const showSemantic = useVaultSearchStore((s) => s.graphShowSemantic);
 	const { vaultNavigation, resultSubgraph: resultSubgraphDeps } = useServiceContext();
 
@@ -87,10 +89,10 @@ export const ResultGraphView: React.FC<ResultGraphViewProps> = ({ onClose, onOpe
 	useEffect(() => () => { if (recorderHoverTimer.current) clearTimeout(recorderHoverTimer.current); }, []);
 
 	return (
-		<AtlasGraphCanvas
+		<ResultBrowserGraph
 			subgraph={subgraph}
 			preset={preset}
-			showSemantic={showSemantic}
+			semantic={showSemantic}
 			nodeCap={NODE_CAP}
 			onNodeTap={({ id, path, isHub, modKey }) => {
 				if (modKey && isHub) { onOpenHubGraphSubview?.(id); return; }
