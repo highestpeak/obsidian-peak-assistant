@@ -11,7 +11,11 @@ Use it before starting a new implementation or requirements session. The goal is
 
 ## Immediate Handoff Target
 
-The next task should integrate the latest sidecar / Intelligence design with the Composer editing view and turn the combined result into a clear product requirement.
+The complete production implementation task now has one consolidated execution handoff:
+
+- [`2026-07-24-peak-composer-complete-implementation-handoff.md`](../plans/2026-07-24-peak-composer-complete-implementation-handoff.md)
+
+It combines the dedicated Composer host, Markdown/source model, editing and selection contracts, transaction/History/Undo rules, every current block/object requirement, the AI capability architecture, Intelligence Sidecar, shared Result Browser, execution DAG, Impact Contract and verification gates. A new coding session should start from that document rather than reconstructing requirements from the long mock conversation.
 
 Current decision and execution handoff:
 

@@ -50,8 +50,9 @@ The 30px rail is intentionally one step larger than the 28px compact toolbar con
 - The per-block generation ledger uses the standard Lucide `History` clock-arrow icon. `Undo` is reserved for restore/rollback actions and must not stand in for history browsing.
 - Opening `指令` morphs this same shell into input state. It does not spawn another command bar.
 - A block hover reveals the row; text selection suppresses it so the selection toolbar has one clear owner.
-- Addressable formula sub-blocks use this exact same row inside the formula card: `在下方插入 / 复制 / 评论 | 解释公式 / 拆分公式 / 变量表 / History / 指令`. They must not render a first common-action row plus a second AI row, or keep an intermediate `AI · N` opener. Trigger scope and result scope are separate contracts: `解释公式 / 拆分公式` remain micro-block results, but `变量表` projects to one formula-group result surface because it must support current formula, arbitrary multi-select, and full-group comparison. The result must remember the trigger formula, default to the full group, merge true shared variables once with formula-location badges, and keep formula-specific variables visibly grouped; it must not nest a three-formula comparison inside one formula card.
-- Actions from a formula row retain the formula sub-block as their trigger target. Flattening the chrome must not silently widen insert, copy, comment, history, custom instruction, or any quick AI result other than the explicitly labelled group-projection `变量表`.
+- Addressable formula sub-blocks use this exact same row inside the formula card: `在下方插入 / 复制 / 评论 | 解释公式 / 拆分公式 / 变量表 / History / 指令`. They must not render a first common-action row plus a second AI row, or keep an intermediate `AI · N` opener. `解释公式 / 拆分公式 / 变量表` all remain micro-block results owned by the clicked formula, and `变量表` lists only that formula's symbols.
+- Formula detail state is keyed by `(formulaId, explain | split | variables)`. One formula may keep all three details open together, while several formulas may keep arbitrary detail combinations open at the same time. Every detail independently owns targeted input, regeneration, versions, History, acceptance and close. Reopening an existing key focuses it instead of adding a duplicate. A future cross-formula comparison requires a separately named formula-group capability; it must not silently widen the current `变量表`.
+- Actions from a formula row retain the formula sub-block as their trigger and result target. Flattening the chrome must not silently widen insert, copy, comment, history, custom instruction, explanation, split or variable-table scope.
 
 ### 2. Document Undo / Redo
 
@@ -153,7 +154,7 @@ Desktop Composer uses dense 28–30px controls because it is a mouse/keyboard Ob
 The integrated mock is accepted only when browser QA confirms:
 
 1. Block common and AI actions have identical computed height, radius, resting background, hover and focus behavior.
-2. Every formula sub-block exposes common and contextual AI actions in one direct-child row, with no `AI · N` trigger and no second AI menu; actions remain scoped to that formula except for the documented `变量表` result projection, which keeps the trigger identity while rendering current/multi/all formula scope at the group level.
+2. Every formula sub-block exposes common and contextual AI actions in one direct-child row, with no `AI · N` trigger and no second AI menu. `解释公式 / 拆分公式 / 变量表` all remain scoped to the clicked formula; all three detail types can coexist inside one formula, several formulas can keep independent details open, and each detail owns its own targeted input, regeneration, versions, History, acceptance and close.
 3. Selection format/comment/AI actions share one 28px toolbar density; icon-only controls are square and text controls use the same radius rung.
 4. Image, table and native toolbars share shell radius/border/shadow and control height/radius.
 5. Disclosure and drag have identical 30×30 geometry.
