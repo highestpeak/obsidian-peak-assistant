@@ -2,71 +2,42 @@ import * as React from 'react';
 import type { ComposerBlock } from '@/core/composer';
 
 /**
- * Read-only, kind-dispatched block renderer (WP1 skeleton).
+ * Read-only, kind-dispatched block renderer (WP1 skeleton, WP4-annotated).
  *
- * Every branch renders from the verbatim `renderModel.raw` slice plus the cheap
- * structural hints — no re-parsing, no editing affordances (block editing +
- * action row are WP4). Unknown / unsupported kinds fall through to a verbatim
- * `<pre>` so nothing is ever hidden or dropped. Semantic h1-h6/p tags are
- * avoided per project convention (span/div/pre only).
+ * Every branch renders from the verbatim `renderModel.raw` slice — no
+ * re-parsing. Kinds with direct text editing (paragraph / heading / quote /
+ * callout / list / task) are rendered by the WP4 editable views in
+ * ComposerRoot; this component covers the remaining read-only kinds (code,
+ * math, table, frontmatter, html, mermaid, dataview, …) and the verbatim
+ * fallback — nothing is ever hidden or dropped. Each text view carries
+ * `data-src-text-from` so cross-structure DOM selection maps to source offsets
+ * (S2 mapping contract): the rendered text equals the source slice, making the
+ * mapping the identity.
  */
 export function BlockKindView({ block }: { block: ComposerBlock }): React.ReactElement {
 	switch (block.kind) {
-		case 'heading':
-			return <HeadingView block={block} />;
 		case 'divider':
 			return <div className="pk-composer-divider" role="separator" />;
-		case 'list':
-		case 'task':
-			return <ListView block={block} />;
 		case 'image':
 		case 'embed':
 			return <RefView block={block} />;
-		case 'code':
-		case 'math':
-		case 'mermaid':
-		case 'dataview':
-		case 'html':
-		case 'frontmatter':
-		case 'table':
-		case 'comment':
-		case 'unknown':
-			return <MonoView block={block} />;
 		default:
-			return <ProseView block={block} />;
+			return <MonoView block={block} />;
 	}
 }
 
-function HeadingView({ block }: { block: ComposerBlock }): React.ReactElement {
-	const level = block.renderModel.level ?? 1;
-	return (
-		<span className="pk-composer-heading" data-level={level}>
-			{block.renderModel.text || block.renderModel.raw}
-		</span>
-	);
-}
-
-function ProseView({ block }: { block: ComposerBlock }): React.ReactElement {
-	return <div className="pk-composer-prose">{block.renderModel.raw}</div>;
-}
-
 function MonoView({ block }: { block: ComposerBlock }): React.ReactElement {
-	return <pre className="pk-composer-mono">{block.renderModel.raw}</pre>;
-}
-
-function ListView({ block }: { block: ComposerBlock }): React.ReactElement {
-	const lines = block.renderModel.raw.split(/\r?\n/).filter((l) => l.trim().length > 0);
 	return (
-		<div className="pk-composer-list">
-			{lines.map((line, i) => (
-				<span key={i} className="pk-composer-list__item">
-					{line}
-				</span>
-			))}
-		</div>
+		<pre className="pk-composer-mono" data-src-text-from={block.source.from} data-block-id={block.blockId}>
+			{block.renderModel.raw}
+		</pre>
 	);
 }
 
 function RefView({ block }: { block: ComposerBlock }): React.ReactElement {
-	return <span className="pk-composer-ref">{block.renderModel.raw}</span>;
+	return (
+		<span className="pk-composer-ref" data-src-text-from={block.source.from} data-block-id={block.blockId}>
+			{block.renderModel.raw}
+		</span>
+	);
 }

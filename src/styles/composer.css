@@ -54,7 +54,7 @@
 .peak-composer-root .pk-composer-block {
 	display: flex;
 	gap: var(--pk-space-2);
-	padding: var(--pk-space-2);
+	padding: var(--pk-space-2) var(--pk-space-2) var(--pk-space-2) 76px;
 	border-radius: var(--pk-radius-md);
 }
 .peak-composer-root .pk-composer-block:hover {
@@ -192,4 +192,686 @@
 }
 .peak-composer-root .pk-composer-stale__action {
 	margin-left: auto;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   WP4 — shared editing chrome. Six component families (component-consistency
+   spec): 28px pill capsules (action row), 28px radius-md compact toolbar
+   controls (selection toolbar), 30×30 radius-md structural rail, 30px
+   radius-md review actions, pill status chips, radius-lg panel shells. All
+   token-driven; focus-visible = 2px accent ring; state changes never shift
+   layout; reduced-motion honored at the end of this file.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.peak-composer-root .pk-composer-shell {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	min-height: 100%;
+}
+.peak-composer-root .pk-composer-blocks {
+	flex: 1 1 auto;
+	padding-bottom: var(--pk-space-10);
+}
+
+/* ── family 3: structural rail (30×30 radius-md, matched pair) ─────────────── */
+.peak-composer-root .pk-composer-rail {
+	/* Overlaid left-gutter rail: absolutely positioned so a one-line block does
+	   not inflate to the rail's 2×30px column height (mock parity). The block
+	   reserves the gutter with padding-left below. */
+	position: absolute;
+	left: 6px;
+	top: 4px;
+	z-index: 15;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	opacity: 0;
+	transition: opacity 120ms ease;
+}
+.peak-composer-root .pk-composer-block:hover .pk-composer-rail,
+.peak-composer-root .pk-composer-block:focus-within .pk-composer-rail {
+	opacity: 1;
+}
+.peak-composer-root .pk-rail-control {
+	/* 30×30 radius-md rail family. !important defends against BOTH
+	   obsidian-reset.css (button height:auto !important) and the shared
+	   .pk-icon-btn 28px !important geometry (ui-design.md §4 defense). */
+	width: 30px !important;
+	height: 30px !important;
+	min-width: 30px !important;
+	min-height: 30px !important;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid var(--pk-border) !important;
+	border-radius: var(--pk-radius-md) !important;
+	background: var(--pk-surface) !important;
+	box-shadow: var(--pk-shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.06));
+	color: var(--pk-fg-muted);
+	cursor: pointer;
+	padding: 0 !important;
+}
+.peak-composer-root .pk-rail-control:hover:not(:disabled) {
+	background: var(--pk-accent-tint) !important;
+	color: var(--pk-accent-text);
+}
+.peak-composer-root .pk-rail-control:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+.peak-composer-root .pk-composer-drag {
+	cursor: grab;
+	touch-action: none;
+}
+.peak-composer-root [data-dragging] .pk-composer-drag {
+	cursor: grabbing;
+}
+.peak-composer-root .pk-composer-block[data-drop-before] {
+	box-shadow: 0 -2px 0 0 var(--pk-accent);
+}
+.peak-composer-root .pk-drop-indicator {
+	height: 2px;
+	background: var(--pk-accent);
+	border-radius: 1px;
+	margin: 2px var(--pk-space-2);
+}
+
+/* ── family 1: flattened action row (28px pill capsules) ───────────────────── */
+.peak-composer-root .pk-composer-block { position: relative; }
+.peak-composer-root .pk-block-action-row {
+	position: absolute;
+	top: -34px;
+	left: 0;
+	z-index: 20;
+	display: none;
+	align-items: center;
+	gap: 4px;
+	padding: 3px 6px;
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-lg);
+	background: var(--pk-surface-overlay);
+	box-shadow: var(--pk-shadow-popover);
+	white-space: nowrap;
+	max-width: 100%;
+	overflow-x: auto;
+}
+.peak-composer-root .pk-composer-block:hover .pk-block-action-row,
+.peak-composer-root .pk-composer-block:focus-within .pk-block-action-row {
+	display: inline-flex;
+}
+/* Selection toolbar has one clear owner: rows hide while a selection is live. */
+.peak-composer-root [data-has-selection] .pk-block-action-row {
+	display: none !important;
+}
+.peak-composer-root .pk-action-core,
+.peak-composer-root .pk-action-ai,
+.peak-composer-root .pk-action-tail {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+.peak-composer-root .pk-action-capsule {
+	/* 28px pill capsule family — height !important-defended (obsidian-reset). */
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	min-height: 28px !important;
+	height: 28px !important;
+	padding: 0 10px;
+	border: none;
+	border-radius: var(--pk-radius-pill);
+	background: transparent;
+	color: var(--pk-fg);
+	font-size: var(--pk-text-xs);
+	font-family: inherit;
+	cursor: pointer;
+}
+.peak-composer-root .pk-action-capsule:hover:not(:disabled) {
+	background: var(--pk-accent-tint);
+	color: var(--pk-accent-text);
+}
+.peak-composer-root .pk-action-capsule:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+.peak-composer-root .pk-action-history {
+	padding: 0 8px;
+}
+.peak-composer-root .pk-action-divider {
+	width: 1px;
+	height: 16px;
+	background: var(--pk-border);
+	flex: none;
+}
+.peak-composer-root .pk-block-action-row__spark {
+	color: var(--pk-accent-text);
+	flex: none;
+}
+.peak-composer-root .pk-block-action-row.is-instruction {
+	gap: 6px;
+	padding: 3px 8px;
+}
+.peak-composer-root .pk-block-action-row__instruction {
+	min-width: 260px;
+	height: 24px;
+	border: none;
+	background: transparent;
+	color: var(--pk-fg);
+	font-size: var(--pk-text-xs);
+	outline: none;
+}
+
+/* ── family 2: selection toolbar (28px compact controls, radius-md) ────────── */
+.peak-composer-root .pk-selection-toolbar {
+	position: absolute;
+	z-index: 30;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 4px 6px;
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-lg);
+	background: var(--pk-surface-overlay);
+	box-shadow: var(--pk-shadow-popover);
+}
+.peak-composer-root .pk-selection-toolbar__row {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+.peak-composer-root .pk-selection-group {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+}
+.peak-composer-root .pk-selection-format-btn {
+	width: 28px !important;
+	height: 28px !important;
+	min-width: 28px !important;
+	min-height: 28px !important;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	border-radius: var(--pk-radius-md);
+	background: transparent;
+	color: var(--pk-fg);
+	cursor: pointer;
+	padding: 0;
+}
+.peak-composer-root .pk-selection-text-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	height: 28px !important;
+	min-height: 28px !important;
+	padding: 0 8px;
+	border: none;
+	border-radius: var(--pk-radius-md);
+	background: transparent;
+	color: var(--pk-fg);
+	font-size: var(--pk-text-xs);
+	font-family: inherit;
+	cursor: pointer;
+}
+.peak-composer-root .pk-selection-format-btn:hover:not(:disabled),
+.peak-composer-root .pk-selection-text-btn:hover:not(:disabled) {
+	background: var(--pk-accent-tint);
+	color: var(--pk-accent-text);
+}
+.peak-composer-root .pk-selection-format-btn:disabled,
+.peak-composer-root .pk-selection-text-btn:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+.peak-composer-root .pk-selection-divider {
+	width: 1px;
+	height: 16px;
+	background: var(--pk-border);
+	flex: none;
+}
+.peak-composer-root .pk-selection-scope {
+	font-size: var(--pk-text-xs);
+	color: var(--pk-text-tertiary);
+	padding: 0 4px;
+	white-space: nowrap;
+}
+.peak-composer-root .pk-selection-spark {
+	color: var(--pk-accent-text);
+	flex: none;
+}
+.peak-composer-root .pk-selection-panel {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 2px 2px;
+	border-top: 1px solid var(--pk-border-soft);
+}
+.peak-composer-root .pk-selection-panel__input {
+	flex: 1;
+	min-width: 220px;
+	height: 26px;
+	padding: 0 8px;
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-md);
+	background: var(--pk-surface);
+	color: var(--pk-fg);
+	font-size: var(--pk-text-xs);
+}
+.peak-composer-root .pk-selection-swatch {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	height: 26px;
+	padding: 0 8px;
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-md);
+	background: transparent;
+	color: var(--pk-fg);
+	font-size: var(--pk-text-xs);
+	cursor: pointer;
+}
+.peak-composer-root .pk-selection-swatch::before {
+	content: '';
+	width: 12px;
+	height: 12px;
+	border-radius: 3px;
+	background: var(--pk-swatch);
+	border: 1px solid var(--pk-border);
+}
+.peak-composer-root .pk-selection-swatch i {
+	font-style: normal;
+}
+
+/* ── family 6: panels (radius-lg shells) ───────────────────────────────────── */
+.peak-composer-root .pk-composer-panel {
+	margin-top: var(--pk-space-2);
+	padding: var(--pk-space-2) var(--pk-space-3);
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-lg);
+	background: var(--pk-surface-overlay);
+	box-shadow: var(--pk-shadow-popover);
+}
+
+/* Easy Copy */
+.peak-composer-root .pk-easy-copy {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.peak-composer-root .pk-easy-copy__tile {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 28px !important;
+	min-height: 28px !important;
+	padding: 0 10px;
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-md);
+	background: var(--pk-surface);
+	color: var(--pk-fg);
+	font-size: var(--pk-text-xs);
+	cursor: pointer;
+}
+.peak-composer-root .pk-easy-copy__tile:hover {
+	background: var(--pk-accent-tint);
+	color: var(--pk-accent-text);
+}
+.peak-composer-root .pk-easy-copy__tile[data-copy-state='success'] {
+	color: var(--pk-success-text, #067647);
+	border-color: var(--pk-success-border, #a6f4c5);
+}
+.peak-composer-root .pk-easy-copy__close {
+	margin-left: auto;
+}
+
+/* Comments */
+.peak-composer-root .pk-comment-panel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--pk-space-2);
+}
+.peak-composer-root .pk-comment-panel__list {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+.peak-composer-root .pk-comment-panel__item {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: var(--pk-text-xs);
+	color: var(--pk-fg);
+}
+.peak-composer-root .pk-comment-panel__item[data-stale='true'] .pk-comment-panel__body {
+	color: var(--pk-text-tertiary);
+}
+.peak-composer-root .pk-comment-panel__icon {
+	color: var(--pk-fg-muted);
+	flex: none;
+}
+.peak-composer-root .pk-comment-panel__body {
+	flex: 1;
+	min-width: 0;
+}
+.peak-composer-root .pk-comment-panel__input {
+	width: 100%;
+	resize: vertical;
+	padding: var(--pk-space-2);
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-md);
+	background: var(--pk-surface);
+	color: var(--pk-fg);
+	font-size: var(--pk-text-sm);
+	font-family: inherit;
+}
+.peak-composer-root .pk-comment-panel__actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--pk-space-2);
+}
+.peak-composer-root .pk-comment-count {
+	margin-bottom: 2px;
+}
+
+/* ── family 4: review actions inside History (30px radius-md) ──────────────── */
+.peak-composer-root .pk-block-history {
+	display: flex;
+	flex-direction: column;
+	gap: var(--pk-space-2);
+	font-size: var(--pk-text-xs);
+}
+.peak-composer-root .pk-block-history__head {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: 600;
+	color: var(--pk-text-secondary);
+}
+.peak-composer-root .pk-block-history__empty {
+	color: var(--pk-text-tertiary);
+}
+.peak-composer-root .pk-block-history__row {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 6px 0;
+	border-top: 1px solid var(--pk-border-soft);
+}
+.peak-composer-root .pk-block-history__meta {
+	display: flex;
+	align-items: center;
+	gap: var(--pk-space-2);
+}
+.peak-composer-root .pk-block-history__label {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.peak-composer-root .pk-block-history__stats {
+	color: var(--pk-text-tertiary);
+	font-family: var(--pk-font-mono);
+}
+.peak-composer-root .pk-block-history__actions {
+	display: flex;
+	gap: var(--pk-space-2);
+}
+.peak-composer-root .pk-review-action {
+	min-height: 30px !important;
+	height: 30px !important;
+	border-radius: var(--pk-radius-md) !important;
+}
+.peak-composer-root .pk-block-history__refused {
+	color: var(--pk-error-text);
+}
+.peak-composer-root .pk-block-history__close {
+	align-self: flex-end;
+}
+
+/* ── link preview popover ──────────────────────────────────────────────────── */
+.peak-composer-root .pk-composer-link {
+	color: var(--pk-accent-text);
+	border-radius: 3px;
+	cursor: pointer;
+}
+.peak-composer-root .pk-composer-link:hover,
+.peak-composer-root .pk-composer-link:focus-visible {
+	background: var(--pk-accent-tint);
+}
+.peak-composer-root .pk-link-popover {
+	position: absolute;
+	z-index: 40;
+	max-width: 340px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	font-size: var(--pk-text-xs);
+	margin-top: 0;
+}
+.peak-composer-root .pk-link-popover__head {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: 600;
+	color: var(--pk-text-primary);
+}
+.peak-composer-root .pk-link-popover__path {
+	color: var(--pk-text-tertiary);
+	word-break: break-all;
+}
+.peak-composer-root .pk-link-popover__summary {
+	color: var(--pk-fg-muted);
+}
+.peak-composer-root .pk-link-popover__fixes {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	align-items: center;
+}
+.peak-composer-root .pk-link-popover__fix {
+	cursor: pointer;
+}
+.peak-composer-root .pk-link-popover__fix-label {
+	color: var(--pk-text-tertiary);
+}
+
+/* ── editable leaves ───────────────────────────────────────────────────────── */
+.peak-composer-root .pk-composer-editable {
+	white-space: pre-wrap;
+	word-break: break-word;
+	line-height: 1.55;
+	color: var(--pk-fg);
+	outline: none;
+	border-radius: var(--pk-radius-sm);
+}
+.peak-composer-root .pk-composer-editable:focus-visible {
+	box-shadow: 0 0 0 2px var(--pk-accent-soft);
+}
+.peak-composer-root .pk-composer-heading {
+	display: block;
+	font-weight: 700;
+	color: var(--pk-text-primary);
+	line-height: 1.3;
+}
+.peak-composer-root .pk-heading-1 { font-size: var(--pk-text-xl); }
+.peak-composer-root .pk-heading-2 { font-size: var(--pk-text-lg); }
+.peak-composer-root .pk-heading-3 { font-size: var(--pk-text-md-plus); }
+.peak-composer-root .pk-composer-quote {
+	border-left: 3px solid var(--pk-border-strong);
+	padding-left: var(--pk-space-3);
+	color: var(--pk-fg-muted);
+}
+.peak-composer-root .pk-composer-list__row {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--pk-space-2);
+	line-height: 1.5;
+}
+.peak-composer-root .pk-composer-list__bullet {
+	flex: none;
+	color: var(--pk-text-tertiary);
+	line-height: 1.5;
+}
+.peak-composer-root .pk-composer-task-check {
+	/* Tailwind preflight strips checkbox appearance → 0×0; force it back. */
+	appearance: auto !important;
+	-webkit-appearance: checkbox !important;
+	width: 14px !important;
+	height: 14px !important;
+	flex: none;
+	margin-top: 3px;
+	accent-color: var(--pk-accent);
+}
+.peak-composer-root .pk-composer-list__text {
+	flex: 1;
+	min-width: 0;
+}
+
+/* ── insert-below draft ────────────────────────────────────────────────────── */
+.peak-composer-root .pk-insert-draft {
+	padding: var(--pk-space-1) var(--pk-space-2) var(--pk-space-1) 76px;
+}
+.peak-composer-root .pk-insert-draft__input {
+	width: 100%;
+	height: 30px;
+	padding: 0 var(--pk-space-2);
+	border: 1px dashed var(--pk-border-strong);
+	border-radius: var(--pk-radius-md);
+	background: var(--pk-surface);
+	color: var(--pk-fg);
+	font-size: var(--pk-text-sm);
+	font-family: inherit;
+}
+
+/* ── bottom status bar + Undo/Redo (family 2, disabled keeps its slot) ─────── */
+.peak-composer-root .pk-composer-statusbar {
+	position: sticky;
+	bottom: 0;
+	display: flex;
+	align-items: center;
+	gap: var(--pk-space-2);
+	padding: var(--pk-space-1) var(--pk-space-2);
+	border-top: 1px solid var(--pk-border-soft);
+	background: var(--pk-bg);
+}
+.peak-composer-root .pk-composer-statusbar__spacer {
+	flex: 1;
+}
+.peak-composer-root .pk-undo-redo {
+	display: inline-flex;
+	gap: 4px;
+}
+.peak-composer-root .pk-undo-redo__btn {
+	width: 28px !important;
+	height: 28px !important;
+	min-width: 28px !important;
+	min-height: 28px !important;
+	border-radius: var(--pk-radius-md) !important;
+	color: var(--pk-fg-muted);
+}
+.peak-composer-root .pk-undo-redo__btn:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+.peak-composer-root .pk-undo-redo__btn:hover:not(:disabled) {
+	background: var(--pk-accent-tint);
+	color: var(--pk-accent-text);
+}
+
+/* ── transient transaction notice + guard toast ────────────────────────────── */
+.peak-composer-root .pk-txn-notice {
+	position: absolute;
+	left: 50%;
+	bottom: 48px;
+	transform: translateX(-50%);
+	z-index: 50;
+	display: flex;
+	align-items: center;
+	gap: var(--pk-space-2);
+	padding: 6px 12px;
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-md);
+	background: var(--pk-surface-overlay);
+	box-shadow: var(--pk-shadow-popover);
+	font-size: var(--pk-text-xs);
+	white-space: nowrap;
+}
+.peak-composer-root .pk-txn-notice__state {
+	font-weight: 600;
+	color: var(--pk-text-secondary);
+}
+.peak-composer-root .pk-txn-notice__label {
+	color: var(--pk-fg);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 280px;
+}
+.peak-composer-root .pk-txn-notice__actions {
+	display: inline-flex;
+	gap: 4px;
+}
+.peak-composer-root .pk-txn-notice__btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	height: 24px;
+	padding: 0 8px;
+	border: none;
+	border-radius: var(--pk-radius-md);
+	background: transparent;
+	color: var(--pk-accent-text);
+	font-size: var(--pk-text-xs);
+	cursor: pointer;
+}
+.peak-composer-root .pk-txn-notice__btn:hover {
+	background: var(--pk-accent-tint);
+}
+.peak-composer-root .pk-guard-toast {
+	position: absolute;
+	left: 50%;
+	bottom: 88px;
+	transform: translateX(-50%);
+	z-index: 50;
+	padding: 6px 12px;
+	border: 1px solid var(--pk-warning-border, var(--pk-border));
+	border-radius: var(--pk-radius-md);
+	background: var(--pk-surface-overlay);
+	box-shadow: var(--pk-shadow-popover);
+	color: var(--pk-warning-text, var(--pk-fg));
+	font-size: var(--pk-text-xs);
+	white-space: nowrap;
+}
+
+/* ── display states (§9.1): clean hides the editing chrome ─────────────────── */
+.peak-composer-root [data-display-state='clean'] .pk-composer-rail,
+.peak-composer-root [data-display-state='clean'] .pk-block-action-row,
+.peak-composer-root [data-display-state='clean'] .pk-insert-draft {
+	display: none !important;
+}
+.peak-composer-root .pk-composer-display-switch {
+	margin-left: auto;
+}
+
+/* ── focus-visible ring (all interactive families) ─────────────────────────── */
+.peak-composer-root .pk-rail-control:focus-visible,
+.peak-composer-root .pk-action-capsule:focus-visible,
+.peak-composer-root .pk-selection-format-btn:focus-visible,
+.peak-composer-root .pk-selection-text-btn:focus-visible,
+.peak-composer-root .pk-undo-redo__btn:focus-visible,
+.peak-composer-root .pk-easy-copy__tile:focus-visible {
+	outline: 2px solid var(--pk-accent);
+	outline-offset: 2px;
+}
+
+/* ── reduced motion ────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+	.peak-composer-root .pk-composer-rail,
+	.peak-composer-root .pk-block-action-row,
+	.peak-composer-root .pk-txn-notice,
+	.peak-composer-root .pk-guard-toast {
+		transition: none !important;
+		animation: none !important;
+	}
 }

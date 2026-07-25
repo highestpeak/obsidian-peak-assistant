@@ -45,6 +45,138 @@
     "readOnlyBadge": "Read-only preview",
     "blocksSuffix": "blocks"
   },
+  "chrome": {
+    "_doc": "WP4 editing-chrome copy. AI capability labels are NOT here — they arrive from the capability projection port. Typed fallback: composerConfig.ts DEFAULT_COMPOSER_CONFIG.chrome. Drift guard: composer-config.test.ts checks the top-level chrome sub-keys.",
+    "actions": {
+      "insertBelow": "在下方插入",
+      "copy": "复制",
+      "comment": "评论",
+      "history": "生成历史",
+      "instruction": "指令",
+      "drag": "拖动块",
+      "instructionPlaceholder": "输入针对此块的指令…",
+      "instructionRun": "执行",
+      "directEdit": "直接编辑",
+      "disabledNoRuntime": "编辑运行时未接入",
+      "insertDraftPlaceholder": "输入新段落内容…"
+    },
+    "undo": {
+      "undo": "撤销",
+      "redo": "重做",
+      "committed": "改动已写入",
+      "undone": "已撤销",
+      "redone": "已重做",
+      "shortcutUndo": "⌘Z",
+      "shortcutRedo": "⇧⌘Z"
+    },
+    "displayStates": {
+      "groupLabel": "正文工作状态",
+      "work": "工作视图",
+      "all": "全部改动",
+      "clean": "纯净阅读"
+    },
+    "selection": {
+      "formats": {
+        "bold": "加粗",
+        "italic": "斜体",
+        "underline": "下划线",
+        "strikethrough": "删除线",
+        "link": "链接",
+        "textColor": "文字颜色",
+        "highlight": "高亮"
+      },
+      "comment": "评论",
+      "pasteUrl": "粘贴 URL",
+      "applyLink": "应用",
+      "linkPlaceholder": "粘贴或输入链接…",
+      "clearColor": "清除",
+      "scopeTemplates": {
+        "crossParagraph": "跨 {n} 个块",
+        "crossItem": "跨 {n} 个列表项",
+        "crossCell": "跨 {n} 个单元格",
+        "crossBlock": "跨 {n} 个块"
+      },
+      "guards": {
+        "codeBlockRichFormat": "代码块内不支持富文本格式",
+        "crossStructureLink": "一个链接只能落在一个段落、列表项或单元格内",
+        "emptySelection": "请先选中文本"
+      },
+      "textColors": [
+        {
+          "label": "红",
+          "value": "#b42318"
+        },
+        {
+          "label": "橙",
+          "value": "#c4520a"
+        },
+        {
+          "label": "绿",
+          "value": "#067647"
+        },
+        {
+          "label": "蓝",
+          "value": "#175cd3"
+        },
+        {
+          "label": "紫",
+          "value": "#6941c6"
+        }
+      ],
+      "highlightColors": [
+        {
+          "label": "重点",
+          "value": "#fff1a8"
+        },
+        {
+          "label": "定义",
+          "value": "#c7f0d8"
+        },
+        {
+          "label": "资料",
+          "value": "#cfe4ff"
+        },
+        {
+          "label": "想法",
+          "value": "#e4d5ff"
+        },
+        {
+          "label": "风险",
+          "value": "#ffd5d5"
+        }
+      ]
+    },
+    "copy": {
+      "plain": "纯文本",
+      "image": "图片",
+      "markdown": "Markdown",
+      "html": "HTML",
+      "success": "复制成功",
+      "imageSuccess": "已下载 PNG",
+      "close": "关闭"
+    },
+    "link": {
+      "openVault": "打开 {title}",
+      "openExternal": "访问 {url}",
+      "brokenTitle": "链接未解析",
+      "fixLabel": "修复建议",
+      "pathLabel": "路径"
+    },
+    "comment": {
+      "placeholder": "写下评论……",
+      "save": "保存",
+      "cancel": "取消",
+      "stale": "锚点已失效",
+      "addTitle": "添加评论"
+    },
+    "history": {
+      "title": "生成历史",
+      "empty": "该块暂无历史",
+      "locate": "定位",
+      "rollback": "回滚",
+      "rollbackRefused": "区域已变化，无法回滚"
+    }
+  },
   "transaction": {
     "burstWindowMs": 800
   },
