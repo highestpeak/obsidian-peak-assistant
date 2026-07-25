@@ -38,6 +38,15 @@ Contract: [`2026-07-24-peak-composer-complete-implementation-handoff.md`](./2026
 （每个 WP 合并时追加：禁区扫描 / 测试 / traceability 抽查 / 设计稿回归 结果与打回记录）
 
 - C0：n/a（纯 docs）。
+- **WP9a（2026-07-25，fable 审计：PASS，待合并）**：
+  - 越界文件：0（只碰 quick-search / result-browser / test）✅
+  - 禁区 import：shared 组件零 store/service/telemetry 运行时依赖（仅 5 处 `import type` 数据形状，可接受）✅；裸 window/document 监听：0，键盘已归轨 owner-scoped ✅
+  - 新测试 `result-browser-contract` / `result-browser-host-parity` 复跑过 ✅
+  - "2 个全量失败系既有"声明：在干净基线 2afa7100 临时 worktree 复现验证属实（chat-studio-message-state-ui / code-block-theme-settings，与本 WP 无关）✅
+  - graph 抽取真实性抽查：cytoscape 渲染器本已共享（AtlasGraphCanvas），shared 层为 controlled 薄壳（frozen subgraph 入参、不自建图），符合 plan §C ✅
+  - 产物：worktree 分支 `worktree-agent-aa0c3a204207c38c0`（基线 2afa7100，3 commits：8a9d7004 / d07b12f2 / 8e7df077）。**合并待 WP1 审计提交后进行**（主树当前有 WP1 未提交改动）。
+  - traceability：CMP-RB-01/02/04 PASS；CMP-RB-03 完成 Quick Search 半边（Composer adapter 待 WP9b 后）。
+  - 遗留：真机视觉 parity 冒烟列入 QA #1 清单（quick-search 打开 List/Tree/Graph 走一遍）。
 
 ## WP0 spike 结论
 

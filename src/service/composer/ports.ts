@@ -1,0 +1,37 @@
+/**
+ * Peak Composer — service-layer ports (WP1).
+ *
+ * The service layer is framework-neutral: it must not import `obsidian`
+ * (enforced by test/boundary/service-layer-boundaries.test.ts). All vault /
+ * workspace interaction is expressed through these interfaces, which the app
+ * layer implements with real Obsidian adapters and tests implement with fakes.
+ */
+
+/** Reads the current bytes of a document from the underlying store. */
+export interface ComposerSourcePort {
+	/** Resolve the verbatim source text for a vault-relative path. */
+	readSource(filePath: string): Promise<string>;
+}
+
+/** A file lifecycle event observed on the underlying store. */
+export interface ComposerFileEvent {
+	type: 'modify' | 'rename' | 'delete';
+	/** Current path (for rename this is the NEW path). */
+	path: string;
+	/** Previous path — only present for `rename`. */
+	oldPath?: string;
+}
+
+/**
+ * Observes which document is "active" and lifecycle events on the vault. The
+ * app adapter maps Obsidian's `workspace`/`vault` events onto this port; the
+ * controller subscribes and never touches Obsidian directly.
+ */
+export interface ComposerFileEventsPort {
+	/** Currently active Markdown file path, or null if none. */
+	getActiveFilePath(): string | null;
+	/** Subscribe to active-file changes. Returns an unsubscribe fn. */
+	onActiveFileChange(cb: (path: string | null) => void): () => void;
+	/** Subscribe to modify/rename/delete events. Returns an unsubscribe fn. */
+	onFileEvent(cb: (event: ComposerFileEvent) => void): () => void;
+}

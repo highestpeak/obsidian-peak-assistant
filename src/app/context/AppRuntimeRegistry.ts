@@ -32,6 +32,7 @@ import type { UsageOptimizationService } from '@/service/usage/optimization/Usag
 import type { HubGenerationRuntime } from '@/service/hub/HubGenerationRuntime';
 import type { HubCurationScheduler } from '@/service/hub/HubCurationScheduler';
 import type { DebugTracePort } from '@/core/debug-trace';
+import type { DocumentComposerRuntime } from '@/app/composer/DocumentComposerRuntime';
 
 /**
  * Bundle of the three usage-telemetry services. They boot and dispose
@@ -59,6 +60,7 @@ export class AppRuntimeRegistry {
 	private hubGenerationRuntime: HubGenerationRuntime | null = null;
 	private hubCurationScheduler: HubCurationScheduler | null = null;
 	private debugTracePort: DebugTracePort | null = null;
+	private documentComposerRuntime: DocumentComposerRuntime | null = null;
 
 	/**
 	 * Bind the Vault Lint runtime. Called exactly once at plugin boot
@@ -548,6 +550,47 @@ export class AppRuntimeRegistry {
 
 	clearDebugTracePort(): void {
 		this.debugTracePort = null;
+	}
+
+	// ── Peak Composer runtime (WP1: host + source model) ─────────────────────
+
+	/**
+	 * Bind the app-owned Document Composer runtime. Composed once at plugin
+	 * boot from `composeDocumentComposerRuntime`. Double-bind without an
+	 * intervening clear throws — typically a hot-reload artifact.
+	 */
+	setDocumentComposerRuntime(runtime: DocumentComposerRuntime): void {
+		if (this.documentComposerRuntime !== null) {
+			throw new Error(
+				'AppRuntimeRegistry.setDocumentComposerRuntime: a runtime is already bound. Call clearDocumentComposerRuntime first if this is intentional.',
+			);
+		}
+		this.documentComposerRuntime = runtime;
+	}
+
+	getDocumentComposerRuntime(): DocumentComposerRuntime {
+		if (this.documentComposerRuntime === null) {
+			throw new Error(
+				'AppRuntimeRegistry.getDocumentComposerRuntime: no runtime is bound. Plugin boot must call setDocumentComposerRuntime() before consumers reach the runtime.',
+			);
+		}
+		return this.documentComposerRuntime;
+	}
+
+	/**
+	 * Soft accessor returning `null` when the runtime is not yet bound. The
+	 * DocumentComposerView may be restored on startup before boot binds the
+	 * runtime; it handles the null case by showing an empty host.
+	 */
+	tryGetDocumentComposerRuntime(): DocumentComposerRuntime | null {
+		return this.documentComposerRuntime;
+	}
+
+	/** Dispose + drop the runtime (detaches the shared vault listeners). Idempotent. */
+	clearDocumentComposerRuntime(): void {
+		const runtime = this.documentComposerRuntime;
+		this.documentComposerRuntime = null;
+		runtime?.dispose();
 	}
 
 }

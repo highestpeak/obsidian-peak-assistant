@@ -6,6 +6,7 @@ import { UsageDashboardView, USAGE_DASHBOARD_VIEW_TYPE } from '@/app/ui-host/vie
 import { ConversationOutlineView, CONVERSATION_OUTLINE_VIEW_TYPE } from '@/app/ui-host/views/ConversationOutlineView';
 import { ChatStudioView, CHAT_STUDIO_VIEW_TYPE } from '@/app/ui-host/views/ChatStudioView';
 import { RelatedNotesView, RELATED_NOTES_VIEW_TYPE } from '@/app/ui-host/views/RelatedNotesView';
+import { DocumentComposerView, DOCUMENT_COMPOSER_VIEW_TYPE } from '@/app/composer';
 import { ViewSwitchConsistentHandler } from '@/app/ui-host/views/ViewSwitchConsistentHandler';
 import { InputModal } from '@/app/ui-host/modals/InputModal';
 import { App, Notice, ViewCreator, WorkspaceLeaf } from 'obsidian';
@@ -42,6 +43,9 @@ export class ViewManager {
 		});
 		this.viewCreators.set(RELATED_NOTES_VIEW_TYPE, (leaf) => {
 			return new RelatedNotesView(leaf, appContext);
+		});
+		this.viewCreators.set(DOCUMENT_COMPOSER_VIEW_TYPE, (leaf) => {
+			return new DocumentComposerView(leaf, appContext);
 		});
 	}
 
@@ -115,6 +119,34 @@ export class ViewManager {
 		const leaf = workspace.getRightLeaf(false);
 		if (!leaf) return;
 		await leaf.setViewState({ type: RELATED_NOTES_VIEW_TYPE, active: true });
+		workspace.revealLeaf(leaf);
+	}
+
+	/**
+	 * Open the Peak Composer in a new main-area tab. Reuses an existing
+	 * Composer leaf if one is open; otherwise creates a tab so the host lives
+	 * beside the note it composes. No Command Palette entry is registered here
+	 * (Command Palette governance — entry decision is deferred to the
+	 * orchestrator).
+	 */
+	async activateDocumentComposerView(): Promise<void> {
+		const { workspace } = this.plugin.app;
+		const existing = workspace.getLeavesOfType(DOCUMENT_COMPOSER_VIEW_TYPE);
+		if (existing.length > 0) {
+			workspace.revealLeaf(existing[0]);
+			return;
+		}
+		let leaf: WorkspaceLeaf | null;
+		try {
+			leaf = workspace.getLeaf('tab');
+		} catch {
+			leaf = workspace.getLeaf(false);
+		}
+		if (!leaf) {
+			new Notice('Could not open Composer: no available workspace tab.', 5000);
+			return;
+		}
+		await leaf.setViewState({ type: DOCUMENT_COMPOSER_VIEW_TYPE, active: true });
 		workspace.revealLeaf(leaf);
 	}
 

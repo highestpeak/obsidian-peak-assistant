@@ -418,6 +418,19 @@ export default class MyPlugin extends Plugin {
 
 		this.viewManager.init();
 
+		// Peak Composer (WP1): compose the app-owned Document Composer runtime
+		// and bind it on the registry BEFORE workspace layout restore can
+		// re-open a Composer leaf. Synchronous (no sqlite dependency), so it is
+		// safe to bind here; released in onunload via clearDocumentComposerRuntime.
+		try {
+			const { composeDocumentComposerRuntime } = await import('@/app/composer');
+			appContext.runtimeRegistry.setDocumentComposerRuntime(
+				composeDocumentComposerRuntime(this.app),
+			);
+		} catch (e) {
+			console.warn('[Peak Composer] runtime compose failed:', e);
+		}
+
 		// register workspace events
 		registerCoreEvents(this, this.viewManager);
 
@@ -1122,6 +1135,11 @@ export default class MyPlugin extends Plugin {
 		// Debug Trace recorder: release the in-memory ring buffer so the
 		// hot-reloaded bundle starts with an empty history.
 		try { AppContext.clearDebugTracePort(); } catch { /* not bound — ignore */ }
+		// Peak Composer runtime: detach the shared vault/workspace listeners so
+		// a hot-reloaded bundle does not double-register them.
+		try {
+			this.appContext?.runtimeRegistry.clearDocumentComposerRuntime();
+		} catch { /* not bound — ignore */ }
 
 		clearPendingConversationTimeouts();
 		this.viewManager?.unload();

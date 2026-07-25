@@ -7,3 +7,4 @@ export { ZodError } from './zod-types';
 export * from './tools';
 export * from './agents';
 export * from './ai-graph-schemas';
+export * from './composer';

@@ -1,0 +1,195 @@
+/**
+ * Peak Composer — read-only host styles (WP1). Scoped under
+ * `.peak-composer-root`; token-driven (`--pk-*`), no hardcoded colors. Rich
+ * block rendering, editing chrome, selection, drag land in later WPs.
+ */
+
+.peak-composer-root {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	overflow: auto;
+	padding: var(--pk-space-4);
+	color: var(--pk-fg);
+	font-family: var(--pk-font-sans);
+	font-size: var(--pk-text-sm);
+}
+
+/* ── header ─────────────────────────────────────────────────────────────── */
+.peak-composer-root .pk-composer-header {
+	display: flex;
+	align-items: center;
+	gap: var(--pk-space-2);
+	padding-bottom: var(--pk-space-3);
+	margin-bottom: var(--pk-space-3);
+	border-bottom: 1px solid var(--pk-border-soft);
+}
+.peak-composer-root .pk-composer-header__icon {
+	color: var(--pk-fg-muted);
+	flex: none;
+}
+.peak-composer-root .pk-composer-header__title {
+	font-weight: 600;
+	color: var(--pk-text-primary);
+}
+.peak-composer-root .pk-composer-header__meta {
+	color: var(--pk-text-tertiary);
+	font-size: var(--pk-text-xs);
+}
+.peak-composer-root .pk-composer-header__badge {
+	margin-left: auto;
+	padding: 2px var(--pk-space-2);
+	border: 1px solid var(--pk-border-soft);
+	border-radius: var(--pk-radius-pill);
+	color: var(--pk-text-tertiary);
+	font-size: var(--pk-text-xs);
+}
+
+/* ── block rows ─────────────────────────────────────────────────────────── */
+.peak-composer-root .pk-composer-blocks {
+	display: flex;
+	flex-direction: column;
+	gap: var(--pk-space-1);
+}
+.peak-composer-root .pk-composer-block {
+	display: flex;
+	gap: var(--pk-space-2);
+	padding: var(--pk-space-2);
+	border-radius: var(--pk-radius-md);
+}
+.peak-composer-root .pk-composer-block:hover {
+	background: var(--pk-surface-sunken);
+}
+.peak-composer-root .pk-composer-rail {
+	flex: none;
+	display: flex;
+	align-items: flex-start;
+	padding-top: 1px;
+}
+.peak-composer-root .pk-composer-disclosure {
+	width: 24px;
+	height: 24px;
+	color: var(--pk-fg-muted);
+}
+.peak-composer-root .pk-composer-block__body {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+.peak-composer-root .pk-composer-block__head {
+	display: flex;
+	align-items: center;
+	gap: var(--pk-space-2);
+	margin-bottom: 2px;
+}
+.peak-composer-root .pk-composer-kind {
+	font-size: var(--pk-text-xs);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--pk-text-tertiary);
+}
+.peak-composer-root .pk-composer-kind-note {
+	font-size: var(--pk-text-xs);
+	color: var(--pk-text-faint);
+	font-style: italic;
+}
+
+/* ── block content ──────────────────────────────────────────────────────── */
+.peak-composer-root .pk-composer-summary {
+	color: var(--pk-fg-muted);
+	font-style: italic;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.peak-composer-root .pk-composer-heading {
+	display: block;
+	font-weight: 700;
+	color: var(--pk-text-primary);
+	line-height: 1.3;
+}
+.peak-composer-root .pk-composer-heading[data-level='1'] { font-size: var(--pk-text-xl); }
+.peak-composer-root .pk-composer-heading[data-level='2'] { font-size: var(--pk-text-lg); }
+.peak-composer-root .pk-composer-heading[data-level='3'] { font-size: var(--pk-text-md-plus); }
+.peak-composer-root .pk-composer-prose {
+	white-space: pre-wrap;
+	word-break: break-word;
+	line-height: 1.55;
+	color: var(--pk-fg);
+}
+.peak-composer-root .pk-composer-mono {
+	margin: 0;
+	padding: var(--pk-space-2) var(--pk-space-3);
+	background: var(--pk-surface-sunken);
+	border: 1px solid var(--pk-border-soft);
+	border-radius: var(--pk-radius-sm);
+	font-family: var(--pk-font-mono);
+	font-size: var(--pk-text-xs);
+	line-height: 1.5;
+	white-space: pre;
+	overflow-x: auto;
+	color: var(--pk-fg);
+}
+.peak-composer-root .pk-composer-list {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+.peak-composer-root .pk-composer-list__item {
+	white-space: pre-wrap;
+	line-height: 1.5;
+}
+.peak-composer-root .pk-composer-ref {
+	font-family: var(--pk-font-mono);
+	font-size: var(--pk-text-xs);
+	color: var(--pk-accent-text);
+	word-break: break-all;
+}
+.peak-composer-root .pk-composer-divider {
+	height: 1px;
+	background: var(--pk-border);
+	margin: var(--pk-space-2) 0;
+}
+
+/* ── lifecycle states ───────────────────────────────────────────────────── */
+.peak-composer-root .pk-composer-state {
+	display: flex;
+	flex-direction: column;
+	gap: var(--pk-space-2);
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	margin: auto;
+	padding: var(--pk-space-8);
+	color: var(--pk-fg-muted);
+}
+.peak-composer-root .pk-composer-state__title {
+	font-weight: 600;
+	color: var(--pk-text-secondary);
+}
+.peak-composer-root .pk-composer-state[data-tone='error'] .pk-composer-state__title {
+	color: var(--pk-error-text);
+}
+.peak-composer-root .pk-composer-state__hint {
+	font-size: var(--pk-text-sm);
+}
+.peak-composer-root .pk-composer-stale {
+	display: flex;
+	align-items: center;
+	gap: var(--pk-space-2);
+	padding: var(--pk-space-2) var(--pk-space-3);
+	margin-bottom: var(--pk-space-3);
+	background: var(--pk-info-bg);
+	border: 1px solid var(--pk-info-border);
+	border-radius: var(--pk-radius-md);
+}
+.peak-composer-root .pk-composer-stale__title {
+	font-weight: 600;
+	color: var(--pk-info-text);
+}
+.peak-composer-root .pk-composer-stale__hint {
+	color: var(--pk-text-tertiary);
+	font-size: var(--pk-text-xs);
+}
+.peak-composer-root .pk-composer-stale__action {
+	margin-left: auto;
+}
