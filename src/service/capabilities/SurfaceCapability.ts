@@ -51,7 +51,8 @@ export type SurfaceId =
 	| 'vault-search'
 	| 'ai-analysis'
 	| 'copilot'
-	| 'web-chat';
+	| 'web-chat'
+	| 'composer';
 
 /** Surfaces self-register adapters that report capability statuses. */
 export interface SurfaceCapabilityAdapter {

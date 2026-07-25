@@ -212,3 +212,25 @@ export const ComposerCandidateSchema = z.object({
 	proposedChange: ProposedChangeSchema,
 	anchorBlockId: z.string().optional(),
 });
+
+// ── WP3: capability runtime input / result payloads ─────────────────────────
+
+/**
+ * Input for instruction-driven text capabilities (polish family). The targeted
+ * instruction is run context frozen into the submitted variant — never merged
+ * into the candidate body.
+ */
+export const ComposerInstructionInputSchema = z.object({
+	instruction: z.string().optional(),
+});
+export type ComposerInstructionInput = z.infer<typeof ComposerInstructionInputSchema>;
+
+/**
+ * Payload of a `text-patch` result envelope: the full replacement text for the
+ * targeted block/unit source range. Writeback compiles it into one atomic
+ * `replaceRange` operation via the text-patch adapter.
+ */
+export const ComposerTextPatchPayloadSchema = z.object({
+	replacementText: z.string(),
+});
+export type ComposerTextPatchPayload = z.infer<typeof ComposerTextPatchPayloadSchema>;

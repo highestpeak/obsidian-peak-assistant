@@ -152,7 +152,8 @@ const SURFACE_CAPABILITY_PATH = path.resolve(
 
 function testSurfaceIdSetsAgree(): void {
 	const serviceSource = fs.readFileSync(SURFACE_CAPABILITY_PATH, 'utf8');
-	const expected = ['chat', 'vault-search', 'ai-analysis', 'copilot', 'web-chat'];
+	// WP3 (2026-07-25) added 'composer' — the document Composer capability surface.
+	const expected = ['chat', 'vault-search', 'ai-analysis', 'copilot', 'web-chat', 'composer'];
 	for (const id of expected) {
 		assert.ok(
 			new RegExp(`'${id}'`).test(typeSource),
