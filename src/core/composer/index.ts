@@ -7,6 +7,7 @@ export * from './types';
 export * from './ids';
 export * from './sections';
 export * from './operations';
+export * from './selection';
 export * from './transaction';
 export * from './transactionConfig';
 export * from './capabilityContracts';

@@ -144,12 +144,12 @@ function ComposerBlockRow({
 		<div className="pk-composer-block" data-kind={block.kind} data-block-id={block.blockId} data-folded={folded}>
 			<DisclosureRail folded={folded} label={label} onToggle={() => foldStore.getState().toggle(block.blockId)} />
 			<div className="pk-composer-block__body">
-				<div className="pk-composer-block__head">
-					<span className="pk-composer-kind">{config.kinds[block.kind]}</span>
-					{block.kind === 'unknown' && (
-						<span className="pk-composer-kind-note">{config.strings.unknownFallback}</span>
-					)}
-				</div>
+				{/*
+				 * WP1 rendered an uppercase per-block kind tag ("FRONTMATTER" / "HEADING" …)
+				 * above every block for skeleton debugging. The owner-review mock has no such
+				 * label, so it is removed here (WP1 audit deviation ②). Unknown / unsupported
+				 * blocks are still rendered verbatim by BlockKindView, never dropped.
+				 */}
 				{showSummary ? (
 					<div className="pk-composer-summary">{block.renderModel.text || config.strings.emptyPreview}</div>
 				) : (
