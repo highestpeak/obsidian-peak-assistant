@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Bug, Filter, SearchX } from 'lucide-react';
 import { useDebugTraceCopy } from '@/ui/hooks/useDebugTraceCopy';
+import { useOwnerDocumentListener } from '@/ui/hooks/useOwnerWindow';
 import { KeyboardShortcut } from '../../component/mine/KeyboardShortcut';
 import { EmptyState } from '../../component/mine/EmptyState';
 import { SearchResultRow } from './components/VaultSearchResult';
@@ -129,9 +130,14 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 		}
 	}, [displayedResults.length, hasSearchQuery]);
 
-	// Handle keyboard navigation
-	useEffect(() => {
-		const handleKeyDown = async (e: KeyboardEvent) => {
+	// Handle keyboard navigation. Bound to the results container's
+	// `ownerDocument` (via `useOwnerDocumentListener`) instead of the global
+	// `window` so it survives detached (popout) windows — plan §B "Move
+	// keyboard handling from `window` listeners to the focused `ResultBrowser`
+	// root" + WP0 owner-window finding. Tree/graph own their own scoped
+	// keyboard; this handler stays authoritative for list + inspector + the
+	// tree/graph Esc-to-list flip.
+	const handleKeyDown = async (e: KeyboardEvent): Promise<void> => {
 			// Navigation keys (ArrowUp, ArrowDown, Enter) should work even when focus is in input
 			// Other keys should be ignored if focus is in input/textarea
 			const isNavigationKey = e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter'
@@ -230,13 +236,9 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 					break;
 				}
 			}
-		};
+	};
 
-		window.addEventListener('keydown', handleKeyDown);
-		return () => {
-			window.removeEventListener('keydown', handleKeyDown);
-		};
-	}, [selectedIndex, displayedResults]);
+	useOwnerDocumentListener(scrollContainerRef, 'keydown', handleKeyDown);
 
 	// Scroll to selected item when selection changes
 	useEffect(() => {
