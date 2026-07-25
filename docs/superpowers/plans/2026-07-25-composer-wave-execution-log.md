@@ -26,7 +26,7 @@ Contract: [`2026-07-24-peak-composer-complete-implementation-handoff.md`](./2026
 | IF | 接口冻结 capabilityContracts.ts | done | n/a（fable authored） | 88931c20 |
 | WP3 | capability runtime | done | PASS | 064d0d04（merge，4 子 commit） |
 | WP4 | editing chrome + 文本 slice | done | PASS（2 项登记偏差） | 8679f448（merge，4 子 commit） |
-| WP4.5 | 集成：AI 接线 + 富渲染 + app adapters | in-progress | pending | — |
+| WP4.5 | 集成：AI 接线 + 富渲染 + app adapters | done | PASS | 64d958ba |
 | QA#1 | 真机中期验收（owner 在场） | pending | pending | — |
 | WP5 | Frontmatter + 公式 | pending | pending | — |
 | WP6 | 表格 + Chart | pending | pending | — |
@@ -74,6 +74,11 @@ Contract: [`2026-07-24-peak-composer-complete-implementation-handoff.md`](./2026
   - **流程教训**：`.dev/` gitignored ⇒ worktree 中的 harness 改动不随 git 合并；已手工同步 composer.html/composer.tsx/composerFixture.ts + 截图到主树。后续 worktree WP 若改 `.dev/`，合并时必须手工同步（写进 packs 派发任务书）。
   - **登记偏差（转 WP4.5 集成任务）**：① 正文 verbatim 渲染（`**bold**` 字面可见）——CMP-SEL-01"可见样式"半边未完成，集成任务补 rich inline 渲染（渲染态 styled runs + CE focus 显源码，S2 映射本就按渲染态设计）；② 在下方插入=短暂 draft 首内容才 commit（空段落 Markdown 不可表示，合理）。
   - 其他登记：comment 持久化 adapter 与 link metadata adapter 的 app 层实现留给 WP4.5（service port + UI 已就位）；Enter 块分割、nested list 内部 reorder 不在 WP4；真机 IME/拖拽/剪贴板二进制写入 QA#1 清单。
+- **WP4.5（2026-07-25，fable 审计：PASS，commit 64d958ba）**：
+  - 足迹/禁区/冻结合同零改形 ✅；285/287 + build 绿 + 几何 QA 35/35 ✅；harness 截图确认富渲染 + AI 行 + 候选 2/2 版本切换 + 定向指令 全链路真实 ✅
+  - 交付：runtime 组合进 Obsidian view（controller 与 hub 共享 session，自写不误报 stale）、comment 持久化（plugin-dir JSON）+ link metadata（metadataCache）adapters、candidates 按 anchorBlockId 挂载、**ComposerTarget 新增 additive `selection` variant**（选区级字节精确写回，多 unit 选区 clamp 到 unit[0]）、富 inline 渲染（styled runs 保持 `source.slice(from,from+len)===run.text` 不变量，focus 显源码）、stale candidate rerun（继承 instruction，anchor 失配 fail-closed）、gateway 命令 `peak-open-document-composer`（allowlist 测试 6→7）。
+  - **开放项（下阶段）**：CMP-REV-02 原位 word diff 尚未实现（候选现为整段替换呈现）——归入 packs 阶段前的 diff-patterns 专项或 WP5 一并处理；外部编辑 revalidate 重建 session/hub（undo 历史丢失）符合 WP2 语义、已接受；多 unit 选区 AI 只作用 unit[0]。
+  - QA#1 真机清单（代理提供）：命令入口/active-file 跟随/落盘/评论重载存活；drag 选择中 styled→source 翻转的卡顿与 caret 落点；macOS 拼音 IME + Cmd+Z 边界；真实付费 provider polish 流式；link hover 打开。
 - **接口冻结（88931c20，fable authored）**：`src/core/composer/capabilityContracts.ts`——ComposerResultKind 14 种 / ComposerContextSnapshot / ComposerActionDescriptor / ComposerCapabilityProjectionPort + stub（chrome 在 runtime 未接入前零假 AI 按钮）。WP3/WP4 只实现不改形；改形需回本 log 记录编排者决定。
 
 ## WP0 spike 结论
