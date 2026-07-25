@@ -25,7 +25,8 @@ Contract: [`2026-07-24-peak-composer-complete-implementation-handoff.md`](./2026
 | WP2 | transaction/History/Undo 底座 | done | PASS | e3a20d64 |
 | IF | 接口冻结 capabilityContracts.ts | done | n/a（fable authored） | 88931c20 |
 | WP3 | capability runtime | done | PASS | 064d0d04（merge，4 子 commit） |
-| WP4 | editing chrome + 文本 slice | in-progress | pending | — |
+| WP4 | editing chrome + 文本 slice | done | PASS（2 项登记偏差） | 8679f448（merge，4 子 commit） |
+| WP4.5 | 集成：AI 接线 + 富渲染 + app adapters | in-progress | pending | — |
 | QA#1 | 真机中期验收（owner 在场） | pending | pending | — |
 | WP5 | Frontmatter + 公式 | pending | pending | — |
 | WP6 | 表格 + Chart | pending | pending | — |
@@ -66,6 +67,13 @@ Contract: [`2026-07-24-peak-composer-complete-implementation-handoff.md`](./2026
   - **集成接线说明（集成任务用）**：`DocumentComposerRuntime.createCapabilityRuntime(session, hub)` 同时实现 projection port 与 candidate runtime port，替换 stub；chrome 先 `runtime.assembleSnapshot(target, selectionText?)` 再 actionsFor/invoke；块下方挂 `ComposerCandidateHost`（candidateId 按 anchorBlockId 从 runtime.subscribe 取）。
   - 遗留（登记）：① stale candidate 的 regenerate 为 fail-closed（rebase 原语留 WP5+/集成）；② selection 级 range target 未在冻结 ComposerTarget 中，选区级 patch 需 WP4 selection target 落地后补 adapter 分支；③ CompiledSkill 为合成 shim，agent-mode packs 接 SkillRegistry.compile；④ 真实付费 provider 冒烟 credential-blocked（§2.4 允许）。
   - 流程备注：isolation worktree 初始基线陈旧（4fa5bd2b），代理自行 reset 到 ae4b2567 后工作——后续 worktree 派发时任务书应显式包含"先确认基线 = 最新主分支 HEAD"步骤。
+- **WP4（2026-07-25，fable 审计：PASS，merge 8679f448）**：
+  - 越界 0、WP3 领地（candidates/冻结合同/capability 文件）与 WP2 引擎内部零触碰、composer.json 顶层 key additive、禁区 grep 全 OK ✅
+  - worktree 内 278/280；合并后主树 283/285 + build 绿；几何 QA **28/28**（主树复跑通过）✅；截图 10 张（light/dark ×5 场景）比对 mock 家族对齐良好 ✅
+  - 冲突解决：`src/service/composer/index.ts` 纯 additive 冲突，两边保留（fable 手工）。
+  - **流程教训**：`.dev/` gitignored ⇒ worktree 中的 harness 改动不随 git 合并；已手工同步 composer.html/composer.tsx/composerFixture.ts + 截图到主树。后续 worktree WP 若改 `.dev/`，合并时必须手工同步（写进 packs 派发任务书）。
+  - **登记偏差（转 WP4.5 集成任务）**：① 正文 verbatim 渲染（`**bold**` 字面可见）——CMP-SEL-01"可见样式"半边未完成，集成任务补 rich inline 渲染（渲染态 styled runs + CE focus 显源码，S2 映射本就按渲染态设计）；② 在下方插入=短暂 draft 首内容才 commit（空段落 Markdown 不可表示，合理）。
+  - 其他登记：comment 持久化 adapter 与 link metadata adapter 的 app 层实现留给 WP4.5（service port + UI 已就位）；Enter 块分割、nested list 内部 reorder 不在 WP4；真机 IME/拖拽/剪贴板二进制写入 QA#1 清单。
 - **接口冻结（88931c20，fable authored）**：`src/core/composer/capabilityContracts.ts`——ComposerResultKind 14 种 / ComposerContextSnapshot / ComposerActionDescriptor / ComposerCapabilityProjectionPort + stub（chrome 在 runtime 未接入前零假 AI 按钮）。WP3/WP4 只实现不改形；改形需回本 log 记录编排者决定。
 
 ## WP0 spike 结论
