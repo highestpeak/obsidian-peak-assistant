@@ -21,6 +21,7 @@
 import {
 	makeGroupId,
 	makeHistoryId,
+	composerTargetBlockId,
 	type ComposerHistoryItem,
 	type ComposerTarget,
 	type ComposerTransaction,
@@ -35,8 +36,9 @@ interface InternalEntry extends ComposerHistoryItem {
 
 function targetBlockOf(target: ComposerTarget | undefined): string {
 	if (!target) return 'doc';
-	if (target.kind === 'block' || target.kind === 'unit') return target.blockId;
-	return target.documentId;
+	const blockId = composerTargetBlockId(target);
+	if (blockId) return blockId;
+	return target.kind === 'document' ? target.documentId : 'doc';
 }
 
 /**

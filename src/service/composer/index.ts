@@ -26,3 +26,4 @@ export * from './blockOps';
 export * from './comment/commentModel';
 export * from './comment/commentStore';
 export * from './linkPreview/linkPreviewModel';
+export * from './render/inlineRuns';

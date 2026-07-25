@@ -6,6 +6,8 @@ import {
 	DEFAULT_TRANSACTION_CONFIG,
 	type ComposerActionDescriptor,
 	type ComposerBlock,
+	type ComposerCandidate,
+	type ComposerCandidateRuntimePort,
 	type ComposerContextSnapshot,
 	type ComposerDocumentSnapshot,
 	type ComposerStateSource,
@@ -28,6 +30,11 @@ import {
 } from '@/ui/view/composer/config/composerConfig';
 import { createComposerFoldStore, type ComposerFoldStore } from './foldStore';
 import { BlockKindView } from './blocks/BlockKindView';
+import {
+	ComposerCandidateHost,
+	createDefaultCandidateRendererRegistry,
+	type CandidateRendererRegistry,
+} from './candidates';
 import {
 	ComposerChromeProvider,
 	resolveProjection,
@@ -64,6 +71,12 @@ export interface ComposerRootProps {
 	config?: ComposerConfig;
 	/** App-composed editing runtime (session + hub + ports). Absent ⇒ read-only. */
 	runtime?: ComposerChromeRuntime;
+	/**
+	 * Reactive runtime provider (the Obsidian view): re-read on every state change
+	 * so the runtime rebinds when the active document (session + hub) switches,
+	 * without remounting the chrome mid-document. Takes precedence over `runtime`.
+	 */
+	runtimeSource?: { getRuntime(): ComposerChromeRuntime | undefined };
 	/** Typing-burst window override; defaults to the transaction config value. */
 	burstWindowMs?: number;
 	/** Host callback for opening links from the preview popover. */
@@ -88,7 +101,8 @@ const EMPTY_RUNTIME: ComposerChromeRuntime = {};
 export function ComposerRoot({
 	source,
 	config = DEFAULT_COMPOSER_CONFIG,
-	runtime = EMPTY_RUNTIME,
+	runtime: runtimeProp = EMPTY_RUNTIME,
+	runtimeSource,
 	burstWindowMs = DEFAULT_TRANSACTION_CONFIG.burstWindowMs,
 	onOpenLink,
 	onRevalidate,
@@ -97,12 +111,19 @@ export function ComposerRoot({
 	const getSnapshot = React.useCallback(() => source.getState(), [source]);
 	const state = React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 	const [foldStore] = React.useState(createComposerFoldStore);
+	const [candidateRegistry] = React.useState<CandidateRendererRegistry>(createDefaultCandidateRendererRegistry);
+
+	// Re-read the reactive runtime each render (rebinds on document switch); the
+	// static prop is the harness path. Identity is stable within one document, so
+	// commits do not remount the chrome — only a session switch rebinds it.
+	const runtime = runtimeSource?.getRuntime() ?? runtimeProp;
 
 	const [flushers] = React.useState(() => new Set<() => Promise<void>>());
 	const chromeValue = React.useMemo<ComposerChromeValue>(
 		() => ({
 			runtime,
 			projection: resolveProjection(runtime),
+			candidateRegistry,
 			config,
 			snapshot: state.snapshot,
 			burstWindowMs,
@@ -115,7 +136,7 @@ export function ComposerRoot({
 			},
 			onOpenLink,
 		}),
-		[runtime, config, state.snapshot, burstWindowMs, flushers, onOpenLink],
+		[runtime, candidateRegistry, config, state.snapshot, burstWindowMs, flushers, onOpenLink],
 	);
 
 	return (
@@ -382,6 +403,8 @@ function ComposerBlockRow({
 	const showSummary = !isHeading && folded;
 	const raw = block.renderModel.raw;
 	const aiSnapshot = makeBlockSnapshot(snapshot, block);
+	const candidateRuntime = chrome.runtime.candidateRuntime;
+	const candidateId = useBlockCandidateId(candidateRuntime, block.blockId);
 
 	const openPanel = (kind: BlockPanelKind) => {
 		if (panel?.panel === kind) setPanel(null);
@@ -434,9 +457,52 @@ function ComposerBlockRow({
 						onClose={() => setPanel(null)}
 					/>
 				)}
+				{candidateRuntime && candidateId && (
+					<div className="pk-composer-candidate-slot" data-chrome="true">
+						<ComposerCandidateHost
+							runtime={candidateRuntime}
+							candidateId={candidateId}
+							registry={chrome.candidateRegistry}
+						/>
+					</div>
+				)}
 			</div>
 		</div>
 	);
+}
+
+/**
+ * The id of the pending (non-terminal) candidate anchored to this block, or null.
+ * Subscribes to the candidate runtime so a freshly-invoked candidate appears
+ * under the correct block and disappears on accept / discard.
+ */
+function useBlockCandidateId(
+	runtime: ComposerCandidateRuntimePort | undefined,
+	blockId: string,
+): string | null {
+	const [candidateId, setCandidateId] = React.useState<string | null>(null);
+	React.useEffect(() => {
+		if (!runtime) {
+			setCandidateId(null);
+			return;
+		}
+		return runtime.subscribe((candidates) => {
+			const match = candidates.find(
+				(c) =>
+					anchorBlockOf(c) === blockId &&
+					c.status !== 'accepted' &&
+					c.status !== 'discarded',
+			);
+			setCandidateId(match?.candidateId ?? null);
+		});
+	}, [runtime, blockId]);
+	return candidateId;
+}
+
+function anchorBlockOf(candidate: ComposerCandidate): string | null {
+	if (candidate.anchorBlockId) return candidate.anchorBlockId;
+	const t = candidate.target;
+	return t.kind === 'document' ? null : t.blockId;
 }
 
 // ── block body dispatch (editable vs read-only) ─────────────────────────────

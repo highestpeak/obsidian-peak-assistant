@@ -203,15 +203,29 @@ export interface ComposerDocumentSnapshot {
 }
 
 /**
- * A pointer to something the Composer can act on. WP1 only needs document /
- * block / unit granularity; selection and object-range targets arrive with the
- * editing chrome (WP4) and table selection (WP6). Kept here so the shape is
- * stable across WPs.
+ * A pointer to something the Composer can act on. WP1 needed document / block /
+ * unit granularity; the editing chrome (WP4.5 integration) adds a `selection`
+ * target that carries an explicit source byte range `[from,to)` inside a block/
+ * unit, so a selection-scoped AI action replaces exactly the selected bytes
+ * (never the whole block). Table object-range targets arrive with WP6. This
+ * shape is referenced by the frozen capability contract but is itself additive
+ * (see execution log 2026-07-25 WP4.5 note).
  */
 export type ComposerTarget =
 	| { kind: 'document'; documentId: string }
 	| { kind: 'block'; blockId: string }
-	| { kind: 'unit'; blockId: string; unitId: string };
+	| { kind: 'unit'; blockId: string; unitId: string }
+	| { kind: 'selection'; blockId: string; unitId?: string; from: number; to: number };
+
+/**
+ * The block a target is anchored to, or null for a whole-document target. The
+ * one place every target→blockId derivation goes through, so adding a target
+ * kind is a single-file change for the grouping/anchoring helpers that consume it.
+ */
+export function composerTargetBlockId(target: ComposerTarget): string | null {
+	if (target.kind === 'document') return null;
+	return target.blockId;
+}
 
 /**
  * Lifecycle status of a document host. `stale` means the underlying file was

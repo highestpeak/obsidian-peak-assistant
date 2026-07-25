@@ -21,6 +21,8 @@ export interface CandidateUiStrings {
 	streaming: string;
 	failed: string;
 	stale: string;
+	/** Action label for re-running a stale candidate against the current source. */
+	rerun: string;
 	acceptDisabledStreaming: string;
 	prevVariant: string;
 	nextVariant: string;
@@ -39,7 +41,8 @@ export const DEFAULT_CANDIDATE_UI_STRINGS: CandidateUiStrings = {
 	instructionAria: 'Targeted instruction',
 	streaming: '生成中…',
 	failed: '生成失败',
-	stale: '源已变化，需重新生成',
+	stale: '源已变化，需重新运行',
+	rerun: '重新运行',
 	acceptDisabledStreaming: '生成完成后才能接受',
 	prevVariant: '上一版本',
 	nextVariant: '下一版本',

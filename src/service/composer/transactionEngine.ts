@@ -33,6 +33,7 @@ import {
 	computeOperationStats,
 	deriveInverseOperations,
 	makeTransactionId,
+	composerTargetBlockId,
 	ComposerConflictError,
 	type ComposerDocumentSnapshot,
 	type ComposerOperation,
@@ -212,6 +213,5 @@ function defaultBlockDelta(operations: readonly ComposerOperation[]): number {
 
 function targetBlockOf(target: ComposerTarget | undefined): string | null {
 	if (!target) return null;
-	if (target.kind === 'block' || target.kind === 'unit') return target.blockId;
-	return null;
+	return composerTargetBlockId(target);
 }

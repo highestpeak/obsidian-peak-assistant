@@ -36,6 +36,7 @@ import {
 	type ComposerRendererId,
 	type ComposerResultEnvelope,
 	type ComposerTarget,
+	composerTargetBlockId,
 	ComposerConflictError,
 } from '@/core/composer';
 import type { CompiledSkill } from '@/core/types/compiled-skill';
@@ -206,6 +207,29 @@ export class ComposerCapabilityDocumentRuntime
 		return { runId, cancel: () => this.cancel(candidateId) };
 	}
 
+	/**
+	 * Re-run a stale candidate against the current document. Fail-closed: if the
+	 * anchor block no longer resolves in the live snapshot we return null and leave
+	 * the stale candidate in place (the surface keeps its "source changed" notice)
+	 * — we never guess a new position. Otherwise the stale candidate is discarded
+	 * and the capability is invoked afresh on the block, inheriting the candidate's
+	 * last instruction.
+	 */
+	rerunStale(candidateId: string): ComposerInvocationHandle | null {
+		if (this.activeRuns.has(candidateId)) return null;
+		const meta = this.requireMeta(candidateId);
+		const candidate = this.findCandidate(candidateId);
+		// Prefer the candidate's CURRENT anchor (revalidate re-maps content-derived
+		// block ids across the reparse); fall back to the frozen target's block.
+		const blockId = candidate?.anchorBlockId ?? composerTargetBlockId(meta.snapshot.target);
+		if (!blockId) return null;
+		if (!this.deps.session.getBlock(blockId)) return null; // anchor gone → fail closed
+		const instruction = candidate ? lastInstructionOf(candidate) : undefined;
+		this.discard(candidateId);
+		const fresh = this.assembleSnapshot({ kind: 'block', blockId });
+		return this.invoke(meta.capabilityId, fresh, instruction !== undefined ? { instruction } : undefined);
+	}
+
 	cancel(candidateId: string): void {
 		const run = this.activeRuns.get(candidateId);
 		if (!run) return;
@@ -256,6 +280,9 @@ export class ComposerCapabilityDocumentRuntime
 
 	private resolveAnchor(target: ComposerTarget): { from: number; to: number } | undefined {
 		if (target.kind === 'document') return undefined;
+		// Selection targets are pre-anchored to their exact source range (the
+		// text-patch writeback replaces only the selection bytes — WP3 leftover ②).
+		if (target.kind === 'selection') return { from: target.from, to: target.to };
 		const block = this.deps.session.getBlock(target.blockId);
 		if (!block) {
 			throw new ComposerConflictError(
@@ -387,6 +414,16 @@ export class ComposerCapabilityDocumentRuntime
 	private emit(event: ComposerCapabilityRunEvent): void {
 		for (const cb of this.runEventSubs) cb(event);
 	}
+}
+
+/** The most recent instruction across a candidate's variants (active first). */
+function lastInstructionOf(candidate: ComposerCandidate): string | undefined {
+	const active = candidate.variants.find((v) => v.variantId === candidate.activeVariantId);
+	if (active?.instruction !== undefined) return active.instruction;
+	for (let i = candidate.variants.length - 1; i >= 0; i--) {
+		if (candidate.variants[i].instruction !== undefined) return candidate.variants[i].instruction;
+	}
+	return undefined;
 }
 
 /** Internal marker for user-initiated cancellation. */

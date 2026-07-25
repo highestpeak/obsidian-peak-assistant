@@ -8,6 +8,7 @@ import { buildCoreCommands } from 'src/app/commands/Register';
 import { composeCommandGatewayBindings } from '@/app/commands/gateway/composeCommandGatewayBindings';
 import {
 	openChatStudio,
+	openDocumentComposer,
 	openFileAtlas,
 	openHarnessSetupWizard,
 	openQuickSearch,
@@ -425,7 +426,7 @@ export default class MyPlugin extends Plugin {
 		try {
 			const { composeDocumentComposerRuntime } = await import('@/app/composer');
 			appContext.runtimeRegistry.setDocumentComposerRuntime(
-				composeDocumentComposerRuntime(this.app),
+				composeDocumentComposerRuntime(this.app, this.manifest.dir),
 			);
 		} catch (e) {
 			console.warn('[Peak Composer] runtime compose failed:', e);
@@ -468,6 +469,7 @@ export default class MyPlugin extends Plugin {
 			openFileAtlas,
 			openUsageDashboard,
 			openChatStudio,
+			openDocumentComposer,
 		});
 		for (const binding of gatewayBindings) {
 			commandGateway.register(binding);

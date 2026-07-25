@@ -78,9 +78,12 @@ export class ComposerWritebackAdapterRegistry {
 }
 
 /**
- * Text-patch adapter: replaces the targeted block/unit's exact source range
- * `[from,to)` with the replacement text — one atomic `replaceRange`. The
- * inter-block separator lives in the gap and is never absorbed (WP1 patch
+ * Text-patch adapter: replaces the targeted range's exact source bytes
+ * `[from,to)` with the replacement text — one atomic `replaceRange`. `ctx.anchor`
+ * is whatever the runtime resolved for the target: a block's full span, a unit's
+ * span, OR a selection's sub-range (a `selection` target pre-anchors its own
+ * `[from,to)`), so a selection-scoped AI action replaces ONLY the selected bytes.
+ * The inter-block separator lives in the gap and is never absorbed (WP1 patch
  * contract); the engine's block-delta guard rejects a fusing patch whole.
  */
 export function createTextPatchWritebackAdapter(): ComposerWritebackAdapter {

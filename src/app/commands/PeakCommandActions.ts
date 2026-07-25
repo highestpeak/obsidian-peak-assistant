@@ -110,6 +110,10 @@ export function openChatStudio(): void {
 	void getContext().viewManager.openChatStudio();
 }
 
+export function openDocumentComposer(): void {
+	void getContext().viewManager.activateDocumentComposerView();
+}
+
 export function openRelatedNotes(): void {
 	void getContext().viewManager.activateRelatedNotesView();
 }

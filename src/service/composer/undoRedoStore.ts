@@ -12,6 +12,7 @@
  * candidate store, never document undo (§9.7).
  */
 
+import { composerTargetBlockId } from '@/core/composer';
 import type {
 	ComposerTransaction,
 	ComposerTransactionConfig,
@@ -34,8 +35,7 @@ function coalesceKeyFor(txn: ComposerTransaction): string | null {
 	if (txn.groupId) return `group:${txn.groupId}`;
 	if (txn.runId) return `run:${txn.runId}`;
 	if (txn.origin === 'direct') {
-		const target = txn.target;
-		const block = target && (target.kind === 'block' || target.kind === 'unit') ? target.blockId : 'doc';
+		const block = (txn.target && composerTargetBlockId(txn.target)) ?? 'doc';
 		return `burst:${block}`;
 	}
 	return null;

@@ -20,6 +20,7 @@
 import {
 	makeCandidateId,
 	makeVariantId,
+	composerTargetBlockId,
 	type ComposerCandidate,
 	type ComposerCandidateStatus,
 	type ComposerTarget,
@@ -46,8 +47,7 @@ export interface AddVariantInput<TResult = unknown> {
 }
 
 function blockOf(target: ComposerTarget): string | undefined {
-	if (target.kind === 'block' || target.kind === 'unit') return target.blockId;
-	return undefined;
+	return composerTargetBlockId(target) ?? undefined;
 }
 
 export class ComposerCandidateStore {

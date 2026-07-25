@@ -362,24 +362,50 @@ function scopeText(
 	return templates.crossBlock.replace('{n}', String(blocks));
 }
 
+/**
+ * Freeze the selection into a `selection` target carrying the exact byte range
+ * inside its unit, so a selection-scoped AI action rewrites ONLY the selected
+ * bytes (the text-patch writeback anchors to `[from,to)`). The range is clamped
+ * to the FIRST selected unit — a single semantic unit — so the frozen
+ * `targetSource`/`selectionText` and the writeback range are byte-identical and
+ * a multi-block selection can never patch across a structural separator.
+ */
 function buildSelectionSnapshot(
 	snapshot: NonNullable<ReturnType<typeof useComposerChrome>['snapshot']>,
 	live: LiveSelection,
 ): ComposerContextSnapshot {
 	const unit = live.selection.units[0];
+	if (!unit) {
+		return {
+			documentId: snapshot.documentId,
+			revision: snapshot.revision,
+			target: { kind: 'document', documentId: snapshot.documentId },
+			targetSource: snapshot.sourceText.slice(live.from, live.to),
+			selectionText: live.selection.text,
+			nearby: {
+				before: snapshot.sourceText.slice(Math.max(0, live.from - 400), live.from),
+				after: snapshot.sourceText.slice(live.to, live.to + 400),
+			},
+		};
+	}
+	const from = unit.from;
+	const to = unit.to;
+	const selectionText = snapshot.sourceText.slice(from, to);
 	return {
 		documentId: snapshot.documentId,
 		revision: snapshot.revision,
-		target: unit
-			? unit.unitId
-				? { kind: 'unit', blockId: unit.blockId, unitId: unit.unitId }
-				: { kind: 'block', blockId: unit.blockId }
-			: { kind: 'document', documentId: snapshot.documentId },
-		targetSource: snapshot.sourceText.slice(live.from, live.to),
-		selectionText: live.selection.text,
+		target: {
+			kind: 'selection',
+			blockId: unit.blockId,
+			...(unit.unitId ? { unitId: unit.unitId } : {}),
+			from,
+			to,
+		},
+		targetSource: selectionText,
+		selectionText,
 		nearby: {
-			before: snapshot.sourceText.slice(Math.max(0, live.from - 400), live.from),
-			after: snapshot.sourceText.slice(live.to, live.to + 400),
+			before: snapshot.sourceText.slice(Math.max(0, from - 400), from),
+			after: snapshot.sourceText.slice(to, to + 400),
 		},
 	};
 }

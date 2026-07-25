@@ -128,7 +128,12 @@ const geom = (locator) =>
 	await record('capsules share 28px height', () => assert.ok(capsuleGeom.every((g) => g.h === 28), JSON.stringify(capsuleGeom.map((g) => g.h))));
 	await record('capsules share pill radius', () => assert.ok(capsuleGeom.every((g) => g.radius === capsuleGeom[0].radius && /999|9999/.test(g.radius))));
 	await record('capsules share resting background', () => assert.ok(capsuleGeom.every((g) => g.bg === capsuleGeom[0].bg)));
-	await record('stub projection renders no AI actions', async () => assert.equal(await row.locator('.pk-action-ai [data-ai-quick]').count(), 0));
+	await record('real projection renders inline AI action(s)', async () => assert.ok((await row.locator('.pk-action-ai [data-ai-quick]').count()) >= 1));
+		const aiCapsules = row.locator('.pk-action-ai [data-ai-quick]');
+		const aiGeom = [];
+		for (let i = 0; i < (await aiCapsules.count()); i++) aiGeom.push(await geom(aiCapsules.nth(i)));
+		await record('AI capsules share the 28px capsule height', () => assert.ok(aiGeom.every((g) => g.h === 28), JSON.stringify(aiGeom.map((g) => g.h))));
+		await record('AI capsules share the deterministic pill radius', () => assert.ok(aiGeom.every((g) => g.radius === capsuleGeom[0].radius)));
 	await record('no second-level AI opener exists', async () =>
 		assert.equal(await page.locator('[data-action="ai"], .ai-hint, .aim-ai-opener').count(), 0),
 	);
@@ -145,9 +150,15 @@ const geom = (locator) =>
 			{ x: Math.round(after.x), y: Math.round(after.y), w: Math.round(after.width), h: Math.round(after.height) },
 		),
 	);
+	await page.screenshot({ path: path.join(shotsDir, 'composer-chrome-ai-row-dark.png') });
 	await page.screenshot({ path: path.join(shotsDir, 'composer-chrome-action-row-dark.png') });
 
 	// ── selection toolbar ──
+	// Focus the block first so live-preview reveals the source (a real mousedown
+	// does this before a drag); a selection made on the styled runs is otherwise
+	// cleared by the focus-driven styled→source swap.
+	await page.evaluate(() => document.querySelector('.pk-composer-block[data-kind="paragraph"] .pk-composer-editable').focus());
+	await page.waitForTimeout(150);
 	await page.evaluate(() => {
 		const leaf = document.querySelector('.pk-composer-block[data-kind="paragraph"] .pk-composer-editable');
 		const walker = document.createTreeWalker(leaf, NodeFilter.SHOW_TEXT);
@@ -221,6 +232,32 @@ const geom = (locator) =>
 		assert.deepEqual(kinds, ['plain', 'image', 'markdown', 'html']);
 	});
 
+	// ── AI candidate flow: invoke → streaming → variants → accept (last, so it
+	//    runs on a pristine paragraph after the deterministic-chrome checks) ──
+	await page.keyboard.press('Escape');
+	const aiPara = page.locator('.pk-composer-block[data-kind="paragraph"]').first();
+	await aiPara.hover();
+	const aiRow = aiPara.locator('.pk-block-action-row');
+	await aiRow.locator('.pk-action-ai [data-ai-quick]').first().click();
+	const slot = aiPara.locator('.pk-composer-candidate-slot');
+	await page.waitForSelector('.pk-composer-candidate-slot [data-candidate-id]', { timeout: 6000 });
+	await record('candidate host mounts under the invoked block', async () => assert.ok((await slot.locator('[data-candidate-id]').count()) >= 1));
+	await page.waitForTimeout(180);
+	await page.screenshot({ path: path.join(shotsDir, 'composer-chrome-streaming-candidate-dark.png') });
+	await record('candidate streams a live caret', async () => assert.ok((await slot.locator('.animate-pulse').count()) >= 1));
+	await page.waitForFunction(() => !document.querySelector('.pk-composer-candidate-slot .animate-pulse'), null, { timeout: 8000 });
+	await record('accept enabled once ready', async () => assert.equal(await slot.locator('button:has-text("接受")').first().isDisabled(), false));
+	await slot.locator('button:has-text("重新生成")').first().click();
+	await page.waitForTimeout(150);
+	await page.waitForFunction(() => !document.querySelector('.pk-composer-candidate-slot .animate-pulse'), null, { timeout: 8000 });
+	await record('regenerate appends a second variant (nav appears)', async () => assert.ok((await slot.locator('.tabular-nums').count()) >= 1));
+	await page.screenshot({ path: path.join(shotsDir, 'composer-chrome-variants-dark.png') });
+	await slot.locator('button:has-text("接受")').first().click();
+	await page.waitForSelector('.pk-composer-candidate-slot [data-candidate-id]', { state: 'detached', timeout: 6000 });
+	await record('accepting removes the candidate host', async () => assert.equal(await slot.locator('[data-candidate-id]').count(), 0));
+	await aiPara.hover();
+	await page.screenshot({ path: path.join(shotsDir, 'composer-chrome-accepted-dark.png') });
+
 	await record('no console/page errors (dark pass)', () => assert.deepEqual(errors, []));
 	await page.close();
 }
@@ -236,7 +273,10 @@ const geom = (locator) =>
 	const g = await geom(para.locator('.pk-composer-drag'));
 	await record('light: rail pair identical 30×30', () => assert.deepEqual([d.w, d.h, d.radius], [g.w, g.h, g.radius]));
 	await page.screenshot({ path: path.join(shotsDir, 'composer-chrome-rail-hover-light.png') });
+	await page.screenshot({ path: path.join(shotsDir, 'composer-chrome-ai-row-light.png') });
 	await page.screenshot({ path: path.join(shotsDir, 'composer-chrome-action-row-light.png') });
+	await page.evaluate(() => document.querySelector('.pk-composer-block[data-kind="paragraph"] .pk-composer-editable').focus());
+	await page.waitForTimeout(150);
 	await page.evaluate(() => {
 		const leaf = document.querySelector('.pk-composer-block[data-kind="paragraph"] .pk-composer-editable');
 		const walker = document.createTreeWalker(leaf, NodeFilter.SHOW_TEXT);
@@ -255,6 +295,26 @@ const geom = (locator) =>
 	// Light theme must not paint a dark panel (WP1 audit deviation ①).
 	const rootBg = await page.evaluate(() => getComputedStyle(document.getElementById('root')).backgroundColor);
 	await record('light theme panel is light (deviation ① fixed)', () => assert.equal(rootBg, 'rgb(255, 255, 255)'));
+
+	// ── AI candidate flow (light screenshots only), last on a pristine paragraph ──
+	await page.keyboard.press('Escape');
+	const lightPara = page.locator('.pk-composer-block[data-kind="paragraph"]').first();
+	await lightPara.hover();
+	const lightSlot = lightPara.locator('.pk-composer-candidate-slot');
+	await lightPara.locator('.pk-block-action-row .pk-action-ai [data-ai-quick]').first().click();
+	await page.waitForSelector('.pk-composer-candidate-slot [data-candidate-id]', { timeout: 6000 });
+	await page.waitForTimeout(180);
+	await page.screenshot({ path: path.join(shotsDir, 'composer-chrome-streaming-candidate-light.png') });
+	await page.waitForFunction(() => !document.querySelector('.pk-composer-candidate-slot .animate-pulse'), null, { timeout: 8000 });
+	await lightSlot.locator('button:has-text("重新生成")').first().click();
+	await page.waitForTimeout(150);
+	await page.waitForFunction(() => !document.querySelector('.pk-composer-candidate-slot .animate-pulse'), null, { timeout: 8000 });
+	await page.screenshot({ path: path.join(shotsDir, 'composer-chrome-variants-light.png') });
+	await lightSlot.locator('button:has-text("接受")').first().click();
+	await page.waitForSelector('.pk-composer-candidate-slot [data-candidate-id]', { state: 'detached', timeout: 6000 });
+	await lightPara.hover();
+	await page.screenshot({ path: path.join(shotsDir, 'composer-chrome-accepted-light.png') });
+
 	await record('no console/page errors (light pass)', () => assert.deepEqual(errors, []));
 	await page.close();
 }

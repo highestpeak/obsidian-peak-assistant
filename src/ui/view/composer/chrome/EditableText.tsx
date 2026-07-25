@@ -1,7 +1,8 @@
 import * as React from 'react';
-import { DirectEditController, type DirectEditRange } from '@/service/composer';
+import { DirectEditController, parseInlineRuns, type DirectEditRange } from '@/service/composer';
 import { useComposerChrome } from './ComposerChromeContext';
 import { segmentLinks } from './linkSegments';
+import { styleAttrs } from './StyledRuns';
 
 /**
  * Per-block contenteditable leaf (WP4, S2 决议全套).
@@ -46,6 +47,10 @@ export function EditableText({
 	const hub = runtime.hub;
 	const elRef = React.useRef<HTMLDivElement | null>(null);
 	const focusedRef = React.useRef(false);
+	// Drives the styled↔source swap: the focused block shows verbatim source
+	// (live-preview style) so editing/mapping is uniform; blurred blocks show the
+	// rich styled-run projection.
+	const [focused, setFocused] = React.useState(false);
 	// Frozen render state: only synced from props while NOT focused.
 	const [renderState, setRenderState] = React.useState({ text, sourceFrom });
 	const resolveRef = React.useRef(resolveRange);
@@ -108,16 +113,26 @@ export function EditableText({
 
 	const onFocus = () => {
 		focusedRef.current = true;
+		setFocused(true);
 	};
 	const onBlur = async () => {
 		focusedRef.current = false;
+		setFocused(false);
 		if (controller) await controller.endSession();
 		// Re-sync the frozen render from the latest committed props.
 		setRenderState((prev) => (prev.text === text && prev.sourceFrom === sourceFrom ? prev : { text, sourceFrom }));
 	};
 
+	// Focused → verbatim source segments (contentEditable owns exact bytes);
+	// blurred / read-only → styled runs. Both carry data-src-text-from so the
+	// selection→source mapping is identical in either state.
+	const showSource = focused && editable && Boolean(hub);
 	const segments = React.useMemo(
 		() => segmentLinks(renderState.text, renderState.sourceFrom),
+		[renderState],
+	);
+	const runs = React.useMemo(
+		() => parseInlineRuns(renderState.text, renderState.sourceFrom),
 		[renderState],
 	);
 
@@ -142,23 +157,55 @@ export function EditableText({
 				onInput();
 			}}
 		>
-			{segments.map((seg, i) =>
-				seg.linkTarget ? (
-					<span
-						key={`${seg.from}-${i}`}
-						className="pk-composer-link"
-						data-src-text-from={seg.from}
-						data-link-target={seg.linkTarget}
-						data-link-kind={seg.linkKind}
-						tabIndex={0}
-					>
-						{seg.text}
-					</span>
-				) : (
-					<span key={`${seg.from}-${i}`} data-src-text-from={seg.from}>
-						{seg.text}
-					</span>
-				),
+			{showSource ? (
+				segments.map((seg, i) =>
+					seg.linkTarget ? (
+						<span
+							key={`${seg.from}-${i}`}
+							className="pk-composer-link"
+							data-src-text-from={seg.from}
+							data-unit-id={unitId}
+							data-link-target={seg.linkTarget}
+							data-link-kind={seg.linkKind}
+							tabIndex={0}
+						>
+							{seg.text}
+						</span>
+					) : (
+						<span key={`${seg.from}-${i}`} data-src-text-from={seg.from} data-unit-id={unitId}>
+							{seg.text}
+						</span>
+					),
+				)
+			) : (
+				// Styled runs are rendered as DIRECT span children (not a nested
+				// component) so React preserves the exact text nodes across the
+				// selection-driven re-render — a component boundary here re-creates
+				// the nodes and collapses an in-progress selection.
+				runs.map((run, i) => {
+					const { className, style } = styleAttrs(run.style);
+					if (run.linkTarget) {
+						return (
+							<span
+								key={`${run.from}-${i}`}
+								className={className ? `pk-composer-link ${className}` : 'pk-composer-link'}
+								style={style}
+								data-src-text-from={run.from}
+								data-unit-id={unitId}
+								data-link-target={run.linkTarget}
+								data-link-kind={run.linkKind}
+								tabIndex={0}
+							>
+								{run.text}
+							</span>
+						);
+					}
+					return (
+						<span key={`${run.from}-${i}`} className={className} style={style} data-src-text-from={run.from} data-unit-id={unitId}>
+							{run.text}
+						</span>
+					);
+				})
 			)}
 		</div>
 	);

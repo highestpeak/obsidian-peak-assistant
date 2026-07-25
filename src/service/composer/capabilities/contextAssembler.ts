@@ -22,6 +22,9 @@ function targetRange(session: ComposerDocumentSession, target: ComposerTarget): 
 	if (target.kind === 'document') {
 		return { from: 0, to: session.snapshot.sourceText.length };
 	}
+	// A selection target carries its own explicit byte range inside the block —
+	// the AI action replaces exactly those bytes, never the whole block.
+	if (target.kind === 'selection') return { from: target.from, to: target.to };
 	const block = session.getBlock(target.blockId);
 	if (!block) throw new Error(`composer context: block '${target.blockId}' not found in current snapshot`);
 	if (target.kind === 'block') return { from: block.source.from, to: block.source.to };

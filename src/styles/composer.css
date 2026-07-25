@@ -677,6 +677,15 @@
 	color: var(--pk-text-tertiary);
 }
 
+/* ── inline styled run: monospace code (WP4.5 rich rendering) ──────────────── */
+.peak-composer-root .pk-composer-inline-code {
+	font-family: var(--font-monospace, ui-monospace, monospace);
+	font-size: 0.9em;
+	background: var(--pk-surface-sunken, var(--background-modifier-border));
+	border-radius: 3px;
+	padding: 0.05em 0.3em;
+}
+
 /* ── editable leaves ───────────────────────────────────────────────────────── */
 .peak-composer-root .pk-composer-editable {
 	white-space: pre-wrap;

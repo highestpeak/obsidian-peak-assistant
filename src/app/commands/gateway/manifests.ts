@@ -109,6 +109,19 @@ export const CHAT_STUDIO_MANIFEST: CapabilityManifest = {
 	surfaceBinding: ['chat'],
 };
 
+export const DOCUMENT_COMPOSER_MANIFEST: CapabilityManifest = {
+	id: 'ui.open.document-composer',
+	title: 'Open document in Peak Composer',
+	description: 'Open the active Markdown document in the Peak Composer editing view.',
+	inputContract: SURFACE_OPEN_INPUT,
+	outputContract: SURFACE_OPEN_OUTPUT,
+	permissionKind: 'read',
+	costTier: 'fast',
+	backendPolicy: DEFAULT_BACKEND,
+	skillRef: 'ui.surface-open.v1',
+	surfaceBinding: ['copilot'],
+};
+
 /**
  * All palette-command manifests keyed by their Obsidian command id.
  * Used by `composeCommandGatewayBindings` to build a GatewayBinding
@@ -122,4 +135,5 @@ export const PALETTE_COMMAND_MANIFESTS: Readonly<Record<string, CapabilityManife
 	'peak-file-atlas-open': FILE_ATLAS_MANIFEST,
 	'peak-usage-dashboard': USAGE_DASHBOARD_MANIFEST,
 	'peak-open-chat-studio': CHAT_STUDIO_MANIFEST,
+	'peak-open-document-composer': DOCUMENT_COMPOSER_MANIFEST,
 });

@@ -1,5 +1,6 @@
 import * as React from 'react';
 import type {
+	ComposerCandidateRuntimePort,
 	ComposerCapabilityProjectionPort,
 	ComposerDocumentSnapshot,
 } from '@/core/composer';
@@ -11,6 +12,7 @@ import type {
 	ComposerTransactionHub,
 } from '@/service/composer';
 import type { ComposerConfig } from '@/ui/view/composer/config/composerConfig';
+import type { CandidateRendererRegistry } from '@/ui/view/composer/candidates';
 
 /**
  * The app-composed runtime the editing chrome consumes (WP4). Everything is
@@ -26,6 +28,12 @@ export interface ComposerChromeRuntime {
 	session?: ComposerDocumentSession;
 	hub?: ComposerTransactionHub;
 	projection?: ComposerCapabilityProjectionPort;
+	/**
+	 * The candidate runtime port the streaming candidate host consumes (streaming
+	 * events, accept / regenerate / variants). In production this is the SAME
+	 * object as {@link projection} (the document runtime implements both ports).
+	 */
+	candidateRuntime?: ComposerCandidateRuntimePort;
 	comments?: ComposerCommentStore;
 	linkPort?: ComposerLinkMetadataPort;
 }
@@ -33,6 +41,8 @@ export interface ComposerChromeRuntime {
 export interface ComposerChromeValue {
 	runtime: ComposerChromeRuntime;
 	projection: ComposerCapabilityProjectionPort;
+	/** Renderer registry the candidate host dispatches through (one per view). */
+	candidateRegistry: CandidateRendererRegistry;
 	config: ComposerConfig;
 	/** Live snapshot the chrome reads for source offsets (from `source`). */
 	snapshot: ComposerDocumentSnapshot | null;

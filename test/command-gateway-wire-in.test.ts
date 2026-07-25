@@ -27,6 +27,7 @@ const EXPECTED_PALETTE_COMMAND_IDS = [
 	'peak-file-atlas-open',
 	'peak-usage-dashboard',
 	'peak-open-chat-studio',
+	'peak-open-document-composer',
 ] as const;
 
 function makeCounter(): { fn: () => void; count: () => number } {
@@ -45,6 +46,7 @@ function makeActions(recorder: Record<string, () => void>): PaletteCommandAction
 		openFileAtlas: recorder.openFileAtlas,
 		openUsageDashboard: recorder.openUsageDashboard,
 		openChatStudio: recorder.openChatStudio,
+		openDocumentComposer: recorder.openDocumentComposer,
 	};
 }
 
@@ -56,6 +58,7 @@ function testManifestCoverageMatchesBindings(): void {
 		openFileAtlas: () => {},
 		openUsageDashboard: () => {},
 		openChatStudio: () => {},
+		openDocumentComposer: () => {},
 	});
 	const bindings = composeCommandGatewayBindings(dummy);
 	const manifestIds = Object.keys(PALETTE_COMMAND_MANIFESTS);
@@ -63,7 +66,7 @@ function testManifestCoverageMatchesBindings(): void {
 	assert.deepStrictEqual(
 		manifestIds,
 		[...EXPECTED_PALETTE_COMMAND_IDS],
-		'global command palette must stay limited to the six owner-approved entry points',
+		'global command palette must stay limited to the seven owner-approved entry points',
 	);
 	assert.deepStrictEqual(
 		bindingIds,
@@ -87,6 +90,7 @@ async function testDispatchInvokesActionExactlyOnce(): Promise<void> {
 		openFileAtlas: makeCounter(),
 		openUsageDashboard: makeCounter(),
 		openChatStudio: makeCounter(),
+		openDocumentComposer: makeCounter(),
 	};
 	const actions = makeActions(
 		Object.fromEntries(Object.entries(counters).map(([k, c]) => [k, c.fn])) as Record<string, () => void>,
@@ -104,6 +108,7 @@ async function testDispatchInvokesActionExactlyOnce(): Promise<void> {
 		['peak-file-atlas-open', 'openFileAtlas'],
 		['peak-usage-dashboard', 'openUsageDashboard'],
 		['peak-open-chat-studio', 'openChatStudio'],
+		['peak-open-document-composer', 'openDocumentComposer'],
 	];
 
 	for (const [commandId, actionKey] of commandToAction) {

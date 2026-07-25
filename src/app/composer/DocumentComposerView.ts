@@ -59,12 +59,29 @@ export class DocumentComposerView extends ReactItemViewHost {
 	}
 
 	protected renderElement(): React.ReactElement {
-		const source: ComposerStateSource = this.controller ?? EMPTY_SOURCE;
-		const onRevalidate = this.controller ? () => this.controller?.revalidate() : undefined;
+		const controller = this.controller;
+		const source: ComposerStateSource = controller ?? EMPTY_SOURCE;
+		const onRevalidate = controller ? () => controller.revalidate() : undefined;
+		const runtimeSource = controller ? { getRuntime: () => controller.getRuntime() } : undefined;
 		return createReactElementWithServices(
 			ComposerRoot,
-			{ source, config: this.config, onRevalidate },
+			{
+				source,
+				config: this.config,
+				onRevalidate,
+				runtimeSource,
+				onOpenLink: (kind, target) => this.openLink(kind, target),
+			},
 			this.appContext,
 		);
+	}
+
+	private openLink(kind: 'vault' | 'external', target: string): void {
+		if (kind === 'external') {
+			window.open(target, '_blank');
+			return;
+		}
+		const sourcePath = this.controller?.getState().filePath ?? '';
+		void this.appContext.app.workspace.openLinkText(target, sourcePath, false);
 	}
 }

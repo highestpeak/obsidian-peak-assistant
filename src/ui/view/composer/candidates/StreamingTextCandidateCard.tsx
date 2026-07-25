@@ -25,7 +25,7 @@
  */
 
 import * as React from 'react';
-import { Check, ChevronLeft, ChevronRight, RotateCcw, X } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, RefreshCw, RotateCcw, X } from 'lucide-react';
 import type { ComposerResultEnvelope } from '@/core/composer';
 import type { ComposerTextPatchPayload } from '@/core/schemas/composer';
 import { Button } from '@/ui/components/primitives';
@@ -122,6 +122,32 @@ export function StreamingTextCandidateCard(props: CandidateRendererProps): React
 		// the in-flight run before dropping the candidate).
 		runtime.discard(candidate.candidateId);
 	};
+
+	// A stale candidate cannot be accepted or regenerated in place (its base
+	// revision drifted). Offer an explicit re-run against the current source
+	// (fail-closed inside the runtime when the anchor is gone) or discard.
+	if (candidate.status === 'stale') {
+		const handleRerun = () => {
+			if (runtime.rerunStale) runtime.rerunStale(candidate.candidateId);
+			else runtime.discard(candidate.candidateId);
+		};
+		return (
+			<span data-candidate-id={candidate.candidateId} data-candidate-stale className="flex flex-col gap-2 py-1">
+				<span className="px-3 leading-relaxed text-[var(--text-muted)]">{strings.stale}</span>
+				<span className="mx-3 border-t border-[var(--background-modifier-border)]" aria-hidden="true" />
+				<span className="flex items-center gap-1.5 px-3 flex-wrap">
+					<Button variant="secondary" className={`${CONTROL} px-2 gap-1`} onClick={handleRerun}>
+						<RefreshCw size={14} />
+						{strings.rerun}
+					</Button>
+					<Button variant="ghost" className={`${CONTROL} px-2 gap-1`} onClick={handleDiscard}>
+						<X size={14} />
+						{strings.discard}
+					</Button>
+				</span>
+			</span>
+		);
+	}
 
 	return (
 		<span data-candidate-id={candidate.candidateId} className="flex flex-col gap-2 py-1">

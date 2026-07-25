@@ -11,19 +11,33 @@ import type { App } from 'obsidian';
 import { ComposerSourceRevisionService } from '@/service/composer';
 import { loadComposerTransactionConfig } from '@/ui/view/composer';
 import {
+	ObsidianComposerCommentPersistence,
 	ObsidianComposerFileEventsAdapter,
+	ObsidianComposerLinkMetadata,
 	ObsidianComposerSourceAdapter,
 	ObsidianComposerWriteAdapter,
 } from './ObsidianComposerAdapters';
 import { DocumentComposerRuntime } from './DocumentComposerRuntime';
 import { composeComposerCapabilityRuntime } from './capabilities/composeComposerCapabilityRuntime';
 
-export function composeDocumentComposerRuntime(app: App): DocumentComposerRuntime {
+/** Subfolder (under the plugin's own data dir) for the per-document comment store. */
+const COMMENT_STORE_SUBDIR = 'composer-comments';
+
+/**
+ * Wire Obsidian adapters into the app-owned {@link DocumentComposerRuntime}.
+ * `pluginDir` is the plugin's manifest directory — the comment store lives under
+ * it so its JSON never enters the vault note tree / metadata cache.
+ */
+export function composeDocumentComposerRuntime(app: App, pluginDir?: string): DocumentComposerRuntime {
 	const source = new ObsidianComposerSourceAdapter(app);
 	const write = new ObsidianComposerWriteAdapter(app);
 	const events = new ObsidianComposerFileEventsAdapter(app);
 	const revisionService = new ComposerSourceRevisionService();
-	const runtime = new DocumentComposerRuntime(source, write, events, revisionService);
+	const commentBaseDir = `${pluginDir ?? app.vault.configDir}/${COMMENT_STORE_SUBDIR}`;
+	const runtime = new DocumentComposerRuntime(source, write, events, revisionService, undefined, {
+		commentPersistence: new ObsidianComposerCommentPersistence(app, commentBaseDir),
+		linkPort: new ObsidianComposerLinkMetadata(app),
+	});
 	// The transaction-timing config lives in composer.json; load it asynchronously
 	// and apply once resolved. Hubs created before it lands use the compiled
 	// default (identical value, drift-guarded), so there is no race hazard.

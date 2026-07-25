@@ -222,6 +222,15 @@ export interface ComposerCandidateRuntimePort {
 	rendererIdFor(candidateId: string): ComposerRendererId | null;
 	/** Append a regeneration variant and stream it. Instruction is run context, never body. */
 	regenerate(candidateId: string, instruction?: string): ComposerInvocationHandle;
+	/**
+	 * Re-run a STALE candidate against the CURRENT document (its base revision
+	 * drifted, so an in-place rebase is unsafe): discards the stale candidate and
+	 * invokes the same capability afresh on its anchor block, inheriting the last
+	 * instruction. Returns null (stays fail-closed) when the anchor block no longer
+	 * resolves — the surface then keeps showing the stale notice. Optional so a
+	 * runtime may omit it (the card falls back to discard).
+	 */
+	rerunStale?(candidateId: string): ComposerInvocationHandle | null;
 	/** Cancel the in-flight generation for this candidate (variant becomes failed). */
 	cancel(candidateId: string): void;
 	/** True while a generation is streaming for this candidate. */

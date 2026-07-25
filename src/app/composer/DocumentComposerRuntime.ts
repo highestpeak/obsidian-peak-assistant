@@ -12,11 +12,14 @@
  */
 
 import {
+	ComposerCommentStore,
 	ComposerSourceRevisionService,
 	ComposerTransactionEngine,
 	ComposerTransactionHub,
 	type ComposerCapabilityDocumentRuntime,
+	type ComposerCommentPersistencePort,
 	type ComposerDocumentSession,
+	type ComposerLinkMetadataPort,
 } from '@/service/composer';
 import { DEFAULT_TRANSACTION_CONFIG, type ComposerTransactionConfig } from '@/core/composer';
 import {
@@ -24,12 +27,25 @@ import {
 	ObsidianComposerSourceAdapter,
 	ObsidianComposerWriteAdapter,
 } from './ObsidianComposerAdapters';
-import { DocumentComposerController } from './DocumentComposerController';
+import {
+	DocumentComposerController,
+	type ComposerEditingRuntime,
+} from './DocumentComposerController';
 import type { ComposerCapabilityRuntimeFactory } from './capabilities/composeComposerCapabilityRuntime';
+
+export interface DocumentComposerRuntimeAdapters {
+	/** Per-document comment JSON persistence (plugin-owned store). */
+	commentPersistence?: ComposerCommentPersistencePort;
+	/** Vault link metadata (Obsidian metadata cache). */
+	linkPort?: ComposerLinkMetadataPort;
+}
 
 export class DocumentComposerRuntime {
 	private transactionConfig: ComposerTransactionConfig;
 	private capabilityFactory: ComposerCapabilityRuntimeFactory | null = null;
+
+	private readonly commentPersistence?: ComposerCommentPersistencePort;
+	private readonly linkPort?: ComposerLinkMetadataPort;
 
 	constructor(
 		private readonly source: ObsidianComposerSourceAdapter,
@@ -37,8 +53,11 @@ export class DocumentComposerRuntime {
 		private readonly events: ObsidianComposerFileEventsAdapter,
 		private readonly revisionService: ComposerSourceRevisionService,
 		transactionConfig: ComposerTransactionConfig = DEFAULT_TRANSACTION_CONFIG,
+		adapters: DocumentComposerRuntimeAdapters = {},
 	) {
 		this.transactionConfig = transactionConfig;
+		this.commentPersistence = adapters.commentPersistence;
+		this.linkPort = adapters.linkPort;
 	}
 
 	/** Override the transaction config once the runtime JSON resolves (async). */
@@ -46,13 +65,32 @@ export class DocumentComposerRuntime {
 		this.transactionConfig = config;
 	}
 
-	/** A fresh lifecycle controller for one view instance. */
+	/** A fresh lifecycle controller for one view instance (with editing composition). */
 	createController(): DocumentComposerController {
 		return new DocumentComposerController({
 			source: this.source,
 			events: this.events,
 			revisionService: this.revisionService,
+			editing: { compose: (session) => this.composeEditing(session) },
 		});
+	}
+
+	/**
+	 * Compose the full per-document editing runtime: transaction hub + capability
+	 * runtime (projection + candidate ports, absent when no factory is bound) +
+	 * comment store + link port. Owned entirely at the app layer.
+	 */
+	composeEditing(session: ComposerDocumentSession): ComposerEditingRuntime {
+		const hub = this.createTransactionHub(session);
+		const capabilityRuntime = this.createCapabilityRuntime(session, hub);
+		const comments = new ComposerCommentStore(session.snapshot.documentId, this.commentPersistence);
+		return {
+			session,
+			hub,
+			comments,
+			...(this.linkPort ? { linkPort: this.linkPort } : {}),
+			...(capabilityRuntime ? { projection: capabilityRuntime, candidateRuntime: capabilityRuntime } : {}),
+		};
 	}
 
 	/**

@@ -21,6 +21,7 @@ import type { GatewayBinding } from '@/service/capabilities/CommandGateway';
 import type { CapabilityRunContext, CapabilityExecutionOutput } from '@/service/capabilities/CapabilityRunner';
 import {
 	CHAT_STUDIO_MANIFEST,
+	DOCUMENT_COMPOSER_MANIFEST,
 	FILE_ATLAS_MANIFEST,
 	HARNESS_WIZARD_MANIFEST,
 	QUICK_SEARCH_MANIFEST,
@@ -53,6 +54,7 @@ export interface PaletteCommandActions {
 	readonly openFileAtlas: () => void | Promise<void>;
 	readonly openUsageDashboard: () => void | Promise<void>;
 	readonly openChatStudio: () => void | Promise<void>;
+	readonly openDocumentComposer: () => void | Promise<void>;
 }
 
 function surfaceOpenStrategy(
@@ -119,6 +121,14 @@ export function composeCommandGatewayBindings(
 			manifest: CHAT_STUDIO_MANIFEST,
 			compiledSkill: SURFACE_OPEN_SKILL,
 			execute: surfaceOpenStrategy(actions.openChatStudio),
+			trigger: 'manual',
+		},
+		{
+			commandId: 'peak-open-document-composer',
+			commandLabel: 'Open document in Peak Composer',
+			manifest: DOCUMENT_COMPOSER_MANIFEST,
+			compiledSkill: SURFACE_OPEN_SKILL,
+			execute: surfaceOpenStrategy(actions.openDocumentComposer),
 			trigger: 'manual',
 		},
 	];
