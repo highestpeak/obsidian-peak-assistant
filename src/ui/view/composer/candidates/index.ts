@@ -5,10 +5,20 @@
  * integration task (via `DocumentComposerRuntime.createCapabilityRuntime`).
  */
 
-import { COMPOSER_STREAMING_TEXT_RENDERER_ID } from '@/core/composer';
+import {
+	COMPOSER_STREAMING_TEXT_RENDERER_ID,
+	COMPOSER_METADATA_SUGGESTION_RENDERER_ID,
+	COMPOSER_FORMULA_ANNOTATION_RENDERER_ID,
+} from '@/core/composer';
 import { StreamingTextCandidateCard } from './StreamingTextCandidateCard';
 import { UnsupportedCandidateCard } from './UnsupportedCandidateCard';
 import { CandidateRendererRegistry, createCandidateRendererRegistry } from './rendererRegistry';
+// WP5 pack renderers (metadata-field-patch / formula-annotation). Registering
+// them here keeps the generic candidate host from ever showing the unsupported
+// fallback for a shipped pack result (spec §10). The bespoke frontmatter / math
+// block UIs remain the richer primary entrances.
+import { MetadataSuggestionCandidateCard } from '../blocks/frontmatter/MetadataSuggestionCandidateCard';
+import { FormulaAnnotationCandidateCard } from '../blocks/math/FormulaAnnotationCandidateCard';
 
 export * from './candidateUiConfig';
 export * from './rendererRegistry';
@@ -23,5 +33,7 @@ export { ComposerCandidateHost, type ComposerCandidateHostProps } from './Compos
 export function createDefaultCandidateRendererRegistry(): CandidateRendererRegistry {
 	const registry = createCandidateRendererRegistry(UnsupportedCandidateCard);
 	registry.register(COMPOSER_STREAMING_TEXT_RENDERER_ID, StreamingTextCandidateCard);
+	registry.register(COMPOSER_METADATA_SUGGESTION_RENDERER_ID, MetadataSuggestionCandidateCard);
+	registry.register(COMPOSER_FORMULA_ANNOTATION_RENDERER_ID, FormulaAnnotationCandidateCard);
 	return registry;
 }

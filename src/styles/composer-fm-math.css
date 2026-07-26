@@ -1,0 +1,555 @@
+/**
+ * Peak Composer — WP5 frontmatter + math block styles.
+ *
+ * Scoped under `.peak-composer-root`. Light values are the mock's computed
+ * values (replication mode — 复刻, verbatim from
+ * docs/gstack/peak-composer-editing-view-2026-07-09/mock.css); dark remaps to
+ * peak tokens. KaTeX CSS is imported once here so display formulas render.
+ */
+
+@import "katex/dist/katex.min.css";
+
+.peak-composer-root {
+	--pkc-fm-line: rgb(220, 227, 238);
+	--pkc-fm-panel-bg: #fbfcff;
+	--pkc-fm-key: #95a1b2;
+	--pkc-fm-value: #344055;
+	--pkc-fm-tag-border: #cfe0ff;
+	--pkc-fm-tag-bg: #eef5ff;
+	--pkc-fm-tag-text: #2454c5;
+	--pkc-fm-origin-border: #e0e4eb;
+	--pkc-fm-origin-text: #7b8493;
+	--pkc-math-label: #667386;
+	--pkc-math-hover-border: #bfd0fb;
+}
+
+.theme-dark .peak-composer-root {
+	--pkc-fm-line: var(--pk-border);
+	--pkc-fm-panel-bg: var(--pk-bg-secondary);
+	--pkc-fm-key: var(--pk-text-muted);
+	--pkc-fm-value: var(--pk-text-primary);
+	--pkc-fm-tag-border: var(--pk-border-accent);
+	--pkc-fm-tag-bg: var(--pk-accent-tint);
+	--pkc-fm-tag-text: var(--pk-accent);
+	--pkc-fm-origin-border: var(--pk-border);
+	--pkc-fm-origin-text: var(--pk-text-muted);
+	--pkc-math-label: var(--pk-text-muted);
+	--pkc-math-hover-border: var(--pk-border-accent);
+}
+
+/* ── frontmatter block ──────────────────────────────────────────────────── */
+
+.peak-composer-root .pk-fm-block {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.peak-composer-root .pk-fm-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.peak-composer-root .pk-fm-issue {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 3px 8px;
+	border: 1px solid #f0c4a8;
+	border-radius: 999px;
+	background: #fff7ed;
+	color: #b45309;
+	font-size: 11px;
+	font-weight: 650;
+}
+
+.theme-dark .peak-composer-root .pk-fm-issue {
+	border-color: var(--pk-warning);
+	background: var(--pk-warning-tint, rgba(180, 83, 9, 0.12));
+	color: var(--pk-warning);
+}
+
+.peak-composer-root .pk-fm-grid {
+	display: grid;
+	grid-template-columns: 90px 1fr;
+	gap: 8px 14px;
+	padding: 12px 14px;
+	border: 1px solid var(--pkc-fm-line);
+	border-radius: 8px;
+	background: var(--pkc-fm-panel-bg);
+}
+
+.peak-composer-root .pk-fm-grid__key {
+	display: inline-flex;
+	align-items: center;
+	color: var(--pkc-fm-key);
+	font-size: 12px;
+	font-weight: 680;
+}
+
+.peak-composer-root .pk-fm-grid__value {
+	color: var(--pkc-fm-value);
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.peak-composer-root .pk-fm-origin {
+	display: inline-flex;
+	align-items: center;
+	min-height: 16px;
+	margin-left: 4px;
+	padding: 0 4px;
+	border: 1px solid var(--pkc-fm-origin-border);
+	border-radius: 4px;
+	color: var(--pkc-fm-origin-text);
+	background: #fff;
+	font-size: 8px;
+	font-style: normal;
+	font-weight: 650;
+}
+
+.theme-dark .peak-composer-root .pk-fm-origin {
+	background: var(--pk-bg);
+}
+
+.peak-composer-root .pk-fm-origin[data-origin="program"] {
+	border-color: #cae4d8;
+	color: #26765b;
+	background: #f2faf6;
+}
+
+.peak-composer-root .pk-fm-origin[data-origin="ai"],
+.peak-composer-root .pk-fm-origin[data-origin="convention"] {
+	border-color: #ddd3fb;
+	color: #6d55bd;
+	background: #f8f5ff;
+}
+
+.peak-composer-root .pk-fm-taglist {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	align-items: center;
+}
+
+.peak-composer-root .pk-fm-tag {
+	display: inline-flex;
+	align-items: center;
+	min-height: 22px;
+	padding: 2px 8px;
+	border: 1px solid var(--pkc-fm-tag-border);
+	border-radius: 999px;
+	background: var(--pkc-fm-tag-bg);
+	color: var(--pkc-fm-tag-text);
+	font-size: 12px;
+	font-weight: 680;
+	line-height: 1.2;
+}
+
+/* ── vault property library + suggestions ───────────────────────────────── */
+
+.peak-composer-root .pk-fm-library,
+.peak-composer-root .pk-fm-suggestions {
+	border: 1px solid var(--pk-border, var(--pkc-fm-line));
+	border-radius: var(--pk-radius-lg, 12px);
+	background: var(--pk-surface-overlay, #fff);
+	overflow: hidden;
+}
+
+.peak-composer-root .pk-fm-library > header,
+.peak-composer-root .pk-fm-library > footer,
+.peak-composer-root .pk-fm-suggestions > header,
+.peak-composer-root .pk-fm-suggestions > footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 11px 13px;
+}
+
+.peak-composer-root .pk-fm-library header b,
+.peak-composer-root .pk-fm-suggestions header b {
+	display: block;
+	color: var(--pkc-fm-value);
+	font-size: 13px;
+}
+
+.peak-composer-root .pk-fm-library header small,
+.peak-composer-root .pk-fm-library > footer,
+.peak-composer-root .pk-fm-suggestions header small,
+.peak-composer-root .pk-fm-suggestions > footer {
+	display: block;
+	color: var(--pkc-fm-key);
+	font-size: 10px;
+}
+
+.peak-composer-root .pk-fm-library__summary {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	border-top: 1px solid var(--pkc-fm-line);
+	border-bottom: 1px solid var(--pkc-fm-line);
+}
+
+.peak-composer-root .pk-fm-library__summary span {
+	padding: 8px 10px;
+	border-right: 1px solid var(--pkc-fm-line);
+	color: var(--pkc-fm-key);
+	font-size: 9px;
+}
+
+.peak-composer-root .pk-fm-library__summary span:last-child {
+	border-right: 0;
+}
+
+.peak-composer-root .pk-fm-library__summary b {
+	margin-right: 3px;
+	color: var(--pkc-fm-value);
+	font-size: 12px;
+}
+
+.peak-composer-root .pk-fm-library__table > div {
+	display: grid;
+	grid-template-columns: 130px 70px minmax(180px, 1fr) 104px;
+	align-items: center;
+	min-height: 48px;
+	border-top: 1px solid var(--pkc-fm-line);
+}
+
+.peak-composer-root .pk-fm-library__head {
+	min-height: 36px;
+	background: var(--pk-bg-secondary, #fbfbfc);
+}
+
+.peak-composer-root .pk-fm-library__table > div > * {
+	margin: 0 11px;
+}
+
+.peak-composer-root .pk-fm-library__table span {
+	color: var(--pkc-fm-key);
+	font-size: 10px;
+}
+
+.peak-composer-root .pk-fm-library__table span:first-child {
+	display: grid;
+	gap: 2px;
+}
+
+.peak-composer-root .pk-fm-library__table strong {
+	color: var(--pkc-fm-value);
+	font-size: 11px;
+}
+
+.peak-composer-root .pk-fm-library__table small {
+	color: var(--pkc-fm-key);
+	font-size: 8px;
+}
+
+.peak-composer-root .pk-fm-library__table button,
+.peak-composer-root .pk-fm-suggestions button {
+	min-height: 28px;
+	padding: 0 9px;
+	border: 1px solid #d9d0f6;
+	border-radius: 7px;
+	background: #faf8ff;
+	color: #604bb8;
+	font-size: 11px;
+	cursor: pointer;
+}
+
+.peak-composer-root .pk-fm-library__table button:disabled {
+	color: #8c939f;
+	border-color: #e3e6eb;
+	background: #f4f5f7;
+	cursor: default;
+}
+
+.peak-composer-root .pk-fm-library__custom {
+	display: grid;
+	grid-template-columns: minmax(140px, 1.2fr) minmax(120px, 0.8fr) minmax(120px, 1fr) auto;
+	gap: 8px;
+	align-items: center;
+	padding: 12px 13px;
+	border-top: 1px solid var(--pkc-fm-line);
+	background: var(--pk-bg-secondary, #fcfcfd);
+}
+
+.peak-composer-root .pk-fm-library__custom > span {
+	display: grid;
+	gap: 2px;
+	color: var(--pkc-fm-value);
+	font-size: 11px;
+}
+
+.peak-composer-root .pk-fm-library__custom > span small {
+	color: var(--pkc-fm-key);
+	font-size: 9px;
+	font-weight: 400;
+}
+
+.peak-composer-root .pk-fm-library__custom input,
+.peak-composer-root .pk-fm-suggestions input {
+	height: 31px;
+	min-width: 0;
+	padding: 0 9px;
+	border: 1px solid var(--pkc-fm-line);
+	border-radius: 6px;
+	background: var(--pk-bg, #fff);
+	color: var(--pkc-fm-value);
+	font-size: 12px;
+}
+
+.peak-composer-root .pk-fm-suggestions__list > div {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 10px 13px;
+	border-top: 1px solid var(--pkc-fm-line);
+}
+
+.peak-composer-root .pk-fm-suggestions__list strong {
+	color: var(--pkc-fm-value);
+	font-size: 12px;
+}
+
+.peak-composer-root .pk-fm-suggestions__list small {
+	display: block;
+	color: var(--pkc-fm-key);
+	font-size: 10px;
+}
+
+.peak-composer-root .pk-fm-suggestions__muted,
+.peak-composer-root .pk-fm-suggestions__row-actions {
+	display: inline-flex;
+	gap: 6px;
+	align-items: center;
+}
+
+.peak-composer-root .pk-fm-suggestions__muted {
+	padding: 12px 13px;
+	color: var(--pkc-fm-key);
+	font-size: 11px;
+}
+
+/* ── math block ─────────────────────────────────────────────────────────── */
+
+.peak-composer-root .pk-math-stack {
+	display: grid;
+	gap: 10px;
+}
+
+.peak-composer-root .pk-math-card {
+	position: relative;
+	display: grid;
+	gap: 8px;
+	padding: 14px;
+	border: 1px solid var(--pkc-fm-line);
+	border-radius: 8px;
+	background: var(--pkc-fm-panel-bg);
+}
+
+.peak-composer-root .pk-math-card:hover {
+	border-color: var(--pkc-math-hover-border);
+	box-shadow: 0 10px 22px rgba(37, 99, 235, 0.08);
+}
+
+.peak-composer-root .pk-math-card__label {
+	color: var(--pkc-math-label);
+	font-size: 12px;
+	font-weight: 760;
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+}
+
+.peak-composer-root .pk-math-card__render {
+	overflow-x: auto;
+	padding: 8px 6px 6px;
+	color: var(--pkc-text, #172033);
+}
+
+.peak-composer-root .pk-math-card__row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.peak-composer-root .pk-math-card__group {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.peak-composer-root .pk-math-card__ai[data-active="true"] {
+	border-color: var(--pk-border-accent, #93c5fd);
+	background: var(--pk-accent-tint, #eaf1ff);
+	color: var(--pk-accent, #2563eb);
+}
+
+/* copy popover */
+.peak-composer-root .pk-math-copy {
+	position: relative;
+	display: inline-flex;
+}
+
+.peak-composer-root .pk-math-copy__menu {
+	position: absolute;
+	top: calc(100% + 4px);
+	left: 0;
+	z-index: 12;
+	display: flex;
+	flex-direction: column;
+	min-width: 120px;
+	padding: 4px;
+	border: 1px solid var(--pk-border, var(--pkc-fm-line));
+	border-radius: 8px;
+	background: var(--pk-surface-overlay, #fff);
+	box-shadow: 0 8px 24px rgba(31, 42, 61, 0.14);
+}
+
+.peak-composer-root .pk-math-copy__menu button {
+	padding: 6px 8px;
+	border: 0;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--pkc-fm-value);
+	font-size: 12px;
+	text-align: left;
+	cursor: pointer;
+}
+
+.peak-composer-root .pk-math-copy__menu button:hover {
+	background: var(--pk-accent-tint, #eaf1ff);
+	color: var(--pk-accent, #2563eb);
+}
+
+/* ── formula detail panels ──────────────────────────────────────────────── */
+
+.peak-composer-root .pk-formula-detail {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 10px 12px;
+	border: 1px solid var(--pk-border-accent, #d8d2ff);
+	border-radius: 8px;
+	background: var(--pk-accent-tint, #f2f0ff);
+}
+
+.peak-composer-root .pk-formula-detail__head {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.peak-composer-root .pk-formula-detail__title {
+	color: var(--pkc-fm-value);
+	font-size: 12px;
+	font-weight: 700;
+}
+
+.peak-composer-root .pk-formula-detail__kept {
+	color: var(--pk-success, #0f8a72);
+	font-size: 11px;
+}
+
+.peak-composer-root .pk-formula-detail__body {
+	color: var(--pkc-text, #172033);
+	font-size: 13px;
+	line-height: 1.55;
+	white-space: pre-wrap;
+}
+
+.peak-composer-root .pk-formula-detail__muted,
+.peak-composer-root .pk-formula-detail__failed {
+	color: var(--pkc-fm-key);
+	font-size: 12px;
+}
+
+.peak-composer-root .pk-formula-detail__failed {
+	color: var(--pk-text-error, #b42318);
+}
+
+.peak-composer-root .pk-formula-detail__caret {
+	display: inline-block;
+	width: 1px;
+	height: 1.05em;
+	margin-left: 1px;
+	vertical-align: text-bottom;
+	background: currentColor;
+	animation: pkFormulaCaret 1s steps(2) infinite;
+}
+
+@keyframes pkFormulaCaret {
+	50% {
+		opacity: 0;
+	}
+}
+
+.peak-composer-root .pk-formula-vartable {
+	display: grid;
+	gap: 0;
+	border: 1px solid var(--pkc-fm-line);
+	border-radius: 6px;
+	overflow: hidden;
+	background: var(--pk-bg, #fff);
+}
+
+.peak-composer-root .pk-formula-vartable > div {
+	display: grid;
+	grid-template-columns: minmax(80px, 0.4fr) 1fr;
+}
+
+.peak-composer-root .pk-formula-vartable > div + div {
+	border-top: 1px solid var(--pkc-fm-line);
+}
+
+.peak-composer-root .pk-formula-vartable__head {
+	background: var(--pk-bg-secondary, #fbfbfc);
+	font-weight: 700;
+	color: var(--pkc-fm-value);
+}
+
+.peak-composer-root .pk-formula-vartable span {
+	padding: 6px 10px;
+	font-size: 12px;
+	color: var(--pkc-fm-value);
+}
+
+.peak-composer-root .pk-formula-vartable__sym {
+	font-family: var(--pk-font-mono, monospace);
+	border-right: 1px solid var(--pkc-fm-line);
+}
+
+.peak-composer-root .pk-formula-detail__foot {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+
+.peak-composer-root .pk-formula-detail__input {
+	flex: 1;
+	min-width: 140px;
+	height: 30px;
+	padding: 0 9px;
+	border: 1px solid var(--pk-border, var(--pkc-fm-line));
+	border-radius: 6px;
+	background: var(--pk-bg, #fff);
+	color: var(--pkc-fm-value);
+	font-size: 12px;
+}
+
+.peak-composer-root .pk-formula-detail__nav {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+}
+
+.peak-composer-root .pk-formula-detail__counter {
+	color: var(--pkc-fm-key);
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+}

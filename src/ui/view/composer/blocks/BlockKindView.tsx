@@ -1,5 +1,7 @@
 import * as React from 'react';
 import type { ComposerBlock } from '@/core/composer';
+import { FrontmatterBlockView } from './frontmatter';
+import { MathBlockView } from './math';
 
 /**
  * Read-only, kind-dispatched block renderer (WP1 skeleton, WP4-annotated).
@@ -21,6 +23,13 @@ export function BlockKindView({ block }: { block: ComposerBlock }): React.ReactE
 		case 'image':
 		case 'embed':
 			return <RefView block={block} />;
+		// WP5 — rich block views (property grid / KaTeX). Interactive AI + vault
+		// entrances arrive via ports at the integration seam; without them these
+		// render the grid / formulas read-only (never fake affordances).
+		case 'frontmatter':
+			return <FrontmatterBlockView block={block} />;
+		case 'math':
+			return <MathBlockView block={block} />;
 		default:
 			return <MonoView block={block} />;
 	}
