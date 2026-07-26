@@ -30,9 +30,10 @@ Contract: [`2026-07-24-peak-composer-complete-implementation-handoff.md`](./2026
 | QA#1 | 真机中期验收 | done（2 must-fix） | 见 QA#1 段 | — |
 | FIX-1 | F1 流式重复 + F2 真机打字失效修复 | done | PASS（真机复验通过） | 1516f50f |
 | FIX-2 | 设计稿保真修复（4 偏离项） | done | PASS（4/4 匹配，几何 QA 46/46，fable 目检通过） | ca369ecb |
-| WP5 | Frontmatter + 公式 | in-progress | pending | — |
+| WP5 | Frontmatter + 公式 | done | PASS | 6a9bded8（merge，3 子 commit） |
+| WP-INT | packs 集成收口 + INT-1 | in-progress | pending | — |
 | WP6 | 表格 + Chart | done | PASS | 11aa5cf2（merge，2 子 commit，amend 修复冲突残留） |
-| WP7 | 图片 + 多图布局 | in-progress | pending | — |
+| WP7 | 图片 + 多图布局 | done | PASS | 75a357ad（merge，4 子 commit） |
 | WP8 | native objects | done | PASS | 21681ffc（merge，3 子 commit） |
 | WP9b | Intelligence Sidecar | done | PASS | ebbbd793（merge，4 子 commit） |
 | WP10 | closure + QA#2 + 最终报告 | pending | pending | — |
@@ -86,6 +87,10 @@ Contract: [`2026-07-24-peak-composer-complete-implementation-handoff.md`](./2026
 - **WP9b（2026-07-26，fable 审计：PASS，merge ebbbd793）**：越界 0/禁区 0/intelligence 零 obsidian/sidecar 零 chat 越境；3 个命名测试 + 合并后全量 289/291 绿。交付：finding 同体（fingerprint 去重/双侧同步/stale via matchBlocks）、brief→session→running→review、frozen context、receipt 四段、PromptInput 内核复用、Composer Result Browser adapter（CMP-RB-03 补全）、十维 telemetry catalog（privacy redaction）。遗留（转集成/QA#2）：related-material port/telemetry sink/focused-block snapshot 用 document 级 fallback 未接实源；ambient sensing runtime、in-body review pin 同步、wide-modal graph real-fit 后续；像素级 sidecar mock 比对待真机。
 - **WP8（2026-07-26，fable 审计：PASS，merge 21681ffc）**：越界 0（.gitignore 负规则改动合理：救回字面 `native/` 目录）；packs 零 obsidian；2 测试文件绿。交付：Base(yaml CST)/Canvas(by-id)/Excalidraw(切片替换+compressed fail-safe) typed patch + 结构化预览、revision-guarded native-file port、code/mermaid 合同、link 能力共享 Copilot definition。遗留：native 结构编辑未走 AI candidate rail（renderer 在 candidates/ 禁区，转集成）；AI native 能力暂复用 DocPolish promptId（prompt 专门化后续）；mermaid popout 渲染入 QA#2。
 - **WP6（2026-07-26，fable 审计：PASS，merge 11aa5cf2 amended）**：越界 0/禁区 0；3 测试文件绿；**合并事故与修复**：merge 输出被截断查看导致 schemas/composer.ts 与 service index 两处未解决标记被 `git add -A` 提交，全量测试立即暴露（compile-error），已解决并 amend——**流程规矩：合并后必须 `git status` 查完整 unmerged 列表 + 全量测试后才允许 commit**。交付：TableModel 生产化（逐字节 round-trip/merge 矩形校验/单向升级/parse5-DOMParser 双 port）、双模选择（S5 手势合同+键盘+ARIA）、merge-aware toolbar（全部真实生效或 disabled+reason）、typed table-patch/chart-source 管线、recharts 懒加载 Chart Block。遗留（诚实登记）：Table AI 5 能力+generate-chart 已实现并单测但**未注册进 runtime**（缺 5 个专用 PromptId 模板，不上死按钮——正确取舍）；cell 级 contenteditable 未做（EditableText 禁区，选中文字走既有 selection toolbar）；两项转集成任务。
+
+- **WP5（2026-07-26，fable 审计：PASS，merge 6a9bded8）**：越界 0（candidates/index.ts 的 2 处 renderer 注册核实为设计扩展点上的 additive，批准）；7 文件冲突全 additive 解决；**合并接缝修复（fable）**：BlockKindView 出现两个重复 `case 'code'`（WP8 先达导致 chart 块永远走 CodeBlockView），合并为 `isChartBlock ? Chart : CodeBlock` 单分支。交付：属性网格+YAML 保真写回+vault 属性库+逐字段 AI 建议、KaTeX 公式+三 detail 独立共存+四格式复制。遗留（转 WP-INT）：vault/AI 端口接线、KaTeX 字体 404（base64 或 mathml）、无 frontmatter 时"添加属性"入口。
+- **WP7（2026-07-26，fable 审计：PASS，merge 75a357ad）**：越界 0/禁区 0/零 obsidian；2 测试 + Canvas QA 10/10 绿。交付：粘贴附件原子事务+rename 引用更新、Canvas 非破坏 converter（精确 blob.size/EXIF 重编码剥离/覆盖需 backup）、kind 保持 caption、instruction-first AI 改图、四种 Markdown 可见布局。设计决策（批准）：图片走独立 `ImageCapabilityCoordinator` port 而非改 WP3 text-only runtime——正确的禁区规避。遗留（转 WP-INT/QA#2）：coordinator 接入组合+renderers 注册+chrome 粘贴接线、caption/layout text port adapter、真机粘贴/fal.ai/raw-HTML preview 验证。
+- **INT-1 缺陷（fable 真机+harness 探针定位，2026-07-26）**：burst commit 后块 remount 导致 **focus 掉到 body + 滚动容器跳底**（scrollTop 0→2292 实测）——长文档下"暂停打字→视口跳走、续打无效"。几何 QA 该断言保持红（45/46）作诚实追踪，修复归 WP-INT 首项。
 
 ## WP0 spike 结论
 
