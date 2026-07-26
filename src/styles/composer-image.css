@@ -1,0 +1,44 @@
+/**
+ * Peak Composer — image pack styles (WP7). Scoped under `.peak-composer-root`;
+ * token-driven (`--pk-*`), no hardcoded colors. The multi-image layout HTML that
+ * lands in the document carries its OWN inline styles so it renders in a plain
+ * Obsidian reading view; these rules only refine that block INSIDE the composer
+ * (hover affordances, selection ring) and style the candidate preview chrome.
+ */
+
+.peak-composer-root .pk-image-candidate-preview {
+	max-height: 120px;
+	max-width: 180px;
+	object-fit: contain;
+	border-radius: var(--pk-radius-md);
+	border: 1px solid var(--background-modifier-border);
+}
+
+/* Layout block inside the composer: give it a hover ring + tidy inner images. */
+.peak-composer-root .pk-image-layout {
+	border-radius: var(--pk-radius-md);
+	transition: box-shadow 120ms ease;
+}
+
+.peak-composer-root .pk-image-layout:hover {
+	box-shadow: 0 0 0 1px var(--background-modifier-border);
+}
+
+.peak-composer-root .pk-image-layout img {
+	border-radius: var(--pk-radius-sm, 4px);
+}
+
+.peak-composer-root .pk-image-layout figure {
+	margin: 0;
+}
+
+.peak-composer-root .pk-image-layout figcaption {
+	color: var(--text-muted);
+}
+
+/* Streaming skeleton respects reduced-motion. */
+@media (prefers-reduced-motion: reduce) {
+	.peak-composer-root .pk-image-skeleton {
+		animation: none;
+	}
+}
