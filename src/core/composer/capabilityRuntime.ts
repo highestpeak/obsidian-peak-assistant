@@ -145,6 +145,13 @@ export interface ComposerCapabilityDefinition<TInput = unknown, TResult = unknow
 	readonly inputSchema: RuntimeSchema<TInput>;
 	readonly resultSchema: RuntimeSchema<TResult>;
 	readonly resultKind: ComposerResultKind;
+	/**
+	 * Static per-definition hints a shared result materializer reads to shape the
+	 * typed envelope when one `resultKind` fans out to several definitions (e.g.
+	 * the formula pack: one `formula-annotation` kind, three `detailKind`s). Never
+	 * a dispatch key — dispatch stays on renderer/adapter/result-kind IDs.
+	 */
+	readonly resultContext?: Readonly<Record<string, string>>;
 	readonly rendererId: ComposerRendererId;
 	/** Required for every mutation-producing effect kind (all but 'analyze'). */
 	readonly writebackAdapterId?: ComposerWritebackAdapterId;

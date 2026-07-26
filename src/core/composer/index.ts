@@ -12,3 +12,4 @@ export * from './transaction';
 export * from './transactionConfig';
 export * from './capabilityContracts';
 export * from './capabilityRuntime';
+export * from './packIds';

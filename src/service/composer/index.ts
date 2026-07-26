@@ -27,3 +27,6 @@ export * from './comment/commentModel';
 export * from './comment/commentStore';
 export * from './linkPreview/linkPreviewModel';
 export * from './render/inlineRuns';
+
+// WP5 — frontmatter + math pack domain logic.
+export * from './packs';

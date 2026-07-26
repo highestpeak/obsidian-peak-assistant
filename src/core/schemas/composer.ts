@@ -234,3 +234,88 @@ export const ComposerTextPatchPayloadSchema = z.object({
 	replacementText: z.string(),
 });
 export type ComposerTextPatchPayload = z.infer<typeof ComposerTextPatchPayloadSchema>;
+
+// ── WP5: frontmatter (metadata) ──────────────────────────────────────────────
+
+/**
+ * Provenance of a frontmatter field value (handoff §8.1). `program` values are
+ * maintained by deterministic logic (created/updated); `ai` is a model
+ * suggestion that never impersonates a program field; `convention` is a
+ * rule/template-derived suggestion; `human` is author-authored.
+ */
+export const ComposerMetadataOriginSchema = z.enum(['program', 'human', 'ai', 'convention']);
+export type ComposerMetadataOrigin = z.infer<typeof ComposerMetadataOriginSchema>;
+
+/** Displayed value shape of a frontmatter field (handoff §8.1 — all YAML kinds). */
+export const ComposerMetadataValueKindSchema = z.enum([
+	'scalar',
+	'list',
+	'boolean',
+	'date',
+	'link',
+	'unknown',
+]);
+export type ComposerMetadataValueKind = z.infer<typeof ComposerMetadataValueKindSchema>;
+
+/** Input for the AI property-suggestion capability (§8.3). Instruction is optional context. */
+export const ComposerMetadataSuggestionInputSchema = z.object({
+	instruction: z.string().optional(),
+});
+export type ComposerMetadataSuggestionInput = z.infer<typeof ComposerMetadataSuggestionInputSchema>;
+
+/**
+ * Payload of a `metadata-field-patch` result envelope (handoff §11.4): ONE
+ * frontmatter field candidate. `requiresReview` is set when accepting would
+ * change the field's shape (e.g. scalar→list), which the writeback refuses to
+ * do silently (§8.4). Never written to YAML without explicit confirmation (§8.3).
+ */
+export const ComposerMetadataFieldPatchPayloadSchema = z.object({
+	key: z.string().min(1),
+	value: z.union([z.string(), z.array(z.string())]),
+	valueKind: ComposerMetadataValueKindSchema,
+	origin: ComposerMetadataOriginSchema,
+	/** Human-readable evidence/reason surfaced next to the suggestion (§8.3). */
+	evidence: z.string().optional(),
+	/** True when accepting changes the field's YAML shape and needs review (§8.4). */
+	requiresReview: z.boolean().optional(),
+});
+export type ComposerMetadataFieldPatchPayload = z.infer<typeof ComposerMetadataFieldPatchPayloadSchema>;
+
+// ── WP5: formula (math) ───────────────────────────────────────────────────────
+
+/** The three independent formula detail kinds (handoff §10.2 / §3.3). */
+export const ComposerFormulaDetailKindSchema = z.enum(['explain', 'split', 'variables']);
+export type ComposerFormulaDetailKind = z.infer<typeof ComposerFormulaDetailKindSchema>;
+
+/** One row of a formula variable table (symbol → meaning). */
+export const ComposerFormulaVariableSchema = z.object({
+	symbol: z.string(),
+	meaning: z.string(),
+});
+export type ComposerFormulaVariable = z.infer<typeof ComposerFormulaVariableSchema>;
+
+/**
+ * Input for a formula detail capability. `detailKind` selects the independent
+ * result family; `latex` is the frozen TeX of the ONE targeted formula (§3.3:
+ * clicking PageRank's table shows PageRank only).
+ */
+export const ComposerFormulaDetailInputSchema = z.object({
+	detailKind: ComposerFormulaDetailKindSchema,
+	latex: z.string(),
+	label: z.string().optional(),
+	instruction: z.string().optional(),
+});
+export type ComposerFormulaDetailInput = z.infer<typeof ComposerFormulaDetailInputSchema>;
+
+/**
+ * Payload of a `formula-annotation` result envelope (handoff §11.4). Carries the
+ * detail kind so the renderer dispatches the right layout; `text` holds the
+ * explain/split narrative, `variables` holds the parsed variable table.
+ */
+export const ComposerFormulaAnnotationPayloadSchema = z.object({
+	detailKind: ComposerFormulaDetailKindSchema,
+	latex: z.string(),
+	text: z.string().optional(),
+	variables: z.array(ComposerFormulaVariableSchema).optional(),
+});
+export type ComposerFormulaAnnotationPayload = z.infer<typeof ComposerFormulaAnnotationPayloadSchema>;
