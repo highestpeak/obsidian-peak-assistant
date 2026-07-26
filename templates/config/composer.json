@@ -192,6 +192,27 @@
         "lucideIcon": "sparkles",
         "historyLabel": "AI 润色",
         "order": 10
+      },
+      "composer.mermaid.edit": {
+        "title": "编辑图表",
+        "description": "用 AI 增量编辑 Mermaid 源码，重渲后再确认",
+        "lucideIcon": "workflow",
+        "historyLabel": "AI 图表编辑",
+        "order": 40
+      },
+      "composer.code.edit": {
+        "title": "编辑代码",
+        "description": "按指令重写或重构代码，保持为围栏代码块",
+        "lucideIcon": "code",
+        "historyLabel": "AI 代码编辑",
+        "order": 42
+      },
+      "composer.link.tidy": {
+        "title": "整理链接",
+        "description": "修复锚点、展开嵌入、转换脚注并补充双链",
+        "lucideIcon": "link",
+        "historyLabel": "AI 链接整理",
+        "order": 44
       }
     },
     "strings": {
@@ -218,5 +239,28 @@
       "variantCounter": "{index}/{count}",
       "unsupportedResult": "暂不支持渲染此结果类型"
     }
+  },
+  "native": {
+    "_doc": "WP8 native object block UI copy (Code/Mermaid/Base/Canvas/Excalidraw/embed previews). Typed fallback + loader: src/ui/view/composer/blocks/nativeBlockConfig.ts. Preview labels only — never a dispatch key.",
+    "preview": "预览",
+    "source": "源码",
+    "baseViewsLabel": "视图",
+    "baseColumnsLabel": "列",
+    "baseFiltersLabel": "过滤",
+    "baseFormulasLabel": "公式",
+    "baseInvalid": "无法解析此 Base 视图",
+    "canvasNodesLabel": "节点",
+    "canvasEdgesLabel": "连线",
+    "canvasInvalid": "无法解析此 Canvas",
+    "excalidrawElementsLabel": "元素",
+    "excalidrawTextLabel": "文本",
+    "excalidrawUnsupported": "此 Excalidraw 图当前不可预览",
+    "embedOpenLabel": "打开",
+    "embedBroken": "嵌入目标缺失",
+    "mermaidRenderError": "图表渲染失败，已显示源码",
+    "mermaidEmpty": "空图表",
+    "linesSuffix": "行",
+    "copySource": "复制源码",
+    "copied": "已复制"
   }
 }
