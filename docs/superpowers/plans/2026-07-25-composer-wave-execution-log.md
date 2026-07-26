@@ -232,3 +232,26 @@ mock 实测值（playwright getComputedStyle，复刻模式基准，修复时直
 
 参考截图：`/tmp/composer-fidelity/mock-default.png`、`mock-action-row.png`（易失，harness shots 目录有生产侧对照）。
 处理：FIX-1 完成后派 FIX-2 保真代理修 4 个偏离项（卡片容器/灰底、row 锚定块底、hover tint、正文基准校准），复拍 harness 截图并排复比后合并。
+
+## WP9b — Intelligence Sidecar + Composer Result Browser adapter（2026-07-26 fable，未 commit→3 commit）
+
+Phase 9 的 sidecar 半边（WP9a 已抽取 shared Result Browser + Quick Search adapter 先例）。基线 `fcf43a6c`（含 ca369ecb）。
+
+**交付层**：
+
+- **Domain runtime**（`src/service/composer/intelligence/**`，framework-neutral，无 obsidian import，t11r boundary 绿）：
+  - `findingIdentity.ts` — `SuggestionFinding{findingId/fingerprint/evidenceRevision/target/state}` + `ComposerFindingStore`。fingerprint+evidenceRevision 去重（一实体）；`bodyMarks()`/`briefItems()` 同一投影；`consume`（正文 accept→consumed）、`dismiss`（任一侧→双侧 dismissed）、`revalidate`（matchBlocks 跨 reparse 重锚，块不映射→stale，绝不静默重定向）。CMP-FIND-01/02。
+  - `runSession.ts` — `CopilotSessionMachine`：`brief→session→running→session/review`，review transient（closeReview 回 originating session）；`FrozenRunContext`（Object.freeze，reuse WP3 ComposerContextSnapshot，later focus 只影响下一 run）；`RunReceipt`（Changes/Insights/Sources/Trace，counts 派生）。CMP-SIDE-02/03/04。
+  - `relatedMaterials.ts` — `ComposerRelatedMaterialSnapshot` + `ComposerRelatedMaterialsPort` + `selectLocalPreview`（bounded 5–7、排除 weak/focus）+ `relatedMaterialCount`（只 items.length）。CMP-REL-01。
+  - `telemetry.ts` — 10 维度 enum + `IntelligenceTelemetryPort` + `RedactingTelemetry`/`redactTelemetryFields`（content/prompt/evidence 默认丢弃）+ `exposureNormalizedRate` + `NOOP_ADAPTIVE`（learning 只接口）。CMP-METRIC-01/02/03。
+  - `IntelligenceRuntime.ts` — app-owned 组合（findings+session+related+telemetry），订阅 hub `committed` 桥接 accepted change→run receipt link + outcome 事件；`onReparse` 重锚 findings。
+- **Schemas additive**：`src/core/schemas/composerIntelligence.ts`（SuggestionFinding + telemetry event Zod，本地 target union 含 selection）。
+- **Config**：`templates/config/composer.json` 加顶层 `sidecar`（strings+cap+breakpoint）与 `telemetry`（10 维度事件名+字段 schema，DATA 非 UI 计数）；typed loader `sidecar/sidecarConfig.ts`。
+- **Result Browser Composer adapter**（`src/ui/view/composer/sidecar/ComposerResultBrowserAdapter.ts`，pure，镜像 QuickSearch 先例）：frozen snapshot→ResultBrowserSnapshot、`applyComposerProjectionChange`（every change search/rebuild-free）、`localFilterItems`（只过滤冻结集不重搜）、`resolveSelectionAfterRevision`、`resolveComposerOpenDisposition`（默认 keep-browser 不导航）。CMP-RB-03 Composer 半边 + CMP-RB-04。既有 result-browser 组件形状未改。
+- **Sidecar UI**（`src/ui/view/composer/sidecar/**`）：`IntelligenceSidecar`（顶层仅 Copilot/History，desktop 右栏 + 窄屏 fixed drawer close/reopen 恢复 + ownerWindow detached-safe resize）、`CopilotView`（brief 三段 + finding rows + related preview / session 复用 PromptInput 内核 + 单层 focus owner / transient review）、`RunReceiptCard`（消息内 4 类切换）、`HistoryView`（读 hub history 投影）、`RelatedMaterialsModal`（Composer-owned wide modal host shared List/Tree/Graph via adapter，Escape 关闭恢复 opener focus，窄屏近全屏）。CMP-SIDE-01/05、CMP-REL-02、CMP-RESP-01、CMP-A11Y-02。
+- **接线**：`ComposerRoot.tsx` 最小 diff（右栏挂 `<IntelligenceSidecar>` + locateBlock）；app 组合 `DocumentComposerRuntime.composeEditing` 造 IntelligenceRuntime（app-owned，非 singleton），`DocumentComposerController` 暴露 `getIntelligence()` + onHubMutation 调 `onReparse`，`DocumentComposerView` 传 `intelligenceSource`。
+- **CSS**：`src/styles/composer-sidecar.css`（scoped .pk-sidecar/.pk-related-modal，`--pk-*` token，Visual Grammar 值：sidecar 16px/composer-modal 12–14px/chip 7–10px、quiet violet nav-focus、muted teal related、metadata≥9.5px），import 进 tailwind.css。
+
+**测试**：`composer-finding-identity`（去重/双侧同步/consume/dismiss/stale 重锚，7 组 30+ assert）、`composer-intelligence-session`（lifecycle/frozen context 不可变/receipt counts/hub bridge/redaction）、`result-browser-host-parity` 扩 Composer 半边（每 change search/rebuild-free、local filter、selection-after-revision、keep-browser）。全量 289 passed（2 失败 chat-studio-message-state-ui / code-block-theme-settings 为基线预存，与本 WP 无关），`npm run build` 绿。
+
+**遗留**：related port / telemetry sink / 真实 focus-block snapshot 由后续 integration 从 app 注入（当前 shell document-level 兜底）；ambient sensing runtime、review 正文 pin 同步、宽 modal graph 真实 fit 归后续 pass；真机 playwright 保真比对未做（headless worktree）。

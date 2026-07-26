@@ -14,6 +14,10 @@ export * from './undoRedoStore';
 export * from './transactionHub';
 export * from './capabilities';
 
+// WP9 — Intelligence Sidecar runtime (finding identity, Copilot session
+// lifecycle, related materials, telemetry). Framework-neutral and node-tested.
+export * from './intelligence';
+
 // WP4 — editing chrome service logic (selection formatting, clipboard, comments,
 // link preview). Framework-neutral and node-tested.
 export * from './selection/formattingSyntax';

@@ -1,12 +1,14 @@
 /**
- * Host-parity tests for the Quick Search ⇄ shared Result Browser adapter
- * (CMP-RB-04).
- *
- * Asserts the adapter maps the `vaultSearchStore` shape onto the browser's
- * controlled state faithfully, routes every browser projection change to a
- * presentation-only store setter (never a search / rebuild), and resolves the
- * list open/new-tab policy exactly as the pre-extraction row did. Pure logic —
- * no React render, no live store singleton.
+ * Host-parity tests for the shared Result Browser host adapters (CMP-RB-03 /
+ * CMP-RB-04). Covers BOTH hosts:
+ *   - Quick Search: maps the `vaultSearchStore` shape onto the browser state,
+ *     routes every projection change to a presentation-only setter, resolves the
+ *     list open/new-tab policy exactly as the pre-extraction row did;
+ *   - Composer (WP9): maps a FROZEN related-material snapshot onto the browser
+ *     state, routes every projection change to a presentation-only reducer branch
+ *     (never search / rebuild), filters the frozen snapshot locally, and resolves
+ *     selection-after-revision + the keep-browser open disposition.
+ * Pure logic — no React render, no live store singleton.
  */
 import {
 	mapStoreToProjectionState,
@@ -15,10 +17,22 @@ import {
 	type QuickSearchProjectionSource,
 } from '../src/ui/view/quick-search/QuickSearchResultBrowserAdapter';
 import {
+	applyComposerProjectionChange,
+	initialComposerBrowserState,
+	mapComposerStateToProjectionState,
+	mapRelatedSnapshotToBrowserSnapshot,
+	localFilterItems,
+	resolveSelectionAfterRevision,
+	resolveComposerOpenDisposition,
+} from '../src/ui/view/composer/sidecar/ComposerResultBrowserAdapter';
+import {
 	applyProjectionChange,
 	type ResultBrowserProjectionChange,
 	type ResultBrowserProjectionState,
 } from '../src/ui/component/result-browser/model';
+import type { SearchResultItem } from '../src/core/search/searchTypes';
+import type { ComposerRelatedMaterialSnapshot } from '../src/service/composer';
+import type { ResultSubgraphOutput } from '../src/service/search/graph/resultSubgraph';
 
 let failures = 0;
 function assert(cond: boolean, msg: string): void {
@@ -110,6 +124,80 @@ function baseState(): ResultBrowserProjectionState {
 		view: 'list', density: 'detailed', graphPreset: 'constellation', graphShowSemantic: false,
 		selectedId: null, inspectorOpen: false, collapsedFolders: [], cursorId: null,
 	};
+}
+
+// ---------------------------------------------------------------------------
+// Composer host (WP9): projection-only over a FROZEN snapshot (CMP-RB-03).
+// ---------------------------------------------------------------------------
+
+function item(id: string, title: string, path: string, score: number): SearchResultItem {
+	return { id, type: 'note' as SearchResultItem['type'], title, path, lastModified: 0, finalScore: score };
+}
+const emptyGraph: ResultSubgraphOutput = {
+	resultNodes: [], hubAnchors: [], edges: [], isolatedDocIds: [], overflowCount: 0,
+};
+const relatedSnapshot: ComposerRelatedMaterialSnapshot = {
+	revision: 'rev-1',
+	focus: { anchorId: 'block-7', rootNodeId: 'doc-root' },
+	items: [item('a', 'Alpha Notes', 'Research/Alpha.md', 0.9), item('b', 'Beta Log', 'Notes/Beta.md', 0.5)],
+	graph: emptyGraph,
+	sourceIdByNodeId: { na: 'a', nb: 'b' },
+	reasonBySourceId: { a: 'shared concept', b: 'linked' },
+	weakNodeIds: [],
+	weakEdgeKeys: [],
+};
+
+// The browser snapshot is derived ONCE from the frozen related snapshot.
+{
+	const bs = mapRelatedSnapshotToBrowserSnapshot(relatedSnapshot);
+	assert(bs.items === relatedSnapshot.items, 'composer browser items are the frozen items (no copy)');
+	assert(bs.subgraph === relatedSnapshot.graph, 'composer browser graph is the frozen graph');
+}
+
+// Every projection change is presentation-only — never search / rebuild.
+{
+	const composerChanges: ResultBrowserProjectionChange[] = [
+		{ kind: 'view', view: 'graph' },
+		{ kind: 'density', density: 'compact' },
+		{ kind: 'graphPreset', preset: 'orbit' },
+		{ kind: 'graphSemantic', on: true },
+		{ kind: 'select', id: 'a' },
+		{ kind: 'cursor', id: 'Research/Alpha.md' },
+		{ kind: 'inspector', open: true },
+		{ kind: 'toggleCollapse', folderPath: 'Research' },
+	];
+	for (const change of composerChanges) {
+		const out = applyComposerProjectionChange(initialComposerBrowserState(), change);
+		assert(out.triggersSearch === false && out.rebuildSnapshot === false, `composer ${change.kind} is search/rebuild free`);
+	}
+	// orbit implies semantic on (mirrors the shared reducer).
+	const orbit = applyComposerProjectionChange(initialComposerBrowserState(), { kind: 'graphPreset', preset: 'orbit' });
+	assert(orbit.state.graphShowSemantic === true, 'composer orbit turns semantic on');
+	// projection mapping is faithful.
+	const projected = mapComposerStateToProjectionState({ ...initialComposerBrowserState(), view: 'tree', selectedId: 'b' });
+	assert(projected.view === 'tree' && projected.selectedId === 'b', 'composer state → projection state faithful');
+}
+
+// Local filter operates ONLY over the frozen snapshot (never a re-query).
+{
+	assert(localFilterItems(relatedSnapshot.items, '').length === 2, 'empty filter returns complete frozen set');
+	assert(localFilterItems(relatedSnapshot.items, 'beta').length === 1, 'filter matches title case-insensitively');
+	assert(localFilterItems(relatedSnapshot.items, 'notes/').length === 1, 'filter matches path');
+	assert(localFilterItems(relatedSnapshot.items, 'zzz').length === 0, 'no match → empty (no fallback query)');
+}
+
+// Selection-after-revision: keep if present, else highest ranked, else null.
+{
+	assert(resolveSelectionAfterRevision(relatedSnapshot, 'b') === 'b', 'keeps selection still present in new snapshot');
+	assert(resolveSelectionAfterRevision(relatedSnapshot, 'gone') === 'a', 'falls back to highest-ranked item');
+	const empty: ComposerRelatedMaterialSnapshot = { ...relatedSnapshot, items: [] };
+	assert(resolveSelectionAfterRevision(empty, 'x') === null, 'empty snapshot → null selection');
+}
+
+// Composer open disposition: keep-browser by default (never navigates away).
+{
+	assert(resolveComposerOpenDisposition({ newTab: false }) === 'keep-browser', 'default open keeps the browser');
+	assert(resolveComposerOpenDisposition({ newTab: true }) === 'tab', 'modifier requests a Vault tab');
 }
 
 if (failures > 0) {

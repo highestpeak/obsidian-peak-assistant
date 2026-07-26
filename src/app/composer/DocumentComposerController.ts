@@ -34,6 +34,7 @@ import {
 	type ComposerLinkMetadataPort,
 	type ComposerSourcePort,
 	type ComposerTransactionHub,
+	type IntelligenceRuntime,
 } from '@/service/composer';
 
 export type { ComposerLifecycleStatus, DocumentComposerState } from '@/core/composer';
@@ -52,6 +53,8 @@ export interface ComposerEditingRuntime {
 	candidateRuntime?: ComposerCandidateRuntimePort;
 	comments: ComposerCommentStore;
 	linkPort?: ComposerLinkMetadataPort;
+	/** App-owned Intelligence Sidecar runtime (WP9); absent ⇒ no sidecar. */
+	intelligence?: IntelligenceRuntime;
 }
 
 /** Builds the editing runtime for one open session (app-owned composition). */
@@ -120,6 +123,11 @@ export class DocumentComposerController implements ComposerStateSource {
 	/** The current per-document editing runtime, or undefined for the read-only host. */
 	getRuntime(): ComposerEditingRuntime | undefined {
 		return this.editing ?? undefined;
+	}
+
+	/** The current Intelligence Sidecar runtime, or undefined (WP9). */
+	getIntelligence(): IntelligenceRuntime | undefined {
+		return this.editing?.intelligence;
 	}
 
 	/** Resolves once the most recent async transition has settled (for tests). */
@@ -226,6 +234,9 @@ export class DocumentComposerController implements ComposerStateSource {
 		const next = runtime.session.snapshot;
 		if (this.lastSnapshot && this.lastSnapshot !== next) {
 			runtime.comments.revalidate(this.lastSnapshot, next);
+			// Re-anchor Intelligence findings across the reparse (matchBlocks) so the
+			// shared body ⇄ brief entity survives edits or goes stale (§5.4).
+			runtime.intelligence?.onReparse(this.lastSnapshot, next);
 		}
 		this.lastSnapshot = next;
 		if (this.state.filePath) {
@@ -234,6 +245,7 @@ export class DocumentComposerController implements ComposerStateSource {
 	}
 
 	private disposeEditing(): void {
+		this.editing?.intelligence?.dispose();
 		this.editing?.dispose();
 		this.editing = null;
 	}

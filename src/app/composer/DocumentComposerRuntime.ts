@@ -16,10 +16,13 @@ import {
 	ComposerSourceRevisionService,
 	ComposerTransactionEngine,
 	ComposerTransactionHub,
+	IntelligenceRuntime,
 	type ComposerCapabilityDocumentRuntime,
 	type ComposerCommentPersistencePort,
 	type ComposerDocumentSession,
 	type ComposerLinkMetadataPort,
+	type ComposerRelatedMaterialsPort,
+	type IntelligenceTelemetryPort,
 } from '@/service/composer';
 import { DEFAULT_TRANSACTION_CONFIG, type ComposerTransactionConfig } from '@/core/composer';
 import {
@@ -38,6 +41,10 @@ export interface DocumentComposerRuntimeAdapters {
 	commentPersistence?: ComposerCommentPersistencePort;
 	/** Vault link metadata (Obsidian metadata cache). */
 	linkPort?: ComposerLinkMetadataPort;
+	/** Related-material snapshot port for the Intelligence Sidecar (WP9). */
+	relatedMaterials?: ComposerRelatedMaterialsPort;
+	/** Privacy-safe telemetry sink for the §12.7 metric events (WP9). */
+	intelligenceTelemetry?: IntelligenceTelemetryPort;
 }
 
 export class DocumentComposerRuntime {
@@ -46,6 +53,8 @@ export class DocumentComposerRuntime {
 
 	private readonly commentPersistence?: ComposerCommentPersistencePort;
 	private readonly linkPort?: ComposerLinkMetadataPort;
+	private readonly relatedMaterials?: ComposerRelatedMaterialsPort;
+	private readonly intelligenceTelemetry?: IntelligenceTelemetryPort;
 
 	constructor(
 		private readonly source: ObsidianComposerSourceAdapter,
@@ -58,6 +67,8 @@ export class DocumentComposerRuntime {
 		this.transactionConfig = transactionConfig;
 		this.commentPersistence = adapters.commentPersistence;
 		this.linkPort = adapters.linkPort;
+		this.relatedMaterials = adapters.relatedMaterials;
+		this.intelligenceTelemetry = adapters.intelligenceTelemetry;
 	}
 
 	/** Override the transaction config once the runtime JSON resolves (async). */
@@ -84,10 +95,18 @@ export class DocumentComposerRuntime {
 		const hub = this.createTransactionHub(session);
 		const capabilityRuntime = this.createCapabilityRuntime(session, hub);
 		const comments = new ComposerCommentStore(session.snapshot.documentId, this.commentPersistence);
+		// WP9 — one Intelligence runtime per document, bound to this hub for the
+		// accepted-change → History receipt bridge. App-owned (no singleton).
+		const intelligence = new IntelligenceRuntime({
+			hub,
+			...(this.relatedMaterials ? { related: this.relatedMaterials } : {}),
+			...(this.intelligenceTelemetry ? { telemetry: this.intelligenceTelemetry } : {}),
+		});
 		return {
 			session,
 			hub,
 			comments,
+			intelligence,
 			...(this.linkPort ? { linkPort: this.linkPort } : {}),
 			...(capabilityRuntime ? { projection: capabilityRuntime, candidateRuntime: capabilityRuntime } : {}),
 		};

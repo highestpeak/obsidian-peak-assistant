@@ -218,5 +218,366 @@
       "variantCounter": "{index}/{count}",
       "unsupportedResult": "暂不支持渲染此结果类型"
     }
+  },
+  "sidecar": {
+    "_doc": "WP9 Intelligence Sidecar — strings + bounded knobs. Labels/thresholds live here per docs/conventions/configurability.md, not in TSX.",
+    "narrowBreakpointPx": 1180,
+    "relatedPreviewCap": 6,
+    "graphNodeCap": 100,
+    "strings": {
+      "title": "Intelligence",
+      "followingDoc": "正在跟随正文",
+      "tabCopilot": "Copilot",
+      "tabHistory": "History",
+      "close": "关闭",
+      "openDrawer": "打开智能侧栏",
+      "back": "返回",
+      "briefHeading": "针对当前正文，接下来值得处理什么",
+      "sectionNextMoves": "接下来可能要做",
+      "sectionRelated": "相关材料",
+      "sectionUnplaced": "还没安放的想法",
+      "whyRanked": "为什么这些排在前面？",
+      "refreshBrief": "更新建议",
+      "viewSource": "查看来源",
+      "bringIntoSession": "带入协作",
+      "openFullView": "打开完整视图",
+      "ignore": "忽略",
+      "discuss": "问 Copilot",
+      "askComposerPlaceholder": "描述你想做什么…",
+      "send": "发送",
+      "stop": "停止",
+      "allCapabilities": "全部能力",
+      "receiptChanges": "Changes",
+      "receiptInsights": "Insights",
+      "receiptSources": "Sources",
+      "receiptTrace": "Trace",
+      "locateInDocument": "定位正文",
+      "staleFindingNotice": "证据已随正文变化，需要重新核对",
+      "historyEmpty": "还没有已接受的写入",
+      "reviewClose": "完成审阅",
+      "emptyBrief": "暂无新的建议"
+    }
+  },
+  "telemetry": {
+    "_doc": "WP9 §12.7 proactive-intelligence metric catalog. Ten dimensions; each event's name + field schema is the source of truth for runtime/store instrumentation. Document content / prompt / evidence never appear in fields (privacy boundary).",
+    "maxFieldStringLength": 120,
+    "forbiddenFields": [
+      "content",
+      "text",
+      "prompt",
+      "promptText",
+      "evidence",
+      "evidenceText",
+      "sourceText",
+      "excerpt",
+      "body",
+      "documentText"
+    ],
+    "dimensions": {
+      "relevance": [
+        {
+          "event": "finding_ingested",
+          "fields": {
+            "findingId": "id",
+            "deduped": "boolean"
+          },
+          "kind": "ai"
+        },
+        {
+          "event": "finding_relevance_rated",
+          "fields": {
+            "findingId": "id",
+            "rating": "int"
+          },
+          "kind": "ai"
+        },
+        {
+          "event": "evidence_coverage",
+          "fields": {
+            "findingId": "id",
+            "sourceCount": "int"
+          },
+          "kind": "ai"
+        }
+      ],
+      "outcome": [
+        {
+          "event": "finding_consumed",
+          "fields": {
+            "findingId": "id"
+          },
+          "kind": "ai"
+        },
+        {
+          "event": "run_change_accepted",
+          "fields": {
+            "runId": "id",
+            "transactionId": "id",
+            "origin": "enum"
+          }
+        },
+        {
+          "event": "accept_partial",
+          "fields": {
+            "runId": "id",
+            "acceptedCount": "int",
+            "totalCount": "int"
+          },
+          "kind": "ai"
+        },
+        {
+          "event": "edit_after_accept",
+          "fields": {
+            "transactionId": "id",
+            "editedWithinMs": "int"
+          },
+          "kind": "ai"
+        }
+      ],
+      "control": [
+        {
+          "event": "finding_dismissed",
+          "fields": {
+            "findingId": "id",
+            "surface": "enum"
+          }
+        },
+        {
+          "event": "undo_after_accept",
+          "fields": {
+            "transactionId": "id"
+          }
+        },
+        {
+          "event": "rollback_invoked",
+          "fields": {
+            "historyId": "id",
+            "success": "boolean"
+          }
+        },
+        {
+          "event": "stale_apply_prevented",
+          "fields": {
+            "findingId": "id"
+          }
+        }
+      ],
+      "interruption": [
+        {
+          "event": "brief_unsolicited_exposure",
+          "fields": {
+            "count": "int",
+            "sensingPolicy": "enum"
+          },
+          "kind": "ai"
+        },
+        {
+          "event": "brief_opened",
+          "fields": {
+            "sensingPolicy": "enum"
+          }
+        },
+        {
+          "event": "finding_time_to_dismiss",
+          "fields": {
+            "findingId": "id",
+            "ms": "int"
+          }
+        },
+        {
+          "event": "quiet_session",
+          "fields": {
+            "durationMs": "int"
+          },
+          "kind": "ai"
+        }
+      ],
+      "dedup": [
+        {
+          "event": "duplicate_suppressed",
+          "fields": {
+            "fingerprint": "id"
+          },
+          "kind": "ai"
+        },
+        {
+          "event": "cross_surface_leak",
+          "fields": {
+            "findingId": "id"
+          }
+        },
+        {
+          "event": "consumed_resurfacing",
+          "fields": {
+            "findingId": "id"
+          }
+        },
+        {
+          "event": "stale_resurfacing",
+          "fields": {
+            "findingId": "id"
+          }
+        }
+      ],
+      "efficiency": [
+        {
+          "event": "time_to_first_useful_suggestion",
+          "fields": {
+            "ms": "int"
+          },
+          "kind": "ai"
+        },
+        {
+          "event": "review_time",
+          "fields": {
+            "runId": "id",
+            "ms": "int"
+          }
+        },
+        {
+          "event": "actions_saved",
+          "fields": {
+            "runId": "id",
+            "count": "int"
+          },
+          "kind": "ai"
+        },
+        {
+          "event": "time_to_accepted_write",
+          "fields": {
+            "runId": "id",
+            "ms": "int"
+          }
+        }
+      ],
+      "reliability": [
+        {
+          "event": "run_failed",
+          "fields": {
+            "runId": "id"
+          },
+          "kind": "ai"
+        },
+        {
+          "event": "run_cancelled",
+          "fields": {
+            "runId": "id"
+          }
+        },
+        {
+          "event": "run_retried",
+          "fields": {
+            "runId": "id"
+          }
+        },
+        {
+          "event": "transaction_conflict",
+          "fields": {
+            "reason": "enum"
+          }
+        },
+        {
+          "event": "findings_staled",
+          "fields": {
+            "count": "int"
+          }
+        },
+        {
+          "event": "writeback_validation_failed",
+          "fields": {
+            "runId": "id"
+          },
+          "kind": "ai"
+        }
+      ],
+      "performance": [
+        {
+          "event": "brief_compute_latency",
+          "fields": {
+            "ms": "int"
+          },
+          "kind": "ai"
+        },
+        {
+          "event": "local_ranking_cost",
+          "fields": {
+            "ms": "int",
+            "nodeCount": "int"
+          }
+        },
+        {
+          "event": "large_note_degradation",
+          "fields": {
+            "blockCount": "int",
+            "ms": "int"
+          }
+        },
+        {
+          "event": "drawer_render_latency",
+          "fields": {
+            "ms": "int"
+          }
+        }
+      ],
+      "trust": [
+        {
+          "event": "source_opened",
+          "fields": {
+            "runId": "id"
+          }
+        },
+        {
+          "event": "reason_expanded",
+          "fields": {
+            "findingId": "id"
+          }
+        },
+        {
+          "event": "manual_verification",
+          "fields": {
+            "runId": "id"
+          }
+        },
+        {
+          "event": "accept_without_source_view",
+          "fields": {
+            "runId": "id"
+          },
+          "kind": "ai"
+        }
+      ],
+      "learning": [
+        {
+          "event": "capability_acceptance_trend",
+          "fields": {
+            "capabilityId": "id",
+            "acceptRate": "float"
+          },
+          "kind": "ai"
+        },
+        {
+          "event": "dismiss_reason",
+          "fields": {
+            "findingId": "id",
+            "reason": "enum"
+          }
+        },
+        {
+          "event": "ranking_lift",
+          "fields": {
+            "lift": "float",
+            "interruptionDelta": "float"
+          },
+          "kind": "ai"
+        }
+      ]
+    },
+    "evaluationBoundary": {
+      "acceptanceIsNotSoleMetric": true,
+      "exposureNormalizedAccept": true,
+      "separateAiAndDeterministic": true,
+      "contentStaysLocal": true,
+      "adaptiveLearningMustBeDisableableAndClearable": true
+    }
   }
 }

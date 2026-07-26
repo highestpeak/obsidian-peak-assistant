@@ -63,6 +63,7 @@ export class DocumentComposerView extends ReactItemViewHost {
 		const source: ComposerStateSource = controller ?? EMPTY_SOURCE;
 		const onRevalidate = controller ? () => controller.revalidate() : undefined;
 		const runtimeSource = controller ? { getRuntime: () => controller.getRuntime() } : undefined;
+		const intelligenceSource = controller ? { getIntelligence: () => controller.getIntelligence() } : undefined;
 		return createReactElementWithServices(
 			ComposerRoot,
 			{
@@ -70,6 +71,7 @@ export class DocumentComposerView extends ReactItemViewHost {
 				config: this.config,
 				onRevalidate,
 				runtimeSource,
+				intelligenceSource,
 				onOpenLink: (kind, target) => this.openLink(kind, target),
 			},
 			this.appContext,
