@@ -17,10 +17,12 @@ import {
 	setFrontmatterField,
 	createFrontmatterBlock,
 	buildMetadataFieldPatchOperations,
+	buildInsertFrontmatterHeadOperations,
 	computeVaultPropertyInventory,
 	fieldCandidateFromVault,
 	customFieldCandidate,
 	parseMetadataSuggestions,
+	parseComposerDocument,
 	type VaultFrontmatterRecord,
 } from '@/service/composer';
 import { makeChecker } from './helpers/composer-fakes';
@@ -107,6 +109,43 @@ function testOperations(): void {
 	check('stale build → no ops', !bad.ok && bad.operations.length === 0 && bad.reason === 'stale');
 }
 
+function testHeadInsert(): void {
+	// A document with no frontmatter: insert a seeded block at byte 0.
+	const doc = '# Title\n\nBody paragraph.\n';
+	const snapshot = parseComposerDocument(doc, { filePath: 'head.md' });
+	const baseCount = snapshot.blocks.length;
+	const built = buildInsertFrontmatterHeadOperations(snapshot, [{ key: 'tags', value: [] }]);
+	check('head insert ok', built.ok && built.operations.length === 1);
+	check('head insert is +1 block', built.expectedBlockDelta === 1);
+	check('head insert targets document', built.target?.kind === 'document');
+	const op = built.operations[0];
+	check('head insert op kind + position', op.kind === 'insertBlock' && op.kind === 'insertBlock' && op.at === 0 && op.blockKind === 'frontmatter');
+	// Byte-precise: flow-style seed + a trailing blank line separator (WP4 contract).
+	const text = op.kind === 'insertBlock' ? op.text : '';
+	check('head insert bytes exact', text === '---\ntags: []\n---\n\n', JSON.stringify(text));
+
+	// Applying the op reparses to a real frontmatter block (+1) at the head.
+	const next = text + doc;
+	const reparsed = parseComposerDocument(next, { filePath: 'head.md' });
+	check('reparse gains one block', reparsed.blocks.length === baseCount + 1);
+	check('reparse head is frontmatter', reparsed.blocks[0].kind === 'frontmatter');
+	const fm = parseFrontmatterModel(next.slice(reparsed.blocks[0].source.from, reparsed.blocks[0].source.to));
+	check('seeded tags field present', fm.present && !fm.malformed && fm.fields.some((f) => f.key === 'tags' && f.valueKind === 'list'));
+
+	// Refuses when a frontmatter block already exists (only ever one, at the head).
+	const withFm = parseComposerDocument('---\ntype: note\n---\n\n# T\n', { filePath: 'has.md' });
+	const refused = buildInsertFrontmatterHeadOperations(withFm, [{ key: 'x', value: 'y' }]);
+	check('refuses when frontmatter exists', !refused.ok && refused.operations.length === 0 && refused.reason === 'frontmatter-exists');
+
+	// Empty document: no trailing separator needed.
+	const empty = parseComposerDocument('', { filePath: 'empty.md' });
+	const emptyBuilt = buildInsertFrontmatterHeadOperations(empty, [{ key: 'tags', value: [] }]);
+	const emptyText = emptyBuilt.operations[0]?.kind === 'insertBlock' ? emptyBuilt.operations[0].text : '';
+	check('empty-doc insert has no extra separator', emptyText === '---\ntags: []\n---\n', JSON.stringify(emptyText));
+	const emptyReparse = parseComposerDocument(emptyText, { filePath: 'empty.md' });
+	check('empty-doc insert yields a frontmatter block', emptyReparse.blocks.length === 1 && emptyReparse.blocks[0].kind === 'frontmatter');
+}
+
 function testInventory(): void {
 	const records: VaultFrontmatterRecord[] = [
 		{ path: 'a.md', frontmatter: { tags: ['pkm', 'x'], created: '2023-01-01', type: 'analysis' } },
@@ -167,6 +206,7 @@ function testSuggestionParse(): void {
 testModel();
 testWriteback();
 testOperations();
+testHeadInsert();
 testInventory();
 testCandidates();
 testSuggestionParse();

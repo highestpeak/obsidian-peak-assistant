@@ -52,6 +52,13 @@
 	flex-wrap: wrap;
 }
 
+/* "添加属性" entrance for a document with no frontmatter block yet. */
+.peak-composer-root .pk-fm-add {
+	display: flex;
+	align-items: center;
+	margin: 2px 0 10px;
+}
+
 .peak-composer-root .pk-fm-issue {
 	display: inline-flex;
 	align-items: center;

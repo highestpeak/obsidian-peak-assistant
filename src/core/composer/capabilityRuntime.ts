@@ -45,6 +45,17 @@ export const COMPOSER_STREAMING_TEXT_RENDERER_ID: ComposerRendererId = 'composer
 /** Text patch writeback: replaces one block/unit source range atomically. */
 export const COMPOSER_TEXT_PATCH_WRITEBACK_ID: ComposerWritebackAdapterId = 'composer.writeback.text-patch';
 
+/** Structured review card for a `native-file-patch` candidate (Base/Canvas/Excalidraw). */
+export const COMPOSER_NATIVE_FILE_PATCH_RENDERER_ID: ComposerRendererId = 'composer.renderer.native-file-patch';
+
+/**
+ * Marker writeback for `native-file-patch`: the change targets a SEPARATE native
+ * file, so it produces NO Markdown operations — the runtime writes it through the
+ * revision-guarded native-file port on accept. Registered so `validateBindings`
+ * sees a complete resultKind→materializer→writeback chain.
+ */
+export const COMPOSER_NATIVE_FILE_PATCH_WRITEBACK_ID: ComposerWritebackAdapterId = 'composer.writeback.native-file-patch';
+
 // ── Runtime schema ────────────────────────────────────────────────────────────
 
 /**
@@ -169,8 +180,23 @@ export interface ComposerCapabilityDefinition<TInput = unknown, TResult = unknow
 	/**
 	 * Map a frozen context snapshot (+ optional targeted instruction) to the
 	 * PromptId's template variables. Required for model-backed modes.
+	 *
+	 * `extras` carries run-time context the frozen snapshot cannot hold — notably
+	 * `nativeText`, the current bytes of a SEPARATE native object file the runtime
+	 * pre-reads through the native-file port for a `native-file-patch` capability.
+	 * Text-only packs ignore it.
 	 */
-	buildPromptVariables?(snapshot: ComposerContextSnapshot, instruction?: string): Record<string, unknown>;
+	buildPromptVariables?(
+		snapshot: ComposerContextSnapshot,
+		instruction?: string,
+		extras?: ComposerPromptExtras,
+	): Record<string, unknown>;
+}
+
+/** Optional run-time inputs a capability's prompt builder may consume (WP-INT). */
+export interface ComposerPromptExtras {
+	/** Verbatim current bytes of the native object file (native-file-patch runs). */
+	nativeText?: string;
 }
 
 /** A pack groups related definitions; registration is explicit at app composition (spec §12). */

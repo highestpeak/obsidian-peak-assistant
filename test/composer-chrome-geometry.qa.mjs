@@ -224,6 +224,24 @@ const geom = (locator) =>
 	const leaf = page.locator('.pk-composer-block[data-kind="paragraph"] .pk-composer-editable').first();
 	await leaf.click();
 	await page.keyboard.press('End');
+	// INT-1: push the scroll container off its top with a REAL wheel gesture (the
+	// editing scroll-guard rightly treats a bare programmatic scrollTop write as
+	// the spurious caret-reveal it suppresses) so a commit-driven remount has
+	// somewhere to (wrongly) jump to; record the pre-commit scroll + editing
+	// identity so the "continuity through commit" assertions have a baseline.
+	await page.mouse.move(700, 400);
+	await page.mouse.wheel(0, 120);
+	await page.waitForTimeout(400); // let the wheel scroll + guard window settle
+	const preCommit = await page.evaluate(() => {
+		const scroller = document.querySelector('.peak-composer-root');
+		const active = document.activeElement;
+		return {
+			scrollTop: scroller.scrollTop,
+			blockId: active?.closest('.pk-composer-block')?.getAttribute('data-block-id') ?? null,
+			kind: active?.closest('.pk-composer-block')?.getAttribute('data-kind') ?? null,
+		};
+	});
+	assert.ok(preCommit.scrollTop > 0, `wheel gesture did not scroll (scrollTop=${preCommit.scrollTop})`);
 	await page.keyboard.type(' geometry-qa');
 	await page.waitForTimeout(1100); // burst window (800ms) + margin
 	await page.waitForFunction(() => !document.querySelector('.pk-undo-redo .pk-undo-redo__btn').disabled);
@@ -234,6 +252,31 @@ const geom = (locator) =>
 			{ x: Math.round(undoEnabledBox.x), y: Math.round(undoEnabledBox.y) },
 		),
 	);
+	// INT-1 continuity: after the burst commit the same block's contenteditable
+	// still owns the keyboard, the scroll container did not move, and typing keeps
+	// landing (the edit is continuous across the reparse-driven snapshot swap).
+	const postCommit = await page.evaluate(() => {
+		const scroller = document.querySelector('.peak-composer-root');
+		const active = document.activeElement;
+		return {
+			scrollTop: scroller.scrollTop,
+			isCE: active instanceof HTMLElement && active.isContentEditable,
+			kind: active?.closest('.pk-composer-block')?.getAttribute('data-kind') ?? null,
+		};
+	});
+	await record('commit keeps the caret in the same block contenteditable', () => {
+		assert.equal(postCommit.isCE, true, 'activeElement is not a contenteditable after commit');
+		assert.equal(postCommit.kind, preCommit.kind, `block kind changed ${preCommit.kind}→${postCommit.kind}`);
+	});
+	await record('commit does not move the scroll container', () =>
+		assert.equal(Math.round(postCommit.scrollTop), Math.round(preCommit.scrollTop)),
+	);
+	await page.keyboard.type(' more');
+	await page.waitForTimeout(1100);
+	await record('typing continues after the commit remount', async () => {
+		const text = await leaf.evaluate((el) => el.textContent ?? '');
+		assert.ok(/geometry-qa more/.test(text), `continued text missing: ${JSON.stringify(text)}`);
+	});
 	await record('undo tooltip names the next transaction', async () => {
 		const label = await undoBtns.first().getAttribute('aria-label');
 		assert.match(label, /直接编辑/);

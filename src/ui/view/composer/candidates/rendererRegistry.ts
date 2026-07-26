@@ -27,6 +27,12 @@ export interface CandidateRendererProps {
 	strings: CandidateUiStrings;
 	/** Accumulated streaming text for the active variant (null when not streaming). */
 	streamingText: string | null;
+	/**
+	 * Verbatim source the candidate replaces ("before" text), for in-place word
+	 * diff (CMP-REV-02). Null when unavailable (non-text-patch, drifted revision,
+	 * or no resolver wired) — the renderer then shows the plain replacement.
+	 */
+	originalText?: string | null;
 }
 
 export type CandidateRendererComponent = React.ComponentType<CandidateRendererProps>;

@@ -28,6 +28,7 @@ import * as React from 'react';
 import { Check, ChevronLeft, ChevronRight, RefreshCw, RotateCcw, X } from 'lucide-react';
 import type { ComposerResultEnvelope } from '@/core/composer';
 import type { ComposerTextPatchPayload } from '@/core/schemas/composer';
+import { diffWords, type DiffSegment } from '@/service/composer';
 import { Button } from '@/ui/components/primitives';
 import { formatVariantCounter } from './candidateUiConfig';
 import type { CandidateRendererProps } from './rendererRegistry';
@@ -38,17 +39,85 @@ function activeVariantIndex(props: CandidateRendererProps): number {
 	return props.candidate.variants.findIndex((v) => v.variantId === props.candidate.activeVariantId);
 }
 
+/**
+ * The reviewable body text for a ready candidate. `text-patch` carries the
+ * replacement prose directly; typed-object results (table-patch / chart-source)
+ * carry a materialized string preview — the post-patch table markdown / the
+ * fenced chart block — so the same streaming-text card shows a sensible
+ * structured preview instead of the raw streamed JSON. Dispatch stays on the
+ * typed `resultKind`, never a label.
+ */
 function readyText(props: CandidateRendererProps): string | null {
 	const change = props.candidate.proposedChange;
 	const envelope = change.result as ComposerResultEnvelope | undefined;
-	if (!envelope || envelope.resultKind !== 'text-patch') return null;
-	const payload = envelope.payload as ComposerTextPatchPayload;
-	return typeof payload?.replacementText === 'string' ? payload.replacementText : null;
+	if (!envelope) return null;
+	if (envelope.resultKind === 'text-patch') {
+		const payload = envelope.payload as ComposerTextPatchPayload;
+		return typeof payload?.replacementText === 'string' ? payload.replacementText : null;
+	}
+	if (envelope.resultKind === 'table-patch') {
+		const preview = (envelope.payload as { replacement?: unknown })?.replacement;
+		return typeof preview === 'string' ? preview : null;
+	}
+	if (envelope.resultKind === 'chart-source') {
+		const preview = (envelope.payload as { fencedSource?: unknown })?.fencedSource;
+		return typeof preview === 'string' ? preview : null;
+	}
+	return null;
+}
+
+/**
+ * Render a ready text-patch candidate as an in-place word diff (CMP-REV-02):
+ * deleted words struck through at their original position, inserted words
+ * highlighted — no whole-line duplicate. Falls back to plain replacement text
+ * when no "before" source is available (non-text-patch, drifted revision, or no
+ * resolver wired) or when nothing actually changed.
+ */
+function ReadyBody({ text, originalText }: { text: string; originalText: string | null }): React.ReactElement {
+	if (originalText === null || originalText === text) {
+		return <span className="whitespace-pre-wrap break-words text-[var(--text-normal)]">{text}</span>;
+	}
+	const segments = diffWords(originalText, text);
+	return (
+		<span className="whitespace-pre-wrap break-words text-[var(--text-normal)]" data-diff="inplace">
+			{segments.map((seg, i) => renderSegment(seg, i))}
+		</span>
+	);
+}
+
+function renderSegment(seg: DiffSegment, key: number): React.ReactElement {
+	if (seg.kind === 'del') {
+		return (
+			<del key={key} className="pk-diff-del">
+				{seg.text}
+			</del>
+		);
+	}
+	if (seg.kind === 'ins') {
+		return (
+			<ins key={key} className="pk-diff-ins">
+				{seg.text}
+			</ins>
+		);
+	}
+	return <React.Fragment key={key}>{seg.text}</React.Fragment>;
 }
 
 function CandidateBody(props: CandidateRendererProps): React.ReactElement {
 	const { strings, streamingText, candidate } = props;
 	if (streamingText !== null) {
+		// Empty while streaming = skeleton: either the first prose delta has not
+		// arrived, or this is a typed-object run (table-patch / chart-source) whose
+		// raw JSON is deliberately never shown as the body. Show a quiet progress
+		// label + caret instead of a bare blinking caret or half-formed JSON.
+		if (streamingText.length === 0) {
+			return (
+				<span className="text-[var(--text-muted)]">
+					{strings.streaming}
+					<span aria-hidden="true" className="inline-block w-[1px] h-[1.1em] align-text-bottom bg-[var(--text-normal)] animate-pulse" />
+				</span>
+			);
+		}
 		return (
 			<span className="whitespace-pre-wrap break-words text-[var(--text-normal)]">
 				{streamingText}
@@ -66,7 +135,7 @@ function CandidateBody(props: CandidateRendererProps): React.ReactElement {
 	if (text === null) {
 		return <span className="text-[var(--text-muted)]">{strings.streaming}</span>;
 	}
-	return <span className="whitespace-pre-wrap break-words text-[var(--text-normal)]">{text}</span>;
+	return <ReadyBody text={text} originalText={props.originalText ?? null} />;
 }
 
 function VariantNav(props: CandidateRendererProps & { disabled: boolean }): React.ReactElement | null {

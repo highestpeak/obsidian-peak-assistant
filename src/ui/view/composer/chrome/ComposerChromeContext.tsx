@@ -10,7 +10,10 @@ import type {
 	ComposerDocumentSession,
 	ComposerLinkMetadataPort,
 	ComposerTransactionHub,
+	ImageCapabilityCoordinator,
+	VaultPropertyScanPort,
 } from '@/service/composer';
+import type { FormulaDetailGeneratorPort } from '../blocks/math/formulaDetailStore';
 import type { ComposerConfig } from '@/ui/view/composer/config/composerConfig';
 import type { CandidateRendererRegistry } from '@/ui/view/composer/candidates';
 
@@ -36,6 +39,16 @@ export interface ComposerChromeRuntime {
 	candidateRuntime?: ComposerCandidateRuntimePort;
 	comments?: ComposerCommentStore;
 	linkPort?: ComposerLinkMetadataPort;
+	/** Vault property inventory scan for the Frontmatter property library (WP5 §8.2). */
+	vaultInventory?: VaultPropertyScanPort;
+	/** Formula-detail generator for the math block's bespoke detail store (WP5 §10.2). */
+	formulaDetailGenerator?: FormulaDetailGeneratorPort;
+	/**
+	 * WP7 — per-document image coordinator. Drives the image block object-toolbar
+	 * flows (paste review / AI 改图 / caption / layout) and its own candidate cards.
+	 * Absent ⇒ image affordances render disabled with a reason (never fake).
+	 */
+	imageCoordinator?: ImageCapabilityCoordinator;
 }
 
 export interface ComposerChromeValue {
@@ -48,6 +61,8 @@ export interface ComposerChromeValue {
 	snapshot: ComposerDocumentSnapshot | null;
 	/** Typing-burst window (ms) — from the transaction config, not a constant. */
 	burstWindowMs: number;
+	/** INT-1 scroll-guard user-gesture window (ms) — from the transaction config. */
+	scrollGuardGestureWindowMs: number;
 	/**
 	 * Register an editable leaf's flush fn. Selection-based operations flush all
 	 * dirty bursts before mapping DOM selection → source offsets, so offsets are

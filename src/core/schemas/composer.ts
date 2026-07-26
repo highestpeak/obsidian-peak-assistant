@@ -267,6 +267,69 @@ export const ComposerNativeFilePatchPayloadSchema = z
 	});
 export type ComposerNativeFilePatchPayload = z.infer<typeof ComposerNativeFilePatchPayloadSchema>;
 
+// ── WP-INT: native structural-edit AI patch families (model output) ──────────
+//
+// The AI native-object capabilities (Base / Canvas / Excalidraw structural
+// editing) ride the candidate rail: the model returns a typed-patch JSON object
+// — `{ patches: [...] }` in the format's patch family — which the materializer
+// validates against these schemas and applies through the WP8 typed-patch
+// functions (never string-replace). These MUST stay structurally identical to
+// the `BaseFilePatch` / `CanvasPatch` / `ExcalidrawPatch` TS unions in
+// `service/composer/packs/native/*`; the native round-trip test asserts a
+// representative patch of each op parses and applies.
+
+const NativePathSchema = z.array(z.union([z.string(), z.number()])).readonly();
+
+/** Zod mirror of `BaseFilePatch` (packs/native/baseFile.ts). */
+export const ComposerBaseFilePatchSchema = z.union([
+	z.object({ op: z.literal('rename-view'), viewIndex: z.number().int().nonnegative(), name: z.string() }),
+	z.object({ op: z.literal('add-order-column'), viewIndex: z.number().int().nonnegative(), column: z.string() }),
+	z.object({ op: z.literal('remove-order-column'), viewIndex: z.number().int().nonnegative(), column: z.string() }),
+	z.object({ op: z.literal('set-formula'), viewIndex: z.number().int().nonnegative(), key: z.string(), expression: z.string() }),
+	z.object({ op: z.literal('remove-formula'), viewIndex: z.number().int().nonnegative(), key: z.string() }),
+	z.object({ op: z.literal('set-field'), path: NativePathSchema, value: z.unknown() }),
+]);
+
+const CanvasEdgeSchema = z
+	.object({
+		id: z.string(),
+		fromNode: z.string(),
+		toNode: z.string(),
+		fromSide: z.string().optional(),
+		toSide: z.string().optional(),
+		label: z.string().optional(),
+		color: z.string().optional(),
+	})
+	.passthrough();
+
+/** Zod mirror of `CanvasPatch` (packs/native/canvasFile.ts). */
+export const ComposerCanvasPatchSchema = z.union([
+	z.object({ op: z.literal('move-node'), id: z.string(), x: z.number(), y: z.number() }),
+	z.object({ op: z.literal('nudge-node'), id: z.string(), dx: z.number(), dy: z.number() }),
+	z.object({ op: z.literal('set-node-text'), id: z.string(), text: z.string() }),
+	z.object({ op: z.literal('set-node-label'), id: z.string(), label: z.string() }),
+	z.object({ op: z.literal('set-node-color'), id: z.string(), color: z.string() }),
+	z.object({ op: z.literal('add-edge'), edge: CanvasEdgeSchema }),
+	z.object({ op: z.literal('remove-edge'), id: z.string() }),
+	z.object({ op: z.literal('remove-node'), id: z.string() }),
+]);
+
+const ExcalidrawElementSchema = z.object({ type: z.string(), id: z.string().optional() }).passthrough();
+
+/** Zod mirror of `ExcalidrawPatch` (packs/native/excalidrawFile.ts). */
+export const ComposerExcalidrawPatchSchema = z.union([
+	z.object({ op: z.literal('set-background'), color: z.string() }),
+	z.object({ op: z.literal('add-element'), element: ExcalidrawElementSchema }),
+	z.object({ op: z.literal('remove-element'), id: z.string() }),
+	z.object({ op: z.literal('set-scene-field'), path: NativePathSchema, value: z.unknown() }),
+]);
+
+/** Model output for a native structural edit: a bundle of typed patches. */
+export const ComposerNativePatchBundleSchema = z.object({
+	patches: z.array(z.union([ComposerBaseFilePatchSchema, ComposerCanvasPatchSchema, ComposerExcalidrawPatchSchema])).min(1),
+});
+export type ComposerNativePatchBundle = z.infer<typeof ComposerNativePatchBundleSchema>;
+
 // ── WP6: table + chart typed result payloads (additive) ──────────────────────
 
 export const ComposerTableAlignSchema = z.enum(['none', 'left', 'right', 'center']);

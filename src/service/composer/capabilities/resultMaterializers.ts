@@ -21,11 +21,54 @@ export interface MaterializeArgs {
 	snapshot: ComposerContextSnapshot;
 	/** Accumulated streamed text (model-stream runs). */
 	text: string;
+	/**
+	 * Verbatim current bytes of the target's SEPARATE native object file, read by
+	 * the runtime before a `native-file-patch` run. The native materializer applies
+	 * the model's typed patches against these to compute the next bytes. Absent for
+	 * every non-native materializer (they ignore it).
+	 */
+	nativeBaseText?: string;
+	/** Vault path of the target's native object file (native-file-patch runs, display + accept). */
+	nativeTargetPath?: string;
 }
 
 export interface ComposerResultMaterializer {
 	readonly resultKind: ComposerResultKind;
+	/**
+	 * True when the streamed run output is a typed JSON object (table-patch /
+	 * chart-source …) rather than human-readable prose. The runtime uses this to
+	 * suppress the accumulating half-JSON during streaming (it shows a skeleton
+	 * instead) and only materializes on completion. Absent ⇒ the streamed text is
+	 * itself the reviewable body (text-patch / formula narrative).
+	 */
+	readonly streamsTypedObject?: boolean;
 	materialize(args: MaterializeArgs): ComposerResultEnvelope;
+}
+
+/**
+ * Strip a single ```json … ``` (or bare ``` … ```) code fence a model may wrap a
+ * typed-object answer in, returning the inner JSON text. No fence ⇒ trimmed input
+ * unchanged. Used by typed-object materializers before `JSON.parse`.
+ */
+export function stripJsonCodeFence(text: string): string {
+	const trimmed = text.trim();
+	const fenced = /^```(?:json)?[ \t]*\r?\n?([\s\S]*?)\r?\n?```$/i.exec(trimmed);
+	return (fenced ? fenced[1] : trimmed).trim();
+}
+
+/**
+ * Parse a typed-object model answer into a plain JSON value, failing closed with
+ * a clear reason (never a raw `Unexpected token` from `JSON.parse`) so a bad
+ * candidate lands in the error state instead of writing garbage back.
+ */
+export function parseTypedObjectJson(text: string, kind: ComposerResultKind): unknown {
+	const body = stripJsonCodeFence(text);
+	if (body.length === 0) throw new Error(`${kind}: model produced no JSON output`);
+	try {
+		return JSON.parse(body);
+	} catch {
+		throw new Error(`${kind}: model output was not valid JSON`);
+	}
 }
 
 export class ComposerResultMaterializerRegistry {

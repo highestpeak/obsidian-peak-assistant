@@ -7,14 +7,12 @@
  * prose diff — decides pipe-vs-HTML serialization) and a writeback adapter that
  * commits the resolved table as one atomic `replaceRange`.
  *
- * Wiring note: these definitions declare their `promptId` binding, but the five
- * table PromptId templates are authored by the prompt-owning work package. Until
- * those land the pack is a registerable, unit-tested library (registration +
- * `validateBindings` + materialize→operations are all covered by
- * `test/composer-table-merge-html.test.ts` / the pack test) and is NOT added to
- * the production runtime, so no dead AI buttons ship — the deterministic table
- * toolbar (which builds operations directly and commits through the hub) is the
- * shipping path for chart generation and structural edits.
+ * Wiring note (WP-INT): the five table PromptId templates now exist
+ * (`templates/prompts/doc-table-*.md`), so these definitions run in
+ * `model-stream` mode bound to their PromptId. The streamed answer is a typed
+ * table-patch JSON object — the runtime shows a skeleton while it streams and the
+ * materializer (fence-strip → JSON.parse → schema) only produces a variant on
+ * completion, so a bad answer fails closed instead of writing garbage back.
  */
 
 import type {
@@ -28,13 +26,14 @@ import type {
 	ComposerWritebackAdapterId,
 } from '@/core/composer';
 import { COMPOSER_STREAMING_TEXT_RENDERER_ID } from '@/core/composer';
+import { PromptId } from '@/core/types/prompt';
 import {
 	ComposerInstructionInputSchema,
 	ComposerTablePatchPayloadSchema,
 	type ComposerTablePatchPayload,
 } from '@/core/schemas/composer';
 import type { ComposerCapabilitiesConfigProvider } from '../capabilityConfig';
-import type { ComposerResultMaterializer } from '../resultMaterializers';
+import { parseTypedObjectJson, type ComposerResultMaterializer } from '../resultMaterializers';
 import type { ComposerWritebackAdapter } from '../writebackAdapters';
 import {
 	addColumn,
@@ -148,8 +147,9 @@ export interface TablePatchEnvelopePayload {
 export function createTablePatchMaterializer(): ComposerResultMaterializer {
 	return {
 		resultKind: 'table-patch',
+		streamsTypedObject: true,
 		materialize({ definition, snapshot, text }): ComposerResultEnvelope<TablePatchEnvelopePayload> {
-			const patch = ComposerTablePatchPayloadSchema.parse(JSON.parse(text));
+			const patch = ComposerTablePatchPayloadSchema.parse(parseTypedObjectJson(text, 'table-patch'));
 			const base = parseTableSource(snapshot.targetSource);
 			const applied = applyTablePatch(base, patch);
 			if (!applied.ok) throw new Error(`table-patch: ${applied.reason}`);
@@ -194,7 +194,7 @@ interface TableDefSpec {
 	id: string;
 	title: string;
 	description: string;
-	promptId: string;
+	promptId: PromptId;
 	lucideIcon: string;
 	historyLabel: string;
 	order: number;
@@ -222,11 +222,11 @@ function createTableDefinition(
 		configKey: spec.id,
 		surfaces: ['object-toolbar'],
 		targetKinds: TABLE_TARGET_KINDS,
-		// Table AI is model-backed; the prompt binding is authored by the
-		// prompt-owning WP. Registered as deterministic here so the pack validates
-		// and can be exercised as a library without a fabricated PromptId.
-		executionMode: 'deterministic',
+		// Table AI is model-backed: the model emits a typed table-patch JSON
+		// object, materialized on completion (fence-strip → parse → schema).
+		executionMode: 'model-stream',
 		effectKind: 'transform',
+		promptId: spec.promptId,
 		inputSchema: ComposerInstructionInputSchema,
 		resultSchema: ComposerTablePatchPayloadSchema,
 		resultKind: 'table-patch',
@@ -254,7 +254,7 @@ export const TABLE_CAPABILITY_SPECS: readonly TableDefSpec[] = [
 		id: 'composer.table.summarize',
 		title: 'Summarize table',
 		description: 'Condense the table into a tighter, normalized structure',
-		promptId: 'doc-table-summarize',
+		promptId: PromptId.DocTableSummarize,
 		lucideIcon: 'table',
 		historyLabel: 'AI table summary',
 		order: 60,
@@ -263,7 +263,7 @@ export const TABLE_CAPABILITY_SPECS: readonly TableDefSpec[] = [
 		id: 'composer.table.add-column',
 		title: 'Add a column',
 		description: 'Propose a new derived column for the table',
-		promptId: 'doc-table-add-column',
+		promptId: PromptId.DocTableAddColumn,
 		lucideIcon: 'columns-3',
 		historyLabel: 'AI add column',
 		order: 61,
@@ -272,7 +272,7 @@ export const TABLE_CAPABILITY_SPECS: readonly TableDefSpec[] = [
 		id: 'composer.table.check-units',
 		title: 'Check units',
 		description: 'Normalize inconsistent units/measures across a column',
-		promptId: 'doc-table-check-units',
+		promptId: PromptId.DocTableCheckUnits,
 		lucideIcon: 'ruler',
 		historyLabel: 'AI unit check',
 		order: 62,
@@ -281,7 +281,7 @@ export const TABLE_CAPABILITY_SPECS: readonly TableDefSpec[] = [
 		id: 'composer.table.extract-formula',
 		title: 'Extract formula',
 		description: 'Derive a computed column from the existing data',
-		promptId: 'doc-table-extract-formula',
+		promptId: PromptId.DocTableExtractFormula,
 		lucideIcon: 'sigma',
 		historyLabel: 'AI formula column',
 		order: 63,

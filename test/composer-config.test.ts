@@ -44,6 +44,7 @@ function main(): void {
 	const jsonTxn = Object.keys(json.transaction ?? {}).filter((k) => !k.startsWith('_')).sort();
 	check('transaction keys match', fbTxn.join(',') === jsonTxn.join(','), `fb=${fbTxn.join(',')} json=${jsonTxn.join(',')}`);
 	check('transaction values match', (json.transaction?.burstWindowMs ?? null) === DEFAULT_TRANSACTION_CONFIG.burstWindowMs);
+	check('transaction scrollGuardGestureWindowMs matches', (json.transaction?.scrollGuardGestureWindowMs ?? null) === DEFAULT_TRANSACTION_CONFIG.scrollGuardGestureWindowMs);
 
 	// WP6: table + chart block UI copy mirrors the typed fallback.
 	const fbTblToolbar = Object.keys(DEFAULT_TABLE_BLOCK_STRINGS.toolbar).sort();

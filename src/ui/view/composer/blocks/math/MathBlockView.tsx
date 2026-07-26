@@ -6,6 +6,7 @@ import { parseFormulaBlock, buildFormulaCopyPayloads, type ParsedFormula } from 
 import type { ComposerFormulaDetailKind } from '@/core/schemas/composer';
 import { Button } from '@/ui/components/primitives';
 import { rasterizeElementToPngBlob } from '../../chrome/rasterize';
+import { useComposerChrome } from '../../chrome/ComposerChromeContext';
 import { KatexFormula } from './KatexFormula';
 import { FormulaDetailPanel } from './FormulaDetailPanel';
 import { createFormulaDetailStore, type FormulaDetailStore } from './formulaDetailStore';
@@ -30,7 +31,12 @@ export function MathBlockView({
 	store?: FormulaDetailStore;
 	config?: MathConfig;
 }): React.ReactElement {
-	const [fallbackStore] = React.useState(() => createFormulaDetailStore());
+	// The math details drive a bespoke per-block store (§3.3). When the editing
+	// runtime wires a formula-detail generator, the store streams real AI; without
+	// one (read-only host / harness) `canGenerate` stays false and the detail
+	// actions render disabled with a reason — never a fake button.
+	const chrome = useComposerChrome();
+	const [fallbackStore] = React.useState(() => createFormulaDetailStore(chrome.runtime.formulaDetailGenerator));
 	const store = storeProp ?? fallbackStore;
 	const formulas = React.useMemo(() => parseFormulaBlock(block.renderModel.raw), [block.renderModel.raw]);
 

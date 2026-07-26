@@ -8,7 +8,7 @@ import { ExcalidrawBlockView } from './excalidraw/ExcalidrawBlockView';
 import { EmbedBlockView } from './embed/EmbedBlockView';
 import { TableBlockView } from './table/TableBlockView';
 import { ChartBlockView, isChartBlock } from './chart/ChartBlockView';
-import { FrontmatterBlockView } from './frontmatter';
+import { ConnectedFrontmatterBlockView } from './frontmatter';
 import { MathBlockView } from './math';
 
 /**
@@ -49,7 +49,7 @@ export function BlockKindView({ block }: { block: ComposerBlock }): React.ReactE
 		// entrances arrive via ports at the integration seam; without them these
 		// render the grid / formulas read-only (never fake affordances).
 		case 'frontmatter':
-			return <FrontmatterBlockView block={block} />;
+			return <ConnectedFrontmatterBlockView block={block} />;
 		case 'math':
 			return <MathBlockView block={block} />;
 		default:

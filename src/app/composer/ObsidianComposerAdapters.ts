@@ -15,11 +15,20 @@ import type {
 	ComposerFileEvent,
 	ComposerFileEventsPort,
 	ComposerLinkMetadataPort,
+	ComposerRelatedMaterialSnapshot,
+	ComposerRelatedMaterialsPort,
 	ComposerSourcePort,
 	ComposerWritePort,
+	IntelligenceTelemetryEvent,
+	IntelligenceTelemetryPort,
+	VaultFrontmatterRecord,
 	VaultLinkMeta,
+	VaultPropertyScanPort,
 } from '@/service/composer';
+import { buildRelatedSnapshot, emptyRelatedSnapshot, JsonlTelemetrySink } from '@/service/composer';
 import { ComposerConflictError } from '@/core/composer';
+import type { SearchClient } from '@/service/search/SearchClient';
+import type { SearchResultItem } from '@/core/search/searchTypes';
 
 /** Reads document bytes via the vault's cached read. */
 export class ObsidianComposerSourceAdapter implements ComposerSourcePort {
@@ -206,5 +215,163 @@ export class ObsidianComposerLinkMetadata implements ComposerLinkMetadataPort {
 			.slice(0, 5)
 			.map((f) => f.path);
 		return matches;
+	}
+}
+
+/** Bounded knobs for the related-material adapter (semantic retrieval + graph cap). */
+export interface ComposerRelatedMaterialsOptions {
+	/** How many neighbours to retrieve (the complete List/Tree set). */
+	readonly topK: number;
+	/** How many top-ranked items to project into the graph (node-only fit). */
+	readonly graphNodeCap: number;
+}
+
+const DEFAULT_RELATED_OPTIONS: ComposerRelatedMaterialsOptions = { topK: 24, graphNodeCap: 100 };
+
+/**
+ * Related-material port over the existing vector search (WP9 §12.4).
+ *
+ * Given the focused block's verbatim text (or a document excerpt), it runs a
+ * semantic (`vectorSearch`) retrieval, drops the current document from the
+ * results and maps the ranked hits into a frozen
+ * {@link ComposerRelatedMaterialSnapshot} via the pure `buildRelatedSnapshot`
+ * mapper. The `SearchClient` is resolved lazily through the injected getter, so
+ * the pre-SQLite / mobile / disabled-search window degrades to an EMPTY snapshot
+ * (never throws) — the Sidecar already renders an empty brief in that case.
+ */
+export class ObsidianComposerRelatedMaterials implements ComposerRelatedMaterialsPort {
+	private seq = 0;
+
+	constructor(
+		private readonly getSearchClient: () => SearchClient | null,
+		private readonly options: ComposerRelatedMaterialsOptions = DEFAULT_RELATED_OPTIONS,
+	) {}
+
+	async buildSnapshot(focus: {
+		anchorId: string;
+		documentId: string;
+		focusText?: string;
+	}): Promise<ComposerRelatedMaterialSnapshot> {
+		const client = this.getSearchClient();
+		const text = (focus.focusText ?? '').trim();
+		// No search service, or no query text to relate against → degrade cleanly.
+		if (!client || !text) return emptyRelatedSnapshot(focus);
+		try {
+			const res = await client.vectorSearch({
+				text,
+				scopeMode: 'all',
+				searchMode: 'vector',
+				topK: this.options.topK,
+			});
+			const items = (res.items ?? []).filter((it) => !isSameDocument(it, focus.documentId));
+			this.seq += 1;
+			return buildRelatedSnapshot({
+				focus: { anchorId: focus.anchorId, rootNodeId: focus.documentId },
+				revision: `${Date.now().toString(36)}-${this.seq.toString(36)}`,
+				items,
+				graphNodeCap: this.options.graphNodeCap,
+			});
+		} catch {
+			// Search failure must never block the Sidecar — degrade to empty.
+			return emptyRelatedSnapshot(focus);
+		}
+	}
+}
+
+/** Whether a result item points at the focused document itself (excluded from related). */
+function isSameDocument(item: SearchResultItem, documentId: string): boolean {
+	return item.path === documentId || item.docId === documentId || item.id === documentId;
+}
+
+/**
+ * Privacy-safe telemetry sink backed by a plugin-owned JSONL stream (WP9 §12.7).
+ *
+ * The proactive-intelligence evaluation stream is a distinct concern from the
+ * cost/token usage dashboard (`UsageTrackingService`), so it is NOT routed there.
+ * Local-first: events append one JSON object per line to
+ * `<pluginDir>/telemetry/composer-intelligence.jsonl`, outside the vault note
+ * tree (Obsidian's metadata cache / search index never touch it), mirroring the
+ * comment store's plugin-dir file pattern. `IntelligenceRuntime` wraps every emit
+ * in {@link RedactingTelemetry}, so content/prompt/evidence are already stripped
+ * before they reach this sink. Writes are fire-and-forget and best-effort: an
+ * unwritable stream must never crash editing.
+ */
+export class ObsidianComposerIntelligenceTelemetry implements IntelligenceTelemetryPort {
+	private ensured = false;
+	private readonly sink: JsonlTelemetrySink;
+	private readonly filePath: string;
+
+	constructor(
+		private readonly app: App,
+		/** Plugin-owned directory for the telemetry stream (e.g. `<pluginDir>/telemetry`). */
+		private readonly baseDir: string,
+		fileName = 'composer-intelligence.jsonl',
+	) {
+		this.filePath = `${baseDir}/${fileName}`;
+		// The neutral sink owns JSONL serialization + append ordering; this class only
+		// binds the append to the plugin-dir vault adapter (lazy mkdir, best-effort).
+		this.sink = new JsonlTelemetrySink({ appendLine: (line) => this.append(line) });
+	}
+
+	emit(event: IntelligenceTelemetryEvent): void {
+		this.sink.emit(event);
+	}
+
+	private async append(line: string): Promise<void> {
+		if (!this.ensured) {
+			if (!(await this.app.vault.adapter.exists(this.baseDir))) {
+				await this.app.vault.adapter.mkdir(this.baseDir);
+			}
+			this.ensured = true;
+		}
+		await this.app.vault.adapter.append(this.filePath, line);
+	}
+}
+
+/**
+ * Vault property inventory scan over Obsidian's metadata cache (WP5, §8.2).
+ *
+ * Implements the framework-neutral {@link VaultPropertyScanPort}: it reads every
+ * markdown note's parsed frontmatter straight from the metadata cache (no file
+ * I/O — the cache already holds it), so the pure `computeVaultPropertyInventory`
+ * statistics can run without Obsidian. The scan is LAZY and CACHED: it rebuilds
+ * only when the metadata cache signals a change (a `resolved`/`changed` event
+ * flips a dirty flag), never on every render/panel open, so a large vault is
+ * walked at most once per real mutation. `dispose()` detaches the listener.
+ */
+export class ObsidianComposerVaultInventory implements VaultPropertyScanPort {
+	private cache: VaultFrontmatterRecord[] | null = null;
+	private dirty = true;
+	private readonly refs: EventRef[] = [];
+
+	constructor(private readonly app: App) {
+		const invalidate = (): void => {
+			this.dirty = true;
+		};
+		this.refs.push(this.app.metadataCache.on('changed', invalidate));
+		this.refs.push(this.app.metadataCache.on('resolved', invalidate));
+		this.refs.push(this.app.metadataCache.on('deleted', invalidate));
+	}
+
+	scanFrontmatter(): VaultFrontmatterRecord[] {
+		if (!this.dirty && this.cache) return this.cache;
+		const records: VaultFrontmatterRecord[] = [];
+		for (const file of this.app.vault.getMarkdownFiles()) {
+			const fm = this.app.metadataCache.getFileCache(file)?.frontmatter;
+			if (!fm) continue;
+			// `position` is metadata-cache bookkeeping, never a user property.
+			const { position: _position, ...rest } = fm as Record<string, unknown>;
+			if (Object.keys(rest).length === 0) continue;
+			records.push({ path: file.path, frontmatter: rest });
+		}
+		this.cache = records;
+		this.dirty = false;
+		return records;
+	}
+
+	dispose(): void {
+		for (const ref of this.refs) this.app.metadataCache.offref(ref);
+		this.refs.length = 0;
+		this.cache = null;
 	}
 }

@@ -131,6 +131,44 @@ export const NOOP_INTELLIGENCE_TELEMETRY: IntelligenceTelemetryPort = {
 };
 
 /**
+ * Minimal append-only file port the {@link JsonlTelemetrySink} writes through.
+ * The app binds it to a plugin-dir file (Obsidian `vault.adapter.append`); tests
+ * bind an in-memory fake — so the JSONL serialization/ordering logic stays
+ * framework-neutral and unit-testable (no obsidian import in this layer).
+ */
+export interface JsonlAppendPort {
+	appendLine(line: string): Promise<void>;
+}
+
+/**
+ * A privacy-safe local-first sink that writes one JSON object per line to an
+ * append-only stream (§12.7 evaluation telemetry — a distinct concern from the
+ * cost/token usage dashboard, so it is NOT routed there). Each event becomes
+ * `{"ts":<ms>, ...event}\n`. Appends are serialized on an internal tail promise
+ * so concurrent emits never interleave a partial line, and failures are swallowed
+ * (telemetry must never surface as an editing error). Wrap it in
+ * {@link RedactingTelemetry} so content/prompt/evidence are stripped first.
+ */
+export class JsonlTelemetrySink implements IntelligenceTelemetryPort {
+	private tail: Promise<void> = Promise.resolve();
+
+	constructor(
+		private readonly port: JsonlAppendPort,
+		private readonly now: () => number = Date.now,
+	) {}
+
+	emit(event: IntelligenceTelemetryEvent): void {
+		const line = JSON.stringify({ ts: this.now(), ...event }) + '\n';
+		this.tail = this.tail.then(() => this.port.appendLine(line)).catch(() => undefined);
+	}
+
+	/** Resolves once every queued append settles (tests / flush-on-dispose). */
+	drain(): Promise<void> {
+		return this.tail;
+	}
+}
+
+/**
  * Adaptive ranking learning surface — interface only (WP scope: no learning
  * implemented). An app can later bind a local, clearable model behind this port;
  * the Sidecar depends only on the interface.

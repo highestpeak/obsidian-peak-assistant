@@ -20,6 +20,8 @@ import {
 	buildToggleTaskOps,
 	headingTextStart,
 	listItemContentStart,
+	matchBlocks,
+	originalTextForTextPatchCandidate,
 	partitionSourceRange,
 	pasteUrlIntoSelection,
 } from '@/service/composer';
@@ -30,11 +32,13 @@ import {
 } from '@/ui/view/composer/config/composerConfig';
 import { createComposerFoldStore, type ComposerFoldStore } from './foldStore';
 import { BlockKindView } from './blocks/BlockKindView';
+import { AddFrontmatterEntry } from './blocks/frontmatter';
 import {
 	ComposerCandidateHost,
 	createDefaultCandidateRendererRegistry,
 	type CandidateRendererRegistry,
 } from './candidates';
+import { registerImageCandidateRenderers, ImageBlockView } from './blocks/image';
 import {
 	ComposerChromeProvider,
 	resolveProjection,
@@ -55,7 +59,9 @@ import { UndoRedoBar } from './chrome/UndoRedoBar';
 import { TransactionNotice } from './chrome/TransactionNotice';
 import { DisplayStateSwitch, type ComposerDisplayState } from './chrome/DisplayStateSwitch';
 import { mapDomRangeToSource } from './chrome/selectionMapping';
+import { firstClipboardImage } from './chrome/pasteImage';
 import { IntelligenceSidecar } from './sidecar';
+import { buildFocusRunContext, resolveRelatedFocus } from './sidecar/focusContext';
 import type { IntelligenceRuntime } from '@/service/composer';
 
 /**
@@ -82,6 +88,8 @@ export interface ComposerRootProps {
 	runtimeSource?: { getRuntime(): ComposerChromeRuntime | undefined };
 	/** Typing-burst window override; defaults to the transaction config value. */
 	burstWindowMs?: number;
+	/** INT-1 scroll-guard user-gesture window; defaults to the transaction config. */
+	scrollGuardGestureWindowMs?: number;
 	/** Host callback for opening links from the preview popover. */
 	onOpenLink?: (kind: 'vault' | 'external', target: string) => void;
 	/** Optional revalidate handler surfaced on the stale banner. */
@@ -115,6 +123,7 @@ export function ComposerRoot({
 	runtime: runtimeProp = EMPTY_RUNTIME,
 	runtimeSource,
 	burstWindowMs = DEFAULT_TRANSACTION_CONFIG.burstWindowMs,
+	scrollGuardGestureWindowMs = DEFAULT_TRANSACTION_CONFIG.scrollGuardGestureWindowMs,
 	onOpenLink,
 	onRevalidate,
 	intelligence: intelligenceProp,
@@ -125,7 +134,14 @@ export function ComposerRoot({
 	const getSnapshot = React.useCallback(() => source.getState(), [source]);
 	const state = React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 	const [foldStore] = React.useState(createComposerFoldStore);
-	const [candidateRegistry] = React.useState<CandidateRendererRegistry>(createDefaultCandidateRendererRegistry);
+	// The default streaming-text card + the three WP7 image cards (asset / caption /
+	// layout), registered by stable renderer id after the default set so image
+	// candidates dispatch without touching the candidates barrel (harness included).
+	const [candidateRegistry] = React.useState<CandidateRendererRegistry>(() => {
+		const registry = createDefaultCandidateRendererRegistry();
+		registerImageCandidateRenderers(registry);
+		return registry;
+	});
 
 	// Re-read the reactive runtime each render (rebinds on document switch); the
 	// static prop is the harness path. Identity is stable within one document, so
@@ -141,6 +157,7 @@ export function ComposerRoot({
 			config,
 			snapshot: state.snapshot,
 			burstWindowMs,
+			scrollGuardGestureWindowMs,
 			registerFlusher: (flush) => {
 				flushers.add(flush);
 				return () => flushers.delete(flush);
@@ -150,14 +167,35 @@ export function ComposerRoot({
 			},
 			onOpenLink,
 		}),
-		[runtime, candidateRegistry, config, state.snapshot, burstWindowMs, flushers, onOpenLink],
+		[runtime, candidateRegistry, config, state.snapshot, burstWindowMs, scrollGuardGestureWindowMs, flushers, onOpenLink],
 	);
 
 	const intelligence = intelligenceSource?.getIntelligence() ?? intelligenceProp;
 	const locateBlock = React.useCallback((blockId: string) => {
 		const el = rootRef.current?.querySelector<HTMLElement>(`[data-block-id="${CSS.escape(blockId)}"]`);
+		markScrollIntent(rootRef.current); // INT-1 guard: intentional scroll
 		el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
 	}, []);
+
+	// WP9 §12.2 — resolve the REAL focused block from chrome focus so a Copilot run
+	// freezes the block the user is on (not a document-level fallback). The DOM
+	// lookup lives here (the chrome owns focus); the snapshot assembly is the pure
+	// `buildFocusRunContext` (keeps the intelligence layer DOM-free).
+	const currentSnapshot = state.snapshot;
+	const getFocusedBlockId = React.useCallback((): string | null => {
+		const rootEl = rootRef.current;
+		const active = rootEl?.ownerDocument.activeElement;
+		if (!(active instanceof HTMLElement) || !rootEl.contains(active)) return null;
+		return active.closest<HTMLElement>('[data-block-id]')?.dataset.blockId ?? null;
+	}, []);
+	const resolveFocusContext = React.useCallback(
+		(focusedBlockId: string | null) => buildFocusRunContext(currentSnapshot, focusedBlockId),
+		[currentSnapshot],
+	);
+	const resolveFocus = React.useCallback(
+		(focusedBlockId: string | null) => resolveRelatedFocus(currentSnapshot, focusedBlockId),
+		[currentSnapshot],
+	);
 
 	return (
 		<ComposerChromeProvider value={chromeValue}>
@@ -175,6 +213,9 @@ export function ComposerRoot({
 						hub={runtime.hub}
 						onLocate={locateBlock}
 						onOpenSource={(path) => onOpenLink?.('vault', path)}
+						getFocusedBlockId={getFocusedBlockId}
+						resolveFocusContext={resolveFocusContext}
+						resolveRelatedFocus={resolveFocus}
 					/>
 				)}
 			</div>
@@ -278,9 +319,33 @@ function ComposerDocument({ state, config, foldStore, onRevalidate }: BodyProps)
 		doc.addEventListener('pointerup', up);
 	};
 
-	// ── paste URL over a selection (§7.5) ──────────────────────────────────────
+	// ── paste bitmap → image coordinator (WP7), else URL over a selection (§7.5) ─
 	const onPaste = async (ev: React.ClipboardEvent<HTMLDivElement>) => {
 		if (!editing || !hub) return;
+		// A pasted bitmap runs the image coordinator's atomic attachment transaction.
+		// `getAsFile()` must run synchronously inside the event, so detect BEFORE any
+		// await. When no coordinator is composed (harness), fall through to native —
+		// never preventDefault a paste we cannot service.
+		const imageCoordinator = chrome.runtime.imageCoordinator;
+		const image = imageCoordinator ? firstClipboardImage(ev.clipboardData.items) : null;
+		if (image && imageCoordinator) {
+			const file = image.file as unknown as File;
+			ev.preventDefault();
+			await chrome.flushAll();
+			const blockId = focusedBlockId(containerRef.current);
+			try {
+				const buffer = await file.arrayBuffer();
+				await imageCoordinator.beginPaste({
+					bytes: new Uint8Array(buffer),
+					mimeType: image.mimeType,
+					...(file.name ? { rawName: file.name } : {}),
+					insertion: { kind: 'after-block', blockId },
+				});
+			} catch {
+				// Attachment save failed — surfaced via the coordinator's own error path.
+			}
+			return;
+		}
 		const text = ev.clipboardData.getData('text/plain').trim();
 		if (!/^https?:\/\/\S+$/.test(text)) return; // ordinary text paste stays native
 		const rootEl = containerRef.current;
@@ -308,6 +373,16 @@ function ComposerDocument({ state, config, foldStore, onRevalidate }: BodyProps)
 	const hidden = React.useMemo(() => hiddenBySections(snapshot.blocks, folded), [snapshot.blocks, folded]);
 	const visibleBlocks = snapshot.blocks.filter((b) => !hidden.has(b.blockId));
 
+	// INT-1: keep the edited block's React subtree (and its focused
+	// contenteditable DOM node) mounted through a burst commit — see
+	// useStableBlockKeys. Without it, blockId churn remounts every row, dropping
+	// caret/focus and collapsing scroll to the document bottom.
+	const stableKey = useStableBlockKeys(snapshot.blocks);
+	// Belt-and-suspenders: snap back any large unexplained scroll jump while the
+	// keyboard is inside this document so a commit-driven caret-reveal can never
+	// scroll the active editor out of view.
+	useEditingScrollGuard(containerRef, chrome.scrollGuardGestureWindowMs);
+
 	return (
 		<div
 			ref={containerRef}
@@ -325,9 +400,10 @@ function ComposerDocument({ state, config, foldStore, onRevalidate }: BodyProps)
 				canEdit={Boolean(hub)}
 			/>
 			{state.status === 'stale' && <StaleBanner strings={config.strings} onRevalidate={onRevalidate} />}
+			<AddFrontmatterEntry editing={editing} />
 			<div className="pk-composer-blocks">
 				{visibleBlocks.map((b, i) => (
-					<React.Fragment key={b.blockId}>
+					<React.Fragment key={stableKey(b.blockId)}>
 						<ComposerBlockRow
 							block={b}
 							snapshot={snapshot}
@@ -493,7 +569,10 @@ function ComposerBlockRow({
 				{panel?.panel === 'history' && (
 					<BlockHistoryPanel
 						blockId={block.blockId}
-						onLocate={() => bodyRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })}
+						onLocate={() => {
+							markScrollIntent(scrollerOf(bodyRef.current)); // INT-1 guard
+							bodyRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+						}}
 						onClose={() => setPanel(null)}
 					/>
 				)}
@@ -503,6 +582,7 @@ function ComposerBlockRow({
 							runtime={candidateRuntime}
 							candidateId={candidateId}
 							registry={chrome.candidateRegistry}
+							resolveOriginalText={(c) => originalTextForTextPatchCandidate(snapshot, c)}
 						/>
 					</div>
 				)}
@@ -561,6 +641,11 @@ function BlockBody({
 	}
 	if (TEXT_EDIT_KINDS.has(block.kind)) {
 		return <EditableTextBody block={block} snapshot={snapshot} editing={editing} />;
+	}
+	// WP7 — image blocks carry an object toolbar (caption / AI 改图) wired to the
+	// image coordinator; the read-only dispatcher keeps a verbatim ref fallback.
+	if (block.kind === 'image') {
+		return <ImageBlockView block={block} editing={editing} />;
 	}
 	return <BlockKindView block={block} />;
 }
@@ -777,6 +862,228 @@ function foldLabel(config: ComposerConfig, isHeading: boolean, folded: boolean):
 function blockBodyClass(kind: string): string {
 	if (kind === 'quote' || kind === 'callout') return 'pk-composer-quote';
 	return 'pk-composer-prose';
+}
+
+/**
+ * INT-1 — stable React keys across revisions.
+ *
+ * Block ids track content + position (WP1), so they change on every commit.
+ * Keying rows by blockId therefore remounts the just-edited block on each burst
+ * commit: the focused contenteditable is torn down (focus falls to <body>) and
+ * the mass DOM churn collapses the scroll container to the document bottom
+ * (measured 0 → 2292). Migrate a persistent key across revisions via
+ * `matchBlocks` (fingerprint → kind-ordinal) so a surviving block reuses the
+ * same React key — its subtree, DOM node, focus and caret all survive the
+ * commit. New blocks mint a fresh key; removed blocks release theirs.
+ *
+ * Deriving-from-props during render is intentional (React's blessed alternative
+ * to a synced effect); it is idempotent per `blocks` identity (early return when
+ * the reference is unchanged), so StrictMode double-invocation is safe.
+ */
+function useStableBlockKeys(blocks: readonly ComposerBlock[]): (blockId: string) => string {
+	const ref = React.useRef<{ prevBlocks: readonly ComposerBlock[]; keyByBlockId: Map<string, string>; seq: number }>({
+		prevBlocks: [],
+		keyByBlockId: new Map(),
+		seq: 0,
+	});
+	const st = ref.current;
+	if (st.prevBlocks !== blocks) {
+		const nextMap = new Map<string, string>();
+		let seq = st.seq;
+		for (const match of matchBlocks(st.prevBlocks, blocks)) {
+			const carried = match.oldBlockId ? st.keyByBlockId.get(match.oldBlockId) : undefined;
+			nextMap.set(match.newBlockId, carried ?? `pk-block-${seq++}`);
+		}
+		ref.current = { prevBlocks: blocks, keyByBlockId: nextMap, seq };
+	}
+	return (blockId: string) => ref.current.keyByBlockId.get(blockId) ?? blockId;
+}
+
+/** The scrolling ancestor of the shell (`.peak-composer-root`, `overflow:auto`). */
+function scrollerOf(shell: HTMLElement | null): HTMLElement | null {
+	return shell?.closest<HTMLElement>('.peak-composer-root') ?? null;
+}
+
+/**
+ * INT-1 — intentional programmatic scrolls (locate / history "定位" etc.) mark
+ * their scroller here so the editing scroll-guard lets them through even while
+ * a contenteditable owns the keyboard.
+ */
+const scrollIntentAt = new WeakMap<Element, number>();
+
+function markScrollIntent(el: Element | null): void {
+	if (!el) return;
+	const win = el.ownerDocument.defaultView ?? window;
+	scrollIntentAt.set(el, win.performance.now());
+}
+
+/**
+ * INT-1 — snap back a commit-driven caret-reveal while editing.
+ *
+ * `matchBlocks`-stable keys keep the edited leaf mounted (focus + caret survive
+ * a burst commit) and block-relative run keys stop downstream blocks from
+ * churning their DOM. What remains is a single NATIVE caret-reveal the browser
+ * fires on the reparse re-render: it jumps the scroll container to the document
+ * bottom (measured 120 → 2592), driven by the user agent (not any JS scroll
+ * API), and it fires before any commit-keyed effect can arm — so a timing-armed
+ * hold is inherently racy.
+ *
+ * The guard therefore discriminates by SCROLL BUDGET + caret visibility, not by
+ * timing alone (the reveal starts ~11ms after the triggering keystroke/wheel and
+ * completes in ~135ms — inside any usable gesture window):
+ *
+ *   - a wheel gesture authorizes about the distance it asked for (`deltaY` plus
+ *     slack); momentum keeps emitting wheel events, so real scrolling keeps its
+ *     budget topped up — while the reveal's ~2200px burn exhausts a keystroke's
+ *     zero budget immediately;
+ *   - a scrollbar drag / touch drag authorizes freely between pointer/touch
+ *     down-in-gutter and up;
+ *   - an intent-marked programmatic scroll (locate) authorizes its animation;
+ *   - everything else, while a contenteditable in this shell owns the keyboard,
+ *     is snapped back IF the caret was already visible at the anchor — the
+ *     spurious reveal's exact signature (it scrolls to the document bottom with
+ *     the caret mid-viewport); a legitimate caret-reveal (typing/arrowing past
+ *     the fold) has the caret OUTSIDE the anchored viewport and passes.
+ *
+ * Passive reading (no editable focused) is never touched.
+ */
+function useEditingScrollGuard(
+	shellRef: React.RefObject<HTMLElement | null>,
+	gestureWindowMs: number,
+): void {
+	const lastTop = React.useRef(0);
+	const budget = React.useRef(0);
+	const budgetAt = React.useRef(-Infinity);
+	const freeScroll = React.useRef(false); // scrollbar/touch drag in progress
+	const restoring = React.useRef(false);
+
+	React.useEffect(() => {
+		// Resolve the scroller inside the effect (the shell ref is null on first
+		// render, so a render-time lookup would miss it).
+		const scroller = scrollerOf(shellRef.current);
+		const shell = shellRef.current;
+		if (!scroller || !shell) return;
+		const win = shell.ownerDocument.defaultView ?? window;
+		const doc = shell.ownerDocument;
+		lastTop.current = scroller.scrollTop;
+
+		// Budget slack: wheel hardware/OS acceleration can deliver more pixels than
+		// deltaY nominally asked for; 3× keeps real scrolling smooth while staying
+		// orders of magnitude below the reveal's full-document burn.
+		const BUDGET_SLACK = 3;
+		const onWheel = (ev: WheelEvent) => {
+			const now = win.performance.now();
+			// Stale budget evaporates after the gesture window (prevents slow
+			// accumulation across unrelated wheel ticks minutes apart).
+			if (now - budgetAt.current >= Math.max(0, gestureWindowMs)) budget.current = 0;
+			budget.current += (Math.abs(ev.deltaY) + Math.abs(ev.deltaX)) * BUDGET_SLACK;
+			budgetAt.current = now;
+		};
+		const endFreeScroll = () => {
+			freeScroll.current = false;
+		};
+		const onPointerDown = (ev: PointerEvent) => {
+			// Scrollbar drag: the pointer lands in the scroller's own gutter (right of
+			// / below the client box). Content clicks stay unmarked.
+			const r = scroller.getBoundingClientRect();
+			const inVGutter = ev.clientX >= r.left + scroller.clientWidth;
+			const inHGutter = ev.clientY >= r.top + scroller.clientHeight;
+			if (ev.target === scroller && (inVGutter || inHGutter)) {
+				freeScroll.current = true;
+				doc.addEventListener('pointerup', endFreeScroll, { once: true });
+			}
+		};
+		const onTouchStart = () => {
+			freeScroll.current = true;
+			doc.addEventListener('touchend', endFreeScroll, { once: true });
+		};
+		const isEditing = (): boolean => {
+			const active = shell.ownerDocument.activeElement;
+			return active instanceof HTMLElement && shell.contains(active) && active.isContentEditable;
+		};
+		/**
+		 * Would the caret already be visible with the container at `top`? The INT-1
+		 * reveal scrolls to the document bottom although the caret is mid-viewport;
+		 * a legitimate reveal always has the caret outside the anchored viewport.
+		 * Fail-open: no measurable caret rect ⇒ never fight what we cannot judge.
+		 */
+		const caretVisibleAt = (top: number): boolean => {
+			const sel = shell.ownerDocument.getSelection();
+			if (!sel || sel.rangeCount === 0) return false;
+			const range = sel.getRangeAt(0);
+			let rect = range.getBoundingClientRect();
+			if (rect.width === 0 && rect.height === 0) {
+				const rects = range.getClientRects();
+				if (rects.length > 0) rect = rects[0];
+				else {
+					const node = sel.anchorNode;
+					const el = node instanceof Element ? node : node?.parentElement;
+					if (!el) return false;
+					rect = el.getBoundingClientRect();
+				}
+			}
+			const scrollerRect = scroller.getBoundingClientRect();
+			const caretDocTop = rect.top - scrollerRect.top + scroller.scrollTop;
+			return caretDocTop >= top && caretDocTop + rect.height <= top + scroller.clientHeight;
+		};
+		const onScroll = () => {
+			if (restoring.current) {
+				restoring.current = false;
+				lastTop.current = scroller.scrollTop;
+				return;
+			}
+			const now = win.performance.now();
+			const window_ = Math.max(0, gestureWindowMs);
+			const delta = Math.abs(scroller.scrollTop - lastTop.current);
+			// Authorized sources, in order: active scrollbar/touch drag; un-expired
+			// wheel budget covering this delta; intent-marked programmatic scroll
+			// (extended while its smooth animation keeps producing events).
+			const recentIntent = now - (scrollIntentAt.get(scroller) ?? -Infinity) < window_;
+			const budgetFresh = now - budgetAt.current < window_;
+			let authorized = freeScroll.current || recentIntent;
+			if (!authorized && budgetFresh && budget.current >= delta) {
+				budget.current -= delta;
+				budgetAt.current = now; // scrolling continues the gesture
+				authorized = true;
+			}
+			// While editing, an unauthorized scroll whose caret was already visible
+			// at the anchor is the spurious caret-reveal — snap back (frame-by-frame:
+			// the reveal animates over ~16 small deltas, so every event snaps).
+			// Authorized scrolls, passive reading, and true out-of-view reveals
+			// track normally.
+			if (!authorized && isEditing() && caretVisibleAt(lastTop.current)) {
+				restoring.current = true;
+				scroller.scrollTop = lastTop.current;
+				return;
+			}
+			if (recentIntent) scrollIntentAt.set(scroller, now);
+			lastTop.current = scroller.scrollTop;
+		};
+
+		scroller.addEventListener('scroll', onScroll, { passive: true });
+		scroller.addEventListener('wheel', onWheel, { passive: true });
+		scroller.addEventListener('touchstart', onTouchStart, { passive: true });
+		scroller.addEventListener('pointerdown', onPointerDown, { passive: true });
+		return () => {
+			scroller.removeEventListener('scroll', onScroll);
+			scroller.removeEventListener('wheel', onWheel);
+			scroller.removeEventListener('touchstart', onTouchStart);
+			scroller.removeEventListener('pointerdown', onPointerDown);
+			doc.removeEventListener('pointerup', endFreeScroll);
+			doc.removeEventListener('touchend', endFreeScroll);
+		};
+	}, [shellRef, gestureWindowMs]);
+}
+
+/**
+ * The block id currently holding keyboard focus inside this shell, or null. A
+ * pasted image inserts AFTER this block (null ⇒ append at document end).
+ */
+function focusedBlockId(container: HTMLElement | null): string | null {
+	if (!container) return null;
+	const active = container.ownerDocument.activeElement;
+	if (!(active instanceof HTMLElement) || !container.contains(active)) return null;
+	return active.closest<HTMLElement>('[data-block-id]')?.dataset.blockId ?? null;
 }
 
 /** Locate a block in the (possibly newer) snapshot by id or kind-ordinal prefix. */

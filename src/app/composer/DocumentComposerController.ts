@@ -34,8 +34,11 @@ import {
 	type ComposerLinkMetadataPort,
 	type ComposerSourcePort,
 	type ComposerTransactionHub,
+	type ImageCapabilityCoordinator,
 	type IntelligenceRuntime,
+	type VaultPropertyScanPort,
 } from '@/service/composer';
+import type { FormulaDetailGeneratorPort } from '@/ui/view/composer/blocks/math/formulaDetailStore';
 
 export type { ComposerLifecycleStatus, DocumentComposerState } from '@/core/composer';
 
@@ -53,6 +56,17 @@ export interface ComposerEditingRuntime {
 	candidateRuntime?: ComposerCandidateRuntimePort;
 	comments: ComposerCommentStore;
 	linkPort?: ComposerLinkMetadataPort;
+	/** Vault property inventory scan for the Frontmatter property library (WP5 §8.2). */
+	vaultInventory?: VaultPropertyScanPort;
+	/** Formula-detail generator for the math block's bespoke detail store (WP5 §10.2). */
+	formulaDetailGenerator?: FormulaDetailGeneratorPort;
+	/**
+	 * WP7 — per-document image coordinator (paste / convert / AI 改图 / caption /
+	 * layout). It implements `ComposerCandidateRuntimePort` for its own review cards
+	 * AND exposes imperative flow entries the image block chrome calls. Absent ⇒ no
+	 * image ports composed (harness / read-only host).
+	 */
+	imageCoordinator?: ImageCapabilityCoordinator;
 	/** App-owned Intelligence Sidecar runtime (WP9); absent ⇒ no sidecar. */
 	intelligence?: IntelligenceRuntime;
 }

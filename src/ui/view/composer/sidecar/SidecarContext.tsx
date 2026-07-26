@@ -1,8 +1,22 @@
 import * as React from 'react';
 import type { IntelligenceRuntime, IntelligenceSessionProjection, SuggestionFinding } from '@/service/composer';
 import type { ComposerTransactionHub } from '@/service/composer';
+import type { ComposerContextSnapshot } from '@/core/composer';
 import type { SidecarConfig } from './sidecarConfig';
 import { DEFAULT_SIDECAR_CONFIG } from './sidecarConfig';
+
+/** The frozen run context assembled from the current chrome focus (WP9 §12.2). */
+export interface SidecarFocusContext {
+	snapshot: ComposerContextSnapshot;
+	targetQuote: string;
+}
+
+/** The related-material focus (query text + anchor) resolved from chrome focus. */
+export interface SidecarRelatedFocus {
+	anchorId: string;
+	documentId: string;
+	focusText: string;
+}
 
 /**
  * Sidecar context — the app-owned {@link IntelligenceRuntime}, the WP2 hub (for
@@ -18,6 +32,12 @@ export interface SidecarContextValue {
 	onLocate?: (blockId: string) => void;
 	/** Open / locate a Vault source from a related material or receipt Source. */
 	onOpenSource?: (path: string) => void;
+	/** The real focused block id from chrome focus state, or null (host-provided). */
+	getFocusedBlockId?: () => string | null;
+	/** Assemble the frozen run context for a focus block (document fallback when null). */
+	resolveFocusContext?: (focusedBlockId: string | null) => SidecarFocusContext;
+	/** Resolve the related-material focus (query text + anchor) for a focus block. */
+	resolveRelatedFocus?: (focusedBlockId: string | null) => SidecarRelatedFocus;
 }
 
 const SidecarContext = React.createContext<SidecarContextValue | null>(null);

@@ -10,6 +10,7 @@
 
 import { TemplateManager } from '@/core/template/TemplateManager';
 import { ConfigTemplateId } from '@/core/template/TemplateRegistry';
+import { DEFAULT_IMAGE_ACTION_STRINGS, type ImageActionStrings } from '@/service/composer';
 
 export interface ImageCandidateUiStrings {
 	accept: string;
@@ -92,6 +93,22 @@ export function formatDimensions(
 		.replace('{w}', width !== undefined ? String(width) : '—')
 		.replace('{h}', height !== undefined ? String(height) : '—')
 		.replace('{size}', formatByteSize(byteSize));
+}
+
+/** Load the image object-action titles (`image.actions`; typed fallback otherwise). */
+export async function loadImageActionStrings(): Promise<ImageActionStrings> {
+	try {
+		const tm = TemplateManager.getInstance();
+		if (!tm) return DEFAULT_IMAGE_ACTION_STRINGS;
+		const parsed = await tm.loadJson<{ image?: { actions?: Partial<ImageActionStrings> } }>(
+			ConfigTemplateId.Composer,
+		);
+		const section = parsed?.image?.actions;
+		if (!section || typeof section !== 'object') return DEFAULT_IMAGE_ACTION_STRINGS;
+		return { ...DEFAULT_IMAGE_ACTION_STRINGS, ...section };
+	} catch {
+		return DEFAULT_IMAGE_ACTION_STRINGS;
+	}
 }
 
 /** Load the image UI strings (JSON template first, compiled fallback otherwise). */

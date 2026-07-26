@@ -175,10 +175,17 @@ export function EditableText({
 			}}
 		>
 			{showSource ? (
+				// INT-1: key by BLOCK-RELATIVE offset (`from − sourceFrom`), never the
+				// absolute source offset. Absolute offsets shift by the edit delta on
+				// every commit for all downstream blocks, so absolute keys remount their
+				// entire span DOM each burst — the mass childList churn is what fires the
+				// browser's async caret-reveal that scrolls the viewport to the document
+				// bottom (INT-1). Relative offsets are stable across commits, so an
+				// unchanged block reconciles in place (attribute-only), no remount.
 				segments.map((seg, i) =>
 					seg.linkTarget ? (
 						<span
-							key={`${seg.from}-${i}`}
+							key={seg.from - renderState.sourceFrom}
 							className="pk-composer-link"
 							data-src-text-from={seg.from}
 							data-unit-id={unitId}
@@ -189,7 +196,7 @@ export function EditableText({
 							{seg.text}
 						</span>
 					) : (
-						<span key={`${seg.from}-${i}`} data-src-text-from={seg.from} data-unit-id={unitId}>
+						<span key={seg.from - renderState.sourceFrom} data-src-text-from={seg.from} data-unit-id={unitId}>
 							{seg.text}
 						</span>
 					),
@@ -198,13 +205,14 @@ export function EditableText({
 				// Styled runs are rendered as DIRECT span children (not a nested
 				// component) so React preserves the exact text nodes across the
 				// selection-driven re-render — a component boundary here re-creates
-				// the nodes and collapses an in-progress selection.
+				// the nodes and collapses an in-progress selection. Keys are
+				// block-relative for the same INT-1 reason as the source segments above.
 				runs.map((run, i) => {
 					const { className, style } = styleAttrs(run.style);
 					if (run.linkTarget) {
 						return (
 							<span
-								key={`${run.from}-${i}`}
+								key={run.from - renderState.sourceFrom}
 								className={className ? `pk-composer-link ${className}` : 'pk-composer-link'}
 								style={style}
 								data-src-text-from={run.from}
@@ -218,7 +226,7 @@ export function EditableText({
 						);
 					}
 					return (
-						<span key={`${run.from}-${i}`} className={className} style={style} data-src-text-from={run.from} data-unit-id={unitId}>
+						<span key={run.from - renderState.sourceFrom} className={className} style={style} data-src-text-from={run.from} data-unit-id={unitId}>
 							{run.text}
 						</span>
 					);

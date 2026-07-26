@@ -15,8 +15,17 @@ export interface ComposerTransactionConfig {
 	 * target coalesce into one History parent + one Undo step (typing burst).
 	 */
 	burstWindowMs: number;
+	/**
+	 * INT-1 scroll-guard gesture window (ms). While a block is being edited the
+	 * browser fires an async caret-reveal on commit that would scroll the active
+	 * editor out of view; the Composer snaps back any large unexplained scroll
+	 * jump. A wheel / touch / scrollbar / nav-key gesture within this window marks
+	 * the scroll as user-driven so intentional scrolling is never fought.
+	 */
+	scrollGuardGestureWindowMs: number;
 }
 
 export const DEFAULT_TRANSACTION_CONFIG: ComposerTransactionConfig = {
 	burstWindowMs: 800,
+	scrollGuardGestureWindowMs: 250,
 };

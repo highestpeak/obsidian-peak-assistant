@@ -16,15 +16,23 @@ import {
 	ComposerSourceRevisionService,
 	ComposerTransactionEngine,
 	ComposerTransactionHub,
+	ImageCapabilityCoordinator,
 	IntelligenceRuntime,
 	type ComposerCapabilityDocumentRuntime,
 	type ComposerCommentPersistencePort,
 	type ComposerDocumentSession,
+	type ComposerImageAttachmentPort,
+	type ComposerImageEditPort,
+	type ComposerImageReferencePort,
+	type ComposerImageTextPort,
 	type ComposerLinkMetadataPort,
 	type ComposerRelatedMaterialsPort,
+	type ImageDomainConfigProvider,
 	type IntelligenceTelemetryPort,
+	type VaultPropertyScanPort,
 } from '@/service/composer';
 import { DEFAULT_TRANSACTION_CONFIG, type ComposerTransactionConfig } from '@/core/composer';
+import type { FormulaDetailGeneratorPort } from '@/ui/view/composer/blocks/math/formulaDetailStore';
 import {
 	ObsidianComposerFileEventsAdapter,
 	ObsidianComposerSourceAdapter,
@@ -45,6 +53,23 @@ export interface DocumentComposerRuntimeAdapters {
 	relatedMaterials?: ComposerRelatedMaterialsPort;
 	/** Privacy-safe telemetry sink for the §12.7 metric events (WP9). */
 	intelligenceTelemetry?: IntelligenceTelemetryPort;
+	/** Vault property inventory scan for the Frontmatter property library (WP5 §8.2). */
+	vaultInventory?: VaultPropertyScanPort;
+	/** Formula-detail generator for the math block's bespoke detail store (WP5 §10.2). */
+	formulaDetailGenerator?: FormulaDetailGeneratorPort;
+	/**
+	 * WP7 — image capability ports (paste / convert asset transactions, AI 改图
+	 * media generation, caption + smart-layout text flows). When present, one
+	 * {@link ImageCapabilityCoordinator} is composed per open document; absent ⇒ the
+	 * image block chrome degrades to disabled affordances (never fake buttons).
+	 */
+	imagePorts?: {
+		attachment: ComposerImageAttachmentPort;
+		reference: ComposerImageReferencePort;
+		edit: ComposerImageEditPort;
+		text?: ComposerImageTextPort;
+		config?: ImageDomainConfigProvider;
+	};
 }
 
 export class DocumentComposerRuntime {
@@ -55,6 +80,9 @@ export class DocumentComposerRuntime {
 	private readonly linkPort?: ComposerLinkMetadataPort;
 	private readonly relatedMaterials?: ComposerRelatedMaterialsPort;
 	private readonly intelligenceTelemetry?: IntelligenceTelemetryPort;
+	private readonly vaultInventory?: VaultPropertyScanPort;
+	private readonly formulaDetailGenerator?: FormulaDetailGeneratorPort;
+	private readonly imagePorts?: DocumentComposerRuntimeAdapters['imagePorts'];
 
 	constructor(
 		private readonly source: ObsidianComposerSourceAdapter,
@@ -69,6 +97,9 @@ export class DocumentComposerRuntime {
 		this.linkPort = adapters.linkPort;
 		this.relatedMaterials = adapters.relatedMaterials;
 		this.intelligenceTelemetry = adapters.intelligenceTelemetry;
+		this.vaultInventory = adapters.vaultInventory;
+		this.formulaDetailGenerator = adapters.formulaDetailGenerator;
+		this.imagePorts = adapters.imagePorts;
 	}
 
 	/** Override the transaction config once the runtime JSON resolves (async). */
@@ -95,6 +126,20 @@ export class DocumentComposerRuntime {
 		const hub = this.createTransactionHub(session);
 		const capabilityRuntime = this.createCapabilityRuntime(session, hub);
 		const comments = new ComposerCommentStore(session.snapshot.documentId, this.commentPersistence);
+		// WP7 — one image coordinator per open document (candidate rail + imperative
+		// paste/convert/AI-edit/caption/layout entries), sharing this document's hub
+		// so image commits land in the same History / Undo timeline. App-owned.
+		const imageCoordinator = this.imagePorts
+			? new ImageCapabilityCoordinator({
+					session,
+					hub,
+					attachment: this.imagePorts.attachment,
+					reference: this.imagePorts.reference,
+					edit: this.imagePorts.edit,
+					...(this.imagePorts.text ? { text: this.imagePorts.text } : {}),
+					...(this.imagePorts.config ? { config: this.imagePorts.config } : {}),
+				})
+			: undefined;
 		// WP9 — one Intelligence runtime per document, bound to this hub for the
 		// accepted-change → History receipt bridge. App-owned (no singleton).
 		const intelligence = new IntelligenceRuntime({
@@ -108,7 +153,10 @@ export class DocumentComposerRuntime {
 			comments,
 			intelligence,
 			...(this.linkPort ? { linkPort: this.linkPort } : {}),
+			...(this.vaultInventory ? { vaultInventory: this.vaultInventory } : {}),
+			...(this.formulaDetailGenerator ? { formulaDetailGenerator: this.formulaDetailGenerator } : {}),
 			...(capabilityRuntime ? { projection: capabilityRuntime, candidateRuntime: capabilityRuntime } : {}),
+			...(imageCoordinator ? { imageCoordinator } : {}),
 		};
 	}
 

@@ -24,3 +24,4 @@ export {
 	resolveComposerOpenDisposition,
 	type ComposerBrowserState,
 } from './ComposerResultBrowserAdapter';
+export { buildFocusRunContext, resolveRelatedFocus } from './focusContext';

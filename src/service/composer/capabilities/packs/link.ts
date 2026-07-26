@@ -71,7 +71,7 @@ export function createLinkTidyDefinition(
 		targetKinds: LINK_TARGET_KINDS,
 		executionMode: 'model-stream',
 		effectKind: 'rewrite',
-		promptId: PromptId.DocPolish,
+		promptId: PromptId.DocLinkTidy,
 		inputSchema: ComposerInstructionInputSchema,
 		resultSchema: ComposerTextPatchPayloadSchema,
 		resultKind: 'text-patch',

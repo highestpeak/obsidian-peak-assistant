@@ -1,42 +1,66 @@
 /**
- * Peak Composer — native objects capability pack (WP8, §10.11 / §10.13).
+ * Peak Composer — native objects capability pack (WP8 + WP-INT, §10.11–10.13).
  *
- * Registers the AI capabilities for native objects that ride the existing
- * text-patch rail (model-stream → text-patch → atomic block replace):
- *   - `composer.mermaid.edit` — incrementally edit a ```mermaid diagram's source
- *     per a targeted instruction; the candidate re-renders and is reviewed
- *     before accept (handoff §10.11: AI patch modifies Mermaid source);
- *   - `composer.code.edit` — rewrite/refactor a code block per instruction while
- *     keeping it a fenced code block (rich formatting stays suppressed, §7.4).
+ * Two rails live here:
  *
- * Both reuse `PromptId.DocPolish` (the generic "improve this content per
- * instruction" prompt) with the FULL block source as content, so the model
- * returns a full replacement for the block's source range — the text-patch
- * writeback then replaces `[from,to)` atomically. Presentation is config-driven
- * with a compiled fallback carried on each definition.
+ * 1. Text-patch native edits (`composer.mermaid.edit`, `composer.code.edit`) —
+ *    the model rewrites a ```mermaid or fenced code block's source; the result
+ *    rides the shared text-patch rail (model-stream → text-patch → atomic block
+ *    replace). WP-INT specialized these onto their OWN PromptIds
+ *    (`DocMermaidEdit` / `DocCodeEdit`) instead of borrowing `DocPolish`.
  *
- * The deterministic Base/Canvas/Excalidraw structural patches are NOT AI runs —
- * they are typed patches applied through the native-file port (see
- * `packs/native/*` + `nativeFilePatch.ts`), so they do not register here.
+ * 2. Native STRUCTURAL edits (`composer.base.edit`, `composer.canvas.edit`,
+ *    `composer.excalidraw.edit`) — the model emits a TYPED PATCH JSON bundle for
+ *    a SEPARATE native object file (`.base` / `.canvas` / `.excalidraw.md`). The
+ *    `native-file-patch` materializer validates the bundle, applies it through the
+ *    WP8 typed-patch functions (never string-replace) to compute the next bytes,
+ *    and carries a structured change summary for the review card. On accept the
+ *    runtime writes it through the revision-guarded native-file port — NOT the
+ *    Markdown transaction hub, because it targets a different file (handoff §10.12).
+ *    All three share the one `DocNativeEdit` PromptId, disambiguated per format by
+ *    `resultContext.format` (the fan-out precedent from the formula pack §5.1).
  */
 
 import { PromptId } from '@/core/types/prompt';
 import {
 	COMPOSER_STREAMING_TEXT_RENDERER_ID,
+	COMPOSER_NATIVE_FILE_PATCH_RENDERER_ID,
+	COMPOSER_NATIVE_FILE_PATCH_WRITEBACK_ID,
 	COMPOSER_TEXT_PATCH_WRITEBACK_ID,
 	type ComposerCapabilityAvailability,
 	type ComposerCapabilityDefinition,
 	type ComposerCapabilityPack,
 	type ComposerContextSnapshot,
+	type ComposerOperation,
+	type ComposerResultEnvelope,
 } from '@/core/composer';
 import {
+	ComposerBaseFilePatchSchema,
+	ComposerCanvasPatchSchema,
+	ComposerExcalidrawPatchSchema,
 	ComposerInstructionInputSchema,
+	ComposerNativeFilePatchPayloadSchema,
+	ComposerNativePatchBundleSchema,
 	ComposerTextPatchPayloadSchema,
+	type ComposerNativeFileFormat,
+	type ComposerNativeFilePatchPayload,
 } from '@/core/schemas/composer';
 import type { ComposerCapabilitiesConfigProvider } from '../capabilityConfig';
+import { parseTypedObjectJson, type ComposerResultMaterializer } from '../resultMaterializers';
+import type { ComposerWritebackAdapter } from '../writebackAdapters';
+import {
+	patchNativeFile,
+	type BaseFilePatch,
+	type CanvasPatch,
+	type ExcalidrawPatch,
+	type NativeFilePatchRequest,
+} from '../../packs/native';
 
 export const MERMAID_EDIT_CAPABILITY_ID = 'composer.mermaid.edit';
 export const CODE_EDIT_CAPABILITY_ID = 'composer.code.edit';
+export const BASE_EDIT_CAPABILITY_ID = 'composer.base.edit';
+export const CANVAS_EDIT_CAPABILITY_ID = 'composer.canvas.edit';
+export const EXCALIDRAW_EDIT_CAPABILITY_ID = 'composer.excalidraw.edit';
 
 function nonEmpty(
 	snapshot: ComposerContextSnapshot,
@@ -47,18 +71,13 @@ function nonEmpty(
 	return { state: 'available' };
 }
 
-/** Shared prompt-variable mapping: the whole block is the content to rewrite. */
-function buildEditPromptVariables(
-	snapshot: ComposerContextSnapshot,
-	instruction: string | undefined,
-	defaultInstruction: string,
-): Record<string, unknown> {
-	return {
-		content: snapshot.selectionText ?? snapshot.targetSource,
-		scope: snapshot.selectionText !== undefined ? 'selection' : 'full',
-		instruction: instruction && instruction.trim() ? instruction : defaultInstruction,
-	};
+/** Extract the language token from a fenced code block's opening line, if any. */
+function fencedLanguage(source: string): string | undefined {
+	const match = /^\s*(?:```+|~~~+)([A-Za-z0-9_+\-]+)/.exec(source);
+	return match ? match[1] : undefined;
 }
+
+// ── Text-patch native edits (mermaid / code) ────────────────────────────────────
 
 export function createMermaidEditDefinition(
 	config: ComposerCapabilitiesConfigProvider,
@@ -83,7 +102,7 @@ export function createMermaidEditDefinition(
 		targetKinds: ['mermaid'],
 		executionMode: 'model-stream',
 		effectKind: 'rewrite',
-		promptId: PromptId.DocPolish,
+		promptId: PromptId.DocMermaidEdit,
 		inputSchema: ComposerInstructionInputSchema,
 		resultSchema: ComposerTextPatchPayloadSchema,
 		resultKind: 'text-patch',
@@ -98,12 +117,11 @@ export function createMermaidEditDefinition(
 			order: 40,
 		},
 		evaluate: ({ snapshot }) => nonEmpty(snapshot, config().strings.emptyTarget),
-		buildPromptVariables: (snapshot, instruction) =>
-			buildEditPromptVariables(
-				snapshot,
-				instruction,
-				'Edit this Mermaid diagram. Return the full ```mermaid code block, keeping it valid Mermaid syntax.',
-			),
+		buildPromptVariables: (snapshot, instruction) => ({
+			content: snapshot.selectionText ?? snapshot.targetSource,
+			scope: snapshot.selectionText !== undefined ? 'selection' : 'full',
+			...(instruction && instruction.trim() ? { instruction } : {}),
+		}),
 	};
 }
 
@@ -130,7 +148,7 @@ export function createCodeEditDefinition(
 		targetKinds: ['code'],
 		executionMode: 'model-stream',
 		effectKind: 'rewrite',
-		promptId: PromptId.DocPolish,
+		promptId: PromptId.DocCodeEdit,
 		inputSchema: ComposerInstructionInputSchema,
 		resultSchema: ComposerTextPatchPayloadSchema,
 		resultKind: 'text-patch',
@@ -145,20 +163,293 @@ export function createCodeEditDefinition(
 			order: 42,
 		},
 		evaluate: ({ snapshot }) => nonEmpty(snapshot, config().strings.emptyTarget),
-		buildPromptVariables: (snapshot, instruction) =>
-			buildEditPromptVariables(
-				snapshot,
-				instruction,
-				'Improve this code. Return the full fenced code block, preserving the language and indentation.',
-			),
+		buildPromptVariables: (snapshot, instruction) => {
+			const content = snapshot.selectionText ?? snapshot.targetSource;
+			const language = fencedLanguage(snapshot.targetSource);
+			return {
+				content,
+				scope: snapshot.selectionText !== undefined ? 'selection' : 'full',
+				...(language ? { language } : {}),
+				...(instruction && instruction.trim() ? { instruction } : {}),
+			};
+		},
 	};
 }
+
+// ── Native structural edits (base / canvas / excalidraw) ─────────────────────────
+
+/** A structured, human-readable summary of one native structural patch bundle. */
+export interface NativeChangeSummary {
+	format: ComposerNativeFileFormat;
+	/** One line per patch op, in application order. */
+	ops: readonly string[];
+}
+
+/** Envelope payload for a `native-file-patch` result: accept core + review summary. */
+export interface NativeFilePatchEnvelopePayload {
+	/** Schema-validated core the accept path (native-file port write) consumes. */
+	core: ComposerNativeFilePatchPayload;
+	/** Structured change description for the review card. */
+	summary: NativeChangeSummary;
+}
+
+/**
+ * Pure mapping: a native format + its typed patches → readable per-op preview
+ * lines. No I/O, no model — the renderer test drives this directly (goal 1).
+ */
+export function describeNativePatches(
+	format: ComposerNativeFileFormat,
+	patches: ReadonlyArray<BaseFilePatch | CanvasPatch | ExcalidrawPatch>,
+): NativeChangeSummary {
+	const ops = patches.map((p) => describeOne(format, p));
+	return { format, ops };
+}
+
+function describeOne(
+	format: ComposerNativeFileFormat,
+	patch: BaseFilePatch | CanvasPatch | ExcalidrawPatch,
+): string {
+	if (format === 'base') return describeBase(patch as BaseFilePatch);
+	if (format === 'canvas') return describeCanvas(patch as CanvasPatch);
+	return describeExcalidraw(patch as ExcalidrawPatch);
+}
+
+function describeBase(p: BaseFilePatch): string {
+	switch (p.op) {
+		case 'rename-view':
+			return `Rename view #${p.viewIndex} → “${p.name}”`;
+		case 'add-order-column':
+			return `Add column “${p.column}” to view #${p.viewIndex}`;
+		case 'remove-order-column':
+			return `Remove column “${p.column}” from view #${p.viewIndex}`;
+		case 'set-formula':
+			return `Set formula “${p.key}” on view #${p.viewIndex}`;
+		case 'remove-formula':
+			return `Remove formula “${p.key}” from view #${p.viewIndex}`;
+		case 'set-field':
+			return `Set field ${p.path.join('.')}`;
+	}
+}
+
+function describeCanvas(p: CanvasPatch): string {
+	switch (p.op) {
+		case 'move-node':
+			return `Move node ${p.id} → (${p.x}, ${p.y})`;
+		case 'nudge-node':
+			return `Nudge node ${p.id} by (${p.dx}, ${p.dy})`;
+		case 'set-node-text':
+			return `Set text of node ${p.id}`;
+		case 'set-node-label':
+			return `Set label of node ${p.id}`;
+		case 'set-node-color':
+			return `Set color of node ${p.id}`;
+		case 'add-edge':
+			return `Add edge ${p.edge.fromNode} → ${p.edge.toNode}`;
+		case 'remove-edge':
+			return `Remove edge ${p.id}`;
+		case 'remove-node':
+			return `Remove node ${p.id}`;
+	}
+}
+
+function describeExcalidraw(p: ExcalidrawPatch): string {
+	switch (p.op) {
+		case 'set-background':
+			return `Set background color ${p.color}`;
+		case 'add-element':
+			return `Add ${p.element.type} element`;
+		case 'remove-element':
+			return `Remove element ${p.id}`;
+		case 'set-scene-field':
+			return `Set scene field ${p.path.join('.')}`;
+	}
+}
+
+/** Validate the bundle's patches against the ONE schema matching `format`. */
+function narrowPatches(
+	format: ComposerNativeFileFormat,
+	patches: readonly unknown[],
+): NativeFilePatchRequest {
+	if (format === 'base') {
+		return { format, patches: patches.map((p) => ComposerBaseFilePatchSchema.parse(p) as BaseFilePatch) };
+	}
+	if (format === 'canvas') {
+		return { format, patches: patches.map((p) => ComposerCanvasPatchSchema.parse(p) as CanvasPatch) };
+	}
+	return { format, patches: patches.map((p) => ComposerExcalidrawPatchSchema.parse(p) as ExcalidrawPatch) };
+}
+
+/**
+ * `native-file-patch` materializer: parse the streamed typed-patch JSON, narrow
+ * it to the definition's format, apply it against the native file's frozen base
+ * bytes through the WP8 typed-patch functions, and carry BOTH the accept core
+ * (format / targetPath / nextText | unsupported+reason) and a structured summary.
+ * Fails CLOSED — a compressed-json Excalidraw variant or an out-of-range patch
+ * lands as `unsupported` rather than corrupting the file.
+ */
+export function createNativeFilePatchMaterializer(): ComposerResultMaterializer {
+	return {
+		resultKind: 'native-file-patch',
+		streamsTypedObject: true,
+		materialize({ definition, text, nativeBaseText, nativeTargetPath }): ComposerResultEnvelope<NativeFilePatchEnvelopePayload> {
+			const format = definition.resultContext?.format as ComposerNativeFileFormat | undefined;
+			if (!format) throw new Error('native-file-patch: definition is missing resultContext.format');
+			const targetPath = nativeTargetPath ?? '';
+			const bundle = ComposerNativePatchBundleSchema.parse(parseTypedObjectJson(text, 'native-file-patch'));
+			const request = narrowPatches(format, bundle.patches);
+			const summary = describeNativePatches(format, request.patches);
+			const core = buildNativeCore(format, targetPath, nativeBaseText, request);
+			return {
+				resultKind: 'native-file-patch',
+				rendererId: definition.rendererId,
+				...(definition.writebackAdapterId !== undefined
+					? { writebackAdapterId: definition.writebackAdapterId }
+					: {}),
+				payload: { core, summary },
+			};
+		},
+	};
+}
+
+function buildNativeCore(
+	format: ComposerNativeFileFormat,
+	targetPath: string,
+	nativeBaseText: string | undefined,
+	request: NativeFilePatchRequest,
+): ComposerNativeFilePatchPayload {
+	if (nativeBaseText === undefined) {
+		return ComposerNativeFilePatchPayloadSchema.parse({
+			format,
+			targetPath,
+			unsupported: true,
+			reason: 'native object source is unavailable (no native-file port)',
+		});
+	}
+	const outcome = patchNativeFile(nativeBaseText, request);
+	const core = outcome.ok
+		? { format, targetPath, nextText: outcome.nextText }
+		: { format, targetPath, unsupported: true, reason: outcome.reason };
+	return ComposerNativeFilePatchPayloadSchema.parse(core);
+}
+
+/**
+ * `native-file-patch` writeback: a MARKER that produces no Markdown operations —
+ * a native patch targets a SEPARATE file, so the runtime writes it through the
+ * revision-guarded native-file port on accept. Registered so `validateBindings`
+ * sees a complete chain for the `native-file-patch` result kind.
+ */
+export function createNativeFilePatchWritebackAdapter(): ComposerWritebackAdapter {
+	return {
+		id: COMPOSER_NATIVE_FILE_PATCH_WRITEBACK_ID,
+		resultKinds: ['native-file-patch'],
+		buildOperations(): ComposerOperation[] {
+			return [];
+		},
+	};
+}
+
+interface NativeDefSpec {
+	id: string;
+	format: ComposerNativeFileFormat;
+	title: string;
+	description: string;
+	lucideIcon: string;
+	historyLabel: string;
+	order: number;
+}
+
+function createNativeStructuralDefinition(
+	spec: NativeDefSpec,
+	config: ComposerCapabilitiesConfigProvider,
+): ComposerCapabilityDefinition {
+	return {
+		manifest: {
+			id: spec.id,
+			title: spec.title,
+			description: spec.description,
+			inputContract: { kind: 'object', description: 'Frozen composer context plus optional targeted instruction' },
+			outputContract: { kind: 'custom', description: 'typed native-file patch candidate' },
+			permissionKind: 'read',
+			costTier: 'fast',
+			backendPolicy: { preferred: 'provider-direct', fallback: [] },
+			skillRef: spec.id,
+			surfaceBinding: ['composer'],
+		},
+		version: '1',
+		owner: 'composer-native',
+		configKey: spec.id,
+		surfaces: ['block-row'],
+		// The native object is hosted by a Markdown embed block; the runtime gates
+		// each format to its own native ref (and to the presence of the native-file
+		// port) in `actionsFor`, so only the matching format ever projects.
+		targetKinds: ['embed', 'base', 'canvas', 'excalidraw'],
+		executionMode: 'model-stream',
+		effectKind: 'native-object-patch',
+		promptId: PromptId.DocNativeEdit,
+		inputSchema: ComposerInstructionInputSchema,
+		resultSchema: ComposerNativeFilePatchPayloadSchema,
+		resultKind: 'native-file-patch',
+		resultContext: { format: spec.format },
+		rendererId: COMPOSER_NATIVE_FILE_PATCH_RENDERER_ID,
+		writebackAdapterId: COMPOSER_NATIVE_FILE_PATCH_WRITEBACK_ID,
+		acceptsInstruction: true,
+		presentationFallback: {
+			title: spec.title,
+			description: spec.description,
+			lucideIcon: spec.lucideIcon,
+			historyLabel: spec.historyLabel,
+			order: spec.order,
+		},
+		// Real availability (native ref of matching format + port present) is decided
+		// by the runtime; here we only reject an empty target.
+		evaluate: ({ snapshot }) => nonEmpty(snapshot, config().strings.emptyTarget),
+		buildPromptVariables: (snapshot, instruction, extras) => ({
+			format: spec.format,
+			native: extras?.nativeText ?? '',
+			...(instruction && instruction.trim() ? { instruction } : {}),
+		}),
+	};
+}
+
+export const NATIVE_STRUCTURAL_SPECS: readonly NativeDefSpec[] = [
+	{
+		id: BASE_EDIT_CAPABILITY_ID,
+		format: 'base',
+		title: 'Edit base',
+		description: 'Restructure this Base view (columns, formulas, filters) with AI',
+		lucideIcon: 'database',
+		historyLabel: 'AI base edit',
+		order: 46,
+	},
+	{
+		id: CANVAS_EDIT_CAPABILITY_ID,
+		format: 'canvas',
+		title: 'Edit canvas',
+		description: 'Edit this Canvas structure (nodes, edges, labels) with AI',
+		lucideIcon: 'layout-dashboard',
+		historyLabel: 'AI canvas edit',
+		order: 47,
+	},
+	{
+		id: EXCALIDRAW_EDIT_CAPABILITY_ID,
+		format: 'excalidraw',
+		title: 'Edit drawing',
+		description: 'Edit this Excalidraw scene (elements, background) with AI',
+		lucideIcon: 'pen-tool',
+		historyLabel: 'AI drawing edit',
+		order: 48,
+	},
+] as const;
 
 export function createNativeCapabilityPack(
 	config: ComposerCapabilitiesConfigProvider,
 ): ComposerCapabilityPack {
 	return {
 		id: 'composer-pack-native',
-		definitions: () => [createMermaidEditDefinition(config), createCodeEditDefinition(config)],
+		definitions: () => [
+			createMermaidEditDefinition(config),
+			createCodeEditDefinition(config),
+			...NATIVE_STRUCTURAL_SPECS.map((spec) => createNativeStructuralDefinition(spec, config)),
+		],
 	};
 }

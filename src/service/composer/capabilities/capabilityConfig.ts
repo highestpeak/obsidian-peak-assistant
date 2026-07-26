@@ -27,6 +27,8 @@ export interface ComposerCapabilityRuntimeStrings {
 	runCancelled: string;
 	/** Generic failure text when a run errors without a message. */
 	runFailed: string;
+	/** Disabled reason when the native object file cannot be edited (no native-file port). */
+	nativeUnavailable: string;
 }
 
 export interface ComposerCapabilityContextPolicy {
@@ -58,6 +60,7 @@ export const DEFAULT_COMPOSER_CAPABILITIES_CONFIG: ComposerCapabilitiesConfig = 
 		emptyTarget: 'Nothing to work on in this block',
 		runCancelled: 'Generation cancelled',
 		runFailed: 'Generation failed',
+		nativeUnavailable: 'This native object cannot be edited here',
 	},
 };
 

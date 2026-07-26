@@ -40,10 +40,20 @@ export interface ImageConverterConfig {
 	defaultQuality: number;
 }
 
+export interface ImageEditConfig {
+	/**
+	 * Media-generation preset id used for AI 改图 (instruction-first image edit).
+	 * Routes through the shared MediaGenerationService; mirrors the Chat composer's
+	 * `EditPresetId` ("edit-default" | "edit-fill" | "native-edit").
+	 */
+	presetId: string;
+}
+
 export interface ImageDomainConfig {
 	naming: ImageNamingConfig;
 	layout: ImageLayoutConfig;
 	converter: ImageConverterConfig;
+	edit: ImageEditConfig;
 }
 
 /** Compiled fallback — mirrors templates/config/composer.json `image`. */
@@ -61,6 +71,9 @@ export const DEFAULT_IMAGE_DOMAIN_CONFIG: ImageDomainConfig = {
 	converter: {
 		defaultQuality: 0.9,
 	},
+	edit: {
+		presetId: 'edit-default',
+	},
 };
 
 export type ImageDomainConfigProvider = () => ImageDomainConfig;
@@ -77,6 +90,7 @@ export async function loadImageDomainConfig(): Promise<ImageDomainConfig> {
 			naming: { ...DEFAULT_IMAGE_DOMAIN_CONFIG.naming, ...(section.naming ?? {}) },
 			layout: { ...DEFAULT_IMAGE_DOMAIN_CONFIG.layout, ...(section.layout ?? {}) },
 			converter: { ...DEFAULT_IMAGE_DOMAIN_CONFIG.converter, ...(section.converter ?? {}) },
+			edit: { ...DEFAULT_IMAGE_DOMAIN_CONFIG.edit, ...(section.edit ?? {}) },
 		};
 	} catch {
 		return DEFAULT_IMAGE_DOMAIN_CONFIG;

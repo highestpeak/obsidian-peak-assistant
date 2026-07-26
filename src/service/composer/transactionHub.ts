@@ -175,6 +175,18 @@ export class ComposerTransactionHub {
 		this.notify();
 	}
 
+	/**
+	 * Mark a candidate accepted WITHOUT a Markdown commit. For results whose write
+	 * lands OUTSIDE this document's transaction ledger — a `native-file-patch`
+	 * written to a separate `.base`/`.canvas`/`.excalidraw` file through the
+	 * native-file port — so the candidate leaves the pending list once its own
+	 * revision-guarded write has succeeded. Never touches Markdown / History / Undo.
+	 */
+	markCandidateAccepted(candidateId: string): void {
+		this.candidates.markAccepted(candidateId);
+		this.notify();
+	}
+
 	/** Restore a discarded candidate (candidate-local; never a document redo). */
 	restoreCandidate(candidateId: string): ComposerCandidate | undefined {
 		const candidate = this.candidates.restore(candidateId);

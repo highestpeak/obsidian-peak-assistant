@@ -46,8 +46,97 @@ export interface ComposerRelatedMaterialSnapshot {
  * never touches the search store directly.
  */
 export interface ComposerRelatedMaterialsPort {
-	/** Build one immutable snapshot for the given focus block; one build per refresh. */
-	buildSnapshot(focus: { anchorId: string; documentId: string }): Promise<ComposerRelatedMaterialSnapshot>;
+	/**
+	 * Build one immutable snapshot for the given focus block; one build per refresh.
+	 * `focusText` is the verbatim text of the focused block (or a document excerpt)
+	 * the app resolves from chrome focus — the query source for the related search.
+	 * An unavailable / uninitialised search service returns an EMPTY snapshot
+	 * (never throws): the Sidecar already degrades to an empty brief.
+	 */
+	buildSnapshot(focus: {
+		anchorId: string;
+		documentId: string;
+		focusText?: string;
+	}): Promise<ComposerRelatedMaterialSnapshot>;
+}
+
+/** An empty snapshot for a focus — the safe degraded value when search is unavailable. */
+export function emptyRelatedSnapshot(focus: {
+	anchorId: string;
+	documentId: string;
+}): ComposerRelatedMaterialSnapshot {
+	return {
+		revision: 'r0',
+		focus: { anchorId: focus.anchorId, rootNodeId: focus.documentId },
+		items: [],
+		graph: { resultNodes: [], hubAnchors: [], edges: [], isolatedDocIds: [], overflowCount: 0 },
+		sourceIdByNodeId: {},
+		reasonBySourceId: {},
+		weakNodeIds: [],
+		weakEdgeKeys: [],
+	};
+}
+
+/** Inputs to the pure related-snapshot mapper (search results → frozen snapshot). */
+export interface RelatedSnapshotMapInput {
+	readonly focus: { readonly anchorId: string; readonly rootNodeId: string };
+	readonly revision: string;
+	/** The complete ranked result set (self already excluded by the caller). */
+	readonly items: readonly SearchResultItem[];
+	/** Cap on graph node projection (sidecar config `graphNodeCap`). */
+	readonly graphNodeCap: number;
+	/** App-owned relation reason per source id (why related). Missing ⇒ ''. */
+	readonly reasonBySourceId?: Readonly<Record<string, string>>;
+	/** Source ids to mark weak (hidden in the local preview; app-owned overlay). */
+	readonly weakSourceIds?: readonly string[];
+}
+
+/**
+ * Pure mapper: search results → a frozen {@link ComposerRelatedMaterialSnapshot}.
+ * The graph is a bounded NODE-ONLY projection of the ranked items (top
+ * `graphNodeCap` by score) — real edge fitting is a later pass (WP9b legacy).
+ * Node ids equal source ids here, so `sourceIdByNodeId` is the identity map over
+ * the projected nodes. Deterministic and side-effect free (unit-tested).
+ */
+export function buildRelatedSnapshot(input: RelatedSnapshotMapInput): ComposerRelatedMaterialSnapshot {
+	const scoreOf = (it: SearchResultItem): number => it.finalScore ?? it.score ?? 0;
+	const ranked = [...input.items].sort((a, b) => scoreOf(b) - scoreOf(a));
+	const cap = Math.max(0, Math.floor(input.graphNodeCap));
+	const projected = ranked.slice(0, cap);
+	const resultNodes = projected.map((it) => ({
+		id: it.id,
+		path: it.path,
+		title: it.title,
+		score: scoreOf(it),
+		communityId: null,
+		folder: topFolderOf(it.path),
+	}));
+	const sourceIdByNodeId: Record<string, string> = {};
+	for (const node of resultNodes) sourceIdByNodeId[node.id] = node.id;
+	const reasonBySourceId: Record<string, string> = {};
+	for (const it of ranked) reasonBySourceId[it.id] = input.reasonBySourceId?.[it.id] ?? '';
+	return {
+		revision: input.revision,
+		focus: { anchorId: input.focus.anchorId, rootNodeId: input.focus.rootNodeId },
+		items: ranked,
+		graph: {
+			resultNodes,
+			hubAnchors: [],
+			edges: [],
+			isolatedDocIds: resultNodes.map((n) => n.id),
+			overflowCount: Math.max(0, ranked.length - cap),
+		},
+		sourceIdByNodeId,
+		reasonBySourceId,
+		weakNodeIds: [...(input.weakSourceIds ?? [])],
+		weakEdgeKeys: [],
+	};
+}
+
+/** Top-level folder segment of a vault path (mirrors the subgraph `folder` field). */
+function topFolderOf(path: string): string {
+	const slash = path.indexOf('/');
+	return slash > 0 ? path.slice(0, slash) : '';
 }
 
 /** One bounded-preview node the Sidecar renders (strongest neighbourhood only). */

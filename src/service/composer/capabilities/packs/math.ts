@@ -149,6 +149,19 @@ export function formulaDetailKindOf(capabilityId: string): ComposerFormulaDetail
 	return DETAILS.find((d) => d.id === capabilityId)?.detailKind ?? null;
 }
 
+/**
+ * Detail kind → its capability id + registered PromptId. The app-composed
+ * formula-detail generator uses this to route a bespoke-store request through
+ * the shared capability executor (the math details drive their own store rather
+ * than the candidate host — §3.3 — so they need the prompt binding directly).
+ */
+export function formulaDetailCapabilityForKind(
+	kind: ComposerFormulaDetailKind,
+): { capabilityId: string; promptId: PromptId } | null {
+	const spec = DETAILS.find((d) => d.detailKind === kind);
+	return spec ? { capabilityId: spec.id, promptId: spec.promptId } : null;
+}
+
 export function createMathCapabilityPack(
 	config: ComposerCapabilitiesConfigProvider,
 ): ComposerCapabilityPack {

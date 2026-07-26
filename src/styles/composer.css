@@ -959,3 +959,45 @@
 		animation: none !important;
 	}
 }
+
+/* ── CMP-REV-02 in-place word diff (candidate card) ───────────────────────────
+   Light values are the diff-patterns-lab mock computed styles, verbatim:
+     del: color #a85b5b · bg #fbecec · line-through #b95858 @1.5px    (--red/--red-weak)
+     ins: color #176d52 · bg #e9f7f0                                  (--green/--green-weak)
+   Dark is a Peak remap (the mock ships light only) — translucent tints so the
+   marks read on dark paper. Both use box-decoration-break so wrapped multi-line
+   marks keep their padding + background across line breaks. */
+.peak-composer-root {
+	--pkc-diff-del-fg: #a85b5b;
+	--pkc-diff-del-bg: #fbecec;
+	--pkc-diff-del-line: #b95858;
+	--pkc-diff-ins-fg: #176d52;
+	--pkc-diff-ins-bg: #e9f7f0;
+}
+.theme-dark .peak-composer-root {
+	--pkc-diff-del-fg: #e0a3a3;
+	--pkc-diff-del-bg: rgba(200, 90, 90, 0.16);
+	--pkc-diff-del-line: #cf8a8a;
+	--pkc-diff-ins-fg: #7fd0b0;
+	--pkc-diff-ins-bg: rgba(46, 160, 118, 0.18);
+}
+.peak-composer-root .pk-diff-del,
+.peak-composer-root .pk-diff-ins {
+	padding: 1px 2px;
+	border-radius: 3px;
+	-webkit-box-decoration-break: clone;
+	box-decoration-break: clone;
+}
+.peak-composer-root .pk-diff-del {
+	color: var(--pkc-diff-del-fg);
+	background: var(--pkc-diff-del-bg);
+	text-decoration-line: line-through;
+	text-decoration-color: var(--pkc-diff-del-line);
+	text-decoration-thickness: 1.5px;
+}
+.peak-composer-root .pk-diff-ins {
+	margin-left: 2px;
+	color: var(--pkc-diff-ins-fg);
+	background: var(--pkc-diff-ins-bg);
+	text-decoration: none;
+}

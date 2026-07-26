@@ -8,3 +8,4 @@ export { ImageAssetCandidateCard } from './ImageAssetCandidateCard';
 export { ImageAnnotationCandidateCard } from './ImageAnnotationCandidateCard';
 export { ImageLayoutCandidateCard } from './ImageLayoutCandidateCard';
 export { registerImageCandidateRenderers } from './imageRendererRegistry';
+export { ImageBlockView } from './ImageBlockView';

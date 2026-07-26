@@ -110,15 +110,21 @@ function BriefView(): React.ReactElement {
 
 /** Loads the related snapshot once from the app-owned port (no-op without one). */
 function RelatedLoader({ onLoaded }: { onLoaded: (s: ComposerRelatedMaterialSnapshot) => void }): null {
-	const { runtime } = useSidecar();
+	const { runtime, getFocusedBlockId, resolveRelatedFocus } = useSidecar();
 	React.useEffect(() => {
 		const port = runtime.related;
 		if (!port) return;
 		let alive = true;
-		// The focus id is document-scoped in the shell; the integration pass wires
-		// the live focus block. Failures are swallowed (brief stays empty).
+		// Resolve the REAL focused block (chrome focus) → anchor + query text. Falls
+		// back to the whole-document focus when nothing is focused; failures are
+		// swallowed (brief stays empty) since the port degrades to an empty snapshot.
+		const focus = resolveRelatedFocus?.(getFocusedBlockId?.() ?? null) ?? {
+			anchorId: 'document',
+			documentId: 'document',
+			focusText: '',
+		};
 		void port
-			.buildSnapshot({ anchorId: 'document', documentId: 'document' })
+			.buildSnapshot(focus)
 			.then((snap) => {
 				if (alive) onLoaded(snap);
 			})
@@ -126,7 +132,7 @@ function RelatedLoader({ onLoaded }: { onLoaded: (s: ComposerRelatedMaterialSnap
 		return () => {
 			alive = false;
 		};
-	}, [runtime, onLoaded]);
+	}, [runtime, onLoaded, getFocusedBlockId, resolveRelatedFocus]);
 	return null;
 }
 
@@ -189,24 +195,32 @@ function FindingRow({
 // ── session ─────────────────────────────────────────────────────────────────────
 
 function SessionView(): React.ReactElement {
-	const { runtime, hub, config } = useSidecar();
+	const { runtime, hub, config, getFocusedBlockId, resolveFocusContext } = useSidecar();
 	const projection = useSessionProjection(runtime);
 	const s = config.strings;
 
-	const buildFrozenSnapshot = (): ComposerContextSnapshot => {
-		const revision = hub?.currentRevision ?? 'r0';
-		return {
+	const documentFallback = (): { snapshot: ComposerContextSnapshot; targetQuote: string } => ({
+		snapshot: {
 			documentId: 'document',
-			revision,
+			revision: hub?.currentRevision ?? 'r0',
 			target: { kind: 'document', documentId: 'document' },
 			targetSource: '',
 			nearby: { before: '', after: '' },
-		};
-	};
+		},
+		targetQuote: '',
+	});
 
 	const onSend = (text: string) => {
 		if (!text.trim()) return;
-		runtime.session.send({ snapshot: buildFrozenSnapshot(), targetQuote: text.trim(), relatedRefs: [] });
+		// Freeze the REAL focused block at send time (§12.2); the typed text is the
+		// run instruction, the frozen target is what the user is focused on.
+		const focused = getFocusedBlockId?.() ?? null;
+		const ctx = resolveFocusContext?.(focused) ?? documentFallback();
+		runtime.session.send({
+			snapshot: ctx.snapshot,
+			targetQuote: ctx.targetQuote || text.trim(),
+			relatedRefs: [],
+		});
 	};
 
 	return (

@@ -27,14 +27,25 @@ import {
 	createProseCapabilityPack,
 	createFrontmatterCapabilityPack,
 	createMathCapabilityPack,
+	createTableCapabilityPack,
+	createChartCapabilityPack,
 	createMetadataFieldPatchMaterializer,
 	createMetadataFieldPatchWritebackAdapter,
 	createFormulaAnnotationMaterializer,
+	createTablePatchMaterializer,
+	createTablePatchWritebackAdapter,
+	createChartSourceMaterializer,
+	createChartSourceWritebackAdapter,
+	registerImageResultMaterializers,
+	registerImageWritebackAdapters,
+	createNativeFilePatchMaterializer,
+	createNativeFilePatchWritebackAdapter,
 	loadComposerCapabilitiesConfig,
 	DEFAULT_COMPOSER_CAPABILITIES_CONFIG,
 	type ComposerCapabilitiesConfig,
 	type ComposerCapabilityExecutorPort,
 	type ComposerDocumentSession,
+	type ComposerNativeFilePort,
 	type ComposerTransactionHub,
 } from '@/service/composer';
 import { ComposerAiExecutorAdapter } from './ComposerAiExecutorAdapter';
@@ -52,6 +63,12 @@ export interface ComposeComposerCapabilityRuntimeOptions {
 	executor?: ComposerCapabilityExecutorPort;
 	/** Test seam — defaults to lazy AppContext resolution. */
 	resolvePrompter?: () => IAgentPrompter;
+	/**
+	 * Native object file port for the Base/Canvas/Excalidraw structural-edit
+	 * capabilities. Absent (a harness with no vault) ⇒ those actions project
+	 * disabled and never write; every text/table/chart/image flow is unaffected.
+	 */
+	nativeFilePort?: ComposerNativeFilePort;
 }
 
 export function composeComposerCapabilityRuntime(
@@ -75,12 +92,33 @@ export function composeComposerCapabilityRuntime(
 	// WP5 packs: frontmatter (AI property suggestion) + math (explain/split/variables).
 	registry.registerPack(createFrontmatterCapabilityPack(configProvider));
 	registry.registerPack(createMathCapabilityPack(configProvider));
+	// WP6 packs: table AI (summarize / add-column / check-units / extract-formula)
+	// + chart (generate-chart). Both emit typed JSON results (table-patch /
+	// chart-source) with their own materializers + writeback adapters below.
+	registry.registerPack(createTableCapabilityPack(configProvider));
+	registry.registerPack(createChartCapabilityPack(configProvider));
 
 	const materializers = createDefaultResultMaterializers();
 	materializers.register(createMetadataFieldPatchMaterializer());
 	materializers.register(createFormulaAnnotationMaterializer());
+	materializers.register(createTablePatchMaterializer());
+	materializers.register(createChartSourceMaterializer());
 	const writebacks = createDefaultWritebackAdapters();
 	writebacks.register(createMetadataFieldPatchWritebackAdapter());
+	writebacks.register(createTablePatchWritebackAdapter());
+	writebacks.register(createChartSourceWritebackAdapter());
+	// WP7 — image annotation (caption) + layout typed results. The image flows are
+	// coordinated by ImageCapabilityCoordinator (not a registry pack), but their
+	// materializer/writeback pair joins the shared registries so any dispatch by
+	// `image-annotation-patch` / `image-layout-patch` result kind resolves.
+	registerImageResultMaterializers(materializers);
+	registerImageWritebackAdapters(writebacks);
+	// WP-INT — native structural edits (Base/Canvas/Excalidraw). The materializer
+	// applies a model-emitted typed patch through the WP8 functions; the writeback
+	// is a no-op marker (the real write is the revision-guarded native-file port on
+	// accept). Registered so validateBindings sees a complete native-file-patch chain.
+	materializers.register(createNativeFilePatchMaterializer());
+	writebacks.register(createNativeFilePatchWritebackAdapter());
 	registry.validateBindings(materializers, writebacks);
 
 	const executor =
@@ -99,6 +137,7 @@ export function composeComposerCapabilityRuntime(
 				writebacks,
 				session,
 				hub,
+				...(options.nativeFilePort ? { nativeFilePort: options.nativeFilePort } : {}),
 			}),
 	};
 }

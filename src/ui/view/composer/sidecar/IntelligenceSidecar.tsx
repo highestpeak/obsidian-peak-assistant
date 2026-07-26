@@ -3,7 +3,13 @@ import { Sparkles, X, Clock, MessageSquare } from 'lucide-react';
 import type { IntelligenceRuntime } from '@/service/composer';
 import type { ComposerTransactionHub } from '@/service/composer';
 import { cn } from '@/ui/react/lib/utils';
-import { SidecarProvider, useSessionProjection, type SidecarContextValue } from './SidecarContext';
+import {
+	SidecarProvider,
+	useSessionProjection,
+	type SidecarContextValue,
+	type SidecarFocusContext,
+	type SidecarRelatedFocus,
+} from './SidecarContext';
 import { DEFAULT_SIDECAR_CONFIG, loadSidecarConfig, type SidecarConfig } from './sidecarConfig';
 import { CopilotView } from './CopilotView';
 import { HistoryView } from './HistoryView';
@@ -25,9 +31,23 @@ export interface IntelligenceSidecarProps {
 	hub?: ComposerTransactionHub;
 	onLocate?: (blockId: string) => void;
 	onOpenSource?: (path: string) => void;
+	/** The real focused block id from chrome focus state, or null (host-provided). */
+	getFocusedBlockId?: () => string | null;
+	/** Assemble the frozen run context for a focus block (document fallback when null). */
+	resolveFocusContext?: (focusedBlockId: string | null) => SidecarFocusContext;
+	/** Resolve the related-material focus (query text + anchor) for a focus block. */
+	resolveRelatedFocus?: (focusedBlockId: string | null) => SidecarRelatedFocus;
 }
 
-export function IntelligenceSidecar({ runtime, hub, onLocate, onOpenSource }: IntelligenceSidecarProps): React.ReactElement {
+export function IntelligenceSidecar({
+	runtime,
+	hub,
+	onLocate,
+	onOpenSource,
+	getFocusedBlockId,
+	resolveFocusContext,
+	resolveRelatedFocus,
+}: IntelligenceSidecarProps): React.ReactElement {
 	const rootRef = React.useRef<HTMLDivElement | null>(null);
 	const [config, setConfig] = React.useState<SidecarConfig>(DEFAULT_SIDECAR_CONFIG);
 	const [narrow, setNarrow] = React.useState(false);
@@ -56,8 +76,8 @@ export function IntelligenceSidecar({ runtime, hub, onLocate, onOpenSource }: In
 	}, [config.narrowBreakpointPx]);
 
 	const ctx: SidecarContextValue = React.useMemo(
-		() => ({ runtime, hub, config, onLocate, onOpenSource }),
-		[runtime, hub, config, onLocate, onOpenSource],
+		() => ({ runtime, hub, config, onLocate, onOpenSource, getFocusedBlockId, resolveFocusContext, resolveRelatedFocus }),
+		[runtime, hub, config, onLocate, onOpenSource, getFocusedBlockId, resolveFocusContext, resolveRelatedFocus],
 	);
 
 	if (narrow) {

@@ -127,6 +127,25 @@ export enum PromptId {
 	ComposerSplitFormula = 'composer-split-formula',
 	ComposerFormulaVariables = 'composer-formula-variables',
 
+	// Composer packs (WP6: table + chart AI — typed table-patch / chart-source)
+	DocTableSummarize = 'doc-table-summarize',
+	DocTableAddColumn = 'doc-table-add-column',
+	DocTableCheckUnits = 'doc-table-check-units',
+	DocTableExtractFormula = 'doc-table-extract-formula',
+	DocTableGenerateChart = 'doc-table-generate-chart',
+
+	// Composer packs (WP8/WP-INT: native objects — specialized edit prompts that
+	// replace the borrowed doc-polish binding)
+	DocMermaidEdit = 'doc-mermaid-edit',
+	DocCodeEdit = 'doc-code-edit',
+	DocLinkTidy = 'doc-link-tidy',
+	/** Native structural edit (Base / Canvas / Excalidraw) → typed native-file patch JSON. */
+	DocNativeEdit = 'doc-native-edit',
+
+	// Composer packs (WP7: image caption + smart layout — text-port flows)
+	ComposerImageCaption = 'composer-image-caption',
+	ComposerImageLayout = 'composer-image-layout',
+
 	// Copilot Vault Intelligence
 	VaultHealth = 'vault-health',
 	VaultSummary = 'vault-summary',
@@ -613,6 +632,60 @@ export interface PromptVariables {
 	[PromptId.ComposerFormulaVariables]: {
 		latex: string;
 		label?: string;
+		instruction?: string;
+	};
+	[PromptId.DocTableSummarize]: {
+		table: string;
+		instruction?: string;
+	};
+	[PromptId.DocTableAddColumn]: {
+		table: string;
+		instruction?: string;
+	};
+	[PromptId.DocTableCheckUnits]: {
+		table: string;
+		instruction?: string;
+	};
+	[PromptId.DocTableExtractFormula]: {
+		table: string;
+		instruction?: string;
+	};
+	[PromptId.DocTableGenerateChart]: {
+		table: string;
+		instruction?: string;
+	};
+	[PromptId.DocMermaidEdit]: {
+		content: string;
+		scope: 'full' | 'selection';
+		instruction?: string;
+	};
+	[PromptId.DocCodeEdit]: {
+		content: string;
+		scope: 'full' | 'selection';
+		/** Fenced-code language token, when known (kept stable across the edit). */
+		language?: string;
+		instruction?: string;
+	};
+	[PromptId.DocLinkTidy]: {
+		content: string;
+		scope: 'full' | 'selection';
+		instruction?: string;
+	};
+	[PromptId.DocNativeEdit]: {
+		/** Native object format — selects the typed-patch schema in the system prompt. */
+		format: 'base' | 'canvas' | 'excalidraw';
+		/** Verbatim current bytes of the native object file (or its editable slice). */
+		native: string;
+		instruction?: string;
+	};
+	[PromptId.ComposerImageCaption]: {
+		/** Frozen image block source (embed + any surrounding figure markup). */
+		context: string;
+		instruction?: string;
+	};
+	[PromptId.ComposerImageLayout]: {
+		/** JSON list of the selected image items ({ path, alt?, caption? }[]). */
+		items: string;
 		instruction?: string;
 	};
 	[PromptId.VaultHealth]: {

@@ -20,6 +20,8 @@ import {
 	buildFormulaAnnotationPayload,
 	parseVariableTable,
 	latexFromSource,
+	formulaDetailKindOf,
+	formulaDetailCapabilityForKind,
 	EMPTY_FORMULA_DETAIL_STATE,
 	openDetail,
 	closeDetail,
@@ -154,7 +156,22 @@ function testAnnotation(): void {
 	check('variables payload carries table not text', varPayload.detailKind === 'variables' && varPayload.variables?.length === 3 && varPayload.text === undefined);
 }
 
+// ── detail kind ⇄ capability binding (generator routing) ─────────────────────
+
+function testDetailCapabilityBinding(): void {
+	// The generator maps a detail kind to its capability id + PromptId; the
+	// reverse (capability id → kind) round-trips, so the store, pack and executor
+	// agree on which of the three independent details a run belongs to.
+	for (const kind of ['explain', 'split', 'variables'] as const) {
+		const cap = formulaDetailCapabilityForKind(kind);
+		check(`capability for ${kind} resolves`, cap !== null && cap.capabilityId.length > 0 && cap.promptId.length > 0);
+		check(`capability round-trips for ${kind}`, cap !== null && formulaDetailKindOf(cap.capabilityId) === kind);
+	}
+	check('explain capability id is stable', formulaDetailCapabilityForKind('explain')?.capabilityId === 'composer.math.explain');
+}
+
 testParse();
+testDetailCapabilityBinding();
 testIndependentCoexistence();
 testVariantHistory();
 testCopyPayloads();

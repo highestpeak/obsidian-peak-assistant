@@ -16,11 +16,14 @@
 import {
 	CopilotSessionMachine,
 	IntelligenceRuntime,
+	JsonlTelemetrySink,
+	RedactingTelemetry,
 	receiptCounts,
 	redactTelemetryFields,
 	isPrivacySafe,
 	type IntelligenceTelemetryEvent,
 	type IntelligenceTelemetryPort,
+	type JsonlAppendPort,
 } from '@/service/composer';
 import type { ComposerContextSnapshot, ComposerTransaction, ComposerTransactionEvent } from '@/core/composer';
 
@@ -159,8 +162,60 @@ function snapshot(revision: string): ComposerContextSnapshot {
 	check('long string dropped', !('long' in redactTelemetryFields({ long: 'x'.repeat(400) })));
 }
 
-if (failures > 0) {
-	console.error(`\n${failures}/${count} intelligence-session assertion(s) failed`);
-	process.exit(1);
+// ── (6)/(7) JSONL telemetry sink — async (cjs: no top-level await) ───────────────
+async function jsonlSinkChecks(): Promise<void> {
+	// (6) format + ordering + privacy wrap.
+	const lines: string[] = [];
+	const fakeFile: JsonlAppendPort = {
+		appendLine: (line) => {
+			lines.push(line);
+			return Promise.resolve();
+		},
+	};
+	// The app wraps the sink in RedactingTelemetry (privacy boundary), exactly as
+	// IntelligenceRuntime does — content/prompt must never reach the file.
+	const sink = new JsonlTelemetrySink(fakeFile, () => 1234);
+	const telemetry: IntelligenceTelemetryPort = new RedactingTelemetry(sink);
+
+	telemetry.emit({
+		dimension: 'relevance',
+		event: 'finding_ingested',
+		kind: 'ai',
+		fields: { findingId: 'f1', deduped: false, content: 'SECRET body', prompt: 'leak' },
+	});
+	telemetry.emit({ dimension: 'control', event: 'finding_dismissed', fields: { findingId: 'f1', surface: 'brief' } });
+	await sink.drain();
+
+	check('sink wrote one line per event', lines.length === 2);
+	check('each line ends with a newline', lines.every((l) => l.endsWith('\n')));
+	const first = JSON.parse(lines[0]) as Record<string, unknown>;
+	check('line is valid JSON with injected ts', first.ts === 1234);
+	check('line carries the event name', first.event === 'finding_ingested');
+	check('line carries the dimension + kind', first.dimension === 'relevance' && first.kind === 'ai');
+	const fields = first.fields as Record<string, unknown>;
+	check('line carries structured fields', fields.findingId === 'f1' && fields.deduped === false);
+	check('line drops redacted content field', !('content' in fields));
+	check('line drops redacted prompt field', !('prompt' in fields));
+	// Ordering: appends are serialized on the tail so lines never interleave.
+	check('second line is the dismiss event', (JSON.parse(lines[1]) as { event: string }).event === 'finding_dismissed');
+
+	// (7) a failing append is swallowed (best-effort, never throws).
+	const failing: JsonlAppendPort = { appendLine: () => Promise.reject(new Error('disk full')) };
+	const failSink = new JsonlTelemetrySink(failing);
+	let threw = false;
+	try {
+		failSink.emit({ dimension: 'performance', event: 'x', fields: {} });
+		await failSink.drain();
+	} catch {
+		threw = true;
+	}
+	check('failing append never surfaces as a throw', !threw);
 }
-console.log(`OK composer-intelligence-session (${count} assertions)`);
+
+void jsonlSinkChecks().then(() => {
+	if (failures > 0) {
+		console.error(`\n${failures}/${count} intelligence-session assertion(s) failed`);
+		process.exit(1);
+	}
+	console.log(`OK composer-intelligence-session (${count} assertions)`);
+});

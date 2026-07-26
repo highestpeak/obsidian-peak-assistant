@@ -319,6 +319,34 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'composer-formula-variables': meta('prompts', 'composer-formula-variables', { systemPromptId: 'composer-formula-system' as PromptId, label: 'Formula Variables', description: 'Lists the symbols of a formula and their meanings.', group: 'copilot' }),
 	'composer-formula-system': meta('prompts', 'composer-formula-system', { label: 'Formula Detail (System)', description: 'System instructions shared by the formula detail actions.', group: 'copilot' }),
 
+	// Composer packs (WP6: table + chart AI — typed table-patch / chart-source JSON)
+	'doc-table-summarize': meta('prompts', 'doc-table-summarize', { systemPromptId: 'doc-table-summarize-system' as PromptId, label: 'Summarize Table', description: 'Reorganizes a table into a tighter, normalized structure as a typed table patch.', group: 'copilot' }),
+	'doc-table-summarize-system': meta('prompts', 'doc-table-summarize-system', { label: 'Summarize Table (System)', description: 'System instructions + table-patch JSON schema for table summarize.', group: 'copilot' }),
+	'doc-table-add-column': meta('prompts', 'doc-table-add-column', { systemPromptId: 'doc-table-add-column-system' as PromptId, label: 'Add Table Column', description: 'Proposes a new derived column as a typed table patch.', group: 'copilot' }),
+	'doc-table-add-column-system': meta('prompts', 'doc-table-add-column-system', { label: 'Add Table Column (System)', description: 'System instructions + table-patch JSON schema for adding a column.', group: 'copilot' }),
+	'doc-table-check-units': meta('prompts', 'doc-table-check-units', { systemPromptId: 'doc-table-check-units-system' as PromptId, label: 'Check Table Units', description: 'Normalizes inconsistent units across a table column as a typed table patch.', group: 'copilot' }),
+	'doc-table-check-units-system': meta('prompts', 'doc-table-check-units-system', { label: 'Check Table Units (System)', description: 'System instructions + table-patch JSON schema for unit normalization.', group: 'copilot' }),
+	'doc-table-extract-formula': meta('prompts', 'doc-table-extract-formula', { systemPromptId: 'doc-table-extract-formula-system' as PromptId, label: 'Extract Table Formula', description: 'Derives a computed column from existing table data as a typed table patch.', group: 'copilot' }),
+	'doc-table-extract-formula-system': meta('prompts', 'doc-table-extract-formula-system', { label: 'Extract Table Formula (System)', description: 'System instructions + table-patch JSON schema for a computed column.', group: 'copilot' }),
+	'doc-table-generate-chart': meta('prompts', 'doc-table-generate-chart', { systemPromptId: 'doc-table-generate-chart-system' as PromptId, label: 'Generate Chart', description: 'Turns a table into a chart-source JSON spec.', group: 'copilot' }),
+	'doc-table-generate-chart-system': meta('prompts', 'doc-table-generate-chart-system', { label: 'Generate Chart (System)', description: 'System instructions + chart-source JSON schema for chart generation.', group: 'copilot' }),
+
+	// Composer packs (WP8/WP-INT: native objects — code / mermaid / link + native structural edit)
+	'doc-mermaid-edit': meta('prompts', 'doc-mermaid-edit', { systemPromptId: 'doc-mermaid-edit-system' as PromptId, label: 'Edit Diagram', description: 'Edits a Mermaid diagram source per a targeted instruction.', group: 'copilot' }),
+	'doc-mermaid-edit-system': meta('prompts', 'doc-mermaid-edit-system', { label: 'Edit Diagram (System)', description: 'System instructions + output contract for Mermaid diagram edits.', group: 'copilot' }),
+	'doc-code-edit': meta('prompts', 'doc-code-edit', { systemPromptId: 'doc-code-edit-system' as PromptId, label: 'Edit Code', description: 'Rewrites or refactors a fenced code block per a targeted instruction.', group: 'copilot' }),
+	'doc-code-edit-system': meta('prompts', 'doc-code-edit-system', { label: 'Edit Code (System)', description: 'System instructions + output contract for code block edits.', group: 'copilot' }),
+	'doc-link-tidy': meta('prompts', 'doc-link-tidy', { systemPromptId: 'doc-link-tidy-system' as PromptId, label: 'Tidy Links', description: 'Repairs and enriches links in a block per a targeted instruction.', group: 'copilot' }),
+	'doc-link-tidy-system': meta('prompts', 'doc-link-tidy-system', { label: 'Tidy Links (System)', description: 'System instructions + output contract for link tidy.', group: 'copilot' }),
+	'doc-native-edit': meta('prompts', 'doc-native-edit', { systemPromptId: 'doc-native-edit-system' as PromptId, label: 'Edit Native Object', description: 'Emits a typed structural patch for a Base / Canvas / Excalidraw file.', group: 'copilot' }),
+	'doc-native-edit-system': meta('prompts', 'doc-native-edit-system', { label: 'Edit Native Object (System)', description: 'System instructions + per-format typed-patch JSON schema for native structural edits.', group: 'copilot' }),
+
+	// Composer packs (WP7: image caption + smart layout — text-port flows)
+	'composer-image-caption': meta('prompts', 'composer-image-caption', { systemPromptId: 'composer-image-caption-system' as PromptId, label: 'Image Caption', description: 'Writes a concise figure caption for an image block.', group: 'copilot' }),
+	'composer-image-caption-system': meta('prompts', 'composer-image-caption-system', { label: 'Image Caption (System)', description: 'System instructions for the image caption action.', group: 'copilot' }),
+	'composer-image-layout': meta('prompts', 'composer-image-layout', { systemPromptId: 'composer-image-layout-system' as PromptId, label: 'Image Layout', description: 'Arranges selected images into a typed layout spec (JSON).', group: 'copilot' }),
+	'composer-image-layout-system': meta('prompts', 'composer-image-layout-system', { label: 'Image Layout (System)', description: 'System instructions + layout-spec JSON schema for the smart layout action.', group: 'copilot' }),
+
 	// Copilot Vault Intelligence
 	'vault-health': meta('prompts', 'vault-health', { expectsJson: true, systemPromptId: 'vault-health-system' as PromptId, label: 'Vault Health', description: 'Analyzes vault structure for orphans, duplicates, stale notes, and tag issues.', group: 'copilot' }),
 	'vault-health-system': meta('prompts', 'vault-health-system', { label: 'Vault Health (System)', description: 'System instructions for vault health analysis.', group: 'copilot' }),

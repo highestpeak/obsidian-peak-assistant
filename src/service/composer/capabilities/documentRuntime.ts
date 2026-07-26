@@ -33,6 +33,7 @@ import {
 	type ComposerCapabilityRunEvent,
 	type ComposerContextSnapshot,
 	type ComposerInvocationHandle,
+	type ComposerPromptExtras,
 	type ComposerRendererId,
 	type ComposerResultEnvelope,
 	type ComposerTarget,
@@ -40,9 +41,12 @@ import {
 	ComposerConflictError,
 } from '@/core/composer';
 import type { CompiledSkill } from '@/core/types/compiled-skill';
+import type { ComposerNativeFileFormat } from '@/core/schemas/composer';
 import { runCapability } from '@/service/capabilities/CapabilityRunner';
 import type { ComposerDocumentSession } from '../documentSession';
 import type { ComposerTransactionHub } from '../transactionHub';
+import type { ComposerNativeFilePort } from '../packs/native';
+import type { NativeFilePatchEnvelopePayload } from './packs/native';
 import { resolveComposerActions } from './applicability';
 import { assembleComposerContextSnapshot } from './contextAssembler';
 import type { ComposerCapabilitiesConfigProvider } from './capabilityConfig';
@@ -60,6 +64,19 @@ export interface ComposerCapabilityDocumentRuntimeDeps {
 	writebacks: ComposerWritebackAdapterRegistry;
 	session: ComposerDocumentSession;
 	hub: ComposerTransactionHub;
+	/**
+	 * Read/write the SEPARATE native object files (`.base`/`.canvas`/`.excalidraw.md`)
+	 * for the native structural-edit capabilities. Absent in a harness with no
+	 * vault ⇒ those actions project disabled (never a dead button), and a native
+	 * run/accept fails closed. Text-only packs never touch it.
+	 */
+	nativeFilePort?: ComposerNativeFilePort;
+}
+
+/** A resolved native object reference for one target block. */
+interface NativeRefResolution {
+	targetPath: string;
+	format: ComposerNativeFileFormat;
 }
 
 interface CandidateMeta {
@@ -69,6 +86,8 @@ interface CandidateMeta {
 	/** Frozen base-revision anchor of the targeted block/unit. */
 	anchor?: { from: number; to: number };
 	lastRunId: string;
+	/** Native object path + frozen base bytes (native-file-patch runs only). */
+	native?: { targetPath: string; baseText: string; format: ComposerNativeFileFormat };
 }
 
 interface ActiveRun {
@@ -116,7 +135,7 @@ export class ComposerCapabilityDocumentRuntime
 		snapshot: ComposerContextSnapshot,
 		surface: ComposerActionSurface,
 	): readonly ComposerActionDescriptor[] {
-		return resolveComposerActions(
+		const descriptors = resolveComposerActions(
 			{
 				registry: this.deps.registry,
 				config: this.deps.config,
@@ -126,6 +145,45 @@ export class ComposerCapabilityDocumentRuntime
 			snapshot,
 			surface,
 		);
+		// Native structural actions (native-file-patch) fan out one definition per
+		// format across every embed block; gate each to the target's actual native
+		// ref + a present, format-capable native-file port. No matching object ⇒
+		// hidden; port missing ⇒ disabled with a reason (never a dead button).
+		const gated: ComposerActionDescriptor[] = [];
+		for (const descriptor of descriptors) {
+			const resolved = this.gateNativeDescriptor(descriptor, snapshot);
+			if (resolved) gated.push(resolved);
+		}
+		return gated;
+	}
+
+	private gateNativeDescriptor(
+		descriptor: ComposerActionDescriptor,
+		snapshot: ComposerContextSnapshot,
+	): ComposerActionDescriptor | null {
+		// A descriptor the resolver already disabled (stale / empty) is left as-is.
+		if (descriptor.disabledReason) return descriptor;
+		const def = this.deps.registry.getById(descriptor.capabilityId);
+		if (!def || def.resultKind !== 'native-file-patch') return descriptor;
+		const desired = def.resultContext?.format;
+		const ref = this.resolveNativeRef(snapshot.target);
+		if (!ref || ref.format !== desired) return null; // no native object of this format here
+		const port = this.deps.nativeFilePort;
+		if (!port || port.format(ref.targetPath) === null) {
+			return { ...descriptor, disabledReason: this.deps.config().strings.nativeUnavailable };
+		}
+		return descriptor;
+	}
+
+	/** The Base/Canvas/Excalidraw native ref anchored to a target's block, if any. */
+	private resolveNativeRef(target: ComposerTarget): NativeRefResolution | null {
+		const blockId = composerTargetBlockId(target);
+		if (!blockId) return null;
+		const ref = this.deps.session.snapshot.nativeRefs.find(
+			(r) => r.blockId === blockId && (r.kind === 'base' || r.kind === 'canvas' || r.kind === 'excalidraw'),
+		);
+		if (!ref) return null;
+		return { targetPath: ref.target, format: ref.kind as ComposerNativeFileFormat };
 	}
 
 	invoke(
@@ -243,12 +301,59 @@ export class ComposerCapabilityDocumentRuntime
 	async accept(candidateId: string): Promise<void> {
 		const meta = this.requireMeta(candidateId);
 		const def = this.deps.registry.require(meta.capabilityId);
+		// Native structural edits target a SEPARATE file, so they are written through
+		// the revision-guarded native-file port rather than the Markdown hub (handoff
+		// §10.12) — no Markdown transaction, no document History/Undo entry.
+		if (def.resultKind === 'native-file-patch') {
+			await this.acceptNative(candidateId, meta);
+			return;
+		}
 		const presentation = resolvePresentation(this.deps.config(), def.configKey, def.presentationFallback);
 		await this.deps.hub.acceptCandidate(candidateId, {
 			origin: 'ai',
 			label: presentation.historyLabel,
 			runId: meta.lastRunId,
 		});
+	}
+
+	private async acceptNative(candidateId: string, meta: CandidateMeta): Promise<void> {
+		const candidate = this.findCandidate(candidateId);
+		if (!candidate || candidate.status !== 'ready') {
+			throw new Error(`native candidate ${candidateId} is not ready to accept`);
+		}
+		const envelope = candidate.proposedChange.result as ComposerResultEnvelope | undefined;
+		const payload = envelope?.payload as NativeFilePatchEnvelopePayload | undefined;
+		const core = payload?.core;
+		if (!core || core.unsupported === true || core.nextText === undefined) {
+			throw new Error(`native edit cannot be applied: ${core?.reason ?? 'no patched bytes'}`);
+		}
+		const port = this.deps.nativeFilePort;
+		if (!port || !meta.native) throw new Error('native-file port unavailable — cannot accept native edit');
+		// Revision-guarded write against the frozen base bytes: an external edit to
+		// the native file since the run makes the port throw (fail closed).
+		await port.writeNative(core.targetPath, core.nextText, meta.native.baseText);
+		this.deps.hub.markCandidateAccepted(candidateId);
+	}
+
+	/**
+	 * Pre-read run inputs the frozen snapshot cannot hold. For a native structural
+	 * capability this reads the separate object file's current bytes (fail closed
+	 * when the port/ref is missing) and stashes them on the candidate meta for the
+	 * materializer + the revision-guarded accept. Non-native runs get no extras.
+	 */
+	private async prepareRunExtras(
+		def: ComposerCapabilityDefinition,
+		meta: CandidateMeta,
+	): Promise<ComposerPromptExtras | undefined> {
+		if (def.resultKind !== 'native-file-patch') return undefined;
+		const ref = this.resolveNativeRef(meta.snapshot.target);
+		const port = this.deps.nativeFilePort;
+		if (!ref || !port || port.format(ref.targetPath) === null) {
+			throw new Error('native object is not editable here (no native-file port or unsupported file)');
+		}
+		const baseText = await port.readNative(ref.targetPath);
+		meta.native = { targetPath: ref.targetPath, baseText, format: ref.format };
+		return { nativeText: baseText };
 	}
 
 	discard(candidateId: string): void {
@@ -330,7 +435,17 @@ export class ComposerCapabilityDocumentRuntime
 			if (!def.promptId || !def.buildPromptVariables) {
 				throw new Error(`capability '${def.manifest.id}' has no model execution binding`);
 			}
-			const variables = def.buildPromptVariables(meta.snapshot, instruction);
+			const materializer = this.deps.materializers.resolve(def.resultKind);
+			// Typed-object results (table-patch / chart-source …) stream raw JSON,
+			// which must NEVER render as the reviewable body. We accumulate the text
+			// internally but emit skeleton (empty-text) deltas, and only materialize
+			// the typed variant on completion. Prose results stream their body live.
+			const typedObject = materializer.streamsTypedObject === true;
+			// Native structural runs need the SEPARATE object file's current bytes for
+			// both the prompt and the typed-patch application — pre-read them (fail
+			// closed when the port/ref is missing) and stash them on the candidate meta.
+			const extras = await this.prepareRunExtras(def, meta);
+			const variables = def.buildPromptVariables(meta.snapshot, instruction, extras);
 			let text = '';
 			await runCapability({
 				manifest: def.manifest,
@@ -348,14 +463,24 @@ export class ComposerCapabilityDocumentRuntime
 						if (abort.signal.aborted) break;
 						if (event.type !== 'text-delta') continue;
 						text += event.text;
+						if (typedObject) {
+							this.emit({ type: 'content-delta', runId, candidateId, variantId, delta: '', text: '' });
+							continue;
+						}
 						this.emit({ type: 'content-delta', runId, candidateId, variantId, delta: event.text, text });
 					}
 					if (abort.signal.aborted) throw new AbortRunError();
 					return { result: text };
 				},
 			});
-			const materializer = this.deps.materializers.resolve(def.resultKind);
-			const envelope = materializer.materialize({ definition: def, snapshot: meta.snapshot, text });
+			const envelope = materializer.materialize({
+				definition: def,
+				snapshot: meta.snapshot,
+				text,
+				...(meta.native
+					? { nativeBaseText: meta.native.baseText, nativeTargetPath: meta.native.targetPath }
+					: {}),
+			});
 			const operations = this.buildOperations(def, envelope, meta);
 			const presentation = resolvePresentation(this.deps.config(), def.configKey, def.presentationFallback);
 			this.deps.hub.markVariantReady(candidateId, {

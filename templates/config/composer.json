@@ -1,800 +1,871 @@
 {
-  "_doc": "Peak Composer domain config. Per-block-kind display labels + lifecycle-state UI copy + fold aria labels for the read-only document host (WP1). Loaded via TemplateManager.loadJson(ConfigTemplateId.Composer). Typed fallback: src/ui/view/composer/config/composerConfig.ts. Drift guard: test/composer-config.test.ts keeps this JSON and the fallback shape-compatible.",
-  "_owner": "peak-composer-wave WP1 (host + source model)",
-  "kinds": {
-    "frontmatter": "Frontmatter",
-    "heading": "Heading",
-    "paragraph": "Paragraph",
-    "list": "List",
-    "task": "Tasks",
-    "quote": "Quote",
-    "callout": "Callout",
-    "divider": "Divider",
-    "code": "Code",
-    "math": "Formula",
-    "table": "Table",
-    "image": "Image",
-    "mermaid": "Mermaid",
-    "dataview": "Dataview",
-    "html": "HTML",
-    "comment": "Comment",
-    "footnote-def": "Footnote",
-    "embed": "Embed",
-    "base": "Base",
-    "canvas": "Canvas",
-    "excalidraw": "Excalidraw",
-    "unknown": "Unsupported"
-  },
-  "strings": {
-    "displayText": "Composer",
-    "emptyTitle": "No document open",
-    "emptyHint": "Open a Markdown note to compose it here.",
-    "loading": "Loading document…",
-    "missingTitle": "Document removed",
-    "missingHint": "The file backing this composer was deleted.",
-    "staleTitle": "Document changed on disk",
-    "staleHint": "This note was modified outside the composer.",
-    "revalidate": "Reload from file",
-    "errorTitle": "Could not open document",
-    "collapseBlock": "Collapse block",
-    "expandBlock": "Expand block",
-    "collapseSection": "Collapse section",
-    "expandSection": "Expand section",
-    "unknownFallback": "shown verbatim",
-    "emptyPreview": "(empty)",
-    "readOnlyBadge": "Read-only preview",
-    "blocksSuffix": "blocks"
-  },
-  "chrome": {
-    "_doc": "WP4 editing-chrome copy. AI capability labels are NOT here — they arrive from the capability projection port. Typed fallback: composerConfig.ts DEFAULT_COMPOSER_CONFIG.chrome. Drift guard: composer-config.test.ts checks the top-level chrome sub-keys.",
-    "actions": {
-      "insertBelow": "在下方插入",
-      "copy": "复制",
-      "comment": "评论",
-      "history": "生成历史",
-      "instruction": "指令",
-      "drag": "拖动块",
-      "instructionPlaceholder": "输入针对此块的指令…",
-      "instructionRun": "执行",
-      "directEdit": "直接编辑",
-      "disabledNoRuntime": "编辑运行时未接入",
-      "insertDraftPlaceholder": "输入新段落内容…"
-    },
-    "undo": {
-      "undo": "撤销",
-      "redo": "重做",
-      "committed": "改动已写入",
-      "undone": "已撤销",
-      "redone": "已重做",
-      "shortcutUndo": "⌘Z",
-      "shortcutRedo": "⇧⌘Z"
-    },
-    "displayStates": {
-      "groupLabel": "正文工作状态",
-      "work": "工作视图",
-      "all": "全部改动",
-      "clean": "纯净阅读"
-    },
-    "selection": {
-      "formats": {
-        "bold": "加粗",
-        "italic": "斜体",
-        "underline": "下划线",
-        "strikethrough": "删除线",
-        "link": "链接",
-        "textColor": "文字颜色",
-        "highlight": "高亮"
-      },
-      "comment": "评论",
-      "pasteUrl": "粘贴 URL",
-      "applyLink": "应用",
-      "linkPlaceholder": "粘贴或输入链接…",
-      "clearColor": "清除",
-      "scopeTemplates": {
-        "crossParagraph": "跨 {n} 个块",
-        "crossItem": "跨 {n} 个列表项",
-        "crossCell": "跨 {n} 个单元格",
-        "crossBlock": "跨 {n} 个块"
-      },
-      "guards": {
-        "codeBlockRichFormat": "代码块内不支持富文本格式",
-        "crossStructureLink": "一个链接只能落在一个段落、列表项或单元格内",
-        "emptySelection": "请先选中文本"
-      },
-      "textColors": [
-        {
-          "label": "红",
-          "value": "#b42318"
-        },
-        {
-          "label": "橙",
-          "value": "#c4520a"
-        },
-        {
-          "label": "绿",
-          "value": "#067647"
-        },
-        {
-          "label": "蓝",
-          "value": "#175cd3"
-        },
-        {
-          "label": "紫",
-          "value": "#6941c6"
-        }
-      ],
-      "highlightColors": [
-        {
-          "label": "重点",
-          "value": "#fff1a8"
-        },
-        {
-          "label": "定义",
-          "value": "#c7f0d8"
-        },
-        {
-          "label": "资料",
-          "value": "#cfe4ff"
-        },
-        {
-          "label": "想法",
-          "value": "#e4d5ff"
-        },
-        {
-          "label": "风险",
-          "value": "#ffd5d5"
-        }
-      ]
-    },
-    "copy": {
-      "plain": "纯文本",
-      "image": "图片",
-      "markdown": "Markdown",
-      "html": "HTML",
-      "success": "复制成功",
-      "imageSuccess": "已下载 PNG",
-      "close": "关闭"
-    },
-    "link": {
-      "openVault": "打开 {title}",
-      "openExternal": "访问 {url}",
-      "brokenTitle": "链接未解析",
-      "fixLabel": "修复建议",
-      "pathLabel": "路径"
-    },
-    "comment": {
-      "placeholder": "写下评论……",
-      "save": "保存",
-      "cancel": "取消",
-      "stale": "锚点已失效",
-      "addTitle": "添加评论"
-    },
-    "history": {
-      "title": "生成历史",
-      "empty": "该块暂无历史",
-      "locate": "定位",
-      "rollback": "回滚",
-      "rollbackRefused": "区域已变化，无法回滚"
-    }
-  },
-  "transaction": {
-    "burstWindowMs": 800
-  },
-  "capabilities": {
-    "_doc": "WP3 capability runtime config. `actions` is keyed by stable capability id (presentation only — never a dispatch key). Typed fallbacks: src/service/composer/capabilities/capabilityConfig.ts (actions/strings/context) and src/ui/view/composer/candidates/candidateUiConfig.ts (candidateUi). Drift guard: test/composer-capability-registry.test.ts.",
-    "context": {
-      "nearbyChars": 800
-    },
-    "actions": {
-      "composer.prose.polish": {
-        "title": "润色文本",
-        "description": "改善表达与清晰度，不改变含义",
-        "lucideIcon": "sparkles",
-        "historyLabel": "AI 润色",
-        "order": 10
-      },
-      "composer.mermaid.edit": {
-        "title": "编辑图表",
-        "description": "用 AI 增量编辑 Mermaid 源码，重渲后再确认",
-        "lucideIcon": "workflow",
-        "historyLabel": "AI 图表编辑",
-        "order": 40
-      },
-      "composer.code.edit": {
-        "title": "编辑代码",
-        "description": "按指令重写或重构代码，保持为围栏代码块",
-        "lucideIcon": "code",
-        "historyLabel": "AI 代码编辑",
-        "order": 42
-      },
-      "composer.link.tidy": {
-        "title": "整理链接",
-        "description": "修复锚点、展开嵌入、转换脚注并补充双链",
-        "lucideIcon": "link",
-        "historyLabel": "AI 链接整理",
-        "order": 44
-      }
-    },
-    "strings": {
-      "staleSnapshot": "文档已变化——请重新打开该操作",
-      "emptyTarget": "此块没有可处理的内容",
-      "runCancelled": "已取消生成",
-      "runFailed": "生成失败"
-    },
-    "candidateUi": {
-      "accept": "接受",
-      "discard": "丢弃",
-      "regenerate": "重新生成",
-      "cancel": "取消",
-      "retry": "重试",
-      "instructionPlaceholder": "定向指令…（Enter 重新生成）",
-      "instructionAria": "Targeted instruction",
-      "streaming": "生成中…",
-      "failed": "生成失败",
-      "stale": "源已变化，需重新运行",
-      "rerun": "重新运行",
-      "acceptDisabledStreaming": "生成完成后才能接受",
-      "prevVariant": "上一版本",
-      "nextVariant": "下一版本",
-      "variantCounter": "{index}/{count}",
-      "unsupportedResult": "暂不支持渲染此结果类型"
-    }
-  },
-  "sidecar": {
-    "_doc": "WP9 Intelligence Sidecar — strings + bounded knobs. Labels/thresholds live here per docs/conventions/configurability.md, not in TSX.",
-    "narrowBreakpointPx": 1180,
-    "relatedPreviewCap": 6,
-    "graphNodeCap": 100,
-    "strings": {
-      "title": "Intelligence",
-      "followingDoc": "正在跟随正文",
-      "tabCopilot": "Copilot",
-      "tabHistory": "History",
-      "close": "关闭",
-      "openDrawer": "打开智能侧栏",
-      "back": "返回",
-      "briefHeading": "针对当前正文，接下来值得处理什么",
-      "sectionNextMoves": "接下来可能要做",
-      "sectionRelated": "相关材料",
-      "sectionUnplaced": "还没安放的想法",
-      "whyRanked": "为什么这些排在前面？",
-      "refreshBrief": "更新建议",
-      "viewSource": "查看来源",
-      "bringIntoSession": "带入协作",
-      "openFullView": "打开完整视图",
-      "ignore": "忽略",
-      "discuss": "问 Copilot",
-      "askComposerPlaceholder": "描述你想做什么…",
-      "send": "发送",
-      "stop": "停止",
-      "allCapabilities": "全部能力",
-      "receiptChanges": "Changes",
-      "receiptInsights": "Insights",
-      "receiptSources": "Sources",
-      "receiptTrace": "Trace",
-      "locateInDocument": "定位正文",
-      "staleFindingNotice": "证据已随正文变化，需要重新核对",
-      "historyEmpty": "还没有已接受的写入",
-      "reviewClose": "完成审阅",
-      "emptyBrief": "暂无新的建议"
-    }
-  },
-  "telemetry": {
-    "_doc": "WP9 §12.7 proactive-intelligence metric catalog. Ten dimensions; each event's name + field schema is the source of truth for runtime/store instrumentation. Document content / prompt / evidence never appear in fields (privacy boundary).",
-    "maxFieldStringLength": 120,
-    "forbiddenFields": [
-      "content",
-      "text",
-      "prompt",
-      "promptText",
-      "evidence",
-      "evidenceText",
-      "sourceText",
-      "excerpt",
-      "body",
-      "documentText"
-    ],
-    "dimensions": {
-      "relevance": [
-        {
-          "event": "finding_ingested",
-          "fields": {
-            "findingId": "id",
-            "deduped": "boolean"
-          },
-          "kind": "ai"
-        },
-        {
-          "event": "finding_relevance_rated",
-          "fields": {
-            "findingId": "id",
-            "rating": "int"
-          },
-          "kind": "ai"
-        },
-        {
-          "event": "evidence_coverage",
-          "fields": {
-            "findingId": "id",
-            "sourceCount": "int"
-          },
-          "kind": "ai"
-        }
-      ],
-      "outcome": [
-        {
-          "event": "finding_consumed",
-          "fields": {
-            "findingId": "id"
-          },
-          "kind": "ai"
-        },
-        {
-          "event": "run_change_accepted",
-          "fields": {
-            "runId": "id",
-            "transactionId": "id",
-            "origin": "enum"
-          }
-        },
-        {
-          "event": "accept_partial",
-          "fields": {
-            "runId": "id",
-            "acceptedCount": "int",
-            "totalCount": "int"
-          },
-          "kind": "ai"
-        },
-        {
-          "event": "edit_after_accept",
-          "fields": {
-            "transactionId": "id",
-            "editedWithinMs": "int"
-          },
-          "kind": "ai"
-        }
-      ],
-      "control": [
-        {
-          "event": "finding_dismissed",
-          "fields": {
-            "findingId": "id",
-            "surface": "enum"
-          }
-        },
-        {
-          "event": "undo_after_accept",
-          "fields": {
-            "transactionId": "id"
-          }
-        },
-        {
-          "event": "rollback_invoked",
-          "fields": {
-            "historyId": "id",
-            "success": "boolean"
-          }
-        },
-        {
-          "event": "stale_apply_prevented",
-          "fields": {
-            "findingId": "id"
-          }
-        }
-      ],
-      "interruption": [
-        {
-          "event": "brief_unsolicited_exposure",
-          "fields": {
-            "count": "int",
-            "sensingPolicy": "enum"
-          },
-          "kind": "ai"
-        },
-        {
-          "event": "brief_opened",
-          "fields": {
-            "sensingPolicy": "enum"
-          }
-        },
-        {
-          "event": "finding_time_to_dismiss",
-          "fields": {
-            "findingId": "id",
-            "ms": "int"
-          }
-        },
-        {
-          "event": "quiet_session",
-          "fields": {
-            "durationMs": "int"
-          },
-          "kind": "ai"
-        }
-      ],
-      "dedup": [
-        {
-          "event": "duplicate_suppressed",
-          "fields": {
-            "fingerprint": "id"
-          },
-          "kind": "ai"
-        },
-        {
-          "event": "cross_surface_leak",
-          "fields": {
-            "findingId": "id"
-          }
-        },
-        {
-          "event": "consumed_resurfacing",
-          "fields": {
-            "findingId": "id"
-          }
-        },
-        {
-          "event": "stale_resurfacing",
-          "fields": {
-            "findingId": "id"
-          }
-        }
-      ],
-      "efficiency": [
-        {
-          "event": "time_to_first_useful_suggestion",
-          "fields": {
-            "ms": "int"
-          },
-          "kind": "ai"
-        },
-        {
-          "event": "review_time",
-          "fields": {
-            "runId": "id",
-            "ms": "int"
-          }
-        },
-        {
-          "event": "actions_saved",
-          "fields": {
-            "runId": "id",
-            "count": "int"
-          },
-          "kind": "ai"
-        },
-        {
-          "event": "time_to_accepted_write",
-          "fields": {
-            "runId": "id",
-            "ms": "int"
-          }
-        }
-      ],
-      "reliability": [
-        {
-          "event": "run_failed",
-          "fields": {
-            "runId": "id"
-          },
-          "kind": "ai"
-        },
-        {
-          "event": "run_cancelled",
-          "fields": {
-            "runId": "id"
-          }
-        },
-        {
-          "event": "run_retried",
-          "fields": {
-            "runId": "id"
-          }
-        },
-        {
-          "event": "transaction_conflict",
-          "fields": {
-            "reason": "enum"
-          }
-        },
-        {
-          "event": "findings_staled",
-          "fields": {
-            "count": "int"
-          }
-        },
-        {
-          "event": "writeback_validation_failed",
-          "fields": {
-            "runId": "id"
-          },
-          "kind": "ai"
-        }
-      ],
-      "performance": [
-        {
-          "event": "brief_compute_latency",
-          "fields": {
-            "ms": "int"
-          },
-          "kind": "ai"
-        },
-        {
-          "event": "local_ranking_cost",
-          "fields": {
-            "ms": "int",
-            "nodeCount": "int"
-          }
-        },
-        {
-          "event": "large_note_degradation",
-          "fields": {
-            "blockCount": "int",
-            "ms": "int"
-          }
-        },
-        {
-          "event": "drawer_render_latency",
-          "fields": {
-            "ms": "int"
-          }
-        }
-      ],
-      "trust": [
-        {
-          "event": "source_opened",
-          "fields": {
-            "runId": "id"
-          }
-        },
-        {
-          "event": "reason_expanded",
-          "fields": {
-            "findingId": "id"
-          }
-        },
-        {
-          "event": "manual_verification",
-          "fields": {
-            "runId": "id"
-          }
-        },
-        {
-          "event": "accept_without_source_view",
-          "fields": {
-            "runId": "id"
-          },
-          "kind": "ai"
-        }
-      ],
-      "learning": [
-        {
-          "event": "capability_acceptance_trend",
-          "fields": {
-            "capabilityId": "id",
-            "acceptRate": "float"
-          },
-          "kind": "ai"
-        },
-        {
-          "event": "dismiss_reason",
-          "fields": {
-            "findingId": "id",
-            "reason": "enum"
-          }
-        },
-        {
-          "event": "ranking_lift",
-          "fields": {
-            "lift": "float",
-            "interruptionDelta": "float"
-          },
-          "kind": "ai"
-        }
-      ]
-    },
-    "evaluationBoundary": {
-      "acceptanceIsNotSoleMetric": true,
-      "exposureNormalizedAccept": true,
-      "separateAiAndDeterministic": true,
-      "contentStaysLocal": true,
-      "adaptiveLearningMustBeDisableableAndClearable": true
-    }
-  },
-  "native": {
-    "_doc": "WP8 native object block UI copy (Code/Mermaid/Base/Canvas/Excalidraw/embed previews). Typed fallback + loader: src/ui/view/composer/blocks/nativeBlockConfig.ts. Preview labels only — never a dispatch key.",
-    "preview": "预览",
-    "source": "源码",
-    "baseViewsLabel": "视图",
-    "baseColumnsLabel": "列",
-    "baseFiltersLabel": "过滤",
-    "baseFormulasLabel": "公式",
-    "baseInvalid": "无法解析此 Base 视图",
-    "canvasNodesLabel": "节点",
-    "canvasEdgesLabel": "连线",
-    "canvasInvalid": "无法解析此 Canvas",
-    "excalidrawElementsLabel": "元素",
-    "excalidrawTextLabel": "文本",
-    "excalidrawUnsupported": "此 Excalidraw 图当前不可预览",
-    "embedOpenLabel": "打开",
-    "embedBroken": "嵌入目标缺失",
-    "mermaidRenderError": "图表渲染失败，已显示源码",
-    "mermaidEmpty": "空图表",
-    "linesSuffix": "行",
-    "copySource": "复制源码",
-    "copied": "已复制"
-  },
-  "table": {
-    "_doc": "WP6 table block UI copy (object toolbar + selection ARIA). Typed fallback: src/ui/view/composer/blocks/table/tableViewConfig.ts (DEFAULT_TABLE_BLOCK_STRINGS.toolbar/.selection). Drift guard: test/composer-config.test.ts.",
-    "toolbar": {
-      "format": "格式",
-      "align": "对齐",
-      "alignLeft": "左对齐",
-      "alignCenter": "居中",
-      "alignRight": "右对齐",
-      "addRow": "加行",
-      "removeRow": "删行",
-      "addColumn": "加列",
-      "removeColumn": "删列",
-      "sort": "排序",
-      "formula": "公式",
-      "sumColumn": "列求和 → 汇总行",
-      "sumRow": "行求和 → 汇总列",
-      "merge": "合并",
-      "unmerge": "拆分",
-      "transpose": "转置",
-      "csv": "CSV",
-      "csvCopy": "复制为 CSV",
-      "csvExport": "导出 CSV",
-      "csvImport": "导入 CSV",
-      "chart": "图表",
-      "summary": "汇总",
-      "noSelection": "请先选择单元格",
-      "needRectangle": "合并需选择一个完整矩形区域",
-      "needMergedCell": "请选择已合并的单元格来拆分",
-      "parseError": "此表格无法解析为可编辑结构"
-    },
-    "selection": {
-      "cellsSelected": "已选择 {count} 个单元格",
-      "singleCell": "已选择第 {row} 行第 {col} 列",
-      "rangeCells": "已选择第 {r0} 到 {r1} 行、第 {c0} 到 {c1} 列",
-      "none": "未选择单元格"
-    }
-  },
-  "chart": {
-    "_doc": "WP6 chart block UI copy (type switch + states). Typed fallback: DEFAULT_TABLE_BLOCK_STRINGS.chart. Drift guard: test/composer-config.test.ts.",
-    "bar": "柱状",
-    "line": "折线",
-    "pie": "饼图",
-    "loading": "图表加载中…",
-    "invalid": "图表源无效",
-    "untitled": "图表"
-  },
-  "frontmatter": {
-    "_doc": "WP5 frontmatter block UI copy (property grid, Vault property library, AI suggestions). Typed fallback: src/ui/view/composer/blocks/frontmatter/frontmatterConfig.ts.",
-    "grid": {
-      "issueWarning": "属性告警",
-      "vaultLibrary": "属性库",
-      "aiSuggest": "AI 属性建议",
-      "addProperty": "添加属性",
-      "origin": {
-        "program": "程序",
-        "human": "人工",
-        "ai": "AI 建议",
-        "convention": "规范建议"
-      },
-      "reviewShapeChange": "该改动会改变字段类型，请确认后再写入"
-    },
-    "library": {
-      "title": "Vault 属性库",
-      "subtitle": "全知识库字段与标签统计 · 选择后只在当前文档生成候选",
-      "close": "关闭属性库",
-      "colField": "字段",
-      "colCoverage": "覆盖率",
-      "colIssue": "发现的问题",
-      "colAdd": "加入本文",
-      "alreadyPresent": "已在本文",
-      "add": "添加",
-      "typeConflict": "类型不一致",
-      "rare": "单次使用",
-      "customTitle": "自定义属性",
-      "customSubtitle": "任意 key / value；先生成候选，不静默写入 YAML",
-      "keyPlaceholder": "key，例如 cssclasses",
-      "valuePlaceholder": "value，例如 wide-page",
-      "addToDoc": "添加到本文",
-      "footer": "统计范围是整个 Vault；入口跟随当前 Frontmatter，只把选中的字段作为本文候选。",
-      "statFields": "个字段",
-      "statTags": "个标签",
-      "statSingle": "个单次字段",
-      "statConflict": "处类型不一致"
-    },
-    "suggestions": {
-      "title": "AI 属性建议",
-      "subtitle": "根据正文与 Vault 关系生成 · 逐条选择",
-      "close": "关闭 AI 属性建议",
-      "add": "添加",
-      "reject": "忽略",
-      "empty": "暂无建议",
-      "streaming": "生成中…",
-      "footer": "AI 只建议字段和值；点击“添加”后还要在 Frontmatter 中确认。"
-    }
-  },
-  "math": {
-    "_doc": "WP5 math block UI copy (formula micro-block detail rows + copy formats). Typed fallback: src/ui/view/composer/blocks/math/mathConfig.ts.",
-    "detail": {
-      "explain": "解释公式",
-      "split": "拆分公式",
-      "variables": "变量表",
-      "insertBelow": "在下方插入",
-      "copy": "复制",
-      "comment": "评论",
-      "history": "History",
-      "instruction": "指令",
-      "keep": "保留标注",
-      "close": "关闭",
-      "regenerate": "重新生成",
-      "followUpPlaceholder": "追问或调整…（Enter 重新生成）",
-      "streaming": "生成中…",
-      "failed": "生成失败",
-      "empty": "暂无内容",
-      "prevVariant": "上一版本",
-      "nextVariant": "下一版本",
-      "variantCounter": "{index}/{count}",
-      "colSymbol": "符号",
-      "colMeaning": "含义"
-    },
-    "copy": {
-      "plain": "纯文本",
-      "latex": "LaTeX",
-      "html": "HTML",
-      "image": "图片",
-      "copied": "已复制",
-      "copyFormula": "复制公式"
-    }
-  },
-  "image": {
-    "_doc": "WP7 image pack config. Domain data (naming noise tokens / layout + converter defaults) + object-action labels + candidate UI copy. Typed fallbacks: src/service/composer/packs/image/imageConfig.ts, src/service/composer/capabilities/packs/image.ts (DEFAULT_IMAGE_ACTION_STRINGS), src/ui/view/composer/blocks/image/imageUiConfig.ts. Not a dispatch key.",
-    "naming": {
-      "fallbackBaseName": "image",
-      "noiseTokens": ["pasted image", "pasted", "screenshot", "screen shot", "screen recording", "image", "photo", "img", "untitled"],
-      "maxLength": 60
-    },
-    "layout": {
-      "defaultMode": "grid",
-      "defaultGap": 8,
-      "defaultColumns": 3
-    },
-    "converter": {
-      "defaultQuality": 0.9
-    },
-    "actions": {
-      "captionTitle": "图注",
-      "editTitle": "AI 改图",
-      "convertTitle": "转换",
-      "layoutTitle": "排版"
-    },
-    "ui": {
-      "accept": "接受",
-      "discard": "丢弃",
-      "cancel": "取消",
-      "regenerate": "换一个",
-      "retry": "重试",
-      "nameLabel": "文件名",
-      "namePlaceholder": "输入文件名…（Enter 生成）",
-      "nameAria": "Image file name",
-      "editInstructionPlaceholder": "描述想要的修改…（Enter 生成）",
-      "editInstructionAria": "Image edit instruction",
-      "generating": "生成中…",
-      "failed": "生成失败",
-      "stale": "源已变化，需重新运行",
-      "rerun": "重新运行",
-      "prevVariant": "上一版本",
-      "nextVariant": "下一版本",
-      "variantCounter": "{index}/{count}",
-      "captionPlaceholder": "描述这张图…（Enter 生成）",
-      "captionAria": "Caption instruction",
-      "dimensionsTemplate": "{w}×{h} · {size}",
-      "unsupportedResult": "暂不支持渲染此结果类型"
-    }
-  }
+	"_doc": "Peak Composer domain config. Per-block-kind display labels + lifecycle-state UI copy + fold aria labels for the read-only document host (WP1). Loaded via TemplateManager.loadJson(ConfigTemplateId.Composer). Typed fallback: src/ui/view/composer/config/composerConfig.ts. Drift guard: test/composer-config.test.ts keeps this JSON and the fallback shape-compatible.",
+	"_owner": "peak-composer-wave WP1 (host + source model)",
+	"kinds": {
+		"frontmatter": "Frontmatter",
+		"heading": "Heading",
+		"paragraph": "Paragraph",
+		"list": "List",
+		"task": "Tasks",
+		"quote": "Quote",
+		"callout": "Callout",
+		"divider": "Divider",
+		"code": "Code",
+		"math": "Formula",
+		"table": "Table",
+		"image": "Image",
+		"mermaid": "Mermaid",
+		"dataview": "Dataview",
+		"html": "HTML",
+		"comment": "Comment",
+		"footnote-def": "Footnote",
+		"embed": "Embed",
+		"base": "Base",
+		"canvas": "Canvas",
+		"excalidraw": "Excalidraw",
+		"unknown": "Unsupported"
+	},
+	"strings": {
+		"displayText": "Composer",
+		"emptyTitle": "No document open",
+		"emptyHint": "Open a Markdown note to compose it here.",
+		"loading": "Loading document…",
+		"missingTitle": "Document removed",
+		"missingHint": "The file backing this composer was deleted.",
+		"staleTitle": "Document changed on disk",
+		"staleHint": "This note was modified outside the composer.",
+		"revalidate": "Reload from file",
+		"errorTitle": "Could not open document",
+		"collapseBlock": "Collapse block",
+		"expandBlock": "Expand block",
+		"collapseSection": "Collapse section",
+		"expandSection": "Expand section",
+		"unknownFallback": "shown verbatim",
+		"emptyPreview": "(empty)",
+		"readOnlyBadge": "Read-only preview",
+		"blocksSuffix": "blocks"
+	},
+	"chrome": {
+		"_doc": "WP4 editing-chrome copy. AI capability labels are NOT here — they arrive from the capability projection port. Typed fallback: composerConfig.ts DEFAULT_COMPOSER_CONFIG.chrome. Drift guard: composer-config.test.ts checks the top-level chrome sub-keys.",
+		"actions": {
+			"insertBelow": "在下方插入",
+			"copy": "复制",
+			"comment": "评论",
+			"history": "生成历史",
+			"instruction": "指令",
+			"drag": "拖动块",
+			"instructionPlaceholder": "输入针对此块的指令…",
+			"instructionRun": "执行",
+			"directEdit": "直接编辑",
+			"disabledNoRuntime": "编辑运行时未接入",
+			"insertDraftPlaceholder": "输入新段落内容…"
+		},
+		"undo": {
+			"undo": "撤销",
+			"redo": "重做",
+			"committed": "改动已写入",
+			"undone": "已撤销",
+			"redone": "已重做",
+			"shortcutUndo": "⌘Z",
+			"shortcutRedo": "⇧⌘Z"
+		},
+		"displayStates": {
+			"groupLabel": "正文工作状态",
+			"work": "工作视图",
+			"all": "全部改动",
+			"clean": "纯净阅读"
+		},
+		"selection": {
+			"formats": {
+				"bold": "加粗",
+				"italic": "斜体",
+				"underline": "下划线",
+				"strikethrough": "删除线",
+				"link": "链接",
+				"textColor": "文字颜色",
+				"highlight": "高亮"
+			},
+			"comment": "评论",
+			"pasteUrl": "粘贴 URL",
+			"applyLink": "应用",
+			"linkPlaceholder": "粘贴或输入链接…",
+			"clearColor": "清除",
+			"scopeTemplates": {
+				"crossParagraph": "跨 {n} 个块",
+				"crossItem": "跨 {n} 个列表项",
+				"crossCell": "跨 {n} 个单元格",
+				"crossBlock": "跨 {n} 个块"
+			},
+			"guards": {
+				"codeBlockRichFormat": "代码块内不支持富文本格式",
+				"crossStructureLink": "一个链接只能落在一个段落、列表项或单元格内",
+				"emptySelection": "请先选中文本"
+			},
+			"textColors": [
+				{
+					"label": "红",
+					"value": "#b42318"
+				},
+				{
+					"label": "橙",
+					"value": "#c4520a"
+				},
+				{
+					"label": "绿",
+					"value": "#067647"
+				},
+				{
+					"label": "蓝",
+					"value": "#175cd3"
+				},
+				{
+					"label": "紫",
+					"value": "#6941c6"
+				}
+			],
+			"highlightColors": [
+				{
+					"label": "重点",
+					"value": "#fff1a8"
+				},
+				{
+					"label": "定义",
+					"value": "#c7f0d8"
+				},
+				{
+					"label": "资料",
+					"value": "#cfe4ff"
+				},
+				{
+					"label": "想法",
+					"value": "#e4d5ff"
+				},
+				{
+					"label": "风险",
+					"value": "#ffd5d5"
+				}
+			]
+		},
+		"copy": {
+			"plain": "纯文本",
+			"image": "图片",
+			"markdown": "Markdown",
+			"html": "HTML",
+			"success": "复制成功",
+			"imageSuccess": "已下载 PNG",
+			"close": "关闭"
+		},
+		"link": {
+			"openVault": "打开 {title}",
+			"openExternal": "访问 {url}",
+			"brokenTitle": "链接未解析",
+			"fixLabel": "修复建议",
+			"pathLabel": "路径"
+		},
+		"comment": {
+			"placeholder": "写下评论……",
+			"save": "保存",
+			"cancel": "取消",
+			"stale": "锚点已失效",
+			"addTitle": "添加评论"
+		},
+		"history": {
+			"title": "生成历史",
+			"empty": "该块暂无历史",
+			"locate": "定位",
+			"rollback": "回滚",
+			"rollbackRefused": "区域已变化，无法回滚"
+		}
+	},
+	"transaction": {
+		"burstWindowMs": 800,
+		"scrollGuardGestureWindowMs": 250
+	},
+	"capabilities": {
+		"_doc": "WP3 capability runtime config. `actions` is keyed by stable capability id (presentation only — never a dispatch key). Typed fallbacks: src/service/composer/capabilities/capabilityConfig.ts (actions/strings/context) and src/ui/view/composer/candidates/candidateUiConfig.ts (candidateUi). Drift guard: test/composer-capability-registry.test.ts.",
+		"context": {
+			"nearbyChars": 800
+		},
+		"actions": {
+			"composer.prose.polish": {
+				"title": "润色文本",
+				"description": "改善表达与清晰度，不改变含义",
+				"lucideIcon": "sparkles",
+				"historyLabel": "AI 润色",
+				"order": 10
+			},
+			"composer.mermaid.edit": {
+				"title": "编辑图表",
+				"description": "用 AI 增量编辑 Mermaid 源码，重渲后再确认",
+				"lucideIcon": "workflow",
+				"historyLabel": "AI 图表编辑",
+				"order": 40
+			},
+			"composer.code.edit": {
+				"title": "编辑代码",
+				"description": "按指令重写或重构代码，保持为围栏代码块",
+				"lucideIcon": "code",
+				"historyLabel": "AI 代码编辑",
+				"order": 42
+			},
+			"composer.link.tidy": {
+				"title": "整理链接",
+				"description": "修复锚点、展开嵌入、转换脚注并补充双链",
+				"lucideIcon": "link",
+				"historyLabel": "AI 链接整理",
+				"order": 44
+			},
+			"composer.table.summarize": {
+				"title": "总结表格",
+				"description": "把表格重排为更紧凑、规范的结构",
+				"lucideIcon": "table",
+				"historyLabel": "AI 表格总结",
+				"order": 60
+			},
+			"composer.table.add-column": {
+				"title": "补一列",
+				"description": "为表格推导并新增一列派生数据",
+				"lucideIcon": "columns-3",
+				"historyLabel": "AI 补列",
+				"order": 61
+			},
+			"composer.table.check-units": {
+				"title": "检查口径",
+				"description": "统一某列中不一致的单位与量纲",
+				"lucideIcon": "ruler",
+				"historyLabel": "AI 口径检查",
+				"order": 62
+			},
+			"composer.table.extract-formula": {
+				"title": "提取公式",
+				"description": "从现有数据推导出一个计算列",
+				"lucideIcon": "sigma",
+				"historyLabel": "AI 公式列",
+				"order": 63
+			},
+			"composer.table.generate-chart": {
+				"title": "生成图表",
+				"description": "根据表格数据生成图表",
+				"lucideIcon": "bar-chart-3",
+				"historyLabel": "生成图表",
+				"order": 65
+			},
+			"composer.base.edit": {
+				"title": "Edit base",
+				"description": "Restructure this Base view (columns, formulas, filters) with AI",
+				"lucideIcon": "database",
+				"historyLabel": "AI base edit",
+				"order": 46
+			},
+			"composer.canvas.edit": {
+				"title": "Edit canvas",
+				"description": "Edit this Canvas structure (nodes, edges, labels) with AI",
+				"lucideIcon": "layout-dashboard",
+				"historyLabel": "AI canvas edit",
+				"order": 47
+			},
+			"composer.excalidraw.edit": {
+				"title": "Edit drawing",
+				"description": "Edit this Excalidraw scene (elements, background) with AI",
+				"lucideIcon": "pen-tool",
+				"historyLabel": "AI drawing edit",
+				"order": 48
+			}
+		},
+		"strings": {
+			"staleSnapshot": "文档已变化——请重新打开该操作",
+			"emptyTarget": "此块没有可处理的内容",
+			"runCancelled": "已取消生成",
+			"runFailed": "生成失败",
+			"nativeUnavailable": "This native object cannot be edited here"
+		},
+		"candidateUi": {
+			"accept": "接受",
+			"discard": "丢弃",
+			"regenerate": "重新生成",
+			"cancel": "取消",
+			"retry": "重试",
+			"instructionPlaceholder": "定向指令…（Enter 重新生成）",
+			"instructionAria": "Targeted instruction",
+			"streaming": "生成中…",
+			"failed": "生成失败",
+			"stale": "源已变化，需重新运行",
+			"rerun": "重新运行",
+			"acceptDisabledStreaming": "生成完成后才能接受",
+			"prevVariant": "上一版本",
+			"nextVariant": "下一版本",
+			"variantCounter": "{index}/{count}",
+			"unsupportedResult": "暂不支持渲染此结果类型"
+		}
+	},
+	"sidecar": {
+		"_doc": "WP9 Intelligence Sidecar — strings + bounded knobs. Labels/thresholds live here per docs/conventions/configurability.md, not in TSX.",
+		"narrowBreakpointPx": 1180,
+		"relatedPreviewCap": 6,
+		"graphNodeCap": 100,
+		"strings": {
+			"title": "Intelligence",
+			"followingDoc": "正在跟随正文",
+			"tabCopilot": "Copilot",
+			"tabHistory": "History",
+			"close": "关闭",
+			"openDrawer": "打开智能侧栏",
+			"back": "返回",
+			"briefHeading": "针对当前正文，接下来值得处理什么",
+			"sectionNextMoves": "接下来可能要做",
+			"sectionRelated": "相关材料",
+			"sectionUnplaced": "还没安放的想法",
+			"whyRanked": "为什么这些排在前面？",
+			"refreshBrief": "更新建议",
+			"viewSource": "查看来源",
+			"bringIntoSession": "带入协作",
+			"openFullView": "打开完整视图",
+			"ignore": "忽略",
+			"discuss": "问 Copilot",
+			"askComposerPlaceholder": "描述你想做什么…",
+			"send": "发送",
+			"stop": "停止",
+			"allCapabilities": "全部能力",
+			"receiptChanges": "Changes",
+			"receiptInsights": "Insights",
+			"receiptSources": "Sources",
+			"receiptTrace": "Trace",
+			"locateInDocument": "定位正文",
+			"staleFindingNotice": "证据已随正文变化，需要重新核对",
+			"historyEmpty": "还没有已接受的写入",
+			"reviewClose": "完成审阅",
+			"emptyBrief": "暂无新的建议"
+		}
+	},
+	"telemetry": {
+		"_doc": "WP9 §12.7 proactive-intelligence metric catalog. Ten dimensions; each event's name + field schema is the source of truth for runtime/store instrumentation. Document content / prompt / evidence never appear in fields (privacy boundary).",
+		"maxFieldStringLength": 120,
+		"forbiddenFields": [
+			"content",
+			"text",
+			"prompt",
+			"promptText",
+			"evidence",
+			"evidenceText",
+			"sourceText",
+			"excerpt",
+			"body",
+			"documentText"
+		],
+		"dimensions": {
+			"relevance": [
+				{
+					"event": "finding_ingested",
+					"fields": {
+						"findingId": "id",
+						"deduped": "boolean"
+					},
+					"kind": "ai"
+				},
+				{
+					"event": "finding_relevance_rated",
+					"fields": {
+						"findingId": "id",
+						"rating": "int"
+					},
+					"kind": "ai"
+				},
+				{
+					"event": "evidence_coverage",
+					"fields": {
+						"findingId": "id",
+						"sourceCount": "int"
+					},
+					"kind": "ai"
+				}
+			],
+			"outcome": [
+				{
+					"event": "finding_consumed",
+					"fields": {
+						"findingId": "id"
+					},
+					"kind": "ai"
+				},
+				{
+					"event": "run_change_accepted",
+					"fields": {
+						"runId": "id",
+						"transactionId": "id",
+						"origin": "enum"
+					}
+				},
+				{
+					"event": "accept_partial",
+					"fields": {
+						"runId": "id",
+						"acceptedCount": "int",
+						"totalCount": "int"
+					},
+					"kind": "ai"
+				},
+				{
+					"event": "edit_after_accept",
+					"fields": {
+						"transactionId": "id",
+						"editedWithinMs": "int"
+					},
+					"kind": "ai"
+				}
+			],
+			"control": [
+				{
+					"event": "finding_dismissed",
+					"fields": {
+						"findingId": "id",
+						"surface": "enum"
+					}
+				},
+				{
+					"event": "undo_after_accept",
+					"fields": {
+						"transactionId": "id"
+					}
+				},
+				{
+					"event": "rollback_invoked",
+					"fields": {
+						"historyId": "id",
+						"success": "boolean"
+					}
+				},
+				{
+					"event": "stale_apply_prevented",
+					"fields": {
+						"findingId": "id"
+					}
+				}
+			],
+			"interruption": [
+				{
+					"event": "brief_unsolicited_exposure",
+					"fields": {
+						"count": "int",
+						"sensingPolicy": "enum"
+					},
+					"kind": "ai"
+				},
+				{
+					"event": "brief_opened",
+					"fields": {
+						"sensingPolicy": "enum"
+					}
+				},
+				{
+					"event": "finding_time_to_dismiss",
+					"fields": {
+						"findingId": "id",
+						"ms": "int"
+					}
+				},
+				{
+					"event": "quiet_session",
+					"fields": {
+						"durationMs": "int"
+					},
+					"kind": "ai"
+				}
+			],
+			"dedup": [
+				{
+					"event": "duplicate_suppressed",
+					"fields": {
+						"fingerprint": "id"
+					},
+					"kind": "ai"
+				},
+				{
+					"event": "cross_surface_leak",
+					"fields": {
+						"findingId": "id"
+					}
+				},
+				{
+					"event": "consumed_resurfacing",
+					"fields": {
+						"findingId": "id"
+					}
+				},
+				{
+					"event": "stale_resurfacing",
+					"fields": {
+						"findingId": "id"
+					}
+				}
+			],
+			"efficiency": [
+				{
+					"event": "time_to_first_useful_suggestion",
+					"fields": {
+						"ms": "int"
+					},
+					"kind": "ai"
+				},
+				{
+					"event": "review_time",
+					"fields": {
+						"runId": "id",
+						"ms": "int"
+					}
+				},
+				{
+					"event": "actions_saved",
+					"fields": {
+						"runId": "id",
+						"count": "int"
+					},
+					"kind": "ai"
+				},
+				{
+					"event": "time_to_accepted_write",
+					"fields": {
+						"runId": "id",
+						"ms": "int"
+					}
+				}
+			],
+			"reliability": [
+				{
+					"event": "run_failed",
+					"fields": {
+						"runId": "id"
+					},
+					"kind": "ai"
+				},
+				{
+					"event": "run_cancelled",
+					"fields": {
+						"runId": "id"
+					}
+				},
+				{
+					"event": "run_retried",
+					"fields": {
+						"runId": "id"
+					}
+				},
+				{
+					"event": "transaction_conflict",
+					"fields": {
+						"reason": "enum"
+					}
+				},
+				{
+					"event": "findings_staled",
+					"fields": {
+						"count": "int"
+					}
+				},
+				{
+					"event": "writeback_validation_failed",
+					"fields": {
+						"runId": "id"
+					},
+					"kind": "ai"
+				}
+			],
+			"performance": [
+				{
+					"event": "brief_compute_latency",
+					"fields": {
+						"ms": "int"
+					},
+					"kind": "ai"
+				},
+				{
+					"event": "local_ranking_cost",
+					"fields": {
+						"ms": "int",
+						"nodeCount": "int"
+					}
+				},
+				{
+					"event": "large_note_degradation",
+					"fields": {
+						"blockCount": "int",
+						"ms": "int"
+					}
+				},
+				{
+					"event": "drawer_render_latency",
+					"fields": {
+						"ms": "int"
+					}
+				}
+			],
+			"trust": [
+				{
+					"event": "source_opened",
+					"fields": {
+						"runId": "id"
+					}
+				},
+				{
+					"event": "reason_expanded",
+					"fields": {
+						"findingId": "id"
+					}
+				},
+				{
+					"event": "manual_verification",
+					"fields": {
+						"runId": "id"
+					}
+				},
+				{
+					"event": "accept_without_source_view",
+					"fields": {
+						"runId": "id"
+					},
+					"kind": "ai"
+				}
+			],
+			"learning": [
+				{
+					"event": "capability_acceptance_trend",
+					"fields": {
+						"capabilityId": "id",
+						"acceptRate": "float"
+					},
+					"kind": "ai"
+				},
+				{
+					"event": "dismiss_reason",
+					"fields": {
+						"findingId": "id",
+						"reason": "enum"
+					}
+				},
+				{
+					"event": "ranking_lift",
+					"fields": {
+						"lift": "float",
+						"interruptionDelta": "float"
+					},
+					"kind": "ai"
+				}
+			]
+		},
+		"evaluationBoundary": {
+			"acceptanceIsNotSoleMetric": true,
+			"exposureNormalizedAccept": true,
+			"separateAiAndDeterministic": true,
+			"contentStaysLocal": true,
+			"adaptiveLearningMustBeDisableableAndClearable": true
+		}
+	},
+	"native": {
+		"_doc": "WP8 native object block UI copy (Code/Mermaid/Base/Canvas/Excalidraw/embed previews). Typed fallback + loader: src/ui/view/composer/blocks/nativeBlockConfig.ts. Preview labels only — never a dispatch key.",
+		"preview": "预览",
+		"source": "源码",
+		"baseViewsLabel": "视图",
+		"baseColumnsLabel": "列",
+		"baseFiltersLabel": "过滤",
+		"baseFormulasLabel": "公式",
+		"baseInvalid": "无法解析此 Base 视图",
+		"canvasNodesLabel": "节点",
+		"canvasEdgesLabel": "连线",
+		"canvasInvalid": "无法解析此 Canvas",
+		"excalidrawElementsLabel": "元素",
+		"excalidrawTextLabel": "文本",
+		"excalidrawUnsupported": "此 Excalidraw 图当前不可预览",
+		"embedOpenLabel": "打开",
+		"embedBroken": "嵌入目标缺失",
+		"mermaidRenderError": "图表渲染失败，已显示源码",
+		"mermaidEmpty": "空图表",
+		"linesSuffix": "行",
+		"copySource": "复制源码",
+		"copied": "已复制"
+	},
+	"table": {
+		"_doc": "WP6 table block UI copy (object toolbar + selection ARIA). Typed fallback: src/ui/view/composer/blocks/table/tableViewConfig.ts (DEFAULT_TABLE_BLOCK_STRINGS.toolbar/.selection). Drift guard: test/composer-config.test.ts.",
+		"toolbar": {
+			"format": "格式",
+			"align": "对齐",
+			"alignLeft": "左对齐",
+			"alignCenter": "居中",
+			"alignRight": "右对齐",
+			"addRow": "加行",
+			"removeRow": "删行",
+			"addColumn": "加列",
+			"removeColumn": "删列",
+			"sort": "排序",
+			"formula": "公式",
+			"sumColumn": "列求和 → 汇总行",
+			"sumRow": "行求和 → 汇总列",
+			"merge": "合并",
+			"unmerge": "拆分",
+			"transpose": "转置",
+			"csv": "CSV",
+			"csvCopy": "复制为 CSV",
+			"csvExport": "导出 CSV",
+			"csvImport": "导入 CSV",
+			"chart": "图表",
+			"summary": "汇总",
+			"noSelection": "请先选择单元格",
+			"needRectangle": "合并需选择一个完整矩形区域",
+			"needMergedCell": "请选择已合并的单元格来拆分",
+			"parseError": "此表格无法解析为可编辑结构"
+		},
+		"selection": {
+			"cellsSelected": "已选择 {count} 个单元格",
+			"singleCell": "已选择第 {row} 行第 {col} 列",
+			"rangeCells": "已选择第 {r0} 到 {r1} 行、第 {c0} 到 {c1} 列",
+			"none": "未选择单元格"
+		}
+	},
+	"chart": {
+		"_doc": "WP6 chart block UI copy (type switch + states). Typed fallback: DEFAULT_TABLE_BLOCK_STRINGS.chart. Drift guard: test/composer-config.test.ts.",
+		"bar": "柱状",
+		"line": "折线",
+		"pie": "饼图",
+		"loading": "图表加载中…",
+		"invalid": "图表源无效",
+		"untitled": "图表"
+	},
+	"frontmatter": {
+		"_doc": "WP5 frontmatter block UI copy (property grid, Vault property library, AI suggestions). Typed fallback: src/ui/view/composer/blocks/frontmatter/frontmatterConfig.ts.",
+		"grid": {
+			"issueWarning": "属性告警",
+			"vaultLibrary": "属性库",
+			"aiSuggest": "AI 属性建议",
+			"addProperty": "添加属性",
+			"origin": {
+				"program": "程序",
+				"human": "人工",
+				"ai": "AI 建议",
+				"convention": "规范建议"
+			},
+			"reviewShapeChange": "该改动会改变字段类型，请确认后再写入"
+		},
+		"library": {
+			"title": "Vault 属性库",
+			"subtitle": "全知识库字段与标签统计 · 选择后只在当前文档生成候选",
+			"close": "关闭属性库",
+			"colField": "字段",
+			"colCoverage": "覆盖率",
+			"colIssue": "发现的问题",
+			"colAdd": "加入本文",
+			"alreadyPresent": "已在本文",
+			"add": "添加",
+			"typeConflict": "类型不一致",
+			"rare": "单次使用",
+			"customTitle": "自定义属性",
+			"customSubtitle": "任意 key / value；先生成候选，不静默写入 YAML",
+			"keyPlaceholder": "key，例如 cssclasses",
+			"valuePlaceholder": "value，例如 wide-page",
+			"addToDoc": "添加到本文",
+			"footer": "统计范围是整个 Vault；入口跟随当前 Frontmatter，只把选中的字段作为本文候选。",
+			"statFields": "个字段",
+			"statTags": "个标签",
+			"statSingle": "个单次字段",
+			"statConflict": "处类型不一致"
+		},
+		"suggestions": {
+			"title": "AI 属性建议",
+			"subtitle": "根据正文与 Vault 关系生成 · 逐条选择",
+			"close": "关闭 AI 属性建议",
+			"add": "添加",
+			"reject": "忽略",
+			"empty": "暂无建议",
+			"streaming": "生成中…",
+			"footer": "AI 只建议字段和值；点击“添加”后还要在 Frontmatter 中确认。"
+		}
+	},
+	"math": {
+		"_doc": "WP5 math block UI copy (formula micro-block detail rows + copy formats). Typed fallback: src/ui/view/composer/blocks/math/mathConfig.ts.",
+		"detail": {
+			"explain": "解释公式",
+			"split": "拆分公式",
+			"variables": "变量表",
+			"insertBelow": "在下方插入",
+			"copy": "复制",
+			"comment": "评论",
+			"history": "History",
+			"instruction": "指令",
+			"keep": "保留标注",
+			"close": "关闭",
+			"regenerate": "重新生成",
+			"followUpPlaceholder": "追问或调整…（Enter 重新生成）",
+			"streaming": "生成中…",
+			"failed": "生成失败",
+			"empty": "暂无内容",
+			"prevVariant": "上一版本",
+			"nextVariant": "下一版本",
+			"variantCounter": "{index}/{count}",
+			"colSymbol": "符号",
+			"colMeaning": "含义"
+		},
+		"copy": {
+			"plain": "纯文本",
+			"latex": "LaTeX",
+			"html": "HTML",
+			"image": "图片",
+			"copied": "已复制",
+			"copyFormula": "复制公式"
+		}
+	},
+	"image": {
+		"_doc": "WP7 image pack config. Domain data (naming noise tokens / layout + converter defaults) + object-action labels + candidate UI copy. Typed fallbacks: src/service/composer/packs/image/imageConfig.ts, src/service/composer/capabilities/packs/image.ts (DEFAULT_IMAGE_ACTION_STRINGS), src/ui/view/composer/blocks/image/imageUiConfig.ts. Not a dispatch key.",
+		"naming": {
+			"fallbackBaseName": "image",
+			"noiseTokens": [
+				"pasted image",
+				"pasted",
+				"screenshot",
+				"screen shot",
+				"screen recording",
+				"image",
+				"photo",
+				"img",
+				"untitled"
+			],
+			"maxLength": 60
+		},
+		"layout": {
+			"defaultMode": "grid",
+			"defaultGap": 8,
+			"defaultColumns": 3
+		},
+		"converter": {
+			"defaultQuality": 0.9
+		},
+		"edit": {
+			"presetId": "edit-default"
+		},
+		"actions": {
+			"captionTitle": "图注",
+			"editTitle": "AI 改图",
+			"convertTitle": "转换",
+			"layoutTitle": "排版"
+		},
+		"ui": {
+			"accept": "接受",
+			"discard": "丢弃",
+			"cancel": "取消",
+			"regenerate": "换一个",
+			"retry": "重试",
+			"nameLabel": "文件名",
+			"namePlaceholder": "输入文件名…（Enter 生成）",
+			"nameAria": "Image file name",
+			"editInstructionPlaceholder": "描述想要的修改…（Enter 生成）",
+			"editInstructionAria": "Image edit instruction",
+			"generating": "生成中…",
+			"failed": "生成失败",
+			"stale": "源已变化，需重新运行",
+			"rerun": "重新运行",
+			"prevVariant": "上一版本",
+			"nextVariant": "下一版本",
+			"variantCounter": "{index}/{count}",
+			"captionPlaceholder": "描述这张图…（Enter 生成）",
+			"captionAria": "Caption instruction",
+			"dimensionsTemplate": "{w}×{h} · {size}",
+			"unsupportedResult": "暂不支持渲染此结果类型"
+		}
+	}
 }

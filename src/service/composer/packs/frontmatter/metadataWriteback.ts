@@ -25,11 +25,16 @@ import type {
 	ComposerMetadataValueKind,
 } from '@/core/schemas/composer';
 import { ComposerMetadataFieldPatchPayloadSchema } from '@/core/schemas/composer';
-import type { ComposerOperation, ComposerResultEnvelope } from '@/core/composer';
+import type {
+	ComposerDocumentSnapshot,
+	ComposerOperation,
+	ComposerResultEnvelope,
+	ComposerTarget,
+} from '@/core/composer';
 import { COMPOSER_METADATA_FIELD_PATCH_WRITEBACK_ID } from '@/core/composer';
 import type { ComposerResultMaterializer, MaterializeArgs } from '../../capabilities/resultMaterializers';
 import type { ComposerWritebackAdapter, WritebackTargetContext } from '../../capabilities/writebackAdapters';
-import { setFrontmatterField, type YamlFieldSet } from './yamlWriteback';
+import { createFrontmatterBlock, setFrontmatterField, type YamlFieldSet } from './yamlWriteback';
 
 export interface MetadataFieldPatchBuildResult {
 	ok: boolean;
@@ -58,6 +63,46 @@ export function buildMetadataFieldPatchOperations(
 		ok: true,
 		operations: [{ kind: 'replaceRange', from: blockFrom, to: blockTo, text: result.nextBlockSource }],
 		requiresReview: result.requiresReview ?? false,
+	};
+}
+
+// ── new-frontmatter insertion (document has no frontmatter yet) ──────────────
+
+export interface InsertFrontmatterHeadResult {
+	ok: boolean;
+	operations: ComposerOperation[];
+	target?: ComposerTarget;
+	expectedBlockDelta: number;
+	/** Reason when `ok` is false (a frontmatter block already exists). */
+	reason?: string;
+}
+
+/**
+ * Build the atomic operation that inserts a brand-new frontmatter block at the
+ * very head of a document that has none. Frontmatter is only recognised at byte
+ * 0, so the block is inserted `at: 0`; a non-empty document gets a trailing
+ * blank line so the new block never fuses with the following block on reparse
+ * (WP4 separator contract). Refuses (fails closed, no operations) when a
+ * frontmatter block already exists — there is only ever one, at the head, and
+ * per-field edits go through {@link buildMetadataFieldPatchOperations} instead.
+ * Lists default to flow style (`tags: []`) so the seeded starter reads cleanly.
+ */
+export function buildInsertFrontmatterHeadOperations(
+	snapshot: ComposerDocumentSnapshot,
+	fields: readonly YamlFieldSet[],
+	options: { flowLists?: boolean } = {},
+): InsertFrontmatterHeadResult {
+	if (snapshot.blocks.some((b) => b.kind === 'frontmatter')) {
+		return { ok: false, operations: [], expectedBlockDelta: 0, reason: 'frontmatter-exists' };
+	}
+	const blockSource = createFrontmatterBlock(fields, options.flowLists ?? true);
+	const hasBody = snapshot.sourceText.length > 0;
+	const text = hasBody ? `${blockSource}\n` : blockSource;
+	return {
+		ok: true,
+		operations: [{ kind: 'insertBlock', at: 0, text, blockKind: 'frontmatter' }],
+		target: { kind: 'document', documentId: snapshot.documentId },
+		expectedBlockDelta: 1,
 	};
 }
 

@@ -6,10 +6,11 @@
  * inserts a fenced ```chart block below the table (it never rewrites the table),
  * so the chart and its source table never re-render each other.
  *
- * `generate chart` from a table is DETERMINISTIC (no LLM): the deterministic
- * table toolbar builds the same chart-source and commits it through the hub as
- * the shipping path. This pack provides the typed materializer + writeback so the
- * capability is registerable and unit-tested, mirroring the table pack's stance.
+ * Two invocation paths share this typed plumbing: the DETERMINISTIC table
+ * toolbar (empty streamed text ⇒ the spec is derived from the frozen table) and
+ * the MODEL path (WP-INT), where `generate-chart` streams a chart-source JSON
+ * spec bound to its PromptId. Either way the result is one typed `chart-source`
+ * envelope inserted as an independent block below the table.
  */
 
 import type {
@@ -23,13 +24,14 @@ import type {
 	ComposerWritebackAdapterId,
 } from '@/core/composer';
 import { COMPOSER_STREAMING_TEXT_RENDERER_ID } from '@/core/composer';
+import { PromptId } from '@/core/types/prompt';
 import {
 	ComposerChartSourcePayloadSchema,
 	ComposerInstructionInputSchema,
 	type ComposerChartSourcePayload,
 } from '@/core/schemas/composer';
 import type { ComposerCapabilitiesConfigProvider } from '../capabilityConfig';
-import type { ComposerResultMaterializer } from '../resultMaterializers';
+import { parseTypedObjectJson, type ComposerResultMaterializer } from '../resultMaterializers';
 import type { ComposerWritebackAdapter } from '../writebackAdapters';
 import { chartSpecToFencedSource, tableToChartSpec } from '../../packs/chart';
 import { parseTableSource } from './table';
@@ -51,6 +53,7 @@ export interface ChartSourceEnvelopePayload {
 export function createChartSourceMaterializer(): ComposerResultMaterializer {
 	return {
 		resultKind: 'chart-source',
+		streamsTypedObject: true,
 		materialize({ definition, snapshot, text }): ComposerResultEnvelope<ChartSourceEnvelopePayload> {
 			const spec = resolveChartSpec(snapshot, text);
 			return {
@@ -66,8 +69,11 @@ export function createChartSourceMaterializer(): ComposerResultMaterializer {
 }
 
 function resolveChartSpec(snapshot: ComposerContextSnapshot, text: string): ComposerChartSourcePayload {
-	const trimmed = text.trim();
-	if (trimmed.length > 0) return ComposerChartSourcePayloadSchema.parse(JSON.parse(trimmed));
+	// Model path: a streamed chart-source JSON spec (may be ```json fenced).
+	if (text.trim().length > 0) {
+		return ComposerChartSourcePayloadSchema.parse(parseTypedObjectJson(text, 'chart-source'));
+	}
+	// Deterministic path: derive the spec from the frozen table source.
 	const derived = tableToChartSpec(parseTableSource(snapshot.targetSource));
 	if (!derived.ok) throw new Error(`generate chart: ${derived.reason}`);
 	return derived.spec;
@@ -120,8 +126,11 @@ export function createGenerateChartDefinition(
 		configKey: GENERATE_CHART_CAPABILITY_ID,
 		surfaces: ['object-toolbar'],
 		targetKinds: ['table'],
-		executionMode: 'deterministic',
+		// Model path: the model streams a chart-source JSON spec. (The
+		// deterministic table toolbar still derives the same spec directly.)
+		executionMode: 'model-stream',
 		effectKind: 'insert',
+		promptId: PromptId.DocTableGenerateChart,
 		inputSchema: ComposerInstructionInputSchema,
 		resultSchema: ComposerChartSourcePayloadSchema,
 		resultKind: 'chart-source',

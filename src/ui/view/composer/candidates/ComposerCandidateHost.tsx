@@ -25,6 +25,12 @@ export interface ComposerCandidateHostProps {
 	registry: CandidateRendererRegistry;
 	/** Injected strings (tests / storyless harness); loaded from config otherwise. */
 	strings?: CandidateUiStrings;
+	/**
+	 * Resolves the verbatim "before" text a candidate replaces, for in-place word
+	 * diff (CMP-REV-02). The app layer wires this from the live document snapshot;
+	 * absent ⇒ the renderer shows the plain replacement (no diff).
+	 */
+	resolveOriginalText?: (candidate: ComposerCandidate) => string | null;
 }
 
 function useCandidate(runtime: ComposerCandidateRuntimePort, candidateId: string): ComposerCandidate | null {
@@ -82,12 +88,14 @@ export function ComposerCandidateHost(props: ComposerCandidateHostProps): React.
 
 	const rendererId = props.runtime.rendererIdFor(candidate.candidateId);
 	const { component: Renderer } = props.registry.resolve(rendererId);
+	const originalText = props.resolveOriginalText ? props.resolveOriginalText(candidate) : null;
 	return (
 		<Renderer
 			candidate={candidate}
 			runtime={props.runtime}
 			strings={strings}
 			streamingText={streamingText}
+			originalText={originalText}
 		/>
 	);
 }
