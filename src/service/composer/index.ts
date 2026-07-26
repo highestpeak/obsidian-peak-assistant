@@ -36,3 +36,10 @@ export * from './render/inlineRuns';
 // analysis. Framework-neutral parse/patch/preview cores; no obsidian imports.
 export * from './packs/native';
 export * from './packs/link';
+
+// WP6 — table + chart packs (model, HTML port, object selection, block ops) and
+// their capability plumbing (typed table-patch / chart-source).
+export * from './packs/table';
+export * from './packs/chart';
+export * from './capabilities/packs/table';
+export * from './capabilities/packs/chart';

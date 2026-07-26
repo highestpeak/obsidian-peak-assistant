@@ -12,6 +12,7 @@
 @import "./composer.css";          /* Peak Composer read-only host (WP1); scoped .peak-composer-root */
 @import "./composer-sidecar.css";  /* Peak Composer Intelligence Sidecar (WP9); scoped .pk-sidecar / .pk-related-modal */
 @import "./composer-native.css";   /* Peak Composer native objects (WP8): code/mermaid/base/canvas/excalidraw/embed previews */
+@import "./composer-table.css";    /* Peak Composer table + chart blocks (WP6); scoped .peak-composer-root */
 @import "./peak-style-settings.css";
 @import "./obsidian-reset.css";
 @import "./codemirror.css";        /* Composer CM6 skin (.pktw-codemirror-custom) — was orphaned from the bundle; every rule here is scoped + !important-defended */

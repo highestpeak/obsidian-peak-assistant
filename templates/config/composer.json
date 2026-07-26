@@ -623,5 +623,51 @@
     "linesSuffix": "行",
     "copySource": "复制源码",
     "copied": "已复制"
+  },
+  "table": {
+    "_doc": "WP6 table block UI copy (object toolbar + selection ARIA). Typed fallback: src/ui/view/composer/blocks/table/tableViewConfig.ts (DEFAULT_TABLE_BLOCK_STRINGS.toolbar/.selection). Drift guard: test/composer-config.test.ts.",
+    "toolbar": {
+      "format": "格式",
+      "align": "对齐",
+      "alignLeft": "左对齐",
+      "alignCenter": "居中",
+      "alignRight": "右对齐",
+      "addRow": "加行",
+      "removeRow": "删行",
+      "addColumn": "加列",
+      "removeColumn": "删列",
+      "sort": "排序",
+      "formula": "公式",
+      "sumColumn": "列求和 → 汇总行",
+      "sumRow": "行求和 → 汇总列",
+      "merge": "合并",
+      "unmerge": "拆分",
+      "transpose": "转置",
+      "csv": "CSV",
+      "csvCopy": "复制为 CSV",
+      "csvExport": "导出 CSV",
+      "csvImport": "导入 CSV",
+      "chart": "图表",
+      "summary": "汇总",
+      "noSelection": "请先选择单元格",
+      "needRectangle": "合并需选择一个完整矩形区域",
+      "needMergedCell": "请选择已合并的单元格来拆分",
+      "parseError": "此表格无法解析为可编辑结构"
+    },
+    "selection": {
+      "cellsSelected": "已选择 {count} 个单元格",
+      "singleCell": "已选择第 {row} 行第 {col} 列",
+      "rangeCells": "已选择第 {r0} 到 {r1} 行、第 {c0} 到 {c1} 列",
+      "none": "未选择单元格"
+    }
+  },
+  "chart": {
+    "_doc": "WP6 chart block UI copy (type switch + states). Typed fallback: DEFAULT_TABLE_BLOCK_STRINGS.chart. Drift guard: test/composer-config.test.ts.",
+    "bar": "柱状",
+    "line": "折线",
+    "pie": "饼图",
+    "loading": "图表加载中…",
+    "invalid": "图表源无效",
+    "untitled": "图表"
   }
 }
