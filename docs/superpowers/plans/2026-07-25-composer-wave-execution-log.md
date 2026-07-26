@@ -29,12 +29,12 @@ Contract: [`2026-07-24-peak-composer-complete-implementation-handoff.md`](./2026
 | WP4.5 | 集成：AI 接线 + 富渲染 + app adapters | done | PASS | 64d958ba |
 | QA#1 | 真机中期验收 | done（2 must-fix） | 见 QA#1 段 | — |
 | FIX-1 | F1 流式重复 + F2 真机打字失效修复 | done | PASS（真机复验通过） | 1516f50f |
-| FIX-2 | 设计稿保真修复（4 偏离项） | in-progress | pending | — |
-| WP5 | Frontmatter + 公式 | pending | pending | — |
-| WP6 | 表格 + Chart | pending | pending | — |
-| WP7 | 图片 + 多图布局 | pending | pending | — |
-| WP8 | native objects | pending | pending | — |
-| WP9b | Intelligence Sidecar | pending | pending | — |
+| FIX-2 | 设计稿保真修复（4 偏离项） | done | PASS（4/4 匹配，几何 QA 46/46，fable 目检通过） | ca369ecb |
+| WP5 | Frontmatter + 公式 | in-progress | pending | — |
+| WP6 | 表格 + Chart | in-progress | pending | — |
+| WP7 | 图片 + 多图布局 | in-progress | pending | — |
+| WP8 | native objects | in-progress | pending | — |
+| WP9b | Intelligence Sidecar | in-progress | pending | — |
 | WP10 | closure + QA#2 + 最终报告 | pending | pending | — |
 
 ## 审计门结论记录
