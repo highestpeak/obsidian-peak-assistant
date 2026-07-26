@@ -28,7 +28,8 @@ Contract: [`2026-07-24-peak-composer-complete-implementation-handoff.md`](./2026
 | WP4 | editing chrome + 文本 slice | done | PASS（2 项登记偏差） | 8679f448（merge，4 子 commit） |
 | WP4.5 | 集成：AI 接线 + 富渲染 + app adapters | done | PASS | 64d958ba |
 | QA#1 | 真机中期验收 | done（2 must-fix） | 见 QA#1 段 | — |
-| FIX-1 | F1 流式重复 + F2 真机打字失效修复 | in-progress | pending | — |
+| FIX-1 | F1 流式重复 + F2 真机打字失效修复 | done | PASS（真机复验通过） | 1516f50f |
+| FIX-2 | 设计稿保真修复（4 偏离项） | in-progress | pending | — |
 | WP5 | Frontmatter + 公式 | pending | pending | — |
 | WP6 | 表格 + Chart | pending | pending | — |
 | WP7 | 图片 + 多图布局 | pending | pending | — |
@@ -202,6 +203,12 @@ Contract: [`2026-07-24-peak-composer-complete-implementation-handoff.md`](./2026
 - 未覆盖（待 F2 修复后补或 QA#2）：中文 IME、块拖动、fold 写回、link hover、评论持久化、Easy Copy 剪贴板、comment、drag 中富渲染翻转卡顿。
 
 **决定**：五路 packs 在 F1/F2 修复并真机复验前保持 blocked（F1 污染所有 AI 流式，F2 阻塞直接编辑底座）。
+
+**FIX-1 结案（2026-07-26，commit 1516f50f，真机复验全过）**：
+- F1 根因：`AIServiceManager.queryStream` agent-SDK 分支漏传 `hasPartialMessages`，SDK 末尾聚合 assistant 全文块被再次翻成 delta。一处修复惠及全部 queryStream 消费方；回归测试 2 条（含"漏传→翻倍"陷阱记录）。真机复验：润色候选单份 ✅
+- F2 根因（探针判读三易其稿后定论）：块 row wrapper 吞 mousedown——点击落在 CE 文本区外（行尾空白/rail gutter/run 间隙）时浏览器不把焦点交给 contenteditable，键盘留在 workspace；QA#1 所见"焦点环"是块级 hover/focus-within 样式。修复：`focusForwarding.ts`（纯决策层可单测 + DOM 壳：preventDefault→leaf.focus()→rAF 后 caretRangeFromPoint 就近落点，rAF 保证 caret 解析于 styled→source 翻转后的 DOM）。回归测试 28 项。真机复验：行尾空白点击→打字→burst 落盘 ✅
+- 受控模型定论（写入代码注释）：CE 聚焦期为非受控 contenteditable，native 插入（含 IME）→ onInput 观察 → burst 落盘；**禁止**改成 preventDefault+手动插入（破坏 IME 与 native undo）。
+- 附带真机验证：外部 sed 改文件触发 stale 横幅（"Document changed on disk / Reload from file"）✅ CMP-HOST-02。
 
 ## 设计稿回归比对记录
 
