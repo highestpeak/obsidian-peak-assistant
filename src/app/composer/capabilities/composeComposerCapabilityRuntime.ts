@@ -22,6 +22,8 @@ import {
 	ComposerCapabilityRegistry,
 	createDefaultResultMaterializers,
 	createDefaultWritebackAdapters,
+	createLinkCapabilityPack,
+	createNativeCapabilityPack,
 	createProseCapabilityPack,
 	loadComposerCapabilitiesConfig,
 	DEFAULT_COMPOSER_CAPABILITIES_CONFIG,
@@ -61,6 +63,10 @@ export function composeComposerCapabilityRuntime(
 
 	const registry = new ComposerCapabilityRegistry(configProvider);
 	registry.registerPack(createProseCapabilityPack(configProvider));
+	// WP8 — native objects (mermaid / code AI edits) + link tidy. Both packs ride
+	// the text-patch rail, so the default materializer/adapter set covers them.
+	registry.registerPack(createNativeCapabilityPack(configProvider));
+	registry.registerPack(createLinkCapabilityPack(configProvider));
 
 	const materializers = createDefaultResultMaterializers();
 	const writebacks = createDefaultWritebackAdapters();

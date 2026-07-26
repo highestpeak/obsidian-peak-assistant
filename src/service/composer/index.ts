@@ -31,3 +31,8 @@ export * from './comment/commentModel';
 export * from './comment/commentStore';
 export * from './linkPreview/linkPreviewModel';
 export * from './render/inlineRuns';
+
+// WP8 — native objects (Code / Mermaid / Base / Canvas / Excalidraw) + link
+// analysis. Framework-neutral parse/patch/preview cores; no obsidian imports.
+export * from './packs/native';
+export * from './packs/link';

@@ -1,0 +1,110 @@
+{
+  "nodes": [
+    {
+      "id": "capture",
+      "type": "text",
+      "x": -260,
+      "y": -110,
+      "width": 220,
+      "height": 120,
+      "color": "5",
+      "text": "## 信息获取\nRSS、网页剪藏、PDF Reader、播客、视频、系统共享"
+    },
+    {
+      "id": "inbox",
+      "type": "file",
+      "x": 30,
+      "y": -140,
+      "width": 240,
+      "height": 92,
+      "color": "6",
+      "file": "kb2-learn-prd/B-2-创意和想法管理/C-大类-信息聚合-PKM/Z-10-PKM产品类别分析/inbox.md"
+    },
+    {
+      "id": "manage",
+      "type": "text",
+      "x": 20,
+      "y": 40,
+      "width": 250,
+      "height": 130,
+      "color": "4",
+      "text": "## 信息管理\n区分资料库、笔记和大脑；用树组织承接线性知识，用图组织承接碎片想法。"
+    },
+    {
+      "id": "output",
+      "type": "text",
+      "x": 360,
+      "y": 10,
+      "width": 240,
+      "height": 118,
+      "color": "2",
+      "text": "## 信息输出\n草稿笔记、正文输出、系列文章、协作输出、数据可视化。"
+    },
+    {
+      "id": "review",
+      "type": "file",
+      "x": 350,
+      "y": 190,
+      "width": 250,
+      "height": 92,
+      "color": "3",
+      "file": "kb2-learn-prd/B-2-创意和想法管理/C-大类-信息聚合-PKM/Z-10-PKM产品类别分析/知识回顾.md"
+    },
+    {
+      "id": "group-pkm",
+      "type": "group",
+      "x": -300,
+      "y": -180,
+      "width": 950,
+      "height": 510,
+      "label": "PKM 产品类别分析 · JSON Canvas sample"
+    }
+  ],
+  "edges": [
+    {
+      "id": "capture-to-inbox",
+      "fromNode": "capture",
+      "fromSide": "right",
+      "toNode": "inbox",
+      "toSide": "left",
+      "label": "暂存",
+      "color": "5"
+    },
+    {
+      "id": "inbox-to-manage",
+      "fromNode": "inbox",
+      "fromSide": "bottom",
+      "toNode": "manage",
+      "toSide": "top",
+      "label": "筛选",
+      "color": "6"
+    },
+    {
+      "id": "manage-to-output",
+      "fromNode": "manage",
+      "fromSide": "right",
+      "toNode": "output",
+      "toSide": "left",
+      "label": "组织后输出",
+      "color": "4"
+    },
+    {
+      "id": "output-to-review",
+      "fromNode": "output",
+      "fromSide": "bottom",
+      "toNode": "review",
+      "toSide": "top",
+      "label": "沉淀",
+      "color": "2"
+    },
+    {
+      "id": "review-to-manage",
+      "fromNode": "review",
+      "fromSide": "left",
+      "toNode": "manage",
+      "toSide": "bottom",
+      "label": "复盘更新",
+      "color": "3"
+    }
+  ]
+}

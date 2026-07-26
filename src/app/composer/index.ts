@@ -18,6 +18,7 @@ export {
 	ObsidianComposerFileEventsAdapter,
 	ObsidianComposerWriteAdapter,
 } from './ObsidianComposerAdapters';
+export { ObsidianComposerNativeFileAdapter } from './ObsidianNativeFileAdapter';
 export {
 	composeComposerCapabilityRuntime,
 	type ComposerCapabilityRuntimeFactory,

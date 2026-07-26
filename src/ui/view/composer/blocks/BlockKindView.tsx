@@ -1,5 +1,11 @@
 import * as React from 'react';
 import type { ComposerBlock } from '@/core/composer';
+import { CodeBlockView } from './code/CodeBlockView';
+import { MermaidBlockView } from './mermaid/MermaidBlockView';
+import { BaseBlockView } from './base/BaseBlockView';
+import { CanvasBlockView } from './canvas/CanvasBlockView';
+import { ExcalidrawBlockView } from './excalidraw/ExcalidrawBlockView';
+import { EmbedBlockView } from './embed/EmbedBlockView';
 
 /**
  * Read-only, kind-dispatched block renderer (WP1 skeleton, WP4-annotated).
@@ -18,8 +24,20 @@ export function BlockKindView({ block }: { block: ComposerBlock }): React.ReactE
 	switch (block.kind) {
 		case 'divider':
 			return <div className="pk-composer-divider" role="separator" />;
-		case 'image':
+		// WP8 native objects — real, data-driven previews.
+		case 'code':
+			return <CodeBlockView block={block} />;
+		case 'mermaid':
+			return <MermaidBlockView block={block} />;
+		case 'base':
+			return <BaseBlockView block={block} />;
+		case 'canvas':
+			return <CanvasBlockView block={block} />;
+		case 'excalidraw':
+			return <ExcalidrawBlockView block={block} />;
 		case 'embed':
+			return <EmbedBlockView block={block} />;
+		case 'image':
 			return <RefView block={block} />;
 		default:
 			return <MonoView block={block} />;
