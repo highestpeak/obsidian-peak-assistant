@@ -31,10 +31,10 @@ Contract: [`2026-07-24-peak-composer-complete-implementation-handoff.md`](./2026
 | FIX-1 | F1 流式重复 + F2 真机打字失效修复 | done | PASS（真机复验通过） | 1516f50f |
 | FIX-2 | 设计稿保真修复（4 偏离项） | done | PASS（4/4 匹配，几何 QA 46/46，fable 目检通过） | ca369ecb |
 | WP5 | Frontmatter + 公式 | in-progress | pending | — |
-| WP6 | 表格 + Chart | in-progress | pending | — |
+| WP6 | 表格 + Chart | done | PASS | 11aa5cf2（merge，2 子 commit，amend 修复冲突残留） |
 | WP7 | 图片 + 多图布局 | in-progress | pending | — |
-| WP8 | native objects | in-progress | pending | — |
-| WP9b | Intelligence Sidecar | in-progress | pending | — |
+| WP8 | native objects | done | PASS | 21681ffc（merge，3 子 commit） |
+| WP9b | Intelligence Sidecar | done | PASS | ebbbd793（merge，4 子 commit） |
 | WP10 | closure + QA#2 + 最终报告 | pending | pending | — |
 
 ## 审计门结论记录
@@ -82,6 +82,10 @@ Contract: [`2026-07-24-peak-composer-complete-implementation-handoff.md`](./2026
   - **开放项（下阶段）**：CMP-REV-02 原位 word diff 尚未实现（候选现为整段替换呈现）——归入 packs 阶段前的 diff-patterns 专项或 WP5 一并处理；外部编辑 revalidate 重建 session/hub（undo 历史丢失）符合 WP2 语义、已接受；多 unit 选区 AI 只作用 unit[0]。
   - QA#1 真机清单（代理提供）：命令入口/active-file 跟随/落盘/评论重载存活；drag 选择中 styled→source 翻转的卡顿与 caret 落点；macOS 拼音 IME + Cmd+Z 边界；真实付费 provider polish 流式；link hover 打开。
 - **接口冻结（88931c20，fable authored）**：`src/core/composer/capabilityContracts.ts`——ComposerResultKind 14 种 / ComposerContextSnapshot / ComposerActionDescriptor / ComposerCapabilityProjectionPort + stub（chrome 在 runtime 未接入前零假 AI 按钮）。WP3/WP4 只实现不改形；改形需回本 log 记录编排者决定。
+
+- **WP9b（2026-07-26，fable 审计：PASS，merge ebbbd793）**：越界 0/禁区 0/intelligence 零 obsidian/sidecar 零 chat 越境；3 个命名测试 + 合并后全量 289/291 绿。交付：finding 同体（fingerprint 去重/双侧同步/stale via matchBlocks）、brief→session→running→review、frozen context、receipt 四段、PromptInput 内核复用、Composer Result Browser adapter（CMP-RB-03 补全）、十维 telemetry catalog（privacy redaction）。遗留（转集成/QA#2）：related-material port/telemetry sink/focused-block snapshot 用 document 级 fallback 未接实源；ambient sensing runtime、in-body review pin 同步、wide-modal graph real-fit 后续；像素级 sidecar mock 比对待真机。
+- **WP8（2026-07-26，fable 审计：PASS，merge 21681ffc）**：越界 0（.gitignore 负规则改动合理：救回字面 `native/` 目录）；packs 零 obsidian；2 测试文件绿。交付：Base(yaml CST)/Canvas(by-id)/Excalidraw(切片替换+compressed fail-safe) typed patch + 结构化预览、revision-guarded native-file port、code/mermaid 合同、link 能力共享 Copilot definition。遗留：native 结构编辑未走 AI candidate rail（renderer 在 candidates/ 禁区，转集成）；AI native 能力暂复用 DocPolish promptId（prompt 专门化后续）；mermaid popout 渲染入 QA#2。
+- **WP6（2026-07-26，fable 审计：PASS，merge 11aa5cf2 amended）**：越界 0/禁区 0；3 测试文件绿；**合并事故与修复**：merge 输出被截断查看导致 schemas/composer.ts 与 service index 两处未解决标记被 `git add -A` 提交，全量测试立即暴露（compile-error），已解决并 amend——**流程规矩：合并后必须 `git status` 查完整 unmerged 列表 + 全量测试后才允许 commit**。交付：TableModel 生产化（逐字节 round-trip/merge 矩形校验/单向升级/parse5-DOMParser 双 port）、双模选择（S5 手势合同+键盘+ARIA）、merge-aware toolbar（全部真实生效或 disabled+reason）、typed table-patch/chart-source 管线、recharts 懒加载 Chart Block。遗留（诚实登记）：Table AI 5 能力+generate-chart 已实现并单测但**未注册进 runtime**（缺 5 个专用 PromptId 模板，不上死按钮——正确取舍）；cell 级 contenteditable 未做（EditableText 禁区，选中文字走既有 selection toolbar）；两项转集成任务。
 
 ## WP0 spike 结论
 
