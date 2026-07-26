@@ -27,3 +27,8 @@ export * from './comment/commentModel';
 export * from './comment/commentStore';
 export * from './linkPreview/linkPreviewModel';
 export * from './render/inlineRuns';
+
+// WP7 — image pack (paste/rename transaction, converter geometry, caption,
+// multi-image layout, media-edit coordinator). Framework-neutral + node-tested.
+export * from './packs/image';
+export * from './capabilities/packs/image';

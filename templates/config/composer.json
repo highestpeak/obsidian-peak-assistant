@@ -218,5 +218,50 @@
       "variantCounter": "{index}/{count}",
       "unsupportedResult": "暂不支持渲染此结果类型"
     }
+  },
+  "image": {
+    "_doc": "WP7 image pack config. Domain data (naming noise tokens / layout + converter defaults) + object-action labels + candidate UI copy. Typed fallbacks: src/service/composer/packs/image/imageConfig.ts, src/service/composer/capabilities/packs/image.ts (DEFAULT_IMAGE_ACTION_STRINGS), src/ui/view/composer/blocks/image/imageUiConfig.ts. Not a dispatch key.",
+    "naming": {
+      "fallbackBaseName": "image",
+      "noiseTokens": ["pasted image", "pasted", "screenshot", "screen shot", "screen recording", "image", "photo", "img", "untitled"],
+      "maxLength": 60
+    },
+    "layout": {
+      "defaultMode": "grid",
+      "defaultGap": 8,
+      "defaultColumns": 3
+    },
+    "converter": {
+      "defaultQuality": 0.9
+    },
+    "actions": {
+      "captionTitle": "图注",
+      "editTitle": "AI 改图",
+      "convertTitle": "转换",
+      "layoutTitle": "排版"
+    },
+    "ui": {
+      "accept": "接受",
+      "discard": "丢弃",
+      "cancel": "取消",
+      "regenerate": "换一个",
+      "retry": "重试",
+      "nameLabel": "文件名",
+      "namePlaceholder": "输入文件名…（Enter 生成）",
+      "nameAria": "Image file name",
+      "editInstructionPlaceholder": "描述想要的修改…（Enter 生成）",
+      "editInstructionAria": "Image edit instruction",
+      "generating": "生成中…",
+      "failed": "生成失败",
+      "stale": "源已变化，需重新运行",
+      "rerun": "重新运行",
+      "prevVariant": "上一版本",
+      "nextVariant": "下一版本",
+      "variantCounter": "{index}/{count}",
+      "captionPlaceholder": "描述这张图…（Enter 生成）",
+      "captionAria": "Caption instruction",
+      "dimensionsTemplate": "{w}×{h} · {size}",
+      "unsupportedResult": "暂不支持渲染此结果类型"
+    }
   }
 }
