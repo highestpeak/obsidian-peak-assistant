@@ -1,17 +1,23 @@
 # Peak Composer implementation note
 
 Date: 2026-07-27
-Baseline: `9f489bb0`
-Branch: `codex/composer-closure-evidence`
+Implementation baseline: `9f489bb0`
+Closure code through: `2b68e34e`
+Branch: `codex/peak-modernization-refactor`
 
 Status: `PARTIAL`
 
-This note is the closure artifact for the Peak Composer wave at baseline `9f489bb0`.
+This note is the closure artifact for the Peak Composer wave. All 13 implementation
+tracks are integrated, and the autonomous T1 / T2 / T3 / T4 / T6 / T7 work is closed.
+The overall verdict remains `PARTIAL` because the owner-involved portion of `QA#2`
+is intentionally still open and the deletion gate concluded `NO-GO`, not because
+the gate was skipped.
+
 It is intentionally conservative:
 - it does not claim overall `COMPLETE`;
 - it distinguishes harness / fixture evidence from real Obsidian evidence;
 - anything called out in HANDOFF §7 as degraded or not real-Obsidian-verified is marked `PARTIAL`;
-- the final `QA#2` and deletion-gate outcomes are left as placeholders for the primary integrator.
+- no live compatibility path is called retired without caller-level parity evidence.
 
 ## Inherited verification snapshot
 
@@ -20,7 +26,30 @@ Inherited evidence at `9f489bb0` from HANDOFF §10, not a new run by me:
 - `npm run build`: green.
 - `node test/composer-chrome-geometry.qa.mjs`: `49/49`.
 
-That snapshot is the floor for this note. The missing pieces are the real Obsidian `QA#2` matrix and the deletion-gate proof.
+That snapshot was the floor when this note was created. The closure work below
+refreshes it and records the deletion-gate adjudication.
+
+## Fresh closure verification snapshot
+
+Run on `codex/peak-modernization-refactor` after the closure code changes:
+
+- `npm run test`: `306 passed / 2 failed (308)`. The only failures remain the
+  pre-existing `chat-studio-message-state-ui` and `code-block-theme-settings`.
+- `npm run build`: green.
+- `node test/composer-chrome-geometry.qa.mjs`: `49/49`.
+- the five design fixtures in the object-QA section below: `5/5` passed.
+- T6 caller/parity focus set: `5/5` test files passed.
+- `test/composer-architecture-source-guards.test.ts`: passed and now locks the
+  app-owned runtime, source boundary, provider boundary, presentation-dispatch
+  boundary, and protected Chat Composer / CodeMirror boundary.
+- Real Obsidian safe subset: plugin reload and entry command, Work / All changes /
+  Clean reading, Copilot / History, selection toolbar, source-once rendering, and
+  honest empty History were exercised without triggering a paid/provider run.
+- Reference-vs-production screenshot review: `PASS_WITH_NONBLOCKING_DIFFERENCES`.
+  The sidecar width, header hierarchy, segmented tabs, card geometry, spacing, and
+  typography were brought back toward the accepted mock. The remaining focus-status
+  row and desktop close control were not faked because their reactive/reopen
+  lifecycle is not yet reliable.
 
 ## What shipped
 
@@ -41,8 +70,12 @@ The concrete runtime flow is:
 
 ## What is not delivered yet
 
-- Real Obsidian `QA#2` is still pending.
-- The deletion gate is still pending, so no old-path retirement claim is final.
+- The autonomous safe subset of real Obsidian `QA#2` is complete. The full
+  owner-involved matrix is still pending: paid/provider output, real bitmap and
+  clipboard flows, Chinese IME, drag gestures, narrow/detached/dark/125% cases,
+  and the remaining native-object/device checks.
+- T6 was adjudicated, but it concluded `NO-GO`: no old path had enough
+  caller-level parity evidence to delete safely.
 - The §7 degraded / unverified surfaces remain `PARTIAL`, even where harness tests are green:
   - real bitmap paste;
   - fal.ai edit;
@@ -60,7 +93,19 @@ The concrete runtime flow is:
 
 None in this checkpoint.
 
-The branch still needs the deletion-gate pass, so the compatibility paths stay in place for now.
+The deletion gate was run and intentionally preserved three live paths:
+
+1. The old Copilot action-specific provider dispatch still serves the full
+   production action set; Composer currently shares only the `polish` bridge and
+   does not prove the same 28-action lifecycle / permissions contract.
+2. `CopilotArtifactAdapter.actionResultToArtifacts()` is still consumed by
+   `CopilotResultContent` through `CopilotResultModal`; the newer proposal
+   collector covers a different review/meta-agent flow.
+3. `ReviewPanel.handleFix()` still invokes `manager.queryText(PromptId.DocPolish, ...)`
+   from live Copilot action surfaces; Composer does not yet replace that caller
+   lifecycle.
+
+Deleting any of these now would be product regression, not modernization.
 
 ## Dual paths that remain
 
@@ -68,6 +113,12 @@ The branch still needs the deletion-gate pass, so the compatibility paths stay i
 - Markdown history / Undo still differs from native-file accept: Markdown uses `ComposerTransactionHub` + `ComposerHistoryStore`, while native object accept goes through `ObsidianNativeFileAdapter` / the native-file port.
 - Quick Search and Composer still share a controlled Result Browser, but each host owns its own adapter layer.
 - `ComposerRoot` still accepts both static props and reactive `runtimeSource` / `intelligenceSource` so a session switch can rebind without remounting the document.
+- The canonical Composer `polish` definition and legacy Copilot invocation remain
+  intentionally dual until all production actions have lifecycle and permission
+  parity.
+- Legacy artifact inference and the newer `CopilotOutputCollector` /
+  `proposalsToArtifacts` remain separate because their producer/caller contracts
+  are not equivalent.
 
 ## How to add a new Composer AI capability
 
@@ -79,6 +130,11 @@ The branch still needs the deletion-gate pass, so the compatibility paths stay i
 6. Register the pack in `ComposerCapabilityRegistry`, then let `validateBindings()` prove every result kind and adapter resolve.
 7. If the capability targets a separate native object file, thread `nativeFilePort` through the app composition path and keep accept fail-closed.
 
+`src/core/composer/capabilityContracts.ts` is the frozen interface seam. Do not
+modify it as part of routine capability addition. If its contract is insufficient,
+stop for an architecture decision and prefer an additive adapter or a new versioned
+contract outside the frozen file.
+
 Concrete files to touch:
 - `src/app/composer/capabilities/composeComposerCapabilityRuntime.ts`
 - `src/service/composer/capabilities/registry.ts`
@@ -86,7 +142,6 @@ Concrete files to touch:
 - `src/service/composer/capabilities/resultMaterializers.ts`
 - `src/service/composer/capabilities/writebackAdapters.ts`
 - `templates/config/composer.json`
-- `src/core/composer/capabilityContracts.ts`
 
 ## How to debug source mapping, transaction, writeback, and History
 
@@ -131,10 +186,22 @@ Use the contract-focused tests, not only the full suite:
 - `npm run test -- test/result-browser-host-parity.test.ts`
 - `node test/composer-chrome-geometry.qa.mjs`
 
+Re-run the five accepted design fixtures as a separate gate:
+
+- `CAPTURE_SCREENSHOTS=0 node docs/gstack/peak-composer-editing-view-2026-07-09/composer-editing-patterns.qa.mjs`
+- `CAPTURE_SCREENSHOTS=0 node docs/gstack/peak-composer-editing-view-2026-07-09/composer-inline-image-table-contract.qa.mjs`
+- `CAPTURE_SCREENSHOTS=0 node docs/gstack/peak-composer-editing-view-2026-07-09/selection-format-matrix.qa.mjs`
+- `CAPTURE_SCREENSHOTS=0 node docs/gstack/peak-composer-editing-view-2026-07-09/intelligence-entrypoints.qa.mjs`
+- `CAPTURE_SCREENSHOTS=0 node docs/gstack/peak-composer-editing-view-2026-07-09/intelligence-ia-lab.qa.mjs`
+
 Evidence types:
 - `test/composer-chrome-geometry.qa.mjs` is headless browser geometry evidence.
 - The `QA#1` items in HANDOFF are real Obsidian evidence.
-- The `304/306` / `49/49` snapshot above is inherited evidence from HANDOFF, not a new run by me.
+- Fixture success proves the accepted contract data has not drifted; it is not a
+  substitute for production rendering or real-host interaction.
+- The `304/306` snapshot is inherited evidence from HANDOFF. The `306/308`,
+  build-green, fixture `5/5`, and geometry `49/49` results above are fresh closure
+  runs.
 
 ## Where the owner should open next
 
@@ -150,9 +217,16 @@ The concrete entry points are:
 ## Traceability matrix
 
 Legend:
-- `COMPLETE` = production implementation exists, automated evidence exists, and the item is not called out in HANDOFF §7 as degraded / unverified.
+- `COMPLETE` = production implementation exists, relevant automated evidence
+  exists, any required real-Obsidian evidence exists, and the item is not called
+  out in HANDOFF §7 as degraded / unverified.
 - `PARTIAL` = implementation exists, but the evidence is still only harness / fixture / headless, or the item is explicitly listed in HANDOFF §7.
 - `BLOCKED` and `NOT-APPLICABLE` are not used in this checkpoint.
+
+The 96-row matrix contains `69 COMPLETE` and `27 PARTIAL`. That does not upgrade
+the overall wave: overall `COMPLETE` also requires the owner-involved `QA#2` and a
+safe retirement outcome, or an explicitly accepted decision to retain the dual
+paths.
 
 | ID | production files | automated tests | QA evidence | status |
 | --- | --- | --- | --- | --- |
@@ -198,7 +272,7 @@ Legend:
 | CMP-AI-05 | `src/service/composer/capabilities/documentRuntime.ts`; `src/service/composer/capabilities/registry.ts`; `src/core/composer/capabilityContracts.ts` | `test/composer-capability-registry.test.ts`; `test/composer-result-renderer.test.ts`; `test/composer-typed-object-runtime.test.ts` | Single app-owned runtime, stable IDs, typed results all exist | COMPLETE |
 | CMP-AI-06 | `src/service/composer/capabilities/registry.ts`; `src/service/composer/capabilities/resultMaterializers.ts`; `src/service/composer/capabilities/writebackAdapters.ts` | `test/composer-result-renderer.test.ts`; `test/composer-writeback-adapters.test.ts` | Renderer / writeback registries and no label dispatch are automated | COMPLETE |
 | CMP-AI-07 | `src/app/composer/capabilities/composeComposerCapabilityRuntime.ts`; `templates/config/composer.json`; `src/service/composer/capabilities/registry.ts` | `test/composer-capability-registry.test.ts`; `test/composer-config.test.ts` | Prompt / config governance and fake-port tests are in place | COMPLETE |
-| CMP-AI-08 | `src/app/composer/capabilities/composeComposerCapabilityRuntime.ts`; `src/service/composer/capabilities/documentRuntime.ts`; `src/ui/view/composer/ComposerRoot.tsx` | `test/composer-capability-registry.test.ts`; `test/composer-capability-applicability.test.ts`; `test/composer-result-renderer.test.ts` | Current production Copilot action parity is covered in automation | COMPLETE |
+| CMP-AI-08 | `src/app/composer/capabilities/composeComposerCapabilityRuntime.ts`; `src/service/composer/capabilities/documentRuntime.ts`; `src/ui/view/composer/ComposerRoot.tsx` | `test/composer-capability-registry.test.ts`; `test/composer-capability-applicability.test.ts`; `test/composer-result-renderer.test.ts`; `test/copilot-action-runtime-ports.test.ts` | Stable Composer IDs and registry coverage exist, but parity with the legacy 28-action Copilot lifecycle / permissions is not proven; T6 concluded NO-GO | PARTIAL |
 | CMP-AI-09 | `src/app/composer/capabilities/composeComposerCapabilityRuntime.ts`; `src/service/composer/capabilities/registry.ts`; `src/ui/view/composer/ComposerRoot.tsx` | `test/composer-capability-registry.test.ts`; `test/composer-result-renderer.test.ts` | Current Composer global projection registry is in place | COMPLETE |
 | CMP-HIST-01 | `src/service/composer/historyStore.ts`; `src/service/composer/transactionHub.ts` | `test/composer-history-grouping.test.ts`; `test/composer-transaction-atomicity.test.ts` | QA#1 history locate / rollback smoke | COMPLETE |
 | CMP-HIST-02 | `src/service/composer/historyStore.ts`; `src/service/composer/transactionHub.ts` | `test/composer-history-grouping.test.ts`; `test/composer-undo-redo.test.ts` | Automated child grouping / locateability is covered | COMPLETE |
@@ -249,22 +323,80 @@ Legend:
 | CMP-METRIC-01 | `src/service/composer/intelligence/telemetry.ts`; `src/ui/view/composer/sidecar/sidecarConfig.ts` | `test/composer-intelligence-session.test.ts` | Relevance / outcome / control / interruption metrics are automated | COMPLETE |
 | CMP-METRIC-02 | `src/service/composer/intelligence/telemetry.ts`; `src/app/composer/ObsidianComposerAdapters.ts` | `test/composer-intelligence-session.test.ts` | Dedup / reliability / performance / trust / learning metrics are automated | COMPLETE |
 | CMP-METRIC-03 | `src/service/composer/intelligence/telemetry.ts`; `src/ui/view/composer/sidecar/sidecarConfig.ts` | `test/composer-intelligence-session.test.ts` | Privacy-safe telemetry and exposure-normalized evaluation are automated | COMPLETE |
-| CMP-RESP-01 | `src/ui/view/composer/ComposerRoot.tsx`; `src/ui/view/composer/sidecar/IntelligenceSidecar.tsx` | `test/composer-chrome-geometry.qa.mjs`; `test/result-browser-host-parity.test.ts` | Headless narrow-drawer / overflow checks only; real-device fit remains pending | PARTIAL |
-| CMP-GOV-01 | `src/core/composer/capabilityContracts.ts`; `src/service/composer/capabilities/registry.ts`; `src/service/composer/capabilities/documentRuntime.ts` | `test/boundary/service-layer-boundaries.test.ts`; `test/composer-capability-registry.test.ts`; `test/composer-result-renderer.test.ts`; `test/composer-writeback-adapters.test.ts` | Inherited baseline 304/306, build green; no docs/gstack import and no label dispatch in automation | COMPLETE |
-| CMP-GOV-02 | `src/app/composer/composeDocumentComposerRuntime.ts`; `src/ui/view/composer/ComposerRoot.tsx`; `src/core/composer/capabilityContracts.ts` | `test/boundary/service-layer-boundaries.test.ts`; `test/composer-capability-registry.test.ts`; `test/composer-result-renderer.test.ts` | Retirement gate and honest COMPLETE status still need the final deletion proof | PARTIAL |
+| CMP-RESP-01 | `src/ui/view/composer/ComposerRoot.tsx`; `src/ui/view/composer/sidecar/IntelligenceSidecar.tsx` | `test/composer-chrome-geometry.qa.mjs`; `test/result-browser-host-parity.test.ts`; `test/composer-sidecar-visual-contract.test.ts` | Real desktop screenshots and independent visual review passed with non-blocking differences; narrow/detached/dark/125% owner matrix remains pending | PARTIAL |
+| CMP-GOV-01 | `src/core/composer/capabilityContracts.ts`; `src/service/composer/capabilities/registry.ts`; `src/service/composer/capabilities/documentRuntime.ts` | `test/boundary/service-layer-boundaries.test.ts`; `test/composer-architecture-source-guards.test.ts`; `test/composer-capability-registry.test.ts`; `test/composer-result-renderer.test.ts`; `test/composer-writeback-adapters.test.ts` | Fresh baseline 306/308 and build green; guards lock no docs/gstack import, no provider adapter in UI, no service singleton, no presentation dispatch, and protected Chat Composer / CodeMirror boundaries | COMPLETE |
+| CMP-GOV-02 | `src/app/composer/composeDocumentComposerRuntime.ts`; `src/ui/view/composer/ComposerRoot.tsx`; `src/core/composer/capabilityContracts.ts` | `test/boundary/service-layer-boundaries.test.ts`; `test/composer-architecture-source-guards.test.ts`; `test/composer-capability-registry.test.ts`; `test/copilot-artifact-adapter.test.ts`; `test/copilot-action-runtime-ports.test.ts` | T6 caller audit concluded NO-GO for all three deletion candidates; live compatibility callers remain and overall status stays honest | PARTIAL |
 
-## T4 / T5 / T6 placeholders
+## T4 / T5 / T6 closure
 
-These are intentionally left as update targets for the primary integrator:
-
-| Task | Current outcome | Final outcome |
+| Task | Outcome | Evidence / remaining gate |
 | --- | --- | --- |
-| T4 fixture QA regression | pending rerun | TBD |
-| T5 real Obsidian QA#2 | owner-involved pending | TBD |
-| T6 deletion gate | parity evidence pending | TBD |
+| T4 fixture QA regression | PASS (`5/5`) | All five accepted design fixtures passed; geometry is `49/49`; independent reference screenshot comparison is `PASS_WITH_NONBLOCKING_DIFFERENCES` |
+| T5 real Obsidian QA#2 | PARTIAL | Safe desktop subset completed with local screenshots under `.dev/harness/shots/design-regression-2026-07-27/`; owner-involved provider/device/IME/drag/narrow/detached/dark/125% matrix remains |
+| T6 deletion gate | PARTIAL / NO-GO | Three live caller families lack parity; no deletion was made |
 
-## Notes for the integrator
+## §19 final implementation report
 
-- Do not upgrade the overall verdict to `COMPLETE` until `QA#2` and the deletion gate are both integrated.
+### Status
+
+`PARTIAL`. The code wave is integrated; acceptance closure is not yet owner-complete.
+
+### Impact Contract
+
+- Primary implementation metric: PASS — all 13 required implementation tracks are
+  present on the app-owned Composer runtime.
+- Required tracks: `13/13` integrated.
+- Protected scope: PASS — Chat Composer and CodeMirror were not changed by this
+  closure; the source guard now fails on future forbidden imports.
+- Architecture boundaries: PASS — no `src/** -> docs/gstack/**` dependency, no
+  Composer UI provider adapter, no service-owned mutable runtime singleton, and
+  no label/id presentation dispatch.
+- Skip budget: used only for explicitly allowed owner/device/provider gates.
+- Stop/commit rule: no legacy deletion without caller-level parity; T6 therefore
+  stopped at `NO-GO`.
+
+### Implemented
+
+- T1 committed the audited WP-INT integration tree.
+- T2 added AST-backed architecture/source guards.
+- T3 produced this exact 96-ID traceability artifact.
+- T4 reran all five design fixtures and the 49-assertion geometry suite.
+- T5 completed the safe real-Obsidian desktop subset and reference screenshot
+  comparison, including one visual correction loop.
+- T6 audited production callers and preserved unsafe-to-delete compatibility paths.
+- T7 updated the durable implementation note, execution log, roadmap, progress,
+  and historical handoff pointer.
+
+### Not implemented or not owner-accepted
+
+- The owner-involved full `QA#2` matrix listed above.
+- Full legacy Copilot action, artifact, and ReviewPanel lifecycle replacement.
+- The §7 degraded/device/provider surfaces retained as `PARTIAL` in the matrix.
+
+### Retired
+
+No production path was retired. This is the correct outcome of the evidence gate,
+not an omitted task.
+
+### Remaining compatibility
+
+- legacy Copilot 28-action dispatch;
+- `actionResultToArtifacts()` modal/content pipeline;
+- `ReviewPanel.handleFix()` direct `DocPolish` query path;
+- Markdown History/Undo versus native-file accept semantics;
+- harness/pre-integration `stubComposerCapabilityProjection`;
+- host-specific Quick Search and Composer Result Browser adapters.
+
+### Owner review entry
+
+Open a real Markdown note with `Open document in Peak Composer`, then continue the
+matrix from T5. Do not upgrade this report to `COMPLETE` until those owner-involved
+checks pass and the retained dual paths are either parity-proven and retired or
+explicitly accepted as permanent product boundaries.
+
+## Notes for future integrators
+
 - If any future diff changes the evidence model, keep the table aligned with the exact `Requirement ID` set above.
-- The production/test paths in this file were checked against `9f489bb0`; do not rewrite them to paths from later commits unless the traceability note is refreshed in the same change.
+- The production/test paths were refreshed through closure code commit `2b68e34e`.
+- Preserve the historical evidence in HANDOFF and the execution log; append new
+  closure evidence instead of rewriting old snapshots as if they were current.

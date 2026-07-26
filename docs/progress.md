@@ -2586,3 +2586,57 @@ Outline/Resources 双 tab；`outlineModel.ts` 纯模型（topic 分组、process
 
 ### 状态
 - 全部改动**未 commit**。File Atlas inspector/tree/parser + Copilot 命令下线。
+
+## 2026-07-27 · Peak Composer production closure checkpoint
+
+**结论**：13/13 Composer implementation tracks 已集成；自主可完成的
+T1 / T2 / T3 / T4 / T6 / T7 与 T5 安全真机子集已收口。整体仍诚实标为
+`PARTIAL`，等待 owner-involved QA#2；旧路径删除门已审计但结论是 `NO-GO`，
+没有用删功能换“完成度”。
+
+### 已完成
+
+- `9f489bb0`：提交已审计的 WP-INT 集成工作树。
+- `e2a75806`：新增 Composer architecture/source guard，锁住 app-owned
+  runtime、provider/source boundary、no presentation dispatch，以及 Chat
+  Composer / CodeMirror protected scope。
+- `0a69459c`：建立 96 Requirement ID traceability 与 final implementation
+  note；T6 后最终计数为 `69 COMPLETE / 27 PARTIAL`。
+- `2b68e34e`：真实 Obsidian 截图对照设计稿后修复 Intelligence sidecar
+  宽度、header、segmented tabs、card geometry、spacing 和 typography。
+- 五个设计 fixture `5/5`，geometry `49/49`，独立视觉判定
+  `PASS_WITH_NONBLOCKING_DIFFERENCES`。
+- 真机安全子集通过：reload/entry、三种 display state、Copilot/History、
+  selection toolbar、source-once、History empty state；QA 后恢复 owner 原左右
+  侧栏。
+
+### T6 parity / deletion gate
+
+三个候选均因活跃生产 caller 或生命周期不等价判定 `NO-GO`：
+
+1. legacy Copilot 28-action provider dispatch；
+2. `actionResultToArtifacts()` modal/content pipeline；
+3. `ReviewPanel.handleFix()` 的 `DocPolish` 直调。
+
+因此没有旧路径删除。Quick Search / Composer host adapters、Markdown versus
+native-file history semantics、以及 pre-integration stub 属于当前有意双路径。
+
+### 最新验证
+
+- `npm run test`: `306 passed / 2 failed (308)`；仍仅
+  `chat-studio-message-state-ui` 与 `code-block-theme-settings` 两个既有失败。
+- `npm run build`: green。
+- `composer-chrome-geometry.qa.mjs`: `49/49`。
+- T4 design fixtures: `5/5`。
+- T6 focused parity/guard tests: `5/5` files。
+
+### 唯一人工收口门
+
+owner-involved QA#2：真实 provider、bitmap/clipboard、Chinese IME、drag、
+narrow/detached/dark/125%，以及剩余 native-object/device matrix。完成前不得把
+Peak Composer wave 或 27 个 PARTIAL requirements 改写成 COMPLETE。
+
+最终证据：
+[`2026-07-27-peak-composer-implementation-note.md`](./superpowers/plans/2026-07-27-peak-composer-implementation-note.md)
+与
+[`2026-07-25-composer-wave-execution-log.md`](./superpowers/plans/2026-07-25-composer-wave-execution-log.md)。

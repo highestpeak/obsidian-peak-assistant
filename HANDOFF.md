@@ -1,5 +1,12 @@
 # HANDOFF.md — Peak Composer 生产波次交接（给 Codex）
 
+> **2026-07-27 closure update:** 本文件保留的是 `9c4bda5d` 时点的接管快照，
+> 不再代表当前工作树。T1 / T2 / T3 / T4 / T6 / T7 已完成，T5 已完成无需 owner
+> 介入的真机子集；T6 的证据裁决为 `NO-GO`，因此未删除仍有生产调用的旧路径。
+> 当前总体状态仍为 `PARTIAL`。以
+> [`docs/superpowers/plans/2026-07-27-peak-composer-implementation-note.md`](./docs/superpowers/plans/2026-07-27-peak-composer-implementation-note.md)
+> 的终表与 §19 报告为准。
+
 Date: 2026-07-27
 Branch: `codex/peak-modernization-refactor`
 HEAD: `9c4bda5d`（fix: React #185 finding list snapshot）

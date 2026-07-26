@@ -264,3 +264,84 @@ Phase 9 的 sidecar 半边（WP9a 已抽取 shared Result Browser + Quick Search
 **测试**：`composer-finding-identity`（去重/双侧同步/consume/dismiss/stale 重锚，7 组 30+ assert）、`composer-intelligence-session`（lifecycle/frozen context 不可变/receipt counts/hub bridge/redaction）、`result-browser-host-parity` 扩 Composer 半边（每 change search/rebuild-free、local filter、selection-after-revision、keep-browser）。全量 289 passed（2 失败 chat-studio-message-state-ui / code-block-theme-settings 为基线预存，与本 WP 无关），`npm run build` 绿。
 
 **遗留**：related port / telemetry sink / 真实 focus-block snapshot 由后续 integration 从 app 注入（当前 shell document-level 兜底）；ambient sensing runtime、review 正文 pin 同步、宽 modal graph 真实 fit 归后续 pass；真机 playwright 保真比对未做（headless worktree）。
+
+## Closure T1–T7 — Codex orchestration（2026-07-27）
+
+本节是对前面历史快照的追加收口，不回写或美化旧时点的 pending / baseline
+记录。执行采用主代理规划、审计与集成，Codex CLI/worktree workers 分担实现、
+parity 审计和视觉复核。
+
+### T1–T3 · 集成、架构守卫、96-ID 终表
+
+- `9f489bb0 feat(composer): complete WP-INT integration closure`：提交已审计的
+  WP-INT 工作树。
+- `e2a75806 test(composer): lock architecture source boundaries`：新增
+  `composer-architecture-source-guards`，以 TypeScript AST 锁住五条边界：
+  `src -> docs/gstack`、Composer UI -> provider adapter、service mutable runtime
+  singleton、label/id presentation dispatch、Chat Composer / CodeMirror protected
+  imports。
+- `0a69459c docs(composer): add final traceability implementation note`：建立
+  96 个 Requirement ID 的逐项生产文件、测试、QA 证据和状态终表。T6 审计后
+  更正为 `69 COMPLETE / 27 PARTIAL`，整体保持 `PARTIAL`。
+
+### T4 · 设计 fixture 与截图回归
+
+- 五个设计 fixture 全部通过：`composer-editing-patterns`、
+  `composer-inline-image-table-contract`、`selection-format-matrix`（24 cases）、
+  `intelligence-entrypoints`、`intelligence-ia-lab`（21 states）。
+- `composer-chrome-geometry.qa.mjs`：`49/49`。
+- 使用真实 Obsidian 对照
+  `docs/gstack/peak-composer-editing-view-2026-07-09/` 设计稿截图。第一轮发现
+  sidecar 明显偏窄、header / tabs / card 层级偏离；由独立 worker 修复后提交
+  `2b68e34e fix(composer): restore sidecar design fidelity`。
+- 第二轮独立视觉结论：`PASS_WITH_NONBLOCKING_DIFFERENCES`。宽度、header、
+  segmented tabs、card geometry、spacing、typography 已回归；未伪造尚无可靠
+  reactive/reopen 生命周期的 focus-status row 和 desktop close control。
+- 本地截图证据位于
+  `.dev/harness/shots/design-regression-2026-07-27/`，包括 Work、All changes、
+  Clean reading、History、selection，以及 1224×768 / 1470×900 参考图。该目录
+  为本机 QA 证据，不作为生产资源导入。
+
+### T5 · 真机 QA#2
+
+状态：`PARTIAL`。
+
+无需 owner 输入且不会触发付费/provider 的安全子集已在真实 Obsidian 完成：
+插件 reload、`Open document in Peak Composer`、Work / All changes / Clean
+reading、Copilot / History、selection toolbar、选区时 action row 抑制、
+source object 只出现一次、History 空态诚实显示。左右侧栏在 QA 后均恢复。
+
+仍需 owner 在场的完整矩阵：真实 provider 输出、bitmap paste / clipboard、
+Chinese IME、drag、narrow / detached / dark / 125%、以及剩余 native-object /
+device flows。未将这些单方面标为完成。
+
+### T6 · 旧路径删除门
+
+结论：`NO-GO`，未删除生产代码。
+
+1. legacy Copilot action-specific provider dispatch 仍服务完整 28-action
+   lifecycle / permissions；Composer 仅共享 `polish` bridge。
+2. `CopilotArtifactAdapter.actionResultToArtifacts()` 仍由
+   `CopilotResultContent` / `CopilotResultModal` 活跃消费，新 collector 属于
+   不同 review/meta-agent producer。
+3. `ReviewPanel.handleFix()` 的 `PromptId.DocPolish` 直调仍有
+   `copilot-action-surfaces` 等生产 caller。
+
+Quick Search / Composer 的 host adapter 双路径和 Markdown History/Undo /
+native-file accept 差异均是有意边界，不是可直接删除的 duplication。
+
+T6 focus set `5/5` 通过：
+`composer-architecture-source-guards`、`result-browser-host-parity`、
+`composer-capability-registry`、`copilot-artifact-adapter`、
+`copilot-action-runtime-ports`。
+
+### T7 · 最终状态
+
+- fresh `npm run test`: `306 passed / 2 failed (308)`；仅
+  `chat-studio-message-state-ui`、`code-block-theme-settings` 两个既有失败。
+- `npm run build`: green。
+- geometry: `49/49`；design fixtures: `5/5`。
+- `HANDOFF.md` 顶部已标注原内容为 `9c4bda5d` 历史快照；
+  `docs/roadmap.html`、`docs/progress.md` 和最终 implementation note 已同步。
+- 最终 verdict：`PARTIAL`。13/13 implementation tracks 已集成，但 owner-only
+  QA#2 未完成，且 T6 正确停在 NO-GO。
