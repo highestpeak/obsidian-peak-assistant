@@ -234,3 +234,35 @@ export const ComposerTextPatchPayloadSchema = z.object({
 	replacementText: z.string(),
 });
 export type ComposerTextPatchPayload = z.infer<typeof ComposerTextPatchPayloadSchema>;
+
+// ── WP8: native object (Base / Canvas / Excalidraw) file patches ─────────────
+
+/** The three native file formats the composer patches through a dedicated adapter. */
+export const ComposerNativeFileFormatSchema = z.enum(['base', 'canvas', 'excalidraw']);
+export type ComposerNativeFileFormat = z.infer<typeof ComposerNativeFileFormatSchema>;
+
+/**
+ * Payload of a `native-file-patch` result: the FULL next bytes for a native
+ * object file (a separate `.base`/`.canvas` file, or the embedded-JSON slice of
+ * an Excalidraw `.excalidraw.md`). Produced by the format-specific typed patch
+ * adapters (never string-replace) and written back through the native-file port
+ * — NOT the Markdown transaction hub — because it targets a different file.
+ *
+ * `unsupported` is set (with a `reason`) when the format could not be safely
+ * patched (e.g. a compressed-json Excalidraw variant), so accept fails closed.
+ */
+export const ComposerNativeFilePatchPayloadSchema = z
+	.object({
+		format: ComposerNativeFileFormatSchema,
+		/** Vault path of the native file (the `.excalidraw.md` host for excalidraw). */
+		targetPath: z.string(),
+		/** Full replacement bytes for the target file; absent when unsupported. */
+		nextText: z.string().optional(),
+		/** True when the patch could not be applied (compressed variant, parse error). */
+		unsupported: z.boolean().optional(),
+		reason: z.string().optional(),
+	})
+	.refine((p) => p.unsupported === true || typeof p.nextText === 'string', {
+		message: 'native-file-patch: nextText is required unless unsupported',
+	});
+export type ComposerNativeFilePatchPayload = z.infer<typeof ComposerNativeFilePatchPayloadSchema>;

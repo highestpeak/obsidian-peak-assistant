@@ -1,0 +1,29 @@
+views:
+  - type: table
+    name: PKM Pipeline
+    filters:
+      and:
+        - file.inFolder("kb2-learn-prd/B-2-创意和想法管理/C-大类-信息聚合-PKM")
+    order:
+      - file.name
+      - stage
+      - input
+      - output
+      - next
+    formulas:
+      stage: |
+        if(contains(file.name, "信息获取"), "Capture",
+        if(contains(file.name, "信息管理"), "Manage",
+        if(contains(file.name, "信息输出"), "Output", "Reference")))
+      input: |
+        if(contains(file.name, "RSS") or contains(file.name, "网页"), "Web / feed",
+        if(contains(file.name, "PDF") or contains(file.name, "书籍"), "Document",
+        if(contains(file.name, "视频") or contains(file.name, "播客"), "Media", "Note")))
+      output: |
+        if(contains(file.name, "知识库"), "Knowledge base",
+        if(contains(file.name, "图谱"), "Graph / canvas",
+        if(contains(file.name, "表格"), "Table", "Markdown")))
+      next: |
+        if(stage == "Capture", "筛选后进入 inbox",
+        if(stage == "Manage", "建立链接和主题",
+        if(stage == "Output", "写成文章或项目文档", "保留为参考")))

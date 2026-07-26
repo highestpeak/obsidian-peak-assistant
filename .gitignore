@@ -40,6 +40,10 @@ main.css
 main.js
 temp-test.js
 native/
+# Peak Composer WP8 owns legitimate source/fixture dirs literally named `native/`
+# that the broad rule above would otherwise drop — re-include them explicitly.
+!src/service/composer/packs/native/
+!test/fixtures/composer/native/
 node_modules
 opencode.json
 sdk/
