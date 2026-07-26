@@ -1,0 +1,350 @@
+/**
+ * Peak Composer — table + chart block styles (WP6). Scoped under
+ * `.peak-composer-root`; token-driven, light values replicated verbatim from the
+ * 2026-07-09 editing mock (mock.css: .composer-table / .object-toolbar /
+ * .is-range-cell), dark remapped to theme tokens. No Obsidian `table` bleed:
+ * every rule is class-scoped and the reset defends font/border.
+ */
+
+.peak-composer-root {
+	/* mock light values (mock.css ground truth) */
+	--pktbl-th-bg: #f1f5fb;
+	--pktbl-th-text: #334155;
+	--pktbl-merged-bg: #f5f1ff;
+	--pktbl-range-fill: rgba(112, 87, 214, 0.11);
+	--pktbl-range-edge: #7057d6;
+	--pktbl-current-outline: rgba(37, 99, 235, 0.4);
+	--pktbl-toolbar-bg: rgba(255, 255, 255, 0.94);
+	--pktbl-toolbar-shadow: 0 12px 26px rgba(31, 42, 61, 0.14);
+	--pktbl-active-text: #604bb8;
+	--pktbl-active-bg: #f1edff;
+	--pktbl-active-ring: #d3c8f6;
+}
+
+:root[data-theme='dark'] .peak-composer-root,
+.theme-dark .peak-composer-root {
+	--pktbl-th-bg: var(--pk-bg-secondary);
+	--pktbl-th-text: var(--pk-text-secondary);
+	--pktbl-merged-bg: var(--pk-bg-tertiary);
+	--pktbl-range-fill: rgba(139, 122, 227, 0.22);
+	--pktbl-range-edge: var(--pk-accent, #8b7ae3);
+	--pktbl-current-outline: var(--pk-border-accent, rgba(120, 150, 255, 0.55));
+	--pktbl-toolbar-bg: var(--pk-bg-primary);
+	--pktbl-toolbar-shadow: 0 12px 26px rgba(0, 0, 0, 0.42);
+	--pktbl-active-text: var(--pk-accent, #b3a4ff);
+	--pktbl-active-bg: var(--pk-bg-secondary);
+	--pktbl-active-ring: var(--pk-border-accent, #4a3f7a);
+}
+
+/* ── surface + object toolbar ─────────────────────────────────────────────── */
+
+.peak-composer-root .pk-table-surface {
+	position: relative;
+	margin-top: 44px; /* clearance for the absolute toolbar (mock: 56px block gap) */
+}
+
+.peak-composer-root .pk-table-toolbar {
+	position: absolute;
+	top: -40px;
+	left: 0;
+	z-index: 4;
+	display: flex;
+	flex-wrap: nowrap;
+	gap: 5px;
+	width: max-content;
+	max-width: 100%;
+	overflow-x: auto;
+	scrollbar-width: none;
+	padding: 5px;
+	border: 1px solid var(--pkc-paper-border);
+	border-radius: 8px;
+	background: var(--pktbl-toolbar-bg);
+	box-shadow: var(--pktbl-toolbar-shadow);
+	opacity: 0;
+	pointer-events: none;
+	transform: translateY(-4px);
+	transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.peak-composer-root .pk-table-toolbar::-webkit-scrollbar {
+	display: none;
+}
+
+.peak-composer-root .pk-table-surface:hover .pk-table-toolbar,
+.peak-composer-root .pk-table-surface:focus-within .pk-table-toolbar,
+.peak-composer-root .pk-table-toolbar:hover,
+.peak-composer-root .pk-table-surface[data-has-object-selection='true'] .pk-table-toolbar {
+	opacity: 1;
+	pointer-events: auto;
+	transform: translateY(0);
+}
+
+.peak-composer-root .pk-table-toolbar button {
+	display: inline-flex;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-height: 28px;
+	padding: 0 9px;
+	border: 1px solid var(--pkc-paper-border);
+	border-radius: 7px;
+	background: var(--pk-bg-primary, #fff);
+	color: var(--pkc-text);
+	font-size: 12px;
+	font-weight: 500;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.peak-composer-root .pk-table-toolbar button:hover:not(:disabled) {
+	border-color: var(--pktbl-range-edge);
+	color: var(--pktbl-active-text);
+}
+
+.peak-composer-root .pk-table-toolbar button:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+.peak-composer-root .pk-table-toolbar button.is-active {
+	color: var(--pktbl-active-text);
+	background: var(--pktbl-active-bg);
+	box-shadow: inset 0 0 0 1px var(--pktbl-active-ring);
+}
+
+.peak-composer-root .pk-table-toolbar__divider {
+	flex: 0 0 auto;
+	width: 1px;
+	align-self: stretch;
+	margin: 2px 1px;
+	background: var(--pkc-paper-border);
+}
+
+/* menu popovers (align / format / AI) */
+.peak-composer-root .pk-table-menu {
+	position: absolute;
+	z-index: 6;
+	top: calc(100% + 4px);
+	left: 0;
+	display: flex;
+	flex-direction: column;
+	min-width: 132px;
+	padding: 4px;
+	border: 1px solid var(--pkc-paper-border);
+	border-radius: 8px;
+	background: var(--pk-bg-primary, #fff);
+	box-shadow: var(--pktbl-toolbar-shadow);
+}
+
+.peak-composer-root .pk-table-menu button {
+	justify-content: flex-start;
+	border: 0;
+	background: transparent;
+	min-height: 26px;
+	padding: 0 8px;
+	font-size: 12px;
+	border-radius: 5px;
+}
+
+.peak-composer-root .pk-table-menu button:hover {
+	background: var(--pktbl-active-bg);
+	color: var(--pktbl-active-text);
+}
+
+/* ── the grid ─────────────────────────────────────────────────────────────── */
+
+.peak-composer-root .pk-composer-table {
+	width: 100%;
+	overflow: hidden;
+	border: 1px solid var(--pkc-paper-border);
+	border-collapse: separate;
+	border-spacing: 0;
+	border-radius: 8px;
+	table-layout: fixed;
+	font-size: 13px;
+	color: var(--pkc-text);
+}
+
+.peak-composer-root .pk-composer-table th,
+.peak-composer-root .pk-composer-table td {
+	position: relative;
+	padding: 10px 11px;
+	border-right: 1px solid var(--pkc-paper-border);
+	border-bottom: 1px solid var(--pkc-paper-border);
+	line-height: 1.5;
+	text-align: left;
+	vertical-align: top;
+	overflow-wrap: break-word;
+	outline: none;
+	cursor: cell;
+}
+
+.peak-composer-root .pk-composer-table th {
+	background: var(--pktbl-th-bg);
+	color: var(--pktbl-th-text);
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.peak-composer-root .pk-composer-table th:last-child,
+.peak-composer-root .pk-composer-table td:last-child {
+	border-right: 0;
+}
+
+.peak-composer-root .pk-composer-table tr:last-child td {
+	border-bottom: 0;
+}
+
+.peak-composer-root .pk-composer-table td[data-align='center'],
+.peak-composer-root .pk-composer-table th[data-align='center'] {
+	text-align: center;
+}
+.peak-composer-root .pk-composer-table td[data-align='right'],
+.peak-composer-root .pk-composer-table th[data-align='right'] {
+	text-align: right;
+}
+
+/* merged anchor cells */
+.peak-composer-root .pk-composer-table td[colspan],
+.peak-composer-root .pk-composer-table td[rowspan],
+.peak-composer-root .pk-composer-table th[colspan],
+.peak-composer-root .pk-composer-table th[rowspan] {
+	background: var(--pktbl-merged-bg);
+	vertical-align: middle;
+}
+
+/* while object-selecting, native text selection is suppressed (S5) */
+.peak-composer-root .pk-composer-table.is-cell-selecting,
+.peak-composer-root .pk-composer-table.is-cell-selecting * {
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+/* object cell-range selection — fill + perimeter edges (overlay does not cover grid) */
+.peak-composer-root .pk-composer-table td.is-range-cell,
+.peak-composer-root .pk-composer-table th.is-range-cell {
+	background: var(--pktbl-range-fill);
+}
+
+.peak-composer-root .pk-composer-table td.is-range-cell::after,
+.peak-composer-root .pk-composer-table th.is-range-cell::after {
+	content: '';
+	position: absolute;
+	z-index: 2;
+	inset: -1px;
+	border-top: 2px solid var(--pk-range-top, transparent);
+	border-right: 2px solid var(--pk-range-right, transparent);
+	border-bottom: 2px solid var(--pk-range-bottom, transparent);
+	border-left: 2px solid var(--pk-range-left, transparent);
+	pointer-events: none;
+}
+
+.peak-composer-root .pk-composer-table .is-range-top {
+	--pk-range-top: var(--pktbl-range-edge);
+}
+.peak-composer-root .pk-composer-table .is-range-right {
+	--pk-range-right: var(--pktbl-range-edge);
+}
+.peak-composer-root .pk-composer-table .is-range-bottom {
+	--pk-range-bottom: var(--pktbl-range-edge);
+}
+.peak-composer-root .pk-composer-table .is-range-left {
+	--pk-range-left: var(--pktbl-range-edge);
+}
+
+.peak-composer-root .pk-composer-table td.is-current-cell,
+.peak-composer-root .pk-composer-table th.is-current-cell {
+	outline: 2px solid var(--pktbl-current-outline);
+	outline-offset: -2px;
+}
+
+.peak-composer-root .pk-table-aria {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+}
+
+.peak-composer-root .pk-table-reason {
+	margin-top: 8px;
+	padding: 7px 10px;
+	border: 1px solid var(--pkc-paper-border);
+	border-radius: 6px;
+	background: var(--pk-bg-secondary, #f7f8fb);
+	color: var(--pk-text-secondary, #64748b);
+	font-size: 12px;
+}
+
+/* ── chart block ──────────────────────────────────────────────────────────── */
+
+.peak-composer-root .pk-chart-surface {
+	position: relative;
+	margin-top: 44px;
+	border: 1px solid var(--pkc-paper-border);
+	border-radius: 8px;
+	padding: 12px 14px 14px;
+	background: var(--pk-bg-primary, #fff);
+}
+
+.peak-composer-root .pk-chart-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 10px;
+}
+
+.peak-composer-root .pk-chart-title {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--pkc-text);
+}
+
+.peak-composer-root .pk-chart-typeswitch {
+	display: inline-flex;
+	gap: 4px;
+	padding: 3px;
+	border: 1px solid var(--pkc-paper-border);
+	border-radius: 8px;
+	background: var(--pk-bg-secondary, #f7f8fb);
+}
+
+.peak-composer-root .pk-chart-typeswitch button {
+	min-height: 26px;
+	padding: 0 10px;
+	border: 0;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--pk-text-secondary, #64748b);
+	font-size: 12px;
+	font-weight: 500;
+	cursor: pointer;
+}
+
+.peak-composer-root .pk-chart-typeswitch button.is-active {
+	background: var(--pk-bg-primary, #fff);
+	color: var(--pktbl-active-text);
+	box-shadow: 0 1px 3px rgba(31, 42, 61, 0.12);
+}
+
+.peak-composer-root .pk-chart-canvas {
+	width: 100%;
+	height: 300px;
+}
+
+.peak-composer-root .pk-chart-fallback {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 300px;
+	color: var(--pk-text-secondary, #64748b);
+	font-size: 12px;
+}
+
+.peak-composer-root .pk-chart-error {
+	color: var(--pk-text-error, #e5484d);
+	font-size: 12px;
+}

@@ -7,6 +7,7 @@
 import fs from 'fs';
 import path from 'path';
 import { DEFAULT_COMPOSER_CONFIG } from '@/ui/view/composer/config/composerConfig';
+import { DEFAULT_TABLE_BLOCK_STRINGS } from '@/ui/view/composer/blocks/table/tableViewConfig';
 import { DEFAULT_TRANSACTION_CONFIG } from '@/core/composer';
 
 let failures = 0;
@@ -43,6 +44,17 @@ function main(): void {
 	const jsonTxn = Object.keys(json.transaction ?? {}).filter((k) => !k.startsWith('_')).sort();
 	check('transaction keys match', fbTxn.join(',') === jsonTxn.join(','), `fb=${fbTxn.join(',')} json=${jsonTxn.join(',')}`);
 	check('transaction values match', (json.transaction?.burstWindowMs ?? null) === DEFAULT_TRANSACTION_CONFIG.burstWindowMs);
+
+	// WP6: table + chart block UI copy mirrors the typed fallback.
+	const fbTblToolbar = Object.keys(DEFAULT_TABLE_BLOCK_STRINGS.toolbar).sort();
+	const jsonTblToolbar = Object.keys(json.table?.toolbar ?? {}).sort();
+	check('table.toolbar keys match', fbTblToolbar.join(',') === jsonTblToolbar.join(','), `fb=${fbTblToolbar.length} json=${jsonTblToolbar.length}`);
+	const fbTblSel = Object.keys(DEFAULT_TABLE_BLOCK_STRINGS.selection).sort();
+	const jsonTblSel = Object.keys(json.table?.selection ?? {}).sort();
+	check('table.selection keys match', fbTblSel.join(',') === jsonTblSel.join(','), `fb=${fbTblSel.join(',')} json=${jsonTblSel.join(',')}`);
+	const fbChart = Object.keys(DEFAULT_TABLE_BLOCK_STRINGS.chart).sort();
+	const jsonChart = Object.keys(json.chart ?? {}).filter((k) => !k.startsWith('_')).sort();
+	check('chart keys match', fbChart.join(',') === jsonChart.join(','), `fb=${fbChart.join(',')} json=${jsonChart.join(',')}`);
 
 	console.log(`composer-config: ${count - failures}/${count} checks passed`);
 	if (failures > 0) throw new Error(`${failures} check(s) failed`);
