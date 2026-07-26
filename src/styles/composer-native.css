@@ -1,0 +1,240 @@
+/**
+ * Peak Composer — native object block styles (WP8). Scoped under
+ * `.peak-composer-root`; token-driven (`--pk-*`), no hardcoded colors. Covers
+ * Code / Mermaid / Base / Canvas / Excalidraw previews and the embed reference
+ * card. Read-only structured previews — the editing chrome (action row, rail)
+ * is styled by composer.css and is deliberately untouched here.
+ */
+
+/* ── preview / source toggle ─────────────────────────────────────────────── */
+.peak-composer-root .pk-native-toggle {
+	display: inline-flex;
+	gap: 2px;
+	padding: 2px;
+	margin-bottom: var(--pk-space-2);
+	border: 1px solid var(--pk-border-soft);
+	border-radius: var(--pk-radius-pill);
+	background: var(--pk-bg-secondary);
+}
+.peak-composer-root .pk-native-toggle__btn {
+	appearance: none;
+	border: none;
+	background: transparent;
+	color: var(--pk-text-tertiary);
+	font-size: var(--pk-text-xs);
+	font-family: inherit;
+	padding: 3px 12px;
+	border-radius: var(--pk-radius-pill);
+	cursor: pointer;
+	line-height: 1.4;
+}
+.peak-composer-root .pk-native-toggle__btn[data-active] {
+	background: var(--pk-bg);
+	color: var(--pk-text-primary);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* ── shared native frame + stats ─────────────────────────────────────────── */
+.peak-composer-root .pk-native-block__body,
+.peak-composer-root .pk-native-code,
+.peak-composer-root .pk-native-embed {
+	border: 1px solid var(--pk-border-soft);
+	border-radius: var(--pk-radius-md);
+	background: var(--pk-bg-secondary);
+	padding: var(--pk-space-3);
+}
+.peak-composer-root .pk-native-stats {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--pk-space-3);
+	margin-bottom: var(--pk-space-2);
+}
+.peak-composer-root .pk-native-stat {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 4px;
+}
+.peak-composer-root .pk-native-stat__value {
+	font-weight: 650;
+	font-size: var(--pk-text-sm);
+	color: var(--pk-text-primary);
+}
+.peak-composer-root .pk-native-stat__label {
+	font-size: var(--pk-text-xs);
+	color: var(--pk-text-tertiary);
+}
+.peak-composer-root .pk-native-empty {
+	color: var(--pk-text-tertiary);
+	font-size: var(--pk-text-xs);
+	font-style: italic;
+	padding: var(--pk-space-1) 0;
+}
+.peak-composer-root .pk-native-chip {
+	display: inline-flex;
+	align-items: center;
+	padding: 1px 8px;
+	margin: 2px 4px 2px 0;
+	border-radius: var(--pk-radius-pill);
+	border: 1px solid var(--pk-border-soft);
+	background: var(--pk-bg);
+	color: var(--pk-text-secondary);
+	font-size: var(--pk-text-xs);
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.peak-composer-root .pk-native-source {
+	margin: 0;
+	max-height: 420px;
+	overflow: auto;
+}
+
+/* ── code ────────────────────────────────────────────────────────────────── */
+.peak-composer-root .pk-native-code {
+	position: relative;
+	padding: 0;
+	overflow: hidden;
+}
+.peak-composer-root .pk-native-code__lang {
+	position: absolute;
+	top: 6px;
+	right: 8px;
+	font-size: 10px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--pk-text-tertiary);
+	pointer-events: none;
+}
+.peak-composer-root .pk-native-code__body {
+	margin: 0;
+	padding: var(--pk-space-3);
+	background: transparent;
+	font-family: var(--pk-font-mono);
+	font-size: 12.5px;
+	line-height: 1.55;
+	overflow-x: auto;
+	white-space: pre;
+	tab-size: 4;
+}
+
+/* ── base ────────────────────────────────────────────────────────────────── */
+.peak-composer-root .pk-native-base__view {
+	padding: var(--pk-space-2) 0;
+	border-top: 1px solid var(--pk-border-soft);
+}
+.peak-composer-root .pk-native-base__view:first-child {
+	border-top: none;
+	padding-top: 0;
+}
+.peak-composer-root .pk-native-base__name {
+	font-weight: 640;
+	color: var(--pk-text-primary);
+	margin-right: var(--pk-space-2);
+}
+.peak-composer-root .pk-native-base__type {
+	font-size: var(--pk-text-xs);
+	color: var(--pk-text-tertiary);
+}
+.peak-composer-root .pk-native-base__cols {
+	margin-top: var(--pk-space-1);
+}
+
+/* ── canvas ──────────────────────────────────────────────────────────────── */
+.peak-composer-root .pk-native-canvas__nodes {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--pk-space-2);
+	margin-top: var(--pk-space-1);
+}
+.peak-composer-root .pk-native-node {
+	display: inline-flex;
+	flex-direction: column;
+	gap: 1px;
+	padding: 4px 10px;
+	border-radius: var(--pk-radius-sm);
+	border: 1px solid var(--pk-border-soft);
+	background: var(--pk-bg);
+	max-width: 220px;
+}
+.peak-composer-root .pk-native-node__type {
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--pk-text-tertiary);
+}
+.peak-composer-root .pk-native-node__label {
+	font-size: var(--pk-text-xs);
+	color: var(--pk-text-primary);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.peak-composer-root .pk-native-canvas__edges {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--pk-space-2);
+	margin-top: var(--pk-space-2);
+	padding-top: var(--pk-space-2);
+	border-top: 1px solid var(--pk-border-soft);
+}
+.peak-composer-root .pk-native-edge {
+	font-size: var(--pk-text-xs);
+	color: var(--pk-text-secondary);
+}
+
+/* ── excalidraw ──────────────────────────────────────────────────────────── */
+.peak-composer-root .pk-native-excalidraw__text {
+	margin-top: var(--pk-space-2);
+	padding-top: var(--pk-space-2);
+	border-top: 1px solid var(--pk-border-soft);
+}
+.peak-composer-root .pk-native-excalidraw__text-label {
+	display: block;
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--pk-text-tertiary);
+	margin-bottom: var(--pk-space-1);
+}
+
+/* ── mermaid ─────────────────────────────────────────────────────────────── */
+.peak-composer-root .pk-native-mermaid {
+	display: flex;
+	justify-content: center;
+	padding: var(--pk-space-2);
+	overflow-x: auto;
+}
+.peak-composer-root .pk-native-mermaid svg {
+	max-width: 100%;
+	height: auto;
+}
+.peak-composer-root .pk-native-mermaid--failed {
+	flex-direction: column;
+	align-items: stretch;
+	gap: var(--pk-space-2);
+}
+
+/* ── embed reference card ────────────────────────────────────────────────── */
+.peak-composer-root .pk-native-embed {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--pk-space-2);
+	padding: 6px 12px;
+}
+.peak-composer-root .pk-native-embed__badge {
+	display: inline-flex;
+	color: var(--pk-fg-muted);
+}
+.peak-composer-root .pk-native-embed__target.pk-composer-link {
+	color: var(--pk-accent-text);
+	cursor: pointer;
+	text-decoration: none;
+	border-radius: var(--pk-radius-sm);
+}
+.peak-composer-root .pk-native-embed__target.pk-composer-link:hover,
+.peak-composer-root .pk-native-embed__target.pk-composer-link:focus-visible {
+	text-decoration: underline;
+	outline: 2px solid var(--pk-border-accent);
+	outline-offset: 2px;
+}
