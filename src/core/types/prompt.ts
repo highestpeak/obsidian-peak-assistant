@@ -121,6 +121,12 @@ export enum PromptId {
 	DocTranslate = 'doc-translate',
 	DocCorrectContent = 'doc-correct-content',
 
+	// Composer packs (WP5: frontmatter + math)
+	ComposerSuggestProperties = 'composer-suggest-properties',
+	ComposerExplainFormula = 'composer-explain-formula',
+	ComposerSplitFormula = 'composer-split-formula',
+	ComposerFormulaVariables = 'composer-formula-variables',
+
 	// Copilot Vault Intelligence
 	VaultHealth = 'vault-health',
 	VaultSummary = 'vault-summary',
@@ -587,6 +593,27 @@ export interface PromptVariables {
 		content: string;
 		title?: string;
 		scope: 'full' | 'selection';
+	};
+	[PromptId.ComposerSuggestProperties]: {
+		content: string;
+		title?: string;
+		currentProperties: string;
+		instruction?: string;
+	};
+	[PromptId.ComposerExplainFormula]: {
+		latex: string;
+		label?: string;
+		instruction?: string;
+	};
+	[PromptId.ComposerSplitFormula]: {
+		latex: string;
+		label?: string;
+		instruction?: string;
+	};
+	[PromptId.ComposerFormulaVariables]: {
+		latex: string;
+		label?: string;
+		instruction?: string;
 	};
 	[PromptId.VaultHealth]: {
 		stats: string;

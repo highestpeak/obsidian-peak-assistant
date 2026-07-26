@@ -25,6 +25,11 @@ import {
 	createLinkCapabilityPack,
 	createNativeCapabilityPack,
 	createProseCapabilityPack,
+	createFrontmatterCapabilityPack,
+	createMathCapabilityPack,
+	createMetadataFieldPatchMaterializer,
+	createMetadataFieldPatchWritebackAdapter,
+	createFormulaAnnotationMaterializer,
 	loadComposerCapabilitiesConfig,
 	DEFAULT_COMPOSER_CAPABILITIES_CONFIG,
 	type ComposerCapabilitiesConfig,
@@ -67,9 +72,15 @@ export function composeComposerCapabilityRuntime(
 	// the text-patch rail, so the default materializer/adapter set covers them.
 	registry.registerPack(createNativeCapabilityPack(configProvider));
 	registry.registerPack(createLinkCapabilityPack(configProvider));
+	// WP5 packs: frontmatter (AI property suggestion) + math (explain/split/variables).
+	registry.registerPack(createFrontmatterCapabilityPack(configProvider));
+	registry.registerPack(createMathCapabilityPack(configProvider));
 
 	const materializers = createDefaultResultMaterializers();
+	materializers.register(createMetadataFieldPatchMaterializer());
+	materializers.register(createFormulaAnnotationMaterializer());
 	const writebacks = createDefaultWritebackAdapters();
+	writebacks.register(createMetadataFieldPatchWritebackAdapter());
 	registry.validateBindings(materializers, writebacks);
 
 	const executor =

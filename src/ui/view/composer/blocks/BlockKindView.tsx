@@ -8,6 +8,8 @@ import { ExcalidrawBlockView } from './excalidraw/ExcalidrawBlockView';
 import { EmbedBlockView } from './embed/EmbedBlockView';
 import { TableBlockView } from './table/TableBlockView';
 import { ChartBlockView, isChartBlock } from './chart/ChartBlockView';
+import { FrontmatterBlockView } from './frontmatter';
+import { MathBlockView } from './math';
 
 /**
  * Read-only, kind-dispatched block renderer (WP1 skeleton, WP4/WP6-annotated).
@@ -25,9 +27,10 @@ export function BlockKindView({ block }: { block: ComposerBlock }): React.ReactE
 	switch (block.kind) {
 		case 'divider':
 			return <div className="pk-composer-divider" role="separator" />;
-		// WP8 native objects — real, data-driven previews.
+		// WP8 native objects — real, data-driven previews. A fenced ```chart block
+		// parses as `code`, so the WP6 chart detector runs first (merge seam).
 		case 'code':
-			return <CodeBlockView block={block} />;
+			return isChartBlock(block) ? <ChartBlockView block={block} /> : <CodeBlockView block={block} />;
 		case 'mermaid':
 			return <MermaidBlockView block={block} />;
 		case 'base':
@@ -42,8 +45,13 @@ export function BlockKindView({ block }: { block: ComposerBlock }): React.ReactE
 			return <RefView block={block} />;
 		case 'table':
 			return <TableBlockView block={block} />;
-		case 'code':
-			return isChartBlock(block) ? <ChartBlockView block={block} /> : <MonoView block={block} />;
+		// WP5 — rich block views (property grid / KaTeX). Interactive AI + vault
+		// entrances arrive via ports at the integration seam; without them these
+		// render the grid / formulas read-only (never fake affordances).
+		case 'frontmatter':
+			return <FrontmatterBlockView block={block} />;
+		case 'math':
+			return <MathBlockView block={block} />;
 		default:
 			return <MonoView block={block} />;
 	}

@@ -311,6 +311,14 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'doc-correct-content': meta('prompts', 'doc-correct-content', { expectsJson: true, systemPromptId: 'doc-correct-content-system' as PromptId, label: 'Correct Content', description: 'Identifies factual errors, logical inconsistencies, broken references, and typos.', group: 'copilot' }),
 	'doc-correct-content-system': meta('prompts', 'doc-correct-content-system', { label: 'Correct Content (System)', description: 'System instructions for content error correction.', group: 'copilot' }),
 
+	// Composer packs (WP5: frontmatter + math)
+	'composer-suggest-properties': meta('prompts', 'composer-suggest-properties', { systemPromptId: 'composer-suggest-properties-system' as PromptId, label: 'Suggest Properties', description: 'Suggests frontmatter fields from the document body and vault conventions.', group: 'copilot' }),
+	'composer-suggest-properties-system': meta('prompts', 'composer-suggest-properties-system', { label: 'Suggest Properties (System)', description: 'System instructions for frontmatter property suggestion.', group: 'copilot' }),
+	'composer-explain-formula': meta('prompts', 'composer-explain-formula', { systemPromptId: 'composer-formula-system' as PromptId, label: 'Explain Formula', description: 'Explains one display formula in natural language.', group: 'copilot' }),
+	'composer-split-formula': meta('prompts', 'composer-split-formula', { systemPromptId: 'composer-formula-system' as PromptId, label: 'Split Formula', description: 'Breaks a formula into its component parts.', group: 'copilot' }),
+	'composer-formula-variables': meta('prompts', 'composer-formula-variables', { systemPromptId: 'composer-formula-system' as PromptId, label: 'Formula Variables', description: 'Lists the symbols of a formula and their meanings.', group: 'copilot' }),
+	'composer-formula-system': meta('prompts', 'composer-formula-system', { label: 'Formula Detail (System)', description: 'System instructions shared by the formula detail actions.', group: 'copilot' }),
+
 	// Copilot Vault Intelligence
 	'vault-health': meta('prompts', 'vault-health', { expectsJson: true, systemPromptId: 'vault-health-system' as PromptId, label: 'Vault Health', description: 'Analyzes vault structure for orphans, duplicates, stale notes, and tag issues.', group: 'copilot' }),
 	'vault-health-system': meta('prompts', 'vault-health-system', { label: 'Vault Health (System)', description: 'System instructions for vault health analysis.', group: 'copilot' }),

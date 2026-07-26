@@ -43,3 +43,5 @@ export * from './packs/table';
 export * from './packs/chart';
 export * from './capabilities/packs/table';
 export * from './capabilities/packs/chart';
+// WP5 — frontmatter + math pack domain logic.
+export * from './packs';

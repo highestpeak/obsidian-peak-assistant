@@ -14,3 +14,5 @@ export * from './documentRuntime';
 export * from './packs/prose';
 export * from './packs/native';
 export * from './packs/link';
+export * from './packs/frontmatter';
+export * from './packs/math';
