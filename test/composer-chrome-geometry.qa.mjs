@@ -153,6 +153,16 @@ const geom = (locator) =>
 	await page.screenshot({ path: path.join(shotsDir, 'composer-chrome-ai-row-dark.png') });
 	await page.screenshot({ path: path.join(shotsDir, 'composer-chrome-action-row-dark.png') });
 
+	// ── FIX-2 deviation ②: action row floats straddling the block BOTTOM edge
+	//    (row top ≈ block bottom − 3px, left-aligned to block) — not above it. ──
+	const rowBox = await row.boundingBox();
+	const blockBox = await para.boundingBox();
+	await record('action row top anchors block bottom − 3px', () =>
+		assert.ok(Math.abs(rowBox.y - (blockBox.y + blockBox.height - 3)) <= 2, `rowTop=${rowBox.y} blockBottom=${blockBox.y + blockBox.height}`),
+	);
+	await record('action row left-aligns the block', () => assert.ok(Math.abs(rowBox.x - blockBox.x) <= 1, `rowX=${rowBox.x} blockX=${blockBox.x}`));
+	await record('action row shell is 38px tall', () => assert.ok(Math.round(rowBox.height) === 38, String(rowBox.height)));
+
 	// ── selection toolbar ──
 	// Focus the block first so live-preview reveals the source (a real mousedown
 	// does this before a drag); a selection made on the styled runs is otherwise
@@ -266,9 +276,39 @@ const geom = (locator) =>
 {
 	const { page, errors } = await openPage('light');
 	await page.screenshot({ path: path.join(shotsDir, 'composer-chrome-default-light.png') });
+
+	// ── FIX-2 deviation ①: document card + page backdrop (light = mock values) ──
+	const pageBg = await page.evaluate(() => getComputedStyle(document.querySelector('.peak-composer-root')).backgroundColor);
+	await record('page backdrop is rgb(243,246,249)', () => assert.equal(pageBg, 'rgb(243, 246, 249)'));
+	const paper = await page.locator('.pk-composer-shell').evaluate((el) => {
+		const s = getComputedStyle(el);
+		return {
+			w: Math.round(el.getBoundingClientRect().width),
+			padding: s.padding,
+			radius: s.borderRadius,
+			borderColor: s.borderTopColor,
+			borderWidth: s.borderTopWidth,
+			bg: s.backgroundColor,
+			shadow: s.boxShadow,
+		};
+	});
+	await record('paper card is 868px wide', () => assert.equal(paper.w, 868));
+	await record('paper padding is 40px 64px 64px', () => assert.equal(paper.padding, '40px 64px 64px'));
+	await record('paper radius is 8px', () => assert.equal(paper.radius, '8px'));
+	await record('paper border is 1px rgb(220,227,238)', () => {
+		assert.equal(paper.borderWidth, '1px');
+		assert.equal(paper.borderColor, 'rgb(220, 227, 238)');
+	});
+	await record('paper is white', () => assert.equal(paper.bg, 'rgb(255, 255, 255)'));
+	await record('paper shadow is 0 8px 24px rgba(31,42,61,.055)', () => assert.equal(paper.shadow, 'rgba(31, 42, 61, 0.055) 0px 8px 24px 0px'));
+
 	const para = page.locator('.pk-composer-block[data-kind="paragraph"]').first();
 	await para.hover();
 	await page.waitForTimeout(200);
+
+	// ── FIX-2 deviation ③: block hover tint is the mock's faint blue ──
+	const hoverTint = await para.evaluate((el) => getComputedStyle(el).backgroundColor);
+	await record('block hover tint is rgba(37,99,235,0.02)', () => assert.equal(hoverTint, 'rgba(37, 99, 235, 0.02)'));
 	const d = await geom(para.locator('.pk-composer-disclosure'));
 	const g = await geom(para.locator('.pk-composer-drag'));
 	await record('light: rail pair identical 30×30', () => assert.deepEqual([d.w, d.h, d.radius], [g.w, g.h, g.radius]));

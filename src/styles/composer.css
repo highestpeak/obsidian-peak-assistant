@@ -5,14 +5,56 @@
  */
 
 .peak-composer-root {
+	/* ── FIX-2 fidelity vars (light = mock computed values, verbatim). Dark is
+	   remapped to theme tokens below. Do NOT swap the light defaults for
+	   approximate tokens — they are the design-spec ground truth. ── */
+	--pkc-page-bg: rgb(243, 246, 249);
+	--pkc-paper-bg: #ffffff;
+	--pkc-paper-border: rgb(220, 227, 238);
+	--pkc-paper-radius: 8px;
+	--pkc-paper-shadow: 0 8px 24px rgba(31, 42, 61, 0.055);
+	--pkc-paper-width: 868px;
+	--pkc-paper-pad-y-top: 40px;
+	--pkc-paper-pad-x: 64px;
+	--pkc-paper-pad-y-bottom: 64px;
+	--pkc-stage-pad-y-top: 34px;
+	--pkc-stage-pad-x: 44px;
+	--pkc-stage-pad-y-bottom: 52px;
+	--pkc-text: rgb(23, 32, 51);
+	--pkc-prose: rgb(47, 59, 80);
+	--pkc-block-gap: 30px;
+	--pkc-h1-size: 32px;
+	--pkc-h1-weight: 760;
+	--pkc-h2-size: 22px;
+	--pkc-h2-weight: 740;
+	--pkc-h3-size: 18px;
+	--pkc-h3-weight: 720;
+	--pkc-prose-size: 15px;
+	--pkc-block-hover-bg: rgba(37, 99, 235, 0.02);
+	--pkc-block-hover-shadow: 0 0 0 5px rgba(37, 99, 235, 0.022),
+		0 0 0 6px rgba(37, 99, 235, 0.12), 0 8px 18px rgba(37, 99, 235, 0.045);
+
 	display: flex;
 	flex-direction: column;
 	height: 100%;
 	overflow: auto;
-	padding: var(--pk-space-4);
-	color: var(--pk-fg);
+	padding: var(--pkc-stage-pad-y-top) var(--pkc-stage-pad-x) var(--pkc-stage-pad-y-bottom);
+	background: var(--pkc-page-bg);
+	color: var(--pkc-text);
 	font-family: var(--pk-font-sans);
-	font-size: var(--pk-text-sm);
+	font-size: 14px;
+}
+
+/* Dark theme: keep the paper metaphor but remap to peak dark tokens. */
+.theme-dark .peak-composer-root {
+	--pkc-page-bg: var(--pk-bg-tertiary);
+	--pkc-paper-bg: var(--pk-bg);
+	--pkc-paper-border: var(--pk-border);
+	--pkc-paper-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+	--pkc-text: var(--pk-text-primary);
+	--pkc-prose: var(--pk-text-primary);
+	--pkc-block-hover-bg: var(--pk-accent-tint);
+	--pkc-block-hover-shadow: 0 0 0 1px var(--pk-border-accent), 0 8px 18px rgba(0, 0, 0, 0.35);
 }
 
 /* ── header ─────────────────────────────────────────────────────────────── */
@@ -49,16 +91,24 @@
 .peak-composer-root .pk-composer-blocks {
 	display: flex;
 	flex-direction: column;
-	gap: var(--pk-space-1);
 }
 .peak-composer-root .pk-composer-block {
 	display: flex;
 	gap: var(--pk-space-2);
-	padding: var(--pk-space-2) var(--pk-space-2) var(--pk-space-2) 76px;
-	border-radius: var(--pk-radius-md);
+	/* Tint breathes ~10px past the text; negative margin keeps the text column
+	   flush with the paper content edge (mock: doc-block padding 0, halo via
+	   shadow rings). The left rail overlays into the paper padding gutter. */
+	margin: var(--pkc-block-gap) -10px 0;
+	padding: 6px 10px;
+	border-radius: 10px;
+	transition: background-color 140ms ease, box-shadow 140ms ease;
+}
+.peak-composer-root .pk-composer-blocks > .pk-composer-block:first-child {
+	margin-top: 0;
 }
 .peak-composer-root .pk-composer-block:hover {
-	background: var(--pk-surface-sunken);
+	background: var(--pkc-block-hover-bg);
+	box-shadow: var(--pkc-block-hover-shadow);
 }
 .peak-composer-root .pk-composer-rail {
 	flex: none;
@@ -103,18 +153,19 @@
 }
 .peak-composer-root .pk-composer-heading {
 	display: block;
-	font-weight: 700;
-	color: var(--pk-text-primary);
+	font-weight: var(--pkc-h1-weight);
+	color: var(--pkc-text);
 	line-height: 1.3;
 }
-.peak-composer-root .pk-composer-heading[data-level='1'] { font-size: var(--pk-text-xl); }
-.peak-composer-root .pk-composer-heading[data-level='2'] { font-size: var(--pk-text-lg); }
-.peak-composer-root .pk-composer-heading[data-level='3'] { font-size: var(--pk-text-md-plus); }
+.peak-composer-root .pk-composer-heading[data-level='1'] { font-size: var(--pkc-h1-size); font-weight: var(--pkc-h1-weight); line-height: 1.25; }
+.peak-composer-root .pk-composer-heading[data-level='2'] { font-size: var(--pkc-h2-size); font-weight: var(--pkc-h2-weight); line-height: 1.35; }
+.peak-composer-root .pk-composer-heading[data-level='3'] { font-size: var(--pkc-h3-size); font-weight: var(--pkc-h3-weight); }
 .peak-composer-root .pk-composer-prose {
 	white-space: pre-wrap;
 	word-break: break-word;
-	line-height: 1.55;
-	color: var(--pk-fg);
+	font-size: var(--pkc-prose-size);
+	line-height: 1.8;
+	color: var(--pkc-prose);
 }
 .peak-composer-root .pk-composer-mono {
 	margin: 0;
@@ -136,7 +187,9 @@
 }
 .peak-composer-root .pk-composer-list__item {
 	white-space: pre-wrap;
-	line-height: 1.5;
+	font-size: var(--pkc-prose-size);
+	line-height: 1.8;
+	color: var(--pkc-prose);
 }
 .peak-composer-root .pk-composer-ref {
 	font-family: var(--pk-font-mono);
@@ -205,13 +258,31 @@
 
 .peak-composer-root .pk-composer-shell {
 	position: relative;
+	box-sizing: border-box;
 	display: flex;
 	flex-direction: column;
+	width: 100%;
+	max-width: var(--pkc-paper-width);
 	min-height: 100%;
+	margin: 0 auto;
+	padding: var(--pkc-paper-pad-y-top) var(--pkc-paper-pad-x) var(--pkc-paper-pad-y-bottom);
+	background: var(--pkc-paper-bg);
+	border: 1px solid var(--pkc-paper-border);
+	border-radius: var(--pkc-paper-radius);
+	box-shadow: var(--pkc-paper-shadow);
 }
 .peak-composer-root .pk-composer-blocks {
 	flex: 1 1 auto;
 	padding-bottom: var(--pk-space-10);
+}
+
+/* Narrow-viewport downgrade: card + stage gutters shrink together; block gutter
+   collapses so the rail tucks under the text edge — never a horizontal scroll. */
+@media (max-width: 720px) {
+	.peak-composer-root {
+		--pkc-stage-pad-x: 14px;
+		--pkc-paper-pad-x: 26px;
+	}
 }
 
 /* ── family 3: structural rail (30×30 radius-md, matched pair) ─────────────── */
@@ -220,7 +291,9 @@
 	   not inflate to the rail's 2×30px column height (mock parity). The block
 	   reserves the gutter with padding-left below. */
 	position: absolute;
-	left: 6px;
+	/* Overlay into the paper's left padding gutter (mock: controls float in the
+	   64px gutter, text stays flush at the content edge). */
+	left: -46px;
 	top: 4px;
 	z-index: 15;
 	display: flex;
@@ -281,12 +354,16 @@
 .peak-composer-root .pk-composer-block { position: relative; }
 .peak-composer-root .pk-block-action-row {
 	position: absolute;
-	top: -34px;
+	/* Float straddling the block's bottom edge: row top ≈ block bottom − 3px,
+	   left-aligned to the block (mock action bar anchors under the block). */
+	top: calc(100% - 3px);
 	left: 0;
 	z-index: 20;
 	display: none;
 	align-items: center;
 	gap: 4px;
+	box-sizing: border-box;
+	min-height: 38px;
 	padding: 3px 6px;
 	border: 1px solid var(--pk-border);
 	border-radius: var(--pk-radius-lg);
@@ -688,25 +765,21 @@
 
 /* ── editable leaves ───────────────────────────────────────────────────────── */
 .peak-composer-root .pk-composer-editable {
+	/* Neutral leaf: font-size / line-height / color come from the co-class
+	   (pk-composer-prose | pk-composer-heading | pk-composer-list__text) so the
+	   FIX-2 typography calibration is not clobbered by declaration order. */
 	white-space: pre-wrap;
 	word-break: break-word;
-	line-height: 1.55;
-	color: var(--pk-fg);
+	color: inherit;
 	outline: none;
 	border-radius: var(--pk-radius-sm);
 }
 .peak-composer-root .pk-composer-editable:focus-visible {
 	box-shadow: 0 0 0 2px var(--pk-accent-soft);
 }
-.peak-composer-root .pk-composer-heading {
-	display: block;
-	font-weight: 700;
-	color: var(--pk-text-primary);
-	line-height: 1.3;
-}
-.peak-composer-root .pk-heading-1 { font-size: var(--pk-text-xl); }
-.peak-composer-root .pk-heading-2 { font-size: var(--pk-text-lg); }
-.peak-composer-root .pk-heading-3 { font-size: var(--pk-text-md-plus); }
+.peak-composer-root .pk-heading-1 { font-size: var(--pkc-h1-size); font-weight: var(--pkc-h1-weight); line-height: 1.25; }
+.peak-composer-root .pk-heading-2 { font-size: var(--pkc-h2-size); font-weight: var(--pkc-h2-weight); line-height: 1.35; }
+.peak-composer-root .pk-heading-3 { font-size: var(--pkc-h3-size); font-weight: var(--pkc-h3-weight); }
 .peak-composer-root .pk-composer-quote {
 	border-left: 3px solid var(--pk-border-strong);
 	padding-left: var(--pk-space-3);
@@ -716,7 +789,9 @@
 	display: flex;
 	align-items: flex-start;
 	gap: var(--pk-space-2);
-	line-height: 1.5;
+	font-size: var(--pkc-prose-size);
+	line-height: 1.8;
+	color: var(--pkc-prose);
 }
 .peak-composer-root .pk-composer-list__bullet {
 	flex: none;
@@ -740,7 +815,7 @@
 
 /* ── insert-below draft ────────────────────────────────────────────────────── */
 .peak-composer-root .pk-insert-draft {
-	padding: var(--pk-space-1) var(--pk-space-2) var(--pk-space-1) 76px;
+	padding: var(--pk-space-2) 0 0;
 }
 .peak-composer-root .pk-insert-draft__input {
 	width: 100%;
