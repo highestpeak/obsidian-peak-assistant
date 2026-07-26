@@ -23,11 +23,13 @@
 
 /* ── desktop right column ──────────────────────────────────────────────────── */
 .pk-sidecar {
-	flex: 0 0 336px;
-	width: 336px;
-	max-width: 40vw;
-	border-left: 1px solid var(--pk-border-soft);
+	flex: 0 0 430px;
+	width: 430px;
+	max-width: none;
+	border: 1px solid var(--pk-border);
+	border-radius: 18px;
 	background: var(--pk-surface);
+	box-shadow: var(--pk-shadow-modal);
 	overflow: hidden;
 }
 .pk-sidecar-shell {
@@ -45,37 +47,63 @@
 	align-items: center;
 	justify-content: center;
 	position: relative;
-	padding: 12px 14px 8px;
+	min-height: 58px;
+	gap: 12px;
+	padding: 10px 13px 8px;
 }
 .pk-sidecar-brand {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	justify-content: center;
+	gap: 7px;
+	max-width: calc(100% - 96px);
+	min-width: 0;
 }
 .pk-sidecar-spark {
+	flex: 0 0 auto;
+	width: 18px;
+	height: 18px;
 	color: var(--pk-accent);
 	background: none;
 	border: 0;
+	border-radius: 0;
 }
 .pk-sidecar-brand-text {
 	display: flex;
 	flex-direction: column;
 	line-height: 1.2;
+	min-width: 0;
 }
 .pk-sidecar-title {
-	font-size: 12px;
+	font-size: var(--pk-text-xl);
 	font-weight: 640;
+	letter-spacing: 0;
 }
 .pk-sidecar-subtitle {
-	font-size: 9.5px;
-	color: var(--pk-muted-foreground);
+	display: inline-flex;
+	align-items: center;
+	margin-top: 2px;
+	font-size: var(--pk-text-xs);
+	color: var(--pk-text-tertiary);
+	white-space: nowrap;
+}
+.pk-sidecar-subtitle::before {
+	content: '';
+	display: inline-block;
+	width: 6px;
+	height: 6px;
+	margin-right: 5px;
+	border-radius: var(--pk-radius-full);
+	background: var(--pk-success);
+	box-shadow: 0 0 0 3px var(--pk-success-bg);
 }
 .pk-sidecar-close,
 .pk-sidecar-drawer-toggle,
 .pk-icon-btn {
 	position: absolute;
 	right: 12px;
-	top: 12px;
+	top: 50%;
+	transform: translateY(-50%);
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -89,6 +117,7 @@
 }
 .pk-icon-btn {
 	position: static;
+	transform: none;
 }
 .pk-sidecar-close:hover,
 .pk-icon-btn:hover {
@@ -98,30 +127,42 @@
 
 /* ── top-level tabs (Copilot / History) ────────────────────────────────────── */
 .pk-sidecar-tabs {
-	display: flex;
-	gap: 4px;
-	padding: 0 12px 8px;
-	border-bottom: 1px solid var(--pk-border-soft);
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 3px;
+	height: 42px;
+	margin: 0 12px 8px;
+	padding: 3px;
+	border-bottom: 0;
+	border-radius: var(--pk-radius-lg);
+	background: var(--pk-surface-sunken);
 }
 .pk-sidecar-tab {
 	display: inline-flex;
 	align-items: center;
-	gap: 5px;
-	height: 28px;
-	padding: 0 10px;
+	justify-content: center;
+	gap: 7px;
+	height: 100%;
+	padding: 0 12px;
 	border: 0;
-	border-radius: var(--pk-radius-md);
+	border-radius: 9px;
 	background: transparent;
-	color: var(--pk-muted-foreground);
-	font-size: 11px;
+	color: var(--pk-text-secondary);
+	font-size: var(--pk-text-sm);
+	font-weight: 620;
 	cursor: pointer;
 }
 .pk-sidecar-tab--active {
-	background: var(--pk-accent-tint);
-	color: var(--pk-accent-text);
+	background: var(--pk-surface);
+	color: var(--pk-text-primary);
+	box-shadow: var(--pk-shadow-sm);
 }
 .pk-sidecar-tab-icon {
 	display: inline-flex;
+}
+.pk-sidecar-tab-icon svg {
+	width: 14px;
+	height: 14px;
 }
 .pk-sidecar-body {
 	flex: 1 1 auto;
@@ -541,7 +582,9 @@
 .pk-sidecar-drawer-toggle {
 	position: fixed;
 	right: 12px;
+	top: auto;
 	bottom: 16px;
+	transform: none;
 	width: 40px;
 	height: 40px;
 	border-radius: var(--pk-radius-full);
