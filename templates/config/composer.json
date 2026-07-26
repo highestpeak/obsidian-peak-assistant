@@ -218,5 +218,87 @@
       "variantCounter": "{index}/{count}",
       "unsupportedResult": "暂不支持渲染此结果类型"
     }
+  },
+  "frontmatter": {
+    "_doc": "WP5 frontmatter block UI copy (property grid, Vault property library, AI suggestions). Typed fallback: src/ui/view/composer/blocks/frontmatter/frontmatterConfig.ts.",
+    "grid": {
+      "issueWarning": "属性告警",
+      "vaultLibrary": "属性库",
+      "aiSuggest": "AI 属性建议",
+      "addProperty": "添加属性",
+      "origin": {
+        "program": "程序",
+        "human": "人工",
+        "ai": "AI 建议",
+        "convention": "规范建议"
+      },
+      "reviewShapeChange": "该改动会改变字段类型，请确认后再写入"
+    },
+    "library": {
+      "title": "Vault 属性库",
+      "subtitle": "全知识库字段与标签统计 · 选择后只在当前文档生成候选",
+      "close": "关闭属性库",
+      "colField": "字段",
+      "colCoverage": "覆盖率",
+      "colIssue": "发现的问题",
+      "colAdd": "加入本文",
+      "alreadyPresent": "已在本文",
+      "add": "添加",
+      "typeConflict": "类型不一致",
+      "rare": "单次使用",
+      "customTitle": "自定义属性",
+      "customSubtitle": "任意 key / value；先生成候选，不静默写入 YAML",
+      "keyPlaceholder": "key，例如 cssclasses",
+      "valuePlaceholder": "value，例如 wide-page",
+      "addToDoc": "添加到本文",
+      "footer": "统计范围是整个 Vault；入口跟随当前 Frontmatter，只把选中的字段作为本文候选。",
+      "statFields": "个字段",
+      "statTags": "个标签",
+      "statSingle": "个单次字段",
+      "statConflict": "处类型不一致"
+    },
+    "suggestions": {
+      "title": "AI 属性建议",
+      "subtitle": "根据正文与 Vault 关系生成 · 逐条选择",
+      "close": "关闭 AI 属性建议",
+      "add": "添加",
+      "reject": "忽略",
+      "empty": "暂无建议",
+      "streaming": "生成中…",
+      "footer": "AI 只建议字段和值；点击“添加”后还要在 Frontmatter 中确认。"
+    }
+  },
+  "math": {
+    "_doc": "WP5 math block UI copy (formula micro-block detail rows + copy formats). Typed fallback: src/ui/view/composer/blocks/math/mathConfig.ts.",
+    "detail": {
+      "explain": "解释公式",
+      "split": "拆分公式",
+      "variables": "变量表",
+      "insertBelow": "在下方插入",
+      "copy": "复制",
+      "comment": "评论",
+      "history": "History",
+      "instruction": "指令",
+      "keep": "保留标注",
+      "close": "关闭",
+      "regenerate": "重新生成",
+      "followUpPlaceholder": "追问或调整…（Enter 重新生成）",
+      "streaming": "生成中…",
+      "failed": "生成失败",
+      "empty": "暂无内容",
+      "prevVariant": "上一版本",
+      "nextVariant": "下一版本",
+      "variantCounter": "{index}/{count}",
+      "colSymbol": "符号",
+      "colMeaning": "含义"
+    },
+    "copy": {
+      "plain": "纯文本",
+      "latex": "LaTeX",
+      "html": "HTML",
+      "image": "图片",
+      "copied": "已复制",
+      "copyFormula": "复制公式"
+    }
   }
 }
