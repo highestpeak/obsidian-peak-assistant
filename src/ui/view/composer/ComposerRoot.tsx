@@ -55,6 +55,8 @@ import { UndoRedoBar } from './chrome/UndoRedoBar';
 import { TransactionNotice } from './chrome/TransactionNotice';
 import { DisplayStateSwitch, type ComposerDisplayState } from './chrome/DisplayStateSwitch';
 import { mapDomRangeToSource } from './chrome/selectionMapping';
+import { IntelligenceSidecar } from './sidecar';
+import type { IntelligenceRuntime } from '@/service/composer';
 
 /**
  * Peak Composer — document host + shared editing chrome (WP1 host, WP4 chrome).
@@ -84,6 +86,14 @@ export interface ComposerRootProps {
 	onOpenLink?: (kind: 'vault' | 'external', target: string) => void;
 	/** Optional revalidate handler surfaced on the stale banner. */
 	onRevalidate?: () => void;
+	/**
+	 * App-owned Intelligence Sidecar runtime (WP9). When provided, the Sidecar is
+	 * mounted in the right column (or a narrow-viewport drawer). Absent ⇒ no
+	 * sidecar (harness / read-only host).
+	 */
+	intelligence?: IntelligenceRuntime;
+	/** Reactive intelligence provider (rebinds on document switch, mirrors runtimeSource). */
+	intelligenceSource?: { getIntelligence(): IntelligenceRuntime | undefined };
 }
 
 interface PanelState {
@@ -107,7 +117,10 @@ export function ComposerRoot({
 	burstWindowMs = DEFAULT_TRANSACTION_CONFIG.burstWindowMs,
 	onOpenLink,
 	onRevalidate,
+	intelligence: intelligenceProp,
+	intelligenceSource,
 }: ComposerRootProps): React.ReactElement {
+	const rootRef = React.useRef<HTMLDivElement | null>(null);
 	const subscribe = React.useCallback((cb: () => void) => source.subscribe(cb), [source]);
 	const getSnapshot = React.useCallback(() => source.getState(), [source]);
 	const state = React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
@@ -140,10 +153,30 @@ export function ComposerRoot({
 		[runtime, candidateRegistry, config, state.snapshot, burstWindowMs, flushers, onOpenLink],
 	);
 
+	const intelligence = intelligenceSource?.getIntelligence() ?? intelligenceProp;
+	const locateBlock = React.useCallback((blockId: string) => {
+		const el = rootRef.current?.querySelector<HTMLElement>(`[data-block-id="${CSS.escape(blockId)}"]`);
+		el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+	}, []);
+
 	return (
 		<ComposerChromeProvider value={chromeValue}>
-			<div className="peak-design-root peak-composer-root">
-				<ComposerBody state={state} config={config} foldStore={foldStore} onRevalidate={onRevalidate} />
+			<div
+				ref={rootRef}
+				className="peak-design-root peak-composer-root"
+				data-with-sidecar={intelligence ? 'true' : undefined}
+			>
+				<div className="pk-composer-main">
+					<ComposerBody state={state} config={config} foldStore={foldStore} onRevalidate={onRevalidate} />
+				</div>
+				{intelligence && (
+					<IntelligenceSidecar
+						runtime={intelligence}
+						hub={runtime.hub}
+						onLocate={locateBlock}
+						onOpenSource={(path) => onOpenLink?.('vault', path)}
+					/>
+				)}
 			</div>
 		</ComposerChromeProvider>
 	);
