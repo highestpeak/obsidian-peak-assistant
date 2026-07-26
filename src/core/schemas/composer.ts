@@ -234,3 +234,64 @@ export const ComposerTextPatchPayloadSchema = z.object({
 	replacementText: z.string(),
 });
 export type ComposerTextPatchPayload = z.infer<typeof ComposerTextPatchPayloadSchema>;
+
+// ── WP6: table + chart typed result payloads (additive) ──────────────────────
+
+export const ComposerTableAlignSchema = z.enum(['none', 'left', 'right', 'center']);
+
+/**
+ * Payload of a `table-patch` result envelope (handoff §10.5). A structured,
+ * typed mutation of the targeted table — never a prose diff. The writeback
+ * adapter applies it against the frozen table model, so the model — not a text
+ * guess — decides pipe vs HTML serialization on accept.
+ *
+ * Variants:
+ *  - `replace-cell`  — set one anchor cell's text (row/col are logical grid coords);
+ *  - `set-column`    — replace/append a whole column's cell texts (补一列);
+ *  - `replace-table` — supply a full new grid (row-major cell texts) plus per-column
+ *                      alignment (总结重排 / 结构性补全).
+ */
+export const ComposerTablePatchPayloadSchema = z.union([
+	z.object({
+		op: z.literal('replace-cell'),
+		row: z.number().int().nonnegative(),
+		col: z.number().int().nonnegative(),
+		text: z.string(),
+	}),
+	z.object({
+		op: z.literal('set-column'),
+		/** Logical column index; === current column count ⇒ append a new column. */
+		col: z.number().int().nonnegative(),
+		header: z.string(),
+		cells: z.array(z.string()).readonly(),
+		align: ComposerTableAlignSchema.optional(),
+	}),
+	z.object({
+		op: z.literal('replace-table'),
+		/** Row-major cell texts; row 0 is the header row. */
+		grid: z.array(z.array(z.string()).readonly()).readonly(),
+		align: z.array(ComposerTableAlignSchema).readonly().optional(),
+	}),
+]);
+export type ComposerTablePatchPayload = z.infer<typeof ComposerTablePatchPayloadSchema>;
+
+const ChartSeriesSchema = z.object({
+	key: z.string(),
+	label: z.string().optional(),
+	color: z.string().optional(),
+});
+
+/**
+ * Payload of a `chart-source` result envelope (handoff §10.6, S4 schema). The
+ * fenced ```chart JSON spec generated from a table. Writeback inserts it as an
+ * independent pending block; the chart renderer reads the same spec.
+ */
+export const ComposerChartSourcePayloadSchema = z.object({
+	type: z.enum(['bar', 'line', 'pie']),
+	title: z.string().optional(),
+	/** Category-axis field name (bar/line). */
+	x: z.string(),
+	series: z.array(ChartSeriesSchema).min(1).readonly(),
+	data: z.array(z.record(z.union([z.string(), z.number()]))).readonly(),
+});
+export type ComposerChartSourcePayload = z.infer<typeof ComposerChartSourcePayloadSchema>;
