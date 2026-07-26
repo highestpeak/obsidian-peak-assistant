@@ -1,6 +1,32 @@
 import assert from 'assert';
-import { translateSdkMessage } from '@/service/agents/core/sdkMessageAdapter';
+import { translateSdkMessage, translateSdkMessages } from '@/service/agents/core/sdkMessageAdapter';
 import { StreamTriggerName } from '@/core/providers/types';
+
+/**
+ * Build the SDK message stream a real streaming turn produces when
+ * `includePartialMessages: true` (which queryWithProfile ALWAYS sets):
+ * incremental `stream_event` text deltas during generation, followed by the
+ * final full `assistant` message block, then `result`. This is the exact
+ * shape that doubled Composer polish output in real-provider QA — the fake
+ * canned-variant executors never modeled it.
+ */
+async function* fakePartialMessageStream(chunks: string[], full: string): AsyncGenerator<any> {
+	yield { type: 'system', subtype: 'init', session_id: 's1', model: 'claude-x' };
+	for (const chunk of chunks) {
+		yield { type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text: chunk } } };
+	}
+	// Final aggregated assistant message — SDK sends this in addition to the deltas.
+	yield { type: 'assistant', message: { content: [{ type: 'text', text: full }] } };
+	yield { type: 'result', subtype: 'success', is_error: false, usage: { input_tokens: 1, output_tokens: 1 }, result: full };
+}
+
+async function collectTextDeltas(gen: AsyncGenerator<any>): Promise<string> {
+	let text = '';
+	for await (const ev of gen) {
+		if (ev.type === 'text-delta') text += ev.text;
+	}
+	return text;
+}
 
 async function run(): Promise<void> {
 	const tests: Array<{ name: string; fn: () => void | Promise<void> }> = [
@@ -102,6 +128,38 @@ async function run(): Promise<void> {
 				assert.strictEqual(events.length, 1);
 				assert.strictEqual(events[0].type, 'pk-debug');
 				assert.strictEqual((events[0] as any).debugName, 'sdk-unknown');
+			},
+		},
+		{
+			// FIX-1 F1 regression: with partial messages enabled, the assistant full
+			// block must NOT be re-emitted (else the whole response is doubled).
+			name: 'translateSdkMessages: partial deltas + assistant full block do NOT double text (hasPartialMessages:true)',
+			fn: async () => {
+				const full = 'Polished sentence one. Polished sentence two.';
+				const chunks = ['Polished ', 'sentence one. ', 'Polished ', 'sentence two.'];
+				const text = await collectTextDeltas(
+					translateSdkMessages(fakePartialMessageStream(chunks, full), {
+						triggerName: StreamTriggerName.COPILOT,
+						hasPartialMessages: true,
+					}),
+				);
+				assert.strictEqual(text, full, `expected single full text, got doubled/other:\n${text}`);
+			},
+		},
+		{
+			// Guards the trap in the other direction: WITHOUT the flag the adapter
+			// re-emits the assistant block, so callers of includePartialMessages
+			// streams MUST pass hasPartialMessages:true. Locks why the fix exists.
+			name: 'translateSdkMessages: omitting hasPartialMessages doubles the text (documents the trap)',
+			fn: async () => {
+				const full = 'Polished sentence one. Polished sentence two.';
+				const chunks = ['Polished ', 'sentence one. ', 'Polished ', 'sentence two.'];
+				const text = await collectTextDeltas(
+					translateSdkMessages(fakePartialMessageStream(chunks, full), {
+						triggerName: StreamTriggerName.COPILOT,
+					}),
+				);
+				assert.strictEqual(text, full + full, 'expected the known doubling when flag omitted');
 			},
 		},
 		{

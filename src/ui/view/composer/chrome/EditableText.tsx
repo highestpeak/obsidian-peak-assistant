@@ -91,6 +91,14 @@ export function EditableText({
 		if (native.inputType === 'insertParagraph' || native.inputType === 'insertLineBreak') {
 			ev.preventDefault();
 		}
+		// Everything else is INTENTIONALLY left to the browser: this leaf is an
+		// uncontrolled contenteditable while focused. Text insertion (including
+		// IME) mutates the DOM natively; we only observe the result via `onInput`
+		// → DirectEditController, which debounces bursts into hub commits. Verified
+		// on real hardware (FIX-1 QA): beforeinput{insertText} stays
+		// defaultPrevented:false and the native node update + react onInput is the
+		// production path. Do NOT convert this into a preventDefault + manual
+		// insert model — it would break IME composition and native undo ownership.
 	};
 
 	const onInput = () => {
@@ -111,6 +119,15 @@ export function EditableText({
 		else void hub.undo();
 	};
 
+	// `focused` — and therefore `showSource` — is driven EXCLUSIVELY by the real
+	// DOM focus/blur events on THIS element; there is no other writer. The visual
+	// "editing" state can never diverge from document.activeElement: if this leaf
+	// does not own the keyboard, no styled↔source flip happens. (Block-level
+	// hover/:focus-within chrome — rail, action row — is separate CSS and does
+	// NOT imply this leaf is focused; see FIX-1 F2.) Clicks that land on the
+	// block wrapper instead of this leaf are forwarded in by
+	// `forwardBlockClickToEditable` (focusForwarding.ts) — the browser only
+	// focuses a contenteditable when the mousedown target is inside it.
 	const onFocus = () => {
 		focusedRef.current = true;
 		setFocused(true);

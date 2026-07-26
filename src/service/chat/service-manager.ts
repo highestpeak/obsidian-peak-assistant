@@ -937,7 +937,13 @@ ${sourcesList}${topicsList}
 					allowedTools: [],
 					signal: opts?.signal,
 				}),
-				{ triggerName: opts?.triggerName as any },
+				// includePartialMessages is ALWAYS enabled in queryWithProfile, so the
+				// SDK streams incremental `stream_event` text deltas. Without this flag
+				// translateSdkMessage ALSO re-emits the final `assistant` message's full
+				// text block as one more text-delta — doubling the whole response
+				// (Composer polish, copilot single-turn actions, quick-search AI analysis).
+				// Every other agent-SDK stream consumer sets this; queryStream must too.
+				{ triggerName: opts?.triggerName as any, hasPartialMessages: true },
 			)) {
 				if (event.type === 'complete') {
 					capturedUsage = event.usage;

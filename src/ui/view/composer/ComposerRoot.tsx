@@ -45,6 +45,7 @@ import {
 import { BlockRail } from './chrome/BlockRail';
 import { BlockActionRow, type BlockPanelKind } from './chrome/BlockActionRow';
 import { EditableText } from './chrome/EditableText';
+import { forwardBlockClickToEditable } from './chrome/focusForwarding';
 import { EasyCopyMenu } from './chrome/EasyCopyMenu';
 import { CommentPanel, CommentCountChip } from './chrome/CommentPanel';
 import { BlockHistoryPanel } from './chrome/BlockHistoryPanel';
@@ -418,6 +419,12 @@ function ComposerBlockRow({
 			data-block-id={block.blockId}
 			data-folded={folded}
 			data-drop-before={dropBefore || undefined}
+			// FIX-1 F2: a mousedown in the row's dead zone (right of the text edge,
+			// rail gutter padding, run gaps) targets this WRAPPER, so the browser
+			// never focuses the contenteditable leaf — typing then goes to the
+			// workspace. Forward such clicks: focus the nearest leaf and place the
+			// caret at the closest text position (line-end for past-the-edge clicks).
+			onMouseDown={editing ? (ev) => forwardBlockClickToEditable(ev.currentTarget, ev) : undefined}
 		>
 			<BlockRail
 				folded={folded}

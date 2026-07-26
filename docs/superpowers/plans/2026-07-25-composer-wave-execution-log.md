@@ -206,3 +206,22 @@ Contract: [`2026-07-24-peak-composer-complete-implementation-handoff.md`](./2026
 ## 设计稿回归比对记录
 
 （每个 UI 类 WP 合并时追加：harness 截图 vs mock 截图逐项 匹配/接近/偏离 表；偏离项处理结果）
+
+### 2026-07-26 fable 首轮保真比对（owner 睡前指令：UI 尽可能还原设计稿，截图对比 + CSS 值级还原）
+
+mock 实测值（playwright getComputedStyle，复刻模式基准，修复时直接写死这些值）：
+
+| 元素 | mock 实测 | 生产现状 | 判定 |
+| --- | --- | --- | --- |
+| 页面底色 | `rgb(243,246,249)` | Obsidian 主题底 | **偏离**（Composer 视图内容区应铺 mock 灰底） |
+| 文档卡片 `.paper` | 868px 宽、padding `40px 64px 64px`、radius 8px、border `1px solid rgb(220,227,238)`、shadow `0 8px 24px rgba(31,42,61,.055)`、白底 | 无卡片容器，正文平铺 | **偏离（最大项）** |
+| 正文基准 | 14px、色 `rgb(23,32,51)`、块间距 margin-top 30px | 近似待校准 | 接近 |
+| Action row 外壳 `.aim` | 白底、radius 12px、border `1px solid rgb(229,231,235)`、shadow `0 4px 12px rgba(0,0,0,.1), 0 0 0 1px rgba(0,0,0,.04)`、h38、**锚定块底边**（row top ≈ block bottom − 3px，左对齐块） | 锚定块**顶部**上方 | **偏离** |
+| Row 按钮族 | h28 pill、font 11px、padding 0 7px、内容器 padding 4px 5px gap 2px | 28px pill（几何 QA 已锁） | 匹配 |
+| 块 hover tint | `rgba(37,99,235,.02)` 淡蓝 | 浅灰 | **偏离**（小） |
+| Frontmatter | 属性网格 + 来源 chips + 属性告警/AI 建议 pills | 原文 YAML mono 框 | 偏离（WP5 范围，登记不阻塞） |
+| 状态 chips（Decision·已确认 等） | 块上方 20-22px pill | 无（finding 层） | WP9b 范围 |
+| Sidecar | 右侧 Intelligence 面板 | 无 | WP9b 范围 |
+
+参考截图：`/tmp/composer-fidelity/mock-default.png`、`mock-action-row.png`（易失，harness shots 目录有生产侧对照）。
+处理：FIX-1 完成后派 FIX-2 保真代理修 4 个偏离项（卡片容器/灰底、row 锚定块底、hover tint、正文基准校准），复拍 harness 截图并排复比后合并。
