@@ -411,3 +411,141 @@ export const ComposerFormulaAnnotationPayloadSchema = z.object({
 	variables: z.array(ComposerFormulaVariableSchema).optional(),
 });
 export type ComposerFormulaAnnotationPayload = z.infer<typeof ComposerFormulaAnnotationPayloadSchema>;
+// ── WP7: image asset / annotation / layout payloads (additive) ───────────────
+// Result kinds `image-asset-candidate` / `image-annotation-patch` /
+// `image-layout-patch` are already declared in the frozen capabilityContracts.
+// These schemas are the payload validators the materializers / writeback
+// adapters / renderers share. Additive: nothing above changes shape.
+
+/** Supported deterministic export formats for the Converter (Canvas API only). */
+export const ComposerImageFormatSchema = z.enum(['image/png', 'image/jpeg', 'image/webp']);
+export type ComposerImageFormat = z.infer<typeof ComposerImageFormatSchema>;
+
+/** A rectangular crop expressed in SOURCE pixel coordinates. */
+export const ComposerImageCropRectSchema = z.object({
+	x: z.number().nonnegative(),
+	y: z.number().nonnegative(),
+	width: z.number().positive(),
+	height: z.number().positive(),
+});
+export type ComposerImageCropRect = z.infer<typeof ComposerImageCropRectSchema>;
+
+/** A polygon point (free-crop / lasso mask), in SOURCE pixel coordinates. */
+export const ComposerImagePointSchema = z.object({ x: z.number(), y: z.number() });
+
+/**
+ * A deterministic, non-destructive Converter transform. Every field is
+ * optional; an empty transform is the identity. Applied by the Canvas renderer
+ * (crop → rotate/straighten/flip → re-encode). Rotation is quarter-turns so the
+ * pure geometry stays integral and testable in node; straighten is a free angle
+ * applied in the browser renderer.
+ */
+export const ComposerImageTransformSchema = z
+	.object({
+		/** Rectangular crop in source pixels. */
+		crop: ComposerImageCropRectSchema.optional(),
+		/** Free-crop polygon (≥3 points); pixels outside are cleared via clip(). */
+		freeCropPath: z.array(ComposerImagePointSchema).min(3).optional(),
+		/** Quarter turns clockwise: 0..3. */
+		rotateQuarters: z.number().int().min(0).max(3).optional(),
+		/** Fine straighten angle in degrees (−45..45). */
+		straightenDegrees: z.number().min(-45).max(45).optional(),
+		flipHorizontal: z.boolean().optional(),
+		flipVertical: z.boolean().optional(),
+		format: ComposerImageFormatSchema.optional(),
+		/** Lossy quality 0..1 (JPEG/WebP only; ignored for PNG). */
+		quality: z.number().min(0).max(1).optional(),
+		/** Strip EXIF/metadata by re-encoding from the decoded pixels (always true in practice). */
+		stripMetadata: z.boolean().optional(),
+	})
+	.strict();
+export type ComposerImageTransform = z.infer<typeof ComposerImageTransformSchema>;
+
+/**
+ * A rename-review filename model: a list of candidate base names (no extension)
+ * the user can page through, plus the active index and the fixed extension.
+ */
+export const ComposerImageFileNameModelSchema = z.object({
+	versions: z.array(z.string().min(1)).min(1),
+	activeIndex: z.number().int().nonnegative(),
+	extension: z.string().min(1),
+});
+export type ComposerImageFileNameModel = z.infer<typeof ComposerImageFileNameModelSchema>;
+
+/** Why an image-asset candidate exists (drives the review affordances). */
+export const ComposerImageAssetIntentSchema = z.enum(['paste', 'ai-edit', 'convert']);
+export type ComposerImageAssetIntent = z.infer<typeof ComposerImageAssetIntentSchema>;
+
+/**
+ * Payload of an `image-asset-candidate` result: a proposed image asset (already
+ * written to the vault at `assetPath`) plus preview metadata and the rename
+ * model. `previewUri` is for on-screen preview ONLY (a vault resource path or a
+ * transient object URL) — it is never persisted into Markdown; the accepted
+ * document reference always points at the vault `assetPath`.
+ */
+export const ComposerImageAssetCandidatePayloadSchema = z.object({
+	intent: ComposerImageAssetIntentSchema,
+	/** Vault-relative path of the written asset (the reference target). */
+	assetPath: z.string().min(1),
+	/** Preview-only URI (resource path / object URL). Never written to Markdown. */
+	previewUri: z.string(),
+	mimeType: z.string().min(1),
+	width: z.number().int().nonnegative().optional(),
+	height: z.number().int().nonnegative().optional(),
+	/** Exact output byte size (== blob.size). */
+	byteSize: z.number().int().nonnegative().optional(),
+	altText: z.string().optional(),
+	/** Present for paste/convert intents that offer a semantic rename. */
+	fileName: ComposerImageFileNameModelSchema.optional(),
+});
+export type ComposerImageAssetCandidatePayload = z.infer<typeof ComposerImageAssetCandidatePayloadSchema>;
+
+/**
+ * Payload of an `image-annotation-patch` result (caption / alt text). Carries
+ * the human-readable caption for the renderer AND the fully-rebuilt block source
+ * so the writeback is one atomic `replaceRange` over the image block's range.
+ */
+export const ComposerImageAnnotationPatchPayloadSchema = z.object({
+	caption: z.string().optional(),
+	altText: z.string().optional(),
+	/** Full replacement source for the targeted image block. */
+	replacementText: z.string(),
+});
+export type ComposerImageAnnotationPatchPayload = z.infer<typeof ComposerImageAnnotationPatchPayloadSchema>;
+
+/** The four Markdown-embeddable multi-image layout modes. */
+export const ComposerImageLayoutModeSchema = z.enum(['row', 'grid', 'hero-thumbs', 'masonry']);
+export type ComposerImageLayoutMode = z.infer<typeof ComposerImageLayoutModeSchema>;
+
+export const ComposerImageLayoutAlignmentSchema = z.enum(['start', 'center', 'end', 'stretch']);
+
+/** One image in a multi-image layout. `path` is ALWAYS a vault attachment path — never base64. */
+export const ComposerImageLayoutItemSchema = z.object({
+	path: z.string().min(1),
+	alt: z.string().optional(),
+	caption: z.string().optional(),
+});
+export type ComposerImageLayoutItem = z.infer<typeof ComposerImageLayoutItemSchema>;
+
+/** A typed multi-image layout spec (source of the embedded HTML). */
+export const ComposerImageLayoutSpecSchema = z.object({
+	mode: ComposerImageLayoutModeSchema,
+	items: z.array(ComposerImageLayoutItemSchema).min(1),
+	/** Inter-image gap in px. */
+	gap: z.number().int().nonnegative().optional(),
+	/** Column count for grid/masonry (ignored for row/hero-thumbs). */
+	columns: z.number().int().positive().optional(),
+	alignment: ComposerImageLayoutAlignmentSchema.optional(),
+});
+export type ComposerImageLayoutSpec = z.infer<typeof ComposerImageLayoutSpecSchema>;
+
+/**
+ * Payload of an `image-layout-patch` result: the typed layout spec plus the
+ * rendered, Markdown-embeddable HTML block. The writeback replaces/inserts the
+ * HTML block; `html` is deterministically derived from `layout` (no base64).
+ */
+export const ComposerImageLayoutPatchPayloadSchema = z.object({
+	layout: ComposerImageLayoutSpecSchema,
+	html: z.string().min(1),
+});
+export type ComposerImageLayoutPatchPayload = z.infer<typeof ComposerImageLayoutPatchPayloadSchema>;

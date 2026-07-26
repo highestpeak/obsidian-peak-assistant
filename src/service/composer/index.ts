@@ -45,3 +45,7 @@ export * from './capabilities/packs/table';
 export * from './capabilities/packs/chart';
 // WP5 — frontmatter + math pack domain logic.
 export * from './packs';
+// WP7 — image pack (paste/rename transaction, converter geometry, caption,
+// multi-image layout, media-edit coordinator). Framework-neutral + node-tested.
+export * from './packs/image';
+export * from './capabilities/packs/image';

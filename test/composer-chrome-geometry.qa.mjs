@@ -70,6 +70,15 @@ async function openPage(theme) {
 	page.on('pageerror', (e) => errors.push(String(e)));
 	await page.goto(URL, { waitUntil: 'networkidle' });
 	await page.waitForSelector('.peak-composer-root .pk-composer-block');
+	// Async renderers (KaTeX math since WP5, lazy charts since WP6) grow their
+	// blocks after first paint; settle the document height before any geometry
+	// is measured so later "zero layout shift" deltas only see real shifts.
+	await page.waitForFunction(() => {
+		const h = document.body.scrollHeight;
+		if (window.__pkQaLastH === h) { window.__pkQaStable = (window.__pkQaStable ?? 0) + 1; } else { window.__pkQaStable = 0; }
+		window.__pkQaLastH = h;
+		return window.__pkQaStable >= 6; // ~6 rAF-ish polls of stability
+	}, { polling: 100, timeout: 15000 });
 	if (theme === 'light') {
 		await page.evaluate(() => {
 			document.body.classList.remove('theme-dark');

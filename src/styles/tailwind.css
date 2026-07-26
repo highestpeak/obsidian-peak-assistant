@@ -14,6 +14,7 @@
 @import "./composer-native.css";   /* Peak Composer native objects (WP8): code/mermaid/base/canvas/excalidraw/embed previews */
 @import "./composer-table.css";    /* Peak Composer table + chart blocks (WP6); scoped .peak-composer-root */
 @import "./composer-fm-math.css";  /* Peak Composer WP5 frontmatter grid + KaTeX math; scoped .peak-composer-root */
+@import "./composer-image.css";    /* Peak Composer image pack (WP7); scoped .peak-composer-root */
 @import "./peak-style-settings.css";
 @import "./obsidian-reset.css";
 @import "./codemirror.css";        /* Composer CM6 skin (.pktw-codemirror-custom) — was orphaned from the bundle; every rule here is scoped + !important-defended */
