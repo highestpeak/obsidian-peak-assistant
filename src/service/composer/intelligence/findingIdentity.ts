@@ -79,6 +79,13 @@ export class ComposerFindingStore {
 	/** dedup key → findingId, so ingest is O(1) and never forks. */
 	private readonly byDedupKey = new Map<string, string>();
 	private readonly subs = new Set<(findings: readonly SuggestionFinding[]) => void>();
+	/**
+	 * Cached immutable list, invalidated by {@link notify}. `list()` is used
+	 * directly as a `useSyncExternalStore` getSnapshot — it MUST return the same
+	 * reference until the store actually changes, or React loops on the "new"
+	 * snapshot every render (minified error #185, hit in real Obsidian).
+	 */
+	private cachedList: readonly SuggestionFinding[] | null = null;
 
 	/** Subscribe to the full finding list (fires immediately). */
 	subscribe(cb: (findings: readonly SuggestionFinding[]) => void): () => void {
@@ -87,9 +94,10 @@ export class ComposerFindingStore {
 		return () => this.subs.delete(cb);
 	}
 
-	/** All findings in insertion order (immutable copy). */
+	/** All findings in insertion order (immutable copy, referentially stable between mutations). */
 	list(): readonly SuggestionFinding[] {
-		return [...this.byId.values()];
+		if (!this.cachedList) this.cachedList = [...this.byId.values()];
+		return this.cachedList;
 	}
 
 	/**
@@ -228,6 +236,7 @@ export class ComposerFindingStore {
 	}
 
 	private notify(): void {
+		this.cachedList = null;
 		const snapshot = this.list();
 		for (const cb of this.subs) cb(snapshot);
 	}
