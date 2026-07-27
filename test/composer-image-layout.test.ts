@@ -14,6 +14,8 @@
 import { applyOperations, type ComposerResultEnvelope } from '@/core/composer';
 import {
 	renderLayoutHtml,
+	parsePeakImageLayout,
+	isPeakImageLayoutSource,
 	isLayoutBlockSource,
 	planLayoutInsert,
 	planLayoutReplace,
@@ -68,6 +70,42 @@ function testEscaping(): void {
 	});
 	check('escape: alt attr escaped', html.includes('&amp;') && html.includes('&quot;') && html.includes('&lt;b&gt;'));
 	check('escape: caption text escaped', html.includes('x &lt; y &amp; z'));
+}
+
+// ── peak fixture parser / source guard ────────────────────────────────────────
+
+const PEAK_FIGURE_LAYOUT = `
+<div class="peak-image-layout" data-layout="hero">
+  <figure><img src="a.png" alt="A"><figcaption>Alpha</figcaption></figure>
+  <figure><img src="b.png" alt="B"><figcaption>Beta</figcaption></figure>
+  <figure><img src="c.png" alt="C"><figcaption>Gamma</figcaption></figure>
+  <figure><img src="d.png" alt="D"><figcaption>Delta</figcaption></figure>
+</div>`;
+
+function testPeakLayoutContract(): void {
+	const parsed = parsePeakImageLayout(PEAK_FIGURE_LAYOUT);
+	check('peak layout: parser accepts exact contract', parsed !== null);
+	check('peak layout: kind is hero', parsed?.kind === 'hero');
+	check('peak layout: exactly 4 figures', parsed?.items.length === 4);
+	check('peak layout: decoded paths', parsed?.items[0]?.src === 'a.png' && parsed?.items[3]?.src === 'd.png');
+	check('peak layout: decoded alt/caption', parsed?.items[0]?.alt === 'A' && parsed?.items[1]?.caption === 'Beta');
+	check('peak layout source guard true', isPeakImageLayoutSource(PEAK_FIGURE_LAYOUT));
+	check('peak layout source guard rejects mixed html', !isPeakImageLayoutSource('<div class="peak-image-layout" data-layout="hero"><figure><img src="a.png"><figcaption>a</figcaption></figure><figure><img src="b.png"><figcaption>b</figcaption></figure></div>'));
+	check('peak layout source guard rejects missing data-layout', !isPeakImageLayoutSource('<div class="peak-image-layout"><figure><img src="a.png"><figcaption>a</figcaption></figure><figure><img src="b.png"><figcaption>b</figcaption></figure><figure><img src="c.png"><figcaption>c</figcaption></figure><figure><img src="d.png"><figcaption>d</figcaption></figure></div>'));
+}
+
+function testLayoutRenderContract(): void {
+	const html = renderLayoutHtml({
+		mode: 'hero-thumbs',
+		items: [
+			{ path: 'Attachments/a.png', alt: 'A', caption: 'Alpha' },
+			{ path: 'Attachments/b.png', alt: 'B', caption: 'Beta' },
+			{ path: 'Attachments/c.png', alt: 'C', caption: 'Gamma' },
+			{ path: 'Attachments/d.png', alt: 'D', caption: 'Delta' },
+		],
+	});
+	check('hero-thumbs html contains 4 images', (html.match(/<img /g) ?? []).length === 4);
+	check('hero-thumbs html preserves contract marker', html.includes('data-pk-layout="hero-thumbs"'));
 }
 
 // ── block ops ─────────────────────────────────────────────────────────────────
@@ -181,6 +219,8 @@ async function testSmartLayout(): Promise<void> {
 async function main(): Promise<void> {
 	testRenderModes();
 	testEscaping();
+	testPeakLayoutContract();
+	testLayoutRenderContract();
 	testInsertReplacePlanners();
 	await testReplacePlanner();
 	await testCommitLayout();

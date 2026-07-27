@@ -136,14 +136,17 @@ export class DocumentComposerRuntime {
 		// so image commits land in the same History / Undo timeline. App-owned.
 		const imageCoordinator = this.imagePorts
 			? new ImageCapabilityCoordinator({
-					session,
-					hub,
-					attachment: this.imagePorts.attachment,
-					reference: this.imagePorts.reference,
-					edit: this.imagePorts.edit,
-					...(this.imagePorts.text ? { text: this.imagePorts.text } : {}),
-					...(this.imagePorts.config ? { config: this.imagePorts.config } : {}),
-				})
+				session,
+				hub,
+				attachment: this.imagePorts.attachment,
+				reference: this.imagePorts.reference,
+				edit: this.imagePorts.edit,
+				...(this.imagePorts.text ? { text: this.imagePorts.text } : {}),
+				...(this.imagePorts.config ? { config: this.imagePorts.config } : {}),
+			})
+			: undefined;
+		const imagePreviewResolver = this.imagePorts
+			? (path: string) => this.imagePorts!.attachment.previewUri(path)
 			: undefined;
 		// WP9 — one Intelligence runtime per document, bound to this hub for the
 		// accepted-change → History receipt bridge. App-owned (no singleton).
@@ -163,6 +166,7 @@ export class DocumentComposerRuntime {
 			...(capabilityRuntime ? { projection: capabilityRuntime, candidateRuntime: capabilityRuntime } : {}),
 			...(imageCoordinator ? { imageCoordinator } : {}),
 			...(this.nativePreviewPort ? { nativePreviewPort: this.nativePreviewPort } : {}),
+			...(imagePreviewResolver ? { imagePreviewResolver } : {}),
 		};
 	}
 

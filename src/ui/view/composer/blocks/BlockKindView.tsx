@@ -9,6 +9,8 @@ import { ExcalidrawBlockView } from './excalidraw/ExcalidrawBlockView';
 import { EmbedBlockView } from './embed/EmbedBlockView';
 import { TableBlockView } from './table/TableBlockView';
 import { ChartBlockView, isChartBlock } from './chart/ChartBlockView';
+import { isPeakImageLayoutSource } from '@/service/composer';
+import { PeakImageLayoutBlockView } from './image/PeakImageLayoutBlockView';
 import { ConnectedFrontmatterBlockView } from './frontmatter';
 import { MathBlockView } from './math';
 import { useComposerChrome } from '../chrome/ComposerChromeContext';
@@ -48,6 +50,12 @@ export function BlockKindView({ block }: { block: ComposerBlock }): React.ReactE
 			return <EmbedBlockView block={block} />;
 		case 'image':
 			return <RefView block={block} />;
+		case 'html':
+			return isPeakImageLayoutSource(block.renderModel.raw) ? (
+				<PeakImageLayoutBlockView block={block} editing={false} />
+			) : (
+				<MonoView block={block} />
+			);
 		case 'table':
 			return <TableBlockView block={block} />;
 		// WP5 — rich block views (property grid / KaTeX). Interactive AI + vault

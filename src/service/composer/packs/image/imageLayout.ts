@@ -29,6 +29,95 @@ const DEFAULT_LAYOUT = DEFAULT_IMAGE_DOMAIN_CONFIG.layout;
 /** Marker attribute identifying a composer-owned layout block. */
 export const LAYOUT_MARKER_ATTR = 'data-pk-layout';
 
+/** Peak fixture contract (production layout renderer path). */
+export const PEAK_IMAGE_LAYOUT_CLASS = 'peak-image-layout';
+export const PEAK_IMAGE_LAYOUT_DATA_LAYOUT = 'data-layout';
+export const PEAK_IMAGE_LAYOUT_DATA_VALUE = 'hero';
+
+export interface ParsedPeakLayoutFigure {
+	src: string;
+	alt: string;
+	caption: string;
+}
+
+export interface ParsedPeakImageLayout {
+	kind: 'hero';
+	items: [ParsedPeakLayoutFigure, ParsedPeakLayoutFigure, ParsedPeakLayoutFigure, ParsedPeakLayoutFigure];
+}
+
+function decodePeakLayoutText(value: string): string {
+	return value.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+}
+
+function htmlAttr(attrs: string, name: string): string | null {
+	const re = new RegExp(`${name}\\s*=\\s*(["'])(.*?)\\1`, 'i');
+	const m = attrs.match(re);
+	return m ? m[2] : null;
+}
+
+function hasClassToken(attrs: string, token: string): boolean {
+	const raw = htmlAttr(attrs, 'class');
+	if (!raw) return false;
+	return raw.split(/\s+/).some((part) => part === token);
+}
+
+function parsePeakImageLayoutFigure(rawFigure: string): ParsedPeakLayoutFigure | null {
+	const figureMatch = rawFigure.match(/^\s*<figure\b[^>]*>([\s\S]*?)<\/figure>\s*$/i);
+	if (!figureMatch) return null;
+	const inner = figureMatch[1];
+
+	const imgMatches = inner.match(/<img\b[^>]*>/gi) ?? [];
+	if (imgMatches.length !== 1) return null;
+	const figMatches = inner.match(/<figcaption\b[^>]*>[\s\S]*?<\/figcaption>/gi) ?? [];
+	if (figMatches.length !== 1) return null;
+
+	const imgMatch = imgMatches[0];
+	const imgAttrs = imgMatch.replace(/^<img/i, '').replace(/>$/, '');
+	const src = htmlAttr(imgAttrs, 'src');
+	if (!src || src.trim().length === 0) return null;
+
+	const alt = htmlAttr(imgAttrs, 'alt') ?? '';
+	const captionMatch = figMatches[0].match(/<figcaption\b[^>]*>([\s\S]*?)<\/figcaption>/i);
+	if (!captionMatch) return null;
+
+	// Figure content must be exactly one image + one caption, nothing else.
+	const withoutFigCaption = inner.replace(imgMatch, '').replace(figMatches[0], '').trim();
+	if (withoutFigCaption.length > 0) return null;
+
+	return {
+		src: decodePeakLayoutText(src.trim()),
+		alt: decodePeakLayoutText(alt.trim()),
+		caption: decodePeakLayoutText(captionMatch[1].trim()),
+	};
+}
+
+/** Parse the exact fixture contract: `<div class="peak-image-layout" data-layout="hero">`. */
+export function parsePeakImageLayout(raw: string): ParsedPeakImageLayout | null {
+	const containerMatch = raw.match(/^\s*<div\b([^>]*)>([\s\S]*?)<\/div>\s*$/i);
+	if (!containerMatch) return null;
+	const attrText = containerMatch[1];
+	if (!hasClassToken(attrText, PEAK_IMAGE_LAYOUT_CLASS)) return null;
+	const layout = htmlAttr(attrText, PEAK_IMAGE_LAYOUT_DATA_LAYOUT);
+	if (!layout || layout !== PEAK_IMAGE_LAYOUT_DATA_VALUE) return null;
+
+	const inner = containerMatch[2];
+	const figureMatch = inner.match(/<figure\b[^>]*>[\s\S]*?<\/figure>/gi) ?? [];
+	if (figureMatch.length !== 4) return null;
+
+	// Reject any non-whitespace, non-figure content outside the four figures.
+	const remainder = inner.replace(/<figure\b[^>]*>[\s\S]*?<\/figure>/gi, '').trim();
+	if (remainder.length > 0) return null;
+
+	const items = figureMatch.map((rawFigure) => parsePeakImageLayoutFigure(rawFigure));
+	if (items.some((item) => !item)) return null;
+	return { kind: 'hero', items: items as [ParsedPeakLayoutFigure, ParsedPeakLayoutFigure, ParsedPeakLayoutFigure, ParsedPeakLayoutFigure] };
+}
+
+/** Type guard for the current fixture contract. */
+export function isPeakImageLayoutSource(raw: string): boolean {
+	return parsePeakImageLayout(raw) !== null;
+}
+
 /** Escape a string for an HTML attribute value (structural, not i18n). */
 function escapeAttr(value: string): string {
 	return value

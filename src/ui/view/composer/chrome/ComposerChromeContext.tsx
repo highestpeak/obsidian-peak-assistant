@@ -52,6 +52,11 @@ export interface ComposerChromeRuntime {
 	imageCoordinator?: ImageCapabilityCoordinator;
 	/** Native preview loader for `.base`, `.canvas` and `.excalidraw.md` embeds. */
 	nativePreviewPort?: ComposerNativePreviewPort;
+	/**
+	 * App-owned preview URI resolver for image rendering, bound by app runtime via
+	 * `DocumentComposerRuntime.composeEditing`. UI never resolves Obsidian paths.
+	 */
+	imagePreviewResolver?: (path: string) => string;
 }
 
 export interface ComposerChromeValue {
