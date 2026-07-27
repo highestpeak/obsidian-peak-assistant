@@ -6,10 +6,13 @@ import type {
 	ComposerRelatedMaterialSnapshot,
 	RelatedPreviewNode,
 	SuggestionFinding,
+	IntelligenceRuntime,
 } from '@/service/composer';
 import { selectLocalPreview } from '@/service/composer';
+import { Button } from '@/ui/component/shared-ui/button';
 import { PromptInput, PromptInputBody, PromptInputAttachments } from '@/ui/component/prompt-input';
 import { cn } from '@/ui/react/lib/utils';
+import type { SidecarConfig } from './sidecarConfig';
 import { useSidecar, useFindings, useSessionProjection } from './SidecarContext';
 import { RunReceiptCard } from './RunReceiptCard';
 import { RelatedMaterialsModal } from './RelatedMaterialsModal';
@@ -32,9 +35,7 @@ export function CopilotView(): React.ReactElement {
 
 export function BriefView(): React.ReactElement {
 	const { runtime, config, onLocate, onOpenSource } = useSidecar();
-	const s = config.strings;
 	const findings = useFindings(runtime);
-	const active = findings.filter((f) => f.state === 'active' || f.state === 'stale');
 	const [related, setRelated] = React.useState<ComposerRelatedMaterialSnapshot | null>(null);
 	const [relatedReloadToken, setRelatedReloadToken] = React.useState(0);
 	const [modalOpen, setModalOpen] = React.useState(false);
@@ -42,6 +43,52 @@ export function BriefView(): React.ReactElement {
 		setRelatedReloadToken((n) => n + 1);
 	}, []);
 
+	return (
+		<>
+			<BriefViewContent
+				config={config}
+				findings={findings}
+				modalOpen={modalOpen}
+				onLocate={onLocate}
+				onOpenSource={onOpenSource}
+				onRefreshRelated={onRefreshRelated}
+				related={related}
+				relatedPortAvailable={Boolean(runtime.related)}
+				setModalOpen={setModalOpen}
+				runtime={runtime}
+			/>
+			<RelatedLoader onLoaded={setRelated} reloadToken={relatedReloadToken} />
+		</>
+	);
+}
+
+export interface BriefViewContentProps {
+	config: Pick<SidecarConfig, 'strings' | 'relatedPreviewCap'>;
+	findings: readonly SuggestionFinding[];
+	modalOpen: boolean;
+	onLocate?: (blockId: string) => void;
+	onOpenSource?: (path: string) => void;
+	onRefreshRelated: () => void;
+	related: ComposerRelatedMaterialSnapshot | null;
+	relatedPortAvailable: boolean;
+	setModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
+	runtime: Pick<IntelligenceRuntime, 'session' | 'dismissFinding'>;
+}
+
+export function BriefViewContent({
+	config,
+	findings,
+	modalOpen,
+	onLocate,
+	onOpenSource,
+	onRefreshRelated,
+	related,
+	relatedPortAvailable,
+	setModalOpen,
+	runtime,
+}: BriefViewContentProps): React.ReactElement {
+	const s = config.strings;
+	const active = findings.filter((f) => f.state === 'active' || f.state === 'stale');
 	const preview: readonly RelatedPreviewNode[] = React.useMemo(
 		() => (related ? selectLocalPreview(related, config.relatedPreviewCap) : []),
 		[related, config.relatedPreviewCap],
@@ -57,9 +104,11 @@ export function BriefView(): React.ReactElement {
 				<div className="pk-brief-meta" aria-label={s.briefHeading}>
 					{active.length > 0 && <span className="pk-status-chip">{`${s.sectionNextMoves} ${active.length}`}</span>}
 					{relatedCount > 0 && <span className="pk-status-chip">{`${s.sectionRelated} ${relatedCount}`}</span>}
-					<button type="button" className="pk-chip-btn" onClick={onRefreshRelated}>
-						{s.refreshBrief}
-					</button>
+					{relatedPortAvailable && (
+						<Button type="button" variant="ghost" size="xs" className="pk-chip-btn" onClick={onRefreshRelated}>
+							{s.refreshRelated}
+						</Button>
+					)}
 				</div>
 			</header>
 
@@ -105,8 +154,6 @@ export function BriefView(): React.ReactElement {
 							</button>
 						)}
 					</BriefSection>
-
-					<BriefSection title={s.sectionUnplaced} count={0} />
 				</>
 			) : (
 				<div className="pk-brief-empty-state" role="status">
@@ -118,8 +165,6 @@ export function BriefView(): React.ReactElement {
 			{modalOpen && related && (
 				<RelatedMaterialsModal snapshot={related} onClose={() => setModalOpen(false)} />
 			)}
-			{/* Related snapshot is fetched lazily from the app-owned port; absent in the harness. */}
-			<RelatedLoader onLoaded={setRelated} reloadToken={relatedReloadToken} />
 		</div>
 	);
 }
@@ -173,7 +218,10 @@ function BriefSection({
 	title: string;
 	count: number;
 	children: React.ReactNode;
-}): React.ReactElement {
+}): React.ReactElement | null {
+	if (count <= 0) {
+		return null;
+	}
 	return (
 		<section className="pk-brief-section">
 			<div className="pk-brief-section-head">

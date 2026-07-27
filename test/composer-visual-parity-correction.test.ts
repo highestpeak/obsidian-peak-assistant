@@ -2,11 +2,10 @@ import assert from 'assert';
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ComposerRoot } from '@/ui/view/composer/ComposerRoot';
-import { BriefView } from '@/ui/view/composer/sidecar/CopilotView';
-import { SidecarProvider } from '@/ui/view/composer/sidecar/SidecarContext';
+import { BriefViewContent, type BriefViewContentProps } from '@/ui/view/composer/sidecar/CopilotView';
 import { DEFAULT_SIDECAR_CONFIG } from '@/ui/view/composer/sidecar/sidecarConfig';
 import { resolveSidecarHostMode, resolveSidecarMode, SidecarOpenButton } from '@/ui/view/composer/sidecar/IntelligenceSidecar';
-import { IntelligenceRuntime } from '@/service/composer';
+import { buildRelatedSnapshot, IntelligenceRuntime } from '@/service/composer';
 import { hasReviewableCandidates } from '@/ui/view/composer/chrome/UndoRedoBar';
 import type { ComposerStateSource, DocumentComposerState } from '@/core/composer';
 import { FakeVault, makeHub, openSession } from './helpers/composer-fakes';
@@ -47,14 +46,38 @@ function makeRuntime(): IntelligenceRuntime {
 	return new IntelligenceRuntime({ hub: { on: () => () => undefined } as never });
 }
 
-function renderBrief(runtime: IntelligenceRuntime): string {
-	return renderToStaticMarkup(
-		React.createElement(
-			SidecarProvider,
-			{ value: { runtime, config: DEFAULT_SIDECAR_CONFIG } },
-			React.createElement(BriefView),
-		),
-	);
+function renderBriefContent(props: Partial<BriefViewContentProps> & Pick<BriefViewContentProps, 'runtime'>): string {
+	const fullProps: BriefViewContentProps = {
+		config: DEFAULT_SIDECAR_CONFIG,
+		findings: [],
+		modalOpen: false,
+		onLocate: undefined,
+		onOpenSource: undefined,
+		onRefreshRelated: () => undefined,
+		related: null,
+		relatedPortAvailable: false,
+		setModalOpen: () => undefined,
+		...props,
+	};
+	return renderToStaticMarkup(React.createElement(BriefViewContent, fullProps));
+}
+
+function makeRelatedSnapshot() {
+	return buildRelatedSnapshot({
+		focus: { anchorId: 'para-1', rootNodeId: 'doc.md' },
+		revision: 'rev-1',
+		items: [
+			{
+				id: 'related-1',
+				type: 'markdown',
+				title: 'Related item',
+				path: 'notes/related-item.md',
+				lastModified: 0,
+				finalScore: 0.9,
+			},
+		],
+		graphNodeCap: 1,
+	});
 }
 
 check('document paper starts with content, not decorative file metadata header', () => {
@@ -91,15 +114,27 @@ check('sidecar mode resolves from actual host width, not sidecar column or windo
 	assert.equal(resolveSidecarHostMode(sidecar, 1180), 'drawer');
 });
 
-check('all-empty Brief renders one consolidated empty state, not three repeated rows', () => {
-	const html = renderBrief(makeRuntime());
+check('all-empty Brief with no related port renders one consolidated empty state and no refresh', () => {
+	const html = renderBriefContent({
+		runtime: makeRuntime() as never,
+	});
 	assert.equal(count(html, DEFAULT_SIDECAR_CONFIG.strings.emptyBrief), 1);
 	assert.equal(count(html, 'class="pk-brief-section"'), 0);
 	assert.ok(html.includes('pk-brief-empty-state'));
-	assert.ok(html.includes(DEFAULT_SIDECAR_CONFIG.strings.refreshBrief));
+	assert.equal(html.includes(DEFAULT_SIDECAR_CONFIG.strings.refreshRelated), false);
 });
 
-check('populated Brief keeps the three semantic sections without invented empty rows', () => {
+check('empty Brief with related port shows refreshRelated and still no sections', () => {
+	const html = renderBriefContent({
+		runtime: makeRuntime() as never,
+		relatedPortAvailable: true,
+	});
+	assert.equal(html.includes(DEFAULT_SIDECAR_CONFIG.strings.refreshRelated), true);
+	assert.equal(count(html, 'class="pk-brief-section"'), 0);
+	assert.equal(count(html, DEFAULT_SIDECAR_CONFIG.strings.emptyBrief), 1);
+});
+
+check('only finding renders Next Moves and nothing else', () => {
 	const runtime = makeRuntime();
 	runtime.ingestFinding({
 		fingerprint: 'fp-1',
@@ -108,20 +143,32 @@ check('populated Brief keeps the three semantic sections without invented empty 
 		reason: '真实 finding reason',
 		capabilityId: 'composer.prose.polish',
 	});
-	const html = renderBrief(runtime);
-	assert.equal(count(html, 'class="pk-brief-section"'), 3);
+	const html = renderBriefContent({
+		runtime: runtime as never,
+		findings: runtime.findings.list(),
+	});
+	assert.equal(count(html, 'class="pk-brief-section"'), 1);
 	assert.ok(html.includes(DEFAULT_SIDECAR_CONFIG.strings.sectionNextMoves));
-	assert.ok(html.includes(DEFAULT_SIDECAR_CONFIG.strings.sectionRelated));
-	assert.ok(html.includes(DEFAULT_SIDECAR_CONFIG.strings.sectionUnplaced));
+	assert.equal(html.includes('<span class="pk-brief-section-title">相关材料</span>'), false);
+	assert.equal(html.includes('<span class="pk-brief-section-title">还没安放的想法</span>'), false);
 	assert.ok(html.includes('真实 finding reason'));
 	assert.equal(html.includes(DEFAULT_SIDECAR_CONFIG.strings.emptyBrief), false);
+	assert.equal(html.includes(DEFAULT_SIDECAR_CONFIG.strings.refreshRelated), false);
 });
 
-check('refresh action remains available in empty brief to retrigger related-material runtime', () => {
-	const html = renderBrief(makeRuntime());
-	const updateAction = DEFAULT_SIDECAR_CONFIG.strings.refreshBrief;
-	const marker = `>${updateAction}</button>`;
-	assert.equal(html.includes(marker), true, 'empty brief should show refresh action and keep source-backed behavior');
+check('only related renders Related and nothing else', () => {
+	const html = renderBriefContent({
+		runtime: makeRuntime() as never,
+		findings: [],
+		related: makeRelatedSnapshot(),
+		relatedPortAvailable: true,
+	});
+	assert.equal(count(html, 'class="pk-brief-section"'), 1);
+	assert.equal(html.includes('<span class="pk-brief-section-title">相关材料</span>'), true);
+	assert.equal(html.includes('<span class="pk-brief-section-title">接下来可能要做</span>'), false);
+	assert.equal(html.includes('<span class="pk-brief-section-title">还没安放的想法</span>'), false);
+	assert.equal(html.includes(DEFAULT_SIDECAR_CONFIG.strings.emptyBrief), false);
+	assert.equal(html.includes(DEFAULT_SIDECAR_CONFIG.strings.refreshRelated), true);
 });
 
 check('closed sidecar entry renders a restrained visible Intelligence Button', () => {

@@ -26,7 +26,7 @@ export interface SidecarStrings {
 	sectionRelated: string;
 	sectionUnplaced: string;
 	whyRanked: string;
-	refreshBrief: string;
+	refreshRelated: string;
 	viewSource: string;
 	bringIntoSession: string;
 	openFullView: string;
@@ -87,7 +87,7 @@ export const DEFAULT_SIDECAR_CONFIG: SidecarConfig = {
 		sectionRelated: '相关材料',
 		sectionUnplaced: '还没安放的想法',
 		whyRanked: '为什么这些排在前面？',
-		refreshBrief: '更新建议',
+		refreshRelated: '更新相关材料',
 		viewSource: '查看来源',
 		bringIntoSession: '带入协作',
 		openFullView: '打开完整视图',
@@ -105,8 +105,8 @@ export const DEFAULT_SIDECAR_CONFIG: SidecarConfig = {
 		staleFindingNotice: '证据已随正文变化，需要重新核对',
 		historyEmpty: '还没有已接受的写入',
 		reviewClose: '完成审阅',
-		emptyBrief: '暂无新的建议',
-		emptyBriefBody: '当前还没有可展示的建议，先完成正文定位再主动向 Copilot 询问。',
+		emptyBrief: '暂无新项目',
+		emptyBriefBody: '当前没有来自已接入数据源的新项目。你可以继续写作，或主动问 Copilot。',
 	},
 };
 
