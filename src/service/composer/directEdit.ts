@@ -24,6 +24,12 @@ export interface DirectEditRange {
 	/** Current source slice at [from,to) — used to skip no-op flushes. */
 	current: string;
 	target?: ComposerTarget;
+	/**
+	 * Optional source serializer for a visual editing leaf. Most leaves expose
+	 * their source verbatim, but structured Markdown shells may hide syntax
+	 * which has to be restored before the transaction is committed.
+	 */
+	normalizeInput?: (text: string) => string;
 }
 
 export interface DirectEditDeps {
@@ -102,12 +108,13 @@ export class DirectEditController {
 	private async commit(text: string): Promise<void> {
 		const range = this.deps.resolveRange();
 		if (!range) return;
-		if (range.current === text) return; // no-op burst
+		const sourceText = range.normalizeInput?.(text) ?? text;
+		if (range.current === sourceText) return; // no-op burst
 		try {
 			await this.deps.hub.commit({
 				origin: 'direct',
 				label: this.deps.label,
-				operations: [{ kind: 'replaceRange', from: range.from, to: range.to, text }],
+				operations: [{ kind: 'replaceRange', from: range.from, to: range.to, text: sourceText }],
 				target: range.target,
 				groupId: this.groupId ?? undefined,
 			});

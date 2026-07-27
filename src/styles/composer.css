@@ -29,6 +29,12 @@
 	--pkc-h3-size: 18px;
 	--pkc-h3-weight: 720;
 	--pkc-prose-size: 15px;
+	/* Callouts intentionally retain the reference's calm blue family rather
+	   than inheriting the product-wide purple accent. */
+	--pkc-callout-border: rgb(191, 208, 251);
+	--pkc-callout-bg: rgb(247, 250, 255);
+	--pkc-callout-divider: rgb(213, 224, 255);
+	--pkc-callout-accent: rgb(37, 99, 235);
 	--pkc-block-hover-bg: rgba(37, 99, 235, 0.02);
 	--pkc-block-hover-shadow: 0 0 0 5px rgba(37, 99, 235, 0.022),
 		0 0 0 6px rgba(37, 99, 235, 0.12), 0 8px 18px rgba(37, 99, 235, 0.045);
@@ -52,6 +58,10 @@
 	--pkc-paper-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 	--pkc-text: var(--pk-text-primary);
 	--pkc-prose: var(--pk-text-primary);
+	--pkc-callout-border: var(--pk-border-accent);
+	--pkc-callout-bg: var(--pk-bg-secondary);
+	--pkc-callout-divider: var(--pk-border);
+	--pkc-callout-accent: var(--pk-accent);
 	--pkc-block-hover-bg: var(--pk-accent-tint);
 	--pkc-block-hover-shadow: 0 0 0 1px var(--pk-border-accent), 0 8px 18px rgba(0, 0, 0, 0.35);
 }
@@ -753,6 +763,43 @@
 	border-left: 3px solid var(--pk-border-strong);
 	padding-left: var(--pk-space-3);
 	color: var(--pk-fg-muted);
+}
+.peak-composer-root .pk-composer-callout {
+	overflow: hidden;
+	border: 1px solid var(--pkc-callout-border);
+	border-radius: var(--pk-radius-md);
+	background: var(--pkc-callout-bg);
+	color: var(--pkc-prose);
+}
+.peak-composer-root .pk-composer-callout__title {
+	display: flex;
+	align-items: center;
+	gap: var(--pk-space-2);
+	min-height: 41px;
+	padding: 10px 12px;
+	border-bottom: 1px solid var(--pkc-callout-divider);
+	color: var(--pkc-callout-accent);
+	font-size: 14px;
+	font-weight: 700;
+	line-height: 1.35;
+}
+.peak-composer-root .pk-composer-callout__icon {
+	flex: none;
+}
+.peak-composer-root .pk-composer-callout__title-text {
+	min-width: 0;
+	flex: 1;
+}
+.peak-composer-root .pk-composer-callout__body {
+	display: grid;
+	gap: 2px;
+	padding: 12px;
+}
+.peak-composer-root .pk-composer-callout__body-text {
+	min-height: 1.82em;
+	color: var(--pkc-prose);
+	font-size: var(--pkc-prose-size);
+	line-height: 1.82;
 }
 .peak-composer-root .pk-composer-list__row {
 	display: flex;

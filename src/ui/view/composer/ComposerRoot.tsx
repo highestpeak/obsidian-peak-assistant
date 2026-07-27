@@ -32,6 +32,7 @@ import {
 } from '@/ui/view/composer/config/composerConfig';
 import { createComposerFoldStore, type ComposerFoldStore } from './foldStore';
 import { BlockKindView } from './blocks/BlockKindView';
+import { CalloutBlockView } from './blocks/callout/CalloutBlockView';
 import { AddFrontmatterEntry } from './blocks/frontmatter';
 import {
 	ComposerCandidateHost,
@@ -606,6 +607,9 @@ function BlockBody({
 }): React.ReactElement {
 	if (block.kind === 'list' || block.kind === 'task') {
 		return <EditableListBody block={block} snapshot={snapshot} editing={editing} />;
+	}
+	if (block.kind === 'callout') {
+		return <CalloutBlockView block={block} snapshot={snapshot} editing={editing} />;
 	}
 	if (TEXT_EDIT_KINDS.has(block.kind)) {
 		return <EditableTextBody block={block} snapshot={snapshot} editing={editing} />;
