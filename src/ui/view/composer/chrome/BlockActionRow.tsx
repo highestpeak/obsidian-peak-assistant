@@ -1,6 +1,7 @@
 import * as React from 'react';
-import { History as HistoryIcon, MessageSquare, Plus, Copy, Sparkles, Terminal } from 'lucide-react';
+import { CornerDownLeft, History as HistoryIcon, MessageSquare, Plus, Copy, Sparkles, Terminal, X } from 'lucide-react';
 import type { ComposerActionDescriptor, ComposerContextSnapshot } from '@/core/composer';
+import { Button, IconButton } from '@/ui/components/primitives';
 import { useComposerChrome } from './ComposerChromeContext';
 
 /**
@@ -41,99 +42,140 @@ export function BlockActionRow({
 	const aiActions = projection.actionsFor(snapshot, 'block-row');
 	const hasInstruction = aiActions.some((d) => d.acceptsInstruction && !d.disabledReason);
 	const [instruction, setInstruction] = React.useState('');
+	const inputRef = React.useRef<HTMLInputElement | null>(null);
+	const instructionOpen = openPanel === 'instruction';
+	const actionTabIndex = instructionOpen ? -1 : 0;
+	React.useEffect(() => {
+		if (!instructionOpen) {
+			setInstruction('');
+			if (inputRef.current === inputRef.current?.ownerDocument.activeElement) inputRef.current.blur();
+			return;
+		}
+		const frame = requestAnimationFrame(() => inputRef.current?.focus());
+		return () => cancelAnimationFrame(frame);
+	}, [instructionOpen]);
+	const closeInstruction = () => {
+		setInstruction('');
+		onOpenPanel('instruction');
+	};
+	const submitInstruction = () => {
+		const target = aiActions.find((d) => d.acceptsInstruction && !d.disabledReason);
+		if (target && instruction.trim()) onInvoke(target, instruction.trim());
+		closeInstruction();
+	};
 
-	if (openPanel === 'instruction') {
-		return (
-			<div className="pk-block-action-row is-instruction" data-chrome="true" role="toolbar" aria-label={a.instruction}>
-				<Terminal size={13} className="pk-block-action-row__spark" />
+	return (
+		<div
+			className="pk-block-action-row"
+			data-chrome="true"
+			data-mode={instructionOpen ? 'instruction' : 'actions'}
+		>
+			<div
+				className="pk-block-action-row__shell"
+				role="toolbar"
+				aria-label={instructionOpen ? a.instruction : 'Block actions'}
+			>
+			<span className="pk-block-action-row__options" aria-hidden={instructionOpen || undefined}>
+				<span className="pk-action-core">
+					<CapsuleButton
+						label={a.insertBelow}
+						icon={<Plus size={13} />}
+						disabled={!onInsertBelow}
+						disabledReason={writeDisabledReason}
+						onClick={onInsertBelow}
+						tabIndex={actionTabIndex}
+						data-action="insert"
+					/>
+					<CapsuleButton
+						label={a.copy}
+						icon={<Copy size={13} />}
+						onClick={() => onOpenPanel('copy')}
+						tabIndex={actionTabIndex}
+						data-action="easy-copy"
+					/>
+					<CapsuleButton
+						label={a.comment}
+						icon={<MessageSquare size={13} />}
+						disabled={!canComment}
+						disabledReason={writeDisabledReason}
+						onClick={() => onOpenPanel('comment')}
+						tabIndex={actionTabIndex}
+						data-action="comment"
+					/>
+				</span>
+				{aiActions.length > 0 && (
+					<>
+						<span className="pk-action-divider" role="separator" />
+						<span className="pk-action-ai">
+							<Sparkles size={13} className="pk-block-action-row__spark" aria-hidden />
+							{aiActions.map((d) => (
+								<CapsuleButton
+									key={d.capabilityId}
+									label={d.title}
+									disabled={Boolean(d.disabledReason)}
+									disabledReason={d.disabledReason}
+									onClick={() => onInvoke(d)}
+									tabIndex={actionTabIndex}
+									data-ai-quick={d.title}
+								/>
+							))}
+						</span>
+					</>
+				)}
+				<span className="pk-action-divider" role="separator" />
+				<span className="pk-action-tail">
+					<IconButton
+						label={a.history}
+						className="pk-action-capsule pk-action-history"
+						tabIndex={actionTabIndex}
+						onClick={() => onOpenPanel('history')}
+					>
+						<HistoryIcon size={13} />
+					</IconButton>
+					{hasInstruction && (
+						<CapsuleButton
+							label={a.instruction}
+							icon={<Terminal size={13} />}
+							onClick={() => onOpenPanel('instruction')}
+							tabIndex={actionTabIndex}
+						/>
+					)}
+				</span>
+			</span>
+			<span className="pk-block-action-row__instruction-shell" aria-hidden={!instructionOpen || undefined}>
+				<Terminal size={13} className="pk-block-action-row__spark" aria-hidden />
 				<input
+					ref={inputRef}
 					className="pk-block-action-row__instruction"
 					placeholder={a.instructionPlaceholder}
 					value={instruction}
-					autoFocus
+					autoFocus={instructionOpen}
+					tabIndex={instructionOpen ? 0 : -1}
 					onChange={(ev) => setInstruction(ev.target.value)}
 					onKeyDown={(ev) => {
-						if (ev.key === 'Escape') onOpenPanel('instruction');
+						if (ev.key === 'Escape') {
+							ev.preventDefault();
+							closeInstruction();
+							return;
+						}
 						if (ev.key !== 'Enter' || !instruction.trim()) return;
-						const target = aiActions.find((d) => d.acceptsInstruction && !d.disabledReason);
-						if (target) onInvoke(target, instruction.trim());
-						setInstruction('');
-						onOpenPanel('instruction');
+						ev.preventDefault();
+						submitInstruction();
 					}}
 				/>
-				<CapsuleButton
-					label={a.instructionRun}
-					disabled={!instruction.trim()}
-					onClick={() => {
-						const target = aiActions.find((d) => d.acceptsInstruction && !d.disabledReason);
-						if (target && instruction.trim()) onInvoke(target, instruction.trim());
-						setInstruction('');
-						onOpenPanel('instruction');
-					}}
-				/>
-			</div>
-		);
-	}
-
-	return (
-		<div className="pk-block-action-row" data-chrome="true" role="toolbar" aria-label="Block actions">
-			<span className="pk-action-core">
-				<CapsuleButton
-					label={a.insertBelow}
-					icon={<Plus size={13} />}
-					disabled={!onInsertBelow}
-					disabledReason={writeDisabledReason}
-					onClick={onInsertBelow}
-					data-action="insert"
-				/>
-				<CapsuleButton
-					label={a.copy}
-					icon={<Copy size={13} />}
-					onClick={() => onOpenPanel('copy')}
-					data-action="easy-copy"
-				/>
-				<CapsuleButton
-					label={a.comment}
-					icon={<MessageSquare size={13} />}
-					disabled={!canComment}
-					disabledReason={writeDisabledReason}
-					onClick={() => onOpenPanel('comment')}
-					data-action="comment"
-				/>
-			</span>
-			{aiActions.length > 0 && (
-				<>
-					<span className="pk-action-divider" role="separator" />
-					<span className="pk-action-ai">
-						<Sparkles size={13} className="pk-block-action-row__spark" aria-hidden />
-						{aiActions.map((d) => (
-							<CapsuleButton
-								key={d.capabilityId}
-								label={d.title}
-								disabled={Boolean(d.disabledReason)}
-								disabledReason={d.disabledReason}
-								onClick={() => onInvoke(d)}
-								data-ai-quick={d.title}
-							/>
-						))}
-					</span>
-				</>
-			)}
-			<span className="pk-action-divider" role="separator" />
-			<span className="pk-action-tail">
-				<button
-					type="button"
-					className="pk-action-capsule pk-action-history"
-					aria-label={a.history}
-					title={a.history}
-					onClick={() => onOpenPanel('history')}
+				<span className="pk-block-action-row__submit-hint" title={a.instructionSubmitHint} aria-hidden>
+					<CornerDownLeft size={15} />
+				</span>
+				<IconButton
+					label={a.instructionClose}
+					className="pk-block-action-row__close"
+					tabIndex={instructionOpen ? 0 : -1}
+					onClick={closeInstruction}
 				>
-					<HistoryIcon size={13} />
-				</button>
-				{hasInstruction && (
-					<CapsuleButton label={a.instruction} icon={<Terminal size={13} />} onClick={() => onOpenPanel('instruction')} />
-				)}
+					<X size={13} />
+				</IconButton>
 			</span>
+			</div>
 		</div>
 	);
 }
@@ -154,8 +196,8 @@ function CapsuleButton({
 	onClick?: () => void;
 } & Record<string, unknown>): React.ReactElement {
 	return (
-		<button
-			type="button"
+		<Button
+			variant="ghost"
 			className="pk-action-capsule"
 			disabled={disabled}
 			title={disabled ? disabledReason : undefined}
@@ -165,6 +207,6 @@ function CapsuleButton({
 		>
 			{icon}
 			<span>{label}</span>
-		</button>
+		</Button>
 	);
 }

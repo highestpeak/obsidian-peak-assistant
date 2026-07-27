@@ -32,6 +32,7 @@ import {
 } from '@/ui/view/composer/config/composerConfig';
 import { createComposerFoldStore, type ComposerFoldStore } from './foldStore';
 import { BlockKindView } from './blocks/BlockKindView';
+import { isChartBlock } from './blocks/chart/ChartBlockView';
 import { CalloutBlockView } from './blocks/callout/CalloutBlockView';
 import { AddFrontmatterEntry } from './blocks/frontmatter';
 import {
@@ -400,6 +401,7 @@ function ComposerDocument({ state, config, foldStore, onRevalidate }: BodyProps)
 					<React.Fragment key={stableKey(b.blockId)}>
 						<ComposerBlockRow
 							block={b}
+							previousBlock={visibleBlocks[i - 1]}
 							snapshot={snapshot}
 							config={config}
 							foldStore={foldStore}
@@ -452,6 +454,7 @@ const TEXT_EDIT_KINDS = new Set(['paragraph', 'heading', 'quote', 'callout']);
 
 function ComposerBlockRow({
 	block,
+	previousBlock,
 	snapshot,
 	config,
 	foldStore,
@@ -464,6 +467,7 @@ function ComposerBlockRow({
 	onInvoke,
 }: {
 	block: ComposerBlock;
+	previousBlock?: ComposerBlock;
 	snapshot: ComposerDocumentSnapshot;
 	config: ComposerConfig;
 	foldStore: ComposerFoldStore;
@@ -484,9 +488,11 @@ function ComposerBlockRow({
 	const aiSnapshot = makeBlockSnapshot(snapshot, block);
 	const candidateRuntime = chrome.runtime.candidateRuntime;
 	const candidateId = useBlockCandidateId(candidateRuntime, block.blockId);
+	const spacing = blockSpacingRole(block, previousBlock);
+	const ownPanel = panel?.blockId === block.blockId ? panel : null;
 
 	const openPanel = (kind: BlockPanelKind) => {
-		if (panel?.panel === kind) setPanel(null);
+		if (ownPanel?.panel === kind) setPanel(null);
 		else setPanel({ blockId: block.blockId, panel: kind });
 	};
 
@@ -496,6 +502,8 @@ function ComposerBlockRow({
 			data-kind={block.kind}
 			data-block-id={block.blockId}
 			data-folded={folded}
+			data-level={block.kind === 'heading' ? block.renderModel.level ?? 1 : undefined}
+			data-spacing={spacing}
 			data-drop-before={dropBefore || undefined}
 			// FIX-1 F2: a mousedown in the row's dead zone (right of the text edge,
 			// rail gutter padding, run gaps) targets this WRAPPER, so the browser
@@ -503,6 +511,9 @@ function ComposerBlockRow({
 			// workspace. Forward such clicks: focus the nearest leaf and place the
 			// caret at the closest text position (line-end for past-the-edge clicks).
 			onMouseDown={editing ? (ev) => forwardBlockClickToEditable(ev.currentTarget, ev) : undefined}
+			onMouseLeave={() => {
+				if (ownPanel?.panel === 'instruction') setPanel(null);
+			}}
 		>
 			<BlockRail
 				folded={folded}
@@ -513,29 +524,29 @@ function ComposerBlockRow({
 				dragDisabledReason={onDragStart ? undefined : config.chrome.actions.disabledNoRuntime}
 			/>
 			<div className="pk-composer-block__body" ref={bodyRef}>
-				{editing && (
-					<BlockActionRow
-						snapshot={aiSnapshot}
-						onInsertBelow={onInsertBelow}
-						onOpenPanel={openPanel}
-						openPanel={panel?.panel ?? null}
-						writeDisabledReason={chrome.runtime.hub ? undefined : config.chrome.actions.disabledNoRuntime}
-						onInvoke={(d, instruction) => onInvoke(d, aiSnapshot, instruction)}
-					/>
-				)}
 				<CommentCountChip blockId={block.blockId} />
 				{showSummary ? (
 					<div className="pk-composer-summary">{block.renderModel.text || config.strings.emptyPreview}</div>
 				) : (
 					<BlockBody block={block} snapshot={snapshot} editing={editing} />
 				)}
-				{panel?.panel === 'copy' && (
+				{editing && (
+					<BlockActionRow
+						snapshot={aiSnapshot}
+						onInsertBelow={onInsertBelow}
+						onOpenPanel={openPanel}
+						openPanel={ownPanel?.panel ?? null}
+						writeDisabledReason={chrome.runtime.hub ? undefined : config.chrome.actions.disabledNoRuntime}
+						onInvoke={(d, instruction) => onInvoke(d, aiSnapshot, instruction)}
+					/>
+				)}
+				{ownPanel?.panel === 'copy' && (
 					<EasyCopyMenu markdown={raw} blockKind={block.kind} rasterTargetRef={bodyRef} onClose={() => setPanel(null)} />
 				)}
-				{panel?.panel === 'comment' && (
-					<CommentPanel blockId={block.blockId} range={panel.range} onClose={() => setPanel(null)} />
+				{ownPanel?.panel === 'comment' && (
+					<CommentPanel blockId={block.blockId} range={ownPanel.range} onClose={() => setPanel(null)} />
 				)}
-				{panel?.panel === 'history' && (
+				{ownPanel?.panel === 'history' && (
 					<BlockHistoryPanel
 						blockId={block.blockId}
 						onLocate={() => {
@@ -558,6 +569,22 @@ function ComposerBlockRow({
 			</div>
 		</div>
 	);
+}
+
+function blockSpacingRole(block: ComposerBlock, previous?: ComposerBlock): string {
+	if (isChartBlock(block)) return 'chart';
+	if (block.kind === 'heading') return (block.renderModel.level ?? 1) === 1 ? 'title' : 'heading';
+	if (block.kind === 'paragraph') {
+		if (previous?.kind === 'heading' && (previous.renderModel.level ?? 1) === 1) return 'lead';
+		if (previous?.kind === 'paragraph') return 'detail';
+		return 'paragraph';
+	}
+	if (block.kind === 'list') return 'list';
+	if (block.kind === 'task') return 'task';
+	if (block.kind === 'math') return 'math';
+	if (block.kind === 'quote') return 'quote';
+	if (block.kind === 'table') return 'table';
+	return 'object';
 }
 
 /**

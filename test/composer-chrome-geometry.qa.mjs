@@ -173,14 +173,22 @@ const geom = (locator) =>
 	await page.screenshot({ path: path.join(shotsDir, 'composer-chrome-ai-row-dark.png') });
 	await page.screenshot({ path: path.join(shotsDir, 'composer-chrome-action-row-dark.png') });
 
-	// ── FIX-2 deviation ②: action row floats straddling the block BOTTOM edge
-	//    (row top ≈ block bottom − 3px, left-aligned to block) — not above it. ──
+	// The row lives in its own inter-block slot. It must sit directly below the
+	// block body (with the deliberate 8px gap), never absolutely overlap prose.
 	const rowBox = await row.boundingBox();
+	const rowFlow = await row.evaluate((el) => {
+		const previous = el.previousElementSibling;
+		const previousBox = previous?.getBoundingClientRect();
+		return { previousBottom: previousBox?.bottom ?? -1, rowTop: el.getBoundingClientRect().top };
+	});
 	const blockBox = await para.boundingBox();
-	await record('action row top anchors block bottom − 3px', () =>
-		assert.ok(Math.abs(rowBox.y - (blockBox.y + blockBox.height - 3)) <= 2, `rowTop=${rowBox.y} blockBottom=${blockBox.y + blockBox.height}`),
+	await record('action row occupies the deliberate in-flow 8px gap', () =>
+		assert.ok(Math.abs(rowFlow.rowTop - (rowFlow.previousBottom + 8)) <= 2, JSON.stringify(rowFlow)),
 	);
-	await record('action row left-aligns the block', () => assert.ok(Math.abs(rowBox.x - blockBox.x) <= 1, `rowX=${rowBox.x} blockX=${blockBox.x}`));
+	const proseBox = await para.locator('.pk-composer-block__body').boundingBox();
+	await record('action row left-aligns the prose baseline, not the hover halo', () =>
+		assert.ok(proseBox && Math.abs(rowBox.x - proseBox.x) <= 1, `rowX=${rowBox.x} proseX=${proseBox?.x}`),
+	);
 	await record('action row shell is 38px tall', () => assert.ok(Math.round(rowBox.height) === 38, String(rowBox.height)));
 
 	// ── selection toolbar ──
@@ -211,9 +219,12 @@ const geom = (locator) =>
 	const textGeom = [];
 	for (let i = 0; i < (await textBtns.count()); i++) textGeom.push(await geom(textBtns.nth(i)));
 	await record('toolbar text controls share the 28px rung', () => assert.ok(textGeom.every((g) => g.h === 28 && g.radius === '8px')));
-	await record('action rows are suppressed while selecting', async () => {
-		const display = await row.evaluate((el) => getComputedStyle(el).display);
-		assert.equal(display, 'none');
+	await record('action rows collapse to a zero-height inert wrapper while selecting', async () => {
+		const state = await row.evaluate((el) => {
+			const style = getComputedStyle(el);
+			return { height: el.getBoundingClientRect().height, visibility: style.visibility, pointerEvents: style.pointerEvents };
+		});
+		assert.deepEqual(state, { height: 0, visibility: 'hidden', pointerEvents: 'none' });
 	});
 	await page.screenshot({ path: path.join(shotsDir, 'composer-chrome-selection-toolbar-dark.png') });
 	await page.evaluate(() => getSelection().removeAllRanges());

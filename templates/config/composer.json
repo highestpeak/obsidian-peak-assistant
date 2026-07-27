@@ -54,8 +54,9 @@
 			"history": "生成历史",
 			"instruction": "指令",
 			"drag": "拖动块",
-			"instructionPlaceholder": "输入针对此块的指令…",
-			"instructionRun": "执行",
+			"instructionPlaceholder": "让 AI 对这个块做什么？",
+			"instructionSubmitHint": "按 Enter 执行",
+			"instructionClose": "返回操作",
 			"directEdit": "直接编辑",
 			"disabledNoRuntime": "编辑运行时未接入",
 			"insertDraftPlaceholder": "输入新段落内容…"

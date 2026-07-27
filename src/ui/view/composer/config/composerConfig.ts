@@ -69,7 +69,8 @@ export interface ComposerChromeConfig {
 		history: string;
 		instruction: string;
 		instructionPlaceholder: string;
-		instructionRun: string;
+		instructionSubmitHint: string;
+		instructionClose: string;
 		drag: string;
 		directEdit: string;
 		disabledNoRuntime: string;
@@ -226,8 +227,9 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 			comment: '评论',
 			history: '生成历史',
 			instruction: '指令',
-			instructionPlaceholder: '输入针对此块的指令…',
-			instructionRun: '执行',
+			instructionPlaceholder: '让 AI 对这个块做什么？',
+			instructionSubmitHint: '按 Enter 执行',
+			instructionClose: '返回操作',
 			drag: '拖动块',
 			directEdit: '直接编辑',
 			disabledNoRuntime: '编辑运行时未接入',

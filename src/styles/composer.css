@@ -29,6 +29,8 @@
 	--pkc-h3-size: 18px;
 	--pkc-h3-weight: 720;
 	--pkc-prose-size: 15px;
+	--pkc-instruction-morph-duration: 320ms;
+	--pkc-instruction-morph-ease: cubic-bezier(0.22, 0.68, 0.36, 1);
 	/* Callouts intentionally retain the reference's calm blue family rather
 	   than inheriting the product-wide purple accent. */
 	--pkc-callout-border: rgb(191, 208, 251);
@@ -72,16 +74,26 @@
 	flex-direction: column;
 }
 .peak-composer-root .pk-composer-block {
-	display: flex;
-	gap: var(--pk-space-2);
+	display: block;
 	/* Tint breathes ~10px past the text; negative margin keeps the text column
 	   flush with the paper content edge (mock: doc-block padding 0, halo via
 	   shadow rings). The left rail overlays into the paper padding gutter. */
-	margin: var(--pkc-block-gap) -10px 0;
-	padding: 6px 10px;
+	margin: 30px -10px 0;
+	padding: 0 10px;
 	border-radius: 10px;
 	transition: background-color 140ms ease, box-shadow 140ms ease;
 }
+.peak-composer-root .pk-composer-block[data-spacing='title'] { margin-top: 28px; }
+.peak-composer-root .pk-composer-block[data-spacing='heading'] { margin-top: 32px; }
+.peak-composer-root .pk-composer-block[data-spacing='paragraph'],
+.peak-composer-root .pk-composer-block[data-spacing='list'],
+.peak-composer-root .pk-composer-block[data-spacing='task'],
+.peak-composer-root .pk-composer-block[data-spacing='math'] { margin-top: 12px; }
+.peak-composer-root .pk-composer-block[data-spacing='lead'] { margin-top: 18px; }
+.peak-composer-root .pk-composer-block[data-spacing='detail'] { margin-top: 8px; }
+.peak-composer-root .pk-composer-block[data-spacing='quote'] { margin-top: 16px; }
+.peak-composer-root .pk-composer-block[data-spacing='table'],
+.peak-composer-root .pk-composer-block[data-spacing='chart'] { margin-top: 56px; }
 .peak-composer-root .pk-composer-blocks > .pk-composer-block:first-child {
 	margin-top: 0;
 }
@@ -272,18 +284,30 @@
 	position: absolute;
 	/* Overlay into the paper's left padding gutter (mock: controls float in the
 	   64px gutter, text stays flush at the content edge). */
-	left: -46px;
-	top: 4px;
+	left: -43px;
+	top: 0;
 	z-index: 15;
 	display: flex;
 	flex-direction: column;
-	gap: 2px;
+	gap: 6px;
+	box-sizing: border-box;
+	width: 42px;
+	padding: 4px 8px 16px 0;
 	opacity: 0;
-	transition: opacity 120ms ease;
+	visibility: hidden;
+	pointer-events: none;
+	transform: translateX(6px);
+	transition: opacity 130ms ease 340ms, transform 130ms ease 340ms, visibility 0s linear 470ms;
 }
 .peak-composer-root .pk-composer-block:hover .pk-composer-rail,
-.peak-composer-root .pk-composer-block:focus-within .pk-composer-rail {
+
+.peak-composer-root .pk-composer-block:focus-within .pk-composer-rail,
+.peak-composer-root .pk-composer-block:has(.pk-composer-rail:hover) .pk-composer-rail {
 	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+	transform: translateX(0);
+	transition-delay: 80ms;
 }
 .peak-composer-root .pk-rail-control {
 	/* 30×30 radius-md rail family. !important defends against BOTH
@@ -332,16 +356,32 @@
 /* ── family 1: flattened action row (28px pill capsules) ───────────────────── */
 .peak-composer-root .pk-composer-block { position: relative; }
 .peak-composer-root .pk-block-action-row {
-	position: absolute;
-	/* Float straddling the block's bottom edge: row top ≈ block bottom − 3px,
-	   left-aligned to the block (mock action bar anchors under the block). */
-	top: calc(100% - 3px);
-	left: 0;
+	position: relative;
 	z-index: 20;
-	display: none;
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 0;
+	height: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	box-shadow: none;
+	max-width: 100%;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transform: translateY(-3px);
+	overflow: hidden;
+	transition: opacity 140ms ease, transform 140ms ease, visibility 0s linear 180ms;
+}
+.peak-composer-root .pk-block-action-row__shell {
+	display: inline-flex;
 	align-items: center;
 	gap: 4px;
 	box-sizing: border-box;
+	width: fit-content;
 	min-height: 38px;
 	padding: 3px 6px;
 	border: 1px solid var(--pk-border);
@@ -350,15 +390,73 @@
 	box-shadow: var(--pk-shadow-popover);
 	white-space: nowrap;
 	max-width: 100%;
-	overflow-x: auto;
+	overflow: hidden;
 }
 .peak-composer-root .pk-composer-block:hover .pk-block-action-row,
-.peak-composer-root .pk-composer-block:focus-within .pk-block-action-row {
-	display: inline-flex;
+.peak-composer-root .pk-composer-block:focus-within .pk-block-action-row,
+.peak-composer-root .pk-composer-block:has(.pk-block-action-row:hover) .pk-block-action-row {
+	height: auto;
+	margin-top: 8px;
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+	transform: translateY(0);
+	transition-delay: 0s;
 }
 /* Selection toolbar has one clear owner: rows hide while a selection is live. */
 .peak-composer-root [data-has-selection] .pk-block-action-row {
-	display: none !important;
+	height: 0 !important;
+	margin-top: 0 !important;
+	opacity: 0 !important;
+	visibility: hidden !important;
+	pointer-events: none !important;
+}
+.peak-composer-root .pk-block-action-row__options,
+.peak-composer-root .pk-block-action-row__instruction-shell {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	min-width: 0;
+	overflow: hidden;
+	transition: max-width var(--pkc-instruction-morph-duration) var(--pkc-instruction-morph-ease),
+		opacity calc(var(--pkc-instruction-morph-duration) * 0.7) var(--pkc-instruction-morph-ease),
+		transform var(--pkc-instruction-morph-duration) var(--pkc-instruction-morph-ease),
+		visibility 0s linear var(--pkc-instruction-morph-duration);
+}
+.peak-composer-root .pk-block-action-row__options {
+	max-width: 900px;
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+	/* Returning from 指令 must expose the original pills immediately; only the
+	   outgoing state defers visibility until its fade has completed. */
+	transition-delay: 0s, 0s, 0s, 0s;
+}
+.peak-composer-root .pk-block-action-row__instruction-shell {
+	max-width: 0;
+	gap: 9px;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transform: translateX(-6px);
+	/* On close, keep the field visible long enough for its collapse to animate. */
+	transition-delay: 0s, 0s, 0s, var(--pkc-instruction-morph-duration);
+}
+.peak-composer-root .pk-block-action-row[data-mode='instruction'] .pk-block-action-row__options {
+	max-width: 0;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transform: translateX(-6px);
+	transition-delay: 0s, 0s, 0s, var(--pkc-instruction-morph-duration);
+}
+.peak-composer-root .pk-block-action-row[data-mode='instruction'] .pk-block-action-row__instruction-shell {
+	max-width: 640px;
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+	transform: translateX(0);
+	transition-delay: 0s, calc(var(--pkc-instruction-morph-duration) * 0.25), 0s, 0s;
 }
 .peak-composer-root .pk-action-core,
 .peak-composer-root .pk-action-ai,
@@ -375,16 +473,16 @@
 	min-height: 28px !important;
 	height: 28px !important;
 	padding: 0 10px;
-	border: none;
-	border-radius: var(--pk-radius-pill);
-	background: transparent;
+	border: none !important;
+	border-radius: var(--pk-radius-pill) !important;
+	background: transparent !important;
 	color: var(--pk-fg);
 	font-size: var(--pk-text-xs);
 	font-family: inherit;
 	cursor: pointer;
 }
 .peak-composer-root .pk-action-capsule:hover:not(:disabled) {
-	background: var(--pk-accent-tint);
+	background: var(--pk-accent-tint) !important;
 	color: var(--pk-accent-text);
 }
 .peak-composer-root .pk-action-capsule:disabled {
@@ -404,18 +502,23 @@
 	color: var(--pk-accent-text);
 	flex: none;
 }
-.peak-composer-root .pk-block-action-row.is-instruction {
-	gap: 6px;
-	padding: 3px 8px;
-}
 .peak-composer-root .pk-block-action-row__instruction {
-	min-width: 260px;
+	min-width: 320px;
 	height: 24px;
 	border: none;
 	background: transparent;
 	color: var(--pk-fg);
 	font-size: var(--pk-text-xs);
 	outline: none;
+}
+.peak-composer-root .pk-block-action-row__submit-hint {
+	display: grid;
+	place-items: center;
+	flex: none;
+	color: var(--pk-text-tertiary);
+}
+.peak-composer-root .pk-block-action-row__close {
+	flex: none;
 }
 
 /* ── family 2: selection toolbar (28px compact controls, radius-md) ────────── */
@@ -976,6 +1079,8 @@
 @media (prefers-reduced-motion: reduce) {
 	.peak-composer-root .pk-composer-rail,
 	.peak-composer-root .pk-block-action-row,
+	.peak-composer-root .pk-block-action-row__options,
+	.peak-composer-root .pk-block-action-row__instruction-shell,
 	.peak-composer-root .pk-txn-notice,
 	.peak-composer-root .pk-guard-toast {
 		transition: none !important;
