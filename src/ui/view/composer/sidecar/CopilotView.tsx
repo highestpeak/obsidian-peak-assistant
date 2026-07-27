@@ -9,7 +9,7 @@ import type {
 	IntelligenceRuntime,
 } from '@/service/composer';
 import { selectLocalPreview } from '@/service/composer';
-import { Button } from '@/ui/component/shared-ui/button';
+import { Button } from '@/ui/components/primitives';
 import { PromptInput, PromptInputBody, PromptInputAttachments } from '@/ui/component/prompt-input';
 import { cn } from '@/ui/react/lib/utils';
 import type { SidecarConfig } from './sidecarConfig';
@@ -105,7 +105,7 @@ export function BriefViewContent({
 					{active.length > 0 && <span className="pk-status-chip">{`${s.sectionNextMoves} ${active.length}`}</span>}
 					{relatedCount > 0 && <span className="pk-status-chip">{`${s.sectionRelated} ${relatedCount}`}</span>}
 					{relatedPortAvailable && (
-						<Button type="button" variant="ghost" size="xs" className="pk-chip-btn" onClick={onRefreshRelated}>
+						<Button type="button" variant="ghost" size="sm" className="pk-chip-btn" onClick={onRefreshRelated}>
 							{s.refreshRelated}
 						</Button>
 					)}

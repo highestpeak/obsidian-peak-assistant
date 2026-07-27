@@ -1,4 +1,5 @@
 import assert from 'assert';
+import { readFileSync } from 'fs';
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ComposerRoot } from '@/ui/view/composer/ComposerRoot';
@@ -80,6 +81,12 @@ function makeRelatedSnapshot() {
 	});
 }
 
+check('CopilotView imports the canonical Button primitive, not legacy shared-ui/button', () => {
+	const source = readFileSync('src/ui/view/composer/sidecar/CopilotView.tsx', 'utf8');
+	assert.equal(source.includes("from '@/ui/component/shared-ui/button'"), false);
+	assert.equal(source.includes("from '@/ui/components/primitives'"), true);
+});
+
 check('document paper starts with content, not decorative file metadata header', () => {
 	const html = renderComposer();
 	assert.equal(html.includes('pk-composer-header'), false);
@@ -130,6 +137,7 @@ check('empty Brief with related port shows refreshRelated and still no sections'
 		relatedPortAvailable: true,
 	});
 	assert.equal(html.includes(DEFAULT_SIDECAR_CONFIG.strings.refreshRelated), true);
+	assert.equal(html.includes('pk-btn'), true);
 	assert.equal(count(html, 'class="pk-brief-section"'), 0);
 	assert.equal(count(html, DEFAULT_SIDECAR_CONFIG.strings.emptyBrief), 1);
 });
