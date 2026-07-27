@@ -30,55 +30,66 @@ export function CopilotView(): React.ReactElement {
 
 // ── brief ─────────────────────────────────────────────────────────────────────
 
-function BriefView(): React.ReactElement {
+export function BriefView(): React.ReactElement {
 	const { runtime, config, onLocate, onOpenSource } = useSidecar();
 	const s = config.strings;
 	const findings = useFindings(runtime);
 	const active = findings.filter((f) => f.state === 'active' || f.state === 'stale');
 	const [related, setRelated] = React.useState<ComposerRelatedMaterialSnapshot | null>(null);
+	const [relatedReloadToken, setRelatedReloadToken] = React.useState(0);
 	const [modalOpen, setModalOpen] = React.useState(false);
+	const onRefreshRelated = React.useCallback(() => {
+		setRelatedReloadToken((n) => n + 1);
+	}, []);
 
 	const preview: readonly RelatedPreviewNode[] = React.useMemo(
 		() => (related ? selectLocalPreview(related, config.relatedPreviewCap) : []),
 		[related, config.relatedPreviewCap],
 	);
+	const relatedCount = related ? related.items.length : 0;
+	const hasBriefItems = active.length > 0 || relatedCount > 0;
 
 	return (
 		<div className="pk-brief" data-testid="pk-brief">
-			<span className="pk-brief-heading">{s.briefHeading}</span>
+			<header className="pk-brief-intro">
+				<span className="pk-brief-heading">{s.briefHeading}</span>
+				<span className="pk-brief-subtitle">{s.briefIntro}</span>
+				<div className="pk-brief-meta" aria-label={s.briefHeading}>
+					{active.length > 0 && <span className="pk-status-chip">{`${s.sectionNextMoves} ${active.length}`}</span>}
+					{relatedCount > 0 && <span className="pk-status-chip">{`${s.sectionRelated} ${relatedCount}`}</span>}
+					<button type="button" className="pk-chip-btn" onClick={onRefreshRelated}>
+						{s.refreshBrief}
+					</button>
+				</div>
+			</header>
 
-			<BriefSection title={s.sectionNextMoves} count={active.length}>
-				{active.length === 0 ? (
-					<span className="pk-brief-empty">{s.emptyBrief}</span>
-				) : (
-					active.map((f) => (
-						<FindingRow
-							key={f.findingId}
-							finding={f}
-							onDiscuss={() => runtime.session.openSession(f.reason)}
-							onIgnore={() => runtime.dismissFinding(f.findingId, 'brief')}
-							onLocate={() => {
-								const blockId = composerTargetBlockId(f.target);
-								if (blockId) onLocate?.(blockId);
-							}}
-							staleNotice={f.state === 'stale' ? s.staleFindingNotice : undefined}
-							discussLabel={s.discuss}
-							ignoreLabel={s.ignore}
-						/>
-					))
-				)}
-			</BriefSection>
+			{hasBriefItems ? (
+				<>
+					<BriefSection title={s.sectionNextMoves} count={active.length}>
+						{active.map((f) => (
+							<FindingRow
+								key={f.findingId}
+								finding={f}
+								onDiscuss={() => runtime.session.openSession(f.reason)}
+								onIgnore={() => runtime.dismissFinding(f.findingId, 'brief')}
+								onLocate={() => {
+									const blockId = composerTargetBlockId(f.target);
+									if (blockId) onLocate?.(blockId);
+								}}
+								staleNotice={f.state === 'stale' ? s.staleFindingNotice : undefined}
+								discussLabel={s.discuss}
+								ignoreLabel={s.ignore}
+							/>
+						))}
+					</BriefSection>
 
-			<BriefSection title={s.sectionRelated} count={related ? related.items.length : 0}>
-				{preview.length === 0 ? (
-					<span className="pk-brief-empty">{s.emptyBrief}</span>
-				) : (
-					<>
+					<BriefSection title={s.sectionRelated} count={relatedCount}>
 						{preview.map((node) => (
 							<div key={node.sourceId} className="pk-related-row">
 								<div className="pk-related-main">
 									<span className="pk-related-title">{node.title}</span>
-									<span className="pk-related-reason">{node.reason}</span>
+									{node.reason ? <span className="pk-related-reason">{node.reason}</span> : null}
+									{node.path ? <span className="pk-related-path">{node.path}</span> : null}
 								</div>
 								<div className="pk-related-actions">
 									<button type="button" className="pk-chip-btn" onClick={() => onOpenSource?.(node.path)}>
@@ -87,34 +98,50 @@ function BriefView(): React.ReactElement {
 								</div>
 							</div>
 						))}
-						<button type="button" className="pk-brief-fullview" onClick={() => setModalOpen(true)}>
-							<ExternalLink size={12} />
-							{s.openFullView}
-						</button>
-					</>
-				)}
-			</BriefSection>
+						{related && related.items.length > preview.length && (
+							<button type="button" className="pk-brief-fullview" onClick={() => setModalOpen(true)}>
+								<ExternalLink size={12} />
+								{s.openFullView}
+							</button>
+						)}
+					</BriefSection>
 
-			<BriefSection title={s.sectionUnplaced} count={0}>
-				<span className="pk-brief-empty">{s.emptyBrief}</span>
-			</BriefSection>
+					<BriefSection title={s.sectionUnplaced} count={0} />
+				</>
+			) : (
+				<div className="pk-brief-empty-state" role="status">
+					<span className="pk-brief-empty-title">{s.emptyBrief}</span>
+					<span className="pk-brief-empty">{s.emptyBriefBody}</span>
+				</div>
+			)}
 
 			{modalOpen && related && (
 				<RelatedMaterialsModal snapshot={related} onClose={() => setModalOpen(false)} />
 			)}
 			{/* Related snapshot is fetched lazily from the app-owned port; absent in the harness. */}
-			<RelatedLoader onLoaded={setRelated} />
+			<RelatedLoader onLoaded={setRelated} reloadToken={relatedReloadToken} />
 		</div>
 	);
 }
 
+
 /** Loads the related snapshot once from the app-owned port (no-op without one). */
-function RelatedLoader({ onLoaded }: { onLoaded: (s: ComposerRelatedMaterialSnapshot) => void }): null {
+function RelatedLoader({
+	onLoaded,
+	reloadToken,
+}: {
+	onLoaded: (s: ComposerRelatedMaterialSnapshot) => void;
+	reloadToken: number;
+}): null {
 	const { runtime, getFocusedBlockId, resolveRelatedFocus } = useSidecar();
+	const requestIdRef = React.useRef(0);
+	const latestRequestRef = React.useRef(0);
 	React.useEffect(() => {
 		const port = runtime.related;
 		if (!port) return;
 		let alive = true;
+		const requestId = ++requestIdRef.current;
+		latestRequestRef.current = requestId;
 		// Resolve the REAL focused block (chrome focus) → anchor + query text. Falls
 		// back to the whole-document focus when nothing is focused; failures are
 		// swallowed (brief stays empty) since the port degrades to an empty snapshot.
@@ -126,13 +153,15 @@ function RelatedLoader({ onLoaded }: { onLoaded: (s: ComposerRelatedMaterialSnap
 		void port
 			.buildSnapshot(focus)
 			.then((snap) => {
-				if (alive) onLoaded(snap);
+				if (alive && requestId === latestRequestRef.current) {
+					onLoaded(snap);
+				}
 			})
 			.catch(() => undefined);
 		return () => {
 			alive = false;
 		};
-	}, [runtime, onLoaded, getFocusedBlockId, resolveRelatedFocus]);
+	}, [runtime, onLoaded, getFocusedBlockId, resolveRelatedFocus, reloadToken]);
 	return null;
 }
 
@@ -151,7 +180,7 @@ function BriefSection({
 				<span className="pk-brief-section-title">{title}</span>
 				<span className="pk-status-chip">{count}</span>
 			</div>
-			<div className="pk-brief-section-body">{children}</div>
+			{children && <div className="pk-brief-section-body">{children}</div>}
 		</section>
 	);
 }

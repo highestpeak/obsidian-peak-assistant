@@ -21,6 +21,7 @@ export interface SidecarStrings {
 	openDrawer: string;
 	back: string;
 	briefHeading: string;
+	briefIntro: string;
 	sectionNextMoves: string;
 	sectionRelated: string;
 	sectionUnplaced: string;
@@ -44,6 +45,7 @@ export interface SidecarStrings {
 	historyEmpty: string;
 	reviewClose: string;
 	emptyBrief: string;
+	emptyBriefBody: string;
 }
 
 export interface SidecarConfig {
@@ -80,6 +82,7 @@ export const DEFAULT_SIDECAR_CONFIG: SidecarConfig = {
 		openDrawer: '打开智能侧栏',
 		back: '返回',
 		briefHeading: '针对当前正文，接下来值得处理什么',
+		briefIntro: '只显示能定位到当前正文或真实相关材料的建议；不会自动写入正文。',
 		sectionNextMoves: '接下来可能要做',
 		sectionRelated: '相关材料',
 		sectionUnplaced: '还没安放的想法',
@@ -103,6 +106,7 @@ export const DEFAULT_SIDECAR_CONFIG: SidecarConfig = {
 		historyEmpty: '还没有已接受的写入',
 		reviewClose: '完成审阅',
 		emptyBrief: '暂无新的建议',
+		emptyBriefBody: '当前还没有可展示的建议，先完成正文定位再主动向 Copilot 询问。',
 	},
 };
 

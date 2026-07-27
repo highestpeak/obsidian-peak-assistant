@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Undo2, Redo2 } from 'lucide-react';
 import { IconButton } from '@/ui/components/primitives';
 import { useOwnerDocumentListener } from '@/ui/hooks/useOwnerWindow';
+import { DisplayStateSwitch, type ComposerDisplayState } from './DisplayStateSwitch';
 import { useComposerChrome } from './ComposerChromeContext';
 import { useHubProjection } from './useHubProjection';
 
@@ -16,10 +17,23 @@ import { useHubProjection } from './useHubProjection';
  * ownership while the user is typing. Keyboard listening is owner-scoped so it
  * fires inside a detached (popped-out) window too.
  */
-export function UndoRedoBar({ containerRef }: { containerRef: React.RefObject<Element | null> }): React.ReactElement {
+export function UndoRedoBar({
+	containerRef,
+	displayState,
+	onDisplayState,
+	canEdit,
+	readOnlyLabel,
+}: {
+	containerRef: React.RefObject<Element | null>;
+	displayState: ComposerDisplayState;
+	onDisplayState: (next: ComposerDisplayState) => void;
+	canEdit: boolean;
+	readOnlyLabel: string;
+}): React.ReactElement {
 	const { runtime, config } = useComposerChrome();
 	const hub = runtime.hub;
 	const projection = useHubProjection(hub);
+	const hasReviewCandidates = hasReviewableCandidates(projection.candidates);
 	const { undo } = projection;
 	const c = config.chrome.undo;
 
@@ -47,27 +61,40 @@ export function UndoRedoBar({ containerRef }: { containerRef: React.RefObject<El
 	useOwnerDocumentListener(containerRef, 'keydown', onKeyDown);
 
 	return (
-		<div className="pk-composer-statusbar" data-chrome="true">
+		<div className="pk-composer-statusbar" data-chrome="true" aria-label={config.chrome.displayStates.groupLabel}>
+			{canEdit && hasReviewCandidates ? (
+				<DisplayStateSwitch value={displayState} onChange={onDisplayState} />
+			) : canEdit ? null : (
+				<span className="pk-composer-statusbar__badge">{readOnlyLabel}</span>
+			)}
 			<span className="pk-composer-statusbar__spacer" />
-			<div className="pk-undo-redo" role="group" aria-label={`${c.undo} / ${c.redo}`}>
-				<IconButton
-					label={undo.nextUndoLabel ? `${c.undo} · ${undo.nextUndoLabel} (${c.shortcutUndo})` : `${c.undo} (${c.shortcutUndo})`}
-					className="pk-undo-redo__btn"
-					disabled={!undo.canUndo}
-					onClick={doUndo}
-				>
-					<Undo2 size={15} />
-				</IconButton>
-				<IconButton
-					label={undo.nextRedoLabel ? `${c.redo} · ${undo.nextRedoLabel} (${c.shortcutRedo})` : `${c.redo} (${c.shortcutRedo})`}
-					className="pk-undo-redo__btn"
-					disabled={!undo.canRedo}
-					onClick={doRedo}
-				>
-					<Redo2 size={15} />
-				</IconButton>
-			</div>
+			{hub && (
+				<div className="pk-undo-redo" role="group" aria-label={`${c.undo} / ${c.redo}`}>
+					<IconButton
+						label={undo.nextUndoLabel ? `${c.undo} · ${undo.nextUndoLabel} (${c.shortcutUndo})` : `${c.undo} (${c.shortcutUndo})`}
+						className="pk-undo-redo__btn"
+						disabled={!undo.canUndo}
+						onClick={doUndo}
+					>
+						<Undo2 size={15} />
+					</IconButton>
+					<IconButton
+						label={undo.nextRedoLabel ? `${c.redo} · ${undo.nextRedoLabel} (${c.shortcutRedo})` : `${c.redo} (${c.shortcutRedo})`}
+						className="pk-undo-redo__btn"
+						disabled={!undo.canRedo}
+						onClick={doRedo}
+					>
+						<Redo2 size={15} />
+					</IconButton>
+				</div>
+			)}
 		</div>
+	);
+}
+
+export function hasReviewableCandidates(candidates: Array<{ status: string }>): boolean {
+	return candidates.some((candidate) =>
+		candidate.status === 'ready' || candidate.status === 'streaming' || candidate.status === 'pending' || candidate.status === 'stale',
 	);
 }
 

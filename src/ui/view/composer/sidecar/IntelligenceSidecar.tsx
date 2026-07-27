@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Sparkles, X, Clock, MessageSquare } from 'lucide-react';
 import type { IntelligenceRuntime } from '@/service/composer';
 import type { ComposerTransactionHub } from '@/service/composer';
+import { Button } from '@/ui/components/primitives';
 import { cn } from '@/ui/react/lib/utils';
 import {
 	SidecarProvider,
@@ -13,6 +14,8 @@ import {
 import { DEFAULT_SIDECAR_CONFIG, loadSidecarConfig, type SidecarConfig } from './sidecarConfig';
 import { CopilotView } from './CopilotView';
 import { HistoryView } from './HistoryView';
+
+export type SidecarMode = 'desktop' | 'drawer';
 
 /**
  * Peak Composer — Intelligence Sidecar shell (WP9, handoff §12.1 / §12.6).
@@ -50,9 +53,10 @@ export function IntelligenceSidecar({
 }: IntelligenceSidecarProps): React.ReactElement {
 	const rootRef = React.useRef<HTMLDivElement | null>(null);
 	const [config, setConfig] = React.useState<SidecarConfig>(DEFAULT_SIDECAR_CONFIG);
-	const [narrow, setNarrow] = React.useState(false);
+	const [mode, setMode] = React.useState<SidecarMode | null>(null);
 	// Drawer open state is preserved across close/reopen for the whole mount.
 	const [drawerOpen, setDrawerOpen] = React.useState(false);
+	const [desktopOpen, setDesktopOpen] = React.useState(true);
 
 	React.useEffect(() => {
 		let alive = true;
@@ -64,15 +68,27 @@ export function IntelligenceSidecar({
 		};
 	}, []);
 
-	// Track the container width against the configured breakpoint using the
-	// OWNER window (detached-safe). Falls back to matchMedia when available.
-	React.useEffect(() => {
+	// Track the actual Composer host/root width, not the 430px sidecar column and
+	// not ownerWindow.innerWidth. ResizeObserver catches Obsidian split-leaf or
+	// native-sidebar changes where the window size itself does not change.
+	React.useLayoutEffect(() => {
 		const el = rootRef.current;
-		const win = el?.ownerDocument.defaultView ?? window;
-		const check = () => setNarrow(win.innerWidth < config.narrowBreakpointPx);
+		const host = findComposerHostElement(el);
+		if (!host) return;
+		const win = host.ownerDocument.defaultView;
+		if (!win) return;
+		const check = () => {
+			setMode(resolveSidecarHostMode(el, config.narrowBreakpointPx));
+		};
 		check();
+		const ResizeObserverCtor = win?.ResizeObserver;
+		const observer = ResizeObserverCtor ? new ResizeObserverCtor(check) : null;
+		observer?.observe(host);
 		win.addEventListener('resize', check);
-		return () => win.removeEventListener('resize', check);
+		return () => {
+			observer?.disconnect();
+			win.removeEventListener('resize', check);
+		};
 	}, [config.narrowBreakpointPx]);
 
 	const ctx: SidecarContextValue = React.useMemo(
@@ -80,18 +96,24 @@ export function IntelligenceSidecar({
 		[runtime, hub, config, onLocate, onOpenSource, getFocusedBlockId, resolveFocusContext, resolveRelatedFocus],
 	);
 
-	if (narrow) {
+	if (mode === null) {
+		return <div ref={rootRef} className="pk-sidecar-anchor" data-measuring="true" aria-hidden="true" />;
+	}
+
+	if (mode === 'drawer') {
 		return (
-			<div ref={rootRef} className="pk-sidecar-anchor" data-narrow="true">
+			<div
+				ref={rootRef}
+				className="pk-sidecar-anchor"
+				data-sidecar-mode="drawer"
+				data-open={drawerOpen ? 'true' : 'false'}
+			>
 				{!drawerOpen && (
-					<button
-						type="button"
-						className="pk-sidecar-drawer-toggle"
+					<SidecarOpenButton
+						label={config.strings.title}
 						aria-label={config.strings.openDrawer}
 						onClick={() => setDrawerOpen(true)}
-					>
-						<Sparkles size={16} />
-					</button>
+					/>
 				)}
 				<div
 					className={cn('pk-sidecar-drawer', drawerOpen && 'pk-sidecar-drawer--open')}
@@ -102,17 +124,71 @@ export function IntelligenceSidecar({
 						<SidecarShell config={config} runtime={runtime} onClose={() => setDrawerOpen(false)} closable />
 					</SidecarProvider>
 				</div>
-			</div>
+		</div>
 		);
 	}
 
 	return (
-		<div ref={rootRef} className="pk-sidecar" data-narrow={false}>
-			<SidecarProvider value={ctx}>
-				<SidecarShell config={config} runtime={runtime} />
-			</SidecarProvider>
+		<div
+			ref={rootRef}
+			className="pk-sidecar-anchor"
+			data-sidecar-mode="desktop"
+			data-open={desktopOpen ? 'true' : 'false'}
+		>
+			{!desktopOpen && (
+				<SidecarOpenButton
+					label={config.strings.title}
+					aria-label={config.strings.openDrawer}
+					onClick={() => setDesktopOpen(true)}
+				/>
+			)}
+			<div
+				className={cn('pk-sidecar', !desktopOpen && 'pk-sidecar--closed')}
+				data-open={desktopOpen || undefined}
+				aria-hidden={!desktopOpen}
+			>
+				<SidecarProvider value={ctx}>
+					<SidecarShell config={config} runtime={runtime} onClose={() => setDesktopOpen(false)} closable />
+				</SidecarProvider>
+			</div>
 		</div>
 	);
+}
+
+export function SidecarOpenButton({
+	label,
+	'aria-label': ariaLabel,
+	onClick,
+}: {
+	label: string;
+	'aria-label': string;
+	onClick: () => void;
+}): React.ReactElement {
+	return (
+		<Button
+			variant="outline"
+			size="sm"
+			className="pk-sidecar-open-toggle"
+			aria-label={ariaLabel}
+			onClick={onClick}
+		>
+			<Sparkles size={13} aria-hidden />
+			<span>{label}</span>
+		</Button>
+	);
+}
+
+export function resolveSidecarMode(hostWidthPx: number, narrowBreakpointPx: number): SidecarMode {
+	return hostWidthPx < narrowBreakpointPx ? 'drawer' : 'desktop';
+}
+
+export function resolveSidecarHostMode(el: HTMLElement | null, narrowBreakpointPx: number): SidecarMode {
+	const host = findComposerHostElement(el);
+	return resolveSidecarMode(host?.getBoundingClientRect().width ?? 0, narrowBreakpointPx);
+}
+
+function findComposerHostElement(el: HTMLElement | null): HTMLElement | null {
+	return el?.closest<HTMLElement>('.peak-composer-root') ?? null;
 }
 
 function SidecarShell({

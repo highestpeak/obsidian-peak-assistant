@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useStore } from 'zustand';
-import { FileText, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import {
 	sectionBlockIds,
 	DEFAULT_TRANSACTION_CONFIG,
@@ -57,7 +57,7 @@ import { SelectionToolbar } from './chrome/SelectionToolbar';
 import { LinkPreviewLayer } from './chrome/LinkPreviewLayer';
 import { UndoRedoBar } from './chrome/UndoRedoBar';
 import { TransactionNotice } from './chrome/TransactionNotice';
-import { DisplayStateSwitch, type ComposerDisplayState } from './chrome/DisplayStateSwitch';
+import type { ComposerDisplayState } from './chrome/DisplayStateSwitch';
 import { mapDomRangeToSource } from './chrome/selectionMapping';
 import { firstClipboardImage } from './chrome/pasteImage';
 import { IntelligenceSidecar } from './sidecar';
@@ -392,13 +392,6 @@ function ComposerDocument({ state, config, foldStore, onRevalidate }: BodyProps)
 			data-dragging={drag ? 'true' : undefined}
 			onPaste={(ev) => void onPaste(ev)}
 		>
-			<ComposerHeader
-				state={state}
-				config={config}
-				displayState={displayState}
-				onDisplayState={setDisplayState}
-				canEdit={Boolean(hub)}
-			/>
 			{state.status === 'stale' && <StaleBanner strings={config.strings} onRevalidate={onRevalidate} />}
 			<AddFrontmatterEntry editing={editing} />
 			<div className="pk-composer-blocks">
@@ -441,38 +434,13 @@ function ComposerDocument({ state, config, foldStore, onRevalidate }: BodyProps)
 				</div>
 			)}
 			<TransactionNotice />
-			{hub && <UndoRedoBar containerRef={containerRef} />}
-		</div>
-	);
-}
-
-// ── header ──────────────────────────────────────────────────────────────────
-
-function ComposerHeader({
-	state,
-	config,
-	displayState,
-	onDisplayState,
-	canEdit,
-}: {
-	state: DocumentComposerState;
-	config: ComposerConfig;
-	displayState: ComposerDisplayState;
-	onDisplayState: (s: ComposerDisplayState) => void;
-	canEdit: boolean;
-}): React.ReactElement {
-	const name = (state.filePath ?? '').split('/').pop() ?? config.strings.displayText;
-	const count = state.snapshot?.blocks.length ?? 0;
-	return (
-		<div className="pk-composer-header" data-chrome="true">
-			<FileText size={15} className="pk-composer-header__icon" />
-			<span className="pk-composer-header__title">{name}</span>
-			<span className="pk-composer-header__meta">{`${count} ${config.strings.blocksSuffix}`}</span>
-			{canEdit ? (
-				<DisplayStateSwitch value={displayState} onChange={onDisplayState} />
-			) : (
-				<span className="pk-composer-header__badge">{config.strings.readOnlyBadge}</span>
-			)}
+			<UndoRedoBar
+				containerRef={containerRef}
+				displayState={displayState}
+				onDisplayState={setDisplayState}
+				canEdit={Boolean(hub)}
+				readOnlyLabel={config.strings.readOnlyBadge}
+			/>
 		</div>
 	);
 }
