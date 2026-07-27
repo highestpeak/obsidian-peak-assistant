@@ -2589,10 +2589,13 @@ Outline/Resources 双 tab；`outlineModel.ts` 纯模型（topic 分组、process
 
 ## 2026-07-27 · Peak Composer production closure checkpoint
 
-**结论**：13/13 Composer implementation tracks 已集成；自主可完成的
-T1 / T2 / T3 / T4 / T6 / T7 与 T5 安全真机子集已收口。整体仍诚实标为
-`PARTIAL`，等待 owner-involved QA#2；旧路径删除门已审计但结论是 `NO-GO`，
-没有用删功能换“完成度”。
+**结论**：13/13 Composer implementation tracks 已集成；T1 / T2 / T3 /
+T6 与自动化 fixture / geometry gate 已完成。owner 指出首轮“视觉通过”判断
+错误后，Composer shell 已再次按设计稿结构纠偏，并在真实 Obsidian 中完成
+宽屏、窄屏抽屉、关闭/重开与宿主边界截图回归。该证据**不等于最终视觉验收
+PASS**：owner-involved QA#2 仍未完成，Brief 的 related refresh 真机仍为 0，
+且当前没有 production finding producer / Ambient-backed Brief 数据。整体继续
+诚实标为 `PARTIAL`。旧路径删除门结论仍是 `NO-GO`，没有用删功能换“完成度”。
 
 ### 已完成
 
@@ -2601,14 +2604,20 @@ T1 / T2 / T3 / T4 / T6 / T7 与 T5 安全真机子集已收口。整体仍诚实
   runtime、provider/source boundary、no presentation dispatch，以及 Chat
   Composer / CodeMirror protected scope。
 - `0a69459c`：建立 96 Requirement ID traceability 与 final implementation
-  note；T6 后最终计数为 `69 COMPLETE / 27 PARTIAL`。
-- `2b68e34e`：真实 Obsidian 截图对照设计稿后修复 Intelligence sidecar
-  宽度、header、segmented tabs、card geometry、spacing 和 typography。
-- 五个设计 fixture `5/5`，geometry `49/49`，独立视觉判定
-  `PASS_WITH_NONBLOCKING_DIFFERENCES`。
+  note；生产数据链路复审后更正为 `61 COMPLETE / 35 PARTIAL`。
+- `2b68e34e`：首轮 sidecar 视觉修复；其后的
+  `84b71f78` / `61900c17` / `499eb7a7` 撤销过早视觉结论并完成第二轮结构、
+  responsive sidecar、Brief 诚实空态与 canonical Button 纠偏。
+- 五个设计 fixture `5/5`，geometry `49/49`。真实 Obsidian 截图位于
+  `.dev/harness/shots/design-regression-2026-07-27-correction/`，覆盖原生左右
+  侧栏保留、宽屏固定列、窄屏抽屉开/关、关闭后正文回流与重新打开。
+- 先前的 `PASS_WITH_NONBLOCKING_DIFFERENCES` 已撤销；当前只能判定为
+  “设计结构纠偏已验证，最终视觉验收仍为 PARTIAL”。
 - 真机安全子集通过：reload/entry、三种 display state、Copilot/History、
   selection toolbar、source-once、History empty state；QA 后恢复 owner 原左右
   侧栏。
+- Brief 没有伪造 finding / related / unplaced 计数。真机点击“更新相关材料”
+  后仍为空；这被记录为真实数据链路缺口，不用占位数据掩盖。
 
 ### T6 parity / deletion gate
 
@@ -2623,18 +2632,20 @@ native-file history semantics、以及 pre-integration stub 属于当前有意�
 
 ### 最新验证
 
-- `npm run test`: `306 passed / 2 failed (308)`；仍仅
+- `npm run test`: `307 passed / 2 failed (309)`；仍仅
   `chat-studio-message-state-ui` 与 `code-block-theme-settings` 两个既有失败。
 - `npm run build`: green。
 - `composer-chrome-geometry.qa.mjs`: `49/49`。
 - T4 design fixtures: `5/5`。
+- Composer visual-contract focused tests: `2/2`。
 - T6 focused parity/guard tests: `5/5` files。
 
 ### 唯一人工收口门
 
 owner-involved QA#2：真实 provider、bitmap/clipboard、Chinese IME、drag、
-narrow/detached/dark/125%，以及剩余 native-object/device matrix。完成前不得把
-Peak Composer wave 或 27 个 PARTIAL requirements 改写成 COMPLETE。
+detached/dark/125%，以及剩余 native-object/device matrix；另需补 production
+finding producer，并解释/修复真实 related refresh 为 0 的数据链路。完成前
+不得把 Peak Composer wave 或当前 PARTIAL requirements 改写成 COMPLETE。
 
 最终证据：
 [`2026-07-27-peak-composer-implementation-note.md`](./superpowers/plans/2026-07-27-peak-composer-implementation-note.md)

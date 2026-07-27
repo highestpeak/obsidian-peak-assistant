@@ -1,11 +1,14 @@
 # HANDOFF.md — Peak Composer 生产波次交接（给 Codex）
 
-> **2026-07-27 closure update:** 本文件保留的是 `9c4bda5d` 时点的接管快照，
-> 不再代表当前工作树。T1 / T2 / T3 / T4 / T6 / T7 已完成，T5 已完成无需 owner
-> 介入的真机子集；T6 的证据裁决为 `NO-GO`，因此未删除仍有生产调用的旧路径。
-> 当前总体状态仍为 `PARTIAL`。以
+> **2026-07-27 correction update:** 本文件正文保留的是 `9c4bda5d` 时点的
+> 接管快照，所有旧测试计数、pending 清单和视觉 verdict 都是历史证据，不再
+> 代表当前工作树。T1 / T2 / T3 / T6 与自动化 fixture / geometry gate 已完成；
+> owner 否决首轮视觉结论后，shell 已再次按设计稿纠偏并完成真实 Obsidian
+> 宽屏/窄屏截图。T5 owner-involved QA#2、production finding producer 与
+> non-empty related-material evidence 仍未完成；T6 的证据裁决为 `NO-GO`，
+> 因此未删除仍有生产调用的旧路径。当前总体状态仍为 `PARTIAL`。以
 > [`docs/superpowers/plans/2026-07-27-peak-composer-implementation-note.md`](./docs/superpowers/plans/2026-07-27-peak-composer-implementation-note.md)
-> 的终表与 §19 报告为准。
+> 的更正终表与 §19 报告为准。
 
 Date: 2026-07-27
 Branch: `codex/peak-modernization-refactor`

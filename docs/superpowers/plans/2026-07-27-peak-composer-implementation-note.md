@@ -2,16 +2,19 @@
 
 Date: 2026-07-27
 Implementation baseline: `9f489bb0`
-Closure code through: `2b68e34e`
+Visual-correction code through: `499eb7a7`
 Branch: `codex/peak-modernization-refactor`
 
 Status: `PARTIAL`
 
-This note is the closure artifact for the Peak Composer wave. All 13 implementation
-tracks are integrated, and the autonomous T1 / T2 / T3 / T4 / T6 / T7 work is closed.
-The overall verdict remains `PARTIAL` because the owner-involved portion of `QA#2`
-is intentionally still open and the deletion gate concluded `NO-GO`, not because
-the gate was skipped.
+This note is the current implementation artifact for the Peak Composer wave. All
+13 implementation tracks are integrated. T1 / T2 / T3 / T6 and the automated
+fixture / geometry gates are closed. The shell has also completed a second
+design-correction loop in real Obsidian after the owner rejected the first visual
+verdict. The overall verdict remains `PARTIAL`: the owner-involved portion of
+`QA#2` is intentionally still open, the deletion gate concluded `NO-GO`, the real
+related-material refresh currently returns no items, and there is no production
+finding producer / Ambient-backed Brief data path.
 
 It is intentionally conservative:
 - it does not claim overall `COMPLETE`;
@@ -29,15 +32,17 @@ Inherited evidence at `9f489bb0` from HANDOFF §10, not a new run by me:
 That snapshot was the floor when this note was created. The closure work below
 refreshes it and records the deletion-gate adjudication.
 
-## Fresh closure verification snapshot
+## Fresh correction verification snapshot
 
-Run on `codex/peak-modernization-refactor` after the closure code changes:
+Run on `codex/peak-modernization-refactor` after `499eb7a7`:
 
-- `npm run test`: `306 passed / 2 failed (308)`. The only failures remain the
+- `npm run test`: `307 passed / 2 failed (309)`. The only failures remain the
   pre-existing `chat-studio-message-state-ui` and `code-block-theme-settings`.
 - `npm run build`: green.
 - `node test/composer-chrome-geometry.qa.mjs`: `49/49`.
 - the five design fixtures in the object-QA section below: `5/5` passed.
+- `test/composer-sidecar-visual-contract.test.ts` and
+  `test/composer-visual-parity-correction.test.ts`: `2/2` passed.
 - T6 caller/parity focus set: `5/5` test files passed.
 - `test/composer-architecture-source-guards.test.ts`: passed and now locks the
   app-owned runtime, source boundary, provider boundary, presentation-dispatch
@@ -45,11 +50,15 @@ Run on `codex/peak-modernization-refactor` after the closure code changes:
 - Real Obsidian safe subset: plugin reload and entry command, Work / All changes /
   Clean reading, Copilot / History, selection toolbar, source-once rendering, and
   honest empty History were exercised without triggering a paid/provider run.
-- Reference-vs-production screenshot review: `PASS_WITH_NONBLOCKING_DIFFERENCES`.
-  The sidecar width, header hierarchy, segmented tabs, card geometry, spacing, and
-  typography were brought back toward the accepted mock. The remaining focus-status
-  row and desktop close control were not faked because their reactive/reopen
-  lifecycle is not yet reliable.
+- The earlier `PASS_WITH_NONBLOCKING_DIFFERENCES` verdict is revoked. The corrected
+  code passed an independent P0/P1 ship review, and real Obsidian screenshots now
+  cover wide desktop, narrow drawer open/closed, close/reopen, document reflow,
+  native left/right sidebars, and host containment. This is evidence that the
+  corrected shell is shippable; it is not an owner-complete visual or product
+  acceptance verdict.
+- Real-host Brief evidence is intentionally honest: no zero-count section is
+  rendered, and clicking `更新相关材料` still returns an empty state. No fixture or
+  Ambient output is presented as a production finding.
 
 ## What shipped
 
@@ -72,8 +81,15 @@ The concrete runtime flow is:
 
 - The autonomous safe subset of real Obsidian `QA#2` is complete. The full
   owner-involved matrix is still pending: paid/provider output, real bitmap and
-  clipboard flows, Chinese IME, drag gestures, narrow/detached/dark/125% cases,
+  clipboard flows, Chinese IME, drag gestures, detached/dark/125% cases,
   and the remaining native-object/device checks.
+- The narrow shell geometry itself was exercised in real Obsidian: the drawer
+  opens and closes within the Composer leaf, does not enter the native Outline,
+  and leaves no hidden sidecar controls in the accessibility tree. This does not
+  replace the rest of the owner/device narrow matrix.
+- The production Brief has no finding producer. The related-material port is
+  present, but the real-host refresh returned zero items in this QA note. Ambient
+  output is not wired as Brief findings and must not be described as such.
 - T6 was adjudicated, but it concluded `NO-GO`: no old path had enough
   caller-level parity evidence to delete safely.
 - The §7 degraded / unverified surfaces remain `PARTIAL`, even where harness tests are green:
@@ -199,9 +215,10 @@ Evidence types:
 - The `QA#1` items in HANDOFF are real Obsidian evidence.
 - Fixture success proves the accepted contract data has not drifted; it is not a
   substitute for production rendering or real-host interaction.
-- The `304/306` snapshot is inherited evidence from HANDOFF. The `306/308`,
-  build-green, fixture `5/5`, and geometry `49/49` results above are fresh closure
-  runs.
+- The `304/306` snapshot is inherited historical evidence from HANDOFF; the
+  `306/308` snapshot is an earlier closure run. The current correction run is
+  `307/309`, build-green, fixture `5/5`, geometry `49/49`, and visual-contract
+  `2/2`.
 
 ## Where the owner should open next
 
@@ -223,10 +240,12 @@ Legend:
 - `PARTIAL` = implementation exists, but the evidence is still only harness / fixture / headless, or the item is explicitly listed in HANDOFF §7.
 - `BLOCKED` and `NOT-APPLICABLE` are not used in this checkpoint.
 
-The 96-row matrix contains `69 COMPLETE` and `27 PARTIAL`. That does not upgrade
-the overall wave: overall `COMPLETE` also requires the owner-involved `QA#2` and a
-safe retirement outcome, or an explicitly accepted decision to retain the dual
-paths.
+The corrected 96-row matrix contains `61 COMPLETE` and `35 PARTIAL`. Eight
+Intelligence / Brief rows were downgraded after production data-path audit: their
+stores and fixtures exist, but real findings have no producer and the real related
+refresh returned no items. That does not upgrade the overall wave: overall
+`COMPLETE` also requires the owner-involved `QA#2` and a safe retirement outcome,
+or an explicitly accepted decision to retain the dual paths.
 
 | ID | production files | automated tests | QA evidence | status |
 | --- | --- | --- | --- | --- |
@@ -307,14 +326,14 @@ paths.
 | CMP-NATIVE-04 | `src/service/composer/packs/native/canvasFile.ts`; `src/ui/view/composer/blocks/canvas/CanvasBlockView.tsx` | `test/composer-native-roundtrip.test.ts`; `test/composer-native-runtime.test.ts` | Typed Canvas node / edge patching is automated | COMPLETE |
 | CMP-NATIVE-05 | `src/service/composer/packs/native/excalidrawFile.ts`; `src/ui/view/composer/blocks/excalidraw/ExcalidrawBlockView.tsx` | `test/composer-native-roundtrip.test.ts`; `test/composer-native-runtime.test.ts` | Typed Excalidraw patching is automated | COMPLETE |
 | CMP-NATIVE-06 | `src/service/composer/packs/native/nativeFilePatch.ts`; `src/ui/view/composer/blocks/embed/EmbedBlockView.tsx`; `src/ui/view/composer/blocks/nativeBlockShared.tsx` | `test/composer-native-contracts.test.ts`; `test/composer-native-runtime.test.ts` | Typed embed / attachment / citation / link actions are automated | COMPLETE |
-| CMP-FIND-01 | `src/service/composer/intelligence/findingIdentity.ts`; `src/service/composer/intelligence/IntelligenceRuntime.ts` | `test/composer-finding-identity.test.ts`; `test/composer-intelligence-session.test.ts` | Headless dedup / fingerprint / evidence-revision coverage | COMPLETE |
-| CMP-FIND-02 | `src/service/composer/intelligence/findingIdentity.ts`; `src/service/composer/intelligence/IntelligenceRuntime.ts`; `src/ui/view/composer/sidecar/CopilotView.tsx` | `test/composer-finding-identity.test.ts`; `test/composer-intelligence-session.test.ts` | Cross-surface consume / dismiss / stale re-anchor is automated | COMPLETE |
-| CMP-SIDE-01 | `src/service/composer/intelligence/runSession.ts`; `src/ui/view/composer/sidecar/IntelligenceSidecar.tsx`; `src/ui/view/composer/sidecar/CopilotView.tsx` | `test/composer-intelligence-session.test.ts`; `test/composer-finding-identity.test.ts` | QA#1 sidecar smoke; top-level only Copilot / History is encoded | COMPLETE |
-| CMP-SIDE-02 | `src/service/composer/intelligence/runSession.ts`; `src/ui/view/composer/sidecar/IntelligenceSidecar.tsx`; `src/ui/view/composer/sidecar/HistoryView.tsx` | `test/composer-intelligence-session.test.ts` | Brief / session / running / review lifecycle is automated | COMPLETE |
-| CMP-SIDE-03 | `src/service/composer/intelligence/runSession.ts`; `src/service/composer/intelligence/relatedMaterials.ts`; `src/ui/view/composer/sidecar/focusContext.ts` | `test/composer-intelligence-session.test.ts`; `test/composer-related-materials.test.ts` | Live vs frozen run context is covered by automation | COMPLETE |
-| CMP-SIDE-04 | `src/service/composer/intelligence/telemetry.ts`; `src/ui/view/composer/sidecar/RunReceiptCard.tsx` | `test/composer-intelligence-session.test.ts` | Receipt counts / privacy-safe telemetry are automated | COMPLETE |
-| CMP-SIDE-05 | `src/service/composer/intelligence/IntelligenceRuntime.ts`; `src/ui/view/composer/sidecar/IntelligenceSidecar.tsx`; `src/ui/view/composer/sidecar/HistoryView.tsx` | `test/composer-intelligence-session.test.ts`; `test/result-browser-host-parity.test.ts` | Document-owned review and locate/explain/status are automated | COMPLETE |
-| CMP-REL-01 | `src/service/composer/intelligence/relatedMaterials.ts`; `src/ui/view/composer/sidecar/ComposerResultBrowserAdapter.ts`; `src/ui/view/composer/sidecar/RelatedMaterialsModal.tsx` | `test/composer-related-materials.test.ts`; `test/result-browser-contract.test.ts`; `test/result-browser-host-parity.test.ts` | Bounded local preview is automated | COMPLETE |
+| CMP-FIND-01 | `src/service/composer/intelligence/findingIdentity.ts`; `src/service/composer/intelligence/IntelligenceRuntime.ts` | `test/composer-finding-identity.test.ts`; `test/composer-intelligence-session.test.ts` | Dedup / fingerprint / evidence-revision are automated, but no production producer currently ingests findings | PARTIAL |
+| CMP-FIND-02 | `src/service/composer/intelligence/findingIdentity.ts`; `src/service/composer/intelligence/IntelligenceRuntime.ts`; `src/ui/view/composer/sidecar/CopilotView.tsx` | `test/composer-finding-identity.test.ts`; `test/composer-intelligence-session.test.ts` | Cross-surface consume / dismiss / stale re-anchor is automated; real-host findings remain empty without a producer | PARTIAL |
+| CMP-SIDE-01 | `src/service/composer/intelligence/runSession.ts`; `src/ui/view/composer/sidecar/IntelligenceSidecar.tsx`; `src/ui/view/composer/sidecar/CopilotView.tsx` | `test/composer-intelligence-session.test.ts`; `test/composer-finding-identity.test.ts`; `test/composer-sidecar-visual-contract.test.ts` | Copilot / History shell and real-host responsive layout are verified; production Brief content path is incomplete | PARTIAL |
+| CMP-SIDE-02 | `src/service/composer/intelligence/runSession.ts`; `src/ui/view/composer/sidecar/IntelligenceSidecar.tsx`; `src/ui/view/composer/sidecar/HistoryView.tsx` | `test/composer-intelligence-session.test.ts` | Brief / session / running / review lifecycle is automated, but not yet exercised with real production findings | PARTIAL |
+| CMP-SIDE-03 | `src/service/composer/intelligence/runSession.ts`; `src/service/composer/intelligence/relatedMaterials.ts`; `src/ui/view/composer/sidecar/focusContext.ts` | `test/composer-intelligence-session.test.ts`; `test/composer-related-materials.test.ts` | Live vs frozen run context is automated; real-host related refresh returned zero items | PARTIAL |
+| CMP-SIDE-04 | `src/service/composer/intelligence/telemetry.ts`; `src/ui/view/composer/sidecar/RunReceiptCard.tsx` | `test/composer-intelligence-session.test.ts` | Receipt counts / privacy-safe telemetry are automated; production finding-backed receipt flow is not yet evidenced | PARTIAL |
+| CMP-SIDE-05 | `src/service/composer/intelligence/IntelligenceRuntime.ts`; `src/ui/view/composer/sidecar/IntelligenceSidecar.tsx`; `src/ui/view/composer/sidecar/HistoryView.tsx` | `test/composer-intelligence-session.test.ts`; `test/result-browser-host-parity.test.ts` | Document-owned review and locate/explain/status are automated, but production Brief data remains incomplete | PARTIAL |
+| CMP-REL-01 | `src/service/composer/intelligence/relatedMaterials.ts`; `src/ui/view/composer/sidecar/ComposerResultBrowserAdapter.ts`; `src/ui/view/composer/sidecar/RelatedMaterialsModal.tsx` | `test/composer-related-materials.test.ts`; `test/result-browser-contract.test.ts`; `test/result-browser-host-parity.test.ts` | Bounded local preview is automated; the wired real-host refresh returned zero items and needs readiness/data-path follow-through | PARTIAL |
 | CMP-REL-02 | `src/ui/view/composer/sidecar/RelatedMaterialsModal.tsx`; `src/ui/view/composer/sidecar/ComposerResultBrowserAdapter.ts`; `src/app/search/composeQuickSearchHost.ts` | `test/result-browser-contract.test.ts`; `test/result-browser-host-parity.test.ts` | The wide modal exists, but real graph fit is still §7 partial | PARTIAL |
 | CMP-RB-01 | `src/ui/view/composer/sidecar/ComposerResultBrowserAdapter.ts`; `src/app/search/composeQuickSearchHost.ts`; `src/app/search/background/composeQuickSearchBackgroundRuntime.ts` | `test/result-browser-contract.test.ts`; `test/result-browser-host-parity.test.ts` | Controlled shared Result Browser is fully automated | COMPLETE |
 | CMP-RB-02 | `src/ui/view/composer/sidecar/ComposerResultBrowserAdapter.ts`; `src/app/search/composeQuickSearchHost.ts` | `test/result-browser-contract.test.ts`; `test/result-browser-host-parity.test.ts` | List / Tree / Graph invariants are covered | COMPLETE |
@@ -323,16 +342,16 @@ paths.
 | CMP-METRIC-01 | `src/service/composer/intelligence/telemetry.ts`; `src/ui/view/composer/sidecar/sidecarConfig.ts` | `test/composer-intelligence-session.test.ts` | Relevance / outcome / control / interruption metrics are automated | COMPLETE |
 | CMP-METRIC-02 | `src/service/composer/intelligence/telemetry.ts`; `src/app/composer/ObsidianComposerAdapters.ts` | `test/composer-intelligence-session.test.ts` | Dedup / reliability / performance / trust / learning metrics are automated | COMPLETE |
 | CMP-METRIC-03 | `src/service/composer/intelligence/telemetry.ts`; `src/ui/view/composer/sidecar/sidecarConfig.ts` | `test/composer-intelligence-session.test.ts` | Privacy-safe telemetry and exposure-normalized evaluation are automated | COMPLETE |
-| CMP-RESP-01 | `src/ui/view/composer/ComposerRoot.tsx`; `src/ui/view/composer/sidecar/IntelligenceSidecar.tsx` | `test/composer-chrome-geometry.qa.mjs`; `test/result-browser-host-parity.test.ts`; `test/composer-sidecar-visual-contract.test.ts` | Real desktop screenshots and independent visual review passed with non-blocking differences; narrow/detached/dark/125% owner matrix remains pending | PARTIAL |
-| CMP-GOV-01 | `src/core/composer/capabilityContracts.ts`; `src/service/composer/capabilities/registry.ts`; `src/service/composer/capabilities/documentRuntime.ts` | `test/boundary/service-layer-boundaries.test.ts`; `test/composer-architecture-source-guards.test.ts`; `test/composer-capability-registry.test.ts`; `test/composer-result-renderer.test.ts`; `test/composer-writeback-adapters.test.ts` | Fresh baseline 306/308 and build green; guards lock no docs/gstack import, no provider adapter in UI, no service singleton, no presentation dispatch, and protected Chat Composer / CodeMirror boundaries | COMPLETE |
+| CMP-RESP-01 | `src/ui/view/composer/ComposerRoot.tsx`; `src/ui/view/composer/sidecar/IntelligenceSidecar.tsx` | `test/composer-chrome-geometry.qa.mjs`; `test/result-browser-host-parity.test.ts`; `test/composer-sidecar-visual-contract.test.ts`; `test/composer-visual-parity-correction.test.ts` | Corrected wide/narrow real-host screenshots and independent P0/P1 ship review pass; detached/dark/125% owner matrix remains pending | PARTIAL |
+| CMP-GOV-01 | `src/core/composer/capabilityContracts.ts`; `src/service/composer/capabilities/registry.ts`; `src/service/composer/capabilities/documentRuntime.ts` | `test/boundary/service-layer-boundaries.test.ts`; `test/composer-architecture-source-guards.test.ts`; `test/composer-capability-registry.test.ts`; `test/composer-result-renderer.test.ts`; `test/composer-writeback-adapters.test.ts` | Fresh baseline 307/309 and build green; guards lock no docs/gstack import, no provider adapter in UI, no service singleton, no presentation dispatch, and protected Chat Composer / CodeMirror boundaries | COMPLETE |
 | CMP-GOV-02 | `src/app/composer/composeDocumentComposerRuntime.ts`; `src/ui/view/composer/ComposerRoot.tsx`; `src/core/composer/capabilityContracts.ts` | `test/boundary/service-layer-boundaries.test.ts`; `test/composer-architecture-source-guards.test.ts`; `test/composer-capability-registry.test.ts`; `test/copilot-artifact-adapter.test.ts`; `test/copilot-action-runtime-ports.test.ts` | T6 caller audit concluded NO-GO for all three deletion candidates; live compatibility callers remain and overall status stays honest | PARTIAL |
 
 ## T4 / T5 / T6 closure
 
 | Task | Outcome | Evidence / remaining gate |
 | --- | --- | --- |
-| T4 fixture QA regression | PASS (`5/5`) | All five accepted design fixtures passed; geometry is `49/49`; independent reference screenshot comparison is `PASS_WITH_NONBLOCKING_DIFFERENCES` |
-| T5 real Obsidian QA#2 | PARTIAL | Safe desktop subset completed with local screenshots under `.dev/harness/shots/design-regression-2026-07-27/`; owner-involved provider/device/IME/drag/narrow/detached/dark/125% matrix remains |
+| T4 fixture QA regression | PASS (`5/5`) | All five accepted design fixtures passed; geometry is `49/49`. Fixture success is contract evidence, not production visual acceptance |
+| T5 real Obsidian QA#2 | PARTIAL | Safe desktop plus narrow-shell subset completed with corrected screenshots under `.dev/harness/shots/design-regression-2026-07-27-correction/`; owner-involved provider/device/IME/drag/detached/dark/125% matrix remains |
 | T6 deletion gate | PARTIAL / NO-GO | Three live caller families lack parity; no deletion was made |
 
 ## §19 final implementation report
@@ -361,15 +380,17 @@ paths.
 - T2 added AST-backed architecture/source guards.
 - T3 produced this exact 96-ID traceability artifact.
 - T4 reran all five design fixtures and the 49-assertion geometry suite.
-- T5 completed the safe real-Obsidian desktop subset and reference screenshot
-  comparison, including one visual correction loop.
+- T5 completed the safe real-Obsidian desktop and narrow-shell subset, including
+  a second correction loop after the owner rejected the first visual verdict.
 - T6 audited production callers and preserved unsafe-to-delete compatibility paths.
 - T7 updated the durable implementation note, execution log, roadmap, progress,
-  and historical handoff pointer.
+  and historical handoff pointer to the corrected `PARTIAL` status.
 
 ### Not implemented or not owner-accepted
 
 - The owner-involved full `QA#2` matrix listed above.
+- A production Current Work State / Open Writing Moves finding producer and a
+  proven non-empty related-material path for the Brief.
 - Full legacy Copilot action, artifact, and ReviewPanel lifecycle replacement.
 - The §7 degraded/device/provider surfaces retained as `PARTIAL` in the matrix.
 
@@ -397,6 +418,7 @@ explicitly accepted as permanent product boundaries.
 ## Notes for future integrators
 
 - If any future diff changes the evidence model, keep the table aligned with the exact `Requirement ID` set above.
-- The production/test paths were refreshed through closure code commit `2b68e34e`.
+- The production/test paths were refreshed through visual-correction code commit
+  `499eb7a7`.
 - Preserve the historical evidence in HANDOFF and the execution log; append new
   closure evidence instead of rewriting old snapshots as if they were current.

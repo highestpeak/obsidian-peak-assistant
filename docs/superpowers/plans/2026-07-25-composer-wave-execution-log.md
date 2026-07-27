@@ -5,7 +5,10 @@ Orchestrator: fable（编排/审计）；实现全部由 opus 子代理完成
 Contract: [`2026-07-24-peak-composer-complete-implementation-handoff.md`](./2026-07-24-peak-composer-complete-implementation-handoff.md)
 编排计划真值：本文件 + `/Users/zhangjike/.claude/plans/opus-sunny-stroustrup.md`
 
-> 本文件是跨会话续跑的唯一状态真值。每过一个审计门即更新。任何新 session 接手时：读 handoff 合同 → 读本文件 → 从第一个非 done 的 WP 继续。
+> 本文件保留完整时序证据，但历史 verdict 可能被后续 owner 纠偏覆盖。当前状态
+> 真值以
+> [`2026-07-27-peak-composer-implementation-note.md`](./2026-07-27-peak-composer-implementation-note.md)
+> 为准；新 session 应先读该 note，再把本文件作为执行证据读取。
 
 ## Owner 决策（2026-07-25 已确认）
 
@@ -281,8 +284,9 @@ parity 审计和视觉复核。
   singleton、label/id presentation dispatch、Chat Composer / CodeMirror protected
   imports。
 - `0a69459c docs(composer): add final traceability implementation note`：建立
-  96 个 Requirement ID 的逐项生产文件、测试、QA 证据和状态终表。T6 审计后
-  更正为 `69 COMPLETE / 27 PARTIAL`，整体保持 `PARTIAL`。
+  96 个 Requirement ID 的逐项生产文件、测试、QA 证据和状态终表。生产
+  Intelligence 数据链路复审后更正为 `61 COMPLETE / 35 PARTIAL`，整体保持
+  `PARTIAL`。
 
 ### T4 · 设计 fixture 与截图回归
 
@@ -294,13 +298,18 @@ parity 审计和视觉复核。
   `docs/gstack/peak-composer-editing-view-2026-07-09/` 设计稿截图。第一轮发现
   sidecar 明显偏窄、header / tabs / card 层级偏离；由独立 worker 修复后提交
   `2b68e34e fix(composer): restore sidecar design fidelity`。
-- 第二轮独立视觉结论：`PASS_WITH_NONBLOCKING_DIFFERENCES`。宽度、header、
-  segmented tabs、card geometry、spacing、typography 已回归；未伪造尚无可靠
-  reactive/reopen 生命周期的 focus-status row 和 desktop close control。
-- 本地截图证据位于
-  `.dev/harness/shots/design-regression-2026-07-27/`，包括 Work、All changes、
-  Clean reading、History、selection，以及 1224×768 / 1470×900 参考图。该目录
-  为本机 QA 证据，不作为生产资源导入。
+- owner 随后以真实截图否决该结论；`PASS_WITH_NONBLOCKING_DIFFERENCES` 已撤销。
+  独立 Codex workers 在 worktree 完成第二轮结构纠偏并合入：
+  `84b71f78`（正文/sidecar 响应式视觉）、`61900c17`（Brief 诚实空态）与
+  `499eb7a7`（canonical Button）。最终独立 P0/P1 ship review 为 PASS，但这
+  只表示纠偏代码可 ship，不表示 owner-complete 视觉验收。
+- 新真机证据位于
+  `.dev/harness/shots/design-regression-2026-07-27-correction/`：宽屏固定列、
+  sidecar 关闭后正文回流、窄屏抽屉开/关、原生 Files / Outline 保留与
+  Composer-host containment。旧目录仅是历史截图。
+- Brief 不再渲染伪造的零计数 section。真机点击“更新相关材料”仍返回空态；
+  production finding producer 也不存在，因此不得把 Ambient fixture 或 store
+  合同描述成真实 Brief 数据。
 
 ### T5 · 真机 QA#2
 
@@ -309,10 +318,12 @@ parity 审计和视觉复核。
 无需 owner 输入且不会触发付费/provider 的安全子集已在真实 Obsidian 完成：
 插件 reload、`Open document in Peak Composer`、Work / All changes / Clean
 reading、Copilot / History、selection toolbar、选区时 action row 抑制、
-source object 只出现一次、History 空态诚实显示。左右侧栏在 QA 后均恢复。
+source object 只出现一次、History 空态诚实显示，以及窄屏 drawer 开/关、
+关闭后退出 accessibility tree、host-contained 不覆盖 Outline。左右侧栏在
+QA 后均恢复。
 
 仍需 owner 在场的完整矩阵：真实 provider 输出、bitmap paste / clipboard、
-Chinese IME、drag、narrow / detached / dark / 125%、以及剩余 native-object /
+Chinese IME、drag、detached / dark / 125%、以及剩余 native-object /
 device flows。未将这些单方面标为完成。
 
 ### T6 · 旧路径删除门
@@ -337,11 +348,13 @@ T6 focus set `5/5` 通过：
 
 ### T7 · 最终状态
 
-- fresh `npm run test`: `306 passed / 2 failed (308)`；仅
+- fresh `npm run test`: `307 passed / 2 failed (309)`；仅
   `chat-studio-message-state-ui`、`code-block-theme-settings` 两个既有失败。
 - `npm run build`: green。
 - geometry: `49/49`；design fixtures: `5/5`。
+- visual-contract focused tests: `2/2`。
 - `HANDOFF.md` 顶部已标注原内容为 `9c4bda5d` 历史快照；
   `docs/roadmap.html`、`docs/progress.md` 和最终 implementation note 已同步。
 - 最终 verdict：`PARTIAL`。13/13 implementation tracks 已集成，但 owner-only
-  QA#2 未完成，且 T6 正确停在 NO-GO。
+  QA#2、production finding producer 与 non-empty related-material evidence
+  未完成，且 T6 正确停在 NO-GO。
