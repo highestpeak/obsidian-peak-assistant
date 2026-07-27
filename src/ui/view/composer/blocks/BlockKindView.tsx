@@ -1,5 +1,6 @@
 import * as React from 'react';
-import type { ComposerBlock } from '@/core/composer';
+import type { ComposerBlock, ComposerNativeRef } from '@/core/composer';
+import type { ComposerNativePreviewFormat } from '@/service/composer';
 import { CodeBlockView } from './code/CodeBlockView';
 import { MermaidBlockView } from './mermaid/MermaidBlockView';
 import { BaseBlockView } from './base/BaseBlockView';
@@ -10,6 +11,8 @@ import { TableBlockView } from './table/TableBlockView';
 import { ChartBlockView, isChartBlock } from './chart/ChartBlockView';
 import { ConnectedFrontmatterBlockView } from './frontmatter';
 import { MathBlockView } from './math';
+import { useComposerChrome } from '../chrome/ComposerChromeContext';
+import { useResolvedNativePreview } from './nativeBlockShared';
 
 /**
  * Read-only, kind-dispatched block renderer (WP1 skeleton, WP4/WP6-annotated).
@@ -24,6 +27,8 @@ import { MathBlockView } from './math';
  * html / mermaid / dataview / …) stay verbatim — nothing is ever hidden.
  */
 export function BlockKindView({ block }: { block: ComposerBlock }): React.ReactElement {
+	const nativeEmbed = useNativeEmbedRef(block);
+	if (nativeEmbed) return <NativeEmbedBlockView block={block} nativeRef={nativeEmbed} />;
 	switch (block.kind) {
 		case 'divider':
 			return <div className="pk-composer-divider" role="separator" />;
@@ -55,6 +60,37 @@ export function BlockKindView({ block }: { block: ComposerBlock }): React.ReactE
 		default:
 			return <MonoView block={block} />;
 	}
+}
+
+function useNativeEmbedRef(block: ComposerBlock): ComposerNativeRef | null {
+	const { snapshot } = useComposerChrome();
+	if (block.kind !== 'embed' || !snapshot) return null;
+	return snapshot.nativeRefs.find((ref) => ref.blockId === block.blockId && formatOf(ref) !== null) ?? null;
+}
+
+function NativeEmbedBlockView({
+	block,
+	nativeRef,
+}: {
+	block: ComposerBlock;
+	nativeRef: ComposerNativeRef;
+}): React.ReactElement {
+	const chrome = useComposerChrome();
+	const format = formatOf(nativeRef);
+	if (!format || !chrome.snapshot) return <EmbedBlockView block={block} />;
+	const { state, reload } = useResolvedNativePreview(chrome.runtime.nativePreviewPort, {
+		sourcePath: chrome.snapshot.filePath,
+		target: nativeRef.target,
+		format,
+	});
+	if (format === 'base') return <BaseBlockView block={block} nativePreview={state} onReload={reload} />;
+	if (format === 'canvas') return <CanvasBlockView block={block} nativePreview={state} onReload={reload} />;
+	return <ExcalidrawBlockView block={block} nativePreview={state} onReload={reload} />;
+}
+
+function formatOf(ref: ComposerNativeRef): ComposerNativePreviewFormat | null {
+	if (ref.kind === 'base' || ref.kind === 'canvas' || ref.kind === 'excalidraw') return ref.kind;
+	return null;
 }
 
 function MonoView({ block }: { block: ComposerBlock }): React.ReactElement {

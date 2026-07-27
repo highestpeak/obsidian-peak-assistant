@@ -32,6 +32,7 @@ import {
 	type ComposerFileEvent,
 	type ComposerFileEventsPort,
 	type ComposerLinkMetadataPort,
+	type ComposerNativePreviewPort,
 	type ComposerSourcePort,
 	type ComposerTransactionHub,
 	type ImageCapabilityCoordinator,
@@ -67,6 +68,8 @@ export interface ComposerEditingRuntime {
 	 * image ports composed (harness / read-only host).
 	 */
 	imageCoordinator?: ImageCapabilityCoordinator;
+	/** Native preview loader for Base/Canvas/Excalidraw embeds. */
+	nativePreviewPort?: ComposerNativePreviewPort;
 	/** App-owned Intelligence Sidecar runtime (WP9); absent ⇒ no sidecar. */
 	intelligence?: IntelligenceRuntime;
 }

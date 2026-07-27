@@ -39,17 +39,9 @@ import {
 	type ComposerSubBlockAnchor,
 	type SourceAnchor,
 } from '@/core/composer';
+import { classifyComposerNativeTarget } from './nativeClassification';
 
 const processor = remark().use(remarkFrontmatter, ['yaml']).use(remarkGfm);
-
-/** Extensions that classify an embed/image target as a native object kind. */
-const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'bmp', 'avif'];
-const NATIVE_EXT_KIND: Record<string, ComposerNativeKind> = {
-	base: 'base',
-	canvas: 'canvas',
-	excalidraw: 'excalidraw',
-};
-const ATTACHMENT_EXTS = ['pdf', 'docx', 'pptx', 'xlsx', 'zip', 'mp3', 'mp4', 'mov', 'wav'];
 
 interface ParseOptions {
 	filePath?: string;
@@ -340,12 +332,7 @@ function pushRef(
 }
 
 function classifyEmbed(target: string): ComposerNativeKind {
-	const ext = target.split('#')[0].split('.').pop()?.toLowerCase() ?? '';
-	if (NATIVE_EXT_KIND[ext]) return NATIVE_EXT_KIND[ext];
-	if (IMAGE_EXTS.includes(ext)) return 'image';
-	if (ATTACHMENT_EXTS.includes(ext)) return 'attachment';
-	if (/^https?:\/\//.test(target)) return 'image';
-	return 'embed';
+	return classifyComposerNativeTarget(target);
 }
 
 // ──────────────────────────────────────────────────────────────────────────

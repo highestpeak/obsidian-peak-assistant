@@ -36,7 +36,7 @@ import {
 	type ComposerMediaProducer,
 } from './ObsidianComposerImageAdapters';
 import { DocumentComposerRuntime } from './DocumentComposerRuntime';
-import { ObsidianComposerNativeFileAdapter } from './ObsidianNativeFileAdapter';
+import { ObsidianComposerNativeFileAdapter, ObsidianComposerNativePreviewAdapter } from './ObsidianNativeFileAdapter';
 import { composeComposerCapabilityRuntime } from './capabilities/composeComposerCapabilityRuntime';
 import { ComposerAiExecutorAdapter } from './capabilities/ComposerAiExecutorAdapter';
 import { createComposerFormulaDetailGenerator } from './capabilities/ComposerFormulaDetailGenerator';
@@ -142,6 +142,7 @@ export function composeDocumentComposerRuntime(app: App, pluginDir?: string): Do
 			text: createComposerImageTextAdapter(executor),
 			config: imageConfigProvider,
 		},
+		nativePreviewPort: new ObsidianComposerNativePreviewAdapter(app),
 	});
 	// The transaction-timing config lives in composer.json; load it asynchronously
 	// and apply once resolved. Hubs created before it lands use the compiled

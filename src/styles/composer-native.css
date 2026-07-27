@@ -91,6 +91,22 @@
 	font-style: italic;
 	padding: var(--pk-space-1) 0;
 }
+.peak-composer-root .pk-native-empty__title,
+.peak-composer-root .pk-native-empty__detail {
+	display: block;
+}
+.peak-composer-root .pk-native-empty__title {
+	color: var(--pk-text-secondary);
+	font-style: normal;
+	font-weight: 600;
+}
+.peak-composer-root .pk-native-empty__detail {
+	margin-top: 2px;
+	overflow-wrap: anywhere;
+}
+.peak-composer-root .pk-native-empty__reload {
+	margin-top: var(--pk-space-2);
+}
 .peak-composer-root .pk-native-chip {
 	display: inline-flex;
 	align-items: center;

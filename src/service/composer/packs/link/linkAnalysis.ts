@@ -18,6 +18,7 @@
  */
 
 import type { ComposerNativeKind } from '@/core/composer';
+import { classifyComposerNativeTarget } from '../../nativeClassification';
 
 export type ComposerLinkTokenKind =
 	| 'internal' // [[wikilink]] to a note
@@ -43,9 +44,6 @@ export interface DetectedLink {
 	from: number;
 	to: number;
 }
-
-const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'bmp', 'avif'];
-const ATTACHMENT_EXTS = ['pdf', 'docx', 'pptx', 'xlsx', 'zip', 'mp3', 'mp4', 'mov', 'wav', 'csv'];
 
 // Order matters: embeds (`![[ ]]` / `![]( )`) are matched before plain links.
 const EMBED_WIKI_RE = /!\[\[([^\]]+)\]\]/g;
@@ -161,11 +159,7 @@ function range(base: Omit<DetectedLink, 'from' | 'to'>, index: number, raw: stri
 }
 
 function nativeKindOf(target: string): ComposerNativeKind {
-	const ext = target.split('#')[0].split('.').pop()?.toLowerCase() ?? '';
-	if (IMAGE_EXTS.includes(ext)) return 'image';
-	if (ATTACHMENT_EXTS.includes(ext)) return 'attachment';
-	if (/^https?:\/\//.test(target)) return 'image';
-	return 'embed';
+	return classifyComposerNativeTarget(target);
 }
 
 // ── deterministic transforms (link capability pack rides these) ──────────────

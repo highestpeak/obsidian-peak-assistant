@@ -46,3 +46,32 @@ export interface ComposerFileEventsPort {
 	/** Subscribe to modify/rename/delete events. Returns an unsubscribe fn. */
 	onFileEvent(cb: (event: ComposerFileEvent) => void): () => void;
 }
+
+export type ComposerNativePreviewFormat = 'base' | 'canvas' | 'excalidraw';
+
+export interface ComposerNativePreviewRequest {
+	/** Markdown source document that owns the embed token. */
+	sourcePath: string;
+	/** The raw wikilink/embed target from Markdown, before app-layer resolution. */
+	target: string;
+	format: ComposerNativePreviewFormat;
+}
+
+export type ComposerNativePreviewState =
+	| { status: 'loaded'; format: ComposerNativePreviewFormat; targetPath: string; text: string }
+	| { status: 'missing'; format: ComposerNativePreviewFormat; requestedTarget: string; targetPath?: string; message?: string }
+	| { status: 'error'; format: ComposerNativePreviewFormat; requestedTarget: string; targetPath?: string; message: string };
+
+/**
+ * Reads native embed preview bytes for `.base`, `.canvas` and `.excalidraw.md`.
+ * Framework-neutral: the app layer resolves Obsidian links + vault reads, while
+ * UI components only see explicit loaded/missing/error states.
+ */
+export interface ComposerNativePreviewPort {
+	resolveNativePreview(request: ComposerNativePreviewRequest): Promise<ComposerNativePreviewState>;
+	/**
+	 * Optional external-change hook. Implementations may call `cb` when the target
+	 * file is modified, renamed or deleted so UI can safely reload the preview.
+	 */
+	onNativePreviewChange?(request: ComposerNativePreviewRequest, cb: () => void): () => void;
+}

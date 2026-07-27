@@ -4,6 +4,7 @@
  */
 export * from './ports';
 export * from './documentParser';
+export * from './nativeClassification';
 export * from './blockIdentity';
 export * from './sourceRevisionService';
 export * from './documentSession';

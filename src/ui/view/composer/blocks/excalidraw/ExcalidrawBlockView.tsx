@@ -10,21 +10,48 @@
 import * as React from 'react';
 import type { ComposerBlock } from '@/core/composer';
 import { buildExcalidrawPreview } from '@/service/composer';
-import { NativeBlockFrame, NativeSourceView, NativeStatRow, useNativeStrings, type NativeViewMode } from '../nativeBlockShared';
+import {
+	NativeBlockFrame,
+	NativePreviewStatusView,
+	NativeSourceView,
+	NativeStatRow,
+	useNativeStrings,
+	type NativePreviewLoadState,
+	type NativeViewMode,
+} from '../nativeBlockShared';
 
-export function ExcalidrawBlockView({ block }: { block: ComposerBlock }): React.ReactElement {
+export function ExcalidrawBlockView({
+	block,
+	nativePreview,
+	onReload,
+}: {
+	block: ComposerBlock;
+	nativePreview?: NativePreviewLoadState;
+	onReload?: () => void;
+}): React.ReactElement {
 	const strings = useNativeStrings();
 	const [mode, setMode] = React.useState<NativeViewMode>('preview');
-	const raw = block.renderModel.raw;
+	const loaded = nativePreview?.status === 'loaded' ? nativePreview : null;
+	const raw = loaded?.text ?? block.renderModel.raw;
 	const preview = React.useMemo(() => buildExcalidrawPreview(raw), [raw]);
+	const sourceFrom = loaded ? undefined : block.source.from;
 	const typeItems = preview.elementTypes
 		? Object.entries(preview.elementTypes).map(([type, count]) => ({ label: type, value: count }))
 		: [];
 
 	return (
-		<NativeBlockFrame blockId={block.blockId} sourceFrom={block.source.from} mode={mode} onMode={setMode} strings={strings}>
+		<NativeBlockFrame
+			blockId={block.blockId}
+			sourceFrom={block.source.from}
+			mode={mode}
+			onMode={setMode}
+			strings={strings}
+			nativeTarget={nativeTargetOf(nativePreview)}
+		>
 			{mode === 'source' ? (
-				<NativeSourceView raw={raw} blockId={block.blockId} sourceFrom={block.source.from} />
+				<NativeSourceView raw={raw} blockId={block.blockId} sourceFrom={sourceFrom} nativeTarget={loaded?.targetPath} />
+			) : nativePreview && nativePreview.status !== 'loaded' ? (
+				<NativePreviewStatusView state={nativePreview} strings={strings} onReload={onReload} />
 			) : preview.supported ? (
 				<div className="pk-native-excalidraw">
 					<NativeStatRow items={[{ label: strings.excalidrawElementsLabel, value: preview.elementCount ?? 0 }, ...typeItems]} />
@@ -44,4 +71,10 @@ export function ExcalidrawBlockView({ block }: { block: ComposerBlock }): React.
 			)}
 		</NativeBlockFrame>
 	);
+}
+
+function nativeTargetOf(state: NativePreviewLoadState | undefined): string | undefined {
+	if (!state) return undefined;
+	if ('targetPath' in state && state.targetPath) return state.targetPath;
+	return 'requestedTarget' in state ? state.requestedTarget : undefined;
 }

@@ -26,6 +26,7 @@ import {
 	type ComposerImageReferencePort,
 	type ComposerImageTextPort,
 	type ComposerLinkMetadataPort,
+	type ComposerNativePreviewPort,
 	type ComposerRelatedMaterialsPort,
 	type ImageDomainConfigProvider,
 	type IntelligenceTelemetryPort,
@@ -70,6 +71,8 @@ export interface DocumentComposerRuntimeAdapters {
 		text?: ComposerImageTextPort;
 		config?: ImageDomainConfigProvider;
 	};
+	/** App-owned native preview loader for Markdown embeds targeting native files. */
+	nativePreviewPort?: ComposerNativePreviewPort;
 }
 
 export class DocumentComposerRuntime {
@@ -83,6 +86,7 @@ export class DocumentComposerRuntime {
 	private readonly vaultInventory?: VaultPropertyScanPort;
 	private readonly formulaDetailGenerator?: FormulaDetailGeneratorPort;
 	private readonly imagePorts?: DocumentComposerRuntimeAdapters['imagePorts'];
+	private readonly nativePreviewPort?: ComposerNativePreviewPort;
 
 	constructor(
 		private readonly source: ObsidianComposerSourceAdapter,
@@ -100,6 +104,7 @@ export class DocumentComposerRuntime {
 		this.vaultInventory = adapters.vaultInventory;
 		this.formulaDetailGenerator = adapters.formulaDetailGenerator;
 		this.imagePorts = adapters.imagePorts;
+		this.nativePreviewPort = adapters.nativePreviewPort;
 	}
 
 	/** Override the transaction config once the runtime JSON resolves (async). */
@@ -157,6 +162,7 @@ export class DocumentComposerRuntime {
 			...(this.formulaDetailGenerator ? { formulaDetailGenerator: this.formulaDetailGenerator } : {}),
 			...(capabilityRuntime ? { projection: capabilityRuntime, candidateRuntime: capabilityRuntime } : {}),
 			...(imageCoordinator ? { imageCoordinator } : {}),
+			...(this.nativePreviewPort ? { nativePreviewPort: this.nativePreviewPort } : {}),
 		};
 	}
 

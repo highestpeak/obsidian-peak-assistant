@@ -32,6 +32,10 @@ export interface NativeBlockStrings {
 	/** Embed preview. */
 	embedOpenLabel: string;
 	embedBroken: string;
+	nativeLoading: string;
+	nativeMissing: string;
+	nativeError: string;
+	nativeReload: string;
 	/** Mermaid preview. */
 	mermaidRenderError: string;
 	mermaidEmpty: string;
@@ -57,6 +61,10 @@ export const DEFAULT_NATIVE_BLOCK_STRINGS: NativeBlockStrings = {
 	excalidrawUnsupported: '此 Excalidraw 图当前不可预览',
 	embedOpenLabel: '打开',
 	embedBroken: '嵌入目标缺失',
+	nativeLoading: '正在加载嵌入目标…',
+	nativeMissing: '嵌入目标缺失',
+	nativeError: '嵌入目标读取失败',
+	nativeReload: '重新加载',
 	mermaidRenderError: '图表渲染失败，已显示源码',
 	mermaidEmpty: '空图表',
 	linesSuffix: '行',

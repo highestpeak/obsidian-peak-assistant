@@ -9,6 +9,7 @@ import type {
 	ComposerCommentStore,
 	ComposerDocumentSession,
 	ComposerLinkMetadataPort,
+	ComposerNativePreviewPort,
 	ComposerTransactionHub,
 	ImageCapabilityCoordinator,
 	VaultPropertyScanPort,
@@ -49,6 +50,8 @@ export interface ComposerChromeRuntime {
 	 * Absent ⇒ image affordances render disabled with a reason (never fake).
 	 */
 	imageCoordinator?: ImageCapabilityCoordinator;
+	/** Native preview loader for `.base`, `.canvas` and `.excalidraw.md` embeds. */
+	nativePreviewPort?: ComposerNativePreviewPort;
 }
 
 export interface ComposerChromeValue {
