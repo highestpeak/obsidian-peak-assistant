@@ -13,6 +13,14 @@ import { ConfigTemplateId } from '@/core/template/TemplateRegistry';
 import { DEFAULT_IMAGE_ACTION_STRINGS, type ImageActionStrings } from '@/service/composer';
 
 export interface ImageCandidateUiStrings {
+	loadFailed: string;
+	sourceUnavailable: string;
+	layoutTitle: string;
+	layoutDescription: string;
+	layoutSource: string;
+	layoutModeAria: string;
+	layoutModes: { grid: string; hero: string; strip: string; story: string };
+	editingRequired: string;
 	accept: string;
 	discard: string;
 	cancel: string;
@@ -41,6 +49,14 @@ export interface ImageCandidateUiStrings {
 }
 
 export const DEFAULT_IMAGE_UI_STRINGS: ImageCandidateUiStrings = {
+	loadFailed: '图片加载失败',
+	sourceUnavailable: '图片源不可用',
+	layoutTitle: '图片组合',
+	layoutDescription: 'HTML Block · Markdown Preview 可见',
+	layoutSource: 'HTML source',
+	layoutModeAria: '图片组合布局',
+	layoutModes: { grid: '网格', hero: '主图', strip: '横排', story: '叙事' },
+	editingRequired: '需编辑权限',
 	accept: '接受',
 	discard: '丢弃',
 	cancel: '取消',

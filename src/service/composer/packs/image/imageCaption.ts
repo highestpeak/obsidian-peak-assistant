@@ -21,6 +21,8 @@ export interface ParsedImageBlock {
 	path: string;
 	alt?: string;
 	caption?: string;
+	/** Optional Obsidian embed display width (`![[asset|alt|720]]`). */
+	width?: number;
 	/** True when the block is already an HTML `<figure>`. */
 	isFigure: boolean;
 }
@@ -52,12 +54,19 @@ export function parseImageBlock(source: string): ParsedImageBlock | null {
 			isFigure: true,
 		};
 	}
-	// Wikilink embed: ![[path|alt]]
+	// Wikilink embed: ![[path|alt|width]]. Obsidian permits the final segment
+	// to be a display width; it is not part of the accessible alt text.
 	const wiki = trimmed.match(/!\[\[([^\]|]+)(?:\|([^\]]*))?\]\]/);
 	if (wiki) {
+		const segments = (wiki[2] ?? '').split('|').map((segment) => segment.trim());
+		const maybeWidth = segments.length > 1 ? Number(segments[segments.length - 1]) : Number.NaN;
+		const width = Number.isFinite(maybeWidth) && maybeWidth > 0 ? Math.floor(maybeWidth) : undefined;
+		const altSegments = width === undefined ? segments : segments.slice(0, -1);
+		const alt = altSegments.join('|').trim();
 		return {
 			path: wiki[1].trim(),
-			...(wiki[2] && wiki[2].trim() ? { alt: wiki[2].trim() } : {}),
+			...(alt ? { alt } : {}),
+			...(width !== undefined ? { width } : {}),
 			isFigure: false,
 		};
 	}

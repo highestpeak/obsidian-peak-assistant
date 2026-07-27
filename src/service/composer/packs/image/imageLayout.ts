@@ -32,7 +32,8 @@ export const LAYOUT_MARKER_ATTR = 'data-pk-layout';
 /** Peak fixture contract (production layout renderer path). */
 export const PEAK_IMAGE_LAYOUT_CLASS = 'peak-image-layout';
 export const PEAK_IMAGE_LAYOUT_DATA_LAYOUT = 'data-layout';
-export const PEAK_IMAGE_LAYOUT_DATA_VALUE = 'hero';
+export const PEAK_IMAGE_LAYOUT_MODES = ['grid', 'hero', 'strip', 'story'] as const;
+export type PeakImageLayoutMode = (typeof PEAK_IMAGE_LAYOUT_MODES)[number];
 
 export interface ParsedPeakLayoutFigure {
 	src: string;
@@ -41,12 +42,26 @@ export interface ParsedPeakLayoutFigure {
 }
 
 export interface ParsedPeakImageLayout {
-	kind: 'hero';
+	kind: PeakImageLayoutMode;
 	items: [ParsedPeakLayoutFigure, ParsedPeakLayoutFigure, ParsedPeakLayoutFigure, ParsedPeakLayoutFigure];
 }
 
 function decodePeakLayoutText(value: string): string {
 	return value.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+}
+
+/** Decode HTML-source vault paths without throwing on malformed percent escapes. */
+function decodeVaultPath(value: string): string {
+	try {
+		return decodeURIComponent(value);
+	} catch {
+		return value;
+	}
+}
+
+function isSafePeakImagePath(value: string): boolean {
+	const normalized = value.trim().toLowerCase();
+	return normalized.length > 0 && !/^(?:data|javascript|vbscript):/.test(normalized) && !normalized.startsWith('//');
 }
 
 function htmlAttr(attrs: string, name: string): string | null {
@@ -74,7 +89,7 @@ function parsePeakImageLayoutFigure(rawFigure: string): ParsedPeakLayoutFigure |
 	const imgMatch = imgMatches[0];
 	const imgAttrs = imgMatch.replace(/^<img/i, '').replace(/>$/, '');
 	const src = htmlAttr(imgAttrs, 'src');
-	if (!src || src.trim().length === 0) return null;
+	if (!src || !isSafePeakImagePath(src)) return null;
 
 	const alt = htmlAttr(imgAttrs, 'alt') ?? '';
 	const captionMatch = figMatches[0].match(/<figcaption\b[^>]*>([\s\S]*?)<\/figcaption>/i);
@@ -85,7 +100,7 @@ function parsePeakImageLayoutFigure(rawFigure: string): ParsedPeakLayoutFigure |
 	if (withoutFigCaption.length > 0) return null;
 
 	return {
-		src: decodePeakLayoutText(src.trim()),
+		src: decodeVaultPath(decodePeakLayoutText(src.trim())),
 		alt: decodePeakLayoutText(alt.trim()),
 		caption: decodePeakLayoutText(captionMatch[1].trim()),
 	};
@@ -98,7 +113,7 @@ export function parsePeakImageLayout(raw: string): ParsedPeakImageLayout | null 
 	const attrText = containerMatch[1];
 	if (!hasClassToken(attrText, PEAK_IMAGE_LAYOUT_CLASS)) return null;
 	const layout = htmlAttr(attrText, PEAK_IMAGE_LAYOUT_DATA_LAYOUT);
-	if (!layout || layout !== PEAK_IMAGE_LAYOUT_DATA_VALUE) return null;
+	if (!layout || !PEAK_IMAGE_LAYOUT_MODES.includes(layout as PeakImageLayoutMode)) return null;
 
 	const inner = containerMatch[2];
 	const figureMatch = inner.match(/<figure\b[^>]*>[\s\S]*?<\/figure>/gi) ?? [];
@@ -110,7 +125,13 @@ export function parsePeakImageLayout(raw: string): ParsedPeakImageLayout | null 
 
 	const items = figureMatch.map((rawFigure) => parsePeakImageLayoutFigure(rawFigure));
 	if (items.some((item) => !item)) return null;
-	return { kind: 'hero', items: items as [ParsedPeakLayoutFigure, ParsedPeakLayoutFigure, ParsedPeakLayoutFigure, ParsedPeakLayoutFigure] };
+	return { kind: layout as PeakImageLayoutMode, items: items as [ParsedPeakLayoutFigure, ParsedPeakLayoutFigure, ParsedPeakLayoutFigure, ParsedPeakLayoutFigure] };
+}
+
+/** Replace only the layout attribute of a verified fixture block. */
+export function replacePeakImageLayoutMode(source: string, mode: PeakImageLayoutMode): string | null {
+	if (!parsePeakImageLayout(source)) return null;
+	return source.replace(/(data-layout\s*=\s*["'])[^"']*(["'])/i, `$1${mode}$2`);
 }
 
 /** Type guard for the current fixture contract. */

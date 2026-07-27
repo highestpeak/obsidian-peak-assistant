@@ -619,7 +619,7 @@ function BlockBody({
 	if (block.kind === 'image') {
 		return <ImageBlockView block={block} editing={editing} />;
 	}
-	return <BlockKindView block={block} />;
+	return <BlockKindView block={block} editing={editing} />;
 }
 
 function EditableTextBody({

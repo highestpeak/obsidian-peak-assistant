@@ -27,13 +27,14 @@ function imageRefOf(snapshot: ComposerDocumentSnapshot | null, raw: string, bloc
 	return ref?.target ?? null;
 }
 
-function imageMetaFromSource(raw: string): { alt: string; caption: string } {
+function imageMetaFromSource(raw: string): { alt: string; caption: string; width?: number } {
 	const parsed = parseImageBlock(raw);
 	if (!parsed) return { alt: '', caption: '' };
 	const alt = parsed.alt ?? '';
 	return {
 		alt,
 		caption: parsed.caption ?? alt,
+		...(parsed.width !== undefined ? { width: parsed.width } : {}),
 	};
 }
 
@@ -49,7 +50,7 @@ export function ImageBlockView({
 	const hub = chrome.runtime.hub;
 	const resolvePreviewUri = chrome.runtime.imagePreviewResolver;
 	const sourcePath = imageRefOf(chrome.snapshot, block.renderModel.raw, block.blockId);
-	const { alt, caption } = imageMetaFromSource(block.renderModel.raw);
+	const { alt, caption, width } = imageMetaFromSource(block.renderModel.raw);
 	const resolvedUri = sourcePath ? resolvePreviewUri?.(sourcePath) ?? sourcePath : '';
 	const [editOpen, setEditOpen] = React.useState(false);
 	const [instruction, setInstruction] = React.useState('');
@@ -67,8 +68,25 @@ export function ImageBlockView({
 		};
 	}, [resolvedUri]);
 
+	const toolbarOpen = editing && Boolean(coordinator) && Boolean(hub);
+	const target: ComposerTarget = { kind: 'block', blockId: block.blockId };
+	const runCaption = (): void => {
+		if (!coordinator || !hub) return;
+		coordinator.beginCaption({ blockId: block.blockId });
+	};
+	const runEdit = (): void => {
+		if (!coordinator || !hub || !sourcePath) return;
+		coordinator.beginAiEdit({ instruction: instruction.trim(), target, sourcePath });
+		setInstruction('');
+		setEditOpen(false);
+	};
 	const figure = (
-		<figure className="pk-composer-image-figure" data-src-text-from={block.source.from} data-block-id={block.blockId}>
+		<figure
+			className="pk-composer-image-figure real-image-frame"
+			data-src-text-from={block.source.from}
+			data-block-id={block.blockId}
+			style={width ? { width: `${width}px`, maxWidth: '100%' } : undefined}
+		>
 			{sourcePath && !imageError ? (
 				<img
 					className="pk-composer-image-elem"
@@ -77,56 +95,44 @@ export function ImageBlockView({
 					onError={() => setImageError(true)}
 				/>
 			) : (
-				<span className="pk-composer-image-fallback" title={sourcePath ? '图片加载失败' : '图片路径缺失'}>
+				<span className="pk-composer-image-fallback" title={sourcePath ? uiStrings.loadFailed : uiStrings.sourceUnavailable}>
 					<FileImage size={18} />
-					<span className="pk-composer-image-fallback-text">{sourcePath ? caption || alt || sourcePath : '图片源不可用'}</span>
+					<span className="pk-composer-image-fallback-text">{sourcePath ? caption || alt || sourcePath : uiStrings.sourceUnavailable}</span>
 				</span>
 			)}
 			{caption ? <figcaption className="pk-composer-image-caption">{caption}</figcaption> : null}
+			{toolbarOpen ? (
+				<span className="pk-composer-image-toolbar image-toolbar inline-flex items-center gap-1.5" data-chrome="true">
+					<Button
+						variant="secondary"
+						className={`${IMAGE_TOOLBAR_CONTROL} px-2 gap-1`}
+						disabled={!sourcePath}
+						title={sourcePath ? undefined : uiStrings.stale}
+						aria-label={actionStrings.editTitle}
+						onClick={() => setEditOpen((v) => !v)}
+					>
+						<WandSparkles size={14} />
+						{actionStrings.editTitle}
+					</Button>
+					<Button
+						variant="secondary"
+						className={`${IMAGE_TOOLBAR_CONTROL} px-2 gap-1`}
+						aria-label={actionStrings.captionTitle}
+						onClick={runCaption}
+					>
+						<Captions size={14} />
+						{actionStrings.captionTitle}
+					</Button>
+				</span>
+			) : null}
 		</figure>
 	);
 
-	// Toolbar shows only in an editable document with a composed coordinator + hub.
-	if (!editing || !coordinator || !hub) return figure;
-
-	const target: ComposerTarget = { kind: 'block', blockId: block.blockId };
-	const disabledReason = sourcePath ? undefined : uiStrings.stale;
-
-	const runCaption = (): void => {
-		coordinator.beginCaption({ blockId: block.blockId });
-	};
-	const runEdit = (): void => {
-		if (!sourcePath) return;
-		coordinator.beginAiEdit({ instruction: instruction.trim(), target, sourcePath });
-		setInstruction('');
-		setEditOpen(false);
-	};
+	if (!toolbarOpen) return figure;
 
 	return (
-		<span className="pk-composer-image-block inline-flex flex-col gap-1.5 items-start">
+		<div className="pk-composer-image-block inline-flex flex-col gap-1.5 items-start">
 			{figure}
-			<span className="pk-composer-image-toolbar inline-flex items-center gap-1.5" data-chrome="true">
-				<Button
-					variant="secondary"
-					className={`${IMAGE_TOOLBAR_CONTROL} px-2 gap-1`}
-					disabled={Boolean(disabledReason)}
-					title={disabledReason}
-					aria-label={actionStrings.editTitle}
-					onClick={() => setEditOpen((v) => !v)}
-				>
-					<WandSparkles size={14} />
-					{actionStrings.editTitle}
-				</Button>
-				<Button
-					variant="secondary"
-					className={`${IMAGE_TOOLBAR_CONTROL} px-2 gap-1`}
-					aria-label={actionStrings.captionTitle}
-					onClick={runCaption}
-				>
-					<Captions size={14} />
-					{actionStrings.captionTitle}
-				</Button>
-			</span>
 			{editOpen && sourcePath && (
 				<input
 					autoFocus
@@ -146,6 +152,6 @@ export function ImageBlockView({
 					}}
 				/>
 			)}
-		</span>
+		</div>
 	);
 }

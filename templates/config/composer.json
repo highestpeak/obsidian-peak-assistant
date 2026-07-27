@@ -853,6 +853,19 @@
 			"layoutTitle": "排版"
 		},
 		"ui": {
+			"loadFailed": "图片加载失败",
+			"sourceUnavailable": "图片源不可用",
+			"layoutTitle": "图片组合",
+			"layoutDescription": "HTML Block · Markdown Preview 可见",
+			"layoutSource": "HTML source",
+			"layoutModeAria": "图片组合布局",
+			"layoutModes": {
+				"grid": "网格",
+				"hero": "主图",
+				"strip": "横排",
+				"story": "叙事"
+			},
+			"editingRequired": "需编辑权限",
 			"accept": "接受",
 			"discard": "丢弃",
 			"cancel": "取消",

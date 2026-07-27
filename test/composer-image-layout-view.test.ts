@@ -35,9 +35,9 @@ function createBlock(raw: string): ComposerBlock {
 	};
 }
 
-function renderHtml(raw: string): string {
+function renderHtml(raw: string, editing = false): string {
 	const value = {
-		runtime: {},
+		runtime: editing ? { hub: { commit: async () => undefined } as never } : {},
 		projection: stubComposerCapabilityProjection,
 		candidateRegistry: {} as never,
 		config: DEFAULT_COMPOSER_CONFIG,
@@ -51,7 +51,7 @@ function renderHtml(raw: string): string {
 		React.createElement(
 			ComposerChromeProvider,
 			{ value },
-			React.createElement(BlockKindView, { block: createBlock(raw) }),
+			React.createElement(BlockKindView, { block: createBlock(raw), editing }),
 		),
 	);
 }
@@ -60,6 +60,12 @@ function testContractRecognized(): void {
 	const html = renderHtml(KNOWN_LAYOUT_HTML);
 	check('exact layout contract renders image layout view', html.includes('pk-composer-image-layout'));
 	check('exact layout contract does not use mono fallback', html.includes('pk-composer-mono') === false);
+	check('exact layout has mock shell, head and source footer', html.includes('image-layout-shell') && html.includes('image-layout-head') && html.includes('image-layout-source'));
+	check('exact layout keeps four flat figures, never nested thumbs', (html.match(/peak-image-layout__item/g) ?? []).length === 4 && html.includes('peak-image-layout__thumbs') === false);
+	check('layout root is a block container, not a span that browsers reparent', html.includes('<div class="pk-composer-image-layout"'));
+	check('read-only layout has no non-functional mode controls', html.includes('pk-composer-image-layout-mode') === false);
+	const editable = renderHtml(KNOWN_LAYOUT_HTML, true);
+	check('editable layout exposes four transaction-backed mode controls', (editable.match(/pk-composer-image-layout-mode/g) ?? []).length === 4);
 }
 
 function testUnknownLayoutVerbatim(): void {

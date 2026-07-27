@@ -28,7 +28,7 @@ import { useResolvedNativePreview } from './nativeBlockShared';
  * block renders live recharts (ChartBlockView). The rest (math / frontmatter /
  * html / mermaid / dataview / …) stay verbatim — nothing is ever hidden.
  */
-export function BlockKindView({ block }: { block: ComposerBlock }): React.ReactElement {
+export function BlockKindView({ block, editing = false }: { block: ComposerBlock; editing?: boolean }): React.ReactElement {
 	const nativeEmbed = useNativeEmbedRef(block);
 	if (nativeEmbed) return <NativeEmbedBlockView block={block} nativeRef={nativeEmbed} />;
 	switch (block.kind) {
@@ -52,7 +52,7 @@ export function BlockKindView({ block }: { block: ComposerBlock }): React.ReactE
 			return <RefView block={block} />;
 		case 'html':
 			return isPeakImageLayoutSource(block.renderModel.raw) ? (
-				<PeakImageLayoutBlockView block={block} editing={false} />
+				<PeakImageLayoutBlockView block={block} editing={editing} />
 			) : (
 				<MonoView block={block} />
 			);

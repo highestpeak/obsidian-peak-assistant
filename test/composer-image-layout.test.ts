@@ -15,6 +15,8 @@ import { applyOperations, type ComposerResultEnvelope } from '@/core/composer';
 import {
 	renderLayoutHtml,
 	parsePeakImageLayout,
+	parseImageBlock,
+	replacePeakImageLayoutMode,
 	isPeakImageLayoutSource,
 	isLayoutBlockSource,
 	planLayoutInsert,
@@ -92,6 +94,36 @@ function testPeakLayoutContract(): void {
 	check('peak layout source guard true', isPeakImageLayoutSource(PEAK_FIGURE_LAYOUT));
 	check('peak layout source guard rejects mixed html', !isPeakImageLayoutSource('<div class="peak-image-layout" data-layout="hero"><figure><img src="a.png"><figcaption>a</figcaption></figure><figure><img src="b.png"><figcaption>b</figcaption></figure></div>'));
 	check('peak layout source guard rejects missing data-layout', !isPeakImageLayoutSource('<div class="peak-image-layout"><figure><img src="a.png"><figcaption>a</figcaption></figure><figure><img src="b.png"><figcaption>b</figcaption></figure><figure><img src="c.png"><figcaption>c</figcaption></figure><figure><img src="d.png"><figcaption>d</figcaption></figure></div>'));
+	check('peak layout source guard rejects unsafe data URI', !isPeakImageLayoutSource('<div class="peak-image-layout" data-layout="hero"><figure><img src="data:image/png;base64,x"><figcaption>a</figcaption></figure><figure><img src="b.png"><figcaption>b</figcaption></figure><figure><img src="c.png"><figcaption>c</figcaption></figure><figure><img src="d.png"><figcaption>d</figcaption></figure></div>'));
+	const percentEncoded = PEAK_FIGURE_LAYOUT.replace('a.png', 'Peak%20Composer%20Visual%20Parity%20Assets/a.png');
+	check('peak layout decodes vault URI before app resolver', parsePeakImageLayout(percentEncoded)?.items[0].src === 'Peak Composer Visual Parity Assets/a.png');
+	const switched = replacePeakImageLayoutMode(PEAK_FIGURE_LAYOUT, 'story');
+	check('peak layout mode writeback keeps strict source contract', switched?.includes('data-layout="story"') === true && parsePeakImageLayout(switched ?? '')?.kind === 'story');
+}
+
+function testWikilinkAltAndWidth(): void {
+	const parsed = parseImageBlock('![[public-image/20250703182542769.png|路线图|720]]');
+	check('wikilink path is preserved', parsed?.path === 'public-image/20250703182542769.png');
+	check('wikilink third segment is width, not alt text', parsed?.alt === '路线图' && parsed?.width === 720);
+}
+
+async function testFixtureModeCommit(): Promise<void> {
+	const vault = new FakeVault();
+	const session = openSession(vault, 'fixture.md', PEAK_FIGURE_LAYOUT);
+	const hub = makeHub(vault, session);
+	const block = session.snapshot.blocks.find((candidate) => candidate.kind === 'html');
+	if (!block) throw new Error('fixture html block missing');
+	const next = replacePeakImageLayoutMode(block.renderModel.raw, 'grid');
+	if (!next) throw new Error('fixture mode replacement rejected');
+	await hub.commit({
+		origin: 'direct',
+		label: '图片组合',
+		operations: [{ kind: 'replaceRange', from: block.source.from, to: block.source.to, text: next }],
+		target: { kind: 'block', blockId: block.blockId },
+		expectedBlockDelta: 0,
+	});
+	check('fixture mode writes one atomic source replacement', vault.read('fixture.md').includes('data-layout="grid"') && vault.writeCount === 1);
+	check('fixture mode commit reparses the same HTML block', session.snapshot.blocks.filter((candidate) => candidate.kind === 'html').length === 1);
 }
 
 function testLayoutRenderContract(): void {
@@ -220,6 +252,8 @@ async function main(): Promise<void> {
 	testRenderModes();
 	testEscaping();
 	testPeakLayoutContract();
+	testWikilinkAltAndWidth();
+	await testFixtureModeCommit();
 	testLayoutRenderContract();
 	testInsertReplacePlanners();
 	await testReplacePlanner();

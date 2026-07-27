@@ -1,45 +1,51 @@
 /**
- * Peak Composer — renderer for the fixture HTML contract:
- * `<div class="peak-image-layout" data-layout="hero">...</div>`.
+ * Renderer for the deliberately narrow, vault-backed image-layout HTML contract.
+ * The layout header controls write the `data-layout` attribute back through the
+ * shared transaction hub; they are absent in a read-only document.
  */
 
 import * as React from 'react';
-import { Captions, FileImage, WandSparkles } from 'lucide-react';
-import type { ComposerBlock, ComposerTarget } from '@/core/composer';
-import { parsePeakImageLayout, type ParsedPeakImageLayout } from '@/service/composer';
+import { Code2, FileImage } from 'lucide-react';
+import type { ComposerBlock } from '@/core/composer';
+import {
+	parsePeakImageLayout,
+	replacePeakImageLayoutMode,
+	type ParsedPeakImageLayout,
+	type PeakImageLayoutMode,
+} from '@/service/composer';
 import { Button } from '@/ui/components/primitives';
 import { useComposerChrome } from '../../chrome/ComposerChromeContext';
-import { IMAGE_TOOLBAR_CONTROL } from './ImageBlockView';
+import { DEFAULT_IMAGE_UI_STRINGS, loadImageUiStrings } from './imageUiConfig';
+
+const LAYOUT_MODES: readonly PeakImageLayoutMode[] = ['grid', 'hero', 'strip', 'story'];
 
 function LayoutImageTile({
 	path,
 	alt,
 	caption,
-	textSource,
 	onError,
 }: {
 	path: string;
 	alt: string;
 	caption: string;
-	textSource: number;
 	onError: () => void;
 }): React.ReactElement {
 	return (
-		<figure className="pk-composer-image-figure peak-image-layout__item" data-src-text-from={textSource}>
-			<img className="pk-composer-image-element peak-image-layout__image" src={path} alt={alt} onError={onError} />
-			{caption ? <figcaption className="pk-composer-image-caption peak-image-layout__caption">{caption}</figcaption> : null}
+		<figure className="peak-image-layout__item">
+			<img className="peak-image-layout__image" src={path} alt={alt} onError={onError} />
+			{caption ? <figcaption className="peak-image-layout__caption">{caption}</figcaption> : null}
 		</figure>
 	);
 }
 
-function layoutFallbackTile(item: ParsedPeakImageLayout['items'][number], sourceTextFrom: number): React.ReactElement {
+function layoutFallbackTile(item: ParsedPeakImageLayout['items'][number], loadFailed: string): React.ReactElement {
 	return (
-		<figure className="pk-composer-image-figure peak-image-layout__item" data-src-text-from={sourceTextFrom}>
-			<span className="pk-composer-image-fallback" title="图片加载失败">
+		<figure className="peak-image-layout__item">
+			<span className="pk-composer-image-fallback" title={loadFailed}>
 				<FileImage size={18} />
 				<span className="pk-composer-image-fallback-text">{item.caption || item.alt || item.src}</span>
 			</span>
-			{item.caption ? <figcaption className="pk-composer-image-caption peak-image-layout__caption">{item.caption}</figcaption> : null}
+			{item.caption ? <figcaption className="peak-image-layout__caption">{item.caption}</figcaption> : null}
 		</figure>
 	);
 }
@@ -47,12 +53,24 @@ function layoutFallbackTile(item: ParsedPeakImageLayout['items'][number], source
 export function PeakImageLayoutBlockView({ block, editing }: { block: ComposerBlock; editing: boolean }): React.ReactElement {
 	const chrome = useComposerChrome();
 	const parsed = parsePeakImageLayout(block.renderModel.raw);
-	const coordinator = chrome.runtime.imageCoordinator;
 	const hub = chrome.runtime.hub;
 	const resolvePreviewUri = chrome.runtime.imagePreviewResolver;
 	const [imageErrors, setImageErrors] = React.useState<Record<number, boolean>>({});
-	const textSource = block.source.from;
-	const target: ComposerTarget = { kind: 'block', blockId: block.blockId };
+	const [uiStrings, setUiStrings] = React.useState(DEFAULT_IMAGE_UI_STRINGS);
+	const layoutIdentity = parsed
+		? `${block.blockId}:${parsed.kind}:${parsed.items.map((item) => item.src).join('|')}`
+		: block.renderModel.raw;
+
+	React.useEffect(() => {
+		let cancelled = false;
+		void loadImageUiStrings().then((strings) => !cancelled && setUiStrings(strings));
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+	React.useEffect(() => {
+		setImageErrors({});
+	}, [layoutIdentity]);
 
 	if (!parsed) {
 		return (
@@ -62,72 +80,68 @@ export function PeakImageLayoutBlockView({ block, editing }: { block: ComposerBl
 		);
 	}
 
-	const hero = parsed.items[0];
-	const thumbs = parsed.items.slice(1);
-	const toolbarOpen = editing && Boolean(coordinator) && Boolean(hub);
-	const showToolbar = editing;
-
-	const runCaption = (): void => {
-		if (!coordinator || !hub) return;
-		coordinator.beginCaption({ blockId: block.blockId });
+	const canChangeMode = editing && Boolean(hub);
+	const changeMode = (mode: PeakImageLayoutMode): void => {
+		if (!hub || mode === parsed.kind) return;
+		const nextSource = replacePeakImageLayoutMode(block.renderModel.raw, mode);
+		if (!nextSource) return;
+		void hub.commit({
+			origin: 'direct',
+			label: uiStrings.layoutTitle,
+			operations: [{ kind: 'replaceRange', from: block.source.from, to: block.source.to, text: nextSource }],
+			target: { kind: 'block', blockId: block.blockId },
+			expectedBlockDelta: 0,
+		});
 	};
-	const runEdit = (): void => {
-		if (!coordinator || !hub || !hero.src) return;
-		coordinator.beginAiEdit({ instruction: '', target, sourcePath: hero.src });
-	};
-
-	const tile = (item: ParsedPeakImageLayout['items'][number], idx: number): React.ReactElement => {
+	const tile = (item: ParsedPeakImageLayout['items'][number], index: number): React.ReactElement => {
 		const resolved = item.src ? resolvePreviewUri?.(item.src) : undefined;
 		const src = resolved && resolved.length > 0 ? resolved : item.src;
-		if (!src || imageErrors[idx]) {
-			return layoutFallbackTile(item, textSource);
-		}
+		if (!src || imageErrors[index]) return layoutFallbackTile(item, uiStrings.loadFailed);
 		return (
 			<LayoutImageTile
+				key={`${item.src}-${index}`}
 				path={src}
-				textSource={textSource}
 				alt={item.alt}
 				caption={item.caption}
-				onError={() => {
-					setImageErrors((prev) => ({ ...prev, [idx]: true }));
-				}}
+				onError={() => setImageErrors((previous) => ({ ...previous, [index]: true }))}
 			/>
 		);
 	};
 
-	const heroSrc = hero.src ? resolvePreviewUri?.(hero.src) ?? hero.src : '';
-	const heroNode = heroSrc && !imageErrors[0] ? tile(hero, 0) : layoutFallbackTile(hero, textSource);
-
 	return (
-		<span className="pk-composer-image-layout" data-src-text-from={block.source.from} data-block-id={block.blockId}>
-			<div className="peak-image-layout" data-layout={parsed.kind}>
-				{heroNode}
-				<div className="peak-image-layout__thumbs">{thumbs.map((item, i) => tile(item, i + 1))}</div>
-			</div>
-			{showToolbar ? (
-				<span className="pk-composer-image-toolbar inline-flex items-center gap-1.5" data-chrome="true">
-					<Button
-						variant="secondary"
-						className={`${IMAGE_TOOLBAR_CONTROL} px-2 gap-1`}
-						disabled={!toolbarOpen}
-						title={toolbarOpen ? undefined : '需编辑权限'}
-						onClick={runEdit}
-					>
-						<WandSparkles size={14} />
-						AI 改图
-					</Button>
-					<Button
-						variant="secondary"
-						className={`${IMAGE_TOOLBAR_CONTROL} px-2 gap-1`}
-						disabled={!toolbarOpen}
-						title={toolbarOpen ? undefined : '需编辑权限'}
-						onClick={runCaption}
-					>
-						<Captions size={14} />
-						图注
-					</Button>
+		<div className="pk-composer-image-layout" data-src-text-from={block.source.from} data-block-id={block.blockId}>
+			<div className="image-layout-shell">
+				<div className="image-layout-head">
+					<span>
+						<strong>{uiStrings.layoutTitle}</strong>
+						<small>{uiStrings.layoutDescription}</small>
 					</span>
-			) : null}
-		</span>
+					{canChangeMode ? (
+						<div className="image-layout-modes" role="group" aria-label={uiStrings.layoutModeAria}>
+							{LAYOUT_MODES.map((mode) => (
+								<Button
+									key={mode}
+									variant="ghost"
+									className="pk-composer-image-layout-mode"
+									aria-pressed={mode === parsed.kind}
+									onClick={() => changeMode(mode)}
+								>
+									{uiStrings.layoutModes[mode]}
+								</Button>
+							))}
+						</div>
+					) : null}
+				</div>
+				<div className="peak-image-layout" data-layout={parsed.kind}>
+					{parsed.items.map(tile)}
+				</div>
+				<div className="image-layout-source">
+					<Code2 aria-hidden="true" />
+					<span>
+						{uiStrings.layoutSource} · <code>{`data-layout="${parsed.kind}"`}</code>
+					</span>
+				</div>
+			</div>
+		</div>
 	);
 }

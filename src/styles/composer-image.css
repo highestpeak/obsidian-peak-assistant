@@ -36,25 +36,29 @@
 .peak-composer-root .pk-composer-image-figure {
 	margin: 0;
 	min-width: 0;
-	width: 100%;
 }
 
-.peak-composer-root .pk-composer-image-element {
+.peak-composer-root .real-image-frame {
+	position: relative;
+	overflow: hidden;
+	margin: 0;
+	border: 1px solid var(--pk-border, var(--background-modifier-border));
+	border-radius: var(--pk-radius-md, 8px);
+	background: var(--pk-surface-muted, var(--background-secondary));
+}
+
+.peak-composer-root .real-image-frame .pk-composer-image-elem {
 	display: block;
 	width: 100%;
 	height: auto;
-	object-fit: contain;
-	border-radius: var(--pk-radius-sm, 4px);
-	background: color-mix(in srgb, var(--background-secondary), transparent 15%);
+	max-height: 390px;
+	object-fit: cover;
+	object-position: center;
+	transition: transform 160ms ease;
 }
 
-.peak-composer-root .pk-composer-image-elem {
-	display: block;
-	width: 100%;
-	height: auto;
-	object-fit: contain;
-	border-radius: var(--pk-radius-sm, 4px);
-	background: color-mix(in srgb, var(--background-secondary), transparent 15%);
+.peak-composer-root .real-image-frame:hover .pk-composer-image-elem {
+	transform: scale(1.015);
 }
 
 .peak-composer-root .pk-composer-image-fallback {
@@ -75,50 +79,231 @@
 	color: var(--text-muted);
 }
 
-.peak-composer-root .pk-composer-image-caption,
-.peak-composer-root .peak-image-layout__caption {
-	margin-top: 0.25rem;
-	font-size: 0.85em;
+.peak-composer-root .real-image-frame > .pk-composer-image-caption {
+	padding: 10px 12px;
+	border-top: 1px solid var(--pk-border, var(--background-modifier-border));
 	color: var(--text-muted);
-	line-height: 1.2;
-	text-align: center;
+	font-size: 12px;
+	line-height: 1.5;
 }
 
 .peak-composer-root .pk-composer-image-toolbar {
+	display: inline-flex;
+	align-items: center;
 	justify-content: flex-start;
+}
+
+.peak-composer-root .real-image-frame > .image-toolbar {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	z-index: 2;
+	max-width: calc(100% - 20px);
+	opacity: 0;
+	pointer-events: none;
+	transform: translateY(-4px);
+	transition: opacity 140ms ease, transform 140ms ease;
+	padding: 4px;
+	border: 1px solid color-mix(in srgb, var(--pk-border, var(--background-modifier-border)), transparent 20%);
+	border-radius: var(--pk-radius-md, 8px);
+	background: color-mix(in srgb, var(--background-primary), transparent 8%);
+	box-shadow: 0 8px 18px rgba(31, 42, 61, 0.16);
+	backdrop-filter: blur(12px);
+}
+
+.peak-composer-root .real-image-frame > .image-toolbar > .pk-btn {
+	height: 28px !important;
+	min-height: 28px !important;
+	padding: 0 8px !important;
+	border-radius: var(--pk-radius-md, 8px) !important;
+	font-size: 11px;
+}
+
+.peak-composer-root .real-image-frame:hover > .image-toolbar,
+.peak-composer-root .real-image-frame:focus-within > .image-toolbar {
+	opacity: 1;
+	pointer-events: auto;
+	transform: translateY(0);
+}
+
+.peak-composer-root .image-layout-shell {
+	overflow: hidden;
+	border: 1px solid var(--pk-border, var(--background-modifier-border));
+	border-radius: var(--pk-radius-md, 8px);
+	background: var(--pk-surface-muted, var(--background-secondary));
+}
+
+.peak-composer-root .image-layout-head,
+.peak-composer-root .image-layout-source {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 9px 10px;
+	color: var(--text-muted);
+}
+
+.peak-composer-root .image-layout-head {
+	border-bottom: 1px solid var(--pk-border, var(--background-modifier-border));
+	background: var(--background-primary);
+}
+
+.peak-composer-root .image-layout-head > span {
+	display: grid;
+	gap: 1px;
+}
+
+.peak-composer-root .image-layout-head strong {
+	color: var(--text-normal);
+	font-size: 11px;
+}
+
+.peak-composer-root .image-layout-head small {
+	color: var(--text-muted);
+	font-size: 9px;
+}
+
+.peak-composer-root .image-layout-modes {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	padding: 2px;
+	border: 1px solid var(--pk-border, var(--background-modifier-border));
+	border-radius: 7px;
+	background: var(--background-secondary);
+}
+
+.peak-composer-root .image-layout-modes > .pk-composer-image-layout-mode {
+	height: 26px !important;
+	min-height: 26px !important;
+	padding: 0 9px !important;
+	border: 0 !important;
+	border-radius: 5px !important;
+	background: transparent !important;
+	color: var(--text-muted);
+	font-size: 10px;
+}
+
+.peak-composer-root .image-layout-modes > .pk-composer-image-layout-mode[aria-pressed="true"] {
+	background: var(--background-primary) !important;
+	color: var(--pk-accent-text, var(--text-accent));
+	box-shadow: 0 1px 3px rgba(30, 38, 55, 0.12);
 }
 
 .peak-composer-root .peak-image-layout {
 	display: grid;
-	gap: 8px;
-	grid-template-columns: 1fr;
+	gap: 6px;
+	padding: 6px;
+	min-height: 280px;
 }
 
-.peak-composer-root .peak-image-layout__thumbs {
-	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
-	gap: 8px;
-}
-
-.peak-composer-root .peak-image-layout__thumbs .pk-composer-image-element {
-	aspect-ratio: 4 / 3;
-	object-fit: cover;
-}
-
-.peak-composer-root .pk-image-layout:hover {
-	box-shadow: 0 0 0 1px var(--background-modifier-border);
-}
-
-.peak-composer-root .pk-image-layout img {
-	border-radius: var(--pk-radius-sm, 4px);
-}
-
-.peak-composer-root .pk-image-layout figure {
+.peak-composer-root .peak-image-layout__item {
+	position: relative;
+	overflow: hidden;
+	min-width: 0;
+	min-height: 0;
 	margin: 0;
+	border-radius: 7px;
+	background: var(--background-secondary);
 }
 
-.peak-composer-root .pk-image-layout figcaption {
-	color: var(--text-muted);
+.peak-composer-root .peak-image-layout__image {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	transition: transform 180ms ease;
+}
+
+.peak-composer-root .peak-image-layout__item:hover .peak-image-layout__image {
+	transform: scale(1.015);
+}
+
+.peak-composer-root .peak-image-layout__caption {
+	position: absolute;
+	right: 7px;
+	bottom: 7px;
+	left: 7px;
+	width: auto;
+	padding: 5px 7px;
+	border: 0;
+	border-radius: 5px;
+	background: rgba(18, 25, 36, 0.7);
+	color: #fff;
+	font-size: 9px;
+	line-height: normal;
+	backdrop-filter: blur(6px);
+}
+
+.peak-composer-root .peak-image-layout[data-layout="grid"] {
+	grid-template: repeat(2, 158px) / repeat(2, minmax(0, 1fr));
+}
+
+.peak-composer-root .peak-image-layout[data-layout="hero"] {
+	grid-template: repeat(3, 104px) / minmax(0, 1.65fr) minmax(170px, 0.8fr);
+}
+
+.peak-composer-root .peak-image-layout[data-layout="hero"] .peak-image-layout__item:first-child {
+	grid-row: 1 / 4;
+}
+
+.peak-composer-root .peak-image-layout[data-layout="strip"] {
+	grid-template: 230px / repeat(4, minmax(0, 1fr));
+}
+
+.peak-composer-root .peak-image-layout[data-layout="strip"] .peak-image-layout__caption {
+	writing-mode: vertical-rl;
+	right: 6px;
+	bottom: 6px;
+	left: auto;
+	max-height: 110px;
+}
+
+.peak-composer-root .peak-image-layout[data-layout="story"] {
+	grid-template: 220px 105px / repeat(3, minmax(0, 1fr));
+}
+
+.peak-composer-root .peak-image-layout[data-layout="story"] .peak-image-layout__item:first-child {
+	grid-column: 1 / 4;
+}
+
+.peak-composer-root .image-layout-source {
+	justify-content: flex-start;
+	border-top: 1px solid var(--pk-border, var(--background-modifier-border));
+	background: var(--background-primary);
+	font-size: 9px;
+}
+
+.peak-composer-root .image-layout-source svg {
+	width: 12px;
+	height: 12px;
+}
+
+.peak-composer-root .image-layout-source code {
+	padding: 1px 4px;
+	border-radius: 3px;
+	background: var(--background-secondary);
+}
+
+@media (max-width: 760px) {
+	.peak-composer-root .image-layout-head {
+		align-items: flex-start;
+		flex-direction: column;
+	}
+
+	.peak-composer-root .image-layout-modes {
+		width: 100%;
+		overflow-x: auto;
+	}
+
+	.peak-composer-root .peak-image-layout[data-layout] {
+		grid-template: repeat(4, 150px) / 1fr;
+	}
+
+	.peak-composer-root .peak-image-layout[data-layout] .peak-image-layout__item:first-child {
+		grid-row: auto;
+		grid-column: auto;
+	}
 }
 
 /* Streaming skeleton respects reduced-motion. */
