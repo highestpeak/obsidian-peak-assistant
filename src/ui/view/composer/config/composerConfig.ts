@@ -18,6 +18,12 @@ import {
 	type ComposerBlockKind,
 	type ComposerTransactionConfig,
 } from '@/core/composer';
+import {
+	DEFAULT_TABLE_BLOCK_STRINGS,
+	type ChartBlockStrings,
+	type TableToolbarStrings,
+} from '../blocks/table/tableViewConfig';
+import type { TableSelectionStrings } from '@/service/composer';
 
 export interface ComposerStrings {
 	displayText: string;
@@ -150,7 +156,23 @@ export interface ComposerConfig {
 	kinds: Record<ComposerBlockKind, string>;
 	strings: ComposerStrings;
 	chrome: ComposerChromeConfig;
+	/** Table object-toolbar and selection copy. */
+	table: {
+		toolbar: TableToolbarStrings;
+		selection: TableSelectionStrings;
+	};
+	/** Chart object-block copy. */
+	chart: ChartBlockStrings;
 }
+
+/** JSON/template patch shape. Table and chart deliberately support nested partial overrides. */
+export type ComposerConfigPatch = Omit<Partial<ComposerConfig>, 'table' | 'chart'> & {
+	table?: {
+		toolbar?: Partial<TableToolbarStrings>;
+		selection?: Partial<TableSelectionStrings>;
+	};
+	chart?: Partial<ChartBlockStrings>;
+};
 
 export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 	kinds: {
@@ -298,6 +320,11 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 			rollbackRefused: '区域已变化，无法回滚',
 		},
 	},
+	table: {
+		toolbar: { ...DEFAULT_TABLE_BLOCK_STRINGS.toolbar },
+		selection: { ...DEFAULT_TABLE_BLOCK_STRINGS.selection },
+	},
+	chart: { ...DEFAULT_TABLE_BLOCK_STRINGS.chart },
 };
 
 /**
@@ -308,16 +335,28 @@ export async function loadComposerConfig(): Promise<ComposerConfig> {
 	try {
 		const tm = TemplateManager.getInstance();
 		if (!tm) return DEFAULT_COMPOSER_CONFIG;
-		const parsed = await tm.loadJson<Partial<ComposerConfig>>(ConfigTemplateId.Composer);
+		const parsed = await tm.loadJson<ComposerConfigPatch>(ConfigTemplateId.Composer);
 		if (!parsed || typeof parsed !== 'object') return DEFAULT_COMPOSER_CONFIG;
-		return {
-			kinds: { ...DEFAULT_COMPOSER_CONFIG.kinds, ...(parsed.kinds ?? {}) },
-			strings: { ...DEFAULT_COMPOSER_CONFIG.strings, ...(parsed.strings ?? {}) },
-			chrome: mergeChrome(parsed.chrome),
-		};
+		return mergeComposerConfig(parsed);
 	} catch {
 		return DEFAULT_COMPOSER_CONFIG;
 	}
+}
+
+/** Merge a partial JSON template over the compiled, cold-start-safe fallback. */
+export function mergeComposerConfig(parsed?: ComposerConfigPatch): ComposerConfig {
+	if (!parsed) return DEFAULT_COMPOSER_CONFIG;
+	const base = DEFAULT_COMPOSER_CONFIG;
+	return {
+		kinds: { ...base.kinds, ...(parsed.kinds ?? {}) },
+		strings: { ...base.strings, ...(parsed.strings ?? {}) },
+		chrome: mergeChrome(parsed.chrome),
+		table: {
+			toolbar: { ...base.table.toolbar, ...parsed.table?.toolbar },
+			selection: { ...base.table.selection, ...parsed.table?.selection },
+		},
+		chart: { ...base.chart, ...parsed.chart },
+	};
 }
 
 /** Shallow-merge the chrome section subtree over the compiled fallback. */

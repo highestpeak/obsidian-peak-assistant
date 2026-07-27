@@ -10,7 +10,6 @@ import {
 	type ChartType,
 } from '@/service/composer';
 import { useComposerChrome } from '../../chrome/ComposerChromeContext';
-import { DEFAULT_TABLE_BLOCK_STRINGS } from '../table/tableViewConfig';
 
 const LazyRecharts = React.lazy(() => import('./RechartsChart'));
 
@@ -31,7 +30,7 @@ export function isChartBlock(block: ComposerBlock): boolean {
 export function ChartBlockView({ block }: { block: ComposerBlock }): React.ReactElement {
 	const chrome = useComposerChrome();
 	const hub = chrome.runtime.hub;
-	const strings = DEFAULT_TABLE_BLOCK_STRINGS.chart;
+	const strings = chrome.config.chart;
 	const parsed = React.useMemo(() => parseChartSource(block.renderModel.raw), [block.renderModel.raw]);
 
 	if (!parsed.ok) {
@@ -83,7 +82,7 @@ function TypeSwitch({
 }: {
 	current: ChartType;
 	disabled: boolean;
-	strings: { bar: string; line: string; pie: string };
+	strings: { bar: string; line: string; pie: string; typeSwitchLabel: string };
 	onSwitch: (t: ChartType) => void;
 }): React.ReactElement {
 	const options: { type: ChartType; label: string }[] = [
@@ -92,7 +91,7 @@ function TypeSwitch({
 		{ type: 'pie', label: strings.pie },
 	];
 	return (
-		<div className="pk-chart-typeswitch" role="group" aria-label="Chart type">
+		<div className="pk-chart-typeswitch" role="group" aria-label={strings.typeSwitchLabel}>
 			{options.map((o) => (
 				<button
 					key={o.type}

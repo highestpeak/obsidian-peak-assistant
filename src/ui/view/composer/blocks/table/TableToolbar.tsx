@@ -105,7 +105,7 @@ export function TableToolbar(props: TableToolbarProps): React.ReactElement {
 			}
 			return { text: numeric ? String(sum) : '', colspan: 1, rowspan: 1 };
 		});
-		if (merges) return props.onReason(strings.formula + ': ' + 'merged cells');
+		if (merges) return props.onReason(strings.formula + ': ' + strings.mergedCells);
 		const next: TableModel = { columns: model.columns, rows: [...model.rows, { isHeader: false, cells }] };
 		props.onCommitModel(next);
 		setMenu(null);

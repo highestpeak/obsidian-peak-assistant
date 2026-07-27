@@ -37,6 +37,8 @@ export interface TableToolbarStrings {
 	noSelection: string;
 	needRectangle: string;
 	needMergedCell: string;
+	/** Suffix used when formula actions are blocked by merged cells. */
+	mergedCells: string;
 	parseError: string;
 }
 
@@ -47,6 +49,8 @@ export interface ChartBlockStrings {
 	loading: string;
 	invalid: string;
 	untitled: string;
+	/** Accessible label for the bar / line / pie switch. */
+	typeSwitchLabel: string;
 }
 
 export interface TableBlockStrings {
@@ -82,6 +86,7 @@ export const DEFAULT_TABLE_BLOCK_STRINGS: TableBlockStrings = {
 		noSelection: 'Select a cell first',
 		needRectangle: 'Select a clean rectangle of cells to merge',
 		needMergedCell: 'Select a merged cell to unmerge',
+		mergedCells: 'merged cells',
 		parseError: 'This table could not be parsed for editing',
 	},
 	selection: {
@@ -97,5 +102,6 @@ export const DEFAULT_TABLE_BLOCK_STRINGS: TableBlockStrings = {
 		loading: 'Loading chart…',
 		invalid: 'Invalid chart source',
 		untitled: 'Chart',
+		typeSwitchLabel: 'Chart type',
 	},
 };

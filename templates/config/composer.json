@@ -712,6 +712,7 @@
 			"noSelection": "请先选择单元格",
 			"needRectangle": "合并需选择一个完整矩形区域",
 			"needMergedCell": "请选择已合并的单元格来拆分",
+			"mergedCells": "已合并单元格",
 			"parseError": "此表格无法解析为可编辑结构"
 		},
 		"selection": {
@@ -728,7 +729,8 @@
 		"pie": "饼图",
 		"loading": "图表加载中…",
 		"invalid": "图表源无效",
-		"untitled": "图表"
+		"untitled": "图表",
+		"typeSwitchLabel": "图表类型"
 	},
 	"frontmatter": {
 		"_doc": "WP5 frontmatter block UI copy (property grid, Vault property library, AI suggestions). Typed fallback: src/ui/view/composer/blocks/frontmatter/frontmatterConfig.ts.",

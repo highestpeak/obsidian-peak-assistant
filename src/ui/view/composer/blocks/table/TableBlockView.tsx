@@ -17,7 +17,6 @@ import {
 	type TableSelectionState,
 } from '@/service/composer';
 import { useComposerChrome } from '../../chrome/ComposerChromeContext';
-import { DEFAULT_TABLE_BLOCK_STRINGS } from './tableViewConfig';
 import { TableToolbar } from './TableToolbar';
 import { useTableObjectSelection } from './useTableObjectSelection';
 
@@ -54,7 +53,7 @@ function TableBlockBody({ block, model }: { block: ComposerBlock; model: TableMo
 	const chrome = useComposerChrome();
 	const hub = chrome.runtime.hub;
 	const writable = Boolean(hub);
-	const strings = DEFAULT_TABLE_BLOCK_STRINGS;
+	const strings = chrome.config.table;
 	const tableRef = React.useRef<HTMLTableElement | null>(null);
 	const fileRef = React.useRef<HTMLInputElement | null>(null);
 	const [reason, setReason] = React.useState<string | null>(null);
