@@ -35,19 +35,30 @@ const PORT = 3211;
 const URL = `http://localhost:${PORT}/composer.html`;
 
 // ── boot vite ────────────────────────────────────────────────────────────────
-const vite = spawn('npx', ['vite', '--config', '.dev/harness/vite.harness.config.mts', '--port', String(PORT), '--strictPort'], {
+const vite = spawn('npx', [
+	'vite',
+	'--config',
+	'.dev/harness/vite.harness.config.mts',
+	'--port',
+	String(PORT),
+	'--strictPort',
+], {
 	cwd: repo,
 	stdio: ['ignore', 'pipe', 'pipe'],
 });
 await new Promise((resolve, reject) => {
 	const timer = setTimeout(() => reject(new Error('vite did not start')), 30000);
+	const logs = [];
 	vite.stdout.on('data', (d) => {
-		if (String(d).includes('Local:')) {
+		const text = String(d);
+		logs.push(text);
+		if (text.includes('Local:')) {
 			clearTimeout(timer);
 			resolve();
 		}
 	});
-	vite.on('exit', (code) => reject(new Error(`vite exited ${code}`)));
+	vite.stderr.on('data', (d) => logs.push(String(d)));
+	vite.on('exit', (code) => reject(new Error(`vite exited ${code}\n${logs.join('')}`)));
 });
 
 const browser = await chromium.launch({ headless: true });
@@ -344,7 +355,7 @@ const geom = (locator) =>
 			shadow: s.boxShadow,
 		};
 	});
-	await record('paper card is 868px wide', () => assert.equal(paper.w, 868));
+	await record('paper card is 900px wide', () => assert.equal(paper.w, 900));
 	await record('paper padding is 40px 64px 64px', () => assert.equal(paper.padding, '40px 64px 64px'));
 	await record('paper radius is 8px', () => assert.equal(paper.radius, '8px'));
 	await record('paper border is 1px rgb(220,227,238)', () => {

@@ -5,15 +5,14 @@
  */
 
 .peak-composer-root {
-	/* ── FIX-2 fidelity vars (light = mock computed values, verbatim). Dark is
-	   remapped to theme tokens below. Do NOT swap the light defaults for
-	   approximate tokens — they are the design-spec ground truth. ── */
+	/* ── visual parity vars (light = owner reference geometry). Dark is remapped
+	   to theme tokens below, but the structural dimensions stay identical. ── */
 	--pkc-page-bg: rgb(243, 246, 249);
 	--pkc-paper-bg: #ffffff;
 	--pkc-paper-border: rgb(220, 227, 238);
 	--pkc-paper-radius: 8px;
 	--pkc-paper-shadow: 0 8px 24px rgba(31, 42, 61, 0.055);
-	--pkc-paper-width: 868px;
+	--pkc-paper-width: 900px;
 	--pkc-paper-pad-y-top: 40px;
 	--pkc-paper-pad-x: 64px;
 	--pkc-paper-pad-y-bottom: 64px;
