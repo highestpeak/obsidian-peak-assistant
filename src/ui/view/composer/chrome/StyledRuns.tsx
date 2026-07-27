@@ -1,5 +1,6 @@
 import * as React from 'react';
-import type { InlineRun, InlineRunStyle } from '@/service/composer';
+import { projectInlineMath, type InlineRun, type InlineRunStyle } from '@/service/composer';
+import { InlineMathAtom } from './InlineMathAtom';
 
 /**
  * Peak Composer — styled inline-run renderer (WP4.5 rich rendering).
@@ -17,11 +18,12 @@ import type { InlineRun, InlineRunStyle } from '@/service/composer';
  * styled state.
  */
 export function StyledRuns({ runs, unitId }: { runs: readonly InlineRun[]; unitId?: string }): React.ReactElement {
+	const projection = projectInlineMath(runs);
 	return (
 		<>
-			{runs.map((run, i) => (
-				<StyledRun key={`${run.from}-${i}`} run={run} unitId={unitId} />
-			))}
+			{projection.map((part, i) => part.kind === 'math'
+				? <InlineMathAtom key={`${part.sourceFrom}-${i}`} {...part} />
+				: <StyledRun key={`${part.run.from}-${i}`} run={part.run} unitId={unitId} />)}
 		</>
 	);
 }

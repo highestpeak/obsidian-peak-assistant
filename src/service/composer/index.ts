@@ -31,6 +31,7 @@ export * from './comment/commentModel';
 export * from './comment/commentStore';
 export * from './linkPreview/linkPreviewModel';
 export * from './render/inlineRuns';
+export * from './render/inlineMathProjection';
 export * from './render/wordDiff';
 
 // WP8 — native objects (Code / Mermaid / Base / Canvas / Excalidraw) + link

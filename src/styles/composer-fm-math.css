@@ -37,6 +37,24 @@
 	--pkc-math-hover-border: var(--pk-border-accent);
 }
 
+/* Inline math is a visual atom while a leaf is blurred. It is deliberately not
+ * a text run: focusing the leaf restores the exact `$latex$` bytes before the
+ * browser receives a caret, so direct edit and source offsets stay source-led. */
+.peak-composer-root .pk-composer-inline-math {
+	display: inline-flex;
+	align-items: baseline;
+	margin: 0 0.12em;
+	vertical-align: -0.13em;
+	white-space: nowrap;
+	user-select: none;
+	color: inherit;
+}
+
+.peak-composer-root .pk-composer-inline-math [data-formula-render] {
+	display: inline-flex;
+	align-items: baseline;
+}
+
 /* ── frontmatter block ──────────────────────────────────────────────────── */
 
 .peak-composer-root .pk-fm-block {

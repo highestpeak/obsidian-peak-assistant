@@ -23,6 +23,11 @@ export function mapDomRangeToSource(root: HTMLElement, range: Range): MappedRang
 
 function mapPoint(root: HTMLElement, node: Node, offset: number): number | null {
 	const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as Element);
+	// A blurred `$…$` span is a visual KaTeX atom, not a compressed text run.
+	// Mapping its MathML text back through a generic selection command would
+	// produce invented offsets, so selection/direct-edit deliberately declines
+	// it. A click focuses the owning leaf and restores the exact source first.
+	if (el?.closest('[data-inline-math-atom]')) return null;
 	const run = el?.closest<HTMLElement>('[data-src-text-from]');
 	if (!run || !root.contains(run)) return null;
 	const base = Number(run.dataset.srcTextFrom);

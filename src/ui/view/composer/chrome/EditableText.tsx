@@ -1,8 +1,9 @@
 import * as React from 'react';
-import { DirectEditController, parseInlineRuns, type DirectEditRange } from '@/service/composer';
+import { DirectEditController, parseInlineProjection, type DirectEditRange } from '@/service/composer';
 import { useComposerChrome } from './ComposerChromeContext';
 import { segmentLinks } from './linkSegments';
 import { styleAttrs } from './StyledRuns';
+import { InlineMathAtom } from './InlineMathAtom';
 
 /**
  * Per-block contenteditable leaf (WP4, S2 决议全套).
@@ -148,8 +149,8 @@ export function EditableText({
 		() => segmentLinks(renderState.text, renderState.sourceFrom),
 		[renderState],
 	);
-	const runs = React.useMemo(
-		() => parseInlineRuns(renderState.text, renderState.sourceFrom),
+	const inlineProjection = React.useMemo(
+		() => parseInlineProjection(renderState.text, renderState.sourceFrom),
 		[renderState],
 	);
 
@@ -207,7 +208,11 @@ export function EditableText({
 				// selection-driven re-render — a component boundary here re-creates
 				// the nodes and collapses an in-progress selection. Keys are
 				// block-relative for the same INT-1 reason as the source segments above.
-				runs.map((run, i) => {
+				inlineProjection.map((part, i) => {
+					if (part.kind === 'math') {
+						return <InlineMathAtom key={part.sourceFrom - renderState.sourceFrom} {...part} />;
+					}
+					const { run } = part;
 					const { className, style } = styleAttrs(run.style);
 					if (run.linkTarget) {
 						return (
