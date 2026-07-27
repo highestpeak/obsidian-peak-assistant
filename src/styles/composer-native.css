@@ -7,6 +7,27 @@
  */
 
 /* ── preview / source toggle ─────────────────────────────────────────────── */
+.peak-composer-root {
+	--pkc-native-shell-bg: var(--pk-surface-overlay, #fff);
+	--pkc-native-shell-border: var(--pk-border-soft);
+	--pkc-native-shell-shadow: var(--pk-shadow-sm, 0 4px 12px rgba(31, 42, 61, 0.08));
+	--pkc-native-code-bg: #141c2d;
+	--pkc-native-code-border: #1f2940;
+	--pkc-native-code-text: #edf2ff;
+	--pkc-native-code-muted: #97a6c6;
+}
+
+:root[data-theme='dark'] .peak-composer-root,
+.theme-dark .peak-composer-root {
+	--pkc-native-shell-bg: var(--pk-bg-secondary);
+	--pkc-native-shell-border: var(--pk-border);
+	--pkc-native-shell-shadow: var(--pk-shadow-sm, 0 6px 16px rgba(0, 0, 0, 0.28));
+	--pkc-native-code-bg: #0f1626;
+	--pkc-native-code-border: #2a3650;
+	--pkc-native-code-text: #edf2ff;
+	--pkc-native-code-muted: #a4b0cb;
+}
+
 .peak-composer-root .pk-native-toggle {
 	display: inline-flex;
 	gap: 2px;
@@ -38,9 +59,10 @@
 .peak-composer-root .pk-native-block__body,
 .peak-composer-root .pk-native-code,
 .peak-composer-root .pk-native-embed {
-	border: 1px solid var(--pk-border-soft);
-	border-radius: var(--pk-radius-md);
-	background: var(--pk-bg-secondary);
+	border: 1px solid var(--pkc-native-shell-border);
+	border-radius: var(--pk-radius-lg);
+	background: var(--pkc-native-shell-bg);
+	box-shadow: var(--pkc-native-shell-shadow);
 	padding: var(--pk-space-3);
 }
 .peak-composer-root .pk-native-stats {
@@ -95,6 +117,8 @@
 	position: relative;
 	padding: 0;
 	overflow: hidden;
+	background: var(--pkc-native-code-bg);
+	border-color: var(--pkc-native-code-border);
 }
 .peak-composer-root .pk-native-code__lang {
 	position: absolute;
@@ -103,7 +127,7 @@
 	font-size: 10px;
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
-	color: var(--pk-text-tertiary);
+	color: var(--pkc-native-code-muted);
 	pointer-events: none;
 }
 .peak-composer-root .pk-native-code__body {
@@ -116,6 +140,7 @@
 	overflow-x: auto;
 	white-space: pre;
 	tab-size: 4;
+	color: var(--pkc-native-code-text);
 }
 
 /* ── base ────────────────────────────────────────────────────────────────── */

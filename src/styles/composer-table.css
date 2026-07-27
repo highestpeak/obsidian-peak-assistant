@@ -61,7 +61,7 @@
 	scrollbar-width: none;
 	padding: 5px;
 	border: 1px solid var(--pkc-paper-border);
-	border-radius: 8px;
+	border-radius: var(--pk-radius-lg, 12px);
 	background: var(--pktbl-toolbar-bg);
 	box-shadow: var(--pktbl-toolbar-shadow);
 	opacity: 0;
@@ -91,18 +91,19 @@
 	gap: 6px;
 	min-height: 28px;
 	padding: 0 9px;
-	border: 1px solid var(--pkc-paper-border);
-	border-radius: 7px;
-	background: var(--pk-bg-primary, #fff);
-	color: var(--pkc-text);
-	font-size: 12px;
+	border: 1px solid transparent;
+	border-radius: var(--pk-radius-md, 8px);
+	background: transparent;
+	color: var(--pk-text-secondary, var(--pkc-text));
+	font-size: var(--pk-text-xs, 11px);
 	font-weight: 500;
 	cursor: pointer;
 	white-space: nowrap;
 }
 
 .peak-composer-root .pk-table-toolbar button:hover:not(:disabled) {
-	border-color: var(--pktbl-range-edge);
+	border-color: transparent;
+	background: var(--pk-accent-tint, var(--pktbl-active-bg));
 	color: var(--pktbl-active-text);
 }
 
@@ -136,19 +137,20 @@
 	min-width: 132px;
 	padding: 4px;
 	border: 1px solid var(--pkc-paper-border);
-	border-radius: 8px;
-	background: var(--pk-bg-primary, #fff);
-	box-shadow: var(--pktbl-toolbar-shadow);
+	border-radius: var(--pk-radius-lg, 12px);
+	background: var(--pk-surface-overlay, #fff);
+	box-shadow: var(--pk-shadow-popover, var(--pktbl-toolbar-shadow));
 }
 
 .peak-composer-root .pk-table-menu button {
 	justify-content: flex-start;
-	border: 0;
+	border: 1px solid transparent;
 	background: transparent;
-	min-height: 26px;
+	min-height: 28px;
 	padding: 0 8px;
-	font-size: 12px;
-	border-radius: 5px;
+	font-size: var(--pk-text-xs, 11px);
+	border-radius: var(--pk-radius-md, 8px);
+	color: var(--pk-text-secondary, var(--pkc-text));
 }
 
 .peak-composer-root .pk-table-menu button:hover {

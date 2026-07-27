@@ -52,6 +52,23 @@
 	flex-wrap: wrap;
 }
 
+.peak-composer-root .pk-fm-actions .pk-btn {
+	min-height: 28px !important;
+	height: 28px !important;
+	padding: 0 10px !important;
+	border: 0 !important;
+	border-radius: var(--pk-radius-pill) !important;
+	background: transparent !important;
+	color: var(--pk-text-secondary);
+	font-size: var(--pk-text-xs);
+}
+
+.peak-composer-root .pk-fm-actions .pk-btn:hover:not(:disabled),
+.peak-composer-root .pk-fm-actions .pk-btn:focus-visible {
+	background: var(--pk-accent-tint) !important;
+	color: var(--pk-accent-text);
+}
+
 /* "添加属性" entrance for a document with no frontmatter block yet. */
 .peak-composer-root .pk-fm-add {
 	display: flex;
@@ -390,6 +407,26 @@
 	gap: 4px;
 }
 
+.peak-composer-root .pk-math-card__row .pk-btn,
+.peak-composer-root .pk-math-card__row .pk-math-card__ai {
+	min-height: 28px !important;
+	height: 28px !important;
+	padding: 0 10px !important;
+	border: 0 !important;
+	border-radius: var(--pk-radius-pill) !important;
+	background: transparent !important;
+	color: var(--pk-text-secondary);
+	font-size: var(--pk-text-xs);
+}
+
+.peak-composer-root .pk-math-card__row .pk-btn:hover:not(:disabled),
+.peak-composer-root .pk-math-card__row .pk-btn:focus-visible,
+.peak-composer-root .pk-math-card__row .pk-math-card__ai:hover:not(:disabled),
+.peak-composer-root .pk-math-card__row .pk-math-card__ai:focus-visible {
+	background: var(--pk-accent-tint) !important;
+	color: var(--pk-accent-text);
+}
+
 .peak-composer-root .pk-math-card__ai[data-active="true"] {
 	border-color: var(--pk-border-accent, #93c5fd);
 	background: var(--pk-accent-tint, #eaf1ff);
@@ -412,9 +449,9 @@
 	min-width: 120px;
 	padding: 4px;
 	border: 1px solid var(--pk-border, var(--pkc-fm-line));
-	border-radius: 8px;
+	border-radius: var(--pk-radius-lg, 12px);
 	background: var(--pk-surface-overlay, #fff);
-	box-shadow: 0 8px 24px rgba(31, 42, 61, 0.14);
+	box-shadow: var(--pk-shadow-popover, 0 8px 24px rgba(31, 42, 61, 0.14));
 }
 
 .peak-composer-root .pk-math-copy__menu button {
@@ -441,8 +478,9 @@
 	gap: 8px;
 	padding: 10px 12px;
 	border: 1px solid var(--pk-border-accent, #d8d2ff);
-	border-radius: 8px;
-	background: var(--pk-accent-tint, #f2f0ff);
+	border-radius: var(--pk-radius-lg, 12px);
+	background: var(--pk-surface-overlay, #fff);
+	box-shadow: var(--pk-shadow-popover, 0 8px 24px rgba(31, 42, 61, 0.14));
 }
 
 .peak-composer-root .pk-formula-detail__head {
@@ -543,7 +581,7 @@
 	height: 30px;
 	padding: 0 9px;
 	border: 1px solid var(--pk-border, var(--pkc-fm-line));
-	border-radius: 6px;
+	border-radius: var(--pk-radius-md, 8px);
 	background: var(--pk-bg, #fff);
 	color: var(--pkc-fm-value);
 	font-size: 12px;
@@ -553,6 +591,20 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 2px;
+}
+
+.peak-composer-root .pk-formula-detail__nav .pk-btn,
+.peak-composer-root .pk-formula-detail__foot > .pk-btn {
+	min-height: 30px !important;
+	height: 30px !important;
+	border-radius: var(--pk-radius-md) !important;
+	font-size: var(--pk-text-xs);
+}
+
+.peak-composer-root .pk-formula-detail__nav .pk-btn {
+	width: 30px !important;
+	min-width: 30px !important;
+	padding: 0 !important;
 }
 
 .peak-composer-root .pk-formula-detail__counter {
