@@ -148,6 +148,49 @@
 	font-weight: 600;
 }
 
+.peak-composer-root .pk-fm-grid__key--draft {
+	color: var(--pkc-fm-value);
+}
+
+.peak-composer-root .pk-fm-draft-value {
+	display: grid;
+	grid-template-columns: minmax(120px, 1fr) auto;
+	gap: 6px 8px;
+	align-items: center;
+}
+
+.peak-composer-root .pk-fm-draft-value > input[type="text"],
+.peak-composer-root .pk-fm-draft-value > input[type="date"] {
+	width: 100%;
+	height: 30px;
+	min-width: 0;
+	padding: 0 8px;
+	border: 1px solid var(--pk-border-accent, #a99ce7);
+	border-radius: var(--pk-radius-md, 7px);
+	background: var(--pk-bg, #fff);
+	color: var(--pkc-fm-value);
+	font-size: 12px;
+	box-shadow: 0 0 0 2px var(--pk-accent-tint, rgba(102, 86, 214, 0.08));
+}
+
+.peak-composer-root .pk-fm-draft-value__actions {
+	display: inline-flex;
+	gap: 4px;
+}
+
+.peak-composer-root .pk-fm-draft-value__actions .pk-btn {
+	min-height: 28px !important;
+	height: 28px !important;
+	padding: 0 8px !important;
+	font-size: 10px;
+}
+
+.peak-composer-root .pk-fm-draft-value > small {
+	grid-column: 1 / -1;
+	color: var(--pk-danger, #b42318);
+	font-size: 10px;
+}
+
 .peak-composer-root .pk-fm-origin {
 	display: inline-flex;
 	align-items: center;
@@ -292,9 +335,35 @@
 	}
 }
 
-/* ── vault property library + suggestions ───────────────────────────────── */
+/* ── current-note property picker + suggestions ─────────────────────────── */
 
-.peak-composer-root .pk-fm-library,
+.peak-composer-root .pk-fm-picker-anchor {
+	position: relative;
+	width: 100%;
+}
+
+.peak-composer-root .pk-fm-add-property {
+	min-height: 28px !important;
+	height: 28px !important;
+	padding: 0 7px !important;
+	color: var(--pk-text-secondary);
+	font-size: 11px;
+}
+
+.peak-composer-root .pk-fm-library {
+	position: absolute;
+	top: calc(100% + 5px);
+	left: 0;
+	z-index: 40;
+	width: min(520px, 100%);
+	max-height: min(520px, calc(100vh - 120px));
+	border: 1px solid var(--pk-border, var(--pkc-fm-line));
+	border-radius: var(--pk-radius-lg, 12px);
+	background: var(--pk-surface-overlay, #fff);
+	overflow: hidden;
+	box-shadow: var(--pk-shadow-popover, 0 18px 42px rgba(31, 42, 61, 0.16));
+}
+
 .peak-composer-root .pk-fm-suggestions {
 	border: 1px solid var(--pk-border, var(--pkc-fm-line));
 	border-radius: var(--pk-radius-lg, 12px);
@@ -303,7 +372,6 @@
 }
 
 .peak-composer-root .pk-fm-library > header,
-.peak-composer-root .pk-fm-library > footer,
 .peak-composer-root .pk-fm-suggestions > header,
 .peak-composer-root .pk-fm-suggestions > footer {
 	display: flex;
@@ -321,7 +389,6 @@
 }
 
 .peak-composer-root .pk-fm-library header small,
-.peak-composer-root .pk-fm-library > footer,
 .peak-composer-root .pk-fm-suggestions header small,
 .peak-composer-root .pk-fm-suggestions > footer {
 	display: block;
@@ -329,110 +396,131 @@
 	font-size: 10px;
 }
 
-.peak-composer-root .pk-fm-library__summary {
-	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
-	border-top: 1px solid var(--pkc-fm-line);
-	border-bottom: 1px solid var(--pkc-fm-line);
-}
-
-.peak-composer-root .pk-fm-library__summary span {
-	padding: 8px 10px;
-	border-right: 1px solid var(--pkc-fm-line);
+.peak-composer-root .pk-fm-picker__search {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	margin: 0 10px 8px;
+	padding: 0 9px;
+	border: 1px solid var(--pk-border-accent, #b8afe8);
+	border-radius: var(--pk-radius-md, 8px);
+	background: var(--pk-bg, #fff);
 	color: var(--pkc-fm-key);
-	font-size: 9px;
 }
 
-.peak-composer-root .pk-fm-library__summary span:last-child {
-	border-right: 0;
-}
-
-.peak-composer-root .pk-fm-library__summary b {
-	margin-right: 3px;
+.peak-composer-root .pk-fm-picker__search input {
+	height: 31px;
+	width: 100%;
+	min-width: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
 	color: var(--pkc-fm-value);
 	font-size: 12px;
+	outline: 0;
+	box-shadow: none;
 }
 
-.peak-composer-root .pk-fm-library__table > div {
-	display: grid;
-	grid-template-columns: 130px 70px minmax(180px, 1fr) 104px;
-	align-items: center;
-	min-height: 48px;
-	border-top: 1px solid var(--pkc-fm-line);
-}
-
-.peak-composer-root .pk-fm-library__head {
-	min-height: 36px;
-	background: var(--pk-bg-secondary, #fbfbfc);
-}
-
-.peak-composer-root .pk-fm-library__table > div > * {
-	margin: 0 11px;
-}
-
-.peak-composer-root .pk-fm-library__table span {
-	color: var(--pkc-fm-key);
-	font-size: 10px;
-}
-
-.peak-composer-root .pk-fm-library__table span:first-child {
-	display: grid;
-	gap: 2px;
-}
-
-.peak-composer-root .pk-fm-library__table strong {
-	color: var(--pkc-fm-value);
-	font-size: 11px;
-}
-
-.peak-composer-root .pk-fm-library__table small {
-	color: var(--pkc-fm-key);
-	font-size: 8px;
-}
-
-.peak-composer-root .pk-fm-library__table button,
-.peak-composer-root .pk-fm-suggestions button {
-	min-height: 28px;
-	padding: 0 9px;
-	border: 1px solid #d9d0f6;
-	border-radius: 7px;
-	background: #faf8ff;
-	color: #604bb8;
-	font-size: 11px;
-	cursor: pointer;
-}
-
-.peak-composer-root .pk-fm-library__table button:disabled {
-	color: #8c939f;
-	border-color: #e3e6eb;
-	background: #f4f5f7;
-	cursor: default;
-}
-
-.peak-composer-root .pk-fm-library__custom {
-	display: grid;
-	grid-template-columns: minmax(140px, 1.2fr) minmax(120px, 0.8fr) minmax(120px, 1fr) auto;
-	gap: 8px;
-	align-items: center;
-	padding: 12px 13px;
-	border-top: 1px solid var(--pkc-fm-line);
-	background: var(--pk-bg-secondary, #fcfcfd);
-}
-
-.peak-composer-root .pk-fm-library__custom > span {
-	display: grid;
-	gap: 2px;
-	color: var(--pkc-fm-value);
-	font-size: 11px;
-}
-
-.peak-composer-root .pk-fm-library__custom > span small {
+.peak-composer-root .pk-fm-picker__section-label {
+	padding: 5px 12px;
 	color: var(--pkc-fm-key);
 	font-size: 9px;
-	font-weight: 400;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
 }
 
-.peak-composer-root .pk-fm-library__custom input,
+.peak-composer-root .pk-fm-picker__options {
+	max-height: 320px;
+	overflow-y: auto;
+	padding: 2px 6px 6px;
+	overscroll-behavior: contain;
+}
+
+.peak-composer-root .pk-fm-picker__option.pk-btn {
+	display: flex;
+	width: 100%;
+	min-height: 42px !important;
+	height: auto !important;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 6px 8px !important;
+	border: 0 !important;
+	border-radius: var(--pk-radius-md, 7px) !important;
+	background: transparent !important;
+	color: var(--pkc-fm-value);
+	text-align: left;
+}
+
+.peak-composer-root .pk-fm-picker__option.pk-btn:hover,
+.peak-composer-root .pk-fm-picker__option.pk-btn:focus-visible {
+	background: var(--pk-accent-tint, #f5f2ff) !important;
+}
+
+.peak-composer-root .pk-fm-picker__option > span {
+	display: grid;
+	min-width: 0;
+	gap: 2px;
+}
+
+.peak-composer-root .pk-fm-picker__option strong {
+	overflow: hidden;
+	color: var(--pkc-fm-value);
+	font-size: 11px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.peak-composer-root .pk-fm-picker__option small,
+.peak-composer-root .pk-fm-picker__already-present small {
+	color: var(--pkc-fm-key);
+	font-size: 9px;
+}
+
+.peak-composer-root .pk-fm-picker__option--create {
+	justify-content: flex-start !important;
+	color: var(--pk-accent-text, #604bb8) !important;
+}
+
+.peak-composer-root .pk-fm-picker__option-meta {
+	flex: 0 0 auto;
+	text-align: right;
+}
+
+.peak-composer-root .pk-fm-picker__option-meta [data-warning="true"] {
+	color: var(--pk-warning, #b45309);
+}
+
+.peak-composer-root .pk-fm-picker__already-present,
+.peak-composer-root .pk-fm-picker__empty {
+	display: grid;
+	gap: 2px;
+	padding: 9px 8px;
+	color: var(--pkc-fm-key);
+	font-size: 11px;
+}
+
+.peak-composer-root .pk-fm-picker__already-present strong {
+	color: var(--pkc-fm-value);
+}
+
+.peak-composer-root .pk-fm-library > footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 6px;
+	padding: 6px 8px;
+	border-top: 1px solid var(--pkc-fm-line);
+}
+
+.peak-composer-root .pk-fm-library > footer .pk-btn {
+	min-height: 27px !important;
+	height: 27px !important;
+	padding: 0 6px !important;
+	color: var(--pk-text-secondary);
+	font-size: 9px;
+}
+
 .peak-composer-root .pk-fm-suggestions input {
 	height: 31px;
 	min-width: 0;
@@ -442,6 +530,20 @@
 	background: var(--pk-bg, #fff);
 	color: var(--pkc-fm-value);
 	font-size: 12px;
+}
+
+@media (max-width: 640px) {
+	.peak-composer-root .pk-fm-draft-value {
+		grid-template-columns: 1fr;
+	}
+
+	.peak-composer-root .pk-fm-draft-value__actions {
+		justify-self: end;
+	}
+
+	.peak-composer-root .pk-fm-library {
+		width: 100%;
+	}
 }
 
 .peak-composer-root .pk-fm-suggestions__list > div {

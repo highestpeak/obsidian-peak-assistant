@@ -98,16 +98,22 @@ check('document paper starts with content, not decorative file metadata header',
 	assert.ok(html.indexOf('pk-composer-blocks') > -1);
 });
 
-check('Frontmatter property library is owned by the bottom block row, not the metadata header', () => {
+check('Frontmatter uses a persistent current-note picker instead of a block-row Vault table', () => {
 	const frontmatter = readFileSync(
 		'src/ui/view/composer/blocks/frontmatter/FrontmatterBlockView.tsx',
 		'utf8',
 	);
 	const root = readFileSync('src/ui/view/composer/ComposerRoot.tsx', 'utf8');
-	assert.equal(frontmatter.includes('<Library size='), false);
-	assert.equal(frontmatter.includes('{config.grid.vaultLibrary}'), false);
-	assert.ok(root.includes('vaultLibrary={'));
-	assert.ok(root.includes('DEFAULT_FRONTMATTER_CONFIG.library.title'));
+	const actionRow = readFileSync('src/ui/view/composer/chrome/BlockActionRow.tsx', 'utf8');
+	assert.ok(frontmatter.includes('className="pk-fm-add-property"'));
+	assert.ok(frontmatter.includes('<FrontmatterPropertyPicker'));
+	const picker = readFileSync(
+		'src/ui/view/composer/blocks/frontmatter/FrontmatterPropertyPicker.tsx',
+		'utf8',
+	);
+	assert.ok(picker.includes('selectVaultPropertyFields'));
+	assert.equal(root.includes('vaultLibrary={'), false);
+	assert.equal(actionRow.includes('data-action="vault-library"'), false);
 	assert.ok(root.includes('[SUGGEST_PROPERTIES_CAPABILITY_ID]'));
 });
 

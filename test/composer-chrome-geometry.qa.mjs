@@ -505,20 +505,21 @@ const geom = (locator) =>
 	await record('paper is white', () => assert.equal(paper.bg, 'rgb(255, 255, 255)'));
 	await record('paper shadow is 0 8px 24px rgba(31,42,61,.055)', () => assert.equal(paper.shadow, 'rgba(31, 42, 61, 0.055) 0px 8px 24px 0px'));
 
-	// ── Frontmatter ownership: state badges stay above the grid; the Vault
-	// library and concrete AI actions belong to the shared block action row. ──
+	// ── Frontmatter ownership: state badges stay above the grid; current-note
+	// property addition is a persistent search-first row, not a Vault-wide table
+	// hidden in the shared block action rail. ──
 	const frontmatter = page.locator('.pk-composer-block[data-kind="frontmatter"]').first();
-	await record('frontmatter state row reports two concrete AI suggestions', async () =>
-		assert.match(await frontmatter.locator('.pk-fm-actions').innerText(), /AI 属性建议 · 2/),
+	await record('frontmatter state row does not pretend action count is result count', async () =>
+		assert.equal((await frontmatter.locator('.pk-fm-actions').innerText()).trim(), 'AI 建议'),
 	);
-	await record('frontmatter state row does not own the Vault library action', async () =>
-		assert.equal(await frontmatter.locator('.pk-fm-actions [data-action="vault-library"]').count(), 0),
+	await record('frontmatter owns one persistent add-property entrance', async () =>
+		assert.equal(await frontmatter.locator('.pk-fm-add-property').count(), 1),
 	);
 	await frontmatter.hover();
 	await page.waitForTimeout(200);
 	const frontmatterRow = frontmatter.locator('.pk-block-action-row');
-	await record('frontmatter block row owns the Vault library action', async () =>
-		assert.equal(await frontmatterRow.locator('[data-action="vault-library"]').count(), 1),
+	await record('frontmatter block row no longer duplicates the property picker', async () =>
+		assert.equal(await frontmatterRow.locator('[data-action="vault-library"]').count(), 0),
 	);
 	await page.screenshot({ path: path.join(shotsDir, 'composer-frontmatter-action-row-light.png') });
 

@@ -40,7 +40,6 @@ import { isChartBlock } from './blocks/chart/ChartBlockView';
 import { CalloutBlockView } from './blocks/callout/CalloutBlockView';
 import {
 	AddFrontmatterEntry,
-	DEFAULT_FRONTMATTER_CONFIG,
 	type FrontmatterCandidatePort,
 } from './blocks/frontmatter';
 import {
@@ -816,18 +815,6 @@ function ComposerBlockRow({
 						openPanel={ownPanel?.panel ?? null}
 						panelPinned={ownPanel?.pinned ?? false}
 						writeDisabledReason={chrome.runtime.hub ? undefined : config.chrome.actions.disabledNoRuntime}
-						vaultLibrary={
-							block.kind === 'frontmatter'
-								? {
-										label: DEFAULT_FRONTMATTER_CONFIG.library.title,
-										active: frontmatterLibraryOpen,
-										...(chrome.runtime.vaultInventory
-											? {}
-											: { disabledReason: config.chrome.actions.disabledNoRuntime }),
-										onClick: () => openPanel('vault-library'),
-									}
-								: undefined
-						}
 						hiddenQuickCapabilityIds={
 							block.kind === 'frontmatter'
 								? [SUGGEST_PROPERTIES_CAPABILITY_ID]

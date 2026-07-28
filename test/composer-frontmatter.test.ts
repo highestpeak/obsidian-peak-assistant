@@ -19,12 +19,15 @@ import {
 	buildMetadataFieldPatchOperations,
 	buildInsertFrontmatterHeadOperations,
 	computeVaultPropertyInventory,
+	findVaultProperty,
+	selectVaultPropertyFields,
 	fieldCandidateFromVault,
 	customFieldCandidate,
 	parseMetadataSuggestions,
 	parseComposerDocument,
 	type VaultFrontmatterRecord,
 } from '@/service/composer';
+import { ComposerMetadataFieldPatchPayloadSchema } from '@/core/schemas/composer';
 import { makeChecker } from './helpers/composer-fakes';
 
 const { check, done } = makeChecker();
@@ -174,6 +177,39 @@ function testInventory(): void {
 	];
 	const conflict = computeVaultPropertyInventory(conflictRecs, {});
 	check('list vs scalar is a type conflict', conflict.fields.find((f) => f.key === 'note')?.typeConflict === true && conflict.typeConflictCount === 1);
+
+	const largeRecords: VaultFrontmatterRecord[] = Array.from({ length: 140 }, (_, index) => ({
+		path: `note-${index}.md`,
+		frontmatter: {
+			...(index < 100 ? { status: 'evergreen' } : {}),
+			...(index < 80 ? { summary: `Summary ${index}` } : {}),
+			...(index < 60 ? { source: `[[Source ${index}]]` } : {}),
+			...(index < 40 ? { project: 'peak-assistant' } : {}),
+			[`field_${index}`]: index,
+			[`hub_internal_${index}`]: index,
+		},
+	}));
+	const large = computeVaultPropertyInventory(largeRecords, { status: 'evergreen' });
+	const rules = {
+		defaultResultLimit: 8,
+		searchResultLimit: 24,
+		hiddenFieldPrefixes: ['hub_'],
+		hiddenFieldKeys: [],
+	};
+	const recommended = selectVaultPropertyFields(large, '', rules);
+	check('large picker stays capped instead of rendering the whole schema', recommended.length > 0 && recommended.length <= 8);
+	check('fields already in the note stay out of add results', !recommended.some((field) => field.key === 'status'));
+	check('configured system fields stay hidden by default', !recommended.some((field) => field.key.startsWith('hub_')));
+	check('common missing fields rank before one-off fields', recommended[0]?.key === 'summary', recommended.map((field) => field.key).join(','));
+	check('single-use noise stays out of the unopened picker', recommended.every((field) => !field.rare));
+
+	const searched = selectVaultPropertyFields(large, 'field_13', rules);
+	check('search returns matching fields only', searched.length > 0 && searched.every((field) => field.key.includes('field_13')));
+	check('exact search match ranks first', searched[0]?.key === 'field_13', searched.map((field) => field.key).join(','));
+	check('exact lookup finds current fields for the already-present state', findVaultProperty(large, ' STATUS ')?.presentInCurrent === true);
+
+	const withSystem = selectVaultPropertyFields(large, 'hub_internal_12', rules, { includeHidden: true });
+	check('system fields require explicit inclusion', withSystem[0]?.key === 'hub_internal_12');
 }
 
 function testCandidates(): void {
@@ -182,6 +218,10 @@ function testCandidates(): void {
 
 	const listCand = fieldCandidateFromVault({ key: 'tags' }, ['a', 'b'], 'convention');
 	check('vault list candidate', listCand.valueKind === 'list' && Array.isArray(listCand.value));
+
+	const booleanCand = fieldCandidateFromVault({ key: 'reviewed' }, false);
+	check('vault boolean candidate preserves boolean YAML shape', booleanCand.value === false && booleanCand.valueKind === 'boolean');
+	check('metadata payload schema accepts boolean property values', ComposerMetadataFieldPatchPayloadSchema.safeParse(booleanCand).success);
 
 	const custom = customFieldCandidate('  category  ', 'knowledge-management');
 	check('custom candidate trims key + human origin', custom.key === 'category' && custom.origin === 'human' && custom.valueKind === 'scalar');

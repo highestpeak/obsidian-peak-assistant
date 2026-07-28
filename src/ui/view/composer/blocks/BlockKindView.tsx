@@ -79,6 +79,7 @@ export function BlockKindView({
 					block={block}
 					candidate={frontmatterCandidate}
 					libraryOpen={frontmatterLibraryOpen}
+					propertyPickerEnabled={editing}
 					onLibraryOpenChange={onFrontmatterLibraryOpenChange}
 				/>
 			);

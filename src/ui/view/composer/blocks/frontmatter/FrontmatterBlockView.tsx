@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Check, RotateCcw, Sparkles, X } from 'lucide-react';
+import { Check, Plus, RotateCcw, Sparkles } from 'lucide-react';
 import type {
 	ComposerBlock,
 	ComposerCandidate,
@@ -10,33 +10,33 @@ import type {
 import type {
 	ComposerMetadataFieldPatchPayload,
 	ComposerMetadataOrigin,
+	ComposerMetadataValueKind,
 } from '@/core/schemas/composer';
 import {
 	parseFrontmatterModel,
-	customFieldCandidate,
-	fieldCandidateFromVault,
 	computeVaultPropertyInventory,
 	buildMetadataFieldPatchOperations,
-	FRONTMATTER_QUICK_ACTION_IDS,
 	SUGGEST_PROPERTIES_CAPABILITY_ID,
 	type FrontmatterField,
 	type FrontmatterModelConfig,
 	type VaultPropertyInventory,
-	type VaultPropertyStat,
 } from '@/service/composer';
 import { Button } from '@/ui/components/primitives';
 import { useComposerChrome } from '../../chrome/ComposerChromeContext';
 import { DEFAULT_FRONTMATTER_CONFIG, type FrontmatterConfig } from './frontmatterConfig';
+import { FrontmatterPropertyPicker } from './FrontmatterPropertyPicker';
 
 /**
  * Peak Composer — frontmatter property grid (WP5, §8).
  *
  * Replaces the raw YAML mono box with a typed property grid (scalar / list /
  * boolean / date / link / unknown) tagged by provenance (程序 / 人工 / AI 建议 /
- * 规范建议). The block's hover action row owns the Vault property library
- * entrance and the two concrete AI quick actions; the compact state row above
- * the grid retains the aggregate AI-suggestion trigger. All paths create
- * per-document candidates only, and nothing writes YAML without confirmation.
+ * 规范建议). A small, persistent "添加属性" row opens the task-focused property
+ * picker without expanding the whole Vault inventory into the document. The
+ * block action row keeps the two concrete AI quick actions; the compact state
+ * row above the grid retains the aggregate AI-suggestion trigger. All paths
+ * create per-document candidates only, and nothing writes YAML without
+ * confirmation.
  *
  * Interactive paths (library scan, AI suggestion, field commit) arrive through
  * the optional {@link FrontmatterBlockPorts}; without them the grid renders
@@ -48,8 +48,6 @@ import { DEFAULT_FRONTMATTER_CONFIG, type FrontmatterConfig } from './frontmatte
 export interface FrontmatterSuggestPort {
 	/** Present ⇒ render disabled with this explanation (never a fake button). */
 	disabledReason?: string;
-	/** Number of concrete quick actions represented by the aggregate trigger. */
-	suggestionCount: number;
 	/** Invoke the AI property-suggestion capability (candidate appears in the block slot). */
 	run(): void;
 }
@@ -76,6 +74,13 @@ export interface FrontmatterCandidatePort {
 	candidate: ComposerCandidate;
 }
 
+interface FrontmatterFieldDraft {
+	key: string;
+	value: string | string[] | boolean;
+	valueKind: ComposerMetadataValueKind;
+	origin: ComposerMetadataOrigin;
+}
+
 export function FrontmatterBlockView({
 	block,
 	config = DEFAULT_FRONTMATTER_CONFIG,
@@ -83,6 +88,7 @@ export function FrontmatterBlockView({
 	ports,
 	candidate: candidatePort,
 	libraryOpen = false,
+	propertyPickerEnabled = false,
 	onLibraryOpenChange,
 }: {
 	block: ComposerBlock;
@@ -91,6 +97,7 @@ export function FrontmatterBlockView({
 	ports?: FrontmatterBlockPorts;
 	candidate?: FrontmatterCandidatePort;
 	libraryOpen?: boolean;
+	propertyPickerEnabled?: boolean;
 	onLibraryOpenChange?(open: boolean): void;
 }): React.ReactElement {
 	const model = React.useMemo(
@@ -112,6 +119,50 @@ export function FrontmatterBlockView({
 	const suggestReason = !suggest ? config.grid.aiSuggest : suggest.disabledReason;
 	const candidate = useFrontmatterCandidate(candidatePort);
 	const candidatePayload = metadataCandidatePayload(candidate);
+	const [fieldDraft, setFieldDraft] = React.useState<FrontmatterFieldDraft | null>(null);
+	const [draftCommitPending, setDraftCommitPending] = React.useState(false);
+	const [draftCommitFailed, setDraftCommitFailed] = React.useState(false);
+	const pickerTriggerRef = React.useRef<HTMLButtonElement | null>(null);
+	const pickerAvailable = Boolean(ports?.loadInventory && ports.commitField);
+	React.useEffect(() => {
+		if (!fieldDraft) return;
+		if (!model.fields.some((field) => field.key === fieldDraft.key)) return;
+		setFieldDraft(null);
+		setDraftCommitFailed(false);
+	}, [fieldDraft, model.fields]);
+	const closePicker = () => {
+		onLibraryOpenChange?.(false);
+		requestAnimationFrame(() => pickerTriggerRef.current?.focus());
+	};
+	const selectField = (payload: ComposerMetadataFieldPatchPayload) => {
+		setFieldDraft({
+			key: payload.key,
+			value: payload.value,
+			valueKind: payload.valueKind,
+			origin: payload.origin,
+		});
+		setDraftCommitFailed(false);
+		onLibraryOpenChange?.(false);
+	};
+	const commitDraft = async () => {
+		if (!fieldDraft || !ports?.commitField || draftCommitPending) return;
+		setDraftCommitPending(true);
+		setDraftCommitFailed(false);
+		try {
+			const result = await ports.commitField(
+				fieldDraftPayload(fieldDraft, config.picker.listValueSeparator),
+			);
+			if (result.committed) {
+				setFieldDraft(null);
+				return;
+			}
+			setDraftCommitFailed(true);
+		} catch {
+			setDraftCommitFailed(true);
+		} finally {
+			setDraftCommitPending(false);
+		}
+	};
 
 	return (
 		<div className="pk-fm-block" data-block-id={block.blockId} data-src-text-from={block.source.from}>
@@ -129,14 +180,54 @@ export function FrontmatterBlockView({
 					onClick={() => suggest?.run()}
 				>
 					<Sparkles size={12} />
-					{config.grid.aiSuggestCount.replace(
-						'{count}',
-						String(suggest?.suggestionCount ?? FRONTMATTER_QUICK_ACTION_IDS.length),
-					)}
+					{config.grid.aiSuggest}
 				</Button>
 			</div>
 
-			<PropertyGrid fields={model.fields} config={config} candidate={candidatePayload} />
+			<PropertyGrid
+				fields={model.fields}
+				config={config}
+				candidate={candidatePayload}
+				draft={fieldDraft}
+				draftCommitPending={draftCommitPending}
+				draftCommitFailed={draftCommitFailed}
+				onDraftChange={setFieldDraft}
+				onDraftCancel={() => {
+					setFieldDraft(null);
+					setDraftCommitFailed(false);
+				}}
+				onDraftCommit={() => void commitDraft()}
+			/>
+			{propertyPickerEnabled && (
+				<div
+					className="pk-fm-picker-anchor"
+					data-chrome="true"
+					data-composer-surface-owner={block.blockId}
+				>
+					<Button
+						ref={pickerTriggerRef}
+						variant="ghost"
+						size="sm"
+						className="pk-fm-add-property"
+						aria-haspopup="dialog"
+						aria-expanded={libraryOpen}
+						disabled={!pickerAvailable}
+						title={!pickerAvailable ? config.library.unavailable : undefined}
+						onClick={() => onLibraryOpenChange?.(!libraryOpen)}
+					>
+						<Plus size={13} />
+						{config.grid.addProperty}
+					</Button>
+					{libraryOpen && pickerAvailable && ports?.loadInventory && (
+						<FrontmatterPropertyPicker
+							config={config}
+							loadInventory={() => ports.loadInventory!(currentMap)}
+							onSelect={selectField}
+							onClose={closePicker}
+						/>
+					)}
+				</div>
+			)}
 			{candidate && candidatePort && (
 				<FrontmatterCandidateReview
 					candidate={candidate}
@@ -146,14 +237,6 @@ export function FrontmatterBlockView({
 				/>
 			)}
 
-			{libraryOpen && ports?.loadInventory && (
-				<VaultPropertyLibrary
-					config={config}
-					loadInventory={() => ports.loadInventory!(currentMap)}
-					commitField={ports.commitField}
-					onClose={() => onLibraryOpenChange?.(false)}
-				/>
-			)}
 		</div>
 	);
 }
@@ -178,11 +261,13 @@ export function ConnectedFrontmatterBlockView({
 	block,
 	candidate,
 	libraryOpen = false,
+	propertyPickerEnabled = false,
 	onLibraryOpenChange,
 }: {
 	block: ComposerBlock;
 	candidate?: FrontmatterCandidatePort;
 	libraryOpen?: boolean;
+	propertyPickerEnabled?: boolean;
 	onLibraryOpenChange?(open: boolean): void;
 }): React.ReactElement {
 	const chrome = useComposerChrome();
@@ -223,6 +308,7 @@ export function ConnectedFrontmatterBlockView({
 			ports={ports}
 			candidate={candidate}
 			libraryOpen={libraryOpen}
+			propertyPickerEnabled={propertyPickerEnabled}
 			onLibraryOpenChange={onLibraryOpenChange}
 		/>
 	);
@@ -249,11 +335,6 @@ function suggestActionFor(
 	if (!action) return undefined;
 	return {
 		...(action.disabledReason !== undefined ? { disabledReason: action.disabledReason } : {}),
-		suggestionCount: actions.filter((candidate) =>
-			FRONTMATTER_QUICK_ACTION_IDS.includes(
-				candidate.capabilityId as (typeof FRONTMATTER_QUICK_ACTION_IDS)[number],
-			),
-		).length,
 		run: () => {
 			try {
 				chrome.projection.invoke(SUGGEST_PROPERTIES_CAPABILITY_ID, context);
@@ -270,10 +351,22 @@ function PropertyGrid({
 	fields,
 	config,
 	candidate,
+	draft,
+	draftCommitPending,
+	draftCommitFailed,
+	onDraftChange,
+	onDraftCancel,
+	onDraftCommit,
 }: {
 	fields: readonly FrontmatterField[];
 	config: FrontmatterConfig;
 	candidate: ComposerMetadataFieldPatchPayload | null;
+	draft: FrontmatterFieldDraft | null;
+	draftCommitPending: boolean;
+	draftCommitFailed: boolean;
+	onDraftChange(draft: FrontmatterFieldDraft): void;
+	onDraftCancel(): void;
+	onDraftCommit(): void;
 }): React.ReactElement {
 	const newCandidateField = candidate && !fields.some((field) => field.key === candidate.key)
 		? {
@@ -303,7 +396,95 @@ function PropertyGrid({
 					<FieldValue field={newCandidateField} candidate={candidate} />
 				</React.Fragment>
 			)}
+			{draft && !fields.some((field) => field.key === draft.key) && (
+				<React.Fragment key={`draft:${draft.key}`}>
+					<span className="pk-fm-grid__key pk-fm-grid__key--draft">
+						{draft.key}
+						<OriginChip origin={draft.origin} config={config} />
+					</span>
+					<DraftFieldValue
+						draft={draft}
+						config={config}
+						pending={draftCommitPending}
+						failed={draftCommitFailed}
+						onChange={onDraftChange}
+						onCancel={onDraftCancel}
+						onCommit={onDraftCommit}
+					/>
+				</React.Fragment>
+			)}
 		</div>
+	);
+}
+
+function DraftFieldValue({
+	draft,
+	config,
+	pending,
+	failed,
+	onChange,
+	onCancel,
+	onCommit,
+}: {
+	draft: FrontmatterFieldDraft;
+	config: FrontmatterConfig;
+	pending: boolean;
+	failed: boolean;
+	onChange(draft: FrontmatterFieldDraft): void;
+	onCancel(): void;
+	onCommit(): void;
+}): React.ReactElement {
+	const inputRef = React.useRef<HTMLInputElement | null>(null);
+	React.useEffect(() => {
+		inputRef.current?.focus();
+	}, [draft.key]);
+	const value = Array.isArray(draft.value)
+		? draft.value.join(`${config.picker.listValueSeparator} `)
+		: draft.value;
+	const updateTextValue = (text: string) => {
+		onChange({ ...draft, value: text });
+	};
+	return (
+		<span className="pk-fm-draft-value">
+			{draft.valueKind === 'boolean' ? (
+				<input
+					ref={inputRef}
+					type="checkbox"
+					checked={Boolean(draft.value)}
+					aria-label={config.library.valuePlaceholder}
+					onChange={(event) => onChange({ ...draft, value: event.target.checked })}
+				/>
+			) : (
+				<input
+					ref={inputRef}
+					type={draft.valueKind === 'date' ? 'date' : 'text'}
+					value={String(value)}
+					placeholder={config.library.valuePlaceholder}
+					aria-label={`${draft.key} ${config.library.valuePlaceholder}`}
+					onChange={(event) => updateTextValue(event.target.value)}
+					onKeyDown={(event) => {
+						if (event.key === 'Escape') {
+							event.preventDefault();
+							onCancel();
+							return;
+						}
+						if (event.key !== 'Enter') return;
+						event.preventDefault();
+						onCommit();
+					}}
+				/>
+			)}
+			<span className="pk-fm-draft-value__actions">
+				<Button variant="primary" size="sm" disabled={pending} onClick={onCommit}>
+					<Check size={12} />
+					{config.library.addToDoc}
+				</Button>
+				<Button variant="ghost" size="sm" disabled={pending} onClick={onCancel}>
+					{config.library.cancel}
+				</Button>
+			</span>
+			{failed && <small role="alert">{config.library.commitFailed}</small>}
+		</span>
 	);
 }
 
@@ -450,131 +631,16 @@ function FrontmatterCandidateReview({
 	);
 }
 
-// ── vault property library ────────────────────────────────────────────────────
-
-function VaultPropertyLibrary({
-	config,
-	loadInventory,
-	commitField,
-	onClose,
-}: {
-	config: FrontmatterConfig;
-	loadInventory: () => Promise<VaultPropertyInventory>;
-	commitField?: FrontmatterBlockPorts['commitField'];
-	onClose: () => void;
-}): React.ReactElement {
-	const [inventory, setInventory] = React.useState<VaultPropertyInventory | null>(null);
-	React.useEffect(() => {
-		let live = true;
-		void loadInventory().then((inv) => {
-			if (live) setInventory(inv);
-		});
-		return () => {
-			live = false;
-		};
-	}, [loadInventory]);
-
-	const lib = config.library;
-	const addField = (payload: ComposerMetadataFieldPatchPayload) => {
-		if (commitField) void commitField(payload);
+function fieldDraftPayload(
+	draft: FrontmatterFieldDraft,
+	listValueSeparator: string,
+): ComposerMetadataFieldPatchPayload {
+	if (draft.valueKind !== 'list' || typeof draft.value !== 'string') return draft;
+	return {
+		...draft,
+		value: draft.value
+			.split(listValueSeparator)
+			.map((part) => part.trim())
+			.filter((part) => part.length > 0),
 	};
-
-	return (
-		<section className="pk-fm-library" role="region" aria-label={lib.title} data-chrome="true">
-			<header>
-				<span>
-					<b>{lib.title}</b>
-					<small>{lib.subtitle}</small>
-				</span>
-				<Button variant="ghost" size="sm" aria-label={lib.close} onClick={onClose}>
-					<X size={13} />
-				</Button>
-			</header>
-			{inventory && (
-				<div className="pk-fm-library__summary">
-					<span><b>{inventory.fieldCount}</b> {lib.statFields}</span>
-					<span><b>{inventory.tagCount}</b> {lib.statTags}</span>
-					<span><b>{inventory.singleUseCount}</b> {lib.statSingle}</span>
-					<span><b>{inventory.typeConflictCount}</b> {lib.statConflict}</span>
-				</div>
-			)}
-			<div className="pk-fm-library__table" role="table" aria-label={lib.title}>
-				<div role="row" className="pk-fm-library__head">
-					<b role="columnheader">{lib.colField}</b>
-					<b role="columnheader">{lib.colCoverage}</b>
-					<b role="columnheader">{lib.colIssue}</b>
-					<b role="columnheader">{lib.colAdd}</b>
-				</div>
-				{(inventory?.fields ?? []).map((stat) => (
-					<LibraryRow key={stat.key} stat={stat} config={config} onAdd={() => addField(fieldCandidateFromVault({ key: stat.key }, ''))} canAdd={Boolean(commitField)} />
-				))}
-			</div>
-			<CustomPropertyForm config={config} commitField={commitField} />
-			<footer>{lib.footer}</footer>
-		</section>
-	);
-}
-
-function LibraryRow({
-	stat,
-	config,
-	onAdd,
-	canAdd,
-}: {
-	stat: VaultPropertyStat;
-	config: FrontmatterConfig;
-	onAdd: () => void;
-	canAdd: boolean;
-}): React.ReactElement {
-	const lib = config.library;
-	const issues: string[] = [];
-	if (stat.typeConflict) issues.push(lib.typeConflict);
-	if (stat.rare) issues.push(lib.rare);
-	return (
-		<div role="row">
-			<span>
-				<strong>{stat.key}</strong>
-				<small>{stat.kinds.join(' / ')}</small>
-			</span>
-			<span>{Math.round(stat.coverage * 100)}%</span>
-			<span>{issues.join(' · ')}</span>
-			{stat.presentInCurrent ? (
-				<button type="button" disabled>{lib.alreadyPresent}</button>
-			) : (
-				<button type="button" disabled={!canAdd} onClick={onAdd}>{lib.add}</button>
-			)}
-		</div>
-	);
-}
-
-function CustomPropertyForm({
-	config,
-	commitField,
-}: {
-	config: FrontmatterConfig;
-	commitField?: FrontmatterBlockPorts['commitField'];
-}): React.ReactElement {
-	const [key, setKey] = React.useState('');
-	const [value, setValue] = React.useState('');
-	const lib = config.library;
-	const submit = (ev: React.FormEvent) => {
-		ev.preventDefault();
-		if (!commitField || key.trim().length === 0) return;
-		void commitField(customFieldCandidate(key, value));
-		setKey('');
-		setValue('');
-	};
-	return (
-		<form className="pk-fm-library__custom" onSubmit={submit}>
-			<span>
-				<b>{lib.customTitle}</b>
-				<small>{lib.customSubtitle}</small>
-			</span>
-			<input value={key} aria-label={lib.customTitle} placeholder={lib.keyPlaceholder} onChange={(e) => setKey(e.target.value)} />
-			<input value={value} aria-label={lib.valuePlaceholder} placeholder={lib.valuePlaceholder} onChange={(e) => setValue(e.target.value)} />
-			<Button type="submit" variant="secondary" size="sm" disabled={!commitField || key.trim().length === 0}>
-				{lib.addToDoc}
-			</Button>
-		</form>
-	);
 }

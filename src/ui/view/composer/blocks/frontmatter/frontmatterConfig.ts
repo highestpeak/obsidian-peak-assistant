@@ -13,9 +13,7 @@ import type { ComposerMetadataOrigin } from '@/core/schemas/composer';
 
 export interface FrontmatterGridStrings {
 	issueWarning: string;
-	vaultLibrary: string;
 	aiSuggest: string;
-	aiSuggestCount: string;
 	addProperty: string;
 	origin: Record<ComposerMetadataOrigin, string>;
 	reviewShapeChange: string;
@@ -25,24 +23,36 @@ export interface FrontmatterLibraryStrings {
 	title: string;
 	subtitle: string;
 	close: string;
-	colField: string;
-	colCoverage: string;
-	colIssue: string;
-	colAdd: string;
+	unavailable: string;
 	alreadyPresent: string;
-	add: string;
+	searchPlaceholder: string;
+	loading: string;
+	loadFailed: string;
+	recommendedTitle: string;
+	searchResultsTitle: string;
+	allTitle: string;
+	noResults: string;
+	createProperty: string;
+	customCandidateHint: string;
+	browseAll: string;
+	showRecommended: string;
+	showSystemFields: string;
+	hideSystemFields: string;
+	usedInNotes: string;
 	typeConflict: string;
 	rare: string;
-	customTitle: string;
-	customSubtitle: string;
-	keyPlaceholder: string;
 	valuePlaceholder: string;
 	addToDoc: string;
-	footer: string;
-	statFields: string;
-	statTags: string;
-	statSingle: string;
-	statConflict: string;
+	cancel: string;
+	commitFailed: string;
+}
+
+export interface FrontmatterPickerConfig {
+	defaultResultLimit: number;
+	searchResultLimit: number;
+	hiddenFieldPrefixes: string[];
+	hiddenFieldKeys: string[];
+	listValueSeparator: string;
 }
 
 export interface FrontmatterSuggestionStrings {
@@ -67,41 +77,51 @@ export interface FrontmatterSuggestionStrings {
 export interface FrontmatterConfig {
 	grid: FrontmatterGridStrings;
 	library: FrontmatterLibraryStrings;
+	picker: FrontmatterPickerConfig;
 	suggestions: FrontmatterSuggestionStrings;
 }
 
 export const DEFAULT_FRONTMATTER_CONFIG: FrontmatterConfig = {
 	grid: {
 		issueWarning: '属性告警',
-		vaultLibrary: '属性库',
-		aiSuggest: 'AI 属性建议',
-		aiSuggestCount: 'AI 属性建议 · {count}',
+		aiSuggest: 'AI 建议',
 		addProperty: '添加属性',
 		origin: { program: '程序', human: '人工', ai: 'AI 建议', convention: '规范建议' },
 		reviewShapeChange: '该改动会改变字段类型，请确认后再写入',
 	},
 	library: {
-		title: 'Vault 属性库',
-		subtitle: '全知识库字段与标签统计 · 选择后只在当前文档生成候选',
-		close: '关闭属性库',
-		colField: '字段',
-		colCoverage: '覆盖率',
-		colIssue: '发现的问题',
-		colAdd: '加入本文',
+		title: '添加属性',
+		subtitle: '搜索或创建当前文档需要的属性',
+		close: '关闭属性选择器',
+		unavailable: '当前无法读取或写入 Vault 属性',
 		alreadyPresent: '已在本文',
-		add: '添加',
+		searchPlaceholder: '搜索或创建属性…',
+		loading: '正在读取 Vault 属性…',
+		loadFailed: '无法读取 Vault 属性，请关闭后重试',
+		recommendedTitle: 'Vault 常用属性',
+		searchResultsTitle: '搜索结果',
+		allTitle: '全部可添加属性',
+		noResults: '没有匹配的可添加属性',
+		createProperty: '创建属性“{key}”',
+		customCandidateHint: '将在当前 Frontmatter 中生成候选',
+		browseAll: '浏览全部 {count} 个属性',
+		showRecommended: '返回常用属性',
+		showSystemFields: '显示系统字段',
+		hideSystemFields: '隐藏系统字段',
+		usedInNotes: '{count} 篇文档使用',
 		typeConflict: '类型不一致',
 		rare: '单次使用',
-		customTitle: '自定义属性',
-		customSubtitle: '任意 key / value；先生成候选，不静默写入 YAML',
-		keyPlaceholder: 'key，例如 cssclasses',
-		valuePlaceholder: 'value，例如 wide-page',
+		valuePlaceholder: '输入属性值',
 		addToDoc: '添加到本文',
-		footer: '统计范围是整个 Vault；入口跟随当前 Frontmatter，只把选中的字段作为本文候选。',
-		statFields: '个字段',
-		statTags: '个标签',
-		statSingle: '个单次字段',
-		statConflict: '处类型不一致',
+		cancel: '取消',
+		commitFailed: '属性没有写入，请检查文档是否已变化后重试',
+	},
+	picker: {
+		defaultResultLimit: 8,
+		searchResultLimit: 24,
+		hiddenFieldPrefixes: ['hub_', 'peak_'],
+		hiddenFieldKeys: ['created', 'updated', 'modified', 'date created', 'date modified'],
+		listValueSeparator: ',',
 	},
 	suggestions: {
 		title: 'AI 属性建议',
@@ -133,6 +153,7 @@ export async function loadFrontmatterConfig(): Promise<FrontmatterConfig> {
 		return {
 			grid: { ...DEFAULT_FRONTMATTER_CONFIG.grid, ...(section.grid ?? {}) },
 			library: { ...DEFAULT_FRONTMATTER_CONFIG.library, ...(section.library ?? {}) },
+			picker: { ...DEFAULT_FRONTMATTER_CONFIG.picker, ...(section.picker ?? {}) },
 			suggestions: { ...DEFAULT_FRONTMATTER_CONFIG.suggestions, ...(section.suggestions ?? {}) },
 		};
 	} catch {

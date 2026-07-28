@@ -61,6 +61,18 @@ export interface VaultPropertyInventory {
 	missingInCurrent: string[];
 }
 
+/**
+ * Product-level picker rules are supplied by the Composer config. Keeping the
+ * ranking pure makes the large-Vault interaction testable without React or
+ * Obsidian, while the actual values remain configurable.
+ */
+export interface VaultPropertyPickerRules {
+	defaultResultLimit: number;
+	searchResultLimit: number;
+	hiddenFieldPrefixes: readonly string[];
+	hiddenFieldKeys: readonly string[];
+}
+
 export interface VaultInventoryConfig {
 	/** Key name whose list values are treated as the tag vocabulary. */
 	tagFieldKey: string;
@@ -125,6 +137,80 @@ export function computeVaultPropertyInventory(
 	};
 }
 
+/**
+ * Select the small, task-focused field set shown by the current-note picker.
+ *
+ * - fields already present in the current note are excluded;
+ * - configured machine-managed fields stay hidden unless explicitly requested;
+ * - a typed query ranks exact and prefix matches before looser matches;
+ * - the unopened picker starts from common missing fields instead of rendering
+ *   the entire Vault schema into the document flow.
+ */
+export function selectVaultPropertyFields(
+	inventory: VaultPropertyInventory,
+	query: string,
+	rules: VaultPropertyPickerRules,
+	options: { showAll?: boolean; includeHidden?: boolean } = {},
+): VaultPropertyStat[] {
+	const normalizedQuery = normalizePropertySearch(query);
+	const hiddenKeys = new Set(rules.hiddenFieldKeys.map(normalizePropertySearch));
+	const hiddenPrefixes = rules.hiddenFieldPrefixes.map(normalizePropertySearch);
+	const eligible = inventory.fields.filter((field) => {
+		if (field.presentInCurrent) return false;
+		if (options.includeHidden) return true;
+		const normalizedKey = normalizePropertySearch(field.key);
+		if (hiddenKeys.has(normalizedKey)) return false;
+		return !hiddenPrefixes.some((prefix) => prefix.length > 0 && normalizedKey.startsWith(prefix));
+	});
+
+	if (normalizedQuery.length > 0) {
+		return eligible
+			.filter((field) => normalizePropertySearch(field.key).includes(normalizedQuery))
+			.sort((left, right) => {
+				const leftRank = propertySearchRank(left.key, normalizedQuery);
+				const rightRank = propertySearchRank(right.key, normalizedQuery);
+				if (leftRank !== rightRank) return leftRank - rightRank;
+				if (left.coverage !== right.coverage) return right.coverage - left.coverage;
+				return left.key.localeCompare(right.key);
+			})
+			.slice(0, rules.searchResultLimit);
+	}
+
+	if (options.showAll) return eligible;
+
+	const missing = new Set(inventory.missingInCurrent.map(normalizePropertySearch));
+	return eligible
+		.filter((field) => !field.rare)
+		.sort((left, right) => {
+			const leftMissing = missing.has(normalizePropertySearch(left.key));
+			const rightMissing = missing.has(normalizePropertySearch(right.key));
+			if (leftMissing !== rightMissing) return leftMissing ? -1 : 1;
+			if (left.coverage !== right.coverage) return right.coverage - left.coverage;
+			return left.key.localeCompare(right.key);
+		})
+		.slice(0, rules.defaultResultLimit);
+}
+
+export function findVaultProperty(
+	inventory: VaultPropertyInventory,
+	query: string,
+): VaultPropertyStat | undefined {
+	const normalizedQuery = normalizePropertySearch(query);
+	if (normalizedQuery.length === 0) return undefined;
+	return inventory.fields.find((field) => normalizePropertySearch(field.key) === normalizedQuery);
+}
+
+function normalizePropertySearch(value: string): string {
+	return value.trim().toLocaleLowerCase();
+}
+
+function propertySearchRank(key: string, query: string): number {
+	const normalizedKey = normalizePropertySearch(key);
+	if (normalizedKey === query) return 0;
+	if (normalizedKey.startsWith(query)) return 1;
+	return 2;
+}
+
 function inventoryKind(value: unknown): ComposerMetadataValueKind {
 	if (Array.isArray(value)) return 'list';
 	if (typeof value === 'boolean') return 'boolean';
@@ -150,7 +236,7 @@ function collectTags(value: unknown, out: Set<string>): void {
  */
 export function fieldCandidateFromVault(
 	stat: Pick<VaultPropertyStat, 'key'>,
-	value: string | string[],
+	value: string | string[] | boolean,
 	origin: ComposerMetadataOrigin = 'human',
 	evidence?: string,
 ): ComposerMetadataFieldPatchPayload {

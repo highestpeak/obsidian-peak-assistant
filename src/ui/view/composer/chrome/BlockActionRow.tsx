@@ -6,7 +6,6 @@ import {
 	Plus,
 	Copy,
 	Sparkles,
-	TableProperties,
 	WandSparkles,
 	X,
 } from 'lucide-react';
@@ -34,13 +33,6 @@ export type BlockPanelKind =
 	| 'instruction'
 	| 'vault-library';
 
-export interface BlockVaultLibraryAction {
-	label: string;
-	active: boolean;
-	disabledReason?: string;
-	onClick(): void;
-}
-
 export interface BlockActionRowProps {
 	snapshot: ComposerContextSnapshot;
 	onInsertBelow?: () => void;
@@ -53,8 +45,6 @@ export interface BlockActionRowProps {
 	panelPinned: boolean;
 	/** Reason when deterministic write actions are unavailable (no hub). */
 	writeDisabledReason?: string;
-	/** Frontmatter-only deterministic entrance, placed with Insert / Copy / Comment. */
-	vaultLibrary?: BlockVaultLibraryAction;
 	/** Capabilities that remain available for 指令 but do not render as quick pills. */
 	hiddenQuickCapabilityIds?: readonly string[];
 	onInvoke: (descriptor: ComposerActionDescriptor, instruction?: string) => void;
@@ -71,7 +61,6 @@ export function BlockActionRow({
 	openPanel,
 	panelPinned,
 	writeDisabledReason,
-	vaultLibrary,
 	hiddenQuickCapabilityIds = [],
 	onInvoke,
 }: BlockActionRowProps): React.ReactElement {
@@ -214,18 +203,6 @@ export function BlockActionRow({
 							tabIndex={actionTabIndex}
 							data-action="comment"
 						/>
-						{vaultLibrary && (
-							<CapsuleButton
-								label={vaultLibrary.label}
-								icon={<TableProperties size={13} />}
-								disabled={Boolean(vaultLibrary.disabledReason)}
-								disabledReason={vaultLibrary.disabledReason}
-								onClick={vaultLibrary.onClick}
-								tabIndex={actionTabIndex}
-								data-action="vault-library"
-								data-active={vaultLibrary.active || undefined}
-							/>
-						)}
 					</span>
 					{quickAiActions.length > 0 && (
 						<>

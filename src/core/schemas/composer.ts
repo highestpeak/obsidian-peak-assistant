@@ -426,7 +426,7 @@ export type ComposerMetadataSuggestionInput = z.infer<typeof ComposerMetadataSug
  */
 export const ComposerMetadataFieldPatchPayloadSchema = z.object({
 	key: z.string().min(1),
-	value: z.union([z.string(), z.array(z.string())]),
+	value: z.union([z.string(), z.array(z.string()), z.boolean()]),
 	valueKind: ComposerMetadataValueKindSchema,
 	origin: ComposerMetadataOriginSchema,
 	/** Human-readable evidence/reason surfaced next to the suggestion (§8.3). */
