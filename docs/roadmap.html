@@ -286,6 +286,12 @@
                 <td><span class="pill gold">shell corrected · data/QA partial</span></td>
               </tr>
               <tr>
+                <td><strong>Composer 多块选择、合并与上下文感知 AI 操作</strong></td>
+                <td>把公式拆分引出的需求收口成通用 Composer 能力：重新验收跨块文字选择，新增显式多块选择，并让兼容 block set 通过确定性或 AI capability 合并；一次接受仍是一个原子事务。复杂合并按 capability 装配上下文并进入共享 Agent Run。当前已有 <code>cross-block</code> selection core，但 multi-block target、真实交互、context slots 和 Agent 链路仍待统一实施。</td>
+                <td><a href="superpowers/specs/2026-07-28-composer-multi-block-selection-and-context-aware-ai-transforms.md">Requirements baseline</a><br><a href="superpowers/specs/2026-07-28-composer-agent-runs-and-generation-history.md">Agent Run / context contract</a></td>
+                <td><span class="pill gold">decided · requirements captured · implementation pending</span></td>
+              </tr>
+              <tr>
                 <td><strong>Peak File Workspace · 多文件预览与 AI 编辑</strong></td>
                 <td>把 Image、HTML、PDF 从“可读取的附件”提升为一等文件工作区：共享 file surface registry、AI sidecar、candidate review 与版本保存。Image 先完成安全 AI edit；HTML 提供 sandboxed Source / Preview / Split；PDF 保留 native viewer，并接入 page / selection-aware companion。默认不覆盖原文件，也不复制 AI runtime。</td>
                 <td><a href="superpowers/specs/2026-07-24-peak-file-workspace.md">正式方案</a><br><a href="gstack/peak-file-workspace-2026-07-24/index.html">视觉方案</a><br><a href="research/2026-07-24-peak-file-workspace/README.md">能力审计</a></td>
