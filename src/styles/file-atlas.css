@@ -13,7 +13,7 @@
 
 .peak-file-atlas-modal.pkfa-root {
 	display: grid;
-	grid-template-columns: 224px minmax(0, 1fr);
+	grid-template-columns: var(--pkfa-rail-width, 300px) minmax(0, 1fr);
 	height: 100%;
 	min-height: 0;
 	background: var(--pk-surface);
@@ -65,13 +65,20 @@
 .pkfa-rail {
 	min-width: 0;
 	min-height: 0;
+	position: relative;
 	border-right: 1px solid var(--pk-border-soft);
 	background: var(--pk-surface-raised);
 	display: grid;
 	grid-template-rows: auto minmax(0, 1fr);
 }
 
-.pkfa-rail-head { display: flex; align-items: center; gap: 8px; padding: 12px 14px 8px; }
+.pkfa-rail-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 12px 12px 8px 14px;
+}
 
 .pkfa-rail-title {
 	display: inline-flex;
@@ -86,7 +93,69 @@
 
 .pkfa-rail-title svg { width: 14px; height: 14px; }
 
-.pkfa-rail-list { min-height: 0; overflow: auto; padding: 2px 8px 12px; display: grid; gap: 2px; align-content: start; }
+.pkfa-rail-sort {
+	min-width: 0;
+	display: flex;
+	align-items: center;
+}
+
+.pkfa-rail-sort select {
+	width: 124px;
+	height: 26px;
+	padding: 0 22px 0 8px;
+	border: 1px solid var(--pk-border-soft);
+	border-radius: var(--pk-radius-sm);
+	background: var(--pk-surface);
+	color: var(--pk-text-secondary);
+	font-family: var(--pk-font-sans);
+	font-size: var(--pk-text-xs);
+	font-weight: 650;
+}
+
+.pkfa-rail-sort select:focus-visible,
+.pkfa-rail-resizer:focus-visible {
+	outline: 2px solid var(--pk-accent);
+	outline-offset: 1px;
+}
+
+.pkfa-visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+.pkfa-rail-list {
+	min-height: 0;
+	overflow: auto;
+	padding: 2px 8px 12px;
+	display: grid;
+	gap: 12px;
+	align-content: start;
+}
+
+.pkfa-rail-group {
+	min-width: 0;
+	display: grid;
+	gap: 2px;
+}
+
+.pkfa-rail-group-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 3px 8px 5px;
+	color: var(--pk-text-faint);
+	font-size: var(--pk-text-xs);
+	font-weight: 760;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
 
 .pkfa-rail-item {
 	min-width: 0;
@@ -132,10 +201,13 @@
 	font-size: var(--pk-text-md);
 	font-weight: 720;
 	color: var(--pk-text-primary);
-	overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+	white-space: normal;
+	overflow-wrap: anywhere;
 }
 
 .pkfa-rail-item.is-active .pkfa-rail-name { color: var(--pk-accent-text); }
+.pkfa-rail-item.is-recent .pkfa-rail-icon,
+.pkfa-rail-item.is-recent .pkfa-rail-name { color: var(--pk-text-secondary); }
 
 .pkfa-rail-dot {
 	width: 6px; height: 6px; border-radius: var(--pk-radius-full);
@@ -155,9 +227,37 @@
 }
 
 .pkfa-rail-close svg { width: 12px; height: 12px; }
+.pkfa-rail-close-slot { width: 20px; height: 20px; }
 .pkfa-rail-item:hover .pkfa-rail-close { opacity: 1; }
 .peak-file-atlas-modal.pkfa-root .pkfa-rail-close:hover { background: var(--pk-state-hover) !important; color: var(--pk-text-primary); }
 .pkfa-rail-item:hover[data-unsaved="true"] .pkfa-rail-dot { opacity: 0; }
+
+.pkfa-rail-resizer {
+	position: absolute;
+	z-index: 4;
+	top: 0;
+	right: -5px;
+	bottom: 0;
+	width: 10px;
+	cursor: col-resize;
+	touch-action: none;
+}
+
+.pkfa-rail-resizer::after {
+	content: "";
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 4px;
+	width: 1px;
+	background: transparent;
+	transition: background 120ms ease;
+}
+
+.pkfa-rail-resizer:hover::after,
+.pkfa-rail-resizer:focus-visible::after {
+	background: var(--pk-accent);
+}
 
 /* Global svg default (mirrors the mock's `svg { 16px; stroke-width: 1.9 }`).
    Without this, Lucide icons with no explicit size prop render at their 24px

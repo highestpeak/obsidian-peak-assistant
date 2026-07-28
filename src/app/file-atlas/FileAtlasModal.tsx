@@ -53,7 +53,12 @@ export class FileAtlasModal extends Modal {
 		this.reactRenderer.render(
 			createReactElementWithServices(
 				FileAtlasHost,
-				{ host, initialPath: file?.path ?? null, initialContent },
+				{
+					host,
+					initialPath: file?.path ?? null,
+					initialContent,
+					ownerDocument: this.contentEl.ownerDocument,
+				},
 				this.appContext,
 			),
 		);

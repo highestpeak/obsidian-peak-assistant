@@ -7,12 +7,18 @@
  * at the app layer (see FileAtlasModal). Keeps runtime ownership out of the UI.
  */
 
-/** One entry in the left rail: a currently-open markdown document. */
+/** One entry in the left rail: an open or recently viewed Markdown document. */
 export interface OpenDocMeta {
 	/** Vault-relative path (also the stable id). */
 	path: string;
 	/** Display title — basename without the `.md` extension. */
 	title: string;
+	/** The file currently has at least one workspace tab. */
+	open: boolean;
+	/** Last time the file became the active visible workspace file. */
+	lastViewedAt: number;
+	/** Persisted number of times the indexed file has been opened. */
+	viewCount: number;
 	/** Has unsaved changes in its editor. */
 	unsaved?: boolean;
 	/** Is the workspace's active leaf. */
@@ -56,12 +62,14 @@ export interface AtlasImageInfo {
 export interface FileAtlasHostPort {
 	/** Snapshot of currently-open markdown documents (for the rail). */
 	listOpenDocs(): OpenDocMeta[];
+	/** Recent + frequently viewed Markdown candidates used to fill the rail. */
+	listHistoryDocs(limit: number): Promise<OpenDocMeta[]>;
 	/** Subscribe to workspace layout / active-leaf changes; returns an unsubscribe. */
 	subscribeOpenDocs(cb: () => void): () => void;
 	/** Read a document's current content by path. */
 	readDoc(path: string): Promise<string>;
-	/** Focus (and if needed open) the document's leaf in the workspace. */
-	activateDoc(path: string): void;
+	/** Focus an existing file leaf, or open the recent file in a new tab. */
+	activateDoc(path: string): Promise<void>;
 	/**
 	 * Open a link block's target: navigate a vault link (`note`, `note#heading`,
 	 * `note#^block`) resolved relative to `sourcePath`, or open an external URL in

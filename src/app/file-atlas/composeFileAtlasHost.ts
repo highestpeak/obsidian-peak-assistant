@@ -2,9 +2,9 @@
  * File Atlas — host port composition (app layer).
  *
  * Builds the {@link FileAtlasHostPort} the standalone File Atlas surface needs
- * from the Obsidian runtime: enumerating open markdown tabs, reading a note,
- * revealing a line, clipboard, and resolving image resources. Runtime ownership
- * stays in the app layer per CLAUDE.md — the UI only ever sees the port.
+ * from the Obsidian runtime: enumerating file-backed Markdown / Composer tabs,
+ * reading recent-use signals, revealing a line, clipboard, and resolving image
+ * resources. Runtime ownership stays in the app layer — the UI only sees the port.
  *
  * `loadNeighborhood` (the read-only graph data) is intentionally omitted here;
  * it lands with the graph subview slice that reuses the vault Result Graph.
@@ -22,6 +22,7 @@ import type {
 } from '@/ui/view/file-atlas/FileAtlasHostPort';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { getConnectedLinks, getDiscoveredConnections } from '@/service/search/inspectorService';
+import { DOCUMENT_COMPOSER_VIEW_TYPE } from '@/app/composer/viewType';
 
 /** Neighborhood node cap — matches the Result Graph's NODE_CAP so both stay legible. */
 const NEIGHBORHOOD_CAP = 60;
@@ -43,6 +44,50 @@ function cleanImageTarget(raw: string): string {
 
 export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort {
 	const app = appContext.app;
+	const sessionViews = new Map<string, { lastViewedAt: number; viewCount: number }>();
+	let lastActivePath: string | null = null;
+
+	const sourcePathForView = (view: unknown): string | null => {
+		if (view instanceof MarkdownView) return view.file?.path ?? null;
+		const sourceAwareView = view as { getSourceFilePath?: () => string | null };
+		return sourceAwareView?.getSourceFilePath?.() ?? null;
+	};
+
+	const fileContextLeaves = (): Array<{ path: string; active: boolean; detach: () => void; reveal: () => Promise<void> }> => {
+		const activeLeaf = app.workspace.activeLeaf;
+		const leaves = [
+			...app.workspace.getLeavesOfType('markdown'),
+			...app.workspace.getLeavesOfType(DOCUMENT_COMPOSER_VIEW_TYPE),
+		];
+		return leaves.flatMap((leaf) => {
+			const path = sourcePathForView(leaf.view);
+			if (!path) return [];
+			return [{
+				path,
+				active: leaf === activeLeaf,
+				detach: () => leaf.detach(),
+				reveal: () => app.workspace.revealLeaf(leaf),
+			}];
+		}).sort((a, b) => Number(b.active) - Number(a.active));
+	};
+
+	const activeFileContextPath = (): string | null => {
+		const activeLeafPath = sourcePathForView(app.workspace.activeLeaf?.view);
+		return activeLeafPath ?? app.workspace.getActiveFile()?.path ?? null;
+	};
+
+	const recordActiveView = (): void => {
+		const path = activeFileContextPath();
+		if (!path || path === lastActivePath) return;
+		lastActivePath = path;
+		const current = sessionViews.get(path);
+		sessionViews.set(path, {
+			lastViewedAt: Date.now(),
+			viewCount: (current?.viewCount ?? 0) + 1,
+		});
+	};
+
+	recordActiveView();
 
 	const resolveImageFile = (target: string, sourcePath: string): TFile | null => {
 		const clean = cleanImageTarget(target);
@@ -54,24 +99,114 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 
 	return {
 		listOpenDocs(): OpenDocMeta[] {
-			const activeFile = app.workspace.getActiveFile();
 			const seen = new Set<string>();
 			const docs: OpenDocMeta[] = [];
-			for (const leaf of app.workspace.getLeavesOfType('markdown')) {
-				const file = (leaf.view as MarkdownView | undefined)?.file;
-				if (!file || seen.has(file.path)) continue;
+			for (const leaf of fileContextLeaves()) {
+				if (seen.has(leaf.path)) continue;
+				const file = app.vault.getAbstractFileByPath(leaf.path);
+				if (!(file instanceof TFile) || file.extension.toLowerCase() !== 'md') continue;
 				seen.add(file.path);
-				docs.push({ path: file.path, title: file.basename, active: activeFile?.path === file.path });
+				const session = sessionViews.get(file.path);
+				docs.push({
+					path: file.path,
+					title: file.basename,
+					open: true,
+					active: leaf.active,
+					lastViewedAt: session?.lastViewedAt ?? 0,
+					viewCount: session?.viewCount ?? 0,
+				});
 			}
 			return docs;
 		},
 
+		async listHistoryDocs(limit: number): Promise<OpenDocMeta[]> {
+			const safeLimit = Math.max(1, limit);
+			const byPath = new Map<string, OpenDocMeta>();
+
+			if (sqliteStoreManager.isInitialized()) {
+				const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
+				const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
+				const [recent, frequent] = await Promise.all([
+					mobiusNodeRepo.getRecent(safeLimit),
+					mobiusNodeRepo.getMostUsed(safeLimit),
+				]);
+				const signals = new Map<string, { lastOpenTs: number; openCount: number }>();
+				for (const row of [...recent, ...frequent]) {
+					const current = signals.get(row.docId);
+					signals.set(row.docId, {
+						lastOpenTs: Math.max(current?.lastOpenTs ?? 0, row.lastOpenTs),
+						openCount: Math.max(current?.openCount ?? 0, row.openCount),
+					});
+				}
+				const metadata = await indexedDocumentRepo.getByIds([...signals.keys()]);
+				for (const meta of metadata) {
+					if (!meta.path.toLowerCase().endsWith('.md')) continue;
+					const file = app.vault.getAbstractFileByPath(meta.path);
+					if (!(file instanceof TFile)) continue;
+					const signal = signals.get(meta.id);
+					byPath.set(file.path, {
+						path: file.path,
+						title: file.basename,
+						open: false,
+						active: false,
+						lastViewedAt: signal?.lastOpenTs ?? 0,
+						viewCount: signal?.openCount ?? 0,
+					});
+				}
+			}
+
+			const workspaceWithHistory = app.workspace as typeof app.workspace & {
+				getLastOpenFiles?: () => string[];
+			};
+			let fallbackPaths: string[] = [];
+			try {
+				fallbackPaths = workspaceWithHistory.getLastOpenFiles?.() ?? [];
+			} catch {
+				fallbackPaths = [];
+			}
+			const fallbackNow = Date.now();
+			for (const [index, path] of fallbackPaths.entries()) {
+				if (byPath.has(path)) continue;
+				const file = app.vault.getAbstractFileByPath(path);
+				if (!(file instanceof TFile) || file.extension.toLowerCase() !== 'md') continue;
+				byPath.set(path, {
+					path,
+					title: file.basename,
+					open: false,
+					active: false,
+					lastViewedAt: fallbackNow - index,
+					viewCount: 0,
+				});
+			}
+
+			for (const [path, session] of sessionViews) {
+				const file = app.vault.getAbstractFileByPath(path);
+				if (!(file instanceof TFile) || file.extension.toLowerCase() !== 'md') continue;
+				const current = byPath.get(path);
+				byPath.set(path, {
+					path,
+					title: file.basename,
+					open: current?.open ?? false,
+					active: current?.active ?? false,
+					lastViewedAt: Math.max(current?.lastViewedAt ?? 0, session.lastViewedAt),
+					viewCount: Math.max(current?.viewCount ?? 0, session.viewCount),
+				});
+			}
+
+			return [...byPath.values()];
+		},
+
 		subscribeOpenDocs(cb: () => void): () => void {
+			const onWorkspaceChange = (): void => {
+				recordActiveView();
+				cb();
+			};
 			const wsRefs = [
-				app.workspace.on('layout-change', cb),
-				app.workspace.on('active-leaf-change', cb),
+				app.workspace.on('layout-change', onWorkspaceChange),
+				app.workspace.on('active-leaf-change', onWorkspaceChange),
+				app.workspace.on('file-open', onWorkspaceChange),
 			];
-			const vRef = app.vault.on('rename', cb);
+			const vRef = app.vault.on('rename', onWorkspaceChange);
 			return () => {
 				wsRefs.forEach((r) => app.workspace.offref(r));
 				app.vault.offref(vRef);
@@ -83,8 +218,24 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 			return file instanceof TFile ? app.vault.cachedRead(file) : '';
 		},
 
-		activateDoc(path: string): void {
-			void app.workspace.openLinkText(path, '', false);
+		async activateDoc(path: string): Promise<void> {
+			for (const leaf of fileContextLeaves()) {
+				if (leaf.path !== path) continue;
+				await leaf.reveal();
+				recordActiveView();
+				return;
+			}
+
+			const file = app.vault.getAbstractFileByPath(path);
+			if (!(file instanceof TFile)) return;
+			let leaf;
+			try {
+				leaf = app.workspace.getLeaf('tab');
+			} catch {
+				leaf = app.workspace.getLeaf(false);
+			}
+			await leaf.openFile(file, { active: true });
+			recordActiveView();
 		},
 
 		openLink(target: string, sourcePath: string, external: boolean): void {
@@ -98,9 +249,8 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 		},
 
 		closeDoc(path: string): void {
-			for (const leaf of app.workspace.getLeavesOfType('markdown')) {
-				const file = (leaf.view as MarkdownView | undefined)?.file;
-				if (file?.path === path) leaf.detach();
+			for (const leaf of fileContextLeaves()) {
+				if (leaf.path === path) leaf.detach();
 			}
 		},
 

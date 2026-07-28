@@ -195,7 +195,7 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, conf
 							host.notify('Note added to tray');
 						}}
 						onNodeDblTap={({ path: nodePath }) => {
-							if (nodePath) host.activateDoc(nodePath);
+							if (nodePath) void host.activateDoc(nodePath);
 						}}
 					/>
 				)}

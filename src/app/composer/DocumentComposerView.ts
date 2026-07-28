@@ -58,6 +58,11 @@ export class DocumentComposerView extends ReactItemViewHost {
 		await super.onClose();
 	}
 
+	/** Vault file currently bound to this product view, for workspace file navigators. */
+	getSourceFilePath(): string | null {
+		return this.controller?.getState().filePath ?? null;
+	}
+
 	protected renderElement(): React.ReactElement {
 		const controller = this.controller;
 		const source: ComposerStateSource = controller ?? EMPTY_SOURCE;

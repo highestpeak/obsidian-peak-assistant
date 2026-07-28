@@ -34,6 +34,13 @@
     { "id": "writing",   "label": "Writing",   "kinds": ["task", "callout", "quote"] },
     { "id": "resources", "label": "Resources", "kinds": ["vault-link", "external-link", "tag", "footnote", "property", "image", "embed", "attachment", "table", "code", "math", "mermaid"] }
   ],
+  "rail": {
+    "capacity": 24,
+    "defaultWidthPx": 300,
+    "minWidthPx": 260,
+    "maxWidthPx": 420,
+    "frequencyHalfLifeDays": 30
+  },
   "strings": {
     "modeAtlas": "Atlas",
     "modeCopilot": "Copilot",
@@ -60,7 +67,14 @@
     "collapseAll": "Collapse all",
     "frontmatterTitle": "Frontmatter",
     "keywordsTitle": "Keywords · term frequency",
-    "railTitle": "Open",
+    "railTitle": "Files",
+    "railOpenTitle": "Open",
+    "railRecentTitle": "Recent",
+    "railSortLabel": "Sort files",
+    "railSortRecent": "Recently viewed",
+    "railSortFrequent": "Most used",
+    "railSortName": "Name",
+    "railResizeLabel": "Resize file rail",
     "copyLabel": "Copy",
     "copiedLabel": "Copied",
     "reliabilityBasic": "Basic anchors",

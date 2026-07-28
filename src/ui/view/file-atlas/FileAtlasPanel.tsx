@@ -12,14 +12,12 @@
  * Everything touching the Obsidian runtime goes through the injected host port.
  */
 
-import React, { useEffect, useMemo, useReducer, useState } from 'react';
+import React, { type CSSProperties, useEffect, useMemo, useReducer, useState } from 'react';
 import { Search, Network, ListTree } from 'lucide-react';
 import { parseDocumentBlocks } from '@/core/document/atlas/documentBlockParser';
 import type { AtlasDocument, DocumentBlock, RawBlockKind } from '@/core/document/atlas/types';
 import {
-	DEFAULT_FILE_ATLAS_CONFIG,
 	DEFAULT_PRESET_ID,
-	loadFileAtlasConfig,
 	type FileAtlasConfig,
 } from './config/fileAtlasConfig';
 import {
@@ -37,18 +35,25 @@ import { AtlasTray, type TrayItem } from './components/AtlasTray';
 import { FileRail } from './components/FileRail';
 import { FileAtlasGraph } from './components/FileAtlasGraph';
 import { Button } from '@/ui/component/shared-ui/button';
-import type { FileAtlasHostPort, OpenDocMeta } from './FileAtlasHostPort';
+import type { FileAtlasHostPort } from './FileAtlasHostPort';
+import type { FileRailSections, FileRailSortMode } from './fileRailModel';
+import type { FileRailPreference } from './fileRailPreference';
 
 type Subview = 'tree' | 'graph';
 
 export interface FileAtlasPanelProps {
-	docs: OpenDocMeta[];
+	config: FileAtlasConfig;
+	railSections: FileRailSections;
+	railPreference: FileRailPreference;
 	activePath: string;
 	displayPath: string;
 	content: string;
 	host: FileAtlasHostPort;
 	onSelectDoc: (path: string) => void;
 	onCloseDoc: (path: string) => void;
+	onSortModeChange: (mode: FileRailSortMode) => void;
+	onRailWidthChange: (widthPx: number) => void;
+	onRailWidthCommit: (widthPx: number) => void;
 }
 
 interface AtlasState {
@@ -121,27 +126,21 @@ function reducer(state: AtlasState, action: AtlasAction): AtlasState {
 }
 
 export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
-	docs,
+	config,
+	railSections,
+	railPreference,
 	activePath,
 	displayPath,
 	content,
 	host,
 	onSelectDoc,
 	onCloseDoc,
+	onSortModeChange,
+	onRailWidthChange,
+	onRailWidthCommit,
 }) => {
-	const [config, setConfig] = useState<FileAtlasConfig>(DEFAULT_FILE_ATLAS_CONFIG);
 	const [searchTerm, setSearchTerm] = useState('');
 	const [subview, setSubview] = useState<Subview>('tree');
-
-	useEffect(() => {
-		let alive = true;
-		loadFileAtlasConfig().then((c) => {
-			if (alive) setConfig(c);
-		});
-		return () => {
-			alive = false;
-		};
-	}, []);
 
 	const doc: AtlasDocument = useMemo(
 		() => parseDocumentBlocks(content, activePath),
@@ -232,15 +231,37 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 			.map(([kind]) => kind as RawBlockKind);
 
 	const s = config.strings;
+	const rootStyle = {
+		'--pkfa-rail-width': `${railPreference.widthPx}px`,
+	} as CSSProperties;
 
 	return (
-		<div className="peak-file-atlas-modal pkfa-root pkfa-standalone peak-design-root" data-subview={subview}>
+		<div
+			className="peak-file-atlas-modal pkfa-root pkfa-standalone peak-design-root"
+			data-subview={subview}
+			style={rootStyle}
+		>
 			<FileRail
 				title={s.railTitle}
-				docs={docs}
+				openTitle={s.railOpenTitle}
+				recentTitle={s.railRecentTitle}
+				sortLabel={s.railSortLabel}
+				sortLabels={{
+					recent: s.railSortRecent,
+					frequent: s.railSortFrequent,
+					name: s.railSortName,
+				}}
+				resizeLabel={s.railResizeLabel}
+				sections={railSections}
+				sortMode={railPreference.sortMode}
+				widthPx={railPreference.widthPx}
+				widthLimits={config.rail}
 				activePath={activePath}
 				onSelect={onSelectDoc}
 				onClose={onCloseDoc}
+				onSortModeChange={onSortModeChange}
+				onWidthChange={onRailWidthChange}
+				onWidthCommit={onRailWidthCommit}
 			/>
 
 			<div className="pkfa-content">

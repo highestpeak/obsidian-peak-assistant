@@ -587,6 +587,23 @@ export class MobiusNodeRepo {
 		}));
 	}
 
+	async getMostUsed(topK: number): Promise<Array<{ docId: string; lastOpenTs: number; openCount: number }>> {
+		const limit = Math.max(1, topK || 20);
+		const rows = await this.docStatisticsRowQuery()
+			.select(['node_id', 'last_open_ts', 'open_count'])
+			.where('open_count', 'is not', null)
+			.where('open_count', '>', 0)
+			.orderBy('open_count', 'desc')
+			.orderBy('last_open_ts', 'desc')
+			.limit(limit)
+			.execute();
+		return rows.map((row) => ({
+			docId: String(row.node_id),
+			lastOpenTs: Number(row.last_open_ts ?? 0),
+			openCount: Number(row.open_count ?? 0),
+		}));
+	}
+
 	async getSignalsForDocIds(docIds: string[]): Promise<Map<string, DocRankingSignal>> {
 		if (!docIds.length) return new Map();
 		const rows = await this.docStatisticsRowQuery()

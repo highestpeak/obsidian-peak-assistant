@@ -49,6 +49,16 @@ export interface PresetConfig {
 	kinds: RawBlockKind[];
 }
 
+export interface FileAtlasRailConfig {
+	/** Fixed Open + Recent target capacity; open files may overflow it. */
+	capacity: number;
+	defaultWidthPx: number;
+	minWidthPx: number;
+	maxWidthPx: number;
+	/** Half-life for recency-weighted "Most used" ordering. */
+	frequencyHalfLifeDays: number;
+}
+
 export interface FileAtlasStrings {
 	modeAtlas: string;
 	modeCopilot: string;
@@ -80,8 +90,15 @@ export interface FileAtlasStrings {
 	frontmatterTitle: string;
 	/** Inspector keyword-frequency card title. */
 	keywordsTitle: string;
-	/** Left rail (open documents) header title. */
+	/** Left rail (open + recent documents) labels. */
 	railTitle: string;
+	railOpenTitle: string;
+	railRecentTitle: string;
+	railSortLabel: string;
+	railSortRecent: string;
+	railSortFrequent: string;
+	railSortName: string;
+	railResizeLabel: string;
 	/** Copy-button resting + copied labels. */
 	copyLabel: string;
 	copiedLabel: string;
@@ -114,6 +131,7 @@ export interface FileAtlasConfig {
 	kinds: Record<string, KindConfig>;
 	filterGroups: FilterGroup[];
 	presets: PresetConfig[];
+	rail: FileAtlasRailConfig;
 	strings: FileAtlasStrings;
 	keywordStopwords: KeywordStopwords;
 }
@@ -155,6 +173,13 @@ export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
 		{ id: 'writing',   label: 'Writing',   kinds: ['task', 'callout', 'quote'] as RawBlockKind[] },
 		{ id: 'resources', label: 'Resources', kinds: ['vault-link', 'external-link', 'tag', 'footnote', 'property', 'image', 'embed', 'attachment', 'table', 'code', 'math', 'mermaid'] as RawBlockKind[] },
 	],
+	rail: {
+		capacity: 24,
+		defaultWidthPx: 300,
+		minWidthPx: 260,
+		maxWidthPx: 420,
+		frequencyHalfLifeDays: 30,
+	},
 	strings: {
 		modeAtlas: 'Atlas',
 		modeCopilot: 'Copilot',
@@ -181,7 +206,14 @@ export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
 		collapseAll: 'Collapse all',
 		frontmatterTitle: 'Frontmatter',
 		keywordsTitle: 'Keywords · term frequency',
-		railTitle: 'Open',
+		railTitle: 'Files',
+		railOpenTitle: 'Open',
+		railRecentTitle: 'Recent',
+		railSortLabel: 'Sort files',
+		railSortRecent: 'Recently viewed',
+		railSortFrequent: 'Most used',
+		railSortName: 'Name',
+		railResizeLabel: 'Resize file rail',
 		copyLabel: 'Copy',
 		copiedLabel: 'Copied',
 		reliabilityBasic: 'Basic anchors',
@@ -218,6 +250,7 @@ export async function loadFileAtlasConfig(): Promise<FileAtlasConfig> {
 			kinds: parsed.kinds ?? DEFAULT_FILE_ATLAS_CONFIG.kinds,
 			filterGroups: parsed.filterGroups ?? DEFAULT_FILE_ATLAS_CONFIG.filterGroups,
 			presets: parsed.presets ?? DEFAULT_FILE_ATLAS_CONFIG.presets,
+			rail: { ...DEFAULT_FILE_ATLAS_CONFIG.rail, ...(parsed.rail ?? {}) },
 			strings: { ...DEFAULT_FILE_ATLAS_CONFIG.strings, ...(parsed.strings ?? {}) },
 			keywordStopwords: parsed.keywordStopwords ?? DEFAULT_FILE_ATLAS_CONFIG.keywordStopwords,
 		};

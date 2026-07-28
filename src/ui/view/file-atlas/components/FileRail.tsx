@@ -1,18 +1,65 @@
 /**
- * File Atlas — left rail of open documents.
+ * File Atlas — resizable work-file rail.
  *
- * Lists every currently-open markdown tab so you can switch which document's
- * Atlas you inspect without reopening files. Title-only rows (full path in the
- * tooltip), an unsaved dot, and a hover close button. No open-count badge and no
- * "new file" footer — per the 2026-07-08 mock v4.
+ * Open files are always included and appear before bounded recent history.
+ * Ordering is independent of Obsidian's tab-strip order and can be switched
+ * between recent activity, recency-weighted frequency, and filename.
  */
 
 import React from 'react';
-import { FileText, X } from 'lucide-react';
+import { FileClock, FileText, X } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { OpenDocMeta } from '../FileAtlasHostPort';
+import type { FileRailSections, FileRailSortMode } from '../fileRailModel';
+import type { FileAtlasRailConfig } from '../config/fileAtlasConfig';
 
-interface FileRailProps {
+interface FileRailRowProps {
+	doc: OpenDocMeta;
+	activePath: string | null;
+	onSelect: (path: string) => void;
+	onClose: (path: string) => void;
+}
+
+const FileRailRow: React.FC<FileRailRowProps> = ({ doc, activePath, onSelect, onClose }) => (
+	<div
+		role="button"
+		tabIndex={0}
+		className={`pkfa-rail-item${doc.path === activePath ? ' is-active' : ''}${doc.open ? ' is-open' : ' is-recent'}`}
+		data-unsaved={doc.unsaved ? 'true' : undefined}
+		title={doc.path}
+		onClick={() => onSelect(doc.path)}
+		onKeyDown={(event) => {
+			if (event.key !== 'Enter' && event.key !== ' ') return;
+			event.preventDefault();
+			onSelect(doc.path);
+		}}
+	>
+		<span className="pkfa-rail-icon">
+			{doc.open ? <FileText /> : <FileClock />}
+		</span>
+		<span className="pkfa-rail-name">{doc.title}</span>
+		<span className="pkfa-rail-dot" aria-hidden="true" />
+		{doc.open ? (
+			<Button
+				variant="unstyled"
+				type="button"
+				className="pkfa-rail-close"
+				aria-label={`Close ${doc.title}`}
+				title="Close"
+				onClick={(event) => {
+					event.stopPropagation();
+					onClose(doc.path);
+				}}
+			>
+				<X />
+			</Button>
+		) : (
+			<span className="pkfa-rail-close-slot" aria-hidden="true" />
+		)}
+	</div>
+);
+
+interface FileRailGroupProps {
 	title: string;
 	docs: OpenDocMeta[];
 	activePath: string | null;
@@ -20,7 +67,109 @@ interface FileRailProps {
 	onClose: (path: string) => void;
 }
 
-export const FileRail: React.FC<FileRailProps> = ({ title, docs, activePath, onSelect, onClose }) => {
+const FileRailGroup: React.FC<FileRailGroupProps> = ({
+	title,
+	docs,
+	activePath,
+	onSelect,
+	onClose,
+}) => {
+	if (docs.length === 0) return null;
+	return (
+		<section className="pkfa-rail-group" aria-label={title}>
+			<div className="pkfa-rail-group-head">
+				<span>{title}</span>
+				<span>{docs.length}</span>
+			</div>
+			{docs.map((doc) => (
+				<FileRailRow
+					key={doc.path}
+					doc={doc}
+					activePath={activePath}
+					onSelect={onSelect}
+					onClose={onClose}
+				/>
+			))}
+		</section>
+	);
+};
+
+interface FileRailProps {
+	title: string;
+	openTitle: string;
+	recentTitle: string;
+	sortLabel: string;
+	sortLabels: Record<FileRailSortMode, string>;
+	resizeLabel: string;
+	sections: FileRailSections;
+	sortMode: FileRailSortMode;
+	widthPx: number;
+	widthLimits: FileAtlasRailConfig;
+	activePath: string | null;
+	onSelect: (path: string) => void;
+	onClose: (path: string) => void;
+	onSortModeChange: (mode: FileRailSortMode) => void;
+	onWidthChange: (widthPx: number) => void;
+	onWidthCommit: (widthPx: number) => void;
+}
+
+export const FileRail: React.FC<FileRailProps> = ({
+	title,
+	openTitle,
+	recentTitle,
+	sortLabel,
+	sortLabels,
+	resizeLabel,
+	sections,
+	sortMode,
+	widthPx,
+	widthLimits,
+	activePath,
+	onSelect,
+	onClose,
+	onSortModeChange,
+	onWidthChange,
+	onWidthCommit,
+}) => {
+	const clampWidth = (value: number): number =>
+		Math.round(Math.min(widthLimits.maxWidthPx, Math.max(widthLimits.minWidthPx, value)));
+
+	const startResize = (event: React.PointerEvent<HTMLDivElement>): void => {
+		event.preventDefault();
+		const ownerDocument = event.currentTarget.ownerDocument;
+		const ownerWindow = ownerDocument.defaultView;
+		if (!ownerWindow) return;
+		const startX = event.clientX;
+		const startWidth = widthPx;
+		let latestWidth = widthPx;
+		const onMove = (moveEvent: PointerEvent): void => {
+			latestWidth = clampWidth(startWidth + moveEvent.clientX - startX);
+			onWidthChange(latestWidth);
+		};
+		const onUp = (): void => {
+			ownerWindow.removeEventListener('pointermove', onMove);
+			ownerWindow.removeEventListener('pointerup', onUp);
+			ownerWindow.removeEventListener('pointercancel', onUp);
+			onWidthCommit(latestWidth);
+		};
+		ownerWindow.addEventListener('pointermove', onMove);
+		ownerWindow.addEventListener('pointerup', onUp, { once: true });
+		ownerWindow.addEventListener('pointercancel', onUp, { once: true });
+	};
+
+	const resizeWithKey = (event: React.KeyboardEvent<HTMLDivElement>): void => {
+		let nextWidth = widthPx;
+		if (event.key === 'ArrowLeft') nextWidth -= 16;
+		else if (event.key === 'ArrowRight') nextWidth += 16;
+		else if (event.key === 'Home') nextWidth = widthLimits.minWidthPx;
+		else if (event.key === 'End') nextWidth = widthLimits.maxWidthPx;
+		else return;
+		event.preventDefault();
+		const clamped = clampWidth(nextWidth);
+		onWidthChange(clamped);
+		onWidthCommit(clamped);
+	};
+
 	return (
 		<div className="pkfa-rail">
 			<div className="pkfa-rail-head">
@@ -28,45 +177,47 @@ export const FileRail: React.FC<FileRailProps> = ({ title, docs, activePath, onS
 					<FileText />
 					{title}
 				</span>
+				<label className="pkfa-rail-sort">
+					<span className="pkfa-visually-hidden">{sortLabel}</span>
+					<select
+						aria-label={sortLabel}
+						value={sortMode}
+						onChange={(event) => onSortModeChange(event.target.value as FileRailSortMode)}
+					>
+						<option value="recent">{sortLabels.recent}</option>
+						<option value="frequent">{sortLabels.frequent}</option>
+						<option value="name">{sortLabels.name}</option>
+					</select>
+				</label>
 			</div>
 			<div className="pkfa-rail-list">
-				{docs.map((doc) => (
-					<div
-						key={doc.path}
-						role="button"
-						tabIndex={0}
-						className={`pkfa-rail-item${doc.path === activePath ? ' is-active' : ''}`}
-						data-unsaved={doc.unsaved ? 'true' : undefined}
-						title={doc.path}
-						onClick={() => onSelect(doc.path)}
-						onKeyDown={(e) => {
-							if (e.key === 'Enter' || e.key === ' ') {
-								e.preventDefault();
-								onSelect(doc.path);
-							}
-						}}
-					>
-						<span className="pkfa-rail-icon">
-							<FileText />
-						</span>
-						<span className="pkfa-rail-name">{doc.title}</span>
-						<span className="pkfa-rail-dot" aria-hidden="true" />
-						<Button
-							variant="unstyled"
-							type="button"
-							className="pkfa-rail-close"
-							aria-label={`Close ${doc.title}`}
-							title="Close"
-							onClick={(e) => {
-								e.stopPropagation();
-								onClose(doc.path);
-							}}
-						>
-							<X />
-						</Button>
-					</div>
-				))}
+				<FileRailGroup
+					title={openTitle}
+					docs={sections.open}
+					activePath={activePath}
+					onSelect={onSelect}
+					onClose={onClose}
+				/>
+				<FileRailGroup
+					title={recentTitle}
+					docs={sections.recent}
+					activePath={activePath}
+					onSelect={onSelect}
+					onClose={onClose}
+				/>
 			</div>
+			<div
+				className="pkfa-rail-resizer"
+				role="separator"
+				aria-label={resizeLabel}
+				aria-orientation="vertical"
+				aria-valuemin={widthLimits.minWidthPx}
+				aria-valuemax={widthLimits.maxWidthPx}
+				aria-valuenow={widthPx}
+				tabIndex={0}
+				onPointerDown={startResize}
+				onKeyDown={resizeWithKey}
+			/>
 		</div>
 	);
 };
