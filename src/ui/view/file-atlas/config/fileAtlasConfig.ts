@@ -93,8 +93,6 @@ export interface FileAtlasStrings {
 	/** Inspector keyword-frequency card title. */
 	keywordsTitle: string;
 	keywordsEmpty: string;
-	keywordsShowAll: string;
-	keywordsShowLess: string;
 	statisticsTitle: string;
 	statWords: string;
 	statCharacters: string;
@@ -225,8 +223,6 @@ export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
 		frontmatterTitle: 'Frontmatter',
 		keywordsTitle: 'Keywords · term frequency',
 		keywordsEmpty: 'No meaningful keywords',
-		keywordsShowAll: 'Show all {count}',
-		keywordsShowLess: 'Show less',
 		statisticsTitle: 'Statistics',
 		statWords: 'Words',
 		statCharacters: 'Characters',

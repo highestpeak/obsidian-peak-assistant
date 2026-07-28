@@ -12,6 +12,7 @@ const hostAdapter = source('src/app/file-atlas/composeFileAtlasHost.ts');
 const inspector = source('src/ui/view/file-atlas/components/AtlasInspector.tsx');
 const atlasBar = source('src/ui/view/file-atlas/components/AtlasBar.tsx');
 const panel = source('src/ui/view/file-atlas/FileAtlasPanel.tsx');
+const treeModel = source('src/ui/view/file-atlas/atlasTreeModel.ts');
 const graph = source('src/ui/view/file-atlas/components/FileAtlasGraph.tsx');
 const canvas = source('src/ui/component/graph/AtlasGraphCanvasImpl.tsx');
 const css = source('src/styles/file-atlas.css');
@@ -29,9 +30,16 @@ assert.match(hostAdapter, /view\?\.editor\?\.focus\(\)/);
 assert.match(inspector, /<KeywordCard text=\{keywordText\} config=\{config\} \/>/);
 assert.match(inspector, /<StatisticsCard block=\{block\} config=\{config\} \/>/);
 assert.match(inspector, /keywordsEmpty/);
-assert.match(inspector, /keywords\.slice\(0, 4\)/);
-assert.match(inspector, /className="pkfa-kw-toggle"/);
-assert.match(css, /\.pkfa-kw-list\.is-expanded[\s\S]*?overflow:\s*auto/);
+assert.match(inspector, /keywords\.map\(/);
+assert.doesNotMatch(inspector, /keywordsShowAll|pkfa-kw-toggle/);
+assert.match(
+	css,
+	/\.pkfa-inspector-scroll[\s\S]*?overflow-y:\s*auto[\s\S]*?display:\s*flex[\s\S]*?flex-direction:\s*column/,
+);
+assert.match(css, /\.pkfa-card\s*\{[\s\S]*?flex:\s*0 0 auto/);
+assert.match(css, /\.pkfa-preview-render[\s\S]*?max-height:[\s\S]*?overflow:\s*auto/);
+assert.doesNotMatch(css, /\.pkfa-kw-list\s*\{[^}]*max-height:/);
+assert.match(treeModel, /limit = 8/);
 assert.doesNotMatch(inspector, /\{!isGroup && \(/);
 assert.match(atlasBar, /cfg\.filterable !== false/);
 assert.match(panel, /case 'toggleKind'[\s\S]*?collapsed: new Set\(\)/);

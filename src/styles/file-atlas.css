@@ -877,11 +877,44 @@
 .pkfa-badge--draw { color: #087a80; background: #e7f7f8; border-color: #b6e6ea; }
 
 /* ---------- inspector ---------- */
-.pkfa-inspector { min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr); background: var(--pk-surface-sunken); }
-.pkfa-inspector-scroll { min-height: 0; overflow: auto; padding: 14px; display: grid; gap: var(--pk-space-3); align-content: start; }
+.pkfa-inspector {
+	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
+	display: grid;
+	grid-template-rows: minmax(0, 1fr);
+	background: var(--pk-surface-sunken);
+}
 
-.pkfa-card { border: 1px solid var(--pk-border); background: var(--pk-surface); border-radius: var(--pk-radius-lg); overflow: hidden; }
-.pkfa-card-body { padding: 14px; display: grid; gap: var(--pk-space-3); }
+.pkfa-inspector-scroll {
+	height: 100%;
+	min-height: 0;
+	overflow-x: hidden;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	scrollbar-gutter: stable;
+	padding: 14px 14px 24px;
+	display: flex;
+	flex-direction: column;
+	gap: var(--pk-space-3);
+	align-items: stretch;
+}
+
+.pkfa-card {
+	flex: 0 0 auto;
+	min-width: 0;
+	border: 1px solid var(--pk-border);
+	background: var(--pk-surface);
+	border-radius: var(--pk-radius-lg);
+	overflow: hidden;
+}
+
+.pkfa-card-body {
+	min-width: 0;
+	padding: 14px 14px 16px;
+	display: grid;
+	gap: var(--pk-space-3);
+}
 
 .pkfa-selected-top { display: flex; align-items: center; justify-content: space-between; gap: var(--pk-space-3); }
 .pkfa-selected-kind { display: flex; align-items: center; gap: 8px; color: var(--pk-text-secondary); font-size: var(--pk-text-xs); font-weight: 820; text-transform: uppercase; }
@@ -928,6 +961,13 @@
 .pkfa-preview-table { width: 100%; border-collapse: collapse; font-family: var(--pk-font-sans); font-size: var(--pk-text-base); }
 .pkfa-preview-table th, .pkfa-preview-table td { padding: 8px 9px; border: 1px solid var(--pk-border-soft); text-align: left; vertical-align: top; }
 .pkfa-preview-table th { color: var(--pk-text-secondary); background: var(--pk-surface-raised); font-weight: 790; }
+.pkfa-preview-table-scroll {
+	max-height: clamp(140px, 28vh, 260px);
+	overflow: auto;
+	overscroll-behavior: contain;
+	scrollbar-gutter: stable;
+	padding-bottom: 6px;
+}
 
 .pkfa-preview-media, .pkfa-preview-link {
 	display: grid;
@@ -1100,11 +1140,14 @@
 /* ---------- rendered preview (mermaid / math / table / prose via Streamdown) ---------- */
 .pkfa-preview-render {
 	min-height: 48px;
-	padding: 12px;
+	max-height: clamp(140px, 28vh, 260px);
+	padding: 12px 12px 18px;
 	border: 1px solid var(--pk-border-soft);
 	border-radius: var(--pk-radius-md);
 	background: var(--pk-surface-raised);
 	overflow: auto;
+	overscroll-behavior: contain;
+	scrollbar-gutter: stable;
 	font-size: var(--pk-text-md);
 }
 
@@ -1156,14 +1199,10 @@
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
+	align-content: flex-start;
 	gap: 7px;
 	min-height: 0;
-}
-
-.pkfa-kw-list.is-expanded {
-	max-height: 150px;
-	overflow: auto;
-	padding-right: 4px;
+	padding: 2px 2px 4px;
 }
 
 .pkfa-kw-chip {
@@ -1182,25 +1221,6 @@
 	padding: 1px 6px;
 	border-radius: var(--pk-radius-pill); background: var(--pk-accent); color: var(--pk-accent-fg);
 	font-size: calc(9px + var(--kw-w) * 4px); font-weight: 820;
-}
-
-.peak-file-atlas-modal.pkfa-root .pkfa-kw-toggle {
-	width: max-content !important;
-	min-height: 24px !important;
-	padding: 0 7px !important;
-	border: 0 !important;
-	border-radius: var(--pk-radius-sm) !important;
-	background: transparent !important;
-	color: var(--pk-accent-text);
-	font-size: var(--pk-text-xs);
-	font-weight: 720;
-	cursor: pointer;
-}
-
-.peak-file-atlas-modal.pkfa-root .pkfa-kw-toggle:hover,
-.peak-file-atlas-modal.pkfa-root .pkfa-kw-toggle:focus-visible {
-	background: var(--pk-accent-tint) !important;
-	outline: 0;
 }
 
 /* ---------- graph subview ---------- */

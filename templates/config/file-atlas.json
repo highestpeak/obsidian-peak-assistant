@@ -69,8 +69,6 @@
     "frontmatterTitle": "Frontmatter",
     "keywordsTitle": "Keywords · term frequency",
     "keywordsEmpty": "No meaningful keywords",
-    "keywordsShowAll": "Show all {count}",
-    "keywordsShowLess": "Show less",
     "statisticsTitle": "Statistics",
     "statWords": "Words",
     "statCharacters": "Characters",

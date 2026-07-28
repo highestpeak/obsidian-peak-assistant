@@ -6,7 +6,9 @@
  * render for real through the shared StreamdownIsolated renderer — no raw source
  * dumps, no vendored libs. Images preview inline with dimensions / format / size
  * and a Copy-image action. Paragraphs get a program-computed term-frequency
- * keyword card. Insight / anchor provenance cards remain Phase 2.
+ * keyword card. Long preview and keyword content stay bounded inside their own
+ * scroll regions while the full Inspector column scrolls independently.
+ * Insight / anchor provenance cards remain Phase 2.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -274,7 +276,7 @@ function dedent(source: string): string {
 
 /** Real Markdown rendering for renderable blocks (prose / lists / tasks / code / math / mermaid). */
 const RenderedPreview: React.FC<{ source: string }> = ({ source }) => (
-	<div className="pkfa-preview-render">
+	<div className="pkfa-preview-render" tabIndex={0} aria-label="Block preview">
 		<StreamdownIsolated>{dedent(source)}</StreamdownIsolated>
 	</div>
 );
@@ -362,14 +364,11 @@ const ImagePreview: React.FC<{
 
 /** Program-computed term-frequency keywords for every addressable block. */
 const KeywordCard: React.FC<{ text: string; config: FileAtlasConfig }> = ({ text, config }) => {
-	const [expanded, setExpanded] = useState(false);
 	const keywords = keywordsOf(text, config.keywordStopwords);
-	useEffect(() => setExpanded(false), [text]);
 	// keywordsOf returns counts descending, so the first entry is the max. Size each
 	// chip by a linear weight (count / max, floored so the rarest term stays legible)
 	// — frequency should read directly by size. CSS maps `--kw-w` to font + badge.
 	const max = keywords[0]?.[1] ?? 1;
-	const visibleKeywords = expanded ? keywords : keywords.slice(0, 4);
 	return (
 		<section className="pkfa-card">
 			<div className="pkfa-card-body">
@@ -378,33 +377,18 @@ const KeywordCard: React.FC<{ text: string; config: FileAtlasConfig }> = ({ text
 					<span>{config.strings.keywordsTitle}</span>
 				</span>
 				{keywords.length ? (
-					<>
-						<div className={`pkfa-kw-list${expanded ? ' is-expanded' : ''}`}>
-							{visibleKeywords.map(([word, count]) => (
-								<span
-									key={word}
-									className="pkfa-kw-chip"
-									style={{ '--kw-w': Math.max(0.12, count / max).toFixed(3) } as React.CSSProperties}
-								>
-									{word}
-									<b>×{count}</b>
-								</span>
-							))}
-						</div>
-						{keywords.length > 4 && (
-							<Button
-								variant="unstyled"
-								type="button"
-								className="pkfa-kw-toggle"
-								aria-expanded={expanded}
-								onClick={() => setExpanded((current) => !current)}
+					<div className="pkfa-kw-list">
+						{keywords.map(([word, count]) => (
+							<span
+								key={word}
+								className="pkfa-kw-chip"
+								style={{ '--kw-w': Math.max(0.12, count / max).toFixed(3) } as React.CSSProperties}
 							>
-								{expanded
-									? config.strings.keywordsShowLess
-									: config.strings.keywordsShowAll.replace('{count}', String(keywords.length))}
-							</Button>
-						)}
-					</>
+								{word}
+								<b>×{count}</b>
+							</span>
+						))}
+					</div>
 				) : (
 					<span className="pkfa-selected-sub">{config.strings.keywordsEmpty}</span>
 				)}
@@ -551,7 +535,7 @@ const PreviewTable: React.FC<{ source: string }> = ({ source }) => {
 	if (!rows.length) return <div className="pkfa-source-snippet">{source}</div>;
 	const [head, ...body] = rows;
 	return (
-		<div style={{ overflowX: 'auto' }}>
+		<div className="pkfa-preview-table-scroll" tabIndex={0} aria-label="Table preview">
 			<table className="pkfa-preview-table">
 				<thead>
 					<tr>{head.map((c, i) => <th key={i}>{c}</th>)}</tr>
