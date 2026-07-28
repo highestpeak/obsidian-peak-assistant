@@ -141,7 +141,13 @@ export function assessFormulaSplitWriteback(
 	return { safe: true };
 }
 
-/** Serialize one safely accepted split as a self-contained display formula. */
+/**
+ * Serialize one safely accepted split as independent display-formula blocks.
+ *
+ * The split is still committed as one atomic source transaction, but every
+ * resulting equation becomes its own Composer math block so it can be read,
+ * selected, commented on, and sent to AI independently.
+ */
 export function buildFormulaSplitMarkdown(
 	payload: Extract<ComposerFormulaAnnotationPayload, { detailKind: 'split' }>,
 ): string {
@@ -149,14 +155,11 @@ export function buildFormulaSplitMarkdown(
 	if (!assessment.safe) {
 		throw new Error(`unsafe formula split writeback: ${assessment.issue ?? 'unknown'}`);
 	}
-	const rows = [
+	const formulas = [
 		latexFromSource(payload.equivalentTex),
 		...payload.parts.map((part) => latexFromSource(part.tex)),
 	];
-	const body = rows
-		.map((row, index) => `  ${alignEquation(row)}${index < rows.length - 1 ? ' \\\\' : ''}`)
-		.join('\n');
-	return ['$$', '\\begin{aligned}', body, '\\end{aligned}', '$$'].join('\n');
+	return formulas.map((formula) => ['$$', formula, '$$'].join('\n')).join('\n\n');
 }
 
 function parseEquation(tex: string): { left: string; right: string } | null {
@@ -170,12 +173,6 @@ function parseEquation(tex: string): { left: string; right: string } | null {
 	const right = source.slice(first + 1).trim();
 	if (!left || !right) return null;
 	return { left, right };
-}
-
-function alignEquation(tex: string): string {
-	const equation = parseEquation(tex);
-	if (!equation) return tex;
-	return `${equation.left}&=${equation.right}`;
 }
 
 function compactLatex(tex: string): string {
@@ -207,7 +204,7 @@ export function buildFormulaSplitPatch(
 	return {
 		operations: [{ kind: 'replaceRange', from, to, text: buildFormulaSplitMarkdown(payload) }],
 		target: { kind: 'selection', blockId, from, to },
-		expectedBlockDelta: 0,
+		expectedBlockDelta: payload.parts.length,
 	};
 }
 

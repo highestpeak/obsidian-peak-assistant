@@ -277,7 +277,7 @@ export class ComposerTransactionHub {
 			operations: txn.inverseOperations,
 			target: txn.target,
 			groupId: makeGroupId(),
-			expectedBlockDelta: -this.forwardBlockDelta(txn),
+			expectedBlockDelta: -txn.expectedBlockDelta,
 		});
 		this.ledger.set(inverseTxn.transactionId, inverseTxn);
 		this.history.recordRollback(inverseTxn, historyId);
@@ -331,15 +331,6 @@ export class ComposerTransactionHub {
 			if (currentSource.slice(op.from, op.to) !== inserts[i]) return false;
 		}
 		return true;
-	}
-
-	private forwardBlockDelta(txn: ComposerTransaction): number {
-		let delta = 0;
-		for (const op of txn.operations) {
-			if (op.kind === 'insertBlock') delta += 1;
-			else if (op.kind === 'removeBlock') delta -= 1;
-		}
-		return delta;
 	}
 
 	private emitCandidate(candidate: ComposerCandidate): void {

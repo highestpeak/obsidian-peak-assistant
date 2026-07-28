@@ -1,7 +1,10 @@
 import * as React from 'react';
 import { Crosshair, History as HistoryIcon, Undo2 } from 'lucide-react';
 import { Button } from '@/ui/components/primitives';
-import type { ComposerHistoryItem } from '@/core/composer';
+import {
+	composerTargetBlockId,
+	type ComposerHistoryItem,
+} from '@/core/composer';
 import { useComposerChrome } from './ComposerChromeContext';
 import { useHubProjection } from './useHubProjection';
 
@@ -27,7 +30,10 @@ export function BlockHistoryPanel({
 	const c = config.chrome.history;
 	const [refusedId, setRefusedId] = React.useState<string | null>(null);
 
-	const items = React.useMemo(() => collectForBlock(projection.history, blockId), [projection.history, blockId]);
+	const items = React.useMemo(
+		() => collectHistoryForBlock(projection.history, blockId),
+		[projection.history, blockId],
+	);
 
 	const rollback = async (historyId: string) => {
 		if (!hub) return;
@@ -84,13 +90,16 @@ export function BlockHistoryPanel({
  * `matchBlocks` uses. Reorder-heavy documents may under-match old entries; the
  * full cross-revision identity chain is integration-task scope.
  */
-function collectForBlock(history: readonly ComposerHistoryItem[], blockId: string): ComposerHistoryItem[] {
+export function collectHistoryForBlock(
+	history: readonly ComposerHistoryItem[],
+	blockId: string,
+): ComposerHistoryItem[] {
 	const prefix = blockId.split('-').slice(0, -1).join('-') + '-';
 	const matches = (id: string) => id === blockId || id.startsWith(prefix);
 	const out: ComposerHistoryItem[] = [];
 	const visit = (item: ComposerHistoryItem) => {
-		const t = item.target;
-		if (t && (t.kind === 'block' || t.kind === 'unit') && matches(t.blockId)) out.push(item);
+		const targetBlockId = item.target ? composerTargetBlockId(item.target) : null;
+		if (targetBlockId && matches(targetBlockId)) out.push(item);
 		item.children?.forEach(visit);
 	};
 	history.forEach(visit);

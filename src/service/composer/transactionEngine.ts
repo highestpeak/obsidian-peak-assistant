@@ -82,9 +82,10 @@ export class ComposerTransactionEngine {
 	 */
 	async commit(session: ComposerDocumentSession, spec: CommitSpec): Promise<ComposerTransaction> {
 		const base = session.snapshot;
+		const expectedBlockDelta = spec.expectedBlockDelta ?? defaultBlockDelta(spec.operations);
 		const next = await this.persist(session, spec.operations, {
 			target: spec.target,
-			expectedBlockDelta: spec.expectedBlockDelta ?? defaultBlockDelta(spec.operations),
+			expectedBlockDelta,
 		});
 		return {
 			transactionId: makeTransactionId(spec.origin),
@@ -95,6 +96,7 @@ export class ComposerTransactionEngine {
 			label: spec.label,
 			operations: spec.operations,
 			inverseOperations: deriveInverseOperations(base.sourceText, spec.operations),
+			expectedBlockDelta,
 			groupId: spec.groupId,
 			runId: spec.runId,
 			stats: computeOperationStats(base.sourceText, spec.operations),
@@ -114,7 +116,7 @@ export class ComposerTransactionEngine {
 		}
 		await this.persist(session, txn.inverseOperations, {
 			target: txn.target,
-			expectedBlockDelta: -defaultBlockDelta(txn.operations),
+			expectedBlockDelta: -txn.expectedBlockDelta,
 		});
 	}
 
@@ -129,7 +131,7 @@ export class ComposerTransactionEngine {
 		}
 		await this.persist(session, txn.operations, {
 			target: txn.target,
-			expectedBlockDelta: defaultBlockDelta(txn.operations),
+			expectedBlockDelta: txn.expectedBlockDelta,
 		});
 	}
 

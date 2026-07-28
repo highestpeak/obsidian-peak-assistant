@@ -226,12 +226,12 @@ function testAnnotation(): void {
 	if (split.detailKind === 'split') {
 		check('named split definitions are safe to write back', assessFormulaSplitWriteback(split).safe);
 		const markdown = buildFormulaSplitMarkdown(split);
-		check('accepted split is one standard display formula', markdown.startsWith('$$\n\\begin{aligned}\n'));
+		check('accepted split creates three standard display formula blocks', markdown.split('$$').length === 7);
 		check(
 			'accepted split defines every introduced component',
-			markdown.includes('B&=x') && markdown.includes('V(A)&=y'),
+			markdown.includes('$$\nB=x\n$$') && markdown.includes('$$\nV(A)=y\n$$'),
 		);
-		check('accepted split aligns equation operators', markdown.includes('PR(A)&=B+V(A) \\\\'));
+		check('accepted split keeps the equivalent equation independent', markdown.startsWith('$$\nPR(A)=B+V(A)\n$$'));
 		const formula = parseFormulaBlock('$$PR(A)=x+y$$')[0];
 		const patch = buildFormulaSplitPatch('math-1', 100, formula, split);
 		check(
@@ -241,7 +241,7 @@ function testAnnotation(): void {
 				patch.target.to === 100 + formula.to &&
 				patch.operations[0].kind === 'replaceRange',
 		);
-		check('split patch preserves top-level block count', patch.expectedBlockDelta === 0);
+		check('split patch declares two additional top-level blocks', patch.expectedBlockDelta === 2);
 	}
 
 	const unsafeSplit = buildFormulaAnnotationPayload('split', 'WS(V_i)=x', JSON.stringify({

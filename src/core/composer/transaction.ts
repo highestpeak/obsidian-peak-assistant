@@ -34,6 +34,11 @@ export interface ComposerTransaction {
 	label: string;
 	operations: readonly ComposerOperation[];
 	inverseOperations: readonly ComposerOperation[];
+	/**
+	 * Validated top-level block-count change. Structural replaceRange operations
+	 * cannot recover this from their operation kind, so Undo/Redo must retain it.
+	 */
+	expectedBlockDelta: number;
 	/** Groups sibling child transactions (typing burst / one AI run). */
 	groupId?: string;
 	/** The AI run that produced this change, if any. */

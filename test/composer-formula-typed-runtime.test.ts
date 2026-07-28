@@ -2,6 +2,7 @@ import {
 	activeVariant,
 	buildFormulaAnnotationPayload,
 	buildFormulaSplitPatch,
+	parseComposerDocument,
 	parseFormulaBlock,
 } from '@/service/composer';
 import {
@@ -9,6 +10,7 @@ import {
 	type FormulaDetailRequest,
 	type FormulaDetailStreamEvent,
 } from '@/ui/view/composer/blocks/math/formulaDetailStore';
+import { collectHistoryForBlock } from '@/ui/view/composer/chrome/BlockHistoryPanel';
 import { FakeVault, makeChecker, makeHub, openSession } from './helpers/composer-fakes';
 
 const { check, done } = makeChecker();
@@ -61,15 +63,25 @@ async function testSplitCommitAndUndo(): Promise<void> {
 		...patch,
 	});
 	const committed = vault.read('formula.md');
-	check('split commit writes one self-contained aligned formula', committed.includes('\\begin{aligned}'));
+	const committedMath = parseComposerDocument(committed).blocks.filter((item) => item.kind === 'math');
+	check('split commit writes three independent formula blocks', committedMath.length === 3);
 	check(
 		'split commit includes every shorthand definition',
-		committed.includes('B&=x') && committed.includes('V(A)&=y'),
+		committed.includes('$$\nB=x\n$$') && committed.includes('$$\nV(A)=y\n$$'),
 	);
 	check('split commit is recorded as one AI History transaction', hub.projection().history.length === 1);
+	check(
+		'formula selection transaction is visible in the first resulting block history',
+		collectHistoryForBlock(hub.projection().history, committedMath[0].blockId).length === 1,
+	);
 	check('split commit enables document Undo', hub.projection().undo.canUndo);
 	await hub.undo();
 	check('split Undo restores exact original Markdown bytes', vault.read('formula.md') === source);
+	await hub.redo();
+	check(
+		'split Redo restores the same three independent formula blocks',
+		parseComposerDocument(vault.read('formula.md')).blocks.filter((item) => item.kind === 'math').length === 3,
+	);
 }
 
 async function main(): Promise<void> {
