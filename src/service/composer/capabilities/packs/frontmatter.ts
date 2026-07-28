@@ -26,10 +26,19 @@ import {
 	ComposerInstructionInputSchema,
 	ComposerMetadataFieldPatchPayloadSchema,
 } from '@/core/schemas/composer';
-import type { ComposerCapabilitiesConfigProvider } from '../capabilityConfig';
+import {
+	DEFAULT_COMPOSER_CAPABILITIES_CONFIG,
+	type ComposerCapabilitiesConfigProvider,
+} from '../capabilityConfig';
 
 /** Stable capability id — canonical identity across surfaces. */
 export const SUGGEST_PROPERTIES_CAPABILITY_ID = 'composer.frontmatter.suggest-properties';
+export const SUGGEST_TAGS_CAPABILITY_ID = 'composer.frontmatter.suggest-tags';
+export const NORMALIZE_PROPERTIES_CAPABILITY_ID = 'composer.frontmatter.normalize-properties';
+export const FRONTMATTER_QUICK_ACTION_IDS = [
+	SUGGEST_TAGS_CAPABILITY_ID,
+	NORMALIZE_PROPERTIES_CAPABILITY_ID,
+] as const;
 export const SUGGEST_PROPERTIES_PROMPT_ID = PromptId.ComposerSuggestProperties;
 
 export interface SuggestPropertiesPromptInput {
@@ -109,11 +118,75 @@ export function createSuggestPropertiesDefinition(
 	};
 }
 
+function createFrontmatterQuickDefinition(
+	config: ComposerCapabilitiesConfigProvider,
+	id: (typeof FRONTMATTER_QUICK_ACTION_IDS)[number],
+): ComposerCapabilityDefinition {
+	const presentation = DEFAULT_COMPOSER_CAPABILITIES_CONFIG.actions[id];
+	if (
+		typeof presentation?.title !== 'string' ||
+		typeof presentation.description !== 'string' ||
+		typeof presentation.lucideIcon !== 'string' ||
+		typeof presentation.historyLabel !== 'string' ||
+		typeof presentation.order !== 'number'
+	) {
+		throw new Error(`missing compiled Composer presentation for '${id}'`);
+	}
+	return {
+		manifest: {
+			id,
+			title: presentation.title,
+			description: presentation.description,
+			inputContract: { kind: 'object', description: 'Frozen frontmatter and document evidence' },
+			outputContract: { kind: 'custom', description: 'one metadata-field-patch candidate' },
+			permissionKind: 'read',
+			costTier: 'fast',
+			backendPolicy: { preferred: 'provider-direct', fallback: [] },
+			skillRef: id,
+			surfaceBinding: ['composer'],
+		},
+		version: '1',
+		owner: 'composer-frontmatter',
+		configKey: id,
+		surfaces: ['block-row'],
+		targetKinds: ['frontmatter'],
+		executionMode: 'model-stream',
+		effectKind: 'metadata-patch',
+		promptId: SUGGEST_PROPERTIES_PROMPT_ID,
+		inputSchema: ComposerInstructionInputSchema,
+		resultSchema: ComposerMetadataFieldPatchPayloadSchema,
+		resultKind: 'metadata-field-patch',
+		rendererId: COMPOSER_METADATA_SUGGESTION_RENDERER_ID,
+		writebackAdapterId: COMPOSER_METADATA_FIELD_PATCH_WRITEBACK_ID,
+		acceptsInstruction: false,
+		presentationFallback: {
+			title: presentation.title,
+			description: presentation.description,
+			lucideIcon: presentation.lucideIcon,
+			historyLabel: presentation.historyLabel,
+			order: presentation.order,
+		},
+		evaluate: ({ snapshot }) => evaluateSuggest(snapshot, config().strings.emptyTarget),
+		buildPromptVariables: (snapshot) => {
+			const instruction = config().instructions[id];
+			if (!instruction) throw new Error(`missing Composer preset instruction for '${id}'`);
+			return buildSuggestPropertiesPromptVariables({
+				content: snapshot.nearby?.after ?? '',
+				currentProperties: snapshot.targetSource,
+				instruction,
+			});
+		},
+	};
+}
+
 export function createFrontmatterCapabilityPack(
 	config: ComposerCapabilitiesConfigProvider,
 ): ComposerCapabilityPack {
 	return {
 		id: 'composer-pack-frontmatter',
-		definitions: () => [createSuggestPropertiesDefinition(config)],
+		definitions: () => [
+			createSuggestPropertiesDefinition(config),
+			...FRONTMATTER_QUICK_ACTION_IDS.map((id) => createFrontmatterQuickDefinition(config, id)),
+		],
 	};
 }

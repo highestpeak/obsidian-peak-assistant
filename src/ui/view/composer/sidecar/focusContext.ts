@@ -81,21 +81,36 @@ export function buildFocusRunContext(
 export function resolveRelatedFocus(
 	snapshot: ComposerDocumentSnapshot | null,
 	focusedBlockId: string | null,
-): { anchorId: string; documentId: string; focusText: string } {
-	if (!snapshot) return { anchorId: 'document', documentId: 'document', focusText: '' };
+): { anchorId: string; documentId: string; focusText: string; label: string } {
+	if (!snapshot) return { anchorId: 'document', documentId: 'document', focusText: '', label: 'document' };
 	const block = focusedBlockId ? findBlock(snapshot, focusedBlockId) : undefined;
 	if (!block) {
 		return {
 			anchorId: snapshot.documentId,
 			documentId: snapshot.documentId,
 			focusText: snapshot.sourceText.slice(0, DOCUMENT_EXCERPT),
+			label: documentLabel(snapshot.filePath, snapshot.documentId),
 		};
 	}
+	const focusText = snapshot.sourceText.slice(block.source.from, block.source.to);
 	return {
 		anchorId: block.blockId,
 		documentId: snapshot.documentId,
-		focusText: snapshot.sourceText.slice(block.source.from, block.source.to),
+		focusText,
+		label: sourceLabel(focusText, documentLabel(snapshot.filePath, snapshot.documentId)),
 	};
+}
+
+/** Source-derived labels keep the Brief status truthful without a second title model. */
+function sourceLabel(source: string, fallback: string): string {
+	const firstLine = source.split('\n', 1)[0]?.trim() ?? '';
+	if (!firstLine) return fallback;
+	return firstLine;
+}
+
+function documentLabel(filePath: string, documentId: string): string {
+	const slash = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
+	return filePath.slice(slash + 1) || documentId;
 }
 
 /** Locate a block by exact id, falling back to the stable kind-ordinal prefix. */

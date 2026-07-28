@@ -10,7 +10,13 @@
  */
 
 import { parseComposerDocument } from '@/service/composer';
-import { makeCommentAnchor, revalidateComments, ComposerCommentStore } from '@/service/composer';
+import {
+	buildCommentSourceRef,
+	makeCommentAnchor,
+	normalizeComposerComment,
+	revalidateComments,
+	ComposerCommentStore,
+} from '@/service/composer';
 import type { ComposerComment, ComposerCommentPersistencePort } from '@/service/composer';
 import { makeChecker } from './helpers/composer-fakes';
 
@@ -79,10 +85,48 @@ async function testStore(): Promise<void> {
 	check('forBlock returns the comment', store.forBlock(wholeAnchor!.blockId).length === 1);
 	store.updateBody(added.commentId, 'edited');
 	check('update changes the body', store.list()[0].body === 'edited');
+	const reply = store.reply(added.commentId, 'follow-up');
+	check('reply is added to the thread', reply !== null && store.list()[0].replies?.length === 1);
+	store.resolve(added.commentId);
+	check('thread can resolve', store.list()[0].threadState === 'resolved');
+	store.reopen(added.commentId);
+	check('thread can reopen', store.list()[0].threadState === 'open');
+	store.setVisibility(added.commentId, 'shared');
+	check('thread visibility can become shared', store.list()[0].visibility === 'shared');
 	store.remove(added.commentId);
 	check('remove clears the store', store.list().length === 0);
-	check('remove persisted the empty set', saved.at(-1)!.length === 0);
+	check('remove persists a tombstone', saved.at(-1)?.[0]?.deletedAt !== undefined);
 	done('composer-comment-anchor');
+}
+
+// Legacy WP4 JSON upgrades without changing the stable id or anchor.
+{
+	const legacy = commentOn(wholeAnchor, 'legacy body');
+	const normalized = normalizeComposerComment(legacy);
+	check('legacy comment upgrades to schema v2', normalized.schemaVersion === 2);
+	check(
+		'legacy comment defaults private/local/open',
+		normalized.visibility === 'private' && normalized.origin === 'local' && normalized.threadState === 'open',
+	);
+	check(
+		'legacy comment keeps stable identity',
+		normalized.commentId === legacy.commentId && normalized.anchor.blockId === legacy.anchor.blockId,
+	);
+
+	const ownerRef = buildCommentSourceRef(normalized);
+	check('owner comment becomes owner-trust Copilot source', ownerRef.trust === 'owner' && ownerRef.kind === 'comment');
+	const external = normalizeComposerComment({
+		...legacy,
+		origin: 'share',
+		visibility: 'shared',
+		actor: { actorId: 'guest-1', displayName: 'Friend', kind: 'guest' },
+	});
+	const externalRef = buildCommentSourceRef(external);
+	check('friend comment is an external untrusted Copilot source', externalRef.trust === 'external');
+	check(
+		'Copilot source preserves anchor and body',
+		externalRef.blockId === wholeAnchor?.blockId && externalRef.body === 'legacy body',
+	);
 }
 
 void testStore();

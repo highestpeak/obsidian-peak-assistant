@@ -75,8 +75,11 @@ export class ObsidianComposerImageAttachmentAdapter implements ComposerImageAtta
 		await this.app.vault.modifyBinary(file, toArrayBuffer(bytes));
 	}
 
-	previewUri(path: string): string {
-		const file = this.app.vault.getAbstractFileByPath(path);
+	previewUri(path: string, sourcePath?: string): string {
+		const linkedFile = sourcePath
+			? this.app.metadataCache.getFirstLinkpathDest(path, sourcePath)
+			: null;
+		const file = linkedFile ?? this.app.vault.getAbstractFileByPath(path);
 		if (file instanceof ObsidianTFile) return this.app.vault.getResourcePath(file);
 		return path;
 	}

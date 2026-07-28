@@ -147,7 +147,7 @@ function classifyKind(node: RootContent, raw: string): ComposerBlockKind {
 			const trimmed = raw.trim();
 			if (trimmed.startsWith('$$') && trimmed.endsWith('$$') && trimmed.length >= 4) return 'math';
 			if (/^%%/.test(trimmed) && /%%$/.test(trimmed)) return 'comment';
-			if (isBareEmbed(trimmed)) return 'embed';
+			if (isBareEmbed(trimmed)) return classifyBareEmbedBlock(trimmed);
 			if (isBareImage(trimmed)) return 'image';
 			return 'paragraph';
 		}
@@ -164,6 +164,12 @@ function listHasCheckbox(node: RootContent): boolean {
 
 function isBareEmbed(raw: string): boolean {
 	return /^!\[\[[^\]]+\]\]$/.test(raw);
+}
+
+function classifyBareEmbedBlock(raw: string): ComposerBlockKind {
+	const match = raw.match(/^!\[\[([^\]]+)\]\]$/);
+	if (!match) return 'embed';
+	return classifyWikilinkTarget(match[1]) === 'image' ? 'image' : 'embed';
 }
 
 function isBareImage(raw: string): boolean {
@@ -303,8 +309,9 @@ function collectNativeRefs(
 	out: ComposerNativeRef[],
 ): void {
 	for (const m of raw.matchAll(EMBED_RE)) {
-		const target = m[1].split('|')[0].trim();
-		pushRef(out, blockId, classifyEmbed(target), target, blockFrom + m.index!, m[0], revision);
+		const rawTarget = m[1];
+		const target = rawTarget.split('|')[0].trim();
+		pushRef(out, blockId, classifyWikilinkTarget(rawTarget), target, blockFrom + m.index!, m[0], revision);
 	}
 	for (const m of raw.matchAll(MD_IMAGE_RE)) {
 		const target = m[1];
@@ -333,6 +340,15 @@ function pushRef(
 
 function classifyEmbed(target: string): ComposerNativeKind {
 	return classifyComposerNativeTarget(target);
+}
+
+function classifyWikilinkTarget(rawTarget: string): ComposerNativeKind {
+	const segments = rawTarget.split('|').map((segment) => segment.trim());
+	const displayWidth = Number(segments.at(-1));
+	if (segments.length > 1 && Number.isFinite(displayWidth) && displayWidth > 0) {
+		return 'image';
+	}
+	return classifyEmbed(segments[0] ?? rawTarget);
 }
 
 // ──────────────────────────────────────────────────────────────────────────

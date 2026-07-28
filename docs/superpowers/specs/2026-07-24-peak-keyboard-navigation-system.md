@@ -3,7 +3,7 @@
 日期：2026-07-24  
 状态：**Review-ready design proposal / implementation pending**  
 类型：Cross-surface interaction and accessibility contract  
-范围：Vault Search、AI Analysis、File Atlas、Composer View、Chat Studio  
+范围：Vault Search、AI Search（含 AI Graph / Vault Intelligence mode）、File Atlas、Composer View、Chat Studio
 不在范围：Usage Dashboard、Setup Wizard、Settings
 
 研究依据：
@@ -123,7 +123,7 @@ F6 到区域 → Tab 到组件 → 方向键到元素 → Enter / Space / Shift+
 以下事件只能更新 live region、状态文本和 active/preview，不得移动 DOM focus：
 
 - 搜索结果刷新；
-- AI Analysis 从 Process 进入 Report；
+- AI Search 从 Process 进入 Report；
 - File Atlas 重新解析；
 - Composer Intelligence 建议到达；
 - Chat 新消息或流式 token 到达；
@@ -183,7 +183,7 @@ IME composition
 这些命令必须可在 Obsidian Command Palette 中搜索和绑定，但默认不抢占全局组合键：
 
 - `Peak: Focus Vault Search`
-- `Peak: Focus AI Analysis`
+- `Peak: Focus AI Search`
 - `Peak: Focus File Atlas`
 - `Peak: Focus Composer View`
 - `Peak: Focus Chat Studio`
@@ -201,7 +201,7 @@ IME composition
 | 工作流顺序 | macOS | Windows / Linux | Surface |
 |---:|---|---|---|
 | 1 | `⌥⌘1` | `Alt+Ctrl+1` | Vault Search |
-| 2 | `⌥⌘2` | `Alt+Ctrl+2` | AI Analysis |
+| 2 | `⌥⌘2` | `Alt+Ctrl+2` | AI Search |
 | 3 | `⌥⌘3` | `Alt+Ctrl+3` | File Atlas |
 | 4 | `⌥⌘4` | `Alt+Ctrl+4` | Composer View |
 | 5 | `⌥⌘5` | `Alt+Ctrl+5` | Chat Studio |
@@ -325,7 +325,7 @@ VS1 Search mode tabs
 
 | 区域 | 内部行为 |
 |---|---|
-| Mode tabs | `Left / Right` 在 Vault Search / AI Analysis 间移动；只在本地瞬时切换时自动激活，否则 `Enter / Space` 激活 |
+| Search surface switcher | `Left / Right` 在 Vault Search 与 AI workspace selector 间移动；`Enter / Space` 激活 Vault Search 或打开 AI mode menu |
 | Query | surface 首次进入时可聚焦；`Down` 从单行 query 进入当前/第一条结果；`Escape` 先关 suggestions，再清 query，再关闭 modal |
 | View / scope | `Left / Right` 浏览 List / Tree / Graph 与 scope 控件；`Enter / Space` 激活 |
 | Result list | `Up / Down` 移动；focus 更新 preview 但不跳焦点；`Enter` 当前 tab 打开；`Cmd/Ctrl+Enter` 新 tab 打开；`Right` 进入 Inspector |
@@ -335,32 +335,34 @@ VS1 Search mode tabs
 
 ### 8.3 当前行为校正
 
-- `Tab` 不再直接切 Vault Search / AI Analysis；
+- `Tab` 不再直接切 Vault Search / AI Search，也不切 AI mode；
 - 结果中的每一行不进入 Tab 顺序；
 - 高层 `window` keydown 不得在 query 正在编辑时吞掉方向键；
 - 列表、树、图谱共享 active result bookmark；
 - view 切换后 focus 留在等价 result；没有等价项才回到 query/root。
 
-## 9. AI Analysis
+## 9. AI Search
 
 ### 9.1 Zone 顺序
 
 ```text
-AA1 Query / mode
-  → AA2 Lifecycle tabs
-  → AA3 Primary canvas
-  → AA4 Outline / section navigator
-  → AA5 Actions
+AS1 AI mode / query
+  → AS2 Suggestions / history or lifecycle tabs
+  → AS3 Primary content / canvas
+  → AS4 Outline / section navigator
+  → AS5 Actions
 ```
 
-没有 Outline 时跳过 AA4；确认 dialog 作为临时最内层，不加入 F6 环。
+没有 Outline 时跳过 AS4；确认 dialog 作为临时最内层，不加入 F6 环。普通打开默认 AI Search；恢复中的 run、history record 或 Graph Detail deep link 可以直接恢复对应 mode。
 
 ### 9.2 行为
 
 | 区域 | 内部行为 |
 |---|---|
-| Query / mode | input 保留编辑语义；mode picker 按 tabs/listbox 模式 |
+| AI mode | 顶栏 selector 打开 AI Search / AI Graph / Vault Intelligence menu；`Up / Down` 移 option，`Enter / Space` 选择，`Escape` 关闭并回 trigger |
+| Query | input 保留编辑语义；不在 input 内重复放 Vault Analysis / AI Graph mode pill |
 | Lifecycle tabs | Process / Report / Sources 使用 tablist；AI 未完成的 panel 可 focus 但不伪装可用 |
+| Suggestions / history | list 只占一个 Tab stop；`Up / Down` 移动 active row，`Enter` 重开；AI Graph mode 复用同一 list contract |
 | Process | `Up / Down` 在步骤/工具运行间移动；`Enter` 展开详情；运行状态用 live region 播报 |
 | Report | heading navigator 与正文分离；navigator `Up / Down`，`Enter` 跳 heading；正文保留选择、复制和 screen-reader reading |
 | Sources | source list 使用 list composite；`Enter` 打开/预览；`Shift+F10` 提供复制引用、打开源等动作 |
@@ -372,7 +374,9 @@ AA1 Query / mode
 - report streaming 不重置 heading navigator 的 active item；
 - 文本选中后使用 `Shift+F10` 暴露“Annotate selection”等动作；
 - plan approval、continue 和 destructive retry 不拥有裸全局快捷键；
-- `Alt+Up / Down` 的既有 mode cycling 可以保留为 secondary shortcut，但 keyboard map 必须标注，且不能在编辑器中生效。
+- `Alt+Up / Down` 的既有 mode cycling 可以保留为 secondary shortcut，但 keyboard map 必须标注，且不能在 input、textarea、contenteditable、PromptInput 或 IME composition 中生效。
+- `Tab` 只走组件，不切 AI Search / AI Graph / Vault Intelligence。
+- 选择 Vault Intelligence 只换 projection，不自动触发 complete review 或其他昂贵运行。
 
 ## 10. File Atlas
 
@@ -611,7 +615,7 @@ autocomplete / tooltip / menu
 每个 surface 必须有可辨识 landmarks / accessible names：
 
 - Vault Search：Search controls、Results、Inspector；
-- AI Analysis：Analysis controls、Process/Report/Sources、Outline、Actions；
+- AI Search：AI mode / Query、Suggestions / History、Process / Report / Sources、Outline、Actions；
 - File Atlas：Files、Atlas、Inspector、Selection tray；
 - Composer：Document、Block controls、Intelligence、Status；
 - Chat Studio：Conversations、Messages、Composer、Conversation index。
@@ -654,7 +658,7 @@ Focus indicator 必须满足当前 WCAG Focus Visible / Focus Appearance 要求�
 ### 16.2 任务
 
 1. Vault Search：query → result → Inspector → open，不使用 pointer；
-2. AI Analysis：Process → Report heading → Source → Save，不使用 pointer；
+2. AI Search：mode menu → query / history → Process → Report heading → Source → Save，不使用 pointer；
 3. File Atlas：file → block tree/graph → Inspector → tray → Copilot，不使用 pointer；
 4. Composer：正文 → block/table/image → Intelligence review → 正文，不使用 pointer；
 5. Chat Studio：left nav → message → outline/resource → Composer → send，不使用 pointer。
@@ -680,7 +684,7 @@ Focus indicator 必须满足当前 WCAG Focus Visible / Focus Appearance 要求�
 - key maps、labels、platform display、coach thresholds 进入 template/config 或明确 defaults；
 - 先补 shared focus/composite primitives 与 contract tests，再逐 surface 迁移；
 - 保留现有正确行为，例如 Chat splitter 和 Conversation Index roving tabs；
-- 对现有行为改变要提供 migration note，尤其是 Vault Search 的 `Tab` 切 mode；
+- 对现有行为改变要提供 migration note，尤其是 Vault Search 的 `Tab` 切 surface，以及 AI input 内 mode pill 迁移到顶栏 selector；
 - 任何 implementation wave 都必须带 keyboard-only browser/Obsidian QA，不以 unit test 和 build 代替真实焦点验证。
 
 ## 18. 最终决策

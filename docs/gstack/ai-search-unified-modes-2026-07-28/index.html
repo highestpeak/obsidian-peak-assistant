@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Search unified modes · Interactive design mock</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="report-head">
+      <div class="report-kicker">Peak Assistant · Design only · Production unchanged</div>
+      <div class="report-title-row">
+        <div>
+          <h1>AI Search 成为统一的 AI 查询与历史入口</h1>
+          <p>
+            保留一个高频的 AI Search 默认入口，把 AI Graph 与 Vault Intelligence 收进同一个模式下拉；
+            三种模式复用输入框、历史列表和键盘语法，不再维护独立 Graph Library。
+          </p>
+        </div>
+        <button class="quiet-button" id="reset-demo" type="button">Reset demo</button>
+      </div>
+      <nav class="report-links" aria-label="配套文档">
+        <a href="../../superpowers/specs/2026-07-28-ai-search-unified-modes.md">设计规格</a>
+        <a href="../ai-graph-artifact-platform-2026-07-28/index.html">AI Graph 平台稿</a>
+        <a href="../../roadmap.html">Roadmap</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="prototype-section" id="prototype">
+        <div class="section-heading">
+          <div>
+            <span class="section-number">01</span>
+            <h2>统一 modal · 可点击原型</h2>
+          </div>
+          <span class="status-pill">Default · AI Search</span>
+        </div>
+
+        <div class="desktop-stage">
+          <div class="editor-ghost" aria-hidden="true">
+            <span class="ghost-line long"></span>
+            <span class="ghost-line medium"></span>
+            <span class="ghost-line short"></span>
+            <span class="ghost-line long"></span>
+          </div>
+
+          <div class="search-modal" id="search-modal" data-active-surface="ai">
+            <header class="surface-switcher" aria-label="Search surface">
+              <button
+                class="surface-button"
+                id="vault-search-tab"
+                type="button"
+                aria-pressed="false"
+              >
+                Vault Search
+              </button>
+
+              <div class="ai-mode-anchor">
+                <button
+                  class="surface-button active"
+                  id="ai-mode-trigger"
+                  type="button"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                  aria-controls="ai-mode-menu"
+                >
+                  <span id="ai-mode-trigger-label">AI Search</span>
+                  <span class="chevron" aria-hidden="true"></span>
+                </button>
+
+                <div
+                  class="mode-menu"
+                  id="ai-mode-menu"
+                  role="listbox"
+                  aria-label="AI workspace mode"
+                  tabindex="-1"
+                  hidden
+                >
+                  <button class="mode-option selected" type="button" role="option" aria-selected="true" data-mode="search">
+                    <span class="mode-mark" aria-hidden="true">✓</span>
+                    <span class="mode-copy">
+                      <strong>AI Search</strong>
+                      <small>提问、分析并重开最近结果</small>
+                    </span>
+                    <span class="default-label">Default</span>
+                  </button>
+                  <button class="mode-option" type="button" role="option" aria-selected="false" data-mode="graph">
+                    <span class="mode-mark" aria-hidden="true"></span>
+                    <span class="mode-copy">
+                      <strong>AI Graph</strong>
+                      <small>创建、查找并继续维护知识图</small>
+                    </span>
+                  </button>
+                  <button class="mode-option" type="button" role="option" aria-selected="false" data-mode="intelligence">
+                    <span class="mode-mark" aria-hidden="true"></span>
+                    <span class="mode-copy">
+                      <strong>Vault Intelligence</strong>
+                      <small>查看 Vault 健康、断点与最近审阅</small>
+                    </span>
+                  </button>
+                  <div class="menu-hint">目标键盘：↑↓ 移动 · Enter 选择 · Esc 返回触发点</div>
+                </div>
+              </div>
+            </header>
+
+            <div class="modal-body" id="modal-body"></div>
+
+            <footer class="modal-footer">
+              <div class="footer-hints" aria-label="目标键盘提示">
+                <span><kbd>Tab</kbd> Navigate</span>
+                <span><kbd>↑↓</kbd> Move in list</span>
+                <span><kbd>↵</kbd> Open / run</span>
+                <span><kbd>⌥↑↓</kbd> Switch AI mode</span>
+              </div>
+              <span class="footer-count" id="footer-count"></span>
+            </footer>
+          </div>
+        </div>
+      </section>
+
+      <section class="decision-section" id="decisions">
+        <div class="section-heading">
+          <div>
+            <span class="section-number">02</span>
+            <h2>产品裁决</h2>
+          </div>
+          <span class="status-pill neutral">Decided · Implementation pending</span>
+        </div>
+        <div class="decision-grid">
+          <article>
+            <h3>删掉独立 Graph Library</h3>
+            <p>AI Graph 的全量浏览就是 AI Search 中的 AI Graph 历史列表。持久化 artifact 仍然存在，但不再为它造第二套浏览产品。</p>
+          </article>
+          <article>
+            <h3>只保留两个顶层位置</h3>
+            <p>Vault Search 负责确定性找回；右侧 AI 工作区通过下拉在 AI Search、AI Graph 和 Vault Intelligence 之间切换。两侧保持原有等分布局并严格垂直居中。</p>
+          </article>
+          <article>
+            <h3>每次普通打开回到 AI Search</h3>
+            <p>低频模式不跨 modal 记忆。只有正在运行的 session、历史记录或 graph deep link 可以直接恢复对应模式。</p>
+          </article>
+          <article>
+            <h3>模式只改变任务，不改变输入习惯</h3>
+            <p>三种模式共享 PromptInput、Recent 列表与键盘规则；mode adapter 只改变 placeholder、建议、运行语义和历史 projection。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="removed-section" id="removed">
+        <div class="section-heading">
+          <div>
+            <span class="section-number">03</span>
+            <h2>从旧稿中移除</h2>
+          </div>
+        </div>
+        <ul class="removed-list">
+          <li><strong>Vault / Web / Mixed</strong><span>来源属于 graph 内部 provenance，不值得占据全局浏览主界面。</span></li>
+          <li><strong>Any type / Concept / Entity / Evidence / Causal / Timeline</strong><span>Graph type 是生成指导与元数据，不是首版高频筛选。</span></li>
+          <li><strong>Graph preview card grid</strong><span>用紧凑列表提高历史密度；节点数、关系数、来源数和 review 状态足够帮助重开。</span></li>
+          <li><strong>输入框里的 Vault Analysis pill</strong><span>AI mode 只在顶栏出现一次；Vault Analysis 回归 AI Search 内部 recipe。</span></li>
+          <li><strong>独立 Vault Intelligence 顶栏按钮</strong><span>它进入同一个低频 mode menu；选择模式本身不会自动触发昂贵扫描。</span></li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="report-footer">
+      AI Search unified modes · focused interactive mock · 2026-07-28
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

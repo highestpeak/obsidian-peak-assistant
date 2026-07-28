@@ -657,6 +657,54 @@ H2 Technical challenge
 
 Inspector should stay readable and avoid making the tree row too dense.
 
+## Owner UI Feedback 2026-07-27: Open Tab Rail
+
+The production screenshot exposed two related problems in the left `Open` rail:
+
+1. the rail is too narrow, so even an ordinary filename such as `Peak Composer Visual Parity QA.md` collapses to an ambiguous fragment;
+2. the rail shows only the file used to enter File Atlas even though the Obsidian workspace has many open tabs.
+
+Accepted surface requirement:
+
+- increase the rail's useful width; common filenames should be readable without truncation, and the user should be able to resize the rail within bounded minimum and maximum widths;
+- derive the rail from the live Obsidian workspace tab inventory, not only the active leaf captured when Atlas opens;
+- include every open tab that owns a Vault file context across tab groups, split panes, and pop-out windows, preserving visible workspace order and distinguishing duplicate tab instances when necessary;
+- update the rail when tabs open, close, rename, move, or change active state;
+- keep the active tab visually obvious and let selecting a row activate the existing tab rather than silently opening another copy;
+- if a product view such as Composer carries a bound source file, surface that file context explicitly instead of presenting an opaque non-file tab label.
+
+The rail is not limited to files that remain open. It is a bounded work-file history with two groups:
+
+- `Open`: every unique Vault file currently represented by an open tab. This group always has inclusion priority, but its rows are ordered by file view activity rather than by Obsidian's visual tab-strip order.
+- `Recent`: recently viewed Vault files that are no longer open. Files already present in `Open` are excluded so the same file is not listed twice.
+
+Let:
+
+- `O` be the number of unique files in `Open`;
+- `M` be the fixed target capacity of the rail;
+- `N = max(0, M - O)` be the number of closed recent files admitted into `Recent`.
+
+The normal combined set is therefore `Open + top N Recent = M` unique files. `M` is a data-capacity limit, not the number of rows visible in the viewport; the rail remains vertically scrollable. Open files must never be evicted merely to preserve the cap. If `O > M`, `Recent` becomes empty and the rail temporarily exceeds `M` until enough tabs close. The product default for `M`, view dwell threshold, and frequency window belong in configuration rather than UI logic.
+
+Default ordering:
+
+1. keep the `Open` group before `Recent`;
+2. inside each group, sort by `lastViewedAt` descending;
+3. the currently active file is first because activating it updates its view time;
+4. break equal timestamps deterministically by normalized path.
+
+`lastViewedAt` means the file became the active visible view, not merely that a background tab existed. Rapid programmatic focus churn should not inflate history; the implementation should use a configurable dwell/debounce rule.
+
+The rail exposes a compact sort selector whose choice persists locally:
+
+- `Recently viewed` — default; `lastViewedAt` descending;
+- `Most used` — recency-weighted view frequency within a configurable rolling window, with `lastViewedAt` as the tie-breaker so old lifetime favorites do not become permanently locked;
+- `Name` — locale-aware filename ordering, with full path as the deterministic tie-breaker.
+
+Changing sort mode changes ordering inside `Open` and `Recent`; it does not remove the open-file inclusion priority or merge the two groups.
+
+This is a planned UI correction, not evidence that the current production rail already supports workspace-wide tab discovery.
+
 ## Metadata Handling
 
 File Atlas should expose frontmatter/properties as part of the document tree, but it should not hardcode a large metadata taxonomy in logic.

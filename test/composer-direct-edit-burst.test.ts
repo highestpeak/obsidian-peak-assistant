@@ -95,6 +95,33 @@ async function testBurst(): Promise<void> {
 	controller.dispose();
 }
 
+async function testValidatedSnapshotIsAdoptedWithoutSecondParse(): Promise<void> {
+	const vault = new FakeVault();
+	const session = openSession(vault, 'single-parse.md', SRC);
+	const hub = makeHub(vault, session, DEFAULT_TRANSACTION_CONFIG);
+	let reparses = 0;
+	const originalReparse = session.reparse.bind(session);
+	session.reparse = (sourceText: string) => {
+		reparses += 1;
+		return originalReparse(sourceText);
+	};
+	const paragraph = session.snapshot.blocks.find((block) => block.kind === 'paragraph');
+	if (!paragraph) throw new Error('paragraph fixture missing');
+	await hub.commit({
+		origin: 'direct',
+		label: 'single parse',
+		operations: [{
+			kind: 'replaceRange',
+			from: paragraph.source.from,
+			to: paragraph.source.to,
+			text: 'Updated without a duplicate parse.',
+		}],
+		target: { kind: 'block', blockId: paragraph.blockId },
+	});
+	check('validated transaction snapshot is adopted without reparsing', reparses === 0, String(reparses));
+	check('adopted snapshot contains the committed source', session.snapshot.sourceText.includes('Updated without a duplicate parse.'));
+}
+
 async function testCheckboxAndInsertAndMove(): Promise<void> {
 	const vault = new FakeVault();
 	const session = openSession(vault, 'm.md', SRC);
@@ -116,6 +143,19 @@ async function testCheckboxAndInsertAndMove(): Promise<void> {
 	await hub.commit({ origin: 'direct', label: '在下方插入', operations: ins!.operations, target: ins!.target, expectedBlockDelta: ins!.expectedBlockDelta });
 	check('insert added exactly one block', session.snapshot.blocks.length === blockCount + 1);
 	check('inserted paragraph sits below the heading', /# Title\n\nInserted paragraph\.\n\nHello world/.test(vault.read('m.md')), vault.read('m.md').slice(0, 60));
+
+	// Markdown is the type source of truth: no hidden chooser metadata is needed.
+	const typed = buildInsertBelowOps(
+		session.snapshot,
+		heading.blockId,
+		'| 项目 | 说明 |\n| --- | --- |\n| 新项目 | 待填写 |',
+	);
+	check('typed table insert ops built', Boolean(typed));
+	check('table draft declares its parsed block delta', typed?.expectedBlockDelta === 1);
+	await hub.commit({ origin: 'direct', label: '在下方插入', operations: typed!.operations, target: typed!.target, expectedBlockDelta: typed!.expectedBlockDelta });
+	check('typed table insert reparses as table', session.snapshot.blocks[1]?.kind === 'table', session.snapshot.blocks.map((block) => block.kind).join(','));
+	const typedCallout = buildInsertBelowOps(session.snapshot, heading.blockId, '> [!note]\n> 注意事项');
+	check('typed callout insert is built from visible Markdown', typedCallout?.operations[0]?.kind === 'insertBlock');
 
 	// Drag-move: move the tail paragraph to the top (before block 0).
 	const prev = session.snapshot;
@@ -145,6 +185,7 @@ async function testCheckboxAndInsertAndMove(): Promise<void> {
 
 async function main(): Promise<void> {
 	await testBurst();
+	await testValidatedSnapshotIsAdoptedWithoutSecondParse();
 	await testCheckboxAndInsertAndMove();
 	done('composer-direct-edit-burst');
 }

@@ -76,8 +76,8 @@ class FakeAttachmentPort implements ComposerImageAttachmentPort {
 		return { path };
 	}
 	async overwrite(): Promise<void> {}
-	previewUri(path: string): string {
-		return `preview://${path}`;
+	previewUri(path: string, sourcePath?: string): string {
+		return `preview://${sourcePath ?? ''}#${path}`;
 	}
 }
 
@@ -131,6 +131,10 @@ async function testCompositionWithPorts(): Promise<void> {
 
 	check('imagePorts ⇒ coordinator composed', editing.imageCoordinator instanceof ImageCapabilityCoordinator);
 	check('editing exposes a hub', Boolean(editing.hub));
+	check(
+		'image preview resolver forwards the source document path',
+		editing.imagePreviewResolver?.('路线图', PATH) === `preview://${PATH}#路线图`,
+	);
 
 	// Paste through the composed coordinator → atomic embed insertion via the hub.
 	const before = session.snapshot.blocks.length;

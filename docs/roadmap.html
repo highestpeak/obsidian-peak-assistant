@@ -83,7 +83,7 @@
       <h1>状态快照：里程碑、待建、调研、远期</h1>
       <p class="subtitle">这份文档回答"项目现在在做什么、下一步做什么"。<strong>只登记关键节点</strong>——不是流水账。逐 session 的完成粒度看 <a href="progress.md"><code>progress.md</code></a>；文档索引看 <a href="index.html"><code>index.html</code></a>；调研原稿在 <code>docs/research/</code>；架构 spec 在 <code>docs/superpowers/specs/</code>；小型未实现需求登记在 <a href="planned-requirements.html"><code>planned-requirements.html</code></a>。</p>
       <div class="meta">
-        <span>Status: current · 2026-07-24</span>
+        <span>Status: current · 2026-07-28</span>
         <span>Scope: milestone-level only</span>
         <span>Updated: 手动维护 + session-end 补关键节点</span>
       </div>
@@ -237,6 +237,18 @@
             </thead>
             <tbody>
               <tr>
+                <td><strong>架构收口 A0-A4</strong></td>
+                <td>按 2026-07-27 依赖/模块化审计的路线执行。<strong>A0 四把守卫锁</strong>（service 域间依赖矩阵 floor 测试锁 chat↔agents 等 5 组循环；非 AppContext 单例 getInstance 用量锁基线 100；facade 绕行检测起点 capabilities 域 2 处违规；<code>tsc --noEmit</code> 进测试锁 355 既有类型错误 floor）→ <strong>A1</strong> 模型路由归一 <code>resolveSlot</code>（消灭 requireActiveProfile / resolveCopilotProfileAndModel / getActiveAgentFastConfig 直读×2 / resolveFastLookupBinding 手写版四套并行；裁决失效的 promptModelMap）→ <strong>A2</strong> 数据层收口（修 <code>mobius_operation</code> 双写：AIAnalysisHistoryService.ts:58 直写 vs SessionContextService 事件写二选一；图存储非 search 域 17 个直连文件改走 Index*Port 注入）→ <strong>A3</strong> 假存在大扫除（copilot 面板 10,092 行无入口、LLM rerank 不可达、BackendStrategyRegistry 零消费、harness_reflection 死表、Models* 死注册、buildChatTools 等零调用函数逐项裁决；与下方 AI Capability Gateway 决策合并推进）→ <strong>A4</strong> 低成本收敛（图片 layout pk-/peak- 双格式 bug、slugify 中文 untitled bug、7 Modal 迁 ReactModalHost、18 处 config loader 工厂化、13 处 TemplateManager 直连恢复 PromptService 用户覆写）。</td>
+                <td><a href="research/2026-07-27-dependency-modularity-audit/README.md">审计判决 §四</a></td>
+                <td><span class="pill gold">decided · queued（A0 起步）</span></td>
+              </tr>
+              <tr>
+                <td><strong>六能力功能收口 P0×7</strong></td>
+                <td>按 2026-07-27 产品能力矩阵执行。头号：<strong>Document Copilot 收口三件套</strong>（sidecar 会话执行器——mark* 零调用死路；Ambient→Brief finding producer——ingestFinding 零调用；Composer 原生 ambient 触发源——CM editor-change 在自绘视图不触发）。其余：入口整顿（ribbon 指向 Chat Studio、旧三 leaf 布局定去留、Quick Search 快捷键）；Usage Dashboard 死按钮群接线或摘除；Onboarding System Check 接真实 readiness；Ambient 旧四载体维护冻结 + 去留决策（晨间简报留给 Command Center）；copilot 面板树定去留；Atlas "Send to Copilot" 做完或摘除。Ambient 与 Document Copilot 定位为 Composer 内能力。</td>
+                <td><a href="research/2026-07-27-capability-walkthrough-ecosystem-strategy/capability-matrix.md">能力矩阵 §三</a></td>
+                <td><span class="pill gold">decided · queued</span></td>
+              </tr>
+              <tr>
                 <td><strong>机器运行记录 JSONL 重构</strong></td>
                 <td>Chat、AI Analysis、新 Composer Copilot/History 使用分片 JSONL；SQLite 作为可重建索引，Markdown 仅用于用户文档和独立 Export。单条 Chat <code>Save to Vault</code> 不保留，旧 Copilot 不迁移。</td>
                 <td><a href="superpowers/specs/2026-07-21-machine-record-storage-jsonl-design.md">Storage design</a></td>
@@ -280,8 +292,32 @@
                 <td><span class="pill gold">decided · design/spec ready · implementation pending</span></td>
               </tr>
               <tr>
+                <td><strong>Shared AI Instruction Composer · 跨 Surface 统一 AI 输入能力</strong></td>
+                <td>把现有 <code>PromptInput / PromptInputBody / PromptInputAttachments</code> primitives 收口为与 AI Graph Artifact Platform 平级的共享产品能力，供 Chat Studio、Composer Copilot、AI Graph Update 与后续 AI surface 共同消费。统一文本、<code>@</code> / <code>[[</code> / <code>/</code> context trigger、附件、draft / history、IME、键盘、focus、loading / streaming / error 和 submit / stop 行为；各 surface 只提供自动 context、chrome slots 与 submit adapter，并继续拥有自己的 runtime 和输出语义。当前 Chat Studio 与 Composer Copilot 只共享输入 primitives，draft/context shelf/stop/run state 等仍未形成完整 platform contract，AI Graph adapter 也尚未实现。</td>
+                <td><a href="superpowers/specs/2026-07-28-shared-ai-instruction-composer.md">正式设计</a><br><a href="planned-requirements.html#pr-shared-ai-instruction-composer">Planned Requirement</a><br><a href="index.html#docs">根级共享能力索引</a></td>
+                <td><span class="pill gold">decided · design/spec ready · implementation pending</span></td>
+              </tr>
+              <tr>
+                <td><strong>Prompt Control Center · Prompt 与模型 Override 管理</strong></td>
+                <td>在 Settings → AI Setup 放一个紧凑入口，打开独立 Obsidian View；按 Composer、Copilot / Ambient、Chat、Search、Knowledge Index、Agent 等能力分组审阅全部内置 Prompt，比较 system / user 配对与内置正文，并在 Vault 中维护正文 override。只有真正拥有 AI run 的 Prompt 可以选择模型；配套 system 模板继承父任务，未接线 Prompt 禁止保存无效配置。模型主界面只提供“使用 AI Setup 默认模型”与“给这个 Prompt 单独选择模型”，并显示下一次实际使用的 Profile + model。实施顺序锁定为：先完成 A1 模型 resolver 归一与 A4 PromptService override 覆盖 → 把 Chat <code>ComposerModelSelector</code>、Settings <code>RoleModelPicker</code> 和单 Profile <code>ModelCombobox</code> 收敛成公共 <code>ProfileModelPicker</code> 组件族 → 迁移旧 <code>promptModelMap</code> → 接 Settings 入口与 Control Center → 在 Generation History / run receipt 记录 Prompt 版本、请求与实际模型、fallback / escalation 和未采纳结果。禁止先做一张“能保存但主执行链不读取”的假设置页，也禁止新增第四套模型选择 UI。</td>
+                <td><a href="superpowers/specs/2026-07-28-prompt-control-center-design.md">正式设计</a><br><a href="gstack/prompt-control-center-2026-07-28/index.html">可交互 mock</a><br><a href="25-infra-prompt-catalog.html#control-center">Prompt 总目录 §8</a><br><a href="conventions/ui-design.md#65-domain-pickers-are-shared-composites-not-surface-local-dropdowns">公共 Picker 规则</a></td>
+                <td><span class="pill gold">decided · design/spec ready · implementation pending</span></td>
+              </tr>
+              <tr>
+                <td><strong>AI Search Unified Modes · 搜索、Graph 与 Intelligence 统一入口</strong></td>
+                <td>Quick Search modal 顶层只保留 <code>Vault Search</code> 与一个 AI workspace selector；普通打开默认 <code>AI Search</code>，低频的 <code>AI Graph</code> 和 <code>Vault Intelligence</code> 从同一下拉进入且不跨 modal sticky。移除输入框里的第二层 <code>Vault Analysis</code> mode pill、独立 Vault Intelligence 顶栏按钮和独立 All AI Graphs Library。AI Graph 的全部持久化内容改在该 mode 的紧凑 history list 中浏览，不再显示 Vault/Web/Mixed、Graph type filters 或 preview card grid；Vault Intelligence 在这里仅提供快捷提问与历史投影，完整维护仍属于 Copilot Vault workspace。切换后续接入全键盘体系：<code>Tab</code> 走组件，menu 使用方向键 / Enter / Escape，modifier shortcut 只作加速层且不能抢 input / IME。</td>
+                <td><a href="superpowers/specs/2026-07-28-ai-search-unified-modes.md">正式设计</a><br><a href="gstack/ai-search-unified-modes-2026-07-28/index.html">可交互 mock</a><br><a href="superpowers/specs/2026-07-24-peak-keyboard-navigation-system.md">键盘体系</a></td>
+                <td><span class="pill gold">decided · design/spec ready · implementation pending</span></td>
+              </tr>
+              <tr>
+                <td><strong>AI Graph Artifact Platform · 持久化与异构知识关系</strong></td>
+                <td>把当前绑定 AI Analysis、以 Vault 文件关系为主的临时 graph 升级成一等 artifact：每张图有稳定 <code>graphId</code>、immutable versions、来源、证据与 review 状态；全部 graph 通过 <code>AI Search → AI Graph</code> 的紧凑历史列表统一浏览，不再建设独立 Library 或多排 source/type filters。每行显示稳定创建来源与主要上下文，例如 <code>Created in File Atlas · AI 编辑器生态调研.md</code>；后续更新不覆盖创建来源。Vault、Web、词汇 / 概念、实体、事件、主张和 custom object 可共同成图。AI Search、Composer / File Atlas、Vault Search 与 Chat 共用 app-owned capability、Graph Detail 和 repository，不复制 runtime；JSON artifact 保存 graph body，JSONL 运行记录只引用 artifact，SQLite 提供可重建 projection。</td>
+                <td><a href="superpowers/specs/2026-07-28-ai-graph-artifact-platform.md">正式设计</a><br><a href="gstack/ai-graph-artifact-platform-2026-07-28/index.html">可交互产品原型</a><br><a href="gstack/ai-search-unified-modes-2026-07-28/index.html">统一入口 mock</a><br><a href="research/2026-07-28-ai-graph-artifact-platform/README.md">代码审计与外部研究</a></td>
+                <td><span class="pill gold">decided · design/spec ready · implementation pending</span></td>
+              </tr>
+              <tr>
                 <td><strong>全键盘导航与可访问性系统</strong></td>
-                <td>让 Vault Search、AI Analysis、File Atlas、Composer View、Chat Studio 共享 <code>Zone → Component → Item</code> 导航心智：<code>F6</code> 切区域、<code>Tab</code> 切组件、方向键切元素，并覆盖选区浮动工具栏、图谱、树、Inspector、AI review、焦点恢复、IME 与 detached window；Usage Dashboard、Setup Wizard、Settings 不进入本轮完整键盘工作区范围。</td>
+                <td>让 Vault Search、AI Search（含 AI Graph / Vault Intelligence mode）、File Atlas、Composer View、Chat Studio 共享 <code>Zone → Component → Item</code> 导航心智：<code>F6</code> 切区域、<code>Tab</code> 切组件、方向键切元素，并覆盖选区浮动工具栏、mode menu、图谱、树、Inspector、AI review、焦点恢复、IME 与 detached window；Usage Dashboard、Setup Wizard、Settings 不进入本轮完整键盘工作区范围。</td>
                 <td><a href="superpowers/specs/2026-07-24-peak-keyboard-navigation-system.md">Keyboard system spec</a><br><a href="gstack/keyboard-navigation-system-2026-07-24/index.html">视觉报告</a><br><a href="research/2026-07-24-peak-keyboard-navigation/README.md">研究报告</a></td>
                 <td><span class="pill gold">decided · design/spec ready · implementation pending</span></td>
               </tr>
@@ -414,7 +450,7 @@
               <tr>
                 <td>2026-07-22</td>
                 <td><strong>Peak Share 产品线</strong>（Review / Forms / Portal）</td>
-                <td>方向已从单篇分享扩成四层：Share 是发布底座与获客入口，Review 提供审批和版本化反馈，Forms 让结构化提交回到 Vault，Portal 将多篇文档、客户行动、文件和通知组合成长期交付空间。当前最强商业假设是 Portal；先用自由职业开发者真实项目验证，定价、身份 / 审计、回写与安全仍待研究。</td>
+                <td>方向已从单篇分享扩成四层：Share 是发布底座与获客入口，Review 提供审批和版本化反馈，Forms 让结构化提交回到 Vault，Portal 将多篇文档、客户行动、文件和通知组合成长期交付空间。当前最强商业假设是 Portal；先用自由职业开发者真实项目验证，定价、身份 / 审计、回写与安全仍待研究。<br><strong>2026-07-28 评论兼容约束：</strong>Composer 本地批注、朋友 / 客户的 Share 评论、Portal Review 与 Copilot 引用源必须复用同一套稳定锚点、线程、版本、身份、权限和同步语义；本地私人评论不得随发布自动上传，外部评论不得未经显式选择自动进入 Copilot。该约束已登记，仍属调研候选，不代表远程评论或同步已实施。</td>
                 <td><a href="research/2026-07-22-obsidian-one-click-sharing/README.md">产品线与验证假设</a></td>
               </tr>
               <tr>
@@ -422,6 +458,30 @@
                 <td><strong>Peak Sheet</strong>（Peak Dataset + Peak Compute Engine）</td>
                 <td>多维表格提案补齐 Dataset 层：自由 Sheet 可经确认转换为稳定 ID + 基础 Schema 的结构化数据。首版只验证 Markdown table → Dataset → Table view → ComputePlan → preview / accept → manual refresh；Kanban、Calendar、Relation、脚本、自动化与 Portal 后移。</td>
                 <td><a href="research/2026-07-22-peak-sheet-compute/README.md">产品与架构评估</a></td>
+              </tr>
+              <tr>
+                <td>2026-07-27</td>
+                <td><strong>六大能力走查框架 + 生态取代/结合策略</strong></td>
+                <td>六能力骨架成立，风险在生态清单边界失控。裁决：生态扩张 gate 在六能力走查通过之后；取代清单分三层（射程内 / 重定义走 Peak Sheet / 不碰 DQL 兼容），结合清单大半归为 Composer 原生能力；先立三个共享内核（VoiceInput / ResultList / Transcript）；Command Center 定位"并存策展启动器 + HomePage"而非替代 Cmd+P；Terminal(codex/claude code) 是唯一差异化集成项。<br><strong>同日续作</strong>：四份代码实地盘点（audit-01~04）+ <a href="research/2026-07-27-capability-walkthrough-ecosystem-strategy/capability-matrix.md">产品能力矩阵</a>——六能力成熟度评级、五大系统性主题（入口层最弱 / 最后一公里不接线 / 双实现分叉 / 索引新鲜度 / 测试与风险倒挂）、P0×7 修复清单。</td>
+                <td><a href="research/2026-07-27-capability-walkthrough-ecosystem-strategy/README.md">研究报告</a></td>
+              </tr>
+              <tr>
+                <td>2026-07-27</td>
+                <td><strong>AI 编辑器格局深度调研</strong>（学术 HCI + 产业 + Obsidian 生态 + ambient UX 实证）</td>
+                <td>四大既有决策（自建编辑器/复用 chat UI 思路/不做 DQL 兼容/不做皮肤市场）全部被证据确认；ambient push 设计前提大修——产出八条设计宪法（任务边界推送/脚手架不推成品/更少但更准/带 why-now 上下文等）；新增架构约束：六能力做成"6 个可独立关闭的窄插件共享内核"（Make.md vs Excalidraw 分野）；语音输入定案 push-to-talk。</td>
+                <td><a href="research/2026-07-27-ai-editor-landscape-deep-research/README.md">综合报告</a>（01-04 四篇原稿）</td>
+              </tr>
+              <tr>
+                <td>2026-07-27</td>
+                <td><strong>依赖关系 + 模块化 + 冗余全景审计</strong>（AI 内核 / 数据层 / 域间耦合 / 冗余清单）</td>
+                <td>判决"骨架优等生、内脏三处分裂"：分层纪律🟢高（21 守卫测试锁 0 违规）；AI 内核🔴4/10（4 执行入口、4 套模型路由并存、promptModelMap 失效）；数据层🟡中低（图存储 50 文件直连、mobius_operation 确认双写 bug）；冗余🟡中（真重复有限，大头是"假存在"资产：1 万行无入口 copilot 面板、355 个 tsc 错误无网关）。产出 A0-A4 收口路线：先上 4 把守卫锁 → 模型路由归一 → 数据层收口 → 假存在大扫除。</td>
+                <td><a href="research/2026-07-27-dependency-modularity-audit/README.md">审计判决</a>（01-04 四篇原稿）</td>
+              </tr>
+              <tr>
+                <td>2026-07-28</td>
+                <td><strong>全面审计：外部证据增量（用户之声/生态/产品格局/学界/技术趋势）+ 内部四维评审（战略/设计/文档/执行）</strong></td>
+                <td>裁决"三真三债"：Composer/Ambient/AI Analysis 是真能力（ambient 与深度报告在生态仍是真空白），Chat Studio/Atlas/Usage Dashboard 是负债（Claudian 7.7 个月 154 万下载吞掉 chat 战场）；护城河已从架构（被 Reflect Open 开源复刻）移到"ambient 提议 + 块级来源 + 可回放证据链"——但三层当前零调用。学界硬化三公理（provenance 必做：混合来源 6 天后辨识仅 37.7%；北极星须信任+自我效能双测；AI Graph 拿到可视化过度信任反向证据）。文档登记闭环系统性失效（#decided 25% 失真、63 份 spec 无 status）；执行 P0=止损 checkpoint + spec 契约矛盾修复 + Document Copilot 三件套接活为唯一主线，三份 07-28 新 spec 冻结。<br><strong>Owner 复议</strong>：Chat 保留为稳定管道、File Atlas 修断点继续做深（结构导航方向外部无强竞品）、Usage Dashboard 保真删假——"三债"修正为投入方式差异；真正砍掉的只有 Terminal 集成与 Command Center。</td>
+                <td><a href="research/2026-07-28-project-audit-and-recommendations/README.md">研究报告</a>（01-03 三篇原稿）</td>
               </tr>
             </tbody>
           </table>
@@ -443,6 +503,7 @@
               <tr><td><strong>Conversation auto-split</strong></td><td>多 topic 自动检测并拆分会话</td><td>progress.md § 5</td></tr>
               <tr><td><strong>n8n / multi-agent / marketplace</strong></td><td>集成 n8n / 多 agent 并发模式 / agent marketplace</td><td>progress.md § 5</td></tr>
               <tr><td><strong>Real-time LLM context inspector</strong></td><td>实时看 LLM 拿到的 context 面板</td><td>progress.md § 5</td></tr>
+              <tr><td><strong>Multi-file Copilot workspace</strong></td><td>Copilot 不应绑定当前 Composer 文档：同一任务会话可显式纳入、打开、导航并编辑多个 Vault 文件，在一个位置展示 active file set、逐文件变更与 review / accept 状态；与“逐个文件打开”的 Peak File Workspace 区分，跨文件权限、事务、回滚与 source-of-truth 边界需先调研。</td><td>2026-07-27 owner idea</td></tr>
               <tr><td><strong>Graph 高级可视化</strong></td><td>nebula background / healing ray / source-sink 视图</td><td>progress.md § 5</td></tr>
               <tr><td><strong>Vault Intelligence signal explainability + Semantic finding UI</strong></td><td>把 soft orphan、island cluster、fragile bridge、phantom node、redundant hubs 等 signal 的解释、例子、图上 overlay 和 review surface 合到各自 signal 行里；<code>M-*</code> semantic detector 需要 LLM budget / throttle / evidence review 后才能从 stub 变成用户可见 finding。</td><td><a href="13-feature-vault-intelligence.html#signals">13 · 每类信号细看</a></td></tr>
               <tr><td><strong>Sync 外部笔记源</strong></td><td>flomo / Apple Notes / Calendar / ChatGPT 历史 / Gemini / Claude 历史</td><td>#53 / #23</td></tr>

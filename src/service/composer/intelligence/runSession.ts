@@ -22,6 +22,7 @@
  */
 
 import type { ComposerContextSnapshot, ComposerTarget } from '@/core/composer';
+import type { ComposerCommentSourceRef } from '../comment/commentModel';
 
 /** Sidecar top-level surface — switching only re-projects, never re-owns context. */
 export type IntelligenceTopSurface = 'copilot' | 'history';
@@ -56,6 +57,11 @@ export interface FrozenRunContext {
 	readonly targetQuote: string;
 	/** Related-material source ids explicitly carried into this run. */
 	readonly relatedRefs: readonly string[];
+	/**
+	 * Explicit comment/thread sources. External text remains structured and
+	 * trust-labelled so prompt assembly cannot confuse it with author commands.
+	 */
+	readonly commentRefs: readonly ComposerCommentSourceRef[];
 }
 
 /** One entry in a receipt artifact family. */
@@ -73,7 +79,11 @@ export interface RunChangeArtifact extends RunArtifact {
 
 /** A Source artifact opens / locates a read material. */
 export interface RunSourceArtifact extends RunArtifact {
-	readonly path: string;
+	readonly sourceKind?: 'vault' | 'comment';
+	readonly path?: string;
+	readonly commentId?: string;
+	readonly blockId?: string;
+	readonly trust?: 'owner' | 'external';
 }
 
 /** A Trace artifact is a verifiable receipt only — never model reasoning (§12.3). */
@@ -122,6 +132,8 @@ export interface IntelligenceSessionProjection {
 	readonly receipts: readonly RunReceipt[];
 	/** The task title of the current session (never the generic "对话"). */
 	readonly sessionTitle: string | null;
+	/** Explicit chips waiting to be frozen into the next run. */
+	readonly pendingCommentRefs: readonly ComposerCommentSourceRef[];
 }
 
 let runSeq = 0;
@@ -141,6 +153,9 @@ export class CopilotSessionMachine {
 	private runStatus: CopilotRunStatus = 'idle';
 	private activeRunId: string | null = null;
 	private sessionTitle: string | null = null;
+	/** Sources explicitly brought from the Brief into the next/session run. */
+	private pendingRelatedRefs: readonly string[] = [];
+	private pendingCommentRefs: readonly ComposerCommentSourceRef[] = [];
 	private readonly receiptsById = new Map<string, RunReceipt>();
 	private readonly frozenById = new Map<string, FrozenRunContext>();
 	/** The session a review was entered from, so close returns there (never History). */
@@ -161,6 +176,7 @@ export class CopilotSessionMachine {
 			activeRunId: this.activeRunId,
 			receipts: [...this.receiptsById.values()],
 			sessionTitle: this.sessionTitle,
+			pendingCommentRefs: this.pendingCommentRefs,
 		};
 	}
 
@@ -176,10 +192,16 @@ export class CopilotSessionMachine {
 	 * (the caller does the chip assembly); this only names the task and moves the
 	 * stage. It never auto-runs (spec §Copilot brief handoff).
 	 */
-	openSession(taskTitle: string): void {
+	openSession(
+		taskTitle: string,
+		relatedRefs: readonly string[] = [],
+		commentRefs: readonly ComposerCommentSourceRef[] = [],
+	): void {
 		this.stage = 'session';
 		this.runStatus = 'idle';
 		this.sessionTitle = taskTitle;
+		this.pendingRelatedRefs = Object.freeze([...new Set(relatedRefs)]);
+		this.pendingCommentRefs = freezeCommentRefs(commentRefs);
 		this.notify();
 	}
 
@@ -195,13 +217,21 @@ export class CopilotSessionMachine {
 	 * (assembling). Returns the frozen context (immutable). Later focus changes
 	 * do NOT touch it — the next send freezes fresh (§12.2).
 	 */
-	send(input: { snapshot: ComposerContextSnapshot; targetQuote: string; relatedRefs?: readonly string[] }): FrozenRunContext {
+	send(input: {
+		snapshot: ComposerContextSnapshot;
+		targetQuote: string;
+		relatedRefs?: readonly string[];
+		commentRefs?: readonly ComposerCommentSourceRef[];
+	}): FrozenRunContext {
 		const runId = nextRunId();
+		const relatedRefs = input.relatedRefs ?? this.pendingRelatedRefs;
+		const commentRefs = freezeCommentRefs(input.commentRefs ?? this.pendingCommentRefs);
 		const frozen: FrozenRunContext = Object.freeze({
 			runId,
 			snapshot: input.snapshot,
 			targetQuote: input.targetQuote,
-			relatedRefs: Object.freeze([...(input.relatedRefs ?? [])]),
+			relatedRefs: Object.freeze([...new Set(relatedRefs)]),
+			commentRefs,
 		});
 		this.frozenById.set(runId, frozen);
 		this.activeRunId = runId;
@@ -215,7 +245,7 @@ export class CopilotSessionMachine {
 			elapsedMs: 0,
 			changes: [],
 			insights: [],
-			sources: [],
+			sources: commentRefs.map(commentSourceArtifact),
 			trace: [],
 			acceptedTransactionIds: [],
 		});
@@ -310,4 +340,28 @@ export class CopilotSessionMachine {
 		const projection = this.projection();
 		for (const cb of this.subs) cb(projection);
 	}
+}
+
+function freezeCommentRefs(refs: readonly ComposerCommentSourceRef[]): readonly ComposerCommentSourceRef[] {
+	const unique = new Map<string, ComposerCommentSourceRef>();
+	for (const ref of refs) {
+		unique.set(ref.commentId, Object.freeze({
+			...ref,
+			...(ref.range ? { range: Object.freeze({ ...ref.range }) } : {}),
+			replies: Object.freeze([...ref.replies]),
+		}));
+	}
+	return Object.freeze([...unique.values()]);
+}
+
+function commentSourceArtifact(ref: ComposerCommentSourceRef): RunSourceArtifact {
+	return {
+		id: `comment:${ref.commentId}`,
+		label: ref.body.slice(0, 64),
+		detail: ref.quote,
+		sourceKind: 'comment',
+		commentId: ref.commentId,
+		blockId: ref.blockId,
+		trust: ref.trust,
+	};
 }

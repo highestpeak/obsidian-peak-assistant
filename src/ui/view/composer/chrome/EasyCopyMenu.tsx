@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Check, Copy, FileCode, FileText, Image as ImageIcon, X, type LucideIcon } from 'lucide-react';
-import { IconButton } from '@/ui/components/primitives';
+import { Button, IconButton } from '@/ui/components/primitives';
 import { EASY_COPY_ORDER, buildEasyCopyText, type EasyCopyKind } from '@/service/composer';
 import type { ComposerBlockKind } from '@/core/composer';
 import { useComposerChrome } from './ComposerChromeContext';
@@ -62,18 +62,19 @@ export function EasyCopyMenu({ markdown, blockKind, rasterTargetRef, onClose }: 
 				const Icon = KIND_ICON[kind];
 				const isDone = done?.kind === kind;
 				return (
-					<button
+					<Button
 						key={kind}
 						type="button"
+						variant="unstyled"
 						role="menuitem"
-						className="pk-easy-copy__tile"
+						className="pk-action-capsule pk-easy-copy__tile"
 						data-copy-kind={kind}
 						data-copy-state={isDone ? 'success' : undefined}
 						onClick={(ev) => void copyKind(kind, ev)}
 					>
 						{isDone ? <Check size={14} /> : <Icon size={14} />}
 						<span>{isDone ? done.label : labels[kind]}</span>
-					</button>
+					</Button>
 				);
 			})}
 			<IconButton label={c.close} className="pk-easy-copy__close" data-copy-close="true" onClick={onClose}>

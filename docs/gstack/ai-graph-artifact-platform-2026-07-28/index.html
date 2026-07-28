@@ -1,0 +1,2025 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Graph Artifact Platform · 可交互原型</title>
+  <link rel="stylesheet" href="../../../styles.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #202532;
+      --muted: #687080;
+      --line: #dfe3ea;
+      --soft-line: #eceef3;
+      --paper: #ffffff;
+      --canvas: #f5f6f8;
+      --soft: #f9fafb;
+      --violet: #6e42d8;
+      --violet-soft: #f1ebff;
+      --violet-line: #bca8f1;
+      --blue: #2f67b3;
+      --blue-soft: #eaf2fb;
+      --green: #25715b;
+      --green-soft: #e9f6f1;
+      --amber: #9a6413;
+      --amber-soft: #fff5df;
+      --red: #a74747;
+      --red-soft: #fff0f0;
+      --shadow: 0 10px 28px rgba(28, 33, 43, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--canvas);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      line-height: 1.65;
+    }
+    a { color: var(--violet); text-underline-offset: 3px; }
+    code {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.92em;
+      background: #f1f2f5;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      padding: 1px 5px;
+    }
+    button, input, textarea { font: inherit; }
+    button { color: inherit; }
+    .page {
+      width: min(1360px, calc(100% - 40px));
+      margin: 24px auto 64px;
+    }
+    .hero {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      padding: 34px 38px;
+    }
+    .eyebrow {
+      color: var(--violet);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 8px 0 10px;
+      max-width: 920px;
+      font-size: clamp(30px, 4vw, 50px);
+      line-height: 1.12;
+      letter-spacing: -0.04em;
+    }
+    .subtitle {
+      max-width: 900px;
+      margin: 0;
+      color: #4e5665;
+      font-size: 17px;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 22px;
+    }
+    .tag, .chip, .status, .node-type {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--paper);
+      padding: 4px 9px;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+    .tag.violet, .chip.active {
+      border-color: var(--violet-line);
+      background: var(--violet-soft);
+      color: #5630b9;
+    }
+    .tag.amber, .status.review {
+      border-color: #edcf94;
+      background: var(--amber-soft);
+      color: var(--amber);
+    }
+    .tag.green, .status.active {
+      border-color: #a9d8c7;
+      background: var(--green-soft);
+      color: var(--green);
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 22px;
+      margin-top: 22px;
+      align-items: start;
+    }
+    .nav {
+      position: sticky;
+      top: 18px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      box-shadow: 0 5px 18px rgba(28, 33, 43, 0.05);
+      padding: 16px;
+    }
+    .nav strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    .nav a {
+      display: block;
+      margin: 5px 0;
+      color: #586171;
+      font-size: 13px;
+      text-decoration: none;
+    }
+    .nav a:hover { color: var(--violet); }
+    .nav hr {
+      border: 0;
+      border-top: 1px solid var(--soft-line);
+      margin: 13px 0;
+    }
+    main { min-width: 0; }
+    section {
+      scroll-margin-top: 18px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      box-shadow: 0 5px 18px rgba(28, 33, 43, 0.04);
+      margin-bottom: 20px;
+      padding: 28px;
+    }
+    h2 {
+      margin: 0 0 7px;
+      font-size: 25px;
+      line-height: 1.3;
+      letter-spacing: -0.02em;
+    }
+    h3 {
+      margin: 0 0 7px;
+      font-size: 16px;
+      line-height: 1.4;
+    }
+    p { margin: 7px 0; }
+    .lead { color: var(--muted); margin-bottom: 20px; }
+    .decision {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .decision-card {
+      border: 1px solid var(--line);
+      background: var(--soft);
+      padding: 18px;
+    }
+    .decision-card.target {
+      border-color: var(--violet-line);
+      background: #fbf9ff;
+    }
+    .decision-card ul, .rules, .source-list {
+      margin: 10px 0 0;
+      padding-left: 20px;
+    }
+    .decision-card li, .rules li, .source-list li { margin: 6px 0; }
+    .note {
+      border-left: 4px solid var(--violet);
+      background: var(--violet-soft);
+      padding: 14px 16px;
+      margin-top: 16px;
+    }
+    .note strong { display: inline; }
+    .note.warning {
+      border-left-color: var(--amber);
+      background: var(--amber-soft);
+    }
+    .screen-label {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      margin: 24px 0 10px;
+    }
+    .screen-label:first-of-type { margin-top: 0; }
+    .screen-label p { color: var(--muted); font-size: 13px; margin: 0; }
+    .mock {
+      overflow: hidden;
+      border: 1px solid #cfd4dd;
+      background: #f7f8fa;
+      box-shadow: 0 12px 32px rgba(28, 33, 43, 0.09);
+    }
+    .window-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 48px;
+      padding: 0 16px;
+      background: var(--paper);
+      border-bottom: 1px solid var(--line);
+    }
+    .window-title { font-weight: 800; font-size: 14px; }
+    .window-actions, .filters, .toolbar, .stat-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      align-items: center;
+    }
+    .button {
+      appearance: none;
+      border: 1px solid #cfd4dd;
+      border-radius: 6px;
+      background: var(--paper);
+      color: #3c4452;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 750;
+    }
+    .button.primary {
+      border-color: var(--violet);
+      background: var(--violet);
+      color: white;
+    }
+    .button:focus-visible,
+    .chip:focus-visible,
+    .graph-card:focus-visible,
+    .source-row:focus-visible {
+      outline: 3px solid rgba(110, 66, 216, 0.23);
+      outline-offset: 2px;
+    }
+    .button:not(:disabled), .chip, .graph-card, .source-row {
+      cursor: pointer;
+    }
+    .button:disabled { cursor: wait; opacity: 0.65; }
+    .button:hover:not(:disabled), .chip:hover { border-color: var(--violet-line); }
+    .button.ghost { border-color: transparent; background: transparent; }
+    .library-body { padding: 16px; }
+    .search {
+      min-width: 230px;
+      border: 1px solid #cfd4dd;
+      background: var(--paper);
+      color: #7a8290;
+      padding: 7px 10px;
+      font-size: 12px;
+    }
+    input.search:focus, .input:focus, .textarea:focus {
+      outline: 3px solid rgba(110, 66, 216, 0.14);
+      border-color: var(--violet);
+    }
+    .library-tools {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .graph-cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .graph-card {
+      min-width: 0;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      padding: 14px;
+      transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+    }
+    .graph-card:hover {
+      border-color: var(--violet-line);
+      box-shadow: 0 7px 20px rgba(48, 36, 86, 0.09);
+      transform: translateY(-2px);
+    }
+    .graph-card.selected {
+      border-color: var(--violet);
+      box-shadow: inset 0 0 0 1px var(--violet);
+    }
+    .graph-card[hidden], .empty-state[hidden] { display: none; }
+    .empty-state {
+      grid-column: 1 / -1;
+      border: 1px dashed #cbd0da;
+      background: white;
+      padding: 34px;
+      text-align: center;
+      color: var(--muted);
+    }
+    .graph-card h3 { margin-top: 10px; }
+    .graph-card p {
+      color: var(--muted);
+      font-size: 12px;
+      min-height: 40px;
+    }
+    .graph-card .stat-line {
+      color: #5b6473;
+      font-size: 11px;
+      border-top: 1px solid var(--soft-line);
+      padding-top: 10px;
+      margin-top: 11px;
+    }
+    .preview-map {
+      position: relative;
+      height: 78px;
+      background: #f8f6ff;
+      border: 1px solid #e8e0fb;
+      overflow: hidden;
+    }
+    .dot {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border: 2px solid var(--violet);
+      border-radius: 50%;
+      background: white;
+    }
+    .dot.a { left: 18%; top: 31%; }
+    .dot.b { left: 45%; top: 18%; background: var(--violet-soft); }
+    .dot.c { left: 68%; top: 52%; border-color: var(--blue); }
+    .dot.d { left: 37%; top: 61%; border-color: var(--green); }
+    .preview-map::before,
+    .preview-map::after {
+      position: absolute;
+      display: block;
+      content: "";
+      height: 1px;
+      transform-origin: left;
+      background: #8f81bb;
+    }
+    .preview-map::before { width: 47%; left: 21%; top: 37%; transform: rotate(17deg); }
+    .preview-map::after { width: 31%; left: 39%; top: 59%; transform: rotate(-31deg); }
+    .detail-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 286px;
+      min-height: 640px;
+    }
+    .graph-update-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 260px;
+      border-bottom: 1px solid var(--violet-line);
+      background: #fbfaff;
+    }
+    .graph-update-panel[hidden] { display: none; }
+    .graph-update-main { padding: 14px 16px; }
+    .graph-update-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .graph-update-head strong {
+      display: block;
+      color: #282d38;
+      font-size: 13px;
+    }
+    .graph-update-head span {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .graph-update-main .textarea {
+      min-height: 78px;
+      resize: vertical;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .update-context {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      margin-top: 9px;
+    }
+    .context-chip {
+      border: 1px solid #ddd7ec;
+      border-radius: 999px;
+      background: white;
+      padding: 4px 8px;
+      color: #5b5470;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .update-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .update-suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .update-safety {
+      border-left: 1px solid #e4def3;
+      background: #f5f1ff;
+      padding: 16px;
+      color: #5a5370;
+      font-size: 11px;
+      line-height: 1.55;
+    }
+    .update-safety strong {
+      display: block;
+      margin-bottom: 7px;
+      color: #3d2a78;
+      font-size: 12px;
+    }
+    .update-safety span { display: block; margin-top: 5px; }
+    .update-preview {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 14px;
+      border-top: 1px solid #e4def3;
+      background: white;
+      padding: 12px 16px;
+    }
+    .update-preview[hidden] { display: none; }
+    .diff-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 6px;
+    }
+    .diff-item {
+      border: 1px solid #dfe3ea;
+      background: #f8f9fb;
+      padding: 5px 8px;
+      color: #525b69;
+      font-size: 11px;
+    }
+    .diff-item.add { border-color: #a7dcb8; background: #f0fbf3; color: #28643a; }
+    .diff-item.review { border-color: #ecd59b; background: #fff8e7; color: #865a05; }
+    .source-manager-copy {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+      margin-bottom: 12px;
+    }
+    .managed-source {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid var(--line);
+      background: #fafbfc;
+      padding: 10px;
+      margin-top: 7px;
+      font-size: 12px;
+    }
+    .managed-source small { color: var(--muted); }
+    .dialog-divider {
+      border: 0;
+      border-top: 1px solid var(--soft-line);
+      margin: 14px 0;
+    }
+    .detail-main { min-width: 0; border-right: 1px solid var(--line); }
+    .detail-toolbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: var(--paper);
+    }
+    .graph-stage {
+      position: relative;
+      height: 500px;
+      overflow: hidden;
+      background-color: #fbfbfd;
+      background-image: radial-gradient(#dfe2e8 0.7px, transparent 0.7px);
+      background-size: 18px 18px;
+    }
+    #graph-detail-shell:fullscreen,
+    #graph-detail-shell.is-maximized {
+      width: 100vw;
+      height: 100vh;
+      max-width: none;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--paper);
+    }
+    #graph-detail-shell.is-maximized {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+    }
+    #graph-detail-shell:fullscreen .detail-layout,
+    #graph-detail-shell.is-maximized .detail-layout {
+      flex: 1;
+      min-height: 0;
+      grid-template-columns: minmax(0, 1fr);
+    }
+    #graph-detail-shell:fullscreen .detail-main,
+    #graph-detail-shell.is-maximized .detail-main {
+      display: flex;
+      min-height: 0;
+      flex-direction: column;
+    }
+    #graph-detail-shell:fullscreen .graph-stage,
+    #graph-detail-shell.is-maximized .graph-stage {
+      flex: 1;
+      height: auto;
+      min-height: 0;
+    }
+    #graph-detail-shell:fullscreen .inspector,
+    #graph-detail-shell.is-maximized .inspector {
+      display: none;
+    }
+    body.graph-maximized { overflow: hidden; }
+    .real-graph-root {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      background: #fbfbfd;
+      --pk-bg: #ffffff;
+      --pk-bg-secondary: #f5f2fd;
+      --pk-background: #ffffff;
+      --pk-surface: #ffffff;
+      --pk-surface-raised: #ffffff;
+      --pk-surface-sunken: #e5e7eb;
+      --pk-border: #dfe3ea;
+      --pk-border-strong: #c7ccd6;
+      --pk-text-primary: #202532;
+      --pk-text-secondary: #687080;
+      --pk-foreground: #202532;
+      --pk-foreground-muted: #687080;
+      --pk-accent: #6e42d8;
+      --pk-accent-soft: #ede7ff;
+      --pk-accent-tint: #f3efff;
+    }
+    .real-graph-root > div,
+    .prototype-real-multi-lens,
+    .prototype-real-multi-lens > .pktw-flex-1,
+    .prototype-real-multi-lens .react-flow {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+    }
+    .real-graph-root .react-flow__controls {
+      overflow: hidden;
+      border: 1px solid #d8dce5;
+      border-radius: 6px;
+      box-shadow: 0 3px 12px rgba(32, 37, 50, 0.08);
+    }
+    .real-graph-root .react-flow__controls-button {
+      border: 0;
+      border-bottom: 1px solid #e5e7eb;
+      background: white;
+      color: #4f5868;
+    }
+    .real-graph-root .react-flow__controls-button:last-child { border-bottom: 0; }
+    .prototype-lens-thinking-tree .react-flow__edge-path {
+      stroke: #1976b8 !important;
+      stroke-width: 2.6px !important;
+      stroke-dasharray: none !important;
+    }
+    .prototype-lens-timeline .react-flow__edge-path {
+      stroke: #a86400 !important;
+      stroke-width: 2.6px !important;
+      stroke-dasharray: 7 4 !important;
+    }
+    .prototype-lens-thinking-tree .react-flow__edgelabel-renderer,
+    .prototype-lens-timeline .react-flow__edgelabel-renderer {
+      display: none;
+    }
+    .lens-guide {
+      position: absolute;
+      top: 52px;
+      right: 14px;
+      z-index: 12;
+      max-width: 310px;
+      border: 1px solid #d7dce5;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 4px 14px rgba(32, 37, 50, 0.08);
+      padding: 8px 10px;
+      color: #515a69;
+      font-size: 11px;
+      line-height: 1.45;
+      pointer-events: none;
+    }
+    .lens-guide strong {
+      display: block;
+      margin-bottom: 2px;
+      color: #252b36;
+      font-size: 12px;
+    }
+    .real-graph-root .clickable-icon {
+      appearance: none;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: transparent;
+      box-shadow: none;
+      color: #4f5868;
+    }
+    .real-graph-root .clickable-icon:hover {
+      border-color: #d8d0ee;
+      background: #f5f2fd;
+      color: #5630b9;
+    }
+    .real-graph-root .pktw-bg-secondary {
+      border-color: #bca8f1;
+      background: #f1ebff;
+      color: #5630b9;
+    }
+    .renderer-parity {
+      color: #4f5868;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .detail-footer {
+      display: flex;
+      gap: 18px;
+      padding: 11px 14px;
+      background: var(--paper);
+      border-top: 1px solid var(--line);
+      color: #5c6574;
+      font-size: 12px;
+    }
+    .inspector { background: var(--paper); padding: 16px; }
+    .inspector-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      border-bottom: 1px solid var(--soft-line);
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+    }
+    .kv {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr);
+      gap: 6px 10px;
+      font-size: 12px;
+      margin: 13px 0;
+    }
+    .kv dt { color: var(--muted); }
+    .kv dd { margin: 0; font-weight: 650; }
+    .evidence {
+      border: 1px solid #e3e6ec;
+      background: var(--soft);
+      padding: 10px;
+      margin-top: 9px;
+      font-size: 11px;
+    }
+    .evidence a {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 750;
+    }
+    .create-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(310px, 0.9fr);
+      gap: 0;
+    }
+    .form-pane, .summary-pane { padding: 18px; }
+    .form-pane { background: var(--paper); border-right: 1px solid var(--line); }
+    .summary-pane { background: #fafafa; }
+    .field { margin-bottom: 16px; }
+    .field-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+    .input, .textarea {
+      width: 100%;
+      border: 1px solid #cfd4dd;
+      background: white;
+      padding: 9px 10px;
+      color: #394150;
+      font-size: 12px;
+    }
+    .textarea { min-height: 68px; }
+    .source-row {
+      display: grid;
+      grid-template-columns: 22px minmax(0, 1fr) auto;
+      gap: 9px;
+      align-items: center;
+      border: 1px solid var(--line);
+      background: white;
+      padding: 9px;
+      margin-top: 7px;
+      font-size: 12px;
+      width: 100%;
+      color: inherit;
+      text-align: left;
+    }
+    .source-row:hover { border-color: var(--violet-line); }
+    .source-row:not(.active) { opacity: 0.62; }
+    .source-row:not(.active) .check { background: white; color: transparent; }
+    .check {
+      width: 14px;
+      height: 14px;
+      border: 1px solid var(--violet);
+      background: var(--violet);
+      color: white;
+      line-height: 12px;
+      text-align: center;
+      font-size: 10px;
+    }
+    .source-row small { color: var(--muted); }
+    .summary-card {
+      border: 1px solid var(--line);
+      background: white;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .summary-card p { color: var(--muted); font-size: 12px; }
+    .progress {
+      height: 6px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e9e6f1;
+      margin: 11px 0;
+    }
+    .progress > span {
+      display: block;
+      width: 0;
+      height: 100%;
+      background: var(--violet);
+      transition: width 360ms ease;
+    }
+    .prototype-banner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      border: 1px solid var(--violet-line);
+      background: var(--violet-soft);
+      padding: 12px 14px;
+      margin-top: 18px;
+      color: #5031a5;
+      font-size: 13px;
+    }
+    .prototype-banner strong { color: #40258d; }
+    .toast {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 40;
+      max-width: 360px;
+      border: 1px solid #b9a4ef;
+      background: #2d2441;
+      color: white;
+      box-shadow: 0 16px 40px rgba(20, 16, 31, 0.28);
+      padding: 12px 15px;
+      font-size: 13px;
+      opacity: 0;
+      transform: translateY(14px);
+      pointer-events: none;
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .dialog-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(20, 23, 31, 0.45);
+    }
+    .dialog-backdrop[hidden] { display: none; }
+    .dialog {
+      width: min(560px, 100%);
+      max-height: min(700px, calc(100vh - 40px));
+      overflow: auto;
+      border: 1px solid var(--line);
+      background: white;
+      box-shadow: 0 24px 80px rgba(20, 23, 31, 0.28);
+      padding: 20px;
+    }
+    .dialog-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      border-bottom: 1px solid var(--soft-line);
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+    }
+    .version-row {
+      display: grid;
+      grid-template-columns: 54px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      border-bottom: 1px solid var(--soft-line);
+      padding: 11px 0;
+      font-size: 12px;
+    }
+    .version-row:last-child { border-bottom: 0; }
+    .edit-grid { display: grid; gap: 11px; }
+    .edit-grid label { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 22px;
+      align-items: stretch;
+      margin-top: 18px;
+    }
+    .flow-box {
+      position: relative;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      padding: 16px;
+      min-height: 150px;
+    }
+    .flow-box:not(:last-child)::after {
+      position: absolute;
+      right: -17px;
+      top: 50%;
+      content: "→";
+      color: var(--violet);
+      font-size: 22px;
+      font-weight: 800;
+      transform: translateY(-50%);
+    }
+    .flow-box ul {
+      margin: 8px 0 0;
+      padding-left: 18px;
+      color: #596171;
+      font-size: 12px;
+    }
+    .surface-grid, .type-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .surface-card, .type-card {
+      border: 1px solid var(--line);
+      background: var(--soft);
+      padding: 14px;
+    }
+    .surface-card p, .type-card p { color: var(--muted); font-size: 12px; }
+    .unified-search-frame {
+      display: block;
+      width: 100%;
+      height: 748px;
+      border: 1px solid var(--line);
+      background: #eef0f3;
+    }
+    .footer {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+      margin-top: 24px;
+    }
+    @media (max-width: 1050px) {
+      .layout { grid-template-columns: 1fr; }
+      .nav { position: static; }
+      .nav a { display: inline-block; margin-right: 12px; }
+      .graph-cards, .surface-grid, .type-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .flow-box:nth-child(2)::after { display: none; }
+    }
+    @media (max-width: 760px) {
+      .page { width: min(100% - 20px, 1360px); margin-top: 10px; }
+      .hero, section { padding: 20px; }
+      .decision, .graph-cards, .surface-grid, .type-grid, .create-layout, .flow {
+        grid-template-columns: 1fr;
+      }
+      .detail-layout { grid-template-columns: 1fr; }
+      .graph-update-panel { grid-template-columns: 1fr; }
+      .update-safety { border-top: 1px solid #e4def3; border-left: 0; }
+      .update-preview { grid-template-columns: 1fr; }
+      .detail-main, .form-pane { border-right: 0; }
+      .inspector { border-top: 1px solid var(--line); }
+      .library-tools, .detail-toolbar, .screen-label { align-items: stretch; flex-direction: column; }
+      .flow-box::after { display: none; }
+      .graph-stage { height: 360px; }
+      .unified-search-frame { height: 760px; }
+      .n1 { left: 35%; }
+      .n3, .n4 { right: 3%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="eyebrow">Peak Assistant · Product / Data Design</div>
+      <h1>AI Graph 不再是一次分析结果，而是一张可以持续维护的知识图</h1>
+      <p class="subtitle">稳定保存、全局可见、版本可追溯；节点可以来自 Vault、互联网、词汇、人物、主张与任意自定义对象。下面是可直接点击的设计原型，不代表功能已经实现。</p>
+      <div class="meta">
+        <span class="tag violet">Interactive prototype</span>
+        <span class="tag amber">Implementation pending</span>
+        <span class="tag">2026-07-28</span>
+        <span class="tag">AI Search history → Detail → Update / Create</span>
+      </div>
+      <div class="prototype-banner">
+        <span><strong>试用提示：</strong>搜索或筛选 Graph、点击卡片打开详情；用 Update graph 输入自然语言并预览语义差异，或到 Create Graph 创建一张新图。</span>
+        <button class="button" id="reset-prototype" type="button">Reset demo</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <nav class="nav" aria-label="页面导航">
+        <strong>视觉评审</strong>
+        <a href="#judgment">核心判断</a>
+        <a href="#library">01 · AI Search 统一入口</a>
+        <a href="#detail">02 · Graph Detail · 可交互</a>
+        <a href="#create">03 · Create Graph · 可交互</a>
+        <a href="#model">对象与关系模型</a>
+        <a href="#architecture">持久化与复用</a>
+        <a href="#rules">设计红线</a>
+        <hr>
+        <strong>配套文档</strong>
+        <a href="../../superpowers/specs/2026-07-28-ai-graph-artifact-platform.md">正式设计规格</a>
+        <a href="../../research/2026-07-28-ai-graph-artifact-platform/README.md">代码审计与外部研究</a>
+        <a href="../../planned-requirements.html#pr-composer-ai-graph">Planned Requirement</a>
+        <a href="../../roadmap.html">Roadmap</a>
+      </nav>
+
+      <main>
+        <section id="judgment">
+          <h2>先把两种 Graph 分开</h2>
+          <p class="lead">当前的 local / two-hop file graph 仍然有价值，但它不应该承担 AI Graph 的产品含义。</p>
+          <div class="decision">
+            <article class="decision-card">
+              <span class="tag">Neighborhood Graph</span>
+              <h3>回答“这些文件怎么连”</h3>
+              <ul>
+                <li>节点主要是 Vault 文件。</li>
+                <li>关系来自 wikilink、semantic edge、folder path。</li>
+                <li>确定性生成；切换 layout 不改变数据。</li>
+                <li>默认只读，不产生独立 artifact。</li>
+              </ul>
+            </article>
+            <article class="decision-card target">
+              <span class="tag violet">AI Graph</span>
+              <h3>回答“这些对象和观点是什么关系”</h3>
+              <ul>
+                <li>节点可以是词汇、概念、实体、事件、主张、网页或文件。</li>
+                <li>关系有 predicate、qualifier、证据、confidence 与 review 状态。</li>
+                <li>每张图有稳定身份、不可变版本和来源历史。</li>
+                <li>AI Search、Composer、Search、Chat 重开同一张图。</li>
+              </ul>
+            </article>
+          </div>
+          <div class="note"><strong>产品裁决：</strong>允许两者共享 canvas renderer，但 domain model、生命周期和保存语义必须分离。</div>
+        </section>
+
+        <section id="library">
+          <div class="screen-label">
+            <div>
+              <h2>01 · AI Search → AI Graph history</h2>
+              <p>所有 AI Graph 仍然持久化，但不再拥有独立 Library；统一入口复用 AI Search modal 与历史列表。</p>
+            </div>
+            <span class="tag violet">Revised IA · interactive</span>
+          </div>
+          <iframe
+            class="unified-search-frame"
+            src="../ai-search-unified-modes-2026-07-28/index.html?embed=1"
+            title="AI Search 统一模式可交互原型"
+          ></iframe>
+          <div class="note"><strong>入口规则：</strong>普通打开默认 AI Search；AI Graph 与 Vault Intelligence 从同一个顶栏下拉进入。AI Graph 只保留紧凑历史列表，不显示 Vault / Web / Mixed、Graph type filters 或 preview card grid。<a href="../ai-search-unified-modes-2026-07-28/index.html">单独打开聚焦评审稿</a>。</div>
+        </section>
+
+        <section id="detail">
+          <div class="screen-label">
+            <div>
+              <h2>02 · Graph Detail · Production Renderer</h2>
+              <p>Canvas 直接复用 AI Analysis 的真实 MultiLensGraph；同一张图只有一个阅读与审阅壳。</p>
+            </div>
+            <span class="tag">Stable graph ID · immutable versions</span>
+          </div>
+          <div class="mock" id="graph-detail-shell" aria-label="Graph Detail production-renderer 原型">
+            <div class="window-bar">
+              <div>
+                <span class="window-title" id="detail-title">GraphRAG 概念与方法</span>
+                <span class="tag violet" id="detail-type">Concept</span>
+                <span class="tag" id="detail-version">v4</span>
+              </div>
+              <div class="window-actions">
+                <button class="button" id="fullscreen-graph" type="button" aria-pressed="false">全屏查看</button>
+                <button class="button" id="open-versions" type="button">Versions</button>
+                <button class="button" id="manage-sources" type="button">Sources <span id="manage-source-count">8</span></button>
+                <button class="button primary" id="update-graph" type="button">Update graph</button>
+              </div>
+            </div>
+            <div class="graph-update-panel" id="graph-update-panel" hidden>
+              <div class="graph-update-main">
+                <div class="graph-update-head">
+                  <div>
+                    <strong>Update this graph</strong>
+                    <span>消费平级的 Shared AI Instruction Composer；Chat Studio、Composer Copilot 与 AI Graph 都只是 consumer，当前图上下文由 AI Graph adapter 注入。</span>
+                  </div>
+                  <button class="button ghost" id="close-graph-update" type="button">Close</button>
+                </div>
+                <textarea class="textarea" id="graph-update-instruction" placeholder="例如：补充 AI Capability Gateway 与 Run Envelope 的关系；合并重复概念；删除缺少证据的关系。"></textarea>
+                <div class="update-context" aria-label="自动带入的更新上下文">
+                  <span class="context-chip">Shared AI Instruction Composer</span>
+                  <span class="context-chip" id="update-target-graph">Current graph</span>
+                  <span class="context-chip" id="update-target-version">Current version</span>
+                  <span class="context-chip" id="update-selection-context">Current selection</span>
+                  <span class="context-chip" id="update-source-context">Sources</span>
+                  <button class="button ghost" id="update-add-context" type="button">+ Add context or source</button>
+                </div>
+                <div class="update-actions">
+                  <div class="update-suggestions" aria-label="更新示例">
+                    <button class="chip update-suggestion" type="button" data-update-prompt="补充缺少的概念和关系，并保留现有结构。">Add or connect concepts</button>
+                    <button class="chip update-suggestion" type="button" data-update-prompt="重新组织层级，只保留最清晰的 parent → child 主线。">Reorganize hierarchy</button>
+                    <button class="chip update-suggestion" type="button" data-update-prompt="检查缺少证据的关系，并提出删除、降级或补证建议。">Review unsupported relations</button>
+                  </div>
+                  <button class="button primary" id="preview-graph-update" type="button">Preview changes</button>
+                </div>
+              </div>
+              <aside class="update-safety">
+                <strong>Peer capability · AI Graph adapter</strong>
+                <span>1. 复用文本、附件、@ / [[、历史、提交 / 停止和键盘行为。</span>
+                <span>2. AI Graph 只提供 graph context adapter 与 semantic-diff submit handler。</span>
+                <span>3. 只有接受预览后才创建 immutable version。</span>
+              </aside>
+              <div class="update-preview" id="graph-update-preview" hidden>
+                <div>
+                  <strong>Proposed semantic diff · <span id="update-preview-version">v5</span></strong>
+                  <div class="diff-summary">
+                    <span class="diff-item add">+ 2 nodes</span>
+                    <span class="diff-item add">+ 3 relations</span>
+                    <span class="diff-item">~ 1 concept merge</span>
+                    <span class="diff-item review">1 relation · Needs review</span>
+                    <span class="diff-item">Sources unchanged</span>
+                  </div>
+                </div>
+                <div class="toolbar">
+                  <button class="button" id="revise-graph-update" type="button">Revise instruction</button>
+                  <button class="button primary" id="apply-graph-update" type="button">Accept as new version</button>
+                </div>
+              </div>
+            </div>
+            <div class="detail-layout">
+              <div class="detail-main">
+                <div class="detail-toolbar">
+                  <div class="toolbar">
+                    <span class="tag violet">Production renderer</span>
+                    <span class="renderer-parity">MultiLensGraph · @xyflow/react · actual layout hooks</span>
+                  </div>
+                  <div class="toolbar">
+                    <button class="chip" id="review-next" type="button">Needs review <span id="review-count">3</span></button>
+                    <span class="renderer-parity">Drag nodes · pan · wheel zoom · use real lens tabs</span>
+                  </div>
+                </div>
+                <div class="graph-stage" id="graph-stage">
+                  <div class="real-graph-root pktw-root" id="real-graph-root"></div>
+                  <div class="lens-guide" id="lens-guide" hidden></div>
+                </div>
+                <div class="detail-footer">
+                  <span>Sources <span id="detail-source-count">8</span></span>
+                  <span>Versions <span id="detail-version-count">4</span></span>
+                  <span>Needs review <span id="detail-review-count">3</span></span>
+                  <span>Last run · 2,840 tokens · estimated</span>
+                </div>
+              </div>
+              <aside class="inspector" id="selection-inspector" aria-live="polite">
+                <div class="inspector-title">
+                  <div><small id="inspector-kind">RELATION</small><br><strong id="inspector-title">supports</strong></div>
+                  <span class="status review" id="inspector-status">Needs review</span>
+                </div>
+                <dl class="kv" id="inspector-kv">
+                  <dt>From</dt><dd>Microsoft GraphRAG Overview</dd>
+                  <dt>To</dt><dd>Global search claim</dd>
+                  <dt>Origin</dt><dd>AI inferred</dd>
+                  <dt>Confidence</dt><dd>0.86</dd>
+                  <dt>Qualifier</dt><dd>corpus-level questions</dd>
+                </dl>
+                <h3>Evidence</h3>
+                <div id="inspector-evidence">
+                <div class="evidence">
+                  <a href="#">microsoft.github.io/…/overview</a>
+                  “Global search is useful for reasoning about holistic questions…”
+                  <div style="margin-top: 7px; color: #7a8290">Captured 2026-07-28 · source hash saved</div>
+                </div>
+                <div class="evidence">
+                  <a href="#">GraphRAG 调研笔记.md · §2</a>
+                  Vault lines 38–43 · content hash matches
+                </div>
+                </div>
+                <div class="toolbar" style="margin-top: 14px">
+                  <button class="button primary" id="accept-selection" type="button">Accept</button>
+                  <button class="button" id="edit-selection" type="button">Edit</button>
+                  <button class="button" id="reject-selection" type="button">Reject</button>
+                </div>
+              </aside>
+            </div>
+          </div>
+          <div class="note"><strong>平级能力依赖：</strong><code>Shared AI Instruction Composer</code> 是根级“共享产品能力”，与 AI Graph Artifact Platform 平级。Chat Studio、Composer Copilot、AI Graph 都是它的 consumers；AI Graph 只负责注入 graphId、baseVersion、selection、sources 与 review context，并把提交结果交给 semantic-diff runtime。</div>
+          <div class="note"><strong>交互职责：</strong>Update graph 是自然语言修改入口，先给 semantic diff，接受后才创建新版本；Sources 只管理来源、freshness 与可用性，不代表图已经更新。</div>
+          <div class="note"><strong>真实复用边界：</strong>Canvas、Topology / Thinking Tree / Bridges / Timeline、节点拖拽、平移、缩放、Controls 和 node click 全部来自生产 <code>MultiLensGraph</code> / <code>@xyflow/react</code>。原型壳为 Thinking Tree / Timeline 提供目标态 lens projection：树只接收父子主线，时间线只接收一份 evolution chain，避免生产当前的跨语义混线与 temporal 重复边。全屏查看、右侧 evidence / review、AI Search history 与 artifact persistence 是目标产品壳层。</div>
+          <div class="note warning"><strong>证据不是装饰：</strong>没有 evidence 的 AI relation 默认进入 Needs review；AI 推断使用虚线，不能伪装成来源明确的事实。</div>
+        </section>
+
+        <section id="create">
+          <div class="screen-label">
+            <div>
+              <h2>03 · Create Graph</h2>
+              <p>这里只负责第一次创建：用户决定问题、图谱类型和初始来源范围；成功验证后自动保存。</p>
+            </div>
+            <span class="tag amber">AI credits before run</span>
+          </div>
+          <div class="mock" aria-label="Create AI Graph 可交互原型">
+            <div class="window-bar">
+              <span class="window-title" id="create-title">Create AI Graph</span>
+              <button class="button ghost" id="close-create" type="button">Close</button>
+            </div>
+            <div class="create-layout">
+              <div class="form-pane">
+                <div class="field">
+                  <span class="field-label">你想看什么关系？</span>
+                  <textarea class="textarea" id="graph-prompt">比较 GraphRAG、传统 RAG 和 community summary 的概念关系，并标出关键来源与有争议的主张。</textarea>
+                </div>
+                <div class="field">
+                  <span class="field-label">Graph type</span>
+                  <div class="filters">
+                    <button class="chip graph-type-choice" type="button" data-create-type="free">Free explore</button>
+                    <button class="chip graph-type-choice active" type="button" data-create-type="concept">Concept map</button>
+                    <button class="chip graph-type-choice" type="button" data-create-type="evidence">Evidence map</button>
+                    <button class="chip graph-type-choice" type="button" data-create-type="causal">Causal</button>
+                  </div>
+                </div>
+                <div class="field">
+                  <span class="field-label">Sources</span>
+                  <button class="source-row source-toggle active" type="button" data-create-source="current">
+                    <span class="check">✓</span>
+                    <span><strong>Current document</strong><br><small>GraphRAG 调研笔记.md</small></span>
+                    <span class="tag">Vault</span>
+                  </button>
+                  <button class="source-row source-toggle active" type="button" data-create-source="vault">
+                    <span class="check">✓</span>
+                    <span><strong>Selected Vault results</strong><br><small>4 documents · review list</small></span>
+                    <span class="tag">Vault</span>
+                  </button>
+                  <button class="source-row source-toggle active" type="button" data-create-source="web">
+                    <span class="check">✓</span>
+                    <span><strong>Research the Web</strong><br><small>Open pages; snippets are not evidence</small></span>
+                    <span class="tag amber">Web on</span>
+                  </button>
+                  <button class="source-row source-toggle" type="button" data-create-source="manual">
+                    <span class="check"></span>
+                    <span><strong>Paste text or add an existing Graph</strong><br><small>Optional source</small></span>
+                    <span class="tag">Add</span>
+                  </button>
+                </div>
+              </div>
+              <aside class="summary-pane">
+                <div class="summary-card">
+                  <h3>Run preview</h3>
+                  <p id="run-preview">5 Vault documents + up to 6 opened Web sources. Web access is explicit and the captured evidence is minimal.</p>
+                  <dl class="kv">
+                    <dt>Cost</dt><dd id="run-cost">Medium · estimated</dd>
+                    <dt>Output</dt><dd id="run-output">New persisted graph</dd>
+                    <dt>Review</dt><dd id="run-review">Low confidence + inferred relations</dd>
+                  </dl>
+                </div>
+                <div class="summary-card">
+                  <h3>Automatic save</h3>
+                  <p>成功通过 schema 与 evidence validation 后创建 graph ID 和 version 1。运行失败不会留下伪成功 artifact。</p>
+                </div>
+                <div class="summary-card" id="run-progress-card" hidden>
+                  <h3 id="run-progress-title">Resolving sources…</h3>
+                  <div class="progress"><span id="run-progress"></span></div>
+                  <p id="run-progress-copy">Capturing evidence units from selected sources.</p>
+                </div>
+                <button class="button primary" id="generate-graph" type="button" style="width: 100%">Generate AI Graph</button>
+              </aside>
+            </div>
+          </div>
+          <div class="note"><strong>职责边界：</strong>这里仅创建新 Graph。已有 Graph 的修改从 Graph Detail 的 Update graph 进入；Sources 只改变可用来源集合，只有经过更新预览并被接受，才会创建新版本。拖动节点、缩放和切 lens 只保存 view preference，不制造版本噪音。</div>
+        </section>
+
+        <section id="model">
+          <h2>同一张图可以容纳哪些对象</h2>
+          <p class="lead">节点类型保持开放，关系语义保持受控。custom predicate 必须归入稳定 relation family。</p>
+          <div class="type-grid">
+            <article class="type-card"><span class="node-type">Concept / term</span><h3>词汇与概念</h3><p>broader、narrower、related、defines、alias；不依赖任何文件才能存在。</p></article>
+            <article class="type-card"><span class="node-type">Entity</span><h3>真实世界对象</h3><p>人物、组织、地点、产品、作品、数据集；同一对象可被多个来源提及。</p></article>
+            <article class="type-card"><span class="node-type">Claim</span><h3>观点与证据</h3><p>supports、refutes、qualifies；冲突来源并存，不静默合成唯一真相。</p></article>
+            <article class="type-card"><span class="node-type">Event / process</span><h3>时间与因果</h3><p>precedes、causes、enables、blocks、depends-on，并可带时间或范围 qualifier。</p></article>
+            <article class="type-card"><span class="node-type">Vault document</span><h3>本地来源</h3><p>文件只是 node kind 之一；evidence 可定位 heading、block、line 与 exact quote。</p></article>
+            <article class="type-card"><span class="node-type">Web resource</span><h3>互联网来源</h3><p>保存 canonical URL、capturedAt、content hash 与最小证据片段，不默认复制整页。</p></article>
+          </div>
+        </section>
+
+        <section id="architecture">
+          <h2>一份 artifact，多个入口</h2>
+          <p class="lead">产品复用的关键不只是共享 renderer，而是共享 app-owned capability、repository 与 projection。</p>
+          <div class="flow" aria-label="AI Graph 数据流">
+            <article class="flow-box">
+              <span class="tag">Inputs</span>
+              <h3>显式来源</h3>
+              <ul><li>Vault file / block</li><li>Web page</li><li>Manual text</li><li>Existing graph</li></ul>
+            </article>
+            <article class="flow-box">
+              <span class="tag violet">Capability</span>
+              <h3>共享 AI Graph runtime</h3>
+              <ul><li>Extraction</li><li>Entity resolution</li><li>Relation validation</li><li>Evidence capture</li></ul>
+            </article>
+            <article class="flow-box">
+              <span class="tag green">Source of truth</span>
+              <h3>Artifact persistence</h3>
+              <ul><li>Manifest + immutable JSON versions</li><li>JSONL run → artifact ref</li><li>SQLite rebuildable projection</li></ul>
+            </article>
+            <article class="flow-box">
+              <span class="tag">Surfaces</span>
+              <h3>同一 Graph Detail</h3>
+              <ul><li>AI Search</li><li>Composer / File Atlas</li><li>Vault Search</li><li>Chat Studio</li></ul>
+            </article>
+          </div>
+          <div class="surface-grid">
+            <article class="surface-card"><h3>AI Search</h3><p>AI Graph mode 复用紧凑 history list；analysis run 只保存 artifact ref。</p></article>
+            <article class="surface-card"><h3>Composer / File Atlas</h3><p>当前文档或选区作为 context；显示 preview，可打开完整 Graph Detail。</p></article>
+            <article class="surface-card"><h3>Vault Search</h3><p>Inspector 显示 Related Graphs 与 View all，不再只看最近 20 次 token overlap。</p></article>
+            <article class="surface-card"><h3>Chat Studio</h3><p>Graph 作为可重开的 artifact card；conversation 保存 reference，不复制 graph body。</p></article>
+            <article class="surface-card"><h3>JSON artifacts</h3><p>每张图拥有 stable graph ID、manifest 和 immutable version files。</p></article>
+            <article class="surface-card"><h3>SQLite projection</h3><p>用于 AI Graph history、搜索、统计与 backlinks；删除后可从 artifact 重建。</p></article>
+          </div>
+        </section>
+
+        <section id="rules">
+          <h2>实现前不可丢的设计红线</h2>
+          <ul class="rules">
+            <li><strong>不自动跑 Web：</strong>用户明确打开 Web，运行前看到 source scope 和成本级别。</li>
+            <li><strong>snippet 不是证据：</strong>搜索摘要只找候选；relation 必须回到打开后的正文片段。</li>
+            <li><strong>不覆盖旧版本：</strong>source refresh 与 semantic edit 产生 immutable version。</li>
+            <li><strong>不让 UI store 充当数据库：</strong>selection、viewport、filter 可以 transient；graph truth 不可以。</li>
+            <li><strong>不复制 runtime：</strong>各 surface 只提供 context adapter 与呈现，不新建 graph agent / history。</li>
+            <li><strong>不默认写回 Vault：</strong>接受 relation 只改变 graph；写回笔记或 links 必须另行显式操作。</li>
+            <li><strong>不急着上 Neo4j / RDF：</strong>首版采用 versioned JSON property graph + SQLite projection。</li>
+          </ul>
+          <div class="note warning"><strong>状态声明：</strong>以上是产品与数据设计目标。当前生产 AI Graph 仍主要绑定 AI Analysis、Vault 文件关系和 analysis snapshot；本稿没有修改任何运行时代码。</div>
+        </section>
+      </main>
+    </div>
+
+    <div class="footer">
+      Peak Assistant · AI Graph Artifact Platform · Interactive design prototype · 2026-07-28
+    </div>
+  </div>
+
+  <div class="dialog-backdrop" id="prototype-dialog" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+      <div class="dialog-head">
+        <div>
+          <span class="eyebrow">Interactive prototype</span>
+          <h3 id="dialog-title">Version history</h3>
+        </div>
+        <button class="button ghost" id="close-dialog" type="button" aria-label="关闭">Close</button>
+      </div>
+      <div id="dialog-body"></div>
+    </div>
+  </div>
+  <div class="toast" id="prototype-toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (() => {
+      const graphPresets = {
+        graphrag: {
+          title: "GraphRAG 概念与方法",
+          type: "Concept",
+          version: 4,
+          sourceCount: 8,
+          reviewCount: 3,
+          nodes: {
+            graphrag: ["Concept", "GraphRAG"],
+            rag: ["Concept", "Retrieval-Augmented Generation"],
+            web: ["Web resource", "Microsoft GraphRAG Overview"],
+            claim: ["Claim", "Global search can answer corpus-level questions"],
+            vault: ["Vault document", "GraphRAG 调研笔记.md"],
+            process: ["Process", "Community summarization"]
+          }
+        },
+        editors: {
+          title: "AI 编辑器生态",
+          type: "Entity",
+          version: 3,
+          sourceCount: 12,
+          reviewCount: 2,
+          nodes: {
+            graphrag: ["Product category", "AI-native editor"],
+            rag: ["Product category", "Code editor"],
+            web: ["Web resource", "Cursor product overview"],
+            claim: ["Claim", "Agentic editing reduces context switching"],
+            vault: ["Vault document", "AI 编辑器格局调研.md"],
+            process: ["Process", "Agentic edit loop"]
+          }
+        },
+        pkm: {
+          title: "PKM 证据地图",
+          type: "Evidence",
+          version: 6,
+          sourceCount: 6,
+          reviewCount: 0,
+          nodes: {
+            graphrag: ["Concept", "Personal knowledge management"],
+            rag: ["Claim", "Active recall strengthens memory"],
+            web: ["Research source", "Retrieval practice study"],
+            claim: ["Claim", "Evidence-linked notes improve synthesis"],
+            vault: ["Vault document", "PKM 工作流研究.md"],
+            process: ["Process", "Capture → connect → synthesize"]
+          }
+        },
+        "agent-timeline": {
+          title: "Agent 能力演化时间线",
+          type: "Timeline",
+          version: 2,
+          sourceCount: 9,
+          reviewCount: 4,
+          nodes: {
+            graphrag: ["Capability", "Tool use"],
+            rag: ["Method", "ReAct"],
+            web: ["Web resource", "Agentic systems report"],
+            claim: ["Claim", "Control planes make agents auditable"],
+            vault: ["Vault document", "Agent Runtime 演化.md"],
+            process: ["Architecture", "AI Capability Gateway"]
+          }
+        }
+      };
+
+      const relationMeta = {
+        narrower: { label: "narrower than", from: "graphrag", to: "rag", origin: "AI extracted", confidence: "0.91", qualifier: "direct concept hierarchy", status: "Accepted" },
+        defined: { label: "defined by", from: "graphrag", to: "web", origin: "Deterministic", confidence: "1.00", qualifier: "primary source", status: "Accepted" },
+        supports: { label: "supports", from: "web", to: "claim", origin: "AI inferred", confidence: "0.86", qualifier: "corpus-level questions", status: "Needs review" },
+        explained: { label: "explained in", from: "graphrag", to: "vault", origin: "AI extracted", confidence: "0.94", qualifier: "section-level evidence", status: "Accepted" },
+        implemented: { label: "implemented by", from: "graphrag", to: "process", origin: "AI inferred", confidence: "0.78", qualifier: "method relationship", status: "Needs review" }
+      };
+
+      const state = {
+        source: "all",
+        type: "all",
+        sort: "updated",
+        graph: "graphrag",
+        lens: "topology",
+        selection: { kind: "relation", id: "supports" },
+        createType: "concept",
+        createdCount: 0
+      };
+
+      const byId = (id) => document.getElementById(id);
+      const all = (selector) => [...document.querySelectorAll(selector)];
+      const nodeLabel = (id) => graphPresets[state.graph].nodes[id][1];
+      const graphRelations = () => {
+        const preset = graphPresets[state.graph];
+        if (!preset.relations) {
+          preset.relations = JSON.parse(JSON.stringify(relationMeta));
+          if (preset.reviewCount === 0) {
+            Object.values(preset.relations).forEach((relation) => { relation.status = "Accepted"; });
+          }
+        }
+        return preset.relations;
+      };
+      let toastTimer = null;
+
+      function showToast(message) {
+        const toast = byId("prototype-toast");
+        toast.textContent = message;
+        toast.classList.add("show");
+        window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(() => toast.classList.remove("show"), 2600);
+      }
+
+      function scrollToSection(id) {
+        byId(id).scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+
+      function refitProductionGraph() {
+        window.setTimeout(() => {
+          window.dispatchEvent(new CustomEvent("peak-prototype:refit"));
+        }, 120);
+      }
+
+      function isGraphFullscreen() {
+        const shell = byId("graph-detail-shell");
+        return document.fullscreenElement === shell || shell.classList.contains("is-maximized");
+      }
+
+      function syncFullscreenControl() {
+        const active = isGraphFullscreen();
+        const button = byId("fullscreen-graph");
+        button.textContent = active ? "退出全屏" : "全屏查看";
+        button.setAttribute("aria-pressed", String(active));
+      }
+
+      function exitFallbackFullscreen() {
+        const shell = byId("graph-detail-shell");
+        if (!shell.classList.contains("is-maximized")) return;
+        shell.classList.remove("is-maximized");
+        document.body.classList.remove("graph-maximized");
+        syncFullscreenControl();
+        refitProductionGraph();
+      }
+
+      async function toggleGraphFullscreen() {
+        const shell = byId("graph-detail-shell");
+        if (document.fullscreenElement === shell) {
+          await document.exitFullscreen();
+          return;
+        }
+        if (shell.classList.contains("is-maximized")) {
+          exitFallbackFullscreen();
+          return;
+        }
+        if (shell.requestFullscreen) {
+          try {
+            await shell.requestFullscreen();
+            return;
+          } catch (_error) {
+            // Local file viewers may reject the native Fullscreen API.
+          }
+        }
+        shell.classList.add("is-maximized");
+        document.body.classList.add("graph-maximized");
+        syncFullscreenControl();
+        refitProductionGraph();
+      }
+
+      function applyLibraryFilters() {
+        const search = byId("graph-search");
+        const empty = byId("graph-empty");
+        if (!search || !empty) return;
+        const term = search.value.trim().toLocaleLowerCase();
+        let visible = 0;
+        all(".graph-card").forEach((card) => {
+          const sourceMatch = state.source === "all" || card.dataset.source === state.source;
+          const typeMatch = state.type === "all" || card.dataset.type === state.type;
+          const termMatch = !term || card.dataset.search.toLocaleLowerCase().includes(term);
+          card.hidden = !(sourceMatch && typeMatch && termMatch);
+          if (!card.hidden) visible += 1;
+        });
+        empty.hidden = visible > 0;
+      }
+
+      function setExclusiveActive(selector, target) {
+        all(selector).forEach((item) => item.classList.toggle("active", item === target));
+      }
+
+      function selectFilter(target, key, value) {
+        state[key] = value;
+        setExclusiveActive(key === "source" ? ".source-filter" : ".type-filter", target);
+        applyLibraryFilters();
+      }
+
+      function sortLibrary() {
+        const modes = [
+          ["updated", "Recently updated ↓", "updated"],
+          ["created", "Recently created ↓", "created"],
+          ["title", "Title A–Z", "title"]
+        ];
+        const current = modes.findIndex(([key]) => key === state.sort);
+        const [key, label, attr] = modes[(current + 1) % modes.length];
+        state.sort = key;
+        byId("sort-graphs").textContent = label;
+        const container = byId("graph-cards");
+        const cards = all(".graph-card");
+        cards.sort((a, b) => {
+          if (attr === "title") return a.querySelector("h3").textContent.localeCompare(b.querySelector("h3").textContent, "zh");
+          return Number(b.dataset[attr]) - Number(a.dataset[attr]);
+        });
+        cards.forEach((card) => container.insertBefore(card, byId("graph-empty")));
+        showToast(`Library 已按 ${label.replace(" ↓", "")} 排序`);
+      }
+
+      function renderGraphNodes() {
+        const preset = graphPresets[state.graph];
+        window.dispatchEvent(new CustomEvent("peak-prototype:set-graph", {
+          detail: {
+            graphId: state.graph,
+            title: preset.title,
+            type: preset.type
+          }
+        }));
+      }
+
+      function renderLensGuide() {
+        const guide = byId("lens-guide");
+        const copy = {
+          "thinking-tree": "<strong>层级主线</strong>由上到下阅读；只显示 parent → child，隐藏跨域与时间关系。",
+          timeline: "<strong>时间演化</strong>由早到晚阅读；每条 evolution relation 只绘制一次。"
+        };
+        const content = copy[state.lens];
+        guide.hidden = !content;
+        guide.innerHTML = content || "";
+      }
+
+      function renderDetailHeader() {
+        const preset = graphPresets[state.graph];
+        byId("detail-title").textContent = preset.title;
+        byId("detail-type").textContent = preset.type;
+        byId("detail-version").textContent = `v${preset.version}`;
+        byId("detail-source-count").textContent = preset.sourceCount;
+        byId("manage-source-count").textContent = preset.sourceCount;
+        byId("detail-version-count").textContent = preset.version;
+        byId("review-count").textContent = preset.reviewCount;
+        byId("detail-review-count").textContent = preset.reviewCount;
+        renderUpdateContext();
+        renderGraphNodes();
+      }
+
+      function statusClass(status) {
+        if (status === "Accepted") return "status active";
+        if (status === "Rejected") return "status";
+        return "status review";
+      }
+
+      function evidenceHtml(primaryLabel, secondaryLabel) {
+        return `
+          <div class="evidence">
+            <a href="#">${primaryLabel}</a>
+            “The selected source contains the exact passage used for this assertion.”
+            <div style="margin-top: 7px; color: #7a8290">Captured 2026-07-28 · source hash saved</div>
+          </div>
+          <div class="evidence">
+            <a href="#">${secondaryLabel} · source excerpt</a>
+            Exact quote + locator · content hash matches
+          </div>
+        `;
+      }
+
+      function renderInspector() {
+        const selection = state.selection;
+
+        if (selection.kind === "node") {
+          const [kind, label] = graphPresets[state.graph].nodes[selection.id];
+          byId("inspector-kind").textContent = kind.toUpperCase();
+          byId("inspector-title").textContent = label;
+          byId("inspector-status").className = "status active";
+          byId("inspector-status").textContent = selection.id === "claim" ? "Suggested" : "Accepted";
+          byId("inspector-kv").innerHTML = `
+            <dt>Kind</dt><dd>${kind}</dd>
+            <dt>Origin</dt><dd>${selection.id === "vault" ? "Deterministic" : "AI extracted"}</dd>
+            <dt>Aliases</dt><dd>${selection.id === "graphrag" ? "Graph RAG" : "None"}</dd>
+            <dt>Sources</dt><dd>${selection.id === "web" ? "1 Web source" : "2 evidence refs"}</dd>
+            <dt>Review</dt><dd>${selection.id === "claim" ? "Suggested" : "Accepted"}</dd>
+          `;
+          byId("inspector-evidence").innerHTML = evidenceHtml(label, graphPresets[state.graph].nodes.vault[1]);
+          return;
+        }
+
+        const relation = graphRelations()[selection.id];
+        byId("inspector-kind").textContent = "RELATION";
+        byId("inspector-title").textContent = relation.label;
+        byId("inspector-status").className = statusClass(relation.status);
+        byId("inspector-status").textContent = relation.status;
+        byId("inspector-kv").innerHTML = `
+          <dt>From</dt><dd>${nodeLabel(relation.from)}</dd>
+          <dt>To</dt><dd>${nodeLabel(relation.to)}</dd>
+          <dt>Origin</dt><dd>${relation.origin}</dd>
+          <dt>Confidence</dt><dd>${relation.confidence}</dd>
+          <dt>Qualifier</dt><dd>${relation.qualifier}</dd>
+        `;
+        byId("inspector-evidence").innerHTML = evidenceHtml(nodeLabel(relation.from), nodeLabel("vault"));
+      }
+
+      function openGraph(graphId) {
+        closeUpdateComposer();
+        state.graph = graphId;
+        state.lens = "topology";
+        state.selection = { kind: "relation", id: "supports" };
+        all(".graph-card").forEach((card) => card.classList.toggle("selected", card.dataset.graph === graphId));
+        renderDetailHeader();
+        renderLensGuide();
+        renderInspector();
+        scrollToSection("detail");
+        showToast(`已打开「${graphPresets[graphId].title}」`);
+      }
+
+      function reviewSelection(nextStatus) {
+        if (state.selection.kind !== "relation") {
+          showToast("Node 已记录当前 review 状态");
+          return;
+        }
+        const relation = graphRelations()[state.selection.id];
+        const wasReview = relation.status === "Needs review";
+        relation.status = nextStatus;
+        if (wasReview) {
+          const count = Math.max(0, graphPresets[state.graph].reviewCount - 1);
+          graphPresets[state.graph].reviewCount = count;
+          byId("review-count").textContent = count;
+          byId("detail-review-count").textContent = count;
+        }
+        renderInspector();
+        showToast(`${relation.label} 已标记为 ${nextStatus}；接受后会形成 semantic draft`);
+      }
+
+      function openDialog(title, body) {
+        byId("dialog-title").textContent = title;
+        byId("dialog-body").innerHTML = body;
+        byId("prototype-dialog").hidden = false;
+        byId("close-dialog").focus();
+      }
+
+      function closeDialog() {
+        byId("prototype-dialog").hidden = true;
+      }
+
+      function openVersions() {
+        const preset = graphPresets[state.graph];
+        openDialog(`${preset.title} · Versions`, `
+          <div class="version-row"><strong>v${preset.version}</strong><span><b>Current</b><br>Accepted semantic update</span><span class="status active">Head</span></div>
+          <div class="version-row"><strong>v${Math.max(1, preset.version - 1)}</strong><span>Updated from changed sources<br><small>2 relations changed</small></span><button class="button" type="button" data-version-preview>Preview</button></div>
+          <div class="version-row"><strong>v1</strong><span>Initial generation<br><small>Created from AI Search</small></span><button class="button" type="button" data-version-preview>Preview</button></div>
+          <div class="note"><strong>Prototype rule：</strong>恢复旧版本不会覆盖历史，而是把选中版本复制成新的 head。</div>
+        `);
+      }
+
+      function selectedContextLabel() {
+        if (state.selection.kind === "node") {
+          return `Selected node · ${nodeLabel(state.selection.id)}`;
+        }
+        const relation = graphRelations()[state.selection.id];
+        return `Selected relation · ${nodeLabel(relation.from)} → ${relation.label} → ${nodeLabel(relation.to)}`;
+      }
+
+      function renderUpdateContext() {
+        if (!byId("update-target-graph")) return;
+        const preset = graphPresets[state.graph];
+        byId("update-target-graph").textContent = `Current graph · ${preset.title}`;
+        byId("update-target-version").textContent = `Base · v${preset.version}`;
+        byId("update-selection-context").textContent = selectedContextLabel();
+        byId("update-source-context").textContent = `Sources · ${preset.sourceCount}`;
+        byId("update-preview-version").textContent = `v${preset.version + 1}`;
+      }
+
+      function openUpdateComposer(prefill = "") {
+        const panel = byId("graph-update-panel");
+        panel.hidden = false;
+        byId("graph-update-preview").hidden = true;
+        renderUpdateContext();
+        if (prefill) byId("graph-update-instruction").value = prefill;
+        byId("graph-update-instruction").focus();
+        refitProductionGraph();
+      }
+
+      function closeUpdateComposer() {
+        const panel = byId("graph-update-panel");
+        if (!panel || panel.hidden) return;
+        panel.hidden = true;
+        byId("graph-update-preview").hidden = true;
+        refitProductionGraph();
+      }
+
+      function openSourcesDialog() {
+        const preset = graphPresets[state.graph];
+        const driftStatus = preset.sourceChanged
+          ? '<span class="status review">Changed</span>'
+          : '<span class="status active">Fresh</span>';
+        openDialog(`${preset.title} · Sources`, `
+          <div class="source-manager-copy">
+            Sources 是这张图可引用的证据与上下文集合。添加、移除或检查来源不会直接改图；需要更新时，再把变更带入 Update graph 审阅。
+          </div>
+          <div class="managed-source">
+            <span><strong>Vault documents</strong><br><small>${Math.max(1, preset.sourceCount - 3)} items · exact block locators</small></span>
+            <span class="status active">Available</span>
+          </div>
+          <div class="managed-source">
+            <span><strong>Web sources</strong><br><small>3 captured pages · content hashes retained</small></span>
+            ${driftStatus}
+          </div>
+          <div class="toolbar" style="margin-top: 12px">
+            <button class="button" id="source-add" type="button">Add source</button>
+            <button class="button" id="source-check" type="button">Check freshness</button>
+          </div>
+          <hr class="dialog-divider">
+          <div class="source-manager-copy">
+            来源有变化时，由你决定是否让 AI 分析这些变化；Graph 在接受 semantic diff 前保持不变。
+          </div>
+          <button class="button primary" id="source-use-update" type="button">Use source changes in Update graph</button>
+        `);
+      }
+
+      async function previewGraphUpdate() {
+        const instruction = byId("graph-update-instruction").value.trim();
+        if (!instruction) {
+          byId("graph-update-instruction").focus();
+          showToast("先描述你希望这张图如何变化");
+          return;
+        }
+        const button = byId("preview-graph-update");
+        button.disabled = true;
+        button.textContent = "Analyzing…";
+        await new Promise((resolve) => window.setTimeout(resolve, 720));
+        byId("graph-update-preview").hidden = false;
+        button.disabled = false;
+        button.textContent = "Preview changes";
+        showToast("已生成 semantic diff；当前 Graph 尚未改变");
+        refitProductionGraph();
+      }
+
+      function applyGraphUpdate() {
+        const preset = graphPresets[state.graph];
+        preset.version += 1;
+        preset.reviewCount += 1;
+        preset.sourceChanged = false;
+        renderDetailHeader();
+        closeUpdateComposer();
+        showToast(`已接受 semantic diff，并创建 immutable version v${preset.version}`);
+      }
+
+      function openEditDialog() {
+        if (state.selection.kind !== "relation") {
+          showToast("当前选择是 node；原型只演示 relation 编辑");
+          return;
+        }
+        const relation = graphRelations()[state.selection.id];
+        openDialog("Edit relationship", `
+          <div class="edit-grid">
+            <label>Predicate<input class="input" id="edit-predicate" value="${relation.label}"></label>
+            <label>Qualifier<input class="input" id="edit-qualifier" value="${relation.qualifier}"></label>
+            <label>Why this relation<textarea class="textarea" id="edit-explanation">Evidence supports this relationship, but owner review is required.</textarea></label>
+            <div class="toolbar"><button class="button primary" id="save-relation-edit" type="button">Save semantic draft</button><button class="button" id="cancel-relation-edit" type="button">Cancel</button></div>
+          </div>
+        `);
+        byId("edit-predicate").focus();
+      }
+
+      function updateRunPreview() {
+        const activeSources = all(".source-toggle.active").map((item) => item.dataset.createSource);
+        const vaultCount = activeSources.includes("current") && activeSources.includes("vault") ? 5 : activeSources.some((item) => item === "current" || item === "vault") ? 1 : 0;
+        const webOn = activeSources.includes("web");
+        const manualOn = activeSources.includes("manual");
+        const parts = [];
+        if (vaultCount) parts.push(`${vaultCount} Vault document${vaultCount > 1 ? "s" : ""}`);
+        if (webOn) parts.push("up to 6 opened Web sources");
+        if (manualOn) parts.push("1 manual / existing Graph source");
+        byId("run-preview").textContent = parts.length
+          ? `${parts.join(" + ")}. Evidence units will be captured before extraction.`
+          : "No sources selected. Select at least one source before generation.";
+        byId("run-cost").textContent = webOn || activeSources.length >= 3 ? "Medium · estimated" : "Low · estimated";
+        byId("run-review").textContent = state.createType === "evidence" ? "Claims + support / refute review" : "Low confidence + inferred relations";
+      }
+
+      function enterCreateMode() {
+        byId("create-title").textContent = "Create AI Graph";
+        byId("run-output").textContent = "New persisted graph";
+        byId("generate-graph").textContent = "Generate AI Graph";
+        scrollToSection("create");
+      }
+
+      function buildCreatedCard(graphId, preset, source) {
+        if (!byId("graph-cards")) return;
+        const card = document.createElement("article");
+        card.className = "graph-card selected";
+        card.tabIndex = 0;
+        card.setAttribute("role", "button");
+        card.dataset.graph = graphId;
+        card.dataset.source = source;
+        card.dataset.type = state.createType;
+        card.dataset.updated = String(100 + state.createdCount);
+        card.dataset.created = String(100 + state.createdCount);
+        card.dataset.search = `${preset.title} ${state.createType} generated prototype`;
+        const safeTitle = preset.title.replace(/[&<>"']/g, (character) => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#039;"
+        })[character]);
+        card.innerHTML = `
+          <div class="preview-map"><span class="dot a"></span><span class="dot b"></span><span class="dot c"></span><span class="dot d"></span></div>
+          <h3>${safeTitle}</h3>
+          <span class="tag violet">${preset.type}</span>
+          <span class="tag">${source[0].toUpperCase() + source.slice(1)}</span>
+          <p>由交互原型刚刚创建；已保存 graph ID 与 version 1。</p>
+          <div class="stat-line"><span>17 nodes</span><span>21 relations</span><span>6 sources</span></div>
+          <div class="stat-line"><span class="status review">5 need review</span><span>Updated now</span></div>
+        `;
+        byId("graph-cards").insertBefore(card, byId("graph-cards").firstChild);
+      }
+
+      async function generateGraph() {
+        const prompt = byId("graph-prompt").value.trim();
+        const activeSources = all(".source-toggle.active");
+        if (!prompt) {
+          byId("graph-prompt").focus();
+          showToast("先描述你想看的关系");
+          return;
+        }
+        if (!activeSources.length) {
+          showToast("至少选择一个 source");
+          return;
+        }
+
+        const button = byId("generate-graph");
+        const progressCard = byId("run-progress-card");
+        const progress = byId("run-progress");
+        const phases = [
+          [18, "Resolving sources…", "Opening selected sources and capturing evidence units."],
+          [44, "Extracting objects…", "Finding concepts, entities, claims and candidate relations."],
+          [72, "Resolving identities…", "Merging aliases while keeping evidence and uncertainty."],
+          [92, "Validating graph…", "Checking schema, evidence coverage and review status."],
+          [100, "Persisting version…", "Creating graph ID, immutable version and browse projection."]
+        ];
+        button.disabled = true;
+        progressCard.hidden = false;
+        for (const [value, title, copy] of phases) {
+          byId("run-progress-title").textContent = title;
+          byId("run-progress-copy").textContent = copy;
+          progress.style.width = `${value}%`;
+          await new Promise((resolve) => window.setTimeout(resolve, 430));
+        }
+
+        state.createdCount += 1;
+        const graphId = `created-${state.createdCount}`;
+        const typeLabel = document.querySelector(".graph-type-choice.active").textContent.replace(" map", "");
+        const cleanPrompt = prompt.replace(/[。！？.!?].*$/, "");
+        const title = cleanPrompt.length > 26 ? `${cleanPrompt.slice(0, 26)}…` : cleanPrompt;
+        graphPresets[graphId] = {
+          title,
+          type: typeLabel,
+          version: 1,
+          sourceCount: 6,
+          reviewCount: 5,
+          nodes: {
+            graphrag: ["Concept", title],
+            rag: ["Concept", "Source concept"],
+            web: ["Web resource", "Captured primary source"],
+            claim: ["Claim", "Generated relationship requires review"],
+            vault: ["Vault document", "Selected source context"],
+            process: ["Process", "Extraction and synthesis"]
+          }
+        };
+        const hasWeb = activeSources.some((item) => item.dataset.createSource === "web");
+        const hasVault = activeSources.some((item) => ["current", "vault"].includes(item.dataset.createSource));
+        const source = hasWeb && hasVault ? "mixed" : hasWeb ? "web" : "vault";
+        all(".graph-card").forEach((card) => card.classList.remove("selected"));
+        buildCreatedCard(graphId, graphPresets[graphId], source);
+        button.disabled = false;
+        progressCard.hidden = true;
+        progress.style.width = "0";
+        openGraph(graphId);
+        showToast("Graph 已自动保存为 version 1，并可从 AI Search → AI Graph history 重开");
+      }
+
+      document.addEventListener("click", (event) => {
+        const sourceFilter = event.target.closest(".source-filter");
+        if (sourceFilter) selectFilter(sourceFilter, "source", sourceFilter.dataset.source);
+
+        const typeFilter = event.target.closest(".type-filter");
+        if (typeFilter) selectFilter(typeFilter, "type", typeFilter.dataset.type);
+
+        const card = event.target.closest(".graph-card");
+        if (card) openGraph(card.dataset.graph);
+
+        const sourceToggle = event.target.closest(".source-toggle");
+        if (sourceToggle) {
+          sourceToggle.classList.toggle("active");
+          sourceToggle.querySelector(".check").textContent = sourceToggle.classList.contains("active") ? "✓" : "";
+          updateRunPreview();
+        }
+
+        const graphType = event.target.closest(".graph-type-choice");
+        if (graphType) {
+          state.createType = graphType.dataset.createType;
+          setExclusiveActive(".graph-type-choice", graphType);
+          updateRunPreview();
+        }
+
+        const updateSuggestion = event.target.closest("[data-update-prompt]");
+        if (updateSuggestion) {
+          byId("graph-update-instruction").value = updateSuggestion.dataset.updatePrompt;
+          byId("graph-update-instruction").focus();
+        }
+
+        if (event.target.closest("[data-version-preview]")) showToast("Version preview 会以只读方式打开，不会移动 head");
+        if (event.target.closest(".evidence a")) {
+          event.preventDefault();
+          showToast("这里会打开精确 source locator；原型不跳出当前页面");
+        }
+      });
+
+      document.addEventListener("keydown", (event) => {
+        const card = event.target.closest(".graph-card");
+        if (card && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          openGraph(card.dataset.graph);
+        }
+        if (event.key === "Escape" && !byId("prototype-dialog").hidden) {
+          closeDialog();
+          return;
+        }
+        if (event.key === "Escape" && !byId("graph-update-panel").hidden) {
+          closeUpdateComposer();
+          return;
+        }
+        if (event.key === "Escape") exitFallbackFullscreen();
+      });
+
+      byId("graph-search")?.addEventListener("input", applyLibraryFilters);
+      byId("sort-graphs")?.addEventListener("click", sortLibrary);
+      byId("new-graph")?.addEventListener("click", enterCreateMode);
+      byId("show-archived")?.addEventListener("click", () => showToast("Archived 是可恢复视图；原型数据里暂时没有归档 Graph"));
+      byId("open-versions").addEventListener("click", openVersions);
+      byId("fullscreen-graph").addEventListener("click", toggleGraphFullscreen);
+      byId("manage-sources").addEventListener("click", openSourcesDialog);
+      byId("update-graph").addEventListener("click", () => openUpdateComposer());
+      byId("close-graph-update").addEventListener("click", closeUpdateComposer);
+      byId("update-add-context").addEventListener("click", openSourcesDialog);
+      byId("preview-graph-update").addEventListener("click", previewGraphUpdate);
+      byId("revise-graph-update").addEventListener("click", () => {
+        byId("graph-update-preview").hidden = true;
+        byId("graph-update-instruction").focus();
+        refitProductionGraph();
+      });
+      byId("apply-graph-update").addEventListener("click", applyGraphUpdate);
+      byId("review-next").addEventListener("click", () => {
+        const next = Object.entries(graphRelations()).find(([, item]) => item.status === "Needs review");
+        if (!next) {
+          showToast("当前 Graph 已没有待审阅关系");
+          return;
+        }
+        state.selection = { kind: "relation", id: next[0] };
+        renderInspector();
+        renderUpdateContext();
+      });
+      byId("accept-selection").addEventListener("click", () => reviewSelection("Accepted"));
+      byId("reject-selection").addEventListener("click", () => reviewSelection("Rejected"));
+      byId("edit-selection").addEventListener("click", openEditDialog);
+      byId("close-create").addEventListener("click", () => scrollToSection("library"));
+      byId("generate-graph").addEventListener("click", generateGraph);
+      byId("close-dialog").addEventListener("click", closeDialog);
+      byId("prototype-dialog").addEventListener("click", (event) => {
+        if (event.target === byId("prototype-dialog")) closeDialog();
+      });
+      byId("dialog-body").addEventListener("click", (event) => {
+        if (event.target.id === "cancel-relation-edit") closeDialog();
+        if (event.target.id === "save-relation-edit") {
+          const relation = graphRelations()[state.selection.id];
+          relation.label = byId("edit-predicate").value.trim() || relation.label;
+          relation.qualifier = byId("edit-qualifier").value.trim() || relation.qualifier;
+          relation.status = "Accepted";
+          renderInspector();
+          closeDialog();
+          showToast("Semantic edit 已保存为 draft；接受后创建新版本");
+        }
+        if (event.target.id === "source-add") {
+          graphPresets[state.graph].sourceCount += 1;
+          renderDetailHeader();
+          openSourcesDialog();
+          showToast("Source 已加入可用上下文；Graph 与版本保持不变");
+        }
+        if (event.target.id === "source-check") {
+          const button = event.target;
+          button.disabled = true;
+          button.textContent = "Checking…";
+          window.setTimeout(() => {
+            graphPresets[state.graph].sourceChanged = true;
+            openSourcesDialog();
+            showToast("发现 Web source 变化；Graph 尚未更新");
+          }, 700);
+        }
+        if (event.target.id === "source-use-update") {
+          closeDialog();
+          openUpdateComposer("分析发生变化的来源，只提出有证据支持的节点与关系更新，并标出需要人工确认的部分。");
+        }
+      });
+      byId("reset-prototype").addEventListener("click", () => window.location.reload());
+      document.addEventListener("fullscreenchange", () => {
+        syncFullscreenControl();
+        refitProductionGraph();
+      });
+
+      window.addEventListener("peak-prototype:node-click", (event) => {
+        const rawId = event.detail?.path?.split("/").pop();
+        const nodeIdMap = {
+          root: "graphrag",
+          foundation: "rag",
+          web: "web",
+          claim: "claim",
+          vault: "vault",
+          process: "process",
+          bridge: "bridge",
+          outcome: "outcome"
+        };
+        const nodeId = nodeIdMap[rawId];
+        if (!nodeId) return;
+        const preset = graphPresets[state.graph];
+        if (!preset.nodes[nodeId]) {
+          preset.nodes[nodeId] = nodeId === "bridge"
+            ? ["Evidence assertion", "Evidence review bridge"]
+            : ["Graph artifact", "Reviewable knowledge graph"];
+        }
+        state.selection = { kind: "node", id: nodeId };
+        renderInspector();
+        renderUpdateContext();
+        showToast(`已通过生产 MultiLensGraph 选择节点：${preset.nodes[nodeId][1]}`);
+      });
+
+      window.addEventListener("peak-prototype:lens-change", (event) => {
+        state.lens = event.detail?.lens ?? "topology";
+        renderLensGuide();
+        showToast(`生产 MultiLensGraph 已切换到 ${state.lens} lens`);
+      });
+
+      renderDetailHeader();
+      renderInspector();
+      renderLensGuide();
+      updateRunPreview();
+    })();
+  </script>
+  <script src="prototype.bundle.js"></script>
+</body>
+</html>

@@ -31,6 +31,8 @@
 	--pkc-prose-size: 15px;
 	--pkc-instruction-morph-duration: 320ms;
 	--pkc-instruction-morph-ease: cubic-bezier(0.22, 0.68, 0.36, 1);
+	--pk-comment-rail-width: 224px;
+	--pk-comment-rail-gap: 18px;
 	/* Callouts intentionally retain the reference's calm blue family rather
 	   than inheriting the product-wide purple accent. */
 	--pkc-callout-border: rgb(191, 208, 251);
@@ -247,15 +249,28 @@
    layout; reduced-motion honored at the end of this file.
    ═══════════════════════════════════════════════════════════════════════════ */
 
+.peak-composer-root .pk-composer-workspace {
+	position: relative;
+	display: flex;
+	align-items: stretch;
+	justify-content: center;
+	gap: var(--pk-comment-rail-gap);
+	width: 100%;
+	max-width: calc(var(--pkc-paper-width) + var(--pk-comment-rail-width) + var(--pk-comment-rail-gap));
+	min-height: 100%;
+	margin: 0 auto;
+}
 .peak-composer-root .pk-composer-shell {
 	position: relative;
 	box-sizing: border-box;
 	display: flex;
 	flex-direction: column;
+	flex: 1 1 var(--pkc-paper-width);
 	width: 100%;
 	max-width: var(--pkc-paper-width);
+	min-width: 0;
 	min-height: 100%;
-	margin: 0 auto;
+	margin: 0;
 	padding: var(--pkc-paper-pad-y-top) var(--pkc-paper-pad-x) var(--pkc-paper-pad-y-bottom);
 	background: var(--pkc-paper-bg);
 	border: 1px solid var(--pkc-paper-border);
@@ -353,7 +368,7 @@
 	margin: 2px var(--pk-space-2);
 }
 
-/* ── family 1: flattened action row (28px pill capsules) ───────────────────── */
+/* ── family 1: flattened action row (compact 28px pill capsules) ───────────── */
 .peak-composer-root .pk-composer-block { position: relative; }
 .peak-composer-root .pk-block-action-row {
 	position: relative;
@@ -383,14 +398,100 @@
 	box-sizing: border-box;
 	width: fit-content;
 	min-height: 38px;
-	padding: 3px 6px;
+	padding: 4px 6px;
 	border: 1px solid var(--pk-border);
 	border-radius: var(--pk-radius-lg);
 	background: var(--pk-surface-overlay);
 	box-shadow: var(--pk-shadow-popover);
 	white-space: nowrap;
 	max-width: 100%;
-	overflow: hidden;
+	/* Keep every real capability reachable on constrained Composer widths. The
+	   design source scrolls this one compact row; silently clipping quick actions
+	   made a paragraph look as if it only had "润色文本". */
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: none;
+}
+.peak-composer-root .pk-block-action-row__shell::-webkit-scrollbar { display: none; }
+.peak-composer-root .pk-block-action-row__interaction-zone {
+	display: block;
+	width: max-content;
+	max-width: 100%;
+}
+.peak-composer-root .pk-block-action-row[data-floating-surface] {
+	height: auto;
+	margin-top: 8px;
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+	transform: translateY(0);
+	overflow: visible;
+	transition-delay: 0s;
+}
+.peak-composer-root .pk-insert-trigger,
+.peak-composer-root .pk-action-surface-trigger {
+	position: relative;
+	display: inline-flex;
+}
+.peak-composer-root .pk-block-action-row[data-floating-surface] .pk-insert-trigger::after,
+.peak-composer-root .pk-block-action-row[data-floating-surface] .pk-action-surface-trigger::after {
+	content: '';
+	position: absolute;
+	z-index: 79;
+	top: 100%;
+	right: -8px;
+	left: -8px;
+	height: 8px;
+}
+.peak-composer-root .pk-insert-type-menu {
+	display: flex;
+	align-items: center;
+	flex-wrap: nowrap;
+	gap: 2px;
+	box-sizing: border-box;
+	width: max-content;
+	max-width: min(680px, calc(100vw - 40px), 100%);
+	padding: 4px 6px;
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-lg);
+	background: var(--pk-surface-overlay);
+	box-shadow: var(--pk-shadow-popover);
+	overflow-x: auto;
+	overflow-y: hidden;
+	white-space: nowrap;
+	scrollbar-width: none;
+}
+.peak-composer-root .pk-insert-type-menu::-webkit-scrollbar { display: none; }
+.peak-composer-root .pk-insert-type-menu__item {
+	min-height: 28px !important;
+	height: 28px !important;
+	padding: 0 5px !important;
+	border: 0 !important;
+	border-radius: var(--pk-radius-pill) !important;
+	background: transparent !important;
+	color: var(--pk-fg) !important;
+	font-size: var(--pk-text-xs) !important;
+	font-weight: 500 !important;
+}
+.peak-composer-root .pk-insert-type-menu__item:hover,
+.peak-composer-root .pk-insert-type-menu__item:focus-visible {
+	background: var(--pk-accent-tint) !important;
+	color: var(--pk-accent-text) !important;
+}
+.peak-composer-root .pk-block-action-row__expanded-surface {
+	display: block;
+	width: max-content;
+	max-width: min(620px, calc(100vw - 40px));
+	margin-top: 6px;
+	white-space: normal;
+}
+.peak-composer-root .pk-block-action-row__expanded-surface .pk-composer-panel {
+	margin-top: 0;
+}
+.peak-composer-root .pk-block-action-row__expanded-surface .pk-block-history {
+	width: min(420px, calc(100vw - 40px));
+	max-height: 360px;
+	overflow: auto;
 }
 .peak-composer-root .pk-composer-block:hover .pk-block-action-row,
 .peak-composer-root .pk-composer-block:focus-within .pk-block-action-row,
@@ -424,7 +525,8 @@
 		visibility 0s linear var(--pkc-instruction-morph-duration);
 }
 .peak-composer-root .pk-block-action-row__options {
-	max-width: 900px;
+	max-width: none;
+	flex: none;
 	opacity: 1;
 	visibility: visible;
 	pointer-events: auto;
@@ -434,7 +536,7 @@
 }
 .peak-composer-root .pk-block-action-row__instruction-shell {
 	max-width: 0;
-	gap: 9px;
+	gap: 7px;
 	opacity: 0;
 	visibility: hidden;
 	pointer-events: none;
@@ -463,16 +565,25 @@
 .peak-composer-root .pk-action-tail {
 	display: inline-flex;
 	align-items: center;
-	gap: 4px;
+	gap: 2px;
+}
+.peak-composer-root .pk-action-core {
+	gap: 1px;
+}
+.peak-composer-root .pk-action-ai {
+	/* Give the group divider breathing room while visually binding Sparkles to
+	   the first AI label instead of leaving it stranded beside the divider. */
+	gap: 0;
+	padding-left: 4px;
 }
 .peak-composer-root .pk-action-capsule {
-	/* 28px pill capsule family — height !important-defended (obsidian-reset). */
+	/* 28px source-matched capsule family — !important-defended (obsidian-reset). */
 	display: inline-flex;
 	align-items: center;
-	gap: 5px;
+	gap: 3px !important;
 	min-height: 28px !important;
 	height: 28px !important;
-	padding: 0 10px;
+	padding: 0 5px !important;
 	border: none !important;
 	border-radius: var(--pk-radius-pill) !important;
 	background: transparent !important;
@@ -485,31 +596,65 @@
 	background: var(--pk-accent-tint) !important;
 	color: var(--pk-accent-text);
 }
+.peak-composer-root .pk-action-capsule[data-active] {
+	background: var(--pk-accent-tint) !important;
+	color: var(--pk-accent-text);
+}
 .peak-composer-root .pk-action-capsule:disabled {
 	opacity: 0.45;
 	cursor: not-allowed;
 }
 .peak-composer-root .pk-action-history {
-	padding: 0 8px;
+	justify-content: center;
+	width: 28px !important;
+	min-width: 28px !important;
+	padding: 0 !important;
 }
 .peak-composer-root .pk-action-divider {
+	flex: none;
 	width: 1px;
 	height: 16px;
+	margin: 0;
 	background: var(--pk-border);
-	flex: none;
 }
 .peak-composer-root .pk-block-action-row__spark {
 	color: var(--pk-accent-text);
 	flex: none;
 }
-.peak-composer-root .pk-block-action-row__instruction {
+.peak-composer-root .pk-action-ai > .pk-block-action-row__spark {
+	margin: 0;
+}
+.peak-composer-root .pk-block-action-row__instruction-history {
+	flex: none;
+	color: var(--pk-text-tertiary);
+}
+.peak-composer-root input.pk-block-action-row__instruction {
+	box-sizing: border-box;
 	min-width: 320px;
-	height: 24px;
-	border: none;
-	background: transparent;
+	height: 28px !important;
+	min-height: 28px !important;
+	margin: 0 !important;
+	padding: 0 2px !important;
+	border: 0 !important;
+	border-radius: 0 !important;
+	background: transparent !important;
+	box-shadow: none !important;
 	color: var(--pk-fg);
 	font-size: var(--pk-text-xs);
-	outline: none;
+	font-family: inherit;
+	line-height: 28px;
+	outline: 0 !important;
+	appearance: none;
+}
+.peak-composer-root input.pk-block-action-row__instruction:focus,
+.peak-composer-root input.pk-block-action-row__instruction:focus-visible {
+	border: 0 !important;
+	box-shadow: none !important;
+	outline: 0 !important;
+}
+.peak-composer-root input.pk-block-action-row__instruction::placeholder {
+	color: var(--pk-text-tertiary);
+	opacity: 1;
 }
 .peak-composer-root .pk-block-action-row__submit-hint {
 	display: grid;
@@ -565,10 +710,10 @@
 	gap: 4px;
 	height: 28px !important;
 	min-height: 28px !important;
-	padding: 0 8px;
-	border: none;
-	border-radius: var(--pk-radius-md);
-	background: transparent;
+	padding: 0 8px !important;
+	border: none !important;
+	border-radius: var(--pk-radius-md) !important;
+	background: transparent !important;
 	color: var(--pk-fg);
 	font-size: var(--pk-text-xs);
 	font-family: inherit;
@@ -576,13 +721,79 @@
 }
 .peak-composer-root .pk-selection-format-btn:hover:not(:disabled),
 .peak-composer-root .pk-selection-text-btn:hover:not(:disabled) {
-	background: var(--pk-accent-tint);
+	background: var(--pk-accent-tint) !important;
 	color: var(--pk-accent-text);
 }
 .peak-composer-root .pk-selection-format-btn:disabled,
 .peak-composer-root .pk-selection-text-btn:disabled {
 	opacity: 0.45;
 	cursor: not-allowed;
+}
+.peak-composer-root .pk-selection-text-color-icon {
+	display: inline-flex;
+	flex-direction: column;
+	align-items: stretch;
+	justify-content: center;
+	width: 15px;
+	height: 18px;
+}
+.peak-composer-root .pk-selection-text-color-icon__letter {
+	display: block;
+	height: 13px;
+	color: currentColor;
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 13px;
+	text-align: center;
+}
+.peak-composer-root .pk-selection-text-color-icon__bar {
+	display: flex;
+	width: 15px;
+	height: 3px;
+	margin-top: 1px;
+	overflow: hidden;
+	border-radius: 2px;
+}
+.peak-composer-root .pk-selection-text-color-icon__bar > span {
+	flex: 1 1 0;
+	min-width: 0;
+}
+.peak-composer-root .pk-selection-quick-colors {
+	display: inline-flex;
+	align-items: center;
+	gap: 0;
+	margin: 0 1px 0 -1px;
+}
+.peak-composer-root .pk-selection-quick-color {
+	display: inline-grid;
+	place-items: center;
+	box-sizing: border-box;
+	width: 18px !important;
+	min-width: 18px !important;
+	height: 28px !important;
+	min-height: 28px !important;
+	padding: 0 !important;
+	border: 0 !important;
+	border-radius: var(--pk-radius-sm) !important;
+	background: transparent !important;
+	cursor: pointer;
+}
+.peak-composer-root .pk-selection-quick-color:hover:not(:disabled),
+.peak-composer-root .pk-selection-quick-color:focus-visible {
+	background: var(--pk-surface-sunken) !important;
+}
+.peak-composer-root .pk-selection-quick-color:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+.peak-composer-root .pk-selection-quick-color__dot {
+	display: block;
+	box-sizing: border-box;
+	width: 10px;
+	height: 10px;
+	border: 1px solid rgba(15, 23, 42, 0.18);
+	border-radius: 50%;
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24);
 }
 .peak-composer-root .pk-selection-divider {
 	width: 1px;
@@ -601,11 +812,21 @@
 	flex: none;
 }
 .peak-composer-root .pk-selection-panel {
+	position: absolute;
+	top: calc(100% + 7px);
+	left: 0;
+	z-index: 1;
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	padding: 4px 2px 2px;
-	border-top: 1px solid var(--pk-border-soft);
+	box-sizing: border-box;
+	width: max-content;
+	max-width: min(420px, calc(100vw - 24px));
+	padding: 8px;
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-md);
+	background: var(--pk-surface-overlay);
+	box-shadow: var(--pk-shadow-popover);
 }
 .peak-composer-root .pk-selection-panel__input {
 	flex: 1;
@@ -618,29 +839,65 @@
 	color: var(--pk-fg);
 	font-size: var(--pk-text-xs);
 }
+.peak-composer-root .pk-selection-color-panel {
+	gap: 6px;
+}
 .peak-composer-root .pk-selection-swatch {
-	display: inline-flex;
-	align-items: center;
-	gap: 5px;
-	height: 26px;
-	padding: 0 8px;
-	border: 1px solid var(--pk-border);
-	border-radius: var(--pk-radius-md);
-	background: transparent;
-	color: var(--pk-fg);
-	font-size: var(--pk-text-xs);
+	box-sizing: border-box;
+	width: 28px !important;
+	min-width: 28px !important;
+	height: 28px !important;
+	min-height: 28px !important;
+	padding: 2px !important;
+	border: 0 !important;
+	border-radius: 50% !important;
+	background: transparent !important;
 	cursor: pointer;
 }
-.peak-composer-root .pk-selection-swatch::before {
-	content: '';
-	width: 12px;
-	height: 12px;
-	border-radius: 3px;
-	background: var(--pk-swatch);
-	border: 1px solid var(--pk-border);
+.peak-composer-root .pk-selection-swatch:hover:not(:disabled),
+.peak-composer-root .pk-selection-swatch:focus-visible {
+	background: var(--pk-surface-sunken) !important;
 }
-.peak-composer-root .pk-selection-swatch i {
-	font-style: normal;
+.peak-composer-root .pk-selection-swatch__color {
+	display: block;
+	box-sizing: border-box;
+	width: 24px;
+	height: 24px;
+	border: 1px solid var(--pk-border);
+	border-radius: 50%;
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+}
+.peak-composer-root .pk-selection-custom-color {
+	position: relative;
+	display: grid;
+	place-items: center;
+	box-sizing: border-box;
+	width: 28px;
+	height: 28px;
+	overflow: hidden;
+	border: 1px dashed var(--pk-border-strong);
+	border-radius: 50%;
+	color: var(--pk-text-secondary);
+	cursor: pointer;
+}
+.peak-composer-root .pk-selection-custom-color:hover,
+.peak-composer-root .pk-selection-custom-color:focus-within {
+	border-color: var(--pk-accent);
+	color: var(--pk-accent-text);
+}
+.peak-composer-root .pk-selection-custom-color input[type='color'] {
+	position: absolute;
+	inset: -4px;
+	width: 36px;
+	height: 36px;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	opacity: 0;
+	cursor: pointer;
+}
+.peak-composer-root .pk-selection-custom-color svg {
+	pointer-events: none;
 }
 
 /* ── family 6: panels (radius-lg shells) ───────────────────────────────────── */
@@ -657,83 +914,287 @@
 .peak-composer-root .pk-easy-copy {
 	display: flex;
 	align-items: center;
-	gap: 6px;
+	gap: 2px;
+	padding: 4px 6px;
 }
 .peak-composer-root .pk-easy-copy__tile {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
+	gap: 4px;
 	height: 28px !important;
 	min-height: 28px !important;
-	padding: 0 10px;
-	border: 1px solid var(--pk-border);
-	border-radius: var(--pk-radius-md);
-	background: var(--pk-surface);
-	color: var(--pk-fg);
-	font-size: var(--pk-text-xs);
+	padding: 0 5px !important;
+	border: 0 !important;
+	border-radius: var(--pk-radius-pill) !important;
+	background: transparent !important;
+	color: var(--pk-fg) !important;
+	font-size: var(--pk-text-xs) !important;
+	font-weight: 500 !important;
 	cursor: pointer;
 }
-.peak-composer-root .pk-easy-copy__tile:hover {
-	background: var(--pk-accent-tint);
-	color: var(--pk-accent-text);
+.peak-composer-root .pk-easy-copy__tile:hover,
+.peak-composer-root .pk-easy-copy__tile:focus-visible {
+	background: var(--pk-accent-tint) !important;
+	color: var(--pk-accent-text) !important;
 }
 .peak-composer-root .pk-easy-copy__tile[data-copy-state='success'] {
 	color: var(--pk-success-text, #067647);
 	border-color: var(--pk-success-border, #a6f4c5);
 }
 .peak-composer-root .pk-easy-copy__close {
-	margin-left: auto;
+	margin-left: 2px;
 }
 
-/* Comments */
-.peak-composer-root .pk-comment-panel {
-	display: flex;
-	flex-direction: column;
-	gap: var(--pk-space-2);
+/* Comments — document-adjacent rail on wide hosts, overlay drawer when narrow. */
+.peak-composer-root .pk-comment-rail {
+	position: relative;
+	flex: 0 0 var(--pk-comment-rail-width);
+	width: var(--pk-comment-rail-width);
+	min-height: 100%;
+	color: var(--pk-fg);
 }
-.peak-composer-root .pk-comment-panel__list {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
+.peak-composer-root .pk-comment-rail__cards {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
 }
-.peak-composer-root .pk-comment-panel__item {
+.peak-composer-root .pk-comment-card {
+	position: absolute;
+	left: 0;
+	z-index: 10;
+	box-sizing: border-box;
+	display: flex;
+	width: 100%;
+	flex-direction: column;
+	gap: 8px;
+	padding: 11px 12px;
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-lg);
+	background: var(--pk-surface);
+	box-shadow: var(--pk-shadow-card);
+	color: var(--pk-fg);
+	pointer-events: auto;
+	transition: border-color 140ms ease, box-shadow 140ms ease, opacity 140ms ease;
+}
+.peak-composer-root .pk-comment-connectors {
+	position: absolute;
+	inset: 0;
+	z-index: 7;
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+	pointer-events: none;
+}
+.peak-composer-root .pk-comment-connectors path {
+	fill: none;
+	stroke: color-mix(in srgb, var(--pk-accent) 72%, var(--pk-border));
+	stroke-width: 1.25;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	vector-effect: non-scaling-stroke;
+}
+.peak-composer-root .pk-comment-connectors circle {
+	fill: var(--pk-accent);
+	stroke: var(--pkc-paper-bg);
+	stroke-width: 1.5;
+	vector-effect: non-scaling-stroke;
+}
+.peak-composer-root .pk-comment-card[data-active='true'] {
+	border-color: var(--pk-accent);
+	box-shadow: 0 0 0 3px var(--pk-accent-tint), var(--pk-shadow-card);
+}
+.peak-composer-root .pk-comment-card[data-resolved='true'] {
+	opacity: 0.68;
+}
+.peak-composer-root .pk-comment-card[data-stale='true'] .pk-comment-card__quote {
+	color: var(--pk-warning-text);
+}
+.peak-composer-root .pk-comment-card__meta,
+.peak-composer-root .pk-comment-card__anchor,
+.peak-composer-root .pk-comment-card__footer,
+.peak-composer-root .pk-comment-card__actions {
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	font-size: var(--pk-text-xs);
-	color: var(--pk-fg);
 }
-.peak-composer-root .pk-comment-panel__item[data-stale='true'] .pk-comment-panel__body {
-	color: var(--pk-text-tertiary);
-}
-.peak-composer-root .pk-comment-panel__icon {
-	color: var(--pk-fg-muted);
-	flex: none;
-}
-.peak-composer-root .pk-comment-panel__body {
-	flex: 1;
+.peak-composer-root .pk-comment-card__meta {
 	min-width: 0;
+	color: var(--pk-text-tertiary);
+	font-size: 10px;
 }
-.peak-composer-root .pk-comment-panel__input {
+.peak-composer-root .pk-comment-card__actor {
+	color: var(--pk-text-primary);
+	font-weight: 650;
+}
+.peak-composer-root .pk-comment-card__time {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.peak-composer-root .pk-comment-card__anchor {
+	color: var(--pk-text-tertiary);
+	font-size: 10px;
+}
+.peak-composer-root .pk-comment-visibility {
+	min-height: 22px !important;
+	height: 22px !important;
+	margin-left: auto;
+	padding: 0 5px !important;
+	font-size: 10px !important;
+}
+.peak-composer-root .pk-comment-card__quote {
+	display: block;
+	padding-left: 8px;
+	overflow: hidden;
+	border-left: 2px solid var(--pk-border-accent);
+	color: var(--pk-text-secondary);
+	font-size: 10.5px;
+	line-height: 1.42;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.peak-composer-root .pk-comment-card__body {
+	color: var(--pk-text-primary);
+	font-size: var(--pk-text-sm);
+	line-height: 1.5;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+.peak-composer-root .pk-comment-card__input {
+	box-sizing: border-box;
 	width: 100%;
+	min-height: 58px;
 	resize: vertical;
-	padding: var(--pk-space-2);
+	padding: 8px 9px;
 	border: 1px solid var(--pk-border);
 	border-radius: var(--pk-radius-md);
+	outline: 0;
 	background: var(--pk-surface);
 	color: var(--pk-fg);
-	font-size: var(--pk-text-sm);
 	font-family: inherit;
+	font-size: var(--pk-text-sm);
+	line-height: 1.45;
 }
-.peak-composer-root .pk-comment-panel__actions {
-	display: flex;
+.peak-composer-root .pk-comment-card__input:focus {
+	border-color: var(--pk-accent);
+	box-shadow: 0 0 0 3px var(--pk-accent-tint);
+}
+.peak-composer-root .pk-comment-card__footer {
 	justify-content: flex-end;
-	gap: var(--pk-space-2);
 }
-.peak-composer-root .pk-comment-count {
-	margin-bottom: 2px;
+.peak-composer-root .pk-comment-card__actions {
+	flex-wrap: wrap;
+	padding-top: 3px;
+	border-top: 1px solid var(--pk-border-soft);
 }
-
+.peak-composer-root .pk-comment-card__actions .pk-btn {
+	min-height: 24px !important;
+	height: 24px !important;
+	padding: 0 5px !important;
+	font-size: 10px !important;
+}
+.peak-composer-root .pk-comment-card__actions .pk-icon-button {
+	width: 24px !important;
+	height: 24px !important;
+	min-height: 24px !important;
+	margin-left: auto;
+}
+.peak-composer-root .pk-comment-card__actions .pk-icon-button + .pk-icon-button {
+	margin-left: 0;
+}
+.peak-composer-root .pk-comment-card__replies {
+	display: flex;
+	flex-direction: column;
+	gap: 7px;
+	padding-top: 7px;
+	border-top: 1px solid var(--pk-border-soft);
+}
+.peak-composer-root .pk-comment-reply {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	font-size: 11px;
+	line-height: 1.45;
+}
+.peak-composer-root .pk-comment-reply__actor {
+	color: var(--pk-text-tertiary);
+	font-size: 9.5px;
+	font-weight: 650;
+}
+.peak-composer-root .pk-comment-reply-editor {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.peak-composer-root .pk-comment-anchor-marker {
+	position: absolute;
+	top: -2px;
+	right: -48px;
+	z-index: 8;
+	display: inline-flex;
+	min-width: 30px !important;
+	height: 24px !important;
+	min-height: 24px !important;
+	padding: 0 6px !important;
+	gap: 3px;
+	border: 1px solid var(--pk-border-soft) !important;
+	border-radius: var(--pk-radius-pill) !important;
+	background: var(--pkc-paper-bg) !important;
+	color: var(--pk-text-tertiary) !important;
+	font-size: 10px !important;
+}
+.peak-composer-root .pk-comment-anchor-marker[data-active='true'],
+.peak-composer-root .pk-comment-anchor-marker:hover {
+	border-color: var(--pk-border-accent) !important;
+	color: var(--pk-accent-text) !important;
+}
+.peak-composer-root .pk-comment-highlights {
+	position: absolute;
+	inset: 0;
+	z-index: 3;
+	overflow: hidden;
+	pointer-events: none;
+}
+.peak-composer-root .pk-comment-highlight {
+	position: absolute;
+	border-bottom: 2px solid color-mix(in srgb, var(--pk-accent) 65%, transparent);
+	border-radius: 2px;
+	background: color-mix(in srgb, var(--pk-accent) 12%, transparent);
+}
+.peak-composer-root .pk-comment-highlight[data-active='true'] {
+	border-bottom-color: var(--pk-accent);
+	background: color-mix(in srgb, var(--pk-accent) 20%, transparent);
+}
+.peak-composer-root .pk-comment-rail[data-mode='drawer'] {
+	--pk-comment-drawer-width: min(340px, calc(100vw - 28px));
+	position: sticky;
+	top: 12px;
+	z-index: 72;
+	align-self: flex-start;
+	flex: 0 0 var(--pk-comment-drawer-width);
+	width: var(--pk-comment-drawer-width);
+	height: calc(100vh - 24px);
+	min-height: 0;
+	margin-left: calc(-1 * var(--pk-comment-drawer-width));
+	padding: 8px;
+	overflow-y: auto;
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-lg);
+	background: var(--pk-surface);
+	box-shadow: var(--pk-shadow-popover);
+}
+.peak-composer-root .pk-comment-rail[data-mode='drawer'] .pk-comment-rail__cards {
+	position: static;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+.peak-composer-root .pk-comment-rail[data-mode='drawer'] .pk-comment-card {
+	position: relative;
+	top: auto !important;
+}
 /* ── family 4: review actions inside History (30px radius-md) ──────────────── */
 .peak-composer-root .pk-block-history {
 	display: flex;
@@ -859,6 +1320,24 @@
 .peak-composer-root .pk-composer-editable:focus-visible {
 	box-shadow: 0 0 0 2px var(--pk-accent-soft);
 }
+.peak-composer-root [data-has-selection] .pk-composer-editable:focus-visible {
+	box-shadow: none;
+}
+.peak-composer-root .pk-composer-source-token {
+	/*
+	 * Keep hidden source bytes in the inline formatting tree. `display: none`
+	 * makes Chromium collapse both caret affinities onto the preceding visible
+	 * run, so typing immediately after a newly closed delimiter writes back
+	 * inside it. A zero-size inline token remains invisible while preserving the
+	 * correct native insertion boundary after the delimiter.
+	 */
+	display: inline;
+	font-size: 0;
+	line-height: 0;
+	opacity: 0;
+	pointer-events: none;
+	user-select: none;
+}
 .peak-composer-root .pk-heading-1 { font-size: var(--pkc-h1-size); font-weight: var(--pkc-h1-weight); line-height: 1.25; }
 .peak-composer-root .pk-heading-2 { font-size: var(--pkc-h2-size); font-weight: var(--pkc-h2-weight); line-height: 1.35; }
 .peak-composer-root .pk-heading-3 { font-size: var(--pkc-h3-size); font-weight: var(--pkc-h3-weight); }
@@ -932,42 +1411,155 @@
 	min-width: 0;
 }
 
-/* ── insert-below draft ────────────────────────────────────────────────────── */
-.peak-composer-root .pk-insert-draft {
-	padding: var(--pk-space-2) 0 0;
-}
-.peak-composer-root .pk-insert-draft__input {
-	width: 100%;
-	height: 30px;
-	padding: 0 var(--pk-space-2);
-	border: 1px dashed var(--pk-border-strong);
-	border-radius: var(--pk-radius-md);
+/* ── review-before-write new-block draft ──────────────────────────────────── */
+.peak-composer-root .pk-new-block-draft {
+	display: grid;
+	gap: var(--pk-space-3);
+	margin: var(--pk-space-2) 0 var(--pk-space-3) 42px;
+	padding: var(--pk-space-3);
+	border: 1px solid var(--pk-border-strong);
+	border-radius: var(--pk-radius-lg);
 	background: var(--pk-surface);
+	box-shadow: var(--pk-shadow-sm);
+}
+.peak-composer-root .pk-new-block-draft__header {
+	display: grid;
+	gap: 2px;
+}
+.peak-composer-root .pk-new-block-draft__title {
 	color: var(--pk-fg);
 	font-size: var(--pk-text-sm);
-	font-family: inherit;
+	font-weight: 650;
 }
-
-/* ── bottom status bar + Undo/Redo (family 2, disabled keeps its slot) ─────── */
-.peak-composer-root .pk-composer-statusbar {
-	position: sticky;
-	bottom: 0;
+.peak-composer-root .pk-new-block-draft__description,
+.peak-composer-root .pk-new-block-draft__empty,
+.peak-composer-root .pk-new-block-draft__hint {
+	color: var(--pk-text-tertiary);
+	font-size: var(--pk-text-xs);
+}
+.peak-composer-root .pk-new-block-draft__shortcuts {
 	display: flex;
-	align-items: center;
-	gap: var(--pk-space-2);
-	padding: var(--pk-space-1) var(--pk-space-2);
-	border-top: 1px solid var(--pk-border-soft);
+	flex-wrap: wrap;
+	gap: 5px;
+}
+.peak-composer-root .pk-new-block-draft__shortcut {
+	min-height: 26px !important;
+	padding: 0 8px !important;
+	border-radius: var(--pk-radius-pill) !important;
+	font-size: var(--pk-text-xs) !important;
+}
+.peak-composer-root .pk-new-block-draft__workspace {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	gap: var(--pk-space-3);
+	min-height: 150px;
+}
+.peak-composer-root .pk-new-block-draft__pane {
+	display: grid;
+	grid-template-rows: auto 1fr;
+	gap: 6px;
+	min-width: 0;
+	margin: 0;
+}
+.peak-composer-root .pk-new-block-draft__pane-label {
+	color: var(--pk-text-secondary);
+	font-size: var(--pk-text-xs);
+	font-weight: 600;
+}
+.peak-composer-root .pk-new-block-draft__input,
+.peak-composer-root .pk-new-block-draft__preview {
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 132px;
+	padding: var(--pk-space-2);
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-md);
 	background: var(--pk-bg);
 }
-.peak-composer-root .pk-composer-statusbar__badge {
+.peak-composer-root .pk-new-block-draft__input {
+	resize: vertical;
+	color: var(--pk-fg);
+	font: inherit;
+	font-family: var(--font-monospace);
+	font-size: var(--pk-text-sm);
+	line-height: 1.5;
+}
+.peak-composer-root .pk-new-block-draft__input:focus {
+	border-color: var(--pk-accent);
+	box-shadow: 0 0 0 2px var(--pk-accent-tint);
+	outline: 0;
+}
+.peak-composer-root .pk-new-block-draft__preview {
+	overflow: auto;
+	color: var(--pk-fg);
+}
+.peak-composer-root .pk-new-block-draft__error {
+	color: var(--text-error);
+	font-size: var(--pk-text-xs);
+}
+.peak-composer-root .pk-new-block-draft__footer,
+.peak-composer-root .pk-new-block-draft__actions {
+	display: flex;
+	align-items: center;
+}
+.peak-composer-root .pk-new-block-draft__footer {
+	justify-content: space-between;
+	gap: var(--pk-space-2);
+}
+.peak-composer-root .pk-new-block-draft__actions {
+	gap: 6px;
+}
+@media (max-width: 880px) {
+	.peak-composer-root .pk-new-block-draft {
+		margin-left: 0;
+	}
+	.peak-composer-root .pk-new-block-draft__workspace {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* ── unified document controls; normal flow, never covers document content ─ */
+.peak-composer-root .pk-composer-controlbar {
+	position: sticky;
+	top: 0;
+	z-index: 80;
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	flex-wrap: nowrap;
+	gap: var(--pk-space-2);
+	width: 100%;
+	max-width: calc(var(--pkc-paper-width) + var(--pk-comment-rail-width) + var(--pk-comment-rail-gap));
+	min-height: 38px;
+	margin: 0 auto 12px;
+	padding: 4px 6px;
+	border: 1px solid var(--pk-border-soft);
+	border-radius: var(--pk-radius-lg);
+	background: color-mix(in srgb, var(--pk-surface) 94%, transparent);
+	box-shadow: var(--pk-shadow-card);
+	backdrop-filter: blur(10px);
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: none;
+}
+.peak-composer-root .pk-composer-controlbar::-webkit-scrollbar { display: none; }
+.peak-composer-root .pk-composer-controlbar__badge {
 	padding: 2px var(--pk-space-2);
 	border: 1px solid var(--pk-border-soft);
 	border-radius: var(--pk-radius-pill);
 	color: var(--pk-text-tertiary);
 	font-size: var(--pk-text-xs);
 }
-.peak-composer-root .pk-composer-statusbar__spacer {
+.peak-composer-root .pk-composer-controlbar__spacer {
 	flex: 1;
+}
+.peak-composer-root .pk-composer-comment-toggle,
+.peak-composer-root .pk-composer-intelligence-toggle {
+	flex: none;
+	min-height: 28px !important;
+	height: 28px !important;
+	gap: 5px;
+	padding: 0 7px !important;
 }
 .peak-composer-root .pk-undo-redo {
 	display: inline-flex;
@@ -1054,6 +1646,250 @@
 	white-space: nowrap;
 }
 
+/* ── AI draft review frame ───────────────────────────────────────────────────
+   A prose candidate is a self-contained document review surface: a stable,
+   readable content field streams above; the footer stays structurally fixed
+   for status, follow-up instruction and commit controls. */
+.peak-composer-root .pk-text-candidate {
+	display: grid;
+	grid-template-rows: minmax(148px, auto) auto;
+	margin: 14px 0 4px;
+	overflow: hidden;
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-lg);
+	background: var(--pk-surface);
+	color: var(--pkc-prose);
+	font-family: var(--pk-font-sans);
+}
+.peak-composer-root .pk-text-candidate[data-candidate-status='streaming'] {
+	border-color: var(--pk-border-accent);
+}
+.peak-composer-root .pk-text-candidate__body {
+	display: block;
+	min-width: 0;
+	padding: 24px 30px 22px;
+}
+.peak-composer-root .pk-text-candidate__text {
+	display: inline;
+	white-space: pre-wrap;
+	word-break: break-word;
+	color: var(--pkc-prose);
+	font-family: var(--pk-font-serif, var(--pk-font-sans));
+	font-size: var(--pkc-prose-size);
+	line-height: 1.8;
+}
+.peak-composer-root .pk-text-candidate__text--muted {
+	color: var(--pk-text-tertiary);
+}
+.peak-composer-root .pk-text-candidate__text--error {
+	color: var(--pk-error-text);
+}
+.peak-composer-root .pk-text-candidate__list {
+	margin: 0;
+	padding-left: 24px;
+	color: var(--pkc-prose);
+	font-family: var(--pk-font-serif, var(--pk-font-sans));
+	font-size: var(--pkc-prose-size);
+	line-height: 1.82;
+}
+.peak-composer-root .pk-text-candidate__list li + li {
+	margin-top: 5px;
+}
+.peak-composer-root .pk-text-candidate__streaming-list {
+	display: block;
+}
+.peak-composer-root .pk-text-candidate__caret {
+	display: inline-block;
+	width: 1px;
+	height: 1.15em;
+	margin-left: 3px;
+	vertical-align: text-bottom;
+	background: var(--pk-accent);
+}
+.peak-composer-root .pk-text-candidate__footer {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(190px, 320px) auto;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+	min-height: 58px;
+	padding: 8px 12px 8px 14px;
+	border-top: 1px solid var(--pk-border-soft);
+	background: var(--pk-surface-sunken);
+}
+.peak-composer-root .pk-text-candidate__status {
+	display: inline-flex;
+	align-items: center;
+	min-width: 0;
+	gap: 7px;
+}
+.peak-composer-root .pk-text-candidate__status-icon {
+	display: inline-flex;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	color: var(--pk-accent-text);
+}
+.peak-composer-root .pk-text-candidate[data-candidate-status='streaming'] .pk-text-candidate__status-icon {
+	animation: pk-text-candidate-spark 900ms ease-in-out infinite;
+}
+.peak-composer-root .pk-text-candidate__status-copy {
+	display: inline-flex;
+	align-items: baseline;
+	min-width: 0;
+	gap: 6px;
+}
+.peak-composer-root .pk-text-candidate__status-copy strong {
+	flex: 0 0 auto;
+	color: var(--pk-text-primary);
+	font-size: var(--pk-text-sm);
+}
+.peak-composer-root .pk-text-candidate__status-copy small {
+	overflow: hidden;
+	color: var(--pk-text-tertiary);
+	font-size: var(--pk-text-xs);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.peak-composer-root .pk-text-candidate__instruction-wrap {
+	display: flex;
+	align-items: center;
+	min-width: 0;
+	height: 32px;
+	padding: 0 9px;
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-md);
+	background: var(--pk-surface);
+	color: var(--pk-accent-text);
+}
+.peak-composer-root .pk-text-candidate__instruction-wrap:focus-within {
+	border-color: var(--pk-accent);
+	box-shadow: 0 0 0 2px var(--pk-accent-tint);
+}
+.peak-composer-root .pk-text-candidate__instruction-wrap > svg {
+	width: 14px;
+	height: 14px;
+	flex: 0 0 auto;
+	margin-right: 6px;
+}
+.peak-composer-root .pk-text-candidate__instruction {
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 0;
+	height: 28px;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	outline: 0;
+	background: transparent;
+	color: var(--pk-text-primary);
+	font: inherit;
+	font-size: var(--pk-text-sm);
+}
+.peak-composer-root .pk-text-candidate__instruction::placeholder {
+	color: var(--pk-text-tertiary);
+}
+.peak-composer-root .pk-text-candidate__actions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 4px;
+	min-width: 0;
+	flex-wrap: nowrap;
+}
+.peak-composer-root .pk-text-candidate__control {
+	box-sizing: border-box;
+	height: 30px !important;
+	min-height: 30px !important;
+	border-radius: var(--pk-radius-md) !important;
+	font-size: var(--pk-text-xs);
+}
+.peak-composer-root .pk-text-candidate__button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 5px;
+	padding: 0 9px !important;
+	white-space: nowrap;
+}
+.peak-composer-root .pk-text-candidate__button svg {
+	width: 14px;
+	height: 14px;
+}
+.peak-composer-root .pk-text-candidate__button--quiet {
+	border-color: transparent !important;
+	background: transparent !important;
+	color: var(--pk-text-secondary);
+}
+.peak-composer-root .pk-text-candidate__button--quiet:hover:not(:disabled),
+.peak-composer-root .pk-text-candidate__button--quiet:focus-visible {
+	border-color: transparent !important;
+	background: var(--pk-surface) !important;
+	color: var(--pk-text-primary);
+}
+.peak-composer-root .pk-text-candidate__variant-nav {
+	display: inline-flex;
+	align-items: center;
+	height: 30px;
+	overflow: hidden;
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-md);
+	background: var(--pk-surface);
+}
+.peak-composer-root .pk-text-candidate__variant-btn {
+	width: 26px !important;
+	min-width: 26px !important;
+	height: 28px !important;
+	min-height: 28px !important;
+	padding: 0 !important;
+	border: 0 !important;
+	border-radius: 0 !important;
+	background: transparent !important;
+	color: var(--pk-text-secondary);
+}
+.peak-composer-root .pk-text-candidate__variant-btn:hover:not(:disabled) {
+	background: var(--pk-surface-sunken) !important;
+	color: var(--pk-text-primary);
+}
+.peak-composer-root .pk-text-candidate__variant-count {
+	padding: 0 6px;
+	color: var(--pk-text-tertiary);
+	font-size: var(--pk-text-xs);
+	font-variant-numeric: tabular-nums;
+	user-select: none;
+}
+@keyframes pk-text-candidate-spark {
+	0%, 100% { opacity: 0.52; transform: scale(0.88) rotate(-8deg); }
+	50% { opacity: 1; transform: scale(1.06) rotate(8deg); }
+}
+@media (max-width: 1040px) {
+	.peak-composer-root .pk-text-candidate__footer {
+		grid-template-columns: minmax(0, 1fr) auto;
+	}
+	.peak-composer-root .pk-text-candidate__instruction-wrap {
+		grid-column: 1 / -1;
+		grid-row: 2;
+	}
+}
+@media (max-width: 720px) {
+	.peak-composer-root .pk-text-candidate__body {
+		padding: 20px 18px;
+	}
+	.peak-composer-root .pk-text-candidate__footer {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.peak-composer-root .pk-text-candidate__instruction-wrap {
+		grid-column: auto;
+		grid-row: auto;
+	}
+	.peak-composer-root .pk-text-candidate__actions {
+		justify-content: flex-start;
+		flex-wrap: wrap;
+	}
+}
+
 /* ── display states (§9.1): clean hides the editing chrome ─────────────────── */
 .peak-composer-root [data-display-state='clean'] .pk-composer-rail,
 .peak-composer-root [data-display-state='clean'] .pk-block-action-row,
@@ -1128,4 +1964,12 @@
 	color: var(--pkc-diff-ins-fg);
 	background: var(--pkc-diff-ins-bg);
 	text-decoration: none;
+}
+
+/* A pending rewrite occupies the source block's exact content position. The
+   candidate body owns its own review divider/footer; the outer slot must not
+   introduce a second card, margin, or layout jump. */
+.peak-composer-root .pk-composer-candidate-slot--in-place {
+	display: block;
+	min-width: 0;
 }

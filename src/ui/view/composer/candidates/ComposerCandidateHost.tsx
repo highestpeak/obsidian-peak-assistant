@@ -18,6 +18,7 @@ import type { ComposerCandidate, ComposerCandidateRuntimePort } from '@/core/com
 import type { CandidateUiStrings } from './candidateUiConfig';
 import { DEFAULT_CANDIDATE_UI_STRINGS, loadCandidateUiStrings } from './candidateUiConfig';
 import type { CandidateRendererRegistry } from './rendererRegistry';
+import { createStreamingTextFrameBuffer } from './streamFrameCoalescer';
 
 export interface ComposerCandidateHostProps {
 	runtime: ComposerCandidateRuntimePort;
@@ -49,16 +50,28 @@ function useStreamingText(runtime: ComposerCandidateRuntimePort, candidateId: st
 	const [text, setText] = React.useState<string | null>(
 		runtime.isStreaming(candidateId) ? '' : null,
 	);
-	React.useEffect(
-		() =>
-			runtime.onRunEvent((event) => {
-				if (event.candidateId !== candidateId) return;
-				if (event.type === 'run-started') setText('');
-				else if (event.type === 'content-delta') setText(event.text);
-				else setText(null);
-			}),
-		[runtime, candidateId],
-	);
+	React.useEffect(() => {
+		const buffer = createStreamingTextFrameBuffer(setText, {
+			request: (callback) => requestAnimationFrame(callback),
+			cancel: (handle) => cancelAnimationFrame(handle),
+		});
+		const unsubscribe = runtime.onRunEvent((event) => {
+			if (event.candidateId !== candidateId) return;
+			if (event.type === 'run-started') {
+				buffer.push('');
+				return;
+			}
+			if (event.type === 'content-delta') {
+				buffer.push(event.text);
+				return;
+			}
+			buffer.finish();
+		});
+		return () => {
+			unsubscribe();
+			buffer.dispose();
+		};
+	}, [runtime, candidateId]);
 	return text;
 }
 

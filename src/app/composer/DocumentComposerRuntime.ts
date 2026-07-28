@@ -18,8 +18,10 @@ import {
 	ComposerTransactionHub,
 	ImageCapabilityCoordinator,
 	IntelligenceRuntime,
+	detectOpenWritingMoves,
 	type ComposerCapabilityDocumentRuntime,
 	type ComposerCommentPersistencePort,
+	type ComposerBlockDraftGenerationPort,
 	type ComposerDocumentSession,
 	type ComposerImageAttachmentPort,
 	type ComposerImageEditPort,
@@ -28,8 +30,10 @@ import {
 	type ComposerLinkMetadataPort,
 	type ComposerNativePreviewPort,
 	type ComposerRelatedMaterialsPort,
+	type BriefSensingPolicy,
 	type ImageDomainConfigProvider,
 	type IntelligenceTelemetryPort,
+	type OpenWritingMovesConfig,
 	type VaultPropertyScanPort,
 } from '@/service/composer';
 import { DEFAULT_TRANSACTION_CONFIG, type ComposerTransactionConfig } from '@/core/composer';
@@ -54,6 +58,10 @@ export interface DocumentComposerRuntimeAdapters {
 	relatedMaterials?: ComposerRelatedMaterialsPort;
 	/** Privacy-safe telemetry sink for the §12.7 metric events (WP9). */
 	intelligenceTelemetry?: IntelligenceTelemetryPort;
+	/** Deterministic source-backed producer for Brief next moves. */
+	openWritingMoves?: () => OpenWritingMovesConfig;
+	/** Template-backed debounce/throttle policy for Brief sensing. */
+	briefSensing?: () => BriefSensingPolicy;
 	/** Vault property inventory scan for the Frontmatter property library (WP5 §8.2). */
 	vaultInventory?: VaultPropertyScanPort;
 	/** Formula-detail generator for the math block's bespoke detail store (WP5 §10.2). */
@@ -73,6 +81,8 @@ export interface DocumentComposerRuntimeAdapters {
 	};
 	/** App-owned native preview loader for Markdown embeds targeting native files. */
 	nativePreviewPort?: ComposerNativePreviewPort;
+	/** Shared-AI-backed new-block draft generation port, composed at the app layer. */
+	blockDraftGeneration?: ComposerBlockDraftGenerationPort;
 }
 
 export class DocumentComposerRuntime {
@@ -83,10 +93,13 @@ export class DocumentComposerRuntime {
 	private readonly linkPort?: ComposerLinkMetadataPort;
 	private readonly relatedMaterials?: ComposerRelatedMaterialsPort;
 	private readonly intelligenceTelemetry?: IntelligenceTelemetryPort;
+	private readonly openWritingMoves?: () => OpenWritingMovesConfig;
+	private readonly briefSensing?: () => BriefSensingPolicy;
 	private readonly vaultInventory?: VaultPropertyScanPort;
 	private readonly formulaDetailGenerator?: FormulaDetailGeneratorPort;
 	private readonly imagePorts?: DocumentComposerRuntimeAdapters['imagePorts'];
 	private readonly nativePreviewPort?: ComposerNativePreviewPort;
+	private readonly blockDraftGeneration?: ComposerBlockDraftGenerationPort;
 
 	constructor(
 		private readonly source: ObsidianComposerSourceAdapter,
@@ -101,10 +114,13 @@ export class DocumentComposerRuntime {
 		this.linkPort = adapters.linkPort;
 		this.relatedMaterials = adapters.relatedMaterials;
 		this.intelligenceTelemetry = adapters.intelligenceTelemetry;
+		this.openWritingMoves = adapters.openWritingMoves;
+		this.briefSensing = adapters.briefSensing;
 		this.vaultInventory = adapters.vaultInventory;
 		this.formulaDetailGenerator = adapters.formulaDetailGenerator;
 		this.imagePorts = adapters.imagePorts;
 		this.nativePreviewPort = adapters.nativePreviewPort;
+		this.blockDraftGeneration = adapters.blockDraftGeneration;
 	}
 
 	/** Override the transaction config once the runtime JSON resolves (async). */
@@ -146,7 +162,7 @@ export class DocumentComposerRuntime {
 			})
 			: undefined;
 		const imagePreviewResolver = this.imagePorts
-			? (path: string) => this.imagePorts!.attachment.previewUri(path)
+			? (path: string, sourcePath?: string) => this.imagePorts!.attachment.previewUri(path, sourcePath)
 			: undefined;
 		// WP9 — one Intelligence runtime per document, bound to this hub for the
 		// accepted-change → History receipt bridge. App-owned (no singleton).
@@ -154,10 +170,21 @@ export class DocumentComposerRuntime {
 			hub,
 			...(this.relatedMaterials ? { related: this.relatedMaterials } : {}),
 			...(this.intelligenceTelemetry ? { telemetry: this.intelligenceTelemetry } : {}),
+			getSnapshot: () => session.snapshot,
+			produceFindings: (snapshot) => {
+				const config = this.openWritingMoves?.();
+				return config ? detectOpenWritingMoves(snapshot, config) : [];
+			},
+			briefSensing: this.briefSensing?.(),
 		});
+		intelligence.updateBriefFocus(defaultBriefFocus(session.snapshot.filePath, session.snapshot.documentId));
+		// Initial Brief content uses the same injected producer as later manual / sensing refreshes.
+		// If no producer is composed, the runtime records no fabricated suggestions.
+		intelligence.refreshBrief();
 		return {
 			session,
 			hub,
+			transactionConfig: this.transactionConfig,
 			comments,
 			intelligence,
 			...(this.linkPort ? { linkPort: this.linkPort } : {}),
@@ -166,6 +193,7 @@ export class DocumentComposerRuntime {
 			...(capabilityRuntime ? { projection: capabilityRuntime, candidateRuntime: capabilityRuntime } : {}),
 			...(imageCoordinator ? { imageCoordinator } : {}),
 			...(this.nativePreviewPort ? { nativePreviewPort: this.nativePreviewPort } : {}),
+			...(this.blockDraftGeneration ? { blockDraftGeneration: this.blockDraftGeneration } : {}),
 			...(imagePreviewResolver ? { imagePreviewResolver } : {}),
 		};
 	}
@@ -204,4 +232,11 @@ export class DocumentComposerRuntime {
 	dispose(): void {
 		this.events.dispose();
 	}
+}
+
+/** Real file basename for the initial document-level Brief focus; no UI copy is invented here. */
+function defaultBriefFocus(filePath: string, documentId: string): { anchorId: string; label: string } {
+	const separator = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
+	const label = filePath.slice(separator + 1) || documentId;
+	return { anchorId: documentId, label };
 }

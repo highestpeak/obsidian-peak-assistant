@@ -18,6 +18,38 @@ import { matchBlocks } from '../blockIdentity';
 import { computeFingerprint } from '@/core/composer';
 
 export type CommentStatus = 'active' | 'stale';
+export type CommentThreadState = 'open' | 'resolved';
+export type CommentVisibility = 'private' | 'shared';
+export type CommentOrigin = 'local' | 'share' | 'portal';
+export type CommentActorKind = 'owner' | 'guest' | 'customer' | 'copilot';
+
+export const COMPOSER_COMMENT_SCHEMA_VERSION = 2;
+
+export interface ComposerCommentActor {
+	actorId: string;
+	displayName: string;
+	kind: CommentActorKind;
+	/** A display claim is not a verified identity unless the host says so. */
+	verified?: boolean;
+}
+
+export const LOCAL_COMMENT_ACTOR: ComposerCommentActor = Object.freeze({
+	actorId: 'local-owner',
+	displayName: 'local-owner',
+	kind: 'owner',
+	verified: true,
+});
+
+export interface ComposerCommentReply {
+	replyId: string;
+	body: string;
+	actor: ComposerCommentActor;
+	createdAt: number;
+	updatedAt: number;
+	/** Tombstone retained for future Share/Portal event reconciliation. */
+	deletedAt?: number;
+	remoteEventId?: string;
+}
 
 /** Where a comment is anchored. `range` absent ⇒ the whole block. */
 export interface CommentAnchor {
@@ -31,12 +63,54 @@ export interface CommentAnchor {
 }
 
 export interface ComposerComment {
+	/** Additive schema marker; absent means the legacy WP4 shape. */
+	schemaVersion?: number;
 	commentId: string;
 	anchor: CommentAnchor;
 	body: string;
 	status: CommentStatus;
+	threadState?: CommentThreadState;
+	visibility?: CommentVisibility;
+	origin?: CommentOrigin;
+	actor?: ComposerCommentActor;
+	replies?: ComposerCommentReply[];
+	/** Local Composer revision or published PageVersion at creation time. */
+	sourceRevision?: string;
+	pageVersionId?: string;
+	remoteEventId?: string;
 	createdAt: number;
 	updatedAt: number;
+	/** Thread tombstone. Deleted records stay persistable but leave projections. */
+	deletedAt?: number;
+}
+
+export interface ComposerCommentCreateInput {
+	anchor: CommentAnchor;
+	body: string;
+	actor?: ComposerCommentActor;
+	visibility?: CommentVisibility;
+	origin?: CommentOrigin;
+	sourceRevision?: string;
+	pageVersionId?: string;
+	remoteEventId?: string;
+}
+
+/**
+ * Structured Copilot source. External comment text stays DATA and is never
+ * concatenated into an instruction string by the comment layer.
+ */
+export interface ComposerCommentSourceRef {
+	kind: 'comment';
+	commentId: string;
+	blockId: string;
+	range?: { from: number; to: number };
+	quote: string;
+	body: string;
+	replies: readonly string[];
+	revision?: string;
+	pageVersionId?: string;
+	trust: 'owner' | 'external';
+	visibility: CommentVisibility;
 }
 
 /** Build an anchor for a block (whole block or a sub-range selection). */
@@ -51,6 +125,56 @@ export function makeCommentAnchor(
 		? snapshot.sourceText.slice(range.from, range.to)
 		: snapshot.sourceText.slice(block.source.from, block.source.to);
 	return { blockId, range, quote, fingerprint: computeFingerprint(quote) };
+}
+
+/** Upgrade a persisted legacy comment without invalidating its stable id. */
+export function normalizeComposerComment(input: ComposerComment): ComposerComment {
+	const createdAt = finiteTimestamp(input.createdAt, Date.now());
+	const updatedAt = finiteTimestamp(input.updatedAt, createdAt);
+	return {
+		...input,
+		schemaVersion: COMPOSER_COMMENT_SCHEMA_VERSION,
+		threadState: input.threadState === 'resolved' ? 'resolved' : 'open',
+		visibility: input.visibility === 'shared' ? 'shared' : 'private',
+		origin: isCommentOrigin(input.origin) ? input.origin : 'local',
+		actor: normalizeActor(input.actor),
+		replies: Array.isArray(input.replies)
+			? input.replies
+				.filter(isReplyLike)
+				.map((reply) => ({
+					...reply,
+					actor: normalizeActor(reply.actor),
+					createdAt: finiteTimestamp(reply.createdAt, createdAt),
+					updatedAt: finiteTimestamp(reply.updatedAt, reply.createdAt),
+				}))
+			: [],
+		createdAt,
+		updatedAt,
+	};
+}
+
+export function buildCommentSourceRef(comment: ComposerComment): ComposerCommentSourceRef {
+	const normalized = normalizeComposerComment(comment);
+	const replies = (normalized.replies ?? [])
+		.filter((reply) => reply.deletedAt === undefined)
+		.map((reply) => reply.body);
+	const hasExternalActor =
+		normalized.actor?.kind !== 'owner' ||
+		(normalized.replies ?? []).some((reply) =>
+			reply.deletedAt === undefined && reply.actor.kind !== 'owner');
+	return Object.freeze({
+		kind: 'comment',
+		commentId: normalized.commentId,
+		blockId: normalized.anchor.blockId,
+		...(normalized.anchor.range ? { range: { ...normalized.anchor.range } } : {}),
+		quote: normalized.anchor.quote,
+		body: normalized.body,
+		replies: Object.freeze(replies),
+		...(normalized.sourceRevision ? { revision: normalized.sourceRevision } : {}),
+		...(normalized.pageVersionId ? { pageVersionId: normalized.pageVersionId } : {}),
+		trust: hasExternalActor ? 'external' : 'owner',
+		visibility: normalized.visibility ?? 'private',
+	});
 }
 
 /**
@@ -114,4 +238,29 @@ function relocate(
 
 function staleOf(comment: ComposerComment): ComposerComment {
 	return comment.status === 'stale' ? comment : { ...comment, status: 'stale' };
+}
+
+function finiteTimestamp(value: number, fallback: number): number {
+	return Number.isFinite(value) ? value : fallback;
+}
+
+function normalizeActor(actor?: ComposerCommentActor): ComposerCommentActor {
+	if (!actor || !actor.actorId || !actor.displayName || !isActorKind(actor.kind)) {
+		return { ...LOCAL_COMMENT_ACTOR };
+	}
+	return { ...actor };
+}
+
+function isCommentOrigin(value: unknown): value is CommentOrigin {
+	return value === 'local' || value === 'share' || value === 'portal';
+}
+
+function isActorKind(value: unknown): value is CommentActorKind {
+	return value === 'owner' || value === 'guest' || value === 'customer' || value === 'copilot';
+}
+
+function isReplyLike(value: unknown): value is ComposerCommentReply {
+	if (!value || typeof value !== 'object') return false;
+	const reply = value as Partial<ComposerCommentReply>;
+	return typeof reply.replyId === 'string' && typeof reply.body === 'string';
 }

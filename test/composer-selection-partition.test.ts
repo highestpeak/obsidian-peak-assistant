@@ -20,6 +20,7 @@ import {
 	partitionSourceRange,
 	applyMarkToSelection,
 	pasteUrlIntoSelection,
+	projectSourceVisualParts,
 } from '@/service/composer';
 import { makeChecker } from './helpers/composer-fakes';
 
@@ -171,6 +172,67 @@ function testMarkAware(): void {
 	check('absorption merges into one bold', out.includes('**boldy**'), out);
 }
 
+function testOverlappingRichMarksStayRendered(): void {
+	const source =
+		'Alpha <mark style="background: #dff4e8">green middle</mark> omega tail';
+	const visible = 'Alpha green middle omega tail';
+	const snap = parseComposerDocument(source);
+	// Start inside the existing mark and end outside it — the exact boundary
+	// crossing that used to emit `<mark new>…</mark old>…</mark new>`.
+	const from = source.indexOf('middle');
+	const to = source.indexOf('omega') + 'omega'.length;
+	const sel = partitionSourceRange(snap, from, to);
+	const highlighted = applyMarkToSelection(sel, 'highlight', { value: '#dfeaff' });
+	check('overlap highlight applies', highlighted.ok === true);
+	if (!highlighted.ok) return;
+	const next = applyOperations(source, highlighted.operations);
+	check('overlap highlight keeps HTML properly nested', htmlTagsAreNested(next), next);
+	check('overlap highlight never exposes raw HTML', projectedVisible(next) === visible, projectedVisible(next));
+}
+
+function testLinkAcrossStyledRunsStayRendered(): void {
+	const source =
+		'Alpha <mark style="background: #dff4e8">green middle</mark> omega tail';
+	const visible = 'Alpha green middle omega tail';
+	const snap = parseComposerDocument(source);
+	const from = source.indexOf('green');
+	const to = source.indexOf('omega') + 'omega'.length;
+	const sel = partitionSourceRange(snap, from, to);
+	const linked = pasteUrlIntoSelection(sel, 'https://example.com');
+	check('styled link applies', linked.ok === true);
+	if (!linked.ok) return;
+	const next = applyOperations(source, linked.operations);
+	check('styled link keeps HTML properly nested', htmlTagsAreNested(next), next);
+	check('styled link never exposes raw HTML', projectedVisible(next) === visible, projectedVisible(next));
+	const links = projectSourceVisualParts(next, 0, { mathMode: 'source' })
+		.filter((part) => part.kind === 'run' && part.linkTarget === 'https://example.com');
+	check('styled link preserves linked visible segments', links.length >= 2, JSON.stringify(links));
+}
+
+function projectedVisible(source: string): string {
+	return projectSourceVisualParts(source, 0, { mathMode: 'source' })
+		.map((part) => {
+			if (part.kind === 'hidden') return '';
+			if (part.kind === 'math') return part.latex;
+			return part.text;
+		})
+		.join('');
+}
+
+function htmlTagsAreNested(source: string): boolean {
+	const stack: string[] = [];
+	for (const match of source.matchAll(/<(\/?)(mark|span|u)\b[^>]*>/gi)) {
+		const closing = match[1] === '/';
+		const name = match[2].toLowerCase();
+		if (!closing) {
+			stack.push(name);
+			continue;
+		}
+		if (stack.pop() !== name) return false;
+	}
+	return stack.length === 0;
+}
+
 // ── guards ────────────────────────────────────────────────────────────────────
 
 function testCodeGuard(): void {
@@ -209,6 +271,8 @@ testScopes();
 testCrossStructureFormatting();
 testColorAcrossCells();
 testMarkAware();
+testOverlappingRichMarksStayRendered();
+testLinkAcrossStyledRunsStayRendered();
 testCodeGuard();
 testUrlPaste();
 done('composer-selection-partition');

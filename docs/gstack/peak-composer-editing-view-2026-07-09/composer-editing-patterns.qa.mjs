@@ -441,7 +441,9 @@ async function testMainEditingSurface() {
   assert.equal(await page.locator("[data-selection-link-paste]").isVisible(), true, "link control exposes Paste URL into selection");
   await page.locator("[data-selection-popover-close]").click();
   await page.locator('[data-selection-format="hiliteColor"]').click();
-  assert.deepEqual(await page.locator(".selection-palette button i").allTextContents(), ["重点", "定义", "资料", "想法", "风险", "清除"], "Highlightr palette exposes named mark colors");
+  assert.equal(await page.locator(".selection-palette button[data-selection-color]").count(), 5, "highlight palette exposes five visual presets");
+  assert.deepEqual(await page.locator(".selection-palette button[data-selection-color]").allTextContents(), ["", "", "", "", ""], "highlight palette does not expose semantic names as visible text");
+  assert.equal(await page.locator('.selection-palette input[type="color"][aria-label="自定义颜色"]').count(), 1, "highlight palette exposes a custom color picker");
   await page.evaluate(() => { document.querySelector("#selection-toolbar-popover").hidden = true; });
   await page.locator('[data-selection-action="easy-copy"]').click();
   assert.equal(await page.locator("#selection-toolbar-popover [data-copy-kind]").count(), 4, "Easy Copy offers plain, Markdown, HTML and image output");

@@ -24,6 +24,35 @@ function expectRule(source: string, pattern: RegExp, label: string): void {
 const tableCss = read('src/styles/composer-table.css');
 const nativeCss = read('src/styles/composer-native.css');
 const fmMathCss = read('src/styles/composer-fm-math.css');
+const composerCss = read('src/styles/composer.css');
+
+check('block action row matches the selection toolbar compact spacing rhythm', () => {
+	expectRule(
+		composerCss,
+		/\.pk-block-action-row__shell\s*\{[\s\S]*?gap:\s*4px;[\s\S]*?min-height:\s*38px;[\s\S]*?padding:\s*4px 6px;/,
+		'block and selection toolbar shells must share the same outer spacing',
+	);
+	expectRule(
+		composerCss,
+		/\.pk-action-capsule\s*\{[\s\S]*?gap:\s*3px !important;[\s\S]*?height:\s*28px !important;[\s\S]*?padding:\s*0 5px !important;/,
+		'block text controls must override the shared button padding and gap without shrinking their click height',
+	);
+	expectRule(
+		composerCss,
+		/\.pk-action-ai\s*\{[\s\S]*?gap:\s*0;[\s\S]*?padding-left:\s*4px;/,
+		'AI group must balance divider breathing room with a tightly bound Sparkles icon',
+	);
+	expectRule(
+		composerCss,
+		/\.pk-action-divider\s*\{[\s\S]*?height:\s*16px;[\s\S]*?margin:\s*0;/,
+		'block dividers must use the selection toolbar divider geometry',
+	);
+	expectRule(
+		composerCss,
+		/\.pk-action-history\s*\{[\s\S]*?width:\s*28px !important;[\s\S]*?min-width:\s*28px !important;[\s\S]*?padding:\s*0 !important;/,
+		'icon-only history must use the same 28px square as selection icon controls',
+	);
+});
 
 check('table toolbar shell uses the panel radius rung', () => {
 	expectRule(
@@ -65,11 +94,11 @@ check('code block has its own dark frame tokens', () => {
 	);
 });
 
-check('frontmatter actions reuse the 28px pill capsule family', () => {
+check('frontmatter state trigger stays a compact 22px badge above the grid', () => {
 	expectRule(
 		fmMathCss,
-		/\.pk-fm-actions \.pk-btn\s*\{[\s\S]*?min-height:\s*28px !important;[\s\S]*?border-radius:\s*var\(--pk-radius-pill\) !important;[\s\S]*?background:\s*transparent !important;/,
-		'frontmatter actions must use the block capsule family',
+		/\.pk-fm-actions \.pk-btn\s*\{[\s\S]*?min-height:\s*22px !important;[\s\S]*?border-radius:\s*var\(--pk-radius-pill\) !important;[\s\S]*?background:\s*var\(--pk-accent-tint\) !important;/,
+		'frontmatter suggestion trigger must stay a compact state badge; the Vault library action lives in the block row',
 	);
 });
 

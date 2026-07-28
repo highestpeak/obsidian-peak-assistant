@@ -1,9 +1,20 @@
 import * as React from 'react';
-import { DirectEditController, parseInlineProjection, type DirectEditRange } from '@/service/composer';
+import {
+	DirectEditController,
+	hasSourceVisualSyntaxChange,
+	projectSourceVisualParts,
+	type DirectEditRange,
+	type HiddenSourceRange,
+	type SourceVisualPart,
+} from '@/service/composer';
 import { useComposerChrome } from './ComposerChromeContext';
-import { segmentLinks } from './linkSegments';
 import { styleAttrs } from './StyledRuns';
 import { InlineMathAtom } from './InlineMathAtom';
+import {
+	mapDomSelectionToSource,
+	restoreDomSelectionFromSource,
+	type MappedSelection,
+} from './selectionMapping';
 
 /**
  * Per-block contenteditable leaf (WP4, S2 决议全套).
@@ -12,9 +23,10 @@ import { InlineMathAtom } from './InlineMathAtom';
  *   the WP4 slice); plain text input flows natively.
  * - Zero preventDefault and ZERO re-render during IME composition; reconcile /
  *   flush only after `compositionend`.
- * - React never re-renders the leaf while it is focused: the rendered text is
- *   frozen at focus time and re-synced from props on blur, so the browser owns
- *   the DOM during a burst.
+ * - React does not re-render for each native input event. When an edit completes
+ *   or removes visual syntax, the leaf re-projects on the next animation frame
+ *   and restores the DOM selection from absolute source coordinates;
+ *   persistence remains separately debounced.
  * - Typing coalesces through {@link DirectEditController} (stable per-session
  *   groupId → grouped History + one Undo step).
  * - While a burst is un-flushed, Cmd/Ctrl+Z stays NATIVE; at a commit boundary
@@ -29,6 +41,8 @@ export interface EditableTextProps {
 	text: string;
 	/** Absolute source offset of the slice's first character. */
 	sourceFrom: number;
+	/** Absolute source ranges that should remain in DOM text but not be visible. */
+	hiddenSourceRanges?: readonly HiddenSourceRange[];
 	editable: boolean;
 	/** Resolve the CURRENT range for a flush (offsets shift after each commit). */
 	resolveRange: () => DirectEditRange | null;
@@ -40,20 +54,37 @@ export function EditableText({
 	unitId,
 	text,
 	sourceFrom,
+	hiddenSourceRanges,
 	editable,
 	resolveRange,
 	className,
 }: EditableTextProps): React.ReactElement {
-	const { runtime, config, burstWindowMs, registerFlusher } = useComposerChrome();
+	const {
+		runtime,
+		config,
+		burstWindowMs,
+		registerFlusher,
+	} = useComposerChrome();
 	const hub = runtime.hub;
 	const elRef = React.useRef<HTMLDivElement | null>(null);
 	const focusedRef = React.useRef(false);
-	// Drives the styled↔source swap: the focused block shows verbatim source
-	// (live-preview style) so editing/mapping is uniform; blurred blocks show the
-	// rich styled-run projection.
+	const composingRef = React.useRef(false);
+	const liveProjectionFrameRef = React.useRef<number | null>(null);
+	// Drives only math rendering. Markdown/HTML source tokens are never shown
+	// verbatim; they stay in hidden DOM spans so textContent still round-trips.
 	const [focused, setFocused] = React.useState(false);
-	// Frozen render state: only synced from props while NOT focused.
+	// Native input owns ordinary keystrokes. Only a visual syntax transition
+	// schedules a next-frame projection; the slower durable commit stays separate.
 	const [renderState, setRenderState] = React.useState({ text, sourceFrom });
+	const renderStateRef = React.useRef(renderState);
+	renderStateRef.current = renderState;
+	const latestSourceRef = React.useRef({ text, sourceFrom });
+	latestSourceRef.current = { text, sourceFrom };
+	const pendingSelectionRestoreRef = React.useRef<{
+		selection: MappedSelection;
+		text: string;
+		sourceFrom: number;
+	} | null>(null);
 	const resolveRef = React.useRef(resolveRange);
 	resolveRef.current = resolveRange;
 
@@ -72,19 +103,41 @@ export function EditableText({
 		if (!controller) return;
 		const unregister = registerFlusher(() => controller.flush());
 		return () => {
+			if (liveProjectionFrameRef.current !== null) {
+				const win = elRef.current?.ownerDocument.defaultView ?? window;
+				win.cancelAnimationFrame(liveProjectionFrameRef.current);
+				liveProjectionFrameRef.current = null;
+			}
 			unregister();
 			controller.dispose();
 		};
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [controller]);
 
-	// Sync from props when not focused and the source changed under us.
-	React.useEffect(() => {
-		if (focusedRef.current) return;
-		if (renderState.text !== text || renderState.sourceFrom !== sourceFrom) {
-			setRenderState({ text, sourceFrom });
+	// Re-project a committed burst while focus stays in place. Never touch the
+	// native DOM while a newer input/composition is pending: that newer burst
+	// must win before an older async commit can paint.
+	React.useLayoutEffect(() => {
+		if (renderState.text === text && renderState.sourceFrom === sourceFrom) return;
+		if (focusedRef.current && (composingRef.current || controller?.dirty)) return;
+		const el = elRef.current;
+		if (focusedRef.current && el) {
+			const mapped = mapSelectionInside(el);
+			if (mapped) pendingSelectionRestoreRef.current = { selection: mapped, text, sourceFrom };
 		}
-	}, [text, sourceFrom, renderState]);
+		setRenderState({ text, sourceFrom });
+	}, [text, sourceFrom, renderState, controller]);
+
+	// Runs after the projection DOM has landed, before paint. A source-coordinate
+	// restore survives styled-run splits and hidden Markdown/HTML delimiters.
+	React.useLayoutEffect(() => {
+		const pending = pendingSelectionRestoreRef.current;
+		const el = elRef.current;
+		if (!pending || !el || !focusedRef.current) return;
+		if (pending.text !== renderState.text || pending.sourceFrom !== renderState.sourceFrom) return;
+		restoreDomSelectionFromSource(el, pending.selection);
+		pendingSelectionRestoreRef.current = null;
+	}, [renderState]);
 
 	const onBeforeInput = (ev: React.FormEvent<HTMLDivElement>) => {
 		const native = ev.nativeEvent as InputEvent;
@@ -103,8 +156,43 @@ export function EditableText({
 	};
 
 	const onInput = () => {
-		if (!controller || !elRef.current) return;
-		controller.onInput(elRef.current.textContent ?? '');
+		const el = elRef.current;
+		if (!controller || !el) return;
+		const nextText = el.textContent ?? '';
+		controller.onInput(nextText);
+		if (composingRef.current || liveProjectionFrameRef.current !== null) return;
+		const current = renderStateRef.current;
+		if (nextText === current.text) return;
+		if (!hasSourceVisualSyntaxChange(
+			current.text,
+			nextText,
+			current.sourceFrom,
+			{ hiddenRanges: hiddenSourceRanges, mathMode: 'source' },
+		)) return;
+		const win = el.ownerDocument.defaultView ?? window;
+		liveProjectionFrameRef.current = win.requestAnimationFrame(() => {
+			liveProjectionFrameRef.current = null;
+			const el = elRef.current;
+			if (!el || !focusedRef.current || composingRef.current) return;
+			const nextText = el.textContent ?? '';
+			const current = renderStateRef.current;
+			if (nextText === current.text) return;
+			if (!hasSourceVisualSyntaxChange(
+				current.text,
+				nextText,
+				current.sourceFrom,
+				{ hiddenRanges: hiddenSourceRanges, mathMode: 'source' },
+			)) return;
+			const mapped = mapSelectionInside(el);
+			if (mapped) {
+				pendingSelectionRestoreRef.current = {
+					selection: mapped,
+					text: nextText,
+					sourceFrom: current.sourceFrom,
+				};
+			}
+			setRenderState({ text: nextText, sourceFrom: current.sourceFrom });
+		});
 	};
 
 	const onKeyDown = (ev: React.KeyboardEvent<HTMLDivElement>) => {
@@ -134,24 +222,39 @@ export function EditableText({
 		setFocused(true);
 	};
 	const onBlur = async () => {
+		if (liveProjectionFrameRef.current !== null) {
+			const win = elRef.current?.ownerDocument.defaultView ?? window;
+			win.cancelAnimationFrame(liveProjectionFrameRef.current);
+			liveProjectionFrameRef.current = null;
+		}
+		const propsAtBlur = latestSourceRef.current;
+		const liveText = elRef.current?.textContent ?? renderStateRef.current.text;
+		const liveState = { text: liveText, sourceFrom: renderStateRef.current.sourceFrom };
+		pendingSelectionRestoreRef.current = null;
 		focusedRef.current = false;
 		setFocused(false);
+		setRenderState((prev) =>
+			prev.text === liveState.text && prev.sourceFrom === liveState.sourceFrom ? prev : liveState,
+		);
 		if (controller) await controller.endSession();
-		// Re-sync the frozen render from the latest committed props.
-		setRenderState((prev) => (prev.text === text && prev.sourceFrom === sourceFrom ? prev : { text, sourceFrom }));
+		// `endSession()` may have committed after this blur handler was created.
+		// Only replace the live blur snapshot when React has actually delivered
+		// newer props; otherwise the parent-store update will reconcile next.
+		const latest = latestSourceRef.current;
+		if (latest.text !== propsAtBlur.text || latest.sourceFrom !== propsAtBlur.sourceFrom) {
+			setRenderState((prev) =>
+				prev.text === latest.text && prev.sourceFrom === latest.sourceFrom ? prev : latest,
+			);
+		}
 	};
 
-	// Focused → verbatim source segments (contentEditable owns exact bytes);
-	// blurred / read-only → styled runs. Both carry data-src-text-from so the
-	// selection→source mapping is identical in either state.
-	const showSource = focused && editable && Boolean(hub);
-	const segments = React.useMemo(
-		() => segmentLinks(renderState.text, renderState.sourceFrom),
-		[renderState],
-	);
-	const inlineProjection = React.useMemo(
-		() => parseInlineProjection(renderState.text, renderState.sourceFrom),
-		[renderState],
+	const visualParts = React.useMemo(
+		() =>
+			projectSourceVisualParts(renderState.text, renderState.sourceFrom, {
+				hiddenRanges: hiddenSourceRanges,
+				mathMode: focused && editable && Boolean(hub) ? 'source' : 'atom',
+			}),
+		[renderState, hiddenSourceRanges, focused, editable, hub],
 	);
 
 	return (
@@ -169,74 +272,71 @@ export function EditableText({
 			onKeyDown={onKeyDown}
 			onFocus={onFocus}
 			onBlur={() => void onBlur()}
-			onCompositionStart={() => controller?.setComposing(true)}
+			onCompositionStart={() => {
+				composingRef.current = true;
+				controller?.setComposing(true);
+			}}
 			onCompositionEnd={() => {
+				composingRef.current = false;
 				controller?.setComposing(false);
 				onInput();
 			}}
 		>
-			{showSource ? (
-				// INT-1: key by BLOCK-RELATIVE offset (`from − sourceFrom`), never the
-				// absolute source offset. Absolute offsets shift by the edit delta on
-				// every commit for all downstream blocks, so absolute keys remount their
-				// entire span DOM each burst — the mass childList churn is what fires the
-				// browser's async caret-reveal that scrolls the viewport to the document
-				// bottom (INT-1). Relative offsets are stable across commits, so an
-				// unchanged block reconciles in place (attribute-only), no remount.
-				segments.map((seg, i) =>
-					seg.linkTarget ? (
-						<span
-							key={seg.from - renderState.sourceFrom}
-							className="pk-composer-link"
-							data-src-text-from={seg.from}
-							data-unit-id={unitId}
-							data-link-target={seg.linkTarget}
-							data-link-kind={seg.linkKind}
-							tabIndex={0}
-						>
-							{seg.text}
-						</span>
-					) : (
-						<span key={seg.from - renderState.sourceFrom} data-src-text-from={seg.from} data-unit-id={unitId}>
-							{seg.text}
-						</span>
-					),
-				)
-			) : (
-				// Styled runs are rendered as DIRECT span children (not a nested
-				// component) so React preserves the exact text nodes across the
-				// selection-driven re-render — a component boundary here re-creates
-				// the nodes and collapses an in-progress selection. Keys are
-				// block-relative for the same INT-1 reason as the source segments above.
-				inlineProjection.map((part, i) => {
-					if (part.kind === 'math') {
-						return <InlineMathAtom key={part.sourceFrom - renderState.sourceFrom} {...part} />;
-					}
-					const { run } = part;
-					const { className, style } = styleAttrs(run.style);
-					if (run.linkTarget) {
-						return (
-							<span
-								key={run.from - renderState.sourceFrom}
-								className={className ? `pk-composer-link ${className}` : 'pk-composer-link'}
-								style={style}
-								data-src-text-from={run.from}
-								data-unit-id={unitId}
-								data-link-target={run.linkTarget}
-								data-link-kind={run.linkKind}
-								tabIndex={0}
-							>
-								{run.text}
-							</span>
-						);
-					}
-					return (
-						<span key={run.from - renderState.sourceFrom} className={className} style={style} data-src-text-from={run.from} data-unit-id={unitId}>
-							{run.text}
-						</span>
-					);
-				})
-			)}
+			{visualParts.map((part) => (
+				<VisualPart
+					key={`${part.from - renderState.sourceFrom}-${part.to - renderState.sourceFrom}-${part.kind}`}
+					part={part}
+					unitId={unitId}
+				/>
+			))}
 		</div>
+	);
+}
+
+function mapSelectionInside(el: HTMLElement): MappedSelection | null {
+	const selection = el.ownerDocument.getSelection();
+	if (!selection?.anchorNode || !selection.focusNode) return null;
+	const anchorInside = selection.anchorNode === el || el.contains(selection.anchorNode);
+	const focusInside = selection.focusNode === el || el.contains(selection.focusNode);
+	return anchorInside && focusInside ? mapDomSelectionToSource(el, selection) : null;
+}
+
+function VisualPart({ part, unitId }: { part: SourceVisualPart; unitId?: string }): React.ReactElement {
+	if (part.kind === 'hidden') {
+		return (
+			<span
+				className="pk-composer-source-token"
+				contentEditable={false}
+				data-src-token-from={part.from}
+				data-src-token-to={part.to}
+				aria-hidden="true"
+			>
+				{part.text}
+			</span>
+		);
+	}
+	if (part.kind === 'math') {
+		return <InlineMathAtom latex={part.latex} sourceFrom={part.from} sourceTo={part.to} />;
+	}
+	const { className, style } = styleAttrs(part.style);
+	if (part.linkTarget) {
+		return (
+			<span
+				className={className ? `pk-composer-link ${className}` : 'pk-composer-link'}
+				style={style}
+				data-src-text-from={part.from}
+				data-unit-id={unitId}
+				data-link-target={part.linkTarget}
+				data-link-kind={part.linkKind}
+				tabIndex={0}
+			>
+				{part.text}
+			</span>
+		);
+	}
+	return (
+		<span className={className} style={style} data-src-text-from={part.from} data-unit-id={unitId}>
+			{part.text}
+		</span>
 	);
 }

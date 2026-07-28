@@ -112,15 +112,10 @@ assertDecl(closedSidecar, 'min-width: 0 !important;', 'closed desktop sidecar ch
 assertDecl(closedSidecar, 'margin: 0;', 'closed desktop sidecar child must not leak gutter width');
 assertDecl(closedSidecar, 'border-width: 0;', 'closed desktop sidecar child must not leak border width');
 
-const openToggle = cssBlock(css, ".peak-composer-root[data-with-sidecar='true'] .pk-sidecar-open-toggle");
-assertDecl(openToggle, 'position: absolute;', 'closed sidecar entry must be positioned relative to the Composer host');
-assertDecl(openToggle, 'right: 12px;', 'closed sidecar entry must keep the canonical right inset');
-assertDecl(openToggle, 'top: 12px;', 'closed sidecar entry must keep the canonical top inset');
-assertDecl(openToggle, 'height: 28px !important;', 'closed sidecar entry must defend its height against Obsidian reset');
-assertDecl(openToggle, 'min-height: 28px !important;', 'closed sidecar entry must defend its min-height against Obsidian reset');
-assertDecl(openToggle, 'padding: 0 10px !important;', 'closed sidecar entry must defend its padding against Obsidian reset');
-assertDecl(openToggle, 'pointer-events: auto;', 'closed sidecar entry must remain clickable while drawer anchor ignores pointer events');
-assert.ok(!openToggle.includes('position: fixed;'), 'closed sidecar entry must not use owner-window fixed positioning');
+assert.ok(
+	!css.includes('.pk-sidecar-open-toggle'),
+	'closed sidecar entry must be owned by the unified Composer control bar, not a detached sidecar toggle',
+);
 
 const header = cssBlock(css, '.pk-sidecar-header');
 assertDecl(header, 'min-height: 58px;', 'sidecar header must keep the canonical restrained presence height');
@@ -165,15 +160,14 @@ assert.ok(
 	'host observer fallback must not use global document.documentElement',
 );
 assert.ok(
-	/aria-hidden=\{!drawerOpen\}/.test(sidecarTsx) && /onClose=\{\(\) => setDrawerOpen\(false\)\}/.test(sidecarTsx),
-	'narrow sidecar drawer must keep close/reopen and aria-hidden behavior',
+	/aria-hidden=\{!open\}/.test(sidecarTsx) && /onClose=\{\(\) => onOpenChange\(false\)\}/.test(sidecarTsx),
+	'narrow sidecar drawer must keep controlled close/reopen and aria-hidden behavior',
 );
 assert.ok(
-	sidecarTsx.includes("data-open={drawerOpen ? 'true' : 'false'}") && sidecarTsx.includes("data-open={desktopOpen ? 'true' : 'false'}"),
+	sidecarTsx.includes("data-open={open ? 'true' : 'false'}"),
 	'desktop and drawer anchors should use explicit data-open state for deterministic CSS',
 );
-assert.ok(sidecarTsx.includes('className="pk-sidecar-open-toggle"'), 'desktop anchor should expose reopen control');
-assert.ok(sidecarTsx.includes("import { Button }"), 'closed sidecar entry must use the project Button primitive');
+assert.ok(!sidecarTsx.includes('pk-sidecar-open-toggle'), 'desktop anchor must not expose a detached reopen control');
 assert.ok(!sidecarTsx.includes('pk-sidecar-drawer-toggle'), 'drawer closed entry must share the desktop closed visual grammar');
 assert.ok(sidecarTsx.includes('data-sidecar-mode="desktop"'), 'desktop sidecar anchor should carry sidecar mode marker');
 assert.ok(

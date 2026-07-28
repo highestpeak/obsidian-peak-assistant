@@ -121,6 +121,10 @@ export enum PromptId {
 	DocTranslate = 'doc-translate',
 	DocCorrectContent = 'doc-correct-content',
 
+	// Composer text-block transforms
+	ComposerProseTransform = 'composer-prose-transform',
+	ComposerBlockDraft = 'composer-block-draft',
+
 	// Composer packs (WP5: frontmatter + math)
 	ComposerSuggestProperties = 'composer-suggest-properties',
 	ComposerExplainFormula = 'composer-explain-formula',
@@ -612,6 +616,19 @@ export interface PromptVariables {
 		content: string;
 		title?: string;
 		scope: 'full' | 'selection';
+	};
+	[PromptId.ComposerProseTransform]: {
+		content: string;
+		before?: string;
+		after?: string;
+		blockKind: string;
+		instruction: string;
+	};
+	[PromptId.ComposerBlockDraft]: {
+		instruction: string;
+		targetSource: string;
+		before?: string;
+		after?: string;
 	};
 	[PromptId.ComposerSuggestProperties]: {
 		content: string;

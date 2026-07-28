@@ -60,11 +60,21 @@ Four-layer architecture: `app/` → `service/` → `core/` → `ui/`
 Detailed conventions live in `docs/conventions/`. Read `docs/conventions/README.md` for the index and how to add new rules. Each pointer below is intentionally one line — open the linked file for the rule itself.
 
 - **UI design system** — tokens, primitive catalog, primitive usage decisions, Obsidian CSS defense, JSX-mock fidelity. One file, 5 sections, section-anchored. [`ui-design.md`](./docs/conventions/ui-design.md)
+- **Obsidian real-UI QA** — CDP/Playwright owns precise state and interactions; Computer Use only supplies final visible proof. Includes plugin-only reload, No-CDP fallback, evidence levels, and stop rules. [`obsidian-real-ui-qa.md`](./docs/conventions/obsidian-real-ui-qa.md)
 - **Prompt input consistency** — Chat Studio、Composer sidecar 与未来输入面共享 PromptInput 内核、trigger/keyboard grammar 和单层 focus owner；各自 runtime/state 保持隔离。[`prompt-input-consistency.md`](./docs/conventions/prompt-input-consistency.md)
 - **Command Palette governance** — 生产 Palette 只允许 owner 明确批准的稳定全局入口；feature-local、Work Intelligence、maintenance、debug、QA、实验性和临时动作必须留在所属 surface，并由精确 allowlist 测试防回流。[`command-palette-governance.md`](./docs/conventions/command-palette-governance.md)
 - **Configurability** — no inline i18n / regex / label maps / color, thresholds, weights, timing knobs, or style configs; route through `templates/config/` plus a documented domain fallback when needed. [`configurability.md`](./docs/conventions/configurability.md)
 - **Root docs** — final-state `docs/*.html` manuals, not work logs; status language, dense tables, long paths, Mermaid, formulas, and viewport QA rules. [`root-docs.md`](./docs/conventions/root-docs.md)
 - **Spec + tests one doc** — spec 与 acceptance criteria / test 文件清单 / bad-case 复现写在同一份 `docs/superpowers/specs/*.md`，不拆到 `test-plan.md` / `qa.md`。[`spec-and-tests.md`](./docs/conventions/spec-and-tests.md)
+
+### Obsidian Real-UI Non-Negotiables
+
+- CDP + Playwright owns precise Obsidian state setup, DOM inspection, plugin reload, pointer/keyboard interaction, focus, geometry, and runtime evidence.
+- Computer Use only supplies final real-app visual proof. It is not a fallback controller: never use AX element indexes, guessed coordinates, or repeated clicks to navigate internal Composer controls.
+- For ordinary plugin QA, use plugin-only reload. Never guess `Cmd+R`, try multiple Command Palette reloads, toggle Community Plugins in Settings, or run `Reload app without saving`.
+- A click-pinned state does not prove hover behavior, and a screenshot does not prove a pointer corridor, focus restoration, Escape handling, or a History sequence. Execute the exact interaction class being claimed.
+- If CDP is unavailable, use an already-open DevTools Console for at most one deterministic reload/open command. Otherwise mark the interaction `NOT VERIFIED` or `OWNER-CONFIRMED` and stop.
+- If the user changes Obsidian state, the active page is DevTools instead of the main renderer, or the same transition fails twice, stop immediately. Do not reclaim focus or continue with alternative clicks.
 
 ## Docs & Research Workflow
 

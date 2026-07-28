@@ -10,7 +10,11 @@
  *   - surfaces filter: polish projects to block-row/selection-toolbar only.
  */
 
-import { DEFAULT_COMPOSER_CAPABILITIES_CONFIG, POLISH_CAPABILITY_ID } from '@/service/composer';
+import {
+	DEFAULT_COMPOSER_CAPABILITIES_CONFIG,
+	POLISH_CAPABILITY_ID,
+	PROSE_BLOCK_ACTION_IDS,
+} from '@/service/composer';
 import type { ComposerContextSnapshot } from '@/core/composer';
 import { FakeVault, openSession, makeHub, makeChecker, blockOfKind } from './helpers/composer-fakes';
 import { FakeComposerExecutor, makeCapabilityRuntime } from './helpers/capability-fakes';
@@ -21,6 +25,21 @@ const SOURCE = [
 	'# Title',
 	'',
 	'A paragraph that clearly needs polishing.',
+	'',
+	'- First list item',
+	'- Second list item',
+	'',
+	'Task section:',
+	'',
+	'- [ ] Draft the implementation',
+	'- [x] Review the result',
+	'',
+	'> A quotation that needs context.',
+	'',
+	'Callout section:',
+	'',
+	'> [!note]',
+	'> A short principle.',
 	'',
 	'```js',
 	'const x = 1;',
@@ -54,8 +73,40 @@ async function main(): Promise<void> {
 		check('descriptor group is ai', polish?.group === 'ai');
 		check('descriptor accepts instruction', polish?.acceptsInstruction === true);
 		check('descriptor is enabled', polish?.disabledReason === undefined, polish?.disabledReason);
+		const paragraphQuickActions = actions.filter((action) =>
+			PROSE_BLOCK_ACTION_IDS.includes(action.capabilityId),
+		);
+		check('paragraph projects the three designed quick actions', paragraphQuickActions.length === 3, String(paragraphQuickActions.length));
+		check(
+			'paragraph quick-action labels come from config',
+			paragraphQuickActions.map((action) => action.title).join(',') === '润色文本,补一个例子,转成表格',
+			paragraphQuickActions.map((action) => action.title).join(','),
+		);
 		check('polish projects on selection-toolbar too', runtime.actionsFor(snapshot, 'selection-toolbar').length === 1);
 		check('polish does NOT project on object-toolbar', runtime.actionsFor(snapshot, 'object-toolbar').length === 0);
+	}
+
+	{
+		const { session, runtime } = setup();
+		const expected: ReadonlyArray<{
+			kind: 'heading' | 'list' | 'task' | 'quote' | 'callout';
+			labels: string;
+		}> = [
+			{ kind: 'heading', labels: '改短标题,补提纲,生成导读问题' },
+			{ kind: 'list', labels: '补缺项,重排列表,转成表格' },
+			{ kind: 'task', labels: '找阻塞,补下一步,按优先级重排' },
+			{ kind: 'quote', labels: '解释引用,找反例,转 Callout' },
+			{ kind: 'callout', labels: '改 Callout 类型,扩写原则,生成检查项' },
+		];
+		for (const item of expected) {
+			const block = blockOfKind(session, item.kind);
+			const snapshot = runtime.assembleSnapshot({ kind: 'block', blockId: block.blockId });
+			const labels = runtime.actionsFor(snapshot, 'block-row')
+				.filter((action) => PROSE_BLOCK_ACTION_IDS.includes(action.capabilityId))
+				.map((action) => action.title)
+				.join(',');
+			check(`${item.kind} projects its three designed quick actions`, labels === item.labels, labels);
+		}
 	}
 
 	{

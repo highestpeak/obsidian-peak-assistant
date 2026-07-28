@@ -59,11 +59,12 @@ function run(): void {
 	check('links: bare url captured', runs2.some((r) => r.linkKind === 'bare-url' && r.text === 'https://y.io'));
 
 	// ── html marks: underline / color / highlight ─────────────────────────────
-	const s3 = 'a <u>под</u> b <span style="color: #b42318">red</span> c <mark style="background: #fff1a8">hi</mark>';
+	const s3 = 'a <u>под</u> b <span style="color: #b42318">red</span> c <mark style="background: #fff1a8">hi</mark> d <span style="text-decoration: underline">under</span>';
 	const runs3 = assertOffsetLaw('html', s3);
 	check('html: underline run', runs3.some((r) => r.style.underline && r.text === 'под'));
 	check('html: color run carries the value', runs3.some((r) => r.style.color === '#b42318' && r.text === 'red'));
 	check('html: highlight run carries the value', runs3.some((r) => r.style.highlight === '#fff1a8' && r.text === 'hi'));
+	check('html: span text-decoration underline run', runs3.some((r) => r.style.underline && r.text === 'under'));
 
 	// ── Obsidian ==highlight== (default color) ─────────────────────────────────
 	const s3b = 'note ==important== here';
@@ -75,6 +76,15 @@ function run(): void {
 	const runs4 = assertOffsetLaw('nested', s4);
 	const deep = runs4.find((r) => r.text === 'deep');
 	check('nested: inner run has both bold+italic', Boolean(deep?.style.bold && deep?.style.italic));
+	const nestedHtml =
+		'<mark style="background: #dff4e8">outer <mark style="background: #dfeaff">inner</mark> tail</mark>';
+	const nestedHtmlRuns = assertOffsetLaw('nested-html', nestedHtml);
+	check(
+		'nested-html: same-tag inner highlight wins without leaking tags',
+		nestedHtmlRuns.some((r) => r.text === 'inner' && r.style.highlight === '#dfeaff') &&
+			nestedHtmlRuns.map((r) => r.text).join('') === 'outer inner tail',
+		nestedHtmlRuns.map((r) => r.text).join(''),
+	);
 
 	// ── non-zero base offset (a block that does not start at 0) ────────────────
 	const inner = '**hey** you';

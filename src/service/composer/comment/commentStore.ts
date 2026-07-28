@@ -9,7 +9,17 @@
  */
 
 import type { ComposerDocumentSnapshot } from '@/core/composer';
-import { revalidateComments, type ComposerComment } from './commentModel';
+import {
+	COMPOSER_COMMENT_SCHEMA_VERSION,
+	LOCAL_COMMENT_ACTOR,
+	normalizeComposerComment,
+	revalidateComments,
+	type ComposerComment,
+	type ComposerCommentActor,
+	type ComposerCommentCreateInput,
+	type ComposerCommentReply,
+	type CommentVisibility,
+} from './commentModel';
 
 /** Injected persistence — the product's existing comment/plugin-data storage. */
 export interface ComposerCommentPersistencePort {
@@ -21,6 +31,11 @@ let seq = 0;
 function nextCommentId(): string {
 	seq += 1;
 	return `cmt-${Date.now().toString(36)}-${seq.toString(36)}`;
+}
+
+function nextReplyId(): string {
+	seq += 1;
+	return `cmt-reply-${Date.now().toString(36)}-${seq.toString(36)}`;
 }
 
 export class ComposerCommentStore {
@@ -35,30 +50,36 @@ export class ComposerCommentStore {
 	/** Hydrate from the persistence port (no-op when none is injected). */
 	async load(): Promise<void> {
 		if (!this.port) return;
-		this.comments = await this.port.load(this.documentId);
+		this.comments = (await this.port.load(this.documentId)).map(normalizeComposerComment);
 		this.notify();
 	}
 
 	list(): readonly ComposerComment[] {
-		return this.comments;
+		return this.comments.filter((comment) => comment.deletedAt === undefined);
 	}
 
 	forBlock(blockId: string): readonly ComposerComment[] {
-		return this.comments.filter((c) => c.anchor.blockId === blockId);
+		return this.list().filter((comment) => comment.anchor.blockId === blockId);
 	}
 
 	subscribe(cb: (comments: readonly ComposerComment[]) => void): () => void {
 		this.subs.add(cb);
-		cb(this.comments);
+		cb(this.list());
 		return () => this.subs.delete(cb);
 	}
 
-	add(input: Omit<ComposerComment, 'commentId' | 'status' | 'createdAt' | 'updatedAt'>): ComposerComment {
+	add(input: ComposerCommentCreateInput): ComposerComment {
 		const now = Date.now();
 		const comment: ComposerComment = {
 			...input,
+			schemaVersion: COMPOSER_COMMENT_SCHEMA_VERSION,
 			commentId: nextCommentId(),
 			status: 'active',
+			threadState: 'open',
+			visibility: input.visibility ?? 'private',
+			origin: input.origin ?? 'local',
+			actor: input.actor ?? { ...LOCAL_COMMENT_ACTOR },
+			replies: [],
 			createdAt: now,
 			updatedAt: now,
 		};
@@ -68,18 +89,57 @@ export class ComposerCommentStore {
 		return comment;
 	}
 
-	updateBody(commentId: string, body: string): void {
-		this.comments = this.comments.map((c) =>
-			c.commentId === commentId ? { ...c, body, updatedAt: Date.now() } : c,
-		);
+	reply(commentId: string, body: string, actor: ComposerCommentActor = LOCAL_COMMENT_ACTOR): ComposerCommentReply | null {
+		const trimmed = body.trim();
+		if (!trimmed) return null;
+		const now = Date.now();
+		const reply: ComposerCommentReply = {
+			replyId: nextReplyId(),
+			body: trimmed,
+			actor: { ...actor },
+			createdAt: now,
+			updatedAt: now,
+		};
+		let found = false;
+		this.comments = this.comments.map((comment) => {
+			if (comment.commentId !== commentId || comment.deletedAt !== undefined) return comment;
+			found = true;
+			return {
+				...normalizeComposerComment(comment),
+				replies: [...(comment.replies ?? []), reply],
+				updatedAt: now,
+			};
+		});
+		if (!found) return null;
 		this.persist();
 		this.notify();
+		return reply;
+	}
+
+	resolve(commentId: string): void {
+		this.setThreadState(commentId, 'resolved');
+	}
+
+	reopen(commentId: string): void {
+		this.setThreadState(commentId, 'open');
+	}
+
+	setVisibility(commentId: string, visibility: CommentVisibility): void {
+		this.updateComment(commentId, (comment, now) => ({ ...comment, visibility, updatedAt: now }));
+	}
+
+	updateBody(commentId: string, body: string): void {
+		const trimmed = body.trim();
+		if (!trimmed) return;
+		this.updateComment(commentId, (comment, now) => ({ ...comment, body: trimmed, updatedAt: now }));
 	}
 
 	remove(commentId: string): void {
-		this.comments = this.comments.filter((c) => c.commentId !== commentId);
-		this.persist();
-		this.notify();
+		this.updateComment(commentId, (comment, now) => ({
+			...comment,
+			deletedAt: now,
+			updatedAt: now,
+		}));
 	}
 
 	/** Migrate/stale anchors after a reparse. Called by the lifecycle controller. */
@@ -98,6 +158,27 @@ export class ComposerCommentStore {
 	}
 
 	private notify(): void {
-		for (const cb of this.subs) cb(this.comments);
+		const visible = this.list();
+		for (const cb of this.subs) cb(visible);
+	}
+
+	private setThreadState(commentId: string, threadState: 'open' | 'resolved'): void {
+		this.updateComment(commentId, (comment, now) => ({ ...comment, threadState, updatedAt: now }));
+	}
+
+	private updateComment(
+		commentId: string,
+		update: (comment: ComposerComment, now: number) => ComposerComment,
+	): void {
+		let changed = false;
+		const now = Date.now();
+		this.comments = this.comments.map((comment) => {
+			if (comment.commentId !== commentId || comment.deletedAt !== undefined) return comment;
+			changed = true;
+			return update(normalizeComposerComment(comment), now);
+		});
+		if (!changed) return;
+		this.persist();
+		this.notify();
 	}
 }

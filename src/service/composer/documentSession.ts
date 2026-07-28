@@ -75,6 +75,20 @@ export class ComposerDocumentSession {
 		return this.snapshotRef;
 	}
 
+	/**
+	 * Adopt a snapshot that has already been parsed and validated for this file.
+	 * TransactionEngine uses this after its reparse-safety check so a direct edit
+	 * does not parse the whole document a second time merely to advance session
+	 * state.
+	 */
+	adoptSnapshot(snapshot: ComposerDocumentSnapshot): ComposerDocumentSnapshot {
+		if (snapshot.filePath !== this.filePath) {
+			throw new Error(`Composer snapshot path ${snapshot.filePath} does not match session ${this.filePath}`);
+		}
+		this.snapshotRef = snapshot;
+		return this.snapshotRef;
+	}
+
 	/** Reparse by re-reading through the source port. */
 	async refresh(port: ComposerSourcePort): Promise<ComposerDocumentSnapshot> {
 		const sourceText = await port.readSource(this.filePath);

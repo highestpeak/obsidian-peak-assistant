@@ -31,6 +31,11 @@ import {
 	type FormattingSyntaxMap,
 	type MarkSyntax,
 } from './formattingSyntax';
+import {
+	visibleSelectionSegments,
+	wrapVisibleSegments,
+	type VisibleSelectionSegment,
+} from './visibleSegments';
 
 export interface ApplyMarkOptions {
 	/** Swatch value for color / highlight marks (e.g. `#b42318`). Ignored otherwise. */
@@ -75,7 +80,7 @@ export function applyMarkToSelection(
 
 	const operations: ComposerOperation[] = [];
 	for (const unit of selection.units) {
-		const patch = wrapUnit(selection.sourceText, unit, syntax, open);
+		const patch = wrapUnit(selection.sourceText, unit, mark, syntax, open, options.value);
 		if (patch) operations.push({ kind: 'replaceRange', from: patch.from, to: patch.to, text: patch.text });
 	}
 	if (operations.length === 0) {
@@ -92,8 +97,10 @@ export function applyMarkToSelection(
 function wrapUnit(
 	source: string,
 	unit: ComposerSelectionUnit,
+	mark: ComposerInlineMark,
 	syntax: MarkSyntax,
 	open: string,
+	value?: string,
 ): UnitPatch | null {
 	const { from, to } = unit;
 	const inner = source.slice(from, to);
@@ -115,19 +122,60 @@ function wrapUnit(
 	const trail = inner.length - inner.trimEnd().length;
 	let repFrom = from + lead;
 	let repTo = to - trail;
-	const core = source.slice(repFrom, repTo);
+	const segments = visibleSelectionSegments(source, {
+		...unit,
+		from: repFrom,
+		to: repTo,
+	});
+	const applicable = segments.filter((segment) => !alreadyHasMark(segment, mark, value));
+	if (applicable.length === 0) return null;
 
-	let prefix = open;
-	let suffix = close;
-	// Absorb an immediately-preceding identical close (merge two adjacent marks).
-	if (source.slice(repFrom - close.length, repFrom) === close) {
-		repFrom -= close.length;
-		prefix = '';
+	// Keep the compact legacy form for a single plain interval. Apart from
+	// preserving clean source, this retains adjacent-mark absorption.
+	if (isSinglePlainInterval(applicable, repFrom, repTo)) {
+		const core = source.slice(repFrom, repTo);
+		let prefix = open;
+		let suffix = close;
+		if (source.slice(repFrom - close.length, repFrom) === close) {
+			repFrom -= close.length;
+			prefix = '';
+		}
+		if (source.slice(repTo, repTo + open.length) === open) {
+			repTo += open.length;
+			suffix = '';
+		}
+		return { from: repFrom, to: repTo, text: prefix + core + suffix };
 	}
-	// Absorb an immediately-following identical open.
-	if (source.slice(repTo, repTo + open.length) === open) {
-		repTo += open.length;
-		suffix = '';
-	}
-	return { from: repFrom, to: repTo, text: prefix + core + suffix };
+
+	return {
+		from: repFrom,
+		to: repTo,
+		text: wrapVisibleSegments(source, repFrom, repTo, applicable, open, close),
+	};
+}
+
+function isSinglePlainInterval(
+	segments: readonly VisibleSelectionSegment[],
+	from: number,
+	to: number,
+): boolean {
+	if (segments.length !== 1) return false;
+	const [segment] = segments;
+	return segment.from === from &&
+		segment.to === to &&
+		Object.keys(segment.style).length === 0 &&
+		!segment.linkTarget;
+}
+
+function alreadyHasMark(
+	segment: VisibleSelectionSegment,
+	mark: ComposerInlineMark,
+	value?: string,
+): boolean {
+	if (mark === 'bold') return Boolean(segment.style.bold);
+	if (mark === 'italic') return Boolean(segment.style.italic);
+	if (mark === 'underline') return Boolean(segment.style.underline);
+	if (mark === 'strikethrough') return Boolean(segment.style.strikethrough);
+	if (mark === 'text-color') return segment.style.color !== undefined && segment.style.color === value;
+	return segment.style.highlight !== undefined && segment.style.highlight === (value ?? '');
 }

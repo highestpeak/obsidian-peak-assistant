@@ -94,7 +94,7 @@ export function PeakImageLayoutBlockView({ block, editing }: { block: ComposerBl
 		});
 	};
 	const tile = (item: ParsedPeakImageLayout['items'][number], index: number): React.ReactElement => {
-		const resolved = item.src ? resolvePreviewUri?.(item.src) : undefined;
+		const resolved = item.src ? resolvePreviewUri?.(item.src, chrome.snapshot?.filePath) : undefined;
 		const src = resolved && resolved.length > 0 ? resolved : item.src;
 		if (!src || imageErrors[index]) return layoutFallbackTile(item, uiStrings.loadFailed);
 		return (

@@ -38,8 +38,12 @@ export interface ComposerImageAttachmentPort {
 	save(request: ComposerImageSaveRequest): Promise<ComposerImageSaveResult>;
 	/** Overwrite an existing asset's bytes in place (Converter overwrite path). */
 	overwrite(path: string, bytes: Uint8Array): Promise<void>;
-	/** A short-lived preview URI for on-screen display — NEVER persisted to Markdown. */
-	previewUri(path: string): string;
+	/**
+	 * A short-lived preview URI for on-screen display — NEVER persisted to
+	 * Markdown. `sourcePath` lets an Obsidian host resolve relative or basename
+	 * wikilinks through its metadata cache before falling back to an exact path.
+	 */
+	previewUri(path: string, sourcePath?: string): string;
 }
 
 /** A document that references an asset (from the metadata cache). */

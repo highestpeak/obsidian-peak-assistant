@@ -72,7 +72,7 @@ try {
 	await block.hover();
 	await page.waitForTimeout(180);
 	assert.equal(await row.getAttribute('data-mode'), 'actions', 'hover starts in action-pill mode');
-	assert.equal(await shell.evaluate((el) => getComputedStyle(el).minHeight), '38px', 'visible shell keeps the 38px action rung');
+	assert.equal(await shell.evaluate((el) => getComputedStyle(el).minHeight), '38px', 'visible shell keeps the compact 38px action rung');
 	assert.ok((await row.locator('.pk-action-core .pk-action-capsule').count()) >= 3, 'original deterministic actions render');
 	const visibleHeight = await row.evaluate((el) => el.getBoundingClientRect().height);
 	assert.ok(visibleHeight >= 38, `hovered action wrapper reveals its shell (${visibleHeight}px)`);

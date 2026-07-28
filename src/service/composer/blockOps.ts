@@ -11,6 +11,7 @@
  */
 
 import type { ComposerDocumentSnapshot, ComposerOperation, ComposerTarget } from '@/core/composer';
+import { countDraftBlocks } from './newBlockDraft';
 
 export interface BuiltOps {
 	operations: ComposerOperation[];
@@ -64,11 +65,9 @@ export function buildMoveBlockOps(
 }
 
 /**
- * Insert a new paragraph with `text` below `blockId`. The chrome's 在下方插入
- * uses an ephemeral draft leaf and commits through this builder on the first
- * flush — a literally-empty paragraph is unrepresentable in Markdown (it would
- * fail the engine's +1 block-count guard), so the transaction carries the
- * draft's first real content.
+ * Insert arbitrary Markdown below `blockId`. Markdown is the source of truth:
+ * block kinds and block count are derived by the parser, never from a hidden UI
+ * selection. A literally-empty Markdown block is unrepresentable.
  */
 export function buildInsertBelowOps(
 	snapshot: ComposerDocumentSnapshot,
@@ -76,6 +75,8 @@ export function buildInsertBelowOps(
 	text: string,
 ): BuiltOps | null {
 	if (!text.trim()) return null;
+	const expectedBlockDelta = countDraftBlocks(text);
+	if (expectedBlockDelta < 1) return null;
 	const { blocks, sourceText } = snapshot;
 	const i = blocks.findIndex((b) => b.blockId === blockId);
 	if (i < 0) return null;
@@ -84,16 +85,16 @@ export function buildInsertBelowOps(
 		const at = sourceText.length;
 		const lead = sourceText.endsWith('\n') ? '\n' : '\n\n';
 		return {
-			operations: [{ kind: 'insertBlock', at, text: lead + text + '\n', blockKind: 'paragraph' }],
+			operations: [{ kind: 'insertBlock', at, text: lead + text + '\n' }],
 			target: { kind: 'block', blockId },
-			expectedBlockDelta: 1,
+			expectedBlockDelta,
 		};
 	}
 	const at = blocks[i + 1].source.from;
 	return {
-		operations: [{ kind: 'insertBlock', at, text: text + '\n\n', blockKind: 'paragraph' }],
+		operations: [{ kind: 'insertBlock', at, text: text + '\n\n' }],
 		target: { kind: 'block', blockId },
-		expectedBlockDelta: 1,
+		expectedBlockDelta,
 	};
 }
 

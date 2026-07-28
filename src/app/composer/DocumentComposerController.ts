@@ -23,12 +23,14 @@ import type {
 	ComposerCapabilityProjectionPort,
 	ComposerDocumentSnapshot,
 	ComposerStateSource,
+	ComposerTransactionConfig,
 	DocumentComposerState,
 } from '@/core/composer';
 import {
 	ComposerDocumentSession,
 	ComposerSourceRevisionService,
 	type ComposerCommentStore,
+	type ComposerBlockDraftGenerationPort,
 	type ComposerFileEvent,
 	type ComposerFileEventsPort,
 	type ComposerLinkMetadataPort,
@@ -53,6 +55,8 @@ export type { ComposerLifecycleStatus, DocumentComposerState } from '@/core/comp
 export interface ComposerEditingRuntime {
 	session: ComposerDocumentSession;
 	hub: ComposerTransactionHub;
+	/** Shared UI projection + persistence timing policy for this document. */
+	transactionConfig?: ComposerTransactionConfig;
 	projection?: ComposerCapabilityProjectionPort;
 	candidateRuntime?: ComposerCandidateRuntimePort;
 	comments: ComposerCommentStore;
@@ -74,7 +78,9 @@ export interface ComposerEditingRuntime {
 	 * App-owned preview URI resolver for image rendering. Keeps raw Markdown paths
 	 * decoupled from view-specific `obsidian` resource URIs.
 	 */
-	imagePreviewResolver?: (path: string) => string;
+	imagePreviewResolver?: (path: string, sourcePath?: string) => string;
+	/** Explicit AI generation for the review-before-write new-block draft. */
+	blockDraftGeneration?: ComposerBlockDraftGenerationPort;
 	/** App-owned Intelligence Sidecar runtime (WP9); absent ⇒ no sidecar. */
 	intelligence?: IntelligenceRuntime;
 }

@@ -450,9 +450,9 @@
     <header>
       <div class="eyebrow">24 · Infrastructure · AI model routing</div>
       <h1>AI 模型路由：每个用到 AI 的地方在用哪个模型，什么时候降级、什么时候升级。</h1>
-      <p class="subtitle">这篇写给要回答“这次 AI 调用到底跑的哪个模型？为什么？”的维护者。Peak 里所有 AI 调用都经过<strong>同一套解析</strong>——用途槽（slot）→ 起始 tier → 可选的运行时升级 → 未配置时的降级 fallback。读完你能对任意一个 AI 触点，说清它的模型来源、升级条件、降级链。</p>
+      <p class="subtitle">这篇写给要回答“这次 AI 调用到底跑的哪个模型？为什么？”的维护者。用途槽（slot）→ 起始 tier → 可选升级 → fallback 是项目的目标模型；2026-07-28 复核发现当前生产代码仍有多条旁路，不能再写成“所有 AI 调用已经经过同一套解析”。</p>
       <ul class="subtitle-list">
-        <li><strong>唯一解析入口</strong>：<code>ProfileRegistry.resolveSlot(slot)</code>——harness 与 SDK 两条路径都走它。</li>
+        <li><strong>目标解析入口</strong>：<code>ProfileRegistry.resolveSlot(slot)</code>；harness 的核心绑定会走它，但一次性文字、Copilot 和部分直接 provider 路径仍会绕过。</li>
         <li><strong>唯一配置面</strong>：Settings → AI Setup 的五行（Conversation / Fast Lookup / Research / Use stronger model / Knowledge Index）。</li>
       </ul>
       <div class="meta">
@@ -510,11 +510,15 @@
               <p>不讲 Provider/Profile/MCP/Skill 五层供给（见 <a href="18-feature-provider-model-mcp-skills.html">18</a>），不讲 Harness 运行时全貌（见 <a href="21-infra-agent-harness.html">21</a>）。</p>
             </div>
           </div>
+          <div class="claim">
+            <strong>2026-07-28 当前实现校正</strong>
+            <p>当前至少同时存在 active Profile、Copilot Profile、用途槽 / tier 与直接 provider 等解析方式。旧 <code>promptModelMap</code> 虽会被加载，但主要 <code>queryText</code> / <code>queryStream</code> / <code>queryTextStream</code> 没有消费它，所以“逐 Prompt 选模型”现在不是可用功能。目标收敛方式和页面设计见 <a href="superpowers/specs/2026-07-28-prompt-control-center-design.md">Prompt Control Center 设计</a>，可直接查看 <a href="gstack/prompt-control-center-2026-07-28/index.html">页面 mock</a>。</p>
+          </div>
         </section>
 
         <section id="three-layers">
           <h2>1. 一张图：三层解析。</h2>
-          <p class="lead">任何一次 AI 调用，模型都由三层依次决定。理解这三层，整份文档就通了。</p>
+          <p class="lead">在目标架构中，任何一次 AI 调用都应该由下面三层依次决定模型。当前旁路和例外以 §0 的校正与 §6 的 gap 为准。</p>
 
           <div class="figure">
             <div class="figure-title"><strong>图 · slot → tier → fallback</strong></div>
@@ -703,6 +707,7 @@
               <tr><td>Settings 里调 escalation 旋钮没效果</td><td>已知 gap（见 §4.3）：这些字段当前未接入 <code>TierController</code>，实际用 <code>DEFAULT_TIER_POLICY</code>（0.6 / 1）。</td></tr>
               <tr><td>AI Analysis 一直不升级到 Stronger</td><td>升级需要 <code>stronger</code> tier 已绑定（配了 Use stronger model，或其 fallback Conversation 有值）。都空则无处可升。</td></tr>
               <tr><td>Chat 用的模型不是我预期的</td><td>Chat 走 <code>conversation</code> 槽（Conversation 行），不是 Fast Lookup；且不升级。</td></tr>
+              <tr><td>不同页面的模型列表长得不一样</td><td>这是当前 UI 复用缺口：<code>modelPickerData.ts</code> 已共享 catalog 与筛选数据，但 Chat 的 <code>ComposerModelSelector</code> 和 Settings 的 <code>RoleModelPicker</code> 仍分别实现弹层。目标是公共 <code>ProfileModelPicker</code>；Prompt Control Center 不得增加第四套，见 <a href="superpowers/specs/2026-07-28-prompt-control-center-design.md">设计 §5.1</a>。</td></tr>
             </tbody>
           </table>
         </section>

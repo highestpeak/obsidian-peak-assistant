@@ -161,8 +161,9 @@ export class ComposerTransactionEngine {
 		// Step 4 — persist (revision-guarded; the port re-checks expectedBaseText).
 		await this.write.writeSource(session.filePath, nextText, base.sourceText);
 
-		// Advance the session to the freshly-persisted revision.
-		return session.reparse(nextText);
+		// Advance to the snapshot already parsed and validated above. Re-parsing
+		// the full document here doubled the hottest direct-edit cost.
+		return session.adoptSnapshot(nextSnapshot);
 	}
 
 	private assertReparseSafe(

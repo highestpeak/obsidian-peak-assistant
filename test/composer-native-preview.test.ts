@@ -83,6 +83,17 @@ function testSharedClassification(): void {
 	check('link-analysis: excalidraw markdown embed remains an embed token', links.some((l) => l.kind === 'embed' && l.target.endsWith('.excalidraw.md')));
 	check('shared classifier: excalidraw.md resolves to excalidraw', classifyComposerNativeTarget('101-A.excalidraw.md') === 'excalidraw');
 	check('shared classifier: note.md is not native excalidraw', classifyComposerNativeTarget('note.md') === 'embed');
+
+	const imageSource = '![[public-image/路线图.png|路线图|720]]';
+	const imageSnapshot = parseComposerDocument(imageSource, { filePath: 'folder/source.md' });
+	check('parser: bare image wikilink dispatches to image block', imageSnapshot.blocks[0]?.kind === 'image');
+	check('parser: bare image wikilink keeps an image native ref', imageSnapshot.nativeRefs[0]?.kind === 'image');
+	check('parser: bare image wikilink round-trips byte-identically', imageSnapshot.sourceText === imageSource);
+
+	const aliasImageSource = '![[路线图|720]]';
+	const aliasImageSnapshot = parseComposerDocument(aliasImageSource, { filePath: 'folder/source.md' });
+	check('parser: extensionless wikilink with image width dispatches to image block', aliasImageSnapshot.blocks[0]?.kind === 'image');
+	check('parser: extensionless wikilink with image width keeps an image native ref', aliasImageSnapshot.nativeRefs[0]?.kind === 'image');
 }
 
 async function testFakePreviewStates(): Promise<void> {

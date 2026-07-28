@@ -1,0 +1,741 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>25 · Prompt 总目录与统一维护</title>
+  <style>
+    :root {
+      --bg: #f7f8f4;
+      --paper: #fff;
+      --ink: #17221d;
+      --muted: #69766f;
+      --line: #d9e1d8;
+      --green: #1f6b52;
+      --blue: #245f7a;
+      --gold: #80611f;
+      --red: #90423d;
+      --soft-green: #eef6f1;
+      --soft-blue: #eef5f7;
+      --soft-gold: #f7f2e8;
+      --soft-red: #f8eeee;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; line-height: 1.7; }
+    a { color: var(--green); font-weight: 750; text-decoration: none; }
+    a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    code, .mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    .page { width: min(1120px, calc(100vw - 64px)); margin: 0 auto; padding: 46px 0 72px; }
+    header { padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+    .eyebrow { color: var(--green); font-size: 13px; font-weight: 820; }
+    h1 { margin: 13px 0 15px; font-size: 46px; line-height: 1.1; letter-spacing: -0.02em; }
+    .subtitle { max-width: 920px; margin: 0; color: var(--muted); font-size: 18px; }
+    .layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 30px; margin-top: 30px; }
+    .side-nav { position: sticky; top: 24px; align-self: start; max-height: calc(100vh - 48px); overflow: auto; padding: 14px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255,255,255,.94); }
+    .side-nav strong { display: block; margin: 0 7px 8px; font-size: 14px; }
+    .side-nav a { display: block; padding: 6px 8px; border-left: 2px solid transparent; border-radius: 5px; color: var(--muted); font-size: 13px; line-height: 1.35; }
+    .side-nav a.active { border-left-color: var(--green); background: var(--soft-green); color: var(--ink); text-decoration: none; }
+    .nav-note { margin-top: 12px; padding: 11px 7px 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+    main { min-width: 0; }
+    section { padding: 38px 0; border-bottom: 1px solid var(--line); }
+    h2 { margin: 0 0 13px; font-size: 29px; line-height: 1.2; }
+    h3 { margin: 28px 0 9px; font-size: 20px; line-height: 1.3; }
+    p { margin: 0; }
+    p + p { margin-top: 13px; }
+    .lead { font-size: 17px; color: var(--ink); }
+    .prose { color: var(--muted); }
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 22px; }
+    .stat { min-height: 118px; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .stat strong { display: block; font-size: 31px; line-height: 1; color: var(--green); }
+    .stat span { display: block; margin-top: 9px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; margin-top: 20px; }
+    .card { padding: 17px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    .card h3 { margin: 0 0 7px; font-size: 17px; }
+    .card p { color: var(--muted); font-size: 14px; }
+    .claim { margin-top: 20px; padding: 16px 18px; border-left: 4px solid var(--green); background: var(--soft-green); }
+    .claim.warn { border-left-color: var(--gold); background: var(--soft-gold); }
+    .claim.gap { border-left-color: var(--red); background: var(--soft-red); }
+    .claim-title { display: block; margin-bottom: 5px; font-weight: 820; }
+    .figure { margin-top: 20px; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); overflow: hidden; }
+    .figure-title { display: flex; justify-content: space-between; gap: 18px; margin-bottom: 12px; }
+    .figure-title span { color: var(--muted); font-size: 13px; }
+    .read-note { margin-top: 12px; color: var(--muted); font-size: 13px; }
+    .table-wrap { margin-top: 18px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13px; line-height: 1.5; }
+    th, td { padding: 11px 12px; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap: anywhere; }
+    th { position: sticky; top: 0; z-index: 1; background: #edf4ee; color: #34453c; text-align: left; font-size: 12px; }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: #fbfcfa; }
+    .path { display: inline-block; max-width: 100%; padding: 2px 6px; border: 1px solid var(--line); border-radius: 4px; background: #f7f9f6; color: var(--ink); font-family: "SFMono-Regular", Consolas, monospace; font-size: 11px; font-weight: 650; overflow-wrap: anywhere; }
+    .status { display: inline-flex; padding: 2px 7px; border-radius: 999px; font-size: 11px; font-weight: 800; white-space: nowrap; }
+    .status.live { color: var(--green); background: var(--soft-green); }
+    .status.paired { color: var(--blue); background: var(--soft-blue); }
+    .status.check { color: var(--gold); background: var(--soft-gold); }
+    .toolbar { position: sticky; top: 0; z-index: 3; display: grid; grid-template-columns: minmax(220px, 1fr) 180px 180px; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: rgba(247,248,244,.96); backdrop-filter: blur(8px); }
+    input, select { width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid #cbd6cc; border-radius: 6px; background: white; color: var(--ink); font: inherit; font-size: 13px; }
+    .catalog-summary { margin: 10px 2px 0; color: var(--muted); font-size: 13px; }
+    .catalog-empty { display: none; padding: 22px; color: var(--muted); text-align: center; }
+    .group-chip { color: var(--blue); font-weight: 760; }
+    .variables { color: var(--muted); font-family: "SFMono-Regular", Consolas, monospace; font-size: 11px; }
+    .source-link { display: inline-block; margin-top: 5px; font-size: 12px; }
+    .review-action { display: inline-flex; align-items: center; justify-content: center; margin-top: 7px; padding: 5px 9px; border: 1px solid rgba(31,107,82,.35); border-radius: 5px; background: var(--soft-green); color: var(--green); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
+    .review-action:hover { border-color: var(--green); }
+    .prompt-review-row td { padding: 0; background: #f3f7f3; }
+    .prompt-review-shell { padding: 16px; border-top: 2px solid rgba(31,107,82,.25); border-bottom: 2px solid rgba(31,107,82,.25); }
+    .prompt-review-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+    .prompt-review-head strong { display: block; }
+    .prompt-review-head span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+    .prompt-review-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .prompt-review-grid.single { grid-template-columns: minmax(0, 1fr); }
+    .prompt-pane { min-width: 0; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); overflow: hidden; }
+    .prompt-pane-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 11px; border-bottom: 1px solid var(--line); background: #f8faf7; }
+    .prompt-pane-head strong { font-size: 12px; }
+    .prompt-pane-head a { font-size: 11px; }
+    .prompt-pane iframe { display: block; width: 100%; height: 520px; border: 0; background: #fff; }
+    .fixed-review { margin-top: 22px; }
+    .fixed-review > h3 { margin-top: 0; }
+    .fixed-review details { background: var(--paper); }
+    .fixed-review .prompt-review-grid { padding: 0 14px 14px; }
+    .review-freshness { margin: 10px 0 0; color: var(--muted); font-size: 12px; }
+    details { margin-top: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+    summary { cursor: pointer; padding: 13px 15px; font-weight: 800; }
+    .details-body { padding: 0 15px 15px; }
+    .footer { padding-top: 30px; color: var(--muted); font-size: 14px; }
+    @media (max-width: 960px) {
+      .page { width: min(100% - 32px, 820px); }
+      .layout { display: block; }
+      .side-nav { position: static; margin-bottom: 8px; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .toolbar { position: static; grid-template-columns: 1fr; }
+      .prompt-review-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 620px) {
+      h1 { font-size: 36px; }
+      .stats, .grid { grid-template-columns: 1fr; }
+      .page { width: min(100% - 24px, 820px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div class="eyebrow">Peak Assistant · AI 基础设施 · 当前代码审计</div>
+      <h1>25 · Prompt 总目录与统一维护</h1>
+      <p class="subtitle">这里回答三件事：项目里到底有哪些 Prompt；Composer、Copilot 和 Ambient 的建议分别由什么驱动；以后要改任务说明时，唯一应该改哪一份。</p>
+    </header>
+
+    <div class="layout">
+      <nav class="side-nav" aria-label="本页目录">
+        <strong>阅读路线</strong>
+        <a href="index.html">← 文档总索引</a>
+        <a href="#answer">先看结论</a>
+        <a href="#source">唯一来源怎么工作</a>
+        <a href="#composer-fixed">Composer 固定建议</a>
+        <a href="#dynamic">Copilot / Ambient 动态建议</a>
+        <a href="#catalog">151 个 Prompt 总表</a>
+        <a href="#outside">目录外还有什么</a>
+        <a href="#gaps">当前发现的问题</a>
+        <a href="#control-center">逐 Prompt 控制页面</a>
+        <a href="#rules">以后怎么统一维护</a>
+        <div class="nav-note">普通产品讨论读到“动态建议”即可。改 Prompt 或排查调用时，再看后面的总表和维护规则。</div>
+      </nav>
+
+      <main>
+        <section id="answer">
+          <h2>1. 先看结论：固定按钮和 AI 动态建议是两层东西</h2>
+          <p class="lead">截图里的“润色文本、补一个例子、转成表格”一直不变，是因为它们来自 Composer 配置里的固定快捷操作，不是 Copilot 临时生成的建议。</p>
+          <p class="prose">点击后，固定操作会把自己的指令、当前块和附近内容装进共享 Prompt，再交给模型。Copilot / Ambient 如果要根据正文持续提出新问题、新任务或新改法，应该走另一条“发现 → 建议 → Agent Run”链。当前代码里，固定操作是完整的；动态建议只有部分链路，不能把两者混成一个按钮列表。</p>
+
+          <div class="stats">
+            <div class="stat"><strong>151</strong><span><code>templates/prompts/</code> 下的 Markdown 模板；每个物理文件都由 TemplateRegistry 映射。</span></div>
+            <div class="stat"><strong>124</strong><span>公开的 <code>PromptId</code>；功能代码用它选 Prompt，避免到处写文件名。</span></div>
+            <div class="stat"><strong>119</strong><span>能在生产源码里找到直接引用的 PromptId。这里的“引用”不等于界面入口一定可达。</span></div>
+            <div class="stat"><strong>5</strong><span>已注册但没找到生产调用者的 PromptId，需要确认是待接线、旧入口还是可删除项。</span></div>
+          </div>
+
+          <div class="claim warn">
+            <span class="claim-title">为什么不把 151 份 Prompt 正文再复制到这个 HTML？</span>
+            <p>复制会产生第二份真相，后面一定漂移。本页的“在本页审阅”会直接读取对应的 <code>templates/prompts/*.md</code>，因此你能在目录里看到完整正文，但真正正文仍然只有一份。</p>
+          </div>
+        </section>
+
+        <section id="source">
+          <h2>2. Prompt 的唯一来源怎么工作？</h2>
+          <p class="lead">功能代码只应该选择 Prompt、准备材料和发起运行；固定任务说明应该留在模板文件里。</p>
+          <div class="figure">
+            <div class="figure-title">
+              <strong>一条正常的 Prompt 链</strong>
+              <span>身份、正文、上下文和模型各有自己的位置</span>
+            </div>
+            <div class="mermaid">
+flowchart LR
+  Entry["按钮、Copilot 或后台任务"] --> Pick["选择 PromptId<br/>准备变量"]
+  Pick --> Service["PromptService / AIServiceManager"]
+  Service --> Registry["TemplateRegistry<br/>ID、说明、system 配对"]
+  Registry --> Body["templates/prompts/*.md<br/>唯一固定正文"]
+  Body --> Render["TemplateManager<br/>把变量填进去"]
+  Context["Context Pipeline<br/>当前文档、来源、用户偏好"] --> Run["AI / Agent Run"]
+  Render --> Run
+  Model["模型路由与 Profile"] --> Run
+  Run --> Result["文字、JSON、insight 或工具步骤"]
+  Custom["用户自己的 Custom Prompt<br/>Vault Markdown"] -. "独立来源" .-> Run
+            </div>
+            <p class="read-note"><b>人话解释：</b><code>PromptId</code> 是名字，Registry 是通讯录，Markdown 是正文，变量是这一次的实际材料，模型路由决定找谁执行。它们不应该挤在同一个文件里。</p>
+          </div>
+
+          <div class="grid">
+            <div class="card"><h3>要改固定任务说明</h3><p>改 <code>templates/prompts/&lt;id&gt;.md</code>。如果是 Composer 的固定快捷指令，则改 <code>templates/config/composer.json</code> 的 <code>capabilities.instructions</code>。</p></div>
+            <div class="card"><h3>要改这次给 AI 的材料</h3><p>改调用者准备的变量或 Context Pipeline；不要把整份 Vault 直接塞进模板。</p></div>
+            <div class="card"><h3>要改模型</h3><p>日常只改 AI Setup；只有特殊 Prompt 才单独选择模型。当前 <code>promptModelMap</code> 虽能加载，但主执行链没有消费，不能当作已可用能力。</p></div>
+            <div class="card"><h3>要让用户自定义</h3><p>走 Vault 里的 Custom Prompt 文件和 override 机制；不要修改插件内置模板来冒充用户配置。</p></div>
+          </div>
+        </section>
+
+        <section id="composer-fixed">
+          <h2>3. Composer 里固定显示的建议，原文是什么？</h2>
+          <p class="lead">下面 20 条是当前配置里的固定指令。前 18 条共用 <code>composer-prose-transform</code> Prompt；后两条共用 <code>composer-suggest-properties</code> Prompt。它们固定出现是设计结果，不是 AI 自己推荐。</p>
+          <div class="table-wrap">
+            <table>
+              <colgroup><col style="width:20%"><col style="width:19%"><col style="width:43%"><col></colgroup>
+              <thead><tr><th>适用块</th><th>界面操作</th><th>送进 Prompt 的固定指令</th><th>共享 Prompt</th></tr></thead>
+              <tbody>
+                <tr><td>段落</td><td>润色文本</td><td>优化表达顺序、语气和连接词，保持原意与 Markdown 段落形态。</td><td><code>composer-prose-transform</code></td></tr>
+                <tr><td>段落</td><td>补一个例子</td><td>补一个贴近当前上下文的具体例子，让内容不只停留在抽象原则。</td><td><code>composer-prose-transform</code></td></tr>
+                <tr><td>段落</td><td>转成表格</td><td>把并列概念、阶段或路径整理成 Markdown 表格，保留原信息并便于后续编辑。</td><td><code>composer-prose-transform</code></td></tr>
+                <tr><td>标题</td><td>改短标题</td><td>把标题改得更短、更像目录项，保留原来的 heading 层级。</td><td><code>composer-prose-transform</code></td></tr>
+                <tr><td>标题</td><td>补提纲</td><td>根据当前标题生成下一层写作提纲，输出仍作为当前块的完整替换内容。</td><td><code>composer-prose-transform</code></td></tr>
+                <tr><td>标题</td><td>生成导读问题</td><td>把标题转成 2 到 3 个导读问题，作为这一节的写作目标。</td><td><code>composer-prose-transform</code></td></tr>
+                <tr><td>列表</td><td>补缺项</td><td>检查列表是否遗漏重要类别，并补出必要的新 bullet。</td><td><code>composer-prose-transform</code></td></tr>
+                <tr><td>列表</td><td>重排列表</td><td>按最清晰的逻辑顺序重排列表，保持合法 Markdown 列表语法。</td><td><code>composer-prose-transform</code></td></tr>
+                <tr><td>列表</td><td>转成表格</td><td>把当前列表转换为 Markdown 表格，保留全部信息。</td><td><code>composer-prose-transform</code></td></tr>
+                <tr><td>任务列表</td><td>找阻塞</td><td>把任务区分为可执行、受阻和待确认，并明确阻塞原因。</td><td><code>composer-prose-transform</code></td></tr>
+                <tr><td>任务列表</td><td>补下一步</td><td>为每个任务补一个最小可执行下一步，保持 Markdown task list 语法。</td><td><code>composer-prose-transform</code></td></tr>
+                <tr><td>任务列表</td><td>按优先级重排</td><td>按影响和紧急度重排任务，保持完成状态不变。</td><td><code>composer-prose-transform</code></td></tr>
+                <tr><td>引用</td><td>解释引用</td><td>解释这段引用在当前文档里的作用，并保留引用内容与引用语法。</td><td><code>composer-prose-transform</code></td></tr>
+                <tr><td>引用</td><td>找反例</td><td>补充一个可能反驳该观点的反例或适用边界。</td><td><code>composer-prose-transform</code></td></tr>
+                <tr><td>引用</td><td>转 Callout</td><td>把引用转换为合适的 Obsidian Callout，并保留原句。</td><td><code>composer-prose-transform</code></td></tr>
+                <tr><td>Callout</td><td>改 Callout 类型</td><td>把 Callout 类型改成更贴合内容语气的类型，保留正文。</td><td><code>composer-prose-transform</code></td></tr>
+                <tr><td>Callout</td><td>扩写原则</td><td>把当前原则扩写为一条可执行的写作规则。</td><td><code>composer-prose-transform</code></td></tr>
+                <tr><td>Callout</td><td>生成检查项</td><td>把 Callout 转换成可验证的 Markdown task list。</td><td><code>composer-prose-transform</code></td></tr>
+                <tr><td>Frontmatter</td><td>补标签</td><td>只建议 tags 字段；根据标题和正文补全可复用标签，保留原始 YAML 结构。</td><td><code>composer-suggest-properties</code></td></tr>
+                <tr><td>Frontmatter</td><td>规范属性</td><td>检查 created、updated、tags、type、status 等字段的格式一致性；不要改写程序维护字段。</td><td><code>composer-suggest-properties</code></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="read-note">配置来源：<a class="path" href="../templates/config/composer.json">templates/config/composer.json</a>。表格、公式、代码、Mermaid、链接和图片等专用操作不靠这 20 条预设，它们各有专用 Prompt，已列在后面的总表。</p>
+
+          <div class="fixed-review">
+            <h3>直接审阅这两组共享 Prompt</h3>
+            <p class="prose">左边是约束模型行为和输出格式的 system Prompt，右边是承载当前块、附近内容和固定指令的 user Prompt。下面显示的是实际源文件，不是复制进文档的摘要。</p>
+            <details open>
+              <summary>段落、标题、列表、任务、引用和 Callout：composer-prose-transform</summary>
+              <div class="prompt-review-grid">
+                <div class="prompt-pane">
+                  <div class="prompt-pane-head"><strong>System Prompt</strong><a href="../templates/prompts/composer-prose-transform-system.md">新标签打开</a></div>
+                  <iframe title="composer-prose-transform-system Prompt 正文" src="../templates/prompts/composer-prose-transform-system.md"></iframe>
+                </div>
+                <div class="prompt-pane">
+                  <div class="prompt-pane-head"><strong>User Prompt</strong><a href="../templates/prompts/composer-prose-transform.md">新标签打开</a></div>
+                  <iframe title="composer-prose-transform Prompt 正文" src="../templates/prompts/composer-prose-transform.md"></iframe>
+                </div>
+              </div>
+            </details>
+            <details>
+              <summary>Frontmatter 补标签与规范属性：composer-suggest-properties</summary>
+              <div class="prompt-review-grid">
+                <div class="prompt-pane">
+                  <div class="prompt-pane-head"><strong>System Prompt</strong><a href="../templates/prompts/composer-suggest-properties-system.md">新标签打开</a></div>
+                  <iframe title="composer-suggest-properties-system Prompt 正文" src="../templates/prompts/composer-suggest-properties-system.md"></iframe>
+                </div>
+                <div class="prompt-pane">
+                  <div class="prompt-pane-head"><strong>User Prompt</strong><a href="../templates/prompts/composer-suggest-properties.md">新标签打开</a></div>
+                  <iframe title="composer-suggest-properties Prompt 正文" src="../templates/prompts/composer-suggest-properties.md"></iframe>
+                </div>
+              </div>
+            </details>
+            <p class="review-freshness">审阅提示：<code>{{variable}}</code> 是运行时才填入的材料；这里显示的是发送前的模板正文。修改请回到源文件，不要修改这个 HTML。</p>
+          </div>
+        </section>
+
+        <section id="dynamic">
+          <h2>4. Copilot 和 Ambient 用哪些 Prompt 产生动态建议？</h2>
+          <p class="lead">项目里确实有“根据内容继续生成”的 Prompt，但它们不是段落操作栏那三个固定按钮，也不是所有链路都已接到 Composer。</p>
+          <div class="table-wrap">
+            <table>
+              <colgroup><col style="width:23%"><col style="width:27%"><col style="width:31%"><col></colgroup>
+              <thead><tr><th>动态能力</th><th>主要 Prompt</th><th>现在真正做什么</th><th>当前判断</th></tr></thead>
+              <tbody>
+                <tr><td><strong>文档 Auto Review</strong></td><td><code>copilot-meta-agent-system-base</code> + fast / complete suffix</td><td>读取文档 signal、正文和用户偏好，多轮产出 insight，并可以继续讨论或起草修改。</td><td><span class="status live">生产源码引用</span></td></tr>
+                <tr><td><strong>Vault Review</strong></td><td><code>vault-meta-agent-system-base</code> + fast / complete suffix</td><td>读取 Vault digest，发现跨文档结构问题和行动项。</td><td><span class="status live">生产源码引用</span></td></tr>
+                <tr><td><strong>Copilot Agent 操作</strong></td><td><code>copilot-agent-*</code></td><td>找链接、找知识缺口、补证据、写计划、写文章、检查任务等；属于用户触发的 agent playbook。</td><td><span class="status live">生产源码引用</span></td></tr>
+                <tr><td><strong>Chat 后续问题</strong></td><td><code>chat-suggest-followups</code></td><td>根据最后一轮对话生成三个后续问题。</td><td><span class="status live">生产源码引用</span></td></tr>
+                <tr><td><strong>Chat 动作建议</strong></td><td><code>chat-suggest-actions</code></td><td>模板已经注册，但当前扫描不到生产调用者。</td><td><span class="status check">待接线或清理</span></td></tr>
+                <tr><td><strong>Ambient 相关说明</strong></td><td><code>ambient-explanation-system/user</code></td><td>解释“这条 pushed note 为什么和当前段落相关”，不是生成新的 finding。</td><td><span class="status live">生产源码引用</span></td></tr>
+                <tr><td><strong>Ambient 工作主题</strong></td><td><code>working-theme-inference</code></td><td>推断当前工作主题，供上下文使用；它也不是正文建议生成器。</td><td><span class="status live">生产源码引用</span></td></tr>
+                <tr><td><strong>Composer 动态 finding</strong></td><td>没有独立、已接通的生产 Prompt</td><td>当前 Brief 的 finding producer 主要还是规则扫描；完整 AI finding → 正文/Brief 投影 → Agent Run 仍是缺口。</td><td><span class="status check">目标设计未接完</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="claim">
+            <span class="claim-title">因此，正确产品关系是“固定能力 + 动态建议”并存</span>
+            <p>固定按钮保证随时可用；Copilot / Ambient 根据当前文档、相关材料和历史持续提出新建议。动态建议被用户运行后，也应该冻结 Prompt、上下文、步骤和结果，并进入 Generation History；没采纳不等于没生成过。</p>
+          </div>
+        </section>
+
+        <section id="catalog">
+          <h2>5. 全项目 Prompt 总表</h2>
+          <p class="lead">下面按当前代码自动审计出的 151 条 Registry 映射列出。点击任意一行的“在本页审阅”，会在该行下面直接展开完整 Prompt；有 system 配对时会并排显示两份正文。</p>
+          <div class="toolbar" aria-label="Prompt 筛选">
+            <input id="promptSearch" type="search" placeholder="搜索 Prompt、用途、变量或调用文件…" autocomplete="off">
+            <select id="groupFilter">
+              <option value="">全部分组（151）</option>
+              <option value="copilot">Copilot / Composer（87）</option>
+              <option value="searchAnalysis">Search &amp; Analysis（24）</option>
+              <option value="chat">Chat（15）</option>
+              <option value="indexing">Indexing（14）</option>
+              <option value="ambientContext">Ambient Context（6）</option>
+              <option value="userProfile">User Profile（5）</option>
+            </select>
+            <select id="statusFilter">
+              <option value="">全部状态</option>
+              <option value="引用">生产源码引用</option>
+              <option value="配套">配套 system 模板</option>
+              <option value="待核对">只注册 / 待核对</option>
+            </select>
+          </div>
+          <p class="catalog-summary" id="catalogSummary">正在整理目录…</p>
+          <div class="table-wrap">
+            <table>
+              <colgroup><col style="width:23%"><col style="width:29%"><col style="width:16%"><col style="width:15%"><col></colgroup>
+              <thead><tr><th>Prompt</th><th>Registry 说明</th><th>输入变量</th><th>状态</th><th>审阅 / 调用</th></tr></thead>
+              <tbody id="promptRows"></tbody>
+            </table>
+            <div class="catalog-empty" id="catalogEmpty">没有符合当前筛选条件的 Prompt。</div>
+          </div>
+          <p class="read-note">“生产源码引用”只表示 <code>src/</code> 中存在直接引用，不保证某个 UI 入口已经可达；“配套”表示它由主 Prompt 的 <code>systemPromptId</code> 自动加载；“待核对”表示本次扫描没找到生产调用者。</p>
+        </section>
+
+        <section id="outside">
+          <h2>6. 151 个模板之外，还有哪些 Prompt 来源？</h2>
+          <p class="lead">统一维护不能只盯着 <code>templates/prompts</code>。下面这些地方也会改变最终交给模型的任务包。</p>
+          <div class="table-wrap">
+            <table>
+              <colgroup><col style="width:25%"><col style="width:31%"><col style="width:28%"><col></colgroup>
+              <thead><tr><th>来源</th><th>它负责什么</th><th>当前边界</th><th>入口</th></tr></thead>
+              <tbody>
+                <tr><td><strong>Composer 固定指令</strong></td><td>20 条块级 quick action 的具体要求。</td><td>属于产品配置，不是独立 Prompt 模板；运行时作为 <code>instruction</code> 填入共享模板。</td><td><a class="path" href="../templates/config/composer.json">templates/config/composer.json</a></td></tr>
+                <tr><td><strong>用户 Custom Prompt</strong></td><td>用户在 Vault 中写自己的 Markdown Prompt，通过 frontmatter 变成 Copilot action。</td><td>它是用户数据，不能枚举进内置 151 条，也不能被插件升级覆盖。</td><td><a class="path" href="../src/service/copilot/CustomPromptRegistry.ts">CustomPromptRegistry.ts</a></td></tr>
+                <tr><td><strong>Vault Prompt override</strong></td><td>为某个 TemplateId 覆盖内置正文。</td><td>文件名为 <code>&lt;id&gt;.prompt.md</code>；删除后恢复内置模板。</td><td><a class="path" href="../src/service/prompt/PromptService.ts">PromptService.ts</a></td></tr>
+                <tr><td><strong>Assistant / Skill</strong></td><td>用户定义 Assistant 指令，以及 Skill 文件里的 System Prompt。</td><td>它们是运行时内容来源，不应复制成内置模板。</td><td><a class="path" href="../src/service/chat/context/slots/AssistantSlot.ts">AssistantSlot.ts</a> · <a class="path" href="../src/service/skills/SkillParser.ts">SkillParser.ts</a></td></tr>
+                <tr><td><strong>Agent 上下文装配</strong></td><td>把 signal report、Vault digest、工具结果、历史轮次和用户偏好拼到模板后面。</td><td>动态数据应该留在装配器；固定规则应该回到模板。</td><td><a class="path" href="../src/service/agents/harness/loop/AgentLoop.ts">AgentLoop.ts</a></td></tr>
+                <tr><td><strong>代码内残留 Prompt</strong></td><td>Hyper Search 的自然语言编译器仍把完整 system prompt 写在 TypeScript 中。</td><td>这是明确绕过统一模板体系的现状，应纳入后续治理。</td><td><a class="path" href="../src/service/search/query/aiQueryParser.ts">aiQueryParser.ts</a></td></tr>
+                <tr><td><strong>代码内 user prompt 包装</strong></td><td>Copilot agent、meta-agent、usage curator 等用数组拼本次 user prompt。</td><td>如果只是包裹本次数据可以保留；如果包含稳定行为规则，就应该迁回模板。</td><td><a class="path" href="../src/service/copilot/actions/index.ts">copilot/actions/index.ts</a></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="gaps">
+          <h2>7. 这次审计发现的具体问题</h2>
+          <div class="grid">
+            <div class="card"><h3>5 个注册项没有生产调用者</h3><p><code>ai-analysis-title</code>、<code>ai-analysis-followup</code>、<code>message-resources</code>、<code>chat-suggest-actions</code>、<code>gap-explanation</code>。需要逐项判断是待接线、动态间接调用，还是旧能力残留。</p></div>
+            <div class="card"><h3>一个 ID 和物理文件不同名</h3><p>Registry 的 <code>ai-analysis-title</code> 实际加载 <code>ai-analysis-dashboard-title.md</code>。当前映射可以工作，但搜索、审计和人工维护容易误判。</p></div>
+            <div class="card"><h3>仍有完整 Prompt 写在代码里</h3><p><code>aiQueryParser.ts</code> 的 Hyper Search system prompt 是明显例子；现有 no-inline 测试只检查少数英文开头，覆盖不到所有拼接方式。</p></div>
+            <div class="card"><h3>Ambient 没有完整 AI finding Prompt 链</h3><p>现有 Prompt 能解释相关性、推断工作主题，但没有看到一个已接通的“持续生成 Composer finding”的生产入口。</p></div>
+          </div>
+          <div class="claim gap">
+            <span class="claim-title">不要把“模板存在”写成“功能已经可用”</span>
+            <p>本页的状态来自 2026-07-28 当前源码静态审计。Registry 有记录只证明模板可被加载；生产引用只证明代码提到它；真正可用还需要入口、运行时、结果解析和 UI 反馈全部接通。</p>
+          </div>
+        </section>
+
+        <section id="control-center">
+          <h2>8. 逐 Prompt 控制页面：需求已经记录，尚未实现</h2>
+          <p class="lead">目标是在 Settings 的 AI Setup 里放一个小入口，点击后打开独立的 Obsidian View。页面按能力分组列出 Prompt，可直接审阅和覆盖正文，也能为真正发起 AI run 的 Prompt 选择用途槽、Profile 和模型。</p>
+          <div class="grid">
+            <div class="card"><h3>当前到底有没有逐 Prompt 选模型？</h3><p>只剩部分骨架。设置结构、旧 map 和 resolver 还在，但 <code>queryText</code>、<code>queryStream</code>、<code>queryTextStream</code> 等实际调用直接取当前 Profile / Copilot Profile，因此旧 map 对主要生产调用不生效。</p></div>
+            <div class="card"><h3>为什么不直接做一张 151 行模型表？</h3><p>151 是物理模板数，不是 151 次独立 AI 调用。配套 system 模板可以单独改正文，但模型必须跟随所属的可执行 Prompt；未接线 Prompt 也不能保存一个永远不会被读取的模型设置。</p></div>
+            <div class="card"><h3>默认不用改，例外才单独选</h3><p>普通 Prompt 继续使用 AI Setup 里“写作与对话、快速任务、研究、深度思考”等默认设置。只有确实需要特殊模型的 Prompt 才单独选择，避免模型升级后维护一百多行。</p></div>
+            <div class="card"><h3>页面上线前的硬条件</h3><p>所有正文先统一经过 Prompt resolver，所有模型先统一经过 model resolver，模型选择复用 Chat / AI Setup 的公共 <code>ProfileModelPicker</code>，运行历史还要记录实际 Prompt 版本、有效模型、fallback 和未采纳结果。否则页面会出现“能保存但不生效”或第四套模型选择 UI。</p></div>
+          </div>
+          <div class="claim">
+            <span class="claim-title">可审阅产物</span>
+            <p><a href="superpowers/specs/2026-07-28-prompt-control-center-design.md">完整产品与运行时设计</a> · <a href="gstack/prompt-control-center-2026-07-28/index.html">打开可点击页面 mock</a>。这两份都是设计产物，没有修改产品代码或真实设置。</p>
+          </div>
+        </section>
+
+        <section id="rules">
+          <h2>9. 以后统一维护 Prompt，按这套规则</h2>
+          <div class="table-wrap">
+            <table>
+              <colgroup><col style="width:23%"><col style="width:38%"><col></colgroup>
+              <thead><tr><th>发生什么变化</th><th>必须一起更新</th><th>不应该做什么</th></tr></thead>
+              <tbody>
+                <tr><td>新增一个内置 Prompt</td><td>增加 Markdown 正文、PromptId、PromptVariables、TemplateRegistry metadata、生产调用和测试；同时更新本目录。</td><td>只加文件，不注册；或只在 React / service 里写一段字符串。</td></tr>
+                <tr><td>给 Prompt 增加变量</td><td>更新模板占位符、<code>PromptVariables</code> 类型和所有调用者；明确变量是必需、可选还是按需读取。</td><td>用 <code>any</code> 绕过缺失变量，或把大段上下文硬塞进一个字段。</td></tr>
+                <tr><td>增加 JSON / typed result</td><td>把输出合同写进 system 模板和 schema；记录解析失败、重试和 raw output。</td><td>只在 Prompt 里说“返回 JSON”，却没有程序校验。</td></tr>
+                <tr><td>新增 Composer 固定建议</td><td>更新 <code>composer.json</code> 的 action 与 instruction、capability 注册、适用块、Prompt 映射和投影测试。</td><td>把固定建议说成 Copilot 动态推荐。</td></tr>
+                <tr><td>新增动态 finding</td><td>明确 producer Prompt、上下文、证据、Agent Run、stream 步骤、review surface 和 Generation History。</td><td>只生成一句建议后丢掉 Prompt、证据和未采纳结果。</td></tr>
+                <tr><td>发现代码内固定规则</td><td>判断它是稳定 Prompt 正文还是本次动态包装；稳定正文迁到 <code>templates/prompts</code>。</td><td>靠 no-inline 测试的四个英文正则当作完整治理。</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>新增 Prompt 的最小检查单</h3>
+          <div class="claim">
+            <p><code>PromptId</code> 有名字 → <code>PromptVariables</code> 有类型 → Registry 有用途、分组、system 配对和输出合同 → Markdown 有唯一正文 → 调用者只传变量 → stream / agent 记录 Prompt 身份 → 结果进入对应历史 → 本页能查到。</p>
+          </div>
+
+          <details>
+            <summary>本页的审计口径和代码入口</summary>
+            <div class="details-body">
+              <p class="prose">模板文件：<a class="path" href="../templates/prompts/">templates/prompts/</a></p>
+              <p class="prose">Prompt 身份和变量：<a class="path" href="../src/core/types/prompt.ts">src/core/types/prompt.ts</a></p>
+              <p class="prose">文件映射和说明：<a class="path" href="../src/core/template/TemplateRegistry.ts">src/core/template/TemplateRegistry.ts</a></p>
+              <p class="prose">读取、override 和渲染：<a class="path" href="../src/service/prompt/PromptService.ts">src/service/prompt/PromptService.ts</a> · <a class="path" href="../src/core/template/TemplateManager.ts">TemplateManager.ts</a></p>
+              <p class="prose">防止内联 Prompt 的现有测试：<a class="path" href="../test/no-inline-llm-prompts.test.ts">test/no-inline-llm-prompts.test.ts</a></p>
+            </div>
+          </details>
+        </section>
+
+        <div class="footer">
+          <p>相关文档：<a href="index.html">文档总索引</a> · <a href="19-feature-peak-composer-ai-runtime.html">19 · Composer AI 运行链</a> · <a href="11-feature-chat-context.html">11 · Chat 上下文</a> · <a href="21-infra-agent-harness.html">21 · Agent Harness</a> · <a href="24-infra-ai-model-routing.html">24 · AI 模型路由</a> · <a href="superpowers/specs/2026-07-28-prompt-control-center-design.md">Prompt Control Center 设计</a>。</p>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script id="prompt-data" type="text/plain">
+conversation-system|conversation-system|Chat System Prompt|Core system instruction for all conversations. Defines AI persona, capabilities, and response style.|chat||引用|conventionMarkdown|src/service/chat/context/slots/SystemPromptSlot.ts
+conversation-summary-short|conversation-summary-short|Conversation Summary (Short)|Generates a concise one-line summary for the sidebar list.|chat||引用|projectContext,role,content|src/service/chat/service-conversation.ts
+conversation-summary-full|conversation-summary-full|Conversation Summary (Full)|Generates a detailed summary preserving key decisions and context.|chat||引用|shortSummary,projectContext,role,content|src/service/chat/service-conversation.ts
+project-summary-short|project-summary-short|Project Summary (Short)|One-line project summary for project list display.|chat||引用|title,shortSummary,source|src/service/chat/service-project.ts
+project-summary-full|project-summary-full|Project Summary (Full)|Detailed project summary with decisions, goals, and context.|chat||引用|shortSummary,title,fullSummary,source|src/service/chat/service-project.ts
+search-rerank-rank-gpt|search-rerank-rank-gpt|Search Rerank (RankGPT)|LLM-based reranker that reorders search results by relevance.|chat||引用|query,index,text,boostInfo|src/core/providers/rerank/llm.ts
+query-rewrite-system|query-rewrite-system|Query Suggest (System)|System prompt for the AI Suggest button — generates structured query candidates from user browsing behavior.|searchAnalysis||引用||src/ui/view/quick-search/rewrite/AIQueryRewriteService.ts
+query-rewrite|query-rewrite|Query Suggest (User)|User prompt carrying behavior context + task for the AI Suggest button.|searchAnalysis|query-rewrite-system|引用|currentQuery,activeFilePath,currentResultView,recentQueriesLine,recentOpenedFilesLine,pinnedLine,knownTopFoldersLine,typedTrail,firstScreenLine,eventCount,sessionTimeline|src/ui/view/quick-search/rewrite/AIQueryRewriteService.ts
+application-generate-title|application-generate-title|Generate Title|Auto-generates a conversation title from the first few messages.|chat||引用|contextInfo,role,content|src/service/chat/service-conversation.ts
+memory-extract-candidates-json|memory-extract-candidates-json|Memory Extraction|Identifies facts worth remembering from conversation messages.|userProfile||引用|this,userMessage,assistantReply|src/service/chat/context/UserProfileService.ts
+doc-summary-short|doc-summary-short|Doc Summary (Short)|One-sentence summary for indexing and embeddings.|indexing||引用|maxWords,textrankKeywords,textrankSentences,title,path,content|src/core/document/loader/helper/DocumentLoaderHelpers.ts
+doc-summary-full|doc-summary-full|Doc Summary (Full)|Detailed summary using short summary + TextRank anchors.|indexing||引用|targetWords,shortSummary,textrankKeywords,textrankSentences,title,path,content|src/core/document/loader/helper/DocumentLoaderHelpers.ts
+image-description|image-description|Image Description|Generates a text description of an image for indexing.|indexing||引用||src/core/document/loader/ImageDocumentLoader.ts
+image-summary|image-summary|Image Summary|Generates a concise summary of image content.|indexing||引用|title,path,content|src/core/document/loader/ImageDocumentLoader.ts
+ai-analysis-followup|ai-analysis-followup|Follow-up Chat|User prompt for follow-up questions on search results.|searchAnalysis||待核对|originalQuery,contextContent,question|
+ai-analysis-followup-system|ai-analysis-followup-system|Follow-up Chat (System)|System prompt for follow-up conversations.|searchAnalysis||引用||src/service/agents/FollowupChatAgent.ts
+ai-analysis-title|ai-analysis-dashboard-title|Analysis Title|Generates a title for search analysis results.|searchAnalysis||待核对|query,summary|
+ai-analysis-mermaid-fix-system|ai-analysis-mermaid-fix-system|Mermaid Fix (System)|System prompt for fixing mermaid syntax errors.|searchAnalysis||引用||src/service/agents/report/ReportOrchestrator.ts
+ai-analysis-mermaid-fix|ai-analysis-mermaid-fix|Mermaid Fix|Fixes broken mermaid diagram syntax in reports.|searchAnalysis||引用|brokenMermaid,errorMessage|src/service/agents/report/ReportOrchestrator.ts
+ai-analysis-save-filename|ai-analysis-save-filename|Save Filename|Suggests a filename when saving analysis results.|searchAnalysis||引用|query,summary|src/ui/view/quick-search/hooks/useAIAnalysisPostAIInteractions.ts
+ai-analysis-save-folder|ai-analysis-save-folder|Save Folder|Suggests a folder path when saving analysis results.|searchAnalysis||引用|query,summary,candidateFoldersFromSearch,defaultSaveFolder|src/ui/view/quick-search/hooks/useAIAnalysisPostAIInteractions.ts
+ai-analysis-vault-report-summary-system|ai-analysis-vault-report-summary-system|Report Summary (System)|System prompt for vault report executive summaries.|searchAnalysis||引用||src/service/agents/report/ReportOrchestrator.ts
+ai-analysis-vault-report-summary|ai-analysis-vault-report-summary|Report Summary|Generates an executive summary for vault search reports.|searchAnalysis|ai-analysis-vault-report-summary-system|引用|userQuery,reportPlan,this.title,this.content,evidenceList|src/service/agents/report/ReportOrchestrator.ts
+ai-analysis-vault-sdk-playbook|ai-analysis-vault-sdk-playbook|Vault SDK Playbook|System prompt for the SDK-based vault search agent.|searchAnalysis||引用|vaultIntuition,probeResults|src/service/agents/VaultSearchAgent.ts
+ai-analysis-proceed-nudge|ai-analysis-proceed-nudge|Vault Agent Proceed Nudge|Injected when the vault agent writes a planning turn but no tool call, prodding it to call its next tool.|searchAnalysis||引用||src/service/agents/VaultSearchAgent.ts
+ai-analysis-continue-system|ai-analysis-continue-system|Continue Analysis (System)|System prompt for follow-up analysis rounds.|searchAnalysis||引用||src/service/agents/ContinueAnalysisAgent.ts
+ai-analysis-continue|ai-analysis-continue|Continue Analysis|Continues analysis with context from previous rounds.|searchAnalysis|ai-analysis-continue-system|引用|originalQuery,this.query,this.summary,this.title,this.content,this.sectionTitle,this.selectedText,this.type,this.comment,this.path,this.relevance,this,followUpQuery|src/service/agents/ContinueAnalysisAgent.ts
+ai-analysis-synthesize-system|ai-analysis-synthesize-system|Synthesize Rounds (System)|System prompt for merging analysis rounds.|searchAnalysis||引用||src/service/agents/SynthesizeAgent.ts
+ai-analysis-synthesize|ai-analysis-synthesize|Synthesize Rounds|Merges all analysis rounds into one cohesive report.|searchAnalysis|ai-analysis-synthesize-system|引用|this.query,this.summary,this.title,this.content,this.type,this.sectionTitle,this.comment|src/service/agents/SynthesizeAgent.ts
+ai-analysis-report-section-system|ai-analysis-report-section-system|Report Section (System)|System prompt for generating report sections.|searchAnalysis||引用||src/service/agents/report/ReportOrchestrator.ts
+ai-analysis-report-section|ai-analysis-report-section|Report Section|Generates a single section of the vault search report.|searchAnalysis|ai-analysis-report-section-system|引用|userQuery,reportOverview,sectionTitle,contentType,visualType,sectionBrief,missionRole,otherSections,evidenceContent,userNotes,userPrompt|src/service/agents/report/ReportOrchestrator.ts
+doc-tag-generate-json|doc-tag-generate-json|Tag Generation|Generates topic, functional, and context tags for a document.|indexing||引用|functionalTagList,functionalHintsTable,title,content,existingTopicTags,existingUserTags,textrankKeywords,textrankSentences|src/core/document/helper/TagService.ts
+knowledge-intuition-plan-system|knowledge-intuition-plan-system|Knowledge Intuition Plan (System)|System prompt for knowledge intuition planning step.|indexing||引用||src/service/agents/intuition-helper/intuition.recon.ts
+knowledge-intuition-plan|knowledge-intuition-plan|Knowledge Intuition Plan|Plans knowledge exploration using backbone + folder digest.|indexing|knowledge-intuition-plan-system|引用|userGoal,vaultName,currentDateLabel,vaultSummaryMarkdown,baselineExcludedMarkdown,backboneMarkdownExcerpt,backboneEdgesMarkdown,folderSignalsMarkdown,documentShortlistMarkdown,folderTreeMarkdown|src/service/agents/intuition-helper/intuition.recon.ts
+knowledge-intuition-submit|knowledge-intuition-submit|Knowledge Intuition Submit|Submits intuition results with findings, entities, and topology.|indexing||引用|userGoal,vaultScaleHintMarkdown,iteration,memoryJson,folderTreeMarkdown,backboneEdgesJson,toolResultsMarkdown|src/service/agents/intuition-helper/intuition.recon.ts
+hub-curation-plan|hub-curation-plan|Hub Curation Plan|System prompt for the Hub Curator plan step (which nodes deserve hubs).|indexing||引用|vaultName,currentDateLabel,worldSnapshotMarkdown|src/service/agents/hub-curation-helper/hubCurationRecon.ts
+hub-curation-submit|hub-curation-submit|Hub Curation Submit|Structured-output prompt for the Hub Curator submit step.|indexing||引用||src/service/agents/hub-curation-helper/hubCurationRecon.ts
+hub-materialization-draft|hub-materialization-draft|Hub Materialization Draft|System prompt for the Hub Materialization draft step.|indexing||引用|vaultName,hubNodeId,hubPath,curatorReason,path,title,pagerank,betweenness,tagsCsv,excerpt,aggregatedTagsCsv,aggregatedKeywordsCsv,memberId,kind,hint|src/service/agents/hub-materialization-helper/hubMaterializationRecon.ts
+hub-materialization-critique|hub-materialization-critique|Hub Materialization Critique|System prompt for the Hub Materialization critique subagent.|indexing||引用|hubPath,memberCount,coreCount,fringeCount,draftMarkdown,this|src/service/agents/hub-materialization-helper/hubMaterializationRecon.ts
+copilot-command-center-plan|copilot-command-center-plan|Copilot Command Center Plan|Meta-agent drafts a capability sequence from a plain-language user goal.|copilot||引用|userGoal,activeFilePath,activeFileExcerpt,commandId,commandLabel,description|src/service/copilot/CopilotCommandCenterService.ts
+pattern-discovery|pattern-discovery|Pattern Discovery|Analyzes query history to discover new query template patterns.|indexing||引用|availableVariables,availableConditions,queriesJson,existingPatternsJson,vaultStructureJson|src/service/agents/PatternDiscoveryAgent.ts
+context-memory|context-memory|Context Memory|Renders long-term memory entries into the conversation context.|userProfile||引用|projectName,projectDescription,projectInstructions,projectSummary,displayName,displaySummary,conversationSummary,join|src/service/chat/context/slots/ConvSummarySlot.ts
+user-profile-context|user-profile-context|User Profile Context|Renders the user profile into the conversation context window.|userProfile||引用|category,texts|src/service/chat/context/slots/UserProfileSlot.ts
+profile-from-vault-json|profile-from-vault-json|Profile Extraction|Extracts structured user profile data from vault notes.|userProfile||引用|vaultContent|src/service/chat/context/BuildUserProfileRunner.ts
+user-profile-organize-markdown|user-profile-organize-markdown|Profile Organize|Organizes raw profile data into a clean markdown format.|userProfile||引用|currentProfileMarkdown,newItemsMarkdown|src/service/chat/context/UserProfileService.ts
+message-resources|message-resources|Message Resources|Formats attached resources for inclusion in messages.|ambientContext||待核对|id|
+doc-format-polish|doc-format-polish|Format Polish|Fixes heading hierarchy, list consistency, trailing whitespace, and broken link syntax.|copilot|doc-format-polish-system|引用|title,content|src/service/copilot/actions/index.ts
+doc-format-polish-system|doc-format-polish-system|Format Polish (System)|System instructions for the format polish action.|copilot||配套||
+doc-polish|doc-polish|Document Polish|Polishes writing for clarity, grammar, and flow.|copilot|doc-polish-system|引用|title,content,instruction|src/service/composer/capabilities/packs/prose.ts,src/ui/view/copilot/panels/ReviewPanel.tsx
+doc-polish-system|doc-polish-system|Document Polish (System)|System instructions for the document polish action.|copilot||配套||
+doc-review|doc-review|Document Review|Structured feedback on document quality with severity-ranked issues.|copilot|doc-review-system|引用|title,content|src/service/copilot/actions/index.ts
+doc-review-system|doc-review-system|Document Review (System)|System instructions for the document review action.|copilot||配套||
+doc-split-suggestion|doc-split-suggestion|Split Suggestion|Analyzes document structure and suggests how to split into smaller notes.|copilot|doc-split-suggestion-system|引用|title,wordCount,content|src/service/copilot/actions/index.ts
+doc-split-suggestion-system|doc-split-suggestion-system|Split Suggestion (System)|System instructions for the split suggestion action.|copilot||配套||
+doc-suggest-tags|doc-suggest-tags|Suggest Tags|Suggests tags based on content and existing vault tags.|copilot|doc-suggest-tags-system|引用|title,content|src/service/copilot/TagSuggestionEngine.ts
+doc-suggest-tags-system|doc-suggest-tags-system|Suggest Tags (System)|System instructions for the tag suggestion action.|copilot||配套||
+doc-summarize|doc-summarize|Summarize|Generates a concise summary of the document content.|copilot|doc-summarize-system|引用|scope,title,length,content|src/service/copilot/actions/index.ts
+doc-summarize-system|doc-summarize-system|Summarize (System)|System instructions for the summarize action.|copilot||配套||
+doc-extract-concepts|doc-extract-concepts|Extract Concepts|Identifies and extracts key concepts from the document.|copilot|doc-extract-concepts-system|引用|title,content|src/service/copilot/actions/index.ts
+doc-extract-concepts-system|doc-extract-concepts-system|Extract Concepts (System)|System instructions for concept extraction.|copilot||配套||
+doc-translate|doc-translate|Translate|Translates document content. Auto-detects CJK to choose target language.|copilot|doc-translate-system|引用|scope,title,targetLanguage,content|src/service/copilot/actions/index.ts
+doc-translate-system|doc-translate-system|Translate (System)|System instructions for the translate action.|copilot||配套||
+doc-correct-content|doc-correct-content|Correct Content|Identifies factual errors, logical inconsistencies, broken references, and typos.|copilot|doc-correct-content-system|引用|title,content|src/service/copilot/actions/index.ts
+doc-correct-content-system|doc-correct-content-system|Correct Content (System)|System instructions for content error correction.|copilot||配套||
+composer-prose-transform|composer-prose-transform|Composer Prose Transform|Transforms one Markdown text block according to a projected block action.|copilot|composer-prose-transform-system|引用|blockKind,instruction,before,content,after|src/service/composer/capabilities/packs/prose.ts
+composer-prose-transform-system|composer-prose-transform-system|Composer Prose Transform (System)|System instructions for source-safe Composer text-block transforms.|copilot||配套||
+composer-suggest-properties|composer-suggest-properties|Suggest Properties|Suggests frontmatter fields from the document body and vault conventions.|copilot|composer-suggest-properties-system|引用|title,currentProperties,content,instruction|src/service/composer/capabilities/packs/frontmatter.ts
+composer-suggest-properties-system|composer-suggest-properties-system|Suggest Properties (System)|System instructions for frontmatter property suggestion.|copilot||配套||
+composer-explain-formula|composer-explain-formula|Explain Formula|Explains one display formula in natural language.|copilot|composer-formula-system|引用|label,latex,instruction|src/service/composer/capabilities/packs/math.ts
+composer-split-formula|composer-split-formula|Split Formula|Breaks a formula into its component parts.|copilot|composer-formula-system|引用|label,latex,instruction|src/service/composer/capabilities/packs/math.ts
+composer-formula-variables|composer-formula-variables|Formula Variables|Lists the symbols of a formula and their meanings.|copilot|composer-formula-system|引用|label,latex,instruction|src/service/composer/capabilities/packs/math.ts
+composer-formula-system|composer-formula-system|Formula Detail (System)|System instructions shared by the formula detail actions.|copilot||配套||
+doc-table-summarize|doc-table-summarize|Summarize Table|Reorganizes a table into a tighter, normalized structure as a typed table patch.|copilot|doc-table-summarize-system|引用|table,instruction|src/service/composer/capabilities/packs/table.ts
+doc-table-summarize-system|doc-table-summarize-system|Summarize Table (System)|System instructions + table-patch JSON schema for table summarize.|copilot||配套||
+doc-table-add-column|doc-table-add-column|Add Table Column|Proposes a new derived column as a typed table patch.|copilot|doc-table-add-column-system|引用|table,instruction|src/service/composer/capabilities/packs/table.ts
+doc-table-add-column-system|doc-table-add-column-system|Add Table Column (System)|System instructions + table-patch JSON schema for adding a column.|copilot||配套||
+doc-table-check-units|doc-table-check-units|Check Table Units|Normalizes inconsistent units across a table column as a typed table patch.|copilot|doc-table-check-units-system|引用|table,instruction|src/service/composer/capabilities/packs/table.ts
+doc-table-check-units-system|doc-table-check-units-system|Check Table Units (System)|System instructions + table-patch JSON schema for unit normalization.|copilot||配套||
+doc-table-extract-formula|doc-table-extract-formula|Extract Table Formula|Derives a computed column from existing table data as a typed table patch.|copilot|doc-table-extract-formula-system|引用|table,instruction|src/service/composer/capabilities/packs/table.ts
+doc-table-extract-formula-system|doc-table-extract-formula-system|Extract Table Formula (System)|System instructions + table-patch JSON schema for a computed column.|copilot||配套||
+doc-table-generate-chart|doc-table-generate-chart|Generate Chart|Turns a table into a chart-source JSON spec.|copilot|doc-table-generate-chart-system|引用|table,instruction|src/service/composer/capabilities/packs/chart.ts
+doc-table-generate-chart-system|doc-table-generate-chart-system|Generate Chart (System)|System instructions + chart-source JSON schema for chart generation.|copilot||配套||
+doc-mermaid-edit|doc-mermaid-edit|Edit Diagram|Edits a Mermaid diagram source per a targeted instruction.|copilot|doc-mermaid-edit-system|引用|content,instruction|src/service/composer/capabilities/packs/native.ts
+doc-mermaid-edit-system|doc-mermaid-edit-system|Edit Diagram (System)|System instructions + output contract for Mermaid diagram edits.|copilot||配套||
+doc-code-edit|doc-code-edit|Edit Code|Rewrites or refactors a fenced code block per a targeted instruction.|copilot|doc-code-edit-system|引用|language,content,instruction|src/service/composer/capabilities/packs/native.ts
+doc-code-edit-system|doc-code-edit-system|Edit Code (System)|System instructions + output contract for code block edits.|copilot||配套||
+doc-link-tidy|doc-link-tidy|Tidy Links|Repairs and enriches links in a block per a targeted instruction.|copilot|doc-link-tidy-system|引用|content,instruction|src/service/composer/capabilities/packs/link.ts
+doc-link-tidy-system|doc-link-tidy-system|Tidy Links (System)|System instructions + output contract for link tidy.|copilot||配套||
+doc-native-edit|doc-native-edit|Edit Native Object|Emits a typed structural patch for a Base / Canvas / Excalidraw file.|copilot|doc-native-edit-system|引用|format,native,instruction|src/service/composer/capabilities/packs/native.ts
+doc-native-edit-system|doc-native-edit-system|Edit Native Object (System)|System instructions + per-format typed-patch JSON schema for native structural edits.|copilot||配套|instruction|
+composer-image-caption|composer-image-caption|Image Caption|Writes a concise figure caption for an image block.|copilot|composer-image-caption-system|引用|context,instruction|src/app/composer/capabilities/ComposerImageTextAdapter.ts
+composer-image-caption-system|composer-image-caption-system|Image Caption (System)|System instructions for the image caption action.|copilot||配套||
+composer-image-layout|composer-image-layout|Image Layout|Arranges selected images into a typed layout spec (JSON).|copilot|composer-image-layout-system|引用|items,instruction|src/app/composer/capabilities/ComposerImageTextAdapter.ts
+composer-image-layout-system|composer-image-layout-system|Image Layout (System)|System instructions + layout-spec JSON schema for the smart layout action.|copilot||配套||
+vault-health|vault-health|Vault Health|Analyzes vault structure for orphans, duplicates, stale notes, and tag issues.|copilot|vault-health-system|引用|stats|src/service/copilot/actions/index.ts
+vault-health-system|vault-health-system|Vault Health (System)|System instructions for vault health analysis.|copilot||配套||
+vault-summary|vault-summary|Vault Summary|Generates a narrative summary of recent vault activity.|copilot|vault-summary-system|引用|period,noteList|src/service/copilot/actions/index.ts
+vault-summary-system|vault-summary-system|Vault Summary (System)|System instructions for vault activity summarization.|copilot||配套||
+writing-continue|writing-continue|Continue Writing|Continues writing from the current cursor position.|copilot|writing-continue-system|引用|title,content|src/service/copilot/actions/index.ts
+writing-continue-system|writing-continue-system|Continue Writing (System)|System instructions for continue writing.|copilot||配套||
+writing-rewrite|writing-rewrite|Rewrite Selection|Rewrites selected text with improved clarity and style.|copilot|writing-rewrite-system|引用|title,style,selection,content|src/service/copilot/actions/index.ts
+writing-rewrite-system|writing-rewrite-system|Rewrite Selection (System)|System instructions for rewrite selection.|copilot||配套||
+copilot-agent-suggest-links|copilot-agent-suggest-links|Suggest Links (Agent)|Agent playbook that searches vault and suggests wiki-links.|copilot||引用||src/service/copilot/actions/index.ts
+copilot-agent-knowledge-gaps|copilot-agent-knowledge-gaps|Knowledge Gaps (Agent)|Agent playbook that identifies knowledge gaps in vault coverage.|copilot||引用||src/service/copilot/actions/index.ts
+copilot-agent-synthesize-topic|copilot-agent-synthesize-topic|Synthesize Topic (Agent)|Agent playbook that synthesizes information across vault notes.|copilot||引用||src/service/copilot/actions/index.ts
+copilot-agent-add-evidence|copilot-agent-add-evidence|Add Evidence (Agent)|Agent playbook that finds and ranks supporting evidence.|copilot||引用||src/service/copilot/actions/index.ts
+copilot-agent-writing-plan|copilot-agent-writing-plan|Writing Plan (Agent)|Agent playbook that creates a structured writing plan grounded in vault notes.|copilot||引用||src/service/copilot/actions/index.ts
+copilot-agent-write-article|copilot-agent-write-article|Write Article (Agent)|Agent playbook that drafts article sections grounded in vault notes.|copilot||引用||src/service/copilot/actions/index.ts
+copilot-agent-detect-and-file|copilot-agent-detect-and-file|Detect & File (Agent)|Agent playbook that detects misfiled notes and proposes target folders.|copilot||引用||src/service/copilot/actions/index.ts
+copilot-agent-check-task-list|copilot-agent-check-task-list|Check Task List (Agent)|Agent playbook that analyzes tasks for priority, overdue items, and blockers.|copilot||引用||src/service/copilot/actions/index.ts
+copilot-agent-prompt-audit|copilot-agent-prompt-audit|Prompt Audit (Agent)|Agent playbook that audits prompt quality and surfaces improvements.|copilot||引用|variables|src/service/copilot/actions/index.ts
+chat-topic-aggregation|chat-topic-aggregation|Topic Aggregation|Groups conversation messages into topic clusters for the sidebar.|chat||引用|messages|src/service/chat/TopicAggregationService.ts
+chat-suggest-followups|chat-suggest-followups|Suggest Follow-ups|Generates 3 suggested follow-up questions shown below the last message.|chat||引用|userMessage,assistantMessage|src/ui/view/chat-view/hooks/useStreamChat.ts
+chat-assistant-draft|chat-assistant-draft|Assistant Draft|Drafts an editable Assistant definition (name/summary/instructions) from a natural-language prompt. Never saved without explicit user confirmation.|chat||引用|userPrompt|src/ui/view/chat-view/components/composer/AssistantBuilderModal.tsx
+project-description-draft|project-description-draft|Project Description Draft|Drafts a user-editable project description from project materials. Never overwrites until the user saves.|chat||引用|projectName,generatedSummary,conversationTitles,currentDescription|src/ui/view/chat-view/components/project-home/ProjectDescriptionEditor.tsx
+chat-suggest-actions|chat-suggest-actions|Suggest Actions|Generates contextual action suggestions for the conversation.|chat||待核对|messages|
+working-theme-inference|working-theme-inference|Working Theme Inference|Infers the current working theme from recent activity.|ambientContext||引用|type,summary|src/service/context/WorkingThemeInferrer.ts
+working-context-render|working-context-render|Working Context Render|Renders working context into conversation context.|ambientContext||引用|activeFile.title,activeFile.path,theme,timeAgo,summary|src/service/chat/context/slots/WorkingContextSlot.ts
+activity-index-render|activity-index-render|Activity Index Render|Renders recent vault activity into conversation context.|ambientContext||引用|id,timeAgo,summary|src/service/chat/context/slots/ActivityIndexSlot.ts
+prompt-enhance|prompt-enhance|Prompt Enhance|Rewrites vague prompts into clear, specific ones.|chat||引用|userPrompt|src/ui/view/chat-view/components/PromptEnhanceSuggestion.tsx
+gap-explanation|gap-explanation|Gap Explanation|LLM prompt for lazy gap explanations.|indexing||待核对|communityALabel,communityBLabel,gapScore,sourceLabel,targetLabel,similarity|
+ambient-explanation-system|ambient-explanation-system|Ambient Explanation (System)|System instructions for the ambient micro-explanation LLM call.|ambientContext||引用||src/service/ambient/AmbientExplanationService.ts
+ambient-explanation-user|ambient-explanation-user|Ambient Explanation|One-sentence explanation of how a pushed note relates to the current writing.|ambientContext|ambient-explanation-system|引用|currentParagraph,pushNoteTitle,pushNoteExcerpt|src/service/ambient/AmbientExplanationService.ts
+copilot-meta-agent-system-base|copilot-meta-agent-system-base|Auto Review Meta-Agent (Base)|Base system block for the Auto Review meta-agent — assembled with signal report + mode suffix at call time.|copilot||引用||src/service/copilot/CopilotMetaAgentStream.ts
+copilot-meta-agent-fast-mode-suffix|copilot-meta-agent-fast-mode-suffix|Auto Review Meta-Agent (Fast Suffix)|Mode suffix appended when Auto Review runs in fast (single focus) mode.|copilot||引用||src/service/copilot/CopilotMetaAgentStream.ts
+copilot-meta-agent-complete-mode-suffix|copilot-meta-agent-complete-mode-suffix|Auto Review Meta-Agent (Complete Suffix)|Mode suffix appended when Auto Review runs in complete (multi-round) mode.|copilot||引用||src/service/copilot/CopilotMetaAgentStream.ts
+vault-meta-agent-system-base|vault-meta-agent-system-base|Vault Review Meta-Agent (Base)|Base system block for the Vault Review meta-agent — assembled with digest + mode suffix at call time.|copilot||引用||src/service/copilot/vault/VaultMetaAgentStream.ts
+vault-meta-agent-fast-mode-suffix|vault-meta-agent-fast-mode-suffix|Vault Review Meta-Agent (Fast Suffix)|Mode suffix appended when Vault Review runs in fast mode.|copilot||引用||src/service/copilot/vault/VaultMetaAgentStream.ts
+vault-meta-agent-complete-mode-suffix|vault-meta-agent-complete-mode-suffix|Vault Review Meta-Agent (Complete Suffix)|Mode suffix appended when Vault Review runs in complete mode.|copilot||引用||src/service/copilot/vault/VaultMetaAgentStream.ts
+insight-inline-chat-draft-proposal-system|insight-inline-chat-draft-proposal-system|Insight Chat (Draft Proposal)|System prompt for turning an Auto Review insight into 1-3 concrete edits.|copilot||引用|subjectPath,subjectBasename,insightTitle,insightBody|src/ui/view/copilot/review/InsightInlineChat.tsx
+insight-inline-chat-followup-system|insight-inline-chat-followup-system|Insight Chat (Follow-up)|System prompt for following up on an Auto Review insight.|copilot||引用|subjectPath,subjectBasename,insightTitle,insightBody|src/ui/view/copilot/review/InsightInlineChat.tsx
+graph-agent-system|graph-agent-system|Graph Agent (System)|System prompt that asks the LLM to read source documents and produce a knowledge graph.|searchAnalysis||引用|searchQuery,sourcesTable|src/service/agents/ai-graph/graph-system-prompt.ts
+graph-agent-user|graph-agent-user|Graph Agent (User)|User prompt that names the search query and source count for the graph agent.|searchAnalysis|graph-agent-system|引用|sourceCount,searchQuery|src/service/agents/ai-graph/GraphAgent.ts
+graph-infer-thinking-tree-system|graph-infer-thinking-tree-system|Infer Thinking Tree (System)|System prompt for the thinking-tree inference call.|searchAnalysis||引用||src/service/agents/ai-graph/infer-thinking-tree.ts
+graph-infer-thinking-tree-user|graph-infer-thinking-tree-user|Infer Thinking Tree (User)|User prompt with files for thinking-tree inference.|searchAnalysis|graph-infer-thinking-tree-system|引用|filesText|src/service/agents/ai-graph/infer-thinking-tree.ts
+report-assign-insights|report-assign-insights|Report Assign Insights|Assigns user insights to plan sections (or creates new sections).|searchAnalysis||引用|sectionList,insightList,userQuery|src/service/agents/report/ReportOrchestrator.ts
+curator-system|curator-system|Curator (System)|System prompt for the Peak Assistant configuration curator agent.|copilot||引用||src/service/agents/harness/curator/prompt.ts
+usage-optimization-system|usage-optimization-system|Usage Optimization (System)|System prompt for the AI usage optimization curator.|copilot||引用||src/service/usage/optimization/prompt.ts
+copilot-find-and-solve-tasks-system|copilot-find-and-solve-tasks-system|Find & Solve Tasks (System)|System prompt for the Find & Solve Tasks Copilot action.|copilot||引用||src/service/copilot/actions/index.ts
+copilot-find-and-solve-tasks-user|copilot-find-and-solve-tasks-user|Find & Solve Tasks (User)|User prompt listing open vault tasks that look like questions to resolve.|copilot|copilot-find-and-solve-tasks-system|引用|taskList|src/service/copilot/actions/index.ts
+lint-broken-link-repair|lint-broken-link-repair|Lint: Broken Link Repair|Repair plan prompt for the broken-link-repair vault health insight.|copilot||引用|topFiles|src/service/lint/insights.ts
+lint-missing-targets|lint-missing-targets|Lint: Missing Targets|Mapping/creation prompt for missing-target vault health insights.|copilot||引用|targetLines,sourceSample|src/service/lint/insights.ts
+lint-noise-source|lint-noise-source|Lint: Noise Source|Classification prompt for noise-source vault health insights.|copilot||引用|folder,fileLines|src/service/lint/insights.ts
+lint-orphan-reconnect|lint-orphan-reconnect|Lint: Orphan Reconnect|Reconnect plan prompt for orphan-note vault health insights.|copilot||引用|lines|src/service/lint/insights.ts
+lint-tag-coverage|lint-tag-coverage|Lint: Tag Coverage|Tag-suggestion prompt for untagged-note vault health insights.|copilot||引用|lines|src/service/lint/insights.ts
+lint-content-cleanup|lint-content-cleanup|Lint: Content Cleanup|Triage prompt for empty/stub-note vault health insights.|copilot||引用|lines|src/service/lint/insights.ts
+web-search-tool-system|web-search-tool-system|Web Search Tool (System)|System prompt used when delegating to a web-search-capable profile from chat and vault tools.|chat||引用||src/service/agents/VaultSearchAgent.ts,src/service/agents/vault-sdk/webSearchTool.ts
+plan-mode-system|plan-mode-system|Plan Mode (System)|System prompt prepended in Plan conversation mode.|chat||引用||src/core/constant.ts,src/service/chat/service-conversation.ts
+skill-weekly-report|skill-weekly-report|Skill: Weekly Report|Built-in Weekly Report skill markdown.|copilot||引用|period|src/service/skills/builtin/index.ts
+skill-literature-review|skill-literature-review|Skill: Literature Review|Built-in Literature Review skill markdown.|copilot||引用|topic,scope|src/service/skills/builtin/index.ts
+skill-vault-health-check|skill-vault-health-check|Skill: Vault Health Check|Built-in Vault Health Check skill markdown.|copilot||引用||src/service/skills/builtin/index.ts
+  </script>
+
+  <script src="../node_modules/mermaid/dist/mermaid.min.js"></script>
+  <script>
+    const groupNames = {
+      chat: 'Chat',
+      userProfile: 'User Profile',
+      copilot: 'Copilot / Composer',
+      searchAnalysis: 'Search & Analysis',
+      indexing: 'Indexing',
+      ambientContext: 'Ambient Context'
+    };
+    const rawPromptData = document.getElementById('prompt-data').textContent.trim();
+    const promptData = rawPromptData.split('\n').filter(Boolean).map((line) => {
+      const [id, stem, label, description, group, system, status, variables, callers] = line.split('|');
+      return { id, stem, label, description, group, system, status, variables, callers };
+    });
+    const escapeHtml = (value = '') => value.replace(/[&<>"']/g, (char) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+    })[char]);
+    const statusMeta = (status) => {
+      if (status === '引用') return { label: '生产源码引用', className: 'live' };
+      if (status === '配套') return { label: '配套 system 模板', className: 'paired' };
+      return { label: '只注册 / 待核对', className: 'check' };
+    };
+    const promptPane = (item, role) => {
+      const source = `../templates/prompts/${item.stem}.md`;
+      return `<div class="prompt-pane">
+        <div class="prompt-pane-head">
+          <strong>${escapeHtml(role)} · ${escapeHtml(item.id)}</strong>
+          <a href="${source}">新标签打开源文件</a>
+        </div>
+        <iframe title="${escapeHtml(item.id)} Prompt 正文" loading="lazy" src="${source}"></iframe>
+      </div>`;
+    };
+    const openPromptReview = (item, hostRow, trigger) => {
+      const existing = document.querySelector(`.prompt-review-row[data-review-for="${CSS.escape(item.id)}"]`);
+      document.querySelectorAll('.prompt-review-row').forEach((row) => row.remove());
+      document.querySelectorAll('[data-review-prompt]').forEach((button) => {
+        button.textContent = '在本页审阅';
+        button.setAttribute('aria-expanded', 'false');
+      });
+      if (existing) return;
+
+      const pairedSystem = item.system
+        ? promptData.find((candidate) => candidate.id === item.system)
+        : null;
+      const pairedUsers = !item.system
+        ? promptData.filter((candidate) => candidate.system === item.id)
+        : [];
+      const panes = pairedSystem
+        ? [promptPane(pairedSystem, 'System Prompt'), promptPane(item, 'User Prompt')]
+        : pairedUsers.length
+          ? [
+              promptPane(item, 'System Prompt'),
+              ...pairedUsers.map((candidate) => promptPane(candidate, 'User Prompt')),
+            ]
+          : [promptPane(item, item.id.includes('system') ? 'System Prompt' : 'Prompt')];
+      const pairText = pairedSystem || pairedUsers.length
+        ? `已显示完整配对：1 份 system + ${pairedSystem ? 1 : pairedUsers.length} 份关联 user 模板。运行某个 user Prompt 时，会与这份 system Prompt 组合。`
+        : '这个 Prompt 没有在 Registry 中声明 system/user 配对，因此显示单份正文。';
+      const reviewRow = document.createElement('tr');
+      reviewRow.className = 'prompt-review-row';
+      reviewRow.dataset.reviewFor = item.id;
+      reviewRow.innerHTML = `<td colspan="5">
+        <div class="prompt-review-shell">
+          <div class="prompt-review-head">
+            <div>
+              <strong>正在审阅：<code>${escapeHtml(item.id)}</code></strong>
+              <span>${pairText} 这里直接读取源文件，<code>{{variable}}</code> 会在运行时填入。</span>
+            </div>
+            <button class="review-action" type="button" data-close-review>收起正文</button>
+          </div>
+          <div class="prompt-review-grid ${panes.length === 1 ? 'single' : ''}">${panes.join('')}</div>
+        </div>
+      </td>`;
+      hostRow.after(reviewRow);
+      trigger.textContent = '收起正文';
+      trigger.setAttribute('aria-expanded', 'true');
+    };
+    const renderCatalog = () => {
+      const query = document.getElementById('promptSearch').value.trim().toLowerCase();
+      const group = document.getElementById('groupFilter').value;
+      const status = document.getElementById('statusFilter').value;
+      const filtered = promptData.filter((item) => {
+        if (group && item.group !== group) return false;
+        if (status && item.status !== status) return false;
+        if (!query) return true;
+        return [item.id, item.stem, item.label, item.description, item.variables, item.callers, item.system]
+          .join(' ').toLowerCase().includes(query);
+      });
+      const rows = filtered.map((item) => {
+        const state = statusMeta(item.status);
+        const source = `../templates/prompts/${item.stem}.md`;
+        const callerLinks = item.callers
+          ? item.callers.split(',').map((caller) =>
+              `<a class="source-link" href="../${escapeHtml(caller)}">${escapeHtml(caller.split('/').pop())}</a>`
+            ).join('<br>')
+          : '<span class="prose">—</span>';
+        const system = item.system
+          ? `<br><span class="prose">配对：<code>${escapeHtml(item.system)}</code></span>`
+          : '';
+        return `<tr>
+          <td><strong class="mono">${escapeHtml(item.id)}</strong><br><span class="group-chip">${escapeHtml(groupNames[item.group] || item.group)}</span>${system}</td>
+          <td><strong>${escapeHtml(item.label)}</strong><br><span class="prose">${escapeHtml(item.description)}</span></td>
+          <td><span class="variables">${escapeHtml(item.variables || '无占位符')}</span></td>
+          <td><span class="status ${state.className}">${state.label}</span></td>
+          <td>
+            <a class="path" href="${source}">源文件 · ${escapeHtml(item.stem)}.md</a>
+            <button class="review-action" type="button" data-review-prompt="${escapeHtml(item.id)}" aria-expanded="false">在本页审阅</button>
+            <br>${callerLinks}
+          </td>
+        </tr>`;
+      }).join('');
+      document.getElementById('promptRows').innerHTML = rows;
+      document.getElementById('catalogSummary').textContent = `当前显示 ${filtered.length} / ${promptData.length} 条 Prompt 映射。`;
+      document.getElementById('catalogEmpty').style.display = filtered.length ? 'none' : 'block';
+    };
+    ['promptSearch', 'groupFilter', 'statusFilter'].forEach((id) => {
+      document.getElementById(id).addEventListener(id === 'promptSearch' ? 'input' : 'change', renderCatalog);
+    });
+    document.getElementById('promptRows').addEventListener('click', (event) => {
+      const close = event.target.closest('[data-close-review]');
+      if (close) {
+        const reviewRow = close.closest('.prompt-review-row');
+        const id = reviewRow?.dataset.reviewFor;
+        reviewRow?.remove();
+        const trigger = id
+          ? document.querySelector(`[data-review-prompt="${CSS.escape(id)}"]`)
+          : null;
+        if (trigger) {
+          trigger.textContent = '在本页审阅';
+          trigger.setAttribute('aria-expanded', 'false');
+        }
+        return;
+      }
+      const trigger = event.target.closest('[data-review-prompt]');
+      if (!trigger) return;
+      const item = promptData.find((candidate) => candidate.id === trigger.dataset.reviewPrompt);
+      const hostRow = trigger.closest('tr');
+      if (!item || !hostRow) return;
+      openPromptReview(item, hostRow, trigger);
+    });
+    renderCatalog();
+
+    const navLinks = Array.from(document.querySelectorAll('.side-nav a[href^="#"]'));
+    const sections = navLinks.map((link) => document.getElementById(link.getAttribute('href').slice(1))).filter(Boolean);
+    const setActive = (id) => navLinks.forEach((link) => {
+      link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+    });
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        const visible = entries.filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target?.id) setActive(visible.target.id);
+      }, { rootMargin: '-18% 0px -68% 0px', threshold: [0.08, 0.2, 0.5] });
+      sections.forEach((section) => observer.observe(section));
+    }
+    setActive(location.hash.slice(1) || 'answer');
+
+    mermaid.initialize({
+      startOnLoad: true,
+      securityLevel: 'loose',
+      theme: 'base',
+      themeVariables: {
+        fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+        primaryColor: '#eef6f1',
+        primaryTextColor: '#17221d',
+        primaryBorderColor: '#1f6b52',
+        lineColor: '#69766f',
+        secondaryColor: '#eef5f7',
+        tertiaryColor: '#f7f2e8'
+      }
+    });
+  </script>
+  <script src="assets/mermaid-zoom.js"></script>
+</body>
+</html>

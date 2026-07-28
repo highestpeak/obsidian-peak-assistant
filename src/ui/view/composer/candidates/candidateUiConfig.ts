@@ -29,6 +29,14 @@ export interface CandidateUiStrings {
 	/** `{index}` / `{count}` are substituted at render time. */
 	variantCounter: string;
 	unsupportedResult: string;
+	/** Label used when the producing capability is unavailable to a specialized runtime. */
+	draftActionFallback: string;
+	draftTitle: string;
+	streamingTitle: string;
+	/** `{action}`, `{index}` and `{count}` are substituted by the review footer. */
+	draftMeta: string;
+	/** `{action}`, `{index}` and `{count}` are substituted by the review footer. */
+	streamingMeta: string;
 }
 
 export const DEFAULT_CANDIDATE_UI_STRINGS: CandidateUiStrings = {
@@ -37,8 +45,8 @@ export const DEFAULT_CANDIDATE_UI_STRINGS: CandidateUiStrings = {
 	regenerate: '重新生成',
 	cancel: '取消',
 	retry: '重试',
-	instructionPlaceholder: '定向指令…（Enter 重新生成）',
-	instructionAria: 'Targeted instruction',
+	instructionPlaceholder: '告诉 AI 这版怎么改…',
+	instructionAria: '告诉 AI 这版怎么改',
 	streaming: '生成中…',
 	failed: '生成失败',
 	stale: '源已变化，需重新运行',
@@ -48,11 +56,23 @@ export const DEFAULT_CANDIDATE_UI_STRINGS: CandidateUiStrings = {
 	nextVariant: '下一版本',
 	variantCounter: '{index}/{count}',
 	unsupportedResult: '暂不支持渲染此结果类型',
+	draftActionFallback: '当前草稿',
+	draftTitle: 'AI 草稿',
+	streamingTitle: 'AI 生成中…',
+	draftMeta: '{action} · 版本 {index}/{count} · 未写入 Markdown',
+	streamingMeta: '{action} · 正在流式生成版本 {index}/{count} · 未写入 Markdown',
 };
 
 /** Substitute `{index}` / `{count}` in the variant counter template. */
 export function formatVariantCounter(template: string, index: number, count: number): string {
 	return template.replace('{index}', String(index)).replace('{count}', String(count));
+}
+
+export function formatCandidateMeta(template: string, action: string, index: number, count: number): string {
+	return template
+		.replace('{action}', action)
+		.replace('{index}', String(index))
+		.replace('{count}', String(count));
 }
 
 /** Load the candidate UI strings (JSON template first, compiled fallback otherwise). */

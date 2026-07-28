@@ -1040,7 +1040,59 @@ When closing one of these out, also remove the comment — comments outliving th
 
 If the data model lacks fields the mock needs (`durationMs`, `toolCount`, `artifactRefs`), that's a separate gap to close *before* the audit passes — not "the UI just doesn't show it yet".
 
-### 6.5 When this section gets a new bullet
+### 6.5 Domain pickers are shared composites, not surface-local dropdowns
+
+**Symptom.** Several surfaces choose the same domain object—model, Profile, Vault file, Assistant—but each surface builds its own search input, grouping, result rows, capability badges, keyboard behavior and empty state. They may share the same data source and still drift as UI.
+
+**Real case (model selection, 2026-07-28).**
+
+- `src/ui/component/model-picker/modelPickerData.ts` already centralizes enabled Profile + model catalog data and filter logic.
+- Chat `ComposerModelSelector` renders a full searchable/filterable Profile-qualified picker.
+- Settings `RoleModelPicker` independently renders another Profile-qualified picker.
+- Settings `ModelCombobox` renders a third, single-Profile model list.
+- The first Prompt Control Center mock incorrectly added two raw `<select>` elements, which would have created a fourth model-selection UI.
+
+Sharing a catalog is necessary but insufficient. Search, grouping, capability tags, selection identity, unavailable reasons, keyboard navigation, focus, popover placement, scroll behavior and empty states are part of the component contract too.
+
+**Rule.** Runtime model selection uses one shared composite under `src/ui/component/model-picker/`, conceptually:
+
+```tsx
+<ProfileModelPicker
+  selection={selection}
+  onSelect={onSelect}
+  defaultOption={surfaceDefaultOption}
+  requiredCapabilities={requiredCapabilities}
+/>
+```
+
+Surface wrappers may customize:
+
+- trigger label and description;
+- whether the default option means `Auto`, `Use AI Setup default`, or `Clear selection`;
+- required capabilities;
+- temporary versus persisted save semantics;
+- popover alignment.
+
+They may not duplicate:
+
+- Profile/model catalog loading;
+- result grouping and row rendering;
+- search and capability filters;
+- capability tags and token-window labels;
+- `{ profileId, modelId }` identity handling;
+- keyboard/focus/scroll/empty/error behavior.
+
+Editing a Profile's own primary model may use a single-Profile mode of the same component family. It must still reuse the shared model-row, catalog metadata and interaction behavior rather than become an unrelated combobox.
+
+**Review test.**
+
+- [ ] Search for new model-selection JSX outside `src/ui/component/model-picker/`; any full model list needs an explicit exception.
+- [ ] Chat, AI Setup and Prompt Control Center show identical model rows and capability tags for the same catalog entry.
+- [ ] A catalog update changes all three surfaces without editing their surface components.
+- [ ] Keyboard navigation and unavailable-model behavior have one shared test suite.
+- [ ] Static mocks show the shared picker contract, not native Profile + model dropdowns.
+
+### 6.6 When this section gets a new bullet
 
 Every time an audit finds the same root cause across ≥3 surfaces or ≥3 components, add a §6.x for it. The first time it bites a surface, fix it in §1-§5. The third time, it's a drift class — promote the lesson here.
 
@@ -1088,5 +1140,6 @@ When implementing or reviewing a new UI surface, work through this list (each it
 - [ ] If this PR is part of a design-system migration wave, every surface family is either in scope or carries a `// MIGRATION-DEFERRED` marker with tracking handle (§6.2)
 - [ ] Every `// intentionally omitted` comment has a tracking handle + mock-element reference + blocker (§6.3)
 - [ ] If the surface relies on rich data states (agent artifacts, tool calls, cost receipts), a fixture conversation exists and is exercised by the audit (§6.4)
+- [ ] Domain pickers reuse one shared composite; model selection does not add a surface-local Profile + model dropdown or duplicate search/list JSX (§6.5)
 
 **Test inside Obsidian, not just the mock browser** — Obsidian leaks (§4) only show in Obsidian. A mock-HTML preview will lie about the final appearance.

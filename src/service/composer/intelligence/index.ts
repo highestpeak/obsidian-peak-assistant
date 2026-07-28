@@ -4,7 +4,11 @@
  * snapshot + port, telemetry, and the app-owned IntelligenceRuntime.
  */
 export * from './findingIdentity';
+export * from './briefState';
+export * from './briefSensingDefaults';
+export * from './openWritingMovesDefaults';
 export * from './runSession';
 export * from './relatedMaterials';
+export * from './openWritingMoves';
 export * from './telemetry';
 export * from './IntelligenceRuntime';

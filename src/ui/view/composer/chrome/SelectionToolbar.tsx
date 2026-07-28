@@ -1,17 +1,17 @@
 import * as React from 'react';
 import {
-	Baseline,
 	Bold,
 	Copy,
 	Highlighter,
 	Italic,
 	Link as LinkIcon,
 	MessageSquare,
+	Pipette,
 	Sparkles,
 	Strikethrough,
 	Underline,
 } from 'lucide-react';
-import { IconButton } from '@/ui/components/primitives';
+import { Button, IconButton } from '@/ui/components/primitives';
 import {
 	applyMarkToSelection,
 	partitionSourceRange,
@@ -29,7 +29,7 @@ import type {
 } from '@/core/composer';
 import { useOwnerDocumentListener } from '@/ui/hooks/useOwnerWindow';
 import { useComposerChrome } from './ComposerChromeContext';
-import { mapDomRangeToSource } from './selectionMapping';
+import { mapDomSelectionToSource } from './selectionMapping';
 
 /**
  * Floating selection toolbar (WP4, §7.2–§7.5 / consistency §3).
@@ -38,9 +38,10 @@ import { mapDomRangeToSource } from './selectionMapping';
  * radius-md — NOT pills), Easy Copy, comment, then projected AI text actions,
  * separated by group dividers. No font-size control. A selection touching a
  * Code Block disables rich formatting with a reason. Sub-panels (link / colors
- * / copy) open inside the same shell and return focus to their trigger on
- * close. While the toolbar is visible the block action rows are suppressed
- * (single focus owner) via the root's `data-has-selection`.
+ * / copy) are visually independent popovers anchored to the compact toolbar
+ * and return focus to their trigger on close. While the toolbar is visible the
+ * block action rows are suppressed (single focus owner) via the root's
+ * `data-has-selection`.
  */
 export interface SelectionToolbarProps {
 	containerRef: React.RefObject<HTMLElement | null>;
@@ -57,6 +58,9 @@ interface LiveSelection {
 	selection: ComposerSelection;
 	from: number;
 	to: number;
+	anchor: number;
+	focus: number;
+	direction: 'forward' | 'backward' | 'collapsed';
 	rect: { top: number; left: number };
 }
 
@@ -81,12 +85,17 @@ export function SelectionToolbar({
 
 	const recompute = React.useCallback(() => {
 		const root = containerRef.current;
-		if (!root || !snapshot) return;
-		if (Date.now() < suppressUntilRef.current) return;
-		const doc = root.ownerDocument;
-		const domSel = doc.getSelection();
-		if (!domSel || domSel.rangeCount === 0 || domSel.isCollapsed) {
-			setLive(null);
+			if (!root || !snapshot) return;
+			if (Date.now() < suppressUntilRef.current) return;
+			const doc = root.ownerDocument;
+			const activeElement = doc.activeElement as Element | null;
+			// A sub-panel input owns focus temporarily while the frozen document
+			// selection remains the operation target. Do not dismiss the toolbar
+			// when the browser moves its live selection into that chrome input.
+			if (activeElement?.closest('[data-chrome="true"]')) return;
+			const domSel = doc.getSelection();
+			if (!domSel || domSel.rangeCount === 0 || domSel.isCollapsed) {
+				setLive(null);
 			setPanel(null);
 			return;
 		}
@@ -101,7 +110,7 @@ export function SelectionToolbar({
 				? range.commonAncestorContainer.parentElement
 				: (range.commonAncestorContainer as Element);
 		if (anchorEl?.closest('[data-chrome="true"]')) return;
-		const mapped = mapDomRangeToSource(root as HTMLElement, range);
+		const mapped = mapDomSelectionToSource(root as HTMLElement, domSel);
 		if (!mapped || mapped.from === mapped.to) {
 			setLive(null);
 			return;
@@ -117,6 +126,9 @@ export function SelectionToolbar({
 			selection: partitioned,
 			from: mapped.from,
 			to: mapped.to,
+			anchor: mapped.anchor,
+			focus: mapped.focus,
+			direction: mapped.direction,
 			rect: {
 				top: Math.max(4, rectPx.top - rootRect.top + root.scrollTop - 44),
 				left: Math.max(4, rectPx.left - rootRect.left),
@@ -210,11 +222,14 @@ export function SelectionToolbar({
 			ref={toolbarRef}
 			className="pk-selection-toolbar"
 			data-chrome="true"
-			role="toolbar"
-			aria-label="Selection actions"
-			style={{ top: live.rect.top, left: live.rect.left }}
-			onMouseDown={(ev) => ev.preventDefault() /* keep the text selection */}
-		>
+				role="toolbar"
+				aria-label="Selection actions"
+				style={{ top: live.rect.top, left: live.rect.left }}
+				onMouseDown={(ev) => {
+					if ((ev.target as HTMLElement).closest('input')) return;
+					ev.preventDefault();
+				}}
+			>
 			<div className="pk-selection-toolbar__row">
 				{scopeLabel && <span className="pk-selection-scope">{scopeLabel}</span>}
 				<span className="pk-selection-group" data-group="format">
@@ -223,24 +238,73 @@ export function SelectionToolbar({
 					<FormatButton label={sel.formats.underline} reason={formatDisabledReason} onClick={() => void applyFormat('underline')}><Underline size={14} /></FormatButton>
 					<FormatButton label={sel.formats.strikethrough} reason={formatDisabledReason} onClick={() => void applyFormat('strikethrough')}><Strikethrough size={14} /></FormatButton>
 					<FormatButton label={sel.formats.link} reason={formatDisabledReason} onClick={(ev) => togglePanel('link', ev)}><LinkIcon size={14} /></FormatButton>
-					<FormatButton label={sel.formats.textColor} reason={formatDisabledReason} onClick={(ev) => togglePanel('text-color', ev)}><Baseline size={14} /></FormatButton>
+					<FormatButton label={sel.formats.textColor} reason={formatDisabledReason} onClick={(ev) => togglePanel('text-color', ev)}>
+						<TextColorIcon swatches={sel.quickTextColors} />
+					</FormatButton>
+					<span
+						className="pk-selection-quick-colors"
+						data-quick-color-kind="text"
+						aria-label={sel.formats.textColor}
+					>
+						{sel.quickTextColors.map((swatch) => (
+							<IconButton
+								key={swatch.value}
+								label={swatch.label}
+								title={formatDisabledReason ?? swatch.label}
+								className="pk-selection-quick-color"
+								data-quick-text-color={swatch.value}
+								disabled={Boolean(formatDisabledReason)}
+								onClick={() => void applyFormat('text-color', swatch.value)}
+							>
+								<span
+									className="pk-selection-quick-color__dot"
+									style={{ backgroundColor: swatch.value }}
+									aria-hidden
+								/>
+							</IconButton>
+						))}
+					</span>
 					<FormatButton label={sel.formats.highlight} reason={formatDisabledReason} onClick={(ev) => togglePanel('highlight', ev)}><Highlighter size={14} /></FormatButton>
+					<span
+						className="pk-selection-quick-colors"
+						data-quick-color-kind="highlight"
+						aria-label={sel.formats.highlight}
+					>
+						{sel.quickHighlightColors.map((swatch) => (
+							<IconButton
+								key={swatch.value}
+								label={swatch.label}
+								title={formatDisabledReason ?? swatch.label}
+								className="pk-selection-quick-color"
+								data-quick-highlight-color={swatch.value}
+								disabled={Boolean(formatDisabledReason)}
+								onClick={() => void applyFormat('highlight', swatch.value)}
+							>
+								<span
+									className="pk-selection-quick-color__dot"
+									style={{ backgroundColor: swatch.value }}
+									aria-hidden
+								/>
+							</IconButton>
+						))}
+					</span>
 				</span>
 				<span className="pk-selection-divider" role="separator" />
 				<span className="pk-selection-group" data-group="copy-comment">
 					<FormatButton label={config.chrome.actions.copy} onClick={(ev) => togglePanel('copy', ev)}><Copy size={14} /></FormatButton>
-					<button
-						type="button"
-						className="pk-selection-text-btn"
-						disabled={!runtime.comments || live.selection.units.length !== 1}
-						title={live.selection.units.length !== 1 ? sel.guards.crossStructureLink : undefined}
+						<Button
+							variant="ghost"
+							size="sm"
+							className="pk-selection-text-btn"
+							disabled={!runtime.comments || live.selection.units.length !== 1}
+							title={live.selection.units.length !== 1 ? sel.guards.crossStructureLink : undefined}
 						onClick={() => {
 							const unit = live.selection.units[0];
 							if (unit) onComment(unit.blockId, { from: live.from, to: live.to });
 						}}
-					>
-						<MessageSquare size={13} /> {sel.comment}
-					</button>
+						>
+							<MessageSquare size={13} /> {sel.comment}
+						</Button>
 				</span>
 				{aiActions.length > 0 && (
 					<>
@@ -248,16 +312,17 @@ export function SelectionToolbar({
 						<span className="pk-selection-group" data-group="ai">
 							<Sparkles size={13} className="pk-selection-spark" aria-hidden />
 							{aiActions.map((d) => (
-								<button
-									key={d.capabilityId}
-									type="button"
-									className="pk-selection-text-btn"
-									disabled={Boolean(d.disabledReason)}
-									title={d.disabledReason}
+									<Button
+										key={d.capabilityId}
+										variant="ghost"
+										size="sm"
+										className="pk-selection-text-btn"
+										disabled={Boolean(d.disabledReason)}
+										title={d.disabledReason}
 									onClick={() => aiSnapshot && onInvoke(d, aiSnapshot)}
-								>
-									{d.title}
-								</button>
+									>
+										{d.title}
+									</Button>
 							))}
 						</span>
 					</>
@@ -276,40 +341,57 @@ export function SelectionToolbar({
 							if (ev.key === 'Escape') closePanel();
 						}}
 					/>
-					<button type="button" className="pk-selection-text-btn" onClick={() => void applyLink()}>
-						{sel.applyLink}
-					</button>
-				</div>
-			)}
-			{(panel === 'text-color' || panel === 'highlight') && (
-				<div className="pk-selection-panel" data-panel={panel}>
-					{(panel === 'text-color' ? sel.textColors : sel.highlightColors).map((swatch) => (
-						<button
-							key={swatch.value}
-							type="button"
-							className="pk-selection-swatch"
-							data-selection-color={swatch.value}
-							style={{ ['--pk-swatch' as never]: swatch.value }}
-							title={swatch.label}
-							onClick={() => void applyFormat(panel === 'text-color' ? 'text-color' : 'highlight', swatch.value)}
-						>
-							<i>{swatch.label}</i>
-						</button>
-					))}
-				</div>
-			)}
+						<Button variant="ghost" size="sm" className="pk-selection-text-btn" onClick={() => void applyLink()}>
+							{sel.applyLink}
+						</Button>
+					</div>
+				)}
+				{(panel === 'text-color' || panel === 'highlight') && (
+					<div className="pk-selection-panel pk-selection-color-panel" data-panel={panel} aria-label={sel.colorPalette}>
+						{(panel === 'text-color' ? sel.textColors : sel.highlightColors).map((swatch) => (
+							<IconButton
+								key={swatch.value}
+								label={swatch.label}
+								className="pk-selection-swatch"
+								data-selection-color={swatch.value}
+								onClick={() => void applyFormat(panel === 'text-color' ? 'text-color' : 'highlight', swatch.value)}
+							>
+								<span
+									className="pk-selection-swatch__color"
+									style={{ backgroundColor: swatch.value }}
+									aria-hidden
+								/>
+							</IconButton>
+						))}
+						<label className="pk-selection-custom-color" aria-label={sel.customColor}>
+							<input
+								type="color"
+								aria-label={sel.customColor}
+								defaultValue={panel === 'text-color' ? '#7c3aed' : '#fff1a8'}
+								onChange={(ev) =>
+									void applyFormat(
+										panel === 'text-color' ? 'text-color' : 'highlight',
+										ev.currentTarget.value,
+									)
+								}
+							/>
+							<Pipette size={12} aria-hidden />
+						</label>
+					</div>
+				)}
 			{panel === 'copy' && (
 				<div className="pk-selection-panel" data-panel="copy">
 					{EASY_COPY_ORDER.filter((k) => k !== 'image').map((kind) => (
-						<button
-							key={kind}
-							type="button"
-							className="pk-selection-text-btn"
-							data-copy-kind={kind}
-							onClick={(ev) => void copySelection(kind, ev)}
-						>
-							{copiedKind === kind ? config.chrome.copy.success : config.chrome.copy[kind]}
-						</button>
+							<Button
+								key={kind}
+								variant="ghost"
+								size="sm"
+								className="pk-selection-text-btn"
+								data-copy-kind={kind}
+								onClick={(ev) => void copySelection(kind, ev)}
+							>
+								{copiedKind === kind ? config.chrome.copy.success : config.chrome.copy[kind]}
+							</Button>
 					))}
 					<IconButton label={config.chrome.copy.close} className="pk-selection-panel__close" onClick={closePanel}>
 						×
@@ -317,6 +399,23 @@ export function SelectionToolbar({
 				</div>
 			)}
 		</div>
+	);
+}
+
+function TextColorIcon({
+	swatches,
+}: {
+	swatches: Array<{ value: string }>;
+}): React.ReactElement {
+	return (
+		<span className="pk-selection-text-color-icon" aria-hidden>
+			<span className="pk-selection-text-color-icon__letter">A</span>
+			<span className="pk-selection-text-color-icon__bar">
+				{swatches.map((swatch) => (
+					<span key={swatch.value} style={{ backgroundColor: swatch.value }} />
+				))}
+			</span>
+		</span>
 	);
 }
 
@@ -332,16 +431,15 @@ function FormatButton({
 	children: React.ReactNode;
 }): React.ReactElement {
 	return (
-		<button
-			type="button"
+		<IconButton
+			label={label}
 			className="pk-selection-format-btn"
-			aria-label={label}
 			title={reason ?? label}
 			disabled={Boolean(reason)}
 			onClick={onClick}
 		>
 			{children}
-		</button>
+		</IconButton>
 	);
 }
 
@@ -363,24 +461,25 @@ function scopeText(
 }
 
 /**
- * Freeze the selection into a `selection` target carrying the exact byte range
- * inside its unit, so a selection-scoped AI action rewrites ONLY the selected
- * bytes (the text-patch writeback anchors to `[from,to)`). The range is clamped
- * to the FIRST selected unit — a single semantic unit — so the frozen
- * `targetSource`/`selectionText` and the writeback range are byte-identical and
- * a multi-block selection can never patch across a structural separator.
+ * Freeze the selection into a `selection` target carrying the exact source byte
+ * range the user selected. `selectionText` stays user-visible text (partitioned
+ * per semantic unit), while `targetSource` keeps the raw bytes the writeback
+ * adapter replaces on accept. Multi-unit selections are anchored to the first
+ * touched block for UI placement, but they no longer silently collapse to that
+ * first unit.
  */
 function buildSelectionSnapshot(
 	snapshot: NonNullable<ReturnType<typeof useComposerChrome>['snapshot']>,
 	live: LiveSelection,
 ): ComposerContextSnapshot {
 	const unit = live.selection.units[0];
+	const targetSource = snapshot.sourceText.slice(live.from, live.to);
 	if (!unit) {
 		return {
 			documentId: snapshot.documentId,
 			revision: snapshot.revision,
 			target: { kind: 'document', documentId: snapshot.documentId },
-			targetSource: snapshot.sourceText.slice(live.from, live.to),
+			targetSource,
 			selectionText: live.selection.text,
 			nearby: {
 				before: snapshot.sourceText.slice(Math.max(0, live.from - 400), live.from),
@@ -388,24 +487,21 @@ function buildSelectionSnapshot(
 			},
 		};
 	}
-	const from = unit.from;
-	const to = unit.to;
-	const selectionText = snapshot.sourceText.slice(from, to);
 	return {
 		documentId: snapshot.documentId,
 		revision: snapshot.revision,
 		target: {
 			kind: 'selection',
 			blockId: unit.blockId,
-			...(unit.unitId ? { unitId: unit.unitId } : {}),
-			from,
-			to,
+			...(live.selection.units.length === 1 && unit.unitId ? { unitId: unit.unitId } : {}),
+			from: live.from,
+			to: live.to,
 		},
-		targetSource: selectionText,
-		selectionText,
+		targetSource,
+		selectionText: live.selection.text,
 		nearby: {
-			before: snapshot.sourceText.slice(Math.max(0, from - 400), from),
-			after: snapshot.sourceText.slice(to, to + 400),
+			before: snapshot.sourceText.slice(Math.max(0, live.from - 400), live.from),
+			after: snapshot.sourceText.slice(live.to, live.to + 400),
 		},
 	};
 }

@@ -1,6 +1,12 @@
 import * as React from 'react';
-import { Library, Sparkles, X } from 'lucide-react';
-import type { ComposerBlock, ComposerContextSnapshot } from '@/core/composer';
+import { Check, RotateCcw, Sparkles, X } from 'lucide-react';
+import type {
+	ComposerBlock,
+	ComposerCandidate,
+	ComposerCandidateRuntimePort,
+	ComposerContextSnapshot,
+	ComposerResultEnvelope,
+} from '@/core/composer';
 import type {
 	ComposerMetadataFieldPatchPayload,
 	ComposerMetadataOrigin,
@@ -11,6 +17,7 @@ import {
 	fieldCandidateFromVault,
 	computeVaultPropertyInventory,
 	buildMetadataFieldPatchOperations,
+	FRONTMATTER_QUICK_ACTION_IDS,
 	SUGGEST_PROPERTIES_CAPABILITY_ID,
 	type FrontmatterField,
 	type FrontmatterModelConfig,
@@ -26,8 +33,9 @@ import { DEFAULT_FRONTMATTER_CONFIG, type FrontmatterConfig } from './frontmatte
  *
  * Replaces the raw YAML mono box with a typed property grid (scalar / list /
  * boolean / date / link / unknown) tagged by provenance (程序 / 人工 / AI 建议 /
- * 规范建议). The block's hover action row is the ONLY entrance to the Vault
- * property library (§8.2) and the AI property suggestions (§8.3); both create
+ * 规范建议). The block's hover action row owns the Vault property library
+ * entrance and the two concrete AI quick actions; the compact state row above
+ * the grid retains the aggregate AI-suggestion trigger. All paths create
  * per-document candidates only, and nothing writes YAML without confirmation.
  *
  * Interactive paths (library scan, AI suggestion, field commit) arrive through
@@ -40,6 +48,8 @@ import { DEFAULT_FRONTMATTER_CONFIG, type FrontmatterConfig } from './frontmatte
 export interface FrontmatterSuggestPort {
 	/** Present ⇒ render disabled with this explanation (never a fake button). */
 	disabledReason?: string;
+	/** Number of concrete quick actions represented by the aggregate trigger. */
+	suggestionCount: number;
 	/** Invoke the AI property-suggestion capability (candidate appears in the block slot). */
 	run(): void;
 }
@@ -55,23 +65,38 @@ export interface FrontmatterBlockPorts {
 	warnings?: readonly string[];
 }
 
+/**
+ * A metadata candidate stays inside the Frontmatter grid instead of replacing
+ * the complete block with the generic candidate card. The app/root owns the
+ * candidate discovery; this view only projects its pending field at the real
+ * field position and routes confirmation through the narrow runtime port.
+ */
+export interface FrontmatterCandidatePort {
+	runtime: ComposerCandidateRuntimePort;
+	candidate: ComposerCandidate;
+}
+
 export function FrontmatterBlockView({
 	block,
 	config = DEFAULT_FRONTMATTER_CONFIG,
 	modelConfig,
 	ports,
+	candidate: candidatePort,
+	libraryOpen = false,
+	onLibraryOpenChange,
 }: {
 	block: ComposerBlock;
 	config?: FrontmatterConfig;
 	modelConfig?: FrontmatterModelConfig;
 	ports?: FrontmatterBlockPorts;
+	candidate?: FrontmatterCandidatePort;
+	libraryOpen?: boolean;
+	onLibraryOpenChange?(open: boolean): void;
 }): React.ReactElement {
 	const model = React.useMemo(
 		() => parseFrontmatterModel(block.renderModel.raw, modelConfig),
 		[block.renderModel.raw, modelConfig],
 	);
-	const [libraryOpen, setLibraryOpen] = React.useState(false);
-
 	if (model.malformed) {
 		return (
 			<pre className="pk-composer-mono" data-src-text-from={block.source.from} data-block-id={block.blockId}>
@@ -85,6 +110,8 @@ export function FrontmatterBlockView({
 	const suggest = ports?.suggest;
 	const suggestDisabled = !suggest || suggest.disabledReason !== undefined;
 	const suggestReason = !suggest ? config.grid.aiSuggest : suggest.disabledReason;
+	const candidate = useFrontmatterCandidate(candidatePort);
+	const candidatePayload = metadataCandidatePayload(candidate);
 
 	return (
 		<div className="pk-fm-block" data-block-id={block.blockId} data-src-text-from={block.source.from}>
@@ -97,34 +124,34 @@ export function FrontmatterBlockView({
 				<Button
 					variant="ghost"
 					size="sm"
-					data-active={libraryOpen || undefined}
-					disabled={!ports?.loadInventory}
-					title={ports?.loadInventory ? undefined : config.grid.vaultLibrary}
-					onClick={() => setLibraryOpen((v) => !v)}
-				>
-					<Library size={12} />
-					{config.grid.vaultLibrary}
-				</Button>
-				<Button
-					variant="ghost"
-					size="sm"
 					disabled={suggestDisabled}
 					title={suggestReason}
 					onClick={() => suggest?.run()}
 				>
 					<Sparkles size={12} />
-					{config.grid.aiSuggest}
+					{config.grid.aiSuggestCount.replace(
+						'{count}',
+						String(suggest?.suggestionCount ?? FRONTMATTER_QUICK_ACTION_IDS.length),
+					)}
 				</Button>
 			</div>
 
-			<PropertyGrid fields={model.fields} config={config} />
+			<PropertyGrid fields={model.fields} config={config} candidate={candidatePayload} />
+			{candidate && candidatePort && (
+				<FrontmatterCandidateReview
+					candidate={candidate}
+					payload={candidatePayload}
+					runtime={candidatePort.runtime}
+					config={config}
+				/>
+			)}
 
 			{libraryOpen && ports?.loadInventory && (
 				<VaultPropertyLibrary
 					config={config}
 					loadInventory={() => ports.loadInventory!(currentMap)}
 					commitField={ports.commitField}
-					onClose={() => setLibraryOpen(false)}
+					onClose={() => onLibraryOpenChange?.(false)}
 				/>
 			)}
 		</div>
@@ -147,7 +174,17 @@ function frontmatterMap(fields: readonly FrontmatterField[]): Record<string, str
  * host / harness) is simply omitted, so the presentational view disables that
  * entrance with a reason — no fake affordances.
  */
-export function ConnectedFrontmatterBlockView({ block }: { block: ComposerBlock }): React.ReactElement {
+export function ConnectedFrontmatterBlockView({
+	block,
+	candidate,
+	libraryOpen = false,
+	onLibraryOpenChange,
+}: {
+	block: ComposerBlock;
+	candidate?: FrontmatterCandidatePort;
+	libraryOpen?: boolean;
+	onLibraryOpenChange?(open: boolean): void;
+}): React.ReactElement {
 	const chrome = useComposerChrome();
 	const { runtime, projection, snapshot } = chrome;
 	const inventory = runtime.vaultInventory;
@@ -180,7 +217,15 @@ export function ConnectedFrontmatterBlockView({ block }: { block: ComposerBlock 
 		return built;
 	}, [chrome, projection, inventory, hub, snapshot, block]);
 
-	return <FrontmatterBlockView block={block} ports={ports} />;
+	return (
+		<FrontmatterBlockView
+			block={block}
+			ports={ports}
+			candidate={candidate}
+			libraryOpen={libraryOpen}
+			onLibraryOpenChange={onLibraryOpenChange}
+		/>
+	);
 }
 
 /** Resolve the AI suggest capability descriptor for this frontmatter block, if projected. */
@@ -199,12 +244,16 @@ function suggestActionFor(
 		// the suggestion reasons over — §8.3 / the pack's buildPromptVariables.
 		nearby: { before: '', after: snapshot.sourceText.slice(block.source.to) },
 	};
-	const action = chrome.projection
-		.actionsFor(context, 'block-row')
-		.find((a) => a.capabilityId === SUGGEST_PROPERTIES_CAPABILITY_ID);
+	const actions = chrome.projection.actionsFor(context, 'block-row');
+	const action = actions.find((candidate) => candidate.capabilityId === SUGGEST_PROPERTIES_CAPABILITY_ID);
 	if (!action) return undefined;
 	return {
 		...(action.disabledReason !== undefined ? { disabledReason: action.disabledReason } : {}),
+		suggestionCount: actions.filter((candidate) =>
+			FRONTMATTER_QUICK_ACTION_IDS.includes(
+				candidate.capabilityId as (typeof FRONTMATTER_QUICK_ACTION_IDS)[number],
+			),
+		).length,
 		run: () => {
 			try {
 				chrome.projection.invoke(SUGGEST_PROPERTIES_CAPABILITY_ID, context);
@@ -217,7 +266,23 @@ function suggestActionFor(
 
 // ── property grid ─────────────────────────────────────────────────────────────
 
-function PropertyGrid({ fields, config }: { fields: readonly FrontmatterField[]; config: FrontmatterConfig }): React.ReactElement {
+function PropertyGrid({
+	fields,
+	config,
+	candidate,
+}: {
+	fields: readonly FrontmatterField[];
+	config: FrontmatterConfig;
+	candidate: ComposerMetadataFieldPatchPayload | null;
+}): React.ReactElement {
+	const newCandidateField = candidate && !fields.some((field) => field.key === candidate.key)
+		? {
+				key: candidate.key,
+				value: candidate.value,
+				valueKind: candidate.valueKind,
+				origin: candidate.origin,
+			}
+		: null;
 	return (
 		<div className="pk-fm-grid">
 			{fields.map((field) => (
@@ -226,9 +291,18 @@ function PropertyGrid({ fields, config }: { fields: readonly FrontmatterField[];
 						{field.key}
 						<OriginChip origin={field.origin} config={config} />
 					</span>
-					<FieldValue field={field} />
+					<FieldValue field={field} candidate={candidate?.key === field.key ? candidate : null} />
 				</React.Fragment>
 			))}
+			{newCandidateField && (
+				<React.Fragment key={`candidate:${newCandidateField.key}`}>
+					<span className="pk-fm-grid__key">
+						{newCandidateField.key}
+						<OriginChip origin={newCandidateField.origin} config={config} />
+					</span>
+					<FieldValue field={newCandidateField} candidate={candidate} />
+				</React.Fragment>
+			)}
 		</div>
 	);
 }
@@ -241,7 +315,13 @@ function OriginChip({ origin, config }: { origin: ComposerMetadataOrigin; config
 	);
 }
 
-function FieldValue({ field }: { field: FrontmatterField }): React.ReactElement {
+function FieldValue({
+	field,
+	candidate,
+}: {
+	field: FrontmatterField;
+	candidate: ComposerMetadataFieldPatchPayload | null;
+}): React.ReactElement {
 	if (field.valueKind === 'list' && Array.isArray(field.value)) {
 		return (
 			<strong className="pk-fm-grid__value pk-fm-taglist">
@@ -250,13 +330,124 @@ function FieldValue({ field }: { field: FrontmatterField }): React.ReactElement 
 						{item}
 					</span>
 				))}
+				{candidate && <CandidateFieldValue field={field} candidate={candidate} />}
 			</strong>
 		);
 	}
 	if (field.valueKind === 'boolean') {
-		return <strong className="pk-fm-grid__value">{String(field.value)}</strong>;
+		return (
+			<strong className="pk-fm-grid__value">
+				{String(field.value)}
+				{candidate && <CandidateFieldValue field={field} candidate={candidate} />}
+			</strong>
+		);
 	}
-	return <strong className="pk-fm-grid__value">{String(field.value)}</strong>;
+	return (
+		<strong className="pk-fm-grid__value">
+			{candidate && field.key === candidate.key ? null : String(field.value)}
+			{candidate && <CandidateFieldValue field={field} candidate={candidate} />}
+		</strong>
+	);
+}
+
+function CandidateFieldValue({
+	field,
+	candidate,
+}: {
+	field: FrontmatterField;
+	candidate: ComposerMetadataFieldPatchPayload;
+}): React.ReactElement {
+	const values = Array.isArray(candidate.value) ? candidate.value : [candidate.value];
+	if (field.key === 'tags') {
+		return (
+			<>
+				{values.map((value) => (
+					<span key={`candidate:${value}`} className="pk-fm-tag pk-fm-tag--candidate" data-ai-suggestion="true">
+						+ {value}
+					</span>
+				))}
+			</>
+		);
+	}
+	return <span className="pk-fm-field-candidate" data-ai-suggestion="true">+ {values.join(', ')}</span>;
+}
+
+function useFrontmatterCandidate(port?: FrontmatterCandidatePort): ComposerCandidate | null {
+	const [candidate, setCandidate] = React.useState<ComposerCandidate | null>(port?.candidate ?? null);
+	React.useEffect(() => {
+		if (!port) {
+			setCandidate(null);
+			return;
+		}
+		setCandidate(port.candidate);
+		return port.runtime.subscribe((candidates) => {
+			setCandidate(candidates.find((item) => item.candidateId === port.candidate.candidateId) ?? null);
+		});
+	}, [port]);
+	return candidate;
+}
+
+function metadataCandidatePayload(candidate: ComposerCandidate | null): ComposerMetadataFieldPatchPayload | null {
+	const envelope = candidate?.proposedChange.result as ComposerResultEnvelope | undefined;
+	if (!envelope || envelope.resultKind !== 'metadata-field-patch') return null;
+	return envelope.payload as ComposerMetadataFieldPatchPayload;
+}
+
+function FrontmatterCandidateReview({
+	candidate,
+	payload,
+	runtime,
+	config,
+}: {
+	candidate: ComposerCandidate;
+	payload: ComposerMetadataFieldPatchPayload | null;
+	runtime: ComposerCandidateRuntimePort;
+	config: FrontmatterConfig;
+}): React.ReactElement {
+	const strings = config.suggestions;
+	const tagCandidate = payload?.key === 'tags';
+	const ready = candidate.status === 'ready' && payload !== null;
+	const retry = () => {
+		if (candidate.status === 'stale') {
+			if (runtime.rerunStale) runtime.rerunStale(candidate.candidateId);
+			return;
+		}
+		runtime.regenerate(candidate.candidateId);
+	};
+	const statusText = candidate.status === 'streaming'
+		? strings.streaming
+		: candidate.status === 'failed'
+			? strings.failed
+			: candidate.status === 'stale'
+				? strings.stale
+				: strings.candidateDescription;
+	return (
+		<div className="pk-fm-candidate-review" data-chrome="true" data-status={candidate.status}>
+			<span className="pk-fm-candidate-review__summary">
+				<span className="pk-fm-candidate-review__dot" aria-hidden="true" />
+				<b>{tagCandidate ? strings.candidateTagTitle : strings.candidateTitle}</b>
+				<span>{statusText}</span>
+			</span>
+			<span className="pk-fm-candidate-review__actions">
+				{(candidate.status === 'failed' || candidate.status === 'stale') && (
+					<Button variant="secondary" size="sm" onClick={retry}>
+						<RotateCcw size={14} />
+						{strings.retry}
+					</Button>
+				)}
+				{ready && (
+					<Button variant="primary" size="sm" onClick={() => void runtime.accept(candidate.candidateId)}>
+						<Check size={14} />
+						{strings.accept}
+					</Button>
+				)}
+				<Button variant="secondary" size="sm" onClick={() => runtime.discard(candidate.candidateId)}>
+					<RotateCcw size={14} />
+					{strings.restore}
+				</Button>
+			</span>
+		</div>
+	);
 }
 
 // ── vault property library ────────────────────────────────────────────────────

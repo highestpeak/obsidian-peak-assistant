@@ -15,6 +15,7 @@ export interface FrontmatterGridStrings {
 	issueWarning: string;
 	vaultLibrary: string;
 	aiSuggest: string;
+	aiSuggestCount: string;
 	addProperty: string;
 	origin: Record<ComposerMetadataOrigin, string>;
 	reviewShapeChange: string;
@@ -53,6 +54,14 @@ export interface FrontmatterSuggestionStrings {
 	empty: string;
 	streaming: string;
 	footer: string;
+	candidateTitle: string;
+	candidateTagTitle: string;
+	candidateDescription: string;
+	accept: string;
+	restore: string;
+	retry: string;
+	failed: string;
+	stale: string;
 }
 
 export interface FrontmatterConfig {
@@ -66,6 +75,7 @@ export const DEFAULT_FRONTMATTER_CONFIG: FrontmatterConfig = {
 		issueWarning: '属性告警',
 		vaultLibrary: '属性库',
 		aiSuggest: 'AI 属性建议',
+		aiSuggestCount: 'AI 属性建议 · {count}',
 		addProperty: '添加属性',
 		origin: { program: '程序', human: '人工', ai: 'AI 建议', convention: '规范建议' },
 		reviewShapeChange: '该改动会改变字段类型，请确认后再写入',
@@ -102,6 +112,14 @@ export const DEFAULT_FRONTMATTER_CONFIG: FrontmatterConfig = {
 		empty: '暂无建议',
 		streaming: '生成中…',
 		footer: 'AI 只建议字段和值；点击“添加”后还要在 Frontmatter 中确认。',
+		candidateTitle: '补全属性',
+		candidateTagTitle: '补标签',
+		candidateDescription: '候选直接标在对应 Frontmatter 字段中',
+		accept: '接受',
+		restore: '还原',
+		retry: '重试',
+		failed: '生成失败，请重试',
+		stale: '原文已变化，请重新生成',
 	},
 };
 

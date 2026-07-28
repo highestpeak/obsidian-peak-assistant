@@ -11,7 +11,7 @@ import { TableBlockView } from './table/TableBlockView';
 import { ChartBlockView, isChartBlock } from './chart/ChartBlockView';
 import { isPeakImageLayoutSource } from '@/service/composer';
 import { PeakImageLayoutBlockView } from './image/PeakImageLayoutBlockView';
-import { ConnectedFrontmatterBlockView } from './frontmatter';
+import { ConnectedFrontmatterBlockView, type FrontmatterCandidatePort } from './frontmatter';
 import { MathBlockView } from './math';
 import { useComposerChrome } from '../chrome/ComposerChromeContext';
 import { useResolvedNativePreview } from './nativeBlockShared';
@@ -28,7 +28,19 @@ import { useResolvedNativePreview } from './nativeBlockShared';
  * block renders live recharts (ChartBlockView). The rest (math / frontmatter /
  * html / mermaid / dataview / …) stay verbatim — nothing is ever hidden.
  */
-export function BlockKindView({ block, editing = false }: { block: ComposerBlock; editing?: boolean }): React.ReactElement {
+export function BlockKindView({
+	block,
+	editing = false,
+	frontmatterLibraryOpen = false,
+	frontmatterCandidate,
+	onFrontmatterLibraryOpenChange,
+}: {
+	block: ComposerBlock;
+	editing?: boolean;
+	frontmatterLibraryOpen?: boolean;
+	frontmatterCandidate?: FrontmatterCandidatePort;
+	onFrontmatterLibraryOpenChange?(open: boolean): void;
+}): React.ReactElement {
 	const nativeEmbed = useNativeEmbedRef(block);
 	if (nativeEmbed) return <NativeEmbedBlockView block={block} nativeRef={nativeEmbed} />;
 	switch (block.kind) {
@@ -62,7 +74,14 @@ export function BlockKindView({ block, editing = false }: { block: ComposerBlock
 		// entrances arrive via ports at the integration seam; without them these
 		// render the grid / formulas read-only (never fake affordances).
 		case 'frontmatter':
-			return <ConnectedFrontmatterBlockView block={block} />;
+			return (
+				<ConnectedFrontmatterBlockView
+					block={block}
+					candidate={frontmatterCandidate}
+					libraryOpen={frontmatterLibraryOpen}
+					onLibraryOpenChange={onFrontmatterLibraryOpenChange}
+				/>
+			);
 		case 'math':
 			return <MathBlockView block={block} />;
 		default:

@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { ComposerRoot } from '@/ui/view/composer/ComposerRoot';
 import { BriefViewContent, type BriefViewContentProps } from '@/ui/view/composer/sidecar/CopilotView';
 import { DEFAULT_SIDECAR_CONFIG } from '@/ui/view/composer/sidecar/sidecarConfig';
-import { resolveSidecarHostMode, resolveSidecarMode, SidecarOpenButton } from '@/ui/view/composer/sidecar/IntelligenceSidecar';
+import { resolveSidecarHostMode, resolveSidecarMode } from '@/ui/view/composer/sidecar/IntelligenceSidecar';
 import { buildRelatedSnapshot, IntelligenceRuntime } from '@/service/composer';
 import { hasReviewableCandidates } from '@/ui/view/composer/chrome/UndoRedoBar';
 import type { ComposerStateSource, DocumentComposerState } from '@/core/composer';
@@ -27,7 +27,7 @@ function count(haystack: string, needle: string): number {
 	return haystack.split(needle).length - 1;
 }
 
-function renderComposer(): string {
+function renderComposer(withIntelligence = false): string {
 	const vault = new FakeVault();
 	const session = openSession(vault, 'Folder/Visual Parity Source.md', '# Real title\n\nFirst paragraph.\n');
 	const hub = makeHub(vault, session);
@@ -40,7 +40,11 @@ function renderComposer(): string {
 		getState: () => state,
 		subscribe: () => () => undefined,
 	};
-	return renderToStaticMarkup(React.createElement(ComposerRoot, { source, runtime: { session, hub } }));
+	return renderToStaticMarkup(React.createElement(ComposerRoot, {
+		source,
+		runtime: { session, hub },
+		intelligence: withIntelligence ? makeRuntime() : undefined,
+	}));
 }
 
 function makeRuntime(): IntelligenceRuntime {
@@ -55,8 +59,7 @@ function renderBriefContent(props: Partial<BriefViewContentProps> & Pick<BriefVi
 		onLocate: undefined,
 		onOpenSource: undefined,
 		onRefreshRelated: () => undefined,
-		related: null,
-		relatedPortAvailable: false,
+		related: { status: 'unavailable' },
 		setModalOpen: () => undefined,
 		...props,
 	};
@@ -81,8 +84,8 @@ function makeRelatedSnapshot() {
 	});
 }
 
-check('CopilotView imports the canonical Button primitive, not legacy shared-ui/button', () => {
-	const source = readFileSync('src/ui/view/composer/sidecar/CopilotView.tsx', 'utf8');
+check('BriefView imports the canonical Button primitive, not legacy shared-ui/button', () => {
+	const source = readFileSync('src/ui/view/composer/sidecar/BriefView.tsx', 'utf8');
 	assert.equal(source.includes("from '@/ui/component/shared-ui/button'"), false);
 	assert.equal(source.includes("from '@/ui/components/primitives'"), true);
 });
@@ -95,13 +98,122 @@ check('document paper starts with content, not decorative file metadata header',
 	assert.ok(html.indexOf('pk-composer-blocks') > -1);
 });
 
-check('display state switch should be candidate-driven (no permanent chrome in empty brief state)', () => {
+check('Frontmatter property library is owned by the bottom block row, not the metadata header', () => {
+	const frontmatter = readFileSync(
+		'src/ui/view/composer/blocks/frontmatter/FrontmatterBlockView.tsx',
+		'utf8',
+	);
+	const root = readFileSync('src/ui/view/composer/ComposerRoot.tsx', 'utf8');
+	assert.equal(frontmatter.includes('<Library size='), false);
+	assert.equal(frontmatter.includes('{config.grid.vaultLibrary}'), false);
+	assert.ok(root.includes('vaultLibrary={'));
+	assert.ok(root.includes('DEFAULT_FRONTMATTER_CONFIG.library.title'));
+	assert.ok(root.includes('[SUGGEST_PROPERTIES_CAPABILITY_ID]'));
+});
+
+check('block instruction restores the designed wand trigger and Spark plus History input lead', () => {
+	const row = readFileSync('src/ui/view/composer/chrome/BlockActionRow.tsx', 'utf8');
+	const css = readFileSync('src/styles/composer.css', 'utf8');
+	assert.equal(row.includes('Terminal'), false);
+	assert.ok(row.includes('icon={<WandSparkles size={13} />}'));
+	assert.ok(row.includes('<Sparkles size={13} className="pk-block-action-row__spark"'));
+	assert.ok(row.includes('<HistoryIcon size={13} className="pk-block-action-row__instruction-history"'));
+	assert.match(
+		css,
+		/input\.pk-block-action-row__instruction\s*\{[\s\S]*?border:\s*0 !important;[\s\S]*?box-shadow:\s*none !important;/,
+	);
+});
+
+check('block action row scrolls instead of silently clipping real quick actions', () => {
+	const css = readFileSync('src/styles/composer.css', 'utf8');
+	assert.match(
+		css,
+		/\.pk-block-action-row__shell\s*\{[\s\S]*?overflow-x:\s*auto;[\s\S]*?scrollbar-width:\s*none;/,
+		'constrained block rows must keep every projected quick action reachable',
+	);
+	assert.match(
+		css,
+		/\.pk-block-action-row__options\s*\{[\s\S]*?max-width:\s*none;[\s\S]*?flex:\s*none;/,
+		'the options rail must not truncate its own capability pills',
+	);
+});
+
+check('insert-below uses one Markdown draft with preview and explicit AI acceptance', () => {
+	const root = readFileSync('src/ui/view/composer/ComposerRoot.tsx', 'utf8');
+	const actionRow = readFileSync('src/ui/view/composer/chrome/BlockActionRow.tsx', 'utf8');
+	const draft = readFileSync('src/ui/view/composer/chrome/NewBlockDraft.tsx', 'utf8');
+	const css = readFileSync('src/styles/composer.css', 'utf8');
+	assert.ok(root.includes("panel: 'insert-draft'"));
+	assert.ok(root.includes('pinned: boolean'));
+	assert.ok(root.includes('previewPanel'));
+	assert.ok(actionRow.includes('pk-insert-type-menu'));
+	assert.ok(actionRow.includes('surfacePreviewCloseDelayMs'));
+	assert.ok(actionRow.includes("onPointerEnter={() => showPreview('insert-menu')}"));
+	assert.ok(actionRow.includes("onPointerEnter={() => showPreview('copy')}"));
+	assert.ok(actionRow.includes("onPointerEnter={() => showPreview('history')}"));
+	assert.ok(actionRow.includes('pk-block-action-row__interaction-zone'));
+	assert.ok(actionRow.includes('onPointerEnter={clearPreviewClose}'));
+	assert.ok(actionRow.includes('if (!openPanel || panelPinned) return;'));
+	assert.equal(actionRow.includes("onPointerLeave={() => hidePreview('insert-menu')}"), false);
+	assert.equal(actionRow.includes("onPointerLeave={() => hidePreview('copy')}"), false);
+	assert.equal(actionRow.includes("onPointerLeave={() => hidePreview('history')}"), false);
+	assert.equal(actionRow.includes('pk-block-action-row__expanded-surface--end'), false);
+	assert.ok(actionRow.includes('pk-block-action-row__expanded-surface'));
+	assert.equal(actionRow.includes("aria-label={instructionOpen ? a.instruction : 'Block actions'}"), false);
+	assert.equal(actionRow.includes('Block actions'), false);
+	assert.match(
+		css,
+		/\.pk-block-action-row__expanded-surface\s*\{[\s\S]*?display:\s*block;[\s\S]*?margin-top:\s*6px;/,
+	);
+	assert.match(
+		css,
+		/\.pk-block-action-row\[data-floating-surface\]\s*\{[\s\S]*?height:\s*auto;[\s\S]*?pointer-events:\s*auto;[\s\S]*?overflow:\s*visible;/,
+		'an open secondary surface must keep its action row in normal layout',
+	);
+	assert.match(
+		css,
+		/\.pk-block-action-row__interaction-zone\s*\{[\s\S]*?width:\s*max-content;[\s\S]*?max-width:\s*100%;/,
+		'the toolbar and its secondary surface must share one continuous hover owner',
+	);
+	assert.equal(css.includes('.pk-block-action-row__expanded-surface--end'), false);
+	assert.match(
+		css,
+		/\.pk-insert-type-menu__item\s*\{[\s\S]*?border-radius:\s*var\(--pk-radius-pill\)[\s\S]*?background:\s*transparent/,
+	);
+	assert.match(
+		css,
+		/\.pk-insert-type-menu\s*\{[\s\S]*?flex-wrap:\s*nowrap;[\s\S]*?width:\s*max-content;[\s\S]*?overflow-x:\s*auto;/,
+		'insert shortcuts should read as one compact toolbar rail, not a sparse option grid',
+	);
+	assert.ok(actionRow.includes('className="pk-action-capsule pk-insert-type-menu__item"'));
+	const easyCopy = readFileSync('src/ui/view/composer/chrome/EasyCopyMenu.tsx', 'utf8');
+	assert.ok(easyCopy.includes('className="pk-action-capsule pk-easy-copy__tile"'));
+	assert.ok(draft.includes('StreamdownIsolated'));
+	assert.ok(draft.includes('blockDraftGeneration'));
+	assert.ok(draft.includes('config.acceptGenerated'));
+	assert.ok(draft.includes('insertDraftSyntax'));
+	assert.equal(draft.includes('selectedTypeId'), false);
+	assert.equal(draft.includes('selectedType.blockKind'), false);
+	assert.equal(draft.includes('lastUsed'), false);
+	assert.equal(root.includes('insertDraftAfter'), false);
+	assert.equal(draft.includes('onBlur={() => void commit()}'), false);
+});
+
+check('document controls share one non-overlay control bar', () => {
 	const html = renderComposer();
-	const statusIndex = html.indexOf('pk-composer-statusbar');
+	const css = readFileSync('src/styles/composer.css', 'utf8');
+	const commentPanel = readFileSync('src/ui/view/composer/chrome/CommentPanel.tsx', 'utf8');
+	const controlIndex = html.indexOf('pk-composer-controlbar');
 	const undoIndex = html.indexOf('pk-undo-redo');
-	assert.ok(statusIndex > -1, 'missing statusbar');
-	assert.equal(html.indexOf('pk-composer-display-switch'), -1, 'display switch should not be permanent in empty work queue');
-	assert.ok(undoIndex > statusIndex, 'undo/redo must stay in the bottom statusbar family');
+	const workspaceIndex = html.indexOf('pk-composer-workspace');
+	assert.ok(controlIndex > -1, 'missing unified control bar');
+	assert.ok(html.includes('pk-composer-display-switch'), 'all three display modes must remain permanently available');
+	assert.ok(undoIndex > controlIndex, 'undo/redo must stay in the unified control bar');
+	assert.ok(controlIndex < workspaceIndex, 'control bar must participate in layout before the document workspace');
+	const controlRule = css.match(/\.peak-composer-root \.pk-composer-controlbar\s*\{([\s\S]*?)\}/)?.[1] ?? '';
+	assert.match(controlRule, /position:\s*sticky/, 'control bar must remain available while the document scrolls');
+	assert.match(controlRule, /top:\s*0/, 'sticky control bar must attach to the Composer scrollport top');
+	assert.equal(commentPanel.includes('pk-comment-rail__header'), false, 'comment rail must not cover its first card with a header');
 });
 
 check('sidecar mode resolves from actual host width, not sidecar column or window width', () => {
@@ -121,28 +233,34 @@ check('sidecar mode resolves from actual host width, not sidecar column or windo
 	assert.equal(resolveSidecarHostMode(sidecar, 1180), 'drawer');
 });
 
-check('all-empty Brief with no related port renders one consolidated empty state and no refresh', () => {
+check('all-empty Brief keeps the three persistent sections and no global empty replacement', () => {
 	const html = renderBriefContent({
 		runtime: makeRuntime() as never,
 	});
-	assert.equal(count(html, DEFAULT_SIDECAR_CONFIG.strings.emptyBrief), 1);
-	assert.equal(count(html, 'class="pk-brief-section"'), 0);
-	assert.ok(html.includes('pk-brief-empty-state'));
+	assert.equal(count(html, DEFAULT_SIDECAR_CONFIG.strings.emptyBrief), 0);
+	assert.equal(count(html, 'class="pk-brief-section"'), 3);
+	assert.ok(html.includes(DEFAULT_SIDECAR_CONFIG.strings.sectionNextMoves));
+	assert.ok(html.includes(DEFAULT_SIDECAR_CONFIG.strings.sectionRelated));
+	assert.ok(html.includes(DEFAULT_SIDECAR_CONFIG.strings.sectionUnplaced));
+	assert.ok(html.includes(DEFAULT_SIDECAR_CONFIG.strings.sectionNextMovesEmpty));
+	assert.ok(html.includes(DEFAULT_SIDECAR_CONFIG.strings.sectionRelatedUnavailable));
+	assert.ok(html.includes(DEFAULT_SIDECAR_CONFIG.strings.sectionUnplacedEmpty));
 	assert.equal(html.includes(DEFAULT_SIDECAR_CONFIG.strings.refreshRelated), false);
 });
 
-check('empty Brief with related port shows refreshRelated and still no sections', () => {
+check('empty Brief with related loading state shows refreshRelated and all sections', () => {
 	const html = renderBriefContent({
 		runtime: makeRuntime() as never,
-		relatedPortAvailable: true,
+		related: { status: 'loading' },
 	});
 	assert.equal(html.includes(DEFAULT_SIDECAR_CONFIG.strings.refreshRelated), true);
 	assert.equal(html.includes('pk-btn'), true);
-	assert.equal(count(html, 'class="pk-brief-section"'), 0);
-	assert.equal(count(html, DEFAULT_SIDECAR_CONFIG.strings.emptyBrief), 1);
+	assert.equal(count(html, 'class="pk-brief-section"'), 3);
+	assert.equal(count(html, DEFAULT_SIDECAR_CONFIG.strings.emptyBrief), 0);
+	assert.ok(html.includes(DEFAULT_SIDECAR_CONFIG.strings.sectionRelatedLoading));
 });
 
-check('only finding renders Next Moves and nothing else', () => {
+check('finding renders Next Moves while Related and Unplaced remain visible', () => {
 	const runtime = makeRuntime();
 	runtime.ingestFinding({
 		fingerprint: 'fp-1',
@@ -155,42 +273,36 @@ check('only finding renders Next Moves and nothing else', () => {
 		runtime: runtime as never,
 		findings: runtime.findings.list(),
 	});
-	assert.equal(count(html, 'class="pk-brief-section"'), 1);
+	assert.equal(count(html, 'class="pk-brief-section"'), 3);
 	assert.ok(html.includes(DEFAULT_SIDECAR_CONFIG.strings.sectionNextMoves));
-	assert.equal(html.includes('<span class="pk-brief-section-title">相关材料</span>'), false);
-	assert.equal(html.includes('<span class="pk-brief-section-title">还没安放的想法</span>'), false);
+	assert.equal(html.includes('<span class="pk-brief-section-title">相关材料</span>'), true);
+	assert.equal(html.includes('<span class="pk-brief-section-title">还没安放的想法</span>'), true);
 	assert.ok(html.includes('真实 finding reason'));
 	assert.equal(html.includes(DEFAULT_SIDECAR_CONFIG.strings.emptyBrief), false);
 	assert.equal(html.includes(DEFAULT_SIDECAR_CONFIG.strings.refreshRelated), false);
 });
 
-check('only related renders Related and nothing else', () => {
+check('related ready state renders Related while other sections remain visible', () => {
 	const html = renderBriefContent({
 		runtime: makeRuntime() as never,
 		findings: [],
-		related: makeRelatedSnapshot(),
-		relatedPortAvailable: true,
+		related: { status: 'ready', snapshot: makeRelatedSnapshot() },
 	});
-	assert.equal(count(html, 'class="pk-brief-section"'), 1);
+	assert.equal(count(html, 'class="pk-brief-section"'), 3);
 	assert.equal(html.includes('<span class="pk-brief-section-title">相关材料</span>'), true);
-	assert.equal(html.includes('<span class="pk-brief-section-title">接下来可能要做</span>'), false);
-	assert.equal(html.includes('<span class="pk-brief-section-title">还没安放的想法</span>'), false);
+	assert.equal(html.includes('<span class="pk-brief-section-title">接下来可能要做</span>'), true);
+	assert.equal(html.includes('<span class="pk-brief-section-title">还没安放的想法</span>'), true);
 	assert.equal(html.includes(DEFAULT_SIDECAR_CONFIG.strings.emptyBrief), false);
 	assert.equal(html.includes(DEFAULT_SIDECAR_CONFIG.strings.refreshRelated), true);
 });
 
-check('closed sidecar entry renders a restrained visible Intelligence Button', () => {
-	const html = renderToStaticMarkup(
-		React.createElement(SidecarOpenButton, {
-			label: DEFAULT_SIDECAR_CONFIG.strings.title,
-			'aria-label': DEFAULT_SIDECAR_CONFIG.strings.openDrawer,
-			onClick: () => undefined,
-		}),
-	);
-	assert.ok(html.includes('pk-btn'), 'closed entry must use the shared Button primitive');
-	assert.ok(html.includes('pk-sidecar-open-toggle'), 'closed entry must use the shared sidecar-open class');
-	assert.ok(html.includes(`aria-label="${DEFAULT_SIDECAR_CONFIG.strings.openDrawer}"`), 'closed entry must keep openDrawer aria-label');
-	assert.ok(html.includes(`>${DEFAULT_SIDECAR_CONFIG.strings.title}</span>`), 'closed entry must expose a visible Intelligence label');
+check('Intelligence toggle lives in the unified Composer control bar', () => {
+	const html = renderComposer(true);
+	const controlIndex = html.indexOf('pk-composer-controlbar');
+	const intelligenceIndex = html.indexOf('pk-composer-intelligence-toggle');
+	assert.ok(intelligenceIndex > controlIndex, 'Intelligence toggle must live inside the unified control bar');
+	assert.equal(html.includes('pk-sidecar-open-toggle'), false, 'sidecar must not render a detached floating reopen button');
+	assert.ok(html.includes(`>${DEFAULT_SIDECAR_CONFIG.strings.title}</span>`), 'control bar must expose the Intelligence label');
 });
 
 check('status switch in the composer bar should track stale candidates as reviewable', () => {

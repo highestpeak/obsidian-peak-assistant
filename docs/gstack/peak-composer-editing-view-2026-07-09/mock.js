@@ -7333,9 +7333,9 @@ function applySelectionFormat(format, value = "") {
 function renderSelectionPalette(format) {
   const isText = format === "foreColor";
   const colors = isText
-    ? [["#1f2937", "正文"], ["#7c3aed", "紫色"], ["#2563eb", "蓝色"], ["#b45309", "棕色"], ["#b42318", "红色"], ["#16845f", "绿色"]]
-    : [["#fff1a8", "重点"], ["#dff4e8", "定义"], ["#dfeaff", "资料"], ["#eee5ff", "想法"], ["#fde4e4", "风险"], ["transparent", "清除"]];
-  selectionToolbarPopover.innerHTML = `<span>${isText ? "文字颜色" : "Highlightr 标记颜色"} · 写入可移除的 HTML 增强格式</span><div class="selection-palette">${colors.map(([color, label]) => `<button type="button" data-selection-color="${color}" data-selection-color-format="${format}" style="--selection-color:${color === "transparent" ? "#fff" : color}" title="${label}" aria-label="${label}"><i>${label}</i></button>`).join("")}</div>`;
+    ? [["#1f2937", "深灰色"], ["#7c3aed", "紫色"], ["#2563eb", "蓝色"], ["#b45309", "棕色"], ["#b42318", "红色"], ["#16845f", "绿色"]]
+    : [["#fff1a8", "黄色高亮"], ["#dff4e8", "绿色高亮"], ["#dfeaff", "蓝色高亮"], ["#eee5ff", "紫色高亮"], ["#fde4e4", "红色高亮"]];
+  selectionToolbarPopover.innerHTML = `<span>${isText ? "文字颜色" : "标记颜色"} · 写入可移除的 HTML 增强格式</span><div class="selection-palette">${colors.map(([color, label]) => `<button type="button" data-selection-color="${color}" data-selection-color-format="${format}" style="--selection-color:${color}" aria-label="${label}"></button>`).join("")}<label class="selection-custom-color" aria-label="自定义颜色"><input type="color" data-selection-custom-color data-selection-color-format="${format}" value="${isText ? "#7c3aed" : "#fff1a8"}" aria-label="自定义颜色" /><svg aria-hidden="true"><use href="#i-palette"></use></svg></label></div>`;
   selectionToolbarPopover.hidden = false;
 }
 
@@ -7599,6 +7599,11 @@ function initMetadataProfile() {
       custom.reset();
       closeLibrary({ restoreFocus: false });
     }
+  });
+  selectionToolbar.addEventListener("change", (event) => {
+    const picker = event.target.closest("[data-selection-custom-color]");
+    if (!picker) return;
+    applySelectionFormat(picker.dataset.selectionColorFormat, picker.value);
   });
   block.addEventListener("click", (event) => {
     const action = event.target.closest("[data-metadata-action]")?.dataset.metadataAction;

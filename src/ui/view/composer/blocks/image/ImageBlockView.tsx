@@ -49,9 +49,11 @@ export function ImageBlockView({
 	const coordinator = chrome.runtime.imageCoordinator;
 	const hub = chrome.runtime.hub;
 	const resolvePreviewUri = chrome.runtime.imagePreviewResolver;
-	const sourcePath = imageRefOf(chrome.snapshot, block.renderModel.raw, block.blockId);
+	const imagePath = imageRefOf(chrome.snapshot, block.renderModel.raw, block.blockId);
 	const { alt, caption, width } = imageMetaFromSource(block.renderModel.raw);
-	const resolvedUri = sourcePath ? resolvePreviewUri?.(sourcePath) ?? sourcePath : '';
+	const resolvedUri = imagePath
+		? resolvePreviewUri?.(imagePath, chrome.snapshot?.filePath) ?? imagePath
+		: '';
 	const [editOpen, setEditOpen] = React.useState(false);
 	const [instruction, setInstruction] = React.useState('');
 	const [imageError, setImageError] = React.useState(false);
@@ -75,8 +77,8 @@ export function ImageBlockView({
 		coordinator.beginCaption({ blockId: block.blockId });
 	};
 	const runEdit = (): void => {
-		if (!coordinator || !hub || !sourcePath) return;
-		coordinator.beginAiEdit({ instruction: instruction.trim(), target, sourcePath });
+		if (!coordinator || !hub || !imagePath) return;
+		coordinator.beginAiEdit({ instruction: instruction.trim(), target, sourcePath: imagePath });
 		setInstruction('');
 		setEditOpen(false);
 	};
@@ -87,7 +89,7 @@ export function ImageBlockView({
 			data-block-id={block.blockId}
 			style={width ? { width: `${width}px`, maxWidth: '100%' } : undefined}
 		>
-			{sourcePath && !imageError ? (
+			{imagePath && !imageError ? (
 				<img
 					className="pk-composer-image-elem"
 					src={resolvedUri}
@@ -95,9 +97,9 @@ export function ImageBlockView({
 					onError={() => setImageError(true)}
 				/>
 			) : (
-				<span className="pk-composer-image-fallback" title={sourcePath ? uiStrings.loadFailed : uiStrings.sourceUnavailable}>
+				<span className="pk-composer-image-fallback" title={imagePath ? uiStrings.loadFailed : uiStrings.sourceUnavailable}>
 					<FileImage size={18} />
-					<span className="pk-composer-image-fallback-text">{sourcePath ? caption || alt || sourcePath : uiStrings.sourceUnavailable}</span>
+					<span className="pk-composer-image-fallback-text">{imagePath ? caption || alt || imagePath : uiStrings.sourceUnavailable}</span>
 				</span>
 			)}
 			{caption ? <figcaption className="pk-composer-image-caption">{caption}</figcaption> : null}
@@ -106,8 +108,8 @@ export function ImageBlockView({
 					<Button
 						variant="secondary"
 						className={`${IMAGE_TOOLBAR_CONTROL} px-2 gap-1`}
-						disabled={!sourcePath}
-						title={sourcePath ? undefined : uiStrings.stale}
+						disabled={!imagePath}
+						title={imagePath ? undefined : uiStrings.stale}
 						aria-label={actionStrings.editTitle}
 						onClick={() => setEditOpen((v) => !v)}
 					>
@@ -133,7 +135,7 @@ export function ImageBlockView({
 	return (
 		<div className="pk-composer-image-block inline-flex flex-col gap-1.5 items-start">
 			{figure}
-			{editOpen && sourcePath && (
+			{editOpen && imagePath && (
 				<input
 					autoFocus
 					type="text"

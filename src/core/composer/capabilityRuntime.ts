@@ -253,6 +253,8 @@ export interface ComposerCandidateRuntimePort {
 	onRunEvent(cb: (event: ComposerCapabilityRunEvent) => void): () => void;
 	/** Renderer to dispatch for a candidate (from its definition). Null when unknown. */
 	rendererIdFor(candidateId: string): ComposerRendererId | null;
+	/** Resolved capability title for review metadata. Optional for specialized runtimes. */
+	candidateLabelFor?(candidateId: string): string | null;
 	/** Append a regeneration variant and stream it. Instruction is run context, never body. */
 	regenerate(candidateId: string, instruction?: string): ComposerInvocationHandle;
 	/**

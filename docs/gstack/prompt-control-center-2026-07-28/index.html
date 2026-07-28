@@ -1,0 +1,1521 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak · Prompt Control Center Mock</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f6f5;
+      --surface: #ffffff;
+      --surface-2: #f9f9f8;
+      --surface-3: #f1f1ef;
+      --line: #e4e4e1;
+      --line-strong: #d4d4cf;
+      --text: #262624;
+      --muted: #75756f;
+      --subtle: #9b9b94;
+      --accent: #6e57d9;
+      --accent-soft: #f1edff;
+      --green: #367a5d;
+      --green-soft: #eaf5ef;
+      --amber: #8a631a;
+      --amber-soft: #fbf3df;
+      --red: #a74747;
+      --shadow: 0 18px 60px rgba(27, 27, 25, .14), 0 2px 8px rgba(27, 27, 25, .07);
+      --radius: 9px;
+      --font: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; }
+    body { font-family: var(--font); color: var(--text); background: var(--bg); font-size: 13px; }
+    button, input, select, textarea { font: inherit; }
+    button { color: inherit; }
+    .hidden { display: none !important; }
+
+    .app {
+      height: 100vh;
+      display: grid;
+      grid-template-rows: 39px 1fr;
+      background: var(--surface);
+    }
+
+    .tabbar {
+      display: flex;
+      align-items: stretch;
+      gap: 1px;
+      padding-left: 46px;
+      background: #ededeb;
+      border-bottom: 1px solid #d8d8d5;
+      user-select: none;
+    }
+
+    .tab {
+      min-width: 190px;
+      max-width: 280px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 0 14px;
+      color: #85857f;
+      border-right: 1px solid #d8d8d5;
+      white-space: nowrap;
+    }
+
+    .tab.active {
+      color: var(--text);
+      background: var(--surface);
+      border-top: 2px solid var(--accent);
+    }
+
+    .tab-icon, .icon {
+      width: 16px;
+      height: 16px;
+      flex: 0 0 auto;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .workspace {
+      min-height: 0;
+      position: relative;
+      background:
+        linear-gradient(90deg, #fafaf9 0 255px, var(--surface) 255px);
+    }
+
+    .ghost-document {
+      height: 100%;
+      padding: 46px max(48px, calc((100vw - 1000px) / 2));
+      opacity: .52;
+    }
+
+    .ghost-document h1 { font-size: 30px; margin: 0 0 28px; }
+    .ghost-document p { max-width: 760px; font-size: 16px; line-height: 1.9; }
+    .ghost-line { height: 13px; background: #ececea; border-radius: 4px; margin: 18px 0; }
+
+    .settings-backdrop {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 28px;
+      background: rgba(246, 246, 245, .55);
+      backdrop-filter: blur(2px);
+      z-index: 20;
+    }
+
+    .settings-modal {
+      width: min(1180px, calc(100vw - 64px));
+      height: min(790px, calc(100vh - 86px));
+      overflow: auto;
+      background: var(--surface);
+      border: 1px solid rgba(0, 0, 0, .08);
+      border-radius: 13px;
+      box-shadow: var(--shadow);
+    }
+
+    .settings-inner { padding: 28px 32px 34px; }
+    .settings-title { font-size: 18px; font-weight: 650; margin: 0; }
+    .settings-copy { margin: 6px 0 22px; color: var(--muted); font-size: 14px; }
+
+    .provider-row {
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr) auto auto;
+      align-items: center;
+      gap: 14px;
+      min-height: 76px;
+      padding: 8px 22px;
+    }
+
+    .provider-mark {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border-radius: 11px;
+      color: white;
+      background: #2f3132;
+      font-weight: 700;
+      font-size: 17px;
+    }
+    .provider-row:nth-of-type(2) .provider-mark { background: #c79158; }
+    .provider-row:nth-of-type(3) .provider-mark { background: #168a68; }
+    .provider-row:nth-of-type(4) .provider-mark { background: #6562df; }
+    .provider-name { font-size: 16px; font-weight: 650; }
+    .provider-meta { color: var(--muted); margin-top: 3px; }
+    .text-button, .icon-button, .primary-button, .secondary-button {
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+    .text-button { padding: 8px 10px; }
+    .text-button:hover, .icon-button:hover { background: var(--surface-3); }
+    .icon-button { width: 32px; height: 32px; display: grid; place-items: center; padding: 0; }
+
+    .advanced {
+      border-top: 1px solid var(--line);
+      margin-top: 12px;
+      padding: 23px 22px 4px;
+    }
+    .advanced-head {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 13px;
+      align-items: center;
+    }
+    .advanced-head strong { font-size: 15px; }
+    .advanced-head span { color: var(--muted); display: block; margin-top: 4px; }
+    .field-preview {
+      margin: 22px 0 28px 28px;
+      display: grid;
+      grid-template-columns: 220px 1fr 70px;
+      align-items: center;
+      gap: 16px;
+      min-height: 44px;
+    }
+    .field-preview + .field-preview { margin-top: 5px; }
+    .field-preview label { color: #5f5f5a; }
+    .slider { height: 4px; background: #e5e5e2; border-radius: 8px; position: relative; }
+    .slider::after {
+      content: "";
+      position: absolute;
+      width: 18px; height: 18px; border-radius: 50%;
+      top: 50%; left: 58%; transform: translate(-50%, -50%);
+      background: white; border: 1px solid #d4d4d0; box-shadow: 0 1px 3px rgba(0,0,0,.12);
+    }
+
+    .prompt-launcher {
+      margin-top: 26px;
+      padding: 18px 19px;
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      border: 1px solid var(--line-strong);
+      border-radius: 9px;
+      background: #fbfbfa;
+    }
+    .launcher-icon {
+      width: 38px; height: 38px; display: grid; place-items: center;
+      color: var(--accent); background: var(--accent-soft); border-radius: 8px;
+    }
+    .prompt-launcher strong { font-size: 15px; }
+    .prompt-launcher p { margin: 4px 0 0; color: var(--muted); }
+    .launcher-meta { font-family: var(--mono); color: var(--subtle); font-size: 11px; margin-top: 7px; }
+    .secondary-button, .primary-button {
+      min-height: 34px;
+      padding: 0 13px;
+      border: 1px solid var(--line-strong);
+      background: var(--surface);
+      font-weight: 600;
+    }
+    .secondary-button:hover { background: var(--surface-3); }
+    .primary-button { color: white; background: var(--accent); border-color: var(--accent); }
+    .primary-button:hover { background: #5e49c8; }
+
+    .center-view {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-rows: 54px minmax(0, 1fr);
+      z-index: 10;
+      background: var(--surface);
+    }
+
+    .view-topbar {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: minmax(260px, 1fr) minmax(300px, 430px) auto;
+      gap: 16px;
+      align-items: center;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+    }
+    .view-title { display: flex; align-items: baseline; gap: 12px; min-width: 0; }
+    .view-title strong { font-size: 16px; white-space: nowrap; }
+    .view-title span { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .search {
+      height: 34px;
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .search .icon { position: absolute; left: 10px; color: var(--subtle); pointer-events: none; }
+    .search input {
+      width: 100%; height: 34px; padding: 0 12px 0 34px;
+      border: 1px solid var(--line); border-radius: 7px; outline: none;
+      background: var(--surface-2); color: var(--text);
+    }
+    .search input:focus { border-color: #aaa0df; box-shadow: 0 0 0 2px var(--accent-soft); background: white; }
+    .top-actions { display: flex; align-items: center; gap: 7px; }
+
+    .center-body {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 198px 338px minmax(520px, 1fr);
+    }
+
+    .groups, .prompt-list, .inspector { min-height: 0; overflow: auto; }
+    .groups {
+      padding: 18px 10px;
+      background: #f7f7f6;
+      border-right: 1px solid var(--line);
+    }
+    .rail-label {
+      padding: 0 10px 9px;
+      color: var(--subtle);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .group-button {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      min-height: 35px;
+      padding: 0 9px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+      color: #595954;
+    }
+    .group-button:hover { background: #eeeeeb; }
+    .group-button.active { background: #e9e7f3; color: #4e3c9a; font-weight: 650; }
+    .group-button .count { font-family: var(--mono); font-size: 10px; color: var(--subtle); }
+    .rail-divider { height: 1px; background: var(--line); margin: 15px 9px; }
+    .rail-note {
+      margin: 16px 9px 0;
+      padding: 11px;
+      font-size: 11px;
+      line-height: 1.5;
+      color: var(--muted);
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+    }
+
+    .prompt-list {
+      background: #fcfcfb;
+      border-right: 1px solid var(--line);
+    }
+    .list-summary {
+      position: sticky; top: 0; z-index: 2;
+      min-height: 46px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 14px;
+      background: rgba(252,252,251,.96);
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      backdrop-filter: blur(8px);
+    }
+    .list-summary strong { color: var(--text); }
+    .prompt-row {
+      width: 100%;
+      display: block;
+      padding: 13px 14px;
+      border: 0;
+      border-bottom: 1px solid #eeeeeb;
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+    }
+    .prompt-row:hover { background: #f5f5f2; }
+    .prompt-row.active { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+    .row-title { display: flex; align-items: center; gap: 7px; font-weight: 650; }
+    .row-id { margin-top: 5px; font-family: var(--mono); font-size: 10px; color: var(--muted); }
+    .row-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 9px; }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 20px;
+      padding: 0 7px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: white;
+      font-size: 10px;
+      line-height: 1;
+    }
+    .tag.green { color: var(--green); background: var(--green-soft); border-color: #cfe5d9; }
+    .tag.amber { color: var(--amber); background: var(--amber-soft); border-color: #eadcb5; }
+    .tag.purple { color: #5b46b7; background: #f0edff; border-color: #dbd3ff; }
+    .tag.muted { background: #f0f0ed; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .empty-list { padding: 40px 24px; color: var(--muted); text-align: center; line-height: 1.6; }
+
+    .inspector {
+      position: relative;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      overflow: hidden;
+      background: var(--surface);
+    }
+    .inspector-head {
+      padding: 22px 28px 17px;
+      border-bottom: 1px solid var(--line);
+    }
+    .breadcrumb { color: var(--muted); font-size: 11px; margin-bottom: 8px; }
+    .title-line { display: flex; align-items: center; gap: 10px; }
+    .title-line h1 { margin: 0; font-size: 22px; line-height: 1.25; }
+    .id-line { margin-top: 7px; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+    .status-strip { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 13px; }
+    .inspector-content {
+      max-width: 920px;
+      min-height: 0;
+      overflow: auto;
+      padding: 0 28px 28px;
+    }
+    .section {
+      padding: 23px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .section:last-child { border-bottom: 0; }
+    .section-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 14px;
+    }
+    .section-head h2 { margin: 0; font-size: 14px; }
+    .section-head p { margin: 5px 0 0; color: var(--muted); line-height: 1.45; }
+    .link-button {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: var(--accent);
+      cursor: pointer;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .pair-tabs { display: flex; gap: 4px; margin-bottom: 9px; }
+    .pair-tab {
+      min-height: 29px; padding: 0 10px; border: 1px solid var(--line);
+      border-radius: 6px; background: var(--surface-2); cursor: pointer; color: var(--muted);
+    }
+    .pair-tab.active { background: var(--surface); color: var(--text); border-color: var(--line-strong); box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+    .code-editor {
+      width: 100%;
+      min-height: 182px;
+      resize: vertical;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      outline: none;
+      background: #fafaf8;
+      color: #3c3c39;
+      font: 12px/1.65 var(--mono);
+    }
+    .code-editor:focus { background: white; border-color: #a69bdc; box-shadow: 0 0 0 2px var(--accent-soft); }
+    .editor-meta {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; margin-top: 9px; color: var(--muted); font-size: 11px;
+    }
+    .variables { display: flex; flex-wrap: wrap; gap: 6px; }
+    .variable {
+      padding: 3px 7px; border-radius: 4px; background: var(--surface-3);
+      color: #5e5e58; font-family: var(--mono); font-size: 10px;
+    }
+
+    .notice {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 12px;
+      border: 1px solid #ded8fa;
+      border-radius: 7px;
+      background: #f8f6ff;
+      color: #514586;
+      line-height: 1.5;
+    }
+    .notice.amber { border-color: #e8d9ad; background: #fffaf0; color: #72551c; }
+    .notice .icon { margin-top: 1px; }
+
+    .route-options { display: grid; gap: 8px; margin-top: 12px; }
+    .route-card {
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      cursor: pointer;
+      background: var(--surface);
+    }
+    .route-card:hover { border-color: #c7c1e3; }
+    .route-card.active { border-color: #a79bdf; background: #fbfaff; box-shadow: 0 0 0 1px #dcd6f8; }
+    .route-card input { accent-color: var(--accent); }
+    .route-main strong { display: block; }
+    .route-main > span { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .route-main strong .tag { display: inline-flex; margin-left: 6px; vertical-align: 1px; }
+    .route-effective { color: var(--muted); text-align: right; font-size: 11px; }
+    .route-effective strong { color: var(--green); font-family: var(--mono); font-weight: 600; display: block; margin-top: 3px; }
+    .model-pickers {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+      margin: 9px 0 0 28px;
+    }
+    .model-pickers select {
+      height: 34px; padding: 0 9px; border: 1px solid var(--line);
+      border-radius: 6px; background: white; outline: none;
+    }
+    .model-pickers select:focus { border-color: #a69bdc; }
+    .model-picker-shell {
+      position: relative;
+      margin: 9px 0 0 28px;
+    }
+    .model-picker-trigger {
+      width: 100%;
+      min-height: 42px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      padding: 7px 11px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: var(--surface);
+      text-align: left;
+      cursor: pointer;
+    }
+    .model-picker-trigger:hover { border-color: #aaa0df; background: #fbfaff; }
+    .model-picker-trigger span { min-width: 0; }
+    .model-picker-trigger small {
+      display: block;
+      margin-bottom: 2px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+    .model-picker-trigger strong {
+      display: block;
+      overflow: hidden;
+      color: var(--text);
+      font-size: 12px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .shared-model-picker {
+      position: absolute;
+      right: 0;
+      bottom: 48px;
+      z-index: 12;
+      width: min(400px, calc(100vw - 80px));
+      max-height: min(510px, calc(100vh - 118px));
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      overflow: hidden;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .shared-model-picker__head {
+      padding: 13px 14px 11px;
+      border-bottom: 1px solid var(--line);
+    }
+    .shared-model-picker__head strong { display: block; font-size: 14px; }
+    .shared-model-picker__head span { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .shared-model-picker__body { min-height: 0; overflow: auto; padding: 9px; }
+    .shared-model-picker__toolbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 7px;
+      margin-bottom: 8px;
+    }
+    .shared-model-picker__search {
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 9px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface-3);
+    }
+    .shared-model-picker__search input {
+      width: 100%;
+      min-width: 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+    }
+    .shared-model-picker__filter-button {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface);
+      cursor: pointer;
+    }
+    .shared-model-picker__filter-button:hover { background: var(--surface-3); }
+    .shared-model-picker__filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin: -1px 0 8px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface-2);
+    }
+    .shared-model-picker__auto,
+    .shared-model-picker__row {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 32px minmax(0, 1fr) auto;
+      gap: 9px;
+      align-items: center;
+      padding: 9px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+    }
+    .shared-model-picker__auto {
+      margin-bottom: 8px;
+      border: 1px solid #cfc6fa;
+      background: var(--accent-soft);
+    }
+    .shared-model-picker__row:hover { background: var(--surface-3); }
+    .shared-model-picker__row[data-selected="true"] { background: var(--accent-soft); }
+    .shared-model-picker__mark {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      color: #61615b;
+      background: var(--surface-3);
+      font-weight: 700;
+    }
+    .shared-model-picker__auto .shared-model-picker__mark { color: var(--accent); background: #e8e1ff; }
+    .shared-model-picker__main strong { display: block; font-size: 12px; }
+    .shared-model-picker__main > span { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; }
+    .shared-model-picker__caps { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+    .shared-model-picker__cap {
+      padding: 2px 6px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: var(--surface-2);
+      font: 9px var(--mono);
+    }
+    .shared-model-picker__note {
+      margin-bottom: 8px;
+      padding: 8px 9px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--muted);
+      background: var(--surface-2);
+      font-size: 10px;
+      line-height: 1.45;
+    }
+    .shared-model-picker__group { margin-top: 8px; }
+    .shared-model-picker__group-label {
+      padding: 5px 8px;
+      color: var(--subtle);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      font-size: 9px;
+      font-weight: 700;
+    }
+    .effective-box {
+      margin-top: 13px;
+      display: grid; grid-template-columns: 1fr auto;
+      gap: 14px; align-items: center;
+      padding: 12px;
+      border: 1px solid #cfe5d9;
+      border-radius: 7px;
+      background: var(--green-soft);
+    }
+    .effective-box span { color: #5f7569; font-size: 11px; }
+    .effective-box strong { font-family: var(--mono); color: #276347; font-size: 11px; }
+
+    details {
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface-2);
+    }
+    summary { cursor: pointer; padding: 12px; font-weight: 650; }
+    .advanced-fields { padding: 0 12px 14px; }
+    .override-switch {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 0 13px; color: var(--muted);
+    }
+    .switch {
+      width: 35px; height: 20px; padding: 2px; border: 0; border-radius: 999px;
+      background: #d6d6d1; cursor: pointer;
+    }
+    .switch::after { content: ""; display: block; width: 16px; height: 16px; border-radius: 50%; background: white; transition: .15s; box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+    .switch.on { background: var(--accent); }
+    .switch.on::after { transform: translateX(15px); }
+    .mini-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; opacity: .42; pointer-events: none; }
+    .mini-grid.enabled { opacity: 1; pointer-events: auto; }
+    .mini-field label { display: block; margin-bottom: 5px; color: var(--muted); font-size: 11px; }
+    .mini-field input, .mini-field select { width: 100%; height: 33px; padding: 0 8px; border: 1px solid var(--line); border-radius: 5px; background: white; }
+
+    .savebar {
+      position: static;
+      min-height: 0;
+      max-height: 0;
+      overflow: hidden;
+      display: flex; align-items: center; justify-content: space-between; gap: 18px;
+      padding: 0 24px;
+      background: rgba(255,255,255,.97);
+      border-top: 1px solid var(--line-strong);
+      box-shadow: 0 -8px 24px rgba(25,25,23,.05);
+      backdrop-filter: blur(8px);
+      opacity: 0;
+      transition: min-height .18s ease, max-height .18s ease, padding .18s ease, opacity .18s ease;
+    }
+    .savebar.visible { min-height: 60px; max-height: 70px; padding: 10px 24px; opacity: 1; }
+    .save-copy strong { display: block; }
+    .save-copy span { display: block; color: var(--muted); margin-top: 3px; font-size: 11px; }
+    .save-actions { display: flex; gap: 8px; }
+
+    .toast {
+      position: fixed;
+      right: 20px; bottom: 20px; z-index: 50;
+      max-width: 360px;
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px;
+      color: white; background: #30302d;
+      border-radius: 7px;
+      box-shadow: 0 12px 36px rgba(0,0,0,.22);
+      opacity: 0; transform: translateY(8px); pointer-events: none;
+      transition: .18s;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    .design-note {
+      position: fixed;
+      left: 13px; bottom: 11px; z-index: 40;
+      padding: 6px 9px;
+      color: var(--muted); background: rgba(255,255,255,.92);
+      border: 1px solid var(--line); border-radius: 5px;
+      font-size: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.05);
+    }
+
+    @media (max-width: 1120px) {
+      .center-body { grid-template-columns: 172px 300px minmax(460px, 1fr); }
+      .view-title span { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="tabbar">
+      <div class="tab">
+        <svg class="tab-icon" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+        Peak Composer QA
+      </div>
+      <div class="tab active" id="activeTab">
+        <svg class="tab-icon" viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6"/></svg>
+        <span id="activeTabLabel">Composer</span>
+      </div>
+    </div>
+
+    <div class="workspace">
+      <div class="ghost-document">
+        <h1>Knowledge is more than a folder tree</h1>
+        <p>Composer keeps writing, context, and AI suggestions close to the document. The user stays in control of what becomes part of the note.</p>
+        <div class="ghost-line" style="width:88%"></div>
+        <div class="ghost-line" style="width:76%"></div>
+        <div class="ghost-line" style="width:91%"></div>
+      </div>
+
+      <div class="settings-backdrop" id="settingsScreen">
+        <div class="settings-modal" role="dialog" aria-label="AI Setup settings">
+          <div class="settings-inner">
+            <h1 class="settings-title">Providers</h1>
+            <p class="settings-copy">AI services and local runtimes connected to Peak.</p>
+
+            <div class="provider-row">
+              <div class="provider-mark">A</div>
+              <div><div class="provider-name">Anthropic Direct</div><div class="provider-meta">Anthropic · API key set</div></div>
+              <button class="text-button">Test</button><button class="icon-button" aria-label="Open provider">›</button>
+            </div>
+            <div class="provider-row">
+              <div class="provider-mark">O</div>
+              <div><div class="provider-name">OpenAI</div><div class="provider-meta">OpenAI · API key set</div></div>
+              <button class="text-button">Test</button><button class="icon-button" aria-label="Open provider">›</button>
+            </div>
+            <div class="provider-row">
+              <div class="provider-mark">L</div>
+              <div><div class="provider-name">Ollama</div><div class="provider-meta">Local runtime · available</div></div>
+              <button class="text-button">Test</button><button class="icon-button" aria-label="Open provider">›</button>
+            </div>
+            <div class="provider-row">
+              <div class="provider-mark">R</div>
+              <div><div class="provider-name">OpenRouter</div><div class="provider-meta">OpenRouter · API key set</div></div>
+              <button class="text-button">Test</button><button class="icon-button" aria-label="Open provider">›</button>
+            </div>
+
+            <div class="advanced">
+              <div class="advanced-head">
+                <svg class="icon" viewBox="0 0 24 24"><path d="m8 9 4 4 4-4"/></svg>
+                <div><strong>Advanced model controls</strong><span>Temperature, top-p, reasoning effort, timeouts.</span></div>
+                <span>6 fields</span>
+              </div>
+              <div class="field-preview"><label>Temperature</label><div class="slider"></div><code>1.0</code></div>
+              <div class="field-preview"><label>Top P</label><div class="slider"></div><code>0.85</code></div>
+
+              <div class="prompt-launcher">
+                <div class="launcher-icon">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/><path d="m16.5 15.5 1 1 2-2"/></svg>
+                </div>
+                <div>
+                  <strong>Prompt Control Center</strong>
+                  <p>Review prompt content, user overrides, and model routing.</p>
+                  <div class="launcher-meta">151 templates · 124 PromptIds · 3 content overrides · 1 model override</div>
+                </div>
+                <button class="secondary-button" id="openCenter">Open</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="center-view hidden" id="centerView">
+        <div class="view-topbar">
+          <div class="view-title">
+            <strong>Prompt Control Center</strong>
+            <span>Review defaults. Override only the exceptions.</span>
+          </div>
+          <label class="search">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+            <input id="promptSearch" type="search" placeholder="Search prompts, variables, or callers…">
+          </label>
+          <div class="top-actions">
+            <a class="secondary-button" style="display:grid;place-items:center;text-decoration:none" href="../../superpowers/specs/2026-07-28-prompt-control-center-design.md">Design spec</a>
+            <button class="icon-button" id="closeCenter" aria-label="Back to settings">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="center-body">
+          <aside class="groups">
+            <div class="rail-label">Prompt groups</div>
+            <button class="group-button active" data-group="all">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg>
+              <span>All prompts</span><span class="count">151</span>
+            </button>
+            <button class="group-button" data-group="composer">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M5 19h14M7 16l9-9 2 2-9 9-3 1z"/></svg>
+              <span>Composer</span><span class="count">19</span>
+            </button>
+            <button class="group-button" data-group="copilot">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M8 5h8M6 9h12v9H6zM9 13h.01M15 13h.01"/></svg>
+              <span>Copilot & Ambient</span><span class="count">24</span>
+            </button>
+            <button class="group-button" data-group="chat">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M4 5h16v12H8l-4 4z"/></svg>
+              <span>Chat & writing</span><span class="count">27</span>
+            </button>
+            <button class="group-button" data-group="search">
+              <svg class="icon" viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg>
+              <span>Search & analysis</span><span class="count">31</span>
+            </button>
+            <button class="group-button" data-group="index">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+              <span>Knowledge index</span><span class="count">18</span>
+            </button>
+            <button class="group-button" data-group="profile">
+              <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
+              <span>User profile</span><span class="count">9</span>
+            </button>
+            <button class="group-button" data-group="agent">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M12 3v4M5 8l3 2M19 8l-3 2M5 16l3-2M19 16l-3-2M12 17v4"/><circle cx="12" cy="12" r="5"/></svg>
+              <span>Agents & tools</span><span class="count">23</span>
+            </button>
+
+            <div class="rail-divider"></div>
+            <button class="group-button" data-group="changed">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z"/></svg>
+              <span>Overridden</span><span class="count">4</span>
+            </button>
+            <button class="group-button" data-group="unwired">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01"/><path d="M10.3 4.6 2.8 18a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 4.6a2 2 0 0 0-3.4 0z"/></svg>
+              <span>Needs review</span><span class="count">5</span>
+            </button>
+
+            <div class="rail-note">
+              Most prompts should use the default from AI Setup. Choose a different model only for an exception.
+            </div>
+          </aside>
+
+          <section class="prompt-list">
+            <div class="list-summary">
+              <span><strong id="visibleCount">8</strong> shown</span>
+              <span>0 / 124 use a custom model</span>
+            </div>
+            <div id="promptRows"></div>
+            <div class="empty-list hidden" id="emptyList">No prompts match this filter.<br>Try a name, PromptId, or variable.</div>
+          </section>
+
+          <main class="inspector">
+            <div class="inspector-head">
+              <div class="breadcrumb" id="breadcrumb">Composer · Text transformation</div>
+              <div class="title-line"><h1 id="promptTitle">Polish or transform prose</h1><span class="tag green" id="callerTag">Used in production</span></div>
+              <div class="id-line" id="promptId">composer-prose-transform</div>
+              <div class="status-strip" id="statusStrip">
+                <span class="tag">Executable prompt</span>
+                <span class="tag">System + user pair</span>
+                <span class="tag purple">Default: Writing &amp; conversation</span>
+              </div>
+            </div>
+
+            <div class="inspector-content">
+              <section class="section">
+                <div class="section-head">
+                  <div>
+                    <h2>Prompt content</h2>
+                    <p id="contentHelp">The built-in template is read-only until you create a Vault override.</p>
+                  </div>
+                  <button class="link-button" id="createOverride">Create override</button>
+                </div>
+                <div class="pair-tabs">
+                  <button class="pair-tab active" data-pair="user">User template</button>
+                  <button class="pair-tab" data-pair="system">System template</button>
+                </div>
+                <textarea class="code-editor" id="promptEditor" readonly></textarea>
+                <div class="editor-meta">
+                  <div class="variables" id="variables"></div>
+                  <span id="sourceLabel">Built-in default</span>
+                </div>
+              </section>
+
+              <section class="section" id="routingSection">
+                <div class="section-head">
+                  <div>
+                    <h2>Which model should this prompt use?</h2>
+                    <p>Most prompts should use the default from AI Setup. Change this only when this prompt needs a different model.</p>
+                  </div>
+                  <button class="link-button" id="resetRoute">Use default</button>
+                </div>
+                <div id="routeContent">
+                  <div class="route-options">
+                    <label class="route-card active" data-route="inherit">
+                      <input type="radio" name="route" value="inherit" checked>
+                      <span class="route-main"><strong>Use the AI Setup default <span class="tag green">Recommended</span></strong><span>Follows the “Writing &amp; conversation” setting.</span></span>
+                      <span class="route-effective">Next run<strong>claude-sonnet-4</strong></span>
+                    </label>
+                    <label class="route-card" data-route="model">
+                      <input type="radio" name="route" value="model">
+                      <span class="route-main"><strong>Use a different model for this prompt</strong><span>Pick one Profile and model. AI Setup changes will not replace it.</span></span>
+                      <span class="route-effective">Custom model<strong id="customModelSummary">Not set</strong></span>
+                    </label>
+                    <div class="model-picker-shell hidden" id="modelPicker">
+                      <button class="model-picker-trigger" id="modelPickerTrigger" type="button">
+                        <span><small>Shared model picker</small><strong id="modelPickerTriggerLabel">Choose a Profile and model…</strong></span>
+                        <svg class="icon" viewBox="0 0 24 24"><path d="m8 10 4 4 4-4"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="effective-box">
+                    <div><strong>Next run will use</strong><br><span>This is the final model after applying the settings above.</span></div>
+                    <strong id="effectiveBinding">Writing &amp; conversation → claude-sonnet-4</strong>
+                  </div>
+                </div>
+              </section>
+
+              <section class="section">
+                <details>
+                  <summary>Advanced output controls</summary>
+                  <div class="advanced-fields">
+                    <div class="override-switch">
+                      <span>Override this prompt's global output controls</span>
+                      <button class="switch" id="outputSwitch" aria-label="Toggle output override"></button>
+                    </div>
+                    <div class="mini-grid" id="outputFields">
+                      <div class="mini-field"><label>Temperature</label><input value="0.7"></div>
+                      <div class="mini-field"><label>Reasoning effort</label><select><option>Medium</option><option>High</option><option>Low</option></select></div>
+                      <div class="mini-field"><label>Text verbosity</label><select><option>Medium</option><option>Low</option><option>High</option></select></div>
+                      <div class="mini-field"><label>Total timeout</label><input value="300 seconds"></div>
+                    </div>
+                  </div>
+                </details>
+              </section>
+
+              <section class="section">
+                <div class="section-head">
+                  <div><h2>Runtime contract</h2><p>What this page expects the execution layer to preserve.</p></div>
+                </div>
+                <div class="notice">
+                  <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 11v5"/></svg>
+                  <span>Every run must record the executable PromptId, system/user template versions, requested route, effective Profile + model, fallback or escalation, and the generated result—even when the result is not accepted.</span>
+                </div>
+              </section>
+            </div>
+
+            <div class="savebar" id="savebar">
+              <div class="save-copy"><strong>Unsaved changes</strong><span id="saveSummary">1 model choice</span></div>
+              <div class="save-actions">
+                <button class="secondary-button" id="discardChanges">Discard</button>
+                <button class="secondary-button" id="validatePrompt">Validate</button>
+                <button class="primary-button" id="saveChanges">Save changes</button>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">
+    <svg class="icon" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg>
+    <span id="toastText">Prompt override validated.</span>
+  </div>
+  <div class="design-note">Design mock · no product settings are changed</div>
+
+  <script>
+    const prompts = [
+      {
+        id: 'composer-prose-transform',
+        title: 'Polish or transform prose',
+        group: 'composer',
+        breadcrumb: 'Composer · Text transformation',
+        kind: 'Executable prompt',
+        slot: 'Conversation',
+        pair: true,
+        used: true,
+        changed: false,
+        variables: ['content', 'instruction', 'beforeContext', 'afterContext'],
+        user: `Current block:\n{{content}}\n\nInstruction:\n{{instruction}}\n\nNearby context:\n{{beforeContext}}\n{{afterContext}}\n\nReturn only the complete replacement block.`,
+        system: `You edit one Obsidian Markdown block at a time.\nPreserve the author's meaning, Markdown syntax, links, and block shape.\nReturn only the replacement content.`
+      },
+      {
+        id: 'composer-prose-transform-system',
+        title: 'Composer prose rules',
+        group: 'composer',
+        breadcrumb: 'Composer · Companion templates',
+        kind: 'Companion system template',
+        slot: 'Inherited',
+        pair: false,
+        used: true,
+        parent: 'composer-prose-transform',
+        changed: true,
+        variables: [],
+        user: `You edit one Obsidian Markdown block at a time.\nPreserve the author's meaning, Markdown syntax, links, and block shape.\nReturn only the replacement content.`,
+        system: ''
+      },
+      {
+        id: 'copilot-suggest-next-actions',
+        title: 'Suggest next actions',
+        group: 'copilot',
+        breadcrumb: 'Copilot & Ambient · Suggestions',
+        kind: 'Executable prompt',
+        slot: 'Conversation',
+        pair: true,
+        used: true,
+        changed: true,
+        variables: ['documentTitle', 'focusedBlock', 'nearbyContext', 'activeIntent'],
+        user: `Read the current writing position and suggest a small set of relevant next actions.\n\nTitle: {{documentTitle}}\nFocused block: {{focusedBlock}}\nNearby context: {{nearbyContext}}\nActive intent: {{activeIntent}}`,
+        system: `Suggest actions that are specific to the current document.\nDo not repeat the fixed quick actions. Explain why each suggestion matters.`
+      },
+      {
+        id: 'conversation-system',
+        title: 'Conversation system',
+        group: 'chat',
+        breadcrumb: 'Chat & writing · Conversation',
+        kind: 'Executable prompt',
+        slot: 'Conversation',
+        pair: false,
+        used: true,
+        changed: false,
+        variables: ['currentDate', 'userProfile', 'assistantInstructions'],
+        user: `You are Peak, a context-aware assistant inside the user's Vault.\nUse available sources carefully and distinguish evidence from inference.`,
+        system: ''
+      },
+      {
+        id: 'ai-analysis-report-section',
+        title: 'Generate report section',
+        group: 'search',
+        breadcrumb: 'Search & analysis · Reports',
+        kind: 'Executable prompt',
+        slot: 'Research',
+        pair: true,
+        used: true,
+        changed: false,
+        variables: ['sectionTitle', 'sectionBrief', 'evidenceContent', 'userNotes'],
+        user: `Write the requested report section from the supplied evidence.\nSection: {{sectionTitle}}\nBrief: {{sectionBrief}}\nEvidence: {{evidenceContent}}`,
+        system: `Produce a grounded report section. Do not invent facts that are absent from evidence.`
+      },
+      {
+        id: 'working-theme-inference',
+        title: 'Infer current working theme',
+        group: 'index',
+        breadcrumb: 'Knowledge index · Ambient context',
+        kind: 'Executable prompt',
+        slot: 'Fast Lookup',
+        pair: true,
+        used: true,
+        changed: false,
+        variables: ['recentDocuments', 'recentQueries', 'currentDocument'],
+        user: `Infer the user's current working theme from recent activity and the current document.`,
+        system: `Return a concise working theme with supporting signals and a confidence level.`
+      },
+      {
+        id: 'profile-from-vault-json',
+        title: 'Build profile from Vault',
+        group: 'profile',
+        breadcrumb: 'User profile · Profile building',
+        kind: 'Executable prompt',
+        slot: 'Research',
+        pair: true,
+        used: true,
+        changed: true,
+        variables: ['vaultEvidence', 'existingProfile'],
+        user: `Update the user profile from Vault evidence.\nKeep uncertain observations separate from stable preferences.`,
+        system: `Return valid structured JSON. Never turn a one-off note into a permanent user preference.`
+      },
+      {
+        id: 'copilot-agent-prompt-audit',
+        title: 'Audit prompt quality',
+        group: 'agent',
+        breadcrumb: 'Agents & tools · Prompt audit',
+        kind: 'Executable prompt',
+        slot: 'Stronger',
+        pair: false,
+        used: false,
+        unwired: true,
+        changed: false,
+        variables: ['variables'],
+        user: `Audit the supplied prompt for unclear instructions, missing output contracts, and unsafe assumptions.`,
+        system: ''
+      }
+    ];
+
+    const settingsScreen = document.getElementById('settingsScreen');
+    const centerView = document.getElementById('centerView');
+    const promptRows = document.getElementById('promptRows');
+    const promptSearch = document.getElementById('promptSearch');
+    const emptyList = document.getElementById('emptyList');
+    const savebar = document.getElementById('savebar');
+    const promptEditor = document.getElementById('promptEditor');
+    const sourceLabel = document.getElementById('sourceLabel');
+    const createOverride = document.getElementById('createOverride');
+    const toast = document.getElementById('toast');
+    const toastText = document.getElementById('toastText');
+    let activeGroup = 'all';
+    let activePrompt = prompts[0];
+    let activePair = 'user';
+    let dirtyContent = false;
+    let dirtyRoute = false;
+    let dirtyOutput = false;
+    let selectedCustomModel = null;
+    let toastTimer;
+
+    function iconFor(prompt) {
+      if (prompt.kind.includes('Companion')) {
+        return '<svg class="icon" viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="M8 10h8M8 14h5"/></svg>';
+      }
+      return '<svg class="icon" viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h6"/></svg>';
+    }
+
+    function matchesGroup(prompt) {
+      if (activeGroup === 'all') return true;
+      if (activeGroup === 'changed') return prompt.changed;
+      if (activeGroup === 'unwired') return prompt.unwired;
+      return prompt.group === activeGroup;
+    }
+
+    function renderRows() {
+      const query = promptSearch.value.trim().toLowerCase();
+      const filtered = prompts.filter(prompt => {
+        const haystack = [prompt.id, prompt.title, prompt.breadcrumb, prompt.variables.join(' ')].join(' ').toLowerCase();
+        return matchesGroup(prompt) && (!query || haystack.includes(query));
+      });
+      document.getElementById('visibleCount').textContent = filtered.length;
+      emptyList.classList.toggle('hidden', filtered.length > 0);
+      promptRows.innerHTML = filtered.map(prompt => `
+        <button class="prompt-row ${prompt.id === activePrompt.id ? 'active' : ''}" data-id="${prompt.id}">
+          <span class="row-title">${iconFor(prompt)}${prompt.title}</span>
+          <span class="row-id">${prompt.id}</span>
+          <span class="row-meta">
+            <span class="tag ${prompt.unwired ? 'amber' : ''}">${prompt.unwired ? 'Needs review' : prompt.slot === 'Inherited' ? 'Uses parent model' : defaultLabel(prompt.slot)}</span>
+            ${prompt.pair ? '<span class="tag">Pair</span>' : ''}
+            ${prompt.changed ? '<span class="tag purple"><span class="dot"></span>&nbsp;Override</span>' : ''}
+          </span>
+        </button>
+      `).join('');
+      promptRows.querySelectorAll('.prompt-row').forEach(row => {
+        row.addEventListener('click', () => selectPrompt(row.dataset.id));
+      });
+    }
+
+    function selectPrompt(id) {
+      if ((dirtyContent || dirtyRoute || dirtyOutput) && !confirm('Discard the unsaved mock changes and switch prompts?')) return;
+      activePrompt = prompts.find(prompt => prompt.id === id);
+      activePair = 'user';
+      selectedCustomModel = null;
+      dirtyContent = dirtyRoute = dirtyOutput = false;
+      savebar.classList.remove('visible');
+      document.querySelectorAll('.pair-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.pair === 'user'));
+      renderRows();
+      renderInspector();
+    }
+
+    function renderInspector() {
+      document.getElementById('breadcrumb').textContent = activePrompt.breadcrumb;
+      document.getElementById('promptTitle').textContent = activePrompt.title;
+      document.getElementById('promptId').textContent = activePrompt.id;
+      const callerTag = document.getElementById('callerTag');
+      callerTag.textContent = activePrompt.unwired ? 'No production caller' : 'Used in production';
+      callerTag.className = `tag ${activePrompt.unwired ? 'amber' : 'green'}`;
+      const statuses = [
+        `<span class="tag">${activePrompt.kind}</span>`,
+        activePrompt.pair ? '<span class="tag">System + user pair</span>' : '',
+        `<span class="tag purple">${activePrompt.slot === 'Inherited' ? 'Uses parent model' : `Default: ${defaultLabel(activePrompt.slot)}`}</span>`,
+        activePrompt.changed ? '<span class="tag purple">Has override</span>' : ''
+      ].join('');
+      document.getElementById('statusStrip').innerHTML = statuses;
+
+      const systemTab = document.querySelector('[data-pair="system"]');
+      systemTab.classList.toggle('hidden', !activePrompt.pair);
+      promptEditor.readOnly = true;
+      promptEditor.value = activePrompt.user;
+      sourceLabel.textContent = activePrompt.changed ? 'Vault override' : 'Built-in default';
+      createOverride.textContent = activePrompt.changed ? 'Edit override' : 'Create override';
+      document.getElementById('contentHelp').textContent = activePrompt.changed
+        ? 'This prompt has a Vault override. The built-in source remains unchanged.'
+        : 'The built-in template is read-only until you create a Vault override.';
+      document.getElementById('variables').innerHTML = activePrompt.variables.length
+        ? activePrompt.variables.map(item => `<span class="variable">{{${item}}}</span>`).join('')
+        : '<span class="tag muted">No runtime variables</span>';
+
+      const routeContent = document.getElementById('routeContent');
+      if (activePrompt.kind.includes('Companion')) {
+        routeContent.innerHTML = `
+          <div class="notice">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 11v5"/></svg>
+            <span>This template does not start an AI run. It inherits the model from <button class="link-button" id="jumpParent">${activePrompt.parent}</button>.</span>
+          </div>`;
+        document.getElementById('jumpParent').addEventListener('click', () => selectPrompt(activePrompt.parent));
+      } else if (activePrompt.unwired) {
+        routeContent.innerHTML = `
+          <div class="notice amber">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01"/><path d="M10.3 4.6 2.8 18a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 4.6a2 2 0 0 0-3.4 0z"/></svg>
+            <span>No production caller was found for this PromptId. Model overrides stay disabled until an executable run owner is registered.</span>
+          </div>`;
+      } else {
+        routeContent.innerHTML = routeMarkup(activePrompt.slot);
+        bindRouteControls();
+      }
+    }
+
+    function sharedModelPickerMarkup() {
+      const rows = [
+        { profile: 'Anthropic Direct', profileId: 'writing-anthropic', kind: 'A', model: 'claude-opus-4-7', display: 'Claude Opus 4.7', caps: ['Vision', 'Tools', '200K'] },
+        { profile: 'Anthropic Direct', profileId: 'writing-anthropic', kind: 'A', model: 'claude-sonnet-4-6', display: 'Claude Sonnet 4.6', caps: ['Vision', 'Tools', '200K'] },
+        { profile: 'Anthropic Direct', profileId: 'writing-anthropic', kind: 'A', model: 'claude-opus-4', display: 'Claude Opus 4', caps: ['Vision', 'Tools', '200K'] },
+        { profile: 'Anthropic Direct', profileId: 'writing-anthropic', kind: 'A', model: 'claude-sonnet-4', display: 'Claude Sonnet 4', caps: ['Vision', 'Tools', '200K'] },
+        { profile: 'Analysis profile', profileId: 'analysis-openai', kind: 'O', model: 'gpt-5-mini', display: 'GPT-5 mini', caps: ['Vision', 'Tools', '400K'] },
+        { profile: 'Local drafts', profileId: 'local-ollama', kind: 'L', model: 'qwen3:8b', display: 'Qwen 3 8B', caps: ['Tools', 'Local'] },
+      ];
+      const groups = Array.from(new Set(rows.map((row) => row.profile))).map((profile) => ({
+        profile,
+        rows: rows.filter((row) => row.profile === profile),
+      }));
+      const groupsMarkup = groups.map((group) => `
+        <div class="shared-model-picker__group" data-picker-group>
+          <div class="shared-model-picker__group-label">${group.profile}</div>
+          ${group.rows.map((row) => `
+            <button
+              type="button"
+              class="shared-model-picker__row"
+              data-model-option
+              data-profile-id="${row.profileId}"
+              data-profile="${row.profile}"
+              data-model="${row.model}"
+              data-search="${row.profile.toLowerCase()} ${row.model.toLowerCase()} ${row.display.toLowerCase()}"
+            >
+              <span class="shared-model-picker__mark">${row.kind}</span>
+              <span class="shared-model-picker__main">
+                <strong>${row.display}</strong>
+                <span>${row.model}</span>
+                <span class="shared-model-picker__caps">${row.caps.map((cap) => `<span class="shared-model-picker__cap">${cap}</span>`).join('')}</span>
+              </span>
+              <svg class="icon hidden" data-picker-check viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg>
+            </button>
+          `).join('')}
+        </div>
+      `).join('');
+      return `
+        <div class="model-picker-shell hidden" id="modelPicker">
+          <button class="model-picker-trigger" id="modelPickerTrigger" type="button" aria-expanded="false">
+            <span><small>Shared model picker</small><strong id="modelPickerTriggerLabel">Choose a Profile and model…</strong></span>
+            <svg class="icon" viewBox="0 0 24 24"><path d="m8 10 4 4 4-4"/></svg>
+          </button>
+          <div class="shared-model-picker hidden" id="sharedModelPicker" role="dialog" aria-label="Choose model">
+            <div class="shared-model-picker__head">
+              <strong>Choose model</strong>
+              <span>Search or filter the shared model catalog.</span>
+            </div>
+            <div class="shared-model-picker__body">
+              <div class="shared-model-picker__toolbar">
+                <label class="shared-model-picker__search">
+                  <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+                  <input id="sharedModelSearch" type="search" placeholder="Search profiles and models…">
+                </label>
+                <button class="shared-model-picker__filter-button" id="sharedModelFiltersButton" type="button" aria-expanded="false">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M6 14v6"/></svg>
+                  Filters
+                </button>
+              </div>
+              <div class="shared-model-picker__filters hidden" id="sharedModelFilters">
+                <span class="tag">Vision</span><span class="tag">Tools</span><span class="tag">Reasoning</span><span class="tag">≥128K context</span>
+              </div>
+              <button type="button" class="shared-model-picker__auto" id="sharedModelUseDefault">
+                <span class="shared-model-picker__mark">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="m12 3 1.4 4.1L18 8.5l-4.1 1.4L12.5 14l-1.4-4.1L7 8.5l4.1-1.4z"/></svg>
+                </span>
+                <span class="shared-model-picker__main"><strong>Use AI Setup default</strong><span>Return this Prompt to “Writing &amp; conversation”.</span></span>
+                <svg class="icon hidden" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg>
+              </button>
+              <div class="shared-model-picker__note">Capability tags show only what the shared model catalog declares; unknown capabilities are never inferred.</div>
+              <div id="sharedModelGroups">${groupsMarkup}</div>
+              <div class="empty-list hidden" id="sharedModelEmpty">No matching models.</div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function routeMarkup(slot) {
+      const defaultName = defaultLabel(slot);
+      const defaultModel = modelForDefault(slot);
+      return `
+        <div class="route-options">
+          <label class="route-card active" data-route="inherit">
+            <input type="radio" name="route" value="inherit" checked>
+            <span class="route-main"><strong>Use the AI Setup default <span class="tag green">Recommended</span></strong><span>Follows the “${defaultName}” setting.</span></span>
+            <span class="route-effective">Next run<strong>${defaultModel}</strong></span>
+          </label>
+          <label class="route-card" data-route="model">
+            <input type="radio" name="route" value="model">
+            <span class="route-main"><strong>Use a different model for this prompt</strong><span>Pick one Profile and model. AI Setup changes will not replace it.</span></span>
+            <span class="route-effective">Custom model<strong id="customModelSummary">Not set</strong></span>
+          </label>
+          ${sharedModelPickerMarkup()}
+        </div>
+        <div class="effective-box">
+          <div><strong>Next run will use</strong><br><span>This is the final model after applying the setting above.</span></div>
+          <strong id="effectiveBinding">${defaultEffective(slot)}</strong>
+        </div>`;
+    }
+
+    function bindRouteControls() {
+      document.querySelectorAll('.route-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const route = card.dataset.route;
+          document.querySelectorAll('.route-card').forEach(item => item.classList.toggle('active', item === card));
+          document.getElementById('modelPicker').classList.toggle('hidden', route !== 'model');
+          document.getElementById('effectiveBinding').textContent = route === 'model'
+            ? selectedCustomModel
+              ? `Custom: ${selectedCustomModel.profile} → ${selectedCustomModel.model}`
+              : 'Choose a model to continue'
+            : defaultEffective(activePrompt.slot);
+          dirtyRoute = route !== 'inherit';
+          updateSavebar();
+        });
+      });
+      bindSharedModelPicker();
+    }
+
+    function bindSharedModelPicker() {
+      const trigger = document.getElementById('modelPickerTrigger');
+      const popover = document.getElementById('sharedModelPicker');
+      const search = document.getElementById('sharedModelSearch');
+      const filterButton = document.getElementById('sharedModelFiltersButton');
+      const filterPanel = document.getElementById('sharedModelFilters');
+      if (!trigger || !popover || !search || !filterButton || !filterPanel) return;
+
+      const setOpen = (open) => {
+        popover.classList.toggle('hidden', !open);
+        trigger.setAttribute('aria-expanded', String(open));
+        if (open) requestAnimationFrame(() => search.focus());
+      };
+
+      trigger.addEventListener('click', () => setOpen(popover.classList.contains('hidden')));
+      filterButton.addEventListener('click', () => {
+        const open = filterPanel.classList.toggle('hidden') === false;
+        filterButton.setAttribute('aria-expanded', String(open));
+      });
+
+      search.addEventListener('input', () => {
+        const query = search.value.trim().toLowerCase();
+        const rows = Array.from(document.querySelectorAll('[data-model-option]'));
+        rows.forEach((row) => row.classList.toggle('hidden', Boolean(query) && !row.dataset.search.includes(query)));
+        document.querySelectorAll('[data-picker-group]').forEach((group) => {
+          const hasVisibleRow = Array.from(group.querySelectorAll('[data-model-option]')).some((row) => !row.classList.contains('hidden'));
+          group.classList.toggle('hidden', !hasVisibleRow);
+        });
+        const visibleCount = rows.filter((row) => !row.classList.contains('hidden')).length;
+        document.getElementById('sharedModelEmpty').classList.toggle('hidden', visibleCount > 0);
+      });
+
+      document.getElementById('sharedModelUseDefault').addEventListener('click', () => {
+        setOpen(false);
+        document.querySelector('.route-card[data-route="inherit"]').click();
+      });
+
+      document.querySelectorAll('[data-model-option]').forEach((row) => {
+        row.addEventListener('click', () => {
+          selectedCustomModel = {
+            profileId: row.dataset.profileId,
+            profile: row.dataset.profile,
+            model: row.dataset.model,
+          };
+          document.querySelectorAll('[data-model-option]').forEach((candidate) => {
+            const selected = candidate === row;
+            candidate.dataset.selected = selected ? 'true' : 'false';
+            candidate.querySelector('[data-picker-check]').classList.toggle('hidden', !selected);
+          });
+          document.getElementById('modelPickerTriggerLabel').textContent = `${selectedCustomModel.profile} · ${selectedCustomModel.model}`;
+          document.getElementById('customModelSummary').textContent = selectedCustomModel.model;
+          document.getElementById('effectiveBinding').textContent = `Custom: ${selectedCustomModel.profile} → ${selectedCustomModel.model}`;
+          setOpen(false);
+          dirtyRoute = true;
+          updateSavebar();
+        });
+      });
+    }
+
+    function defaultLabel(slot) {
+      if (slot === 'Research') return 'Research';
+      if (slot === 'Fast Lookup') return 'Quick tasks';
+      if (slot === 'Stronger') return 'Deep reasoning';
+      return 'Writing & conversation';
+    }
+
+    function modelForDefault(slot) {
+      if (slot === 'Research') return 'gemini-2.5-pro';
+      if (slot === 'Fast Lookup') return 'gpt-4.1-mini';
+      if (slot === 'Stronger') return 'claude-opus-4';
+      return 'claude-sonnet-4';
+    }
+
+    function defaultEffective(slot) {
+      return `${defaultLabel(slot)} → ${modelForDefault(slot)}`;
+    }
+
+    function updateSavebar() {
+      const changes = [];
+      if (dirtyContent) changes.push('1 content override');
+      if (dirtyRoute) changes.push('1 model choice');
+      if (dirtyOutput) changes.push('1 output-control change');
+      document.getElementById('saveSummary').textContent = changes.join(' · ');
+      savebar.classList.toggle('visible', changes.length > 0);
+    }
+
+    function showToast(message) {
+      toastText.textContent = message;
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 2300);
+    }
+
+    document.getElementById('openCenter').addEventListener('click', () => {
+      settingsScreen.classList.add('hidden');
+      centerView.classList.remove('hidden');
+      document.getElementById('activeTabLabel').textContent = 'Prompt Control Center';
+      promptSearch.focus();
+    });
+
+    document.getElementById('closeCenter').addEventListener('click', () => {
+      if ((dirtyContent || dirtyRoute || dirtyOutput) && !confirm('Discard unsaved mock changes and return to Settings?')) return;
+      centerView.classList.add('hidden');
+      settingsScreen.classList.remove('hidden');
+      document.getElementById('activeTabLabel').textContent = 'Composer';
+    });
+
+    document.querySelectorAll('.group-button').forEach(button => {
+      button.addEventListener('click', () => {
+        activeGroup = button.dataset.group;
+        document.querySelectorAll('.group-button').forEach(item => item.classList.toggle('active', item === button));
+        renderRows();
+      });
+    });
+
+    promptSearch.addEventListener('input', renderRows);
+
+    document.querySelectorAll('.pair-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        activePair = tab.dataset.pair;
+        document.querySelectorAll('.pair-tab').forEach(item => item.classList.toggle('active', item === tab));
+        promptEditor.value = activePair === 'system' ? activePrompt.system : activePrompt.user;
+      });
+    });
+
+    createOverride.addEventListener('click', () => {
+      promptEditor.readOnly = false;
+      promptEditor.focus();
+      sourceLabel.textContent = 'Editing Vault override';
+      createOverride.textContent = 'Reset content';
+      dirtyContent = true;
+      updateSavebar();
+    });
+
+    promptEditor.addEventListener('input', () => {
+      dirtyContent = true;
+      updateSavebar();
+    });
+
+    document.getElementById('resetRoute').addEventListener('click', () => {
+      if (activePrompt.kind.includes('Companion') || activePrompt.unwired) return;
+      const inherit = document.querySelector('.route-card[data-route="inherit"]');
+      inherit?.click();
+      dirtyRoute = false;
+      updateSavebar();
+      showToast('This prompt now uses the AI Setup default.');
+    });
+
+    document.getElementById('outputSwitch').addEventListener('click', event => {
+      event.currentTarget.classList.toggle('on');
+      document.getElementById('outputFields').classList.toggle('enabled');
+      dirtyOutput = event.currentTarget.classList.contains('on');
+      updateSavebar();
+    });
+
+    document.getElementById('validatePrompt').addEventListener('click', () => {
+      showToast('Valid: required variables and output contract are present.');
+    });
+
+    document.getElementById('saveChanges').addEventListener('click', () => {
+      activePrompt.changed = true;
+      dirtyContent = dirtyRoute = dirtyOutput = false;
+      savebar.classList.remove('visible');
+      promptEditor.readOnly = true;
+      sourceLabel.textContent = 'Vault override';
+      renderRows();
+      showToast('Mock saved. Runtime receipt would capture the effective model.');
+    });
+
+    document.getElementById('discardChanges').addEventListener('click', () => {
+      dirtyContent = dirtyRoute = dirtyOutput = false;
+      savebar.classList.remove('visible');
+      renderInspector();
+      showToast('Unsaved mock changes discarded.');
+    });
+
+    renderRows();
+    renderInspector();
+  </script>
+</body>
+</html>

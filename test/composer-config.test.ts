@@ -38,6 +38,28 @@ function main(): void {
 	const fbSel = Object.keys(DEFAULT_COMPOSER_CONFIG.chrome.selection).sort();
 	const jsonSel = Object.keys(json.chrome?.selection ?? {}).sort();
 	check('chrome.selection keys match', fbSel.join(',') === jsonSel.join(','), `fb=${fbSel.join(',')} json=${jsonSel.join(',')}`);
+	const fbComment = DEFAULT_COMPOSER_CONFIG.chrome.comment;
+	const jsonComment = json.chrome?.comment ?? {};
+	check(
+		'chrome.comment keys match',
+		Object.keys(fbComment).sort().join(',') === Object.keys(jsonComment).sort().join(','),
+	);
+	check(
+		'comment rail breakpoint matches',
+		jsonComment.railBreakpointPx === fbComment.railBreakpointPx,
+		`fb=${fbComment.railBreakpointPx} json=${String(jsonComment.railBreakpointPx)}`,
+	);
+	const fallbackInsertTypes = DEFAULT_COMPOSER_CONFIG.chrome.insertDraft.types;
+	const jsonInsertTypes = json.chrome?.insertDraft?.types ?? [];
+	check('insert draft exposes all designed type choices', fallbackInsertTypes.length === 13, String(fallbackInsertTypes.length));
+	check(
+		'insert draft type ids match',
+		fallbackInsertTypes.map((type) => type.id).join(',') === jsonInsertTypes.map((type: { id: string }) => type.id).join(','),
+	);
+	check(
+		'insert draft type shapes match',
+		fallbackInsertTypes.every((type, index) => Object.keys(type).sort().join(',') === Object.keys(jsonInsertTypes[index] ?? {}).sort().join(',')),
+	);
 
 	// WP2: transaction timing/grouping knobs mirror DEFAULT_TRANSACTION_CONFIG.
 	const fbTxn = Object.keys(DEFAULT_TRANSACTION_CONFIG).sort();

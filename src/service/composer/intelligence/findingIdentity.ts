@@ -24,10 +24,24 @@ import { composerTargetBlockId } from '@/core/composer';
 import { matchBlocks } from '../blockIdentity';
 
 /** Lifecycle state of a finding, shared across both surfaces (handoff §5.4). */
-export type SuggestionFindingState = 'active' | 'dismissed' | 'consumed' | 'stale';
+export type SuggestionFindingState = 'active' | 'ignored' | 'dismissed' | 'consumed' | 'stale';
 
 /** Which projection surface an interaction originated from. */
 export type FindingSurface = 'body' | 'brief';
+
+/**
+ * Optional, producer-owned presentation for the Brief projection. The canonical
+ * `reason` remains the shared body/brief explanation; this record carries the
+ * richer hierarchy when a producer has real source-backed values for it.
+ */
+export interface FindingBriefPresentation {
+	readonly title: string;
+	readonly summary: string;
+	readonly targetLabel: string;
+	readonly evidenceLabel: string;
+	/** Lower values sort earlier. Producers must not treat this as an AI confidence score. */
+	readonly priority: number;
+}
 
 /**
  * The single shared finding entity. The body mark and the brief item read the
@@ -46,6 +60,15 @@ export interface SuggestionFinding {
 	readonly reason: string;
 	/** Optional capability the finding would invoke when discussed. */
 	readonly capabilityId?: string;
+	/**
+	 * App-owned producer identity. It prevents one producer's refresh from
+	 * rewriting a coincidentally identical finding owned by another producer.
+	 */
+	readonly producerId?: string;
+	/** Optional richer copy for the Brief; absent producers retain the legacy reason. */
+	readonly brief?: FindingBriefPresentation;
+	/** Deferred items stay active, but sort after non-deferred items in the Brief. */
+	readonly deferredAt?: number;
 }
 
 /** Input to {@link ComposerFindingStore.ingest} (findingId is assigned by the store). */
@@ -55,6 +78,9 @@ export interface FindingIngestInput {
 	target: ComposerTarget;
 	reason: string;
 	capabilityId?: string;
+	producerId?: string;
+	brief?: FindingBriefPresentation;
+	deferredAt?: number;
 }
 
 /** The dedup key: identical fingerprint + evidence is the same finding (§5.4). */
@@ -103,7 +129,8 @@ export class ComposerFindingStore {
 	/**
 	 * The body-mark projection: only findings that should paint a mark next to
 	 * live prose — `active` and `stale` (a stale mark still shows so the user can
-	 * see the evidence drifted). `consumed` / `dismissed` never mark the body.
+	 * see the evidence drifted). `ignored`, `consumed` and `dismissed` never mark
+	 * the body.
 	 */
 	bodyMarks(): readonly SuggestionFinding[] {
 		return this.list().filter((f) => f.state === 'active' || f.state === 'stale');
@@ -135,11 +162,17 @@ export class ComposerFindingStore {
 		const existingId = this.byDedupKey.get(key);
 		if (existingId) {
 			const existing = this.byId.get(existingId)!;
+			// A producer must not silently take over an external finding that happens
+			// to use the same source fingerprint and revision.
+			if (input.producerId !== undefined && existing.producerId !== input.producerId) return existing;
 			const next: SuggestionFinding = {
 				...existing,
 				reason: input.reason,
 				target: input.target,
 				...(input.capabilityId !== undefined ? { capabilityId: input.capabilityId } : {}),
+				...(input.producerId !== undefined ? { producerId: input.producerId } : {}),
+				...(input.brief !== undefined ? { brief: input.brief } : {}),
+				...(input.deferredAt !== undefined ? { deferredAt: input.deferredAt } : {}),
 			};
 			this.byId.set(existingId, next);
 			this.notify();
@@ -153,6 +186,9 @@ export class ComposerFindingStore {
 			reason: input.reason,
 			state: 'active',
 			...(input.capabilityId !== undefined ? { capabilityId: input.capabilityId } : {}),
+			...(input.producerId !== undefined ? { producerId: input.producerId } : {}),
+			...(input.brief !== undefined ? { brief: input.brief } : {}),
+			...(input.deferredAt !== undefined ? { deferredAt: input.deferredAt } : {}),
 		};
 		this.byId.set(finding.findingId, finding);
 		this.byDedupKey.set(key, finding.findingId);
@@ -177,6 +213,55 @@ export class ComposerFindingStore {
 	 */
 	dismiss(findingId: string, _surface: FindingSurface): void {
 		this.transition(findingId, 'dismissed', (s) => s === 'active' || s === 'stale');
+	}
+
+	/**
+	 * Hide a producer-backed item for the current Brief refresh only. This is
+	 * intentionally distinct from {@link dismiss}: the next producer refresh
+	 * may restore it, matching the product label “本轮忽略”.
+	 */
+	ignoreForCurrentRefresh(findingId: string): boolean {
+		const existing = this.byId.get(findingId);
+		if (!existing || (existing.state !== 'active' && existing.state !== 'stale')) return false;
+		this.byId.set(findingId, { ...existing, state: 'ignored' });
+		this.notify();
+		return true;
+	}
+
+	/** Restore a current-refresh ignore when its producer re-observes the finding. */
+	restoreIgnored(findingId: string): boolean {
+		const existing = this.byId.get(findingId);
+		if (!existing || existing.state !== 'ignored') return false;
+		this.byId.set(findingId, { ...existing, state: 'active' });
+		this.notify();
+		return true;
+	}
+
+	/**
+	 * Defer an active finding without changing its lifecycle membership. It stays
+	 * visible to both body and Brief projections; the timestamp gives the Brief a
+	 * real, deterministic way to move it later in its local ordering.
+	 */
+	defer(findingId: string, deferredAt = Date.now()): boolean {
+		const existing = this.byId.get(findingId);
+		if (!existing || existing.state !== 'active') return false;
+		this.byId.set(findingId, { ...existing, deferredAt });
+		this.notify();
+		return true;
+	}
+
+	/**
+	 * Remove a transient producer-owned finding once a newer sensing pass replaces
+	 * it. This is intentionally not a user dismissal or consumption transition;
+	 * the record simply no longer represents the current producer snapshot.
+	 */
+	remove(findingId: string): boolean {
+		const existing = this.byId.get(findingId);
+		if (!existing) return false;
+		this.byId.delete(findingId);
+		this.byDedupKey.delete(findingDedupKey(existing.fingerprint, existing.evidenceRevision));
+		this.notify();
+		return true;
 	}
 
 	/**

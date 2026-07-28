@@ -139,6 +139,11 @@ async function main(): Promise<void> {
 		const rt = controller.getRuntime();
 		check('controller.getRuntime() returns the editing runtime', Boolean(rt));
 		check('getRuntime().hub is present (EditableText → contentEditable=true)', Boolean(rt?.hub));
+		check(
+			'editing runtime exposes the shared transaction timing policy',
+			rt?.transactionConfig?.burstWindowMs === 800,
+			String(rt?.transactionConfig?.burstWindowMs),
+		);
 
 		// Identity must be stable across a hub mutation — otherwise React would
 		// remount the focused leaf and drop the in-progress burst.

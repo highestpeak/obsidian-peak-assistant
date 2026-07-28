@@ -76,6 +76,8 @@ function collectBlockUnits(
 			blockId: block.blockId,
 			blockKind: block.kind,
 			unitKind: 'heading-text',
+			contentFrom: textStart,
+			contentTo: block.source.to,
 			from: Math.max(from, textStart),
 			to,
 		});
@@ -86,6 +88,8 @@ function collectBlockUnits(
 		blockId: block.blockId,
 		blockKind: block.kind,
 		unitKind: 'block-text',
+		contentFrom: block.source.from,
+		contentTo: block.source.to,
 		from,
 		to,
 	});
@@ -119,6 +123,8 @@ function pushUnitAnchors(
 			blockKind: block.kind,
 			unitId: u.unitId,
 			unitKind: u.unitKind,
+			contentFrom,
+			contentTo,
 			from: unitFrom,
 			to: unitTo,
 		});

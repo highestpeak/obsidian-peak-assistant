@@ -7,6 +7,8 @@
 
 > 本文只依据插件源码定义目标存储边界。当前生产代码仍以 SQLite + Vault Markdown 混合方式运行；在迁移完成并通过验证前，源码行为仍是当前事实，本文是目标设计事实。
 
+> **2026-07-28 补充：** Composer 的 Copilot session stream 需要保存完整 Generation History，包括未采用、失败、取消和 stale 的所有模型产物。Document History 仍然只保存真实提交。详见 [`2026-07-28-composer-agent-runs-and-generation-history.md`](./2026-07-28-composer-agent-runs-and-generation-history.md)。
+
 ## 1. 核心决定
 
 Peak Assistant 后续按数据责任选择存储格式，不再把“机器生成”简单等同于 Markdown，也不把“历史数据”简单等同于 SQLite。
@@ -88,9 +90,9 @@ Peak Assistant 后续按数据责任选择存储格式，不再把“机器生�
 
 当前新 Composer Intelligence 仍是设计和静态 mock，不是生产持久化 runtime。
 
-- `Copilot` 负责 brief、session、run receipt 和临时 review；
-- `History` 只保存已经接受或真正提交的文档事务；
-- pending proposal 不属于 History；
+- `Copilot` 负责 brief、session、run receipt、Generation History 和 review；
+- `Document History` 只保存已经接受或真正提交的文档事务；
+- pending proposal 不属于 Document History，但必须属于 Generation History；
 - 旧 `CopilotReviewHistoryService` 和 Vault review report 不作为新实现基础。
 
 产品边界来自 [`2026-07-15-composer-intelligence-sidecar-ui.md`](./2026-07-15-composer-intelligence-sidecar-ui.md)。
@@ -255,13 +257,20 @@ SQLite 继续负责：
 - `message.created`；
 - `recommendation.presented`；
 - `run.started`；
+- `generation.created`；
+- `generation.step.recorded`；
+- `generation.variant.appended`；
+- `generation.output.recorded`；
+- `generation.validation.completed`；
+- `generation.disposition.changed`；
+- `generation.restored`；
 - `run.receipt.updated`；
 - `artifact.recorded`；
 - `proposal.created`；
 - `review.completed`；
 - `session.closed`。
 
-`proposal.created` 和 pending review 只属于 Copilot session。只有真正提交到文档的 change 才产生 document History event。
+`proposal.created`、pending review 和全部 Generation History 都属于 Copilot session。未采用、失败、取消和 stale 的模型产物仍要保留；只有真正提交到文档的 change 才产生 document History event。
 
 ### 7.4 Document History stream
 
@@ -283,7 +292,7 @@ SQLite 继续负责：
 - rollback safety metadata；
 - committed timestamp。
 
-History 不保存仍未接受的 candidate，也不导入旧 Copilot review Markdown。
+Document History 不保存仍未接受的 candidate，也不导入旧 Copilot review Markdown。所有模型生成 candidate 由 Generation History 保存。
 
 ## 8. View 与 Export
 
@@ -426,7 +435,7 @@ src/
 验证：
 
 - context freeze 后编辑器焦点变化不重写已发 run；
-- pending proposal 不出现在 History；
+- pending proposal 不出现在 Document History，但能从 Generation History 恢复；
 - accept 后产生唯一 transaction；
 - rollback 产生新 transaction，不修改旧 event。
 
@@ -514,7 +523,7 @@ src/
 
 - Chat 和 AI Analysis 的内部恢复不再解析 Markdown；
 - 新 Copilot session 与 Document History 有独立 JSONL streams；
-- History 只包含已提交事务；
+- Document History 只包含已提交事务，Generation History 包含所有模型生成 variant；
 - SQLite 可从 JSONL 重新投影关键 read models；
 - View 不依赖 `.md` 或 `.jsonl` 文件扩展；
 - 单条 Chat message `Save to Vault` 不再是核心 message action 或迁移兼容项；

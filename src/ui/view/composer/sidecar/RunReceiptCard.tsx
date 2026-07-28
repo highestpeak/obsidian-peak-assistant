@@ -14,7 +14,7 @@ import { useSidecar } from './SidecarContext';
  * scope, are the only exception).
  */
 export function RunReceiptCard({ receipt }: { receipt: RunReceipt }): React.ReactElement {
-	const { config, onLocate, onOpenSource } = useSidecar();
+	const { config, onLocate, onLocateComment, onOpenSource } = useSidecar();
 	const s = config.strings;
 	const [expanded, setExpanded] = React.useState(false);
 	const [category, setCategory] = React.useState<RunArtifactCategory>('changes');
@@ -62,7 +62,19 @@ export function RunReceiptCard({ receipt }: { receipt: RunReceipt }): React.Reac
 							))}
 						{category === 'sources' &&
 							receipt.sources.map((src) => (
-								<button key={src.id} type="button" className="pk-receipt-item" onClick={() => onOpenSource?.(src.path)}>
+								<button
+									key={src.id}
+									type="button"
+									className="pk-receipt-item"
+									data-source-kind={src.sourceKind}
+									onClick={() => {
+										if (src.sourceKind === 'comment' && src.commentId && src.blockId) {
+											onLocateComment?.(src.commentId, src.blockId);
+											return;
+										}
+										if (src.path) onOpenSource?.(src.path);
+									}}
+								>
 									{src.label}
 								</button>
 							))}

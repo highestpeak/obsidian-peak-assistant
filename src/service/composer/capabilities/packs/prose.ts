@@ -25,7 +25,10 @@ import {
 	ComposerInstructionInputSchema,
 	ComposerTextPatchPayloadSchema,
 } from '@/core/schemas/composer';
-import type { ComposerCapabilitiesConfigProvider } from '../capabilityConfig';
+import {
+	DEFAULT_COMPOSER_CAPABILITIES_CONFIG,
+	type ComposerCapabilitiesConfigProvider,
+} from '../capabilityConfig';
 
 // ── Shared identity (Composer definition ⇄ production Copilot action) ────────
 
@@ -37,6 +40,7 @@ export const POLISH_COPILOT_ACTION_ID = 'polish';
 
 /** Template-registered prompt shared by both invocation paths. */
 export const POLISH_PROMPT_ID = PromptId.DocPolish;
+export const PROSE_TRANSFORM_PROMPT_ID = PromptId.ComposerProseTransform;
 
 export interface PolishPromptInput {
 	content: string;
@@ -56,6 +60,27 @@ export function buildPolishPromptVariables(input: PolishPromptInput): Record<str
 		...(input.title !== undefined ? { title: input.title } : {}),
 		scope: input.scope,
 		...(input.instruction !== undefined ? { instruction: input.instruction } : {}),
+	};
+}
+
+export interface ProseTransformPromptInput {
+	content: string;
+	before?: string;
+	after?: string;
+	blockKind: string;
+	instruction: string;
+}
+
+/** Shared variables for the source-safe one-block transform prompt. */
+export function buildProseTransformPromptVariables(
+	input: ProseTransformPromptInput,
+): Record<string, unknown> {
+	return {
+		content: input.content,
+		blockKind: input.blockKind,
+		instruction: input.instruction,
+		...(input.before !== undefined ? { before: input.before } : {}),
+		...(input.after !== undefined ? { after: input.after } : {}),
 	};
 }
 
@@ -121,12 +146,115 @@ export function createPolishDefinition(
 	};
 }
 
+interface ProseTransformSpec {
+	id: string;
+	targetKind: 'paragraph' | 'heading' | 'list' | 'task' | 'quote' | 'callout';
+	/** First action for each kind doubles as the custom-instruction execution path. */
+	acceptsInstruction: boolean;
+}
+
+const PROSE_TRANSFORM_SPECS: readonly ProseTransformSpec[] = [
+	{ id: 'composer.prose.polish-block', targetKind: 'paragraph', acceptsInstruction: true },
+	{ id: 'composer.prose.add-example', targetKind: 'paragraph', acceptsInstruction: false },
+	{ id: 'composer.prose.to-table', targetKind: 'paragraph', acceptsInstruction: false },
+	{ id: 'composer.heading.shorten', targetKind: 'heading', acceptsInstruction: true },
+	{ id: 'composer.heading.outline', targetKind: 'heading', acceptsInstruction: false },
+	{ id: 'composer.heading.questions', targetKind: 'heading', acceptsInstruction: false },
+	{ id: 'composer.list.fill-gaps', targetKind: 'list', acceptsInstruction: true },
+	{ id: 'composer.list.reorder', targetKind: 'list', acceptsInstruction: false },
+	{ id: 'composer.list.to-table', targetKind: 'list', acceptsInstruction: false },
+	{ id: 'composer.task.find-blockers', targetKind: 'task', acceptsInstruction: true },
+	{ id: 'composer.task.add-next-step', targetKind: 'task', acceptsInstruction: false },
+	{ id: 'composer.task.prioritize', targetKind: 'task', acceptsInstruction: false },
+	{ id: 'composer.quote.explain', targetKind: 'quote', acceptsInstruction: true },
+	{ id: 'composer.quote.counterexample', targetKind: 'quote', acceptsInstruction: false },
+	{ id: 'composer.quote.to-callout', targetKind: 'quote', acceptsInstruction: false },
+	{ id: 'composer.callout.change-type', targetKind: 'callout', acceptsInstruction: true },
+	{ id: 'composer.callout.expand', targetKind: 'callout', acceptsInstruction: false },
+	{ id: 'composer.callout.to-checklist', targetKind: 'callout', acceptsInstruction: false },
+] as const;
+
+export const PROSE_BLOCK_ACTION_IDS = PROSE_TRANSFORM_SPECS.map((spec) => spec.id);
+
+function completePresentation(id: string): ComposerCapabilityDefinition['presentationFallback'] {
+	const presentation = DEFAULT_COMPOSER_CAPABILITIES_CONFIG.actions[id];
+	if (
+		typeof presentation?.title !== 'string' ||
+		typeof presentation.description !== 'string' ||
+		typeof presentation.lucideIcon !== 'string' ||
+		typeof presentation.historyLabel !== 'string' ||
+		typeof presentation.order !== 'number'
+	) {
+		throw new Error(`missing compiled Composer presentation for '${id}'`);
+	}
+	return {
+		title: presentation.title,
+		description: presentation.description,
+		lucideIcon: presentation.lucideIcon,
+		historyLabel: presentation.historyLabel,
+		order: presentation.order,
+	};
+}
+
+function createProseTransformDefinition(
+	config: ComposerCapabilitiesConfigProvider,
+	spec: ProseTransformSpec,
+): ComposerCapabilityDefinition {
+	const presentation = completePresentation(spec.id);
+	return {
+		manifest: {
+			id: spec.id,
+			title: presentation.title,
+			description: presentation.description,
+			inputContract: { kind: 'object', description: 'Frozen one-block context plus optional custom instruction' },
+			outputContract: { kind: 'custom', description: 'one source-safe text-patch candidate' },
+			permissionKind: 'read',
+			costTier: 'fast',
+			backendPolicy: { preferred: 'provider-direct', fallback: [] },
+			skillRef: spec.id,
+			surfaceBinding: ['composer'],
+		},
+		version: '1',
+		owner: 'composer-prose',
+		configKey: spec.id,
+		surfaces: ['block-row'],
+		targetKinds: [spec.targetKind],
+		executionMode: 'model-stream',
+		effectKind: 'rewrite',
+		promptId: PROSE_TRANSFORM_PROMPT_ID,
+		inputSchema: ComposerInstructionInputSchema,
+		resultSchema: ComposerTextPatchPayloadSchema,
+		resultKind: 'text-patch',
+		rendererId: COMPOSER_STREAMING_TEXT_RENDERER_ID,
+		writebackAdapterId: COMPOSER_TEXT_PATCH_WRITEBACK_ID,
+		acceptsInstruction: spec.acceptsInstruction,
+		presentationFallback: presentation,
+		evaluate: ({ snapshot }) => evaluatePolish(snapshot, config().strings.emptyTarget),
+		buildPromptVariables: (snapshot, instruction) => {
+			const effectiveInstruction = instruction?.trim() || config().instructions[spec.id];
+			if (!effectiveInstruction) {
+				throw new Error(`missing Composer preset instruction for '${spec.id}'`);
+			}
+			return buildProseTransformPromptVariables({
+				content: snapshot.targetSource,
+				blockKind: spec.targetKind,
+				instruction: effectiveInstruction,
+				...(snapshot.nearby?.before ? { before: snapshot.nearby.before } : {}),
+				...(snapshot.nearby?.after ? { after: snapshot.nearby.after } : {}),
+			});
+		},
+	};
+}
+
 /** The prose pack (spec §12 registration API). */
 export function createProseCapabilityPack(
 	config: ComposerCapabilitiesConfigProvider,
 ): ComposerCapabilityPack {
 	return {
 		id: 'composer-pack-prose',
-		definitions: () => [createPolishDefinition(config)],
+		definitions: () => [
+			createPolishDefinition(config),
+			...PROSE_TRANSFORM_SPECS.map((spec) => createProseTransformDefinition(config, spec)),
+		],
 	};
 }

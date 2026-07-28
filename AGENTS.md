@@ -75,6 +75,142 @@ Four-layer architecture: `app/` → `service/` → `core/` → `ui/`
 - Include all important branches while keeping each lane readable. For Copilot / Command Center work, cover Document Auto, manual write intents, insight/no-change flows, Vault Intelligence, and Setting/System.
 - If a report starts looking like a prose matrix, redesign it into visual screen-node lanes before considering it done.
 
+## Obsidian Debugging & Real-UI QA
+
+The canonical maintainer protocol is [`docs/conventions/obsidian-real-ui-qa.md`](./docs/conventions/obsidian-real-ui-qa.md). Use two channels with explicit ownership. Do not spend time guessing UI state from screenshots or repeated coordinate clicks.
+
+### Channel ownership
+
+- **Obsidian CDP + Playwright** owns precise state setup, DOM inspection, scroll anchoring, focus, clicks, keyboard flows, geometry, and runtime evidence.
+- **Computer Use** owns proof that the visible result came from the real Obsidian app, plus human-visible screenshots and interactions that need OS-level observation.
+- **Harness / static mock** owns fast characterization and design-reference rendering only. It never counts as real-Obsidian acceptance.
+- When CDP is available, do not use Computer Use coordinate clicks to find or close internal Composer controls. Obsidian exposes little useful accessibility structure, so coordinate recovery is slow and fragile.
+- Computer Use is not a fallback controller when CDP is unavailable. Do not use AX element indexes, guessed shortcuts, Command Palette reload attempts, Settings toggles, or repeated coordinate clicks to recover internal Composer state.
+- If the tool reports that the user changed Obsidian state, stop immediately and yield control. Do not reclaim focus or continue the previous automation chain.
+
+### Connect to the running Obsidian renderer
+
+Discover the current loopback debugging port instead of hard-coding it:
+
+```bash
+lsof -nP -iTCP -sTCP:LISTEN | rg '^Obsidian'
+```
+
+The port is often `9223` in this workspace, but it may change. Connect Playwright to that port, then select the real Obsidian page:
+
+```js
+const { chromium } = await import('playwright');
+const browser = await chromium.connectOverCDP('http://127.0.0.1:<port>');
+const page = browser
+  .contexts()
+  .flatMap((context) => context.pages())
+  .find((candidate) => candidate.url() === 'app://obsidian.md/index.html');
+```
+
+Use `page.locator(...)`, DOM attributes, computed styles, bounding boxes, and the real scroll containers to establish and verify state. Close transient panels through their real DOM controls, move the pointer away before a resting-state capture, and re-read state after every material interaction.
+
+If no CDP listener exists, use an already-open Obsidian DevTools Console only for one deterministic plugin reload/open command described in the canonical protocol. If CDP still cannot be established, keep source/test/build evidence, mark the exact interaction `INTERACTION NOT VERIFIED`, and stop. Never replace hover, drag, focus, or keyboard verification with click-only Computer Use evidence.
+
+### Fast build → reload → verify loop
+
+Do not restart Obsidian manually after every code change. After a successful build, reload only this plugin through the running renderer:
+
+```js
+await page.evaluate(async () => {
+  const pluginId = 'obsidian-peak-assistant';
+  await app.plugins.disablePlugin(pluginId);
+  await app.plugins.enablePlugin(pluginId);
+});
+await page.waitForFunction(() =>
+  Boolean(
+    app.commands.commands[
+      'obsidian-peak-assistant:peak-open-document-composer'
+    ],
+  ),
+);
+```
+
+Plugin reload may remove the existing Composer leaf. Re-select the canonical Markdown tab and open Composer through the stable command id:
+
+```js
+await page.locator(
+  '.workspace-tab-header[data-type="markdown"][aria-label="Peak Composer Visual Parity QA"]',
+).click();
+await page.evaluate(() =>
+  app.commands.executeCommandById(
+    'obsidian-peak-assistant:peak-open-document-composer',
+  ),
+);
+await page.locator('.peak-composer-root').waitFor({ state: 'visible' });
+```
+
+Then verify the production DOM before taking a screenshot: expected block kind, real resource URI, natural bitmap size, source SHA, and the active Composer leaf. This is the default tight loop for isolated UI fixes:
+
+```text
+focused test → production build → plugin-only reload → CDP DOM assertion
+→ Computer Use screenshot → normalized overlay/diff
+```
+
+If an interaction unexpectedly switches to a Markdown leaf, do not recover with coordinate clicking or assume the control merely closed. Inspect the active tab type, record the behavior as evidence when it is the bug under test, then return through the stable `data-type` selector.
+
+For ordinary plugin QA, never guess `Cmd+R`, open Settings to toggle community plugins, or run `Reload app without saving`. Full renderer reload is reserved for a confirmed renderer-level problem with an explicit impact and recovery plan.
+
+### Interaction evidence contract
+
+- A click-pinned menu does not prove hover behavior.
+- A final screenshot does not prove a pointer corridor, focus restoration, Escape handling, or an Undo/Redo/History sequence.
+- Hover and pointer-corridor claims require a real pointer path with the final DOM still visible.
+- Keyboard and focus claims require `activeElement` and state assertions before and after the real key flow.
+- If the available tool cannot perform the claimed interaction, report `NOT VERIFIED` or `OWNER-CONFIRMED`; never upgrade it to automated acceptance.
+
+### Screenshot economy and bisection debugging
+
+Treat screenshots as final visual evidence, not a click-by-click activity log. For a known path (for example: open Command Palette → enter a command → open Composer → trigger an AI action), execute the deterministic setup continuously and capture only once the intended final state is reached. Do not take a screenshot merely because a menu opened, a query was typed, or a normal navigation click succeeded.
+
+If the final state is wrong, missing, or visually unstable, then use bisection: replay the same path, inspect the midpoint state, and keep halving the uncertain portion until the first divergent transition is identified. Use CDP/DOM/accessibility reads for cheap state checks between steps; introduce intermediate screenshots only when text/DOM evidence cannot explain the divergence. Continue to capture the required reference/current/normalized comparison set for a real visual-parity claim, and use video for the interaction classes listed below.
+
+### Lock evidence before changing code
+
+For every design comparison or interaction regression, create one run directory and record:
+
+- canonical Vault file path and SHA-256;
+- attachment/native-file paths;
+- Obsidian theme and app zoom;
+- `innerWidth`, `innerHeight`, and `devicePixelRatio` from the real renderer;
+- native sidebar state;
+- document scroll container and exact `scrollTop` or named anchor;
+- Composer display state, focused/selected block, open transient surface, sidecar tab/stage, and data revision when available;
+- capture time and SHA-256 of reference/current/overlay artifacts.
+
+Save a byte-identical source snapshot beside the evidence. If the source SHA or interaction state differs, the screenshots are not comparable.
+
+Computer Use screenshots may be downsampled even when the real Electron renderer is `1728x1084` at DPR 2. Read CSS viewport/DPR from CDP, record the original screenshot dimensions, and normalize before overlay/diff. Never treat Computer Use bitmap dimensions as the CSS viewport.
+
+The minimum visual set is:
+
+```text
+reference + real current + normalized current + 50% overlay or pixel diff + manifest
+```
+
+Use the same document, viewport, theme, zoom, scroll anchor, sidecar stage, and interaction state. Native Obsidian chrome differences must be identified explicitly rather than mistaken for Composer drift.
+
+### When to record video
+
+Use a short local screen recording when a still image cannot prove the behavior:
+
+- Chinese IME composition and submit guards;
+- forward/reverse cross-block selection;
+- drag, autoscroll, table hover corridor, or resize gestures;
+- AI first-token, stable-prefix streaming, stop, regenerate, and variant switching;
+- narrow drawer focus trap, Escape, close/reopen, and focus restoration;
+- Undo/Redo/History sequences where intermediate state matters.
+
+Record one flow per clip, keep it short, and store it under the run evidence directory, for example `.dev/harness/shots/<run>/recordings/`. Start each clip from a manifest-locked state and pair it with final-state screenshots and source-byte evidence. Do not record unrelated tabs, credentials, or private Vault content outside the canonical QA fixture.
+
+### Stop rule
+
+If the real app cannot be placed in the same source revision, viewport, scroll anchor, and interaction state as the reference, stop and label the comparison `NOT COMPARABLE`. Fix the evidence setup before editing CSS or product code. A green harness, geometry test, or visually similar screenshot is never sufficient by itself.
+
 ## Key External Dependencies
 
 - **AI:** Vercel AI SDK adapters (`@ai-sdk/anthropic`, `@ai-sdk/openai`, `@ai-sdk/google`, etc.)

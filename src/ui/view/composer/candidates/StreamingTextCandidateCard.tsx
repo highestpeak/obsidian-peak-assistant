@@ -4,10 +4,10 @@
  * Object-native review surface for `text-patch` candidates, per the
  * component-consistency contract (spec 2026-07-22 §Review family):
  *
- *   - the draft stays part of the document flow: neutral content, one quiet
- *     separator, a compact review footer — no tinted band, no nested card
- *     outline, no decorative color rail;
- *   - streaming renders into the REAL candidate body with a live caret;
+ *   - the draft stays part of the document flow inside one restrained review
+ *     frame: a readable streaming body above a fixed review footer;
+ *   - streaming renders into the REAL candidate body with a live caret and
+ *     turns complete bullet-only proposals into native list reading geometry;
  *   - the targeted-instruction field is always visible; Enter and the
  *     regenerate button are equivalent; the instruction freezes into the
  *     submitted variant and stays editable for the next one;
@@ -25,15 +25,16 @@
  */
 
 import * as React from 'react';
-import { Check, ChevronLeft, ChevronRight, RefreshCw, RotateCcw, X } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, RefreshCw, RotateCcw, Sparkles, WandSparkles, X } from 'lucide-react';
 import type { ComposerResultEnvelope } from '@/core/composer';
 import type { ComposerTextPatchPayload } from '@/core/schemas/composer';
 import { diffWords, type DiffSegment } from '@/service/composer';
 import { Button } from '@/ui/components/primitives';
-import { formatVariantCounter } from './candidateUiConfig';
+import { cn } from '@/ui/react/lib/utils';
+import { formatCandidateMeta, formatVariantCounter } from './candidateUiConfig';
 import type { CandidateRendererProps } from './rendererRegistry';
 
-const CONTROL = 'h-[30px] rounded-[var(--pk-radius-md)]';
+const CONTROL = 'pk-text-candidate__control';
 
 function activeVariantIndex(props: CandidateRendererProps): number {
 	return props.candidate.variants.findIndex((v) => v.variantId === props.candidate.activeVariantId);
@@ -74,14 +75,35 @@ function readyText(props: CandidateRendererProps): string | null {
  * resolver wired) or when nothing actually changed.
  */
 function ReadyBody({ text, originalText }: { text: string; originalText: string | null }): React.ReactElement {
+	const items = draftListItems(text);
+	if (items) return <DraftList items={items} />;
 	if (originalText === null || originalText === text) {
-		return <span className="whitespace-pre-wrap break-words text-[var(--text-normal)]">{text}</span>;
+		return <span className="pk-text-candidate__text">{text}</span>;
 	}
 	const segments = diffWords(originalText, text);
 	return (
-		<span className="whitespace-pre-wrap break-words text-[var(--text-normal)]" data-diff="inplace">
+		<span className="pk-text-candidate__text" data-diff="inplace">
 			{segments.map((seg, i) => renderSegment(seg, i))}
 		</span>
+	);
+}
+
+/**
+ * The Composer owns source fidelity; the review frame only gives a list-shaped
+ * draft its native reading form. This deliberately recognizes a complete
+ * bullet-only proposal and never attempts broad Markdown rendering.
+ */
+function draftListItems(text: string): string[] | null {
+	const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+	if (lines.length === 0 || !lines.every((line) => /^(?:[-*•])\s+/.test(line))) return null;
+	return lines.map((line) => line.replace(/^(?:[-*•])\s+/, ''));
+}
+
+function DraftList({ items }: { items: readonly string[] }): React.ReactElement {
+	return (
+		<ul className="pk-text-candidate__list">
+			{items.map((item, index) => <li key={`${index}:${item}`}>{item}</li>)}
+		</ul>
 	);
 }
 
@@ -112,28 +134,37 @@ function CandidateBody(props: CandidateRendererProps): React.ReactElement {
 		// label + caret instead of a bare blinking caret or half-formed JSON.
 		if (streamingText.length === 0) {
 			return (
-				<span className="text-[var(--text-muted)]">
+				<span className="pk-text-candidate__text pk-text-candidate__text--muted">
 					{strings.streaming}
-					<span aria-hidden="true" className="inline-block w-[1px] h-[1.1em] align-text-bottom bg-[var(--text-normal)] animate-pulse" />
+					<span aria-hidden="true" className="pk-text-candidate__caret animate-pulse" />
+				</span>
+			);
+		}
+		const items = draftListItems(streamingText);
+		if (items) {
+			return (
+				<span className="pk-text-candidate__streaming-list">
+					<DraftList items={items} />
+					<span aria-hidden="true" className="pk-text-candidate__caret animate-pulse" />
 				</span>
 			);
 		}
 		return (
-			<span className="whitespace-pre-wrap break-words text-[var(--text-normal)]">
+			<span className="pk-text-candidate__text">
 				{streamingText}
-				<span aria-hidden="true" className="inline-block w-[1px] h-[1.1em] align-text-bottom bg-[var(--text-normal)] animate-pulse" />
+				<span aria-hidden="true" className="pk-text-candidate__caret animate-pulse" />
 			</span>
 		);
 	}
 	if (candidate.status === 'failed') {
-		return <span className="text-[var(--text-error)]">{strings.failed}</span>;
+		return <span className="pk-text-candidate__text pk-text-candidate__text--error">{strings.failed}</span>;
 	}
 	if (candidate.status === 'stale') {
-		return <span className="text-[var(--text-muted)]">{strings.stale}</span>;
+		return <span className="pk-text-candidate__text pk-text-candidate__text--muted">{strings.stale}</span>;
 	}
 	const text = readyText(props);
 	if (text === null) {
-		return <span className="text-[var(--text-muted)]">{strings.streaming}</span>;
+		return <span className="pk-text-candidate__text pk-text-candidate__text--muted">{strings.streaming}</span>;
 	}
 	return <ReadyBody text={text} originalText={props.originalText ?? null} />;
 }
@@ -147,22 +178,22 @@ function VariantNav(props: CandidateRendererProps & { disabled: boolean }): Reac
 		if (variant) runtime.setActiveVariant(candidate.candidateId, variant.variantId);
 	};
 	return (
-		<span className={`inline-flex items-center border border-[var(--background-modifier-border)] overflow-hidden ${CONTROL}`}>
+		<span className="pk-text-candidate__variant-nav">
 			<Button
 				variant="ghost"
-				className={`${CONTROL} rounded-none px-1`}
+				className="pk-text-candidate__variant-btn"
 				aria-label={strings.prevVariant}
 				disabled={disabled || index <= 0}
 				onClick={() => goTo(index - 1)}
 			>
 				<ChevronLeft size={14} />
 			</Button>
-			<span className="px-1.5 text-xs text-[var(--text-muted)] tabular-nums select-none">
+			<span className="pk-text-candidate__variant-count">
 				{formatVariantCounter(strings.variantCounter, index + 1, candidate.variants.length)}
 			</span>
 			<Button
 				variant="ghost"
-				className={`${CONTROL} rounded-none px-1`}
+				className="pk-text-candidate__variant-btn"
 				aria-label={strings.nextVariant}
 				disabled={disabled || index >= candidate.variants.length - 1}
 				onClick={() => goTo(index + 1)}
@@ -179,6 +210,21 @@ export function StreamingTextCandidateCard(props: CandidateRendererProps): React
 	const streaming = props.streamingText !== null;
 	const acceptable = !streaming && candidate.status === 'ready';
 	const regenerable = !streaming && (candidate.status === 'ready' || candidate.status === 'failed');
+	const activeIndex = Math.max(0, activeVariantIndex(props)) + 1;
+	const action = runtime.candidateLabelFor?.(candidate.candidateId) ?? strings.draftActionFallback;
+	const statusTitle = streaming
+		? strings.streamingTitle
+		: candidate.status === 'failed'
+			? strings.failed
+			: candidate.status === 'stale'
+				? strings.stale
+				: strings.draftTitle;
+	const statusMeta = formatCandidateMeta(
+		streaming ? strings.streamingMeta : strings.draftMeta,
+		action,
+		activeIndex,
+		candidate.variants.length,
+	);
 
 	const submitRegenerate = () => {
 		if (!regenerable) return;
@@ -191,83 +237,85 @@ export function StreamingTextCandidateCard(props: CandidateRendererProps): React
 		// the in-flight run before dropping the candidate).
 		runtime.discard(candidate.candidateId);
 	};
-
-	// A stale candidate cannot be accepted or regenerated in place (its base
-	// revision drifted). Offer an explicit re-run against the current source
-	// (fail-closed inside the runtime when the anchor is gone) or discard.
-	if (candidate.status === 'stale') {
-		const handleRerun = () => {
-			if (runtime.rerunStale) runtime.rerunStale(candidate.candidateId);
-			else runtime.discard(candidate.candidateId);
-		};
-		return (
-			<span data-candidate-id={candidate.candidateId} data-candidate-stale className="flex flex-col gap-2 py-1">
-				<span className="px-3 leading-relaxed text-[var(--text-muted)]">{strings.stale}</span>
-				<span className="mx-3 border-t border-[var(--background-modifier-border)]" aria-hidden="true" />
-				<span className="flex items-center gap-1.5 px-3 flex-wrap">
-					<Button variant="secondary" className={`${CONTROL} px-2 gap-1`} onClick={handleRerun}>
-						<RefreshCw size={14} />
-						{strings.rerun}
-					</Button>
-					<Button variant="ghost" className={`${CONTROL} px-2 gap-1`} onClick={handleDiscard}>
-						<X size={14} />
-						{strings.discard}
-					</Button>
-				</span>
-			</span>
-		);
-	}
+	const rerunStale = () => {
+		if (runtime.rerunStale) runtime.rerunStale(candidate.candidateId);
+		else runtime.discard(candidate.candidateId);
+	};
 
 	return (
-		<span data-candidate-id={candidate.candidateId} className="flex flex-col gap-2 py-1">
-			<span className="px-3 leading-relaxed">
+		<div
+			data-candidate-id={candidate.candidateId}
+			data-candidate-status={streaming ? 'streaming' : candidate.status}
+			className="pk-text-candidate"
+		>
+			<div className="pk-text-candidate__body" aria-live="polite">
 				<CandidateBody {...props} />
-			</span>
-			<span className="mx-3 border-t border-[var(--background-modifier-border)]" aria-hidden="true" />
-			<span className="flex items-center gap-1.5 px-3 flex-wrap">
-				<input
-					type="text"
-					value={instruction}
-					aria-label={strings.instructionAria}
-					placeholder={strings.instructionPlaceholder}
-					className={`flex-1 min-w-[140px] px-2 text-sm bg-transparent border border-[var(--background-modifier-border)] text-[var(--text-normal)] ${CONTROL}`}
-					onChange={(e) => setInstruction(e.target.value)}
-					onKeyDown={(e) => {
-						if (e.key !== 'Enter') return;
-						e.preventDefault();
-						submitRegenerate();
-					}}
-				/>
-				<VariantNav {...props} disabled={streaming} />
-				<Button
-					variant="secondary"
-					className={`${CONTROL} px-2 gap-1`}
-					disabled={!regenerable}
-					title={streaming ? strings.acceptDisabledStreaming : undefined}
-					onClick={submitRegenerate}
-				>
-					<RotateCcw size={14} />
-					{candidate.status === 'failed' ? strings.retry : strings.regenerate}
-				</Button>
-				<Button
-					variant="primary"
-					className={`${CONTROL} px-2 gap-1`}
-					disabled={!acceptable}
-					title={!acceptable ? strings.acceptDisabledStreaming : undefined}
-					onClick={() => void runtime.accept(candidate.candidateId)}
-				>
-					<Check size={14} />
-					{strings.accept}
-				</Button>
-				<Button
-					variant="ghost"
-					className={`${CONTROL} px-2 gap-1`}
-					onClick={handleDiscard}
-				>
-					<X size={14} />
-					{streaming ? strings.cancel : strings.discard}
-				</Button>
-			</span>
-		</span>
+			</div>
+			<div className="pk-text-candidate__footer">
+				<div className="pk-text-candidate__status">
+					<span className="pk-text-candidate__status-icon" aria-hidden="true">
+						<Sparkles size={14} />
+					</span>
+					<span className="pk-text-candidate__status-copy">
+						<strong>{statusTitle}</strong>
+						<small>{statusMeta}</small>
+					</span>
+				</div>
+				<label className="pk-text-candidate__instruction-wrap">
+					<WandSparkles size={14} aria-hidden="true" />
+					<input
+						type="text"
+						value={instruction}
+						aria-label={strings.instructionAria}
+						placeholder={strings.instructionPlaceholder}
+						className="pk-text-candidate__instruction"
+						onChange={(e) => setInstruction(e.target.value)}
+						onKeyDown={(e) => {
+							if (e.key !== 'Enter') return;
+							e.preventDefault();
+							submitRegenerate();
+						}}
+					/>
+				</label>
+				<div className="pk-text-candidate__actions">
+					<VariantNav {...props} disabled={streaming || candidate.status === 'stale'} />
+					{candidate.status === 'stale' ? (
+						<Button variant="ghost" className={cn(CONTROL, 'pk-text-candidate__button', 'pk-text-candidate__button--quiet')} onClick={rerunStale}>
+							<RefreshCw size={14} />
+							{strings.rerun}
+						</Button>
+					) : (
+						<Button
+							variant="ghost"
+							className={cn(CONTROL, 'pk-text-candidate__button', 'pk-text-candidate__button--quiet')}
+							disabled={!regenerable}
+							title={streaming ? strings.acceptDisabledStreaming : undefined}
+							onClick={submitRegenerate}
+						>
+							<RotateCcw size={14} />
+							{candidate.status === 'failed' ? strings.retry : strings.regenerate}
+						</Button>
+					)}
+					<Button
+						variant="primary"
+						className={cn(CONTROL, 'pk-text-candidate__button pk-text-candidate__button--accept')}
+						disabled={!acceptable}
+						title={!acceptable ? strings.acceptDisabledStreaming : undefined}
+						onClick={() => void runtime.accept(candidate.candidateId)}
+					>
+						<Check size={14} />
+						{strings.accept}
+					</Button>
+					<Button
+						variant="ghost"
+						className={cn(CONTROL, 'pk-text-candidate__button', 'pk-text-candidate__button--quiet')}
+						onClick={handleDiscard}
+					>
+						<X size={14} />
+						{streaming ? strings.cancel : strings.discard}
+					</Button>
+				</div>
+			</div>
+		</div>
 	);
 }

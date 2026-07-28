@@ -105,6 +105,8 @@ function testWikilinkAltAndWidth(): void {
 	const parsed = parseImageBlock('![[public-image/20250703182542769.png|路线图|720]]');
 	check('wikilink path is preserved', parsed?.path === 'public-image/20250703182542769.png');
 	check('wikilink third segment is width, not alt text', parsed?.alt === '路线图' && parsed?.width === 720);
+	const alias = parseImageBlock('![[路线图|720]]');
+	check('wikilink second numeric segment is width, not alt text', alias?.path === '路线图' && alias.alt === undefined && alias.width === 720);
 }
 
 async function testFixtureModeCommit(): Promise<void> {

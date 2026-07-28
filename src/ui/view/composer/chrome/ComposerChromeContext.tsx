@@ -3,10 +3,12 @@ import type {
 	ComposerCandidateRuntimePort,
 	ComposerCapabilityProjectionPort,
 	ComposerDocumentSnapshot,
+	ComposerTransactionConfig,
 } from '@/core/composer';
 import { stubComposerCapabilityProjection } from '@/core/composer';
 import type {
 	ComposerCommentStore,
+	ComposerBlockDraftGenerationPort,
 	ComposerDocumentSession,
 	ComposerLinkMetadataPort,
 	ComposerNativePreviewPort,
@@ -31,6 +33,8 @@ import type { CandidateRendererRegistry } from '@/ui/view/composer/candidates';
 export interface ComposerChromeRuntime {
 	session?: ComposerDocumentSession;
 	hub?: ComposerTransactionHub;
+	/** App-resolved timing policy shared with the transaction hub. */
+	transactionConfig?: ComposerTransactionConfig;
 	projection?: ComposerCapabilityProjectionPort;
 	/**
 	 * The candidate runtime port the streaming candidate host consumes (streaming
@@ -56,7 +60,9 @@ export interface ComposerChromeRuntime {
 	 * App-owned preview URI resolver for image rendering, bound by app runtime via
 	 * `DocumentComposerRuntime.composeEditing`. UI never resolves Obsidian paths.
 	 */
-	imagePreviewResolver?: (path: string) => string;
+	imagePreviewResolver?: (path: string, sourcePath?: string) => string;
+	/** Explicit new-block generation; absent keeps the AI action disabled with a reason. */
+	blockDraftGeneration?: ComposerBlockDraftGenerationPort;
 }
 
 export interface ComposerChromeValue {

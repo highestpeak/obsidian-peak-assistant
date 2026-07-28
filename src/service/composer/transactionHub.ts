@@ -298,7 +298,7 @@ export class ComposerTransactionHub {
 	 */
 	adoptExternalSnapshot(next: ComposerDocumentSnapshot): void {
 		const prev = this.session.snapshot;
-		this.session.reparse(next.sourceText);
+		this.session.adoptSnapshot(next);
 		this.revalidateCandidates(prev);
 		this.notify();
 	}

@@ -234,6 +234,13 @@ export class ComposerCapabilityDocumentRuntime
 		return this.deps.registry.require(meta.capabilityId).rendererId;
 	}
 
+	candidateLabelFor(candidateId: string): string | null {
+		const meta = this.candidateMeta.get(candidateId);
+		if (!meta) return null;
+		const def = this.deps.registry.require(meta.capabilityId);
+		return resolvePresentation(this.deps.config(), def.configKey, def.presentationFallback).title;
+	}
+
 	regenerate(candidateId: string, instruction?: string): ComposerInvocationHandle {
 		if (this.activeRuns.has(candidateId)) {
 			throw new Error(`candidate ${candidateId} is still streaming — cancel before regenerating`);

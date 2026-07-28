@@ -63,15 +63,33 @@ function snapshot(revision: string): ComposerContextSnapshot {
 // ── (2)/(3) lifecycle + frozen run context ──────────────────────────────────────
 {
 	const m = new CopilotSessionMachine();
-	m.openSession('润色引言');
+	m.openSession('润色引言', [], [{
+		kind: 'comment',
+		commentId: 'comment-1',
+		blockId: 'para-0-abc',
+		quote: 'Alpha para.',
+		body: '请补充证据',
+		replies: [],
+		revision: 'r1',
+		trust: 'external',
+		visibility: 'shared',
+	}]);
 	check('brief → session', m.projection().stage === 'session');
+	check('comment source is visible before send', m.projection().pendingCommentRefs.length === 1);
 
 	const frozen = m.send({ snapshot: snapshot('r1'), targetQuote: 'Alpha para.', relatedRefs: ['src-1'] });
 	check('send → assembling', m.projection().runStatus === 'assembling');
 	check('active run set', m.projection().activeRunId === frozen.runId);
 	check('frozen context is frozen', Object.isFrozen(frozen));
 	check('frozen relatedRefs frozen', Object.isFrozen(frozen.relatedRefs));
+	check('frozen commentRefs frozen', Object.isFrozen(frozen.commentRefs) && Object.isFrozen(frozen.commentRefs[0]));
+	check('external comment trust survives freeze', frozen.commentRefs[0].trust === 'external');
 	check('frozen carries target quote', frozen.targetQuote === 'Alpha para.');
+	const initialReceipt = m.projection().receipts.find((r) => r.runId === frozen.runId)!;
+	check(
+		'comment source is recorded in the run receipt',
+		initialReceipt.sources[0]?.sourceKind === 'comment' && initialReceipt.sources[0]?.commentId === 'comment-1',
+	);
 
 	// later "focus change": mutating the live snapshot must not touch the frozen one.
 	const live = snapshot('r2');

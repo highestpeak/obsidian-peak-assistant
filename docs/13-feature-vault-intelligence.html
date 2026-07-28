@@ -272,7 +272,12 @@ flowchart LR
 
         <section id="user-workflows">
           <h2>用户如何触发</h2>
-          <p class="lead">Vault Intelligence 没有独立视图，也不要求用户记住额外命令。主入口是 <strong>Open Copilot（Vault tab）</strong> 里的 Vault Maintenance：用户在同一个面板里看 scan / 信号建议，也可以选择生成或更新 hub 综述。Quick Search 和 AI Graph 只是消费同一份数据的不同投影。</p>
+          <p class="lead">Vault Intelligence 没有独立视图，也不要求用户记住额外命令。完整维护工作区仍是 <strong>Open Copilot（Vault tab）</strong> 里的 Vault Maintenance：用户在同一个面板里看 scan / 信号建议，也可以选择生成或更新 hub 综述。目标态的 Quick Search 只提供低频快捷提问与 review history 投影，不复制完整维护 UI。</p>
+
+          <div class="claim">
+            <strong>2026-07-28 入口设计更新 · 未实现</strong>
+            Quick Search 顶层目标态只保留 <em>Vault Search</em> 与一个 AI workspace selector；普通打开默认 <em>AI Search</em>，<em>Vault Intelligence</em> 与 <em>AI Graph</em> 从同一下拉进入。选择 Vault Intelligence 只切换页面内容，不自动触发 complete review。详见 <a href="superpowers/specs/2026-07-28-ai-search-unified-modes.md">AI Search 统一模式入口设计</a>与<a href="gstack/ai-search-unified-modes-2026-07-28/index.html">可交互 mock</a>。
+          </div>
 
           <div class="claim">
             <strong>Vault Maintenance segment 草图</strong>
@@ -292,16 +297,16 @@ flowchart LR
                 <td>Scan 结果落 <code>vault.sqlite</code>（<code>VaultLintRepo</code>）；报告落 Vault 里的 Copilot review 历史。</td>
               </tr>
               <tr>
-                <td><strong>Quick Search → AI Analysis</strong></td>
-                <td>使用 <em>Vault Analysis</em> 预设时，会读最新一次 lint scan 作为 digest 的一部分传给 meta-agent。</td>
-                <td>手动，且要求 AI profile 可用。</td>
-                <td>无新写入；只是消费已有 scan。</td>
+                <td><strong>Quick Search → Vault Intelligence</strong><br><span class="pill gold">目标态 · 未实现</span></td>
+                <td>快捷询问 Vault health / structure，查看高层摘要与最近 review；完整 finding review 仍回到 Copilot Vault workspace。</td>
+                <td>从 AI workspace selector 手动进入；选择 mode 本身不运行扫描。</td>
+                <td>只有用户显式运行 review 才写 run / review record；切换 mode 无写入。</td>
               </tr>
               <tr>
                 <td><strong>AI Graph</strong></td>
-                <td>hub / community / bridge 的 <em>结构</em>视角；不显示 lint findings 本身，但底层用的是同一张图（<code>mobius_node</code> / <code>mobius_edge</code>）。</td>
-                <td>手动打开视图；graph 刷新与索引同步。</td>
-                <td>无。</td>
+                <td>AI Graph artifact 可以把选定的 hub / community / bridge 信号作为 context，但不会把 lint findings 或 <code>mobius_node</code> / <code>mobius_edge</code> 直接冒充版本化 graph truth。</td>
+                <td>从同一个 AI workspace selector 手动进入；graph create / update 仍需要显式提交。</td>
+                <td>成功 create / update 后写 AI Graph artifact version；只切换 mode 无写入。</td>
               </tr>
               <tr>
                 <td><strong>Ambient hints</strong><br><span class="pill gold">只读推荐</span></td>
@@ -326,7 +331,7 @@ flowchart LR
             <div class="recipe">
               <h3>Recipe B · 我想让 AI 围绕 Vault 做主题分析</h3>
               <ol class="steps">
-                <li>Command Palette → <strong>Quick Search</strong>，切 <strong>AI Analysis</strong>，选 <strong>Vault Analysis</strong> 预设。</li>
+                <li>目标态：Command Palette → <strong>Quick Search</strong>；普通打开已在 <strong>AI Search</strong>。主题分析直接输入问题，不再选择 <strong>Vault Analysis</strong> 可见 preset。</li>
                 <li>输入主题（例如“我关于 attention head 的笔记结构”）。</li>
                 <li>Peak 会调 <code>VaultDigestBuilder</code>：里面同时用 <em>lint 最新 snapshot</em>、<em>top hubs</em>、<em>top structural holes</em> 构造 digest 传给 meta-agent。</li>
                 <li>流式返回结构化报告；用户可选择保存到 <code>ChatFolder/AI-Analysis/</code>。</li>
@@ -1027,9 +1032,9 @@ flowchart TB
                 <td>frontmatter + Community A/B top nodes；给 <code>bridge-to-main</code> / <code>create-hub</code> 类 fix action 用。</td>
               </tr>
               <tr>
-                <td>Quick Search 里 “Vault Analysis” 是 AI Analysis 预设之一</td>
+                <td>Quick Search 生产代码当前仍有 “Vault Analysis” preset；目标态会移除可见 mode pill</td>
                 <td><code data-copy="src/ui/view/quick-search/SearchModal.tsx">SearchModal.tsx</code></td>
-                <td>确认入口名称 <em>Vault Analysis · Deep analysis whole vault.</em>；Recipe B 里的“Vault Analysis 预设”不是本页发明的。</td>
+                <td>确认当前行为；目标入口与迁移边界见 <a href="superpowers/specs/2026-07-28-ai-search-unified-modes.md">AI Search 统一模式入口设计</a>。</td>
               </tr>
             </tbody>
           </table>

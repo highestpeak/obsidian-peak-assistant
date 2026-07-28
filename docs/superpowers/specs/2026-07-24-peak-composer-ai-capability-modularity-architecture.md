@@ -7,6 +7,7 @@
 - **Product host:** dedicated Composer View over the same Markdown and native files; the existing CodeMirror editor remains unchanged
 
 - **Related product contract:** [`2026-07-15-composer-block-ai-capability-contract.md`](2026-07-15-composer-block-ai-capability-contract.md)
+- **Owner-confirmed Agent Run and Generation History decision:** [`2026-07-28-composer-agent-runs-and-generation-history.md`](2026-07-28-composer-agent-runs-and-generation-history.md)
 - **Composer host design:** [`2026-07-09-peak-composer-editing-view.md`](2026-07-09-peak-composer-editing-view.md)
 - **Component contract:** [`2026-07-22-peak-composer-component-consistency.md`](2026-07-22-peak-composer-component-consistency.md)
 - **Integrated design fixture:** [`../../gstack/peak-composer-editing-view-2026-07-09/index.html`](../../gstack/peak-composer-editing-view-2026-07-09/index.html)
@@ -112,7 +113,7 @@ The integrated mock currently demonstrates:
 - table analysis and chart generation;
 - incremental Mermaid, Canvas and Excalidraw patches;
 - streaming candidates, targeted regeneration and variant history;
-- explicit accept/reject and accepted History transactions.
+- explicit accept/not-adopted decisions and accepted Document History transactions.
 
 The mock still uses label-driven fixtures such as `getAiActions()`, `candidateLibrary`, `showAiSuggestionCard()` and a large dispatch chain. That is appropriate for owner-review design evidence. It is not the production modularity model.
 
@@ -181,6 +182,10 @@ The product contract's classes remain:
 - `direct-edit`: ordinary editor behavior, not an AI capability.
 
 `direct-edit` belongs in the inventory because it prevents false AI abstraction. Typing a table cell, toggling a task or changing a caption directly must not run the capability system.
+
+`fixed` and `contextual` describe where an invocation comes from, not two duplicated executors. Fixed actions project a stable registered capability into a block, selection or object toolbar. Ambient / Copilot may continuously produce new `SuggestionFinding` records as evidence changes; each finding can recommend a registered capability through `proposedAction`, prefill an instruction and carry richer context into a Copilot session. Open-ended Copilot tasks may compose registered capabilities and tools, but they do not mint unregistered executable behavior.
+
+The number of Brief findings is not capped by the 2–3 quick capabilities shown next to the session composer. Brief findings are a continuously refreshed evidence-backed list; quick capabilities are only a compact manual launcher.
 
 ## 4. Current AI Capability Inventory
 
@@ -437,6 +442,8 @@ interface ComposerContextSnapshot {
 
 The context snapshot is assembled once at run start. Navigating the document or switching the focused Block does not mutate the active run.
 
+This interface describes the minimum editing-domain snapshot, not the complete prompt payload and not a rule to include every optional field on every run. The canonical context contract now lives in [`2026-07-28-composer-agent-runs-and-generation-history.md` §4](./2026-07-28-composer-agent-runs-and-generation-history.md#4-上下文合同不是四段文字拼-prompt而是按能力装配): Composer reuses shared context-slot and budget-governance primitives, while each capability declares required, optional and retrievable inputs. Copilot / Ambient findings, related materials, Assistant instructions, user preferences and work/session context enter only through those declared slots and are recorded in the Context Assembly Receipt.
+
 ### 5.5 Event contract
 
 The generic `RunEvent` remains the operational envelope. Composer adds typed content events carried by the execution result stream.
@@ -451,6 +458,8 @@ type ComposerCapabilityEvent =
   | { type: 'source'; source: SourceRef }
   | { type: 'no-change'; reason: string };
 ```
+
+Operational feedback and result content are separate projections. Every AI run immediately exposes its current stage, latest real event, elapsed time, stop action and an indeterminate activity animation. A result type may wait for complete validation before emitting `preview-ready`, but the UI must never wait on a static empty skeleton. Quiet periods retain the last truthful stage and animation; they do not synthesize fake steps or percentages. Permission, failure, cancellation, timeout and completion transition to explicit non-running states.
 
 Operational progress and domain content are deliberately separate. A renderer does not parse log text to discover a candidate.
 
@@ -639,6 +648,10 @@ stateDiagram-v2
 
 One `SuggestionFinding` is projected into both the document-local action and the Copilot Brief. Identity uses its fingerprint and evidence revision, not its UI position.
 
+The target runtime may ingest both deterministic and AI-produced findings. An AI-produced finding or recommendation is itself the output of an Agent Run and remains addressable through Generation History even when its current projection becomes dismissed, ignored, deduplicated or stale. Deterministic recomputation retains finding identity and lifecycle but does not impersonate an AI generation record.
+
+The current production producer is narrower: `detectOpenWritingMoves()` mainly emits source-backed unchecked-task findings. That partial producer must not be mistaken for the full Ambient / Copilot generation contract.
+
 ### 8.2 Proposed change lifecycle
 
 ```mermaid
@@ -647,7 +660,7 @@ stateDiagram-v2
     generating --> reviewing: first candidate completes
     generating --> cancelled
     reviewing --> reviewing: append or switch variant
-    reviewing --> resolved: every change accepted/rejected
+    reviewing --> resolved: every change accepted/not-adopted
     reviewing --> cancelled
     reviewing --> stale: overlapping source changes
     stale --> generating: regenerate against new source
@@ -737,7 +750,7 @@ interface ProposedChangeVariant<TPatch> {
   id: string;
   instruction?: string;
   patch: TPatch;
-  status: 'generating' | 'completed' | 'failed' | 'discarded';
+  status: 'generating' | 'completed' | 'failed' | 'not-adopted';
   createdAt: number;
   origin: 'initial' | 'regenerate' | 'follow-up';
 }
@@ -752,6 +765,7 @@ Rules:
 - the input remains editable for the next variant;
 - only a completed active variant can be accepted;
 - switching variants never writes the document;
+- every variant is persisted to Generation History; `not-adopted` is a disposition, not deletion;
 - deterministic editor previews use Undo/Redo or restore, not AI variant language.
 
 Formula detail, semantic filename, image caption, AI image edit, Base generation, native patches and prose generation all reuse this model.
@@ -910,7 +924,7 @@ A new capability is not complete when only a button appears.
 - overlapping direct edit marks only the affected change stale;
 - accept creates one independent History transaction;
 - inline and sidecar acceptance use the same bridge;
-- rejected and pending candidates never enter History;
+- not-adopted and pending candidates never enter Document History, but all model-generated variants enter Generation History;
 - Undo/Redo operates on committed transactions;
 - rollback appends an inverse transaction;
 - attachment rename updates reviewed references atomically;
@@ -1018,7 +1032,7 @@ The modularity architecture is implemented only when:
 4. all mutation-producing results are typed change sets;
 5. every accept goes through source revalidation and a target writeback adapter;
 6. every accepted change creates an addressable History transaction;
-7. pending, rejected and stale candidates never become History;
+7. pending, not-adopted and stale candidates never become Document History, while every model-generated variant remains recoverable from Generation History;
 8. formula, image and native-object variants share one variant lifecycle;
 9. result renderers are selected by declared target/preview contracts;
 10. production dispatch does not depend on Chinese or English UI labels;

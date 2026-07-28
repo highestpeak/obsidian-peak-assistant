@@ -49,7 +49,7 @@ export interface ComposerStrings {
 	blocksSuffix: string;
 }
 
-/** Named swatch (Highlightr-style) for text color / highlight. */
+/** Color swatch. The label is accessibility-only; the palette stays visual. */
 export interface ComposerSwatch {
 	label: string;
 	value: string;
@@ -62,6 +62,8 @@ export interface ComposerSwatch {
  * messages) routed through config per configurability.md.
  */
 export interface ComposerChromeConfig {
+	/** Hover corridor grace period for moving from an action trigger into its floating surface. */
+	surfacePreviewCloseDelayMs: number;
 	actions: {
 		insertBelow: string;
 		copy: string;
@@ -74,7 +76,35 @@ export interface ComposerChromeConfig {
 		drag: string;
 		directEdit: string;
 		disabledNoRuntime: string;
-		insertDraftPlaceholder: string;
+	};
+	insertDraft: {
+		chooserLabel: string;
+		title: string;
+		description: string;
+		sourceLabel: string;
+		previewLabel: string;
+		previewEmpty: string;
+		commit: string;
+		generate: string;
+		generating: string;
+		stop: string;
+		acceptGenerated: string;
+		generationUnavailable: string;
+		generationFailed: string;
+		cancel: string;
+		shortcutHint: string;
+		types: Array<{
+			/** Stable option id; labels and source templates remain config-owned. */
+			id: string;
+			label: string;
+			initialValue: string;
+			placeholder: string;
+			/** Markdown inserted at the caret when this option is used as a syntax shortcut. */
+			syntaxPrefix: string;
+			syntaxSuffix: string;
+			shortcut: boolean;
+			mode: 'markdown' | 'ai';
+		}>;
 	};
 	undo: {
 		undo: string;
@@ -106,6 +136,8 @@ export interface ComposerChromeConfig {
 		applyLink: string;
 		linkPlaceholder: string;
 		clearColor: string;
+		colorPalette: string;
+		customColor: string;
 		scopeTemplates: {
 			crossParagraph: string;
 			crossItem: string;
@@ -117,6 +149,8 @@ export interface ComposerChromeConfig {
 			crossStructureLink: string;
 			emptySelection: string;
 		};
+		quickTextColors: ComposerSwatch[];
+		quickHighlightColors: ComposerSwatch[];
 		textColors: ComposerSwatch[];
 		highlightColors: ComposerSwatch[];
 	};
@@ -137,11 +171,29 @@ export interface ComposerChromeConfig {
 		pathLabel: string;
 	};
 	comment: {
+		railBreakpointPx: number;
 		placeholder: string;
+		replyPlaceholder: string;
 		save: string;
 		cancel: string;
 		stale: string;
 		addTitle: string;
+		railTitle: string;
+		openRail: string;
+		closeRail: string;
+		selectionAnchor: string;
+		blockAnchor: string;
+		privateLabel: string;
+		sharedLabel: string;
+		ownerLabel: string;
+		externalLabel: string;
+		reply: string;
+		resolve: string;
+		reopen: string;
+		remove: string;
+		askCopilot: string;
+		copilotTaskTitle: string;
+		empty: string;
 	};
 	history: {
 		title: string;
@@ -221,8 +273,9 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 		blocksSuffix: 'blocks',
 	},
 	chrome: {
+		surfacePreviewCloseDelayMs: 180,
 		actions: {
-			insertBelow: '在下方插入',
+				insertBelow: '在下方插入',
 			copy: '复制',
 			comment: '评论',
 			history: '生成历史',
@@ -231,11 +284,42 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 			instructionSubmitHint: '按 Enter 执行',
 			instructionClose: '返回操作',
 			drag: '拖动块',
-			directEdit: '直接编辑',
-			disabledNoRuntime: '编辑运行时未接入',
-			insertDraftPlaceholder: '输入新段落内容…',
-		},
-		undo: {
+				directEdit: '直接编辑',
+				disabledNoRuntime: '编辑运行时未接入',
+			},
+			insertDraft: {
+				chooserLabel: '在下方插入',
+				title: '新块草稿',
+				description: '直接写 Markdown 并即时预览，或把输入作为指令交给 AI 生成。',
+				sourceLabel: 'Markdown',
+				previewLabel: '预览',
+				previewEmpty: '开始输入后，这里会显示最终写入效果。',
+				commit: '写入为块',
+				generate: 'AI 生成',
+				generating: '正在生成…',
+				stop: '停止',
+				acceptGenerated: '接受为新块',
+				generationUnavailable: 'AI 生成运行时未接入',
+				generationFailed: 'AI 生成失败，请保留当前草稿后重试。',
+				cancel: '取消',
+				shortcutHint: '⌘↵ 写入',
+				types: [
+					{ id: 'paragraph', label: '段落', initialValue: '', placeholder: '直接写 Markdown，或输入希望 AI 生成的内容…', syntaxPrefix: '', syntaxSuffix: '', shortcut: false, mode: 'markdown' },
+					{ id: 'heading', label: '标题', initialValue: '## ', placeholder: '输入标题…', syntaxPrefix: '## ', syntaxSuffix: '', shortcut: true, mode: 'markdown' },
+					{ id: 'list', label: '列表', initialValue: '- ', placeholder: '输入列表项…', syntaxPrefix: '- ', syntaxSuffix: '', shortcut: true, mode: 'markdown' },
+					{ id: 'task', label: '待办', initialValue: '- [ ] ', placeholder: '输入待办事项…', syntaxPrefix: '- [ ] ', syntaxSuffix: '', shortcut: true, mode: 'markdown' },
+					{ id: 'quote', label: '引用', initialValue: '> ', placeholder: '输入引用内容…', syntaxPrefix: '> ', syntaxSuffix: '', shortcut: true, mode: 'markdown' },
+					{ id: 'callout', label: 'Callout', initialValue: '> [!note]\n> ', placeholder: '输入提示内容…', syntaxPrefix: '> [!note]\n> ', syntaxSuffix: '', shortcut: true, mode: 'markdown' },
+					{ id: 'formula', label: '公式', initialValue: '$$E = mc^2$$', placeholder: '输入 LaTeX 公式…', syntaxPrefix: '$$', syntaxSuffix: '$$', shortcut: true, mode: 'markdown' },
+					{ id: 'image', label: '图片', initialValue: '![[附件.png]]', placeholder: '输入图片嵌入，例如 ![[附件.png]]', syntaxPrefix: '![[', syntaxSuffix: ']]', shortcut: true, mode: 'markdown' },
+					{ id: 'table', label: '表格', initialValue: '| 项目 | 说明 |\n| --- | --- |\n| 新项目 | 待填写 |', placeholder: '输入 Markdown 表格…', syntaxPrefix: '| 项目 | 说明 |\n| --- | --- |\n| 新项目 | 待填写 |', syntaxSuffix: '', shortcut: true, mode: 'markdown' },
+					{ id: 'base', label: 'Base', initialValue: '![[新视图.base]]', placeholder: '输入 Base 嵌入，例如 ![[视图.base]]', syntaxPrefix: '![[', syntaxSuffix: '.base]]', shortcut: false, mode: 'markdown' },
+					{ id: 'canvas', label: 'Canvas', initialValue: '![[新画布.canvas]]', placeholder: '输入 Canvas 嵌入，例如 ![[画布.canvas]]', syntaxPrefix: '![[', syntaxSuffix: '.canvas]]', shortcut: false, mode: 'markdown' },
+					{ id: 'excalidraw', label: 'Excalidraw', initialValue: '![[新草图.excalidraw.md]]', placeholder: '输入 Excalidraw 嵌入，例如 ![[草图.excalidraw.md]]', syntaxPrefix: '![[', syntaxSuffix: '.excalidraw.md]]', shortcut: false, mode: 'markdown' },
+					{ id: 'ai', label: 'AI 续写', initialValue: '', placeholder: '描述希望 AI 在这里补充什么…', syntaxPrefix: '', syntaxSuffix: '', shortcut: false, mode: 'ai' },
+				],
+			},
+			undo: {
 			undo: '撤销',
 			redo: '重做',
 			committed: '改动已写入',
@@ -265,6 +349,8 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 			applyLink: '应用',
 			linkPlaceholder: '粘贴或输入链接…',
 			clearColor: '清除',
+			colorPalette: '颜色',
+			customColor: '自定义颜色',
 			scopeTemplates: {
 				crossParagraph: '跨 {n} 个块',
 				crossItem: '跨 {n} 个列表项',
@@ -276,19 +362,30 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 				crossStructureLink: '一个链接只能落在一个段落、列表项或单元格内',
 				emptySelection: '请先选中文本',
 			},
+			quickTextColors: [
+				{ label: '红色', value: '#b42318' },
+				{ label: '蓝色', value: '#2563eb' },
+				{ label: '绿色', value: '#16845f' },
+			],
+			quickHighlightColors: [
+				{ label: '黄色高亮', value: '#fff1a8' },
+				{ label: '绿色高亮', value: '#dff4e8' },
+				{ label: '红色高亮', value: '#fde4e4' },
+			],
 			textColors: [
-				{ label: '红', value: '#b42318' },
-				{ label: '橙', value: '#c4520a' },
-				{ label: '绿', value: '#067647' },
-				{ label: '蓝', value: '#175cd3' },
-				{ label: '紫', value: '#6941c6' },
+				{ label: '深灰色', value: '#1f2937' },
+				{ label: '紫色', value: '#7c3aed' },
+				{ label: '蓝色', value: '#2563eb' },
+				{ label: '棕色', value: '#b45309' },
+				{ label: '红色', value: '#b42318' },
+				{ label: '绿色', value: '#16845f' },
 			],
 			highlightColors: [
-				{ label: '重点', value: '#fff1a8' },
-				{ label: '定义', value: '#c7f0d8' },
-				{ label: '资料', value: '#cfe4ff' },
-				{ label: '想法', value: '#e4d5ff' },
-				{ label: '风险', value: '#ffd5d5' },
+				{ label: '黄色高亮', value: '#fff1a8' },
+				{ label: '绿色高亮', value: '#dff4e8' },
+				{ label: '蓝色高亮', value: '#dfeaff' },
+				{ label: '紫色高亮', value: '#eee5ff' },
+				{ label: '红色高亮', value: '#fde4e4' },
 			],
 		},
 		copy: {
@@ -308,11 +405,29 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 			pathLabel: '路径',
 		},
 		comment: {
+			railBreakpointPx: 560,
 			placeholder: '写下评论……',
+			replyPlaceholder: '回复此评论……',
 			save: '保存',
 			cancel: '取消',
 			stale: '锚点已失效',
 			addTitle: '添加评论',
+			railTitle: '评论',
+			openRail: '打开评论',
+			closeRail: '关闭评论',
+			selectionAnchor: '文字选区',
+			blockAnchor: '整个内容块',
+			privateLabel: '仅自己',
+			sharedLabel: '分享时公开',
+			ownerLabel: '你',
+			externalLabel: '外部评论',
+			reply: '回复',
+			resolve: '解决',
+			reopen: '重新打开',
+			remove: '删除评论',
+			askCopilot: '交给 Copilot',
+			copilotTaskTitle: '根据评论处理正文',
+			empty: '当前文档还没有评论。',
 		},
 		history: {
 			title: '生成历史',
@@ -367,6 +482,11 @@ function mergeChrome(parsed?: Partial<ComposerChromeConfig>): ComposerChromeConf
 	if (!parsed) return base;
 	return {
 		actions: { ...base.actions, ...parsed.actions },
+		insertDraft: {
+			...base.insertDraft,
+			...parsed.insertDraft,
+			types: parsed.insertDraft?.types ?? base.insertDraft.types,
+		},
 		undo: { ...base.undo, ...parsed.undo },
 		displayStates: { ...base.displayStates, ...parsed.displayStates },
 		selection: {
@@ -375,6 +495,8 @@ function mergeChrome(parsed?: Partial<ComposerChromeConfig>): ComposerChromeConf
 			formats: { ...base.selection.formats, ...parsed.selection?.formats },
 			scopeTemplates: { ...base.selection.scopeTemplates, ...parsed.selection?.scopeTemplates },
 			guards: { ...base.selection.guards, ...parsed.selection?.guards },
+			quickTextColors: parsed.selection?.quickTextColors ?? base.selection.quickTextColors,
+			quickHighlightColors: parsed.selection?.quickHighlightColors ?? base.selection.quickHighlightColors,
 			textColors: parsed.selection?.textColors ?? base.selection.textColors,
 			highlightColors: parsed.selection?.highlightColors ?? base.selection.highlightColors,
 		},

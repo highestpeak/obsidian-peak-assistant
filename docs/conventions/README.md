@@ -25,6 +25,7 @@ here are fetched on demand when an agent works in a relevant area.
 | Rule | Topic | Status |
 |---|---|---|
 | [ui-design.md](./ui-design.md) | The single design-system reference — tokens, primitive catalog, primitive usage decisions, Obsidian CSS defense, JSX-mock fidelity. 5 sections with section anchors. | ✅ enforced |
+| [obsidian-real-ui-qa.md](./obsidian-real-ui-qa.md) | Obsidian 真机调试的工具所有权、plugin-only reload、交互证据等级、No-CDP fallback 与停止条件；禁止用 AX/坐标点击冒充完整验收。 | ✅ enforced |
 | [prompt-input-consistency.md](./prompt-input-consistency.md) | Chat Studio、Composer sidecar 与未来输入面共享 PromptInput 内核、触发/键盘语法和单层 focus owner；surface runtime 保持隔离。 | ✅ enforced |
 | [command-palette-governance.md](./command-palette-governance.md) | Production Command Palette 只保留 owner-approved global entry points；临时、调试、QA、Work Intelligence 与 feature-local 动作不得扁平化进去，并由精确 allowlist 测试守卫。 | ✅ enforced |
 | [configurability.md](./configurability.md) | No inline i18n / regex / label maps / color or style configs in logic files; route through `templates/config/` or `core/constant.ts` | ✅ enforced |
@@ -42,3 +43,5 @@ These are short enough to keep inline in `CLAUDE.md`'s **Code Conventions** sect
 - The other one-liners about useCallback / arrow-code / getInstance / Templates / Agents / Streaming patterns
 
 **Hard rule:** if a convention's explanation grows past ~3 lines or starts needing code examples, move it to a file here and replace the CLAUDE.md entry with a one-line pointer (rule title + 1-sentence what it's about + link). Do NOT inline detailed rules in CLAUDE.md — it ships in every agent's context window and bloat there costs every conversation. This rule has been violated in the past (2026-06-01) and the Project Rules entries were re-shrunk back to one-liners; don't undo that.
+
+**Safety exception:** `CLAUDE.md` keeps the short `Obsidian Real-UI Non-Negotiables` block inline. These rules prevent destructive or misleading app automation before an agent decides to open a convention file; detailed commands and checklists remain only in [`obsidian-real-ui-qa.md`](./obsidian-real-ui-qa.md).

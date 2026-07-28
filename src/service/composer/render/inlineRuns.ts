@@ -153,7 +153,7 @@ function matchLink(text: string, at: number): LinkMatch | null {
 
 // ── mark spans ────────────────────────────────────────────────────────────────
 
-const SPAN_COLOR_RE = /^<span\s+style="color:\s*([^"]*)"\s*>/i;
+const SPAN_STYLE_RE = /^<span\s+style="([^"]*)"\s*>/i;
 const MARK_OPEN_RE = /^<mark(?:\s+style="background:\s*([^"]*)"\s*)?>/i;
 
 /** Try to match a mark span whose opening delimiter starts at `text[at]`. */
@@ -193,28 +193,46 @@ function matchSpan(text: string, at: number): SpanMatch | null {
 	if (ch === '<') {
 		const rest = text.slice(at);
 		if (/^<u>/i.test(rest)) {
-			const closeAt = indexOfCase(text, '</u>', at + 3);
+			const closeAt = findMatchingHtmlClose(text, at + 3, 'u');
 			if (closeAt >= 0) return { openLen: 3, closeLen: 4, closeAt, style: { underline: true } };
 			return null;
 		}
 		const mark = MARK_OPEN_RE.exec(rest);
 		if (mark) {
-			const closeAt = indexOfCase(text, '</mark>', at + mark[0].length);
+			const closeAt = findMatchingHtmlClose(text, at + mark[0].length, 'mark');
 			if (closeAt >= 0) {
 				const style: InlineRunStyle = mark[1] ? { highlight: mark[1].trim() } : { highlight: '' };
 				return { openLen: mark[0].length, closeLen: 7, closeAt, style };
 			}
 			return null;
 		}
-		const color = SPAN_COLOR_RE.exec(rest);
-		if (color) {
-			const closeAt = indexOfCase(text, '</span>', at + color[0].length);
-			if (closeAt >= 0) return { openLen: color[0].length, closeLen: 7, closeAt, style: { color: color[1].trim() } };
+		const span = SPAN_STYLE_RE.exec(rest);
+		if (span) {
+			const closeAt = findMatchingHtmlClose(text, at + span[0].length, 'span');
+			if (closeAt >= 0) return { openLen: span[0].length, closeLen: 7, closeAt, style: styleFromSpan(span[1]) };
 			return null;
 		}
 	}
 
 	return null;
+}
+
+function styleFromSpan(styleText: string): InlineRunStyle {
+	const style: InlineRunStyle = {};
+	for (const rawDecl of styleText.split(';')) {
+		const [rawName, ...rawValue] = rawDecl.split(':');
+		const name = rawName?.trim().toLowerCase();
+		const value = rawValue.join(':').trim();
+		if (!name || !value) continue;
+		if (name === 'color') style.color = value;
+		if ((name === 'background' || name === 'background-color') && style.highlight === undefined) style.highlight = value;
+		if (name === 'text-decoration' || name === 'text-decoration-line') {
+			const normalized = value.toLowerCase();
+			if (normalized.includes('underline')) style.underline = true;
+			if (normalized.includes('line-through')) style.strikethrough = true;
+		}
+	}
+	return style;
 }
 
 /** Index of `delim` at/after `from`, requiring a non-whitespace char just before it. */
@@ -228,6 +246,47 @@ function findClose(text: string, from: number, delim: string): number {
 	return -1;
 }
 
-function indexOfCase(text: string, needle: string, from: number): number {
-	return text.toLowerCase().indexOf(needle.toLowerCase(), from);
+/**
+ * Match the close for a generated HTML inline mark with same-tag nesting.
+ *
+ * Selection formatting may legitimately apply a new color/highlight inside an
+ * existing one. A flat `indexOf('</mark>')` closes the outer mark at the inner
+ * boundary and leaks the remaining tag as visible text.
+ */
+function findMatchingHtmlClose(
+	text: string,
+	from: number,
+	tagName: 'u' | 'mark' | 'span',
+): number {
+	let depth = 1;
+	let cursor = from;
+	const close = `</${tagName}>`;
+	while (cursor < text.length) {
+		const at = text.indexOf('<', cursor);
+		if (at < 0) return -1;
+		const rest = text.slice(at);
+		if (rest.toLowerCase().startsWith(close)) {
+			depth -= 1;
+			if (depth === 0) return at;
+			cursor = at + close.length;
+			continue;
+		}
+		const openLength = matchingHtmlOpenLength(rest, tagName);
+		if (openLength > 0) {
+			depth += 1;
+			cursor = at + openLength;
+			continue;
+		}
+		cursor = at + 1;
+	}
+	return -1;
+}
+
+function matchingHtmlOpenLength(
+	rest: string,
+	tagName: 'u' | 'mark' | 'span',
+): number {
+	if (tagName === 'u') return /^<u>/i.exec(rest)?.[0].length ?? 0;
+	if (tagName === 'mark') return MARK_OPEN_RE.exec(rest)?.[0].length ?? 0;
+	return SPAN_STYLE_RE.exec(rest)?.[0].length ?? 0;
 }

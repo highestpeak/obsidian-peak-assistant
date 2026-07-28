@@ -81,6 +81,10 @@ async function testHappyPath(): Promise<void> {
 	check('slice: envelope kind text-patch', envelope?.resultKind === 'text-patch');
 	check('slice: payload is the accumulated text', (envelope?.payload as ComposerTextPatchPayload)?.replacementText === POLISHED);
 	check('slice: renderer id resolvable for the candidate', runtime.rendererIdFor(candidate!.candidateId) === 'composer.renderer.streaming-text');
+	check(
+		'slice: review metadata resolves the actual action title',
+		runtime.candidateLabelFor(candidate!.candidateId) === DEFAULT_COMPOSER_CAPABILITIES_CONFIG.actions[POLISH_CAPABILITY_ID]?.title,
+	);
 	check('slice: pending candidate wrote nothing', vault.read('note.md') === SOURCE);
 	check('slice: pending candidate not in History', hub.projection().history.length === 0);
 	check('slice: variant-ready envelope matches candidate', readyEvent.envelope.resultKind === 'text-patch');

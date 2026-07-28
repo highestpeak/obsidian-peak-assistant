@@ -13,6 +13,7 @@
  */
 
 import type { ComposerOperation, ComposerSelection, SelectionOpResult } from '@/core/composer';
+import { visibleSelectionSegments, wrapVisibleSegments } from './visibleSegments';
 
 export interface PasteUrlOptions {
 	/**
@@ -49,9 +50,18 @@ export function pasteUrlIntoSelection(
 		return { ok: false, reason: 'empty-selection', message: 'Select the text to link first.' };
 	}
 
-	const replacement = options.internalTarget
-		? `[[${options.internalTarget}|${text}]]`
-		: `[${text}](${url})`;
-	const op: ComposerOperation = { kind: 'replaceRange', from: unit.from, to: unit.to, text: replacement };
+	const lead = text.length - text.trimStart().length;
+	const trail = text.length - text.trimEnd().length;
+	const from = unit.from + lead;
+	const to = unit.to - trail;
+	const segments = visibleSelectionSegments(selection.sourceText, { ...unit, from, to })
+		.filter((segment) => !segment.linkTarget);
+	if (segments.length === 0) {
+		return { ok: false, reason: 'empty-selection', message: 'The selected text is already linked.' };
+	}
+	const open = options.internalTarget ? `[[${options.internalTarget}|` : '[';
+	const close = options.internalTarget ? ']]' : `](${url})`;
+	const replacement = wrapVisibleSegments(selection.sourceText, from, to, segments, open, close);
+	const op: ComposerOperation = { kind: 'replaceRange', from, to, text: replacement };
 	return { ok: true, operations: [op], label: options.label ?? 'Add link' };
 }

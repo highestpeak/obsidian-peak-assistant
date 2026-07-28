@@ -311,6 +311,12 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'doc-correct-content': meta('prompts', 'doc-correct-content', { expectsJson: true, systemPromptId: 'doc-correct-content-system' as PromptId, label: 'Correct Content', description: 'Identifies factual errors, logical inconsistencies, broken references, and typos.', group: 'copilot' }),
 	'doc-correct-content-system': meta('prompts', 'doc-correct-content-system', { label: 'Correct Content (System)', description: 'System instructions for content error correction.', group: 'copilot' }),
 
+	// Composer text-block transforms
+	'composer-prose-transform': meta('prompts', 'composer-prose-transform', { systemPromptId: 'composer-prose-transform-system' as PromptId, label: 'Composer Prose Transform', description: 'Transforms one Markdown text block according to a projected block action.', group: 'copilot' }),
+	'composer-prose-transform-system': meta('prompts', 'composer-prose-transform-system', { label: 'Composer Prose Transform (System)', description: 'System instructions for source-safe Composer text-block transforms.', group: 'copilot' }),
+	'composer-block-draft': meta('prompts', 'composer-block-draft', { systemPromptId: 'composer-block-draft-system' as PromptId, label: 'Composer New Block Draft', description: 'Generates reviewable Markdown for insertion below the active block.', group: 'copilot' }),
+	'composer-block-draft-system': meta('prompts', 'composer-block-draft-system', { label: 'Composer New Block Draft (System)', description: 'System instructions for source-safe new-block Markdown generation.', group: 'copilot' }),
+
 	// Composer packs (WP5: frontmatter + math)
 	'composer-suggest-properties': meta('prompts', 'composer-suggest-properties', { systemPromptId: 'composer-suggest-properties-system' as PromptId, label: 'Suggest Properties', description: 'Suggests frontmatter fields from the document body and vault conventions.', group: 'copilot' }),
 	'composer-suggest-properties-system': meta('prompts', 'composer-suggest-properties-system', { label: 'Suggest Properties (System)', description: 'System instructions for frontmatter property suggestion.', group: 'copilot' }),

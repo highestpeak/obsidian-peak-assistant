@@ -47,6 +47,9 @@ export interface ComposerSelectionUnit {
 	/** Present for addressable sub-units (list item / table cell / callout body). */
 	unitId?: string;
 	unitKind: ComposerSelectionUnitKind;
+	/** Full inline-content bounds of the owning semantic unit. */
+	contentFrom: number;
+	contentTo: number;
 	from: number;
 	to: number;
 }

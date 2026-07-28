@@ -128,7 +128,7 @@
       <div class="meta">
         <span>Status: planning register</span>
         <span>Scope: small / surface-level requirements</span>
-        <span>Updated: 2026-07-07</span>
+        <span>Updated: 2026-07-28</span>
       </div>
       <nav class="nav" aria-label="cross document navigation">
         <a href="index.html">← 文档总索引</a>
@@ -176,6 +176,49 @@
           <p>Ambient Push 需要一个只悬在 Obsidian 内的 floating panel，替代右下角 related 提示，并暴露明确刷新入口。</p>
           <p><a href="superpowers/specs/2026-07-07-ambient-floating-panel.html">低保真设计</a> · <a href="14-feature-ambient-push.html#doc-map">Ambient 文档地图</a></p>
         </article>
+        <article class="card">
+          <div class="pill-row"><span class="pill green">File Atlas</span><span class="pill gold">planned</span></div>
+          <h3>PR-FILE-ATLAS-WORK-FILE-RAIL</h3>
+          <p>左侧工作文件 rail 要加宽并优先让完整文件名可读；先展示当前打开文件，再用最近查看文件补足固定容量。默认按最后查看时间排序，不复制顶部 tab 顺序；用户可切换最近查看、最常使用或文件名排序。</p>
+          <p><a href="superpowers/specs/2026-07-08-file-atlas-design.md">File Atlas spec · 2026-07-27 owner feedback</a></p>
+        </article>
+        <article class="card" id="pr-shared-ai-instruction-composer">
+          <div class="pill-row"><span class="pill green">Cross-surface · Shared AI input</span><span class="pill gold">decided · design only</span></div>
+          <h3>PR-SHARED-AI-INSTRUCTION-COMPOSER</h3>
+          <p>把自然语言指挥 AI 的输入体验提升为独立共享产品能力，与 AI Graph Artifact Platform 平级。Chat Studio、Composer Copilot、AI Graph Update 和后续 AI surface 都消费同一套 shared PromptInput capability，而不是分别实现输入框、附件、引用、draft、history 和提交状态机。</p>
+          <p>共享范围包括文本、<code>@</code> / <code>[[</code> / <code>/</code> context trigger、附件与去重、IME、Enter / Shift+Enter / Escape、focus、draft / history、loading / streaming / error、submit / stop 与 accessibility。各 surface 只提供自动 context、placeholder / chrome slot 和 submit adapter，并持有自己的 runtime 与输出语义。</p>
+          <p>当前 Chat Studio Composer 与 Composer Copilot sidecar 已共同消费 <code>PromptInput / PromptInputBody / PromptInputAttachments</code>，但完整 platform capability 仍是 implementation pending。验收必须由真实 component import、contract test 与跨 surface behavior test 证明，不能只复制 DOM / CSS 或做视觉仿制。</p>
+          <p><a href="superpowers/specs/2026-07-28-shared-ai-instruction-composer.md">Shared AI Instruction Composer 正式规格</a></p>
+        </article>
+        <article class="card" id="pr-ai-search-unified-modes">
+          <div class="pill-row"><span class="pill green">Quick Search · Unified AI modes</span><span class="pill gold">decided · design only</span></div>
+          <h3>PR-AI-SEARCH-UNIFIED-MODES</h3>
+          <p>Quick Search modal 顶层只保留 <code>Vault Search</code> 与一个 AI workspace selector，并保持原有左右等分布局。两侧可点击区域必须占满同一顶栏高度，文字严格垂直居中；嵌套在 menu anchor 内的 AI selector 不能贴近顶边。普通打开默认 <code>AI Search</code>；低频的 <code>AI Graph</code> 与 <code>Vault Intelligence</code> 从同一下拉进入，并且不跨 modal 记住低频 mode。恢复中的 run、history record 与 artifact deep link 可以直接恢复对应模式。</p>
+          <p>移除输入框里重复的 <code>Vault Analysis / AI Graph</code> mode pill和独立 Vault Intelligence 顶栏按钮。三种 AI mode 复用 Shared AI Instruction Composer、history list 与键盘语法；每个 adapter 只改变 placeholder、suggestions、run envelope、history projection 与 detail route。</p>
+          <p>AI Graph 不再拥有独立 All AI Graphs Library。全部 persisted graphs 在 AI Graph mode 中用一列紧凑 history row 浏览；不显示 Vault / Web / Mixed、Graph type filter rows 或 graph preview card grid。Vault Intelligence 在这里仅提供快捷提问、高层摘要和 recent reviews；完整维护仍属于 Copilot Vault workspace，选择 mode 本身不自动触发 scan。</p>
+          <p>键盘接入既有全键盘体系：<code>Tab</code> 在组件间移动；mode menu 使用方向键、Enter / Space 与 Escape；modifier shortcut 只作可发现的加速层，并且不能抢 input、PromptInput 或 IME。</p>
+          <p><a href="superpowers/specs/2026-07-28-ai-search-unified-modes.md">正式设计</a> · <a href="gstack/ai-search-unified-modes-2026-07-28/index.html">可交互 mock</a> · <a href="superpowers/specs/2026-07-24-peak-keyboard-navigation-system.md">键盘体系</a></p>
+        </article>
+        <article class="card" id="pr-composer-ai-graph">
+          <div class="pill-row"><span class="pill green">Cross-surface · AI Graph</span><span class="pill gold">decided · design only</span></div>
+          <h3>PR-COMPOSER-AI-GRAPH</h3>
+          <p>AI Graph 升级为独立、持久化、可版本化的知识图谱 artifact，而不是 AI Search 某次运行里附带的一张文件关系图。每张图拥有稳定 <code>graphId</code>、不可变版本、来源、证据和 review 状态；全部 graph 在 <a href="#pr-ai-search-unified-modes"><code>AI Search → AI Graph</code></a> 的紧凑历史列表中浏览，AI Search、Composer / File Atlas、Vault Search 与 Chat 重开的是同一份 graph。</p>
+          <p><strong>创建来源可见：</strong>每个 history row 显示不可变的 creation surface 与主要上下文，例如 <code>Created in File Atlas · AI 编辑器生态调研.md</code>。File Atlas 必须记录稳定 file ref 与当时的可读文件名；AI Search / Vault Search 记录 query，Composer 记录文档 / 选区，Chat Studio 记录 project / conversation。图从别处更新时不覆盖创建来源，更新位置进入 version / run provenance；完整来源在 Graph Detail 中查看和跳转。</p>
+          <p>节点不仅是 Vault 文件，还支持词汇 / 概念、人物、组织、产品、事件、流程、主张、网页与 custom object。关系保存 predicate、qualifier、evidence、confidence、生成方式和 review 状态；Vault、Web、粘贴文本和已有 Graph 都可作为 source。Web 必须由用户主动开启，snippet 不能单独充当证据，成功验证后自动保存新版本，但不自动改写笔记或 Vault links。</p>
+          <p><strong>关系方向标记：</strong>renderer 必须读取 relation 的 <code>directed</code> 语义，而不是把所有关系画成无方向线。directed relation 在 target 端显示清晰箭头；symmetric relation 不显示箭头。Hierarchy 的 parent → child、Timeline 的 earlier → later 必须始终可辨；Bridges 的纯结构连接保持中性，只有具体有向 predicate 才显示箭头。Inspector 同时以文字显示 <code>source → predicate → target</code>，不能只依赖颜色或箭头形状。</p>
+          <p><strong>自然语言更新入口：</strong>Graph Detail 的主修改动作命名为 <code>Update graph</code>，直接输入“希望这张图如何变化”，自动带入 current graph / head version、当前选中 node 或 relation、已有 sources 与 review context；不要求用户回到首次创建表单重新选择 Graph type。AI 必须先给 added / changed / removed nodes、relations、evidence 与 review status 的 semantic diff，只有用户接受后才创建新的 immutable version。</p>
+          <p><strong>共享能力依赖：</strong>Update graph 是 <a href="#pr-shared-ai-instruction-composer">Shared AI Instruction Composer</a> 的 consumer。AI Graph 只提供 graphId、baseVersion、selection、sources / lens / review context adapter，并把 submit 路由到 semantic diff；输入核心由平级共享能力拥有。</p>
+          <p><strong>Sources 与 Update 分离：</strong><code>Sources</code> 只管理来源、可用性与 freshness。Add / remove source 或检查到 Web source changed 都不能自动改图、触发 run 或创建版本；用户可明确选择 “Use source changes in Update graph” 再进入更新预览。Graph Detail 不提供语义含混的顶层 <code>Add sources</code> / <code>Refresh</code> 作为更新入口；Create Graph 只负责首次生成。</p>
+          <p>Composer 只提供当前文档 / 选区 context、入口、preview 与打开 Graph Detail 的 adapter，不另建 agent、runtime 或 store。canonical body 使用 versioned JSON artifact，运行事件使用 JSONL 并只引用 artifact，SQLite 作为可重建 browse / search projection；Markdown 仅用于显式 export。</p>
+          <p><a href="superpowers/specs/2026-07-28-ai-graph-artifact-platform.md">正式产品与数据设计</a> · <a href="gstack/ai-graph-artifact-platform-2026-07-28/index.html">Detail / Create 交互原型</a> · <a href="gstack/ai-search-unified-modes-2026-07-28/index.html">统一入口 mock</a> · <a href="research/2026-07-28-ai-graph-artifact-platform/README.md">现状审计与外部研究</a></p>
+        </article>
+        <article class="card" id="pr-composer-graph-empty-folder-collapse">
+          <div class="pill-row"><span class="pill green">Peak Composer · Graph / Folder tree</span><span class="pill gold">planned · small UI</span></div>
+          <h3>PR-COMPOSER-GRAPH-EMPTY-FOLDER-COLLAPSE</h3>
+          <p>Folder tree 图谱不要为“本级没有直接可见内容、只是通向下级目录”的中转目录绘制独立边框和大块留白。例如 <code>B-2-创意和想法管理</code> 若本级没有直接文件节点，就不应只为包住下一层目录再画一层框。</p>
+          <p>目录框只在该层直接拥有当前图谱中的可见内容节点时显示；纯目录链自动折叠，后代节点与它们真正有内容的最近目录组继续正常呈现。折叠只影响布局，不丢失层级信息：完整 Vault path 仍保留在节点详情 / tooltip / 打开文件行为中。搜索、scope 或 filter 导致本级内容不可见时，也按当前可见结果重新判断。</p>
+          <p>来源：2026-07-28 owner screenshot feedback。下一步：用深层单链、同级多分支、过滤后空目录三类 fixture 做布局 mock。</p>
+        </article>
       </div>
     </section>
 
@@ -215,6 +258,36 @@
             <td>Ambient Push / Related Notes</td>
             <td>写作时保持相关笔记可见，但不使用右下角短提示，也不变成系统级悬浮窗。</td>
             <td><a href="superpowers/specs/2026-07-07-ambient-floating-panel.html">ambient floating panel spec</a><br><a href="14-feature-ambient-push.html#doc-map">Ambient doc map</a></td>
+          </tr>
+          <tr>
+            <td><strong>PR-FILE-ATLAS-WORK-FILE-RAIL</strong></td>
+            <td>File Atlas → Open / Recent rail</td>
+            <td>不靠顶部被截断的 tab 猜文件：左栏能读清文件名，优先汇总各 tab group / split / pop-out 的打开文件，再从最近查看历史补足固定容量，并支持切换排序。</td>
+            <td><a href="superpowers/specs/2026-07-08-file-atlas-design.md">File Atlas spec · owner UI feedback</a></td>
+          </tr>
+          <tr>
+            <td><strong>PR-SHARED-AI-INSTRUCTION-COMPOSER</strong></td>
+            <td>Chat Studio / Composer Copilot / AI Graph / future AI surfaces</td>
+            <td>建立平级共享的 AI instruction input capability；统一 PromptInput、context、附件、draft、history、IME、键盘和 submit / stop 行为，各 surface 只提供 adapter。</td>
+            <td><a href="superpowers/specs/2026-07-28-shared-ai-instruction-composer.md">正式设计</a><br><a href="#pr-shared-ai-instruction-composer">本页需求卡</a></td>
+          </tr>
+          <tr>
+            <td><strong>PR-AI-SEARCH-UNIFIED-MODES</strong></td>
+            <td>Quick Search / AI Search / AI Graph / Vault Intelligence</td>
+            <td>只保留 Vault Search 与一个 AI workspace selector；默认 AI Search，低频 mode 下拉进入。AI Graph 复用紧凑 history list，不再建设独立 Library、source/type filters 或 preview card grid。</td>
+            <td><a href="superpowers/specs/2026-07-28-ai-search-unified-modes.md">正式设计</a><br><a href="gstack/ai-search-unified-modes-2026-07-28/index.html">可交互 mock</a><br><a href="#pr-ai-search-unified-modes">本页需求卡</a></td>
+          </tr>
+          <tr>
+            <td><strong>PR-COMPOSER-AI-GRAPH</strong></td>
+            <td>AI Search / Composer / Search / Chat</td>
+            <td>把 AI Graph 作为跨 surface 的持久化 artifact：AI Graph history 可看全部图，并显示 <code>Created in surface · primary context</code>；File Atlas 来源精确到文件。Vault、Web、词汇、实体、主张与 custom object 可共同成图；关系有证据、版本、review 状态和 relation-aware 方向箭头。</td>
+            <td><a href="superpowers/specs/2026-07-28-ai-graph-artifact-platform.md">正式设计</a><br><a href="gstack/ai-graph-artifact-platform-2026-07-28/index.html">Detail / Create 交互原型</a><br><a href="gstack/ai-search-unified-modes-2026-07-28/index.html">统一入口 mock</a><br><a href="research/2026-07-28-ai-graph-artifact-platform/README.md">current-gap audit</a></td>
+          </tr>
+          <tr>
+            <td><strong>PR-COMPOSER-GRAPH-EMPTY-FOLDER-COLLAPSE</strong></td>
+            <td>Peak Composer → Graph → Folder tree</td>
+            <td>本级没有直接可见内容时不画空目录框，折叠纯中转目录链，减少无信息的大框、嵌套和留白；完整文件路径仍可追溯。</td>
+            <td><a href="#pr-composer-graph-empty-folder-collapse">本页显示规则</a><br>下一步：3 类目录结构 fixture + 布局 mock</td>
           </tr>
         </tbody>
       </table>

@@ -215,6 +215,45 @@ const geom = (locator) =>
 	await record('seven deterministic format controls', () => assert.equal(iconGeom.length, 7));
 	await record('format icons are 28×28 squares', () => assert.ok(iconGeom.every((g) => g.w === 28 && g.h === 28), JSON.stringify(iconGeom.map((g) => [g.w, g.h]))));
 	await record('format icons use radius-md, not pills', () => assert.ok(iconGeom.every((g) => g.radius === '8px')));
+	const quickTextColorBtns = page.locator('.pk-selection-toolbar [data-quick-color-kind="text"] .pk-selection-quick-color');
+	const quickHighlightBtns = page.locator('.pk-selection-toolbar [data-quick-color-kind="highlight"] .pk-selection-quick-color');
+	const quickColorBtns = page.locator('.pk-selection-toolbar .pk-selection-quick-color');
+	await record('three text colors and three highlights are available without opening a panel', async () => {
+		assert.equal(await quickTextColorBtns.count(), 3);
+		assert.equal(await quickHighlightBtns.count(), 3);
+	});
+	await record('all quick colors stay compact on the 28px toolbar rung', async () => {
+		const geometry = [];
+		for (let i = 0; i < (await quickColorBtns.count()); i++) geometry.push(await geom(quickColorBtns.nth(i)));
+		assert.ok(geometry.every((item) => item.w === 18 && item.h === 28), JSON.stringify(geometry));
+	});
+	await record('quick text and highlight colors are visible dots without text labels', async () => {
+		const swatches = await quickColorBtns.evaluateAll((buttons) =>
+			buttons.map((button) => {
+				const dot = button.querySelector('.pk-selection-quick-color__dot');
+				const style = getComputedStyle(dot);
+				return {
+					text: button.textContent.trim(),
+					width: style.width,
+					height: style.height,
+					radius: style.borderRadius,
+					background: style.backgroundColor,
+				};
+			}),
+		);
+		assert.ok(swatches.every((swatch) =>
+			swatch.text === ''
+			&& swatch.width === '10px'
+			&& swatch.height === '10px'
+			&& swatch.radius === '50%'
+			&& swatch.background !== 'rgba(0, 0, 0, 0)'
+		), JSON.stringify(swatches));
+	});
+	await record('text color trigger carries a three-color semantic bar', async () => {
+		const trigger = page.locator('.pk-selection-format-btn[aria-label="文字颜色"]');
+		assert.equal(await trigger.locator('.pk-selection-text-color-icon__letter').textContent(), 'A');
+		assert.equal(await trigger.locator('.pk-selection-text-color-icon__bar > span').count(), 3);
+	});
 	const textBtns = page.locator('.pk-selection-toolbar .pk-selection-text-btn');
 	const textGeom = [];
 	for (let i = 0; i < (await textBtns.count()); i++) textGeom.push(await geom(textBtns.nth(i)));
@@ -226,7 +265,57 @@ const geom = (locator) =>
 		});
 		assert.deepEqual(state, { height: 0, visibility: 'hidden', pointerEvents: 'none' });
 	});
+	await record('live text selection suppresses the whole-leaf focus ring', async () => {
+		const shadow = await para.locator('.pk-composer-editable').evaluate((el) => getComputedStyle(el).boxShadow);
+		assert.equal(shadow, 'none');
+	});
+	await iconBtns.nth(6).click();
+	const colorPanel = page.locator('.pk-selection-color-panel[data-panel="highlight"]');
+	await colorPanel.waitFor({ state: 'visible' });
+	await record('highlight panel is a detached popover and does not inflate the toolbar', async () => {
+		const toolbarBox = await page.locator('.pk-selection-toolbar').boundingBox();
+		const panelBox = await colorPanel.boundingBox();
+		assert.ok(toolbarBox && panelBox);
+		assert.equal(Math.round(toolbarBox.height), 38);
+		assert.ok(panelBox.y >= toolbarBox.y + toolbarBox.height + 5);
+	});
+	await record('highlight palette exposes visible circular colors without visible semantic labels', async () => {
+		const swatches = await colorPanel.locator('.pk-selection-swatch').evaluateAll((buttons) =>
+			buttons.map((button) => {
+				const color = button.querySelector('.pk-selection-swatch__color');
+				const style = getComputedStyle(color);
+				return {
+					text: button.textContent.trim(),
+					display: style.display,
+					width: style.width,
+					height: style.height,
+					radius: style.borderRadius,
+					background: style.backgroundColor,
+				};
+			}),
+		);
+		assert.equal(swatches.length, 5);
+		assert.ok(swatches.every((swatch) =>
+			swatch.text === ''
+			&& swatch.display === 'block'
+			&& swatch.width === '24px'
+			&& swatch.height === '24px'
+			&& swatch.radius === '50%'
+			&& swatch.background !== 'rgba(0, 0, 0, 0)'
+		), JSON.stringify(swatches));
+	});
+	await record('highlight palette exposes one native custom color picker', async () => {
+		const picker = colorPanel.locator('input[type="color"][aria-label="自定义颜色"]');
+		assert.equal(await picker.count(), 1);
+	});
 	await page.screenshot({ path: path.join(shotsDir, 'composer-chrome-selection-toolbar-dark.png') });
+	await colorPanel.locator('input[type="color"][aria-label="自定义颜色"]').fill('#123456');
+	await record('custom highlight color commits and renders the selected value', async () => {
+		await page.waitForFunction(() =>
+			[...document.querySelectorAll('.pk-composer-editable [style]')]
+				.some((el) => getComputedStyle(el).backgroundColor === 'rgb(18, 52, 86)'),
+		);
+	});
 	await page.evaluate(() => getSelection().removeAllRanges());
 	await page.waitForTimeout(200);
 
@@ -293,11 +382,49 @@ const geom = (locator) =>
 	await record('commit does not move the scroll container', () =>
 		assert.equal(Math.round(postCommit.scrollTop), Math.round(preCommit.scrollTop)),
 	);
-	await page.keyboard.type(' more');
+	// Put the caret in the middle of an unstyled source run. `End` is a visual
+	// line-end command in contenteditable and may land beside a hidden delimiter,
+	// which is not a stable boundary for this live-projection contract.
+	await leaf.evaluate((el) => {
+		const run = Array.from(el.querySelectorAll('span[data-src-text-from]'))
+			.find((span) => (span.textContent ?? '').includes('writing surface where'));
+		const node = run?.firstChild;
+		if (!node) throw new Error('plain source run missing');
+		const offset = (node.textContent ?? '').indexOf('writing surface ') + 'writing surface '.length;
+		const range = document.createRange();
+		range.setStart(node, offset);
+		range.collapse(true);
+		const selection = document.getSelection();
+		selection.removeAllRanges();
+		selection.addRange(range);
+	});
+	const liveProjectionStartedAt = Date.now();
+	await page.keyboard.type('==live==');
+	await page.waitForFunction(() =>
+		Array.from(document.querySelectorAll('.pk-composer-editable span')).some((span) =>
+			(span.textContent ?? '') === 'live' && span.style.backgroundColor !== ''),
+		null,
+		{ timeout: 5000 },
+	);
+	const liveProjectionElapsedMs = Date.now() - liveProjectionStartedAt;
+	await record('completed inline markup renders without leaving the focused block', async () => {
+		const projection = await leaf.evaluate((el) => ({
+			active: document.activeElement === el,
+			highlight: Array.from(el.querySelectorAll('span')).some((span) =>
+				(span.textContent ?? '') === 'live'
+				&& span.style.backgroundColor !== ''),
+		}));
+		assert.equal(projection.active, true, 'inline projection stole focus');
+		assert.equal(projection.highlight, true, 'completed ==live== source stayed raw while focused');
+	});
+	await record('completed syntax projects on the next animation frame', () =>
+		assert.ok(liveProjectionElapsedMs < 100, `projection took ${liveProjectionElapsedMs}ms`),
+	);
+	await page.keyboard.type(' tail ');
 	await page.waitForTimeout(1100);
-	await record('typing continues after the commit remount', async () => {
+	await record('typing continues at the restored caret after live projection', async () => {
 		const text = await leaf.evaluate((el) => el.textContent ?? '');
-		assert.ok(/geometry-qa more/.test(text), `continued text missing: ${JSON.stringify(text)}`);
+		assert.ok(/writing surface ==live== tail where/.test(text), `continued text missing: ${JSON.stringify(text)}`);
 	});
 	await record('undo tooltip names the next transaction', async () => {
 		const label = await undoBtns.first().getAttribute('aria-label');
@@ -334,7 +461,9 @@ const geom = (locator) =>
 	await slot.locator('button:has-text("重新生成")').first().click();
 	await page.waitForTimeout(150);
 	await page.waitForFunction(() => !document.querySelector('.pk-composer-candidate-slot .animate-pulse'), null, { timeout: 8000 });
-	await record('regenerate appends a second variant (nav appears)', async () => assert.ok((await slot.locator('.tabular-nums').count()) >= 1));
+	await record('regenerate appends a second variant (nav appears)', async () =>
+		assert.ok((await slot.locator('.pk-text-candidate__variant-count').count()) >= 1),
+	);
 	await page.screenshot({ path: path.join(shotsDir, 'composer-chrome-variants-dark.png') });
 	await slot.locator('button:has-text("接受")').first().click();
 	await page.waitForSelector('.pk-composer-candidate-slot [data-candidate-id]', { state: 'detached', timeout: 6000 });
@@ -375,6 +504,23 @@ const geom = (locator) =>
 	});
 	await record('paper is white', () => assert.equal(paper.bg, 'rgb(255, 255, 255)'));
 	await record('paper shadow is 0 8px 24px rgba(31,42,61,.055)', () => assert.equal(paper.shadow, 'rgba(31, 42, 61, 0.055) 0px 8px 24px 0px'));
+
+	// ── Frontmatter ownership: state badges stay above the grid; the Vault
+	// library and concrete AI actions belong to the shared block action row. ──
+	const frontmatter = page.locator('.pk-composer-block[data-kind="frontmatter"]').first();
+	await record('frontmatter state row reports two concrete AI suggestions', async () =>
+		assert.match(await frontmatter.locator('.pk-fm-actions').innerText(), /AI 属性建议 · 2/),
+	);
+	await record('frontmatter state row does not own the Vault library action', async () =>
+		assert.equal(await frontmatter.locator('.pk-fm-actions [data-action="vault-library"]').count(), 0),
+	);
+	await frontmatter.hover();
+	await page.waitForTimeout(200);
+	const frontmatterRow = frontmatter.locator('.pk-block-action-row');
+	await record('frontmatter block row owns the Vault library action', async () =>
+		assert.equal(await frontmatterRow.locator('[data-action="vault-library"]').count(), 1),
+	);
+	await page.screenshot({ path: path.join(shotsDir, 'composer-frontmatter-action-row-light.png') });
 
 	const para = page.locator('.pk-composer-block[data-kind="paragraph"]').first();
 	await para.hover();

@@ -24,6 +24,7 @@ import {
 	DEFAULT_COMPOSER_CAPABILITIES_CONFIG,
 	POLISH_CAPABILITY_ID,
 	POLISH_COPILOT_ACTION_ID,
+	PROSE_BLOCK_ACTION_IDS,
 } from '@/service/composer';
 import type { ComposerCapabilityDefinition } from '@/core/composer';
 import { DEFAULT_CANDIDATE_UI_STRINGS } from '@/ui/view/composer/candidates/candidateUiConfig';
@@ -50,7 +51,11 @@ function expectThrow(name: string, fn: () => void, needle?: string): void {
 
 function testRegistration(): void {
 	const registry = freshRegistry();
-	check('prose pack registers polish', registry.size() === 1);
+	check(
+		'prose pack registers selection polish plus the designed block actions',
+		registry.size() === 1 + PROSE_BLOCK_ACTION_IDS.length,
+		String(registry.size()),
+	);
 	check('getById resolves the stable id', registry.getById(POLISH_CAPABILITY_ID) !== null);
 	check('require resolves the stable id', registry.require(POLISH_CAPABILITY_ID).version === '1');
 	check(
@@ -123,6 +128,7 @@ interface CapabilitiesJson {
 	capabilities?: {
 		context?: Record<string, unknown>;
 		actions?: Record<string, Record<string, unknown>>;
+		instructions?: Record<string, string>;
 		strings?: Record<string, unknown>;
 		candidateUi?: Record<string, unknown>;
 	};
@@ -144,6 +150,18 @@ function testConfigCompleteness(): void {
 		if (!jsonEntry) continue;
 		for (const key of ['title', 'description', 'lucideIcon', 'historyLabel', 'order']) {
 			check(`JSON action '${def.configKey}' has '${key}'`, key in jsonEntry, key);
+		}
+		if (PROSE_BLOCK_ACTION_IDS.includes(def.configKey)) {
+			check(
+				`JSON instructions cover '${def.configKey}'`,
+				typeof section.instructions?.[def.configKey] === 'string',
+				def.configKey,
+			);
+			check(
+				`compiled instructions cover '${def.configKey}'`,
+				typeof DEFAULT_COMPOSER_CAPABILITIES_CONFIG.instructions[def.configKey] === 'string',
+				def.configKey,
+			);
 		}
 	}
 

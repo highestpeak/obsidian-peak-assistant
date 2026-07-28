@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useStore } from 'zustand';
 import { RefreshCw } from 'lucide-react';
 import {
+	COMPOSER_METADATA_SUGGESTION_RENDERER_ID,
 	sectionBlockIds,
 	DEFAULT_TRANSACTION_CONFIG,
 	type ComposerActionDescriptor,
@@ -15,15 +16,18 @@ import {
 	type SelectionGuardReason,
 } from '@/core/composer';
 import {
-	buildInsertBelowOps,
+	buildCommentSourceRef,
 	buildMoveBlockOps,
 	buildToggleTaskOps,
+	POLISH_CAPABILITY_ID,
+	SUGGEST_PROPERTIES_CAPABILITY_ID,
 	headingTextStart,
 	listItemContentStart,
 	matchBlocks,
 	originalTextForTextPatchCandidate,
 	partitionSourceRange,
 	pasteUrlIntoSelection,
+	type HiddenSourceRange,
 } from '@/service/composer';
 import { Button } from '@/ui/components/primitives';
 import {
@@ -34,7 +38,11 @@ import { createComposerFoldStore, type ComposerFoldStore } from './foldStore';
 import { BlockKindView } from './blocks/BlockKindView';
 import { isChartBlock } from './blocks/chart/ChartBlockView';
 import { CalloutBlockView } from './blocks/callout/CalloutBlockView';
-import { AddFrontmatterEntry } from './blocks/frontmatter';
+import {
+	AddFrontmatterEntry,
+	DEFAULT_FRONTMATTER_CONFIG,
+	type FrontmatterCandidatePort,
+} from './blocks/frontmatter';
 import {
 	ComposerCandidateHost,
 	createDefaultCandidateRendererRegistry,
@@ -53,12 +61,18 @@ import { BlockActionRow, type BlockPanelKind } from './chrome/BlockActionRow';
 import { EditableText } from './chrome/EditableText';
 import { forwardBlockClickToEditable } from './chrome/focusForwarding';
 import { EasyCopyMenu } from './chrome/EasyCopyMenu';
-import { CommentPanel, CommentCountChip } from './chrome/CommentPanel';
+import {
+	CommentAnchorMarker,
+	CommentHighlightLayer,
+	CommentRail,
+	type CommentDraftTarget,
+} from './chrome/CommentPanel';
 import { BlockHistoryPanel } from './chrome/BlockHistoryPanel';
 import { SelectionToolbar } from './chrome/SelectionToolbar';
 import { LinkPreviewLayer } from './chrome/LinkPreviewLayer';
 import { UndoRedoBar } from './chrome/UndoRedoBar';
 import { TransactionNotice } from './chrome/TransactionNotice';
+import { NewBlockDraft } from './chrome/NewBlockDraft';
 import type { ComposerDisplayState } from './chrome/DisplayStateSwitch';
 import { mapDomRangeToSource } from './chrome/selectionMapping';
 import { firstClipboardImage } from './chrome/pasteImage';
@@ -70,7 +84,7 @@ import type { IntelligenceRuntime } from '@/service/composer';
  * Peak Composer — document host + shared editing chrome (WP1 host, WP4 chrome).
  *
  * Renders the parsed snapshot block-by-block with the WP4 editing chrome:
- * structural rail (30×30 disclosure + drag), single flattened 28px-capsule
+ * structural rail (30×30 disclosure + drag), single flattened compact-capsule
  * action row, per-block contenteditable text editing (burst → hub), selection
  * toolbar, Easy Copy, comments, link previews, the three document display
  * states and the permanent bottom Undo/Redo pair. All document mutation flows
@@ -109,7 +123,9 @@ export interface ComposerRootProps {
 interface PanelState {
 	blockId: string;
 	panel: BlockPanelKind;
+	pinned: boolean;
 	range?: { from: number; to: number };
+	initialTypeId?: string;
 }
 
 interface DragState {
@@ -124,8 +140,8 @@ export function ComposerRoot({
 	config = DEFAULT_COMPOSER_CONFIG,
 	runtime: runtimeProp = EMPTY_RUNTIME,
 	runtimeSource,
-	burstWindowMs = DEFAULT_TRANSACTION_CONFIG.burstWindowMs,
-	scrollGuardGestureWindowMs = DEFAULT_TRANSACTION_CONFIG.scrollGuardGestureWindowMs,
+	burstWindowMs,
+	scrollGuardGestureWindowMs,
 	onOpenLink,
 	onRevalidate,
 	intelligence: intelligenceProp,
@@ -149,6 +165,12 @@ export function ComposerRoot({
 	// static prop is the harness path. Identity is stable within one document, so
 	// commits do not remount the chrome — only a session switch rebinds it.
 	const runtime = runtimeSource?.getRuntime() ?? runtimeProp;
+	const resolvedBurstWindowMs =
+		burstWindowMs ?? runtime.transactionConfig?.burstWindowMs ?? DEFAULT_TRANSACTION_CONFIG.burstWindowMs;
+	const resolvedScrollGuardGestureWindowMs =
+		scrollGuardGestureWindowMs
+		?? runtime.transactionConfig?.scrollGuardGestureWindowMs
+		?? DEFAULT_TRANSACTION_CONFIG.scrollGuardGestureWindowMs;
 
 	const [flushers] = React.useState(() => new Set<() => Promise<void>>());
 	const chromeValue = React.useMemo<ComposerChromeValue>(
@@ -158,8 +180,8 @@ export function ComposerRoot({
 			candidateRegistry,
 			config,
 			snapshot: state.snapshot,
-			burstWindowMs,
-			scrollGuardGestureWindowMs,
+			burstWindowMs: resolvedBurstWindowMs,
+			scrollGuardGestureWindowMs: resolvedScrollGuardGestureWindowMs,
 			registerFlusher: (flush) => {
 				flushers.add(flush);
 				return () => flushers.delete(flush);
@@ -169,10 +191,28 @@ export function ComposerRoot({
 			},
 			onOpenLink,
 		}),
-		[runtime, candidateRegistry, config, state.snapshot, burstWindowMs, scrollGuardGestureWindowMs, flushers, onOpenLink],
+		[
+			runtime,
+			candidateRegistry,
+			config,
+			state.snapshot,
+			resolvedBurstWindowMs,
+			resolvedScrollGuardGestureWindowMs,
+			flushers,
+			onOpenLink,
+		],
 	);
 
 	const intelligence = intelligenceSource?.getIntelligence() ?? intelligenceProp;
+	const [activeCommentId, setActiveCommentId] = React.useState<string | null>(null);
+	const [intelligenceOpen, setIntelligenceOpen] = React.useState(true);
+	React.useEffect(() => {
+		setActiveCommentId(null);
+	}, [state.snapshot?.documentId]);
+	// Sidecar controls legitimately take DOM focus. Preserve the last body block so
+	// that clicking a Brief action does not silently downgrade its document context
+	// to the whole note.
+	const lastFocusedBlockIdRef = React.useRef<string | null>(null);
 	const locateBlock = React.useCallback((blockId: string) => {
 		const el = rootRef.current?.querySelector<HTMLElement>(`[data-block-id="${CSS.escape(blockId)}"]`);
 		markScrollIntent(rootRef.current); // INT-1 guard: intentional scroll
@@ -187,8 +227,10 @@ export function ComposerRoot({
 	const getFocusedBlockId = React.useCallback((): string | null => {
 		const rootEl = rootRef.current;
 		const active = rootEl?.ownerDocument.activeElement;
-		if (!(active instanceof HTMLElement) || !rootEl.contains(active)) return null;
-		return active.closest<HTMLElement>('[data-block-id]')?.dataset.blockId ?? null;
+		if (!(active instanceof HTMLElement) || !rootEl?.contains(active)) return lastFocusedBlockIdRef.current;
+		const blockId = active.closest<HTMLElement>('[data-block-id]')?.dataset.blockId ?? null;
+		if (blockId) lastFocusedBlockIdRef.current = blockId;
+		return blockId ?? lastFocusedBlockIdRef.current;
 	}, []);
 	const resolveFocusContext = React.useCallback(
 		(focusedBlockId: string | null) => buildFocusRunContext(currentSnapshot, focusedBlockId),
@@ -198,22 +240,55 @@ export function ComposerRoot({
 		(focusedBlockId: string | null) => resolveRelatedFocus(currentSnapshot, focusedBlockId),
 		[currentSnapshot],
 	);
+	const updateBriefFocus = React.useCallback(() => {
+		if (!intelligence) return;
+		const focus = resolveFocus(getFocusedBlockId());
+		intelligence.updateBriefFocus({ anchorId: focus.anchorId, label: focus.label });
+	}, [getFocusedBlockId, intelligence, resolveFocus]);
+	const onComposerBodyFocusCapture = React.useCallback(() => {
+		const rootEl = rootRef.current;
+		const active = rootEl?.ownerDocument.activeElement;
+		if (!(active instanceof HTMLElement)) return;
+		const blockId = active.closest<HTMLElement>('[data-block-id]')?.dataset.blockId ?? null;
+		if (!blockId) return;
+		lastFocusedBlockIdRef.current = blockId;
+		updateBriefFocus();
+	}, [updateBriefFocus]);
+	React.useEffect(() => {
+		updateBriefFocus();
+	}, [updateBriefFocus]);
 
 	return (
 		<ComposerChromeProvider value={chromeValue}>
 			<div
 				ref={rootRef}
-				className="peak-design-root peak-composer-root"
-				data-with-sidecar={intelligence ? 'true' : undefined}
-			>
-				<div className="pk-composer-main">
-					<ComposerBody state={state} config={config} foldStore={foldStore} onRevalidate={onRevalidate} />
+					className="peak-design-root peak-composer-root"
+					data-with-sidecar={intelligence ? 'true' : undefined}
+				>
+					<div className="pk-composer-main" onFocusCapture={onComposerBodyFocusCapture}>
+					<ComposerBody
+						state={state}
+						config={config}
+						foldStore={foldStore}
+						onRevalidate={onRevalidate}
+						intelligence={intelligence}
+						intelligenceOpen={intelligenceOpen}
+						onIntelligenceOpen={setIntelligenceOpen}
+						activeCommentId={activeCommentId}
+						onActiveComment={setActiveCommentId}
+					/>
 				</div>
 				{intelligence && (
 					<IntelligenceSidecar
 						runtime={intelligence}
 						hub={runtime.hub}
+						open={intelligenceOpen}
+						onOpenChange={setIntelligenceOpen}
 						onLocate={locateBlock}
+						onLocateComment={(commentId, blockId) => {
+							setActiveCommentId(commentId);
+							locateBlock(blockId);
+						}}
 						onOpenSource={(path) => onOpenLink?.('vault', path)}
 						getFocusedBlockId={getFocusedBlockId}
 						resolveFocusContext={resolveFocusContext}
@@ -230,31 +305,71 @@ interface BodyProps {
 	config: ComposerConfig;
 	foldStore: ComposerFoldStore;
 	onRevalidate?: () => void;
+	intelligence?: IntelligenceRuntime;
+	intelligenceOpen?: boolean;
+	onIntelligenceOpen?: (open: boolean) => void;
+	activeCommentId?: string | null;
+	onActiveComment?: (commentId: string | null) => void;
 }
 
-function ComposerBody({ state, config, foldStore, onRevalidate }: BodyProps): React.ReactElement {
+function ComposerBody(props: BodyProps): React.ReactElement {
+	const { state, config, foldStore, onRevalidate } = props;
 	const { strings } = config;
 	if (state.status === 'empty') return <StateBanner title={strings.emptyTitle} hint={strings.emptyHint} />;
 	if (state.status === 'missing') return <StateBanner title={strings.missingTitle} hint={strings.missingHint} />;
 	if (state.status === 'error') return <StateBanner title={strings.errorTitle} hint={state.error ?? ''} tone="error" />;
 	if (!state.snapshot) return <StateBanner title={strings.loading} hint="" />;
-	return <ComposerDocument state={state} config={config} foldStore={foldStore} onRevalidate={onRevalidate} />;
+	return <ComposerDocument {...props} />;
 }
 
-function ComposerDocument({ state, config, foldStore, onRevalidate }: BodyProps): React.ReactElement {
+function ComposerDocument({
+	state,
+	config,
+	foldStore,
+	onRevalidate,
+	intelligence,
+	intelligenceOpen = false,
+	onIntelligenceOpen = () => undefined,
+	activeCommentId = null,
+	onActiveComment = () => undefined,
+}: BodyProps): React.ReactElement {
 	const chrome = useComposerChrome();
 	const { runtime, projection } = chrome;
 	const hub = runtime.hub;
 	const snapshot = state.snapshot as ComposerDocumentSnapshot;
 	const containerRef = React.useRef<HTMLDivElement | null>(null);
+	const workspaceRef = React.useRef<HTMLDivElement | null>(null);
 
 	const [displayState, setDisplayState] = React.useState<ComposerDisplayState>(hub ? 'work' : 'clean');
 	const [panel, setPanel] = React.useState<PanelState | null>(null);
+	const [commentDraft, setCommentDraft] = React.useState<CommentDraftTarget | null>(null);
+	const [commentRailOpen, setCommentRailOpen] = React.useState(true);
 	const [drag, setDrag] = React.useState<DragState | null>(null);
-	const [insertDraftAfter, setInsertDraftAfter] = React.useState<string | null>(null);
 	const [hasSelection, setHasSelection] = React.useState(false);
 	const [guard, setGuard] = React.useState<string | null>(null);
 	const guardTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+	const setCommentSurfaceOpen = React.useCallback((open: boolean) => {
+		setCommentRailOpen(open);
+		if (open) return;
+		setCommentDraft(null);
+		onActiveComment(null);
+	}, [onActiveComment]);
+
+	React.useEffect(() => {
+		if (!panel) return;
+		const root = containerRef.current;
+		const doc = root?.ownerDocument;
+		if (!root || !doc) return;
+		const closeOnOutsidePointer = (event: PointerEvent) => {
+			const target = event.target as Element | null;
+			if (!target || typeof target.closest !== 'function') return;
+			const owner = target.closest<HTMLElement>('[data-composer-surface-owner]');
+			if (owner?.dataset.composerSurfaceOwner === panel.blockId) return;
+			setPanel(null);
+		};
+		doc.addEventListener('pointerdown', closeOnOutsidePointer);
+		return () => doc.removeEventListener('pointerdown', closeOnOutsidePointer);
+	}, [panel]);
 
 	const editing = displayState !== 'clean' && Boolean(hub);
 
@@ -386,14 +501,28 @@ function ComposerDocument({ state, config, foldStore, onRevalidate }: BodyProps)
 	useEditingScrollGuard(containerRef, chrome.scrollGuardGestureWindowMs);
 
 	return (
-		<div
-			ref={containerRef}
-			className="pk-composer-shell"
-			data-display-state={displayState}
-			data-has-selection={hasSelection || undefined}
-			data-dragging={drag ? 'true' : undefined}
-			onPaste={(ev) => void onPaste(ev)}
-		>
+		<>
+			<UndoRedoBar
+				containerRef={containerRef}
+				displayState={displayState}
+				onDisplayState={setDisplayState}
+				canEdit={Boolean(hub)}
+				readOnlyLabel={config.strings.readOnlyBadge}
+				commentOpen={commentRailOpen}
+				onCommentOpen={setCommentSurfaceOpen}
+				intelligenceAvailable={Boolean(intelligence)}
+				intelligenceOpen={intelligenceOpen}
+				onIntelligenceOpen={onIntelligenceOpen}
+			/>
+			<div ref={workspaceRef} className="pk-composer-workspace">
+			<div
+				ref={containerRef}
+				className="pk-composer-shell"
+				data-display-state={displayState}
+				data-has-selection={hasSelection || undefined}
+				data-dragging={drag ? 'true' : undefined}
+				onPaste={(ev) => void onPaste(ev)}
+			>
 			{state.status === 'stale' && <StaleBanner strings={config.strings} onRevalidate={onRevalidate} />}
 			<AddFrontmatterEntry editing={editing} />
 			<div className="pk-composer-blocks">
@@ -408,13 +537,41 @@ function ComposerDocument({ state, config, foldStore, onRevalidate }: BodyProps)
 							editing={editing}
 							panel={panel?.blockId === b.blockId ? panel : null}
 							setPanel={setPanel}
-							onInsertBelow={hub && editing ? () => setInsertDraftAfter(b.blockId) : undefined}
+							onInsertBelow={
+								hub && editing
+									? () => setPanel((current) =>
+											current?.blockId === b.blockId &&
+											current.panel === 'insert-menu' &&
+											current.pinned
+												? null
+												: { blockId: b.blockId, panel: 'insert-menu', pinned: true })
+									: undefined
+							}
+							onSelectInsertType={(typeId) =>
+								setPanel({ blockId: b.blockId, panel: 'insert-draft', pinned: true, initialTypeId: typeId })
+							}
 							onDragStart={hub && editing ? startDrag(b.blockId) : undefined}
 							dropBefore={drag?.dropIndex === i}
 							onInvoke={invoke}
+							activeCommentId={activeCommentId}
+							onActiveComment={(commentId) => {
+								if (commentId) setCommentRailOpen(true);
+								onActiveComment(commentId);
+							}}
+							onOpenComment={() => {
+								setPanel(null);
+								setCommentRailOpen(true);
+								setCommentDraft({ blockId: b.blockId });
+							}}
 						/>
-						{insertDraftAfter === b.blockId && (
-							<InsertDraftRow blockId={b.blockId} onDone={() => setInsertDraftAfter(null)} />
+						{panel?.blockId === b.blockId && panel.panel === 'insert-draft' && (
+							<div data-composer-surface-owner={b.blockId}>
+								<NewBlockDraft
+									blockId={b.blockId}
+									initialTypeId={panel.initialTypeId}
+									onDone={() => setPanel(null)}
+								/>
+							</div>
 						)}
 					</React.Fragment>
 				))}
@@ -426,25 +583,58 @@ function ComposerDocument({ state, config, foldStore, onRevalidate }: BodyProps)
 					editingEnabled={editing}
 					onVisibleChange={setHasSelection}
 					onGuard={showGuard}
-					onComment={(blockId, range) => setPanel({ blockId, panel: 'comment', range })}
+					onComment={(blockId, range) => {
+						setPanel(null);
+						setCommentRailOpen(true);
+						setCommentDraft({ blockId, range });
+					}}
 					onInvoke={(d, snap) => invoke(d, snap)}
 				/>
 			)}
 			<LinkPreviewLayer containerRef={containerRef} />
+			<CommentHighlightLayer
+				shellRef={containerRef}
+				activeCommentId={activeCommentId}
+				draftTarget={commentDraft}
+				visible={commentRailOpen}
+			/>
 			{guard && (
 				<div className="pk-guard-toast" role="alert" data-chrome="true">
 					{guard}
 				</div>
 			)}
 			<TransactionNotice />
-			<UndoRedoBar
-				containerRef={containerRef}
-				displayState={displayState}
-				onDisplayState={setDisplayState}
-				canEdit={Boolean(hub)}
-				readOnlyLabel={config.strings.readOnlyBadge}
+			</div>
+			<CommentRail
+				shellRef={containerRef}
+				workspaceRef={workspaceRef}
+				draftTarget={commentDraft}
+				activeCommentId={activeCommentId}
+				open={commentRailOpen}
+				onOpenChange={setCommentSurfaceOpen}
+				onDraftClose={() => setCommentDraft(null)}
+				onActiveComment={onActiveComment}
+				onLocate={(blockId) => {
+					const block = containerRef.current?.querySelector<HTMLElement>(
+						`[data-block-id="${CSS.escape(blockId)}"]`,
+					);
+					markScrollIntent(scrollerOf(containerRef.current));
+					block?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+				}}
+				onAskCopilot={intelligence
+					? (comment) => {
+							intelligence.session.selectSurface('copilot');
+							intelligence.session.openSession(
+								config.chrome.comment.copilotTaskTitle,
+								[],
+								[buildCommentSourceRef(comment)],
+							);
+							onActiveComment(comment.commentId);
+						}
+					: undefined}
 			/>
-		</div>
+			</div>
+		</>
 	);
 }
 
@@ -462,9 +652,13 @@ function ComposerBlockRow({
 	panel,
 	setPanel,
 	onInsertBelow,
+	onSelectInsertType,
 	onDragStart,
 	dropBefore,
 	onInvoke,
+	activeCommentId,
+	onActiveComment,
+	onOpenComment,
 }: {
 	block: ComposerBlock;
 	previousBlock?: ComposerBlock;
@@ -473,11 +667,15 @@ function ComposerBlockRow({
 	foldStore: ComposerFoldStore;
 	editing: boolean;
 	panel: PanelState | null;
-	setPanel: (p: PanelState | null) => void;
+	setPanel: React.Dispatch<React.SetStateAction<PanelState | null>>;
 	onInsertBelow?: () => void;
+	onSelectInsertType: (typeId: string) => void;
 	onDragStart?: (ev: React.PointerEvent<HTMLButtonElement>) => void;
 	dropBefore?: boolean;
 	onInvoke: (d: ComposerActionDescriptor, snap: ComposerContextSnapshot, instruction?: string) => void;
+	activeCommentId: string | null;
+	onActiveComment: (commentId: string | null) => void;
+	onOpenComment: () => void;
 }): React.ReactElement {
 	const chrome = useComposerChrome();
 	const folded = useStore(foldStore, (s) => s.folded.has(block.blockId));
@@ -487,13 +685,40 @@ function ComposerBlockRow({
 	const raw = block.renderModel.raw;
 	const aiSnapshot = makeBlockSnapshot(snapshot, block);
 	const candidateRuntime = chrome.runtime.candidateRuntime;
-	const candidateId = useBlockCandidateId(candidateRuntime, block.blockId);
+	const candidate = useBlockCandidate(candidateRuntime, block.blockId);
+	const candidateId = candidate?.candidateId ?? null;
+	const hasInlineCandidate = Boolean(candidateRuntime && candidateId);
+	const frontmatterCandidate: FrontmatterCandidatePort | undefined =
+		candidateRuntime && candidate && block.kind === 'frontmatter' &&
+		candidateRuntime.rendererIdFor(candidate.candidateId) === COMPOSER_METADATA_SUGGESTION_RENDERER_ID
+			? { runtime: candidateRuntime, candidate }
+			: undefined;
+	const replacesBlockBody = hasInlineCandidate && !frontmatterCandidate;
 	const spacing = blockSpacingRole(block, previousBlock);
 	const ownPanel = panel?.blockId === block.blockId ? panel : null;
+	const frontmatterLibraryOpen = ownPanel?.panel === 'vault-library';
 
 	const openPanel = (kind: BlockPanelKind) => {
-		if (ownPanel?.panel === kind) setPanel(null);
-		else setPanel({ blockId: block.blockId, panel: kind });
+		if (kind === 'comment') {
+			onOpenComment();
+			return;
+		}
+		if (ownPanel?.panel === kind && ownPanel.pinned) setPanel(null);
+		else setPanel({ blockId: block.blockId, panel: kind, pinned: true });
+	};
+	const previewPanel = (kind: BlockPanelKind, open: boolean) => {
+		setPanel((current) => {
+			if (open) {
+				if (current?.pinned) return current;
+				return { blockId: block.blockId, panel: kind, pinned: false };
+			}
+			if (
+				current?.blockId === block.blockId &&
+				current.panel === kind &&
+				!current.pinned
+			) return null;
+			return current;
+		});
 	};
 
 	return (
@@ -524,47 +749,94 @@ function ComposerBlockRow({
 				dragDisabledReason={onDragStart ? undefined : config.chrome.actions.disabledNoRuntime}
 			/>
 			<div className="pk-composer-block__body" ref={bodyRef}>
-				<CommentCountChip blockId={block.blockId} />
-				{showSummary ? (
-					<div className="pk-composer-summary">{block.renderModel.text || config.strings.emptyPreview}</div>
-				) : (
-					<BlockBody block={block} snapshot={snapshot} editing={editing} />
-				)}
-				{editing && (
-					<BlockActionRow
-						snapshot={aiSnapshot}
-						onInsertBelow={onInsertBelow}
-						onOpenPanel={openPanel}
-						openPanel={ownPanel?.panel ?? null}
-						writeDisabledReason={chrome.runtime.hub ? undefined : config.chrome.actions.disabledNoRuntime}
-						onInvoke={(d, instruction) => onInvoke(d, aiSnapshot, instruction)}
-					/>
-				)}
-				{ownPanel?.panel === 'copy' && (
-					<EasyCopyMenu markdown={raw} blockKind={block.kind} rasterTargetRef={bodyRef} onClose={() => setPanel(null)} />
-				)}
-				{ownPanel?.panel === 'comment' && (
-					<CommentPanel blockId={block.blockId} range={ownPanel.range} onClose={() => setPanel(null)} />
-				)}
-				{ownPanel?.panel === 'history' && (
-					<BlockHistoryPanel
-						blockId={block.blockId}
-						onLocate={() => {
-							markScrollIntent(scrollerOf(bodyRef.current)); // INT-1 guard
-							bodyRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-						}}
-						onClose={() => setPanel(null)}
-					/>
-				)}
-				{candidateRuntime && candidateId && (
-					<div className="pk-composer-candidate-slot" data-chrome="true">
+				<CommentAnchorMarker
+					blockId={block.blockId}
+					activeCommentId={activeCommentId}
+					onActivate={onActiveComment}
+				/>
+				{replacesBlockBody ? (
+					<div className="pk-composer-candidate-slot pk-composer-candidate-slot--in-place" data-chrome="true">
 						<ComposerCandidateHost
-							runtime={candidateRuntime}
-							candidateId={candidateId}
+							runtime={candidateRuntime!}
+							candidateId={candidateId!}
 							registry={chrome.candidateRegistry}
 							resolveOriginalText={(c) => originalTextForTextPatchCandidate(snapshot, c)}
 						/>
 					</div>
+				) : showSummary ? (
+					<div className="pk-composer-summary">{block.renderModel.text || config.strings.emptyPreview}</div>
+				) : (
+					<BlockBody
+						block={block}
+						snapshot={snapshot}
+						editing={editing}
+						frontmatterLibraryOpen={frontmatterLibraryOpen}
+						frontmatterCandidate={frontmatterCandidate}
+						onFrontmatterLibraryOpenChange={(open) => {
+							if (open === frontmatterLibraryOpen) return;
+							openPanel('vault-library');
+						}}
+					/>
+				)}
+				{editing && !hasInlineCandidate && (
+					<BlockActionRow
+						snapshot={aiSnapshot}
+						onInsertBelow={onInsertBelow}
+						onSelectInsertType={onSelectInsertType}
+						copySurface={(dismissPreview) => (
+							<div data-composer-surface-owner={block.blockId}>
+								<EasyCopyMenu
+									markdown={raw}
+									blockKind={block.kind}
+									rasterTargetRef={bodyRef}
+									onClose={() => {
+										dismissPreview();
+										setPanel(null);
+									}}
+								/>
+							</div>
+						)}
+						historySurface={(dismissPreview) => (
+							<div data-composer-surface-owner={block.blockId}>
+								<BlockHistoryPanel
+									blockId={block.blockId}
+									onLocate={() => {
+										markScrollIntent(scrollerOf(bodyRef.current)); // INT-1 guard
+										bodyRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+									}}
+									onClose={() => {
+										dismissPreview();
+										setPanel(null);
+									}}
+								/>
+							</div>
+						)}
+						onOpenPanel={openPanel}
+						onPreviewPanel={previewPanel}
+						openPanel={ownPanel?.panel ?? null}
+						panelPinned={ownPanel?.pinned ?? false}
+						writeDisabledReason={chrome.runtime.hub ? undefined : config.chrome.actions.disabledNoRuntime}
+						vaultLibrary={
+							block.kind === 'frontmatter'
+								? {
+										label: DEFAULT_FRONTMATTER_CONFIG.library.title,
+										active: frontmatterLibraryOpen,
+										...(chrome.runtime.vaultInventory
+											? {}
+											: { disabledReason: config.chrome.actions.disabledNoRuntime }),
+										onClick: () => openPanel('vault-library'),
+									}
+								: undefined
+						}
+						hiddenQuickCapabilityIds={
+							block.kind === 'frontmatter'
+								? [SUGGEST_PROPERTIES_CAPABILITY_ID]
+								: isTextActionBlock(block.kind)
+									? [POLISH_CAPABILITY_ID]
+									: undefined
+						}
+						onInvoke={(d, instruction) => onInvoke(d, aiSnapshot, instruction)}
+					/>
 				)}
 			</div>
 		</div>
@@ -587,19 +859,28 @@ function blockSpacingRole(block: ComposerBlock, previous?: ComposerBlock): strin
 	return 'object';
 }
 
+function isTextActionBlock(kind: ComposerBlock['kind']): boolean {
+	return kind === 'paragraph' ||
+		kind === 'heading' ||
+		kind === 'list' ||
+		kind === 'task' ||
+		kind === 'quote' ||
+		kind === 'callout';
+}
+
 /**
  * The id of the pending (non-terminal) candidate anchored to this block, or null.
  * Subscribes to the candidate runtime so a freshly-invoked candidate appears
  * under the correct block and disappears on accept / discard.
  */
-function useBlockCandidateId(
+function useBlockCandidate(
 	runtime: ComposerCandidateRuntimePort | undefined,
 	blockId: string,
-): string | null {
-	const [candidateId, setCandidateId] = React.useState<string | null>(null);
+): ComposerCandidate | null {
+	const [candidate, setCandidate] = React.useState<ComposerCandidate | null>(null);
 	React.useEffect(() => {
 		if (!runtime) {
-			setCandidateId(null);
+			setCandidate(null);
 			return;
 		}
 		return runtime.subscribe((candidates) => {
@@ -609,10 +890,10 @@ function useBlockCandidateId(
 					c.status !== 'accepted' &&
 					c.status !== 'discarded',
 			);
-			setCandidateId(match?.candidateId ?? null);
+			setCandidate(match ?? null);
 		});
 	}, [runtime, blockId]);
-	return candidateId;
+	return candidate;
 }
 
 function anchorBlockOf(candidate: ComposerCandidate): string | null {
@@ -627,10 +908,16 @@ function BlockBody({
 	block,
 	snapshot,
 	editing,
+	frontmatterLibraryOpen,
+	frontmatterCandidate,
+	onFrontmatterLibraryOpenChange,
 }: {
 	block: ComposerBlock;
 	snapshot: ComposerDocumentSnapshot;
 	editing: boolean;
+	frontmatterLibraryOpen: boolean;
+	frontmatterCandidate?: FrontmatterCandidatePort;
+	onFrontmatterLibraryOpenChange(open: boolean): void;
 }): React.ReactElement {
 	if (block.kind === 'list' || block.kind === 'task') {
 		return <EditableListBody block={block} snapshot={snapshot} editing={editing} />;
@@ -646,7 +933,16 @@ function BlockBody({
 	if (block.kind === 'image') {
 		return <ImageBlockView block={block} editing={editing} />;
 	}
-	return <BlockKindView block={block} editing={editing} />;
+	if (block.kind !== 'frontmatter') return <BlockKindView block={block} editing={editing} />;
+	return (
+		<BlockKindView
+			block={block}
+			editing={editing}
+			frontmatterLibraryOpen={frontmatterLibraryOpen}
+			frontmatterCandidate={frontmatterCandidate}
+			onFrontmatterLibraryOpenChange={onFrontmatterLibraryOpenChange}
+		/>
+	);
 }
 
 function EditableTextBody({
@@ -659,8 +955,10 @@ function EditableTextBody({
 	editing: boolean;
 }): React.ReactElement {
 	const isHeading = block.kind === 'heading';
+	const isQuote = block.kind === 'quote';
 	const textStart = isHeading ? headingTextStart(snapshot.sourceText, block.source) : block.source.from;
 	const text = snapshot.sourceText.slice(textStart, block.source.to);
+	const hiddenSourceRanges = isQuote ? quoteMarkerRanges(snapshot.sourceText, block.source.from, block.source.to) : undefined;
 	const blockId = block.blockId;
 	// Resolve against the CURRENT snapshot at flush time — ids/offsets shift per
 	// commit, so re-locate by the stable kind-ordinal prefix (matchBlocks fallback).
@@ -683,11 +981,27 @@ function EditableTextBody({
 			blockId={block.blockId}
 			text={text}
 			sourceFrom={textStart}
+			hiddenSourceRanges={hiddenSourceRanges}
 			editable={editing}
 			resolveRange={resolveRange}
 			className={className}
 		/>
 	);
+}
+
+function quoteMarkerRanges(sourceText: string, from: number, to: number): HiddenSourceRange[] {
+	const ranges: HiddenSourceRange[] = [];
+	let cursor = from;
+	while (cursor < to) {
+		const lineEnd = sourceText.indexOf('\n', cursor);
+		const end = lineEnd >= 0 && lineEnd < to ? lineEnd : to;
+		const line = sourceText.slice(cursor, end);
+		const marker = /^>\s?/.exec(line);
+		if (marker) ranges.push({ from: cursor, to: cursor + marker[0].length });
+		if (lineEnd < 0 || lineEnd >= to) break;
+		cursor = lineEnd + 1;
+	}
+	return ranges;
 }
 
 function EditableListBody({
@@ -763,51 +1077,6 @@ function EditableListBody({
 					</div>
 				);
 			})}
-		</div>
-	);
-}
-
-/** Ephemeral insert-below draft: nothing commits until real content flushes. */
-function InsertDraftRow({ blockId, onDone }: { blockId: string; onDone: () => void }): React.ReactElement {
-	const chrome = useComposerChrome();
-	const hub = chrome.runtime.hub;
-	const [value, setValue] = React.useState('');
-	const commit = async () => {
-		const text = value.trim();
-		if (!text || !hub || !chrome.snapshot) {
-			onDone();
-			return;
-		}
-		const built = buildInsertBelowOps(chrome.snapshot, blockId, text);
-		if (built) {
-			try {
-				await hub.commit({
-					origin: 'direct',
-					label: chrome.config.chrome.actions.insertBelow,
-					operations: built.operations,
-					target: built.target,
-					expectedBlockDelta: built.expectedBlockDelta,
-				});
-			} catch {
-				// conflict — surfaced via staleness
-			}
-		}
-		onDone();
-	};
-	return (
-		<div className="pk-insert-draft" data-chrome="true">
-			<input
-				autoFocus
-				className="pk-insert-draft__input"
-				placeholder={chrome.config.chrome.actions.insertDraftPlaceholder}
-				value={value}
-				onChange={(ev) => setValue(ev.target.value)}
-				onBlur={() => void commit()}
-				onKeyDown={(ev) => {
-					if (ev.key === 'Enter') void commit();
-					if (ev.key === 'Escape') onDone();
-				}}
-			/>
 		</div>
 	);
 }

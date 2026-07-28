@@ -1,5 +1,10 @@
 import * as React from 'react';
-import type { IntelligenceRuntime, IntelligenceSessionProjection, SuggestionFinding } from '@/service/composer';
+import type {
+	IntelligenceBriefProjection,
+	IntelligenceRuntime,
+	IntelligenceSessionProjection,
+	SuggestionFinding,
+} from '@/service/composer';
 import type { ComposerTransactionHub } from '@/service/composer';
 import type { ComposerContextSnapshot } from '@/core/composer';
 import type { SidecarConfig } from './sidecarConfig';
@@ -16,6 +21,8 @@ export interface SidecarRelatedFocus {
 	anchorId: string;
 	documentId: string;
 	focusText: string;
+	/** Human-readable label derived from the actual focused source. */
+	label: string;
 }
 
 /**
@@ -30,6 +37,8 @@ export interface SidecarContextValue {
 	config: SidecarConfig;
 	/** Locate a target block in the document body (scroll + focus). Host-provided. */
 	onLocate?: (blockId: string) => void;
+	/** Locate and activate a comment source referenced by a Copilot receipt. */
+	onLocateComment?: (commentId: string, blockId: string) => void;
 	/** Open / locate a Vault source from a related material or receipt Source. */
 	onOpenSource?: (path: string) => void;
 	/** The real focused block id from chrome focus state, or null (host-provided). */
@@ -63,6 +72,16 @@ export function useFindings(runtime: IntelligenceRuntime): readonly SuggestionFi
 		[runtime],
 	);
 	const getSnapshot = React.useCallback(() => runtime.findings.list(), [runtime]);
+	return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+}
+
+/** Subscribe to the document-adjacent Brief projection as a stable external store. */
+export function useBriefProjection(runtime: IntelligenceRuntime): IntelligenceBriefProjection {
+	const subscribe = React.useCallback(
+		(cb: () => void) => runtime.brief.subscribe(() => cb()),
+		[runtime],
+	);
+	const getSnapshot = React.useCallback(() => runtime.brief.projection(), [runtime]);
 	return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 

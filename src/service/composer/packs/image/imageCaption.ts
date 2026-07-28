@@ -59,7 +59,7 @@ export function parseImageBlock(source: string): ParsedImageBlock | null {
 	const wiki = trimmed.match(/!\[\[([^\]|]+)(?:\|([^\]]*))?\]\]/);
 	if (wiki) {
 		const segments = (wiki[2] ?? '').split('|').map((segment) => segment.trim());
-		const maybeWidth = segments.length > 1 ? Number(segments[segments.length - 1]) : Number.NaN;
+		const maybeWidth = segments.length > 0 ? Number(segments[segments.length - 1]) : Number.NaN;
 		const width = Number.isFinite(maybeWidth) && maybeWidth > 0 ? Math.floor(maybeWidth) : undefined;
 		const altSegments = width === undefined ? segments : segments.slice(0, -1);
 		const alt = altSegments.join('|').trim();

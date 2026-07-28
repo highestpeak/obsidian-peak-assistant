@@ -25,7 +25,12 @@ import type {
 	VaultLinkMeta,
 	VaultPropertyScanPort,
 } from '@/service/composer';
-import { buildRelatedSnapshot, emptyRelatedSnapshot, JsonlTelemetrySink } from '@/service/composer';
+import {
+	buildRelatedSnapshot,
+	emptyRelatedSnapshot,
+	JsonlTelemetrySink,
+	normalizeComposerComment,
+} from '@/service/composer';
 import { ComposerConflictError } from '@/core/composer';
 import type { SearchClient } from '@/service/search/SearchClient';
 import type { SearchResultItem } from '@/core/search/searchTypes';
@@ -149,7 +154,9 @@ export class ObsidianComposerCommentPersistence implements ComposerCommentPersis
 			if (!(await this.app.vault.adapter.exists(path))) return [];
 			const raw = await this.app.vault.adapter.read(path);
 			const parsed = JSON.parse(raw);
-			return Array.isArray(parsed) ? (parsed as ComposerComment[]) : [];
+			return Array.isArray(parsed)
+				? (parsed as ComposerComment[]).map(normalizeComposerComment)
+				: [];
 		} catch {
 			return [];
 		}

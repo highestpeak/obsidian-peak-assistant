@@ -1,11 +1,14 @@
 import * as React from 'react';
-import { Sparkles, X, Clock, MessageSquare } from 'lucide-react';
+import { Sparkles, X, History, MessageSquare } from 'lucide-react';
 import type { IntelligenceRuntime } from '@/service/composer';
 import type { ComposerTransactionHub } from '@/service/composer';
+import type { ComposerHistoryItem } from '@/core/composer';
 import { Button } from '@/ui/components/primitives';
+import { IconButton } from '@/ui/components/primitives';
 import { cn } from '@/ui/react/lib/utils';
 import {
 	SidecarProvider,
+	useSidecar,
 	useSessionProjection,
 	type SidecarContextValue,
 	type SidecarFocusContext,
@@ -32,7 +35,10 @@ export interface IntelligenceSidecarProps {
 	runtime: IntelligenceRuntime;
 	/** WP2 hub for the History projection + document locate. */
 	hub?: ComposerTransactionHub;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
 	onLocate?: (blockId: string) => void;
+	onLocateComment?: (commentId: string, blockId: string) => void;
 	onOpenSource?: (path: string) => void;
 	/** The real focused block id from chrome focus state, or null (host-provided). */
 	getFocusedBlockId?: () => string | null;
@@ -45,7 +51,10 @@ export interface IntelligenceSidecarProps {
 export function IntelligenceSidecar({
 	runtime,
 	hub,
+	open,
+	onOpenChange,
 	onLocate,
+	onLocateComment,
 	onOpenSource,
 	getFocusedBlockId,
 	resolveFocusContext,
@@ -54,9 +63,12 @@ export function IntelligenceSidecar({
 	const rootRef = React.useRef<HTMLDivElement | null>(null);
 	const [config, setConfig] = React.useState<SidecarConfig>(DEFAULT_SIDECAR_CONFIG);
 	const [mode, setMode] = React.useState<SidecarMode | null>(null);
-	// Drawer open state is preserved across close/reopen for the whole mount.
-	const [drawerOpen, setDrawerOpen] = React.useState(false);
-	const [desktopOpen, setDesktopOpen] = React.useState(true);
+	const projection = useSessionProjection(runtime);
+
+	React.useEffect(() => {
+		if (projection.stage !== 'session') return;
+		onOpenChange(true);
+	}, [projection.stage, onOpenChange]);
 
 	React.useEffect(() => {
 		let alive = true;
@@ -92,8 +104,28 @@ export function IntelligenceSidecar({
 	}, [config.narrowBreakpointPx]);
 
 	const ctx: SidecarContextValue = React.useMemo(
-		() => ({ runtime, hub, config, onLocate, onOpenSource, getFocusedBlockId, resolveFocusContext, resolveRelatedFocus }),
-		[runtime, hub, config, onLocate, onOpenSource, getFocusedBlockId, resolveFocusContext, resolveRelatedFocus],
+		() => ({
+			runtime,
+			hub,
+			config,
+			onLocate,
+			onLocateComment,
+			onOpenSource,
+			getFocusedBlockId,
+			resolveFocusContext,
+			resolveRelatedFocus,
+		}),
+		[
+			runtime,
+			hub,
+			config,
+			onLocate,
+			onLocateComment,
+			onOpenSource,
+			getFocusedBlockId,
+			resolveFocusContext,
+			resolveRelatedFocus,
+		],
 	);
 
 	if (mode === null) {
@@ -106,22 +138,15 @@ export function IntelligenceSidecar({
 				ref={rootRef}
 				className="pk-sidecar-anchor"
 				data-sidecar-mode="drawer"
-				data-open={drawerOpen ? 'true' : 'false'}
+				data-open={open ? 'true' : 'false'}
 			>
-				{!drawerOpen && (
-					<SidecarOpenButton
-						label={config.strings.title}
-						aria-label={config.strings.openDrawer}
-						onClick={() => setDrawerOpen(true)}
-					/>
-				)}
 				<div
-					className={cn('pk-sidecar-drawer', drawerOpen && 'pk-sidecar-drawer--open')}
-					data-open={drawerOpen || undefined}
-					aria-hidden={!drawerOpen}
+					className={cn('pk-sidecar-drawer', open && 'pk-sidecar-drawer--open')}
+					data-open={open || undefined}
+					aria-hidden={!open}
 				>
 					<SidecarProvider value={ctx}>
-						<SidecarShell config={config} runtime={runtime} onClose={() => setDrawerOpen(false)} closable />
+						<SidecarShell config={config} runtime={runtime} onClose={() => onOpenChange(false)} closable />
 					</SidecarProvider>
 				</div>
 		</div>
@@ -133,48 +158,18 @@ export function IntelligenceSidecar({
 			ref={rootRef}
 			className="pk-sidecar-anchor"
 			data-sidecar-mode="desktop"
-			data-open={desktopOpen ? 'true' : 'false'}
+			data-open={open ? 'true' : 'false'}
 		>
-			{!desktopOpen && (
-				<SidecarOpenButton
-					label={config.strings.title}
-					aria-label={config.strings.openDrawer}
-					onClick={() => setDesktopOpen(true)}
-				/>
-			)}
 			<div
-				className={cn('pk-sidecar', !desktopOpen && 'pk-sidecar--closed')}
-				data-open={desktopOpen || undefined}
-				aria-hidden={!desktopOpen}
+				className={cn('pk-sidecar', !open && 'pk-sidecar--closed')}
+				data-open={open || undefined}
+				aria-hidden={!open}
 			>
 				<SidecarProvider value={ctx}>
-					<SidecarShell config={config} runtime={runtime} onClose={() => setDesktopOpen(false)} closable />
+					<SidecarShell config={config} runtime={runtime} onClose={() => onOpenChange(false)} closable />
 				</SidecarProvider>
 			</div>
 		</div>
-	);
-}
-
-export function SidecarOpenButton({
-	label,
-	'aria-label': ariaLabel,
-	onClick,
-}: {
-	label: string;
-	'aria-label': string;
-	onClick: () => void;
-}): React.ReactElement {
-	return (
-		<Button
-			variant="outline"
-			size="sm"
-			className="pk-sidecar-open-toggle"
-			aria-label={ariaLabel}
-			onClick={onClick}
-		>
-			<Sparkles size={13} aria-hidden />
-			<span>{label}</span>
-		</Button>
 	);
 }
 
@@ -185,6 +180,35 @@ export function resolveSidecarMode(hostWidthPx: number, narrowBreakpointPx: numb
 export function resolveSidecarHostMode(el: HTMLElement | null, narrowBreakpointPx: number): SidecarMode {
 	const host = findComposerHostElement(el);
 	return resolveSidecarMode(host?.getBoundingClientRect().width ?? 0, narrowBreakpointPx);
+}
+
+/**
+ * Count every committed transaction represented by the History projection.
+ * Grouped bursts and AI runs keep their children below a parent row, but the
+ * badge must report the actual transaction total rather than just top-level
+ * groups. The visited set also makes a malformed cyclic projection harmless.
+ */
+export function countHistoryTransactions(items: readonly ComposerHistoryItem[]): number {
+	const visited = new Set<string>();
+	const countItem = (item: ComposerHistoryItem): number => {
+		if (visited.has(item.historyId)) return 0;
+		visited.add(item.historyId);
+		return 1 + (item.children?.reduce((count, child) => count + countItem(child), 0) ?? 0);
+	};
+	return items.reduce((count, item) => count + countItem(item), 0);
+}
+
+/** Subscribe to the hub's projection while selecting the stable numeric badge. */
+function useHistoryTransactionCount(hub: ComposerTransactionHub | undefined): number {
+	const subscribe = React.useCallback(
+		(notify: () => void) => hub?.subscribe(() => notify()) ?? (() => undefined),
+		[hub],
+	);
+	const getSnapshot = React.useCallback(
+		() => (hub ? countHistoryTransactions(hub.projection().history) : 0),
+		[hub],
+	);
+	return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
 function findComposerHostElement(el: HTMLElement | null): HTMLElement | null {
@@ -202,8 +226,10 @@ function SidecarShell({
 	onClose?: () => void;
 	closable?: boolean;
 }): React.ReactElement {
+	const { hub } = useSidecar();
 	const projection = useSessionProjection(runtime);
 	const surface = projection.surface;
+	const historyTransactionCount = useHistoryTransactionCount(hub);
 	const s = config.strings;
 	return (
 		<div className="pk-sidecar-shell peak-design-root">
@@ -216,9 +242,9 @@ function SidecarShell({
 					</div>
 				</div>
 				{closable && (
-					<button type="button" className="pk-sidecar-close" aria-label={s.close} onClick={onClose}>
+					<IconButton className="pk-sidecar-close" label={s.close} onClick={onClose}>
 						<X size={15} />
-					</button>
+					</IconButton>
 				)}
 			</div>
 			<div className="pk-sidecar-tabs" role="tablist" aria-label={s.title}>
@@ -230,8 +256,9 @@ function SidecarShell({
 				/>
 				<SidecarTab
 					active={surface === 'history'}
-					icon={<Clock size={13} />}
+					icon={<History size={13} />}
 					label={s.tabHistory}
+					count={historyTransactionCount}
 					onSelect={() => runtime.session.selectSurface('history')}
 				/>
 			</div>
@@ -246,17 +273,20 @@ function SidecarTab({
 	active,
 	icon,
 	label,
+	count = 0,
 	onSelect,
 }: {
 	active: boolean;
 	icon: React.ReactNode;
 	label: string;
+	count?: number;
 	onSelect: () => void;
 }): React.ReactElement {
 	return (
-		<button
-			type="button"
-			role="tab"
+			<Button
+				variant="ghost"
+				size="sm"
+				role="tab"
 			aria-selected={active}
 			className={cn('pk-sidecar-tab', active && 'pk-sidecar-tab--active')}
 			onClick={onSelect}
@@ -265,6 +295,7 @@ function SidecarTab({
 				{icon}
 			</span>
 			<span>{label}</span>
-		</button>
+			{count > 0 && <b className="pk-sidecar-tab-count">{count}</b>}
+			</Button>
 	);
 }

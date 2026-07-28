@@ -2,11 +2,12 @@
 
 **Status:** product contract and implementation roadmap  
 **Date:** 2026-07-15  
-**Updated:** 2026-07-24 — object-native table range selection; message-embedded run artifacts, anchored streaming review, and accepted-transaction linkage
+**Updated:** 2026-07-28 — clarified Generation History vs Document History and linked the owner-confirmed Agent Run decision
 **Related mock:** [`docs/gstack/peak-composer-editing-view-2026-07-09/index.html`](../../gstack/peak-composer-editing-view-2026-07-09/index.html)  
 **Current IA lab:** [`docs/gstack/peak-composer-editing-view-2026-07-09/intelligence-ia-lab.html`](../../gstack/peak-composer-editing-view-2026-07-09/intelligence-ia-lab.html)
 **Parent design:** [`2026-07-09-peak-composer-editing-view.md`](2026-07-09-peak-composer-editing-view.md)
 **Modular implementation architecture:** [`2026-07-24-peak-composer-ai-capability-modularity-architecture.md`](2026-07-24-peak-composer-ai-capability-modularity-architecture.md)
+**Agent Run and generation-history decision:** [`2026-07-28-composer-agent-runs-and-generation-history.md`](2026-07-28-composer-agent-runs-and-generation-history.md)
 
 ## 1. Why This Contract Exists
 
@@ -45,7 +46,7 @@ AI results are rendered where the resulting object will live:
 | Change a native diagram/file | Re-rendered preview after every typed source patch, in the same object shell |
 | Replace/generate an image | Timed generation state, then original/candidate switching in the same image frame; alt/caption diff separately |
 
-All review surfaces use one transaction footer: status, action name, targeted instruction when model output can be regenerated, version/history navigation, `接受`, `还原/丢弃`, and optional `重试`. A result must not be represented by an explanatory paragraph when the product can render the actual proposed object. A prompt, trigger label, suggestion reason, or “generate a new X” sentence is provenance—not candidate content. Structured targets such as Base, table, chart and native diagrams use an object-shaped progress renderer and resolve into the typed object; they must not flash raw source unless source/code is itself the requested output.
+All review surfaces use one transaction footer: status, action name, targeted instruction when model output can be regenerated, version/history navigation, `接受`, `未采用`, and optional `重试`. `未采用` closes the active review but retains the output in Generation History. A result must not be represented by an explanatory paragraph when the product can render the actual proposed object. A prompt, trigger label, suggestion reason, or “generate a new X” sentence is provenance—not candidate content. Structured targets such as Base, table, chart and native diagrams use an object-shaped progress renderer and resolve into the typed object; they must not flash raw source unless source/code is itself the requested output.
 
 ### 2.3 Object-native comparison rule
 
@@ -62,9 +63,9 @@ Every costly generation exposes real progress:
 5. Review navigates the pending changes in document source order;
 6. explicit acceptance writes each Markdown or native-file change and creates one independent History transaction for that accepted change.
 
-History stores accepted transactions, not findings, pending previews, rejected changes, stale changes, hovers, or abandoned candidates. A costly unresolved candidate may stay in the active session cache so the user can reopen it before the review session ends without presenting it as document history.
+Document History stores accepted transactions, not findings, pending previews, rejected changes, stale changes or hovers. Generation History is separate: every model run and variant, including not-adopted, failed, cancelled and stale outputs, is retained there and can be reopened without pretending it changed the document.
 
-Every model-generated output keeps a variant lifecycle inside the same anchored review transaction: `variants[]`, one `activeVariantId`, targeted instruction, previous/next/history navigation, and explicit acceptance of one completed active variant. Regeneration appends instead of overwriting. This applies to prose rewrite/insert, semantic filename, caption, AI image edit, Base/native typed generation, and other model-derived objects. Deterministic crop/rotate/format operations use preview/restore and document Undo/Redo rather than pretending to create model variants.
+Every model-generated output keeps a variant lifecycle inside the same anchored review transaction: `variants[]`, one `activeVariantId`, targeted instruction, previous/next/history navigation, and explicit acceptance of one completed active variant. Regeneration appends instead of overwriting, and every appended variant is also persisted to Generation History. This applies to prose rewrite/insert, semantic filename, caption, AI image edit, Base/native typed generation, and other model-derived objects. Deterministic crop/rotate/format operations use preview/restore and document Undo/Redo rather than pretending to create model variants.
 
 ### 2.5 Clipboard and attachment transaction rule
 
@@ -186,7 +187,7 @@ A `ProposedChange` is one atomic, independently reviewable candidate inside a ch
 - `operation`: rewrite, insert, delete, metadata patch, vertical transform, or native-object patch;
 - `before`, typed patch payload, and renderable proposed state;
 - `previewMode`: inline diff, vertical transform, inserted object, or incremental native patch;
-- `status`: `pending`, `accepted`, `rejected`, or `stale`;
+- `status`: `pending`, `accepted`, `not-adopted`, or `stale`;
 - evidence/provenance needed to explain the change and create an accepted receipt.
 
 Accepting or rejecting one change must not implicitly resolve unrelated changes in the set. A finding may produce no change, one change, or many changes.
@@ -208,7 +209,7 @@ Every change uses the most specific anchored preview its object supports. A moda
 
 - Every accept revalidates the target source revision and adapter locator.
 - If the user edits an overlapping target after generation, only the affected pending change becomes `stale`; unrelated changes remain reviewable.
-- A stale change cannot be accepted. The user may discard it or regenerate it against the new source.
+- A stale change cannot be accepted. The user may mark it not adopted or regenerate it against the new source.
 - Moving the cursor or navigating between changes does not make a change stale.
 - If an adapter cannot safely relocate a target, it must fail closed and explain why rather than writing at a guessed position.
 
@@ -216,7 +217,7 @@ Every change uses the most specific anchored preview its object supports. A moda
 
 One Copilot Run may retain local `Changes`, `Insights`, `Sources`, and a redacted `Trace`, all keyed by stable `runId`. These are execution/review artifacts, not top-level Intelligence work surfaces and not document history. Trace contains only verifiable capability/tool actions, source references, produced artifacts, validation results, status, timing and errors; it must not persist or expose hidden prompts, raw reasoning, thinking tokens, or chain-of-thought. Runtime strategy labels such as `Fast Lookup` remain metadata rather than product capabilities.
 
-The run record and History use separate records with bidirectional references. The run record may store `acceptedTransactionIds`; each accepted History transaction stores `originRunId`, `changeSetId`, and `changeId`. Accepting two changes from the same set creates two independently locatable, diffable, and rollbackable transactions. Rejected, stale, abandoned, preview-only, insight, source, and trace artifacts may remain under the run/session retention policy, but never become History transactions.
+The run record and Document History use separate records with bidirectional references. The run record may store `acceptedTransactionIds`; each accepted Document History transaction stores `originRunId`, `changeSetId`, and `changeId`. Accepting two changes from the same set creates two independently locatable, diffable, and rollbackable transactions. Not-adopted, stale, abandoned and preview-only model outputs remain in Generation History but never become Document History transactions. Redacted trace and source retention follows the same run record without exposing hidden reasoning.
 
 ## 7. Intelligence Dock Ownership
 
@@ -243,7 +244,7 @@ The Q&A flow represents a run with one receipt and its key insight. That same me
 
 ### Transient Review
 
-When a run creates a `ProposedChangeSet`, Copilot enters a transient Review stage. Candidates stream and re-render at their real document anchors. Review freezes the run context, exposes source-order previous/next navigation, and lets the user accept, reject, regenerate, or inspect each proposed change. Every model-generated review surface—including rewrite, insert, semantic rename, image caption/edit, Base view and native typed generation—exposes a targeted instruction field plus variant history. Enter and regenerate/retry submit the same value, the instruction is frozen into the appended candidate version, prior versions remain reachable, and only accepting the active completed version can write its result. Deterministic transforms continue to use recalculate/restore instead of pretending to regenerate from a prompt. The document anchors are the review truth source; the sidecar explains the active change and provides controls rather than duplicating the candidate. Pending, rejected, and stale changes never appear in History.
+When a run creates a `ProposedChangeSet`, Copilot enters a transient Review stage. Candidates stream and re-render at their real document anchors. Review freezes the run context, exposes source-order previous/next navigation, and lets the user accept, mark not adopted, regenerate, or inspect each proposed change. Every model-generated review surface—including rewrite, insert, semantic rename, image caption/edit, Base view and native typed generation—exposes a targeted instruction field plus variant history. Enter and regenerate/retry submit the same value, the instruction is frozen into the appended candidate version, prior versions remain reachable, and only accepting the active completed version can write its result. Deterministic transforms continue to use recalculate/restore instead of pretending to regenerate from a prompt. The document anchors are the review truth source; the sidecar explains the active change and provides controls rather than duplicating the candidate. Pending, not-adopted, and stale changes never appear in Document History, but all model-generated variants remain in Generation History.
 
 ### History
 
@@ -293,14 +294,14 @@ type ProposedChange = {
   variants?: ProposedChangeVariant[];
   activeVariantId?: string;
   preview: ComposerCapability['preview'];
-  status: 'pending' | 'accepted' | 'rejected' | 'stale';
+  status: 'pending' | 'accepted' | 'not-adopted' | 'stale';
 };
 
 type ProposedChangeVariant = {
   id: string;
   instruction?: string;
   payload: ComposerTypedPatch;
-  status: 'generating' | 'completed' | 'failed' | 'discarded';
+  status: 'generating' | 'completed' | 'failed' | 'not-adopted';
 };
 
 type ProposedChangeSet = {
@@ -379,7 +380,7 @@ The IA lab proves interaction semantics, not production persistence: source rang
 12. No accepted operation loses valid Markdown or native-file source.
 13. A user can reopen a recent expensive unresolved candidate during the active review session without paying for a second generation or misclassifying it as History.
 14. Every accepted `ProposedChange` creates one independently addressable History transaction, with bidirectional run/change/transaction links.
-15. Run-local Insights, Sources, redacted Trace, rejected changes, and preview artifacts never become History transactions or permanent product tabs.
+15. Run-local Insights, Sources, redacted Trace, not-adopted changes, and preview artifacts never become Document History transactions. Model-generated outputs remain addressable through Generation History without becoming permanent top-level product tabs.
 16. Trace exposes only verifiable actions and artifacts; no UI or persisted record exposes chain-of-thought or promotes runtime metadata such as `Fast Lookup` into a user capability.
 17. The same Copilot run receipt owns compact summary, category switching, visible artifact rows, and inline long-content expansion; ordinary artifacts never require a modal, while a wide view is reserved for genuinely spatial artifacts.
 18. Vault wikilinks and external URLs remain directly navigable from both the inline object and the first control in their hover surface; AI actions never replace the destination.

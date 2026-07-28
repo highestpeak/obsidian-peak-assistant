@@ -66,19 +66,20 @@
 .peak-composer-root .pk-fm-actions {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 6px;
 	flex-wrap: wrap;
+	min-height: 22px;
 }
 
 .peak-composer-root .pk-fm-actions .pk-btn {
-	min-height: 28px !important;
-	height: 28px !important;
-	padding: 0 10px !important;
-	border: 0 !important;
+	min-height: 22px !important;
+	height: 22px !important;
+	padding: 0 7px !important;
+	border: 1px solid var(--pk-accent-soft) !important;
 	border-radius: var(--pk-radius-pill) !important;
-	background: transparent !important;
-	color: var(--pk-text-secondary);
-	font-size: var(--pk-text-xs);
+	background: var(--pk-accent-tint) !important;
+	color: var(--pk-accent-text);
+	font-size: 10px;
 }
 
 .peak-composer-root .pk-fm-actions .pk-btn:hover:not(:disabled),
@@ -188,6 +189,97 @@
 	font-size: 12px;
 	font-weight: 680;
 	line-height: 1.2;
+}
+
+/* AI tag proposals belong to the existing `tags` field. Their dashed mint
+ * treatment distinguishes a pending value without moving it into a second
+ * document region or making it look committed. */
+.peak-composer-root .pk-fm-tag--candidate {
+	border-style: dashed;
+	border-color: #81cdb2;
+	background: #effbf5;
+	color: #087c61;
+}
+
+.theme-dark .peak-composer-root .pk-fm-tag--candidate {
+	border-color: #4ba98a;
+	background: rgba(47, 151, 116, 0.16);
+	color: #8be2c1;
+}
+
+.peak-composer-root .pk-fm-field-candidate {
+	display: inline;
+	margin-left: 7px;
+	color: #087c61;
+}
+
+/* The confirmation strip is part of the same Frontmatter block. It explains
+ * the pending field-level projection; it does not duplicate the candidate
+ * value, which remains next to the original property above. */
+.peak-composer-root .pk-fm-candidate-review {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	min-height: 58px;
+	padding: 11px 13px;
+	border: 1px solid #b9e5d1;
+	border-radius: var(--pk-radius-lg, 12px);
+	background: #fbfefc;
+}
+
+.peak-composer-root .pk-fm-candidate-review__summary,
+.peak-composer-root .pk-fm-candidate-review__actions {
+	display: inline-flex;
+	align-items: center;
+}
+
+.peak-composer-root .pk-fm-candidate-review__summary {
+	min-width: 0;
+	gap: 8px;
+	color: var(--pkc-fm-key);
+	font-size: 12px;
+}
+
+.peak-composer-root .pk-fm-candidate-review__summary b {
+	color: var(--pkc-fm-value);
+	font-size: 13px;
+}
+
+.peak-composer-root .pk-fm-candidate-review__dot {
+	width: 8px;
+	height: 8px;
+	flex: 0 0 auto;
+	border-radius: 999px;
+	background: #6756d6;
+}
+
+.peak-composer-root .pk-fm-candidate-review__actions {
+	flex: 0 0 auto;
+	gap: 7px;
+}
+
+.peak-composer-root .pk-fm-candidate-review__actions .pk-btn {
+	min-height: 30px !important;
+	height: 30px !important;
+	padding: 0 10px !important;
+	border-radius: var(--pk-radius-md, 8px) !important;
+	font-size: var(--pk-text-xs, 11px);
+}
+
+.theme-dark .peak-composer-root .pk-fm-candidate-review {
+	border-color: rgba(95, 193, 155, 0.46);
+	background: rgba(46, 117, 89, 0.1);
+}
+
+@media (max-width: 640px) {
+	.peak-composer-root .pk-fm-candidate-review {
+		align-items: flex-start;
+		flex-direction: column;
+	}
+	.peak-composer-root .pk-fm-candidate-review__actions {
+		align-self: flex-end;
+	}
 }
 
 /* ── vault property library + suggestions ───────────────────────────────── */

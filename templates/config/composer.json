@@ -47,6 +47,7 @@
 	},
 	"chrome": {
 		"_doc": "WP4 editing-chrome copy. AI capability labels are NOT here — they arrive from the capability projection port. Typed fallback: composerConfig.ts DEFAULT_COMPOSER_CONFIG.chrome. Drift guard: composer-config.test.ts checks the top-level chrome sub-keys.",
+		"surfacePreviewCloseDelayMs": 180,
 		"actions": {
 			"insertBelow": "在下方插入",
 			"copy": "复制",
@@ -58,8 +59,39 @@
 			"instructionSubmitHint": "按 Enter 执行",
 			"instructionClose": "返回操作",
 			"directEdit": "直接编辑",
-			"disabledNoRuntime": "编辑运行时未接入",
-			"insertDraftPlaceholder": "输入新段落内容…"
+			"disabledNoRuntime": "编辑运行时未接入"
+		},
+		"insertDraft": {
+			"chooserLabel": "在下方插入",
+			"title": "新块草稿",
+			"description": "直接写 Markdown 并即时预览，或把输入作为指令交给 AI 生成。",
+			"sourceLabel": "Markdown",
+			"previewLabel": "预览",
+			"previewEmpty": "开始输入后，这里会显示最终写入效果。",
+			"commit": "写入为块",
+			"generate": "AI 生成",
+			"generating": "正在生成…",
+			"stop": "停止",
+			"acceptGenerated": "接受为新块",
+			"generationUnavailable": "AI 生成运行时未接入",
+			"generationFailed": "AI 生成失败，请保留当前草稿后重试。",
+			"cancel": "取消",
+			"shortcutHint": "⌘↵ 写入",
+			"types": [
+				{ "id": "paragraph", "label": "段落", "initialValue": "", "placeholder": "直接写 Markdown，或输入希望 AI 生成的内容…", "syntaxPrefix": "", "syntaxSuffix": "", "shortcut": false, "mode": "markdown" },
+				{ "id": "heading", "label": "标题", "initialValue": "## ", "placeholder": "输入标题…", "syntaxPrefix": "## ", "syntaxSuffix": "", "shortcut": true, "mode": "markdown" },
+				{ "id": "list", "label": "列表", "initialValue": "- ", "placeholder": "输入列表项…", "syntaxPrefix": "- ", "syntaxSuffix": "", "shortcut": true, "mode": "markdown" },
+				{ "id": "task", "label": "待办", "initialValue": "- [ ] ", "placeholder": "输入待办事项…", "syntaxPrefix": "- [ ] ", "syntaxSuffix": "", "shortcut": true, "mode": "markdown" },
+				{ "id": "quote", "label": "引用", "initialValue": "> ", "placeholder": "输入引用内容…", "syntaxPrefix": "> ", "syntaxSuffix": "", "shortcut": true, "mode": "markdown" },
+				{ "id": "callout", "label": "Callout", "initialValue": "> [!note]\n> ", "placeholder": "输入提示内容…", "syntaxPrefix": "> [!note]\n> ", "syntaxSuffix": "", "shortcut": true, "mode": "markdown" },
+				{ "id": "formula", "label": "公式", "initialValue": "$$E = mc^2$$", "placeholder": "输入 LaTeX 公式…", "syntaxPrefix": "$$", "syntaxSuffix": "$$", "shortcut": true, "mode": "markdown" },
+				{ "id": "image", "label": "图片", "initialValue": "![[附件.png]]", "placeholder": "输入图片嵌入，例如 ![[附件.png]]", "syntaxPrefix": "![[", "syntaxSuffix": "]]", "shortcut": true, "mode": "markdown" },
+				{ "id": "table", "label": "表格", "initialValue": "| 项目 | 说明 |\n| --- | --- |\n| 新项目 | 待填写 |", "placeholder": "输入 Markdown 表格…", "syntaxPrefix": "| 项目 | 说明 |\n| --- | --- |\n| 新项目 | 待填写 |", "syntaxSuffix": "", "shortcut": true, "mode": "markdown" },
+				{ "id": "base", "label": "Base", "initialValue": "![[新视图.base]]", "placeholder": "输入 Base 嵌入，例如 ![[视图.base]]", "syntaxPrefix": "![[", "syntaxSuffix": ".base]]", "shortcut": false, "mode": "markdown" },
+				{ "id": "canvas", "label": "Canvas", "initialValue": "![[新画布.canvas]]", "placeholder": "输入 Canvas 嵌入，例如 ![[画布.canvas]]", "syntaxPrefix": "![[", "syntaxSuffix": ".canvas]]", "shortcut": false, "mode": "markdown" },
+				{ "id": "excalidraw", "label": "Excalidraw", "initialValue": "![[新草图.excalidraw.md]]", "placeholder": "输入 Excalidraw 嵌入，例如 ![[草图.excalidraw.md]]", "syntaxPrefix": "![[", "syntaxSuffix": ".excalidraw.md]]", "shortcut": false, "mode": "markdown" },
+				{ "id": "ai", "label": "AI 续写", "initialValue": "", "placeholder": "描述希望 AI 在这里补充什么…", "syntaxPrefix": "", "syntaxSuffix": "", "shortcut": false, "mode": "ai" }
+			]
 		},
 		"undo": {
 			"undo": "撤销",
@@ -91,6 +123,8 @@
 			"applyLink": "应用",
 			"linkPlaceholder": "粘贴或输入链接…",
 			"clearColor": "清除",
+			"colorPalette": "颜色",
+			"customColor": "自定义颜色",
 			"scopeTemplates": {
 				"crossParagraph": "跨 {n} 个块",
 				"crossItem": "跨 {n} 个列表项",
@@ -102,48 +136,80 @@
 				"crossStructureLink": "一个链接只能落在一个段落、列表项或单元格内",
 				"emptySelection": "请先选中文本"
 			},
-			"textColors": [
+			"quickTextColors": [
 				{
-					"label": "红",
+					"label": "红色",
 					"value": "#b42318"
 				},
 				{
-					"label": "橙",
-					"value": "#c4520a"
+					"label": "蓝色",
+					"value": "#2563eb"
 				},
 				{
-					"label": "绿",
-					"value": "#067647"
+					"label": "绿色",
+					"value": "#16845f"
+				}
+			],
+			"quickHighlightColors": [
+				{
+					"label": "黄色高亮",
+					"value": "#fff1a8"
 				},
 				{
-					"label": "蓝",
-					"value": "#175cd3"
+					"label": "绿色高亮",
+					"value": "#dff4e8"
 				},
 				{
-					"label": "紫",
-					"value": "#6941c6"
+					"label": "红色高亮",
+					"value": "#fde4e4"
+				}
+			],
+			"textColors": [
+				{
+					"label": "深灰色",
+					"value": "#1f2937"
+				},
+				{
+					"label": "紫色",
+					"value": "#7c3aed"
+				},
+				{
+					"label": "蓝色",
+					"value": "#2563eb"
+				},
+				{
+					"label": "棕色",
+					"value": "#b45309"
+				},
+				{
+					"label": "红色",
+					"value": "#b42318"
+				},
+				{
+					"label": "绿色",
+					"value": "#16845f"
 				}
 			],
 			"highlightColors": [
 				{
-					"label": "重点",
+					"label": "黄色高亮",
 					"value": "#fff1a8"
 				},
 				{
-					"label": "定义",
-					"value": "#c7f0d8"
+					"label": "绿色高亮",
+					"value": "#dff4e8"
 				},
 				{
-					"label": "资料",
-					"value": "#cfe4ff"
+					"label": "蓝色高亮",
+					"value": "#dfeaff"
 				},
 				{
-					"label": "想法",
-					"value": "#e4d5ff"
+					"label": "紫色高亮",
+					"value": "#eee5ff"
 				},
 				{
-					"label": "风险",
-					"value": "#ffd5d5"
+					"label": "红色高亮",
+					"value": "#fde4e4"
 				}
 			]
 		},
@@ -164,11 +230,29 @@
 			"pathLabel": "路径"
 		},
 		"comment": {
+			"railBreakpointPx": 560,
 			"placeholder": "写下评论……",
+			"replyPlaceholder": "回复此评论……",
 			"save": "保存",
 			"cancel": "取消",
 			"stale": "锚点已失效",
-			"addTitle": "添加评论"
+			"addTitle": "添加评论",
+			"railTitle": "评论",
+			"openRail": "打开评论",
+			"closeRail": "关闭评论",
+			"selectionAnchor": "文字选区",
+			"blockAnchor": "整个内容块",
+			"privateLabel": "仅自己",
+			"sharedLabel": "分享时公开",
+			"ownerLabel": "你",
+			"externalLabel": "外部评论",
+			"reply": "回复",
+			"resolve": "解决",
+			"reopen": "重新打开",
+			"remove": "删除评论",
+			"askCopilot": "交给 Copilot",
+			"copilotTaskTitle": "根据评论处理正文",
+			"empty": "当前文档还没有评论。"
 		},
 		"history": {
 			"title": "生成历史",
@@ -194,6 +278,146 @@
 				"lucideIcon": "sparkles",
 				"historyLabel": "AI 润色",
 				"order": 10
+			},
+			"composer.prose.polish-block": {
+				"title": "润色文本",
+				"description": "改善当前段落的表达顺序、语气与连接",
+				"lucideIcon": "sparkles",
+				"historyLabel": "AI 润色",
+				"order": 10
+			},
+			"composer.prose.add-example": {
+				"title": "补一个例子",
+				"description": "补充一个贴近当前语境的具体例子",
+				"lucideIcon": "lightbulb",
+				"historyLabel": "AI 补例",
+				"order": 11
+			},
+			"composer.prose.to-table": {
+				"title": "转成表格",
+				"description": "把并列概念整理为可继续编辑的 Markdown 表格",
+				"lucideIcon": "table",
+				"historyLabel": "AI 转表格",
+				"order": 12
+			},
+			"composer.heading.shorten": {
+				"title": "改短标题",
+				"description": "生成更短、更像目录项的标题",
+				"lucideIcon": "heading",
+				"historyLabel": "AI 改标题",
+				"order": 10
+			},
+			"composer.heading.outline": {
+				"title": "补提纲",
+				"description": "根据标题补出下一层写作提纲",
+				"lucideIcon": "list-tree",
+				"historyLabel": "AI 补提纲",
+				"order": 11
+			},
+			"composer.heading.questions": {
+				"title": "生成导读问题",
+				"description": "把标题转成这一节需要回答的问题",
+				"lucideIcon": "circle-help",
+				"historyLabel": "AI 导读问题",
+				"order": 12
+			},
+			"composer.list.fill-gaps": {
+				"title": "补缺项",
+				"description": "检查列表遗漏并补出可插入的新项",
+				"lucideIcon": "list-plus",
+				"historyLabel": "AI 补列表",
+				"order": 10
+			},
+			"composer.list.reorder": {
+				"title": "重排列表",
+				"description": "按当前语义重新排列列表项",
+				"lucideIcon": "arrow-up-down",
+				"historyLabel": "AI 重排列表",
+				"order": 11
+			},
+			"composer.list.to-table": {
+				"title": "转成表格",
+				"description": "把并列列表转换为 Markdown 表格",
+				"lucideIcon": "table",
+				"historyLabel": "AI 列表转表格",
+				"order": 12
+			},
+			"composer.task.find-blockers": {
+				"title": "找阻塞",
+				"description": "标出不清晰、不可执行或等待依赖的任务",
+				"lucideIcon": "octagon-alert",
+				"historyLabel": "AI 找阻塞",
+				"order": 10
+			},
+			"composer.task.add-next-step": {
+				"title": "补下一步",
+				"description": "为每个任务补一个最小可执行下一步",
+				"lucideIcon": "list-checks",
+				"historyLabel": "AI 补下一步",
+				"order": 11
+			},
+			"composer.task.prioritize": {
+				"title": "按优先级重排",
+				"description": "按影响与紧急度重排任务列表",
+				"lucideIcon": "arrow-up-down",
+				"historyLabel": "AI 任务排序",
+				"order": 12
+			},
+			"composer.quote.explain": {
+				"title": "解释引用",
+				"description": "解释引用在当前上下文中的作用",
+				"lucideIcon": "quote",
+				"historyLabel": "AI 解释引用",
+				"order": 10
+			},
+			"composer.quote.counterexample": {
+				"title": "找反例",
+				"description": "补充可能反驳该观点的反例或边界",
+				"lucideIcon": "scale",
+				"historyLabel": "AI 找反例",
+				"order": 11
+			},
+			"composer.quote.to-callout": {
+				"title": "转 Callout",
+				"description": "转换为 Obsidian Callout 并保留原句",
+				"lucideIcon": "message-square-warning",
+				"historyLabel": "AI 转 Callout",
+				"order": 12
+			},
+			"composer.callout.change-type": {
+				"title": "改 Callout 类型",
+				"description": "选择更贴合内容语气的 Callout 类型",
+				"lucideIcon": "badge-info",
+				"historyLabel": "AI 改 Callout",
+				"order": 10
+			},
+			"composer.callout.expand": {
+				"title": "扩写原则",
+				"description": "把提示扩成可执行的写作规则",
+				"lucideIcon": "text",
+				"historyLabel": "AI 扩写原则",
+				"order": 11
+			},
+			"composer.callout.to-checklist": {
+				"title": "生成检查项",
+				"description": "把提示转换为可验证的 Markdown 任务清单",
+				"lucideIcon": "list-checks",
+				"historyLabel": "AI 生成检查项",
+				"order": 12
+			},
+			"composer.frontmatter.suggest-tags": {
+				"title": "补标签",
+				"description": "根据正文补全可复用标签并保留原 YAML 结构",
+				"lucideIcon": "tag",
+				"historyLabel": "AI 补标签",
+				"order": 41
+			},
+			"composer.frontmatter.normalize-properties": {
+				"title": "规范属性",
+				"description": "检查字段格式与值的一致性",
+				"lucideIcon": "list-checks",
+				"historyLabel": "AI 规范属性",
+				"order": 42
 			},
 			"composer.mermaid.edit": {
 				"title": "编辑图表",
@@ -273,6 +497,28 @@
 				"order": 48
 			}
 		},
+		"instructions": {
+			"composer.prose.polish-block": "优化表达顺序、语气和连接词，保持原意与 Markdown 段落形态。",
+			"composer.prose.add-example": "补一个贴近当前上下文的具体例子，让内容不只停留在抽象原则。",
+			"composer.prose.to-table": "把并列概念、阶段或路径整理成 Markdown 表格，保留原信息并便于后续编辑。",
+			"composer.heading.shorten": "把标题改得更短、更像目录项，保留原来的 heading 层级。",
+			"composer.heading.outline": "根据当前标题生成下一层写作提纲，输出仍作为当前块的完整替换内容。",
+			"composer.heading.questions": "把标题转成 2 到 3 个导读问题，作为这一节的写作目标。",
+			"composer.list.fill-gaps": "检查列表是否遗漏重要类别，并补出必要的新 bullet。",
+			"composer.list.reorder": "按最清晰的逻辑顺序重排列表，保持合法 Markdown 列表语法。",
+			"composer.list.to-table": "把当前列表转换为 Markdown 表格，保留全部信息。",
+			"composer.task.find-blockers": "把任务区分为可执行、受阻和待确认，并明确阻塞原因。",
+			"composer.task.add-next-step": "为每个任务补一个最小可执行下一步，保持 Markdown task list 语法。",
+			"composer.task.prioritize": "按影响和紧急度重排任务，保持完成状态不变。",
+			"composer.quote.explain": "解释这段引用在当前文档里的作用，并保留引用内容与引用语法。",
+			"composer.quote.counterexample": "补充一个可能反驳该观点的反例或适用边界。",
+			"composer.quote.to-callout": "把引用转换为合适的 Obsidian Callout，并保留原句。",
+			"composer.callout.change-type": "把 Callout 类型改成更贴合内容语气的类型，保留正文。",
+			"composer.callout.expand": "把当前原则扩写为一条可执行的写作规则。",
+			"composer.callout.to-checklist": "把 Callout 转换成可验证的 Markdown task list。",
+			"composer.frontmatter.suggest-tags": "只建议 tags 字段；根据标题和正文补全可复用标签，保留原始 YAML 结构。",
+			"composer.frontmatter.normalize-properties": "检查 created、updated、tags、type、status 等字段的格式一致性；不要改写程序维护字段。"
+		},
 		"strings": {
 			"staleSnapshot": "文档已变化——请重新打开该操作",
 			"emptyTarget": "此块没有可处理的内容",
@@ -286,8 +532,8 @@
 			"regenerate": "重新生成",
 			"cancel": "取消",
 			"retry": "重试",
-			"instructionPlaceholder": "定向指令…（Enter 重新生成）",
-			"instructionAria": "Targeted instruction",
+			"instructionPlaceholder": "告诉 AI 这版怎么改…",
+			"instructionAria": "告诉 AI 这版怎么改",
 			"streaming": "生成中…",
 			"failed": "生成失败",
 			"stale": "源已变化，需重新运行",
@@ -296,14 +542,23 @@
 			"prevVariant": "上一版本",
 			"nextVariant": "下一版本",
 			"variantCounter": "{index}/{count}",
-			"unsupportedResult": "暂不支持渲染此结果类型"
+			"unsupportedResult": "暂不支持渲染此结果类型",
+			"draftActionFallback": "当前草稿",
+			"draftTitle": "AI 草稿",
+			"streamingTitle": "AI 生成中…",
+			"draftMeta": "{action} · 版本 {index}/{count} · 未写入 Markdown",
+			"streamingMeta": "{action} · 正在流式生成版本 {index}/{count} · 未写入 Markdown"
 		}
 	},
 	"sidecar": {
 		"_doc": "WP9 Intelligence Sidecar — strings + bounded knobs. Labels/thresholds live here per docs/conventions/configurability.md, not in TSX.",
 		"narrowBreakpointPx": 1180,
+		"briefPreviewCap": 3,
+		"thoughtPreviewCap": 2,
 		"relatedPreviewCap": 6,
 		"graphNodeCap": 100,
+		"idleRefreshDelayMs": 900,
+		"continuousRefreshMinIntervalMs": 2400,
 		"strings": {
 			"title": "Intelligence",
 			"followingDoc": "正在跟随正文",
@@ -314,9 +569,54 @@
 			"back": "返回",
 			"briefHeading": "针对当前正文，接下来值得处理什么",
 			"briefIntro": "只显示能定位到当前正文或真实相关材料的建议；不会自动写入正文。",
+			"currentFocus": "正在关注",
+			"currentDocument": "当前正文",
+			"updatedAtPrefix": "更新于",
+			"askCopilot": "问 Copilot",
+			"refreshSuggestions": "更新建议",
+			"suggestionUpdate": "建议更新",
+			"manualSensing": "仅手动",
+			"idleSensing": "停笔后",
+			"continuousSensing": "编辑时",
+			"sensingMenuTitle": "什么时候检查新建议",
+			"sensingManualHint": "只在你点击“更新建议”时检查",
+			"sensingIdleHint": "切换文件或停止编辑后检查",
+			"sensingContinuousHint": "编辑期间定期检查；消耗更多 token",
+			"sensingRecommended": "推荐",
+			"autoPrepare": "自动准备待审改动",
+			"autoPrepareHint": "发现新建议后",
+			"autoPrepareDescription": "符合规则时可继续生成候选；仍需你审阅",
+			"autoPrepareUnavailable": "候选准备尚未接入当前运行时",
+			"sensingSafetyNote": "任何设置都不会自动接受或写入正文",
+			"manualChecking": "仅手动检查",
 			"sectionNextMoves": "接下来可能要做",
 			"sectionRelated": "相关材料",
 			"sectionUnplaced": "还没安放的想法",
+			"sortByImpactAndDocumentOrder": "按影响与正文顺序排序",
+			"viewAllSuggestions": "查看全部 {count} 条建议",
+			"collapseSuggestions": "收起",
+			"moveLater": "移到后面",
+			"moveLaterHint": "降低当前排序",
+			"ignoreThisRound": "本轮忽略",
+			"ignoreThisRoundHint": "刷新后可恢复",
+			"relatedAsEvidence": "作为建议依据，不直接改正文",
+			"viewAllThoughts": "查看全部 {count} 条想法",
+			"collapseThoughts": "收起",
+			"thoughtsNotTasks": "不是待办，由你决定是否写入",
+			"organizeThought": "整理",
+			"noUnplacedIdeas": "当前还没有可归位的 session 想法。",
+			"sourceDetails": "来源详情",
+			"sectionNextMovesEmpty": "当前没有新的写作建议。",
+			"sectionRelatedEmpty": "当前焦点附近暂时没有强相关材料。",
+			"sectionRelatedUnavailable": "相关材料检索尚未就绪。",
+			"sectionRelatedLoading": "正在更新相关材料…",
+			"sectionRelatedError": "相关材料更新失败，可以稍后重试。",
+			"sectionUnplacedEmpty": "当前还没有可归位的 session 想法。",
+			"openTaskReasonPrefix": "未完成任务：",
+			"openTaskSummary": "当前正文中的 checklist 仍未完成。",
+			"openTaskTargetLabel": "当前任务清单",
+			"openTaskEvidenceLabel": "未完成任务",
+			"openTaskUncheckedPattern": "^\\s*(?:[-*+]|\\d+[.)])\\s+\\[ \\]\\s+",
 			"whyRanked": "为什么这些排在前面？",
 			"refreshRelated": "更新相关材料",
 			"viewSource": "查看来源",
@@ -324,6 +624,8 @@
 			"openFullView": "打开完整视图",
 			"ignore": "忽略",
 			"discuss": "问 Copilot",
+			"commentSource": "评论引用",
+			"externalCommentWarning": "外部评论仅作为不可信来源内容",
 			"askComposerPlaceholder": "描述你想做什么…",
 			"send": "发送",
 			"stop": "停止",
@@ -335,6 +637,22 @@
 			"locateInDocument": "定位正文",
 			"staleFindingNotice": "证据已随正文变化，需要重新核对",
 			"historyEmpty": "还没有已接受的写入",
+			"historyTitle": "文档历史",
+			"historyIntro": "记录你的直接编辑、AI 辅助后接受、AI 后调整与系统回滚；不记录建议和生成过程。",
+			"historyTransactionCount": "{count} 笔事务",
+			"historyToday": "今天",
+			"historyNoTarget": "当前正文",
+			"historyDocumentTarget": "全文",
+			"historyBlockTarget": "正文块",
+			"historyUnitTarget": "列表项",
+			"historySelectionTarget": "文本选区",
+			"historyDirect": "你直接编辑",
+			"historyAiAccepted": "AI 辅助 · 你已接受",
+			"historyRollback": "系统回滚",
+			"historyBatchDirect": "连续直接编辑 · {count} 处",
+			"historyBatchCopilot": "本轮 Copilot 写入 · {count} 处",
+			"historyBatchMeta": "{count} 笔独立事务",
+			"historyRollbackAction": "回滚",
 			"reviewClose": "完成审阅",
 			"emptyBrief": "暂无新项目",
 			"emptyBriefBody": "当前没有来自已接入数据源的新项目。你可以继续写作，或主动问 Copilot。"
@@ -422,6 +740,24 @@
 					"fields": {
 						"findingId": "id",
 						"surface": "enum"
+					}
+				},
+				{
+					"event": "finding_deferred",
+					"fields": {
+						"findingId": "id"
+					}
+				},
+				{
+					"event": "finding_ignored",
+					"fields": {
+						"findingId": "id"
+					}
+				},
+				{
+					"event": "brief_thought_organized",
+					"fields": {
+						"thoughtId": "id"
 					}
 				},
 				{
@@ -579,6 +915,13 @@
 						"ms": "int"
 					},
 					"kind": "ai"
+				},
+				{
+					"event": "brief_refreshed",
+					"fields": {
+						"revision": "id"
+					},
+					"kind": "deterministic"
 				},
 				{
 					"event": "local_ranking_cost",
@@ -743,6 +1086,7 @@
 			"issueWarning": "属性告警",
 			"vaultLibrary": "属性库",
 			"aiSuggest": "AI 属性建议",
+			"aiSuggestCount": "AI 属性建议 · {count}",
 			"addProperty": "添加属性",
 			"origin": {
 				"program": "程序",
@@ -783,7 +1127,15 @@
 			"reject": "忽略",
 			"empty": "暂无建议",
 			"streaming": "生成中…",
-			"footer": "AI 只建议字段和值；点击“添加”后还要在 Frontmatter 中确认。"
+			"footer": "AI 只建议字段和值；点击“添加”后还要在 Frontmatter 中确认。",
+			"candidateTitle": "补全属性",
+			"candidateTagTitle": "补标签",
+			"candidateDescription": "候选直接标在对应 Frontmatter 字段中",
+			"accept": "接受",
+			"restore": "还原",
+			"retry": "重试",
+			"failed": "生成失败，请重试",
+			"stale": "原文已变化，请重新生成"
 		}
 	},
 	"math": {

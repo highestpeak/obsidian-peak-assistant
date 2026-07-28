@@ -286,6 +286,10 @@ flowchart LR
             <li><strong>Safety</strong> — 默认 permission mode。</li>
           </ul>
           <p class="prose">这 tab 是 Profile v2 的门面。它不直接编辑 <code>Profile</code> 对象，而是让用户看到“角色 → provider + modelId”的一对映射，中间转换由 <code>ProfileRegistry</code> 负责。</p>
+          <div class="claim">
+            <strong>模型选择器是跨页面公共组件</strong>
+            Chat、AI Setup、Prompt Control Center 和以后所有“选择运行模型”的页面必须复用同一套 Profile + model picker：相同的启用 Profile、model catalog、搜索、能力筛选、分组、capability 标签、键盘操作和不可用原因。当前 <code>modelPickerData.ts</code> 已经共享数据，但 <code>ComposerModelSelector</code> 与 <code>RoleModelPicker</code> 仍是两套 UI；后续应抽成公共 <code>ProfileModelPicker</code>，不能让新页面继续添加原生双下拉框。规则见 <a href="conventions/ui-design.md#65-domain-pickers-are-shared-composites-not-surface-local-dropdowns">UI Design System §6.5</a>。
+          </div>
 
           <h3 style="margin-top: 22px;">Knowledge Index · 索引深度与质量</h3>
           <p class="prose">5 个 section：</p>
@@ -675,7 +679,7 @@ flowchart LR
             <dd>Loader 不做 <code>{ ...raw, ...defaults }</code>。它显式抽出每个字段，未知字段直接被丢。加新字段时必须在 loader 里补 normalize 分支，否则用户 <code>data.json</code> 里的值读不出来。</dd>
 
             <dt>2 · Defaults 分层</dt>
-            <dd>三层默认：字段层（<code>DEFAULT_SEARCH_SETTINGS</code> / <code>DEFAULT_AI_SERVICE_SETTINGS</code> / <code>DEFAULT_HARNESS_SETTINGS</code>）、块层（<code>promptModelMap</code> 是所有 PromptId 的默认 map）、结构层（<code>DEFAULT_SETTINGS</code> 组合前两层）。加字段前先看它属于哪一层。</dd>
+            <dd>三层默认：字段层（<code>DEFAULT_SEARCH_SETTINGS</code> / <code>DEFAULT_AI_SERVICE_SETTINGS</code> / <code>DEFAULT_HARNESS_SETTINGS</code>）、块层（<code>promptModelMap</code> 目前只为三组共 29 个 PromptId 生成默认项，不是全部 Prompt）、结构层（<code>DEFAULT_SETTINGS</code> 组合前两层）。加字段前先看它属于哪一层。</dd>
 
             <dt>3 · 只 clamp 边界</dt>
             <dd>数值字段基本都夹一次上下界：<code>shortSummaryLength</code> 50–500、<code>fullSummaryLength</code> 500–10000、<code>aiAnalysisHistoryLimit</code> 1–50、<code>maxEscalationsPerLoop</code> 1–3、<code>autoEscalateScoreBelow</code> 0–1、<code>resetDayOfMonth</code> 1–28、Ambient 的各种 cooldown 至少 1000ms。用户输错也不会崩，但 UI 组件也要跟这份界一致。</dd>
@@ -690,6 +694,11 @@ flowchart LR
           <div class="claim">
             <strong>Settings 写入</strong>
             插件运行时不再直接改 <code>data.json</code>，写入走 <code>PluginSettingsLoader</code> 反向序列化 + Obsidian <code>saveData()</code>。Setup Wizard、Command Center 的临时覆盖、Settings tab 三个入口都收敛到这一个 write path。
+          </div>
+
+          <div class="claim warn">
+            <strong>逐 Prompt 设置目前不能视为可用能力</strong>
+            <code>promptModelMap</code> 仍会被 Loader 读取，旧 resolver 也仍存在；但主要文字、流式和结构化 AI 调用没有消费它。目标设计是在 AI Setup 放一个小入口，打开独立的 <a href="superpowers/specs/2026-07-28-prompt-control-center-design.md">Prompt Control Center</a>；先统一 Prompt / model resolver，再实现页面。可先审阅 <a href="gstack/prompt-control-center-2026-07-28/index.html">可点击 mock</a>。
           </div>
         </section>
 

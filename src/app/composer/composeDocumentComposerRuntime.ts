@@ -9,12 +9,15 @@
 
 import type { App } from 'obsidian';
 import {
+	compileUncheckedTaskPattern,
+	createComposerBlockDraftGenerationPort,
 	ComposerSourceRevisionService,
 	DEFAULT_IMAGE_DOMAIN_CONFIG,
 	loadImageDomainConfig,
 	type ImageDomainConfig,
 } from '@/service/composer';
 import { loadComposerTransactionConfig } from '@/ui/view/composer';
+import { DEFAULT_SIDECAR_CONFIG, loadSidecarConfig, type SidecarConfig } from '@/ui/view/composer/sidecar/sidecarConfig';
 import { AppContext } from '@/app/context/AppContext';
 import { getAIMediaFolder } from '@/core/config/folderPaths';
 import type { SearchClient } from '@/service/search/SearchClient';
@@ -120,6 +123,10 @@ export function composeDocumentComposerRuntime(app: App, pluginDir?: string): Do
 		imageConfig = loaded;
 	});
 	const imageConfigProvider = (): ImageDomainConfig => imageConfig;
+	let sidecarConfig: SidecarConfig = DEFAULT_SIDECAR_CONFIG;
+	void loadSidecarConfig().then((loaded) => {
+		sidecarConfig = loaded;
+	});
 	const runtime = new DocumentComposerRuntime(source, write, events, revisionService, undefined, {
 		commentPersistence: new ObsidianComposerCommentPersistence(app, commentBaseDir),
 		linkPort: new ObsidianComposerLinkMetadata(app),
@@ -128,6 +135,17 @@ export function composeDocumentComposerRuntime(app: App, pluginDir?: string): Do
 		relatedMaterials: new ObsidianComposerRelatedMaterials(safeGetSearchClient),
 		// WP9 §12.7 — privacy-safe evaluation telemetry to a plugin-dir JSONL stream.
 		intelligenceTelemetry: new ObsidianComposerIntelligenceTelemetry(app, telemetryBaseDir),
+		openWritingMoves: () => ({
+			uncheckedTaskReason: sidecarConfig.strings.openTaskReasonPrefix,
+			uncheckedTaskSummary: sidecarConfig.strings.openTaskSummary,
+			uncheckedTaskTargetLabel: sidecarConfig.strings.openTaskTargetLabel,
+			uncheckedTaskEvidenceLabel: sidecarConfig.strings.openTaskEvidenceLabel,
+			uncheckedTaskPattern: compileUncheckedTaskPattern(sidecarConfig.strings.openTaskUncheckedPattern),
+		}),
+		briefSensing: () => ({
+			idleRefreshDelayMs: sidecarConfig.idleRefreshDelayMs,
+			continuousRefreshMinIntervalMs: sidecarConfig.continuousRefreshMinIntervalMs,
+		}),
 		// WP5 §8.2 — Vault property library scan over the metadata cache (lazy + cached).
 		vaultInventory: new ObsidianComposerVaultInventory(app),
 		// WP5 §10.2 — formula detail (explain / split / variables) generation.
@@ -143,6 +161,7 @@ export function composeDocumentComposerRuntime(app: App, pluginDir?: string): Do
 			config: imageConfigProvider,
 		},
 		nativePreviewPort: new ObsidianComposerNativePreviewAdapter(app),
+		blockDraftGeneration: createComposerBlockDraftGenerationPort(executor),
 	});
 	// The transaction-timing config lives in composer.json; load it asynchronously
 	// and apply once resolved. Hubs created before it lands use the compiled
