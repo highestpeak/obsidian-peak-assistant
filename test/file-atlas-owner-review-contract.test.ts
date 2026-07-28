@@ -27,6 +27,9 @@ assert.match(hostAdapter, /view\?\.editor\?\.focus\(\)/);
 assert.match(inspector, /<KeywordCard text=\{keywordText\} config=\{config\} \/>/);
 assert.match(inspector, /<StatisticsCard block=\{block\} config=\{config\} \/>/);
 assert.match(inspector, /keywordsEmpty/);
+assert.match(inspector, /keywords\.slice\(0, 4\)/);
+assert.match(inspector, /className="pkfa-kw-toggle"/);
+assert.match(css, /\.pkfa-kw-list\.is-expanded[\s\S]*?overflow:\s*auto/);
 assert.doesNotMatch(inspector, /\{!isGroup && \(/);
 
 assert.match(graph, /data\.edges\.filter\(\(edge\) => semantic \|\| edge\.kind !== 'semantic'\)/);

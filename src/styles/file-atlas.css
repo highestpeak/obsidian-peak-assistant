@@ -1152,7 +1152,19 @@
 /* Chips are sized by term frequency: `--kw-w` (0..1, set inline per chip) scales
    height, word size, and the count badge so magnitude reads at a glance. Baselines
    below correspond to the least-frequent term; the deltas add up toward the top. */
-.pkfa-kw-list { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+.pkfa-kw-list {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 7px;
+	min-height: 0;
+}
+
+.pkfa-kw-list.is-expanded {
+	max-height: 150px;
+	overflow: auto;
+	padding-right: 4px;
+}
 
 .pkfa-kw-chip {
 	--kw-w: 0.5;
@@ -1170,6 +1182,25 @@
 	padding: 1px 6px;
 	border-radius: var(--pk-radius-pill); background: var(--pk-accent); color: var(--pk-accent-fg);
 	font-size: calc(9px + var(--kw-w) * 4px); font-weight: 820;
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-kw-toggle {
+	width: max-content !important;
+	min-height: 24px !important;
+	padding: 0 7px !important;
+	border: 0 !important;
+	border-radius: var(--pk-radius-sm) !important;
+	background: transparent !important;
+	color: var(--pk-accent-text);
+	font-size: var(--pk-text-xs);
+	font-weight: 720;
+	cursor: pointer;
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-kw-toggle:hover,
+.peak-file-atlas-modal.pkfa-root .pkfa-kw-toggle:focus-visible {
+	background: var(--pk-accent-tint) !important;
+	outline: 0;
 }
 
 /* ---------- graph subview ---------- */

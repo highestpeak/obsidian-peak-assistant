@@ -362,11 +362,14 @@ const ImagePreview: React.FC<{
 
 /** Program-computed term-frequency keywords for every addressable block. */
 const KeywordCard: React.FC<{ text: string; config: FileAtlasConfig }> = ({ text, config }) => {
+	const [expanded, setExpanded] = useState(false);
 	const keywords = keywordsOf(text, config.keywordStopwords);
+	useEffect(() => setExpanded(false), [text]);
 	// keywordsOf returns counts descending, so the first entry is the max. Size each
 	// chip by a linear weight (count / max, floored so the rarest term stays legible)
 	// — frequency should read directly by size. CSS maps `--kw-w` to font + badge.
-	const max = keywords[0][1] || 1;
+	const max = keywords[0]?.[1] ?? 1;
+	const visibleKeywords = expanded ? keywords : keywords.slice(0, 4);
 	return (
 		<section className="pkfa-card">
 			<div className="pkfa-card-body">
@@ -375,18 +378,33 @@ const KeywordCard: React.FC<{ text: string; config: FileAtlasConfig }> = ({ text
 					<span>{config.strings.keywordsTitle}</span>
 				</span>
 				{keywords.length ? (
-					<div className="pkfa-kw-list">
-						{keywords.map(([word, count]) => (
-						<span
-							key={word}
-							className="pkfa-kw-chip"
-							style={{ '--kw-w': Math.max(0.12, count / max).toFixed(3) } as React.CSSProperties}
-						>
-							{word}
-							<b>×{count}</b>
-						</span>
-						))}
-					</div>
+					<>
+						<div className={`pkfa-kw-list${expanded ? ' is-expanded' : ''}`}>
+							{visibleKeywords.map(([word, count]) => (
+								<span
+									key={word}
+									className="pkfa-kw-chip"
+									style={{ '--kw-w': Math.max(0.12, count / max).toFixed(3) } as React.CSSProperties}
+								>
+									{word}
+									<b>×{count}</b>
+								</span>
+							))}
+						</div>
+						{keywords.length > 4 && (
+							<Button
+								variant="unstyled"
+								type="button"
+								className="pkfa-kw-toggle"
+								aria-expanded={expanded}
+								onClick={() => setExpanded((current) => !current)}
+							>
+								{expanded
+									? config.strings.keywordsShowLess
+									: config.strings.keywordsShowAll.replace('{count}', String(keywords.length))}
+							</Button>
+						)}
+					</>
 				) : (
 					<span className="pkfa-selected-sub">{config.strings.keywordsEmpty}</span>
 				)}
