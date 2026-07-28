@@ -2,8 +2,7 @@
 
 ## Status
 
-Implemented in the isolated `codex/composer-formula-typed-review` worktree.
-The original checkout remains unchanged.
+Implemented, then corrected on the production branch after owner real-UI review.
 
 ## Problem
 
@@ -47,13 +46,25 @@ target remains the single frozen formula.
 
 - Explanation and variables remain formula-local annotations and never mutate
   Markdown.
-- Split acceptance writes one standard display-math block using an `aligned`
-  environment containing the equivalent expression and every component
-  definition. It does not replace the source with shorthand containing
-  undefined names.
+- A split may always render as an explanation. It becomes writeback-eligible
+  only when the equivalent expression is an equation, every component is a
+  complete named definition, definition names are unique, and every definition
+  is referenced by the equivalent expression.
+- Eligible split acceptance writes one standard display-math block using an
+  `aligned` environment with aligned equality operators. Explanatory fragments
+  such as `1-d` or `d` cannot enter the document as standalone equation rows.
 - Split commits through the existing `ComposerTransactionHub` using the exact
   formula source range, a revision guard, History and Undo. No second runtime or
   write path is introduced.
+- `kept` means a local explanation/variable annotation was retained; `applied`
+  means a split transaction succeeded. The two states must never share copy.
+- Labels, explanations and variable extraction use the leading equation of an
+  `aligned` result rather than the LaTeX environment wrapper or helper rows.
+- Variable rows contain deduplicated atomic symbols only. Compound expressions,
+  operators, equations and numeric literals are not variable identities.
+- Language hints skip adjacent math blocks and continue to the nearest prose so
+  a formula stack inside a Chinese section does not silently fall back to
+  English.
 
 ## Non-goals
 
@@ -65,13 +76,17 @@ target remains the single frozen formula.
 ## Verification
 
 - Typed response parsing and invalid-output failure: covered.
+- Unsafe explanatory splits remain visible but cannot reach the serializer.
+- `aligned` labels resolve to the leading equation identity.
+- Atomic variable filtering/deduplication and prose-seeking locale context:
+  covered.
 - KaTeX-addressable explain/split/variable DOM contracts: covered by SSR.
 - Exact split replacement and reversible transaction behavior: covered against
   the real transaction hub with History and Undo.
 - Nine focused Composer/config/style/runtime tests: passing.
 - Production build and bundle syntax check: passing.
-- Full suite: 331/333 passing. The remaining two Chat Studio/theme assertion
+- Full suite: 338/340 passing. The remaining two Chat Studio/theme assertion
   failures reproduce on the untouched baseline and are outside this scope.
-- Real Obsidian interaction: `INTERACTION NOT VERIFIED`. No Obsidian CDP
-  listener was available, and the isolated worktree is not the plugin source
-  currently loaded by the app.
+- Owner real-Obsidian screenshots established the original regression. The
+  corrected build still has `INTERACTION NOT VERIFIED`: no Obsidian CDP
+  listener was available for reload, DOM assertions and a corrected screenshot.

@@ -27,6 +27,7 @@ export interface MathDetailStrings {
 	streaming: string;
 	failed: string;
 	applyFailed: string;
+	splitUnsafe: string;
 	empty: string;
 	prevVariant: string;
 	nextVariant: string;
@@ -79,6 +80,7 @@ export const DEFAULT_MATH_CONFIG: MathConfig = {
 		streaming: '生成中…',
 		failed: '生成失败',
 		applyFailed: '原文已变化，无法应用；请重新生成',
+		splitUnsafe: '这版可以阅读，但组成项不是完整定义式，不能写回 Markdown',
 		empty: '暂无内容',
 		prevVariant: '上一版本',
 		nextVariant: '下一版本',

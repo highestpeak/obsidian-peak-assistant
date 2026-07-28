@@ -62,7 +62,10 @@ async function testSplitCommitAndUndo(): Promise<void> {
 	});
 	const committed = vault.read('formula.md');
 	check('split commit writes one self-contained aligned formula', committed.includes('\\begin{aligned}'));
-	check('split commit includes every shorthand definition', committed.includes('B=x') && committed.includes('V(A)=y'));
+	check(
+		'split commit includes every shorthand definition',
+		committed.includes('B&=x') && committed.includes('V(A)&=y'),
+	);
 	check('split commit is recorded as one AI History transaction', hub.projection().history.length === 1);
 	check('split commit enables document Undo', hub.projection().undo.canUndo);
 	await hub.undo();

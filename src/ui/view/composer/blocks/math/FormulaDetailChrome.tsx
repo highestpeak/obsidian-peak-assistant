@@ -14,6 +14,7 @@ export function FormulaDetailHeader({
 	count,
 	counter,
 	kept,
+	applied,
 	config,
 }: {
 	label?: string;
@@ -21,6 +22,7 @@ export function FormulaDetailHeader({
 	count: number;
 	counter: string;
 	kept: boolean;
+	applied: boolean;
 	config: MathConfig;
 }): React.ReactElement {
 	const strings = config.detail;
@@ -32,7 +34,12 @@ export function FormulaDetailHeader({
 				{label ?? strings[kind]} · {strings[kind]}
 			</span>
 			<span className="pk-formula-detail__meta">{meta} · {counter}</span>
-			{kept && <span className="pk-formula-detail__kept"><Check size={12} />{strings.kept}</span>}
+			{(kept || applied) && (
+				<span className="pk-formula-detail__kept">
+					<Check size={12} />
+					{applied ? strings.splitApplied : strings.kept}
+				</span>
+			)}
 		</div>
 	);
 }
@@ -74,6 +81,7 @@ export function FormulaDetailControls({
 	onClose,
 	kind,
 	kept,
+	applied,
 	config,
 }: {
 	entry: DetailEntry;
@@ -92,10 +100,11 @@ export function FormulaDetailControls({
 	onClose: () => void;
 	kind: ComposerFormulaDetailKind;
 	kept: boolean;
+	applied: boolean;
 	config: MathConfig;
 }): React.ReactElement {
 	const strings = config.detail;
-	const acceptLabel = acceptedLabel(kind, kept, config);
+	const acceptLabel = acceptedLabel(kind, kept, applied, config);
 	return (
 		<div className="pk-formula-detail__foot">
 			<input
@@ -127,7 +136,12 @@ export function FormulaDetailControls({
 					config={config}
 				/>
 			)}
-			<Button variant="primary" size="sm" disabled={streaming || applying || kept || !canAccept} onClick={onAccept}>
+			<Button
+				variant="primary"
+				size="sm"
+				disabled={streaming || applying || kept || applied || !canAccept}
+				onClick={onAccept}
+			>
 				<Check size={13} />
 				{acceptLabel}
 			</Button>
@@ -146,9 +160,10 @@ export function FormulaDetailControls({
 function acceptedLabel(
 	kind: ComposerFormulaDetailKind,
 	kept: boolean,
+	applied: boolean,
 	config: MathConfig,
 ): string {
-	if (kind === 'split') return kept ? config.detail.splitApplied : config.detail.applySplit;
+	if (kind === 'split') return applied ? config.detail.splitApplied : config.detail.applySplit;
 	return kept ? config.detail.kept : config.detail.keep;
 }
 

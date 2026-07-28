@@ -41,6 +41,8 @@ export interface FormulaDetailEntry {
 	activeVariantId: string | null;
 	/** Accept-keep-annotation: the detail is pinned rather than discarded on close. */
 	kept: boolean;
+	/** Split-only acknowledgement that this exact variant was written to source. */
+	applied: boolean;
 }
 
 export interface FormulaDetailState {
@@ -120,6 +122,7 @@ export function openDetail(
 		variants: [variant],
 		activeVariantId: firstVariantId,
 		kept: false,
+		applied: false,
 	});
 }
 
@@ -135,7 +138,7 @@ export function closeDetail(
 	const key = detailKey(formulaId, kind);
 	const existing = state.entries[key];
 	if (!existing) return state;
-	if (!existing.kept) return remove(state, key);
+	if (!existing.kept || existing.applied) return remove(state, key);
 	return patch(state, key, { ...existing, open: false });
 }
 
@@ -148,7 +151,19 @@ export function keepDetail(
 	const key = detailKey(formulaId, kind);
 	const existing = state.entries[key];
 	if (!existing) return state;
-	return patch(state, key, { ...existing, kept: true });
+	return patch(state, key, { ...existing, kept: true, applied: false });
+}
+
+/** Mark one split review as written without mislabelling it as a kept annotation. */
+export function markDetailApplied(
+	state: FormulaDetailState,
+	formulaId: string,
+	kind: ComposerFormulaDetailKind,
+): FormulaDetailState {
+	const key = detailKey(formulaId, kind);
+	const existing = state.entries[key];
+	if (!existing || kind !== 'split') return state;
+	return patch(state, key, { ...existing, kept: false, applied: true });
 }
 
 /** Append a streamed delta to a variant. */
@@ -214,6 +229,8 @@ export function regenerate(
 		...existing,
 		variants: [...existing.variants, variant],
 		activeVariantId: variantId,
+		kept: false,
+		applied: false,
 	});
 }
 

@@ -18,6 +18,7 @@ import {
 	buildFormulaCopyPayloads,
 	FORMULA_COPY_ORDER,
 	buildFormulaAnnotationPayload,
+	assessFormulaSplitWriteback,
 	buildFormulaSplitMarkdown,
 	buildFormulaSplitPatch,
 	buildFormulaContext,
@@ -29,6 +30,7 @@ import {
 	openDetail,
 	closeDetail,
 	keepDetail,
+	markDetailApplied,
 	regenerate,
 	setActiveVariant,
 	appendDelta,
@@ -63,6 +65,15 @@ function testParse(): void {
 	}
 	check('ranges are disjoint + ordered', formulas[0].to <= formulas[1].from && formulas[1].to <= formulas[2].from);
 	check('label derived from head', formulas[0].label === 'PR(A)');
+	check(
+		'aligned formula label comes from the primary equation, not the environment name',
+		deriveFormulaLabel([
+			'\\begin{aligned}',
+			'  WS(V_i) &= (1-d)+dN_{ji}WS(V_j) \\\\',
+			'  N_{ji} &= w_{ji}',
+			'\\end{aligned}',
+		].join('\n'), 0) === 'WS(V_i)',
+	);
 
 	check('empty label fallback', deriveFormulaLabel('x + y', 4) === 'Formula 5');
 	check('single formula block', parseFormulaBlock('$$a=b$$').length === 1);
@@ -102,6 +113,16 @@ function testIndependentCoexistence(): void {
 	check('kept detail survives close (collapsed)', getDetail(s, 'f0', 'explain') !== undefined && !isDetailOpen(s, 'f0', 'explain'));
 	s = openDetail(s, 'f0', 'explain', 'v-ignored');
 	check('reopening kept detail keeps its history (no new variant)', getDetail(s, 'f0', 'explain')?.variants[0].variantId === 'v-e0');
+
+	s = openDetail(s, 'f0', 'split', 'v-s1');
+	s = markDetailApplied(s, 'f0', 'split');
+	check(
+		'applied split has a distinct state from kept annotation',
+		getDetail(s, 'f0', 'split')?.applied === true &&
+			getDetail(s, 'f0', 'split')?.kept === false,
+	);
+	s = closeDetail(s, 'f0', 'split');
+	check('closing an applied split drops its stale review panel', getDetail(s, 'f0', 'split') === undefined);
 }
 
 function testVariantHistory(): void {
@@ -175,6 +196,19 @@ function testAnnotation(): void {
 			varPayload.variables[0].symbolTex === 'PR(A)' &&
 			varPayload.variables[0].role === 'output',
 	);
+	const noisyVariables = buildFormulaAnnotationPayload('variables', 'x=(1-d)+dy', JSON.stringify({
+		variables: [
+			{ symbolTex: '1-d', role: 'parameter', meaning: 'composite term' },
+			{ symbolTex: 'd', role: 'parameter', meaning: 'damping factor' },
+			{ symbolTex: '$d$', role: 'parameter', meaning: 'duplicate damping factor' },
+		],
+	}));
+	check(
+		'variable rows keep atomic symbols only and deduplicate normalized LaTeX',
+		noisyVariables.detailKind === 'variables' &&
+			noisyVariables.variables.length === 1 &&
+			noisyVariables.variables[0].symbolTex === 'd',
+	);
 
 	const split = buildFormulaAnnotationPayload('split', 'PR(A)=x+y', JSON.stringify({
 		equivalentTex: '$$PR(A)=B+V(A)$$',
@@ -190,10 +224,14 @@ function testAnnotation(): void {
 			split.parts[0].tex === 'B=x',
 	);
 	if (split.detailKind === 'split') {
+		check('named split definitions are safe to write back', assessFormulaSplitWriteback(split).safe);
 		const markdown = buildFormulaSplitMarkdown(split);
 		check('accepted split is one standard display formula', markdown.startsWith('$$\n\\begin{aligned}\n'));
-		check('accepted split defines every introduced component', markdown.includes('B=x') && markdown.includes('V(A)=y'));
-		check('accepted split keeps aligned rows', markdown.includes('PR(A)=B+V(A) \\\\'));
+		check(
+			'accepted split defines every introduced component',
+			markdown.includes('B&=x') && markdown.includes('V(A)&=y'),
+		);
+		check('accepted split aligns equation operators', markdown.includes('PR(A)&=B+V(A) \\\\'));
 		const formula = parseFormulaBlock('$$PR(A)=x+y$$')[0];
 		const patch = buildFormulaSplitPatch('math-1', 100, formula, split);
 		check(
@@ -204,6 +242,27 @@ function testAnnotation(): void {
 				patch.operations[0].kind === 'replaceRange',
 		);
 		check('split patch preserves top-level block count', patch.expectedBlockDelta === 0);
+	}
+
+	const unsafeSplit = buildFormulaAnnotationPayload('split', 'WS(V_i)=x', JSON.stringify({
+		equivalentTex: 'WS(V_i)=(1-d)+dN_{ji}WS(V_j)',
+		parts: [
+			{ label: 'Damping constant', tex: '1-d', contribution: 'base score' },
+			{ label: 'Normalized weight', tex: 'N_{ji}=x', contribution: 'weight' },
+		],
+	}));
+	if (unsafeSplit.detailKind === 'split') {
+		check(
+			'explanatory fragments remain displayable but are unsafe for Markdown writeback',
+			!assessFormulaSplitWriteback(unsafeSplit).safe,
+		);
+		let unsafeWriteFailed = false;
+		try {
+			buildFormulaSplitMarkdown(unsafeSplit);
+		} catch {
+			unsafeWriteFailed = true;
+		}
+		check('unsafe split cannot reach the serializer', unsafeWriteFailed);
 	}
 
 	let invalidFailed = false;
@@ -221,16 +280,28 @@ function testContextHint(): void {
 		'',
 		'这是 PageRank 的中文背景说明。',
 		'',
+		'$$x=y$$',
+		'',
 		'$$PR(A)=x+y$$',
+		'',
+		'$$z=w$$',
 		'',
 		'下一段继续解释阻尼系数。',
 	].join('\n'));
-	const math = snapshot.blocks.find((block) => block.kind === 'math');
+	const math = snapshot.blocks.find(
+		(block) => block.kind === 'math' && block.renderModel.raw.includes('PR(A)'),
+	);
 	check('math fixture parsed for context hint', Boolean(math));
 	const context = buildFormulaContext(snapshot, math?.blockId ?? '', 1200);
 	check(
-		'context hint includes neighboring Chinese prose but not target LaTeX',
-		Boolean(context?.includes('中文背景说明') && context.includes('阻尼系数') && !context.includes('PR(A)=x+y')),
+		'context skips adjacent math and finds nearby Chinese prose',
+		Boolean(
+			context?.includes('中文背景说明') &&
+				context.includes('阻尼系数') &&
+				!context.includes('PR(A)=x+y') &&
+				!context.includes('x=y') &&
+				!context.includes('z=w'),
+		),
 	);
 }
 

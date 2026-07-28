@@ -24,6 +24,9 @@ export interface ParsedFormula {
 }
 
 const FORMULA_RE = /\$\$([\s\S]*?)\$\$/g;
+const MULTI_EQUATION_ENVIRONMENT_RE =
+	/\\(?:begin|end)\{(?:aligned|gathered|split)\}/g;
+const EQUATION_ROW_SEPARATOR_RE = /\\\\/;
 
 /** Parse a math block source into its display formulas (in document order). */
 export function parseFormulaBlock(blockSource: string): ParsedFormula[] {
@@ -51,11 +54,24 @@ export function parseFormulaBlock(blockSource: string): ParsedFormula[] {
  * usable head. Deterministic — no AI.
  */
 export function deriveFormulaLabel(latex: string, ordinal: number): string {
-	const eq = latex.indexOf('=');
-	const head = eq > 0 ? latex.slice(0, eq) : '';
+	const primary = primaryFormulaLatex(latex);
+	const eq = primary.indexOf('=');
+	const head = eq > 0 ? primary.slice(0, eq) : '';
 	const cleaned = stripTexToText(head).trim();
 	if (cleaned.length > 0 && cleaned.length <= 24) return cleaned;
 	return `Formula ${ordinal + 1}`;
+}
+
+/**
+ * Return the primary equation from a display formula. AI-applied splits use an
+ * `aligned` environment for helper definitions; explain/variables and the card
+ * label must stay scoped to the leading equation rather than treating the
+ * presentation environment as part of the formula identity.
+ */
+export function primaryFormulaLatex(latex: string): string {
+	const withoutEnvironment = latex.replace(MULTI_EQUATION_ENVIRONMENT_RE, '').trim();
+	const firstRow = withoutEnvironment.split(EQUATION_ROW_SEPARATOR_RE, 1)[0] ?? withoutEnvironment;
+	return firstRow.replace(/&/g, '').trim();
 }
 
 /** Rough TeX → readable text: resolve a small symbol set, drop commands/braces. */
@@ -96,12 +112,28 @@ export function buildFormulaContext(
 	if (!snapshot || characterLimit <= 0) return undefined;
 	const index = snapshot.blocks.findIndex((block) => block.blockId === blockId);
 	if (index < 0) return undefined;
-	const neighborSources = [snapshot.blocks[index - 1], snapshot.blocks[index + 1]]
-		.filter((block) => block !== undefined)
-		.map((block) => snapshot.sourceText.slice(block.source.from, block.source.to).trim())
-		.filter(Boolean);
-	if (neighborSources.length === 0) return undefined;
-	const context = neighborSources.join('\n\n');
+	const neighbors: Array<{ index: number; source: string }> = [];
+	let collectedLength = 0;
+	for (
+		let distance = 1;
+		collectedLength < characterLimit &&
+			(index - distance >= 0 || index + distance < snapshot.blocks.length);
+		distance += 1
+	) {
+		for (const neighborIndex of [index - distance, index + distance]) {
+			const block = snapshot.blocks[neighborIndex];
+			if (!block || block.kind === 'math') continue;
+			const source = snapshot.sourceText.slice(block.source.from, block.source.to).trim();
+			if (!source) continue;
+			neighbors.push({ index: neighborIndex, source });
+			collectedLength += source.length;
+		}
+	}
+	if (neighbors.length === 0) return undefined;
+	const context = neighbors
+		.sort((left, right) => left.index - right.index)
+		.map((neighbor) => neighbor.source)
+		.join('\n\n');
 	if (context.length <= characterLimit) return context;
 	const headLength = Math.ceil(characterLimit / 2);
 	const tailLength = Math.floor(characterLimit / 2);

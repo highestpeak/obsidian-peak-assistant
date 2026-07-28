@@ -7,6 +7,7 @@ import {
 	buildFormulaCopyPayloads,
 	buildFormulaSplitPatch,
 	parseFormulaBlock,
+	primaryFormulaLatex,
 	type ParsedFormula,
 } from '@/service/composer';
 import type {
@@ -125,7 +126,7 @@ function FormulaCard({
 							onClick={() => store.getState().toggle(
 								formula.id,
 								kind,
-								formula.latex,
+								detailLatex(formula, kind),
 								formula.label,
 								contextText,
 							)}
@@ -142,7 +143,7 @@ function FormulaCard({
 					store={store}
 					formulaId={formula.id}
 					kind={kind}
-					latex={formula.latex}
+					latex={detailLatex(formula, kind)}
 					label={formula.label}
 					contextText={contextText}
 					config={config}
@@ -151,6 +152,14 @@ function FormulaCard({
 			))}
 		</div>
 	);
+}
+
+function detailLatex(
+	formula: ParsedFormula,
+	kind: ComposerFormulaDetailKind,
+): string {
+	if (kind === 'split') return formula.latex;
+	return primaryFormulaLatex(formula.latex);
 }
 
 function CopyControl({

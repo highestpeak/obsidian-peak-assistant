@@ -2,6 +2,7 @@ import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ComposerFormulaAnnotationPayload } from '@/core/schemas/composer';
 import { FormulaDetailBody } from '@/ui/view/composer/blocks/math/FormulaDetailBody';
+import { FormulaDetailHeader } from '@/ui/view/composer/blocks/math/FormulaDetailChrome';
 import { DEFAULT_MATH_CONFIG } from '@/ui/view/composer/blocks/math/mathConfig';
 import { makeChecker } from './helpers/composer-fakes';
 
@@ -53,5 +54,16 @@ check('variables uses the formula-local table layout', variables.includes('data-
 check('variables renders preview and symbols as math', (variables.match(/data-formula-render/g) ?? []).length === 3);
 check('variables preserves semantic role chips', variables.includes('output') && variables.includes('parameter'));
 check('variables states the clicked formula identity', variables.includes('PageRank'));
+
+const appliedHeader = renderToStaticMarkup(React.createElement(FormulaDetailHeader, {
+	label: 'WS(V_i)',
+	kind: 'split',
+	count: 0,
+	counter: '1/1',
+	kept: false,
+	applied: true,
+	config: DEFAULT_MATH_CONFIG,
+}));
+check('applied split is not mislabeled as a kept annotation', appliedHeader.includes('已应用') && !appliedHeader.includes('已保留'));
 
 done('composer-formula-structured-ui');

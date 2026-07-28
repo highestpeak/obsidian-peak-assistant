@@ -21,6 +21,7 @@ import {
 	closeDetail,
 	getDetail,
 	keepDetail,
+	markDetailApplied,
 	markVariantFailed,
 	markVariantReady,
 	openDetail,
@@ -58,6 +59,7 @@ export interface FormulaDetailStoreState {
 	) => void;
 	close: (formulaId: string, kind: ComposerFormulaDetailKind) => void;
 	keep: (formulaId: string, kind: ComposerFormulaDetailKind) => void;
+	markApplied: (formulaId: string, kind: ComposerFormulaDetailKind) => void;
 	followUp: (
 		formulaId: string,
 		kind: ComposerFormulaDetailKind,
@@ -144,6 +146,7 @@ export function createFormulaDetailStore(generator?: FormulaDetailGeneratorPort)
 				apply(closeDetail(get().model, formulaId, kind));
 			},
 			keep: (formulaId, kind) => apply(keepDetail(get().model, formulaId, kind)),
+			markApplied: (formulaId, kind) => apply(markDetailApplied(get().model, formulaId, kind)),
 			followUp: (formulaId, kind, latex, instruction, label, contextText) => {
 				if (get().isStreaming(formulaId, kind)) return;
 				const variantId = nextVariantId();

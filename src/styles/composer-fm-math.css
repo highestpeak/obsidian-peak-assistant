@@ -750,9 +750,14 @@
 
 .peak-composer-root .pk-formula-detail__muted,
 .peak-composer-root .pk-formula-detail__failed,
+.peak-composer-root .pk-formula-detail__warning,
 .peak-composer-root .pk-formula-detail__error {
 	color: var(--pkc-fm-key);
 	font-size: 12px;
+}
+
+.peak-composer-root .pk-formula-detail__warning {
+	color: var(--text-warning, #9a6700);
 }
 
 .peak-composer-root .pk-formula-detail__failed,

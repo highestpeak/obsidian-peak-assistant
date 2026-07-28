@@ -1,6 +1,10 @@
 import * as React from 'react';
 import { useStore } from 'zustand';
-import { activeVariant, getDetail } from '@/service/composer';
+import {
+	activeVariant,
+	assessFormulaSplitWriteback,
+	getDetail,
+} from '@/service/composer';
 import type {
 	ComposerFormulaAnnotationPayload,
 	ComposerFormulaDetailKind,
@@ -55,6 +59,9 @@ export function FormulaDetailPanel({
 	const index = entry.variants.findIndex((item) => item.variantId === entry.activeVariantId);
 	const counter = formatMathVariantCounter(strings.variantCounter, index + 1, entry.variants.length);
 	const payload = variant?.payload;
+	const splitAssessment = payload?.detailKind === 'split'
+		? assessFormulaSplitWriteback(payload)
+		: null;
 
 	const submitFollowUp = () => {
 		if (streaming) return;
@@ -76,12 +83,12 @@ export function FormulaDetailPanel({
 			store.getState().keep(formulaId, kind);
 			return;
 		}
-		if (!onApplySplit) return;
+		if (!onApplySplit || !splitAssessment?.safe) return;
 		setApplying(true);
 		setApplyError(null);
 		try {
 			await onApplySplit(payload);
-			store.getState().keep(formulaId, kind);
+			store.getState().markApplied(formulaId, kind);
 		} catch {
 			setApplyError(strings.applyFailed);
 		} finally {
@@ -97,6 +104,7 @@ export function FormulaDetailPanel({
 				count={payload?.detailKind === 'variables' ? payload.variables.length : 0}
 				counter={counter}
 				kept={entry.kept}
+				applied={entry.applied}
 				config={config}
 			/>
 			<div className="pk-formula-detail__body">
@@ -111,6 +119,9 @@ export function FormulaDetailPanel({
 					<span className="pk-formula-detail__muted">{strings.empty}</span>
 				)}
 			</div>
+			{splitAssessment && !splitAssessment.safe && (
+				<span className="pk-formula-detail__warning">{strings.splitUnsafe}</span>
+			)}
 			{applyError && <span className="pk-formula-detail__error">{applyError}</span>}
 			<FormulaDetailControls
 				entry={entry}
@@ -119,7 +130,10 @@ export function FormulaDetailPanel({
 				applying={applying}
 				instruction={instruction}
 				historyOpen={historyOpen}
-				canAccept={Boolean(payload && (payload.detailKind !== 'split' || onApplySplit))}
+				canAccept={Boolean(
+					payload &&
+						(payload.detailKind !== 'split' || (onApplySplit && splitAssessment?.safe)),
+				)}
 				onInstruction={setInstruction}
 				onSubmit={submitFollowUp}
 				onAccept={() => void accept()}
@@ -129,6 +143,7 @@ export function FormulaDetailPanel({
 				onClose={() => store.getState().close(formulaId, kind)}
 				kind={kind}
 				kept={entry.kept}
+				applied={entry.applied}
 				config={config}
 			/>
 			{historyOpen && entry.variants.length > 1 && (
