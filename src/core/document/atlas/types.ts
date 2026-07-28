@@ -43,6 +43,8 @@ export const RawBlockKind = {
 	Heading: 'heading',
 	Paragraph: 'paragraph',
 	List: 'list',
+	/** One addressable item inside a List block. Checkbox items use Task. */
+	ListItem: 'list-item',
 	Task: 'task',
 	Callout: 'callout',
 	Quote: 'quote',
@@ -90,8 +92,8 @@ export interface FileAtlasAnchor {
 /**
  * One node in the ordered document tree.
  *
- * Only {@link RawBlockKind.Heading} blocks carry `children`; every other kind
- * is a leaf. Order of `children` mirrors document order exactly.
+ * Structural containers (headings, lists, and nested list items) carry
+ * `children`. Order of `children` mirrors document order exactly.
  */
 export interface DocumentBlock {
 	/** Same value as `anchor.blockId` — hoisted for convenient keying. */
@@ -106,7 +108,7 @@ export interface DocumentBlock {
 	/** Raw source slice for this block (used by Inspector preview). */
 	source: string;
 	anchor: FileAtlasAnchor;
-	/** Heading containers only. */
+	/** Ordered structural children, when this block is a container. */
 	children?: DocumentBlock[];
 
 	/**
@@ -131,6 +133,8 @@ export interface BlockDetail {
 	lineCount?: number;
 	/** Lists: number of top-level items. */
 	itemCount?: number;
+	/** Lists: ordered (`1.`) vs unordered (`-`). */
+	ordered?: boolean;
 	/** Tables: row / column counts. */
 	rows?: number;
 	columns?: number;

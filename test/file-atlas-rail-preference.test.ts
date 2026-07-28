@@ -24,7 +24,12 @@ assert.deepStrictEqual(
 );
 assert.deepStrictEqual(
 	decodeFileRailPreference('{"sortMode":"unknown","widthPx":100}', config),
-	{ sortMode: 'recent', widthPx: 260 },
+	{ sortMode: 'frequent', widthPx: 260 },
+);
+assert.deepStrictEqual(
+	decodeFileRailPreference('{"sortMode":"recent","widthPx":300}', config),
+	{ sortMode: 'frequent', widthPx: 300 },
+	'legacy recent preference migrates to the stable Most used mode',
 );
 assert.deepStrictEqual(
 	JSON.parse(encodeFileRailPreference({ sortMode: 'name', widthPx: 320.4 }, config)),

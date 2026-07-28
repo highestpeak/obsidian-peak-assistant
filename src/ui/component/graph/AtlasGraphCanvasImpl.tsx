@@ -286,6 +286,8 @@ export interface AtlasGraphCanvasProps {
 	emptyLabel?: string;
 	/** Building state message. Default "Building graph…". */
 	buildingLabel?: string;
+	/** Optional secondary information shown beside the copy controls. */
+	summary?: string;
 	/** Format the overflow badge. */
 	overflowLabel?: (shown: number, total: number) => string;
 	onNodeTap?: (node: AtlasGraphNodeTap) => void;
@@ -301,6 +303,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	nodeCap = 100,
 	emptyLabel = 'No results to graph.',
 	buildingLabel = 'Building graph…',
+	summary,
 	overflowLabel,
 	onNodeTap,
 	onNodeDblTap,
@@ -480,7 +483,18 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 					{emptyMessage}
 				</div>
 			)}
-			<div className="pktw-absolute pktw-top-2 pktw-right-2 pktw-z-20 pktw-flex pktw-gap-1">
+			<div className="pktw-absolute pktw-top-2 pktw-right-2 pktw-z-20 pktw-flex pktw-items-center pktw-gap-1">
+				{summary && (
+					<>
+						<span className="pktw-px-1 pktw-text-xs pktw-font-medium pktw-text-pk-text-tertiary pktw-whitespace-nowrap">
+							{summary}
+						</span>
+						<span
+							aria-hidden="true"
+							className="pktw-mx-1 pktw-h-4 pktw-w-px pktw-bg-pk-border"
+						/>
+					</>
+				)}
 				<IconButton
 					label={copiedMode === 'mermaid' ? 'Copied Mermaid to clipboard' : 'Copy graph as Mermaid'}
 					onClick={handleCopyMermaid}

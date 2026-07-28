@@ -3,11 +3,11 @@
  *
  * Open files are always included and appear before bounded recent history.
  * Ordering is independent of Obsidian's tab-strip order and can be switched
- * between recent activity, recency-weighted frequency, and filename.
+ * between recency-weighted frequency and filename.
  */
 
 import React from 'react';
-import { FileClock, FileText, X } from 'lucide-react';
+import { ArrowUpDown, ChevronDown, FileClock, FileText, X } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { OpenDocMeta } from '../FileAtlasHostPort';
 import type { FileRailSections, FileRailSortMode } from '../fileRailModel';
@@ -179,15 +179,16 @@ export const FileRail: React.FC<FileRailProps> = ({
 				</span>
 				<label className="pkfa-rail-sort">
 					<span className="pkfa-visually-hidden">{sortLabel}</span>
+					<ArrowUpDown aria-hidden="true" />
 					<select
 						aria-label={sortLabel}
 						value={sortMode}
 						onChange={(event) => onSortModeChange(event.target.value as FileRailSortMode)}
 					>
-						<option value="recent">{sortLabels.recent}</option>
 						<option value="frequent">{sortLabels.frequent}</option>
 						<option value="name">{sortLabels.name}</option>
 					</select>
+					<ChevronDown aria-hidden="true" />
 				</label>
 			</div>
 			<div className="pkfa-rail-list">

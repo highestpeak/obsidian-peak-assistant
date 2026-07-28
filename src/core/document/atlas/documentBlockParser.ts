@@ -86,6 +86,7 @@ export function parseDocumentBlocks(content: string, filePath: string): AtlasDoc
 		const siblings = parent ? (parent.children ??= []) : top;
 		block.anchor.ordinalInHeading = siblings.length;
 		block.anchor.nearestHeading = parent ? parent.title : null;
+		assignDescendantContext(block, block.anchor.nearestHeading);
 		siblings.push(block);
 	};
 
@@ -111,6 +112,7 @@ export function parseDocumentBlocks(content: string, filePath: string): AtlasDoc
 		for (const block of makeBlocksFromNode(ctx, node)) pushBlock(block);
 	}
 
+	extendContainerLineRanges(top);
 	return { filePath, blocks: top, stats: computeStats(content, top) };
 }
 
@@ -343,11 +345,7 @@ function makeBlocksFromNode(ctx: ParseCtx, node: RootContent): DocumentBlock[] {
 	}
 }
 
-/**
- * A list becomes: one List block for the whole list (with item count), plus a
- * Task block for every checkbox item (tasks are high-signal per the spec and
- * must surface individually). Non-task items stay folded into the List block.
- */
+/** A list is one document block with addressable ListItem / Task children. */
 function expandList(
 	ctx: ParseCtx,
 	node: { children?: any[]; ordered?: boolean },
@@ -356,38 +354,82 @@ function expandList(
 	raw: string
 ): DocumentBlock[] {
 	const items = node.children ?? [];
-	const out: DocumentBlock[] = [
-		finalizeLeaf(ctx, {
-			kind: RawBlockKind.List,
-			title: firstMeaningfulText(raw) || `${node.ordered ? 'Ordered' : 'Bullet'} list`,
-			sub: `${items.length} items`,
-			source: raw,
-			lineStart: start,
-			lineEnd: end,
-			detail: { itemCount: items.length },
-			ordinal: 0,
-		}),
-	];
+	const list = finalizeLeaf(ctx, {
+		kind: RawBlockKind.List,
+		title: node.ordered ? 'Numbered list' : 'Bullet list',
+		sub: `${items.length} items`,
+		source: raw,
+		lineStart: start,
+		lineEnd: end,
+		detail: { itemCount: items.length, ordered: Boolean(node.ordered) },
+		ordinal: 0,
+	});
+	list.children = items.map((item, index) => makeListItem(ctx, item, start, index));
+	return [list];
+}
 
-	for (const item of items) {
-		if (typeof item.checked !== 'boolean') continue;
-		const iStart = item.position?.start.line ?? start;
-		const iEnd = item.position?.end.line ?? iStart;
-		const itemRaw = sliceLines(ctx, iStart, iEnd);
-		out.push(
-			finalizeLeaf(ctx, {
-				kind: RawBlockKind.Task,
-				title: itemRaw.replace(/^\s*[-*+]\s*\[.\]\s*/, '').trim() || 'Task',
-				sub: item.checked ? 'Checked' : 'Unchecked',
-				source: itemRaw,
-				lineStart: iStart,
-				lineEnd: iEnd,
-				detail: { checked: item.checked },
-				ordinal: 0,
-			})
-		);
+function makeListItem(
+	ctx: ParseCtx,
+	item: any,
+	fallbackLine: number,
+	ordinal: number,
+): DocumentBlock {
+	const start = item.position?.start.line ?? fallbackLine;
+	const end = item.position?.end.line ?? start;
+	const source = sliceLines(ctx, start, end);
+	const checked = typeof item.checked === 'boolean' ? item.checked : null;
+	const kind = checked === null ? RawBlockKind.ListItem : RawBlockKind.Task;
+	const block = finalizeLeaf(ctx, {
+		kind,
+		title: listItemTitle(source, checked !== null),
+		sub: checked === null ? 'List item' : checked ? 'Checked' : 'Unchecked',
+		source,
+		lineStart: start,
+		lineEnd: end,
+		detail: checked === null ? undefined : { checked },
+		ordinal,
+	});
+	const nestedLists = (item.children ?? []).filter((child: any) => child?.type === 'list');
+	const children = nestedLists.map((nested: any, nestedIndex: number) => {
+		const nestedStart = nested.position?.start.line ?? start;
+		const nestedEnd = nested.position?.end.line ?? nestedStart;
+		const nestedRaw = sliceLines(ctx, nestedStart, nestedEnd);
+		const [nestedBlock] = expandList(ctx, nested, nestedStart, nestedEnd, nestedRaw);
+		nestedBlock.anchor.ordinalInHeading = nestedIndex;
+		return nestedBlock;
+	});
+	if (children.length) block.children = children;
+	return block;
+}
+
+function listItemTitle(source: string, task: boolean): string {
+	const firstLine = source.split('\n').find((line) => line.trim()) ?? '';
+	const marker = task
+		? /^\s*(?:[-*+]|\d+[.)])\s+\[[ xX]\]\s*/
+		: /^\s*(?:[-*+]|\d+[.)])\s+/;
+	return truncate(firstLine.replace(marker, '').trim() || (task ? 'Task' : 'List item'), 120);
+}
+
+function assignDescendantContext(block: DocumentBlock, nearestHeading: string | null): void {
+	for (const [index, child] of (block.children ?? []).entries()) {
+		child.anchor.nearestHeading = nearestHeading;
+		child.anchor.ordinalInHeading = index;
+		assignDescendantContext(child, nearestHeading);
 	}
-	return out;
+}
+
+/** Make structural container anchors span the descendants they represent. */
+function extendContainerLineRanges(blocks: DocumentBlock[]): number {
+	let furthestLine = 0;
+	for (const block of blocks) {
+		let blockEnd = block.anchor.lineEnd;
+		if (block.children?.length) {
+			blockEnd = Math.max(blockEnd, extendContainerLineRanges(block.children));
+			block.anchor.lineEnd = blockEnd;
+		}
+		furthestLine = Math.max(furthestLine, blockEnd);
+	}
+	return furthestLine;
 }
 
 /**
@@ -609,6 +651,9 @@ function computeStats(content: string, top: DocumentBlock[]): AtlasStats {
 				blocks += 1;
 				if (RESOURCE_KINDS.has(b.kind)) resources += 1;
 			}
+			// List items are addressable sub-units of one document block. Their
+			// descendants must not inflate the document-context block count.
+			if (b.kind === RawBlockKind.List) continue;
 			if (b.children) visit(b.children);
 		}
 	};

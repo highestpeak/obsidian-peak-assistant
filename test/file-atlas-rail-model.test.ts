@@ -31,13 +31,17 @@ const now = 1_000_000;
 			doc('D.md', { lastViewedAt: 600, viewCount: 2 }),
 		],
 		capacity: 3,
-		sortMode: 'recent',
+		sortMode: 'frequent',
 		now,
 		frequencyHalfLifeDays: 30,
 	});
-	assert.deepStrictEqual(sections.open.map((item) => item.path), ['B.md', 'A.md']);
+	assert.deepStrictEqual(sections.open.map((item) => item.path), ['A.md', 'B.md']);
 	assert.deepStrictEqual(sections.recent.map((item) => item.path), ['C.md']);
-	assert.strictEqual(sections.open[1].viewCount, 8, 'history metrics enrich open rows');
+	assert.strictEqual(
+		sections.open.find((item) => item.path === 'A.md')?.viewCount,
+		8,
+		'history metrics enrich open rows',
+	);
 }
 
 {

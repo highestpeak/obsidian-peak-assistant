@@ -111,7 +111,9 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, conf
 	}, [path, scope, host]);
 
 	const subgraph = useMemo(() => (data ? toSubgraph(data) : null), [data]);
-	const meta = data ? `${data.nodes.length} notes · ${data.edges.length} links` : '';
+	const meta = data
+		? `${data.nodes.length} notes · ${data.edges.filter((edge) => semantic || edge.kind !== 'semantic').length} links`
+		: '';
 	const labelById = useMemo(() => {
 		const m = new Map<string, string>();
 		data?.nodes.forEach((n) => m.set(n.id, n.label));
@@ -173,7 +175,6 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, conf
 					{s.graphSemanticLabel}
 				</Button>
 
-				{meta && <span className="pkfa-graph-chip">{meta}</span>}
 			</div>
 
 			<div className="pkfa-graph-canvas">
@@ -187,6 +188,7 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, conf
 						subgraph={loading ? null : subgraph}
 						preset={layout}
 						showSemantic={semantic}
+						summary={meta}
 						buildingLabel="Loading neighborhood…"
 						emptyLabel="No linked notes around this document yet."
 						onNodeTap={({ id, path: nodePath }) => {

@@ -10,7 +10,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Eye, Plus, Link as LinkIcon, FileText, Send, Copy, Check, Hash } from 'lucide-react';
+import { BarChart3, Eye, Plus, Link as LinkIcon, FileText, Send, Copy, Check, Hash } from 'lucide-react';
 import type { DocumentBlock } from '@/core/document/atlas/types';
 import { RawBlockKind } from '@/core/document/atlas/types';
 import { Button } from '@/ui/component/shared-ui/button';
@@ -18,7 +18,7 @@ import { StreamdownIsolated } from '@/ui/component/mine';
 import type { FileAtlasConfig } from '../config/fileAtlasConfig';
 import type { AtlasImageInfo, FileAtlasHostPort } from '../FileAtlasHostPort';
 import { iconForKind } from '../config/kindIcons';
-import { isGroupKind, keywordsOf, sectionText } from '../atlasTreeModel';
+import { analysisText, isGroupNode, keywordsOf, statisticsOf } from '../atlasTreeModel';
 
 interface AtlasInspectorProps {
 	block: DocumentBlock | null;
@@ -46,6 +46,7 @@ const RENDERED_KINDS = new Set<string>([
 	RawBlockKind.Mermaid,
 	RawBlockKind.Paragraph,
 	RawBlockKind.List,
+	RawBlockKind.ListItem,
 	RawBlockKind.Task,
 	RawBlockKind.Quote,
 	RawBlockKind.Callout,
@@ -105,19 +106,15 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 
 	const kindCfg = config.kinds[block.kind];
 	const Icon = iconForKind(block.kind);
-	const isGroup = isGroupKind(block.kind);
+	const isGroup = isGroupNode(block);
 	const label =
 		block.kind === RawBlockKind.Heading
 			? `Heading H${block.level}`
 			: block.kind === RawBlockKind.Frontmatter
 				? config.strings.frontmatterTitle
 				: kindCfg?.label ?? block.kind;
-	// Prose blocks key off their own text; a heading rolls up its whole section
-	// (heading line alone carries almost no term-frequency signal).
 	const isHeading = block.kind === RawBlockKind.Heading;
-	const showKeywords =
-		block.kind === RawBlockKind.Paragraph || block.kind === RawBlockKind.Quote || isHeading;
-	const keywordText = isHeading ? sectionText(block) : block.source || block.title || '';
+	const keywordText = analysisText(block);
 	// Content blocks (paragraph / list / quote / …) title themselves off their own
 	// first line, so the preview already shows it — only render the title span when
 	// it's a real, distinct label.
@@ -154,28 +151,28 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 				</div>
 			</section>
 
-			{showKeywords && <KeywordCard text={keywordText} config={config} />}
+			<KeywordCard text={keywordText} config={config} />
 
-			{!isGroup && (
-				<section className="pkfa-card">
-					<div className="pkfa-card-body">
-						<span className="pkfa-selected-kind">
-							<FileText />
-							<span>{config.strings.locationCard}</span>
-						</span>
-						<div className="pkfa-meta-rows">
-							<div className="pkfa-meta-row">
-								<span className="pkfa-k">{config.strings.lines}</span>
-								<span className="pkfa-v pkfa-mono">{lineRange(block)}</span>
-							</div>
-							<div className="pkfa-meta-row">
-								<span className="pkfa-k">{config.strings.nearestHeading}</span>
-								<span className="pkfa-v">{block.anchor.nearestHeading ?? '—'}</span>
-							</div>
+			<StatisticsCard block={block} config={config} />
+
+			<section className="pkfa-card">
+				<div className="pkfa-card-body">
+					<span className="pkfa-selected-kind">
+						<FileText />
+						<span>{config.strings.locationCard}</span>
+					</span>
+					<div className="pkfa-meta-rows">
+						<div className="pkfa-meta-row">
+							<span className="pkfa-k">{config.strings.lines}</span>
+							<span className="pkfa-v pkfa-mono">{lineRange(block)}</span>
+						</div>
+						<div className="pkfa-meta-row">
+							<span className="pkfa-k">{config.strings.nearestHeading}</span>
+							<span className="pkfa-v">{block.anchor.nearestHeading ?? '—'}</span>
 						</div>
 					</div>
-				</section>
-			)}
+				</div>
+			</section>
 
 			<section className="pkfa-card">
 				<div className="pkfa-card-body">
@@ -363,10 +360,9 @@ const ImagePreview: React.FC<{
 	);
 };
 
-/** Program-computed term-frequency keywords for a paragraph / quote / heading-section. */
+/** Program-computed term-frequency keywords for every addressable block. */
 const KeywordCard: React.FC<{ text: string; config: FileAtlasConfig }> = ({ text, config }) => {
 	const keywords = keywordsOf(text, config.keywordStopwords);
-	if (!keywords.length) return null;
 	// keywordsOf returns counts descending, so the first entry is the max. Size each
 	// chip by a linear weight (count / max, floored so the rarest term stays legible)
 	// — frequency should read directly by size. CSS maps `--kw-w` to font + badge.
@@ -378,8 +374,9 @@ const KeywordCard: React.FC<{ text: string; config: FileAtlasConfig }> = ({ text
 					<Hash />
 					<span>{config.strings.keywordsTitle}</span>
 				</span>
-				<div className="pkfa-kw-list">
-					{keywords.map(([word, count]) => (
+				{keywords.length ? (
+					<div className="pkfa-kw-list">
+						{keywords.map(([word, count]) => (
 						<span
 							key={word}
 							className="pkfa-kw-chip"
@@ -388,7 +385,52 @@ const KeywordCard: React.FC<{ text: string; config: FileAtlasConfig }> = ({ text
 							{word}
 							<b>×{count}</b>
 						</span>
-					))}
+						))}
+					</div>
+				) : (
+					<span className="pkfa-selected-sub">{config.strings.keywordsEmpty}</span>
+				)}
+			</div>
+		</section>
+	);
+};
+
+const StatisticsCard: React.FC<{ block: DocumentBlock; config: FileAtlasConfig }> = ({
+	block,
+	config,
+}) => {
+	const stats = statisticsOf(block);
+	const s = config.strings;
+	const rows: Array<[string, string | number | undefined]> = [
+		[s.statWords, stats.words],
+		[s.statCharacters, stats.characters],
+		[s.statLines, stats.lines],
+		[s.statItems, stats.items],
+		[s.statTasks, stats.tasks],
+		[s.statChecked, stats.checked],
+		[s.statUnchecked, stats.unchecked],
+		[s.statRows, stats.rows],
+		[s.statColumns, stats.columns],
+		[s.statCodeLines, stats.codeLines],
+		[s.statLanguage, stats.language],
+		[s.statStatus, stats.status],
+	];
+	return (
+		<section className="pkfa-card">
+			<div className="pkfa-card-body">
+				<span className="pkfa-selected-kind">
+					<BarChart3 />
+					<span>{s.statisticsTitle}</span>
+				</span>
+				<div className="pkfa-meta-rows">
+					{rows
+						.filter(([, value]) => value !== undefined)
+						.map(([label, value]) => (
+							<div className="pkfa-meta-row" key={label}>
+								<span className="pkfa-k">{label}</span>
+								<span className="pkfa-v pkfa-mono">{value}</span>
+							</div>
+						))}
 				</div>
 			</div>
 		</section>

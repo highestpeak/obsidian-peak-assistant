@@ -14,7 +14,7 @@ import { RawBlockKind } from '@/core/document/atlas/types';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { FileAtlasConfig } from '../config/fileAtlasConfig';
 import { iconForKind } from '../config/kindIcons';
-import { foldSummary, isGroupKind } from '../atlasTreeModel';
+import { foldSummary, isGroupNode } from '../atlasTreeModel';
 
 interface AtlasTreeProps {
 	blocks: DocumentBlock[];
@@ -24,6 +24,7 @@ interface AtlasTreeProps {
 	selectedId: string | null;
 	trayIds: Set<string>;
 	onSelect: (block: DocumentBlock) => void;
+	onOpenInEditor: (block: DocumentBlock) => void;
 	onToggleFold: (id: string) => void;
 	onAddToTray: (block: DocumentBlock) => void;
 }
@@ -49,7 +50,7 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({ block, depth, ...props }) => {
 
 	const isHeading = block.kind === RawBlockKind.Heading;
 	const isFrontmatter = block.kind === RawBlockKind.Frontmatter;
-	const isGroup = isGroupKind(block.kind);
+	const isGroup = isGroupNode(block);
 	const kindCfg = config.kinds[block.kind];
 	const isCollapsed = collapsed.has(block.id);
 	const Icon = iconForKind(block.kind);
@@ -63,6 +64,7 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({ block, depth, ...props }) => {
 			? 'pkfa-type-frontmatter'
 			: `pkfa-type-${kindCfg?.type ?? 'block'}`;
 	const inTray = trayIds.has(block.id);
+	const summary = isGroup && isCollapsed ? foldSummary(block, config.kinds) : '';
 
 	const onRowClick = (): void => props.onSelect(block);
 
@@ -76,7 +78,13 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({ block, depth, ...props }) => {
 				}`}
 				data-kind={block.kind}
 				onClick={onRowClick}
+				onDoubleClick={() => props.onOpenInEditor(block)}
 				onKeyDown={(e) => {
+					if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+						e.preventDefault();
+						props.onOpenInEditor(block);
+						return;
+					}
 					if (e.key === 'Enter' || e.key === ' ') {
 						e.preventDefault();
 						onRowClick();
@@ -95,6 +103,7 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({ block, depth, ...props }) => {
 								e.stopPropagation();
 								props.onToggleFold(block.id);
 							}}
+							onDoubleClick={(e) => e.stopPropagation()}
 						>
 							<ChevronDown />
 						</Button>
@@ -108,9 +117,7 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({ block, depth, ...props }) => {
 						<span className="pkfa-name">{block.title}</span>
 						{block.sub && <span className="pkfa-sub">{block.sub}</span>}
 					</span>
-					{isGroup && isCollapsed && (
-						<span className="pkfa-fold-sum">{foldSummary(block, config.kinds)}</span>
-					)}
+					{summary && <span className="pkfa-fold-sum">{summary}</span>}
 					<Button
 						variant="unstyled"
 						type="button"
@@ -121,6 +128,7 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({ block, depth, ...props }) => {
 							e.stopPropagation();
 							props.onAddToTray(block);
 						}}
+						onDoubleClick={(e) => e.stopPropagation()}
 					>
 						<Plus />
 					</Button>

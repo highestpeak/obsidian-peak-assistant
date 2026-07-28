@@ -254,8 +254,14 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 			}
 		},
 
-		revealLine(path: string, line: number): Promise<void> {
-			return appContext.vaultNavigation.openVaultPathAtLine(path, { line, newLeaf: false });
+		async revealLine(path: string, line: number): Promise<void> {
+			await appContext.vaultNavigation.openVaultPathAtLine(path, { line, newLeaf: false });
+			const leaf = app.workspace.getLeavesOfType('markdown').find((candidate) => {
+				const view = candidate.view as MarkdownView | undefined;
+				return view?.file?.path === path;
+			});
+			const view = leaf?.view as MarkdownView | undefined;
+			view?.editor?.focus();
 		},
 
 		getCursorLine(path: string): number | null {

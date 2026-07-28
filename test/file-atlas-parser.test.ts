@@ -82,6 +82,8 @@ ok('nests headings by depth', () => {
 	const h2a = h2s[0];
 	const h3 = (h2a.children ?? []).find((c) => c.kind === RawBlockKind.Heading);
 	assert.ok(h3 && h3.level === 3, 'H3 nested under H2a');
+	assert.strictEqual(h1.anchor.lineEnd, 8, 'heading container spans its full section');
+	assert.strictEqual(h2a.anchor.lineEnd, 6, 'nested heading ends before its next sibling');
 });
 
 ok('nearestHeading + ordinalInHeading populated', () => {
@@ -113,7 +115,41 @@ ok('tasks surface as individual Task blocks', () => {
 	assert.strictEqual(tasks.length, 2, 'two checkbox tasks');
 	assert.strictEqual(tasks[0].detail?.checked, false);
 	assert.strictEqual(tasks[1].detail?.checked, true);
-	assert.strictEqual(findKind(doc.blocks, RawBlockKind.List).length, 1, 'one list container');
+	const lists = findKind(doc.blocks, RawBlockKind.List);
+	assert.strictEqual(lists.length, 1, 'one list container');
+	assert.strictEqual(lists[0].children?.length, 3, 'each top-level item is addressable');
+	assert.strictEqual(
+		lists[0].children?.[2].kind,
+		RawBlockKind.ListItem,
+		'ordinary list item is not misclassified as a task',
+	);
+	assert.strictEqual(doc.stats.blocks, 1, 'list children do not inflate document block stats');
+});
+
+ok('nested lists preserve item hierarchy without duplicate sibling tasks', () => {
+	const md = [
+		'- parent',
+		'  - child',
+		'    - [x] nested task',
+		'- sibling',
+	].join('\n');
+	const doc = parseDocumentBlocks(md, 'f.md');
+	const rootList = doc.blocks[0];
+	assert.strictEqual(rootList.kind, RawBlockKind.List);
+	assert.strictEqual(rootList.children?.length, 2, 'two root items');
+	const parentItem = rootList.children?.[0];
+	assert.strictEqual(parentItem?.kind, RawBlockKind.ListItem);
+	const nestedList = parentItem?.children?.[0];
+	assert.strictEqual(nestedList?.kind, RawBlockKind.List);
+	const childItem = nestedList?.children?.[0];
+	assert.strictEqual(childItem?.kind, RawBlockKind.ListItem);
+	const deepList = childItem?.children?.[0];
+	assert.strictEqual(deepList?.children?.[0].kind, RawBlockKind.Task);
+	assert.strictEqual(
+		rootList.children?.filter((child) => child.kind === RawBlockKind.Task).length,
+		0,
+		'nested task is not duplicated at the root',
+	);
 });
 
 ok('callout vs quote distinction', () => {

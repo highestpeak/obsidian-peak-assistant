@@ -49,6 +49,13 @@ export class FileAtlasModal extends Modal {
 		}
 
 		const host = composeFileAtlasHost(this.appContext);
+		const ownerWindow = this.contentEl.ownerDocument.defaultView;
+		const openBlock = (path: string, line: number): void => {
+			this.close();
+			(ownerWindow ?? window).setTimeout(() => {
+				void host.revealLine(path, line);
+			}, 0);
+		};
 		this.reactRenderer = new ReactRenderer(this.containerEl);
 		this.reactRenderer.render(
 			createReactElementWithServices(
@@ -58,6 +65,7 @@ export class FileAtlasModal extends Modal {
 					initialPath: file?.path ?? null,
 					initialContent,
 					ownerDocument: this.contentEl.ownerDocument,
+					onOpenBlock: openBlock,
 				},
 				this.appContext,
 			),

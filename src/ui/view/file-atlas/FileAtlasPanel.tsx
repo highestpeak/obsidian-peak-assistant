@@ -49,6 +49,7 @@ export interface FileAtlasPanelProps {
 	displayPath: string;
 	content: string;
 	host: FileAtlasHostPort;
+	onOpenBlock: (path: string, line: number) => void;
 	onSelectDoc: (path: string) => void;
 	onCloseDoc: (path: string) => void;
 	onSortModeChange: (mode: FileRailSortMode) => void;
@@ -133,6 +134,7 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 	displayPath,
 	content,
 	host,
+	onOpenBlock,
 	onSelectDoc,
 	onCloseDoc,
 	onSortModeChange,
@@ -215,7 +217,7 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 
 	const reveal = (block: DocumentBlock): void => {
 		// Editor lines are 0-based; anchor lines are 1-based.
-		void host.revealLine(activePath, Math.max(0, block.anchor.lineStart - 1));
+		onOpenBlock(activePath, Math.max(0, block.anchor.lineStart - 1));
 	};
 
 	const copyLink = (block: DocumentBlock): void => {
@@ -227,7 +229,7 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 
 	const groupKinds = (groupId: string): RawBlockKind[] =>
 		Object.entries(config.kinds)
-			.filter(([, cfg]) => cfg.group === groupId)
+			.filter(([, cfg]) => cfg.group === groupId && cfg.filterable !== false)
 			.map(([kind]) => kind as RawBlockKind);
 
 	const s = config.strings;
@@ -247,7 +249,6 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 				recentTitle={s.railRecentTitle}
 				sortLabel={s.railSortLabel}
 				sortLabels={{
-					recent: s.railSortRecent,
 					frequent: s.railSortFrequent,
 					name: s.railSortName,
 				}}
@@ -358,6 +359,7 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 										selectedId={state.selectedId}
 										trayIds={trayIds}
 										onSelect={(b) => dispatch({ type: 'select', id: b.id })}
+										onOpenInEditor={reveal}
 										onToggleFold={(id) => dispatch({ type: 'toggleFold', id })}
 										onAddToTray={addToTray}
 									/>

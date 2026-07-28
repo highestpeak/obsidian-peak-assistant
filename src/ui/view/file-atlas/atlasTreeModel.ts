@@ -12,9 +12,25 @@ import type { DocumentBlock, FileAtlasAnchor, RawBlockKind } from '@/core/docume
 import { RawBlockKind as Kind } from '@/core/document/atlas/types';
 import type { KeywordStopwords, KindConfig } from './config/fileAtlasConfig';
 
-/** Group kinds fold like headings: they own children and show a summary collapsed. */
+const ANALYSIS_METADATA_KINDS = new Set<RawBlockKind>([
+	Kind.Image,
+	Kind.Embed,
+	Kind.Attachment,
+	Kind.VaultLink,
+	Kind.ExternalLink,
+	Kind.Property,
+	Kind.Tag,
+	Kind.Footnote,
+]);
+
+/** Kinds that are containers even before their children are inspected. */
 export function isGroupKind(kind: RawBlockKind): boolean {
-	return kind === Kind.Heading || kind === Kind.Frontmatter;
+	return kind === Kind.Heading || kind === Kind.Frontmatter || kind === Kind.List;
+}
+
+/** A nested ListItem/Task may also become a container when it owns a sub-list. */
+export function isGroupNode(node: DocumentBlock): boolean {
+	return isGroupKind(node.kind) || Boolean(node.children?.length);
 }
 
 /** Stable id for the synthetic frontmatter group node. */
@@ -71,6 +87,10 @@ export function countDescendants(
 ): CountSummary {
 	const sum: CountSummary = { block: 0, resource: 0 };
 	const walk = (child: DocumentBlock): void => {
+		if (child.kind === Kind.List) {
+			if (kinds[child.kind]?.category === 'block') sum.block += 1;
+			return;
+		}
 		if (isGroupKind(child.kind)) {
 			(child.children ?? []).forEach(walk);
 			return;
@@ -86,6 +106,7 @@ export function countDescendants(
 
 /** "3 blocks · 2 res" summary shown on a collapsed group row. */
 export function foldSummary(node: DocumentBlock, kinds: Record<string, KindConfig>): string {
+	if (node.kind === Kind.List) return '';
 	const s = countDescendants(node, kinds);
 	const parts: string[] = [];
 	if (s.block) parts.push(`${s.block} blocks`);
@@ -123,17 +144,38 @@ export function computeVisibility(
 	let hits = 0;
 
 	const visit = (node: DocumentBlock): boolean => {
-		if (isGroupKind(node.kind)) {
+		if (isGroupNode(node)) {
 			let anyChild = false;
 			for (const child of node.children ?? []) {
 				if (visit(child)) anyChild = true;
 			}
+			const kindOn =
+				node.kind === Kind.Heading ||
+				node.kind === Kind.Frontmatter ||
+				(node.kind === Kind.ListItem
+					? visibleKinds.has(Kind.List)
+					: visibleKinds.has(node.kind));
 			const selfMatch = matchesSearch(node, searchTerm);
-			const show = !searchTerm ? true : anyChild || selfMatch;
-			if (show) visible.add(node.id);
+			const show = !searchTerm
+				? node.kind === Kind.Heading || node.kind === Kind.Frontmatter || kindOn || anyChild
+				: anyChild || (kindOn && selfMatch);
+			if (show) {
+				visible.add(node.id);
+				if (
+					searchTerm &&
+					kindOn &&
+					selfMatch &&
+					(node.kind === Kind.ListItem || node.kind === Kind.Task)
+				) {
+					hits += 1;
+				}
+			}
 			return show;
 		}
-		const kindOn = visibleKinds.has(node.kind);
+		const kindOn =
+			node.kind === Kind.ListItem
+				? visibleKinds.has(Kind.List)
+				: visibleKinds.has(node.kind);
 		const show = kindOn && matchesSearch(node, searchTerm);
 		if (show) {
 			visible.add(node.id);
@@ -146,12 +188,12 @@ export function computeVisibility(
 	return { visible, hits };
 }
 
-/** Collect every group id (headings + frontmatter) in the tree. */
+/** Collect every collapsible structural node in the tree. */
 export function collectGroupIds(blocks: DocumentBlock[]): string[] {
 	const ids: string[] = [];
 	const walk = (list: DocumentBlock[]): void => {
 		for (const b of list) {
-			if (isGroupKind(b.kind)) ids.push(b.id);
+			if (isGroupNode(b)) ids.push(b.id);
 			if (b.children) walk(b.children);
 		}
 	};
@@ -186,7 +228,7 @@ export function ancestorGroupsOf(blocks: DocumentBlock[], targetId: string): Doc
 				return true;
 			}
 			if (node.children) {
-				const isGroup = isGroupKind(node.kind);
+				const isGroup = isGroupNode(node);
 				if (isGroup) path.push(node);
 				if (visit(node.children)) return true;
 				if (isGroup) path.pop();
@@ -208,7 +250,7 @@ export function defaultCollapsedIds(blocks: DocumentBlock[], currentId: string |
 	if (!currentId) return collapsed;
 	for (const group of ancestorGroupsOf(blocks, currentId)) collapsed.delete(group.id);
 	const current = findBlock(blocks, currentId);
-	if (current && isGroupKind(current.kind)) collapsed.delete(current.id);
+	if (current && isGroupNode(current)) collapsed.delete(current.id);
 	return collapsed;
 }
 
@@ -237,7 +279,7 @@ export function firstSelectableId(blocks: DocumentBlock[]): string | null {
 	const visit = (list: DocumentBlock[]): string | null => {
 		for (const node of list) {
 			if (node.kind === Kind.Heading) return node.id;
-			if (!isGroupKind(node.kind) && firstLeaf === null) firstLeaf = node.id;
+			if (!isGroupNode(node) && firstLeaf === null) firstLeaf = node.id;
 			if (node.children) {
 				const hit = visit(node.children);
 				if (hit) return hit;
@@ -257,10 +299,115 @@ export function sectionText(node: DocumentBlock): string {
 	const parts: string[] = [];
 	const walk = (b: DocumentBlock): void => {
 		if (b.source) parts.push(b.source);
+		// List and frontmatter sources already span their descendants. Recursing
+		// would double-count every list item/property in metrics and keywords.
+		if (b.kind === Kind.List || b.kind === Kind.ListItem || b.kind === Kind.Task || b.kind === Kind.Frontmatter) {
+			return;
+		}
 		(b.children ?? []).forEach(walk);
 	};
 	walk(node);
 	return parts.join('\n');
+}
+
+export interface BlockStatistics {
+	words: number;
+	characters: number;
+	lines: number;
+	items?: number;
+	tasks?: number;
+	checked?: number;
+	unchecked?: number;
+	rows?: number;
+	columns?: number;
+	codeLines?: number;
+	language?: string;
+	status?: string;
+}
+
+/** Clean, kind-aware text used by both Keywords and Statistics. */
+export function analysisText(node: DocumentBlock): string {
+	const raw = node.kind === Kind.Heading ? sectionText(node) : node.source || node.title || '';
+	const withoutFences = raw.replace(/^\s*```[^\n]*$/gm, ' ');
+	const withoutMarkers = withoutFences
+		.replace(/^\s{0,3}(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s*)?/gm, ' ')
+		.replace(/^\s*>\s?(?:\[![^\]]+\][+-]?\s*)?/gm, ' ')
+		.replace(/!\[\[([^\]]+)\]\]/g, '$1')
+		.replace(/\[\[([^|\]]+)\|([^\]]+)\]\]/g, '$2')
+		.replace(/\[\[([^\]]+)\]\]/g, '$1')
+		.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 $2')
+		.replace(/[#*_`~|]/g, ' ');
+	const metadata = ANALYSIS_METADATA_KINDS.has(node.kind)
+		? [
+			node.title,
+			node.detail?.target,
+			node.detail?.domain,
+			node.detail?.fileTarget,
+		].filter(Boolean).join(' ')
+		: '';
+	return `${withoutMarkers} ${metadata}`.replace(/\s+/g, ' ').trim();
+}
+
+function wordCount(text: string): number {
+	const Segmenter = (Intl as unknown as {
+		Segmenter?: new (
+			locales?: string | string[],
+			options?: { granularity: 'word' },
+		) => { segment(input: string): Iterable<{ isWordLike?: boolean }> };
+	}).Segmenter;
+	if (Segmenter) {
+		const segments = new Segmenter(undefined, { granularity: 'word' }).segment(text);
+		let count = 0;
+		for (const segment of segments) if (segment.isWordLike) count += 1;
+		return count;
+	}
+	const latin = text.match(/[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)*/g) ?? [];
+	const cjk = text.match(/[一-鿿]/g) ?? [];
+	return latin.length + cjk.length;
+}
+
+/** Deterministic common + kind-specific statistics for an Inspector block. */
+export function statisticsOf(node: DocumentBlock): BlockStatistics {
+	const text = analysisText(node);
+	const taskNodes: DocumentBlock[] = [];
+	let listItemCount = 0;
+	const collectListUnits = (current: DocumentBlock): void => {
+		if (current !== node && (current.kind === Kind.ListItem || current.kind === Kind.Task)) {
+			listItemCount += 1;
+		}
+		if (current.kind === Kind.Task) taskNodes.push(current);
+		(current.children ?? []).forEach(collectListUnits);
+	};
+	if (node.kind === Kind.List) collectListUnits(node);
+	const checked = taskNodes.filter((task) => task.detail?.checked === true).length;
+	const unchecked = taskNodes.filter((task) => task.detail?.checked === false).length;
+	const result: BlockStatistics = {
+		words: wordCount(text),
+		characters: Array.from(text.replace(/\s/g, '')).length,
+		lines: node.kind === Kind.Heading
+			? Math.max(0, node.anchor.lineEnd - node.anchor.lineStart + 1)
+			: node.source
+				? node.source.split(/\r?\n/).length
+				: 0,
+	};
+	if (node.kind === Kind.List) {
+		result.items = listItemCount > 0
+			? listItemCount
+			: node.detail?.itemCount ?? node.children?.length ?? 0;
+		result.tasks = taskNodes.length;
+		result.checked = checked;
+		result.unchecked = unchecked;
+	}
+	if (node.kind === Kind.Table) {
+		result.rows = node.detail?.rows;
+		result.columns = node.detail?.columns;
+	}
+	if (node.kind === Kind.Code || node.kind === Kind.Mermaid) {
+		result.codeLines = node.detail?.lineCount;
+		result.language = node.detail?.language ?? (node.kind === Kind.Mermaid ? 'mermaid' : undefined);
+	}
+	if (node.kind === Kind.Task) result.status = node.detail?.checked ? 'Checked' : 'Unchecked';
+	return result;
 }
 
 /**

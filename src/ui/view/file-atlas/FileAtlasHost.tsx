@@ -6,7 +6,7 @@
  * the injected port; runtime APIs remain app-owned.
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FileAtlasPanel } from './FileAtlasPanel';
 import type { FileAtlasHostPort, OpenDocMeta } from './FileAtlasHostPort';
 import {
@@ -27,6 +27,7 @@ interface FileAtlasHostProps {
 	initialPath: string | null;
 	initialContent: string;
 	ownerDocument?: Document | null;
+	onOpenBlock: (path: string, line: number) => void;
 }
 
 export const FileAtlasHost: React.FC<FileAtlasHostProps> = ({
@@ -34,6 +35,7 @@ export const FileAtlasHost: React.FC<FileAtlasHostProps> = ({
 	initialPath,
 	initialContent,
 	ownerDocument,
+	onOpenBlock,
 }) => {
 	const [config, setConfig] = useState<FileAtlasConfig>(DEFAULT_FILE_ATLAS_CONFIG);
 	const [preference, setPreference] = useState<FileRailPreference>(
@@ -78,7 +80,8 @@ export const FileAtlasHost: React.FC<FileAtlasHostProps> = ({
 		};
 	}, [host, config.rail.capacity]);
 
-	const sections = useMemo(
+	const frequentOrderRef = useRef(new Map<string, number>());
+	const rawSections = useMemo(
 		() => buildFileRailSections({
 			openDocs,
 			historyDocs,
@@ -89,6 +92,23 @@ export const FileAtlasHost: React.FC<FileAtlasHostProps> = ({
 		}),
 		[openDocs, historyDocs, config.rail, preference.sortMode],
 	);
+	const sections = useMemo(() => {
+		if (preference.sortMode !== 'frequent') return rawSections;
+		const rank = frequentOrderRef.current;
+		for (const doc of [...rawSections.open, ...rawSections.recent]) {
+			if (!rank.has(doc.path)) rank.set(doc.path, rank.size);
+		}
+		const stable = (docs: OpenDocMeta[]): OpenDocMeta[] =>
+			[...docs].sort((a, b) =>
+				(rank.get(a.path) ?? Number.MAX_SAFE_INTEGER) -
+				(rank.get(b.path) ?? Number.MAX_SAFE_INTEGER)
+				|| a.path.localeCompare(b.path)
+			);
+		return {
+			open: stable(rawSections.open),
+			recent: stable(rawSections.recent),
+		};
+	}, [rawSections, preference.sortMode]);
 
 	const docs = useMemo(
 		() => [...sections.open, ...sections.recent],
@@ -150,6 +170,7 @@ export const FileAtlasHost: React.FC<FileAtlasHostProps> = ({
 	};
 
 	const onSortModeChange = (sortMode: FileRailSortMode): void => {
+		if (sortMode === 'frequent') frequentOrderRef.current.clear();
 		const next = { ...preference, sortMode };
 		setPreference(next);
 		writeFileRailPreference(next, config.rail, ownerDocument);
@@ -183,6 +204,7 @@ export const FileAtlasHost: React.FC<FileAtlasHostProps> = ({
 			displayPath={activePath}
 			content={content}
 			host={host}
+			onOpenBlock={onOpenBlock}
 			onSelectDoc={onSelectDoc}
 			onCloseDoc={onCloseDoc}
 			onSortModeChange={onSortModeChange}

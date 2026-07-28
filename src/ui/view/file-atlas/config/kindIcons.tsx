@@ -41,6 +41,7 @@ const KIND_ICONS: Record<string, IconComponent> = {
 	[RawBlockKind.Tag]: Hash,
 	[RawBlockKind.Paragraph]: Pilcrow,
 	[RawBlockKind.List]: ListIcon,
+	[RawBlockKind.ListItem]: ListIcon,
 	[RawBlockKind.Quote]: TextQuote,
 	[RawBlockKind.Callout]: AlertTriangle,
 	[RawBlockKind.Task]: CheckSquare,

@@ -35,6 +35,8 @@ export interface KindConfig {
 	category: KindCategory;
 	/** Filter-popover group id. */
 	group: string;
+	/** False for structural child kinds controlled by their parent filter. */
+	filterable?: boolean;
 }
 
 export interface FilterGroup {
@@ -90,12 +92,25 @@ export interface FileAtlasStrings {
 	frontmatterTitle: string;
 	/** Inspector keyword-frequency card title. */
 	keywordsTitle: string;
+	keywordsEmpty: string;
+	statisticsTitle: string;
+	statWords: string;
+	statCharacters: string;
+	statLines: string;
+	statItems: string;
+	statTasks: string;
+	statChecked: string;
+	statUnchecked: string;
+	statRows: string;
+	statColumns: string;
+	statCodeLines: string;
+	statLanguage: string;
+	statStatus: string;
 	/** Left rail (open + recent documents) labels. */
 	railTitle: string;
 	railOpenTitle: string;
 	railRecentTitle: string;
 	railSortLabel: string;
-	railSortRecent: string;
 	railSortFrequent: string;
 	railSortName: string;
 	railResizeLabel: string;
@@ -146,6 +161,7 @@ export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
 		'tag':           { label: 'Tag',           badge: 'tag',      badgeClass: 'meta',     type: 'block',    category: 'resource', group: 'references' },
 		'paragraph':     { label: 'Paragraph',     badge: 'text',     badgeClass: 'block',    type: 'block',    category: 'block',    group: 'structure' },
 		'list':          { label: 'List',          badge: 'list',     badgeClass: 'block',    type: 'block',    category: 'block',    group: 'structure' },
+		'list-item':     { label: 'List item',     badge: 'item',     badgeClass: 'block',    type: 'block',    category: 'block',    group: 'structure', filterable: false },
 		'quote':         { label: 'Quote',         badge: 'quote',    badgeClass: 'block',    type: 'block',    category: 'block',    group: 'structure' },
 		'callout':       { label: 'Callout',       badge: 'callout',  badgeClass: 'block',    type: 'block',    category: 'block',    group: 'structure' },
 		'task':          { label: 'Task',          badge: 'task',     badgeClass: 'ok',       type: 'task',     category: 'block',    group: 'structure' },
@@ -206,11 +222,24 @@ export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
 		collapseAll: 'Collapse all',
 		frontmatterTitle: 'Frontmatter',
 		keywordsTitle: 'Keywords · term frequency',
+		keywordsEmpty: 'No meaningful keywords',
+		statisticsTitle: 'Statistics',
+		statWords: 'Words',
+		statCharacters: 'Characters',
+		statLines: 'Lines',
+		statItems: 'Items',
+		statTasks: 'Tasks',
+		statChecked: 'Checked',
+		statUnchecked: 'Unchecked',
+		statRows: 'Rows',
+		statColumns: 'Columns',
+		statCodeLines: 'Code lines',
+		statLanguage: 'Language',
+		statStatus: 'Status',
 		railTitle: 'Files',
 		railOpenTitle: 'Open',
 		railRecentTitle: 'Recent',
 		railSortLabel: 'Sort files',
-		railSortRecent: 'Recently viewed',
 		railSortFrequent: 'Most used',
 		railSortName: 'Name',
 		railResizeLabel: 'Resize file rail',

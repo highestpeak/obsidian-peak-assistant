@@ -11,14 +11,17 @@ const host = source('src/ui/view/file-atlas/FileAtlasHost.tsx');
 const adapter = source('src/app/file-atlas/composeFileAtlasHost.ts');
 const css = source('src/styles/file-atlas.css');
 
-assert.match(rail, /value="recent"/);
 assert.match(rail, /value="frequent"/);
 assert.match(rail, /value="name"/);
+assert.doesNotMatch(rail, /value="recent"/);
+assert.match(rail, /ArrowUpDown/);
+assert.match(rail, /ChevronDown/);
 assert.match(rail, /role="separator"/);
 assert.match(rail, /sections\.open/);
 assert.match(rail, /sections\.recent/);
 
 assert.match(host, /buildFileRailSections/);
+assert.match(host, /frequentOrderRef/);
 assert.match(host, /host\.activateDoc\(path\)/);
 assert.match(host, /writeFileRailPreference/);
 
