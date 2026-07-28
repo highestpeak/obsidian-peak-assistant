@@ -3,11 +3,12 @@
  *
  * Splits a `math` block's verbatim source into its constituent display formulas
  * — one `$$…$$` segment each, with byte offsets RELATIVE to the block source so
- * a selection target can address exactly one formula (§3.3: clicking PageRank
- * operates on PageRank only). A block usually holds one formula; the mock's
- * three-formula stack is handled by the same scan. Byte content is never
- * re-serialized. Framework-neutral: no `obsidian` import.
+ * a selection target can address exactly one formula. A block usually holds one
+ * formula; multi-formula stacks are handled by the same scan. Byte content is
+ * never re-serialized. Framework-neutral: no `obsidian` import.
  */
+
+import type { ComposerDocumentSnapshot } from '@/core/composer';
 
 export interface ParsedFormula {
 	/** Stable-within-block id: `f{ordinal}`. */
@@ -80,4 +81,29 @@ export function stripTexToText(tex: string): string {
 		.replace(/[{}]/g, '')
 		.replace(/\s+/g, ' ')
 		.trim();
+}
+
+/**
+ * Bounded neighboring source used only as a model language/domain hint. The
+ * target formula is deliberately excluded: the request already carries its
+ * frozen LaTeX, and detail scope must never widen to adjacent formulas.
+ */
+export function buildFormulaContext(
+	snapshot: ComposerDocumentSnapshot | null,
+	blockId: string,
+	characterLimit: number,
+): string | undefined {
+	if (!snapshot || characterLimit <= 0) return undefined;
+	const index = snapshot.blocks.findIndex((block) => block.blockId === blockId);
+	if (index < 0) return undefined;
+	const neighborSources = [snapshot.blocks[index - 1], snapshot.blocks[index + 1]]
+		.filter((block) => block !== undefined)
+		.map((block) => snapshot.sourceText.slice(block.source.from, block.source.to).trim())
+		.filter(Boolean);
+	if (neighborSources.length === 0) return undefined;
+	const context = neighborSources.join('\n\n');
+	if (context.length <= characterLimit) return context;
+	const headLength = Math.ceil(characterLimit / 2);
+	const tailLength = Math.floor(characterLimit / 2);
+	return `${context.slice(0, headLength)}\n…\n${context.slice(-tailLength)}`;
 }

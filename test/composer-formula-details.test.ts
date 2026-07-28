@@ -18,7 +18,10 @@ import {
 	buildFormulaCopyPayloads,
 	FORMULA_COPY_ORDER,
 	buildFormulaAnnotationPayload,
-	parseVariableTable,
+	buildFormulaSplitMarkdown,
+	buildFormulaSplitPatch,
+	buildFormulaContext,
+	parseComposerDocument,
 	latexFromSource,
 	formulaDetailKindOf,
 	formulaDetailCapabilityForKind,
@@ -108,7 +111,12 @@ function testVariantHistory(): void {
 	s = appendDelta(s, 'f2', 'explain', 'v0', 'computes X.');
 	const v0Text = activeVariant(getDetail(s, 'f2', 'explain'))?.streamingText;
 	check('deltas accumulate', v0Text === 'The formula computes X.');
-	s = markVariantReady(s, 'f2', 'explain', 'v0', { detailKind: 'explain', latex: 'x', text: 'done' });
+	s = markVariantReady(s, 'f2', 'explain', 'v0', {
+		detailKind: 'explain',
+		latex: 'x',
+		summary: 'done',
+		terms: [{ symbolTex: 'x', meaning: 'value' }],
+	});
 	check('variant marked ready', activeVariant(getDetail(s, 'f2', 'explain'))?.status === 'ready');
 
 	// Targeted follow-up → new variant, previous kept as history, active switches.
@@ -137,23 +145,93 @@ function testCopyPayloads(): void {
 }
 
 function testAnnotation(): void {
-	const explain = buildFormulaAnnotationPayload('explain', 'a=b', '  This means a equals b.  ');
-	check('explain payload keeps trimmed text', explain.detailKind === 'explain' && explain.text === 'This means a equals b.' && explain.variables === undefined);
+	const explain = buildFormulaAnnotationPayload('explain', 'a=b', JSON.stringify({
+		summary: 'This means a equals b.',
+		terms: [{ symbolTex: 'a', meaning: 'left-hand value' }],
+	}));
+	check(
+		'explain payload is a typed term map',
+		explain.detailKind === 'explain' &&
+			explain.summary === 'This means a equals b.' &&
+			explain.terms[0].symbolTex === 'a',
+	);
 
-	const varsText = [
-		'PR(A) — PageRank of node A',
-		'- d: damping factor',
-		'N = total number of nodes',
-		'noise line',
-	].join('\n');
-	const vars = parseVariableTable(varsText);
-	check('variable table parses rows', vars.length === 3, String(vars.length));
-	check('symbol/meaning split (dash)', vars[0].symbol === 'PR(A)' && vars[0].meaning === 'PageRank of node A');
-	check('symbol/meaning split (colon)', vars[1].symbol === 'd' && vars[1].meaning === 'damping factor');
-	check('symbol/meaning split (equals)', vars[2].symbol === 'N' && vars[2].meaning === 'total number of nodes');
+	const variablesJson = JSON.stringify({
+		variables: [
+			{ symbolTex: 'PR(A)', role: 'output', meaning: 'PageRank of node A' },
+			{ symbolTex: 'd', role: 'parameter', meaning: 'damping factor' },
+			{ symbolTex: 'N', role: 'normalization', meaning: 'total number of nodes' },
+		],
+	});
+	const varPayload: ComposerFormulaAnnotationPayload = buildFormulaAnnotationPayload(
+		'variables',
+		'x',
+		`\`\`\`json\n${variablesJson}\n\`\`\``,
+	);
+	check(
+		'variables payload carries exhaustive typed rows',
+		varPayload.detailKind === 'variables' &&
+			varPayload.variables.length === 3 &&
+			varPayload.variables[0].symbolTex === 'PR(A)' &&
+			varPayload.variables[0].role === 'output',
+	);
 
-	const varPayload: ComposerFormulaAnnotationPayload = buildFormulaAnnotationPayload('variables', 'x', varsText);
-	check('variables payload carries table not text', varPayload.detailKind === 'variables' && varPayload.variables?.length === 3 && varPayload.text === undefined);
+	const split = buildFormulaAnnotationPayload('split', 'PR(A)=x+y', JSON.stringify({
+		equivalentTex: '$$PR(A)=B+V(A)$$',
+		parts: [
+			{ label: 'Base', tex: '$$B=x$$', contribution: 'minimum probability' },
+			{ label: 'Vote', tex: 'V(A)=y', contribution: 'link contribution' },
+		],
+	}));
+	check(
+		'split payload strips display delimiters from every math field',
+		split.detailKind === 'split' &&
+			split.equivalentTex === 'PR(A)=B+V(A)' &&
+			split.parts[0].tex === 'B=x',
+	);
+	if (split.detailKind === 'split') {
+		const markdown = buildFormulaSplitMarkdown(split);
+		check('accepted split is one standard display formula', markdown.startsWith('$$\n\\begin{aligned}\n'));
+		check('accepted split defines every introduced component', markdown.includes('B=x') && markdown.includes('V(A)=y'));
+		check('accepted split keeps aligned rows', markdown.includes('PR(A)=B+V(A) \\\\'));
+		const formula = parseFormulaBlock('$$PR(A)=x+y$$')[0];
+		const patch = buildFormulaSplitPatch('math-1', 100, formula, split);
+		check(
+			'split patch targets exactly one formula range',
+			patch.target.kind === 'selection' &&
+				patch.target.from === 100 + formula.from &&
+				patch.target.to === 100 + formula.to &&
+				patch.operations[0].kind === 'replaceRange',
+		);
+		check('split patch preserves top-level block count', patch.expectedBlockDelta === 0);
+	}
+
+	let invalidFailed = false;
+	try {
+		buildFormulaAnnotationPayload('explain', 'a=b', '**not structured**');
+	} catch {
+		invalidFailed = true;
+	}
+	check('invalid model formatting fails closed', invalidFailed);
+}
+
+function testContextHint(): void {
+	const snapshot = parseComposerDocument([
+		'# 图算法',
+		'',
+		'这是 PageRank 的中文背景说明。',
+		'',
+		'$$PR(A)=x+y$$',
+		'',
+		'下一段继续解释阻尼系数。',
+	].join('\n'));
+	const math = snapshot.blocks.find((block) => block.kind === 'math');
+	check('math fixture parsed for context hint', Boolean(math));
+	const context = buildFormulaContext(snapshot, math?.blockId ?? '', 1200);
+	check(
+		'context hint includes neighboring Chinese prose but not target LaTeX',
+		Boolean(context?.includes('中文背景说明') && context.includes('阻尼系数') && !context.includes('PR(A)=x+y')),
+	);
 }
 
 // ── detail kind ⇄ capability binding (generator routing) ─────────────────────
@@ -176,4 +254,5 @@ testIndependentCoexistence();
 testVariantHistory();
 testCopyPayloads();
 testAnnotation();
+testContextHint();
 done('composer-formula-details');

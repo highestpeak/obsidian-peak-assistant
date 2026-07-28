@@ -21,6 +21,11 @@
 	--pkc-fm-origin-text: #7b8493;
 	--pkc-math-label: #667386;
 	--pkc-math-hover-border: #bfd0fb;
+	--pkc-formula-review-border: #bfe6d5;
+	--pkc-formula-review-bg: #fbfefc;
+	--pkc-formula-accent: #0f8a72;
+	--pkc-formula-accent-soft: #e7f7f1;
+	--pkc-formula-row-border: #e7eeeb;
 }
 
 .theme-dark .peak-composer-root {
@@ -35,6 +40,11 @@
 	--pkc-fm-origin-text: var(--pk-text-muted);
 	--pkc-math-label: var(--pk-text-muted);
 	--pkc-math-hover-border: var(--pk-border-accent);
+	--pkc-formula-review-border: color-mix(in srgb, var(--pk-success, #4db89c) 45%, var(--pk-border));
+	--pkc-formula-review-bg: color-mix(in srgb, var(--pk-success, #4db89c) 7%, var(--pk-bg));
+	--pkc-formula-accent: var(--pk-success, #4db89c);
+	--pkc-formula-accent-soft: color-mix(in srgb, var(--pk-success, #4db89c) 14%, transparent);
+	--pkc-formula-row-border: var(--pk-border);
 }
 
 /* Inline math is a visual atom while a leaf is blurred. It is deliberately not
@@ -583,30 +593,49 @@
 /* ── formula detail panels ──────────────────────────────────────────────── */
 
 .peak-composer-root .pk-formula-detail {
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-	padding: 10px 12px;
-	border: 1px solid var(--pk-border-accent, #d8d2ff);
+	display: grid;
+	gap: 10px;
+	padding: 11px 12px;
+	border: 1px solid var(--pkc-formula-review-border);
 	border-radius: var(--pk-radius-lg, 12px);
 	background: var(--pk-surface-overlay, #fff);
-	box-shadow: var(--pk-shadow-popover, 0 8px 24px rgba(31, 42, 61, 0.14));
+	box-shadow: none;
 }
 
 .peak-composer-root .pk-formula-detail__head {
 	display: flex;
 	align-items: center;
+	flex-wrap: wrap;
 	gap: 6px;
 }
 
 .peak-composer-root .pk-formula-detail__title {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
 	color: var(--pkc-fm-value);
 	font-size: 12px;
 	font-weight: 700;
 }
 
+.peak-composer-root .pk-formula-detail__dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--pk-accent, #7c5ce7);
+}
+
+.peak-composer-root .pk-formula-detail__meta {
+	color: var(--pkc-fm-key);
+	font-size: 10px;
+}
+
 .peak-composer-root .pk-formula-detail__kept {
-	color: var(--pk-success, #0f8a72);
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	margin-left: auto;
+	color: var(--pkc-formula-accent);
 	font-size: 11px;
 }
 
@@ -614,16 +643,18 @@
 	color: var(--pkc-text, #172033);
 	font-size: 13px;
 	line-height: 1.55;
-	white-space: pre-wrap;
+	min-width: 0;
 }
 
 .peak-composer-root .pk-formula-detail__muted,
-.peak-composer-root .pk-formula-detail__failed {
+.peak-composer-root .pk-formula-detail__failed,
+.peak-composer-root .pk-formula-detail__error {
 	color: var(--pkc-fm-key);
 	font-size: 12px;
 }
 
-.peak-composer-root .pk-formula-detail__failed {
+.peak-composer-root .pk-formula-detail__failed,
+.peak-composer-root .pk-formula-detail__error {
 	color: var(--pk-text-error, #b42318);
 }
 
@@ -643,39 +674,232 @@
 	}
 }
 
-.peak-composer-root .pk-formula-vartable {
+.peak-composer-root .pk-formula-detail-skeleton {
 	display: grid;
-	gap: 0;
-	border: 1px solid var(--pkc-fm-line);
-	border-radius: 6px;
-	overflow: hidden;
+	gap: 7px;
+	min-height: 76px;
+	align-content: center;
+	padding: 8px;
+}
+
+.peak-composer-root .pk-formula-detail-skeleton > span {
+	width: 100%;
+	height: 11px;
+	border-radius: 4px;
+	background: linear-gradient(90deg, #f1f3f6 0%, #e5e9ed 45%, #f1f3f6 90%);
+	background-size: 220% 100%;
+	animation: pkFormulaSweep 900ms ease infinite;
+}
+
+.peak-composer-root .pk-formula-detail-skeleton > span:nth-child(2) {
+	width: 68%;
+}
+
+.peak-composer-root .pk-formula-detail-skeleton small {
+	color: var(--pkc-fm-key);
+	font-size: 10px;
+}
+
+@keyframes pkFormulaSweep {
+	to {
+		background-position: -220% 0;
+	}
+}
+
+/* Explain: addressable symbol → meaning rows. */
+.peak-composer-root .pk-formula-term-map {
+	display: grid;
+	gap: 7px;
+}
+
+.peak-composer-root .pk-formula-term-map__summary {
+	padding: 0 2px 3px;
+	color: var(--pk-text-secondary);
+	font-size: 11px;
+}
+
+.peak-composer-root .pk-formula-term {
+	display: grid;
+	grid-template-columns: 22px minmax(88px, auto) 22px minmax(0, 1fr);
+	align-items: center;
+	gap: 7px;
+	padding: 7px 9px;
+	border-left: 2px solid var(--pkc-formula-accent);
 	background: var(--pk-bg, #fff);
 }
 
-.peak-composer-root .pk-formula-vartable > div {
+.peak-composer-root .pk-formula-term__index {
 	display: grid;
-	grid-template-columns: minmax(80px, 0.4fr) 1fr;
-}
-
-.peak-composer-root .pk-formula-vartable > div + div {
-	border-top: 1px solid var(--pkc-fm-line);
-}
-
-.peak-composer-root .pk-formula-vartable__head {
-	background: var(--pk-bg-secondary, #fbfbfc);
+	place-items: center;
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	background: var(--pkc-formula-accent-soft);
+	color: var(--pkc-formula-accent);
+	font-size: 11px;
 	font-weight: 700;
+}
+
+.peak-composer-root .pk-formula-term__symbol {
+	min-width: 0;
 	color: var(--pkc-fm-value);
 }
 
-.peak-composer-root .pk-formula-vartable span {
-	padding: 6px 10px;
+.peak-composer-root .pk-formula-term__arrow {
+	color: var(--pkc-formula-accent);
+	font-weight: 700;
+	text-align: center;
+}
+
+.peak-composer-root .pk-formula-term__meaning {
+	color: var(--pk-text-secondary);
+	font-size: 11px;
+	line-height: 1.45;
+}
+
+/* Split: vertical original → typed equivalent + definitions. */
+.peak-composer-root .pk-formula-compare {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: 8px;
+}
+
+.peak-composer-root .pk-formula-compare__section,
+.peak-composer-root .pk-formula-split-part {
+	display: grid;
+	gap: 6px;
+	padding: 9px 10px;
+	border: 1px solid var(--pkc-fm-line);
+	border-radius: var(--pk-radius-md, 8px);
+	background: var(--pk-bg, #fff);
+}
+
+.peak-composer-root .pk-formula-compare__section[data-side="original"] [data-formula-render] {
+	opacity: 0.58;
+}
+
+.peak-composer-root .pk-formula-compare__section[data-side="proposed"] {
+	border-color: var(--pkc-formula-review-border);
+}
+
+.peak-composer-root .pk-formula-compare__label,
+.peak-composer-root .pk-formula-split-part__label {
+	color: var(--pkc-fm-key);
+	font-size: 10px;
+	font-weight: 700;
+}
+
+.peak-composer-root .pk-formula-compare__arrow {
+	display: grid;
+	min-height: 14px;
+	place-items: center;
+	color: var(--pkc-formula-accent);
+	font-size: 18px;
+	font-weight: 700;
+}
+
+.peak-composer-root .pk-formula-split-parts {
+	display: grid;
+	gap: 7px;
+}
+
+.peak-composer-root .pk-formula-split-part {
+	border-style: dashed;
+}
+
+.peak-composer-root .pk-formula-split-part__meaning {
+	color: var(--pk-text-secondary);
+	font-size: 10px;
+	line-height: 1.4;
+}
+
+/* Variables: formula preview header + exhaustive KaTeX rows. */
+.peak-composer-root .pk-formula-variable-group {
+	min-width: 0;
+	overflow: hidden;
+	border: 1px solid var(--pkc-fm-line);
+	border-radius: var(--pk-radius-md, 8px);
+	background: var(--pk-bg, #fff);
+}
+
+.peak-composer-root .pk-formula-variable-group__head {
+	display: grid;
+	gap: 5px;
+	min-height: 56px;
+	padding: 8px 9px;
+	border-bottom: 1px solid var(--pkc-formula-row-border);
+	background: var(--pk-bg-secondary, #f8faff);
+}
+
+.peak-composer-root .pk-formula-variable-group__identity {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.peak-composer-root .pk-formula-variable-group__identity strong {
+	color: var(--pkc-fm-value);
 	font-size: 12px;
-	color: var(--pkc-fm-value);
 }
 
-.peak-composer-root .pk-formula-vartable__sym {
-	font-family: var(--pk-font-mono, monospace);
-	border-right: 1px solid var(--pkc-fm-line);
+.peak-composer-root .pk-formula-variable-group__identity small {
+	color: var(--pkc-fm-key);
+	font-size: 10px;
+}
+
+.peak-composer-root .pk-formula-variable-group__dot {
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: var(--pk-accent, #7c5ce7);
+}
+
+.peak-composer-root .pk-formula-variable-group__preview {
+	min-width: 0;
+	overflow: hidden;
+	color: var(--pk-text-secondary);
+	font-size: 10px;
+	white-space: nowrap;
+}
+
+.peak-composer-root .pk-formula-variable-rows {
+	display: grid;
+}
+
+.peak-composer-root .pk-formula-variable-row {
+	display: grid;
+	grid-template-columns: minmax(92px, 0.7fr) minmax(0, 1.3fr);
+	gap: 8px;
+	align-items: center;
+	min-height: 48px;
+	padding: 7px 9px;
+	border-top: 1px solid var(--pkc-formula-row-border);
+}
+
+.peak-composer-root .pk-formula-variable-row:first-child {
+	border-top: 0;
+}
+
+.peak-composer-root .pk-formula-variable-symbol {
+	display: grid;
+	justify-items: start;
+	gap: 3px;
+	min-width: 0;
+}
+
+.peak-composer-root .pk-formula-variable-symbol small {
+	padding: 1px 5px;
+	border-radius: var(--pk-radius-pill, 999px);
+	background: var(--pk-bg-secondary, #eef2f8);
+	color: var(--pkc-fm-key);
+	font-size: 9px;
+	font-weight: 700;
+}
+
+.peak-composer-root .pk-formula-variable-meaning {
+	color: var(--pk-text-secondary);
+	font-size: 11px;
+	line-height: 1.45;
 }
 
 .peak-composer-root .pk-formula-detail__foot {
@@ -683,6 +907,8 @@
 	align-items: center;
 	gap: 6px;
 	flex-wrap: wrap;
+	padding-top: 8px;
+	border-top: 1px solid var(--pkc-formula-row-border);
 }
 
 .peak-composer-root .pk-formula-detail__input {
@@ -711,7 +937,8 @@
 	font-size: var(--pk-text-xs);
 }
 
-.peak-composer-root .pk-formula-detail__nav .pk-btn {
+.peak-composer-root .pk-formula-detail__nav .pk-btn,
+.peak-composer-root .pk-formula-detail__history {
 	width: 30px !important;
 	min-width: 30px !important;
 	padding: 0 !important;
@@ -721,4 +948,42 @@
 	color: var(--pkc-fm-key);
 	font-size: 11px;
 	font-variant-numeric: tabular-nums;
+}
+
+.peak-composer-root .pk-formula-detail-history {
+	display: grid;
+	gap: 4px;
+	padding: 7px;
+	border: 1px solid var(--pkc-fm-line);
+	border-radius: var(--pk-radius-md, 8px);
+	background: var(--pk-bg, #fff);
+}
+
+.peak-composer-root .pk-formula-detail-history .pk-btn {
+	display: grid;
+	grid-template-columns: 38px minmax(0, 1fr) 14px;
+	justify-content: stretch;
+	min-height: 32px !important;
+	text-align: left;
+}
+
+.peak-composer-root .pk-formula-detail-history .pk-btn[data-active="true"] {
+	background: var(--pk-accent-tint) !important;
+}
+
+.peak-composer-root .pk-formula-detail-history small {
+	overflow: hidden;
+	color: var(--pkc-fm-key);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+@media (max-width: 860px) {
+	.peak-composer-root .pk-formula-term {
+		grid-template-columns: 22px minmax(72px, auto) 18px minmax(0, 1fr);
+	}
+
+	.peak-composer-root .pk-formula-variable-row {
+		grid-template-columns: minmax(82px, 0.7fr) minmax(0, 1.3fr);
+	}
 }

@@ -1,27 +1,27 @@
 /**
  * Peak Composer — formula annotation materializer (WP5, handoff §10.2 / §11.4).
  *
- * Turns one formula detail run's streamed text into a typed `formula-annotation`
- * envelope. All three detail kinds share the ONE result kind (so validateBindings
- * has a single materializer); the per-definition `resultContext.detailKind` hint
- * selects the layout — explain/split keep the narrative text, variables parse the
- * streamed rows into a symbol→meaning table. Formula details are analyze results
- * (§10.2 accept-keep-annotation / close), so there is no writeback adapter.
+ * Turns one formula detail run's streamed JSON into a typed
+ * `formula-annotation` envelope. All three detail kinds share one result kind;
+ * `resultContext.detailKind` selects the validated explain, split, or variables
+ * payload. Explain/variables stay local annotations. An accepted split is
+ * separately serialized into an exact-range transaction patch below.
  * Framework-neutral: no `obsidian` import.
  */
 
 import type {
 	ComposerFormulaAnnotationPayload,
 	ComposerFormulaDetailKind,
-	ComposerFormulaVariable,
 } from '@/core/schemas/composer';
 import {
 	ComposerFormulaAnnotationPayloadSchema,
 	ComposerFormulaDetailKindSchema,
 } from '@/core/schemas/composer';
 import type { ComposerResultEnvelope } from '@/core/composer';
+import type { ComposerOperation, ComposerTarget } from '@/core/composer';
 import { COMPOSER_FORMULA_ANNOTATION_RENDERER_ID } from '@/core/composer';
 import type { ComposerResultMaterializer, MaterializeArgs } from '../../capabilities/resultMaterializers';
+import type { ParsedFormula } from './formulaModel';
 
 /** Extract inner TeX from a `$$…$$` (or bare) formula source slice. */
 export function latexFromSource(source: string): string {
@@ -30,42 +30,91 @@ export function latexFromSource(source: string): string {
 	return stripped.trim();
 }
 
-const VARIABLE_LINE_RE = /^\s*(?:[-*]\s*)?(.+?)\s*(?:—|--|:|=|\t)\s*(.+?)\s*$/;
-
 /**
- * Parse streamed text into variable rows. Accepts `symbol — meaning`,
- * `symbol: meaning`, `symbol = meaning`, or tab-separated. Lenient: lines
- * without a separator are skipped.
+ * Extract the one JSON object requested by the formula prompts. Providers
+ * occasionally wrap an otherwise valid object in a Markdown code fence; strip
+ * that transport decoration without ever rendering it.
  */
-export function parseVariableTable(text: string): ComposerFormulaVariable[] {
-	const out: ComposerFormulaVariable[] = [];
-	for (const rawLine of text.split(/\r?\n/)) {
-		const line = rawLine.trim();
-		if (line.length === 0) continue;
-		const m = VARIABLE_LINE_RE.exec(line);
-		if (!m) continue;
-		const symbol = m[1].trim();
-		const meaning = m[2].trim();
-		if (symbol.length === 0 || meaning.length === 0) continue;
-		out.push({ symbol, meaning });
+function parseResponseObject(text: string): Record<string, unknown> {
+	let source = text.trim();
+	if (source.startsWith('```')) {
+		const firstNewline = source.indexOf('\n');
+		const closingFence = source.lastIndexOf('```');
+		if (firstNewline >= 0 && closingFence > firstNewline) {
+			source = source.slice(firstNewline + 1, closingFence).trim();
+		}
 	}
-	return out;
+	const objectStart = source.indexOf('{');
+	const objectEnd = source.lastIndexOf('}');
+	if (objectStart < 0 || objectEnd <= objectStart) {
+		throw new Error('formula detail response did not contain a JSON object');
+	}
+	const parsed = JSON.parse(source.slice(objectStart, objectEnd + 1));
+	if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+		throw new Error('formula detail response JSON must be an object');
+	}
+	return parsed as Record<string, unknown>;
 }
 
-/** Build a `formula-annotation` payload for a detail kind from streamed text. */
+/** Build a typed `formula-annotation` payload from the model's JSON response. */
 export function buildFormulaAnnotationPayload(
 	detailKind: ComposerFormulaDetailKind,
 	latex: string,
 	text: string,
 ): ComposerFormulaAnnotationPayload {
-	if (detailKind === 'variables') {
-		return ComposerFormulaAnnotationPayloadSchema.parse({
-			detailKind,
-			latex,
-			variables: parseVariableTable(text),
-		});
+	const raw = parseResponseObject(text);
+	const payload = ComposerFormulaAnnotationPayloadSchema.parse({
+		...raw,
+		detailKind,
+		latex: latexFromSource(latex),
+	});
+	if (payload.detailKind === 'split') {
+		return {
+			...payload,
+			equivalentTex: latexFromSource(payload.equivalentTex),
+			parts: payload.parts.map((part) => ({
+				...part,
+				tex: latexFromSource(part.tex),
+			})),
+		};
 	}
-	return ComposerFormulaAnnotationPayloadSchema.parse({ detailKind, latex, text: text.trim() });
+	return payload;
+}
+
+/** Serialize one accepted split as a self-contained standard display formula. */
+export function buildFormulaSplitMarkdown(
+	payload: Extract<ComposerFormulaAnnotationPayload, { detailKind: 'split' }>,
+): string {
+	const rows = [
+		latexFromSource(payload.equivalentTex),
+		...payload.parts.map((part) => latexFromSource(part.tex)),
+	];
+	const body = rows
+		.map((row, index) => `  ${row}${index < rows.length - 1 ? ' \\\\' : ''}`)
+		.join('\n');
+	return ['$$', '\\begin{aligned}', body, '\\end{aligned}', '$$'].join('\n');
+}
+
+export interface FormulaSplitPatch {
+	operations: readonly ComposerOperation[];
+	target: ComposerTarget;
+	expectedBlockDelta: number;
+}
+
+/** Address exactly one parsed formula inside its owning math block. */
+export function buildFormulaSplitPatch(
+	blockId: string,
+	blockSourceFrom: number,
+	formula: ParsedFormula,
+	payload: Extract<ComposerFormulaAnnotationPayload, { detailKind: 'split' }>,
+): FormulaSplitPatch {
+	const from = blockSourceFrom + formula.from;
+	const to = blockSourceFrom + formula.to;
+	return {
+		operations: [{ kind: 'replaceRange', from, to, text: buildFormulaSplitMarkdown(payload) }],
+		target: { kind: 'selection', blockId, from, to },
+		expectedBlockDelta: 0,
+	};
 }
 
 export function createFormulaAnnotationMaterializer(): ComposerResultMaterializer {

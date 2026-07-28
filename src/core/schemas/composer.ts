@@ -442,17 +442,33 @@ export type ComposerMetadataFieldPatchPayload = z.infer<typeof ComposerMetadataF
 export const ComposerFormulaDetailKindSchema = z.enum(['explain', 'split', 'variables']);
 export type ComposerFormulaDetailKind = z.infer<typeof ComposerFormulaDetailKindSchema>;
 
-/** One row of a formula variable table (symbol → meaning). */
+/** One conceptual term in the visual explanation map. */
+export const ComposerFormulaExplainTermSchema = z.object({
+	symbolTex: z.string().min(1),
+	meaning: z.string().min(1),
+});
+export type ComposerFormulaExplainTerm = z.infer<typeof ComposerFormulaExplainTermSchema>;
+
+/** One named equation in a structured formula split. */
+export const ComposerFormulaSplitPartSchema = z.object({
+	label: z.string().min(1),
+	tex: z.string().min(1),
+	contribution: z.string().min(1),
+});
+export type ComposerFormulaSplitPart = z.infer<typeof ComposerFormulaSplitPartSchema>;
+
+/** One exhaustive row of a formula variable table. */
 export const ComposerFormulaVariableSchema = z.object({
-	symbol: z.string(),
-	meaning: z.string(),
+	symbolTex: z.string().min(1),
+	role: z.string().min(1),
+	meaning: z.string().min(1),
 });
 export type ComposerFormulaVariable = z.infer<typeof ComposerFormulaVariableSchema>;
 
 /**
  * Input for a formula detail capability. `detailKind` selects the independent
- * result family; `latex` is the frozen TeX of the ONE targeted formula (§3.3:
- * clicking PageRank's table shows PageRank only).
+ * result family; `latex` is the frozen TeX of the ONE targeted formula. Detail
+ * actions never inherit a sibling formula merely because both share a block.
  */
 export const ComposerFormulaDetailInputSchema = z.object({
 	detailKind: ComposerFormulaDetailKindSchema,
@@ -463,16 +479,32 @@ export const ComposerFormulaDetailInputSchema = z.object({
 export type ComposerFormulaDetailInput = z.infer<typeof ComposerFormulaDetailInputSchema>;
 
 /**
- * Payload of a `formula-annotation` result envelope (handoff §11.4). Carries the
- * detail kind so the renderer dispatches the right layout; `text` holds the
- * explain/split narrative, `variables` holds the parsed variable table.
+ * Payload of a `formula-annotation` result envelope (handoff §11.4).
+ *
+ * Each detail kind owns a distinct typed layout. This intentionally rejects an
+ * opaque Markdown string: formula fragments remain addressable LaTeX and prose
+ * stays in explicit fields, so the UI never needs to guess structure from model
+ * formatting.
  */
-export const ComposerFormulaAnnotationPayloadSchema = z.object({
-	detailKind: ComposerFormulaDetailKindSchema,
-	latex: z.string(),
-	text: z.string().optional(),
-	variables: z.array(ComposerFormulaVariableSchema).optional(),
-});
+export const ComposerFormulaAnnotationPayloadSchema = z.discriminatedUnion('detailKind', [
+	z.object({
+		detailKind: z.literal('explain'),
+		latex: z.string().min(1),
+		summary: z.string().optional(),
+		terms: z.array(ComposerFormulaExplainTermSchema).min(1),
+	}),
+	z.object({
+		detailKind: z.literal('split'),
+		latex: z.string().min(1),
+		equivalentTex: z.string().min(1),
+		parts: z.array(ComposerFormulaSplitPartSchema).min(1),
+	}),
+	z.object({
+		detailKind: z.literal('variables'),
+		latex: z.string().min(1),
+		variables: z.array(ComposerFormulaVariableSchema).min(1),
+	}),
+]);
 export type ComposerFormulaAnnotationPayload = z.infer<typeof ComposerFormulaAnnotationPayloadSchema>;
 // ── WP7: image asset / annotation / layout payloads (additive) ───────────────
 // Result kinds `image-asset-candidate` / `image-annotation-patch` /

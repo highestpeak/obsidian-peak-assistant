@@ -4,6 +4,8 @@ import type { ComposerResultEnvelope } from '@/core/composer';
 import type { ComposerFormulaAnnotationPayload } from '@/core/schemas/composer';
 import { Button } from '@/ui/components/primitives';
 import type { CandidateRendererProps } from '../../candidates/rendererRegistry';
+import { FormulaDetailBody } from './FormulaDetailBody';
+import { DEFAULT_MATH_CONFIG } from './mathConfig';
 
 /**
  * Peak Composer — formula-annotation candidate card (WP5) — safety-net renderer.
@@ -24,25 +26,16 @@ function readyPayload(props: CandidateRendererProps): ComposerFormulaAnnotationP
 }
 
 export function FormulaAnnotationCandidateCard(props: CandidateRendererProps): React.ReactElement {
-	const { candidate, runtime, strings, streamingText } = props;
-	const streaming = streamingText !== null;
+	const { candidate, runtime, strings } = props;
+	const streaming = props.streamingText !== null;
 	const payload = readyPayload(props);
 
 	return (
 		<span data-candidate-id={candidate.candidateId} className="flex flex-col gap-2 py-1">
 			<span className="px-3 leading-relaxed text-[var(--text-normal)]">
-				{streaming && <span className="whitespace-pre-wrap">{streamingText}</span>}
-				{!streaming && payload?.detailKind === 'variables' && (
-					<span className="flex flex-col gap-0.5">
-						{(payload.variables ?? []).map((v, i) => (
-							<span key={`${v.symbol}-${i}`}>
-								<b className="font-mono">{v.symbol}</b> — {v.meaning}
-							</span>
-						))}
-					</span>
-				)}
-				{!streaming && payload && payload.detailKind !== 'variables' && (
-					<span className="whitespace-pre-wrap">{payload.text}</span>
+				{streaming && <span>{DEFAULT_MATH_CONFIG.detail.streaming}</span>}
+				{!streaming && payload && (
+					<FormulaDetailBody payload={payload} config={DEFAULT_MATH_CONFIG} />
 				)}
 				{!streaming && !payload && <span className="text-[var(--text-muted)]">{strings.streaming}</span>}
 			</span>

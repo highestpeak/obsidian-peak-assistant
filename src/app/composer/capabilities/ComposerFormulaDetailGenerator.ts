@@ -40,6 +40,7 @@ export function createComposerFormulaDetailGenerator(
 				latex: request.latex,
 				...(request.label !== undefined ? { label: request.label } : {}),
 				...(request.instruction !== undefined ? { instruction: request.instruction } : {}),
+				...(request.contextText !== undefined ? { contextText: request.contextText } : {}),
 			});
 			for await (const ev of executor.stream({
 				capabilityId: cap.capabilityId,

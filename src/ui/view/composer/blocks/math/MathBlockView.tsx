@@ -2,8 +2,17 @@ import * as React from 'react';
 import { useStore } from 'zustand';
 import { Copy, Sparkles } from 'lucide-react';
 import type { ComposerBlock } from '@/core/composer';
-import { parseFormulaBlock, buildFormulaCopyPayloads, type ParsedFormula } from '@/service/composer';
-import type { ComposerFormulaDetailKind } from '@/core/schemas/composer';
+import {
+	buildFormulaContext,
+	buildFormulaCopyPayloads,
+	buildFormulaSplitPatch,
+	parseFormulaBlock,
+	type ParsedFormula,
+} from '@/service/composer';
+import type {
+	ComposerFormulaAnnotationPayload,
+	ComposerFormulaDetailKind,
+} from '@/core/schemas/composer';
 import { Button } from '@/ui/components/primitives';
 import { rasterizeElementToPngBlob } from '../../chrome/rasterize';
 import { useComposerChrome } from '../../chrome/ComposerChromeContext';
@@ -51,7 +60,7 @@ export function MathBlockView({
 	return (
 		<div className="pk-math-stack" data-block-id={block.blockId} data-src-text-from={block.source.from}>
 			{formulas.map((formula) => (
-				<FormulaCard key={formula.id} formula={formula} store={store} config={config} />
+				<FormulaCard key={formula.id} block={block} formula={formula} store={store} config={config} />
 			))}
 		</div>
 	);
@@ -60,10 +69,12 @@ export function MathBlockView({
 const DETAIL_KINDS: readonly ComposerFormulaDetailKind[] = ['explain', 'split', 'variables'];
 
 function FormulaCard({
+	block,
 	formula,
 	store,
 	config,
 }: {
+	block: ComposerBlock;
 	formula: ParsedFormula;
 	store: FormulaDetailStore;
 	config: MathConfig;
@@ -72,9 +83,24 @@ function FormulaCard({
 	const renderRef = React.useRef<HTMLDivElement | null>(null);
 	const [copyOpen, setCopyOpen] = React.useState(false);
 	const canGenerate = useStore(store, (s) => s.canGenerate);
+	const chrome = useComposerChrome();
+	const contextText = React.useMemo(
+		() => buildFormulaContext(chrome.snapshot, block.blockId, config.contextCharacterLimit),
+		[chrome.snapshot, block.blockId, config.contextCharacterLimit],
+	);
 	const openKinds = useStore(store, (s) =>
 		DETAIL_KINDS.filter((k) => s.model.entries[`${formula.id}::${k}`]?.open),
 	);
+	const applySplit = chrome.runtime.hub
+		? async (payload: Extract<ComposerFormulaAnnotationPayload, { detailKind: 'split' }>) => {
+			const patch = buildFormulaSplitPatch(block.blockId, block.source.from, formula, payload);
+			await chrome.runtime.hub!.commit({
+				origin: 'ai',
+				label: `${formula.label} · ${config.detail.split}`,
+				...patch,
+			});
+		}
+		: undefined;
 
 	return (
 		<div className="pk-math-card" ref={cardRef} data-formula-id={formula.id}>
@@ -96,7 +122,13 @@ function FormulaCard({
 							data-active={openKinds.includes(kind) || undefined}
 							disabled={!canGenerate}
 							title={canGenerate ? undefined : config.detail.streaming}
-							onClick={() => store.getState().toggle(formula.id, kind, formula.latex, formula.label)}
+							onClick={() => store.getState().toggle(
+								formula.id,
+								kind,
+								formula.latex,
+								formula.label,
+								contextText,
+							)}
 						>
 							<Sparkles size={12} />
 							{config.detail[kind]}
@@ -112,7 +144,9 @@ function FormulaCard({
 					kind={kind}
 					latex={formula.latex}
 					label={formula.label}
+					contextText={contextText}
 					config={config}
+					onApplySplit={applySplit}
 				/>
 			))}
 		</div>
@@ -166,10 +200,10 @@ function CopyControl({
 			</Button>
 			{open && (
 				<span className="pk-math-copy__menu" role="menu">
-					<button type="button" role="menuitem" onClick={() => void copyText('plain', config.copy.plain)}>{config.copy.plain}</button>
-					<button type="button" role="menuitem" onClick={() => void copyText('latex', config.copy.latex)}>{config.copy.latex}</button>
-					<button type="button" role="menuitem" onClick={() => void copyText('html', config.copy.html)}>{config.copy.html}</button>
-					<button type="button" role="menuitem" onClick={() => void copyImage()}>{config.copy.image}</button>
+					<Button variant="ghost" size="sm" role="menuitem" onClick={() => void copyText('plain', config.copy.plain)}>{config.copy.plain}</Button>
+					<Button variant="ghost" size="sm" role="menuitem" onClick={() => void copyText('latex', config.copy.latex)}>{config.copy.latex}</Button>
+					<Button variant="ghost" size="sm" role="menuitem" onClick={() => void copyText('html', config.copy.html)}>{config.copy.html}</Button>
+					<Button variant="ghost" size="sm" role="menuitem" onClick={() => void copyImage()}>{config.copy.image}</Button>
 				</span>
 			)}
 		</span>

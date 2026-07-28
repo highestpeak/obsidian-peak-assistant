@@ -36,6 +36,7 @@ export interface FormulaDetailRequest {
 	latex: string;
 	label?: string;
 	instruction?: string;
+	contextText?: string;
 	signal: AbortSignal;
 }
 
@@ -48,7 +49,13 @@ export interface FormulaDetailGeneratorPort {
 
 export interface FormulaDetailStoreState {
 	model: FormulaDetailState;
-	toggle: (formulaId: string, kind: ComposerFormulaDetailKind, latex: string, label?: string) => void;
+	toggle: (
+		formulaId: string,
+		kind: ComposerFormulaDetailKind,
+		latex: string,
+		label?: string,
+		contextText?: string,
+	) => void;
 	close: (formulaId: string, kind: ComposerFormulaDetailKind) => void;
 	keep: (formulaId: string, kind: ComposerFormulaDetailKind) => void;
 	followUp: (
@@ -57,6 +64,7 @@ export interface FormulaDetailStoreState {
 		latex: string,
 		instruction: string | undefined,
 		label?: string,
+		contextText?: string,
 	) => void;
 	setVariant: (formulaId: string, kind: ComposerFormulaDetailKind, variantId: string) => void;
 	/** True while a generation is streaming for this detail. */
@@ -86,6 +94,7 @@ export function createFormulaDetailStore(generator?: FormulaDetailGeneratorPort)
 			latex: string,
 			label?: string,
 			instruction?: string,
+			contextText?: string,
 		): Promise<void> {
 			if (!generator) return;
 			const abort = new AbortController();
@@ -98,6 +107,7 @@ export function createFormulaDetailStore(generator?: FormulaDetailGeneratorPort)
 					latex,
 					...(label !== undefined ? { label } : {}),
 					...(instruction !== undefined ? { instruction } : {}),
+					...(contextText !== undefined ? { contextText } : {}),
 					signal: abort.signal,
 				});
 				for await (const ev of stream) {
@@ -118,7 +128,7 @@ export function createFormulaDetailStore(generator?: FormulaDetailGeneratorPort)
 		return {
 			model: EMPTY_FORMULA_DETAIL_STATE,
 			canGenerate: Boolean(generator),
-			toggle: (formulaId, kind, latex, label) => {
+			toggle: (formulaId, kind, latex, label, contextText) => {
 				const existing = getDetail(get().model, formulaId, kind);
 				if (existing?.open) {
 					get().close(formulaId, kind);
@@ -127,18 +137,18 @@ export function createFormulaDetailStore(generator?: FormulaDetailGeneratorPort)
 				const hadVariants = (existing?.variants.length ?? 0) > 0;
 				const variantId = nextVariantId();
 				apply(openDetail(get().model, formulaId, kind, variantId));
-				if (!hadVariants) void run(formulaId, kind, variantId, latex, label);
+				if (!hadVariants) void run(formulaId, kind, variantId, latex, label, undefined, contextText);
 			},
 			close: (formulaId, kind) => {
 				aborts.get(runKey(formulaId, kind))?.abort();
 				apply(closeDetail(get().model, formulaId, kind));
 			},
 			keep: (formulaId, kind) => apply(keepDetail(get().model, formulaId, kind)),
-			followUp: (formulaId, kind, latex, instruction, label) => {
+			followUp: (formulaId, kind, latex, instruction, label, contextText) => {
 				if (get().isStreaming(formulaId, kind)) return;
 				const variantId = nextVariantId();
 				apply(regenerate(get().model, formulaId, kind, variantId, instruction));
-				void run(formulaId, kind, variantId, latex, label, instruction);
+				void run(formulaId, kind, variantId, latex, label, instruction, contextText);
 			},
 			setVariant: (formulaId, kind, variantId) => apply(setActiveVariant(get().model, formulaId, kind, variantId)),
 			isStreaming: (formulaId, kind) => aborts.has(runKey(formulaId, kind)),

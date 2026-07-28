@@ -8,9 +8,11 @@
  * the `formula-annotation` result kind; the per-definition `resultContext`
  * carries the `detailKind` the materializer/renderer dispatch on.
  *
- * All three are `analyze` (accept-keep-annotation / close — §10.2), so they have
- * no writeback adapter; the formula-detail store owns their independent display
- * state, variant history and follow-up regeneration.
+ * Generation stays `analyze` and therefore has no generic writeback adapter.
+ * The formula-detail store owns independent display state, variant history and
+ * follow-up regeneration. Explain/variables can be kept locally; the split
+ * panel exposes a separate explicit Apply action that commits its validated
+ * typed payload through the app-owned ComposerTransactionHub.
  */
 
 import { PromptId } from '@/core/types/prompt';
@@ -73,6 +75,7 @@ export interface FormulaDetailPromptInput {
 	latex: string;
 	label?: string;
 	instruction?: string;
+	contextText?: string;
 }
 
 export function buildFormulaDetailPromptVariables(input: FormulaDetailPromptInput): Record<string, unknown> {
@@ -80,6 +83,7 @@ export function buildFormulaDetailPromptVariables(input: FormulaDetailPromptInpu
 		latex: input.latex,
 		...(input.label !== undefined ? { label: input.label } : {}),
 		...(input.instruction !== undefined ? { instruction: input.instruction } : {}),
+		...(input.contextText !== undefined ? { contextText: input.contextText } : {}),
 	};
 }
 
