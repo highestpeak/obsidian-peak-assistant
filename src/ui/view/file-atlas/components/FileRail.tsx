@@ -7,8 +7,13 @@
  */
 
 import React from 'react';
-import { ArrowUpDown, ChevronDown, FileClock, FileText, X } from 'lucide-react';
+import { ArrowUpDown, Check, ChevronDown, FileClock, FileText, X } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from '@/ui/component/shared-ui/popover';
 import type { OpenDocMeta } from '../FileAtlasHostPort';
 import type { FileRailSections, FileRailSortMode } from '../fileRailModel';
 import type { FileAtlasRailConfig } from '../config/fileAtlasConfig';
@@ -131,6 +136,7 @@ export const FileRail: React.FC<FileRailProps> = ({
 	onWidthChange,
 	onWidthCommit,
 }) => {
+	const [sortOpen, setSortOpen] = React.useState(false);
 	const clampWidth = (value: number): number =>
 		Math.round(Math.min(widthLimits.maxWidthPx, Math.max(widthLimits.minWidthPx, value)));
 
@@ -177,19 +183,47 @@ export const FileRail: React.FC<FileRailProps> = ({
 					<FileText />
 					{title}
 				</span>
-				<label className="pkfa-rail-sort">
-					<span className="pkfa-visually-hidden">{sortLabel}</span>
-					<ArrowUpDown aria-hidden="true" />
-					<select
-						aria-label={sortLabel}
-						value={sortMode}
-						onChange={(event) => onSortModeChange(event.target.value as FileRailSortMode)}
+				<Popover open={sortOpen} onOpenChange={setSortOpen}>
+					<PopoverTrigger asChild>
+						<Button
+							variant="unstyled"
+							type="button"
+							className="pkfa-rail-sort"
+							aria-haspopup="menu"
+							aria-expanded={sortOpen}
+							aria-label={`${sortLabel}: ${sortLabels[sortMode]}`}
+						>
+							<ArrowUpDown aria-hidden="true" />
+							<span>{sortLabels[sortMode]}</span>
+							<ChevronDown aria-hidden="true" />
+						</Button>
+					</PopoverTrigger>
+					<PopoverContent
+						className="pkfa-rail-sort-menu"
+						align="end"
+						sideOffset={6}
+						role="menu"
 					>
-						<option value="frequent">{sortLabels.frequent}</option>
-						<option value="name">{sortLabels.name}</option>
-					</select>
-					<ChevronDown aria-hidden="true" />
-				</label>
+						{(['frequent', 'name'] as const).map((mode) => (
+							<Button
+								key={mode}
+								variant="unstyled"
+								type="button"
+								role="menuitemradio"
+								aria-checked={sortMode === mode}
+								className="pkfa-rail-sort-option"
+								data-selected={sortMode === mode ? 'true' : undefined}
+								onClick={() => {
+									onSortModeChange(mode);
+									setSortOpen(false);
+								}}
+							>
+								<span>{sortLabels[mode]}</span>
+								{sortMode === mode && <Check aria-hidden="true" />}
+							</Button>
+						))}
+					</PopoverContent>
+				</Popover>
 			</div>
 			<div className="pkfa-rail-list">
 				<FileRailGroup

@@ -11,8 +11,11 @@ const host = source('src/ui/view/file-atlas/FileAtlasHost.tsx');
 const adapter = source('src/app/file-atlas/composeFileAtlasHost.ts');
 const css = source('src/styles/file-atlas.css');
 
-assert.match(rail, /value="frequent"/);
-assert.match(rail, /value="name"/);
+assert.match(rail, /<Popover open=\{sortOpen\}/);
+assert.match(rail, /role="menuitemradio"/);
+assert.match(rail, /aria-expanded=\{sortOpen\}/);
+assert.match(rail, /onSortModeChange\(mode\)/);
+assert.doesNotMatch(rail, /<select/);
 assert.doesNotMatch(rail, /value="recent"/);
 assert.match(rail, /ArrowUpDown/);
 assert.match(rail, /ChevronDown/);

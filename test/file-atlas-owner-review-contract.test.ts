@@ -41,6 +41,7 @@ assert.match(
 	/\.pkfa-search-box input[\s\S]*?box-shadow:\s*none !important;/,
 	'inner search input must not draw its own Obsidian/native border shadow',
 );
-assert.match(css, /\.pkfa-rail-sort:focus-within/);
+assert.match(css, /\.pkfa-rail-sort:focus-visible/);
+assert.match(css, /\.pkfa-rail-sort\[data-state="open"\]/);
 
 console.log('PASS: File Atlas owner-review interaction and layout contract');
