@@ -92,17 +92,25 @@ function reducer(state: AtlasState, action: AtlasAction): AtlasState {
 				tray: state.tray,
 			};
 		case 'applyPreset':
-			return { ...state, activePreset: action.id, presetModified: false, visibleKinds: new Set(action.kinds) };
+			return {
+				...state,
+				activePreset: action.id,
+				presetModified: false,
+				visibleKinds: new Set(action.kinds),
+				// A preset is a request to inspect matching nodes. Do not leave
+				// those matches hidden behind stale structural folds.
+				collapsed: new Set(),
+			};
 		case 'toggleKind': {
 			const next = new Set(state.visibleKinds);
 			if (next.has(action.kind)) next.delete(action.kind);
 			else next.add(action.kind);
-			return { ...state, visibleKinds: next, presetModified: true };
+			return { ...state, visibleKinds: next, presetModified: true, collapsed: new Set() };
 		}
 		case 'groupSet': {
 			const next = new Set(state.visibleKinds);
 			action.kinds.forEach((k) => (action.on ? next.add(k) : next.delete(k)));
-			return { ...state, visibleKinds: next, presetModified: true };
+			return { ...state, visibleKinds: next, presetModified: true, collapsed: new Set() };
 		}
 		case 'toggleFold': {
 			const next = new Set(state.collapsed);

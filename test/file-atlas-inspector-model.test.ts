@@ -4,6 +4,7 @@ import { RawBlockKind } from '@/core/document/atlas/types';
 import {
 	analysisText,
 	computeVisibility,
+	defaultCollapsedIds,
 	keywordsOf,
 	statisticsOf,
 } from '@/ui/view/file-atlas/atlasTreeModel';
@@ -105,5 +106,26 @@ const nestedSearch = computeVisibility(
 	'parent',
 );
 assert.strictEqual(nestedSearch.hits, 1, 'a collapsible list item remains a search hit');
+
+const ownedLink = block(RawBlockKind.VaultLink, '[[Owned Link]]', { title: 'Owned Link' });
+const linkedItem = block(RawBlockKind.ListItem, '- [[Owned Link]]', {
+	children: [ownedLink],
+});
+const linkedList = block(RawBlockKind.List, '- [[Owned Link]]', {
+	children: [linkedItem],
+	detail: { itemCount: 1 },
+});
+const resourceOnlyVisibility = computeVisibility(
+	[linkedList],
+	new Set([RawBlockKind.VaultLink]),
+	'',
+);
+assert.ok(resourceOnlyVisibility.visible.has(linkedList.id), 'list ancestor remains visible');
+assert.ok(resourceOnlyVisibility.visible.has(linkedItem.id), 'owning item remains visible');
+assert.ok(resourceOnlyVisibility.visible.has(ownedLink.id), 'owned link respects resource filter');
+assert.ok(
+	!defaultCollapsedIds([linkedList], linkedList.id).has(linkedItem.id),
+	'a resource-owning item starts open so its link is not silently hidden',
+);
 
 console.log('PASS: File Atlas Inspector analysis and statistics model');

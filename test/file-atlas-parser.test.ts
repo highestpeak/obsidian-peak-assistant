@@ -152,6 +152,40 @@ ok('nested lists preserve item hierarchy without duplicate sibling tasks', () =>
 	);
 });
 
+ok('list items expose owned resources without duplicating nested-list links', () => {
+	const md = [
+		'- [[Root Link]]',
+		'- [External](https://example.com/docs)',
+		'- parent [[Parent Link]]',
+		'  - [[Nested Link]]',
+		'- [ ] task [[Task Link]]',
+	].join('\n');
+	const doc = parseDocumentBlocks(md, 'f.md');
+	const rootList = doc.blocks[0];
+	const items = rootList.children ?? [];
+	assert.strictEqual(rootList.kind, RawBlockKind.List);
+	assert.strictEqual(items.length, 4, 'four top-level items remain four item units');
+	assert.strictEqual(items[0].children?.[0].kind, RawBlockKind.VaultLink);
+	assert.strictEqual(items[1].children?.[0].kind, RawBlockKind.ExternalLink);
+	assert.strictEqual(
+		items[2].children?.filter((child) => child.kind === RawBlockKind.VaultLink).length,
+		1,
+		'parent owns only its direct wikilink',
+	);
+	const nestedList = items[2].children?.find((child) => child.kind === RawBlockKind.List);
+	assert.strictEqual(
+		nestedList?.children?.[0].children?.[0].title,
+		'Nested Link',
+		'nested wikilink belongs to the nested item',
+	);
+	assert.strictEqual(items[3].kind, RawBlockKind.Task);
+	assert.strictEqual(items[3].children?.[0].title, 'Task Link');
+	assert.strictEqual(findKind(doc.blocks, RawBlockKind.VaultLink).length, 4);
+	assert.strictEqual(findKind(doc.blocks, RawBlockKind.ExternalLink).length, 1);
+	assert.strictEqual(doc.stats.blocks, 1, 'resource children do not change the one-list block count');
+	assert.strictEqual(doc.stats.resources, 5, 'list-owned resources still reach document stats');
+});
+
 ok('callout vs quote distinction', () => {
 	const md = ['> [!warning] Heads up', '> body line', '', '> plain quote'].join('\n');
 	const doc = parseDocumentBlocks(md, 'f.md');
@@ -160,6 +194,89 @@ ok('callout vs quote distinction', () => {
 	assert.strictEqual(callouts.length, 1, 'one callout');
 	assert.strictEqual(callouts[0].detail?.calloutType, 'warning');
 	assert.strictEqual(quotes.length, 1, 'one plain quote');
+});
+
+ok('heading, quote, callout, table, and footnote expose inline resources', () => {
+	const md = [
+		'# Heading [[Heading Link]]',
+		'',
+		'> Quote [[Quote Link]]',
+		'',
+		'> [!note] Callout [[Callout Link]]',
+		'',
+		'| Ref |',
+		'| --- |',
+		'| [[Table Link]] |',
+		'',
+		'Body[^ref]',
+		'',
+		'[^ref]: [External](https://example.com)',
+	].join('\n');
+	const doc = parseDocumentBlocks(md, 'f.md');
+	const heading = findKind(doc.blocks, RawBlockKind.Heading)[0];
+	const quote = findKind(doc.blocks, RawBlockKind.Quote)[0];
+	const callout = findKind(doc.blocks, RawBlockKind.Callout)[0];
+	const table = findKind(doc.blocks, RawBlockKind.Table)[0];
+	const footnote = findKind(doc.blocks, RawBlockKind.Footnote)[0];
+	assert.ok(heading.children?.some((child) => child.kind === RawBlockKind.VaultLink));
+	assert.ok(quote.children?.some((child) => child.kind === RawBlockKind.VaultLink));
+	assert.ok(callout.children?.some((child) => child.kind === RawBlockKind.VaultLink));
+	assert.ok(table.children?.some((child) => child.kind === RawBlockKind.VaultLink));
+	assert.ok(footnote.children?.some((child) => child.kind === RawBlockKind.ExternalLink));
+});
+
+ok('inline resources retain source order and exact line anchors', () => {
+	const md = [
+		'[External](https://example.com)',
+		'[[Vault Link]]',
+		'https://openai.com',
+	].join('\n');
+	const doc = parseDocumentBlocks(md, 'f.md');
+	const resources = doc.blocks;
+	assert.deepStrictEqual(
+		resources.map((resource) => resource.kind),
+		[RawBlockKind.ExternalLink, RawBlockKind.VaultLink, RawBlockKind.ExternalLink],
+	);
+	assert.deepStrictEqual(
+		resources.map((resource) => resource.anchor.lineStart),
+		[1, 2, 3],
+	);
+});
+
+ok('frontmatter properties expose links without duplicating frontmatter tags', () => {
+	const md = [
+		'---',
+		'related: ["[[Linked Note]]", "[[Second Note]]"]',
+		'source: "[Docs](https://example.com)"',
+		'tags: ["#atlas"]',
+		'---',
+	].join('\n');
+	const doc = parseDocumentBlocks(md, 'f.md');
+	const properties = findKind(doc.blocks, RawBlockKind.Property);
+	assert.deepStrictEqual(
+		properties[0].children?.map((child) => child.title),
+		['Linked Note', 'Second Note'],
+	);
+	assert.ok(properties[1].children?.some((child) => child.kind === RawBlockKind.ExternalLink));
+	assert.strictEqual(findKind(doc.blocks, RawBlockKind.Tag).length, 1);
+});
+
+ok('autolinks are resources while inline code and comments are ignored', () => {
+	const md = [
+		'<https://example.com/docs>',
+		'<mailto:owner@example.com>',
+		'`[[example only]]` and `https://not-a-resource.example`',
+		'%% [[hidden note]] %%',
+		'<!-- https://hidden.example -->',
+	].join('\n\n');
+	const doc = parseDocumentBlocks(md, 'f.md');
+	const external = findKind(doc.blocks, RawBlockKind.ExternalLink);
+	const vault = findKind(doc.blocks, RawBlockKind.VaultLink);
+	assert.deepStrictEqual(
+		external.map((resource) => resource.detail?.target),
+		['https://example.com/docs', 'mailto:owner@example.com'],
+	);
+	assert.strictEqual(vault.length, 0);
 });
 
 ok('table with row/column counts', () => {

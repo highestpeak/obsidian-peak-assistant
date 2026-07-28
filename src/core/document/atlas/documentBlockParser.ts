@@ -105,6 +105,9 @@ export function parseDocumentBlocks(content: string, filePath: string): AtlasDoc
 			const siblings = parent ? (parent.children ??= []) : top;
 			heading.anchor.ordinalInHeading = siblings.length;
 			heading.anchor.nearestHeading = parent ? parent.title : null;
+			// A heading may itself contain inline links/tags. Those resource
+			// children belong to this heading, not to its parent section.
+			assignDescendantContext(heading, heading.title);
 			siblings.push(heading);
 			headingStack.push(heading);
 			continue;
@@ -151,8 +154,7 @@ function emitFrontmatter(ctx: ParseCtx, ast: Root, out: DocumentBlock[]): void {
 		const rel = yamlLines.findIndex((l) => l.trimStart().startsWith(`${key}:`));
 		const line = rel >= 0 ? startLine + 1 + rel : startLine;
 		const rendered = renderScalar(value);
-		out.push(
-			finalizeLeaf(ctx, {
+		const property = finalizeLeaf(ctx, {
 				kind: RawBlockKind.Property,
 				title: `${key}: ${truncate(rendered, 60)}`,
 				sub: 'Frontmatter property',
@@ -160,8 +162,15 @@ function emitFrontmatter(ctx: ParseCtx, ast: Root, out: DocumentBlock[]): void {
 				lineStart: line,
 				lineEnd: line,
 				ordinal: ordinal++,
-			})
-		);
+			});
+		// Obsidian properties may contain wikilinks or Markdown links. Preserve
+		// the Property row while exposing those references as owned resources.
+		// Tags are emitted separately below, so exclude them here to avoid
+		// representing the same frontmatter tag twice.
+		const references = extractInlineResources(ctx, inlineResourceText(value), line, line)
+			.filter((resource) => resource.kind !== RawBlockKind.Tag);
+		if (references.length) property.children = references;
+		out.push(property);
 	}
 
 	if (data.tags !== undefined) {
@@ -199,7 +208,13 @@ function makeHeading(ctx: ParseCtx, node: RootContent & { depth?: number }): Doc
 	});
 	block.level = level;
 	block.children = [];
-	return block;
+	return attachInlineResourceChildren(
+		ctx,
+		block,
+		block.source,
+		line,
+		node.position?.end.line ?? line,
+	);
 }
 
 // --------------------------------------------------------------------------
@@ -245,17 +260,18 @@ function makeBlocksFromNode(ctx: ParseCtx, node: RootContent): DocumentBlock[] {
 		case 'table': {
 			const rows = (node as any).children?.length ?? 0;
 			const columns = (node as any).children?.[0]?.children?.length ?? 0;
+			const block = finalizeLeaf(ctx, {
+				kind: RawBlockKind.Table,
+				title: firstMeaningfulText(raw) || 'Table',
+				sub: `${Math.max(0, rows - 1)} rows · ${columns} columns`,
+				source: raw,
+				lineStart: start,
+				lineEnd: end,
+				detail: { rows: Math.max(0, rows - 1), columns },
+				ordinal: 0,
+			});
 			return [
-				finalizeLeaf(ctx, {
-					kind: RawBlockKind.Table,
-					title: firstMeaningfulText(raw) || 'Table',
-					sub: `${Math.max(0, rows - 1)} rows · ${columns} columns`,
-					source: raw,
-					lineStart: start,
-					lineEnd: end,
-					detail: { rows: Math.max(0, rows - 1), columns },
-					ordinal: 0,
-				}),
+				attachInlineResourceChildren(ctx, block, raw, start, end),
 			];
 		}
 
@@ -263,29 +279,31 @@ function makeBlocksFromNode(ctx: ParseCtx, node: RootContent): DocumentBlock[] {
 			// Callout = blockquote whose first line is `> [!type]`.
 			const calloutType = matchCalloutType(raw);
 			if (calloutType) {
-				return [
-					finalizeLeaf(ctx, {
-						kind: RawBlockKind.Callout,
-						title: calloutTitle(raw) || `${calloutType} callout`,
-						sub: `${calloutType} callout`,
-						source: raw,
-						lineStart: start,
-						lineEnd: end,
-						detail: { calloutType },
-						ordinal: 0,
-					}),
-				];
-			}
-			return [
-				finalizeLeaf(ctx, {
-					kind: RawBlockKind.Quote,
-					title: firstMeaningfulText(raw) || 'Quote',
-					sub: 'Blockquote',
+				const block = finalizeLeaf(ctx, {
+					kind: RawBlockKind.Callout,
+					title: calloutTitle(raw) || `${calloutType} callout`,
+					sub: `${calloutType} callout`,
 					source: raw,
 					lineStart: start,
 					lineEnd: end,
+					detail: { calloutType },
 					ordinal: 0,
-				}),
+				});
+				return [
+					attachInlineResourceChildren(ctx, block, raw, start, end),
+				];
+			}
+			const block = finalizeLeaf(ctx, {
+				kind: RawBlockKind.Quote,
+				title: firstMeaningfulText(raw) || 'Quote',
+				sub: 'Blockquote',
+				source: raw,
+				lineStart: start,
+				lineEnd: end,
+				ordinal: 0,
+			});
+			return [
+				attachInlineResourceChildren(ctx, block, raw, start, end),
 			];
 		}
 
@@ -295,17 +313,18 @@ function makeBlocksFromNode(ctx: ParseCtx, node: RootContent): DocumentBlock[] {
 
 		case 'footnoteDefinition': {
 			const id = (node as any).identifier ?? '';
+			const block = finalizeLeaf(ctx, {
+				kind: RawBlockKind.Footnote,
+				title: `[^${id}]`,
+				sub: 'Footnote definition',
+				source: raw,
+				lineStart: start,
+				lineEnd: end,
+				detail: { target: id },
+				ordinal: 0,
+			});
 			return [
-				finalizeLeaf(ctx, {
-					kind: RawBlockKind.Footnote,
-					title: `[^${id}]`,
-					sub: 'Footnote definition',
-					source: raw,
-					lineStart: start,
-					lineEnd: end,
-					detail: { target: id },
-					ordinal: 0,
-				}),
+				attachInlineResourceChildren(ctx, block, raw, start, end),
 			];
 		}
 
@@ -315,31 +334,33 @@ function makeBlocksFromNode(ctx: ParseCtx, node: RootContent): DocumentBlock[] {
 
 		case 'html': {
 			// Bare HTML (e.g. <!-- comment -->) — treat as paragraph-ish text.
+			const block = finalizeLeaf(ctx, {
+				kind: RawBlockKind.Paragraph,
+				title: firstMeaningfulText(raw) || 'HTML block',
+				sub: 'HTML block',
+				source: raw,
+				lineStart: start,
+				lineEnd: end,
+				ordinal: 0,
+			});
 			return [
-				finalizeLeaf(ctx, {
-					kind: RawBlockKind.Paragraph,
-					title: firstMeaningfulText(raw) || 'HTML block',
-					sub: 'HTML block',
-					source: raw,
-					lineStart: start,
-					lineEnd: end,
-					ordinal: 0,
-				}),
+				attachInlineResourceChildren(ctx, block, raw, start, end),
 			];
 		}
 
 		default: {
 			// Unknown container — represent as a paragraph so nothing is lost.
+			const block = finalizeLeaf(ctx, {
+				kind: RawBlockKind.Paragraph,
+				title: firstMeaningfulText(raw) || node.type,
+				sub: 'Body block',
+				source: raw,
+				lineStart: start,
+				lineEnd: end,
+				ordinal: 0,
+			});
 			return [
-				finalizeLeaf(ctx, {
-					kind: RawBlockKind.Paragraph,
-					title: firstMeaningfulText(raw) || node.type,
-					sub: 'Body block',
-					source: raw,
-					lineStart: start,
-					lineEnd: end,
-					ordinal: 0,
-				}),
+				attachInlineResourceChildren(ctx, block, raw, start, end),
 			];
 		}
 	}
@@ -389,16 +410,35 @@ function makeListItem(
 		detail: checked === null ? undefined : { checked },
 		ordinal,
 	});
-	const nestedLists = (item.children ?? []).filter((child: any) => child?.type === 'list');
-	const children = nestedLists.map((nested: any, nestedIndex: number) => {
-		const nestedStart = nested.position?.start.line ?? start;
-		const nestedEnd = nested.position?.end.line ?? nestedStart;
-		const nestedRaw = sliceLines(ctx, nestedStart, nestedEnd);
-		const [nestedBlock] = expandList(ctx, nested, nestedStart, nestedEnd, nestedRaw);
-		nestedBlock.anchor.ordinalInHeading = nestedIndex;
-		return nestedBlock;
+	const children: DocumentBlock[] = [];
+	for (const child of item.children ?? []) {
+		const childStart = child.position?.start.line ?? start;
+		const childEnd = child.position?.end.line ?? childStart;
+		const childRaw = sliceLines(ctx, childStart, childEnd);
+		if (child.type === 'list') {
+			const [nestedBlock] = expandList(ctx, child, childStart, childEnd, childRaw);
+			children.push(nestedBlock);
+			continue;
+		}
+		children.push(...extractInlineResources(ctx, childRaw, childStart, childEnd));
+	}
+	children.forEach((child, index) => {
+		child.anchor.ordinalInHeading = index;
 	});
 	if (children.length) block.children = children;
+	return block;
+}
+
+function attachInlineResourceChildren(
+	ctx: ParseCtx,
+	block: DocumentBlock,
+	raw: string,
+	lineStart: number,
+	lineEnd: number,
+): DocumentBlock {
+	const resources = extractInlineResources(ctx, raw, lineStart, lineEnd);
+	if (!resources.length) return block;
+	block.children = [...(block.children ?? []), ...resources];
 	return block;
 }
 
@@ -490,6 +530,7 @@ const EMBED_RE = /!\[\[([^\]]+)\]\]/g;
 const WIKILINK_RE = /(?<!!)\[\[([^\]]+)\]\]/g;
 const MD_IMAGE_RE = /!\[[^\]]*\]\(([^)\s]+)[^)]*\)/g;
 const MD_LINK_RE = /(?<!!)\[[^\]]*\]\(([^)\s]+)[^)]*\)/g;
+const AUTOLINK_RE = /<((?:https?:\/\/|mailto:|[a-z][a-z0-9+.-]*:\/\/|\/\/)[^>\s]+)>/gi;
 const BARE_URL_RE = /(?<![\(<"'\]])\bhttps?:\/\/[^\s<>)\]]+/g;
 const INLINE_TAG_RE = /(?:^|\s)#([A-Za-z一-鿿][\w一-鿿/-]*)/g;
 
@@ -506,14 +547,17 @@ function isResourceOnly(raw: string): boolean {
 		.replace(MD_IMAGE_RE, ' ')
 		.replace(WIKILINK_RE, ' ')
 		.replace(MD_LINK_RE, ' ')
+		.replace(AUTOLINK_RE, ' ')
 		.replace(BARE_URL_RE, ' ')
 		.replace(INLINE_TAG_RE, ' ');
 	return !/[\p{L}\p{N}]/u.test(stripped);
 }
 
 /**
- * Extract link/embed/image/url/tag blocks from a raw source slice. Line range
- * of the enclosing block is reused (inline offsets aren't tracked in Phase 0).
+ * Extract link/embed/image/url/tag blocks from a raw source slice. Inline code
+ * and comments are masked before scanning so examples and hidden notes do not
+ * become semantic resources. Exact source order and 1-based line anchors are
+ * retained for every match.
  */
 export function extractInlineResources(
 	ctx: ParseCtx,
@@ -521,68 +565,96 @@ export function extractInlineResources(
 	lineStart: number,
 	lineEnd: number
 ): DocumentBlock[] {
-	const out: DocumentBlock[] = [];
+	const matches: Array<{
+		index: number;
+		discoveryOrder: number;
+		kind: RawBlockKind;
+		title: string;
+		sub: string;
+		source: string;
+		detail?: BlockDetail;
+	}> = [];
 	const push = (
+		match: RegExpMatchArray,
 		kind: RawBlockKind,
 		title: string,
 		sub: string,
 		source: string,
 		detail?: BlockDetail
 	): void => {
-		out.push(finalizeLeaf(ctx, { kind, title, sub, source, lineStart, lineEnd, detail, ordinal: 0 }));
+		matches.push({
+			index: match.index ?? 0,
+			discoveryOrder: matches.length,
+			kind,
+			title,
+			sub,
+			source,
+			detail,
+		});
 	};
+	const scanRaw = maskIgnoredInlineSyntax(raw);
 
 	// Embeds first (they share the `[[…]]` shape but are prefixed with `!`).
-	for (const m of raw.matchAll(EMBED_RE)) {
+	for (const m of scanRaw.matchAll(EMBED_RE)) {
 		const target = m[1].split('|')[0].trim();
 		const { kind, fileTarget } = classifyEmbedTarget(target);
 		const label = fileTarget || target;
-		if (kind === RawBlockKind.Image) push(kind, label, 'Embedded image', m[0], { fileTarget });
+		if (kind === RawBlockKind.Image) push(m, kind, label, 'Embedded image', m[0], { fileTarget });
 		else if (kind === RawBlockKind.Attachment)
-			push(kind, label, 'Embedded attachment', m[0], { fileTarget });
-		else push(kind, label, 'Embedded note / media', m[0], { fileTarget });
+			push(m, kind, label, 'Embedded attachment', m[0], { fileTarget });
+		else push(m, kind, label, 'Embedded note / media', m[0], { fileTarget });
 	}
 
 	// Markdown images ![alt](path)
-	for (const m of raw.matchAll(MD_IMAGE_RE)) {
+	for (const m of scanRaw.matchAll(MD_IMAGE_RE)) {
 		const target = m[1];
 		if (isExternalUrl(target)) {
-			push(RawBlockKind.Image, target, 'Remote image', m[0], { fileTarget: target, domain: extractDomain(target) });
+			push(m, RawBlockKind.Image, target, 'Remote image', m[0], { fileTarget: target, domain: extractDomain(target) });
 		} else {
-			push(RawBlockKind.Image, target, 'Embedded image', m[0], { fileTarget: target });
+			push(m, RawBlockKind.Image, target, 'Embedded image', m[0], { fileTarget: target });
 		}
 	}
 
 	// Vault wiki links [[note]] / [[note#heading]] / [[note#^block]]
-	for (const m of raw.matchAll(WIKILINK_RE)) {
+	for (const m of scanRaw.matchAll(WIKILINK_RE)) {
 		const inner = m[1].split('|')[0].trim();
 		const hashIdx = inner.indexOf('#');
 		const fragment = hashIdx >= 0 ? inner.slice(hashIdx) : undefined;
-		push(RawBlockKind.VaultLink, inner, 'Vault link', m[0], {
+		push(m, RawBlockKind.VaultLink, inner, 'Vault link', m[0], {
 			target: inner,
 			linkFragment: fragment,
 		});
 	}
 
 	// Markdown links [text](target)
-	for (const m of raw.matchAll(MD_LINK_RE)) {
+	for (const m of scanRaw.matchAll(MD_LINK_RE)) {
 		const target = m[1];
 		if (isExternalUrl(target)) {
-			push(RawBlockKind.ExternalLink, extractDomain(target) || target, 'External link', m[0], {
+			push(m, RawBlockKind.ExternalLink, extractDomain(target) || target, 'External link', m[0], {
 				target,
 				domain: extractDomain(target),
 				nakedUrl: false,
 			});
 		} else if (!target.startsWith('#')) {
 			// Relative/local path → vault link.
-			push(RawBlockKind.VaultLink, target, 'Vault link', m[0], { target });
+			push(m, RawBlockKind.VaultLink, target, 'Vault link', m[0], { target });
 		}
 	}
 
+	// Markdown autolinks: <https://example.com> / <mailto:user@example.com>.
+	for (const m of scanRaw.matchAll(AUTOLINK_RE)) {
+		const target = m[1];
+		push(m, RawBlockKind.ExternalLink, extractDomain(target) || target, 'External link', m[0], {
+			target,
+			domain: extractDomain(target),
+			nakedUrl: false,
+		});
+	}
+
 	// Bare URLs
-	for (const m of raw.matchAll(BARE_URL_RE)) {
+	for (const m of scanRaw.matchAll(BARE_URL_RE)) {
 		const url = m[0];
-		push(RawBlockKind.ExternalLink, extractDomain(url) || url, 'External link', url, {
+		push(m, RawBlockKind.ExternalLink, extractDomain(url) || url, 'External link', url, {
 			target: url,
 			domain: extractDomain(url),
 			nakedUrl: true,
@@ -590,12 +662,38 @@ export function extractInlineResources(
 	}
 
 	// Inline tags
-	for (const m of raw.matchAll(INLINE_TAG_RE)) {
+	for (const m of scanRaw.matchAll(INLINE_TAG_RE)) {
 		const tag = m[1];
-		push(RawBlockKind.Tag, `#${tag}`, 'Inline tag', `#${tag}`, { target: tag });
+		push(m, RawBlockKind.Tag, `#${tag}`, 'Inline tag', `#${tag}`, { target: tag });
 	}
 
-	return out;
+	return matches
+		.sort((a, b) => a.index - b.index || a.discoveryOrder - b.discoveryOrder)
+		.map((match, ordinal) => {
+			const linesBefore = (raw.slice(0, match.index).match(/\n/g) ?? []).length;
+			const matchedLines = (match.source.match(/\n/g) ?? []).length;
+			const resourceLineStart = Math.min(lineEnd, lineStart + linesBefore);
+			const resourceLineEnd = Math.min(lineEnd, resourceLineStart + matchedLines);
+			return finalizeLeaf(ctx, {
+				kind: match.kind,
+				title: match.title,
+				sub: match.sub,
+				source: match.source,
+				lineStart: resourceLineStart,
+				lineEnd: resourceLineEnd,
+				detail: match.detail,
+				ordinal,
+			});
+		});
+}
+
+/** Replace ignored inline syntax with spaces while preserving offsets/newlines. */
+function maskIgnoredInlineSyntax(raw: string): string {
+	const mask = (value: string): string => value.replace(/[^\n]/g, ' ');
+	return raw
+		.replace(/<!--[\s\S]*?-->/g, mask)
+		.replace(/%%[\s\S]*?%%/g, mask)
+		.replace(/(`+)([\s\S]*?)\1/g, mask);
 }
 
 // --------------------------------------------------------------------------
@@ -645,6 +743,12 @@ function finalizeLeaf(ctx: ParseCtx, spec: LeafSpec): DocumentBlock {
 function computeStats(content: string, top: DocumentBlock[]): AtlasStats {
 	let blocks = 0;
 	let resources = 0;
+	const countResourceDescendants = (list: DocumentBlock[]): void => {
+		for (const child of list) {
+			if (RESOURCE_KINDS.has(child.kind)) resources += 1;
+			if (child.children) countResourceDescendants(child.children);
+		}
+	};
 	const visit = (list: DocumentBlock[]): void => {
 		for (const b of list) {
 			if (b.kind !== RawBlockKind.Heading) {
@@ -652,8 +756,12 @@ function computeStats(content: string, top: DocumentBlock[]): AtlasStats {
 				if (RESOURCE_KINDS.has(b.kind)) resources += 1;
 			}
 			// List items are addressable sub-units of one document block. Their
-			// descendants must not inflate the document-context block count.
-			if (b.kind === RawBlockKind.List) continue;
+			// descendants must not inflate the document-context block count, but
+			// semantic resources inside those items still belong in resource stats.
+			if (b.kind === RawBlockKind.List) {
+				countResourceDescendants(b.children ?? []);
+				continue;
+			}
 			if (b.children) visit(b.children);
 		}
 	};
@@ -701,6 +809,19 @@ function renderScalar(value: unknown): string {
 	if (value == null) return '';
 	if (Array.isArray(value)) return `[${value.map(renderScalar).join(', ')}]`;
 	if (typeof value === 'object') return JSON.stringify(value);
+	return String(value);
+}
+
+/** Flatten scalar property values without adding syntax that can corrupt links. */
+function inlineResourceText(value: unknown): string {
+	if (value == null) return '';
+	if (Array.isArray(value)) return value.map(inlineResourceText).filter(Boolean).join('\n');
+	if (typeof value === 'object') {
+		return Object.values(value as Record<string, unknown>)
+			.map(inlineResourceText)
+			.filter(Boolean)
+			.join('\n');
+	}
 	return String(value);
 }
 

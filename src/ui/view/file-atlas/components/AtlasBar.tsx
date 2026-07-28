@@ -50,10 +50,12 @@ export const AtlasBar: React.FC<AtlasBarProps> = ({
 
 	const kindsInGroup = (groupId: string): RawBlockKind[] =>
 		Object.entries(config.kinds)
-			.filter(([, cfg]) => cfg.group === groupId)
+			.filter(([, cfg]) => cfg.group === groupId && cfg.filterable !== false)
 			.map(([kind]) => kind as RawBlockKind);
 
-	const allKinds = Object.keys(config.kinds) as RawBlockKind[];
+	const allKinds = Object.entries(config.kinds)
+		.filter(([, cfg]) => cfg.filterable !== false)
+		.map(([kind]) => kind as RawBlockKind);
 	const onCount = allKinds.filter((k) => visibleKinds.has(k)).length;
 	const setAll = (on: boolean): void => config.filterGroups.forEach((g) => onGroupSet(g.id, on));
 

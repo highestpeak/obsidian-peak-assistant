@@ -10,6 +10,8 @@ const tree = source('src/ui/view/file-atlas/components/AtlasTree.tsx');
 const modal = source('src/app/file-atlas/FileAtlasModal.tsx');
 const hostAdapter = source('src/app/file-atlas/composeFileAtlasHost.ts');
 const inspector = source('src/ui/view/file-atlas/components/AtlasInspector.tsx');
+const atlasBar = source('src/ui/view/file-atlas/components/AtlasBar.tsx');
+const panel = source('src/ui/view/file-atlas/FileAtlasPanel.tsx');
 const graph = source('src/ui/view/file-atlas/components/FileAtlasGraph.tsx');
 const canvas = source('src/ui/component/graph/AtlasGraphCanvasImpl.tsx');
 const css = source('src/styles/file-atlas.css');
@@ -31,6 +33,8 @@ assert.match(inspector, /keywords\.slice\(0, 4\)/);
 assert.match(inspector, /className="pkfa-kw-toggle"/);
 assert.match(css, /\.pkfa-kw-list\.is-expanded[\s\S]*?overflow:\s*auto/);
 assert.doesNotMatch(inspector, /\{!isGroup && \(/);
+assert.match(atlasBar, /cfg\.filterable !== false/);
+assert.match(panel, /case 'toggleKind'[\s\S]*?collapsed: new Set\(\)/);
 
 assert.match(graph, /data\.edges\.filter\(\(edge\) => semantic \|\| edge\.kind !== 'semantic'\)/);
 assert.match(graph, /summary=\{meta\}/);

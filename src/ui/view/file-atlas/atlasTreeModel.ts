@@ -86,9 +86,14 @@ export function countDescendants(
 	kinds: Record<string, KindConfig>
 ): CountSummary {
 	const sum: CountSummary = { block: 0, resource: 0 };
+	const countListResources = (child: DocumentBlock): void => {
+		if (kinds[child.kind]?.category === 'resource') sum.resource += 1;
+		(child.children ?? []).forEach(countListResources);
+	};
 	const walk = (child: DocumentBlock): void => {
 		if (child.kind === Kind.List) {
 			if (kinds[child.kind]?.category === 'block') sum.block += 1;
+			(child.children ?? []).forEach(countListResources);
 			return;
 		}
 		if (isGroupKind(child.kind)) {
@@ -201,6 +206,27 @@ export function collectGroupIds(blocks: DocumentBlock[]): string[] {
 	return ids;
 }
 
+/**
+ * Resource children should be visible as soon as their owning structural row
+ * is revealed. Only intrinsic sections and items that own a nested list start
+ * folded; an item does not become default-collapsed merely because it owns a
+ * link, tag, image, or embed.
+ */
+function collectDefaultCollapsedIds(blocks: DocumentBlock[]): string[] {
+	const ids: string[] = [];
+	const walk = (list: DocumentBlock[]): void => {
+		for (const block of list) {
+			const ownsNestedList =
+				(block.kind === Kind.ListItem || block.kind === Kind.Task) &&
+				(block.children ?? []).some((child) => child.kind === Kind.List);
+			if (isGroupKind(block.kind) || ownsNestedList) ids.push(block.id);
+			if (block.children) walk(block.children);
+		}
+	};
+	walk(blocks);
+	return ids;
+}
+
 /** Find a block by id anywhere in the tree. */
 export function findBlock(blocks: DocumentBlock[], id: string): DocumentBlock | null {
 	for (const b of blocks) {
@@ -246,7 +272,7 @@ export function ancestorGroupsOf(blocks: DocumentBlock[], targetId: string): Doc
  * only the current level's section is open, everything else summarized.
  */
 export function defaultCollapsedIds(blocks: DocumentBlock[], currentId: string | null): Set<string> {
-	const collapsed = new Set(collectGroupIds(blocks));
+	const collapsed = new Set(collectDefaultCollapsedIds(blocks));
 	if (!currentId) return collapsed;
 	for (const group of ancestorGroupsOf(blocks, currentId)) collapsed.delete(group.id);
 	const current = findBlock(blocks, currentId);
