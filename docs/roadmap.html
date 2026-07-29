@@ -165,6 +165,7 @@
               <tr><th>里程碑</th><th>价值</th><th>阶段</th><th>状态</th></tr>
             </thead>
             <tbody>
+              <tr><td><strong>AI Search Simulator Sidecar</strong></td><td>独立 localhost Provider 同时实现 OpenAI Chat 与 Anthropic Messages，只替换模型推理，完整测试 AI Search planning → tool loop → report 流程；8 个确定性场景、零付费调用，场景 runtime 不进入插件 bundle。该边界可继续复用于其他 AI surface 的端到端测试。</td><td>2026-07-29 · commit <code>165debe6</code> · <a href="superpowers/specs/2026-07-29-ai-search-simulator-provider-design.md">spec</a></td><td><span class="pill green">shipped</span></td></tr>
               <tr><td><strong>Provider v2 迁移</strong></td><td>删 Vercel AI SDK → Agent SDK query()，7 packages 移除，~3700 行删</td><td>Phase F</td><td><span class="pill green">shipped</span></td></tr>
               <tr><td><strong>Agent Trace 可观测性</strong></td><td>TraceSink + fixture vault + MCP server + CLI harness + scenarios（15 tasks, 100+ assertions）</td><td>Phase G</td><td><span class="pill green">shipped</span></td></tr>
               <tr><td><strong>MCP Integration Wave</strong></td><td>Model Registry JSON 化 + Custom OpenAI-compat + MCP Client (stdio/SSE) + Skill System</td><td>Phase AH / AI / AJ</td><td><span class="pill green">shipped</span></td></tr>

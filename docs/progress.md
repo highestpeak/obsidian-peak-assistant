@@ -8,6 +8,15 @@
 
 Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding → 配置 → Chat → Search → Graph 每个环节都能跑通，体验完整。同时推进技术债清理和架构重构。
 
+## 2026-07-29 · AI Search Simulator 独立 sidecar
+
+- [x] **独立 Provider 进程**：AI Search Simulator 从插件进程内 mock 迁到 `tools/ai-search-simulator/`；`npm run simulator` 单独启动，`npm run dev:simulator` 同时启动插件 watchers 与独立 sidecar。
+- [x] **完整 AI Search 双协议链路**：sidecar 同时实现 OpenAI Chat `/v1/chat/completions`（Vercel AI SDK 规划/tool calling）与 Anthropic Messages `/v1/messages`（Claude Agent SDK 报告章节/summary），只替换模型推理；AI Search UI、AgentLoop、Vault tools、Plan Review、Report/Sources 与持久化仍走生产链路。
+- [x] **正常 Provider 配置**：Simulator Provider 默认存在于 AI Setup；默认 endpoint 为 `http://127.0.0.1:43127/v1`，无需 API key。在 Provider 卡配置 scenario / speed / strict，并把 `AI Behavior → Research` 绑定到 `AI Search Simulator`，不增加 AI Search 专用开发工具条。
+- [x] **8 个可复现场景**：happy path、slow streaming、planning failure、empty result、Vault tool recovery、report partial failure、report total failure、escalation request。配置通过逐请求 headers 发送，修改场景不需要重启 sidecar。
+- [x] **低污染与可复用边界**：场景引擎、响应文案、fixture 与延迟/失败行为只存在于 sidecar；插件保留轻量标准 Provider client、Settings 配置、health check 和 Agent SDK env materialization。`check:simulator-boundary` 随生产 build 验证 sidecar runtime 未进入 `main.js`。后续其他 AI surface 需要确定性全流程测试时，应优先复用/扩展这个 Provider sidecar，不在业务 UI 或生产调用路径新增 mock 分支。
+- [x] **验证与提交**：Simulator focused suite 5/5 通过；生产 build 与 bundle boundary 通过；全量 346/350，4 个失败为既有 Chat Studio/Composer failure；sidecar 在原工作区真实启动并通过 health/models 检查。因无 Obsidian CDP listener，真实 UI 交互标记 `INTERACTION NOT VERIFIED`。提交 `165debe6`（`refactor: move AI Search simulator to sidecar`）。设计见 [`2026-07-29-ai-search-simulator-provider-design.md`](./superpowers/specs/2026-07-29-ai-search-simulator-provider-design.md)。
+
 ## 2026-07-21 晚 · Chat Studio 零缺口收口（9 track + runner 修复）
 
 - [x] **Track 1 · Auto 真实路由**：新 `src/service/chat/modelRouter.ts`（纯函数：能力过滤 + tier 策略）+ `templates/config/model-routing.json`（ConfigTemplateId.ModelRouting）；接线 `service-conversation.prepareChatRequest`；auto sentinel 持久化不回写；`TurnExecutionReceipt` 增 `requestedSelection/modelSource/routeReason/requiredCapabilities`；零候选硬错误。测试 `test/model-router.test.ts`。

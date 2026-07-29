@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm run dev              # Run all watchers in parallel (CSS + TypeScript)
+npm run simulator        # Run the standalone AI Search Simulator sidecar
+npm run dev:simulator    # Run plugin watchers + Simulator as separate processes
 npm run build            # Production build (CSS pipeline + esbuild + bundle check)
 npm run test             # Run all tests
 npm run test -- test/boolean-expression-parser.test.ts  # Run a specific test
@@ -35,6 +37,7 @@ Four-layer architecture: `app/` → `service/` → `core/` → `ui/`
 - `SearchClient` (`service/search/SearchClient.ts`) — Text/vector search via SQLite, AI-assisted analysis, reranking
 - `IndexService` (`service/search/index/indexService.ts`) — Singleton for document embeddings, chunking, semantic edges, hub discovery
 - `MultiProviderChatService` (`core/providers/MultiProviderChatService.ts`) — Factory pattern supporting Claude, OpenAI, Google, Perplexity, Ollama, OpenRouter
+- **AI Search Simulator** (`tools/ai-search-simulator/`) — Standalone localhost Provider for deterministic, zero-cost AI Search flow testing. It implements OpenAI Chat for planning and Anthropic Messages for report generation; the plugin keeps only a thin client/config adapter. Configure it through the normal Simulator Provider card and bind it to Research. See [`2026-07-29-ai-search-simulator-provider-design.md`](./docs/superpowers/specs/2026-07-29-ai-search-simulator-provider-design.md).
 
 **Storage:** Current production uses two SQLite databases (`vault.sqlite` for search/embeddings, `chat.sqlite` for conversations) plus Vault markdown files for chat history/projects. The accepted, not-yet-implemented persistence redesign moves machine run records to JSONL streams, keeps SQLite as rebuildable read models, and reserves Markdown for user documents/explicit exports; see [`2026-07-21-machine-record-storage-jsonl-design.md`](./docs/superpowers/specs/2026-07-21-machine-record-storage-jsonl-design.md).
 
