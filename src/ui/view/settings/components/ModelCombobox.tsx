@@ -24,6 +24,7 @@ const PROVIDER_CATALOG_MAP: Record<string, string | null> = {
 	perplexity: 'perplexity',
 	ollama: 'ollama',
 	openrouter: 'openrouter',
+	simulator: 'simulator',
 };
 
 const GROUPED_KINDS = new Set<ProfileKind>(['openrouter', 'litellm', 'custom']);

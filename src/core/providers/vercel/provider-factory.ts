@@ -7,6 +7,7 @@ import { createOllama } from 'ollama-ai-provider-v2';
 import type { LanguageModel } from 'ai';
 import type { Profile } from '@/core/profiles/types';
 import { modelRegistry } from '@/core/providers/model-registry';
+import { createSimulatorLanguageModel } from '@/core/providers/simulator';
 
 /**
  * Optional CORS-bypass fetch injected at boot by the app layer. Used for
@@ -109,6 +110,8 @@ export function createLanguageModel(profile: Profile, modelId: string): Language
             });
             return provider(resolvedModelId);
         }
+        case 'simulator':
+            return createSimulatorLanguageModel(profile, resolvedModelId);
         default:
             throw new Error(`Unsupported provider kind: ${kind}`);
     }

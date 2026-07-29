@@ -1,7 +1,8 @@
 import * as React from 'react';
-import { Settings2 } from 'lucide-react';
+import { Bot, Settings2 } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import type { ProfileKind } from '@/core/profiles/types';
+import { SIMULATOR_DEFAULTS } from '@/core/providers/simulator/SimulatorDefaults';
 
 // ---------------------------------------------------------------------------
 // Brand SVG icons
@@ -56,6 +57,10 @@ const CustomIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <Settings2 {...(props as React.ComponentProps<typeof Settings2>)} />
 );
 
+const SimulatorIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <Bot {...(props as React.ComponentProps<typeof Bot>)} />
+);
+
 // ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
@@ -69,6 +74,7 @@ export const ICON_SVGS: Record<ProfileKind, React.FC<React.SVGProps<SVGSVGElemen
     openrouter: OpenRouterIcon,
     litellm: LiteLLMIcon,
     custom: CustomIcon,
+    simulator: SimulatorIcon,
 };
 
 export const ICON_GRADIENTS: Record<ProfileKind, string> = {
@@ -80,6 +86,7 @@ export const ICON_GRADIENTS: Record<ProfileKind, string> = {
     openrouter: 'pktw-bg-gradient-to-br pktw-from-[#6366f1] pktw-to-[#818cf8]',
     litellm: 'pktw-bg-gradient-to-br pktw-from-[#059669] pktw-to-[#34d399]',
     custom: 'pktw-bg-gradient-to-br pktw-from-[#3a3a3a] pktw-to-[#4a4a4a]',
+    simulator: 'pktw-bg-[#7c3aed]',
 };
 
 export const PROVIDER_LABELS: Record<ProfileKind, { label: string; desc: string }> = {
@@ -91,6 +98,10 @@ export const PROVIDER_LABELS: Record<ProfileKind, { label: string; desc: string 
     openrouter: { label: 'OpenRouter', desc: 'All providers' },
     litellm: { label: 'LiteLLM', desc: 'Proxy gateway' },
     custom: { label: 'Custom', desc: 'Any OpenAI-compatible' },
+    simulator: {
+        label: SIMULATOR_DEFAULTS.ui.providerLabel,
+        desc: SIMULATOR_DEFAULTS.ui.providerDescription,
+    },
 };
 
 export interface ProviderIconProps {

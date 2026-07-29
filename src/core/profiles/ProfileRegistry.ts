@@ -9,6 +9,7 @@
 import type { Profile, ProfileSettings, RoleConfig, SdkSettings, OpenAICompatibleEndpoint } from './types';
 import { DEFAULT_SDK_SETTINGS } from './types';
 import type { ModelSlot } from '@/core/types/model-tier';
+import { DEFAULT_SIMULATOR_PROFILE_CONFIG } from './types';
 
 export type PersistFn = (settings: ProfileSettings) => void | Promise<void>;
 
@@ -134,6 +135,22 @@ export class ProfileRegistry {
   }
 
   private migrateProfileModelIds(p: Profile): Profile {
+    if (p.kind === 'simulator') {
+      return {
+        ...p,
+        baseUrl: '',
+        apiKey: null,
+        primaryModel: 'ai-search-simulator',
+        fastModel: 'ai-search-simulator',
+        embeddingEndpoint: null,
+        embeddingApiKey: null,
+        embeddingModel: null,
+        simulatorConfig: {
+          ...DEFAULT_SIMULATOR_PROFILE_CONFIG,
+          ...p.simulatorConfig,
+        },
+      };
+    }
     // Profile-level primary/fast feed Agent SDK env vars, so also apply the 3.x bump.
     const primary = ProfileRegistry.rewriteAgentModelId(p.primaryModel);
     const fast = ProfileRegistry.rewriteAgentModelId(p.fastModel);

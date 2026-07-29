@@ -3,12 +3,18 @@ import { useState, useRef, useEffect } from 'react';
 import { ChevronRight, MoreHorizontal, Zap, Check, X } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { Button } from '@/ui/component/shared-ui/button';
-import type { Profile, ProfileKind } from '@/core/profiles/types';
+import type { Profile, ProfileKind, SimulatorProfileConfig } from '@/core/profiles/types';
 import { ProviderIcon, PROVIDER_LABELS } from './ProviderIcon';
 import { ModelCombobox } from './ModelCombobox';
 import { testProviderConnection } from '@/core/providers/testProviderConnection';
 import { uiHttpClient } from '@/ui/util/uiHttpClient';
 import { FieldRow } from './FieldRow';
+import {
+    SIMULATOR_DEFAULTS,
+    SIMULATOR_SCENARIOS,
+    SIMULATOR_SPEEDS,
+} from '@/core/providers/simulator';
+import { DEFAULT_SIMULATOR_PROFILE_CONFIG } from '@/core/profiles/types';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -21,7 +27,7 @@ export interface ProfileCardProps {
     onToggleEnabled: (id: string) => void;
 }
 
-const ALL_KINDS: ProfileKind[] = ['anthropic', 'openai', 'google', 'perplexity', 'ollama', 'openrouter', 'litellm', 'custom'];
+const ALL_KINDS: ProfileKind[] = ['simulator', 'anthropic', 'openai', 'google', 'perplexity', 'ollama', 'openrouter', 'litellm', 'custom'];
 
 // ---------------------------------------------------------------------------
 // Sub-components
@@ -41,9 +47,139 @@ function SectionTitle({ label }: { label: string }) {
 const INPUT_CLS = 'pktw-w-full pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-px-2.5 pktw-py-1.5 pktw-text-sm pktw-outline-none focus:pktw-border-pk-accent pktw-transition-colors';
 
 function getCredentialLabel(profile: Profile): string {
+    if (profile.kind === 'simulator') return SIMULATOR_DEFAULTS.ui.credentialLabel;
     if (profile.kind === 'ollama') return 'no key needed';
     if (profile.apiKey) return 'API key set';
     return 'no key';
+}
+
+function SimulatorFields({
+    config,
+    onChange,
+}: {
+    config: SimulatorProfileConfig;
+    onChange: (config: SimulatorProfileConfig) => void;
+}) {
+    return (
+        <>
+            <SectionTitle label={SIMULATOR_DEFAULTS.ui.sectionTitle} />
+            <div className="pktw-space-y-2.5">
+                <FieldRow label={SIMULATOR_DEFAULTS.ui.scenarioLabel}>
+                    <select
+                        className={INPUT_CLS}
+                        value={config.scenario}
+                        onChange={(e) => onChange({
+                            ...config,
+                            scenario: e.target.value as SimulatorProfileConfig['scenario'],
+                        })}
+                    >
+                        {SIMULATOR_SCENARIOS.map((scenario) => (
+                            <option key={scenario.id} value={scenario.id}>{scenario.label}</option>
+                        ))}
+                    </select>
+                </FieldRow>
+                <FieldRow label={SIMULATOR_DEFAULTS.ui.speedLabel}>
+                    <select
+                        className={INPUT_CLS}
+                        value={config.speed}
+                        onChange={(e) => onChange({
+                            ...config,
+                            speed: e.target.value as SimulatorProfileConfig['speed'],
+                        })}
+                    >
+                        {SIMULATOR_SPEEDS.map((speed) => (
+                            <option key={speed.id} value={speed.id}>{speed.label}</option>
+                        ))}
+                    </select>
+                </FieldRow>
+                <FieldRow label={SIMULATOR_DEFAULTS.ui.strictLabel}>
+                    <input
+                        type="checkbox"
+                        checked={config.strict}
+                        onChange={(e) => onChange({ ...config, strict: e.target.checked })}
+                    />
+                </FieldRow>
+                <span className="pktw-block pktw-text-pk-sm pktw-text-pk-muted-foreground">
+                    {SIMULATOR_DEFAULTS.ui.instruction}
+                </span>
+            </div>
+        </>
+    );
+}
+
+function ProviderConnectionFields({
+    profile,
+    allowFreeText,
+    update,
+}: {
+    profile: Profile;
+    allowFreeText: boolean;
+    update: (updates: Partial<Profile>) => void;
+}) {
+    return (
+        <>
+            <SectionTitle label="Connection" />
+            <div className="pktw-space-y-2.5">
+                <FieldRow label="Type">
+                    <select
+                        className={INPUT_CLS}
+                        value={profile.kind}
+                        onChange={(e) => update({ kind: e.target.value as ProfileKind })}
+                    >
+                        {ALL_KINDS.map((kind) => (
+                            <option key={kind} value={kind}>{PROVIDER_LABELS[kind].label}</option>
+                        ))}
+                    </select>
+                </FieldRow>
+                <FieldRow label="Base URL">
+                    <input
+                        className={INPUT_CLS}
+                        defaultValue={profile.baseUrl}
+                        placeholder="https://api.example.com"
+                        onBlur={(e) => update({ baseUrl: e.target.value })}
+                    />
+                </FieldRow>
+                <FieldRow label="API Key">
+                    <input
+                        type="password"
+                        className={INPUT_CLS}
+                        defaultValue={profile.apiKey ?? ''}
+                        placeholder="sk-..."
+                        onBlur={(e) => update({ apiKey: e.target.value || null })}
+                    />
+                </FieldRow>
+            </div>
+
+            <SectionTitle label="Embedding" />
+            <div className="pktw-space-y-2.5">
+                <FieldRow label="Endpoint">
+                    <input
+                        className={INPUT_CLS}
+                        defaultValue={profile.embeddingEndpoint ?? ''}
+                        placeholder="Leave empty = use Base URL"
+                        onBlur={(e) => update({ embeddingEndpoint: e.target.value || null })}
+                    />
+                </FieldRow>
+                <FieldRow label="API Key">
+                    <input
+                        type="password"
+                        className={INPUT_CLS}
+                        defaultValue={profile.embeddingApiKey ?? ''}
+                        placeholder="Leave empty = use main key"
+                        onBlur={(e) => update({ embeddingApiKey: e.target.value || null })}
+                    />
+                </FieldRow>
+                <FieldRow label="Model">
+                    <ModelCombobox
+                        value={profile.embeddingModel ?? ''}
+                        onChange={(id) => update({ embeddingModel: id || null })}
+                        providerKind={profile.kind}
+                        allowFreeText={allowFreeText}
+                    />
+                </FieldRow>
+            </div>
+        </>
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -112,6 +248,11 @@ export function ProfileCard({
     const [testing, setTesting] = useState(false);
     const [testResult, setTestResult] = useState<'success' | 'fail' | null>(null);
     const allowFreeText = profile.kind === 'custom' || profile.kind === 'litellm' || profile.kind === 'ollama';
+    const isSimulator = profile.kind === 'simulator';
+    const simulatorConfig = {
+        ...DEFAULT_SIMULATOR_PROFILE_CONFIG,
+        ...profile.simulatorConfig,
+    };
     const subtitle = `${PROVIDER_LABELS[profile.kind].label} · ${getCredentialLabel(profile)}`;
 
     const handleTest = async (e: React.MouseEvent) => {
@@ -179,69 +320,18 @@ export function ProfileCard({
             {/* ── Body (expanded) ─────────────────────────────────────── */}
             {isExpanded && (
                 <div className="pktw-px-4 pktw-pb-4 pktw-border-t pktw-border-pk-border">
-                    {/* Connection */}
-                    <SectionTitle label="Connection" />
-                    <div className="pktw-space-y-2.5">
-                        <FieldRow label="Type">
-                            <select
-                                className={INPUT_CLS}
-                                value={profile.kind}
-                                onChange={(e) => update({ kind: e.target.value as ProfileKind })}
-                            >
-                                {ALL_KINDS.map((k) => (
-                                    <option key={k} value={k}>{PROVIDER_LABELS[k].label}</option>
-                                ))}
-                            </select>
-                        </FieldRow>
-                        <FieldRow label="Base URL">
-                            <input
-                                className={INPUT_CLS}
-                                defaultValue={profile.baseUrl}
-                                placeholder="https://api.example.com"
-                                onBlur={(e) => update({ baseUrl: e.target.value })}
-                            />
-                        </FieldRow>
-                        <FieldRow label="API Key">
-                            <input
-                                type="password"
-                                className={INPUT_CLS}
-                                defaultValue={profile.apiKey ?? ''}
-                                placeholder="sk-..."
-                                onBlur={(e) => update({ apiKey: e.target.value || null })}
-                            />
-                        </FieldRow>
-                    </div>
-
-                    {/* Embedding */}
-                    <SectionTitle label="Embedding" />
-                    <div className="pktw-space-y-2.5">
-                        <FieldRow label="Endpoint">
-                            <input
-                                className={INPUT_CLS}
-                                defaultValue={profile.embeddingEndpoint ?? ''}
-                                placeholder="Leave empty = use Base URL"
-                                onBlur={(e) => update({ embeddingEndpoint: e.target.value || null })}
-                            />
-                        </FieldRow>
-                        <FieldRow label="API Key">
-                            <input
-                                type="password"
-                                className={INPUT_CLS}
-                                defaultValue={profile.embeddingApiKey ?? ''}
-                                placeholder="Leave empty = use main key"
-                                onBlur={(e) => update({ embeddingApiKey: e.target.value || null })}
-                            />
-                        </FieldRow>
-                        <FieldRow label="Model">
-                            <ModelCombobox
-                                value={profile.embeddingModel ?? ''}
-                                onChange={(id) => update({ embeddingModel: id || null })}
-                                providerKind={profile.kind}
-                                allowFreeText={allowFreeText}
-                            />
-                        </FieldRow>
-                    </div>
-
+                    {isSimulator ? (
+                        <SimulatorFields
+                            config={simulatorConfig}
+                            onChange={(next) => update({ simulatorConfig: next })}
+                        />
+                    ) : (
+                        <ProviderConnectionFields
+                            profile={profile}
+                            allowFreeText={allowFreeText}
+                            update={update}
+                        />
+                    )}
                 </div>
             )}
         </div>

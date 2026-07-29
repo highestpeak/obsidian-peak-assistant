@@ -23,6 +23,7 @@ import { ProfilesTab } from '../ProfilesTab';
 import { RecommendedSetupGrid } from '../components/RecommendedSetupGrid';
 import { useSettingsStrings } from '../settingsStrings';
 import { SettingsRow, SettingsSection } from '../components/SettingsRow';
+import { createBuiltInSimulatorProfile } from '@/core/profiles/presets';
 
 interface AISetupTabProps {
     settings: MyPluginSettings;
@@ -43,6 +44,13 @@ export function AISetupTab({ settings, settingsUpdates }: AISetupTabProps) {
     // (Conversation / Knowledge Index bindings live in ProfileRegistry's active*Config).
     const [, setTick] = useState(0);
     const bump = () => setTick((t) => t + 1);
+
+    useEffect(() => {
+        const registry = ProfileRegistry.getInstance();
+        if (registry.getAllProfiles().some((profile) => profile.kind === 'simulator')) return;
+        registry.addProfile(createBuiltInSimulatorProfile());
+        bump();
+    }, []);
 
     const writeTier = (tier: TierKey, cfg: RoleConfig | null) => {
         const base: HarnessSettings = harness ?? DEFAULT_HARNESS_SETTINGS;
@@ -65,6 +73,7 @@ export function AISetupTab({ settings, settingsUpdates }: AISetupTabProps) {
     };
 
     const allProfiles = ProfileRegistry.getInstance().getAllProfiles();
+    const simulatorProfiles = allProfiles.filter((p) => p.kind === 'simulator');
     const localProfiles = allProfiles.filter((p) => p.kind === 'ollama' || p.kind === 'litellm' || p.kind === 'custom');
     const cloudProfiles = allProfiles.filter(
         (p) => p.kind === 'anthropic' || p.kind === 'openai' || p.kind === 'openrouter' || p.kind === 'google' || p.kind === 'perplexity',
@@ -84,7 +93,7 @@ export function AISetupTab({ settings, settingsUpdates }: AISetupTabProps) {
     const behaviorRows: BehaviorPickerRowProps[] = [
         { icon: MessageSquare, title: aiSetupCopy.aiBehavior.conversation.title, desc: aiSetupCopy.aiBehavior.conversation.desc, usedBy: aiSetupCopy.aiBehavior.conversation.usedBy, bound: chatBound, fallbackText: null, changeLabel: aiSetupCopy.aiBehavior.change, setupLabel: aiSetupCopy.aiBehavior.setup, profiles: [...cloudProfiles, ...localProfiles], onWrite: writeConversation },
         { icon: Zap, title: aiSetupCopy.aiBehavior.fastLookup.title, desc: aiSetupCopy.aiBehavior.fastLookup.desc, usedBy: aiSetupCopy.aiBehavior.fastLookup.usedBy, bound: harness?.localFastConfig ?? null, fallbackText: aiSetupCopy.aiBehavior.fallsBack, changeLabel: aiSetupCopy.aiBehavior.change, setupLabel: aiSetupCopy.aiBehavior.setup, profiles: [...localProfiles, ...cloudProfiles], onWrite: (cfg) => writeTier('fastLookup', cfg) },
-        { icon: SearchIcon, title: aiSetupCopy.aiBehavior.research.title, desc: aiSetupCopy.aiBehavior.research.desc, usedBy: aiSetupCopy.aiBehavior.research.usedBy, bound: harness?.localDeepConfig ?? null, fallbackText: aiSetupCopy.aiBehavior.fallsBack, changeLabel: aiSetupCopy.aiBehavior.change, setupLabel: aiSetupCopy.aiBehavior.setup, profiles: [...localProfiles, ...cloudProfiles], onWrite: (cfg) => writeTier('research', cfg) },
+        { icon: SearchIcon, title: aiSetupCopy.aiBehavior.research.title, desc: aiSetupCopy.aiBehavior.research.desc, usedBy: aiSetupCopy.aiBehavior.research.usedBy, bound: harness?.localDeepConfig ?? null, fallbackText: aiSetupCopy.aiBehavior.fallsBack, changeLabel: aiSetupCopy.aiBehavior.change, setupLabel: aiSetupCopy.aiBehavior.setup, profiles: [...simulatorProfiles, ...localProfiles, ...cloudProfiles], onWrite: (cfg) => writeTier('research', cfg) },
         { icon: Sparkle, title: aiSetupCopy.aiBehavior.strongerModel.title, desc: aiSetupCopy.aiBehavior.strongerModel.desc, usedBy: aiSetupCopy.aiBehavior.strongerModel.usedBy, bound: harness?.onlineConfig ?? null, fallbackText: aiSetupCopy.aiBehavior.strongerModel.offChip, changeLabel: aiSetupCopy.aiBehavior.change, setupLabel: aiSetupCopy.aiBehavior.setup, profiles: cloudProfiles, onWrite: (cfg) => writeTier('strongerModel', cfg) },
         { icon: Database, title: aiSetupCopy.aiBehavior.knowledgeIndex.title, desc: aiSetupCopy.aiBehavior.knowledgeIndex.desc, usedBy: aiSetupCopy.aiBehavior.knowledgeIndex.usedBy, bound: embeddingBound, fallbackText: null, changeLabel: aiSetupCopy.aiBehavior.change, setupLabel: aiSetupCopy.aiBehavior.setup, profiles: allProfiles, onWrite: writeEmbedding, modelFilter: isEmbeddingModel },
     ];

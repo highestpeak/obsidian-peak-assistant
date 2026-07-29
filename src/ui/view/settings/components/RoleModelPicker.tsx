@@ -16,7 +16,7 @@ function isExpensiveForFast(modelId: string): boolean {
 const PROVIDER_CATALOG: Record<string, string | null> = {
     anthropic: 'claude', openai: 'openai', google: 'gemini',
     perplexity: 'perplexity', ollama: 'ollama', openrouter: 'openrouter',
-    litellm: null, custom: null,
+    simulator: 'simulator', litellm: null, custom: null,
 };
 
 interface PickerItem {

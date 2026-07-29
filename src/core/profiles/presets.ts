@@ -6,11 +6,14 @@
  * after creation.
  */
 
-import type { Profile, ProfileKind } from './types';
+import { DEFAULT_SIMULATOR_PROFILE_CONFIG, type Profile, type ProfileKind } from './types';
+import { SIMULATOR_DEFAULTS } from '@/core/providers/simulator/SimulatorDefaults';
 
 function generateId(): string {
   return `profile_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
+
+export const BUILT_IN_SIMULATOR_PROFILE_ID = 'builtin-ai-search-simulator';
 
 const PRESET_FACTORIES: Record<ProfileKind, (overrides?: Partial<Profile>) => Profile> = {
   anthropic: (overrides) => ({
@@ -168,6 +171,26 @@ const PRESET_FACTORIES: Record<ProfileKind, (overrides?: Partial<Profile>) => Pr
     description: null,
     ...overrides,
   }),
+
+  simulator: (overrides) => ({
+    id: generateId(),
+    name: SIMULATOR_DEFAULTS.ui.providerName,
+    kind: 'simulator',
+    enabled: true,
+    createdAt: Date.now(),
+    baseUrl: '',
+    apiKey: null,
+    primaryModel: 'ai-search-simulator',
+    fastModel: 'ai-search-simulator',
+    customHeaders: {},
+    embeddingEndpoint: null,
+    embeddingApiKey: null,
+    embeddingModel: null,
+    icon: null,
+    description: SIMULATOR_DEFAULTS.ui.presetDescription,
+    simulatorConfig: { ...DEFAULT_SIMULATOR_PROFILE_CONFIG },
+    ...overrides,
+  }),
 };
 
 /**
@@ -175,4 +198,11 @@ const PRESET_FACTORIES: Record<ProfileKind, (overrides?: Partial<Profile>) => Pr
  */
 export function createPresetProfile(kind: ProfileKind, overrides?: Partial<Profile>): Profile {
   return PRESET_FACTORIES[kind](overrides);
+}
+
+export function createBuiltInSimulatorProfile(): Profile {
+  return createPresetProfile('simulator', {
+    id: BUILT_IN_SIMULATOR_PROFILE_ID,
+    createdAt: 0,
+  });
 }

@@ -138,13 +138,13 @@ export class ReportOrchestrator {
         return { app: this.app as any, pluginId: this.pluginId };
     }
 
-    /** Resolve the active agent profile. Throws if none configured. */
+    /** Resolve the complete Research binding. Throws if none configured. */
     private requireProfile(): Profile {
-        const profile = ProfileRegistry.getInstance().getActiveAgentProfile();
-        if (!profile) {
-            throw new Error('No active profile configured. Please set up a profile in Settings → Profiles.');
+        const binding = ProfileRegistry.getInstance().resolveSlot('research');
+        if (!binding) {
+            throw new Error('No Research profile configured. Please set up Research in Settings → AI Setup.');
         }
-        return profile;
+        return binding.profile;
     }
 
     /**

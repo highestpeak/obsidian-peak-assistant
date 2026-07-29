@@ -6,7 +6,31 @@
  * and optional embedding config into one portable unit.
  */
 
-export type ProfileKind = 'anthropic' | 'openai' | 'google' | 'perplexity' | 'ollama' | 'openrouter' | 'litellm' | 'custom';
+export type ProfileKind = 'anthropic' | 'openai' | 'google' | 'perplexity' | 'ollama' | 'openrouter' | 'litellm' | 'custom' | 'simulator';
+
+export type SimulatorScenarioId =
+  | 'happy-path'
+  | 'slow-streaming'
+  | 'planning-failure'
+  | 'empty-vault'
+  | 'vault-tool-recovery'
+  | 'report-partial-failure'
+  | 'report-total-failure'
+  | 'escalation-request';
+
+export type SimulatorSpeed = 'instant' | 'normal' | 'slow';
+
+export interface SimulatorProfileConfig {
+  scenario: SimulatorScenarioId;
+  speed: SimulatorSpeed;
+  strict: boolean;
+}
+
+export const DEFAULT_SIMULATOR_PROFILE_CONFIG: SimulatorProfileConfig = {
+  scenario: 'happy-path',
+  speed: 'normal',
+  strict: true,
+};
 
 export interface Profile {
   id: string;
@@ -24,6 +48,8 @@ export interface Profile {
   embeddingModel: string | null;
   icon: string | null;
   description: string | null;
+  /** Present only for the built-in, no-network Simulator provider. */
+  simulatorConfig?: SimulatorProfileConfig;
 }
 
 export interface RoleConfig {

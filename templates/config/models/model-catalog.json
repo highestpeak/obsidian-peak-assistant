@@ -1,6 +1,24 @@
 {
   "providers": [
     {
+      "id": "simulator",
+      "name": "AI Search Simulator",
+      "defaultBaseUrl": "",
+      "icon": "simulator",
+      "models": [
+        {
+          "id": "ai-search-simulator",
+          "displayName": "AI Search Simulator",
+          "icon": "simulator",
+          "modelType": "llm",
+          "costInput": "0",
+          "costOutput": "0",
+          "tokenLimits": { "maxTokens": 200000, "maxInputTokens": 200000, "recommendedSummaryThreshold": 150000 },
+          "capabilities": { "vision": false, "pdfInput": false, "tools": true, "webSearch": false, "reasoning": false, "maxCtx": 200000 }
+        }
+      ]
+    },
+    {
       "id": "openai",
       "name": "OpenAI",
       "defaultBaseUrl": "https://api.openai.com/v1",

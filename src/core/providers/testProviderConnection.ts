@@ -25,6 +25,9 @@ export async function testProviderConnection(
 				: kindOrProfile;
 
 		const { kind, baseUrl } = profile;
+		if (kind === 'simulator') {
+			return profile.primaryModel === 'ai-search-simulator' && !!profile.simulatorConfig?.scenario;
+		}
 		const key = profile.apiKey ?? '';
 		const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 

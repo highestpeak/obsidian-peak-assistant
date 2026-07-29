@@ -9,6 +9,7 @@ import { EventBus, UsageRecordedViewEvent } from '@/core/eventBus';
 import type { UsageFeature } from '@/service/usage/types';
 import { computeUsdFromUsage } from '@/service/search/support/llm-cost-utils';
 import { modelRegistry } from '@/core/providers/model-registry';
+import { querySimulatorSdk } from '@/core/providers/simulator';
 
 export interface NodeBinaryInfo { path: string; isElectron: boolean; }
 
@@ -249,6 +250,11 @@ export async function* queryWithProfile(
     profile: Profile,
     options: QueryOptions,
 ): AsyncGenerator<SDKMessage> {
+    if (profile.kind === 'simulator') {
+        yield* querySimulatorSdk(profile, options);
+        return;
+    }
+
     const nodeInfo = await ensureNodeInfo();
 
     const registry = ProfileRegistry.getInstance();

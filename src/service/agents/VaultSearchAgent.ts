@@ -188,7 +188,12 @@ export class VaultSearchAgent {
         try {
             tierController = new TierController({
                 bindings,
-                policy: { preferred: 'research' },
+                policy: {
+                    preferred: 'research',
+                    allowEscalation: harnessSettings.allowEscalation,
+                    escalationThreshold: harnessSettings.autoEscalateScoreBelow,
+                    maxEscalationsPerLoop: harnessSettings.maxEscalationsPerLoop,
+                },
                 loopId,
             });
         } catch (err) {

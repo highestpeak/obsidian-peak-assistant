@@ -67,9 +67,18 @@ export function defaultTierBindings(harness: HarnessSettings): TierBindings {
         research: harness.localDeepConfig ?? null,
         stronger: harness.onlineConfig ?? null,
     });
+    const researchRole = reg.resolveSlot('research');
+    if (researchRole?.profile.kind === 'simulator') {
+        return {
+            fast: bindingFromRole('fast', researchRole),
+            research: bindingFromRole('research', researchRole),
+            stronger: bindingFromRole('stronger', researchRole),
+        };
+    }
+
     return {
         fast: bindingFromRole('fast', reg.resolveSlot('fast')),
-        research: bindingFromRole('research', reg.resolveSlot('research')),
+        research: bindingFromRole('research', researchRole),
         stronger: bindingFromRole('stronger', reg.resolveSlot('stronger')),
     };
 }
