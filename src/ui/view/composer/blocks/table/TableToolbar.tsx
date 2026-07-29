@@ -165,7 +165,7 @@ export function TableToolbar(props: TableToolbarProps): React.ReactElement {
 			{singleMergedAnchor ? (
 				<ToolbarButton icon={Split} label={strings.unmerge} hint={strings.unmergeHint} delayMs={strings.tooltipDelayMs} disabled={disabled} onClick={() => rect && commit(unmergeAt(model, rect.r0, rect.c0))} />
 			) : (
-				<ToolbarButton icon={Merge} label={strings.merge} hint={strings.mergeHint} delayMs={strings.tooltipDelayMs} disabled={disabled || !rect || (rect.r0 === rect.r1 && rect.c0 === rect.c1)} reason={!rect ? strings.needRectangle : undefined} onClick={doMerge} />
+				<ToolbarButton icon={Merge} label={strings.merge} hint={strings.mergeHint} delayMs={strings.tooltipDelayMs} disabled={disabled || !rect} reason={!rect ? strings.needRectangle : undefined} onClick={doMerge} />
 			)}
 			<ToolbarButton icon={Repeat2} label={strings.transpose} hint={strings.transposeHint} delayMs={strings.tooltipDelayMs} disabled={disabled || merges} onClick={() => commit(transpose(model))} />
 			<Divider />
@@ -217,8 +217,9 @@ function ToolbarButton({
 				type="button"
 				variant="ghost"
 				size="sm"
-				className={active ? 'is-active' : undefined}
+				className={active ? 'pk-table-tool__button is-active' : 'pk-table-tool__button'}
 				disabled={disabled}
+				aria-label={label}
 				aria-describedby={tooltipId}
 				aria-pressed={active === undefined ? undefined : active}
 				onClick={onClick}
@@ -232,7 +233,7 @@ function ToolbarButton({
 					<Icon size={16} />
 					{structureAction && <OperationIcon className="pk-table-tool__icon-badge" size={9} />}
 				</span>
-				<span className="pk-table-tool__label">{label}</span>
+				<span className="pk-table-tool__label" aria-hidden="true">{label}</span>
 			</Button>
 			<span id={tooltipId} className="pk-table-tool__tooltip" role="tooltip">
 				<strong>{label}</strong>

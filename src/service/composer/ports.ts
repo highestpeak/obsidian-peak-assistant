@@ -98,3 +98,27 @@ export interface ComposerNativePreviewPort {
 	 */
 	onNativePreviewChange?(request: ComposerNativePreviewRequest, cb: () => void): () => void;
 }
+
+/** A persisted, source-backed Obsidian block anchor for one embedded Markdown region. */
+export interface ComposerEmbedSelectionAnchorRequest {
+	/** Already-resolved Vault path of the embedded Markdown note. */
+	targetPath: string;
+	/** Text content of one fully selected rendered Markdown block. */
+	selectedBlockText: string;
+}
+
+export interface ComposerEmbedSelectionAnchorResult {
+	/** Bare ID; callers build the Obsidian subpath as `#^${anchor}`. */
+	anchor: string;
+	/** `true` when the matching source block already carried an anchor. */
+	reused: boolean;
+}
+
+/**
+ * App-owned two-file bridge for persisted Markdown embed selections. The target
+ * note write is revision guarded; the owning Composer document updates its
+ * embed token through the normal transaction hub afterwards.
+ */
+export interface ComposerEmbedSelectionAnchorPort {
+	persistSelection(request: ComposerEmbedSelectionAnchorRequest): Promise<ComposerEmbedSelectionAnchorResult>;
+}

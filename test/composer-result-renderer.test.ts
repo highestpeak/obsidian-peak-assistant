@@ -18,11 +18,13 @@ import {
 } from '@/service/composer';
 import {
 	COMPOSER_STREAMING_TEXT_RENDERER_ID,
+	COMPOSER_ANALYSIS_RENDERER_ID,
 	COMPOSER_TEXT_PATCH_WRITEBACK_ID,
 	type ComposerContextSnapshot,
 } from '@/core/composer';
 import {
 	createDefaultCandidateRendererRegistry,
+	AnalysisCandidateCard,
 	StreamingTextCandidateCard,
 	UnsupportedCandidateCard,
 } from '@/ui/view/composer/candidates';
@@ -41,6 +43,7 @@ const SNAPSHOT: ComposerContextSnapshot = {
 function testMaterializerRegistry(): void {
 	const registry = createDefaultResultMaterializers();
 	check('default materializers cover text-patch', registry.has('text-patch'));
+	check('default materializers cover read-only analysis', registry.has('analysis'));
 
 	const definition = createPolishDefinition(config);
 	const envelope = registry.resolve('text-patch').materialize({
@@ -76,9 +79,12 @@ function testMaterializerRegistry(): void {
 function testRendererRegistry(): void {
 	const registry = createDefaultCandidateRendererRegistry();
 	check('streaming-text renderer registered', registry.has(COMPOSER_STREAMING_TEXT_RENDERER_ID));
+	check('analysis renderer registered', registry.has(COMPOSER_ANALYSIS_RENDERER_ID));
 
 	const resolved = registry.resolve(COMPOSER_STREAMING_TEXT_RENDERER_ID);
 	check('renderer resolves by id', resolved.component === StreamingTextCandidateCard && !resolved.unsupported);
+	const analysis = registry.resolve(COMPOSER_ANALYSIS_RENDERER_ID);
+	check('analysis renderer resolves by id', analysis.component === AnalysisCandidateCard && !analysis.unsupported);
 
 	const unknown = registry.resolve('composer.renderer.does-not-exist');
 	check('unknown renderer id → visible unsupported fallback', unknown.unsupported && unknown.component === UnsupportedCandidateCard);

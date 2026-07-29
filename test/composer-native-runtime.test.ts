@@ -32,6 +32,9 @@ import {
 	CANVAS_EDIT_CAPABILITY_ID,
 	BASE_EDIT_CAPABILITY_ID,
 	EXCALIDRAW_EDIT_CAPABILITY_ID,
+	CODE_EXPLAIN_CAPABILITY_ID,
+	MERMAID_EXPLAIN_CAPABILITY_ID,
+	MERMAID_FILL_BRANCHES_CAPABILITY_ID,
 	DEFAULT_COMPOSER_CAPABILITIES_CONFIG,
 	type ComposerNativeFilePort,
 	type NativeFilePatchEnvelopePayload,
@@ -119,6 +122,16 @@ function canvasDef(): ComposerCapabilityDefinition {
 		.find((d) => d.manifest.id === CANVAS_EDIT_CAPABILITY_ID);
 	if (!def) throw new Error('canvas edit definition missing from native pack');
 	return def;
+}
+
+function testDedicatedNativeActions(): void {
+	const definitions = createNativeCapabilityPack(() => DEFAULT_COMPOSER_CAPABILITIES_CONFIG).definitions();
+	const codeExplain = definitions.find((definition) => definition.manifest.id === CODE_EXPLAIN_CAPABILITY_ID);
+	const mermaidExplain = definitions.find((definition) => definition.manifest.id === MERMAID_EXPLAIN_CAPABILITY_ID);
+	const fillBranches = definitions.find((definition) => definition.manifest.id === MERMAID_FILL_BRANCHES_CAPABILITY_ID);
+	check('native: code explain is a read-only analysis', codeExplain?.effectKind === 'analyze' && codeExplain.resultKind === 'analysis' && !codeExplain.writebackAdapterId);
+	check('native: Mermaid explain is a read-only analysis', mermaidExplain?.effectKind === 'analyze' && mermaidExplain.resultKind === 'analysis' && !mermaidExplain.writebackAdapterId);
+	check('native: fill branches remains reviewable source edit', fillBranches?.effectKind === 'rewrite' && fillBranches.resultKind === 'text-patch' && !!fillBranches.writebackAdapterId);
 }
 
 /** 2. Materializer applies a typed patch → nextText + summary; carries the target path. */
@@ -234,7 +247,8 @@ async function testAcceptRevisionGuard(): Promise<void> {
 }
 
 async function main(): Promise<void> {
-	testDescribe();
+testDescribe();
+testDedicatedNativeActions();
 	testMaterializer();
 	testMaterializerFailClosed();
 	testProjection();

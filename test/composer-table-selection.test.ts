@@ -2,8 +2,8 @@
  * Peak Composer — table dual-mode selection (WP6, CMP-TABLE-06, S5 contract).
  *
  * Pure reducer + gesture partition (no DOM):
- *   - gesture partition: glyph-drag → native text selection; padding/edge drag or
- *     non-glyph → object cell-range selection (object never disables text);
+ *   - gesture partition: ordinary cell drag → object cell-range selection;
+ *     Option/Alt + glyph drag → native text selection escape hatch;
  *   - click / drag rectangle / vertical+horizontal range;
  *   - Shift extend; Cmd/Ctrl discontiguous toggle (add + remove);
  *   - arrow move / Shift+arrow extend; Esc clear;
@@ -47,7 +47,8 @@ const STRINGS: TableSelectionStrings = {
 // ── gesture partition (S5) ──────────────────────────────────────────────────
 {
 	const geo = { x: 40, y: 12, width: 120, height: 32, padX: 8, padY: 6 };
-	check('glyph drag in content → text selection', classifyTablePointer({ geometry: geo, overGlyph: true }) === 'text');
+	check('glyph drag in content → object selection by default', classifyTablePointer({ geometry: geo, overGlyph: true }) === 'object');
+	check('alt glyph drag in content → text selection escape hatch', classifyTablePointer({ geometry: geo, overGlyph: true, preferTextSelection: true }) === 'text');
 	check('padding/edge drag → object selection', classifyTablePointer({ geometry: { ...geo, x: 3 }, overGlyph: true }) === 'object');
 	check('non-glyph content drag → object selection', classifyTablePointer({ geometry: geo, overGlyph: false }) === 'object');
 	check('pointerInPadding left edge', pointerInPadding({ ...geo, x: 4 }));

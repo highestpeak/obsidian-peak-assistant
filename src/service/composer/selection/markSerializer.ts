@@ -90,6 +90,45 @@ export function applyMarkToSelection(
 }
 
 /**
+ * Remove one parser-identified outer mark wrapper without touching nested source.
+ *
+ * The inline interaction layer calls this only with a range emitted by the
+ * rich-text parser. That range includes the original delimiters, which lets
+ * color/highlight values and Obsidian's `==highlight==` form round-trip exactly.
+ */
+export function removeInlineMarkWrapper(
+	source: string,
+	mark: ComposerInlineMark,
+	range: { from: number; to: number },
+): ComposerOperation | null {
+	const wrapped = source.slice(range.from, range.to);
+	const bounds = wrapperBounds(wrapped, mark);
+	if (!bounds) return null;
+	return {
+		kind: 'replaceRange',
+		from: range.from,
+		to: range.to,
+		text: wrapped.slice(bounds.open, wrapped.length - bounds.close),
+	};
+}
+
+function wrapperBounds(text: string, mark: ComposerInlineMark): { open: number; close: number } | null {
+	if (mark === 'bold') return text.startsWith('**') && text.endsWith('**') ? { open: 2, close: 2 } : null;
+	if (mark === 'italic') return (
+		(text.startsWith('*') && text.endsWith('*')) || (text.startsWith('_') && text.endsWith('_'))
+	) ? { open: 1, close: 1 } : null;
+	if (mark === 'strikethrough') return text.startsWith('~~') && text.endsWith('~~') ? { open: 2, close: 2 } : null;
+	if (mark === 'underline') return /^<u>/i.test(text) && /<\/u>$/i.test(text) ? { open: 3, close: 4 } : null;
+	if (mark === 'text-color') {
+		const open = /^<span\s+style="[^"]*\bcolor\s*:[^"]*"\s*>/i.exec(text)?.[0];
+		return open && /<\/span>$/i.test(text) ? { open: open.length, close: 7 } : null;
+	}
+	if (text.startsWith('==') && text.endsWith('==')) return { open: 2, close: 2 };
+	const open = /^<mark(?:\s+style="[^"]*")?\s*>/i.exec(text)?.[0];
+	return open && /<\/mark>$/i.test(text) ? { open: open.length, close: 7 } : null;
+}
+
+/**
  * Compute one unit's replacement. Returns `null` for a whitespace-only slice
  * (so we never write an empty `****`). Handles toggle-off, whitespace-outside
  * placement, and adjacent same-mark absorption.

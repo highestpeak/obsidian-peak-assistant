@@ -5,12 +5,11 @@
  * native text selection). Two selection modes coexist per the locked S5 gesture
  * contract:
  *
- *  - **text selection** — a drag that starts on a glyph runs native text
- *    selection (the existing selection toolbar path); the object layer stays out
- *    of the way. {@link classifyTablePointer} makes that call.
- *  - **object selection** — a drag from the cell padding/edge, a click, Shift
- *    extension, Cmd/Ctrl discontiguous toggle, arrow/Shift+arrow keyboard
- *    extension, and Esc clear — all modeled here.
+ *  - **object selection** — a drag from a cell selects a rectangle by default,
+ *    matching spreadsheet muscle memory. Shift extension, Cmd/Ctrl discontiguous
+ *    toggle, arrow/Shift+arrow keyboard extension, and Esc clear are modeled here.
+ *  - **text selection** — Option/Alt + drag from visible text preserves the native
+ *    selection escape hatch without making merge depend on tiny cell padding.
  *
  * Object selection never disables cell text selection: the two are partitioned
  * by where the gesture starts, never by turning one off.
@@ -253,12 +252,12 @@ export function pointerInPadding(g: CellGeometry): boolean {
 }
 
 /**
- * Route a pointer-down inside a table cell (S5): a drag that starts on a glyph in
- * the content area runs native TEXT selection; a drag from the padding/edge — or
- * anywhere not over a glyph — starts an OBJECT cell-range selection. Object
- * selection is never bought by disabling text selection.
+ * Route a pointer-down inside a table cell (S5): table cells default to OBJECT
+ * selection so merge/sort/structure operations are reachable from the same drag
+ * users naturally perform in a spreadsheet. Native TEXT selection remains an
+ * explicit escape hatch for visible glyphs.
  */
-export function classifyTablePointer(input: { geometry: CellGeometry; overGlyph: boolean }): 'text' | 'object' {
-	if (input.overGlyph && !pointerInPadding(input.geometry)) return 'text';
+export function classifyTablePointer(input: { geometry: CellGeometry; overGlyph: boolean; preferTextSelection?: boolean }): 'text' | 'object' {
+	if (input.preferTextSelection && input.overGlyph && !pointerInPadding(input.geometry)) return 'text';
 	return 'object';
 }

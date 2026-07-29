@@ -1,10 +1,10 @@
 /**
  * Peak Composer — Excalidraw read-only preview (WP8, §10.12).
  *
- * Parses the embedded scene (parsed variant) and renders a structural summary:
- * element counts by type and a sample of text elements. The compressed-json
- * variant is detected and reported as not-previewable with a reason (fail-safe)
- * rather than shown as a broken image. Real data, never a placeholder.
+ * Renders the actual Excalidraw embed through Obsidian's Markdown renderer
+ * first. The parsed-scene SVG is retained as a fallback for environments where
+ * the Excalidraw processor is unavailable; compressed formats still fail closed
+ * in that fallback rather than being displayed as a broken image.
  */
 
 import * as React from 'react';
@@ -14,6 +14,7 @@ import { parseExcalidrawScene, type ExcalidrawElement, type ExcalidrawScene } fr
 import { useComposerChrome } from '../../chrome/ComposerChromeContext';
 import {
 	NativeBlockFrame,
+	NativeEmbedHost,
 	NativePreviewStatusView,
 	NativeSourceView,
 	useNativeStrings,
@@ -31,7 +32,8 @@ export function ExcalidrawBlockView({
 	onReload?: () => void;
 }): React.ReactElement {
 	const strings = useNativeStrings();
-	const { onOpenLink } = useComposerChrome();
+	const chrome = useComposerChrome();
+	const { onOpenLink } = chrome;
 	const [mode, setMode] = React.useState<NativeViewMode>('preview');
 	const loaded = nativePreview?.status === 'loaded' ? nativePreview : null;
 	const raw = loaded?.text ?? block.renderModel.raw;
@@ -41,6 +43,7 @@ export function ExcalidrawBlockView({
 	}, [raw]);
 	const sourceFrom = loaded ? undefined : block.source.from;
 	const target = nativeTargetOf(nativePreview);
+	const fallback = scene ? <ExcalidrawSceneView scene={scene} /> : <div className="pk-native-empty">{strings.excalidrawUnsupported}</div>;
 
 	return (
 		<NativeBlockFrame
@@ -61,11 +64,16 @@ export function ExcalidrawBlockView({
 				<NativeSourceView raw={raw} blockId={block.blockId} sourceFrom={sourceFrom} nativeTarget={loaded?.targetPath} />
 			) : nativePreview && nativePreview.status !== 'loaded' ? (
 				<NativePreviewStatusView state={nativePreview} strings={strings} onReload={onReload} />
-			) : scene ? (
-				<ExcalidrawSceneView scene={scene} />
-			) : (
-				<div className="pk-native-empty">{strings.excalidrawUnsupported}</div>
-			)}
+			) : loaded && target && chrome.snapshot ? (
+				<NativeEmbedHost
+					renderer={chrome.runtime.nativeEmbedRenderer}
+					sourcePath={chrome.snapshot.filePath}
+					target={target}
+					kind="excalidraw"
+					markdown={`![[${target}]]`}
+					fallback={fallback}
+				/>
+			) : fallback}
 		</NativeBlockFrame>
 	);
 }

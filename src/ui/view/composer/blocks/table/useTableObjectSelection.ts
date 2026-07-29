@@ -45,9 +45,9 @@ export interface TableObjectSelection {
 
 /**
  * Object cell-range selection wired to the pure reducer (WP6, S5). A pointer-down
- * on a glyph runs native text selection; a pointer-down on the cell padding/edge
- * — or a modifier gesture — drives object selection. Drag listeners are scoped to
- * the leaf's OWNER document so a detached (popout) composer works.
+ * in the cell defaults to object selection so merge stays reachable; Option/Alt
+ * on visible text preserves a native text-selection escape hatch. Drag listeners
+ * are scoped to the leaf's OWNER document so a detached (popout) composer works.
  */
 export function useTableObjectSelection(model: TableModel, tableRef: React.RefObject<HTMLElement>): TableObjectSelection {
 	const [state, setState] = React.useState<TableSelectionState>(EMPTY_TABLE_SELECTION);
@@ -65,7 +65,7 @@ export function useTableObjectSelection(model: TableModel, tableRef: React.RefOb
 			padY: CELL_PAD_Y,
 		};
 		const overGlyph = Boolean((ev.target as HTMLElement).closest('.pk-tcell-text'));
-		const mode = classifyTablePointer({ geometry, overGlyph });
+		const mode = classifyTablePointer({ geometry, overGlyph, preferTextSelection: ev.altKey });
 
 		if (ev.metaKey || ev.ctrlKey) {
 			ev.preventDefault();

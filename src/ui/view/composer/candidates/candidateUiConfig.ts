@@ -37,6 +37,10 @@ export interface CandidateUiStrings {
 	draftMeta: string;
 	/** `{action}`, `{index}` and `{count}` are substituted by the review footer. */
 	streamingMeta: string;
+	/** Read-only model explanation. It has no accept/writeback control. */
+	analysisTitle: string;
+	analysisStreaming: string;
+	analysisClose: string;
 }
 
 export const DEFAULT_CANDIDATE_UI_STRINGS: CandidateUiStrings = {
@@ -61,6 +65,9 @@ export const DEFAULT_CANDIDATE_UI_STRINGS: CandidateUiStrings = {
 	streamingTitle: 'AI 生成中…',
 	draftMeta: '{action} · 版本 {index}/{count} · 未写入 Markdown',
 	streamingMeta: '{action} · 正在流式生成版本 {index}/{count} · 未写入 Markdown',
+	analysisTitle: 'AI 说明',
+	analysisStreaming: '正在分析…',
+	analysisClose: '关闭',
 };
 
 /** Substitute `{index}` / `{count}` in the variant counter template. */

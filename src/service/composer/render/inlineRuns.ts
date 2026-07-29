@@ -33,18 +33,27 @@ export interface InlineRunStyle {
 	highlight?: string;
 }
 
+/** Marks a rendered token can expose for direct, source-safe actions. */
+export type InlineStyleToken = 'bold' | 'italic' | 'underline' | 'strikethrough' | 'text-color' | 'highlight';
+
+/** The exact outer source wrapper for every style currently applied to a run. */
+export type InlineMarkRanges = Partial<Record<InlineStyleToken, { from: number; to: number }>>;
+
 export interface InlineRun {
 	/** Visible text — always a contiguous slice of the source (delimiters excluded). */
 	text: string;
 	/** Absolute source offset of the run's first VISIBLE character. */
 	from: number;
 	style: InlineRunStyle;
+	/** Source ranges including the relevant Markdown/HTML wrappers, if styled. */
+	markRanges?: InlineMarkRanges;
 	/** Link target when this run is a link token. */
 	linkTarget?: string;
 	linkKind?: 'wikilink' | 'markdown' | 'bare-url';
 }
 
 const EMPTY_STYLE: InlineRunStyle = Object.freeze({});
+const EMPTY_MARK_RANGES: InlineMarkRanges = Object.freeze({});
 
 function merge(base: InlineRunStyle, patch: InlineRunStyle): InlineRunStyle {
 	return { ...base, ...patch };
@@ -53,7 +62,7 @@ function merge(base: InlineRunStyle, patch: InlineRunStyle): InlineRunStyle {
 /** Parse a source slice `[baseFrom, baseFrom+text.length)` into styled runs. */
 export function parseInlineRuns(text: string, baseFrom: number): InlineRun[] {
 	const runs: InlineRun[] = [];
-	parseInto(text, baseFrom, EMPTY_STYLE, runs);
+	parseInto(text, baseFrom, EMPTY_STYLE, runs, EMPTY_MARK_RANGES);
 	if (runs.length === 0) runs.push({ text: '', from: baseFrom, style: EMPTY_STYLE });
 	return runs;
 }
@@ -69,19 +78,35 @@ interface SpanMatch {
 	style: InlineRunStyle;
 }
 
-function parseInto(text: string, baseFrom: number, style: InlineRunStyle, out: InlineRun[]): void {
+function parseInto(
+	text: string,
+	baseFrom: number,
+	style: InlineRunStyle,
+	out: InlineRun[],
+	markRanges: InlineMarkRanges,
+): void {
 	let cursor = 0;
 	let plainStart = 0;
 	const flushPlain = (end: number): void => {
 		if (end <= plainStart) return;
-		out.push({ text: text.slice(plainStart, end), from: baseFrom + plainStart, style });
+		out.push({
+			text: text.slice(plainStart, end),
+			from: baseFrom + plainStart,
+			style,
+			...(Object.keys(markRanges).length > 0 ? { markRanges } : {}),
+		});
 	};
 
 	while (cursor < text.length) {
 		const link = matchLink(text, cursor);
 		if (link) {
 			flushPlain(cursor);
-			out.push({ ...link.run, from: baseFrom + link.run.from, style });
+			out.push({
+				...link.run,
+				from: baseFrom + link.run.from,
+				style,
+				...(Object.keys(markRanges).length > 0 ? { markRanges } : {}),
+			});
 			cursor = link.end;
 			plainStart = cursor;
 			continue;
@@ -92,11 +117,20 @@ function parseInto(text: string, baseFrom: number, style: InlineRunStyle, out: I
 			const innerStart = cursor + span.openLen;
 			const inner = text.slice(innerStart, span.closeAt);
 			const nextStyle = merge(style, span.style);
+			const nextRanges = mergeMarkRanges(markRanges, span.style, {
+				from: baseFrom + cursor,
+				to: baseFrom + span.closeAt + span.closeLen,
+			});
 			if (span.style.code) {
 				// Code content is literal — never re-parsed for nested marks.
-				out.push({ text: inner, from: baseFrom + innerStart, style: nextStyle });
+				out.push({
+					text: inner,
+					from: baseFrom + innerStart,
+					style: nextStyle,
+					...(Object.keys(nextRanges).length > 0 ? { markRanges: nextRanges } : {}),
+				});
 			} else {
-				parseInto(inner, baseFrom + innerStart, nextStyle, out);
+				parseInto(inner, baseFrom + innerStart, nextStyle, out, nextRanges);
 			}
 			cursor = span.closeAt + span.closeLen;
 			plainStart = cursor;
@@ -105,6 +139,37 @@ function parseInto(text: string, baseFrom: number, style: InlineRunStyle, out: I
 		cursor += 1;
 	}
 	flushPlain(text.length);
+}
+
+function mergeMarkRanges(
+	base: InlineMarkRanges,
+	style: InlineRunStyle,
+	range: { from: number; to: number },
+): InlineMarkRanges {
+	const token = styleTokenOf(style);
+	return token ? { ...base, [token]: range } : base;
+}
+
+function styleTokenOf(style: InlineRunStyle): InlineStyleToken | null {
+	if (style.bold) return 'bold';
+	if (style.italic) return 'italic';
+	if (style.underline) return 'underline';
+	if (style.strikethrough) return 'strikethrough';
+	if (style.color !== undefined) return 'text-color';
+	if (style.highlight !== undefined) return 'highlight';
+	return null;
+}
+
+/** Stable UI-facing list of active style tokens; source remains in {@link InlineRun}. */
+export function inlineStyleTokenKinds(style: InlineRunStyle): InlineStyleToken[] {
+	const tokens: InlineStyleToken[] = [];
+	if (style.bold) tokens.push('bold');
+	if (style.italic) tokens.push('italic');
+	if (style.underline) tokens.push('underline');
+	if (style.strikethrough) tokens.push('strikethrough');
+	if (style.color !== undefined) tokens.push('text-color');
+	if (style.highlight !== undefined) tokens.push('highlight');
+	return tokens;
 }
 
 // ── link tokens (mirror linkSegments.ts grammar, but yields a styled run) ─────

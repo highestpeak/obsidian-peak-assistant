@@ -142,6 +142,8 @@ export enum PromptId {
 	// replace the borrowed doc-polish binding)
 	DocMermaidEdit = 'doc-mermaid-edit',
 	DocCodeEdit = 'doc-code-edit',
+	/** Read-only explanation for code and Mermaid sources. */
+	DocNativeExplain = 'doc-native-explain',
 	DocLinkTidy = 'doc-link-tidy',
 	/** Native structural edit (Base / Canvas / Excalidraw) → typed native-file patch JSON. */
 	DocNativeEdit = 'doc-native-edit',
@@ -680,6 +682,12 @@ export interface PromptVariables {
 		content: string;
 		scope: 'full' | 'selection';
 		/** Fenced-code language token, when known (kept stable across the edit). */
+		language?: string;
+		instruction?: string;
+	};
+	[PromptId.DocNativeExplain]: {
+		content: string;
+		nativeKind: 'code' | 'mermaid';
 		language?: string;
 		instruction?: string;
 	};

@@ -76,6 +76,14 @@ function run(): void {
 	const runs4 = assertOffsetLaw('nested', s4);
 	const deep = runs4.find((r) => r.text === 'deep');
 	check('nested: inner run has both bold+italic', Boolean(deep?.style.bold && deep?.style.italic));
+	check(
+		'nested: mark ranges retain the outer source wrappers',
+		deep?.markRanges?.bold?.from === s4.indexOf('**') &&
+			deep?.markRanges?.bold?.to === s4.indexOf('**', s4.indexOf('**') + 2) + 2 &&
+			deep?.markRanges?.italic?.from === s4.indexOf('_') &&
+			deep?.markRanges?.italic?.to === s4.lastIndexOf('_') + 1,
+		JSON.stringify(deep?.markRanges),
+	);
 	const nestedHtml =
 		'<mark style="background: #dff4e8">outer <mark style="background: #dfeaff">inner</mark> tail</mark>';
 	const nestedHtmlRuns = assertOffsetLaw('nested-html', nestedHtml);

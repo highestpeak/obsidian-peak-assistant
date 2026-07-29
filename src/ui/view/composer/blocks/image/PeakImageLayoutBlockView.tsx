@@ -9,10 +9,12 @@ import { Code2, FileImage } from 'lucide-react';
 import type { ComposerBlock } from '@/core/composer';
 import {
 	parsePeakImageLayout,
+	isPeakImageLayoutPortable,
 	replacePeakImageLayoutMode,
 	type ParsedPeakImageLayout,
 	type PeakImageLayoutMode,
 } from '@/service/composer';
+import { DEFAULT_IMAGE_DOMAIN_CONFIG, loadImageDomainConfig } from '@/service/composer/packs/image/imageConfig';
 import { Button } from '@/ui/components/primitives';
 import { useComposerChrome } from '../../chrome/ComposerChromeContext';
 import { ComposerImageLightbox } from './ComposerImageLightbox';
@@ -75,6 +77,7 @@ export function PeakImageLayoutBlockView({ block, editing }: { block: ComposerBl
 	const [imageErrors, setImageErrors] = React.useState<Record<number, boolean>>({});
 	const [lightbox, setLightbox] = React.useState<{ src: string; alt: string } | null>(null);
 	const [uiStrings, setUiStrings] = React.useState(DEFAULT_IMAGE_UI_STRINGS);
+	const [layoutConfig, setLayoutConfig] = React.useState(DEFAULT_IMAGE_DOMAIN_CONFIG.layout);
 	const rootRef = React.useRef<HTMLDivElement | null>(null);
 	const layoutIdentity = parsed
 		? `${block.blockId}:${parsed.kind}:${parsed.items.map((item) => item.src).join('|')}`
@@ -83,6 +86,7 @@ export function PeakImageLayoutBlockView({ block, editing }: { block: ComposerBl
 	React.useEffect(() => {
 		let cancelled = false;
 		void loadImageUiStrings().then((strings) => !cancelled && setUiStrings(strings));
+		void loadImageDomainConfig().then((config) => !cancelled && setLayoutConfig(config.layout));
 		return () => {
 			cancelled = true;
 		};
@@ -101,8 +105,8 @@ export function PeakImageLayoutBlockView({ block, editing }: { block: ComposerBl
 
 	const canChangeMode = editing && Boolean(hub);
 	const changeMode = (mode: PeakImageLayoutMode): void => {
-		if (!hub || mode === parsed.kind) return;
-		const nextSource = replacePeakImageLayoutMode(block.renderModel.raw, mode);
+		if (!hub || (mode === parsed.kind && isPeakImageLayoutPortable(block.renderModel.raw))) return;
+		const nextSource = replacePeakImageLayoutMode(block.renderModel.raw, mode, layoutConfig);
 		if (!nextSource) return;
 		void hub.commit({
 			origin: 'direct',

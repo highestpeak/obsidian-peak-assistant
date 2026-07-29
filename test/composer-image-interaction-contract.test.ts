@@ -21,8 +21,10 @@ check(
 );
 check(
 	'viewer implements navigation, zoom, drag, wheel, Escape, and thumbnails',
-	['ArrowLeft', 'ArrowRight', "event.key === 'Escape'", 'onWheel=', 'onPointerDown=', 'pk-image-lightbox__strip']
-		.every((token) => lightbox.includes(token)),
+	lightbox.includes('handleLightboxKeyboardEvent') &&
+		lightbox.includes("addEventListener('keydown', onKeyDown, true)") &&
+		lightbox.includes("removeEventListener('keydown', onKeyDown, true)") &&
+		['onWheel=', 'onPointerDown=', 'pk-image-lightbox__strip'].every((token) => lightbox.includes(token)),
 );
 check(
 	'image object toolbar exposes the complete approved action set',

@@ -21,6 +21,8 @@ import {
 	buildMoveBlockOps,
 	buildToggleTaskOps,
 	POLISH_CAPABILITY_ID,
+	CODE_EXPLAIN_CAPABILITY_ID,
+	MERMAID_EXPLAIN_CAPABILITY_ID,
 	SUGGEST_PROPERTIES_CAPABILITY_ID,
 	headingTextStart,
 	listItemContentStart,
@@ -71,6 +73,7 @@ import { BlockHistoryPanel } from './chrome/BlockHistoryPanel';
 import { SelectionToolbar } from './chrome/SelectionToolbar';
 import { useCrossBlockTextSelection } from './chrome/useCrossBlockTextSelection';
 import { LinkPreviewLayer } from './chrome/LinkPreviewLayer';
+import { InlineStyleLayer } from './chrome/InlineStyleLayer';
 import { UndoRedoBar } from './chrome/UndoRedoBar';
 import { TransactionNotice } from './chrome/TransactionNotice';
 import { BlockFindingPanel } from './chrome/BlockFindingPanel';
@@ -617,6 +620,7 @@ function ComposerDocument({
 				/>
 			)}
 			<LinkPreviewLayer containerRef={containerRef} />
+			<InlineStyleLayer containerRef={containerRef} enabled={editing} />
 			<CommentHighlightLayer
 				shellRef={containerRef}
 				activeCommentId={activeCommentId}
@@ -875,13 +879,7 @@ function ComposerBlockRow({
 						openPanel={ownPanel?.panel ?? null}
 						panelPinned={ownPanel?.pinned ?? false}
 						writeDisabledReason={chrome.runtime.hub ? undefined : config.chrome.actions.disabledNoRuntime}
-						hiddenQuickCapabilityIds={
-							block.kind === 'frontmatter'
-								? [SUGGEST_PROPERTIES_CAPABILITY_ID]
-								: isTextActionBlock(block.kind)
-									? [POLISH_CAPABILITY_ID]
-									: undefined
-						}
+						hiddenQuickCapabilityIds={hiddenQuickCapabilities(block.kind)}
 						onInvoke={(d, instruction) => onInvoke(d, aiSnapshot, instruction)}
 					/>
 				)}
@@ -903,6 +901,14 @@ function useComposerFindings(runtime?: IntelligenceRuntime): readonly Suggestion
 }
 
 const EMPTY_FINDINGS: readonly SuggestionFinding[] = [];
+
+function hiddenQuickCapabilities(kind: ComposerBlock['kind']): readonly string[] | undefined {
+	if (kind === 'frontmatter') return [SUGGEST_PROPERTIES_CAPABILITY_ID];
+	if (kind === 'code') return [CODE_EXPLAIN_CAPABILITY_ID];
+	if (kind === 'mermaid') return [MERMAID_EXPLAIN_CAPABILITY_ID];
+	if (isTextActionBlock(kind)) return [POLISH_CAPABILITY_ID];
+	return undefined;
+}
 
 function blockSpacingRole(block: ComposerBlock, previous?: ComposerBlock): string {
 	if (isChartBlock(block)) return 'chart';

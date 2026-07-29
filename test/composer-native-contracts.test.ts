@@ -27,7 +27,11 @@ import {
 	externalHost,
 	inlineFootnoteToReference,
 	embedToLink,
+	linkToEmbed,
+	setEmbedAnchor,
 	internalTargets,
+	planEmbedSelectionAnchor,
+	normalizeVisibleText,
 	// easy copy
 	toPlainText,
 } from '@/service/composer';
@@ -133,6 +137,17 @@ function testLink(): void {
 	const fn = inlineFootnoteToReference('the text', 'fn1');
 	check('link: inline footnote → reference', fn.reference === '[^fn1]' && fn.definition === '[^fn1]: the text');
 	check('link: embed → link', embedToLink('![[Note#h|A]]') === '[[Note#h|A]]');
+	check('link: link → embed', linkToEmbed('[[Note#h|A]]') === '![[Note#h|A]]');
+	check('link: embed heading scope preserves alias', setEmbedAnchor('![[Note#old|Alias]]', 'New heading') === '![[Note#New heading|Alias]]');
+	const anchoredParagraph = planEmbedSelectionAnchor('A **focused** [[Note|reference]] paragraph.', 'A focused reference paragraph.', 'peak-test');
+	check('link: selected paragraph writes compatible block anchor', anchoredParagraph.ok && anchoredParagraph.anchor === 'peak-test' && anchoredParagraph.nextText === 'A **focused** [[Note|reference]] paragraph. ^peak-test');
+	const anchoredList = planEmbedSelectionAnchor('- [[Note|Reference]]', 'Reference', 'peak-list');
+	check('link: selected list item writes compatible block anchor', anchoredList.ok && anchoredList.nextText === '- [[Note|Reference]] ^peak-list');
+	const reusedAnchor = planEmbedSelectionAnchor('> Persisted quote ^peak-old', 'Persisted quote', 'peak-new');
+	check('link: selected existing anchor is reused', reusedAnchor.ok && reusedAnchor.reused && reusedAnchor.anchor === 'peak-old');
+	const ambiguousAnchor = planEmbedSelectionAnchor('Same\n\nSame', 'Same', 'peak-ambiguous');
+	check('link: repeated selected text fails closed', !ambiguousAnchor.ok && ambiguousAnchor.reason === 'selection-ambiguous');
+	check('link: visible-text normalization preserves rendered link label', normalizeVisibleText('> [[Note|Label]]') === 'Label');
 	const targets = internalTargets(source);
 	check('link: internal targets distinct', targets.includes('Note A') && targets.includes('diagram.canvas') && !targets.includes('pic.png'));
 

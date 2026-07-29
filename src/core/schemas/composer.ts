@@ -235,6 +235,12 @@ export const ComposerTextPatchPayloadSchema = z.object({
 });
 export type ComposerTextPatchPayload = z.infer<typeof ComposerTextPatchPayloadSchema>;
 
+/** A read-only model explanation. It never carries a writeback payload. */
+export const ComposerAnalysisPayloadSchema = z.object({
+	content: z.string(),
+});
+export type ComposerAnalysisPayload = z.infer<typeof ComposerAnalysisPayloadSchema>;
+
 // ── WP8: native object (Base / Canvas / Excalidraw) file patches ─────────────
 
 /** The three native file formats the composer patches through a dedicated adapter. */

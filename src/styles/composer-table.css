@@ -48,26 +48,6 @@
 	padding-top: 50px;
 }
 
-@container (max-width: 720px) {
-	.peak-composer-root .pk-table-toolbar button {
-		width: 28px !important;
-		min-width: 28px !important;
-		max-width: 28px !important;
-		padding: 0 !important;
-	}
-	.peak-composer-root .pk-table-toolbar .pk-table-tool__label {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
-}
-
 .peak-composer-root .pk-table-toolbar {
 	position: absolute;
 	top: 4px;
@@ -75,11 +55,11 @@
 	z-index: 4;
 	display: flex;
 	flex-wrap: nowrap;
-	gap: 4px;
+	gap: 3px;
 	width: fit-content;
 	max-width: 100%;
 	overflow: visible;
-	padding: 4px 6px;
+	padding: 4px 5px;
 	border: 1px solid var(--pkc-paper-border);
 	border-radius: var(--pk-radius-lg, 12px);
 	background: var(--pktbl-toolbar-bg);
@@ -99,16 +79,19 @@
 	transform: translateY(0);
 }
 
-.peak-composer-root .pk-table-toolbar button {
+.peak-composer-root .pk-table-tool__button {
 	display: inline-flex;
 	flex: 0 0 auto;
 	align-items: center;
 	justify-content: center;
-	gap: 4px !important;
+	gap: 0 !important;
+	width: 28px !important;
+	min-width: 28px !important;
+	max-width: 28px !important;
 	height: 28px !important;
 	min-height: 28px !important;
 	max-height: 28px !important;
-	padding: 0 7px !important;
+	padding: 0 !important;
 	border: 1px solid transparent;
 	border-radius: var(--pk-radius-md, 8px);
 	background: transparent;
@@ -117,6 +100,18 @@
 	font-weight: 500;
 	cursor: pointer;
 	white-space: nowrap;
+}
+
+.peak-composer-root .pk-table-tool__label {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
 }
 
 .peak-composer-root .pk-table-toolbar__a11y-label {
@@ -208,18 +203,18 @@
 	visibility: hidden;
 }
 
-.peak-composer-root .pk-table-toolbar button:hover:not(:disabled) {
+.peak-composer-root .pk-table-tool__button:hover:not(:disabled) {
 	border-color: transparent;
 	background: var(--pk-accent-tint, var(--pktbl-active-bg));
 	color: var(--pktbl-active-text);
 }
 
-.peak-composer-root .pk-table-toolbar button:disabled {
+.peak-composer-root .pk-table-tool__button:disabled {
 	opacity: 0.45;
 	cursor: not-allowed;
 }
 
-.peak-composer-root .pk-table-toolbar button.is-active {
+.peak-composer-root .pk-table-tool__button.is-active {
 	color: var(--pktbl-active-text);
 	background: var(--pktbl-active-bg);
 	box-shadow: inset 0 0 0 1px var(--pktbl-active-ring);

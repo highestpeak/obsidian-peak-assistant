@@ -19,6 +19,7 @@ import {
 	parseComposerDocument,
 	partitionSourceRange,
 	applyMarkToSelection,
+	removeInlineMarkWrapper,
 	pasteUrlIntoSelection,
 	projectSourceVisualParts,
 } from '@/service/composer';
@@ -172,6 +173,20 @@ function testMarkAware(): void {
 	check('absorption merges into one bold', out.includes('**boldy**'), out);
 }
 
+function testDirectTokenRemoval(): void {
+	const cases: Array<{ source: string; mark: 'bold' | 'underline' | 'text-color' | 'highlight'; expected: string }> = [
+		{ source: '**strong**', mark: 'bold', expected: 'strong' },
+		{ source: '<u>under</u>', mark: 'underline', expected: 'under' },
+		{ source: '<span style="color: #b42318">red</span>', mark: 'text-color', expected: 'red' },
+		{ source: '==important==', mark: 'highlight', expected: 'important' },
+	];
+	for (const item of cases) {
+		const op = removeInlineMarkWrapper(item.source, item.mark, { from: 0, to: item.source.length });
+		const next = op ? applyOperations(item.source, [op]) : null;
+		check(`direct token removal: ${item.mark}`, next === item.expected, String(next));
+	}
+}
+
 function testOverlappingRichMarksStayRendered(): void {
 	const source =
 		'Alpha <mark style="background: #dff4e8">green middle</mark> omega tail';
@@ -271,6 +286,7 @@ testScopes();
 testCrossStructureFormatting();
 testColorAcrossCells();
 testMarkAware();
+testDirectTokenRemoval();
 testOverlappingRichMarksStayRendered();
 testLinkAcrossStyledRunsStayRendered();
 testCodeGuard();

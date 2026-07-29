@@ -41,6 +41,8 @@ import type { ComposerCandidate } from './transaction';
 
 /** Streaming textual candidate card (inline text patch review). */
 export const COMPOSER_STREAMING_TEXT_RENDERER_ID: ComposerRendererId = 'composer.renderer.streaming-text';
+/** Read-only analysis result: streamed narrative, no writeback adapter. */
+export const COMPOSER_ANALYSIS_RENDERER_ID: ComposerRendererId = 'composer.renderer.analysis';
 
 /** Text patch writeback: replaces one block/unit source range atomically. */
 export const COMPOSER_TEXT_PATCH_WRITEBACK_ID: ComposerWritebackAdapterId = 'composer.writeback.text-patch';

@@ -23,6 +23,7 @@ import type {
 	ComposerCapabilityProjectionPort,
 	ComposerDocumentSnapshot,
 	ComposerModelSelectionPort,
+	ComposerNativeEmbedRendererPort,
 	ComposerStateSource,
 	ComposerTransactionConfig,
 	DocumentComposerState,
@@ -32,6 +33,7 @@ import {
 	ComposerSourceRevisionService,
 	type ComposerCommentStore,
 	type ComposerBlockDraftGenerationPort,
+	type ComposerEmbedSelectionAnchorPort,
 	type ComposerFileEvent,
 	type ComposerFileEventsPort,
 	type ComposerLinkMetadataPort,
@@ -76,6 +78,10 @@ export interface ComposerEditingRuntime {
 	imageCoordinator?: ImageCapabilityCoordinator;
 	/** Native preview loader for Base/Canvas/Excalidraw embeds. */
 	nativePreviewPort?: ComposerNativePreviewPort;
+	/** App-owned renderer for native Obsidian embeds. */
+	nativeEmbedRenderer?: ComposerNativeEmbedRendererPort;
+	/** App-owned writer for persisted Markdown embed selection anchors. */
+	embedSelectionAnchorPort?: ComposerEmbedSelectionAnchorPort;
 	/**
 	 * App-owned preview URI resolver for image rendering. Keeps raw Markdown paths
 	 * decoupled from view-specific `obsidian` resource URIs.

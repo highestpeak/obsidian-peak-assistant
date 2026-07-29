@@ -169,6 +169,31 @@ export interface ComposerChromeConfig {
 		brokenTitle: string;
 		fixLabel: string;
 		pathLabel: string;
+		explainRelation: string;
+		syncTargetPoints: string;
+		repairLink: string;
+		explainRelationInstruction: string;
+		syncTargetPointsInstruction: string;
+		 repairLinkInstruction: string;
+		previewEmbed: string;
+		previewEmbedTitle: string;
+	};
+	inlineStyle: {
+		removeBold: string;
+		removeItalic: string;
+		removeUnderline: string;
+		removeStrikethrough: string;
+		removeTextColor: string;
+		removeHighlight: string;
+		 polishSelection: string;
+		 suggestStyle: string;
+		 suggestBoldInstruction: string;
+		 suggestItalicInstruction: string;
+		 suggestUnderlineInstruction: string;
+		 suggestStrikethroughInstruction: string;
+		 suggestTextColorInstruction: string;
+		 suggestHighlightInstruction: string;
+		unavailable: string;
 	};
 	comment: {
 		railBreakpointPx: number;
@@ -410,6 +435,31 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 			brokenTitle: '链接未解析',
 			fixLabel: '修复建议',
 			pathLabel: '路径',
+			explainRelation: '解释引用关系',
+			syncTargetPoints: '同步目标要点',
+			repairLink: '修复此链接',
+			explainRelationInstruction: 'Clarify the relationship between this wikilink and its surrounding statement. Preserve the existing link token and unrelated text; return the complete block source.',
+			syncTargetPointsInstruction: 'Synchronize the most relevant target-note key points into this local statement. Keep the existing wikilink, add only concise grounded context, and return the complete block source.',
+			repairLinkInstruction: 'Repair this unresolved link using the available suggestion or the closest intended vault target. Preserve unrelated text and return the complete block source.',
+			previewEmbed: '预览内容',
+			previewEmbedTitle: '将此链接切换为嵌入预览',
+		},
+		inlineStyle: {
+			removeBold: '取消加粗',
+			removeItalic: '取消斜体',
+			removeUnderline: '取消下划线',
+			removeStrikethrough: '取消删除线',
+			removeTextColor: '移除文字色',
+			removeHighlight: '移除标记',
+			polishSelection: '润色这个片段',
+			suggestStyle: 'AI 样式建议',
+			suggestBoldInstruction: '评估这处加粗是否真正承载关键结论；保留必要强调，或给出更清晰的强调位置。返回可审阅的改写。',
+			suggestItalicInstruction: '评估这处斜体是否适合作为补充语气或术语强调；保留必要强调，或给出更清晰的改写。返回可审阅的改写。',
+			suggestUnderlineInstruction: '评估这处下划线是否表达可执行行动；必要时改成更明确的行动表述或 checklist。返回可审阅的改写。',
+			suggestStrikethroughInstruction: '判断这处删除线是否应保留为历史结论；必要时改写为清晰的已废弃说明。返回可审阅的改写。',
+			suggestTextColorInstruction: '评估这处文字色是否有明确语义；保留必要颜色，或改为更一致的强调方式。返回可审阅的改写。',
+			suggestHighlightInstruction: '评估这处标记是否值得保留为关键结论；保留必要重点，或建议更准确的强调范围。返回可审阅的改写。',
+			unavailable: '编辑运行时未接入',
 		},
 		comment: {
 			railBreakpointPx: 560,

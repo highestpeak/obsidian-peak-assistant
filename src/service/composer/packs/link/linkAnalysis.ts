@@ -189,6 +189,22 @@ export function embedToLink(embedRaw: string): string {
 	return embedRaw.replace(/^!\[\[/, '[[');
 }
 
+/** Turn a plain vault link `[[target]]` into the corresponding inline embed. */
+export function linkToEmbed(linkRaw: string): string {
+	return linkRaw.replace(/^\[\[/, '![[');
+}
+
+/** Replace an embed's heading anchor without losing its alias/display segment. */
+export function setEmbedAnchor(embedRaw: string, anchor: string): string | null {
+	const match = embedRaw.trim().match(/^!\[\[([\s\S]+)\]\]$/);
+	if (!match) return null;
+	const [targetAndAnchor, ...display] = match[1].split('|');
+	const target = targetAndAnchor.replace(/#.*/, '').trim();
+	if (!target) return null;
+	const normalizedAnchor = anchor.trim().replace(/^#/, '');
+	return `![[${target}${normalizedAnchor ? `#${normalizedAnchor}` : ''}${display.length > 0 ? `|${display.join('|')}` : ''}]]`;
+}
+
 /** Whether a wikilink target already carries a heading/block anchor. */
 export function hasAnchor(link: DetectedLink): boolean {
 	return typeof link.anchor === 'string' && link.anchor.length > 0;

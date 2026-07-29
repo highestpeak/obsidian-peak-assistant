@@ -33,6 +33,8 @@ export interface ImageLayoutConfig {
 	defaultGap: number;
 	/** Grid / masonry column count. */
 	defaultColumns: number;
+	/** Reading-view width of the whole generated image composition. */
+	readingViewWidthPercent: number;
 }
 
 export interface ImageConverterConfig {
@@ -67,6 +69,7 @@ export const DEFAULT_IMAGE_DOMAIN_CONFIG: ImageDomainConfig = {
 		defaultMode: 'grid',
 		defaultGap: 8,
 		defaultColumns: 3,
+		readingViewWidthPercent: 50,
 	},
 	converter: {
 		defaultQuality: 0.9,

@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Search report workspace · UX review and interactive mock</title>
+  <link rel="stylesheet" href="../ai-search-unified-modes-2026-07-28/styles.css">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="report-head review-head">
+      <div class="report-kicker">Peak Assistant · Design only · Production unchanged</div>
+      <div class="report-title-row">
+        <div>
+          <h1>AI Search 不缺步骤，缺的是可信的研究—计划—报告工作区</h1>
+          <p>
+            保留分章节并行生成，取消固定的 mission-role 报告模板；让结构来自当前问题与证据，
+            让 Report 成为生成后的主工作区，让 Sources 直接复用 Vault Search 的 Result Browser。
+          </p>
+        </div>
+        <button class="quiet-button" id="reset-demo" type="button">Reset mock</button>
+      </div>
+      <div class="reading-meta" aria-label="阅读信息">
+        <span>录像：51.37 秒</span>
+        <span>证据：生产源码 + simulator + 既有设计</span>
+        <span>预计阅读：8 分钟</span>
+      </div>
+      <nav class="report-links review-links" aria-label="报告导航">
+        <a href="#verdict">核心判断</a>
+        <a href="#recording">录像证据</a>
+        <a href="#planner">动态结构</a>
+        <a href="#prototype">可交互 mock</a>
+        <a href="#boundary">复用边界</a>
+        <a href="../../superpowers/specs/2026-07-29-ai-search-report-workspace-ux-design.md">完整规格</a>
+      </nav>
+    </header>
+
+    <main>
+      <section id="verdict" class="report-section">
+        <div class="section-heading">
+          <div>
+            <span class="section-number">01</span>
+            <h2>核心判断</h2>
+          </div>
+          <span class="status-pill">Review-ready</span>
+        </div>
+
+        <div class="verdict-callout">
+          <div class="verdict-mark" aria-hidden="true">✓</div>
+          <div>
+            <strong>并行生成没有问题，固定章节有问题。</strong>
+            <p>
+              当前的 `Synthesis required` 与 `Action Plan required` 来自硬编码规则，不是这次问题自然需要的答案结构。
+              章节应该回答本次问题的子问题；contradiction、risk、roadmap 等只作为按需分析 lens。
+            </p>
+          </div>
+        </div>
+
+        <div class="judgment-grid">
+          <article>
+            <span class="judgment-index">A</span>
+            <h3>入口只保留一种 history 心智</h3>
+            <p>删除空态里的 Recent searches 重复层；用 `Start from current context` 与 `Continue your analysis` 承接开始和恢复。</p>
+          </article>
+          <article>
+            <span class="judgment-index">B</span>
+            <h3>Activity 负责信任，不负责占据主舞台</h3>
+            <p>统计值必须来自真实 tool result。Generate 后立即进入 Report；Activity 退到可展开的次级视图。</p>
+          </article>
+          <article>
+            <span class="judgment-index">C</span>
+            <h3>Sources 复用同一个 Result Browser</h3>
+            <p>List / Tree / Graph、density、scope 与 layout 都沿用 Vault Search；AI relationship map 只增加语义层，不复制外壳。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="recording" class="report-section">
+        <div class="section-heading">
+          <div>
+            <span class="section-number">02</span>
+            <h2>录像证据与问题归类</h2>
+          </div>
+          <span class="status-pill neutral">Source-first review</span>
+        </div>
+
+        <div class="evidence-grid">
+          <figure class="evidence-card">
+            <img src="./evidence/01-entry.jpg" alt="录像 00:00，AI Search 空态同时显示 Recent searches、Suggested for you 与 Recent">
+            <figcaption>
+              <span>00:00</span>
+              <strong>入口重复</strong>
+              <p>Recent searches、Suggested for you 与 Recent 同屏；还有未解析变量和中英混排。</p>
+            </figcaption>
+          </figure>
+          <figure class="evidence-card">
+            <img src="./evidence/02-plan.jpg" alt="录像 00:06，活动日志显示零文件零字符但计划引用六个来源">
+            <figcaption>
+              <span>00:06</span>
+              <strong>数据自相矛盾</strong>
+              <p>0 folders / files / chars / sources selected，却立即出现每节 6 sources 与三节计划。</p>
+            </figcaption>
+          </figure>
+          <figure class="evidence-card">
+            <img src="./evidence/03-ime.jpg" alt="录像 00:25，中文输入法候选框覆盖在 Enter 添加 insight 输入框上">
+            <figcaption>
+              <span>00:25</span>
+              <strong>IME 没有提交边界</strong>
+              <p>候选确认与 Enter-to-add 共用一个 keydown；缺少 composition guard 和明确 Apply 动作。</p>
+            </figcaption>
+          </figure>
+          <figure class="evidence-card">
+            <img src="./evidence/04-report.jpg" alt="录像 00:35，报告三个章节输出相同的短段落">
+            <figcaption>
+              <span>00:35</span>
+              <strong>报告没有验证富内容</strong>
+              <p>章节内容重复且很短；没有表格、图、图表、链接、引用或长内容导航。</p>
+            </figcaption>
+          </figure>
+          <figure class="evidence-card">
+            <img src="./evidence/05-sources.jpg" alt="录像 00:46，Sources 使用独立的 List 和 Graph 切换">
+            <figcaption>
+              <span>00:46</span>
+              <strong>Sources 又造一套浏览器</strong>
+              <p>只有 List / Graph，没有 Vault Search 已有的 Tree、density、graph presets 与 semantic controls。</p>
+            </figcaption>
+          </figure>
+        </div>
+
+        <div class="issue-lanes" aria-label="问题归类">
+          <article>
+            <h3>发现与恢复</h3>
+            <ul>
+              <li>不再声称 “Suggested for you”</li>
+              <li>只留一个可重开的分析历史</li>
+              <li>所有 context variable 展示前必须解析</li>
+            </ul>
+          </article>
+          <article>
+            <h3>过程与信任</h3>
+            <ul>
+              <li>pending 用破折号，不冒充 0</li>
+              <li>files considered / read / cited 分开</li>
+              <li>真实时钟与 simulator profile 分开</li>
+            </ul>
+          </article>
+          <article>
+            <h3>计划与生成</h3>
+            <ul>
+              <li>章节来自 answer contract</li>
+              <li>指令用显式 Apply，支持多行与 IME</li>
+              <li>生成后自动进入 Report</li>
+            </ul>
+          </article>
+          <article>
+            <h3>报告与来源</h3>
+            <ul>
+              <li>每节使用最合适的内容格式</li>
+              <li>长文有可见 outline 与引用</li>
+              <li>Sources 统一为 Result Browser</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section id="planner" class="report-section">
+        <div class="section-heading">
+          <div>
+            <span class="section-number">03</span>
+            <h2>报告结构不再预设，改为动态 answer plan</h2>
+          </div>
+          <span class="status-pill neutral">Decision</span>
+        </div>
+
+        <div class="planner-flow" aria-label="动态 answer planner 流程">
+          <article>
+            <span>1</span>
+            <strong>问题与输出意图</strong>
+            <small>解释、比较、诊断、时间线、决策或行动</small>
+          </article>
+          <i aria-hidden="true">→</i>
+          <article>
+            <span>2</span>
+            <strong>Answer contract</strong>
+            <small>要回答的子问题、scope、约束与期望载体</small>
+          </article>
+          <i aria-hidden="true">→</i>
+          <article>
+            <span>3</span>
+            <strong>证据覆盖</strong>
+            <small>已回答、矛盾、缺失、需要澄清</small>
+          </article>
+          <i aria-hidden="true">→</i>
+          <article>
+            <span>4</span>
+            <strong>动态章节与格式</strong>
+            <small>只保留有独立问题和足够证据的块</small>
+          </article>
+          <i aria-hidden="true">→</i>
+          <article>
+            <span>5</span>
+            <strong>依赖与并行</strong>
+            <small>独立章节并行，跨章节 summary 最后生成</small>
+          </article>
+        </div>
+
+        <div class="planner-notes">
+          <article>
+            <h3>仍然保留</h3>
+            <div class="token-row">
+              <span>并行 section generation</span>
+              <span>每节独立重试</span>
+              <span>证据路径</span>
+              <span>用户重排与删改</span>
+            </div>
+          </article>
+          <article>
+            <h3>降级为内部可选 lens</h3>
+            <div class="token-row muted">
+              <span>Synthesis</span>
+              <span>Contradictions</span>
+              <span>Trade-off</span>
+              <span>Risk</span>
+              <span>Roadmap</span>
+              <span>Blind spots</span>
+            </div>
+          </article>
+          <article>
+            <h3>不再全局强制</h3>
+            <div class="token-row danger">
+              <span>Action plan required</span>
+              <span>3–6 sections</span>
+              <span>Executive summary always</span>
+              <span>Mermaid always</span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="prototype" class="report-section prototype-section">
+        <div class="section-heading">
+          <div>
+            <span class="section-number">04</span>
+            <h2>完整流程 · 可交互 mock</h2>
+          </div>
+          <span class="status-pill">Click through</span>
+        </div>
+
+        <div class="checkpoint-bar" role="tablist" aria-label="Mock checkpoints">
+          <button class="checkpoint active" type="button" data-screen="landing">1 · 入口</button>
+          <button class="checkpoint" type="button" data-screen="plan">2 · 动态计划</button>
+          <button class="checkpoint" type="button" data-screen="generating">3 · 生成中报告</button>
+          <button class="checkpoint" type="button" data-screen="report">4 · 完整报告</button>
+          <button class="checkpoint" type="button" data-screen="sources">5 · Sources</button>
+        </div>
+
+        <div class="desktop-stage review-stage">
+          <div class="editor-ghost" aria-hidden="true">
+            <span class="ghost-line long"></span>
+            <span class="ghost-line medium"></span>
+            <span class="ghost-line short"></span>
+            <span class="ghost-line long"></span>
+          </div>
+
+          <div class="search-modal report-workspace-modal" id="search-modal">
+            <header class="surface-switcher" aria-label="Search surface">
+              <button class="surface-button" id="vault-search-tab" type="button">Vault Search</button>
+              <div class="ai-mode-anchor">
+                <button class="surface-button active" id="ai-mode-trigger" type="button" aria-haspopup="listbox">
+                  <span>AI Search</span>
+                  <span class="chevron" aria-hidden="true"></span>
+                </button>
+              </div>
+            </header>
+            <div class="mock-run-bar" id="mock-run-bar" hidden></div>
+            <div class="modal-body report-modal-body" id="modal-body"></div>
+            <footer class="modal-footer workspace-footer" id="modal-footer"></footer>
+          </div>
+        </div>
+
+        <div class="prototype-caption">
+          <strong>Mock 重点：</strong>
+          <span>Generate 后立即把 Report 设为 active；已完成章节可读，未完成章节原位 streaming。Sources 内的 List / Tree / Graph 共用同一工具条。</span>
+        </div>
+      </section>
+
+      <section id="boundary" class="report-section">
+        <div class="section-heading">
+          <div>
+            <span class="section-number">05</span>
+            <h2>复用边界与 simulator 合同</h2>
+          </div>
+          <span class="status-pill neutral">Implementation boundary</span>
+        </div>
+
+        <div class="boundary-grid">
+          <article>
+            <h3>直接复用</h3>
+            <ul>
+              <li>Result Browser 的 List / Tree / Graph</li>
+              <li>Compact / Detailed density</li>
+              <li>Constellation / Flow / Folder tree / Orbit</li>
+              <li>Streamdown rich report renderer</li>
+            </ul>
+          </article>
+          <article>
+            <h3>适配，不合并事实源</h3>
+            <ul>
+              <li>V2Source → Result Browser projection</li>
+              <li>Vault graph → deterministic relations</li>
+              <li>AI map → extracted / inferred relations</li>
+              <li>Report citations → source inspector</li>
+            </ul>
+          </article>
+          <article>
+            <h3>Simulator 必须补全</h3>
+            <ul>
+              <li>`test-fast` 与 `review-realistic` 分离</li>
+              <li>统计来自真实 tool outputs</li>
+              <li>章节内容、长度与格式各不相同</li>
+              <li>覆盖 AI relationship map 生成态</li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="truth-boundary">
+          <div>
+            <span class="truth-label vault">Vault graph</span>
+            <strong>Wikilink、folder、indexed semantic edge</strong>
+            <p>确定性或预计算关系。可以用 local / 1-hop / 2-hop、Folder tree 与 Orbit。</p>
+          </div>
+          <div class="truth-divider" aria-hidden="true">≠</div>
+          <div>
+            <span class="truth-label ai">AI relationship map</span>
+            <strong>概念、主张、支持、冲突与推断</strong>
+            <p>必须带 provenance、evidence 与 review state；可以共享画布和 layout，但不能伪装成 Vault link。</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="report-footer">
+      AI Search report workspace · UX review + interactive design mock · 2026-07-29
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js"></script>
+</body>
+</html>

@@ -4,6 +4,7 @@ import type {
 	ComposerCapabilityProjectionPort,
 	ComposerDocumentSnapshot,
 	ComposerModelSelectionPort,
+	ComposerNativeEmbedRendererPort,
 	ComposerTransactionConfig,
 } from '@/core/composer';
 import { stubComposerCapabilityProjection } from '@/core/composer';
@@ -11,6 +12,7 @@ import type {
 	ComposerCommentStore,
 	ComposerBlockDraftGenerationPort,
 	ComposerDocumentSession,
+	ComposerEmbedSelectionAnchorPort,
 	ComposerLinkMetadataPort,
 	ComposerNativePreviewPort,
 	ComposerTransactionHub,
@@ -59,6 +61,10 @@ export interface ComposerChromeRuntime {
 	imageCoordinator?: ImageCapabilityCoordinator;
 	/** Native preview loader for `.base`, `.canvas` and `.excalidraw.md` embeds. */
 	nativePreviewPort?: ComposerNativePreviewPort;
+	/** Host-owned renderer for real Obsidian `![[...]]` previews. */
+	nativeEmbedRenderer?: ComposerNativeEmbedRendererPort;
+	/** Host-owned writer for persisted Markdown embed selection anchors. */
+	embedSelectionAnchorPort?: ComposerEmbedSelectionAnchorPort;
 	/**
 	 * App-owned preview URI resolver for image rendering, bound by app runtime via
 	 * `DocumentComposerRuntime.composeEditing`. UI never resolves Obsidian paths.

@@ -37,6 +37,7 @@ export type ComposerWritebackAdapterId = string & { readonly __brand?: 'Composer
  * dispatch on this kind (plus renderer/adapter IDs) — never on action labels.
  */
 export type ComposerResultKind =
+	| 'analysis'
 	| 'text-patch'
 	| 'block-insertion'
 	| 'block-replacement'

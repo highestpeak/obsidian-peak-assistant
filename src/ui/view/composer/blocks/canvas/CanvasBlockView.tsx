@@ -1,10 +1,9 @@
 /**
  * Peak Composer — `.canvas` (JSON Canvas) read-only preview (WP8, §10.12).
  *
- * Renders a data-driven structural summary of the canvas — node counts by type,
- * a labelled node list and the edge list — parsed with the id-addressed canvas
- * adapter. Not a full pan/zoom canvas (out of scope for the read-only host) but
- * a real parse of the JSON, never a placeholder image.
+ * Renders the native Obsidian Canvas embed first. The data-driven SVG scene
+ * remains as an explicit fallback when the native renderer or Canvas view is
+ * unavailable, so a valid JSON Canvas never degrades to a placeholder image.
  */
 
 import * as React from 'react';
@@ -14,6 +13,7 @@ import { parseCanvasModel, type CanvasModel, type CanvasNode } from '@/service/c
 import { useComposerChrome } from '../../chrome/ComposerChromeContext';
 import {
 	NativeBlockFrame,
+	NativeEmbedHost,
 	NativePreviewStatusView,
 	NativeSourceView,
 	useNativeStrings,
@@ -31,7 +31,8 @@ export function CanvasBlockView({
 	onReload?: () => void;
 }): React.ReactElement {
 	const strings = useNativeStrings();
-	const { onOpenLink } = useComposerChrome();
+	const chrome = useComposerChrome();
+	const { onOpenLink } = chrome;
 	const [mode, setMode] = React.useState<NativeViewMode>('preview');
 	const loaded = nativePreview?.status === 'loaded' ? nativePreview : null;
 	const raw = loaded?.text ?? block.renderModel.raw;
@@ -44,6 +45,7 @@ export function CanvasBlockView({
 	}, [raw]);
 	const sourceFrom = loaded ? undefined : block.source.from;
 	const target = nativeTargetOf(nativePreview);
+	const fallback = model ? <CanvasScene model={model} /> : <div className="pk-native-empty">{strings.canvasInvalid}</div>;
 
 	return (
 		<NativeBlockFrame
@@ -64,11 +66,16 @@ export function CanvasBlockView({
 				<NativeSourceView raw={raw} blockId={block.blockId} sourceFrom={sourceFrom} nativeTarget={loaded?.targetPath} />
 			) : nativePreview && nativePreview.status !== 'loaded' ? (
 				<NativePreviewStatusView state={nativePreview} strings={strings} onReload={onReload} />
-			) : model ? (
-				<CanvasScene model={model} />
-			) : (
-				<div className="pk-native-empty">{strings.canvasInvalid}</div>
-			)}
+			) : loaded && target && chrome.snapshot ? (
+				<NativeEmbedHost
+					renderer={chrome.runtime.nativeEmbedRenderer}
+					sourcePath={chrome.snapshot.filePath}
+					target={target}
+					kind="canvas"
+					markdown={`![[${target}]]`}
+					fallback={fallback}
+				/>
+			) : fallback}
 		</NativeBlockFrame>
 	);
 }

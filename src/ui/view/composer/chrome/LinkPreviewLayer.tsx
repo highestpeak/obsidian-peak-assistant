@@ -1,7 +1,9 @@
 import * as React from 'react';
-import { ExternalLink, FileText, TriangleAlert } from 'lucide-react';
+import { ExternalLink, FileText, Sparkles, TriangleAlert } from 'lucide-react';
 import { Button, Chip } from '@/ui/components/primitives';
-import { buildLinkPreview, type ComposerLinkPreview } from '@/service/composer';
+import type { ComposerContextSnapshot } from '@/core/composer';
+import { LINK_TIDY_CAPABILITY_ID } from '@/service/composer';
+import { analyzeLinks, buildLinkPreview, linkToEmbed, type ComposerLinkPreview } from '@/service/composer';
 import { useOwnerDocumentListener } from '@/ui/hooks/useOwnerWindow';
 import { useComposerChrome } from './ComposerChromeContext';
 
@@ -19,12 +21,13 @@ export function LinkPreviewLayer({
 }: {
 	containerRef: React.RefObject<HTMLElement | null>;
 }): React.ReactElement | null {
-	const { runtime, config, snapshot, onOpenLink } = useComposerChrome();
+	const { runtime, projection, config, snapshot, onOpenLink } = useComposerChrome();
 	const c = config.chrome.link;
 	const [state, setState] = React.useState<{
 		preview: ComposerLinkPreview;
 		top: number;
 		left: number;
+		blockId: string | null;
 	} | null>(null);
 	const hideTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -36,10 +39,14 @@ export function LinkPreviewLayer({
 			const preview = buildLinkPreview(target, snapshot?.filePath ?? '', runtime.linkPort);
 			const rect = el.getBoundingClientRect();
 			const rootRect = root.getBoundingClientRect();
+			const blockId = el.closest<HTMLElement>('[data-block-id]')?.dataset.blockId ?? null;
 			setState({
 				preview,
-				top: rect.bottom - rootRect.top + root.scrollTop + 6,
+				// Keep transient link UI above its anchor so it never obscures the
+				// block's persistent action row below the text.
+				top: rect.top - rootRect.top + root.scrollTop - 8,
 				left: Math.max(4, rect.left - rootRect.left),
+				blockId,
 			});
 		},
 		[containerRef, runtime.linkPort, snapshot],
@@ -80,6 +87,38 @@ export function LinkPreviewLayer({
 	useOwnerDocumentListener(containerRef, 'mouseover', onOver);
 	useOwnerDocumentListener(containerRef, 'focusin', onFocusIn);
 	React.useEffect(() => () => { if (hideTimer.current) clearTimeout(hideTimer.current); }, []);
+	const invokeLinkAction = (instruction: string) => {
+		if (!snapshot || !state?.blockId) return;
+		const block = snapshot.blocks.find((candidate) => candidate.blockId === state.blockId);
+		if (!block) return;
+		const context: ComposerContextSnapshot = {
+			documentId: snapshot.documentId,
+			revision: snapshot.revision,
+			target: { kind: 'block', blockId: block.blockId },
+			targetSource: snapshot.sourceText.slice(block.source.from, block.source.to),
+		};
+		const action = projection.actionsFor(context, 'block-row').find((candidate) => candidate.capabilityId === LINK_TIDY_CAPABILITY_ID);
+		if (!action || action.disabledReason) return;
+		projection.invoke(action.capabilityId, context, { instruction });
+		setState(null);
+	};
+	const showEmbed = () => {
+		if (!snapshot || !state?.blockId || !runtime.hub || state.preview.kind !== 'vault') return;
+		const block = snapshot.blocks.find((candidate) => candidate.blockId === state.blockId);
+		if (!block) return;
+		const link = analyzeLinks(block.renderModel.raw).find((candidate) =>
+			(candidate.kind === 'internal' || candidate.kind === 'internal-heading') && candidate.target === state.preview.target,
+		);
+		if (!link) return;
+		void runtime.hub.commit({
+			origin: 'direct',
+			label: c.previewEmbed,
+			operations: [{ kind: 'replaceRange', from: block.source.from + link.from, to: block.source.from + link.to, text: linkToEmbed(link.raw) }],
+			target: { kind: 'block', blockId: block.blockId },
+			expectedBlockDelta: 0,
+		});
+		setState(null);
+	};
 
 	if (!state) return null;
 	const p = state.preview;
@@ -88,7 +127,7 @@ export function LinkPreviewLayer({
 			className="pk-link-popover pk-composer-panel"
 			data-chrome="true"
 			role="dialog"
-			style={{ top: state.top, left: state.left }}
+			style={{ top: state.top, left: state.left, transform: 'translateY(-100%)' }}
 			onMouseLeave={scheduleHide}
 			onMouseEnter={cancelHide}
 		>
@@ -108,6 +147,18 @@ export function LinkPreviewLayer({
 					>
 						{c.openVault.replace('{title}', p.title ?? p.target)}
 					</Button>
+					<Button variant="ghost" size="sm" title={c.previewEmbedTitle} onClick={showEmbed}>
+						{c.previewEmbed}
+					</Button>
+					<div className="pk-link-popover__ai-actions">
+						<Button variant="ghost" size="sm" onClick={() => invokeLinkAction(c.explainRelationInstruction)}>
+							<Sparkles size={13} />
+							{c.explainRelation}
+						</Button>
+						<Button variant="ghost" size="sm" onClick={() => invokeLinkAction(c.syncTargetPointsInstruction)}>
+							{c.syncTargetPoints}
+						</Button>
+					</div>
 				</>
 			)}
 			{p.kind === 'external' && (
@@ -144,6 +195,10 @@ export function LinkPreviewLayer({
 							))}
 						</div>
 					)}
+					<Button variant="ghost" size="sm" onClick={() => invokeLinkAction(c.repairLinkInstruction)}>
+						<Sparkles size={13} />
+						{c.repairLink}
+					</Button>
 				</>
 			)}
 		</div>

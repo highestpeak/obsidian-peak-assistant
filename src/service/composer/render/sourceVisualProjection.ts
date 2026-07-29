@@ -1,5 +1,5 @@
 import { parseInlineProjection } from './inlineMathProjection';
-import type { InlineRunStyle } from './inlineRuns';
+import type { InlineMarkRanges, InlineRunStyle } from './inlineRuns';
 
 export interface HiddenSourceRange {
 	from: number;
@@ -24,6 +24,7 @@ export type SourceVisualPart =
 		from: number;
 		to: number;
 		style: InlineRunStyle;
+		markRanges?: InlineMarkRanges;
 		linkTarget?: string;
 		linkKind?: 'wikilink' | 'markdown' | 'bare-url';
 	}
@@ -45,6 +46,7 @@ interface CandidatePart {
 	visibleFrom?: number;
 	visibleTo?: number;
 	style?: InlineRunStyle;
+	markRanges?: InlineMarkRanges;
 	linkTarget?: string;
 	linkKind?: 'wikilink' | 'markdown' | 'bare-url';
 }
@@ -129,6 +131,7 @@ function visibleCandidates(text: string, baseFrom: number, mathMode: 'atom' | 's
 				to: part.run.from + part.run.text.length,
 				text: part.run.text,
 				style: part.run.style,
+				markRanges: part.run.markRanges,
 				linkTarget: part.run.linkTarget,
 				linkKind: part.run.linkKind,
 			});
@@ -213,6 +216,7 @@ function mergeWithHiddenGaps(
 				from: part.from,
 				to: part.to,
 				style: part.style ?? {},
+				...(part.markRanges ? { markRanges: part.markRanges } : {}),
 				linkTarget: part.linkTarget,
 				linkKind: part.linkKind,
 			});

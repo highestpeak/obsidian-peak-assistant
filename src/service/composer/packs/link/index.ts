@@ -3,3 +3,4 @@
  * Framework-neutral link analysis + deterministic transforms. No Obsidian / DOM.
  */
 export * from './linkAnalysis';
+export * from './embedSelectionAnchor';

@@ -23,6 +23,7 @@ import {
 	type ComposerCommentPersistencePort,
 	type ComposerBlockDraftGenerationPort,
 	type ComposerDocumentSession,
+	type ComposerEmbedSelectionAnchorPort,
 	type ComposerImageAttachmentPort,
 	type ComposerImageEditPort,
 	type ComposerImageReferencePort,
@@ -39,6 +40,7 @@ import {
 import {
 	DEFAULT_TRANSACTION_CONFIG,
 	type ComposerModelSelectionPort,
+	type ComposerNativeEmbedRendererPort,
 	type ComposerTransactionConfig,
 } from '@/core/composer';
 import type { FormulaDetailGeneratorPort } from '@/ui/view/composer/blocks/math/formulaDetailStore';
@@ -86,6 +88,10 @@ export interface DocumentComposerRuntimeAdapters {
 	};
 	/** App-owned native preview loader for Markdown embeds targeting native files. */
 	nativePreviewPort?: ComposerNativePreviewPort;
+	/** App-owned renderer for native Obsidian `![[...]]` embeds. */
+	nativeEmbedRenderer?: ComposerNativeEmbedRendererPort;
+	/** App-owned writer for persisted Markdown embed selection anchors. */
+	embedSelectionAnchorPort?: ComposerEmbedSelectionAnchorPort;
 	/** Shared-AI-backed new-block draft generation port, composed at the app layer. */
 	blockDraftGeneration?: ComposerBlockDraftGenerationPort;
 	/** Active-profile models exposed to the Composer Copilot selector. */
@@ -106,6 +112,8 @@ export class DocumentComposerRuntime {
 	private readonly formulaDetailGenerator?: FormulaDetailGeneratorPort;
 	private readonly imagePorts?: DocumentComposerRuntimeAdapters['imagePorts'];
 	private readonly nativePreviewPort?: ComposerNativePreviewPort;
+	private readonly nativeEmbedRenderer?: ComposerNativeEmbedRendererPort;
+	private readonly embedSelectionAnchorPort?: ComposerEmbedSelectionAnchorPort;
 	private readonly blockDraftGeneration?: ComposerBlockDraftGenerationPort;
 	private readonly modelSelection?: ComposerModelSelectionPort;
 
@@ -128,6 +136,8 @@ export class DocumentComposerRuntime {
 		this.formulaDetailGenerator = adapters.formulaDetailGenerator;
 		this.imagePorts = adapters.imagePorts;
 		this.nativePreviewPort = adapters.nativePreviewPort;
+		this.nativeEmbedRenderer = adapters.nativeEmbedRenderer;
+		this.embedSelectionAnchorPort = adapters.embedSelectionAnchorPort;
 		this.blockDraftGeneration = adapters.blockDraftGeneration;
 		this.modelSelection = adapters.modelSelection;
 	}
@@ -207,6 +217,8 @@ export class DocumentComposerRuntime {
 			...(candidateRuntime ? { candidateRuntime } : {}),
 			...(imageCoordinator ? { imageCoordinator } : {}),
 			...(this.nativePreviewPort ? { nativePreviewPort: this.nativePreviewPort } : {}),
+			...(this.nativeEmbedRenderer ? { nativeEmbedRenderer: this.nativeEmbedRenderer } : {}),
+			...(this.embedSelectionAnchorPort ? { embedSelectionAnchorPort: this.embedSelectionAnchorPort } : {}),
 			...(this.blockDraftGeneration ? { blockDraftGeneration: this.blockDraftGeneration } : {}),
 			...(this.modelSelection ? { modelSelection: this.modelSelection } : {}),
 			...(imagePreviewResolver ? { imagePreviewResolver } : {}),

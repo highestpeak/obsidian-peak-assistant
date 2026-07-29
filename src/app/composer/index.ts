@@ -19,6 +19,7 @@ export {
 	ObsidianComposerWriteAdapter,
 } from './ObsidianComposerAdapters';
 export { ObsidianComposerNativeFileAdapter } from './ObsidianNativeFileAdapter';
+export { ObsidianComposerEmbedAnchorAdapter } from './ObsidianComposerEmbedAnchorAdapter';
 export {
 	composeComposerCapabilityRuntime,
 	type ComposerCapabilityRuntimeFactory,

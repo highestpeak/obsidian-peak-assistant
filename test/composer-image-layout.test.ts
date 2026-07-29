@@ -18,6 +18,7 @@ import {
 	parseImageBlock,
 	replacePeakImageLayoutMode,
 	isPeakImageLayoutSource,
+	isPeakImageLayoutPortable,
 	isLayoutBlockSource,
 	planLayoutInsert,
 	planLayoutReplace,
@@ -61,6 +62,7 @@ function testRenderModes(): void {
 		check('all: vault paths in src', html.includes('src="Attachments/a.png"'));
 		check('all: NO base64 data URI', !html.includes('data:image') && !html.includes('base64'));
 		check('all: caption rendered', html.includes('First'));
+		check('all: reading-view composition is centered at 50%', html.includes('width:50%;max-width:100%;margin:0 auto;'));
 	}
 	check('isLayoutBlockSource detects marker', isLayoutBlockSource(grid) && !isLayoutBlockSource('plain text'));
 }
@@ -92,6 +94,7 @@ function testPeakLayoutContract(): void {
 	check('peak layout: decoded paths', parsed?.items[0]?.src === 'a.png' && parsed?.items[3]?.src === 'd.png');
 	check('peak layout: decoded alt/caption', parsed?.items[0]?.alt === 'A' && parsed?.items[1]?.caption === 'Beta');
 	check('peak layout source guard true', isPeakImageLayoutSource(PEAK_FIGURE_LAYOUT));
+	check('legacy fixture is recognized but marked non-portable', !isPeakImageLayoutPortable(PEAK_FIGURE_LAYOUT));
 	check('peak layout source guard rejects mixed html', !isPeakImageLayoutSource('<div class="peak-image-layout" data-layout="hero"><figure><img src="a.png"><figcaption>a</figcaption></figure><figure><img src="b.png"><figcaption>b</figcaption></figure></div>'));
 	check('peak layout source guard rejects missing data-layout', !isPeakImageLayoutSource('<div class="peak-image-layout"><figure><img src="a.png"><figcaption>a</figcaption></figure><figure><img src="b.png"><figcaption>b</figcaption></figure><figure><img src="c.png"><figcaption>c</figcaption></figure><figure><img src="d.png"><figcaption>d</figcaption></figure></div>'));
 	check('peak layout source guard rejects unsafe data URI', !isPeakImageLayoutSource('<div class="peak-image-layout" data-layout="hero"><figure><img src="data:image/png;base64,x"><figcaption>a</figcaption></figure><figure><img src="b.png"><figcaption>b</figcaption></figure><figure><img src="c.png"><figcaption>c</figcaption></figure><figure><img src="d.png"><figcaption>d</figcaption></figure></div>'));
@@ -99,6 +102,7 @@ function testPeakLayoutContract(): void {
 	check('peak layout decodes vault URI before app resolver', parsePeakImageLayout(percentEncoded)?.items[0].src === 'Peak Composer Visual Parity Assets/a.png');
 	const switched = replacePeakImageLayoutMode(PEAK_FIGURE_LAYOUT, 'story');
 	check('peak layout mode writeback keeps strict source contract', switched?.includes('data-layout="story"') === true && parsePeakImageLayout(switched ?? '')?.kind === 'story');
+	check('peak layout mode writeback is self-contained for Reading view', isPeakImageLayoutPortable(switched ?? '') && switched?.includes('width:50%;max-width:100%;margin:0 auto;') === true && switched?.includes('grid-template-columns') === true && switched?.includes('<img src="a.png" alt="A" style=') === true);
 }
 
 function testWikilinkAltAndWidth(): void {

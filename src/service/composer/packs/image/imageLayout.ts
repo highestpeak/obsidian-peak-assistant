@@ -46,6 +46,11 @@ export interface ParsedPeakImageLayout {
 	items: [ParsedPeakLayoutFigure, ParsedPeakLayoutFigure, ParsedPeakLayoutFigure, ParsedPeakLayoutFigure];
 }
 
+/** The source must carry enough geometry for ordinary Markdown Reading view. */
+export function isPeakImageLayoutPortable(source: string): boolean {
+	return /<div\b[^>]*\bclass\s*=\s*(["'])[^"']*\bpeak-image-layout\b[^"']*\1[^>]*\bstyle\s*=/i.test(source);
+}
+
 function decodePeakLayoutText(value: string): string {
 	return value.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 }
@@ -128,15 +133,85 @@ export function parsePeakImageLayout(raw: string): ParsedPeakImageLayout | null 
 	return { kind: layout as PeakImageLayoutMode, items: items as [ParsedPeakLayoutFigure, ParsedPeakLayoutFigure, ParsedPeakLayoutFigure, ParsedPeakLayoutFigure] };
 }
 
-/** Replace only the layout attribute of a verified fixture block. */
-export function replacePeakImageLayoutMode(source: string, mode: PeakImageLayoutMode): string | null {
-	if (!parsePeakImageLayout(source)) return null;
-	return source.replace(/(data-layout\s*=\s*["'])[^"']*(["'])/i, `$1${mode}$2`);
+/**
+ * Replace a verified layout with its portable canonical form. This intentionally
+ * upgrades old class-only fixture blocks on the next user-triggered layout
+ * change, while preserving the class/data hooks Composer needs to reopen it.
+ */
+export function replacePeakImageLayoutMode(
+	source: string,
+	mode: PeakImageLayoutMode,
+	config: ImageLayoutConfig = DEFAULT_LAYOUT,
+): string | null {
+	const parsed = parsePeakImageLayout(source);
+	return parsed ? renderPeakImageLayoutHtml({ ...parsed, kind: mode }, config) : null;
 }
 
 /** Type guard for the current fixture contract. */
 export function isPeakImageLayoutSource(raw: string): boolean {
 	return parsePeakImageLayout(raw) !== null;
+}
+
+/** Render the four-image Peak fixture contract with self-contained layout CSS. */
+export function renderPeakImageLayoutHtml(
+	layout: ParsedPeakImageLayout,
+	config: ImageLayoutConfig = DEFAULT_LAYOUT,
+): string {
+	const containerStyle = peakContainerStyle(layout.kind, config);
+	const figures = layout.items.map((item, index) => peakFigureHtml(item, layout.kind, index));
+	return `<div class="${PEAK_IMAGE_LAYOUT_CLASS}" ${PEAK_IMAGE_LAYOUT_DATA_LAYOUT}="${layout.kind}" style="${containerStyle}">${figures.join('')}</div>`;
+}
+
+/** A whole composition stays readable in ordinary Markdown Reading view. */
+function readingViewFrameStyle(config: ImageLayoutConfig): string {
+	const requested = Math.floor(config.readingViewWidthPercent);
+	const width = Number.isFinite(requested) ? Math.min(100, Math.max(1, requested)) : DEFAULT_LAYOUT.readingViewWidthPercent;
+	return `width:${width}%;max-width:100%;margin:0 auto;`;
+}
+
+function peakContainerStyle(mode: PeakImageLayoutMode, config: ImageLayoutConfig): string {
+	const frame = readingViewFrameStyle(config);
+	if (mode === 'grid') {
+		return `${frame}display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(158px,1fr));gap:8px;padding:6px;`;
+	}
+	if (mode === 'hero') {
+		return `${frame}display:grid;grid-template-columns:minmax(0,1.65fr) minmax(170px,.8fr);grid-template-rows:repeat(3,minmax(104px,1fr));gap:8px;padding:6px;`;
+	}
+	if (mode === 'strip') {
+		return `${frame}display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:minmax(230px,1fr);gap:8px;padding:6px;overflow-x:auto;`;
+	}
+	return `${frame}display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:minmax(220px,1fr) minmax(105px,1fr);gap:8px;padding:6px;`;
+}
+
+function peakFigureHtml(item: ParsedPeakLayoutFigure, mode: PeakImageLayoutMode, index: number): string {
+	const figureStyle = [
+		'position:relative',
+		'overflow:hidden',
+		'min-width:0',
+		'min-height:0',
+		'margin:0',
+		'border-radius:7px',
+		'background:var(--background-secondary,#f5f5f5)',
+		mode === 'hero' && index === 0 ? 'grid-row:1 / 4' : '',
+		mode === 'story' && index === 0 ? 'grid-column:1 / 4' : '',
+	].filter(Boolean).join(';') + ';';
+	const imageStyle = 'display:block;width:100%;height:100%;object-fit:cover;';
+	const captionStyle = [
+		'position:absolute',
+		mode === 'strip' ? 'right:6px;bottom:6px;left:auto;max-height:110px;writing-mode:vertical-rl;' : 'right:7px;bottom:7px;left:7px;',
+		'width:auto',
+		'padding:5px 7px',
+		'border:0',
+		'border-radius:5px',
+		'background:rgba(18,25,36,.7)',
+		'color:#fff',
+		'font-size:.75em',
+		'line-height:normal',
+	].join(';') + ';';
+	const src = escapeAttr(item.src);
+	const alt = escapeAttr(item.alt);
+	const caption = escapeText(item.caption);
+	return `<figure style="${figureStyle}"><img src="${src}" alt="${alt}" style="${imageStyle}" />${caption ? `<figcaption style="${captionStyle}">${caption}</figcaption>` : ''}</figure>`;
 }
 
 /** Escape a string for an HTML attribute value (structural, not i18n). */
@@ -176,23 +251,24 @@ export function renderLayoutHtml(
 	const gap = layout.gap ?? config.defaultGap;
 	const columns = layout.columns ?? config.defaultColumns;
 	const align = layout.alignment ?? 'stretch';
+	const frame = readingViewFrameStyle(config);
 	const imgStyle = 'width:100%;height:auto;display:block;border-radius:4px;';
 	const wrapStyle = 'margin:0;';
 	const figures = layout.items.map((item) => figureHtml(item, imgStyle, wrapStyle));
 
 	if (layout.mode === 'row') {
-		const container = `display:flex;gap:${gap}px;align-items:${cssAlign(align)};`;
+		const container = `${frame}display:flex;gap:${gap}px;align-items:${cssAlign(align)};`;
 		const cells = layout.items.map((item) =>
 			figureHtml(item, imgStyle, 'margin:0;flex:1 1 0;min-width:0;'),
 		);
 		return wrap('row', container, cells);
 	}
 	if (layout.mode === 'grid') {
-		const container = `display:grid;grid-template-columns:repeat(${columns},1fr);gap:${gap}px;align-items:${cssAlign(align)};`;
+		const container = `${frame}display:grid;grid-template-columns:repeat(${columns},1fr);gap:${gap}px;align-items:${cssAlign(align)};`;
 		return wrap('grid', container, figures);
 	}
 	if (layout.mode === 'masonry') {
-		const container = `column-count:${columns};column-gap:${gap}px;`;
+		const container = `${frame}column-count:${columns};column-gap:${gap}px;`;
 		const cells = layout.items.map((item) =>
 			figureHtml(item, imgStyle, `margin:0 0 ${gap}px;break-inside:avoid;`),
 		);
@@ -208,7 +284,7 @@ export function renderLayoutHtml(
 		thumbCells.length > 0
 			? `<div style="display:flex;gap:${gap}px;margin-top:${gap}px;">${thumbCells.join('')}</div>`
 			: '';
-	const container = 'display:block;';
+	const container = `${frame}display:block;`;
 	return `<div class="pk-image-layout" ${LAYOUT_MARKER_ATTR}="hero-thumbs" style="${container}">${heroHtml}${thumbRow}</div>`;
 }
 

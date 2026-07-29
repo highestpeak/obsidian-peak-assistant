@@ -62,11 +62,16 @@ check('table toolbar shell uses the panel radius rung', () => {
 	);
 });
 
-check('table toolbar buttons match the shared 28px action-row rhythm', () => {
+check('table toolbar buttons are compact icon-only controls', () => {
 	expectRule(
 		tableCss,
-		/\.pk-table-toolbar button\s*\{[\s\S]*?height:\s*28px !important;[\s\S]*?min-height:\s*28px !important;[\s\S]*?max-height:\s*28px !important;[\s\S]*?border-radius:\s*var\(--pk-radius-md,\s*8px\);[\s\S]*?background:\s*transparent;[\s\S]*?font-size:\s*var\(--pk-text-xs,\s*11px\);/,
-		'table toolbar controls must share the bottom action-row height and typography',
+		/\.pk-table-tool__button\s*\{[\s\S]*?gap:\s*0 !important;[\s\S]*?width:\s*28px !important;[\s\S]*?min-width:\s*28px !important;[\s\S]*?max-width:\s*28px !important;[\s\S]*?height:\s*28px !important;[\s\S]*?min-height:\s*28px !important;[\s\S]*?max-height:\s*28px !important;[\s\S]*?padding:\s*0 !important;[\s\S]*?border-radius:\s*var\(--pk-radius-md,\s*8px\);/,
+		'table toolbar controls must be fixed 28px icon buttons so labels cannot widen the preview toolbar',
+	);
+	expectRule(
+		tableCss,
+		/\.pk-table-tool__label\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?width:\s*1px;[\s\S]*?height:\s*1px;[\s\S]*?overflow:\s*hidden;[\s\S]*?white-space:\s*nowrap;/,
+		'table toolbar text labels must remain visually hidden while aria-label and tooltip preserve names',
 	);
 });
 

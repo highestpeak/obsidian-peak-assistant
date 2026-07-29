@@ -127,7 +127,7 @@ function classifyKind(node: RootContent, raw: string): ComposerBlockKind {
 		case 'footnoteDefinition':
 			return 'footnote-def';
 		case 'html':
-			return 'html';
+			return isRawHtmlTable(raw) ? 'table' : 'html';
 		case 'code': {
 			const lang = ((node as { lang?: string }).lang ?? '').toLowerCase();
 			if (lang === 'mermaid') return 'mermaid';
@@ -174,6 +174,10 @@ function classifyBareEmbedBlock(raw: string): ComposerBlockKind {
 
 function isBareImage(raw: string): boolean {
 	return /^!\[[^\]]*\]\([^)]+\)$/.test(raw);
+}
+
+function isRawHtmlTable(raw: string): boolean {
+	return /^<table(?:\s|>)/i.test(raw.trim());
 }
 
 // ──────────────────────────────────────────────────────────────────────────

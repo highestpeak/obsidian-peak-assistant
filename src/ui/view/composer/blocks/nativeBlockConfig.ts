@@ -31,6 +31,8 @@ export interface NativeBlockStrings {
 	attachmentLabel: string;
 	explainSource: string;
 	explainSourceInstruction: string;
+	explainMermaid: string;
+	explainMermaidInstruction: string;
 	anchorResolved: string;
 	anchorMissing: string;
 	vaultAttachment: string;
@@ -52,6 +54,18 @@ export interface NativeBlockStrings {
 	/** Embed preview. */
 	embedOpenLabel: string;
 	embedBroken: string;
+	embedAsLink: string;
+	embedCompact: string;
+	embedFull: string;
+	embedSection: string;
+	embedSectionPlaceholder: string;
+	embedApplySection: string;
+	embedPreviewSelection: string;
+	embedSelectionPreview: string;
+	embedReturnToFull: string;
+	embedAnchorNeedsBlock: string;
+	embedAnchorWriting: string;
+	embedAnchorError: string;
 	nativeLoading: string;
 	nativeMissing: string;
 	nativeError: string;
@@ -84,6 +98,8 @@ export const DEFAULT_NATIVE_BLOCK_STRINGS: NativeBlockStrings = {
 	attachmentLabel: '附件',
 	explainSource: '解释源格式',
 	explainSourceInstruction: '解释这段源代码的格式、结构和关键逻辑，不修改原文。',
+	explainMermaid: '解释流程图',
+	explainMermaidInstruction: '解释此流程图的主要路径、节点关系和明确可见的分支缺口，不修改源码。',
 	anchorResolved: '锚点已解析',
 	anchorMissing: '锚点未解析',
 	vaultAttachment: 'Vault 附件',
@@ -101,6 +117,18 @@ export const DEFAULT_NATIVE_BLOCK_STRINGS: NativeBlockStrings = {
 	excalidrawUnsupported: '此 Excalidraw 图当前不可预览',
 	embedOpenLabel: '打开',
 	embedBroken: '嵌入目标缺失',
+	embedAsLink: '显示链接',
+	embedCompact: '收起预览',
+	embedFull: '完整预览',
+	embedSection: '预览章节',
+	embedSectionPlaceholder: '输入标题或锚点',
+	embedApplySection: '应用范围',
+	embedPreviewSelection: '写回并预览选中区域',
+	embedSelectionPreview: '选中区域预览',
+	embedReturnToFull: '返回完整预览',
+	embedAnchorNeedsBlock: '请选择完整的段落、列表项或引用块',
+	embedAnchorWriting: '正在写回锚点…',
+	embedAnchorError: '无法将该选区写回为原笔记中的唯一 Markdown 块',
 	nativeLoading: '正在加载嵌入目标…',
 	nativeMissing: '嵌入目标缺失',
 	nativeError: '嵌入目标读取失败',

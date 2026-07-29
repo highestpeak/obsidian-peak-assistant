@@ -124,6 +124,68 @@
 	background: var(--pkc-native-shell-bg);
 	padding: var(--pk-space-3);
 }
+.peak-composer-root .pk-native-embed-host {
+	min-height: 72px;
+	color: var(--pk-text-secondary);
+}
+.peak-composer-root .pk-native-embed-host[aria-busy='true']::before {
+	content: '';
+	display: block;
+	height: 56px;
+	border-radius: var(--pk-radius-md);
+	background: var(--pk-bg-secondary);
+}
+.peak-composer-root .pk-native-embed-host > :first-child {
+	margin-top: 0;
+}
+.peak-composer-root .pk-native-embed-host > :last-child {
+	margin-bottom: 0;
+}
+.peak-composer-root .pk-native-embed-surface {
+	position: relative;
+	border: 1px solid var(--pkc-native-shell-border);
+	border-radius: var(--pk-radius-lg);
+	background: var(--pkc-native-shell-bg);
+}
+.peak-composer-root .pk-native-embed-surface__actions,
+.peak-composer-root .pk-native-embed-surface__section {
+	display: flex;
+	align-items: center;
+	gap: var(--pk-space-1);
+	padding: var(--pk-space-2) var(--pk-space-3);
+	border-bottom: 1px solid var(--pk-border-soft);
+}
+.peak-composer-root .pk-native-embed-surface__section input {
+	flex: 1;
+	min-width: 140px;
+}
+.peak-composer-root .pk-native-embed-surface__content {
+	position: relative;
+	max-height: 440px;
+	overflow: auto;
+	overscroll-behavior: contain;
+	scrollbar-gutter: stable;
+}
+.peak-composer-root .pk-native-embed-surface[data-expanded] .pk-native-embed-surface__content {
+	max-height: none;
+}
+.peak-composer-root .pk-native-embed-selection-menu {
+	position: fixed;
+	z-index: 52;
+	display: flex;
+	align-items: center;
+	gap: var(--pk-space-2);
+	padding: 3px;
+	border: 1px solid var(--pkc-native-shell-border);
+	border-radius: var(--pk-radius-md);
+	background: var(--pkc-native-shell-bg);
+	box-shadow: var(--pkc-native-shell-shadow);
+}
+.peak-composer-root .pk-native-embed-selection-menu__error {
+	max-width: 220px;
+	color: var(--pk-error-text);
+	font-size: var(--pk-text-xs);
+}
 .peak-composer-root .pk-native-block__source-ref {
 	display: flex;
 	align-items: center;

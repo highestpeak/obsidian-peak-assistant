@@ -7,6 +7,8 @@
 
 import * as React from 'react';
 import type {
+	ComposerNativeEmbedKind,
+	ComposerNativeEmbedRendererPort,
 	ComposerNativePreviewPort,
 	ComposerNativePreviewRequest,
 	ComposerNativePreviewState,
@@ -21,6 +23,67 @@ import {
 
 export type NativeViewMode = 'preview' | 'source';
 export type NativePreviewLoadState = ComposerNativePreviewState | { status: 'loading'; requestedTarget: string };
+
+/**
+ * Host the real Obsidian renderer for a native/embed object. Existing Composer
+ * previews are passed as a fallback so a missing renderer, plugin, or render
+ * error is visible and honest instead of leaving an empty surface.
+ */
+export function NativeEmbedHost({
+	renderer,
+	sourcePath,
+	target,
+	kind,
+	markdown,
+	fallback,
+}: {
+	renderer: ComposerNativeEmbedRendererPort | undefined;
+	sourcePath: string;
+	target: string;
+	kind: ComposerNativeEmbedKind;
+	markdown: string;
+	fallback: React.ReactNode;
+}): React.ReactElement {
+	const hostRef = React.useRef<HTMLDivElement | null>(null);
+	const [failed, setFailed] = React.useState(false);
+	const [ready, setReady] = React.useState(false);
+
+	React.useEffect(() => {
+		const host = hostRef.current;
+		if (!renderer || !host || !sourcePath || !markdown) return;
+		let disposed = false;
+		let dispose: (() => void) | undefined;
+		setFailed(false);
+		setReady(false);
+		void renderer
+			.render({ sourcePath, target, kind, markdown }, host)
+			.then((cleanup) => {
+				if (disposed) cleanup();
+				else {
+					dispose = cleanup;
+					setReady(true);
+				}
+			})
+			.catch(() => {
+				if (!disposed) setFailed(true);
+			});
+		return () => {
+			disposed = true;
+			dispose?.();
+		};
+	}, [renderer, sourcePath, target, kind, markdown]);
+
+	if (!renderer || failed) return <>{fallback}</>;
+	return (
+		<div
+			ref={hostRef}
+			className="pk-native-embed-host markdown-rendered"
+			data-native-target={target}
+			data-native-kind={kind}
+			aria-busy={!ready}
+		/>
+	);
+}
 
 /** Load the native strings once (default until the template resolves). */
 export function useNativeStrings(): NativeBlockStrings {

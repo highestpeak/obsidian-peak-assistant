@@ -11,7 +11,7 @@
 import * as React from 'react';
 import { Code2, Sparkles } from 'lucide-react';
 import type { ComposerBlock } from '@/core/composer';
-import { parseCodeFence } from '@/service/composer';
+import { CODE_EXPLAIN_CAPABILITY_ID, parseCodeFence } from '@/service/composer';
 import { Button } from '@/ui/components/primitives';
 import { useComposerChrome } from '../../chrome/ComposerChromeContext';
 import { NativeBlockFrame, NativeSourceView, useNativeStrings, type NativeViewMode } from '../nativeBlockShared';
@@ -32,7 +32,7 @@ export function CodeBlockView({ block }: { block: ComposerBlock }): React.ReactE
 		target: { kind: 'block' as const, blockId: block.blockId },
 		targetSource: chrome.snapshot?.sourceText.slice(block.source.from, block.source.to) ?? raw,
 	}), [chrome.snapshot, block.blockId, block.source.from, block.source.to, block.source.revision, raw]);
-	const explainAction = chrome.projection.actionsFor(snapshot, 'block-row').find((action) => action.acceptsInstruction && !action.disabledReason);
+	const explainAction = chrome.projection.actionsFor(snapshot, 'block-row').find((action) => action.capabilityId === CODE_EXPLAIN_CAPABILITY_ID && !action.disabledReason);
 	const explain = explainAction
 		? () => chrome.projection.invoke(explainAction.capabilityId, snapshot, { instruction: strings.explainSourceInstruction })
 		: undefined;

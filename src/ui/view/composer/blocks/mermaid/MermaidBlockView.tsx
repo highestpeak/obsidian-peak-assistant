@@ -12,18 +12,37 @@
  */
 
 import * as React from 'react';
-import { Workflow } from 'lucide-react';
+import { Sparkles, Workflow } from 'lucide-react';
 import type { ComposerBlock } from '@/core/composer';
-import { parseMermaidBlock } from '@/service/composer';
+import { MERMAID_EXPLAIN_CAPABILITY_ID, parseMermaidBlock } from '@/service/composer';
+import { Button } from '@/ui/components/primitives';
+import { useComposerChrome } from '../../chrome/ComposerChromeContext';
 import { NativeBlockFrame, NativeSourceView, useNativeStrings, type NativeViewMode } from '../nativeBlockShared';
 
 let mermaidSeq = 0;
 
 export function MermaidBlockView({ block }: { block: ComposerBlock }): React.ReactElement {
 	const strings = useNativeStrings();
+	const chrome = useComposerChrome();
 	const [mode, setMode] = React.useState<NativeViewMode>('preview');
 	const raw = block.renderModel.raw;
 	const source = React.useMemo(() => parseMermaidBlock(raw)?.source ?? '', [raw]);
+	const snapshot = React.useMemo(() => ({
+		documentId: chrome.snapshot?.documentId ?? '',
+		revision: chrome.snapshot?.revision ?? block.source.revision,
+		target: { kind: 'block' as const, blockId: block.blockId },
+		targetSource: chrome.snapshot?.sourceText.slice(block.source.from, block.source.to) ?? raw,
+	}), [chrome.snapshot, block.blockId, block.source.from, block.source.to, block.source.revision, raw]);
+	const explainAction = chrome.projection.actionsFor(snapshot, 'block-row').find((action) => action.capabilityId === MERMAID_EXPLAIN_CAPABILITY_ID && !action.disabledReason);
+	const explain = explainAction
+		? () => chrome.projection.invoke(explainAction.capabilityId, snapshot, { instruction: strings.explainMermaidInstruction })
+		: undefined;
+	const headerAction = (
+		<Button variant="outline" size="sm" disabled={!explain} className="pk-native-code__explain" onClick={explain}>
+			<Sparkles size={13} />
+			<span>{strings.explainMermaid}</span>
+		</Button>
+	);
 
 	if (mode === 'source') {
 		return (
@@ -36,6 +55,7 @@ export function MermaidBlockView({ block }: { block: ComposerBlock }): React.Rea
 				icon={<Workflow size={17} />}
 				kindLabel={strings.mermaidLabel}
 				title={diagramTitle(source, strings.mermaidTitle)}
+				headerAction={headerAction}
 			>
 				<NativeSourceView raw={raw} blockId={block.blockId} sourceFrom={block.source.from} />
 			</NativeBlockFrame>
@@ -51,6 +71,7 @@ export function MermaidBlockView({ block }: { block: ComposerBlock }): React.Rea
 			icon={<Workflow size={17} />}
 			kindLabel={strings.mermaidLabel}
 			title={diagramTitle(source, strings.mermaidTitle)}
+			headerAction={headerAction}
 		>
 			<MermaidRender source={source} raw={raw} blockId={block.blockId} sourceFrom={block.source.from} strings={strings} />
 		</NativeBlockFrame>

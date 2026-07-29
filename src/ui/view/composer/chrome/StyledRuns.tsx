@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { projectInlineMath, type InlineRun, type InlineRunStyle } from '@/service/composer';
+import { ExternalLink } from 'lucide-react';
+import { inlineStyleTokenKinds, projectInlineMath, type InlineRun, type InlineRunStyle } from '@/service/composer';
 import { InlineMathAtom } from './InlineMathAtom';
 
 /**
@@ -30,10 +31,24 @@ export function StyledRuns({ runs, unitId }: { runs: readonly InlineRun[]; unitI
 
 function StyledRun({ run, unitId }: { run: InlineRun; unitId?: string }): React.ReactElement {
 	const { className, style } = styleAttrs(run.style);
+	const tokens = inlineStyleTokenKinds(run.style);
+	const tokenProps = tokens.length > 0
+		? {
+			className: ['pk-composer-inline-style-token', className ?? ''].filter(Boolean).join(' '),
+			'data-inline-style': tokens.join(' '),
+			'data-inline-mark-ranges': JSON.stringify(run.markRanges ?? {}),
+			'data-inline-visible-to': run.from + run.text.length,
+		}
+		: { className };
 	if (run.linkTarget) {
+		const linkClass = [
+			'pk-composer-link',
+			run.linkKind === 'wikilink' ? 'pk-composer-wikilink' : '',
+			tokenProps.className ?? '',
+		].filter(Boolean).join(' ');
 		return (
 			<span
-				className={className ? `pk-composer-link ${className}` : 'pk-composer-link'}
+				className={linkClass}
 				style={style}
 				data-src-text-from={run.from}
 				data-unit-id={unitId}
@@ -42,11 +57,12 @@ function StyledRun({ run, unitId }: { run: InlineRun; unitId?: string }): React.
 				tabIndex={0}
 			>
 				{run.text}
+				{run.linkKind !== 'wikilink' && <ExternalLink className="pk-composer-external-link-icon" size={12} aria-label="外部链接" />}
 			</span>
 		);
 	}
 	return (
-		<span className={className} style={style} data-src-text-from={run.from} data-unit-id={unitId}>
+		<span {...tokenProps} style={style} data-src-text-from={run.from} data-unit-id={unitId}>
 			{run.text}
 		</span>
 	);

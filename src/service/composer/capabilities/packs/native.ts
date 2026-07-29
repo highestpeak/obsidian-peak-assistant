@@ -23,6 +23,7 @@
 
 import { PromptId } from '@/core/types/prompt';
 import {
+	COMPOSER_ANALYSIS_RENDERER_ID,
 	COMPOSER_STREAMING_TEXT_RENDERER_ID,
 	COMPOSER_NATIVE_FILE_PATCH_RENDERER_ID,
 	COMPOSER_NATIVE_FILE_PATCH_WRITEBACK_ID,
@@ -39,13 +40,17 @@ import {
 	ComposerCanvasPatchSchema,
 	ComposerExcalidrawPatchSchema,
 	ComposerInstructionInputSchema,
+	ComposerAnalysisPayloadSchema,
 	ComposerNativeFilePatchPayloadSchema,
 	ComposerNativePatchBundleSchema,
 	ComposerTextPatchPayloadSchema,
 	type ComposerNativeFileFormat,
 	type ComposerNativeFilePatchPayload,
 } from '@/core/schemas/composer';
-import type { ComposerCapabilitiesConfigProvider } from '../capabilityConfig';
+import {
+	DEFAULT_COMPOSER_CAPABILITIES_CONFIG,
+	type ComposerCapabilitiesConfigProvider,
+} from '../capabilityConfig';
 import { parseTypedObjectJson, type ComposerResultMaterializer } from '../resultMaterializers';
 import type { ComposerWritebackAdapter } from '../writebackAdapters';
 import {
@@ -57,7 +62,10 @@ import {
 } from '../../packs/native';
 
 export const MERMAID_EDIT_CAPABILITY_ID = 'composer.mermaid.edit';
+export const MERMAID_EXPLAIN_CAPABILITY_ID = 'composer.mermaid.explain';
+export const MERMAID_FILL_BRANCHES_CAPABILITY_ID = 'composer.mermaid.fill-branches';
 export const CODE_EDIT_CAPABILITY_ID = 'composer.code.edit';
+export const CODE_EXPLAIN_CAPABILITY_ID = 'composer.code.explain';
 export const BASE_EDIT_CAPABILITY_ID = 'composer.base.edit';
 export const CANVAS_EDIT_CAPABILITY_ID = 'composer.canvas.edit';
 export const EXCALIDRAW_EDIT_CAPABILITY_ID = 'composer.excalidraw.edit';
@@ -75,6 +83,75 @@ function nonEmpty(
 function fencedLanguage(source: string): string | undefined {
 	const match = /^\s*(?:```+|~~~+)([A-Za-z0-9_+\-]+)/.exec(source);
 	return match ? match[1] : undefined;
+}
+
+function nativePresentation(id: string): ComposerCapabilityDefinition['presentationFallback'] {
+	const presentation = DEFAULT_COMPOSER_CAPABILITIES_CONFIG.actions[id];
+	if (
+		typeof presentation?.title !== 'string' ||
+		typeof presentation.description !== 'string' ||
+		typeof presentation.lucideIcon !== 'string' ||
+		typeof presentation.historyLabel !== 'string' ||
+		typeof presentation.order !== 'number'
+	) {
+		throw new Error(`missing compiled Composer native presentation for '${id}'`);
+	}
+	return {
+		title: presentation.title,
+		description: presentation.description,
+		lucideIcon: presentation.lucideIcon,
+		historyLabel: presentation.historyLabel,
+		order: presentation.order,
+	};
+}
+
+interface NativeExplainSpec {
+	id: string;
+	kind: 'code' | 'mermaid';
+}
+
+function createNativeExplainDefinition(
+	spec: NativeExplainSpec,
+	config: ComposerCapabilitiesConfigProvider,
+): ComposerCapabilityDefinition {
+	const presentation = nativePresentation(spec.id);
+	return {
+		manifest: {
+			id: spec.id,
+			title: presentation.title,
+			description: presentation.description,
+			inputContract: { kind: 'object', description: 'Frozen native source plus an optional explanation focus' },
+			outputContract: { kind: 'custom', description: 'read-only source explanation' },
+			permissionKind: 'read',
+			costTier: 'fast',
+			backendPolicy: { preferred: 'provider-direct', fallback: [] },
+			skillRef: spec.id,
+			surfaceBinding: ['composer'],
+		},
+		version: '1',
+		owner: 'composer-native',
+		configKey: spec.id,
+		surfaces: ['block-row'],
+		targetKinds: [spec.kind],
+		executionMode: 'model-stream',
+		effectKind: 'analyze',
+		promptId: PromptId.DocNativeExplain,
+		inputSchema: ComposerInstructionInputSchema,
+		resultSchema: ComposerAnalysisPayloadSchema,
+		resultKind: 'analysis',
+		rendererId: COMPOSER_ANALYSIS_RENDERER_ID,
+		acceptsInstruction: true,
+		presentationFallback: presentation,
+		evaluate: ({ snapshot }) => nonEmpty(snapshot, config().strings.emptyTarget),
+		buildPromptVariables: (snapshot, instruction) => ({
+			content: snapshot.selectionText ?? snapshot.targetSource,
+			nativeKind: spec.kind,
+			...(spec.kind === 'code' && fencedLanguage(snapshot.targetSource)
+				? { language: fencedLanguage(snapshot.targetSource) }
+				: {}),
+			...(instruction?.trim() ? { instruction } : {}),
+		}),
+	};
 }
 
 // ── Text-patch native edits (mermaid / code) ────────────────────────────────────
@@ -109,13 +186,7 @@ export function createMermaidEditDefinition(
 		rendererId: COMPOSER_STREAMING_TEXT_RENDERER_ID,
 		writebackAdapterId: COMPOSER_TEXT_PATCH_WRITEBACK_ID,
 		acceptsInstruction: true,
-		presentationFallback: {
-			title: 'Edit diagram',
-			description: 'Edit the Mermaid source with AI; re-renders before accept',
-			lucideIcon: 'workflow',
-			historyLabel: 'AI mermaid edit',
-			order: 40,
-		},
+		presentationFallback: nativePresentation(MERMAID_EDIT_CAPABILITY_ID),
 		evaluate: ({ snapshot }) => nonEmpty(snapshot, config().strings.emptyTarget),
 		buildPromptVariables: (snapshot, instruction) => ({
 			content: snapshot.selectionText ?? snapshot.targetSource,
@@ -155,13 +226,7 @@ export function createCodeEditDefinition(
 		rendererId: COMPOSER_STREAMING_TEXT_RENDERER_ID,
 		writebackAdapterId: COMPOSER_TEXT_PATCH_WRITEBACK_ID,
 		acceptsInstruction: true,
-		presentationFallback: {
-			title: 'Edit code',
-			description: 'Rewrite or refactor the code with AI, kept as a fenced code block',
-			lucideIcon: 'code',
-			historyLabel: 'AI code edit',
-			order: 42,
-		},
+		presentationFallback: nativePresentation(CODE_EDIT_CAPABILITY_ID),
 		evaluate: ({ snapshot }) => nonEmpty(snapshot, config().strings.emptyTarget),
 		buildPromptVariables: (snapshot, instruction) => {
 			const content = snapshot.selectionText ?? snapshot.targetSource;
@@ -173,6 +238,47 @@ export function createCodeEditDefinition(
 				...(instruction && instruction.trim() ? { instruction } : {}),
 			};
 		},
+	};
+}
+
+export function createMermaidFillBranchesDefinition(
+	config: ComposerCapabilitiesConfigProvider,
+): ComposerCapabilityDefinition {
+	const presentation = nativePresentation(MERMAID_FILL_BRANCHES_CAPABILITY_ID);
+	return {
+		manifest: {
+			id: MERMAID_FILL_BRANCHES_CAPABILITY_ID,
+			title: presentation.title,
+			description: presentation.description,
+			inputContract: { kind: 'object', description: 'Frozen Mermaid source plus an optional refinement instruction' },
+			outputContract: { kind: 'custom', description: 'text-patch replacing the Mermaid source' },
+			permissionKind: 'read',
+			costTier: 'fast',
+			backendPolicy: { preferred: 'provider-direct', fallback: [] },
+			skillRef: MERMAID_FILL_BRANCHES_CAPABILITY_ID,
+			surfaceBinding: ['composer'],
+		},
+		version: '1',
+		owner: 'composer-native',
+		configKey: MERMAID_FILL_BRANCHES_CAPABILITY_ID,
+		surfaces: ['block-row'],
+		targetKinds: ['mermaid'],
+		executionMode: 'model-stream',
+		effectKind: 'rewrite',
+		promptId: PromptId.DocMermaidEdit,
+		inputSchema: ComposerInstructionInputSchema,
+		resultSchema: ComposerTextPatchPayloadSchema,
+		resultKind: 'text-patch',
+		rendererId: COMPOSER_STREAMING_TEXT_RENDERER_ID,
+		writebackAdapterId: COMPOSER_TEXT_PATCH_WRITEBACK_ID,
+		acceptsInstruction: true,
+		presentationFallback: presentation,
+		evaluate: ({ snapshot }) => nonEmpty(snapshot, config().strings.emptyTarget),
+		buildPromptVariables: (snapshot, instruction) => ({
+			content: snapshot.selectionText ?? snapshot.targetSource,
+			scope: snapshot.selectionText !== undefined ? 'selection' : 'full',
+			instruction: instruction?.trim() || config().instructions[MERMAID_FILL_BRANCHES_CAPABILITY_ID],
+		}),
 	};
 }
 
@@ -447,7 +553,10 @@ export function createNativeCapabilityPack(
 	return {
 		id: 'composer-pack-native',
 		definitions: () => [
+			createNativeExplainDefinition({ id: MERMAID_EXPLAIN_CAPABILITY_ID, kind: 'mermaid' }, config),
 			createMermaidEditDefinition(config),
+			createMermaidFillBranchesDefinition(config),
+			createNativeExplainDefinition({ id: CODE_EXPLAIN_CAPABILITY_ID, kind: 'code' }, config),
 			createCodeEditDefinition(config),
 			...NATIVE_STRUCTURAL_SPECS.map((spec) => createNativeStructuralDefinition(spec, config)),
 		],

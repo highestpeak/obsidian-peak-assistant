@@ -14,7 +14,7 @@ import type {
 	ComposerResultEnvelope,
 	ComposerResultKind,
 } from '@/core/composer';
-import { ComposerTextPatchPayloadSchema } from '@/core/schemas/composer';
+import { ComposerAnalysisPayloadSchema, ComposerTextPatchPayloadSchema } from '@/core/schemas/composer';
 
 export interface MaterializeArgs {
 	definition: ComposerCapabilityDefinition;
@@ -114,9 +114,27 @@ export function createTextPatchMaterializer(): ComposerResultMaterializer {
 	};
 }
 
+/**
+ * Read-only narrative materializer. Analysis candidates deliberately have no
+ * writeback adapter, so an explanation can never be mistaken for an edit.
+ */
+export function createAnalysisMaterializer(): ComposerResultMaterializer {
+	return {
+		resultKind: 'analysis',
+		materialize({ definition, text }): ComposerResultEnvelope {
+			return {
+				resultKind: 'analysis',
+				rendererId: definition.rendererId,
+				payload: ComposerAnalysisPayloadSchema.parse({ content: text }),
+			};
+		},
+	};
+}
+
 /** Default materializer set for the WP3 slice (grows per pack in WP5–8). */
 export function createDefaultResultMaterializers(): ComposerResultMaterializerRegistry {
 	const registry = new ComposerResultMaterializerRegistry();
+	registry.register(createAnalysisMaterializer());
 	registry.register(createTextPatchMaterializer());
 	return registry;
 }

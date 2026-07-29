@@ -41,7 +41,9 @@ import {
 	type ComposerMediaProducer,
 } from './ObsidianComposerImageAdapters';
 import { DocumentComposerRuntime } from './DocumentComposerRuntime';
+import { ObsidianComposerEmbedAnchorAdapter } from './ObsidianComposerEmbedAnchorAdapter';
 import { ObsidianComposerNativeFileAdapter, ObsidianComposerNativePreviewAdapter } from './ObsidianNativeFileAdapter';
+import { ObsidianComposerNativeEmbedRenderer } from './ObsidianComposerNativeEmbedRenderer';
 import { composeComposerCapabilityRuntime } from './capabilities/composeComposerCapabilityRuntime';
 import { ComposerAiExecutorAdapter } from './capabilities/ComposerAiExecutorAdapter';
 import { createComposerFormulaDetailGenerator } from './capabilities/ComposerFormulaDetailGenerator';
@@ -163,6 +165,8 @@ export function composeDocumentComposerRuntime(app: App, pluginDir?: string): Do
 			config: imageConfigProvider,
 		},
 		nativePreviewPort: new ObsidianComposerNativePreviewAdapter(app),
+		nativeEmbedRenderer: new ObsidianComposerNativeEmbedRenderer(app),
+		embedSelectionAnchorPort: new ObsidianComposerEmbedAnchorAdapter(app),
 		blockDraftGeneration: createComposerBlockDraftGenerationPort(executor),
 		modelSelection: {
 			choices: () => {

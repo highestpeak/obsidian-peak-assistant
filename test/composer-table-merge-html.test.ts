@@ -36,13 +36,15 @@ import {
 } from '@/service/composer';
 import {
 	applyTablePatch,
+	buildReplaceBlockSourceOps,
 	createTablePatchMaterializer,
 	createTablePatchWritebackAdapter,
+	parseComposerDocument,
 	parseTableSource,
 	serializeTableSource,
 } from '@/service/composer';
 import type { ComposerCapabilityDefinition, ComposerContextSnapshot } from '@/core/composer';
-import { makeChecker } from './helpers/composer-fakes';
+import { FakeVault, makeChecker, makeHub, openSession } from './helpers/composer-fakes';
 
 const { check, done } = makeChecker();
 const port = createParse5HtmlPort();
@@ -232,4 +234,51 @@ const gridText = (m: ReturnType<typeof pipeToModel>): string =>
 	check('table-patch writeback fails closed without anchor', failedClosed);
 }
 
-done('composer-table-merge-html');
+// ── 7. Composer transaction path: pipe merge upgrades to HTML and remains table ──
+async function commitPipeTableMergeThroughHub(): Promise<void> {
+	const path = 'table-merge.md';
+	const source = ['Intro', '', GRID3x3, '', 'After'].join('\n');
+	const vault = new FakeVault();
+	const session = openSession(vault, path, source);
+	const tableBlock = session.snapshot.blocks.find((block) => block.kind === 'table');
+	check('hub fixture has table block', Boolean(tableBlock));
+	if (!tableBlock) return;
+
+	const merged = mergeRange(pipeToModel(tableBlock.renderModel.raw), { r0: 1, c0: 0, r1: 1, c1: 1 });
+	check('hub path prepares horizontal body merge', merged.ok, merged.ok ? '' : merged.reason);
+	if (!merged.ok) return;
+
+	const nextSource = serializeTable(merged.model, modelToHtml);
+	check('hub path upgrades merged pipe table to HTML', /^<table(?:\s|>)/i.test(nextSource));
+	const built = buildReplaceBlockSourceOps(session.snapshot, tableBlock.blockId, nextSource);
+	check('hub path builds replace ops', Boolean(built));
+	if (!built) return;
+
+	const hub = makeHub(vault, session);
+	let error = '';
+	try {
+		await hub.commit({
+			origin: 'direct',
+			label: 'Merge table cells',
+			operations: built.operations,
+			target: built.target,
+			expectedBlockDelta: built.expectedBlockDelta,
+		});
+	} catch (err) {
+		error = err instanceof Error ? err.message : String(err);
+	}
+
+	const committed = vault.read(path);
+	check('hub path commits merge without table→html conflict', error === '', error);
+	check('hub path persists colspan', /colspan="2"/.test(committed));
+	const reparsed = parseComposerDocument(committed, { filePath: path });
+	check('raw HTML table reparses as table block', reparsed.blocks.some((block) => block.kind === 'table'));
+	check('session target block remains table after commit', session.snapshot.blocks[1]?.kind === 'table');
+}
+
+commitPipeTableMergeThroughHub()
+	.then(() => done('composer-table-merge-html'))
+	.catch((err) => {
+		console.error(err);
+		process.exit(1);
+	});

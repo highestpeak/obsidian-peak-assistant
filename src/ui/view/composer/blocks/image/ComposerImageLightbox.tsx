@@ -2,6 +2,7 @@ import * as React from 'react';
 import { ChevronLeft, ChevronRight, Grid3X3, Maximize2, Minus, Plus, RotateCcw, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { IconButton } from '@/ui/components/primitives';
+import { handleLightboxKeyboardEvent } from './composerImageLightboxKeyboard';
 
 interface LightboxItem {
 	src: string;
@@ -81,18 +82,24 @@ export function ComposerImageLightbox({
 	React.useEffect(() => {
 		if (!ownerDocument) return;
 		const onKeyDown = (event: KeyboardEvent): void => {
-			if (event.key === 'Escape') onClose();
-			if (event.key === 'ArrowLeft' && items.length > 1) move(-1);
-			if (event.key === 'ArrowRight' && items.length > 1) move(1);
-			if (event.key === '+' || event.key === '=') changeScale(scale + 0.25);
-			if (event.key === '-') changeScale(scale - 0.25);
-			if (event.key === '0') resetView();
+			handleLightboxKeyboardEvent(event, {
+				hasMultiple: items.length > 1,
+				close: onClose,
+				previous: () => move(-1),
+				next: () => move(1),
+				zoomIn: () => changeScale(scale + 0.25),
+				zoomOut: () => changeScale(scale - 0.25),
+				reset: resetView,
+			});
 		};
-		ownerDocument.addEventListener('keydown', onKeyDown);
+		const ownerWindow = ownerDocument.defaultView;
+		if (ownerWindow) ownerWindow.addEventListener('keydown', onKeyDown, true);
+		else ownerDocument.addEventListener('keydown', onKeyDown, true);
 		const previousOverflow = ownerDocument.body.style.overflow;
 		ownerDocument.body.style.overflow = 'hidden';
 		return () => {
-			ownerDocument.removeEventListener('keydown', onKeyDown);
+			if (ownerWindow) ownerWindow.removeEventListener('keydown', onKeyDown, true);
+			else ownerDocument.removeEventListener('keydown', onKeyDown, true);
 			ownerDocument.body.style.overflow = previousOverflow;
 		};
 	}, [changeScale, items.length, move, onClose, ownerDocument, resetView, scale]);

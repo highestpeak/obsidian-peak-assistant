@@ -7,6 +7,7 @@
 
 import {
 	COMPOSER_STREAMING_TEXT_RENDERER_ID,
+	COMPOSER_ANALYSIS_RENDERER_ID,
 	COMPOSER_METADATA_SUGGESTION_RENDERER_ID,
 	COMPOSER_FORMULA_ANNOTATION_RENDERER_ID,
 	COMPOSER_NATIVE_FILE_PATCH_RENDERER_ID,
@@ -14,6 +15,7 @@ import {
 import { StreamingTextCandidateCard } from './StreamingTextCandidateCard';
 import { UnsupportedCandidateCard } from './UnsupportedCandidateCard';
 import { NativeFilePatchCandidateCard } from './NativeFilePatchCandidateCard';
+import { AnalysisCandidateCard } from './AnalysisCandidateCard';
 import { CandidateRendererRegistry, createCandidateRendererRegistry } from './rendererRegistry';
 // WP5 pack renderers (metadata-field-patch / formula-annotation). Registering
 // them here keeps the generic candidate host from ever showing the unsupported
@@ -27,6 +29,7 @@ export * from './rendererRegistry';
 export { StreamingTextCandidateCard } from './StreamingTextCandidateCard';
 export { UnsupportedCandidateCard } from './UnsupportedCandidateCard';
 export { NativeFilePatchCandidateCard } from './NativeFilePatchCandidateCard';
+export { AnalysisCandidateCard } from './AnalysisCandidateCard';
 export { ComposerCandidateHost, type ComposerCandidateHostProps } from './ComposerCandidateHost';
 
 /**
@@ -35,6 +38,7 @@ export { ComposerCandidateHost, type ComposerCandidateHostProps } from './Compos
  */
 export function createDefaultCandidateRendererRegistry(): CandidateRendererRegistry {
 	const registry = createCandidateRendererRegistry(UnsupportedCandidateCard);
+	registry.register(COMPOSER_ANALYSIS_RENDERER_ID, AnalysisCandidateCard);
 	registry.register(COMPOSER_STREAMING_TEXT_RENDERER_ID, StreamingTextCandidateCard);
 	registry.register(COMPOSER_METADATA_SUGGESTION_RENDERER_ID, MetadataSuggestionCandidateCard);
 	registry.register(COMPOSER_FORMULA_ANNOTATION_RENDERER_ID, FormulaAnnotationCandidateCard);
