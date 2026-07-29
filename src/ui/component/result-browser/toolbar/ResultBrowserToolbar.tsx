@@ -12,6 +12,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { List, ListTree, Network } from 'lucide-react';
+import { CodeMirrorInput } from '@/ui/component/mine/codemirror-input';
+import { KeyboardShortcut } from '@/ui/component/mine/KeyboardShortcut';
 import { cn } from '@/ui/react/lib/utils';
 import type {
 	ResultBrowserDensity,
@@ -26,6 +28,61 @@ const PRESET_LABELS: Array<[ResultBrowserGraphPreset, string, string]> = [
 	['folder',        'Folder tree',   'Full-depth folder tree — where in my vault do they live?'],
 	['orbit',         'Orbit',         'Hubs at center, docs orbit — are hubs the center of gravity?'],
 ];
+
+// ---------------------------------------------------------------------------
+// Search / local-filter input
+// ---------------------------------------------------------------------------
+
+export interface ResultBrowserSearchInputProps {
+	value: string;
+	onChange: (value: string) => void;
+	placeholder: string;
+	onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>;
+	className?: string;
+	ariaLabel?: string;
+}
+
+/**
+ * The canonical Result Browser query field. Quick Search and Composer's
+ * frozen-snapshot browser deliberately share this component so Obsidian's
+ * native input styles cannot create a second nested border.
+ */
+export const ResultBrowserSearchInput = React.forwardRef<
+	{ focus: () => void; select: () => void },
+	ResultBrowserSearchInputProps
+>(({ value, onChange, placeholder, onKeyDown, className, ariaLabel }, ref) => (
+	<CodeMirrorInput
+		ref={ref}
+		value={value}
+		onChange={onChange}
+		onKeyDown={onKeyDown}
+		placeholder={placeholder}
+		aria-label={ariaLabel ?? placeholder}
+		enableSearchTags={false}
+		singleLine
+		containerClassName={cn(
+			'pktw-flex-1 pktw-min-w-0 pktw-px-4 pktw-py-2.5',
+			'pktw-bg-pk-surface-raised pktw-border pktw-border-pk-border',
+			'focus-within:pktw-border-pk-accent focus-within:pktw-shadow-sm',
+			'pktw-rounded-full pktw-transition-all pktw-z-0',
+			className,
+		)}
+		className="pktw-pr-2"
+	/>
+));
+ResultBrowserSearchInput.displayName = 'ResultBrowserSearchInput';
+
+/** Keyboard contract shared by Search and other list-first Result Browsers. */
+export const ResultBrowserFooterHints: React.FC<{ showNewTab?: boolean }> = ({
+	showNewTab = true,
+}) => (
+	<div className="pktw-flex pktw-items-center pktw-gap-4 pktw-text-xs pktw-text-pk-text-tertiary">
+		<KeyboardShortcut keys="↑↓" description="navigate" />
+		<KeyboardShortcut keys="Enter" description="open" />
+		{showNewTab && <KeyboardShortcut keys="Ctrl+Enter" description="new tab" />}
+		<KeyboardShortcut keys="→" description="inspector" />
+	</div>
+);
 
 // ---------------------------------------------------------------------------
 // View mode toggle (List / Tree / Graph)

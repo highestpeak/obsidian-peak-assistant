@@ -62,11 +62,11 @@ check('table toolbar shell uses the panel radius rung', () => {
 	);
 });
 
-check('table toolbar buttons keep compact 28px radius-md transparent controls', () => {
+check('table toolbar buttons match the shared 28px action-row rhythm', () => {
 	expectRule(
 		tableCss,
-		/\.pk-table-toolbar button\s*\{[\s\S]*?min-height:\s*28px;[\s\S]*?border-radius:\s*var\(--pk-radius-md,\s*8px\);[\s\S]*?background:\s*transparent;[\s\S]*?font-size:\s*var\(--pk-text-xs,\s*11px\);/,
-		'table toolbar buttons must stay in the compact toolbar family',
+		/\.pk-table-toolbar button\s*\{[\s\S]*?height:\s*28px !important;[\s\S]*?min-height:\s*28px !important;[\s\S]*?max-height:\s*28px !important;[\s\S]*?border-radius:\s*var\(--pk-radius-md,\s*8px\);[\s\S]*?background:\s*transparent;[\s\S]*?font-size:\s*var\(--pk-text-xs,\s*11px\);/,
+		'table toolbar controls must share the bottom action-row height and typography',
 	);
 });
 
@@ -81,8 +81,13 @@ check('table menu popover reuses the panel shell grammar', () => {
 check('native shells use radius-lg instead of radius-md', () => {
 	expectRule(
 		nativeCss,
-		/\.pk-native-block__body,\s*[\r\n]+\.peak-composer-root \.pk-native-code,\s*[\r\n]+\.peak-composer-root \.pk-native-embed\s*\{[\s\S]*?border-radius:\s*var\(--pk-radius-lg\);/,
-		'native block shells must use the panel radius rung',
+		/\.pk-native-block\s*\{[\s\S]*?border-radius:\s*var\(--pk-radius-lg\);/,
+		'the shared native object frame must own the panel radius rung',
+	);
+	expectRule(
+		nativeCss,
+		/\.pk-native-code,\s*[\r\n]+\.peak-composer-root \.pk-native-embed\s*\{[\s\S]*?border-radius:\s*var\(--pk-radius-lg\);/,
+		'standalone code and embed shells must retain the panel radius rung',
 	);
 });
 

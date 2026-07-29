@@ -124,7 +124,9 @@ export function createGenerateChartDefinition(
 		version: '1',
 		owner: 'composer-chart',
 		configKey: GENERATE_CHART_CAPABILITY_ID,
-		surfaces: ['object-toolbar'],
+		// The deterministic chart shortcut stays in the top object toolbar; the
+		// model-backed chart capability belongs to the shared bottom action row.
+		surfaces: ['block-row'],
 		targetKinds: ['table'],
 		// Model path: the model streams a chart-source JSON spec. (The
 		// deterministic table toolbar still derives the same spec directly.)

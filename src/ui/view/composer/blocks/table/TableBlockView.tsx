@@ -1,5 +1,5 @@
 import * as React from 'react';
-import type { ComposerActionDescriptor, ComposerBlock, ComposerContextSnapshot } from '@/core/composer';
+import type { ComposerBlock } from '@/core/composer';
 import {
 	buildInsertBlockBelowOps,
 	buildReplaceBlockSourceOps,
@@ -25,8 +25,8 @@ import { useTableObjectSelection } from './useTableObjectSelection';
  * accessible grid with dual-mode selection (native text on glyph, object cell
  * range on padding/edge) and the deterministic object toolbar. All mutations
  * re-serialize the model to the narrowest lossless syntax (pipe → HTML on merge)
- * and commit through the transaction hub. AI actions are projected from the
- * capability port (none render until the runtime is wired — no dead buttons).
+ * and commit through the transaction hub. AI actions stay in ComposerRoot's
+ * shared bottom action row, so the object toolbar remains short and scannable.
  */
 export function TableBlockView({ block }: { block: ComposerBlock }): React.ReactElement {
 	const parsed = React.useMemo(() => safeParse(block.renderModel.raw), [block.renderModel.raw]);
@@ -99,15 +99,6 @@ function TableBlockBody({ block, model }: { block: ComposerBlock; model: TableMo
 		await commitModel(csvToModel(text));
 	};
 
-	const aiActions = useProjectedActions(block);
-	const invokeAi = (d: ComposerActionDescriptor): void => {
-		try {
-			chrome.projection.invoke(d.capabilityId, makeTableSnapshot(chrome, block));
-		} catch {
-			/* mis-wired port only — stub projects nothing */
-		}
-	};
-
 	const describe = describeSelection(selection.state, model, strings.selection);
 
 	return (
@@ -122,8 +113,6 @@ function TableBlockBody({ block, model }: { block: ComposerBlock; model: TableMo
 				onImportCsv={() => fileRef.current?.click()}
 				onExportCsv={exportCsv}
 				onReason={setReason}
-				aiActions={aiActions}
-				onInvokeAi={invokeAi}
 			/>
 			<TableGrid
 				tableRef={tableRef}
@@ -254,32 +243,6 @@ function edgeClasses(model: TableModel, selection: TableSelectionState, r: numbe
 	if (!isCellSelected(selection, model, r, c - 1)) out.push('is-range-left');
 	if (!isCellSelected(selection, model, r, c + colspan)) out.push('is-range-right');
 	return out.join(' ');
-}
-
-// ── AI projection ────────────────────────────────────────────────────────────
-
-function useProjectedActions(block: ComposerBlock): readonly ComposerActionDescriptor[] {
-	const chrome = useComposerChrome();
-	return React.useMemo(() => {
-		try {
-			return chrome.projection.actionsFor(makeTableSnapshot(chrome, block), 'object-toolbar');
-		} catch {
-			return [];
-		}
-	}, [chrome, block]);
-}
-
-function makeTableSnapshot(chrome: ReturnType<typeof useComposerChrome>, block: ComposerBlock): ComposerContextSnapshot {
-	const snap = chrome.snapshot;
-	const from = block.source.from;
-	const to = block.source.to;
-	const src = snap?.sourceText.slice(from, to) ?? block.renderModel.raw;
-	return {
-		documentId: snap?.documentId ?? '',
-		revision: snap?.revision ?? block.source.revision,
-		target: { kind: 'block', blockId: block.blockId },
-		targetSource: src,
-	};
 }
 
 async function tryCommit(fn: () => Promise<unknown>): Promise<void> {

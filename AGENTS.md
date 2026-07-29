@@ -43,6 +43,16 @@ Four-layer architecture: `app/` → `service/` → `core/` → `ui/`
 ## Code Conventions
 
 - Use shadcn/ui `Button` component, never raw `<button>` elements
+- **Obsidian button geometry rule**: `.peak-design-root button` resets
+  `height: auto`, `min-height: 0`, and `max-height: none` with `!important`.
+  Therefore any shared/button primitive that promises a fixed hit target must
+  declare its effective `width`/`height`/`min-*`/`max-*` dimensions with
+  `!important`; padding in that fixed-size rule must also use `!important`.
+  Do not accept source inspection or a green build as proof that the size
+  rendered. Add the selector to
+  `test/shared-button-reset-defense.test.ts` when introducing a new public
+  button primitive, and verify computed geometry in real Obsidian through CDP
+  when available. See `docs/conventions/ui-design.md` §4.3.1.
 - Avoid semantic HTML tags (`<h1-h6>`, `<p>`) — use `<span>` with Tailwind classes
 - Extract components when they exceed ~8 lines
 - Prefer simple async functions over `useCallback`; use `store.getState()` inside handlers to avoid dependency arrays

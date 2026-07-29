@@ -183,6 +183,8 @@ const relatedSnapshot: ComposerRelatedMaterialSnapshot = {
 	assert(localFilterItems(relatedSnapshot.items, '').length === 2, 'empty filter returns complete frozen set');
 	assert(localFilterItems(relatedSnapshot.items, 'beta').length === 1, 'filter matches title case-insensitively');
 	assert(localFilterItems(relatedSnapshot.items, 'notes/').length === 1, 'filter matches path');
+	const bodyItem = { ...relatedSnapshot.items[0], content: 'Unique body phrase' };
+	assert(localFilterItems([bodyItem], 'body phrase').length === 1, 'filter matches frozen body content');
 	assert(localFilterItems(relatedSnapshot.items, 'zzz').length === 0, 'no match → empty (no fallback query)');
 }
 

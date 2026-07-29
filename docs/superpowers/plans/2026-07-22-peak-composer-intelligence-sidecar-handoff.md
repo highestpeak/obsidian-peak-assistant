@@ -47,7 +47,7 @@ Copilot brief
 - Frontmatter 使用完整属性表面，并消费 app-owned Vault 字段/标签统计。`Vault 属性库` 的数据范围是整个 Vault，但入口只在 Frontmatter 悬浮操作栏中作为确定性动作出现，与该块的其他操作同排；禁止占用 Composer 全局顶栏，也禁止在属性框下面常驻“从全库字段中添加属性”一行。点击后属性库才在属性框下方原位展开，不打开全屏 modal；界面要明确写出“统计范围是整个 Vault”，避免局部位置被误解为本文统计。用户在属性库选择字段或自定义 key/value 后，当前文档只出现一个可编辑候选；接受后才写 YAML，禁止静默 `添加属性`。`AI 属性建议 · N` 与 `属性告警` 并列，语义字段始终逐字段审阅；确定性字段可由程序补齐。
 - 表格默认保存 pipe Markdown。`对齐`、`排序`、`公式`、`合并`、`转置`都必须产生可见、可保存、可回滚的真实结果，不能只弹 toast：未预选单元格时，对齐/排序采用一个可见默认数据列并把当前列与方向显性标出；公式用列级编辑器实时计算 `COUNTA / COUNT / COUNTUNIQUE`，接受后增加汇总行并保存可检查的 `TBLFM` 注释；合并在没有完整范围时进入明确的“两角点”矩形选择模式，不能依赖未说明的 Shift-click 规则。矩形选区合并后，由于 pipe table 不支持 `rowspan / colspan`，该块显式升级为 Markdown 文件中的原生 HTML `<table>`，并保留 undo。`图表`从表格创建独立 Chart Block 候选，支持柱状/折线/饼图；源保存为可检查的 fenced `chart` code block，Composer 负责真实渲染，接受前不写入。
 - 只有真实写入进入 History；建议、来源、洞察、Trace 和拒绝项留在 Run record。
-- 侧栏保留小型相关材料关系图；`打开完整视图` 仍留在 Composer 内，并挂载从 Vault Search / Quick Search 组件中抽取的 shared controlled `ResultBrowser`。它不跳转到搜索功能，也不重新检索。
+- 2026-07-28 owner override：侧栏不再显示小型关系图，改为普通材料列表；悬浮/聚焦临时预览，点击固定，`查看全部材料` 与来源动作共用详情 footer。Graph 只保留在 Composer 内的宽幅 shared controlled `ResultBrowser`，不跳转到搜索功能，也不重新检索。
 - 正文块的 `AI 建议` 与 Copilot Brief 必须投影同一个 app-owned `SuggestionFinding`，共享去重、忽略、已解决和失效状态。
 - 主动智能必须用“保留的有用结果/主动介入”与错误、打扰、stale、rollback、输入性能护栏共同评价，不能只看接受率。
 - 窄屏始终是 fixed right drawer，绝不掉到正文下面。

@@ -15,6 +15,45 @@ import { DEFAULT_IMAGE_ACTION_STRINGS, type ImageActionStrings } from '@/service
 export interface ImageCandidateUiStrings {
 	loadFailed: string;
 	sourceUnavailable: string;
+	fullscreen: string;
+	editImage: string;
+	rename: string;
+	copy: string;
+	renamePlaceholder: string;
+	renameAria: string;
+	renameApply: string;
+	lightbox: {
+		label: string;
+		zoomOut: string;
+		zoomIn: string;
+		actualSize: string;
+		fit: string;
+		toggleStrip: string;
+		close: string;
+		previous: string;
+		next: string;
+		thumbnail: string;
+	};
+	converter: {
+		title: string;
+		crop: string;
+		freeCrop: string;
+		clearFreeCrop: string;
+		freeCropHint: string;
+		rotateLeft: string;
+		rotateRight: string;
+		flipHorizontal: string;
+		flipVertical: string;
+		straighten: string;
+		format: string;
+		quality: string;
+		stripMetadata: string;
+		reset: string;
+		cancel: string;
+		apply: string;
+		converting: string;
+		failed: string;
+	};
 	layoutTitle: string;
 	layoutDescription: string;
 	layoutSource: string;
@@ -51,6 +90,45 @@ export interface ImageCandidateUiStrings {
 export const DEFAULT_IMAGE_UI_STRINGS: ImageCandidateUiStrings = {
 	loadFailed: '图片加载失败',
 	sourceUnavailable: '图片源不可用',
+	fullscreen: '全屏',
+	editImage: '编辑图片',
+	rename: '重命名',
+	copy: '复制',
+	renamePlaceholder: '输入新的图片文件名…',
+	renameAria: '图片文件名',
+	renameApply: '生成重命名预览',
+	lightbox: {
+		label: '图片查看器',
+		zoomOut: '缩小',
+		zoomIn: '放大',
+		actualSize: '恢复实际大小',
+		fit: '适合窗口',
+		toggleStrip: '显示或隐藏缩略图',
+		close: '关闭图片查看器',
+		previous: '上一张',
+		next: '下一张',
+		thumbnail: '查看第 {index} 张图片',
+	},
+	converter: {
+		title: '编辑图片',
+		crop: '矩形裁剪',
+		freeCrop: '自由裁剪',
+		clearFreeCrop: '清除选区',
+		freeCropHint: '沿图片拖动以绘制自由裁剪区域',
+		rotateLeft: '左转',
+		rotateRight: '右转',
+		flipHorizontal: '水平翻转',
+		flipVertical: '垂直翻转',
+		straighten: '校正',
+		format: '格式',
+		quality: '质量',
+		stripMetadata: '导出时移除 EXIF 与其他元数据',
+		reset: '重置',
+		cancel: '取消',
+		apply: '生成预览',
+		converting: '处理中…',
+		failed: '图片转换失败',
+	},
 	layoutTitle: '图片组合',
 	layoutDescription: 'HTML Block · Markdown Preview 可见',
 	layoutSource: 'HTML source',

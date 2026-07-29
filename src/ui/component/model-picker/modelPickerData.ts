@@ -41,7 +41,7 @@ export interface ProfileModelItem {
 	tokenLimits?: ModelTokenLimits;
 }
 
-export function buildProfileModelItems(profiles: Profile[]): ProfileModelItem[] {
+export function buildProfileModelItems(profiles: readonly Profile[]): ProfileModelItem[] {
 	const items: ProfileModelItem[] = [];
 	for (const profile of profiles) {
 		if (profile.enabled === false) continue;

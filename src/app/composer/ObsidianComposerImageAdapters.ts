@@ -61,6 +61,10 @@ export class ObsidianComposerImageAttachmentAdapter implements ComposerImageAtta
 		return this.resolveFolder();
 	}
 
+	exists(path: string): boolean {
+		return this.app.vault.getAbstractFileByPath(path) !== null;
+	}
+
 	async save(request: ComposerImageSaveRequest): Promise<ComposerImageSaveResult> {
 		const folder = request.folder ?? this.resolveFolder();
 		await ensureFolder(this.app, folder);

@@ -1,16 +1,21 @@
 import * as React from 'react';
-import { X } from 'lucide-react';
 import type { SearchResultItem } from '@/core/search/searchTypes';
 import type { ComposerRelatedMaterialSnapshot } from '@/service/composer';
 import {
-	ResultBrowserViewToggle,
 	ResultBrowserDensityToggle,
+	ResultBrowserFooterHints,
+	ResultBrowserGraph,
 	ResultBrowserGraphControls,
 	ResultBrowserListRow,
+	ResultBrowserSearchInput,
 	ResultBrowserTree,
-	ResultBrowserGraph,
+	ResultBrowserViewToggle,
 } from '@/ui/component/result-browser';
+import { Button, Modal } from '@/ui/components/primitives';
 import { cn } from '@/ui/react/lib/utils';
+import { usePortalContainer } from '@/ui/react/PortalContainerContext';
+import { useOwnerDocumentListener } from '@/ui/hooks/useOwnerWindow';
+import { InspectorSidePanel } from '@/ui/view/quick-search/components/inspector/InspectorSidePanel';
 import { useSidecar } from './SidecarContext';
 import {
 	applyComposerProjectionChange,
@@ -24,10 +29,9 @@ import {
 /**
  * Peak Composer — related-material wide modal (WP9, handoff §12.4 / CMP-REL-02 +
  * CMP-RB-03 Composer half). `打开完整视图` opens THIS Composer-owned modal, which
- * hosts the shared controlled Result Browser over the SAME frozen snapshot. It
- * does not navigate to Quick Search and never re-queries — a filter box only
- * filters the frozen snapshot locally. Narrow viewport ⇒ near-fullscreen with the
- * inspector moved below the content; Escape closes and restores opener focus.
+ * hosts the shared Result Browser over the SAME frozen snapshot. It never
+ * re-queries: the top query field only filters locally. The Search-style
+ * inspector stays closed until → is pressed, then opens at the canonical 340px.
  */
 export function RelatedMaterialsModal({
 	snapshot,
@@ -36,35 +40,41 @@ export function RelatedMaterialsModal({
 	snapshot: ComposerRelatedMaterialSnapshot;
 	onClose: () => void;
 }): React.ReactElement {
-	const { config, onOpenSource } = useSidecar();
+	const { runtime, config, onOpenSource } = useSidecar();
+	const portalContainer = usePortalContainer();
 	const s = config.strings;
-	const [state, setState] = React.useState<ComposerBrowserState>(initialComposerBrowserState);
+	const [state, setState] = React.useState<ComposerBrowserState>(() => ({
+		...initialComposerBrowserState(),
+		selectedId: snapshot.items[0]?.id ?? null,
+	}));
 	const rootRef = React.useRef<HTMLDivElement | null>(null);
-	const openerRef = React.useRef<Element | null>(null);
-
-	// Capture opener focus, trap Escape, restore focus on close (§12.4 keyboard).
-	React.useEffect(() => {
-		const doc = rootRef.current?.ownerDocument ?? document;
-		openerRef.current = doc.activeElement;
-		rootRef.current?.focus();
-		const onKey = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') {
-				e.stopPropagation();
-				onClose();
-			}
-		};
-		doc.addEventListener('keydown', onKey, true);
-		return () => {
-			doc.removeEventListener('keydown', onKey, true);
-			(openerRef.current as HTMLElement | null)?.focus?.();
-		};
-	}, [onClose]);
-
-	const browserSnapshot = React.useMemo(() => mapRelatedSnapshotToBrowserSnapshot(snapshot), [snapshot]);
-	const items = React.useMemo(
-		() => localFilterItems(browserSnapshot.items, state.filterText),
-		[browserSnapshot.items, state.filterText],
+	const itemRefs = React.useRef<Array<HTMLDivElement | null>>([]);
+	const [inspectorPath, setInspectorPath] = React.useState<string | null>(
+		snapshot.items[0]?.path ?? null,
 	);
+	const openerRef = React.useRef<HTMLElement | null>(
+		(portalContainer?.ownerDocument.activeElement as HTMLElement | null) ?? null,
+	);
+
+	// Radix owns Escape + focus trapping. Preserve the exact Composer opener
+	// because this modal is conditionally mounted by BriefView.
+	React.useEffect(() => {
+		return () => {
+			openerRef.current?.focus?.();
+		};
+	}, []);
+
+	const items = React.useMemo(
+		() => localFilterItems(snapshot.items, state.filterText),
+		[snapshot.items, state.filterText],
+	);
+	const browserSnapshot = React.useMemo(
+		() => mapRelatedSnapshotToBrowserSnapshot(snapshot),
+		[snapshot],
+	);
+	const selectedItem = items.find((item) => item.id === state.selectedId)
+		?? items[0]
+		?? null;
 
 	const dispatch = (change: Parameters<typeof applyComposerProjectionChange>[1]) => {
 		setState((prev) => applyComposerProjectionChange(prev, change).state);
@@ -78,50 +88,135 @@ export function RelatedMaterialsModal({
 		onOpenSource?.(item.path);
 	};
 
+	const selectItem = (item: SearchResultItem): void => {
+		dispatch({ kind: 'select', id: item.id });
+		if (state.inspectorOpen) setInspectorPath(item.path);
+	};
+
+	const selectIndex = (index: number): void => {
+		const item = items[index];
+		if (!item) return;
+		selectItem(item);
+		itemRefs.current[index]?.scrollIntoView({ block: 'nearest' });
+	};
+
+	const handleNavigationKey = (event: KeyboardEvent): void => {
+		const target = event.target as Element | null;
+		const fromQueryField = Boolean(target?.closest?.('.pk-related-search-row'));
+		const fromResultRow = Boolean(target?.closest?.("[data-result-browser-variant='related-material']"));
+		if (event.defaultPrevented && !fromQueryField) return;
+		if (event.key === 'Enter' && !fromResultRow && target?.closest?.('button')) return;
+		if (event.key === 'Escape' && state.view !== 'list') {
+			event.preventDefault();
+			event.stopPropagation();
+			dispatch({ kind: 'view', view: 'list' });
+			return;
+		}
+		if (state.view === 'graph' && event.key === 'ArrowRight' && selectedItem) {
+			event.preventDefault();
+			setInspectorPath(selectedItem.path);
+			dispatch({ kind: 'inspector', open: true });
+			return;
+		}
+		if (state.view === 'graph' && event.key === 'ArrowLeft' && state.inspectorOpen) {
+			event.preventDefault();
+			dispatch({ kind: 'inspector', open: false });
+			return;
+		}
+		if (state.view !== 'list' && !fromQueryField) return;
+		const currentIndex = Math.max(0, items.findIndex((item) => item.id === selectedItem?.id));
+		if (event.key === 'ArrowRight' && selectedItem) {
+			event.preventDefault();
+			setInspectorPath(selectedItem.path);
+			dispatch({ kind: 'inspector', open: true });
+			return;
+		}
+		if (event.key === 'ArrowLeft' && state.inspectorOpen) {
+			event.preventDefault();
+			dispatch({ kind: 'inspector', open: false });
+			return;
+		}
+		if (event.key === 'ArrowDown' && items.length > 0) {
+			event.preventDefault();
+			selectIndex((currentIndex + 1) % items.length);
+			return;
+		}
+		if (event.key === 'ArrowUp' && items.length > 0) {
+			event.preventDefault();
+			selectIndex((currentIndex - 1 + items.length) % items.length);
+			return;
+		}
+		if (event.key === 'Enter' && selectedItem) {
+			event.preventDefault();
+			openItem(selectedItem, { newTab: event.metaKey || event.ctrlKey });
+		}
+	};
+
+	useOwnerDocumentListener(rootRef, 'keydown', handleNavigationKey);
+
 	return (
-		<div className="pk-related-modal-scrim" data-testid="pk-related-modal" onMouseDown={onClose}>
-			<div
+		<Modal open onOpenChange={(open) => { if (!open) onClose(); }}>
+			<Modal.Content
 				ref={rootRef}
-				className="pk-related-modal"
-				role="dialog"
-				aria-modal="true"
-				aria-label={s.sectionRelated}
-				tabIndex={-1}
-				onMouseDown={(e) => e.stopPropagation()}
+				className="pk-related-modal peak-result-browser-modal-frame"
+				container={portalContainer}
+				overlayClassName="pk-related-modal-overlay"
+				data-testid="pk-related-modal"
+				onCloseAutoFocus={(event) => {
+					event.preventDefault();
+					openerRef.current?.focus?.();
+				}}
 			>
-				<div className="pk-related-modal-head">
-					<span className="pk-related-modal-title">{s.sectionRelated}</span>
-					<input
+				<Modal.Header className="pk-related-modal-head">
+					<span className="pk-related-modal-copy">
+						<Modal.Title asChild>
+							<strong className="pk-related-modal-title">{s.sectionRelated}</strong>
+						</Modal.Title>
+						<Modal.Subtitle asChild>
+							<span className="pk-related-modal-subtitle">{s.relatedModalSubtitle}</span>
+						</Modal.Subtitle>
+					</span>
+					<Modal.Close className="pk-icon-btn" label={s.close} />
+				</Modal.Header>
+
+				<div className="pk-related-search-row">
+					<ResultBrowserSearchInput
 						className="pk-related-filter"
-						placeholder={s.sectionRelated}
+						placeholder={s.relatedFilterPlaceholder}
+						ariaLabel={s.relatedFilterPlaceholder}
 						value={state.filterText}
-						onChange={(e) => setState((p) => ({ ...p, filterText: e.target.value }))}
+						onChange={(filterText) => setState((p) => ({ ...p, filterText }))}
 					/>
-					<button type="button" className="pk-icon-btn" aria-label={s.close} onClick={onClose}>
-						<X size={15} />
-					</button>
 				</div>
 
 				<div className="pk-related-toolbar">
-					<ResultBrowserViewToggle view={state.view} onViewChange={(view) => dispatch({ kind: 'view', view })} />
-					{state.view !== 'graph' && (
-						<ResultBrowserDensityToggle
-							density={state.density}
-							onDensityChange={(density) => dispatch({ kind: 'density', density })}
-						/>
-					)}
-					{state.view === 'graph' && (
+					<ResultBrowserViewToggle
+						view={state.view}
+						onViewChange={(view) => dispatch({ kind: 'view', view })}
+					/>
+					{state.view === 'graph' ? (
 						<ResultBrowserGraphControls
 							preset={state.graphPreset}
 							onPresetChange={(preset) => dispatch({ kind: 'graphPreset', preset })}
 							semantic={state.graphShowSemantic}
 							onSemanticChange={(on) => dispatch({ kind: 'graphSemantic', on })}
+							className="pk-related-toolbar-end"
 						/>
+					) : (
+						<div className="pk-related-toolbar-end">
+							<ResultBrowserDensityToggle
+								density={state.density}
+								onDensityChange={(density) => dispatch({ kind: 'density', density })}
+							/>
+						</div>
 					)}
 				</div>
 
 				<div className={cn('pk-related-content', state.inspectorOpen && 'pk-related-content--inspector')}>
 					<div className="pk-related-projection">
+						{items.length === 0 && (
+							<div className="pk-related-empty">{s.sectionRelatedEmpty}</div>
+						)}
 						{state.view === 'list' && (
 							<div className="pk-related-list">
 								{items.map((item, index) => (
@@ -129,12 +224,15 @@ export function RelatedMaterialsModal({
 										key={item.id}
 										result={item}
 										index={index}
-										isSelected={state.selectedId === item.id}
+										isSelected={selectedItem?.id === item.id}
 										density={state.density}
 										highlightQuery={state.filterText}
-										itemRef={() => undefined}
-										onSelect={() => dispatch({ kind: 'select', id: item.id })}
+										snippetText={snapshot.reasonBySourceId[item.id] || undefined}
+										itemRef={(element) => { itemRefs.current[index] = element; }}
+										onSelect={(nextIndex) => selectIndex(nextIndex)}
 										onOpen={(res, opts) => openItem(res, opts)}
+										openOnSelect={false}
+										variant="related-material"
 									/>
 								))}
 							</div>
@@ -145,12 +243,19 @@ export function RelatedMaterialsModal({
 								density={state.density}
 								collapsedFolders={state.collapsedFolders}
 								cursor={state.cursorId}
-								onCursorChange={(id) => dispatch({ kind: 'cursor', id })}
+								onCursorChange={(id) => {
+									dispatch({ kind: 'cursor', id });
+									const item = items.find((candidate) => candidate.path === id);
+									if (item) selectItem(item);
+								}}
 								onToggleCollapse={(folderPath) => dispatch({ kind: 'toggleCollapse', folderPath })}
-								onOpenFile={() => undefined}
+								onOpenFile={(file, opts) => openItem(file.result, { newTab: opts.newTab })}
 								onRevealFolder={() => undefined}
 								inspectorOpen={state.inspectorOpen}
-								onInspectorOpenChange={(open) => dispatch({ kind: 'inspector', open })}
+								onInspectorOpenChange={(open) => {
+									if (open && selectedItem) setInspectorPath(selectedItem.path);
+									dispatch({ kind: 'inspector', open });
+								}}
 							/>
 						)}
 						{state.view === 'graph' && (
@@ -159,12 +264,46 @@ export function RelatedMaterialsModal({
 								preset={state.graphPreset}
 								semantic={state.graphShowSemantic}
 								nodeCap={config.graphNodeCap}
-								onNodeTap={(node) => dispatch({ kind: 'select', id: node.id })}
+								onNodeTap={(node) => {
+									const item = items.find((candidate) =>
+										candidate.id === node.id || candidate.path === node.path
+									);
+									if (item) selectItem(item);
+								}}
 							/>
 						)}
 					</div>
+					{state.inspectorOpen && (
+						<aside className="pk-related-inspector" aria-label={s.materialPreview}>
+							<InspectorSidePanel
+								currentPath={selectedItem ? (inspectorPath ?? selectedItem.path) : null}
+								searchQuery={state.filterText}
+								showSearchSnippet={false}
+								onClose={() => dispatch({ kind: 'inspector', open: false })}
+								onOpenDocument={(path) => onOpenSource?.(path)}
+								onInspectInPanel={setInspectorPath}
+							/>
+						</aside>
+					)}
 				</div>
-			</div>
-		</div>
+
+				<div className="pk-related-footer">
+					<ResultBrowserFooterHints showNewTab={false} />
+					{selectedItem && (
+						<Button
+							onClick={() => {
+								runtime.session.openSession(
+									`${s.bringIntoSession} · ${selectedItem.title}`,
+									[selectedItem.id],
+								);
+								onClose();
+							}}
+						>
+							{s.bringIntoSession}
+						</Button>
+					)}
+				</div>
+			</Modal.Content>
+		</Modal>
 	);
 }

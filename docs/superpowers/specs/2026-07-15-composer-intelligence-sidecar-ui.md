@@ -127,12 +127,12 @@ Purpose: infer and continuously organize the user's current editing work in a vi
 
 `相关材料` 不是一排置信度卡片，也不是新的顶层工作面。它在 Copilot brief 的同一 section 内提供两层渐进披露：
 
-1. **局部图**：侧栏只展示当前正文对象、5–7 个最强材料节点和主要连接。弱关联默认隐藏；点击节点只原位更新一条材料详情，说明标题、路径、关联理由、分数及 `查看来源 / 带入协作`。它不改变 Copilot stage、不自动运行能力，也不直接写正文。
+1. **可读材料列表（2026-07-28 owner 决策）**：窄侧栏不再渲染小型关系图、点阵画布或当前正文节点。它按相关度展示最强材料的普通列表，逐项说明标题、关联理由和分数；悬浮或键盘聚焦临时更新下方材料预览，点击固定预览。预览说明正文摘要、路径及 `查看来源 / 带入协作`，并把 `查看全部材料` 放在同一详情 footer，禁止再单独占据一整行。弱关联仍只进入宽幅浏览器。该列表不改变 Copilot stage、不自动运行能力，也不直接写正文。
 2. **宽幅材料浏览器**：`打开完整视图` 在 Composer 内打开明显宽于 sidecar 的 modal，并挂载 shared controlled `ResultBrowser` 的 related-material mode。它浏览的是 Composer 已经找到并冻结的相关资料集合，不跳转到 Vault Search / Quick Search，也不把用户带离当前文档。`列表 / 文件夹 / 图谱`、toolbar、density、graph layouts、keyboard 和 inspector 语法由从现有搜索结果组件中抽取的共享 production component 提供；Composer 不实现第二套 renderer。Composer 只提供 related-material snapshot 与 host actions。窄屏 modal 接近全屏，inspector 移到内容下方，不产生横向页面滚动。
 
 一级视图的视觉与键盘语法沿用 Vault Search：List/Folder 可切换 compact/detailed density；Folder 保留 path hierarchy、folder-first ordering、聚合数量与 collapse state；List/Folder 的 leaf IDs 必须完全一致。Graph 才显示二级 layout controls，preset 精确锁定为 `constellation / flow-tb / flow-lr / folder / orbit`；一级 `文件夹` 与 Graph 的 `folder` layout 是两个独立状态。Graph 区分当前对象、普通材料、弱关联、引用实线和 Semantic 虚线；Orbit 自动打开 Semantic，其他 preset 自动关闭。Semantic 只切换已索引语义边，不调用模型、不走网络、不消耗 AI credit。Graph 支持 wheel/pinch zoom、drag pan、真实 fit、悬停邻域、节点选择、Mermaid 与 PNG export。
 
-这里的“复用 Vault Search / Quick Search 组件”只描述组件来源，不描述导航目标。宽幅 modal 挂载同一个 production React `ResultBrowser`，但仍属于 Composer 当前工作面；它不是外观仿制，也不是把完整 Quick Search modal、搜索请求或 `vaultSearchStore` 嵌进 Composer。侧栏局部关系预览与宽幅浏览器消费同一份冻结 related-material snapshot。若宽幅浏览器提供搜索框，只能本地过滤该 snapshot，不能隐式发起新检索。静态 docs modal 只保留 reuse slot / contract marker，不复制或模拟完整浏览器的控件和投影。用户界面只使用 `相关材料`、`打开完整视图` 等产品文案，不显示内部组件名 `ResultBrowser`。
+这里的“复用 Vault Search / Quick Search 组件”只描述组件来源，不描述导航目标。宽幅 modal 挂载同一个 production React `ResultBrowser`，但仍属于 Composer 当前工作面；它不是外观仿制，也不是把完整 Quick Search modal、搜索请求或 `vaultSearchStore` 嵌进 Composer。侧栏材料列表与宽幅浏览器消费同一份冻结 related-material snapshot；Graph 只存在于宽幅浏览器。若宽幅浏览器提供搜索框，只能本地过滤该 snapshot，不能隐式发起新检索。静态 docs modal 只保留 reuse slot / contract marker，不复制或模拟完整浏览器的控件和投影。用户界面只使用 `相关材料`、`打开完整视图` 等产品文案，不显示内部组件名 `ResultBrowser`。
 
 关系图操作边界：
 

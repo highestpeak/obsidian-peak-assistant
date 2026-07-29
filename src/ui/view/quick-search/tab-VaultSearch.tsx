@@ -2,8 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { Bug, Filter, SearchX } from 'lucide-react';
 import { useDebugTraceCopy } from '@/ui/hooks/useDebugTraceCopy';
 import { useOwnerDocumentListener } from '@/ui/hooks/useOwnerWindow';
-import { KeyboardShortcut } from '../../component/mine/KeyboardShortcut';
 import { EmptyState } from '../../component/mine/EmptyState';
+import { ResultBrowserFooterHints } from '@/ui/component/result-browser';
 import { SearchResultRow } from './components/VaultSearchResult';
 import { cn } from '@/ui/react/lib/utils';
 import { useVaultSearchStore } from './store';
@@ -65,14 +65,7 @@ const FilterSyntaxHint: React.FC<{ variant: 'browse' | 'results' }> = ({ variant
 const RESULT_HINT_THRESHOLD = 15;
 
 /** Footer hints for vault search tab. Exported for use in SearchModal footer. */
-export const VaultSearchFooterHints: React.FC = () => (
-	<div className="pktw-flex pktw-items-center pktw-gap-4 pktw-text-xs pktw-text-pk-text-tertiary">
-		<KeyboardShortcut keys="↑↓" description="navigate" />
-		<KeyboardShortcut keys="Enter" description="open" />
-		<KeyboardShortcut keys="Ctrl+Enter" description="new tab" />
-		<KeyboardShortcut keys="→" description="inspector" />
-	</div>
-);
+export const VaultSearchFooterHints = ResultBrowserFooterHints;
 
 interface VaultSearchTabProps {
 	onClose?: () => void;

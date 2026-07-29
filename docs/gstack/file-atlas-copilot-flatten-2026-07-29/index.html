@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>File Atlas · Element Copilot + Flatten Mock</title>
+  <link rel="stylesheet" href="./mock.css">
+</head>
+<body>
+  <svg aria-hidden="true" class="defs">
+    <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7Z"/><path d="M14 2v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/></symbol>
+    <symbol id="i-sort" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m7 3-4 4 4 4"/><path d="M3 7h18"/><path d="m17 21 4-4-4-4"/><path d="M21 17H3"/></symbol>
+    <symbol id="i-tree" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 4h10v6H10z"/><path d="M10 14h10v6H10z"/><path d="M4 7h6"/><path d="M4 17h6"/><path d="M4 7v10"/></symbol>
+    <symbol id="i-network" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="12" cy="18" r="3"/><path d="m8.7 7.4 6.6 0"/><path d="m7.5 8.7 3 6.6"/><path d="m16.5 8.7-3 6.6"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6h16"/><path d="M7 12h10"/><path d="M10 18h4"/></symbol>
+    <symbol id="i-flatten" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></symbol>
+    <symbol id="i-unfold" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m7 8 5-5 5 5"/><path d="M12 3v18"/><path d="m7 16 5 5 5-5"/></symbol>
+    <symbol id="i-fold" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m7 3 5 5 5-5"/><path d="m7 21 5-5 5 5"/><path d="M12 8v8"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></symbol>
+    <symbol id="i-heading" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 4v16"/><path d="M18 4v16"/><path d="M6 12h12"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 13a5 5 0 0 0 7.1 0l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1 0l-2 2A5 5 0 0 0 12 20.1l1.1-1.1"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3l1.8 5.1L19 10l-5.2 1.9L12 17l-1.8-5.1L5 10l5.2-1.9Z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8Z"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14"/><path d="M5 12h14"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m20 6-11 11-5-5"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></symbol>
+  </svg>
+
+  <main class="stage">
+    <section class="surface" id="surface" aria-label="File Atlas Copilot mock">
+      <aside class="file-rail" aria-label="Open files">
+        <div class="rail-head">
+          <span class="rail-title"><svg><use href="#i-file"/></svg> Files</span>
+          <button class="rail-sort" type="button"><svg><use href="#i-sort"/></svg> Most used</button>
+        </div>
+        <div class="rail-section">Open <span>3</span></div>
+        <button class="rail-item is-active" type="button">
+          <span class="rail-icon"><svg><use href="#i-file"/></svg></span>
+          <span class="rail-text"><strong>A-0-最高准则</strong><small>CA-WHOAMI</small></span>
+        </button>
+        <button class="rail-item" type="button">
+          <span class="rail-icon"><svg><use href="#i-file"/></svg></span>
+          <span class="rail-text"><strong>Peak Composer Visual Parity QA</strong><small>docs/testing</small></span>
+        </button>
+        <button class="rail-item" type="button">
+          <span class="rail-icon"><svg><use href="#i-file"/></svg></span>
+          <span class="rail-text"><strong>2-Story Cards-2-1-AI Experience</strong><small>interview</small></span>
+        </button>
+        <div class="rail-section">Recent <span>21</span></div>
+        <button class="rail-item muted" type="button"><span class="rail-icon"><svg><use href="#i-file"/></svg></span><span class="rail-text"><strong>0-Index</strong><small>kb root</small></span></button>
+        <button class="rail-item muted" type="button"><span class="rail-icon"><svg><use href="#i-file"/></svg></span><span class="rail-text"><strong>3-Common Engineering Principles</strong><small>stories</small></span></button>
+        <button class="rail-item muted" type="button"><span class="rail-icon"><svg><use href="#i-file"/></svg></span><span class="rail-text"><strong>AI-peak-assistant-obsidian</strong><small>product</small></span></button>
+      </aside>
+
+      <section class="atlas">
+        <header class="doc-bar">
+          <span class="doc-path">kb1-life-notes/CA-WHOAMI/C-指导性原则/A-0-最高准则.md</span>
+          <span class="status-pill"><span class="dot"></span> Basic anchors</span>
+          <span class="metric">136 words</span>
+          <span class="metric">1 blocks</span>
+          <span class="metric">2 resources</span>
+        </header>
+
+        <nav class="view-row" aria-label="Atlas view mode">
+          <button class="view-tab is-active" type="button"><svg><use href="#i-tree"/></svg> Tree</button>
+          <button class="view-tab" type="button"><svg><use href="#i-network"/></svg> Graph</button>
+          <span class="view-copy">Outline of every block, resource & heading in this note</span>
+          <button class="ghost-btn reveal" type="button"><svg><use href="#i-eye"/></svg> Reveal in editor</button>
+        </nav>
+
+        <div class="search-band">
+          <div class="search-box">
+            <svg><use href="#i-search"/></svg>
+            <span>Search this document's blocks, links, and headings...</span>
+            <strong>document</strong>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <div class="preset-tabs" aria-label="Layer presets">
+            <button class="preset is-active" type="button">All</button>
+            <button class="preset" type="button">Overview</button>
+            <button class="preset" type="button">Reading</button>
+            <button class="preset" type="button">Writing</button>
+            <button class="preset" type="button">Resources</button>
+          </div>
+          <button class="icon-btn" type="button" aria-label="Filters" title="Filters"><svg><use href="#i-filter"/></svg></button>
+          <button class="icon-btn" id="flattenToggle" type="button" aria-label="Flatten all hierarchy" title="Flatten all hierarchy">
+            <svg><use href="#i-flatten"/></svg>
+          </button>
+          <button class="icon-btn" type="button" title="Expand all"><svg><use href="#i-unfold"/></svg></button>
+          <button class="icon-btn" type="button" title="Collapse all"><svg><use href="#i-fold"/></svg></button>
+        </div>
+
+        <div class="content-shell">
+          <section class="tree-pane" aria-label="Atlas elements">
+            <div class="mode-hint tree-copy">
+              <strong>Tree mode</strong>
+              <span>保留 heading/list/item 的层级关系；右侧 Copilot 跟随当前选中元素。</span>
+            </div>
+            <div class="mode-hint flat-copy">
+              <strong>Flat mode</strong>
+              <span>按正文顺序展平所有元素；层级被收进 path crumb，适合批量扫读和筛选。</span>
+            </div>
+
+            <div class="nodes">
+              <button class="node depth-0 group selected" type="button" data-title="Bullet list" data-kind="List" data-lines="2-21" data-prompt="解释这个 list 的主张结构">
+                <span class="line">2</span>
+                <span class="twisty">⌄</span>
+                <span class="node-icon"><svg><use href="#i-list"/></svg></span>
+                <span class="node-main"><strong>Bullet list</strong><small>21 items</small><em>Document / Bullet list</em></span>
+                <span class="node-action">Ask Copilot</span>
+                <span class="badge">list</span>
+              </button>
+
+              <button class="node depth-1" type="button" data-title="最大的确定性就是不确定性本身，最不会变化的就是变化本身" data-kind="List item" data-lines="2" data-prompt="帮我解释这句话在本文中的位置">
+                <span class="line">2</span>
+                <span class="twisty"></span>
+                <span class="node-icon"><svg><use href="#i-list"/></svg></span>
+                <span class="node-main"><strong>最大的确定性就是不确定性本身，最不会变化的就是变化本身</strong><small>List item</small><em>Document / Bullet list / Item 01</em></span>
+                <span class="node-action">Ask</span>
+                <span class="badge">item</span>
+              </button>
+
+              <button class="node depth-1" type="button" data-title="物质守恒，守恒定律。等价交换。什么都无法舍去，什么都无法获得。" data-kind="List item" data-lines="3" data-prompt="找出这条原则和其他笔记的呼应">
+                <span class="line">3</span>
+                <span class="twisty"></span>
+                <span class="node-icon"><svg><use href="#i-list"/></svg></span>
+                <span class="node-main"><strong>物质守恒，守恒定律。等价交换。什么都无法舍去，什么都无法获得。</strong><small>List item</small><em>Document / Bullet list / Item 02</em></span>
+                <span class="node-action">Ask</span>
+                <span class="badge">item</span>
+              </button>
+
+              <button class="node depth-1" type="button" data-title="利益优先，逻辑优先，放弃情感，思考人性，当然，一旦签订契约就是另一回事。" data-kind="List item" data-lines="4" data-prompt="把这条改写成更适合面试表达的版本">
+                <span class="line">4</span>
+                <span class="twisty"></span>
+                <span class="node-icon"><svg><use href="#i-list"/></svg></span>
+                <span class="node-main"><strong>利益优先，逻辑优先，放弃情感，思考人性，当然，一旦签订契约就是另一回事。</strong><small>List item</small><em>Document / Bullet list / Item 03</em></span>
+                <span class="node-action">Draft</span>
+                <span class="badge">item</span>
+              </button>
+
+              <button class="node depth-1" type="button" data-title="不要在蠢人身上浪费时间，不要试图说服不愿意听或者考虑哪怕一点点你说话的可能性的人。" data-kind="List item" data-lines="5" data-prompt="判断这条是否和本文其他原则重复">
+                <span class="line">5</span>
+                <span class="twisty"></span>
+                <span class="node-icon"><svg><use href="#i-list"/></svg></span>
+                <span class="node-main"><strong>不要在蠢人身上浪费时间，不要试图说服不愿意听或者考虑哪怕一点点你说话的可能性的人。</strong><small>List item</small><em>Document / Bullet list / Item 04</em></span>
+                <span class="node-action">Check</span>
+                <span class="badge">item</span>
+              </button>
+
+              <button class="node depth-1 group" type="button" data-title="If you love me, then I love you. If you support me, then I support you." data-kind="Nested list" data-lines="6-8" data-prompt="总结这个英文段落和中文原则的关系">
+                <span class="line">6</span>
+                <span class="twisty">⌄</span>
+                <span class="node-icon"><svg><use href="#i-list"/></svg></span>
+                <span class="node-main"><strong>If you love me, then I love you. If you support me, then I support you.</strong><small>Nested list · 2 child items</small><em>Document / Bullet list / Conditional exchange</em></span>
+                <span class="node-action">Ask</span>
+                <span class="badge">item</span>
+              </button>
+
+              <button class="node depth-2 resource" type="button" data-title="关于暧昧-感情-恋爱-女人" data-kind="Vault link" data-lines="6" data-prompt="解释这个链接为什么被放在这里">
+                <span class="line">6</span>
+                <span class="twisty"></span>
+                <span class="node-icon"><svg><use href="#i-link"/></svg></span>
+                <span class="node-main"><strong>关于暧昧-感情-恋爱-女人</strong><small>Vault link</small><em>Document / Bullet list / Conditional exchange / Resource</em></span>
+                <span class="node-action">Inspect</span>
+                <span class="badge link">vault</span>
+              </button>
+
+              <button class="node depth-1 group" type="button" data-title="小马过河 [[0717-a good lesson i learned these years-小马过河]]" data-kind="List item" data-lines="8" data-prompt="把这个 item 和资源一起交给 Copilot 找证据">
+                <span class="line">8</span>
+                <span class="twisty">⌄</span>
+                <span class="node-icon"><svg><use href="#i-list"/></svg></span>
+                <span class="node-main"><strong>小马过河 [[0717-a good lesson i learned these years-小马过河]]</strong><small>List item with resource</small><em>Document / Bullet list / Experience reference</em></span>
+                <span class="node-action">Ask</span>
+                <span class="badge">item</span>
+              </button>
+
+              <button class="node depth-2 resource" type="button" data-title="0717-a good lesson i learned these years-小马过河" data-kind="Vault link" data-lines="8" data-prompt="预览这个资源并说明它支持哪条原则">
+                <span class="line">8</span>
+                <span class="twisty"></span>
+                <span class="node-icon"><svg><use href="#i-link"/></svg></span>
+                <span class="node-main"><strong>0717-a good lesson i learned these years-小马过河</strong><small>Vault link</small><em>Document / Bullet list / Experience reference / Resource</em></span>
+                <span class="node-action">Inspect</span>
+                <span class="badge link">vault</span>
+              </button>
+
+              <button class="node depth-1" type="button" data-title="第一性原理" data-kind="List item" data-lines="10" data-prompt="找出本文里哪些句子可以归到第一性原理">
+                <span class="line">10</span>
+                <span class="twisty"></span>
+                <span class="node-icon"><svg><use href="#i-list"/></svg></span>
+                <span class="node-main"><strong>第一性原理</strong><small>List item</small><em>Document / Bullet list / Item 10</em></span>
+                <span class="node-action">Ask</span>
+                <span class="badge">item</span>
+              </button>
+
+              <button class="node depth-1" type="button" data-title="沉没成本不参与重大决策" data-kind="List item" data-lines="11" data-prompt="把这条变成一个可执行判断 checklist">
+                <span class="line">11</span>
+                <span class="twisty"></span>
+                <span class="node-icon"><svg><use href="#i-list"/></svg></span>
+                <span class="node-main"><strong>沉没成本不参与重大决策</strong><small>List item</small><em>Document / Bullet list / Item 11</em></span>
+                <span class="node-action">Draft</span>
+                <span class="badge">item</span>
+              </button>
+            </div>
+          </section>
+
+          <aside class="inspector" aria-label="Element inspector">
+            <section class="card selected-card">
+              <div class="card-head">
+                <span><svg><use href="#i-list"/></svg> Selected element</span>
+                <button class="ghost-btn small" type="button"><svg><use href="#i-eye"/></svg> Reveal</button>
+              </div>
+              <strong id="selectedTitle">Bullet list</strong>
+              <dl>
+                <div><dt>Kind</dt><dd id="selectedKind">List</dd></div>
+                <div><dt>Lines</dt><dd id="selectedLines">2-21</dd></div>
+                <div><dt>Path</dt><dd id="selectedPath">Document / Bullet list</dd></div>
+              </dl>
+            </section>
+
+            <section class="card copilot-card">
+              <div class="copilot-title">
+                <span class="spark-icon"><svg><use href="#i-spark"/></svg></span>
+                <div>
+                  <strong>Copilot 建议</strong>
+                  <small>按当前选中元素更新</small>
+                </div>
+              </div>
+              <div class="scope-note">
+                <strong>当前范围</strong>
+                <span id="suggestedPrompt">Document / Bullet list</span>
+              </div>
+              <div class="composer-suggestion-list">
+                <button type="button" class="composer-suggestion is-active" data-run="ask">
+                  <span class="rank">01</span>
+                  <span class="suggestion-copy">
+                    <strong id="suggestionTitle">解释这个 list 的主张结构。</strong>
+                    <small>定位到 Atlas 选中元素，进入同一 Copilot 对话。</small>
+                  </span>
+                  <span class="suggestion-tail">问 Copilot</span>
+                </button>
+                <button type="button" class="composer-suggestion" data-run="carry">
+                  <span class="rank">02</span>
+                  <span class="suggestion-copy">
+                    <strong>把当前元素带入协作。</strong>
+                    <small>带着当前元素进入协作输入框。</small>
+                  </span>
+                  <span class="suggestion-tail">带入协作</span>
+                </button>
+                <button type="button" class="composer-suggestion" data-run="review">
+                  <span class="rank">03</span>
+                  <span class="suggestion-copy">
+                    <strong>需要改写时打开 Composer Review。</strong>
+                    <small>全面 review 是一次性场景；需要写入时进入 Composer Review。</small>
+                  </span>
+                  <span class="suggestion-tail">打开 Review</span>
+                </button>
+              </div>
+              <div class="run-receipt" id="runReceipt">
+                <span><svg><use href="#i-clock"/></svg> Ready</span>
+                <p>不会直接改正文；需要写入时进入 Composer Review。</p>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="card-head">
+                <span><svg><use href="#i-link"/></svg> Element context</span>
+                <span class="quiet">3 signals</span>
+              </div>
+              <div class="signal-list">
+                <span><strong>Parent</strong> Bullet list</span>
+                <span><strong>Nearby</strong> Item 02, Item 03</span>
+                <span><strong>Resources</strong> 2 linked notes</span>
+              </div>
+            </section>
+
+            <section class="card guard-card">
+              <div class="card-head">
+                <span><svg><use href="#i-shield"/></svg> Boundary</span>
+              </div>
+              <ul>
+                <li>Atlas 负责选择、检查、解释和 handoff。</li>
+                <li>自动写入 Markdown 不在这里发生。</li>
+                <li>复杂 rewrite 进入 Composer Review。</li>
+              </ul>
+            </section>
+          </aside>
+        </div>
+
+        <footer class="tray">
+          <span>Tray <strong>0</strong></span>
+          <button class="primary-btn" type="button"><svg><use href="#i-send"/></svg> Send selected element to Copilot</button>
+        </footer>
+      </section>
+    </section>
+  </main>
+  <script src="./mock.js"></script>
+</body>
+</html>

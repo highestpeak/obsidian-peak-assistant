@@ -11,6 +11,52 @@
  * 2026-07-09 mock correction; full line range lives in the Inspector.
  */
 
+/*
+ * File Atlas Reveal lands outside the modal in Obsidian's CodeMirror editor.
+ * This intentionally global, one-shot class highlights the complete active
+ * editor line after navigation; the app adapter removes it on animation end.
+ */
+.markdown-source-view .cm-line.pkfa-editor-reveal-flash {
+	animation: pkfa-editor-reveal-line-flash 1150ms ease-out;
+	border-radius: var(--radius-s);
+}
+
+@keyframes pkfa-editor-reveal-line-flash {
+	0%,
+	100% {
+		background-color: transparent;
+		box-shadow: inset 0 0 0 transparent;
+	}
+	12%,
+	46% {
+		background-color: color-mix(in srgb, var(--interactive-accent) 26%, transparent);
+		box-shadow: inset 4px 0 0 var(--interactive-accent);
+	}
+	30%,
+	64% {
+		background-color: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
+		box-shadow: inset 2px 0 0 color-mix(in srgb, var(--interactive-accent) 48%, transparent);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.markdown-source-view .cm-line.pkfa-editor-reveal-flash {
+		animation: pkfa-editor-reveal-line-flash-reduced 700ms ease-out;
+	}
+}
+
+@keyframes pkfa-editor-reveal-line-flash-reduced {
+	0%,
+	70% {
+		background-color: color-mix(in srgb, var(--interactive-accent) 20%, transparent);
+		box-shadow: inset 4px 0 0 var(--interactive-accent);
+	}
+	100% {
+		background-color: transparent;
+		box-shadow: inset 0 0 0 transparent;
+	}
+}
+
 .peak-file-atlas-modal.pkfa-root {
 	display: grid;
 	grid-template-columns: var(--pkfa-rail-width, 300px) minmax(0, 1fr);
@@ -93,7 +139,7 @@
 
 .pkfa-rail-title svg { width: 14px; height: 14px; }
 
-.pkfa-rail-sort {
+.peak-file-atlas-modal.pkfa-root .pkfa-rail-sort {
 	min-width: 0;
 	height: 28px;
 	display: grid;
@@ -104,8 +150,8 @@
 	padding: 0 7px;
 	border: 1px solid var(--pk-border-soft);
 	border-radius: var(--pk-radius-sm);
-	background: var(--pk-surface);
-	color: var(--pk-text-secondary);
+	background: var(--pk-surface) !important;
+	color: var(--pk-text-secondary) !important;
 	cursor: pointer;
 	transition: border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
 	font-family: var(--pk-font-sans);
@@ -114,14 +160,17 @@
 	text-align: left;
 }
 
-.pkfa-rail-sort:hover {
-	border-color: var(--pk-border-strong);
-	background: var(--pk-surface-raised);
+.peak-file-atlas-modal.pkfa-root .pkfa-rail-sort:hover:not(:disabled) {
+	border-color: var(--pk-border-strong) !important;
+	background: var(--pk-surface-raised) !important;
+	color: var(--pk-text-primary) !important;
 }
 
-.pkfa-rail-sort:focus-visible,
-.pkfa-rail-sort[data-state="open"] {
-	border-color: var(--pk-accent);
+.peak-file-atlas-modal.pkfa-root .pkfa-rail-sort:focus-visible,
+.peak-file-atlas-modal.pkfa-root .pkfa-rail-sort[data-state="open"] {
+	border-color: var(--pk-accent) !important;
+	background: var(--pk-surface-raised) !important;
+	color: var(--pk-text-primary) !important;
 	box-shadow: 0 0 0 2px var(--pk-accent-tint);
 	outline: 0;
 }
@@ -133,6 +182,13 @@
 }
 
 .pkfa-rail-sort-menu {
+	/*
+	 * Radix copies the content's computed z-index onto its fixed-position
+	 * wrapper when the popover mounts. Obsidian modals live at layer 50, so
+	 * the generic `pktw-z-50` would leave this menu behind the File Atlas
+	 * modal even though the trigger correctly entered its open state.
+	 */
+	z-index: var(--pk-z-popover) !important;
 	width: 152px !important;
 	padding: 5px !important;
 }

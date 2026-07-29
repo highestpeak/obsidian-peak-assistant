@@ -84,7 +84,7 @@ export interface FrontmatterConfig {
 export const DEFAULT_FRONTMATTER_CONFIG: FrontmatterConfig = {
 	grid: {
 		issueWarning: '属性告警',
-		aiSuggest: 'AI 建议',
+		aiSuggest: 'AI 属性建议',
 		addProperty: '添加属性',
 		origin: { program: '程序', human: '人工', ai: 'AI 建议', convention: '规范建议' },
 		reviewShapeChange: '该改动会改变字段类型，请确认后再写入',

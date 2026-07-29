@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { ChevronDown, ExternalLink, MoreHorizontal, RefreshCw, Sparkles } from 'lucide-react';
+import { ChevronDown, ExternalLink, ListEnd, RefreshCw, Sparkles } from 'lucide-react';
 import { composerTargetBlockId } from '@/core/composer';
 import type {
 	BriefSensingMode,
@@ -15,6 +15,7 @@ import { selectLocalPreview } from '@/service/composer';
 import { Button } from '@/ui/components/primitives';
 import { cn } from '@/ui/react/lib/utils';
 import { RelatedMaterialsModal } from './RelatedMaterialsModal';
+import { resolveSidecarPreviewFixture } from './previewFixture';
 import { useBriefProjection, useFindings, useSidecar } from './SidecarContext';
 import type { SidecarConfig } from './sidecarConfig';
 
@@ -32,7 +33,15 @@ export type RelatedLoadState =
  * projects it and sends explicit user actions back to that runtime.
  */
 export function BriefView(): React.ReactElement {
-	const { runtime, config, getFocusedBlockId, onLocate, onOpenSource, resolveRelatedFocus } = useSidecar();
+	const {
+		runtime,
+		config,
+		documentFilePath,
+		getFocusedBlockId,
+		onLocate,
+		onOpenSource,
+		resolveRelatedFocus,
+	} = useSidecar();
 	const findings = useFindings(runtime);
 	const brief = useBriefProjection(runtime);
 	const [related, setRelated] = React.useState<RelatedLoadState>(
@@ -40,6 +49,9 @@ export function BriefView(): React.ReactElement {
 	);
 	const [relatedReloadToken, setRelatedReloadToken] = React.useState(0);
 	const [modalOpen, setModalOpen] = React.useState(false);
+	const [organizedPreviewThoughtIds, setOrganizedPreviewThoughtIds] = React.useState<ReadonlySet<string>>(
+		() => new Set(),
+	);
 
 	const resolveCurrentFocus = React.useCallback(() => {
 		const focusedBlockId = getFocusedBlockId?.() ?? null;
@@ -62,11 +74,30 @@ export function BriefView(): React.ReactElement {
 		runtime.refreshBrief();
 		onRefreshRelated();
 	}, [onRefreshRelated, resolveCurrentFocus, runtime]);
+	const previewFocus = resolveRelatedFocus?.(getFocusedBlockId?.() ?? null) ?? {
+		anchorId: 'document',
+		documentId: 'document',
+		focusText: '',
+		label: config.strings.currentDocument,
+	};
+	const previewFixture = resolveSidecarPreviewFixture(documentFilePath, config, previewFocus);
+	const hasRealRelated = related.status === 'ready' && related.snapshot.items.length > 0;
+	const relatedPreviewActive = Boolean(previewFixture && !hasRealRelated);
+	const effectiveRelated: RelatedLoadState = previewFixture && !hasRealRelated
+		? { status: 'ready', snapshot: previewFixture.related }
+		: related;
+	const thoughtPreviewActive = Boolean(previewFixture && brief.unplacedThoughts.length === 0);
+	const previewThoughts = thoughtPreviewActive
+		? previewFixture?.thoughts.filter((thought) => !organizedPreviewThoughtIds.has(thought.thoughtId)) ?? []
+		: [];
+	const effectiveBrief: IntelligenceBriefProjection = thoughtPreviewActive
+		? { ...brief, unplacedThoughts: previewThoughts }
+		: brief;
 
 	return (
 		<>
 			<BriefViewContent
-				brief={brief}
+				brief={effectiveBrief}
 				config={config}
 				findings={findings}
 				modalOpen={modalOpen}
@@ -74,7 +105,16 @@ export function BriefView(): React.ReactElement {
 				onOpenSource={onOpenSource}
 				onRefreshRelated={onRefreshRelated}
 				onRefreshSuggestions={onRefreshSuggestions}
-				related={related}
+				related={effectiveRelated}
+				relatedPreviewActive={relatedPreviewActive}
+				thoughtPreviewActive={thoughtPreviewActive}
+				onOrganizeThought={(thought) => {
+					if (!previewFixture?.thoughts.some((entry) => entry.id === thought.thoughtId)) {
+						runtime.organizeThought(thought.thoughtId);
+						return;
+					}
+					setOrganizedPreviewThoughtIds((current) => new Set([...current, thought.thoughtId]));
+				}}
 				setModalOpen={setModalOpen}
 				runtime={runtime}
 			/>
@@ -85,14 +125,20 @@ export function BriefView(): React.ReactElement {
 
 export interface BriefViewContentProps {
 	brief?: IntelligenceBriefProjection;
-	config: Pick<SidecarConfig, 'strings' | 'briefPreviewCap' | 'thoughtPreviewCap' | 'relatedPreviewCap'>;
+	config: Pick<
+		SidecarConfig,
+		'strings' | 'briefPreviewCap' | 'thoughtPreviewCap' | 'relatedPreviewCap' | 'relatedExcerptMaxChars'
+	>;
 	findings: readonly SuggestionFinding[];
 	modalOpen: boolean;
 	onLocate?: (blockId: string) => void;
 	onOpenSource?: (path: string) => void;
 	onRefreshRelated: () => void;
 	onRefreshSuggestions?: () => void;
+	onOrganizeThought?: (thought: BriefThought) => void;
 	related: RelatedLoadState;
+	relatedPreviewActive?: boolean;
+	thoughtPreviewActive?: boolean;
 	setModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
 	runtime: IntelligenceRuntime;
 }
@@ -106,7 +152,10 @@ export function BriefViewContent({
 	onOpenSource,
 	onRefreshRelated,
 	onRefreshSuggestions,
+	onOrganizeThought,
 	related,
+	relatedPreviewActive = false,
+	thoughtPreviewActive = false,
 	setModalOpen,
 	runtime,
 }: BriefViewContentProps): React.ReactElement {
@@ -123,8 +172,12 @@ export function BriefViewContent({
 		? brief.unplacedThoughts
 		: brief.unplacedThoughts.slice(0, config.thoughtPreviewCap);
 	const preview: readonly RelatedPreviewNode[] = React.useMemo(
-		() => (related.status === 'ready' ? selectLocalPreview(related.snapshot, config.relatedPreviewCap) : []),
-		[config.relatedPreviewCap, related],
+		() => (
+			related.status === 'ready'
+				? selectLocalPreview(related.snapshot, config.relatedPreviewCap, config.relatedExcerptMaxChars)
+				: []
+		),
+		[config.relatedExcerptMaxChars, config.relatedPreviewCap, related],
 	);
 	const relatedSnapshot = related.status === 'ready' ? related.snapshot : null;
 	const relatedCount = relatedSnapshot?.items.length ?? 0;
@@ -192,8 +245,14 @@ export function BriefViewContent({
 									finding={finding}
 									index={index + 1}
 									onDefer={() => runtime.deferFinding(finding.findingId)}
-									onDiscuss={() => runtime.session.openSession(findingPresentation(finding).title)}
-									onIgnore={() => runtime.ignoreFindingForCurrentRefresh(finding.findingId)}
+									onDiscuss={() =>
+										runtime.session.openSession(
+											findingPresentation(finding).title,
+											[],
+											[],
+											finding.capabilityId,
+										)
+									}
 									onLocate={() => locateFinding(finding, onLocate)}
 									strings={s}
 								/>
@@ -221,6 +280,8 @@ export function BriefViewContent({
 				title={s.sectionRelated}
 				count={relatedCount}
 				hint={s.relatedAsEvidence}
+				badge={relatedPreviewActive ? s.previewFixtureLabel : undefined}
+				badgeTitle={relatedPreviewActive ? s.previewFixtureNote : undefined}
 				action={
 					related.status !== 'unavailable' ? (
 						<Button className="pk-brief-section-action" variant="outline" size="sm" onClick={onRefreshRelated}>
@@ -233,7 +294,6 @@ export function BriefViewContent({
 				<RelatedSectionBody
 					related={related}
 					preview={preview}
-					focusLabel={brief.focus?.label ?? s.currentDocument}
 					onOpenSource={onOpenSource}
 					onRefreshRelated={onRefreshRelated}
 					onStartSession={(node) => runtime.session.openSession(`${s.bringIntoSession} ${node.title}`, [node.sourceId])}
@@ -242,7 +302,13 @@ export function BriefViewContent({
 				/>
 			</BriefSection>
 
-			<BriefSection title={s.sectionUnplaced} count={brief.unplacedThoughts.length} hint={s.thoughtsNotTasks}>
+			<BriefSection
+				title={s.sectionUnplaced}
+				count={brief.unplacedThoughts.length}
+				hint={s.thoughtsNotTasks}
+				badge={thoughtPreviewActive ? s.previewFixtureLabel : undefined}
+				badgeTitle={thoughtPreviewActive ? s.previewFixtureNote : undefined}
+			>
 				{brief.unplacedThoughts.length > 0 ? (
 					<>
 						<div className="pk-thought-list">
@@ -251,7 +317,16 @@ export function BriefViewContent({
 									key={thought.thoughtId}
 									thought={thought}
 									organizeLabel={s.organizeThought}
-								onOrganize={() => runtime.session.openSession(thought.label)}
+									bringIntoSessionLabel={s.bringIntoSession}
+									fromRunTemplate={s.thoughtFromRun}
+									onBringIntoSession={() => runtime.session.openSession(thought.label)}
+									onOrganize={() => {
+										if (onOrganizeThought) {
+											onOrganizeThought(thought);
+											return;
+										}
+										runtime.organizeThought(thought.thoughtId);
+									}}
 								/>
 							))}
 						</div>
@@ -326,12 +401,16 @@ function BriefSection({
 	title,
 	count,
 	hint,
+	badge,
+	badgeTitle,
 	action,
 	children,
 }: {
 	title: string;
 	count: number;
 	hint?: string;
+	badge?: string;
+	badgeTitle?: string;
 	action?: React.ReactNode;
 	children: React.ReactNode;
 }): React.ReactElement {
@@ -341,6 +420,7 @@ function BriefSection({
 				<span className="pk-brief-section-title-group">
 					<span className="pk-brief-section-title">{title}</span>
 					<span className="pk-status-chip">{count}</span>
+					{badge && <span className="pk-preview-badge" title={badgeTitle}>{badge}</span>}
 					{hint && <small className="pk-brief-section-hint">{hint}</small>}
 				</span>
 				{action}
@@ -429,7 +509,6 @@ function FindingRow({
 	index,
 	onDefer,
 	onDiscuss,
-	onIgnore,
 	onLocate,
 	strings,
 }: {
@@ -437,7 +516,6 @@ function FindingRow({
 	index: number;
 	onDefer: () => void;
 	onDiscuss: () => void;
-	onIgnore: () => void;
 	onLocate: () => void;
 	strings: SidecarConfig['strings'];
 }): React.ReactElement {
@@ -453,51 +531,32 @@ function FindingRow({
 		>
 			<span className="pk-suggestion-index">{String(index).padStart(2, '0')}</span>
 			<div className="pk-suggestion-copy">
-				<strong className="pk-suggestion-title">{presentation.title}</strong>
+				<strong className="pk-suggestion-title" title={presentation.title}>{presentation.title}</strong>
 				{presentation.summary && <span className="pk-suggestion-summary">{presentation.summary}</span>}
-				<div className="pk-suggestion-meta">
-					<Button className="pk-suggestion-target" variant="ghost" size="sm" onClick={onLocate}>
-						{presentation.targetLabel}
-					</Button>
-					<span>{presentation.evidenceLabel}</span>
-				</div>
-				{finding.state === 'stale' && <span className="pk-suggestion-stale">{strings.staleFindingNotice}</span>}
-			</div>
-			<div className="pk-suggestion-actions">
-				<Button className="pk-suggestion-discuss" variant="outline" size="sm" onClick={onDiscuss}>
-					{strings.discuss}
-				</Button>
-				<details className="pk-suggestion-more">
-					<summary aria-label={strings.moveLater} title={strings.moveLater}>
-						<MoreHorizontal aria-hidden />
-					</summary>
-					<div className="pk-suggestion-menu" role="menu">
-						<Button
-							className="pk-suggestion-menu-item"
-							variant="ghost"
-							role="menuitem"
-							onClick={(event) => {
-								onDefer();
-								closeContainingDetails(event.currentTarget);
-							}}
-						>
-							<span>{strings.moveLater}</span>
-							<small>{strings.moveLaterHint}</small>
+				<div className="pk-suggestion-footer">
+					<div className="pk-suggestion-meta">
+						<Button className="pk-suggestion-target" variant="ghost" size="sm" onClick={onLocate}>
+							{presentation.targetLabel}
+						</Button>
+						<span>{presentation.evidenceLabel}</span>
+					</div>
+					<div className="pk-suggestion-inline-actions">
+						<Button className="pk-suggestion-discuss" variant="ghost" size="sm" onClick={onDiscuss}>
+							{strings.discuss}
 						</Button>
 						<Button
-							className="pk-suggestion-menu-item pk-suggestion-menu-item--ignore"
+							className="pk-suggestion-defer"
 							variant="ghost"
-							role="menuitem"
-							onClick={(event) => {
-								onIgnore();
-								closeContainingDetails(event.currentTarget);
-							}}
+							size="sm"
+							title={strings.moveLaterHint}
+							aria-label={strings.moveLater}
+							onClick={onDefer}
 						>
-							<span>{strings.ignoreThisRound}</span>
-							<small>{strings.ignoreThisRoundHint}</small>
+							<ListEnd aria-hidden />
 						</Button>
 					</div>
-				</details>
+				</div>
+				{finding.state === 'stale' && <span className="pk-suggestion-stale">{strings.staleFindingNotice}</span>}
 			</div>
 		</article>
 	);
@@ -506,7 +565,6 @@ function FindingRow({
 function RelatedSectionBody({
 	related,
 	preview,
-	focusLabel,
 	onOpenSource,
 	onRefreshRelated,
 	onStartSession,
@@ -515,7 +573,6 @@ function RelatedSectionBody({
 }: {
 	related: RelatedLoadState;
 	preview: readonly RelatedPreviewNode[];
-	focusLabel: string;
 	onOpenSource?: (path: string) => void;
 	onRefreshRelated: () => void;
 	onStartSession: (node: RelatedPreviewNode) => void;
@@ -535,98 +592,106 @@ function RelatedSectionBody({
 		);
 	}
 	if (preview.length === 0) {
-		return (
-			<>
-				<SectionNotice>{strings.sectionRelatedEmpty}</SectionNotice>
-				<Button className="pk-list-more" variant="ghost" size="sm" onClick={() => setModalOpen(true)}>
-					<ExternalLink aria-hidden />
-					{strings.openFullView}
-				</Button>
-			</>
-		);
+		return <SectionNotice>{strings.sectionRelatedEmpty}</SectionNotice>;
 	}
 	return (
-		<>
-			<RelatedInlineGraph
-				nodes={preview}
-				focusLabel={focusLabel}
-				onOpenSource={onOpenSource}
-				onStartSession={onStartSession}
-				strings={strings}
-			/>
-			<Button className="pk-list-more" variant="ghost" size="sm" onClick={() => setModalOpen(true)}>
-				<ExternalLink aria-hidden />
-				{strings.openFullView}
-			</Button>
-		</>
+		<RelatedMaterialList
+			nodes={preview}
+			onOpenFullView={() => setModalOpen(true)}
+			onOpenSource={onOpenSource}
+			onStartSession={onStartSession}
+			strings={strings}
+		/>
 	);
 }
 
-function RelatedInlineGraph({
+function RelatedMaterialList({
 	nodes,
-	focusLabel,
+	onOpenFullView,
 	onOpenSource,
 	onStartSession,
 	strings,
 }: {
 	nodes: readonly RelatedPreviewNode[];
-	focusLabel: string;
+	onOpenFullView: () => void;
 	onOpenSource?: (path: string) => void;
 	onStartSession: (node: RelatedPreviewNode) => void;
 	strings: SidecarConfig['strings'];
 }): React.ReactElement {
-	const [selectedId, setSelectedId] = React.useState(nodes[0]?.sourceId ?? '');
+	const [pinnedId, setPinnedId] = React.useState(nodes[0]?.sourceId ?? '');
+	const [previewedId, setPreviewedId] = React.useState<string | null>(null);
 	React.useEffect(() => {
-		if (!nodes.some((node) => node.sourceId === selectedId)) setSelectedId(nodes[0]?.sourceId ?? '');
-	}, [nodes, selectedId]);
+		if (!nodes.some((node) => node.sourceId === pinnedId)) setPinnedId(nodes[0]?.sourceId ?? '');
+		if (previewedId && !nodes.some((node) => node.sourceId === previewedId)) setPreviewedId(null);
+	}, [nodes, pinnedId, previewedId]);
+	const selectedId = previewedId ?? pinnedId;
 	const selected = nodes.find((node) => node.sourceId === selectedId) ?? nodes[0];
 	if (!selected) return <SectionNotice>{strings.sectionRelatedEmpty}</SectionNotice>;
 	return (
-		<div className="pk-material-graph" data-testid="pk-related-inline-graph">
-			<div className="pk-material-graph-head">
-				<span>{strings.sourceDetails}</span>
+		<div className="pk-material-list-shell" data-testid="pk-related-material-list">
+			<div className="pk-material-list-head">
+				<strong>{strings.materialListTitle}</strong>
+				<span>{strings.materialHoverHint}</span>
 			</div>
-			<div className="pk-material-graph-network">
-				<div className="pk-material-node-list">
-					{nodes.map((node) => (
-						<Button
-							key={node.sourceId}
-							className="pk-material-node"
-							variant="outline"
-							size="sm"
-							aria-pressed={node.sourceId === selected.sourceId}
-							onClick={() => setSelectedId(node.sourceId)}
-						>
-							<span className="pk-material-node-title">{node.title}</span>
-							<span className="pk-material-node-score">{formatScore(node.score)}</span>
-						</Button>
-					))}
+			<div className="pk-material-list">
+				{nodes.map((node, index) => (
+					<Button
+						key={node.sourceId}
+						className="pk-material-row"
+						variant="ghost"
+						aria-pressed={node.sourceId === pinnedId}
+						data-previewed={node.sourceId === selected.sourceId || undefined}
+						onBlur={() => setPreviewedId(null)}
+						onClick={() => setPinnedId(node.sourceId)}
+						onFocus={() => setPreviewedId(node.sourceId)}
+						onMouseEnter={() => setPreviewedId(node.sourceId)}
+						onMouseLeave={() => setPreviewedId(null)}
+					>
+						<span className="pk-material-row-index">{String(index + 1).padStart(2, '0')}</span>
+						<span className="pk-material-row-copy">
+							<strong>{node.title}</strong>
+							<small>{node.reason || node.path}</small>
+						</span>
+						<span className="pk-material-row-score">{formatScore(node.score)}</span>
+					</Button>
+				))}
+			</div>
+			<div className="pk-material-detail">
+				<div className="pk-material-detail-head">
+					<strong>{strings.materialPreview}</strong>
+					<span>{strings.materialHoverHint}</span>
 				</div>
-				<span className="pk-material-focus">{focusLabel}</span>
-			</div>
-			<div className="pk-material-graph-detail">
 				<div className="pk-material-detail-copy">
 					<strong className="pk-material-detail-title">{selected.title}</strong>
 					{selected.reason && <span className="pk-material-detail-reason">{selected.reason}</span>}
+					<span className="pk-material-detail-excerpt">
+						{selected.excerpt || strings.materialPreviewEmpty}
+					</span>
 					<span className="pk-material-detail-path">{selected.path}</span>
 				</div>
-				<div className="pk-material-detail-actions">
-					<Button
-						className="pk-material-detail-action"
-						variant="outline"
-						size="sm"
-						onClick={() => onOpenSource?.(selected.path)}
-					>
-						{strings.viewSource}
+				<div className="pk-material-detail-footer">
+					<Button className="pk-material-open-full" variant="ghost" size="sm" onClick={onOpenFullView}>
+						<ExternalLink aria-hidden />
+						{strings.openFullView}
 					</Button>
-					<Button
-						className="pk-material-detail-action"
-						variant="outline"
-						size="sm"
-						onClick={() => onStartSession(selected)}
-					>
-						{strings.bringIntoSession}
-					</Button>
+					<div className="pk-material-detail-actions">
+						<Button
+							className="pk-material-detail-action"
+							variant="outline"
+							size="sm"
+							onClick={() => onOpenSource?.(selected.path)}
+						>
+							{strings.viewSource}
+						</Button>
+						<Button
+							className="pk-material-detail-action"
+							variant="outline"
+							size="sm"
+							onClick={() => onStartSession(selected)}
+						>
+							{strings.bringIntoSession}
+						</Button>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -636,22 +701,40 @@ function RelatedInlineGraph({
 function ThoughtRow({
 	thought,
 	organizeLabel,
+	bringIntoSessionLabel,
+	fromRunTemplate,
+	onBringIntoSession,
 	onOrganize,
 }: {
 	thought: BriefThought;
 	organizeLabel: string;
+	bringIntoSessionLabel: string;
+	fromRunTemplate: string;
+	onBringIntoSession: () => void;
 	onOrganize: () => void;
 }): React.ReactElement {
 	return (
-		<article className="pk-thought-row" data-thought-id={thought.thoughtId}>
-			<div className="pk-thought-copy">
-				<strong className="pk-thought-title">{thought.label}</strong>
-				{thought.detail && <span className="pk-thought-summary">{thought.detail}</span>}
+		<details className="pk-thought-row" data-thought-id={thought.thoughtId}>
+			<summary>
+				<span className="pk-thought-copy">
+					<strong className="pk-thought-title">{thought.label}</strong>
+					{thought.detail && <span className="pk-thought-summary">{thought.detail}</span>}
+				</span>
+				<ChevronDown aria-hidden />
+			</summary>
+			<div className="pk-thought-preview">
+				<small>{fromRunTemplate.replace('{runId}', thought.runId)}</small>
+				{thought.detail && <span>{thought.detail}</span>}
+				<div className="pk-thought-actions">
+					<Button variant="outline" size="sm" onClick={onBringIntoSession}>
+						{bringIntoSessionLabel}
+					</Button>
+					<Button variant="ghost" size="sm" onClick={onOrganize}>
+						{organizeLabel}
+					</Button>
+				</div>
 			</div>
-			<Button className="pk-thought-organize" variant="outline" size="sm" onClick={onOrganize}>
-				{organizeLabel}
-			</Button>
-		</article>
+		</details>
 	);
 }
 

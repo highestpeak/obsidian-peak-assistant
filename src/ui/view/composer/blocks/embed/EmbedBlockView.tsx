@@ -10,17 +10,25 @@
  */
 
 import * as React from 'react';
-import { FileText, Image as ImageIcon, LayoutGrid, PenTool, Paperclip, Table2, Link2 } from 'lucide-react';
+import { ExternalLink, FileText, Image as ImageIcon, LayoutGrid, PenTool, Paperclip, Table2, Link2 } from 'lucide-react';
 import type { ComposerBlock } from '@/core/composer';
-import { analyzeLinks, type ComposerLinkTokenKind } from '@/service/composer';
+import { analyzeLinks, type ComposerLinkTokenKind, type ComposerResourcePreviewState } from '@/service/composer';
+import { Button } from '@/ui/components/primitives';
 import { useComposerChrome } from '../../chrome/ComposerChromeContext';
 import { useNativeStrings } from '../nativeBlockShared';
 
 export function EmbedBlockView({ block }: { block: ComposerBlock }): React.ReactElement {
 	const strings = useNativeStrings();
-	const { onOpenLink } = useComposerChrome();
+	const chrome = useComposerChrome();
+	const { onOpenLink } = chrome;
 	const raw = block.renderModel.raw;
 	const link = React.useMemo(() => analyzeLinks(raw)[0], [raw]);
+	const external = link?.kind === 'external';
+	const preview = useResourcePreview(
+		external ? undefined : chrome.runtime.nativePreviewPort,
+		chrome.snapshot?.filePath ?? '',
+		link?.target ?? '',
+	);
 
 	if (!link) {
 		return (
@@ -30,8 +38,41 @@ export function EmbedBlockView({ block }: { block: ComposerBlock }): React.React
 		);
 	}
 
-	const external = link.kind === 'external';
 	const open = () => onOpenLink?.(external ? 'external' : 'vault', link.target);
+	if (!external && preview?.status === 'loaded') {
+		if (link.kind === 'attachment' || preview.extension !== 'md') {
+			return (
+				<div className="pk-native-attachment" data-block-id={block.blockId}>
+					<span className="pk-native-attachment__icon" aria-hidden><Paperclip size={20} /></span>
+					<div className="pk-native-attachment__content">
+						<span className="pk-native-attachment__name">{preview.name}</span>
+						<span className="pk-native-attachment__meta">
+							{preview.extension.toUpperCase()}
+							{preview.pageCount ? ` · ${preview.pageCount} ${strings.pagesSuffix}` : ''}
+							{` · ${formatBytes(preview.size)} · ${strings.vaultAttachment}`}
+						</span>
+					</div>
+					<Button variant="outline" size="sm" onClick={open}>
+						<ExternalLink size={13} />
+						<span>{strings.embedOpenLabel}</span>
+					</Button>
+				</div>
+			);
+		}
+		return (
+			<div className="pk-native-embed-preview" data-block-id={block.blockId}>
+				<div className="pk-native-embed-preview__header" data-chrome="true">
+					<span className="pk-native-embed-preview__kind"><FileText size={14} />{strings.embedLabel}</span>
+					<span className="pk-native-embed-preview__target">{preview.name}{preview.anchor ? `#${preview.anchor}` : ''}</span>
+					<span className="pk-native-embed-preview__anchor" data-resolved={preview.anchorResolved ?? undefined}>
+						{preview.anchor ? (preview.anchorResolved ? strings.anchorResolved : strings.anchorMissing) : ''}
+					</span>
+					<Button variant="ghost" size="sm" onClick={open}><ExternalLink size={13} />{strings.embedOpenLabel}</Button>
+				</div>
+				<div className="pk-native-embed-preview__excerpt">{preview.textExcerpt || strings.embedBroken}</div>
+			</div>
+		);
+	}
 	return (
 		<div className="pk-native-embed" data-block-id={block.blockId} data-embed-kind={link.kind}>
 			<span className="pk-native-embed__badge" aria-hidden>
@@ -55,6 +96,34 @@ export function EmbedBlockView({ block }: { block: ComposerBlock }): React.React
 			</span>
 		</div>
 	);
+}
+
+function useResourcePreview(
+	port: ReturnType<typeof useComposerChrome>['runtime']['nativePreviewPort'],
+	sourcePath: string,
+	target: string,
+): ComposerResourcePreviewState | null {
+	const [state, setState] = React.useState<ComposerResourcePreviewState | null>(null);
+	React.useEffect(() => {
+		let alive = true;
+		if (!port?.resolveResourcePreview || !sourcePath) {
+			setState(null);
+			return;
+		}
+		void port.resolveResourcePreview({ sourcePath, target }).then((next) => {
+			if (alive) setState(next);
+		});
+		return () => {
+			alive = false;
+		};
+	}, [port, sourcePath, target]);
+	return state;
+}
+
+function formatBytes(bytes: number): string {
+	if (bytes < 1024) return `${bytes} B`;
+	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function KindIcon({ kind, target }: { kind: ComposerLinkTokenKind; target: string }): React.ReactElement {

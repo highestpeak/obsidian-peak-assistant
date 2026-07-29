@@ -119,6 +119,8 @@ export function FrontmatterBlockView({
 	const suggestReason = !suggest ? config.grid.aiSuggest : suggest.disabledReason;
 	const candidate = useFrontmatterCandidate(candidatePort);
 	const candidatePayload = metadataCandidatePayload(candidate);
+	const [suggestionsOpen, setSuggestionsOpen] = React.useState(false);
+	const [candidateReviewOpen, setCandidateReviewOpen] = React.useState(false);
 	const [fieldDraft, setFieldDraft] = React.useState<FrontmatterFieldDraft | null>(null);
 	const [draftCommitPending, setDraftCommitPending] = React.useState(false);
 	const [draftCommitFailed, setDraftCommitFailed] = React.useState(false);
@@ -130,6 +132,14 @@ export function FrontmatterBlockView({
 		setFieldDraft(null);
 		setDraftCommitFailed(false);
 	}, [fieldDraft, model.fields]);
+	React.useEffect(() => {
+		if (candidate) return;
+		setCandidateReviewOpen(false);
+	}, [candidate]);
+	const openSuggestions = () => {
+		setSuggestionsOpen(true);
+		if (!candidate) suggest?.run();
+	};
 	const closePicker = () => {
 		onLibraryOpenChange?.(false);
 		requestAnimationFrame(() => pickerTriggerRef.current?.focus());
@@ -177,17 +187,19 @@ export function FrontmatterBlockView({
 					size="sm"
 					disabled={suggestDisabled}
 					title={suggestReason}
-					onClick={() => suggest?.run()}
+					aria-expanded={suggestionsOpen}
+					onClick={openSuggestions}
 				>
 					<Sparkles size={12} />
 					{config.grid.aiSuggest}
+					{candidatePayload ? ` · 1` : ''}
 				</Button>
 			</div>
 
 			<PropertyGrid
 				fields={model.fields}
 				config={config}
-				candidate={candidatePayload}
+				candidate={candidateReviewOpen ? candidatePayload : null}
 				draft={fieldDraft}
 				draftCommitPending={draftCommitPending}
 				draftCommitFailed={draftCommitFailed}
@@ -198,6 +210,19 @@ export function FrontmatterBlockView({
 				}}
 				onDraftCommit={() => void commitDraft()}
 			/>
+			{suggestionsOpen && (
+				<MetadataSuggestionPanel
+					candidate={candidate}
+					payload={candidatePayload}
+					runtime={candidatePort?.runtime}
+					config={config}
+					onClose={() => setSuggestionsOpen(false)}
+					onAdd={() => {
+						setCandidateReviewOpen(true);
+						setSuggestionsOpen(false);
+					}}
+				/>
+			)}
 			{propertyPickerEnabled && (
 				<div
 					className="pk-fm-picker-anchor"
@@ -228,7 +253,7 @@ export function FrontmatterBlockView({
 					)}
 				</div>
 			)}
-			{candidate && candidatePort && (
+			{candidateReviewOpen && candidate && candidatePort && (
 				<FrontmatterCandidateReview
 					candidate={candidate}
 					payload={candidatePayload}
@@ -239,6 +264,86 @@ export function FrontmatterBlockView({
 
 		</div>
 	);
+}
+
+function MetadataSuggestionPanel({
+	candidate,
+	payload,
+	runtime,
+	config,
+	onClose,
+	onAdd,
+}: {
+	candidate: ComposerCandidate | null;
+	payload: ComposerMetadataFieldPatchPayload | null;
+	runtime?: ComposerCandidateRuntimePort;
+	config: FrontmatterConfig;
+	onClose(): void;
+	onAdd(): void;
+}): React.ReactElement {
+	const strings = config.suggestions;
+	const statusText = candidate?.status === 'failed'
+		? strings.failed
+		: candidate?.status === 'stale'
+			? strings.stale
+			: strings.streaming;
+	const canRetry = candidate?.status === 'failed' || candidate?.status === 'stale';
+	const retry = () => {
+		if (!candidate || !runtime) return;
+		if (candidate.status === 'stale' && runtime.rerunStale) {
+			runtime.rerunStale(candidate.candidateId);
+			return;
+		}
+		runtime.regenerate(candidate.candidateId);
+	};
+	return (
+		<section className="pk-fm-suggestions" data-chrome="true" aria-label={strings.title}>
+			<div className="pk-fm-suggestions__head">
+				<span>
+					<strong>{strings.title}{payload ? ' · 1' : ''}</strong>
+					<small>{strings.subtitle}</small>
+				</span>
+				<Button variant="ghost" size="sm" onClick={onClose}>{strings.close}</Button>
+			</div>
+			<div className="pk-fm-suggestions__body">
+				{payload ? (
+					<div className="pk-fm-suggestion-row">
+						<span className="pk-fm-suggestion-row__copy">
+							<strong>{payload.key}</strong>
+							<span>{formatMetadataSuggestionValue(payload.value)}</span>
+							<small>{strings.candidateDescription}</small>
+						</span>
+						<span className="pk-fm-suggestion-row__actions">
+							<Button variant="primary" size="sm" onClick={onAdd}>
+								<Plus size={13} />
+								{strings.add}
+							</Button>
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => {
+									if (candidate && runtime) runtime.discard(candidate.candidateId);
+									onClose();
+								}}
+							>
+								{strings.reject}
+							</Button>
+						</span>
+					</div>
+				) : (
+					<div className="pk-fm-suggestions__state">
+						<span>{candidate ? statusText : strings.empty}</span>
+						{canRetry && <Button variant="secondary" size="sm" onClick={retry}>{strings.retry}</Button>}
+					</div>
+				)}
+			</div>
+			<small className="pk-fm-suggestions__footer">{strings.footer}</small>
+		</section>
+	);
+}
+
+function formatMetadataSuggestionValue(value: ComposerMetadataFieldPatchPayload['value']): string {
+	return Array.isArray(value) ? value.join(', ') : String(value);
 }
 
 function frontmatterMap(fields: readonly FrontmatterField[]): Record<string, string | string[] | boolean> {

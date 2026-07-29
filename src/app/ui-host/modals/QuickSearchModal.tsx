@@ -55,6 +55,7 @@ export class QuickSearchModal extends Modal {
 		contentEl.empty();
 		contentEl.addClass('peak-quick-search-modal');
 		contentEl.addClass('pktw-root');
+		modalEl.addClass('peak-result-browser-modal-frame');
 		// `peak-design-root` on modalEl opts the whole subtree into the
 		// Obsidian-tag reset (see docs/recurring-pitfalls.md #obsidian-css-bleed).
 		// Without it, bare <button> inside Vault Intelligence + view-mode
@@ -66,10 +67,6 @@ export class QuickSearchModal extends Modal {
 
 		// Position modal similar to Obsidian's command palette
 		modalEl.style.position = 'absolute';
-		modalEl.style.top = '80px';
-		modalEl.style.width = '1100px';
-		modalEl.style.maxWidth = '90vw';
-		modalEl.style.maxHeight = 'calc(100vh - 160px)';
 		modalEl.style.padding = '0';
 		modalEl.style.overflow = 'hidden'; // Prevent modal itself from scrolling
 
@@ -138,5 +135,4 @@ export class QuickSearchModal extends Modal {
 		}
 	}
 }
-
 

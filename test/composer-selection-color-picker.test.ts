@@ -25,6 +25,22 @@ assert.equal(fallbackSelection.textColors.length, 6);
 assert.equal(templateSelection.textColors.length, 6);
 assert.equal(fallbackSelection.highlightColors.length, 5);
 assert.equal(templateSelection.highlightColors.length, 5);
+assert.equal(
+	fallbackSelection.scopeTemplates.crossParagraph,
+	'跨 {n} 个块 · {fragments} 个片段',
+);
+assert.equal(
+	templateSelection.scopeTemplates.crossParagraph,
+	'跨 {n} 个块 · {fragments} 个片段',
+);
+assert.equal(
+	fallbackSelection.scopeTemplates.crossBlock,
+	'跨 {n} 个块 · {fragments} 个片段',
+);
+assert.equal(
+	templateSelection.scopeTemplates.crossBlock,
+	'跨 {n} 个块 · {fragments} 个片段',
+);
 assert.deepEqual(
 	fallbackSelection.quickTextColors?.map((swatch) => swatch.value),
 	['#b42318', '#2563eb', '#16845f'],
@@ -63,6 +79,7 @@ assert.match(toolbar, /data-quick-color-kind="text"/);
 assert.match(toolbar, /data-quick-color-kind="highlight"/);
 assert.match(toolbar, /data-quick-text-color=\{swatch\.value\}/);
 assert.match(toolbar, /data-quick-highlight-color=\{swatch\.value\}/);
+assert.match(toolbar, /\.replaceAll\('\{fragments\}', String\(fragments\)\)/);
 assert.match(
 	toolbar,
 	/onClick=\{\(\) => void applyFormat\('text-color', swatch\.value\)\}/,
@@ -99,4 +116,4 @@ assert.match(
 );
 assert.doesNotMatch(css, /\.pk-selection-swatch::before/);
 
-console.log('composer-selection-color-picker: 34/34 checks passed');
+console.log('composer-selection-color-picker: 39/39 checks passed');

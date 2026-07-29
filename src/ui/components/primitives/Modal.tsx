@@ -28,6 +28,8 @@ ModalOverlay.displayName = 'ModalOverlay';
 export interface ModalContentProps
 	extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
 	width?: 'narrow' | 'default' | 'wide';
+	/** Optional class for the Radix overlay rendered beside the content. */
+	overlayClassName?: string;
 	/**
 	 * Optional Radix Portal container. When omitted, the Portal renders into
 	 * `document.body` (Radix default). Note that the `pk-modal-*` CSS rules
@@ -49,12 +51,12 @@ export interface ModalContentProps
 const ModalContent = React.forwardRef<
 	React.ElementRef<typeof DialogPrimitive.Content>,
 	ModalContentProps
->(({ className, width = 'default', container, portalClassName, children, ...props }, ref) => {
+>(({ className, width = 'default', container, overlayClassName, portalClassName, children, ...props }, ref) => {
 	const contextContainer = usePortalContainer();
 	const effectiveContainer = container ?? contextContainer ?? undefined;
 	const shell = (
 		<>
-			<ModalOverlay />
+			<ModalOverlay className={overlayClassName} />
 			<DialogPrimitive.Content
 				ref={ref}
 				className={cn(

@@ -102,14 +102,42 @@ export interface ResultBrowserListRowProps {
 	onOpen: (result: SearchResultItem, opts: { newTab: boolean; viaNewTabButton?: boolean }) => void;
 	onHoverStart?: (result: SearchResultItem) => void;
 	onHoverEnd?: (result: SearchResultItem) => void;
+	/** Host-owned explanation that replaces the normal search snippet. */
+	snippetText?: string | null;
+	/**
+	 * Search hosts open on a body click. Selection-first hosts such as Composer
+	 * use a body click to update their inspector and reserve open for double
+	 * click, Enter, or the dedicated new-tab affordance.
+	 */
+	openOnSelect?: boolean;
+	/** Host-specific visual grammar without changing Quick Search defaults. */
+	variant?: 'search' | 'related-material';
 }
 
 export const ResultBrowserListRow: React.FC<ResultBrowserListRowProps> = ({
-	result, index, isSelected, density, highlightQuery, itemRef, onSelect, onOpen, onHoverStart, onHoverEnd,
+	result, index, isSelected, density, highlightQuery, itemRef, onSelect, onOpen,
+	onHoverStart, onHoverEnd, snippetText, openOnSelect = true, variant = 'search',
 }) => {
 	const isCompact = density === 'compact';
 
 	const handleClick = (e: React.MouseEvent) => {
+		onSelect(index);
+		if (openOnSelect) onOpen(result, { newTab: e.metaKey || e.ctrlKey });
+	};
+
+	const handleDoubleClick = (e: React.MouseEvent) => {
+		if (openOnSelect) return;
+		onOpen(result, { newTab: e.metaKey || e.ctrlKey });
+	};
+
+	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (e.key === ' ') {
+			e.preventDefault();
+			onSelect(index);
+			return;
+		}
+		if (e.key !== 'Enter') return;
+		e.preventDefault();
 		onSelect(index);
 		onOpen(result, { newTab: e.metaKey || e.ctrlKey });
 	};
@@ -132,7 +160,12 @@ export const ResultBrowserListRow: React.FC<ResultBrowserListRowProps> = ({
 			ref={itemRef}
 			className={`pktw-group pktw-relative pktw-px-4 pktw-py-2 pktw-cursor-pointer pktw-transition-colors pktw-mb-2 ${isSelected ? 'pktw-bg-pk-indigo-bg' : 'hover:pktw-bg-pk-surface-raised'
 				}`}
+			data-result-browser-variant={variant}
+			data-selected={isSelected ? 'true' : 'false'}
+			tabIndex={0}
 			onClick={handleClick}
+			onDoubleClick={handleDoubleClick}
+			onKeyDown={handleKeyDown}
 			onMouseEnter={() => onHoverStart?.(result)}
 			onMouseLeave={() => onHoverEnd?.(result)}
 		>
@@ -164,14 +197,14 @@ export const ResultBrowserListRow: React.FC<ResultBrowserListRowProps> = ({
 				<div className="pktw-flex-1 pktw-min-w-0 pktw-pr-8">
 					<div className="pktw-flex pktw-items-baseline pktw-gap-2 pktw-min-w-0">
 						<span
-							className="pktw-flex-1 pktw-min-w-0 pktw-font-extrabold pktw-text-pk-text-primary pktw-truncate pktw-text-[1.2rem] pktw-leading-[1.2]"
+							className="pk-result-browser-row-title pktw-flex-1 pktw-min-w-0 pktw-font-extrabold pktw-text-pk-text-primary pktw-truncate pktw-text-[1.2rem] pktw-leading-[1.2]"
 							title={displayTitle}
 						>
 							{renderHighlightSpans(titleHighlight)}
 						</span>
 						{scorePercent != null ? (
 							<span
-								className="pktw-flex-shrink-0 pktw-text-pk-xs pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded-full pktw-bg-pk-accent-tint pktw-text-pk-accent pktw-whitespace-nowrap"
+								className="pk-result-browser-row-score pktw-flex-shrink-0 pktw-text-pk-xs pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded-full pktw-bg-pk-accent-tint pktw-text-pk-accent pktw-whitespace-nowrap"
 								title="Relative to the top match in this result set"
 							>
 								{scorePercent}%
@@ -183,8 +216,14 @@ export const ResultBrowserListRow: React.FC<ResultBrowserListRowProps> = ({
 						) : null}
 					</div>
 
-					{!isCompact && result.highlight?.text && (
-						<div className="pktw-text-sm pktw-text-pk-text-secondary pktw-line-clamp-2 pktw-mt-1">
+					{!isCompact && snippetText && (
+						<div className="pk-result-browser-row-snippet pktw-text-sm pktw-text-pk-text-secondary pktw-line-clamp-2 pktw-mt-1">
+							{snippetText}
+						</div>
+					)}
+
+					{!isCompact && !snippetText && result.highlight?.text && (
+						<div className="pk-result-browser-row-snippet pktw-text-sm pktw-text-pk-text-secondary pktw-line-clamp-2 pktw-mt-1">
 							{(result.highlight as unknown as HighlightResult).spans
 								? renderHighlightSpans(result.highlight as unknown as HighlightResult, { cap: true })
 								: result.highlight.highlights?.length
@@ -194,7 +233,7 @@ export const ResultBrowserListRow: React.FC<ResultBrowserListRowProps> = ({
 					)}
 
 					{!isCompact && (
-						<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-mt-1 pktw-text-pk-xs pktw-text-pk-text-tertiary pktw-min-w-0 pktw-opacity-60 group-hover:pktw-opacity-100 pktw-transition-opacity">
+						<div className="pk-result-browser-row-meta pktw-flex pktw-items-center pktw-gap-1.5 pktw-mt-1 pktw-text-pk-xs pktw-text-pk-text-tertiary pktw-min-w-0 pktw-opacity-60 group-hover:pktw-opacity-100 pktw-transition-opacity">
 							<span className="pktw-truncate" title={result.path}>{shortPath}</span>
 							{scorePercent != null && modifiedText && (
 								<>

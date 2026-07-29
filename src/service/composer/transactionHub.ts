@@ -22,6 +22,7 @@ import {
 	ComposerConflictError,
 	type ComposerCandidate,
 	type ComposerDocumentSnapshot,
+	type ComposerHistoryItem,
 	type ComposerOperation,
 	type ComposerTarget,
 	type ComposerTransaction,
@@ -59,6 +60,12 @@ export interface AcceptOptions {
 	origin?: ComposerTransactionOrigin;
 	label?: string;
 	runId?: string;
+}
+
+export interface ComposerHistoryPreview {
+	readonly item: ComposerHistoryItem;
+	readonly beforeText: string;
+	readonly afterText: string;
 }
 
 export class ComposerTransactionHub {
@@ -109,6 +116,32 @@ export class ComposerTransactionHub {
 
 	get currentRevision(): string {
 		return this.session.baseRevision;
+	}
+
+	/**
+	 * Read-only preview for the History inspector. Text is derived from the same
+	 * committed operation/inverse-operation pair used by rollback, so the UI
+	 * never guesses a diff from labels or from the current document revision.
+	 */
+	historyPreview(historyId: string): ComposerHistoryPreview | null {
+		const item = this.history.find(historyId);
+		const txn = item ? this.ledger.get(item.transactionId) : undefined;
+		if (!item || !txn) return null;
+		return {
+			item,
+			beforeText: txn.inverseOperations
+				.filter((operation) => operation.kind === 'replaceRange')
+				.map((operation) => operation.text)
+				.join('\n'),
+			afterText: txn.operations
+				.flatMap((operation) => {
+					if (operation.kind === 'replaceRange' || operation.kind === 'insertBlock') {
+						return [operation.text];
+					}
+					return [];
+				})
+				.join('\n'),
+		};
 	}
 
 	// ── commit ───────────────────────────────────────────────────────────────────

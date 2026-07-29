@@ -26,6 +26,17 @@ assert.ok(
 assert.match(modal, /this\.close\(\)/);
 assert.match(modal, /host\.revealLine\(path, line\)/);
 assert.match(hostAdapter, /view\?\.editor\?\.focus\(\)/);
+assert.match(hostAdapter, /flashRevealedEditorLine\(view\)/);
+assert.match(hostAdapter, /\.cm-line\.cm-activeLine/);
+assert.match(hostAdapter, /requestAnimationFrame/);
+assert.match(css, /\.markdown-source-view \.cm-line\.pkfa-editor-reveal-flash/);
+assert.match(css, /@keyframes pkfa-editor-reveal-line-flash/);
+assert.match(css, /var\(--interactive-accent\)/);
+assert.doesNotMatch(
+	css.match(/@keyframes pkfa-editor-reveal-line-flash\s*\{[\s\S]*?\n\}/)?.[0] ?? '',
+	/var\(--pk-/,
+	'editor reveal feedback must use host-scoped Obsidian tokens, not Peak-root-only tokens',
+);
 
 assert.match(inspector, /<KeywordCard text=\{keywordText\} config=\{config\} \/>/);
 assert.match(inspector, /<StatisticsCard block=\{block\} config=\{config\} \/>/);
@@ -58,5 +69,14 @@ assert.match(
 );
 assert.match(css, /\.pkfa-rail-sort:focus-visible/);
 assert.match(css, /\.pkfa-rail-sort\[data-state="open"\]/);
+assert.match(
+	css,
+	/\.peak-file-atlas-modal\.pkfa-root \.pkfa-rail-sort:hover:not\(:disabled\)[\s\S]*?background: var\(--pk-surface-raised\) !important/,
+);
+assert.match(
+	css,
+	/\.pkfa-rail-sort-menu\s*\{[\s\S]*?z-index: var\(--pk-z-popover\) !important/,
+	'portaled sort menu must mount above Obsidian modal layer 50',
+);
 
 console.log('PASS: File Atlas owner-review interaction and layout contract');

@@ -285,14 +285,61 @@ Square 28px transparent button for header close/dismiss or compact toolbar icons
 
 #### `.pk-segmented` + `.pk-segmented__opt`
 
-Inline segmented control (Index mode picker, list/grid view toggles).
+Public mutually-exclusive state switch for view mode, density, time range,
+workflow mode and similar compact choices. Use the React primitive from
+`src/ui/components/primitives/Segmented.tsx`; do not assemble a local row of
+buttons.
 
-```html
-<div class="pk-segmented" role="tablist">
-  <button class="pk-segmented__opt" data-selected="true">List</button>
-  <button class="pk-segmented__opt" data-selected="false">Grid</button>
-</div>
+```tsx
+<Segmented
+  aria-label="Result view"
+  value={view}
+  onValueChange={setView}
+  options={[
+    { value: 'list', label: 'List' },
+    { value: 'tree', label: 'Tree' },
+    { value: 'graph', label: 'Graph' },
+  ]}
+/>
 ```
+
+Two public variants are supported:
+
+- `default` — quiet static selection for dense forms and settings.
+- `animated-pill` — accent-colored shared thumb with a Framer Motion spring,
+  for primary view/mode switches where spatial continuity helps users follow
+  the state change. It honors `prefers-reduced-motion`.
+
+```tsx
+<Segmented
+  variant="animated-pill"
+  size="lg"
+  thumbLayoutId="document-display-mode"
+  aria-label="Document display mode"
+  value={displayMode}
+  onValueChange={setDisplayMode}
+  options={displayModeOptions}
+/>
+```
+
+`thumbLayoutId` names the animation for diagnostics; the component appends a
+per-instance React id so multiple controls cannot animate into each other.
+Use `size="lg"` for persistent primary navigation such as Composer display
+mode; it provides a 36px-tall target and stable minimum option width. Keep the
+default `md` density for secondary toolbars and use `sm` only where the control
+is visually subordinate and the surrounding surface supplies adequate spacing.
+Size rules that set a fixed target must use `height`, `min-height`, width
+constraints and padding with `!important`: `.peak-design-root button` resets
+`height` and `min-height` with `!important`, otherwise an apparent large variant
+collapses back to the text line-height in real Obsidian.
+`test/shared-button-reset-defense.test.ts` enforces this contract across the
+public button primitives; a new public button class must be added to that
+test's primitive inventory in the same change.
+Surface code may constrain width or placement through `className`, but must not
+copy the thumb markup, spring values, selected color, radius or reduced-motion
+logic. Current intended consumers include Composer display mode, result
+List/Tree/Graph, graph layout presets, compact/detailed density, time ranges and
+other three-or-more-way view switches.
 
 #### `.pk-modal-*`
 
@@ -457,7 +504,7 @@ Root cause behind both: the primitive library was missing a real `Button` primit
 | Icon-only square button (Close, Delete in list) | `<IconButton>` | ❌ `<button>` with `<X />` |
 | Settings card row (big — list of preferences) | `<Row>` | — |
 | Onboarding flat row (compact saved-provider list) | `<Row className="pkonb-provider-row">` | ❌ bare `<Row>` |
-| Multi-step picker (List/Grid, Mode toggle) | `<Segmented>` | ❌ row of `<Pill>` |
+| Mutually-exclusive view/mode switch (List/Grid, Work/Clean, time range) | `<Segmented>`; add `variant="animated-pill"` when continuity matters | ❌ row of `<Pill>` or local motion thumb |
 | Modal dialog | `<Modal>` compound | — |
 | Floating menu | `<Popover>` compound | — |
 | Form input layout | `<FormRow>` / `<FormGrid>` | — |
@@ -967,6 +1014,7 @@ For every action surface, classify each control before styling it:
 Rules:
 
 - Peer controls in one toolbar MUST be pixel-identical for all shared properties. `AI` is a capability source, not a separate button shape: an AI action may add a sparkle icon or semantic divider, but cannot silently change height, radius, resting background, or hover behavior.
+- Independent visibility toggles that sit beside a Segmented view switch may remain separate buttons when multiple panels can be open together, but their `aria-pressed="true"` state must reuse the same solid accent surface, on-accent text, pill radius and shadow as the Segmented selected state. Do not leave the button white while colouring only its count badge.
 - Controls from different families SHOULD remain visually distinct. Do not turn every toolbar icon, review button and panel into a pill merely to make the page look uniform. Consistency means a stable hierarchy, not one radius everywhere.
 - Within a toolbar shell, use the inner/outer radius relationship: a `--pk-radius-lg` shell normally contains `--pk-radius-md` controls; free-standing capsule actions use `--pk-radius-pill` intentionally.
 - A semantic state may override color, border, or emphasis only: primary/accept, danger/reject, selected, disabled and success. It does not create a new geometry.
@@ -1092,7 +1140,41 @@ Editing a Profile's own primary model may use a single-Profile mode of the same 
 - [ ] Keyboard navigation and unavailable-model behavior have one shared test suite.
 - [ ] Static mocks show the shared picker contract, not native Profile + model dropdowns.
 
-### 6.6 When this section gets a new bullet
+### 6.6 Segmented state switches share one motion contract
+
+**Symptom.** Several surfaces present the same mutually-exclusive switch, but
+one uses a static white rectangle, one uses an accent pill, and another copies a
+Framer Motion thumb with slightly different spring values. The controls all
+mean “choose one state” but feel like unrelated products.
+
+**Real case (2026-07-28).** Result Browser `List / Tree / Graph` and graph
+presets used an accent-colored spring thumb, while Composer
+`工作视图 / 全部改动 / 纯净阅读` used the static default `Segmented` selection.
+The latter was migrated to the public `animated-pill` variant instead of
+copying Result Browser JSX into Composer.
+
+**Rule.**
+
+- Use `<Segmented>` for compact mutually-exclusive state switches.
+- Use `variant="animated-pill"` for primary view/mode navigation where a moving
+  thumb communicates continuity; use `default` for quieter form configuration.
+- Reuse the primitive's thumb, spring and reduced-motion behavior. A surface
+  must not add its own `motion.div`/`motion.span` for the same interaction.
+- Keep labels and state domain in the surface adapter; geometry, color,
+  animation and accessibility semantics belong to the primitive.
+- Binary on/off state remains `<Toggle>`; commands remain `<Button>`; filters
+  remain `<Pill>`. Do not turn unrelated controls into segmented navigation.
+
+**Review test.**
+
+- [ ] Search for new shared-layout thumbs beside adjacent tab buttons; migrate
+  them to `Segmented` unless the interaction is genuinely different.
+- [ ] Multiple mounted controls have independent layout ids.
+- [ ] `prefers-reduced-motion` removes the spring animation.
+- [ ] State changes preserve `role="tablist"`, `role="tab"` and
+  `aria-selected`.
+
+### 6.7 When this section gets a new bullet
 
 Every time an audit finds the same root cause across ≥3 surfaces or ≥3 components, add a §6.x for it. The first time it bites a surface, fix it in §1-§5. The third time, it's a drift class — promote the lesson here.
 
@@ -1134,6 +1216,7 @@ When implementing or reviewing a new UI surface, work through this list (each it
 
 **Surface drift prevention (§6)**
 - [ ] No new `pk(surface)-*-chip` / `*-pill` / `*-tag` class — use `<Chip>` or `<Pill>` (§6.1)
+- [ ] Mutually-exclusive view/mode controls use `<Segmented>`; moving pill variants reuse `animated-pill` rather than surface-local motion JSX (§6.6)
 - [ ] Every action surface has a role map: toolbar action / toolbar icon / rail / review action / status chip / shell (§6.1)
 - [ ] Peer actions in the same toolbar share computed height, radius, padding, resting surface, hover, focus and disabled behavior; AI actions do not introduce a second shape (§6.1)
 - [ ] Different component families keep an intentional radius hierarchy; consistency was not implemented as “make everything a pill” (§6.1)

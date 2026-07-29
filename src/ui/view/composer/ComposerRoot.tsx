@@ -14,6 +14,7 @@ import {
 	type ComposerStateSource,
 	type DocumentComposerState,
 	type SelectionGuardReason,
+	composerTargetBlockId,
 } from '@/core/composer';
 import {
 	buildCommentSourceRef,
@@ -68,16 +69,19 @@ import {
 } from './chrome/CommentPanel';
 import { BlockHistoryPanel } from './chrome/BlockHistoryPanel';
 import { SelectionToolbar } from './chrome/SelectionToolbar';
+import { useCrossBlockTextSelection } from './chrome/useCrossBlockTextSelection';
 import { LinkPreviewLayer } from './chrome/LinkPreviewLayer';
 import { UndoRedoBar } from './chrome/UndoRedoBar';
 import { TransactionNotice } from './chrome/TransactionNotice';
+import { BlockFindingPanel } from './chrome/BlockFindingPanel';
 import { NewBlockDraft } from './chrome/NewBlockDraft';
 import type { ComposerDisplayState } from './chrome/DisplayStateSwitch';
 import { mapDomRangeToSource } from './chrome/selectionMapping';
 import { firstClipboardImage } from './chrome/pasteImage';
+import { containComposerEscape } from './escapeContainment';
 import { IntelligenceSidecar } from './sidecar';
 import { buildFocusRunContext, resolveRelatedFocus } from './sidecar/focusContext';
-import type { IntelligenceRuntime } from '@/service/composer';
+import type { IntelligenceRuntime, SuggestionFinding } from '@/service/composer';
 
 /**
  * Peak Composer — document host + shared editing chrome (WP1 host, WP4 chrome).
@@ -263,6 +267,7 @@ export function ComposerRoot({
 				ref={rootRef}
 					className="peak-design-root peak-composer-root"
 					data-with-sidecar={intelligence ? 'true' : undefined}
+					onKeyDown={containComposerEscape}
 				>
 					<div className="pk-composer-main" onFocusCapture={onComposerBodyFocusCapture}>
 					<ComposerBody
@@ -281,6 +286,7 @@ export function ComposerRoot({
 					<IntelligenceSidecar
 						runtime={intelligence}
 						hub={runtime.hub}
+						documentFilePath={currentSnapshot.filePath}
 						open={intelligenceOpen}
 						onOpenChange={setIntelligenceOpen}
 						onLocate={locateBlock}
@@ -353,6 +359,10 @@ function ComposerDocument({
 		setCommentDraft(null);
 		onActiveComment(null);
 	}, [onActiveComment]);
+	const setDisplayStateWithComments = React.useCallback((next: ComposerDisplayState) => {
+		setDisplayState(next);
+		if (next === 'clean') setCommentSurfaceOpen(false);
+	}, [setCommentSurfaceOpen]);
 
 	React.useEffect(() => {
 		if (!panel) return;
@@ -371,6 +381,11 @@ function ComposerDocument({
 	}, [panel]);
 
 	const editing = displayState !== 'clean' && Boolean(hub);
+	useCrossBlockTextSelection(containerRef, editing);
+	// Comments are an on-demand reading layer, not editing chrome. Clean mode
+	// enters with the rail closed; the toolbar can still open existing threads
+	// without enabling source edits or new selection comments.
+	const commentSurfaceVisible = commentRailOpen;
 
 	const showGuard = (reason: SelectionGuardReason) => {
 		const g = config.chrome.selection.guards;
@@ -488,6 +503,7 @@ function ComposerDocument({
 	const folded = useStore(foldStore, (s) => s.folded);
 	const hidden = React.useMemo(() => hiddenBySections(snapshot.blocks, folded), [snapshot.blocks, folded]);
 	const visibleBlocks = snapshot.blocks.filter((b) => !hidden.has(b.blockId));
+	const findings = useComposerFindings(intelligence);
 
 	// INT-1: keep the edited block's React subtree (and its focused
 	// contenteditable DOM node) mounted through a burst commit — see
@@ -504,10 +520,10 @@ function ComposerDocument({
 			<UndoRedoBar
 				containerRef={containerRef}
 				displayState={displayState}
-				onDisplayState={setDisplayState}
+				onDisplayState={setDisplayStateWithComments}
 				canEdit={Boolean(hub)}
 				readOnlyLabel={config.strings.readOnlyBadge}
-				commentOpen={commentRailOpen}
+				commentOpen={commentSurfaceVisible}
 				onCommentOpen={setCommentSurfaceOpen}
 				intelligenceAvailable={Boolean(intelligence)}
 				intelligenceOpen={intelligenceOpen}
@@ -534,6 +550,16 @@ function ComposerDocument({
 							config={config}
 							foldStore={foldStore}
 							editing={editing}
+							displayState={displayState}
+							findings={findings.filter((finding) => composerTargetBlockId(finding.target) === b.blockId)}
+							onAskFinding={(finding) => {
+								if (!intelligence) return;
+								intelligence.session.selectSurface('copilot');
+								intelligence.session.openSession(finding.body?.title ?? finding.reason, []);
+								onIntelligenceOpen(true);
+							}}
+							onConfirmFinding={(finding) => intelligence?.findings.consume(finding.findingId)}
+							onDismissFinding={(finding) => intelligence?.findings.dismiss(finding.findingId, 'body')}
 							panel={panel?.blockId === b.blockId ? panel : null}
 							setPanel={setPanel}
 							onInsertBelow={
@@ -595,7 +621,7 @@ function ComposerDocument({
 				shellRef={containerRef}
 				activeCommentId={activeCommentId}
 				draftTarget={commentDraft}
-				visible={commentRailOpen}
+				visible={commentSurfaceVisible}
 			/>
 			{guard && (
 				<div className="pk-guard-toast" role="alert" data-chrome="true">
@@ -609,7 +635,7 @@ function ComposerDocument({
 				workspaceRef={workspaceRef}
 				draftTarget={commentDraft}
 				activeCommentId={activeCommentId}
-				open={commentRailOpen}
+				open={commentSurfaceVisible}
 				onOpenChange={setCommentSurfaceOpen}
 				onDraftClose={() => setCommentDraft(null)}
 				onActiveComment={onActiveComment}
@@ -648,6 +674,11 @@ function ComposerBlockRow({
 	config,
 	foldStore,
 	editing,
+	displayState,
+	findings,
+	onAskFinding,
+	onConfirmFinding,
+	onDismissFinding,
 	panel,
 	setPanel,
 	onInsertBelow,
@@ -665,6 +696,11 @@ function ComposerBlockRow({
 	config: ComposerConfig;
 	foldStore: ComposerFoldStore;
 	editing: boolean;
+	displayState: ComposerDisplayState;
+	findings: readonly SuggestionFinding[];
+	onAskFinding(finding: SuggestionFinding): void;
+	onConfirmFinding(finding: SuggestionFinding): void;
+	onDismissFinding(finding: SuggestionFinding): void;
 	panel: PanelState | null;
 	setPanel: React.Dispatch<React.SetStateAction<PanelState | null>>;
 	onInsertBelow?: () => void;
@@ -687,12 +723,19 @@ function ComposerBlockRow({
 	const candidate = useBlockCandidate(candidateRuntime, block.blockId);
 	const candidateId = candidate?.candidateId ?? null;
 	const hasInlineCandidate = Boolean(candidateRuntime && candidateId);
+	const showInlineCandidate = displayState === 'all' && hasInlineCandidate;
 	const frontmatterCandidate: FrontmatterCandidatePort | undefined =
 		candidateRuntime && candidate && block.kind === 'frontmatter' &&
 		candidateRuntime.rendererIdFor(candidate.candidateId) === COMPOSER_METADATA_SUGGESTION_RENDERER_ID
 			? { runtime: candidateRuntime, candidate }
 			: undefined;
-	const replacesBlockBody = hasInlineCandidate && !frontmatterCandidate;
+	const imageCandidate =
+		showInlineCandidate &&
+		block.kind === 'image' &&
+		candidateRuntime &&
+		candidate &&
+		candidateRuntime.rendererIdFor(candidate.candidateId)?.startsWith('composer.renderer.image');
+	const replacesBlockBody = showInlineCandidate && !frontmatterCandidate && !imageCandidate;
 	const spacing = blockSpacingRole(block, previousBlock);
 	const ownPanel = panel?.blockId === block.blockId ? panel : null;
 	const frontmatterLibraryOpen = ownPanel?.panel === 'vault-library';
@@ -748,6 +791,13 @@ function ComposerBlockRow({
 				dragDisabledReason={onDragStart ? undefined : config.chrome.actions.disabledNoRuntime}
 			/>
 			<div className="pk-composer-block__body" ref={bodyRef}>
+				<BlockFindingPanel
+					findings={findings}
+					strings={config.chrome.findings}
+					onAskCopilot={onAskFinding}
+					onConfirm={onConfirmFinding}
+					onDismiss={onDismissFinding}
+				/>
 				<CommentAnchorMarker
 					blockId={block.blockId}
 					activeCommentId={activeCommentId}
@@ -776,8 +826,18 @@ function ComposerBlockRow({
 							openPanel('vault-library');
 						}}
 					/>
-				)}
-				{editing && !hasInlineCandidate && (
+					)}
+					{imageCandidate ? (
+						<div className="pk-composer-candidate-slot pk-composer-candidate-slot--image" data-chrome="true">
+							<ComposerCandidateHost
+								runtime={candidateRuntime!}
+								candidateId={candidateId!}
+								registry={chrome.candidateRegistry}
+								resolveOriginalText={(c) => originalTextForTextPatchCandidate(snapshot, c)}
+							/>
+						</div>
+					) : null}
+					{editing && !hasInlineCandidate && (
 					<BlockActionRow
 						snapshot={aiSnapshot}
 						onInsertBelow={onInsertBelow}
@@ -829,6 +889,20 @@ function ComposerBlockRow({
 		</div>
 	);
 }
+
+function useComposerFindings(runtime?: IntelligenceRuntime): readonly SuggestionFinding[] {
+	const subscribe = React.useCallback(
+		(notify: () => void) => runtime?.findings.subscribe(() => notify()) ?? (() => undefined),
+		[runtime],
+	);
+	const getSnapshot = React.useCallback(
+		() => runtime?.findings.list() ?? EMPTY_FINDINGS,
+		[runtime],
+	);
+	return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+}
+
+const EMPTY_FINDINGS: readonly SuggestionFinding[] = [];
 
 function blockSpacingRole(block: ComposerBlock, previous?: ComposerBlock): string {
 	if (isChartBlock(block)) return 'chart';

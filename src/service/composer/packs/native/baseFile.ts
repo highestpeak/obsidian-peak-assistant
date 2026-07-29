@@ -28,6 +28,8 @@ export interface BaseViewSummary {
 	filterCount: number;
 	/** Formula keys defined on the view, in document order. */
 	formulaKeys: string[];
+	/** Formula expressions, retained for the visual configuration table. */
+	formulas: Array<{ key: string; expression: string }>;
 }
 
 export interface BaseFilePreview {
@@ -84,13 +86,20 @@ export function buildBasePreview(raw: string): BaseFilePreview {
 function summarizeView(view: unknown): BaseViewSummary {
 	const v = (view ?? {}) as Record<string, unknown>;
 	const order = Array.isArray(v.order) ? v.order.map((c) => String(c)) : [];
-	const formulas = v.formulas && typeof v.formulas === 'object' ? Object.keys(v.formulas as object) : [];
+	const formulaObject = v.formulas && typeof v.formulas === 'object'
+		? v.formulas as Record<string, unknown>
+		: {};
+	const formulas = Object.entries(formulaObject).map(([key, expression]) => ({
+		key,
+		expression: typeof expression === 'string' ? expression : String(expression ?? ''),
+	}));
 	return {
 		type: typeof v.type === 'string' ? v.type : 'table',
 		name: typeof v.name === 'string' ? v.name : '(unnamed)',
 		order,
 		filterCount: countFilters(v.filters),
-		formulaKeys: formulas,
+		formulaKeys: formulas.map((formula) => formula.key),
+		formulas,
 	};
 }
 

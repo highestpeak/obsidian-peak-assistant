@@ -49,6 +49,27 @@ export interface ComposerFileEventsPort {
 
 export type ComposerNativePreviewFormat = 'base' | 'canvas' | 'excalidraw';
 
+export interface ComposerResourcePreviewRequest {
+	sourcePath: string;
+	target: string;
+}
+
+export type ComposerResourcePreviewState =
+	| {
+		status: 'loaded';
+		targetPath: string;
+		name: string;
+		extension: string;
+		size: number;
+		mtime: number;
+		anchor?: string;
+		anchorResolved?: boolean;
+		textExcerpt?: string;
+		pageCount?: number;
+	}
+	| { status: 'missing'; requestedTarget: string }
+	| { status: 'error'; requestedTarget: string; message: string };
+
 export interface ComposerNativePreviewRequest {
 	/** Markdown source document that owns the embed token. */
 	sourcePath: string;
@@ -69,6 +90,8 @@ export type ComposerNativePreviewState =
  */
 export interface ComposerNativePreviewPort {
 	resolveNativePreview(request: ComposerNativePreviewRequest): Promise<ComposerNativePreviewState>;
+	/** Resolve note embeds and binary attachments without leaking Obsidian APIs into UI. */
+	resolveResourcePreview?(request: ComposerResourcePreviewRequest): Promise<ComposerResourcePreviewState>;
 	/**
 	 * Optional external-change hook. Implementations may call `cb` when the target
 	 * file is modified, renamed or deleted so UI can safely reload the preview.

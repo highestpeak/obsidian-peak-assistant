@@ -916,7 +916,7 @@ ${sourcesList}${topicsList}
 	async *queryStream(
 		promptOrText: string,
 		variables?: Record<string, unknown>,
-		opts?: { systemPrompt?: string; triggerName?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string },
+		opts?: { systemPrompt?: string; triggerName?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string; modelId?: string },
 	): AsyncGenerator<LLMStreamEvent> {
 		const startMs = Date.now();
 		const profile = this.requireActiveProfile();
@@ -936,6 +936,7 @@ ${sourcesList}${topicsList}
 					maxTurns: 1,
 					allowedTools: [],
 					signal: opts?.signal,
+					...(opts?.modelId ? { modelOverride: opts.modelId } : {}),
 				}),
 				// includePartialMessages is ALWAYS enabled in queryWithProfile, so the
 				// SDK streams incremental `stream_event` text deltas. Without this flag
@@ -956,7 +957,7 @@ ${sourcesList}${topicsList}
 				{ role: 'system', content: [{ type: 'text', text: systemPrompt }] },
 				{ role: 'user', content: [{ type: 'text', text: userPrompt }] },
 			];
-			for await (const event of vercelStreamChat(profile, profile.primaryModel, { messages: llmMessages, abortSignal: opts?.signal })) {
+			for await (const event of vercelStreamChat(profile, opts?.modelId ?? profile.primaryModel, { messages: llmMessages, abortSignal: opts?.signal })) {
 				if (opts?.triggerName) {
 					(event as any).triggerName = opts.triggerName;
 				}
@@ -1016,4 +1017,3 @@ ${sourcesList}${topicsList}
 	}
 
 }
-

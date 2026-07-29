@@ -21,7 +21,7 @@
  * app-composed IntelligenceRuntime owns one instance per open document.
  */
 
-import type { ComposerContextSnapshot, ComposerTarget } from '@/core/composer';
+import type { ComposerCapabilityId, ComposerContextSnapshot, ComposerTarget } from '@/core/composer';
 import type { ComposerCommentSourceRef } from '../comment/commentModel';
 
 /** Sidecar top-level surface — switching only re-projects, never re-owns context. */
@@ -57,6 +57,8 @@ export interface FrozenRunContext {
 	readonly targetQuote: string;
 	/** Related-material source ids explicitly carried into this run. */
 	readonly relatedRefs: readonly string[];
+	/** Real Composer capability selected for this run, when one is required. */
+	readonly capabilityId?: ComposerCapabilityId;
 	/**
 	 * Explicit comment/thread sources. External text remains structured and
 	 * trust-labelled so prompt assembly cannot confuse it with author commands.
@@ -134,6 +136,7 @@ export interface IntelligenceSessionProjection {
 	readonly sessionTitle: string | null;
 	/** Explicit chips waiting to be frozen into the next run. */
 	readonly pendingCommentRefs: readonly ComposerCommentSourceRef[];
+	readonly pendingCapabilityId: ComposerCapabilityId | null;
 }
 
 let runSeq = 0;
@@ -156,8 +159,11 @@ export class CopilotSessionMachine {
 	/** Sources explicitly brought from the Brief into the next/session run. */
 	private pendingRelatedRefs: readonly string[] = [];
 	private pendingCommentRefs: readonly ComposerCommentSourceRef[] = [];
+	private pendingCapabilityId: ComposerCapabilityId | null = null;
 	private readonly receiptsById = new Map<string, RunReceipt>();
 	private readonly frozenById = new Map<string, FrozenRunContext>();
+	/** Capability-runtime run id → sidecar session run id. */
+	private readonly externalRunAliases = new Map<string, string>();
 	/** The session a review was entered from, so close returns there (never History). */
 	private reviewOriginStage: CopilotStage = 'session';
 	private readonly subs = new Set<(p: IntelligenceSessionProjection) => void>();
@@ -177,6 +183,7 @@ export class CopilotSessionMachine {
 			receipts: [...this.receiptsById.values()],
 			sessionTitle: this.sessionTitle,
 			pendingCommentRefs: this.pendingCommentRefs,
+			pendingCapabilityId: this.pendingCapabilityId,
 		};
 	}
 
@@ -196,12 +203,14 @@ export class CopilotSessionMachine {
 		taskTitle: string,
 		relatedRefs: readonly string[] = [],
 		commentRefs: readonly ComposerCommentSourceRef[] = [],
+		capabilityId?: ComposerCapabilityId,
 	): void {
 		this.stage = 'session';
 		this.runStatus = 'idle';
 		this.sessionTitle = taskTitle;
 		this.pendingRelatedRefs = Object.freeze([...new Set(relatedRefs)]);
 		this.pendingCommentRefs = freezeCommentRefs(commentRefs);
+		this.pendingCapabilityId = capabilityId ?? null;
 		this.notify();
 	}
 
@@ -222,6 +231,7 @@ export class CopilotSessionMachine {
 		targetQuote: string;
 		relatedRefs?: readonly string[];
 		commentRefs?: readonly ComposerCommentSourceRef[];
+		capabilityId?: ComposerCapabilityId;
 	}): FrozenRunContext {
 		const runId = nextRunId();
 		const relatedRefs = input.relatedRefs ?? this.pendingRelatedRefs;
@@ -232,6 +242,9 @@ export class CopilotSessionMachine {
 			targetQuote: input.targetQuote,
 			relatedRefs: Object.freeze([...new Set(relatedRefs)]),
 			commentRefs,
+			...((input.capabilityId ?? this.pendingCapabilityId)
+				? { capabilityId: input.capabilityId ?? this.pendingCapabilityId! }
+				: {}),
 		});
 		this.frozenById.set(runId, frozen);
 		this.activeRunId = runId;
@@ -314,14 +327,21 @@ export class CopilotSessionMachine {
 
 	/** Record an accepted-change → History transaction link on the run receipt (§12.3). */
 	linkAcceptedTransaction(runId: string, transactionId: string): void {
-		const receipt = this.receiptsById.get(runId);
+		const receiptId = this.externalRunAliases.get(runId) ?? runId;
+		const receipt = this.receiptsById.get(receiptId);
 		if (!receipt) return;
 		if (receipt.acceptedTransactionIds.includes(transactionId)) return;
-		this.receiptsById.set(runId, {
+		this.receiptsById.set(receiptId, {
 			...receipt,
 			acceptedTransactionIds: [...receipt.acceptedTransactionIds, transactionId],
 		});
 		this.notify();
+	}
+
+	/** Bridge a real capability executor run into the surrounding sidecar receipt. */
+	linkExternalRun(externalRunId: string, sessionRunId: string): void {
+		if (!this.receiptsById.has(sessionRunId)) return;
+		this.externalRunAliases.set(externalRunId, sessionRunId);
 	}
 
 	private updateRunStatus(runId: string, status: CopilotRunStatus): void {

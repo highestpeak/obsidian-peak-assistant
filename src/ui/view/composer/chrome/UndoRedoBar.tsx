@@ -100,7 +100,7 @@ export function UndoRedoBar({
 			<span className="pk-composer-controlbar__spacer" />
 			{comments && (
 				<Button
-					variant={commentOpen ? 'secondary' : 'ghost'}
+					variant={commentOpen ? 'primary' : 'ghost'}
 					size="sm"
 					className="pk-composer-comment-toggle"
 					aria-pressed={commentOpen}
@@ -109,12 +109,14 @@ export function UndoRedoBar({
 				>
 					<MessageSquare size={14} />
 					<span>{commentStrings.railTitle}</span>
-					<Chip variant={commentOpen ? 'accent' : 'neutral'}>{commentCount}</Chip>
+					<Chip className="pk-composer-comment-count" variant={commentOpen ? 'accent' : 'neutral'}>
+						{commentCount}
+					</Chip>
 				</Button>
 			)}
 			{intelligenceAvailable && (
 				<Button
-					variant={intelligenceOpen ? 'secondary' : 'ghost'}
+					variant={intelligenceOpen ? 'primary' : 'ghost'}
 					size="sm"
 					className="pk-composer-intelligence-toggle"
 					aria-pressed={intelligenceOpen}

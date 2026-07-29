@@ -4,7 +4,8 @@ import { useComposerChrome } from './ComposerChromeContext';
 
 /**
  * The three document display states (handoff §9.1 / §3.3 L164):
- *   - `clean` 纯净阅读 — accepted content only, read-only, no insight/candidate;
+ *   - `clean` 纯净阅读 — accepted content + existing comments, read-only,
+ *     no insight/candidate or new selection comments;
  *   - `work`  工作视图 — accepted content editable + insight/finding layer;
  *   - `all`   全部改动 — work + all pending candidates / diffs.
  * The chrome renders the layers by state; insight/candidate layers are empty in
@@ -25,6 +26,9 @@ export function DisplayStateSwitch({
 		<Segmented<ComposerDisplayState>
 			className="pk-composer-display-switch"
 			aria-label={s.groupLabel}
+			variant="animated-pill"
+			size="sm"
+			thumbLayoutId="composer-display-state-thumb"
 			value={value}
 			onValueChange={onChange}
 			options={[

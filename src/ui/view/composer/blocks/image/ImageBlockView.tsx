@@ -9,11 +9,14 @@
  */
 
 import * as React from 'react';
-import { Captions, FileImage, WandSparkles } from 'lucide-react';
+import { Captions, Copy, FileImage, Maximize2, Pencil, ScanLine, WandSparkles } from 'lucide-react';
 import type { ComposerBlock, ComposerDocumentSnapshot, ComposerTarget } from '@/core/composer';
 import { DEFAULT_IMAGE_ACTION_STRINGS, IMAGE_CAPABILITY_IDS, parseImageBlock } from '@/service/composer';
 import { Button } from '@/ui/components/primitives';
+import { EasyCopyMenu } from '../../chrome/EasyCopyMenu';
 import { useComposerChrome } from '../../chrome/ComposerChromeContext';
+import { ComposerImageLightbox } from './ComposerImageLightbox';
+import { ImageConverterPanel } from './ImageConverterPanel';
 import { DEFAULT_IMAGE_UI_STRINGS, loadImageActionStrings, loadImageUiStrings } from './imageUiConfig';
 
 export const IMAGE_TOOLBAR_CONTROL = 'h-[28px] rounded-[var(--pk-radius-md)]';
@@ -55,10 +58,17 @@ export function ImageBlockView({
 		? resolvePreviewUri?.(imagePath, chrome.snapshot?.filePath) ?? imagePath
 		: '';
 	const [editOpen, setEditOpen] = React.useState(false);
+	const [converterOpen, setConverterOpen] = React.useState(false);
+	const [renameOpen, setRenameOpen] = React.useState(false);
+	const [copyOpen, setCopyOpen] = React.useState(false);
+	const [lightboxOpen, setLightboxOpen] = React.useState(false);
 	const [instruction, setInstruction] = React.useState('');
+	const [renameValue, setRenameValue] = React.useState('');
 	const [imageError, setImageError] = React.useState(false);
 	const [actionStrings, setActionStrings] = React.useState(DEFAULT_IMAGE_ACTION_STRINGS);
 	const [uiStrings, setUiStrings] = React.useState(DEFAULT_IMAGE_UI_STRINGS);
+	const figureRef = React.useRef<HTMLElement | null>(null);
+	const imageRef = React.useRef<HTMLImageElement | null>(null);
 
 	React.useEffect(() => {
 		let cancelled = false;
@@ -82,8 +92,37 @@ export function ImageBlockView({
 		setInstruction('');
 		setEditOpen(false);
 	};
+	const runRename = (): void => {
+		const value = renameValue.trim();
+		if (!coordinator || !hub || !imagePath || !value || value === baseNameOfPath(imagePath)) return;
+		coordinator.beginRename({
+			sourcePath: imagePath,
+			blockId: block.blockId,
+			desiredBaseName: value,
+			...(imageRef.current?.naturalWidth ? { width: imageRef.current.naturalWidth } : {}),
+			...(imageRef.current?.naturalHeight ? { height: imageRef.current.naturalHeight } : {}),
+		});
+		setRenameValue('');
+		setRenameOpen(false);
+	};
+	const runConvert = async (output: {
+		bytes: Uint8Array;
+		mimeType: string;
+		width: number;
+		height: number;
+	}): Promise<void> => {
+		if (!coordinator || !imagePath) return;
+		await coordinator.beginConvert({
+			...output,
+			baseName: `${baseNameOfPath(imagePath)}-edited`,
+			replaceBlockId: block.blockId,
+			originalPath: imagePath,
+		});
+		setConverterOpen(false);
+	};
 	const figure = (
 		<figure
+			ref={figureRef}
 			className="pk-composer-image-figure real-image-frame"
 			data-src-text-from={block.source.from}
 			data-block-id={block.blockId}
@@ -91,10 +130,20 @@ export function ImageBlockView({
 		>
 			{imagePath && !imageError ? (
 				<img
+					ref={imageRef}
 					className="pk-composer-image-elem"
 					src={resolvedUri}
 					alt={alt}
+					role="button"
+					tabIndex={0}
+					aria-label={uiStrings.fullscreen}
 					onError={() => setImageError(true)}
+					onClick={() => setLightboxOpen(true)}
+					onKeyDown={(event) => {
+						if (event.key !== 'Enter' && event.key !== ' ') return;
+						event.preventDefault();
+						setLightboxOpen(true);
+					}}
 				/>
 			) : (
 				<span className="pk-composer-image-fallback" title={imagePath ? uiStrings.loadFailed : uiStrings.sourceUnavailable}>
@@ -107,34 +156,161 @@ export function ImageBlockView({
 				<span className="pk-composer-image-toolbar image-toolbar inline-flex items-center gap-1.5" data-chrome="true">
 					<Button
 						variant="secondary"
-						className={`${IMAGE_TOOLBAR_CONTROL} px-2 gap-1`}
+						className={`${IMAGE_TOOLBAR_CONTROL} px-2 gap-1 pk-composer-image-toolbar__text`}
 						disabled={!imagePath}
-						title={imagePath ? undefined : uiStrings.stale}
-						aria-label={actionStrings.editTitle}
-						onClick={() => setEditOpen((v) => !v)}
+						aria-label={uiStrings.fullscreen}
+						onClick={() => setLightboxOpen(true)}
 					>
-						<WandSparkles size={14} />
-						{actionStrings.editTitle}
+						<Maximize2 size={14} />
+						{uiStrings.fullscreen}
 					</Button>
 					<Button
 						variant="secondary"
-						className={`${IMAGE_TOOLBAR_CONTROL} px-2 gap-1`}
+						className={`${IMAGE_TOOLBAR_CONTROL} px-2 gap-1 pk-composer-image-toolbar__text`}
+						disabled={!imagePath || imageError}
+						aria-label={uiStrings.editImage}
+						onClick={() => {
+							setConverterOpen((value) => !value);
+							setEditOpen(false);
+							setRenameOpen(false);
+							setCopyOpen(false);
+						}}
+					>
+						<Pencil size={14} />
+						{uiStrings.editImage}
+					</Button>
+					<Button
+						variant="secondary"
+						className={`${IMAGE_TOOLBAR_CONTROL} px-2 gap-1 pk-composer-image-toolbar__text`}
+						disabled={!imagePath}
+						aria-label={uiStrings.rename}
+						onClick={() => {
+							setRenameValue(baseNameOfPath(imagePath ?? ''));
+							setRenameOpen((value) => !value);
+							setConverterOpen(false);
+							setEditOpen(false);
+							setCopyOpen(false);
+						}}
+					>
+						<ScanLine size={14} />
+						{uiStrings.rename}
+					</Button>
+					<Button
+						variant="secondary"
+						className={`${IMAGE_TOOLBAR_CONTROL} px-2 gap-1 pk-composer-image-toolbar__text`}
+						aria-label={uiStrings.copy}
+						onClick={() => {
+							setCopyOpen((value) => !value);
+							setConverterOpen(false);
+							setEditOpen(false);
+							setRenameOpen(false);
+						}}
+					>
+						<Copy size={14} />
+						{uiStrings.copy}
+					</Button>
+					<Button
+						variant="secondary"
+						className={`${IMAGE_TOOLBAR_CONTROL} px-2 gap-1 pk-composer-image-toolbar__text`}
 						aria-label={actionStrings.captionTitle}
 						onClick={runCaption}
 					>
 						<Captions size={14} />
 						{actionStrings.captionTitle}
 					</Button>
+					<Button
+						variant="secondary"
+						className={`${IMAGE_TOOLBAR_CONTROL} px-2 gap-1 pk-composer-image-toolbar__text`}
+						disabled={!imagePath}
+						title={imagePath ? undefined : uiStrings.stale}
+						aria-label={actionStrings.editTitle}
+						onClick={() => {
+							setEditOpen((value) => !value);
+							setConverterOpen(false);
+							setRenameOpen(false);
+							setCopyOpen(false);
+						}}
+					>
+						<WandSparkles size={14} />
+						{actionStrings.editTitle}
+					</Button>
 				</span>
 			) : null}
 		</figure>
 	);
 
-	if (!toolbarOpen) return figure;
+	if (!toolbarOpen) {
+		return (
+			<>
+				{figure}
+				{lightboxOpen && imagePath && !imageError ? (
+					<ComposerImageLightbox
+						anchor={figureRef.current}
+						initialSrc={resolvedUri}
+						initialAlt={caption || alt}
+						labels={uiStrings.lightbox}
+						onClose={() => setLightboxOpen(false)}
+					/>
+				) : null}
+			</>
+		);
+	}
 
 	return (
 		<div className="pk-composer-image-block inline-flex flex-col gap-1.5 items-start">
 			{figure}
+			{lightboxOpen && imagePath && !imageError ? (
+				<ComposerImageLightbox
+					anchor={figureRef.current}
+					initialSrc={resolvedUri}
+					initialAlt={caption || alt}
+					labels={uiStrings.lightbox}
+					onClose={() => setLightboxOpen(false)}
+				/>
+			) : null}
+			{copyOpen ? (
+				<EasyCopyMenu
+					markdown={block.renderModel.raw}
+					blockKind={block.kind}
+					rasterTargetRef={figureRef}
+					onClose={() => setCopyOpen(false)}
+				/>
+			) : null}
+			{renameOpen && imagePath ? (
+				<span className="pk-composer-image-inline-form pk-composer-panel" data-chrome="true">
+					<input
+						autoFocus
+						type="text"
+						value={renameValue}
+						aria-label={uiStrings.renameAria}
+						placeholder={uiStrings.renamePlaceholder}
+						onChange={(event) => setRenameValue(event.target.value)}
+						onKeyDown={(event) => {
+							if (event.key === 'Enter') {
+								event.preventDefault();
+								runRename();
+							}
+							if (event.key === 'Escape') setRenameOpen(false);
+						}}
+					/>
+					<Button
+						variant="primary"
+						disabled={!renameValue.trim() || renameValue.trim() === baseNameOfPath(imagePath)}
+						onClick={runRename}
+					>
+						{uiStrings.renameApply}
+					</Button>
+				</span>
+			) : null}
+			{converterOpen && imageRef.current && coordinator ? (
+				<ImageConverterPanel
+					image={imageRef.current}
+					labels={uiStrings.converter}
+					defaultQuality={coordinator.converterDefaultQuality}
+					onCancel={() => setConverterOpen(false)}
+					onConvert={runConvert}
+				/>
+			) : null}
 			{editOpen && imagePath && (
 				<input
 					autoFocus
@@ -156,4 +332,10 @@ export function ImageBlockView({
 			)}
 		</div>
 	);
+}
+
+function baseNameOfPath(path: string): string {
+	const file = path.slice(path.lastIndexOf('/') + 1);
+	const dot = file.lastIndexOf('.');
+	return dot > 0 ? file.slice(0, dot) : file;
 }

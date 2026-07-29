@@ -46,6 +46,32 @@ try {
 	await page.waitForTimeout(160);
 	assert.equal(await toolbar.evaluate((el) => getComputedStyle(el).opacity), '1', 'table hover reveals the toolbar');
 	assert.equal(await toolbar.evaluate((el) => getComputedStyle(el).pointerEvents), 'auto', 'revealed toolbar accepts pointer input');
+	for (const label of ['Left', 'Center', 'Right']) {
+		assert.equal(await toolbar.getByRole('button', { name: label, exact: true }).count(), 1, `${label} alignment is directly available without a menu`);
+	}
+	assert.equal(await toolbar.locator('.pk-table-menu').count(), 0, 'alignment does not require an intermediate popover');
+
+	const structureActions = [
+		['Add row', 'row', 'add'],
+		['Remove row', 'row', 'remove'],
+		['Add column', 'column', 'add'],
+		['Remove column', 'column', 'remove'],
+	];
+	for (const [label, axis, operation] of structureActions) {
+		const button = toolbar.getByRole('button', { name: label });
+		const icon = button.locator(`.pk-table-tool__icon[data-axis="${axis}"][data-operation="${operation}"]`);
+		assert.equal(await icon.count(), 1, `${label} exposes both ${axis} and ${operation} semantics`);
+		assert.equal(await icon.locator('.pk-table-tool__icon-badge').count(), 1, `${label} renders a visible operation badge`);
+	}
+	const addColumn = toolbar.getByRole('button', { name: 'Add column' });
+	assert.equal(await addColumn.evaluate((el) => getComputedStyle(el).height), '28px', 'table controls use the same 28px control height as the bottom action row');
+	assert.equal(await addColumn.locator('.pk-table-tool__icon > svg').first().getAttribute('width'), '16', 'compact table controls keep a legible 16px base icon');
+	assert.equal(await addColumn.getAttribute('title'), null, 'table controls do not create a second slow native title tooltip');
+	await addColumn.hover();
+	await page.waitForTimeout(100);
+	const addColumnTooltip = addColumn.locator('xpath=..').getByRole('tooltip');
+	assert.equal(await addColumnTooltip.evaluate((el) => getComputedStyle(el).opacity), '1', 'action tooltip appears without the native browser delay');
+	assert.match(await addColumnTooltip.textContent(), /Add column.*Insert a column after the active column/, 'tooltip explains what the plus-column action does');
 
 	const safeZone = await surface.evaluate((el) => {
 		const style = getComputedStyle(el);

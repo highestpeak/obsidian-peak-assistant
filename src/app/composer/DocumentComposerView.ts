@@ -1,4 +1,4 @@
-import { IconName, WorkspaceLeaf } from 'obsidian';
+import { IconName, Scope, WorkspaceLeaf } from 'obsidian';
 import { ReactItemViewHost } from '@/app/ui-host/ReactItemViewHost';
 import { createReactElementWithServices } from '@/app/ui-host/ReactElementFactory';
 import type { AppContext } from '@/app/context/AppContext';
@@ -36,6 +36,8 @@ export class DocumentComposerView extends ReactItemViewHost {
 
 	constructor(leaf: WorkspaceLeaf, appContext: AppContext) {
 		super(leaf, appContext);
+		this.scope = new Scope(this.app.scope);
+		this.scope.register([], 'Escape', () => false);
 	}
 
 	async onOpen(): Promise<void> {

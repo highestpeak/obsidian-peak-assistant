@@ -34,6 +34,8 @@ export interface ComposerImageSaveResult {
 export interface ComposerImageAttachmentPort {
 	/** Default attachment folder for pasted / generated images (vault-relative). */
 	attachmentFolder(): string;
+	/** Whether a vault path is occupied (used to dedupe existing-asset renames). */
+	exists?(path: string): boolean;
 	/** Persist bytes as a NEW attachment; dedups the path on collision. */
 	save(request: ComposerImageSaveRequest): Promise<ComposerImageSaveResult>;
 	/** Overwrite an existing asset's bytes in place (Converter overwrite path). */

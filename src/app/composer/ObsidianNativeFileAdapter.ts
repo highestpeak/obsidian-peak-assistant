@@ -21,6 +21,8 @@ import type {
 	ComposerNativePreviewPort,
 	ComposerNativePreviewRequest,
 	ComposerNativePreviewState,
+	ComposerResourcePreviewRequest,
+	ComposerResourcePreviewState,
 } from '@/service/composer';
 import { classifyComposerNativeTarget } from '@/service/composer';
 
@@ -97,6 +99,43 @@ export class ObsidianComposerNativePreviewAdapter implements ComposerNativePrevi
 		}
 	}
 
+	async resolveResourcePreview(request: ComposerResourcePreviewRequest): Promise<ComposerResourcePreviewState> {
+		const resolved = this.resolveTargetFile(request);
+		if (!resolved) return { status: 'missing', requestedTarget: request.target };
+		try {
+			const anchor = anchorOf(request.target);
+			const base = {
+				status: 'loaded' as const,
+				targetPath: resolved.path,
+				name: resolved.name,
+				extension: resolved.extension.toLowerCase(),
+				size: resolved.stat.size,
+				mtime: resolved.stat.mtime,
+				...(anchor ? { anchor } : {}),
+			};
+			if (resolved.extension.toLowerCase() === 'md') {
+				const text = await this.app.vault.cachedRead(resolved);
+				const excerpt = excerptFor(text, anchor);
+				return {
+					...base,
+					...(excerpt.text ? { textExcerpt: excerpt.text } : {}),
+					...(anchor ? { anchorResolved: excerpt.resolved } : {}),
+				};
+			}
+			if (resolved.extension.toLowerCase() === 'pdf') {
+				const pageCount = await pdfPageCount(this.app, resolved);
+				return { ...base, ...(pageCount ? { pageCount } : {}) };
+			}
+			return base;
+		} catch (err) {
+			return {
+				status: 'error',
+				requestedTarget: request.target,
+				message: err instanceof Error ? err.message : String(err),
+			};
+		}
+	}
+
 	onNativePreviewChange(request: ComposerNativePreviewRequest, cb: () => void): () => void {
 		let currentPath = this.resolveTargetFile(request)?.path ?? null;
 		const refresh = (path: string, oldPath?: string): void => {
@@ -124,7 +163,7 @@ export class ObsidianComposerNativePreviewAdapter implements ComposerNativePrevi
 		return null;
 	}
 
-	private resolveTargetFile(request: ComposerNativePreviewRequest): TFile | null {
+	private resolveTargetFile(request: { sourcePath: string; target: string }): TFile | null {
 		const linkpath = request.target.replace(/#.*$/, '').replace(/\|.*$/, '').trim();
 		if (!linkpath) return null;
 		const dest = this.app.metadataCache.getFirstLinkpathDest(linkpath, request.sourcePath);
@@ -135,5 +174,58 @@ export class ObsidianComposerNativePreviewAdapter implements ComposerNativePrevi
 		if (!folder) return null;
 		const relative = this.app.vault.getAbstractFileByPath(normalizePath(`${folder}/${linkpath}`));
 		return relative instanceof ObsidianTFile ? relative : null;
+	}
+}
+
+function anchorOf(target: string): string | undefined {
+	const withoutAlias = target.split('|')[0] ?? target;
+	const index = withoutAlias.indexOf('#');
+	if (index === -1) return undefined;
+	const anchor = withoutAlias.slice(index + 1).trim();
+	return anchor || undefined;
+}
+
+function excerptFor(text: string, anchor?: string): { text: string; resolved: boolean } {
+	const body = text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '');
+	if (!anchor) return { text: compactExcerpt(body), resolved: true };
+	if (anchor.startsWith('^')) {
+		const id = escapeRegExp(anchor.slice(1));
+		const match = body.match(new RegExp(`^(.+?)\\s+\\^${id}\\s*$`, 'm'));
+		return { text: match ? compactExcerpt(match[1]) : '', resolved: Boolean(match) };
+	}
+	const heading = escapeRegExp(anchor.replace(/^#+/, '').trim());
+	const match = body.match(new RegExp(`^#{1,6}\\s+${heading}\\s*$\\r?\\n([\\s\\S]*?)(?=^#{1,6}\\s|\\s*$)`, 'mi'));
+	return { text: match ? compactExcerpt(match[1]) : '', resolved: Boolean(match) };
+}
+
+function compactExcerpt(text: string): string {
+	return text
+		.replace(/```[\s\S]*?```/g, '')
+		.replace(/!\[\[[^\]]+\]\]/g, '')
+		.replace(/^#{1,6}\s+/gm, '')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.slice(0, 420);
+}
+
+function escapeRegExp(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+async function pdfPageCount(app: App, file: TFile): Promise<number | undefined> {
+	try {
+		const pdfjs = require('pdfjs-dist') as typeof import('pdfjs-dist');
+		const bytes = await app.vault.readBinary(file);
+		const task = pdfjs.getDocument({ data: new Uint8Array(bytes), disableWorker: true });
+		try {
+			const doc = await task.promise;
+			const pages = doc.numPages;
+			if (typeof doc.cleanup === 'function') doc.cleanup();
+			return pages;
+		} finally {
+			if (typeof task.destroy === 'function') await task.destroy();
+		}
+	} catch {
+		return undefined;
 	}
 }

@@ -10,11 +10,14 @@ export {
 	ResultBrowserViewToggle,
 	ResultBrowserDensityToggle,
 	ResultBrowserGraphControls,
+	ResultBrowserSearchInput,
+	ResultBrowserFooterHints,
 } from './toolbar/ResultBrowserToolbar';
 export type {
 	ViewModeToggleProps,
 	DensityToggleProps,
 	GraphControlsProps,
+	ResultBrowserSearchInputProps,
 } from './toolbar/ResultBrowserToolbar';
 export { ResultBrowserListRow } from './list/ResultBrowserListRow';
 export type { ResultBrowserListRowProps } from './list/ResultBrowserListRow';

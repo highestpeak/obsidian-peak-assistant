@@ -29,6 +29,9 @@ function run(): void {
 	check('finding uses current revision as evidence', findings.every((finding) => finding.evidenceRevision === snapshot.revision));
 	check('reason includes the task content', findings[0].reason === 'Open task: Fill evidence for the opening claim', findings[0].reason);
 	check('checked tasks are skipped', !findings.some((finding) => finding.reason.includes('Already handled')));
+	check('body projection uses a concrete task label', findings[0].body?.label === 'Task list');
+	check('body projection carries the real task text', findings[0].body?.title === 'Fill evidence for the opening claim');
+	check('body projection is not a generic AI suggestion', findings.every((finding) => finding.body?.label !== 'AI 建议'));
 
 	const uncappedSource = [
 		'# More tasks',

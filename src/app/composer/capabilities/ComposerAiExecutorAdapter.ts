@@ -25,7 +25,10 @@ export class ComposerAiExecutorAdapter implements ComposerCapabilityExecutorPort
 
 	async *stream(request: ComposerExecutionRequest): AsyncGenerator<ComposerExecutorStreamEvent, void, unknown> {
 		const prompter = this.resolvePrompter();
-		const opts = request.signal !== undefined ? { signal: request.signal } : {};
+		const opts = {
+			...(request.signal !== undefined ? { signal: request.signal } : {}),
+			...(request.modelId !== undefined ? { modelId: request.modelId } : {}),
+		};
 		for await (const event of prompter.queryStream(request.promptId, request.variables, opts)) {
 			if (event.type === 'text-delta') {
 				yield { type: 'text-delta', text: event.text };

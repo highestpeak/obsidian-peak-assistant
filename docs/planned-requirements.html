@@ -128,7 +128,7 @@
       <div class="meta">
         <span>Status: planning register</span>
         <span>Scope: small / surface-level requirements</span>
-        <span>Updated: 2026-07-28</span>
+        <span>Updated: 2026-07-29</span>
       </div>
       <nav class="nav" aria-label="cross document navigation">
         <a href="index.html">← 文档总索引</a>
@@ -181,6 +181,22 @@
           <h3>PR-FILE-ATLAS-WORK-FILE-RAIL</h3>
           <p>左侧工作文件 rail 要加宽并优先让完整文件名可读；先展示当前打开文件，再用最近查看文件补足固定容量。默认按最后查看时间排序，不复制顶部 tab 顺序；用户可切换最近查看、最常使用或文件名排序。</p>
           <p><a href="superpowers/specs/2026-07-08-file-atlas-design.md">File Atlas spec · 2026-07-27 owner feedback</a></p>
+        </article>
+        <article class="card" id="pr-copilot-intelligence-native-modal">
+          <div class="pill-row"><span class="pill green">Document Copilot · Native editor</span><span class="pill gold">decided · design only</span></div>
+          <h3>PR-COPILOT-INTELLIGENCE-NATIVE-MODAL</h3>
+          <p>在 Obsidian 原生 Markdown 编辑器上方打开一个 <code>Copilot Intelligence</code> modal，让用户不进入 Composer View 也能围绕当前文件 / 选区使用同一 Document Intelligence 能力。它不是新 AI model，也不是 Chat Studio 子模式。</p>
+          <p>顶层 IA 只保留 <code>Copilot / History</code>。<code>Copilot</code> 内部用两列呈现同一能力：自动建议和对话；不要暴露 <code>Ambient</code>、<code>Session</code>、<code>候选</code> 这类新 tab。自动建议必须复用 Composer Copilot 的建议组件、preset、排序和卡片语义；对话必须复用共享输入组件。</p>
+          <p>全面 review 或复杂写入不在 modal 里持续展示候选面板，而是 handoff 到 Composer Review，并保留 run identity、context snapshot、sources 和 receipt。History 独立显示当前文件真实写入记录；未采用建议仍归 generation history / run receipt。</p>
+          <p><a href="superpowers/specs/2026-07-29-copilot-intelligence-native-editor-modal.md">正式设计</a> · <a href="gstack/copilot-intelligence-native-modal-2026-07-29/index.html">Native modal mock</a></p>
+        </article>
+        <article class="card" id="pr-file-atlas-copilot-suggestions-flatten">
+          <div class="pill-row"><span class="pill green">File Atlas · Element Copilot</span><span class="pill gold">decided · design only</span></div>
+          <h3>PR-FILE-ATLAS-COPILOT-SUGGESTIONS-FLATTEN</h3>
+          <p>File Atlas 右侧 inspector 可以展示当前选中 heading / block / resource 的 Copilot 建议，但它必须是 Composer Copilot 建议在 Atlas 里的呈现位置，而不是一套新的 Atlas-only action 体系。</p>
+          <p>同一功能、不同呈现位置：建议 generator、preset、排序、文案语义、run receipt 和 prompt composer 都与 Composer Copilot 对齐。Atlas 只负责选择、定位、检查和 context handoff；需要写入时进入 Copilot Intelligence 或 Composer Review，不直接改 Markdown。</p>
+          <p>工具栏的 filter 与 flatten 控制采用 icon-only button；视觉上不写 <code>Filters</code> / <code>Flatten all</code>，但必须保留 <code>aria-label</code> 与 tooltip。Flatten 模式按正文顺序展平所有元素，并用 path crumb 保留原始层级，不破坏搜索和筛选结果。</p>
+          <p><a href="gstack/file-atlas-copilot-flatten-2026-07-29/index.html">Atlas Copilot / flatten mock</a> · <a href="superpowers/specs/2026-07-08-file-atlas-design.md">File Atlas spec</a></p>
         </article>
         <article class="card" id="pr-shared-ai-instruction-composer">
           <div class="pill-row"><span class="pill green">Cross-surface · Shared AI input</span><span class="pill gold">decided · design only</span></div>
@@ -264,6 +280,18 @@
             <td>File Atlas → Open / Recent rail</td>
             <td>不靠顶部被截断的 tab 猜文件：左栏能读清文件名，优先汇总各 tab group / split / pop-out 的打开文件，再从最近查看历史补足固定容量，并支持切换排序。</td>
             <td><a href="superpowers/specs/2026-07-08-file-atlas-design.md">File Atlas spec · owner UI feedback</a></td>
+          </tr>
+          <tr>
+            <td><strong>PR-COPILOT-INTELLIGENCE-NATIVE-MODAL</strong></td>
+            <td>Document Copilot → Native editor modal</td>
+            <td>用户不打开 Composer View 也能围绕当前文件 / 选区获得同一 Copilot Intelligence：顶层只保留 Copilot / History，Copilot 内部两列呈现自动建议和对话，全面 review handoff 到 Composer Review。</td>
+            <td><a href="superpowers/specs/2026-07-29-copilot-intelligence-native-editor-modal.md">正式设计</a><br><a href="gstack/copilot-intelligence-native-modal-2026-07-29/index.html">Native modal mock</a><br><a href="#pr-copilot-intelligence-native-modal">本页需求卡</a></td>
+          </tr>
+          <tr>
+            <td><strong>PR-FILE-ATLAS-COPILOT-SUGGESTIONS-FLATTEN</strong></td>
+            <td>File Atlas → Inspector / toolbar</td>
+            <td>Atlas 右侧展示当前元素的 Copilot 建议，但建议生成器、preset、排序和卡片语义必须与 Composer Copilot 完全一致；filter / flatten 用 icon-only 控制，flatten 以 path crumb 保留层级。</td>
+            <td><a href="gstack/file-atlas-copilot-flatten-2026-07-29/index.html">Atlas mock</a><br><a href="#pr-file-atlas-copilot-suggestions-flatten">本页需求卡</a></td>
           </tr>
           <tr>
             <td><strong>PR-SHARED-AI-INSTRUCTION-COMPOSER</strong></td>

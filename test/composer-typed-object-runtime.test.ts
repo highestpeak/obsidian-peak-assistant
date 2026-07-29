@@ -53,16 +53,17 @@ function tableSnapshot(runtime: ReturnType<typeof setup>['runtime'], session: Re
 	return { table, snapshot: runtime.assembleSnapshot({ kind: 'block', blockId: table.blockId }) };
 }
 
-/** 1. Composition validates + projects the five AI actions on a table object toolbar. */
+/** 1. Composition validates + projects the five AI actions on the shared table block row. */
 function testProjection(): void {
 	const { runtime, session } = setup();
 	check('compose: production composition validates table/chart bindings', true);
 	const { snapshot } = tableSnapshot(runtime, session);
-	const actions = runtime.actionsFor(snapshot, 'object-toolbar');
+	const actions = runtime.actionsFor(snapshot, 'block-row');
 	const ids = actions.map((a) => a.capabilityId);
 	for (const id of [SUMMARIZE_ID, ADD_COLUMN_ID, CHECK_UNITS_ID, EXTRACT_FORMULA_ID, GENERATE_CHART_ID]) {
-		check(`projection: '${id}' projects on the table object toolbar`, ids.includes(id), ids.join(','));
+		check(`projection: '${id}' projects on the table block row`, ids.includes(id), ids.join(','));
 	}
+	check('projection: table object toolbar stays deterministic-only', runtime.actionsFor(snapshot, 'object-toolbar').length === 0);
 	const summarize = actions.find((a) => a.capabilityId === SUMMARIZE_ID);
 	check('projection: table AI action is in the ai group', summarize?.group === 'ai');
 	check('projection: table AI action offers a targeted instruction', summarize?.acceptsInstruction === true);

@@ -12,6 +12,7 @@
  */
 
 import * as React from 'react';
+import { Workflow } from 'lucide-react';
 import type { ComposerBlock } from '@/core/composer';
 import { parseMermaidBlock } from '@/service/composer';
 import { NativeBlockFrame, NativeSourceView, useNativeStrings, type NativeViewMode } from '../nativeBlockShared';
@@ -26,13 +27,31 @@ export function MermaidBlockView({ block }: { block: ComposerBlock }): React.Rea
 
 	if (mode === 'source') {
 		return (
-			<NativeBlockFrame blockId={block.blockId} sourceFrom={block.source.from} mode={mode} onMode={setMode} strings={strings}>
+			<NativeBlockFrame
+				blockId={block.blockId}
+				sourceFrom={block.source.from}
+				mode={mode}
+				onMode={setMode}
+				strings={strings}
+				icon={<Workflow size={17} />}
+				kindLabel={strings.mermaidLabel}
+				title={diagramTitle(source, strings.mermaidTitle)}
+			>
 				<NativeSourceView raw={raw} blockId={block.blockId} sourceFrom={block.source.from} />
 			</NativeBlockFrame>
 		);
 	}
 	return (
-		<NativeBlockFrame blockId={block.blockId} sourceFrom={block.source.from} mode={mode} onMode={setMode} strings={strings}>
+		<NativeBlockFrame
+			blockId={block.blockId}
+			sourceFrom={block.source.from}
+			mode={mode}
+			onMode={setMode}
+			strings={strings}
+			icon={<Workflow size={17} />}
+			kindLabel={strings.mermaidLabel}
+			title={diagramTitle(source, strings.mermaidTitle)}
+		>
 			<MermaidRender source={source} raw={raw} blockId={block.blockId} sourceFrom={block.source.from} strings={strings} />
 		</NativeBlockFrame>
 	);
@@ -87,11 +106,28 @@ async function renderMermaid(host: HTMLElement, source: string): Promise<void> {
 	const mod = (await import('mermaid')) as unknown as { default: MermaidApi } | MermaidApi;
 	const mermaid: MermaidApi = 'default' in mod ? mod.default : mod;
 	const dark = detectDark(host);
-	mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: dark ? 'dark' : 'default' });
+	mermaid.initialize({
+		startOnLoad: false,
+		securityLevel: 'strict',
+		theme: dark ? 'dark' : 'base',
+		themeVariables: dark ? undefined : {
+			primaryColor: '#f0edff',
+			primaryBorderColor: '#8067df',
+			primaryTextColor: '#20283a',
+			lineColor: '#5c6472',
+			secondaryColor: '#f8f9fc',
+		},
+	});
 	mermaidSeq += 1;
 	const id = `pk-composer-mermaid-${mermaidSeq}`;
 	const { svg } = await mermaid.render(id, source);
 	host.innerHTML = svg;
+}
+
+function diagramTitle(source: string, fallback: string): string {
+	const token = source.trim().split(/\s+/)[0]?.toLowerCase() ?? '';
+	if (!token) return fallback;
+	return `${fallback} · ${token.replace(/-v\d+$/, '')}`;
 }
 
 function detectDark(host: HTMLElement): boolean {

@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/ui/react/lib/utils';
 
 export interface SegmentedOption<T extends string> {
@@ -11,6 +12,13 @@ export interface SegmentedProps<T extends string> {
 	onValueChange: (next: T) => void;
 	options: SegmentedOption<T>[];
 	className?: string;
+	variant?: 'default' | 'animated-pill';
+	size?: 'sm' | 'md' | 'lg';
+	/**
+	 * Shared-layout key for the selected thumb. A per-instance React id is
+	 * appended so separate controls never animate into one another.
+	 */
+	thumbLayoutId?: string;
 	'aria-label'?: string;
 }
 
@@ -28,11 +36,18 @@ export function Segmented<T extends string>({
 	onValueChange,
 	options,
 	className,
+	variant = 'default',
+	size = 'md',
+	thumbLayoutId = 'segmented-thumb',
 	'aria-label': ariaLabel,
 }: SegmentedProps<T>) {
+	const instanceId = React.useId();
+	const reducedMotion = useReducedMotion();
 	return (
 		<div
 			className={cn('pk-segmented', className)}
+			data-variant={variant}
+			data-size={size}
 			role="tablist"
 			aria-label={ariaLabel}
 		>
@@ -48,7 +63,17 @@ export function Segmented<T extends string>({
 						className="pk-segmented__opt"
 						onClick={() => onValueChange(opt.value)}
 					>
-						{opt.label}
+						{variant === 'animated-pill' && isSelected && (
+							<motion.span
+								aria-hidden
+								className="pk-segmented__thumb"
+								layoutId={`${thumbLayoutId}-${instanceId}`}
+								transition={reducedMotion
+									? { duration: 0 }
+									: { type: 'spring', stiffness: 500, damping: 34 }}
+							/>
+						)}
+						<span className="pk-segmented__label">{opt.label}</span>
 					</button>
 				);
 			})}

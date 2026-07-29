@@ -83,7 +83,7 @@
       <h1>状态快照：里程碑、待建、调研、远期</h1>
       <p class="subtitle">这份文档回答"项目现在在做什么、下一步做什么"。<strong>只登记关键节点</strong>——不是流水账。逐 session 的完成粒度看 <a href="progress.md"><code>progress.md</code></a>；文档索引看 <a href="index.html"><code>index.html</code></a>；调研原稿在 <code>docs/research/</code>；架构 spec 在 <code>docs/superpowers/specs/</code>；小型未实现需求登记在 <a href="planned-requirements.html"><code>planned-requirements.html</code></a>。</p>
       <div class="meta">
-        <span>Status: current · 2026-07-28</span>
+        <span>Status: current · 2026-07-29</span>
         <span>Scope: milestone-level only</span>
         <span>Updated: 手动维护 + session-end 补关键节点</span>
       </div>
@@ -286,6 +286,12 @@
                 <td><span class="pill gold">shell corrected · data/QA partial</span></td>
               </tr>
               <tr>
+                <td><strong>Copilot Intelligence Native Modal + Atlas Element Handoff</strong></td>
+                <td>新增当前文件级 Copilot Intelligence 弹窗，让用户留在 Obsidian 原生编辑器时也能使用同一 Document Intelligence 能力。顶层只保留 <code>Copilot / History</code>；<code>Copilot</code> 内部分为自动建议和对话两列，不暴露 <code>Ambient</code>、<code>Session</code> 或候选 tab；全面 review 直接升级到 Composer Review。File Atlas 只增加元素级 Copilot 建议呈现和 context handoff：建议生成器、preset、排序和卡片语义必须与 Composer Copilot 完全一致；Atlas 不维护自己的 Copilot action taxonomy，不直接写入正文。工具栏新增 icon-only filter / flatten 控制，flatten 后用 path crumb 保留原层级。</td>
+                <td><a href="superpowers/specs/2026-07-29-copilot-intelligence-native-editor-modal.md">正式设计</a><br><a href="gstack/copilot-intelligence-native-modal-2026-07-29/index.html">Native modal mock</a><br><a href="gstack/file-atlas-copilot-flatten-2026-07-29/index.html">Atlas handoff / flatten mock</a><br><a href="planned-requirements.html#pr-copilot-intelligence-native-modal">Planned Requirement</a></td>
+                <td><span class="pill gold">decided · design/spec ready · implementation pending</span></td>
+              </tr>
+              <tr>
                 <td><strong>Composer 多块选择、合并与上下文感知 AI 操作</strong></td>
                 <td>把公式拆分引出的需求收口成通用 Composer 能力：重新验收跨块文字选择，新增显式多块选择，并让兼容 block set 通过确定性或 AI capability 合并；一次接受仍是一个原子事务。复杂合并按 capability 装配上下文并进入共享 Agent Run。当前已有 <code>cross-block</code> selection core，但 multi-block target、真实交互、context slots 和 Agent 链路仍待统一实施。</td>
                 <td><a href="superpowers/specs/2026-07-28-composer-multi-block-selection-and-context-aware-ai-transforms.md">Requirements baseline</a><br><a href="superpowers/specs/2026-07-28-composer-agent-runs-and-generation-history.md">Agent Run / context contract</a></td>
@@ -369,6 +375,12 @@
             <tbody>
               <!-- Chat 内富生成能力 2026-07-03 shipped as commit 459aa5ba (Mermaid + Bases) — see #done -->
               <!-- Multimodal Media Ring 2026-07-03 shipped骨架 as commit 459aa5ba — see #done for scope. Excalidraw / Dataview / 视频 / 音乐 / 播客 未做,仍在 backlog。-->
+              <tr>
+                <td>2026-07-28</td>
+                <td><strong>AI 协作工作流效率诊断</strong>（过程调研，非产品功能）</td>
+                <td>两轮实证诊断（61 个 Claude 转录 + 285 个 Codex 会话 + git 历史 + 实测测试红绿）。首轮七问题模式；二轮对抗评审后修订为 12 条排序建议——测试零红灯、checkpoint commit 预授权 + worktree 隔离、视觉验收"裁判独立 + 首屏先行"、QA 环境预检、progress.md NOW 节修复等。元结论：病根不是缺规则，是规则停留在散文层——需下沉为授权行 / guard test / 独立裁判 / 二值信号。</td>
+                <td><a href="research/2026-07-28-ai-workflow-efficiency-diagnosis/README.md">研究报告</a></td>
+              </tr>
               <tr>
                 <td>2026-07-01</td>
                 <td><strong>多模态生成（Image / Video / Music / Voice）与 Studio 形态</strong></td>

@@ -5,8 +5,8 @@
  * .dev/spikes/composer/s4-media/fixtures): typed parse → typed patch →
  * serialize, with (a) unknown fields surviving by construction, (b) the
  * Excalidraw Markdown wrapper byte-stable outside the embedded-JSON slice, and
- * (c) the compressed-json variant failing SAFE (unsupported + reason, no
- * corruption). Nothing here string-replaces to guess structure.
+ * (c) the compressed-json variant decoding and re-encoding without wrapper
+ * corruption. Nothing here string-replaces to guess structure.
  */
 
 import fs from 'fs';
@@ -31,6 +31,7 @@ import {
 	type ComposerNativeFilePort,
 } from '@/service/composer';
 import type { ComposerNativeFileFormat } from '@/core/schemas/composer';
+import { compressToBase64 } from 'lz-string';
 
 const FIX = path.join(process.cwd(), 'test', 'fixtures', 'composer', 'native');
 const read = (f: string): string => fs.readFileSync(path.join(FIX, f), 'utf8');
@@ -187,7 +188,14 @@ function testExcalidraw(): void {
 	check('excalidraw: duplicate element id fails', parsed.scene.elements[0].id ? !dup.ok : true);
 }
 
-// ── EXCALIDRAW compressed-json fail-safe (CMP-NATIVE-05) ──────────────────────
+// ── EXCALIDRAW compressed-json round-trip (CMP-NATIVE-05) ─────────────────────
+const COMPRESSED_SCENE = {
+	type: 'excalidraw',
+	version: 2,
+	elements: [{ id: 'compressed-text', type: 'text', x: 10, y: 12, width: 80, height: 24, text: 'Hello' }],
+	appState: { viewBackgroundColor: '#ffffff' },
+	files: {},
+};
 const COMPRESSED_FIXTURE = [
 	'---',
 	'excalidraw-plugin: parsed',
@@ -195,7 +203,7 @@ const COMPRESSED_FIXTURE = [
 	'',
 	'# Drawing',
 	'```compressed-json',
-	'N4KABGAOAiCu2VZ0DGKBm+YAsIBcAtYBaYADgFYBGAJwCMWbNMBmVU/',
+	compressToBase64(JSON.stringify(COMPRESSED_SCENE)),
 	'```',
 	'%%',
 	'',
@@ -205,11 +213,17 @@ function testCompressedVariant(): void {
 	const loc = locateExcalidrawScene(COMPRESSED_FIXTURE);
 	check('excalidraw: compressed variant detected', loc?.variant === 'compressed', String(loc?.variant));
 	const parsed = parseExcalidrawScene(COMPRESSED_FIXTURE);
-	check('excalidraw: compressed parse fails safe', !parsed.ok && parsed.variant === 'compressed');
+	check('excalidraw: compressed parse succeeds', parsed.ok && parsed.location.variant === 'compressed');
 	const preview = buildExcalidrawPreview(COMPRESSED_FIXTURE);
-	check('excalidraw: compressed preview unsupported + reason', !preview.supported && Boolean(preview.reason));
+	check('excalidraw: compressed preview supported', preview.supported && preview.elementCount === 1);
 	const patch = applyExcalidrawPatch(COMPRESSED_FIXTURE, [{ op: 'set-background', color: '#fff' }]);
-	check('excalidraw: compressed patch refused (no corruption)', !patch.ok && patch.variant === 'compressed');
+	check('excalidraw: compressed patch succeeds', patch.ok);
+	if (patch.ok) {
+		const reparsed = parseExcalidrawScene(patch.text);
+		check('excalidraw: compressed patch re-parses', reparsed.ok && reparsed.location.variant === 'compressed');
+		check('excalidraw: compressed patch applies', reparsed.ok && reparsed.scene.appState?.viewBackgroundColor === '#fff');
+		check('excalidraw: compressed wrapper preserved', patch.text.startsWith('---\nexcalidraw-plugin: parsed\n---'));
+	}
 }
 
 // ── native-file port (CMP-NATIVE-06) ─────────────────────────────────────────
@@ -241,7 +255,7 @@ async function testNativePort(): Promise<void> {
 	check('port: patchNativeFile base ok', baseOut.ok && baseOut.nextText.includes('Renamed'));
 
 	const compressedOut = patchNativeFile(COMPRESSED_FIXTURE, { format: 'excalidraw', patches: [{ op: 'set-background', color: '#fff' }] });
-	check('port: patchNativeFile compressed fails safe', !compressedOut.ok);
+	check('port: patchNativeFile compressed succeeds', compressedOut.ok);
 
 	// read → patch → revision-guarded write cycle.
 	const files = new Map<string, string>([['PKM.canvas', read('pkm-composer.canvas')]]);

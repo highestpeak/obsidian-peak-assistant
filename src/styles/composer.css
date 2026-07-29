@@ -952,6 +952,30 @@
 	width: var(--pk-comment-rail-width);
 	min-height: 100%;
 	color: var(--pk-fg);
+	opacity: 1;
+	transform: translateX(0);
+	transition:
+		flex-basis 180ms ease,
+		width 180ms ease,
+		opacity 140ms ease,
+		transform 180ms ease,
+		visibility 0s linear 0s;
+}
+.peak-composer-root .pk-comment-rail[data-open='false'] {
+	flex-basis: 0;
+	width: 0;
+	min-width: 0;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transform: translateX(16px);
+	overflow: hidden;
+	transition:
+		flex-basis 180ms ease,
+		width 180ms ease,
+		opacity 140ms ease,
+		transform 180ms ease,
+		visibility 0s linear 180ms;
 }
 .peak-composer-root .pk-comment-rail__cards {
 	position: absolute;
@@ -1085,24 +1109,39 @@
 	justify-content: flex-end;
 }
 .peak-composer-root .pk-comment-card__actions {
-	flex-wrap: wrap;
-	padding-top: 3px;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 8px;
+	padding-top: 7px;
 	border-top: 1px solid var(--pk-border-soft);
 }
-.peak-composer-root .pk-comment-card__actions .pk-btn {
-	min-height: 24px !important;
-	height: 24px !important;
-	padding: 0 5px !important;
-	font-size: 10px !important;
+.peak-composer-root .pk-comment-card__collaboration-actions,
+.peak-composer-root .pk-comment-card__thread-actions {
+	display: flex;
+	align-items: center;
+	min-width: 0;
+	gap: 2px;
 }
-.peak-composer-root .pk-comment-card__actions .pk-icon-button {
+.peak-composer-root .pk-comment-card__thread-actions {
+	flex: 0 0 auto;
+	padding-left: 7px;
+	border-left: 1px solid var(--pk-border-soft);
+}
+.peak-composer-root .pk-comment-action--copilot {
+	color: var(--pk-accent-text) !important;
+}
+.peak-composer-root .pk-comment-card__actions .pk-icon-btn {
 	width: 24px !important;
 	height: 24px !important;
+	min-width: 24px !important;
 	min-height: 24px !important;
-	margin-left: auto;
-}
-.peak-composer-root .pk-comment-card__actions .pk-icon-button + .pk-icon-button {
 	margin-left: 0;
+}
+.peak-composer-root .pk-comment-action--remove:hover,
+.peak-composer-root .pk-comment-action--remove:focus-visible {
+	background: var(--pk-error-bg) !important;
+	color: var(--pk-error-text) !important;
 }
 .peak-composer-root .pk-comment-card__replies {
 	display: flex;
@@ -1184,6 +1223,11 @@
 	border-radius: var(--pk-radius-lg);
 	background: var(--pk-surface);
 	box-shadow: var(--pk-shadow-popover);
+}
+.peak-composer-root .pk-comment-rail[data-mode='drawer'][data-open='false'] {
+	flex-basis: var(--pk-comment-drawer-width);
+	width: var(--pk-comment-drawer-width);
+	transform: translateX(calc(100% + 18px));
 }
 .peak-composer-root .pk-comment-rail[data-mode='drawer'] .pk-comment-rail__cards {
 	position: static;
@@ -1323,6 +1367,18 @@
 .peak-composer-root [data-has-selection] .pk-composer-editable:focus-visible {
 	box-shadow: none;
 }
+.peak-composer-root [data-cross-block-selection-overlay] {
+	position: absolute;
+	inset: 0;
+	z-index: 6;
+	pointer-events: none;
+}
+.peak-composer-root .pk-cross-block-selection-fragment {
+	position: absolute;
+	border-radius: 2px;
+	background: color-mix(in srgb, var(--pk-accent) 24%, transparent);
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pk-accent) 8%, transparent);
+}
 .peak-composer-root .pk-composer-source-token {
 	/*
 	 * Keep hidden source bytes in the inline formatting tree. `display: none`
@@ -1342,9 +1398,13 @@
 .peak-composer-root .pk-heading-2 { font-size: var(--pkc-h2-size); font-weight: var(--pkc-h2-weight); line-height: 1.35; }
 .peak-composer-root .pk-heading-3 { font-size: var(--pkc-h3-size); font-weight: var(--pkc-h3-weight); }
 .peak-composer-root .pk-composer-quote {
-	border-left: 3px solid var(--pk-border-strong);
-	padding-left: var(--pk-space-3);
-	color: var(--pk-fg-muted);
+	border-left: 4px solid var(--pk-accent, #5d70e8);
+	border-radius: 0 var(--pk-radius-md) var(--pk-radius-md) 0;
+	background: color-mix(in srgb, var(--pk-accent, #5d70e8) 5%, var(--pk-bg-primary, #fff));
+	padding: 16px 24px;
+	color: var(--pk-text-secondary);
+	font-size: 15px;
+	line-height: 1.8;
 }
 .peak-composer-root .pk-composer-callout {
 	overflow: hidden;
@@ -1560,6 +1620,15 @@
 	height: 28px !important;
 	gap: 5px;
 	padding: 0 7px !important;
+	border-radius: var(--pk-radius-full) !important;
+}
+.peak-composer-root :is(.pk-composer-comment-toggle, .pk-composer-intelligence-toggle)[aria-pressed='true'] {
+	box-shadow: var(--pk-shadow-sm);
+}
+.peak-composer-root .pk-composer-comment-toggle[aria-pressed='true'] .pk-composer-comment-count {
+	border-color: color-mix(in srgb, var(--pk-surface) 34%, transparent);
+	background: color-mix(in srgb, var(--pk-surface) 24%, transparent);
+	color: var(--pk-accent-fg);
 }
 .peak-composer-root .pk-undo-redo {
 	display: inline-flex;
@@ -1891,9 +1960,124 @@
 }
 
 /* ── display states (§9.1): clean hides the editing chrome ─────────────────── */
+.peak-composer-root .pk-block-findings {
+	display: grid;
+	gap: 8px;
+	margin: 0 0 8px;
+}
+
+.peak-composer-root .pk-block-finding-badges {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+
+.peak-composer-root .pk-block-finding-badge.pk-btn {
+	min-height: 24px !important;
+	height: 24px !important;
+	padding: 0 9px !important;
+	border: 1px solid color-mix(in srgb, var(--pk-accent) 28%, var(--pk-border)) !important;
+	border-radius: var(--pk-radius-pill) !important;
+	background: color-mix(in srgb, var(--pk-accent) 7%, var(--pk-bg)) !important;
+	color: var(--pk-accent-text);
+	font-size: 10px;
+}
+
+.peak-composer-root .pk-block-finding-badge[data-tone='teal'] {
+	border-color: color-mix(in srgb, var(--pk-success, #16845f) 34%, var(--pk-border)) !important;
+	background: color-mix(in srgb, var(--pk-success, #16845f) 8%, var(--pk-bg)) !important;
+	color: var(--pk-success, #16845f);
+}
+
+.peak-composer-root .pk-block-finding-badge[data-tone='amber'],
+.peak-composer-root .pk-block-finding-badge[data-tone='red'] {
+	border-color: color-mix(in srgb, var(--pk-warning, #b45309) 38%, var(--pk-border)) !important;
+	background: color-mix(in srgb, var(--pk-warning, #b45309) 8%, var(--pk-bg)) !important;
+	color: var(--pk-warning, #b45309);
+}
+
+.peak-composer-root .pk-block-finding-panel {
+	display: grid;
+	gap: 12px;
+	padding: 13px 15px;
+	border: 1px solid color-mix(in srgb, var(--pk-accent) 28%, var(--pk-border));
+	border-left: 3px solid var(--pk-accent);
+	border-radius: var(--pk-radius-lg);
+	background: color-mix(in srgb, var(--pk-accent) 3%, var(--pk-bg));
+}
+
+.peak-composer-root .pk-block-finding-panel[data-tone='teal'] {
+	border-left-color: var(--pk-success, #16845f);
+}
+
+.peak-composer-root .pk-block-finding-panel[data-tone='amber'],
+.peak-composer-root .pk-block-finding-panel[data-tone='red'] {
+	border-left-color: var(--pk-warning, #b45309);
+}
+
+.peak-composer-root .pk-block-finding-panel__meta,
+.peak-composer-root .pk-block-finding-panel__copy {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.peak-composer-root .pk-block-finding-panel__meta {
+	color: var(--pk-text-muted);
+	font-size: 10px;
+}
+
+.peak-composer-root .pk-block-finding-panel__meta > strong {
+	color: var(--pk-accent-text);
+	font-size: 11px;
+}
+
+.peak-composer-root .pk-block-finding-panel__copy {
+	display: grid;
+	gap: 5px;
+}
+
+.peak-composer-root .pk-block-finding-panel__copy > strong {
+	color: var(--pk-text-primary);
+	font-size: 13px;
+}
+
+.peak-composer-root .pk-block-finding-panel__copy > span {
+	color: var(--pk-text-secondary);
+	font-size: 12px;
+	line-height: 1.55;
+}
+
+.peak-composer-root .pk-block-finding-panel__copy > em {
+	width: fit-content;
+	padding: 2px 7px;
+	border: 1px solid color-mix(in srgb, var(--pk-warning, #b45309) 36%, var(--pk-border));
+	border-radius: var(--pk-radius-pill);
+	color: var(--pk-warning, #b45309);
+	font-size: 10px;
+	font-style: normal;
+}
+
+.peak-composer-root .pk-block-finding-panel__actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+
 .peak-composer-root [data-display-state='clean'] .pk-composer-rail,
 .peak-composer-root [data-display-state='clean'] .pk-block-action-row,
-.peak-composer-root [data-display-state='clean'] .pk-insert-draft {
+.peak-composer-root [data-display-state='clean'] .pk-insert-draft,
+.peak-composer-root [data-display-state='clean'] .pk-fm-actions,
+.peak-composer-root [data-display-state='clean'] .pk-fm-origin,
+.peak-composer-root [data-display-state='clean'] .pk-fm-picker-anchor,
+.peak-composer-root [data-display-state='clean'] .pk-fm-suggestions,
+.peak-composer-root [data-display-state='clean'] .pk-fm-candidate-review,
+.peak-composer-root [data-display-state='clean'] [data-ai-suggestion],
+.peak-composer-root [data-display-state='clean'] .pk-comment-anchor-marker,
+.peak-composer-root [data-display-state='clean'] .pk-block-findings {
 	display: none !important;
 }
 .peak-composer-root .pk-composer-display-switch {

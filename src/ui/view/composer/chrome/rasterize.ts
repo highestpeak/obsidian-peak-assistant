@@ -21,10 +21,14 @@ export async function rasterizeElementToPngBlob(el: HTMLElement): Promise<Blob |
 	const height = Math.max(1, Math.ceil(rect.height));
 
 	const clone = el.cloneNode(true) as HTMLElement;
+	// Inline styles while the live and cloned trees still have identical
+	// structure. Chromium exposes an empty `cssText` on computed styles, so the
+	// properties must be copied one by one; otherwise the PNG degenerates into
+	// an unstyled text rendering instead of the visible Composer block.
+	inlineStyles(el, clone, win);
 	for (const sel of EASY_COPY_CHROME_SELECTORS) {
 		clone.querySelectorAll(sel).forEach((n) => n.remove());
 	}
-	inlineStyles(el, clone, win);
 	clone.removeAttribute('contenteditable');
 
 	const xhtml = new win.XMLSerializer().serializeToString(clone);
@@ -52,24 +56,23 @@ export async function rasterizeElementToPngBlob(el: HTMLElement): Promise<Blob |
 	return new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
 }
 
-/** Copy computed styles from the live tree onto the clone (element-pairwise). */
+/** Copy every computed property from the live tree onto its exact clone node. */
 function inlineStyles(source: HTMLElement, clone: HTMLElement, win: Window): void {
-	const srcWalk = [source, ...Array.from(source.querySelectorAll<HTMLElement>('*'))];
-	const dstWalk = [clone, ...Array.from(clone.querySelectorAll<HTMLElement>('*'))];
-	// After chrome removal the clone tree is shorter — walk by matching order of
-	// remaining nodes via a parallel filtered walk on the source side.
-	const kept = new Set(dstWalk.map((n) => nodeSignature(n)));
-	let d = 0;
-	for (const s of srcWalk) {
-		if (d >= dstWalk.length) break;
-		if (nodeSignature(s) !== nodeSignature(dstWalk[d])) continue;
-		if (!kept.has(nodeSignature(s))) continue;
-		const computed = win.getComputedStyle(s);
-		dstWalk[d].style.cssText = computed.cssText;
-		d += 1;
+	const sourceElements = [source, ...Array.from(source.querySelectorAll<HTMLElement | SVGElement>('*'))];
+	const cloneElements = [clone, ...Array.from(clone.querySelectorAll<HTMLElement | SVGElement>('*'))];
+	for (let index = 0; index < sourceElements.length; index += 1) {
+		const sourceElement = sourceElements[index];
+		const cloneElement = cloneElements[index];
+		if (!sourceElement || !cloneElement || !('style' in cloneElement)) continue;
+		const computed = win.getComputedStyle(sourceElement);
+		for (let propertyIndex = 0; propertyIndex < computed.length; propertyIndex += 1) {
+			const property = computed.item(propertyIndex);
+			if (!property) continue;
+			cloneElement.style.setProperty(
+				property,
+				computed.getPropertyValue(property),
+				computed.getPropertyPriority(property),
+			);
+		}
 	}
-}
-
-function nodeSignature(el: HTMLElement): string {
-	return `${el.tagName}.${el.className}`;
 }

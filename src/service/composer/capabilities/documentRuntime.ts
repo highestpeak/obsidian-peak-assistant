@@ -26,6 +26,7 @@ import {
 	type ComposerActionDescriptor,
 	type ComposerActionSurface,
 	type ComposerCandidate,
+	type ComposerCapabilityCatalogItem,
 	type ComposerCandidateRuntimePort,
 	type ComposerCapabilityDefinition,
 	type ComposerCapabilityId,
@@ -86,6 +87,7 @@ interface CandidateMeta {
 	/** Frozen base-revision anchor of the targeted block/unit. */
 	anchor?: { from: number; to: number };
 	lastRunId: string;
+	modelId?: string;
 	/** Native object path + frozen base bytes (native-file-patch runs only). */
 	native?: { targetPath: string; baseText: string; format: ComposerNativeFileFormat };
 }
@@ -157,6 +159,36 @@ export class ComposerCapabilityDocumentRuntime
 		return gated;
 	}
 
+	catalogFor(snapshot: ComposerContextSnapshot): readonly ComposerCapabilityCatalogItem[] {
+		const currentActions = new Map<ComposerCapabilityId, ComposerActionDescriptor>();
+		for (const surface of ['block-row', 'selection-toolbar', 'object-toolbar'] as const) {
+			for (const action of this.actionsFor(snapshot, surface)) {
+				if (action.group !== 'ai' || action.disabledReason || currentActions.has(action.capabilityId)) continue;
+				currentActions.set(action.capabilityId, action);
+			}
+		}
+		return this.deps.registry
+			.list()
+			.filter((definition) => definition.executionMode !== 'deterministic')
+			.map((definition) => {
+				const presentation = resolvePresentation(
+					this.deps.config(),
+					definition.configKey,
+					definition.presentationFallback,
+				);
+				return {
+					capabilityId: definition.manifest.id,
+					title: presentation.title,
+					...(presentation.description ? { description: presentation.description } : {}),
+					...(presentation.lucideIcon ? { lucideIcon: presentation.lucideIcon } : {}),
+					...(currentActions.get(definition.manifest.id)
+						? { action: currentActions.get(definition.manifest.id) }
+						: {}),
+					targetKinds: definition.targetKinds,
+				};
+			});
+	}
+
 	private gateNativeDescriptor(
 		descriptor: ComposerActionDescriptor,
 		snapshot: ComposerContextSnapshot,
@@ -189,7 +221,7 @@ export class ComposerCapabilityDocumentRuntime
 	invoke(
 		capabilityId: ComposerCapabilityId,
 		snapshot: ComposerContextSnapshot,
-		options?: { instruction?: string },
+		options?: { instruction?: string; modelId?: string },
 	): ComposerInvocationHandle {
 		const def = this.deps.registry.require(capabilityId);
 		def.inputSchema.parse({ instruction: options?.instruction });
@@ -212,8 +244,16 @@ export class ComposerCapabilityDocumentRuntime
 			snapshot,
 			...(anchor !== undefined ? { anchor } : {}),
 			lastRunId: runId,
+			...(options?.modelId !== undefined ? { modelId: options.modelId } : {}),
 		});
-		this.startGeneration(def, candidate.candidateId, candidate.activeVariantId, runId, options?.instruction);
+		this.startGeneration(
+			def,
+			candidate.candidateId,
+			candidate.activeVariantId,
+			runId,
+			options?.instruction,
+			options?.modelId,
+		);
 		return { runId, cancel: () => this.cancel(candidate.candidateId) };
 	}
 
@@ -268,7 +308,7 @@ export class ComposerCapabilityDocumentRuntime
 		});
 		const runId = nextRunId();
 		meta.lastRunId = runId;
-		this.startGeneration(def, candidateId, updated.activeVariantId, runId, instruction);
+		this.startGeneration(def, candidateId, updated.activeVariantId, runId, instruction, meta.modelId);
 		return { runId, cancel: () => this.cancel(candidateId) };
 	}
 
@@ -292,7 +332,10 @@ export class ComposerCapabilityDocumentRuntime
 		const instruction = candidate ? lastInstructionOf(candidate) : undefined;
 		this.discard(candidateId);
 		const fresh = this.assembleSnapshot({ kind: 'block', blockId });
-		return this.invoke(meta.capabilityId, fresh, instruction !== undefined ? { instruction } : undefined);
+		return this.invoke(meta.capabilityId, fresh, {
+			...(instruction !== undefined ? { instruction } : {}),
+			...(meta.modelId !== undefined ? { modelId: meta.modelId } : {}),
+		});
 	}
 
 	cancel(candidateId: string): void {
@@ -419,11 +462,12 @@ export class ComposerCapabilityDocumentRuntime
 		variantId: string,
 		runId: string,
 		instruction?: string,
+		modelId?: string,
 	): void {
 		const abort = new AbortController();
 		this.activeRuns.set(candidateId, { runId, variantId, abort });
 		this.emit({ type: 'run-started', runId, capabilityId: def.manifest.id, candidateId, variantId });
-		void this.runGeneration(def, candidateId, variantId, runId, abort, instruction).finally(() => {
+		void this.runGeneration(def, candidateId, variantId, runId, abort, instruction, modelId).finally(() => {
 			this.activeRuns.delete(candidateId);
 		});
 	}
@@ -435,6 +479,7 @@ export class ComposerCapabilityDocumentRuntime
 		runId: string,
 		abort: AbortController,
 		instruction?: string,
+		modelId?: string,
 	): Promise<void> {
 		const meta = this.requireMeta(candidateId);
 		const strings = this.deps.config().strings;
@@ -464,6 +509,7 @@ export class ComposerCapabilityDocumentRuntime
 						capabilityId: def.manifest.id,
 						promptId: def.promptId!,
 						variables,
+						...(modelId !== undefined ? { modelId } : {}),
 						signal: abort.signal,
 					});
 					for await (const event of stream) {

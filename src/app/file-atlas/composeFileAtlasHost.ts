@@ -26,6 +26,34 @@ import { DOCUMENT_COMPOSER_VIEW_TYPE } from '@/app/composer/viewType';
 
 /** Neighborhood node cap — matches the Result Graph's NODE_CAP so both stay legible. */
 const NEIGHBORHOOD_CAP = 60;
+const FILE_ATLAS_REVEAL_FLASH_CLASS = 'pkfa-editor-reveal-flash';
+
+/**
+ * CodeMirror applies `.cm-activeLine` after the cursor transaction reaches the
+ * renderer. Wait for two paint frames, then flash that real line rather than
+ * guessing its DOM position from the File Atlas source anchor.
+ */
+function flashRevealedEditorLine(view: MarkdownView): void {
+	const win = view.containerEl.ownerDocument.defaultView;
+	if (!win) return;
+	win.requestAnimationFrame(() => {
+		win.requestAnimationFrame(() => {
+			const activeLine = view.containerEl.querySelector<HTMLElement>('.cm-line.cm-activeLine');
+			if (!activeLine) return;
+			for (const previous of view.containerEl.querySelectorAll<HTMLElement>(`.${FILE_ATLAS_REVEAL_FLASH_CLASS}`)) {
+				previous.classList.remove(FILE_ATLAS_REVEAL_FLASH_CLASS);
+			}
+			// Force a style boundary so repeated Reveal actions restart the pulse.
+			void activeLine.offsetWidth;
+			activeLine.classList.add(FILE_ATLAS_REVEAL_FLASH_CLASS);
+			activeLine.addEventListener(
+				'animationend',
+				() => activeLine.classList.remove(FILE_ATLAS_REVEAL_FLASH_CLASS),
+				{ once: true },
+			);
+		});
+	});
+}
 
 function basenameOf(path: string): string {
 	return path.split('/').pop()?.replace(/\.md$/i, '') ?? path;
@@ -256,12 +284,17 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 
 		async revealLine(path: string, line: number): Promise<void> {
 			await appContext.vaultNavigation.openVaultPathAtLine(path, { line, newLeaf: false });
-			const leaf = app.workspace.getLeavesOfType('markdown').find((candidate) => {
+			const activeLeaf = app.workspace.activeLeaf;
+			const activeView = activeLeaf?.view;
+			const leaf = activeView instanceof MarkdownView && activeView.file?.path === path
+				? activeLeaf
+				: app.workspace.getLeavesOfType('markdown').find((candidate) => {
 				const view = candidate.view as MarkdownView | undefined;
 				return view?.file?.path === path;
 			});
 			const view = leaf?.view as MarkdownView | undefined;
 			view?.editor?.focus();
+			if (view) flashRevealedEditorLine(view);
 		},
 
 		getCursorLine(path: string): number | null {

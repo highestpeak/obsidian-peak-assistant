@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Copilot Intelligence · Native Editor Modal Mock</title>
+  <link rel="stylesheet" href="./mock.css">
+</head>
+<body>
+  <svg class="sprite" aria-hidden="true">
+    <symbol id="i-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3l1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7Z"/><path d="m19 15 .8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8Z"/></symbol>
+    <symbol id="i-message" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 5h14v11H8l-3 3Z"/><path d="M9 9h6"/><path d="M9 12h4"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v6h6"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M6.2 8.2A7 7 0 0 1 18.6 7"/><path d="M17.8 15.8A7 7 0 0 1 5.4 17"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14"/><path d="M5 12h14"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m20 6-11 11-5-5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m6 6 12 12"/><path d="M18 6 6 18"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2 3.4-.2-.1a1.7 1.7 0 0 0-2 .3 1.7 1.7 0 0 0-.8 1.7V22H9.2v-.3a1.7 1.7 0 0 0-.8-1.7 1.7 1.7 0 0 0-2-.3l-.2.1-2-3.4.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3V9h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1 2-3.4.2.1a1.7 1.7 0 0 0 2-.3A1.7 1.7 0 0 0 9.2.7V.5h5.6v.2a1.7 1.7 0 0 0 .8 1.7 1.7 1.7 0 0 0 2 .3l.2-.1 2 3.4-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.1v4.4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 13a5 5 0 0 0 7.1.1l2-2A5 5 0 0 0 12 4l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3Z"/><path d="m9 12 2 2 4-4"/></symbol>
+  </svg>
+
+  <main class="stage">
+    <section class="native-shell" aria-label="Obsidian native editor background">
+      <header class="native-top">
+        <span class="vault-dot">P</span>
+        <span class="native-title">
+          <strong>Peak Composer Visual Parity QA.md</strong>
+          <small>原生 Markdown 编辑器 · 未打开 Composer View</small>
+        </span>
+        <button class="native-button" type="button" id="open-modal"><svg><use href="#i-spark"/></svg>Intelligence</button>
+      </header>
+      <div class="native-body">
+        <aside class="file-list">
+          <span>Files</span>
+          <button type="button">Peak Assistant Copilot PRD</button>
+          <button type="button" class="active">Peak Composer Visual Parity QA.md</button>
+          <button type="button">AI Workflow</button>
+          <button type="button">知识调用：填充还是搜索</button>
+        </aside>
+        <article class="doc-page">
+          <span class="doc-meta">2,138 words · 5,430 characters · saved</span>
+          <h1>Intelligence 弹窗在原生编辑器里的使用边界</h1>
+          <p>用户有时不想进入 Composer View，而是希望继续在 Obsidian 原生编辑器里写。这个时候，AI 不应该接管正文，只应该贴着当前文件工作。</p>
+          <p class="selected">对当前正文来说，Copilot 需要知道当前块、当前选区和相关材料，但候选修改必须在用户接受前保持可审阅。</p>
+          <h2>设计目标</h2>
+          <ul>
+            <li>保持原生编辑器作为写作现场。</li>
+            <li>让 Copilot 能围绕当前文件回答、找材料和生成轻量候选。</li>
+            <li>复杂块级改动升级到 Composer Review。</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="modal-scrim is-open" aria-label="Copilot Intelligence modal preview">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <header class="modal-head">
+          <div class="brand">
+            <span class="spark"><svg><use href="#i-spark"/></svg></span>
+            <span><strong id="modal-title">Copilot Intelligence</strong><small>当前文件 companion · 不打开 Composer View</small></span>
+          </div>
+          <nav class="top-tabs" aria-label="Copilot Intelligence sections">
+            <button type="button" class="top-tab is-active" data-view="copilot"><svg><use href="#i-spark"/></svg>Copilot</button>
+            <button type="button" class="top-tab" data-view="history"><svg><use href="#i-history"/></svg>History</button>
+          </nav>
+          <div class="head-actions">
+            <button type="button" class="icon-button" aria-label="Settings"><svg><use href="#i-settings"/></svg></button>
+            <button type="button" class="icon-button" id="close-modal" aria-label="Close"><svg><use href="#i-x"/></svg></button>
+          </div>
+        </header>
+
+        <section class="context-strip">
+          <span class="context-chip strong"><svg><use href="#i-check"/></svg>Peak Composer Visual Parity QA.md</span>
+          <span class="context-chip">选区 · 1 paragraph</span>
+          <span class="context-chip">相关材料 · 3</span>
+          <span class="context-chip stable">source revision v12</span>
+        </section>
+
+        <section class="modal-view is-active" data-panel="copilot">
+          <div class="copilot-grid">
+            <section class="copilot-column suggestions-column">
+              <header class="column-head">
+                <div>
+                  <span class="eyebrow">Copilot · 自动建议</span>
+                  <h2>针对当前正文，接下来值得处理什么</h2>
+                  <p>只显示能定位到当前文件或真实相关材料的建议；不会自动写入正文。</p>
+                </div>
+                <button type="button" class="secondary-action"><svg><use href="#i-refresh"/></svg>更新建议</button>
+              </header>
+
+              <section class="brief-section">
+                <header><strong>接下来可能要做</strong><b>5</b><span>按影响与正文顺序排序</span></header>
+                <div class="suggestion-list">
+                  <button type="button" class="suggestion-card is-active" data-suggestion="boundary">
+                    <span class="rank">01</span>
+                    <span class="suggestion-copy">
+                      <strong>解释为什么这是独立 Copilot 弹窗，而不是 File Atlas 的一部分。</strong>
+                      <small>当前段落已经说明“不打开 Composer”，但缺少 surface 边界。</small>
+                    </span>
+                    <span class="suggestion-action">问 Copilot<svg><use href="#i-chevron"/></svg></span>
+                  </button>
+                  <button type="button" class="suggestion-card" data-suggestion="summary">
+                    <span class="rank">02</span>
+                    <span class="suggestion-copy">
+                      <strong>补充自动 summary 不能默认出现的原因。</strong>
+                      <small>与 Word Copilot 的用户反馈直接相关。</small>
+                    </span>
+                    <span class="suggestion-action">带入协作<svg><use href="#i-plus"/></svg></span>
+                  </button>
+                  <button type="button" class="suggestion-card" data-suggestion="review">
+                    <span class="rank">03</span>
+                    <span class="suggestion-copy">
+                      <strong>如果需要全面 review，打开 Composer Review。</strong>
+                      <small>全面 review 是一次性场景，不在弹窗里做持续候选面板。</small>
+                    </span>
+                    <span class="suggestion-action">打开 Review<svg><use href="#i-chevron"/></svg></span>
+                  </button>
+                </div>
+              </section>
+
+              <section class="brief-section materials-section">
+                <header><strong>相关材料</strong><b>3</b><span>作为建议依据，不直接改正文</span></header>
+                <div class="material-list">
+                  <button type="button" class="material-row is-active" data-material="prd">
+                    <span class="rank">01</span>
+                    <span><strong>Peak Assistant Copilot PRD</strong><small>同一 Copilot 产品方向，可作为交互和能力边界依据。</small></span>
+                    <b>94%</b>
+                  </button>
+                  <button type="button" class="material-row" data-material="atlas">
+                    <span class="rank">02</span>
+                    <span><strong>File Atlas Design Spec</strong><small>定义 Atlas 只负责选择、定位和检查。</small></span>
+                    <b>89%</b>
+                  </button>
+                  <button type="button" class="material-row" data-material="history">
+                    <span class="rank">03</span>
+                    <span><strong>Generation History 合同</strong><small>说明未采用结果也不能无声消失。</small></span>
+                    <b>86%</b>
+                  </button>
+                </div>
+              </section>
+            </section>
+
+            <section class="copilot-column talk-column">
+              <header class="column-head compact">
+                <div>
+                  <span class="eyebrow">Copilot · 对话</span>
+                  <h2>围绕当前选区继续问</h2>
+                  <p>当前选区和相关材料已固定在上方，可继续追问。</p>
+                </div>
+              </header>
+
+              <div class="thread">
+                <article class="thread-row system">
+                  <span class="dot"></span>
+                  <div><strong>上下文已冻结</strong><p>当前选区、邻近段落和 3 个相关材料已进入本轮 run snapshot。</p></div>
+                </article>
+                <article class="thread-row user">
+                  <strong>你</strong>
+                  <p>帮我把这段补清楚：为什么它应该是独立弹窗，不应该塞进 File Atlas。</p>
+                </article>
+                <article class="thread-row assistant">
+                  <strong>Copilot</strong>
+                  <p>File Atlas 是地图：负责拆解、定位、筛选和交接元素。这个弹窗是同一 Copilot 能力在原生编辑器里的呈现：自动建议和对话都围绕当前正文运行，但需要写入时仍进入 Composer Review。</p>
+                  <div class="receipt-tabs">
+                    <button type="button" class="is-active">Sources · 3</button>
+                    <button type="button">Trace · 5</button>
+                    <button type="button">Review</button>
+                  </div>
+                </article>
+              </div>
+
+              <footer class="composer-box">
+                <div class="composer-chips">
+                  <span>当前选区</span>
+                  <span>相关材料 · 3</span>
+                  <span>停笔后</span>
+                </div>
+                <div class="prompt-row">
+                  <textarea aria-label="Copilot message">再短一点，像设计决策说明。</textarea>
+                  <button type="button" aria-label="Send"><svg><use href="#i-send"/></svg></button>
+                </div>
+              </footer>
+            </section>
+          </div>
+        </section>
+
+        <section class="modal-view history-view" data-panel="history" hidden>
+          <header class="history-head">
+            <div>
+              <span class="eyebrow">History</span>
+              <h2>当前文件的真实写入记录</h2>
+              <p>History 可以单独看；未采用建议和运行细节留在单条 run receipt / generation history。</p>
+            </div>
+          </header>
+          <div class="history-layout">
+            <div class="history-list">
+              <button type="button" class="history-row is-active">
+                <span class="history-kind ai">AI</span>
+                <span><strong>从 Copilot 弹窗接受选区 rewrite</strong><small>14:41 · 当前选区 · +32 −14 · originRunId run_native_041</small></span>
+                <b>查看 diff</b>
+              </button>
+              <button type="button" class="history-row">
+                <span class="history-kind user">U</span>
+                <span><strong>手动补充“不打开 Composer”场景</strong><small>14:18 · Paragraph · +21 −0</small></span>
+                <b>定位</b>
+              </button>
+              <button type="button" class="history-row">
+                <span class="history-kind mixed">M</span>
+                <span><strong>AI 后手动压缩 File Atlas 边界</strong><small>13:57 · Paragraph · +18 −23</small></span>
+                <b>查看来源</b>
+              </button>
+            </div>
+            <aside class="diff-card">
+              <header><strong>Diff preview</strong><span>source revision v12</span></header>
+              <p><del>候选修改必须在用户接受前保持可审阅。</del></p>
+              <p><ins>它只应该生成可审阅候选；只有用户接受后，改动才写入 Markdown，并进入可定位、可回滚的 History。</ins></p>
+              <button type="button" class="primary-action"><svg><use href="#i-link"/></svg>查看来源</button>
+            </aside>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+  <script src="./mock.js"></script>
+</body>
+</html>

@@ -15,6 +15,26 @@ export interface NativeBlockStrings {
 	preview: string;
 	/** Header toggle: raw source. */
 	source: string;
+	openOriginal: string;
+	sourceReference: string;
+	codeLabel: string;
+	codeSourceTitle: string;
+	mermaidLabel: string;
+	mermaidTitle: string;
+	baseLabel: string;
+	baseDescription: string;
+	canvasLabel: string;
+	canvasDescription: string;
+	excalidrawLabel: string;
+	excalidrawDescription: string;
+	embedLabel: string;
+	attachmentLabel: string;
+	explainSource: string;
+	explainSourceInstruction: string;
+	anchorResolved: string;
+	anchorMissing: string;
+	vaultAttachment: string;
+	pagesSuffix: string;
 	/** Base preview. */
 	baseViewsLabel: string;
 	baseColumnsLabel: string;
@@ -48,6 +68,26 @@ export interface NativeBlockStrings {
 export const DEFAULT_NATIVE_BLOCK_STRINGS: NativeBlockStrings = {
 	preview: '预览',
 	source: '源码',
+	openOriginal: '打开原文件',
+	sourceReference: '来源',
+	codeLabel: '代码',
+	codeSourceTitle: '源代码',
+	mermaidLabel: 'Mermaid',
+	mermaidTitle: '流程图',
+	baseLabel: 'Base',
+	baseDescription: '基于 Vault 数据的结构化视图',
+	canvasLabel: 'Canvas',
+	canvasDescription: '可视化节点与连线',
+	excalidrawLabel: 'Excalidraw',
+	excalidrawDescription: '可编辑白板场景',
+	embedLabel: '嵌入',
+	attachmentLabel: '附件',
+	explainSource: '解释源格式',
+	explainSourceInstruction: '解释这段源代码的格式、结构和关键逻辑，不修改原文。',
+	anchorResolved: '锚点已解析',
+	anchorMissing: '锚点未解析',
+	vaultAttachment: 'Vault 附件',
+	pagesSuffix: '页',
 	baseViewsLabel: '视图',
 	baseColumnsLabel: '列',
 	baseFiltersLabel: '过滤',

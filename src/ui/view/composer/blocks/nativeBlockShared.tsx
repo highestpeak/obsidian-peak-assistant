@@ -11,6 +11,7 @@ import type {
 	ComposerNativePreviewRequest,
 	ComposerNativePreviewState,
 } from '@/service/composer';
+import { ExternalLink } from 'lucide-react';
 import { Button } from '@/ui/components/primitives';
 import {
 	DEFAULT_NATIVE_BLOCK_STRINGS,
@@ -195,6 +196,13 @@ export function NativeBlockFrame({
 	strings,
 	showToggle = true,
 	nativeTarget,
+	icon,
+	kindLabel,
+	title,
+	description,
+	onOpen,
+	sourceReference,
+	headerAction,
 	children,
 }: {
 	blockId: string;
@@ -204,8 +212,16 @@ export function NativeBlockFrame({
 	strings: NativeBlockStrings;
 	showToggle?: boolean;
 	nativeTarget?: string;
+	icon?: React.ReactNode;
+	kindLabel?: string;
+	title?: string;
+	description?: string;
+	onOpen?: () => void;
+	sourceReference?: string;
+	headerAction?: React.ReactNode;
 	children: React.ReactNode;
 }): React.ReactElement {
+	const hasHeader = Boolean(icon || kindLabel || title || description || showToggle || onOpen);
 	return (
 		<div
 			className="pk-native-block"
@@ -214,8 +230,37 @@ export function NativeBlockFrame({
 			data-mode={mode}
 			{...(nativeTarget ? { 'data-native-target': nativeTarget } : {})}
 		>
-			{showToggle && <PreviewSourceToggle mode={mode} onChange={onMode} strings={strings} />}
+			{hasHeader && (
+				<div className="pk-native-block__header" data-chrome="true">
+					<div className="pk-native-block__identity">
+						{icon && <span className="pk-native-block__icon" aria-hidden>{icon}</span>}
+						<div className="pk-native-block__titles">
+							<div className="pk-native-block__title-line">
+								{kindLabel && <span className="pk-native-block__kind">{kindLabel}</span>}
+								{title && <span className="pk-native-block__title">{title}</span>}
+							</div>
+							{description && <span className="pk-native-block__description">{description}</span>}
+						</div>
+					</div>
+					<div className="pk-native-block__header-actions">
+						{headerAction}
+						{onOpen && (
+							<Button variant="outline" size="sm" className="pk-native-block__open" onClick={onOpen}>
+								<ExternalLink size={13} />
+								<span>{strings.openOriginal}</span>
+							</Button>
+						)}
+						{showToggle && <PreviewSourceToggle mode={mode} onChange={onMode} strings={strings} />}
+					</div>
+				</div>
+			)}
 			<div className="pk-native-block__body">{children}</div>
+			{sourceReference && (
+				<div className="pk-native-block__source-ref" data-chrome="true">
+					<span>{strings.sourceReference}</span>
+					<code>{sourceReference}</code>
+				</div>
+			)}
 		</div>
 	);
 }

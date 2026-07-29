@@ -126,8 +126,8 @@
 
 .peak-composer-root .pk-fm-grid {
 	display: grid;
-	grid-template-columns: 90px 1fr;
-	gap: 8px 14px;
+	grid-template-columns: minmax(132px, 176px) minmax(0, 1fr);
+	gap: 9px 18px;
 	padding: 12px 14px;
 	border: 1px solid var(--pkc-fm-line);
 	border-radius: 8px;
@@ -137,12 +137,15 @@
 .peak-composer-root .pk-fm-grid__key {
 	display: inline-flex;
 	align-items: center;
+	min-width: 0;
+	gap: 4px;
 	color: var(--pkc-fm-key);
 	font-size: 12px;
 	font-weight: 680;
 }
 
 .peak-composer-root .pk-fm-grid__value {
+	min-width: 0;
 	color: var(--pkc-fm-value);
 	font-size: 12px;
 	font-weight: 600;
@@ -194,6 +197,7 @@
 .peak-composer-root .pk-fm-origin {
 	display: inline-flex;
 	align-items: center;
+	flex: 0 0 auto;
 	min-height: 16px;
 	margin-left: 4px;
 	padding: 0 4px;
@@ -369,6 +373,72 @@
 	border-radius: var(--pk-radius-lg, 12px);
 	background: var(--pk-surface-overlay, #fff);
 	overflow: hidden;
+}
+
+.peak-composer-root .pk-fm-suggestions__head,
+.peak-composer-root .pk-fm-suggestion-row,
+.peak-composer-root .pk-fm-suggestion-row__actions,
+.peak-composer-root .pk-fm-suggestions__state {
+	display: flex;
+	align-items: center;
+}
+
+.peak-composer-root .pk-fm-suggestions__head,
+.peak-composer-root .pk-fm-suggestion-row,
+.peak-composer-root .pk-fm-suggestions__state {
+	justify-content: space-between;
+	gap: 14px;
+}
+
+.peak-composer-root .pk-fm-suggestions__head {
+	padding: 12px 14px;
+	border-bottom: 1px solid var(--pkc-fm-line);
+}
+
+.peak-composer-root .pk-fm-suggestions__head > span,
+.peak-composer-root .pk-fm-suggestion-row__copy {
+	display: grid;
+	gap: 3px;
+	min-width: 0;
+}
+
+.peak-composer-root .pk-fm-suggestions__head small,
+.peak-composer-root .pk-fm-suggestion-row__copy small,
+.peak-composer-root .pk-fm-suggestions__footer {
+	color: var(--pkc-fm-key);
+	font-size: 10px;
+}
+
+.peak-composer-root .pk-fm-suggestions__body {
+	padding: 0 14px;
+}
+
+.peak-composer-root .pk-fm-suggestion-row,
+.peak-composer-root .pk-fm-suggestions__state {
+	min-height: 58px;
+	padding: 9px 0;
+}
+
+.peak-composer-root .pk-fm-suggestion-row__copy > strong {
+	color: var(--pkc-fm-value);
+	font-size: 12px;
+}
+
+.peak-composer-root .pk-fm-suggestion-row__copy > span {
+	color: var(--pkc-fm-value);
+	font-size: 12px;
+	overflow-wrap: anywhere;
+}
+
+.peak-composer-root .pk-fm-suggestion-row__actions {
+	flex: 0 0 auto;
+	gap: 6px;
+}
+
+.peak-composer-root .pk-fm-suggestions__footer {
+	display: block;
+	padding: 9px 14px 11px;
+	border-top: 1px solid var(--pkc-fm-line);
 }
 
 .peak-composer-root .pk-fm-library > header,

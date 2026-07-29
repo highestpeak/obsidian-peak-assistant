@@ -13,6 +13,7 @@ import {
 	buildEasyCopyText,
 	toPlainText,
 } from '@/service/composer';
+import { readFileSync } from 'node:fs';
 import { makeChecker } from './helpers/composer-fakes';
 
 const { check, done } = makeChecker();
@@ -52,5 +53,15 @@ check('wikilink alias resolves', toPlainText('see [[知识库|the vault]] now', 
 check('excludes the block rail', EASY_COPY_CHROME_SELECTORS.includes('.pk-composer-rail'));
 check('excludes the action row', EASY_COPY_CHROME_SELECTORS.includes('.pk-block-action-row'));
 check('excludes the selection toolbar', EASY_COPY_CHROME_SELECTORS.includes('.pk-selection-toolbar'));
+
+// Chromium returns an empty string for getComputedStyle(...).cssText. Guard the
+// raster path against regressing to an unstyled text-only-looking PNG.
+const rasterSource = readFileSync('src/ui/view/composer/chrome/rasterize.ts', 'utf8');
+check('raster copies computed styles property-by-property', rasterSource.includes('computed.getPropertyValue(property)'));
+check('raster does not rely on empty computed cssText', !rasterSource.includes('computed.cssText'));
+check(
+	'raster inlines styles before removing chrome so source/clone nodes stay paired',
+	rasterSource.indexOf('inlineStyles(el, clone, win)') < rasterSource.indexOf('clone.querySelectorAll(sel)'),
+);
 
 done('composer-easy-copy');

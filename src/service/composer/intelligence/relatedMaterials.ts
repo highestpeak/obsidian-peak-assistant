@@ -145,6 +145,7 @@ export interface RelatedPreviewNode {
 	readonly title: string;
 	readonly path: string;
 	readonly reason: string;
+	readonly excerpt: string;
 	readonly score: number;
 }
 
@@ -156,6 +157,7 @@ export interface RelatedPreviewNode {
 export function selectLocalPreview(
 	snapshot: ComposerRelatedMaterialSnapshot,
 	cap: number,
+	excerptMaxChars: number,
 ): readonly RelatedPreviewNode[] {
 	const weak = new Set(snapshot.weakNodeIds);
 	const weakSources = new Set<string>();
@@ -172,11 +174,21 @@ export function selectLocalPreview(
 			title: item.title,
 			path: item.path,
 			reason: snapshot.reasonBySourceId[item.id] ?? '',
+			excerpt: relatedMaterialExcerpt(item.highlight?.text ?? item.content ?? '', excerptMaxChars),
 			score: item.finalScore ?? item.score ?? 0,
 		});
 	}
 	nodes.sort((a, b) => b.score - a.score);
 	return nodes.slice(0, Math.max(0, cap));
+}
+
+function relatedMaterialExcerpt(content: string, maxChars: number): string {
+	let readable = content.trim();
+	if (readable.startsWith('---')) {
+		const closingDelimiter = readable.indexOf('\n---', 3);
+		if (closingDelimiter >= 0) readable = readable.slice(closingDelimiter + 4).trim();
+	}
+	return readable.slice(0, Math.max(0, maxChars));
 }
 
 /**

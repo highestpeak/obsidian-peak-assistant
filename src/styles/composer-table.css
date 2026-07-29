@@ -40,11 +40,32 @@
 
 .peak-composer-root .pk-table-surface {
 	position: relative;
+	container-type: inline-size;
 	/* Keep the toolbar clearance inside the hover owner. A margin creates a
 	 * dead strip between table and absolutely positioned toolbar, so the toolbar
 	 * vanishes before the pointer can reach it. Padding preserves the exact table
 	 * position in document flow while making that strip hover-safe. */
-	padding-top: 44px;
+	padding-top: 50px;
+}
+
+@container (max-width: 720px) {
+	.peak-composer-root .pk-table-toolbar button {
+		width: 28px !important;
+		min-width: 28px !important;
+		max-width: 28px !important;
+		padding: 0 !important;
+	}
+	.peak-composer-root .pk-table-toolbar .pk-table-tool__label {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
 }
 
 .peak-composer-root .pk-table-toolbar {
@@ -54,12 +75,11 @@
 	z-index: 4;
 	display: flex;
 	flex-wrap: nowrap;
-	gap: 5px;
-	width: max-content;
+	gap: 4px;
+	width: fit-content;
 	max-width: 100%;
-	overflow-x: auto;
-	scrollbar-width: none;
-	padding: 5px;
+	overflow: visible;
+	padding: 4px 6px;
 	border: 1px solid var(--pkc-paper-border);
 	border-radius: var(--pk-radius-lg, 12px);
 	background: var(--pktbl-toolbar-bg);
@@ -68,10 +88,6 @@
 	pointer-events: none;
 	transform: translateY(-4px);
 	transition: opacity 120ms ease, transform 120ms ease;
-}
-
-.peak-composer-root .pk-table-toolbar::-webkit-scrollbar {
-	display: none;
 }
 
 .peak-composer-root .pk-table-surface:hover .pk-table-toolbar,
@@ -88,9 +104,11 @@
 	flex: 0 0 auto;
 	align-items: center;
 	justify-content: center;
-	gap: 6px;
-	min-height: 28px;
-	padding: 0 9px;
+	gap: 4px !important;
+	height: 28px !important;
+	min-height: 28px !important;
+	max-height: 28px !important;
+	padding: 0 7px !important;
 	border: 1px solid transparent;
 	border-radius: var(--pk-radius-md, 8px);
 	background: transparent;
@@ -99,6 +117,95 @@
 	font-weight: 500;
 	cursor: pointer;
 	white-space: nowrap;
+}
+
+.peak-composer-root .pk-table-toolbar__a11y-label {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+.peak-composer-root .pk-table-tool {
+	position: relative;
+	display: inline-flex;
+	flex: 0 0 auto;
+}
+
+.peak-composer-root .pk-table-tool__icon {
+	position: relative;
+	display: inline-flex;
+	width: 18px;
+	height: 18px;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 18px;
+}
+
+.peak-composer-root .pk-table-tool__icon-badge {
+	position: absolute;
+	right: -3px;
+	bottom: -2px;
+	padding: 1px;
+	border-radius: 50%;
+	background: var(--pktbl-toolbar-bg);
+	stroke-width: 3;
+}
+
+.peak-composer-root .pk-table-tool__tooltip {
+	position: absolute;
+	z-index: 80;
+	top: calc(100% + 8px);
+	left: 50%;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	width: max-content;
+	max-width: 240px;
+	padding: 7px 9px;
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-md, 8px);
+	background: var(--pk-surface-inverse, #18202f);
+	box-shadow: var(--pk-shadow-popover);
+	color: var(--pk-text-on-inverse, #fff);
+	font-size: 11px;
+	line-height: 1.35;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transform: translate(-50%, -3px);
+	transition:
+		opacity 40ms ease var(--pk-table-tooltip-delay, 40ms),
+		transform 40ms ease var(--pk-table-tooltip-delay, 40ms),
+		visibility 0s linear calc(var(--pk-table-tooltip-delay, 40ms) + 40ms);
+}
+
+.peak-composer-root .pk-table-tool__tooltip strong {
+	font-size: 11px;
+	font-weight: 650;
+}
+
+.peak-composer-root .pk-table-tool__tooltip > span {
+	color: color-mix(in srgb, currentColor 78%, transparent);
+	font-weight: 400;
+}
+
+.peak-composer-root .pk-table-tool:hover .pk-table-tool__tooltip,
+.peak-composer-root .pk-table-tool:focus-within .pk-table-tool__tooltip {
+	opacity: 1;
+	visibility: visible;
+	transform: translate(-50%, 0);
+	transition-delay: var(--pk-table-tooltip-delay, 40ms);
+}
+
+.peak-composer-root .pk-table-toolbar:has(.pk-table-menu) .pk-table-tool__tooltip {
+	opacity: 0;
+	visibility: hidden;
 }
 
 .peak-composer-root .pk-table-toolbar button:hover:not(:disabled) {
@@ -146,8 +253,10 @@
 	justify-content: flex-start;
 	border: 1px solid transparent;
 	background: transparent;
-	min-height: 28px;
-	padding: 0 8px;
+	height: 30px !important;
+	min-height: 30px !important;
+	max-height: 30px !important;
+	padding: 0 8px !important;
 	font-size: var(--pk-text-xs, 11px);
 	border-radius: var(--pk-radius-md, 8px);
 	color: var(--pk-text-secondary, var(--pkc-text));

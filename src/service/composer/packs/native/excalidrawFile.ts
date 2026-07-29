@@ -14,13 +14,13 @@
  * scene/element fields survive because we mutate the parsed object, never a
  * string. We never string-replace to guess structure (handoff §10.12).
  *
- * The `compressed-json` variant needs an LZString decoder the plugin does not
- * bundle (only `pako`/zlib is present, which is the wrong codec). So we DETECT
- * the variant and fail SAFE: parse/patch report `unsupported` with a reason and
- * leave the file untouched, rather than corrupting a scene we cannot decode.
+ * The `compressed-json` variant uses LZString base64. We decode it for preview
+ * and encode it back after a typed patch, preserving the wrapper and fence.
  *
  * Framework-neutral: no Obsidian / DOM imports.
  */
+
+import { compressToBase64, decompressFromBase64 } from 'lz-string';
 
 export type ExcalidrawFenceVariant = 'parsed' | 'compressed';
 
@@ -133,20 +133,17 @@ function boundsFor(raw: string, match: RegExpExecArray): EmbeddedSceneLocation |
 export function parseExcalidrawScene(raw: string): ExcalidrawParse {
 	const location = locateExcalidrawScene(raw);
 	if (!location) return { ok: false, reason: 'No embedded Excalidraw scene found' };
-	if (location.variant === 'compressed') {
-		return {
-			ok: false,
-			variant: 'compressed',
-			reason: 'Compressed Excalidraw scene (compressed-json) is not editable — switch the note to parsed mode',
-		};
+	const payload = raw.slice(location.jsonFrom, location.jsonTo).trim();
+	const jsonText = location.variant === 'compressed' ? decompressFromBase64(payload) : payload;
+	if (!jsonText) {
+		return { ok: false, variant: location.variant, reason: 'Compressed Excalidraw scene could not be decoded' };
 	}
-	const jsonText = raw.slice(location.jsonFrom, location.jsonTo);
 	try {
 		const scene = JSON.parse(jsonText) as ExcalidrawScene;
 		if (!Array.isArray(scene.elements)) scene.elements = [];
 		return { ok: true, scene, location };
 	} catch (err) {
-		return { ok: false, variant: 'parsed', reason: err instanceof Error ? err.message : 'Invalid scene JSON' };
+		return { ok: false, variant: location.variant, reason: err instanceof Error ? err.message : 'Invalid scene JSON' };
 	}
 }
 
@@ -171,7 +168,7 @@ export function buildExcalidrawPreview(raw: string): ExcalidrawPreview {
 	}
 	return {
 		supported: true,
-		variant: 'parsed',
+		variant: parsed.location.variant,
 		elementCount: scene.elements.length,
 		elementTypes,
 		textSample,
@@ -180,8 +177,7 @@ export function buildExcalidrawPreview(raw: string): ExcalidrawPreview {
 
 /**
  * Apply typed patches by slice-replacing ONLY the embedded JSON region. The
- * frontmatter, text elements, `%%` markers and fence lines are untouched. Fails
- * safe (returns `ok:false`) for the compressed variant or a missing scene.
+ * frontmatter, text elements, `%%` markers and fence lines are untouched.
  */
 export function applyExcalidrawPatch(raw: string, patches: readonly ExcalidrawPatch[]): ExcalidrawPatchResult {
 	const parsed = parseExcalidrawScene(raw);
@@ -194,8 +190,9 @@ export function applyExcalidrawPatch(raw: string, patches: readonly ExcalidrawPa
 		if (err) return { ok: false, reason: err, variant: 'parsed' };
 	}
 	const patchedJson = JSON.stringify(scene, null, '\t');
+	const payload = location.variant === 'compressed' ? compressToBase64(patchedJson) : patchedJson;
 	// Plain byte splice: prefix (…"```json\n") + new JSON + suffix ("\n```…%%").
-	const text = raw.slice(0, location.jsonFrom) + patchedJson + raw.slice(location.jsonTo);
+	const text = raw.slice(0, location.jsonFrom) + payload + raw.slice(location.jsonTo);
 	return { ok: true, text };
 }
 

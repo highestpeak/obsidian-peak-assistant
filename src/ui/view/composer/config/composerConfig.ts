@@ -202,6 +202,13 @@ export interface ComposerChromeConfig {
 		rollback: string;
 		rollbackRefused: string;
 	};
+	findings: {
+		askCopilot: string;
+		confirm: string;
+		close: string;
+		dismiss: string;
+		stale: string;
+	};
 }
 
 export interface ComposerConfig {
@@ -352,10 +359,10 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 			colorPalette: '颜色',
 			customColor: '自定义颜色',
 			scopeTemplates: {
-				crossParagraph: '跨 {n} 个块',
+				crossParagraph: '跨 {n} 个块 · {fragments} 个片段',
 				crossItem: '跨 {n} 个列表项',
 				crossCell: '跨 {n} 个单元格',
-				crossBlock: '跨 {n} 个块',
+				crossBlock: '跨 {n} 个块 · {fragments} 个片段',
 			},
 			guards: {
 				codeBlockRichFormat: '代码块内不支持富文本格式',
@@ -436,6 +443,13 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 			rollback: '回滚',
 			rollbackRefused: '区域已变化，无法回滚',
 		},
+		findings: {
+			askCopilot: '问 Copilot',
+			confirm: '标记已确认',
+			close: '关闭',
+			dismiss: '忽略',
+			stale: '正文已变化，需要重新定位',
+		},
 	},
 	table: {
 		toolbar: { ...DEFAULT_TABLE_BLOCK_STRINGS.toolbar },
@@ -504,6 +518,7 @@ function mergeChrome(parsed?: Partial<ComposerChromeConfig>): ComposerChromeConf
 		link: { ...base.link, ...parsed.link },
 		comment: { ...base.comment, ...parsed.comment },
 		history: { ...base.history, ...parsed.history },
+		findings: { ...base.findings, ...parsed.findings },
 	};
 }
 

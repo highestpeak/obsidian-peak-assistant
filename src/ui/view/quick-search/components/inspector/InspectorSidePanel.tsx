@@ -60,6 +60,8 @@ export interface InspectorSidePanelProps {
 	currentPath: string | null;
 	searchQuery: string;
 	onClose: () => void;
+	/** Search owns an optional query snippet; list-first external hosts disable it. */
+	showSearchSnippet?: boolean;
 	/** Open the target doc in the vault (Search modal stays open). */
 	onOpenDocument: (notePath: string) => void;
 	/** Re-target the inspector panel to another doc without opening it. */
@@ -71,7 +73,7 @@ export interface InspectorSidePanelProps {
  * Contains collapsible Hub / Connected / Discovered / AI Graph sections.
  */
 export const InspectorSidePanel: React.FC<InspectorSidePanelProps> = ({
-	currentPath, searchQuery, onClose, onOpenDocument, onInspectInPanel,
+	currentPath, searchQuery, onClose, showSearchSnippet = true, onOpenDocument, onInspectInPanel,
 }) => {
 	if (!currentPath) {
 		return (
@@ -110,7 +112,7 @@ export const InspectorSidePanel: React.FC<InspectorSidePanelProps> = ({
 				    per row, so Tree/Graph users don't lose that context. Hidden
 				    when the current path isn't in the result set (e.g. inspecting
 				    a hub target the query didn't hit). */}
-				<InspectorSnippetBlock currentPath={currentPath} />
+				{showSearchSnippet && <InspectorSnippetBlock currentPath={currentPath} />}
 				<CollapsibleSection title="Connected">
 					<ConnectedSection
 						currentPath={currentPath}

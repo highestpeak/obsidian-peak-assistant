@@ -128,6 +128,18 @@ function snapshot(revision: string): ComposerContextSnapshot {
 	m.markNoChange(frozen2.runId);
 	check('no-change stays in session', m.projection().stage === 'session');
 	check('no-change run status', m.projection().runStatus === 'no-change');
+
+	// A real Composer capability executor owns a different run id. The sidecar
+	// keeps its frozen session id, but accepted transactions from the executor
+	// must still land on the surrounding receipt.
+	m.openSession('补上依据', [], [], 'prose.add-evidence');
+	check('chosen capability is projected before send', m.projection().pendingCapabilityId === 'prose.add-evidence');
+	const bridged = m.send({ snapshot: snapshot('r2'), targetQuote: 'evidence' });
+	check('chosen capability is frozen with the run', bridged.capabilityId === 'prose.add-evidence');
+	m.linkExternalRun('capability-run-1', bridged.runId);
+	m.linkAcceptedTransaction('capability-run-1', 'txn-capability-1');
+	const bridgedReceipt = m.projection().receipts.find((r) => r.runId === bridged.runId)!;
+	check('external capability transaction links to session receipt', bridgedReceipt.acceptedTransactionIds.includes('txn-capability-1'));
 }
 
 // ── (5) IntelligenceRuntime History bridge + privacy-safe telemetry ─────────────

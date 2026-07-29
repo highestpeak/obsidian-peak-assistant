@@ -4,15 +4,19 @@ import {
 	AlignLeft,
 	AlignRight,
 	ArrowUpDown,
-	BarChart3,
-	FileSpreadsheet,
-	FlipVertical2,
+	ChartColumn,
+	Columns3,
+	Copy,
+	FileDown,
+	FileUp,
 	Merge,
 	Minus,
 	Plus,
+	Repeat2,
+	Rows3,
 	Sigma,
-	Sparkles,
 	Split,
+	TableProperties,
 	type LucideIcon,
 } from 'lucide-react';
 import {
@@ -31,12 +35,11 @@ import {
 	tableToChartSpec,
 	transpose,
 	unmergeAt,
-	type TableAlign,
 	type TableModel,
 	type TableOpResult,
 	type TableSelectionState,
 } from '@/service/composer';
-import type { ComposerActionDescriptor } from '@/core/composer';
+import { Button } from '@/ui/components/primitives';
 import type { TableToolbarStrings } from './tableViewConfig';
 
 export interface TableToolbarProps {
@@ -54,15 +57,17 @@ export interface TableToolbarProps {
 	onExportCsv: () => void;
 	/** Surface a "why disabled" reason. */
 	onReason: (reason: string) => void;
-	/** Projected AI actions (empty until the runtime is wired). */
-	aiActions: readonly ComposerActionDescriptor[];
-	onInvokeAi: (descriptor: ComposerActionDescriptor) => void;
 }
 
-type MenuKind = 'align' | 'formula' | 'csv' | null;
+type MenuKind = 'formula' | 'csv' | null;
+type StructureAction = {
+	axis: 'row' | 'column';
+	operation: 'add' | 'remove';
+};
 
 export function TableToolbar(props: TableToolbarProps): React.ReactElement {
 	const { model, selection, strings, writable } = props;
+	const toolbarLabelId = React.useId();
 	const [menu, setMenu] = React.useState<MenuKind>(null);
 	const [sortDir, setSortDir] = React.useState<'asc' | 'desc'>('asc');
 	const merges = hasMerges(model);
@@ -77,6 +82,7 @@ export function TableToolbar(props: TableToolbarProps): React.ReactElement {
 
 	const activeRow = active?.row ?? model.rows.length - 1;
 	const activeCol = active?.col ?? colCount(model) - 1;
+	const activeAlign = model.columns[activeCol]?.align ?? 'none';
 
 	const doMerge = (): void => {
 		if (!rect || rect.r0 === rect.r1 && rect.c0 === rect.c1) return props.onReason(strings.needRectangle);
@@ -125,24 +131,22 @@ export function TableToolbar(props: TableToolbarProps): React.ReactElement {
 	const disabled = !writable;
 
 	return (
-		<div className="pk-table-toolbar" role="toolbar" aria-label={strings.format} data-chrome="true">
-			<ToolbarButton icon={AlignLeft} label={strings.align} disabled={disabled} onClick={() => setMenu(menu === 'align' ? null : 'align')} active={menu === 'align'} />
-			{menu === 'align' && (
-				<Menu>
-					<MenuItem icon={AlignLeft} label={strings.alignLeft} onClick={() => commit(setColumnAlign(model, activeCol, 'left'))} />
-					<MenuItem icon={AlignCenter} label={strings.alignCenter} onClick={() => commit(setColumnAlign(model, activeCol, 'center'))} />
-					<MenuItem icon={AlignRight} label={strings.alignRight} onClick={() => commit(setColumnAlign(model, activeCol, 'right'))} />
-				</Menu>
-			)}
+		<div className="pk-table-toolbar" role="toolbar" aria-labelledby={toolbarLabelId} data-chrome="true">
+			<span id={toolbarLabelId} className="pk-table-toolbar__a11y-label">{strings.format}</span>
+			<ToolbarButton icon={AlignLeft} label={strings.alignLeft} hint={strings.alignLeftHint} delayMs={strings.tooltipDelayMs} disabled={disabled} onClick={() => commit(setColumnAlign(model, activeCol, 'left'))} active={activeAlign === 'left'} />
+			<ToolbarButton icon={AlignCenter} label={strings.alignCenter} hint={strings.alignCenterHint} delayMs={strings.tooltipDelayMs} disabled={disabled} onClick={() => commit(setColumnAlign(model, activeCol, 'center'))} active={activeAlign === 'center'} />
+			<ToolbarButton icon={AlignRight} label={strings.alignRight} hint={strings.alignRightHint} delayMs={strings.tooltipDelayMs} disabled={disabled} onClick={() => commit(setColumnAlign(model, activeCol, 'right'))} active={activeAlign === 'right'} />
 			<Divider />
-			<ToolbarButton icon={Plus} label={strings.addRow} disabled={disabled} onClick={() => commit(addRow(model, activeRow + 1))} />
-			<ToolbarButton icon={Minus} label={strings.removeRow} disabled={disabled} onClick={() => commit(removeRow(model, activeRow))} />
-			<ToolbarButton icon={Plus} label={strings.addColumn} disabled={disabled} onClick={() => commit(addColumn(model, activeCol + 1))} />
-			<ToolbarButton icon={Minus} label={strings.removeColumn} disabled={disabled} onClick={() => commit(removeColumn(model, activeCol))} />
+			<ToolbarButton icon={Rows3} structureAction={{ axis: 'row', operation: 'add' }} label={strings.addRow} hint={strings.addRowHint} delayMs={strings.tooltipDelayMs} disabled={disabled} onClick={() => commit(addRow(model, activeRow + 1))} />
+			<ToolbarButton icon={Rows3} structureAction={{ axis: 'row', operation: 'remove' }} label={strings.removeRow} hint={strings.removeRowHint} delayMs={strings.tooltipDelayMs} disabled={disabled} onClick={() => commit(removeRow(model, activeRow))} />
+			<ToolbarButton icon={Columns3} structureAction={{ axis: 'column', operation: 'add' }} label={strings.addColumn} hint={strings.addColumnHint} delayMs={strings.tooltipDelayMs} disabled={disabled} onClick={() => commit(addColumn(model, activeCol + 1))} />
+			<ToolbarButton icon={Columns3} structureAction={{ axis: 'column', operation: 'remove' }} label={strings.removeColumn} hint={strings.removeColumnHint} delayMs={strings.tooltipDelayMs} disabled={disabled} onClick={() => commit(removeColumn(model, activeCol))} />
 			<Divider />
 			<ToolbarButton
 				icon={ArrowUpDown}
 				label={strings.sort}
+				hint={strings.sortHint}
+				delayMs={strings.tooltipDelayMs}
 				disabled={disabled || merges}
 				reason={merges ? strings.sort : undefined}
 				onClick={() => {
@@ -151,7 +155,7 @@ export function TableToolbar(props: TableToolbarProps): React.ReactElement {
 					commit(sortByColumn(model, activeCol, dir));
 				}}
 			/>
-			<ToolbarButton icon={Sigma} label={strings.formula} disabled={disabled || merges} onClick={() => setMenu(menu === 'formula' ? null : 'formula')} active={menu === 'formula'} />
+			<ToolbarButton icon={Sigma} label={strings.formula} hint={strings.formulaHint} delayMs={strings.tooltipDelayMs} disabled={disabled || merges} onClick={() => setMenu(menu === 'formula' ? null : 'formula')} active={menu === 'formula'} />
 			{menu === 'formula' && (
 				<Menu>
 					<MenuItem icon={Sigma} label={strings.sumColumn} onClick={appendTotalsRow} />
@@ -159,31 +163,21 @@ export function TableToolbar(props: TableToolbarProps): React.ReactElement {
 			)}
 			<Divider />
 			{singleMergedAnchor ? (
-				<ToolbarButton icon={Split} label={strings.unmerge} disabled={disabled} onClick={() => rect && commit(unmergeAt(model, rect.r0, rect.c0))} />
+				<ToolbarButton icon={Split} label={strings.unmerge} hint={strings.unmergeHint} delayMs={strings.tooltipDelayMs} disabled={disabled} onClick={() => rect && commit(unmergeAt(model, rect.r0, rect.c0))} />
 			) : (
-				<ToolbarButton icon={Merge} label={strings.merge} disabled={disabled || !rect || (rect.r0 === rect.r1 && rect.c0 === rect.c1)} reason={!rect ? strings.needRectangle : undefined} onClick={doMerge} />
+				<ToolbarButton icon={Merge} label={strings.merge} hint={strings.mergeHint} delayMs={strings.tooltipDelayMs} disabled={disabled || !rect || (rect.r0 === rect.r1 && rect.c0 === rect.c1)} reason={!rect ? strings.needRectangle : undefined} onClick={doMerge} />
 			)}
-			<ToolbarButton icon={FlipVertical2} label={strings.transpose} disabled={disabled || merges} onClick={() => commit(transpose(model))} />
+			<ToolbarButton icon={Repeat2} label={strings.transpose} hint={strings.transposeHint} delayMs={strings.tooltipDelayMs} disabled={disabled || merges} onClick={() => commit(transpose(model))} />
 			<Divider />
-			<ToolbarButton icon={FileSpreadsheet} label={strings.csv} disabled={disabled} onClick={() => setMenu(menu === 'csv' ? null : 'csv')} active={menu === 'csv'} />
+			<ToolbarButton icon={TableProperties} label={strings.csv} hint={strings.csvHint} delayMs={strings.tooltipDelayMs} disabled={disabled} onClick={() => setMenu(menu === 'csv' ? null : 'csv')} active={menu === 'csv'} />
 			{menu === 'csv' && (
 				<Menu>
-					<MenuItem icon={FileSpreadsheet} label={strings.csvCopy} onClick={() => void copyCsv()} />
-					<MenuItem icon={FileSpreadsheet} label={strings.csvExport} onClick={() => { props.onExportCsv(); setMenu(null); }} />
-					<MenuItem icon={FileSpreadsheet} label={strings.csvImport} onClick={() => { props.onImportCsv(); setMenu(null); }} />
+					<MenuItem icon={Copy} label={strings.csvCopy} onClick={() => void copyCsv()} />
+					<MenuItem icon={FileDown} label={strings.csvExport} onClick={() => { props.onExportCsv(); setMenu(null); }} />
+					<MenuItem icon={FileUp} label={strings.csvImport} onClick={() => { props.onImportCsv(); setMenu(null); }} />
 				</Menu>
 			)}
-			<ToolbarButton icon={BarChart3} label={strings.chart} disabled={disabled} onClick={generateChart} />
-			{props.aiActions.map((a) => (
-				<ToolbarButton
-					key={a.capabilityId}
-					icon={Sparkles}
-					label={a.title}
-					disabled={disabled || Boolean(a.disabledReason)}
-					reason={a.disabledReason}
-					onClick={() => props.onInvokeAi(a)}
-				/>
-			))}
+			<ToolbarButton icon={ChartColumn} label={strings.chart} hint={strings.chartHint} delayMs={strings.tooltipDelayMs} disabled={disabled} onClick={generateChart} />
 		</div>
 	);
 }
@@ -193,23 +187,58 @@ export function TableToolbar(props: TableToolbarProps): React.ReactElement {
 function ToolbarButton({
 	icon: Icon,
 	label,
+	hint,
+	delayMs,
 	onClick,
 	disabled,
 	reason,
 	active,
+	structureAction,
 }: {
 	icon: LucideIcon;
 	label: string;
+	hint: string;
+	delayMs: number;
 	onClick: () => void;
 	disabled?: boolean;
 	reason?: string;
 	active?: boolean;
+	structureAction?: StructureAction;
 }): React.ReactElement {
+	const tooltipId = React.useId();
+	const tooltipText = disabled && reason ? reason : hint;
+	const OperationIcon = structureAction?.operation === 'remove' ? Minus : Plus;
 	return (
-		<button type="button" className={active ? 'is-active' : undefined} disabled={disabled} title={disabled && reason ? reason : label} aria-label={label} onClick={onClick}>
-			<Icon size={13} />
-			<span>{label}</span>
-		</button>
+		<span
+			className="pk-table-tool"
+			style={{ '--pk-table-tooltip-delay': `${delayMs}ms` } as React.CSSProperties}
+		>
+			<Button
+				type="button"
+				variant="ghost"
+				size="sm"
+				className={active ? 'is-active' : undefined}
+				disabled={disabled}
+				aria-describedby={tooltipId}
+				aria-pressed={active === undefined ? undefined : active}
+				onClick={onClick}
+			>
+				<span
+					className="pk-table-tool__icon"
+					data-axis={structureAction?.axis}
+					data-operation={structureAction?.operation}
+					aria-hidden="true"
+				>
+					<Icon size={16} />
+					{structureAction && <OperationIcon className="pk-table-tool__icon-badge" size={9} />}
+				</span>
+				<span className="pk-table-tool__label">{label}</span>
+			</Button>
+			<span id={tooltipId} className="pk-table-tool__tooltip" role="tooltip">
+				<strong>{label}</strong>
+				<span>{tooltipText}</span>
+			</span>
+		</span>
 	);
 }
 
@@ -223,10 +252,10 @@ function Menu({ children }: { children: React.ReactNode }): React.ReactElement {
 
 function MenuItem({ icon: Icon, label, onClick }: { icon: LucideIcon; label: string; onClick: () => void }): React.ReactElement {
 	return (
-		<button type="button" role="menuitem" onClick={onClick}>
+		<Button type="button" variant="ghost" size="sm" role="menuitem" onClick={onClick}>
 			<Icon size={12} />
 			<span>{label}</span>
-		</button>
+		</Button>
 	);
 }
 

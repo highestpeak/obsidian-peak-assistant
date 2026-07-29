@@ -84,6 +84,20 @@ async function main(): Promise<void> {
 		);
 		check('polish projects on selection-toolbar too', runtime.actionsFor(snapshot, 'selection-toolbar').length === 1);
 		check('polish does NOT project on object-toolbar', runtime.actionsFor(snapshot, 'object-toolbar').length === 0);
+		const catalog = runtime.catalogFor(snapshot);
+		check(
+			'capability browser receives the full real registry catalog',
+			catalog.length === 1 + PROSE_BLOCK_ACTION_IDS.length,
+			String(catalog.length),
+		);
+		check(
+			'catalog separates current-target actions from other-object abilities',
+			catalog.some((item) => item.action) && catalog.some((item) => !item.action),
+		);
+		check(
+			'catalog supporting copy comes from capability presentation config',
+			catalog.every((item) => Boolean(item.description)),
+		);
 	}
 
 	{

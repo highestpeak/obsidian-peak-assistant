@@ -134,7 +134,7 @@ function reduce(state: ComposerBrowserState, change: ResultBrowserProjectionChan
 /**
  * Local filter over the FROZEN snapshot (spec §Related-material browser: a
  * search box may only filter the snapshot, never issue a new search). Matches
- * title/path case-insensitively; empty query returns the complete set.
+ * title/path/body case-insensitively; empty query returns the complete set.
  */
 export function localFilterItems(
 	items: readonly SearchResultItem[],
@@ -142,9 +142,13 @@ export function localFilterItems(
 ): readonly SearchResultItem[] {
 	const q = filterText.trim().toLowerCase();
 	if (!q) return items;
-	return items.filter(
-		(it) => it.title.toLowerCase().includes(q) || it.path.toLowerCase().includes(q),
-	);
+	return items.filter((it) => [
+		it.title,
+		it.path,
+		it.content,
+		it.contentRaw,
+		it.highlight?.text,
+	].some((value) => value?.toLowerCase().includes(q)));
 }
 
 /**

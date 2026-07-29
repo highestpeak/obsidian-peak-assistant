@@ -79,6 +79,7 @@ export function resolveComposerActions(
 			capabilityId: def.manifest.id,
 			surface,
 			title: presentation.title,
+			...(presentation.description ? { description: presentation.description } : {}),
 			lucideIcon: presentation.lucideIcon,
 			group: def.executionMode === 'deterministic' ? 'deterministic' : 'ai',
 			...(def.acceptsInstruction ? { acceptsInstruction: true } : {}),

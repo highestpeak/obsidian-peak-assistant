@@ -35,6 +35,7 @@ import { RecentAnalysisList } from './components/RecentAnalysisList';
 import { RecentQueriesDropdown } from './components/RecentQueriesDropdown';
 import { createOpenSourceCallback } from './callbacks/open-source-file';
 import { ResultPaneGraphControls, ResultDensityToggle, ViewModeToggle } from './components/ResultPaneHeader';
+import { ResultBrowserSearchInput } from '@/ui/component/result-browser';
 
 type TabType = 'vault' | 'ai';
 
@@ -674,16 +675,12 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 			<div className="pktw-flex-shrink-0 pktw-p-2 pktw-bg-pk-background pktw-border-b pktw-border-pk-border">
 				<div className="pktw-flex pktw-gap-3 pktw-items-center">
 					<div className="pktw-relative pktw-flex-1 pktw-min-w-0">
-						<CodeMirrorInput
+						<ResultBrowserSearchInput
 							ref={inputRef}
 							value={vaultSearchQuery}
 							onChange={setVaultSearchQuery}
 							onKeyDown={handleInputKeyDown}
 							placeholder="Search your vault…"
-							enableSearchTags={false}
-							singleLine={true}
-							containerClassName="pktw-flex-1 pktw-min-w-0 pktw-px-4 pktw-py-2.5 pktw-bg-pk-surface-raised pktw-border pktw-border-pk-border focus-within:pktw-border-pk-accent focus-within:pktw-shadow-sm pktw-rounded-full pktw-transition-all pktw-z-0"
-							className="pktw-pr-2"
 						/>
 					</div>
 					<SuggestButton

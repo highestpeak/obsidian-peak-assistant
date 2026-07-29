@@ -18,6 +18,7 @@ import {
 	type ProfileModelItem,
 } from '@/ui/component/model-picker/modelPickerData';
 import type { ModelSelection } from '@/core/types/chat-studio';
+import type { Profile } from '@/core/profiles/types';
 import { useChatStudioStrings } from '../../chatStudioStringsContext';
 
 /**
@@ -35,6 +36,12 @@ import { useChatStudioStrings } from '../../chatStudioStringsContext';
 export interface ComposerModelSelectorProps {
 	selection: ModelSelection;
 	onSelect: (selection: ModelSelection) => void;
+	/**
+	 * Optional execution-safe profile scope. Chat Studio omits this and shows
+	 * every enabled Profile; narrower surfaces such as Composer Copilot pass
+	 * the Profiles their runtime can actually execute.
+	 */
+	profiles?: readonly Profile[];
 }
 
 function triggerLabel(selection: ModelSelection, items: ProfileModelItem[], autoLabel: string): string {
@@ -49,15 +56,19 @@ function providerName(kind: string): string {
 	return kind.charAt(0).toUpperCase() + kind.slice(1);
 }
 
-export const ComposerModelSelector: React.FC<ComposerModelSelectorProps> = ({ selection, onSelect }) => {
+export const ComposerModelSelector: React.FC<ComposerModelSelectorProps> = ({
+	selection,
+	onSelect,
+	profiles,
+}) => {
 	const strings = useChatStudioStrings();
 	const [open, setOpen] = useState(false);
 	const [filterOpen, setFilterOpen] = useState(false);
 	const [filter, setFilter] = useState<ModelFilterState>(emptyModelFilter());
 
 	const allItems = useMemo(
-		() => buildProfileModelItems(ProfileRegistry.getInstance().getAllProfiles()),
-		[open],
+		() => buildProfileModelItems(profiles ?? ProfileRegistry.getInstance().getAllProfiles()),
+		[open, profiles],
 	);
 	const filtered = useMemo(() => filterProfileModelItems(allItems, filter), [allItems, filter]);
 	const groups = useMemo(() => groupByProfile(filtered), [filtered]);

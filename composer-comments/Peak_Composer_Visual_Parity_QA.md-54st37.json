@@ -1,9 +1,9 @@
 [
   {
     "anchor": {
-      "blockId": "frontmatter-0-f5fbeffb",
-      "quote": "---\ncreated: 2023-10-15 21:45:29\nupdated: 2023-10-18 21:17:05\ntags: [pkm, information-management, canvas]\naliases: [PKM 产品分析]\ntype: analysis\nstatus: evergreen\nproject: peak-assistant\n---",
-      "fingerprint": "f5fbeffb82b80001b95a30f07f86d2a0bff3202111d7f679c0208e949ec18bf8"
+      "blockId": "frontmatter-0-1e284e79",
+      "quote": "---\ncreated: 2023-10-15 21:45:29\nupdated: 2023-10-18 21:17:05\ntags: [pkm, information-management, canvas]\naliases: [PKM 产品分析]\ntype: analysis\nstatus: evergreen\nproject: peak-assistant\nsad: sad\nknowledge_structures:\n  - network\n  - tree\n---",
+      "fingerprint": "1e284e79288966a0db8ceb636a528d851d523e1dabc1952eab162b3e55511f71"
     },
     "body": "sadasdas",
     "commentId": "cmt-ms3yycpg-1",
@@ -26,8 +26,8 @@
     "anchor": {
       "blockId": "paragraph-3-6f16f38b",
       "range": {
-        "from": 549,
-        "to": 615
+        "from": 601,
+        "to": 667
       },
       "quote": "子表格的灵活调整，数学公式可即时渲染，同时保持Base、Canvas、Excalidraw等模块以原生块形式存在，确保AI能够准确解",
       "fingerprint": "acbeaa0356608316f7719d80a82ac598a5aee747fc2387e6fb950972ddb6c246"
@@ -54,8 +54,8 @@
     "anchor": {
       "blockId": "list-7-8f1af8ae",
       "range": {
-        "from": 1109,
-        "to": 1123
+        "from": 1161,
+        "to": 1175
       },
       "quote": "旁批、公众号想法和临时判断。",
       "fingerprint": "280b0bd427ead1081683a05a2f862f8f61dbef0897811e18c86bea8b2c5fe5ff"

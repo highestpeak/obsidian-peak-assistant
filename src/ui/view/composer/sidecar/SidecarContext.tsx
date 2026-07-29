@@ -35,6 +35,8 @@ export interface SidecarContextValue {
 	runtime: IntelligenceRuntime;
 	hub?: ComposerTransactionHub;
 	config: SidecarConfig;
+	/** Current Vault path, used only for explicit file-scoped presentation behavior. */
+	documentFilePath?: string;
 	/** Locate a target block in the document body (scroll + focus). Host-provided. */
 	onLocate?: (blockId: string) => void;
 	/** Locate and activate a comment source referenced by a Copilot receipt. */

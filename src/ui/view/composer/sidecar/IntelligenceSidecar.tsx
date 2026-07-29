@@ -35,6 +35,7 @@ export interface IntelligenceSidecarProps {
 	runtime: IntelligenceRuntime;
 	/** WP2 hub for the History projection + document locate. */
 	hub?: ComposerTransactionHub;
+	documentFilePath?: string;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	onLocate?: (blockId: string) => void;
@@ -51,6 +52,7 @@ export interface IntelligenceSidecarProps {
 export function IntelligenceSidecar({
 	runtime,
 	hub,
+	documentFilePath,
 	open,
 	onOpenChange,
 	onLocate,
@@ -108,6 +110,7 @@ export function IntelligenceSidecar({
 			runtime,
 			hub,
 			config,
+			documentFilePath,
 			onLocate,
 			onLocateComment,
 			onOpenSource,
@@ -119,6 +122,7 @@ export function IntelligenceSidecar({
 			runtime,
 			hub,
 			config,
+			documentFilePath,
 			onLocate,
 			onLocateComment,
 			onOpenSource,

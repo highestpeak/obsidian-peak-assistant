@@ -61,6 +61,7 @@ export interface SidecarStrings {
 	collapseThoughts: string;
 	thoughtsNotTasks: string;
 	organizeThought: string;
+	thoughtFromRun: string;
 	noUnplacedIdeas: string;
 	sourceDetails: string;
 	sectionNextMovesEmpty: string;
@@ -87,6 +88,30 @@ export interface SidecarStrings {
 	send: string;
 	stop: string;
 	allCapabilities: string;
+	capabilityPickerHint: string;
+	capabilityDialogTitle: string;
+	capabilityDialogSubtitle: string;
+	capabilitySearchPlaceholder: string;
+	capabilityRecommendedGroup: string;
+	capabilityOtherGroup: string;
+	capabilityAvailable: string;
+	capabilityOtherObject: string;
+	capabilityNoResults: string;
+	sessionStartTitle: string;
+	sessionStartBody: string;
+	currentContext: string;
+	autoRoute: string;
+	autoModel: string;
+	noAvailableCapabilities: string;
+	previewFixtureLabel: string;
+	previewFixtureNote: string;
+	materialPreview: string;
+	materialReason: string;
+	materialPreviewEmpty: string;
+	materialListTitle: string;
+	materialHoverHint: string;
+	relatedModalSubtitle: string;
+	relatedFilterPlaceholder: string;
 	receiptChanges: string;
 	receiptInsights: string;
 	receiptSources: string;
@@ -110,9 +135,35 @@ export interface SidecarStrings {
 	historyBatchCopilot: string;
 	historyBatchMeta: string;
 	historyRollbackAction: string;
+	historyPreviewTitle: string;
+	historyBefore: string;
+	historyAfter: string;
+	historyPreviewUnavailable: string;
 	reviewClose: string;
 	emptyBrief: string;
 	emptyBriefBody: string;
+}
+
+export interface SidecarPreviewMaterial {
+	id: string;
+	title: string;
+	path: string;
+	content: string;
+	reason: string;
+	score: number;
+}
+
+export interface SidecarPreviewThought {
+	id: string;
+	label: string;
+	detail: string;
+}
+
+export interface SidecarPreviewFixture {
+	/** Exact Vault file names allowed to show explicitly-labelled design preview data. */
+	fileNames: readonly string[];
+	materials: readonly SidecarPreviewMaterial[];
+	thoughts: readonly SidecarPreviewThought[];
 }
 
 export interface SidecarConfig {
@@ -120,11 +171,13 @@ export interface SidecarConfig {
 	briefPreviewCap: number;
 	thoughtPreviewCap: number;
 	relatedPreviewCap: number;
+	relatedExcerptMaxChars: number;
 	graphNodeCap: number;
 	/** Quiet-period debounce for idle Brief sensing. */
 	idleRefreshDelayMs: number;
 	/** Minimum interval between continuous Brief sensing refreshes. */
 	continuousRefreshMinIntervalMs: number;
+	previewFixture: SidecarPreviewFixture;
 	strings: SidecarStrings;
 }
 
@@ -147,9 +200,51 @@ export const DEFAULT_SIDECAR_CONFIG: SidecarConfig = {
 	briefPreviewCap: 3,
 	thoughtPreviewCap: 2,
 	relatedPreviewCap: 6,
+	relatedExcerptMaxChars: 240,
 	graphNodeCap: 100,
 	idleRefreshDelayMs: DEFAULT_BRIEF_SENSING_POLICY.idleRefreshDelayMs,
 	continuousRefreshMinIntervalMs: DEFAULT_BRIEF_SENSING_POLICY.continuousRefreshMinIntervalMs,
+	previewFixture: {
+		fileNames: ['Peak Composer Visual Parity QA.md'],
+		materials: [
+			{
+				id: 'preview-copilot-prd',
+				title: 'Peak Assistant Copilot PRD',
+				path: 'kb2-learn-prd/B-Z-mess/AI-peakAssistant-Copilot-prd-snapshot-for-ideastream-thought.md',
+				content: '围绕当前正文给出可定位、可审阅、不会自动写入的 Copilot 建议。',
+				reason: '同一 Copilot 产品方向，可作为交互和能力边界依据。',
+				score: 0.94,
+			},
+			{
+				id: 'preview-ai-workflow',
+				title: 'AI Workflow',
+				path: 'kb2-learn-prd/B-0-BestPractice/sections/AI-workflow.md',
+				content: '把 AI 建议、人工判断、写回和历史记录拆成可检查的工作流。',
+				reason: '补充当前任务的执行顺序与人工审阅边界。',
+				score: 0.88,
+			},
+			{
+				id: 'preview-knowledge-call',
+				title: '知识调用：填充还是搜索',
+				path: 'kb2-learn-prd/B-Z-mess/peakassistant-知识调用是否是填而不是搜索.md',
+				content: '知识材料不仅用于搜索结果，也可以成为当前写作上下文的一部分。',
+				reason: '直接关联“相关材料如何进入当前正文”的产品问题。',
+				score: 0.82,
+			},
+		],
+		thoughts: [
+			{
+				id: 'preview-thought-review',
+				label: '把“建议”与“直接改写”明确分成两个动作',
+				detail: '建议先进入审阅面板，只有接受后才写入正文。',
+			},
+			{
+				id: 'preview-thought-source',
+				label: '相关材料卡片需要同时说明来源和相关原因',
+				detail: '用户不仅要看到标题，还要知道为什么这份材料会出现在这里。',
+			},
+		],
+	},
 	strings: {
 		title: 'Intelligence',
 		followingDoc: '正在跟随正文',
@@ -194,7 +289,8 @@ export const DEFAULT_SIDECAR_CONFIG: SidecarConfig = {
 		viewAllThoughts: '查看全部 {count} 条想法',
 		collapseThoughts: '收起',
 		thoughtsNotTasks: '不是待办，由你决定是否写入',
-		organizeThought: '整理',
+		organizeThought: '标为已安放',
+		thoughtFromRun: '来自 Copilot run {runId}',
 		noUnplacedIdeas: '当前还没有可归位的 session 想法。',
 		sourceDetails: '来源详情',
 		sectionNextMovesEmpty: '当前没有新的写作建议。',
@@ -212,7 +308,7 @@ export const DEFAULT_SIDECAR_CONFIG: SidecarConfig = {
 		refreshRelated: '更新相关材料',
 		viewSource: '查看来源',
 		bringIntoSession: '带入协作',
-		openFullView: '打开完整视图',
+		openFullView: '查看全部材料',
 		ignore: '忽略',
 		discuss: '问 Copilot',
 		commentSource: '评论引用',
@@ -221,6 +317,30 @@ export const DEFAULT_SIDECAR_CONFIG: SidecarConfig = {
 		send: '发送',
 		stop: '停止',
 		allCapabilities: '全部能力',
+		capabilityPickerHint: '选择后加入本轮，不会自动运行',
+		capabilityDialogTitle: '全部 Copilot 能力',
+		capabilityDialogSubtitle: '选择当前正文对象可用的能力；选择后只会填入本轮，不会自动运行。',
+		capabilitySearchPlaceholder: '搜索能力',
+		capabilityRecommendedGroup: '推荐给当前对象',
+		capabilityOtherGroup: '其他正文对象',
+		capabilityAvailable: '可用于当前对象',
+		capabilityOtherObject: '切换到对应正文对象后可用',
+		capabilityNoResults: '没有匹配的能力。',
+		sessionStartTitle: '从当前正文开始',
+		sessionStartBody: '选择一种可用能力，或直接描述希望 Copilot 如何处理当前内容。',
+		currentContext: '当前上下文',
+		autoRoute: '自动路由',
+		autoModel: '自动模型',
+		noAvailableCapabilities: '当前对象没有可用的 Copilot 能力。',
+		previewFixtureLabel: '示例预览',
+		previewFixtureNote: '用于设计验收，不会写入正文或知识库',
+		materialPreview: '材料预览',
+		materialReason: '为什么相关',
+		materialPreviewEmpty: '这份材料暂时没有可显示的正文预览。',
+		materialListTitle: '支持当前建议的材料',
+		materialHoverHint: '悬浮预览 · 点击固定',
+		relatedModalSubtitle: '搜索当前相关结果；不会重新检索或写入正文',
+		relatedFilterPlaceholder: '搜索标题、路径或正文…',
 		receiptChanges: 'Changes',
 		receiptInsights: 'Insights',
 		receiptSources: 'Sources',
@@ -244,6 +364,10 @@ export const DEFAULT_SIDECAR_CONFIG: SidecarConfig = {
 			historyBatchCopilot: '本轮 Copilot 写入 · {count} 处',
 			historyBatchMeta: '{count} 笔独立事务',
 			historyRollbackAction: '回滚',
+			historyPreviewTitle: '修改预览',
+			historyBefore: '修改前',
+			historyAfter: '修改后',
+			historyPreviewUnavailable: '这笔事务没有可显示的文字差异。',
 			reviewClose: '完成审阅',
 		emptyBrief: '暂无新项目',
 		emptyBriefBody: '当前没有来自已接入数据源的新项目。你可以继续写作，或主动问 Copilot。',
@@ -268,17 +392,32 @@ export async function loadSidecarConfig(): Promise<SidecarConfig> {
 			briefPreviewCap: positiveInteger(s.briefPreviewCap, DEFAULT_SIDECAR_CONFIG.briefPreviewCap),
 			thoughtPreviewCap: positiveInteger(s.thoughtPreviewCap, DEFAULT_SIDECAR_CONFIG.thoughtPreviewCap),
 			relatedPreviewCap: positiveInteger(s.relatedPreviewCap, DEFAULT_SIDECAR_CONFIG.relatedPreviewCap),
+			relatedExcerptMaxChars: positiveInteger(
+				s.relatedExcerptMaxChars,
+				DEFAULT_SIDECAR_CONFIG.relatedExcerptMaxChars,
+			),
 			graphNodeCap: positiveInteger(s.graphNodeCap, DEFAULT_SIDECAR_CONFIG.graphNodeCap),
 			idleRefreshDelayMs: positiveInteger(s.idleRefreshDelayMs, DEFAULT_SIDECAR_CONFIG.idleRefreshDelayMs),
 			continuousRefreshMinIntervalMs: positiveInteger(
 				s.continuousRefreshMinIntervalMs,
 				DEFAULT_SIDECAR_CONFIG.continuousRefreshMinIntervalMs,
 			),
+			previewFixture: mergePreviewFixture(s.previewFixture),
 			strings: { ...DEFAULT_SIDECAR_CONFIG.strings, ...(s.strings ?? {}) },
 		};
 	} catch {
 		return DEFAULT_SIDECAR_CONFIG;
 	}
+}
+
+function mergePreviewFixture(value: unknown): SidecarPreviewFixture {
+	if (!value || typeof value !== 'object') return DEFAULT_SIDECAR_CONFIG.previewFixture;
+	const input = value as Partial<SidecarPreviewFixture>;
+	return {
+		fileNames: Array.isArray(input.fileNames) ? input.fileNames : DEFAULT_SIDECAR_CONFIG.previewFixture.fileNames,
+		materials: Array.isArray(input.materials) ? input.materials : DEFAULT_SIDECAR_CONFIG.previewFixture.materials,
+		thoughts: Array.isArray(input.thoughts) ? input.thoughts : DEFAULT_SIDECAR_CONFIG.previewFixture.thoughts,
+	};
 }
 
 function positiveInteger(value: unknown, fallback: number): number {

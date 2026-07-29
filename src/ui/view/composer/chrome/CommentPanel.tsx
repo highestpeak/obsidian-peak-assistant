@@ -193,10 +193,6 @@ export function CommentRail({
 		else cardRefs.current.delete(id);
 	};
 
-	if (!open) {
-		return null;
-	}
-
 	return (
 		<>
 			{mode === 'rail' && connectors.length > 0 && (
@@ -212,7 +208,9 @@ export function CommentRail({
 			<aside
 				className="pk-comment-rail"
 				data-mode={mode}
+				data-open={open ? 'true' : 'false'}
 				data-chrome="true"
+				aria-hidden={!open}
 				aria-label={c.railTitle}
 			>
 				<div className="pk-comment-rail__cards">
@@ -540,48 +538,58 @@ const CommentThreadCard = React.forwardRef<HTMLDivElement, {
 				</div>
 			)}
 			<div className="pk-comment-card__actions">
-				<Button
-					variant="ghost"
-					size="sm"
-					onClick={(event) => {
-						event.stopPropagation();
-						setReplyOpen(true);
-					}}
-				>
-					<Reply size={12} /> {c.reply}
-				</Button>
-				{onAskCopilot && (
-					<Button
-						variant="ghost"
-						size="sm"
+				<div className="pk-comment-card__collaboration-actions">
+					<IconButton
+						className="pk-comment-action pk-comment-action--reply"
+						label={c.reply}
+						title={c.reply}
 						onClick={(event) => {
 							event.stopPropagation();
-							onAskCopilot(comment);
+							setReplyOpen(true);
 						}}
 					>
-						<Sparkles size={12} /> {c.askCopilot}
-					</Button>
-				)}
-				<IconButton
-					label={resolved ? c.reopen : c.resolve}
-					onClick={(event) => {
-						event.stopPropagation();
-						if (resolved) store.reopen(comment.commentId);
-						else store.resolve(comment.commentId);
-					}}
-				>
-					{resolved ? <RotateCcw size={12} /> : <Check size={12} />}
-				</IconButton>
-				<IconButton
-					label={c.remove}
-					onClick={(event) => {
-						event.stopPropagation();
-						store.remove(comment.commentId);
-						onRemoved();
-					}}
-				>
-					<Trash2 size={12} />
-				</IconButton>
+						<Reply size={12} />
+					</IconButton>
+					{onAskCopilot && (
+						<IconButton
+							className="pk-comment-action pk-comment-action--copilot"
+							label={c.askCopilot}
+							title={c.askCopilot}
+							onClick={(event) => {
+								event.stopPropagation();
+								onAskCopilot(comment);
+							}}
+						>
+							<Sparkles size={12} />
+						</IconButton>
+					)}
+				</div>
+				<div className="pk-comment-card__thread-actions">
+					<IconButton
+						className="pk-comment-action--resolve"
+						label={resolved ? c.reopen : c.resolve}
+						title={resolved ? c.reopen : c.resolve}
+						onClick={(event) => {
+							event.stopPropagation();
+							if (resolved) store.reopen(comment.commentId);
+							else store.resolve(comment.commentId);
+						}}
+					>
+						{resolved ? <RotateCcw size={12} /> : <Check size={12} />}
+					</IconButton>
+					<IconButton
+						className="pk-comment-action--remove"
+						label={c.remove}
+						title={c.remove}
+						onClick={(event) => {
+							event.stopPropagation();
+							store.remove(comment.commentId);
+							onRemoved();
+						}}
+					>
+						<Trash2 size={12} />
+					</IconButton>
+				</div>
 			</div>
 		</div>
 	);

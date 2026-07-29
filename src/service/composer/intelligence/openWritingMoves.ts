@@ -54,6 +54,14 @@ export function detectOpenWritingMoves(
 					// Source order is a display order only; it is not a claim of AI urgency.
 					priority: findings.length + 1,
 				},
+				body: {
+					label: config.uncheckedTaskTargetLabel,
+					statusLabel: config.uncheckedTaskEvidenceLabel,
+					title: content || raw.trim(),
+					detail: config.uncheckedTaskSummary,
+					provenance: config.uncheckedTaskReason,
+					tone: 'violet',
+				},
 			});
 		}
 	}

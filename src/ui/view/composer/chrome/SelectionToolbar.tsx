@@ -29,7 +29,12 @@ import type {
 } from '@/core/composer';
 import { useOwnerDocumentListener } from '@/ui/hooks/useOwnerWindow';
 import { useComposerChrome } from './ComposerChromeContext';
-import { mapDomSelectionToSource } from './selectionMapping';
+import { mapDomRangeToSource, mapDomSelectionToSource } from './selectionMapping';
+import {
+	clearCrossBlockTextSelection,
+	CROSS_BLOCK_SELECTION_EVENT,
+	type CrossBlockSelectionDetail,
+} from './crossBlockTextSelection';
 
 /**
  * Floating selection toolbar (WP4, §7.2–§7.5 / consistency §3).
@@ -87,6 +92,7 @@ export function SelectionToolbar({
 		const root = containerRef.current;
 			if (!root || !snapshot) return;
 			if (Date.now() < suppressUntilRef.current) return;
+			if (root.hasAttribute('data-cross-block-selection')) return;
 			const doc = root.ownerDocument;
 			const activeElement = doc.activeElement as Element | null;
 			// A sub-panel input owns focus temporarily while the frozen document
@@ -139,6 +145,46 @@ export function SelectionToolbar({
 	useOwnerDocumentListener(containerRef, 'selectionchange', recompute);
 
 	React.useEffect(() => {
+		const root = containerRef.current;
+		if (!root || !snapshot) return;
+		const onCrossBlockSelection = (ev: Event) => {
+			const detail = (ev as CustomEvent<CrossBlockSelectionDetail | null>).detail;
+			if (!detail) {
+				setLive(null);
+				setPanel(null);
+				return;
+			}
+			const mapped = mapDomRangeToSource(root, detail.range);
+			if (!mapped || mapped.from === mapped.to) {
+				setLive(null);
+				return;
+			}
+			const partitioned = partitionSourceRange(snapshot, mapped.from, mapped.to);
+			if (partitioned.collapsed) {
+				setLive(null);
+				return;
+			}
+			const rectPx = detail.range.getBoundingClientRect();
+			const rootRect = root.getBoundingClientRect();
+			const forward = detail.direction === 'forward';
+			setLive({
+				selection: partitioned,
+				from: mapped.from,
+				to: mapped.to,
+				anchor: forward ? mapped.from : mapped.to,
+				focus: forward ? mapped.to : mapped.from,
+				direction: detail.direction,
+				rect: {
+					top: Math.max(4, rectPx.top - rootRect.top + root.scrollTop - 44),
+					left: Math.max(4, rectPx.left - rootRect.left),
+				},
+			});
+		};
+		root.addEventListener(CROSS_BLOCK_SELECTION_EVENT, onCrossBlockSelection);
+		return () => root.removeEventListener(CROSS_BLOCK_SELECTION_EVENT, onCrossBlockSelection);
+	}, [containerRef, snapshot]);
+
+	React.useEffect(() => {
 		onVisibleChange(Boolean(live));
 	}, [live, onVisibleChange]);
 
@@ -175,6 +221,7 @@ export function SelectionToolbar({
 			// conflict — lifecycle controller surfaces staleness
 		}
 		containerRef.current?.ownerDocument.getSelection()?.removeAllRanges();
+		if (containerRef.current) clearCrossBlockTextSelection(containerRef.current);
 		setLive(null);
 		setPanel(null);
 	};
@@ -454,10 +501,17 @@ function scopeText(
 ): string | null {
 	if (selection.scope === 'single') return null;
 	const blocks = new Set(selection.units.map((u) => u.blockId)).size;
-	if (selection.scope === 'cross-item') return templates.crossItem.replace('{n}', String(selection.units.length));
-	if (selection.scope === 'cross-cell') return templates.crossCell.replace('{n}', String(selection.units.length));
-	if (selection.scope === 'cross-paragraph') return templates.crossParagraph.replace('{n}', String(blocks));
-	return templates.crossBlock.replace('{n}', String(blocks));
+	const fragments = selection.units.length;
+	if (selection.scope === 'cross-item') return fillScopeTemplate(templates.crossItem, fragments, fragments);
+	if (selection.scope === 'cross-cell') return fillScopeTemplate(templates.crossCell, fragments, fragments);
+	if (selection.scope === 'cross-paragraph') return fillScopeTemplate(templates.crossParagraph, blocks, fragments);
+	return fillScopeTemplate(templates.crossBlock, blocks, fragments);
+}
+
+function fillScopeTemplate(template: string, count: number, fragments: number): string {
+	return template
+		.replaceAll('{n}', String(count))
+		.replaceAll('{fragments}', String(fragments));
 }
 
 /**

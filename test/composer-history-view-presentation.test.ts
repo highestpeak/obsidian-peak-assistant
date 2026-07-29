@@ -1,4 +1,5 @@
 import assert from 'assert';
+import { readFileSync } from 'fs';
 import type { ComposerHistoryItem } from '@/core/composer';
 import { countTransactions, groupHistoryByDay } from '@/ui/view/composer/sidecar/HistoryView';
 
@@ -28,5 +29,14 @@ assert.equal(groups.length, 2, 'history groups entries by local day');
 assert.equal(groups[0].label, '今天', 'the current day uses the configured Today label');
 assert.deepEqual(groups[0].items.map((entry) => entry.historyId), ['second', 'first'], 'newest entries render first within a day');
 assert.equal(countTransactions([older, first, second]), 4, 'batch parents count their independently locatable child transactions');
+
+const source = readFileSync('src/ui/view/composer/sidecar/HistoryView.tsx', 'utf8');
+assert.equal(
+	source.includes('disabled={!blockId}'),
+	false,
+	'a transaction row remains readable and previewable when its document anchor is unavailable',
+);
+assert.ok(source.includes('pk-history-detail'), 'History exposes an explicit transaction preview');
+assert.ok(source.includes('historyRollbackAction'), 'rollback remains available from the transaction detail');
 
 console.log('composer-history-view-presentation: passed');

@@ -90,6 +90,8 @@ export interface ComposerActionDescriptor {
 	surface: ComposerActionSurface;
 	/** Display title resolved from config/templates by the projection, not by the chrome. */
 	title: string;
+	/** Supporting copy for capability browsers and recommendation rows. */
+	description?: string;
 	/** Lucide icon name; chrome maps it to the icon component. */
 	lucideIcon?: string;
 	/** Deterministic actions and AI actions share geometry; AI gets the sparkle affordance. */
@@ -100,10 +102,33 @@ export interface ComposerActionDescriptor {
 	acceptsInstruction?: boolean;
 }
 
+/** One real registry entry exposed to capability browsers. */
+export interface ComposerCapabilityCatalogItem {
+	capabilityId: ComposerCapabilityId;
+	title: string;
+	description?: string;
+	lucideIcon?: string;
+	/** Current-target action when this capability is immediately invocable. */
+	action?: ComposerActionDescriptor;
+	/** Stable target-kind vocabulary, used only as supporting presentation. */
+	targetKinds: readonly string[];
+}
+
 /** Handle the chrome gets back when it invokes a capability. */
 export interface ComposerInvocationHandle {
 	runId: string;
 	cancel(): void;
+}
+
+export interface ComposerModelChoice {
+	id: string;
+	displayName: string;
+	providerLabel?: string;
+}
+
+export interface ComposerModelSelectionPort {
+	choices(): readonly ComposerModelChoice[];
+	defaultModelId(): string | null;
 }
 
 /**
@@ -114,11 +139,13 @@ export interface ComposerInvocationHandle {
 export interface ComposerCapabilityProjectionPort {
 	/** Actions applicable to the target, in display order for the given surface. */
 	actionsFor(snapshot: ComposerContextSnapshot, surface: ComposerActionSurface): readonly ComposerActionDescriptor[];
+	/** Full real registry catalog for capability browsers; older projections may omit it. */
+	catalogFor?(snapshot: ComposerContextSnapshot): readonly ComposerCapabilityCatalogItem[];
 	/** Invoke a capability against a frozen snapshot. Instruction is run context, never candidate body. */
 	invoke(
 		capabilityId: ComposerCapabilityId,
 		snapshot: ComposerContextSnapshot,
-		options?: { instruction?: string },
+		options?: { instruction?: string; modelId?: string },
 	): ComposerInvocationHandle;
 }
 

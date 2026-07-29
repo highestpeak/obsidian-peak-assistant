@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { ChevronDown, RotateCcw } from 'lucide-react';
+import { ChevronDown, MapPin, RotateCcw, X } from 'lucide-react';
 import { composerTargetBlockId, type ComposerHistoryItem, type ComposerTransactionProjection } from '@/core/composer';
-import { Button } from '@/ui/components/primitives';
+import { Button, IconButton } from '@/ui/components/primitives';
 import { cn } from '@/ui/react/lib/utils';
 import type { SidecarStrings } from './sidecarConfig';
 import { useSidecar } from './SidecarContext';
@@ -18,6 +18,8 @@ export function HistoryView(): React.ReactElement {
 	const projection = useHubProjection(hub);
 	const items = projection?.history ?? [];
 	const [expandedGroups, setExpandedGroups] = React.useState<ReadonlySet<string>>(() => new Set());
+	const [selectedHistoryId, setSelectedHistoryId] = React.useState<string | null>(null);
+	const preview = selectedHistoryId ? hub?.historyPreview(selectedHistoryId) ?? null : null;
 
 	if (items.length === 0) {
 		return <div className="pk-history pk-history--empty">{s.historyEmpty}</div>;
@@ -47,8 +49,7 @@ export function HistoryView(): React.ReactElement {
 									key={item.historyId}
 									item={item}
 									expanded={expanded}
-									onLocate={onLocate}
-									onRollback={(historyId) => void hub?.rollback(historyId).catch(() => undefined)}
+									onSelect={setSelectedHistoryId}
 									onToggle={() => {
 										setExpandedGroups((current) => {
 											const next = new Set(current);
@@ -63,8 +64,7 @@ export function HistoryView(): React.ReactElement {
 								<HistoryRow
 									key={item.historyId}
 									item={item}
-									onLocate={onLocate}
-									onRollback={(historyId) => void hub?.rollback(historyId).catch(() => undefined)}
+									onSelect={setSelectedHistoryId}
 									strings={s}
 								/>
 							);
@@ -72,6 +72,19 @@ export function HistoryView(): React.ReactElement {
 					</div>
 				</section>
 			))}
+			{preview && (
+				<HistoryDetail
+					item={preview.item}
+					beforeText={preview.beforeText}
+					afterText={preview.afterText}
+					onClose={() => setSelectedHistoryId(null)}
+					onLocate={onLocate}
+					onRollback={(historyId) => {
+						void hub?.rollback(historyId).then(() => setSelectedHistoryId(null)).catch(() => undefined);
+					}}
+					strings={s}
+				/>
+			)}
 		</div>
 	);
 }
@@ -79,15 +92,13 @@ export function HistoryView(): React.ReactElement {
 function HistoryBatch({
 	item,
 	expanded,
-	onLocate,
-	onRollback,
+	onSelect,
 	onToggle,
 	strings,
 }: {
 	item: ComposerHistoryItem;
 	expanded: boolean;
-	onLocate?: (blockId: string) => void;
-	onRollback: (historyId: string) => void;
+	onSelect: (historyId: string) => void;
 	onToggle: () => void;
 	strings: SidecarStrings;
 }): React.ReactElement {
@@ -109,7 +120,13 @@ function HistoryBatch({
 			{expanded && (
 				<div className="pk-history-batch-entries">
 					{[...children].reverse().map((child) => (
-						<HistoryRow key={child.historyId} item={child} nested onLocate={onLocate} onRollback={onRollback} strings={strings} />
+						<HistoryRow
+							key={child.historyId}
+							item={child}
+							nested
+							onSelect={onSelect}
+							strings={strings}
+						/>
 					))}
 				</div>
 			)}
@@ -120,27 +137,20 @@ function HistoryBatch({
 function HistoryRow({
 	item,
 	nested = false,
-	onLocate,
-	onRollback,
+	onSelect,
 	strings,
 }: {
 	item: ComposerHistoryItem;
 	nested?: boolean;
-	onLocate?: (blockId: string) => void;
-	onRollback: (historyId: string) => void;
+	onSelect: (historyId: string) => void;
 	strings: SidecarStrings;
 }): React.ReactElement {
-	const blockId = item.target ? composerTargetBlockId(item.target) : null;
 	return (
 		<div className={cn('pk-history-row', nested && 'pk-history-row--nested')} data-origin={item.origin}>
 			<Button
 				variant="ghost"
 				className="pk-history-main"
-				disabled={!blockId}
-				title={blockId ? strings.locateInDocument : undefined}
-				onClick={() => {
-					if (blockId) onLocate?.(blockId);
-				}}
+				onClick={() => onSelect(item.historyId)}
 			>
 				<HistoryDot origin={item.origin} />
 				<HistoryCopy label={item.label} item={item} originLabel={originLabel(item, strings)} strings={strings} />
@@ -149,18 +159,69 @@ function HistoryRow({
 					<strong>{formatDelta(item)}</strong>
 				</span>
 			</Button>
-			{!item.isRollback && (
-				<Button
-					variant="ghost"
-					className="pk-history-rollback"
-					aria-label={strings.historyRollbackAction}
-					title={strings.historyRollbackAction}
-					onClick={() => onRollback(item.historyId)}
-				>
-					<RotateCcw size={13} />
-				</Button>
-			)}
 		</div>
+	);
+}
+
+function HistoryDetail({
+	item,
+	beforeText,
+	afterText,
+	onClose,
+	onLocate,
+	onRollback,
+	strings,
+}: {
+	item: ComposerHistoryItem;
+	beforeText: string;
+	afterText: string;
+	onClose: () => void;
+	onLocate?: (blockId: string) => void;
+	onRollback: (historyId: string) => void;
+	strings: SidecarStrings;
+}): React.ReactElement {
+	const blockId = item.target ? composerTargetBlockId(item.target) : null;
+	const hasText = Boolean(beforeText || afterText);
+	return (
+		<aside className="pk-history-detail" aria-label={strings.historyPreviewTitle}>
+			<header>
+				<div>
+					<span>{strings.historyPreviewTitle}</span>
+					<strong>{item.label}</strong>
+				</div>
+				<IconButton label={strings.close} onClick={onClose}>
+					<X size={14} />
+				</IconButton>
+			</header>
+			{hasText ? (
+				<div className="pk-history-diff">
+					<div data-kind="before">
+						<span>{strings.historyBefore}</span>
+						<pre>{beforeText || strings.historyPreviewUnavailable}</pre>
+					</div>
+					<div data-kind="after">
+						<span>{strings.historyAfter}</span>
+						<pre>{afterText || strings.historyPreviewUnavailable}</pre>
+					</div>
+				</div>
+			) : (
+				<span className="pk-history-detail-empty">{strings.historyPreviewUnavailable}</span>
+			)}
+			<footer>
+				{blockId && (
+					<Button variant="outline" onClick={() => onLocate?.(blockId)}>
+						<MapPin size={13} />
+						{strings.locateInDocument}
+					</Button>
+				)}
+				{!item.isRollback && (
+					<Button variant="outline" onClick={() => onRollback(item.historyId)}>
+						<RotateCcw size={13} />
+						{strings.historyRollbackAction}
+					</Button>
+				)}
+			</footer>
+		</aside>
 	);
 }
 

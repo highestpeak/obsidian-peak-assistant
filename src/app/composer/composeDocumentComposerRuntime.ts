@@ -19,6 +19,8 @@ import {
 import { loadComposerTransactionConfig } from '@/ui/view/composer';
 import { DEFAULT_SIDECAR_CONFIG, loadSidecarConfig, type SidecarConfig } from '@/ui/view/composer/sidecar/sidecarConfig';
 import { AppContext } from '@/app/context/AppContext';
+import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import { modelRegistry } from '@/core/providers/model-registry';
 import { getAIMediaFolder } from '@/core/config/folderPaths';
 import type { SearchClient } from '@/service/search/SearchClient';
 import type { ProduceMediaInput, ProduceMediaOutcome } from '@/service/media/MediaGenerationService';
@@ -162,6 +164,19 @@ export function composeDocumentComposerRuntime(app: App, pluginDir?: string): Do
 		},
 		nativePreviewPort: new ObsidianComposerNativePreviewAdapter(app),
 		blockDraftGeneration: createComposerBlockDraftGenerationPort(executor),
+		modelSelection: {
+			choices: () => {
+				const profile = ProfileRegistry.getInstance().getActiveAgentProfile();
+				if (!profile) return [];
+				return modelRegistry.getModelsForProvider(profile.kind).map((model) => ({
+					id: model.id,
+					displayName: model.displayName ?? model.id,
+					providerLabel: profile.name,
+				}));
+			},
+			defaultModelId: () =>
+				ProfileRegistry.getInstance().getActiveAgentProfile()?.primaryModel ?? null,
+		},
 	});
 	// The transaction-timing config lives in composer.json; load it asynchronously
 	// and apply once resolved. Hubs created before it lands use the compiled

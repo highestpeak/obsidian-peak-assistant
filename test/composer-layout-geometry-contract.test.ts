@@ -60,9 +60,20 @@ const sidecar = cssBlock(sidecarCss, '.pk-sidecar');
 assertDecl(sidecar, 'flex: 0 0 430px;', 'desktop sidecar body width must remain 430px');
 assertDecl(sidecar, 'margin: 14px 14px 14px 0;', 'desktop sidecar gutters must remain 14px');
 
+const controlbar = cssBlock(composerCss, '.peak-composer-root .pk-composer-controlbar');
+assertDecl(controlbar, 'z-index: 80;', 'sticky controlbar layer is the reference drawer must clear');
+
+const rootWithSidecar = cssBlock(sidecarCss, ".peak-composer-root[data-with-sidecar='true']");
+assertDecl(rootWithSidecar, '--pk-sidecar-drawer-z: 90;', 'drawer overlay must be above the sticky controlbar layer');
+assertDecl(rootWithSidecar, '--pk-sidecar-drawer-surface-z: 91;', 'drawer surface must be above its overlay anchor');
+
+const drawerAnchor = cssBlock(sidecarCss, ".pk-sidecar-anchor[data-sidecar-mode='drawer']");
+assertDecl(drawerAnchor, 'z-index: var(--pk-sidecar-drawer-z, 90);', 'drawer anchor must overlay the Composer sticky controlbar');
+
 const drawer = cssBlock(sidecarCss, '.pk-sidecar-drawer');
 assertDecl(drawer, 'width: min(440px, calc(100% - 24px));', 'narrow drawer width must be host-contained at 440px');
 assertDecl(drawer, 'max-width: calc(100% - 24px);', 'narrow drawer must stay inside the host horizontally');
+assertDecl(drawer, 'z-index: var(--pk-sidecar-drawer-surface-z, 91);', 'drawer surface must not render under sticky document controls');
 assert.equal(resolveSidecarMode(1040, 1180), 'drawer', '1040px host must use drawer mode');
 assert.equal(resolveSidecarMode(1440, 1180), 'desktop', '1440px host must use desktop sidecar mode');
 

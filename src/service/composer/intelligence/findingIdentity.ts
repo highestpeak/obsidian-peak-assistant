@@ -43,6 +43,23 @@ export interface FindingBriefPresentation {
 	readonly priority: number;
 }
 
+export type FindingBodyTone = 'violet' | 'teal' | 'amber' | 'red';
+
+/**
+ * Concrete in-document presentation. This is intentionally specific (Claim,
+ * Evidence, broken link, task, …) so the body never falls back to a vague
+ * catch-all "AI 建议" badge.
+ */
+export interface FindingBodyPresentation {
+	readonly label: string;
+	readonly statusLabel: string;
+	readonly title: string;
+	readonly detail?: string;
+	readonly provenance?: string;
+	readonly issueLabel?: string;
+	readonly tone: FindingBodyTone;
+}
+
 /**
  * The single shared finding entity. The body mark and the brief item read the
  * SAME record — they carry no independent state of their own.
@@ -67,6 +84,8 @@ export interface SuggestionFinding {
 	readonly producerId?: string;
 	/** Optional richer copy for the Brief; absent producers retain the legacy reason. */
 	readonly brief?: FindingBriefPresentation;
+	/** Optional concrete copy for the in-body finding badge and review panel. */
+	readonly body?: FindingBodyPresentation;
 	/** Deferred items stay active, but sort after non-deferred items in the Brief. */
 	readonly deferredAt?: number;
 }
@@ -80,6 +99,7 @@ export interface FindingIngestInput {
 	capabilityId?: string;
 	producerId?: string;
 	brief?: FindingBriefPresentation;
+	body?: FindingBodyPresentation;
 	deferredAt?: number;
 }
 
@@ -172,6 +192,7 @@ export class ComposerFindingStore {
 				...(input.capabilityId !== undefined ? { capabilityId: input.capabilityId } : {}),
 				...(input.producerId !== undefined ? { producerId: input.producerId } : {}),
 				...(input.brief !== undefined ? { brief: input.brief } : {}),
+				...(input.body !== undefined ? { body: input.body } : {}),
 				...(input.deferredAt !== undefined ? { deferredAt: input.deferredAt } : {}),
 			};
 			this.byId.set(existingId, next);
@@ -188,6 +209,7 @@ export class ComposerFindingStore {
 			...(input.capabilityId !== undefined ? { capabilityId: input.capabilityId } : {}),
 			...(input.producerId !== undefined ? { producerId: input.producerId } : {}),
 			...(input.brief !== undefined ? { brief: input.brief } : {}),
+			...(input.body !== undefined ? { body: input.body } : {}),
 			...(input.deferredAt !== undefined ? { deferredAt: input.deferredAt } : {}),
 		};
 		this.byId.set(finding.findingId, finding);

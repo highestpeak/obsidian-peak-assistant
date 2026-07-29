@@ -36,7 +36,11 @@ import {
 	type OpenWritingMovesConfig,
 	type VaultPropertyScanPort,
 } from '@/service/composer';
-import { DEFAULT_TRANSACTION_CONFIG, type ComposerTransactionConfig } from '@/core/composer';
+import {
+	DEFAULT_TRANSACTION_CONFIG,
+	type ComposerModelSelectionPort,
+	type ComposerTransactionConfig,
+} from '@/core/composer';
 import type { FormulaDetailGeneratorPort } from '@/ui/view/composer/blocks/math/formulaDetailStore';
 import {
 	ObsidianComposerFileEventsAdapter,
@@ -48,6 +52,7 @@ import {
 	type ComposerEditingRuntime,
 } from './DocumentComposerController';
 import type { ComposerCapabilityRuntimeFactory } from './capabilities/composeComposerCapabilityRuntime';
+import { CompositeComposerCandidateRuntime } from './CompositeComposerCandidateRuntime';
 
 export interface DocumentComposerRuntimeAdapters {
 	/** Per-document comment JSON persistence (plugin-owned store). */
@@ -83,6 +88,8 @@ export interface DocumentComposerRuntimeAdapters {
 	nativePreviewPort?: ComposerNativePreviewPort;
 	/** Shared-AI-backed new-block draft generation port, composed at the app layer. */
 	blockDraftGeneration?: ComposerBlockDraftGenerationPort;
+	/** Active-profile models exposed to the Composer Copilot selector. */
+	modelSelection?: ComposerModelSelectionPort;
 }
 
 export class DocumentComposerRuntime {
@@ -100,6 +107,7 @@ export class DocumentComposerRuntime {
 	private readonly imagePorts?: DocumentComposerRuntimeAdapters['imagePorts'];
 	private readonly nativePreviewPort?: ComposerNativePreviewPort;
 	private readonly blockDraftGeneration?: ComposerBlockDraftGenerationPort;
+	private readonly modelSelection?: ComposerModelSelectionPort;
 
 	constructor(
 		private readonly source: ObsidianComposerSourceAdapter,
@@ -121,6 +129,7 @@ export class DocumentComposerRuntime {
 		this.imagePorts = adapters.imagePorts;
 		this.nativePreviewPort = adapters.nativePreviewPort;
 		this.blockDraftGeneration = adapters.blockDraftGeneration;
+		this.modelSelection = adapters.modelSelection;
 	}
 
 	/** Override the transaction config once the runtime JSON resolves (async). */
@@ -164,6 +173,10 @@ export class DocumentComposerRuntime {
 		const imagePreviewResolver = this.imagePorts
 			? (path: string, sourcePath?: string) => this.imagePorts!.attachment.previewUri(path, sourcePath)
 			: undefined;
+		const candidateRuntime =
+			capabilityRuntime && imageCoordinator
+				? new CompositeComposerCandidateRuntime(capabilityRuntime, imageCoordinator)
+				: capabilityRuntime ?? imageCoordinator;
 		// WP9 — one Intelligence runtime per document, bound to this hub for the
 		// accepted-change → History receipt bridge. App-owned (no singleton).
 		const intelligence = new IntelligenceRuntime({
@@ -190,10 +203,12 @@ export class DocumentComposerRuntime {
 			...(this.linkPort ? { linkPort: this.linkPort } : {}),
 			...(this.vaultInventory ? { vaultInventory: this.vaultInventory } : {}),
 			...(this.formulaDetailGenerator ? { formulaDetailGenerator: this.formulaDetailGenerator } : {}),
-			...(capabilityRuntime ? { projection: capabilityRuntime, candidateRuntime: capabilityRuntime } : {}),
+			...(capabilityRuntime ? { projection: capabilityRuntime } : {}),
+			...(candidateRuntime ? { candidateRuntime } : {}),
 			...(imageCoordinator ? { imageCoordinator } : {}),
 			...(this.nativePreviewPort ? { nativePreviewPort: this.nativePreviewPort } : {}),
 			...(this.blockDraftGeneration ? { blockDraftGeneration: this.blockDraftGeneration } : {}),
+			...(this.modelSelection ? { modelSelection: this.modelSelection } : {}),
 			...(imagePreviewResolver ? { imagePreviewResolver } : {}),
 		};
 	}

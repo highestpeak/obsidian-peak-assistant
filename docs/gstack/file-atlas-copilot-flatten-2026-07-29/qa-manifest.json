@@ -1,0 +1,54 @@
+[
+  {
+    "name": "atlas-tree",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "metrics": {
+      "bodyScrollWidth": 1440,
+      "bodyClientWidth": 1440,
+      "toolbarText": "All\nOverview\nReading\nWriting\nResources",
+      "copilotTitle": "Copilot 建议",
+      "firstSuggestion": "把这条改写成更适合面试表达的版本",
+      "flat": false
+    },
+    "overflow": false,
+    "checks": {
+      "iconOnlyToolbar": true
+    }
+  },
+  {
+    "name": "atlas-flat",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "metrics": {
+      "bodyScrollWidth": 1440,
+      "bodyClientWidth": 1440,
+      "toolbarText": "All\nOverview\nReading\nWriting\nResources",
+      "flat": true,
+      "flattenLabel": "Restore hierarchy"
+    },
+    "overflow": false,
+    "checks": {
+      "iconOnlyToolbar": true,
+      "ariaLabelPresent": true
+    }
+  },
+  {
+    "name": "atlas-narrow-flat",
+    "viewport": {
+      "width": 900,
+      "height": 900
+    },
+    "metrics": {
+      "bodyScrollWidth": 900,
+      "bodyClientWidth": 900,
+      "railVisible": false,
+      "cards": 4
+    },
+    "overflow": false
+  }
+]

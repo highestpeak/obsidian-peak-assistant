@@ -8,7 +8,8 @@
  *       map, default reasons, weak overlay;
  *   (2) `emptyRelatedSnapshot` is the safe degraded value (no items, empty graph);
  *   (3) `buildFocusRunContext` / `resolveRelatedFocus` capture the REAL focused
- *       block (block target + verbatim slice) and degrade to a document target;
+ *       block (block target + verbatim slice) and default to meaningful body
+ *       content rather than YAML frontmatter;
  *   (4) the focus context frozen through `CopilotSessionMachine.send` carries the
  *       focused block id (not a document-level fallback).
  */
@@ -40,6 +41,7 @@ function item(id: string, path: string, finalScore: number): SearchResultItem {
 		title: id.replace(/-/g, ' '),
 		path,
 		lastModified: 0,
+		content: `${id} material preview content`,
 		finalScore,
 	};
 }
@@ -48,7 +50,7 @@ function item(id: string, path: string, finalScore: number): SearchResultItem {
 {
 	const items = [
 		item('a', 'notes/a.md', 0.2),
-		item('b', 'projects/b.md', 0.9),
+		{ ...item('b', 'projects/b.md', 0.9), content: '---\ntags: [internal]\n---\nReadable source B preview.' },
 		item('c', 'c.md', 0.5),
 	];
 	const snap = buildRelatedSnapshot({
@@ -70,9 +72,11 @@ function item(id: string, path: string, finalScore: number): SearchResultItem {
 	check('weak overlay carried', snap.weakNodeIds.includes('a'));
 
 	// preview excludes weak + focus, strongest first, capped.
-	const preview = selectLocalPreview(snap, 5);
+	const preview = selectLocalPreview(snap, 5, 240);
 	check('preview excludes weak node', !preview.some((n) => n.sourceId === 'a'));
 	check('preview strongest first', preview[0]?.sourceId === 'b');
+	check('preview carries a readable excerpt', preview[0]?.excerpt === 'Readable source B preview.');
+	check('preview does not expose leading frontmatter', !preview[0]?.excerpt.includes('tags:'));
 	check('material count is items.length', relatedMaterialCount(snap) === 3);
 }
 
@@ -82,12 +86,13 @@ function item(id: string, path: string, finalScore: number): SearchResultItem {
 	check('empty has no items', empty.items.length === 0);
 	check('empty graph has no nodes', empty.graph.resultNodes.length === 0);
 	check('empty focus rootNode is the document', empty.focus.rootNodeId === 'doc/x.md');
-	check('empty preview is empty', selectLocalPreview(empty, 6).length === 0);
+	check('empty preview is empty', selectLocalPreview(empty, 6, 240).length === 0);
 }
 
 // ── focus fixtures ──────────────────────────────────────────────────────────────
 function makeSnapshot(): ComposerDocumentSnapshot {
-	const sourceText = '# Title\n\nAlpha paragraph body.\n\nBeta paragraph body.';
+	const sourceText = '---\ncreated: 2026-07-28\ntags: [qa]\n---\n\n# Title\n\nAlpha paragraph body.\n\nBeta paragraph body.';
+	const frontmatterTo = sourceText.indexOf('\n\n# Title');
 	const heading = sourceText.indexOf('# Title');
 	const alphaFrom = sourceText.indexOf('Alpha');
 	const alphaTo = alphaFrom + 'Alpha paragraph body.'.length;
@@ -107,6 +112,7 @@ function makeSnapshot(): ComposerDocumentSnapshot {
 		revision: 'r1',
 		sourceText,
 		blocks: [
+			block('frontmatter-0-f', 'frontmatter', 0, frontmatterTo),
 			block('heading-0-t', 'heading', heading, heading + '# Title'.length),
 			block('paragraph-1-a', 'paragraph', alphaFrom, alphaTo),
 			block('paragraph-2-b', 'paragraph', betaFrom, betaTo),
@@ -130,10 +136,15 @@ function makeSnapshot(): ComposerDocumentSnapshot {
 	check('focus revision is snapshot revision', focused.snapshot.revision === 'r1');
 	check('focus nearby captured', (focused.snapshot.nearby?.before ?? '').includes('Alpha'));
 
-	// no focus → document-level target with a bounded excerpt (still has context).
+	// no focus → first meaningful body block, never YAML frontmatter.
 	const doc = buildFocusRunContext(snapshot, null);
-	check('no-focus target is document', doc.snapshot.target.kind === 'document');
-	check('no-focus targetSource is a document excerpt', doc.snapshot.targetSource.includes('Alpha'));
+	check('no-focus target is the first body block', doc.snapshot.target.kind === 'block');
+	check(
+		'no-focus target skips frontmatter',
+		doc.snapshot.target.kind === 'block'
+			&& doc.snapshot.target.blockId === 'heading-0-t'
+			&& doc.snapshot.targetSource === '# Title',
+	);
 
 	// null snapshot → hard document fallback.
 	const none = buildFocusRunContext(null, 'paragraph-2-b');
@@ -150,8 +161,8 @@ function makeSnapshot(): ComposerDocumentSnapshot {
 	check('related focusText is the block slice', focus.focusText === 'Alpha paragraph body.');
 
 	const docFocus = resolveRelatedFocus(snapshot, null);
-	check('no-focus related anchor is the document', docFocus.anchorId === 'doc/here.md');
-	check('no-focus related focusText is a document excerpt', docFocus.focusText.includes('Alpha'));
+	check('no-focus related anchor is the first body block', docFocus.anchorId === 'heading-0-t');
+	check('no-focus related focusText skips frontmatter', docFocus.focusText === '# Title');
 
 	const none = resolveRelatedFocus(null, 'x');
 	check('null snapshot related focus is empty', none.focusText === '' && none.documentId === 'document');

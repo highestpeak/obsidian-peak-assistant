@@ -568,7 +568,7 @@ export const ComposerImageFileNameModelSchema = z.object({
 export type ComposerImageFileNameModel = z.infer<typeof ComposerImageFileNameModelSchema>;
 
 /** Why an image-asset candidate exists (drives the review affordances). */
-export const ComposerImageAssetIntentSchema = z.enum(['paste', 'ai-edit', 'convert']);
+export const ComposerImageAssetIntentSchema = z.enum(['paste', 'ai-edit', 'convert', 'rename']);
 export type ComposerImageAssetIntent = z.infer<typeof ComposerImageAssetIntentSchema>;
 
 /**
@@ -590,7 +590,7 @@ export const ComposerImageAssetCandidatePayloadSchema = z.object({
 	/** Exact output byte size (== blob.size). */
 	byteSize: z.number().int().nonnegative().optional(),
 	altText: z.string().optional(),
-	/** Present for paste/convert intents that offer a semantic rename. */
+	/** Present for paste/convert/rename intents that offer a semantic rename. */
 	fileName: ComposerImageFileNameModelSchema.optional(),
 });
 export type ComposerImageAssetCandidatePayload = z.infer<typeof ComposerImageAssetCandidatePayloadSchema>;

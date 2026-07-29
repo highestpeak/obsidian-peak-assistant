@@ -20,8 +20,12 @@ function assertDecl(block: string, declaration: string, message: string): void {
 }
 
 const css = read('src/styles/composer-sidecar.css');
+const composerCss = read('src/styles/composer.css');
+const peakComponentsCss = read('src/styles/peak-components.css');
 const sidecarTsx = read('src/ui/view/composer/sidecar/IntelligenceSidecar.tsx');
 const sidecarConfig = read('src/ui/view/composer/sidecar/sidecarConfig.ts');
+const relatedModalTsx = read('src/ui/view/composer/sidecar/RelatedMaterialsModal.tsx');
+const quickSearchModalTsx = read('src/app/ui-host/modals/QuickSearchModal.tsx');
 
 const sidecar = cssBlock(css, '.pk-sidecar');
 assertDecl(sidecar, 'flex: 0 0 430px;', 'desktop sidecar must keep the canonical 430px column');
@@ -44,9 +48,13 @@ assert.ok(!sidecarDrawer.includes('position: fixed;'), 'narrow drawer must not u
 assertDecl(sidecarDrawer, 'border: 1px solid var(--pk-border);', 'narrow drawer must keep the complete card border');
 assertDecl(sidecarDrawer, 'border-radius: 18px;', 'narrow drawer must keep the complete card radius');
 assertDecl(sidecarDrawer, 'box-shadow: var(--pk-shadow-modal);', 'narrow drawer must keep the complete card shadow');
+assertDecl(sidecarDrawer, 'z-index: var(--pk-sidecar-drawer-surface-z, 91);', 'narrow drawer surface must render above sticky Composer chrome');
 assertDecl(sidecarDrawer, 'visibility: hidden;', 'drawer closed state should be visually hidden');
 assertDecl(sidecarDrawer, 'pointer-events: none;', 'drawer closed state should disable pointer interaction');
-assertDecl(sidecarDrawer, 'transition: transform 180ms ease;', 'drawer should keep a close/open transition');
+assert.ok(
+	/transition:[\s\S]*transform 180ms ease/.test(sidecarDrawer),
+	'drawer should keep a close/open transition while allowing opacity and delayed visibility',
+);
 assertDecl(cssBlock(css, '.pk-sidecar-drawer--open'), 'visibility: visible;', 'drawer open state should restore interactivity');
 assertDecl(cssBlock(css, '.pk-sidecar-drawer--open'), 'pointer-events: auto;', 'drawer open state should restore pointer interaction');
 
@@ -63,6 +71,11 @@ assertDecl(measuringAnchor, 'max-width: 0;', 'measuring anchor must keep max-wid
 const desktopAnchor = cssBlock(css, ".pk-sidecar-anchor[data-sidecar-mode='desktop']");
 assertDecl(desktopAnchor, 'display: flex;', 'desktop anchor must lay out the sidecar as a flex track');
 assertDecl(desktopAnchor, 'align-items: stretch;', 'desktop anchor must stretch the sidecar card');
+assertDecl(desktopAnchor, 'overflow: hidden;', 'desktop anchor must clip the fixed-width sidecar while its track closes');
+assert.ok(
+	desktopAnchor.includes('max-width 260ms cubic-bezier(0.4, 0, 0.2, 1)'),
+	'desktop anchor must animate max-width instead of snapping its hard width clamp to zero',
+);
 assertDecl(
 	cssBlock(css, ".pk-sidecar-anchor[data-sidecar-mode='desktop'][data-open='true']"),
 	'flex: 0 0 444px;',
@@ -95,22 +108,30 @@ assertDecl(
 );
 assertDecl(cssBlock(css, ".pk-sidecar-anchor[data-sidecar-mode='drawer']"), 'max-width: none;', 'drawer mode anchor must not clamp host overlay width');
 assertDecl(cssBlock(css, ".pk-sidecar-anchor[data-sidecar-mode='drawer']"), 'pointer-events: none;', 'drawer overlay anchor must not intercept document interactions when closed');
+assertDecl(cssBlock(css, ".pk-sidecar-anchor[data-sidecar-mode='drawer']"), 'z-index: var(--pk-sidecar-drawer-z, 90);', 'drawer overlay anchor must sit above the sticky Composer control bar');
 
 const rootWithSidecar = cssBlock(css, ".peak-composer-root[data-with-sidecar='true']");
+assertDecl(rootWithSidecar, '--pk-sidecar-drawer-z: 90;', 'drawer overlay layer must stay above the 80 sticky controlbar layer');
+assertDecl(rootWithSidecar, '--pk-sidecar-drawer-surface-z: 91;', 'drawer surface layer must stay above its overlay anchor');
+assertDecl(rootWithSidecar, '--pk-sidecar-modal-z: 110;', 'related material modal must stay above the open drawer');
 assertDecl(rootWithSidecar, 'position: relative;', 'with-sidecar root must be the drawer positioning container');
 assertDecl(rootWithSidecar, 'padding: 0;', 'with-sidecar root must not own shared stage padding');
 assertDecl(rootWithSidecar, 'overflow: hidden;', 'with-sidecar root must bound the shell and prevent horizontal page overflow');
+
+const controlbar = cssBlock(composerCss, '.peak-composer-root .pk-composer-controlbar');
+assertDecl(controlbar, 'z-index: 80;', 'sticky Composer control bar is the layer drawer must cover');
 
 const mainWithSidecar = cssBlock(css, ".peak-composer-root[data-with-sidecar='true'] .pk-composer-main");
 assertDecl(mainWithSidecar, 'overflow-y: auto;', 'Composer main must own vertical scrolling when the sidecar is mounted');
 assertDecl(mainWithSidecar, 'padding: var(--pkc-stage-pad-y-top) var(--pkc-stage-pad-x) var(--pkc-stage-pad-y-bottom);', 'Composer main must own stage gutters when the sidecar is mounted');
 
 const closedSidecar = cssBlock(css, '.pk-sidecar--closed');
-assertDecl(closedSidecar, 'flex-basis: 0;', 'closed desktop sidecar child must collapse its own flex basis');
-assertDecl(closedSidecar, 'width: 0 !important;', 'closed desktop sidecar child must collapse width despite button reset rules');
-assertDecl(closedSidecar, 'min-width: 0 !important;', 'closed desktop sidecar child must collapse min-width despite reset rules');
-assertDecl(closedSidecar, 'margin: 0;', 'closed desktop sidecar child must not leak gutter width');
-assertDecl(closedSidecar, 'border-width: 0;', 'closed desktop sidecar child must not leak border width');
+assertDecl(closedSidecar, 'opacity: 0;', 'closed desktop sidecar child must fade while the outer track collapses');
+assertDecl(closedSidecar, 'transform: translateX(18px);', 'closed desktop sidecar child must ease toward the dock edge');
+assert.ok(
+	!closedSidecar.includes('width: 0') && !closedSidecar.includes('max-width: 0') && !closedSidecar.includes('flex-basis: 0'),
+	'desktop sidecar child must preserve its geometry so the animated outer track owns the collapse',
+);
 
 assert.ok(
 	!css.includes('.pk-sidecar-open-toggle'),
@@ -146,6 +167,36 @@ assertDecl(tab, 'font-weight: 620;', 'primary switch labels must keep the canoni
 const activeTab = cssBlock(css, '.pk-sidecar-tab--active');
 assertDecl(activeTab, 'background: var(--pk-surface);', 'active primary tab must use a raised surface');
 assertDecl(activeTab, 'box-shadow: var(--pk-shadow-sm);', 'active primary tab must keep the subtle shadow');
+
+const relatedModalOverlay = cssBlock(css, '.pk-related-modal-overlay');
+assertDecl(relatedModalOverlay, 'z-index: var(--pk-sidecar-modal-z, 110);', 'related material modal must cover the drawer and sticky Composer chrome');
+const resultBrowserFrame = cssBlock(peakComponentsCss, '.peak-result-browser-modal-frame');
+assertDecl(resultBrowserFrame, '--pk-result-browser-frame-top: 80px;', 'Result Browser frame keeps the production Quick Search top offset');
+assertDecl(resultBrowserFrame, '--pk-result-browser-frame-width: 1100px;', 'Result Browser frame keeps the production Quick Search width');
+assertDecl(resultBrowserFrame, '--pk-result-browser-frame-max-width: 90vw;', 'Result Browser frame keeps the production Quick Search responsive cap');
+assertDecl(resultBrowserFrame, '--pk-result-browser-frame-height: calc(100vh - 160px);', 'Result Browser frame keeps the production Quick Search viewport height');
+assert.ok(
+	quickSearchModalTsx.includes("modalEl.addClass('peak-result-browser-modal-frame')"),
+	'Quick Search must consume the shared Result Browser modal frame',
+);
+assert.ok(
+	relatedModalTsx.includes('pk-related-modal peak-result-browser-modal-frame'),
+	'related materials must consume the same Result Browser modal frame',
+);
+const relatedModal = cssBlock(css, '.pk-related-modal.pk-modal-shell[data-state]');
+assertDecl(relatedModal, 'top: var(--pk-result-browser-frame-top);', 'related material modal must consume the shared Quick Search top geometry');
+assertDecl(relatedModal, 'left: 50%;', 'related material modal must center against the owner viewport');
+assertDecl(relatedModal, 'width: var(--pk-result-browser-frame-width);', 'related material modal must consume the shared Quick Search desktop width');
+assertDecl(relatedModal, 'height: var(--pk-result-browser-frame-height);', 'related material modal must consume the shared Quick Search viewport height');
+assertDecl(relatedModal, 'max-width: var(--pk-result-browser-frame-max-width);', 'related material modal must consume the shared Quick Search responsive width cap');
+assertDecl(relatedModal, 'transform: translateX(-50%);', 'related material modal must not compensate for the sidecar with a fixed offset');
+const relatedContent = cssBlock(css, '.pk-related-content');
+assertDecl(relatedContent, 'grid-template-columns: minmax(0, 1fr);', 'related material list owns the full width while inspector is closed');
+const relatedContentWithInspector = cssBlock(css, '.pk-related-content--inspector');
+assertDecl(relatedContentWithInspector, 'grid-template-columns: minmax(0, 1fr) 340px;', 'related material inspector matches Search narrow side-panel width');
+const relatedFilter = cssBlock(css, '.pk-related-filter');
+assertDecl(relatedFilter, 'width: 100%;', 'related material query field occupies its own full-width row');
+assertDecl(relatedFilter, 'max-width: none;', 'related material query field is not squeezed into the toolbar');
 
 assert.ok(
 	/narrowBreakpointPx:\s*1180/.test(sidecarConfig),

@@ -220,7 +220,9 @@ function createTableDefinition(
 		version: '1',
 		owner: 'composer-table',
 		configKey: spec.id,
-		surfaces: ['object-toolbar'],
+		// Table AI belongs to the shared bottom capability row. The top object
+		// toolbar is reserved for deterministic cell/table operations.
+		surfaces: ['block-row'],
 		targetKinds: TABLE_TARGET_KINDS,
 		// Table AI is model-backed: the model emits a typed table-patch JSON
 		// object, materialized on completion (fence-strip → parse → schema).

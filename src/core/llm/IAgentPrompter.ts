@@ -15,6 +15,8 @@ export interface AgentPrompterQueryOpts {
 	usageAction?: string;
 	usageSessionId?: string;
 	usageCallback?: (usage: LLMUsage) => void;
+	/** Optional per-run model override within the active provider profile. */
+	modelId?: string;
 }
 
 /**

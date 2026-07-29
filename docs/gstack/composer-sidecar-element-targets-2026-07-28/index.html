@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Composer Sidecar · 局部修改目标</title>
+  <style>
+    :root {
+      --canvas: #f2f3f5;
+      --surface: #ffffff;
+      --sunken: #f6f6f8;
+      --line: #e4e5e9;
+      --line-strong: #d9dbe2;
+      --text: #172033;
+      --muted: #7a808c;
+      --quiet: #a0a4ad;
+      --accent: #7c3aed;
+      --accent-soft: #f2eaff;
+      --accent-border: #d8bfff;
+      font-family: Inter, "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      background: var(--canvas);
+      color: var(--text);
+    }
+    button { font: inherit; }
+    .page {
+      width: min(560px, calc(100vw - 40px));
+      margin: 36px auto;
+    }
+    .note {
+      margin: 0 0 12px 2px;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: .02em;
+    }
+    .sidecar {
+      overflow: hidden;
+      border: 1px solid var(--line-strong);
+      border-radius: 22px;
+      background: var(--surface);
+      box-shadow: 0 18px 44px rgba(25, 28, 38, .10);
+    }
+    .section {
+      padding: 22px 22px 24px;
+    }
+    .section + .section {
+      border-top: 1px solid var(--line);
+    }
+    .section-head {
+      display: flex;
+      min-height: 34px;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 12px;
+    }
+    .section-head strong {
+      font-size: 16px;
+      letter-spacing: -.01em;
+    }
+    .count {
+      display: inline-grid;
+      width: 30px;
+      height: 30px;
+      place-items: center;
+      border-radius: 999px;
+      background: var(--sunken);
+      color: #4f5561;
+      font-size: 13px;
+      font-weight: 650;
+    }
+    .section-hint {
+      min-width: 0;
+      color: var(--quiet);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .refresh {
+      display: inline-flex;
+      height: 32px;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+      padding: 0 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: var(--surface);
+      color: #656b77;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .icon {
+      width: 15px;
+      height: 15px;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+    .suggestions {
+      display: grid;
+      gap: 8px;
+    }
+    .suggestion {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr);
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid transparent;
+      border-radius: 14px;
+      background: var(--surface);
+    }
+    .suggestion + .suggestion {
+      border-top-color: var(--line);
+      border-radius: 0;
+    }
+    .suggestion.selected {
+      border-color: #ebddff;
+      border-radius: 14px;
+      background: linear-gradient(90deg, var(--accent-soft), #ffffff 72%);
+    }
+    .rank {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, .76);
+      color: #9a9da5;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .08em;
+    }
+    .suggestion-copy { min-width: 0; }
+    .suggestion-title {
+      display: -webkit-box;
+      overflow: hidden;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 720;
+      line-height: 1.45;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+    .suggestion-desc {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .suggestion-foot {
+      display: flex;
+      min-height: 28px;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .suggestion-meta {
+      overflow: hidden;
+      color: var(--quiet);
+      font-size: 11px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .suggestion-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: auto;
+    }
+    .quiet-action {
+      display: inline-flex;
+      height: 27px;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 0 8px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: #6f7581;
+      font-size: 11px;
+      font-weight: 650;
+    }
+    .quiet-action:hover { background: #ffffff; color: var(--accent); }
+    .quiet-action.icon-only {
+      width: 27px;
+      padding: 0;
+    }
+    .quiet-action .icon { width: 13px; height: 13px; }
+    .material-shell {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--surface);
+    }
+    .material-summary {
+      padding: 8px 14px 0;
+      background: var(--surface);
+    }
+    .material-summary-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 2px 9px;
+    }
+    .material-summary-head strong {
+      font-size: 12px;
+      font-weight: 680;
+    }
+    .material-summary-head span {
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .material-list {
+      display: grid;
+      gap: 0;
+    }
+    .material-row {
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 9px;
+      width: 100%;
+      min-height: 52px;
+      padding: 8px 10px;
+      border: 0;
+      border-top: 1px solid var(--line);
+      border-radius: 0;
+      background: #fff;
+      color: inherit;
+      cursor: pointer;
+      text-align: left;
+      transition: background-color 150ms ease, color 150ms ease;
+    }
+    .material-row-index {
+      display: grid;
+      width: 28px;
+      height: 28px;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--sunken);
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .material-row-copy {
+      min-width: 0;
+    }
+    .material-row strong {
+      display: block;
+      overflow: hidden;
+      font-size: 12px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .material-row small {
+      display: block;
+      overflow: hidden;
+      margin-top: 2px;
+      color: var(--quiet);
+      font-size: 10px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .material-row-score {
+      min-width: 38px;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+      text-align: right;
+    }
+    .material-row.selected {
+      background: #faf7ff;
+    }
+    .material-row.selected .material-row-index {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+    .material-row:hover,
+    .material-row:focus-visible {
+      outline: 0;
+      background: #f5f2fa;
+    }
+    .material-row:hover .material-row-index,
+    .material-row:focus-visible .material-row-index {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+    .material-detail {
+      padding: 13px 16px 12px;
+      border-top: 1px solid var(--line);
+      background: #fbfbfc;
+    }
+    .preview-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 7px;
+    }
+    .preview-kicker {
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .preview-help {
+      color: var(--quiet);
+      font-size: 10px;
+    }
+    .material-title {
+      display: block;
+      font-size: 14px;
+      font-weight: 720;
+    }
+    .material-reason {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .material-excerpt {
+      display: block;
+      margin-top: 9px;
+      padding-left: 9px;
+      border-left: 2px solid var(--accent-border);
+      color: #555c69;
+      font-size: 11px;
+      line-height: 1.55;
+    }
+    .material-path {
+      display: block;
+      overflow: hidden;
+      margin-top: 4px;
+      color: var(--quiet);
+      font-size: 10px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .material-actions {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+    }
+    .view-all {
+      display: inline-flex;
+      height: 30px;
+      align-items: center;
+      gap: 6px;
+      padding: 0 4px;
+      border: 0;
+      background: transparent;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .view-all .icon { width: 13px; height: 13px; }
+    .view-all .chevron { width: 12px; height: 12px; }
+    .material-actions-right {
+      display: inline-flex;
+      gap: 6px;
+      margin-left: auto;
+    }
+    .secondary-action {
+      height: 30px;
+      padding: 0 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 9px;
+      background: var(--surface);
+      color: #676d78;
+      font-size: 11px;
+      font-weight: 650;
+    }
+    .target-note {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .target-note span {
+      padding: 9px 10px;
+      border-left: 2px solid var(--accent-border);
+      background: rgba(255,255,255,.7);
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="note">Composer Intelligence · 仅展示本轮三个修改元素</div>
+    <div class="sidecar">
+      <section class="section">
+        <div class="section-head">
+          <strong>接下来可能要做</strong>
+          <span class="count">5</span>
+          <span class="section-hint">按影响与正文顺序排序</span>
+        </div>
+        <div class="suggestions">
+          <article class="suggestion selected">
+            <span class="rank">01</span>
+            <div class="suggestion-copy">
+              <span class="suggestion-title">回想这篇笔记最初所在的项目路径，并沿着知识库目录结构逐级定位它之前所属的主题位置。</span>
+              <span class="suggestion-desc">当前正文中的 checklist 仍未完成。</span>
+              <div class="suggestion-foot">
+                <span class="suggestion-meta">当前任务清单 · 未完成任务</span>
+                <span class="suggestion-actions">
+                  <button class="quiet-action">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 3l1.2 4.2L17 9l-3.8 1.8L12 15l-1.2-4.2L7 9l3.8-1.8L12 3Z"/><path d="M18.5 3.5v4M20.5 5.5h-4"/></svg>
+                    问 Copilot
+                  </button>
+                  <button class="quiet-action icon-only" title="移到后面" aria-label="移到后面">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M5 6h10M5 11h7M5 16h5"/><path d="M16 11v8M13 16l3 3 3-3"/></svg>
+                  </button>
+                </span>
+              </div>
+            </div>
+          </article>
+          <article class="suggestion">
+            <span class="rank">02</span>
+            <div class="suggestion-copy">
+              <span class="suggestion-title">回想可能链接到当前内容的另一篇笔记，从已有双向链接和引用关系中继续顺藤摸瓜。</span>
+              <span class="suggestion-desc">当前正文中的 checklist 仍未完成。</span>
+              <div class="suggestion-foot">
+                <span class="suggestion-meta">当前任务清单 · 未完成任务</span>
+                <span class="suggestion-actions">
+                  <button class="quiet-action">问 Copilot</button>
+                  <button class="quiet-action icon-only" aria-label="移到后面">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M5 6h10M5 11h7M5 16h5"/><path d="M16 11v8M13 16l3 3 3-3"/></svg>
+                  </button>
+                </span>
+              </div>
+            </div>
+          </article>
+          <article class="suggestion">
+            <span class="rank">03</span>
+            <div class="suggestion-copy">
+              <span class="suggestion-title">回想这篇笔记可能归入的专题索引，通过索引内部的分类结构跳转到更准确的位置。</span>
+              <span class="suggestion-desc">当前正文中的 checklist 仍未完成。</span>
+              <div class="suggestion-foot">
+                <span class="suggestion-meta">当前任务清单 · 未完成任务</span>
+                <span class="suggestion-actions">
+                  <button class="quiet-action">问 Copilot</button>
+                  <button class="quiet-action icon-only" aria-label="移到后面">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M5 6h10M5 11h7M5 16h5"/><path d="M16 11v8M13 16l3 3 3-3"/></svg>
+                  </button>
+                </span>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <strong>相关材料</strong>
+          <span class="count">3</span>
+          <span class="section-hint">作为建议依据，不直接改正文</span>
+          <button class="refresh">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
+            更新
+          </button>
+        </div>
+        <div class="material-shell">
+          <div class="material-summary">
+            <div class="material-summary-head">
+              <strong>支持当前建议的材料</strong>
+              <span>选择一条查看依据</span>
+            </div>
+            <div class="material-list">
+              <button
+                type="button"
+                class="material-row selected"
+                aria-pressed="true"
+                data-title="Peak Assistant Copilot PRD"
+                data-reason="同一 Copilot 产品方向，可作为交互和能力边界依据。"
+                data-excerpt="Copilot 应围绕当前正文给出可定位、可审阅的建议；材料只作为建议依据，不直接写入正文。"
+                data-path="kb2-learn-prd/B-Z-mess/AI-peakAssistant-Copilot-prd-snapshot.md"
+              >
+                <span class="material-row-index">01</span>
+                <span class="material-row-copy">
+                  <strong>Peak Assistant Copilot PRD</strong>
+                  <small>同一产品方向 · 交互与能力边界</small>
+                </span>
+                <span class="material-row-score">94%</span>
+              </button>
+              <button
+                type="button"
+                class="material-row"
+                aria-pressed="false"
+                data-title="AI Workflow"
+                data-reason="描述建议如何进入审阅、接受和回退流程。"
+                data-excerpt="建议进入正文前必须经过用户确认；接受、调整和回退都应保留清楚的动作边界。"
+                data-path="sections/AI-workflow.md"
+              >
+                <span class="material-row-index">02</span>
+                <span class="material-row-copy">
+                  <strong>AI Workflow</strong>
+                  <small>工作流约束 · 建议进入正文前需确认</small>
+                </span>
+                <span class="material-row-score">88%</span>
+              </button>
+              <button
+                type="button"
+                class="material-row"
+                aria-pressed="false"
+                data-title="知识调用：填充还是搜索"
+                data-reason="解释检索材料与直接生成内容之间的产品边界。"
+                data-excerpt="知识调用不是自动填充。系统应先检索、展示来源和相关原因，再由用户决定是否带入协作。"
+                data-path="research/peakassistant-知识调用是否是填而不是搜索.md"
+              >
+                <span class="material-row-index">03</span>
+                <span class="material-row-copy">
+                  <strong>知识调用：填充还是搜索</strong>
+                  <small>知识调用策略 · 检索与生成边界</small>
+                </span>
+                <span class="material-row-score">82%</span>
+              </button>
+            </div>
+          </div>
+          <div class="material-detail">
+            <div class="preview-head">
+              <span class="preview-kicker" id="previewMode">当前材料预览</span>
+              <span class="preview-help">悬浮预览 · 点击固定</span>
+            </div>
+            <span class="material-title" id="previewTitle">Peak Assistant Copilot PRD</span>
+            <span class="material-reason" id="previewReason">同一 Copilot 产品方向，可作为交互和能力边界依据。</span>
+            <span class="material-excerpt" id="previewExcerpt">Copilot 应围绕当前正文给出可定位、可审阅的建议；材料只作为建议依据，不直接写入正文。</span>
+            <span class="material-path" id="previewPath">kb2-learn-prd/B-Z-mess/AI-peakAssistant-Copilot-prd-snapshot.md</span>
+            <div class="material-actions">
+              <button class="view-all">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M14 4h6v6"/><path d="M10 14 20 4"/><path d="M20 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5"/></svg>
+                查看全部 3 条材料
+                <svg class="icon chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+              <span class="material-actions-right">
+                <button class="secondary-action">查看来源</button>
+                <button class="secondary-action">带入协作</button>
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <div class="target-note">
+      <span>长标题最多两行；只有标题本身过长时换行，不再被右侧动作挤压。</span>
+      <span>侧栏展示可读材料摘要；完整 List / Tree / Graph 进入“查看全部材料”弹窗。</span>
+    </div>
+  </main>
+  <script>
+    const rows = Array.from(document.querySelectorAll(".material-row"));
+    const previewMode = document.querySelector("#previewMode");
+    const previewTitle = document.querySelector("#previewTitle");
+    const previewReason = document.querySelector("#previewReason");
+    const previewExcerpt = document.querySelector("#previewExcerpt");
+    const previewPath = document.querySelector("#previewPath");
+    let pinnedRow = rows[0];
+
+    function renderPreview(row, mode) {
+      previewMode.textContent = mode;
+      previewTitle.textContent = row.dataset.title;
+      previewReason.textContent = row.dataset.reason;
+      previewExcerpt.textContent = row.dataset.excerpt;
+      previewPath.textContent = row.dataset.path;
+    }
+
+    function pinRow(row) {
+      pinnedRow = row;
+      rows.forEach((candidate) => {
+        const selected = candidate === row;
+        candidate.classList.toggle("selected", selected);
+        candidate.setAttribute("aria-pressed", String(selected));
+      });
+      renderPreview(row, "已固定的材料");
+    }
+
+    rows.forEach((row) => {
+      row.addEventListener("mouseenter", () => renderPreview(row, "悬浮预览"));
+      row.addEventListener("focus", () => renderPreview(row, "键盘预览"));
+      row.addEventListener("mouseleave", () => renderPreview(pinnedRow, "当前材料预览"));
+      row.addEventListener("blur", () => renderPreview(pinnedRow, "当前材料预览"));
+      row.addEventListener("click", () => pinRow(row));
+    });
+  </script>
+</body>
+</html>

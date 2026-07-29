@@ -3,6 +3,7 @@ import type {
 	ComposerCandidateRuntimePort,
 	ComposerCapabilityProjectionPort,
 	ComposerDocumentSnapshot,
+	ComposerModelSelectionPort,
 	ComposerTransactionConfig,
 } from '@/core/composer';
 import { stubComposerCapabilityProjection } from '@/core/composer';
@@ -36,6 +37,8 @@ export interface ComposerChromeRuntime {
 	/** App-resolved timing policy shared with the transaction hub. */
 	transactionConfig?: ComposerTransactionConfig;
 	projection?: ComposerCapabilityProjectionPort;
+	/** App-owned model catalog for Copilot; selection is passed into the real run. */
+	modelSelection?: ComposerModelSelectionPort;
 	/**
 	 * The candidate runtime port the streaming candidate host consumes (streaming
 	 * events, accept / regenerate / variants). In production this is the SAME

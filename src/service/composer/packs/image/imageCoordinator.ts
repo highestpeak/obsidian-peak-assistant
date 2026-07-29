@@ -110,6 +110,14 @@ export interface ImageAiEditInput {
 	variants?: number;
 }
 
+export interface ImageRenameInput {
+	sourcePath: string;
+	blockId: string;
+	desiredBaseName: string;
+	width?: number;
+	height?: number;
+}
+
 interface VariantPlan {
 	/** Final vault path this variant's embed points at (asset flows only). */
 	assetPath?: string;
@@ -121,7 +129,7 @@ interface VariantPlan {
 	historyLabel: string;
 }
 
-type ImageFlowKind = 'paste' | 'convert' | 'ai-edit' | 'caption' | 'layout';
+type ImageFlowKind = 'paste' | 'convert' | 'rename' | 'ai-edit' | 'caption' | 'layout';
 
 interface AssetCandidateMeta {
 	flow: ImageFlowKind;
@@ -174,6 +182,10 @@ export class ImageCapabilityCoordinator implements ComposerCandidateRuntimePort 
 
 	private get config() {
 		return this.deps.config ? this.deps.config() : DEFAULT_IMAGE_DOMAIN_CONFIG;
+	}
+
+	get converterDefaultQuality(): number {
+		return this.config.converter.defaultQuality;
 	}
 
 	// ── Paste flow (CMP-IMG-01 / CMP-IMG-02) ────────────────────────────────────
@@ -287,6 +299,51 @@ export class ImageCapabilityCoordinator implements ComposerCandidateRuntimePort 
 		};
 		const candidate = this.deps.hub.createCandidate({
 			target: { kind: 'block', blockId: input.replaceBlockId },
+			proposedChange: { operations: plan.operations, result: plan.envelope, summary: plan.historyLabel },
+		});
+		meta.plans.set(candidate.activeVariantId, plan);
+		this.meta.set(candidate.candidateId, meta);
+		return candidate.candidateId;
+	}
+
+	/**
+	 * Open a real existing-asset rename review. Accept first records the current
+	 * document's reference rewrite in Composer History, then asks the host to
+	 * rename the file and update backlinks in other documents. If the host rename
+	 * fails, the document transaction is immediately undone.
+	 */
+	beginRename(input: ImageRenameInput): string {
+		const extension = extensionOf(input.sourcePath);
+		const baseName = buildFileNameVersions(input.desiredBaseName, [], this.config.naming)[0];
+		const finalPath = this.renameTargetPath(input.sourcePath, baseName, extension);
+		const rewrite = planReferenceRewrite(this.deps.session, input.sourcePath, finalPath);
+		const envelope = this.assetPayload('rename', finalPath, extension, mimeForExtension(extension), {
+			width: input.width,
+			height: input.height,
+			fileName: { versions: [baseName], activeIndex: 0, extension },
+			previewPath: input.sourcePath,
+		});
+		const plan: VariantPlan = {
+			assetPath: finalPath,
+			baseName,
+			operations: rewrite.operations,
+			blockDelta: 0,
+			envelope,
+			historyLabel: 'Rename image',
+		};
+		const meta: AssetCandidateMeta = {
+			flow: 'rename',
+			rendererId: COMPOSER_IMAGE_ASSET_RENDERER_ID,
+			savedPath: input.sourcePath,
+			extension,
+			mimeType: mimeForExtension(extension),
+			...(input.width !== undefined ? { width: input.width } : {}),
+			...(input.height !== undefined ? { height: input.height } : {}),
+			editTarget: { kind: 'block', blockId: input.blockId },
+			plans: new Map(),
+		};
+		const candidate = this.deps.hub.createCandidate({
+			target: { kind: 'block', blockId: input.blockId },
 			proposedChange: { operations: plan.operations, result: plan.envelope, summary: plan.historyLabel },
 		});
 		meta.plans.set(candidate.activeVariantId, plan);
@@ -485,12 +542,32 @@ export class ImageCapabilityCoordinator implements ComposerCandidateRuntimePort 
 		}
 		const plan = meta.plans.get(candidate.activeVariantId);
 		if (!plan) throw new Error(`no plan for active variant of ${candidateId}`);
-		// Only a paste offers a rename: its asset was written under an initial name
-		// and the chosen version may differ. ai-edit / convert already point at the
-		// final, independently-written file — never rename those.
+		// A pasted asset is not referenced yet, so its physical rename safely
+		// happens before inserting the reference.
 		if (meta.flow === 'paste' && plan.assetPath && plan.assetPath !== meta.savedPath) {
 			await this.deps.reference.rename(meta.savedPath, plan.assetPath);
 			meta.savedPath = plan.assetPath;
+		}
+		// Existing assets need the opposite order: Composer owns the current
+		// document reference + History, then Obsidian updates the physical file and
+		// any remaining backlinks. Undo immediately if that host step fails.
+		if (meta.flow === 'rename' && plan.assetPath && plan.assetPath !== meta.savedPath) {
+			await this.deps.hub.commit({
+				origin: 'deterministic',
+				label: plan.historyLabel,
+				operations: plan.operations,
+				target: candidate.target,
+				expectedBlockDelta: plan.blockDelta,
+			});
+			try {
+				await this.deps.reference.rename(meta.savedPath, plan.assetPath);
+			} catch (cause) {
+				await this.deps.hub.undo();
+				throw cause;
+			}
+			this.deps.hub.discardCandidate(candidateId);
+			this.meta.delete(candidateId);
+			return;
 		}
 		await this.deps.hub.commit({
 			origin: meta.flow === 'paste' || meta.flow === 'convert' ? 'deterministic' : 'ai',
@@ -510,6 +587,30 @@ export class ImageCapabilityCoordinator implements ComposerCandidateRuntimePort 
 		const candidate = this.findCandidate(candidateId)!;
 		const current = candidate.variants.map((v) => meta.plans.get(v.variantId)?.baseName ?? '');
 		const nextBase = proposeAlternateName(instruction, current, this.config.naming.fallbackBaseName);
+		if (meta.flow === 'rename') {
+			const finalPath = this.renameTargetPath(meta.savedPath, nextBase, meta.extension);
+			const rewrite = planReferenceRewrite(this.deps.session, meta.savedPath, finalPath);
+			const envelope = this.assetPayload('rename', finalPath, meta.extension, meta.mimeType, {
+				width: meta.width,
+				height: meta.height,
+				fileName: { versions: [nextBase], activeIndex: 0, extension: meta.extension },
+				previewPath: meta.savedPath,
+			});
+			const plan: VariantPlan = {
+				assetPath: finalPath,
+				baseName: nextBase,
+				operations: rewrite.operations,
+				blockDelta: 0,
+				envelope,
+				historyLabel: 'Rename image',
+			};
+			const updated = this.deps.hub.addVariant(candidateId, {
+				...(instruction !== undefined ? { instruction } : {}),
+				proposedChange: { operations: plan.operations, result: plan.envelope, summary: plan.historyLabel },
+			});
+			meta.plans.set(updated.activeVariantId, plan);
+			return { runId: nextRunId(), cancel: () => {} };
+		}
 		const insertion = meta.insertion!;
 		const finalPath = dedupeAttachmentPath(
 			this.deps.attachment.attachmentFolder(),
@@ -763,12 +864,13 @@ export class ImageCapabilityCoordinator implements ComposerCandidateRuntimePort 
 			height?: number;
 			byteSize?: number;
 			fileName?: { versions: string[]; activeIndex: number; extension: string };
+			previewPath?: string;
 		},
 	): ComposerResultEnvelope<ComposerImageAssetCandidatePayload> {
 		const payload = ComposerImageAssetCandidatePayloadSchema.parse({
 			intent,
 			assetPath,
-			previewUri: this.deps.attachment.previewUri(assetPath),
+			previewUri: this.deps.attachment.previewUri(extra.previewPath ?? assetPath),
 			mimeType,
 			...(extra.width !== undefined ? { width: extra.width } : {}),
 			...(extra.height !== undefined ? { height: extra.height } : {}),
@@ -781,6 +883,20 @@ export class ImageCapabilityCoordinator implements ComposerCandidateRuntimePort 
 	private pathTaken(path: string, meta: AssetCandidateMeta): boolean {
 		// The asset already lives at savedPath; every other proposed variant path is free.
 		return path === meta.savedPath;
+	}
+
+	private renameTargetPath(sourcePath: string, baseName: string, extension: string): string {
+		const folder = folderOf(sourcePath);
+		const direct = folder.length > 0
+			? `${folder}/${baseName}.${extension}`
+			: `${baseName}.${extension}`;
+		if (direct === sourcePath) return sourcePath;
+		return dedupeAttachmentPath(
+			folder,
+			baseName,
+			extension,
+			(path) => path !== sourcePath && (this.deps.attachment.exists?.(path) ?? false),
+		);
 	}
 
 	private failVariantSafely(candidateId: string): void {
@@ -817,6 +933,26 @@ function baseNameOf(path: string): string {
 	const file = path.slice(path.lastIndexOf('/') + 1);
 	const dot = file.lastIndexOf('.');
 	return dot > 0 ? file.slice(0, dot) : file;
+}
+
+function folderOf(path: string): string {
+	const slash = path.lastIndexOf('/');
+	return slash > 0 ? path.slice(0, slash) : '';
+}
+
+function extensionOf(path: string): string {
+	const file = path.slice(path.lastIndexOf('/') + 1);
+	const dot = file.lastIndexOf('.');
+	return dot > 0 ? file.slice(dot + 1).toLowerCase() : 'png';
+}
+
+function mimeForExtension(extension: string): string {
+	if (extension === 'jpg' || extension === 'jpeg') return 'image/jpeg';
+	if (extension === 'webp') return 'image/webp';
+	if (extension === 'gif') return 'image/gif';
+	if (extension === 'svg') return 'image/svg+xml';
+	if (extension === 'avif') return 'image/avif';
+	return 'image/png';
 }
 
 /** A deterministic alternate name proposal (uses a typed instruction verbatim). */

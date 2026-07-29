@@ -22,6 +22,7 @@ import type {
 	ComposerCandidateRuntimePort,
 	ComposerCapabilityProjectionPort,
 	ComposerDocumentSnapshot,
+	ComposerModelSelectionPort,
 	ComposerStateSource,
 	ComposerTransactionConfig,
 	DocumentComposerState,
@@ -59,6 +60,7 @@ export interface ComposerEditingRuntime {
 	transactionConfig?: ComposerTransactionConfig;
 	projection?: ComposerCapabilityProjectionPort;
 	candidateRuntime?: ComposerCandidateRuntimePort;
+	modelSelection?: ComposerModelSelectionPort;
 	comments: ComposerCommentStore;
 	linkPort?: ComposerLinkMetadataPort;
 	/** Vault property inventory scan for the Frontmatter property library (WP5 §8.2). */

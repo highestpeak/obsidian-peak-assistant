@@ -17,14 +17,15 @@ import type {
 
 /** Bounded surrounding-source window (chars) captured around the focus block. */
 const NEARBY_WINDOW = 400;
-/** Bounded document excerpt (chars) used when no single block owns the focus. */
-const DOCUMENT_EXCERPT = 800;
+/** Block kinds that are metadata/structural shells rather than useful Copilot prose context. */
+const NON_CONTENT_FOCUS_KINDS = new Set<ComposerBlock['kind']>(['frontmatter']);
 
 /**
  * Assemble the immutable run context for the focused block. When `focusedBlockId`
  * resolves to a block, the target is that block (verbatim source + bounded
- * nearby); otherwise it degrades to a document-level target carrying a bounded
- * document excerpt so a run still has context. Returns the context plus the
+ * nearby); otherwise it selects the first meaningful body block. This avoids
+ * treating YAML frontmatter as the user's prompt context when the Sidecar owns
+ * focus. Returns the context plus the
  * verbatim `targetQuote` used for the receipt's clickable body reference.
  */
 export function buildFocusRunContext(
@@ -43,18 +44,17 @@ export function buildFocusRunContext(
 			targetQuote: '',
 		};
 	}
-	const block = focusedBlockId ? findBlock(snapshot, focusedBlockId) : undefined;
+	const block = resolveFocusBlock(snapshot, focusedBlockId);
 	if (!block) {
-		const excerpt = snapshot.sourceText.slice(0, DOCUMENT_EXCERPT);
 		return {
 			snapshot: {
 				documentId: snapshot.documentId,
 				revision: snapshot.revision,
 				target: { kind: 'document', documentId: snapshot.documentId },
-				targetSource: excerpt,
+				targetSource: '',
 				nearby: { before: '', after: '' },
 			},
-			targetQuote: excerpt.trim(),
+			targetQuote: '',
 		};
 	}
 	const targetSource = snapshot.sourceText.slice(block.source.from, block.source.to);
@@ -75,7 +75,7 @@ export function buildFocusRunContext(
 
 /**
  * Resolve the related-material focus for the current chrome focus: the anchor id
- * (the focused block id, or the document id for a whole-document focus), the real
+ * (the focused block id, or the first meaningful body block), the real
  * document id, and the query text the related-search runs against. Pure.
  */
 export function resolveRelatedFocus(
@@ -83,12 +83,12 @@ export function resolveRelatedFocus(
 	focusedBlockId: string | null,
 ): { anchorId: string; documentId: string; focusText: string; label: string } {
 	if (!snapshot) return { anchorId: 'document', documentId: 'document', focusText: '', label: 'document' };
-	const block = focusedBlockId ? findBlock(snapshot, focusedBlockId) : undefined;
+	const block = resolveFocusBlock(snapshot, focusedBlockId);
 	if (!block) {
 		return {
 			anchorId: snapshot.documentId,
 			documentId: snapshot.documentId,
-			focusText: snapshot.sourceText.slice(0, DOCUMENT_EXCERPT),
+			focusText: '',
 			label: documentLabel(snapshot.filePath, snapshot.documentId),
 		};
 	}
@@ -111,6 +111,16 @@ function sourceLabel(source: string, fallback: string): string {
 function documentLabel(filePath: string, documentId: string): string {
 	const slash = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
 	return filePath.slice(slash + 1) || documentId;
+}
+
+/** Prefer the explicit focus; otherwise choose the first non-frontmatter body block. */
+export function resolveFocusBlock(
+	snapshot: ComposerDocumentSnapshot,
+	focusedBlockId: string | null,
+): ComposerBlock | undefined {
+	const explicit = focusedBlockId ? findBlock(snapshot, focusedBlockId) : undefined;
+	if (explicit && !NON_CONTENT_FOCUS_KINDS.has(explicit.kind)) return explicit;
+	return snapshot.blocks.find((block) => !NON_CONTENT_FOCUS_KINDS.has(block.kind));
 }
 
 /** Locate a block by exact id, falling back to the stable kind-ordinal prefix. */

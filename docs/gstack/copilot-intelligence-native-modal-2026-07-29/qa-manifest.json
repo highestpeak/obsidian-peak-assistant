@@ -1,0 +1,59 @@
+[
+  {
+    "name": "modal-copilot",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "metrics": {
+      "bodyScrollWidth": 1440,
+      "bodyClientWidth": 1440,
+      "tabText": "Copilot|History",
+      "modal": {
+        "x": 140,
+        "y": 40,
+        "width": 1160,
+        "height": 820,
+        "top": 40,
+        "right": 1300,
+        "bottom": 860,
+        "left": 140
+      },
+      "columnCount": 2,
+      "visiblePanel": "copilot"
+    },
+    "overflow": false,
+    "checks": {
+      "noSessionCandidateTabs": true,
+      "copilotHistoryOnly": true
+    }
+  },
+  {
+    "name": "modal-history",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "metrics": {
+      "bodyScrollWidth": 1440,
+      "bodyClientWidth": 1440,
+      "visiblePanel": "history",
+      "rows": 3
+    },
+    "overflow": false
+  },
+  {
+    "name": "modal-narrow-copilot",
+    "viewport": {
+      "width": 900,
+      "height": 900
+    },
+    "metrics": {
+      "bodyScrollWidth": 900,
+      "bodyClientWidth": 900,
+      "visiblePanel": "copilot",
+      "columnCount": 2
+    },
+    "overflow": false
+  }
+]
