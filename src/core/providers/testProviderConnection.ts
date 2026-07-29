@@ -1,6 +1,7 @@
 import type { Profile, ProfileKind } from '@/core/profiles/types';
 import { createPresetProfile } from '@/core/profiles/presets';
 import type { HttpClientPort } from '@/core/ports/HttpClientPort';
+import { simulatorHealthUrl } from '@/core/providers/simulator';
 
 /**
  * Test connectivity for a provider profile.
@@ -26,7 +27,14 @@ export async function testProviderConnection(
 
 		const { kind, baseUrl } = profile;
 		if (kind === 'simulator') {
-			return profile.primaryModel === 'ai-search-simulator' && !!profile.simulatorConfig?.scenario;
+			const res = await http.request({
+				url: simulatorHealthUrl(baseUrl),
+				method: 'GET',
+				throwOnError: false,
+			});
+			if (res.status < 200 || res.status >= 300) return false;
+			const payload = JSON.parse(res.text) as { ok?: unknown; service?: unknown };
+			return payload.ok === true && payload.service === 'peak-ai-search-simulator';
 		}
 		const key = profile.apiKey ?? '';
 		const headers: Record<string, string> = { 'Content-Type': 'application/json' };

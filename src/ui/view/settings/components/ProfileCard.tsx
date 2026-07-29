@@ -54,16 +54,28 @@ function getCredentialLabel(profile: Profile): string {
 }
 
 function SimulatorFields({
+    baseUrl,
     config,
+    onBaseUrlChange,
     onChange,
 }: {
+    baseUrl: string;
     config: SimulatorProfileConfig;
+    onBaseUrlChange: (baseUrl: string) => void;
     onChange: (config: SimulatorProfileConfig) => void;
 }) {
     return (
         <>
             <SectionTitle label={SIMULATOR_DEFAULTS.ui.sectionTitle} />
             <div className="pktw-space-y-2.5">
+                <FieldRow label={SIMULATOR_DEFAULTS.ui.endpointLabel}>
+                    <input
+                        className={INPUT_CLS}
+                        defaultValue={baseUrl}
+                        placeholder={SIMULATOR_DEFAULTS.endpoint.defaultBaseUrl}
+                        onBlur={(event) => onBaseUrlChange(event.target.value)}
+                    />
+                </FieldRow>
                 <FieldRow label={SIMULATOR_DEFAULTS.ui.scenarioLabel}>
                     <select
                         className={INPUT_CLS}
@@ -322,7 +334,9 @@ export function ProfileCard({
                 <div className="pktw-px-4 pktw-pb-4 pktw-border-t pktw-border-pk-border">
                     {isSimulator ? (
                         <SimulatorFields
+                            baseUrl={profile.baseUrl}
                             config={simulatorConfig}
+                            onBaseUrlChange={(baseUrl) => update({ baseUrl })}
                             onChange={(next) => update({ simulatorConfig: next })}
                         />
                     ) : (

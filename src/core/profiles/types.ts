@@ -48,7 +48,7 @@ export interface Profile {
   embeddingModel: string | null;
   icon: string | null;
   description: string | null;
-  /** Present only for the built-in, no-network Simulator provider. */
+  /** Present only for the standalone localhost Simulator provider. */
   simulatorConfig?: SimulatorProfileConfig;
 }
 

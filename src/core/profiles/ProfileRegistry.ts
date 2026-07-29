@@ -10,6 +10,7 @@ import type { Profile, ProfileSettings, RoleConfig, SdkSettings, OpenAICompatibl
 import { DEFAULT_SDK_SETTINGS } from './types';
 import type { ModelSlot } from '@/core/types/model-tier';
 import { DEFAULT_SIMULATOR_PROFILE_CONFIG } from './types';
+import { SIMULATOR_DEFAULTS } from '@/core/providers/simulator';
 
 export type PersistFn = (settings: ProfileSettings) => void | Promise<void>;
 
@@ -138,7 +139,7 @@ export class ProfileRegistry {
     if (p.kind === 'simulator') {
       return {
         ...p,
-        baseUrl: '',
+        baseUrl: p.baseUrl || SIMULATOR_DEFAULTS.endpoint.defaultBaseUrl,
         apiKey: null,
         primaryModel: 'ai-search-simulator',
         fastModel: 'ai-search-simulator',

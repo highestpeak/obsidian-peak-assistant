@@ -1,70 +1,12 @@
 {
-  "timing": {
-    "instantMs": 0,
-    "normalMs": 120,
-    "slowMs": 900,
-    "chunkSize": 80,
-    "minChunkDelayMs": 20,
-    "chunkDelayDivisor": 4
-  },
-  "workflow": {
-    "folderDepth": 2,
-    "noteMaxChars": 2500,
-    "invalidNoteMaxChars": 1,
-    "maxSelectedPaths": 6,
-    "recoveryMissingNotePath": "__simulator__/missing-note.md"
-  },
-  "usage": {
-    "inputTokens": 12,
-    "outputTokens": 8
-  },
-  "format": {
-    "sectionHeadingPrefix": "####"
-  },
-  "ui": {
-    "providerName": "AI Search Simulator",
-    "providerLabel": "Simulator",
-    "providerDescription": "Local AI Search testing",
-    "presetDescription": "Local, deterministic AI Search flow simulator",
-    "credentialLabel": "local · no network",
-    "sectionTitle": "Simulation",
-    "scenarioLabel": "Scenario",
-    "speedLabel": "Response speed",
-    "strictLabel": "Strict matching",
-    "instruction": "Scenario changes apply immediately. Bind this provider to Research above to test AI Search."
-  },
-  "planSections": [
-    {
-      "id": "sim-structure",
-      "contentType": "enumeration",
-      "visualType": "none",
-      "weight": 6,
-      "missionRole": "synthesis"
-    },
-    {
-      "id": "sim-evidence",
-      "contentType": "analysis",
-      "visualType": "table",
-      "weight": 7,
-      "missionRole": "decomposition"
-    },
-    {
-      "id": "sim-actions",
-      "contentType": "recommendation",
-      "visualType": "none",
-      "weight": 5,
-      "missionRole": "action_plan"
-    }
-  ],
-  "patterns": {
-    "partialReportSection": "Representative notes and evidence|代表性笔记与证据",
-    "mermaidRepair": "brokenMermaid|mermaid syntax|fix.*mermaid",
-    "insightAssignment": "insight_index|section_id|assign.*insight",
-    "summary": "executive summary|report summary|evidenceList|Evidence list|Generated Section Content|Evidence Sources Referenced|Research Plan",
-    "section": "section title|sectionTitle|mission role|evidence content|other sections|This Section|Evidence for This Section",
-    "cjk": "[\\u3400-\\u9fff]",
-    "sectionTitleLabels": ["Section title", "sectionTitle"],
-    "labelValue": "{label}\\*{0,2}\\s*[:：]\\s*([^\\n]+)"
+  "endpoint": {
+    "defaultBaseUrl": "http://127.0.0.1:43127/v1",
+    "apiKey": "peak-local-simulator",
+    "agentSdkModel": "claude-sonnet-4-6",
+    "agentSdkFastModel": "claude-haiku-4-5",
+    "scenarioHeader": "x-peak-simulator-scenario",
+    "speedHeader": "x-peak-simulator-speed",
+    "strictHeader": "x-peak-simulator-strict"
   },
   "scenarios": [
     {
@@ -113,82 +55,17 @@
     { "id": "normal", "label": "Normal", "description": "Short delay for visible state changes." },
     { "id": "slow", "label": "Slow", "description": "Longer delay for loading and cancellation checks." }
   ],
-  "errors": {
-    "planning": "Simulator scenario: planning request failed.",
-    "partialReport": "Simulator scenario: representative-evidence section failed.",
-    "totalReport": "Simulator scenario: report generation failed.",
-    "strictUnmatched": "Simulator strict mode could not classify this non-planning request.",
-    "unsupportedSdkTool": "Simulator SDK bridge received an unsupported tool-call response.",
-    "aborted": "Simulator request aborted."
-  },
-  "fixedResponses": {
-    "mermaid": "```mermaid\nflowchart LR\n  A[Vault evidence] --> B[Validated report]\n```",
-    "insightAssignment": "[]",
-    "defaultSectionTitle": "Simulated analysis",
-    "escalationReason": "Simulator scenario requests a stronger tier before Vault discovery."
-  },
-  "copy": {
-    "en": {
-      "titles": [
-        "Vault structure and dominant themes",
-        "Representative notes and evidence",
-        "Practical next steps"
-      ],
-      "rationaleSelected": "Simulator inspected the current Vault and selected {count} representative notes.",
-      "rationaleEmpty": "Simulator inspected the current Vault; no Markdown evidence was available.",
-      "coverage": "Dynamic Vault inspection reported {count} Markdown files.",
-      "questions": [
-        "Which theme should be explored in more depth?",
-        "Which sources should be excluded or added?",
-        "Should the report emphasize chronology or recommendations?"
-      ],
-      "briefs": [
-        "Summarize the structure and recurring themes visible in the selected evidence.",
-        "Connect representative notes to the main findings.",
-        "Turn the evidence into a small set of practical follow-up actions."
-      ],
-      "summary": [
-        "## Executive summary",
-        "The simulator completed the real AI Search orchestration without a remote model call.",
-        "The report is based on the Vault paths selected during the planning tool loop."
-      ],
-      "section": [
-        "This section was streamed by the local AI Search Simulator while the production report pipeline read the real selected evidence.",
-        "- The content verifies section lifecycle, rendering and source propagation.",
-        "- No paid or remote model endpoint was contacted."
-      ],
-      "generic": "Simulator generic response: the request reached the local provider successfully."
-    },
-    "zh": {
-      "titles": [
-        "Vault 结构与主要主题",
-        "代表性笔记与证据",
-        "可执行的下一步"
-      ],
-      "rationaleSelected": "Simulator 已检查当前 Vault，并选择了 {count} 篇代表性笔记。",
-      "rationaleEmpty": "Simulator 已检查当前 Vault，但没有可用的 Markdown 证据。",
-      "coverage": "动态 Vault 检查共发现 {count} 个 Markdown 文件。",
-      "questions": [
-        "哪个主题值得继续深入？",
-        "哪些来源需要排除或补充？",
-        "报告应该更强调时间演进还是行动建议？"
-      ],
-      "briefs": [
-        "总结所选证据中可见的 Vault 结构和重复主题。",
-        "把代表性笔记与主要发现连接起来。",
-        "把证据转化成少量可执行的后续行动。"
-      ],
-      "summary": [
-        "本地 Simulator 已通过真实的 AI Search 编排完成本次分析，全程没有调用远程模型。",
-        "报告内容来自规划阶段通过真实 Vault 工具选出的笔记路径。",
-        "你可以继续检查章节渲染、来源、保存、后台运行和历史记录等生产流程。"
-      ],
-      "section": [
-        "本章节由本地 AI Search Simulator 流式生成，生产报告管线仍然读取了真实的已选证据。",
-        "- 用于验证章节生命周期、Markdown 渲染和来源传递。",
-        "- 没有访问任何付费或远程模型端点。"
-      ],
-      "generic": "Simulator 通用响应：请求已成功到达本地 Provider。"
-    }
+  "ui": {
+    "providerName": "AI Search Simulator",
+    "providerLabel": "Simulator",
+    "providerDescription": "Standalone local AI Search provider",
+    "presetDescription": "Standalone localhost provider for deterministic AI Search testing",
+    "credentialLabel": "localhost sidecar",
+    "sectionTitle": "Simulator provider",
+    "endpointLabel": "Endpoint",
+    "scenarioLabel": "Scenario",
+    "speedLabel": "Response speed",
+    "strictLabel": "Strict matching",
+    "instruction": "Start with `npm run simulator`, then bind this provider to Research."
   }
 }

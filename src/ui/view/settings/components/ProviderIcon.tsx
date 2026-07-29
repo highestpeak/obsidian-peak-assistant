@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Bot, Settings2 } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import type { ProfileKind } from '@/core/profiles/types';
-import { SIMULATOR_DEFAULTS } from '@/core/providers/simulator/SimulatorDefaults';
+import { SIMULATOR_DEFAULTS } from '@/core/providers/simulator';
 
 // ---------------------------------------------------------------------------
 // Brand SVG icons

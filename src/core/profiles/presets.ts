@@ -7,7 +7,7 @@
  */
 
 import { DEFAULT_SIMULATOR_PROFILE_CONFIG, type Profile, type ProfileKind } from './types';
-import { SIMULATOR_DEFAULTS } from '@/core/providers/simulator/SimulatorDefaults';
+import { SIMULATOR_DEFAULTS } from '@/core/providers/simulator';
 
 function generateId(): string {
   return `profile_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -178,7 +178,7 @@ const PRESET_FACTORIES: Record<ProfileKind, (overrides?: Partial<Profile>) => Pr
     kind: 'simulator',
     enabled: true,
     createdAt: Date.now(),
-    baseUrl: '',
+    baseUrl: SIMULATOR_DEFAULTS.endpoint.defaultBaseUrl,
     apiKey: null,
     primaryModel: 'ai-search-simulator',
     fastModel: 'ai-search-simulator',

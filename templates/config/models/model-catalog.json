@@ -3,7 +3,7 @@
     {
       "id": "simulator",
       "name": "AI Search Simulator",
-      "defaultBaseUrl": "",
+      "defaultBaseUrl": "http://127.0.0.1:43127/v1",
       "icon": "simulator",
       "models": [
         {

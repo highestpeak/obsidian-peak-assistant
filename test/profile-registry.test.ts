@@ -101,7 +101,7 @@ async function run(): Promise<void> {
           customHeaders: { 'X-Org': 'test-org' },
         });
         const env = toAgentSdkEnv(p, 'claude-opus-4-6', 'claude-haiku-4-5');
-        assert.strictEqual(env.ANTHROPIC_CUSTOM_HEADERS, JSON.stringify({ 'X-Org': 'test-org' }));
+        assert.strictEqual(env.ANTHROPIC_CUSTOM_HEADERS, 'X-Org: test-org');
       },
     },
     {
