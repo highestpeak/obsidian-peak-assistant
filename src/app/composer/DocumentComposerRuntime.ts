@@ -35,6 +35,7 @@ import {
 	type BriefSensingPolicy,
 	type ImageDomainConfigProvider,
 	type IntelligenceTelemetryPort,
+	type ComposerHistoryPersistencePort,
 	type ComposerWorkspaceStatePersistencePort,
 	type FrozenComposerReviewSnapshot,
 	type OpenWritingMovesConfig,
@@ -71,6 +72,8 @@ export interface DocumentComposerRuntimeAdapters {
 	};
 	/** Canonical JSONL persistence for workspace scope, segments and Frozen Runs. */
 	workspaceStatePersistence?: ComposerWorkspaceStatePersistencePort;
+	/** Canonical committed transactions and Copilot receipts under DataStore. */
+	historyPersistence?: ComposerHistoryPersistencePort;
 	/** Per-document comment JSON persistence under the configured DataStore. */
 	commentPersistence?: ComposerCommentPersistencePort;
 	/** Vault link metadata (Obsidian metadata cache). */
@@ -139,6 +142,7 @@ export class DocumentComposerRuntime {
 	private readonly blockDraftGeneration?: ComposerBlockDraftGenerationPort;
 	private readonly modelSelection?: ComposerModelSelectionPort;
 	private readonly intelligenceVisibilityPreference?: DocumentComposerRuntimeAdapters['intelligenceVisibilityPreference'];
+	private readonly historyPersistence?: ComposerHistoryPersistencePort;
 	readonly navigation?: ComposerDocumentRouter;
 	readonly workspaceIntelligence: ComposerWorkspaceIntelligenceRuntime;
 
@@ -166,6 +170,7 @@ export class DocumentComposerRuntime {
 		this.blockDraftGeneration = adapters.blockDraftGeneration;
 		this.modelSelection = adapters.modelSelection;
 		this.intelligenceVisibilityPreference = adapters.intelligenceVisibilityPreference;
+		this.historyPersistence = adapters.historyPersistence;
 		this.navigation = adapters.navigation;
 		this.workspaceIntelligence = new ComposerWorkspaceIntelligenceRuntime(
 			adapters.workspaceStatePersistence,
@@ -317,6 +322,11 @@ export class DocumentComposerRuntime {
 		this.documentEntries.delete(oldPath);
 		this.documentEntries.set(newPath, entry);
 		this.workspaceIntelligence.renameDocument(session.snapshot.documentId, newPath);
+		void this.historyPersistence?.renameDocument(
+			session.snapshot.documentId,
+			oldPath,
+			newPath,
+		);
 	}
 
 	/**
@@ -353,6 +363,13 @@ export class DocumentComposerRuntime {
 		// accepted-change → History receipt bridge. App-owned (no singleton).
 		const intelligence = new IntelligenceRuntime({
 			hub,
+			...(this.historyPersistence
+				? {
+						historyPersistence: this.historyPersistence,
+						documentId: session.snapshot.documentId,
+						filePath: session.filePath,
+					}
+				: {}),
 			...(this.relatedMaterials ? { related: this.relatedMaterials } : {}),
 			...(this.intelligenceTelemetry ? { telemetry: this.intelligenceTelemetry } : {}),
 			getSnapshot: () => session.snapshot,
@@ -395,7 +412,11 @@ export class DocumentComposerRuntime {
 	 */
 	createTransactionHub(session: ComposerDocumentSession): ComposerTransactionHub {
 		const engine = new ComposerTransactionEngine(this.source, this.write, this.revisionService);
-		return new ComposerTransactionHub(session, { engine, config: this.transactionConfig });
+		return new ComposerTransactionHub(session, {
+			engine,
+			config: this.transactionConfig,
+			...(this.historyPersistence ? { historyPersistence: this.historyPersistence } : {}),
+		});
 	}
 
 	/** Bind the WP3 capability runtime factory (set once by the composition root). */

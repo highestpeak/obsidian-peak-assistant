@@ -44,6 +44,7 @@ import {
 import { DocumentComposerRuntime } from './DocumentComposerRuntime';
 import { ComposerDocumentRouter } from './ComposerDocumentRouter';
 import { ObsidianComposerWorkspaceStatePersistence } from './ObsidianComposerWorkspaceStatePersistence';
+import { ObsidianComposerHistoryPersistence } from './ObsidianComposerHistoryPersistence';
 import { ObsidianComposerEmbedAnchorAdapter } from './ObsidianComposerEmbedAnchorAdapter';
 import { ObsidianComposerNativeFileAdapter, ObsidianComposerNativePreviewAdapter } from './ObsidianNativeFileAdapter';
 import { ObsidianComposerNativeEmbedRenderer } from './ObsidianComposerNativeEmbedRenderer';
@@ -135,6 +136,8 @@ export async function composeDocumentComposerRuntime(
 	const commentBaseDir = joinAdapterPath(dataStoreDir, storage.commentsSubdir);
 	const telemetryBaseDir = joinAdapterPath(dataStoreDir, storage.telemetrySubdir);
 	const workspaceStateBaseDir = joinAdapterPath(dataStoreDir, storage.workspaceStateSubdir);
+	const documentHistoryBaseDir = joinAdapterPath(dataStoreDir, storage.documentHistorySubdir);
+	const copilotSessionBaseDir = joinAdapterPath(dataStoreDir, storage.copilotSessionSubdir);
 	const legacyPluginDir = options?.legacyPluginDir;
 	const legacyCommentBaseDir = legacyPluginDir
 		? joinAdapterPath(legacyPluginDir, LEGACY_COMMENT_STORE_SUBDIR)
@@ -191,6 +194,15 @@ export async function composeDocumentComposerRuntime(
 				fileName: storage.workspaceStateFile,
 				legacyFilePath: legacyWorkspaceStateFile,
 				compactionEventThreshold: storage.workspaceCompactionEventThreshold,
+			},
+		),
+		historyPersistence: new ObsidianComposerHistoryPersistence(
+			app,
+			documentHistoryBaseDir,
+			copilotSessionBaseDir,
+			{
+				identityFile: storage.documentIdentityFile,
+				copilotCompactionEventThreshold: storage.copilotCompactionEventThreshold,
 			},
 		),
 		commentPersistence: new ObsidianComposerCommentPersistence(

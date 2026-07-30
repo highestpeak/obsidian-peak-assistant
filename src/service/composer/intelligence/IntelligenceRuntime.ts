@@ -20,6 +20,7 @@
 
 import type { ComposerDocumentSnapshot, ComposerTransaction, ComposerTransactionEvent } from '@/core/composer';
 import type { ComposerTransactionHub } from '../transactionHub';
+import type { ComposerHistoryPersistencePort } from '../historyPersistence';
 import {
 	ComposerFindingStore,
 	type FindingIngestInput,
@@ -48,6 +49,10 @@ export interface IntelligenceRuntimeDeps {
 	briefSensing?: BriefSensingPolicy;
 	/** Only true when an app-owned candidate-preparation executor is available. */
 	autoPrepareAvailable?: boolean;
+	/** App-owned JSONL persistence for Copilot receipts and frozen run context. */
+	historyPersistence?: ComposerHistoryPersistencePort;
+	documentId?: string;
+	filePath?: string;
 }
 
 export class IntelligenceRuntime {
@@ -62,6 +67,13 @@ export class IntelligenceRuntime {
 	private readonly getSnapshot?: () => ComposerDocumentSnapshot;
 	private readonly produceFindings?: (snapshot: ComposerDocumentSnapshot) => readonly FindingIngestInput[];
 	private readonly briefSensing: BriefSensingPolicy;
+	private readonly historyPersistence?: ComposerHistoryPersistencePort;
+	private readonly documentId?: string;
+	private readonly filePath?: string;
+	private sessionHydrated = false;
+	private sessionChangedBeforeHydration = false;
+	private restoringSession = false;
+	private readonly sessionHistoryReady: Promise<void>;
 	private briefRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 	private lastBriefRefreshAt = 0;
 	/** Only producer-created ids are reconciled on the next Brief refresh. */
@@ -71,13 +83,18 @@ export class IntelligenceRuntime {
 		this.related = deps.related;
 		this.getSnapshot = deps.getSnapshot;
 		this.produceFindings = deps.produceFindings;
+		this.historyPersistence = deps.historyPersistence;
+		this.documentId = deps.documentId;
+		this.filePath = deps.filePath;
 		this.briefSensing = deps.briefSensing ?? DEFAULT_BRIEF_SENSING_POLICY;
 		this.brief = new ComposerBriefState({ autoPrepareAvailable: deps.autoPrepareAvailable });
 		this.telemetry = new RedactingTelemetry(deps.telemetry ?? NOOP_INTELLIGENCE_TELEMETRY);
 		this.unsubHub = deps.hub.on((e) => this.onTransactionEvent(e));
 		this.unsubSession = this.session.subscribe((projection) => {
 			this.brief.syncReceiptInsights(projection.receipts);
+			this.persistSessionProjection(projection);
 		});
+		this.sessionHistoryReady = this.hydrateSession();
 	}
 
 	/** Ingest a discovered finding (dedup + surface projection). */
@@ -224,6 +241,10 @@ export class IntelligenceRuntime {
 		this.unsubHub();
 	}
 
+	whenSessionHistoryReady(): Promise<void> {
+		return this.sessionHistoryReady;
+	}
+
 	// ── History bridge ────────────────────────────────────────────────────────────
 
 	private onTransactionEvent(e: ComposerTransactionEvent): void {
@@ -258,6 +279,55 @@ export class IntelligenceRuntime {
 			if (finding) findings.set(finding.fingerprint, finding);
 		}
 		return findings;
+	}
+
+	private async hydrateSession(): Promise<void> {
+		if (!this.historyPersistence || !this.documentId || !this.filePath) {
+			this.sessionHydrated = true;
+			return;
+		}
+		try {
+			const state = await this.historyPersistence.loadCopilotSession(
+				this.documentId,
+				this.filePath,
+			);
+			if (state && !this.sessionChangedBeforeHydration) {
+				this.restoringSession = true;
+				this.session.restore(state);
+				this.restoringSession = false;
+			}
+		} catch (error) {
+			console.warn('[Peak Composer] Copilot session replay failed:', error);
+		} finally {
+			this.restoringSession = false;
+			this.sessionHydrated = true;
+		}
+	}
+
+	private persistSessionProjection(
+		projection: ReturnType<CopilotSessionMachine['projection']>,
+	): void {
+		if (!this.historyPersistence || !this.documentId || !this.filePath) return;
+		if (this.restoringSession) return;
+		if (!this.sessionHydrated) {
+			if (
+				projection.receipts.length > 0
+				|| projection.stage !== 'brief'
+				|| projection.sessionTitle !== null
+			) {
+				this.sessionChangedBeforeHydration = true;
+			}
+			return;
+		}
+		void this.historyPersistence
+			.appendCopilotSession(
+				this.documentId,
+				this.filePath,
+				this.session.exportState(),
+			)
+			.catch((error) => {
+				console.warn('[Peak Composer] Copilot session append failed:', error);
+			});
 	}
 
 	/** Debounced idle sensing and throttle-bounded continuous sensing. */

@@ -35,6 +35,10 @@ import {
 } from '@/core/composer';
 import { ComposerCandidateStore, type AddVariantInput } from './candidateStore';
 import { ComposerHistoryStore } from './historyStore';
+import type {
+	ComposerDocumentHistoryEvent,
+	ComposerHistoryPersistencePort,
+} from './historyPersistence';
 import { ComposerTransactionEngine } from './transactionEngine';
 import { ComposerUndoRedoStore } from './undoRedoStore';
 import type { ComposerDocumentSession } from './documentSession';
@@ -77,16 +81,24 @@ export class ComposerTransactionHub {
 	private readonly ledger = new Map<string, ComposerTransaction>();
 	private readonly projectionSubs = new Set<(p: ComposerTransactionProjection) => void>();
 	private readonly eventSubs = new Set<(e: ComposerTransactionEvent) => void>();
+	private readonly historyPersistence?: ComposerHistoryPersistencePort;
+	private readonly historyReady: Promise<void>;
 
 	constructor(
 		private session: ComposerDocumentSession,
-		deps: { engine: ComposerTransactionEngine; config?: ComposerTransactionConfig },
+		deps: {
+			engine: ComposerTransactionEngine;
+			config?: ComposerTransactionConfig;
+			historyPersistence?: ComposerHistoryPersistencePort;
+		},
 	) {
 		this.engine = deps.engine;
 		const config = deps.config ?? DEFAULT_TRANSACTION_CONFIG;
 		this.candidates = new ComposerCandidateStore();
 		this.history = new ComposerHistoryStore(config);
 		this.undoRedo = new ComposerUndoRedoStore(config);
+		this.historyPersistence = deps.historyPersistence;
+		this.historyReady = this.hydrateHistory();
 	}
 
 	// ── subscriptions ───────────────────────────────────────────────────────────
@@ -144,15 +156,33 @@ export class ComposerTransactionHub {
 		};
 	}
 
+	/** Read the durable transaction behind a History row without exposing the ledger. */
+	historyTransaction(historyId: string): ComposerTransaction | null {
+		const item = this.history.find(historyId);
+		return item ? this.ledger.get(item.transactionId) ?? null : null;
+	}
+
+	/** Test/app synchronization point for async durable-history replay. */
+	whenHistoryReady(): Promise<void> {
+		return this.historyReady;
+	}
+
 	// ── commit ───────────────────────────────────────────────────────────────────
 
 	/** Commit a direct / deterministic / AI transaction atomically. */
 	async commit(input: ComposerCommitInput): Promise<ComposerTransaction> {
+		await this.historyReady;
 		const prev = this.session.snapshot;
 		const txn = await this.engine.commit(this.session, input);
 		this.ledger.set(txn.transactionId, txn);
 		this.history.record(txn);
 		this.undoRedo.pushCommit(txn);
+		await this.persistHistory({
+			type: 'document.transaction.committed',
+			eventId: `transaction:${txn.transactionId}`,
+			at: txn.committedAt,
+			transaction: txn,
+		});
 		this.revalidateCandidates(prev);
 		this.emit({ type: 'committed', transaction: txn });
 		this.notify();
@@ -327,6 +357,7 @@ export class ComposerTransactionHub {
 	 * transaction touched has since changed (a safe rebase is out of WP2 scope).
 	 */
 	async rollback(historyId: string): Promise<ComposerTransaction> {
+		await this.historyReady;
 		const item = this.history.find(historyId);
 		const txn = item ? this.ledger.get(item.transactionId) : undefined;
 		if (!item || !txn) throw new Error(`no rollbackable transaction for history ${historyId}`);
@@ -347,6 +378,13 @@ export class ComposerTransactionHub {
 		this.ledger.set(inverseTxn.transactionId, inverseTxn);
 		this.history.recordRollback(inverseTxn, historyId);
 		this.undoRedo.pushCommit(inverseTxn);
+		await this.persistHistory({
+			type: 'document.transaction.rolled-back',
+			eventId: `rollback:${inverseTxn.transactionId}`,
+			at: inverseTxn.committedAt,
+			transaction: inverseTxn,
+			targetHistoryId: historyId,
+		});
 		this.revalidateCandidates(prev);
 		this.emit({ type: 'rolled-back', transaction: inverseTxn, targetHistoryId: historyId });
 		this.notify();
@@ -373,6 +411,41 @@ export class ComposerTransactionHub {
 	private revalidateCandidates(prev: ComposerDocumentSnapshot): void {
 		const staleIds = this.candidates.revalidate(prev, this.session.snapshot);
 		if (staleIds.length > 0) this.emit({ type: 'candidates-revalidated', staleIds });
+	}
+
+	private async hydrateHistory(): Promise<void> {
+		if (!this.historyPersistence) return;
+		try {
+			const events = await this.historyPersistence.loadDocumentHistory(
+				this.session.snapshot.documentId,
+				this.session.filePath,
+			);
+			for (const event of [...events].sort((left, right) => left.at - right.at)) {
+				const transaction = event.transaction;
+				this.ledger.set(transaction.transactionId, transaction);
+				if (event.type === 'document.transaction.rolled-back') {
+					this.history.recordRollback(transaction, event.targetHistoryId);
+					continue;
+				}
+				this.history.record(transaction);
+			}
+			this.notify();
+		} catch (error) {
+			console.warn('[Peak Composer] document History replay failed:', error);
+		}
+	}
+
+	private async persistHistory(event: ComposerDocumentHistoryEvent): Promise<void> {
+		if (!this.historyPersistence) return;
+		try {
+			await this.historyPersistence.appendDocumentHistory(
+				this.session.snapshot.documentId,
+				this.session.filePath,
+				event,
+			);
+		} catch (error) {
+			console.warn('[Peak Composer] document History append failed:', error);
+		}
 	}
 
 	/**

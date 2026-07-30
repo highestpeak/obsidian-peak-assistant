@@ -58,6 +58,9 @@ export type RunArtifactCategory = 'changes' | 'insights' | 'sources' | 'trace';
 export interface FrozenRunContext {
 	readonly runId: string;
 	readonly snapshot: ComposerContextSnapshot;
+	/** Exact owner instruction submitted for this run. */
+	readonly instruction: string;
+	readonly startedAt: number;
 	/** Verbatim quote of the target at freeze time — click locates the doc block. */
 	readonly targetQuote: string;
 	/** Related-material source ids explicitly carried into this run. */
@@ -110,9 +113,17 @@ export interface RunReceipt {
 	readonly status: CopilotRunStatus;
 	/** Human action label ("润色当前段落"), resolved from config by the caller. */
 	readonly action: string;
+	/** Exact owner instruction. This is product history, not model reasoning. */
+	readonly instruction: string;
 	/** Short target label ("引言 · 第 2 段"). */
 	readonly targetLabel: string;
+	readonly targetQuote: string;
+	readonly startedAt: number;
+	readonly completedAt?: number;
 	readonly elapsedMs: number;
+	/** Safe result/no-change summary, never a raw provider payload. */
+	readonly responseSummary?: string;
+	readonly safeError?: string;
 	/** Contextual handoff retained for session resume/history explanation. */
 	readonly presentationOrigin?: IntelligencePresentationOrigin;
 	readonly changes: readonly RunChangeArtifact[];
@@ -146,6 +157,24 @@ export interface IntelligenceSessionProjection {
 	/** Explicit chips waiting to be frozen into the next run. */
 	readonly pendingCommentRefs: readonly ComposerCommentSourceRef[];
 	readonly pendingCapabilityId: ComposerCapabilityId | null;
+	/** Capability-runtime run id → session receipt id, used only for correlation. */
+	readonly externalRunAliases: Readonly<Record<string, string>>;
+}
+
+/** Durable, framework-neutral session state saved by the app-owned repository. */
+export interface CopilotSessionStateSnapshot {
+	readonly schemaVersion: 1;
+	readonly surface: IntelligenceTopSurface;
+	readonly stage: CopilotStage;
+	readonly runStatus: CopilotRunStatus;
+	readonly activeRunId: string | null;
+	readonly sessionTitle: string | null;
+	readonly pendingRelatedRefs: readonly string[];
+	readonly pendingCommentRefs: readonly ComposerCommentSourceRef[];
+	readonly pendingCapabilityId: ComposerCapabilityId | null;
+	readonly receipts: readonly RunReceipt[];
+	readonly frozenContexts: readonly FrozenRunContext[];
+	readonly externalRunAliases: Readonly<Record<string, string>>;
 }
 
 let runSeq = 0;
@@ -193,7 +222,53 @@ export class CopilotSessionMachine {
 			sessionTitle: this.sessionTitle,
 			pendingCommentRefs: this.pendingCommentRefs,
 			pendingCapabilityId: this.pendingCapabilityId,
+			externalRunAliases: Object.fromEntries(this.externalRunAliases),
 		};
+	}
+
+	/** Serializable state for JSONL persistence. */
+	exportState(): CopilotSessionStateSnapshot {
+		return cloneSessionState({
+			schemaVersion: 1,
+			surface: this.surface,
+			stage: this.stage,
+			runStatus: this.runStatus,
+			activeRunId: this.activeRunId,
+			sessionTitle: this.sessionTitle,
+			pendingRelatedRefs: this.pendingRelatedRefs,
+			pendingCommentRefs: this.pendingCommentRefs,
+			pendingCapabilityId: this.pendingCapabilityId,
+			receipts: [...this.receiptsById.values()],
+			frozenContexts: [...this.frozenById.values()],
+			externalRunAliases: Object.fromEntries(this.externalRunAliases),
+		});
+	}
+
+	/** Restore a persisted session without fabricating missing receipt details. */
+	restore(state: CopilotSessionStateSnapshot): void {
+		if (state.schemaVersion !== 1) return;
+		this.surface = state.surface;
+		this.stage = state.stage;
+		this.runStatus = state.runStatus;
+		this.activeRunId = state.activeRunId;
+		this.sessionTitle = state.sessionTitle;
+		this.pendingRelatedRefs = Object.freeze([...state.pendingRelatedRefs]);
+		this.pendingCommentRefs = freezeCommentRefs(state.pendingCommentRefs);
+		this.pendingCapabilityId = state.pendingCapabilityId;
+		this.receiptsById.clear();
+		for (const receipt of state.receipts) {
+			this.receiptsById.set(receipt.runId, cloneReceipt(receipt));
+		}
+		this.frozenById.clear();
+		for (const context of state.frozenContexts) {
+			this.frozenById.set(context.runId, freezeRunContext(context));
+		}
+		this.externalRunAliases.clear();
+		for (const [externalRunId, sessionRunId] of Object.entries(state.externalRunAliases)) {
+			if (!this.receiptsById.has(sessionRunId)) continue;
+			this.externalRunAliases.set(externalRunId, sessionRunId);
+		}
+		this.notify();
 	}
 
 	/** Switch top surface. Projection-only: does not touch run/receipt/session. */
@@ -237,6 +312,7 @@ export class CopilotSessionMachine {
 	 */
 	send(input: {
 		snapshot: ComposerContextSnapshot;
+		instruction?: string;
 		targetQuote: string;
 		relatedRefs?: readonly string[];
 		commentRefs?: readonly ComposerCommentSourceRef[];
@@ -244,11 +320,14 @@ export class CopilotSessionMachine {
 		presentationOrigin?: IntelligencePresentationOrigin | null;
 	}): FrozenRunContext {
 		const runId = nextRunId();
+		const startedAt = Date.now();
 		const relatedRefs = input.relatedRefs ?? this.pendingRelatedRefs;
 		const commentRefs = freezeCommentRefs(input.commentRefs ?? this.pendingCommentRefs);
 		const frozen: FrozenRunContext = Object.freeze({
 			runId,
 			snapshot: input.snapshot,
+			instruction: input.instruction?.trim() ?? '',
+			startedAt,
 			targetQuote: input.targetQuote,
 			relatedRefs: Object.freeze([...new Set(relatedRefs)]),
 			commentRefs,
@@ -267,7 +346,10 @@ export class CopilotSessionMachine {
 			runId,
 			status: 'assembling',
 			action: this.sessionTitle ?? '',
+			instruction: frozen.instruction,
 			targetLabel: input.targetQuote.slice(0, 48),
+			targetQuote: input.targetQuote,
+			startedAt,
 			elapsedMs: 0,
 			...(input.presentationOrigin
 				? { presentationOrigin: Object.freeze({ ...input.presentationOrigin }) }
@@ -297,7 +379,11 @@ export class CopilotSessionMachine {
 	 * `review` is entered from the current session and remembers it as the origin.
 	 */
 	markProposed(runId: string, receipt: Partial<RunReceipt>): void {
-		this.patchReceipt(runId, { ...receipt, status: 'proposed' });
+		this.patchReceipt(runId, {
+			...receipt,
+			status: 'proposed',
+			...this.completionFields(runId),
+		});
 		if (this.activeRunId !== runId) return;
 		this.runStatus = 'proposed';
 		this.reviewOriginStage = 'session';
@@ -307,7 +393,11 @@ export class CopilotSessionMachine {
 
 	/** Run finished with no proposed change — stay in the session (spec §Copilot). */
 	markNoChange(runId: string, receipt?: Partial<RunReceipt>): void {
-		this.patchReceipt(runId, { ...(receipt ?? {}), status: 'no-change' });
+		this.patchReceipt(runId, {
+			...(receipt ?? {}),
+			status: 'no-change',
+			...this.completionFields(runId),
+		});
 		if (this.activeRunId === runId) {
 			this.runStatus = 'no-change';
 			this.stage = 'session';
@@ -316,17 +406,24 @@ export class CopilotSessionMachine {
 	}
 
 	markError(runId: string, message: string): void {
-		this.patchReceipt(runId, { status: 'error', insights: [] });
+		this.patchReceipt(runId, {
+			status: 'error',
+			insights: [],
+			safeError: message,
+			...this.completionFields(runId),
+		});
 		if (this.activeRunId === runId) {
 			this.runStatus = 'error';
 			this.stage = 'session';
 		}
-		void message;
 		this.notify();
 	}
 
 	markCancelled(runId: string): void {
-		this.patchReceipt(runId, { status: 'cancelled' });
+		this.patchReceipt(runId, {
+			status: 'cancelled',
+			...this.completionFields(runId),
+		});
 		if (this.activeRunId === runId) {
 			this.runStatus = 'cancelled';
 			this.stage = 'session';
@@ -358,6 +455,7 @@ export class CopilotSessionMachine {
 	linkExternalRun(externalRunId: string, sessionRunId: string): void {
 		if (!this.receiptsById.has(sessionRunId)) return;
 		this.externalRunAliases.set(externalRunId, sessionRunId);
+		this.notify();
 	}
 
 	private updateRunStatus(runId: string, status: CopilotRunStatus): void {
@@ -370,6 +468,15 @@ export class CopilotSessionMachine {
 		const existing = this.receiptsById.get(runId);
 		if (!existing) return;
 		this.receiptsById.set(runId, { ...existing, ...patch });
+	}
+
+	private completionFields(runId: string): Pick<RunReceipt, 'completedAt' | 'elapsedMs'> {
+		const completedAt = Date.now();
+		const receipt = this.receiptsById.get(runId);
+		return {
+			completedAt,
+			elapsedMs: Math.max(0, completedAt - (receipt?.startedAt ?? completedAt)),
+		};
 	}
 
 	private notify(): void {
@@ -400,4 +507,24 @@ function commentSourceArtifact(ref: ComposerCommentSourceRef): RunSourceArtifact
 		blockId: ref.blockId,
 		trust: ref.trust,
 	};
+}
+
+function cloneSessionState(state: CopilotSessionStateSnapshot): CopilotSessionStateSnapshot {
+	return JSON.parse(JSON.stringify(state)) as CopilotSessionStateSnapshot;
+}
+
+function cloneReceipt(receipt: RunReceipt): RunReceipt {
+	return JSON.parse(JSON.stringify(receipt)) as RunReceipt;
+}
+
+function freezeRunContext(context: FrozenRunContext): FrozenRunContext {
+	const cloned = JSON.parse(JSON.stringify(context)) as FrozenRunContext;
+	return Object.freeze({
+		...cloned,
+		relatedRefs: Object.freeze([...cloned.relatedRefs]),
+		commentRefs: freezeCommentRefs(cloned.commentRefs),
+		...(cloned.presentationOrigin
+			? { presentationOrigin: Object.freeze({ ...cloned.presentationOrigin }) }
+			: {}),
+	});
 }

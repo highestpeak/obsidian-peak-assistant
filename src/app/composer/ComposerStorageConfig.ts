@@ -13,9 +13,13 @@ export interface ComposerStorageConfig {
 	commentsSubdir: string;
 	workspaceStateSubdir: string;
 	workspaceStateFile: string;
+	documentHistorySubdir: string;
+	copilotSessionSubdir: string;
+	documentIdentityFile: string;
 	telemetrySubdir: string;
 	telemetryFile: string;
 	workspaceCompactionEventThreshold: number;
+	copilotCompactionEventThreshold: number;
 	telemetryRotationBytes: number;
 	telemetryRetentionFiles: number;
 }
@@ -24,9 +28,13 @@ export const DEFAULT_COMPOSER_STORAGE_CONFIG: ComposerStorageConfig = {
 	commentsSubdir: 'composer/comments',
 	workspaceStateSubdir: 'records/composer/workspaces',
 	workspaceStateFile: 'current.jsonl',
+	documentHistorySubdir: 'records/document-history',
+	copilotSessionSubdir: 'records/copilot/sessions',
+	documentIdentityFile: 'document-index.json',
 	telemetrySubdir: 'telemetry/composer',
 	telemetryFile: 'composer-intelligence.jsonl',
 	workspaceCompactionEventThreshold: 200,
+	copilotCompactionEventThreshold: 200,
 	telemetryRotationBytes: 1_048_576,
 	telemetryRetentionFiles: 14,
 };
@@ -52,6 +60,18 @@ export async function loadComposerStorageConfig(): Promise<ComposerStorageConfig
 				storage.workspaceStateFile,
 				DEFAULT_COMPOSER_STORAGE_CONFIG.workspaceStateFile,
 			),
+			documentHistorySubdir: relativePath(
+				storage.documentHistorySubdir,
+				DEFAULT_COMPOSER_STORAGE_CONFIG.documentHistorySubdir,
+			),
+			copilotSessionSubdir: relativePath(
+				storage.copilotSessionSubdir,
+				DEFAULT_COMPOSER_STORAGE_CONFIG.copilotSessionSubdir,
+			),
+			documentIdentityFile: fileName(
+				storage.documentIdentityFile,
+				DEFAULT_COMPOSER_STORAGE_CONFIG.documentIdentityFile,
+			),
 			telemetrySubdir: relativePath(
 				storage.telemetrySubdir,
 				DEFAULT_COMPOSER_STORAGE_CONFIG.telemetrySubdir,
@@ -60,6 +80,10 @@ export async function loadComposerStorageConfig(): Promise<ComposerStorageConfig
 			workspaceCompactionEventThreshold: positiveInteger(
 				storage.workspaceCompactionEventThreshold,
 				DEFAULT_COMPOSER_STORAGE_CONFIG.workspaceCompactionEventThreshold,
+			),
+			copilotCompactionEventThreshold: positiveInteger(
+				storage.copilotCompactionEventThreshold,
+				DEFAULT_COMPOSER_STORAGE_CONFIG.copilotCompactionEventThreshold,
 			),
 			telemetryRotationBytes: positiveInteger(
 				storage.telemetryRotationBytes,

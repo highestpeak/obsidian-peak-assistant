@@ -312,5 +312,7 @@ export interface ComposerCandidateRuntimeSnapshot {
 	ownerId: 'capability' | 'image';
 	rendererId: ComposerRendererId;
 	label?: string;
+	/** Persisted semantic effect used by History presentation after reload. */
+	effectKind?: ComposerCapabilityEffectKind;
 	payload: unknown;
 }

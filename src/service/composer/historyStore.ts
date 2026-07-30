@@ -20,7 +20,6 @@
 
 import {
 	makeGroupId,
-	makeHistoryId,
 	composerTargetBlockId,
 	type ComposerHistoryItem,
 	type ComposerTarget,
@@ -54,9 +53,19 @@ function groupKeyFor(txn: ComposerTransaction): string | null {
 	return null;
 }
 
-function toChild(txn: ComposerTransaction): ComposerHistoryItem {
+function transactionHistoryId(transactionId: string): string {
+	return `history:transaction:${transactionId}`;
+}
+
+function groupHistoryId(transactionId: string): string {
+	return `history:group:${transactionId}`;
+}
+
+function toChild(txn: ComposerTransaction, grouped = false): ComposerHistoryItem {
 	return {
-		historyId: makeHistoryId(),
+		historyId: grouped
+			? groupHistoryId(txn.transactionId)
+			: transactionHistoryId(txn.transactionId),
 		transactionId: txn.transactionId,
 		origin: txn.origin,
 		label: txn.label,
@@ -93,6 +102,7 @@ export class ComposerHistoryStore {
 
 	/** Record a committed transaction, coalescing bursts / AI-run children. */
 	record(txn: ComposerTransaction): void {
+		if (this.hasTransaction(txn.transactionId)) return;
 		const key = groupKeyFor(txn);
 		const last = this.entries[this.entries.length - 1];
 		if (key && last && last._groupKey === key && this.withinWindow(txn, last, key)) {
@@ -100,7 +110,7 @@ export class ComposerHistoryStore {
 			return;
 		}
 		this.entries.push({
-			...toChild(txn),
+			...toChild(txn, Boolean(key)),
 			groupId: txn.groupId ?? (key ? makeGroupId() : undefined),
 			_groupKey: key ?? undefined,
 			_lastAt: txn.committedAt,
@@ -109,6 +119,7 @@ export class ComposerHistoryStore {
 
 	/** Append the inverse of a rolled-back transaction (never deletes history). */
 	recordRollback(inverse: ComposerTransaction, rolledBackHistoryId: string): void {
+		if (this.hasTransaction(inverse.transactionId)) return;
 		this.entries.push({
 			...toChild(inverse),
 			isRollback: true,
@@ -116,6 +127,13 @@ export class ComposerHistoryStore {
 			groupId: rolledBackHistoryId,
 			_lastAt: inverse.committedAt,
 		});
+	}
+
+	private hasTransaction(transactionId: string): boolean {
+		return this.entries.some((entry) =>
+			entry.transactionId === transactionId
+			|| entry.children?.some((child) => child.transactionId === transactionId),
+		);
 	}
 
 	/** Find an entry (top-level or child) by history id. */
@@ -143,7 +161,7 @@ export class ComposerHistoryStore {
 			// child is the original transaction it represented.
 			parent.children = [
 				{
-					historyId: makeHistoryId(),
+					historyId: transactionHistoryId(parent.transactionId),
 					transactionId: parent.transactionId,
 					origin: parent.origin,
 					label: parent.label,

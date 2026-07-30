@@ -18,6 +18,7 @@ import type {
 	ComposerTransactionHub,
 	ImageCapabilityCoordinator,
 	ComposerWorkspaceIntelligenceRuntime,
+	IntelligenceRuntime,
 	VaultPropertyScanPort,
 } from '@/service/composer';
 import type { FormulaDetailGeneratorPort } from '../blocks/math/formulaDetailStore';
@@ -75,6 +76,8 @@ export interface ComposerChromeRuntime {
 	blockDraftGeneration?: ComposerBlockDraftGenerationPort;
 	/** Workspace-lifetime scope, Work Segment and Frozen Run owner. */
 	workspaceIntelligence?: ComposerWorkspaceIntelligenceRuntime;
+	/** Per-document Copilot receipt owner used by the unified History projection. */
+	intelligence?: IntelligenceRuntime;
 }
 
 export interface ComposerChromeValue {

@@ -25,6 +25,7 @@ import {
 	type ComposerCandidate,
 	type ComposerCandidateRuntimeSnapshot,
 	type ComposerCandidateRuntimePort,
+	type ComposerCapabilityEffectKind,
 	type ComposerCapabilityRunEvent,
 	type ComposerInvocationHandle,
 	type ComposerOperation,
@@ -531,6 +532,7 @@ export class ImageCapabilityCoordinator implements ComposerCandidateRuntimePort 
 			ownerId: 'image',
 			rendererId: meta.rendererId,
 			label: this.findCandidate(candidateId)?.proposedChange.summary,
+			effectKind: imageFlowEffect(meta.flow),
 			payload: {
 				...meta,
 				plans: [...meta.plans.entries()],
@@ -1054,6 +1056,12 @@ function isImageFlow(value: string): value is ImageFlowKind {
 		|| value === 'ai-edit'
 		|| value === 'caption'
 		|| value === 'layout';
+}
+
+function imageFlowEffect(flow: ImageFlowKind): ComposerCapabilityEffectKind {
+	if (flow === 'caption') return 'rewrite';
+	if (flow === 'layout') return 'transform';
+	return 'asset-transaction';
 }
 
 class AbortRunError extends Error {

@@ -456,6 +456,7 @@ export class ComposerCapabilityDocumentRuntime
 			ownerId: 'capability',
 			rendererId: def.rendererId,
 			label: presentation.title,
+			effectKind: def.effectKind,
 			payload: meta,
 		};
 	}

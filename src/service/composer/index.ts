@@ -11,6 +11,8 @@ export * from './documentSession';
 export * from './transactionEngine';
 export * from './candidateStore';
 export * from './historyStore';
+export * from './historyActivity';
+export * from './historyPersistence';
 export * from './undoRedoStore';
 export * from './transactionHub';
 export * from './capabilities';

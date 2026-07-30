@@ -855,9 +855,13 @@
 		"commentsSubdir": "composer/comments",
 		"workspaceStateSubdir": "records/composer/workspaces",
 		"workspaceStateFile": "current.jsonl",
+		"documentHistorySubdir": "records/document-history",
+		"copilotSessionSubdir": "records/copilot/sessions",
+		"documentIdentityFile": "document-index.json",
 		"telemetrySubdir": "telemetry/composer",
 		"telemetryFile": "composer-intelligence.jsonl",
 		"workspaceCompactionEventThreshold": 200,
+		"copilotCompactionEventThreshold": 200,
 		"telemetryRotationBytes": 1048576,
 		"telemetryRetentionFiles": 14
 	},
