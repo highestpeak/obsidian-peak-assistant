@@ -164,6 +164,9 @@
     "searchPlaceholder": "Search this document's blocks, links, and headings...",
     "searchScope": "document",
     "filtersButton": "Filters",
+    "aiGraphsButton": "Open AI Graphs",
+    "flattenView": "Flatten document order",
+    "treeView": "Restore hierarchy",
     "filtersTitle": "Visible block types",
     "filtersHeadingHint": "Headings always stay visible",
     "filtersSelectAll": "Select all",
@@ -193,6 +196,7 @@
     "railOpenTitle": "Open",
     "railRecentTitle": "Recent",
     "railSortLabel": "Sort files",
+    "railSortRecent": "Recently viewed",
     "railSortFrequent": "Most used",
     "railSortName": "Name",
     "railResizeLabel": "Resize file rail",
@@ -217,7 +221,11 @@
     "nearestHeading": "Nearest heading",
     "trayTitle": "Tray",
     "sendToCopilot": "Send to Copilot",
-    "sendToCopilotHint": "Copilot handoff arrives in a later phase"
+    "sendToCopilotHint": "Opens the same document Copilot runtime; File Atlas remains read-only",
+    "copilotSuggestionsTitle": "Copilot suggestions",
+    "copilotSuggestionsEmpty": "No current suggestions for this note.",
+    "copilotSuggestionsLoading": "Loading document suggestions…",
+    "copilotOpen": "Discuss in Copilot"
   },
   "keywordStopwords": {
     "latin": ["the", "and", "for", "that", "this", "with", "you", "are", "but", "not", "can", "has", "was", "from", "into", "per", "its"],

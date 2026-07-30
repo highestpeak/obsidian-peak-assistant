@@ -19,13 +19,26 @@ import {
 	type ComposerChromeValue,
 } from '@/ui/view/composer/chrome/ComposerChromeContext';
 import {
-	IntelligenceSidecar,
+	DEFAULT_SIDECAR_CONFIG,
 	buildFocusRunContext,
+	loadSidecarConfig,
 	resolveRelatedFocus,
+	type SidecarConfig,
 } from '@/ui/view/composer/sidecar';
+import { BriefView } from '@/ui/view/composer/sidecar/BriefView';
+import { CopilotView } from '@/ui/view/composer/sidecar/CopilotView';
+import { HistoryView } from '@/ui/view/composer/sidecar/HistoryView';
+import {
+	SidecarProvider,
+	useSessionProjection,
+	useSidecar,
+	type SidecarContextValue,
+} from '@/ui/view/composer/sidecar/SidecarContext';
 import type { ComposerEditingRuntime } from './DocumentComposerController';
 import type { DocumentComposerController } from './DocumentComposerController';
 import { DEFAULT_COMPOSER_NAVIGATION_STRINGS } from './ComposerNavigationDefaults';
+import { Button, IconButton } from '@/ui/components/primitives';
+import { History, MessageSquare, Sparkles, X } from 'lucide-react';
 
 /**
  * Native Markdown companion host for the same app-owned Composer Intelligence
@@ -39,22 +52,36 @@ export class NativeMarkdownIntelligenceModal extends Modal {
 	private controllerSubscription: (() => void) | null = null;
 	private closed = true;
 	private config: ComposerConfig = DEFAULT_COMPOSER_CONFIG;
+	private previouslyFocused: HTMLElement | null = null;
 	private readonly originHostId = `markdown-intelligence-${crypto.randomUUID()}`;
 
 	constructor(
 		private readonly appContext: AppContext,
 		private readonly filePath: string,
+		private readonly initialContext?: {
+			blockId?: string;
+			findingId?: string;
+			sourceFrom?: number;
+			sourceTo?: number;
+		},
 	) {
 		super(appContext.app);
 	}
 
 	async onOpen(): Promise<void> {
+		this.previouslyFocused = this.containerEl.ownerDocument.activeElement as HTMLElement | null;
 		this.closed = false;
 		this.contentEl.empty();
 		this.modalEl.addClass('pk-native-intelligence-modal');
 		this.modalEl.addClass('peak-design-root');
 		this.contentEl.addClass('peak-composer-root');
 		this.contentEl.setAttribute('data-with-sidecar', 'true');
+		if (this.initialContext?.blockId) {
+			this.contentEl.setAttribute('data-initial-block-id', this.initialContext.blockId);
+		}
+		if (this.initialContext?.findingId) {
+			this.contentEl.setAttribute('data-initial-finding-id', this.initialContext.findingId);
+		}
 
 		const owner = this.appContext.runtimeRegistry.tryGetDocumentComposerRuntime();
 		if (!owner) {
@@ -94,10 +121,12 @@ export class NativeMarkdownIntelligenceModal extends Modal {
 			setTimeout(() => {
 				renderer.unmount();
 				this.contentEl.empty();
+				this.previouslyFocused?.focus();
 			}, 0);
 			return;
 		}
 		this.contentEl.empty();
+		this.previouslyFocused?.focus();
 	}
 
 	private renderPanel(): void {
@@ -112,6 +141,7 @@ export class NativeMarkdownIntelligenceModal extends Modal {
 					editing,
 					snapshot,
 					config: this.config,
+					initialContext: this.initialContext,
 					onClose: () => this.close(),
 					onOpenSource: (path) => {
 						void this.appContext.vaultNavigation.openLink(path, {
@@ -121,6 +151,19 @@ export class NativeMarkdownIntelligenceModal extends Modal {
 					},
 					onOpenExternal: (url) => {
 						this.contentEl.ownerDocument.defaultView?.open(url, '_blank');
+					},
+					onEscalate: () => {
+						const navigation = this.appContext.runtimeRegistry
+							.getDocumentComposerRuntime()
+							.navigation;
+						if (navigation) {
+							void navigation.open({
+								filePath: snapshot.filePath,
+								disposition: 'replace-current',
+								reason: 'view-conversion',
+							});
+						}
+						this.close();
 					},
 				},
 				this.appContext,
@@ -133,16 +176,25 @@ function NativeMarkdownIntelligencePanel({
 	editing,
 	snapshot,
 	config,
+	initialContext,
 	onClose,
 	onOpenSource,
 	onOpenExternal,
+	onEscalate,
 }: {
 	editing: ComposerEditingRuntime;
 	snapshot: ComposerDocumentSnapshot;
 	config: ComposerConfig;
+	initialContext?: {
+		blockId?: string;
+		findingId?: string;
+		sourceFrom?: number;
+		sourceTo?: number;
+	};
 	onClose(): void;
 	onOpenSource(path: string): void;
 	onOpenExternal(url: string): void;
+	onEscalate(): void;
 }): React.ReactElement {
 	const [candidateRegistry] = React.useState(createDefaultCandidateRendererRegistry);
 	const chromeValue = React.useMemo<ComposerChromeValue>(
@@ -171,24 +223,150 @@ function NativeMarkdownIntelligencePanel({
 		[candidateRegistry, config, editing, onOpenExternal, onOpenSource, snapshot],
 	);
 	const intelligence = editing.intelligence!;
+	const initialBlockId = React.useMemo(
+		() => resolveInitialBlockId(snapshot, initialContext),
+		[initialContext, snapshot],
+	);
+	const [sidecarConfig, setSidecarConfig] = React.useState<SidecarConfig>(DEFAULT_SIDECAR_CONFIG);
+	React.useEffect(() => {
+		let active = true;
+		void loadSidecarConfig().then((loaded) => {
+			if (active) setSidecarConfig(loaded);
+		});
+		return () => {
+			active = false;
+		};
+	}, []);
+	const sidecarValue = React.useMemo<SidecarContextValue>(() => ({
+		runtime: intelligence,
+		workspaceRuntime: editing.workspaceIntelligence,
+		documentId: snapshot.documentId,
+		documentSnapshot: snapshot,
+		hub: editing.hub,
+		documentFilePath: snapshot.filePath,
+		config: sidecarConfig,
+		onOpenSource,
+		getFocusedBlockId: () => initialBlockId,
+		resolveFocusContext: () => buildFocusRunContext(snapshot, initialBlockId),
+		resolveRelatedFocus: () => resolveRelatedFocus(snapshot, initialBlockId),
+		presentationOrigin: initialContext?.findingId && initialBlockId
+			? {
+					kind: 'automatic-suggestion',
+					findingId: initialContext.findingId,
+					blockId: initialBlockId,
+				}
+			: {
+					kind: 'native-editor',
+					filePath: snapshot.filePath,
+				},
+	}), [editing, initialBlockId, initialContext?.findingId, intelligence, onOpenSource, sidecarConfig, snapshot]);
 	return (
 		<ComposerChromeProvider value={chromeValue}>
-			<IntelligenceSidecar
-				runtime={intelligence}
-				workspaceRuntime={editing.workspaceIntelligence}
-				documentId={snapshot.documentId}
-				documentSnapshot={snapshot}
-				hub={editing.hub}
-				documentFilePath={snapshot.filePath}
-				open
-				onOpenChange={(open) => {
-					if (!open) onClose();
-				}}
-				onOpenSource={onOpenSource}
-				getFocusedBlockId={() => null}
-				resolveFocusContext={() => buildFocusRunContext(snapshot, null)}
-				resolveRelatedFocus={() => resolveRelatedFocus(snapshot, null)}
-			/>
+			<SidecarProvider value={sidecarValue}>
+				<NativeIntelligenceWorkspace
+					filePath={snapshot.filePath}
+					onClose={onClose}
+					onEscalate={onEscalate}
+				/>
+			</SidecarProvider>
 		</ComposerChromeProvider>
+	);
+}
+
+function resolveInitialBlockId(
+	snapshot: ComposerDocumentSnapshot,
+	context: {
+		blockId?: string;
+		sourceFrom?: number;
+		sourceTo?: number;
+	} | undefined,
+): string | null {
+	if (!context) return null;
+	if (context.blockId && snapshot.blocks.some((block) => block.blockId === context.blockId)) {
+		return context.blockId;
+	}
+	if (context.sourceFrom === undefined) return null;
+	const sourceTo = context.sourceTo ?? context.sourceFrom;
+	const overlapping = snapshot.blocks.find((block) =>
+		block.source.to >= context.sourceFrom! && block.source.from <= sourceTo);
+	return overlapping?.blockId ?? null;
+}
+
+function NativeIntelligenceWorkspace({
+	filePath,
+	onClose,
+	onEscalate,
+}: {
+	filePath: string;
+	onClose(): void;
+	onEscalate(): void;
+}): React.ReactElement {
+	const { runtime, config } = useSidecar();
+	const projection = useSessionProjection(runtime);
+	const [tab, setTab] = React.useState<'copilot' | 'history'>('copilot');
+	const conversationReady = projection.stage === 'session' || projection.stage === 'review';
+	return (
+		<div className="pk-native-intelligence-workspace">
+			<header className="pk-native-intelligence-head">
+				<span>
+					<Sparkles aria-hidden />
+					<strong>Copilot Intelligence</strong>
+					<small>{filePath}</small>
+				</span>
+				<Button variant="ghost" size="sm" onClick={onEscalate}>Open full Composer</Button>
+				<IconButton label={config.strings.close} onClick={onClose}>
+					<X />
+				</IconButton>
+			</header>
+			<div className="pk-native-intelligence-tabs" role="tablist" aria-label={config.strings.title}>
+				<Button
+					variant="ghost"
+					role="tab"
+					aria-selected={tab === 'copilot'}
+					onClick={() => setTab('copilot')}
+				>
+					<MessageSquare />
+					{config.strings.tabCopilot}
+				</Button>
+				<Button
+					variant="ghost"
+					role="tab"
+					aria-selected={tab === 'history'}
+					onClick={() => setTab('history')}
+				>
+					<History />
+					{config.strings.tabHistory}
+				</Button>
+			</div>
+			{tab === 'history' ? (
+				<div className="pk-native-intelligence-history"><HistoryView /></div>
+			) : (
+				<div className="pk-native-intelligence-columns">
+					<section className="pk-native-intelligence-brief">
+						<BriefView />
+					</section>
+					<section className="pk-native-intelligence-conversation">
+						{conversationReady ? (
+							<CopilotView />
+						) : (
+							<div className="pk-native-intelligence-start">
+								<Sparkles />
+								<strong>Continue with Copilot</strong>
+								<span>
+									Context is frozen from this Markdown note. Changes still require
+									candidate review before writeback.
+								</span>
+								<Button
+									variant="primary"
+									onClick={() => runtime.session.openSession(config.strings.askCopilot)}
+								>
+									{config.strings.askCopilot}
+								</Button>
+							</div>
+						)}
+					</section>
+				</div>
+			)}
+		</div>
 	);
 }

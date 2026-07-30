@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ReactFlow, Background, MiniMap, Controls, applyNodeChanges, type NodeMouseHandler, type ReactFlowInstance, type NodeChange } from '@xyflow/react';
-import type { LensType, LensGraphData, LensNode } from './types';
+import { ReactFlow, Background, MiniMap, Controls, applyNodeChanges, type EdgeMouseHandler, type NodeMouseHandler, type ReactFlowInstance, type NodeChange } from '@xyflow/react';
+import type { LensType, LensGraphData, LensNode, LensEdge } from './types';
 import { LensNodeComponent } from './nodes/LensNodeComponent';
 import { SwimlaneNode } from './nodes/SwimlaneNode';
 import { TimelineAxisNode } from './nodes/TimelineAxisNode';
@@ -45,6 +45,12 @@ interface MultiLensGraphProps {
 	graphData: LensGraphData | null;
 	defaultLens?: LensType;
 	onNodeClick?: (path: string) => void;
+	onEdgeClick?: (edge: {
+		relationId: string | null;
+		source: string;
+		target: string;
+		accessibleLabel: string | null;
+	}) => void;
 	onLensChange?: (lens: LensType) => void;
 	className?: string;
 	showControls?: boolean;
@@ -65,6 +71,7 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 	graphData,
 	defaultLens = 'topology',
 	onNodeClick,
+	onEdgeClick,
 	onLensChange,
 	className = '',
 	showControls = true,
@@ -109,6 +116,21 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 			if (path && onNodeClick) onNodeClick(path);
 		},
 		[onNodeClick]
+	);
+	const handleEdgeClick: EdgeMouseHandler<LensEdge> = useCallback(
+		(_event, edge) => {
+			onEdgeClick?.({
+				relationId: typeof edge.data?.canonicalRelationId === 'string'
+					? edge.data.canonicalRelationId
+					: null,
+				source: edge.source,
+				target: edge.target,
+				accessibleLabel: typeof edge.data?.accessibleLabel === 'string'
+					? edge.data.accessibleLabel
+					: null,
+			});
+		},
+		[onEdgeClick],
 	);
 
 	if (loading) {
@@ -228,6 +250,7 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 					nodeTypes={nodeTypes}
 					edgeTypes={edgeTypes}
 					onNodeClick={handleNodeClick}
+					onEdgeClick={handleEdgeClick}
 					onInit={(instance) => { rfInstance.current = instance; }}
 					fitView
 					fitViewOptions={{ padding: 0.15 }}

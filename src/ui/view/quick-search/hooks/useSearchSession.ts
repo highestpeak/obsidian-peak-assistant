@@ -272,23 +272,47 @@ export function useSearchSession() {
 			// aiGraph mode — run AIGraphAgent and route events to aiGraphStore
 			if (analysisMode === 'aiGraph') {
 				const { useAIGraphStore } = await import('../store/aiGraphStore');
-				const { AIGraphAgent } = await import('@/service/agents/AIGraphAgent');
+				const { generatedLensGraphToCreateRequest } = await import('@/service/ai-graph');
 
 				const agent = host.createAIGraphAgent();
 				useAIGraphStore.getState().setLoading(true);
+				useAIGraphStore.getState().setGraphData(null);
 				useAIGraphStore.getState().setQuery(searchQuery);
+				let webResearch = null;
 
-				for await (const event of agent.startSession(searchQuery)) {
+				for await (const event of agent.startSession(searchQuery, { webEnabled })) {
 					if (signal?.aborted) break;
 					if (event.type === 'ui-signal' && (event as any).channel === 'ai-graph-data') {
 						useAIGraphStore.getState().setGraphData((event as any).data.graphData);
+						webResearch = (event as any).data.webResearch ?? null;
 					}
 				}
 
 				useAIGraphStore.getState().setLoading(false);
+				const graphState = useAIGraphStore.getState();
+				if (!graphState.graphData) {
+					throw new Error('AI Graph generation completed without a valid graph artifact.');
+				}
+				const artifactRef = await host.persistGeneratedAIGraph(generatedLensGraphToCreateRequest({
+					title: searchQuery.slice(0, 80),
+					query: searchQuery,
+					graphData: graphState.graphData,
+					selectedPaths: graphState.selectedPaths,
+					webResearch,
+					runId: mySessionId,
+					...(useSharedStore.getState().aiGraphCreateOrigin
+						? {
+							createdFrom: {
+								surface: useSharedStore.getState().aiGraphCreateOrigin!.surface,
+								contextRefs: [useSharedStore.getState().aiGraphCreateOrigin!.contextRef],
+							},
+						}
+						: {}),
+				}));
+				if (!artifactRef) {
+					throw new Error('AI Graph artifact repository is unavailable.');
+				}
 				store.getState().markCompleted();
-				// Persist graph to markdown — aiGraph mode produces the graph as its primary result
-				void persistForegroundSession(persistDeps);
 				return;
 			}
 

@@ -13,6 +13,9 @@ import { getSelectedTextFromActiveEditor } from '@/app/platform/vault/obsidian-u
 import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { AIQueryRewriteModal } from '@/app/ui-host/modals/AIQueryRewriteModal';
 import { behaviorRecorder } from '@/ui/view/quick-search/rewrite/BehaviorContextRecorder';
+import { useSharedStore } from '@/ui/view/quick-search/store';
+import type { QuickSearchOpenOptions } from '@/core/ports/QuickSearchLauncherPort';
+import { useAIGraphStore } from '@/ui/view/quick-search/store/aiGraphStore';
 
 /**
  * Obsidian modal wrapper for quick search React UI.
@@ -23,13 +26,27 @@ export class QuickSearchModal extends Modal {
 	private openToken = 0;
 	private closed = true;
 
-	constructor(private readonly appContext: AppContext) {
+	constructor(
+		private readonly appContext: AppContext,
+		private readonly openOptions?: QuickSearchOpenOptions,
+	) {
 		super(appContext.app);
 	}
 
 	async onOpen(): Promise<void> {
 		const token = ++this.openToken;
 		this.closed = false;
+		if (this.openOptions?.aiMode || this.openOptions?.graphId) {
+			useSharedStore.getState().beginIntentOpen(
+				this.openOptions.aiMode ?? 'graph',
+				this.openOptions.graphId,
+				this.openOptions.graphCreateOrigin,
+			);
+			useAIGraphStore.getState().setSelectedPaths(this.openOptions.selectedVaultPaths ?? []);
+		} else {
+			useSharedStore.getState().beginOrdinaryOpen();
+			useAIGraphStore.getState().setSelectedPaths([]);
+		}
 		// Kick off the AI-Suggest behavior recorder for this session. Stops in
 		// onClose. Cheap — subscribes to two Zustand stores + a debounce timer.
 		behaviorRecorder.start();
@@ -135,4 +152,3 @@ export class QuickSearchModal extends Modal {
 		}
 	}
 }
-

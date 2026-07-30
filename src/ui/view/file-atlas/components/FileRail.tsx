@@ -204,7 +204,7 @@ export const FileRail: React.FC<FileRailProps> = ({
 						sideOffset={6}
 						role="menu"
 					>
-						{(['frequent', 'name'] as const).map((mode) => (
+						{(['recent', 'frequent', 'name'] as const).map((mode) => (
 							<Button
 								key={mode}
 								variant="unstyled"

@@ -4,7 +4,7 @@
 // (file/path ops, settings flags, agent factories, markdown helpers,
 // chat interop) but builds it once at mount time from `AppContext`.
 
-import type { TFile } from 'obsidian';
+import { TFile } from 'obsidian';
 import { AppContext } from '@/app/context/AppContext';
 import { ContextProvider } from '@/service/context/ContextProvider';
 import { AIGraphAgent } from '@/service/agents/AIGraphAgent';
@@ -24,6 +24,12 @@ import {
 import { getAIAnalysisFolder } from '@/core/config/folderPaths';
 import { composeFileAtlasHost } from '@/app/file-atlas/composeFileAtlasHost';
 import type { ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph';
+import {
+	buildAIGraphChangeSet,
+	generatedLensGraphToCreateRequest,
+} from '@/service/ai-graph';
+import { createAIInstructionSubmission } from '@/core/instruction-composer';
+import { hashSHA256 } from '@/core/utils/hash-utils';
 
 export function composeQuickSearchHost(
 	appContext: AppContext,
@@ -50,12 +56,12 @@ export function composeQuickSearchHost(
 		},
 		readVaultFileText: async (path) => {
 			const f = app.vault.getAbstractFileByPath(path);
-			if (!f || !('extension' in (f as Record<string, unknown>))) return null;
-			return app.vault.read(f as TFile);
+			if (!(f instanceof TFile)) return null;
+			return app.vault.read(f);
 		},
 		findFileByPath: (path) => {
 			const f = app.vault.getAbstractFileByPath(path);
-			return f && 'extension' in (f as Record<string, unknown>) ? (f as TFile) : null;
+			return f instanceof TFile ? f : null;
 		},
 		getActiveFilePath: () => app.workspace.getActiveFile()?.path ?? null,
 
@@ -77,6 +83,7 @@ export function composeQuickSearchHost(
 
 		aiAnalysisHistory: aiAnalysisHistoryService,
 		quickSearchRuntime: appContext.runtimeRegistry.tryGetQuickSearchBackgroundRuntime(),
+		aiGraphArtifacts: appContext.runtimeRegistry.tryGetAIGraphArtifactRuntime(),
 
 		createSynthesizeAgent: () => new SynthesizeAgent(manager),
 		createAIGraphAgent: () => new AIGraphAgent(app, searchClient!, manager),
@@ -160,6 +167,118 @@ export function composeQuickSearchHost(
 				isolatedDocIds: [...nodes.keys()].filter((id) => !connected.has(id)),
 				overflowCount: 0,
 			} satisfies ResultSubgraphOutput;
+		},
+		persistGeneratedAIGraph: async (request) => {
+			const runtime = appContext.runtimeRegistry.tryGetAIGraphArtifactRuntime();
+			if (!runtime) return null;
+			const sources = await Promise.all(request.sources.map(async (source) => {
+				if (source.kind !== 'vault-file') return source;
+				const file = app.vault.getAbstractFileByPath(source.locator);
+				if (!(file instanceof TFile)) {
+					return { ...source, freshness: 'unavailable' as const };
+				}
+				const content = await app.vault.cachedRead(file);
+				return {
+					...source,
+					contentHash: hashSHA256(content),
+					freshness: 'current' as const,
+				};
+			}));
+			const view = await runtime.create({ ...request, sources });
+			return {
+				graphId: view.manifest.graphId,
+				versionId: view.version.versionId,
+			};
+		},
+		listAIGraphArtifacts: async () => {
+			return appContext.runtimeRegistry.tryGetAIGraphArtifactRuntime()?.list() ?? [];
+		},
+		openAIGraphArtifact: async (graphId, versionId) => {
+			return appContext.runtimeRegistry.tryGetAIGraphArtifactRuntime()?.open(graphId, versionId) ?? null;
+		},
+		listAIGraphVersions: async (graphId) => {
+			return appContext.runtimeRegistry.tryGetAIGraphArtifactRuntime()?.listVersions(graphId) ?? [];
+		},
+		addActiveFileToAIGraphSources: async (graphId) => {
+			const runtime = appContext.runtimeRegistry.getAIGraphArtifactRuntime();
+			const current = await runtime.open(graphId);
+			if (!current) throw new Error(`AI Graph ${graphId} does not exist.`);
+			const file = app.workspace.getActiveFile();
+			if (!file) throw new Error('Open a Vault file before adding it as a source.');
+			if (current.sources.some((source) =>
+				source.kind === 'vault-file' && source.locator === file.path)) return current;
+			const content = await app.vault.cachedRead(file);
+			return runtime.replaceSources(graphId, [
+				...current.sources,
+				{
+					sourceId: `source-${hashSHA256(`vault:${file.path}`).slice(0, 20)}`,
+					kind: 'vault-file',
+					title: file.basename,
+					locator: file.path,
+					contentHash: hashSHA256(content),
+					capturedAt: Date.now(),
+					freshness: 'current',
+				},
+			]);
+		},
+		removeAIGraphSource: async (graphId, sourceId) => {
+			const runtime = appContext.runtimeRegistry.getAIGraphArtifactRuntime();
+			const current = await runtime.open(graphId);
+			if (!current) throw new Error(`AI Graph ${graphId} does not exist.`);
+			return runtime.replaceSources(
+				graphId,
+				current.sources.filter((source) => source.sourceId !== sourceId),
+			);
+		},
+		proposeAIGraphUpdate: async (graphId, baseVersionId, instruction, selection) => {
+			const runtime = appContext.runtimeRegistry.getAIGraphArtifactRuntime();
+			const current = await runtime.open(graphId, baseVersionId);
+			if (!current) throw new Error(`AI Graph ${graphId} does not exist.`);
+			const agent = new AIGraphAgent(app, searchClient!, manager);
+			let generated = null;
+			const contextualInstruction = [
+				`Update the existing AI Graph "${current.manifest.title}".`,
+				instruction,
+				'Return the complete revised graph while preserving valid existing concepts and relations.',
+			].join('\n');
+			for await (const event of agent.startSession(contextualInstruction)) {
+				if (event.type === 'ui-signal' && (event as any).channel === 'ai-graph-data') {
+					generated = (event as any).data.graphData;
+				}
+			}
+			if (!generated) throw new Error('AI Graph update generation returned no graph data.');
+			const proposed = generatedLensGraphToCreateRequest({
+				title: current.manifest.title,
+				query: instruction,
+				graphData: generated,
+				selectedPaths: current.sources
+					.filter((source) => source.kind === 'vault-file')
+					.map((source) => source.locator),
+			});
+			return runtime.proposeUpdate({
+				surface: 'ai-graph',
+				capabilityId: 'ai-graph.update',
+				submission: createAIInstructionSubmission(instruction),
+				surfaceContext: {
+					graphId,
+					baseVersionId,
+					...(selection ? { selection } : {}),
+					sourceIds: current.version.sourceIds,
+					lens: current.manifest.defaultLens,
+					reviewContext: [
+						`${current.version.stats.needsReviewCount} items need review`,
+						`${current.sources.filter((source) => source.freshness === 'changed').length} sources changed`,
+					],
+				},
+			}, buildAIGraphChangeSet(current.version, {
+				nodes: proposed.nodes,
+				relations: proposed.relations,
+				evidence: proposed.evidence,
+				sourceIds: current.version.sourceIds,
+			}));
+		},
+		acceptAIGraphUpdate: async (diff) => {
+			return appContext.runtimeRegistry.getAIGraphArtifactRuntime().acceptUpdate(diff);
 		},
 
 		saveAnalysisToVault: async (params) => {

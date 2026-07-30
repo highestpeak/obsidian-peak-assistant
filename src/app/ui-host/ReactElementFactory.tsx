@@ -10,6 +10,7 @@ import { composeQuickSearchHost } from '@/app/search/composeQuickSearchHost';
 import { composeCopilotReviewDeps } from '@/app/copilot/composeCopilotReviewDeps';
 import { composeHeadingModeDeps } from '@/app/search/composeHeadingModeDeps';
 import { composeResultSubgraphDeps } from '@/app/search/composeResultSubgraphDeps';
+import { composeContextualGraphPort } from '@/app/search/composeContextualGraphPort';
 import { openQuickSearch } from '@/app/commands/PeakCommandActions';
 import type { QuickSearchLauncherPort } from '@/core/ports/QuickSearchLauncherPort';
 
@@ -20,7 +21,7 @@ import type { QuickSearchLauncherPort } from '@/core/ports/QuickSearchLauncherPo
  */
 function composeQuickSearchLauncher(appContext: AppContext): QuickSearchLauncherPort {
 	return {
-		open: () => openQuickSearch(),
+		open: (options) => openQuickSearch(options),
 		hotkeyHint: () => resolveQuickSearchHotkeyHint(appContext.plugin, 'peak-quick-search'),
 	};
 }
@@ -119,6 +120,7 @@ export function createReactElementWithServices<T extends Record<string, any>>(
 			debugTracePort: appContext.runtimeRegistry.tryGetDebugTracePort(),
 			headingMode: composeHeadingModeDeps(appContext),
 			resultSubgraph: composeResultSubgraphDeps(),
+			contextualGraph: composeContextualGraphPort(appContext),
 			quickSearchLauncher: composeQuickSearchLauncher(appContext),
 			children: React.createElement(Component, props as T)
 		}

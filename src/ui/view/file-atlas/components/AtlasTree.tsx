@@ -14,7 +14,7 @@ import { RawBlockKind } from '@/core/document/atlas/types';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { FileAtlasConfig } from '../config/fileAtlasConfig';
 import { iconForKind } from '../config/kindIcons';
-import { foldSummary, isGroupNode } from '../atlasTreeModel';
+import { flattenAtlasRows, foldSummary, isGroupNode } from '../atlasTreeModel';
 import { displayIdentity, isProjectionRow } from '../atlasDisplayModel';
 
 interface AtlasTreeProps {
@@ -30,9 +30,34 @@ interface AtlasTreeProps {
 	onOpenInEditor: (block: DocumentBlock) => void;
 	onToggleFold: (id: string) => void;
 	onAddToTray: (block: DocumentBlock) => void;
+	flattened?: boolean;
 }
 
 export const AtlasTree: React.FC<AtlasTreeProps> = (props) => {
+	if (props.flattened) {
+		const rows = flattenAtlasRows(
+			props.blocks,
+			props.visible,
+			props.visibleKinds,
+			props.showFrontmatterSummary,
+			props.config,
+		);
+		return (
+			<div className="pkfa-tree pkfa-tree--flattened">
+				{rows.map((row) => (
+					<AtlasNode
+						key={row.block.id}
+						block={row.block}
+						depth={0}
+						ownerContext={row.ownerContext}
+						flatBreadcrumb={row.breadcrumb}
+						suppressChildren
+						{...props}
+					/>
+				))}
+			</div>
+		);
+	}
 	return (
 		<div className="pkfa-tree">
 			{props.blocks.map((block) => (
@@ -46,9 +71,18 @@ interface AtlasNodeProps extends AtlasTreeProps {
 	block: DocumentBlock;
 	depth: number;
 	ownerContext?: string;
+	flatBreadcrumb?: string;
+	suppressChildren?: boolean;
 }
 
-const AtlasNode: React.FC<AtlasNodeProps> = ({ block, depth, ownerContext, ...props }) => {
+const AtlasNode: React.FC<AtlasNodeProps> = ({
+	block,
+	depth,
+	ownerContext,
+	flatBreadcrumb,
+	suppressChildren = false,
+	...props
+}) => {
 	const {
 		config,
 		visible,
@@ -150,6 +184,7 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({ block, depth, ownerContext, ...pr
 						<Icon />
 					</span>
 					<span className="pkfa-label">
+						{flatBreadcrumb && <span className="pkfa-breadcrumb">{flatBreadcrumb}</span>}
 						<span className="pkfa-name">{display.primary}</span>
 						{display.secondary && <span className="pkfa-sub">{display.secondary}</span>}
 					</span>
@@ -172,7 +207,7 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({ block, depth, ownerContext, ...pr
 				</div>
 			</div>
 
-			{isGroup && hasChildren && (
+			{!suppressChildren && isGroup && hasChildren && (
 				<div
 					className={`pkfa-kids${isFrontmatter ? ' pkfa-frontmatter-kids' : ''}${
 						isCollapsed ? ' is-collapsed' : ''

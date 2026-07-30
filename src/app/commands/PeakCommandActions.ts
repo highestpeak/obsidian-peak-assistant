@@ -26,6 +26,7 @@ import { computeEvalMetrics, formatEvalReport } from '@/service/search/query/ppr
 import { runStructuralAnalysis } from '@/service/search/index/helper/structural/orchestrator';
 import { MaintenanceCleanupService } from '@/service/maintenance/MaintenanceCleanupService';
 import { obsidianNotifier } from '@/app/platform/NoticeNotifier';
+import type { QuickSearchOpenOptions } from '@/core/ports/QuickSearchLauncherPort';
 
 /**
  * Persistent bottom notice with updatable message (Obsidian 1.5+ `setMessage` when available).
@@ -78,8 +79,8 @@ export function openAssistant(): void {
 	void getContext().viewManager.getViewSwitchConsistentHandler().activateChatView();
 }
 
-export function openQuickSearch(): void {
-	const modal: Modal = new QuickSearchModal(getContext());
+export function openQuickSearch(options?: QuickSearchOpenOptions): void {
+	const modal: Modal = new QuickSearchModal(getContext(), options);
 	modal.open();
 }
 

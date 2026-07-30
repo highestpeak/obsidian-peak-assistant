@@ -96,6 +96,7 @@ export interface ChatStudioStrings {
 	};
 	composer: {
 		placeholder: string;
+		openAIGraphsLabel: string;
 		attachFilesLabel: string;
 		attachFilesDescription: string;
 		attachVaultDocLabel: string;

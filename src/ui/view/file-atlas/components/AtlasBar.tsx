@@ -7,7 +7,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { ListFilter, FoldVertical, UnfoldVertical, Check } from 'lucide-react';
+import { ListFilter, FoldVertical, UnfoldVertical, Check, Rows3, ListTree, Network } from 'lucide-react';
 import type { RawBlockKind } from '@/core/document/atlas/types';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { FileAtlasConfig } from '../config/fileAtlasConfig';
@@ -23,6 +23,9 @@ interface AtlasBarProps {
 	onGroupSet: (groupId: string, on: boolean) => void;
 	onExpandAll: () => void;
 	onCollapseAll: () => void;
+	flattened: boolean;
+	onFlattenChange: (flattened: boolean) => void;
+	onOpenAIGraphs?: () => void;
 }
 
 export const AtlasBar: React.FC<AtlasBarProps> = ({
@@ -35,6 +38,9 @@ export const AtlasBar: React.FC<AtlasBarProps> = ({
 	onGroupSet,
 	onExpandAll,
 	onCollapseAll,
+	flattened,
+	onFlattenChange,
+	onOpenAIGraphs,
 }) => {
 	const [filterOpen, setFilterOpen] = useState(false);
 	const menuRef = useRef<HTMLDivElement>(null);
@@ -82,12 +88,13 @@ export const AtlasBar: React.FC<AtlasBarProps> = ({
 				<Button
 					variant="unstyled"
 					type="button"
-					className="pkfa-ghost-btn"
+					className="pkfa-bar-icon-btn"
 					aria-expanded={filterOpen}
+					aria-label={config.strings.filtersButton}
+					title={config.strings.filtersButton}
 					onClick={() => setFilterOpen((v) => !v)}
 				>
 					<ListFilter />
-					{config.strings.filtersButton}
 				</Button>
 				{filterOpen && (
 					<div className="pkfa-filter-popover" aria-label="Type filters">
@@ -169,6 +176,29 @@ export const AtlasBar: React.FC<AtlasBarProps> = ({
 			</div>
 
 			<div className="pkfa-fold-actions">
+				{onOpenAIGraphs && (
+					<Button
+						variant="unstyled"
+						type="button"
+						className="pkfa-bar-icon-btn"
+						aria-label={config.strings.aiGraphsButton}
+						title={config.strings.aiGraphsButton}
+						onClick={onOpenAIGraphs}
+					>
+						<Network />
+					</Button>
+				)}
+				<Button
+					variant="unstyled"
+					type="button"
+					className="pkfa-bar-icon-btn"
+					aria-pressed={flattened}
+					aria-label={flattened ? config.strings.treeView : config.strings.flattenView}
+					title={flattened ? config.strings.treeView : config.strings.flattenView}
+					onClick={() => onFlattenChange(!flattened)}
+				>
+					{flattened ? <ListTree /> : <Rows3 />}
+				</Button>
 				<Button
 					variant="unstyled"
 					type="button"

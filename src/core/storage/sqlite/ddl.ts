@@ -296,6 +296,58 @@ export interface Database {
 		/** Analysis preset for history icon and restore: vaultFull | aiGraph. */
 		analysis_preset: string | null;
 	};
+	ai_graph_artifact_projection: {
+		graph_id: string;
+		title: string;
+		graph_type: string;
+		status: string;
+		version_id: string;
+		version_number: number;
+		updated_at: number;
+		node_count: number;
+		relation_count: number;
+		source_count: number;
+		needs_review_count: number;
+		created_from_json: string;
+		changed_source_count: number;
+	};
+	ai_graph_version_projection: {
+		graph_id: string;
+		version_id: string;
+		parent_version_id: string | null;
+		created_at: number;
+		change_kind: string;
+		prompt: string | null;
+		stats_json: string;
+	};
+	ai_graph_node_projection: {
+		graph_id: string;
+		version_id: string;
+		node_id: string;
+		kind: string;
+		label: string;
+		aliases_json: string;
+		canonical_ref: string | null;
+		review_status: string;
+	};
+	ai_graph_relation_projection: {
+		graph_id: string;
+		version_id: string;
+		relation_id: string;
+		source_node_id: string;
+		target_node_id: string;
+		family: string;
+		predicate: string;
+		directed: number;
+		review_status: string;
+	};
+	ai_graph_usage_projection: {
+		graph_id: string;
+		origin_surface: string;
+		context_refs_json: string;
+		last_opened_at: number;
+		open_count: number;
+	};
 	query_pattern: {
 		id: string;
 		template: string;
@@ -933,6 +985,78 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		CREATE INDEX IF NOT EXISTS idx_ai_analysis_record_vault_path ON ai_analysis_record(vault_rel_path);
 	`);
 
+	// AI Graph read models. Canonical semantics remain in immutable JSON
+	// versions; every row below can be deleted and rebuilt from artifacts.
+	db.exec(`
+		CREATE TABLE IF NOT EXISTS ai_graph_artifact_projection (
+			graph_id TEXT PRIMARY KEY,
+			title TEXT NOT NULL,
+			graph_type TEXT NOT NULL,
+			status TEXT NOT NULL,
+			version_id TEXT NOT NULL,
+			version_number INTEGER NOT NULL,
+			updated_at INTEGER NOT NULL,
+			node_count INTEGER NOT NULL,
+			relation_count INTEGER NOT NULL,
+			source_count INTEGER NOT NULL,
+			needs_review_count INTEGER NOT NULL,
+			created_from_json TEXT NOT NULL,
+			changed_source_count INTEGER NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_ai_graph_artifact_updated
+			ON ai_graph_artifact_projection(updated_at DESC);
+
+		CREATE TABLE IF NOT EXISTS ai_graph_version_projection (
+			graph_id TEXT NOT NULL,
+			version_id TEXT NOT NULL,
+			parent_version_id TEXT,
+			created_at INTEGER NOT NULL,
+			change_kind TEXT NOT NULL,
+			prompt TEXT,
+			stats_json TEXT NOT NULL,
+			PRIMARY KEY(graph_id, version_id)
+		);
+		CREATE INDEX IF NOT EXISTS idx_ai_graph_version_created
+			ON ai_graph_version_projection(graph_id, created_at DESC);
+
+		CREATE TABLE IF NOT EXISTS ai_graph_node_projection (
+			graph_id TEXT NOT NULL,
+			version_id TEXT NOT NULL,
+			node_id TEXT NOT NULL,
+			kind TEXT NOT NULL,
+			label TEXT NOT NULL,
+			aliases_json TEXT NOT NULL,
+			canonical_ref TEXT,
+			review_status TEXT NOT NULL,
+			PRIMARY KEY(graph_id, version_id, node_id)
+		);
+		CREATE INDEX IF NOT EXISTS idx_ai_graph_node_label
+			ON ai_graph_node_projection(label);
+
+		CREATE TABLE IF NOT EXISTS ai_graph_relation_projection (
+			graph_id TEXT NOT NULL,
+			version_id TEXT NOT NULL,
+			relation_id TEXT NOT NULL,
+			source_node_id TEXT NOT NULL,
+			target_node_id TEXT NOT NULL,
+			family TEXT NOT NULL,
+			predicate TEXT NOT NULL,
+			directed INTEGER NOT NULL,
+			review_status TEXT NOT NULL,
+			PRIMARY KEY(graph_id, version_id, relation_id)
+		);
+		CREATE INDEX IF NOT EXISTS idx_ai_graph_relation_predicate
+			ON ai_graph_relation_projection(predicate, family);
+
+		CREATE TABLE IF NOT EXISTS ai_graph_usage_projection (
+			graph_id TEXT PRIMARY KEY,
+			origin_surface TEXT NOT NULL,
+			context_refs_json TEXT NOT NULL,
+			last_opened_at INTEGER NOT NULL,
+			open_count INTEGER NOT NULL DEFAULT 0
+		);
+	`);
+
 	db.exec(`
 		CREATE TABLE IF NOT EXISTS query_pattern (
 			id              TEXT PRIMARY KEY,
@@ -1364,4 +1488,3 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		// swallow to keep migration side-effect-safe.
 	}
 }
-

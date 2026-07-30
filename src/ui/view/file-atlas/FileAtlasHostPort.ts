@@ -64,6 +64,22 @@ export interface AtlasImageInfo {
 	format: string;
 }
 
+/** Read-only projection of the canonical Composer Intelligence finding. */
+export interface AtlasCopilotSuggestion {
+	findingId: string;
+	/** Canonical Composer target; used for same-run handoff to the native modal. */
+	targetBlockId: string | null;
+	/** Source range lets Atlas project findings onto its independently parsed tree. */
+	targetFrom: number | null;
+	targetTo: number | null;
+	title: string;
+	summary: string;
+	targetLabel: string;
+	evidenceLabel: string;
+	state: 'active' | 'stale';
+	priority: number;
+}
+
 export interface FileAtlasHostPort {
 	/** File identity owned by the active Markdown or Composer leaf. */
 	getActiveDocumentPath(): string | null;
@@ -111,4 +127,18 @@ export interface FileAtlasHostPort {
 	 * (tree-only) hosts can omit it.
 	 */
 	loadNeighborhood?(path: string, opts: { hops: 1 | 2; semantic: boolean }): Promise<AtlasGraphData>;
+	/**
+	 * Read suggestions from the same per-document IntelligenceRuntime used by
+	 * Composer and the native Markdown companion. File Atlas owns no generator.
+	 */
+	loadCopilotSuggestions?(path: string): Promise<AtlasCopilotSuggestion[]>;
+	/** Escalate to the shared native Copilot surface; File Atlas never writes. */
+	openCopilot?(path: string, context?: {
+		blockId?: string;
+		findingId?: string;
+		sourceFrom?: number;
+		sourceTo?: number;
+	}): void;
+	/** Open the canonical AI Graph workspace; Atlas owns no graph runtime. */
+	openAIGraphs?(graphId?: string): void;
 }

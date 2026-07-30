@@ -37,6 +37,7 @@ export interface SidecarStrings {
 	currentDocument: string;
 	updatedAtPrefix: string;
 	askCopilot: string;
+	openAIGraphs: string;
 	refreshSuggestions: string;
 	suggestionUpdate: string;
 	manualSensing: string;
@@ -340,6 +341,7 @@ export const DEFAULT_SIDECAR_CONFIG: SidecarConfig = {
 		currentDocument: '当前正文',
 		updatedAtPrefix: '更新于',
 		askCopilot: '问 Copilot',
+		openAIGraphs: '打开 AI Graphs',
 		refreshSuggestions: '更新建议',
 		suggestionUpdate: '建议更新',
 		manualSensing: '仅手动',

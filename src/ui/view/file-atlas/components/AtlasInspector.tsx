@@ -12,13 +12,17 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { BarChart3, Eye, Plus, Link as LinkIcon, FileText, Send, Copy, Check, Hash } from 'lucide-react';
+import { BarChart3, Eye, Plus, Link as LinkIcon, FileText, Send, Copy, Check, Hash, Sparkles } from 'lucide-react';
 import type { DocumentBlock } from '@/core/document/atlas/types';
 import { RawBlockKind } from '@/core/document/atlas/types';
 import { Button } from '@/ui/component/shared-ui/button';
 import { StreamdownIsolated } from '@/ui/component/mine';
 import type { FileAtlasConfig } from '../config/fileAtlasConfig';
-import type { AtlasImageInfo, FileAtlasHostPort } from '../FileAtlasHostPort';
+import type {
+	AtlasCopilotSuggestion,
+	AtlasImageInfo,
+	FileAtlasHostPort,
+} from '../FileAtlasHostPort';
 import { iconForKind } from '../config/kindIcons';
 import {
 	analysisText,
@@ -151,6 +155,13 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 				<SourceDetails block={block} config={config} />
 			)}
 
+			<AtlasCopilotSuggestions
+				block={block}
+				config={config}
+				host={host}
+				sourcePath={sourcePath}
+			/>
+
 			<section className="pkfa-card">
 				<div className="pkfa-card-body">
 					<span className="pkfa-selected-kind">
@@ -177,6 +188,112 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 		</>
 	);
 };
+
+const AtlasCopilotSuggestions: React.FC<{
+	block: DocumentBlock;
+	config: FileAtlasConfig;
+	host: FileAtlasHostPort;
+	sourcePath: string;
+}> = ({ block, config, host, sourcePath }) => {
+	const [suggestions, setSuggestions] = useState<AtlasCopilotSuggestion[]>([]);
+	const [loading, setLoading] = useState(Boolean(host.loadCopilotSuggestions));
+	useEffect(() => {
+		let active = true;
+		if (!host.loadCopilotSuggestions) {
+			setLoading(false);
+			setSuggestions([]);
+			return () => {
+				active = false;
+			};
+		}
+		setLoading(true);
+		void host.loadCopilotSuggestions(sourcePath)
+			.then((next) => {
+				if (!active) return;
+				const range = atlasSelectionRange(block);
+				setSuggestions(next.filter((suggestion) => {
+					if (suggestion.targetFrom === null || suggestion.targetTo === null) return false;
+					return suggestion.targetTo >= range.from && suggestion.targetFrom <= range.to;
+				}).slice(0, 3));
+			})
+			.finally(() => {
+				if (active) setLoading(false);
+			});
+		return () => {
+			active = false;
+		};
+	}, [host, sourcePath]);
+
+	return (
+		<section className="pkfa-card pkfa-copilot-suggestions">
+			<div className="pkfa-card-body">
+				<span className="pkfa-selected-kind">
+					<Sparkles />
+					<span>{config.strings.copilotSuggestionsTitle}</span>
+				</span>
+				<span className="pkfa-selected-sub">{config.strings.sendToCopilotHint}</span>
+				{loading && <span className="pkfa-selected-sub">{config.strings.copilotSuggestionsLoading}</span>}
+				{!loading && suggestions.length === 0 && (
+					<span className="pkfa-selected-sub">{config.strings.copilotSuggestionsEmpty}</span>
+				)}
+				{suggestions.map((suggestion, index) => (
+					<div
+						key={suggestion.findingId}
+						className={`pkfa-copilot-suggestion${suggestion.state === 'stale' ? ' is-stale' : ''}`}
+					>
+						<span className="pkfa-suggestion-index">{String(index + 1).padStart(2, '0')}</span>
+						<span className="pkfa-suggestion-copy">
+							<strong>{suggestion.title}</strong>
+							{suggestion.summary && <small>{suggestion.summary}</small>}
+							<small>{suggestion.targetLabel} · {suggestion.evidenceLabel}</small>
+						</span>
+						<Button
+							variant="unstyled"
+							type="button"
+							className="pkfa-copilot-open"
+							onClick={() => host.openCopilot?.(sourcePath, {
+								...(suggestion.targetBlockId
+									? { blockId: suggestion.targetBlockId }
+									: {}),
+								findingId: suggestion.findingId,
+								sourceFrom: block.anchor.sourceFrom,
+								sourceTo: block.anchor.sourceTo,
+							})}
+						>
+							{config.strings.copilotOpen}
+						</Button>
+					</div>
+				))}
+				{host.openCopilot && (
+					<Button
+						variant="unstyled"
+						type="button"
+						className="pkfa-ghost-btn"
+						onClick={() => host.openCopilot?.(sourcePath, {
+							sourceFrom: block.anchor.sourceFrom,
+							sourceTo: block.anchor.sourceTo,
+						})}
+					>
+						<Send />
+						{config.strings.sendToCopilot}
+					</Button>
+				)}
+			</div>
+		</section>
+	);
+};
+
+function atlasSelectionRange(block: DocumentBlock): { from: number; to: number } {
+	let from = block.anchor.sourceFrom ?? 0;
+	let to = block.anchor.sourceTo ?? from;
+	const visit = (candidate: DocumentBlock): void => {
+		from = Math.min(from, candidate.anchor.sourceFrom ?? from);
+		to = Math.max(to, candidate.anchor.sourceTo ?? to);
+		for (const child of candidate.children ?? []) visit(child);
+	};
+	visit(block);
+	return { from, to };
+}
 
 function lineRange(block: DocumentBlock): string {
 	const { lineStart, lineEnd } = block.anchor;

@@ -1,13 +1,16 @@
 import { create } from 'zustand';
+import type { QuickSearchGraphCreateOrigin } from '@/core/ports/QuickSearchLauncherPort';
 
-// 'intel' is Vault Intelligence — reached only via the floating button.
-// Tab-key cycling only rotates between 'vault' and 'ai'.
-type TabType = 'vault' | 'ai' | 'intel';
+export type TabType = 'vault' | 'ai';
+export type AIWorkspaceMode = 'search' | 'graph' | 'vault-intelligence';
 
 const MAX_RECENT_QUERIES = 10;
 
 interface SharedStore {
 	activeTab: TabType;
+	aiWorkspaceMode: AIWorkspaceMode;
+	aiGraphDeepLinkId: string | null;
+	aiGraphCreateOrigin: QuickSearchGraphCreateOrigin | null;
 	/** Vault Search tab input; not shared with AI until user clicks Ask AI */
 	vaultSearchQuery: string;
 	/** AI Analysis tab input; also set from vault query when Ask AI is clicked */
@@ -16,6 +19,14 @@ interface SharedStore {
 	recentQueries: string[];
 
 	setActiveTab: (tab: TabType) => void;
+	setAIWorkspaceMode: (mode: AIWorkspaceMode) => void;
+	beginOrdinaryOpen: () => void;
+	beginIntentOpen: (
+		mode: AIWorkspaceMode,
+		graphId?: string,
+		origin?: QuickSearchGraphCreateOrigin,
+	) => void;
+	consumeAIGraphDeepLink: () => void;
 	setVaultSearchQuery: (query: string) => void;
 	setSearchQuery: (query: string) => void;
 	/** Record a query in recent history (deduplicates, caps at MAX_RECENT_QUERIES) */
@@ -25,12 +36,44 @@ interface SharedStore {
 }
 
 export const useSharedStore = create<SharedStore>((set) => ({
-	activeTab: 'vault',
+	activeTab: 'ai',
+	aiWorkspaceMode: 'search',
+	aiGraphDeepLinkId: null,
+	aiGraphCreateOrigin: null,
 	vaultSearchQuery: '',
 	searchQuery: '',
 	recentQueries: [],
 
 	setActiveTab: (tab: TabType) => set({ activeTab: tab }),
+	setAIWorkspaceMode: (mode: AIWorkspaceMode) => set((state) => ({
+		activeTab: 'ai',
+		aiWorkspaceMode: mode,
+		...(mode === 'graph' && state.activeTab === 'vault' && state.vaultSearchQuery.trim()
+			? {
+				aiGraphCreateOrigin: {
+					surface: 'vault-search' as const,
+					contextRef: {
+						kind: 'search-query' as const,
+						ref: state.vaultSearchQuery.trim(),
+						label: state.vaultSearchQuery.trim(),
+					},
+				},
+			}
+			: {}),
+	})),
+	beginOrdinaryOpen: () => set({
+		activeTab: 'ai',
+		aiWorkspaceMode: 'search',
+		aiGraphDeepLinkId: null,
+		aiGraphCreateOrigin: null,
+	}),
+	beginIntentOpen: (mode, graphId, origin) => set({
+		activeTab: 'ai',
+		aiWorkspaceMode: mode,
+		aiGraphDeepLinkId: graphId ?? null,
+		aiGraphCreateOrigin: origin ?? null,
+	}),
+	consumeAIGraphDeepLink: () => set({ aiGraphDeepLinkId: null }),
 	setVaultSearchQuery: (query: string) => set({ vaultSearchQuery: query }),
 	setSearchQuery: (query: string) => set({ searchQuery: query }),
 	addRecentQuery: (query: string) => set((state) => {
@@ -41,7 +84,10 @@ export const useSharedStore = create<SharedStore>((set) => ({
 	}),
 	clearRecentQueries: () => set({ recentQueries: [] }),
 	reset: () => set({
-		activeTab: 'vault',
+		activeTab: 'ai',
+		aiWorkspaceMode: 'search',
+		aiGraphDeepLinkId: null,
+		aiGraphCreateOrigin: null,
 		vaultSearchQuery: '',
 		searchQuery: '',
 	}),

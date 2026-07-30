@@ -8,7 +8,7 @@ export interface FileRailPreference {
 
 export const FILE_ATLAS_RAIL_STORAGE_KEY = 'peak-assistant.file-atlas.rail.v1';
 
-const SORT_MODES = new Set<FileRailSortMode>(['frequent', 'name']);
+const SORT_MODES = new Set<FileRailSortMode>(['recent', 'frequent', 'name']);
 
 function clampWidth(widthPx: number, config: FileAtlasRailConfig): number {
 	if (!Number.isFinite(widthPx)) return config.defaultWidthPx;
@@ -16,7 +16,7 @@ function clampWidth(widthPx: number, config: FileAtlasRailConfig): number {
 }
 
 export function defaultFileRailPreference(config: FileAtlasRailConfig): FileRailPreference {
-	return { sortMode: 'frequent', widthPx: config.defaultWidthPx };
+	return { sortMode: 'recent', widthPx: config.defaultWidthPx };
 }
 
 export function decodeFileRailPreference(
@@ -29,9 +29,7 @@ export function decodeFileRailPreference(
 		const parsed = JSON.parse(raw) as Partial<FileRailPreference> | null;
 		if (!parsed || typeof parsed !== 'object') return fallback;
 		const storedSortMode = (parsed as { sortMode?: string }).sortMode;
-		const sortMode: FileRailSortMode = storedSortMode === 'recent'
-			? 'frequent'
-			: SORT_MODES.has(storedSortMode as FileRailSortMode)
+		const sortMode: FileRailSortMode = SORT_MODES.has(storedSortMode as FileRailSortMode)
 				? storedSortMode as FileRailSortMode
 				: fallback.sortMode;
 		return {
@@ -48,7 +46,7 @@ export function encodeFileRailPreference(
 	config: FileAtlasRailConfig,
 ): string {
 	return JSON.stringify({
-		sortMode: SORT_MODES.has(preference.sortMode) ? preference.sortMode : 'frequent',
+		sortMode: SORT_MODES.has(preference.sortMode) ? preference.sortMode : 'recent',
 		widthPx: clampWidth(preference.widthPx, config),
 	});
 }

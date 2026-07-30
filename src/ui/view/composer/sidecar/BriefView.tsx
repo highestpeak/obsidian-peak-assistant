@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { ChevronDown, ExternalLink, ListEnd, RefreshCw, Sparkles } from 'lucide-react';
+import { ChevronDown, ExternalLink, ListEnd, Network, RefreshCw, Sparkles } from 'lucide-react';
 import { composerTargetBlockId } from '@/core/composer';
 import type {
 	BriefSensingMode,
@@ -18,6 +18,7 @@ import { RelatedMaterialsModal } from './RelatedMaterialsModal';
 import { resolveSidecarPreviewFixture } from './previewFixture';
 import { useBriefProjection, useFindings, useSidecar } from './SidecarContext';
 import type { SidecarConfig } from './sidecarConfig';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 
 /** Brief state of the optional related-material request. */
 export type RelatedLoadState =
@@ -33,6 +34,7 @@ export type RelatedLoadState =
  * projects it and sends explicit user actions back to that runtime.
  */
 export function BriefView(): React.ReactElement {
+	const { quickSearchLauncher } = useServiceContext();
 	const {
 		runtime,
 		config,
@@ -105,6 +107,25 @@ export function BriefView(): React.ReactElement {
 				onOpenSource={onOpenSource}
 				onRefreshRelated={onRefreshRelated}
 				onRefreshSuggestions={onRefreshSuggestions}
+				onOpenAIGraphs={quickSearchLauncher
+					? () => quickSearchLauncher.open({
+						aiMode: 'graph',
+						selectedVaultPaths: documentFilePath ? [documentFilePath] : [],
+						...(documentFilePath
+							? {
+								graphCreateOrigin: {
+									surface: 'composer',
+									contextRef: {
+										kind: 'vault-file',
+										ref: documentFilePath,
+										label: documentFilePath.slice(documentFilePath.lastIndexOf('/') + 1),
+										locator: documentFilePath,
+									},
+								},
+							}
+							: {}),
+					})
+					: undefined}
 				related={effectiveRelated}
 				relatedPreviewActive={relatedPreviewActive}
 				thoughtPreviewActive={thoughtPreviewActive}
@@ -135,6 +156,7 @@ export interface BriefViewContentProps {
 	onOpenSource?: (path: string) => void;
 	onRefreshRelated: () => void;
 	onRefreshSuggestions?: () => void;
+	onOpenAIGraphs?: () => void;
 	onOrganizeThought?: (thought: BriefThought) => void;
 	related: RelatedLoadState;
 	relatedPreviewActive?: boolean;
@@ -152,6 +174,7 @@ export function BriefViewContent({
 	onOpenSource,
 	onRefreshRelated,
 	onRefreshSuggestions,
+	onOpenAIGraphs,
 	onOrganizeThought,
 	related,
 	relatedPreviewActive = false,
@@ -203,6 +226,18 @@ export function BriefViewContent({
 				<span className="pk-brief-heading">{s.briefHeading}</span>
 				<span className="pk-brief-subtitle">{[sensingHint, s.briefIntro].filter(Boolean).join(' ')}</span>
 				<div className="pk-brief-head-actions">
+					{onOpenAIGraphs && (
+						<Button
+							className="pk-brief-action"
+							variant="outline"
+							size="sm"
+							aria-label={s.openAIGraphs}
+							title={s.openAIGraphs}
+							onClick={onOpenAIGraphs}
+						>
+							<Network aria-hidden />
+						</Button>
+					)}
 					<Button
 						className="pk-brief-action pk-brief-action--primary"
 						variant="outline"

@@ -5,7 +5,7 @@ import { useSharedStore } from '../store/sharedStore';
 
 /**
  * T7 (2026-07-07 hub graph subview): shared handler for Result Graph View
- * Cmd+click on a hub anchor. Pins the Vault Search result set to the hub's
+ * Cmd+click on a hub anchor or an explicit hub path action. Pins the Vault Search result set to the hub's
  * constituent doc paths and forces the result view into graph mode.
  * `useVaultSearch` post-filters `lastSearchResults` by `pinnedResultDocIds`,
  * so ResultGraphView (which reads `lastSearchResults` from the store) picks
@@ -14,10 +14,10 @@ import { useSharedStore } from '../store/sharedStore';
  * Clearing the pin is the user's job — via the "Pinned to hub" chip in
  * `ResultPaneHeader` or by leaving `all` mode.
  */
-export function useOpenHubGraphSubview(): (hubNodeId: string) => Promise<void> {
-	return useCallback(async (hubNodeId: string) => {
+export function useOpenHubGraphSubview(): (hubNodeIdOrPath: string) => Promise<void> {
+	return useCallback(async (hubNodeIdOrPath: string) => {
 		try {
-			const members = await getHubMembers(hubNodeId);
+			const members = await getHubMembers(hubNodeIdOrPath);
 			if (!members.length) return;
 
 			// Clear query text — mode resolves to `'all'` via `updateParsedQuery`.

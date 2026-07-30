@@ -160,7 +160,15 @@ export async function getHubsForDoc(currentPath: string): Promise<HubForDoc[]> {
  * `HubConstituentRepo.getMembersForHub` — kept here so hooks import the
  * inspector-service surface uniformly, matching `getHubReferencesForDoc`.
  */
-export async function getHubMembers(hubNodeId: string): Promise<string[]> {
+export async function getHubMembers(hubNodeIdOrPath: string): Promise<string[]> {
+	let hubNodeId = hubNodeIdOrPath;
+	if (hubNodeIdOrPath.includes('/') || hubNodeIdOrPath.toLowerCase().endsWith('.md')) {
+		const tenant: IndexTenant = getIndexTenantForPath(hubNodeIdOrPath);
+		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+		const document = await indexedDocumentRepo.getByPath(hubNodeIdOrPath);
+		if (!document) return [];
+		hubNodeId = document.id;
+	}
 	const hubConstituentRepo = sqliteStoreManager.getHubConstituentRepo();
 	const rows = await hubConstituentRepo.getMembersForHub(hubNodeId);
 	const seen = new Set<string>();

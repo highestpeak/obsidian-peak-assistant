@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowUp, FileText, ImagePlus, Loader2, Music as MusicIcon, Pencil, Video as VideoIcon, Workflow } from 'lucide-react';
+import { ArrowUp, FileText, ImagePlus, Loader2, Music as MusicIcon, Network, Pencil, Video as VideoIcon, Workflow } from 'lucide-react';
 import { useComposerEditImageStore } from '../store/composerEditImageStore';
 import {
 	PromptInput,
@@ -34,6 +34,8 @@ import { ComposerModelSelector } from './composer/ComposerModelSelector';
 import { ComposerAssistantSelector } from './composer/ComposerAssistantSelector';
 import { ComposerGenerateActions, type GenerateKind } from './composer/ComposerGenerateActions';
 import type { ToolAvailability } from '@/service/chat/tools/toolAvailability';
+import { createAIInstructionSubmission } from '@/core/instruction-composer';
+import { IconButton } from '@/ui/components/primitives';
 
 /**
  * Composer V2 — the single live editor of Chat Studio (chat-studio §8).
@@ -122,7 +124,7 @@ function useCurrentModelSelection(): ModelSelection {
 export const Composer: React.FC = () => {
 	const strings = useChatStrings();
 	const studioStrings = useChatStudioStrings();
-	const { manager } = useServiceContext();
+	const { manager, quickSearchLauncher } = useServiceContext();
 	const activeConversation = useChatDataStore((s) => s.activeConversation);
 
 	const textareaRef = useRef<PromptInputEditorHandle>(null);
@@ -383,7 +385,10 @@ export const Composer: React.FC = () => {
 				globalDrop
 				multiple
 				inputFocusRef={inputFocusRef}
-				onSubmit={handleSubmit}
+				onSubmit={(message) => {
+					const submission = createAIInstructionSubmission(message.text);
+					return handleSubmit({ ...message, text: submission.instruction });
+				}}
 				contextItems={menuContextItems}
 				onLoadContextItems={handleSearchContext}
 				onMenuItemSelect={onMenuItemSelect}
@@ -427,6 +432,30 @@ export const Composer: React.FC = () => {
 					<div className="pkchat-composer__foot-left">
 						<ComposerPlusMenu insertAtCaret={(text) => textareaRef.current?.insertText(text)} />
 						<ComposerSourcesPopover />
+						{quickSearchLauncher && (
+							<IconButton
+								label={studioStrings.composer.openAIGraphsLabel}
+								title={studioStrings.composer.openAIGraphsLabel}
+								onClick={() => quickSearchLauncher.open({
+									aiMode: 'graph',
+									...(activeConversation
+										? {
+											graphCreateOrigin: {
+												surface: 'chat-studio',
+												contextRef: {
+													kind: 'conversation',
+													ref: activeConversation.meta.id,
+													label: activeConversation.meta.title
+														?? activeConversation.meta.id,
+												},
+											},
+										}
+										: {}),
+								})}
+							>
+								<Network />
+							</IconButton>
+						)}
 					</div>
 					<div className="pkchat-composer__foot-right">
 						<ComposerAssistantSelector assistantId={assistantId} onSelect={onAssistantSelect} />

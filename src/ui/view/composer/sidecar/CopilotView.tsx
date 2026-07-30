@@ -60,6 +60,7 @@ import { BriefView } from './BriefView';
 import { RunReceiptCard } from './RunReceiptCard';
 import { useSessionProjection, useSidecar } from './SidecarContext';
 import type { SidecarStrings } from './sidecarConfig';
+import { createAIInstructionSubmission } from '@/core/instruction-composer';
 
 export {
 	BriefView,
@@ -344,7 +345,7 @@ function SessionView(): React.ReactElement {
 				<PromptInput
 					className="pk-prompt-input-shell"
 					inputFocusRef={inputFocusRef}
-					onSubmit={(message) => onSend(message.text)}
+					onSubmit={(message) => onSend(createAIInstructionSubmission(message.text).instruction)}
 				>
 					<PromptInputAttachments />
 					<div className="pk-session-context-chip" title={contextLabel}>

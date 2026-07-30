@@ -209,6 +209,8 @@ export function useLensLayout(graphData: LensGraphData | null, lens: LensType) {
 					edgeLabel: e.label,
 					dense,
 					directionality: e.directionality,
+					canonicalRelationId: e.canonicalRelationId,
+					accessibleLabel: e.accessibleLabel,
 				},
 			});
 		});

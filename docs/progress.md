@@ -8,6 +8,15 @@
 
 Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding → 配置 → Chat → Search → Graph 每个环节都能跑通，体验完整。同时推进技术债清理和架构重构。
 
+## 2026-07-31 · Planned Requirements 11 项完整实现
+
+- [x] **Contextual graph surfaces**：Vault Maintenance、Document Copilot 与 Quick Search drawer 共用 app-composed read-only graph port，落地 overview / hubs / source chain / local graph / orphan actions。
+- [x] **Ambient / File Atlas / Native Copilot**：Ambient 改为 Obsidian window-local floating host并提供显式刷新；File Atlas work-file rail 支持 recent / frequent / name、同源 Copilot suggestions、icon-only filter/flatten 与 breadcrumb；原生 Markdown modal 复用 Document Composer runtime，顶层只保留 Copilot / History。
+- [x] **Shared AI input / unified AI workspace**：Chat、Composer Copilot、AI Search 与 AI Graph 使用共享 instruction submission/component；Quick Search 顶层收敛为 Vault Search + AI selector，普通打开重置 AI Search，低频 mode、run/history 与 artifact deep link 可按 intent 恢复。
+- [x] **AI Graph Artifact Platform**：稳定 graph/version identity、immutable JSON versions、来源/证据/review/provenance、显式 Web、semantic diff accept gate、source/update 分离、JSONL run events、SQLite rebuildable projection、版本历史与 relation direction/文字 inspector 已落地；File Atlas、Composer、Vault Search、Chat 通过统一 launcher 带真实 context 重开/创建同一类 artifact。
+- [x] **Folder layout**：仅直接拥有当前可见文档的目录生成 compound frame，空中转目录按最近可见祖先折叠，完整 path 保留。
+- [x] **验证边界**：15 个需求聚焦 suites 全通过；`npm run build` 通过。全量 suite 为 `389/393`，4 个失败来自未触碰的基线 Chat Streamdown / Composer 契约。隔离 worktree 未覆盖真实 Obsidian 插件目录，故交互状态仍为 `INTERACTION NOT VERIFIED`。
+
 ## 2026-07-30 · Graph 边方向真值修复
 
 - [x] **File Atlas 方向恢复**：邻域图不再把 incoming backlink 强制改造成“当前文档 → 邻居”；一跳和二跳都按索引中的真实 `from/to` 构图，`A-2-processing → AI-peak-assistant-obsidian` 与 Vault/SQLite 真值一致。

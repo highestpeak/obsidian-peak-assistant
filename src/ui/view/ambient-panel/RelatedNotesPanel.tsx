@@ -2,15 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
 import { SessionContextService } from '@/service/context/SessionContextService';
 import type { WorkingTheme } from '@/service/context/types';
-import { Bug, FileText, Sparkles } from 'lucide-react';
+import { Bug, FileText, RefreshCw, Sparkles, X } from 'lucide-react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useDebugTraceCopy } from '@/ui/hooks/useDebugTraceCopy';
+import { Button } from '@/ui/component/shared-ui/button';
 
 // UI stays app-agnostic — link opening routes through the vaultNavigation
 // port already published on ServiceContext, so we no longer need `app: App`
 // as a prop (which forced callers in `src/ui/**` to import from `@/app/**`,
 // violating the T11P / T11Q boundary).
-type RelatedNotesPanelProps = Record<string, never>;
+interface RelatedNotesPanelProps {
+	floating?: boolean;
+	onClose?: () => void;
+}
 
 /**
  * Stable Ambient / Related Notes panel — the canonical surface for Ambient
@@ -23,12 +27,53 @@ type RelatedNotesPanelProps = Record<string, never>;
  * this panel from the ribbon or command palette; once open, it updates in
  * place without demanding attention.
  */
-export const RelatedNotesPanel: React.FC<RelatedNotesPanelProps> = () => {
+export const RelatedNotesPanel: React.FC<RelatedNotesPanelProps> = ({
+	floating = false,
+	onClose,
+}) => {
 	const items = useAmbientPushStore((s) => s.items);
 	const sourceFilePath = useAmbientPushStore((s) => s.sourceFilePath);
 	const [theme, setTheme] = useState<WorkingTheme | null>(null);
-	const { debugTracePort, vaultNavigation } = useServiceContext();
+	const { ambientRuntime, debugTracePort, vaultNavigation } = useServiceContext();
 	const copyDebugTrace = useDebugTraceCopy();
+	const [refreshing, setRefreshing] = useState(false);
+
+	const startDrag = (event: React.PointerEvent<HTMLElement>): void => {
+		if (!floating || event.button !== 0) return;
+		const target = event.target as HTMLElement;
+		if (target.closest('button')) return;
+		const host = event.currentTarget.closest('.peak-ambient-floating-host') as HTMLElement | null;
+		const ownerWindow = event.currentTarget.ownerDocument.defaultView;
+		if (!host || !ownerWindow) return;
+		event.preventDefault();
+		const box = host.getBoundingClientRect();
+		const offsetX = event.clientX - box.left;
+		const offsetY = event.clientY - box.top;
+		const move = (moveEvent: PointerEvent): void => {
+			const maxLeft = Math.max(8, ownerWindow.innerWidth - host.offsetWidth - 8);
+			const maxTop = Math.max(8, ownerWindow.innerHeight - host.offsetHeight - 8);
+			const left = Math.min(maxLeft, Math.max(8, moveEvent.clientX - offsetX));
+			const top = Math.min(maxTop, Math.max(8, moveEvent.clientY - offsetY));
+			host.style.left = `${left}px`;
+			host.style.top = `${top}px`;
+			host.style.right = 'auto';
+		};
+		const stop = (): void => {
+			ownerWindow.removeEventListener('pointermove', move);
+			ownerWindow.removeEventListener('pointerup', stop);
+			ownerWindow.removeEventListener('pointercancel', stop);
+		};
+		ownerWindow.addEventListener('pointermove', move);
+		ownerWindow.addEventListener('pointerup', stop, { once: true });
+		ownerWindow.addEventListener('pointercancel', stop, { once: true });
+	};
+
+	const refresh = (): void => {
+		if (!ambientRuntime || refreshing) return;
+		setRefreshing(true);
+		ambientRuntime.triggerManual();
+		window.setTimeout(() => setRefreshing(false), 600);
+	};
 
 	// Poll WorkingTheme every 15s while the panel is open. This is a stable
 	// surface — no store subscription flicker.
@@ -54,13 +99,30 @@ export const RelatedNotesPanel: React.FC<RelatedNotesPanelProps> = () => {
 
 	return (
 		<div className="peak-related-notes-panel">
-			<header className="peak-related-notes-header">
+			<header
+				className="peak-related-notes-header"
+				onPointerDown={startDrag}
+				data-draggable={floating ? 'true' : undefined}
+			>
 				<Sparkles size={14} />
 				<span className="peak-related-notes-title">Related Notes</span>
+				<Button
+					variant="unstyled"
+					geometry="action-icon"
+					className="peak-related-notes-header-btn"
+					title="Refresh related notes"
+					aria-label="Refresh related notes"
+					disabled={!ambientRuntime || refreshing}
+					onClick={refresh}
+				>
+					<RefreshCw className={refreshing ? 'is-spinning' : undefined} />
+				</Button>
 				{debugTracePort?.isEnabled() && items.length > 0 && (
-					<button
+					<Button
+						variant="unstyled"
+						geometry="action-icon"
 						type="button"
-						className="peak-related-notes-debug-btn"
+						className="peak-related-notes-header-btn"
 						title="Copy ambient push debug trace"
 						aria-label="Copy ambient push debug trace"
 						onClick={() => {
@@ -71,11 +133,22 @@ export const RelatedNotesPanel: React.FC<RelatedNotesPanelProps> = () => {
 							const ambientRun = recent.find((r) => r.surface === 'ambient');
 							void copyDebugTrace(ambientRun?.runId);
 						}}
-						style={{ marginLeft: 'auto', background: 'transparent', border: 'none', cursor: 'pointer', padding: 2 }}
 					>
 						<Bug size={12} />
-					</button>
+					</Button>
 				)}
+				{onClose ? (
+					<Button
+						variant="unstyled"
+						geometry="action-icon"
+						className="peak-related-notes-header-btn"
+						title="Close Related Notes"
+						aria-label="Close Related Notes"
+						onClick={onClose}
+					>
+						<X aria-hidden="true" />
+					</Button>
+				) : null}
 			</header>
 
 			{summary.length > 0 && (
@@ -95,7 +168,8 @@ export const RelatedNotesPanel: React.FC<RelatedNotesPanelProps> = () => {
 				<ul className="peak-related-notes-list">
 					{items.map((item) => (
 						<li key={item.filePath} className="peak-related-notes-item">
-							<button
+							<Button
+								variant="unstyled"
 								type="button"
 								className="peak-related-notes-link"
 								onClick={() => {
@@ -109,7 +183,7 @@ export const RelatedNotesPanel: React.FC<RelatedNotesPanelProps> = () => {
 							>
 								<FileText size={12} />
 								<span className="peak-related-notes-item-title">{item.title || item.filePath}</span>
-							</button>
+							</Button>
 							{item.explanation && (
 								<span className="peak-related-notes-item-explanation">{item.explanation}</span>
 							)}

@@ -16,7 +16,7 @@ assert.match(rail, /role="menuitemradio"/);
 assert.match(rail, /aria-expanded=\{sortOpen\}/);
 assert.match(rail, /onSortModeChange\(mode\)/);
 assert.doesNotMatch(rail, /<select/);
-assert.doesNotMatch(rail, /value="recent"/);
+assert.match(rail, /\['recent', 'frequent', 'name'\]/);
 assert.match(rail, /ArrowUpDown/);
 assert.match(rail, /ChevronDown/);
 assert.match(rail, /role="separator"/);

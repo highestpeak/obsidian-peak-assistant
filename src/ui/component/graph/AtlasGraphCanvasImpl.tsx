@@ -28,6 +28,10 @@ import { Check, Image as ImageIcon, Workflow } from 'lucide-react';
 import { IconButton } from '@/ui/components/primitives';
 import type { ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph';
 import { coalesceGraphEdges } from '@/core/types/graph-edge';
+import {
+	buildVisibleFolderGroups,
+	visibleFolderGroupIdForDocument,
+} from './folderCompoundModel';
 
 // ─── One-time Cytoscape extension registration ──────────────────────────────
 let extensionsRegistered = false;
@@ -98,40 +102,21 @@ function buildElements(
 		sub.resultNodes.filter((n) => !refEndpoints.has(n.id)).map((n) => n.id),
 	);
 
-	const folderChainMemo = new Map<string, Array<{ id: string; label: string; parentId?: string; depth: number; top: string }>>();
-	const chainForPath = (rawPath: string) => {
-		if (!rawPath) return [];
-		let hit = folderChainMemo.get(rawPath);
-		if (hit) return hit;
-		const parts = rawPath.split('/');
-		parts.pop();
-		let cum = '';
-		let prevId: string | undefined;
-		const chain: Array<{ id: string; label: string; parentId?: string; depth: number; top: string }> = [];
-		const top = parts[0] ?? '';
-		for (const p of parts) {
-			cum = cum ? `${cum}/${p}` : p;
-			const id = `group:folder:${cum}`;
-			chain.push({ id, label: p, parentId: prevId, depth: chain.length, top });
-			prevId = id;
-		}
-		hit = chain;
-		folderChainMemo.set(rawPath, hit);
-		return hit;
-	};
-
 	if (opts.groupFolder) {
-		const seen = new Set<string>();
-		for (const n of sub.resultNodes) {
-			for (const seg of chainForPath(n.path)) {
-				if (seen.has(seg.id)) continue;
-				seen.add(seg.id);
-				els.push({
-					group: 'nodes',
-					data: { id: seg.id, label: seg.label, kind: 'folderGroup', parent: seg.parentId, color: folderPicker(seg.top), depth: seg.depth },
-					classes: 'folderGroup',
-				});
-			}
+		for (const group of buildVisibleFolderGroups(sub.resultNodes)) {
+			els.push({
+				group: 'nodes',
+				data: {
+					id: group.id,
+					label: group.label,
+					path: group.path,
+					kind: 'folderGroup',
+					parent: group.parentId,
+					color: folderPicker(group.top),
+					depth: group.depth,
+				},
+				classes: 'folderGroup',
+			});
 		}
 	}
 
@@ -153,11 +138,9 @@ function buildElements(
 		});
 	}
 	for (const n of sub.resultNodes) {
-		let parent: string | undefined;
-		if (opts.groupFolder) {
-			const chain = chainForPath(n.path);
-			if (chain.length) parent = chain[chain.length - 1].id;
-		}
+		const parent = opts.groupFolder
+			? visibleFolderGroupIdForDocument(n.path)
+			: undefined;
 		const degree = degreeMap.get(n.id) ?? 0;
 		const isHublike = degree >= HUBLIKE_THRESHOLD;
 		els.push({

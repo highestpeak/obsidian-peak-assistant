@@ -78,6 +78,7 @@
 	},
 	"composer": {
 		"placeholder": "Ask about your project, notes, or current work…",
+		"openAIGraphsLabel": "Open AI Graphs",
 		"attachFilesLabel": "Files & images",
 		"attachFilesDescription": "PDF, images, Office, Canvas, Excalidraw",
 		"attachVaultDocLabel": "Vault document",

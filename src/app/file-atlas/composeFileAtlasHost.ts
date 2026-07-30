@@ -15,6 +15,7 @@ import type { AppContext } from '@/app/context/AppContext';
 import type {
 	AtlasGraphData,
 	AtlasImageInfo,
+	AtlasCopilotSuggestion,
 	FileAtlasHostPort,
 	OpenDocMeta,
 } from '@/ui/view/file-atlas/FileAtlasHostPort';
@@ -23,6 +24,9 @@ import { getConnectedLinks, getDiscoveredConnections } from '@/service/search/in
 import { DOCUMENT_COMPOSER_VIEW_TYPE } from '@/app/composer/viewType';
 import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
 import { buildFileAtlasNeighborhood } from './buildFileAtlasNeighborhood';
+import { composerTargetBlockId } from '@/core/composer';
+import { NativeMarkdownIntelligenceModal } from '@/app/composer/NativeMarkdownIntelligenceModal';
+import { openQuickSearch } from '@/app/commands/PeakCommandActions';
 
 /** Strip `![[ ]]` / `![]()` wrappers and any `|alias` so we have a bare link target. */
 function cleanImageTarget(raw: string): string {
@@ -356,6 +360,69 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 			return buildFileAtlasNeighborhood(path, opts, {
 				getConnectedLinks,
 				getDiscoveredConnections,
+			});
+		},
+
+		async loadCopilotSuggestions(path: string): Promise<AtlasCopilotSuggestion[]> {
+			const owner = appContext.runtimeRegistry.tryGetDocumentComposerRuntime();
+			if (!owner) return [];
+			const controller = owner.createController(`file-atlas-${crypto.randomUUID()}`);
+			controller.start(path);
+			try {
+				await controller.settled();
+				const intelligence = controller.getIntelligence();
+				if (!intelligence) return [];
+				intelligence.refreshBrief();
+				return intelligence.findings.briefItems().map((finding): AtlasCopilotSuggestion => {
+					const targetBlockId = composerTargetBlockId(finding.target);
+					const targetBlock = targetBlockId
+						? controller.getRuntime()?.session.snapshot.blocks.find(
+							(candidate) => candidate.blockId === targetBlockId,
+						)
+						: undefined;
+					const targetLabel = targetBlockId ?? finding.target.kind;
+					return {
+						findingId: finding.findingId,
+						targetBlockId,
+						targetFrom: targetBlock?.source.from ?? null,
+						targetTo: targetBlock?.source.to ?? null,
+						title: finding.brief?.title ?? finding.reason,
+						summary: finding.brief?.summary ?? '',
+						targetLabel: finding.brief?.targetLabel ?? targetLabel,
+						evidenceLabel: finding.brief?.evidenceLabel ?? finding.evidenceRevision,
+						state: finding.state === 'stale' ? 'stale' : 'active',
+						priority: finding.brief?.priority ?? Number.MAX_SAFE_INTEGER,
+					};
+				}).sort((left, right) => left.priority - right.priority);
+			} finally {
+				controller.stop();
+			}
+		},
+
+		openCopilot(path: string, context): void {
+			new NativeMarkdownIntelligenceModal(appContext, path, context).open();
+		},
+
+		openAIGraphs(graphId?: string): void {
+			const path = activeFileContextPath();
+			const file = path ? app.vault.getAbstractFileByPath(path) : null;
+			openQuickSearch({
+				aiMode: 'graph',
+				...(graphId ? { graphId } : {}),
+				...(path
+					? {
+						selectedVaultPaths: [path],
+						graphCreateOrigin: {
+							surface: 'file-atlas',
+							contextRef: {
+								kind: 'atlas-file',
+								ref: path,
+								label: file instanceof TFile ? file.basename : path,
+								locator: path,
+							},
+						},
+					}
+					: {}),
 			});
 		},
 	};

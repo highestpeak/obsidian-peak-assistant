@@ -441,6 +441,15 @@ export default class MyPlugin extends Plugin {
 			console.warn('[Peak Composer] runtime compose failed:', e);
 		}
 
+		try {
+			const { composeAIGraphArtifactRuntime } = await import('@/app/ai-graph');
+			appContext.runtimeRegistry.setAIGraphArtifactRuntime(
+				composeAIGraphArtifactRuntime(this.app, this.settings.dataStorageFolder),
+			);
+		} catch (e) {
+			console.warn('[Peak AI Graph] artifact runtime compose failed:', e);
+		}
+
 		// register workspace events
 		registerCoreEvents(this, this.viewManager);
 
@@ -1148,6 +1157,9 @@ export default class MyPlugin extends Plugin {
 		// a hot-reloaded bundle does not double-register them.
 		try {
 			this.appContext?.runtimeRegistry.clearDocumentComposerRuntime();
+		} catch { /* not bound — ignore */ }
+		try {
+			this.appContext?.runtimeRegistry.clearAIGraphArtifactRuntime();
 		} catch { /* not bound — ignore */ }
 
 		clearPendingConversationTimeouts();

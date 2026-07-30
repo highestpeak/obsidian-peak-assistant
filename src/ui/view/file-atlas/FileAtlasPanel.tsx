@@ -162,6 +162,7 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 }) => {
 	const [searchTerm, setSearchTerm] = useState('');
 	const [subview, setSubview] = useState<Subview>('tree');
+	const [flattened, setFlattened] = useState(false);
 
 	const doc: AtlasDocument = useMemo(
 		() => parseDocumentBlocks(content, activePath),
@@ -308,6 +309,7 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 				recentTitle={s.railRecentTitle}
 				sortLabel={s.railSortLabel}
 				sortLabels={{
+					recent: s.railSortRecent,
 					frequent: s.railSortFrequent,
 					name: s.railSortName,
 				}}
@@ -404,6 +406,11 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 							onGroupSet={(groupId, on) => dispatch({ type: 'groupSet', kinds: groupKinds(groupId), on })}
 							onExpandAll={() => dispatch({ type: 'expandAll' })}
 							onCollapseAll={() => dispatch({ type: 'setCollapsed', ids: collectGroupIds(blocks) })}
+							flattened={flattened}
+							onFlattenChange={setFlattened}
+							onOpenAIGraphs={host.openAIGraphs
+								? () => host.openAIGraphs?.()
+								: undefined}
 						/>
 
 						{/* main split */}
@@ -423,6 +430,7 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 										onOpenInEditor={reveal}
 										onToggleFold={(id) => dispatch({ type: 'toggleFold', id })}
 										onAddToTray={addToTray}
+										flattened={flattened}
 									/>
 								</div>
 							</div>

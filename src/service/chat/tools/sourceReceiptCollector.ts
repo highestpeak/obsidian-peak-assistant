@@ -3,6 +3,7 @@ import {
 	type ExplicitContextRef,
 	type SourceReceipt,
 } from '@/core/types/chat-studio';
+import { extractCitedWebSources } from '@/core/web/sourceExtraction';
 
 /**
  * Per-turn accumulator for the ACTUAL sources consulted while producing an
@@ -71,33 +72,5 @@ export class SourceReceiptCollector {
  * fabricated data. Dedupes by URL; the collector dedupes again on record.
  */
 export function extractWebSourcesFromText(text: string): Array<{ id: string; url: string; title: string }> {
-	if (!text) return [];
-	const titleByUrl = new Map<string, string>();
-	const upsert = (rawUrl: string, title: string): void => {
-		const url = stripTrailingPunctuation(rawUrl);
-		if (!url) return;
-		const existing = titleByUrl.get(url);
-		// Keep the first non-empty title we see for a URL; never downgrade to ''.
-		if (existing === undefined || (!existing && title)) titleByUrl.set(url, title);
-	};
-
-	// 1) Markdown links [title](url) — carry a human-readable title.
-	const mdLink = /\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/g;
-	let m: RegExpExecArray | null;
-	while ((m = mdLink.exec(text)) !== null) upsert(m[2], (m[1] ?? '').trim());
-
-	// 2) Bare / angle-bracketed URLs — title falls back to the URL itself.
-	const bareUrl = /https?:\/\/[^\s<>()[\]]+/g;
-	while ((m = bareUrl.exec(text)) !== null) upsert(m[0], '');
-
-	return Array.from(titleByUrl.entries()).map(([url, title], i) => ({
-		id: `web-${i + 1}`,
-		url,
-		title: title || url,
-	}));
-}
-
-/** Drop trailing sentence/markdown punctuation that URL regexes over-capture. */
-function stripTrailingPunctuation(raw: string): string {
-	return raw.replace(/[.,;:!?)\]]+$/, '').trim();
+	return extractCitedWebSources(text);
 }

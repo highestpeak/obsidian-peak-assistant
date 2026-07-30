@@ -33,6 +33,7 @@ import type { HubGenerationRuntime } from '@/service/hub/HubGenerationRuntime';
 import type { HubCurationScheduler } from '@/service/hub/HubCurationScheduler';
 import type { DebugTracePort } from '@/core/debug-trace';
 import type { DocumentComposerRuntime } from '@/app/composer/DocumentComposerRuntime';
+import type { AIGraphArtifactRuntime } from '@/service/ai-graph';
 
 /**
  * Bundle of the three usage-telemetry services. They boot and dispose
@@ -61,6 +62,7 @@ export class AppRuntimeRegistry {
 	private hubCurationScheduler: HubCurationScheduler | null = null;
 	private debugTracePort: DebugTracePort | null = null;
 	private documentComposerRuntime: DocumentComposerRuntime | null = null;
+	private aiGraphArtifactRuntime: AIGraphArtifactRuntime | null = null;
 
 	/**
 	 * Bind the Vault Lint runtime. Called exactly once at plugin boot
@@ -591,6 +593,30 @@ export class AppRuntimeRegistry {
 		const runtime = this.documentComposerRuntime;
 		this.documentComposerRuntime = null;
 		runtime?.dispose();
+	}
+
+	// ── AI Graph artifact runtime ──────────────────────────────────────────
+
+	setAIGraphArtifactRuntime(runtime: AIGraphArtifactRuntime): void {
+		if (this.aiGraphArtifactRuntime !== null) {
+			throw new Error('AppRuntimeRegistry.setAIGraphArtifactRuntime: a runtime is already bound.');
+		}
+		this.aiGraphArtifactRuntime = runtime;
+	}
+
+	getAIGraphArtifactRuntime(): AIGraphArtifactRuntime {
+		if (this.aiGraphArtifactRuntime === null) {
+			throw new Error('AppRuntimeRegistry.getAIGraphArtifactRuntime: no runtime is bound.');
+		}
+		return this.aiGraphArtifactRuntime;
+	}
+
+	tryGetAIGraphArtifactRuntime(): AIGraphArtifactRuntime | null {
+		return this.aiGraphArtifactRuntime;
+	}
+
+	clearAIGraphArtifactRuntime(): void {
+		this.aiGraphArtifactRuntime = null;
 	}
 
 }

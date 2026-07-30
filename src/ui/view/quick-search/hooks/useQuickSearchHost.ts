@@ -30,6 +30,14 @@ import type { SaveAnalysisResultParams } from '../callbacks/save-ai-analyze-to-m
 import type { CompletedAnalysisSnapshot } from '../store/aiAnalysisStore';
 import type { LensGraphData } from '@/ui/component/mine/multi-lens-graph/types';
 import type { ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph';
+import type {
+	AIGraphArtifactRuntime,
+	AIGraphArtifactView,
+	AIGraphHistoryRow,
+	AIGraphSemanticDiff,
+	AIGraphVersion,
+	CreateAIGraphRequest,
+} from '@/service/ai-graph';
 
 export interface QuickSearchHost {
 	// File / path operations
@@ -54,6 +62,7 @@ export interface QuickSearchHost {
 	// Services
 	aiAnalysisHistory: AIAnalysisHistoryService;
 	quickSearchRuntime: QuickSearchBackgroundRuntime | null;
+	aiGraphArtifacts: AIGraphArtifactRuntime | null;
 
 	// Agent factories — UI never `new`s an agent with raw {app, manager}
 	createSynthesizeAgent(): SynthesizeAgent;
@@ -70,6 +79,19 @@ export interface QuickSearchHost {
 		paths: string[],
 		scope: 'evidence' | 'one-hop' | 'two-hop',
 	): Promise<ResultSubgraphOutput>;
+	persistGeneratedAIGraph(request: CreateAIGraphRequest): Promise<{ graphId: string; versionId: string } | null>;
+	listAIGraphArtifacts(): Promise<AIGraphHistoryRow[]>;
+	openAIGraphArtifact(graphId: string, versionId?: string): Promise<AIGraphArtifactView | null>;
+	listAIGraphVersions(graphId: string): Promise<AIGraphVersion[]>;
+	addActiveFileToAIGraphSources(graphId: string): Promise<AIGraphArtifactView>;
+	removeAIGraphSource(graphId: string, sourceId: string): Promise<AIGraphArtifactView>;
+	proposeAIGraphUpdate(
+		graphId: string,
+		baseVersionId: string,
+		instruction: string,
+		selection?: { kind: 'node' | 'relation'; id: string },
+	): Promise<AIGraphSemanticDiff>;
+	acceptAIGraphUpdate(diff: AIGraphSemanticDiff): Promise<AIGraphArtifactView>;
 
 	// Markdown save / persist
 	saveAnalysisToVault(params: SaveAnalysisResultParams): Promise<{ path: string }>;

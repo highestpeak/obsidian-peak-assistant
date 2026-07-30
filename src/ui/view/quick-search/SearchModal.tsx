@@ -37,6 +37,17 @@ import type { AIAnalysisHistoryRecord } from '@/service/AIAnalysisHistoryService
 import { createOpenSourceCallback } from './callbacks/open-source-file';
 import { ResultPaneGraphControls, ResultDensityToggle, ViewModeToggle } from './components/ResultPaneHeader';
 import { ResultBrowserSearchInput } from '@/ui/component/result-browser';
+import { useOpenHubGraphSubview } from './hooks/useOpenHubGraphSubview';
+import { AIInstructionComposer } from '@/ui/component/instruction-composer';
+import type { AIWorkspaceMode } from './store/sharedStore';
+import type {
+	AIGraphArtifactView,
+	AIGraphHistoryRow,
+	AIGraphSemanticDiff,
+	AIGraphVersion,
+} from '@/service/ai-graph';
+import { MultiLensGraph } from '@/ui/component/mine/multi-lens-graph/MultiLensGraph';
+import type { LensGraphData } from '@/core/types/lens-graph';
 
 type TabType = 'vault' | 'ai';
 
@@ -75,8 +86,7 @@ const TabButton: React.FC<TabButtonProps> = ({ tab, label, activeTab, onClick, c
 
 interface AITabContentProps {
 	onClose?: () => void;
-	activeTab: TabType;
-	setActiveTab: (tab: TabType) => void;
+	mode: Exclude<AIWorkspaceMode, 'vault-intelligence'>;
 }
 
 /**
@@ -87,8 +97,7 @@ export const PRESET_LABELS: Record<AnalysisMode, { short: string; full: string; 
 	aiGraph: { short: 'AI graph', full: 'AI graph · Build an interactive knowledge graph.', placeholder: 'Describe the knowledge graph you want to build...' },
 };
 
-const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActiveTab }) => {
-	const inputRef = useRef<{ focus: () => void; select: () => void } | null>(null);
+const AITabContent: React.FC<AITabContentProps> = ({ onClose, mode }) => {
 	const { eventBus } = useServiceContext();
 	const host = useQuickSearchHost();
 	const { searchQuery, setSearchQuery, recentQueries, clearRecentQueries } = useSharedStore();
@@ -98,7 +107,6 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 	const isInputFrozen = useSearchSessionStore((s) => s.isInputFrozen);
 	const hasAnalyzed = useSearchSessionStore((s) => s.hasAnalyzed);
 	const setAiModalOpen = useSearchSessionStore((s) => s.setAiModalOpen);
-	const analysisMode = useSearchSessionStore((s) => s.analysisMode);
 	const setAnalysisMode = useSearchSessionStore((s) => s.setAnalysisMode);
 	const { performAnalysis, cancel, restoreFromBackground } = useSearchSession();
 
@@ -123,6 +131,10 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 		} catch { /* EventBus may not be initialized */ }
 		performAnalysis(undefined);
 	};
+
+	useEffect(() => {
+		setAnalysisMode(mode === 'graph' ? 'aiGraph' : 'vaultFull');
+	}, [mode, setAnalysisMode]);
 
 	const openSavedAnalysis = async (record: AIAnalysisHistoryRecord) => {
 		const path = String(record.vault_rel_path ?? '').trim();
@@ -160,60 +172,12 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 		}
 	};
 
-	const PRESETS: AnalysisMode[] = isMobile() ? ['vaultFull'] : ['vaultFull', 'aiGraph'];
-	const cyclePreset = (dir: 1 | -1) => {
-		const idx = PRESETS.indexOf(analysisMode);
-		const next = PRESETS[(idx + dir + PRESETS.length) % PRESETS.length];
-		setAnalysisMode(next);
-	};
-
-	const handleInputKeyDown = (e: React.KeyboardEvent) => {
-		if (e.key === 'Tab' && !e.shiftKey) {
-			e.preventDefault();
-			e.stopPropagation();
-			setActiveTab('vault');
-			return;
-		}
-		if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
-			e.preventDefault();
-			cyclePreset(e.key === 'ArrowUp' ? -1 : 1);
-			return;
-		}
-		if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-			e.preventDefault();
-			return;
-		}
-		if ((e.key === 'a' || e.key === 'A') && (e.metaKey || e.ctrlKey) && inputRef.current) {
-			e.preventDefault();
-			e.stopPropagation();
-			inputRef.current?.select?.();
-			return;
-		}
-	};
-
 	useEffect(() => {
 		setAiModalOpen(true);
 		return () => setAiModalOpen(false);
 	}, [setAiModalOpen]);
 
-	useEffect(() => {
-		if (inputRef.current) inputRef.current.focus();
-	}, []);
-
 	const [suggestions, setSuggestions] = useState<MatchedSuggestion[]>([]);
-	const [showModeMenu, setShowModeMenu] = useState(false);
-	const modeBadgeRef = useRef<HTMLDivElement>(null);
-
-	// Close dropdown on click outside
-	useEffect(() => {
-		if (!showModeMenu) return;
-		const handler = (e: MouseEvent) => {
-			if (modeBadgeRef.current?.contains(e.target as Node)) return;
-			setShowModeMenu(false);
-		};
-		document.addEventListener('mousedown', handler);
-		return () => document.removeEventListener('mousedown', handler);
-	}, [showModeMenu]);
 
 	useEffect(() => {
 		(async () => {
@@ -244,100 +208,43 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 	}, []);
 
 	return (
-		<>
-			<div className="pktw-flex-shrink-0 pktw-p-2 pktw-bg-pk-background pktw-border-b pktw-border-pk-border">
-				<div className="pktw-flex pktw-gap-2 pktw-items-center">
-					<div className="pktw-relative pktw-flex-1 pktw-min-w-0">
-						<div className="pktw-relative pktw-flex pktw-items-center pktw-min-w-0">
-							<CodeMirrorInput
-								ref={inputRef}
+			<>
+				<div className="pktw-flex-shrink-0 pktw-p-2 pktw-bg-pk-background pktw-border-b pktw-border-pk-border">
+					<div className="pktw-flex pktw-gap-2 pktw-items-center">
+						<div className="pktw-relative pktw-flex-1 pktw-min-w-0">
+							<AIInstructionComposer
+								surface={mode === 'graph' ? 'ai-graph' : 'ai-search'}
+								capabilityId={mode === 'graph' ? 'ai-graph.create' : 'ai-search.run'}
 								value={searchQuery}
-								onChange={setSearchQuery}
-								onKeyDown={handleInputKeyDown}
-								onEnterSubmit={handleAnalyze}
-								placeholder={PRESET_LABELS[analysisMode].placeholder}
-								enableSearchTags={true}
-								singleLine={true}
-								disabled={isInputFrozen}
-								containerClassName={`pktw-flex-1 pktw-min-w-0 ${analysisMode === 'aiGraph' ? 'pktw-pl-[118px]' : 'pktw-pl-[150px]'} pktw-pr-16 pktw-py-2.5 pktw-bg-pk-surface-raised pktw-border pktw-border-pk-border focus-within:pktw-border-pk-accent focus-within:pktw-shadow-sm pktw-rounded-full pktw-transition-all pktw-z-0`}
-								className="pktw-pr-4"
+								onValueChange={setSearchQuery}
+								onSubmit={() => handleAnalyze()}
+								onStop={cancel}
+								status={isAnalyzing ? 'streaming' : isInputFrozen ? 'submitting' : 'idle'}
+								placeholder={mode === 'graph'
+									? PRESET_LABELS.aiGraph.placeholder
+									: 'Ask AI anything about your vault...'}
+								compact
+								autoFocus
+								trailingControls={!isMobile() ? (
+									<Button
+										variant="ghost"
+										geometry="action-icon"
+										type="button"
+										onClick={() => {
+											if (!webEnabled && !ProfileRegistry.getInstance().getActiveWebSearchProfile()) {
+												new Notice('No Web Search profile configured. Go to Settings → Profiles and assign a profile as "Web Search".', 5000);
+												return;
+											}
+											setSearchQuery(toggleWeb(searchQuery));
+										}}
+										title={webEnabled ? 'Web: ON' : 'Web: OFF'}
+										aria-label={webEnabled ? 'Disable Web search' : 'Enable Web search'}
+									>
+										{webEnabled ? <Globe className="pktw-w-5 pktw-h-5" /> : <GlobeOff className="pktw-w-5 pktw-h-5" />}
+									</Button>
+								) : undefined}
 							/>
-							{/* Mode dropdown */}
-							<div ref={modeBadgeRef} className="pktw-absolute pktw-left-2 pktw-top-1/2 -pktw-translate-y-1/2 pktw-z-10">
-								<Button
-									variant="unstyled"
-									size="sm"
-									geometry="toolbar"
-									onClick={() => setShowModeMenu((v) => !v)}
-									className={cn(
-										'pktw-rounded-full pktw-text-sm pktw-font-medium pktw-select-none pktw-transition-all',
-										'pktw-bg-pk-highlight pktw-text-pk-accent pktw-border pktw-border-pk-accent/20 hover:pktw-bg-pk-accent-muted pktw-cursor-pointer'
-									)}
-									title={`${PRESET_LABELS[analysisMode].full} (⌥↑/⌥↓ to switch)`}
-								>
-									{analysisMode === 'aiGraph' ? <Network className="pktw-w-4 pktw-h-4 pktw-mr-1.5" /> : <Library className="pktw-w-4 pktw-h-4 pktw-mr-1.5" />}
-									{PRESET_LABELS[analysisMode].short}
-									<ChevronDown className={cn('pktw-w-3 pktw-h-3 pktw-ml-1 pktw-opacity-60 pktw-transition-transform', showModeMenu && 'pktw-rotate-180')} />
-								</Button>
-								{showModeMenu && (
-									<div className="pktw-absolute pktw-top-full pktw-left-0 pktw-mt-1 pktw-bg-pk-surface pktw-border pktw-border-pk-border pktw-rounded-lg pktw-shadow-lg pktw-py-1 pktw-z-50 pktw-min-w-[200px]">
-										{PRESETS.map((p) => {
-											const Icon = p === 'aiGraph' ? Network : Library;
-											return (
-												<Button
-													key={p}
-													variant="ghost"
-													size="sm"
-													onClick={() => { setAnalysisMode(p); setShowModeMenu(false); }}
-													className={cn(
-														'!pktw-h-auto !pktw-min-h-12 !pktw-max-h-none pktw-w-full pktw-justify-start pktw-gap-2.5 pktw-rounded-none !pktw-px-3 !pktw-py-2 pktw-text-sm pktw-cursor-pointer pktw-transition-colors',
-														analysisMode === p
-															? 'pktw-text-pk-accent pktw-font-medium pktw-bg-pk-accent/5'
-															: 'pktw-text-pk-foreground'
-													)}
-												>
-													<div className={cn(
-														'pktw-w-8 pktw-h-8 pktw-rounded-md pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0',
-														analysisMode === p ? 'pktw-bg-pk-accent pktw-text-pk-text-inverted' : 'pktw-bg-pk-surface-sunken pktw-text-pk-foreground-muted pktw-border pktw-border-pk-border'
-													)}>
-														<Icon className="pktw-w-4 pktw-h-4" />
-													</div>
-													<div className="pktw-flex-1 pktw-text-left">
-														<span className="pktw-block pktw-font-medium">{PRESET_LABELS[p].short}</span>
-														<span className="pktw-block pktw-text-pk-xs pktw-text-pk-foreground-muted pktw-font-normal">{PRESET_LABELS[p].full.split('·')[1]?.trim()}</span>
-													</div>
-												</Button>
-											);
-										})}
-										<div className="pktw-border-t pktw-border-pk-border pktw-mt-1 pktw-pt-1 pktw-px-3 pktw-pb-1">
-											<span className="pktw-text-pk-xs pktw-text-pk-foreground-muted">⌥↑ ⌥↓ to switch</span>
-										</div>
-									</div>
-								)}
-							</div>
-							{!isMobile() && (
-								<Button
-									variant="ghost"
-									geometry="action-icon"
-									onClick={() => {
-										// Check if web search profile is configured before enabling
-										if (!webEnabled && !ProfileRegistry.getInstance().getActiveWebSearchProfile()) {
-											new Notice('No Web Search profile configured. Go to Settings → Profiles and assign a profile as "Web Search".', 5000);
-											return;
-										}
-										const newQuery = toggleWeb(searchQuery);
-										setSearchQuery(newQuery);
-									}}
-									className={`pktw-shadow-none pktw-absolute pktw-right-2 pktw-top-1/2 -pktw-translate-y-1/2 pktw-rounded pktw-transition-colors
-										!pktw-rounded-full
-										${webEnabled ? 'pktw-text-pk-info pktw-border pktw-border-pk-info/30' : 'pktw-border-0 pktw-bg-transparent '} pktw-cursor-pointer`}
-									title={webEnabled ? 'Web: ON' : 'Web: OFF'}
-								>
-									{webEnabled ? <Globe className="pktw-w-5 pktw-h-5" /> : <GlobeOff className="pktw-w-5 pktw-h-5" />}
-								</Button>
-							)}
 						</div>
-					</div>
 					<div className="pktw-flex pktw-items-center pktw-gap-2">
 						{!isAnalyzing && hasResult && (
 							<Button
@@ -385,52 +292,57 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 					</div>
 				</div>
 			</div>
-			{sessionStatus === 'idle' && (
-				<div className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto pktw-py-3">
-					<ActiveSessionsList onRestore={restoreFromBackground} />
-					{!searchQuery.trim() && (
-						<RecentQueriesDropdown
-							queries={recentQueries.slice(0, 5)}
-							onSelect={(query) => {
-								setSearchQuery(query);
-								useSearchSessionStore.getState().resetAll();
-								useSearchSessionStore.getState().incrementTriggerAnalysis();
-							}}
-							onClear={clearRecentQueries}
-						/>
-					)}
-					<SuggestionGrid
-						suggestions={suggestions}
-						onSelect={(s) => {
-							useSharedStore.getState().setSearchQuery(s.filledTemplate);
-							useSearchSessionStore.getState().resetAll();
-							useSearchSessionStore.getState().incrementTriggerAnalysis();
-							// Increment usage count in background
-							(async () => {
-								try {
-									let repo: any = (sqliteStoreManager as any).getQueryPatternRepo?.();
-									if (!repo) {
-										const { QueryPatternRepo } = await import('@/core/storage/sqlite/repositories/QueryPatternRepo');
-										const metaStore = sqliteStoreManager.getMetaStore();
-										if (metaStore) repo = new QueryPatternRepo(metaStore.kysely());
-									}
-									if (repo) await repo.incrementUsage(s.patternId);
-								} catch {}
-							})();
-						}}
-					/>
-					<RecentAnalysisList
-						filterQuery={searchQuery}
-						limit={6}
-						onSelectQuery={(query) => {
-							setSearchQuery(query);
-							useSearchSessionStore.getState().resetAll();
-							useSearchSessionStore.getState().incrementTriggerAnalysis();
-						}}
-						onSelectRecord={openSavedAnalysis}
-					/>
-				</div>
-			)}
+				{sessionStatus === 'idle' && (
+					<div className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto pktw-py-3">
+						{mode === 'graph' ? (
+							<AIGraphHistoryPanel />
+						) : (
+							<>
+								<ActiveSessionsList onRestore={restoreFromBackground} />
+								{!searchQuery.trim() && (
+									<RecentQueriesDropdown
+										queries={recentQueries.slice(0, 5)}
+										onSelect={(query) => {
+											setSearchQuery(query);
+											useSearchSessionStore.getState().resetAll();
+											useSearchSessionStore.getState().incrementTriggerAnalysis();
+										}}
+										onClear={clearRecentQueries}
+									/>
+								)}
+								<SuggestionGrid
+									suggestions={suggestions}
+									onSelect={(s) => {
+										useSharedStore.getState().setSearchQuery(s.filledTemplate);
+										useSearchSessionStore.getState().resetAll();
+										useSearchSessionStore.getState().incrementTriggerAnalysis();
+										void (async () => {
+											try {
+												let repo: any = (sqliteStoreManager as any).getQueryPatternRepo?.();
+												if (!repo) {
+													const { QueryPatternRepo } = await import('@/core/storage/sqlite/repositories/QueryPatternRepo');
+													const metaStore = sqliteStoreManager.getMetaStore();
+													if (metaStore) repo = new QueryPatternRepo(metaStore.kysely());
+												}
+												if (repo) await repo.incrementUsage(s.patternId);
+											} catch {}
+										})();
+									}}
+								/>
+								<RecentAnalysisList
+									filterQuery={searchQuery}
+									limit={6}
+									onSelectQuery={(query) => {
+										setSearchQuery(query);
+										useSearchSessionStore.getState().resetAll();
+										useSearchSessionStore.getState().incrementTriggerAnalysis();
+									}}
+									onSelectRecord={openSavedAnalysis}
+								/>
+							</>
+						)}
+					</div>
+				)}
 			{/* Only render AISearchTab when NOT showing the idle landing — avoids competing scroll zones */}
 			{sessionStatus !== 'idle' && (
 				<div className="pktw-flex-1 pktw-min-h-0 pktw-bg-pk-background pktw-overflow-visible pktw-flex pktw-flex-col">
@@ -442,7 +354,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 					<div className="pktw-flex pktw-items-center pktw-gap-4 pktw-text-xs pktw-text-pk-text-tertiary">
 						<span>↑↓ Navigate</span>
 						<span>↵ Run</span>
-						<span>⌥↑⌥↓ Switch mode</span>
+							<span>Tab Navigate</span>
 					</div>
 					<span className="pktw-text-xs pktw-text-pk-foreground-muted">
 						Current context stays visible before the run
@@ -452,6 +364,514 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 		</>
 	);
 };
+
+const AI_WORKSPACE_OPTIONS: Array<{
+	mode: AIWorkspaceMode;
+	label: string;
+	description: string;
+}> = [
+	{ mode: 'search', label: 'AI Search', description: 'Ask and analyze your Vault' },
+	{ mode: 'graph', label: 'AI Graph', description: 'Create, browse, and update graphs' },
+	{ mode: 'vault-intelligence', label: 'Vault Intelligence', description: 'Health summary and recent reviews' },
+];
+
+function AIWorkspaceSelector({
+	mode,
+	active,
+	onActivate,
+	onModeChange,
+}: {
+	mode: AIWorkspaceMode;
+	active: boolean;
+	onActivate(): void;
+	onModeChange(mode: AIWorkspaceMode): void;
+}): React.ReactElement {
+	const [open, setOpen] = useState(false);
+	const [activeIndex, setActiveIndex] = useState(() =>
+		Math.max(0, AI_WORKSPACE_OPTIONS.findIndex((item) => item.mode === mode)));
+	const triggerRef = useRef<HTMLButtonElement | null>(null);
+	const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+	const selected = AI_WORKSPACE_OPTIONS.find((item) => item.mode === mode) ?? AI_WORKSPACE_OPTIONS[0];
+
+	useEffect(() => {
+		setActiveIndex(Math.max(0, AI_WORKSPACE_OPTIONS.findIndex((item) => item.mode === mode)));
+	}, [mode]);
+
+	useEffect(() => {
+		if (open) optionRefs.current[activeIndex]?.focus();
+	}, [activeIndex, open]);
+
+	const closeAndRestore = (): void => {
+		setOpen(false);
+		requestAnimationFrame(() => triggerRef.current?.focus());
+	};
+	const select = (nextMode: AIWorkspaceMode): void => {
+		onModeChange(nextMode);
+		closeAndRestore();
+	};
+	return (
+		<div className="pk-ai-workspace-selector">
+			<Button
+				ref={triggerRef}
+				variant="ghost"
+				type="button"
+				className={cn('pk-ai-workspace-trigger', active && 'is-active')}
+				aria-haspopup="listbox"
+				aria-expanded={open}
+				onClick={() => {
+					onActivate();
+					setOpen((current) => !current);
+				}}
+				onKeyDown={(event) => {
+					if (event.key !== 'ArrowDown' && event.key !== 'Enter' && event.key !== ' ') return;
+					event.preventDefault();
+					onActivate();
+					setOpen(true);
+				}}
+			>
+				{mode === 'graph' ? <Network /> : mode === 'vault-intelligence' ? <Sparkles /> : <Library />}
+				<span>{selected.label}</span>
+				<ChevronDown aria-hidden />
+			</Button>
+			{open && (
+				<div
+					className="pk-ai-workspace-menu"
+					role="listbox"
+					aria-label="AI workspace"
+					onKeyDown={(event) => {
+						if (event.key === 'Escape') {
+							event.preventDefault();
+							closeAndRestore();
+							return;
+						}
+						if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+							event.preventDefault();
+							const delta = event.key === 'ArrowDown' ? 1 : -1;
+							setActiveIndex((index) =>
+								(index + delta + AI_WORKSPACE_OPTIONS.length) % AI_WORKSPACE_OPTIONS.length);
+							return;
+						}
+						if (event.key === 'Enter' || event.key === ' ') {
+							event.preventDefault();
+							select(AI_WORKSPACE_OPTIONS[activeIndex].mode);
+						}
+					}}
+				>
+					{AI_WORKSPACE_OPTIONS.map((item, index) => (
+						<Button
+							key={item.mode}
+							ref={(element) => {
+								optionRefs.current[index] = element;
+							}}
+							variant="ghost"
+							type="button"
+							role="option"
+							aria-selected={item.mode === mode}
+							className="pk-ai-workspace-option"
+							onFocus={() => setActiveIndex(index)}
+							onClick={() => select(item.mode)}
+						>
+							<span>{item.label}</span>
+							<small>{item.description}</small>
+						</Button>
+					))}
+				</div>
+			)}
+		</div>
+	);
+}
+
+function AIGraphHistoryPanel(): React.ReactElement {
+	const host = useQuickSearchHost();
+	const deepLinkId = useSharedStore((state) => state.aiGraphDeepLinkId);
+	const [rows, setRows] = useState<AIGraphHistoryRow[]>([]);
+	const [selected, setSelected] = useState<AIGraphArtifactView | null>(null);
+	const [loading, setLoading] = useState(true);
+	const refresh = async (): Promise<void> => {
+		setLoading(true);
+		try {
+			setRows(await host.listAIGraphArtifacts());
+		} finally {
+			setLoading(false);
+		}
+	};
+	useEffect(() => {
+		void refresh();
+	}, []);
+	useEffect(() => {
+		if (!deepLinkId) return;
+		useSharedStore.getState().consumeAIGraphDeepLink();
+		void host.openAIGraphArtifact(deepLinkId).then((view) => {
+			if (view) setSelected(view);
+		});
+	}, [deepLinkId, host]);
+	if (selected) {
+		return (
+			<AIGraphDetail
+				initialView={selected}
+				onBack={() => {
+					setSelected(null);
+					void refresh();
+				}}
+			/>
+		);
+	}
+	return (
+		<section className="pk-ai-graph-history">
+			<div className="pk-ai-graph-history-head">
+				<span>
+					<strong>AI Graphs</strong>
+					<small>{rows.length} persisted artifacts</small>
+				</span>
+				{loading && <span>Loading…</span>}
+			</div>
+			{!loading && rows.length === 0 && (
+				<div className="pk-ai-graph-empty">
+					<Network />
+					<strong>No AI Graphs yet</strong>
+					<span>Describe a graph above. Successful generation saves an immutable artifact automatically.</span>
+				</div>
+			)}
+			<div className="pk-ai-graph-history-list" role="listbox" aria-label="AI Graph history">
+				{rows.map((row) => (
+					<Button
+						key={row.graphId}
+						variant="ghost"
+						type="button"
+						role="option"
+						className="pk-ai-graph-history-row"
+						onClick={() => {
+							void host.openAIGraphArtifact(row.graphId).then((view) => {
+								if (view) setSelected(view);
+							});
+						}}
+					>
+						<span className="pk-ai-graph-history-title">{row.title}</span>
+						<span className="pk-ai-graph-history-meta">
+							{row.stats.nodeCount} nodes · {row.stats.relationCount} relations · {row.stats.sourceCount} sources · v{row.versionNumber}
+						</span>
+						<span className="pk-ai-graph-history-origin">
+							Created in {row.createdFrom.surface} · {row.createdFrom.contextRefs[0]?.label ?? 'No context'}
+						</span>
+						<span className="pk-ai-graph-history-badges">
+							{row.stats.needsReviewCount > 0 && <em>{row.stats.needsReviewCount} needs review</em>}
+							{row.changedSourceCount > 0 && <em>{row.changedSourceCount} source changed</em>}
+							<time>{new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(row.updatedAt)}</time>
+						</span>
+					</Button>
+				))}
+			</div>
+		</section>
+	);
+}
+
+function canonicalGraphData(view: AIGraphArtifactView): LensGraphData {
+	const nodeById = new Map(view.version.nodes.map((node) => [node.nodeId, node]));
+	return {
+		nodes: view.version.nodes
+			.filter((node) => node.reviewStatus !== 'rejected')
+			.map((node) => ({
+				label: node.label,
+				path: node.canonicalRef?.replace(/^vault:\/\//, '') ?? node.nodeId,
+				summary: node.description,
+				role: node.kind === 'claim' ? 'bridge' : 'leaf',
+			})),
+		edges: view.version.relations
+			.filter((relation) => relation.reviewStatus !== 'rejected')
+			.map((relation) => ({
+				source: nodeById.get(relation.sourceNodeId)?.canonicalRef?.replace(/^vault:\/\//, '')
+					?? relation.sourceNodeId,
+				target: nodeById.get(relation.targetNodeId)?.canonicalRef?.replace(/^vault:\/\//, '')
+					?? relation.targetNodeId,
+				kind: relation.family === 'temporal' ? 'temporal' : 'references',
+				label: relation.label,
+				directionality: relation.directed ? 'directed' : 'undirected',
+				canonicalRelationId: relation.relationId,
+				accessibleLabel: `${nodeById.get(relation.sourceNodeId)?.label ?? relation.sourceNodeId} → ${relation.predicate} → ${nodeById.get(relation.targetNodeId)?.label ?? relation.targetNodeId}`,
+			})),
+		availableLenses: ['topology', 'thinking-tree', 'timeline'],
+	};
+}
+
+function AIGraphDetail({
+	initialView,
+	onBack,
+}: {
+	initialView: AIGraphArtifactView;
+	onBack(): void;
+}): React.ReactElement {
+	const host = useQuickSearchHost();
+	const [view, setView] = useState(initialView);
+	const [versions, setVersions] = useState<AIGraphVersion[]>([]);
+	const [instruction, setInstruction] = useState('');
+	const [diff, setDiff] = useState<AIGraphSemanticDiff | null>(null);
+	const [status, setStatus] = useState<'idle' | 'submitting' | 'error'>('idle');
+	const [error, setError] = useState<string | null>(null);
+	const [selection, setSelection] = useState<
+		| { kind: 'node'; nodeId: string }
+		| { kind: 'relation'; relationId: string }
+		| null
+	>(null);
+	const changeCount = diff
+		? diff.nodes.added.length + diff.nodes.changed.length + diff.nodes.removed.length
+			+ diff.relations.added.length + diff.relations.changed.length + diff.relations.removed.length
+			+ diff.evidence.added.length + diff.evidence.removed.length
+		: 0;
+	const isHeadVersion = view.version.versionId === view.manifest.headVersionId;
+	const changedSources = view.sources.filter((source) =>
+		source.freshness === 'changed' || source.freshness === 'unavailable');
+	useEffect(() => {
+		void host.listAIGraphVersions(view.manifest.graphId).then(setVersions);
+	}, [host, view.manifest.graphId, view.version.versionId]);
+	const propose = async (): Promise<void> => {
+		if (!isHeadVersion) {
+			setStatus('error');
+			setError('Open the current head version before updating this graph.');
+			return;
+		}
+		setStatus('submitting');
+		setError(null);
+		try {
+			setDiff(await host.proposeAIGraphUpdate(
+				view.manifest.graphId,
+				view.version.versionId,
+				instruction,
+				selection
+					? { kind: selection.kind, id: selection.kind === 'node' ? selection.nodeId : selection.relationId }
+					: undefined,
+			));
+			setStatus('idle');
+		} catch (nextError) {
+			setStatus('error');
+			setError(nextError instanceof Error ? nextError.message : String(nextError));
+		}
+	};
+	return (
+		<section className="pk-ai-graph-detail">
+			<div className="pk-ai-graph-detail-head">
+				<Button variant="ghost" onClick={onBack}>Back</Button>
+				<span>
+					<strong>{view.manifest.title}</strong>
+					<small>{view.manifest.graphType} · {view.version.versionId}</small>
+				</span>
+				<span>{view.version.stats.needsReviewCount} needs review</span>
+			</div>
+			<AIInstructionComposer
+				surface="ai-graph"
+				capabilityId="ai-graph.update"
+				value={instruction}
+				onValueChange={setInstruction}
+				onSubmit={propose}
+				status={status}
+				placeholder="Describe how this graph should change…"
+				context={[
+					{
+						id: view.manifest.graphId,
+						kind: 'artifact',
+						label: `${view.manifest.title} · ${view.version.versionId}`,
+						source: 'automatic',
+					},
+					...view.sources.slice(0, 3).map((source) => ({
+						id: source.sourceId,
+						kind: 'custom' as const,
+						label: source.title,
+						source: 'automatic' as const,
+					})),
+					...(selection ? [{
+						id: selection.kind === 'node' ? selection.nodeId : selection.relationId,
+						kind: 'custom' as const,
+						label: `Selected ${selection.kind}`,
+						source: 'automatic' as const,
+					}] : []),
+				]}
+				compact
+			/>
+			{error && <div className="pk-ai-graph-update-error" role="alert">{error}</div>}
+			{!isHeadVersion && (
+				<div className="pk-ai-graph-update-error" role="status">
+					You are inspecting an immutable historical version. Open the head version to update.
+				</div>
+			)}
+			{diff && (
+				<div className="pk-ai-graph-diff">
+					<span>
+						<strong>Semantic diff</strong>
+						<small>
+							+{diff.nodes.added.length} / ~{diff.nodes.changed.length} / −{diff.nodes.removed.length} nodes ·
+							+{diff.relations.added.length} / ~{diff.relations.changed.length} / −{diff.relations.removed.length} relations
+						</small>
+					</span>
+					<Button variant="ghost" onClick={() => setDiff(null)}>Cancel</Button>
+					<Button
+						variant="default"
+						disabled={changeCount === 0}
+						onClick={() => {
+							void host.acceptAIGraphUpdate(diff).then((accepted) => {
+								setView(accepted);
+								setDiff(null);
+								setInstruction('');
+							});
+						}}
+					>
+						Accept new version
+					</Button>
+				</div>
+			)}
+			<div className="pk-ai-graph-detail-body">
+				<div className="pk-ai-graph-canvas">
+					<MultiLensGraph
+						graphData={canonicalGraphData(view)}
+						defaultLens="topology"
+						showControls
+						className="pktw-h-full"
+						onNodeClick={(path) => {
+							const node = view.version.nodes.find((candidate) =>
+								(candidate.canonicalRef?.replace(/^vault:\/\//, '') ?? candidate.nodeId) === path);
+							if (node) setSelection({ kind: 'node', nodeId: node.nodeId });
+						}}
+						onEdgeClick={(edge) => {
+							if (edge.relationId) {
+								setSelection({ kind: 'relation', relationId: edge.relationId });
+							}
+						}}
+					/>
+				</div>
+				<aside className="pk-ai-graph-detail-aside">
+					<AIGraphSelectionInspector view={view} selection={selection} />
+					<strong>Versions</strong>
+					{versions.map((version, index) => (
+						<Button
+							key={version.versionId}
+							variant="ghost"
+							type="button"
+							aria-current={version.versionId === view.version.versionId ? 'true' : undefined}
+							className="pk-ai-graph-version-row"
+							onClick={() => {
+								void host.openAIGraphArtifact(
+									view.manifest.graphId,
+									version.versionId,
+								).then((historical) => {
+									if (historical) {
+										setView(historical);
+										setDiff(null);
+										setSelection(null);
+									}
+								});
+							}}
+						>
+							v{versions.length - index} · {version.changeKind}
+							<small>{version.versionId === view.manifest.headVersionId ? 'head' : 'immutable'}</small>
+						</Button>
+					))}
+					<strong>Sources</strong>
+					<Button
+						variant="ghost"
+						type="button"
+						onClick={() => {
+							setError(null);
+							void host.addActiveFileToAIGraphSources(view.manifest.graphId)
+								.then(setView)
+								.catch((nextError) => setError(
+									nextError instanceof Error ? nextError.message : String(nextError),
+								));
+						}}
+					>
+						Add current Vault file
+					</Button>
+					{view.sources.map((source) => (
+						<span key={source.sourceId} data-freshness={source.freshness}>
+							<span>{source.title}<small>{source.freshness}</small></span>
+							<Button
+								variant="ghost"
+								type="button"
+								aria-label={`Remove source ${source.title}`}
+								onClick={() => {
+									void host.removeAIGraphSource(
+										view.manifest.graphId,
+										source.sourceId,
+									).then(setView);
+								}}
+							>
+								Remove
+							</Button>
+						</span>
+					))}
+					{changedSources.length > 0 && (
+						<Button
+							variant="ghost"
+							type="button"
+							onClick={() => setInstruction(
+								`Use source changes in Update graph: ${changedSources.map((source) => source.title).join(', ')}`,
+							)}
+						>
+							Use source changes in Update graph
+						</Button>
+					)}
+					<strong>Evidence & review</strong>
+					<span>{view.version.evidence.length} evidence records</span>
+					<span>{view.version.stats.needsReviewCount} suggested items</span>
+				</aside>
+			</div>
+		</section>
+	);
+}
+
+function AIGraphSelectionInspector({
+	view,
+	selection,
+}: {
+	view: AIGraphArtifactView;
+	selection:
+		| { kind: 'node'; nodeId: string }
+		| { kind: 'relation'; relationId: string }
+		| null;
+}): React.ReactElement {
+	if (!selection) {
+		return (
+			<>
+				<strong>Selection</strong>
+				<span>Select a node or relation to inspect its evidence and review state.</span>
+			</>
+		);
+	}
+	if (selection.kind === 'node') {
+		const node = view.version.nodes.find((candidate) => candidate.nodeId === selection.nodeId);
+		if (!node) return <span>Selected node is unavailable in this version.</span>;
+		return (
+			<>
+				<strong>{node.label}</strong>
+				<span>{node.kind}<small>{node.reviewStatus}</small></span>
+				{node.description && <span>{node.description}</span>}
+				<span>{node.evidenceIds.length} evidence record{node.evidenceIds.length === 1 ? '' : 's'}</span>
+			</>
+		);
+	}
+	const relation = view.version.relations.find(
+		(candidate) => candidate.relationId === selection.relationId,
+	);
+	if (!relation) return <span>Selected relation is unavailable in this version.</span>;
+	const source = view.version.nodes.find((node) => node.nodeId === relation.sourceNodeId);
+	const target = view.version.nodes.find((node) => node.nodeId === relation.targetNodeId);
+	return (
+		<>
+			<strong>Relation</strong>
+			<span className="pk-ai-graph-relation-readable">
+				{source?.label ?? relation.sourceNodeId} → {relation.predicate} → {target?.label ?? relation.targetNodeId}
+			</span>
+			<span>
+				{relation.family} · {relation.directed ? 'directed' : 'symmetric'}
+				<small>{relation.reviewStatus} · confidence {relation.confidence ?? 'unknown'}</small>
+			</span>
+			{relation.qualifiers.map((qualifier) => (
+				<span key={`${qualifier.key}:${String(qualifier.value)}`}>
+					{qualifier.key}<small>{String(qualifier.value)}</small>
+				</span>
+			))}
+			<span>{relation.evidenceIds.length} evidence record{relation.evidenceIds.length === 1 ? '' : 's'}</span>
+			{relation.explanation && <span>{relation.explanation}</span>}
+		</>
+	);
+}
 
 /**
  * Compound Suggest control — main click opens a fresh Suggest round, hover
@@ -628,6 +1048,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 	const hasSearchQuery = !!vaultSearchQuery.trim();
 	const [inspectorPath, setInspectorPath] = useState<string | null>(null);
 	const [navigateToPath, setNavigateToPath] = useState<string | null>(null);
+	const openHubGraphSubview = useOpenHubGraphSubview();
 
 	// Heading mode moved to Copilot Modal's Atlas tab — no `#` cycling here.
 
@@ -738,6 +1159,14 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 								setInspectorPath(path);
 								setNavigateToPath(path);
 							}}
+							onOpenHubLocalGraph={(path) => {
+								void openHubGraphSubview(path);
+							}}
+							onFindRelated={(path) => {
+								const title = path.split('/').pop()?.replace(/\.md$/i, '') ?? path;
+								setVaultSearchQuery(title);
+								useVaultSearchStore.getState().setResultView('graph');
+							}}
 						/>
 					</div>
 				)}
@@ -791,13 +1220,7 @@ interface QuickSearchModalContentProps {
 	onReplaySuggest?: (entryId: string) => void;
 }
 
-/**
- * Root quick search modal content with tabs for vault and AI search.
- * A floating Sparkles button in the tab bar reveals the Vault Intelligence
- * panel (activeTab='intel'). Tab-key cycling only rotates between 'vault'
- * and 'ai' — the intel panel is button-only to avoid accidentally triggering
- * an expensive review.
- */
+/** Root quick search: Vault Search plus one AI workspace selector. */
 export const QuickSearchModalContent: React.FC<QuickSearchModalContentProps> = ({
 	onClose,
 	intelCtx = null,
@@ -806,7 +1229,12 @@ export const QuickSearchModalContent: React.FC<QuickSearchModalContentProps> = (
 	onOpenSuggest,
 	onReplaySuggest,
 }) => {
-	const { activeTab, setActiveTab } = useSharedStore();
+	const {
+		activeTab,
+		setActiveTab,
+		aiWorkspaceMode,
+		setAIWorkspaceMode,
+	} = useSharedStore();
 	// Graph view claims all available modal height (list view stays
 	// content-driven so short result sets don't leave empty space).
 	const resultView = useVaultSearchStore((s) => s.resultView);
@@ -833,24 +1261,10 @@ export const QuickSearchModalContent: React.FC<QuickSearchModalContentProps> = (
 		? { height: '100%', maxHeight: 'calc(100vh - 160px)' }
 		: { maxHeight: 'calc(100vh - 160px)', minHeight: '400px' };
 
-	const handleContainerKeyDown = (e: React.KeyboardEvent) => {
-		if (e.key === 'Tab' && !e.shiftKey) {
-			e.preventDefault();
-			// Tab cycles only vault ↔ ai. When on 'intel', Tab exits back to vault.
-			if (activeTab === 'intel') setActiveTab('vault');
-			else setActiveTab(activeTab === 'vault' ? 'ai' : 'vault');
-		}
-		if (e.key === 'Escape' && activeTab === 'intel') {
-			e.preventDefault();
-			setActiveTab('vault');
-		}
-	};
-
 	return (
 		<div
 			ref={rootRef}
 			className="pktw-w-full pktw-flex-1 pktw-min-h-0 pktw-bg-pk-background pktw-rounded-lg pktw-shadow-lg pktw-flex pktw-flex-col pktw-overflow-hidden peak-no-native-outline"
-			onKeyDown={handleContainerKeyDown}
 			tabIndex={-1}
 			style={modalStyle}
 		>
@@ -862,47 +1276,29 @@ export const QuickSearchModalContent: React.FC<QuickSearchModalContentProps> = (
 					onClick={() => setActiveTab('vault')}
 					className="pktw-rounded-tl-lg"
 				/>
-				<TabButton
-					tab="ai"
-					label="AI Search"
-					activeTab={activeTab}
-					onClick={() => setActiveTab('ai')}
-					className="pktw-rounded-tr-lg"
+				<AIWorkspaceSelector
+					mode={aiWorkspaceMode}
+					active={activeTab === 'ai'}
+					onActivate={() => setActiveTab('ai')}
+					onModeChange={setAIWorkspaceMode}
 				/>
-				{/* Floating Vault Intelligence button — outside Tab-key cycle */}
-				<div className="pktw-absolute pktw-right-3 pktw-top-0 pktw-bottom-0 pktw-z-10 pktw-flex pktw-items-center">
-					<button
-						type="button"
-						onClick={() => setActiveTab(activeTab === 'intel' ? 'vault' : 'intel')}
-						title="Vault Intelligence — vault-wide AI review (expensive, manual)"
-						className={cn(
-							'pktw-inline-flex pktw-items-center pktw-gap-1.5',
-							'pktw-text-pk-sm pktw-font-medium pktw-whitespace-nowrap',
-							'pktw-rounded-full pktw-border pktw-px-2.5 pktw-py-1',
-							activeTab === 'intel'
-								? 'pktw-bg-pk-accent pktw-text-white pktw-border-pk-accent'
-								: 'pktw-bg-pk-background pktw-text-pk-accent pktw-border-pk-accent-tint hover:pktw-bg-pk-accent-tint',
-						)}
-					>
-						<Sparkles className="pktw-w-3 pktw-h-3" />
-						<span>Vault Intelligence</span>
-					</button>
-				</div>
 			</div>
 			{activeTab === 'ai' ? (
-				<AITabContent onClose={onClose} activeTab={activeTab} setActiveTab={setActiveTab} />
-			) : activeTab === 'intel' ? (
-				<CopilotPickerContent
-					hideTabBar
-					initialTab="vault"
-					ctx={intelCtx}
-					onSelect={() => { /* Vault actions dispatched separately */ }}
-					onAuto={(_tab, mode) => onVaultAuto?.(mode)}
-					onOpenHistoryRecord={() => { /* document-scope only; unused here */ }}
-					onOpenAllHistory={() => { /* wired via Copilot Modal path */ }}
-					onOpenVaultRecord={(record) => onOpenVaultRecord?.(record)}
-					onClose={onClose}
-				/>
+				aiWorkspaceMode === 'vault-intelligence' ? (
+					<CopilotPickerContent
+						hideTabBar
+						initialTab="vault"
+						ctx={intelCtx}
+						onSelect={() => { /* Vault actions dispatched separately */ }}
+						onAuto={(_tab, mode) => onVaultAuto?.(mode)}
+						onOpenHistoryRecord={() => { /* document-scope only; unused here */ }}
+						onOpenAllHistory={() => { /* wired via Copilot Modal path */ }}
+						onOpenVaultRecord={(record) => onOpenVaultRecord?.(record)}
+						onClose={onClose}
+					/>
+				) : (
+					<AITabContent onClose={onClose} mode={aiWorkspaceMode} />
+				)
 			) : (
 				<VaultTabContent onClose={onClose} activeTab={activeTab} setActiveTab={setActiveTab} onOpenSuggest={onOpenSuggest} onReplaySuggest={onReplaySuggest} />
 			)}

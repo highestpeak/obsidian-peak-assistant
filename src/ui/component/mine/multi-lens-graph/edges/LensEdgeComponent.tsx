@@ -81,6 +81,9 @@ export function LensEdgeComponent(props: EdgeProps<LensEdge>) {
 				fill="none"
 				stroke="transparent"
 				strokeWidth={12}
+				role={data?.accessibleLabel ? 'button' : undefined}
+				tabIndex={data?.accessibleLabel ? 0 : undefined}
+				aria-label={data?.accessibleLabel}
 				onMouseEnter={() => setHovered(true)}
 				onMouseLeave={() => setHovered(false)}
 			/>

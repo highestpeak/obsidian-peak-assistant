@@ -18,7 +18,7 @@ import type { VaultReviewMode } from './VaultMetaAgentStream';
 import type {
 	VaultReviewHistoryRecord,
 } from './VaultReviewReportService';
-import type { ClusterMember } from './VaultDigestService';
+import type { ClusterMember, VaultDigest } from './VaultDigestService';
 import type { VaultFingerprint } from './VaultFingerprintService';
 
 export interface RunVaultReviewRuntimeOptions {
@@ -78,6 +78,9 @@ export interface VaultReviewRuntime {
 	 * when the sqlite index is not yet ready.
 	 */
 	getVaultFingerprint(force?: boolean): Promise<VaultFingerprint | null>;
+
+	/** Read-only Vault Maintenance projection; does not start an AI review. */
+	getDigest(): Promise<VaultDigest | null>;
 
 	/**
 	 * Release any cached state (e.g. fingerprint cache, lazy services)

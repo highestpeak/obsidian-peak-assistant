@@ -36,6 +36,8 @@ import {
 	vaultReadiness,
 	settingReadiness,
 } from './PickerReadinessAdapters';
+import { DocumentContextGraphStrip } from './context/DocumentContextGraphStrip';
+import { VaultMaintenanceSegment } from './vault/VaultMaintenanceSegment';
 
 // Copilot Modal tab bar. Atlas moved out to the standalone File Atlas surface
 // (see FileAtlasModal); Vault Intelligence lives in the Search Modal (rendered
@@ -150,6 +152,14 @@ export const CopilotPickerContent: React.FC<{
 					onRunCheck: () => setShowAll(true),
 					onViewDiagnostics: () => setShowAll(true),
 				});
+			case 'ambient':
+			default:
+				return documentReadiness({
+					ctx,
+					isMobile,
+					onAuto: () => onAuto('document', 'complete'),
+					onFast: () => onAuto('document', 'fast'),
+				});
 		}
 	}, [activeTab, ctx, isMobile, vaultState, onAuto, onOpenVaultRecord]);
 
@@ -176,6 +186,19 @@ export const CopilotPickerContent: React.FC<{
 					vaultLastRecord={vaultState.lastRecord}
 					fallbackLine={model.contextLine}
 				/>
+
+				{activeTab === 'document' && ctx?.file.path ? (
+					<DocumentContextGraphStrip filePath={ctx.file.path} />
+				) : null}
+				{activeTab === 'vault' ? (
+					<VaultMaintenanceSegment
+						lastReport={vaultState.lastRecord}
+						onOpenLastReport={() => {
+							if (vaultState.lastRecord) onOpenVaultRecord(vaultState.lastRecord);
+						}}
+						onRunReview={() => onAuto('vault', 'complete')}
+					/>
+				) : null}
 
 				{/* Readiness card */}
 				<PickerReadinessCard {...readinessProps} />
@@ -571,4 +594,3 @@ function CapabilityButton({
 		</Button>
 	);
 }
-

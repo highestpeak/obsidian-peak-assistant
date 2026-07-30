@@ -1,0 +1,132 @@
+import type { AppContext } from '@/app/context/AppContext';
+import type {
+	ContextualGraphPort,
+	ContextualGraphEdge,
+	ContextualGraphNode,
+	ContextualHubRef,
+	ContextualSourceRef,
+	DocumentGraphContext,
+} from '@/core/ports/ContextualGraphPort';
+import {
+	getConnectedLinks,
+	getDiscoveredConnections,
+	getHubsForDoc,
+} from '@/service/search/inspectorService';
+import { composeFileAtlasHost } from '@/app/file-atlas/composeFileAtlasHost';
+
+interface CandidateHubAccumulator {
+	path: string;
+	label: string;
+	confidence: number;
+}
+
+export function composeContextualGraphPort(appContext: AppContext): ContextualGraphPort {
+	const atlas = composeFileAtlasHost(appContext);
+
+	return {
+		async loadDocumentContext(filePath: string): Promise<DocumentGraphContext> {
+			const [primary, connected, discovered, neighborhood] = await Promise.all([
+				getHubsForDoc(filePath),
+				getConnectedLinks(filePath),
+				getDiscoveredConnections(filePath, 8),
+				atlas.loadNeighborhood?.(filePath, { hops: 1, semantic: true })
+					?? Promise.resolve({ nodes: [], edges: [] }),
+			]);
+
+			const primaryPaths = new Set(primary.map((hub) => hub.path));
+			const candidateByPath = new Map<string, CandidateHubAccumulator>();
+			await Promise.all(discovered.slice(0, 6).map(async (item) => {
+				const hubs = await getHubsForDoc(item.path);
+				for (const hub of hubs) {
+					if (primaryPaths.has(hub.path)) continue;
+					const current = candidateByPath.get(hub.path);
+					if (current && current.confidence >= item.score) continue;
+					candidateByPath.set(hub.path, {
+						path: hub.path,
+						label: hub.label,
+						confidence: item.score,
+					});
+				}
+			}));
+
+			const hubs: ContextualHubRef[] = [
+				...primary.map((hub): ContextualHubRef => ({
+					...hub,
+					status: 'primary',
+					confidence: null,
+				})),
+				...[...candidateByPath.values()]
+					.sort((left, right) => right.confidence - left.confidence)
+					.slice(0, 3)
+					.map((hub): ContextualHubRef => ({
+						...hub,
+						status: 'candidate',
+					})),
+			];
+
+			const sourceKeys = new Set<string>();
+			const sources: ContextualSourceRef[] = [];
+			for (const link of connected) {
+				const key = `${link.direction}:${link.path}`;
+				if (sourceKeys.has(key)) continue;
+				sourceKeys.add(key);
+				sources.push({
+					path: link.path,
+					label: link.label,
+					direction: link.direction === 'in' ? 'source' : 'outgoing',
+				});
+			}
+
+			const currentNodeId = neighborhood.nodes.find((node) => node.path === filePath)?.id ?? filePath;
+			const nodes: ContextualGraphNode[] = neighborhood.nodes.map((node) => ({
+				id: node.id,
+				label: node.label,
+				path: node.path ?? null,
+				role: node.id === currentNodeId
+					? 'current' as const
+					: node.hop === 1
+						? 'neighbor' as const
+						: 'bridge' as const,
+			}));
+			for (const hub of hubs.filter((item) => item.status === 'primary')) {
+				if (nodes.some((node) => node.path === hub.path)) continue;
+				nodes.push({
+					id: `hub:${hub.path}`,
+					label: hub.label,
+					path: hub.path,
+					role: 'hub',
+				});
+			}
+
+			const edges: ContextualGraphEdge[] = neighborhood.edges.map((edge) => ({
+				source: edge.from,
+				target: edge.to,
+				kind: edge.kind,
+				directionality: edge.directionality ?? 'directed',
+			}));
+			for (const hub of hubs.filter((item) => item.status === 'primary')) {
+				edges.push({
+					source: `hub:${hub.path}`,
+					target: currentNodeId,
+					kind: 'hub',
+					directionality: 'directed',
+				});
+			}
+
+			const orphanStatus = connected.length > 0
+				? 'connected'
+				: discovered.length > 0 || hubs.length > 0
+					? 'soft-orphan'
+					: 'orphan';
+
+			return {
+				filePath,
+				hubs,
+				sources: sources.slice(0, 8),
+				nodes,
+				edges,
+				orphanStatus,
+			};
+		},
+	};
+}

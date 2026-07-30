@@ -62,6 +62,12 @@ export class VaultReviewRuntimeImpl implements VaultReviewRuntime {
 		return this.deps.digestData.getVaultFingerprint(force);
 	}
 
+	getDigest() {
+		return this.deps.digestData.buildDigest({
+			vaultLintRuntime: this.deps.vaultLintRuntime,
+		});
+	}
+
 	dispose(): void {
 		// Adapter-side dispose hooks (the sqlite adapter clears its
 		// fingerprint cache here). Each port is optional-disposable.

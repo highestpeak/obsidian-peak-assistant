@@ -145,6 +145,9 @@ export interface FileAtlasStrings {
 	searchPlaceholder: string;
 	searchScope: string;
 	filtersButton: string;
+	aiGraphsButton: string;
+	flattenView: string;
+	treeView: string;
 	/** Filter popover header title. */
 	filtersTitle: string;
 	filtersHeadingHint: string;
@@ -178,6 +181,7 @@ export interface FileAtlasStrings {
 	railOpenTitle: string;
 	railRecentTitle: string;
 	railSortLabel: string;
+	railSortRecent: string;
 	railSortFrequent: string;
 	railSortName: string;
 	railResizeLabel: string;
@@ -204,6 +208,10 @@ export interface FileAtlasStrings {
 	trayTitle: string;
 	sendToCopilot: string;
 	sendToCopilotHint: string;
+	copilotSuggestionsTitle: string;
+	copilotSuggestionsEmpty: string;
+	copilotSuggestionsLoading: string;
+	copilotOpen: string;
 }
 
 /**
@@ -394,6 +402,9 @@ export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
 		searchPlaceholder: "Search this document's blocks, links, and headings...",
 		searchScope: 'document',
 		filtersButton: 'Filters',
+		aiGraphsButton: 'Open AI Graphs',
+		flattenView: 'Flatten document order',
+		treeView: 'Restore hierarchy',
 		filtersTitle: 'Visible block types',
 		filtersHeadingHint: 'Headings always stay visible',
 		filtersSelectAll: 'Select all',
@@ -423,6 +434,7 @@ export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
 		railOpenTitle: 'Open',
 		railRecentTitle: 'Recent',
 		railSortLabel: 'Sort files',
+		railSortRecent: 'Recently viewed',
 		railSortFrequent: 'Most used',
 		railSortName: 'Name',
 		railResizeLabel: 'Resize file rail',
@@ -448,7 +460,11 @@ export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
 		nearestHeading: 'Nearest heading',
 		trayTitle: 'Tray',
 		sendToCopilot: 'Send to Copilot',
-		sendToCopilotHint: 'Copilot handoff arrives in a later phase',
+		sendToCopilotHint: 'Opens the same document Copilot runtime; File Atlas remains read-only',
+		copilotSuggestionsTitle: 'Copilot suggestions',
+		copilotSuggestionsEmpty: 'No current suggestions for this note.',
+		copilotSuggestionsLoading: 'Loading document suggestions…',
+		copilotOpen: 'Discuss in Copilot',
 	},
 	keywordStopwords: {
 		latin: ['the', 'and', 'for', 'that', 'this', 'with', 'you', 'are', 'but', 'not', 'can', 'has', 'was', 'from', 'into', 'per', 'its'],

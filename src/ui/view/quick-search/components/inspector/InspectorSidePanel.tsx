@@ -66,6 +66,10 @@ export interface InspectorSidePanelProps {
 	onOpenDocument: (notePath: string) => void;
 	/** Re-target the inspector panel to another doc without opening it. */
 	onInspectInPanel: (notePath: string) => void;
+	/** Open the selected hub as a pinned result graph. */
+	onOpenHubLocalGraph?: (hubPath: string) => void;
+	/** Seed a related-note search for an orphan. */
+	onFindRelated?: (notePath: string) => void;
 }
 
 /**
@@ -74,6 +78,7 @@ export interface InspectorSidePanelProps {
  */
 export const InspectorSidePanel: React.FC<InspectorSidePanelProps> = ({
 	currentPath, searchQuery, onClose, showSearchSnippet = true, onOpenDocument, onInspectInPanel,
+	onOpenHubLocalGraph, onFindRelated,
 }) => {
 	if (!currentPath) {
 		return (
@@ -136,6 +141,8 @@ export const InspectorSidePanel: React.FC<InspectorSidePanelProps> = ({
 						currentPath={currentPath}
 						onOpenDocument={onOpenDocument}
 						onInspectInPanel={onInspectInPanel}
+						onOpenLocalGraph={onOpenHubLocalGraph}
+						onFindRelated={onFindRelated}
 					/>
 				</CollapsibleSection>
 				<CollapsibleSection title="AI Graph">

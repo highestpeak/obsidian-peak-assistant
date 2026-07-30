@@ -16,6 +16,10 @@ import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
 import { buildLensGraphFromSources, enrichWithThinkingTree } from './ai-graph/build-graph-data';
 import type { LensGraphData } from '@/core/types/lens-graph';
 import type { SearchResultItem } from '@/core/search/searchTypes';
+import {
+	runWebSearchQuery,
+	type WebSearchQueryResult,
+} from '@/service/search/web/runWebSearchQuery';
 
 export type AIGraphEvent = LLMStreamEvent;
 
@@ -35,7 +39,10 @@ export class AIGraphAgent {
 	/**
 	 * Search the vault for the given query and build a topology graph from results.
 	 */
-	async *startSession(userQuery: string): AsyncGenerator<AIGraphEvent> {
+	async *startSession(
+		userQuery: string,
+		options: { webEnabled?: boolean } = {},
+	): AsyncGenerator<AIGraphEvent> {
 		yield { type: 'ui-signal', channel: 'search-stage', data: { stage: 'searching' } } as any;
 
 		const results = await this.searchClient.search(
@@ -46,11 +53,25 @@ export class AIGraphAgent {
 		yield { type: 'ui-signal', channel: 'search-stage', data: { stage: 'building-graph' } } as any;
 
 		const graphData = await buildLensGraphFromSources(results.items, this.app);
+		let webResearch: WebSearchQueryResult | null = null;
+		if (options.webEnabled) {
+			yield { type: 'ui-signal', channel: 'search-stage', data: { stage: 'web-searching' } } as any;
+			webResearch = await runWebSearchQuery(userQuery);
+			for (const source of webResearch.sources) {
+				if (graphData.nodes.some((node) => node.path === source.url)) continue;
+				graphData.nodes.push({
+					label: source.title,
+					path: source.url,
+					role: 'leaf',
+					group: 'Web',
+				});
+			}
+		}
 
 		yield {
 			type: 'ui-signal',
 			channel: 'ai-graph-data',
-			data: { graphData },
+			data: { graphData, webResearch },
 		} as any;
 
 		yield { type: 'complete', result: { summary: `Built graph with ${graphData.nodes.length} nodes` } } as any;
