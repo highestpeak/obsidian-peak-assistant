@@ -8,7 +8,11 @@ import type {
 	SuggestionFinding,
 } from '@/service/composer';
 import type { ComposerTransactionHub } from '@/service/composer';
-import type { ComposerContextSnapshot, IntelligencePresentationOrigin } from '@/core/composer';
+import type {
+	ComposerContextSnapshot,
+	ComposerDocumentSnapshot,
+	IntelligencePresentationOrigin,
+} from '@/core/composer';
 import type { SidecarConfig } from './sidecarConfig';
 import { DEFAULT_SIDECAR_CONFIG } from './sidecarConfig';
 
@@ -38,6 +42,7 @@ export interface SidecarContextValue {
 	hub?: ComposerTransactionHub;
 	workspaceRuntime?: ComposerWorkspaceIntelligenceRuntime;
 	documentId?: string;
+	documentSnapshot?: ComposerDocumentSnapshot;
 	config: SidecarConfig;
 	/** Restore a persisted not-adopted generation onto the review canvas. */
 	onRestoreGeneration?: (runId: string) => boolean;

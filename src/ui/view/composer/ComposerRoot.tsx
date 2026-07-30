@@ -377,6 +377,7 @@ export function ComposerRoot({
 						workspaceRuntime={runtime.workspaceIntelligence}
 						hub={runtime.hub}
 						documentId={currentSnapshot.documentId}
+						documentSnapshot={currentSnapshot}
 						documentFilePath={currentSnapshot.filePath}
 						open={intelligencePresentation.open}
 						motion={intelligencePresentation.animate ? 'user' : 'none'}
@@ -773,6 +774,13 @@ function ComposerDocument({
 								setCommentRailOpen(true);
 								setCommentDraft({ blockId: b.blockId });
 							}}
+							onViewHistory={intelligence
+								? () => {
+										intelligence.session.selectSurface('history');
+										onIntelligenceManualOpen(true);
+										setPanel(null);
+									}
+								: undefined}
 						/>
 						{panel?.blockId === b.blockId && panel.panel === 'insert-draft' && (
 							<div data-composer-surface-owner={b.blockId}>
@@ -883,6 +891,7 @@ function ComposerBlockRow({
 	activeCommentId,
 	onActiveComment,
 	onOpenComment,
+	onViewHistory,
 }: {
 	block: ComposerBlock;
 	previousBlock?: ComposerBlock;
@@ -912,6 +921,7 @@ function ComposerBlockRow({
 	activeCommentId: string | null;
 	onActiveComment: (commentId: string | null) => void;
 	onOpenComment: () => void;
+	onViewHistory?: () => void;
 }): React.ReactElement {
 	const chrome = useComposerChrome();
 	const folded = useStore(foldStore, (s) => s.folded.has(block.blockId));
@@ -1173,6 +1183,12 @@ function ComposerBlockRow({
 										dismissPreview();
 										setPanel(null);
 									}}
+									onViewAll={onViewHistory
+										? () => {
+												dismissPreview();
+												onViewHistory();
+											}
+										: undefined}
 								/>
 							</div>
 						)}

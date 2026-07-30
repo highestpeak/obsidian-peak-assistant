@@ -166,6 +166,46 @@ export interface SidecarStrings {
 	historyBefore: string;
 	historyAfter: string;
 	historyPreviewUnavailable: string;
+	historyUnifiedTitle: string;
+	historyUnifiedIntro: string;
+	historyActivityCount: string;
+	historyFilter: string;
+	historyFilterAll: string;
+	historyFilterSource: string;
+	historyFilterAction: string;
+	historyFilterStatus: string;
+	historyFilterTarget: string;
+	historyResetFilters: string;
+	historySourceGeneration: string;
+	historySourceCopilot: string;
+	historySourceDocument: string;
+	historyActionAnalyze: string;
+	historyActionRewrite: string;
+	historyActionInsert: string;
+	historyActionDelete: string;
+	historyActionTransform: string;
+	historyActionMetadata: string;
+	historyActionAsset: string;
+	historyActionNative: string;
+	historyStatusRunning: string;
+	historyStatusCompleted: string;
+	historyStatusRolledBack: string;
+	historyLegacyGeneration: string;
+	historyOpenDetail: string;
+	historyDetailTitle: string;
+	historyDetailSubtitle: string;
+	historyInstruction: string;
+	historyOriginal: string;
+	historyGenerated: string;
+	historyCurrentDocument: string;
+	historyProcess: string;
+	historySourceChanged: string;
+	historyCurrentMissing: string;
+	historyNoContent: string;
+	historyVersion: string;
+	historyPreviousVersion: string;
+	historyNextVersion: string;
+	historyViewAll: string;
 	reviewClose: string;
 	emptyBrief: string;
 	emptyBriefBody: string;
@@ -422,6 +462,46 @@ export const DEFAULT_SIDECAR_CONFIG: SidecarConfig = {
 			historyBefore: '修改前',
 			historyAfter: '修改后',
 			historyPreviewUnavailable: '这笔事务没有可显示的文字差异。',
+			historyUnifiedTitle: '活动历史',
+			historyUnifiedIntro: '生成、Copilot 与真正写入正文的编辑都在这里，未采用内容也会保留。',
+			historyActivityCount: '{count} 条活动',
+			historyFilter: '筛选历史',
+			historyFilterAll: '全部',
+			historyFilterSource: '来源',
+			historyFilterAction: '操作',
+			historyFilterStatus: '状态',
+			historyFilterTarget: '对象',
+			historyResetFilters: '清除筛选',
+			historySourceGeneration: 'AI 生成',
+			historySourceCopilot: 'Copilot',
+			historySourceDocument: '文档编辑',
+			historyActionAnalyze: '分析',
+			historyActionRewrite: '改写',
+			historyActionInsert: '新增',
+			historyActionDelete: '删除',
+			historyActionTransform: '结构调整',
+			historyActionMetadata: '属性修改',
+			historyActionAsset: '资源修改',
+			historyActionNative: '原生对象',
+			historyStatusRunning: '生成中',
+			historyStatusCompleted: '已完成',
+			historyStatusRolledBack: '已回滚',
+			historyLegacyGeneration: '旧 AI 生成',
+			historyOpenDetail: '查看详情',
+			historyDetailTitle: '历史详情',
+			historyDetailSubtitle: '查看生成时的原文、结果和当前正文。',
+			historyInstruction: '当时的指令',
+			historyOriginal: '当时原文',
+			historyGenerated: '生成结果',
+			historyCurrentDocument: '当前正文',
+			historyProcess: '过程记录',
+			historySourceChanged: '正文在这次活动之后已经变化，恢复时会继续执行安全检查。',
+			historyCurrentMissing: '当前正文中已经找不到原来的目标位置。',
+			historyNoContent: '这条旧记录没有可恢复的正文详情。',
+			historyVersion: '版本 {current}/{total}',
+			historyPreviousVersion: '上一个版本',
+			historyNextVersion: '下一个版本',
+			historyViewAll: '查看该段全部历史',
 			reviewClose: '完成审阅',
 		emptyBrief: '暂无新项目',
 		emptyBriefBody: '当前没有来自已接入数据源的新项目。你可以继续写作，或主动问 Copilot。',

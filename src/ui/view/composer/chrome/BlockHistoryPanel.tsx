@@ -1,94 +1,182 @@
 import * as React from 'react';
-import { Crosshair, History as HistoryIcon, Undo2 } from 'lucide-react';
-import { Button } from '@/ui/components/primitives';
+import { History as HistoryIcon } from 'lucide-react';
 import {
 	composerTargetBlockId,
 	type ComposerHistoryItem,
+	type ComposerTransactionProjection,
 } from '@/core/composer';
 import {
-	groupComposerGenerationRuns,
-	type ComposerGenerationGroup,
+	activityMatchesBlock,
+	projectComposerHistoryActivities,
+	type ComposerHistoryTransactionResolver,
 	type ComposerWorkspaceIntelligenceProjection,
 	type ComposerWorkspaceIntelligenceRuntime,
-	type FrozenComposerRunEnvelope,
+	type IntelligenceRuntime,
+	type IntelligenceSessionProjection,
 } from '@/service/composer';
-import { generationPreview, restoreGenerationReview } from '../generationHistory';
+import { Button } from '@/ui/components/primitives';
+import { restoreGenerationReview } from '../generationHistory';
+import {
+	activitySourceLabel,
+	activityStatusLabel,
+	composerHistoryActivityLabels,
+	formatHistoryTime,
+} from '../sidecar/HistoryView';
+import { HistoryDetailModal } from '../sidecar/HistoryDetailModal';
+import {
+	DEFAULT_SIDECAR_CONFIG,
+	loadSidecarConfig,
+	type SidecarConfig,
+} from '../sidecar/sidecarConfig';
 import { useComposerChrome } from './ComposerChromeContext';
 
 /**
- * Per-block History panel (WP4). Lists the REAL hub-projection ledger entries
- * whose target is this block (grouped bursts contribute their children), with
- * locate / diff summary / rollback. Rollback appends an inverse transaction via
- * hub.rollback — it never deletes the original entry; an anchor-drift refusal
- * surfaces as an inline reason. Review actions use the 30px radius-md family.
+ * Compact block-local projection of the same unified activity ledger shown in
+ * the Sidecar. It intentionally shows only the latest three activities; the
+ * original/result/current comparison belongs to the shared wide detail modal.
  */
 export function BlockHistoryPanel({
 	blockId,
 	onLocate,
+	onViewAll,
 	onClose,
 }: {
 	blockId: string;
 	onLocate: () => void;
+	onViewAll?: () => void;
 	onClose: () => void;
 }): React.ReactElement {
-	const { runtime, config } = useComposerChrome();
-	const projection = useWorkspaceProjection(runtime.workspaceIntelligence);
+	const { runtime, config, snapshot: liveSnapshot } = useComposerChrome();
+	const workspace = useWorkspaceProjection(runtime.workspaceIntelligence);
+	const session = useIntelligenceProjection(runtime.intelligence);
+	const transactionProjection = useTransactionProjection(runtime.hub);
+	const [sidecarConfig, setSidecarConfig] = React.useState<SidecarConfig>(
+		DEFAULT_SIDECAR_CONFIG,
+	);
+	const [selectedActivityId, setSelectedActivityId] = React.useState<string | null>(null);
+	const snapshot = liveSnapshot ?? runtime.session?.snapshot;
+	const documentId = snapshot?.documentId ?? '';
 	const c = config.chrome.history;
-	const documentId = runtime.session?.snapshot.documentId;
-	const groups = React.useMemo(() => {
-		const runs = (projection?.runs ?? []).filter((run) => targetMatchesBlock(run.target, blockId));
-		return groupComposerGenerationRuns(runs, documentId);
-	}, [projection, blockId, documentId]);
+	const s = sidecarConfig.strings;
+
+	React.useEffect(() => {
+		let alive = true;
+		void loadSidecarConfig().then((loaded) => {
+			if (alive) setSidecarConfig(loaded);
+		});
+		return () => {
+			alive = false;
+		};
+	}, []);
+
+	const transactionResolver = React.useMemo<ComposerHistoryTransactionResolver | undefined>(
+		() => runtime.hub
+			? {
+					preview: (historyId) => runtime.hub!.historyPreview(historyId),
+					transaction: (historyId) => runtime.hub!.historyTransaction(historyId),
+				}
+			: undefined,
+		[runtime.hub, transactionProjection],
+	);
+	const allActivities = React.useMemo(
+		() => projectComposerHistoryActivities({
+			documentId,
+			runs: workspace?.runs ?? [],
+			receipts: session?.receipts ?? [],
+			externalRunAliases: session?.externalRunAliases,
+			history: transactionProjection?.history ?? [],
+			labels: composerHistoryActivityLabels(s),
+			transactionResolver,
+		}),
+		[
+			documentId,
+			workspace,
+			session,
+			transactionProjection,
+			transactionResolver,
+			s,
+		],
+	);
+	const blockActivities = React.useMemo(
+		() => allActivities.filter((activity) => activityMatchesBlock(activity, blockId)),
+		[allActivities, blockId],
+	);
+	const visibleActivities = blockActivities.slice(0, 3);
+	const selectedActivity = allActivities.find((activity) =>
+		activity.activityId === selectedActivityId,
+	);
 
 	return (
 		<div className="pk-block-history pk-composer-panel" data-chrome="true" aria-label={c.title}>
 			<div className="pk-block-history__head">
 				<HistoryIcon size={13} />
 				<span>{c.title}</span>
+				{blockActivities.length > 0 && <small>{blockActivities.length}</small>}
 			</div>
-			{groups.length === 0 && <span className="pk-block-history__empty">{c.empty}</span>}
-			{groups.map((group) => {
-				const latest = group.latest;
-				const restorable = [...group.runs]
-					.reverse()
-					.find((run) => run.disposition === 'not-adopted' && run.review);
-				return (
-				<div
-					key={group.candidateId}
-					className="pk-block-history__row"
-					data-status={latest.status}
-					data-disposition={latest.disposition}
-				>
-					<div className="pk-block-history__meta">
-						<span className="pk-block-history__label">{group.label}</span>
-						<span className="pk-block-history__stats">
-							{`${formatCount(c.versions, group.runs.length)} · ${blockGenerationStatus(group, c)}`}
+			{visibleActivities.length === 0 && (
+				<span className="pk-block-history__empty">{c.empty}</span>
+			)}
+			<div className="pk-block-history__list">
+				{visibleActivities.map((activity) => (
+					<Button
+						key={activity.activityId}
+						variant="ghost"
+						className="pk-block-history__row"
+						onClick={() => setSelectedActivityId(activity.activityId)}
+						aria-label={`${s.historyOpenDetail}: ${activity.actionLabel}`}
+					>
+						<span className="pk-block-history__meta">
+							<strong>{activity.actionLabel}</strong>
+							<time>{formatHistoryTime(activity.occurredAt)}</time>
 						</span>
-					</div>
-					{generationPreview(latest) && (
-						<span className="pk-block-history__preview">{generationPreview(latest)}</span>
-					)}
-					<div className="pk-block-history__actions">
-						<Button variant="secondary" size="sm" className="pk-review-action" onClick={onLocate}>
-							<Crosshair size={12} /> {c.locate}
-						</Button>
-						{restorable && (
-							<Button
-								variant="secondary"
-								size="sm"
-								className="pk-review-action"
-								onClick={() => restoreGenerationReview(runtime, restorable)}
-							>
-								<Undo2 size={12} /> {c.restore}
-							</Button>
+						<span className="pk-block-history__context">
+							{activitySourceLabel(activity.source, s)}
+							<em data-status={activity.status}>
+								{activityStatusLabel(activity.status, s)}
+							</em>
+						</span>
+						{(activity.changeSummary || activity.targetLabel) && (
+							<span className="pk-block-history__preview">
+								{activity.changeSummary || activity.targetLabel}
+							</span>
 						)}
-					</div>
-				</div>
-				);
-			})}
-			<Button variant="ghost" size="sm" className="pk-block-history__close" onClick={onClose}>
-				{config.chrome.copy.close}
-			</Button>
+					</Button>
+				))}
+			</div>
+			<div className="pk-block-history__footer">
+				{blockActivities.length > 0 && onViewAll && (
+					<Button
+						variant="ghost"
+						size="sm"
+						className="pk-block-history__view-all"
+						onClick={onViewAll}
+					>
+						{s.historyViewAll}
+					</Button>
+				)}
+				<Button variant="ghost" size="sm" className="pk-block-history__close" onClick={onClose}>
+					{config.chrome.copy.close}
+				</Button>
+			</div>
+
+			{selectedActivity && (
+				<HistoryDetailModal
+					activity={selectedActivity}
+					snapshot={snapshot}
+					transactionResolver={transactionResolver}
+					strings={s}
+					onClose={() => setSelectedActivityId(null)}
+					onLocate={() => onLocate()}
+					onRestore={(runId) => {
+						const run = workspace?.runs.find((candidate) => candidate.runId === runId);
+						return run ? restoreGenerationReview(runtime, run) : false;
+					}}
+					onRollback={async (historyId) => {
+						await runtime.hub?.rollback(historyId);
+						setSelectedActivityId(null);
+					}}
+				/>
+			)}
 		</div>
 	);
 }
@@ -100,60 +188,53 @@ function useWorkspaceProjection(
 		() => runtime?.projection() ?? null,
 	);
 	React.useEffect(() => {
-		if (!runtime) {
-			setProjection(null);
-			return;
-		}
+		setProjection(runtime?.projection() ?? null);
+		if (!runtime) return;
 		return runtime.subscribe(setProjection);
 	}, [runtime]);
 	return projection;
 }
 
-function targetMatchesBlock(target: FrozenComposerRunEnvelope['target'], blockId: string): boolean {
-	const targetBlockId = composerTargetBlockId(target);
-	if (!targetBlockId) return false;
-	const prefix = blockId.split('-').slice(0, -1).join('-') + '-';
-	return targetBlockId === blockId || targetBlockId.startsWith(prefix);
+function useIntelligenceProjection(
+	runtime: IntelligenceRuntime | undefined,
+): IntelligenceSessionProjection | null {
+	const [projection, setProjection] = React.useState<IntelligenceSessionProjection | null>(
+		() => runtime?.session.projection() ?? null,
+	);
+	React.useEffect(() => {
+		setProjection(runtime?.session.projection() ?? null);
+		if (!runtime) return;
+		return runtime.session.subscribe(setProjection);
+	}, [runtime]);
+	return projection;
 }
 
-function blockGenerationStatus(
-	group: ComposerGenerationGroup,
-	strings: {
-		accepted: string;
-		notAdopted: string;
-		pending: string;
-		failed: string;
-		cancelled: string;
-	},
-): string {
-	if (group.runs.some((run) => run.disposition === 'accepted')) return strings.accepted;
-	if (group.latest.disposition === 'not-adopted') return strings.notAdopted;
-	if (group.latest.status === 'failed') return strings.failed;
-	if (group.latest.status === 'cancelled' || group.latest.status === 'interrupted') {
-		return strings.cancelled;
-	}
-	return strings.pending;
-}
-
-function formatCount(template: string, count: number): string {
-	return template.replace('{count}', String(count));
+function useTransactionProjection(
+	hub: ReturnType<typeof useComposerChrome>['runtime']['hub'],
+): ComposerTransactionProjection | null {
+	const [projection, setProjection] = React.useState<ComposerTransactionProjection | null>(
+		() => hub?.projection() ?? null,
+	);
+	React.useEffect(() => {
+		setProjection(hub?.projection() ?? null);
+		if (!hub) return;
+		return hub.subscribe(setProjection);
+	}, [hub]);
+	return projection;
 }
 
 /**
- * Flatten parents + children, keeping entries that target this block. A block's
- * id changes with its content (`kind-ordinal-fp8`), so past entries are matched
- * by the stable `kind-ordinal-` prefix — the same positional fallback
- * `matchBlocks` uses. Reorder-heavy documents may under-match old entries; the
- * full cross-revision identity chain is integration-task scope.
+ * Flatten parents + children, keeping entries that target this block. This
+ * compatibility helper remains exported for the ledger projection regression.
  */
 export function collectHistoryForBlock(
 	history: readonly ComposerHistoryItem[],
 	blockId: string,
 ): ComposerHistoryItem[] {
-	const prefix = blockId.split('-').slice(0, -1).join('-') + '-';
+	const prefix = `${blockId.split('-').slice(0, -1).join('-')}-`;
 	const matches = (id: string) => id === blockId || id.startsWith(prefix);
 	const out: ComposerHistoryItem[] = [];
-	const visit = (item: ComposerHistoryItem) => {
+	const visit = (item: ComposerHistoryItem): void => {
 		const targetBlockId = item.target ? composerTargetBlockId(item.target) : null;
 		if (targetBlockId && matches(targetBlockId)) out.push(item);
 		item.children?.forEach(visit);

@@ -17,9 +17,17 @@ import type {
 	ComposerWorkspaceIntelligenceRuntime,
 	IntelligenceRuntime,
 } from '@/service/composer';
-import { groupComposerGenerationRuns } from '@/service/composer';
+import {
+	projectComposerHistoryActivities,
+	type ComposerHistoryTransactionResolver,
+} from '@/service/composer';
 import type { ComposerTransactionHub } from '@/service/composer';
-import type { ComposerHistoryItem, IntelligencePresentationOrigin } from '@/core/composer';
+import type {
+	ComposerDocumentSnapshot,
+	ComposerHistoryItem,
+	ComposerTransactionProjection,
+	IntelligencePresentationOrigin,
+} from '@/core/composer';
 import {
 	Button,
 	IconButton,
@@ -34,6 +42,7 @@ import {
 	useBriefProjection,
 	useSidecar,
 	useSessionProjection,
+	useWorkspaceProjection,
 	type SidecarContextValue,
 	type SidecarFocusContext,
 	type SidecarRelatedFocus,
@@ -41,7 +50,10 @@ import {
 import { DEFAULT_SIDECAR_CONFIG, loadSidecarConfig, type SidecarConfig } from './sidecarConfig';
 import { CopilotView } from './CopilotView';
 import { SensingControl } from './BriefView';
-import { HistoryView } from './HistoryView';
+import {
+	composerHistoryActivityLabels,
+	HistoryView,
+} from './HistoryView';
 
 export type SidecarMode = 'desktop' | 'drawer';
 
@@ -60,6 +72,7 @@ export interface IntelligenceSidecarProps {
 	runtime: IntelligenceRuntime;
 	workspaceRuntime?: ComposerWorkspaceIntelligenceRuntime;
 	documentId?: string;
+	documentSnapshot?: ComposerDocumentSnapshot;
 	/** WP2 hub for the History projection + document locate. */
 	hub?: ComposerTransactionHub;
 	documentFilePath?: string;
@@ -83,6 +96,7 @@ export function IntelligenceSidecar({
 	runtime,
 	workspaceRuntime,
 	documentId,
+	documentSnapshot,
 	hub,
 	documentFilePath,
 	open,
@@ -140,6 +154,7 @@ export function IntelligenceSidecar({
 			hub,
 			workspaceRuntime,
 			documentId,
+			documentSnapshot,
 			config,
 			onRestoreGeneration,
 			documentFilePath,
@@ -156,6 +171,7 @@ export function IntelligenceSidecar({
 			hub,
 			workspaceRuntime,
 			documentId,
+			documentSnapshot,
 			config,
 			onRestoreGeneration,
 			documentFilePath,
@@ -269,46 +285,6 @@ export function countHistoryTransactions(items: readonly ComposerHistoryItem[]):
 	return items.reduce((count, item) => count + countItem(item), 0);
 }
 
-/** Subscribe to the hub's projection while selecting the stable numeric badge. */
-function useHistoryTransactionCount(hub: ComposerTransactionHub | undefined): number {
-	const subscribe = React.useCallback(
-		(notify: () => void) => hub?.subscribe(() => notify()) ?? (() => undefined),
-		[hub],
-	);
-	const getSnapshot = React.useCallback(
-		() => (hub ? countHistoryTransactions(hub.projection().history) : 0),
-		[hub],
-	);
-	return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-}
-
-/** Count durable generation groups immediately, including not-adopted runs. */
-function useGenerationHistoryCount(
-	runtime: ComposerWorkspaceIntelligenceRuntime | undefined,
-	documentId: string | undefined,
-): number {
-	const ref = React.useRef(
-		groupComposerGenerationRuns(runtime?.projection().runs ?? [], documentId).length,
-	);
-	React.useEffect(() => {
-		ref.current = groupComposerGenerationRuns(runtime?.projection().runs ?? [], documentId).length;
-	}, [runtime, documentId]);
-	const subscribe = React.useCallback(
-		(notify: () => void) => {
-			if (!runtime) return () => undefined;
-			return runtime.subscribe((projection) => {
-				const next = groupComposerGenerationRuns(projection.runs, documentId).length;
-				if (next === ref.current) return;
-				ref.current = next;
-				notify();
-			});
-		},
-		[runtime, documentId],
-	);
-	const getSnapshot = React.useCallback(() => ref.current, []);
-	return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-}
-
 function findComposerHostElement(el: HTMLElement | null): HTMLElement | null {
 	return el?.closest<HTMLElement>('.peak-composer-root') ?? null;
 }
@@ -328,12 +304,42 @@ function SidecarShell({
 	onClose?: () => void;
 	closable?: boolean;
 }): React.ReactElement {
-	const { hub } = useSidecar();
+	const { hub, documentSnapshot } = useSidecar();
 	const projection = useSessionProjection(runtime);
+	const workspaceProjection = useWorkspaceProjection(workspaceRuntime);
+	const transactionProjection = useHistoryTransactionProjection(hub);
 	const surface = projection.surface;
-	const historyTransactionCount = useHistoryTransactionCount(hub);
-	const generationHistoryCount = useGenerationHistoryCount(workspaceRuntime, documentId);
 	const s = config.strings;
+	const transactionResolver = React.useMemo<ComposerHistoryTransactionResolver | undefined>(
+		() => hub
+			? {
+					preview: (historyId) => hub.historyPreview(historyId),
+					transaction: (historyId) => hub.historyTransaction(historyId),
+				}
+			: undefined,
+		[hub, transactionProjection],
+	);
+	const historyActivityCount = React.useMemo(
+		() => projectComposerHistoryActivities({
+			documentId: documentId ?? documentSnapshot?.documentId ?? '',
+			runs: workspaceProjection?.runs ?? [],
+			receipts: projection.receipts,
+			externalRunAliases: projection.externalRunAliases,
+			history: transactionProjection?.history ?? [],
+			labels: composerHistoryActivityLabels(s),
+			transactionResolver,
+		}).length,
+		[
+			documentId,
+			documentSnapshot?.documentId,
+			workspaceProjection,
+			projection.receipts,
+			projection.externalRunAliases,
+			transactionProjection,
+			transactionResolver,
+			s,
+		],
+	);
 	return (
 		<div className="pk-sidecar-shell peak-design-root">
 			<div className="pk-sidecar-header" data-chrome="true">
@@ -361,7 +367,7 @@ function SidecarShell({
 					active={surface === 'history'}
 					icon={<History size={13} />}
 					label={s.tabHistory}
-					count={historyTransactionCount + generationHistoryCount}
+					count={historyActivityCount}
 					onSelect={() => runtime.session.selectSurface('history')}
 				/>
 			</div>
@@ -380,6 +386,27 @@ function SidecarShell({
 			</div>
 		</div>
 	);
+}
+
+function useHistoryTransactionProjection(
+	hub: ComposerTransactionHub | undefined,
+): ComposerTransactionProjection | null {
+	const ref = React.useRef<ComposerTransactionProjection | null>(hub?.projection() ?? null);
+	React.useEffect(() => {
+		ref.current = hub?.projection() ?? null;
+	}, [hub]);
+	const subscribe = React.useCallback(
+		(notify: () => void) => {
+			if (!hub) return () => undefined;
+			return hub.subscribe((projection) => {
+				ref.current = projection;
+				notify();
+			});
+		},
+		[hub],
+	);
+	const getSnapshot = React.useCallback(() => ref.current, []);
+	return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
 function WorkspaceScopeMenu({

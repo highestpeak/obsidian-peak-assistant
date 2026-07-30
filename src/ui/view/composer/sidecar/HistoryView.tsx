@@ -1,451 +1,431 @@
 import * as React from 'react';
-import { ChevronDown, MapPin, RotateCcw, Undo2, X } from 'lucide-react';
-import { composerTargetBlockId, type ComposerHistoryItem, type ComposerTransactionProjection } from '@/core/composer';
 import {
-	groupComposerGenerationRuns,
-	type ComposerGenerationGroup,
-	type FrozenComposerRunEnvelope,
+	FilePenLine,
+	Filter,
+	MessageSquare,
+	Sparkles,
+} from 'lucide-react';
+import type {
+	ComposerHistoryItem,
+	ComposerTransactionProjection,
+} from '@/core/composer';
+import {
+	DEFAULT_COMPOSER_HISTORY_FILTERS,
+	filterComposerHistoryActivities,
+	projectComposerHistoryActivities,
+	type ComposerHistoryActivity,
+	type ComposerHistoryActivitySource,
+	type ComposerHistoryActivityStatus,
+	type ComposerHistoryFilters,
+	type ComposerHistoryTransactionResolver,
 } from '@/service/composer';
-import { Button, IconButton } from '@/ui/components/primitives';
-import { cn } from '@/ui/react/lib/utils';
-import { generationPreview } from '../generationHistory';
+import {
+	Button,
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from '@/ui/components/primitives';
+import { HistoryDetailModal } from './HistoryDetailModal';
 import type { SidecarStrings } from './sidecarConfig';
-import { useSidecar, useWorkspaceProjection } from './SidecarContext';
+import {
+	useSessionProjection,
+	useSidecar,
+	useWorkspaceProjection,
+} from './SidecarContext';
 
-/**
- * History has two intentionally separate truths:
- * - Generation History: every Frozen Run, including not-adopted output.
- * - Document History: only committed, undoable Markdown transactions.
- */
+/** One mixed activity timeline; storage truths remain separate behind the projector. */
 export function HistoryView(): React.ReactElement {
-	const { workspaceRuntime, documentId, config } = useSidecar();
-	const [mode, setMode] = React.useState<'generation' | 'document'>('generation');
+	const {
+		runtime,
+		workspaceRuntime,
+		documentId,
+		documentSnapshot,
+		hub,
+		config,
+		onLocate,
+		onRestoreGeneration,
+	} = useSidecar();
 	const workspace = useWorkspaceProjection(workspaceRuntime);
-	const groups = React.useMemo(
-		() => groupComposerGenerationRuns(workspace?.runs ?? [], documentId),
-		[workspace, documentId],
+	const session = useSessionProjection(runtime);
+	const transactionProjection = useHubProjection(hub);
+	const [filters, setFilters] = React.useState<ComposerHistoryFilters>(
+		DEFAULT_COMPOSER_HISTORY_FILTERS,
 	);
+	const [selectedActivityId, setSelectedActivityId] = React.useState<string | null>(null);
 	const s = config.strings;
-	return (
-		<div className="pk-history-switcher">
-			<div className="pk-history-kind-tabs" role="tablist" aria-label={s.tabHistory}>
-				<Button
-					variant="ghost"
-					size="sm"
-					className="pk-history-kind-tab"
-					role="tab"
-					data-active={mode === 'generation' || undefined}
-					aria-selected={mode === 'generation'}
-					onClick={() => setMode('generation')}
-				>
-					{s.generationHistoryTitle}
-					{groups.length > 0 && <span>{groups.length}</span>}
-				</Button>
-				<Button
-					variant="ghost"
-					size="sm"
-					className="pk-history-kind-tab"
-					role="tab"
-					data-active={mode === 'document' || undefined}
-					aria-selected={mode === 'document'}
-					onClick={() => setMode('document')}
-				>
-					{s.documentHistoryTitle}
-				</Button>
-			</div>
-			{mode === 'generation'
-				? <GenerationHistory groups={groups} />
-				: <DocumentHistory />}
-		</div>
+	const transactionResolver = React.useMemo<ComposerHistoryTransactionResolver | undefined>(
+		() => hub
+			? {
+					preview: (historyId) => hub.historyPreview(historyId),
+					transaction: (historyId) => hub.historyTransaction(historyId),
+				}
+			: undefined,
+		[hub, transactionProjection],
 	);
-}
+	const activities = React.useMemo(
+		() => projectComposerHistoryActivities({
+			documentId: documentId ?? documentSnapshot?.documentId ?? '',
+			runs: workspace?.runs ?? [],
+			receipts: session.receipts,
+			externalRunAliases: session.externalRunAliases,
+			history: transactionProjection?.history ?? [],
+			labels: composerHistoryActivityLabels(s),
+			transactionResolver,
+		}),
+		[
+			documentId,
+			documentSnapshot?.documentId,
+			workspace,
+			session.receipts,
+			session.externalRunAliases,
+			transactionProjection,
+			transactionResolver,
+			s,
+		],
+	);
+	const filtered = React.useMemo(
+		() => filterComposerHistoryActivities(activities, filters),
+		[activities, filters],
+	);
+	const selectedActivity = activities.find((activity) =>
+		activity.activityId === selectedActivityId,
+	);
+	const days = groupActivitiesByDay(filtered, s, new Date());
 
-function GenerationHistory({
-	groups,
-}: {
-	groups: readonly ComposerGenerationGroup[];
-}): React.ReactElement {
-	const { config, onLocate, onRestoreGeneration } = useSidecar();
-	const s = config.strings;
-	const [expanded, setExpanded] = React.useState<ReadonlySet<string>>(() => new Set());
-	const [restoredRunId, setRestoredRunId] = React.useState<string | null>(null);
 	return (
-		<div className="pk-history pk-generation-history" data-testid="pk-generation-history">
+		<div className="pk-history" data-testid="pk-unified-history">
 			<header className="pk-history-heading">
 				<div>
-					<span className="pk-history-title">{s.generationHistoryTitle}</span>
-					<span className="pk-history-intro">{s.generationHistoryIntro}</span>
+					<span className="pk-history-title">{s.historyUnifiedTitle}</span>
+					<span className="pk-history-intro">{s.historyUnifiedIntro}</span>
 				</div>
-				<span className="pk-history-total">{formatCount(s.generationHistoryCount, groups.length)}</span>
+				<span className="pk-history-total">
+					{formatCount(s.historyActivityCount, activities.length)}
+				</span>
 			</header>
-			{groups.length === 0 && (
-				<div className="pk-history pk-history--empty">{s.generationHistoryEmpty}</div>
+
+			<HistoryFilterBar filters={filters} onChange={setFilters} strings={s} />
+
+			{filtered.length === 0 && (
+				<div className="pk-history--empty">{s.historyEmpty}</div>
 			)}
-			<div className="pk-generation-list">
-				{groups.map((group) => {
-					const open = expanded.has(group.candidateId);
-					return (
-						<section key={group.candidateId} className="pk-generation-group">
-							<Button
-								variant="ghost"
-								className="pk-generation-summary"
-								aria-expanded={open}
-								onClick={() => setExpanded((current) => toggled(current, group.candidateId))}
-							>
-								<HistoryDot origin="ai" />
-								<span className="pk-history-copy">
-									<span className="pk-history-title-row">
-										<strong>{group.label}</strong>
-										<em data-disposition={group.latest.disposition}>
-											{generationGroupStatus(group, s)}
-										</em>
-									</span>
-									<small>{formatCount(s.generationHistoryVersions, group.runs.length)}</small>
-								</span>
-								<span className="pk-history-meta">
-									<time>{formatHistoryTime(group.latest.startedAt)}</time>
-									<ChevronDown
-										size={13}
-										className={cn('pk-history-batch-chevron', open && 'pk-history-batch-chevron--expanded')}
-									/>
-								</span>
-							</Button>
-							{open && (
-								<div className="pk-generation-runs">
-									{[...group.runs].reverse().map((run) => (
-										<GenerationRun
-											key={run.runId}
-											run={run}
-											restored={restoredRunId === run.runId}
-											onLocate={onLocate}
-											onRestore={() => {
-												if (!onRestoreGeneration?.(run.runId)) return;
-												setRestoredRunId(run.runId);
-											}}
-											strings={s}
-										/>
-									))}
-								</div>
-							)}
-						</section>
-					);
-				})}
-			</div>
-		</div>
-	);
-}
 
-function GenerationRun({
-	run,
-	restored,
-	onLocate,
-	onRestore,
-	strings,
-}: {
-	run: FrozenComposerRunEnvelope;
-	restored: boolean;
-	onLocate?: (blockId: string) => void;
-	onRestore: () => void;
-	strings: SidecarStrings;
-}): React.ReactElement {
-	const preview = generationPreview(run);
-	const blockId = composerTargetBlockId(run.target);
-	const canRestore = run.disposition === 'not-adopted' && Boolean(run.review);
-	return (
-		<article className="pk-generation-run" data-status={run.status} data-disposition={run.disposition}>
-			<div className="pk-generation-run__meta">
-				<strong>{generationStatus(run, strings)}</strong>
-				<time>{formatHistoryTime(run.startedAt)}</time>
-			</div>
-			{preview && <span className="pk-generation-run__preview">{preview}</span>}
-			<div className="pk-generation-run__actions">
-				{blockId && (
-					<Button variant="ghost" size="sm" onClick={() => onLocate?.(blockId)}>
-						<MapPin size={12} />
-						{strings.locateInDocument}
-					</Button>
-				)}
-				{canRestore && (
-					<Button variant="outline" size="sm" onClick={onRestore}>
-						<Undo2 size={12} />
-						{restored ? strings.generationHistoryRestored : strings.generationHistoryRestore}
-					</Button>
-				)}
-			</div>
-		</article>
-	);
-}
-
-function DocumentHistory(): React.ReactElement {
-	const { hub, config, onLocate } = useSidecar();
-	const s = config.strings;
-	const projection = useHubProjection(hub);
-	const items = projection?.history ?? [];
-	const [expandedGroups, setExpandedGroups] = React.useState<ReadonlySet<string>>(() => new Set());
-	const [selectedHistoryId, setSelectedHistoryId] = React.useState<string | null>(null);
-	const preview = selectedHistoryId ? hub?.historyPreview(selectedHistoryId) ?? null : null;
-
-	if (items.length === 0) {
-		return <div className="pk-history pk-history--empty">{s.historyEmpty}</div>;
-	}
-	const groups = groupHistoryByDay(items, s, new Date());
-	return (
-		<div className="pk-history" data-testid="pk-history">
-			<header className="pk-history-heading">
-				<div>
-					<span className="pk-history-title">{s.documentHistoryTitle}</span>
-					<span className="pk-history-intro">{s.documentHistoryIntro}</span>
-				</div>
-				<span className="pk-history-total">{formatCount(s.historyTransactionCount, countTransactions(items))}</span>
-			</header>
-			{groups.map((group) => (
-				<section key={group.key} className="pk-history-day">
+			{days.map((day) => (
+				<section key={day.key} className="pk-history-day">
 					<header className="pk-history-day-head">
-						<span>{group.label}</span>
-						<span>{formatCount(s.historyTransactionCount, countTransactions(group.items))}</span>
+						<span>{day.label}</span>
+						<span>{formatCount(s.historyActivityCount, day.items.length)}</span>
 					</header>
 					<div className="pk-history-list">
-						{group.items.map((item) => {
-							const groupKey = item.historyId;
-							const expanded = expandedGroups.has(groupKey);
-							return item.children && item.children.length > 1 ? (
-								<HistoryBatch
-									key={item.historyId}
-									item={item}
-									expanded={expanded}
-									onSelect={setSelectedHistoryId}
-									onToggle={() => {
-										setExpandedGroups((current) => {
-											const next = new Set(current);
-											if (next.has(groupKey)) next.delete(groupKey);
-											else next.add(groupKey);
-											return next;
-										});
-									}}
-									strings={s}
-								/>
-							) : (
-								<HistoryRow
-									key={item.historyId}
-									item={item}
-									onSelect={setSelectedHistoryId}
-									strings={s}
-								/>
-							);
-						})}
+						{day.items.map((activity) => (
+							<HistoryActivityRow
+								key={activity.activityId}
+								activity={activity}
+								onOpen={() => setSelectedActivityId(activity.activityId)}
+								strings={s}
+							/>
+						))}
 					</div>
 				</section>
 			))}
-			{preview && (
-				<HistoryDetail
-					item={preview.item}
-					beforeText={preview.beforeText}
-					afterText={preview.afterText}
-					onClose={() => setSelectedHistoryId(null)}
-					onLocate={onLocate}
-					onRollback={(historyId) => {
-						void hub?.rollback(historyId).then(() => setSelectedHistoryId(null)).catch(() => undefined);
-					}}
+
+			{selectedActivity && (
+				<HistoryDetailModal
+					activity={selectedActivity}
+					snapshot={documentSnapshot}
+					transactionResolver={transactionResolver}
 					strings={s}
+					onClose={() => setSelectedActivityId(null)}
+					onLocate={onLocate}
+					onRestore={onRestoreGeneration}
+					onRollback={async (historyId) => {
+						await hub?.rollback(historyId);
+						setSelectedActivityId(null);
+					}}
 				/>
 			)}
 		</div>
 	);
 }
 
-function toggled(current: ReadonlySet<string>, id: string): ReadonlySet<string> {
-	const next = new Set(current);
-	if (next.has(id)) next.delete(id);
-	else next.add(id);
-	return next;
-}
-
-function generationStatus(
-	run: FrozenComposerRunEnvelope,
-	strings: SidecarStrings,
-): string {
-	if (run.disposition === 'accepted') return strings.generationHistoryAccepted;
-	if (run.disposition === 'not-adopted') return strings.generationHistoryNotAdopted;
-	if (run.status === 'failed') return strings.generationHistoryFailed;
-	if (run.status === 'cancelled' || run.status === 'interrupted') {
-		return strings.generationHistoryCancelled;
-	}
-	if (run.status === 'stale') return strings.generationHistoryStale;
-	return strings.generationHistoryPending;
-}
-
-function generationGroupStatus(
-	group: ComposerGenerationGroup,
-	strings: SidecarStrings,
-): string {
-	if (group.runs.some((run) => run.disposition === 'accepted')) {
-		return strings.generationHistoryAccepted;
-	}
-	return generationStatus(group.latest, strings);
-}
-
-function HistoryBatch({
-	item,
-	expanded,
-	onSelect,
-	onToggle,
+function HistoryActivityRow({
+	activity,
+	onOpen,
 	strings,
 }: {
-	item: ComposerHistoryItem;
-	expanded: boolean;
-	onSelect: (historyId: string) => void;
-	onToggle: () => void;
-	strings: SidecarStrings;
-}): React.ReactElement {
-	const children = item.children ?? [];
-	const label = item.origin === 'direct'
-		? formatCount(strings.historyBatchDirect, children.length)
-		: formatCount(strings.historyBatchCopilot, children.length);
-	return (
-		<section className="pk-history-batch" data-origin={item.origin}>
-			<Button variant="ghost" className="pk-history-batch-summary" onClick={onToggle} aria-expanded={expanded}>
-				<HistoryDot origin={item.origin} />
-				<HistoryCopy label={label} item={item} originLabel={originLabel(item, strings)} strings={strings} />
-				<span className="pk-history-meta">
-					<time>{formatHistoryTime(item.timestamp)}</time>
-					<strong>{formatCount(strings.historyBatchMeta, children.length)}</strong>
-					<ChevronDown className={cn('pk-history-batch-chevron', expanded && 'pk-history-batch-chevron--expanded')} size={13} />
-				</span>
-			</Button>
-			{expanded && (
-				<div className="pk-history-batch-entries">
-					{[...children].reverse().map((child) => (
-						<HistoryRow
-							key={child.historyId}
-							item={child}
-							nested
-							onSelect={onSelect}
-							strings={strings}
-						/>
-					))}
-				</div>
-			)}
-		</section>
-	);
-}
-
-function HistoryRow({
-	item,
-	nested = false,
-	onSelect,
-	strings,
-}: {
-	item: ComposerHistoryItem;
-	nested?: boolean;
-	onSelect: (historyId: string) => void;
+	activity: ComposerHistoryActivity;
+	onOpen(): void;
 	strings: SidecarStrings;
 }): React.ReactElement {
 	return (
-		<div className={cn('pk-history-row', nested && 'pk-history-row--nested')} data-origin={item.origin}>
+		<div
+			className="pk-history-row"
+			data-source={activity.source}
+			data-status={activity.status}
+		>
 			<Button
 				variant="ghost"
 				className="pk-history-main"
-				onClick={() => onSelect(item.historyId)}
+				onClick={onOpen}
+				aria-label={`${strings.historyOpenDetail}: ${activity.actionLabel}`}
 			>
-				<HistoryDot origin={item.origin} />
-				<HistoryCopy label={item.label} item={item} originLabel={originLabel(item, strings)} strings={strings} />
+				<span className="pk-history-source-icon" data-source={activity.source}>
+					{activityIcon(activity.source)}
+				</span>
+				<span className="pk-history-copy">
+					<span className="pk-history-title-row">
+						<strong>{activity.actionLabel}</strong>
+						<em data-status={activity.status}>
+							{activityStatusLabel(activity.status, strings)}
+						</em>
+					</span>
+					<small>{activity.targetLabel}</small>
+					{activity.changeSummary && (
+						<span className="pk-history-excerpt">{activity.changeSummary}</span>
+					)}
+				</span>
 				<span className="pk-history-meta">
-					<time>{formatHistoryTime(item.timestamp)}</time>
-					<strong>{formatDelta(item)}</strong>
+					<time>{formatHistoryTime(activity.occurredAt)}</time>
+					<strong>{activitySourceLabel(activity.source, strings)}</strong>
+					{activity.variantCount > 1 && (
+						<span>{formatCount(strings.generationHistoryVersions, activity.variantCount)}</span>
+					)}
 				</span>
 			</Button>
 		</div>
 	);
 }
 
-function HistoryDetail({
-	item,
-	beforeText,
-	afterText,
-	onClose,
-	onLocate,
-	onRollback,
+function HistoryFilterBar({
+	filters,
+	onChange,
 	strings,
 }: {
-	item: ComposerHistoryItem;
-	beforeText: string;
-	afterText: string;
-	onClose: () => void;
-	onLocate?: (blockId: string) => void;
-	onRollback: (historyId: string) => void;
+	filters: ComposerHistoryFilters;
+	onChange(filters: ComposerHistoryFilters): void;
 	strings: SidecarStrings;
 }): React.ReactElement {
-	const blockId = item.target ? composerTargetBlockId(item.target) : null;
-	const hasText = Boolean(beforeText || afterText);
+	const activeCount = Object.values(filters).filter((value) => value !== 'all').length;
 	return (
-		<aside className="pk-history-detail" aria-label={strings.historyPreviewTitle}>
-			<header>
-				<div>
-					<span>{strings.historyPreviewTitle}</span>
-					<strong>{item.label}</strong>
-				</div>
-				<IconButton label={strings.close} onClick={onClose}>
-					<X size={14} />
-				</IconButton>
-			</header>
-			{hasText ? (
-				<div className="pk-history-diff">
-					<div data-kind="before">
-						<span>{strings.historyBefore}</span>
-						<pre>{beforeText || strings.historyPreviewUnavailable}</pre>
-					</div>
-					<div data-kind="after">
-						<span>{strings.historyAfter}</span>
-						<pre>{afterText || strings.historyPreviewUnavailable}</pre>
-					</div>
-				</div>
-			) : (
-				<span className="pk-history-detail-empty">{strings.historyPreviewUnavailable}</span>
+		<div className="pk-history-filter-bar">
+			<Popover>
+				<PopoverTrigger asChild>
+					<Button
+						variant="outline"
+						size="sm"
+						className="pk-history-filter-trigger"
+						data-active={activeCount > 0 || undefined}
+					>
+						<Filter />
+						{strings.historyFilter}
+						{activeCount > 0 && <span>{activeCount}</span>}
+					</Button>
+				</PopoverTrigger>
+				<PopoverContent
+					align="start"
+					className="pk-history-filter-popover"
+					portalClassName="pk-history-filter-portal"
+				>
+					<HistoryFilterSelect
+						label={strings.historyFilterSource}
+						value={filters.source}
+						options={sourceOptions(strings)}
+						onChange={(source) => onChange({ ...filters, source })}
+					/>
+					<HistoryFilterSelect
+						label={strings.historyFilterAction}
+						value={filters.effect}
+						options={effectOptions(strings)}
+						onChange={(effect) => onChange({ ...filters, effect })}
+					/>
+					<HistoryFilterSelect
+						label={strings.historyFilterStatus}
+						value={filters.status}
+						options={statusOptions(strings)}
+						onChange={(status) => onChange({ ...filters, status })}
+					/>
+					<HistoryFilterSelect
+						label={strings.historyFilterTarget}
+						value={filters.target}
+						options={targetOptions(strings)}
+						onChange={(target) => onChange({ ...filters, target })}
+					/>
+					{activeCount > 0 && (
+						<Button
+							variant="ghost"
+							size="sm"
+							className="pk-history-filter-reset"
+							onClick={() => onChange(DEFAULT_COMPOSER_HISTORY_FILTERS)}
+						>
+							{strings.historyResetFilters}
+						</Button>
+					)}
+				</PopoverContent>
+			</Popover>
+			{activeCount > 0 && (
+				<span className="pk-history-filter-summary">
+					{`${activeCount} · ${strings.historyFilter}`}
+				</span>
 			)}
-			<footer>
-				{blockId && (
-					<Button variant="outline" onClick={() => onLocate?.(blockId)}>
-						<MapPin size={13} />
-						{strings.locateInDocument}
-					</Button>
-				)}
-				{!item.isRollback && (
-					<Button variant="outline" onClick={() => onRollback(item.historyId)}>
-						<RotateCcw size={13} />
-						{strings.historyRollbackAction}
-					</Button>
-				)}
-			</footer>
-		</aside>
+		</div>
 	);
 }
 
-function HistoryCopy({
+function HistoryFilterSelect<TValue extends string>({
 	label,
-	item,
-	originLabel,
-	strings,
+	value,
+	options,
+	onChange,
 }: {
 	label: string;
-	item: ComposerHistoryItem;
-	originLabel: string;
-	strings: SidecarStrings;
+	value: TValue;
+	options: readonly { value: TValue; label: string }[];
+	onChange(value: TValue): void;
 }): React.ReactElement {
 	return (
-		<span className="pk-history-copy">
-			<span className="pk-history-title-row">
-				<strong>{label}</strong>
-				<em>{originLabel}</em>
-			</span>
-			<small>{targetLabel(item, originLabel, strings)}</small>
-		</span>
+		<label className="pk-history-filter-field">
+			<span>{label}</span>
+			<select value={value} onChange={(event) => onChange(event.target.value as TValue)}>
+				{options.map((option) => (
+					<option key={option.value} value={option.value}>
+						{option.label}
+					</option>
+				))}
+			</select>
+		</label>
 	);
 }
 
-function HistoryDot({ origin }: { origin: ComposerHistoryItem['origin'] }): React.ReactElement {
-	return <i className="pk-history-dot" data-origin={origin} aria-hidden />;
+export function composerHistoryActivityLabels(strings: SidecarStrings) {
+	return {
+		legacyGeneration: strings.historyLegacyGeneration,
+		copilot: strings.tabCopilot,
+		directEdit: strings.historyDirect,
+		documentTarget: strings.historyDocumentTarget,
+		blockTarget: strings.historyBlockTarget,
+		unitTarget: strings.historyUnitTarget,
+		selectionTarget: strings.historySelectionTarget,
+		unknownTarget: strings.historyNoTarget,
+	};
 }
 
+function sourceOptions(
+	strings: SidecarStrings,
+): readonly { value: ComposerHistoryFilters['source']; label: string }[] {
+	return [
+		{ value: 'all', label: strings.historyFilterAll },
+		{ value: 'generation', label: strings.historySourceGeneration },
+		{ value: 'copilot', label: strings.historySourceCopilot },
+		{ value: 'document', label: strings.historySourceDocument },
+	];
+}
+
+function effectOptions(
+	strings: SidecarStrings,
+): readonly { value: ComposerHistoryFilters['effect']; label: string }[] {
+	return [
+		{ value: 'all', label: strings.historyFilterAll },
+		{ value: 'analyze', label: strings.historyActionAnalyze },
+		{ value: 'rewrite', label: strings.historyActionRewrite },
+		{ value: 'insert', label: strings.historyActionInsert },
+		{ value: 'delete', label: strings.historyActionDelete },
+		{ value: 'transform', label: strings.historyActionTransform },
+		{ value: 'metadata-patch', label: strings.historyActionMetadata },
+		{ value: 'asset-transaction', label: strings.historyActionAsset },
+		{ value: 'native-object-patch', label: strings.historyActionNative },
+	];
+}
+
+function statusOptions(
+	strings: SidecarStrings,
+): readonly { value: ComposerHistoryFilters['status']; label: string }[] {
+	return [
+		{ value: 'all', label: strings.historyFilterAll },
+		{ value: 'running', label: strings.historyStatusRunning },
+		{ value: 'pending-review', label: strings.generationHistoryPending },
+		{ value: 'accepted', label: strings.generationHistoryAccepted },
+		{ value: 'not-adopted', label: strings.generationHistoryNotAdopted },
+		{ value: 'completed', label: strings.historyStatusCompleted },
+		{ value: 'failed', label: strings.generationHistoryFailed },
+		{ value: 'cancelled', label: strings.generationHistoryCancelled },
+		{ value: 'stale', label: strings.generationHistoryStale },
+		{ value: 'rolled-back', label: strings.historyStatusRolledBack },
+	];
+}
+
+function targetOptions(
+	strings: SidecarStrings,
+): readonly { value: ComposerHistoryFilters['target']; label: string }[] {
+	return [
+		{ value: 'all', label: strings.historyFilterAll },
+		{ value: 'document', label: strings.historyDocumentTarget },
+		{ value: 'block', label: strings.historyBlockTarget },
+		{ value: 'unit', label: strings.historyUnitTarget },
+		{ value: 'selection', label: strings.historySelectionTarget },
+	];
+}
+
+function activityIcon(source: ComposerHistoryActivitySource): React.ReactNode {
+	if (source === 'generation') return <Sparkles aria-hidden />;
+	if (source === 'copilot') return <MessageSquare aria-hidden />;
+	return <FilePenLine aria-hidden />;
+}
+
+export function activitySourceLabel(
+	source: ComposerHistoryActivitySource,
+	strings: SidecarStrings,
+): string {
+	if (source === 'generation') return strings.historySourceGeneration;
+	if (source === 'copilot') return strings.historySourceCopilot;
+	return strings.historySourceDocument;
+}
+
+export function activityStatusLabel(
+	status: ComposerHistoryActivityStatus,
+	strings: SidecarStrings,
+): string {
+	if (status === 'running') return strings.historyStatusRunning;
+	if (status === 'pending-review') return strings.generationHistoryPending;
+	if (status === 'accepted') return strings.generationHistoryAccepted;
+	if (status === 'not-adopted') return strings.generationHistoryNotAdopted;
+	if (status === 'failed') return strings.generationHistoryFailed;
+	if (status === 'cancelled') return strings.generationHistoryCancelled;
+	if (status === 'stale') return strings.generationHistoryStale;
+	if (status === 'rolled-back') return strings.historyStatusRolledBack;
+	return strings.historyStatusCompleted;
+}
+
+export interface HistoryActivityDayGroup {
+	key: string;
+	label: string;
+	items: readonly ComposerHistoryActivity[];
+}
+
+export function groupActivitiesByDay(
+	items: readonly ComposerHistoryActivity[],
+	strings: Pick<SidecarStrings, 'historyToday'>,
+	now: Date,
+): readonly HistoryActivityDayGroup[] {
+	const byDay = new Map<string, ComposerHistoryActivity[]>();
+	for (const item of items) {
+		const key = localDateKey(new Date(item.occurredAt));
+		const group = byDay.get(key) ?? [];
+		group.push(item);
+		byDay.set(key, group);
+	}
+	return [...byDay.entries()].map(([key, grouped]) => ({
+		key,
+		label: key === localDateKey(now)
+			? strings.historyToday
+			: new Intl.DateTimeFormat(undefined, {
+					month: 'short',
+					day: 'numeric',
+				}).format(new Date(grouped[0].occurredAt)),
+		items: grouped,
+	}));
+}
+
+/** Compatibility helper used by the existing transaction grouping regression. */
 export interface HistoryDayGroup {
 	key: string;
 	label: string;
@@ -459,8 +439,7 @@ export function groupHistoryByDay(
 ): readonly HistoryDayGroup[] {
 	const byDay = new Map<string, ComposerHistoryItem[]>();
 	for (const item of [...items].reverse()) {
-		const date = new Date(item.timestamp);
-		const key = localDateKey(date);
+		const key = localDateKey(new Date(item.timestamp));
 		const group = byDay.get(key) ?? [];
 		group.push(item);
 		byDay.set(key, group);
@@ -469,7 +448,10 @@ export function groupHistoryByDay(
 		key,
 		label: key === localDateKey(now)
 			? strings.historyToday
-			: new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(grouped[0].timestamp)),
+			: new Intl.DateTimeFormat(undefined, {
+					month: 'short',
+					day: 'numeric',
+				}).format(new Date(grouped[0].timestamp)),
 		items: grouped,
 	}));
 }
@@ -478,28 +460,12 @@ export function countTransactions(items: readonly ComposerHistoryItem[]): number
 	return items.reduce((total, item) => total + (item.children?.length ?? 1), 0);
 }
 
-function originLabel(item: ComposerHistoryItem, strings: SidecarStrings): string {
-	if (item.isRollback || item.origin === 'system-rollback') return strings.historyRollback;
-	if (item.origin === 'direct') return strings.historyDirect;
-	return strings.historyAiAccepted;
-}
-
-function targetLabel(item: ComposerHistoryItem, fallback: string, strings: SidecarStrings): string {
-	switch (item.target?.kind) {
-		case 'document': return strings.historyDocumentTarget;
-		case 'block': return strings.historyBlockTarget;
-		case 'unit': return strings.historyUnitTarget;
-		case 'selection': return strings.historySelectionTarget;
-		default: return fallback || strings.historyNoTarget;
-	}
-}
-
-function formatHistoryTime(timestamp: number): string {
-	return new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(timestamp));
-}
-
-function formatDelta(item: ComposerHistoryItem): string {
-	return `+${item.stats.added} / -${item.stats.removed}`;
+export function formatHistoryTime(timestamp: number): string {
+	return new Intl.DateTimeFormat(undefined, {
+		hour: '2-digit',
+		minute: '2-digit',
+		hour12: false,
+	}).format(new Date(timestamp));
 }
 
 function formatCount(template: string, count: number): string {
@@ -510,15 +476,17 @@ function localDateKey(date: Date): string {
 	return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
 
-/** Subscribe to the hub projection as a React external store (History-only slice). */
-function useHubProjection(hub: ReturnType<typeof useSidecar>['hub']): ComposerTransactionProjection | null {
+/** Subscribe to the hub projection as a React external store. */
+function useHubProjection(
+	hub: ReturnType<typeof useSidecar>['hub'],
+): ComposerTransactionProjection | null {
 	const ref = React.useRef<ComposerTransactionProjection | null>(hub?.projection() ?? null);
 	const subscribe = React.useCallback(
-		(cb: () => void) => {
+		(notify: () => void) => {
 			if (!hub) return () => undefined;
 			return hub.subscribe((projection) => {
 				ref.current = projection;
-				cb();
+				notify();
 			});
 		},
 		[hub],

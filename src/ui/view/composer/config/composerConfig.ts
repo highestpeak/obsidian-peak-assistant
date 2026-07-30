@@ -522,7 +522,7 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 			empty: '当前文档还没有评论。',
 		},
 		history: {
-			title: '生成历史',
+			title: '该段历史',
 			empty: '该块暂无历史',
 			locate: '定位',
 			versions: '{count} 个版本',

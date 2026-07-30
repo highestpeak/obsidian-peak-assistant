@@ -212,6 +212,7 @@ function SessionView(): React.ReactElement {
 		const frozen = runtime.session.send({
 			snapshot: context.snapshot,
 			targetQuote: context.targetQuote || text.trim(),
+			instruction: text.trim(),
 			capabilityId: selectedCapability.capabilityId,
 			presentationOrigin,
 		});

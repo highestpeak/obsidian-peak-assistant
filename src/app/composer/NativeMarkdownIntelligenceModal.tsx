@@ -177,6 +177,7 @@ function NativeMarkdownIntelligencePanel({
 				runtime={intelligence}
 				workspaceRuntime={editing.workspaceIntelligence}
 				documentId={snapshot.documentId}
+				documentSnapshot={snapshot}
 				hub={editing.hub}
 				documentFilePath={snapshot.filePath}
 				open
