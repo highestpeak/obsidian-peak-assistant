@@ -19,7 +19,7 @@ import { MultiLensGraph } from '@/ui/component/mine/multi-lens-graph/MultiLensGr
 import { Button } from '@/ui/component/shared-ui/button';
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { useOwnerDocumentListener } from '@/ui/hooks/useOwnerWindow';
+import { useOwnerWindowListener } from '@/ui/hooks/useOwnerWindow';
 import { createOpenSourceCallback } from '../callbacks/open-source-file';
 import { InspectorSidePanel } from './inspector/InspectorSidePanel';
 import { useGraphAgent } from '../hooks/useGraphAgent';
@@ -294,6 +294,15 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 		if (inspectorOpen) setInspectorPath(path);
 	}, [inspectorOpen, results]);
 
+	const openInspectorForPath = useCallback((path: string): void => {
+		if (isMobile()) {
+			handleOpen(path, true);
+			return;
+		}
+		setInspectorPath(path);
+		setInspectorOpen(true);
+	}, [handleOpen]);
+
 	const setInspectorVisible = useCallback((open: boolean): void => {
 		if (!open) {
 			setInspectorOpen(false);
@@ -301,16 +310,12 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 			return;
 		}
 		if (!selectedPath) return;
-		if (isMobile()) {
-			handleOpen(selectedPath, true);
-			return;
-		}
-		setInspectorPath(selectedPath);
-		setInspectorOpen(true);
-	}, [focusSourcesProjection, handleOpen, selectedPath]);
+		openInspectorForPath(selectedPath);
+	}, [focusSourcesProjection, openInspectorForPath, selectedPath]);
 
 	const handleProjectionKey = useCallback((event: KeyboardEvent): void => {
 		const target = event.target as Element | null;
+		if (event.key === 'ArrowRight' && target?.closest?.('[data-result-browser-row]')) return;
 		const intent = resolveSourcesKeyboardIntent({
 			view,
 			key: event.key,
@@ -351,9 +356,9 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 		view,
 	]);
 
-	// Capture before CodeMirror/Obsidian can stop the event: Sources remains the
-	// active projection even when the top query editor still owns DOM focus.
-	useOwnerDocumentListener(rootRef, 'keydown', handleProjectionKey, true);
+	// Capture before Obsidian can stop the event when the query editor still
+	// owns focus. List rows handle ArrowRight directly with their own path.
+	useOwnerWindowListener(rootRef, 'keydown', handleProjectionKey, true);
 
 	useEffect(() => {
 		focusSourcesProjection();
@@ -474,6 +479,7 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 									itemRef={(element) => itemRefs.current.set(index, element)}
 									onSelect={(nextIndex) => selectPath(results[nextIndex].path)}
 									onOpen={(item, options) => handleOpen(item.path, options.newTab)}
+									onInspect={(item) => openInspectorForPath(item.path)}
 									snippetText={sources[index]?.reasoning ?? null}
 									openOnSelect={false}
 								/>

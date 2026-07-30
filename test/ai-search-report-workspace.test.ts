@@ -112,7 +112,7 @@ assert(sourceView.includes('ResultBrowserTree'));
 assert(sourceView.includes('ResultBrowserGraph'));
 assert(sourceView.includes('MultiLensGraph'));
 assert(sourceView.includes('InspectorSidePanel'));
-assert(sourceView.includes('useOwnerDocumentListener'));
+assert(!sourceView.includes('useOwnerDocumentListener'));
 assert(sourceView.includes('data-v2-sources-projection'));
 assert(sourceView.includes('<aside'));
 assert(!sourceView.includes('Shared Result Browser ·'));
@@ -122,7 +122,17 @@ assert(sourceView.includes('isSourcesDensityVisible(view)'));
 assert(sourceView.includes('resolveSourcesKeyboardIntent'));
 assert(sourceView.includes('focusSourcesProjection'));
 assert(!sourceView.includes("target.closest('[data-v2-sources-projection]')"));
-assert(sourceView.includes("useOwnerDocumentListener(rootRef, 'keydown', handleProjectionKey, true)"));
+assert(sourceView.includes("useOwnerWindowListener(rootRef, 'keydown', handleProjectionKey, true)"));
+assert(sourceView.includes("target?.closest?.('[data-result-browser-row]')"));
+assert(sourceView.includes('onInspect={(item) => openInspectorForPath(item.path)}'));
+
+const resultListRow = readFileSync(
+	'src/ui/component/result-browser/list/ResultBrowserListRow.tsx',
+	'utf8',
+);
+assert(resultListRow.includes("e.key === 'ArrowRight'"));
+assert(resultListRow.includes('onInspect?.(result)'));
+assert(resultListRow.includes('if (e.defaultPrevented) return'));
 
 const aiMapBody = sourceView.match(
 	/const AIRelationshipMap[\s\S]*?export const V2SourcesView/,

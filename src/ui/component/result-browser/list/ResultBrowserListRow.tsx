@@ -100,6 +100,8 @@ export interface ResultBrowserListRowProps {
 	 * adapter resolves the final open policy.
 	 */
 	onOpen: (result: SearchResultItem, opts: { newTab: boolean; viaNewTabButton?: boolean }) => void;
+	/** Open the host inspector for this row without depending on outer selection state. */
+	onInspect?: (result: SearchResultItem) => void;
 	onHoverStart?: (result: SearchResultItem) => void;
 	onHoverEnd?: (result: SearchResultItem) => void;
 	/** Host-owned explanation that replaces the normal search snippet. */
@@ -116,11 +118,12 @@ export interface ResultBrowserListRowProps {
 
 export const ResultBrowserListRow: React.FC<ResultBrowserListRowProps> = ({
 	result, index, isSelected, density, highlightQuery, itemRef, onSelect, onOpen,
-	onHoverStart, onHoverEnd, snippetText, openOnSelect = true, variant = 'search',
+	onInspect, onHoverStart, onHoverEnd, snippetText, openOnSelect = true, variant = 'search',
 }) => {
 	const isCompact = density === 'compact';
 
 	const handleClick = (e: React.MouseEvent) => {
+		e.currentTarget.focus({ preventScroll: true });
 		onSelect(index);
 		if (openOnSelect) onOpen(result, { newTab: e.metaKey || e.ctrlKey });
 	};
@@ -131,6 +134,14 @@ export const ResultBrowserListRow: React.FC<ResultBrowserListRowProps> = ({
 	};
 
 	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (e.defaultPrevented) return;
+		if (e.key === 'ArrowRight' && onInspect) {
+			e.preventDefault();
+			e.stopPropagation();
+			onSelect(index);
+			onInspect?.(result);
+			return;
+		}
 		if (e.key === ' ') {
 			e.preventDefault();
 			onSelect(index);
@@ -161,6 +172,7 @@ export const ResultBrowserListRow: React.FC<ResultBrowserListRowProps> = ({
 			className={`pktw-group pktw-relative pktw-px-4 pktw-py-2 pktw-cursor-pointer pktw-transition-colors pktw-mb-2 ${isSelected ? 'pktw-bg-pk-indigo-bg' : 'hover:pktw-bg-pk-surface-raised'
 				}`}
 			data-result-browser-variant={variant}
+			data-result-browser-row
 			data-selected={isSelected ? 'true' : 'false'}
 			tabIndex={0}
 			onClick={handleClick}
