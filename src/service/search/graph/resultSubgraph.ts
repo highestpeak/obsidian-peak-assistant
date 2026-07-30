@@ -10,6 +10,7 @@
  * Plan: docs/superpowers/plans/2026-07-07-vault-search-heading-and-result-graph.md
  *   §T2a.
  */
+import type { GraphEdgeDirectionality } from '@/core/types/graph-edge';
 
 // ─── LOCKED type contract (integration surface with T4 / T6) ─────────────────
 
@@ -29,7 +30,12 @@ export interface ResultSubgraphOutput {
         folder: string;
     }>;
     hubAnchors: Array<{ id: string; path: string; title: string; constituentCount: number }>;
-    edges: Array<{ from: string; to: string; kind: 'reference' | 'semantic' | 'hub_constituent' }>;
+    edges: Array<{
+        from: string;
+        to: string;
+        kind: 'reference' | 'semantic' | 'hub_constituent';
+        directionality?: GraphEdgeDirectionality;
+    }>;
     isolatedDocIds: string[];
     overflowCount: number; // N - nodeCap when trimmed
 }
@@ -69,7 +75,12 @@ export interface ResultSubgraphDeps {
      */
     getStructuralEdgesWithin(
         nodeIds: string[],
-    ): Promise<Array<{ from: string; to: string; kind: 'reference' | 'semantic' }>>;
+    ): Promise<Array<{
+        from: string;
+        to: string;
+        kind: 'reference' | 'semantic';
+        directionality?: GraphEdgeDirectionality;
+    }>>;
 
     /**
      * Hub-constituent edges among the given result doc set and hub anchor set.
@@ -171,11 +182,21 @@ export async function buildResultSubgraph(
     for (const e of structuralEdges) {
         // Defensive: adapter contract says both endpoints in scope; enforce anyway.
         if (!scopeSet.has(e.from) || !scopeSet.has(e.to)) continue;
-        edges.push({ from: e.from, to: e.to, kind: e.kind });
+        edges.push({
+            from: e.from,
+            to: e.to,
+            kind: e.kind,
+            directionality: e.directionality,
+        });
     }
     for (const e of hubConstituentEdges) {
         if (!keptHubIdSet.has(e.from) || !trimmedDocSet.has(e.to)) continue;
-        edges.push({ from: e.from, to: e.to, kind: 'hub_constituent' });
+        edges.push({
+            from: e.from,
+            to: e.to,
+            kind: 'hub_constituent',
+            directionality: 'directed',
+        });
     }
 
     // 6. Isolated partition — a result doc is isolated when it has NO

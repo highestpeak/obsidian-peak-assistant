@@ -6,6 +6,7 @@
  * the document neighborhood graph) is injected through this port and composed
  * at the app layer (see FileAtlasModal). Keeps runtime ownership out of the UI.
  */
+import type { GraphEdgeDirectionality } from '@/core/types/graph-edge';
 
 import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
 
@@ -44,6 +45,8 @@ export interface AtlasGraphEdge {
 	to: string;
 	/** Reference link vs. semantic (index-discovered) relation. */
 	kind: 'reference' | 'semantic';
+	/** Whether the renderer uses an end arrow, no arrow, or arrows at both ends. */
+	directionality?: GraphEdgeDirectionality;
 }
 
 export interface AtlasGraphData {

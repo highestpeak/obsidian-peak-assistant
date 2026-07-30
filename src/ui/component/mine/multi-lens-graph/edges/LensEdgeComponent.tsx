@@ -37,7 +37,18 @@ function simpleHash(s: string): number {
 }
 
 export function LensEdgeComponent(props: EdgeProps<LensEdge>) {
-	const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data } = props;
+	const {
+		id,
+		sourceX,
+		sourceY,
+		targetX,
+		targetY,
+		sourcePosition,
+		targetPosition,
+		markerStart,
+		markerEnd,
+		data,
+	} = props;
 	const [hovered, setHovered] = useState(false);
 	const [edgePath, labelX, labelY] = getBezierPath({
 		sourceX,
@@ -60,6 +71,8 @@ export function LensEdgeComponent(props: EdgeProps<LensEdge>) {
 		<>
 			<BaseEdge
 				path={edgePath}
+				markerStart={markerStart}
+				markerEnd={markerEnd}
 				style={{ ...style, strokeWidth: Math.max(1.5, (data?.weight ?? 0.5) * 3) }}
 			/>
 			{/* Invisible wider hit area for hover detection */}

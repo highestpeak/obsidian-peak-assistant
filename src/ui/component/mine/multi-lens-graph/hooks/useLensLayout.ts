@@ -5,8 +5,19 @@ import { computeTreeLayout } from '../layouts/tree-layout';
 import { computeBridgeLayout } from '../layouts/bridge-layout';
 import { computeTimelineLayout } from '../layouts/timeline-layout';
 import { computeGapAnalysisLayout } from '../layouts/gap-analysis-layout';
+import { edgeMarkersForDirectionality } from '../edgeDirection';
+import {
+	coalesceGraphEdges,
+	resolveGraphEdgeDirectionality,
+	type GraphEdgeDirectionality,
+} from '@/core/types/graph-edge';
 
 type RawEdge = LensGraphData['edges'][number];
+type StandardLayoutResult =
+	| ReturnType<typeof computeTopologyLayout>
+	| ReturnType<typeof computeTreeLayout>
+	| ReturnType<typeof computeBridgeLayout>
+	| ReturnType<typeof computeTimelineLayout>;
 
 const NODE_H = 60;
 const CELL_PAD_X = 20;
@@ -70,6 +81,36 @@ function filterTopologyEdges(edges: RawEdge[], nodeCount: number): RawEdge[] {
 	return aboveThreshold.slice(0, cap);
 }
 
+function coalesceLensEdges(edges: RawEdge[]): RawEdge[] {
+	const normalized = coalesceGraphEdges(edges.map((edge) => ({
+		...edge,
+		from: edge.source,
+		to: edge.target,
+	})));
+	return normalized.map(({ from, to, ...edge }) => ({
+		...edge,
+		source: from,
+		target: to,
+	}));
+}
+
+function decorateLensEdge(edge: LensEdge): LensEdge {
+	const kind = edge.data?.kind ?? 'link';
+	const directionality: GraphEdgeDirectionality = resolveGraphEdgeDirectionality(
+		kind,
+		edge.data?.directionality,
+	);
+	return {
+		...edge,
+		...edgeMarkersForDirectionality(directionality),
+		data: {
+			...edge.data,
+			kind,
+			directionality,
+		},
+	};
+}
+
 export function useLensLayout(graphData: LensGraphData | null, lens: LensType) {
 	return useMemo(() => {
 		if (!graphData || graphData.nodes.length === 0) {
@@ -86,50 +127,57 @@ export function useLensLayout(graphData: LensGraphData | null, lens: LensType) {
 		const dedupedGraphData = dedupedNodeData.length < graphData.nodes.length
 			? { ...graphData, nodes: dedupedNodeData }
 			: graphData;
+		const normalizedGraphData = {
+			...dedupedGraphData,
+			edges: coalesceLensEdges(dedupedGraphData.edges),
+		};
 
-		let layoutResult: { positions: Map<string, { x: number; y: number }>; [key: string]: unknown };
+		let layoutResult: StandardLayoutResult;
 		let filteredEdges: RawEdge[];
 
 		switch (lens) {
 			case 'thinking-tree':
-				filteredEdges = dedupedGraphData.edges;
+				filteredEdges = normalizedGraphData.edges;
 				layoutResult = computeTreeLayout({
-					nodes: dedupedGraphData.nodes,
+					nodes: normalizedGraphData.nodes,
 					edges: filteredEdges,
 				});
 				break;
 			case 'bridge':
-				filteredEdges = dedupedGraphData.edges.filter((e) => e.kind === 'cross-domain');
+				filteredEdges = normalizedGraphData.edges.filter((e) => e.kind === 'cross-domain');
 				layoutResult = computeBridgeLayout({
-					nodes: dedupedGraphData.nodes,
+					nodes: normalizedGraphData.nodes,
 					edges: filteredEdges,
-					clusters: dedupedGraphData.clusters,
-					bridges: dedupedGraphData.bridges,
+					clusters: normalizedGraphData.clusters,
+					bridges: normalizedGraphData.bridges,
 				});
 				break;
 			case 'timeline':
-				filteredEdges = dedupedGraphData.edges.filter((e) => e.kind === 'temporal');
+				filteredEdges = normalizedGraphData.edges.filter((e) => e.kind === 'temporal');
 				layoutResult = computeTimelineLayout({
-					nodes: dedupedGraphData.nodes,
-					evolutionChains: dedupedGraphData.evolutionChains,
+					nodes: normalizedGraphData.nodes,
+					evolutionChains: normalizedGraphData.evolutionChains,
 				});
 				break;
 			case 'gap-analysis': {
-				const gapResult = computeGapAnalysisLayout(dedupedGraphData);
+				const gapResult = computeGapAnalysisLayout(normalizedGraphData);
 				resolveOverlaps(gapResult.nodes);
-				return { nodes: gapResult.nodes, edges: gapResult.edges };
+				return {
+					nodes: gapResult.nodes,
+					edges: gapResult.edges.map(decorateLensEdge),
+				};
 			}
 			case 'topology':
 			default:
-				filteredEdges = filterTopologyEdges(dedupedGraphData.edges, dedupedGraphData.nodes.length);
+				filteredEdges = filterTopologyEdges(normalizedGraphData.edges, normalizedGraphData.nodes.length);
 				layoutResult = computeTopologyLayout({
-					nodes: dedupedGraphData.nodes,
+					nodes: normalizedGraphData.nodes,
 					edges: filteredEdges,
 				});
 				break;
 		}
 
-		const nodes: LensNode[] = dedupedGraphData.nodes.map((n) => ({
+		const nodes: LensNode[] = normalizedGraphData.nodes.map((n) => ({
 			id: n.path,
 			type: 'lensNode' as const,
 			position: layoutResult.positions.get(n.path) ?? { x: 0, y: 0 },
@@ -148,15 +196,21 @@ export function useLensLayout(graphData: LensGraphData | null, lens: LensType) {
 			const tgtPos = resolvedPositions.get(e.target);
 			const handles = srcPos && tgtPos ? computeHandlePair(srcPos, tgtPos) : { sourceHandle: 'source-right', targetHandle: 'target-left' };
 			const dense = filteredEdges.length > graphData.nodes.length * 1.2;
-			return {
+			return decorateLensEdge({
 				id: `e-${i}-${e.source}-${e.target}`,
 				source: e.source,
 				target: e.target,
 				sourceHandle: handles.sourceHandle,
 				targetHandle: handles.targetHandle,
 				type: 'lensEdge',
-				data: { kind: e.kind, weight: e.weight, dense },
-			};
+				data: {
+					kind: e.kind,
+					weight: e.weight,
+					edgeLabel: e.label,
+					dense,
+					directionality: e.directionality,
+				},
+			});
 		});
 
 		// Add swimlane background nodes for bridge layout
@@ -199,24 +253,24 @@ export function useLensLayout(graphData: LensGraphData | null, lens: LensType) {
 		const extraEdges: LensEdge[] = [];
 		if (lens === 'bridge' && 'bridgeEdges' in layoutResult && Array.isArray(layoutResult.bridgeEdges)) {
 			for (const e of layoutResult.bridgeEdges as Array<{ source: string; target: string; kind: string; label?: string }>) {
-				extraEdges.push({
+				extraEdges.push(decorateLensEdge({
 					id: `bridge-${e.source}-${e.target}`,
 					source: e.source,
 					target: e.target,
 					type: 'lensEdge',
 					data: { kind: e.kind as LensEdgeData['kind'], edgeLabel: e.label },
-				});
+				}));
 			}
 		}
 		if (lens === 'timeline' && 'chainEdges' in layoutResult && Array.isArray(layoutResult.chainEdges)) {
 			for (const e of layoutResult.chainEdges as Array<{ source: string; target: string; kind: string; chainIndex: number }>) {
-				extraEdges.push({
+				extraEdges.push(decorateLensEdge({
 					id: `chain-${e.chainIndex}-${e.source}-${e.target}`,
 					source: e.source,
 					target: e.target,
 					type: 'lensEdge',
 					data: { kind: e.kind as LensEdgeData['kind'] },
-				});
+				}));
 			}
 		}
 

@@ -159,8 +159,9 @@ async function fallbackToPhysicalGraph(sources: SourceItem[], persistDeps: Persi
 			const edges = sg.edges.map((e: any) => ({
 				source: e.from_node_id,
 				target: e.to_node_id,
-				kind: (e.kind === 'semantic' ? 'semantic' : 'link') as const,
+				kind: e.kind === 'semantic' ? 'semantic' as const : 'references' as const,
 				weight: e.weight ?? 0.5,
+				directionality: e.directionality,
 			}));
 			let data: LensGraphData = { nodes, edges, availableLenses: ['topology'] };
 			data = enrichWithCrossDomain(data);

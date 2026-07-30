@@ -6,6 +6,7 @@
 // need to import from `src/ui/`. The UI types module re-exports these
 // and additionally declares the ReactFlow-coupled `LensNode` / `LensEdge`
 // aliases for the React component layer.
+import type { GraphEdgeDirectionality } from './graph-edge';
 
 export type LensType = 'topology' | 'thinking-tree' | 'bridge' | 'timeline' | 'gap-analysis';
 
@@ -32,6 +33,7 @@ export interface LensEdgeData extends Record<string, unknown> {
 		| 'builds_on' | 'contrasts' | 'complements' | 'applies' | 'references';
 	weight?: number;
 	edgeLabel?: string;
+	directionality?: GraphEdgeDirectionality;
 	/** True when edge count > 1.2x node count — suppresses labels unless hovered */
 	dense?: boolean;
 }
@@ -44,6 +46,7 @@ export interface LensGraphData {
 		kind: LensEdgeData['kind'];
 		weight?: number;
 		label?: string;
+		directionality?: GraphEdgeDirectionality;
 	}>;
 	availableLenses: LensType[];
 	clusters?: Array<{ id: string; name: string; description: string }>;

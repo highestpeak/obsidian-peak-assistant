@@ -27,6 +27,7 @@ import dagre from 'cytoscape-dagre';
 import { Check, Image as ImageIcon, Workflow } from 'lucide-react';
 import { IconButton } from '@/ui/components/primitives';
 import type { ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph';
+import { coalesceGraphEdges } from '@/core/types/graph-edge';
 
 // ─── One-time Cytoscape extension registration ──────────────────────────────
 let extensionsRegistered = false;
@@ -79,9 +80,16 @@ function buildElements(
 	folderPicker: (folder: string) => string,
 ): ElementDefinition[] {
 	const els: ElementDefinition[] = [];
+	const visibleEdges = coalesceGraphEdges(
+		sub.edges.filter((edge) => (
+			edge.kind !== 'hub_constituent'
+			&& (edge.kind !== 'semantic' || opts.showSemantic)
+			&& edge.from !== edge.to
+		)),
+	);
 
 	const refEndpoints = new Set<string>();
-	for (const e of sub.edges) {
+	for (const e of visibleEdges) {
 		if (e.kind !== 'reference') continue;
 		refEndpoints.add(e.from);
 		refEndpoints.add(e.to);
@@ -128,10 +136,7 @@ function buildElements(
 	}
 
 	const degreeMap = new Map<string, number>();
-	for (const e of sub.edges) {
-		if (e.kind === 'hub_constituent') continue;
-		if (e.kind === 'semantic' && !opts.showSemantic) continue;
-		if (e.from === e.to) continue;
+	for (const e of visibleEdges) {
 		degreeMap.set(e.from, (degreeMap.get(e.from) ?? 0) + 1);
 		degreeMap.set(e.to, (degreeMap.get(e.to) ?? 0) + 1);
 	}
@@ -173,14 +178,21 @@ function buildElements(
 	}
 
 	const seen = new Set<string>();
-	for (const e of sub.edges) {
-		if (e.kind === 'hub_constituent') continue;
-		if (e.kind === 'semantic' && !opts.showSemantic) continue;
-		if (e.from === e.to) continue;
-		const key = `${e.kind}|${e.from}|${e.to}`;
+	for (const e of visibleEdges) {
+		const key = `${e.kind}|${e.directionality}|${e.from}|${e.to}`;
 		if (seen.has(key)) continue;
 		seen.add(key);
-		els.push({ group: 'edges', data: { id: key, source: e.from, target: e.to, kind: e.kind }, classes: e.kind });
+		els.push({
+			group: 'edges',
+			data: {
+				id: key,
+				source: e.from,
+				target: e.to,
+				kind: e.kind,
+				directionality: e.directionality,
+			},
+			classes: e.kind,
+		});
 	}
 
 	return els;
@@ -193,14 +205,17 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{ selector: 'node.doc.hublike', style: { 'background-color': '#c4b5fd', 'border-color': '#6d28d9', 'border-width': 3, 'padding-left': '14px', 'padding-right': '14px', 'padding-top': '9px', 'padding-bottom': '9px', 'font-size': 13, 'font-weight': 700, color: '#4c1d95' } as never },
 	{ selector: 'node.doc.isolated', style: { opacity: 0.55, 'border-style': 'dashed' } as never },
 	{ selector: 'node.folderGroup', style: { 'background-color': 'data(color)', 'background-opacity': 'mapData(depth, 0, 4, 0.55, 0.08)', 'border-color': '#94a3b8', 'border-width': 'mapData(depth, 0, 4, 1.6, 0.6)', 'border-style': 'dashed', shape: 'round-rectangle', label: 'data(label)', 'font-size': 'mapData(depth, 0, 4, 11, 8)', 'font-weight': 700, color: '#334155', 'text-valign': 'top', 'text-halign': 'left', 'text-margin-y': -4, 'text-margin-x': 8, padding: 'mapData(depth, 0, 4, 22, 10)' } as never },
-	{ selector: 'edge', style: { 'curve-style': 'bezier', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#94a3b8', 'line-color': '#94a3b8', width: 1, 'arrow-scale': 0.7 } as never },
-	{ selector: 'edge.reference', style: { 'line-color': '#334155', 'target-arrow-color': '#334155', width: 1.4 } as never },
-	{ selector: 'edge.semantic', style: { 'line-color': '#cbd5e1', 'target-arrow-color': '#cbd5e1', 'line-style': 'dashed', width: 0.8, opacity: 0.7 } as never },
+	{ selector: 'edge', style: { 'curve-style': 'bezier', 'source-arrow-shape': 'none', 'target-arrow-shape': 'none', 'source-arrow-color': '#94a3b8', 'target-arrow-color': '#94a3b8', 'line-color': '#94a3b8', width: 1, 'arrow-scale': 0.7 } as never },
+	{ selector: 'edge[directionality = "directed"]', style: { 'target-arrow-shape': 'triangle' } as never },
+	{ selector: 'edge[directionality = "bidirectional"]', style: { 'source-arrow-shape': 'triangle', 'target-arrow-shape': 'triangle' } as never },
+	{ selector: 'edge[directionality = "undirected"]', style: { 'source-arrow-shape': 'none', 'target-arrow-shape': 'none' } as never },
+	{ selector: 'edge.reference', style: { 'line-color': '#334155', 'source-arrow-color': '#334155', 'target-arrow-color': '#334155', width: 1.4 } as never },
+	{ selector: 'edge.semantic', style: { 'line-color': '#cbd5e1', 'source-arrow-color': '#cbd5e1', 'target-arrow-color': '#cbd5e1', 'line-style': 'dashed', width: 0.8, opacity: 0.7 } as never },
 	{ selector: 'node', style: { 'transition-property': 'background-color, border-color, border-width, opacity', 'transition-duration': 260, 'transition-timing-function': 'ease-out' } as never },
-	{ selector: 'edge', style: { 'transition-property': 'line-color, target-arrow-color, width, opacity', 'transition-duration': 260, 'transition-timing-function': 'ease-out' } as never },
+	{ selector: 'edge', style: { 'transition-property': 'line-color, source-arrow-color, target-arrow-color, width, opacity', 'transition-duration': 260, 'transition-timing-function': 'ease-out' } as never },
 	{ selector: '.dimmed', style: { opacity: 0.12 } as never },
 	{ selector: 'node.highlighted', style: { 'border-color': '#f59e0b', 'border-width': 3, opacity: 1, 'z-index': 999 } as never },
-	{ selector: 'edge.highlighted', style: { 'line-color': '#f59e0b', 'target-arrow-color': '#f59e0b', opacity: 1, 'z-index': 999, 'arrow-scale': 1.4 } as never },
+	{ selector: 'edge.highlighted', style: { 'line-color': '#f59e0b', 'source-arrow-color': '#f59e0b', 'target-arrow-color': '#f59e0b', opacity: 1, 'z-index': 999, 'arrow-scale': 1.4 } as never },
 	{ selector: 'edge.reference.highlighted', style: { 'line-style': 'solid', width: 2.6 } as never },
 	{ selector: 'edge.semantic.highlighted', style: { 'line-style': 'dashed', 'line-dash-pattern': [10, 6], width: 2.0 } as never },
 	{ selector: 'node.regionLabel', style: { 'background-opacity': 0, 'border-width': 0, label: 'data(label)', 'font-size': 11, 'font-weight': 700, color: '#94a3b8', 'text-transform': 'uppercase', 'letter-spacing': '2px', 'text-valign': 'center', 'text-halign': 'center', width: 200, height: 20 } as never },
@@ -259,10 +274,17 @@ function subgraphToMermaid(sub: ResultSubgraphOutput): string {
 		const cls = isolatedSet.has(n.id) ? ':::iso' : '';
 		lines.push(`  ${sid(n.id)}["${escape(n.title || n.path || n.id)}"]${cls}`);
 	}
-	for (const e of sub.edges) {
-		if (e.from === e.to) continue;
-		if (e.kind === 'reference') lines.push(`  ${sid(e.from)} -->|ref| ${sid(e.to)}`);
-		else if (e.kind === 'semantic') lines.push(`  ${sid(e.from)} -.->|sem| ${sid(e.to)}`);
+	for (const e of coalesceGraphEdges(sub.edges)) {
+		if (e.from === e.to || e.kind === 'hub_constituent') continue;
+		if (e.directionality === 'bidirectional') {
+			lines.push(`  ${sid(e.from)} <-->|${e.kind === 'semantic' ? 'sem' : 'ref'}| ${sid(e.to)}`);
+			continue;
+		}
+		if (e.directionality === 'undirected') {
+			lines.push(`  ${sid(e.from)} -.- ${sid(e.to)}`);
+			continue;
+		}
+		lines.push(`  ${sid(e.from)} -->|${e.kind === 'semantic' ? 'sem' : 'ref'}| ${sid(e.to)}`);
 	}
 	lines.push('  classDef hub fill:#ede9fe,stroke:#7c3aed,stroke-width:2px,color:#4c1d95');
 	lines.push('  classDef iso fill:#f5f5f5,stroke:#cbd5e1,stroke-dasharray:3 3,color:#64748b');

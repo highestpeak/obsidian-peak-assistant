@@ -1,5 +1,6 @@
 import type { GraphOutput } from './graph-output-types';
 import type { LensGraphData, LensNodeData, LensType } from '@/core/types/lens-graph';
+import { resolveGraphEdgeDirectionality } from '@/core/types/graph-edge';
 
 /**
  * Build a path resolver that maps LLM-generated paths to real vault-relative paths.
@@ -58,6 +59,7 @@ export function graphOutputToLensData(output: GraphOutput, sourcePaths?: string[
 		kind: e.kind as LensGraphData['edges'][number]['kind'],
 		weight: e.weight,
 		label: e.label,
+		directionality: resolveGraphEdgeDirectionality(e.kind),
 	}));
 
 	const availableLenses: LensType[] = ['topology'];

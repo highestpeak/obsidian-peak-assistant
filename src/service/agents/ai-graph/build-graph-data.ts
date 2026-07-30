@@ -25,12 +25,15 @@ export async function buildLensGraphFromSources(sources: SearchResultItem[], app
 		path: n.attributes?.path ?? n.id,
 		role: 'leaf' as const,
 		group: (n.attributes?.path ?? n.id).split('/').slice(0, -1).join('/'),
+		createdAt: undefined as number | undefined,
+		modifiedAt: undefined as number | undefined,
 	}));
 
 	const edges = sg.edges.map((e) => ({
 		source: e.from_node_id,
 		target: e.to_node_id,
-		kind: (e.kind === 'semantic' ? 'semantic' : 'link') as 'semantic' | 'link',
+		kind: (e.kind === 'semantic' ? 'semantic' : 'references') as 'semantic' | 'references',
+		directionality: e.directionality,
 	}));
 
 	const nodesWithTime = await Promise.all(baseNodes.map(async (n) => {
@@ -91,7 +94,12 @@ export async function enrichWithThinkingTree(
 
 	const derivesEdges = tree.nodes
 		.filter((n) => n.parentPath)
-		.map((n) => ({ source: n.parentPath!, target: n.path, kind: 'derives' as const }));
+		.map((n) => ({
+			source: n.parentPath!,
+			target: n.path,
+			kind: 'derives' as const,
+			directionality: 'directed' as const,
+		}));
 
 	const allEdges = [...currentData.edges, ...derivesEdges];
 	const availableLenses = [

@@ -57,7 +57,12 @@ function toSubgraph(data: AtlasGraphData): ResultSubgraphOutput {
 			folder: n.path ? n.path.split('/')[0] ?? '' : '',
 		})),
 		hubAnchors: [],
-		edges: data.edges.map((e) => ({ from: e.from, to: e.to, kind: e.kind })),
+		edges: data.edges.map((e) => ({
+			from: e.from,
+			to: e.to,
+			kind: e.kind,
+			directionality: e.directionality,
+		})),
 		isolatedDocIds: [],
 		overflowCount: 0,
 	};

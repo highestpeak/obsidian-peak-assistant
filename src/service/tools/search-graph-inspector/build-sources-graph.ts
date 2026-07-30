@@ -1,12 +1,17 @@
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { getSemanticNeighbors } from "./common";
-import { getPathFromNode } from "./common";
 import type { SearchResultItem } from "@/core/search/searchTypes";
 import { normalizeFilePath } from "@/core/utils/file-utils";
+import { GraphEdgeType } from "@/core/types/graph";
+import {
+	projectSourcesGraphEdges,
+	type ProjectedSourcesGraphEdge,
+	type SourcesGraphCandidateEdge,
+} from "./source-graph-direction";
 
 export type SourcesGraph = {
 	nodes: { id: string; label: string; type: string; attributes: { path?: string } }[];
-	edges: { id: string; from_node_id: string; to_node_id: string; kind: string }[];
+	edges: ProjectedSourcesGraphEdge[];
 };
 
 const CACHE_MAX_ENTRIES = 5;
@@ -69,7 +74,6 @@ export async function buildSourcesGraphWithDiscoveredEdges(
 
 	const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
 	const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
-	const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
 
 	const pathToIndexedDoc = await indexedDocumentRepo.getByPaths(uniquePaths);
 	const pathToDocId = new Map<string, string>();
@@ -93,56 +97,57 @@ export async function buildSourcesGraphWithDiscoveredEdges(
 		return { id, label, type: "file", attributes: path ? { path } : {} };
 	});
 
-	const seenEdges = new Set<string>();
-	const edges: SourcesGraph["edges"] = [];
+	const edgeCandidates: SourcesGraphCandidateEdge[] = [];
 	const EDGE_LIMIT = 30;
+	const referenceTypes = new Set<string>([
+		GraphEdgeType.References,
+		GraphEdgeType.ReferencesResource,
+	]);
 
 	for (const docId of sourceDocIds) {
-		const fromDisplayId = docIdToDisplayId.get(docId);
-		if (!fromDisplayId) continue;
+		const indexedEdges = await mobiusEdgeRepo.getAllEdgesForNode(docId, EDGE_LIMIT);
+		const referenceNeighborIds = new Set<string>();
+		const knownNeighborIds = new Set<string>();
+		for (const edge of indexedEdges) {
+			const neighborId = edge.from_node_id === docId ? edge.to_node_id : edge.from_node_id;
+			if (!sourceDocIds.has(neighborId)) continue;
 
-		// Physical edges
-		const physicalEdges = await mobiusEdgeRepo.getAllEdgesForNode(docId, EDGE_LIMIT);
-		const neighborIds = new Set<string>();
-		for (const e of physicalEdges) {
-			const neighborId = e.from_node_id === docId ? e.to_node_id : e.from_node_id;
-			neighborIds.add(neighborId);
+			if (referenceTypes.has(edge.type)) {
+				referenceNeighborIds.add(neighborId);
+				knownNeighborIds.add(neighborId);
+				edgeCandidates.push({
+					fromNodeId: edge.from_node_id,
+					toNodeId: edge.to_node_id,
+					kind: "reference",
+				});
+				continue;
+			}
+			if (edge.type !== GraphEdgeType.SemanticRelated) continue;
+			knownNeighborIds.add(neighborId);
+			edgeCandidates.push({
+				fromNodeId: edge.from_node_id,
+				toNodeId: edge.to_node_id,
+				kind: "semantic",
+			});
 		}
 
-		// Semantic neighbors (when physical neighbors are few)
-		if (neighborIds.size < 5) {
-			const physicalPlusExcluded = new Set(neighborIds);
+		// Semantic neighbors supplement sparse physical reference neighborhoods.
+		if (referenceNeighborIds.size < 5) {
+			const physicalPlusExcluded = new Set(knownNeighborIds);
 			physicalPlusExcluded.add(docId);
 			const semantic = await getSemanticNeighbors(docId, 10, physicalPlusExcluded);
 			for (const n of semantic) {
-				if (sourceDocIds.has(n.id)) neighborIds.add(n.id);
+				if (!sourceDocIds.has(n.id)) continue;
+				edgeCandidates.push({
+					fromNodeId: docId,
+					toNodeId: n.id,
+					kind: "semantic",
+				});
 			}
-		}
-
-		// Resolve neighbor doc_ids to paths
-		const neighborNodes = neighborIds.size > 0
-			? await mobiusNodeRepo.getByIds([...neighborIds])
-			: new Map();
-		for (const [, node] of neighborNodes) {
-			if (node.type !== "document") continue;
-			const neighborPath = getPathFromNode(node);
-			if (!neighborPath) continue;
-			const n = normPath(neighborPath);
-			if (!pathToDisplayId.has(n)) continue;
-			const toDisplayId = pathToDisplayId.get(n)!;
-			if (fromDisplayId === toDisplayId) continue;
-			const key = fromDisplayId < toDisplayId ? `${fromDisplayId}|${toDisplayId}` : `${toDisplayId}|${fromDisplayId}`;
-			if (seenEdges.has(key)) continue;
-			seenEdges.add(key);
-			edges.push({
-				id: `e-${fromDisplayId}-${toDisplayId}`,
-				from_node_id: fromDisplayId,
-				to_node_id: toDisplayId,
-				kind: "link",
-			});
 		}
 	}
 
+	const edges = projectSourcesGraphEdges(edgeCandidates, docIdToDisplayId);
 	const result: SourcesGraph = { nodes, edges };
 	if (sourcesGraphCache.size >= CACHE_MAX_ENTRIES) {
 		const firstKey = sourcesGraphCache.keys().next().value;

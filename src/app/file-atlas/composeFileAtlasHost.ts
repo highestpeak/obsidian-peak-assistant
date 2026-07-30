@@ -6,16 +6,14 @@
  * reading recent-use signals, revealing a line, clipboard, and resolving image
  * resources. Runtime ownership stays in the app layer — the UI only sees the port.
  *
- * `loadNeighborhood` (the read-only graph data) is intentionally omitted here;
- * it lands with the graph subview slice that reuses the vault Result Graph.
+ * `loadNeighborhood` delegates to a pure direction-preserving graph builder;
+ * this composition layer only supplies the live index readers.
  */
 
 import { MarkdownView, Notice, TFile } from 'obsidian';
 import type { AppContext } from '@/app/context/AppContext';
 import type {
 	AtlasGraphData,
-	AtlasGraphEdge,
-	AtlasGraphNode,
 	AtlasImageInfo,
 	FileAtlasHostPort,
 	OpenDocMeta,
@@ -24,13 +22,7 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { getConnectedLinks, getDiscoveredConnections } from '@/service/search/inspectorService';
 import { DOCUMENT_COMPOSER_VIEW_TYPE } from '@/app/composer/viewType';
 import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
-
-/** Neighborhood node cap — matches the Result Graph's NODE_CAP so both stay legible. */
-const NEIGHBORHOOD_CAP = 60;
-
-function basenameOf(path: string): string {
-	return path.split('/').pop()?.replace(/\.md$/i, '') ?? path;
-}
+import { buildFileAtlasNeighborhood } from './buildFileAtlasNeighborhood';
 
 /** Strip `![[ ]]` / `![]()` wrappers and any `|alias` so we have a bare link target. */
 function cleanImageTarget(raw: string): string {
@@ -361,54 +353,10 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 			opts: { hops: 1 | 2; semantic: boolean },
 		): Promise<AtlasGraphData> {
 			if (!sqliteStoreManager.isInitialized()) return { nodes: [], edges: [] };
-
-			const nodes = new Map<string, AtlasGraphNode>();
-			const edges: AtlasGraphEdge[] = [];
-			nodes.set(path, { id: path, label: basenameOf(path), hop: 0, path });
-
-			const addNode = (p: string, hop: 1 | 2): boolean => {
-				if (nodes.has(p)) return true;
-				if (nodes.size >= NEIGHBORHOOD_CAP) return false;
-				nodes.set(p, { id: p, label: basenameOf(p), hop, path: p, sub: `Vault note · ${hop}-hop` });
-				return true;
-			};
-			const addEdge = (from: string, to: string, kind: AtlasGraphEdge['kind']): void => {
-				if (nodes.has(from) && nodes.has(to)) edges.push({ from, to, kind });
-			};
-
-			// 1-hop reference links.
-			const oneHop = await getConnectedLinks(path).catch(() => []);
-			const firstRing: string[] = [];
-			for (const link of oneHop) {
-				if (link.path === path) continue;
-				if (addNode(link.path, 1)) {
-					addEdge(path, link.path, 'reference');
-					firstRing.push(link.path);
-				}
-			}
-
-			// Optional semantic (index-discovered) edges.
-			if (opts.semantic) {
-				const discovered = await getDiscoveredConnections(path).catch(() => []);
-				for (const d of discovered) {
-					if (d.type !== 'SEM' || d.path === path) continue;
-					if (addNode(d.path, 1)) addEdge(path, d.path, 'semantic');
-				}
-			}
-
-			// 2-hop expansion off the reference ring.
-			if (opts.hops === 2) {
-				for (const src of firstRing) {
-					if (nodes.size >= NEIGHBORHOOD_CAP) break;
-					const neighbors = await getConnectedLinks(src).catch(() => []);
-					for (const n of neighbors) {
-						if (n.path === path || n.path === src) continue;
-						if (addNode(n.path, 2)) addEdge(src, n.path, 'reference');
-					}
-				}
-			}
-
-			return { nodes: [...nodes.values()], edges };
+			return buildFileAtlasNeighborhood(path, opts, {
+				getConnectedLinks,
+				getDiscoveredConnections,
+			});
 		},
 	};
 }

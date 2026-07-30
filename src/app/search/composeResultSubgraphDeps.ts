@@ -117,11 +117,21 @@ export function composeResultSubgraphDeps(): ResultSubgraphDeps {
                 GraphEdgeType.SemanticRelated,
             ];
             const rows = await repo.getByFromNodesAndTypes(nodeIds, structuralTypes as unknown as string[]);
-            const edges: Array<{ from: string; to: string; kind: 'reference' | 'semantic' }> = [];
+            const edges: Array<{
+                from: string;
+                to: string;
+                kind: 'reference' | 'semantic';
+                directionality: 'directed' | 'undirected';
+            }> = [];
             for (const r of rows) {
                 if (!scope.has(r.to_node_id)) continue;
                 const kind: 'reference' | 'semantic' = r.type === GraphEdgeType.SemanticRelated ? 'semantic' : 'reference';
-                edges.push({ from: r.from_node_id, to: r.to_node_id, kind });
+                edges.push({
+                    from: r.from_node_id,
+                    to: r.to_node_id,
+                    kind,
+                    directionality: kind === 'semantic' ? 'undirected' : 'directed',
+                });
             }
             return edges;
         },

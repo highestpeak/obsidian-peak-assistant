@@ -47,6 +47,8 @@ test('converts edges with correct kind', () => {
 	assert(result.edges.length === 2, 'expected 2 edges');
 	assert(result.edges[0].kind === 'builds_on', 'edge kind preserved');
 	assert(result.edges[0].label === 'B expands A', 'edge label preserved');
+	assert(result.edges[0].directionality === 'directed', 'builds_on is directed');
+	assert(result.edges[1].directionality === 'undirected', 'complements is undirected');
 });
 
 test('includes clusters, bridges, evolutionChains', () => {
