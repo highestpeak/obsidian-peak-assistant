@@ -13,6 +13,7 @@ import {
 	type ComposerTarget,
 	type ComposerTransaction,
 } from '@/core/composer';
+import { toPlainText } from './clipboard/easyCopy';
 import type {
 	CopilotRunStatus,
 	RunReceipt,
@@ -101,16 +102,16 @@ export interface ProjectComposerHistoryActivitiesInput {
 
 export interface ComposerHistoryFilters {
 	source: ComposerHistoryActivitySource | 'all';
-	effect: ComposerCapabilityEffectKind | 'all';
-	status: ComposerHistoryActivityStatus | 'all';
-	target: ComposerTarget['kind'] | 'all';
+	effects: readonly ComposerCapabilityEffectKind[];
+	statuses: readonly ComposerHistoryActivityStatus[];
+	targets: readonly ComposerTarget['kind'][];
 }
 
 export const DEFAULT_COMPOSER_HISTORY_FILTERS: ComposerHistoryFilters = {
 	source: 'all',
-	effect: 'all',
-	status: 'all',
-	target: 'all',
+	effects: [],
+	statuses: [],
+	targets: [],
 };
 
 export function projectComposerHistoryActivities(
@@ -164,9 +165,15 @@ export function filterComposerHistoryActivities(
 ): readonly ComposerHistoryActivity[] {
 	return activities.filter((activity) => {
 		if (filters.source !== 'all' && activity.source !== filters.source) return false;
-		if (filters.effect !== 'all' && activity.effectKind !== filters.effect) return false;
-		if (filters.status !== 'all' && activity.status !== filters.status) return false;
-		if (filters.target !== 'all' && activity.targetKind !== filters.target) return false;
+		if (filters.effects.length > 0 && !matchesFacet(filters.effects, activity.effectKind)) {
+			return false;
+		}
+		if (filters.statuses.length > 0 && !filters.statuses.includes(activity.status)) {
+			return false;
+		}
+		if (filters.targets.length > 0 && !matchesFacet(filters.targets, activity.targetKind)) {
+			return false;
+		}
 		return true;
 	});
 }
@@ -217,11 +224,12 @@ function generationActivity(
 	const latest = group.latest;
 	const target = latest.target;
 	const targetQuote = generationSourceText(latest) || receipt?.targetQuote;
-	const label = group.label === latest.capabilityId
-		? input.labels.legacyGeneration
-		: group.label;
+	const label = group.label !== latest.capabilityId
+		? group.label
+		: receipt?.action || input.labels.legacyGeneration;
 	const effectKind = latest.review?.runtime.effectKind;
 	const status = generationStatus(group.runs, latest.status, latest.disposition);
+	const changeSummary = historyVisibleSummary(generationVariantText(latest));
 	return {
 		activityId: `generation:${group.candidateId}`,
 		documentId: latest.originDocumentId,
@@ -232,10 +240,10 @@ function generationActivity(
 		targetKind: target.kind,
 		...targetBlock(target),
 		targetLabel: targetLabel(target, targetQuote, input.labels),
-		...(targetQuote ? { targetQuote: compactQuote(targetQuote) } : {}),
+		...(targetQuote ? { targetQuote: historyVisibleSummary(targetQuote) } : {}),
 		status,
 		variantCount: group.runs.length,
-		changeSummary: generationVariantText(latest) || undefined,
+		...(changeSummary ? { changeSummary } : {}),
 		comparisonKind: comparisonKind(effectKind),
 		detailAvailability: group.runs.some((run) => Boolean(run.review))
 			? 'complete'
@@ -262,11 +270,15 @@ function copilotActivity(
 		actionLabel: receipt.action || input.labels.copilot,
 		effectKind: receipt.changes.length > 0 ? 'rewrite' : 'analyze',
 		...(target ? { targetKind: target.kind, ...targetBlock(target) } : {}),
-		targetLabel: receipt.targetLabel || input.labels.unknownTarget,
-		...(receipt.targetQuote ? { targetQuote: compactQuote(receipt.targetQuote) } : {}),
+		targetLabel: historyVisibleSummary(receipt.targetLabel) || input.labels.unknownTarget,
+		...(receipt.targetQuote
+			? { targetQuote: historyVisibleSummary(receipt.targetQuote) }
+			: {}),
 		status: copilotStatus(receipt.status, transactions.length > 0),
 		variantCount: 1,
-		...(receipt.responseSummary ? { changeSummary: receipt.responseSummary } : {}),
+		...(receipt.responseSummary
+			? { changeSummary: historyVisibleSummary(receipt.responseSummary) }
+			: {}),
 		comparisonKind: receipt.changes.length > 0 ? 'rewrite' : 'analysis',
 		detailAvailability: 'complete',
 		receipt,
@@ -292,12 +304,14 @@ function documentActivity(
 		effectKind,
 		...(target ? { targetKind: target.kind, ...targetBlock(target) } : {}),
 		targetLabel: targetLabel(target, targetQuote, input.labels),
-		...(targetQuote ? { targetQuote: compactQuote(targetQuote) } : {}),
+		...(targetQuote ? { targetQuote: historyVisibleSummary(targetQuote) } : {}),
 		status: item.isRollback || item.origin === 'system-rollback'
 			? 'rolled-back'
 			: 'completed',
 		variantCount: item.children?.length ?? 1,
-		...(preview?.afterText ? { changeSummary: compactQuote(preview.afterText) } : {}),
+		...(preview?.afterText
+			? { changeSummary: historyVisibleSummary(preview.afterText) }
+			: {}),
 		comparisonKind: comparisonKind(effectKind),
 		detailAvailability: transaction ? 'complete' : 'partial',
 		transactions: item.children?.length ? item.children : [item],
@@ -401,7 +415,7 @@ function targetLabel(
 	quote: string | undefined,
 	labels: ComposerHistoryActivityLabels,
 ): string {
-	if (quote?.trim()) return compactQuote(quote);
+	if (quote?.trim()) return historyVisibleSummary(quote);
 	if (!target) return labels.unknownTarget;
 	if (target.kind === 'document') return labels.documentTarget;
 	if (target.kind === 'block') return labels.blockTarget;
@@ -424,8 +438,20 @@ function flattenHistory(items: readonly ComposerHistoryItem[]): ComposerHistoryI
 	return flattened;
 }
 
-function compactQuote(value: string): string {
-	return value.replace(/\s+/g, ' ').trim().slice(0, 120);
+export function historyVisibleSummary(value: string, maxLength = 120): string {
+	const visible = toPlainText(value)
+		.split(/\r?\n/)
+		.map((line) => line.replace(/\s+/g, ' ').trim())
+		.filter(Boolean)
+		.join(' · ');
+	return visible.slice(0, maxLength);
+}
+
+function matchesFacet<TValue>(
+	filters: readonly TValue[],
+	value: TValue | undefined,
+): boolean {
+	return value !== undefined && filters.includes(value);
 }
 
 function stableBlockPrefix(blockId: string): string {

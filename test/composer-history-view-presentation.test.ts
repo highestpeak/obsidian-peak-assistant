@@ -35,8 +35,27 @@ const detailSource = readFileSync('src/ui/view/composer/sidecar/HistoryDetailMod
 const blockHistorySource = readFileSync('src/ui/view/composer/chrome/BlockHistoryPanel.tsx', 'utf8');
 const composerRootSource = readFileSync('src/ui/view/composer/ComposerRoot.tsx', 'utf8');
 const sidecarStyles = readFileSync('src/styles/composer-sidecar.css', 'utf8');
+const sidecarConfig = readFileSync('src/ui/view/composer/sidecar/sidecarConfig.ts', 'utf8');
 assert.ok(source.includes('projectComposerHistoryActivities'), 'History projects one mixed activity timeline');
 assert.ok(source.includes('HistoryFilterBar'), 'the mixed timeline can be filtered without switching tabs');
+assert.ok(
+	source.includes('pk-history-filter-primary')
+		&& source.includes('HistoryFacetGroup')
+		&& source.includes('HistoryAppliedFilters'),
+	'the history filter uses visible source shortcuts, one advanced facet surface, and removable chips',
+);
+assert.equal(
+	source.includes('<select'),
+	false,
+	'the advanced history filter does not delegate its information architecture to nested native selects',
+);
+assert.ok(
+	sidecarConfig.includes("historyFilterSource: '记录类型'")
+		&& sidecarConfig.includes("historyFilterAction: '改动方式'")
+		&& sidecarConfig.includes("historyFilterStatus: '结果状态'")
+		&& sidecarConfig.includes("historyFilterTarget: '作用范围'"),
+	'filter groups explain the user-facing meaning instead of exposing storage dimensions',
+);
 assert.equal(
 	source.includes('pk-history-kind-tabs'),
 	false,
@@ -48,6 +67,19 @@ assert.equal(
 	'a transaction row remains readable and previewable when its document anchor is unavailable',
 );
 assert.ok(source.includes('HistoryDetailModal'), 'rows open one shared wide history detail');
+const rowSource = source.slice(
+	source.indexOf('function HistoryActivityRow'),
+	source.indexOf('function HistoryFilterBar'),
+);
+assert.equal(
+	rowSource.includes('activitySourceLabel('),
+	false,
+	'the row icon already conveys source, so a repeated right-side source label cannot cover its summary',
+);
+assert.ok(
+	rowSource.includes('pk-history-time') && rowSource.includes('pk-history-chevron'),
+	'the row reserves a compact trailing column for time and disclosure only',
+);
 assert.equal(
 	detailSource.includes('strings.generationHistoryRestore')
 		|| detailSource.includes('strings.historyRollbackAction'),
@@ -76,6 +108,11 @@ assert.ok(
 	sidecarStyles.includes("[data-kind='insert']")
 		&& sidecarStyles.includes("[data-kind='structural']"),
 	'additive and structural operations use an explicit vertical comparison shape',
+);
+assert.ok(
+	sidecarStyles.includes('grid-template-columns: 27px minmax(0, 1fr) auto 12px')
+		&& sidecarStyles.includes('.pk-history-filter-option[data-selected]'),
+	'the production CSS protects row text width and visibly marks selected advanced facets',
 );
 assert.ok(
 	blockHistorySource.includes('projectComposerHistoryActivities')

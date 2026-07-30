@@ -1,12 +1,17 @@
 import * as React from 'react';
 import {
+	Check,
+	ChevronRight,
 	FilePenLine,
 	Filter,
 	MessageSquare,
 	Sparkles,
+	X,
 } from 'lucide-react';
 import type {
+	ComposerCapabilityEffectKind,
 	ComposerHistoryItem,
+	ComposerTarget,
 	ComposerTransactionProjection,
 } from '@/core/composer';
 import {
@@ -87,6 +92,10 @@ export function HistoryView(): React.ReactElement {
 		() => filterComposerHistoryActivities(activities, filters),
 		[activities, filters],
 	);
+	const hasActiveFilters = filters.source !== 'all'
+		|| filters.effects.length > 0
+		|| filters.statuses.length > 0
+		|| filters.targets.length > 0;
 	const selectedActivity = activities.find((activity) =>
 		activity.activityId === selectedActivityId,
 	);
@@ -100,11 +109,22 @@ export function HistoryView(): React.ReactElement {
 					<span className="pk-history-intro">{s.historyUnifiedIntro}</span>
 				</div>
 				<span className="pk-history-total">
-					{formatCount(s.historyActivityCount, activities.length)}
+					{formatCount(
+						hasActiveFilters
+							? s.historyFilteredActivityCount
+							: s.historyActivityCount,
+						hasActiveFilters ? filtered.length : activities.length,
+					)}
 				</span>
 			</header>
 
-			<HistoryFilterBar filters={filters} onChange={setFilters} strings={s} />
+			<HistoryFilterBar
+				activities={activities}
+				filteredCount={filtered.length}
+				filters={filters}
+				onChange={setFilters}
+				strings={s}
+			/>
 
 			{filtered.length === 0 && (
 				<div className="pk-history--empty">{s.historyEmpty}</div>
@@ -184,19 +204,210 @@ function HistoryActivityRow({
 						<span className="pk-history-excerpt">{activity.changeSummary}</span>
 					)}
 				</span>
-				<span className="pk-history-meta">
-					<time>{formatHistoryTime(activity.occurredAt)}</time>
-					<strong>{activitySourceLabel(activity.source, strings)}</strong>
-					{activity.variantCount > 1 && (
-						<span>{formatCount(strings.generationHistoryVersions, activity.variantCount)}</span>
-					)}
-				</span>
+				<time className="pk-history-time">{formatHistoryTime(activity.occurredAt)}</time>
+				<ChevronRight className="pk-history-chevron" aria-hidden />
 			</Button>
 		</div>
 	);
 }
 
 function HistoryFilterBar({
+	activities,
+	filteredCount,
+	filters,
+	onChange,
+	strings,
+}: {
+	activities: readonly ComposerHistoryActivity[];
+	filteredCount: number;
+	filters: ComposerHistoryFilters;
+	onChange(filters: ComposerHistoryFilters): void;
+	strings: SidecarStrings;
+}): React.ReactElement {
+	const [open, setOpen] = React.useState(false);
+	const activeCount = filters.effects.length + filters.statuses.length + filters.targets.length;
+	const sourceFiltered = filters.source === 'all'
+		? activities
+		: activities.filter((activity) => activity.source === filters.source);
+	const effects = withFacetCounts(
+		effectOptions(strings),
+		sourceFiltered,
+		(activity) => activity.effectKind,
+		filters.effects,
+	);
+	const statuses = withFacetCounts(
+		statusOptions(strings),
+		sourceFiltered,
+		(activity) => activity.status,
+		filters.statuses,
+	);
+	const targets = withFacetCounts(
+		targetOptions(strings),
+		sourceFiltered,
+		(activity) => activity.targetKind,
+		filters.targets,
+	);
+	return (
+		<div className="pk-history-filter-bar">
+			<div
+				className="pk-history-filter-primary"
+				role="group"
+				aria-label={strings.historyFilterSource}
+			>
+				{sourceOptions(strings, activities).map((option) => (
+					<Button
+						key={option.value}
+						variant="ghost"
+						size="sm"
+						className="pk-history-source-filter"
+						aria-pressed={filters.source === option.value}
+						data-active={filters.source === option.value || undefined}
+						onClick={() => onChange({ ...filters, source: option.value })}
+					>
+						<span>{option.label}</span>
+						<small>{option.count}</small>
+					</Button>
+				))}
+				<Popover open={open} onOpenChange={setOpen}>
+					<PopoverTrigger asChild>
+						<Button
+							variant="outline"
+							size="sm"
+							className="pk-history-filter-trigger"
+							data-active={activeCount > 0 || undefined}
+						>
+							<Filter aria-hidden />
+							{strings.historyFilterMore}
+							{activeCount > 0 && <span>{activeCount}</span>}
+						</Button>
+					</PopoverTrigger>
+					<PopoverContent
+						align="end"
+						className="pk-history-filter-popover"
+						portalClassName="pk-history-filter-portal"
+					>
+						<header className="pk-history-filter-popover__head">
+							<strong>{strings.historyFilter}</strong>
+							<span>{strings.historyFilterAvailable}</span>
+						</header>
+						{effects.length > 0 && (
+							<HistoryFacetGroup
+								label={strings.historyFilterAction}
+								options={effects}
+								selected={filters.effects}
+								onToggle={(effect) => onChange({
+									...filters,
+									effects: toggleFilterValue(filters.effects, effect),
+								})}
+							/>
+						)}
+						{statuses.length > 0 && (
+							<HistoryFacetGroup
+								label={strings.historyFilterStatus}
+								options={statuses}
+								selected={filters.statuses}
+								onToggle={(status) => onChange({
+									...filters,
+									statuses: toggleFilterValue(filters.statuses, status),
+								})}
+							/>
+						)}
+						{targets.length > 0 && (
+							<HistoryFacetGroup
+								label={strings.historyFilterTarget}
+								options={targets}
+								selected={filters.targets}
+								onToggle={(target) => onChange({
+									...filters,
+									targets: toggleFilterValue(filters.targets, target),
+								})}
+							/>
+						)}
+						<footer className="pk-history-filter-popover__footer">
+							<span>{formatCount(strings.historyFilterShowing, filteredCount)}</span>
+							<div>
+								{activeCount > 0 && (
+									<Button
+										variant="ghost"
+										size="sm"
+										className="pk-history-filter-reset"
+										onClick={() => onChange({
+											...filters,
+											effects: [],
+											statuses: [],
+											targets: [],
+										})}
+									>
+										{strings.historyResetFilters}
+									</Button>
+								)}
+								<Button
+									variant="secondary"
+									size="sm"
+									className="pk-history-filter-done"
+									onClick={() => setOpen(false)}
+								>
+									{strings.historyFilterDone}
+								</Button>
+							</div>
+						</footer>
+					</PopoverContent>
+				</Popover>
+			</div>
+			{activeCount > 0 && (
+				<HistoryAppliedFilters
+					filters={filters}
+					onChange={onChange}
+					strings={strings}
+				/>
+			)}
+		</div>
+	);
+}
+
+interface CountedFilterOption<TValue extends string> {
+	value: TValue;
+	label: string;
+	count: number;
+}
+
+function HistoryFacetGroup<TValue extends string>({
+	label,
+	options,
+	selected,
+	onToggle,
+}: {
+	label: string;
+	options: readonly CountedFilterOption<TValue>[];
+	selected: readonly TValue[];
+	onToggle(value: TValue): void;
+}): React.ReactElement {
+	return (
+		<section className="pk-history-filter-group">
+			<span className="pk-history-filter-group__label">{label}</span>
+			<div>
+				{options.map((option) => (
+					<Button
+						key={option.value}
+						variant="ghost"
+						className="pk-history-filter-option"
+						aria-pressed={selected.includes(option.value)}
+						data-selected={selected.includes(option.value) || undefined}
+						onClick={() => onToggle(option.value)}
+					>
+						<span className="pk-history-filter-check">
+							{selected.includes(option.value) && <Check aria-hidden />}
+						</span>
+						<span>{option.label}</span>
+						<small>{option.count}</small>
+					</Button>
+				))}
+			</div>
+		</section>
+	);
+}
+
+function HistoryAppliedFilters({
 	filters,
 	onChange,
 	strings,
@@ -205,94 +416,65 @@ function HistoryFilterBar({
 	onChange(filters: ComposerHistoryFilters): void;
 	strings: SidecarStrings;
 }): React.ReactElement {
-	const activeCount = Object.values(filters).filter((value) => value !== 'all').length;
 	return (
-		<div className="pk-history-filter-bar">
-			<Popover>
-				<PopoverTrigger asChild>
-					<Button
-						variant="outline"
-						size="sm"
-						className="pk-history-filter-trigger"
-						data-active={activeCount > 0 || undefined}
-					>
-						<Filter />
-						{strings.historyFilter}
-						{activeCount > 0 && <span>{activeCount}</span>}
-					</Button>
-				</PopoverTrigger>
-				<PopoverContent
-					align="start"
-					className="pk-history-filter-popover"
-					portalClassName="pk-history-filter-portal"
-				>
-					<HistoryFilterSelect
-						label={strings.historyFilterSource}
-						value={filters.source}
-						options={sourceOptions(strings)}
-						onChange={(source) => onChange({ ...filters, source })}
-					/>
-					<HistoryFilterSelect
-						label={strings.historyFilterAction}
-						value={filters.effect}
-						options={effectOptions(strings)}
-						onChange={(effect) => onChange({ ...filters, effect })}
-					/>
-					<HistoryFilterSelect
-						label={strings.historyFilterStatus}
-						value={filters.status}
-						options={statusOptions(strings)}
-						onChange={(status) => onChange({ ...filters, status })}
-					/>
-					<HistoryFilterSelect
-						label={strings.historyFilterTarget}
-						value={filters.target}
-						options={targetOptions(strings)}
-						onChange={(target) => onChange({ ...filters, target })}
-					/>
-					{activeCount > 0 && (
-						<Button
-							variant="ghost"
-							size="sm"
-							className="pk-history-filter-reset"
-							onClick={() => onChange(DEFAULT_COMPOSER_HISTORY_FILTERS)}
-						>
-							{strings.historyResetFilters}
-						</Button>
-					)}
-				</PopoverContent>
-			</Popover>
-			{activeCount > 0 && (
-				<span className="pk-history-filter-summary">
-					{`${activeCount} · ${strings.historyFilter}`}
-				</span>
-			)}
+		<div className="pk-history-filter-chips">
+			{filters.effects.map((effect) => (
+				<HistoryFilterChip
+					key={effect}
+					label={optionLabel(effectOptions(strings), effect)}
+					removeLabel={strings.historyRemoveFilter}
+					onRemove={() => onChange({
+						...filters,
+						effects: filters.effects.filter((value) => value !== effect),
+					})}
+				/>
+			))}
+			{filters.statuses.map((status) => (
+				<HistoryFilterChip
+					key={status}
+					label={optionLabel(statusOptions(strings), status)}
+					removeLabel={strings.historyRemoveFilter}
+					onRemove={() => onChange({
+						...filters,
+						statuses: filters.statuses.filter((value) => value !== status),
+					})}
+				/>
+			))}
+			{filters.targets.map((target) => (
+				<HistoryFilterChip
+					key={target}
+					label={optionLabel(targetOptions(strings), target)}
+					removeLabel={strings.historyRemoveFilter}
+					onRemove={() => onChange({
+						...filters,
+						targets: filters.targets.filter((value) => value !== target),
+					})}
+				/>
+			))}
 		</div>
 	);
 }
 
-function HistoryFilterSelect<TValue extends string>({
+function HistoryFilterChip({
 	label,
-	value,
-	options,
-	onChange,
+	removeLabel,
+	onRemove,
 }: {
 	label: string;
-	value: TValue;
-	options: readonly { value: TValue; label: string }[];
-	onChange(value: TValue): void;
+	removeLabel: string;
+	onRemove(): void;
 }): React.ReactElement {
 	return (
-		<label className="pk-history-filter-field">
-			<span>{label}</span>
-			<select value={value} onChange={(event) => onChange(event.target.value as TValue)}>
-				{options.map((option) => (
-					<option key={option.value} value={option.value}>
-						{option.label}
-					</option>
-				))}
-			</select>
-		</label>
+		<Button
+			variant="ghost"
+			size="sm"
+			className="pk-history-filter-chip"
+			aria-label={removeLabel.replace('{label}', label)}
+			onClick={onRemove}
+		>
+			{label}
+			<X aria-hidden />
+		</Button>
 	);
 }
 
@@ -311,20 +493,32 @@ export function composerHistoryActivityLabels(strings: SidecarStrings) {
 
 function sourceOptions(
 	strings: SidecarStrings,
-): readonly { value: ComposerHistoryFilters['source']; label: string }[] {
+	activities: readonly ComposerHistoryActivity[],
+): readonly CountedFilterOption<ComposerHistoryFilters['source']>[] {
 	return [
-		{ value: 'all', label: strings.historyFilterAll },
-		{ value: 'generation', label: strings.historySourceGeneration },
-		{ value: 'copilot', label: strings.historySourceCopilot },
-		{ value: 'document', label: strings.historySourceDocument },
+		{ value: 'all', label: strings.historyFilterAll, count: activities.length },
+		{
+			value: 'generation',
+			label: strings.historySourceGeneration,
+			count: activities.filter((activity) => activity.source === 'generation').length,
+		},
+		{
+			value: 'copilot',
+			label: strings.historySourceCopilot,
+			count: activities.filter((activity) => activity.source === 'copilot').length,
+		},
+		{
+			value: 'document',
+			label: strings.historySourceDocument,
+			count: activities.filter((activity) => activity.source === 'document').length,
+		},
 	];
 }
 
 function effectOptions(
 	strings: SidecarStrings,
-): readonly { value: ComposerHistoryFilters['effect']; label: string }[] {
+): readonly { value: ComposerCapabilityEffectKind; label: string }[] {
 	return [
-		{ value: 'all', label: strings.historyFilterAll },
 		{ value: 'analyze', label: strings.historyActionAnalyze },
 		{ value: 'rewrite', label: strings.historyActionRewrite },
 		{ value: 'insert', label: strings.historyActionInsert },
@@ -338,9 +532,8 @@ function effectOptions(
 
 function statusOptions(
 	strings: SidecarStrings,
-): readonly { value: ComposerHistoryFilters['status']; label: string }[] {
+): readonly { value: ComposerHistoryActivityStatus; label: string }[] {
 	return [
-		{ value: 'all', label: strings.historyFilterAll },
 		{ value: 'running', label: strings.historyStatusRunning },
 		{ value: 'pending-review', label: strings.generationHistoryPending },
 		{ value: 'accepted', label: strings.generationHistoryAccepted },
@@ -355,14 +548,43 @@ function statusOptions(
 
 function targetOptions(
 	strings: SidecarStrings,
-): readonly { value: ComposerHistoryFilters['target']; label: string }[] {
+): readonly { value: ComposerTarget['kind']; label: string }[] {
 	return [
-		{ value: 'all', label: strings.historyFilterAll },
 		{ value: 'document', label: strings.historyDocumentTarget },
 		{ value: 'block', label: strings.historyBlockTarget },
 		{ value: 'unit', label: strings.historyUnitTarget },
 		{ value: 'selection', label: strings.historySelectionTarget },
 	];
+}
+
+function withFacetCounts<TValue extends string>(
+	options: readonly { value: TValue; label: string }[],
+	activities: readonly ComposerHistoryActivity[],
+	select: (activity: ComposerHistoryActivity) => TValue | undefined,
+	selected: readonly TValue[],
+): readonly CountedFilterOption<TValue>[] {
+	return options
+		.map((option) => ({
+			...option,
+			count: activities.filter((activity) => select(activity) === option.value).length,
+		}))
+		.filter((option) => option.count > 0 || selected.includes(option.value));
+}
+
+function toggleFilterValue<TValue extends string>(
+	values: readonly TValue[],
+	value: TValue,
+): readonly TValue[] {
+	return values.includes(value)
+		? values.filter((item) => item !== value)
+		: [...values, value];
+}
+
+function optionLabel<TValue extends string>(
+	options: readonly { value: TValue; label: string }[],
+	value: TValue,
+): string {
+	return options.find((option) => option.value === value)?.label ?? value;
 }
 
 function activityIcon(source: ComposerHistoryActivitySource): React.ReactNode {

@@ -7,6 +7,7 @@ import type {
 import {
 	DEFAULT_COMPOSER_HISTORY_FILTERS,
 	filterComposerHistoryActivities,
+	historyVisibleSummary,
 	projectComposerHistoryActivities,
 	type ComposerHistoryActivityLabels,
 	type FrozenComposerRunEnvelope,
@@ -205,8 +206,29 @@ assert.deepEqual(onlyGeneration.map((activity) => activity.activityId), ['genera
 
 const onlyRewrite = filterComposerHistoryActivities(activities, {
 	...DEFAULT_COMPOSER_HISTORY_FILTERS,
-	effect: 'rewrite',
+	effects: ['rewrite'],
 });
 assert.equal(onlyRewrite.length, 2);
+
+const acceptedGenerationRewrite = filterComposerHistoryActivities(activities, {
+	source: 'generation',
+	effects: ['rewrite', 'insert'],
+	statuses: ['accepted'],
+	targets: ['block'],
+});
+assert.deepEqual(
+	acceptedGenerationRewrite.map((activity) => activity.activityId),
+	['generation:candidate-1'],
+	'advanced facets combine across groups and accept multiple values within one group',
+);
+
+assert.equal(
+	historyVisibleSummary(
+		'- **网络结构**：<span style="color: #2563eb">承接滑箱笔记</span>\n'
+		+ '- [树形结构](https://example.com)：承接系统学习',
+	),
+	'网络结构：承接滑箱笔记 · 树形结构：承接系统学习',
+	'history summaries expose visible text instead of raw Markdown or inline HTML',
+);
 
 console.log('composer-history-activity-projector: correlation, presentation, legacy, and filters passed');
