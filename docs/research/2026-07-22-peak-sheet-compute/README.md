@@ -2,7 +2,7 @@
 
 **Status:** 调研完成，建议进入 roadmap 的“调研候选”；尚未接受为实施项目  
 **Date:** 2026-07-22  
-**Updated:** 2026-07-30 · 多视图工作流、View adapter 与移动消费模式需求调整
+**Updated:** 2026-07-31 · 多视图工作流、数据工作台信息架构与移动消费模式需求调整
 **读者:** Peak Assistant owner、产品规划者和后续 spec / 原型负责人  
 **关联:** [Roadmap · 调研候选](../../roadmap.html#researching) · [多视图交互 Mock](../../gstack/peak-sheet-multiview-2026-07-30/index.html) · [Composer Block AI Contract](../../superpowers/specs/2026-07-15-composer-block-ai-capability-contract.md) · [Peak Share / Portal 调研](../2026-07-22-obsidian-one-click-sharing/README.md)
 
@@ -76,13 +76,27 @@ Peak Sheet 的用户价值应表达为：
 
 [多视图交互 Mock](../../gstack/peak-sheet-multiview-2026-07-30/index.html) 使用“求职追踪”作为真实 fixture，展示以下状态：
 
-1. Dataset workspace：来源、记录数、revision、刷新状态和主要动作同屏可见。
-2. Table / Chart：首个交付闭环中的可编辑主视图与只读派生视图。
-3. Board / Gallery / Calendar / Map：验证同一 Dataset 的 View adapter 方向，并明确标为后续阶段。
-4. Ask Peak：自然语言请求先进入 plan preview，再由用户接受写回。
-5. Mobile consumption：只展示查看、筛选、刷新和审批，不伪装完整编辑能力。
+1. Dataset workspace：左侧管理数据表，顶部管理当前数据表的多个视图；来源、记录数、revision 和刷新状态保持可见。
+2. Table / Dashboard：以高密度可编辑表格作为主工作区，以数据表级独立仪表盘作为只读派生视图。
+3. Board / Calendar：验证同一 Dataset 的 View adapter 方向；Gallery / Map 只保留为后续候选，不占据主导航。
+4. Field configuration：字段列表、字段类型与枚举选项是结构化数据的主操作，不藏在 AI 或装饰性说明卡中。
+5. Ask Peak：默认收起为辅助入口；自然语言请求先进入 plan preview，再由用户接受并改变当前视图。
+6. Mobile consumption：只展示查看、筛选、刷新和审批，不伪装完整编辑能力。
 
 Mock 是设计探索，不代表这些视图已经实现，也不把 Peak Sheet 从 `research candidate` 升为已决策项目。
+
+### 2026-07-31 设计纠偏：从“功能陈列页”改为“数据决策工作台”
+
+用户提供的高密度多维表格示例，以及[飞书多维表格产品分析](https://www.woshipm.com/evaluating/5935411.html)，补充了前一版 Mock 缺少的产品层级。后者把基本对象明确区分为数据表、视图、字段和记录，并说明数据表列表适合放在左侧、视图操作适合留在当前数据表内，仪表盘则作为数据表级独立页面集中承载图表和统一筛选结果。
+
+据此加入以下设计要求：
+
+- **信息架构必须先区分数据表与视图。** 左侧是 Dataset 内的数据表；当前数据表的 Table / Board / Calendar / Dashboard 放在顶部视图栏。不能把所有层级平铺成一个“视图清单”。
+- **表格是默认工作面。** 首屏优先展示记录、字段和分组统计；冻结主字段，使用紧凑行高、稳定网格和字段内微型数据图形。说明条、AI 面板和大面积卡片不能抢走数据区。
+- **仪表盘是独立的只读分析视图。** KPI、趋势、漏斗和分布共享当前数据表的筛选定义，并一起响应 Dataset revision；不要把图表零散插进可编辑 grid。
+- **字段配置是核心结构操作。** 字段名、类型、枚举选项、显示状态和后续能力声明必须可见、可审阅。
+- **AI 保持辅助位置。** Ask Peak 默认不常驻占宽；它可以总结优先级、生成 ComputePlan 和建议视图，但不能替代字段与视图的直接操作。
+- **视觉主题不是产品合同。** Mock 采用克制的深色数据工作台以验证密度和数据图形；生产实现必须继承 Obsidian theme token，同时保留相同层级与可读性。
 
 ## 对新增多维表格提案的判断
 

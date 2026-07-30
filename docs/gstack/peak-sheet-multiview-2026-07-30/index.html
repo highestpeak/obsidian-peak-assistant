@@ -3,24 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Peak Sheet · 多视图工作流 Mock</title>
+  <title>Peak Sheet · 数据决策工作台</title>
   <link rel="stylesheet" href="./mock.css">
 </head>
 <body>
   <svg class="icon-sprite" aria-hidden="true">
     <symbol id="i-peak" viewBox="0 0 24 24"><path d="m3 18 6.2-10 3.4 5 2.5-3.7L21 18Z"/><path d="M7.5 15h9"/></symbol>
-    <symbol id="i-table" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></symbol>
-    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></symbol>
     <symbol id="i-board" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="16" rx="1.5"/><rect x="14" y="4" width="7" height="10" rx="1.5"/></symbol>
-    <symbol id="i-gallery" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></symbol>
     <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></symbol>
+    <symbol id="i-dashboard" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="8" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="15" width="7" height="6" rx="1"/></symbol>
+    <symbol id="i-gallery" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></symbol>
     <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3Z"/><path d="M9 3v15M15 6v15"/></symbol>
-    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.4 3 14.6 0 18M12 3c-3 3.4-3 14.6 0 18"/></symbol>
     <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v7c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12v7c0 1.7 3.6 3 8 3s8-1.3 8-3v-7"/></symbol>
-    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9Z"/><path d="M14 3v7h6"/></symbol>
     <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
     <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 5h16l-6 7v6l-4 2v-8Z"/></symbol>
     <symbol id="i-sort" viewBox="0 0 24 24"><path d="M4 7h10M4 12h7M4 17h4M18 5v14M15 16l3 3 3-3"/></symbol>
+    <symbol id="i-group" viewBox="0 0 24 24"><path d="M8 6h12M8 12h8M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></symbol>
+    <symbol id="i-fields" viewBox="0 0 24 24"><path d="M5 4h14M5 12h14M5 20h14"/><path d="M8 2v4M16 10v4M11 18v4"/></symbol>
+    <symbol id="i-row" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
     <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 6v6h-6M4 18v-6h6"/><path d="M6.5 8a7 7 0 0 1 11.7-2L20 8M4 16l1.8 2a7 7 0 0 0 11.7-2"/></symbol>
     <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
@@ -29,386 +30,291 @@
     <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
     <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
     <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
-    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></symbol>
-    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></symbol>
+    <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.2 1.2"/><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.2-1.2"/></symbol>
+    <symbol id="i-text" viewBox="0 0 24 24"><path d="M5 5h14M12 5v14M8 19h8"/></symbol>
+    <symbol id="i-select" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-number" viewBox="0 0 24 24"><path d="M10 3 8 21M16 3l-2 18M4 9h16M3 15h16"/></symbol>
+    <symbol id="i-location" viewBox="0 0 24 24"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+    <symbol id="i-money" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M16 8h-5a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4H8M12 6v12"/></symbol>
     <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
-    <symbol id="i-columns" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/></symbol>
-    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="m3 3 18 18M10.6 10.7a2 2 0 0 0 2.7 2.7M9.9 5.2A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a18 18 0 0 1-2.2 3.2M6.2 6.2C3.5 8 2 12 2 12s3.5 7 10 7c1.4 0 2.7-.3 3.8-.8"/></symbol>
     <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
-    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6M12 7v5l3 2"/></symbol>
-    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></symbol>
+    <symbol id="i-briefcase" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V4h8v3M3 12h18"/></symbol>
+    <symbol id="i-building" viewBox="0 0 24 24"><path d="M4 21V5l8-3v19M12 8h8v13M7 7h2M7 11h2M7 15h2M15 11h2M15 15h2M2 21h20"/></symbol>
+    <symbol id="i-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M16 4a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 5v2"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9Z"/><path d="M14 3v7h6M8 14h8M8 18h5"/></symbol>
   </svg>
 
-  <header class="prototype-bar">
-    <div class="prototype-copy">
-      <span class="prototype-mark">Peak Sheet</span>
-      <strong>多视图工作流 Mock</strong>
-      <span>设计探索 · Research candidate · 不代表已实现</span>
-    </div>
-    <div class="prototype-actions">
-      <a href="../../research/2026-07-22-peak-sheet-compute/README.md">需求说明</a>
-      <button type="button" class="prototype-button" id="open-mobile">
-        <svg><use href="#i-mobile"/></svg>
-        移动消费模式
+  <main class="app-shell" aria-label="Peak Sheet 数据决策工作台概念原型">
+    <aside class="data-sidebar">
+      <header class="brand-row">
+        <span class="brand-mark"><svg><use href="#i-peak"/></svg></span>
+        <span><strong>Peak Sheet</strong><small>Local data studio</small></span>
+        <button type="button" class="icon-button" aria-label="更多工作区操作"><svg><use href="#i-more"/></svg></button>
+      </header>
+
+      <button type="button" class="workspace-switcher">
+        <span class="workspace-avatar">CI</span>
+        <span><strong>Career Intelligence</strong><small>4 张数据表 · 本地 Vault</small></span>
+        <svg><use href="#i-chevron-down"/></svg>
       </button>
-    </div>
-  </header>
 
-  <main class="app-window" aria-label="Peak Sheet 求职追踪多视图原型">
-    <header class="window-titlebar">
-      <div class="window-controls" aria-hidden="true"><span></span><span></span><span></span></div>
-      <div class="vault-title">
-        <svg><use href="#i-peak"/></svg>
-        <span>Peak Workspace</span>
-        <small>Obsidian</small>
-      </div>
-      <button type="button" class="icon-button" aria-label="更多窗口操作"><svg><use href="#i-more"/></svg></button>
-    </header>
+      <label class="sidebar-search">
+        <svg><use href="#i-search"/></svg>
+        <input type="search" placeholder="搜索数据表和视图" aria-label="搜索数据表和视图">
+        <kbd>⌘ K</kbd>
+      </label>
 
-    <section class="workspace">
-      <nav class="global-rail" aria-label="Peak Assistant 功能">
-        <button type="button" class="rail-button" aria-label="文件"><svg><use href="#i-file"/></svg></button>
-        <button type="button" class="rail-button is-active" aria-label="Peak Sheet"><svg><use href="#i-table"/></svg></button>
-        <button type="button" class="rail-button" aria-label="搜索"><svg><use href="#i-search"/></svg></button>
-        <button type="button" class="rail-button" aria-label="历史"><svg><use href="#i-history"/></svg></button>
-        <span class="rail-spacer"></span>
-        <button type="button" class="rail-button" aria-label="设置"><svg><use href="#i-settings"/></svg></button>
-      </nav>
-
-      <aside class="dataset-sidebar">
-        <div class="sidebar-heading">
-          <span class="product-icon"><svg><use href="#i-table"/></svg></span>
-          <span>
-            <strong>Peak Sheet</strong>
-            <small>本地数据工作区</small>
-          </span>
-          <button type="button" class="icon-button" aria-label="新建 Dataset"><svg><use href="#i-plus"/></svg></button>
-        </div>
-
-        <button type="button" class="dataset-switcher">
-          <span class="dataset-icon"><svg><use href="#i-database"/></svg></span>
-          <span>
-            <strong>求职追踪</strong>
-            <small>Job Applications.md</small>
-          </span>
-          <svg class="dataset-chevron"><use href="#i-chevron"/></svg>
+      <section class="sidebar-group">
+        <header><span>数据表</span><button type="button" class="icon-button compact" aria-label="新建数据表"><svg><use href="#i-plus"/></svg></button></header>
+        <button type="button" class="data-table-item is-active">
+          <svg><use href="#i-briefcase"/></svg>
+          <span><strong>申请记录</strong><small>24 records · 10 fields</small></span>
+          <em>24</em>
         </button>
-
-        <section class="sidebar-section">
-          <header>
-            <span>工作视图</span>
-            <button type="button" class="icon-button compact" id="add-view" aria-label="添加视图" aria-expanded="false">
-              <svg><use href="#i-plus"/></svg>
-            </button>
-          </header>
-          <div class="view-list" id="view-list">
-            <button type="button" class="view-button is-active" data-view="table">
-              <svg><use href="#i-table"/></svg>
-              <span>Table</span>
-              <em class="status-core">首版</em>
-            </button>
-            <button type="button" class="view-button" data-view="chart">
-              <svg><use href="#i-chart"/></svg>
-              <span>Chart</span>
-              <em class="status-core">首版</em>
-            </button>
-            <button type="button" class="view-button" data-view="board">
-              <svg><use href="#i-board"/></svg>
-              <span>Board</span>
-              <em>后续</em>
-            </button>
-            <button type="button" class="view-button" data-view="gallery">
-              <svg><use href="#i-gallery"/></svg>
-              <span>Gallery</span>
-              <em>后续</em>
-            </button>
-            <button type="button" class="view-button" data-view="calendar">
-              <svg><use href="#i-calendar"/></svg>
-              <span>Calendar</span>
-              <em>后续</em>
-            </button>
-            <button type="button" class="view-button" data-view="map">
-              <svg><use href="#i-map"/></svg>
-              <span>Map</span>
-              <em>后续</em>
-            </button>
-          </div>
-
-          <section class="view-menu" id="view-menu" hidden aria-label="添加视图">
-            <header>
-              <span>
-                <strong>添加工作视图</strong>
-                <small>所有视图读取同一 Dataset</small>
-              </span>
-              <button type="button" class="icon-button compact" id="close-view-menu" aria-label="关闭"><svg><use href="#i-x"/></svg></button>
-            </header>
-            <button type="button" data-menu-view="board"><svg><use href="#i-board"/></svg><span><strong>Board</strong><small>按阶段分组记录</small></span><em>Phase 4</em></button>
-            <button type="button" data-menu-view="gallery"><svg><use href="#i-gallery"/></svg><span><strong>Gallery</strong><small>以视觉卡片浏览</small></span><em>Phase 3+</em></button>
-            <button type="button" data-menu-view="calendar"><svg><use href="#i-calendar"/></svg><span><strong>Calendar</strong><small>按日期安排事件</small></span><em>Phase 3+</em></button>
-            <button type="button" data-menu-view="map"><svg><use href="#i-map"/></svg><span><strong>Map</strong><small>按位置聚合记录</small></span><em>Phase 3+</em></button>
-            <button type="button" class="experimental" data-menu-view="globe"><svg><use href="#i-globe"/></svg><span><strong>3D globe</strong><small>Spatial adapter 实验</small></span><em>实验</em></button>
-          </section>
-        </section>
-
-        <section class="sidebar-section saved-filters">
-          <header><span>保存的筛选</span></header>
-          <button type="button" data-filter-preset="remote"><span class="filter-dot purple"></span>远程岗位 <em>8</em></button>
-          <button type="button" data-filter-preset="interview"><span class="filter-dot green"></span>本周面试 <em>3</em></button>
-          <button type="button" data-filter-preset="followup"><span class="filter-dot orange"></span>需要跟进 <em>5</em></button>
-        </section>
-
-        <footer class="dataset-health">
-          <span class="health-icon"><svg><use href="#i-check"/></svg></span>
-          <span>
-            <strong>Dataset 健康</strong>
-            <small>24 records · schema v3</small>
-          </span>
-          <button type="button" class="icon-button compact" aria-label="查看 Dataset 健康"><svg><use href="#i-chevron"/></svg></button>
-        </footer>
-      </aside>
-
-      <section class="sheet-main">
-        <header class="sheet-header">
-          <div class="sheet-heading">
-            <div class="breadcrumbs"><span>Work</span><svg><use href="#i-chevron"/></svg><span>求职追踪</span></div>
-            <h1>求职追踪</h1>
-            <div class="sheet-meta">
-              <span><svg><use href="#i-file"/></svg>Job Applications.md</span>
-              <span>24 records</span>
-              <span>revision 12</span>
-              <span id="refresh-time">2 分钟前刷新</span>
-            </div>
-          </div>
-          <div class="sheet-actions">
-            <button type="button" class="icon-button" id="download-view" aria-label="导出当前视图"><svg><use href="#i-download"/></svg></button>
-            <button type="button" class="secondary-button" id="refresh-dataset">
-              <svg><use href="#i-refresh"/></svg>
-              刷新
-            </button>
-            <button type="button" class="primary-button" id="focus-ask">
-              <svg><use href="#i-sparkles"/></svg>
-              Ask Peak
-            </button>
-          </div>
-        </header>
-
-        <section class="truth-strip">
-          <svg><use href="#i-database"/></svg>
-          <span><strong>同一份数据真值</strong> · 当前视图读取 Dataset revision 12；切换视图不会复制 records。</span>
-          <button type="button" id="show-data-info">查看边界</button>
-        </section>
-
-        <header class="view-toolbar">
-          <div class="view-title">
-            <span class="view-title-icon"><svg id="current-view-icon"><use href="#i-table"/></svg></span>
-            <span>
-              <strong id="current-view-title">Table</strong>
-              <small id="current-view-description">可编辑主视图 · 24 records</small>
-            </span>
-            <em id="current-view-phase">首版闭环</em>
-          </div>
-          <div class="view-tools">
-            <label class="search-field">
-              <svg><use href="#i-search"/></svg>
-              <input id="record-search" type="search" placeholder="搜索 records" aria-label="搜索 records">
-            </label>
-            <button type="button" class="tool-button" id="remote-filter" aria-pressed="false"><svg><use href="#i-filter"/></svg>筛选</button>
-            <button type="button" class="tool-button"><svg><use href="#i-sort"/></svg>排序</button>
-            <button type="button" class="icon-button" aria-label="更多视图操作"><svg><use href="#i-more"/></svg></button>
-          </div>
-        </header>
-
-        <section class="active-filter-row" id="active-filter-row" hidden>
-          <span>当前筛选</span>
-          <button type="button" id="remote-filter-chip">工作模式：Remote <svg><use href="#i-x"/></svg></button>
-          <small id="filter-result-count">8 / 24 records</small>
-        </section>
-
-        <section class="view-stage" id="view-stage" aria-live="polite"></section>
-
-        <footer class="view-footer">
-          <span><span class="status-dot"></span><b id="footer-state">Dataset revision 12</b></span>
-          <span id="footer-note">Table 可写 · 变更必须经过 transaction commit</span>
-          <button type="button"><svg><use href="#i-history"/></svg>运行历史</button>
-        </footer>
+        <button type="button" class="data-table-item">
+          <svg><use href="#i-building"/></svg>
+          <span><strong>目标公司</strong><small>18 records · 7 fields</small></span>
+          <em>18</em>
+        </button>
+        <button type="button" class="data-table-item">
+          <svg><use href="#i-people"/></svg>
+          <span><strong>人脉跟进</strong><small>31 records · 8 fields</small></span>
+          <em>31</em>
+        </button>
+        <button type="button" class="data-table-item">
+          <svg><use href="#i-note"/></svg>
+          <span><strong>面试复盘</strong><small>12 records · 6 fields</small></span>
+          <em>12</em>
+        </button>
       </section>
 
-      <aside class="peak-panel">
-        <nav class="panel-tabs" aria-label="Peak Sheet 辅助面板">
-          <button type="button" class="is-active" data-panel-tab="ask">Ask Peak</button>
-          <button type="button" data-panel-tab="run">Run details <em id="run-count">0</em></button>
-        </nav>
+      <section class="sidebar-group sidebar-analysis">
+        <header><span>分析页</span></header>
+        <button type="button" class="analysis-link" data-open-dashboard>
+          <span class="analysis-icon"><svg><use href="#i-dashboard"/></svg></span>
+          <span><strong>求职驾驶舱</strong><small>跨视图决策面板</small></span>
+        </button>
+        <button type="button" class="analysis-link">
+          <span class="analysis-icon muted"><svg><use href="#i-link"/></svg></span>
+          <span><strong>数据关系</strong><small>来源与字段映射</small></span>
+        </button>
+      </section>
 
-        <section class="panel-content" id="ask-panel">
-          <header class="panel-heading">
-            <span class="assistant-mark"><svg><use href="#i-sparkles"/></svg></span>
-            <span>
-              <strong>把数据变成可重复的工作</strong>
-              <small>Peak 会先展示计划，不会直接改写 Dataset。</small>
-            </span>
-          </header>
+      <footer class="sidebar-footer">
+        <span class="sync-state"><i></i><span><strong>Local-first</strong><small>revision 12 已保存</small></span></span>
+        <button type="button" class="icon-button" aria-label="数据设置"><svg><use href="#i-more"/></svg></button>
+      </footer>
+    </aside>
 
-          <div class="prompt-suggestions">
-            <button type="button" data-prompt="只看支持远程、匹配度 80 分以上，并把本周需要跟进的岗位标出来">筛选高匹配远程岗位</button>
-            <button type="button" data-prompt="按申请渠道统计回复率，并生成一张对比图">统计渠道回复率</button>
-            <button type="button" data-prompt="找出超过 7 天没有回复的岗位，生成跟进清单">生成跟进清单</button>
-          </div>
+    <section class="workspace">
+      <header class="document-bar">
+        <div class="document-title">
+          <span class="document-icon"><svg><use href="#i-grid"/></svg></span>
+          <span><strong>申请记录</strong><small>来源：Job Applications.md</small></span>
+          <button type="button" class="icon-button compact" aria-label="数据表菜单"><svg><use href="#i-chevron-down"/></svg></button>
+        </div>
+        <div class="document-actions">
+          <span class="revision-state"><i></i>revision 12</span>
+          <button type="button" class="icon-button" id="show-source" aria-label="查看数据边界"><svg><use href="#i-database"/></svg></button>
+          <button type="button" class="icon-button" id="refresh-data" aria-label="刷新数据"><svg><use href="#i-refresh"/></svg></button>
+          <button type="button" class="icon-button" id="open-mobile" aria-label="移动端预览"><svg><use href="#i-mobile"/></svg></button>
+          <button type="button" class="icon-button" aria-label="更多"><svg><use href="#i-more"/></svg></button>
+        </div>
+      </header>
 
-          <label class="prompt-box">
-            <textarea id="peak-prompt" rows="5">只看支持远程、匹配度 80 分以上，并把本周需要跟进的岗位标出来</textarea>
-            <span class="prompt-context"><svg><use href="#i-database"/></svg>求职追踪 · revision 12</span>
-            <button type="button" class="prompt-submit" id="generate-plan" aria-label="生成计划"><svg><use href="#i-arrow"/></svg></button>
+      <nav class="view-tabs" aria-label="申请记录视图">
+        <div class="view-tab-scroll">
+          <button type="button" class="view-tab is-active" data-view="table"><svg><use href="#i-grid"/></svg><span>全部记录</span></button>
+          <button type="button" class="view-tab" data-view="board"><svg><use href="#i-board"/></svg><span>求职看板</span></button>
+          <button type="button" class="view-tab" data-view="calendar"><svg><use href="#i-calendar"/></svg><span>面试日历</span></button>
+          <button type="button" class="view-tab" data-view="dashboard"><svg><use href="#i-dashboard"/></svg><span>决策仪表盘</span></button>
+          <button type="button" class="add-view-button" id="add-view" aria-label="添加视图" aria-expanded="false"><svg><use href="#i-plus"/></svg></button>
+        </div>
+        <div class="view-tab-actions">
+          <button type="button" class="icon-button" aria-label="搜索当前视图"><svg><use href="#i-search"/></svg></button>
+          <button type="button" class="icon-button" aria-label="视图菜单"><svg><use href="#i-more"/></svg></button>
+        </div>
+      </nav>
+
+      <header class="data-toolbar">
+        <div class="toolbar-primary">
+          <button type="button" class="add-record-button"><svg><use href="#i-plus"/></svg>添加记录</button>
+          <span class="toolbar-divider"></span>
+          <button type="button" class="tool-button" id="open-fields"><svg><use href="#i-fields"/></svg>字段配置</button>
+          <button type="button" class="tool-button" id="toggle-filter"><svg><use href="#i-filter"/></svg>筛选 <em>2</em></button>
+          <button type="button" class="tool-button is-applied" id="toggle-group"><svg><use href="#i-group"/></svg>分组 <em>1</em></button>
+          <button type="button" class="tool-button"><svg><use href="#i-sort"/></svg>排序 <em>1</em></button>
+          <button type="button" class="tool-button"><svg><use href="#i-row"/></svg>紧凑行</button>
+        </div>
+        <div class="toolbar-secondary">
+          <label class="record-search">
+            <svg><use href="#i-search"/></svg>
+            <input id="record-search" type="search" placeholder="搜索记录" aria-label="搜索记录">
           </label>
+          <button type="button" class="ask-button" id="open-ai"><svg><use href="#i-sparkles"/></svg>分析</button>
+        </div>
+      </header>
 
-          <section class="plan-card" id="plan-card" hidden>
-            <header>
-              <span>
-                <strong>计划预览</strong>
-                <small>受限 ComputePlan · 不执行脚本</small>
-              </span>
-              <em>12 条受影响</em>
-            </header>
-            <ol class="plan-steps">
-              <li><span>1</span><div><strong>筛选</strong><small>workMode = Remote</small></div><svg><use href="#i-check"/></svg></li>
-              <li><span>2</span><div><strong>比较</strong><small>fitScore ≥ 80</small></div><svg><use href="#i-check"/></svg></li>
-              <li><span>3</span><div><strong>派生</strong><small>followUpDue = appliedAt + 7d</small></div><svg><use href="#i-check"/></svg></li>
-            </ol>
-            <section class="plan-impact">
-              <div><span>输入</span><strong>24 records</strong></div>
-              <svg><use href="#i-arrow"/></svg>
-              <div><span>结果</span><strong>8 records</strong></div>
-            </section>
-            <div class="plan-actions">
-              <button type="button" class="secondary-button" id="cancel-plan">取消</button>
-              <button type="button" class="primary-button" id="accept-plan"><svg><use href="#i-check"/></svg>接受并保存 recipe</button>
+      <section class="filter-line" id="filter-line">
+        <span>当前条件</span>
+        <button type="button">状态 ≠ 已归档 <svg><use href="#i-x"/></svg></button>
+        <button type="button">申请日期 · 最近 90 天 <svg><use href="#i-x"/></svg></button>
+        <span class="filter-result">显示 24 条记录</span>
+      </section>
+
+      <section class="view-stage" id="view-stage" aria-live="polite"></section>
+
+      <footer class="workspace-status">
+        <span><i></i><b id="status-primary">24 records</b><em>·</em><span id="status-secondary">按阶段分组 · 2 个筛选条件</span></span>
+        <span class="status-truth"><svg><use href="#i-database"/></svg>同一 Dataset · 所有视图共享 revision 12</span>
+      </footer>
+
+      <section class="view-menu floating-surface" id="view-menu" hidden>
+        <header><span><strong>添加视图</strong><small>选择查看同一份记录的方式</small></span><button type="button" class="icon-button compact" data-close-view-menu><svg><use href="#i-x"/></svg></button></header>
+        <button type="button" data-menu-view="board"><svg><use href="#i-board"/></svg><span><strong>看板</strong><small>按阶段推进工作</small></span></button>
+        <button type="button" data-menu-view="calendar"><svg><use href="#i-calendar"/></svg><span><strong>日历</strong><small>按面试和跟进日期查看</small></span></button>
+        <button type="button" data-menu-view="dashboard"><svg><use href="#i-dashboard"/></svg><span><strong>仪表盘</strong><small>聚合指标和分析图表</small></span></button>
+        <button type="button" disabled><svg><use href="#i-gallery"/></svg><span><strong>画册</strong><small>后续 View adapter</small></span><em>后续</em></button>
+        <button type="button" disabled><svg><use href="#i-map"/></svg><span><strong>地图</strong><small>后续 Spatial adapter</small></span><em>后续</em></button>
+      </section>
+
+      <section class="field-panel floating-surface" id="field-panel" hidden aria-label="字段配置">
+        <header class="panel-header">
+          <span><strong>字段配置</strong><small>10 个字段 · 1 个计算字段</small></span>
+          <button type="button" class="icon-button" id="close-fields" aria-label="关闭字段配置"><svg><use href="#i-x"/></svg></button>
+        </header>
+        <div class="field-panel-body">
+          <nav class="field-list">
+            <label><svg><use href="#i-search"/></svg><input type="search" placeholder="查找字段" aria-label="查找字段"></label>
+            <button type="button"><svg><use href="#i-text"/></svg><span>公司 / 职位</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
+            <button type="button" class="is-active"><svg><use href="#i-select"/></svg><span>阶段</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
+            <button type="button"><svg><use href="#i-select"/></svg><span>工作模式</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
+            <button type="button"><svg><use href="#i-location"/></svg><span>地点</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
+            <button type="button"><svg><use href="#i-calendar"/></svg><span>申请日期</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
+            <button type="button"><svg><use href="#i-money"/></svg><span>薪资范围</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
+            <button type="button"><svg><use href="#i-number"/></svg><span>匹配度</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
+            <button type="button"><svg><use href="#i-clock"/></svg><span>等待天数</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
+            <button type="button" class="field-add"><svg><use href="#i-plus"/></svg><span>新增字段</span></button>
+          </nav>
+          <section class="field-editor">
+            <label class="editor-label">字段名称<input type="text" value="阶段" aria-label="字段名称"></label>
+            <div class="editor-label">字段类型<button type="button" class="type-select"><span><svg><use href="#i-select"/></svg>单选</span><svg><use href="#i-chevron-down"/></svg></button></div>
+            <div class="option-heading"><span>选项内容</span><button type="button"><svg><use href="#i-sort"/></svg>排序</button></div>
+            <div class="field-options">
+              <button type="button"><i class="option-dot gray"></i><span>待申请</span><svg><use href="#i-more"/></svg></button>
+              <button type="button"><i class="option-dot blue"></i><span>已申请</span><svg><use href="#i-more"/></svg></button>
+              <button type="button"><i class="option-dot amber"></i><span>待跟进</span><svg><use href="#i-more"/></svg></button>
+              <button type="button"><i class="option-dot purple"></i><span>面试中</span><svg><use href="#i-more"/></svg></button>
+              <button type="button"><i class="option-dot green"></i><span>Offer</span><svg><use href="#i-more"/></svg></button>
+              <button type="button"><i class="option-dot red"></i><span>已结束</span><svg><use href="#i-more"/></svg></button>
+              <button type="button" class="option-add"><svg><use href="#i-plus"/></svg>添加选项</button>
             </div>
+            <footer><button type="button" class="subtle-button" id="cancel-fields">取消</button><button type="button" class="confirm-button" id="save-fields">保存字段</button></footer>
           </section>
-
-          <section class="saved-recipe" id="saved-recipe">
-            <header>
-              <span>
-                <strong>已保存的计算</strong>
-                <small>每次刷新都能重放，不需要再次调用 AI。</small>
-              </span>
-              <button type="button" class="icon-button" aria-label="计算设置"><svg><use href="#i-more"/></svg></button>
-            </header>
-            <div class="recipe-row">
-              <span class="recipe-icon"><svg><use href="#i-refresh"/></svg></span>
-              <span>
-                <strong>本周申请漏斗</strong>
-                <small>3 steps · manual refresh</small>
-              </span>
-              <em>正常</em>
-            </div>
-          </section>
-        </section>
-
-        <section class="panel-content" id="run-panel" hidden>
-          <header class="panel-heading">
-            <span class="assistant-mark neutral"><svg><use href="#i-history"/></svg></span>
-            <span>
-              <strong>运行记录</strong>
-              <small>输入 revision、步骤和写回结果保持可追溯。</small>
-            </span>
-          </header>
-          <section class="run-empty" id="run-empty">
-            <svg><use href="#i-clock"/></svg>
-            <strong>本轮还没有运行</strong>
-            <span>生成并接受一个计划后，这里会显示 receipt。</span>
-          </section>
-          <section class="run-receipt" id="run-receipt" hidden>
-            <header><span class="status-dot"></span><strong>Recipe 已保存</strong><time>刚刚</time></header>
-            <dl>
-              <div><dt>输入</dt><dd>revision 12 · 24 records</dd></div>
-              <div><dt>计划</dt><dd>filter → compare → derive</dd></div>
-              <div><dt>输出</dt><dd>8 records · saved filter</dd></div>
-              <div><dt>写回</dt><dd>recipe only · records unchanged</dd></div>
-            </dl>
-            <button type="button">查看完整 receipt <svg><use href="#i-chevron"/></svg></button>
-          </section>
-        </section>
-      </aside>
+        </div>
+      </section>
     </section>
+
+    <aside class="ai-drawer" id="ai-drawer" aria-hidden="true">
+      <header>
+        <span class="ai-title"><span class="ai-mark"><svg><use href="#i-sparkles"/></svg></span><span><strong>Peak 分析</strong><small>先计划，再改变视图</small></span></span>
+        <button type="button" class="icon-button" id="close-ai" aria-label="关闭分析面板"><svg><use href="#i-x"/></svg></button>
+      </header>
+      <section class="ai-context">
+        <span><svg><use href="#i-database"/></svg>申请记录</span>
+        <span>revision 12</span>
+        <span>24 records</span>
+      </section>
+      <section class="ai-insight">
+        <span class="insight-kicker">今日优先级</span>
+        <strong>3 个高匹配岗位进入行动窗口</strong>
+        <p>Aster Labs 已到 Offer 决策期；Tide Systems 与 Fern Studio 本周有面试。建议先完成薪资比较，再准备两场面试。</p>
+        <button type="button" data-open-dashboard>在仪表盘中查看 <svg><use href="#i-arrow"/></svg></button>
+      </section>
+      <section class="ai-suggestions">
+        <span>试着问</span>
+        <button type="button" data-prompt="比较高匹配岗位的薪资、阶段和等待时间">比较高匹配岗位</button>
+        <button type="button" data-prompt="找出本周需要行动、且匹配度高于 80 的申请">找出需要跟进的申请</button>
+        <button type="button" data-prompt="按渠道分析回复率，并生成仪表盘图表">分析渠道回复率</button>
+      </section>
+      <label class="ai-composer">
+        <textarea id="ai-prompt" rows="4">找出本周需要行动、且匹配度高于 80 的申请</textarea>
+        <span><small>仅生成受限 ComputePlan</small><button type="button" id="generate-plan" aria-label="生成分析计划"><svg><use href="#i-arrow"/></svg></button></span>
+      </label>
+      <section class="plan-preview" id="plan-preview" hidden>
+        <header><span><strong>变更计划</strong><small>不会直接改写源文件</small></span><em>影响 5 条</em></header>
+        <ol>
+          <li><span>1</span><div><strong>筛选记录</strong><small>urgency = true AND fitScore ≥ 80</small></div><svg><use href="#i-check"/></svg></li>
+          <li><span>2</span><div><strong>添加临时标记</strong><small>priority = “本周跟进”</small></div><svg><use href="#i-check"/></svg></li>
+          <li><span>3</span><div><strong>保存为视图</strong><small>“高价值待跟进” · 不复制 records</small></div><svg><use href="#i-check"/></svg></li>
+        </ol>
+        <footer><button type="button" class="subtle-button">仅预览</button><button type="button" class="confirm-button" id="accept-plan">应用到当前视图</button></footer>
+      </section>
+    </aside>
   </main>
 
-  <section class="data-boundary-popover" id="data-boundary" hidden>
-    <header>
-      <span>
-        <strong>视图不拥有数据</strong>
-        <small>Peak Sheet 的多视图边界</small>
-      </span>
-      <button type="button" class="icon-button" id="close-data-info" aria-label="关闭"><svg><use href="#i-x"/></svg></button>
-    </header>
-    <div class="boundary-flow">
-      <span><svg><use href="#i-file"/></svg>本地 records</span>
-      <svg><use href="#i-arrow"/></svg>
-      <span><svg><use href="#i-database"/></svg>Dataset revision</span>
-      <svg><use href="#i-arrow"/></svg>
-      <span><svg><use href="#i-columns"/></svg>View projection</span>
-    </div>
-    <p>Table 可以提交 record patch；Chart 只读。后续视图必须声明自己的读写能力，不能保存另一份 records。</p>
-  </section>
-
-  <section class="mobile-overlay" id="mobile-overlay" hidden aria-label="移动消费模式预览">
-    <button type="button" class="overlay-backdrop" id="close-mobile-backdrop" aria-label="关闭移动预览"></button>
-    <aside class="mobile-drawer">
-      <header>
-        <span>
-          <strong>移动消费模式</strong>
-          <small>查看、筛选、刷新和审批</small>
-        </span>
-        <button type="button" class="icon-button" id="close-mobile" aria-label="关闭"><svg><use href="#i-x"/></svg></button>
-      </header>
-      <div class="phone-frame">
-        <div class="phone-status"><span>9:41</span><span>5G · 82%</span></div>
-        <section class="phone-app">
-          <header>
-            <button type="button" aria-label="返回"><svg><use href="#i-chevron"/></svg></button>
-            <span>
-              <strong>求职追踪</strong>
-              <small>24 records · revision 12</small>
-            </span>
-            <button type="button" aria-label="更多"><svg><use href="#i-more"/></svg></button>
-          </header>
-          <nav>
-            <button type="button" class="is-active" data-mobile-view="summary">概览</button>
-            <button type="button" data-mobile-view="records">Records</button>
-          </nav>
-          <section class="phone-view" id="mobile-summary">
-            <div class="phone-kpis">
-              <article><span>回复率</span><strong>33%</strong><small>本月 +6%</small></article>
-              <article><span>本周面试</span><strong>3</strong><small>下一场 周五</small></article>
-            </div>
-            <article class="phone-next">
-              <span>下一步</span>
-              <strong>Halcyon · Senior Engineer</strong>
-              <small>技术面试 · 周五 10:30 · Auckland</small>
-              <button type="button">查看准备材料 <svg><use href="#i-chevron"/></svg></button>
-            </article>
-            <article class="phone-approval">
-              <header><span><svg><use href="#i-sparkles"/></svg>待审阅计划</span><em>8 records</em></header>
-              <strong>高匹配远程岗位</strong>
-              <p>筛选 Remote 且匹配度 ≥ 80 的岗位，并标记需要跟进的记录。</p>
-              <div><button type="button">拒绝</button><button type="button" class="approve-mobile">接受</button></div>
-            </article>
-          </section>
-          <section class="phone-view" id="mobile-records" hidden>
-            <label><svg><use href="#i-search"/></svg><input type="search" placeholder="搜索 records"></label>
-            <button type="button" class="phone-record"><span class="company-avatar lilac">H</span><span><strong>Halcyon</strong><small>Senior Engineer · Interview</small></span><em>92</em></button>
-            <button type="button" class="phone-record"><span class="company-avatar blue">O</span><span><strong>Orbit</strong><small>Platform Engineer · Replied</small></span><em>88</em></button>
-            <button type="button" class="phone-record"><span class="company-avatar green">N</span><span><strong>Northstar</strong><small>Staff Engineer · Applied</small></span><em>84</em></button>
-          </section>
-        </section>
+  <section class="source-dialog dialog-overlay" id="source-dialog" hidden>
+    <div class="dialog-card">
+      <header><span><strong>数据边界</strong><small>视图不是第二份数据</small></span><button type="button" class="icon-button" id="close-source"><svg><use href="#i-x"/></svg></button></header>
+      <div class="data-flow">
+        <span><svg><use href="#i-note"/></svg><strong>Markdown source</strong><small>Job Applications.md</small></span>
+        <svg><use href="#i-arrow"/></svg>
+        <span><svg><use href="#i-database"/></svg><strong>Dataset revision 12</strong><small>records + schema</small></span>
+        <svg><use href="#i-arrow"/></svg>
+        <span><svg><use href="#i-dashboard"/></svg><strong>View projections</strong><small>Table · Board · Dashboard</small></span>
       </div>
-      <p class="mobile-boundary"><svg><use href="#i-info"/></svg>设计边界：这里没有批量录入、拖拽建模或完整 grid 编辑。</p>
-    </aside>
+      <p>所有视图读取同一 revision；编辑先经过 transaction commit，再写回公开、本地可控的源格式。</p>
+      <button type="button" class="confirm-button" id="confirm-source">知道了</button>
+    </div>
   </section>
 
-  <div class="toast" id="toast" role="status" hidden>
-    <span><svg><use href="#i-check"/></svg></span>
-    <div><strong>Recipe 已保存</strong><small>筛选结果可在刷新后重复生成。</small></div>
-  </div>
+  <section class="mobile-overlay dialog-overlay" id="mobile-overlay" hidden>
+    <button type="button" class="mobile-close" id="close-mobile"><svg><use href="#i-x"/></svg>关闭预览</button>
+    <div class="phone-frame">
+      <header class="phone-system"><strong>9:41</strong><span>●●● ᴡɪꜰɪ ▰</span></header>
+      <header class="phone-title">
+        <span><small>Peak Sheet</small><strong>求职驾驶舱</strong></span>
+        <button type="button"><svg><use href="#i-more"/></svg></button>
+      </header>
+      <nav class="phone-tabs"><button type="button">记录</button><button type="button" class="is-active">仪表盘</button><button type="button">待审批 <em>1</em></button></nav>
+      <section class="phone-content">
+        <div class="phone-filter"><span>最近 90 天</span><span>全部岗位</span></div>
+        <section class="phone-priority">
+          <small>本周行动窗口</small>
+          <strong>3</strong>
+          <span>2 场面试 · 1 个 Offer</span>
+        </section>
+        <section class="phone-metrics">
+          <span><small>申请</small><strong>24</strong><em>+9</em></span>
+          <span><small>回复率</small><strong>33%</strong><em>+8%</em></span>
+          <span><small>平均匹配</small><strong>84</strong><em>+5</em></span>
+        </section>
+        <section class="phone-chart">
+          <header><span><strong>申请与回复趋势</strong><small>最近 6 周</small></span><em>● 申请　● 回复</em></header>
+          <svg viewBox="0 0 320 170" role="img" aria-label="申请与回复趋势">
+            <path class="phone-grid" d="M28 30H308M28 72H308M28 114H308M28 150H308"/>
+            <path class="phone-line primary" d="M30 128 80 112 130 91 180 67 230 42 280 75"/>
+            <path class="phone-line secondary" d="M30 145 80 137 130 124 180 107 230 91 280 121"/>
+            <g class="phone-dots primary"><circle cx="30" cy="128" r="4"/><circle cx="80" cy="112" r="4"/><circle cx="130" cy="91" r="4"/><circle cx="180" cy="67" r="4"/><circle cx="230" cy="42" r="4"/><circle cx="280" cy="75" r="4"/></g>
+            <g class="phone-dots secondary"><circle cx="30" cy="145" r="4"/><circle cx="80" cy="137" r="4"/><circle cx="130" cy="124" r="4"/><circle cx="180" cy="107" r="4"/><circle cx="230" cy="91" r="4"/><circle cx="280" cy="121" r="4"/></g>
+          </svg>
+        </section>
+        <section class="phone-actions">
+          <header><strong>需要行动</strong><span>查看全部</span></header>
+          <div><i class="priority-dot purple"></i><span><strong>Tide Systems · 面试</strong><small>明天 10:30 · 匹配度 91</small></span><em>准备</em></div>
+          <div><i class="priority-dot green"></i><span><strong>Aster Labs · Offer</strong><small>周五前回复 · 匹配度 94</small></span><em>比较</em></div>
+          <div><i class="priority-dot amber"></i><span><strong>Koru Digital · 跟进</strong><small>已等待 11 天 · 匹配度 86</small></span><em>跟进</em></div>
+        </section>
+      </section>
+      <footer class="phone-footer"><span><i></i>revision 12 · 只读消费模式</span><button type="button"><svg><use href="#i-refresh"/></svg></button></footer>
+    </div>
+  </section>
 
+  <div class="toast" id="toast" hidden><svg><use href="#i-check"/></svg><span><strong id="toast-title">视图已更新</strong><small id="toast-copy">5 条记录已标记，本地源文件未改写</small></span></div>
   <script src="./mock.js"></script>
 </body>
 </html>
