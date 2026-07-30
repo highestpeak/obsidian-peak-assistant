@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Peak Composer · 流畅写入交互</title>
+	<style>
+		:root {
+			color-scheme: light;
+			--bg: #f6f7fb;
+			--paper: #fff;
+			--surface: #fbfbfd;
+			--surface-2: #f2f3f7;
+			--line: #dedfe7;
+			--line-strong: #c8c9d5;
+			--text: #24252b;
+			--muted: #71737e;
+			--accent: #6f43dc;
+			--accent-soft: #f0eaff;
+			--accent-line: #cbbcf4;
+			--success: #167557;
+			--warning: #9a6700;
+			--shadow: 0 12px 36px rgba(28, 30, 38, .10);
+			--radius: 10px;
+			--font: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+			--mono: "SFMono-Regular", Consolas, monospace;
+		}
+		* { box-sizing: border-box; }
+		body {
+			margin: 0;
+			min-width: 1080px;
+			background: var(--bg);
+			color: var(--text);
+			font: 13px/1.5 var(--font);
+		}
+		button, input { font: inherit; }
+		button { color: inherit; }
+		.app {
+			display: grid;
+			grid-template-rows: 48px minmax(0, 1fr);
+			height: 100vh;
+		}
+		.topbar {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			padding: 0 18px;
+			border-bottom: 1px solid var(--line);
+			background: rgba(255,255,255,.94);
+		}
+		.brand { font-weight: 720; letter-spacing: -.01em; }
+		.badge {
+			display: inline-flex;
+			align-items: center;
+			min-height: 22px;
+			padding: 0 7px;
+			border: 1px solid var(--line);
+			border-radius: 999px;
+			background: var(--surface);
+			color: var(--muted);
+			font-size: 11px;
+		}
+		.topbar-note { margin-left: auto; color: var(--muted); font-size: 11px; }
+		.workspace {
+			display: grid;
+			grid-template-columns: 224px minmax(620px, 1fr) 320px;
+			min-height: 0;
+		}
+		.rail, .inspector {
+			min-height: 0;
+			overflow: auto;
+			background: var(--surface);
+		}
+		.rail { border-right: 1px solid var(--line); padding: 18px 14px; }
+		.inspector { border-left: 1px solid var(--line); }
+		.rail h2, .inspector h2 {
+			margin: 0 0 5px;
+			font-size: 12px;
+			letter-spacing: .02em;
+		}
+		.rail p { margin: 0 0 16px; color: var(--muted); font-size: 11px; }
+		.lane {
+			display: grid;
+			grid-template-columns: 22px minmax(0, 1fr);
+			gap: 8px;
+			padding: 9px 8px;
+			border-radius: 8px;
+			color: var(--muted);
+		}
+		.lane + .lane { margin-top: 3px; }
+		.lane.active { background: var(--accent-soft); color: var(--text); }
+		.lane-index {
+			display: grid;
+			place-items: center;
+			width: 20px;
+			height: 20px;
+			border: 1px solid var(--line-strong);
+			border-radius: 6px;
+			font-size: 10px;
+		}
+		.lane.active .lane-index { border-color: var(--accent-line); color: var(--accent); }
+		.lane strong { display: block; font-size: 12px; }
+		.lane span { display: block; margin-top: 2px; font-size: 10px; }
+		.editor-shell {
+			min-height: 0;
+			overflow: auto;
+			padding: 34px 42px 80px;
+		}
+		.document {
+			width: min(780px, 100%);
+			margin: 0 auto;
+		}
+		.document-kicker { color: var(--accent); font-size: 11px; font-weight: 680; }
+		.document-title { margin: 4px 0 24px; font-size: 26px; line-height: 1.2; letter-spacing: -.025em; }
+		.block {
+			position: relative;
+			padding: 7px 10px;
+			border: 1px solid transparent;
+			border-radius: 8px;
+			font-size: 15px;
+			line-height: 1.7;
+		}
+		.block:hover { border-color: var(--line); background: rgba(255,255,255,.7); }
+		.action-row {
+			display: flex;
+			align-items: center;
+			gap: 4px;
+			margin: 8px 0 12px 10px;
+		}
+		.action, .icon-action, .choice, .resource-row, .footer-action {
+			border: 0;
+			background: transparent;
+			cursor: pointer;
+		}
+		.action {
+			display: inline-flex;
+			align-items: center;
+			gap: 5px;
+			min-height: 30px;
+			padding: 0 9px;
+			border-radius: 999px;
+			font-weight: 620;
+		}
+		.action.primary { background: var(--accent-soft); color: var(--accent); }
+		.action:hover, .icon-action:hover { background: var(--surface-2); }
+		.icon-action {
+			display: grid;
+			place-items: center;
+			width: 30px;
+			height: 30px;
+			border-radius: 999px;
+		}
+		.icon { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; }
+		.resource-popover {
+			position: absolute;
+			z-index: 4;
+			display: none;
+			width: 286px;
+			margin-top: 8px;
+			padding: 8px;
+			border: 1px solid var(--line);
+			border-radius: var(--radius);
+			background: var(--paper);
+			box-shadow: var(--shadow);
+		}
+		.resource-popover.open { display: block; }
+		.popover-label {
+			padding: 4px 7px 7px;
+			color: var(--muted);
+			font-size: 10px;
+			font-weight: 700;
+			letter-spacing: .08em;
+			text-transform: uppercase;
+		}
+		.resource-row {
+			display: grid;
+			grid-template-columns: 30px minmax(0, 1fr) auto;
+			align-items: center;
+			gap: 8px;
+			width: 100%;
+			padding: 7px;
+			border-radius: 7px;
+			text-align: left;
+		}
+		.resource-row:hover, .resource-row:focus-visible { outline: none; background: var(--surface-2); }
+		.resource-icon {
+			display: grid;
+			place-items: center;
+			width: 28px;
+			height: 28px;
+			border: 1px solid var(--line);
+			border-radius: 7px;
+			background: var(--surface);
+			color: var(--accent);
+		}
+		.resource-copy strong { display: block; font-size: 12px; }
+		.resource-copy span { display: block; color: var(--muted); font-size: 10px; }
+		.planned { color: var(--warning); font-size: 9px; font-weight: 700; }
+		.draft {
+			display: none;
+			margin: 8px 0 18px;
+			padding: 11px 12px 9px;
+			border: 1px solid var(--accent-line);
+			border-radius: var(--radius);
+			background: var(--paper);
+			box-shadow: 0 0 0 2px rgba(111,67,220,.05);
+		}
+		.draft.open { display: block; }
+		.draft-label {
+			display: flex;
+			align-items: center;
+			gap: 7px;
+			margin-bottom: 6px;
+			color: var(--muted);
+			font-size: 10px;
+		}
+		.live-kind {
+			margin-left: auto;
+			padding: 1px 6px;
+			border-radius: 999px;
+			background: var(--surface-2);
+			color: var(--accent);
+		}
+		.markdown-editor {
+			min-height: 48px;
+			padding: 4px 2px;
+			outline: 0;
+			white-space: pre-wrap;
+			font-size: 15px;
+			line-height: 1.65;
+		}
+		.markdown-editor:empty::before { content: attr(data-placeholder); color: #a1a3ad; }
+		.markdown-editor[data-kind="heading"] { font-size: 23px; font-weight: 720; line-height: 1.35; }
+		.markdown-editor[data-kind="list"],
+		.markdown-editor[data-kind="task"] { padding-left: 12px; }
+		.markdown-editor[data-kind="quote"],
+		.markdown-editor[data-kind="callout"] { padding-left: 12px; border-left: 3px solid var(--accent); }
+		.markdown-editor[data-kind="code"] {
+			padding: 9px;
+			border: 1px solid var(--line);
+			border-radius: 7px;
+			background: var(--surface-2);
+			font: 12px/1.6 var(--mono);
+		}
+		.draft-footer {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			margin-top: 7px;
+			padding-top: 7px;
+			border-top: 1px solid var(--line);
+			color: var(--muted);
+			font-size: 10px;
+		}
+		.draft-footer .right { display: flex; gap: 4px; margin-left: auto; }
+		.footer-action {
+			min-height: 27px;
+			padding: 0 8px;
+			border-radius: 7px;
+			font-size: 11px;
+		}
+		.footer-action:hover { background: var(--surface-2); }
+		.footer-action.commit { background: var(--accent); color: #fff; }
+		.inspector-head {
+			padding: 18px 16px 12px;
+			border-bottom: 1px solid var(--line);
+			background: var(--paper);
+		}
+		.inspector-head p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
+		.inspector-body { padding: 14px 16px; }
+		.empty-inspector {
+			padding: 26px 12px;
+			border: 1px dashed var(--line-strong);
+			border-radius: var(--radius);
+			color: var(--muted);
+			text-align: center;
+		}
+		.object-panel { display: none; }
+		.object-panel.open { display: block; }
+		.object-title { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+		.object-title .resource-icon { flex: none; }
+		.object-title strong { display: block; }
+		.object-title span { display: block; color: var(--muted); font-size: 10px; }
+		.segmented {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 4px;
+			padding: 3px;
+			border: 1px solid var(--line);
+			border-radius: 8px;
+			background: var(--surface-2);
+		}
+		.choice { min-height: 30px; border-radius: 6px; font-size: 11px; }
+		.choice.active { background: var(--paper); box-shadow: 0 1px 4px rgba(25,25,30,.08); color: var(--accent); }
+		.field { margin-top: 13px; }
+		.field label { display: block; margin-bottom: 5px; color: var(--muted); font-size: 10px; font-weight: 650; }
+		.field input {
+			width: 100%;
+			height: 34px;
+			padding: 0 9px;
+			border: 1px solid var(--line);
+			border-radius: 7px;
+			outline: 0;
+			background: var(--paper);
+			color: var(--text);
+		}
+		.field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+		.path-preview {
+			margin-top: 12px;
+			padding: 9px;
+			border: 1px solid var(--line);
+			border-radius: 7px;
+			background: var(--surface-2);
+			color: var(--muted);
+			font: 10px/1.5 var(--mono);
+		}
+		.object-note {
+			margin-top: 12px;
+			padding: 9px 10px;
+			border-left: 3px solid var(--accent);
+			background: var(--accent-soft);
+			color: #50436d;
+			font-size: 10px;
+		}
+		.inspector-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 14px; }
+		.inspector-actions button {
+			min-height: 30px;
+			padding: 0 10px;
+			border: 1px solid var(--line);
+			border-radius: 7px;
+			background: var(--paper);
+			cursor: pointer;
+		}
+		.inspector-actions .primary { border-color: var(--accent); background: var(--accent); color: #fff; }
+		kbd {
+			padding: 1px 5px;
+			border: 1px solid var(--line-strong);
+			border-bottom-width: 2px;
+			border-radius: 5px;
+			background: var(--paper);
+			color: var(--muted);
+			font: 9px var(--font);
+		}
+	</style>
+</head>
+<body>
+	<div class="app">
+		<header class="topbar">
+			<span class="brand">Peak Composer</span>
+			<span class="badge">Fluid writing · interaction mock</span>
+			<span class="topbar-note">AI Sheet 在此仅为设计契约，不代表生产已接线</span>
+		</header>
+		<div class="workspace">
+			<aside class="rail">
+				<h2>写入路径</h2>
+				<p>主动作只负责继续写；复杂对象才进入选择。</p>
+				<div class="lane active"><span class="lane-index">1</span><span><strong>直接写 Markdown</strong><span>一次点击，空块聚焦</span></span></div>
+				<div class="lane"><span class="lane-index">2</span><span><strong>语法即时投影</strong><span># / - / &gt; / fence / $$</span></span></div>
+				<div class="lane"><span class="lane-index">3</span><span><strong>事务写入</strong><span>⌘↵ → commit → reparse</span></span></div>
+				<div class="lane"><span class="lane-index">4</span><span><strong>复杂对象</strong><span>新建或引用已有</span></span></div>
+			</aside>
+
+			<main class="editor-shell">
+				<div class="document">
+					<div class="document-kicker">Composer interaction decision</div>
+					<h1 class="document-title">让写作继续，而不是先选择块类型</h1>
+					<div class="block">普通 Markdown 已经有自己的语言。标题、列表、引用、代码和公式不需要再经过一排预置按钮。</div>
+					<div class="block">复杂对象需要稳定文件、结构化配置或创建流程，因此保留独立入口。</div>
+
+					<div class="action-row">
+						<button class="action primary" id="insertMarkdown" type="button">
+							<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+							在下方插入
+						</button>
+						<div>
+							<button class="icon-action" id="openResources" type="button" aria-label="插入复杂对象" aria-expanded="false">
+								<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+							</button>
+							<div class="resource-popover" id="resourcePopover">
+								<div class="popover-label">复杂对象</div>
+								<div id="resourceRows"></div>
+							</div>
+						</div>
+						<button class="action" type="button">复制</button>
+						<button class="action" type="button">评论</button>
+						<button class="action" type="button">润色文本</button>
+					</div>
+
+					<section class="draft" id="draft">
+						<div class="draft-label">
+							<span>Markdown 块 · 直接输入语法</span>
+							<span class="live-kind" id="liveKind">段落</span>
+						</div>
+						<div
+							class="markdown-editor"
+							id="markdownEditor"
+							contenteditable="true"
+							spellcheck="false"
+							data-kind="paragraph"
+							data-placeholder="直接输入 Markdown：# 标题、- 列表、> 引用、代码或公式…"
+						></div>
+						<div class="draft-footer">
+							<span><kbd>Enter</kbd> 连续写 · <kbd>⌘ Enter</kbd> 写入为块</span>
+							<span class="right">
+								<button class="footer-action" id="cancelDraft" type="button">取消</button>
+								<button class="footer-action" type="button">AI 生成</button>
+								<button class="footer-action commit" id="commitDraft" type="button">写入为块</button>
+							</span>
+						</div>
+					</section>
+
+					<div class="block">这段内容模拟下一个真实文档块，草稿会稳定地插在两块之间。</div>
+				</div>
+			</main>
+
+			<aside class="inspector">
+				<div class="inspector-head">
+					<h2 id="inspectorTitle">复杂对象</h2>
+					<p id="inspectorSubtitle">选择对象后，只问创建所需的信息。</p>
+				</div>
+				<div class="inspector-body">
+					<div class="empty-inspector" id="emptyInspector">从插入菜单选择图片、表格或原生对象</div>
+					<div class="object-panel" id="objectPanel">
+						<div class="object-title">
+							<span class="resource-icon" id="objectIcon"></span>
+							<span><strong id="objectName"></strong><span id="objectDescription"></span></span>
+						</div>
+						<div class="segmented" id="modePicker">
+							<button class="choice active" data-mode="create" type="button">新建</button>
+							<button class="choice" data-mode="reference" type="button">引用已有</button>
+						</div>
+						<div class="field">
+							<label id="fieldLabel" for="objectInput">文件名</label>
+							<input id="objectInput" value="未命名对象">
+						</div>
+						<div class="path-preview" id="pathPreview"></div>
+						<div class="object-note" id="objectNote"></div>
+						<div class="inspector-actions">
+							<button type="button">取消</button>
+							<button class="primary" id="objectConfirm" type="button">创建并插入</button>
+						</div>
+					</div>
+				</div>
+			</aside>
+		</div>
+	</div>
+	<script>
+		const resources = [
+			{ id: 'image', name: '图片', description: '上传、AI 生成或引用 Vault 图片', ext: '.png', icon: 'image' },
+			{ id: 'table', name: '表格', description: '从 2×2 可编辑网格开始', ext: '', icon: 'table', createOnly: true },
+			{ id: 'base', name: 'Base', description: '新建视图或引用 .base 文件', ext: '.base', icon: 'database' },
+			{ id: 'canvas', name: 'Canvas', description: '新建画布或引用 .canvas 文件', ext: '.canvas', icon: 'canvas' },
+			{ id: 'excalidraw', name: 'Excalidraw', description: '新建草图或引用已有绘图', ext: '.excalidraw.md', icon: 'draw' },
+			{ id: 'sheet', name: 'AI Sheet', description: '结构化数据与 AI 运算工作区', ext: '.peak-sheet', icon: 'sheet', planned: true },
+		];
+		const icons = {
+			image: '<svg class="icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="m21 15-5-5L5 19"/></svg>',
+			table: '<svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg>',
+			database: '<svg class="icon" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v7c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12v7c0 1.7 3.6 3 8 3s8-1.3 8-3v-7"/></svg>',
+			canvas: '<svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><path d="M10 6.5h4a3.5 3.5 0 0 1 3.5 3.5v4"/></svg>',
+			draw: '<svg class="icon" viewBox="0 0 24 24"><path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z"/><path d="m13.5 8 3 3"/></svg>',
+			sheet: '<svg class="icon" viewBox="0 0 24 24"><path d="M4 3h12l4 4v14H4Z"/><path d="M16 3v5h5M8 12h8M8 16h8"/></svg>',
+		};
+		const resourceRows = document.getElementById('resourceRows');
+		const popover = document.getElementById('resourcePopover');
+		const resourceButton = document.getElementById('openResources');
+		const draft = document.getElementById('draft');
+		const editor = document.getElementById('markdownEditor');
+		let selected = null;
+		let objectMode = 'create';
+
+		resourceRows.innerHTML = resources.map(item => `
+			<button class="resource-row" data-resource="${item.id}" type="button">
+				<span class="resource-icon">${icons[item.icon]}</span>
+				<span class="resource-copy"><strong>${item.name}</strong><span>${item.description}</span></span>
+				${item.planned ? '<span class="planned">待接线</span>' : ''}
+			</button>
+		`).join('');
+
+		document.getElementById('insertMarkdown').addEventListener('click', () => {
+			popover.classList.remove('open');
+			resourceButton.setAttribute('aria-expanded', 'false');
+			draft.classList.add('open');
+			requestAnimationFrame(() => editor.focus());
+		});
+		resourceButton.addEventListener('click', () => {
+			const open = popover.classList.toggle('open');
+			resourceButton.setAttribute('aria-expanded', String(open));
+		});
+		document.getElementById('cancelDraft').addEventListener('click', () => {
+			draft.classList.remove('open');
+			editor.textContent = '';
+			updateKind();
+		});
+		document.getElementById('commitDraft').addEventListener('click', () => {
+			if (!editor.textContent.trim()) return editor.focus();
+			draft.classList.remove('open');
+		});
+		editor.addEventListener('input', updateKind);
+		editor.addEventListener('keydown', event => {
+			if (event.key !== 'Enter') return;
+			if (event.metaKey || event.ctrlKey) {
+				event.preventDefault();
+				document.getElementById('commitDraft').click();
+				return;
+			}
+			const text = editor.textContent || '';
+			if (text.split('\n').at(-1)?.startsWith('- ') && !text.endsWith('- ')) {
+				event.preventDefault();
+				document.execCommand('insertText', false, '\n- ');
+			}
+		});
+		function updateKind() {
+			const text = editor.textContent || '';
+			let kind = 'paragraph';
+			let label = '段落';
+			if (/^#{1,6}\s/.test(text)) { kind = 'heading'; label = '标题'; }
+			else if (/^-\s+\[[ xX]\]\s/.test(text)) { kind = 'task'; label = '待办'; }
+			else if (/^(?:[-*+]|\d+[.)])\s/.test(text)) { kind = 'list'; label = '列表'; }
+			else if (/^>\s*\[!/.test(text)) { kind = 'callout'; label = 'Callout'; }
+			else if (/^>\s/.test(text)) { kind = 'quote'; label = '引用'; }
+			else if (/^```/.test(text)) { kind = 'code'; label = '代码'; }
+			else if (/^\$\$/.test(text)) { kind = 'math'; label = '公式'; }
+			editor.dataset.kind = kind;
+			document.getElementById('liveKind').textContent = label;
+		}
+
+		resourceRows.addEventListener('click', event => {
+			const row = event.target.closest('[data-resource]');
+			if (!row) return;
+			selected = resources.find(item => item.id === row.dataset.resource);
+			objectMode = 'create';
+			popover.classList.remove('open');
+			resourceButton.setAttribute('aria-expanded', 'false');
+			renderObjectPanel();
+		});
+		document.getElementById('modePicker').addEventListener('click', event => {
+			const button = event.target.closest('[data-mode]');
+			if (!button || !selected || selected.createOnly) return;
+			objectMode = button.dataset.mode;
+			renderObjectPanel();
+		});
+		document.getElementById('objectInput').addEventListener('input', renderPath);
+
+		function renderObjectPanel() {
+			document.getElementById('emptyInspector').style.display = 'none';
+			document.getElementById('objectPanel').classList.add('open');
+			document.getElementById('objectName').textContent = selected.name;
+			document.getElementById('objectDescription').textContent = selected.description;
+			document.getElementById('objectIcon').innerHTML = icons[selected.icon];
+			document.getElementById('inspectorTitle').textContent = `插入 ${selected.name}`;
+			document.querySelectorAll('[data-mode]').forEach(button => {
+				button.classList.toggle('active', button.dataset.mode === objectMode);
+				button.disabled = Boolean(selected.createOnly && button.dataset.mode === 'reference');
+			});
+			document.getElementById('fieldLabel').textContent = objectMode === 'create' ? '名称与目标位置' : '搜索 Vault';
+			document.getElementById('objectInput').value = objectMode === 'create' ? `未命名${selected.name}` : '';
+			document.getElementById('objectInput').placeholder = objectMode === 'create' ? '输入名称' : '输入文件名或路径';
+			document.getElementById('objectConfirm').textContent = objectMode === 'create' ? '创建并插入' : '引用所选';
+			const note = selected.planned
+				? '仅设计契约：真实 runtime、serializer、create/reference port、transaction、reparse 与 History 全部接线后，生产 UI 才能显示此入口。'
+				: objectMode === 'create'
+					? '确认前只预览路径；取消不得创建文件。创建成功后再提交 Markdown embed。'
+					: '结果必须来自真实 Vault picker；选择后显示稳定路径和将写入的 embed。';
+			document.getElementById('objectNote').textContent = note;
+			renderPath();
+		}
+		function renderPath() {
+			if (!selected) return;
+			const value = document.getElementById('objectInput').value.trim() || `未命名${selected.name}`;
+			const target = selected.id === 'table'
+				? '| 项目 | 说明 |\\n| --- | --- |\\n| 新项目 | 待填写 |'
+				: objectMode === 'reference'
+					? `![[${value || '选择一个文件'}]]`
+					: `![[Artifacts/${value}${selected.ext}]]`;
+			document.getElementById('pathPreview').textContent = target;
+		}
+	</script>
+</body>
+</html>

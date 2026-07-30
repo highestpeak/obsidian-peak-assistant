@@ -4,19 +4,17 @@ import {
 	Image as ImageIcon,
 	Sparkles,
 	Square,
-	SquareCheckBig,
 } from 'lucide-react';
 import {
 	buildInsertBelowOps,
-	composerDraftBody,
 	composerDraftEditorKind,
-	composerDraftFormula,
-	composerDraftFormulaSource,
+	composerDraftHiddenRanges,
 	composerDraftHasContent,
+	composerDraftPresentationKind,
 	composerDraftReferenceSource,
 	composerDraftReferenceTarget,
-	composerDraftSource,
 	hasSourceVisualSyntaxChange,
+	insertMarkdownDraftBreak,
 	modelToHtml,
 	parseTableSource,
 	projectSourceVisualParts,
@@ -25,8 +23,6 @@ import {
 } from '@/service/composer';
 import { StreamdownIsolated } from '@/ui/component/mine';
 import { Button } from '@/ui/components/primitives';
-import { KatexFormula } from '../blocks/math/KatexFormula';
-import { SourceVisualPartView } from './EditableText';
 import {
 	mapDomSelectionToSource,
 	restoreDomSelectionFromSource,
@@ -34,6 +30,7 @@ import {
 } from './selectionMapping';
 import { useComposerChrome } from './ComposerChromeContext';
 import { useComposerSurfaces } from './ComposerSurfaceCoordinator';
+import { renderContentEditableProjection } from './contentEditableProjection';
 
 export interface NewBlockDraftProps {
 	blockId: string;
@@ -47,12 +44,12 @@ type GenerationStatus = 'idle' | 'generating' | 'complete' | 'error';
  * One inline, review-before-write block at the real insertion anchor.
  *
  * Structural Markdown remains the serialized source of truth, but the default
- * surface edits the rendered object: text body, table cells, formula, or
- * reference target. Raw Markdown is never presented beside a second preview.
+ * surface edits one live Markdown projection, table cells, or a reference
+ * target. Raw Markdown is never presented beside a second preview.
  */
 export function NewBlockDraft({
 	blockId,
-	initialTypeId = 'paragraph',
+	initialTypeId = 'markdown',
 	onDone,
 }: NewBlockDraftProps): React.ReactElement {
 	const chrome = useComposerChrome();
@@ -60,12 +57,12 @@ export function NewBlockDraft({
 	const generation = chrome.runtime.blockDraftGeneration;
 	const config = chrome.config.chrome.insertDraft;
 	const type = config.types.find((candidate) => candidate.id === initialTypeId) ?? config.types[0];
-	const typeId = type?.id ?? 'paragraph';
+	const typeId = type?.id ?? 'markdown';
 	const editorKind = composerDraftEditorKind(typeId);
 	const [source, setSource] = React.useState(type?.initialValue ?? '');
 	const [generatedSource, setGeneratedSource] = React.useState('');
 	const [aiPrompt, setAiPrompt] = React.useState('');
-	const [aiOpen, setAiOpen] = React.useState(editorKind === 'ai');
+	const [aiOpen, setAiOpen] = React.useState(false);
 	const [status, setStatus] = React.useState<GenerationStatus>('idle');
 	const [committing, setCommitting] = React.useState(false);
 	const [error, setError] = React.useState('');
@@ -214,7 +211,6 @@ export function NewBlockDraft({
 						source={source}
 						placeholder={type?.placeholder ?? ''}
 						onSource={updateSource}
-						onCommit={() => void commit()}
 					/>
 				)}
 			</div>
@@ -222,9 +218,9 @@ export function NewBlockDraft({
 				<div className="pk-new-block-draft__ai" data-composer-surface-owner={blockId}>
 					<Sparkles size={14} aria-hidden />
 					<input
-						data-draft-autofocus={editorKind === 'ai' ? 'true' : undefined}
+						autoFocus
 						value={aiPrompt}
-						placeholder={config.types.find((candidate) => candidate.mode === 'ai')?.placeholder}
+						placeholder={config.generationPlaceholder}
 						onChange={(event) => setAiPrompt(event.currentTarget.value)}
 						onKeyDown={(event) => {
 							if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
@@ -278,21 +274,16 @@ function DraftEditor({
 	source,
 	placeholder,
 	onSource,
-	onCommit,
 }: {
 	typeId: string;
 	typeLabel: string;
 	source: string;
 	placeholder: string;
 	onSource(source: string): void;
-	onCommit(): void;
 }): React.ReactElement {
 	const kind = composerDraftEditorKind(typeId);
 	if (kind === 'table') {
 		return <DraftTableEditor source={source} onSource={onSource} />;
-	}
-	if (kind === 'formula') {
-		return <DraftFormulaEditor source={source} onSource={onSource} />;
 	}
 	if (kind === 'reference') {
 		return (
@@ -305,23 +296,16 @@ function DraftEditor({
 			/>
 		);
 	}
-	if (kind === 'ai') {
-		return (
-			<div className="pk-new-block-draft__empty">
-				<Sparkles size={18} />
-			</div>
-		);
-	}
-	const body = composerDraftBody(typeId, source);
+	const presentationKind = composerDraftPresentationKind(source);
 	return (
-		<div className={`pk-new-block-draft__visual pk-new-block-draft__visual--${typeId}`}>
-			{typeId === 'list' && <span className="pk-new-block-draft__marker" aria-hidden>•</span>}
-			{typeId === 'task' && <SquareCheckBig className="pk-new-block-draft__marker" size={16} aria-hidden />}
+		<div
+			className="pk-new-block-draft__visual"
+			data-markdown-kind={presentationKind}
+		>
 			<VisualDraftTextEditor
-				value={body}
+				value={source}
 				placeholder={placeholder}
-				onChange={(next) => onSource(composerDraftSource(typeId, next))}
-				onCommit={onCommit}
+				onChange={onSource}
 			/>
 		</div>
 	);
@@ -331,12 +315,10 @@ function VisualDraftTextEditor({
 	value,
 	placeholder,
 	onChange,
-	onCommit,
 }: {
 	value: string;
 	placeholder: string;
 	onChange(value: string): void;
-	onCommit(): void;
 }): React.ReactElement {
 	const ref = React.useRef<HTMLDivElement | null>(null);
 	const pendingSelection = React.useRef<MappedSelection | null>(null);
@@ -347,10 +329,28 @@ function VisualDraftTextEditor({
 	const [projection, setProjection] = React.useState({ text: value, version: 0 });
 	const projectionRef = React.useRef(projection);
 	projectionRef.current = projection;
-	const parts = React.useMemo(
-		() => projectSourceVisualParts(projection.text, 0, { mathMode: 'source' }),
+	const hiddenRanges = React.useMemo(
+		() => composerDraftHiddenRanges(projection.text),
 		[projection.text],
 	);
+	const parts = React.useMemo(
+		() => projectSourceVisualParts(projection.text, 0, {
+			hiddenRanges,
+			mathMode: 'source',
+		}),
+		[hiddenRanges, projection.text],
+	);
+	const projectionHtml = React.useMemo(
+		() => renderContentEditableProjection(parts, undefined, hiddenRanges),
+		[hiddenRanges, parts],
+	);
+	const project = (next: string, selection: MappedSelection | null) => {
+		pendingSelection.current = selection;
+		setProjection((current) => ({
+			text: next,
+			version: current.version + 1,
+		}));
+	};
 	React.useLayoutEffect(() => {
 		const el = ref.current;
 		const pending = pendingSelection.current;
@@ -360,37 +360,63 @@ function VisualDraftTextEditor({
 		pendingSelection.current = null;
 	}, [projection]);
 	React.useLayoutEffect(() => {
-		if (focused.current || projectionRef.current.text === value) return;
+		if (projectionRef.current.text === value) return;
+		if (focused.current) {
+			const beforeKind = composerDraftPresentationKind(projectionRef.current.text);
+			const afterKind = composerDraftPresentationKind(value);
+			const beforeHidden = composerDraftHiddenRanges(projectionRef.current.text);
+			const afterHidden = composerDraftHiddenRanges(value);
+			if (beforeKind === afterKind && JSON.stringify(beforeHidden) === JSON.stringify(afterHidden)) {
+				return;
+			}
+			const el = ref.current;
+			const selection = el?.ownerDocument.getSelection();
+			project(value, el && selection ? mapDomSelectionToSource(el, selection) : null);
+			return;
+		}
 		setProjection((current) => ({
 			text: value,
 			version: current.version + 1,
 		}));
 	}, [value]);
-	const project = (next: string, selection: MappedSelection | null) => {
-		pendingSelection.current = selection;
-		setProjection((current) => ({
-			text: next,
-			version: current.version + 1,
-		}));
-	};
 	const handleInput = () => {
 		const el = ref.current;
 		if (!el) return;
 		const next = el.textContent ?? '';
 		onChange(next);
 		if (composing.current) return;
-		if (!hasSourceVisualSyntaxChange(
+		const nextHiddenRanges = composerDraftHiddenRanges(next);
+		const hiddenRangesChanged =
+			JSON.stringify(hiddenRanges) !== JSON.stringify(nextHiddenRanges);
+		if (!hiddenRangesChanged && !hasSourceVisualSyntaxChange(
 			projectionRef.current.text,
 			next,
 			0,
-			{ mathMode: 'source' },
+			{ hiddenRanges: nextHiddenRanges, mathMode: 'source' },
 		)) return;
 		const selection = el.ownerDocument.getSelection();
 		project(next, selection ? mapDomSelectionToSource(el, selection) : null);
 	};
+	const insertBreak = (soft: boolean) => {
+		const el = ref.current;
+		if (!el) return;
+		const selection = el.ownerDocument.getSelection();
+		const mapped = selection ? mapDomSelectionToSource(el, selection) : null;
+		if (!mapped) return;
+		const liveText = el.textContent ?? '';
+		const edit = insertMarkdownDraftBreak(liveText, mapped.from, mapped.to, soft);
+		const nextSelection: MappedSelection = {
+			from: edit.selectionStart,
+			to: edit.selectionEnd,
+			anchor: edit.selectionStart,
+			focus: edit.selectionEnd,
+			direction: 'collapsed',
+		};
+		onChange(edit.value);
+		project(edit.value, nextSelection);
+	};
 	return (
 		<div
-			key={projection.version}
 			ref={ref}
 			className="pk-new-block-draft__editor pk-composer-editable"
 			contentEditable
@@ -400,6 +426,15 @@ function VisualDraftTextEditor({
 			data-placeholder={placeholder}
 			data-src-text-from={0}
 			onInput={handleInput}
+			onBeforeInput={(event) => {
+				const native = event.nativeEvent as InputEvent;
+				if (native.inputType !== 'insertParagraph' && native.inputType !== 'insertLineBreak') {
+					return;
+				}
+				event.preventDefault();
+				if (native.isComposing) return;
+				insertBreak(native.inputType === 'insertLineBreak');
+			}}
 			onFocus={() => {
 				focused.current = true;
 			}}
@@ -423,37 +458,12 @@ function VisualDraftTextEditor({
 			}}
 			onKeyDown={(event) => {
 				if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
+				if (event.metaKey || event.ctrlKey) return;
 				event.preventDefault();
-				if (event.shiftKey) {
-					const el = ref.current;
-					if (!el) return;
-					const selection = el.ownerDocument.getSelection();
-					const mapped = selection ? mapDomSelectionToSource(el, selection) : null;
-					if (!mapped) return;
-					const caret = mapped.from + 1;
-					const nextSelection: MappedSelection = {
-						from: caret,
-						to: caret,
-						anchor: caret,
-						focus: caret,
-						direction: 'collapsed',
-					};
-					const liveText = el.textContent ?? '';
-					const next = `${liveText.slice(0, mapped.from)}\n${liveText.slice(mapped.to)}`;
-					onChange(next);
-					project(next, nextSelection);
-					return;
-				}
-				onCommit();
+				insertBreak(event.shiftKey);
 			}}
-		>
-			{parts.map((part) => (
-				<SourceVisualPartView
-					key={`${part.from}-${part.to}-${part.kind}`}
-					part={part}
-				/>
-			))}
-		</div>
+			dangerouslySetInnerHTML={{ __html: projectionHtml }}
+		/>
 	);
 }
 
@@ -511,28 +521,6 @@ function safeDraftTable(source: string): TableModel | null {
 	} catch {
 		return null;
 	}
-}
-
-function DraftFormulaEditor({
-	source,
-	onSource,
-}: {
-	source: string;
-	onSource(source: string): void;
-}): React.ReactElement {
-	const latex = composerDraftFormula(source);
-	return (
-		<div className="pk-new-block-draft__formula">
-			<div className="pk-new-block-draft__formula-preview">
-				<KatexFormula latex={latex} display />
-			</div>
-			<input
-				data-draft-autofocus="true"
-				value={latex}
-				onChange={(event) => onSource(composerDraftFormulaSource(event.currentTarget.value))}
-			/>
-		</div>
-	);
 }
 
 function DraftReferenceEditor({

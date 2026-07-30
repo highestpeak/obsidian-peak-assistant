@@ -801,12 +801,12 @@ function ComposerDocument({
 							setPanel={setPanel}
 							onInsertBelow={
 								hub && editing
-									? () => setPanel((current) =>
-											current?.blockId === b.blockId &&
-											current.panel === 'insert-menu' &&
-											current.pinned
-												? null
-												: { blockId: b.blockId, panel: 'insert-menu', pinned: true })
+									? () => setPanel({
+											blockId: b.blockId,
+											panel: 'insert-draft',
+											pinned: true,
+											initialTypeId: 'markdown',
+										})
 									: undefined
 							}
 							onSelectInsertType={(typeId) =>

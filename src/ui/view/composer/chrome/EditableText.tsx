@@ -15,6 +15,7 @@ import {
 	restoreDomSelectionFromSource,
 	type MappedSelection,
 } from './selectionMapping';
+import { renderContentEditableProjection } from './contentEditableProjection';
 
 /**
  * Per-block contenteditable leaf (WP4, S2 决议全套).
@@ -265,12 +266,16 @@ export function EditableText({
 			}),
 		[renderState, hiddenSourceRanges, focused, editable, hub],
 	);
+	const canEdit = editable && Boolean(hub);
+	const editableProjection = canEdit
+		? { __html: renderContentEditableProjection(visualParts, unitId) }
+		: undefined;
 
 	return (
 		<div
 			ref={elRef}
 			className={className ? `pk-composer-editable ${className}` : 'pk-composer-editable'}
-			contentEditable={editable && Boolean(hub)}
+			contentEditable={canEdit}
 			suppressContentEditableWarning
 			spellCheck={false}
 			data-block-id={blockId}
@@ -290,8 +295,9 @@ export function EditableText({
 				controller?.setComposing(false);
 				onInput();
 			}}
+			dangerouslySetInnerHTML={editableProjection}
 		>
-			{visualParts.map((part) => (
+			{canEdit ? undefined : visualParts.map((part) => (
 				<SourceVisualPartView
 					key={`${part.from - renderState.sourceFrom}-${part.to - renderState.sourceFrom}-${part.kind}`}
 					part={part}

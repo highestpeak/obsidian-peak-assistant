@@ -206,10 +206,9 @@ check('insert-below uses one full-width live editor with explicit AI acceptance'
 	assert.ok(draft.includes('config.acceptGenerated'));
 	assert.ok(draft.includes('<VisualDraftTextEditor'));
 	assert.ok(draft.includes('<DraftTableEditor'));
-	assert.ok(draft.includes('<DraftFormulaEditor'));
 	assert.ok(draft.includes('<DraftReferenceEditor'));
 	assert.ok(draft.includes('hasSourceVisualSyntaxChange'));
-	assert.ok(draft.includes('key={projection.version}'));
+	assert.ok(draft.includes('dangerouslySetInnerHTML={{ __html: projectionHtml }}'));
 	assert.ok(draft.includes('onCompositionStart'));
 	assert.equal(draft.includes('pk-new-block-draft__header'), false);
 	assert.equal(draft.includes('pk-new-block-draft__shortcuts'), false);

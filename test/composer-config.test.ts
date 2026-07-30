@@ -52,7 +52,12 @@ function main(): void {
 	);
 	const fallbackInsertTypes = DEFAULT_COMPOSER_CONFIG.chrome.insertDraft.types;
 	const jsonInsertTypes = json.chrome?.insertDraft?.types ?? [];
-	check('insert draft exposes all designed type choices', fallbackInsertTypes.length === 13, String(fallbackInsertTypes.length));
+	check(
+		'chrome.insertDraft keys match',
+		Object.keys(DEFAULT_COMPOSER_CONFIG.chrome.insertDraft).sort().join(',') ===
+			Object.keys(json.chrome?.insertDraft ?? {}).sort().join(','),
+	);
+	check('insert draft exposes Markdown plus complex object choices', fallbackInsertTypes.length === 6, String(fallbackInsertTypes.length));
 	check(
 		'insert draft type ids match',
 		fallbackInsertTypes.map((type) => type.id).join(',') === jsonInsertTypes.map((type: { id: string }) => type.id).join(','),

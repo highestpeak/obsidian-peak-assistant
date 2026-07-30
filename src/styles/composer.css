@@ -1781,25 +1781,65 @@
 	min-height: 36px;
 	padding: 4px 2px;
 }
-.peak-composer-root .pk-new-block-draft__visual--heading {
+.peak-composer-root .pk-new-block-draft__visual[data-markdown-kind='heading'] {
 	font-size: 1.45em;
 	font-weight: 700;
 }
-.peak-composer-root .pk-new-block-draft__visual--quote {
+.peak-composer-root .pk-new-block-draft__visual[data-markdown-kind='quote'] {
 	padding-left: 12px;
 	border-left: 3px solid var(--pk-accent);
 	color: var(--pk-fg-muted);
 }
-.peak-composer-root .pk-new-block-draft__visual--callout {
+.peak-composer-root .pk-new-block-draft__visual[data-markdown-kind='callout'] {
 	padding: 10px 12px;
 	border-left: 3px solid var(--pk-accent);
 	border-radius: var(--pk-radius-sm);
 	background: var(--pk-accent-tint);
 }
-.peak-composer-root .pk-new-block-draft__marker {
-	flex: none;
-	margin-top: 5px;
+.peak-composer-root .pk-new-block-draft__visual[data-markdown-kind='code'] {
+	padding: 8px 10px;
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-sm);
+	background: var(--pk-surface-sunken);
+	font-family: var(--font-monospace);
+	font-size: var(--pk-text-xs);
+}
+.peak-composer-root .pk-new-block-draft__visual[data-markdown-kind='math'] {
+	justify-content: center;
+	min-height: 52px;
+	font-family: var(--font-monospace);
+}
+.peak-composer-root .pk-new-block-draft__visual
+	.pk-composer-source-token[data-structural-token='list']::after {
+	content: '•';
+}
+.peak-composer-root .pk-new-block-draft__visual
+	.pk-composer-source-token[data-structural-token='ordered-list']::after {
+	content: attr(data-src-token-text);
+}
+.peak-composer-root .pk-new-block-draft__visual
+	.pk-composer-source-token[data-structural-token='task']::after,
+.peak-composer-root .pk-new-block-draft__visual
+	.pk-composer-source-token[data-structural-token='ordered-task']::after {
+	content: '☐';
+}
+.peak-composer-root .pk-new-block-draft__visual
+	.pk-composer-source-token[data-structural-token='list']::after,
+.peak-composer-root .pk-new-block-draft__visual
+	.pk-composer-source-token[data-structural-token='ordered-list']::after,
+.peak-composer-root .pk-new-block-draft__visual
+	.pk-composer-source-token[data-structural-token='task']::after,
+.peak-composer-root .pk-new-block-draft__visual
+	.pk-composer-source-token[data-structural-token='ordered-task']::after {
+	display: inline-block;
+	width: 18px;
+	margin-right: 4px;
 	color: var(--pk-accent-text);
+	font-family: var(--font-interface);
+	font-size: var(--pk-text-sm);
+	line-height: 1.6;
+	opacity: 1;
+	text-align: right;
 }
 .peak-composer-root .pk-new-block-draft__editor {
 	flex: 1;
