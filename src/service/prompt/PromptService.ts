@@ -15,7 +15,7 @@ import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
 /**
  * Unified prompt service: templates loaded on demand via TemplateManager, with optional vault overrides.
  *
- * Chat methods delegate to AIServiceManager's Agent SDK-based queryText/queryStream.
+ * Chat methods delegate to AIServiceManager's Peak Harness queryText/queryStream.
  * The active Profile determines the model.
  */
 export class PromptService {

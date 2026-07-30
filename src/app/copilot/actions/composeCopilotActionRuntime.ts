@@ -3,7 +3,7 @@
 //
 // One place wires every concrete dependency (Obsidian `App`,
 // AIServiceManager, SearchClient, sqliteStoreManager, ProfileRegistry,
-// custom prompt vault folder, Agent SDK) into the
+// custom prompt vault folder, Peak Harness) into the
 // {@link CopilotActionPorts} bag and constructs the runtime
 // implementation. Called from `main.ts` at plugin boot.
 //

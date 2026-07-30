@@ -11,10 +11,10 @@ import { StreamingTextCandidateCard } from '@/ui/view/composer/candidates';
 import { DEFAULT_CANDIDATE_UI_STRINGS } from '@/ui/view/composer/candidates/candidateUiConfig';
 
 const envelope: ComposerResultEnvelope = {
-	resultKind: 'text-patch',
+	resultKind: 'block-insertion',
 	rendererId: 'composer.renderer.streaming-text',
-	writebackAdapterId: 'composer.writeback.text-patch',
-	payload: { replacementText: '- 这节最希望读者带走的判断是什么？\n- 哪个例子能证明这个判断？' },
+	writebackAdapterId: 'composer.writeback.block-insertion',
+	payload: { insertedText: '- 这节最希望读者带走的判断是什么？\n- 哪个例子能证明这个判断？' },
 };
 const candidate: ComposerCandidate = {
 	candidateId: 'candidate-ai-draft',
@@ -36,6 +36,7 @@ const runtime: ComposerCandidateRuntimePort = {
 	subscribe: () => () => undefined,
 	onRunEvent: () => () => undefined,
 	rendererIdFor: () => 'composer.renderer.streaming-text',
+	candidateEffectFor: () => 'insert',
 	candidateLabelFor: () => '提出追问',
 	regenerate: () => ({ runId: 'regenerate', cancel: () => undefined }),
 	cancel: () => undefined,
@@ -75,7 +76,12 @@ assert.ok(streaming.includes('正在流式生成版本 1/1'), 'streaming footer 
 assert.ok(streaming.includes('animate-pulse'), 'streaming list must retain the live caret');
 
 const css = readFileSync('src/styles/composer.css', 'utf8');
-assert.match(css, /\.pk-text-candidate\s*\{[\s\S]*?grid-template-rows:\s*minmax\(148px, auto\) auto;[\s\S]*?border:\s*1px solid var\(--pk-border\);[\s\S]*?border-radius:\s*var\(--pk-radius-lg\);/, 'AI draft needs one framed body, not a separator strip');
+assert.match(css, /\.pk-text-candidate\s*\{[\s\S]*?grid-template-rows:\s*minmax\(0, auto\) auto;[\s\S]*?border:\s*1px solid var\(--pk-border\);[\s\S]*?border-radius:\s*var\(--pk-radius-lg\);/, 'AI draft needs a content-sized framed body, not a large empty minimum panel');
 assert.match(css, /\.pk-text-candidate__footer\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\) minmax\(190px, 320px\) auto;[\s\S]*?border-top:\s*1px solid var\(--pk-border-soft\);/, 'review footer must align status, instruction and actions');
+assert.match(
+	css,
+	/input\.pk-text-candidate__instruction\s*\{[\s\S]*?height:\s*28px !important;[\s\S]*?max-height:\s*28px !important;[\s\S]*?border:\s*0 !important;[\s\S]*?box-shadow:\s*none !important;/,
+	'follow-up input must override the Obsidian bare-input geometry and chrome',
+);
 
 console.log('composer-ai-draft-review-frame: passed');

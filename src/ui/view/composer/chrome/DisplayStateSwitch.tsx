@@ -3,15 +3,13 @@ import { Segmented } from '@/ui/components/primitives';
 import { useComposerChrome } from './ComposerChromeContext';
 
 /**
- * The three document display states (handoff §9.1 / §3.3 L164):
+ * The two document display states:
  *   - `clean` 纯净阅读 — accepted content + existing comments, read-only,
  *     no insight/candidate or new selection comments;
- *   - `work`  工作视图 — accepted content editable + insight/finding layer;
- *   - `all`   全部改动 — work + all pending candidates / diffs.
- * The chrome renders the layers by state; insight/candidate layers are empty in
- * the WP4 slice (wired by later integration) — the toggle already controls them.
+ *   - `edit` 编辑视图 — accepted content editable + findings + origin candidates.
+ * “审阅全部改动” is a contextual action inside edit mode, never a third state.
  */
-export type ComposerDisplayState = 'work' | 'all' | 'clean';
+export type ComposerDisplayState = 'edit' | 'clean';
 
 export function DisplayStateSwitch({
 	value,
@@ -32,8 +30,7 @@ export function DisplayStateSwitch({
 			value={value}
 			onValueChange={onChange}
 			options={[
-				{ value: 'work', label: s.work },
-				{ value: 'all', label: s.all },
+				{ value: 'edit', label: s.edit },
 				{ value: 'clean', label: s.clean },
 			]}
 		/>

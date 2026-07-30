@@ -6,7 +6,7 @@
 import type { App } from 'obsidian';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import type { SearchClient } from '@/service/search/SearchClient';
-import type { GrepHit } from '@/service/agents/vault-sdk/vaultMcpServer';
+import type { GrepHit } from '@/service/agents/vault/vaultToolImplementations';
 import {
 	createCopilotAgentPort,
 	type CopilotAgentSearchFn,
@@ -49,7 +49,7 @@ export function createAppCopilotActionAgentAdapter(
 	return createCopilotAgentPort({
 		app: opts.app,
 		pluginId: opts.pluginId,
-		resolveActiveProfile: () => ProfileRegistry.getInstance().getActiveAgentProfile(),
+		resolveActiveBinding: () => ProfileRegistry.getInstance().getActiveAgentConfig(),
 		search: searchFn,
 		analysisHistory: opts.analysisHistory,
 	});

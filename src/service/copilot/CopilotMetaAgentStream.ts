@@ -1,7 +1,7 @@
 /**
  * Meta-agent stream for Auto Review.
  *
- * Single SDK query per round. Drives a `CopilotOutputCollector` through the
+ * Single Peak Harness run per round. Drives a `CopilotOutputCollector` through the
  * propose_* / submit_review toolset. Multi-round coordination lives in
  * `CopilotReviewSession` (see runCopilotReview).
  *
@@ -14,14 +14,17 @@ import type { Profile } from '@/core/profiles/types';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { PromptId } from '@/core/types/prompt';
 import { TemplateManager } from '@/core/template/TemplateManager';
-import { warmupPool, queryWithProfile } from '@/service/agents/core/sdkAgentPool';
-import { buildVaultMcpServer, type GrepHit } from '@/service/agents/vault-sdk/vaultMcpServer';
-import { translateSdkMessage } from '@/service/agents/core/sdkMessageAdapter';
+import type { GrepHit } from '@/service/agents/vault/vaultToolImplementations';
+import {
+	assertSuccessfulRun,
+	streamHarnessModel,
+} from '@/service/agents/harness/HarnessModelRunner';
+import { buildVaultHarnessTools } from '@/service/agents/vault/vaultHarnessTools';
 
 import {
-	buildCopilotOutputMcpServer,
+	buildCopilotOutputTools,
 	COPILOT_OUTPUT_TOOL_NAMES,
-} from './CopilotOutputMcpServer';
+} from './CopilotOutputTools';
 import type { CopilotOutputCollector, ReviewSubmission } from './CopilotOutputCollector';
 import type { DocumentSignalReport } from './CopilotSignalReport';
 import { formatSignalReportForPrompt } from './CopilotSignalReport';
@@ -63,7 +66,7 @@ export interface MetaAgentOptions {
 	collector: CopilotOutputCollector;
 	maxTurns: number;
 	signal?: AbortSignal;
-	/** Called once per assistant SDK message — used to drive 70% budget reminder. */
+	/** Called once per Harness model step — used to drive 70% budget reminder. */
 	onTurnIncrement?: () => void;
 	/** User profile (built from chat extractor) — injected into system prompt so the agent honours stated preferences. */
 	userProfileText?: string;
@@ -97,20 +100,21 @@ export interface MetaAgentOptions {
  *   heavier primary model.
  * - Complete mode always uses the active agent profile with no override.
  */
-function resolveProfileForMode(mode: ReviewMode): { profile: Profile; modelOverride?: string } | null {
+function resolveProfileForMode(mode: ReviewMode): { profile: Profile; modelId: string } | null {
 	const registry = ProfileRegistry.getInstance();
-	const agentProfile = registry.getActiveAgentProfile();
-	if (!agentProfile) return null;
-	if (mode !== 'fast') return { profile: agentProfile };
+	const agentConfig = registry.getActiveAgentConfig();
+	if (!agentConfig) return null;
+	if (mode !== 'fast') return agentConfig;
 
 	const fastConfig = registry.getActiveAgentFastConfig();
 	if (fastConfig?.profile && fastConfig.modelId) {
-		return { profile: fastConfig.profile, modelOverride: fastConfig.modelId };
+		return { profile: fastConfig.profile, modelId: fastConfig.modelId };
 	}
+	const agentProfile = agentConfig.profile;
 	if (agentProfile.fastModel && agentProfile.fastModel !== agentProfile.primaryModel) {
-		return { profile: agentProfile, modelOverride: agentProfile.fastModel };
+		return { profile: agentProfile, modelId: agentProfile.fastModel };
 	}
-	return { profile: agentProfile };
+	return agentConfig;
 }
 
 function buildPreviousRoundsBlock(prev: PreviousRoundSummary[]): string {
@@ -234,7 +238,7 @@ export function buildMetaAgentUserPrompt(params: {
 
 /**
  * One round of the meta-agent. Yields LLMStreamEvents for trace display.
- * Returns when the SDK stream completes (either via submit_review, maxTurns,
+ * Returns when the Harness run completes (either via submit_review, maxTurns,
  * or signal abort).
  *
  * Multi-round orchestration is handled by `runCopilotReview` (separate function).
@@ -245,13 +249,6 @@ export async function* buildCopilotMetaAgentStream(
 	const triggerName = StreamTriggerName.COPILOT;
 	const { app, pluginId } = options;
 
-	try {
-		await warmupPool();
-	} catch (err) {
-		yield { type: 'error', error: err as Error, triggerName } as LLMStreamEvent;
-		return;
-	}
-
 	const resolved = resolveProfileForMode(options.mode);
 	if (!resolved) {
 		yield {
@@ -261,7 +258,7 @@ export async function* buildCopilotMetaAgentStream(
 		} as LLMStreamEvent;
 		return;
 	}
-	const { profile, modelOverride } = resolved;
+	const { profile, modelId } = resolved;
 
 	const searchClient = options.searchClient;
 	const searchFn = async (q: string, limit: number): Promise<GrepHit[]> => {
@@ -279,7 +276,7 @@ export async function* buildCopilotMetaAgentStream(
 		}));
 	};
 
-	const vaultMcpServer = buildVaultMcpServer({
+	const vaultTools = buildVaultHarnessTools({
 		app,
 		searchFn,
 		onSubmitPlan: async (plan) => ({
@@ -290,7 +287,7 @@ export async function* buildCopilotMetaAgentStream(
 		analysisHistory: options.analysisHistory,
 	});
 
-	const copilotMcpServer = buildCopilotOutputMcpServer({
+	const copilotTools = buildCopilotOutputTools({
 		collector: options.collector,
 	});
 
@@ -316,49 +313,43 @@ export async function* buildCopilotMetaAgentStream(
 			...COPILOT_OUTPUT_TOOL_NAMES,
 		];
 
-		const messages = queryWithProfile(app, pluginId, profile, {
+		const allowedToolNames = new Set(allowedTools);
+		const tools = [...vaultTools, ...copilotTools]
+			.filter((tool) => allowedToolNames.has(tool.name));
+		const submissionsBefore = options.collector.getSnapshot().submissions.length;
+		const stream = streamHarnessModel({
+			loopId: `copilot-review-${pluginId}-${options.previousRounds.length + 1}`,
+			profile,
+			modelId,
 			prompt: userPrompt,
 			systemPrompt,
-			maxTurns: options.maxTurns,
-			allowedTools,
-			disallowedTools: ['AskUserQuestion', 'mcp__vault__vault_submit_plan'],
-			mcpServers: {
-				vault: vaultMcpServer,
-				copilot: copilotMcpServer,
-			},
+			tools,
+			maxSteps: options.maxTurns,
+			maxToolCalls: Math.max(12, options.maxTurns * 4),
 			signal: options.signal,
-			usageFeature: 'copilot',
-			usageAction: `auto-review-round-${options.previousRounds.length}`,
-			modelOverride,
+			triggerName,
+			stopWhen: () =>
+				options.collector.getSnapshot().submissions.length > submissionsBefore,
+			treatBareTextAsFinal: false,
+			bareTextContinuationNudge: 'Continue the review using the available tools. Finish by calling mcp__copilot__submit_review.',
+			onStepFinish: () => {
+				options.onTurnIncrement?.();
+			},
 		});
 
-		for await (const raw of messages) {
-			if (options.signal?.aborted) return;
-			const msgType = (raw as { type?: string }).type;
-			if (msgType === 'assistant') {
-				options.onTurnIncrement?.();
+		while (true) {
+			const next = await stream.next();
+			if (next.done) {
+				if (next.value.finishReason === 'max_steps') {
+					console.warn('[CopilotMetaAgent] max steps reached this round');
+					yield { type: 'pk-debug', debugName: 'max-turns-reached', triggerName } as LLMStreamEvent;
+				}
+				assertSuccessfulRun(next.value);
+				break;
 			}
-			const events = translateSdkMessage(raw, {
-				triggerName,
-				hasPartialMessages: true,
-			});
-			for (const ev of events) {
-				yield ev;
-			}
+			yield next.value;
 		}
 	} catch (err) {
-		const msg = (err as Error)?.message ?? '';
-		if (msg.toLowerCase().includes('maximum number of turns')) {
-			console.warn('[CopilotMetaAgent] max turns reached this round');
-			yield { type: 'pk-debug', debugName: 'max-turns-reached', triggerName } as LLMStreamEvent;
-			return;
-		}
 		yield { type: 'error', error: err as Error, triggerName } as LLMStreamEvent;
 	}
-
-	yield {
-		type: 'complete',
-		triggerName,
-		durationMs: 0,
-	} as LLMStreamEvent;
 }

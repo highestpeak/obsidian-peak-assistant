@@ -10,7 +10,7 @@
 //   T5 ToolDef             — the tools the backend may invoke
 //
 // Backend dispatch is deliberately a caller-supplied `execute` function.
-// The runner has no opinion on Hermes vs Claude SDK vs raw provider —
+// The runner has no opinion on Peak Harness vs provider-direct execution —
 // that responsibility belongs to the composition site that constructs
 // the runner options. Keeping the runner backend-agnostic means:
 //   1. The runner is unit-testable without spinning up any provider.

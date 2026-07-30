@@ -98,11 +98,12 @@ export const InspectorSidePanel: React.FC<InspectorSidePanelProps> = ({
 				</span>
 				<Button
 					variant="ghost"
-					size="xs"
-					className="pktw-shadow-none !pktw-w-6 !pktw-h-6"
+					size="icon"
+					title="Close inspector"
+					className="pktw-shadow-none !pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-w-8 !pktw-min-w-8 !pktw-max-w-8 !pktw-p-0"
 					onClick={onClose}
 				>
-					<X className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-muted" />
+					<X className="pktw-h-4 pktw-w-4 pktw-text-pk-foreground-muted" />
 				</Button>
 			</div>
 

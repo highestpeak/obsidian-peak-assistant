@@ -1,7 +1,7 @@
 // T4 / T9 — BackendStrategyRegistry dispatch semantics.
 
 import assert from 'assert';
-import type { CapabilityManifest } from '@/core/types/capability';
+import type { BackendKind, CapabilityManifest } from '@/core/types/capability';
 import {
 	resolveBackendStrategy,
 	composeExecuteFromPolicy,
@@ -12,8 +12,7 @@ import {
 } from '@/service/capabilities/BackendStrategyRegistry';
 import { runCapability } from '@/service/capabilities/CapabilityRunner';
 
-function makeManifest(preferred: 'hermes-harness' | 'claude-sdk' | 'provider-direct',
-	fallback: Array<'hermes-harness' | 'claude-sdk' | 'provider-direct'>): CapabilityManifest {
+function makeManifest(preferred: BackendKind, fallback: BackendKind[]): CapabilityManifest {
 	return {
 		id: 'test.strategy',
 		title: 'Strategy Test',
@@ -35,10 +34,10 @@ function makeManifest(preferred: 'hermes-harness' | 'claude-sdk' | 'provider-dir
 function testPreferredWins(): void {
 	const registry: BackendStrategyRegistry = {
 		'hermes-harness': makeEchoStrategy(),
-		'claude-sdk': makeUnavailableStrategy('should not be called'),
+		'provider-direct': makeUnavailableStrategy('should not be called'),
 	};
 	const { backend } = resolveBackendStrategy(
-		{ preferred: 'hermes-harness', fallback: ['claude-sdk'] },
+		{ preferred: 'hermes-harness', fallback: ['provider-direct'] },
 		registry,
 	);
 	assert.strictEqual(backend, 'hermes-harness');
@@ -51,13 +50,13 @@ function testPreferredWins(): void {
 
 function testFallbackUsed(): void {
 	const registry: BackendStrategyRegistry = {
-		'claude-sdk': makeEchoStrategy(),
+		'provider-direct': makeEchoStrategy(),
 	};
 	const { backend } = resolveBackendStrategy(
-		{ preferred: 'hermes-harness', fallback: ['claude-sdk', 'provider-direct'] },
+		{ preferred: 'hermes-harness', fallback: ['provider-direct'] },
 		registry,
 	);
-	assert.strictEqual(backend, 'claude-sdk');
+	assert.strictEqual(backend, 'provider-direct');
 	console.log('PASS: fallbackUsed');
 }
 
@@ -69,7 +68,7 @@ function testFailLoud(): void {
 	let thrown: unknown = null;
 	try {
 		resolveBackendStrategy(
-			{ preferred: 'hermes-harness', fallback: ['claude-sdk'] },
+			{ preferred: 'hermes-harness', fallback: ['provider-direct'] },
 			{},
 		);
 	} catch (err) { thrown = err; }

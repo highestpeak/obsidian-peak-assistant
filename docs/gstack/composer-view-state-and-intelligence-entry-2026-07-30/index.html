@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Composer View State · Intelligence Entry Mock</title>
+  <link rel="stylesheet" href="./mock.css">
+</head>
+<body>
+  <svg class="icon-sprite" aria-hidden="true">
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 2h8l4 4v16H6Z"/><path d="M14 2v5h5"/><path d="M9 12h6M9 16h6"/></symbol>
+    <symbol id="i-layout" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M9 10h12"/></symbol>
+    <symbol id="i-message" viewBox="0 0 24 24"><path d="M4 5h16v12H8l-4 3Z"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7Z"/><path d="m19 16 .7 2.3L22 19l-2.3.7L19 22l-.7-2.3L16 19l2.3-.7Z"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v6h6M12 7v5l3 2"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m8 10 4 4 4-4"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.2 8.2A7 7 0 0 1 18.6 7M17.8 15.8A7 7 0 0 1 5.4 17"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="m9 7-5 5 5 5"/><path d="M4 12h9a6 6 0 0 1 6 6"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 7 5 5-5 5"/><path d="M20 12h-9a6 6 0 0 0-6 6"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+  </svg>
+
+  <main class="review-stage">
+    <header class="review-head">
+      <div>
+        <span class="eyebrow">DESIGN MOCK · 2026-07-30</span>
+        <h1>Composer 入口、评论与 Intelligence 状态</h1>
+        <p>把“当前视图”“以后默认打开”和“这次为什么打开 Intelligence”分开表达。</p>
+      </div>
+      <nav class="scenario-switch" aria-label="Mock states">
+        <button type="button" data-scenario="first">首次打开</button>
+        <button type="button" class="is-active" data-scenario="intelligence">打开 Intelligence</button>
+        <button type="button" data-scenario="native">原生 Markdown</button>
+      </nav>
+    </header>
+
+    <section class="origin-demo" aria-label="Intelligence entry source">
+      <span>入口演示</span>
+      <button type="button" class="is-active" data-origin="toolbar">工具栏</button>
+      <button type="button" data-origin="automatic-suggestion">自动建议</button>
+      <button type="button" data-origin="ask-copilot">问 Copilot</button>
+      <button type="button" data-origin="comment-handoff">评论交接</button>
+    </section>
+
+    <section class="obsidian-window">
+      <header class="window-tabs">
+        <span class="traffic"><i></i><i></i><i></i></span>
+        <div class="tab"><svg><use href="#i-file"/></svg>信息管理</div>
+        <div class="tab is-active"><svg><use href="#i-layout"/></svg>PKM 产品类别分析</div>
+        <button type="button" aria-label="New tab">+</button>
+      </header>
+
+      <div class="workspace">
+        <aside class="ribbon">
+          <button type="button" aria-label="Files"><svg><use href="#i-file"/></svg></button>
+          <button type="button" aria-label="Composer"><svg><use href="#i-layout"/></svg></button>
+          <span></span>
+          <button type="button" aria-label="More"><svg><use href="#i-more"/></svg></button>
+        </aside>
+
+        <section class="composer-scene">
+          <header class="document-controls">
+            <div class="display-switch">
+              <button type="button" class="is-active">编辑视图</button>
+              <button type="button">纯净阅读</button>
+            </div>
+            <button type="button" class="future-policy">
+              <span>以后打开</span>
+              <strong>Composer</strong>
+              <svg><use href="#i-chevron"/></svg>
+            </button>
+            <span class="controls-spacer"></span>
+            <button type="button" class="current-view-action" data-action="native">
+              <svg><use href="#i-file"/></svg>
+              <span>切到原生 Markdown</span>
+            </button>
+            <button type="button" class="comments-toggle" aria-pressed="false">
+              <svg><use href="#i-message"/></svg>
+              <span>评论</span>
+              <b>2</b>
+            </button>
+            <button type="button" class="intelligence-toggle" aria-pressed="true">
+              <svg><use href="#i-spark"/></svg>
+              <span>Intelligence</span>
+            </button>
+            <span class="control-divider"></span>
+            <button type="button" class="icon-control" aria-label="Undo"><svg><use href="#i-undo"/></svg></button>
+            <button type="button" class="icon-control" aria-label="Redo"><svg><use href="#i-redo"/></svg></button>
+          </header>
+
+          <div class="composer-layout">
+            <article class="document-page">
+              <span class="doc-kicker">PKM / 产品分析 / 信息流</span>
+              <h2>PKM 产品类别分析：从信息获取到输出</h2>
+              <p>个人知识管理并不是单一工具，而是一条从获取、整理、连接到输出的连续工作流。不同产品强调其中不同的环节。</p>
+              <div class="paragraph-block">
+                <span class="block-handle">⠿</span>
+                <p>对写作者来说，最自然的 AI 不是一个万能聊天框，而是当前内容旁边的候选动作。标题需要改名、段落需要扩写、列表需要补项，系统应该把最可能有用的动作带到当前块。</p>
+                <div class="block-actions">
+                  <button type="button">＋ 在下方插入</button>
+                  <button type="button">复制</button>
+                  <button type="button">评论</button>
+                  <button type="button" data-context-open="ask-copilot"><svg><use href="#i-spark"/></svg>问 Copilot</button>
+                </div>
+              </div>
+              <h3>信息管理产品的主要分化</h3>
+              <ul>
+                <li>收集型产品强调输入速度和来源覆盖。</li>
+                <li>组织型产品强调结构、标签和双向链接。</li>
+                <li>输出型产品强调提炼、发布和协作。</li>
+              </ul>
+              <button type="button" class="suggestion-inline" data-context-open="automatic-suggestion">
+                <svg><use href="#i-spark"/></svg>
+                <span><strong>自动建议</strong> 补一个“输出型产品”的具体例子</span>
+                <b>打开</b>
+              </button>
+            </article>
+
+            <aside class="intelligence-panel" aria-label="Intelligence panel">
+              <header class="panel-head">
+                <span class="brand-icon"><svg><use href="#i-spark"/></svg></span>
+                <span class="panel-title">
+                  <strong>Intelligence</strong>
+                  <small><i></i><span>正在跟随 · 当前文档</span></small>
+                </span>
+                <button type="button" class="panel-close" aria-label="Close"><svg><use href="#i-x"/></svg></button>
+              </header>
+
+              <nav class="panel-tabs">
+                <button type="button" class="is-active"><svg><use href="#i-message"/></svg>Copilot</button>
+                <button type="button"><svg><use href="#i-history"/></svg>History</button>
+              </nav>
+
+              <section class="context-toolbar">
+                <button type="button" class="scope-control">
+                  <svg><use href="#i-target"/></svg>
+                  <span>范围</span>
+                  <strong>当前文档</strong>
+                  <svg><use href="#i-chevron"/></svg>
+                </button>
+                <button type="button" class="update-policy">
+                  <i></i>
+                  <span>建议更新 · 停笔后</span>
+                  <svg><use href="#i-chevron"/></svg>
+                </button>
+              </section>
+
+              <div class="panel-scroll">
+                <section class="focus-card">
+                  <div>
+                    <span><i></i><span id="focus-source-label">正在关注</span></span>
+                    <strong id="focus-source-value">“AI 应该贴着当前块给出候选动作”</strong>
+                  </div>
+                  <small>15:29 · source v12</small>
+                </section>
+
+                <section class="brief-intro">
+                  <span class="eyebrow">CURRENT DOCUMENT</span>
+                  <h3>针对当前正文，接下来值得处理什么</h3>
+                  <p>建议只围绕当前文档和已定位的真实相关材料，不会自动写入正文。</p>
+                  <div class="brief-actions">
+                    <button type="button" class="primary"><svg><use href="#i-spark"/></svg>问 Copilot</button>
+                    <button type="button"><svg><use href="#i-refresh"/></svg>更新建议</button>
+                  </div>
+                </section>
+
+                <section class="suggestion-section">
+                  <header><strong>接下来可能要做</strong><b>3</b><span>按影响与正文顺序</span></header>
+                  <button type="button" class="suggestion-row">
+                    <span>01</span>
+                    <span><strong>补一个输出型 PKM 产品的例子</strong><small>当前列表只有分类，没有帮助读者形成判断的实例。</small></span>
+                  </button>
+                  <button type="button" class="suggestion-row">
+                    <span>02</span>
+                    <span><strong>解释“候选动作”与聊天框的边界</strong><small>这个判断是本节的核心，但目前只出现了一次。</small></span>
+                  </button>
+                </section>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="native-scene" hidden>
+          <header class="native-view-head">
+            <span>
+              <svg><use href="#i-file"/></svg>
+              <strong>PKM 产品类别分析.md</strong>
+              <small>原生 Markdown · source mode</small>
+            </span>
+            <button type="button" class="open-composer-action">
+              <svg><use href="#i-layout"/></svg>
+              在 Composer 中打开
+            </button>
+          </header>
+          <article class="native-editor">
+            <span class="line-no">1</span><code># PKM 产品类别分析：从信息获取到输出</code>
+            <span class="line-no">2</span><code></code>
+            <span class="line-no">3</span><code>个人知识管理并不是单一工具，而是一条从获取、整理、连接到输出的连续工作流。</code>
+            <span class="line-no">4</span><code></code>
+            <span class="line-no">5</span><code>## 信息管理产品的主要分化</code>
+            <span class="line-no">6</span><code></code>
+            <span class="line-no">7</span><code>- 收集型产品强调输入速度和来源覆盖。</code>
+            <span class="line-no">8</span><code>- 组织型产品强调结构、标签和双向链接。</code>
+            <span class="line-no">9</span><code>- 输出型产品强调提炼、发布和协作。</code>
+          </article>
+          <p class="native-action-note">推荐挂在当前 Markdown view header，不注入正文 DOM；视觉上保持轻量、随当前 leaf 工作。</p>
+        </section>
+      </div>
+    </section>
+
+    <footer class="design-notes">
+      <span><b>评论</b> 新 Composer 一律关闭；只有点评论/评论锚点时打开。</span>
+      <span><b>Intelligence</b> 首次默认关闭，记住最后一次手动开关；上下文入口只临时打开。</span>
+      <span><b>动画</b> 初始/恢复不滑入，只有用户明确打开时才有过渡。</span>
+      <span><b>视图切换</b> 当前 leaf 与未来默认策略是两个不同动作。</span>
+    </footer>
+  </main>
+  <script src="./mock.js"></script>
+</body>
+</html>

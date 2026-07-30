@@ -34,15 +34,10 @@ export interface ComposerFileEvent {
 }
 
 /**
- * Observes which document is "active" and lifecycle events on the vault. The
- * app adapter maps Obsidian's `workspace`/`vault` events onto this port; the
- * controller subscribes and never touches Obsidian directly.
+ * Observes lifecycle events on the vault. File identity is supplied by the
+ * versioned Composer leaf state; this port must never follow global active file.
  */
 export interface ComposerFileEventsPort {
-	/** Currently active Markdown file path, or null if none. */
-	getActiveFilePath(): string | null;
-	/** Subscribe to active-file changes. Returns an unsubscribe fn. */
-	onActiveFileChange(cb: (path: string | null) => void): () => void;
 	/** Subscribe to modify/rename/delete events. Returns an unsubscribe fn. */
 	onFileEvent(cb: (event: ComposerFileEvent) => void): () => void;
 }
@@ -52,6 +47,8 @@ export type ComposerNativePreviewFormat = 'base' | 'canvas' | 'excalidraw';
 export interface ComposerResourcePreviewRequest {
 	sourcePath: string;
 	target: string;
+	/** Composer-only exact range boundaries for a normal Markdown embed. */
+	range?: { startAnchor: string; endAnchor: string };
 }
 
 export type ComposerResourcePreviewState =
@@ -65,6 +62,9 @@ export type ComposerResourcePreviewState =
 		anchor?: string;
 		anchorResolved?: boolean;
 		textExcerpt?: string;
+		/** Verbatim source slice when the caller requested a persisted Composer range. */
+		rangeText?: string;
+		rangeResolved?: boolean;
 		pageCount?: number;
 	}
 	| { status: 'missing'; requestedTarget: string }
@@ -103,22 +103,58 @@ export interface ComposerNativePreviewPort {
 export interface ComposerEmbedSelectionAnchorRequest {
 	/** Already-resolved Vault path of the embedded Markdown note. */
 	targetPath: string;
-	/** Text content of one fully selected rendered Markdown block. */
-	selectedBlockText: string;
+	/** Ordered visible texts of complete semantic Markdown blocks resolved from the preview selection. */
+	selectedBlockTexts: string[];
+	/**
+	 * Lower-priority semantic interpretations of the same DOM selection. Native
+	 * renderers may add a wrapper that is not a Markdown block; the app tries
+	 * these only when the primary interpretation cannot map losslessly.
+	 */
+	fallbackBlockTextGroups?: string[][];
+	/** Exact Composer-owned anchors from the currently persisted preview, if any. */
+	previousSelection?: ComposerManagedEmbedSelectionAnchors;
 }
 
-export interface ComposerEmbedSelectionAnchorResult {
-	/** Bare ID; callers build the Obsidian subpath as `#^${anchor}`. */
-	anchor: string;
-	/** `true` when the matching source block already carried an anchor. */
-	reused: boolean;
+export type ComposerManagedEmbedSelectionAnchors =
+	| { kind: 'block'; anchor: string }
+	| { kind: 'range'; startAnchor: string; endAnchor: string };
+
+export type ComposerEmbedSelectionAnchorResult =
+	| {
+		kind: 'block';
+		/** Bare ID; callers build the Obsidian subpath as `#^${anchor}`. */
+		anchor: string;
+		/** `true` when the matching source block already carried an anchor. */
+		reused: boolean;
+	}
+	| {
+		kind: 'range';
+		startAnchor: string;
+		endAnchor: string;
+		reused: boolean;
+	};
+
+export type ComposerEmbedSelectionAnchorMutation =
+	& ComposerEmbedSelectionAnchorResult
+	& {
+		/**
+		 * Compensate the target-note mutation when the parent Composer commit
+		 * fails. Implementations must refuse to overwrite a newer target edit.
+		 */
+		rollback(): Promise<void>;
+	};
+
+export interface ComposerEmbedSelectionAnchorReleaseRequest {
+	targetPath: string;
+	selection: ComposerManagedEmbedSelectionAnchors;
 }
 
 /**
  * App-owned two-file bridge for persisted Markdown embed selections. The target
- * note write is revision guarded; the owning Composer document updates its
- * embed token through the normal transaction hub afterwards.
+ * note write is revision guarded and compensatable; the owning Composer
+ * document updates its embed token through the normal transaction hub.
  */
 export interface ComposerEmbedSelectionAnchorPort {
-	persistSelection(request: ComposerEmbedSelectionAnchorRequest): Promise<ComposerEmbedSelectionAnchorResult>;
+	persistSelection(request: ComposerEmbedSelectionAnchorRequest): Promise<ComposerEmbedSelectionAnchorMutation>;
+	releaseSelection(request: ComposerEmbedSelectionAnchorReleaseRequest): Promise<{ rollback(): Promise<void> }>;
 }

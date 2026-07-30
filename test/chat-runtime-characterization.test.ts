@@ -362,7 +362,6 @@ function testWebSearchInjectionRules(): void {
                 activeCopilotConfig: null,
                 activeEmbeddingConfig: null,
                 activeWebSearchConfig: { profileId: 'p-web', modelId: 'm-primary' },
-                sdkSettings: { cliPathOverride: null, subprocessPoolSize: 1, warmupOnLoad: false },
             },
             () => { /* no persistence in tests */ },
         );
@@ -393,7 +392,6 @@ function testWebSearchInjectionRules(): void {
                 activeCopilotConfig: null,
                 activeEmbeddingConfig: null,
                 activeWebSearchConfig: { profileId: 'p-web', modelId: 'm-primary' },
-                sdkSettings: { cliPathOverride: null, subprocessPoolSize: 1, warmupOnLoad: false },
             },
             () => { /* no persistence in tests */ },
         );
@@ -425,7 +423,6 @@ function testWebSearchInjectionRules(): void {
                 activeCopilotConfig: null,
                 activeEmbeddingConfig: null,
                 activeWebSearchConfig: null,
-                sdkSettings: { cliPathOverride: null, subprocessPoolSize: 1, warmupOnLoad: false },
             },
             () => { /* no persistence in tests */ },
         );

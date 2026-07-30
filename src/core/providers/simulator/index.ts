@@ -1,7 +1,6 @@
 export {
 	createSimulatorLanguageModel,
 	normalizeSimulatorBaseUrl,
-	simulatorAgentSdkBaseUrl,
 	simulatorHealthUrl,
 	simulatorRequestHeaders,
 	SIMULATOR_DEFAULTS,

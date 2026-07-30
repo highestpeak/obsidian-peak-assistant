@@ -10,7 +10,7 @@ const forbiddenValues = [
 	...Object.values(config.errors),
 	config.workflow.recoveryMissingNotePath,
 	config.fixedResponses.escalationReason,
-	config.copy.en.section[0],
+	config.copy.en.sections[0][0],
 ];
 const leaked = forbiddenValues.filter((value) => bundle.includes(value));
 if (leaked.length > 0) {

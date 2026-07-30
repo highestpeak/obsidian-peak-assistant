@@ -26,8 +26,7 @@ import { z } from 'zod';
 import { PromptId } from '@/core/types/prompt';
 import { TemplateManager } from '@/core/template/TemplateManager';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
-import { collectText } from '@/service/agents/core/sdkMessageAdapter';
+import { runHarnessText } from '@/service/agents/harness/HarnessModelRunner';
 import type { ToolDef } from '@/service/agents/harness/tool/types';
 import { ok } from '@/service/agents/harness/tool/types';
 import type { ModelCapabilities } from '@/core/providers/types';
@@ -202,7 +201,9 @@ function buildWebSearchTool(deps: ChatToolDeps): ToolDef {
 	// resolver already confirmed it exists. If a subsequent settings edit
 	// removes the profile the tool call will surface the same "unavailable"
 	// path as any other failed provider query.
-	const webProfileId = ProfileRegistry.getInstance().getActiveWebSearchProfile()?.id ?? null;
+	const activeWebBinding = ProfileRegistry.getInstance().getActiveWebSearchConfig();
+	const webProfileId = activeWebBinding?.profile.id ?? null;
+	const webModelId = activeWebBinding?.modelId ?? null;
 	return {
 		name: 'web_search',
 		description:
@@ -224,12 +225,15 @@ function buildWebSearchTool(deps: ChatToolDeps): ToolDef {
 							.find((p) => p.id === webProfileId)
 					: ProfileRegistry.getInstance().getActiveWebSearchProfile();
 				if (!webProfile) return ok('Web search error: no active Web Search profile');
-				const messages = queryWithProfile(deps.app as any, deps.pluginId, webProfile, {
+				const { text } = await runHarnessText({
+					loopId: `${deps.pluginId}-chat-web-search-${crypto.randomUUID()}`,
+					profile: webProfile,
+					modelId: webModelId ?? webProfile.primaryModel,
 					prompt: args.query,
 					systemPrompt,
-					maxTurns: 1,
+					maxSteps: 1,
 				});
-				const answer = (await collectText(messages)) || 'No results found.';
+				const answer = text || 'No results found.';
 				if (receipts) {
 					for (const source of extractWebSourcesFromText(answer)) {
 						receipts.recordWebSource(source);

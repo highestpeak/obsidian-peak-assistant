@@ -37,6 +37,7 @@ export const ComposerBlockKindSchema = z.enum([
 ]);
 
 export const ComposerUnitKindSchema = z.enum([
+	'paragraph-line',
 	'list-item',
 	'table-row',
 	'table-cell',
@@ -234,6 +235,35 @@ export const ComposerTextPatchPayloadSchema = z.object({
 	replacementText: z.string(),
 });
 export type ComposerTextPatchPayload = z.infer<typeof ComposerTextPatchPayloadSchema>;
+
+/**
+ * Payload of a `block-insertion` result envelope. The candidate stays separate
+ * from its source block; acceptance inserts this text as one new block after
+ * the frozen target anchor.
+ */
+export const ComposerBlockInsertionPayloadSchema = z.object({
+	insertedText: z.string().min(1),
+});
+export type ComposerBlockInsertionPayload = z.infer<typeof ComposerBlockInsertionPayloadSchema>;
+
+/**
+ * Model-facing proposal for `list-item-patch`. `insertionIndex` is a gap index:
+ * 0 means before the first top-level item; itemCount means after the last.
+ */
+export const ComposerListItemPatchProposalSchema = z.object({
+	insertionIndex: z.number().int().nonnegative(),
+	itemMarkdown: z.string().min(1),
+});
+export type ComposerListItemPatchProposal = z.infer<typeof ComposerListItemPatchProposalSchema>;
+
+/**
+ * Materialized list insertion. The original list remains the visible source
+ * during review; acceptance atomically writes the prevalidated replacement.
+ */
+export const ComposerListItemPatchPayloadSchema = ComposerListItemPatchProposalSchema.extend({
+	replacementText: z.string().min(1),
+});
+export type ComposerListItemPatchPayload = z.infer<typeof ComposerListItemPatchPayloadSchema>;
 
 /** A read-only model explanation. It never carries a writeback payload. */
 export const ComposerAnalysisPayloadSchema = z.object({

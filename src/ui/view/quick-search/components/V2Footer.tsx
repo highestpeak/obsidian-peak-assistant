@@ -5,13 +5,14 @@ import { Button } from '@/ui/component/shared-ui/button';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import { exportGraphJson, useAIGraphStore } from '../store/aiGraphStore';
 import { useQuickSearchHost } from '../hooks/useQuickSearchHost';
+import type { Round, V2Section } from '@/core/search/v2SessionTypes';
+import { isReportReadyForFollowup } from './reportState';
 
 type CopyTarget = 'process' | 'report' | 'graph';
 
-function buildProcessText(): string {
-	const s = useSearchSessionStore.getState();
+function formatProcessSteps(steps: Round['steps']): string {
 	const lines: string[] = [];
-	for (const step of s.v2Steps) {
+	for (const step of steps) {
 		if (step.status !== 'done') continue;
 		const dur = step.endedAt && step.startedAt
 			? `${((step.endedAt - step.startedAt) / 1000).toFixed(1)}s`
@@ -21,12 +22,49 @@ function buildProcessText(): string {
 	return lines.join('\n');
 }
 
-function buildReportText(): string {
+function buildProcessText(): string {
 	const s = useSearchSessionStore.getState();
-	return s.v2PlanSections
+	const blocks = s.rounds.map((round) => {
+		const body = formatProcessSteps(round.steps);
+		return body ? `## Round ${round.index + 1}: ${round.query}\n\n${body}` : '';
+	});
+	const current = formatProcessSteps(s.v2Steps);
+	if (current) {
+		blocks.push(s.rounds.length > 0
+			? `## Round ${s.currentRoundIndex + 1}: ${s.query}\n\n${current}`
+			: current);
+	}
+	return blocks.filter(Boolean).join('\n\n');
+}
+
+function formatReportSections(sections: V2Section[]): string {
+	return sections
 		.filter((sec) => sec.content)
 		.map((sec) => '## ' + sec.title + '\n\n' + sec.content)
 		.join('\n\n');
+}
+
+function buildReportTextFromParts(rounds: Round[], sections: V2Section[], summary: string): string {
+	const blocks = rounds.map((round) => {
+		const parts = [
+			`# Round ${round.index + 1}: ${round.query}`,
+			round.summary ? `## Executive Summary\n\n${round.summary}` : '',
+			formatReportSections(round.sections),
+		].filter(Boolean);
+		return parts.join('\n\n');
+	});
+	const currentParts = [
+		rounds.length > 0 ? `# Round ${rounds.length + 1}` : '',
+		summary ? `## Executive Summary\n\n${summary}` : '',
+		formatReportSections(sections),
+	].filter(Boolean);
+	if (currentParts.length > 0) blocks.push(currentParts.join('\n\n'));
+	return blocks.join('\n\n');
+}
+
+function buildReportText(): string {
+	const state = useSearchSessionStore.getState();
+	return buildReportTextFromParts(state.rounds, state.v2PlanSections, state.v2Summary);
 }
 
 function buildGraphText(): string {
@@ -34,7 +72,7 @@ function buildGraphText(): string {
 }
 
 const COPY_TARGETS: Array<{ id: CopyTarget; icon: React.ElementType; label: string }> = [
-	{ id: 'process', icon: Activity, label: 'Process' },
+	{ id: 'process', icon: Activity, label: 'Activity' },
 	{ id: 'report', icon: Eye, label: 'Report' },
 	{ id: 'graph', icon: Network, label: 'Graph' },
 ];
@@ -43,11 +81,10 @@ const COPY_TARGETS: Array<{ id: CopyTarget; icon: React.ElementType; label: stri
 export const V2Footer: React.FC<{
 	onContinue: () => void;
 	onSynthesize: () => void;
-	showContinueAnalysis: boolean;
 	onSave: () => void;
 	onSaveGraph?: () => void;
 	onOpenInChat: () => void;
-}> = ({ onContinue, onSynthesize, showContinueAnalysis, onSave, onSaveGraph, onOpenInChat }) => {
+}> = ({ onContinue, onSynthesize, onSave, onSaveGraph, onOpenInChat }) => {
 	const host = useQuickSearchHost();
 	const v2View = useSearchSessionStore((s) => s.v2View);
 	const usage = useSearchSessionStore((s) => s.usage);
@@ -55,25 +92,29 @@ export const V2Footer: React.FC<{
 	const setV2View = useSearchSessionStore((s) => s.setV2View);
 	const rounds = useSearchSessionStore((s) => s.rounds);
 	const v2PlanSections = useSearchSessionStore((s) => s.v2PlanSections);
+	const v2Summary = useSearchSessionStore((s) => s.v2Summary);
+	const v2SummaryStreaming = useSearchSessionStore((s) => s.v2SummaryStreaming);
 	const lastSavedPath = useSearchSessionStore((s) => s.autoSaveState.lastSavedPath);
 	const hasGraphData = useAIGraphStore((s) => s.graphData !== null);
 	const [showToc, setShowToc] = useState(false);
 	const [showCopyMenu, setShowCopyMenu] = useState(false);
 	const [copied, setCopied] = useState<CopyTarget | 'default' | null>(null);
 	const copyMenuRef = useRef<HTMLDivElement>(null);
-	const copyBtnRef = useRef<HTMLDivElement>(null);
+	const copyBtnRef = useRef<HTMLButtonElement>(null);
 	const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-	const reportMarkdown = v2PlanSections
-		.filter((sec) => sec.content)
-		.map((sec) => '## ' + sec.title + '\n\n' + sec.content)
-		.join('\n\n');
+	const reportMarkdown = buildReportTextFromParts(rounds, v2PlanSections, v2Summary);
+	const reportReady = isReportReadyForFollowup(
+		v2PlanSections,
+		v2Summary,
+		v2SummaryStreaming,
+	);
 
 	const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 	const durationStr = duration ? `${(duration / 1000).toFixed(0)}s` : '';
 
 	const views = [
-		{ id: 'process' as const, icon: Activity, label: 'Process' },
+		{ id: 'process' as const, icon: Activity, label: 'Activity' },
 		{ id: 'report' as const, icon: Eye, label: 'Report' },
 		{ id: 'sources' as const, icon: FileText, label: 'Sources' },
 	];
@@ -122,7 +163,7 @@ export const V2Footer: React.FC<{
 		if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
 	};
 
-	const copyLabel = defaultCopyTarget === 'process' ? 'Copy Process' : defaultCopyTarget === 'graph' ? 'Copy Graph' : 'Copy Report';
+	const copyLabel = defaultCopyTarget === 'process' ? 'Copy Activity' : defaultCopyTarget === 'graph' ? 'Copy Graph' : 'Copy Report';
 
 	return (
 		<div className="pktw-relative pktw-border-t pktw-border-pk-border pktw-bg-pk-background pktw-px-3 pktw-py-2 pktw-flex pktw-items-center pktw-justify-between pktw-flex-shrink-0 pktw-min-w-0 pktw-gap-2 pktw-flex-wrap">
@@ -138,48 +179,40 @@ export const V2Footer: React.FC<{
 			{/* Left: View tabs */}
 			<div className="pktw-flex pktw-items-center pktw-gap-1 pktw-flex-shrink-0">
 				{views.slice(0, 2).map(({ id, icon: Icon, label }) => (
-					<div
+					<Button
 						key={id}
+						variant={v2View === id ? 'default' : 'ghost'}
+						size="sm"
 						onClick={() => setV2View(id)}
-						className={`pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-transition-all pktw-cursor-pointer ${
-							id === 'report' ? 'pktw-rounded-l-lg' : 'pktw-rounded-lg'
-						} ${
-							v2View === id
-								? 'pktw-bg-pk-accent pktw-text-pk-accent-fg'
-								: 'pktw-text-pk-foreground-muted hover:pktw-bg-pk-surface-sunken'
-						}`}
+						className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 pktw-gap-1.5 pktw-rounded-lg !pktw-px-3 pktw-text-sm"
 					>
-						<Icon className="pktw-w-3.5 pktw-h-3.5" />
+						<Icon className="pktw-h-4 pktw-w-4" />
 						{label}
-					</div>
+					</Button>
 				))}
 				{/* TOC toggle — icon only, visually grouped with Report button */}
 				{reportMarkdown.length > 0 && (
-					<div
+					<Button
+						variant={showToc ? 'secondary' : 'ghost'}
+						size="icon"
 						onClick={() => setShowToc((prev) => !prev)}
-						className={`pktw-flex pktw-items-center pktw-px-1.5 pktw-py-1.5 pktw-rounded-r-lg pktw-transition-all pktw-cursor-pointer pktw-border-l pktw-border-pk-border ${
-							showToc
-								? 'pktw-bg-pk-accent/10 pktw-text-pk-accent'
-								: 'pktw-text-pk-foreground-muted hover:pktw-bg-pk-surface-sunken'
-						}`}
 						title="Table of Contents"
+						className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-w-8 !pktw-min-w-8 !pktw-max-w-8 !pktw-p-0"
 					>
-						<List className="pktw-w-3.5 pktw-h-3.5" />
-					</div>
+						<List className="pktw-h-4 pktw-w-4" />
+					</Button>
 				)}
 				{views.slice(2).map(({ id, icon: Icon, label }) => (
-					<div
+					<Button
 						key={id}
+						variant={v2View === id ? 'default' : 'ghost'}
+						size="sm"
 						onClick={() => setV2View(id)}
-						className={`pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-rounded-lg pktw-transition-all pktw-cursor-pointer ${
-							v2View === id
-								? 'pktw-bg-pk-accent pktw-text-pk-accent-fg'
-								: 'pktw-text-pk-foreground-muted hover:pktw-bg-pk-surface-sunken'
-						}`}
+						className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 pktw-gap-1.5 pktw-rounded-lg !pktw-px-3 pktw-text-sm"
 					>
-						<Icon className="pktw-w-3.5 pktw-h-3.5" />
+						<Icon className="pktw-h-4 pktw-w-4" />
 						{label}
-					</div>
+					</Button>
 				))}
 			</div>
 
@@ -194,16 +227,18 @@ export const V2Footer: React.FC<{
 			<div className="pktw-flex pktw-items-center pktw-gap-1 pktw-flex-shrink-0">
 				{/* Copy button with hover menu */}
 				<div className="pktw-relative">
-					<div
+					<Button
 						ref={copyBtnRef}
+						variant="ghost"
+						size="icon"
 						onClick={handleDefaultCopy}
 						onMouseEnter={startHoverTimer}
 						onMouseLeave={startHideTimer}
-						className="pktw-p-1.5 pktw-text-pk-text-secondary hover:pktw-bg-pk-surface-sunken pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
+						className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-w-8 !pktw-min-w-8 !pktw-max-w-8 !pktw-p-0 pktw-text-pk-text-secondary"
 						title={copied ? 'Copied!' : copyLabel}
 					>
-						{copied ? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-success" /> : <Copy className="pktw-w-3.5 pktw-h-3.5" />}
-					</div>
+						{copied ? <Check className="pktw-h-4 pktw-w-4 pktw-text-pk-success" /> : <Copy className="pktw-h-4 pktw-w-4" />}
+					</Button>
 					{showCopyMenu && (
 						<div
 							ref={copyMenuRef}
@@ -212,79 +247,89 @@ export const V2Footer: React.FC<{
 							className="pktw-absolute pktw-bottom-full pktw-right-0 pktw-mb-1 pktw-bg-popover pktw-border pktw-border-pk-border pktw-rounded-lg pktw-shadow-lg pktw-py-1 pktw-z-50 pktw-min-w-[140px]"
 						>
 							{COPY_TARGETS.map(({ id, icon: Icon, label }) => (
-								<div
+								<Button
 									key={id}
+									variant="ghost"
+									size="sm"
 									onClick={() => { void doCopy(id); setShowCopyMenu(false); }}
-									className={`pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-cursor-pointer pktw-transition-colors ${
+									className={`!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 pktw-w-full pktw-justify-start pktw-gap-2 pktw-rounded-none !pktw-px-3 pktw-text-sm ${
 										id === defaultCopyTarget
 											? 'pktw-text-pk-accent pktw-font-medium pktw-bg-pk-accent/5'
-											: 'pktw-text-pk-foreground hover:pktw-bg-pk-surface-sunken'
+											: 'pktw-text-pk-foreground'
 									}`}
 								>
-									<Icon className="pktw-w-3.5 pktw-h-3.5" />
+									<Icon className="pktw-h-4 pktw-w-4" />
 									<span>{label}</span>
 									{copied === id && <Check className="pktw-w-3 pktw-h-3 pktw-text-pk-success pktw-ml-auto" />}
-								</div>
+								</Button>
 							))}
 						</div>
 					)}
 				</div>
-				<div
+				<Button
+					variant="ghost"
+					size="icon"
 					onClick={onSave}
-					className="pktw-p-1.5 pktw-text-pk-text-secondary hover:pktw-bg-pk-surface-sunken pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
+					className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-w-8 !pktw-min-w-8 !pktw-max-w-8 !pktw-p-0 pktw-text-pk-text-secondary"
 					title="Export analysis as Markdown note"
 				>
-					<Save className="pktw-w-3.5 pktw-h-3.5" />
-				</div>
+					<Save className="pktw-h-4 pktw-w-4" />
+				</Button>
 				{hasGraphData && onSaveGraph && (
-					<div
+					<Button
+						variant="ghost"
+						size="icon"
 						onClick={onSaveGraph}
-						className="pktw-p-1.5 pktw-text-pk-text-secondary hover:pktw-bg-pk-surface-sunken pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
+						className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-w-8 !pktw-min-w-8 !pktw-max-w-8 !pktw-p-0 pktw-text-pk-text-secondary"
 						title="Save Graph to Vault"
 					>
-						<Download className="pktw-w-3.5 pktw-h-3.5" />
-					</div>
+						<Download className="pktw-h-4 pktw-w-4" />
+					</Button>
 				)}
 				{lastSavedPath && (
-					<div
+					<Button
+						variant="ghost"
+						size="icon"
 						onClick={() => {
 							host.openVaultPath(lastSavedPath, { newLeaf: false });
 						}}
-						className="pktw-p-1.5 pktw-text-pk-text-secondary hover:pktw-bg-pk-surface-sunken pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
+						className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-w-8 !pktw-min-w-8 !pktw-max-w-8 !pktw-p-0 pktw-text-pk-text-secondary"
 						title="Open saved analysis note"
 					>
-						<FileSearch className="pktw-w-3.5 pktw-h-3.5" />
-					</div>
+						<FileSearch className="pktw-h-4 pktw-w-4" />
+					</Button>
 				)}
 				{rounds.length >= 2 && (
 					<Button
 						variant="outline"
 						size="sm"
 						onClick={onSynthesize}
-						className="pktw-text-xs"
+						className="!pktw-h-9 !pktw-min-h-9 !pktw-max-h-9 !pktw-px-3 pktw-text-xs"
 					>
 						<Sparkles className="pktw-w-3.5 pktw-h-3.5 pktw-mr-1" />
 						Synthesize All
 					</Button>
 				)}
-				<div
-					onClick={onContinue}
-					className={`pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-rounded-lg pktw-transition-all pktw-cursor-pointer ${
-						showContinueAnalysis
-							? 'pktw-bg-pk-accent/10 pktw-text-pk-accent'
-							: 'pktw-text-pk-foreground-muted hover:pktw-bg-pk-surface-sunken'
-					}`}
-				>
-					<MessageSquare className="pktw-w-3.5 pktw-h-3.5" />
-					Continue
-				</div>
-				<div
+				{reportReady && v2View !== 'report' && (
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={onContinue}
+						className="!pktw-h-9 !pktw-min-h-9 !pktw-max-h-9 pktw-gap-1.5 pktw-rounded-lg !pktw-px-3 pktw-text-sm"
+					>
+						<MessageSquare className="pktw-h-4 pktw-w-4" />
+						Ask follow-up
+					</Button>
+				)}
+				<Button
+					variant="default"
+					size="sm"
 					onClick={onOpenInChat}
-					className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-text-pk-accent-fg pktw-bg-pk-accent hover:pktw-bg-pk-accent-hover pktw-rounded-lg pktw-transition-colors pktw-cursor-pointer"
+					className="!pktw-h-9 !pktw-min-h-9 !pktw-max-h-9 pktw-gap-1.5 pktw-rounded-lg !pktw-px-3 pktw-text-sm"
 				>
 					Open in Chat
-					<ExternalLink className="pktw-w-3.5 pktw-h-3.5" />
-				</div>
+					<ExternalLink className="pktw-h-4 pktw-w-4" />
+				</Button>
 			</div>
 		</div>
 	);

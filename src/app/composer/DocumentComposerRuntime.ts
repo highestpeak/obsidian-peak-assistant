@@ -18,6 +18,7 @@ import {
 	ComposerTransactionHub,
 	ImageCapabilityCoordinator,
 	IntelligenceRuntime,
+	ComposerWorkspaceIntelligenceRuntime,
 	detectOpenWritingMoves,
 	type ComposerCapabilityDocumentRuntime,
 	type ComposerCommentPersistencePort,
@@ -34,11 +35,14 @@ import {
 	type BriefSensingPolicy,
 	type ImageDomainConfigProvider,
 	type IntelligenceTelemetryPort,
+	type ComposerWorkspaceStatePersistencePort,
+	type FrozenComposerReviewSnapshot,
 	type OpenWritingMovesConfig,
 	type VaultPropertyScanPort,
 } from '@/service/composer';
 import {
 	DEFAULT_TRANSACTION_CONFIG,
+	type ComposerCapabilityProjectionPort,
 	type ComposerModelSelectionPort,
 	type ComposerNativeEmbedRendererPort,
 	type ComposerTransactionConfig,
@@ -55,8 +59,18 @@ import {
 } from './DocumentComposerController';
 import type { ComposerCapabilityRuntimeFactory } from './capabilities/composeComposerCapabilityRuntime';
 import { CompositeComposerCandidateRuntime } from './CompositeComposerCandidateRuntime';
+import type { ComposerDocumentRouter } from './ComposerDocumentRouter';
 
 export interface DocumentComposerRuntimeAdapters {
+	/** App-owned Markdown/Composer navigation policy and same-leaf converter. */
+	navigation?: ComposerDocumentRouter;
+	/** Persisted workspace preference for explicit Intelligence open/close. */
+	intelligenceVisibilityPreference?: {
+		get(): boolean;
+		set(open: boolean): Promise<void>;
+	};
+	/** Canonical JSONL persistence for workspace scope, segments and Frozen Runs. */
+	workspaceStatePersistence?: ComposerWorkspaceStatePersistencePort;
 	/** Per-document comment JSON persistence (plugin-owned store). */
 	commentPersistence?: ComposerCommentPersistencePort;
 	/** Vault link metadata (Obsidian metadata cache). */
@@ -101,6 +115,14 @@ export interface DocumentComposerRuntimeAdapters {
 export class DocumentComposerRuntime {
 	private transactionConfig: ComposerTransactionConfig;
 	private capabilityFactory: ComposerCapabilityRuntimeFactory | null = null;
+	private readonly documentEntries = new Map<string, {
+		runtime: ComposerEditingRuntime;
+		refs: number;
+		lastAccessedAt: number;
+		offRun?: () => void;
+		offReview?: () => void;
+		reviewsRestorePromise?: Promise<void>;
+	}>();
 
 	private readonly commentPersistence?: ComposerCommentPersistencePort;
 	private readonly linkPort?: ComposerLinkMetadataPort;
@@ -116,6 +138,9 @@ export class DocumentComposerRuntime {
 	private readonly embedSelectionAnchorPort?: ComposerEmbedSelectionAnchorPort;
 	private readonly blockDraftGeneration?: ComposerBlockDraftGenerationPort;
 	private readonly modelSelection?: ComposerModelSelectionPort;
+	private readonly intelligenceVisibilityPreference?: DocumentComposerRuntimeAdapters['intelligenceVisibilityPreference'];
+	readonly navigation?: ComposerDocumentRouter;
+	readonly workspaceIntelligence: ComposerWorkspaceIntelligenceRuntime;
 
 	constructor(
 		private readonly source: ObsidianComposerSourceAdapter,
@@ -140,6 +165,20 @@ export class DocumentComposerRuntime {
 		this.embedSelectionAnchorPort = adapters.embedSelectionAnchorPort;
 		this.blockDraftGeneration = adapters.blockDraftGeneration;
 		this.modelSelection = adapters.modelSelection;
+		this.intelligenceVisibilityPreference = adapters.intelligenceVisibilityPreference;
+		this.navigation = adapters.navigation;
+		this.workspaceIntelligence = new ComposerWorkspaceIntelligenceRuntime(
+			adapters.workspaceStatePersistence,
+		);
+		void this.workspaceIntelligence.hydrate();
+	}
+
+	getIntelligenceManualOpen(): boolean {
+		return this.intelligenceVisibilityPreference?.get() ?? false;
+	}
+
+	async setIntelligenceManualOpen(open: boolean): Promise<void> {
+		await this.intelligenceVisibilityPreference?.set(open);
 	}
 
 	/** Override the transaction config once the runtime JSON resolves (async). */
@@ -147,14 +186,137 @@ export class DocumentComposerRuntime {
 		this.transactionConfig = config;
 	}
 
-	/** A fresh lifecycle controller for one view instance (with editing composition). */
-	createController(): DocumentComposerController {
+	/** A fresh lifecycle controller for one explicitly file-bound view instance. */
+	createController(
+		originHostId?: string,
+		originHost: 'composer' | 'markdown' = 'composer',
+	): DocumentComposerController {
 		return new DocumentComposerController({
 			source: this.source,
 			events: this.events,
 			revisionService: this.revisionService,
-			editing: { compose: (session) => this.composeEditing(session) },
+			originHostId,
+			originHost,
+			editing: {
+				acquire: (session, hostId, host) => this.acquireEditing(session, hostId, host),
+				rename: (oldPath, newPath, session) => this.renameDocument(oldPath, newPath, session),
+			},
 		});
+	}
+
+	/**
+	 * Acquire the canonical app-owned runtime for a document. Closing a leaf only
+	 * releases its reference; pending candidates and active runs survive until
+	 * plugin shutdown.
+	 */
+	acquireEditing(
+		session: ComposerDocumentSession,
+		originHostId?: string,
+		originHost: 'composer' | 'markdown' = 'composer',
+	): {
+		runtime: ComposerEditingRuntime;
+		release(): void;
+	} {
+		let entry = this.documentEntries.get(session.filePath);
+		if (!entry) {
+			const runtime = this.composeEditing(session);
+			const offRun = runtime.candidateRuntime?.onRunEvent((event) => {
+				const review = this.snapshotCandidateReview(runtime, event.candidateId);
+				if (event.type === 'run-started') {
+					const candidate = runtime.hub
+						.projection()
+						.candidates
+						.find((item) => item.candidateId === event.candidateId);
+					if (!candidate) return;
+					this.workspaceIntelligence.startRun({
+						event,
+						candidate,
+						documentId: runtime.session.snapshot.documentId,
+						filePath: runtime.session.filePath,
+						originHost: 'composer',
+						...(review ? { review } : {}),
+					});
+					return;
+				}
+				this.workspaceIntelligence.applyRunEvent(event, review);
+			});
+			const offReview = runtime.hub.on((event) => {
+				if (event.type === 'committed' && event.transaction.runId) {
+					this.workspaceIntelligence.markRunAccepted(
+						event.transaction.runId,
+						event.transaction.transactionId,
+					);
+					return;
+				}
+				if (event.type === 'candidate-changed') {
+					if (event.status === 'discarded') {
+						this.workspaceIntelligence.markCandidateNotAdopted(event.candidateId);
+						return;
+					}
+					if (event.status === 'accepted') {
+						const review = this.snapshotCandidateReview(runtime, event.candidateId);
+						if (review) {
+							this.workspaceIntelligence.updateCandidateReview(
+								event.candidateId,
+								review,
+							);
+						}
+						this.workspaceIntelligence.markCandidateAccepted(event.candidateId);
+						return;
+					}
+					this.deferCandidateReviewSync(runtime, event.candidateId);
+					return;
+				}
+				if (event.type !== 'candidates-revalidated') return;
+				for (const candidateId of event.staleIds) {
+					this.deferCandidateReviewSync(runtime, candidateId);
+				}
+			});
+			entry = {
+				runtime,
+				refs: 0,
+				lastAccessedAt: Date.now(),
+				...(offRun ? { offRun } : {}),
+				offReview,
+			};
+			this.documentEntries.set(session.filePath, entry);
+		} else if (entry.runtime.session.baseRevision !== session.baseRevision) {
+			const previous = entry.runtime.session.snapshot;
+			entry.runtime.hub.adoptExternalSnapshot(session.snapshot);
+			entry.runtime.comments.revalidate(previous, entry.runtime.session.snapshot);
+			entry.runtime.intelligence?.onReparse(previous, entry.runtime.session.snapshot);
+			this.workspaceIntelligence.markDocumentRunsStale(previous.documentId);
+		}
+		this.workspaceIntelligence.trackDocument(
+			entry.runtime.session.snapshot.documentId,
+			entry.runtime.session.filePath,
+		);
+		entry.reviewsRestorePromise ??= this.workspaceIntelligence.hydrate().then(() => {
+			this.restorePersistedReviews(entry!.runtime);
+		});
+		entry.refs += 1;
+		entry.lastAccessedAt = Date.now();
+		let released = false;
+		return {
+			runtime: this.forOriginHost(entry.runtime, originHostId, originHost),
+			release: () => {
+				if (released) return;
+				released = true;
+				entry!.refs = Math.max(0, entry!.refs - 1);
+				entry!.lastAccessedAt = Date.now();
+			},
+		};
+	}
+
+	/** Preserve the document runtime and stable document id across a vault rename. */
+	renameDocument(oldPath: string, newPath: string, session: ComposerDocumentSession): void {
+		if (oldPath === newPath) return;
+		const entry = this.documentEntries.get(oldPath);
+		if (!entry) return;
+		if (entry.runtime.session !== session) return;
+		this.documentEntries.delete(oldPath);
+		this.documentEntries.set(newPath, entry);
+		this.workspaceIntelligence.renameDocument(session.snapshot.documentId, newPath);
 	}
 
 	/**
@@ -210,6 +372,7 @@ export class DocumentComposerRuntime {
 			transactionConfig: this.transactionConfig,
 			comments,
 			intelligence,
+			workspaceIntelligence: this.workspaceIntelligence,
 			...(this.linkPort ? { linkPort: this.linkPort } : {}),
 			...(this.vaultInventory ? { vaultInventory: this.vaultInventory } : {}),
 			...(this.formulaDetailGenerator ? { formulaDetailGenerator: this.formulaDetailGenerator } : {}),
@@ -257,7 +420,100 @@ export class DocumentComposerRuntime {
 
 	/** Detach the shared Obsidian event listeners. Idempotent. */
 	dispose(): void {
+		for (const entry of this.documentEntries.values()) {
+			entry.offRun?.();
+			entry.offReview?.();
+			for (const candidate of entry.runtime.hub.projection().candidates) {
+				if (candidate.status !== 'streaming') continue;
+				entry.runtime.candidateRuntime?.cancel(candidate.candidateId);
+			}
+			entry.runtime.intelligence?.dispose();
+		}
+		this.documentEntries.clear();
+		this.navigation?.dispose();
 		this.events.dispose();
+	}
+
+	private snapshotCandidateReview(
+		runtime: ComposerEditingRuntime,
+		candidateId: string,
+	): FrozenComposerReviewSnapshot | undefined {
+		const candidate = runtime.hub
+			.projection()
+			.candidates
+			.find((item) => item.candidateId === candidateId);
+		const runtimeSnapshot =
+			runtime.candidateRuntime?.exportCandidateRuntimeState?.(candidateId);
+		if (!candidate || !runtimeSnapshot) return undefined;
+		return { candidate, runtime: runtimeSnapshot };
+	}
+
+	private deferCandidateReviewSync(
+		runtime: ComposerEditingRuntime,
+		candidateId: string,
+	): void {
+		void Promise.resolve().then(() => {
+			const review = this.snapshotCandidateReview(runtime, candidateId);
+			if (!review) return;
+			this.workspaceIntelligence.updateCandidateReview(candidateId, review);
+		});
+	}
+
+	private restorePersistedReviews(runtime: ComposerEditingRuntime): void {
+		const candidateRuntime = runtime.candidateRuntime;
+		if (!candidateRuntime?.restoreCandidateRuntimeState) return;
+		const reviews = this.workspaceIntelligence.reviewsForDocument(
+			runtime.session.snapshot.documentId,
+		);
+		for (const review of reviews) {
+			const candidateId = review.candidate.candidateId;
+			const alreadyLive = runtime.hub
+				.projection()
+				.candidates
+				.some((candidate) => candidate.candidateId === candidateId);
+			if (alreadyLive) continue;
+			const candidate =
+				review.candidate.baseRevision === runtime.session.baseRevision
+					? review.candidate
+					: { ...review.candidate, status: 'stale' as const };
+			const rebound = candidateRuntime.restoreCandidateRuntimeState(
+				candidate,
+				review.runtime,
+			);
+			if (!rebound) continue;
+			runtime.hub.restoreCandidateSnapshot(candidate);
+		}
+	}
+
+	private forOriginHost(
+		runtime: ComposerEditingRuntime,
+		originHostId?: string,
+		originHost: 'composer' | 'markdown' = 'composer',
+	): ComposerEditingRuntime {
+		if (!originHostId || !runtime.projection) return runtime;
+		return {
+			...runtime,
+			projection: this.wrapProjection(runtime.projection, originHostId, originHost),
+		};
+	}
+
+	private wrapProjection(
+		projection: ComposerCapabilityProjectionPort,
+		originHostId: string,
+		originHost: 'composer' | 'markdown',
+	): ComposerCapabilityProjectionPort {
+		const wrapped: ComposerCapabilityProjectionPort = {
+			actionsFor: (snapshot, surface) => projection.actionsFor(snapshot, surface),
+			invoke: (capabilityId, snapshot, options) => {
+				const handle = projection.invoke(capabilityId, snapshot, options);
+				this.workspaceIntelligence.attachOriginHost(handle.runId, originHostId, originHost);
+				return handle;
+			},
+		};
+		if (projection.catalogFor) {
+			wrapped.catalogFor = (snapshot) => projection.catalogFor!(snapshot);
+		}
+		return wrapped;
 	}
 }
 

@@ -95,6 +95,12 @@ export function snapshotFromState(state: SnapshotSource): V2SessionSnapshot {
 		v2UserInsights: [...state.v2UserInsights],
 		v2Summary: state.v2Summary,
 		v2SummaryStreaming: state.v2SummaryStreaming,
+		v2SectionFollowups: Object.fromEntries(
+			Object.entries(state.v2SectionFollowups).map(([sectionId, turns]) => [
+				sectionId,
+				turns.map((turn) => ({ ...turn })),
+			]),
+		),
 		rounds: state.rounds.map(cloneRound),
 		currentRoundIndex: state.currentRoundIndex,
 		continueMode: state.continueMode,

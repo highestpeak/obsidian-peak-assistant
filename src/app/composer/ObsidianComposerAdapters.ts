@@ -2,9 +2,8 @@
  * Peak Composer — Obsidian adapters for the service ports (WP1).
  *
  * This is the ONE composer file allowed to touch Obsidian's vault/workspace.
- * It maps Obsidian events onto the framework-neutral `ComposerFileEventsPort`
- * and `ComposerSourcePort` the controller consumes. All DOM/event wiring here
- * is workspace-level (not window-level), so detached popouts are unaffected.
+ * It maps Obsidian vault events onto the framework-neutral
+ * `ComposerFileEventsPort` and `ComposerSourcePort` the controller consumes.
  */
 
 import type { App, EventRef, TAbstractFile, TFile } from 'obsidian';
@@ -87,18 +86,6 @@ export class ObsidianComposerFileEventsAdapter implements ComposerFileEventsPort
 
 	constructor(private readonly app: App) {}
 
-	getActiveFilePath(): string | null {
-		const file = this.app.workspace.getActiveFile();
-		return file && file.extension === MARKDOWN_EXT ? file.path : null;
-	}
-
-	onActiveFileChange(cb: (path: string | null) => void): () => void {
-		const handler = (): void => cb(this.getActiveFilePath());
-		const ref = this.app.workspace.on('active-leaf-change', handler);
-		this.refs.push(ref);
-		return () => this.app.workspace.offref(ref);
-	}
-
 	onFileEvent(cb: (event: ComposerFileEvent) => void): () => void {
 		const modifyRef = this.app.vault.on('modify', (file: TAbstractFile) => {
 			if (isMarkdown(file)) cb({ type: 'modify', path: file.path });
@@ -120,7 +107,6 @@ export class ObsidianComposerFileEventsAdapter implements ComposerFileEventsPort
 	dispose(): void {
 		for (const ref of this.refs) {
 			this.app.vault.offref(ref);
-			this.app.workspace.offref(ref);
 		}
 		this.refs.length = 0;
 	}

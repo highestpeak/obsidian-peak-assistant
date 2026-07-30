@@ -7,8 +7,7 @@ import type { VaultRetrievalPort } from '@/core/ports/VaultRetrievalPort';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { PromptId } from '@/core/types/prompt';
 import { TemplateManager } from '@/core/template/TemplateManager';
-import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
-import { collectText } from '@/service/agents/core/sdkMessageAdapter';
+import { runHarnessText } from '@/service/agents/harness/HarnessModelRunner';
 import { extractWebSourcesFromText, type SourceReceiptCollector } from './sourceReceiptCollector';
 import { VAULT_SEARCH_TOP_K } from '@/core/constant';
 import type { MCPClientManager } from '@/service/mcp/MCPClientManager';
@@ -131,7 +130,7 @@ export function buildChatTools(
             description:
                 "Search the user's personal knowledge base (Obsidian vault) for notes, documents, and past writing. " +
                 'Use when the user asks about their own notes, projects, ideas, or anything they may have written before.',
-            parameters: z.object({
+            inputSchema: z.object({
                 query: z.string().describe('The search query to run against the vault'),
             }),
             execute: async ({ query }) => {
@@ -164,13 +163,13 @@ export function buildChatTools(
     // fallback is the only real route. Inject whenever the toggle is on and
     // an active Web Search profile is configured.
     if (deps.enableWebSearch) {
-        const webProfile = ProfileRegistry.getInstance().getActiveWebSearchProfile();
-        if (webProfile) {
+        const webBinding = ProfileRegistry.getInstance().getActiveWebSearchConfig();
+        if (webBinding) {
             tools.web_search = tool({
                 description:
                     'Search the web for up-to-date information, recent events, external knowledge, or facts. ' +
                     'Use when the user asks about current events, external products, public data, or anything beyond their personal notes.',
-                parameters: z.object({
+                inputSchema: z.object({
                     query: z.string().describe('The search query to look up on the web'),
                 }),
                 execute: async ({ query }) => {
@@ -179,12 +178,15 @@ export function buildChatTools(
                         const tm = TemplateManager.getInstance();
                         if (!tm) return 'Web search error: template manager not bound';
                         const systemPrompt = await tm.render(PromptId.WebSearchToolSystem, {});
-                        const messages = queryWithProfile(deps.app as any, deps.pluginId, webProfile, {
+                        const { text } = await runHarnessText({
+                            loopId: `${deps.pluginId}-legacy-chat-web-search-${crypto.randomUUID()}`,
+                            profile: webBinding.profile,
+                            modelId: webBinding.modelId,
                             prompt: query,
                             systemPrompt,
-                            maxTurns: 1,
+                            maxSteps: 1,
                         });
-                        const answer = (await collectText(messages)) || 'No results found.';
+                        const answer = text || 'No results found.';
                         // RUN-02 receipt honesty: record the ACTUAL web sources the
                         // model cited. The provider profile exposes no structured
                         // per-source metadata (search runs server-side; the CLI

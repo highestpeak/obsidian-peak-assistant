@@ -62,7 +62,7 @@ export interface ProposedChange<TResult = unknown> {
 }
 
 /** Lifecycle of one variant's generation. */
-export type CandidateVariantStatus = 'streaming' | 'ready' | 'failed';
+export type CandidateVariantStatus = 'streaming' | 'ready' | 'failed' | 'cancelled';
 
 /**
  * One generation attempt for a candidate (§5.3). Regeneration APPENDS a new
@@ -77,6 +77,8 @@ export interface CandidateVariant<TResult = unknown> {
 	proposedChange: ProposedChange<TResult>;
 	/** Targeted instruction that produced this variant (run context, not body). */
 	instruction?: string;
+	/** Safe user-facing failure detail captured on the durable review variant. */
+	error?: string;
 	createdAt: number;
 }
 
@@ -92,7 +94,8 @@ export type ComposerCandidateStatus =
 	| 'stale'
 	| 'accepted'
 	| 'discarded'
-	| 'failed';
+	| 'failed'
+	| 'cancelled';
 
 /** A pending, reviewable proposal targeting one part of the document (§5.3). */
 export interface ComposerCandidate<TResult = unknown> {

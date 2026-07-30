@@ -1,9 +1,37 @@
 import React, { useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Check, Loader2, Brain } from 'lucide-react';
+import { Loader2, Brain, Bug } from 'lucide-react';
+import { useDebugTraceCopy } from '@/ui/hooks/useDebugTraceCopy';
+import { useServiceContext } from '@/ui/context/ServiceContext';
+import { Button } from '@/ui/component/shared-ui/button';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import { V2RoundBlock } from './V2RoundBlock';
 import { V2InlinePlanReview } from './V2InlinePlanReview';
+import { V2ActivitySummary } from './V2ActivitySummary';
+
+const ActivityDebugTraceButton: React.FC = () => {
+    const { debugTracePort } = useServiceContext();
+    const copyDebugTrace = useDebugTraceCopy();
+    if (!debugTracePort?.isEnabled()) return null;
+    return (
+        <div className="pktw-flex pktw-justify-end pktw-px-1 pktw-pb-1">
+            <Button
+                variant="ghost"
+                size="sm"
+                className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-px-2.5 pktw-gap-1.5 pktw-text-xs pktw-text-pk-foreground-faint"
+                title="Copy analyze activity debug trace"
+                aria-label="Copy analyze activity debug trace"
+                onClick={() => {
+                    const recent = debugTracePort.listRecent(5);
+                    const analyzeRun = recent.find((run) => run.surface === 'analyze');
+                    void copyDebugTrace(analyzeRun?.runId);
+                }}
+            >
+                <Bug className="pktw-w-4 pktw-h-4" />
+                Copy activity trace
+            </Button>
+        </div>
+    );
+};
 
 export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove }) => {
     const rounds = useSearchSessionStore((s) => s.rounds);
@@ -13,7 +41,6 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
     const query = useSearchSessionStore((s) => s.query);
     const status = useSearchSessionStore((s) => s.status);
     const sources = useSearchSessionStore((s) => s.v2Sources);
-    const planApproved = useSearchSessionStore((s) => s.v2PlanApproved);
     const usage = useSearchSessionStore((s) => s.usage);
     const duration = useSearchSessionStore((s) => s.duration);
     const restoredFromHistory = useSearchSessionStore((s) => s.restoredFromHistory);
@@ -34,11 +61,7 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
     const noRunningTools = v2Steps.every((s) => s.status !== 'running');
     const showInitialThinking = isStreaming && v2Steps.length === 0 && timeline.length === 0;
 
-    // Generating report: tools exist, none running, last grouped item is text
-    const lastTimelineItem = timeline.length > 0 ? timeline[timeline.length - 1] : null;
-    const isGeneratingReport = isStreaming && hasTools && noRunningTools && lastTimelineItem?.kind === 'text';
-    // Waiting for plan/report: all tools done but text output hasn't started yet
-    const isWaitingForPlan = isStreaming && hasTools && noRunningTools && !isGeneratingReport;
+    const isWaitingForPlan = isStreaming && hasTools && noRunningTools && sections.length === 0;
 
     const currentRoundIndex = rounds.length;
 
@@ -52,6 +75,7 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
 
     return (
         <div ref={scrollRef} className="pktw-py-2 pktw-px-1">
+            <ActivityDebugTraceButton />
             {/* Frozen rounds */}
             {rounds.map((round) => (
                 <V2RoundBlock
@@ -82,6 +106,14 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
                 isCurrent={true}
                 defaultExpanded={true}
             >
+                <V2ActivitySummary
+                    steps={v2Steps}
+                    sections={sections}
+                    sources={sources}
+                    duration={duration}
+                    running={isStreaming}
+                />
+
                 {/* Initial thinking indicator */}
                 {showInitialThinking && (
                     <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-1.5 pktw-px-1">
@@ -103,57 +135,9 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
                     </div>
                 )}
 
-                {/* Generating report indicator */}
-                {isGeneratingReport && (
-                    <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-1.5 pktw-px-1 pktw-mt-1">
-                        <div className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-bg-pk-accent-tint pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0">
-                            <Loader2 className="pktw-w-2.5 pktw-h-2.5 pktw-text-pk-accent pktw-animate-spin" />
-                        </div>
-                        <Brain className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" />
-                        <span className="pktw-text-xs pktw-font-medium pktw-text-pk-text-primary">Generating report...</span>
-                        <span className="pktw-flex-1" />
-                        <div className="pktw-w-24 pktw-h-1 pktw-bg-pk-surface-sunken pktw-rounded-full pktw-overflow-hidden">
-                            <motion.div
-                                className="pktw-h-full pktw-bg-pk-accent"
-                                initial={{ width: '0%' }}
-                                animate={{ width: '85%' }}
-                                transition={{ duration: 8, ease: 'easeInOut' }}
-                            />
-                        </div>
-                    </div>
-                )}
-
                 {/* Inline plan review */}
                 {sections.length > 0 && onApprove && (
                     <V2InlinePlanReview onApprove={onApprove} />
-                )}
-
-                {/* Section generation progress */}
-                {sections.length > 0 && status !== 'plan_ready' && planApproved && (
-                    <div className="pktw-mt-3 pktw-space-y-1">
-                        <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-1 pktw-mb-2">
-                            <Brain className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" />
-                            <span className="pktw-text-xs pktw-font-medium pktw-text-pk-text-primary">
-                                Generating sections ({sections.filter((s) => s.status === 'done').length}/{sections.length})
-                            </span>
-                        </div>
-                        {sections.map((sec) => (
-                            <div key={sec.id} className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-0.5 pktw-px-1">
-                                {sec.status === 'done' ? (
-                                    <div className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-bg-pk-success-bg pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0">
-                                        <Check className="pktw-w-2.5 pktw-h-2.5 pktw-text-pk-success" />
-                                    </div>
-                                ) : sec.status === 'generating' ? (
-                                    <div className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-bg-pk-accent-tint pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0">
-                                        <Loader2 className="pktw-w-2.5 pktw-h-2.5 pktw-text-pk-accent pktw-animate-spin" />
-                                    </div>
-                                ) : (
-                                    <div className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-bg-pk-surface-sunken pktw-shrink-0" />
-                                )}
-                                <span className="pktw-text-xs pktw-text-pk-foreground-muted pktw-truncate">{sec.title}</span>
-                            </div>
-                        ))}
-                    </div>
                 )}
             </V2RoundBlock>
         </div>

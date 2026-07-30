@@ -14,7 +14,6 @@ import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { GlobeOff } from '@/ui/component/icon';
 import { useSharedStore, useVaultSearchStore } from './store';
-import { loadCompletedAnalysisSnapshot } from './store/aiAnalysisStore';
 import { useSearchSessionStore } from './store/searchSessionStore';
 import type { AnalysisMode } from './store/aiAnalysisStore';
 import type { QuickSearchMode } from './store/vaultSearchStore';
@@ -30,9 +29,6 @@ import { matchPatterns, type MatchedSuggestion } from '@/service/context/Pattern
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { SuggestionGrid } from './components/SuggestionGrid';
 import { ActiveSessionsList } from './components/ActiveSessionsList';
-import { resolveAnalysisSnapshotFromVault } from '@/core/storage/vault/search-docs/AiAnalysisJsonStore';
-import { RecentAnalysisList } from './components/RecentAnalysisList';
-import { RecentQueriesDropdown } from './components/RecentQueriesDropdown';
 import { createOpenSourceCallback } from './callbacks/open-source-file';
 import { ResultPaneGraphControls, ResultDensityToggle, ViewModeToggle } from './components/ResultPaneHeader';
 import { ResultBrowserSearchInput } from '@/ui/component/result-browser';
@@ -82,15 +78,15 @@ interface AITabContentProps {
  * AI Analysis tab: input row (mode, web, Clear/Re-analyze/Cancel/Analyze) + AISearchTab content.
  */
 export const PRESET_LABELS: Record<AnalysisMode, { short: string; full: string; placeholder: string }> = {
-	vaultFull: { short: 'Vault Analysis', full: 'Vault Analysis · Deep analysis whole vault.', placeholder: 'Ask AI anything about your vault...' },
-	aiGraph: { short: 'AI Graph', full: 'AI Graph · Build interactive knowledge graphs.', placeholder: 'Describe the knowledge graph you want to build...' },
+	vaultFull: { short: 'Vault analysis', full: 'Vault analysis · Deep analysis of the whole vault.', placeholder: 'Ask AI anything about your vault...' },
+	aiGraph: { short: 'AI graph', full: 'AI graph · Build an interactive knowledge graph.', placeholder: 'Describe the knowledge graph you want to build...' },
 };
 
 const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActiveTab }) => {
 	const inputRef = useRef<{ focus: () => void; select: () => void } | null>(null);
 	const { eventBus } = useServiceContext();
 	const host = useQuickSearchHost();
-	const { searchQuery, setSearchQuery, recentQueries, clearRecentQueries } = useSharedStore();
+	const { searchQuery, setSearchQuery } = useSharedStore();
 	const webEnabled = useSearchSessionStore((s) => s.webEnabled);
 	const toggleWeb = useSearchSessionStore((s) => s.toggleWeb);
 	const sessionStatus = useSearchSessionStore((s) => s.status);
@@ -164,7 +160,6 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 	}, []);
 
 	const [suggestions, setSuggestions] = useState<MatchedSuggestion[]>([]);
-	const [totalAnalysisCount, setTotalAnalysisCount] = useState(0);
 	const [showModeMenu, setShowModeMenu] = useState(false);
 	const modeBadgeRef = useRef<HTMLDivElement>(null);
 
@@ -205,8 +200,6 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 			} catch { setSuggestions([]); }
 		})();
 
-		host.aiAnalysisHistory.count()
-			.then(setTotalAnalysisCount).catch(() => {});
 	}, []);
 
 	return (
@@ -225,49 +218,53 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 								enableSearchTags={true}
 								singleLine={true}
 								disabled={isInputFrozen}
-								containerClassName={`pktw-flex-1 pktw-min-w-0 ${analysisMode === 'aiGraph' ? 'pktw-pl-[105px]' : 'pktw-pl-[140px]'} pktw-pr-16 pktw-py-2.5 pktw-bg-pk-surface-raised pktw-border pktw-border-pk-border focus-within:pktw-border-pk-accent focus-within:pktw-shadow-sm pktw-rounded-full pktw-transition-all pktw-z-0`}
+								containerClassName={`pktw-flex-1 pktw-min-w-0 ${analysisMode === 'aiGraph' ? 'pktw-pl-[118px]' : 'pktw-pl-[150px]'} pktw-pr-16 pktw-py-2.5 pktw-bg-pk-surface-raised pktw-border pktw-border-pk-border focus-within:pktw-border-pk-accent focus-within:pktw-shadow-sm pktw-rounded-full pktw-transition-all pktw-z-0`}
 								className="pktw-pr-4"
 							/>
 							{/* Mode dropdown */}
 							<div ref={modeBadgeRef} className="pktw-absolute pktw-left-2 pktw-top-1/2 -pktw-translate-y-1/2 pktw-z-10">
-								<div
+								<Button
+									variant="unstyled"
+									size="sm"
 									onClick={() => setShowModeMenu((v) => !v)}
 									className={cn(
-										'pktw-flex pktw-items-center pktw-h-6 pktw-px-2 pktw-rounded-full pktw-text-pk-xs pktw-font-medium pktw-select-none pktw-transition-all',
+										'!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-px-3 !pktw-py-0 pktw-rounded-full pktw-text-sm pktw-font-medium pktw-select-none pktw-transition-all',
 										'pktw-bg-pk-highlight pktw-text-pk-accent pktw-border pktw-border-pk-accent/20 hover:pktw-bg-pk-accent-muted pktw-cursor-pointer'
 									)}
 									title={`${PRESET_LABELS[analysisMode].full} (⌥↑/⌥↓ to switch)`}
 								>
-									{analysisMode === 'aiGraph' ? <Network className="pktw-w-3 pktw-h-3 pktw-mr-1" /> : <Library className="pktw-w-3 pktw-h-3 pktw-mr-1" />}
+									{analysisMode === 'aiGraph' ? <Network className="pktw-w-4 pktw-h-4 pktw-mr-1.5" /> : <Library className="pktw-w-4 pktw-h-4 pktw-mr-1.5" />}
 									{PRESET_LABELS[analysisMode].short}
-									<ChevronDown className={cn('pktw-w-2.5 pktw-h-2.5 pktw-ml-0.5 pktw-opacity-60 pktw-transition-transform', showModeMenu && 'pktw-rotate-180')} />
-								</div>
+									<ChevronDown className={cn('pktw-w-3 pktw-h-3 pktw-ml-1 pktw-opacity-60 pktw-transition-transform', showModeMenu && 'pktw-rotate-180')} />
+								</Button>
 								{showModeMenu && (
 									<div className="pktw-absolute pktw-top-full pktw-left-0 pktw-mt-1 pktw-bg-pk-surface pktw-border pktw-border-pk-border pktw-rounded-lg pktw-shadow-lg pktw-py-1 pktw-z-50 pktw-min-w-[200px]">
 										{PRESETS.map((p) => {
 											const Icon = p === 'aiGraph' ? Network : Library;
 											return (
-												<div
+												<Button
 													key={p}
+													variant="ghost"
+													size="sm"
 													onClick={() => { setAnalysisMode(p); setShowModeMenu(false); }}
 													className={cn(
-														'pktw-flex pktw-items-center pktw-gap-2.5 pktw-px-3 pktw-py-2 pktw-text-xs pktw-cursor-pointer pktw-transition-colors',
+														'!pktw-h-auto !pktw-min-h-12 !pktw-max-h-none pktw-w-full pktw-justify-start pktw-gap-2.5 pktw-rounded-none !pktw-px-3 !pktw-py-2 pktw-text-sm pktw-cursor-pointer pktw-transition-colors',
 														analysisMode === p
 															? 'pktw-text-pk-accent pktw-font-medium pktw-bg-pk-accent/5'
-															: 'pktw-text-pk-foreground hover:pktw-bg-pk-surface-raised'
+															: 'pktw-text-pk-foreground'
 													)}
 												>
 													<div className={cn(
-														'pktw-w-7 pktw-h-7 pktw-rounded-md pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0',
+														'pktw-w-8 pktw-h-8 pktw-rounded-md pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0',
 														analysisMode === p ? 'pktw-bg-pk-accent pktw-text-pk-text-inverted' : 'pktw-bg-pk-surface-sunken pktw-text-pk-foreground-muted pktw-border pktw-border-pk-border'
 													)}>
-														<Icon className="pktw-w-3.5 pktw-h-3.5" />
+														<Icon className="pktw-w-4 pktw-h-4" />
 													</div>
-													<div className="pktw-flex-1">
+													<div className="pktw-flex-1 pktw-text-left">
 														<span className="pktw-block pktw-font-medium">{PRESET_LABELS[p].short}</span>
 														<span className="pktw-block pktw-text-pk-xs pktw-text-pk-foreground-muted pktw-font-normal">{PRESET_LABELS[p].full.split('·')[1]?.trim()}</span>
 													</div>
-												</div>
+												</Button>
 											);
 										})}
 										<div className="pktw-border-t pktw-border-pk-border pktw-mt-1 pktw-pt-1 pktw-px-3 pktw-pb-1">
@@ -289,6 +286,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 										setSearchQuery(newQuery);
 									}}
 									className={`pktw-shadow-none pktw-absolute pktw-right-2 pktw-top-1/2 -pktw-translate-y-1/2 pktw-p-1.5 pktw-rounded pktw-transition-colors
+										!pktw-h-9 !pktw-min-h-9 !pktw-max-h-9 !pktw-w-9 !pktw-min-w-9 !pktw-max-w-9 !pktw-p-0 !pktw-rounded-full
 										${webEnabled ? 'pktw-text-pk-info pktw-border pktw-border-pk-info/30' : 'pktw-border-0 pktw-bg-transparent '} pktw-cursor-pointer`}
 									title={webEnabled ? 'Web: ON' : 'Web: OFF'}
 								>
@@ -333,7 +331,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 						{!isAnalyzing && !hasResult && searchQuery.trim() && (
 							<Button
 								onClick={handleAnalyze}
-								className="pktw-shadow-none pktw-px-5 pktw-py-2.5 pktw-whitespace-nowrap !pktw-rounded-md pktw-bg-pk-accent pktw-text-pk-text-inverted hover:pktw-bg-pk-accent-hover pktw-cursor-pointer"
+								className="pktw-shadow-none !pktw-h-[42px] !pktw-min-h-[42px] !pktw-max-h-[42px] !pktw-px-5 !pktw-py-2.5 !pktw-rounded-full pktw-whitespace-nowrap pktw-bg-pk-accent pktw-text-pk-text-inverted hover:pktw-bg-pk-accent-hover pktw-cursor-pointer"
 								title="Start AI analysis"
 							>
 								<Sparkles className="pktw-w-4 pktw-h-4" />
@@ -345,17 +343,6 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 			</div>
 			{sessionStatus === 'idle' && (
 				<div className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto pktw-py-3">
-					{!searchQuery.trim() && recentQueries.length > 0 && (
-						<RecentQueriesDropdown
-							queries={recentQueries}
-							onSelect={(query) => {
-								setSearchQuery(query);
-								useSearchSessionStore.getState().resetAll();
-								useSearchSessionStore.getState().incrementTriggerAnalysis();
-							}}
-							onClear={clearRecentQueries}
-						/>
-					)}
 					<SuggestionGrid
 						suggestions={suggestions}
 						onSelect={(s) => {
@@ -377,55 +364,9 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 						}}
 					/>
 					<ActiveSessionsList onRestore={restoreFromBackground} />
-					<RecentAnalysisList
-						filterQuery={searchQuery}
-						onSelectQuery={(query) => {
-							useSharedStore.getState().setSearchQuery(query);
-							useSearchSessionStore.getState().resetAll();
-							useSearchSessionStore.getState().incrementTriggerAnalysis();
-						}}
-						onSelectRecord={async (record) => {
-							const path = String(record.vault_rel_path ?? '').trim();
-							if (!path) return;
-							try {
-								// T11N: vault read goes through the host's named
-								// `readVaultFileText` op so this modal no longer
-								// performs raw `app.vault.{getAbstractFileByPath,read}`.
-								// The host returns `null` for missing/non-file
-								// paths, matching the previous TFile-check fall
-								// through to `getAnalysisMarkdownForReplay`.
-								let md: string | null = await host.readVaultFileText(path);
-								if (!md) {
-									md = await host.getAnalysisMarkdownForReplay(path);
-								}
-								if (!md) {
-									new Notice('Analysis file not found in vault.');
-									return;
-								}
-								// `.json` records resolve directly; legacy `.md` still parses.
-								const loaded = resolveAnalysisSnapshotFromVault(path, md, Number.isFinite(record.created_at_ts) ? record.created_at_ts : undefined);
-								if (!loaded) {
-									new Notice('Failed to load saved analysis.');
-									return;
-								}
-								loadCompletedAnalysisSnapshot(loaded.snapshot, path);
-								const query = loaded.query || record.query || '';
-								if (query) {
-									useSharedStore.getState().setSearchQuery(query);
-									useSearchSessionStore.setState({ query });
-								}
-							} catch (e) {
-								console.warn('[SearchModal] Failed to load snapshot:', e);
-								new Notice('Failed to load saved analysis.');
-								if (record.query) {
-									useSharedStore.getState().setSearchQuery(record.query);
-								}
-							}
-						}}
-					/>
-					{suggestions.length === 0 && totalAnalysisCount === 0 && (
+					{suggestions.length === 0 && (
 						<div className="pktw-px-4 pktw-py-8 pktw-text-center pktw-text-sm pktw-text-pk-foreground-muted">
-							No analyses yet. Type a question above or click a suggestion to get started.
+							Type a question above to start from your current Vault context.
 						</div>
 					)}
 				</div>
@@ -443,8 +384,8 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 						<span>↵ Run</span>
 						<span>⌥↑⌥↓ Switch mode</span>
 					</div>
-					<span className="pktw-text-xs pktw-text-pk-accent">
-						{totalAnalysisCount} analyses
+					<span className="pktw-text-xs pktw-text-pk-foreground-muted">
+						Current context stays visible before the run
 					</span>
 				</div>
 			)}

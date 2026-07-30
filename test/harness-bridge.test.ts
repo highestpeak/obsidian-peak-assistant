@@ -1,5 +1,5 @@
 /**
- * Tests for ClaudeAgentSDKBridge.
+ * Tests for HarnessRunBridge.
  *
  * Post 2026-07 SDK-backend retirement the bridge has one path: it wraps
  * runAgentLoop in a RunEnvelope. The pre-retirement `useSDK` branch is gone;
@@ -7,7 +7,7 @@
  */
 
 import assert from 'assert';
-import { ClaudeAgentSDKBridge } from '@/service/agents/harness-bridge/ClaudeAgentSDKBridge';
+import { HarnessRunBridge } from '@/service/agents/harness-bridge/HarnessRunBridge';
 import { TierController } from '@/service/agents/harness/tier/TierController';
 import { DEFAULT_TIER_CAPABILITIES } from '@/service/agents/harness/tier/types';
 import { DEFAULT_HARNESS_SETTINGS } from '@/core/config/settingsTypes';
@@ -41,7 +41,7 @@ function makeTierController(text: string): TierController {
 // ─── harness path ────────────────────────────────────────────────────────────
 
 async function testHarnessPath() {
-    const bridge = new ClaudeAgentSDKBridge();
+    const bridge = new HarnessRunBridge();
     const result = await bridge.run({
         loopId: 'bridge-harness-1',
         systemPrompt: 'You are a test agent.',
@@ -64,7 +64,7 @@ async function testHarnessPath() {
 // ─── default settings still route to harness ─────────────────────────────────
 
 async function testDefaultUsesHarness() {
-    const bridge = new ClaudeAgentSDKBridge();
+    const bridge = new HarnessRunBridge();
     const result = await bridge.run({
         loopId: 'bridge-default-1',
         systemPrompt: 'System.',
@@ -83,7 +83,7 @@ async function testDefaultUsesHarness() {
 // ─── result shape from harness path ──────────────────────────────────────────
 
 async function testResultShape() {
-    const bridge = new ClaudeAgentSDKBridge();
+    const bridge = new HarnessRunBridge();
     const result = await bridge.run({
         loopId: 'bridge-shape-1',
         systemPrompt: 'S',

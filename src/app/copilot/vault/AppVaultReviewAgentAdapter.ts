@@ -4,7 +4,7 @@
 // `src/service/copilot/vault/VaultMetaAgentStream.ts` resolved
 // `AppContext.getInstance()` to grab `app`, `plugin.manifest.id`, and
 // `searchClient`, then constructed the Vault + Copilot MCP servers
-// and dispatched a Claude Agent SDK round.
+// and dispatched an agent round.
 //
 // T9 keeps the prompt construction + MCP wiring inside the service
 // file but as a function that receives `app + pluginId + searchClient`

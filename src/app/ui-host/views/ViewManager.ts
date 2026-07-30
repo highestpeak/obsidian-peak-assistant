@@ -9,8 +9,9 @@ import { RelatedNotesView, RELATED_NOTES_VIEW_TYPE } from '@/app/ui-host/views/R
 import { DocumentComposerView, DOCUMENT_COMPOSER_VIEW_TYPE } from '@/app/composer';
 import { ViewSwitchConsistentHandler } from '@/app/ui-host/views/ViewSwitchConsistentHandler';
 import { InputModal } from '@/app/ui-host/modals/InputModal';
-import { App, Notice, ViewCreator, WorkspaceLeaf } from 'obsidian';
+import { App, Notice, ViewCreator } from 'obsidian';
 import { AppContext } from '@/app/context/AppContext';
+import { DEFAULT_COMPOSER_NAVIGATION_STRINGS } from '@/app/composer/ComposerNavigationDefaults';
 
 /**
  * Manages view registrations, related commands, and lifecycle cleanup.
@@ -131,23 +132,31 @@ export class ViewManager {
 	 */
 	async activateDocumentComposerView(): Promise<void> {
 		const { workspace } = this.plugin.app;
-		const existing = workspace.getLeavesOfType(DOCUMENT_COMPOSER_VIEW_TYPE);
-		if (existing.length > 0) {
-			workspace.revealLeaf(existing[0]);
+		const file = workspace.getActiveFile();
+		if (!file || file.extension !== 'md') {
+			new Notice(DEFAULT_COMPOSER_NAVIGATION_STRINGS.openMarkdownFirst, 5000);
 			return;
 		}
-		let leaf: WorkspaceLeaf | null;
-		try {
-			leaf = workspace.getLeaf('tab');
-		} catch {
-			leaf = workspace.getLeaf(false);
-		}
-		if (!leaf) {
-			new Notice('Could not open Composer: no available workspace tab.', 5000);
+		const existing = workspace.getLeavesOfType(DOCUMENT_COMPOSER_VIEW_TYPE).find((leaf) => {
+			const view = leaf.view as { getSourceFilePath?: () => string | null };
+			return view.getSourceFilePath?.() === file.path;
+		});
+		if (existing) {
+			workspace.revealLeaf(existing);
 			return;
 		}
-		await leaf.setViewState({ type: DOCUMENT_COMPOSER_VIEW_TYPE, active: true });
-		workspace.revealLeaf(leaf);
+		const runtime = this.appContext.runtimeRegistry.tryGetDocumentComposerRuntime();
+		if (!runtime?.navigation) {
+			new Notice(DEFAULT_COMPOSER_NAVIGATION_STRINGS.runtimeNotReady, 5000);
+			return;
+		}
+		const leaf = await runtime.navigation.open({
+			filePath: file.path,
+			view: 'composer',
+			disposition: 'new-tab',
+			reason: 'command',
+		});
+		if (!leaf) new Notice(DEFAULT_COMPOSER_NAVIGATION_STRINGS.noAvailableLeaf, 5000);
 	}
 
 	/**

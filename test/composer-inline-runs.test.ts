@@ -93,6 +93,48 @@ function run(): void {
 			nestedHtmlRuns.map((r) => r.text).join('') === 'outer inner tail',
 		nestedHtmlRuns.map((r) => r.text).join(''),
 	);
+	const canonicalHtml =
+		'<span style="font-weight: 700; font-style: italic; text-decoration-line: underline line-through; color: #b42318; background-color: #fff1a8">stack</span>';
+	const canonicalRuns = assertOffsetLaw('canonical-html', canonicalHtml);
+	const stack = canonicalRuns.find((run) => run.text === 'stack');
+	check(
+		'canonical-html: one span projects the complete style set',
+		Boolean(
+			stack?.style.bold &&
+			stack.style.italic &&
+			stack.style.underline &&
+			stack.style.strikethrough &&
+			stack.style.color === '#b42318' &&
+			stack.style.highlight === '#fff1a8',
+		),
+		JSON.stringify(stack?.style),
+	);
+	check(
+		'canonical-html: every projected style maps to the shared source wrapper',
+		Boolean(
+			stack?.markRanges &&
+			Object.values(stack.markRanges).length === 6 &&
+			Object.values(stack.markRanges).every(
+				(range) => range?.from === 0 && range.to === canonicalHtml.length,
+			),
+		),
+		JSON.stringify(stack?.markRanges),
+	);
+	const htmlLink =
+		'<a href="https://example.com?a=1&amp;b=2" style="font-weight: 700; text-decoration-line: underline">linked</a>';
+	const htmlLinkRuns = assertOffsetLaw('canonical-html-link', htmlLink);
+	check(
+		'canonical-html-link: anchor keeps link semantics and styles',
+		htmlLinkRuns.some(
+			(run) =>
+				run.text === 'linked' &&
+				run.linkKind === 'html' &&
+				run.linkTarget === 'https://example.com?a=1&b=2' &&
+				run.style.bold &&
+				run.style.underline,
+		),
+		JSON.stringify(htmlLinkRuns),
+	);
 
 	// ── non-zero base offset (a block that does not start at 0) ────────────────
 	const inner = '**hey** you';

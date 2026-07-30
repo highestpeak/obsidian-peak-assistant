@@ -66,21 +66,21 @@ function testAnalysisWireIn(): void {
 }
 
 // ---------------------------------------------------------------------------
-// B2.harness — ClaudeAgentSDKBridge.run wraps the single-path harness
+// B2.harness — HarnessRunBridge.run wraps the single-path harness
 // dispatch in `runHarnessAgent({ trigger: 'manual', execute })`. Post
 // 2026-07 SDK-backend retirement, the SDK branch is gone; the bridge is a
 // thin RunEnvelope wrapper over `runAgentLoop`.
 // ---------------------------------------------------------------------------
 
 function testHarnessWireIn(): void {
-	const src = read('src/service/agents/harness-bridge/ClaudeAgentSDKBridge.ts');
+	const src = read('src/service/agents/harness-bridge/HarnessRunBridge.ts');
 	assert.ok(
 		src.includes(`'@/service/agents/harness/HarnessAgentRun'`),
-		'ClaudeAgentSDKBridge must reach for HarnessAgentRun',
+		'HarnessRunBridge must reach for HarnessAgentRun',
 	);
 	assert.ok(
 		src.includes('runHarnessAgent'),
-		'ClaudeAgentSDKBridge must call runHarnessAgent',
+		'HarnessRunBridge must call runHarnessAgent',
 	);
 	const stripped = stripComments(src);
 	assert.match(

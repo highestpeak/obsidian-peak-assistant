@@ -401,13 +401,14 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 	if (v2SectionMetaRaw && v2ReportSections.length > 0) {
 		try {
 			const metaArray = JSON.parse(v2SectionMetaRaw.trim()) as Array<{
-				title?: string; visualType?: string; missionRole?: string;
+				id?: string; title?: string; visualType?: string; missionRole?: string;
 				evidencePaths?: string[]; brief?: string; contentType?: string; weight?: number;
 			}>;
 			if (Array.isArray(metaArray)) {
 				for (let i = 0; i < v2ReportSections.length && i < metaArray.length; i++) {
 					const meta = metaArray[i];
 					if (meta && typeof meta === 'object') {
+						if (meta.id !== undefined) v2ReportSections[i].id = meta.id;
 						if (meta.visualType !== undefined) v2ReportSections[i].visualType = meta.visualType;
 						if (meta.missionRole !== undefined) v2ReportSections[i].missionRole = meta.missionRole;
 						if (meta.evidencePaths !== undefined) v2ReportSections[i].evidencePaths = meta.evidencePaths;

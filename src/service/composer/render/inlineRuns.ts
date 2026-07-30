@@ -49,7 +49,9 @@ export interface InlineRun {
 	markRanges?: InlineMarkRanges;
 	/** Link target when this run is a link token. */
 	linkTarget?: string;
-	linkKind?: 'wikilink' | 'markdown' | 'bare-url';
+	linkKind?: 'wikilink' | 'markdown' | 'bare-url' | 'html';
+	/** Full source range of the link wrapper/autolink, including its destination. */
+	linkRange?: { from: number; to: number };
 }
 
 const EMPTY_STYLE: InlineRunStyle = Object.freeze({});
@@ -101,11 +103,22 @@ function parseInto(
 		const link = matchLink(text, cursor);
 		if (link) {
 			flushPlain(cursor);
+			const linkStyle = merge(style, link.run.style);
+			const linkRange = {
+				from: baseFrom + cursor,
+				to: baseFrom + link.end,
+			};
+			const linkMarkRanges = mergeMarkRanges(
+				markRanges,
+				link.run.style,
+				linkRange,
+			);
 			out.push({
 				...link.run,
 				from: baseFrom + link.run.from,
-				style,
-				...(Object.keys(markRanges).length > 0 ? { markRanges } : {}),
+				style: linkStyle,
+				linkRange,
+				...(Object.keys(linkMarkRanges).length > 0 ? { markRanges: linkMarkRanges } : {}),
 			});
 			cursor = link.end;
 			plainStart = cursor;
@@ -146,18 +159,11 @@ function mergeMarkRanges(
 	style: InlineRunStyle,
 	range: { from: number; to: number },
 ): InlineMarkRanges {
-	const token = styleTokenOf(style);
-	return token ? { ...base, [token]: range } : base;
-}
-
-function styleTokenOf(style: InlineRunStyle): InlineStyleToken | null {
-	if (style.bold) return 'bold';
-	if (style.italic) return 'italic';
-	if (style.underline) return 'underline';
-	if (style.strikethrough) return 'strikethrough';
-	if (style.color !== undefined) return 'text-color';
-	if (style.highlight !== undefined) return 'highlight';
-	return null;
+	const tokens = inlineStyleTokenKinds(style);
+	if (tokens.length === 0) return base;
+	const next = { ...base };
+	for (const token of tokens) next[token] = range;
+	return next;
 }
 
 /** Stable UI-facing list of active style tokens; source remains in {@link InlineRun}. */
@@ -177,6 +183,7 @@ export function inlineStyleTokenKinds(style: InlineRunStyle): InlineStyleToken[]
 const WIKILINK_RE = /^!?\[\[([^\]]+)\]\]/;
 const MDLINK_RE = /^\[([^\]]*)\]\((([^)\s]+)[^)]*)\)/;
 const BARE_URL_RE = /^https?:\/\/[^\s)\]]+/;
+const HTML_ANCHOR_RE = /^<a\s+href="([^"]*)"(?:\s+style="([^"]*)")?\s*>([^<]*)<\/a>/i;
 
 interface LinkMatch {
 	run: InlineRun;
@@ -185,6 +192,20 @@ interface LinkMatch {
 
 function matchLink(text: string, at: number): LinkMatch | null {
 	const rest = text.slice(at);
+	const anchor = HTML_ANCHOR_RE.exec(rest);
+	if (anchor) {
+		const openEnd = anchor[0].indexOf('>') + 1;
+		return {
+			run: {
+				text: anchor[3],
+				from: at + openEnd,
+				style: anchor[2] ? parseInlineStyleDeclaration(anchor[2]) : EMPTY_STYLE,
+				linkTarget: decodeHtmlAttribute(anchor[1]),
+				linkKind: 'html',
+			},
+			end: at + anchor[0].length,
+		};
+	}
 	const wiki = WIKILINK_RE.exec(rest);
 	if (wiki) {
 		const inner = wiki[1];
@@ -274,7 +295,7 @@ function matchSpan(text: string, at: number): SpanMatch | null {
 		const span = SPAN_STYLE_RE.exec(rest);
 		if (span) {
 			const closeAt = findMatchingHtmlClose(text, at + span[0].length, 'span');
-			if (closeAt >= 0) return { openLen: span[0].length, closeLen: 7, closeAt, style: styleFromSpan(span[1]) };
+			if (closeAt >= 0) return { openLen: span[0].length, closeLen: 7, closeAt, style: parseInlineStyleDeclaration(span[1]) };
 			return null;
 		}
 	}
@@ -282,7 +303,7 @@ function matchSpan(text: string, at: number): SpanMatch | null {
 	return null;
 }
 
-function styleFromSpan(styleText: string): InlineRunStyle {
+export function parseInlineStyleDeclaration(styleText: string): InlineRunStyle {
 	const style: InlineRunStyle = {};
 	for (const rawDecl of styleText.split(';')) {
 		const [rawName, ...rawValue] = rawDecl.split(':');
@@ -291,6 +312,8 @@ function styleFromSpan(styleText: string): InlineRunStyle {
 		if (!name || !value) continue;
 		if (name === 'color') style.color = value;
 		if ((name === 'background' || name === 'background-color') && style.highlight === undefined) style.highlight = value;
+		if (name === 'font-weight' && (value.toLowerCase() === 'bold' || Number.parseInt(value, 10) >= 600)) style.bold = true;
+		if (name === 'font-style' && /^(italic|oblique)$/i.test(value)) style.italic = true;
 		if (name === 'text-decoration' || name === 'text-decoration-line') {
 			const normalized = value.toLowerCase();
 			if (normalized.includes('underline')) style.underline = true;
@@ -298,6 +321,15 @@ function styleFromSpan(styleText: string): InlineRunStyle {
 		}
 	}
 	return style;
+}
+
+function decodeHtmlAttribute(value: string): string {
+	return value
+		.replace(/&quot;/g, '"')
+		.replace(/&#39;/g, "'")
+		.replace(/&lt;/g, '<')
+		.replace(/&gt;/g, '>')
+		.replace(/&amp;/g, '&');
 }
 
 /** Index of `delim` at/after `from`, requiring a non-whitespace char just before it. */

@@ -4,21 +4,11 @@ import path from 'path';
 import { startSimulatorSidecar } from './helpers/simulatorSidecar';
 import { createPresetProfile } from '@/core/profiles/presets';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import {
-	queryWithProfile,
-	shutdownPool,
-} from '@/service/agents/core/sdkAgentPool';
-import { DEFAULT_SDK_SETTINGS } from '@/core/profiles/types';
-import { toAgentSdkEnv } from '@/core/profiles/materialize';
-import {
-	simulatorAgentSdkBaseUrl,
-	SIMULATOR_DEFAULTS,
-	SIMULATOR_MODEL_ID,
-} from '@/core/providers/simulator';
+import { runHarnessText } from '@/service/agents/harness/HarnessModelRunner';
 
 const ROOT = process.cwd();
 
-async function run() {
+async function run(): Promise<void> {
 	const sidecar = await startSimulatorSidecar();
 	const profile = createPresetProfile('simulator', {
 		id: 'sim-routing',
@@ -31,60 +21,38 @@ async function run() {
 	});
 
 	try {
-		verifyAgentSdkMaterialization(profile);
-		await verifyRealAgentSdkRoute(profile);
+		await verifyHarnessRoute(profile);
 		verifyResearchBinding(profile);
 		verifySourceBoundaries();
 	} finally {
-		shutdownPool();
 		ProfileRegistry.resetInstance();
 		await sidecar.stop();
 	}
-	console.log('AI Search Simulator sidecar routing tests passed');
+	console.log('AI Search Simulator Harness routing tests passed');
 }
 
-function verifyAgentSdkMaterialization(profile: ReturnType<typeof createPresetProfile>) {
-	const env = toAgentSdkEnv(profile, SIMULATOR_MODEL_ID, SIMULATOR_MODEL_ID);
-	assert.equal(env.ANTHROPIC_BASE_URL, simulatorAgentSdkBaseUrl(profile.baseUrl));
-	assert.equal(env.ANTHROPIC_API_KEY, SIMULATOR_DEFAULTS.endpoint.apiKey);
-	assert(env.ANTHROPIC_CUSTOM_HEADERS.includes(
-		`${SIMULATOR_DEFAULTS.endpoint.scenarioHeader}: happy-path`,
-	));
-	assert(env.ANTHROPIC_CUSTOM_HEADERS.includes(
-		`${SIMULATOR_DEFAULTS.endpoint.speedHeader}: instant`,
-	));
-	assert(env.ANTHROPIC_CUSTOM_HEADERS.includes(
-		`${SIMULATOR_DEFAULTS.endpoint.strictHeader}: true`,
-	));
-}
-
-async function verifyRealAgentSdkRoute(profile: ReturnType<typeof createPresetProfile>) {
-	loadRegistry(profile, {
-		...DEFAULT_SDK_SETTINGS,
-		cliPathOverride: path.join(ROOT, 'sdk/cli.js'),
-	});
-	const app = {
-		vault: {
-			adapter: { getBasePath: () => ROOT },
-		},
-	};
-	let text = '';
-	for await (const message of queryWithProfile(app as any, 'test-plugin', profile, {
+async function verifyHarnessRoute(
+	profile: ReturnType<typeof createPresetProfile>,
+): Promise<void> {
+	const { text } = await runHarnessText({
+		loopId: 'simulator-harness-routing',
+		profile,
+		modelId: profile.primaryModel,
 		prompt: [
 			'## This Section',
-			'Section title: Agent SDK route',
+			'Section title: Peak Harness route',
 			'## Evidence for This Section',
 		].join('\n'),
 		systemPrompt: 'Generate the requested report section.',
-		maxTurns: 1,
-	})) {
-		const delta = (message as any)?.event?.delta;
-		if (delta?.type === 'text_delta') text += delta.text;
-	}
-	assert(text.includes('local AI Search Simulator'));
+		maxSteps: 1,
+	});
+	assert(text.includes('flowchart LR'));
+	assert(text.length > 700);
 }
 
-function verifyResearchBinding(profile: ReturnType<typeof createPresetProfile>) {
+function verifyResearchBinding(
+	profile: ReturnType<typeof createPresetProfile>,
+): void {
 	ProfileRegistry.resetInstance();
 	const openRouter = createPresetProfile('openrouter', {
 		id: 'real',
@@ -105,7 +73,6 @@ function verifyResearchBinding(profile: ReturnType<typeof createPresetProfile>) 
 		activeCopilotConfig: null,
 		activeEmbeddingConfig: null,
 		activeWebSearchConfig: null,
-		sdkSettings: DEFAULT_SDK_SETTINGS,
 	}, () => undefined);
 	registry.setTierConfigs({
 		fast: null,
@@ -116,58 +83,28 @@ function verifyResearchBinding(profile: ReturnType<typeof createPresetProfile>) 
 	assert.equal(registry.getActiveAgentProfile()?.kind, 'openrouter');
 }
 
-function verifySourceBoundaries() {
-	const sdkPoolSource = readSource('src/service/agents/core/sdkAgentPool.ts');
-	assert(!sdkPoolSource.includes('querySimulatorSdk'));
-	assert(!sdkPoolSource.includes("profile.kind === 'simulator'"));
-
+function verifySourceBoundaries(): void {
 	const providerSource = readSource('src/core/providers/simulator/client.ts');
 	assert(providerSource.includes('createOpenAI'));
 	assert(providerSource.includes('provider.chat(modelId)'));
 
 	const reportSource = readSource('src/service/agents/report/ReportOrchestrator.ts');
-	const requireProfileBody = reportSource.match(
-		/private requireProfile\(\): Profile \{([\s\S]*?)\n    \}/,
-	)?.[1] ?? '';
-	assert(requireProfileBody.includes("resolveSlot('research')"));
-	assert(!requireProfileBody.includes('getActiveAgentProfile'));
+	assert(reportSource.includes("resolveSlot('research')"));
+	assert(reportSource.includes('runHarnessText'));
+	assert(reportSource.includes('streamHarnessModel'));
 
 	const vaultSearchSource = readSource('src/service/agents/VaultSearchAgent.ts');
 	assert(vaultSearchSource.includes('allowEscalation: harnessSettings.allowEscalation'));
 	assert(vaultSearchSource.includes('escalationThreshold: harnessSettings.autoEscalateScoreBelow'));
 	assert(vaultSearchSource.includes('maxEscalationsPerLoop: harnessSettings.maxEscalationsPerLoop'));
 
-	const setupSource = readSource('src/ui/view/settings/tabs/AISetupTab.tsx');
-	assert(setupSource.includes('createBuiltInSimulatorProfile'));
-	assert(setupSource.includes("profile.kind === 'simulator'"));
-
 	const packageJson = JSON.parse(readSource('package.json')) as {
+		dependencies?: Record<string, string>;
 		scripts?: Record<string, string>;
 	};
+	assert.equal(packageJson.dependencies?.['@anthropic-ai/claude-agent-sdk'], undefined);
+	assert.equal(packageJson.scripts?.['copy-sdk'], undefined);
 	assert.equal(packageJson.scripts?.simulator, 'node tools/ai-search-simulator/server.mjs');
-	assert.equal(packageJson.scripts?.['dev:simulator'], 'npm-run-all --parallel dev simulator');
-}
-
-function loadRegistry(
-	profile: ReturnType<typeof createPresetProfile>,
-	sdkSettings: typeof DEFAULT_SDK_SETTINGS,
-) {
-	ProfileRegistry.resetInstance();
-	ProfileRegistry.getInstance().load({
-		profiles: [profile],
-		activeAgentConfig: null,
-		activeAgentFastConfig: null,
-		activeChatConfig: null,
-		activeCopilotConfig: null,
-		activeEmbeddingConfig: null,
-		activeWebSearchConfig: null,
-		sdkSettings,
-	}, () => undefined);
-	ProfileRegistry.getInstance().setTierConfigs({
-		fast: { profileId: profile.id, modelId: profile.fastModel },
-		research: { profileId: profile.id, modelId: profile.primaryModel },
-		stronger: { profileId: profile.id, modelId: profile.primaryModel },
-	});
 }
 
 function readSource(relativePath: string): string {

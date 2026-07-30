@@ -38,7 +38,6 @@ import { setEmbeddingUsageReporter } from '@/service/search/embeddings/embedClie
 import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import { registerTemplateEngineHelpers } from '@/core/template-engine-helper';
 import { RerankProviderManager } from '@/core/providers/rerank/factory';
-import { warmupPool, shutdownPool } from '@/service/agents/core/sdkAgentPool';
 import { TemplateManager } from '@/core/template/TemplateManager';
 import { initPatternSystem } from '@/service/context/PatternDiscoveryTrigger';
 import { createPluginDirContentProvider } from '@/core/template/PluginDirContentProvider';
@@ -53,7 +52,6 @@ import { hydrateTextStopwordsFromTemplateManager } from '@/core/utils/stopword-u
 import { installHoverMenuGlobals } from '@/ui/component/mine/hover-menu-manager';
 import { useVaultSearchStore } from '@/ui/view/quick-search/store/vaultSearchStore';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import { DEFAULT_SDK_SETTINGS } from '@/core/profiles/types';
 import { useSharedStore } from '@/ui/view/quick-search/store/sharedStore';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
@@ -164,15 +162,13 @@ export default class MyPlugin extends Plugin {
 			activeCopilotConfig: null,
 			activeEmbeddingConfig: null,
 			activeWebSearchConfig: null,
-			sdkSettings: { ...DEFAULT_SDK_SETTINGS },
 		};
 		ProfileRegistry.getInstance().load(ps, (updated) => {
 			this.settings.profileSettings = updated;
 			void this.saveSettings();
 		});
-		// Mirror harness tier bindings into the registry so `resolveSlot` (the
-		// single model-binding resolver used by both the harness and the SDK
-		// path) sees the current Fast Lookup / Research / Stronger picks.
+		// Mirror harness tier bindings into the registry so `resolveSlot`
+		// sees the current Fast Lookup / Research / Stronger picks.
 		this.syncProfileRegistryTierConfigs();
 
 		// Auto-detect indexLevel for existing users who already have an embedding profile configured.
@@ -426,7 +422,18 @@ export default class MyPlugin extends Plugin {
 		try {
 			const { composeDocumentComposerRuntime } = await import('@/app/composer');
 			appContext.runtimeRegistry.setDocumentComposerRuntime(
-				composeDocumentComposerRuntime(this.app, this.manifest.dir),
+				composeDocumentComposerRuntime(this.app, this.manifest.dir, {
+					getDefaultDocumentView: () => this.settings.composer.defaultDocumentView,
+					setDefaultDocumentView: async (view) => {
+						this.settings.composer.defaultDocumentView = view;
+						await this.saveSettings();
+					},
+					getIntelligenceManualOpen: () => this.settings.composer.intelligenceManualOpen,
+					setIntelligenceManualOpen: async (open) => {
+						this.settings.composer.intelligenceManualOpen = open;
+						await this.saveSettings();
+					},
+				}),
 			);
 		} catch (e) {
 			console.warn('[Peak Composer] runtime compose failed:', e);
@@ -449,10 +456,9 @@ export default class MyPlugin extends Plugin {
 		// currently-configured providers. Wave 1 capability adopters
 		// (B2.chat / B2.copilot / etc.) will pick up the strategies as
 		// they graduate their execute paths from surface-only wrappers
-		// to real backend dispatch. `sdkQueryAdapter` /
-		// `providerStreamAdapter` deliberately stay omitted until those
-		// adopters land — leaving them unset means `claude-sdk` /
-		// `provider-direct` do not register, and palette commands
+		// to real backend dispatch. `providerStreamAdapter` deliberately
+		// stays omitted until those adopters land — leaving it unset means
+		// `provider-direct` does not register, and palette commands
 		// resolve to `hermes-harness` (or fall through further) via
 		// `resolveBackendStrategy`.
 		const backendStrategies = registerBackendStrategies({
@@ -812,9 +818,8 @@ export default class MyPlugin extends Plugin {
 				const hasActiveProfile = !!ProfileRegistry.getInstance().getActiveAgentProfile();
 				if (hasActiveProfile && AUTO_STARTUP_PROACTIVE_BACKGROUND) {
 					initPatternSystem(this.aiServiceManager).catch((e) => console.error('[PatternDiscovery] Init failed:', e));
-					warmupPool().catch((e) => console.warn('[sdkAgentPool] warmup failed:', e));
 				} else {
-					console.log('[Peak Assistant] PatternDiscovery + agent pool warmup skipped (renderer-safety guard / no active profile)');
+					console.log('[Peak Assistant] PatternDiscovery skipped (renderer-safety guard / no active profile)');
 				}
 				// D1 §R1/R5 + D2 §R1/§R3/§R4: compose MediaGenerationService
 				// + MediaJobRunner once at boot, bind them into
@@ -1120,7 +1125,7 @@ export default class MyPlugin extends Plugin {
 		this.ambientStoreUnsub = null;
 		try { AppContext.clearAmbientRuntime(); } catch { /* not bound — ignore */ }
 		// T9: release the Vault Review runtime so the digest adapter's
-		// fingerprint cache + agent SDK bindings drop with the
+		// fingerprint cache + Harness bindings drop with the
 		// hot-reloaded bundle.
 		try { AppContext.clearVaultReviewRuntime(); } catch { /* not bound — ignore */ }
 		// Hub Generation runtime: dispose scheduler timer + drop agent refs.
@@ -1227,9 +1232,6 @@ export default class MyPlugin extends Plugin {
 		// `AppContext.clearAmbientRuntime()`; the duplicate dispose call
 		// against the retired `AmbientPushService` singleton is gone.
 
-		// Shutdown SDK agent pool (clear cached node info so reload re-probes)
-		shutdownPool();
-
 		// T13: Skill + Usage services are released via `clearForUnload`
 		// below (which invokes `destroy()` on each). Break the usage
 		// dashboard message-receipt registration explicitly so its
@@ -1284,7 +1286,7 @@ export default class MyPlugin extends Plugin {
 	/**
 	 * Push the current harness tier bindings (Fast Lookup / Research / Stronger)
 	 * into ProfileRegistry so `resolveSlot` resolves models from one source for
-	 * both the harness (`bindings.ts`) and the SDK path (`queryWithProfile`).
+	 * the Peak Harness model bindings.
 	 */
 	private syncProfileRegistryTierConfigs(): void {
 		const harness = this.settings.harnessSettings ?? DEFAULT_HARNESS_SETTINGS;

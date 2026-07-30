@@ -61,7 +61,13 @@ import { RunReceiptCard } from './RunReceiptCard';
 import { useSessionProjection, useSidecar } from './SidecarContext';
 import type { SidecarStrings } from './sidecarConfig';
 
-export { BriefView, BriefViewContent, type BriefViewContentProps, type RelatedLoadState } from './BriefView';
+export {
+	BriefView,
+	BriefViewContent,
+	SensingControl,
+	type BriefViewContentProps,
+	type RelatedLoadState,
+} from './BriefView';
 
 /**
  * Peak Composer — Copilot lifecycle projection. The Brief itself lives in its
@@ -85,7 +91,15 @@ export function CopilotView(): React.ReactElement {
 // ── session ─────────────────────────────────────────────────────────────────
 
 function SessionView(): React.ReactElement {
-	const { runtime, hub, config, getFocusedBlockId, resolveFocusContext } = useSidecar();
+	const {
+		runtime,
+		hub,
+		workspaceRuntime,
+		config,
+		getFocusedBlockId,
+		resolveFocusContext,
+		presentationOrigin,
+	} = useSidecar();
 	const { projection: capabilityProjection, runtime: chromeRuntime } = useComposerChrome();
 	const projection = useSessionProjection(runtime);
 	const s = config.strings;
@@ -199,6 +213,7 @@ function SessionView(): React.ReactElement {
 			snapshot: context.snapshot,
 			targetQuote: context.targetQuote || text.trim(),
 			capabilityId: selectedCapability.capabilityId,
+			presentationOrigin,
 		});
 		try {
 			const handle = capabilityProjection.invoke(
@@ -210,6 +225,9 @@ function SessionView(): React.ReactElement {
 				},
 			);
 			externalRuns.current.set(handle.runId, frozen.runId);
+			if (presentationOrigin) {
+				workspaceRuntime?.attachPresentationOrigin(handle.runId, presentationOrigin);
+			}
 			runtime.session.linkExternalRun(handle.runId, frozen.runId);
 			runtime.session.markStreaming(frozen.runId);
 		} catch (error) {
@@ -249,7 +267,7 @@ function SessionView(): React.ReactElement {
 						</div>
 						<div className="pk-session-start-context">
 							<i aria-hidden />
-							<span>{s.currentContext}</span>
+							<span>{formatPresentationOrigin(presentationOrigin, s) ?? s.currentContext}</span>
 							<strong>{contextLabel}</strong>
 						</div>
 						<div className="pk-session-start-actions" aria-label={s.capabilityRecommendedGroup}>
@@ -549,6 +567,18 @@ export function formatCopilotContextLabel(source: string, fallback: string): str
 		.trim();
 	if (plain.length <= 72) return plain;
 	return `${plain.slice(0, 69).trimEnd()}…`;
+}
+
+function formatPresentationOrigin(
+	origin: import('@/core/composer').IntelligencePresentationOrigin | null | undefined,
+	strings: SidecarStrings,
+): string | null {
+	if (!origin) return null;
+	if (origin.kind === 'automatic-suggestion') return strings.originAutomaticSuggestion;
+	if (origin.kind === 'ask-copilot') return strings.originAskCopilot;
+	if (origin.kind === 'comment-handoff') return strings.originCommentHandoff;
+	if (origin.kind === 'history-deep-link') return strings.originHistoryDeepLink;
+	return strings.originNativeEditor;
 }
 
 // ── review (transient) ──────────────────────────────────────────────────────

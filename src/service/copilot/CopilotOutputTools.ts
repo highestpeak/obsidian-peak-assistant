@@ -1,5 +1,5 @@
 /**
- * MCP server exposing the copilot output toolset.
+ * Peak Harness tools exposing the copilot output contract.
  *
  * Tools:
  *   propose_insight        — publish an analytical finding
@@ -14,11 +14,11 @@
  * text back so the agent remembers it across turns (decision I1).
  */
 
-import { tool, createSdkMcpServer } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
+import { ok, type ToolDef } from '@/core/types/tool';
 import type { CopilotOutputCollector } from './CopilotOutputCollector';
 
-export interface CopilotOutputMcpOptions {
+export interface CopilotOutputToolsOptions {
 	collector: CopilotOutputCollector;
 	/** Optional notifier; called whenever submit_review fires. */
 	onSubmitReview?: (submission: { summary: string; modeUsed: 'fast' | 'complete'; continue: boolean; continueRationale?: string }) => void;
@@ -28,10 +28,28 @@ function ackText(payload: unknown): { content: Array<{ type: 'text'; text: strin
 	return { content: [{ type: 'text' as const, text: JSON.stringify(payload) }] };
 }
 
-export function buildCopilotOutputMcpServer(options: CopilotOutputMcpOptions) {
+function defineCopilotTool<TShape extends z.ZodRawShape>(
+	name: string,
+	description: string,
+	shape: TShape,
+	execute: (input: z.infer<z.ZodObject<TShape>>) => Promise<unknown>,
+): ToolDef {
+	return {
+		name: `mcp__copilot__${name}`,
+		description,
+		inputSchema: z.object(shape),
+		source: 'local',
+		kind: name === 'submit_review' ? 'meta' : 'read',
+		async execute(input) {
+			return ok(await execute(input));
+		},
+	};
+}
+
+export function buildCopilotOutputTools(options: CopilotOutputToolsOptions): ToolDef[] {
 	const { collector, onSubmitReview } = options;
 
-	const proposeInsight = tool(
+	const proposeInsight = defineCopilotTool(
 		'propose_insight',
 		[
 			'Publish an analytical finding that should appear in the Insights tab of the review.',
@@ -58,7 +76,7 @@ export function buildCopilotOutputMcpServer(options: CopilotOutputMcpOptions) {
 		},
 	);
 
-	const proposeChange = tool(
+	const proposeChange = defineCopilotTool(
 		'propose_change',
 		[
 			'Propose concrete edits to the user\'s document. Appears in the Changes tab and can be applied with one click.',
@@ -96,7 +114,7 @@ export function buildCopilotOutputMcpServer(options: CopilotOutputMcpOptions) {
 		},
 	);
 
-	const proposeSource = tool(
+	const proposeSource = defineCopilotTool(
 		'propose_source',
 		[
 			'Cite a vault note as supporting evidence. Appears in the Sources tab.',
@@ -120,7 +138,7 @@ export function buildCopilotOutputMcpServer(options: CopilotOutputMcpOptions) {
 		},
 	);
 
-	const attachChatFollowup = tool(
+	const attachChatFollowup = defineCopilotTool(
 		'attach_chat_followup',
 		'Queue a follow-up question to surface in the Chat tab so the user can keep exploring. Use when you noticed something worth a deeper conversation but it does not belong in an insight.',
 		{
@@ -136,7 +154,7 @@ export function buildCopilotOutputMcpServer(options: CopilotOutputMcpOptions) {
 		},
 	);
 
-	const noteFinding = tool(
+	const noteFinding = defineCopilotTool(
 		'note_finding',
 		[
 			'Record a mid-flight observation — not a final insight, just a thought you want to remember.',
@@ -153,7 +171,7 @@ export function buildCopilotOutputMcpServer(options: CopilotOutputMcpOptions) {
 		},
 	);
 
-	const submitReview = tool(
+	const submitReview = defineCopilotTool(
 		'submit_review',
 		[
 			'Terminate the current review round. Call this exactly once when you believe the round is complete.',
@@ -185,7 +203,7 @@ export function buildCopilotOutputMcpServer(options: CopilotOutputMcpOptions) {
 
 	// ─── Vault-scope structured proposals (used by Vault Auto Review) ────
 
-	const proposeClusterObservation = tool(
+	const proposeClusterObservation = defineCopilotTool(
 		'propose_cluster_observation',
 		[
 			'VAULT-SCOPE ONLY. Publish an observation about one knowledge cluster (a community detected by Louvain).',
@@ -216,7 +234,7 @@ export function buildCopilotOutputMcpServer(options: CopilotOutputMcpOptions) {
 		},
 	);
 
-	const proposeGap = tool(
+	const proposeGap = defineCopilotTool(
 		'propose_gap',
 		[
 			'VAULT-SCOPE ONLY. Publish a structural gap finding.',
@@ -246,7 +264,7 @@ export function buildCopilotOutputMcpServer(options: CopilotOutputMcpOptions) {
 		},
 	);
 
-	const proposeAction = tool(
+	const proposeAction = defineCopilotTool(
 		'propose_action',
 		[
 			'VAULT-SCOPE ONLY. Publish a concrete recommended action (Phase 1: text-only; Phase 2 will be executable).',
@@ -282,21 +300,17 @@ export function buildCopilotOutputMcpServer(options: CopilotOutputMcpOptions) {
 		},
 	);
 
-	return createSdkMcpServer({
-		name: 'copilot',
-		version: '1.0.0',
-		tools: [
-			proposeInsight,
-			proposeChange,
-			proposeSource,
-			attachChatFollowup,
-			noteFinding,
-			submitReview,
-			proposeClusterObservation,
-			proposeGap,
-			proposeAction,
-		],
-	});
+	return [
+		proposeInsight,
+		proposeChange,
+		proposeSource,
+		attachChatFollowup,
+		noteFinding,
+		submitReview,
+		proposeClusterObservation,
+		proposeGap,
+		proposeAction,
+	];
 }
 
 export const COPILOT_OUTPUT_TOOL_NAMES = [

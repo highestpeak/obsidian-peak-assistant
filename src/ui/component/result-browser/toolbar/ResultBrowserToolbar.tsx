@@ -14,6 +14,7 @@ import { motion } from 'framer-motion';
 import { List, ListTree, Network } from 'lucide-react';
 import { CodeMirrorInput } from '@/ui/component/mine/codemirror-input';
 import { KeyboardShortcut } from '@/ui/component/mine/KeyboardShortcut';
+import { Button } from '@/ui/component/shared-ui/button';
 import { cn } from '@/ui/react/lib/utils';
 import type {
 	ResultBrowserDensity,
@@ -101,7 +102,7 @@ const Thumb: React.FC<{ layoutId: string }> = ({ layoutId }) => (
 	/>
 );
 
-const VIEW_OPT_BASE = 'pktw-relative pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1 pktw-rounded-full pktw-text-pk-sm pktw-font-medium';
+const VIEW_OPT_BASE = 'pktw-relative pktw-inline-flex pktw-items-center pktw-gap-1.5 !pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-px-3 !pktw-py-0 pktw-rounded-full pktw-text-sm pktw-font-medium';
 const ACTIVE_LABEL = 'pktw-relative pktw-z-10 pktw-text-white';
 const IDLE_LABEL = 'pktw-relative pktw-z-10 pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-transition-colors';
 
@@ -126,18 +127,20 @@ export const ResultBrowserViewToggle: React.FC<ViewModeToggleProps> = ({ view, o
 		{VIEW_OPTIONS.map(([id, label, Icon]) => {
 			const active = view === id;
 			return (
-				<button
-					key={id}
-					type="button"
-					title={VIEW_TITLES[id]}
-					onClick={() => { if (view !== id) onViewChange(id); }}
-					className={cn(VIEW_OPT_BASE, active ? ACTIVE_LABEL : IDLE_LABEL)}
+					<Button
+						key={id}
+						type="button"
+						variant="unstyled"
+						size="sm"
+						title={VIEW_TITLES[id]}
+						onClick={() => { if (view !== id) onViewChange(id); }}
+						className={cn(VIEW_OPT_BASE, active ? ACTIVE_LABEL : IDLE_LABEL)}
 				>
 					{active && <Thumb layoutId="view-mode-thumb" />}
 					<span className="pktw-relative pktw-z-10 pktw-inline-flex pktw-items-center pktw-gap-1.5">
-						<Icon className="pktw-w-3 pktw-h-3" /> {label}
-					</span>
-				</button>
+							<Icon className="pktw-w-3.5 pktw-h-3.5" /> {label}
+						</span>
+					</Button>
 			);
 		})}
 	</div>
@@ -152,7 +155,7 @@ export interface DensityToggleProps {
 	onDensityChange: (density: ResultBrowserDensity) => void;
 }
 
-const DENSITY_OPT_BASE = 'pktw-relative pktw-inline-flex pktw-items-center pktw-px-3 pktw-py-1 pktw-rounded-full pktw-text-pk-sm pktw-font-medium';
+const DENSITY_OPT_BASE = 'pktw-relative pktw-inline-flex pktw-items-center !pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-px-3 !pktw-py-0 pktw-rounded-full pktw-text-sm pktw-font-medium';
 
 export const ResultBrowserDensityToggle: React.FC<DensityToggleProps> = ({ density, onDensityChange }) => (
 	<div
@@ -163,10 +166,12 @@ export const ResultBrowserDensityToggle: React.FC<DensityToggleProps> = ({ densi
 		{(['compact', 'detailed'] as const).map((d) => {
 			const active = density === d;
 			return (
-				<button
-					key={d}
-					type="button"
-					role="tab"
+					<Button
+						key={d}
+						type="button"
+						variant="unstyled"
+						size="sm"
+						role="tab"
 					aria-selected={active}
 					title={d === 'compact' ? 'Compact — one line per result' : 'Detailed — result title + snippet + path / anchor'}
 					onClick={() => onDensityChange(d)}
@@ -174,7 +179,7 @@ export const ResultBrowserDensityToggle: React.FC<DensityToggleProps> = ({ densi
 				>
 					{active && <Thumb layoutId="result-density-thumb" />}
 					<span className="pktw-relative pktw-z-10">{d === 'compact' ? 'Compact' : 'Detailed'}</span>
-				</button>
+					</Button>
 			);
 		})}
 	</div>
@@ -203,17 +208,19 @@ const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPres
 		{PRESET_LABELS.map(([id, label, title]) => {
 			const active = preset === id;
 			return (
-				<button
-					key={id}
-					type="button"
-					role="tab"
+					<Button
+						key={id}
+						type="button"
+						variant="unstyled"
+						size="sm"
+						role="tab"
 					aria-selected={active}
 					title={title}
 					onClick={() => onPresetChange(id)}
-					className={cn(
-						'pktw-relative pktw-inline-flex pktw-items-center pktw-px-3 pktw-py-1 pktw-rounded-full pktw-text-pk-sm pktw-font-medium',
-						active ? 'pktw-text-white' : 'pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-transition-colors',
-					)}
+						className={cn(
+							'pktw-relative pktw-inline-flex pktw-items-center !pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-px-3 !pktw-py-0 pktw-rounded-full pktw-text-sm pktw-font-medium',
+							active ? 'pktw-text-white' : 'pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-transition-colors',
+						)}
 				>
 					{active && (
 						<motion.div
@@ -223,7 +230,7 @@ const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPres
 						/>
 					)}
 					<span className="pktw-relative pktw-z-10">{label}</span>
-				</button>
+					</Button>
 			);
 		})}
 	</div>
@@ -231,7 +238,7 @@ const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPres
 
 const SemanticToggle: React.FC<Pick<GraphControlsProps, 'semantic' | 'onSemanticChange'>> = ({ semantic, onSemanticChange }) => (
 	<label
-		className="pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-cursor-pointer pktw-select-none pktw-text-pk-sm pktw-text-pk-foreground-muted"
+		className="pktw-inline-flex pktw-min-h-8 pktw-items-center pktw-gap-1.5 pktw-cursor-pointer pktw-select-none pktw-text-sm pktw-text-pk-foreground-muted"
 		title="Layer semantic-similarity edges on top of the current preset. Uses pre-indexed embeddings — instant, no AI credits, no network."
 	>
 		<input

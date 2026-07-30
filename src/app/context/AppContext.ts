@@ -11,7 +11,7 @@ import { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
 import { AIGraphAgent } from '@/service/agents/AIGraphAgent';
 import { SessionContextService } from '@/service/context/SessionContextService';
 import { registerDevtools, unregisterDevtools } from '@/app/context/devtools';
-import { ClaudeAgentSDKBridge } from '@/service/agents/harness-bridge/ClaudeAgentSDKBridge';
+import { HarnessRunBridge } from '@/service/agents/harness-bridge/HarnessRunBridge';
 import { AppRuntimeRegistry } from '@/app/context/AppRuntimeRegistry';
 import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
 import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
@@ -48,7 +48,7 @@ export class AppContext {
 	public viewManager: ViewManager;
 	public readonly eventBus: EventBus;
 	/** Bridge instance shared across the plugin lifetime. */
-	public readonly _bridge: ClaudeAgentSDKBridge;
+	public readonly _bridge: HarnessRunBridge;
 	/**
 	 * App-owned runtime registry. T6R moves Vault Lint runtime ownership
 	 * from a service-layer module singleton into this registry; future
@@ -137,8 +137,8 @@ export class AppContext {
 		return AppContext.getInstance().settings.harnessSettings ?? { ...DEFAULT_HARNESS_SETTINGS };
 	}
 
-	/** Singleton ClaudeAgentSDKBridge instance. */
-	public static getBridge(): ClaudeAgentSDKBridge {
+	/** Singleton Peak Harness run bridge. */
+	public static getBridge(): HarnessRunBridge {
 		return AppContext.getInstance()._bridge;
 	}
 
@@ -491,11 +491,14 @@ export class AppContext {
 		// viewManager will be set after ViewManager is created
 		this.viewManager = null as any;
 		this.eventBus = EventBus.getInstance(app);
-		this._bridge = new ClaudeAgentSDKBridge();
+		this._bridge = new HarnessRunBridge();
 		this.runtimeRegistry = new AppRuntimeRegistry();
 		this.progressReporter = new ObsidianProgressReporter();
 		this.vaultPreview = composeVaultPreview(app);
-		this.vaultNavigation = composeVaultNavigation(app);
+		this.vaultNavigation = composeVaultNavigation(
+			app,
+			() => this.runtimeRegistry.tryGetDocumentComposerRuntime()?.navigation ?? null,
+		);
 		this.wikilink = composeWikilink(app);
 		this.editorCommands = composeEditorCommands(app);
 		this.chatVaultWriter = composeChatVaultWriter(app);
@@ -518,10 +521,7 @@ export class AppContext {
 	}
 
 	/**
-	 * Create a VaultSearchAgent. Runs on the self-hosted harness
-	 * (`runAgentLoop`) as of the 2026-07-04 cutover — the Claude Agent SDK
-	 * is now used strictly as a library for MCP plumbing + one-shot LLM
-	 * callers, not as a routing backend.
+	 * Create a VaultSearchAgent backed by the app-owned Peak Harness.
 	 */
 	public static vaultSearchAgent(): VaultSearchAgent {
 		const ctx = AppContext.getInstance();

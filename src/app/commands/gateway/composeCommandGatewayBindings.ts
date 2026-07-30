@@ -12,7 +12,7 @@
 // neutral: same callback runs, but now RunSession/RunEvent are recorded
 // via the CapabilityRunner.
 //
-// Once B3 lands live backend strategies (hermes-harness / claude-sdk /
+// Once B3 lands live backend strategies (hermes-harness /
 // provider-direct), these `execute` closures can shift to real backend
 // dispatch without touching the manifest or the palette registration.
 

@@ -110,7 +110,7 @@ function hasCJKMajority(text: string): boolean {
  * The 28 service-side action definitions live inside this factory as
  * closures, so each `execute()` body talks only to the injected ports.
  * The app composition layer is the single place that wires concrete
- * Obsidian / AppContext / sqlite / Agent SDK dependencies.
+ * Obsidian / AppContext / sqlite / Peak Harness dependencies.
  */
 export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAction[] {
 	// T11Y-7b: actions read the vault through three shared narrow ports

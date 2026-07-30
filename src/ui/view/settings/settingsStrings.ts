@@ -212,17 +212,6 @@ export interface SettingsStrings {
             description: string;
             cta: string;
         };
-        backend: {
-            sectionLabel: string;
-            info: string;
-            fieldLabel: string;
-            fieldHint: string;
-            options: {
-                auto: string;
-                harness: string;
-                claudeAgentSdk: string;
-            };
-        };
         tierBindings: {
             sectionLabel: string;
             info: string;

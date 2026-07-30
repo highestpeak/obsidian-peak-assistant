@@ -1,18 +1,182 @@
 import * as React from 'react';
-import { ChevronDown, MapPin, RotateCcw, X } from 'lucide-react';
+import { ChevronDown, MapPin, RotateCcw, Undo2, X } from 'lucide-react';
 import { composerTargetBlockId, type ComposerHistoryItem, type ComposerTransactionProjection } from '@/core/composer';
+import {
+	groupComposerGenerationRuns,
+	type ComposerGenerationGroup,
+	type FrozenComposerRunEnvelope,
+} from '@/service/composer';
 import { Button, IconButton } from '@/ui/components/primitives';
 import { cn } from '@/ui/react/lib/utils';
+import { generationPreview } from '../generationHistory';
 import type { SidecarStrings } from './sidecarConfig';
-import { useSidecar } from './SidecarContext';
+import { useSidecar, useWorkspaceProjection } from './SidecarContext';
 
 /**
- * The History view reads the one transaction ledger used by Undo/Redo. It is a
- * document history, rather than a flat list of controls: newest committed work
- * is grouped by local day, batches can expand to their independent writes, and
- * every locatable/rollbackable child keeps its real transaction identity.
+ * History has two intentionally separate truths:
+ * - Generation History: every Frozen Run, including not-adopted output.
+ * - Document History: only committed, undoable Markdown transactions.
  */
 export function HistoryView(): React.ReactElement {
+	const { workspaceRuntime, documentId, config } = useSidecar();
+	const [mode, setMode] = React.useState<'generation' | 'document'>('generation');
+	const workspace = useWorkspaceProjection(workspaceRuntime);
+	const groups = React.useMemo(
+		() => groupComposerGenerationRuns(workspace?.runs ?? [], documentId),
+		[workspace, documentId],
+	);
+	const s = config.strings;
+	return (
+		<div className="pk-history-switcher">
+			<div className="pk-history-kind-tabs" role="tablist" aria-label={s.tabHistory}>
+				<Button
+					variant="ghost"
+					size="sm"
+					className="pk-history-kind-tab"
+					role="tab"
+					data-active={mode === 'generation' || undefined}
+					aria-selected={mode === 'generation'}
+					onClick={() => setMode('generation')}
+				>
+					{s.generationHistoryTitle}
+					{groups.length > 0 && <span>{groups.length}</span>}
+				</Button>
+				<Button
+					variant="ghost"
+					size="sm"
+					className="pk-history-kind-tab"
+					role="tab"
+					data-active={mode === 'document' || undefined}
+					aria-selected={mode === 'document'}
+					onClick={() => setMode('document')}
+				>
+					{s.documentHistoryTitle}
+				</Button>
+			</div>
+			{mode === 'generation'
+				? <GenerationHistory groups={groups} />
+				: <DocumentHistory />}
+		</div>
+	);
+}
+
+function GenerationHistory({
+	groups,
+}: {
+	groups: readonly ComposerGenerationGroup[];
+}): React.ReactElement {
+	const { config, onLocate, onRestoreGeneration } = useSidecar();
+	const s = config.strings;
+	const [expanded, setExpanded] = React.useState<ReadonlySet<string>>(() => new Set());
+	const [restoredRunId, setRestoredRunId] = React.useState<string | null>(null);
+	return (
+		<div className="pk-history pk-generation-history" data-testid="pk-generation-history">
+			<header className="pk-history-heading">
+				<div>
+					<span className="pk-history-title">{s.generationHistoryTitle}</span>
+					<span className="pk-history-intro">{s.generationHistoryIntro}</span>
+				</div>
+				<span className="pk-history-total">{formatCount(s.generationHistoryCount, groups.length)}</span>
+			</header>
+			{groups.length === 0 && (
+				<div className="pk-history pk-history--empty">{s.generationHistoryEmpty}</div>
+			)}
+			<div className="pk-generation-list">
+				{groups.map((group) => {
+					const open = expanded.has(group.candidateId);
+					return (
+						<section key={group.candidateId} className="pk-generation-group">
+							<Button
+								variant="ghost"
+								className="pk-generation-summary"
+								aria-expanded={open}
+								onClick={() => setExpanded((current) => toggled(current, group.candidateId))}
+							>
+								<HistoryDot origin="ai" />
+								<span className="pk-history-copy">
+									<span className="pk-history-title-row">
+										<strong>{group.label}</strong>
+										<em data-disposition={group.latest.disposition}>
+											{generationGroupStatus(group, s)}
+										</em>
+									</span>
+									<small>{formatCount(s.generationHistoryVersions, group.runs.length)}</small>
+								</span>
+								<span className="pk-history-meta">
+									<time>{formatHistoryTime(group.latest.startedAt)}</time>
+									<ChevronDown
+										size={13}
+										className={cn('pk-history-batch-chevron', open && 'pk-history-batch-chevron--expanded')}
+									/>
+								</span>
+							</Button>
+							{open && (
+								<div className="pk-generation-runs">
+									{[...group.runs].reverse().map((run) => (
+										<GenerationRun
+											key={run.runId}
+											run={run}
+											restored={restoredRunId === run.runId}
+											onLocate={onLocate}
+											onRestore={() => {
+												if (!onRestoreGeneration?.(run.runId)) return;
+												setRestoredRunId(run.runId);
+											}}
+											strings={s}
+										/>
+									))}
+								</div>
+							)}
+						</section>
+					);
+				})}
+			</div>
+		</div>
+	);
+}
+
+function GenerationRun({
+	run,
+	restored,
+	onLocate,
+	onRestore,
+	strings,
+}: {
+	run: FrozenComposerRunEnvelope;
+	restored: boolean;
+	onLocate?: (blockId: string) => void;
+	onRestore: () => void;
+	strings: SidecarStrings;
+}): React.ReactElement {
+	const preview = generationPreview(run);
+	const blockId = composerTargetBlockId(run.target);
+	const canRestore = run.disposition === 'not-adopted' && Boolean(run.review);
+	return (
+		<article className="pk-generation-run" data-status={run.status} data-disposition={run.disposition}>
+			<div className="pk-generation-run__meta">
+				<strong>{generationStatus(run, strings)}</strong>
+				<time>{formatHistoryTime(run.startedAt)}</time>
+			</div>
+			{preview && <span className="pk-generation-run__preview">{preview}</span>}
+			<div className="pk-generation-run__actions">
+				{blockId && (
+					<Button variant="ghost" size="sm" onClick={() => onLocate?.(blockId)}>
+						<MapPin size={12} />
+						{strings.locateInDocument}
+					</Button>
+				)}
+				{canRestore && (
+					<Button variant="outline" size="sm" onClick={onRestore}>
+						<Undo2 size={12} />
+						{restored ? strings.generationHistoryRestored : strings.generationHistoryRestore}
+					</Button>
+				)}
+			</div>
+		</article>
+	);
+}
+
+function DocumentHistory(): React.ReactElement {
 	const { hub, config, onLocate } = useSidecar();
 	const s = config.strings;
 	const projection = useHubProjection(hub);
@@ -29,8 +193,8 @@ export function HistoryView(): React.ReactElement {
 		<div className="pk-history" data-testid="pk-history">
 			<header className="pk-history-heading">
 				<div>
-					<span className="pk-history-title">{s.historyTitle}</span>
-					<span className="pk-history-intro">{s.historyIntro}</span>
+					<span className="pk-history-title">{s.documentHistoryTitle}</span>
+					<span className="pk-history-intro">{s.documentHistoryIntro}</span>
 				</div>
 				<span className="pk-history-total">{formatCount(s.historyTransactionCount, countTransactions(items))}</span>
 			</header>
@@ -87,6 +251,37 @@ export function HistoryView(): React.ReactElement {
 			)}
 		</div>
 	);
+}
+
+function toggled(current: ReadonlySet<string>, id: string): ReadonlySet<string> {
+	const next = new Set(current);
+	if (next.has(id)) next.delete(id);
+	else next.add(id);
+	return next;
+}
+
+function generationStatus(
+	run: FrozenComposerRunEnvelope,
+	strings: SidecarStrings,
+): string {
+	if (run.disposition === 'accepted') return strings.generationHistoryAccepted;
+	if (run.disposition === 'not-adopted') return strings.generationHistoryNotAdopted;
+	if (run.status === 'failed') return strings.generationHistoryFailed;
+	if (run.status === 'cancelled' || run.status === 'interrupted') {
+		return strings.generationHistoryCancelled;
+	}
+	if (run.status === 'stale') return strings.generationHistoryStale;
+	return strings.generationHistoryPending;
+}
+
+function generationGroupStatus(
+	group: ComposerGenerationGroup,
+	strings: SidecarStrings,
+): string {
+	if (group.runs.some((run) => run.disposition === 'accepted')) {
+		return strings.generationHistoryAccepted;
+	}
+	return generationStatus(group.latest, strings);
 }
 
 function HistoryBatch({

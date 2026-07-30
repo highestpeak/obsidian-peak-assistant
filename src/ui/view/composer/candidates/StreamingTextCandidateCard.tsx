@@ -26,11 +26,19 @@
 
 import * as React from 'react';
 import { Check, ChevronLeft, ChevronRight, RefreshCw, RotateCcw, Sparkles, WandSparkles, X } from 'lucide-react';
-import type { ComposerResultEnvelope } from '@/core/composer';
-import type { ComposerTextPatchPayload } from '@/core/schemas/composer';
-import { diffWords, type DiffSegment } from '@/service/composer';
+import {
+	COMPOSER_LIST_ITEM_PATCH_RENDERER_ID,
+	type ComposerResultEnvelope,
+} from '@/core/composer';
+import type {
+	ComposerBlockInsertionPayload,
+	ComposerListItemPatchPayload,
+	ComposerTextPatchPayload,
+} from '@/core/schemas/composer';
+import { diffWords, parseInlineRuns, type DiffSegment } from '@/service/composer';
 import { Button } from '@/ui/components/primitives';
 import { cn } from '@/ui/react/lib/utils';
+import { StyledRuns } from '../chrome/StyledRuns';
 import { formatCandidateMeta, formatVariantCounter } from './candidateUiConfig';
 import type { CandidateRendererProps } from './rendererRegistry';
 
@@ -38,6 +46,13 @@ const CONTROL = 'pk-text-candidate__control';
 
 function activeVariantIndex(props: CandidateRendererProps): number {
 	return props.candidate.variants.findIndex((v) => v.variantId === props.candidate.activeVariantId);
+}
+
+function activeVariantError(props: CandidateRendererProps): string | null {
+	const variant = props.candidate.variants.find(
+		(item) => item.variantId === props.candidate.activeVariantId,
+	);
+	return variant?.error ?? null;
 }
 
 /**
@@ -55,6 +70,14 @@ function readyText(props: CandidateRendererProps): string | null {
 	if (envelope.resultKind === 'text-patch') {
 		const payload = envelope.payload as ComposerTextPatchPayload;
 		return typeof payload?.replacementText === 'string' ? payload.replacementText : null;
+	}
+	if (envelope.resultKind === 'block-insertion') {
+		const payload = envelope.payload as ComposerBlockInsertionPayload;
+		return typeof payload?.insertedText === 'string' ? payload.insertedText : null;
+	}
+	if (envelope.resultKind === 'list-item-patch') {
+		const payload = envelope.payload as ComposerListItemPatchPayload;
+		return typeof payload?.itemMarkdown === 'string' ? payload.itemMarkdown : null;
 	}
 	if (envelope.resultKind === 'table-patch') {
 		const preview = (envelope.payload as { replacement?: unknown })?.replacement;
@@ -75,12 +98,14 @@ function readyText(props: CandidateRendererProps): string | null {
  * resolver wired) or when nothing actually changed.
  */
 function ReadyBody({ text, originalText }: { text: string; originalText: string | null }): React.ReactElement {
+	const table = draftTable(text);
+	if (table) return <DraftTable table={table} />;
 	const items = draftListItems(text);
 	if (items) return <DraftList items={items} />;
 	if (originalText === null || originalText === text) {
-		return <span className="pk-text-candidate__text">{text}</span>;
+		return <RichTextPreview text={text} />;
 	}
-	const segments = diffWords(originalText, text);
+	const segments = diffWords(visibleInlineText(originalText), visibleInlineText(text));
 	return (
 		<span className="pk-text-candidate__text" data-diff="inplace">
 			{segments.map((seg, i) => renderSegment(seg, i))}
@@ -102,8 +127,78 @@ function draftListItems(text: string): string[] | null {
 function DraftList({ items }: { items: readonly string[] }): React.ReactElement {
 	return (
 		<ul className="pk-text-candidate__list">
-			{items.map((item, index) => <li key={`${index}:${item}`}>{item}</li>)}
+			{items.map((item, index) => (
+				<li key={`${index}:${item}`}>
+					<RichTextPreview text={item} />
+				</li>
+			))}
 		</ul>
+	);
+}
+
+interface DraftTableModel {
+	headers: string[];
+	rows: string[][];
+}
+
+function draftTable(text: string): DraftTableModel | null {
+	const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+	if (lines.length < 3 || !lines.every(isPipeTableLine)) return null;
+	const cells = lines.map(splitPipeTableLine);
+	const width = cells[0]?.length ?? 0;
+	if (width === 0 || cells.some((row) => row.length !== width)) return null;
+	if (!cells[1]?.every(isTableSeparatorCell)) return null;
+	return { headers: cells[0], rows: cells.slice(2) };
+}
+
+function isPipeTableLine(line: string): boolean {
+	return line.startsWith('|') && line.endsWith('|');
+}
+
+function splitPipeTableLine(line: string): string[] {
+	return line.slice(1, -1).split('|').map((cell) => cell.trim());
+}
+
+function isTableSeparatorCell(cell: string): boolean {
+	const compact = cell.split(' ').join('');
+	const dashes = compact.split(':').join('');
+	return dashes.length >= 3 && [...dashes].every((character) => character === '-');
+}
+
+function DraftTable({ table }: { table: DraftTableModel }): React.ReactElement {
+	return (
+		<div className="pk-text-candidate__table-wrap">
+			<table className="pk-text-candidate__table">
+				<thead>
+					<tr>
+						{table.headers.map((cell, index) => (
+							<th key={`${index}:${cell}`}><RichTextPreview text={cell} /></th>
+						))}
+					</tr>
+				</thead>
+				<tbody>
+					{table.rows.map((row, rowIndex) => (
+						<tr key={`${rowIndex}:${row.join('|')}`}>
+							{row.map((cell, cellIndex) => (
+								<td key={`${cellIndex}:${cell}`}><RichTextPreview text={cell} /></td>
+							))}
+						</tr>
+					))}
+				</tbody>
+			</table>
+		</div>
+	);
+}
+
+function visibleInlineText(text: string): string {
+	return parseInlineRuns(text, 0).map((run) => run.text).join('');
+}
+
+function RichTextPreview({ text }: { text: string }): React.ReactElement {
+	return (
+		<span className="pk-text-candidate__text">
+			<StyledRuns runs={parseInlineRuns(text, 0)} />
+		</span>
 	);
 }
 
@@ -149,15 +244,34 @@ function CandidateBody(props: CandidateRendererProps): React.ReactElement {
 				</span>
 			);
 		}
+		const table = draftTable(streamingText);
+		if (table) return <DraftTable table={table} />;
+		const structural =
+			props.runtime.candidateEffectFor?.(candidate.candidateId) === 'transform';
+		if (structural && streamingText.trimStart().startsWith('|')) {
+			return (
+				<span className="pk-text-candidate__text pk-text-candidate__text--muted">
+					{strings.streaming}
+					<span aria-hidden="true" className="pk-text-candidate__caret animate-pulse" />
+				</span>
+			);
+		}
 		return (
 			<span className="pk-text-candidate__text">
-				{streamingText}
+				<StyledRuns runs={parseInlineRuns(streamingText, 0)} />
 				<span aria-hidden="true" className="pk-text-candidate__caret animate-pulse" />
 			</span>
 		);
 	}
 	if (candidate.status === 'failed') {
-		return <span className="pk-text-candidate__text pk-text-candidate__text--error">{strings.failed}</span>;
+		return (
+			<span className="pk-text-candidate__text pk-text-candidate__text--error">
+				{activeVariantError(props) ?? strings.failed}
+			</span>
+		);
+	}
+	if (candidate.status === 'cancelled') {
+		return <span className="pk-text-candidate__text pk-text-candidate__text--muted">{strings.cancelled}</span>;
 	}
 	if (candidate.status === 'stale') {
 		return <span className="pk-text-candidate__text pk-text-candidate__text--muted">{strings.stale}</span>;
@@ -209,13 +323,17 @@ export function StreamingTextCandidateCard(props: CandidateRendererProps): React
 	const [instruction, setInstruction] = React.useState('');
 	const streaming = props.streamingText !== null;
 	const acceptable = !streaming && candidate.status === 'ready';
-	const regenerable = !streaming && (candidate.status === 'ready' || candidate.status === 'failed');
+	const regenerable =
+		!streaming &&
+		(candidate.status === 'ready' || candidate.status === 'failed' || candidate.status === 'cancelled');
 	const activeIndex = Math.max(0, activeVariantIndex(props)) + 1;
 	const action = runtime.candidateLabelFor?.(candidate.candidateId) ?? strings.draftActionFallback;
 	const statusTitle = streaming
 		? strings.streamingTitle
 		: candidate.status === 'failed'
 			? strings.failed
+			: candidate.status === 'cancelled'
+				? strings.cancelled
 			: candidate.status === 'stale'
 				? strings.stale
 				: strings.draftTitle;
@@ -225,6 +343,8 @@ export function StreamingTextCandidateCard(props: CandidateRendererProps): React
 		activeIndex,
 		candidate.variants.length,
 	);
+	const compactListItem =
+		runtime.rendererIdFor(candidate.candidateId) === COMPOSER_LIST_ITEM_PATCH_RENDERER_ID;
 
 	const submitRegenerate = () => {
 		if (!regenerable) return;
@@ -246,7 +366,8 @@ export function StreamingTextCandidateCard(props: CandidateRendererProps): React
 		<div
 			data-candidate-id={candidate.candidateId}
 			data-candidate-status={streaming ? 'streaming' : candidate.status}
-			className="pk-text-candidate"
+			data-result-layout={compactListItem ? 'list-item' : undefined}
+			className={cn('pk-text-candidate', compactListItem && 'pk-text-candidate--list-item')}
 		>
 			<div className="pk-text-candidate__body" aria-live="polite">
 				<CandidateBody {...props} />
@@ -280,7 +401,12 @@ export function StreamingTextCandidateCard(props: CandidateRendererProps): React
 				<div className="pk-text-candidate__actions">
 					<VariantNav {...props} disabled={streaming || candidate.status === 'stale'} />
 					{candidate.status === 'stale' ? (
-						<Button variant="ghost" className={cn(CONTROL, 'pk-text-candidate__button', 'pk-text-candidate__button--quiet')} onClick={rerunStale}>
+						<Button
+							variant="ghost"
+							className={cn(CONTROL, 'pk-text-candidate__button', 'pk-text-candidate__button--quiet')}
+							title={compactListItem ? strings.rerun : undefined}
+							onClick={rerunStale}
+						>
 							<RefreshCw size={14} />
 							{strings.rerun}
 						</Button>
@@ -289,18 +415,28 @@ export function StreamingTextCandidateCard(props: CandidateRendererProps): React
 							variant="ghost"
 							className={cn(CONTROL, 'pk-text-candidate__button', 'pk-text-candidate__button--quiet')}
 							disabled={!regenerable}
-							title={streaming ? strings.acceptDisabledStreaming : undefined}
+							title={
+								compactListItem
+									? strings.regenerate
+									: streaming ? strings.acceptDisabledStreaming : undefined
+							}
 							onClick={submitRegenerate}
 						>
 							<RotateCcw size={14} />
-							{candidate.status === 'failed' ? strings.retry : strings.regenerate}
+							{candidate.status === 'failed' || candidate.status === 'cancelled'
+								? strings.retry
+								: strings.regenerate}
 						</Button>
 					)}
 					<Button
 						variant="primary"
 						className={cn(CONTROL, 'pk-text-candidate__button pk-text-candidate__button--accept')}
 						disabled={!acceptable}
-						title={!acceptable ? strings.acceptDisabledStreaming : undefined}
+						title={
+							compactListItem && acceptable
+								? strings.accept
+								: !acceptable ? strings.acceptDisabledStreaming : undefined
+						}
 						onClick={() => void runtime.accept(candidate.candidateId)}
 					>
 						<Check size={14} />
@@ -309,6 +445,7 @@ export function StreamingTextCandidateCard(props: CandidateRendererProps): React
 					<Button
 						variant="ghost"
 						className={cn(CONTROL, 'pk-text-candidate__button', 'pk-text-candidate__button--quiet')}
+						title={compactListItem ? (streaming ? strings.cancel : strings.discard) : undefined}
 						onClick={handleDiscard}
 					>
 						<X size={14} />

@@ -31,7 +31,13 @@ import {
 	setEmbedAnchor,
 	internalTargets,
 	planEmbedSelectionAnchor,
+	planEmbedSelectionRange,
+	removeManagedEmbedSelectionAnchors,
+	extractEmbedSelectionRange,
+	serializeEmbedSelectionRange,
+	parseEmbedSelectionRange,
 	normalizeVisibleText,
+	parseComposerDocument,
 	// easy copy
 	toPlainText,
 } from '@/service/composer';
@@ -143,10 +149,83 @@ function testLink(): void {
 	check('link: selected paragraph writes compatible block anchor', anchoredParagraph.ok && anchoredParagraph.anchor === 'peak-test' && anchoredParagraph.nextText === 'A **focused** [[Note|reference]] paragraph. ^peak-test');
 	const anchoredList = planEmbedSelectionAnchor('- [[Note|Reference]]', 'Reference', 'peak-list');
 	check('link: selected list item writes compatible block anchor', anchoredList.ok && anchoredList.nextText === '- [[Note|Reference]] ^peak-list');
+	const anchoredWholeList = planEmbedSelectionAnchor(
+		'- [[One|One item]]\n- [[Two|Two item]]',
+		'One item\nTwo item',
+		'peak-list-whole',
+	);
+	check('link: selected list range writes one anchor for the whole list', anchoredWholeList.ok && anchoredWholeList.anchor === 'peak-list-whole' && anchoredWholeList.nextText === '- [[One|One item]]\n- [[Two|Two item]] ^peak-list-whole');
 	const reusedAnchor = planEmbedSelectionAnchor('> Persisted quote ^peak-old', 'Persisted quote', 'peak-new');
 	check('link: selected existing anchor is reused', reusedAnchor.ok && reusedAnchor.reused && reusedAnchor.anchor === 'peak-old');
 	const ambiguousAnchor = planEmbedSelectionAnchor('Same\n\nSame', 'Same', 'peak-ambiguous');
 	check('link: repeated selected text fails closed', !ambiguousAnchor.ok && ambiguousAnchor.reason === 'selection-ambiguous');
+	const rangeSource = 'First **paragraph**.\n\n[[Second|Second paragraph]].\n\nThird paragraph.';
+	const anchoredRange = planEmbedSelectionRange(
+		rangeSource,
+		['First paragraph.', 'Second paragraph.'],
+		'peak-range',
+	);
+	check('link: consecutive paragraphs receive one logical range with two boundary anchors', anchoredRange.ok && anchoredRange.startAnchor === 'peak-range-start' && anchoredRange.endAnchor === 'peak-range-end');
+	check('link: range preserves Markdown and blank lines in the target note', anchoredRange.ok && anchoredRange.nextText === 'First **paragraph**. ^peak-range-start\n\n[[Second|Second paragraph]]. ^peak-range-end\n\nThird paragraph.');
+	const rangeSlice = anchoredRange.ok
+		? extractEmbedSelectionRange(anchoredRange.nextText, anchoredRange.startAnchor, anchoredRange.endAnchor)
+		: { resolved: false, text: '' };
+	check('link: range resolves the exact persisted source slice', rangeSlice.resolved && rangeSlice.text === 'First **paragraph**. ^peak-range-start\n\n[[Second|Second paragraph]]. ^peak-range-end');
+	const rangeEmbed = anchoredRange.ok
+		? serializeEmbedSelectionRange('![[Note]]', anchoredRange)
+		: '';
+	const parsedRange = parseEmbedSelectionRange(rangeEmbed);
+	const rangeSnapshot = parseComposerDocument(rangeEmbed);
+	check('link: range metadata preserves the original one-embed source', parsedRange?.originalEmbed === '![[Note]]' && parsedRange.startAnchor === 'peak-range-start' && parsedRange.endAnchor === 'peak-range-end');
+	check('link: range metadata remains one Composer embed block', rangeSnapshot.blocks.length === 1 && rangeSnapshot.blocks[0]?.kind === 'embed');
+	const encodedRangePayload = rangeEmbed.match(/peak-composer-embed-range:([^%]*(?:%[^%]*)*)%%$/)?.[1] ?? '';
+	const rangePayloadKeys = encodedRangePayload
+		? Object.keys(JSON.parse(decodeURIComponent(encodedRangePayload)) as Record<string, unknown>).sort()
+		: [];
+	check(
+		'link: range metadata strips transient planner and mutation fields',
+		rangePayloadKeys.join(',') === 'endAnchor,originalEmbed,startAnchor,version',
+		rangePayloadKeys.join(','),
+	);
+	const discontinuousRange = planEmbedSelectionRange(rangeSource, ['First paragraph.', 'Third paragraph.'], 'peak-discontinuous');
+	check('link: non-consecutive paragraphs fail closed instead of making a fake range', !discontinuousRange.ok && discontinuousRange.reason === 'selection-not-a-contiguous-block-range');
+	const replacedRange = planEmbedSelectionRange(
+		'First. ^peak-old-start\n\nSecond. ^peak-old-end\n\nThird.',
+		['Second.', 'Third.'],
+		'peak-next',
+		{ kind: 'range', startAnchor: 'peak-old-start', endAnchor: 'peak-old-end' },
+	);
+	check(
+		'link: replacing a persisted range removes both old Composer anchors',
+		replacedRange.ok
+			&& !replacedRange.nextText.includes('peak-old-start')
+			&& !replacedRange.nextText.includes('peak-old-end'),
+		replacedRange.ok ? replacedRange.nextText : replacedRange.reason,
+	);
+	check(
+		'link: replacement writes only the new range boundaries',
+		replacedRange.ok
+			&& replacedRange.nextText === 'First.\n\nSecond. ^peak-next-start\n\nThird. ^peak-next-end',
+		replacedRange.ok ? replacedRange.nextText : replacedRange.reason,
+	);
+	const releasedRange = removeManagedEmbedSelectionAnchors(
+		'First. ^peak-release-start\n\nSecond. ^peak-release-end\n\nKeep. ^owner-anchor',
+		{ kind: 'range', startAnchor: 'peak-release-start', endAnchor: 'peak-release-end' },
+	);
+	check(
+		'link: returning to full preview removes only the exact Composer range anchors',
+		releasedRange === 'First.\n\nSecond.\n\nKeep. ^owner-anchor',
+		releasedRange,
+	);
+	const preservedOwnerAnchor = removeManagedEmbedSelectionAnchors(
+		'Keep. ^owner-anchor',
+		{ kind: 'block', anchor: 'owner-anchor' },
+	);
+	check(
+		'link: cleanup never removes a non-Composer owner anchor',
+		preservedOwnerAnchor === 'Keep. ^owner-anchor',
+		preservedOwnerAnchor,
+	);
 	check('link: visible-text normalization preserves rendered link label', normalizeVisibleText('> [[Note|Label]]') === 'Label');
 	const targets = internalTargets(source);
 	check('link: internal targets distinct', targets.includes('Note A') && targets.includes('diagram.canvas') && !targets.includes('pic.png'));

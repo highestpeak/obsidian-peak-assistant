@@ -12,7 +12,16 @@
 import * as React from 'react';
 import { ExternalLink, FileText, Image as ImageIcon, LayoutGrid, PenTool, Paperclip, Table2, Link2 } from 'lucide-react';
 import type { ComposerBlock } from '@/core/composer';
-import { analyzeLinks, embedToLink, setEmbedAnchor, type ComposerLinkTokenKind, type ComposerResourcePreviewState } from '@/service/composer';
+import {
+	analyzeLinks,
+	embedToLink,
+	parseEmbedSelectionRange,
+	serializeEmbedSelectionRange,
+	setEmbedAnchor,
+	type ComposerManagedEmbedSelectionAnchors,
+	type ComposerLinkTokenKind,
+	type ComposerResourcePreviewState,
+} from '@/service/composer';
 import { Button } from '@/ui/components/primitives';
 import { Input } from '@/ui/component/shared-ui/input';
 import { useComposerChrome } from '../../chrome/ComposerChromeContext';
@@ -23,12 +32,14 @@ export function EmbedBlockView({ block }: { block: ComposerBlock }): React.React
 	const chrome = useComposerChrome();
 	const { onOpenLink } = chrome;
 	const raw = block.renderModel.raw;
+	const persistedRange = React.useMemo(() => parseEmbedSelectionRange(raw), [raw]);
 	const link = React.useMemo(() => analyzeLinks(raw)[0], [raw]);
 	const external = link?.kind === 'external';
 	const preview = useResourcePreview(
 		external ? undefined : chrome.runtime.nativePreviewPort,
 		chrome.snapshot?.filePath ?? '',
 		link?.target ?? '',
+		persistedRange ? { startAnchor: persistedRange.startAnchor, endAnchor: persistedRange.endAnchor } : undefined,
 	);
 	const isVaultEmbed = !external && /^!\[\[/.test(raw.trim());
 	const [expanded, setExpanded] = React.useState(false);
@@ -36,14 +47,75 @@ export function EmbedBlockView({ block }: { block: ComposerBlock }): React.React
 	const [section, setSection] = React.useState(link?.anchor ?? '');
 	const [selectionMenu, setSelectionMenu] = React.useState<PreviewSelectionMenu | null>(null);
 	const [persistingSelection, setPersistingSelection] = React.useState(false);
-	const [selectionAnchorError, setSelectionAnchorError] = React.useState(false);
+	const [selectionAnchorFeedback, setSelectionAnchorFeedback] = React.useState<PreviewSelectionFeedback | null>(null);
 	const contentRef = React.useRef<HTMLDivElement>(null);
+	const selectionMenuRef = React.useRef<HTMLDivElement>(null);
+	const selectionMenuPointerActiveRef = React.useRef(false);
 
 	React.useEffect(() => {
 		setSelectionMenu(null);
 		setPersistingSelection(false);
-		setSelectionAnchorError(false);
+		setSelectionAnchorFeedback(null);
 	}, [raw]);
+
+	React.useEffect(() => {
+		if (!isVaultEmbed || preview?.status !== 'loaded') return;
+		const content = contentRef.current;
+		if (!content) return;
+		const document = content.ownerDocument;
+		let releaseMenuPointerTimer: number | undefined;
+		const dismiss = (): void => {
+			setSelectionMenu(null);
+			setSelectionAnchorFeedback(null);
+		};
+		const dismissWhenSelectionLeavesPreview = (): void => {
+			if (selectionMenuPointerActiveRef.current) return;
+			const selection = document.getSelection();
+			if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+				dismiss();
+				return;
+			}
+			if (!content.contains(selection.getRangeAt(0).commonAncestorContainer)) dismiss();
+		};
+		const dismissOnOutsidePointer = (event: PointerEvent): void => {
+			const target = event.target;
+			if (!(target instanceof Node)) return;
+			if (selectionMenuRef.current?.contains(target)) {
+				selectionMenuPointerActiveRef.current = true;
+				return;
+			}
+			if (content.contains(target)) return;
+			dismiss();
+		};
+		const releaseMenuPointerLock = (): void => {
+			if (!selectionMenuPointerActiveRef.current) return;
+			if (releaseMenuPointerTimer) window.clearTimeout(releaseMenuPointerTimer);
+			releaseMenuPointerTimer = window.setTimeout(() => {
+				selectionMenuPointerActiveRef.current = false;
+			}, 0);
+		};
+		document.addEventListener('selectionchange', dismissWhenSelectionLeavesPreview);
+		document.addEventListener('pointerdown', dismissOnOutsidePointer);
+		document.addEventListener('pointerup', releaseMenuPointerLock);
+		content.addEventListener('scroll', dismiss);
+		return () => {
+			document.removeEventListener('selectionchange', dismissWhenSelectionLeavesPreview);
+			document.removeEventListener('pointerdown', dismissOnOutsidePointer);
+			document.removeEventListener('pointerup', releaseMenuPointerLock);
+			content.removeEventListener('scroll', dismiss);
+			if (releaseMenuPointerTimer) window.clearTimeout(releaseMenuPointerTimer);
+			selectionMenuPointerActiveRef.current = false;
+		};
+	}, [isVaultEmbed, preview?.status]);
+
+	React.useEffect(() => {
+		if (!selectionAnchorFeedback) return;
+		const timeout = window.setTimeout(
+			() => setSelectionAnchorFeedback(null),
+			selectionAnchorFeedback.tone === 'success' ? 1800 : 5000,
+		);
+		return () => window.clearTimeout(timeout);
+	}, [selectionAnchorFeedback]);
 
 	if (!link) {
 		return (
@@ -55,6 +127,8 @@ export function EmbedBlockView({ block }: { block: ComposerBlock }): React.React
 
 	const open = () => onOpenLink?.(external ? 'external' : 'vault', link.target);
 	if (!external && preview?.status === 'loaded') {
+		const rangeMarkdown = persistedRange && preview.rangeResolved ? preview.rangeText : undefined;
+		const sourceEmbed = persistedRange?.originalEmbed ?? raw.trim();
 		let fallback: React.ReactElement;
 		if (link.kind === 'attachment' || preview.extension !== 'md') {
 			fallback = (
@@ -74,6 +148,16 @@ export function EmbedBlockView({ block }: { block: ComposerBlock }): React.React
 					</Button>
 				</div>
 			);
+		} else if (persistedRange && !rangeMarkdown) {
+			fallback = (
+				<div className="pk-native-embed-preview" data-block-id={block.blockId} data-range-missing="true">
+					<div className="pk-native-embed-preview__header" data-chrome="true">
+						<span className="pk-native-embed-preview__kind"><FileText size={14} />{strings.embedLabel}</span>
+						<span className="pk-native-embed-preview__target">{preview.name}</span>
+					</div>
+					<div className="pk-native-embed-preview__excerpt">{strings.embedRangeMissing}</div>
+				</div>
+			);
 		} else {
 			fallback = (
 			<div className="pk-native-embed-preview" data-block-id={block.blockId}>
@@ -90,10 +174,19 @@ export function EmbedBlockView({ block }: { block: ComposerBlock }): React.React
 			);
 		}
 		if (isVaultEmbed && chrome.snapshot) {
+			const previousSelection: ComposerManagedEmbedSelectionAnchors | undefined = persistedRange
+				? {
+					kind: 'range',
+					startAnchor: persistedRange.startAnchor,
+					endAnchor: persistedRange.endAnchor,
+				}
+				: link.anchor?.startsWith('^peak-')
+					? { kind: 'block', anchor: link.anchor.slice(1) }
+					: undefined;
 			const capturePreviewSelection = (): void => {
 				const content = contentRef.current;
 				const selection = content?.ownerDocument.getSelection();
-				setSelectionAnchorError(false);
+				setSelectionAnchorFeedback(null);
 				if (!content || !selection || selection.rangeCount === 0 || selection.isCollapsed) {
 					setSelectionMenu(null);
 					return;
@@ -104,13 +197,19 @@ export function EmbedBlockView({ block }: { block: ComposerBlock }): React.React
 					return;
 				}
 				const text = selection.toString().trim();
-				const selectedBlockText = selectedRenderedBlockText(range, content);
+				const selectedBlockTextGroups = selectedRenderedBlockTextGroups(range, content);
+				const [selectedBlockTexts = [], ...fallbackBlockTextGroups] = selectedBlockTextGroups;
 				const rect = range.getBoundingClientRect();
 				if (!text || (!rect.width && !rect.height)) {
 					setSelectionMenu(null);
 					return;
 				}
-				setSelectionMenu({ selectedBlockText, top: Math.max(8, rect.top - 38), left: Math.max(8, rect.left) });
+				setSelectionMenu({
+					selectedBlockTexts,
+					fallbackBlockTextGroups,
+					top: Math.max(8, rect.top - 38),
+					left: Math.max(8, rect.left),
+				});
 			};
 			const writeSource = async (text: string, label: string): Promise<void> => {
 				const hub = chrome.runtime.hub;
@@ -124,7 +223,7 @@ export function EmbedBlockView({ block }: { block: ComposerBlock }): React.React
 				});
 			};
 			const applySection = (): void => {
-				const next = setEmbedAnchor(raw, section);
+				const next = setEmbedAnchor(sourceEmbed, section);
 				if (!next) return;
 				void writeSource(next, strings.embedSection);
 				setSectionOpen(false);
@@ -132,29 +231,100 @@ export function EmbedBlockView({ block }: { block: ComposerBlock }): React.React
 			const persistSelectedPreview = async (): Promise<void> => {
 				const selected = selectionMenu;
 				const port = chrome.runtime.embedSelectionAnchorPort;
-				if (!selected?.selectedBlockText || !port || !preview.targetPath) return;
-				setPersistingSelection(true);
-				try {
-					const result = await port.persistSelection({
-						targetPath: preview.targetPath,
-						selectedBlockText: selected.selectedBlockText,
-					});
-					const next = setEmbedAnchor(raw, `^${result.anchor}`);
-					if (!next) throw new Error('Unable to update the embed anchor');
-					await writeSource(next, strings.embedPreviewSelection);
+				if (!selected || selected.selectedBlockTexts.length === 0 || !preview.targetPath) return;
+				if (!port) {
 					setSelectionMenu(null);
 					contentRef.current?.ownerDocument.getSelection()?.removeAllRanges();
-				} catch {
-					setSelectionAnchorError(true);
+					setSelectionAnchorFeedback({
+						top: selected.top,
+						left: selected.left,
+						tone: 'error',
+						message: strings.embedAnchorUnavailable,
+					});
+					return;
+				}
+				setPersistingSelection(true);
+				try {
+					const mutation = await port.persistSelection({
+						targetPath: preview.targetPath,
+						selectedBlockTexts: selected.selectedBlockTexts,
+						fallbackBlockTextGroups: selected.fallbackBlockTextGroups,
+						previousSelection,
+					});
+					const next = mutation.kind === 'block'
+						? setEmbedAnchor(sourceEmbed, `^${mutation.anchor}`)
+						: serializeEmbedSelectionRange(sourceEmbed, mutation);
+					if (!next) throw new Error('Unable to update the embed selection');
+					try {
+						await writeSource(next, strings.embedPreviewSelection);
+					} catch (error) {
+						try {
+							await mutation.rollback();
+						} catch (rollbackError) {
+							console.error('[Peak Composer] failed to compensate target-note anchor write', {
+								targetPath: preview.targetPath,
+								rollbackError,
+							});
+						}
+						throw error;
+					}
+					setSelectionMenu(null);
+					contentRef.current?.ownerDocument.getSelection()?.removeAllRanges();
+					setSelectionAnchorFeedback({ top: selected.top, left: selected.left, tone: 'success', message: strings.embedAnchorWritten });
+				} catch (error) {
+					console.error('[Peak Composer] failed to persist selected embed preview range', {
+						targetPath: preview.targetPath,
+						selectedBlockCount: selected.selectedBlockTexts.length,
+						fallbackBlockCounts: selected.fallbackBlockTextGroups.map((group) => group.length),
+						error,
+					});
+					setSelectionMenu(null);
+					contentRef.current?.ownerDocument.getSelection()?.removeAllRanges();
+					setSelectionAnchorFeedback({
+						top: selected.top,
+						left: selected.left,
+						tone: 'error',
+						message: selectionAnchorFailureMessage(error, strings),
+					});
 				} finally {
 					setPersistingSelection(false);
 				}
 			};
-			const generatedSelectionAnchor = link.anchor?.startsWith('^peak-') ?? false;
+			const returnToFullPreview = async (): Promise<void> => {
+				const next = persistedRange ? sourceEmbed : setEmbedAnchor(raw, '') ?? raw;
+				const port = chrome.runtime.embedSelectionAnchorPort;
+				if (!previousSelection || !port || !preview.targetPath) {
+					await writeSource(next, strings.embedReturnToFull);
+					return;
+				}
+				const mutation = await port.releaseSelection({
+					targetPath: preview.targetPath,
+					selection: previousSelection,
+				});
+				try {
+					await writeSource(next, strings.embedReturnToFull);
+				} catch (error) {
+					try {
+						await mutation.rollback();
+					} catch (rollbackError) {
+						console.error('[Peak Composer] failed to compensate target-note anchor release', {
+							targetPath: preview.targetPath,
+							rollbackError,
+						});
+					}
+					throw error;
+				}
+			};
+			const generatedSelectionAnchor = Boolean(previousSelection);
 			return (
-				<div className="pk-native-embed-surface" data-expanded={expanded || undefined} data-block-id={block.blockId}>
+				<div
+					className="pk-native-embed-surface"
+					data-expanded={expanded || undefined}
+					data-range-preview={Boolean(rangeMarkdown) || undefined}
+					data-block-id={block.blockId}
+				>
 					<div className="pk-native-embed-surface__actions" data-chrome="true">
-						<Button variant="ghost" size="sm" onClick={() => void writeSource(embedToLink(raw.trim()), strings.embedAsLink)}>
+						<Button variant="ghost" size="sm" onClick={() => void writeSource(embedToLink(sourceEmbed), strings.embedAsLink)}>
 							<Link2 size={13} />
 							{strings.embedAsLink}
 						</Button>
@@ -162,7 +332,18 @@ export function EmbedBlockView({ block }: { block: ComposerBlock }): React.React
 							{expanded ? strings.embedCompact : strings.embedFull}
 						</Button>
 						{generatedSelectionAnchor && (
-							<Button variant="ghost" size="sm" onClick={() => void writeSource(setEmbedAnchor(raw, '') ?? raw, strings.embedReturnToFull)}>
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => {
+									void returnToFullPreview().catch((error) => {
+										console.error('[Peak Composer] failed to return embed to full preview', {
+											targetPath: preview.targetPath,
+											error,
+										});
+									});
+								}}
+							>
 								{strings.embedReturnToFull}
 							</Button>
 						)}
@@ -179,38 +360,50 @@ export function EmbedBlockView({ block }: { block: ComposerBlock }): React.React
 					<div
 						className="pk-native-embed-surface__content"
 						ref={contentRef}
-						onMouseDown={() => setSelectionMenu(null)}
+						onMouseDown={() => {
+							setSelectionMenu(null);
+							setSelectionAnchorFeedback(null);
+						}}
 						onMouseUp={capturePreviewSelection}
 						onKeyUp={capturePreviewSelection}
 					>
 						<NativeEmbedHost
-							renderer={chrome.runtime.nativeEmbedRenderer}
-							sourcePath={chrome.snapshot.filePath}
+							renderer={persistedRange && !rangeMarkdown ? undefined : chrome.runtime.nativeEmbedRenderer}
+							sourcePath={rangeMarkdown ? preview.targetPath : chrome.snapshot.filePath}
 							target={preview.targetPath}
 							kind={preview.extension === 'md' ? 'markdown' : 'attachment'}
-							markdown={raw.trim()}
+							markdown={rangeMarkdown ?? raw.trim()}
 							fallback={fallback}
 						/>
 					</div>
 					{selectionMenu && (
 						<div
 							className="pk-native-embed-selection-menu"
+							ref={selectionMenuRef}
 							data-chrome="true"
 							style={{ top: selectionMenu.top, left: selectionMenu.left }}
 						>
 							<Button
 								variant="secondary"
 								size="sm"
-								disabled={!selectionMenu.selectedBlockText || !chrome.runtime.embedSelectionAnchorPort || persistingSelection}
-								title={!selectionMenu.selectedBlockText ? strings.embedAnchorNeedsBlock : undefined}
+								disabled={selectionMenu.selectedBlockTexts.length === 0 || persistingSelection}
+								title={selectionMenu.selectedBlockTexts.length === 0 ? strings.embedAnchorNeedsBlock : undefined}
 								onMouseDown={(event) => event.preventDefault()}
 								onClick={() => void persistSelectedPreview()}
 							>
 								{persistingSelection ? strings.embedAnchorWriting : strings.embedPreviewSelection}
 							</Button>
-							{selectionAnchorError && (
-								<span className="pk-native-embed-selection-menu__error">{strings.embedAnchorError}</span>
-							)}
+						</div>
+					)}
+					{selectionAnchorFeedback && (
+						<div
+							className="pk-native-embed-selection-feedback"
+							data-chrome="true"
+							data-tone={selectionAnchorFeedback.tone}
+							role="status"
+							style={{ top: selectionAnchorFeedback.top, left: selectionAnchorFeedback.left }}
+						>
+							{selectionAnchorFeedback.message}
 						</div>
 					)}
 				</div>
@@ -244,31 +437,64 @@ export function EmbedBlockView({ block }: { block: ComposerBlock }): React.React
 }
 
 interface PreviewSelectionMenu {
-	selectedBlockText: string | null;
+	selectedBlockTexts: string[];
+	fallbackBlockTextGroups: string[][];
 	top: number;
 	left: number;
 }
 
-function selectedRenderedBlockText(range: Range, root: HTMLElement): string | null {
+interface PreviewSelectionFeedback {
+	top: number;
+	left: number;
+	tone: 'success' | 'error';
+	message: string;
+}
+
+function selectionAnchorFailureMessage(error: unknown, strings: ReturnType<typeof useNativeStrings>): string {
+	const message = error instanceof Error ? error.message.toLowerCase() : '';
+	if (message.includes('target not found')) return strings.embedAnchorTargetMissing;
+	if (message.includes('conflict') || message.includes('revision')) return strings.embedAnchorConflict;
+	return strings.embedAnchorError;
+}
+
+function selectedRenderedBlockTextGroups(range: Range, root: HTMLElement): string[][] {
 	const common = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
 		? range.commonAncestorContainer as Element
 		: range.commonAncestorContainer.parentElement;
-	const block = common?.closest('p, li, ul, ol, blockquote, h1, h2, h3, h4, h5, h6') ?? null;
-	if (!block || !root.contains(block)) return null;
-	const selected = normalizeRenderedText(range.toString());
-	const blockText = block instanceof HTMLElement ? block.innerText : block.textContent ?? '';
-	if (!selected || selected !== normalizeRenderedText(blockText)) return null;
-	return blockText;
+	const block = common?.closest<HTMLElement>('p, li, ul, ol, blockquote, h1, h2, h3, h4, h5, h6') ?? null;
+	const candidates = Array.from(root.querySelectorAll<HTMLElement>('p, li, ul, ol, blockquote, h1, h2, h3, h4, h5, h6'))
+		.filter((candidate) => range.intersectsNode(candidate));
+	const groups: string[][] = [];
+	const addGroup = (elements: readonly HTMLElement[]): void => {
+		const texts = elements.flatMap(visibleBlockText);
+		if (texts.length === 0 || groups.some((group) => sameBlockTexts(group, texts))) return;
+		groups.push(texts);
+	};
+	if (block && root.contains(block)) addGroup([block]);
+	addGroup(candidates
+		.filter((candidate) => !candidates.some((other) => other !== candidate && other.contains(candidate)))
+	);
+	addGroup(candidates
+		.filter((candidate) => !candidates.some((other) => other !== candidate && candidate.contains(other)))
+	);
+	return groups;
 }
 
-function normalizeRenderedText(text: string): string {
-	return text.replace(/\s+/g, ' ').trim();
+function sameBlockTexts(left: readonly string[], right: readonly string[]): boolean {
+	return left.length === right.length
+		&& left.every((text, index) => text.replace(/\s+/g, ' ').trim() === right[index]?.replace(/\s+/g, ' ').trim());
+}
+
+function visibleBlockText(block: HTMLElement): string[] {
+	const text = block.innerText || block.textContent || '';
+	return text.trim() ? [text] : [];
 }
 
 function useResourcePreview(
 	port: ReturnType<typeof useComposerChrome>['runtime']['nativePreviewPort'],
 	sourcePath: string,
 	target: string,
+	range?: { startAnchor: string; endAnchor: string },
 ): ComposerResourcePreviewState | null {
 	const [state, setState] = React.useState<ComposerResourcePreviewState | null>(null);
 	React.useEffect(() => {
@@ -277,13 +503,13 @@ function useResourcePreview(
 			setState(null);
 			return;
 		}
-		void port.resolveResourcePreview({ sourcePath, target }).then((next) => {
+		void port.resolveResourcePreview({ sourcePath, target, ...(range ? { range } : {}) }).then((next) => {
 			if (alive) setState(next);
 		});
 		return () => {
 			alive = false;
 		};
-	}, [port, sourcePath, target]);
+	}, [port, sourcePath, target, range?.startAnchor, range?.endAnchor]);
 	return state;
 }
 

@@ -21,8 +21,6 @@ interface SimulatorClientDefaults {
 	endpoint: {
 		defaultBaseUrl: string;
 		apiKey: string;
-		agentSdkModel: string;
-		agentSdkFastModel: string;
 		scenarioHeader: string;
 		speedHeader: string;
 		strictHeader: string;
@@ -79,11 +77,6 @@ export function normalizeSimulatorBaseUrl(baseUrl: string | null | undefined): s
 
 export function simulatorHealthUrl(baseUrl: string | null | undefined): string {
 	return `${normalizeSimulatorBaseUrl(baseUrl)}/health`;
-}
-
-export function simulatorAgentSdkBaseUrl(baseUrl: string | null | undefined): string {
-	const normalized = normalizeSimulatorBaseUrl(baseUrl);
-	return normalized.slice(0, -'/v1'.length);
 }
 
 export function simulatorRequestHeaders(

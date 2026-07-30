@@ -1,20 +1,15 @@
 /**
  * VaultSearchAgent — harness-native shell for Vault Search.
  *
- * Runs the LLM through `runAgentLoop` (self-hosted harness) with the six
- * vault MCP tool implementations wrapped via `buildVaultHarnessTools`.
+ * Runs the LLM through `runAgentLoop` (self-hosted harness) with the
+ * Harness-native vault tools from `buildVaultHarnessTools`.
  * `vault_submit_plan` is the loop's stop condition (harness `stopWhen`).
  *
- * The Claude Agent SDK is still available as a library (for one-shot LLM
- * callers under `AIServiceManager`, and for the vault-sdk MCP servers used
- * by `webSearchTool` / other plumbing), but the Vault Search main route no
- * longer touches `queryWithProfile` — it drives the harness directly.
+ * Model turns, tools, budgets, and completion are all owned by Peak Harness.
  *
  * Yields `LLMStreamEvent`s so the existing Quick Search event router
  * (`useEventRouter` → `dispatchEvent`) continues to work without change:
- *   - `pk-debug` `vault-sdk-starting` marks the start of the session
- *     (kept for parity with the SDK path — dispatcher keys off it to
- *     enter V2 mode).
+ *   - `pk-debug` `vault-harness-starting` marks the start of the session.
  *   - `tool-call` / `tool-result` events keep the `mcp__vault__*` toolName
  *     naming so `dispatchEvent` continues to parse `vault_submit_plan`'s
  *     `plan_sections` / `follow_up_questions` / `proposed_outline`.
@@ -44,15 +39,14 @@ import {
     createSubmitPlanState,
     VAULT_SUBMIT_PLAN_TOOL_NAME,
 } from '@/service/agents/vault/vaultHarnessTools';
-import type { SubmitPlanFeedback, SubmitPlanInput, GrepHit } from '@/service/agents/vault-sdk/vaultMcpServer';
+import type { SubmitPlanFeedback, SubmitPlanInput, GrepHit } from '@/service/agents/vault/vaultToolImplementations';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
-import { collectText } from '@/service/agents/core/sdkMessageAdapter';
+import { runHarnessText } from '@/service/agents/harness/HarnessModelRunner';
 import { TemplateManager } from '@/core/template/TemplateManager';
 
 export interface VaultSearchAgentOptions {
-    /** Override the default vault-sdk-playbook system prompt (used by ContinueAnalysisAgent). */
+    /** Override the default vault-harness playbook system prompt (used by ContinueAnalysisAgent). */
     systemPromptOverride?: string;
     /** Prefix prepended to the user query before sending to the agent (e.g. previous round context). */
     contextPrefix?: string;
@@ -111,7 +105,7 @@ export class VaultSearchAgent {
         } else {
             try {
                 systemPrompt = await this.aiServiceManager.renderPrompt(
-                    PromptId.VaultSdkPlaybook,
+                    PromptId.VaultHarnessPlaybook,
                     {
                         vaultIntuition: vaultIntuitionSection,
                         probeResults: probeResultsSection,
@@ -201,12 +195,11 @@ export class VaultSearchAgent {
             return;
         }
 
-        // 5. Emit the SDK-parity `vault-sdk-starting` debug event so the
-        //    Quick Search event router enters V2 mode.
+        // 5. Tell the Quick Search event router to enter Harness V2 mode.
         const currentTier = tierController.current();
         yield {
             type: 'pk-debug',
-            debugName: 'vault-sdk-starting',
+            debugName: 'vault-harness-starting',
             triggerName,
             extra: {
                 query: userQuery,
@@ -332,7 +325,7 @@ export class VaultSearchAgent {
 
         yield {
             type: 'pk-debug',
-            debugName: 'vault-sdk-complete',
+            debugName: 'vault-harness-complete',
             triggerName,
             extra: {
                 loopId,
@@ -345,7 +338,7 @@ export class VaultSearchAgent {
     }
 
     /**
-     * The old SDK path exposed a HITL resume hook here. The harness path
+     * The old runtime exposed a HITL resume hook here. The Harness path
      * auto-approves `vault_submit_plan` inside the loop itself, so there is
      * no pause to resume from. Kept as a no-op generator to preserve the
      * shape callers still reach for (see `useSearchSession.hitlCallback`).
@@ -458,18 +451,17 @@ async function gatherPreSearchContext(
 }
 
 /**
- * Harness-shaped web search tool. Uses the SDK as a library
- * (`queryWithProfile` + `collectText`) — the routing itself is harness.
+ * Harness-native web search tool.
  */
 function buildHarnessWebSearchTool(app: AppHandle, pluginId: string): ToolDef | null {
-    const profile = ProfileRegistry.getInstance().getActiveWebSearchProfile();
-    if (!profile) return null;
+    const binding = ProfileRegistry.getInstance().getActiveWebSearchConfig();
+    if (!binding) return null;
     return {
         name: 'mcp__web__web_search',
         description:
             'Search the web for up-to-date information, external knowledge, or facts not found in the vault. ' +
             'Use when the user asks about recent events, external products, public data, or anything beyond their personal notes.',
-        source: 'mcp',
+        source: 'local',
         kind: 'read',
         inputSchema: z.object({
             query: z.string().describe('The search query to look up on the web'),
@@ -479,12 +471,14 @@ function buildHarnessWebSearchTool(app: AppHandle, pluginId: string): ToolDef | 
                 const tm = TemplateManager.getInstance();
                 if (!tm) return fail('Web search is not available (template manager not bound).', false);
                 const systemPrompt = await tm.render(PromptId.WebSearchToolSystem, {});
-                const messages = queryWithProfile(app as any, pluginId, profile, {
+                const { text } = await runHarnessText({
+                    loopId: `${pluginId}-web-search-${crypto.randomUUID()}`,
+                    profile: binding.profile,
+                    modelId: binding.modelId,
                     prompt: query,
                     systemPrompt,
-                    maxTurns: 1,
+                    maxSteps: 1,
                 });
-                const text = await collectText(messages);
                 return ok({ text: text || 'No results found.' });
             } catch (err) {
                 return fail(err instanceof Error ? err.message : 'Web search failed', true);

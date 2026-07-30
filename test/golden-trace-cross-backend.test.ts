@@ -50,7 +50,7 @@ const FIXTURE_MANIFEST: CapabilityManifest = {
 	outputContract: { kind: 'object', description: 'output' },
 	permissionKind: 'read',
 	costTier: 'fast',
-	backendPolicy: { preferred: 'hermes-harness', fallback: ['claude-sdk'] },
+	backendPolicy: { preferred: 'hermes-harness', fallback: ['provider-direct'] },
 	skillRef: 'skill.cross',
 	surfaceBinding: ['chat'],
 };
@@ -63,12 +63,11 @@ const FIXTURE_SKILL: CompiledSkill = {
 };
 
 // ---------------------------------------------------------------------------
-// Three backend strategies producing the SAME output shape.
+// Both supported backend strategies produce the SAME output shape.
 // ---------------------------------------------------------------------------
 
-const strategies: Record<'hermes-harness' | 'claude-sdk' | 'provider-direct', BackendStrategy> = {
+const strategies: Record<'hermes-harness' | 'provider-direct', BackendStrategy> = {
 	'hermes-harness': async (input) => ({ result: { source: 'hermes', echo: input } }),
-	'claude-sdk': async (input) => ({ result: { source: 'claude', echo: input } }),
 	'provider-direct': async (input) => ({ result: { source: 'direct', echo: input } }),
 };
 
@@ -90,7 +89,7 @@ const GOLDEN: GoldenEvent[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Test — same trace across three backends.
+// Test — same trace across supported backends.
 // ---------------------------------------------------------------------------
 
 async function testCrossBackendTraceIdentical(): Promise<void> {
@@ -124,16 +123,19 @@ async function testCrossBackendTraceIdentical(): Promise<void> {
 		}
 	}
 
-	// Cross-check: all three trace *shapes* match exactly (event.type / status / kind).
+	// Cross-check: all trace *shapes* match exactly (event.type / status / kind).
 	function stripToShape(events: readonly RunEvent[]): string {
 		return JSON.stringify(events.map((e) => {
 			const anyE = e as { type: string; status?: string; artifact?: { kind?: string } };
 			return { type: anyE.type, status: anyE.status, artifactKind: anyE.artifact?.kind };
 		}));
 	}
-	const [t0, t1, t2] = traces.map((t) => stripToShape(t.events));
-	assert.strictEqual(t0, t1, 'hermes vs claude trace shape must match byte-for-byte');
-	assert.strictEqual(t1, t2, 'claude vs provider-direct trace shape must match byte-for-byte');
+	const [harnessTrace, providerTrace] = traces.map((trace) => stripToShape(trace.events));
+	assert.strictEqual(
+		harnessTrace,
+		providerTrace,
+		'harness vs provider-direct trace shape must match byte-for-byte',
+	);
 	console.log('PASS: crossBackendTraceIdentical');
 }
 

@@ -6,8 +6,7 @@
  * the provided callback.
  */
 
-import type { Profile, ProfileSettings, RoleConfig, SdkSettings, OpenAICompatibleEndpoint } from './types';
-import { DEFAULT_SDK_SETTINGS } from './types';
+import type { Profile, ProfileSettings, RoleConfig, OpenAICompatibleEndpoint } from './types';
 import type { ModelSlot } from '@/core/types/model-tier';
 import { DEFAULT_SIMULATOR_PROFILE_CONFIG } from './types';
 import { SIMULATOR_DEFAULTS } from '@/core/providers/simulator';
@@ -26,15 +25,11 @@ export class ProfileRegistry {
   private activeWebSearchConfig: RoleConfig | null = null;
   // Harness tier bindings (Settings → AI Setup: Fast Lookup / Research /
   // Use stronger model). Mirrored here by the app layer (see
-  // `setTierConfigs`) so BOTH the harness (`bindings.ts`) and the SDK path
-  // (`sdkAgentPool.queryWithProfile`) resolve models from ONE source via
-  // `resolveSlot`, instead of the SDK path silently using only the legacy
-  // agent/agent-fast roles. This is what makes "Research" the single source
-  // of truth for all deep work.
+  // `setTierConfigs`) so every Harness consumer resolves models from one
+  // source via `resolveSlot`.
   private tierFastConfig: RoleConfig | null = null;
   private tierResearchConfig: RoleConfig | null = null;
   private tierStrongerConfig: RoleConfig | null = null;
-  private sdkSettings: SdkSettings = { ...DEFAULT_SDK_SETTINGS };
   private customEndpoints: OpenAICompatibleEndpoint[] = [];
   private persistFn: PersistFn | null = null;
 
@@ -68,16 +63,12 @@ export class ProfileRegistry {
     persistFn: PersistFn,
   ): void {
     this.profiles = settings.profiles.map(p => this.migrateProfileModelIds(p));
-    // Agent SDK only accepts Claude 4.x — migrate both renames AND 3.x → 4.x for agent roles.
-    this.activeAgentConfig = this.migrateAgentRoleConfig(settings.activeAgentConfig ?? this.migrateOldId(settings.activeAgentProfileId));
-    this.activeAgentFastConfig = this.migrateAgentRoleConfig((settings as any).activeAgentFastConfig) ?? this.deriveDefaultAgentFastConfig();
-    // Chat / Copilot / Embedding / Web Search go through Vercel SDK which still accepts 3.x —
-    // only apply pure renames, not the 3.x → 4.x bump.
+    this.activeAgentConfig = this.migrateRoleConfig(settings.activeAgentConfig ?? this.migrateOldId(settings.activeAgentProfileId));
+    this.activeAgentFastConfig = this.migrateRoleConfig((settings as any).activeAgentFastConfig) ?? this.deriveDefaultAgentFastConfig();
     this.activeChatConfig = this.migrateRoleConfig((settings as any).activeChatConfig);
     this.activeCopilotConfig = this.migrateRoleConfig((settings as any).activeCopilotConfig);
     this.activeEmbeddingConfig = this.migrateRoleConfig(settings.activeEmbeddingConfig ?? this.migrateOldId(settings.activeEmbeddingProfileId));
     this.activeWebSearchConfig = this.migrateRoleConfig(settings.activeWebSearchConfig ?? this.migrateOldId(settings.activeWebSearchProfileId));
-    this.sdkSettings = { ...DEFAULT_SDK_SETTINGS, ...settings.sdkSettings };
     this.customEndpoints = [...(settings.customEndpoints ?? [])];
     this.persistFn = persistFn;
   }
@@ -97,42 +88,14 @@ export class ProfileRegistry {
     'anthropic/claude-opus-4-6': 'anthropic/claude-opus-4-7',
   };
 
-  // Claude Agent SDK rejects 3.x — bump persisted Agent / Agent Fast picks to 4.x equivalents.
-  // Only applied to agent-role configs; Chat / Copilot can still use 3.x via Vercel SDK.
-  private static readonly AGENT_3X_REWRITES: Record<string, string> = {
-    'claude-3-5-haiku': 'claude-haiku-4-5',
-    'claude-3-haiku': 'claude-haiku-4-5',
-    'claude-3-5-sonnet': 'claude-sonnet-4-6',
-    'claude-3-7-sonnet': 'claude-sonnet-4-6',
-    'claude-3-sonnet': 'claude-sonnet-4-6',
-    'claude-3-opus': 'claude-opus-4-7',
-    'anthropic/claude-3-5-haiku': 'anthropic/claude-haiku-4-5',
-    'anthropic/claude-3-haiku': 'anthropic/claude-haiku-4-5',
-    'anthropic/claude-3-5-sonnet': 'anthropic/claude-sonnet-4-6',
-    'anthropic/claude-3-7-sonnet': 'anthropic/claude-sonnet-4-6',
-    'anthropic/claude-3-sonnet': 'anthropic/claude-sonnet-4-6',
-    'anthropic/claude-3-opus': 'anthropic/claude-opus-4-7',
-  };
-
   private static rewriteModelId(id: string | null | undefined): string {
     if (!id) return id ?? '';
     return ProfileRegistry.MODEL_ID_REWRITES[id] ?? id;
   }
 
-  private static rewriteAgentModelId(id: string | null | undefined): string {
-    if (!id) return id ?? '';
-    const renamed = ProfileRegistry.MODEL_ID_REWRITES[id] ?? id;
-    return ProfileRegistry.AGENT_3X_REWRITES[renamed] ?? renamed;
-  }
-
   private migrateRoleConfig(cfg: RoleConfig | null | undefined): RoleConfig | null {
     if (!cfg) return null;
     return { profileId: cfg.profileId, modelId: ProfileRegistry.rewriteModelId(cfg.modelId) };
-  }
-
-  private migrateAgentRoleConfig(cfg: RoleConfig | null | undefined): RoleConfig | null {
-    if (!cfg) return null;
-    return { profileId: cfg.profileId, modelId: ProfileRegistry.rewriteAgentModelId(cfg.modelId) };
   }
 
   private migrateProfileModelIds(p: Profile): Profile {
@@ -152,9 +115,8 @@ export class ProfileRegistry {
         },
       };
     }
-    // Profile-level primary/fast feed Agent SDK env vars, so also apply the 3.x bump.
-    const primary = ProfileRegistry.rewriteAgentModelId(p.primaryModel);
-    const fast = ProfileRegistry.rewriteAgentModelId(p.fastModel);
+    const primary = ProfileRegistry.rewriteModelId(p.primaryModel);
+    const fast = ProfileRegistry.rewriteModelId(p.fastModel);
     if (primary === p.primaryModel && fast === p.fastModel) return p;
     return { ...p, primaryModel: primary, fastModel: fast };
   }
@@ -226,9 +188,8 @@ export class ProfileRegistry {
   }
 
   /**
-   * THE single model-binding resolver. Every consumer (harness `bindings.ts`
-   * and the SDK `queryWithProfile` path) resolves through here, so a change to
-   * any AI Setup row takes effect everywhere that slot is used.
+   * THE single model-binding resolver. Every Harness consumer resolves through
+   * here, so a change to any AI Setup row takes effect everywhere that slot is used.
    *
    * Fallback chains preserve the pre-unification behaviour:
    *   fast          → Fast Lookup  ?? agent-fast role
@@ -307,10 +268,6 @@ export class ProfileRegistry {
     const profile = this.profiles.find((p) => p.id === this.activeWebSearchConfig!.profileId);
     if (!profile) return null;
     return { profile, modelId: this.activeWebSearchConfig.modelId };
-  }
-
-  getSdkSettings(): SdkSettings {
-    return { ...this.sdkSettings };
   }
 
   getProfileById(id: string): Profile | null {
@@ -493,7 +450,6 @@ export class ProfileRegistry {
       activeCopilotConfig: this.activeCopilotConfig,
       activeEmbeddingConfig: this.activeEmbeddingConfig,
       activeWebSearchConfig: this.activeWebSearchConfig,
-      sdkSettings: { ...this.sdkSettings },
       customEndpoints: this.customEndpoints.map(e => ({ ...e })),
     };
     void this.persistFn(snapshot);

@@ -19,7 +19,7 @@ export interface V2RoundBlockProps {
 	sources: { length: number };
 	isCurrent: boolean;
 	defaultExpanded: boolean;
-	usage?: { inputTokens: number; outputTokens: number } | null;
+	usage?: { inputTokens?: number | null; outputTokens?: number | null } | null;
 	duration?: number | null;
 	children?: React.ReactNode;
 }
@@ -59,7 +59,10 @@ export const V2RoundBlock: React.FC<V2RoundBlockProps> = ({
 	const setV2View = useSearchSessionStore((s) => s.setV2View);
 
 	const duration = roundDuration != null ? `${Math.round(roundDuration / 1000)}s` : formatDuration(steps);
-	const tokenStr = usage ? `${((usage.inputTokens + usage.outputTokens) / 1000).toFixed(1)}k` : null;
+	const tokenTotal = usage
+		? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0)
+		: null;
+	const tokenStr = tokenTotal !== null ? `${(tokenTotal / 1000).toFixed(1)}k` : null;
 	const hasSections = sections.length > 0;
 
 	const borderClass = isCurrent

@@ -1,20 +1,6 @@
 /**
- * ClaudeAgentSDKBridge — the single choke point for external `runAgentLoop`
- * invocations. Every dispatch runs inside a `RunEnvelope` so timing, failures,
- * and backend-selection land uniformly in the trace/usage pipelines.
- *
- * History (2026-07): the bridge used to dispatch between two backends — the
- * self-hosted harness and a `queryWithProfile`-based Cloud Agent SDK path
- * gated by `agentBackend === 'claude-agent-sdk'`. That backend was retired
- * (see docs/superpowers/specs/2026-07-03-cloud-sdk-and-mode-choice-audit.md
- * Part A / Option 2). The SDK stays imported as a library — `tool()` /
- * `createSdkMcpServer()` / `queryWithProfile` are still used by MCP servers
- * (`vaultMcpServer`, `graphMcpServer`, `webSearchTool`) and one-shot LLM
- * callers (`service-manager.ts`, `LlmAmbientExplanationAdapter`) — but the
- * bridge no longer routes to them as a chosen backend.
- *
- * The class name is preserved because a large number of imports reference it;
- * conceptually it is now `HarnessRunBridge`.
+ * Single app-facing bridge into Peak Harness. Every dispatch runs inside a
+ * RunEnvelope so timing and failures land uniformly in trace/usage pipelines.
  */
 
 import type { AppHandle } from '@/core/ports/AppHandle';
@@ -36,7 +22,7 @@ export interface BridgeRunConfig extends AgentLoopConfig {
     harnessSettings: HarnessSettings;
 }
 
-export class ClaudeAgentSDKBridge {
+export class HarnessRunBridge {
     async run(cfg: BridgeRunConfig): Promise<AgentLoopResult> {
         const { runHarnessAgent } = await import('@/service/agents/harness/HarnessAgentRun');
         const loopConfig = withDefaultContextManager(cfg);

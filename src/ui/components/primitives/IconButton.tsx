@@ -7,7 +7,7 @@ export interface IconButtonProps
 	label: string;
 }
 
-/** Square 28px transparent icon button — applies `.pk-icon-btn`. */
+/** Square 32px transparent icon button — applies `.pk-icon-btn`. */
 export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
 	({ className, label, type = 'button', ...props }, ref) => (
 		<button

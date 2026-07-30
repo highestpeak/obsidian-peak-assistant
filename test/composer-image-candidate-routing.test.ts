@@ -1,6 +1,7 @@
 import type {
 	ComposerCandidate,
 	ComposerCandidateRuntimePort,
+	ComposerCandidateRuntimeSnapshot,
 	ComposerCapabilityRunEvent,
 	ComposerInvocationHandle,
 	ComposerRendererId,
@@ -60,6 +61,29 @@ class FakeRuntime implements ComposerCandidateRuntimePort {
 	setActiveVariant(candidateId: string, variantId: string): void {
 		this.calls.push(`variant:${candidateId}:${variantId}`);
 	}
+
+	exportCandidateRuntimeState(
+		candidateId: string,
+	): ComposerCandidateRuntimeSnapshot | null {
+		const rendererId = this.rendererIdFor(candidateId);
+		if (!rendererId) return null;
+		return {
+			ownerId: this.label === 'Image' ? 'image' : 'capability',
+			rendererId,
+			label: this.label,
+			payload: { candidateId },
+		};
+	}
+
+	restoreCandidateRuntimeState(
+		candidate: ComposerCandidate,
+		snapshot: ComposerCandidateRuntimeSnapshot,
+	): boolean {
+		const expectedOwner = this.label === 'Image' ? 'image' : 'capability';
+		if (snapshot.ownerId !== expectedOwner) return false;
+		this.calls.push(`restore:${candidate.candidateId}`);
+		return true;
+	}
 }
 
 async function main(): Promise<void> {
@@ -83,6 +107,31 @@ async function main(): Promise<void> {
 			image.calls.includes('variant:image:v2'),
 	);
 	check('generic review actions remain on primary runtime', primary.calls.includes('discard:text'));
+	check(
+		'persisted image review state exports from the image owner',
+		runtime.exportCandidateRuntimeState('image')?.ownerId === 'image',
+	);
+	check(
+		'persisted generic review state exports from the capability owner',
+		runtime.exportCandidateRuntimeState('text')?.ownerId === 'capability',
+	);
+	const restored = {
+		candidateId: 'restored',
+		target: { kind: 'document' },
+		baseRevision: 'rev',
+		status: 'ready',
+		variants: [],
+		activeVariantId: 'variant',
+		proposedChange: { operations: [] },
+	} as unknown as ComposerCandidate;
+	check(
+		'image-owned persisted state restores through the image runtime',
+		runtime.restoreCandidateRuntimeState(restored, {
+			ownerId: 'image',
+			rendererId: 'composer.renderer.image-asset',
+			payload: {},
+		}) === true && image.calls.includes('restore:restored'),
+	);
 	done('composer-image-candidate-routing');
 }
 

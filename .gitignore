@@ -46,7 +46,6 @@ native/
 !test/fixtures/composer/native/
 node_modules
 opencode.json
-sdk/
 search-worker.js
 src/styles/streamdown-isolated-css.ts
 streamdown-styles.css

@@ -22,6 +22,8 @@ import {
 	buildAiAnalyzeMarkdownFromSnapshot,
 } from '@/ui/view/quick-search/callbacks/save-ai-analyze-to-md';
 import { getAIAnalysisFolder } from '@/core/config/folderPaths';
+import { composeFileAtlasHost } from '@/app/file-atlas/composeFileAtlasHost';
+import type { ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph';
 
 export function composeQuickSearchHost(
 	appContext: AppContext,
@@ -36,15 +38,12 @@ export function composeQuickSearchHost(
 	// saveAnalysisToVault can reach for its still-open debug run and attach
 	// an artifact.write span before sealing it.
 	let lastOrchestrator: ReportOrchestrator | null = null;
+	const fileAtlasHost = composeFileAtlasHost(appContext);
 
 	return {
 		openVaultPath: async (path, opts) => {
 			const leaf = opts?.newLeaf ?? 'tab';
-			const f = app.vault.getAbstractFileByPath(path);
-			if (f && 'extension' in (f as Record<string, unknown>)) {
-				await app.workspace.getLeaf(leaf as any).openFile(f as TFile);
-				return;
-			}
+			if (await appContext.vaultNavigation.openVaultPath(path, { newLeaf: leaf as any })) return;
 			const sourcePath = app.workspace.getActiveFile()?.path ?? '';
 			await app.workspace.openLinkText(path, sourcePath, leaf as any);
 		},
@@ -65,7 +64,7 @@ export function composeQuickSearchHost(
 		autoSaveFolder: search.aiAnalysisAutoSaveFolder?.trim() || getAIAnalysisFolder(settings.ai.rootFolder),
 		analysisHistoryPageSize: search.aiAnalysisHistoryLimit ?? 20,
 		indexLevel: search.indexLevel,
-		searchUpgradePromptDismissedAt: search.searchUpgradePromptDismissedAt,
+		searchUpgradePromptDismissedAt: search.searchUpgradePromptDismissedAt ?? undefined,
 
 		setSearchUpgradePromptDismissed: async () => {
 			search.searchUpgradePromptDismissedAt = Date.now();
@@ -81,12 +80,11 @@ export function composeQuickSearchHost(
 		createSynthesizeAgent: () => new SynthesizeAgent(manager),
 		createAIGraphAgent: () => new AIGraphAgent(app, searchClient!, manager),
 		createVaultSearchAgent: () => new VaultSearchAgent(app, plugin.manifest.id, searchClient!, manager, {}, AppContext.tryGetDebugTracePort()),
-		createContinueAnalysisAgent: (rounds) => new ContinueAnalysisAgent({
+		createContinueAnalysisAgent: (_rounds) => new ContinueAnalysisAgent({
 			app,
 			pluginId: plugin.manifest.id,
 			searchClient: searchClient!,
 			aiServiceManager: manager,
-			rounds: rounds as never,
 		}),
 		createGraphAgent: () => new GraphAgent(app, plugin.manifest.id),
 		createContextProvider: () => new ContextProvider(app),
@@ -105,6 +103,64 @@ export function composeQuickSearchHost(
 			);
 			lastOrchestrator = orch;
 			return orch;
+		},
+		buildSourceVaultGraph: async (paths, scope) => {
+			const uniquePaths = [...new Set(paths.filter(Boolean))];
+			if (uniquePaths.length === 0 || !fileAtlasHost.loadNeighborhood) {
+				return { resultNodes: [], hubAnchors: [], edges: [], isolatedDocIds: [], overflowCount: 0 };
+			}
+			const hops = scope === 'two-hop' ? 2 : 1;
+			const neighborhoods = await Promise.all(
+				uniquePaths.map((path) => fileAtlasHost.loadNeighborhood!(path, { hops, semantic: true })),
+			);
+			const sourceSet = new Set(uniquePaths);
+			const nodes = new Map<string, {
+				id: string;
+				path: string;
+				title: string;
+				score: number;
+				communityId: null;
+				folder: string;
+			}>();
+			const edges = new Map<string, {
+				from: string;
+				to: string;
+				kind: 'reference' | 'semantic';
+			}>();
+
+			for (const graph of neighborhoods) {
+				for (const node of graph.nodes) {
+					const path = node.path ?? node.id;
+					if (scope === 'evidence' && !sourceSet.has(path)) continue;
+					const score = sourceSet.has(path) ? 1 : node.hop === 1 ? 0.6 : 0.3;
+					nodes.set(node.id, {
+						id: node.id,
+						path,
+						title: node.label,
+						score,
+						communityId: null,
+						folder: path.split('/')[0] ?? '',
+					});
+				}
+				for (const edge of graph.edges) {
+					if (!nodes.has(edge.from) || !nodes.has(edge.to)) continue;
+					const key = `${edge.from}|${edge.to}|${edge.kind}`;
+					edges.set(key, { from: edge.from, to: edge.to, kind: edge.kind });
+				}
+			}
+
+			const connected = new Set<string>();
+			for (const edge of edges.values()) {
+				connected.add(edge.from);
+				connected.add(edge.to);
+			}
+			return {
+				resultNodes: [...nodes.values()],
+				hubAnchors: [],
+				edges: [...edges.values()],
+				isolatedDocIds: [...nodes.keys()].filter((id) => !connected.has(id)),
+				overflowCount: 0,
+			} satisfies ResultSubgraphOutput;
 		},
 
 		saveAnalysisToVault: async (params) => {

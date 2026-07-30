@@ -52,8 +52,12 @@ assertDecl(sidecarDrawer, 'z-index: var(--pk-sidecar-drawer-surface-z, 91);', 'n
 assertDecl(sidecarDrawer, 'visibility: hidden;', 'drawer closed state should be visually hidden');
 assertDecl(sidecarDrawer, 'pointer-events: none;', 'drawer closed state should disable pointer interaction');
 assert.ok(
-	/transition:[\s\S]*transform 180ms ease/.test(sidecarDrawer),
-	'drawer should keep a close/open transition while allowing opacity and delayed visibility',
+	!sidecarDrawer.includes('transition:'),
+	'drawer restore/mount must not animate before an explicit user transition',
+);
+assert.ok(
+	/transition:[\s\S]*transform 180ms ease/.test(cssBlock(css, '.pk-sidecar-drawer--user-transition')),
+	'drawer should animate only after an explicit user close/open transition',
 );
 assertDecl(cssBlock(css, '.pk-sidecar-drawer--open'), 'visibility: visible;', 'drawer open state should restore interactivity');
 assertDecl(cssBlock(css, '.pk-sidecar-drawer--open'), 'pointer-events: auto;', 'drawer open state should restore pointer interaction');
@@ -73,8 +77,13 @@ assertDecl(desktopAnchor, 'display: flex;', 'desktop anchor must lay out the sid
 assertDecl(desktopAnchor, 'align-items: stretch;', 'desktop anchor must stretch the sidecar card');
 assertDecl(desktopAnchor, 'overflow: hidden;', 'desktop anchor must clip the fixed-width sidecar while its track closes');
 assert.ok(
-	desktopAnchor.includes('max-width 260ms cubic-bezier(0.4, 0, 0.2, 1)'),
-	'desktop anchor must animate max-width instead of snapping its hard width clamp to zero',
+	!desktopAnchor.includes('transition:'),
+	'desktop restore/mount must not slide the sidecar into view',
+);
+assert.ok(
+	cssBlock(css, ".pk-sidecar-anchor--user-transition[data-sidecar-mode='desktop']")
+		.includes('max-width 260ms cubic-bezier(0.4, 0, 0.2, 1)'),
+	'desktop anchor must animate max-width only for explicit user transitions',
 );
 assertDecl(
 	cssBlock(css, ".pk-sidecar-anchor[data-sidecar-mode='desktop'][data-open='true']"),
@@ -159,6 +168,20 @@ assertDecl(tabs, 'height: 42px;', 'primary switch must keep the canonical 42px h
 assertDecl(tabs, 'gap: 3px;', 'primary switch must keep the canonical 3px inner gap');
 assertDecl(tabs, 'padding: 3px;', 'primary switch must keep the canonical 3px inner padding');
 assertDecl(tabs, 'background: var(--pk-surface-sunken);', 'primary switch must keep the sunken segmented background');
+assert.ok(
+	sidecarTsx.indexOf('className="pk-sidecar-tabs"')
+		< sidecarTsx.indexOf('<WorkspaceScopeMenu'),
+	'workspace scope must sit inside Copilot content after the primary Copilot / History navigation',
+);
+assert.ok(
+	!sidecarTsx.includes('pk-sidecar-scope-switch'),
+	'workspace scope must not remain a second full-width segmented navigation row',
+);
+const contextBar = cssBlock(css, '.pk-sidecar-context-bar');
+assertDecl(contextBar, 'min-height: 34px;', 'Copilot scope context should stay visually secondary and compact');
+const scopeTrigger = cssBlock(css, '.peak-design-root .pk-sidecar-scope-trigger');
+assertDecl(scopeTrigger, 'height: 28px !important;', 'scope trigger must retain its compact hit target under Obsidian resets');
+assertDecl(scopeTrigger, 'width: auto !important;', 'scope trigger must not read as a full-width primary navigation control');
 
 const tab = cssBlock(css, '.pk-sidecar-tab');
 assertDecl(tab, 'justify-content: center;', 'primary switch labels must be centered');

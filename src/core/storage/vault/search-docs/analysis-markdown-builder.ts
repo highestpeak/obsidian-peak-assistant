@@ -104,6 +104,7 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 		// Write section metadata as a collapsed callout for round-trip fidelity.
 		// Only emitted when at least one section carries rich metadata (missionRole / visualType / sources).
 		const secMeta = docModel.v2ReportSections.map(s => ({
+			id: s.id ?? '',
 			title: s.title,
 			visualType: s.visualType ?? '',
 			missionRole: s.missionRole ?? '',
@@ -112,7 +113,7 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 			contentType: s.contentType ?? '',
 			weight: s.weight ?? 1,
 		}));
-		if (secMeta.some(m => m.visualType || m.missionRole || m.evidencePaths.length > 0)) {
+		if (secMeta.some(m => m.id || m.visualType || m.missionRole || m.evidencePaths.length > 0)) {
 			b.text('> [!abstract]- V2 Section Meta');
 			b.text(`> ${JSON.stringify(secMeta)}`);
 			b.blankLine();

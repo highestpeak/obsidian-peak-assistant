@@ -221,13 +221,6 @@ export function BriefViewContent({
 						<RefreshCw aria-hidden />
 						{s.refreshSuggestions}
 					</Button>
-					<SensingControl
-						runtime={runtime}
-						sensingMode={brief.sensingMode}
-						autoPrepare={brief.autoPrepare}
-						autoPrepareAvailable={brief.autoPrepareAvailable}
-						strings={s}
-					/>
 				</div>
 			</header>
 
@@ -430,7 +423,7 @@ function BriefSection({
 	);
 }
 
-function SensingControl({
+export function SensingControl({
 	runtime,
 	sensingMode,
 	autoPrepare,

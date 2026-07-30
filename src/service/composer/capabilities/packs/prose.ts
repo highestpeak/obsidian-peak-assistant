@@ -14,15 +14,21 @@
 
 import { PromptId } from '@/core/types/prompt';
 import {
+	COMPOSER_BLOCK_INSERTION_WRITEBACK_ID,
+	COMPOSER_LIST_ITEM_PATCH_RENDERER_ID,
+	COMPOSER_LIST_ITEM_PATCH_WRITEBACK_ID,
 	COMPOSER_STREAMING_TEXT_RENDERER_ID,
 	COMPOSER_TEXT_PATCH_WRITEBACK_ID,
 	type ComposerCapabilityAvailability,
 	type ComposerCapabilityDefinition,
+	type ComposerCapabilityEffectKind,
 	type ComposerCapabilityPack,
 	type ComposerContextSnapshot,
 } from '@/core/composer';
 import {
+	ComposerBlockInsertionPayloadSchema,
 	ComposerInstructionInputSchema,
+	ComposerListItemPatchPayloadSchema,
 	ComposerTextPatchPayloadSchema,
 } from '@/core/schemas/composer';
 import {
@@ -41,6 +47,7 @@ export const POLISH_COPILOT_ACTION_ID = 'polish';
 /** Template-registered prompt shared by both invocation paths. */
 export const POLISH_PROMPT_ID = PromptId.DocPolish;
 export const PROSE_TRANSFORM_PROMPT_ID = PromptId.ComposerProseTransform;
+export const FILL_GAPS_CAPABILITY_ID = 'composer.list.fill-gaps';
 
 export interface PolishPromptInput {
 	content: string;
@@ -149,29 +156,31 @@ export function createPolishDefinition(
 interface ProseTransformSpec {
 	id: string;
 	targetKind: 'paragraph' | 'heading' | 'list' | 'task' | 'quote' | 'callout';
+	effectKind: Extract<ComposerCapabilityEffectKind, 'rewrite' | 'insert' | 'transform'>;
+	resultMode?: 'insert-block' | 'insert-list-item';
 	/** First action for each kind doubles as the custom-instruction execution path. */
 	acceptsInstruction: boolean;
 }
 
 const PROSE_TRANSFORM_SPECS: readonly ProseTransformSpec[] = [
-	{ id: 'composer.prose.polish-block', targetKind: 'paragraph', acceptsInstruction: true },
-	{ id: 'composer.prose.add-example', targetKind: 'paragraph', acceptsInstruction: false },
-	{ id: 'composer.prose.to-table', targetKind: 'paragraph', acceptsInstruction: false },
-	{ id: 'composer.heading.shorten', targetKind: 'heading', acceptsInstruction: true },
-	{ id: 'composer.heading.outline', targetKind: 'heading', acceptsInstruction: false },
-	{ id: 'composer.heading.questions', targetKind: 'heading', acceptsInstruction: false },
-	{ id: 'composer.list.fill-gaps', targetKind: 'list', acceptsInstruction: true },
-	{ id: 'composer.list.reorder', targetKind: 'list', acceptsInstruction: false },
-	{ id: 'composer.list.to-table', targetKind: 'list', acceptsInstruction: false },
-	{ id: 'composer.task.find-blockers', targetKind: 'task', acceptsInstruction: true },
-	{ id: 'composer.task.add-next-step', targetKind: 'task', acceptsInstruction: false },
-	{ id: 'composer.task.prioritize', targetKind: 'task', acceptsInstruction: false },
-	{ id: 'composer.quote.explain', targetKind: 'quote', acceptsInstruction: true },
-	{ id: 'composer.quote.counterexample', targetKind: 'quote', acceptsInstruction: false },
-	{ id: 'composer.quote.to-callout', targetKind: 'quote', acceptsInstruction: false },
-	{ id: 'composer.callout.change-type', targetKind: 'callout', acceptsInstruction: true },
-	{ id: 'composer.callout.expand', targetKind: 'callout', acceptsInstruction: false },
-	{ id: 'composer.callout.to-checklist', targetKind: 'callout', acceptsInstruction: false },
+	{ id: 'composer.prose.polish-block', targetKind: 'paragraph', effectKind: 'rewrite', acceptsInstruction: true },
+	{ id: 'composer.prose.add-example', targetKind: 'paragraph', effectKind: 'insert', resultMode: 'insert-block', acceptsInstruction: false },
+	{ id: 'composer.prose.to-table', targetKind: 'paragraph', effectKind: 'transform', acceptsInstruction: false },
+	{ id: 'composer.heading.shorten', targetKind: 'heading', effectKind: 'rewrite', acceptsInstruction: true },
+	{ id: 'composer.heading.outline', targetKind: 'heading', effectKind: 'insert', resultMode: 'insert-block', acceptsInstruction: false },
+	{ id: 'composer.heading.questions', targetKind: 'heading', effectKind: 'insert', resultMode: 'insert-block', acceptsInstruction: false },
+	{ id: FILL_GAPS_CAPABILITY_ID, targetKind: 'list', effectKind: 'insert', resultMode: 'insert-list-item', acceptsInstruction: true },
+	{ id: 'composer.list.reorder', targetKind: 'list', effectKind: 'transform', acceptsInstruction: false },
+	{ id: 'composer.list.to-table', targetKind: 'list', effectKind: 'transform', acceptsInstruction: false },
+	{ id: 'composer.task.find-blockers', targetKind: 'task', effectKind: 'insert', resultMode: 'insert-block', acceptsInstruction: true },
+	{ id: 'composer.task.add-next-step', targetKind: 'task', effectKind: 'insert', resultMode: 'insert-block', acceptsInstruction: false },
+	{ id: 'composer.task.prioritize', targetKind: 'task', effectKind: 'transform', acceptsInstruction: false },
+	{ id: 'composer.quote.explain', targetKind: 'quote', effectKind: 'insert', resultMode: 'insert-block', acceptsInstruction: true },
+	{ id: 'composer.quote.counterexample', targetKind: 'quote', effectKind: 'insert', resultMode: 'insert-block', acceptsInstruction: false },
+	{ id: 'composer.quote.to-callout', targetKind: 'quote', effectKind: 'transform', acceptsInstruction: false },
+	{ id: 'composer.callout.change-type', targetKind: 'callout', effectKind: 'rewrite', acceptsInstruction: true },
+	{ id: 'composer.callout.expand', targetKind: 'callout', effectKind: 'rewrite', acceptsInstruction: false },
+	{ id: 'composer.callout.to-checklist', targetKind: 'callout', effectKind: 'transform', acceptsInstruction: false },
 ] as const;
 
 export const PROSE_BLOCK_ACTION_IDS = PROSE_TRANSFORM_SPECS.map((spec) => spec.id);
@@ -201,13 +210,32 @@ function createProseTransformDefinition(
 	spec: ProseTransformSpec,
 ): ComposerCapabilityDefinition {
 	const presentation = completePresentation(spec.id);
+	const insertsNewBlock = spec.resultMode === 'insert-block';
+	const insertsListItem = spec.resultMode === 'insert-list-item';
+	const resultSchema = insertsListItem
+		? ComposerListItemPatchPayloadSchema
+		: insertsNewBlock
+			? ComposerBlockInsertionPayloadSchema
+			: ComposerTextPatchPayloadSchema;
+	const resultKind = insertsListItem
+		? 'list-item-patch' as const
+		: insertsNewBlock
+			? 'block-insertion' as const
+			: 'text-patch' as const;
 	return {
 		manifest: {
 			id: spec.id,
 			title: presentation.title,
 			description: presentation.description,
 			inputContract: { kind: 'object', description: 'Frozen one-block context plus optional custom instruction' },
-			outputContract: { kind: 'custom', description: 'one source-safe text-patch candidate' },
+			outputContract: {
+				kind: 'custom',
+				description: insertsListItem
+					? 'one source-safe list-item patch candidate'
+					: insertsNewBlock
+						? 'one source-safe block-insertion candidate'
+						: 'one source-safe text-patch candidate',
+			},
 			permissionKind: 'read',
 			costTier: 'fast',
 			backendPolicy: { preferred: 'provider-direct', fallback: [] },
@@ -220,18 +248,34 @@ function createProseTransformDefinition(
 		surfaces: ['block-row'],
 		targetKinds: [spec.targetKind],
 		executionMode: 'model-stream',
-		effectKind: 'rewrite',
+		effectKind: spec.effectKind,
 		promptId: PROSE_TRANSFORM_PROMPT_ID,
 		inputSchema: ComposerInstructionInputSchema,
-		resultSchema: ComposerTextPatchPayloadSchema,
-		resultKind: 'text-patch',
-		rendererId: COMPOSER_STREAMING_TEXT_RENDERER_ID,
-		writebackAdapterId: COMPOSER_TEXT_PATCH_WRITEBACK_ID,
+		resultSchema,
+		resultKind,
+		rendererId: insertsListItem
+			? COMPOSER_LIST_ITEM_PATCH_RENDERER_ID
+			: COMPOSER_STREAMING_TEXT_RENDERER_ID,
+		writebackAdapterId: insertsListItem
+			? COMPOSER_LIST_ITEM_PATCH_WRITEBACK_ID
+			: insertsNewBlock
+				? COMPOSER_BLOCK_INSERTION_WRITEBACK_ID
+				: COMPOSER_TEXT_PATCH_WRITEBACK_ID,
 		acceptsInstruction: spec.acceptsInstruction,
 		presentationFallback: presentation,
 		evaluate: ({ snapshot }) => evaluatePolish(snapshot, config().strings.emptyTarget),
-		buildPromptVariables: (snapshot, instruction) => {
-			const effectiveInstruction = instruction?.trim() || config().instructions[spec.id];
+		buildPromptVariables: (snapshot, instruction, extras) => {
+			const baseInstruction = instruction?.trim() || config().instructions[spec.id];
+			const placementInstruction =
+				extras?.placement?.kind === 'list-gap'
+					? config().strings.listGapPlacementInstruction.replace(
+							'{index}',
+							String(extras.placement.insertionIndex),
+						)
+					: '';
+			const effectiveInstruction = [baseInstruction, placementInstruction]
+				.filter(Boolean)
+				.join('\n');
 			if (!effectiveInstruction) {
 				throw new Error(`missing Composer preset instruction for '${spec.id}'`);
 			}

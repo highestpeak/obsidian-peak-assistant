@@ -1,15 +1,14 @@
 /**
  * Advanced tab — the only place internal vocabulary ("Harness", runtime
- * backend selectors, hooks DSL, diagnostics, SDK process) surfaces.
+ * backend selectors, hooks DSL, and diagnostics) surfaces.
  *
  * Sections: Re-run setup wizard banner · Storage and folders · Maintenance · Developer.
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Bug, Cog, FileText, Folder, HardDrive, Inbox, MessageSquare, Microscope, Palette, Sparkles, User, Wand2, type LucideIcon } from 'lucide-react';
 import { Row, FormRow, FormGrid, Button } from '@/ui/components/primitives';
 import { Input } from '@/ui/component/shared-ui/input';
-import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { Switch } from '@/ui/component/shared-ui/switch';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import {
@@ -121,7 +120,6 @@ export function AdvancedTab({ settings, settingsUpdates }: AdvancedTabProps) {
                     />
                 </div>
                 <DebugTracesSection settings={settings} settingsUpdates={settingsUpdates} />
-                <SdkProcessDisclosure settings={settings} settingsUpdates={settingsUpdates} />
             </SettingsSection>
         </div>
     );
@@ -337,85 +335,6 @@ function StorageSection({
                 </div>
             </SettingsDisclosure>
         </div>
-    );
-}
-
-/* Developer → SDK process disclosure */
-
-function SdkProcessDisclosure({
-    settings,
-    settingsUpdates,
-}: {
-    settings: MyPluginSettings;
-    settingsUpdates: SettingsUpdates;
-}) {
-    const registry = ProfileRegistry.getInstance();
-    const sdkSettings = registry.getSdkSettings();
-    const [tick, setTick] = useState(0);
-    void tick;
-
-    const updateSdk = (
-        field: 'cliPathOverride' | 'subprocessPoolSize' | 'warmupOnLoad',
-        value: unknown,
-    ) => {
-        const current = registry.getSdkSettings();
-        const updated = { ...current, [field]: value };
-        settingsUpdates.update('profileSettings', {
-            ...settings.profileSettings!,
-            sdkSettings: updated,
-        });
-        setTick((t) => t + 1);
-    };
-
-    return (
-        <SettingsDisclosure
-            icon={Cog}
-            title="SDK process"
-            desc="Claude Agent SDK subprocess CLI path, pool size, and warmup."
-            meta="3 fields"
-        >
-            <FormGrid className="pktw-p-1">
-                <FormRow>
-                    <FormRow.Label>
-                        CLI path override
-                        <FormRow.LabelHint>Leave empty for the bundled SDK.</FormRow.LabelHint>
-                    </FormRow.Label>
-                    <FormRow.Control>
-                        <FormRow.Input
-                            type="text"
-                            defaultValue={sdkSettings.cliPathOverride ?? ''}
-                            placeholder="Leave empty for default"
-                            onBlur={(e) => updateSdk('cliPathOverride', e.target.value || null)}
-                        />
-                    </FormRow.Control>
-                </FormRow>
-                <FormRow>
-                    <FormRow.Label>
-                        Pool size
-                        <FormRow.LabelHint>How many subprocesses to keep alive.</FormRow.LabelHint>
-                    </FormRow.Label>
-                    <FormRow.Control>
-                        <FormRow.Number
-                            value={sdkSettings.subprocessPoolSize}
-                            min={1}
-                            max={10}
-                            onChange={(e) =>
-                                updateSdk('subprocessPoolSize', Math.max(1, parseInt(e.target.value, 10) || 1))
-                            }
-                        />
-                    </FormRow.Control>
-                </FormRow>
-                <FormRow>
-                    <FormRow.Label>
-                        Warmup on load
-                        <FormRow.LabelHint>Pre-warm an SDK subprocess when the plugin starts.</FormRow.LabelHint>
-                    </FormRow.Label>
-                    <FormRow.Control>
-                        <Switch checked={sdkSettings.warmupOnLoad} onChange={(v) => updateSdk('warmupOnLoad', v)} />
-                    </FormRow.Control>
-                </FormRow>
-            </FormGrid>
-        </SettingsDisclosure>
     );
 }
 

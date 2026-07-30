@@ -26,14 +26,18 @@ import {
 	type ComposerActionDescriptor,
 	type ComposerActionSurface,
 	type ComposerCandidate,
+	type ComposerCandidateRuntimeSnapshot,
 	type ComposerCapabilityCatalogItem,
 	type ComposerCandidateRuntimePort,
 	type ComposerCapabilityDefinition,
+	type ComposerCapabilityEffectKind,
 	type ComposerCapabilityId,
 	type ComposerCapabilityProjectionPort,
 	type ComposerCapabilityRunEvent,
 	type ComposerContextSnapshot,
 	type ComposerInvocationHandle,
+	type ComposerInvocationOptions,
+	type ComposerInvocationPlacement,
 	type ComposerPromptExtras,
 	type ComposerRendererId,
 	type ComposerResultEnvelope,
@@ -87,7 +91,9 @@ interface CandidateMeta {
 	/** Frozen base-revision anchor of the targeted block/unit. */
 	anchor?: { from: number; to: number };
 	lastRunId: string;
+	runIdsByVariant: Record<string, string>;
 	modelId?: string;
+	placement?: ComposerInvocationPlacement;
 	/** Native object path + frozen base bytes (native-file-patch runs only). */
 	native?: { targetPath: string; baseText: string; format: ComposerNativeFileFormat };
 }
@@ -221,10 +227,11 @@ export class ComposerCapabilityDocumentRuntime
 	invoke(
 		capabilityId: ComposerCapabilityId,
 		snapshot: ComposerContextSnapshot,
-		options?: { instruction?: string; modelId?: string },
+		options?: ComposerInvocationOptions,
 	): ComposerInvocationHandle {
 		const def = this.deps.registry.require(capabilityId);
 		def.inputSchema.parse({ instruction: options?.instruction });
+		validatePlacement(options?.placement);
 		if (snapshot.revision !== this.deps.session.baseRevision) {
 			throw new ComposerConflictError(
 				'revision-mismatch',
@@ -244,7 +251,9 @@ export class ComposerCapabilityDocumentRuntime
 			snapshot,
 			...(anchor !== undefined ? { anchor } : {}),
 			lastRunId: runId,
+			runIdsByVariant: { [candidate.activeVariantId]: runId },
 			...(options?.modelId !== undefined ? { modelId: options.modelId } : {}),
+			...(options?.placement !== undefined ? { placement: options.placement } : {}),
 		});
 		this.startGeneration(
 			def,
@@ -272,6 +281,12 @@ export class ComposerCapabilityDocumentRuntime
 		const meta = this.candidateMeta.get(candidateId);
 		if (!meta) return null;
 		return this.deps.registry.require(meta.capabilityId).rendererId;
+	}
+
+	candidateEffectFor(candidateId: string): ComposerCapabilityEffectKind | null {
+		const meta = this.candidateMeta.get(candidateId);
+		if (!meta) return null;
+		return this.deps.registry.require(meta.capabilityId).effectKind;
 	}
 
 	candidateLabelFor(candidateId: string): string | null {
@@ -308,6 +323,7 @@ export class ComposerCapabilityDocumentRuntime
 		});
 		const runId = nextRunId();
 		meta.lastRunId = runId;
+		meta.runIdsByVariant[updated.activeVariantId] = runId;
 		this.startGeneration(def, candidateId, updated.activeVariantId, runId, instruction, meta.modelId);
 		return { runId, cancel: () => this.cancel(candidateId) };
 	}
@@ -335,6 +351,7 @@ export class ComposerCapabilityDocumentRuntime
 		return this.invoke(meta.capabilityId, fresh, {
 			...(instruction !== undefined ? { instruction } : {}),
 			...(meta.modelId !== undefined ? { modelId: meta.modelId } : {}),
+			...(meta.placement !== undefined ? { placement: meta.placement } : {}),
 		});
 	}
 
@@ -362,7 +379,7 @@ export class ComposerCapabilityDocumentRuntime
 		await this.deps.hub.acceptCandidate(candidateId, {
 			origin: 'ai',
 			label: presentation.historyLabel,
-			runId: meta.lastRunId,
+			runId: runIdForActiveVariant(this.findCandidate(candidateId), meta),
 		});
 	}
 
@@ -395,7 +412,12 @@ export class ComposerCapabilityDocumentRuntime
 		def: ComposerCapabilityDefinition,
 		meta: CandidateMeta,
 	): Promise<ComposerPromptExtras | undefined> {
-		if (def.resultKind !== 'native-file-patch') return undefined;
+		const extras: ComposerPromptExtras = {
+			...(meta.placement ? { placement: meta.placement } : {}),
+		};
+		if (def.resultKind !== 'native-file-patch') {
+			return Object.keys(extras).length > 0 ? extras : undefined;
+		}
 		const ref = this.resolveNativeRef(meta.snapshot.target);
 		const port = this.deps.nativeFilePort;
 		if (!ref || !port || port.format(ref.targetPath) === null) {
@@ -403,7 +425,7 @@ export class ComposerCapabilityDocumentRuntime
 		}
 		const baseText = await port.readNative(ref.targetPath);
 		meta.native = { targetPath: ref.targetPath, baseText, format: ref.format };
-		return { nativeText: baseText };
+		return { ...extras, nativeText: baseText };
 	}
 
 	discard(candidateId: string): void {
@@ -416,6 +438,58 @@ export class ComposerCapabilityDocumentRuntime
 			throw new Error(`candidate ${candidateId} is streaming — variant navigation is disabled`);
 		}
 		this.deps.hub.setActiveVariant(candidateId, variantId);
+	}
+
+	exportCandidateRuntimeState(
+		candidateId: string,
+	): ComposerCandidateRuntimeSnapshot | null {
+		const meta = this.candidateMeta.get(candidateId);
+		if (!meta) return null;
+		const def = this.deps.registry.getById(meta.capabilityId);
+		if (!def) return null;
+		const presentation = resolvePresentation(
+			this.deps.config(),
+			def.configKey,
+			def.presentationFallback,
+		);
+		return {
+			ownerId: 'capability',
+			rendererId: def.rendererId,
+			label: presentation.title,
+			payload: meta,
+		};
+	}
+
+	restoreCandidateRuntimeState(
+		candidate: ComposerCandidate,
+		snapshot: ComposerCandidateRuntimeSnapshot,
+	): boolean {
+		if (snapshot.ownerId !== 'capability') return false;
+		const payload = asRecord(snapshot.payload);
+		const capabilityId = payload.capabilityId;
+		const context = payload.snapshot;
+		if (typeof capabilityId !== 'string' || !context || typeof context !== 'object') return false;
+		const def = this.deps.registry.getById(capabilityId);
+		if (!def || def.rendererId !== snapshot.rendererId) return false;
+		this.candidateMeta.set(candidate.candidateId, {
+			...(payload as unknown as CandidateMeta),
+			capabilityId,
+			snapshot: context as ComposerContextSnapshot,
+			lastRunId:
+				typeof payload.lastRunId === 'string'
+					? payload.lastRunId
+					: `restored-${candidate.candidateId}`,
+			runIdsByVariant:
+				payload.runIdsByVariant && typeof payload.runIdsByVariant === 'object'
+					? payload.runIdsByVariant as Record<string, string>
+					: {
+							[candidate.activeVariantId]:
+								typeof payload.lastRunId === 'string'
+									? payload.lastRunId
+									: `restored-${candidate.candidateId}`,
+						},
+		});
+		return true;
 	}
 
 	// ── context assembly convenience (integration wiring point) ───────────────
@@ -530,6 +604,7 @@ export class ComposerCapabilityDocumentRuntime
 				definition: def,
 				snapshot: meta.snapshot,
 				text,
+				...(meta.placement ? { placement: meta.placement } : {}),
 				...(meta.native
 					? { nativeBaseText: meta.native.baseText, nativeTargetPath: meta.native.targetPath }
 					: {}),
@@ -546,13 +621,14 @@ export class ComposerCapabilityDocumentRuntime
 			this.activeRuns.delete(candidateId);
 			this.emit({ type: 'variant-ready', runId, candidateId, variantId, envelope });
 		} catch (err) {
-			this.failVariantSafely(candidateId);
 			this.activeRuns.delete(candidateId);
 			if (err instanceof AbortRunError || abort.signal.aborted) {
+				this.cancelVariantSafely(candidateId);
 				this.emit({ type: 'run-cancelled', runId, candidateId, variantId });
 				return;
 			}
 			const message = err instanceof Error ? err.message : strings.runFailed;
+			this.failVariantSafely(candidateId, message);
 			this.emit({ type: 'run-failed', runId, candidateId, variantId, error: message });
 		}
 	}
@@ -571,9 +647,17 @@ export class ComposerCapabilityDocumentRuntime
 		return adapter.buildOperations(envelope, ctx);
 	}
 
-	private failVariantSafely(candidateId: string): void {
+	private failVariantSafely(candidateId: string, error?: string): void {
 		try {
-			this.deps.hub.markVariantFailed(candidateId);
+			this.deps.hub.markVariantFailed(candidateId, error);
+		} catch {
+			// Candidate was discarded mid-run — nothing to mark.
+		}
+	}
+
+	private cancelVariantSafely(candidateId: string): void {
+		try {
+			this.deps.hub.markVariantCancelled(candidateId);
 		} catch {
 			// Candidate was discarded mid-run — nothing to mark.
 		}
@@ -604,10 +688,35 @@ function lastInstructionOf(candidate: ComposerCandidate): string | undefined {
 	return undefined;
 }
 
+function validatePlacement(placement: ComposerInvocationPlacement | undefined): void {
+	if (!placement) return;
+	if (
+		placement.kind !== 'list-gap' ||
+		!Number.isInteger(placement.insertionIndex) ||
+		placement.insertionIndex < 0
+	) {
+		throw new Error('Composer list-gap placement requires a non-negative integer insertionIndex');
+	}
+}
+
+function runIdForActiveVariant(
+	candidate: ComposerCandidate | undefined,
+	meta: CandidateMeta,
+): string {
+	if (!candidate) return meta.lastRunId;
+	return meta.runIdsByVariant[candidate.activeVariantId] ?? meta.lastRunId;
+}
+
 /** Internal marker for user-initiated cancellation. */
 class AbortRunError extends Error {
 	constructor() {
 		super('composer capability run cancelled');
 		this.name = 'AbortRunError';
 	}
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+	return value && typeof value === 'object'
+		? value as Record<string, unknown>
+		: {};
 }

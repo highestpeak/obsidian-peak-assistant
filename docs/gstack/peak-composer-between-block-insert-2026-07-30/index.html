@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Peak Composer · 跟随指针的块间插入</title>
+		<link rel="stylesheet" href="../../../src/styles/peak-tokens.css" />
+		<link rel="stylesheet" href="./mock.css" />
+	</head>
+	<body class="peak-design-root theme-light">
+		<main class="review-frame" data-state="open">
+			<header class="review-header">
+				<div>
+					<span class="eyebrow">PEAK COMPOSER · INTERACTION MOCK</span>
+					<h1>在任意两个 Block 之间，自然地插入内容</h1>
+					<p>整条空隙都是命中区；加号在离鼠标最近的位置出现，悬浮到加号就直接展开。</p>
+				</div>
+				<nav class="state-switcher" aria-label="预览交互状态">
+					<button type="button" data-preview-state="idle">静止</button>
+					<button type="button" data-preview-state="hover">移动中</button>
+					<button type="button" data-preview-state="open" aria-pressed="true">悬浮展开</button>
+				</nav>
+			</header>
+
+			<section class="composer-stage" aria-label="Composer 块间插入交互概念稿">
+				<div class="document-column">
+					<article class="doc-block doc-block--heading">
+						<span class="block-rail" aria-hidden="true">
+							<span class="disclosure">⌄</span>
+							<span class="drag-handle">⠿</span>
+						</span>
+						<div class="block-content">
+							<h2>一个“舒服”的编辑器允许用户边写边整理</h2>
+						</div>
+					</article>
+
+					<div class="insertion-gap" data-gap="heading-paragraph" aria-hidden="true">
+						<span class="insertion-line"></span>
+						<button class="insertion-plus" type="button" tabindex="-1" aria-label="悬浮以打开插入菜单">
+							<svg viewBox="0 0 24 24" aria-hidden="true">
+								<path d="M12 5v14M5 12h14"></path>
+							</svg>
+						</button>
+					</div>
+
+					<article class="doc-block doc-block--paragraph">
+						<span class="block-rail block-rail--quiet" aria-hidden="true">
+							<span class="disclosure">⌄</span>
+							<span class="drag-handle">⠿</span>
+						</span>
+						<div class="block-content">
+							<p>
+								真正困难的部分，并不是把内容收进来，而是让它在之后仍然能够被重新找到、重新组合、重新输出。
+								一个顺手的编辑器，应该允许用户在任何两个结构之间自然地补上一段内容。
+							</p>
+						</div>
+					</article>
+
+					<div class="insertion-gap insertion-gap--active" data-gap="paragraph-list">
+						<span class="insertion-line"></span>
+						<button class="insertion-plus" type="button" aria-label="悬浮以打开插入菜单" aria-expanded="true">
+							<svg viewBox="0 0 24 24" aria-hidden="true">
+								<path d="M12 5v14M5 12h14"></path>
+							</svg>
+						</button>
+
+						<div class="insert-popover" role="menu" aria-label="选择要插入的块类型">
+							<div class="insert-popover__title">
+								<span>插入新块</span>
+								<kbd>Esc</kbd>
+							</div>
+							<div class="insert-types">
+								<button class="insert-type is-default" type="button" role="menuitem">
+									<svg viewBox="0 0 24 24" aria-hidden="true">
+										<path d="M7 5h10M7 10h10M7 15h7"></path>
+									</svg>
+									<span>段落</span>
+								</button>
+								<button class="insert-type" type="button" role="menuitem">标题</button>
+								<button class="insert-type" type="button" role="menuitem">列表</button>
+								<button class="insert-type" type="button" role="menuitem">待办</button>
+								<button class="insert-type" type="button" role="menuitem">引用</button>
+								<button class="insert-type" type="button" role="menuitem">Callout</button>
+								<button class="insert-type" type="button" role="menuitem">公式</button>
+								<button class="insert-type" type="button" role="menuitem">图片</button>
+								<button class="insert-type" type="button" role="menuitem">表格</button>
+								<button class="insert-type" type="button" role="menuitem">Base</button>
+								<button class="insert-type" type="button" role="menuitem">Canvas</button>
+								<button class="insert-type" type="button" role="menuitem">Excalidraw</button>
+								<button class="insert-type insert-type--ai" type="button" role="menuitem">
+									<svg viewBox="0 0 24 24" aria-hidden="true">
+										<path d="m12 3 1.2 4.1L17 9l-3.8 1.9L12 15l-1.2-4.1L7 9l3.8-1.9L12 3Z"></path>
+										<path d="m18.5 14 .7 2.3 2.3.7-2.3.7-.7 2.3-.7-2.3-2.3-.7 2.3-.7.7-2.3Z"></path>
+									</svg>
+									<span>AI 续写</span>
+								</button>
+							</div>
+							<div class="insert-popover__hint">
+								<span><strong>段落</strong>是默认类型，按 Enter 直接创建并开始输入</span>
+								<span>↑↓ 选择 · / 更多</span>
+							</div>
+						</div>
+					</div>
+
+					<article class="doc-block doc-block--list">
+						<span class="block-rail" aria-hidden="true">
+							<span class="disclosure">⌄</span>
+							<span class="drag-handle">⠿</span>
+						</span>
+						<div class="block-content">
+							<ul>
+								<li><strong>网络结构：</strong>承接滑箱笔记、论文旁批、公众号想法和临时判断。</li>
+								<li><strong>树形结构：</strong>承接系统学习、技术专题、书籍章节和项目文档。</li>
+								<li><strong>跨库链接：</strong>保留来源、引用和迁移差异。</li>
+							</ul>
+						</div>
+					</article>
+
+					<div class="insertion-gap" data-gap="list-callout" aria-hidden="true">
+						<span class="insertion-line"></span>
+						<button class="insertion-plus" type="button" tabindex="-1" aria-label="悬浮以打开插入菜单">
+							<svg viewBox="0 0 24 24" aria-hidden="true">
+								<path d="M12 5v14M5 12h14"></path>
+							</svg>
+						</button>
+					</div>
+
+					<article class="doc-block doc-block--callout">
+						<span class="block-rail block-rail--quiet" aria-hidden="true">
+							<span class="disclosure">⌄</span>
+							<span class="drag-handle">⠿</span>
+						</span>
+						<div class="block-content callout">
+							<span class="callout-mark" aria-hidden="true"></span>
+							<p>
+								这个入口属于“结构间隙”，而不是上一个 Block；无论上下是什么类型，插入位置都保持明确。
+							</p>
+						</div>
+					</article>
+				</div>
+			</section>
+
+			<footer class="behavior-notes" aria-label="交互原则">
+				<span><strong>01</strong> 空闲时完全隐形，不给正文增加永久噪音</span>
+				<span><strong>02</strong> 横向跟随鼠标，靠近哪里就在哪里长出加号</span>
+				<span><strong>03</strong> 悬浮加号后锚点冻结，菜单自动避开左右边界</span>
+			</footer>
+		</main>
+		<script src="./mock.js"></script>
+	</body>
+</html>

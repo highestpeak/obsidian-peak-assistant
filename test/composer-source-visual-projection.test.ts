@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import {
 	hasSourceVisualSyntaxChange,
 	projectSourceVisualParts,
@@ -34,6 +35,18 @@ function run(): void {
 	check('projection hides markdown link destination and shows label', !visible.includes('https://x.com') && visible.includes('label'), visible);
 	check('projection hides html mark tags', !visible.includes('<span') && !visible.includes('</span>') && visible.includes('red') && visible.includes('under'), visible);
 	check('projection hides highlight and math delimiters', !visible.includes('==') && !visible.includes('$') && visible.includes('E=mc^2'), visible);
+}
+
+{
+	const editableSource = readFileSync('src/ui/view/composer/chrome/EditableText.tsx', 'utf8');
+	const hiddenStart = editableSource.indexOf("if (part.kind === 'hidden')");
+	const hiddenEnd = editableSource.indexOf("if (part.kind === 'math')", hiddenStart);
+	const hiddenRenderer = editableSource.slice(hiddenStart, hiddenEnd);
+	check(
+		'hidden source tokens do not render layout-bearing child elements',
+		hiddenStart >= 0 && hiddenEnd > hiddenStart && !hiddenRenderer.includes('<ExternalLink'),
+		hiddenRenderer,
+	);
 }
 
 {

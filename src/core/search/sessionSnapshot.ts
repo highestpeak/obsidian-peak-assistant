@@ -17,6 +17,7 @@ import type { LLMUsage } from '@/core/providers/types';
 import type { AnalysisMode } from '@/core/types/agents-shared';
 import type { V2ToolStep, V2TimelineItem, V2Source } from '@/core/search/v2ToolTypes';
 import type { V2Section, Round } from '@/core/search/v2SessionTypes';
+import type { SectionAnalyzeResult } from '@/core/storage/vault/search-docs/analysisSnapshotTypes';
 import type { SessionStatus, AutoSaveState } from '@/core/search/sessionTypes';
 
 export interface V2SessionSnapshot {
@@ -44,6 +45,7 @@ export interface V2SessionSnapshot {
 	v2UserInsights: string[];
 	v2Summary: string;
 	v2SummaryStreaming: boolean;
+	v2SectionFollowups: Record<string, SectionAnalyzeResult[]>;
 	rounds: Round[];
 	currentRoundIndex: number;
 	continueMode: boolean;

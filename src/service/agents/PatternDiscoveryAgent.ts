@@ -38,7 +38,7 @@ export async function runPatternDiscovery(
 	isRunning = true;
 
 	try {
-		// 1. Call LLM via Agent SDK (Pattern B: single-turn, no tools)
+		// 1. Call the model via Peak Harness (single-turn, no tools).
 		const text = await prompter.queryText(
 			PromptId.PatternDiscovery,
 			{

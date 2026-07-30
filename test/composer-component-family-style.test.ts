@@ -96,6 +96,19 @@ check('native shells use radius-lg instead of radius-md', () => {
 	);
 });
 
+check('persisted embed ranges use a readable document surface', () => {
+	expectRule(
+		nativeCss,
+		/\.pk-native-embed-surface\[data-range-preview\]\s+\.pk-native-embed-host\s*\{[\s\S]*?padding:\s*var\(--pk-space-4\)\s+var\(--pk-space-5\);[\s\S]*?font-size:\s*var\(--pk-text-lg\);[\s\S]*?line-height:\s*1\.7;/,
+		'range previews must read as rendered document content instead of an unstyled source dump',
+	);
+	expectRule(
+		nativeCss,
+		/\.pk-native-embed-surface\[data-range-preview\]\s+\.pk-native-embed-host\s+:is\(p,\s*ul,\s*ol,\s*blockquote\)\s*\{[\s\S]*?margin-block:/,
+		'range previews must restore vertical rhythm between rendered Markdown blocks',
+	);
+});
+
 check('code block has its own dark frame tokens', () => {
 	expectRule(
 		nativeCss,

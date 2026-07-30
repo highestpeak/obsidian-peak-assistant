@@ -60,7 +60,7 @@ export class SourceReceiptCollector {
  * Extract cited web sources from a web-search answer (chat-studio RUN-02).
  *
  * CONSTRAINT: the chat `web_search` tool runs through a provider profile
- * (sdkAgentPool.queryWithProfile) whose search happens server-side inside the
+ * whose search happens server-side inside the
  * model — the CLI WebSearch tool is disallowed, so the only web signal that
  * surfaces is the model's synthesized answer TEXT with inline citations (the
  * web-search system prompt instructs "Cite URLs where possible"). There is no

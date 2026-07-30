@@ -13,8 +13,8 @@
  * `App` shape." The trade-off is that callers lose IntelliSense for
  * `app.vault.X` chains — the type is intentionally permissive
  * (`Record<string, any>`), so any property access compiles. Leaf
- * adapters that need the strict `App` shape (e.g. `vaultMcpServer.ts`,
- * `sdkAgentPool.ts`) keep importing the real `App` directly.
+ * adapters that need the strict `App` shape keep importing the real `App`
+ * directly.
  *
  * Do NOT use `AppHandle` as a generic dependency bag. If a file
  * genuinely needs multiple typed surfaces from the host runtime, prefer

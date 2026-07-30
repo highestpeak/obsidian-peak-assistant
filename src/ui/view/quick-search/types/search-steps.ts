@@ -1,5 +1,5 @@
 /**
- * V2 (Agent SDK) types for the AI search UI.
+ * V2 Harness types for the AI search UI.
  *
  * T11I (2026-06-26): types moved to @/core/search/v2ToolTypes; display
  * helpers moved to @/service/search/v2ToolDisplay. This module

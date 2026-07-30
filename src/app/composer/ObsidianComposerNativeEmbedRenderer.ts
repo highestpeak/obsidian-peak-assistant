@@ -8,21 +8,34 @@ export class ObsidianComposerNativeEmbedRenderer implements ComposerNativeEmbedR
 
 	async render(request: Parameters<ComposerNativeEmbedRendererPort['render']>[0], host: HTMLElement): Promise<() => void> {
 		const owner = new Component();
+		const mount = host.ownerDocument.createElement('div');
+		mount.className = 'pk-native-embed-render-root';
+		host.appendChild(mount);
 		owner.load();
-		host.replaceChildren();
+		let cleaned = false;
+		const cleanup = (): void => {
+			if (cleaned) return;
+			cleaned = true;
+			try {
+				owner.unload();
+			} catch (error) {
+				console.error('[Peak Composer] native Markdown owner cleanup failed', {
+					target: request.target,
+					error,
+				});
+			} finally {
+				mount.remove();
+			}
+		};
 		try {
-			await MarkdownRenderer.render(this.app, request.markdown, host, request.sourcePath, owner);
-			if (host.childElementCount === 0 && !host.textContent?.trim()) {
+			await MarkdownRenderer.render(this.app, request.markdown, mount, request.sourcePath, owner);
+			if (mount.childElementCount === 0 && !mount.textContent?.trim()) {
 				throw new Error(`native embed produced no content for '${request.target}'`);
 			}
 		} catch (error) {
-			owner.unload();
-			host.replaceChildren();
+			cleanup();
 			throw error;
 		}
-		return () => {
-			owner.unload();
-			host.replaceChildren();
-		};
+		return cleanup;
 	}
 }

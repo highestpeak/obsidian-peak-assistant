@@ -2,7 +2,11 @@ import assert from 'assert';
 import { readFileSync } from 'fs';
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { BriefViewContent, type BriefViewContentProps } from '@/ui/view/composer/sidecar/CopilotView';
+import {
+	BriefViewContent,
+	SensingControl,
+	type BriefViewContentProps,
+} from '@/ui/view/composer/sidecar/CopilotView';
 import { DEFAULT_SIDECAR_CONFIG } from '@/ui/view/composer/sidecar/sidecarConfig';
 import { buildRelatedSnapshot, IntelligenceRuntime } from '@/service/composer';
 
@@ -95,7 +99,16 @@ check('Brief uses the design-source head/actions/structured suggestion hierarchy
 	assert.ok(html.includes('pk-brief-head-actions'));
 	assert.ok(html.includes(DEFAULT_SIDECAR_CONFIG.strings.askCopilot));
 	assert.ok(html.includes(DEFAULT_SIDECAR_CONFIG.strings.refreshSuggestions));
-	assert.ok(html.includes('pk-sensing-control'));
+	assert.equal(
+		html.includes('pk-sensing-control'),
+		false,
+		'update policy belongs beside Scope in the compact context row, not in the Brief actions',
+	);
+	assert.ok(
+		readFileSync('src/ui/view/composer/sidecar/IntelligenceSidecar.tsx', 'utf8')
+			.includes('<SensingControl'),
+		'the sidecar context row must render the update policy control',
+	);
 	assert.equal(count(html, 'data-finding-id='), DEFAULT_SIDECAR_CONFIG.briefPreviewCap);
 	assert.ok(html.includes('pk-suggestion-row--primary'));
 	assert.ok(html.includes('pk-suggestion-title'));
@@ -209,10 +222,17 @@ check('Brief distinguishes manual sensing and does not present unavailable auto-
 	const runtime = makeRuntime();
 	runtime.brief.setSensingMode('manual');
 	const html = renderBrief({ runtime, brief: runtime.brief.projection() });
+	const sensingHtml = renderToStaticMarkup(React.createElement(SensingControl, {
+		runtime,
+		sensingMode: runtime.brief.projection().sensingMode,
+		autoPrepare: runtime.brief.projection().autoPrepare,
+		autoPrepareAvailable: runtime.brief.projection().autoPrepareAvailable,
+		strings: DEFAULT_SIDECAR_CONFIG.strings,
+	}));
 	assert.ok(html.includes(DEFAULT_SIDECAR_CONFIG.strings.manualChecking));
 	assert.ok(html.includes(DEFAULT_SIDECAR_CONFIG.strings.sensingManualHint));
-	assert.ok(html.includes(DEFAULT_SIDECAR_CONFIG.strings.autoPrepareUnavailable));
-	assert.ok(html.includes('disabled=""'));
+	assert.ok(sensingHtml.includes(DEFAULT_SIDECAR_CONFIG.strings.autoPrepareUnavailable));
+	assert.ok(sensingHtml.includes('disabled=""'));
 });
 
 check('Brief gives long titles the content width and keeps actions in the metadata footer', () => {

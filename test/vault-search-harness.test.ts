@@ -1,8 +1,7 @@
 /**
  * Vault Search harness cutover guard.
  *
- * Covers the 2026-07-04 migration from Claude Agent SDK `query()`
- * orchestration to the self-hosted harness `runAgentLoop`:
+ * Covers the Peak-owned Harness `runAgentLoop` vault-search path:
  *   1. buildVaultHarnessTools produces harness ToolDefs that runAgentLoop
  *      accepts and executes.
  *   2. When the model calls vault_submit_plan, the loop terminates via

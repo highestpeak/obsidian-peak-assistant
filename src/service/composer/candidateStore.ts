@@ -63,6 +63,17 @@ export class ComposerCandidateStore {
 		return this.candidates.get(candidateId) ?? this.discarded.get(candidateId);
 	}
 
+	/** Restore a JSONL-backed pending review without replacing newer live work. */
+	restoreSnapshot(candidate: ComposerCandidate): boolean {
+		if (this.candidates.has(candidate.candidateId) || this.discarded.has(candidate.candidateId)) {
+			return false;
+		}
+		if (candidate.status === 'accepted' || candidate.status === 'discarded') return false;
+		const restored = cloneCandidate(candidate);
+		this.candidates.set(restored.candidateId, restored);
+		return true;
+	}
+
 	/** Create a new pending candidate with its first (active) variant. */
 	create<TResult = unknown>(input: CreateCandidateInput<TResult>): ComposerCandidate<TResult> {
 		const variant: CandidateVariant<TResult> = {
@@ -121,7 +132,7 @@ export class ComposerCandidateStore {
 			...candidate,
 			activeVariantId: variantId,
 			proposedChange: variant.proposedChange,
-			status: variant.status === 'streaming' ? 'streaming' : candidate.status,
+			status: candidate.status === 'stale' ? 'stale' : statusForVariant(variant.status),
 		};
 		this.candidates.set(candidateId, next);
 		return next;
@@ -136,8 +147,13 @@ export class ComposerCandidateStore {
 	}
 
 	/** Mark the active variant failed. */
-	markVariantFailed(candidateId: string): ComposerCandidate {
-		return this.patchActiveVariant(candidateId, 'failed');
+	markVariantFailed(candidateId: string, error?: string): ComposerCandidate {
+		return this.patchActiveVariant(candidateId, 'failed', undefined, error);
+	}
+
+	/** Mark the active variant as explicitly cancelled by the user. */
+	markVariantCancelled(candidateId: string): ComposerCandidate {
+		return this.patchActiveVariant(candidateId, 'cancelled');
 	}
 
 	/**
@@ -217,6 +233,18 @@ export class ComposerCandidateStore {
 		return staleIds;
 	}
 
+	/** Fail closed as soon as the backing file is known to have changed. */
+	markAllStale(): string[] {
+		const staleIds: string[] = [];
+		for (const [id, candidate] of this.candidates) {
+			if (candidate.status === 'accepted' || candidate.status === 'discarded') continue;
+			if (candidate.status === 'stale') continue;
+			this.candidates.set(id, { ...candidate, status: 'stale' });
+			staleIds.push(id);
+		}
+		return staleIds;
+	}
+
 	// ── internals ─────────────────────────────────────────────────────────────
 
 	private requireActive(candidateId: string): ComposerCandidate {
@@ -235,11 +263,17 @@ export class ComposerCandidateStore {
 		candidateId: string,
 		status: CandidateVariant['status'],
 		proposedChange?: ProposedChange,
+		error?: string,
 	): ComposerCandidate {
 		const candidate = this.requireActive(candidateId);
 		const variants = candidate.variants.map((v) =>
 			v.variantId === candidate.activeVariantId
-				? { ...v, status, proposedChange: proposedChange ?? v.proposedChange }
+				? {
+						...v,
+						status,
+						proposedChange: proposedChange ?? v.proposedChange,
+						...(error ? { error } : { error: undefined }),
+					}
 				: v,
 		);
 		const active = variants.find((v) => v.variantId === candidate.activeVariantId)!;
@@ -247,7 +281,15 @@ export class ComposerCandidateStore {
 			...candidate,
 			variants,
 			proposedChange: active.proposedChange,
-			status: status === 'streaming' ? 'streaming' : status === 'failed' ? 'failed' : 'ready',
+			status: candidate.status === 'stale'
+				? 'stale'
+				: status === 'streaming'
+					? 'streaming'
+					: status === 'failed'
+						? 'failed'
+						: status === 'cancelled'
+							? 'cancelled'
+							: 'ready',
 		};
 		this.candidates.set(candidateId, next);
 		return next;
@@ -257,5 +299,30 @@ export class ComposerCandidateStore {
 function activeStatus(candidate: ComposerCandidate): ComposerCandidateStatus {
 	const active = candidate.variants.find((v) => v.variantId === candidate.activeVariantId);
 	if (!active) return 'ready';
-	return active.status === 'streaming' ? 'streaming' : active.status === 'failed' ? 'failed' : 'ready';
+	return statusForVariant(active.status);
+}
+
+function statusForVariant(status: CandidateVariant['status']): ComposerCandidateStatus {
+	if (status === 'streaming') return 'streaming';
+	if (status === 'failed') return 'failed';
+	if (status === 'cancelled') return 'cancelled';
+	return 'ready';
+}
+
+function cloneCandidate(candidate: ComposerCandidate): ComposerCandidate {
+	return {
+		...candidate,
+		target: { ...candidate.target },
+		variants: candidate.variants.map((variant) => ({
+			...variant,
+			proposedChange: {
+				...variant.proposedChange,
+				operations: variant.proposedChange.operations.map((operation) => ({ ...operation })),
+			},
+		})),
+		proposedChange: {
+			...candidate.proposedChange,
+			operations: candidate.proposedChange.operations.map((operation) => ({ ...operation })),
+		},
+	};
 }

@@ -511,14 +511,14 @@
             </div>
           </div>
           <div class="claim">
-            <strong>2026-07-28 当前实现校正</strong>
-            <p>当前至少同时存在 active Profile、Copilot Profile、用途槽 / tier 与直接 provider 等解析方式。旧 <code>promptModelMap</code> 虽会被加载，但主要 <code>queryText</code> / <code>queryStream</code> / <code>queryTextStream</code> 没有消费它，所以“逐 Prompt 选模型”现在不是可用功能。目标收敛方式和页面设计见 <a href="superpowers/specs/2026-07-28-prompt-control-center-design.md">Prompt Control Center 设计</a>，可直接查看 <a href="gstack/prompt-control-center-2026-07-28/index.html">页面 mock</a>。</p>
+            <strong>2026-07-30 当前实现校正</strong>
+            <p>Claude Agent SDK 已完全退役。当前生成式调用分为三种执行形状：带多 tier 的 Peak Harness loop、固定模型的 Peak Harness run，以及少量仍直接调用 provider adapter 的单轮 helper；embedding 另走 Knowledge Index binding。用途槽、active Agent / Copilot role 与 feature-local fallback 仍未完全收敛成一个 resolver。旧 <code>promptModelMap</code> 虽会被加载，但主要 <code>queryText</code> / <code>queryStream</code> / <code>queryTextStream</code> 没有消费它，所以“逐 Prompt 选模型”现在不是可用功能。目标收敛方式和页面设计见 <a href="superpowers/specs/2026-07-28-prompt-control-center-design.md">Prompt Control Center 设计</a>。</p>
           </div>
         </section>
 
         <section id="three-layers">
           <h2>1. 一张图：三层解析。</h2>
-          <p class="lead">在目标架构中，任何一次 AI 调用都应该由下面三层依次决定模型。当前旁路和例外以 §0 的校正与 §6 的 gap 为准。</p>
+          <p class="lead">当前模型路由先解析用途 binding，再决定是多 tier Harness、固定模型 Harness，还是 feature-local provider-direct helper。Provider 只执行模型推理；Peak Harness 才拥有 agent loop、tool、permission 与 trace。</p>
 
           <div class="figure">
             <div class="figure-title"><strong>图 · slot → tier → fallback</strong></div>
@@ -527,13 +527,13 @@
     fast · research · stronger · conversation · knowledgeIndex
     （fast/research/stronger 同时是 harness 的三级 cascade tier）
 
-②  起始 tier + 运行时升级（仅 harness agent） ────────────────
-    TierController 从 preferred tier 起步，
-    某步自评分低于阈值 → 沿 fast → research → stronger 升一级
-    （只升不降，每轮上限 1 次）
+②  执行形状 ──────────────────────────────────────────────────
+    多 tier Harness：TierController 可沿 fast → research → stronger 升级
+    固定模型 Harness：HarnessModelRunner / harnessStreamChat，不升级
+    provider-direct helper：feature 自己选 binding，当前仍是收敛 gap
 
 ③  降级 fallback（解析时，非运行时） ─────────────────────────
-    resolveSlot：该槽没显式配置 → 回退到 role → 再回退到 profile 默认
+    resolveSlot：该槽没显式配置 → 回退到对应 legacy role
     fast     → Fast Lookup ?? agent-fast role
     research → Research     ?? agent role
     stronger → Stronger     ?? Conversation(chat → agent)
@@ -544,53 +544,53 @@
           <div class="callout">
             <strong>关键区分：升级 ≠ 降级。</strong>
             <ul>
-              <li><b>升级（cascade / escalation）</b>是<strong>运行时</strong>行为：一次多步 agent 跑到一半，模型不确定 → 临时切到更强的 tier。只发生在走 <code>TierController</code> 的 harness agent 上（AI Analysis 及其后续对话）。</li>
-              <li><b>降级（fallback）</b>是<strong>解析时</strong>行为：某个槽你没在 Settings 里配 → <code>resolveSlot</code> 回退到旧 role，再回退到当前 profile 的默认模型。跟运行质量无关，纯粹是“没配就用替代”。</li>
+              <li><b>升级（cascade / escalation）</b>是<strong>运行时</strong>行为：一次多步 agent 跑到一半，模型不确定 → 临时切到更强的 tier。只发生在拥有多个 binding 且允许升级的 <code>TierController</code> 上。</li>
+              <li><b>降级（fallback）</b>是<strong>解析时</strong>行为：某个槽没在 Settings 里配置 → <code>resolveSlot</code> 回退到对应 role。跟运行质量无关，纯粹是“没配就用替代”。</li>
             </ul>
           </div>
         </section>
 
         <section id="matrix">
           <h2>2. 全量映射：所有用到 AI 的地方。</h2>
-          <p class="lead">按解析路径分两类：<span class="tag green">harness agent</span>（走 TierController，会升级）和 <span class="tag blue">SDK 一次性</span>（走 <code>queryWithProfile</code>，不升级）。第三类是不走对话模型的 embedding。</p>
+          <p class="lead">按执行形状分三类：<span class="tag green">多 tier Harness</span>、<span class="tag blue">固定模型 Harness</span>、<span class="tag">provider-direct helper</span>。Embedding 不走对话模型。</p>
 
-          <h3>2.1 harness agent（会升级）</h3>
+          <h3>2.1 多 tier Harness（可以升级）</h3>
           <p class="prose">这些经 <code>TierController</code>，起始 tier 见下表，升级规则见 <a href="#escalation">§4</a>。</p>
           <table class="dense">
             <thead><tr><th>AI 触点</th><th>槽 / 起始 tier</th><th>升级</th><th>代码入口</th></tr></thead>
             <tbody>
-              <tr><td><strong>Vault Search · AI Analysis</strong>（主搜索：列文件夹→读笔记→提交计划）</td><td><code>research</code></td><td>research→stronger</td><td><code>VaultSearchAgent.ts:191</code></td></tr>
+              <tr><td><strong>Vault Search · AI Analysis</strong>（主搜索：列文件夹→读笔记→提交计划）</td><td><code>research</code></td><td>research→stronger</td><td><code>VaultSearchAgent.ts</code></td></tr>
               <tr><td><strong>Continue Analysis</strong>（追加证据轮）</td><td><code>research</code></td><td>research→stronger</td><td><code>ContinueAnalysisAgent.ts</code> → 复用 VaultSearchAgent</td></tr>
-              <tr><td><strong>AI Analysis 结果面板的后续对话</strong>（Topic / Continue / Graph / Blocks / Sources tab）</td><td><code>fast</code></td><td>fast→research→stronger</td><td><code>FollowupChatAgent.ts:32,91</code></td></tr>
-              <tr><td><strong>主 Chat 对话</strong></td><td>单 tier（贴 <code>fast</code> 槽名），模型取自 <strong>Conversation</strong></td><td>关闭（不 cascade）</td><td><code>harnessChatRunner.ts:167,176</code></td></tr>
+              <tr><td><strong>AI Analysis 结果面板的后续对话</strong>（Topic / Continue / Graph / Blocks / Sources tab）</td><td><code>fast</code></td><td>fast→research→stronger</td><td><code>FollowupChatAgent.ts</code></td></tr>
             </tbody>
           </table>
-          <p class="read-note"><b>注意 Chat 的特例：</b>Chat 内部把模型绑在一个叫 <code>fast</code> 的单 tier 上，但那只是内部标签——<strong>实际模型来自 Conversation 槽</strong>（见 <a href="#slots">§3</a>），且 <code>allowEscalation:false</code>，不会升级。</p>
 
-          <h3>2.2 SDK 一次性（不升级）</h3>
-          <p class="prose">这些走 <code>queryWithProfile</code>（Claude Agent SDK），模型经 <code>resolveSlot</code> 一次性选定，<strong>没有 tier cascade</strong>。primary=<code>research</code>，fast=<code>fast</code>。</p>
+          <h3>2.2 固定模型 Harness（不做 tier cascade）</h3>
+          <p class="prose">这些调用仍由 Peak Harness 执行，但每次只绑定一个已经解析好的 profile + model。它们可以有多步 tool loop，却不会在运行中切换 tier；底层 provider 只负责推理。</p>
           <table class="dense">
-            <thead><tr><th>AI 触点</th><th>槽</th><th>代码入口</th></tr></thead>
+            <thead><tr><th>AI 触点</th><th>当前 binding</th><th>代码入口</th></tr></thead>
             <tbody>
+              <tr><td><strong>主 Chat 对话</strong></td><td><code>conversation</code> / Assistant override；固定单 tier</td><td><code>harnessChatRunner.ts</code></td></tr>
               <tr><td><strong>报告生成</strong>（AI Analysis 分段成文）</td><td><code>research</code></td><td><code>ReportOrchestrator.ts</code></td></tr>
-              <tr><td><strong>AI Graph 生成</strong></td><td><code>research</code></td><td><code>GraphAgent.ts</code></td></tr>
-              <tr><td><strong>Auto Review / Vault Review · complete 模式</strong></td><td><code>research</code></td><td><code>CopilotMetaAgentStream.ts</code> · <code>VaultMetaAgentStream.ts</code></td></tr>
-              <tr><td><strong>Auto Review / Vault Review · fast 模式</strong></td><td><code>fast</code></td><td>同上（<code>resolveProfileForMode('fast')</code>）</td></tr>
-              <tr><td><strong>Copilot 内联动作</strong>（polish/review/links…）</td><td><code>research</code></td><td><code>agent-actions.ts</code></td></tr>
-              <tr><td><strong>知识直觉 / Hub 整理</strong>（索引侧推理）</td><td><code>research</code></td><td><code>intuition.recon.ts</code> · <code>hub*Recon.ts</code></td></tr>
-              <tr><td><strong>Ambient 悬浮解释</strong></td><td><code>research</code></td><td><code>LlmAmbientExplanationAdapter.ts</code></td></tr>
-              <tr><td><strong>✦ Refine</strong>（Vault Search 查询改写）</td><td><code>fast</code></td><td><code>AIQueryRewriteService.ts</code></td></tr>
-              <tr><td><strong>自然语言搜索解析</strong>（日期/过滤）</td><td><code>fast</code></td><td><code>aiQueryParserRuntime.ts</code></td></tr>
-              <tr><td><strong>上下文压缩摘要器</strong>（所有 harness run 中途压缩）</td><td><code>fast</code></td><td><code>compactSummarizerRuntime.ts</code></td></tr>
-              <tr><td><strong>Web 搜索工具</strong></td><td>provider 取 <strong>Web Access</strong> profile；模型仍走 <code>research</code>/<code>fast</code></td><td><code>webSearchTool</code> · <code>VaultSearchAgent.ts</code></td></tr>
+              <tr><td><strong>AI Graph 生成</strong></td><td>active Agent role</td><td><code>GraphAgent.ts</code></td></tr>
+              <tr><td><strong>Auto Review / Vault Review · complete</strong></td><td>active Agent role</td><td><code>CopilotMetaAgentStream.ts</code> · <code>VaultMetaAgentStream.ts</code></td></tr>
+              <tr><td><strong>Auto Review / Vault Review · fast</strong></td><td>active Agent Fast role；否则 profile fastModel / Agent model</td><td>同上（<code>resolveProfileForMode('fast')</code>）</td></tr>
+              <tr><td><strong>Copilot 内联动作</strong>（polish/review/links…）</td><td>Copilot / Agent binding，取决于入口 adapter</td><td><code>agent-actions.ts</code> · <code>service-manager.ts</code></td></tr>
+              <tr><td><strong>知识直觉 / Hub 整理</strong></td><td>active Agent role</td><td><code>intuition.recon.ts</code> · <code>hub*Recon.ts</code></td></tr>
+              <tr><td><strong>Ambient 悬浮解释</strong></td><td><code>fast</code></td><td><code>LlmAmbientExplanationAdapter.ts</code></td></tr>
+              <tr><td><strong>Web 搜索工具</strong></td><td>Web Access binding</td><td><code>VaultSearchAgent.ts</code></td></tr>
             </tbody>
           </table>
 
-          <h3>2.3 直接用 Conversation / Embedding</h3>
+          <h3>2.3 Provider-direct helper 与 Embedding</h3>
+          <p class="prose">下面几条单轮 helper 仍直接调用 Vercel provider adapter，没有进入 <code>HarnessModelRunner</code>。它们不属于 Claude Agent SDK，但确实是当前尚未收敛到统一 Harness/Gateway 的旁路。</p>
           <table class="dense">
-            <thead><tr><th>AI 触点</th><th>槽</th><th>代码入口</th></tr></thead>
+            <thead><tr><th>AI 触点</th><th>当前 binding</th><th>代码入口</th></tr></thead>
             <tbody>
-              <tr><td><strong>Chat 发送 · “Auto” 默认模型</strong></td><td><code>conversation</code></td><td><code>service-conversation.ts</code> · <code>assistantResolver.ts</code></td></tr>
+              <tr><td><strong>✦ Refine</strong>（Vault Search 查询改写）</td><td>Fast Lookup → Agent Fast → Conversation</td><td><code>AIQueryRewriteService.ts</code></td></tr>
+              <tr><td><strong>自然语言搜索解析</strong></td><td>active Agent Fast role</td><td><code>aiQueryParserRuntime.ts</code></td></tr>
+              <tr><td><strong>Agent context 压缩摘要器</strong></td><td>active Agent Fast role</td><td><code>compactSummarizerRuntime.ts</code></td></tr>
+              <tr><td><strong>Usage 优化建议</strong></td><td>active Agent profile 的 primary model</td><td><code>UsageOptimizationService.ts</code> · <code>useOptimization.ts</code></td></tr>
               <tr><td><strong>语义 / 向量搜索（查询时）</strong></td><td><code>knowledgeIndex</code>（embedding）</td><td><code>vector-retriever.ts</code> → <code>embedClient.ts</code></td></tr>
               <tr><td><strong>Knowledge Index 构建 / 重建</strong></td><td><code>knowledgeIndex</code>（embedding）</td><td><code>indexService.ts</code> → <code>embedClient.ts</code></td></tr>
             </tbody>
@@ -599,45 +599,46 @@
 
         <section id="slots">
           <h2>3. 五个槽 + 降级规则。</h2>
-          <p class="lead">槽是唯一的用户配置单位（Settings → AI Setup 五行）。<code>resolveSlot</code> 是唯一解析入口——harness 的 <code>bindings.ts</code> 和 SDK 的 <code>queryWithProfile</code> 都调它，所以改一行 Settings 到处生效。</p>
+          <p class="lead">Settings → AI Setup 的五行是面向用户的主要配置单位。<code>resolveSlot</code> 是 slot-aware Harness consumer 的统一解析入口；部分 active Agent/Copilot role 与 provider-direct helper 仍有自己的兼容 fallback，见 §2.2–2.3。</p>
 
           <table class="dense">
             <thead><tr><th>槽 slot</th><th>UI 行</th><th>降级 fallback 链</th><th>典型消费方</th></tr></thead>
             <tbody>
-              <tr><td><code>fast</code></td><td>Fast Lookup</td><td>Fast Lookup 配置 → <code>agent-fast</code> role</td><td>Refine、搜索解析、Review fast、后续对话、上下文压缩</td></tr>
-              <tr><td><code>research</code></td><td>Research</td><td>Research 配置 → <code>agent</code> role</td><td><strong>AI Analysis、报告生成、Graph、Review complete、Copilot、知识直觉、Ambient</strong></td></tr>
+              <tr><td><code>fast</code></td><td>Fast Lookup</td><td>Fast Lookup 配置 → <code>agent-fast</code> role</td><td>AI Analysis 后续对话、Ambient；Refine 首选此槽</td></tr>
+              <tr><td><code>research</code></td><td>Research</td><td>Research 配置 → <code>agent</code> role</td><td><strong>AI Analysis 主搜索、报告生成</strong></td></tr>
               <tr><td><code>stronger</code></td><td>Use stronger model</td><td>Stronger 配置 → Conversation(chat → agent)</td><td>仅作升级兜底（见 §4）</td></tr>
-              <tr><td><code>conversation</code></td><td>Conversation</td><td>Conversation(chat) → agent</td><td>主 Chat、Auto 默认</td></tr>
+              <tr><td><code>conversation</code></td><td>Conversation</td><td>Conversation(chat) → agent</td><td>主 Chat；也是 stronger 的兼容 fallback</td></tr>
               <tr><td><code>knowledgeIndex</code></td><td>Knowledge Index</td><td>Embedding profile</td><td>语义搜索、索引构建</td></tr>
             </tbody>
           </table>
+          <p class="read-note"><b>不要把 role 当成 slot。</b>Graph、Review、部分 Copilot / Intuition 目前仍直接读取 active Agent、Agent Fast 或 feature binding；它们已由 Peak Harness 执行，但还没有统一改成 <code>resolveSlot</code>。</p>
 
           <h3>3.1 降级规则的完整形式</h3>
-          <p class="prose">对 <code>fast</code> / <code>research</code>，SDK 路径（<code>queryWithProfile</code>）在 <code>resolveSlot</code> 之上还有一层最终兜底——回退到当前 profile 的默认模型：</p>
-          <pre class="file-tree" aria-label="fallback formula"><code>modelId =
-    resolveSlot('research')?.modelId          # ① Research 显式配置
-    ?? （resolveSlot 内部）agent role.modelId  # ② 旧 Agent role
-    ?? profile.primaryModel                    # ③ 当前 profile 默认主模型
-                                               #    （fast 槽对应 profile.fastModel）</code></pre>
-          <p class="prose">harness 路径（<code>bindings.ts</code>）里，若 <code>resolveSlot</code> 整体返回 null（该槽和其 role 都没配），该 tier 直接<strong>从 bindings 里缺席</strong>，<code>TierController</code> 会 fall-forward 到下一个已绑定的 tier（<code>resolveStartTier</code> / <code>nextBoundTier</code>）。</p>
+          <p class="prose"><code>resolveSlot</code> 的 fallback 完全发生在 <code>ProfileRegistry</code> 内，没有额外的 SDK fallback 层：</p>
+          <pre class="file-tree" aria-label="fallback formula"><code>fast           = Fast Lookup ?? active Agent Fast
+research       = Research    ?? active Agent
+stronger       = Stronger    ?? active Conversation ?? active Agent
+conversation   = active Conversation ?? active Agent
+knowledgeIndex = active Embedding</code></pre>
+          <p class="prose">若某个 cascade tier 的 <code>resolveSlot</code> 返回 null，该 tier 会从 <code>bindings</code> 缺席，<code>TierController</code> 再 fall-forward 到下一个已绑定 tier。固定模型或 provider-direct feature 可以定义自己的兼容 fallback，但那不属于全局 slot contract。</p>
 
           <div class="worked">
             <div class="worked-title">降级 · 实例</div>
             <p>你只在 Settings 里配了 <strong>Research = OpenRouter · deepseek-r1</strong>，没单独配 Fast Lookup、没配 Stronger。此时：</p>
             <ul>
               <li><code>resolveSlot('research')</code> → deepseek-r1（① 命中）。</li>
-              <li><code>resolveSlot('fast')</code> → Fast Lookup 空 → 回退 <code>agent-fast</code> role；若 role 也空 → SDK 路径再回退 <code>profile.fastModel</code>。</li>
+              <li><code>resolveSlot('fast')</code> → Fast Lookup 空 → 回退 active Agent Fast；两者都空则返回 null。</li>
               <li><code>resolveSlot('stronger')</code> → Stronger 空 → 回退 Conversation；Conversation 空 → 回退 agent role。</li>
             </ul>
           </div>
 
           <h3>3.2 配置怎么落到槽（镜像同步）</h3>
-          <p class="prose">三个 harness tier 配置存在 <code>settings.harnessSettings.{localFastConfig, localDeepConfig, onlineConfig}</code>（字段名沿用旧名，不影响槽语义）。<code>main.ts</code> 在 bootstrap 与每次 <code>saveSettings()</code> 时经 <code>ProfileRegistry.setTierConfigs()</code> 把它们镜像进 registry，<code>resolveSlot</code> 才能读到当前值。所以改任意一行 AI Setup，保存后立即对<strong>所有</strong>路径生效。</p>
+          <p class="prose">三个 Harness tier 配置存在 <code>settings.harnessSettings.{localFastConfig, localDeepConfig, onlineConfig}</code>（字段名沿用旧名，不影响槽语义）。<code>main.ts</code> 在 bootstrap 与每次 <code>saveSettings()</code> 时经 <code>ProfileRegistry.setTierConfigs()</code> 把它们镜像进 registry，<code>resolveSlot</code> 才能读到当前值。保存后会立即影响所有 <strong>slot-aware</strong> 路径；仍读取 active Agent / Agent Fast / feature binding 的路径按各自 role 配置解析，不能宣称五行 AI Setup 已经覆盖所有调用面。</p>
         </section>
 
         <section id="escalation">
           <h2>4. 升级规则（cascade / escalation）。</h2>
-          <p class="lead">只有走 <code>TierController</code> 的 harness agent 会升级（AI Analysis、其后续对话）。SDK 一次性路径<strong>不升级</strong>。</p>
+          <p class="lead">只有拥有多个 binding 的 <code>TierController</code> run 才可能升级。<code>HarnessModelRunner</code> 的固定模型调用、Chat 单 tier run 与 provider-direct helper 都不会中途换模型。</p>
 
           <h3>4.1 机制</h3>
           <ul class="route">
@@ -657,24 +658,23 @@
 升级条件： score &lt; escalationThreshold</code></pre>
 
           <h3>4.3 当前实际生效的参数</h3>
-          <p class="prose">AI Analysis / 后续对话只向 <code>TierController</code> 传了 <code>preferred</code>，其余走 <code>DEFAULT_TIER_POLICY</code>：</p>
+          <p class="prose">两条多 tier 路径当前并不使用同一组 policy：Vault Search 已接入 Settings；结果面板后续对话仍只传 <code>preferred</code>，其余使用 <code>DEFAULT_TIER_POLICY</code>。</p>
           <table class="dense">
-            <thead><tr><th>参数</th><th>实际生效值</th><th>含义</th></tr></thead>
+            <thead><tr><th>路径</th><th>policy 来源</th><th>当前值</th></tr></thead>
             <tbody>
-              <tr><td><code>allowEscalation</code></td><td>true</td><td>允许升级</td></tr>
-              <tr><td><code>escalationThreshold</code></td><td>0.6</td><td>score &lt; 0.6 触发</td></tr>
-              <tr><td><code>maxEscalationsPerLoop</code></td><td>1</td><td>每轮最多升 1 级</td></tr>
+              <tr><td><strong>Vault Search / Continue Analysis</strong></td><td><code>harnessSettings</code></td><td><code>allowEscalation</code>、<code>autoEscalateScoreBelow</code>、<code>maxEscalationsPerLoop</code>；默认 <strong>true / 0.4 / 3</strong></td></tr>
+              <tr><td><strong>AI Analysis 后续对话</strong></td><td><code>DEFAULT_TIER_POLICY</code></td><td><strong>true / 0.6 / 1</strong></td></tr>
             </tbody>
           </table>
 
           <div class="worked">
             <div class="worked-title">升级 · 实例</div>
-            <p>Research=deepseek-r1，Stronger=qwen3-max。跑 AI Analysis：起步 <code>research</code>（deepseek-r1）。某步一个工具 schema 校验失败 → score 掉到 ~0.35 &lt; 0.6 → 升到 <code>stronger</code>（qwen3-max）跑后续步骤。本轮已用满 1 次升级，不再升。若 Stronger 未绑定，则无处可升，继续用 research。</p>
+            <p>Research=deepseek-r1，Stronger=qwen3-max，Vault Search 保持默认 threshold=0.4。跑 AI Analysis：起步 <code>research</code>（deepseek-r1）。某步一个工具 schema 校验失败 → score 掉到 ~0.35 &lt; 0.4 → 升到 <code>stronger</code>（qwen3-max）跑后续步骤。若 Stronger 未绑定，则无处可升，继续用 research。默认最多允许 3 次升级，但当前只有 fast / research / stronger 三个 tier，实际次数仍受剩余已绑定 tier 数限制。</p>
           </div>
 
           <div class="callout warn">
-            <strong>⚠ 已知 gap：Settings 里的升级旋钮当前未接入。</strong>
-            <p>Settings → Profiles 有 <code>allowEscalation</code> 开关、<code>maxEscalationsPerLoop</code> 滑块（存在 <code>harnessSettings</code>，默认 threshold 0.4 / max 3），但 <code>VaultSearchAgent</code> / <code>FollowupChatAgent</code> 只向 <code>TierController</code> 传了 <code>{ preferred }</code>，<strong>没有把这些字段接进 policy</strong>。所以真正生效的是 <code>DEFAULT_TIER_POLICY</code>（0.6 / 1），UI 上调这几个旋钮当前<strong>不改变运行时行为</strong>。要让它们生效，需在构造 <code>TierController</code> 时把 <code>harnessSettings</code> 的 escalation 字段并入 <code>policy</code>。</p>
+            <strong>⚠ 当前不一致：后续对话尚未接入 Settings policy。</strong>
+            <p><code>VaultSearchAgent</code> 已把 <code>harnessSettings</code> 的三个 escalation 字段传给 <code>TierController</code>，所以 Settings 调整会改变主 AI Analysis。<code>FollowupChatAgent</code> 仍只传 <code>{ preferred: 'fast' }</code>，因此结果面板的后续对话继续使用默认 0.6 / 1。要完全一致，需让 Followup 同样消费这三个字段。</p>
           </div>
         </section>
 
@@ -685,7 +685,7 @@
           <p class="prose">同一次分析跨了<strong>两条解析路径</strong>，注意区分：</p>
           <ul class="route">
             <li><span><b>搜索阶段</b>（列文件夹、grep、读笔记、submit_plan）：harness agent，槽 <code>research</code>，可升级到 <code>stronger</code>。</span></li>
-            <li><span><b>报告生成阶段</b>（分段成文、Mermaid）：SDK <code>queryWithProfile</code>，槽 <code>research</code>，<strong>不升级</strong>。</span></li>
+            <li><span><b>报告生成阶段</b>（分段成文、Mermaid）：固定模型 Peak Harness，槽 <code>research</code>，<strong>不升级</strong>。</span></li>
             <li><span><b>结果面板后续对话</b>（Topic/Graph/…）：harness agent，槽 <code>fast</code>，可升级。</span></li>
           </ul>
           <p class="read-note">因为搜索与报告生成都归到 <code>research</code> 槽，改一次“Research”对整条分析链一致生效——这是 2026-07-23 统一 resolver 之后的行为；此前报告生成走独立的 <code>agent</code> role，会和搜索漂移。</p>
@@ -693,8 +693,8 @@
           <h3>5.2 主 Chat 一条消息</h3>
           <p class="prose">槽 <code>conversation</code>（= Conversation 行）。经 <code>harnessChatRunner</code> 绑成单 tier、<code>allowEscalation:false</code>——<strong>永不升级</strong>。Assistant 指定了固定模型时以 Assistant 为准，否则 Auto 默认回到 Conversation。</p>
 
-          <h3>5.3 报告生成 / Graph / Review（SDK 路径）</h3>
-          <p class="prose">全部经 <code>queryWithProfile</code>：primary=<code>resolveSlot('research')</code>，fast=<code>resolveSlot('fast')</code>。<strong>没有 tier cascade</strong>——SDK 内部可能多轮工具调用，但模型不会中途换 tier。Review 的 fast/complete 模式分别落到 <code>fast</code>/<code>research</code> 槽。</p>
+          <h3>5.3 报告生成 / Graph / Review（固定模型 Harness）</h3>
+          <p class="prose">三者都进入 <code>HarnessModelRunner</code>，但 binding 来源不同：报告生成用 <code>resolveSlot('research')</code>；Graph 与 complete Review 用 active Agent；fast Review 优先 active Agent Fast，其次 Agent profile 的 <code>fastModel</code>，最后回到 Agent model。它们可以执行多轮工具调用，但每个 run 只绑定一个模型，<strong>没有 tier cascade</strong>。</p>
         </section>
 
         <section id="gaps">
@@ -702,11 +702,12 @@
           <table class="dense">
             <thead><tr><th>现象 / 问题</th><th>解释 / 处理</th></tr></thead>
             <tbody>
-              <tr><td>想确认某次跑的到底是哪个模型</td><td>VaultSearch 启动会发 <code>pk-debug: vault-sdk-starting</code>，带 <code>tier / modelId / providerId</code>（<code>VaultSearchAgent.ts</code>）。开 DevTools / debug trace 可见。</td></tr>
+              <tr><td>想确认某次跑的到底是哪个模型</td><td>VaultSearch 启动会发 <code>pk-debug: vault-harness-starting</code>，带 <code>tier / modelId / providerId</code>（<code>VaultSearchAgent.ts</code>）。开 DevTools / debug trace 可见。</td></tr>
               <tr><td>改了 Research 却发现报告生成没变</td><td>2026-07-23 前的行为（报告生成走独立 <code>agent</code> role）。统一 resolver 后已一致；若仍不一致，确认 <code>saveSettings</code> 已触发 <code>setTierConfigs</code> 镜像。</td></tr>
-              <tr><td>Settings 里调 escalation 旋钮没效果</td><td>已知 gap（见 §4.3）：这些字段当前未接入 <code>TierController</code>，实际用 <code>DEFAULT_TIER_POLICY</code>（0.6 / 1）。</td></tr>
+              <tr><td>Settings 里调 escalation 后，主 Analysis 变了但后续对话没变</td><td>当前边界如此：Vault Search 已接 Settings policy；<code>FollowupChatAgent</code> 仍使用 <code>DEFAULT_TIER_POLICY</code>（0.6 / 1），见 §4.3。</td></tr>
               <tr><td>AI Analysis 一直不升级到 Stronger</td><td>升级需要 <code>stronger</code> tier 已绑定（配了 Use stronger model，或其 fallback Conversation 有值）。都空则无处可升。</td></tr>
               <tr><td>Chat 用的模型不是我预期的</td><td>Chat 走 <code>conversation</code> 槽（Conversation 行），不是 Fast Lookup；且不升级。</td></tr>
+              <tr><td>错误先写 “Claude Code returned”，后面却是 OpenRouter 402</td><td>旧前缀来自已退役 runtime 的错误包装文案；真正失败方是模型 provider。当前代码已删除 Claude Agent SDK 路径。若再次看到 OpenRouter 402，含义是 Harness 选中的 binding 正好指向 OpenRouter，且该 provider 因余额 / <code>max_tokens</code> 拒绝请求，不表示 Claude Agent SDK 仍在调用 OpenRouter。</td></tr>
               <tr><td>不同页面的模型列表长得不一样</td><td>这是当前 UI 复用缺口：<code>modelPickerData.ts</code> 已共享 catalog 与筛选数据，但 Chat 的 <code>ComposerModelSelector</code> 和 Settings 的 <code>RoleModelPicker</code> 仍分别实现弹层。目标是公共 <code>ProfileModelPicker</code>；Prompt Control Center 不得增加第四套，见 <a href="superpowers/specs/2026-07-28-prompt-control-center-design.md">设计 §5.1</a>。</td></tr>
             </tbody>
           </table>
@@ -716,11 +717,12 @@
           <h2>7. 代码入口（读代码顺序）。</h2>
           <ol class="code-order">
             <li><code>src/core/types/model-tier.ts</code> — <code>ModelSlot</code>（fast/research/stronger/conversation/knowledgeIndex）与 <code>ModelTier</code>（三级 cascade tier）定义。</li>
-            <li><code>src/core/profiles/ProfileRegistry.ts</code> — <code>resolveSlot()</code> 唯一解析入口 + <code>setTierConfigs()</code> 镜像。</li>
-            <li><code>src/service/agents/harness/tier/bindings.ts</code> — harness 路径：tier → <code>resolveSlot</code>。</li>
-            <li><code>src/service/agents/core/sdkAgentPool.ts</code> — SDK 路径 <code>queryWithProfile</code>：primary/fast → <code>resolveSlot</code>。</li>
+            <li><code>src/core/profiles/ProfileRegistry.ts</code> — <code>resolveSlot()</code> 的 slot fallback + active role 解析 + <code>setTierConfigs()</code> 镜像。</li>
+            <li><code>src/service/agents/harness/tier/bindings.ts</code> — 多 tier Harness：tier → <code>resolveSlot</code>。</li>
+            <li><code>src/service/agents/harness/HarnessModelRunner.ts</code> — 固定模型 Harness：单 binding、多步 tool loop、无 cascade。</li>
             <li><code>src/service/agents/harness/tier/TierController.ts</code> — 升级状态机（起步、<code>onStepFinish</code>、<code>tryUpgrade</code>、<code>escalateTool</code>）。</li>
             <li><code>src/service/agents/harness/tier/scoreStep.ts</code> — 打分公式（0.5/0.3/0.2）。</li>
+            <li><code>src/service/search/query/AIQueryRewriteService.ts</code>、<code>aiQueryParserRuntime.ts</code>、<code>compactSummarizerRuntime.ts</code> — 当前 provider-direct 例外，用来判断 Gateway 收敛缺口。</li>
             <li><code>src/main.ts</code> — bootstrap + <code>saveSettings</code> 调 <code>syncProfileRegistryTierConfigs()</code>。</li>
             <li>配置面：<code>src/ui/view/settings/tabs/AISetupTab.tsx</code>（五行 + 每行“Used by”悬浮）。</li>
           </ol>

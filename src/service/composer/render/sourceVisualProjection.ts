@@ -26,7 +26,7 @@ export type SourceVisualPart =
 		style: InlineRunStyle;
 		markRanges?: InlineMarkRanges;
 		linkTarget?: string;
-		linkKind?: 'wikilink' | 'markdown' | 'bare-url';
+		linkKind?: 'wikilink' | 'markdown' | 'bare-url' | 'html';
 	}
 	| {
 		kind: 'math';
@@ -48,7 +48,7 @@ interface CandidatePart {
 	style?: InlineRunStyle;
 	markRanges?: InlineMarkRanges;
 	linkTarget?: string;
-	linkKind?: 'wikilink' | 'markdown' | 'bare-url';
+	linkKind?: 'wikilink' | 'markdown' | 'bare-url' | 'html';
 }
 
 /**

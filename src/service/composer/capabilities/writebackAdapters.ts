@@ -28,8 +28,16 @@ import type {
 	ComposerTarget,
 	ComposerWritebackAdapterId,
 } from '@/core/composer';
-import { COMPOSER_TEXT_PATCH_WRITEBACK_ID } from '@/core/composer';
-import { ComposerTextPatchPayloadSchema } from '@/core/schemas/composer';
+import {
+	COMPOSER_BLOCK_INSERTION_WRITEBACK_ID,
+	COMPOSER_LIST_ITEM_PATCH_WRITEBACK_ID,
+	COMPOSER_TEXT_PATCH_WRITEBACK_ID,
+} from '@/core/composer';
+import {
+	ComposerBlockInsertionPayloadSchema,
+	ComposerListItemPatchPayloadSchema,
+	ComposerTextPatchPayloadSchema,
+} from '@/core/schemas/composer';
 
 /** Frozen addressing info captured at invocation time (base-revision coords). */
 export interface WritebackTargetContext {
@@ -104,9 +112,65 @@ export function createTextPatchWritebackAdapter(): ComposerWritebackAdapter {
 	};
 }
 
+/**
+ * Additive draft adapter: inserts one independent block immediately after the
+ * frozen target. The leading blank-line separator places the new block between
+ * the target and the target's existing trailing separator; source bytes of the
+ * original block remain untouched.
+ */
+export function createBlockInsertionWritebackAdapter(): ComposerWritebackAdapter {
+	return {
+		id: COMPOSER_BLOCK_INSERTION_WRITEBACK_ID,
+		resultKinds: ['block-insertion'],
+		buildOperations(envelope, ctx): ComposerOperation[] {
+			const payload = ComposerBlockInsertionPayloadSchema.parse(envelope.payload);
+			if (!ctx.anchor) {
+				throw new Error(
+					'block-insertion writeback: no source anchor for target — refusing to guess a position',
+				);
+			}
+			return [
+				{
+					kind: 'insertBlock',
+					at: ctx.anchor.to,
+					text: `\n\n${payload.insertedText}`,
+				},
+			];
+		},
+	};
+}
+
+/**
+ * Anchored list insertion adapter. The materializer has already validated the
+ * chosen gap and built the complete next list; acceptance still uses one frozen
+ * range replacement so revision checks, History and Undo remain atomic.
+ */
+export function createListItemPatchWritebackAdapter(): ComposerWritebackAdapter {
+	return {
+		id: COMPOSER_LIST_ITEM_PATCH_WRITEBACK_ID,
+		resultKinds: ['list-item-patch'],
+		buildOperations(envelope, ctx): ComposerOperation[] {
+			const payload = ComposerListItemPatchPayloadSchema.parse(envelope.payload);
+			if (!ctx.anchor) {
+				throw new Error(
+					'list-item-patch writeback: no source anchor for target — refusing to guess a position',
+				);
+			}
+			return [{
+				kind: 'replaceRange',
+				from: ctx.anchor.from,
+				to: ctx.anchor.to,
+				text: payload.replacementText,
+			}];
+		},
+	};
+}
+
 /** Default adapter set for the WP3 slice (grows per pack in WP5–8). */
 export function createDefaultWritebackAdapters(): ComposerWritebackAdapterRegistry {
 	const registry = new ComposerWritebackAdapterRegistry();
+	registry.register(createBlockInsertionWritebackAdapter());
+	registry.register(createListItemPatchWritebackAdapter());
 	registry.register(createTextPatchWritebackAdapter());
 	return registry;
 }

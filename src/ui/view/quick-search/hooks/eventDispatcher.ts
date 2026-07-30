@@ -103,7 +103,7 @@ export function dispatchEvent(
 		// ---- Phase transitions (vault pipeline) ----
 		case 'pk-debug': {
 			const ev = event as any;
-			if (ev.debugName === 'vault-sdk-starting') {
+			if (ev.debugName === 'vault-harness-starting') {
 				target.setV2Active(true);
 			}
 			if (ev.debugName === 'phase-usage' && ev.extra) {

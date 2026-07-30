@@ -76,6 +76,10 @@ export interface ComposerChromeConfig {
 		drag: string;
 		directEdit: string;
 		disabledNoRuntime: string;
+		listGapLabel: string;
+		listGapPlaceholder: string;
+		listGapGenerate: string;
+		listGapCancel: string;
 	};
 	insertDraft: {
 		chooserLabel: string;
@@ -117,9 +121,18 @@ export interface ComposerChromeConfig {
 	};
 	displayStates: {
 		groupLabel: string;
-		work: string;
-		all: string;
+		edit: string;
 		clean: string;
+		/** `{count}` is replaced with the pending candidate count. */
+		reviewAll: string;
+	};
+	defaultDocumentView: {
+		groupLabel: string;
+		futureLabel: string;
+		markdown: string;
+		composer: string;
+		switchCurrentToMarkdown: string;
+		help: string;
 	};
 	selection: {
 		formats: {
@@ -147,6 +160,7 @@ export interface ComposerChromeConfig {
 		guards: {
 			codeBlockRichFormat: string;
 			crossStructureLink: string;
+			semanticInlineHtmlFormat: string;
 			emptySelection: string;
 		};
 		quickTextColors: ComposerSwatch[];
@@ -224,6 +238,13 @@ export interface ComposerChromeConfig {
 		title: string;
 		empty: string;
 		locate: string;
+		versions: string;
+		accepted: string;
+		notAdopted: string;
+		pending: string;
+		failed: string;
+		cancelled: string;
+		restore: string;
 		rollback: string;
 		rollbackRefused: string;
 	};
@@ -315,9 +336,13 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 			instructionPlaceholder: '让 AI 对这个块做什么？',
 			instructionSubmitHint: '按 Enter 执行',
 			instructionClose: '返回操作',
-			drag: '拖动块',
+				drag: '拖动块',
 				directEdit: '直接编辑',
 				disabledNoRuntime: '编辑运行时未接入',
+				listGapLabel: '在这里补缺项',
+				listGapPlaceholder: '描述这一项需要补什么（可选）',
+				listGapGenerate: '生成',
+				listGapCancel: '取消',
 			},
 			insertDraft: {
 				chooserLabel: '在下方插入',
@@ -362,9 +387,17 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 		},
 		displayStates: {
 			groupLabel: '正文工作状态',
-			work: '工作视图',
-			all: '全部改动',
+			edit: '编辑视图',
 			clean: '纯净阅读',
+			reviewAll: '审阅全部改动 · {count}',
+		},
+		defaultDocumentView: {
+			groupLabel: '后续文件默认打开方式',
+			futureLabel: '以后打开',
+			markdown: '原生 Markdown',
+			composer: 'Composer',
+			switchCurrentToMarkdown: '切到原生 Markdown',
+			help: '只影响之后普通打开的 Markdown 文件，不切换当前标签页。',
 		},
 		selection: {
 			formats: {
@@ -392,6 +425,7 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 			guards: {
 				codeBlockRichFormat: '代码块内不支持富文本格式',
 				crossStructureLink: '一个链接只能落在一个段落、列表项或单元格内',
+				semanticInlineHtmlFormat: '链接、行内代码或公式不能合并进 HTML 样式，请缩小选择范围',
 				emptySelection: '请先选中文本',
 			},
 			quickTextColors: [
@@ -490,6 +524,13 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 			title: '生成历史',
 			empty: '该块暂无历史',
 			locate: '定位',
+			versions: '{count} 个版本',
+			accepted: '已采用',
+			notAdopted: '未采用',
+			pending: '待审阅',
+			failed: '失败',
+			cancelled: '已取消',
+			restore: '恢复',
 			rollback: '回滚',
 			rollbackRefused: '区域已变化，无法回滚',
 		},
@@ -545,6 +586,8 @@ function mergeChrome(parsed?: Partial<ComposerChromeConfig>): ComposerChromeConf
 	const base = DEFAULT_COMPOSER_CONFIG.chrome;
 	if (!parsed) return base;
 	return {
+		surfacePreviewCloseDelayMs:
+			parsed.surfacePreviewCloseDelayMs ?? base.surfacePreviewCloseDelayMs,
 		actions: { ...base.actions, ...parsed.actions },
 		insertDraft: {
 			...base.insertDraft,
@@ -553,6 +596,7 @@ function mergeChrome(parsed?: Partial<ComposerChromeConfig>): ComposerChromeConf
 		},
 		undo: { ...base.undo, ...parsed.undo },
 		displayStates: { ...base.displayStates, ...parsed.displayStates },
+		defaultDocumentView: { ...base.defaultDocumentView, ...parsed.defaultDocumentView },
 		selection: {
 			...base.selection,
 			...parsed.selection,
@@ -566,6 +610,7 @@ function mergeChrome(parsed?: Partial<ComposerChromeConfig>): ComposerChromeConf
 		},
 		copy: { ...base.copy, ...parsed.copy },
 		link: { ...base.link, ...parsed.link },
+		inlineStyle: { ...base.inlineStyle, ...parsed.inlineStyle },
 		comment: { ...base.comment, ...parsed.comment },
 		history: { ...base.history, ...parsed.history },
 		findings: { ...base.findings, ...parsed.findings },

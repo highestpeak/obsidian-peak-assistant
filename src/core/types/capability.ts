@@ -54,10 +54,10 @@ export type PermissionKind = 'read' | 'acceptEdits' | 'bypassPermissions';
 export type CostTier = 'fast' | 'deep' | 'premium';
 
 /**
- * Backend that will physically execute a run. Handbook §8 lists three;
+ * Backend that will physically execute a run.
  * adding a new entry here is a breaking change and requires handbook edit.
  */
-export type BackendKind = 'hermes-harness' | 'claude-sdk' | 'provider-direct';
+export type BackendKind = 'hermes-harness' | 'provider-direct';
 
 /**
  * Policy for picking a backend. `preferred` is tried first; `fallback` is

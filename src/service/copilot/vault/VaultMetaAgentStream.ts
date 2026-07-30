@@ -21,14 +21,17 @@ import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { PromptId } from '@/core/types/prompt';
 import { TemplateManager } from '@/core/template/TemplateManager';
 import type { SearchClient } from '@/service/search/SearchClient';
-import { warmupPool, queryWithProfile } from '@/service/agents/core/sdkAgentPool';
-import { buildVaultMcpServer, type GrepHit } from '@/service/agents/vault-sdk/vaultMcpServer';
-import { translateSdkMessage } from '@/service/agents/core/sdkMessageAdapter';
+import type { GrepHit } from '@/service/agents/vault/vaultToolImplementations';
+import {
+	assertSuccessfulRun,
+	streamHarnessModel,
+} from '@/service/agents/harness/HarnessModelRunner';
+import { buildVaultHarnessTools } from '@/service/agents/vault/vaultHarnessTools';
 
 import {
-	buildCopilotOutputMcpServer,
+	buildCopilotOutputTools,
 	COPILOT_VAULT_TOOL_NAMES,
-} from '../CopilotOutputMcpServer';
+} from '../CopilotOutputTools';
 import type { CopilotOutputCollector, ReviewSubmission } from '../CopilotOutputCollector';
 import type { VaultDigest } from './VaultDigestService';
 import { formatVaultDigestForPrompt } from './VaultDigestService';
@@ -65,20 +68,21 @@ export interface VaultMetaAgentOptions {
  * to preserve byte-equality with pre-migration output.
  */
 
-function resolveProfileForMode(mode: VaultReviewMode): { profile: Profile; modelOverride?: string } | null {
+function resolveProfileForMode(mode: VaultReviewMode): { profile: Profile; modelId: string } | null {
 	const registry = ProfileRegistry.getInstance();
-	const agentProfile = registry.getActiveAgentProfile();
-	if (!agentProfile) return null;
-	if (mode !== 'fast') return { profile: agentProfile };
+	const agentConfig = registry.getActiveAgentConfig();
+	if (!agentConfig) return null;
+	if (mode !== 'fast') return agentConfig;
 
 	const fastConfig = registry.getActiveAgentFastConfig();
 	if (fastConfig?.profile && fastConfig.modelId) {
-		return { profile: fastConfig.profile, modelOverride: fastConfig.modelId };
+		return { profile: fastConfig.profile, modelId: fastConfig.modelId };
 	}
+	const agentProfile = agentConfig.profile;
 	if (agentProfile.fastModel && agentProfile.fastModel !== agentProfile.primaryModel) {
-		return { profile: agentProfile, modelOverride: agentProfile.fastModel };
+		return { profile: agentProfile, modelId: agentProfile.fastModel };
 	}
-	return { profile: agentProfile };
+	return agentConfig;
 }
 
 function buildPreviousRoundsBlock(prev: VaultPreviousRoundSummary[]): string {
@@ -173,13 +177,6 @@ export async function* buildVaultMetaAgentStream(
 	const triggerName = StreamTriggerName.COPILOT;
 	const { app, pluginId } = deps;
 
-	try {
-		await warmupPool();
-	} catch (err) {
-		yield { type: 'error', error: err as Error, triggerName } as LLMStreamEvent;
-		return;
-	}
-
 	const resolved = resolveProfileForMode(options.mode);
 	if (!resolved) {
 		yield {
@@ -189,7 +186,7 @@ export async function* buildVaultMetaAgentStream(
 		} as LLMStreamEvent;
 		return;
 	}
-	const { profile, modelOverride } = resolved;
+	const { profile, modelId } = resolved;
 
 	const { searchClient } = deps;
 	const searchFn = async (q: string, limit: number): Promise<GrepHit[]> => {
@@ -207,7 +204,7 @@ export async function* buildVaultMetaAgentStream(
 		}));
 	};
 
-	const vaultMcpServer = buildVaultMcpServer({
+	const vaultTools = buildVaultHarnessTools({
 		app,
 		searchFn,
 		onSubmitPlan: async (plan) => ({
@@ -218,7 +215,7 @@ export async function* buildVaultMetaAgentStream(
 		analysisHistory: deps.analysisHistory,
 	});
 
-	const copilotMcpServer = buildCopilotOutputMcpServer({
+	const copilotTools = buildCopilotOutputTools({
 		collector: options.collector,
 	});
 
@@ -240,49 +237,43 @@ export async function* buildVaultMetaAgentStream(
 			...COPILOT_VAULT_TOOL_NAMES,
 		];
 
-		const messages = queryWithProfile(app, pluginId, profile, {
+		const allowedToolNames = new Set(allowedTools);
+		const tools = [...vaultTools, ...copilotTools]
+			.filter((tool) => allowedToolNames.has(tool.name));
+		const submissionsBefore = options.collector.getSnapshot().submissions.length;
+		const stream = streamHarnessModel({
+			loopId: `vault-review-${pluginId}-${options.previousRounds.length + 1}`,
+			profile,
+			modelId,
 			prompt: userPrompt,
 			systemPrompt,
-			maxTurns: options.maxTurns,
-			allowedTools,
-			disallowedTools: ['AskUserQuestion', 'mcp__vault__vault_submit_plan', 'mcp__copilot__propose_change'],
-			mcpServers: {
-				vault: vaultMcpServer,
-				copilot: copilotMcpServer,
-			},
+			tools,
+			maxSteps: options.maxTurns,
+			maxToolCalls: Math.max(12, options.maxTurns * 4),
 			signal: options.signal,
-			usageFeature: 'copilot',
-			usageAction: `vault-review-round-${options.previousRounds.length}`,
-			modelOverride,
+			triggerName,
+			stopWhen: () =>
+				options.collector.getSnapshot().submissions.length > submissionsBefore,
+			treatBareTextAsFinal: false,
+			bareTextContinuationNudge: 'Continue the vault review using the available tools. Finish by calling mcp__copilot__submit_review.',
+			onStepFinish: () => {
+				options.onTurnIncrement?.();
+			},
 		});
 
-		for await (const raw of messages) {
-			if (options.signal?.aborted) return;
-			const msgType = (raw as { type?: string }).type;
-			if (msgType === 'assistant') {
-				options.onTurnIncrement?.();
+		while (true) {
+			const next = await stream.next();
+			if (next.done) {
+				if (next.value.finishReason === 'max_steps') {
+					console.warn('[VaultMetaAgent] max steps reached this round');
+					yield { type: 'pk-debug', debugName: 'max-turns-reached', triggerName } as LLMStreamEvent;
+				}
+				assertSuccessfulRun(next.value);
+				break;
 			}
-			const events = translateSdkMessage(raw, {
-				triggerName,
-				hasPartialMessages: true,
-			});
-			for (const ev of events) {
-				yield ev;
-			}
+			yield next.value;
 		}
 	} catch (err) {
-		const msg = (err as Error)?.message ?? '';
-		if (msg.toLowerCase().includes('maximum number of turns')) {
-			console.warn('[VaultMetaAgent] max turns reached this round');
-			yield { type: 'pk-debug', debugName: 'max-turns-reached', triggerName } as LLMStreamEvent;
-			return;
-		}
 		yield { type: 'error', error: err as Error, triggerName } as LLMStreamEvent;
 	}
-
-	yield {
-		type: 'complete',
-		triggerName,
-		durationMs: 0,
-	} as LLMStreamEvent;
 }

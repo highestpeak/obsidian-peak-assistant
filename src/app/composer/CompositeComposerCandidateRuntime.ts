@@ -1,7 +1,9 @@
 import type {
 	ComposerCandidate,
 	ComposerCandidateRuntimePort,
+	ComposerCandidateRuntimeSnapshot,
 	ComposerCapabilityRunEvent,
+	ComposerCapabilityEffectKind,
 	ComposerInvocationHandle,
 	ComposerRendererId,
 } from '@/core/composer';
@@ -39,6 +41,14 @@ export class CompositeComposerCandidateRuntime implements ComposerCandidateRunti
 		return this.image.rendererIdFor(candidateId) ?? this.primary.rendererIdFor(candidateId);
 	}
 
+	candidateEffectFor(candidateId: string): ComposerCapabilityEffectKind | null {
+		return (
+			this.image.candidateEffectFor?.(candidateId)
+			?? this.primary.candidateEffectFor?.(candidateId)
+			?? null
+		);
+	}
+
 	candidateLabelFor(candidateId: string): string | null {
 		const imageLabel = this.image.candidateLabelFor?.(candidateId);
 		return imageLabel ?? this.primary.candidateLabelFor?.(candidateId) ?? null;
@@ -71,6 +81,24 @@ export class CompositeComposerCandidateRuntime implements ComposerCandidateRunti
 
 	setActiveVariant(candidateId: string, variantId: string): void {
 		this.owner(candidateId).setActiveVariant(candidateId, variantId);
+	}
+
+	exportCandidateRuntimeState(
+		candidateId: string,
+	): ComposerCandidateRuntimeSnapshot | null {
+		return (
+			this.image.exportCandidateRuntimeState?.(candidateId)
+			?? this.primary.exportCandidateRuntimeState?.(candidateId)
+			?? null
+		);
+	}
+
+	restoreCandidateRuntimeState(
+		candidate: ComposerCandidate,
+		snapshot: ComposerCandidateRuntimeSnapshot,
+	): boolean {
+		const owner = snapshot.ownerId === 'image' ? this.image : this.primary;
+		return owner.restoreCandidateRuntimeState?.(candidate, snapshot) ?? false;
 	}
 
 	private owner(candidateId: string): ComposerCandidateRuntimePort {

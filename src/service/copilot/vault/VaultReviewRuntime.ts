@@ -7,7 +7,7 @@
 // implementation takes a `VaultReviewDeps` port bag and is composed in
 // `src/app/copilot/vault/composeVaultReviewRuntime.ts` — the single
 // place where Obsidian `App`, `sqliteStoreManager`, lint runtime,
-// profile registry, search client, and the Agent SDK are wired into
+// profile registry, search client, and Peak Harness are wired into
 // ports.
 //
 // Single-instance-per-plugin-load. Binding semantics live in

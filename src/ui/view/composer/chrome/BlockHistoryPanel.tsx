@@ -5,8 +5,15 @@ import {
 	composerTargetBlockId,
 	type ComposerHistoryItem,
 } from '@/core/composer';
+import {
+	groupComposerGenerationRuns,
+	type ComposerGenerationGroup,
+	type ComposerWorkspaceIntelligenceProjection,
+	type ComposerWorkspaceIntelligenceRuntime,
+	type FrozenComposerRunEnvelope,
+} from '@/service/composer';
+import { generationPreview, restoreGenerationReview } from '../generationHistory';
 import { useComposerChrome } from './ComposerChromeContext';
-import { useHubProjection } from './useHubProjection';
 
 /**
  * Per-block History panel (WP4). Lists the REAL hub-projection ledger entries
@@ -25,25 +32,13 @@ export function BlockHistoryPanel({
 	onClose: () => void;
 }): React.ReactElement {
 	const { runtime, config } = useComposerChrome();
-	const hub = runtime.hub;
-	const projection = useHubProjection(hub);
+	const projection = useWorkspaceProjection(runtime.workspaceIntelligence);
 	const c = config.chrome.history;
-	const [refusedId, setRefusedId] = React.useState<string | null>(null);
-
-	const items = React.useMemo(
-		() => collectHistoryForBlock(projection.history, blockId),
-		[projection.history, blockId],
-	);
-
-	const rollback = async (historyId: string) => {
-		if (!hub) return;
-		try {
-			await hub.rollback(historyId);
-			setRefusedId(null);
-		} catch {
-			setRefusedId(historyId);
-		}
-	};
+	const documentId = runtime.session?.snapshot.documentId;
+	const groups = React.useMemo(() => {
+		const runs = (projection?.runs ?? []).filter((run) => targetMatchesBlock(run.target, blockId));
+		return groupComposerGenerationRuns(runs, documentId);
+	}, [projection, blockId, documentId]);
 
 	return (
 		<div className="pk-block-history pk-composer-panel" data-chrome="true" aria-label={c.title}>
@@ -51,36 +46,97 @@ export function BlockHistoryPanel({
 				<HistoryIcon size={13} />
 				<span>{c.title}</span>
 			</div>
-			{items.length === 0 && <span className="pk-block-history__empty">{c.empty}</span>}
-			{items.map((item) => (
-				<div key={item.historyId} className="pk-block-history__row" data-origin={item.origin}>
+			{groups.length === 0 && <span className="pk-block-history__empty">{c.empty}</span>}
+			{groups.map((group) => {
+				const latest = group.latest;
+				const restorable = [...group.runs]
+					.reverse()
+					.find((run) => run.disposition === 'not-adopted' && run.review);
+				return (
+				<div
+					key={group.candidateId}
+					className="pk-block-history__row"
+					data-status={latest.status}
+					data-disposition={latest.disposition}
+				>
 					<div className="pk-block-history__meta">
-						<span className="pk-block-history__label">{item.label}</span>
-						<span className="pk-block-history__stats">{`+${item.stats.added} −${item.stats.removed}`}</span>
+						<span className="pk-block-history__label">{group.label}</span>
+						<span className="pk-block-history__stats">
+							{`${formatCount(c.versions, group.runs.length)} · ${blockGenerationStatus(group, c)}`}
+						</span>
 					</div>
+					{generationPreview(latest) && (
+						<span className="pk-block-history__preview">{generationPreview(latest)}</span>
+					)}
 					<div className="pk-block-history__actions">
 						<Button variant="secondary" size="sm" className="pk-review-action" onClick={onLocate}>
 							<Crosshair size={12} /> {c.locate}
 						</Button>
-						<Button
-							variant="secondary"
-							size="sm"
-							className="pk-review-action"
-							disabled={!hub || item.isRollback}
-							title={refusedId === item.historyId ? c.rollbackRefused : undefined}
-							onClick={() => void rollback(item.historyId)}
-						>
-							<Undo2 size={12} /> {c.rollback}
-						</Button>
+						{restorable && (
+							<Button
+								variant="secondary"
+								size="sm"
+								className="pk-review-action"
+								onClick={() => restoreGenerationReview(runtime, restorable)}
+							>
+								<Undo2 size={12} /> {c.restore}
+							</Button>
+						)}
 					</div>
-					{refusedId === item.historyId && <span className="pk-block-history__refused">{c.rollbackRefused}</span>}
 				</div>
-			))}
+				);
+			})}
 			<Button variant="ghost" size="sm" className="pk-block-history__close" onClick={onClose}>
 				{config.chrome.copy.close}
 			</Button>
 		</div>
 	);
+}
+
+function useWorkspaceProjection(
+	runtime: ComposerWorkspaceIntelligenceRuntime | undefined,
+): ComposerWorkspaceIntelligenceProjection | null {
+	const [projection, setProjection] = React.useState<ComposerWorkspaceIntelligenceProjection | null>(
+		() => runtime?.projection() ?? null,
+	);
+	React.useEffect(() => {
+		if (!runtime) {
+			setProjection(null);
+			return;
+		}
+		return runtime.subscribe(setProjection);
+	}, [runtime]);
+	return projection;
+}
+
+function targetMatchesBlock(target: FrozenComposerRunEnvelope['target'], blockId: string): boolean {
+	const targetBlockId = composerTargetBlockId(target);
+	if (!targetBlockId) return false;
+	const prefix = blockId.split('-').slice(0, -1).join('-') + '-';
+	return targetBlockId === blockId || targetBlockId.startsWith(prefix);
+}
+
+function blockGenerationStatus(
+	group: ComposerGenerationGroup,
+	strings: {
+		accepted: string;
+		notAdopted: string;
+		pending: string;
+		failed: string;
+		cancelled: string;
+	},
+): string {
+	if (group.runs.some((run) => run.disposition === 'accepted')) return strings.accepted;
+	if (group.latest.disposition === 'not-adopted') return strings.notAdopted;
+	if (group.latest.status === 'failed') return strings.failed;
+	if (group.latest.status === 'cancelled' || group.latest.status === 'interrupted') {
+		return strings.cancelled;
+	}
+	return strings.pending;
+}
+
+function formatCount(template: string, count: number): string {
+	return template.replace('{count}', String(count));
 }
 
 /**

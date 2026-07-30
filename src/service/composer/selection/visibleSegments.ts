@@ -1,11 +1,18 @@
 import type { ComposerSelectionUnit } from '@/core/composer';
-import { parseInlineRuns, type InlineRunStyle } from '../render/inlineRuns';
+import {
+	parseInlineRuns,
+	type InlineMarkRanges,
+	type InlineRunStyle,
+} from '../render/inlineRuns';
 
 export interface VisibleSelectionSegment {
 	from: number;
 	to: number;
 	style: InlineRunStyle;
+	markRanges?: InlineMarkRanges;
 	linkTarget?: string;
+	linkKind?: 'wikilink' | 'markdown' | 'bare-url' | 'html';
+	linkRange?: { from: number; to: number };
 }
 
 /**
@@ -36,7 +43,10 @@ export function visibleSelectionSegments(
 			from: visibleFrom,
 			to: visibleTo,
 			style: run.style,
+			markRanges: run.markRanges,
 			linkTarget: run.linkTarget,
+			linkKind: run.linkKind,
+			linkRange: run.linkRange,
 		});
 	}
 	return segments;

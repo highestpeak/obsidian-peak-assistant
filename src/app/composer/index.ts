@@ -7,6 +7,13 @@ export { DOCUMENT_COMPOSER_VIEW_TYPE } from './viewType';
 export { DocumentComposerView } from './DocumentComposerView';
 export { DocumentComposerRuntime } from './DocumentComposerRuntime';
 export { composeDocumentComposerRuntime } from './composeDocumentComposerRuntime';
+export { NativeMarkdownIntelligenceModal } from './NativeMarkdownIntelligenceModal';
+export { NativeMarkdownComposerAffordance } from './NativeMarkdownComposerAffordance';
+export {
+	ComposerDocumentRouter,
+	composerViewStateForPath,
+	type ComposerDocumentRouterOptions,
+} from './ComposerDocumentRouter';
 export {
 	DocumentComposerController,
 	type DocumentComposerControllerDeps,

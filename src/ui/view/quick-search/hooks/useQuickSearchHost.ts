@@ -29,6 +29,7 @@ import type { QuickSearchBackgroundRuntime } from '@/service/search/background/Q
 import type { SaveAnalysisResultParams } from '../callbacks/save-ai-analyze-to-md';
 import type { CompletedAnalysisSnapshot } from '../store/aiAnalysisStore';
 import type { LensGraphData } from '@/ui/component/mine/multi-lens-graph/types';
+import type { ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph';
 
 export interface QuickSearchHost {
 	// File / path operations
@@ -64,6 +65,11 @@ export interface QuickSearchHost {
 	createContextProvider(): ContextProvider;
 	/** T11P: report orchestrator factory, replacing inline `new ReportOrchestrator(plugin.aiServiceManager, _, app, _)` in `useSearchSession`. */
 	createReportOrchestrator(): ReportOrchestrator;
+	/** Deterministic Vault relation graph for the cited evidence set and optional neighborhood expansion. */
+	buildSourceVaultGraph(
+		paths: string[],
+		scope: 'evidence' | 'one-hop' | 'two-hop',
+	): Promise<ResultSubgraphOutput>;
 
 	// Markdown save / persist
 	saveAnalysisToVault(params: SaveAnalysisResultParams): Promise<{ path: string }>;

@@ -213,7 +213,7 @@ check('document controls share one non-overlay control bar', () => {
 	const undoIndex = html.indexOf('pk-undo-redo');
 	const workspaceIndex = html.indexOf('pk-composer-workspace');
 	assert.ok(controlIndex > -1, 'missing unified control bar');
-	assert.ok(html.includes('pk-composer-display-switch'), 'all three display modes must remain permanently available');
+	assert.ok(html.includes('pk-composer-display-switch'), 'the edit/clean display control must remain permanently available');
 	assert.ok(undoIndex > controlIndex, 'undo/redo must stay in the unified control bar');
 	assert.ok(controlIndex < workspaceIndex, 'control bar must participate in layout before the document workspace');
 	const controlRule = css.match(/\.peak-composer-root \.pk-composer-controlbar\s*\{([\s\S]*?)\}/)?.[1] ?? '';

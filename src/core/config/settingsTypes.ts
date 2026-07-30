@@ -19,6 +19,7 @@ import {
 	getAIInboxFolder,
 	getAISkillsFolder,
 } from '@/core/config/folderPaths';
+import type { DefaultDocumentView } from '@/core/composer';
 
 export interface ChunkingSettings {
 	maxChunkSize: number;
@@ -255,21 +256,6 @@ export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
  * same profiles/models already configured by the user can be reused.
  */
 /**
- * Which backend runs agent loops:
- * - 'auto'    — prefer self-hosted harness. All Vault Search / Continue
- *               Analysis rounds now route through `runAgentLoop`.
- * - 'harness' — always use the self-hosted loop (local models).
- *
- * The `'claude-agent-sdk'` backend was retired in 2026-07 alongside the
- * Chat/Agent/Plan mode picker (spec: docs/superpowers/specs/2026-07-03-cloud-sdk-and-mode-choice-audit.md).
- * The SDK stays imported as a library for one-shot LLM callers and the
- * in-process MCP tool plumbing (`vaultMcpServer`, `webSearchTool`, etc.),
- * but the Vault Search main path no longer touches `queryWithProfile` —
- * see docs/superpowers/specs/2026-07-04-vault-search-harness-native-migration.md.
- */
-export type AgentBackend = 'auto' | 'harness';
-
-/**
  * Closed enum of alert rule kinds shipped in the mock Budget & Alerts surface.
  * Each kind maps to a distinct carrier (notification / inline chat / receipt /
  * per-message pip), with `threshold` interpreted per kind.
@@ -308,8 +294,6 @@ export const DEFAULT_BUDGET_SETTINGS: BudgetSettings = {
 };
 
 export interface HarnessSettings {
-	/** Which backend runs agent loops. Default 'auto'. */
-	agentBackend: AgentBackend;
 	/** local-fast tier profile+model (e.g. Ollama Qwen3-14B). null = disabled. */
 	localFastConfig: RoleConfig | null;
 	/** local-deep tier profile+model (e.g. Ollama Qwen3-32B). null = disabled. */
@@ -331,7 +315,6 @@ export interface HarnessSettings {
 }
 
 export const DEFAULT_HARNESS_SETTINGS: HarnessSettings = {
-	agentBackend: 'auto',
 	localFastConfig: null,
 	localDeepConfig: null,
 	onlineConfig: null,
@@ -341,6 +324,24 @@ export const DEFAULT_HARNESS_SETTINGS: HarnessSettings = {
 	hooksEnabled: false,
 	defaultPermissionMode: 'acceptEdits',
 	budget: { ...DEFAULT_BUDGET_SETTINGS, alertRules: DEFAULT_BUDGET_SETTINGS.alertRules.map((r) => ({ ...r })) },
+};
+
+export interface ComposerSettings {
+	/**
+	 * Workspace policy for future ordinary Markdown opens. This never converts
+	 * the current leaf; current-leaf conversion is an explicit view action.
+	 */
+	defaultDocumentView: DefaultDocumentView;
+	/**
+	 * Last explicit Intelligence open/close choice. Contextual opens from a
+	 * finding, comment or deep link never rewrite this preference.
+	 */
+	intelligenceManualOpen: boolean;
+}
+
+export const DEFAULT_COMPOSER_SETTINGS: ComposerSettings = {
+	defaultDocumentView: 'markdown',
+	intelligenceManualOpen: false,
 };
 
 export interface MyPluginSettings {
@@ -387,6 +388,9 @@ export interface MyPluginSettings {
 
 	/** Debug Trace Infrastructure (see docs/superpowers/specs/debug-trace-infrastructure.md). */
 	debugTrace?: DebugTraceSettings;
+
+	/** Peak Composer file-view and workspace routing preferences. */
+	composer: ComposerSettings;
 
 }
 
@@ -449,6 +453,7 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 	ambientPush: undefined,
 	harnessSettings: { ...DEFAULT_HARNESS_SETTINGS },
 	debugTrace: { ...DEFAULT_DEBUG_TRACE_SETTINGS },
+	composer: { ...DEFAULT_COMPOSER_SETTINGS },
 	graphViz: {
 		mstPruneDepth: 2,
 		skeletonBackboneOnly: false,

@@ -1,6 +1,7 @@
 import * as React from 'react';
-import { MessageSquare, Sparkles, Undo2, Redo2 } from 'lucide-react';
-import { Button, Chip, IconButton } from '@/ui/components/primitives';
+import { FileText, Layers3, MessageSquare, Sparkles, Undo2, Redo2 } from 'lucide-react';
+import { Button, Chip, IconButton, Segmented } from '@/ui/components/primitives';
+import type { DefaultDocumentView } from '@/core/composer';
 import { useOwnerDocumentListener } from '@/ui/hooks/useOwnerWindow';
 import { DisplayStateSwitch, type ComposerDisplayState } from './DisplayStateSwitch';
 import { useComposerChrome } from './ComposerChromeContext';
@@ -30,6 +31,12 @@ export function UndoRedoBar({
 	intelligenceAvailable,
 	intelligenceOpen,
 	onIntelligenceOpen,
+	defaultDocumentView,
+	onDefaultDocumentView,
+	onConvertCurrentView,
+	reviewCandidateCount = 0,
+	reviewAll = false,
+	onReviewAll,
 }: {
 	containerRef: React.RefObject<Element | null>;
 	displayState: ComposerDisplayState;
@@ -41,6 +48,12 @@ export function UndoRedoBar({
 	intelligenceAvailable: boolean;
 	intelligenceOpen: boolean;
 	onIntelligenceOpen: (open: boolean) => void;
+	defaultDocumentView?: DefaultDocumentView;
+	onDefaultDocumentView?: (view: DefaultDocumentView) => void;
+	onConvertCurrentView?: (view: DefaultDocumentView) => void;
+	reviewCandidateCount?: number;
+	reviewAll?: boolean;
+	onReviewAll?: (open: boolean) => void;
 }): React.ReactElement {
 	const { runtime, config } = useComposerChrome();
 	const hub = runtime.hub;
@@ -97,7 +110,51 @@ export function UndoRedoBar({
 			) : (
 				<span className="pk-composer-controlbar__badge">{readOnlyLabel}</span>
 			)}
+			{defaultDocumentView && onDefaultDocumentView ? (
+				<div className="pk-composer-default-view-policy">
+					<span>{config.chrome.defaultDocumentView.futureLabel}</span>
+					<Segmented<DefaultDocumentView>
+						className="pk-composer-default-view-switch"
+						aria-label={config.chrome.defaultDocumentView.groupLabel}
+						title={config.chrome.defaultDocumentView.help}
+						variant="animated-pill"
+						size="sm"
+						thumbLayoutId="composer-default-document-view-thumb"
+						value={defaultDocumentView}
+						onValueChange={onDefaultDocumentView}
+						options={[
+							{ value: 'markdown', label: config.chrome.defaultDocumentView.markdown },
+							{ value: 'composer', label: config.chrome.defaultDocumentView.composer },
+						]}
+					/>
+				</div>
+			) : null}
+			{reviewCandidateCount >= 2 && onReviewAll ? (
+				<Button
+					variant={reviewAll ? 'primary' : 'ghost'}
+					size="sm"
+					className="pk-composer-review-all"
+					aria-pressed={reviewAll}
+					onClick={() => onReviewAll(!reviewAll)}
+				>
+					<Layers3 size={14} />
+					<span>
+						{config.chrome.displayStates.reviewAll.replace('{count}', String(reviewCandidateCount))}
+					</span>
+				</Button>
+			) : null}
 			<span className="pk-composer-controlbar__spacer" />
+			{onConvertCurrentView ? (
+				<Button
+					variant="ghost"
+					size="sm"
+					className="pk-composer-current-view-switch"
+					onClick={() => onConvertCurrentView('markdown')}
+				>
+					<FileText size={14} />
+					<span>{config.chrome.defaultDocumentView.switchCurrentToMarkdown}</span>
+				</Button>
+			) : null}
 			{comments && (
 				<Button
 					variant={commentOpen ? 'primary' : 'ghost'}

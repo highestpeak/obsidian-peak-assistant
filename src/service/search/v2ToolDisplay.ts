@@ -1,5 +1,5 @@
 /**
- * T11I (2026-06-26): tool-result display helpers for V2 (Agent SDK) tools.
+ * T11I (2026-06-26): tool-result display helpers for V2 Harness tools.
  *
  * Moved out of `src/ui/view/quick-search/types/search-steps.ts` so
  * service-layer trace builders (e.g. CopilotReviewArtifactBuilder) can

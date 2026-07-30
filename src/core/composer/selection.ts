@@ -85,6 +85,7 @@ export interface ComposerSelection {
 export type SelectionGuardReason =
 	| 'code-block-rich-format'
 	| 'cross-structure-link'
+	| 'semantic-inline-html-format'
 	| 'empty-selection';
 
 /** Result of a selection operation the chrome can act on. */

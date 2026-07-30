@@ -3,7 +3,7 @@
 // `generateLlmExplanation` (and its module-level rate-limit cache)
 // moved to `src/app/ambient/LlmAmbientExplanationAdapter.ts` — the
 // LLM path needs `AppContext.getApp()` + `ProfileRegistry` +
-// `queryWithProfile`, which are app-shell concerns and must not live
+// model runtime composition, which is an app-shell concern and must not live
 // in service code. The remaining helper here is byte-pure and is
 // covered by `test/ambient-push.test.ts`.
 

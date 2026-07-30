@@ -1,8 +1,7 @@
 import assert from 'assert';
 import type { Profile, ProfileSettings } from '@/core/profiles/types';
-import { DEFAULT_SDK_SETTINGS } from '@/core/profiles/types';
 import { createPresetProfile } from '@/core/profiles/presets';
-import { toAgentSdkEnv, toEmbeddingConfig } from '@/core/profiles/materialize';
+import { toEmbeddingConfig } from '@/core/profiles/materialize';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 
 async function run(): Promise<void> {
@@ -59,65 +58,6 @@ async function run(): Promise<void> {
         assert.strictEqual(p.apiKey, 'sk-test');
         assert.strictEqual(p.primaryModel, 'claude-sonnet-4-20250514');
         assert.strictEqual(p.kind, 'anthropic'); // kind stays from preset
-      },
-    },
-
-    // ───────── toAgentSdkEnv ─────────
-    {
-      name: 'toAgentSdkEnv: anthropic with apiKey',
-      fn: () => {
-        const p = createPresetProfile('anthropic', { apiKey: 'sk-ant-test' });
-        const env = toAgentSdkEnv(p, 'claude-opus-4-6', 'claude-haiku-4-5');
-        assert.strictEqual(env.ANTHROPIC_BASE_URL, 'https://api.anthropic.com/v1');
-        assert.strictEqual(env.ANTHROPIC_API_KEY, 'sk-ant-test');
-        assert.strictEqual(env.ANTHROPIC_DEFAULT_OPUS_MODEL, 'claude-opus-4-6');
-        assert.strictEqual(env.ANTHROPIC_DEFAULT_HAIKU_MODEL, 'claude-haiku-4-5');
-        assert.strictEqual(env.ANTHROPIC_DEFAULT_SONNET_MODEL, 'claude-opus-4-6');
-        assert.strictEqual(env.ANTHROPIC_AUTH_TOKEN, undefined);
-      },
-    },
-    {
-      name: 'toAgentSdkEnv: openrouter sends apiKey as ANTHROPIC_AUTH_TOKEN',
-      fn: () => {
-        const p = createPresetProfile('openrouter', { apiKey: 'sk-or-test' });
-        const env = toAgentSdkEnv(p, 'anthropic/claude-opus-4-6', 'anthropic/claude-haiku-4-5');
-        assert.strictEqual(env.ANTHROPIC_API_KEY, '');
-        assert.strictEqual(env.ANTHROPIC_AUTH_TOKEN, 'sk-or-test');
-        assert.strictEqual(env.ANTHROPIC_BASE_URL, 'https://openrouter.ai/api/v1');
-      },
-    },
-    {
-      name: 'toAgentSdkEnv: throws on missing credentials',
-      fn: () => {
-        const p = createPresetProfile('anthropic');
-        assert.throws(() => toAgentSdkEnv(p, 'model', 'fast'), /missing/i);
-      },
-    },
-    {
-      name: 'toAgentSdkEnv: custom headers serialized',
-      fn: () => {
-        const p = createPresetProfile('anthropic', {
-          apiKey: 'sk-test',
-          customHeaders: { 'X-Org': 'test-org' },
-        });
-        const env = toAgentSdkEnv(p, 'claude-opus-4-6', 'claude-haiku-4-5');
-        assert.strictEqual(env.ANTHROPIC_CUSTOM_HEADERS, 'X-Org: test-org');
-      },
-    },
-    {
-      name: 'toAgentSdkEnv: empty customHeaders not included',
-      fn: () => {
-        const p = createPresetProfile('anthropic', { apiKey: 'sk-test' });
-        const env = toAgentSdkEnv(p, 'claude-opus-4-6', 'claude-haiku-4-5');
-        assert.strictEqual(env.ANTHROPIC_CUSTOM_HEADERS, undefined);
-      },
-    },
-    {
-      name: 'toAgentSdkEnv: openrouter with empty baseUrl falls back to default',
-      fn: () => {
-        const p = createPresetProfile('openrouter', { apiKey: 'sk-or-test', baseUrl: '' });
-        const env = toAgentSdkEnv(p, 'anthropic/claude-opus-4-6', 'anthropic/claude-haiku-4-5');
-        assert.strictEqual(env.ANTHROPIC_BASE_URL, 'https://openrouter.ai/api/v1');
       },
     },
 
@@ -180,7 +120,7 @@ async function run(): Promise<void> {
         const registry = ProfileRegistry.getInstance();
         const persisted: ProfileSettings[] = [];
         registry.load(
-          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null, sdkSettings: DEFAULT_SDK_SETTINGS },
+          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null },
           (s) => { persisted.push(s); },
         );
 
@@ -204,7 +144,6 @@ async function run(): Promise<void> {
             activeAgentConfig: { profileId: p.id, modelId: 'agent-role-model' },
             activeAgentProfileId: null,
             activeEmbeddingProfileId: null,
-            sdkSettings: DEFAULT_SDK_SETTINGS,
           } as any,
           () => {},
         );
@@ -228,7 +167,6 @@ async function run(): Promise<void> {
             activeAgentFastConfig: { profileId: p.id, modelId: 'agent-fast-model' },
             activeAgentProfileId: null,
             activeEmbeddingProfileId: null,
-            sdkSettings: DEFAULT_SDK_SETTINGS,
           } as any,
           () => {},
         );
@@ -243,7 +181,7 @@ async function run(): Promise<void> {
         ProfileRegistry.resetInstance();
         const registry = ProfileRegistry.getInstance();
         registry.load(
-          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null, sdkSettings: DEFAULT_SDK_SETTINGS },
+          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null },
           () => {},
         );
 
@@ -258,7 +196,7 @@ async function run(): Promise<void> {
         ProfileRegistry.resetInstance();
         const registry = ProfileRegistry.getInstance();
         registry.load(
-          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null, sdkSettings: DEFAULT_SDK_SETTINGS },
+          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null },
           () => {},
         );
 
@@ -278,7 +216,7 @@ async function run(): Promise<void> {
         ProfileRegistry.resetInstance();
         const registry = ProfileRegistry.getInstance();
         registry.load(
-          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null, sdkSettings: DEFAULT_SDK_SETTINGS },
+          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null },
           () => {},
         );
         assert.throws(() => registry.updateProfile('ghost', { name: 'x' }), /not found/);
@@ -290,7 +228,7 @@ async function run(): Promise<void> {
         ProfileRegistry.resetInstance();
         const registry = ProfileRegistry.getInstance();
         registry.load(
-          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null, sdkSettings: DEFAULT_SDK_SETTINGS },
+          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null },
           () => {},
         );
 
@@ -310,7 +248,7 @@ async function run(): Promise<void> {
         ProfileRegistry.resetInstance();
         const registry = ProfileRegistry.getInstance();
         registry.load(
-          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null, sdkSettings: DEFAULT_SDK_SETTINGS },
+          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null },
           () => {},
         );
         assert.throws(() => registry.deleteProfile('ghost'), /not found/);
@@ -322,7 +260,7 @@ async function run(): Promise<void> {
         ProfileRegistry.resetInstance();
         const registry = ProfileRegistry.getInstance();
         registry.load(
-          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null, sdkSettings: DEFAULT_SDK_SETTINGS },
+          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null },
           () => {},
         );
 
@@ -348,7 +286,7 @@ async function run(): Promise<void> {
         ProfileRegistry.resetInstance();
         const registry = ProfileRegistry.getInstance();
         registry.load(
-          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null, sdkSettings: DEFAULT_SDK_SETTINGS },
+          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null },
           () => {},
         );
         assert.throws(() => registry.setActiveAgentProfile('ghost'), /not found/);
@@ -361,7 +299,7 @@ async function run(): Promise<void> {
         const registry = ProfileRegistry.getInstance();
         const persisted: ProfileSettings[] = [];
         registry.load(
-          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null, sdkSettings: DEFAULT_SDK_SETTINGS },
+          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null },
           (s) => { persisted.push(s); },
         );
 
@@ -394,7 +332,7 @@ async function run(): Promise<void> {
         ProfileRegistry.resetInstance();
         const registry = ProfileRegistry.getInstance();
         registry.load(
-          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null, sdkSettings: DEFAULT_SDK_SETTINGS },
+          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null },
           () => {},
         );
 
@@ -413,7 +351,7 @@ async function run(): Promise<void> {
         ProfileRegistry.resetInstance();
         const registry = ProfileRegistry.getInstance();
         registry.load(
-          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null, sdkSettings: DEFAULT_SDK_SETTINGS },
+          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null },
           () => {},
         );
 
@@ -428,27 +366,6 @@ async function run(): Promise<void> {
       },
     },
     {
-      name: 'ProfileRegistry: getSdkSettings returns copy',
-      fn: () => {
-        ProfileRegistry.resetInstance();
-        const registry = ProfileRegistry.getInstance();
-        registry.load(
-          {
-            profiles: [],
-            activeAgentProfileId: null,
-            activeEmbeddingProfileId: null,
-            sdkSettings: { cliPathOverride: '/custom/path', subprocessPoolSize: 3, warmupOnLoad: false },
-          },
-          () => {},
-        );
-
-        const sdk = registry.getSdkSettings();
-        assert.strictEqual(sdk.cliPathOverride, '/custom/path');
-        assert.strictEqual(sdk.subprocessPoolSize, 3);
-        assert.strictEqual(sdk.warmupOnLoad, false);
-      },
-    },
-    {
       name: 'ProfileRegistry: load initializes from existing profiles',
       fn: () => {
         ProfileRegistry.resetInstance();
@@ -460,7 +377,6 @@ async function run(): Promise<void> {
             profiles: [existing],
             activeAgentProfileId: existing.id,
             activeEmbeddingProfileId: null,
-            sdkSettings: DEFAULT_SDK_SETTINGS,
           },
           () => {},
         );
@@ -476,7 +392,7 @@ async function run(): Promise<void> {
         const registry = ProfileRegistry.getInstance();
         let callCount = 0;
         registry.load(
-          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null, sdkSettings: DEFAULT_SDK_SETTINGS },
+          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null },
           () => { callCount++; },
         );
 

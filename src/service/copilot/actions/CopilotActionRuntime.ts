@@ -8,7 +8,7 @@
 // in `src/app/copilot/actions/composeCopilotActionRuntime.ts` — the
 // single place where Obsidian `App`, AppContext concrete dependencies,
 // AIServiceManager, SearchClient, sqliteStoreManager, ProfileRegistry,
-// and the Agent SDK are wired into ports.
+// and Peak Harness are wired into ports.
 //
 // Single-instance-per-plugin-load. Binding semantics live in
 // `AppRuntimeRegistry`.

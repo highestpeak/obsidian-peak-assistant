@@ -56,37 +56,26 @@ export function createSimulatorServer(options = {}) {
 
 			const body = await readJsonBody(request, SIMULATOR_CONFIG.server.maxRequestBytes);
 			const config = simulatorConfigFromHeaders(request.headers);
-			let protocol;
-			let normalized;
-			if (url.pathname === '/v1/chat/completions') {
-				protocol = 'openai-chat';
-				normalized = normalizeOpenAIRequest(body);
-			} else if (url.pathname === '/v1/messages') {
-				protocol = 'anthropic-messages';
-				normalized = normalizeAnthropicRequest(body);
-			} else {
+			if (url.pathname !== '/v1/chat/completions') {
 				writeJson(response, 404, { error: 'Unknown Simulator endpoint' });
 				return;
 			}
 
+			const normalized = normalizeOpenAIRequest(body);
 			const intent = resolveSimulatorIntent({ ...normalized, config });
 			if (!quiet) {
 				console.log(
-					`[AI Search Simulator] ${requestId} ${protocol}`
+					`[AI Search Simulator] ${requestId} openai-chat`
 					+ ` scenario=${config.scenario} intent=${intent.kind}`,
 				);
 			}
 			if (intent.kind === 'error') {
-				writeProtocolError(response, protocol, intent.message);
+				writeSimulatorError(response, intent.message);
 				return;
 			}
 
 			const delayMs = simulatorDelayMs(config);
-			if (protocol === 'openai-chat') {
-				await writeOpenAIResponse(response, body, intent, delayMs, requestId);
-			} else {
-				await writeAnthropicResponse(response, body, intent, delayMs, requestId);
-			}
+			await writeOpenAIResponse(response, body, intent, delayMs, requestId);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			if (!response.headersSent) writeJson(response, 400, { error: message });
@@ -124,7 +113,7 @@ function handleGet(pathname, response) {
 			ok: true,
 			service: SIMULATOR_CONFIG.server.serviceName,
 			model: SIMULATOR_CONFIG.server.modelId,
-			protocols: ['openai-chat', 'anthropic-messages'],
+			protocols: ['openai-chat'],
 		});
 		return;
 	}
@@ -179,38 +168,6 @@ function normalizeOpenAIRequest(body) {
 		text: text.join('\n'),
 		availableTools: (body.tools ?? [])
 			.map((tool) => tool?.function?.name)
-			.filter((name) => typeof name === 'string'),
-		toolResults,
-	};
-}
-
-function normalizeAnthropicRequest(body) {
-	const toolNames = new Map();
-	const toolResults = [];
-	const text = [];
-	appendAnthropicText(text, body.system);
-
-	for (const message of body.messages ?? []) {
-		appendAnthropicText(text, message.content);
-		if (!Array.isArray(message.content)) continue;
-		for (const block of message.content) {
-			if (block?.type === 'tool_use' && block.id && block.name) {
-				toolNames.set(block.id, block.name);
-			}
-			if (block?.type !== 'tool_result') continue;
-			const toolName = toolNames.get(block.tool_use_id);
-			if (!toolName) continue;
-			toolResults.push({
-				toolName,
-				value: parseMaybeJson(extractAnthropicContent(block.content)),
-			});
-		}
-	}
-
-	return {
-		text: text.join('\n'),
-		availableTools: (body.tools ?? [])
-			.map((tool) => tool?.name)
 			.filter((name) => typeof name === 'string'),
 		toolResults,
 	};
@@ -313,96 +270,7 @@ async function writeOpenAIResponse(response, body, intent, delayMs, requestId) {
 	response.end();
 }
 
-async function writeAnthropicResponse(response, body, intent, delayMs, requestId) {
-	const model = body.model ?? SIMULATOR_CONFIG.server.modelId;
-	const id = `msg_${requestId.replaceAll('-', '')}`;
-	if (!body.stream) {
-		await wait(delayMs, response);
-		const content = intent.kind === 'tool-call'
-			? [{ type: 'tool_use', id: `toolu_${requestId}`, name: intent.toolName, input: intent.input }]
-			: [{ type: 'text', text: intent.text }];
-		writeJson(response, 200, {
-			id,
-			type: 'message',
-			role: 'assistant',
-			model,
-			content,
-			stop_reason: intent.kind === 'tool-call' ? 'tool_use' : 'end_turn',
-			stop_sequence: null,
-			usage: anthropicUsage(),
-		});
-		return;
-	}
-
-	startSse(response);
-	await wait(delayMs, response);
-	writeSse(response, {
-		type: 'message_start',
-		message: {
-			id,
-			type: 'message',
-			role: 'assistant',
-			model,
-			content: [],
-			stop_reason: null,
-			stop_sequence: null,
-			usage: { input_tokens: SIMULATOR_CONFIG.usage.inputTokens, output_tokens: 0 },
-		},
-	}, 'message_start');
-
-	if (intent.kind === 'tool-call') {
-		writeSse(response, {
-			type: 'content_block_start',
-			index: 0,
-			content_block: {
-				type: 'tool_use',
-				id: `toolu_${requestId}`,
-				name: intent.toolName,
-				input: {},
-			},
-		}, 'content_block_start');
-		writeSse(response, {
-			type: 'content_block_delta',
-			index: 0,
-			delta: { type: 'input_json_delta', partial_json: JSON.stringify(intent.input) },
-		}, 'content_block_delta');
-	} else {
-		writeSse(response, {
-			type: 'content_block_start',
-			index: 0,
-			content_block: { type: 'text', text: '' },
-		}, 'content_block_start');
-		for (const chunk of splitSimulatorText(intent.text)) {
-			await wait(simulatorChunkDelayMs(delayMs), response);
-			writeSse(response, {
-				type: 'content_block_delta',
-				index: 0,
-				delta: { type: 'text_delta', text: chunk },
-			}, 'content_block_delta');
-		}
-	}
-
-	writeSse(response, { type: 'content_block_stop', index: 0 }, 'content_block_stop');
-	writeSse(response, {
-		type: 'message_delta',
-		delta: {
-			stop_reason: intent.kind === 'tool-call' ? 'tool_use' : 'end_turn',
-			stop_sequence: null,
-		},
-		usage: { output_tokens: SIMULATOR_CONFIG.usage.outputTokens },
-	}, 'message_delta');
-	writeSse(response, { type: 'message_stop' }, 'message_stop');
-	response.end();
-}
-
-function writeProtocolError(response, protocol, message) {
-	if (protocol === 'anthropic-messages') {
-		writeJson(response, 500, {
-			type: 'error',
-			error: { type: 'simulator_error', message },
-		});
-		return;
-	}
+function writeSimulatorError(response, message) {
 	writeJson(response, 500, {
 		error: { type: 'simulator_error', code: 'simulator_scenario', message },
 	});
@@ -414,32 +282,6 @@ function openAIUsage() {
 		completion_tokens: SIMULATOR_CONFIG.usage.outputTokens,
 		total_tokens: SIMULATOR_CONFIG.usage.inputTokens + SIMULATOR_CONFIG.usage.outputTokens,
 	};
-}
-
-function anthropicUsage() {
-	return {
-		input_tokens: SIMULATOR_CONFIG.usage.inputTokens,
-		output_tokens: SIMULATOR_CONFIG.usage.outputTokens,
-		cache_creation_input_tokens: 0,
-		cache_read_input_tokens: 0,
-	};
-}
-
-function appendAnthropicText(target, content) {
-	if (typeof content === 'string') {
-		target.push(content);
-		return;
-	}
-	if (!Array.isArray(content)) return;
-	for (const block of content) {
-		if (typeof block?.text === 'string') target.push(block.text);
-	}
-}
-
-function extractAnthropicContent(content) {
-	if (typeof content === 'string') return content;
-	if (!Array.isArray(content)) return content;
-	return content.map((block) => block?.text ?? block).join('\n');
 }
 
 async function readJsonBody(request, maxBytes) {
@@ -468,8 +310,8 @@ function setCorsHeaders(response) {
 	response.setHeader('access-control-allow-origin', '*');
 	response.setHeader(
 		'access-control-allow-headers',
-		'authorization, content-type, anthropic-version, anthropic-beta,'
-		+ ' x-api-key, x-peak-simulator-scenario, x-peak-simulator-speed,'
+		'authorization, content-type, x-api-key, x-peak-simulator-scenario,'
+		+ ' x-peak-simulator-speed,'
 		+ ' x-peak-simulator-strict, x-peak-simulator-run-id',
 	);
 	response.setHeader('access-control-allow-methods', 'GET, POST, OPTIONS');
@@ -527,7 +369,7 @@ if (isMainModule()) {
 	simulator.listen()
 		.then(({ host, port }) => {
 			console.log(`[AI Search Simulator] listening on http://${host}:${port}`);
-			console.log('[AI Search Simulator] protocols: OpenAI Chat + Anthropic Messages');
+			console.log('[AI Search Simulator] protocol: OpenAI Chat');
 		})
 		.catch((error) => {
 			console.error(`[AI Search Simulator] failed to start: ${error.message}`);

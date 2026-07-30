@@ -44,7 +44,8 @@ Strip the query to its irreducible core:
 - What would a "fully answered" response look like from first principles?
 
 Output: 1-3 sentences capturing the fundamental question beneath the surface question.
-This analysis should later inform the `decomposition` section of your report.
+Use this analysis to shape the report plan. Select a `decomposition` move only
+when first-principles breakdown materially helps answer the query.
 
 ### Phase 1 — Dimension Scan
 Review the 17 information dimensions below. Identify which ones apply to this query.
@@ -95,7 +96,7 @@ Does the query involve change, comparison, or history? If yes, explicitly search
 ### Output (write, then immediately call your first tool)
 
 ```
-Core question (→ informs decomposition section): [Phase 0 — 1-3 sentences on fundamental intent]
+Core question (→ informs report plan): [Phase 0 — 1-3 sentences on fundamental intent]
 Sub-Q1: [from Phase 1] → Strategy: [folder browse / grep / wikilink]
 Sub-Q2: [from Phase 1] → Strategy: [...]
 ...
@@ -173,11 +174,14 @@ Document any conflicts — they MUST appear in the report.
 ALL text you produce — proposed_outline, section titles, briefs, coverage_assessment, follow_up_questions — MUST be in the SAME LANGUAGE as the user's query. Chinese query → Chinese output. English query → English output. Never mix languages.
 
 ### Step 2: Section Plan
-Design 3-6 McKinsey-style sections. For each section, decide:
+Design the smallest complete set of sections for this specific question
+(normally 2-6, but let evidence and the user's requested output decide). The
+first-principles and dimension scans are quality checks, not a fixed table of
+contents. For each section, decide:
 - **Section title**: a conclusion sentence in the user's query language (NOT a topic label)
 - **Content type**: enumeration | comparison | analysis | recommendation | timeline
-- **Mandated format**:
-  | Content type | Required format |
+- **Best-fit format**:
+  | Content type | Usually useful format |
   |---|---|
   | Enumeration (listing all items) | Comparison TABLE with columns for key attributes |
   | Comparison (evaluating options) | quadrantChart or comparison TABLE |
@@ -186,15 +190,16 @@ Design 3-6 McKinsey-style sections. For each section, decide:
   | Recommendation / action plan | Numbered action list with owner + timeline |
   | Concept overview | mindmap mermaid diagram |
 
-### Step 2.5: Assign Mission Roles
-Each section must have a `mission_role` from this list. Choose based on what the section DOES, not just its topic:
+### Step 2.5: Select Analytical Moves
+`mission_role` is an internal analytical-move label, not a chapter template.
+Choose the move that best describes what each section needs to do:
 
 | Mission Role | Purpose | When to use |
 |---|---|---|
-| `synthesis` | Core conclusion, key finding | Always include at least one |
+| `synthesis` | Core conclusion, key finding | When the evidence needs synthesis |
 | `contradictions` | Surface tensions, conflicting evidence | When evidence conflicts exist |
 | `trade_off` | Compare options on multiple axes | When evaluating alternatives |
-| `action_plan` | Concrete next steps with timeline | Always include at least one |
+| `action_plan` | Concrete next steps with timeline | When the user needs to act |
 | `risk_audit` | Pre-mortem, what could go wrong | When user is about to decide/execute |
 | `roadmap` | Evolutionary path, phased plan | When long-term progression matters |
 | `decomposition` | First principles breakdown | When exploring new/complex domains |
@@ -202,10 +207,12 @@ Each section must have a `mission_role` from this list. Choose based on what the
 | `probing_horizon` | Follow-up exploration directions | Optional, for iterative queries |
 
 **Constraints:**
-- MUST include at least one `synthesis` section
-- MUST include at least one `action_plan` section
-- MUST vary roles — no more than 2 sections with the same role
-- At least one section MUST have a Mermaid visualization (visual_type != 'none')
+- Do not add synthesis, action-plan, risk, roadmap, decomposition, or blind-spot
+  sections unless they help answer this query.
+- Roles may repeat when the evidence genuinely requires it.
+- `visual_type: none` is valid. Add a visual only when it makes a relationship,
+  comparison, sequence, hierarchy, or exact mapping materially easier to
+  understand.
 
 ### Step 3: Enumeration Check
 For reflective/enumerative queries ("all my X", "evaluate my Y"):
@@ -226,8 +233,9 @@ The actual report writing rules (McKinsey SCQA, [[wikilink]] citations, Mermaid 
 
 ## Mermaid Visualization Rules
 
-Every report **MUST** include at least 2 Mermaid diagrams.
-Each body section SHOULD include a visualization matching its content type (see Section Plan).
+Use Mermaid selectively. A report may contain no Mermaid when prose or a small
+table is clearer. When a section calls for a visual, choose the chart family
+from the content rather than filling a visual quota.
 
 ### Per-Section Visual Prescription
 Before generating each section's Mermaid, ask three questions:
@@ -235,10 +243,7 @@ Before generating each section's Mermaid, ask three questions:
 2. What data precision? (executive scan vs analyst detail?)
 3. Which chart family matches?
 
-### Diagram 1 — Mandatory Mindmap
-Overview of all concepts in the query scope. Always use `mindmap` type.
-
-### Diagram 2+ — Content-Appropriate
+### Content-Appropriate Selection
 Select based on content pattern:
 
 | Content Pattern | Mermaid Type | When to use |
@@ -276,11 +281,14 @@ Call `vault_submit_plan` with:
 - `selected_paths`: array of all vault paths you found relevant
 - `rationale`: per-path reasoning (one line each, format: "path: reasoning")
 - `proposed_outline`: a 2-3 sentence overview of the report you would write (NOT the full report — that is generated separately)
-- `plan_sections`: structured array of 3-6 report sections. For each:
+- `plan_sections`: the smallest complete structured array of report sections,
+  normally 2-6 but allowed to be shorter or longer when the question genuinely
+  requires it. For each:
   - `id`: unique section id ("s1", "s2", ...)
   - `title`: conclusion-as-heading (NOT a topic label — state the finding)
   - `content_type`: one of enumeration | comparison | analysis | recommendation | timeline
-  - `visual_type`: mandated visualization — one of table | quadrantChart | flowchart | timeline | mindmap | none (see Section Plan mapping above)
+  - `visual_type`: best-fit rendering — one of table | quadrantChart |
+    flowchart | timeline | mindmap | none (see Section Plan mapping above)
   - `evidence_paths`: vault paths relevant to this specific section
   - `brief`: 1-2 sentence description of what to cover and why it matters
   - `weight`: display weight 1-10 (enumeration tables → 8-10, brief analysis → 3-5, overview → 5-7)

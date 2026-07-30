@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { SaveDialog } from './components/ai-analysis-modal//ResultSaveDialog';
-import { V2ContinueAnalysisInput } from './components/V2ContinueAnalysisInput';
 import { useSharedStore, useGraphQueuePump } from './store';
 import { useSearchSessionStore } from './store/searchSessionStore';
 import { useSearchSession } from './hooks/useSearchSession';
 import { useTypewriterEffect } from '@/ui/component/mine/useTypewriterEffect';
 import { useAIAnalysisResult } from './hooks/useAIAnalysisResult';
-import { SynthesizeAgent } from '@/service/agents/SynthesizeAgent';
 import { useQuickSearchHost } from './hooks/useQuickSearchHost';
 import { SearchResultView } from './components/SearchResultView';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
@@ -43,7 +41,6 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 	});
 
 	const [showSaveDialog, setShowSaveDialog] = useState(false);
-	const [showV2ContinueInput, setShowV2ContinueInput] = useState(false);
 	const contentContainerRef = useRef<HTMLDivElement>(null);
 
 	// Graph queue pump: process tool events so graph populates; must run even when graph panel is hidden
@@ -52,8 +49,8 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 	// hooks for AI analysis ========================================================
 
 	// Use custom hook for AI analysis (new unified hook)
-	const sessionHook = useSearchSession() as ReturnType<typeof useSearchSession> & { handleApprovePlan?: () => void; handleRegenerateSection?: (id: string, prompt?: string) => void };
-	const { performAnalysis, cancel, handleApprovePlan, handleRegenerateSection } = sessionHook;
+	const sessionHook = useSearchSession();
+	const { performAnalysis, cancel, handleApprovePlan, handleRegenerateSection, handleAskSection } = sessionHook;
 
 	// Only trigger analysis when triggerAnalysis changes AND analysis is not completed
 	// Do NOT trigger on searchQuery changes to avoid wasting resources
@@ -166,7 +163,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 
 		useSearchSessionStore.setState({ status: 'starting' });
 		try {
-			const agent = new SynthesizeAgent();
+			const agent = host.createSynthesizeAgent();
 			const result = await agent.synthesize(useSearchSessionStore.getState().rounds);
 			useSearchSessionStore.getState().replaceSynthesized(result.summary, result.sections);
 			useSearchSessionStore.getState().markCompleted();
@@ -174,7 +171,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 			console.error('Synthesize failed:', e);
 			useSearchSessionStore.setState({ status: 'completed' });
 		}
-	}, []);
+	}, [host]);
 
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-min-h-0">
@@ -194,20 +191,30 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 				</div>
 			)}
 
-			{/* Main Content - extra top/side padding for IntelligenceFrame glow to avoid clipping */}
-			<div ref={contentContainerRef} className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto pktw-pt-6 pktw-px-4 pktw-pb-5">
-				<SearchResultView onClose={onClose} onRetry={handleRetry} onApprove={handleApprovePlan} onRegenerateSection={handleRegenerateSection} />
+			{/* Main content — compact top inset keeps section headers attached to the workspace. */}
+			<div ref={contentContainerRef} className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto pktw-pt-2 pktw-px-4 pktw-pb-4">
+				<SearchResultView
+					onClose={onClose}
+					onRetry={handleRetry}
+					onApprove={handleApprovePlan}
+					onRegenerateSection={handleRegenerateSection}
+					onAskSection={handleAskSection}
+				/>
 			</div>
 
 			{/* Footer */}
-			{(isAnalyzing || analysisCompleted) ? (
-				<V2Footer onContinue={() => setShowV2ContinueInput(!showV2ContinueInput)} onSynthesize={handleSynthesize} showContinueAnalysis={showV2ContinueInput} onSave={() => setShowSaveDialog(true)} onSaveGraph={handleSaveGraph} onOpenInChat={() => handleOpenInChat(onClose)} />
+			{(isAnalyzing || analysisCompleted || sessionStatus === 'plan_ready') ? (
+				<V2Footer
+					onContinue={() => {
+						useSearchSessionStore.getState().setV2View('report');
+						useUIEventStore.getState().publish('focus-report-followup', {});
+					}}
+					onSynthesize={handleSynthesize}
+					onSave={() => setShowSaveDialog(true)}
+					onSaveGraph={handleSaveGraph}
+					onOpenInChat={() => handleOpenInChat(onClose)}
+				/>
 			) : null}
-
-			{/* V2 floating continue analysis input */}
-			{showV2ContinueInput && (
-				<V2ContinueAnalysisInput onClose={() => setShowV2ContinueInput(false)} />
-			)}
 
 			{/* Save dialog */}
 			{showSaveDialog && (

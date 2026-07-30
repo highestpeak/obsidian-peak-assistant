@@ -15,6 +15,7 @@ const PATTERNS = {
 	partialReportSection: new RegExp(SIMULATOR_CONFIG.patterns.partialReportSection, 'i'),
 	mermaidRepair: new RegExp(SIMULATOR_CONFIG.patterns.mermaidRepair, 'i'),
 	insightAssignment: new RegExp(SIMULATOR_CONFIG.patterns.insightAssignment, 'i'),
+	followup: new RegExp(SIMULATOR_CONFIG.patterns.followup, 'i'),
 	summary: new RegExp(SIMULATOR_CONFIG.patterns.summary, 'i'),
 	section: new RegExp(SIMULATOR_CONFIG.patterns.section, 'i'),
 	cjk: new RegExp(SIMULATOR_CONFIG.patterns.cjk, 'u'),
@@ -181,6 +182,11 @@ function resolveOneShotIntent(request) {
 		return { kind: 'text', text: SIMULATOR_CONFIG.fixedResponses.insightAssignment };
 	}
 
+	if (PATTERNS.followup.test(text)) {
+		const copy = languageCopy(text);
+		return { kind: 'text', text: copy.followup.join('\n\n') };
+	}
+
 	if (PATTERNS.summary.test(text)) {
 		const copy = languageCopy(text);
 		return { kind: 'text', text: copy.summary.join('\n\n') };
@@ -190,11 +196,14 @@ function resolveOneShotIntent(request) {
 		const copy = languageCopy(text);
 		const title = captureSectionTitle(text)
 			?? SIMULATOR_CONFIG.fixedResponses.defaultSectionTitle;
+		const sectionIndex = copy.titles.indexOf(title);
+		const section = copy.sections[sectionIndex >= 0 ? sectionIndex : 0] ?? copy.sections[0];
+		const evidencePaths = captureEvidencePaths(text);
 		return {
 			kind: 'text',
 			text: [
 				`${SIMULATOR_CONFIG.format.sectionHeadingPrefix} ${title}`,
-				...copy.section,
+				...section.map((part) => interpolateEvidence(part, evidencePaths)),
 			].join('\n\n'),
 		};
 	}
@@ -280,6 +289,25 @@ function captureSectionTitle(text) {
 
 function uniqueStrings(values) {
 	return [...new Set(values)];
+}
+
+function captureEvidencePaths(text) {
+	const paths = [];
+	const pattern = /\[\[([^\]|#]+)(?:[|#][^\]]+)?\]\]/g;
+	let match;
+	while ((match = pattern.exec(text)) !== null) {
+		const path = match[1]?.trim();
+		if (path) paths.push(path);
+	}
+	return uniqueStrings(paths);
+}
+
+function interpolateEvidence(template, evidencePaths) {
+	const first = evidencePaths[0] ?? 'Current evidence';
+	const second = evidencePaths[1] ?? first;
+	return template
+		.replaceAll('{source1}', first)
+		.replaceAll('{source2}', second);
 }
 
 function interpolateCount(template, count) {

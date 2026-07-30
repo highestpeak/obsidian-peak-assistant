@@ -144,14 +144,15 @@ async function testStreamingGuards(): Promise<void> {
 	}
 	check('guards: variant switch refused while streaming', navThrew);
 
-	// Cancel is allowed: variant fails, nothing written, typed event fires.
+	// Cancel is allowed: variant reaches its distinct terminal state, nothing
+	// is written, and the typed event fires.
 	const cancelled = nextRunEvent(runtime, 'run-cancelled');
 	runtime.cancel(candidateId);
 	executor.release();
 	await cancelled;
 	// Let the run's finally block settle before probing the streaming flag.
 	await new Promise((resolve) => setTimeout(resolve, 0));
-	check('guards: cancelled candidate is failed', hub.projection().candidates[0]?.status === 'failed');
+	check('guards: cancelled candidate is cancelled', hub.projection().candidates[0]?.status === 'cancelled');
 	check('guards: cancel wrote nothing', vault.read('note.md') === SOURCE);
 	check('guards: streaming flag cleared after cancel', !runtime.isStreaming(candidateId));
 }

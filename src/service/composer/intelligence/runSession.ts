@@ -21,7 +21,12 @@
  * app-composed IntelligenceRuntime owns one instance per open document.
  */
 
-import type { ComposerCapabilityId, ComposerContextSnapshot, ComposerTarget } from '@/core/composer';
+import type {
+	ComposerCapabilityId,
+	ComposerContextSnapshot,
+	ComposerTarget,
+	IntelligencePresentationOrigin,
+} from '@/core/composer';
 import type { ComposerCommentSourceRef } from '../comment/commentModel';
 
 /** Sidecar top-level surface — switching only re-projects, never re-owns context. */
@@ -59,6 +64,8 @@ export interface FrozenRunContext {
 	readonly relatedRefs: readonly string[];
 	/** Real Composer capability selected for this run, when one is required. */
 	readonly capabilityId?: ComposerCapabilityId;
+	/** Leaf-local UI handoff that opened Intelligence for this run, when contextual. */
+	readonly presentationOrigin?: IntelligencePresentationOrigin;
 	/**
 	 * Explicit comment/thread sources. External text remains structured and
 	 * trust-labelled so prompt assembly cannot confuse it with author commands.
@@ -106,6 +113,8 @@ export interface RunReceipt {
 	/** Short target label ("引言 · 第 2 段"). */
 	readonly targetLabel: string;
 	readonly elapsedMs: number;
+	/** Contextual handoff retained for session resume/history explanation. */
+	readonly presentationOrigin?: IntelligencePresentationOrigin;
 	readonly changes: readonly RunChangeArtifact[];
 	readonly insights: readonly RunArtifact[];
 	readonly sources: readonly RunSourceArtifact[];
@@ -232,6 +241,7 @@ export class CopilotSessionMachine {
 		relatedRefs?: readonly string[];
 		commentRefs?: readonly ComposerCommentSourceRef[];
 		capabilityId?: ComposerCapabilityId;
+		presentationOrigin?: IntelligencePresentationOrigin | null;
 	}): FrozenRunContext {
 		const runId = nextRunId();
 		const relatedRefs = input.relatedRefs ?? this.pendingRelatedRefs;
@@ -245,6 +255,9 @@ export class CopilotSessionMachine {
 			...((input.capabilityId ?? this.pendingCapabilityId)
 				? { capabilityId: input.capabilityId ?? this.pendingCapabilityId! }
 				: {}),
+			...(input.presentationOrigin
+				? { presentationOrigin: Object.freeze({ ...input.presentationOrigin }) }
+				: {}),
 		});
 		this.frozenById.set(runId, frozen);
 		this.activeRunId = runId;
@@ -256,6 +269,9 @@ export class CopilotSessionMachine {
 			action: this.sessionTitle ?? '',
 			targetLabel: input.targetQuote.slice(0, 48),
 			elapsedMs: 0,
+			...(input.presentationOrigin
+				? { presentationOrigin: Object.freeze({ ...input.presentationOrigin }) }
+				: {}),
 			changes: [],
 			insights: [],
 			sources: commentRefs.map(commentSourceArtifact),

@@ -20,7 +20,6 @@ import { runAgentLoop } from '@/service/agents/harness/loop/AgentLoop';
 import type { ToolDef } from '@/service/agents/harness/tool/types';
 import { ok } from '@/service/agents/harness/tool/types';
 import { DEFAULT_HARNESS_SETTINGS } from '@/core/config/settingsTypes';
-import { DEFAULT_SDK_SETTINGS } from '@/core/profiles/types';
 import type { SimulatorScenarioId } from '@/core/profiles/types';
 import type { TierBinding } from '@/service/agents/harness/tier/types';
 
@@ -58,7 +57,7 @@ async function verifyProviderContract(baseUrl: string) {
 
 	const health = await fetch(`${baseUrl}/health`);
 	const healthPayload = await health.json() as { protocols?: string[] };
-	assert.deepEqual(healthPayload.protocols, ['openai-chat', 'anthropic-messages']);
+	assert.deepEqual(healthPayload.protocols, ['openai-chat']);
 
 	const strictModel = createLanguageModel(profile, SIMULATOR_MODEL_ID);
 	await assert.rejects(
@@ -70,7 +69,7 @@ async function verifyProviderContract(baseUrl: string) {
 		/strict mode could not classify/i,
 	);
 
-	const sectionResponse = await anthropicRequest(baseUrl, profile, {
+	const sectionResponse = await openAIRequest(baseUrl, profile, {
 		stream: false,
 		messages: [{
 			role: 'user',
@@ -79,11 +78,48 @@ async function verifyProviderContract(baseUrl: string) {
 	});
 	assert.equal(sectionResponse.status, 200);
 	const sectionPayload = await sectionResponse.json() as {
-		content?: Array<{ text?: string }>;
+		choices?: Array<{ message?: { content?: string } }>;
 	};
-	assert(sectionPayload.content?.[0]?.text?.includes('local AI Search Simulator'));
+	const sectionText = sectionPayload.choices?.[0]?.message?.content ?? '';
+	assert(sectionText.includes('flowchart LR'));
+	assert(sectionText.length > 700);
 
-	const streamResponse = await anthropicRequest(baseUrl, profile, {
+	const evidenceSectionResponse = await openAIRequest(baseUrl, profile, {
+		stream: false,
+		messages: [{
+			role: 'user',
+			content: [
+				'## This Section',
+				'Section title: Representative notes and evidence',
+				'## Evidence for This Section',
+				'### [[Projects/Alpha.md]]',
+				'### [[Projects/Beta.md]]',
+			].join('\n'),
+		}],
+	});
+	assert.equal(evidenceSectionResponse.status, 200);
+	const evidencePayload = await evidenceSectionResponse.json() as {
+		choices?: Array<{ message?: { content?: string } }>;
+	};
+	const evidenceText = evidencePayload.choices?.[0]?.message?.content ?? '';
+	assert(evidenceText.includes('| Evidence | Contribution | Confidence | Review action |'));
+	assert(evidenceText.includes('[[Projects/Alpha.md]]'));
+	assert.notEqual(evidenceText, sectionText);
+
+	const followupResponse = await openAIRequest(baseUrl, profile, {
+		stream: false,
+		messages: [{
+			role: 'user',
+			content: '## Analysis context\nSection answer: Test\n## User question\nWhat supports this?',
+		}],
+	});
+	assert.equal(followupResponse.status, 200);
+	const followupPayload = await followupResponse.json() as {
+		choices?: Array<{ message?: { content?: string } }>;
+	};
+	assert(followupPayload.choices?.[0]?.message?.content?.includes('non-destructive'));
+
+	const streamResponse = await openAIRequest(baseUrl, profile, {
 		stream: true,
 		messages: [{
 			role: 'user',
@@ -92,11 +128,11 @@ async function verifyProviderContract(baseUrl: string) {
 	});
 	assert.equal(streamResponse.status, 200);
 	const streamBody = await streamResponse.text();
-	assert(streamBody.includes('event: content_block_delta'));
+	assert(streamBody.includes('chat.completion.chunk'));
 	assert(streamBody.includes('Executive summary'));
 
 	const partialProfile = simulatorProfile(baseUrl, 'report-partial-failure');
-	const partialResponse = await anthropicRequest(baseUrl, partialProfile, {
+	const partialResponse = await openAIRequest(baseUrl, partialProfile, {
 		stream: false,
 		messages: [{
 			role: 'user',
@@ -199,7 +235,7 @@ async function verifyRemainingScenarios(baseUrl: string) {
 	assert.equal(escalationResponse.status, 200);
 	assert.equal((await readOpenAIToolCall(escalationResponse)).name, 'escalate');
 
-	const totalFailureResponse = await anthropicRequest(
+	const totalFailureResponse = await openAIRequest(
 		baseUrl,
 		simulatorProfile(baseUrl, 'report-total-failure'),
 		{
@@ -329,16 +365,15 @@ function loadSimulatorRegistry(profile: ReturnType<typeof simulatorProfile>) {
 		activeCopilotConfig: null,
 		activeEmbeddingConfig: null,
 		activeWebSearchConfig: null,
-		sdkSettings: DEFAULT_SDK_SETTINGS,
 	}, () => undefined);
 }
 
-function anthropicRequest(
+function openAIRequest(
 	baseUrl: string,
 	profile: ReturnType<typeof simulatorProfile>,
 	body: Record<string, unknown>,
 ) {
-	return fetch(`${baseUrl}/messages`, {
+	return fetch(`${baseUrl}/chat/completions`, {
 		method: 'POST',
 		headers: {
 			'content-type': 'application/json',
@@ -346,7 +381,6 @@ function anthropicRequest(
 		},
 		body: JSON.stringify({
 			model: SIMULATOR_MODEL_ID,
-			max_tokens: 1024,
 			...body,
 		}),
 	});

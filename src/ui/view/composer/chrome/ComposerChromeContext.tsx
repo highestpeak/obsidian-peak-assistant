@@ -17,6 +17,7 @@ import type {
 	ComposerNativePreviewPort,
 	ComposerTransactionHub,
 	ImageCapabilityCoordinator,
+	ComposerWorkspaceIntelligenceRuntime,
 	VaultPropertyScanPort,
 } from '@/service/composer';
 import type { FormulaDetailGeneratorPort } from '../blocks/math/formulaDetailStore';
@@ -72,6 +73,8 @@ export interface ComposerChromeRuntime {
 	imagePreviewResolver?: (path: string, sourcePath?: string) => string;
 	/** Explicit new-block generation; absent keeps the AI action disabled with a reason. */
 	blockDraftGeneration?: ComposerBlockDraftGenerationPort;
+	/** Workspace-lifetime scope, Work Segment and Frozen Run owner. */
+	workspaceIntelligence?: ComposerWorkspaceIntelligenceRuntime;
 }
 
 export interface ComposerChromeValue {

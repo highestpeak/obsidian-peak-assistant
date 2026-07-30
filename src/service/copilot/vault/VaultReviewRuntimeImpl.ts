@@ -7,7 +7,7 @@
 //
 // The composition (`src/app/copilot/vault/composeVaultReviewRuntime`)
 // is the ONE place that wires concrete Obsidian + sqlite + lint
-// runtime + Agent SDK adapters into the port bag.
+// runtime + Peak Harness adapters into the port bag.
 
 import type { VaultReviewRuntime, RunVaultReviewRuntimeOptions } from './VaultReviewRuntime';
 import type { VaultReviewDeps } from './ports/VaultReviewPorts';

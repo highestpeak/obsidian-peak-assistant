@@ -215,6 +215,7 @@ function buildCompletedSnapshotFromV2(
 		graph: null,
 		sources: [],
 		dashboardBlocks: [],
+		blocksFollowupsByBlockId: v2Data!.v2SectionFollowups,
 		// V2 fields
 		v2ProcessLog: v2Data!.v2ProcessLog,
 		v2PlanOutline: v2Data!.v2PlanOutline ?? undefined,

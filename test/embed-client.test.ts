@@ -90,7 +90,6 @@ async function run(): Promise<void> {
             profiles: [BASE_PROFILE],
             activeAgentProfileId: 'test-profile',
             activeEmbeddingProfileId: 'test-profile',
-            sdkSettings: {} as any,
           },
           () => {},
         );
@@ -124,7 +123,6 @@ async function run(): Promise<void> {
             profiles: [BASE_PROFILE],
             activeAgentProfileId: 'test-profile',
             activeEmbeddingProfileId: 'test-profile',
-            sdkSettings: {} as any,
           },
           () => {},
         );
@@ -156,7 +154,6 @@ async function run(): Promise<void> {
             profiles: [BASE_PROFILE],
             activeAgentProfileId: 'test-profile',
             activeEmbeddingProfileId: 'test-profile',
-            sdkSettings: {} as any,
           },
           () => {},
         );
@@ -189,7 +186,6 @@ async function run(): Promise<void> {
             profiles: [BASE_PROFILE],
             activeAgentProfileId: 'test-profile',
             activeEmbeddingProfileId: 'test-profile',
-            sdkSettings: {} as any,
           },
           () => {},
         );
@@ -220,7 +216,6 @@ async function run(): Promise<void> {
             profiles: [BASE_PROFILE],
             activeAgentProfileId: 'test-profile',
             activeEmbeddingProfileId: 'test-profile',
-            sdkSettings: {} as any,
           },
           () => {},
         );
@@ -250,7 +245,6 @@ async function run(): Promise<void> {
             profiles: [BASE_PROFILE],
             activeAgentProfileId: 'test-profile',
             activeEmbeddingProfileId: 'test-profile',
-            sdkSettings: {} as any,
           },
           () => {},
         );
@@ -284,7 +278,6 @@ async function run(): Promise<void> {
             profiles: [],
             activeAgentProfileId: null,
             activeEmbeddingProfileId: null,
-            sdkSettings: {} as any,
           },
           () => {},
         );
@@ -311,7 +304,6 @@ async function run(): Promise<void> {
             profiles: [noEmbedProfile],
             activeAgentProfileId: 'test-profile',
             activeEmbeddingProfileId: 'test-profile',
-            sdkSettings: {} as any,
           },
           () => {},
         );
@@ -334,7 +326,6 @@ async function run(): Promise<void> {
             profiles: [BASE_PROFILE],
             activeAgentProfileId: 'test-profile',
             activeEmbeddingProfileId: null, // no embedding profile
-            sdkSettings: {} as any,
           },
           () => {},
         );

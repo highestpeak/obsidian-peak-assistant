@@ -40,8 +40,8 @@ export const DOC_REVIEW_CURRENT_FIXTURE: CapabilityManifest = {
 	permissionKind: 'read',
 	costTier: 'deep',
 	backendPolicy: {
-		preferred: 'claude-sdk',
-		fallback: ['hermes-harness', 'provider-direct'],
+		preferred: 'hermes-harness',
+		fallback: ['provider-direct'],
 	},
 
 	skillRef: 'doc-review.v1',

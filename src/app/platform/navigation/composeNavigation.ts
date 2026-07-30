@@ -13,9 +13,13 @@ import type { WikilinkPort } from '@/core/ports/WikilinkPort';
 import { AppVaultNavigationAdapter } from './AppVaultNavigationAdapter';
 import { AppEditorCommandsAdapter } from './AppEditorCommandsAdapter';
 import { AppWikilinkAdapter } from './AppWikilinkAdapter';
+import type { ComposerDocumentRouter } from '@/app/composer/ComposerDocumentRouter';
 
-export function composeVaultNavigation(app: App): VaultNavigationPort {
-	return new AppVaultNavigationAdapter(app);
+export function composeVaultNavigation(
+	app: App,
+	getComposerRouter?: () => ComposerDocumentRouter | null,
+): VaultNavigationPort {
+	return new AppVaultNavigationAdapter(app, getComposerRouter);
 }
 
 export function composeEditorCommands(app: App): EditorCommandsPort {

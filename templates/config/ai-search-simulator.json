@@ -2,8 +2,6 @@
   "endpoint": {
     "defaultBaseUrl": "http://127.0.0.1:43127/v1",
     "apiKey": "peak-local-simulator",
-    "agentSdkModel": "claude-sonnet-4-6",
-    "agentSdkFastModel": "claude-haiku-4-5",
     "scenarioHeader": "x-peak-simulator-scenario",
     "speedHeader": "x-peak-simulator-speed",
     "strictHeader": "x-peak-simulator-strict"
@@ -51,9 +49,9 @@
     }
   ],
   "speeds": [
-    { "id": "instant", "label": "Instant", "description": "No artificial delay." },
-    { "id": "normal", "label": "Normal", "description": "Short delay for visible state changes." },
-    { "id": "slow", "label": "Slow", "description": "Longer delay for loading and cancellation checks." }
+    { "id": "instant", "label": "Instant", "description": "Automation-only speed with no artificial delay." },
+    { "id": "normal", "label": "Review realistic", "description": "Human-review timing with visible tool and streaming states." },
+    { "id": "slow", "label": "Slow inspection", "description": "Extended delay for loading, cancellation and recovery checks." }
   ],
   "ui": {
     "providerName": "AI Search Simulator",

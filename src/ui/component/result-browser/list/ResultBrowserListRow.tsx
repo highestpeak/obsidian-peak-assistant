@@ -180,13 +180,13 @@ export const ResultBrowserListRow: React.FC<ResultBrowserListRowProps> = ({
 				variant="ghost"
 				size="icon"
 				title="Open in new tab"
-				className="pktw-absolute pktw-top-1.5 pktw-right-2 pktw-h-6 pktw-w-6 pktw-rounded pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity"
+				className="pktw-absolute pktw-top-1.5 pktw-right-2 !pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-w-8 !pktw-min-w-8 !pktw-max-w-8 !pktw-p-0 pktw-rounded-md pktw-opacity-0 group-hover:pktw-opacity-100 focus-visible:pktw-opacity-100 pktw-transition-opacity"
 				onClick={(e) => {
 					e.stopPropagation();
 					onOpen(result, { newTab: true, viaNewTabButton: true });
 				}}
 			>
-				<ExternalLink className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-text-tertiary" />
+				<ExternalLink className="pktw-h-4 pktw-w-4 pktw-text-pk-text-tertiary" />
 			</Button>
 
 			<div className="pktw-flex pktw-items-start pktw-gap-3">

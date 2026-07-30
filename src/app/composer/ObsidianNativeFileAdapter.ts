@@ -24,7 +24,7 @@ import type {
 	ComposerResourcePreviewRequest,
 	ComposerResourcePreviewState,
 } from '@/service/composer';
-import { classifyComposerNativeTarget } from '@/service/composer';
+import { classifyComposerNativeTarget, extractEmbedSelectionRange } from '@/service/composer';
 
 export class ObsidianComposerNativeFileAdapter implements ComposerNativeFilePort {
 	constructor(private readonly app: App) {}
@@ -116,10 +116,14 @@ export class ObsidianComposerNativePreviewAdapter implements ComposerNativePrevi
 			if (resolved.extension.toLowerCase() === 'md') {
 				const text = await this.app.vault.cachedRead(resolved);
 				const excerpt = excerptFor(text, anchor);
+				const range = request.range
+					? extractEmbedSelectionRange(text, request.range.startAnchor, request.range.endAnchor)
+					: null;
 				return {
 					...base,
 					...(excerpt.text ? { textExcerpt: excerpt.text } : {}),
 					...(anchor ? { anchorResolved: excerpt.resolved } : {}),
+					...(range ? { rangeText: range.text, rangeResolved: range.resolved } : {}),
 				};
 			}
 			if (resolved.extension.toLowerCase() === 'pdf') {

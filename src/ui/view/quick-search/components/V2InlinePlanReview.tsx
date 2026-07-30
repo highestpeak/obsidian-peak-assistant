@@ -1,341 +1,254 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronRight, ChevronUp, ChevronDown, Trash2, Sparkles, FileText, AlertTriangle, Check, Plus, Microscope, Zap, Scale, Target, ShieldAlert, Map as MapIcon, Layers, Eye, Telescope, type LucideIcon } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, FileText, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import type { V2Section } from '../store/searchSessionStore';
-import { VISUAL_TYPE_LABELS, MISSION_ROLES } from '@/core/constant';
+import { MISSION_ROLES, VISUAL_TYPE_LABELS } from '@/core/constant';
 import { StreamdownIsolated } from '@/ui/component/mine/StreamdownIsolated';
 
-const ROLE_ICON_MAP: Record<string, LucideIcon> = {
-	synthesis: Microscope,
-	contradictions: Zap,
-	trade_off: Scale,
-	action_plan: Target,
-	risk_audit: ShieldAlert,
-	roadmap: MapIcon,
-	decomposition: Layers,
-	blindspots: Eye,
-	probing_horizon: Telescope,
-};
+function moveLabel(role: string): string {
+	return MISSION_ROLES.find((item) => item.key === role)?.label ?? role.replace(/_/g, ' ');
+}
 
-/** A single section card nested under its role */
 const SectionCard: React.FC<{
-	sec: V2Section;
+	section: V2Section;
 	index: number;
 	total: number;
-	onMove: (id: string, dir: -1 | 1) => void;
+	editable: boolean;
+	onMove: (id: string, direction: -1 | 1) => void;
 	onRemove: (id: string) => void;
-	onUpdate: (id: string, updater: (s: V2Section) => V2Section) => void;
-}> = ({ sec, index, total, onMove, onRemove, onUpdate }) => (
-	<div className="pktw-flex pktw-items-start pktw-gap-2 pktw-py-2 pktw-px-3 pktw-bg-pk-background pktw-rounded-lg pktw-border pktw-border-pk-border pktw-group">
-		{/* Reorder */}
-		<div className="pktw-flex pktw-flex-col pktw-gap-0 pktw-shrink-0 pktw-pt-0.5">
-			<div
-				onClick={() => onMove(sec.id, -1)}
-				className={`pktw-p-0.5 pktw-rounded pktw-cursor-pointer pktw-transition-colors ${index === 0 ? 'pktw-text-pk-border' : 'pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground-muted'}`}
-			>
-				<ChevronUp className="pktw-w-3 pktw-h-3" />
-			</div>
-			<div
-				onClick={() => onMove(sec.id, 1)}
-				className={`pktw-p-0.5 pktw-rounded pktw-cursor-pointer pktw-transition-colors ${index === total - 1 ? 'pktw-text-pk-border' : 'pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground-muted'}`}
-			>
-				<ChevronDown className="pktw-w-3 pktw-h-3" />
-			</div>
+	onUpdate: (id: string, updater: (section: V2Section) => V2Section) => void;
+}> = ({ section, index, total, editable, onMove, onRemove, onUpdate }) => (
+	<div className="pktw-grid pktw-grid-cols-[32px_minmax(0,1fr)_auto] pktw-gap-2.5 pktw-px-3 pktw-py-3 pktw-border-t pktw-border-pk-border first:pktw-border-t-0 pktw-bg-pk-background">
+		<div className="pktw-w-7 pktw-h-7 pktw-rounded-md pktw-bg-pk-surface-sunken pktw-border pktw-border-pk-border pktw-flex pktw-items-center pktw-justify-center pktw-text-pk-xs pktw-font-semibold pktw-text-pk-foreground-muted">
+			{index + 1}
 		</div>
-		{/* Content */}
-		<div className="pktw-flex-1 pktw-min-w-0">
+		<div className="pktw-min-w-0">
 			<span
-				className="pktw-text-sm pktw-font-medium pktw-text-pk-text-primary pktw-block pktw-mb-0.5 pktw-outline-none pktw-rounded pktw-px-1.5 pktw-py-0.5 pktw--mx-1.5 pktw-border pktw-border-transparent hover:pktw-border-pk-border hover:pktw-bg-pk-background focus:pktw-ring-1 focus:pktw-ring-pk-accent/40 focus:pktw-bg-pk-background focus:pktw-border-pk-accent/30 pktw-cursor-text pktw-transition-all"
-				contentEditable
+				className={`pktw-block pktw-text-sm pktw-font-semibold pktw-text-pk-text-primary pktw-rounded pktw-outline-none ${editable ? 'pktw-px-1.5 pktw-py-0.5 pktw--mx-1.5 pktw-border pktw-border-transparent hover:pktw-border-pk-border focus:pktw-border-pk-accent/40 focus:pktw-bg-pk-surface-raised pktw-cursor-text' : ''}`}
+				contentEditable={editable}
 				suppressContentEditableWarning
-				onBlur={(e) => {
-					const text = (e.target as HTMLSpanElement).textContent?.trim() || sec.title;
-					if (text !== sec.title) onUpdate(sec.id, (s) => ({ ...s, title: text }));
+				onBlur={(event) => {
+					if (!editable) return;
+					const title = event.currentTarget.textContent?.trim() || section.title;
+					if (title !== section.title) onUpdate(section.id, (value) => ({ ...value, title }));
 				}}
-				onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLElement).blur(); } }}
+				onKeyDown={(event) => {
+					if (event.nativeEvent.isComposing) return;
+					if (event.key !== 'Enter') return;
+					event.preventDefault();
+					event.currentTarget.blur();
+				}}
 			>
-				{sec.title}
+				{section.title}
 			</span>
-			<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-mb-1">
-				{sec.visualType && sec.visualType !== 'none' && (
-					<span className="pktw-px-1.5 pktw-py-0.5 pktw-text-[9px] pktw-font-medium pktw-bg-pk-surface-sunken pktw-text-pk-foreground-muted pktw-rounded">
-						{VISUAL_TYPE_LABELS[sec.visualType] ?? sec.visualType}
+			<span
+				className={`pktw-block pktw-mt-1 pktw-text-xs pktw-leading-relaxed pktw-text-pk-foreground-muted pktw-rounded pktw-outline-none ${editable ? 'pktw-px-1.5 pktw-py-0.5 pktw--mx-1.5 pktw-border pktw-border-transparent hover:pktw-border-pk-border focus:pktw-border-pk-accent/40 focus:pktw-bg-pk-surface-raised pktw-cursor-text' : ''}`}
+				contentEditable={editable}
+				suppressContentEditableWarning
+				onBlur={(event) => {
+					if (!editable) return;
+					const brief = event.currentTarget.textContent?.trim() || section.brief;
+					if (brief !== section.brief) onUpdate(section.id, (value) => ({ ...value, brief }));
+				}}
+			>
+				{section.brief || 'Add the question this section must answer.'}
+			</span>
+			<div className="pktw-flex pktw-items-center pktw-flex-wrap pktw-gap-1.5 pktw-mt-2">
+				<span className="pktw-px-1.5 pktw-py-0.5 pktw-rounded-full pktw-bg-pk-accent-tint pktw-text-pk-xs pktw-font-medium pktw-text-pk-accent">
+					{moveLabel(section.missionRole)}
+				</span>
+				{section.visualType && section.visualType !== 'none' && (
+					<span className="pktw-px-1.5 pktw-py-0.5 pktw-rounded-full pktw-bg-pk-surface-sunken pktw-text-pk-xs pktw-text-pk-foreground-muted">
+						{VISUAL_TYPE_LABELS[section.visualType] ?? section.visualType}
 					</span>
 				)}
-				<span className="pktw-text-[9px] pktw-text-pk-foreground-muted">{sec.evidencePaths.length} sources</span>
+				<span className="pktw-text-pk-xs pktw-text-pk-foreground-muted">
+					{section.evidencePaths.length} direct sources
+				</span>
 			</div>
-			<span
-				className="pktw-text-xs pktw-text-pk-foreground-muted pktw-leading-relaxed pktw-outline-none pktw-rounded pktw-px-1.5 pktw-py-0.5 pktw--mx-1.5 pktw-border pktw-border-transparent hover:pktw-border-pk-border hover:pktw-bg-pk-background focus:pktw-ring-1 focus:pktw-ring-pk-accent/40 focus:pktw-bg-pk-background focus:pktw-border-pk-accent/30 pktw-cursor-text pktw-transition-all"
-				contentEditable
-				suppressContentEditableWarning
-				onBlur={(e) => {
-					const text = (e.target as HTMLSpanElement).textContent?.trim() || sec.brief;
-					if (text !== sec.brief) onUpdate(sec.id, (s) => ({ ...s, brief: text }));
-				}}
-				onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLElement).blur(); } }}
-			>
-				{sec.brief || 'Click to add description...'}
-			</span>
 		</div>
-		{/* Delete */}
-		<div
-			onClick={() => onRemove(sec.id)}
-			className="pktw-p-1 pktw-rounded pktw-text-pk-border group-hover:pktw-text-pk-foreground-muted hover:!pktw-text-pk-error pktw-cursor-pointer pktw-transition-colors pktw-shrink-0"
-		>
-			<Trash2 className="pktw-w-3 pktw-h-3" />
-		</div>
+		{editable && (
+			<div className="pktw-flex pktw-items-start pktw-gap-0.5">
+				<Button
+					variant="ghost"
+					size="icon"
+					disabled={index === 0}
+					className="!pktw-w-8 !pktw-h-8 !pktw-min-w-8 !pktw-min-h-8 !pktw-max-w-8 !pktw-max-h-8 !pktw-p-0 pktw-rounded-md"
+					title="Move section up"
+					onClick={() => onMove(section.id, -1)}
+				>
+					<ChevronUp className="pktw-w-4 pktw-h-4" />
+				</Button>
+				<Button
+					variant="ghost"
+					size="icon"
+					disabled={index === total - 1}
+					className="!pktw-w-8 !pktw-h-8 !pktw-min-w-8 !pktw-min-h-8 !pktw-max-w-8 !pktw-max-h-8 !pktw-p-0 pktw-rounded-md"
+					title="Move section down"
+					onClick={() => onMove(section.id, 1)}
+				>
+					<ChevronDown className="pktw-w-4 pktw-h-4" />
+				</Button>
+				<Button
+					variant="ghost"
+					size="icon"
+					className="!pktw-w-8 !pktw-h-8 !pktw-min-w-8 !pktw-min-h-8 !pktw-max-w-8 !pktw-max-h-8 !pktw-p-0 pktw-rounded-md hover:pktw-text-pk-error"
+					title="Remove section"
+					onClick={() => onRemove(section.id)}
+				>
+					<Trash2 className="pktw-w-4 pktw-h-4" />
+				</Button>
+			</div>
+		)}
 	</div>
 );
 
-interface V2InlinePlanReviewProps {
-	onApprove: () => void;
-}
+export const V2InlinePlanReview: React.FC<{ onApprove: () => void }> = ({ onApprove }) => {
+	const sections = useSearchSessionStore((state) => state.v2PlanSections);
+	const overview = useSearchSessionStore((state) => state.v2ProposedOutline);
+	const approved = useSearchSessionStore((state) => state.v2PlanApproved);
+	const insights = useSearchSessionStore((state) => state.v2UserInsights);
+	const removePlanSection = useSearchSessionStore((state) => state.removePlanSection);
+	const reorderPlanSections = useSearchSessionStore((state) => state.reorderPlanSections);
+	const updatePlanSection = useSearchSessionStore((state) => state.updatePlanSection);
+	const addPlanSection = useSearchSessionStore((state) => state.addPlanSection);
+	const [direction, setDirection] = useState('');
 
-export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprove }) => {
-	const sections = useSearchSessionStore((s) => s.v2PlanSections);
-	const overview = useSearchSessionStore((s) => s.v2ProposedOutline);
-	const planApproved = useSearchSessionStore((s) => s.v2PlanApproved);
-	const restoredFromHistory = useSearchSessionStore((s) => s.restoredFromHistory);
-	const removePlanSection = useSearchSessionStore((s) => s.removePlanSection);
-	const reorderPlanSections = useSearchSessionStore((s) => s.reorderPlanSections);
-	const updatePlanSection = useSearchSessionStore((s) => s.updatePlanSection);
-	const addPlanSection = useSearchSessionStore((s) => s.addPlanSection);
-	const insights = useSearchSessionStore((s) => s.v2UserInsights);
-	const [insightInput, setInsightInput] = useState('');
-	const [expanded, setExpanded] = useState(restoredFromHistory || !planApproved);
+	const moves = useMemo(
+		() => [...new Set(sections.map((section) => section.missionRole).filter(Boolean))],
+		[sections],
+	);
 
-	const moveSection = useCallback((id: string, direction: -1 | 1) => {
-		const ids = sections.map((s) => s.id);
-		const idx = ids.indexOf(id);
-		if (idx < 0) return;
-		const newIdx = idx + direction;
-		if (newIdx < 0 || newIdx >= ids.length) return;
-		[ids[idx], ids[newIdx]] = [ids[newIdx], ids[idx]];
+	const moveSection = useCallback((id: string, change: -1 | 1) => {
+		const ids = sections.map((section) => section.id);
+		const from = ids.indexOf(id);
+		const to = from + change;
+		if (from < 0 || to < 0 || to >= ids.length) return;
+		[ids[from], ids[to]] = [ids[to], ids[from]];
 		reorderPlanSections(ids);
 	}, [sections, reorderPlanSections]);
 
-	// Group sections by mission role, preserving order
-	const roleGroups = useMemo(() => {
-		const grouped = new Map<string, V2Section[]>();
-		for (const sec of sections) {
-			const role = sec.missionRole || 'synthesis';
-			const list = grouped.get(role) ?? [];
-			list.push(sec);
-			grouped.set(role, list);
-		}
-		return grouped;
-	}, [sections]);
-
-	// Find missing required roles
-	const coveredRoles = useMemo(() => new Set(sections.map((s) => s.missionRole)), [sections]);
-	const missingRequired = MISSION_ROLES.filter((r) => r.required && !coveredRoles.has(r.key));
+	const addDirection = () => {
+		const value = direction.trim();
+		if (!value) return;
+		useSearchSessionStore.getState().addUserInsight(value);
+		setDirection('');
+	};
 
 	return (
-		<div className="pktw-mt-2 pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-pk-background">
-			{/* Collapsible Header */}
-			<div
-				onClick={() => setExpanded((prev) => !prev)}
-				className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-2 pktw-cursor-pointer pktw-select-none hover:pktw-bg-pk-surface-sunken pktw-rounded-t-lg pktw-transition-colors"
-			>
-				<motion.div
-					animate={{ rotate: expanded ? 90 : 0 }}
-					transition={{ duration: 0.15 }}
-				>
-					<ChevronRight className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-muted" />
-				</motion.div>
-				<FileText className="pktw-w-4 pktw-h-4 pktw-text-pk-accent" />
-				<span className="pktw-text-xs pktw-font-semibold pktw-text-pk-text-primary">Report Outline</span>
-				<span className="pktw-text-pk-xs pktw-text-pk-foreground-muted">{sections.length} sections</span>
-				<div className="pktw-flex-1" />
-				{planApproved && (
-					<span className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-px-2 pktw-py-0.5 pktw-text-pk-xs pktw-font-medium pktw-text-pk-success-text pktw-bg-pk-success-bg pktw-border pktw-border-[var(--pk-success-border)] pktw-rounded-full">
-						<Check className="pktw-w-3 pktw-h-3" />
-						Approved
+		<div className="pktw-mt-3 pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-pk-background pktw-overflow-hidden">
+			<div className="pktw-flex pktw-items-start pktw-gap-2 pktw-px-3 pktw-py-3 pktw-border-b pktw-border-pk-border">
+				<FileText className="pktw-w-4 pktw-h-4 pktw-text-pk-accent pktw-mt-0.5" />
+				<div className="pktw-min-w-0 pktw-flex-1">
+					<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-flex-wrap">
+						<span className="pktw-text-sm pktw-font-semibold pktw-text-pk-text-primary">
+							Report plan · {sections.length} evidence-backed sections
+						</span>
+						{approved && (
+							<span className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-px-2 pktw-py-0.5 pktw-rounded-full pktw-bg-pk-success-bg pktw-text-pk-xs pktw-font-medium pktw-text-pk-success-text">
+								<Check className="pktw-w-3 pktw-h-3" />
+								Approved
+							</span>
+						)}
+					</div>
+					<span className="pktw-block pktw-text-xs pktw-text-pk-foreground-muted pktw-mt-1">
+						Sections are chosen for this question. Analytical moves guide quality; they are not fixed chapters.
 					</span>
-				)}
+				</div>
 			</div>
 
-			{/* Collapsible Body */}
-			<AnimatePresence initial={false}>
-				{expanded && (
-					<motion.div
-						initial={{ height: 0, opacity: 0 }}
-						animate={{ height: 'auto', opacity: 1 }}
-						exit={{ height: 0, opacity: 0 }}
-						transition={{ duration: 0.2, ease: 'easeInOut' }}
-						className="pktw-overflow-hidden"
+			{overview && (
+				<div className="pktw-px-3 pktw-py-3 pktw-border-b pktw-border-pk-border pktw-bg-pk-surface-raised">
+					<StreamdownIsolated isAnimating={false} className="pktw-text-sm pktw-text-pk-foreground-muted">
+						{overview}
+					</StreamdownIsolated>
+				</div>
+			)}
+
+			{moves.length > 0 && (
+				<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-flex-wrap pktw-px-3 pktw-py-2 pktw-border-b pktw-border-pk-border pktw-bg-pk-accent-tint/30">
+					<span className="pktw-text-pk-xs pktw-font-medium pktw-text-pk-foreground-muted">Selected analytical moves</span>
+					{moves.map((move) => (
+						<span key={move} className="pktw-px-1.5 pktw-py-0.5 pktw-rounded-full pktw-border pktw-border-pk-accent/20 pktw-text-pk-xs pktw-text-pk-accent pktw-bg-pk-background">
+							{moveLabel(move)}
+						</span>
+					))}
+				</div>
+			)}
+
+			<div>
+				{sections.map((section, index) => (
+					<SectionCard
+						key={section.id}
+						section={section}
+						index={index}
+						total={sections.length}
+						editable={!approved}
+						onMove={moveSection}
+						onRemove={removePlanSection}
+						onUpdate={updatePlanSection}
+					/>
+				))}
+			</div>
+
+			{!approved && (
+				<div className="pktw-px-3 pktw-py-3 pktw-border-t pktw-border-pk-border pktw-bg-pk-surface-raised">
+						<Button
+							variant="outline"
+							size="sm"
+							className="!pktw-h-9 !pktw-min-h-9 !pktw-max-h-9 !pktw-px-3 pktw-text-xs pktw-mb-3"
+						onClick={() => addPlanSection('synthesis')}
 					>
-						<div className="pktw-flex pktw-flex-col">
-							<div className="pktw-px-3">
-								{/* Overview */}
-								{overview && (
-									<div className="pktw-bg-pk-background pktw-rounded-lg pktw-p-3 pktw-border pktw-border-pk-border pktw-mb-3">
-										<StreamdownIsolated isAnimating={false} className="pktw-text-pk-lg pktw-text-pk-foreground-muted">
-											{overview}
-										</StreamdownIsolated>
-									</div>
-								)}
-
-								{/* Executive Summary marker */}
-								<div className="pktw-mb-2 pktw-ml-1 pktw-pl-3 pktw-border-l-2 pktw-border-pk-accent/30">
-									<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-1.5">
-										<Sparkles className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" />
-										<span className="pktw-text-xs pktw-font-semibold pktw-text-pk-accent">Executive Summary</span>
-										<span className="pktw-text-[9px] pktw-text-pk-foreground-muted pktw-italic">auto-generated</span>
-									</div>
-								</div>
-
-								{/* Role groups with nested sections */}
-								{MISSION_ROLES.map((role) => {
-									const roleSections = roleGroups.get(role.key) ?? [];
-									if (roleSections.length === 0) return null;
-
-									return (
-										<motion.div
-											key={role.key}
-											initial={{ opacity: 0, y: 6 }}
-											animate={{ opacity: 1, y: 0 }}
-											className="pktw-mb-2 pktw-ml-1"
-										>
-											{/* Role header */}
-											<div className={`pktw-pl-3 pktw-border-l-2 ${role.bgColor.split(' ')[1] ?? 'pktw-border-pk-border'}`}>
-												<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-py-1">
-													{(() => { const RIcon = ROLE_ICON_MAP[role.key]; return RIcon ? <RIcon className={`pktw-w-3.5 pktw-h-3.5 ${role.color}`} /> : null; })()}
-													<span className={`pktw-text-xs pktw-font-semibold ${role.color}`}>{role.label}</span>
-													{role.required && (
-														<span className="pktw-text-[8px] pktw-text-pk-foreground-muted pktw-uppercase">required</span>
-													)}
-												</div>
-												{/* Nested section cards */}
-												<div className="pktw-space-y-1.5 pktw-pb-2">
-													{roleSections.map((sec) => (
-														<SectionCard
-															key={sec.id}
-															sec={sec}
-															index={sections.indexOf(sec)}
-															total={sections.length}
-															onMove={moveSection}
-															onRemove={removePlanSection}
-															onUpdate={updatePlanSection}
-														/>
-													))}
-													{/* Add section button */}
-													{!planApproved && (
-														<div
-															onClick={() => addPlanSection(role.key)}
-															className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-py-1.5 pktw-px-3 pktw-text-pk-sm pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-cursor-pointer hover:pktw-bg-pk-accent-tint pktw-rounded-lg pktw-transition-colors"
-														>
-															<Plus className="pktw-w-3 pktw-h-3" />
-															<span>Add section</span>
-														</div>
-													)}
-												</div>
-											</div>
-										</motion.div>
-									);
-								})}
-
-								{/* Missing roles warning */}
-								{missingRequired.length > 0 && (
-									<div className="pktw-ml-1 pktw-pl-3 pktw-border-l-2 pktw-border-[var(--pk-error-border)] pktw-py-2">
-										<div className="pktw-flex pktw-items-center pktw-gap-1.5">
-											<AlertTriangle className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-error" />
-											<span className="pktw-text-pk-xs pktw-text-pk-error">
-												Missing: {missingRequired.map((r) => r.label).join(', ')}
-											</span>
-										</div>
-									</div>
-								)}
-
-								{/* Uncovered optional roles hint */}
-								{MISSION_ROLES.filter((r) => !r.required && !coveredRoles.has(r.key)).length > 0 && (
-									<div className="pktw-ml-1 pktw-pl-3 pktw-border-l-2 pktw-border-pk-border-soft pktw-py-1.5">
-										<span className="pktw-text-[9px] pktw-text-pk-foreground-muted">
-											Not covered: {MISSION_ROLES.filter((r) => !r.required && !coveredRoles.has(r.key)).map((r) => {
-									const RIcon = ROLE_ICON_MAP[r.key];
-									return (
-										<span key={r.key} className="pktw-inline-flex pktw-items-center pktw-gap-0.5 pktw-mr-1.5">
-											{RIcon && <RIcon className="pktw-w-2.5 pktw-h-2.5" />}
-											{r.label}
-										</span>
-									);
-								})}
-										</span>
-									</div>
-								)}
-							</div>
-
-							{/* Sticky footer — always visible without scrolling */}
-							<div className="pktw-flex-shrink-0 pktw-border-t pktw-border-pk-border pktw-px-3 pktw-pt-3 pktw-pb-3">
-								{/* Insight chips (only editable before approval) */}
-								{!planApproved && insights.length > 0 && (
-									<div className="pktw-flex pktw-flex-wrap pktw-gap-1.5 pktw-mb-2">
-										{insights.map((insight, i) => (
-											<span
-												key={i}
-												className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-px-2.5 pktw-py-1 pktw-text-xs pktw-bg-pk-accent-tint pktw-text-pk-accent pktw-rounded-full pktw-border pktw-border-pk-accent/20"
-											>
-												{insight}
-												<span
-													onClick={() => useSearchSessionStore.getState().removeUserInsight(i)}
-													className="pktw-cursor-pointer pktw-text-pk-accent/50 hover:pktw-text-pk-accent pktw-ml-0.5"
-												>
-													&times;
-												</span>
-											</span>
-										))}
-									</div>
-								)}
-								{/* Insight input */}
-								{!planApproved && (
-									<input
-										type="text"
-										value={insightInput}
-										onChange={(e) => setInsightInput(e.target.value)}
-										onKeyDown={(e) => {
-											if (e.key === 'Enter' && insightInput.trim()) {
-												useSearchSessionStore.getState().addUserInsight(insightInput.trim());
-												setInsightInput('');
-											}
-										}}
-										placeholder="Add insight (Enter to add)..."
-										className="pktw-w-full pktw-px-3 pktw-py-2 pktw-text-sm pktw-border pktw-border-pk-border pktw-rounded-lg pktw-outline-none focus:pktw-ring-2 focus:pktw-ring-pk-accent/50 pktw-mb-2"
-									/>
-								)}
-								{/* Generate button — only before approval */}
-								{!planApproved && (
-									<Button
-										onClick={onApprove}
-										className="pktw-w-full pktw-bg-pk-accent pktw-text-pk-accent-fg pktw-font-medium pktw-transition-all hover:pktw-opacity-90 hover:pktw-shadow-md active:pktw-scale-[0.98]"
-									>
-										<Sparkles className="pktw-w-4 pktw-h-4 pktw-mr-2" />
-										Generate Report ({sections.length} sections)
-									</Button>
-								)}
-							</div>
-						</div>
-					</motion.div>
-				)}
-			</AnimatePresence>
-
-			{/* Collapsed compact section list (when not expanded and not approved) */}
-			{!expanded && !planApproved && sections.length > 0 && (
-				<div className="pktw-px-3 pktw-pb-2">
-					<div className="pktw-flex pktw-flex-wrap pktw-gap-1">
-						{sections.map((sec) => {
-							const role = MISSION_ROLES.find((r) => r.key === sec.missionRole);
-							return (
-								<span
-									key={sec.id}
-									className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-px-2 pktw-py-0.5 pktw-text-pk-xs pktw-text-pk-foreground-muted pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded"
-								>
-									{role && (() => { const RIcon = ROLE_ICON_MAP[role.key]; return RIcon ? <RIcon className={`pktw-w-3 pktw-h-3 ${role.color}`} /> : null; })()}
-									{sec.title}
+						<Plus className="pktw-w-3.5 pktw-h-3.5 pktw-mr-1" />
+						Add section
+					</Button>
+					{insights.length > 0 && (
+						<div className="pktw-flex pktw-flex-wrap pktw-gap-1.5 pktw-mb-2">
+							{insights.map((insight, index) => (
+								<span key={`${insight}-${index}`} className="pktw-px-2 pktw-py-1 pktw-rounded-full pktw-bg-pk-accent-tint pktw-text-pk-xs pktw-text-pk-accent">
+									{insight}
 								</span>
-							);
-						})}
+							))}
+						</div>
+					)}
+					<div className="pktw-flex pktw-items-end pktw-gap-2">
+						<label className="pktw-flex-1 pktw-min-w-0">
+							<span className="pktw-block pktw-text-xs pktw-font-medium pktw-text-pk-text-primary pktw-mb-1">
+								Additional report direction
+							</span>
+							<textarea
+								value={direction}
+								onChange={(event) => setDirection(event.target.value)}
+								onKeyDown={(event) => {
+									if (event.nativeEvent.isComposing) return;
+									if (event.key !== 'Enter' || (!event.metaKey && !event.ctrlKey)) return;
+									event.preventDefault();
+									addDirection();
+								}}
+								placeholder="For example: separate proven findings from open questions."
+								className="pktw-w-full pktw-min-h-[58px] pktw-resize-y pktw-px-3 pktw-py-2 pktw-text-xs pktw-border pktw-border-pk-border pktw-rounded-lg pktw-bg-pk-background pktw-outline-none focus:pktw-border-pk-accent"
+							/>
+						</label>
+						<Button
+							variant="outline"
+							size="sm"
+							disabled={!direction.trim()}
+							onClick={addDirection}
+							className="!pktw-h-9 !pktw-min-h-9 !pktw-max-h-9 !pktw-px-3"
+						>
+							Apply to plan
+						</Button>
+					</div>
+					<div className="pktw-flex pktw-justify-end pktw-mt-3">
+						<Button
+							onClick={onApprove}
+							disabled={sections.length === 0}
+							className="!pktw-h-10 !pktw-min-h-10 !pktw-max-h-10 !pktw-px-5 !pktw-rounded-full"
+						>
+							<Sparkles className="pktw-w-4 pktw-h-4 pktw-mr-2" />
+							Generate report
+						</Button>
 					</div>
 				</div>
 			)}

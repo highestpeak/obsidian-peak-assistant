@@ -15,8 +15,8 @@
         <div>
           <h1>AI Search 不缺步骤，缺的是可信的研究—计划—报告工作区</h1>
           <p>
-            保留分章节并行生成，取消固定的 mission-role 报告模板；让结构来自当前问题与证据，
-            让 Report 成为生成后的主工作区，让 Sources 直接复用 Vault Search 的 Result Browser。
+            保留完整 agent run、报告计划、旧版分析框架与分章节并行生成；重新划分它们的层级，
+            让 Report 成为生成后的主工作区，让 Sources 直接复用 Workspace / File Atlas / Vault Search 的 Result Browser。
           </p>
         </div>
         <button class="quiet-button" id="reset-demo" type="button">Reset mock</button>
@@ -49,10 +49,10 @@
         <div class="verdict-callout">
           <div class="verdict-mark" aria-hidden="true">✓</div>
           <div>
-            <strong>并行生成没有问题，固定章节有问题。</strong>
+            <strong>旧体系不该被扔掉；该取消的是“分析动作 = 固定章节”的绑定。</strong>
             <p>
-              当前的 `Synthesis required` 与 `Action Plan required` 来自硬编码规则，不是这次问题自然需要的答案结构。
-              章节应该回答本次问题的子问题；contradiction、risk、roadmap 等只作为按需分析 lens。
+              Logic Audit、SCQA / answer-first、mission roles、内容类型到载体、分节并行重试、正文后综合总结都值得保留。
+              但 Synthesis、Contradiction、Risk、Roadmap 等应该帮助 planner 形成本次章节，而不是自己永远成为目录。
             </p>
           </div>
         </div>
@@ -60,18 +60,18 @@
         <div class="judgment-grid">
           <article>
             <span class="judgment-index">A</span>
-            <h3>入口只保留一种 history 心智</h3>
-            <p>删除空态里的 Recent searches 重复层；用 `Start from current context` 与 `Continue your analysis` 承接开始和恢复。</p>
+            <h3>入口没有“历史记录”</h3>
+            <p>`Continue analysis` 只承接未完成 run；完成报告回到其文件、对话或 owning surface，不在这里再铺一层 Recent。</p>
           </article>
           <article>
             <span class="judgment-index">B</span>
-            <h3>Activity 负责信任，不负责占据主舞台</h3>
-            <p>统计值必须来自真实 tool result。Generate 后立即进入 Report；Activity 退到可展开的次级视图。</p>
+            <h3>Activity 与 report plan 都保留</h3>
+            <p>Activity 展示实际 agent steps 与真实 tool result；其后才是可审核的 report plan。Generate 后 Report active，但 Activity 一直可返回。</p>
           </article>
           <article>
             <span class="judgment-index">C</span>
             <h3>Sources 复用同一个 Result Browser</h3>
-            <p>List / Tree / Graph、density、scope 与 layout 都沿用 Vault Search；AI relationship map 只增加语义层，不复制外壳。</p>
+            <p>List / Tree / Graph 与 density 复用通用外壳；Vault graph 与 AI relationship map 只共享 renderer primitives，各自拥有不同的数据控制条。</p>
           </article>
         </div>
       </section>
@@ -133,7 +133,7 @@
             <h3>发现与恢复</h3>
             <ul>
               <li>不再声称 “Suggested for you”</li>
-              <li>只留一个可重开的分析历史</li>
+              <li>只显示未完成的 Continue analysis</li>
               <li>所有 context variable 展示前必须解析</li>
             </ul>
           </article>
@@ -157,7 +157,7 @@
             <h3>报告与来源</h3>
             <ul>
               <li>每节使用最合适的内容格式</li>
-              <li>长文有可见 outline 与引用</li>
+              <li>底栏 TOC 图标弹出 outline</li>
               <li>Sources 统一为 Result Browser</li>
             </ul>
           </article>
@@ -168,7 +168,7 @@
         <div class="section-heading">
           <div>
             <span class="section-number">03</span>
-            <h2>报告结构不再预设，改为动态 answer plan</h2>
+            <h2>保留旧报告能力，改造成四层动态 report architecture</h2>
           </div>
           <span class="status-pill neutral">Decision</span>
         </div>
@@ -194,8 +194,8 @@
           <i aria-hidden="true">→</i>
           <article>
             <span>4</span>
-            <strong>动态章节与格式</strong>
-            <small>只保留有独立问题和足够证据的块</small>
+            <strong>分析动作与动态章节</strong>
+            <small>旧 mission roles 按问题选用，再形成具体章节</small>
           </article>
           <i aria-hidden="true">→</i>
           <article>
@@ -207,7 +207,7 @@
 
         <div class="planner-notes">
           <article>
-            <h3>仍然保留</h3>
+            <h3>原样保留</h3>
             <div class="token-row">
               <span>并行 section generation</span>
               <span>每节独立重试</span>
@@ -216,7 +216,7 @@
             </div>
           </article>
           <article>
-            <h3>降级为内部可选 lens</h3>
+            <h3>保留为 planner 分析动作</h3>
             <div class="token-row muted">
               <span>Synthesis</span>
               <span>Contradictions</span>
@@ -236,6 +236,26 @@
             </div>
           </article>
         </div>
+
+        <div class="content-model-decision">
+          <div>
+            <span class="judgment-index">D</span>
+            <h3>报告载体：Markdown-first + typed rich artifacts</h3>
+            <p>正文继续用 Streamdown 流式渲染 Markdown；表格可直接用 Markdown，简单流程可用 Mermaid。</p>
+          </div>
+          <i aria-hidden="true">+</i>
+          <div>
+            <span class="judgment-index">R</span>
+            <h3>图表、AI graph、图片与交互块不是 HTML 字符串</h3>
+            <p>它们是带 provenance 的 typed artifact，由 React renderer 展示；模型不直接生成任意 HTML。</p>
+          </div>
+          <i aria-hidden="true">→</i>
+          <div>
+            <span class="judgment-index">E</span>
+            <h3>Markdown / Word / PDF / HTML 都只是 export</h3>
+            <p>canonical run 是结构化 machine record；报告可导出，但不把某一种展示格式当内部事实源。</p>
+          </div>
+        </div>
       </section>
 
       <section id="prototype" class="report-section prototype-section">
@@ -249,7 +269,7 @@
 
         <div class="checkpoint-bar" role="tablist" aria-label="Mock checkpoints">
           <button class="checkpoint active" type="button" data-screen="landing">1 · 入口</button>
-          <button class="checkpoint" type="button" data-screen="plan">2 · 动态计划</button>
+          <button class="checkpoint" type="button" data-screen="plan">2 · Activity + report plan</button>
           <button class="checkpoint" type="button" data-screen="generating">3 · 生成中报告</button>
           <button class="checkpoint" type="button" data-screen="report">4 · 完整报告</button>
           <button class="checkpoint" type="button" data-screen="sources">5 · Sources</button>
@@ -281,7 +301,7 @@
 
         <div class="prototype-caption">
           <strong>Mock 重点：</strong>
-          <span>Generate 后立即把 Report 设为 active；已完成章节可读，未完成章节原位 streaming。Sources 内的 List / Tree / Graph 共用同一工具条。</span>
+          <span>Activity 保留 agent run 与逐条可编辑 plan；Report 保留 section Ask / Revise 和整体 Continue；AI relationship map 使用当前真实的 Topology / Thinking Tree / Bridges / Timeline / Gaps。</span>
         </div>
       </section>
 
@@ -298,10 +318,11 @@
           <article>
             <h3>直接复用</h3>
             <ul>
-              <li>Result Browser 的 List / Tree / Graph</li>
+              <li>Workspace / File Atlas / Search 共用的 Result Browser</li>
               <li>Compact / Detailed density</li>
-              <li>Constellation / Flow / Folder tree / Orbit</li>
-              <li>Streamdown rich report renderer</li>
+              <li>Vault graph 的 Constellation / Flow / Folder tree / Orbit</li>
+              <li>AI Graph 的 Topology / Thinking Tree / Bridges / Timeline / Gaps</li>
+              <li>Streamdown Markdown + typed artifact renderer</li>
             </ul>
           </article>
           <article>
@@ -334,7 +355,7 @@
           <div>
             <span class="truth-label ai">AI relationship map</span>
             <strong>概念、主张、支持、冲突与推断</strong>
-            <p>必须带 provenance、evidence 与 review state；可以共享画布和 layout，但不能伪装成 Vault link。</p>
+            <p>输入来自 source/query resolver；生成后只显示 graphData 实际支持的当前 lenses。它共享画布 primitives，但不共享 Vault scope、layout 或 semantic-edge controls。</p>
           </div>
         </div>
       </section>

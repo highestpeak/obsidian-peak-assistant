@@ -121,6 +121,16 @@ export interface ComposerInvocationHandle {
 	cancel(): void;
 }
 
+export type ComposerInvocationPlacement =
+	| { kind: 'list-gap'; insertionIndex: number };
+
+export interface ComposerInvocationOptions {
+	instruction?: string;
+	modelId?: string;
+	/** Explicit user-owned placement. The model may propose content, not move it. */
+	placement?: ComposerInvocationPlacement;
+}
+
 export interface ComposerModelChoice {
 	id: string;
 	displayName: string;
@@ -146,7 +156,7 @@ export interface ComposerCapabilityProjectionPort {
 	invoke(
 		capabilityId: ComposerCapabilityId,
 		snapshot: ComposerContextSnapshot,
-		options?: { instruction?: string; modelId?: string },
+		options?: ComposerInvocationOptions,
 	): ComposerInvocationHandle;
 }
 

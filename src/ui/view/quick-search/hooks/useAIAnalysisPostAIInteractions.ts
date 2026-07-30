@@ -105,7 +105,7 @@ export async function consumeFollowupStream(
             const ev = event as { output?: unknown; usage?: LLMUsage };
             if (ev.output != null) acc = typeof ev.output === 'string' ? ev.output : acc;
             if (ev.usage) handlers?.onUsage?.(ev.usage);
-        // Provider v2: Agent SDK events (from queryStream / translateSdkMessages)
+        // Peak Harness stream events from queryStream.
         } else if (event.type === 'text-delta' && typeof (event as any).text === 'string') {
             acc += (event as any).text;
             handlers?.onDelta?.(acc);
@@ -223,5 +223,4 @@ export function useGenerateResultSaveField() {
         generateFolder,
     };
 }
-
 

@@ -1,13 +1,37 @@
 import * as React from 'react';
-import { Sparkles, X, History, MessageSquare } from 'lucide-react';
-import type { IntelligenceRuntime } from '@/service/composer';
+import {
+	Check,
+	ChevronDown,
+	FileText,
+	Focus,
+	History,
+	Layers3,
+	MessageSquare,
+	Pin,
+	Plus,
+	Sparkles,
+	Square,
+	X,
+} from 'lucide-react';
+import type {
+	ComposerWorkspaceIntelligenceRuntime,
+	IntelligenceRuntime,
+} from '@/service/composer';
+import { groupComposerGenerationRuns } from '@/service/composer';
 import type { ComposerTransactionHub } from '@/service/composer';
-import type { ComposerHistoryItem } from '@/core/composer';
-import { Button } from '@/ui/components/primitives';
-import { IconButton } from '@/ui/components/primitives';
+import type { ComposerHistoryItem, IntelligencePresentationOrigin } from '@/core/composer';
+import {
+	Button,
+	IconButton,
+	Popover,
+	PopoverContent,
+	PopoverItem,
+	PopoverTrigger,
+} from '@/ui/components/primitives';
 import { cn } from '@/ui/react/lib/utils';
 import {
 	SidecarProvider,
+	useBriefProjection,
 	useSidecar,
 	useSessionProjection,
 	type SidecarContextValue,
@@ -16,6 +40,7 @@ import {
 } from './SidecarContext';
 import { DEFAULT_SIDECAR_CONFIG, loadSidecarConfig, type SidecarConfig } from './sidecarConfig';
 import { CopilotView } from './CopilotView';
+import { SensingControl } from './BriefView';
 import { HistoryView } from './HistoryView';
 
 export type SidecarMode = 'desktop' | 'drawer';
@@ -33,10 +58,14 @@ export type SidecarMode = 'desktop' | 'drawer';
 export interface IntelligenceSidecarProps {
 	/** App-owned intelligence runtime for the current document. */
 	runtime: IntelligenceRuntime;
+	workspaceRuntime?: ComposerWorkspaceIntelligenceRuntime;
+	documentId?: string;
 	/** WP2 hub for the History projection + document locate. */
 	hub?: ComposerTransactionHub;
 	documentFilePath?: string;
 	open: boolean;
+	motion?: 'none' | 'user';
+	presentationOrigin?: IntelligencePresentationOrigin | null;
 	onOpenChange: (open: boolean) => void;
 	onLocate?: (blockId: string) => void;
 	onLocateComment?: (commentId: string, blockId: string) => void;
@@ -47,13 +76,18 @@ export interface IntelligenceSidecarProps {
 	resolveFocusContext?: (focusedBlockId: string | null) => SidecarFocusContext;
 	/** Resolve the related-material focus (query text + anchor) for a focus block. */
 	resolveRelatedFocus?: (focusedBlockId: string | null) => SidecarRelatedFocus;
+	onRestoreGeneration?: (runId: string) => boolean;
 }
 
 export function IntelligenceSidecar({
 	runtime,
+	workspaceRuntime,
+	documentId,
 	hub,
 	documentFilePath,
 	open,
+	motion = 'none',
+	presentationOrigin = null,
 	onOpenChange,
 	onLocate,
 	onLocateComment,
@@ -61,16 +95,11 @@ export function IntelligenceSidecar({
 	getFocusedBlockId,
 	resolveFocusContext,
 	resolveRelatedFocus,
+	onRestoreGeneration,
 }: IntelligenceSidecarProps): React.ReactElement {
 	const rootRef = React.useRef<HTMLDivElement | null>(null);
 	const [config, setConfig] = React.useState<SidecarConfig>(DEFAULT_SIDECAR_CONFIG);
 	const [mode, setMode] = React.useState<SidecarMode | null>(null);
-	const projection = useSessionProjection(runtime);
-
-	React.useEffect(() => {
-		if (projection.stage !== 'session') return;
-		onOpenChange(true);
-	}, [projection.stage, onOpenChange]);
 
 	React.useEffect(() => {
 		let alive = true;
@@ -109,7 +138,10 @@ export function IntelligenceSidecar({
 		() => ({
 			runtime,
 			hub,
+			workspaceRuntime,
+			documentId,
 			config,
+			onRestoreGeneration,
 			documentFilePath,
 			onLocate,
 			onLocateComment,
@@ -117,11 +149,15 @@ export function IntelligenceSidecar({
 			getFocusedBlockId,
 			resolveFocusContext,
 			resolveRelatedFocus,
+			presentationOrigin,
 		}),
 		[
 			runtime,
 			hub,
+			workspaceRuntime,
+			documentId,
 			config,
+			onRestoreGeneration,
 			documentFilePath,
 			onLocate,
 			onLocateComment,
@@ -129,6 +165,7 @@ export function IntelligenceSidecar({
 			getFocusedBlockId,
 			resolveFocusContext,
 			resolveRelatedFocus,
+			presentationOrigin,
 		],
 	);
 
@@ -140,17 +177,32 @@ export function IntelligenceSidecar({
 		return (
 			<div
 				ref={rootRef}
-				className="pk-sidecar-anchor"
+				className={cn(
+					'pk-sidecar-anchor',
+					motion === 'user' && 'pk-sidecar-anchor--user-transition',
+				)}
 				data-sidecar-mode="drawer"
 				data-open={open ? 'true' : 'false'}
+				data-motion={motion}
 			>
 				<div
-					className={cn('pk-sidecar-drawer', open && 'pk-sidecar-drawer--open')}
+					className={cn(
+						'pk-sidecar-drawer',
+						open && 'pk-sidecar-drawer--open',
+						motion === 'user' && 'pk-sidecar-drawer--user-transition',
+					)}
 					data-open={open || undefined}
 					aria-hidden={!open}
 				>
 					<SidecarProvider value={ctx}>
-						<SidecarShell config={config} runtime={runtime} onClose={() => onOpenChange(false)} closable />
+						<SidecarShell
+							config={config}
+							runtime={runtime}
+							workspaceRuntime={workspaceRuntime}
+							documentId={documentId}
+							onClose={() => onOpenChange(false)}
+							closable
+						/>
 					</SidecarProvider>
 				</div>
 		</div>
@@ -160,17 +212,32 @@ export function IntelligenceSidecar({
 	return (
 		<div
 			ref={rootRef}
-			className="pk-sidecar-anchor"
+			className={cn(
+				'pk-sidecar-anchor',
+				motion === 'user' && 'pk-sidecar-anchor--user-transition',
+			)}
 			data-sidecar-mode="desktop"
 			data-open={open ? 'true' : 'false'}
+			data-motion={motion}
 		>
 			<div
-				className={cn('pk-sidecar', !open && 'pk-sidecar--closed')}
+				className={cn(
+					'pk-sidecar',
+					!open && 'pk-sidecar--closed',
+					motion === 'user' && 'pk-sidecar--user-transition',
+				)}
 				data-open={open || undefined}
 				aria-hidden={!open}
 			>
 				<SidecarProvider value={ctx}>
-					<SidecarShell config={config} runtime={runtime} onClose={() => onOpenChange(false)} closable />
+					<SidecarShell
+						config={config}
+						runtime={runtime}
+						workspaceRuntime={workspaceRuntime}
+						documentId={documentId}
+						onClose={() => onOpenChange(false)}
+						closable
+					/>
 				</SidecarProvider>
 			</div>
 		</div>
@@ -215,6 +282,33 @@ function useHistoryTransactionCount(hub: ComposerTransactionHub | undefined): nu
 	return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
+/** Count durable generation groups immediately, including not-adopted runs. */
+function useGenerationHistoryCount(
+	runtime: ComposerWorkspaceIntelligenceRuntime | undefined,
+	documentId: string | undefined,
+): number {
+	const ref = React.useRef(
+		groupComposerGenerationRuns(runtime?.projection().runs ?? [], documentId).length,
+	);
+	React.useEffect(() => {
+		ref.current = groupComposerGenerationRuns(runtime?.projection().runs ?? [], documentId).length;
+	}, [runtime, documentId]);
+	const subscribe = React.useCallback(
+		(notify: () => void) => {
+			if (!runtime) return () => undefined;
+			return runtime.subscribe((projection) => {
+				const next = groupComposerGenerationRuns(projection.runs, documentId).length;
+				if (next === ref.current) return;
+				ref.current = next;
+				notify();
+			});
+		},
+		[runtime, documentId],
+	);
+	const getSnapshot = React.useCallback(() => ref.current, []);
+	return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+}
+
 function findComposerHostElement(el: HTMLElement | null): HTMLElement | null {
 	return el?.closest<HTMLElement>('.peak-composer-root') ?? null;
 }
@@ -222,11 +316,15 @@ function findComposerHostElement(el: HTMLElement | null): HTMLElement | null {
 function SidecarShell({
 	config,
 	runtime,
+	workspaceRuntime,
+	documentId,
 	onClose,
 	closable,
 }: {
 	config: SidecarConfig;
 	runtime: IntelligenceRuntime;
+	workspaceRuntime?: ComposerWorkspaceIntelligenceRuntime;
+	documentId?: string;
 	onClose?: () => void;
 	closable?: boolean;
 }): React.ReactElement {
@@ -234,6 +332,7 @@ function SidecarShell({
 	const projection = useSessionProjection(runtime);
 	const surface = projection.surface;
 	const historyTransactionCount = useHistoryTransactionCount(hub);
+	const generationHistoryCount = useGenerationHistoryCount(workspaceRuntime, documentId);
 	const s = config.strings;
 	return (
 		<div className="pk-sidecar-shell peak-design-root">
@@ -262,13 +361,128 @@ function SidecarShell({
 					active={surface === 'history'}
 					icon={<History size={13} />}
 					label={s.tabHistory}
-					count={historyTransactionCount}
+					count={historyTransactionCount + generationHistoryCount}
 					onSelect={() => runtime.session.selectSurface('history')}
 				/>
 			</div>
 			<div className="pk-sidecar-body">
-				{surface === 'copilot' ? <CopilotView /> : <HistoryView />}
+				<div className="pk-sidecar-body-content">
+					{surface === 'copilot' && workspaceRuntime && documentId ? (
+						<WorkspaceScopeMenu
+							runtime={workspaceRuntime}
+							intelligenceRuntime={runtime}
+							documentId={documentId}
+							config={config}
+						/>
+					) : null}
+					{surface === 'copilot' ? <CopilotView /> : <HistoryView />}
+				</div>
 			</div>
+		</div>
+	);
+}
+
+function WorkspaceScopeMenu({
+	runtime,
+	intelligenceRuntime,
+	documentId,
+	config,
+}: {
+	runtime: ComposerWorkspaceIntelligenceRuntime;
+	intelligenceRuntime: IntelligenceRuntime;
+	documentId: string;
+	config: SidecarConfig;
+}): React.ReactElement {
+	const [projection, setProjection] = React.useState(() => runtime.projection());
+	const [open, setOpen] = React.useState(false);
+	React.useEffect(() => runtime.subscribe(setProjection), [runtime]);
+	const brief = useBriefProjection(intelligenceRuntime);
+	const scopeKind = projection.scope?.kind ?? 'document';
+	const s = config.strings;
+	const scopeOptions = [
+		{ kind: 'document' as const, label: s.scopeDocument, icon: FileText },
+		{ kind: 'work-segment' as const, label: s.scopeWorkSegment, icon: Layers3 },
+		{ kind: 'pinned' as const, label: s.scopePinned, icon: Pin },
+	];
+	const activeLabel =
+		scopeOptions.find((option) => option.kind === scopeKind)?.label
+		?? s.scopeDocument;
+	const selectScope = (kind: 'document' | 'work-segment' | 'pinned'): void => {
+		if (kind === 'document') runtime.setDocumentScope(documentId);
+		else if (kind === 'work-segment') runtime.setWorkSegmentScope();
+		else runtime.pinDocuments([documentId]);
+		setOpen(false);
+	};
+	return (
+		<div className="pk-sidecar-context-bar" data-chrome="true">
+			<Popover open={open} onOpenChange={setOpen}>
+				<PopoverTrigger asChild>
+					<Button
+						variant="ghost"
+						size="sm"
+						className="pk-sidecar-scope-trigger"
+						aria-label={`${s.scopeLabel}: ${activeLabel}`}
+						aria-haspopup="menu"
+						aria-expanded={open}
+					>
+						<Focus size={13} aria-hidden />
+						<span className="pk-sidecar-scope-trigger__prefix">{s.scopeTrigger}</span>
+						<span className="pk-sidecar-scope-trigger__value">{activeLabel}</span>
+						<ChevronDown size={12} aria-hidden />
+					</Button>
+				</PopoverTrigger>
+				<PopoverContent
+					className="pk-sidecar-scope-menu"
+					align="start"
+					sideOffset={5}
+					role="menu"
+					aria-label={s.scopeLabel}
+				>
+					<span className="pk-sidecar-scope-menu__title">{s.scopeLabel}</span>
+					{scopeOptions.map(({ kind, label, icon: Icon }) => (
+						<PopoverItem
+							key={kind}
+							role="menuitemradio"
+							aria-checked={scopeKind === kind}
+							onClick={() => selectScope(kind)}
+						>
+							<Icon aria-hidden />
+							<span>{label}</span>
+							{scopeKind === kind ? <Check className="pk-sidecar-scope-check" aria-hidden /> : null}
+						</PopoverItem>
+					))}
+					<div className="pk-sidecar-scope-menu__separator" role="separator" />
+					<PopoverItem
+						onClick={() => {
+							const followsWorkSegment = projection.scope?.kind === 'work-segment';
+							runtime.startNewSegment();
+							if (followsWorkSegment) runtime.setWorkSegmentScope();
+							setOpen(false);
+						}}
+					>
+						<Plus aria-hidden />
+						<span>{s.startNewWorkSegment}</span>
+					</PopoverItem>
+					{projection.activeSegment && !projection.activeSegment.endedAt ? (
+						<PopoverItem
+							onClick={() => {
+								runtime.endCurrentSegment();
+								setOpen(false);
+							}}
+						>
+							<Square aria-hidden />
+							<span>{s.endWorkSegment}</span>
+						</PopoverItem>
+					) : null}
+				</PopoverContent>
+			</Popover>
+			<SensingControl
+				runtime={intelligenceRuntime}
+				sensingMode={brief.sensingMode}
+				autoPrepare={brief.autoPrepare}
+				autoPrepareAvailable={brief.autoPrepareAvailable}
+				strings={s}
+			/>
 		</div>
 	);
 }

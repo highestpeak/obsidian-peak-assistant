@@ -43,6 +43,8 @@ export type SnapshotChatMessage = { role: string; content: string };
 
 /** Persisted V2 report section — carries rich metadata for UI round-trip fidelity. */
 export type V2PersistedSection = {
+	/** Stable report-block identity used to reattach saved section follow-ups. */
+	id?: string;
 	title: string;
 	content: string;
 	visualType?: string;

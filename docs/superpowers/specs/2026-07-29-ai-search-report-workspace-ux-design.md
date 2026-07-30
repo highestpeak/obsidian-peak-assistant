@@ -17,20 +17,44 @@ This design reviews the 51.37-second recording `~/Downloads/ai search ui ux reco
 
 ## 1. Verdict
 
-Keep the two-phase architecture:
+Keep three different artifacts and never collapse them:
 
-1. Search and evidence collection produce a reviewable plan.
-2. Independent report sections generate in parallel, followed by any dependent synthesis.
+1. **Activity / agent run** records what the system inspected, searched, read, checked, and produced. Its job is progress and trust.
+2. **Report plan** states what the answer will contain, which analytical moves were selected, what evidence covers each section, and what can run in parallel. Its job is user control.
+3. **Report** is the reading, verification, reuse, and export surface. Its job is the useful outcome.
 
-Retire the fixed report taxonomy as a user-visible structure and as a universal planner constraint. `Synthesis`, `Action Plan`, `Decomposition`, `Risk Audit`, and the other current mission roles are analytical lenses, not sections that every answer needs.
+The old report system should not be discarded. It contains six valuable design assets:
 
-The report structure must be derived from the current question, evidence coverage, and requested output. The UI should show the questions each section answers, its evidence, format, and generation state. It should not group sections under fixed English mission-role headings.
+- Logic Audit and evidence coverage checks;
+- SCQA / answer-first structure;
+- content type to output-carrier selection;
+- mission roles such as synthesis, contradiction, trade-off, risk, roadmap, decomposition, blind spots, and probing horizon;
+- parallel per-section generation and isolated retry;
+- dependent synthesis only after section bodies exist.
+
+The correction is narrower: retire the binding **mission role = fixed user-visible section** and retire universal requirements such as `Action Plan required` or `Mermaid always`. Mission roles become planner analytical moves. They may create a section, change a section's question, or remain an internal quality check depending on this query.
+
+The report structure must be derived from the current question, evidence coverage, requested output, and selected analytical moves. The UI shows concrete sections rather than fixed English mission-role groups.
+
+### 1.1 Historical AI Analysis design audit
+
+| Source | Valuable design | Decision |
+| --- | --- | --- |
+| `docs/90-old-root-docs/AI_ANALYSIS_ARCHITECTURE_AND_PROMPTS.md` | Thought/Search separation, evidence hints, structured memory, diagnosis before synthesis | **Keep concept**, do not restore the retired V1 runtime architecture |
+| `docs/archive/RESEARCH_WORKFLOW_ENGINEERING.md` | discovery → dossier → gap fill → verified summary; facts remain connected to source paths | **Keep** as research-quality contract |
+| `2026-04-13-per-section-report-generation.md` | agent run → plan review → parallel sections → dependent summary → per-section regeneration | **Keep** as the core lifecycle |
+| `2026-04-13-v2-report-quality-and-ui-fixes.md` | Logic Audit, SCQA, enumeration completeness, content-type-aware presentation | **Keep**, but remove universal section-count and Mermaid requirements |
+| `2026-04-14-mission-roles-plan-review.md` | synthesis, contradiction, trade-off, action, risk, roadmap, decomposition, blind spots, probing horizon | **Move** from fixed UI grouping to visible planner analytical moves |
+| `2026-04-15-report-quality-overhaul.md` | no artificial word cap, summary after bodies, inline citations, visual selection with a valid “no visual” outcome | **Keep** |
+| `2026-04-17-ai-analysis-ux-overhaul.md` | Report as primary outcome; Activity, Plan, Sources, and Graph as review surfaces; continue / synthesize rounds | **Keep information architecture**, reconcile with the newer footer and persistence contracts |
+
+The audit deliberately separates design lineage from current production. A useful old prompt or UI concept is not evidence that the current runtime implements it.
 
 ## 2. Confirmed problems
 
 ### 2.1 Entry screen
 
-- `Recent searches` and `Recent` show overlapping history at the same time.
+- `Recent searches` and `Recent` show overlapping completed-history surfaces at the same time.
 - `Suggested for you` makes a personalization claim but mostly exposes generic templates and current-context substitutions.
 - A raw `{activeDocumentTitle}` placeholder is visible in the recording.
 - Chinese and English labels are mixed inside the same hierarchy.
@@ -42,8 +66,8 @@ The report structure must be derived from the current question, evidence coverag
 - The simulator completes multiple tool calls in fractions of a second because `normalMs` is 120 ms and `slowMs` is 900 ms.
 - The activity log reports `0 folders`, `0 files`, `0 chars`, and `0 sources selected`, while the plan immediately claims six sources per section.
 - Pending measurements are rendered as zero rather than unknown or in progress.
-- A detailed tool trace and the user-facing research summary occupy the same visual level.
-- The plan editor is nested inside the process log, so the primary decision is buried inside execution telemetry.
+- The simulator reduces the agent run to counters, losing the actual sequence that explains how evidence was found.
+- The plan and process are not distinguished clearly enough: the run should lead into the report plan, not disappear and not become the plan.
 
 ### 2.3 Plan review and IME
 
@@ -58,7 +82,7 @@ The report structure must be derived from the current question, evidence coverag
 - After `Generate Report`, Process remains the visible workspace while the report is generated.
 - The user cannot start reading completed sections while the remaining sections continue in parallel.
 - The simulator returns the same short paragraphs for every section, so it does not verify tables, charts, diagrams, citations, links, images, long content, or section-specific formatting.
-- The current bottom-only table-of-contents icon is hard to discover and detached from the reading position.
+- The mock incorrectly moved the outline into a permanent left rail and changed a good existing footer information architecture.
 - The report does not foreground source coverage or unsupported claims.
 
 ### 2.5 Sources and graph
@@ -72,8 +96,8 @@ The report structure must be derived from the current question, evidence coverag
 
 ```text
 Ask a question
-  -> collect evidence with honest activity counts
-  -> propose a dynamic answer plan
+  -> run agent steps with honest activity evidence
+  -> propose a dynamic report plan
   -> user edits or adds instructions explicitly
   -> generate independent sections in parallel
   -> switch immediately to the Report workspace
@@ -82,9 +106,24 @@ Ask a question
   -> optionally generate an AI relationship map from the chosen evidence scope
 ```
 
-`Activity` remains available as a secondary view. It is not the default reading surface after report generation begins.
+`Activity` remains a first-class workspace tab and retains the complete run. It is not the default surface after report generation begins.
 
-## 4. Dynamic answer planner
+This separation is also consistent with current research products. [OpenAI Deep Research](https://help.openai.com/en/articles/10500283-deep-research) exposes a modifiable research plan, live progress, a final report, sources, and activity history. [Gemini Deep Research](https://blog.google/products-and-platforms/products/gemini/tips-how-to-use-deep-research/) exposes an editable plan plus “Show thinking” and “Sites browsed” while the report is produced. The relevant lesson is not to copy their chrome; it is that plan, run, report, and sources serve different user questions and remain inspectable.
+
+## 4. Dynamic report architecture
+
+### 4.0 Four layers
+
+The planner uses four layers:
+
+| Layer | Stable or dynamic | Purpose |
+| --- | --- | --- |
+| Quality contract | Stable | direct answer, evidence provenance, uncertainty, conflict checking, no duplication, user language |
+| Analytical moves | Selected per query | synthesis, contradiction, trade-off, risk, roadmap, decomposition, blind spots, probing horizon |
+| Concrete sections | Dynamic | conclusion-style title, question, evidence, dependency, generation state |
+| Output carriers | Dynamic | prose, table, timeline, chart, graph, task list, code, image, source-backed callout |
+
+The stable quality contract protects report quality. Analytical moves preserve the best part of the old mission-role design. Concrete sections and carriers remain query-specific.
 
 ### 4.1 Answer contract
 
@@ -113,7 +152,7 @@ interface AnswerContract {
 
 This is a design contract, not a claim that the current domain type exists.
 
-### 4.2 Section selection
+### 4.2 Analytical moves and section selection
 
 Each proposed section must pass four tests:
 
@@ -122,7 +161,13 @@ Each proposed section must pass four tests:
 3. Its format reduces reading cost for this content.
 4. It does not duplicate another section.
 
-The planner may use internal lenses such as contradiction, trade-off, risk, decomposition, or next steps when the question and evidence justify them. These lenses are optional quality tags. They do not create fixed UI groups and are never universally required.
+The planner evaluates the old mission-role set for every substantial query, then selects only the moves that add value. Selected moves are visible as compact plan metadata so the capability is not hidden. They do not create fixed UI groups and are never universally required.
+
+- `Synthesis` usually becomes an answer-in-brief or final synthesis only when multiple findings need integration.
+- `Contradiction` creates visible content only when sources materially disagree.
+- `Trade-off`, `Risk`, `Roadmap`, and `Action plan` appear only when the user's decision or requested outcome needs them.
+- `Blind spots` and coverage checks always run internally, but become visible sections only when they contain consequential gaps.
+- `Decomposition` may shape several sections without becoming a section titled “Decomposition”.
 
 ### 4.3 Conditional structure
 
@@ -151,30 +196,35 @@ Parallel generation remains a strength. The change is that the dependency graph 
 
 ### 5.1 AI Search landing
 
-Primary job: ask a question or continue a prior analysis.
+Primary job: ask a question or continue an unfinished analysis.
 
 - Keep the accepted two-position header: `Vault Search` and one AI workspace selector.
 - Remove the visible `Vault Analysis` recipe pill.
-- Replace `Suggested for you` with `Start from current context`.
+- Replace `Suggested for you` with sentence-case `Start with current context`. These are context-derived starters, not personalization and not history.
 - Resolve every context variable before display.
-- Use one `Continue your analysis` history list.
-- Do not show a separate recent-query block on the empty landing page.
-- Expose scope as concrete context chips such as current note, current folder, Vault, and Web state.
+- Use `Continue analysis` only for unfinished states such as running, queued, error recovery, or plan ready for review.
+- Do not show completed history or a separate recent-query block on the landing page.
+- Preserve the original `GlobeOff` / `Globe` icon and tooltip rather than replacing it with bare text.
+- Keep the `Analyze` action inside the pill composer and give it the same pill-radius geometry.
+- Expose automatic scope as concrete context chips such as current note and Vault.
+- Provide a quiet `+` / add-context affordance for pinning a note or folder. Do not open a permanent references panel by default; automatic current-note context already covers the common case.
 
 ### 5.2 Research activity
 
 Primary job: communicate what is happening and whether the evidence is trustworthy.
 
-- Show one current phase and a compact completed summary.
+- Show the actual agent run steps, followed by a compact completed summary.
 - Distinguish folders scanned, files considered, files read, characters read, and sources cited.
 - Use `—` for unknown or pending values; reserve zero for confirmed zero.
 - Use actual wall-clock duration in production.
 - Keep provider/model/tool spans inside an expandable Activity detail.
 - In simulator review mode, label the run and use a realistic pacing profile.
 
-### 5.3 Answer plan review
+### 5.3 Report plan review
 
-Primary job: approve the shape of the answer.
+Primary job: approve the shape of the answer after reviewing what the agent did.
+
+The Activity view places the complete run first and the report plan after it. It does not replace one with the other.
 
 Each section row shows:
 
@@ -193,6 +243,13 @@ The refinement field is a multiline instruction composer:
 - composition events never submit;
 - applying an instruction previews the plan changes before generation.
 
+Direct row editing and plan-wide refinement are complementary, not substitutes:
+
+- row-level edit changes the section title, question, and proposed output form deterministically;
+- reorder, remove, and add remain available before approval;
+- the multiline refinement composer asks AI to restructure several sections together;
+- no redesign may collapse these controls into an unexplained overflow menu or silently remove them.
+
 ### 5.4 Report generation
 
 Primary job: let the user read useful output as soon as it exists.
@@ -208,19 +265,37 @@ Primary job: let the user read useful output as soon as it exists.
 
 Primary job: read, navigate, verify, and reuse the report.
 
-- Use a visible, position-aware section navigator rather than a bottom icon.
+- Preserve the original bottom footer order: `Activity`, `Report`, table-of-contents icon, `Sources`.
+- Do not reserve a permanent left rail for the outline.
+- The table-of-contents icon opens a compact outline popover above the footer and tracks the current section when implemented.
 - Allow rich Markdown content: prose, tables, task lists, code, Mermaid, Vault links, external links, and callouts.
-- Allow report-owned visual projections such as charts and evidence diagrams.
+- Allow report-owned typed visual projections such as charts and evidence diagrams.
 - Show inline Vault citations and make the source openable.
 - Keep unsupported or weakly supported claims visibly labelled.
-- Preserve per-section copy and regenerate actions.
+- Preserve three distinct section actions: `Ask`, `Revise`, and `Copy`.
+- `Ask` is a non-destructive, section-anchored follow-up thread. It searches that section, its citations, and its prior Q&A without rewriting the report block.
+- `Revise` generates a new section variant from an optional instruction; the previous version and evidence boundary remain recoverable.
+- Selected-text `question / disagree / expand / note` annotations remain an additional input to later analysis rounds; they are not a replacement for section Q&A.
+- Keep an overall follow-up composer below the complete report. It uses generated follow-up suggestions and appends a new analysis round while preserving the previous report.
+- Show `Synthesize all rounds` only after two or more rounds exist.
 - Keep save, open in file, continue, and open in Chat as report-level actions.
 
-### 5.6 Sources workspace
+### 5.6 Report content model: Markdown-first, not HTML-first
+
+The report is **Markdown-first plus typed rich artifacts**:
+
+- narrative, headings, lists, links, citations, code, callouts, and ordinary tables stream as Markdown through `StreamdownIsolated`;
+- simple deterministic diagrams may use Mermaid;
+- charts, AI relationship maps, images, interactive tables, and other structured visuals are typed artifact blocks rendered by trusted React components;
+- arbitrary model-generated HTML is not a report source format.
+
+The canonical machine record remains structured run and report data. Markdown, Word, PDF, or HTML are export projections. This avoids treating a display format as the source of truth while retaining Vault-native readability, streaming, safe rendering, diffability, and future interactive components.
+
+### 5.7 Sources workspace
 
 Primary job: inspect the evidence set and its relationships.
 
-Use the shared Result Browser:
+Use the generic shared Result Browser already intended for Workspace, File Atlas, and Vault Search:
 
 - `List`: detailed or compact rows with snippet, path, selection reason, cited sections, and freshness.
 - `Tree`: the same evidence grouped by full Vault folder hierarchy.
@@ -229,9 +304,28 @@ Use the shared Result Browser:
 Graph data semantics remain explicit:
 
 1. `Vault graph` uses deterministic Vault links, folder relations, and optional pre-indexed semantic edges.
-2. `AI relationship map` uses AI-extracted or inferred concepts and relationships, with provenance and review state.
+2. `AI relationship map` uses AI-extracted or inferred concepts and relationships, with extracted/inferred provenance styling.
 
-Both can share layout controls, but they do not share truth semantics. `Folder tree`, `local neighborhood`, and `orbit` remain deterministic file-graph presets. AI relationship maps use their own graph type and lens contract.
+They share renderer primitives such as the React Flow canvas, viewport, selection, fullscreen, and export. They do **not** share data controls. `Folder tree`, `local neighborhood`, `orbit`, hop scope, and indexed semantic edges belong to the deterministic Vault graph.
+
+The embedded AI relationship map must match the current `MultiLensGraph` contract rather than importing candidate taxonomy from a newer artifact proposal:
+
+- current lens ids are `topology`, `thinking-tree`, `bridge`, `timeline`, and `gap-analysis`;
+- current labels are `Topology`, `Thinking Tree`, `Bridges`, `Timeline`, and `Gaps`;
+- only `graphData.availableLenses` render; a graph must not promise a lens unsupported by its generated data;
+- the simulator fixture may intentionally provide all five so every current projection can be reviewed;
+- `Constellation / Concept / Evidence / Flow / Source` are not current AI Graph tabs and must not appear in this mock.
+
+The accepted AI Graph artifact platform proposal may later add graph-type, review, and version semantics, but those future controls must be treated as a separate migration decision. They are not evidence of the current AI Graph UI.
+
+Toolbar order is not host-specific:
+
+1. `List / Tree / Graph` at the left.
+2. When `Graph` is active, `Vault graph / AI relationship map` appears immediately after the view selector.
+3. `Compact / Detailed` remains at the far right.
+4. `Vault graph` shows scope, deterministic layout presets, semantic edges, copy, and export.
+5. Before AI generation, `AI relationship map` shows a compact source/query resolver summary and `Edit inputs`.
+6. After AI generation, it shows only the current data-supported AI Graph lenses and `Save to Vault`. It does not show Vault scope, Vault layout presets, semantic-edge controls, or invented artifact controls.
 
 ## 6. Simulator fixture contract
 
@@ -250,6 +344,8 @@ The review-realistic fixture must:
 - include at least one table, one diagram or chart, inline Vault links, and a source-backed callout across the full report;
 - include a long-content case that exercises navigation and scrolling;
 - generate an AI relationship map fixture with extracted versus inferred relationship styling;
+- generate data-supported current AI Graph projections for Topology, Thinking Tree, Bridges, Timeline, and Gaps;
+- preserve section-level Q&A, section revision, overall Continue, and multi-round Synthesize states;
 - never claim remote model behavior when the local provider produced the content.
 
 Fast automation timing may remain fast, but it must not be presented as realistic user-facing elapsed time.
@@ -259,35 +355,46 @@ Fast automation timing may remain fast, but it must not be presented as realisti
 | Target | Existing source to reuse | Current duplicate to retire |
 | --- | --- | --- |
 | Landing information architecture | `2026-07-28-ai-search-unified-modes.md` | input-level `Vault Analysis` mode |
-| Sources List / Tree / Graph | `src/ui/component/result-browser/` | custom `V2SourcesView` list and mode toggle |
+| Sources List / Tree / Graph across Workspace, File Atlas, and Search | `src/ui/component/result-browser/` | custom `V2SourcesView` list and mode toggle |
 | Vault graph layout controls | `ResultBrowserToolbar.tsx` and `AtlasGraphCanvasImpl.tsx` | graph-local ad hoc controls |
 | AI relationship map rendering | `MultiLensGraph` plus the AI Graph artifact contract | unlabeled graph empty state |
-| Rich report body | `StreamdownIsolated` | repeated simulator paragraphs |
+| Rich report body | `StreamdownIsolated` plus typed artifact renderers | repeated simulator paragraphs or arbitrary HTML |
 | Shared instruction behavior | Shared AI Instruction Composer contract | raw Enter-to-chip field |
 
 This table is an implementation direction, not an instruction to merge the deterministic Result Browser model with the AI Graph artifact model.
 
 ## 8. Acceptance criteria
 
-- Landing has one visible history surface and no unresolved template variables.
+- Landing has no completed history surface, only unfinished `Continue analysis`, and no unresolved template variables.
+- Landing retains the original Web state icon, aligned Analyze geometry, and quiet opt-in context pinning.
+- Activity shows the complete agent run and the report plan follows it.
 - The plan contains only sections justified by the current answer contract.
-- No mission role is universally required.
+- Every plan row exposes edit, reorder, remove, and add behavior; plan-wide refinement remains separately available.
+- The selected old-framework analytical moves are visible, but no mission role is universally required as a section.
 - IME candidate confirmation cannot add an instruction or start generation.
 - Activity counts agree with the evidence set.
 - Pending counts do not display as confirmed zero.
 - Generate switches immediately to Report.
 - A completed section is readable while other sections continue.
+- Every completed report section exposes non-destructive Ask, versioned Revise, and Copy actions.
+- The complete report exposes an overall follow-up composer; a second round does not overwrite round one.
+- Footer order is `Activity / Report / TOC / Sources`; TOC opens as a popover rather than occupying a left rail.
 - The simulator exercises prose, table, visual, link, citation, and long-content rendering.
 - Sources use the shared List / Tree / Graph chrome.
+- Graph mode selection follows `List / Tree / Graph`, density stays at the far right, and graph controls keep their established layout.
+- Vault graph and AI relationship map share renderer primitives but expose different data-semantic controls.
 - Vault graph and AI relationship map have separate provenance and truth labels.
+- AI relationship map uses the current `Topology / Thinking Tree / Bridges / Timeline / Gaps` labels and filters them by available graph data.
 - No production source is considered implemented until real Obsidian interaction verification is complete.
 
 ## 9. Do not do
 
 - Do not replace one fixed report taxonomy with another fixed taxonomy.
+- Do not delete the old report framework; preserve it as quality contracts and planner analytical moves.
 - Do not make every query produce an action plan, risk audit, roadmap, or executive summary.
 - Do not show simulator fast-test duration as realistic elapsed time.
 - Do not solve contradictory counters by hiding them; correct the metric semantics.
 - Do not style the existing Sources list to look similar while keeping a second component system.
 - Do not present AI-inferred relations as Vault links.
+- Do not make raw model-generated HTML the canonical report format.
 - Do not treat this design mock as production acceptance.

@@ -49,7 +49,7 @@ export interface VaultReviewDigestDataPort {
 
 /**
  * Stream a single round of the vault meta-agent. The adapter owns the
- * Agent SDK pool, MCP server construction, and Obsidian `App` access.
+ * Peak Harness model/tool execution and Obsidian `App` access.
  */
 export interface VaultReviewAgentPort {
 	runRound(options: VaultMetaAgentOptions): AsyncGenerator<LLMStreamEvent>;

@@ -221,7 +221,7 @@ function resolveWebSearchAvailability(
 	}
 
 	// Fallback: a configured Web Search profile provides the tool via
-	// queryWithProfile. Absent profile registry OR absent active profile ⇒
+	// Harness model execution. Absent profile registry OR active profile ⇒
 	// unconfigured (user needs to pick a Web Search profile in Settings).
 	const activeWebProfile = ctx.profileRegistry?.getActiveWebSearchProfile();
 	if (!activeWebProfile) {

@@ -1,10 +1,7 @@
 /**
  * Harness-native adapters for the Vault Search tools.
  *
- * `vault-sdk/vaultMcpServer.ts` still owns the pure implementations because
- * the SDK path uses them today. This file wraps the same implementations in
- * the self-hosted harness `ToolDef` shape so the VaultSearchAgent migration
- * can move one layer at a time without duplicating tool logic.
+ * Pure vault operations are wrapped in the Peak Harness `ToolDef` envelope.
  */
 
 import { z } from 'zod';
@@ -15,6 +12,7 @@ import { fail, ok } from '@/service/agents/harness/tool/types';
 import { getActivityDetailTool } from '@/service/context/context-tools/getActivityDetailTool';
 import { getRecentAnalysisResultTool } from '@/service/context/context-tools/getRecentAnalysisResultTool';
 import { getWorkingThemeTool } from '@/service/context/context-tools/getWorkingThemeTool';
+import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import {
 	grepImpl,
 	listFoldersImpl,
@@ -24,8 +22,11 @@ import {
 	type GrepSearchFn,
 	type SubmitPlanFeedback,
 	type SubmitPlanInput,
-} from '@/service/agents/vault-sdk/vaultMcpServer';
+} from '@/service/agents/vault/vaultToolImplementations';
 
+// Preserve the existing public tool names so saved traces, prompts, and UI
+// projections remain compatible. These tools are Peak-owned local ToolDefs;
+// the prefix no longer implies an external MCP/SDK runtime.
 const VAULT_TOOL_PREFIX = 'mcp__vault__';
 
 export const VAULT_SUBMIT_PLAN_TOOL_NAME = `${VAULT_TOOL_PREFIX}vault_submit_plan`;
@@ -77,7 +78,7 @@ export function buildVaultHarnessTools(deps: VaultHarnessToolDeps): ToolDef[] {
 		{
 			name: VAULT_SUBMIT_PLAN_TOOL_NAME,
 			description: 'Call when enough evidence has been gathered to propose a report plan for review.',
-			source: 'mcp',
+			source: 'local',
 			kind: 'meta',
 			inputSchema: z.object({
 				selected_paths: z.array(z.string()),
@@ -118,6 +119,24 @@ export function buildVaultHarnessTools(deps: VaultHarnessToolDeps): ToolDef[] {
 		agentTool('get_activity_detail', getActivityDetailTool()),
 		agentTool('get_recent_analysis', getRecentAnalysisResultTool(deps.analysisHistory)),
 		agentTool('get_working_theme', getWorkingThemeTool()),
+		readTool('vault_get_clusters', 'List detected knowledge communities with labels, sizes, and dominant topics.', z.object({}), async () => {
+			const repo = sqliteStoreManager.getStructuralAnalysisRepo();
+			const communities = await repo.getCommunities();
+			return communities.map((community) => ({
+				id: community.id,
+				label: community.label,
+				memberCount: community.memberCount,
+				dominantTopics: community.dominantTopics,
+			}));
+		}),
+		readTool('vault_get_bridges', 'List top bridge nodes connecting different knowledge communities.', z.object({}), async () => {
+			const repo = sqliteStoreManager.getStructuralAnalysisRepo();
+			return repo.getTopBridgeNodes(20);
+		}),
+		readTool('vault_find_gaps', 'Find structural holes between knowledge communities and potential bridges.', z.object({}), async () => {
+			const repo = sqliteStoreManager.getStructuralAnalysisRepo();
+			return repo.getTopHoles(10);
+		}),
 	];
 }
 
@@ -135,7 +154,7 @@ function readTool<TInput, TOutput>(
 		name: prefixed(name),
 		description,
 		inputSchema,
-		source: 'mcp',
+		source: 'local',
 		kind: 'read',
 		execute: async (input) => runTool(() => execute(input)),
 	};
@@ -145,8 +164,8 @@ function agentTool(name: string, tool: import('@/service/tools/types').AgentTool
 	return {
 		name: prefixed(name),
 		description: tool.description,
-		inputSchema: tool.inputSchema,
-		source: 'mcp',
+		inputSchema: tool.inputSchema as unknown as ToolDef['inputSchema'],
+		source: 'local',
 		kind: 'read',
 		execute: async (input) => runTool(() => tool.execute(input)),
 	};

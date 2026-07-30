@@ -1,5 +1,5 @@
 /**
- * Peak Composer — active-file lifecycle controller (WP1 host, WP4.5 editing).
+ * Peak Composer — explicitly file-bound lifecycle controller.
  *
  * Owns the state machine behind one DocumentComposerView: which file is open,
  * its parsed session, and how it reacts to the file switching, being renamed,
@@ -9,7 +9,7 @@
  * under the real Obsidian adapters composed in `composeDocumentComposerRuntime`.
  *
  * WP4.5 makes the controller the single reactive source of BOTH the render state
- * (`ComposerStateSource`) AND the per-document editing runtime: on each newly
+ * (`ComposerStateSource`) AND a lease on the app-owned per-document runtime: on each newly
  * loaded session it composes the transaction hub + capability runtime + comment
  * store + link port (via an injected app-owned composer) and, after every hub
  * mutation (commit / undo / redo / rollback), re-emits the reparsed snapshot and
@@ -42,6 +42,7 @@ import {
 	type ComposerTransactionHub,
 	type ImageCapabilityCoordinator,
 	type IntelligenceRuntime,
+	type ComposerWorkspaceIntelligenceRuntime,
 	type VaultPropertyScanPort,
 } from '@/service/composer';
 import type { FormulaDetailGeneratorPort } from '@/ui/view/composer/blocks/math/formulaDetailStore';
@@ -91,11 +92,21 @@ export interface ComposerEditingRuntime {
 	blockDraftGeneration?: ComposerBlockDraftGenerationPort;
 	/** App-owned Intelligence Sidecar runtime (WP9); absent ⇒ no sidecar. */
 	intelligence?: IntelligenceRuntime;
+	/** Workspace-lifetime Current Work State / Scope / Frozen Run owner. */
+	workspaceIntelligence?: ComposerWorkspaceIntelligenceRuntime;
 }
 
 /** Builds the editing runtime for one open session (app-owned composition). */
 export interface ComposerEditingComposer {
-	compose(session: ComposerDocumentSession): ComposerEditingRuntime;
+	acquire(
+		session: ComposerDocumentSession,
+		originHostId?: string,
+		originHost?: 'composer' | 'markdown',
+	): {
+		runtime: ComposerEditingRuntime;
+		release(): void;
+	};
+	rename?(oldPath: string, newPath: string, session: ComposerDocumentSession): void;
 }
 
 export interface DocumentComposerControllerDeps {
@@ -104,6 +115,10 @@ export interface DocumentComposerControllerDeps {
 	revisionService?: ComposerSourceRevisionService;
 	/** App-owned editing composer; absent ⇒ read-only host (no hub, disabled chrome). */
 	editing?: ComposerEditingComposer;
+	/** Leaf-local origin id copied into Frozen Run envelopes when available. */
+	originHostId?: string;
+	/** Product surface that invoked the shared document runtime. */
+	originHost?: 'composer' | 'markdown';
 }
 
 interface ActiveEditing extends ComposerEditingRuntime {
@@ -115,6 +130,8 @@ export class DocumentComposerController implements ComposerStateSource {
 	private readonly events: ComposerFileEventsPort;
 	private readonly revisionService: ComposerSourceRevisionService;
 	private readonly editingComposer?: ComposerEditingComposer;
+	private readonly originHostId?: string;
+	private readonly originHost: 'composer' | 'markdown';
 
 	private session: ComposerDocumentSession | null = null;
 	private editing: ActiveEditing | null = null;
@@ -129,13 +146,21 @@ export class DocumentComposerController implements ComposerStateSource {
 		this.events = deps.events;
 		this.revisionService = deps.revisionService ?? new ComposerSourceRevisionService();
 		this.editingComposer = deps.editing;
+		this.originHostId = deps.originHostId;
+		this.originHost = deps.originHost ?? 'composer';
 	}
 
-	/** Begin tracking: subscribe to file events and load the active file. */
-	start(): void {
-		this.unsubscribers.push(this.events.onActiveFileChange((path) => this.onActiveFileChange(path)));
+	/** Begin tracking one explicit Composer leaf binding. */
+	start(filePath: string): void {
 		this.unsubscribers.push(this.events.onFileEvent((event) => this.onFileEvent(event)));
-		this.onActiveFileChange(this.events.getActiveFilePath());
+		this.bindFile(filePath);
+	}
+
+	/** Rebind only when Obsidian applies a new versioned state to this same leaf. */
+	bindFile(filePath: string): void {
+		if (!filePath) return;
+		if (filePath === this.state.filePath && this.state.status !== 'error') return;
+		this.load(filePath);
 	}
 
 	/** Stop tracking and drop subscriptions. Idempotent. */
@@ -174,32 +199,55 @@ export class DocumentComposerController implements ComposerStateSource {
 	/** Re-read the current file and adopt it, clearing a stale flag. */
 	revalidate(): void {
 		if (!this.state.filePath) return;
-		this.load(this.state.filePath);
+		this.run(async () => {
+			const filePath = this.state.filePath;
+			if (!filePath) return;
+			try {
+				const text = await this.source.readSource(filePath);
+				if (!this.session) {
+					this.load(filePath);
+					return;
+				}
+				const prev = this.session.snapshot;
+				const next = this.session.parse(text);
+				if (this.editing) {
+					this.editing.hub.adoptExternalSnapshot(next);
+					this.editing.comments.revalidate(prev, this.session.snapshot);
+					this.editing.intelligence?.onReparse(prev, this.session.snapshot);
+				} else {
+					this.session.adoptSnapshot(next);
+				}
+				this.lastSnapshot = this.session.snapshot;
+				this.setState({ status: 'loaded', filePath, snapshot: this.session.snapshot });
+			} catch (err) {
+				this.setState({
+					status: 'error',
+					filePath,
+					snapshot: null,
+					error: err instanceof Error ? err.message : String(err),
+				});
+			}
+		});
 	}
 
 	// ── event handlers ──────────────────────────────────────────────────────
-
-	private onActiveFileChange(path: string | null): void {
-		if (!path) {
-			this.disposeEditing();
-			this.session = null;
-			this.setState({ status: 'empty', filePath: null, snapshot: null });
-			return;
-		}
-		if (path === this.state.filePath && this.state.status === 'loaded') return;
-		this.load(path);
-	}
 
 	private onFileEvent(event: ComposerFileEvent): void {
 		const current = this.state.filePath;
 		if (!current) return;
 		if (event.type === 'rename' && event.oldPath === current) {
-			this.setState({ ...this.state, filePath: event.path });
+			const snapshot = this.session?.rebindFilePath(event.path) ?? this.state.snapshot;
+			if (this.session) this.editingComposer?.rename?.(current, event.path, this.session);
+			this.setState({ ...this.state, filePath: event.path, snapshot });
 			return;
 		}
 		if (event.type === 'delete' && event.path === current) {
-			this.disposeEditing();
-			this.session = null;
+			this.editing?.hub.markCandidatesStale();
+			if (this.session) {
+				this.editing?.workspaceIntelligence?.markDocumentRunsStale(
+					this.session.snapshot.documentId,
+				);
+			}
 			this.setState({ status: 'missing', filePath: current, snapshot: null });
 			return;
 		}
@@ -215,6 +263,10 @@ export class DocumentComposerController implements ComposerStateSource {
 			// we originated is already adopted → not stale. Only a genuine external
 			// edit still differs from the session snapshot.
 			if (this.session && this.session.isStale(text)) {
+				this.editing?.hub.markCandidatesStale();
+				this.editing?.workspaceIntelligence?.markDocumentRunsStale(
+					this.session.snapshot.documentId,
+				);
 				this.setState({ ...this.state, status: 'stale' });
 			}
 		});
@@ -224,12 +276,12 @@ export class DocumentComposerController implements ComposerStateSource {
 		this.setState({ status: 'loading', filePath, snapshot: this.state.snapshot });
 		this.run(async () => {
 			try {
-				const session = await ComposerDocumentSession.load(this.source, filePath, this.revisionService);
+				const loadedSession = await ComposerDocumentSession.load(this.source, filePath, this.revisionService);
 				this.disposeEditing();
-				this.session = session;
-				this.lastSnapshot = session.snapshot;
-				this.composeEditingFor(session);
-				this.setState({ status: 'loaded', filePath, snapshot: session.snapshot });
+				const runtime = this.composeEditingFor(loadedSession);
+				this.session = runtime?.session ?? loadedSession;
+				this.lastSnapshot = this.session.snapshot;
+				this.setState({ status: 'loaded', filePath, snapshot: this.session.snapshot });
 			} catch (err) {
 				this.disposeEditing();
 				this.session = null;
@@ -245,9 +297,14 @@ export class DocumentComposerController implements ComposerStateSource {
 
 	// ── editing runtime lifecycle ───────────────────────────────────────────────
 
-	private composeEditingFor(session: ComposerDocumentSession): void {
-		if (!this.editingComposer) return;
-		const runtime = this.editingComposer.compose(session);
+	private composeEditingFor(session: ComposerDocumentSession): ComposerEditingRuntime | undefined {
+		if (!this.editingComposer) return undefined;
+		const lease = this.editingComposer.acquire(
+			session,
+			this.originHostId,
+			this.originHost,
+		);
+		const runtime = lease.runtime;
 		// Re-emit the reparsed snapshot + migrate comment anchors after every hub
 		// mutation. `hub.subscribe` fires immediately; we only react once a real
 		// mutation advances the document (revision change) or candidates move.
@@ -261,9 +318,16 @@ export class DocumentComposerController implements ComposerStateSource {
 				this.onHubMutation(runtime);
 			}
 		});
-		this.editing = { ...runtime, dispose: off };
+		this.editing = {
+			...runtime,
+			dispose: () => {
+				off();
+				lease.release();
+			},
+		};
 		// Hydrate persisted comments (best-effort; store re-emits when it lands).
 		void runtime.comments.load();
+		return runtime;
 	}
 
 	private onHubMutation(runtime: ComposerEditingRuntime): void {
@@ -281,7 +345,6 @@ export class DocumentComposerController implements ComposerStateSource {
 	}
 
 	private disposeEditing(): void {
-		this.editing?.intelligence?.dispose();
 		this.editing?.dispose();
 		this.editing = null;
 	}

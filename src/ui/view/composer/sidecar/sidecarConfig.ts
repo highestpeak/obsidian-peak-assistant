@@ -19,6 +19,13 @@ import {
 export interface SidecarStrings {
 	title: string;
 	followingDoc: string;
+	scopeLabel: string;
+	scopeTrigger: string;
+	scopeDocument: string;
+	scopeWorkSegment: string;
+	scopePinned: string;
+	startNewWorkSegment: string;
+	endWorkSegment: string;
 	tabCopilot: string;
 	tabHistory: string;
 	close: string;
@@ -100,6 +107,11 @@ export interface SidecarStrings {
 	sessionStartTitle: string;
 	sessionStartBody: string;
 	currentContext: string;
+	originAutomaticSuggestion: string;
+	originAskCopilot: string;
+	originCommentHandoff: string;
+	originHistoryDeepLink: string;
+	originNativeEditor: string;
 	autoRoute: string;
 	autoModel: string;
 	noAvailableCapabilities: string;
@@ -118,6 +130,21 @@ export interface SidecarStrings {
 	receiptTrace: string;
 	locateInDocument: string;
 	staleFindingNotice: string;
+	generationHistoryTitle: string;
+	generationHistoryIntro: string;
+	generationHistoryEmpty: string;
+	generationHistoryCount: string;
+	generationHistoryVersions: string;
+	generationHistoryAccepted: string;
+	generationHistoryNotAdopted: string;
+	generationHistoryPending: string;
+	generationHistoryFailed: string;
+	generationHistoryCancelled: string;
+	generationHistoryStale: string;
+	generationHistoryRestore: string;
+	generationHistoryRestored: string;
+	documentHistoryTitle: string;
+	documentHistoryIntro: string;
 	historyEmpty: string;
 	historyTitle: string;
 	historyIntro: string;
@@ -248,6 +275,13 @@ export const DEFAULT_SIDECAR_CONFIG: SidecarConfig = {
 	strings: {
 		title: 'Intelligence',
 		followingDoc: '正在跟随正文',
+		scopeLabel: 'Intelligence 范围',
+		scopeTrigger: '范围',
+		scopeDocument: '当前文档',
+		scopeWorkSegment: '当前工作段',
+		scopePinned: '固定范围',
+		startNewWorkSegment: '开始新工作段',
+		endWorkSegment: '结束工作段',
 		tabCopilot: 'Copilot',
 		tabHistory: 'History',
 		close: '关闭',
@@ -329,6 +363,11 @@ export const DEFAULT_SIDECAR_CONFIG: SidecarConfig = {
 		sessionStartTitle: '从当前正文开始',
 		sessionStartBody: '选择一种可用能力，或直接描述希望 Copilot 如何处理当前内容。',
 		currentContext: '当前上下文',
+		originAutomaticSuggestion: '来自正文旁的自动建议',
+		originAskCopilot: '来自正文块的“问 Copilot”',
+		originCommentHandoff: '来自评论交接',
+		originHistoryDeepLink: '来自历史记录',
+		originNativeEditor: '来自原生 Markdown',
 		autoRoute: '自动路由',
 		autoModel: '自动模型',
 		noAvailableCapabilities: '当前对象没有可用的 Copilot 能力。',
@@ -347,6 +386,21 @@ export const DEFAULT_SIDECAR_CONFIG: SidecarConfig = {
 		receiptTrace: 'Trace',
 		locateInDocument: '定位正文',
 			staleFindingNotice: '证据已随正文变化，需要重新核对',
+			generationHistoryTitle: '生成历史',
+			generationHistoryIntro: '保留每次 AI 生成和所有版本；关闭或未采用不会删除。',
+			generationHistoryEmpty: '还没有 AI 生成记录',
+			generationHistoryCount: '{count} 次生成',
+			generationHistoryVersions: '{count} 个版本',
+			generationHistoryAccepted: '已采用',
+			generationHistoryNotAdopted: '未采用',
+			generationHistoryPending: '待审阅',
+			generationHistoryFailed: '生成失败',
+			generationHistoryCancelled: '已取消',
+			generationHistoryStale: '源已变化',
+			generationHistoryRestore: '恢复到正文',
+			generationHistoryRestored: '已恢复，可在正文中继续审阅',
+			documentHistoryTitle: '文档历史',
+			documentHistoryIntro: '只记录真正写入正文的编辑、接受和回滚。',
 			historyEmpty: '还没有已接受的写入',
 			historyTitle: '文档历史',
 			historyIntro: '记录你的直接编辑、AI 辅助后接受、AI 后调整与系统回滚；不记录建议和生成过程。',

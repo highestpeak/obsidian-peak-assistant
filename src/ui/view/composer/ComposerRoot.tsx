@@ -1,25 +1,38 @@
 import * as React from 'react';
 import { useStore } from 'zustand';
-import { RefreshCw } from 'lucide-react';
+import { Plus, RefreshCw, Sparkles, X } from 'lucide-react';
 import {
+	COMPOSER_LIST_ITEM_PATCH_RENDERER_ID,
 	COMPOSER_METADATA_SUGGESTION_RENDERER_ID,
+	COMPOSER_STREAMING_TEXT_RENDERER_ID,
 	sectionBlockIds,
 	DEFAULT_TRANSACTION_CONFIG,
+	initialIntelligencePresentationState,
+	reduceIntelligencePresentation,
 	type ComposerActionDescriptor,
 	type ComposerBlock,
 	type ComposerCandidate,
 	type ComposerCandidateRuntimePort,
 	type ComposerContextSnapshot,
 	type ComposerDocumentSnapshot,
+	type ComposerDisplayMode,
+	type ComposerInvocationPlacement,
+	type ComposerResultEnvelope,
 	type ComposerStateSource,
+	type DefaultDocumentView,
 	type DocumentComposerState,
+	type IntelligencePresentationIntent,
+	type IntelligencePresentationOrigin,
 	type SelectionGuardReason,
 	composerTargetBlockId,
+	stubComposerCapabilityProjection,
 } from '@/core/composer';
+import type { ComposerListItemPatchPayload } from '@/core/schemas/composer';
 import {
 	buildCommentSourceRef,
 	buildMoveBlockOps,
 	buildToggleTaskOps,
+	FILL_GAPS_CAPABILITY_ID,
 	POLISH_CAPABILITY_ID,
 	CODE_EXPLAIN_CAPABILITY_ID,
 	MERMAID_EXPLAIN_CAPABILITY_ID,
@@ -48,6 +61,8 @@ import {
 import {
 	ComposerCandidateHost,
 	createDefaultCandidateRendererRegistry,
+	DEFAULT_CANDIDATE_UI_STRINGS,
+	loadCandidateUiStrings,
 	type CandidateRendererRegistry,
 } from './candidates';
 import { registerImageCandidateRenderers, ImageBlockView } from './blocks/image';
@@ -84,6 +99,7 @@ import { firstClipboardImage } from './chrome/pasteImage';
 import { containComposerEscape } from './escapeContainment';
 import { IntelligenceSidecar } from './sidecar';
 import { buildFocusRunContext, resolveRelatedFocus } from './sidecar/focusContext';
+import { restoreGenerationReview } from './generationHistory';
 import type { IntelligenceRuntime, SuggestionFinding } from '@/service/composer';
 
 /**
@@ -124,6 +140,17 @@ export interface ComposerRootProps {
 	intelligence?: IntelligenceRuntime;
 	/** Reactive intelligence provider (rebinds on document switch, mirrors runtimeSource). */
 	intelligenceSource?: { getIntelligence(): IntelligenceRuntime | undefined };
+	/** Versioned leaf-local display state (`work`/`all` migrate to `edit`). */
+	initialDisplayMode?: ComposerDisplayMode;
+	onDisplayModeChange?: (mode: ComposerDisplayMode) => void;
+	/** Workspace policy for future file opens; does not convert this leaf. */
+	defaultDocumentView?: DefaultDocumentView;
+	onDefaultDocumentViewChange?: (view: DefaultDocumentView) => void | Promise<void>;
+	/** Explicit same-leaf conversion; independent from the future-open policy. */
+	onConvertCurrentView?: (view: DefaultDocumentView) => void | Promise<void>;
+	/** Last explicit workspace-level Intelligence open/close preference. */
+	initialIntelligenceOpen?: boolean;
+	onIntelligenceManualOpenChange?: (open: boolean) => void | Promise<void>;
 }
 
 interface PanelState {
@@ -152,6 +179,13 @@ export function ComposerRoot({
 	onRevalidate,
 	intelligence: intelligenceProp,
 	intelligenceSource,
+	initialDisplayMode = 'edit',
+	onDisplayModeChange,
+	defaultDocumentView,
+	onDefaultDocumentViewChange,
+	onConvertCurrentView,
+	initialIntelligenceOpen = false,
+	onIntelligenceManualOpenChange,
 }: ComposerRootProps): React.ReactElement {
 	const rootRef = React.useRef<HTMLDivElement | null>(null);
 	const subscribe = React.useCallback((cb: () => void) => source.subscribe(cb), [source]);
@@ -182,7 +216,9 @@ export function ComposerRoot({
 	const chromeValue = React.useMemo<ComposerChromeValue>(
 		() => ({
 			runtime,
-			projection: resolveProjection(runtime),
+			projection: state.snapshot
+				? resolveProjection(runtime)
+				: stubComposerCapabilityProjection,
 			candidateRegistry,
 			config,
 			snapshot: state.snapshot,
@@ -211,10 +247,41 @@ export function ComposerRoot({
 
 	const intelligence = intelligenceSource?.getIntelligence() ?? intelligenceProp;
 	const [activeCommentId, setActiveCommentId] = React.useState<string | null>(null);
-	const [intelligenceOpen, setIntelligenceOpen] = React.useState(true);
+	const [intelligencePresentation, setIntelligencePresentation] = React.useState(
+		() => initialIntelligencePresentationState(initialIntelligenceOpen),
+	);
+	const intelligenceMotionTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+	const applyIntelligenceIntent = React.useCallback((intent: IntelligencePresentationIntent) => {
+		setIntelligencePresentation((current) => {
+			const next = reduceIntelligencePresentation(current, intent);
+			if (intelligenceMotionTimer.current) clearTimeout(intelligenceMotionTimer.current);
+			if (next.animate) {
+				intelligenceMotionTimer.current = setTimeout(() => {
+					setIntelligencePresentation((latest) => ({ ...latest, animate: false }));
+					intelligenceMotionTimer.current = null;
+				}, 300);
+			}
+			return next;
+		});
+		if (intent.kind !== 'manual-set') return;
+		void onIntelligenceManualOpenChange?.(intent.open);
+	}, [onIntelligenceManualOpenChange]);
+	const setManualIntelligenceOpen = React.useCallback(
+		(open: boolean) => applyIntelligenceIntent({ kind: 'manual-set', open }),
+		[applyIntelligenceIntent],
+	);
+	const openContextualIntelligence = React.useCallback(
+		(origin: IntelligencePresentationOrigin) =>
+			applyIntelligenceIntent({ kind: 'contextual-open', origin }),
+		[applyIntelligenceIntent],
+	);
 	React.useEffect(() => {
 		setActiveCommentId(null);
-	}, [state.snapshot?.documentId]);
+		setIntelligencePresentation(initialIntelligencePresentationState(initialIntelligenceOpen));
+	}, [initialIntelligenceOpen, state.snapshot?.documentId]);
+	React.useEffect(() => () => {
+		if (intelligenceMotionTimer.current) clearTimeout(intelligenceMotionTimer.current);
+	}, []);
 	// Sidecar controls legitimately take DOM focus. Preserve the last body block so
 	// that clicking a Brief action does not silently downgrade its document context
 	// to the whole note.
@@ -229,7 +296,7 @@ export function ComposerRoot({
 	// freezes the block the user is on (not a document-level fallback). The DOM
 	// lookup lives here (the chrome owns focus); the snapshot assembly is the pure
 	// `buildFocusRunContext` (keeps the intelligence layer DOM-free).
-	const currentSnapshot = state.snapshot;
+	const currentSnapshot = state.snapshot ?? runtime.session?.snapshot ?? null;
 	const getFocusedBlockId = React.useCallback((): string | null => {
 		const rootEl = rootRef.current;
 		const active = rootEl?.ownerDocument.activeElement;
@@ -245,6 +312,15 @@ export function ComposerRoot({
 	const resolveFocus = React.useCallback(
 		(focusedBlockId: string | null) => resolveRelatedFocus(currentSnapshot, focusedBlockId),
 		[currentSnapshot],
+	);
+	const restoreGeneration = React.useCallback(
+		(runId: string): boolean => {
+			const workspace = runtime.workspaceIntelligence;
+			const run = workspace?.projection().runs.find((item) => item.runId === runId);
+			if (!run) return false;
+			return restoreGenerationReview(runtime, run);
+		},
+		[runtime],
 	);
 	const updateBriefFocus = React.useCallback(() => {
 		if (!intelligence) return;
@@ -279,19 +355,29 @@ export function ComposerRoot({
 						foldStore={foldStore}
 						onRevalidate={onRevalidate}
 						intelligence={intelligence}
-						intelligenceOpen={intelligenceOpen}
-						onIntelligenceOpen={setIntelligenceOpen}
+						intelligenceOpen={intelligencePresentation.open}
+						onIntelligenceManualOpen={setManualIntelligenceOpen}
+						onIntelligenceContextualOpen={openContextualIntelligence}
 						activeCommentId={activeCommentId}
 						onActiveComment={setActiveCommentId}
+						initialDisplayMode={initialDisplayMode}
+						onDisplayModeChange={onDisplayModeChange}
+						defaultDocumentView={defaultDocumentView}
+						onDefaultDocumentViewChange={onDefaultDocumentViewChange}
+						onConvertCurrentView={onConvertCurrentView}
 					/>
 				</div>
-				{intelligence && (
+				{intelligence && currentSnapshot && (
 					<IntelligenceSidecar
 						runtime={intelligence}
+						workspaceRuntime={runtime.workspaceIntelligence}
 						hub={runtime.hub}
+						documentId={currentSnapshot.documentId}
 						documentFilePath={currentSnapshot.filePath}
-						open={intelligenceOpen}
-						onOpenChange={setIntelligenceOpen}
+						open={intelligencePresentation.open}
+						motion={intelligencePresentation.animate ? 'user' : 'none'}
+						presentationOrigin={intelligencePresentation.origin}
+						onOpenChange={(open) => setManualIntelligenceOpen(open)}
 						onLocate={locateBlock}
 						onLocateComment={(commentId, blockId) => {
 							setActiveCommentId(commentId);
@@ -301,6 +387,7 @@ export function ComposerRoot({
 						getFocusedBlockId={getFocusedBlockId}
 						resolveFocusContext={resolveFocusContext}
 						resolveRelatedFocus={resolveFocus}
+						onRestoreGeneration={restoreGeneration}
 					/>
 				)}
 			</div>
@@ -315,9 +402,15 @@ interface BodyProps {
 	onRevalidate?: () => void;
 	intelligence?: IntelligenceRuntime;
 	intelligenceOpen?: boolean;
-	onIntelligenceOpen?: (open: boolean) => void;
+	onIntelligenceManualOpen?: (open: boolean) => void;
+	onIntelligenceContextualOpen?: (origin: IntelligencePresentationOrigin) => void;
 	activeCommentId?: string | null;
 	onActiveComment?: (commentId: string | null) => void;
+	initialDisplayMode?: ComposerDisplayMode;
+	onDisplayModeChange?: (mode: ComposerDisplayMode) => void;
+	defaultDocumentView?: DefaultDocumentView;
+	onDefaultDocumentViewChange?: (view: DefaultDocumentView) => void | Promise<void>;
+	onConvertCurrentView?: (view: DefaultDocumentView) => void | Promise<void>;
 }
 
 function ComposerBody(props: BodyProps): React.ReactElement {
@@ -337,9 +430,15 @@ function ComposerDocument({
 	onRevalidate,
 	intelligence,
 	intelligenceOpen = false,
-	onIntelligenceOpen = () => undefined,
+	onIntelligenceManualOpen = () => undefined,
+	onIntelligenceContextualOpen = () => undefined,
 	activeCommentId = null,
 	onActiveComment = () => undefined,
+	initialDisplayMode = 'edit',
+	onDisplayModeChange,
+	defaultDocumentView,
+	onDefaultDocumentViewChange,
+	onConvertCurrentView,
 }: BodyProps): React.ReactElement {
 	const chrome = useComposerChrome();
 	const { runtime, projection } = chrome;
@@ -348,13 +447,17 @@ function ComposerDocument({
 	const containerRef = React.useRef<HTMLDivElement | null>(null);
 	const workspaceRef = React.useRef<HTMLDivElement | null>(null);
 
-	const [displayState, setDisplayState] = React.useState<ComposerDisplayState>(hub ? 'work' : 'clean');
+	const [displayState, setDisplayState] = React.useState<ComposerDisplayState>(
+		hub ? initialDisplayMode : 'clean',
+	);
 	const [panel, setPanel] = React.useState<PanelState | null>(null);
 	const [commentDraft, setCommentDraft] = React.useState<CommentDraftTarget | null>(null);
-	const [commentRailOpen, setCommentRailOpen] = React.useState(true);
+	const [commentRailOpen, setCommentRailOpen] = React.useState(false);
 	const [drag, setDrag] = React.useState<DragState | null>(null);
 	const [hasSelection, setHasSelection] = React.useState(false);
 	const [guard, setGuard] = React.useState<string | null>(null);
+	const [invokeErrors, setInvokeErrors] = React.useState<Record<string, string>>({});
+	const [reviewAll, setReviewAll] = React.useState(false);
 	const guardTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 	const setCommentSurfaceOpen = React.useCallback((open: boolean) => {
 		setCommentRailOpen(open);
@@ -364,8 +467,15 @@ function ComposerDocument({
 	}, [onActiveComment]);
 	const setDisplayStateWithComments = React.useCallback((next: ComposerDisplayState) => {
 		setDisplayState(next);
+		onDisplayModeChange?.(next);
 		if (next === 'clean') setCommentSurfaceOpen(false);
-	}, [setCommentSurfaceOpen]);
+	}, [onDisplayModeChange, setCommentSurfaceOpen]);
+
+	React.useEffect(() => {
+		if (!hub) return;
+		setDisplayState(initialDisplayMode);
+		setCommentSurfaceOpen(false);
+	}, [hub, initialDisplayMode, snapshot.documentId]);
 
 	React.useEffect(() => {
 		if (!panel) return;
@@ -383,7 +493,7 @@ function ComposerDocument({
 		return () => doc.removeEventListener('pointerdown', closeOnOutsidePointer);
 	}, [panel]);
 
-	const editing = displayState !== 'clean' && Boolean(hub);
+	const editing = displayState === 'edit' && Boolean(hub);
 	useCrossBlockTextSelection(containerRef, editing);
 	// Comments are an on-demand reading layer, not editing chrome. Clean mode
 	// enters with the rail closed; the toolbar can still open existing threads
@@ -392,23 +502,42 @@ function ComposerDocument({
 
 	const showGuard = (reason: SelectionGuardReason) => {
 		const g = config.chrome.selection.guards;
-		const message =
-			reason === 'code-block-rich-format'
-				? g.codeBlockRichFormat
-				: reason === 'cross-structure-link'
-					? g.crossStructureLink
-					: g.emptySelection;
+		let message = g.emptySelection;
+		if (reason === 'code-block-rich-format') message = g.codeBlockRichFormat;
+		if (reason === 'cross-structure-link') message = g.crossStructureLink;
+		if (reason === 'semantic-inline-html-format') message = g.semanticInlineHtmlFormat;
 		setGuard(message);
 		if (guardTimer.current) clearTimeout(guardTimer.current);
 		guardTimer.current = setTimeout(() => setGuard(null), 3200);
 	};
 
-	const invoke = (descriptor: ComposerActionDescriptor, snap: ComposerContextSnapshot, instruction?: string) => {
+	const invoke = (
+		descriptor: ComposerActionDescriptor,
+		snap: ComposerContextSnapshot,
+		instruction?: string,
+		placement?: ComposerInvocationPlacement,
+	) => {
+		const blockId = composerTargetBlockId(snap.target);
 		try {
-			projection.invoke(descriptor.capabilityId, snap, instruction ? { instruction } : undefined);
-		} catch {
-			// Only a real (mis-wired) port can land here — the stub projects no
-			// actions, so nothing invokable renders against it.
+			const options = instruction !== undefined || placement !== undefined
+				? {
+						...(instruction !== undefined ? { instruction } : {}),
+						...(placement !== undefined ? { placement } : {}),
+					}
+				: undefined;
+			projection.invoke(descriptor.capabilityId, snap, options);
+			if (blockId) {
+				setInvokeErrors((current) => {
+					if (!(blockId in current)) return current;
+					const next = { ...current };
+					delete next[blockId];
+					return next;
+				});
+			}
+		} catch (error) {
+			if (!blockId) return;
+			const message = error instanceof Error ? error.message : String(error);
+			setInvokeErrors((current) => ({ ...current, [blockId]: message }));
 		}
 	};
 
@@ -507,6 +636,11 @@ function ComposerDocument({
 	const hidden = React.useMemo(() => hiddenBySections(snapshot.blocks, folded), [snapshot.blocks, folded]);
 	const visibleBlocks = snapshot.blocks.filter((b) => !hidden.has(b.blockId));
 	const findings = useComposerFindings(intelligence);
+	const reviewCandidates = useDocumentCandidates(runtime.candidateRuntime);
+	React.useEffect(() => {
+		if (reviewCandidates.length >= 2) return;
+		setReviewAll(false);
+	}, [reviewCandidates.length]);
 
 	// INT-1: keep the edited block's React subtree (and its focused
 	// contenteditable DOM node) mounted through a burst commit — see
@@ -530,7 +664,21 @@ function ComposerDocument({
 				onCommentOpen={setCommentSurfaceOpen}
 				intelligenceAvailable={Boolean(intelligence)}
 				intelligenceOpen={intelligenceOpen}
-				onIntelligenceOpen={onIntelligenceOpen}
+				onIntelligenceOpen={onIntelligenceManualOpen}
+				defaultDocumentView={defaultDocumentView}
+				onDefaultDocumentView={onDefaultDocumentViewChange
+					? (view) => {
+							void onDefaultDocumentViewChange(view);
+						}
+					: undefined}
+				onConvertCurrentView={onConvertCurrentView
+					? (view) => {
+							void onConvertCurrentView(view);
+						}
+					: undefined}
+				reviewCandidateCount={reviewCandidates.length}
+				reviewAll={reviewAll}
+				onReviewAll={setReviewAll}
 			/>
 			<div ref={workspaceRef} className="pk-composer-workspace">
 			<div
@@ -554,12 +702,20 @@ function ComposerDocument({
 							foldStore={foldStore}
 							editing={editing}
 							displayState={displayState}
+							reviewAll={reviewAll}
+							invokeError={invokeErrors[b.blockId]}
 							findings={findings.filter((finding) => composerTargetBlockId(finding.target) === b.blockId)}
 							onAskFinding={(finding) => {
 								if (!intelligence) return;
 								intelligence.session.selectSurface('copilot');
 								intelligence.session.openSession(finding.body?.title ?? finding.reason, []);
-								onIntelligenceOpen(true);
+								const blockId = composerTargetBlockId(finding.target);
+								if (!blockId) return;
+								onIntelligenceContextualOpen({
+									kind: 'automatic-suggestion',
+									findingId: finding.findingId,
+									blockId,
+								});
 							}}
 							onConfirmFinding={(finding) => intelligence?.findings.consume(finding.findingId)}
 							onDismissFinding={(finding) => intelligence?.findings.dismiss(finding.findingId, 'body')}
@@ -659,6 +815,11 @@ function ComposerDocument({
 								[buildCommentSourceRef(comment)],
 							);
 							onActiveComment(comment.commentId);
+							onIntelligenceContextualOpen({
+								kind: 'comment-handoff',
+								commentId: comment.commentId,
+								blockId: comment.anchor.blockId,
+							});
 						}
 					: undefined}
 			/>
@@ -679,6 +840,8 @@ function ComposerBlockRow({
 	foldStore,
 	editing,
 	displayState,
+	reviewAll,
+	invokeError,
 	findings,
 	onAskFinding,
 	onConfirmFinding,
@@ -701,6 +864,8 @@ function ComposerBlockRow({
 	foldStore: ComposerFoldStore;
 	editing: boolean;
 	displayState: ComposerDisplayState;
+	reviewAll: boolean;
+	invokeError?: string;
 	findings: readonly SuggestionFinding[];
 	onAskFinding(finding: SuggestionFinding): void;
 	onConfirmFinding(finding: SuggestionFinding): void;
@@ -711,7 +876,12 @@ function ComposerBlockRow({
 	onSelectInsertType: (typeId: string) => void;
 	onDragStart?: (ev: React.PointerEvent<HTMLButtonElement>) => void;
 	dropBefore?: boolean;
-	onInvoke: (d: ComposerActionDescriptor, snap: ComposerContextSnapshot, instruction?: string) => void;
+	onInvoke: (
+		d: ComposerActionDescriptor,
+		snap: ComposerContextSnapshot,
+		instruction?: string,
+		placement?: ComposerInvocationPlacement,
+	) => void;
 	activeCommentId: string | null;
 	onActiveComment: (commentId: string | null) => void;
 	onOpenComment: () => void;
@@ -724,12 +894,56 @@ function ComposerBlockRow({
 	const raw = block.renderModel.raw;
 	const aiSnapshot = makeBlockSnapshot(snapshot, block);
 	const candidateRuntime = chrome.runtime.candidateRuntime;
-	const candidate = useBlockCandidate(candidateRuntime, block.blockId);
+	const candidates = useBlockCandidates(candidateRuntime, block.blockId);
+	const newestActiveCandidate = activeCandidateOf(candidates);
+	const [selectedCandidateId, setSelectedCandidateId] = React.useState<string | null>(null);
+	React.useEffect(() => {
+		if (!newestActiveCandidate) {
+			setSelectedCandidateId(null);
+			return;
+		}
+		if (newestActiveCandidate.status === 'streaming') {
+			setSelectedCandidateId(newestActiveCandidate.candidateId);
+			return;
+		}
+		setSelectedCandidateId((current) =>
+			current && candidates.some((candidate) => candidate.candidateId === current)
+				? current
+				: newestActiveCandidate.candidateId,
+		);
+	}, [candidates, newestActiveCandidate]);
+	const candidate =
+		candidates.find((item) => item.candidateId === selectedCandidateId)
+		?? newestActiveCandidate;
 	const candidateId = candidate?.candidateId ?? null;
-	const hasInlineCandidate = Boolean(candidateRuntime && candidateId);
-	const showInlineCandidate = displayState === 'all' && hasInlineCandidate;
+	const hasInlineCandidate = Boolean(candidateRuntime && candidates.length > 0);
+	const showInlineCandidate = displayState === 'edit' && hasInlineCandidate;
+	const visibleCandidates = reviewAll
+		? candidates
+		: candidate ? [candidate] : [];
+	const listItemCandidates = visibleCandidates.filter(
+		(item) =>
+			candidateRuntime?.rendererIdFor(item.candidateId) ===
+			COMPOSER_LIST_ITEM_PATCH_RENDERER_ID,
+	);
+	const inPlaceCandidates = visibleCandidates.filter(
+		(item) =>
+			candidateRuntime?.candidateEffectFor?.(item.candidateId) === 'rewrite' &&
+			candidateRuntime.rendererIdFor(item.candidateId) !==
+				COMPOSER_LIST_ITEM_PATCH_RENDERER_ID,
+	);
+	const belowCandidates = visibleCandidates.filter(
+		(item) => {
+			const effect = candidateRuntime?.candidateEffectFor?.(item.candidateId);
+			return (
+				(effect === 'insert' || effect === 'transform') &&
+				candidateRuntime?.rendererIdFor(item.candidateId) ===
+					COMPOSER_STREAMING_TEXT_RENDERER_ID
+			);
+		},
+	);
 	const frontmatterCandidate: FrontmatterCandidatePort | undefined =
-		candidateRuntime && candidate && block.kind === 'frontmatter' &&
+		showInlineCandidate && candidateRuntime && candidate && block.kind === 'frontmatter' &&
 		candidateRuntime.rendererIdFor(candidate.candidateId) === COMPOSER_METADATA_SUGGESTION_RENDERER_ID
 			? { runtime: candidateRuntime, candidate }
 			: undefined;
@@ -739,7 +953,11 @@ function ComposerBlockRow({
 		candidateRuntime &&
 		candidate &&
 		candidateRuntime.rendererIdFor(candidate.candidateId)?.startsWith('composer.renderer.image');
-	const replacesBlockBody = showInlineCandidate && !frontmatterCandidate && !imageCandidate;
+	const replacesBlockBody =
+		showInlineCandidate &&
+		inPlaceCandidates.length > 0 &&
+		!frontmatterCandidate &&
+		!imageCandidate;
 	const spacing = blockSpacingRole(block, previousBlock);
 	const ownPanel = panel?.blockId === block.blockId ? panel : null;
 	const frontmatterLibraryOpen = ownPanel?.panel === 'vault-library';
@@ -775,6 +993,13 @@ function ComposerBlockRow({
 			data-folded={folded}
 			data-level={block.kind === 'heading' ? block.renderModel.level ?? 1 : undefined}
 			data-spacing={spacing}
+			data-unitized={
+				block.kind === 'list' ||
+				block.kind === 'task' ||
+				(block.kind === 'paragraph' && block.units.length > 1)
+					? 'true'
+					: undefined
+			}
 			data-drop-before={dropBefore || undefined}
 			// FIX-1 F2: a mousedown in the row's dead zone (right of the text edge,
 			// rail gutter padding, run gaps) targets this WRAPPER, so the browser
@@ -809,12 +1034,15 @@ function ComposerBlockRow({
 				/>
 				{replacesBlockBody ? (
 					<div className="pk-composer-candidate-slot pk-composer-candidate-slot--in-place" data-chrome="true">
-						<ComposerCandidateHost
-							runtime={candidateRuntime!}
-							candidateId={candidateId!}
-							registry={chrome.candidateRegistry}
-							resolveOriginalText={(c) => originalTextForTextPatchCandidate(snapshot, c)}
-						/>
+						{inPlaceCandidates.map((visibleCandidate) => (
+							<ComposerCandidateHost
+								key={visibleCandidate.candidateId}
+								runtime={candidateRuntime!}
+								candidateId={visibleCandidate.candidateId}
+								registry={chrome.candidateRegistry}
+								resolveOriginalText={(c) => originalTextForTextPatchCandidate(snapshot, c)}
+							/>
+						))}
 					</div>
 				) : showSummary ? (
 					<div className="pk-composer-summary">{block.renderModel.text || config.strings.emptyPreview}</div>
@@ -825,23 +1053,70 @@ function ComposerBlockRow({
 						editing={editing}
 						frontmatterLibraryOpen={frontmatterLibraryOpen}
 						frontmatterCandidate={frontmatterCandidate}
+						listItemCandidates={showInlineCandidate ? listItemCandidates : []}
+						candidateRuntime={candidateRuntime}
+						candidateRegistry={chrome.candidateRegistry}
+						aiSnapshot={aiSnapshot}
+						onInvoke={onInvoke}
 						onFrontmatterLibraryOpenChange={(open) => {
 							if (open === frontmatterLibraryOpen) return;
 							openPanel('vault-library');
 						}}
 					/>
 					)}
-					{imageCandidate ? (
-						<div className="pk-composer-candidate-slot pk-composer-candidate-slot--image" data-chrome="true">
-							<ComposerCandidateHost
-								runtime={candidateRuntime!}
-								candidateId={candidateId!}
-								registry={chrome.candidateRegistry}
-								resolveOriginalText={(c) => originalTextForTextPatchCandidate(snapshot, c)}
-							/>
+					{showInlineCandidate && belowCandidates.length > 0 ? (
+						<div className="pk-composer-candidate-slot pk-composer-candidate-slot--below" data-chrome="true">
+							{belowCandidates.map((visibleCandidate) => (
+								<ComposerCandidateHost
+									key={visibleCandidate.candidateId}
+									runtime={candidateRuntime!}
+									candidateId={visibleCandidate.candidateId}
+									registry={chrome.candidateRegistry}
+								/>
+							))}
 						</div>
 					) : null}
-					{editing && !hasInlineCandidate && (
+					{imageCandidate ? (
+						<div className="pk-composer-candidate-slot pk-composer-candidate-slot--image" data-chrome="true">
+							{visibleCandidates.map((visibleCandidate) => (
+								<ComposerCandidateHost
+									key={visibleCandidate.candidateId}
+									runtime={candidateRuntime!}
+									candidateId={visibleCandidate.candidateId}
+									registry={chrome.candidateRegistry}
+									resolveOriginalText={(c) => originalTextForTextPatchCandidate(snapshot, c)}
+								/>
+							))}
+						</div>
+					) : null}
+					{showInlineCandidate && reviewAll && (frontmatterCandidate || imageCandidate) ? (
+						<div className="pk-composer-candidate-slot pk-composer-candidate-slot--review-all" data-chrome="true">
+							{visibleCandidates
+								.filter((visibleCandidate) => visibleCandidate.candidateId !== candidateId)
+								.map((visibleCandidate) => (
+									<ComposerCandidateHost
+										key={visibleCandidate.candidateId}
+										runtime={candidateRuntime!}
+										candidateId={visibleCandidate.candidateId}
+										registry={chrome.candidateRegistry}
+										resolveOriginalText={(c) => originalTextForTextPatchCandidate(snapshot, c)}
+									/>
+								))}
+						</div>
+					) : null}
+					{showInlineCandidate && !reviewAll && candidates.length > 1 ? (
+						<CollapsedCandidateList
+							candidates={candidates.filter((item) => item.candidateId !== candidateId)}
+							runtime={candidateRuntime!}
+							onSelect={setSelectedCandidateId}
+						/>
+					) : null}
+					{editing && invokeError ? (
+						<div className="pk-composer-invoke-error" role="alert" data-chrome="true">
+							{invokeError}
+						</div>
+					) : null}
+					{editing && !showInlineCandidate && (
 					<BlockActionRow
 						snapshot={aiSnapshot}
 						onInsertBelow={onInsertBelow}
@@ -936,31 +1211,104 @@ function isTextActionBlock(kind: ComposerBlock['kind']): boolean {
 }
 
 /**
- * The id of the pending (non-terminal) candidate anchored to this block, or null.
+ * Pending (non-terminal) candidates anchored to this block.
  * Subscribes to the candidate runtime so a freshly-invoked candidate appears
  * under the correct block and disappears on accept / discard.
  */
-function useBlockCandidate(
+function useBlockCandidates(
 	runtime: ComposerCandidateRuntimePort | undefined,
 	blockId: string,
-): ComposerCandidate | null {
-	const [candidate, setCandidate] = React.useState<ComposerCandidate | null>(null);
+): ComposerCandidate[] {
+	const [candidates, setCandidates] = React.useState<ComposerCandidate[]>([]);
 	React.useEffect(() => {
 		if (!runtime) {
-			setCandidate(null);
+			setCandidates([]);
 			return;
 		}
-		return runtime.subscribe((candidates) => {
-			const match = candidates.find(
+		return runtime.subscribe((nextCandidates) => {
+			const matches = nextCandidates.filter(
 				(c) =>
 					anchorBlockOf(c) === blockId &&
 					c.status !== 'accepted' &&
 					c.status !== 'discarded',
 			);
-			setCandidate(match ?? null);
+			setCandidates(matches);
 		});
 	}, [runtime, blockId]);
-	return candidate;
+	return candidates;
+}
+
+function useDocumentCandidates(
+	runtime: ComposerCandidateRuntimePort | undefined,
+): ComposerCandidate[] {
+	const [candidates, setCandidates] = React.useState<ComposerCandidate[]>([]);
+	React.useEffect(() => {
+		if (!runtime) {
+			setCandidates([]);
+			return;
+		}
+		return runtime.subscribe((next) => {
+			setCandidates(next.filter((candidate) =>
+				candidate.status !== 'accepted' && candidate.status !== 'discarded'));
+		});
+	}, [runtime]);
+	return candidates;
+}
+
+function activeCandidateOf(candidates: readonly ComposerCandidate[]): ComposerCandidate | null {
+	if (candidates.length === 0) return null;
+	const streaming = [...candidates].reverse().find((candidate) => candidate.status === 'streaming');
+	return streaming ?? candidates[candidates.length - 1];
+}
+
+function CollapsedCandidateList({
+	candidates,
+	runtime,
+	onSelect,
+}: {
+	candidates: readonly ComposerCandidate[];
+	runtime: ComposerCandidateRuntimePort;
+	onSelect(candidateId: string): void;
+}): React.ReactElement | null {
+	const [strings, setStrings] = React.useState(DEFAULT_CANDIDATE_UI_STRINGS);
+	React.useEffect(() => {
+		let active = true;
+		void loadCandidateUiStrings().then((loaded) => {
+			if (active) setStrings(loaded);
+		});
+		return () => {
+			active = false;
+		};
+	}, []);
+	if (candidates.length === 0) return null;
+	return (
+		<div className="pk-composer-candidate-collapsed-list" data-chrome="true">
+			{candidates.map((candidate) => {
+				const action = runtime.candidateLabelFor?.(candidate.candidateId) ?? strings.draftActionFallback;
+				const status = candidate.status === 'streaming'
+					? strings.streaming
+					: candidate.status === 'failed'
+						? strings.failed
+						: candidate.status === 'cancelled'
+							? strings.cancelled
+							: candidate.status === 'stale'
+								? strings.stale
+								: strings.draftTitle;
+				return (
+					<Button
+						key={candidate.candidateId}
+						variant="ghost"
+						size="sm"
+						className="pk-composer-candidate-collapsed"
+						onClick={() => onSelect(candidate.candidateId)}
+					>
+						<span>{action}</span>
+						<small>{status}</small>
+					</Button>
+				);
+			})}
+		</div>
+	);
 }
 
 function anchorBlockOf(candidate: ComposerCandidate): string | null {
@@ -977,6 +1325,11 @@ function BlockBody({
 	editing,
 	frontmatterLibraryOpen,
 	frontmatterCandidate,
+	listItemCandidates,
+	candidateRuntime,
+	candidateRegistry,
+	aiSnapshot,
+	onInvoke,
 	onFrontmatterLibraryOpenChange,
 }: {
 	block: ComposerBlock;
@@ -984,13 +1337,40 @@ function BlockBody({
 	editing: boolean;
 	frontmatterLibraryOpen: boolean;
 	frontmatterCandidate?: FrontmatterCandidatePort;
+	listItemCandidates: readonly ComposerCandidate[];
+	candidateRuntime?: ComposerCandidateRuntimePort;
+	candidateRegistry: CandidateRendererRegistry;
+	aiSnapshot: ComposerContextSnapshot;
+	onInvoke: (
+		d: ComposerActionDescriptor,
+		snapshot: ComposerContextSnapshot,
+		instruction?: string,
+		placement?: ComposerInvocationPlacement,
+	) => void;
 	onFrontmatterLibraryOpenChange(open: boolean): void;
 }): React.ReactElement {
 	if (block.kind === 'list' || block.kind === 'task') {
-		return <EditableListBody block={block} snapshot={snapshot} editing={editing} />;
+		return (
+			<EditableListBody
+				block={block}
+				snapshot={snapshot}
+				editing={editing}
+				listItemCandidates={listItemCandidates}
+				candidateRuntime={candidateRuntime}
+				candidateRegistry={candidateRegistry}
+				aiSnapshot={aiSnapshot}
+				onInvoke={onInvoke}
+			/>
+		);
 	}
 	if (block.kind === 'callout') {
 		return <CalloutBlockView block={block} snapshot={snapshot} editing={editing} />;
+	}
+	if (
+		block.kind === 'paragraph' &&
+		block.units.filter((unit) => unit.unitKind === 'paragraph-line').length > 1
+	) {
+		return <EditableParagraphLinesBody block={block} snapshot={snapshot} editing={editing} />;
 	}
 	if (TEXT_EDIT_KINDS.has(block.kind)) {
 		return <EditableTextBody block={block} snapshot={snapshot} editing={editing} />;
@@ -1009,6 +1389,55 @@ function BlockBody({
 			frontmatterCandidate={frontmatterCandidate}
 			onFrontmatterLibraryOpenChange={onFrontmatterLibraryOpenChange}
 		/>
+	);
+}
+
+function EditableParagraphLinesBody({
+	block,
+	snapshot,
+	editing,
+}: {
+	block: ComposerBlock;
+	snapshot: ComposerDocumentSnapshot;
+	editing: boolean;
+}): React.ReactElement {
+	const lines = block.units.filter((unit) => unit.unitKind === 'paragraph-line');
+	return (
+		<div className="pk-composer-paragraph-lines" data-block-id={block.blockId}>
+			{lines.map((line) => (
+				<div
+					key={line.unitId}
+					className="pk-composer-paragraph__line"
+					data-unit-id={line.unitId}
+				>
+					<EditableText
+						blockId={block.blockId}
+						unitId={line.unitId}
+						text={snapshot.sourceText.slice(line.from, line.to)}
+						sourceFrom={line.from}
+						editable={editing}
+						resolveRange={() => {
+							const current = locateBlock(snapshot, block.blockId);
+							const currentLine = current?.units.find(
+								(unit) => unit.unitId === line.unitId && unit.unitKind === 'paragraph-line',
+							);
+							if (!current || !currentLine) return null;
+							return {
+								from: currentLine.from,
+								to: currentLine.to,
+								current: snapshot.sourceText.slice(currentLine.from, currentLine.to),
+								target: {
+									kind: 'unit' as const,
+									blockId: current.blockId,
+									unitId: currentLine.unitId,
+								},
+							};
+						}}
+						className="pk-composer-prose pk-composer-paragraph__line-text"
+					/>
+				</div>
+			))}
+		</div>
 	);
 }
 
@@ -1075,14 +1504,143 @@ function EditableListBody({
 	block,
 	snapshot,
 	editing,
+	listItemCandidates,
+	candidateRuntime,
+	candidateRegistry,
+	aiSnapshot,
+	onInvoke,
 }: {
 	block: ComposerBlock;
 	snapshot: ComposerDocumentSnapshot;
 	editing: boolean;
+	listItemCandidates: readonly ComposerCandidate[];
+	candidateRuntime?: ComposerCandidateRuntimePort;
+	candidateRegistry: CandidateRendererRegistry;
+	aiSnapshot: ComposerContextSnapshot;
+	onInvoke: (
+		d: ComposerActionDescriptor,
+		snapshot: ComposerContextSnapshot,
+		instruction?: string,
+		placement?: ComposerInvocationPlacement,
+	) => void;
 }): React.ReactElement {
 	const chrome = useComposerChrome();
 	const hub = chrome.runtime.hub;
+	const [activeGapIndex, setActiveGapIndex] = React.useState<number | null>(null);
+	const [gapInstruction, setGapInstruction] = React.useState('');
 	const items = block.units.filter((u) => u.unitKind === 'list-item' && !u.parentUnitId);
+	const fillGapAction = chrome.projection
+		.actionsFor(aiSnapshot, 'block-row')
+		.find((action) => action.capabilityId === FILL_GAPS_CAPABILITY_ID);
+	const candidatesAt = (index: number): readonly ComposerCandidate[] =>
+		listItemCandidates.filter(
+			(candidate) => listItemInsertionIndex(candidate, items.length) === index,
+		);
+	const renderCandidatesAt = (index: number): React.ReactElement[] => {
+		if (!candidateRuntime) return [];
+		return candidatesAt(index).map((candidate) => (
+			<div
+				key={candidate.candidateId}
+				className="pk-composer-list__candidate-row"
+				data-chrome="true"
+			>
+				<ComposerCandidateHost
+					runtime={candidateRuntime}
+					candidateId={candidate.candidateId}
+					registry={candidateRegistry}
+				/>
+			</div>
+		));
+	};
+	const renderGap = (index: number): React.ReactElement | null => {
+		if (!editing || !candidateRuntime || !fillGapAction) return null;
+		const active = activeGapIndex === index;
+		return (
+			<div
+				key={`gap-${index}`}
+				className="pk-composer-list__gap-anchor"
+				data-list-gap-index={index}
+				data-active={active || undefined}
+				data-chrome="true"
+				onMouseDown={(event) => event.stopPropagation()}
+			>
+				{active ? (
+					<div className="pk-composer-list__gap-form">
+						<Sparkles size={13} aria-hidden />
+						<input
+							autoFocus
+							value={gapInstruction}
+							placeholder={chrome.config.chrome.actions.listGapPlaceholder}
+							aria-label={chrome.config.chrome.actions.listGapPlaceholder}
+							onChange={(event) => setGapInstruction(event.currentTarget.value)}
+							onKeyDown={(event) => {
+								if (event.key === 'Escape') {
+									event.preventDefault();
+									setActiveGapIndex(null);
+									setGapInstruction('');
+								}
+								if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
+								event.preventDefault();
+								if (fillGapAction.disabledReason) return;
+								onInvoke(
+									fillGapAction,
+									aiSnapshot,
+									gapInstruction.trim() || undefined,
+									{ kind: 'list-gap', insertionIndex: index },
+								);
+								setActiveGapIndex(null);
+								setGapInstruction('');
+							}}
+						/>
+						<Button
+							variant="ghost"
+							size="sm"
+							className="pk-composer-list__gap-cancel"
+							aria-label={chrome.config.chrome.actions.listGapCancel}
+							title={chrome.config.chrome.actions.listGapCancel}
+							onClick={() => {
+								setActiveGapIndex(null);
+								setGapInstruction('');
+							}}
+						>
+							<X size={12} />
+						</Button>
+						<Button
+							variant="secondary"
+							size="sm"
+							className="pk-composer-list__gap-submit"
+							disabled={Boolean(fillGapAction.disabledReason)}
+							title={fillGapAction.disabledReason}
+							onClick={() => {
+								onInvoke(
+									fillGapAction,
+									aiSnapshot,
+									gapInstruction.trim() || undefined,
+									{ kind: 'list-gap', insertionIndex: index },
+								);
+								setActiveGapIndex(null);
+								setGapInstruction('');
+							}}
+						>
+							{chrome.config.chrome.actions.listGapGenerate}
+						</Button>
+					</div>
+				) : (
+					<Button
+						variant="ghost"
+						size="icon"
+						className="pk-composer-list__gap-trigger"
+						aria-label={chrome.config.chrome.actions.listGapLabel}
+						title={fillGapAction.disabledReason ?? chrome.config.chrome.actions.listGapLabel}
+						disabled={Boolean(fillGapAction.disabledReason)}
+						onClick={() => setActiveGapIndex(index)}
+					>
+						<Plus size={12} />
+					</Button>
+				)}
+			</div>
+		);
+	};
 	const toggle = async (unitId: string) => {
 		if (!hub) return;
 		const built = buildToggleTaskOps(snapshot, block.blockId, unitId);
@@ -1101,51 +1659,65 @@ function EditableListBody({
 	};
 	return (
 		<div className="pk-composer-list" data-block-id={block.blockId}>
-			{items.map((unit) => {
+			{items.map((unit, itemIndex) => {
 				const contentStart = listItemContentStart(snapshot.sourceText, unit);
 				const slice = snapshot.sourceText.slice(unit.from, unit.to);
 				const checkbox = /^(\s*(?:[-*+]|\d+[.)])\s+\[)([ xX])\]/.exec(slice);
 				const text = snapshot.sourceText.slice(contentStart, unit.to);
 				return (
-					<div key={unit.unitId} className="pk-composer-list__row">
-						{checkbox ? (
-							<input
-								type="checkbox"
-								className="pk-composer-task-check"
-								checked={checkbox[2] !== ' '}
-								disabled={!editing || !hub}
-								onChange={() => void toggle(unit.unitId)}
+					<React.Fragment key={unit.unitId}>
+						{renderGap(itemIndex)}
+						{renderCandidatesAt(itemIndex)}
+						<div className="pk-composer-list__row" data-unit-id={unit.unitId}>
+							{checkbox ? (
+								<input
+									type="checkbox"
+									className="pk-composer-task-check"
+									checked={checkbox[2] !== ' '}
+									disabled={!editing || !hub}
+									onChange={() => void toggle(unit.unitId)}
+								/>
+							) : (
+								<span className="pk-composer-list__bullet" aria-hidden>
+									•
+								</span>
+							)}
+							<EditableText
+								blockId={block.blockId}
+								unitId={unit.unitId}
+								text={text}
+								sourceFrom={contentStart}
+								editable={editing}
+								resolveRange={() => {
+									const current = locateBlock(snapshot, block.blockId);
+									const u = current?.units.find((x) => x.unitId === unit.unitId);
+									if (!current || !u) return null;
+									const from = listItemContentStart(snapshot.sourceText, u);
+									return {
+										from,
+										to: u.to,
+										current: snapshot.sourceText.slice(from, u.to),
+										target: { kind: 'unit' as const, blockId: current.blockId, unitId: u.unitId },
+									};
+								}}
+								className="pk-composer-list__text"
 							/>
-						) : (
-							<span className="pk-composer-list__bullet" aria-hidden>
-								•
-							</span>
-						)}
-						<EditableText
-							blockId={block.blockId}
-							unitId={unit.unitId}
-							text={text}
-							sourceFrom={contentStart}
-							editable={editing}
-							resolveRange={() => {
-								const current = locateBlock(snapshot, block.blockId);
-								const u = current?.units.find((x) => x.unitId === unit.unitId);
-								if (!current || !u) return null;
-								const from = listItemContentStart(snapshot.sourceText, u);
-								return {
-									from,
-									to: u.to,
-									current: snapshot.sourceText.slice(from, u.to),
-									target: { kind: 'unit' as const, blockId: current.blockId, unitId: u.unitId },
-								};
-							}}
-							className="pk-composer-list__text"
-						/>
-					</div>
+						</div>
+					</React.Fragment>
 				);
 			})}
+			{renderGap(items.length)}
+			{renderCandidatesAt(items.length)}
 		</div>
 	);
+}
+
+function listItemInsertionIndex(candidate: ComposerCandidate, itemCount: number): number {
+	const envelope = candidate.proposedChange.result as ComposerResultEnvelope | undefined;
+	if (envelope?.resultKind !== 'list-item-patch') return itemCount;
+	const index = (envelope.payload as ComposerListItemPatchPayload).insertionIndex;
+	if (!Number.isInteger(index)) return itemCount;
+	return Math.max(0, Math.min(itemCount, index));
 }
 
 // ── shared bits ─────────────────────────────────────────────────────────────

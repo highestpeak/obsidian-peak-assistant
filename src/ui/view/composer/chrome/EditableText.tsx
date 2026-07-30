@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { ExternalLink } from 'lucide-react';
 import {
 	DirectEditController,
 	hasSourceVisualSyntaxChange,
@@ -313,7 +312,6 @@ function VisualPart({ part, unitId }: { part: SourceVisualPart; unitId?: string 
 				aria-hidden="true"
 			>
 				{part.text}
-				{part.linkKind !== 'wikilink' && <ExternalLink className="pk-composer-external-link-icon" size={12} aria-label="外部链接" />}
 			</span>
 		);
 	}

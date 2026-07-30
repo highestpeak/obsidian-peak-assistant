@@ -60,7 +60,7 @@ export function recordAnalysisSectionGeneration(
 		durationMs?: number;
 		/**
 		 * Tool calls the LLM made while generating this section (extracted
-		 * from `tool_use` / `tool_result` blocks in the SDK message stream).
+		 * from Harness tool-call / tool-result events).
 		 * Each entry becomes a `tool.call` child of the section's model.call
 		 * span so the receipt shows agent/tool steps per section.
 		 */

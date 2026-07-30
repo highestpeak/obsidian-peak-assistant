@@ -12,3 +12,4 @@ export * from './relatedMaterials';
 export * from './openWritingMoves';
 export * from './telemetry';
 export * from './IntelligenceRuntime';
+export * from './workspaceIntelligence';

@@ -11,7 +11,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Cpu, Database, Info, MessageSquare, Search as SearchIcon, Shield, Sparkle, Zap } from 'lucide-react';
+import { ChevronDown, Database, Info, MessageSquare, Search as SearchIcon, Shield, Sparkle, Zap } from 'lucide-react';
 import { Row, Chip, Segmented } from '@/ui/components/primitives';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/ui/component/shared-ui/hover-card';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
@@ -100,32 +100,6 @@ export function AISetupTab({ settings, settingsUpdates }: AISetupTabProps) {
 
     return (
         <div className="pkset-panel">
-            <SettingsSection
-                title="Runtime"
-                sub="Which loop engine runs agents. Auto picks the in-process Vercel AI SDK runtime when supported and falls back to the Claude Agent SDK for Anthropic-only workflows like Vault Search."
-            >
-                <div className="pkset-row-list">
-                    <SettingsRow
-                        icon={Cpu}
-                        title="Agent runtime"
-                        desc="Auto prefers the in-process harness; use In-process to force local models only."
-                        right={
-                            <select
-                                className="pktw-text-sm pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-px-2.5 pktw-py-1.5"
-                                value={settings.harnessSettings?.agentBackend ?? 'auto'}
-                                onChange={(e) => settingsUpdates.update('harnessSettings', {
-                                    ...baseHarness(),
-                                    agentBackend: e.target.value as HarnessSettings['agentBackend'],
-                                })}
-                            >
-                                <option value="auto">Auto</option>
-                                <option value="harness">In-process (Vercel AI SDK)</option>
-                            </select>
-                        }
-                    />
-                </div>
-            </SettingsSection>
-
             <SettingsSection title="Safety" sub="Write-permission gate for the whole agent surface.">
                 <div className="pkset-row-list">
                     <SettingsRow

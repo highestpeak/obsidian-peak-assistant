@@ -10,7 +10,7 @@
 // boundary scanner correctly counted dozens of service -> app edges.
 //
 // T11B replaces those hidden lookups with a small set of cohesive ports.
-// Concrete Obsidian / AI / SQLite / Agent SDK / profile dependencies are
+// Concrete Obsidian / AI / SQLite / Peak Harness / profile dependencies are
 // resolved exactly once at the app composition point
 // (`src/app/copilot/actions/composeCopilotActionRuntime.ts`); service
 // code closes over the ports and stays fakeable.
@@ -121,8 +121,8 @@ export interface CopilotActionTagsPort {
 }
 
 /**
- * Run a Copilot agent stream. The adapter owns the Agent SDK pool,
- * profile resolution, vault MCP server, and copilot MCP server — every
+ * Run a Copilot agent stream. The adapter owns Harness model binding,
+ * profile resolution, vault tools, and copilot output tools — every
  * concrete `AppContext` / `ProfileRegistry` access happens behind this
  * port. Service-side actions just hand over a system + user prompt.
  */

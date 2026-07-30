@@ -1,26 +1,16 @@
-/**
- * GraphAgent — thin shell over Claude Agent SDK query() for knowledge graph
- * generation. Uses the SDK as a library (queryWithProfile); the Vault
- * Search main route no longer does this — see VaultSearchAgent.
- *
- * Flow:
- *   1. warmupPool() installs renderer compat patches + probes node binary
- *   2. generateGraph() resolves profile, builds graph MCP server, calls queryWithProfile()
- *   3. When LLM calls submit_graph, the callback captures the GraphOutput
- *   4. Returns the parsed GraphOutput or null on failure
- *
- * Provider v2 Task 2: now delegates warmup + env materialization to shared sdkAgentPool.
- */
+/** Knowledge-graph agent executed entirely by Peak Harness. */
 
 import type { AppHandle } from '@/core/ports/AppHandle';
-import type { Profile } from '@/core/profiles/types';
 import { PromptId } from '@/core/types/prompt';
 import { TemplateManager } from '@/core/template/TemplateManager';
 import type { GraphOutput } from './graph-output-types';
-import { buildGraphMcpServer } from './graphMcpServer';
+import { buildGraphTools } from './graphTools';
 import { buildGraphSystemPrompt } from './graph-system-prompt';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import { warmupPool, queryWithProfile } from '../core/sdkAgentPool';
+import {
+	assertSuccessfulRun,
+	runHarnessModel,
+} from '@/service/agents/harness/HarnessModelRunner';
 
 export interface GraphAgentInput {
     searchQuery: string;
@@ -42,25 +32,15 @@ export class GraphAgent {
     ) {}
 
     async warmup(): Promise<void> {
-        await warmupPool();
+        // Harness providers are created lazily for the selected profile.
     }
 
     async generateGraph(input: GraphAgentInput, signal?: AbortSignal, onStep?: GraphAgentStepCallback): Promise<GraphOutput | null> {
-        // 1. Ensure pool is warmed up (idempotent)
-        try {
-            await warmupPool();
-        } catch (err) {
-            console.error('[GraphAgent] warmup failed', err);
-            return null;
-        }
-
-        // 2. Resolve profile from ProfileRegistry
-        const profile: Profile | null = ProfileRegistry.getInstance().getActiveAgentProfile();
-        if (!profile) {
+        const binding = ProfileRegistry.getInstance().getActiveAgentConfig();
+        if (!binding) {
             throw new Error('No active profile configured. Please set up a profile in Settings → Profiles.');
         }
 
-        // 3. Build source metadata for system prompt
         const sourcesMeta = input.sources.map(s => {
             const file = this.app.vault.getFileByPath(s.path);
             const folder = s.path.includes('/') ? s.path.split('/').slice(0, -1).join('/') : '/';
@@ -77,11 +57,10 @@ export class GraphAgent {
 
         const systemPrompt = await buildGraphSystemPrompt(input.searchQuery, sourcesMeta);
 
-        // 4. Build MCP server with graph tools
         let graphResult: GraphOutput | null = null;
         let graphSubmitted = false;
 
-        const graphMcpServer = buildGraphMcpServer({
+        const graphTools = buildGraphTools({
             app: this.app,
             onSubmitGraph: async (graph) => {
                 graphResult = graph;
@@ -89,7 +68,6 @@ export class GraphAgent {
             },
         });
 
-        // 5. Call queryWithProfile() and consume messages until graph is submitted
         try {
             const tm = TemplateManager.getInstance();
             if (!tm) throw new Error('TemplateManager not bound — cannot render graph agent user prompt.');
@@ -97,52 +75,44 @@ export class GraphAgent {
                 sourceCount: input.sources.length,
                 searchQuery: input.searchQuery,
             });
-            const messages = queryWithProfile(this.app, this.pluginId, profile, {
+            const result = await runHarnessModel({
+                loopId: `graph-agent-${this.pluginId}-${Date.now()}`,
+                profile: binding.profile,
+                modelId: binding.modelId,
                 prompt: userPrompt,
                 systemPrompt,
-                maxTurns: 10,
-                allowedTools: [
-                    'mcp__graph__read_sources',
-                    'mcp__graph__submit_graph',
-                ],
-                disallowedTools: [
-                    'AskUserQuestion',
-                ],
-                mcpServers: { graph: graphMcpServer },
+                tools: graphTools,
+                maxSteps: 10,
+                maxToolCalls: 12,
                 signal,
-            });
-
-            let turnIndex = 0;
-            for await (const raw of messages) {
-                if (signal?.aborted) break;
-                if (graphSubmitted) break;
-
-                const msg = raw as { type?: string; message?: { content?: Array<{ type: string; name?: string; text?: string; thinking?: string }> } };
-
-                if (msg.type === 'assistant' && msg.message?.content) {
-                    turnIndex++;
-                    for (const block of msg.message.content) {
-                        if (block.type === 'tool_use' && block.name) {
-                            const toolName = block.name.replace('mcp__graph__', '');
-                            if (toolName === 'read_sources') {
-                                onStep?.({ type: 'step-start', id: 'read', label: `Reading ${input.sources.length} source files...` });
-                                onStep?.({ type: 'step-start', id: 'analyze', label: 'Analyzing document relations, clusters, and evolution chains...' });
-                            } else if (toolName === 'submit_graph') {
-                                onStep?.({ type: 'step-done', id: 'read', label: 'Source files loaded' });
-                                onStep?.({ type: 'step-done', id: 'analyze', label: 'Document analysis complete' });
-                                onStep?.({ type: 'step-start', id: 'submit', label: 'Building graph structure...' });
-                            }
+                stopWhen: () => graphSubmitted,
+                treatBareTextAsFinal: false,
+                bareTextContinuationNudge: 'Continue the analysis and call mcp__graph__submit_graph with the completed graph.',
+                onStreamEvent: (event) => {
+                    if (event.type === 'tool_call') {
+                        if (event.toolName === 'mcp__graph__read_sources') {
+                            onStep?.({ type: 'step-start', id: 'read', label: `Reading ${input.sources.length} source files...` });
+                            onStep?.({ type: 'step-start', id: 'analyze', label: 'Analyzing document relations, clusters, and evolution chains...' });
                         }
-                        if (block.type === 'text' && block.text && turnIndex > 1) {
-                            const snippet = block.text.length > 100 ? block.text.slice(0, 100) + '...' : block.text;
-                            onStep?.({ type: 'thinking', id: 'analyze', label: 'Analyzing document relations, clusters, and evolution chains...', detail: snippet });
+                        if (event.toolName === 'mcp__graph__submit_graph') {
+                            onStep?.({ type: 'step-done', id: 'read', label: 'Source files loaded' });
+                            onStep?.({ type: 'step-done', id: 'analyze', label: 'Document analysis complete' });
+                            onStep?.({ type: 'step-start', id: 'submit', label: 'Building graph structure...' });
                         }
                     }
-                }
-
-            }
+                    if (event.type === 'text_delta' && event.stepIndex > 0) {
+                        const detail = event.delta.length > 100
+                            ? `${event.delta.slice(0, 100)}...`
+                            : event.delta;
+                        if (detail) {
+                            onStep?.({ type: 'thinking', id: 'analyze', label: 'Analyzing document relations, clusters, and evolution chains...', detail });
+                        }
+                    }
+                },
+            });
+            assertSuccessfulRun(result);
         } catch (err) {
-            console.error('[GraphAgent] query error', err);
+            console.error('[GraphAgent] Harness run failed', err);
             return null;
         }
 

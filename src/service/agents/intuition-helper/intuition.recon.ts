@@ -1,9 +1,8 @@
 /**
  * Knowledge intuition recon: plan (tools) → structured submit loop.
  *
- * Provider v2: migrated from Vercel AI SDK streamText to Agent SDK queryWithProfile.
- * The plan step uses an MCP server for vault tools. Tool execution happens inside
- * the SDK subprocess via IPC callbacks. The submit step uses queryText + Zod parse.
+ * Peak Harness owns both model turns and tool execution. The submit step uses
+ * queryText + Zod parse after the plan tools have completed.
  */
 
 import { knowledgeIntuitionSubmitSchema } from '@/core/schemas';
@@ -32,9 +31,12 @@ import type { IntuitionMemory, IntuitionPrepContext } from './types';
 import { exploreFolderTool, findPathTool, graphTraversalTool, grepFileTreeTool, inspectNoteContextTool, localSearchWholeVaultTool } from '@/service/tools/search-graph-inspector';
 import { exploreFolderEnvFromManager } from '@/service/tools/exploreFolderEnv';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
-import { translateSdkMessages } from '@/service/agents/core/sdkMessageAdapter';
-import { agentToolsToMcpServer, mcpToolNames, mergeExternalMcpTools } from '@/service/agents/core/agentToolMcpAdapter';
+import {
+	assertSuccessfulRun,
+	streamHarnessModel,
+} from '@/service/agents/harness/HarnessModelRunner';
+import { adaptAgentTool } from '@/service/agents/harness-bridge/agentToolAdapter';
+import { getAllMcpToolDefs } from '@/service/mcp/MCPToolAdapter';
 
 export type IntuitionReconCompleteCallback = (memory: IntuitionMemory) => void;
 
@@ -78,7 +80,7 @@ export async function* runKnowledgeIntuitionLoop(options: {
 	/** T13: MCP client manager injected so this module never reaches AppContext. */
 	mcpClientManager: import('@/service/mcp/MCPClientManager').MCPClientManager | null;
 }): AsyncGenerator<LLMStreamEvent, void> {
-	const { ctx, stepId, aiServiceManager, onComplete, debug, app, pluginId, mcpClientManager } = options;
+	const { ctx, stepId, aiServiceManager, onComplete, debug, mcpClientManager } = options;
 	const stopwatch = new Stopwatch('Knowledge intuition recon');
 	const getEnv = () => exploreFolderEnvFromManager(aiServiceManager);
 	const tools = {
@@ -112,13 +114,13 @@ export async function* runKnowledgeIntuitionLoop(options: {
 		{ role: 'user', content: initialUserPrompt },
 	];
 
-	// Build MCP server and tool names once (tools don't change across iterations)
-	const allTools = mergeExternalMcpTools(tools, mcpClientManager);
-	const mcpServer = agentToolsToMcpServer(MCP_SERVER_NAME, allTools);
-	const allowedTools = mcpToolNames(MCP_SERVER_NAME, allTools);
-
-	// Profile for SDK calls (app/pluginId injected via options)
-	const profile = ProfileRegistry.getInstance().getActiveAgentProfile()!;
+	const externalTools = mcpClientManager
+		? getAllMcpToolDefs(mcpClientManager)
+		: [];
+	const binding = ProfileRegistry.getInstance().getActiveAgentConfig();
+	if (!binding) {
+		throw new Error('Knowledge intuition requires an active Agent model');
+	}
 
 	for (let iter = 0; iter < maxIter; iter++) {
 		const planSystem = await aiServiceManager.renderPrompt(PromptId.KnowledgeIntuitionPlanSystem, {});
@@ -136,13 +138,11 @@ export async function* runKnowledgeIntuitionLoop(options: {
 		);
 		stopwatch.start(`knowledge intuition plan iter ${iter}`);
 
-		// Capture tool call results from MCP server execution
+		// Capture tool call results from Harness-owned execution.
 		const capturedToolResults: string[] = [];
 		const capturedToolCalls: Array<{ toolName: string; input: unknown }> = [];
-
-		// Build a capturing MCP server that records tool results
-		const capturingMcpServer = agentToolsToMcpServer(MCP_SERVER_NAME, Object.fromEntries(
-			Object.entries(tools).map(([name, agentTool]) => [name, {
+		const localTools = Object.entries(tools).map(([name, agentTool]) =>
+			adaptAgentTool(`mcp__${MCP_SERVER_NAME}__${name}`, {
 				...agentTool,
 				execute: async (input: any) => {
 					capturedToolCalls.push({ toolName: name, input });
@@ -151,24 +151,30 @@ export async function* runKnowledgeIntuitionLoop(options: {
 					capturedToolResults.push(`[${name}] ${str.slice(0, 2000)}${str.length > 2000 ? '…' : ''}`);
 					return result;
 				},
-			}]),
-		));
+			}),
+		);
 
-		// Call Agent SDK for the plan step
-		const planMessages = queryWithProfile(app, pluginId, profile, {
+		const planStream = streamHarnessModel({
+			loopId: `intuition-recon-${stepId}-${iter + 1}`,
+			profile: binding.profile,
+			modelId: binding.modelId,
 			prompt: iterPrompt,
 			systemPrompt: planSystem,
-			maxTurns: 2, // one LLM turn with tool calls + one final response
-			mcpServers: { [MCP_SERVER_NAME]: capturingMcpServer },
-			allowedTools,
+			tools: [...localTools, ...externalTools],
+			maxSteps: 2,
+			maxToolCalls: 12,
+			triggerName: StreamTriggerName.KNOWLEDGE_INTUITION_PLAN,
 		});
 
 		// Stream and collect plan text
 		let planText = '';
-		for await (const ev of translateSdkMessages(planMessages, {
-			triggerName: StreamTriggerName.KNOWLEDGE_INTUITION_PLAN,
-			hasPartialMessages: true,
-		})) {
+		while (true) {
+			const next = await planStream.next();
+			if (next.done) {
+				assertSuccessfulRun(next.value);
+				break;
+			}
+			const ev = next.value;
 			if (ev.type === 'text-delta' && typeof (ev as any).text === 'string') {
 				planText += (ev as any).text;
 			}

@@ -14,7 +14,12 @@
  *   - Paste-URL only links a single semantic unit and refuses across a boundary.
  */
 
-import { applyOperations, type ComposerSelection } from '@/core/composer';
+import {
+	applyOperations,
+	type ComposerInlineMark,
+	type ComposerSelection,
+	type SelectionOpResult,
+} from '@/core/composer';
 import {
 	parseComposerDocument,
 	partitionSourceRange,
@@ -187,6 +192,168 @@ function testDirectTokenRemoval(): void {
 	}
 }
 
+function applyMarkToVisibleText(
+	source: string,
+	from: number,
+	to: number,
+	mark: ComposerInlineMark,
+	value?: string,
+): { result: SelectionOpResult; source: string } {
+	const selection = partitionSourceRange(parseComposerDocument(source), from, to);
+	const result = applyMarkToSelection(selection, mark, { value });
+	return {
+		result,
+		source: result.ok ? applyOperations(source, result.operations) : source,
+	};
+}
+
+function testHtmlCanonicalFormatting(): void {
+	const plainBold = applyMarkToVisibleText('plain', 0, 'plain'.length, 'bold');
+	check(
+		'html canonical: pure markdown formatting stays markdown',
+		plainBold.result.ok && plainBold.source === '**plain**',
+		plainBold.source,
+	);
+
+	const underlineThenStrikeSource = '<u>不会真的</u>';
+	const strikeFrom = underlineThenStrikeSource.indexOf('真的');
+	const underlineThenStrike = applyMarkToVisibleText(
+		underlineThenStrikeSource,
+		strikeFrom,
+		strikeFrom + '真的'.length,
+		'strikethrough',
+	);
+	const expected =
+		'<span style="text-decoration-line: underline">不会</span>' +
+		'<span style="text-decoration-line: underline line-through">真的</span>';
+	check(
+		'html canonical: markdown mark inside underline becomes HTML-only',
+		underlineThenStrike.result.ok && underlineThenStrike.source === expected,
+		underlineThenStrike.source,
+	);
+	check(
+		'html canonical: HTML wrappers never contain markdown delimiters',
+		!/<(?:span|u|mark)\b[^>]*>[^<]*(?:\*\*|~~)/i.test(underlineThenStrike.source),
+		underlineThenStrike.source,
+	);
+
+	const strikeThenUnderlineSource = '不会~~真的~~';
+	const underlineTo = strikeThenUnderlineSource.indexOf('真的') + '真的'.length;
+	const strikeThenUnderline = applyMarkToVisibleText(
+		strikeThenUnderlineSource,
+		0,
+		underlineTo,
+		'underline',
+	);
+	check(
+		'html canonical: formatting order produces one canonical source',
+		strikeThenUnderline.result.ok && strikeThenUnderline.source === expected,
+		strikeThenUnderline.source,
+	);
+
+	const boldSource = '**真的**';
+	const boldFrom = boldSource.indexOf('真的');
+	const boldUnderline = applyMarkToVisibleText(
+		boldSource,
+		boldFrom,
+		boldFrom + '真的'.length,
+		'underline',
+	);
+	check(
+		'html canonical: existing markdown styles join the HTML style set',
+		boldUnderline.result.ok &&
+			boldUnderline.source === '<span style="font-weight: 700; text-decoration-line: underline">真的</span>',
+		boldUnderline.source,
+	);
+	const markdownLinkSource = '[linked](https://example.com)';
+	const linkedUnderline = applyMarkToVisibleText(
+		markdownLinkSource,
+		markdownLinkSource.indexOf('linked'),
+		markdownLinkSource.indexOf('linked') + 'linked'.length,
+		'underline',
+	);
+	check(
+		'html canonical: external Markdown links become styled HTML anchors',
+		linkedUnderline.result.ok &&
+			linkedUnderline.source ===
+				'<a href="https://example.com" style="text-decoration-line: underline">linked</a>',
+		linkedUnderline.source,
+	);
+
+	const combined =
+		'<span style="font-weight: 700; text-decoration-line: underline line-through">真的</span>';
+	const strikeRange = { from: 0, to: combined.length };
+	const removeStrike = removeInlineMarkWrapper(combined, 'strikethrough', strikeRange);
+	const afterRemove = removeStrike ? applyOperations(combined, [removeStrike]) : combined;
+	check(
+		'html canonical: removing one style preserves sibling styles',
+		afterRemove === '<span style="font-weight: 700; text-decoration-line: underline">真的</span>',
+		afterRemove,
+	);
+	const combinedWithForeignCss =
+		'<span style="font-weight: 700; text-decoration-line: underline line-through; letter-spacing: 0.02em">真的</span>';
+	const foreignCssRange = { from: 0, to: combinedWithForeignCss.length };
+	const removeStrikeWithForeignCss = removeInlineMarkWrapper(
+		combinedWithForeignCss,
+		'strikethrough',
+		foreignCssRange,
+	);
+	const afterForeignCssRemove = removeStrikeWithForeignCss
+		? applyOperations(combinedWithForeignCss, [removeStrikeWithForeignCss])
+		: combinedWithForeignCss;
+	check(
+		'html canonical: removing one style preserves unowned CSS declarations',
+		afterForeignCssRemove ===
+			'<span style="font-weight: 700; text-decoration-line: underline; letter-spacing: 0.02em">真的</span>',
+		afterForeignCssRemove,
+	);
+
+	const mathSource = '<u>before $x$ after</u>';
+	const mathSelection = applyMarkToVisibleText(
+		mathSource,
+		mathSource.indexOf('before'),
+		mathSource.indexOf('before') + 'before'.length,
+		'bold',
+	);
+	check(
+		'html canonical: formula boundary fails closed',
+		!mathSelection.result.ok &&
+			mathSelection.result.reason === 'semantic-inline-html-format' &&
+			mathSelection.source === mathSource,
+		mathSelection.source,
+	);
+
+	const wikiSource = '<u>before [[知识库]] after</u>';
+	const wikiSelection = applyMarkToVisibleText(
+		wikiSource,
+		wikiSource.indexOf('before'),
+		wikiSource.indexOf('before') + 'before'.length,
+		'bold',
+	);
+	check(
+		'html canonical: wikilink boundary fails closed',
+		!wikiSelection.result.ok &&
+			wikiSelection.result.reason === 'semantic-inline-html-format' &&
+			wikiSelection.source === wikiSource,
+		wikiSelection.source,
+	);
+
+	const entitySource = 'literal &copy; token';
+	const entitySelection = applyMarkToVisibleText(
+		entitySource,
+		0,
+		entitySource.length,
+		'underline',
+	);
+	check(
+		'html canonical: entity-like source fails closed instead of changing visible text',
+		!entitySelection.result.ok &&
+			entitySelection.result.reason === 'semantic-inline-html-format' &&
+			entitySelection.source === entitySource,
+		entitySelection.source,
+	);
+}
+
 function testOverlappingRichMarksStayRendered(): void {
 	const source =
 		'Alpha <mark style="background: #dff4e8">green middle</mark> omega tail';
@@ -280,6 +447,32 @@ function testUrlPaste(): void {
 	const cross = partitionSourceRange(snapshot, cellA, cellC + 2);
 	const refused = pasteUrlIntoSelection(cross, 'https://example.com/y');
 	check('cross-structure link refused', refused.ok === false && refused.reason === 'cross-structure-link');
+
+	const styled = '<u>linked text</u>';
+	const styledFrom = styled.indexOf('linked text');
+	const styledSelection = partitionSourceRange(
+		parseComposerDocument(styled),
+		styledFrom,
+		styledFrom + 'linked text'.length,
+	);
+	const styledLink = pasteUrlIntoSelection(styledSelection, 'https://example.com/styled');
+	const styledResult = styledLink.ok ? applyOperations(styled, styledLink.operations) : styled;
+	check(
+		'paste writes HTML link when selected styles are already HTML',
+		styledLink.ok &&
+			styledResult ===
+				'<a href="https://example.com/styled" style="text-decoration-line: underline">linked text</a>',
+		styledResult,
+	);
+	const styledInternal = pasteUrlIntoSelection(
+		styledSelection,
+		'ignored',
+		{ internalTarget: '知识库' },
+	);
+	check(
+		'HTML-styled selection refuses a wikilink instead of hiding vault semantics',
+		!styledInternal.ok && styledInternal.reason === 'semantic-inline-html-format',
+	);
 }
 
 testScopes();
@@ -287,6 +480,7 @@ testCrossStructureFormatting();
 testColorAcrossCells();
 testMarkAware();
 testDirectTokenRemoval();
+testHtmlCanonicalFormatting();
 testOverlappingRichMarksStayRendered();
 testLinkAcrossStyledRunsStayRendered();
 testCodeGuard();

@@ -1,7 +1,7 @@
 // B5.harness — agent-harness-side RunEnvelope projection store.
 //
 // See `chatRunEnvelopeStore.ts` for the pattern.
-// `runHarnessAgent` and `ClaudeAgentSDKBridge` both emit the same
+// `runHarnessAgent` and `HarnessRunBridge` both emit the same
 // standard `RunEvent`s the shared factory expects.
 
 import {

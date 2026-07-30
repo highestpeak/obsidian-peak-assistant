@@ -69,6 +69,13 @@ function collectBlockUnits(
 		pushUnitAnchors(block, 'table-cell', from, to, source, out);
 		return;
 	}
+	if (
+		block.kind === 'paragraph' &&
+		block.units.some((unit) => unit.unitKind === 'paragraph-line')
+	) {
+		pushUnitAnchors(block, 'paragraph-line', from, to, source, out);
+		return;
+	}
 	if (block.kind === 'heading') {
 		const marker = HEADING_MARKER_RE.exec(source.slice(block.source.from, block.source.to));
 		const textStart = block.source.from + (marker ? marker[0].length : 0);
@@ -114,7 +121,9 @@ function pushUnitAnchors(
 		const [contentFrom, contentTo] =
 			kind === 'list-item'
 				? [u.from + markerLength(source, u.from, u.to), u.to]
-				: cellContentBounds(source, u.from, u.to);
+				: kind === 'table-cell'
+					? cellContentBounds(source, u.from, u.to)
+					: [u.from, u.to];
 		const unitFrom = Math.max(from, contentFrom);
 		const unitTo = Math.min(to, contentTo);
 		if (unitFrom >= unitTo) continue;
@@ -170,6 +179,11 @@ function classifyScope(units: readonly ComposerSelectionUnit[]): SelectionScopeK
 		if (kind === 'list-item') return 'cross-item';
 		return 'cross-paragraph';
 	}
-	const allProse = units.every((u) => u.unitKind === 'block-text' || u.unitKind === 'heading-text');
+	const allProse = units.every(
+		(u) =>
+			u.unitKind === 'block-text' ||
+			u.unitKind === 'heading-text' ||
+			u.unitKind === 'paragraph-line',
+	);
 	return allProse ? 'cross-paragraph' : 'cross-block';
 }

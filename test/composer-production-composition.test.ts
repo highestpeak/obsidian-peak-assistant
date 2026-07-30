@@ -61,26 +61,12 @@ class FakeSource implements ComposerSourcePort, ComposerWritePort {
 }
 
 class FakeEvents implements ComposerFileEventsPort {
-	private active: string | null = null;
-	private activeCbs = new Set<(p: string | null) => void>();
 	private fileCbs = new Set<(e: ComposerFileEvent) => void>();
-	getActiveFilePath(): string | null {
-		return this.active;
-	}
-	onActiveFileChange(cb: (p: string | null) => void): () => void {
-		this.activeCbs.add(cb);
-		return () => this.activeCbs.delete(cb);
-	}
 	onFileEvent(cb: (e: ComposerFileEvent) => void): () => void {
 		this.fileCbs.add(cb);
 		return () => this.fileCbs.delete(cb);
 	}
-	setActive(p: string | null): void {
-		this.active = p;
-		for (const cb of this.activeCbs) cb(p);
-	}
 	dispose(): void {
-		this.activeCbs.clear();
 		this.fileCbs.clear();
 	}
 }
@@ -130,9 +116,8 @@ async function main(): Promise<void> {
 		const source = new FakeSource();
 		const events = new FakeEvents();
 		const runtime = makeRuntime(source, events);
-		events.setActive(PATH);
 		const controller = runtime.createController();
-		controller.start();
+		controller.start(PATH);
 		await controller.settled();
 
 		check('active file loads through the production composer', controller.getState().status === 'loaded', controller.getState().status);

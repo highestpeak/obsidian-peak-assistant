@@ -10,9 +10,10 @@ export interface SearchResultViewProps {
 	onRetry?: () => void;
 	onApprove?: () => void;
 	onRegenerateSection?: (id: string, prompt?: string) => void;
+	onAskSection?: (id: string, question: string, onDelta?: (answer: string) => void) => Promise<string>;
 }
 
-export const SearchResultView: React.FC<SearchResultViewProps> = ({ onClose, onRetry, onApprove, onRegenerateSection }) => {
+export const SearchResultView: React.FC<SearchResultViewProps> = ({ onClose, onRetry, onApprove, onRegenerateSection, onAskSection }) => {
 	const error = useSearchSessionStore((s) => s.error);
 	const isV2Active = useSearchSessionStore((s) => s.v2Active);
 	const isStreaming = useSearchSessionStore((s) => s.status === 'streaming');
@@ -27,7 +28,7 @@ export const SearchResultView: React.FC<SearchResultViewProps> = ({ onClose, onR
 	}
 
 	if (isV2Active) {
-		return <V2SearchResultView onClose={onClose} onRetry={onRetry} onApprove={onApprove} onRegenerateSection={onRegenerateSection} />;
+		return <V2SearchResultView onClose={onClose} onRetry={onRetry} onApprove={onApprove} onRegenerateSection={onRegenerateSection} onAskSection={onAskSection} />;
 	}
 
 	// Idle: no V2 active, no error

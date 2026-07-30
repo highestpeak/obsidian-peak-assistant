@@ -27,6 +27,7 @@ import type {
 	ComposerCapabilityId,
 	ComposerContextSnapshot,
 	ComposerInvocationHandle,
+	ComposerInvocationPlacement,
 	ComposerRendererId,
 	ComposerResultEnvelope,
 	ComposerResultKind,
@@ -46,6 +47,15 @@ export const COMPOSER_ANALYSIS_RENDERER_ID: ComposerRendererId = 'composer.rende
 
 /** Text patch writeback: replaces one block/unit source range atomically. */
 export const COMPOSER_TEXT_PATCH_WRITEBACK_ID: ComposerWritebackAdapterId = 'composer.writeback.text-patch';
+/** Additive draft writeback: inserts one independent block after the target. */
+export const COMPOSER_BLOCK_INSERTION_WRITEBACK_ID: ComposerWritebackAdapterId =
+	'composer.writeback.block-insertion';
+/** Anchored list-item writeback: replaces the frozen list with one validated inserted item. */
+export const COMPOSER_LIST_ITEM_PATCH_WRITEBACK_ID: ComposerWritebackAdapterId =
+	'composer.writeback.list-item-patch';
+/** Lightweight renderer for a pending item at its semantic list position. */
+export const COMPOSER_LIST_ITEM_PATCH_RENDERER_ID: ComposerRendererId =
+	'composer.renderer.list-item-patch';
 
 /** Structured review card for a `native-file-patch` candidate (Base/Canvas/Excalidraw). */
 export const COMPOSER_NATIVE_FILE_PATCH_RENDERER_ID: ComposerRendererId = 'composer.renderer.native-file-patch';
@@ -199,6 +209,8 @@ export interface ComposerCapabilityDefinition<TInput = unknown, TResult = unknow
 export interface ComposerPromptExtras {
 	/** Verbatim current bytes of the native object file (native-file-patch runs). */
 	nativeText?: string;
+	/** User-selected semantic placement for additive results. */
+	placement?: ComposerInvocationPlacement;
 }
 
 /** A pack groups related definitions; registration is explicit at app composition (spec §12). */
@@ -255,6 +267,13 @@ export interface ComposerCandidateRuntimePort {
 	onRunEvent(cb: (event: ComposerCapabilityRunEvent) => void): () => void;
 	/** Renderer to dispatch for a candidate (from its definition). Null when unknown. */
 	rendererIdFor(candidateId: string): ComposerRendererId | null;
+	/**
+	 * Semantic effect declared by the candidate's capability. The document chrome
+	 * uses this to keep additive drafts below their source while rewrites occupy
+	 * the source position. Optional for specialized runtimes that own their own
+	 * placement.
+	 */
+	candidateEffectFor?(candidateId: string): ComposerCapabilityEffectKind | null;
 	/** Resolved capability title for review metadata. Optional for specialized runtimes. */
 	candidateLabelFor?(candidateId: string): string | null;
 	/** Append a regeneration variant and stream it. Instruction is run context, never body. */
@@ -268,7 +287,7 @@ export interface ComposerCandidateRuntimePort {
 	 * runtime may omit it (the card falls back to discard).
 	 */
 	rerunStale?(candidateId: string): ComposerInvocationHandle | null;
-	/** Cancel the in-flight generation for this candidate (variant becomes failed). */
+	/** Cancel the in-flight generation for this candidate (variant becomes cancelled). */
 	cancel(candidateId: string): void;
 	/** True while a generation is streaming for this candidate. */
 	isStreaming(candidateId: string): boolean;
@@ -278,4 +297,20 @@ export interface ComposerCandidateRuntimePort {
 	discard(candidateId: string): void;
 	/** Switch the visible variant (refused while streaming). */
 	setActiveVariant(candidateId: string, variantId: string): void;
+	/** Serializable owner metadata used to restore a persisted review card. */
+	exportCandidateRuntimeState?(
+		candidateId: string,
+	): ComposerCandidateRuntimeSnapshot | null;
+	/** Rebind a persisted candidate to the runtime that originally owned it. */
+	restoreCandidateRuntimeState?(
+		candidate: ComposerCandidate,
+		snapshot: ComposerCandidateRuntimeSnapshot,
+	): boolean;
+}
+
+export interface ComposerCandidateRuntimeSnapshot {
+	ownerId: 'capability' | 'image';
+	rendererId: ComposerRendererId;
+	label?: string;
+	payload: unknown;
 }

@@ -288,7 +288,7 @@ flowchart LR
             <dt>装配流程</dt>
             <dd>调用 <code>ContextPipeline.assemble()</code>，Pipeline 并行 build 所有 slot → 跑 <code>BudgetGovernor.fit()</code> → 按 profile 顺序 render 成 <code>LLMRequestMessage[]</code>。</dd>
             <dt>Slot 详情</dt>
-            <dd>8 个 slot 的职责见 <a href="11-feature-chat-context.html#slots">11 § 当前启用的 slots</a>。</dd>
+            <dd>当前 slot stack 与各层职责见 <a href="11-feature-chat-context.html#context-stack">11 § 上下文堆叠</a>。</dd>
           </dl>
 
           <h3 style="margin-top: 22px;">Agent Harness · message + memory block</h3>
@@ -316,7 +316,7 @@ flowchart LR
             <dt>喂给模型</dt>
             <dd>tier-2 的 <code>AmbientExplanationService.generate()</code> 只调 <code>TemplateManager.render(PromptId.AmbientExplanation{System,User})</code>，然后 <code>llm.collectText({ prompt, systemPrompt })</code>。</dd>
             <dt>不做的事</dt>
-            <dd><strong>没有 slot、没有预算治理、没有历史消息</strong>——Ambient 是单条 explanation，不是多轮对话。</dd>
+            <dd><strong>没有 Chat context slot stack、没有多步预算治理、没有历史消息</strong>——Ambient 是单条 explanation，不是多轮对话；模型绑定仍通过 <code>resolveSlot('fast')</code> 选择。</dd>
           </dl>
 
           <h3 style="margin-top: 22px;">Command Gateway · manifest-driven surface routing</h3>
@@ -328,7 +328,7 @@ flowchart LR
             <dt>代码</dt>
             <dd><code data-copy="src/service/capabilities/CommandGateway.ts">CommandGateway.ts</code>（<code>register</code>/<code>dispatch</code>/<code>has</code>/<code>get</code>/<code>all</code>/<code>unregister</code>）+ <code data-copy="src/app/commands/gateway/manifests.ts">manifests.ts</code>（7 个 <code>ui.open.*</code> CapabilityManifest）+ <code data-copy="src/app/commands/gateway/composeCommandGatewayBindings.ts">composeCommandGatewayBindings.ts</code>。<code>main.ts</code> boot 时 <code>new CommandGateway()</code> → <code>AppContext.setCommandGateway(...)</code> → 每条 binding 注册 → Obsidian <code>addCommand.callback = () =&gt; gateway.dispatch(id).catch(new Notice)</code>。</dd>
             <dt>Context 装配</dt>
-            <dd>Palette command 属于 <strong>surface-open capability</strong>（<code>ui.open.quick-search</code> / <code>ui.open.copilot</code> / <code>ui.open.chat-studio</code> / …）：只负责 focus 一个 leaf 或 modal，不产 token，不组装长 context。<code>surfaceOpenStrategy</code> 只把原 UI-open callback 包成 <code>CapabilityExecutionOutput&lt;void&gt;</code>，走 <code>runCapability(...)</code> 记录 <code>RunSession start/finish</code>。真正需要长 context 的 capability（<code>doc.review.current</code>、<code>vault.search</code>、未来的 <code>doc.polish</code> 等）注册进 gateway 时，会指定不同的 <code>backendPolicy</code>（<code>preferred: 'hermes-harness'</code> 走 AgentLoop、<code>preferred: 'claude-sdk'</code> 走 SDK），context 由对应 backend 的 adapter 装配 —— gateway 只提供 <em>命令 → 能力 → backend</em> 三段映射，不做装配本身。</dd>
+            <dd>Palette command 属于 <strong>surface-open capability</strong>（<code>ui.open.quick-search</code> / <code>ui.open.copilot</code> / <code>ui.open.chat-studio</code> / …）：只负责 focus 一个 leaf 或 modal，不产 token，不组装长 context。<code>surfaceOpenStrategy</code> 把原 UI-open callback 包成 <code>CapabilityExecutionOutput&lt;void&gt;</code>，走 <code>runCapability(...)</code> 记录 <code>RunSession start/finish</code>。当前 <code>BackendKind</code> 只有 <code>hermes-harness</code> 与 <code>provider-direct</code>；需要长 context 的 capability 由 composition adapter 按 manifest 的 <code>backendPolicy</code> 装配，gateway 本身只负责 <em>命令 → 能力 → execute</em>，不持有 context。</dd>
             <dt>用途</dt>
             <dd>URI scheme / MCP <code>propose_*</code> tool call / Copilot Command Center 未来的 "AI 起草 capability 序列" 都会走同一份 gateway，避免每个 trigger 源重复复制映射表。</dd>
           </dl>
@@ -363,7 +363,7 @@ flowchart LR
               <tr>
                 <td><strong>Command Gateway</strong></td>
                 <td>Palette command → CapabilityManifest → GatewayBinding；surface-open 命令用 surfaceOpenStrategy 直接跑 UI-open callback，不组 context；产 token 的 command 由 backend 侧 adapter 装 context</td>
-                <td>由绑定的 backend 决定（<code>hermes-harness</code>→AgentLoop budget / <code>claude-sdk</code>→SDK budget / <code>provider-direct</code>→provider budget）</td>
+                <td>由绑定的 backend 决定（<code>hermes-harness</code> → AgentLoop budget；<code>provider-direct</code> → 调用方定义的 provider budget）</td>
                 <td>无（gateway 层不带历史；backend 装配时按需拉）</td>
                 <td>无（gateway 层不做发现；backend 层继续用 SlotBuildContext / MemoryBlock 逻辑）</td>
               </tr>
@@ -458,13 +458,13 @@ flowchart TB
 
         <section id="rendering">
           <h2>装配好之后怎么进模型</h2>
-          <p class="lead">四个 surface 最后一步都走同一条 provider stream。产出是 <code>AsyncGenerator&lt;LLMStreamEvent&gt;</code>，消费者（UI 或 agent loop）拉取事件序列。</p>
+          <p class="lead">Chat、Agent 与 Ambient 都由 Peak Harness 拥有运行语义，但输出形状按 surface 不同：Chat / streaming caller 消费 <code>LLMStreamEvent</code>，AgentLoop 保留 step + trace，Ambient 只取最终文本。Provider adapter 只执行模型推理。</p>
 
-          <p class="prose"><strong>Chat</strong> 把 <code>ContextPipeline.assemble</code> 的最终 <code>LLMRequestMessage[]</code>、mode-specific 的 tools（<code>buildChatTools</code>）、outputControl 一起交给 <code>vercelStreamChat</code>（<code>src/core/providers/vercel/index.ts</code>）。Plan mode 会 prepend 一段 planning system prompt；Agent mode 会附带 tools + <code>maxSteps</code>。</p>
+          <p class="prose"><strong>Chat</strong> 把 <code>ContextPipeline.assemble</code> 的最终消息、<code>buildChatTools</code> 生成的工具与 output control 交给 <code>harnessStreamChat</code>。它用单 tier <code>TierController</code> 调 <code>runAgentLoop</code>，当前固定 Conversation 选中的 model 且关闭 escalation；Vercel provider factory 只创建底层 <code>LanguageModel</code>。</p>
 
           <p class="prose"><strong>Agent Harness</strong> 直接走 <code>generateText({ model, system, messages, tools, stopWhen: stepCountIs(1) })</code> — 一次 step 一个 <code>generateText</code> 调用；tool 用 ai-sdk 的 <code>tool()</code> 包装，返回值是 <code>ToolResult</code> envelope 的 JSON。<code>TraceBus</code> 把 <code>step</code> / <code>tool_call</code> / <code>tool_result</code> / <code>context_compacted</code> / <code>escalate</code> emit 出去。</p>
 
-          <p class="prose"><strong>Ambient Explanation</strong> 走最短路径：<code>llm.collectText({ prompt, systemPrompt })</code> 返回一个 <code>string | null</code>。它不需要 tool、不需要多步、不需要预算 — <code>AmbientExplanationLlmPort</code> 是 adapter 层直接把 <code>queryWithProfile</code> 的流吃掉，concat 成字符串。<code>PushCard</code> 上再做 <code>line-clamp</code>。</p>
+          <p class="prose"><strong>Ambient Explanation</strong> 走最短路径：adapter 先 <code>resolveSlot('fast')</code>，再调用 <code>runHarnessText(..., maxSteps: 1)</code>，最后向 <code>AmbientExplanationService</code> 返回 <code>string | null</code>。它不需要 tool 或多轮历史；<code>PushCard</code> 再负责 <code>line-clamp</code>。</p>
 
           <table class="doc-table">
 <colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
@@ -475,7 +475,7 @@ flowchart TB
               <tr>
                 <td><strong>Chat</strong></td>
                 <td><code>LLMStreamEvent</code> 流（RawStream + tool-call + tool-result + agent-step-progress）</td>
-                <td>Agent mode 时是；Chat mode 时否；Plan mode 时否</td>
+                <td>有可用 tools 时是；普通纯文本 turn 否</td>
                 <td><code>useChatStore</code> + <code>MessageViewItem.tsx</code> + <code>ToolCallSummary.tsx</code></td>
               </tr>
               <tr>
@@ -492,16 +492,16 @@ flowchart TB
               </tr>
               <tr>
                 <td><strong>Command Gateway</strong></td>
-                <td>spec 未定；预计走 <code>LLMStreamEvent</code></td>
-                <td>预计是</td>
-                <td>Command Palette / notification</td>
+                <td>surface-open command 是 <code>CapabilityRunResult&lt;void&gt;</code></td>
+                <td>否；未来生成型 capability 由所选 backend 决定</td>
+                <td>Command Palette / Notice / RunEnvelope observer</td>
               </tr>
             </tbody>
           </table>
 
           <div class="claim">
             <strong>LLMStreamEvent 是共同货币</strong>
-            即使 Ambient 目前不 emit tool-call（它只等 collectText 返回），它下面用的 <code>queryWithProfile</code> 内部仍走 <code>LLMStreamEvent</code>，只是被 adapter 折成 string。想让 Ambient 变成 “可以调 tool 的解释”，只需要不折叠：直接把 <code>LLMStreamEvent</code> 交给一个新的 <code>AmbientToolLoop</code>。基础设施已经在那儿。
+            <code>HarnessModelRunner</code> 把 Harness stream event 翻译成 <code>LLMStreamEvent</code>，供 Chat、Report、Copilot 等既有 UI consumer 复用。Ambient 当前选择 <code>runHarnessText</code>，所以只拿最终字符串；若以后需要 tool，应给同一 Harness runner 注入 <code>ToolDef</code> 并保留 stream，而不是另起一套 runtime。
           </div>
         </section>
 

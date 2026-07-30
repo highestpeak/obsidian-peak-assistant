@@ -11,8 +11,6 @@
 //   - `hermes-harness`   → runAgentLoop. Registers if any profile with
 //                          an apiKey (or ollama, which needs no key)
 //                          is present — the loop can then pick a model.
-//   - `claude-sdk`       → direct Anthropic SDK call. Registers only
-//                          when an `anthropic` profile has an apiKey.
 //   - `provider-direct`  → MultiProviderChatService.streamText. Same
 //                          precondition as hermes-harness (any working
 //                          provider).
@@ -48,12 +46,6 @@ export type BackendInvocationInput =
 		readonly config: AgentLoopConfig;
 	}
 	| {
-		readonly kind: 'sdk-query';
-		readonly systemPrompt: string;
-		readonly prompt: string;
-		readonly model?: string;
-	}
-	| {
 		readonly kind: 'provider-stream';
 		readonly systemPrompt: string;
 		readonly prompt: string;
@@ -62,16 +54,6 @@ export type BackendInvocationInput =
 
 export interface BackendCompositionDeps {
 	readonly profileRegistry: ProfileRegistry;
-	/**
-	 * Delegate for `claude-sdk` — invoked with a normalized SDK query
-	 * payload. Composition site provides the concrete adapter (usually
-	 * `runSdkAgentQuery` / `runQueryOnce`) so this module stays free of
-	 * pool-management concerns.
-	 */
-	readonly sdkQueryAdapter?: (
-		input: Extract<BackendInvocationInput, { kind: 'sdk-query' }>,
-		ctx: CapabilityRunContext,
-	) => Promise<CapabilityExecutionOutput<unknown>>;
 	/**
 	 * Delegate for `provider-direct` — same shape rationale as above,
 	 * usually points at `MultiProviderChatService.streamText`.
@@ -93,12 +75,6 @@ function profileHasCredential(profile: Profile): boolean {
 	// ollama runs locally; no key required.
 	if (profile.kind === 'ollama') return true;
 	return typeof profile.apiKey === 'string' && profile.apiKey.length > 0;
-}
-
-function hasAnthropicKey(profileRegistry: ProfileRegistry): boolean {
-	return profileRegistry
-		.getAllProfiles()
-		.some((p) => p.kind === 'anthropic' && profileHasCredential(p));
 }
 
 function buildHermesHarnessStrategy(): BackendStrategy<BackendInvocationInput, unknown> {
@@ -128,24 +104,9 @@ export function registerBackendStrategies(
 	const registry: BackendStrategyRegistry = {};
 
 	const anyProvider = hasWorkingProvider(deps.profileRegistry);
-	const anthropicReady = hasAnthropicKey(deps.profileRegistry);
 
 	if (anyProvider) {
 		registry['hermes-harness'] = buildHermesHarnessStrategy() as BackendStrategy;
-	}
-
-	if (anthropicReady && deps.sdkQueryAdapter) {
-		registry['claude-sdk'] = (async (input, ctx) => {
-			if ((input as BackendInvocationInput).kind !== 'sdk-query') {
-				throw new Error(
-					`claude-sdk backend received unsupported input '${(input as BackendInvocationInput).kind}'. Expected { kind: 'sdk-query', systemPrompt, prompt, model? }.`,
-				);
-			}
-			return deps.sdkQueryAdapter!(
-				input as Extract<BackendInvocationInput, { kind: 'sdk-query' }>,
-				ctx,
-			);
-		}) as BackendStrategy;
 	}
 
 	if (anyProvider && deps.providerStreamAdapter) {

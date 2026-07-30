@@ -77,7 +77,17 @@ function snapshot(revision: string): ComposerContextSnapshot {
 	check('brief → session', m.projection().stage === 'session');
 	check('comment source is visible before send', m.projection().pendingCommentRefs.length === 1);
 
-	const frozen = m.send({ snapshot: snapshot('r1'), targetQuote: 'Alpha para.', relatedRefs: ['src-1'] });
+	const presentationOrigin = {
+		kind: 'comment-handoff' as const,
+		commentId: 'comment-1',
+		blockId: 'para-0-abc',
+	};
+	const frozen = m.send({
+		snapshot: snapshot('r1'),
+		targetQuote: 'Alpha para.',
+		relatedRefs: ['src-1'],
+		presentationOrigin,
+	});
 	check('send → assembling', m.projection().runStatus === 'assembling');
 	check('active run set', m.projection().activeRunId === frozen.runId);
 	check('frozen context is frozen', Object.isFrozen(frozen));
@@ -85,7 +95,15 @@ function snapshot(revision: string): ComposerContextSnapshot {
 	check('frozen commentRefs frozen', Object.isFrozen(frozen.commentRefs) && Object.isFrozen(frozen.commentRefs[0]));
 	check('external comment trust survives freeze', frozen.commentRefs[0].trust === 'external');
 	check('frozen carries target quote', frozen.targetQuote === 'Alpha para.');
+	check(
+		'contextual Intelligence origin is frozen with the session run',
+		frozen.presentationOrigin?.kind === 'comment-handoff',
+	);
 	const initialReceipt = m.projection().receipts.find((r) => r.runId === frozen.runId)!;
+	check(
+		'contextual Intelligence origin is retained by the receipt',
+		initialReceipt.presentationOrigin?.kind === 'comment-handoff',
+	);
 	check(
 		'comment source is recorded in the run receipt',
 		initialReceipt.sources[0]?.sourceKind === 'comment' && initialReceipt.sources[0]?.commentId === 'comment-1',

@@ -22,7 +22,11 @@ import {
 	classifyComposerNativeTarget,
 	parseComposerDocument,
 } from '@/service/composer';
-import { NativeBlockFrame, NativeSourceView } from '@/ui/view/composer/blocks/nativeBlockShared';
+import {
+	NativeBlockFrame,
+	NativeEmbedHost,
+	NativeSourceView,
+} from '@/ui/view/composer/blocks/nativeBlockShared';
 import { DEFAULT_NATIVE_BLOCK_STRINGS } from '@/ui/view/composer/blocks/nativeBlockConfig';
 
 const ASSETS = path.join(process.cwd(), 'docs', 'gstack', 'peak-composer-editing-view-2026-07-09', 'assets');
@@ -191,6 +195,28 @@ function testSourceMappingMarkup(): void {
 		}),
 	);
 	check('mapping: Markdown fallback source keeps Markdown offset', markdownSource.includes('data-src-text-from="0"'), markdownSource);
+
+	const nativeHost = renderToStaticMarkup(
+		React.createElement(NativeEmbedHost, {
+			renderer: undefined,
+			sourcePath: 'folder/source.md',
+			target: 'folder/target.md',
+			kind: 'markdown',
+			markdown: '![[target]]',
+			fallback: React.createElement('span', null, 'fallback'),
+		}),
+	);
+	check(
+		'native host: React keeps one stable shell even when the native renderer is unavailable',
+		nativeHost.includes('pk-native-embed-host-shell'),
+		nativeHost,
+	);
+	check(
+		'native host: the imperative mount remains separate from the React fallback',
+		nativeHost.includes('pk-native-embed-host-fallback')
+			&& nativeHost.includes('pk-native-embed-host markdown-rendered'),
+		nativeHost,
+	);
 }
 
 async function main(): Promise<void> {

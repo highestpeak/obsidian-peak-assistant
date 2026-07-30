@@ -11,51 +11,37 @@ interface V2SearchResultViewProps {
     onRetry?: () => void;
     onApprove?: () => void;
     onRegenerateSection?: (id: string, prompt?: string) => void;
+    onAskSection?: (id: string, question: string, onDelta?: (answer: string) => void) => Promise<string>;
 }
 
 /**
  * V2 search result — no footer (footer is rendered by tab-AISearch).
  * View state is driven by searchSessionStore.v2View.
  */
-export const V2SearchResultView: React.FC<V2SearchResultViewProps> = ({ onClose, onApprove, onRegenerateSection }) => {
-    const isStreaming = useSearchSessionStore((s) => s.status === 'streaming');
-    const isCompleted = useSearchSessionStore((s) => s.status === 'completed');
+export const V2SearchResultView: React.FC<V2SearchResultViewProps> = ({ onClose, onApprove, onRegenerateSection, onAskSection }) => {
     const v2View = useSearchSessionStore((s) => s.v2View);
-    const allSectionsDone = useSearchSessionStore((s) =>
-        (s.v2PlanApproved && s.v2PlanSections.length > 0 && s.v2PlanSections.every((sec) => sec.status === 'done')) ||
-        (s.v2PlanSections.length === 0 && !!s.v2Summary)
-    );
     const containerRef = useRef<HTMLDivElement>(null);
-    const hasAutoSwitchedRef = useRef(false);
+    const previousViewRef = useRef(v2View);
 
-    // Allow manual tab switching at any time; auto-jump is handled by useEffects below
+    // The approve action owns the Activity -> Report transition. Never force a
+    // streaming session back to Activity: report sections stream in their final
+    // positions while Activity remains available through the footer.
     const activeView = v2View;
 
-    // Reset to process when streaming starts
     useEffect(() => {
-        if (isStreaming) {
-            hasAutoSwitchedRef.current = false;
-            useSearchSessionStore.getState().setV2View('process');
-        }
-    }, [isStreaming]);
-
-    // Auto-switch to report view when all sections are done generating (once only)
-    useEffect(() => {
-        if (isCompleted && allSectionsDone && !hasAutoSwitchedRef.current) {
-            hasAutoSwitchedRef.current = true;
-            useSearchSessionStore.getState().setV2View('report');
-            requestAnimationFrame(() => {
-                containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-            });
-        }
-    }, [isCompleted, allSectionsDone]);
+        if (previousViewRef.current === v2View) return;
+        previousViewRef.current = v2View;
+        requestAnimationFrame(() => {
+            containerRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+        });
+    }, [v2View]);
 
     return (
         <div className="pktw-flex pktw-flex-col pktw-h-full pktw-relative">
             <div ref={containerRef} className="pktw-flex-1 pktw-overflow-y-auto pktw-min-h-0">
                 <AnimatePresence mode="wait">
                     {activeView === 'process' && <V2ProcessView key="process" onApprove={onApprove} />}
-                    {activeView === 'report' && <V2ReportView key="report" onClose={onClose} onApprove={onApprove} onRegenerateSection={onRegenerateSection} />}
+                    {activeView === 'report' && <V2ReportView key="report" onRegenerateSection={onRegenerateSection} onAskSection={onAskSection} />}
                     {activeView === 'sources' && <V2SourcesView key="sources" onClose={onClose} />}
                 </AnimatePresence>
             </div>

@@ -46,8 +46,10 @@ import type { SearchSettings } from '@/core/config/settingsTypes';
 import { AgentTemplateId, getTemplateMetadata } from '@/core/template/TemplateRegistry';
 import { estimateTokens as estimateTokensFn } from './token-estimation';
 import type { Profile } from '@/core/profiles/types';
-import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
-import { collectText, collectJson, translateSdkMessages } from '@/service/agents/core/sdkMessageAdapter';
+import {
+	runHarnessText,
+	streamHarnessModel,
+} from '@/service/agents/harness/HarnessModelRunner';
 import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
 import type { IDocTagClassifier } from '@/core/llm/IDocTagClassifier';
 import type { HarnessSettings } from '@/core/config/settingsTypes';
@@ -567,16 +569,8 @@ ${sourcesList}${topicsList}
 	}
 
 	// ═══════════════════════════════════════════════════════════════════════════
-	// Provider v2 — Agent SDK query methods (Pattern B / C)
-	//
-	// These methods route through the shared sdkAgentPool → Claude Agent SDK,
-	// using the active agent Profile for credentials.
+	// Canonical Peak Harness query methods (Pattern B / C)
 	// ═══════════════════════════════════════════════════════════════════════════
-
-	/** T11J B3: pluginId is injected at construction; no AppContext lookup. */
-	private getPluginId(): string {
-		return this.pluginId;
-	}
 
 	/**
 	 * T11J B1: Expose the live `app` + `pluginId` so service-side agents can
@@ -607,10 +601,6 @@ ${sourcesList}${topicsList}
 	 */
 	getHarnessSettings(): HarnessSettings {
 		return this.harnessSettingsProvider();
-	}
-
-	private isAgentSdkProfile(profile: Profile): boolean {
-		return profile.kind === 'anthropic' || profile.kind === 'openrouter';
 	}
 
 	/**
@@ -785,42 +775,10 @@ ${sourcesList}${topicsList}
 	}
 
 	/**
-	 * Wrap an async iterable to capture usage from SDK `result` messages.
-	 * Passes all messages through unchanged while extracting usage side-band.
-	 */
-	private teeUsageFromSdkStream(
-		messages: AsyncIterable<any>,
-		onUsage: (usage: LLMUsage) => void,
-	): AsyncIterable<any> {
-		return {
-			[Symbol.asyncIterator]() {
-				const iter = (messages as any)[Symbol.asyncIterator]();
-				return {
-					async next() {
-						const result = await iter.next();
-						if (!result.done) {
-							const msg = result.value;
-							if (msg?.type === 'result' && msg.usage) {
-								onUsage({
-									inputTokens: msg.usage.input_tokens ?? 0,
-									outputTokens: msg.usage.output_tokens ?? 0,
-									totalTokens: (msg.usage.input_tokens ?? 0) + (msg.usage.output_tokens ?? 0),
-									cachedInputTokens: msg.usage.cache_read_input_tokens ?? 0,
-								});
-							}
-						}
-						return result;
-					},
-				};
-			},
-		};
-	}
-
-	/**
-	 * Pattern B: Single-turn LLM call via Agent SDK. Returns plain text.
+	 * Pattern B: Single-turn LLM call through the Peak Harness.
 	 *
 	 * Accepts either a PromptId (with variables) or a raw prompt string.
-	 * Routes through the active agent Profile → sdkAgentPool → Claude Agent SDK.
+	 * Provider selection remains profile-driven, while Peak owns the loop.
 	 *
 	 * @param promptOrText - A PromptId or raw user prompt string
 	 * @param variables - Template variables (only used when promptOrText is a PromptId)
@@ -832,36 +790,24 @@ ${sourcesList}${topicsList}
 		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string },
 	): Promise<string> {
 		const startMs = Date.now();
-		const profile = this.requireActiveProfile();
+		const { profile, modelId } = this.resolveAgentProfileAndModel();
 		const { userPrompt, systemPrompt } = await this.resolvePromptPair(
 			promptOrText,
 			variables,
 			opts?.systemPrompt,
 		);
 
-		if (this.isAgentSdkProfile(profile)) {
-			let capturedUsage: LLMUsage | undefined;
-			const rawMessages = queryWithProfile(this.app, this.getPluginId(), profile, {
-				prompt: userPrompt,
-				systemPrompt,
-				maxTurns: 1,
-				allowedTools: [],
-				signal: opts?.signal,
-			});
-			const teed = this.teeUsageFromSdkStream(rawMessages, u => { capturedUsage = u; });
-			const text = await collectText(teed);
-			this.emitUsage(capturedUsage, startMs, false, opts?.usageFeature, opts?.usageAction, opts?.usageSessionId);
-			return text;
-		} else {
-			const { vercelGenerateText } = await import('@/core/providers/vercel');
-			const llmMessages: LLMRequestMessage[] = [
-				{ role: 'system', content: [{ type: 'text', text: systemPrompt }] },
-				{ role: 'user', content: [{ type: 'text', text: userPrompt }] },
-			];
-			const { text, usage } = await vercelGenerateText(profile, profile.primaryModel, llmMessages);
-			this.emitUsage(usage, startMs, false, opts?.usageFeature, opts?.usageAction, opts?.usageSessionId);
-			return text;
-		}
+		const { text, usage } = await runHarnessText({
+			loopId: `query-text-${crypto.randomUUID()}`,
+			profile,
+			modelId,
+			prompt: userPrompt,
+			systemPrompt,
+			maxSteps: 1,
+			signal: opts?.signal,
+		});
+		this.emitUsage(usage, startMs, false, opts?.usageFeature, opts?.usageAction, opts?.usageSessionId);
+		return text;
 	}
 
 	/**
@@ -883,16 +829,16 @@ ${sourcesList}${topicsList}
 		);
 
 		let capturedUsage: LLMUsage | undefined;
-
-		// Always use Vercel streaming — copilot actions are single-turn and
-		// don't need Agent SDK's tool-use capabilities.
-		const { vercelStreamChat } = await import('@/core/providers/vercel');
-		const llmMessages: LLMRequestMessage[] = [
-			{ role: 'system', content: [{ type: 'text', text: systemPrompt }] },
-			{ role: 'user', content: [{ type: 'text', text: userPrompt }] },
-		];
 		let fullText = '';
-		for await (const event of vercelStreamChat(profile, modelId, { messages: llmMessages, abortSignal: opts?.signal })) {
+		for await (const event of streamHarnessModel({
+			loopId: `query-text-stream-${crypto.randomUUID()}`,
+			profile,
+			modelId,
+			prompt: userPrompt,
+			systemPrompt,
+			maxSteps: 1,
+			signal: opts?.signal,
+		})) {
 			if (event.type === 'text-delta') {
 				fullText += event.text;
 				yield { type: 'delta', text: event.text };
@@ -906,7 +852,7 @@ ${sourcesList}${topicsList}
 	}
 
 	/**
-	 * Pattern B (streaming): Single-turn LLM call via Agent SDK.
+	 * Pattern B (streaming): Single-turn LLM call through the Peak Harness.
 	 * Yields LLMStreamEvents for progressive UI updates.
 	 *
 	 * @param promptOrText - A PromptId or raw user prompt string
@@ -919,7 +865,9 @@ ${sourcesList}${topicsList}
 		opts?: { systemPrompt?: string; triggerName?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string; modelId?: string },
 	): AsyncGenerator<LLMStreamEvent> {
 		const startMs = Date.now();
-		const profile = this.requireActiveProfile();
+		const resolved = this.resolveAgentProfileAndModel();
+		const profile = resolved.profile;
+		const modelId = opts?.modelId ?? resolved.modelId;
 		const { userPrompt, systemPrompt } = await this.resolvePromptPair(
 			promptOrText,
 			variables,
@@ -928,51 +876,27 @@ ${sourcesList}${topicsList}
 
 		let capturedUsage: LLMUsage | undefined;
 
-		if (this.isAgentSdkProfile(profile)) {
-			for await (const event of translateSdkMessages(
-				queryWithProfile(this.app, this.getPluginId(), profile, {
-					prompt: userPrompt,
-					systemPrompt,
-					maxTurns: 1,
-					allowedTools: [],
-					signal: opts?.signal,
-					...(opts?.modelId ? { modelOverride: opts.modelId } : {}),
-				}),
-				// includePartialMessages is ALWAYS enabled in queryWithProfile, so the
-				// SDK streams incremental `stream_event` text deltas. Without this flag
-				// translateSdkMessage ALSO re-emits the final `assistant` message's full
-				// text block as one more text-delta — doubling the whole response
-				// (Composer polish, copilot single-turn actions, quick-search AI analysis).
-				// Every other agent-SDK stream consumer sets this; queryStream must too.
-				{ triggerName: opts?.triggerName as any, hasPartialMessages: true },
-			)) {
-				if (event.type === 'complete') {
-					capturedUsage = event.usage;
-				}
-				yield event;
+		for await (const event of streamHarnessModel({
+			loopId: `query-stream-${crypto.randomUUID()}`,
+			profile,
+			modelId,
+			prompt: userPrompt,
+			systemPrompt,
+			maxSteps: 1,
+			signal: opts?.signal,
+			triggerName: opts?.triggerName as any,
+		})) {
+			if (event.type === 'complete') {
+				capturedUsage = event.usage;
 			}
-		} else {
-			const { vercelStreamChat } = await import('@/core/providers/vercel');
-			const llmMessages: LLMRequestMessage[] = [
-				{ role: 'system', content: [{ type: 'text', text: systemPrompt }] },
-				{ role: 'user', content: [{ type: 'text', text: userPrompt }] },
-			];
-			for await (const event of vercelStreamChat(profile, opts?.modelId ?? profile.primaryModel, { messages: llmMessages, abortSignal: opts?.signal })) {
-				if (opts?.triggerName) {
-					(event as any).triggerName = opts.triggerName;
-				}
-				if (event.type === 'complete') {
-					capturedUsage = event.usage;
-				}
-				yield event;
-			}
+			yield event;
 		}
 
 		this.emitUsage(capturedUsage, startMs, true, opts?.usageFeature, opts?.usageAction, opts?.usageSessionId);
 	}
 
 	/**
-	 * Pattern C: Structured output via Agent SDK. Returns parsed JSON.
+	 * Pattern C: Structured output through the Peak Harness. Returns parsed JSON.
 	 *
 	 * The caller provides a JSON schema (not Zod) for the SDK to enforce.
 	 * Use `zodToJsonSchema()` to convert Zod schemas before calling.
@@ -996,17 +920,18 @@ ${sourcesList}${topicsList}
 			opts?.systemPrompt,
 		);
 
-		// Always use Vercel path for structured output — single-turn calls
-		// don't need Agent SDK, and Vercel avoids CLI auth complexity.
-		const { vercelGenerateText } = await import('@/core/providers/vercel');
 		const jsonInstruction = schema
 			? `\n\nRespond with valid JSON matching this schema:\n${JSON.stringify(schema, null, 2)}`
 			: '\n\nRespond with valid JSON.';
-		const llmMessages: LLMRequestMessage[] = [
-			{ role: 'system', content: [{ type: 'text', text: systemPrompt + jsonInstruction }] },
-			{ role: 'user', content: [{ type: 'text', text: userPrompt }] },
-		];
-		const { text, usage } = await vercelGenerateText(profile, modelId, llmMessages);
+		const { text, usage } = await runHarnessText({
+			loopId: `query-structured-${crypto.randomUUID()}`,
+			profile,
+			modelId,
+			prompt: userPrompt,
+			systemPrompt: systemPrompt + jsonInstruction,
+			maxSteps: 1,
+			signal: opts?.signal,
+		});
 		this.emitUsage(usage, startMs, false, opts?.usageFeature, opts?.usageAction, opts?.usageSessionId);
 		if (usage && opts?.usageCallback) opts.usageCallback(usage);
 		// Extract JSON from potential markdown code fences

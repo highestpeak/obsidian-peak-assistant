@@ -277,7 +277,7 @@ Uses `!important` on bg/border/padding/border-radius to beat Obsidian's `.modal-
 
 #### `.pk-icon-btn`
 
-Square 28px transparent button for header close/dismiss or compact toolbar icons. Hover dims to `surface-sunken` + primary text. Uses `!important` (same Obsidian leak reason).
+Square 32px transparent button for header close/dismiss or compact toolbar icons. Hover dims to `surface-sunken` + primary text. Uses `!important` (same Obsidian leak reason).
 
 ```html
 <button class="pk-icon-btn" aria-label="Close"><XIcon class="icon" /></button>

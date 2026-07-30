@@ -63,8 +63,13 @@ export interface NativeBlockStrings {
 	embedPreviewSelection: string;
 	embedSelectionPreview: string;
 	embedReturnToFull: string;
+	embedRangeMissing: string;
 	embedAnchorNeedsBlock: string;
 	embedAnchorWriting: string;
+	embedAnchorWritten: string;
+	embedAnchorUnavailable: string;
+	embedAnchorTargetMissing: string;
+	embedAnchorConflict: string;
 	embedAnchorError: string;
 	nativeLoading: string;
 	nativeMissing: string;
@@ -126,9 +131,14 @@ export const DEFAULT_NATIVE_BLOCK_STRINGS: NativeBlockStrings = {
 	embedPreviewSelection: '写回并预览选中区域',
 	embedSelectionPreview: '选中区域预览',
 	embedReturnToFull: '返回完整预览',
-	embedAnchorNeedsBlock: '请选择完整的段落、列表项或引用块',
+	embedRangeMissing: '选中区域已失效，请返回完整预览后重新选择',
+	embedAnchorNeedsBlock: '请选择连续的正文、列表或引用内容',
 	embedAnchorWriting: '正在写回锚点…',
-	embedAnchorError: '无法将该选区写回为原笔记中的唯一 Markdown 块',
+	embedAnchorWritten: '已写回选中区域，正在刷新预览',
+	embedAnchorUnavailable: '当前 Composer 会话未加载写回能力，请关闭后重新打开该 Composer 文档',
+	embedAnchorTargetMissing: '找不到被嵌入的目标笔记，请返回完整预览后重试',
+	embedAnchorConflict: '写回时原文已变更，请重新打开预览后重试',
+	embedAnchorError: '无法将该选区定位为原笔记中的连续 Markdown 区域',
 	nativeLoading: '正在加载嵌入目标…',
 	nativeMissing: '嵌入目标缺失',
 	nativeError: '嵌入目标读取失败',

@@ -256,6 +256,16 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 
 			const file = app.vault.getAbstractFileByPath(path);
 			if (!(file instanceof TFile)) return;
+			const router = appContext.runtimeRegistry.tryGetDocumentComposerRuntime()?.navigation;
+			if (router && file.extension === 'md') {
+				await router.open({
+					filePath: file.path,
+					disposition: 'new-tab',
+					reason: 'file-atlas',
+				});
+				recordActiveView();
+				return;
+			}
 			let leaf;
 			try {
 				leaf = app.workspace.getLeaf('tab');
@@ -273,7 +283,7 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 			}
 			// `openLinkText` resolves wikilink targets (note / note#heading / note#^block)
 			// relative to the source note, matching Obsidian's own link navigation.
-			void app.workspace.openLinkText(target, sourcePath, false);
+			void appContext.vaultNavigation.openLink(target, { sourcePath, newLeaf: false });
 		},
 
 		closeDoc(path: string): void {

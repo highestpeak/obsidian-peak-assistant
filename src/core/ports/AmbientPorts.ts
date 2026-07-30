@@ -144,7 +144,7 @@ export interface AmbientBriefingPort {
 /**
  * Optional LLM tier-2 explanation. Returns `null` when rate-limited,
  * profile missing, or model errored. The adapter wraps
- * `queryWithProfile` + `ProfileRegistry`.
+ * Harness model execution + `ProfileRegistry`.
  */
 export interface AmbientExplanationPort {
 	generateLlmExplanation(

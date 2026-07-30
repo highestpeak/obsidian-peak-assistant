@@ -15,9 +15,15 @@ const composerCss = readFileSync('src/styles/composer.css', 'utf8');
 const primitivesCss = readFileSync('src/styles/peak-components.css', 'utf8');
 
 assert.ok(
-	root.includes("const showInlineCandidate = displayState === 'all' && hasInlineCandidate"),
-	'pending candidates expand automatically only in 全部改动',
+	root.includes("const showInlineCandidate = displayState === 'edit' && hasInlineCandidate"),
+	'pending candidates are visible at their origin anchor in 编辑视图',
 );
+assert.ok(root.includes('{editing && !showInlineCandidate && ('), 'action row only yields after a candidate card is actually visible');
+assert.ok(root.includes('setInvokeErrors'), 'synchronous AI invocation errors stay visible instead of being swallowed');
+assert.equal(displaySwitch.includes("value: 'all'"), false, '全部改动 is not a persistent top-level display state');
+assert.equal(displaySwitch.includes("value: 'work'"), false, 'legacy 工作视图 is retired');
+assert.ok(displaySwitch.includes("value: 'edit'"), 'the explicit 编辑视图 state is available');
+assert.ok(undoRedo.includes('pk-composer-review-all'), 'multiple candidates expose the contextual review-all action');
 assert.ok(displaySwitch.includes('variant="animated-pill"'), 'display modes use the animated pill segmented variant');
 assert.ok(displaySwitch.includes('size="sm"'), 'display modes match the compact document toolbar density');
 assert.ok(displaySwitch.includes('thumbLayoutId="composer-display-state-thumb"'), 'display modes own a stable thumb animation');
@@ -55,7 +61,10 @@ assert.equal(copilot.includes('function ModelPicker('), false, 'Copilot does not
 assert.ok(copilot.includes("modelSelection.mode === 'fixed'"), 'Copilot resolves the shared fixed selection to a model override');
 assert.ok(copilot.includes('...(selectedModelId ? { modelId: selectedModelId } : {})'), 'selected model is passed into capability invocation');
 assert.ok(capabilityRuntime.includes('modelId?: string'), 'capability runtime retains the selected model');
-assert.ok(aiService.includes('opts?.modelId ?? profile.primaryModel'), 'the shared AI service executes the selected model');
+assert.ok(
+	aiService.includes('const modelId = opts?.modelId ?? resolved.modelId;'),
+	'the shared Harness AI service executes the selected model override',
+);
 assert.ok(copilot.includes('<CapabilityIcon name={item.lucideIcon} />'), 'capability rows use their declared Lucide icons');
 assert.ok(related.includes('ResultBrowserViewToggle'), 'related-material browser preserves List / Tree / Graph controls');
 assert.ok(related.includes('ResultBrowserDensityToggle'), 'related-material Compact / Detailed control remains intact');

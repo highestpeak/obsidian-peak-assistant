@@ -1,205 +1,540 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { Notice } from 'obsidian';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { isMobile, Notice } from 'obsidian';
 import { motion } from 'framer-motion';
-import { FileText, List, Network, ChevronRight, Folder, Loader2 } from 'lucide-react';
-import { useSearchSessionStore } from '../store/searchSessionStore';
-import { createOpenSourceCallback } from '../callbacks/open-source-file';
-import { useServiceContext } from '@/ui/context/ServiceContext';
+import { Check, Copy, Database, FileText, Loader2, Pencil } from 'lucide-react';
+import type { SearchResultItem } from '@/core/search/searchTypes';
+import type { ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph';
+import {
+	ResultBrowserDensityToggle,
+	ResultBrowserGraph,
+	ResultBrowserGraphControls,
+	ResultBrowserListRow,
+	ResultBrowserTree,
+	ResultBrowserViewToggle,
+	type ResultBrowserDensity,
+	type ResultBrowserGraphPreset,
+	type ResultBrowserView,
+} from '@/ui/component/result-browser';
 import { MultiLensGraph } from '@/ui/component/mine/multi-lens-graph/MultiLensGraph';
-import { useQuickSearchHost } from '../hooks/useQuickSearchHost';
-import type { V2Source } from '../types/search-steps';
+import { Button } from '@/ui/component/shared-ui/button';
+import { cn } from '@/ui/react/lib/utils';
+import { useServiceContext } from '@/ui/context/ServiceContext';
+import { useOwnerDocumentListener } from '@/ui/hooks/useOwnerWindow';
+import { createOpenSourceCallback } from '../callbacks/open-source-file';
+import { InspectorSidePanel } from './inspector/InspectorSidePanel';
 import { useGraphAgent } from '../hooks/useGraphAgent';
+import { useQuickSearchHost } from '../hooks/useQuickSearchHost';
+import { useSearchSessionStore } from '../store/searchSessionStore';
+import type { V2Source } from '../types/search-steps';
 
-type SourceViewMode = 'list' | 'graph';
+type GraphKind = 'vault' | 'ai';
+type VaultGraphScope = 'evidence' | 'one-hop' | 'two-hop';
 
 interface V2SourcesViewProps {
-    onClose?: () => void;
+	onClose?: () => void;
 }
 
-const SourcesGraph: React.FC<{ sources: V2Source[]; onOpen: (path: string) => void }> = ({ sources, onOpen }) => {
-    const searchQuery = useSearchSessionStore(s => s.query);
-    const host = useQuickSearchHost();
-    const sourceItems = useMemo(
-        () => sources.map(s => ({ path: s.path, title: s.title, score: sources.length - sources.indexOf(s) })),
-        [sources],
-    );
-    const { graphData, loading, steps, start } = useGraphAgent(sourceItems, searchQuery);
+/** Adapter only: the shared Result Browser remains the single projection UI. */
+export function sourcesToResultItems(sources: readonly V2Source[]): SearchResultItem[] {
+	const total = Math.max(1, sources.length);
+	return sources.map((source, index) => {
+		const score = (total - index) / total;
+		return {
+			id: source.path,
+			type: 'markdown',
+			title: source.title,
+			path: source.path,
+			lastModified: source.readAt,
+			content: source.reasoning,
+			highlight: source.reasoning ? { text: source.reasoning } : null,
+			score,
+			finalScore: score,
+			displayScorePercent: Math.round(score * 100),
+			source: 'local',
+		};
+	});
+}
 
-    const handleSaveToVault = useCallback(async () => {
-        if (!graphData) {
-            new Notice('No graph data to save');
-            return;
-        }
-        try {
-            const saveFolder = host.autoSaveFolder || 'AI-Analysis';
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-            const querySlug = (searchQuery || 'graph').replace(/[/\\:*?"<>|]/g, '').trim().slice(0, 40);
-            const fileName = `Graph-${querySlug}-${timestamp}`;
-            const summary = `${graphData.nodes.length} nodes, ${graphData.edges.length} edges`;
-            const { path } = await host.saveGraphToVault({
-                folderPath: saveFolder,
-                fileName,
-                query: searchQuery || '',
-                summary,
-                graphData,
-                lensHint: 'topology',
-            });
-            new Notice(`Graph saved: ${path}`);
-        } catch (e) {
-            new Notice(`Failed to save graph: ${e instanceof Error ? e.message : String(e)}`);
-        }
-    }, [graphData, searchQuery, host]);
+const SegmentedButton: React.FC<{
+	active: boolean;
+	onClick: () => void;
+	children: React.ReactNode;
+	title?: string;
+}> = ({ active, onClick, children, title }) => (
+	<Button
+		variant={active ? 'default' : 'ghost'}
+		size="sm"
+		title={title}
+		onClick={onClick}
+		className={cn(
+			'!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 pktw-rounded-full !pktw-px-3 pktw-text-sm',
+			active ? '' : 'pktw-text-pk-foreground-muted',
+		)}
+	>
+		{children}
+	</Button>
+);
 
-    return (
-        <div className="pktw-h-[500px] pktw-w-full pktw-border pktw-border-[--background-modifier-border] pktw-rounded-lg pktw-overflow-hidden">
-            <MultiLensGraph
-                graphData={graphData}
-                defaultLens="topology"
-                showControls
-                onNodeClick={onOpen}
-                className="pktw-h-full"
-                loading={loading}
-                loadingSteps={steps}
-                onRequestGenerate={start}
-                onSaveToVault={handleSaveToVault}
-            />
-        </div>
-    );
+const GraphKindToggle: React.FC<{
+	value: GraphKind;
+	onChange: (value: GraphKind) => void;
+}> = ({ value, onChange }) => (
+	<div className="pktw-inline-flex pktw-items-center pktw-gap-0.5 pktw-rounded-full pktw-border pktw-border-pk-border pktw-bg-pk-surface-sunken pktw-p-0.5">
+		<SegmentedButton active={value === 'vault'} onClick={() => onChange('vault')}>
+			Vault graph
+		</SegmentedButton>
+		<SegmentedButton active={value === 'ai'} onClick={() => onChange('ai')}>
+			AI relationship map
+		</SegmentedButton>
+	</div>
+);
+
+const ScopeToggle: React.FC<{
+	value: VaultGraphScope;
+	onChange: (value: VaultGraphScope) => void;
+}> = ({ value, onChange }) => (
+	<div className="pktw-flex pktw-items-center pktw-gap-1.5">
+		<span className="pktw-text-xs pktw-font-medium pktw-text-pk-foreground-muted">
+			Scope
+		</span>
+		<div className="pktw-inline-flex pktw-items-center pktw-gap-0.5 pktw-rounded-full pktw-border pktw-border-pk-border pktw-bg-pk-surface-sunken pktw-p-0.5">
+			<SegmentedButton active={value === 'evidence'} onClick={() => onChange('evidence')}>
+				Evidence set
+			</SegmentedButton>
+			<SegmentedButton active={value === 'one-hop'} onClick={() => onChange('one-hop')}>
+				1-hop
+			</SegmentedButton>
+			<SegmentedButton active={value === 'two-hop'} onClick={() => onChange('two-hop')}>
+				2-hop
+			</SegmentedButton>
+		</div>
+	</div>
+);
+
+const AIRelationshipMap: React.FC<{
+	sources: readonly V2Source[];
+	onSelect: (path: string) => void;
+}> = ({ sources, onSelect }) => {
+	const query = useSearchSessionStore((state) => state.query);
+	const host = useQuickSearchHost();
+	const sourceKey = sources.map((source) => source.path).join('|');
+	const [selectedPaths, setSelectedPaths] = useState<string[]>(() => sources.map((source) => source.path));
+	const [editingSources, setEditingSources] = useState(false);
+
+	useEffect(() => {
+		const nextPaths = sources.map((source) => source.path);
+		setSelectedPaths((current) => {
+			const retained = current.filter((path) => nextPaths.includes(path));
+			return retained.length > 0 ? retained : nextPaths;
+		});
+	}, [sourceKey]);
+
+	const selectedSources = useMemo(
+		() => sources.filter((source) => selectedPaths.includes(source.path)),
+		[sources, selectedPaths],
+	);
+	const sourceItems = useMemo(
+		() => selectedSources.map((source, index) => ({
+			path: source.path,
+			title: source.title,
+			score: selectedSources.length - index,
+		})),
+		[selectedSources],
+	);
+	const { graphData, loading, steps, start } = useGraphAgent(sourceItems, query);
+
+	const toggleSource = (path: string): void => {
+		setSelectedPaths((current) => {
+			if (!current.includes(path)) return [...current, path];
+			if (current.length === 1) return current;
+			return current.filter((candidate) => candidate !== path);
+		});
+	};
+
+	const handleSaveToVault = useCallback(async () => {
+		if (!graphData) {
+			new Notice('Generate the relationship map before saving it');
+			return;
+		}
+		try {
+			const saveFolder = host.autoSaveFolder || 'AI-Analysis';
+			const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+			const querySlug = (query || 'graph').replace(/[/\\:*?"<>|]/g, '').trim().slice(0, 40);
+			const { path } = await host.saveGraphToVault({
+				folderPath: saveFolder,
+				fileName: `Graph-${querySlug}-${timestamp}`,
+				query,
+				summary: `${graphData.nodes.length} nodes, ${graphData.edges.length} edges`,
+				graphData,
+				lensHint: 'topology',
+			});
+			new Notice(`Graph saved: ${path}`);
+		} catch (error) {
+			new Notice(`Failed to save graph: ${error instanceof Error ? error.message : String(error)}`);
+		}
+	}, [graphData, host, query]);
+
+	return (
+		<div className="pktw-flex pktw-h-full pktw-min-h-0 pktw-flex-col pktw-overflow-hidden">
+			<div className="pktw-flex pktw-min-h-10 pktw-items-center pktw-gap-3 pktw-border-b pktw-border-pk-border pktw-bg-pk-surface-raised pktw-px-3 pktw-py-1">
+				<Database className="pktw-h-4 pktw-w-4 pktw-text-pk-accent" />
+				<div className="pktw-min-w-0 pktw-flex-1">
+					<span className="pktw-block pktw-text-xs pktw-font-semibold pktw-text-pk-foreground">
+						Relationship inputs
+					</span>
+					<span className="pktw-block pktw-truncate pktw-text-xs pktw-text-pk-foreground-muted">
+						{selectedSources.length} of {sources.length} cited files selected
+					</span>
+				</div>
+				<Button
+					variant="ghost"
+					size="sm"
+					onClick={() => setEditingSources((value) => !value)}
+					className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 pktw-gap-1.5 pktw-rounded-md !pktw-px-3"
+				>
+					<Pencil className="pktw-h-3.5 pktw-w-3.5" />
+					{editingSources ? 'Done' : 'Edit sources'}
+				</Button>
+			</div>
+
+			{editingSources && (
+				<div className="pktw-grid pktw-grid-cols-2 pktw-gap-1 pktw-border-b pktw-border-pk-border pktw-bg-pk-background pktw-p-3">
+					{sources.map((source) => {
+						const selected = selectedPaths.includes(source.path);
+						return (
+							<Button
+								key={source.path}
+								variant="ghost"
+								size="sm"
+								onClick={() => toggleSource(source.path)}
+								className="!pktw-h-auto !pktw-min-h-8 !pktw-max-h-none pktw-justify-start pktw-gap-2 pktw-rounded-md !pktw-px-2 !pktw-py-1.5 pktw-text-left"
+								title={source.path}
+							>
+								<span className={cn(
+									'pktw-flex pktw-h-4 pktw-w-4 pktw-shrink-0 pktw-items-center pktw-justify-center pktw-rounded pktw-border',
+									selected ? 'pktw-border-pk-accent pktw-bg-pk-accent pktw-text-white' : 'pktw-border-pk-border',
+								)}>
+									{selected && <Check className="pktw-h-3 pktw-w-3" />}
+								</span>
+								<span className="pktw-truncate pktw-text-xs">{source.title}</span>
+							</Button>
+						);
+					})}
+				</div>
+			)}
+
+			<div className="pktw-flex-1 pktw-min-h-0 pktw-bg-pk-background">
+				<MultiLensGraph
+					graphData={graphData}
+					defaultLens="topology"
+					showControls
+					onNodeClick={onSelect}
+					className="pktw-h-full"
+					loading={loading}
+					loadingSteps={steps}
+					onRequestGenerate={start}
+					generateLabel="Generate relationship map"
+					onSaveToVault={handleSaveToVault}
+				/>
+			</div>
+		</div>
+	);
 };
 
-function SourceItem({ source, onClick }: { source: V2Source; onClick: (e: React.MouseEvent) => void }) {
-    const refCount = useSearchSessionStore(s =>
-        s.v2PlanSections.filter(sec => sec.evidencePaths?.includes(source.path)).length
-    );
-
-    return (
-        <div
-            className="pktw-flex pktw-items-center pktw-gap-2 pktw-w-full pktw-text-left pktw-text-xs pktw-py-1.5 pktw-px-2 hover:pktw-bg-[--background-secondary] pktw-rounded pktw-cursor-pointer pktw-group"
-            onClick={onClick}
-        >
-            <FileText className="pktw-w-3 pktw-h-3 pktw-text-[--text-muted] pktw-shrink-0" />
-            <span className="pktw-truncate pktw-flex-1">{source.title}</span>
-            {refCount > 0 && (
-                <span className="pktw-text-pk-xs pktw-px-1 pktw-rounded pktw-bg-[--interactive-accent] pktw-text-[--text-on-accent]">
-                    x{refCount}
-                </span>
-            )}
-            {source.reasoning && (
-                <span className="pktw-hidden group-hover:pktw-inline pktw-text-pk-xs pktw-text-[--text-muted] pktw-max-w-[200px] pktw-truncate">
-                    {source.reasoning}
-                </span>
-            )}
-        </div>
-    );
-}
-
 export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
-    const { vaultNavigation } = useServiceContext();
-    const sources = useSearchSessionStore((s) => s.v2Sources);
-    const storeViewMode = useSearchSessionStore((s) => s.sourcesViewMode);
-    const setStoreViewMode = useSearchSessionStore((s) => s.setSourcesViewMode);
-    const viewMode = storeViewMode as SourceViewMode;
-    const setViewMode = useCallback((m: SourceViewMode) => { if (m === 'list' || m === 'graph') setStoreViewMode(m); }, [setStoreViewMode]);
-    const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-    const handleOpen = useCallback((pathOrResult: string, newTab?: boolean) => {
-        createOpenSourceCallback(onClose, newTab ?? true, vaultNavigation)(pathOrResult);
-    }, [onClose, vaultNavigation]);
+	const { vaultNavigation } = useServiceContext();
+	const host = useQuickSearchHost();
+	const sources = useSearchSessionStore((state) => state.v2Sources);
+	const query = useSearchSessionStore((state) => state.query);
+	const view = useSearchSessionStore((state) => state.sourcesViewMode) as ResultBrowserView;
+	const setView = useSearchSessionStore((state) => state.setSourcesViewMode);
+	const [density, setDensity] = useState<ResultBrowserDensity>('detailed');
+	const [selectedIndex, setSelectedIndex] = useState(0);
+	const [cursor, setCursor] = useState<string | null>(null);
+	const [graphSelectedPath, setGraphSelectedPath] = useState<string | null>(null);
+	const [collapsedFolders, setCollapsedFolders] = useState<string[]>([]);
+	const [inspectorOpen, setInspectorOpen] = useState(false);
+	const [inspectorPath, setInspectorPath] = useState<string | null>(null);
+	const [graphKind, setGraphKind] = useState<GraphKind>('vault');
+	const [graphScope, setGraphScope] = useState<VaultGraphScope>('evidence');
+	const [graphPreset, setGraphPreset] = useState<ResultBrowserGraphPreset>('constellation');
+	const [semantic, setSemantic] = useState(false);
+	const [subgraph, setSubgraph] = useState<ResultSubgraphOutput | null>(null);
+	const [graphLoading, setGraphLoading] = useState(false);
+	const rootRef = useRef<HTMLDivElement>(null);
+	const projectionRef = useRef<HTMLDivElement>(null);
+	const itemRefs = useRef<Map<number, HTMLDivElement | null>>(new Map());
+	const results = useMemo(() => sourcesToResultItems(sources), [sources]);
+	const pathsKey = sources.map((source) => source.path).join('|');
+	const selectedPath = view === 'tree'
+		? cursor ?? results[0]?.path ?? null
+		: view === 'graph'
+			? graphSelectedPath ?? results[0]?.path ?? null
+			: results[selectedIndex]?.path ?? results[0]?.path ?? null;
 
-    const toggleGroup = (prefix: string) => {
-        setCollapsedGroups(prev => {
-            const next = new Set(prev);
-            next.has(prefix) ? next.delete(prefix) : next.add(prefix);
-            return next;
-        });
-    };
+	const handleOpen = useCallback((pathOrResult: string, newTab = true) => {
+		createOpenSourceCallback(onClose, newTab, vaultNavigation)(pathOrResult);
+	}, [onClose, vaultNavigation]);
 
-    const viewModes: Array<{ id: SourceViewMode; icon: typeof List; label: string }> = [
-        { id: 'list', icon: List, label: 'List' },
-        { id: 'graph', icon: Network, label: 'Graph' },
-    ];
+	const selectPath = useCallback((path: string): void => {
+		const nextIndex = results.findIndex((result) => result.path === path);
+		if (nextIndex >= 0) setSelectedIndex(nextIndex);
+		setCursor(path);
+		setGraphSelectedPath(path);
+		if (inspectorOpen) setInspectorPath(path);
+	}, [inspectorOpen, results]);
 
-    const grouped = useMemo(() => {
-        const groups = new Map<string, V2Source[]>();
-        for (const src of sources) {
-            const parts = src.path.split('/');
-            const prefix = parts.length > 2 ? parts.slice(0, 2).join('/') : parts[0] ?? 'root';
-            if (!groups.has(prefix)) groups.set(prefix, []);
-            groups.get(prefix)!.push(src);
-        }
-        return Array.from(groups.entries())
-            .sort((a, b) => b[1].length - a[1].length)
-            .map(([prefix, srcs]) => ({
-                prefix,
-                sources: srcs.sort((a, b) => b.readAt - a.readAt),
-            }));
-    }, [sources]);
+	const setInspectorVisible = useCallback((open: boolean): void => {
+		if (!open) {
+			setInspectorOpen(false);
+			return;
+		}
+		if (!selectedPath) return;
+		if (isMobile()) {
+			handleOpen(selectedPath, true);
+			return;
+		}
+		setInspectorPath(selectedPath);
+		setInspectorOpen(true);
+	}, [handleOpen, selectedPath]);
 
-    return (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="pktw-px-1 pktw-py-3"
-        >
-            {/* Header */}
-            <div className="pktw-flex pktw-items-center pktw-justify-between pktw-mb-4 pktw-px-1">
-                <div className="pktw-flex pktw-items-center pktw-gap-2">
-                    <FileText className="pktw-w-4 pktw-h-4 pktw-text-pk-accent" />
-                    <span className="pktw-text-sm pktw-font-semibold pktw-text-pk-text-primary">
-                        Top Sources
-                    </span>
-                    <span className="pktw-text-xs pktw-text-pk-text-tertiary">
-                        ({sources.length} files)
-                    </span>
-                </div>
-                <div className="pktw-flex pktw-items-center pktw-gap-0.5 pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-lg pktw-p-0.5">
-                    {viewModes.map(({ id, icon: Icon, label }) => (
-                        <div
-                            key={id}
-                            onClick={() => setViewMode(id)}
-                            className={`pktw-flex pktw-items-center pktw-gap-1 pktw-px-2 pktw-py-1 pktw-text-xs pktw-font-medium pktw-rounded pktw-cursor-pointer pktw-transition-colors ${
-                                viewMode === id
-                                    ? 'pktw-bg-pk-surface-sunken pktw-text-pk-text-primary'
-                                    : 'pktw-text-pk-foreground-muted hover:pktw-bg-pk-background'
-                            }`}
-                        >
-                            <Icon className="pktw-w-3.5 pktw-h-3.5" />
-                            {label}
-                        </div>
-                    ))}
-                </div>
-            </div>
+	const handleProjectionKey = useCallback((event: KeyboardEvent): void => {
+		if (view === 'tree') return;
+		const target = event.target as Element | null;
+		if (!target || !rootRef.current?.contains(target)) return;
+		if (!target.closest('[data-v2-sources-projection]')) return;
+		if (target.closest('input, textarea, [contenteditable="true"]')) return;
 
-            {/* List view — grouped by folder prefix */}
-            {viewMode === 'list' && (
-                <div>
-                    {grouped.map(({ prefix, sources: items }) => (
-                        <div key={prefix} className="pktw-mb-2">
-                            <div
-                                className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-w-full pktw-text-left pktw-text-xs pktw-font-medium pktw-text-[--text-muted] pktw-py-1.5 pktw-px-2 hover:pktw-bg-[--background-secondary] pktw-rounded pktw-cursor-pointer"
-                                onClick={() => toggleGroup(prefix)}
-                            >
-                                <ChevronRight className={`pktw-w-3 pktw-h-3 pktw-transition-transform ${!collapsedGroups.has(prefix) ? 'pktw-rotate-90' : ''}`} />
-                                <Folder className="pktw-w-3 pktw-h-3" />
-                                <span className="pktw-truncate">{prefix}</span>
-                                <span className="pktw-ml-auto pktw-text-[--text-faint]">{items.length}</span>
-                            </div>
-                            {!collapsedGroups.has(prefix) && (
-                                <div className="pktw-ml-5 pktw-space-y-0.5">
-                                    {items.map(src => (
-                                        <SourceItem key={src.path} source={src} onClick={(e) => handleOpen(src.path, e.metaKey || e.ctrlKey)} />
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            )}
+		if (event.key === 'ArrowRight') {
+			event.preventDefault();
+			setInspectorVisible(true);
+			return;
+		}
+		if (event.key === 'ArrowLeft' && inspectorOpen) {
+			event.preventDefault();
+			setInspectorVisible(false);
+			return;
+		}
+		if (view !== 'list' || results.length === 0) return;
+		if (event.key === 'Enter') {
+			if (!selectedPath) return;
+			event.preventDefault();
+			handleOpen(selectedPath, event.metaKey || event.ctrlKey);
+			return;
+		}
+		if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+		event.preventDefault();
+		const direction = event.key === 'ArrowDown' ? 1 : -1;
+		const nextIndex = (selectedIndex + direction + results.length) % results.length;
+		setSelectedIndex(nextIndex);
+		const nextPath = results[nextIndex].path;
+		setCursor(nextPath);
+		if (inspectorOpen) setInspectorPath(nextPath);
+		itemRefs.current.get(nextIndex)?.focus();
+	}, [
+		handleOpen,
+		inspectorOpen,
+		results,
+		selectedIndex,
+		selectedPath,
+		setInspectorVisible,
+		view,
+	]);
 
-            {/* Graph view */}
-            {viewMode === 'graph' && (
-                <SourcesGraph sources={sources} onOpen={(path) => handleOpen(path)} />
-            )}
-        </motion.div>
-    );
+	useOwnerDocumentListener(rootRef, 'keydown', handleProjectionKey);
+
+	useEffect(() => {
+		if (results.length === 0) return;
+		const selectedStillExists = selectedPath && results.some((result) => result.path === selectedPath);
+		if (selectedStillExists) return;
+		const firstPath = results[0].path;
+		setSelectedIndex(0);
+		setCursor(firstPath);
+		setGraphSelectedPath(firstPath);
+		if (inspectorOpen) setInspectorPath(firstPath);
+	}, [inspectorOpen, results, selectedPath]);
+
+	useEffect(() => {
+		if (view !== 'graph' || graphKind !== 'vault') return;
+		let cancelled = false;
+		setGraphLoading(true);
+		host.buildSourceVaultGraph(sources.map((source) => source.path), graphScope)
+			.then((result) => {
+				if (!cancelled) setSubgraph(result);
+			})
+			.catch((error) => {
+				if (cancelled) return;
+				setSubgraph(null);
+				new Notice(`Could not build Vault graph: ${error instanceof Error ? error.message : String(error)}`);
+			})
+			.finally(() => {
+				if (!cancelled) setGraphLoading(false);
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, [graphKind, graphScope, host, pathsKey, sources, view]);
+
+	const toggleFolder = (folderPath: string): void => {
+		setCollapsedFolders((current) => (
+			current.includes(folderPath)
+				? current.filter((path) => path !== folderPath)
+				: [...current, folderPath]
+		));
+	};
+
+	const copySourcePaths = async (): Promise<void> => {
+		await navigator.clipboard.writeText(sources.map((source) => `[[${source.path}]]`).join('\n'));
+		new Notice(`Copied ${sources.length} source paths`);
+	};
+
+	if (sources.length === 0) {
+		return (
+			<div className="pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-gap-2 pktw-py-20 pktw-text-center">
+				<FileText className="pktw-h-7 pktw-w-7 pktw-text-pk-foreground-faint" />
+				<span className="pktw-text-sm pktw-font-medium pktw-text-pk-foreground">No cited files yet</span>
+				<span className="pktw-text-xs pktw-text-pk-foreground-muted">Sources appear here after the agent reads evidence.</span>
+			</div>
+		);
+	}
+
+	return (
+		<motion.div
+			ref={rootRef}
+			initial={{ opacity: 0 }}
+			animate={{ opacity: 1 }}
+			exit={{ opacity: 0 }}
+			className="pktw-flex pktw-min-h-0 pktw-flex-col pktw-gap-2 pktw-px-1 pktw-py-1"
+		>
+			<div className="pktw-flex pktw-min-h-8 pktw-items-center pktw-gap-2 pktw-px-1">
+				<FileText className="pktw-h-4 pktw-w-4 pktw-text-pk-accent" />
+				<span className="pktw-text-sm pktw-font-semibold pktw-text-pk-foreground">
+					Sources · {sources.length} cited files
+				</span>
+			</div>
+
+			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-pk-surface-raised pktw-p-1.5">
+				<ResultBrowserViewToggle view={view} onViewChange={setView} />
+				{view === 'graph' && <GraphKindToggle value={graphKind} onChange={setGraphKind} />}
+				<div className="pktw-flex-1" />
+				<ResultBrowserDensityToggle density={density} onDensityChange={setDensity} />
+			</div>
+
+			{view === 'graph' && graphKind === 'vault' && (
+				<div className="pktw-flex pktw-flex-wrap pktw-items-center pktw-gap-3 pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-pk-background pktw-p-2">
+					<ScopeToggle value={graphScope} onChange={setGraphScope} />
+					<div className="pktw-flex-1" />
+					<ResultBrowserGraphControls
+						preset={graphPreset}
+						onPresetChange={setGraphPreset}
+						semantic={semantic}
+						onSemanticChange={setSemantic}
+					/>
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => void copySourcePaths()}
+						className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 pktw-gap-1.5 pktw-rounded-md !pktw-px-3"
+					>
+						<Copy className="pktw-h-4 pktw-w-4" />
+						Copy source links
+					</Button>
+				</div>
+			)}
+
+			<div
+				ref={projectionRef}
+				data-v2-sources-projection
+				tabIndex={0}
+				className="pktw-flex pktw-h-[540px] pktw-min-h-0 pktw-overflow-hidden pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-pk-background focus-visible:pktw-outline-none focus-visible:pktw-ring-2 focus-visible:pktw-ring-pk-accent/30"
+			>
+				<div className="pktw-min-w-0 pktw-flex-1 pktw-overflow-hidden">
+					{view === 'list' && (
+						<div className="pktw-h-full pktw-overflow-y-auto pktw-py-2">
+							{results.map((result, index) => (
+								<ResultBrowserListRow
+									key={result.path}
+									result={result}
+									index={index}
+									isSelected={selectedIndex === index}
+									density={density}
+									highlightQuery={query}
+									itemRef={(element) => itemRefs.current.set(index, element)}
+									onSelect={(nextIndex) => selectPath(results[nextIndex].path)}
+									onOpen={(item, options) => handleOpen(item.path, options.newTab)}
+									snippetText={sources[index]?.reasoning ?? null}
+									openOnSelect={false}
+								/>
+							))}
+						</div>
+					)}
+
+					{view === 'tree' && (
+						<ResultBrowserTree
+							results={results}
+							density={density}
+							collapsedFolders={collapsedFolders}
+							cursor={cursor}
+							onCursorChange={(path) => {
+								setCursor(path);
+								if (path && inspectorOpen) setInspectorPath(path);
+							}}
+							onToggleCollapse={toggleFolder}
+							onOpenFile={(file, options) => handleOpen(file.path, options.newTab)}
+							onRevealFolder={(folder) => toggleFolder(folder.path)}
+							inspectorOpen={inspectorOpen}
+							onInspectorOpenChange={setInspectorVisible}
+						/>
+					)}
+
+					{view === 'graph' && graphKind === 'vault' && (
+						<div className="pktw-relative pktw-h-full pktw-overflow-hidden">
+							{graphLoading && (
+								<div className="pktw-absolute pktw-inset-0 pktw-z-10 pktw-flex pktw-items-center pktw-justify-center pktw-gap-2 pktw-bg-pk-background/80">
+									<Loader2 className="pktw-h-4 pktw-w-4 pktw-animate-spin pktw-text-pk-accent" />
+									<span className="pktw-text-xs pktw-text-pk-foreground-muted">Resolving Vault relations…</span>
+								</div>
+							)}
+							<ResultBrowserGraph
+								subgraph={subgraph}
+								preset={graphPreset}
+								semantic={semantic}
+								onNodeTap={(node) => {
+									selectPath(node.path);
+									projectionRef.current?.focus();
+								}}
+								onNodeDblTap={(node) => handleOpen(node.path)}
+							/>
+						</div>
+					)}
+
+					{view === 'graph' && graphKind === 'ai' && (
+						<AIRelationshipMap
+							sources={sources}
+							onSelect={(path) => {
+								selectPath(path);
+								projectionRef.current?.focus();
+							}}
+						/>
+					)}
+				</div>
+
+				{inspectorOpen && !isMobile() && (
+					<aside className="pktw-w-[340px] pktw-flex-shrink-0 pktw-overflow-hidden pktw-border-l pktw-border-pk-border">
+						<InspectorSidePanel
+							currentPath={inspectorPath}
+							searchQuery={query}
+							showSearchSnippet={false}
+							onClose={() => setInspectorVisible(false)}
+							onOpenDocument={(path) => handleOpen(path, true)}
+							onInspectInPanel={(path) => {
+								setInspectorPath(path);
+								selectPath(path);
+							}}
+						/>
+					</aside>
+				)}
+			</div>
+		</motion.div>
+	);
 };

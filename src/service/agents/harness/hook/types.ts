@@ -2,8 +2,8 @@
  * Hook system — guarantees behavior at deterministic points in the loop.
  * See spec §3.6: "Hooks guarantee behavior; prompts suggest it."
  *
- * M2 supports inline TS function hooks. Shell command hooks (Claude Code
- * style) are deferred to M5 when settings UI exposes them — running shell
+ * M2 supports inline TS function hooks. External shell-command hooks are
+ * deferred to M5 when settings UI exposes them — running shell
  * from inside the Obsidian process introduces sandboxing concerns we don't
  * want to tackle yet.
  */

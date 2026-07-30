@@ -22,6 +22,7 @@ import { AppContext } from '@/app/context/AppContext';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { modelRegistry } from '@/core/providers/model-registry';
 import { getAIMediaFolder } from '@/core/config/folderPaths';
+import type { DefaultDocumentView } from '@/core/composer';
 import type { SearchClient } from '@/service/search/SearchClient';
 import type { ProduceMediaInput, ProduceMediaOutcome } from '@/service/media/MediaGenerationService';
 import {
@@ -41,6 +42,8 @@ import {
 	type ComposerMediaProducer,
 } from './ObsidianComposerImageAdapters';
 import { DocumentComposerRuntime } from './DocumentComposerRuntime';
+import { ComposerDocumentRouter } from './ComposerDocumentRouter';
+import { ObsidianComposerWorkspaceStatePersistence } from './ObsidianComposerWorkspaceStatePersistence';
 import { ObsidianComposerEmbedAnchorAdapter } from './ObsidianComposerEmbedAnchorAdapter';
 import { ObsidianComposerNativeFileAdapter, ObsidianComposerNativePreviewAdapter } from './ObsidianNativeFileAdapter';
 import { ObsidianComposerNativeEmbedRenderer } from './ObsidianComposerNativeEmbedRenderer';
@@ -48,11 +51,14 @@ import { composeComposerCapabilityRuntime } from './capabilities/composeComposer
 import { ComposerAiExecutorAdapter } from './capabilities/ComposerAiExecutorAdapter';
 import { createComposerFormulaDetailGenerator } from './capabilities/ComposerFormulaDetailGenerator';
 import { createComposerImageTextAdapter } from './capabilities/ComposerImageTextAdapter';
+import { NativeMarkdownIntelligenceModal } from './NativeMarkdownIntelligenceModal';
 
 /** Subfolder (under the plugin's own data dir) for the per-document comment store. */
 const COMMENT_STORE_SUBDIR = 'composer-comments';
 /** Subfolder (under the plugin's own data dir) for the §12.7 telemetry stream. */
 const TELEMETRY_SUBDIR = 'telemetry';
+/** Canonical append-only Current Work State / Scope / Frozen Run records. */
+const WORKSPACE_STATE_SUBDIR = 'composer-state';
 
 /**
  * Read the active `SearchClient` if one is bound, else `null`. It is typed
@@ -107,7 +113,18 @@ function composerMediaProducer(): ComposerMediaProducer {
  * `pluginDir` is the plugin's manifest directory — the comment store lives under
  * it so its JSON never enters the vault note tree / metadata cache.
  */
-export function composeDocumentComposerRuntime(app: App, pluginDir?: string): DocumentComposerRuntime {
+export interface ComposeDocumentComposerRuntimeOptions {
+	getDefaultDocumentView(): DefaultDocumentView;
+	setDefaultDocumentView(view: DefaultDocumentView): Promise<void>;
+	getIntelligenceManualOpen(): boolean;
+	setIntelligenceManualOpen(open: boolean): Promise<void>;
+}
+
+export function composeDocumentComposerRuntime(
+	app: App,
+	pluginDir?: string,
+	options?: ComposeDocumentComposerRuntimeOptions,
+): DocumentComposerRuntime {
 	const source = new ObsidianComposerSourceAdapter(app);
 	const write = new ObsidianComposerWriteAdapter(app);
 	const events = new ObsidianComposerFileEventsAdapter(app);
@@ -115,6 +132,18 @@ export function composeDocumentComposerRuntime(app: App, pluginDir?: string): Do
 	const dataDir = pluginDir ?? app.vault.configDir;
 	const commentBaseDir = `${dataDir}/${COMMENT_STORE_SUBDIR}`;
 	const telemetryBaseDir = `${dataDir}/${TELEMETRY_SUBDIR}`;
+	const workspaceStateBaseDir = `${dataDir}/${WORKSPACE_STATE_SUBDIR}`;
+	let fallbackDefaultView: DefaultDocumentView = 'markdown';
+	let fallbackIntelligenceManualOpen = false;
+	const navigation = new ComposerDocumentRouter(app, {
+		getDefaultView: options?.getDefaultDocumentView ?? (() => fallbackDefaultView),
+		setDefaultView: options?.setDefaultDocumentView ?? (async (view) => {
+			fallbackDefaultView = view;
+		}),
+		openIntelligenceCompanion: (filePath) => {
+			new NativeMarkdownIntelligenceModal(AppContext.getInstance(), filePath).open();
+		},
+	});
 	// One shared capability executor over the AI service (lazy prompter resolution,
 	// so plugin boot order is a non-issue). It backs BOTH the candidate-runtime
 	// capabilities AND the math block's bespoke formula-detail generator, so math
@@ -132,6 +161,17 @@ export function composeDocumentComposerRuntime(app: App, pluginDir?: string): Do
 		sidecarConfig = loaded;
 	});
 	const runtime = new DocumentComposerRuntime(source, write, events, revisionService, undefined, {
+		navigation,
+		intelligenceVisibilityPreference: {
+			get: options?.getIntelligenceManualOpen ?? (() => fallbackIntelligenceManualOpen),
+			set: options?.setIntelligenceManualOpen ?? (async (open) => {
+				fallbackIntelligenceManualOpen = open;
+			}),
+		},
+		workspaceStatePersistence: new ObsidianComposerWorkspaceStatePersistence(
+			app,
+			workspaceStateBaseDir,
+		),
 		commentPersistence: new ObsidianComposerCommentPersistence(app, commentBaseDir),
 		linkPort: new ObsidianComposerLinkMetadata(app),
 		// WP9 §12.4 — related materials over the existing vector search (lazy client

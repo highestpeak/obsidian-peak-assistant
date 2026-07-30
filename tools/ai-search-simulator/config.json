@@ -8,11 +8,11 @@
   },
   "timing": {
     "instantMs": 0,
-    "normalMs": 120,
-    "slowMs": 900,
-    "chunkSize": 80,
-    "minChunkDelayMs": 20,
-    "chunkDelayDivisor": 4
+    "normalMs": 900,
+    "slowMs": 2600,
+    "chunkSize": 120,
+    "minChunkDelayMs": 45,
+    "chunkDelayDivisor": 12
   },
   "workflow": {
     "folderDepth": 2,
@@ -22,8 +22,8 @@
     "recoveryMissingNotePath": "__simulator__/missing-note.md"
   },
   "usage": {
-    "inputTokens": 12,
-    "outputTokens": 8
+    "inputTokens": 768,
+    "outputTokens": 384
   },
   "format": {
     "sectionHeadingPrefix": "####"
@@ -44,7 +44,7 @@
     {
       "id": "sim-structure",
       "contentType": "enumeration",
-      "visualType": "none",
+      "visualType": "flowchart",
       "weight": 6,
       "missionRole": "synthesis"
     },
@@ -58,7 +58,7 @@
     {
       "id": "sim-actions",
       "contentType": "recommendation",
-      "visualType": "none",
+      "visualType": "timeline",
       "weight": 5,
       "missionRole": "action_plan"
     }
@@ -67,6 +67,7 @@
     "partialReportSection": "Representative notes and evidence|代表性笔记与证据",
     "mermaidRepair": "brokenMermaid|mermaid syntax|fix.*mermaid",
     "insightAssignment": "insight_index|section_id|assign.*insight",
+    "followup": "Analysis context|User question|用户问题",
     "summary": "executive summary|report summary|evidenceList|Evidence list|Generated Section Content|Evidence Sources Referenced|Research Plan",
     "section": "section title|sectionTitle|mission role|evidence content|other sections|This Section|Evidence for This Section",
     "cjk": "[\\u3400-\\u9fff]",
@@ -116,9 +117,9 @@
     }
   ],
   "speeds": [
-    { "id": "instant", "label": "Instant", "description": "No artificial delay." },
-    { "id": "normal", "label": "Normal", "description": "Short delay for visible state changes." },
-    { "id": "slow", "label": "Slow", "description": "Longer delay for loading and cancellation checks." }
+    { "id": "instant", "label": "Instant", "description": "Automation-only speed with no artificial delay." },
+    { "id": "normal", "label": "Review realistic", "description": "Human-review timing with visible tool and streaming states." },
+    { "id": "slow", "label": "Slow inspection", "description": "Extended delay for loading, cancellation and recovery checks." }
   ],
   "errors": {
     "planning": "Simulator scenario: planning request failed.",
@@ -156,13 +157,33 @@
       ],
       "summary": [
         "## Executive summary",
-        "The simulator completed the real AI Search orchestration without a remote model call.",
-        "The report is based on the Vault paths selected during the planning tool loop."
+        "The simulator completed the real AI Search orchestration without a remote model call. The plan, source set and report lifecycle all travelled through the production path; only the model response was deterministic.",
+        "The report is grounded in Vault paths selected during the planning tool loop. Each section intentionally uses a different content shape so the review surface exercises prose, evidence tables, diagrams, links and section-level follow-up.",
+        "> [!note] Simulator contract\n> Timing is review-realistic in Normal mode. Instant remains available for automation; displayed file and character counts come from actual tool receipts rather than fixture constants."
       ],
-      "section": [
-        "This section was streamed by the local AI Search Simulator while the production report pipeline read the real selected evidence.",
-        "- The content verifies section lifecycle, rendering and source propagation.",
-        "- No paid or remote model endpoint was contacted."
+      "sections": [
+        [
+          "The selected evidence forms a small but traceable knowledge path. The report starts from the documents the agent actually read, then separates direct observations from interpretation so the user can audit the conclusion instead of accepting a synthetic summary.",
+          "```mermaid\nflowchart LR\n  Q[Research question] --> R[Vault discovery]\n  R --> E[Selected evidence]\n  E --> P[Editable report plan]\n  P --> S[Parallel report sections]\n  S --> A[Auditable answer]\n```",
+          "The important product implication is not the number of chapters. It is the continuity from question to evidence to a reviewable answer. See [[{source1}]] for the first cited anchor and [[{source2}]] for a second perspective.",
+          "### What this establishes\n- The source set is visible before synthesis.\n- The plan can change without erasing the activity trace.\n- Report sections can stream independently while preserving a stable reading order."
+        ],
+        [
+          "The strongest claims should be read alongside the evidence that supports them. This simulator section therefore uses a comparison table rather than repeating the same prose layout as the previous section.",
+          "| Evidence | Contribution | Confidence | Review action |\n|---|---|---:|---|\n| [[{source1}]] | Primary factual anchor selected by the real Vault tool loop | High | Open the note and verify the cited passage |\n| [[{source2}]] | Corroborating or contrasting context | Medium | Compare terminology and scope |\n| Current analysis plan | Explains why the evidence was grouped into this section | High | Revise the section brief if the grouping is wrong |",
+          "This table is deliberately an evidence contract, not decoration. A user can move from the claim back to its source, ask a section-specific question, or revise the section without regenerating the rest of the report.",
+          "For Markdown behavior, the fixture also includes a normal external reference: [CommonMark specification](https://spec.commonmark.org/)."
+        ],
+        [
+          "The next step is to turn the findings into a small review sequence. Actions stay conditional on the evidence; the simulator does not pretend that every analysis must end with a recommendation chapter.",
+          "```mermaid\ntimeline\n  title Evidence-to-decision review\n  Review evidence : Open cited notes : Check unsupported claims\n  Refine report : Ask a section question : Revise only the affected block\n  Continue analysis : Add a new research round : Preserve the prior report\n  Synthesize : Compare rounds : Produce a cross-round answer when useful\n```",
+          "1. Validate the two highest-impact claims against [[{source1}]].\n2. Use the per-section **Ask** action for clarification before rewriting content.\n3. Use **Continue analysis** only when the question requires new evidence, not merely different wording.\n4. Save or open in Chat after the report is stable enough to become a durable artifact.",
+          "> [!tip] Review boundary\n> Ask is non-destructive, Revise changes one section, and Continue analysis appends a new round. Those three actions should never be collapsed into one ambiguous regenerate button."
+        ]
+      ],
+      "followup": [
+        "The section-level answer is intentionally non-destructive: the report block remains unchanged while this response is appended beneath it.",
+        "- The answer is grounded in the section text and its direct source paths.\n- If the question asks for new evidence, use **Continue analysis** instead of treating this reply as a new research run.\n- The cited source links remain available for manual verification."
       ],
       "generic": "Simulator generic response: the request reached the local provider successfully."
     },
@@ -186,14 +207,34 @@
         "把证据转化成少量可执行的后续行动。"
       ],
       "summary": [
-        "本地 Simulator 已通过真实的 AI Search 编排完成本次分析，全程没有调用远程模型。",
-        "报告内容来自规划阶段通过真实 Vault 工具选出的笔记路径。",
-        "你可以继续检查章节渲染、来源、保存、后台运行和历史记录等生产流程。"
+        "## 核心结论",
+        "本地 Simulator 已通过真实的 AI Search 编排完成本次分析，全程没有调用远程模型。规划、来源集合与报告生命周期都走生产链路，只有模型回复是确定性的 fixture。",
+        "报告内容来自规划阶段通过真实 Vault 工具选出的笔记路径。不同章节刻意使用不同的内容形态，用来覆盖长文本、证据表格、图、链接和章节级追问，而不是复制三份相同模板。",
+        "> [!note] Simulator 合同\n> Normal 模式使用适合人工 review 的延迟；Instant 只为自动化保留。界面展示的文件数、字符数与来源数来自实际 tool receipt，不再写死成 0。"
       ],
-      "section": [
-        "本章节由本地 AI Search Simulator 流式生成，生产报告管线仍然读取了真实的已选证据。",
-        "- 用于验证章节生命周期、Markdown 渲染和来源传递。",
-        "- 没有访问任何付费或远程模型端点。"
+      "sections": [
+        [
+          "所选证据形成了一条可追溯的知识路径：先由 agent 真实读取 Vault，再区分直接观察与解释。用户看到的不只是一个总结，而是问题、证据、计划与答案之间的连续关系。",
+          "```mermaid\nflowchart LR\n  Q[研究问题] --> R[Vault 检索]\n  R --> E[已选证据]\n  E --> P[可编辑报告计划]\n  P --> S[并行生成章节]\n  S --> A[可审计答案]\n```",
+          "关键并不是固定要有几个章节，而是每一部分为什么存在、由哪些证据支持。第一条证据可从 [[{source1}]] 打开，另一条视角来自 [[{source2}]]。",
+          "### 这一部分确认了什么\n- 来源集合在综合之前可见。\n- 调整计划不会抹掉 agent activity。\n- 各章节可以并行生成，但阅读顺序保持稳定。"
+        ],
+        [
+          "重要结论应该和支撑它的证据一起阅读。因此这一节使用对照表，而不是复用上一节的纯文本样式。",
+          "| 证据 | 在本节中的作用 | 可信度 | 建议检查动作 |\n|---|---|---:|---|\n| [[{source1}]] | 由真实 Vault tool loop 选出的主要事实锚点 | 高 | 打开原文核对具体段落 |\n| [[{source2}]] | 补充或对照主要结论 | 中 | 比较术语、时间与范围 |\n| 当前报告计划 | 解释为何把这些证据归入本节 | 高 | 如果分组不合理，直接修改 section brief |",
+          "这个表格是 evidence contract，不是装饰。用户可以从结论回到来源、对本节单独追问，或只改这一节而不重做整份报告。",
+          "同时保留一个普通外链用于验证渲染：[CommonMark 规范](https://spec.commonmark.org/)。"
+        ],
+        [
+          "下一步应当是一条小而清晰的 review sequence。行动仍然受证据约束；Simulator 不假设每次分析都必须以“建议章节”结束。",
+          "```mermaid\ntimeline\n  title 从证据到决定的 review\n  检查证据 : 打开引用笔记 : 标记无支撑结论\n  调整报告 : 对单节追问 : 只改受影响的 block\n  继续分析 : 新增研究轮次 : 保留旧报告\n  跨轮综合 : 比较各轮发现 : 需要时生成总答案\n```",
+          "1. 先用 [[{source1}]] 核对影响最大的两条结论。\n2. 需要解释时使用章节 **Ask**，不要先重写内容。\n3. 只有确实需要新证据时才使用 **Continue analysis**。\n4. 报告稳定后再 Save to Vault 或 Open in Chat。",
+          "> [!tip] 交互边界\n> Ask 不修改正文，Revise 只改变一个 section，Continue analysis 新增一轮。这三种动作不能折叠成同一个含糊的 regenerate。"
+        ]
+      ],
+      "followup": [
+        "这是章节级、非破坏性的回答：原报告 block 保持不变，本回答追加在章节下方。",
+        "- 回答只依据当前 section 内容与直接来源路径。\n- 如果问题要求寻找新证据，应使用 **Continue analysis**，而不是把本回答伪装成新 research run。\n- 引用来源仍可直接打开核验。"
       ],
       "generic": "Simulator 通用响应：请求已成功到达本地 Provider。"
     }

@@ -1,5 +1,5 @@
 /**
- * T11I (2026-06-26): framework-agnostic V2 (Agent SDK) session types,
+ * T11I (2026-06-26): framework-agnostic V2 Harness session types,
  * initial state fragment, and serialization helpers.
  *
  * Moved out of src/ui/view/quick-search/store/v2SessionTypes.ts so the
@@ -12,6 +12,7 @@
 import type { LLMUsage } from '@/core/providers/types';
 import type { V2ToolStep, V2TimelineItem, V2Source } from '@/core/search/v2ToolTypes';
 import type { V2PersistedSection } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
+import type { SectionAnalyzeResult } from '@/core/storage/vault/search-docs/analysisSnapshotTypes';
 
 // ---------------------------------------------------------------------------
 // Annotation & Round types (for Continue Append Mode)
@@ -84,6 +85,8 @@ export interface V2SessionState {
 	v2UserInsights: string[];
 	v2Summary: string;
 	v2SummaryStreaming: boolean;
+	/** Grounded, non-destructive Q&A attached to a report section id. */
+	v2SectionFollowups: Record<string, SectionAnalyzeResult[]>;
 	rounds: Round[];
 	currentRoundIndex: number;
 	continueMode: boolean;
@@ -106,6 +109,7 @@ export const V2_INITIAL_STATE: V2SessionState = {
 	v2UserInsights: [],
 	v2Summary: '',
 	v2SummaryStreaming: false,
+	v2SectionFollowups: {},
 	rounds: [],
 	currentRoundIndex: 0,
 	continueMode: false,
@@ -123,13 +127,14 @@ export type V2AnalysisSnapshotData = {
 	v2Sources: V2Source[];
 	v2FollowUpQuestions: string[];
 	v2Summary: string;
+	v2SectionFollowups: Record<string, SectionAnalyzeResult[]>;
 	v2GraphJson: string | null;
 	usage: LLMUsage | null;
 	duration: number | null;
 };
 
 export function buildV2AnalysisSnapshot(
-	getState: () => { v2Active: boolean; v2Steps: V2ToolStep[]; v2PlanSections: V2Section[]; v2ProposedOutline: string | null; v2Sources: V2Source[]; v2FollowUpQuestions: string[]; v2Summary: string; usage: LLMUsage | null; duration: number | null; rounds: Round[]; v2Timeline: V2TimelineItem[] },
+	getState: () => { v2Active: boolean; v2Steps: V2ToolStep[]; v2PlanSections: V2Section[]; v2ProposedOutline: string | null; v2Sources: V2Source[]; v2FollowUpQuestions: string[]; v2Summary: string; v2SectionFollowups: Record<string, SectionAnalyzeResult[]>; usage: LLMUsage | null; duration: number | null; rounds: Round[]; v2Timeline: V2TimelineItem[] },
 	exportGraphJsonFn: () => string | null,
 	getGraphFallbackFn: () => string | null,
 ): V2AnalysisSnapshotData | null {
@@ -147,6 +152,7 @@ export function buildV2AnalysisSnapshot(
 		v2Sources: s.v2Sources,
 		v2FollowUpQuestions: s.v2FollowUpQuestions,
 		v2Summary: s.v2Summary,
+		v2SectionFollowups: s.v2SectionFollowups ?? {},
 		v2GraphJson: exportGraphJsonFn() ?? getGraphFallbackFn(),
 		usage: s.usage,
 		duration: s.duration,
@@ -158,7 +164,7 @@ export function buildV2AnalysisSnapshot(
  * Works without any store access — used by the service-layer persistence.
  */
 export function buildV2AnalysisSnapshotFromData(
-	snapshot: { v2Active: boolean; v2Steps: V2ToolStep[]; v2Timeline: V2TimelineItem[]; v2PlanSections: V2Section[]; v2ProposedOutline: string | null; v2Sources: V2Source[]; v2FollowUpQuestions: string[]; v2Summary: string; usage: LLMUsage | null; duration: number | null; rounds: Round[] },
+	snapshot: { v2Active: boolean; v2Steps: V2ToolStep[]; v2Timeline: V2TimelineItem[]; v2PlanSections: V2Section[]; v2ProposedOutline: string | null; v2Sources: V2Source[]; v2FollowUpQuestions: string[]; v2Summary: string; v2SectionFollowups: Record<string, SectionAnalyzeResult[]>; usage: LLMUsage | null; duration: number | null; rounds: Round[] },
 ): V2AnalysisSnapshotData | null {
 	if (!snapshot.v2Active) return null;
 
@@ -173,6 +179,7 @@ export function buildV2AnalysisSnapshotFromData(
 		v2Sources: snapshot.v2Sources,
 		v2FollowUpQuestions: snapshot.v2FollowUpQuestions,
 		v2Summary: snapshot.v2Summary,
+		v2SectionFollowups: snapshot.v2SectionFollowups ?? {},
 		v2GraphJson: null,
 		usage: snapshot.usage,
 		duration: snapshot.duration,
@@ -205,6 +212,7 @@ function serializeAllRounds(
 			if (!sec.title) continue;
 			const secContent = sec.status === 'done' && sec.content ? sec.content : formatPlanSectionBrief(sec);
 			allSections.push({
+				id: sec.id,
 				title: sec.title,
 				content: secContent,
 				visualType: sec.visualType,
@@ -232,6 +240,7 @@ function serializeAllRounds(
 		if (!sec.title) continue;
 		const secContent = sec.status === 'done' && sec.content ? sec.content : formatPlanSectionBrief(sec);
 		allSections.push({
+			id: sec.id,
 			title: sec.title,
 			content: secContent,
 			visualType: sec.visualType,

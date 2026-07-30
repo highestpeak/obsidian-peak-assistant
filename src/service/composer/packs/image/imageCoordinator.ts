@@ -23,6 +23,7 @@ import {
 	ComposerConflictError,
 	composerTargetBlockId,
 	type ComposerCandidate,
+	type ComposerCandidateRuntimeSnapshot,
 	type ComposerCandidateRuntimePort,
 	type ComposerCapabilityRunEvent,
 	type ComposerInvocationHandle,
@@ -521,6 +522,57 @@ export class ImageCapabilityCoordinator implements ComposerCandidateRuntimePort 
 		this.deps.hub.setActiveVariant(candidateId, variantId);
 	}
 
+	exportCandidateRuntimeState(
+		candidateId: string,
+	): ComposerCandidateRuntimeSnapshot | null {
+		const meta = this.meta.get(candidateId);
+		if (!meta) return null;
+		return {
+			ownerId: 'image',
+			rendererId: meta.rendererId,
+			label: this.findCandidate(candidateId)?.proposedChange.summary,
+			payload: {
+				...meta,
+				plans: [...meta.plans.entries()],
+			},
+		};
+	}
+
+	restoreCandidateRuntimeState(
+		candidate: ComposerCandidate,
+		snapshot: ComposerCandidateRuntimeSnapshot,
+	): boolean {
+		if (snapshot.ownerId !== 'image') return false;
+		const payload = asRecord(snapshot.payload);
+		const flow = payload.flow;
+		const rendererId = payload.rendererId;
+		if (
+			typeof flow !== 'string'
+			|| !isImageFlow(flow)
+			|| typeof rendererId !== 'string'
+			|| rendererId !== snapshot.rendererId
+		) return false;
+		const planEntries = Array.isArray(payload.plans)
+			? payload.plans.filter(
+					(entry): entry is [string, VariantPlan] =>
+						Array.isArray(entry)
+						&& typeof entry[0] === 'string'
+						&& Boolean(entry[1])
+						&& typeof entry[1] === 'object',
+				)
+			: [];
+		this.meta.set(candidate.candidateId, {
+			...(payload as unknown as AssetCandidateMeta),
+			flow,
+			rendererId: snapshot.rendererId,
+			savedPath: typeof payload.savedPath === 'string' ? payload.savedPath : '',
+			extension: typeof payload.extension === 'string' ? payload.extension : '',
+			mimeType: typeof payload.mimeType === 'string' ? payload.mimeType : '',
+			plans: new Map(planEntries),
+		});
+		return true;
+	}
+
 	discard(candidateId: string): void {
 		this.cancel(candidateId);
 		this.deps.hub.discardCandidate(candidateId);
@@ -690,12 +742,13 @@ export class ImageCapabilityCoordinator implements ComposerCandidateRuntimePort 
 			} catch (err) {
 				this.streaming.delete(candidateId);
 				this.aborters.delete(candidateId);
-				this.failVariantSafely(candidateId);
 				if (err instanceof AbortRunError || abort.signal.aborted) {
+					this.cancelVariantSafely(candidateId);
 					this.emit({ type: 'run-cancelled', runId, candidateId, variantId });
 					return;
 				}
 				const message = err instanceof Error ? err.message : 'AI image edit failed';
+				this.failVariantSafely(candidateId, message);
 				this.emit({ type: 'run-failed', runId, candidateId, variantId, error: message });
 			}
 		})();
@@ -751,12 +804,13 @@ export class ImageCapabilityCoordinator implements ComposerCandidateRuntimePort 
 			} catch (err) {
 				this.streaming.delete(candidateId);
 				this.aborters.delete(candidateId);
-				this.failVariantSafely(candidateId);
 				if (err instanceof AbortRunError || abort.signal.aborted) {
+					this.cancelVariantSafely(candidateId);
 					this.emit({ type: 'run-cancelled', runId, candidateId, variantId });
 					return;
 				}
 				const message = err instanceof Error ? err.message : 'AI generation failed';
+				this.failVariantSafely(candidateId, message);
 				this.emit({ type: 'run-failed', runId, candidateId, variantId, error: message });
 			}
 		})();
@@ -899,9 +953,17 @@ export class ImageCapabilityCoordinator implements ComposerCandidateRuntimePort 
 		);
 	}
 
-	private failVariantSafely(candidateId: string): void {
+	private failVariantSafely(candidateId: string, error?: string): void {
 		try {
-			this.deps.hub.markVariantFailed(candidateId);
+			this.deps.hub.markVariantFailed(candidateId, error);
+		} catch {
+			// discarded mid-run
+		}
+	}
+
+	private cancelVariantSafely(candidateId: string): void {
+		try {
+			this.deps.hub.markVariantCancelled(candidateId);
 		} catch {
 			// discarded mid-run
 		}
@@ -977,6 +1039,21 @@ function parseLayoutJson(text: string): unknown {
 	} catch {
 		throw new Error('smart layout: model output is not valid layout JSON');
 	}
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+	return value && typeof value === 'object'
+		? value as Record<string, unknown>
+		: {};
+}
+
+function isImageFlow(value: string): value is ImageFlowKind {
+	return value === 'paste'
+		|| value === 'convert'
+		|| value === 'rename'
+		|| value === 'ai-edit'
+		|| value === 'caption'
+		|| value === 'layout';
 }
 
 class AbortRunError extends Error {

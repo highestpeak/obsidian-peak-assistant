@@ -18,14 +18,18 @@ import type { LLMStreamEvent } from '@/core/providers/types';
 import { StreamTriggerName } from '@/core/providers/types';
 import type { Profile } from '@/core/profiles/types';
 import type { ActionResult, ActionUsage } from '../CopilotActionRegistry';
-import type { CopilotActionAgentPort } from './CopilotActionPorts';
-import { warmupPool, queryWithProfile } from '@/service/agents/core/sdkAgentPool';
-import { buildVaultMcpServer, type GrepHit } from '@/service/agents/vault-sdk/vaultMcpServer';
-import { translateSdkMessage } from '@/service/agents/core/sdkMessageAdapter';
-import { tool, createSdkMcpServer } from '@anthropic-ai/claude-agent-sdk';
+import type { CopilotActionAgentPort } from '@/core/ports/CopilotActionPorts';
+import type { GrepHit } from '@/service/agents/vault/vaultToolImplementations';
 import { z } from 'zod';
+import { ok, type ToolDef } from '@/core/types/tool';
 import type { CopilotOutputCollector } from '../CopilotOutputCollector';
-import { buildCopilotOutputMcpServer, COPILOT_OUTPUT_TOOL_NAMES } from '../CopilotOutputMcpServer';
+import { buildCopilotOutputTools, COPILOT_OUTPUT_TOOL_NAMES } from '../CopilotOutputTools';
+import {
+	assertSuccessfulRun,
+	streamHarnessModel,
+	usageFromHarnessResult,
+} from '@/service/agents/harness/HarnessModelRunner';
+import { buildVaultHarnessTools } from '@/service/agents/vault/vaultHarnessTools';
 
 /** Vault-grep callback shape the agent loop needs. */
 export type CopilotAgentSearchFn = (q: string, limit: number) => Promise<GrepHit[]>;
@@ -34,8 +38,8 @@ export type CopilotAgentSearchFn = (q: string, limit: number) => Promise<GrepHit
 export interface CopilotAgentPortDeps {
 	app: AppHandle;
 	pluginId: string;
-	/** Return the active agent profile, or null if the user has none yet. */
-	resolveActiveProfile(): Profile | null;
+	/** Return the active Harness model binding, or null if none is configured. */
+	resolveActiveBinding(): { profile: Profile; modelId: string } | null;
 	/** Vault-grep search callback (typically wraps SearchClient). */
 	search: CopilotAgentSearchFn;
 	/** T11L: narrow port the embedded `get_recent_analysis` tool needs. */
@@ -43,20 +47,22 @@ export interface CopilotAgentPortDeps {
 }
 
 /**
- * Build a lightweight MCP server with a single `submit_result` tool.
- * The agent calls this tool to submit its structured output.
+ * Build the Harness-owned `submit_result` tool for structured actions.
  */
-function buildSubmitResultMcpServer(onSubmit: (result: string) => void) {
-	const submitResult = tool(
-		'submit_result',
-		'Call this tool when you have completed your analysis and are ready to submit the final result. Pass the result as a JSON string matching the required output schema.',
-		{ result: z.string().describe('JSON string of the structured result') },
-		async (input) => {
+function buildSubmitResultTool(onSubmit: (result: string) => void): ToolDef {
+	return {
+		name: 'mcp__copilot__submit_result',
+		description: 'Call this tool when you have completed your analysis and are ready to submit the final result. Pass the result as a JSON string matching the required output schema.',
+		inputSchema: z.object({
+			result: z.string().describe('JSON string of the structured result'),
+		}),
+		source: 'local',
+		kind: 'meta',
+		async execute(input) {
 			onSubmit(input.result);
-			return { content: [{ type: 'text' as const, text: '{"acknowledged": true}' }] };
+			return ok({ acknowledged: true });
 		},
-	);
-	return createSdkMcpServer({ name: 'copilot', version: '1.0.0', tools: [submitResult] });
+	};
 }
 
 /**
@@ -66,21 +72,14 @@ function buildSubmitResultMcpServer(onSubmit: (result: string) => void) {
  * agent body itself never reaches a singleton.
  */
 export function createCopilotAgentPort(deps: CopilotAgentPortDeps): CopilotActionAgentPort {
-	const { app, pluginId, resolveActiveProfile, search, analysisHistory } = deps;
+	const { app, pluginId, resolveActiveBinding, search, analysisHistory } = deps;
 
 	return {
 		async *runAgentStream(options): AsyncGenerator<LLMStreamEvent, ActionResult | void> {
 			const triggerName = StreamTriggerName.COPILOT;
 
-			try {
-				await warmupPool();
-			} catch (err) {
-				yield { type: 'error', error: err as Error, triggerName } as LLMStreamEvent;
-				return;
-			}
-
-			const profile: Profile | null = resolveActiveProfile();
-			if (!profile) {
+			const binding = resolveActiveBinding();
+			if (!binding) {
 				yield {
 					type: 'error',
 					error: new Error('No active agent profile configured. Please set up a profile in Settings.'),
@@ -91,7 +90,7 @@ export function createCopilotAgentPort(deps: CopilotAgentPortDeps): CopilotActio
 
 			const searchFn: CopilotAgentSearchFn = search;
 
-			const vaultMcpServer = buildVaultMcpServer({
+			const vaultTools = buildVaultHarnessTools({
 				app,
 				searchFn,
 				onSubmitPlan: async (plan) => ({
@@ -104,14 +103,14 @@ export function createCopilotAgentPort(deps: CopilotAgentPortDeps): CopilotActio
 
 			let capturedResult: string | null = null;
 			const collector: CopilotOutputCollector | undefined = options.collector;
-			const copilotMcpServer = collector
-				? buildCopilotOutputMcpServer({ collector })
-				: buildSubmitResultMcpServer((result) => {
+			const copilotTools = collector
+				? buildCopilotOutputTools({ collector })
+				: [buildSubmitResultTool((result) => {
 					capturedResult = result;
-				});
+				})];
 
-			let sdkUsage: { inputTokens: number; outputTokens: number } | null = null;
-			const startTs = Date.now();
+			const submissionsBefore = collector?.getSnapshot().submissions.length ?? 0;
+			let usage: ActionUsage | undefined;
 
 			try {
 				const allowedTools = [
@@ -125,59 +124,53 @@ export function createCopilotAgentPort(deps: CopilotAgentPortDeps): CopilotActio
 						: ['mcp__copilot__submit_result']),
 				];
 
-				const messages = queryWithProfile(app, pluginId, profile, {
+				const allowedToolNames = new Set(allowedTools);
+				const tools = [...vaultTools, ...copilotTools]
+					.filter((tool) => allowedToolNames.has(tool.name));
+				const stream = streamHarnessModel({
+					loopId: `copilot-action-${pluginId}-${Date.now()}`,
+					profile: binding.profile,
+					modelId: binding.modelId,
 					prompt: options.userPrompt,
 					systemPrompt: options.systemPrompt,
-					maxTurns: options.maxTurns ?? 20,
-					allowedTools,
-					disallowedTools: ['AskUserQuestion', 'mcp__vault__vault_submit_plan'],
-					mcpServers: {
-						vault: vaultMcpServer,
-						copilot: copilotMcpServer,
-					},
+					tools,
+					maxSteps: options.maxTurns ?? 20,
+					maxToolCalls: Math.max(12, (options.maxTurns ?? 20) * 4),
 					signal: options.signal,
+					triggerName,
+					stopWhen: () =>
+						capturedResult !== null
+						|| Boolean(
+							collector
+							&& collector.getSnapshot().submissions.length > submissionsBefore,
+						),
+					treatBareTextAsFinal: false,
+					bareTextContinuationNudge: collector
+						? 'Continue using the available tools. Finish by calling mcp__copilot__submit_review.'
+						: 'Continue using the available tools. Finish by calling mcp__copilot__submit_result.',
 				});
 
-				for await (const raw of messages) {
-					const events = translateSdkMessage(raw, {
-						triggerName,
-						hasPartialMessages: true,
-					});
-					for (const ev of events) {
-						yield ev;
-					}
-
-					const msg = raw as any;
-					if (msg.type === 'result' && msg.usage) {
-						sdkUsage = {
-							inputTokens: msg.usage.input_tokens ?? 0,
-							outputTokens: msg.usage.output_tokens ?? 0,
+				while (true) {
+					const next = await stream.next();
+					if (next.done) {
+						assertSuccessfulRun(next.value);
+						const runUsage = usageFromHarnessResult(next.value);
+						usage = {
+							inputTokens: runUsage.inputTokens ?? 0,
+							outputTokens: runUsage.outputTokens ?? 0,
 						};
+						break;
 					}
+					yield next.value;
 				}
 			} catch (err) {
-				const errMsg = (err as Error)?.message ?? '';
-				if (errMsg.toLowerCase().includes('maximum number of turns')) {
-					console.warn('[CopilotAgent] max turns reached');
-				} else {
-					yield { type: 'error', error: err as Error, triggerName } as LLMStreamEvent;
-					return;
-				}
+				yield { type: 'error', error: err as Error, triggerName } as LLMStreamEvent;
+				return;
 			}
-
-			yield {
-				type: 'complete',
-				triggerName,
-				durationMs: Date.now() - startTs,
-				usage: sdkUsage ?? undefined,
-			} as LLMStreamEvent;
 
 			if (capturedResult) {
 				try {
 					const parsed = JSON.parse(capturedResult);
-					const usage: ActionUsage | undefined = sdkUsage
-						? { inputTokens: sdkUsage.inputTokens, outputTokens: sdkUsage.outputTokens }
-						: undefined;
 					return { type: 'structured', data: parsed, usage } as ActionResult;
 				} catch {
 					return { type: 'error', message: 'Failed to parse agent result as JSON' } as ActionResult;

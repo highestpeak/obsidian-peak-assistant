@@ -31,6 +31,11 @@ assert.deepEqual(groups[0].items.map((entry) => entry.historyId), ['second', 'fi
 assert.equal(countTransactions([older, first, second]), 4, 'batch parents count their independently locatable child transactions');
 
 const source = readFileSync('src/ui/view/composer/sidecar/HistoryView.tsx', 'utf8');
+const blockHistorySource = readFileSync('src/ui/view/composer/chrome/BlockHistoryPanel.tsx', 'utf8');
+assert.ok(source.includes('generationHistoryTitle'), 'History defaults to a durable generation timeline');
+assert.ok(source.includes('documentHistoryTitle'), 'Document transactions remain available as a separate view');
+assert.ok(source.includes('groupComposerGenerationRuns'), 'generation attempts are grouped without losing variants');
+assert.ok(source.includes('onRestoreGeneration'), 'not-adopted output can be reopened from History');
 assert.equal(
 	source.includes('disabled={!blockId}'),
 	false,
@@ -38,5 +43,13 @@ assert.equal(
 );
 assert.ok(source.includes('pk-history-detail'), 'History exposes an explicit transaction preview');
 assert.ok(source.includes('historyRollbackAction'), 'rollback remains available from the transaction detail');
+assert.ok(
+	blockHistorySource.includes('groupComposerGenerationRuns'),
+	'the block History affordance reads generation attempts rather than accepted writes only',
+);
+assert.ok(
+	blockHistorySource.includes('restoreGenerationReview'),
+	'a not-adopted block generation can return to the review canvas',
+);
 
 console.log('composer-history-view-presentation: passed');

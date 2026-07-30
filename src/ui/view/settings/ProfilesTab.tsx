@@ -314,9 +314,8 @@ export function ProfilesTab({ settings, settingsUpdates, hideStatusBar = false }
                             </div>
                         </div>
 
-                        {/* SDK Settings moved to Advanced tab → Developer
-                            disclosure (PR-5). Keeping the persistence layer
-                            wired in case any power user is editing JSON. */}
+                        {/* Legacy runtime controls were retired. Harness policy
+                            remains the only agent-runtime configuration here. */}
                     </div>
                 )}
             </div>

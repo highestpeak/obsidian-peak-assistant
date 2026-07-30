@@ -1,12 +1,14 @@
 import * as React from 'react';
 import type {
+	ComposerWorkspaceIntelligenceProjection,
+	ComposerWorkspaceIntelligenceRuntime,
 	IntelligenceBriefProjection,
 	IntelligenceRuntime,
 	IntelligenceSessionProjection,
 	SuggestionFinding,
 } from '@/service/composer';
 import type { ComposerTransactionHub } from '@/service/composer';
-import type { ComposerContextSnapshot } from '@/core/composer';
+import type { ComposerContextSnapshot, IntelligencePresentationOrigin } from '@/core/composer';
 import type { SidecarConfig } from './sidecarConfig';
 import { DEFAULT_SIDECAR_CONFIG } from './sidecarConfig';
 
@@ -34,7 +36,11 @@ export interface SidecarRelatedFocus {
 export interface SidecarContextValue {
 	runtime: IntelligenceRuntime;
 	hub?: ComposerTransactionHub;
+	workspaceRuntime?: ComposerWorkspaceIntelligenceRuntime;
+	documentId?: string;
 	config: SidecarConfig;
+	/** Restore a persisted not-adopted generation onto the review canvas. */
+	onRestoreGeneration?: (runId: string) => boolean;
 	/** Current Vault path, used only for explicit file-scoped presentation behavior. */
 	documentFilePath?: string;
 	/** Locate a target block in the document body (scroll + focus). Host-provided. */
@@ -49,6 +55,8 @@ export interface SidecarContextValue {
 	resolveFocusContext?: (focusedBlockId: string | null) => SidecarFocusContext;
 	/** Resolve the related-material focus (query text + anchor) for a focus block. */
 	resolveRelatedFocus?: (focusedBlockId: string | null) => SidecarRelatedFocus;
+	/** Leaf-local provenance for the current contextual Intelligence presentation. */
+	presentationOrigin?: IntelligencePresentationOrigin | null;
 }
 
 const SidecarContext = React.createContext<SidecarContextValue | null>(null);
@@ -96,6 +104,30 @@ export function useSessionProjection(runtime: IntelligenceRuntime): Intelligence
 				ref.current = p;
 				cb();
 			}),
+		[runtime],
+	);
+	const getSnapshot = React.useCallback(() => ref.current, []);
+	return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+}
+
+/** Subscribe to workspace-lifetime Frozen Runs without constructing a UI-owned runtime. */
+export function useWorkspaceProjection(
+	runtime: ComposerWorkspaceIntelligenceRuntime | undefined,
+): ComposerWorkspaceIntelligenceProjection | null {
+	const ref = React.useRef<ComposerWorkspaceIntelligenceProjection | null>(
+		runtime?.projection() ?? null,
+	);
+	React.useEffect(() => {
+		ref.current = runtime?.projection() ?? null;
+	}, [runtime]);
+	const subscribe = React.useCallback(
+		(cb: () => void) => {
+			if (!runtime) return () => undefined;
+			return runtime.subscribe((projection) => {
+				ref.current = projection;
+				cb();
+			});
+		},
 		[runtime],
 	);
 	const getSnapshot = React.useCallback(() => ref.current, []);

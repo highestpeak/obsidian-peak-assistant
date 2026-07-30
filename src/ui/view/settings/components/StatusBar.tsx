@@ -96,29 +96,19 @@ export function StatusBar() {
 
     const sqliteReady = sqliteStoreManager.isInitialized();
 
-    const agentProfiles = profiles.filter(p => p.kind === 'anthropic' || p.kind === 'openrouter');
-    // Claude Agent SDK only supports Claude 4.x models; 3.x are rejected with "model not found".
-    const agentModelFilter = (modelId: string) => {
-        if (modelId.includes('/') && !modelId.startsWith('anthropic/')) return false;
-        const base = modelId.startsWith('anthropic/') ? modelId.slice('anthropic/'.length) : modelId;
-        return !/^claude-3[-_]/.test(base);
-    };
-
     return (
         <div className="pktw-flex pktw-gap-2.5 pktw-mt-4 pktw-mb-5 pktw-flex-wrap">
             <RoleSelectorChip
                 role="agent" label="Agent"
-                activeConfig={agentConfig} profiles={agentProfiles}
+                activeConfig={agentConfig} profiles={profiles}
                 onSelect={(config) => { registry.setActiveAgentConfig(config); bump(); }}
                 onClear={() => { registry.setActiveAgentConfig(null); bump(); }}
-                modelFilter={agentModelFilter}
             />
             <RoleSelectorChip
                 role="agent-fast" label="Agent Fast"
-                activeConfig={agentFastConfig} profiles={agentProfiles}
+                activeConfig={agentFastConfig} profiles={profiles}
                 onSelect={(config) => { registry.setActiveAgentFastConfig(config); bump(); }}
                 onClear={() => { registry.setActiveAgentFastConfig(null); bump(); }}
-                modelFilter={agentModelFilter}
             />
             <RoleSelectorChip
                 role="chat" label="Chat"

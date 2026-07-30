@@ -195,16 +195,46 @@ export class ComposerTransactionHub {
 		return candidate;
 	}
 
-	markVariantFailed(candidateId: string): ComposerCandidate {
-		const candidate = this.candidates.markVariantFailed(candidateId);
+	markVariantFailed(candidateId: string, error?: string): ComposerCandidate {
+		const candidate = this.candidates.markVariantFailed(candidateId, error);
 		this.emitCandidate(candidate);
 		this.notify();
 		return candidate;
 	}
 
+	markVariantCancelled(candidateId: string): ComposerCandidate {
+		const candidate = this.candidates.markVariantCancelled(candidateId);
+		this.emitCandidate(candidate);
+		this.notify();
+		return candidate;
+	}
+
+	/** Immediately block review acceptance after an out-of-band file change. */
+	markCandidatesStale(): string[] {
+		const staleIds = this.candidates.markAllStale();
+		if (staleIds.length > 0) {
+			this.emit({ type: 'candidates-revalidated', staleIds });
+			this.notify();
+		}
+		return staleIds;
+	}
+
+	/** Restore one persisted review candidate into this document projection. */
+	restoreCandidateSnapshot(candidate: ComposerCandidate): boolean {
+		const restored = this.candidates.restoreSnapshot(candidate);
+		if (!restored) return false;
+		this.emitCandidate(candidate);
+		this.notify();
+		return true;
+	}
+
 	/** Discard a pending candidate (candidate-local; never a document undo). */
 	discardCandidate(candidateId: string): void {
+		const candidate = this.candidates.get(candidateId);
 		this.candidates.discard(candidateId);
+		if (candidate) {
+			this.emit({ type: 'candidate-changed', candidateId, status: 'discarded' });
+		}
 		this.notify();
 	}
 
@@ -217,6 +247,7 @@ export class ComposerTransactionHub {
 	 */
 	markCandidateAccepted(candidateId: string): void {
 		this.candidates.markAccepted(candidateId);
+		this.emit({ type: 'candidate-changed', candidateId, status: 'accepted' });
 		this.notify();
 	}
 
@@ -250,6 +281,7 @@ export class ComposerTransactionHub {
 			runId: opts.runId,
 		});
 		this.candidates.markAccepted(candidateId);
+		this.emit({ type: 'candidate-changed', candidateId, status: 'accepted' });
 		this.notify();
 		return txn;
 	}

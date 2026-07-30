@@ -40,6 +40,7 @@ import {
 	type SourceAnchor,
 } from '@/core/composer';
 import { classifyComposerNativeTarget } from './nativeClassification';
+import { isEmbedSelectionRange } from './packs/link/embedSelectionRange';
 
 const processor = remark().use(remarkFrontmatter, ['yaml']).use(remarkGfm);
 
@@ -163,7 +164,7 @@ function listHasCheckbox(node: RootContent): boolean {
 }
 
 function isBareEmbed(raw: string): boolean {
-	return /^!\[\[[^\]]+\]\]$/.test(raw);
+	return /^!\[\[[^\]]+\]\]$/.test(raw) || isEmbedSelectionRange(raw);
 }
 
 function classifyBareEmbedBlock(raw: string): ComposerBlockKind {
@@ -228,10 +229,36 @@ function extractUnits(
 	sourceText: string,
 	revision: string,
 ): ComposerSubBlockAnchor[] {
+	if (kind === 'paragraph') return paragraphLineUnits(node, sourceText);
 	if (kind === 'list' || kind === 'task') return listUnits(node, sourceText, revision);
 	if (kind === 'table') return tableUnits(node, sourceText, revision);
 	if (kind === 'callout' || kind === 'quote') return calloutBodyUnits(node, sourceText, revision);
 	return [];
+}
+
+function paragraphLineUnits(
+	node: RootContent,
+	sourceText: string,
+): ComposerSubBlockAnchor[] {
+	const from = node.position?.start?.offset;
+	const to = node.position?.end?.offset;
+	if (typeof from !== 'number' || typeof to !== 'number') return [];
+	const raw = sourceText.slice(from, to);
+	const out: ComposerSubBlockAnchor[] = [];
+	let relativeFrom = 0;
+	raw.split('\n').forEach((line, index) => {
+		const lineFrom = from + relativeFrom;
+		const lineTo = lineFrom + line.length;
+		out.push({
+			unitId: makeUnitId('line', index),
+			unitKind: 'paragraph-line',
+			from: lineFrom,
+			to: lineTo,
+			fingerprint: computeFingerprint(sourceText.slice(lineFrom, lineTo)),
+		});
+		relativeFrom += line.length + 1;
+	});
+	return out;
 }
 
 function anchorFor(

@@ -8,9 +8,10 @@ You are writing section "{sectionTitle}" — one piece of a multi-section report
 
 Lead with the point. One idea per sentence. Cut filler. Synthesize — do not copy-paste evidence verbatim.
 
-# STRUCTURE BY MISSION ROLE
+# STRUCTURE BY ANALYTICAL MOVE
 
-Your section's mission_role determines the structure. Follow the matching pattern:
+Your section's mission_role is a quality hint, not a mandatory chapter
+template. Use the matching pattern when it helps this section answer the user:
 
 - **synthesis**: Lead with the overarching finding. Then 2-3 supporting points with evidence. End with implication.
 - **contradictions**: State the tension upfront. Present Side A evidence, then Side B. Do NOT resolve — let the reader decide.
@@ -37,11 +38,16 @@ Adapt format by content_type:
 
 # VISUALS
 
-- Do NOT include Mermaid diagrams or visualization code — a dedicated Visual Agent generates visualizations from your content after you finish.
-- You MUST use a markdown table in every section that involves comparison, enumeration, or evaluation. Tables are your PRIMARY output format — not bullet lists.
+- There is no separate Visual Agent. If the requested visualization is
+  `flowchart`, `timeline`, `mindmap`, or `quadrantChart`, include one valid
+  fenced `mermaid` block in this section.
+- If the requested visualization is `table`, include a standard Markdown table.
+- If it is `none`, do not manufacture a visual.
+- Use a markdown table when the section involves a repeated-field comparison or
+  exact mapping. Do not turn every analysis into a table.
 - For action_plan/roadmap sections: use a table with columns (Step | Action | Owner/When).
 - For risk_audit sections: use a table with columns (Risk | Impact | Mitigation).
-- Default to tables. Only use bullet lists for 2 or fewer items.
+- Keep Mermaid nodes concise and quote labels containing punctuation.
 
 # OUTPUT RULES
 

@@ -19,7 +19,7 @@ export function adaptAgentTool(name: string, tool: AgentTool, source: ToolSource
     return {
         name,
         description: tool.description,
-        inputSchema: tool.inputSchema as ToolDef['inputSchema'],
+        inputSchema: tool.inputSchema as unknown as ToolDef['inputSchema'],
         source,
         async execute(args: unknown, _ctx: ToolExecCtx) {
             try {

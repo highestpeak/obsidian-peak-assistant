@@ -1,7 +1,7 @@
 // T9 / T11Y-4a: Single composition point for the Vault Review runtime.
 //
 // This is the ONE place that wires concrete Obsidian, sqlite, profile
-// registry, lint runtime, search client, and Agent SDK dependencies
+// registry, lint runtime, search client, and Peak Harness dependencies
 // into the `VaultReviewDeps` port bag, then constructs the runtime
 // implementation. Called exactly once at plugin boot from `main.ts`.
 //

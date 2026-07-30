@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { listFoldersImpl, readFolderImpl, readNoteImpl, wikilinkExpandImpl, grepImpl } from '@/service/agents/vault-sdk/vaultMcpServer';
+import { listFoldersImpl, readFolderImpl, readNoteImpl, wikilinkExpandImpl, grepImpl } from '@/service/agents/vault/vaultToolImplementations';
 
 // Minimal mock of Obsidian's Vault. Only implements getMarkdownFiles().
 function mockVaultWithFiles(paths: string[]) {

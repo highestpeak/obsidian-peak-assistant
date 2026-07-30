@@ -5,65 +5,19 @@ import type { V2Section } from '@/core/search/v2SessionTypes';
 import type { ReportSessionPort } from '@/core/ports/ReportSessionPort';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import type { Profile } from '@/core/profiles/types';
-import { queryWithProfile, type SDKMessage } from '@/service/agents/core/sdkAgentPool';
-import { collectText } from '@/service/agents/core/sdkMessageAdapter';
+import {
+	assertSuccessfulRun,
+	runHarnessText,
+	streamHarnessModel,
+} from '@/service/agents/harness/HarnessModelRunner';
 import { streamWithRepetitionGuard, detectRepetition } from './stream-utils';
 import type { DebugRunHandle, DebugTracePort } from '@/core/debug-trace';
 import {
+	type AnalysisSectionToolUse,
 	recordAnalysisPlan,
 	recordAnalysisSectionGeneration,
 	recordAnalysisSkip,
-	type AnalysisSectionToolUse,
 } from './debugTraceAdapter';
-
-/**
- * Wrap an SDKMessage AsyncIterable so it forwards every message downstream
- * unchanged AND collects any `tool_use` / `tool_result` blocks into the
- * supplied sink. The section debug adapter reads the sink after the stream
- * completes and attaches tool.call children.
- */
-async function* tapToolUses(
-    source: AsyncIterable<SDKMessage>,
-    sink: AnalysisSectionToolUse[],
-): AsyncGenerator<SDKMessage> {
-    for await (const raw of source) {
-        const msg = raw as unknown as {
-            type?: string;
-            message?: { content?: Array<{ type: string; name?: string; id?: string; input?: unknown; content?: unknown; tool_use_id?: string; is_error?: boolean }> };
-        };
-        if (msg.type === 'assistant' || msg.type === 'user') {
-            const blocks = msg.message?.content ?? [];
-            for (const block of blocks) {
-                if (block.type === 'tool_use') {
-                    sink.push({
-                        toolName: block.name ?? 'unknown',
-                        ...(block.id ? { toolCallId: block.id } : {}),
-                        inputExcerpt: safeStringify(block.input),
-                    });
-                } else if (block.type === 'tool_result') {
-                    const existing = sink.find(
-                        (t) => t.toolCallId === block.tool_use_id,
-                    );
-                    if (existing) {
-                        existing.outputExcerpt = safeStringify(block.content);
-                        existing.ok = !block.is_error;
-                    }
-                }
-            }
-        }
-        yield raw;
-    }
-}
-
-function safeStringify(v: unknown): string {
-    if (typeof v === 'string') return v;
-    if (v === null || v === undefined) return String(v);
-    try {
-        return JSON.stringify(v);
-    } catch {
-        return String(v);
-    }
-}
 
 /**
  * Multi-agent report orchestrator.
@@ -73,13 +27,13 @@ function safeStringify(v: unknown): string {
  * the caller (the UI hook constructs `SearchSessionReportAdapter`).
  *
  * Per section (parallel):
- *   1. Content Agent — queryWithProfile → section markdown
+ *   1. Content Agent — Peak Harness → section markdown
  *
  * After all sections:
- *   2. Summary Agent — queryWithProfile → executive summary
+ *   2. Summary Agent — Peak Harness → executive summary
  *
  * On demand:
- *   - Mermaid Fix Agent — queryWithProfile → fix broken mermaid syntax
+ *   - Mermaid Fix Agent — Peak Harness → fix broken mermaid syntax
  *   - Section Regeneration — re-run content agent with optional user prompt
  */
 export class ReportOrchestrator {
@@ -126,63 +80,38 @@ export class ReportOrchestrator {
         }
     }
 
-    // -----------------------------------------------------------------------
-    // SDK helpers
-    // -----------------------------------------------------------------------
-
-    /** T11J B1: returns the injected app + pluginId (no AppContext lookup). */
-    private get appCtx() {
-        // T11L: cast at the SDK boundary so the file's typed surface stays
-        // AppHandle (no obsidian import); queryWithProfile + vault helpers
-        // here are the only consumers that need the real `App` shape.
-        return { app: this.app as any, pluginId: this.pluginId };
-    }
-
     /** Resolve the complete Research binding. Throws if none configured. */
-    private requireProfile(): Profile {
+    private requireResearchBinding(): { profile: Profile; modelId: string } {
         const binding = ProfileRegistry.getInstance().resolveSlot('research');
         if (!binding) {
             throw new Error('No Research profile configured. Please set up Research in Settings → AI Setup.');
         }
-        return binding.profile;
+        return binding;
     }
 
-    /**
-     * Extract text deltas from an SDK message stream as an async iterable of
-     * string chunks. Suitable for feeding into `streamWithRepetitionGuard` or
-     * manual chunk-by-chunk consumption.
-     *
-     * Handles both streaming events (content_block_delta) and final assistant
-     * messages.
-     */
-    private async *sdkTextStream(
-        messages: AsyncIterable<SDKMessage>,
+    private async *harnessTextStream(
+        binding: { profile: Profile; modelId: string },
+        prompt: string,
+        systemPrompt: string,
+        signal: AbortSignal,
+        loopId: string,
     ): AsyncGenerator<string> {
-        for await (const raw of messages) {
-            const msg = raw as {
-                type?: string;
-                message?: { content?: Array<{ type: string; text?: string }> };
-                event?: { type?: string; delta?: { type?: string; text?: string } };
-            };
-
-            if (msg.type === 'stream_event') {
-                const event = msg.event;
-                if (
-                    event?.type === 'content_block_delta' &&
-                    event?.delta?.type === 'text_delta' &&
-                    typeof event?.delta?.text === 'string'
-                ) {
-                    yield event.delta.text;
-                }
-            } else if (msg.type === 'assistant') {
-                // Fallback: if no streaming events were seen, yield from final message blocks
-                const blocks = msg.message?.content ?? [];
-                for (const block of blocks) {
-                    if (block.type === 'text' && typeof block.text === 'string') {
-                        yield block.text;
-                    }
-                }
+        const stream = streamHarnessModel({
+            loopId,
+            profile: binding.profile,
+            modelId: binding.modelId,
+            prompt,
+            systemPrompt,
+            maxSteps: 1,
+            signal,
+        });
+        while (true) {
+            const step = await stream.next();
+            if (step.done) {
+                assertSuccessfulRun(step.value);
+                return;
             }
+            if (step.value.type === 'text-delta') yield step.value.text;
         }
     }
 
@@ -312,8 +241,7 @@ export class ReportOrchestrator {
         }
 
         // Pre-prepare ALL section params (evidence + prompts) BEFORE firing any queries.
-        const { app, pluginId } = this.appCtx;
-        const profile = this.requireProfile();
+        const binding = this.requireResearchBinding();
         const sectionParams = await Promise.all(sections.map(async (sec) => {
             const evidenceContent = await this.readEvidence(sec.evidencePaths, sec.brief);
             const otherSections = sections
@@ -342,30 +270,19 @@ export class ReportOrchestrator {
         // Fire ALL queries at once and consume streams in parallel
         const contentPromises = sectionParams.map(async ({ sec, systemPrompt, userMessage }) => {
             const controller = new AbortController();
-            console.log(`[Section:${sec.id.slice(0, 8)}] queryWithProfile fired`);
+            console.log(`[Section:${sec.id.slice(0, 8)}] Peak Harness run fired`);
             const startedAt = Date.now();
-            // Tap tool_use / tool_result blocks off the SDK stream so we can
-            // attach per-tool child spans to the section's model.call span.
-            const toolUses: Array<{
-                toolName: string;
-                toolCallId?: string;
-                inputExcerpt?: string;
-                outputExcerpt?: string;
-                ok?: boolean;
-            }> = [];
-            const tappedMessages = tapToolUses(
-                queryWithProfile(app, pluginId, profile, {
-                    prompt: userMessage,
-                    systemPrompt,
-                    maxTurns: 1,
-                    signal: controller.signal,
-                }),
-                toolUses,
-            );
+            const toolUses: AnalysisSectionToolUse[] = [];
             try {
                 let fullText = '';
                 let lastCheckLen = 0;
-                for await (const chunk of this.sdkTextStream(tappedMessages)) {
+                for await (const chunk of this.harnessTextStream(
+                    binding,
+                    userMessage,
+                    systemPrompt,
+                    controller.signal,
+                    `report-section-${sec.id}`,
+                )) {
                     fullText += chunk;
                     this.session.appendSectionChunk(sec.id, chunk);
                     if (fullText.length - lastCheckLen > 200) {
@@ -383,8 +300,8 @@ export class ReportOrchestrator {
                         recordAnalysisSectionGeneration(debugRun, {
                             sectionId: sec.id,
                             sectionTitle: sec.title,
-                            provider: profile?.kind,
-                            model: profile?.primaryModel,
+                            provider: binding.profile.kind,
+                            model: binding.modelId,
                             promptExcerpt: userMessage,
                             responseExcerpt: fullText,
                             durationMs: Date.now() - startedAt,
@@ -467,15 +384,15 @@ export class ReportOrchestrator {
         });
 
         try {
-            const { app, pluginId } = this.appCtx;
-            const profile = this.requireProfile();
-            const messages = queryWithProfile(app, pluginId, profile, {
+            const binding = this.requireResearchBinding();
+            const { text } = await runHarnessText({
+                loopId: `report-insights-${crypto.randomUUID()}`,
+                profile: binding.profile,
+                modelId: binding.modelId,
                 prompt,
                 systemPrompt: '',
-                maxTurns: 1,
+                maxSteps: 1,
             });
-
-            const text = await collectText(messages);
 
             // Parse JSON from response
             const jsonMatch = text.match(/\[[\s\S]*\]/);
@@ -561,18 +478,17 @@ export class ReportOrchestrator {
                 }),
             ]);
 
-            const { app, pluginId } = this.appCtx;
-            const profile = this.requireProfile();
+            const binding = this.requireResearchBinding();
             const controller = new AbortController();
-            const messages = queryWithProfile(app, pluginId, profile, {
-                prompt: userMessage,
-                systemPrompt,
-                maxTurns: 1,
-                signal: controller.signal,
-            });
 
             const { fullText } = await streamWithRepetitionGuard(
-                this.sdkTextStream(messages),
+                this.harnessTextStream(
+                    binding,
+                    userMessage,
+                    systemPrompt,
+                    controller.signal,
+                    `report-regenerate-${section.id}`,
+                ),
                 controller,
                 (chunk) => this.session.appendSectionChunk(section.id, chunk),
             );
@@ -611,21 +527,20 @@ export class ReportOrchestrator {
                 }),
             ]);
 
-            const { app, pluginId } = this.appCtx;
-            const profile = this.requireProfile();
+            const binding = this.requireResearchBinding();
             const controller = new AbortController();
-            const messages = queryWithProfile(app, pluginId, profile, {
-                prompt: userMessage,
-                systemPrompt,
-                maxTurns: 1,
-                signal: controller.signal,
-            });
 
             let accumulated = '';
             let summaryRaf: number | null = null;
             const sessionRef = this.session;
             const { fullText } = await streamWithRepetitionGuard(
-                this.sdkTextStream(messages),
+                this.harnessTextStream(
+                    binding,
+                    userMessage,
+                    systemPrompt,
+                    controller.signal,
+                    `report-summary-${crypto.randomUUID()}`,
+                ),
                 controller,
                 (chunk) => {
                     accumulated += chunk;
@@ -660,15 +575,16 @@ export class ReportOrchestrator {
                 }),
             ]);
 
-            const { app, pluginId } = this.appCtx;
-            const profile = this.requireProfile();
-            const messages = queryWithProfile(app, pluginId, profile, {
+            const binding = this.requireResearchBinding();
+            const { text: fixed } = await runHarnessText({
+                loopId: `report-mermaid-fix-${crypto.randomUUID()}`,
+                profile: binding.profile,
+                modelId: binding.modelId,
                 prompt: userMessage,
                 systemPrompt,
-                maxTurns: 1,
+                maxSteps: 1,
             });
 
-            const fixed = await collectText(messages);
             return fixed.includes('```mermaid') ? fixed.trim() : null;
         } catch {
             return null;

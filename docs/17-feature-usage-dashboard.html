@@ -364,7 +364,7 @@ flowchart LR
             <dd>结构化 output（zod 校验）。<code>action</code> 里带 schema 名，方便 History 屏识别。</dd>
           </div>
 
-          <p class="prose" style="margin-top: 22px;">Agent 调用（SDK harness）在 <code>sdkAgentPool.ts</code> L344 有独立 emit，<code>feature: 'skill'</code>。媒体调用（image / image edit / video / music / TTS / transcription）由 <code>src/app/media/composeMediaGenerationService.ts</code> 的组合根 emit，<code>feature: 'media_generation'</code>；成功 / 失败双路径都打点，成本恒标 <code>metadata.costConfidence='estimated'</code>。<code>embedTexts</code>（embedding 客户端）目前 <strong>没有</strong> 手动 emit——insights spec 里列作已知 gap，需要在 T13 之前补上。</p>
+          <p class="prose" style="margin-top: 22px;"><code>HarnessModelRunner</code> 会把每一步 token 汇总成 usage，但全局 Usage Dashboard 的事件仍由调用方负责发送：经过 <code>AIServiceManager.queryText/queryTextStream/queryStream/queryStructured</code> 的调用会走 <code>emitUsage()</code>；直接调用 <code>runHarnessModel/runHarnessText/streamHarnessModel</code> 的 Report、Graph、Ambient 与部分 Copilot 路径目前不会自动写 <code>usage_log</code>，这是现存覆盖 gap。媒体调用（image / image edit / video / music / TTS / transcription）由 <code>src/app/media/composeMediaGenerationService.ts</code> 的组合根 emit，<code>feature: 'media_generation'</code>；成功 / 失败双路径都打点，成本恒标 <code>metadata.costConfidence='estimated'</code>。<code>embedTexts</code>（embedding 客户端）目前也没有手动 emit。</p>
 
           <div class="claim">
             <strong>成本是本地算的，不是 provider 传的</strong>
@@ -713,8 +713,8 @@ flowchart TB
               </tr>
               <tr>
                 <td><strong>Recording surface（call site）</strong></td>
-                <td><code data-copy="src/service/chat/service-manager.ts">service-manager.ts</code>（L744）<br><code data-copy="src/service/agents/core/sdkAgentPool.ts">sdkAgentPool.ts</code>（L344）<br><code data-copy="src/app/media/composeMediaGenerationService.ts">composeMediaGenerationService.ts</code><br><code data-copy="src/service/media/MediaUsageEmitter.ts">MediaUsageEmitter.ts</code></td>
-                <td><code>emitUsage()</code>：chat 各种 query 完成时；agent 完成时；媒体生成 / 编辑 / async job 完成时（emitter 抛错不影响生成）。</td>
+                <td><code data-copy="src/service/chat/service-manager.ts">service-manager.ts</code><br><code data-copy="src/app/media/composeMediaGenerationService.ts">composeMediaGenerationService.ts</code><br><code data-copy="src/service/media/MediaUsageEmitter.ts">MediaUsageEmitter.ts</code></td>
+                <td><code>emitUsage()</code>：AIServiceManager 各种 query 完成时；媒体生成 / 编辑 / async job 完成时（emitter 抛错不影响生成）。直接使用 <code>HarnessModelRunner</code> 的调用方仍需补统一 recording adapter。</td>
               </tr>
               <tr>
                 <td><strong>Media run detail 显示</strong></td>

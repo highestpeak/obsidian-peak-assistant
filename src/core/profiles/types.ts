@@ -86,19 +86,6 @@ export interface ProfileSettings {
   activeCopilotConfig: RoleConfig | null;
   activeEmbeddingConfig: RoleConfig | null;
   activeWebSearchConfig: RoleConfig | null;
-  sdkSettings: SdkSettings;
   /** User-defined OpenAI-compatible endpoints (LM Studio, LiteLLM, vLLM, custom). */
   customEndpoints?: OpenAICompatibleEndpoint[];
 }
-
-export interface SdkSettings {
-  cliPathOverride: string | null;
-  subprocessPoolSize: number;
-  warmupOnLoad: boolean;
-}
-
-export const DEFAULT_SDK_SETTINGS: SdkSettings = {
-  cliPathOverride: null,
-  subprocessPoolSize: 1,
-  warmupOnLoad: true,
-};

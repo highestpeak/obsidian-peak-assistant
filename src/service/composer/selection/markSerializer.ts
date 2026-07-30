@@ -23,6 +23,7 @@ import type {
 	ComposerOperation,
 	ComposerSelection,
 	ComposerSelectionUnit,
+	SelectionGuardReason,
 	SelectionOpResult,
 } from '@/core/composer';
 import {
@@ -31,6 +32,11 @@ import {
 	type FormattingSyntaxMap,
 	type MarkSyntax,
 } from './formattingSyntax';
+import {
+	canonicalizeMarkSelection,
+	removeMarkFromCanonicalHtmlWrapper,
+	shouldCanonicalizeMarkAsHtml,
+} from './canonicalInlineHtml';
 import {
 	visibleSelectionSegments,
 	wrapVisibleSegments,
@@ -52,6 +58,11 @@ interface UnitPatch {
 	to: number;
 	text: string;
 }
+
+type UnitPatchResult =
+	| UnitPatch
+	| { reason: SelectionGuardReason }
+	| null;
 
 /**
  * Apply `mark` across every unit of `selection`, returning atomic operations or
@@ -81,6 +92,15 @@ export function applyMarkToSelection(
 	const operations: ComposerOperation[] = [];
 	for (const unit of selection.units) {
 		const patch = wrapUnit(selection.sourceText, unit, mark, syntax, open, options.value);
+		if (patch && 'reason' in patch) {
+			return {
+				ok: false,
+				reason: patch.reason,
+				message: patch.reason === 'semantic-inline-html-format'
+					? 'Links, inline code and formulas cannot be merged into an HTML style run.'
+					: 'Nothing formattable in the selection.',
+			};
+		}
 		if (patch) operations.push({ kind: 'replaceRange', from: patch.from, to: patch.to, text: patch.text });
 	}
 	if (operations.length === 0) {
@@ -102,6 +122,15 @@ export function removeInlineMarkWrapper(
 	range: { from: number; to: number },
 ): ComposerOperation | null {
 	const wrapped = source.slice(range.from, range.to);
+	const canonical = removeMarkFromCanonicalHtmlWrapper(wrapped, mark);
+	if (canonical !== null) {
+		return {
+			kind: 'replaceRange',
+			from: range.from,
+			to: range.to,
+			text: canonical,
+		};
+	}
 	const bounds = wrapperBounds(wrapped, mark);
 	if (!bounds) return null;
 	return {
@@ -140,7 +169,7 @@ function wrapUnit(
 	syntax: MarkSyntax,
 	open: string,
 	value?: string,
-): UnitPatch | null {
+): UnitPatchResult {
 	const { from, to } = unit;
 	const inner = source.slice(from, to);
 	if (!inner.trim()) return null;
@@ -168,6 +197,17 @@ function wrapUnit(
 	});
 	const applicable = segments.filter((segment) => !alreadyHasMark(segment, mark, value));
 	if (applicable.length === 0) return null;
+	if (shouldCanonicalizeMarkAsHtml(source, mark, segments)) {
+		const canonical = canonicalizeMarkSelection(
+			source,
+			{ ...unit, from: repFrom, to: repTo },
+			applicable,
+			mark,
+			value,
+		);
+		if (!canonical.ok) return { reason: canonical.reason };
+		return canonical.patch;
+	}
 
 	// Keep the compact legacy form for a single plain interval. Apart from
 	// preserving clean source, this retains adjacent-mark absorption.

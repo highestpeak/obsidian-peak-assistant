@@ -18,13 +18,19 @@ import type { ComposerSourcePort } from './ports';
 
 export class ComposerDocumentSession {
 	private snapshotRef: ComposerDocumentSnapshot;
+	private filePathRef: string;
 
 	private constructor(
-		public readonly filePath: string,
+		filePath: string,
 		snapshot: ComposerDocumentSnapshot,
 		private readonly revisionService: ComposerSourceRevisionService,
 	) {
+		this.filePathRef = filePath;
 		this.snapshotRef = snapshot;
+	}
+
+	get filePath(): string {
+		return this.filePathRef;
 	}
 
 	/** Parse `sourceText` into a fresh session (no port read). */
@@ -71,7 +77,31 @@ export class ComposerDocumentSession {
 	 * snapshot. Used after an external modification / accepted transaction.
 	 */
 	reparse(sourceText: string): ComposerDocumentSnapshot {
-		this.snapshotRef = parseComposerDocument(sourceText, { filePath: this.filePath });
+		this.snapshotRef = this.parse(sourceText);
+		return this.snapshotRef;
+	}
+
+	/** Parse fresh source for this stable document identity without adopting it. */
+	parse(sourceText: string): ComposerDocumentSnapshot {
+		const parsed = parseComposerDocument(sourceText, { filePath: this.filePath });
+		return {
+			...parsed,
+			documentId: this.snapshotRef.documentId,
+			filePath: this.filePath,
+		};
+	}
+
+	/**
+	 * Rebind a vault rename without changing the stable document identity or
+	 * dropping candidate/history state owned by the document registry.
+	 */
+	rebindFilePath(filePath: string): ComposerDocumentSnapshot {
+		if (!filePath || filePath === this.filePathRef) return this.snapshotRef;
+		this.filePathRef = filePath;
+		this.snapshotRef = {
+			...this.snapshotRef,
+			filePath,
+		};
 		return this.snapshotRef;
 	}
 
@@ -85,7 +115,10 @@ export class ComposerDocumentSession {
 		if (snapshot.filePath !== this.filePath) {
 			throw new Error(`Composer snapshot path ${snapshot.filePath} does not match session ${this.filePath}`);
 		}
-		this.snapshotRef = snapshot;
+		this.snapshotRef = {
+			...snapshot,
+			documentId: this.snapshotRef.documentId,
+		};
 		return this.snapshotRef;
 	}
 

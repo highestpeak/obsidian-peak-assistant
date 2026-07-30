@@ -29,6 +29,8 @@ export interface ComposerCapabilityRuntimeStrings {
 	runFailed: string;
 	/** Disabled reason when the native object file cannot be edited (no native-file port). */
 	nativeUnavailable: string;
+	/** Prompt constraint for a user-selected list gap. `{index}` is the gap index. */
+	listGapPlacementInstruction: string;
 }
 
 export interface ComposerCapabilityContextPolicy {
@@ -65,7 +67,7 @@ export const DEFAULT_COMPOSER_CAPABILITIES_CONFIG: ComposerCapabilitiesConfig = 
 		},
 		'composer.prose.add-example': {
 			title: '补一个例子',
-			description: '补充一个贴近当前语境的具体例子',
+			description: '在当前段落下方补充一个贴近语境的具体例子',
 			lucideIcon: 'lightbulb',
 			historyLabel: 'AI 补例',
 			order: 11,
@@ -86,14 +88,14 @@ export const DEFAULT_COMPOSER_CAPABILITIES_CONFIG: ComposerCapabilitiesConfig = 
 		},
 		'composer.heading.outline': {
 			title: '补提纲',
-			description: '根据标题补出下一层写作提纲',
+			description: '在标题下方补出下一层写作提纲',
 			lucideIcon: 'list-tree',
 			historyLabel: 'AI 补提纲',
 			order: 11,
 		},
 		'composer.heading.questions': {
 			title: '生成导读问题',
-			description: '把标题转成这一节需要回答的问题',
+			description: '在标题下方生成这一节需要回答的问题',
 			lucideIcon: 'circle-help',
 			historyLabel: 'AI 导读问题',
 			order: 12,
@@ -121,14 +123,14 @@ export const DEFAULT_COMPOSER_CAPABILITIES_CONFIG: ComposerCapabilitiesConfig = 
 		},
 		'composer.task.find-blockers': {
 			title: '找阻塞',
-			description: '标出不清晰、不可执行或等待依赖的任务',
+			description: '在任务区下方补充阻塞与待确认事项',
 			lucideIcon: 'octagon-alert',
 			historyLabel: 'AI 找阻塞',
 			order: 10,
 		},
 		'composer.task.add-next-step': {
 			title: '补下一步',
-			description: '为每个任务补一个最小可执行下一步',
+			description: '在任务区下方生成最小可执行下一步',
 			lucideIcon: 'list-checks',
 			historyLabel: 'AI 补下一步',
 			order: 11,
@@ -142,14 +144,14 @@ export const DEFAULT_COMPOSER_CAPABILITIES_CONFIG: ComposerCapabilitiesConfig = 
 		},
 		'composer.quote.explain': {
 			title: '解释引用',
-			description: '解释引用在当前上下文中的作用',
+			description: '在引用下方解释它在当前上下文中的作用',
 			lucideIcon: 'quote',
 			historyLabel: 'AI 解释引用',
 			order: 10,
 		},
 		'composer.quote.counterexample': {
 			title: '找反例',
-			description: '补充可能反驳该观点的反例或边界',
+			description: '在引用下方补充反例或适用边界',
 			lucideIcon: 'scale',
 			historyLabel: 'AI 找反例',
 			order: 11,
@@ -234,19 +236,19 @@ export const DEFAULT_COMPOSER_CAPABILITIES_CONFIG: ComposerCapabilitiesConfig = 
 	},
 	instructions: {
 		'composer.prose.polish-block': '优化表达顺序、语气和连接词，保持原意与 Markdown 段落形态。',
-		'composer.prose.add-example': '补一个贴近当前上下文的具体例子，让内容不只停留在抽象原则。',
+		'composer.prose.add-example': '只输出一个要插入到当前段落下方的具体例子，不重复或改写原段落。',
 		'composer.prose.to-table': '把并列概念、阶段或路径整理成 Markdown 表格，保留原信息并便于后续编辑。',
 		'composer.heading.shorten': '把标题改得更短、更像目录项，保留原来的 heading 层级。',
-		'composer.heading.outline': '根据当前标题生成下一层写作提纲，输出仍作为当前块的完整替换内容。',
-		'composer.heading.questions': '把标题转成 2 到 3 个导读问题，作为这一节的写作目标。',
-		'composer.list.fill-gaps': '检查列表是否遗漏重要类别，并补出必要的新 bullet。',
+		'composer.heading.outline': '只输出要插入到当前标题下方的下一层 Markdown 写作提纲，不重复或改写标题。',
+		'composer.heading.questions': '只输出要插入到当前标题下方的 2 到 3 个导读问题，不重复或改写标题。',
+		'composer.list.fill-gaps': '检查列表是否遗漏一个重要类别，补出一个必要的新项，并选择它在现有列表中的最佳语义位置。只输出 JSON 对象，字段为 insertionIndex（插入到第几个顶层列表项之前，末尾使用列表项总数）和 itemMarkdown（一个与原列表类型一致的完整顶层 Markdown 列表项）。',
 		'composer.list.reorder': '按最清晰的逻辑顺序重排列表，保持合法 Markdown 列表语法。',
 		'composer.list.to-table': '把当前列表转换为 Markdown 表格，保留全部信息。',
-		'composer.task.find-blockers': '把任务区分为可执行、受阻和待确认，并明确阻塞原因。',
-		'composer.task.add-next-step': '为每个任务补一个最小可执行下一步，保持 Markdown task list 语法。',
+		'composer.task.find-blockers': '只输出要插入到当前任务区下方的阻塞与待确认事项列表，不重复或改写原任务。',
+		'composer.task.add-next-step': '只输出要插入到当前任务区下方的最小可执行下一步，保持为一个 Markdown task list 块。',
 		'composer.task.prioritize': '按影响和紧急度重排任务，保持完成状态不变。',
-		'composer.quote.explain': '解释这段引用在当前文档里的作用，并保留引用内容与引用语法。',
-		'composer.quote.counterexample': '补充一个可能反驳该观点的反例或适用边界。',
+		'composer.quote.explain': '只输出要插入到引用下方的解释段落，不重复或改写原引用。',
+		'composer.quote.counterexample': '只输出要插入到引用下方的反例或适用边界段落，不重复或改写原引用。',
 		'composer.quote.to-callout': '把引用转换为合适的 Obsidian Callout，并保留原句。',
 		'composer.callout.change-type': '把 Callout 类型改成更贴合内容语气的类型，保留正文。',
 		'composer.callout.expand': '把当前原则扩写为一条可执行的写作规则。',
@@ -261,6 +263,7 @@ export const DEFAULT_COMPOSER_CAPABILITIES_CONFIG: ComposerCapabilitiesConfig = 
 		runCancelled: 'Generation cancelled',
 		runFailed: 'Generation failed',
 		nativeUnavailable: 'This native object cannot be edited here',
+		listGapPlacementInstruction: 'Use insertionIndex {index}. The user selected this exact list gap; do not move the new item.',
 	},
 };
 

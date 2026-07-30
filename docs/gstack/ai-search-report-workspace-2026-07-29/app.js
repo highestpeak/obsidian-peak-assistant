@@ -8,7 +8,15 @@
     graphPreset: 'constellation',
     semantic: false,
     aiMapGenerated: false,
+    aiLens: 'topology',
     instructionApplied: false,
+    editingPlanIndex: null,
+    sectionInteraction: null,
+    sectionFollowupAnswered: false,
+    reportContinueOpen: false,
+    reportFollowupDraft: '',
+    reportRound2: false,
+    tocOpen: false,
     generationTimer: null,
   };
 
@@ -115,11 +123,15 @@
 
   function setScreen(screen, options = {}) {
     clearGenerationTimer();
+    if (state.screen !== screen) {
+      state.tocOpen = false;
+    }
     state.screen = screen;
     document.querySelectorAll('.checkpoint').forEach((button) => {
       button.classList.toggle('active', button.dataset.screen === screen);
     });
     render();
+    modalBody.scrollTop = 0;
 
     if (screen !== 'generating' || options.hold) {
       return;
@@ -161,34 +173,44 @@
         <div class="landing-composer">
           <div class="composer-shell">
             <input id="analysis-query" value="${query}" aria-label="Ask AI Search">
-            <button class="web-toggle" type="button" aria-pressed="false" data-action="toggle-web">Web off</button>
+            <button class="context-add" type="button" aria-label="Add a note or folder as context" title="Add context">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5v14M5 12h14"></path>
+              </svg>
+            </button>
+            <button class="web-toggle" type="button" aria-label="Web access off" title="Web access off" aria-pressed="false" data-action="toggle-web">
+              <svg class="web-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="9"></circle>
+                <path d="M3 12h11M12 3a15 15 0 0 1 3.2 8M12 21a15 15 0 0 0 2.4-5M4.5 4.5l15 15"></path>
+              </svg>
+              <span>Web off</span>
+            </button>
             <button class="composer-action" type="button" data-action="start-analysis">Analyze</button>
           </div>
           <div class="context-shelf" aria-label="Search context">
             <span class="context-chip primary">Current note · Peak Composer Visual Parity QA.md</span>
             <span class="context-chip">Vault</span>
-            <span class="context-chip">Web off</span>
           </div>
         </div>
 
         <section class="landing-section">
           <div class="landing-section-title">
-            <h3>Start from current context</h3>
-            <span>具体上下文，不声称“为你推荐”</span>
+            <h3>Start with current context</h3>
+            <span>From Peak Composer Visual Parity QA.md</span>
           </div>
           <div class="quick-start-grid">
             <button class="quick-start" type="button" data-action="start-analysis">
-              <em>CURRENT NOTE</em>
+              <em>Current note</em>
               <strong>解释这份 QA 文档的设计意图</strong>
               <span>识别内容覆盖、写回边界与验收要求</span>
             </button>
             <button class="quick-start" type="button" data-action="start-analysis">
-              <em>COMPARE</em>
+              <em>Compare</em>
               <strong>比较 Composer 与 Markdown 编辑路径</strong>
               <span>按任务、摩擦点与证据类型组织答案</span>
             </button>
             <button class="quick-start" type="button" data-action="start-analysis">
-              <em>EVIDENCE</em>
+              <em>Evidence</em>
               <strong>找出尚未被真实 UI 验证的行为</strong>
               <span>只输出 evidence gaps，不强行生成行动计划</span>
             </button>
@@ -197,25 +219,17 @@
 
         <section class="landing-section">
           <div class="landing-section-title">
-            <h3>Continue your analysis</h3>
-            <span>一个 history surface</span>
+            <h3>Continue analysis</h3>
+            <span>1 analysis waiting</span>
           </div>
-          <div class="analysis-history">
+          <div class="continue-analysis">
             <button class="analysis-row" type="button" data-action="resume-analysis">
-              <span class="analysis-icon">AI</span>
-              <span class="analysis-main">
-                <strong>Composer visual parity：可验收要求</strong>
-                <span>Report ready · 6 sources · 4 sections</span>
-              </span>
-              <time>12 min</time>
-            </button>
-            <button class="analysis-row" type="button" data-action="resume-analysis">
-              <span class="analysis-icon">AI</span>
+              <span class="analysis-icon"><span class="pulse-dot"></span></span>
               <span class="analysis-main">
                 <strong>Command Palette governance 边界</strong>
-                <span>Evidence collected · plan not reviewed</span>
+                <span>Report plan ready · 6 files read · waiting for review</span>
               </span>
-              <time>Yesterday</time>
+              <time>2 min ago</time>
             </button>
           </div>
         </section>
@@ -225,9 +239,9 @@
     modalFooter.innerHTML = `
       <div class="footer-hints">
         <span><kbd>↵</kbd> Analyze</span>
-        <span>Current context is visible before the run</span>
+        <span>Use + only when you need to pin extra context</span>
       </div>
-      <span class="footer-count">No synthetic “1,141 analyses” metric</span>
+      <span class="footer-count">Current note + Vault</span>
     `;
   }
 
@@ -235,8 +249,8 @@
     return `
       <div class="activity-summary" aria-label="Research activity summary">
         <div class="activity-primary">
-          <strong>Evidence ready · 9.4s</strong>
-          <span>Review-realistic simulator fixture · expandable tool trace</span>
+          <strong>Evidence ready · 17.6s</strong>
+          <span>Review-realistic simulator fixture · counts come from completed steps</span>
         </div>
         <div class="activity-metric"><strong>4</strong><span>folders scanned</span></div>
         <div class="activity-metric"><strong>9</strong><span>files considered</span></div>
@@ -244,6 +258,41 @@
         <div class="activity-metric"><strong>42,780</strong><span>characters read</span></div>
         <div class="activity-metric"><strong>6</strong><span>sources cited</span></div>
       </div>
+    `;
+  }
+
+  function renderActivityTimeline() {
+    const steps = [
+      ['1', 'Understand the request', 'Identified explain + evaluate intent and the current-note scope.', '1.2s'],
+      ['2', 'Read the current note', '1 file · 12,480 characters · headings, links and embedded asset indexed.', '2.8s'],
+      ['3', 'Expand evidence through Vault links', '4 folders scanned · 9 files considered · 6 files read.', '7.6s'],
+      ['4', 'Check conflicts and coverage', 'Compared UI conventions, real-Obsidian QA and storage boundaries.', '4.1s'],
+      ['5', 'Build the report plan', '4 evidence-backed sections · 0 blocking gaps · 3 analytical moves selected.', '1.9s'],
+    ];
+    return `
+      <section class="activity-card" aria-label="Agent run steps">
+        <div class="activity-card-head">
+          <div>
+            <h3>Activity · agent run</h3>
+            <p>The run is evidence for trust; the report plan below is the contract for the answer.</p>
+          </div>
+          <button class="quiet-detail" type="button" data-action="activity-detail">Tool details</button>
+        </div>
+        <div class="run-step-list">
+          ${steps
+            .map(
+              ([index, title, detail, duration], stepIndex) => `
+                <div class="run-step">
+                  <span class="run-step-status">${stepIndex === steps.length - 1 ? '✓' : '✓'}</span>
+                  <span class="run-step-index">${index}</span>
+                  <span class="run-step-copy"><strong>${title}</strong><small>${detail}</small></span>
+                  <time>${duration}</time>
+                </div>
+              `,
+            )
+            .join('')}
+        </div>
+      </section>
     `;
   }
 
@@ -263,8 +312,37 @@
                 ${index === 3 ? '<span class="status-chip">Depends on S1–S3 evidence</span>' : ''}
               </div>
             </div>
-            <button class="row-menu" type="button" aria-label="Edit section">•••</button>
+            <div class="plan-row-actions" aria-label="Section plan actions">
+              <button type="button" data-action="edit-plan-section" data-index="${index}">Edit</button>
+              <button type="button" data-action="move-plan-section" data-index="${index}" data-direction="-1" aria-label="Move section up" ${index === 0 ? 'disabled' : ''}>↑</button>
+              <button type="button" data-action="move-plan-section" data-index="${index}" data-direction="1" aria-label="Move section down" ${index === planSections.length - 1 ? 'disabled' : ''}>↓</button>
+              <button type="button" data-action="remove-plan-section" data-index="${index}" aria-label="Remove section">×</button>
+            </div>
           </div>
+          ${
+            state.editingPlanIndex === index
+              ? `
+                <div class="plan-row-editor" data-plan-editor="${index}">
+                  <label>
+                    Section title
+                    <input type="text" value="${section.title}">
+                  </label>
+                  <label>
+                    Question this section must answer
+                    <textarea>${section.question}</textarea>
+                  </label>
+                  <label>
+                    Output form
+                    <input type="text" value="${section.format}">
+                  </label>
+                  <div>
+                    <button type="button" data-action="cancel-plan-edit">Cancel</button>
+                    <button class="primary-subtle" type="button" data-action="save-plan-section">Save section</button>
+                  </div>
+                </div>
+              `
+              : ''
+          }
         `,
       )
       .join('');
@@ -274,26 +352,36 @@
     modalBody.innerHTML = `
       <div class="plan-shell">
         ${renderActivitySummary()}
+        ${renderActivityTimeline()}
         <section class="plan-card">
           <div class="plan-card-head">
             <div>
-              <h3>Answer plan · 4 evidence-backed sections</h3>
-              <p>结构来自这次问题，不按 Synthesis / Decomposition / Action Plan 固定分组。</p>
+              <h3>Report plan · ${planSections.length} evidence-backed sections</h3>
+              <p>保留旧设计的分析能力，但让它们选择章节，不让它们直接变成固定章节。</p>
             </div>
             <span class="coverage-chip good">No blocking gaps</span>
           </div>
+          <div class="analysis-moves">
+            <span>Selected analytical moves</span>
+            <div>
+              <b>Synthesis</b>
+              <b>Decomposition</b>
+              <b>Evidence audit</b>
+            </div>
+            <small>Chosen for this question · contradictions, risk and action plan were evaluated but not forced.</small>
+          </div>
           ${renderPlanRows()}
+          <button class="add-plan-section" type="button" data-action="add-plan-section">+ Add section</button>
           <div class="refine-plan">
-            <label for="plan-instruction">Refine the answer plan</label>
+            <label for="plan-instruction">Refine the report plan</label>
             <div class="refine-grid">
               <textarea id="plan-instruction" placeholder="例如：把写回行为单独做成表格；不要给泛化行动建议。">${state.instructionApplied ? '把写回行为单独做成表格；不要给泛化行动建议。' : ''}</textarea>
               <button class="apply-plan" type="button" data-action="apply-plan">Apply to plan</button>
             </div>
-            <p class="plan-hint">Enter 换行 · Cmd/Ctrl+Enter 应用 · 中文输入法选词不会提交</p>
+            <p class="plan-hint">逐条 Edit 用于精确改写；这里用于批量重组整份 plan。Enter 换行 · Cmd/Ctrl+Enter 应用 · 中文输入法选词不会提交</p>
           </div>
         </section>
         <div class="plan-actions">
-          <button class="secondary-button" type="button" data-action="show-activity">View activity details</button>
           <button class="generate-report" type="button" data-action="generate-report">Generate report</button>
         </div>
       </div>
@@ -338,31 +426,6 @@
     showToast('计划已更新：S2 保留表格；不添加泛化行动建议');
   }
 
-  function renderReportOutline(generating) {
-    return `
-      <aside class="report-outline" aria-label="Report outline">
-        <h3>REPORT OUTLINE</h3>
-        ${planSections
-          .map((section, index) => {
-            let status = '✓';
-            if (generating && index === 1) {
-              status = '◌';
-            }
-            if (generating && index > 1) {
-              status = '·';
-            }
-            return `
-              <button class="outline-link ${index === 0 ? 'active' : ''}" type="button" data-action="scroll-section" data-index="${index + 1}">
-                <span class="outline-status">${status}</span>
-                <span>${section.title}</span>
-              </button>
-            `;
-          })
-          .join('')}
-      </aside>
-    `;
-  }
-
   function renderContentChart() {
     const rows = [
       ['Sections', 36, 5],
@@ -393,7 +456,6 @@
   function renderGeneratingReport() {
     return `
       <div class="report-shell">
-        ${renderReportOutline(true)}
         <article class="report-article">
           <div class="report-progress-banner">
             <div>
@@ -443,15 +505,69 @@
     `;
   }
 
+  function renderSectionControls(index) {
+    return `
+      <div class="report-block-actions">
+        <span class="status-chip good">Complete</span>
+        <button type="button" data-action="ask-section" data-index="${index}">Ask</button>
+        <button type="button" data-action="revise-section" data-index="${index}">Revise</button>
+        <button type="button" data-action="copy-section" data-index="${index}">Copy</button>
+      </div>
+    `;
+  }
+
+  function renderSectionInteraction(index) {
+    if (!state.sectionInteraction || state.sectionInteraction.index !== index) {
+      return '';
+    }
+    if (state.sectionInteraction.type === 'revise') {
+      return `
+        <div class="section-interaction revise-section-panel">
+          <div>
+            <strong>Revise this section</strong>
+            <span>Creates a new section variant; the current evidence and prior version stay recoverable.</span>
+          </div>
+          <div class="section-interaction-input">
+            <input type="text" value="把这部分改成设计决策矩阵，并保留所有引用。" aria-label="Revision instruction">
+            <button class="primary-subtle" type="button" data-action="apply-section-revision">Generate revision</button>
+          </div>
+        </div>
+      `;
+    }
+    return `
+      <div class="section-interaction section-followup-panel">
+        <div>
+          <strong>Ask about section ${index}</strong>
+          <span>Non-destructive Q&amp;A anchored to this section, its citations, and its follow-up history.</span>
+        </div>
+        ${
+          state.sectionFollowupAnswered
+            ? `
+              <div class="section-followup-answer">
+                <b>You</b><p>这里说的 block-level knowledge work，和普通 Markdown 编辑器的边界到底是什么？</p>
+                <b>AI</b><p>边界不在渲染格式，而在操作合同：目标 block 可定位、建议有证据与 preview、写回是最小 patch，且可以 undo。普通 Markdown 编辑器不必同时承诺这四点。</p>
+                <span>Grounded in 3 citations from this section</span>
+              </div>
+            `
+            : ''
+        }
+        <div class="section-interaction-input">
+          <input type="text" placeholder="Ask a follow-up about this section…" aria-label="Section follow-up question">
+          <button class="primary-subtle" type="button" data-action="submit-section-followup">Ask</button>
+        </div>
+      </div>
+    `;
+  }
+
   function renderSectionOne() {
     return `
       <section class="report-block" id="mock-section-1">
         <div class="report-block-head">
           <div>
-            <h3>1. Composer 的目标不是“富文本外观”，而是块级知识工作</h3>
-            <small>Complete · 3 source paths · evidence coverage strong</small>
-          </div>
-          <span class="status-chip good">Complete</span>
+                <h3>1. Composer 的目标不是“富文本外观”，而是块级知识工作</h3>
+                <small>Complete · 3 source paths · evidence coverage strong</small>
+              </div>
+          ${renderSectionControls(1)}
         </div>
         <p>
           这份 QA fixture 把图片、数学公式、代码、任务、wikilink 与外部链接放进同一篇笔记，不是在追求一张“看起来丰富”的截图。
@@ -465,6 +581,47 @@
             <img src="../peak-composer-editing-view-2026-07-09/assets/ai-knowledge-workflow-illustration.png" alt="AI knowledge workflow illustration">
           </figure>
         </div>
+        ${renderSectionInteraction(1)}
+      </section>
+    `;
+  }
+
+  function renderOverallFollowup() {
+    return `
+      <section class="overall-followup" id="overall-followup">
+        <div class="overall-followup-head">
+          <div>
+            <h3>Continue this analysis</h3>
+            <p>Ask about the whole report. A new round is appended; the completed report remains readable.</p>
+          </div>
+          ${state.reportRound2 ? '<span class="coverage-chip good">Round 2 ready</span>' : ''}
+        </div>
+        <div class="followup-suggestions">
+          <button type="button" data-action="use-report-suggestion">把验收矩阵转成 implementation checklist</button>
+          <button type="button" data-action="use-report-suggestion">只比较 Composer 与 Markdown editor 的边界</button>
+          <button type="button" data-action="use-report-suggestion">哪些结论仍缺真实 Obsidian 证据？</button>
+        </div>
+        ${
+          state.reportContinueOpen || state.reportRound2
+            ? `
+              <div class="overall-followup-composer">
+                <textarea id="report-followup-input" placeholder="Ask a follow-up about the whole report…">${state.reportFollowupDraft}</textarea>
+                <button class="primary-subtle" type="button" data-action="submit-report-followup">Continue</button>
+              </div>
+            `
+            : '<button class="continue-report-button" type="button" data-action="continue-report">Ask about the whole report</button>'
+        }
+        ${
+          state.reportRound2
+            ? `
+              <div class="round-preview">
+                <strong>Round 2 · evidence gaps</strong>
+                <span>New agent activity and answer sections append as a separate round.</span>
+                <button type="button" data-action="synthesize-report">Synthesize all rounds</button>
+              </div>
+            `
+            : ''
+        }
       </section>
     `;
   }
@@ -472,7 +629,6 @@
   function renderFullReport() {
     modalBody.innerHTML = `
       <div class="report-shell">
-        ${renderReportOutline(false)}
         <article class="report-article">
           <div class="report-progress-banner">
             <div>
@@ -500,7 +656,7 @@
                 <h3>2. 内容类型与写回行为必须形成一张可验收矩阵</h3>
                 <small>Complete · comparison table · 4 direct sources</small>
               </div>
-              <span class="status-chip good">Complete</span>
+              ${renderSectionControls(2)}
             </div>
             <p>
               富内容不是一个 renderer 开关。每种 block 都有自己的选择单位、允许操作、写回风险和验收证据；
@@ -519,6 +675,7 @@
                 <tr><td>Task</td><td>toggle, reorder, enrich</td><td>minimal line patch, undoable</td><td>before/after source + history sequence</td></tr>
               </tbody>
             </table>
+            ${renderSectionInteraction(2)}
           </section>
           <section class="report-block" id="mock-section-3">
             <div class="report-block-head">
@@ -526,7 +683,7 @@
                 <h3>3. AI 建议应靠近 block，并经过 preview → apply → undo</h3>
                 <small>Complete · interaction flow · 3 direct sources</small>
               </div>
-              <span class="status-chip good">Complete</span>
+              ${renderSectionControls(3)}
             </div>
             <p>
               “让 AI 修改文档”不是一次性覆盖整篇文件。建议应携带目标 block、证据范围和拟议 patch，
@@ -536,6 +693,7 @@
             <div class="process-diagram" aria-label="Block-adjacent AI patch flow">
               <span>Select block</span><i>→</i><span>Ask in context</span><i>→</i><span>Preview patch</span><i>→</i><span>Apply + Undo</span>
             </div>
+            ${renderSectionInteraction(3)}
           </section>
           <section class="report-block" id="mock-section-4">
             <div class="report-block-head">
@@ -543,7 +701,7 @@
                 <h3>4. 视觉相似不是验收；证据必须覆盖四个层次</h3>
                 <small>Complete · acceptance ladder · 2 direct sources</small>
               </div>
-              <span class="status-chip good">Complete</span>
+              ${renderSectionControls(4)}
             </div>
             <p>
               静态 mock 只证明方向，harness 只适合快速 characterization。对真实交互的完成声明必须同时回答：
@@ -556,7 +714,9 @@
               <article><strong>3 · Interaction</strong><span>focus, keyboard, hover, drag or history sequence</span></article>
               <article><strong>4 · Visual</strong><span>reference, normalized current, overlay and manifest</span></article>
             </div>
+            ${renderSectionInteraction(4)}
           </section>
+          ${renderOverallFollowup()}
         </article>
       </div>
     `;
@@ -610,7 +770,7 @@
     `;
   }
 
-  function graphControls() {
+  function vaultGraphControls() {
     const vaultScopes = [
       ['evidence', 'Evidence set'],
       ['one-hop', '1-hop'],
@@ -626,15 +786,8 @@
     return `
       <div class="graph-toolbar">
         <div class="graph-toolbar-row">
-          <div class="segmented" aria-label="Graph data kind">
-            <button class="${state.graphKind === 'vault' ? 'active' : ''}" type="button" data-graph-kind="vault">Vault graph</button>
-            <button class="${state.graphKind === 'ai' ? 'active' : ''}" type="button" data-graph-kind="ai">AI relationship map</button>
-          </div>
-          <span class="source-count">${state.graphKind === 'vault' ? 'Deterministic file relations' : 'Extracted / inferred relations · reviewable'}</span>
-        </div>
-        <div class="graph-toolbar-row">
           <div class="filter-strip">
-            <span>SCOPE</span>
+            <span>Scope</span>
             ${vaultScopes
               .map(
                 ([value, label]) =>
@@ -643,7 +796,7 @@
               .join('')}
           </div>
           <div class="filter-strip">
-            <span>LAYOUT</span>
+            <span>Layout</span>
             ${layouts
               .map(
                 ([value, label]) =>
@@ -655,6 +808,51 @@
             <input id="semantic-toggle" type="checkbox" ${state.semantic ? 'checked' : ''}>
             Semantic edges
           </label>
+          <div class="graph-side-actions" aria-label="Graph actions">
+            <button type="button" data-action="copy-graph" title="Copy graph view">Copy</button>
+            <button type="button" data-action="export-graph" title="Export graph image">Export</button>
+          </div>
+        </div>
+        <span class="graph-truth-note">${state.graphKind === 'vault' ? 'Deterministic Vault links and indexed relations' : 'AI-extracted and inferred relations · provenance remains reviewable'}</span>
+      </div>
+    `;
+  }
+
+  function aiGraphControls() {
+    if (!state.aiMapGenerated) {
+      return `
+        <div class="ai-resolver-toolbar">
+          <div>
+            <span class="resolver-label">Data resolver</span>
+            <strong>6 cited source files + current query</strong>
+            <small>Vault source set · Web off · source paths resolved</small>
+          </div>
+          <button type="button" data-action="edit-ai-inputs">Edit inputs</button>
+        </div>
+      `;
+    }
+
+    const lenses = [
+      ['topology', 'Topology'],
+      ['thinking-tree', 'Thinking Tree'],
+      ['bridge', 'Bridges'],
+      ['timeline', 'Timeline'],
+      ['gap-analysis', 'Gaps'],
+    ];
+    return `
+      <div class="ai-lens-toolbar">
+        <div class="filter-strip">
+          <span>Lens</span>
+          ${lenses
+            .map(
+              ([value, label]) =>
+                `<button class="${state.aiLens === value ? 'active' : ''}" type="button" data-ai-lens="${value}">${label}</button>`,
+            )
+            .join('')}
+        </div>
+        <div class="ai-artifact-actions">
+          <span>Available lenses come from generated graph data</span>
+          <button type="button" data-action="save-ai-graph">Save to Vault</button>
         </div>
       </div>
     `;
@@ -694,28 +892,84 @@
         </div>
       `;
     }
+    const projections = {
+      topology: `
+        <span class="graph-edge" style="left:24%;top:41%;width:24%;transform:rotate(-16deg)"></span>
+        <span class="graph-edge semantic" style="left:24%;top:44%;width:25%;transform:rotate(20deg)"></span>
+        <span class="graph-edge" style="left:48%;top:29%;width:22%;transform:rotate(-8deg)"></span>
+        <span class="graph-edge semantic" style="left:49%;top:61%;width:22%;transform:rotate(8deg)"></span>
+        <span class="graph-node hub" style="left:12%;top:36%">Peak Composer QA</span>
+        <span class="graph-node ai" style="left:42%;top:19%">Real UI QA</span>
+        <span class="graph-node ai" style="left:42%;top:55%">Shared AI composer</span>
+        <span class="graph-node ai" style="left:70%;top:15%">UI design</span>
+        <span class="graph-node ai" style="left:69%;top:63%">Storage boundary</span>
+      `,
+      'thinking-tree': `
+        <span class="tree-level-label" style="left:8%;top:13%">Question</span>
+        <span class="tree-level-label" style="left:39%;top:13%">Derived claims</span>
+        <span class="tree-level-label" style="left:72%;top:13%">Evidence</span>
+        <span class="graph-edge semantic" style="left:23%;top:42%;width:22%;transform:rotate(-19deg)"></span>
+        <span class="graph-edge semantic" style="left:23%;top:44%;width:22%;transform:rotate(22deg)"></span>
+        <span class="graph-edge" style="left:49%;top:29%;width:22%;transform:rotate(-13deg)"></span>
+        <span class="graph-edge" style="left:49%;top:62%;width:22%;transform:rotate(11deg)"></span>
+        <span class="graph-node hub" style="left:9%;top:37%">What must Composer prove?</span>
+        <span class="graph-node ai" style="left:41%;top:20%">Block operation contracts</span>
+        <span class="graph-node ai" style="left:41%;top:58%">Evidence, not screenshots</span>
+        <span class="graph-node ai" style="left:72%;top:13%">UI design</span>
+        <span class="graph-node ai" style="left:72%;top:68%">Real UI QA</span>
+      `,
+      bridge: `
+        <span class="community-label" style="left:10%;top:13%">Editing system</span>
+        <span class="community-label" style="left:72%;top:13%">Acceptance system</span>
+        <span class="graph-edge" style="left:20%;top:35%;width:20%;transform:rotate(22deg)"></span>
+        <span class="graph-edge bridge-edge" style="left:42%;top:47%;width:24%;transform:rotate(0deg)"></span>
+        <span class="graph-edge" style="left:65%;top:47%;width:17%;transform:rotate(-24deg)"></span>
+        <span class="graph-node ai" style="left:10%;top:27%">Shared AI composer</span>
+        <span class="graph-node ai" style="left:14%;top:63%">Storage boundary</span>
+        <span class="graph-node hub bridge" style="left:42%;top:42%">Peak Composer QA</span>
+        <span class="graph-node ai" style="left:76%;top:25%">UI design</span>
+        <span class="graph-node ai" style="left:72%;top:64%">Real UI QA</span>
+      `,
+      timeline: `
+        <span class="timeline-axis"></span>
+        <span class="timeline-date" style="left:9%">Apr 13</span>
+        <span class="timeline-date" style="left:32%">Apr 17</span>
+        <span class="timeline-date" style="left:56%">Jul 21</span>
+        <span class="timeline-date" style="left:78%">Jul 28</span>
+        <span class="graph-node ai timeline-node" style="left:7%;top:34%">Per-section reports</span>
+        <span class="graph-node ai timeline-node" style="left:29%;top:56%">Continue + synthesize</span>
+        <span class="graph-node ai timeline-node" style="left:54%;top:31%">Machine record boundary</span>
+        <span class="graph-node ai timeline-node" style="left:76%;top:57%">Shared AI composer</span>
+      `,
+      'gap-analysis': `
+        <span class="community-label" style="left:10%;top:13%">Covered: content + writeback</span>
+        <span class="community-label" style="left:66%;top:13%">Covered: runtime QA</span>
+        <span class="graph-node ai" style="left:10%;top:28%">Block contracts</span>
+        <span class="graph-node ai" style="left:15%;top:65%">Patch + undo</span>
+        <span class="graph-node ai" style="left:71%;top:28%">DOM geometry</span>
+        <span class="graph-node ai" style="left:67%;top:65%">Interaction video</span>
+        <span class="gap-zone" style="left:43%;top:38%">
+          <strong>Gap</strong>
+          <span>No verified accessibility path</span>
+        </span>
+      `,
+    };
     return `
-      <div class="graph-canvas" aria-label="AI generated relationship map">
-        <span class="graph-edge semantic" style="left:25%;top:38%;width:26%;transform:rotate(-14deg)"></span>
-        <span class="graph-edge semantic" style="left:25%;top:42%;width:26%;transform:rotate(19deg)"></span>
-        <span class="graph-edge" style="left:50%;top:27%;width:22%;transform:rotate(3deg)"></span>
-        <span class="graph-edge semantic" style="left:50%;top:61%;width:22%;transform:rotate(-8deg)"></span>
-        <span class="graph-edge semantic" style="left:74%;top:30%;width:1.5px;height:122px"></span>
-        <span class="graph-node hub" style="left:14%;top:35%">Block-level knowledge work</span>
-        <span class="graph-node ai" style="left:44%;top:18%">Rich content is a test surface</span>
-        <span class="graph-node ai" style="left:44%;top:55%">AI edits require patch contracts</span>
-        <span class="graph-node ai" style="left:72%;top:20%">Source + runtime evidence</span>
-        <span class="graph-node ai" style="left:71%;top:64%">Interaction + visual evidence</span>
+      <div class="graph-canvas ai-lens-canvas" data-active-lens="${state.aiLens}" aria-label="AI generated ${state.aiLens} lens">
+        ${projections[state.aiLens] || projections.topology}
         <div class="graph-legend">
-          <span>━━ Extracted</span>
-          <span>┄┄ Inferred · needs review</span>
+          <span>━━ Extracted relation</span>
+          <span>┄┄ AI-inferred relation</span>
         </div>
       </div>
     `;
   }
 
   function renderGraph() {
-    return `${graphControls()}${state.graphKind === 'vault' ? renderVaultGraph() : renderAiGraph()}`;
+    if (state.graphKind === 'vault') {
+      return `${vaultGraphControls()}${renderVaultGraph()}`;
+    }
+    return `${aiGraphControls()}${renderAiGraph()}`;
   }
 
   function renderSources() {
@@ -723,22 +977,37 @@
       <div class="sources-shell">
         <div class="sources-head">
           <div>
-            <h3>Sources · 6 cited files</h3>
-            <p>同一 evidence set 的 List / Tree / Graph 投影；不再维护 AI Search 专属浏览器。</p>
+            <h3>Sources · 6 files used</h3>
+            <p>Shared Result Browser · the same evidence set projected as List, Tree or Graph.</p>
           </div>
-          <span class="coverage-chip good">6 cited · 0 unsupported sections</span>
+          <div class="sources-summary">
+            <span class="source-count">4 folders · sorted by citation coverage</span>
+            <span class="coverage-chip good">6 cited · 0 unsupported sections</span>
+          </div>
         </div>
         <div class="source-toolbar">
-          <div class="segmented" aria-label="Source view">
-            <button class="${state.sourceMode === 'list' ? 'active' : ''}" type="button" data-source-mode="list">List</button>
-            <button class="${state.sourceMode === 'tree' ? 'active' : ''}" type="button" data-source-mode="tree">Tree</button>
-            <button class="${state.sourceMode === 'graph' ? 'active' : ''}" type="button" data-source-mode="graph">Graph</button>
+          <div class="source-toolbar-left">
+            <div class="segmented" aria-label="Source view">
+              <button class="${state.sourceMode === 'list' ? 'active' : ''}" type="button" data-source-mode="list">List</button>
+              <button class="${state.sourceMode === 'tree' ? 'active' : ''}" type="button" data-source-mode="tree">Tree</button>
+              <button class="${state.sourceMode === 'graph' ? 'active' : ''}" type="button" data-source-mode="graph">Graph</button>
+            </div>
+            ${
+              state.sourceMode === 'graph'
+                ? `
+                  <div class="toolbar-separator" aria-hidden="true"></div>
+                  <div class="segmented graph-kind-switch" aria-label="Graph data kind">
+                    <button class="${state.graphKind === 'vault' ? 'active' : ''}" type="button" data-graph-kind="vault">Vault graph</button>
+                    <button class="${state.graphKind === 'ai' ? 'active' : ''}" type="button" data-graph-kind="ai">AI relationship map</button>
+                  </div>
+                `
+                : ''
+            }
           </div>
-          <div class="segmented" aria-label="Source density">
+          <div class="segmented density-switch" aria-label="Source density">
             <button class="${state.density === 'compact' ? 'active' : ''}" type="button" data-density="compact">Compact</button>
             <button class="${state.density === 'detailed' ? 'active' : ''}" type="button" data-density="detailed">Detailed</button>
           </div>
-          <span class="source-count">6 sources · 4 folders · sorted by citation coverage</span>
         </div>
         <div class="source-content">
           ${state.sourceMode === 'list' ? renderSourceRows() : ''}
@@ -752,14 +1021,49 @@
   }
 
   function renderWorkspaceFooter(active) {
+    const reportAvailable = active === 'report';
     modalFooter.innerHTML = `
-      <div class="workspace-nav" aria-label="Report workspace navigation">
-        <button class="${active === 'report' ? 'active' : ''}" type="button" data-action="open-report">Report</button>
-        <button class="${active === 'sources' ? 'active' : ''}" type="button" data-action="open-sources">Sources</button>
-        <button class="${active === 'activity' ? 'active' : ''}" type="button" data-action="show-activity">Activity</button>
+      <div class="workspace-nav-shell">
+        ${
+          state.tocOpen && reportAvailable
+            ? `
+              <div class="toc-popover" role="dialog" aria-label="Report outline">
+                <strong>Report outline</strong>
+                ${planSections
+                  .map(
+                    (section, index) => `
+                      <button type="button" data-action="scroll-section" data-index="${index + 1}">
+                        <span>${index + 1}</span>
+                        <span>${section.title}</span>
+                      </button>
+                    `,
+                  )
+                  .join('')}
+              </div>
+            `
+            : ''
+        }
+        <div class="workspace-nav" aria-label="Report workspace navigation">
+          <button class="${active === 'activity' ? 'active' : ''}" type="button" data-action="show-activity">Activity</button>
+          <button class="${active === 'report' ? 'active' : ''}" type="button" data-action="open-report">Report</button>
+          <button class="toc-trigger ${state.tocOpen ? 'active' : ''}" type="button" data-action="toggle-toc" aria-label="Report outline" title="Report outline" aria-expanded="${state.tocOpen}" ${reportAvailable ? '' : 'disabled'}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"></path>
+            </svg>
+          </button>
+          <button class="${active === 'sources' ? 'active' : ''}" type="button" data-action="open-sources">Sources</button>
+        </div>
       </div>
       <div class="workspace-actions">
         <button type="button" data-action="save-report">Save to Vault</button>
+        ${
+          reportAvailable
+            ? `
+              ${state.reportRound2 ? '<button type="button" data-action="synthesize-report">Synthesize all</button>' : ''}
+              <button type="button" data-action="continue-report">Continue</button>
+            `
+            : ''
+        }
         <button class="primary" type="button" data-action="open-chat">Open in Chat</button>
       </div>
     `;
@@ -790,10 +1094,15 @@
   function handleAction(action, element) {
     if (action === 'start-analysis') {
       setScreen('plan');
-      showToast('Evidence collected · dynamic answer plan ready');
+      showToast('Agent run complete · report plan ready');
       return;
     }
-    if (action === 'resume-analysis' || action === 'open-report') {
+    if (action === 'resume-analysis') {
+      setScreen('plan');
+      showToast('Resumed unfinished analysis · report plan ready for review');
+      return;
+    }
+    if (action === 'open-report') {
       setScreen('report');
       return;
     }
@@ -803,6 +1112,53 @@
     }
     if (action === 'apply-plan') {
       applyPlanInstruction();
+      return;
+    }
+    if (action === 'edit-plan-section') {
+      state.editingPlanIndex = Number(element.dataset.index);
+      renderPlan();
+      return;
+    }
+    if (action === 'cancel-plan-edit') {
+      state.editingPlanIndex = null;
+      renderPlan();
+      return;
+    }
+    if (action === 'save-plan-section') {
+      state.editingPlanIndex = null;
+      renderPlan();
+      showToast('Section plan updated');
+      return;
+    }
+    if (action === 'move-plan-section') {
+      const index = Number(element.dataset.index);
+      const target = index + Number(element.dataset.direction);
+      if (target < 0 || target >= planSections.length) {
+        return;
+      }
+      const [section] = planSections.splice(index, 1);
+      planSections.splice(target, 0, section);
+      renderPlan();
+      showToast('Section order updated');
+      return;
+    }
+    if (action === 'remove-plan-section') {
+      const index = Number(element.dataset.index);
+      planSections.splice(index, 1);
+      state.editingPlanIndex = null;
+      renderPlan();
+      showToast('Section removed from the plan');
+      return;
+    }
+    if (action === 'add-plan-section') {
+      planSections.push({
+        title: 'New evidence-backed section',
+        question: 'What additional question should this report answer?',
+        format: 'Evidence brief',
+        coverage: 'Evidence pending',
+      });
+      state.editingPlanIndex = planSections.length - 1;
+      renderPlan();
       return;
     }
     if (action === 'generate-report') {
@@ -816,19 +1172,93 @@
     }
     if (action === 'show-activity') {
       setScreen('plan');
-      showToast('Activity 是次级证据面，不替代 Report');
+      showToast('Activity 保留完整 agent run；report plan 紧随其后');
+      return;
+    }
+    if (action === 'toggle-toc') {
+      state.tocOpen = !state.tocOpen;
+      render();
       return;
     }
     if (action === 'generate-ai-map') {
       state.aiMapGenerated = true;
       renderSources();
-      showToast('AI relationship map generated · inferred edges remain reviewable');
+      showToast('AI relationship map generated · 5 data-supported lenses available');
+      return;
+    }
+    if (action === 'edit-ai-inputs') {
+      showToast('Mock: edit cited source set, current query, and Web context');
+      return;
+    }
+    if (action === 'save-ai-graph') {
+      showToast('Mock: AI graph saved to Vault');
+      return;
+    }
+    if (action === 'ask-section') {
+      state.sectionInteraction = { type: 'ask', index: Number(element.dataset.index) };
+      state.sectionFollowupAnswered = false;
+      renderFullReport();
+      document.getElementById(`mock-section-${element.dataset.index}`)?.scrollIntoView({ block: 'center' });
+      return;
+    }
+    if (action === 'revise-section') {
+      state.sectionInteraction = { type: 'revise', index: Number(element.dataset.index) };
+      renderFullReport();
+      document.getElementById(`mock-section-${element.dataset.index}`)?.scrollIntoView({ block: 'center' });
+      return;
+    }
+    if (action === 'submit-section-followup') {
+      state.sectionFollowupAnswered = true;
+      renderFullReport();
+      document.getElementById(`mock-section-${state.sectionInteraction?.index}`)?.scrollIntoView({ block: 'center' });
+      showToast('Section follow-up appended without rewriting the section');
+      return;
+    }
+    if (action === 'apply-section-revision') {
+      showToast('Mock: new section variant generated; previous version preserved');
+      return;
+    }
+    if (action === 'copy-section') {
+      showToast(`Mock: section ${element.dataset.index} copied`);
+      return;
+    }
+    if (action === 'continue-report') {
+      state.reportContinueOpen = true;
+      renderFullReport();
+      document.getElementById('overall-followup')?.scrollIntoView({ block: 'center' });
+      return;
+    }
+    if (action === 'use-report-suggestion') {
+      state.reportContinueOpen = true;
+      state.reportFollowupDraft = element.textContent.trim();
+      renderFullReport();
+      const input = document.getElementById('report-followup-input');
+      if (input) {
+        input.value = state.reportFollowupDraft;
+        input.focus();
+      }
+      document.getElementById('overall-followup')?.scrollIntoView({ block: 'center' });
+      return;
+    }
+    if (action === 'submit-report-followup') {
+      state.reportRound2 = true;
+      state.reportContinueOpen = true;
+      renderFullReport();
+      document.getElementById('overall-followup')?.scrollIntoView({ block: 'center' });
+      showToast('Round 2 appended · prior report preserved');
+      return;
+    }
+    if (action === 'synthesize-report') {
+      showToast('Mock: synthesize becomes available after multiple rounds');
       return;
     }
     if (action === 'toggle-web') {
       const pressed = element.getAttribute('aria-pressed') === 'true';
       element.setAttribute('aria-pressed', String(!pressed));
-      element.textContent = pressed ? 'Web off' : 'Web on';
+      const nextLabel = pressed ? 'Web off' : 'Web on';
+      element.querySelector('span').textContent = nextLabel;
+      element.setAttribute('aria-label', nextLabel);
+      element.setAttribute('title', nextLabel);
       showToast(pressed ? 'Web context disabled' : 'Web context enabled');
       return;
     }
@@ -839,6 +1269,18 @@
     }
     if (action === 'copy-report') {
       showToast('Mock: report copied');
+      return;
+    }
+    if (action === 'copy-graph') {
+      showToast('Mock: graph view copied');
+      return;
+    }
+    if (action === 'export-graph') {
+      showToast('Mock: graph image export');
+      return;
+    }
+    if (action === 'activity-detail') {
+      showToast('Mock: provider and tool spans would expand here');
       return;
     }
     if (action === 'save-report') {
@@ -896,6 +1338,13 @@
       return;
     }
 
+    const aiLens = event.target.closest('[data-ai-lens]');
+    if (aiLens) {
+      state.aiLens = aiLens.dataset.aiLens;
+      renderSources();
+      return;
+    }
+
     const action = event.target.closest('[data-action]');
     if (action) {
       handleAction(action.dataset.action, action);
@@ -921,7 +1370,15 @@
       graphPreset: 'constellation',
       semantic: false,
       aiMapGenerated: false,
+      aiLens: 'topology',
       instructionApplied: false,
+      editingPlanIndex: null,
+      sectionInteraction: null,
+      sectionFollowupAnswered: false,
+      reportContinueOpen: false,
+      reportFollowupDraft: '',
+      reportRound2: false,
+      tocOpen: false,
     });
     render();
     document.getElementById('prototype').scrollIntoView({ behavior: 'smooth' });

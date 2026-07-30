@@ -8,7 +8,7 @@
 // a single point to enforce future permission / budget checks.
 //
 // Every manifest lists `provider-direct` as its preferred backend with
-// `hermes-harness` + `claude-sdk` as fallbacks. In practice these
+// `hermes-harness` as its fallback. In practice these
 // commands dispatch to an echo strategy at wire-in time (see
 // `composeCommandGatewayBindings`); once B3 lands and the registry has
 // live backend strategies, palette commands still resolve first to the
@@ -28,7 +28,7 @@ const SURFACE_OPEN_OUTPUT: CapabilityManifest['outputContract'] = {
 
 const DEFAULT_BACKEND: CapabilityManifest['backendPolicy'] = {
 	preferred: 'provider-direct',
-	fallback: ['hermes-harness', 'claude-sdk'],
+	fallback: ['hermes-harness'],
 };
 
 export const SETTINGS_MODAL_MANIFEST: CapabilityManifest = {

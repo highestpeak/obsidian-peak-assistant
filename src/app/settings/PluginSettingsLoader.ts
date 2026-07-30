@@ -1,7 +1,7 @@
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, DEFAULT_DEBUG_TRACE_SETTINGS, DEFAULT_HARNESS_SETTINGS, DEFAULT_SEARCH_SETTINGS, DEFAULT_SETTINGS, DebugTraceSettings, HarnessSettings, MyPluginSettings, SearchSettings, normalizeCodeBlockTheme } from '@/core/config/settingsTypes';
 import { ProviderConfig, LLMOutputControlSettings } from '@/core/providers/types';
 import { DEFAULT_AMBIENT_PUSH_SETTINGS, type AmbientPushSettings } from '@/core/types/ambient';
-import { DEFAULT_SDK_SETTINGS, type ProfileSettings } from '@/core/profiles/types';
+import type { ProfileSettings } from '@/core/profiles/types';
 import {
 	getAIAnalysisFolder,
 	getAICustomPromptsFolder,
@@ -336,6 +336,14 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 		usageDetailRetentionDays: DEFAULT_SETTINGS.usageDetailRetentionDays,
 		usagePreviewEnabled: DEFAULT_SETTINGS.usagePreviewEnabled,
 		codeBlockTheme: normalizeCodeBlockTheme(raw?.codeBlockTheme),
+		composer: {
+			defaultDocumentView:
+				(raw?.composer as { defaultDocumentView?: unknown } | undefined)?.defaultDocumentView === 'composer'
+					? 'composer'
+					: 'markdown',
+			intelligenceManualOpen:
+				(raw?.composer as { intelligenceManualOpen?: unknown } | undefined)?.intelligenceManualOpen === true,
+		},
 	};
 
 	settings.skillsFolder = resolveFolderSetting(
@@ -428,7 +436,6 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 			activeCopilotConfig: null,
 			activeEmbeddingConfig: null,
 			activeWebSearchConfig: null,
-			sdkSettings: DEFAULT_SDK_SETTINGS,
 		};
 	}
 
@@ -444,9 +451,6 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 	if (rawHarness && typeof rawHarness === 'object') {
 		const d = DEFAULT_HARNESS_SETTINGS;
 		settings.harnessSettings = {
-			agentBackend: (rawHarness.agentBackend === 'auto' || rawHarness.agentBackend === 'harness')
-				? rawHarness.agentBackend
-				: d.agentBackend,
 			localFastConfig: rawHarness.localFastConfig ?? d.localFastConfig,
 			localDeepConfig: rawHarness.localDeepConfig ?? d.localDeepConfig,
 			onlineConfig: rawHarness.onlineConfig ?? d.onlineConfig,

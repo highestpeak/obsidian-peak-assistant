@@ -1,10 +1,10 @@
 /**
- * Peak Composer — view registration + active-file lifecycle (WP1,
+ * Peak Composer — view registration + explicit file-bound lifecycle,
  * CMP-HOST-01 / CMP-HOST-02).
  *
  * Covers the stable view id (registration contract) and the full lifecycle the
- * DocumentComposerController drives: open active file → switch → rename →
- * external modify (stale) → revalidate → delete → empty. The controller has no
+ * DocumentComposerController drives: bind file → ignore other leaf activity →
+ * rename → external modify (stale) → revalidate → delete. The controller has no
  * runtime `obsidian` dependency, so it is exercised directly with fake ports.
  */
 
@@ -42,24 +42,11 @@ class FakeSource implements ComposerSourcePort {
 }
 
 class FakeEvents implements ComposerFileEventsPort {
-	private active: string | null = null;
-	private activeCbs = new Set<(p: string | null) => void>();
 	private fileCbs = new Set<(e: ComposerFileEvent) => void>();
 
-	getActiveFilePath(): string | null {
-		return this.active;
-	}
-	onActiveFileChange(cb: (p: string | null) => void): () => void {
-		this.activeCbs.add(cb);
-		return () => this.activeCbs.delete(cb);
-	}
 	onFileEvent(cb: (e: ComposerFileEvent) => void): () => void {
 		this.fileCbs.add(cb);
 		return () => this.fileCbs.delete(cb);
-	}
-	setActive(path: string | null): void {
-		this.active = path;
-		for (const cb of this.activeCbs) cb(path);
 	}
 	emit(event: ComposerFileEvent): void {
 		for (const cb of this.fileCbs) cb(event);
@@ -81,20 +68,19 @@ async function main(): Promise<void> {
 	source.files.set('A.md', DOC_A);
 	source.files.set('B.md', DOC_B);
 	const events = new FakeEvents();
-	events.setActive('A.md');
 
 	const controller = new DocumentComposerController({ source, events });
 	const seen: string[] = [];
 	controller.subscribe((s) => seen.push(s.status));
 
-	controller.start();
+	controller.start('A.md');
 	await controller.settled();
 	check('opens active file → loaded', controller.getState().status === 'loaded', controller.getState().status);
 	check('loaded snapshot has blocks', (controller.getState().snapshot?.blocks.length ?? 0) > 0);
 	check('loaded filePath is A.md', controller.getState().filePath === 'A.md');
 
-	// switch active file.
-	events.setActive('B.md');
+	// Rebinding is explicit View state, never a global active-leaf callback.
+	controller.bindFile('B.md');
 	await controller.settled();
 	check('switch active file → loaded B', controller.getState().filePath === 'B.md' && controller.getState().status === 'loaded');
 	const bBlocks = controller.getState().snapshot?.blocks.length ?? 0;
@@ -124,11 +110,6 @@ async function main(): Promise<void> {
 	await controller.settled();
 	check('delete → missing', controller.getState().status === 'missing', controller.getState().status);
 	check('missing clears snapshot', controller.getState().snapshot === null);
-
-	// no active file → empty.
-	events.setActive(null);
-	await controller.settled();
-	check('no active file → empty', controller.getState().status === 'empty', controller.getState().status);
 
 	// subscribers observed a stale transition (not silently overwritten).
 	check('emitted a stale status', seen.includes('stale'), seen.join(','));

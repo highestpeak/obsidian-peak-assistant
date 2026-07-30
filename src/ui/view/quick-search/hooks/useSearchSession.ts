@@ -25,6 +25,7 @@ import { consumeStream } from './streamConsumer';
 import type { StreamConsumerContext } from './streamConsumer';
 import { useEventRouter } from './useEventRouter';
 import { useContinueAnalysis } from './useContinueAnalysis';
+import { consumeFollowupStream, streamSearchFollowup } from './useAIAnalysisPostAIInteractions';
 import { persistSessionToVault } from '@/service/search/analysisDocPersistence';
 import type { AnalysisDocVaultWriterPort } from '@/core/ports/AnalysisDocVaultWriterPort';
 import type { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
@@ -32,6 +33,7 @@ import type { EventBus } from '@/core/eventBus';
 import type { MyPluginSettings } from '@/core/config/settingsTypes';
 import { snapshotFromState } from '../store/sessionSnapshot';
 import type { V2SessionSnapshot } from '../store/sessionSnapshot';
+import { PromptId } from '@/core/types/prompt';
 
 // ---------------------------------------------------------------------------
 // Module-level ref holder — survives React unmount so QuickSearchModal.onClose
@@ -48,6 +50,17 @@ export interface PersistForegroundSessionDeps {
 	historyService: AIAnalysisHistoryService;
 	eventBus: EventBus;
 	vaultWriter: AnalysisDocVaultWriterPort;
+}
+
+function buildReportDirectionContext(outline: string | null, directions: string[]): string {
+	const blocks = [outline?.trim() ?? ''];
+	if (directions.length > 0) {
+		blocks.push([
+			'User report directions:',
+			...directions.map((direction) => `- ${direction}`),
+		].join('\n'));
+	}
+	return blocks.filter(Boolean).join('\n\n');
 }
 
 /**
@@ -339,9 +352,16 @@ export function useSearchSession() {
 		const state = store.getState();
 		const sections = state.v2PlanSections;
 		if (sections.length === 0) return;
+		const reportDirection = buildReportDirectionContext(
+			state.v2ProposedOutline,
+			state.v2UserInsights,
+		);
 
 		// Mark plan as approved — this is the user's explicit action
 		store.getState().approvePlan();
+		// Report is the generation surface. Keep Activity available in the
+		// footer, but stream each section directly into its final report slot.
+		store.getState().setV2View('report');
 
 		try {
 			// B2.analysis (2026-07-03): route report generation through
@@ -351,12 +371,12 @@ export function useSearchSession() {
 			await runAnalysisReport({
 				trigger: 'manual',
 				generate: async () => {
-					await reportOrchestrator.generateReport(
-						sections,
-						state.v2Sources.map((s) => s.path),
-						state.v2ProposedOutline ?? '',
-						state.query,
-					);
+						await reportOrchestrator.generateReport(
+							sections,
+							state.v2Sources.map((s) => s.path),
+							reportDirection,
+							state.query,
+						);
 					return null;
 				},
 			});
@@ -373,11 +393,15 @@ export function useSearchSession() {
 
 	const handleRegenerateSection = useCallback(async (sectionId: string, userPrompt?: string) => {
 		const state = store.getState();
+		const reportDirection = buildReportDirectionContext(
+			state.v2ProposedOutline,
+			state.v2UserInsights,
+		);
 		try {
 			await reportOrchestrator.regenerateSection(
 				sectionId,
 				state.v2PlanSections,
-				state.v2ProposedOutline ?? '',
+				reportDirection,
 				state.query,
 				userPrompt,
 			);
@@ -387,6 +411,55 @@ export function useSearchSession() {
 			store.getState().failSection(sectionId, err?.message ?? 'Regeneration failed');
 		}
 	}, []);
+
+	// -----------------------------------------------------------------------
+	// handleAskSection — grounded, non-destructive section Q&A
+	// -----------------------------------------------------------------------
+
+	const handleAskSection = useCallback(async (
+		sectionId: string,
+		question: string,
+		onDelta?: (answer: string) => void,
+	): Promise<string> => {
+		const state = store.getState();
+		const owningRound = state.rounds.find((round) =>
+			round.sections.some((candidate) => candidate.id === sectionId),
+		);
+		const section = owningRound?.sections.find((candidate) => candidate.id === sectionId)
+			?? state.v2PlanSections.find((candidate) => candidate.id === sectionId);
+		if (!section) throw new Error('Report section not found');
+
+		const evidence = section.evidencePaths.length > 0
+			? section.evidencePaths.map((path) => `- [[${path.replace(/\.md$/, '')}]]`).join('\n')
+			: '- No direct source paths attached';
+		const contextContent = [
+			`Section: ${section.title}`,
+			`Section answer:\n${section.content}`,
+			`Direct sources:\n${evidence}`,
+		].join('\n\n');
+
+		const answer = await consumeFollowupStream(
+			streamSearchFollowup(
+				manager,
+				PromptId.AiAnalysisFollowup,
+				{
+					originalQuery: owningRound?.query ?? state.query,
+					question,
+					contextContent,
+				},
+				host.isMockEnv,
+			),
+			{
+				onDelta,
+				onUsage: (usage) => store.getState().accumulateUsage(usage),
+			},
+		);
+		if (!answer.trim()) throw new Error('No follow-up answer generated');
+
+		store.getState().addSectionFollowup(sectionId, { question, answer });
+		persistForegroundSession(persistDeps, store.getState().autoSaveState.lastSavedPath);
+		return answer;
+	}, [host, manager, persistDeps, store]);
 
 	// -----------------------------------------------------------------------
 	// cancel
@@ -457,5 +530,12 @@ export function useSearchSession() {
 		}
 	}, [routeEvent]);
 
-	return { performAnalysis, cancel, handleApprovePlan, handleRegenerateSection, restoreFromBackground };
+	return {
+		performAnalysis,
+		cancel,
+		handleApprovePlan,
+		handleRegenerateSection,
+		handleAskSection,
+		restoreFromBackground,
+	};
 }

@@ -52,7 +52,21 @@ const FOLDER = getAIAnalysisJsonStoreFolder('ChatFolder');
 
 async function testRoundTripSaveListLoad(): Promise<void> {
 	const adapter = new MemAdapter();
-	const snapshot = makeSnapshot();
+	const snapshot = makeSnapshot({
+		v2ReportSections: [{
+			id: 'section-stable-id',
+			title: 'Evidence-backed section',
+			content: 'Section body.',
+			missionRole: 'synthesis',
+			evidencePaths: ['notes/source.md'],
+		}],
+		blocksFollowupsByBlockId: {
+			'section-stable-id': [{
+				question: 'What supports this?',
+				answer: 'The cited source.',
+			}],
+		},
+	});
 	const record = buildAnalysisJsonRecord(snapshot, { query: 'what is x', webEnabled: true, savedAt: 111 });
 
 	assert.strictEqual(record.formatVersion, AI_ANALYSIS_JSON_FORMAT_VERSION, 'format version stamped');
@@ -78,6 +92,16 @@ async function testRoundTripSaveListLoad(): Promise<void> {
 	assert.ok(loaded, 'record loaded');
 	assert.strictEqual(loaded!.snapshot.summaries[0], 'Hello summary', 'snapshot round-trips');
 	assert.strictEqual(loaded!.query, 'what is x', 'query round-trips');
+	assert.strictEqual(
+		loaded!.snapshot.v2ReportSections?.[0]?.id,
+		'section-stable-id',
+		'V2 section id survives canonical JSON round-trip',
+	);
+	assert.strictEqual(
+		loaded!.snapshot.blocksFollowupsByBlockId?.['section-stable-id']?.[0]?.answer,
+		'The cited source.',
+		'section follow-up remains attached to the stable section id',
+	);
 
 	console.log('[AiAnalysisJsonStore] round-trip save/list/load: PASS');
 }
@@ -142,14 +166,32 @@ function testResolveJsonRecord(): void {
 }
 
 function testResolveLegacyMarkdown(): void {
-	const snapshot = makeSnapshot();
+	const snapshot = makeSnapshot({
+		v2ReportSections: [{
+			id: 'section-stable-id',
+			title: 'Evidence-backed section',
+			content: 'Section body.',
+			missionRole: 'synthesis',
+			evidencePaths: ['notes/source.md'],
+		}],
+		blocksFollowupsByBlockId: {
+			'section-stable-id': [{
+				question: 'What supports this?',
+				answer: 'The cited source.',
+			}],
+		},
+	});
 	const doc = fromCompletedAnalysisSnapshot(snapshot, 'legacy query', true);
 	const md = buildMarkdown(doc, {});
 
 	const resolved = resolveAnalysisSnapshotFromVault('ChatFolder/AI-Analysis/legacy.md', md, 123);
 	assert.ok(resolved, 'legacy md resolves via parse()');
 	assert.strictEqual(resolved!.query, 'legacy query', 'query recovered from md frontmatter');
-
+	assert.strictEqual(
+		resolved!.snapshot.v2ReportSections?.[0]?.id,
+		'section-stable-id',
+		'V2 section id survives Markdown round-trip',
+	);
 	console.log('[AiAnalysisJsonStore] resolve legacy markdown: PASS');
 }
 

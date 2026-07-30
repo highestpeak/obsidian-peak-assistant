@@ -50,15 +50,15 @@ export function NativeEmbedHost({
 
 	React.useEffect(() => {
 		const host = hostRef.current;
+		setFailed(false);
+		setReady(false);
 		if (!renderer || !host || !sourcePath || !markdown) return;
 		let disposed = false;
 		let dispose: (() => void) | undefined;
-		setFailed(false);
-		setReady(false);
 		void renderer
 			.render({ sourcePath, target, kind, markdown }, host)
 			.then((cleanup) => {
-				if (disposed) cleanup();
+				if (disposed) safelyDisposeNativeRenderer(cleanup);
 				else {
 					dispose = cleanup;
 					setReady(true);
@@ -69,20 +69,35 @@ export function NativeEmbedHost({
 			});
 		return () => {
 			disposed = true;
-			dispose?.();
+			if (dispose) safelyDisposeNativeRenderer(dispose);
 		};
 	}, [renderer, sourcePath, target, kind, markdown]);
 
-	if (!renderer || failed) return <>{fallback}</>;
 	return (
-		<div
-			ref={hostRef}
-			className="pk-native-embed-host markdown-rendered"
-			data-native-target={target}
-			data-native-kind={kind}
-			aria-busy={!ready}
-		/>
+		<div className="pk-native-embed-host-shell" data-native-failed={failed || undefined}>
+			<div
+				ref={hostRef}
+				className="pk-native-embed-host markdown-rendered"
+				data-native-target={target}
+				data-native-kind={kind}
+				aria-busy={Boolean(renderer) && !failed && !ready}
+				hidden={!renderer || failed}
+			/>
+			{(!renderer || failed) && (
+				<div className="pk-native-embed-host-fallback">
+					{fallback}
+				</div>
+			)}
+		</div>
 	);
+}
+
+function safelyDisposeNativeRenderer(dispose: () => void): void {
+	try {
+		dispose();
+	} catch (error) {
+		console.error('[Peak Composer] native embed renderer cleanup failed', { error });
+	}
 }
 
 /** Load the native strings once (default until the template resolves). */

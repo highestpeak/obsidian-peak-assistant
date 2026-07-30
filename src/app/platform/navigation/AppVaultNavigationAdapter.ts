@@ -16,19 +16,24 @@ import type {
 	VaultNavigationPort,
 } from '@/core/ports/VaultNavigationPort';
 import type { SearchResultItem } from '@/core/search/searchTypes';
+import type { ComposerDocumentRouter } from '@/app/composer/ComposerDocumentRouter';
 
 function isFile(f: unknown): f is TFile {
 	return !!f && typeof f === 'object' && 'extension' in (f as Record<string, unknown>);
 }
 
 export class AppVaultNavigationAdapter implements VaultNavigationPort {
-	constructor(private readonly app: App) {}
+	constructor(
+		private readonly app: App,
+		private readonly getComposerRouter: () => ComposerDocumentRouter | null = () => null,
+	) {}
 
 	async openLink(path: string, opts: VaultNavigationOpenOptions = {}): Promise<void> {
 		const newLeaf = opts.newLeaf ?? 'tab';
 		const sourcePath = opts.sourcePath ?? this.app.workspace.getActiveFile()?.path ?? '';
 		const file = this.app.vault.getAbstractFileByPath(path);
 		if (isFile(file)) {
+			if (await this.openMarkdownThroughPolicy(file, newLeaf, 'wikilink')) return;
 			await this.app.workspace.getLeaf(newLeaf as any).openFile(file);
 			return;
 		}
@@ -41,6 +46,7 @@ export class AppVaultNavigationAdapter implements VaultNavigationPort {
 		const file = this.app.vault.getAbstractFileByPath(path);
 		if (!isFile(file)) return false;
 		const newLeaf = opts.newLeaf ?? false;
+		if (await this.openMarkdownThroughPolicy(file, newLeaf, 'search')) return true;
 		await this.app.workspace.getLeaf(newLeaf as any).openFile(file);
 		return true;
 	}
@@ -167,5 +173,25 @@ export class AppVaultNavigationAdapter implements VaultNavigationPort {
 			view.revealInFolder(folder);
 		}
 		app.workspace.revealLeaf(leaf);
+	}
+
+	private async openMarkdownThroughPolicy(
+		file: TFile,
+		newLeaf: boolean | 'tab' | 'window',
+		reason: 'wikilink' | 'search',
+	): Promise<boolean> {
+		if (file.extension !== 'md' || newLeaf === 'window') return false;
+		const router = this.getComposerRouter();
+		if (!router) return false;
+		const disposition =
+			newLeaf === 'tab' || newLeaf === true
+				? 'new-tab'
+				: 'reuse-existing';
+		const leaf = await router.open({
+			filePath: file.path,
+			disposition,
+			reason,
+		});
+		return Boolean(leaf);
 	}
 }

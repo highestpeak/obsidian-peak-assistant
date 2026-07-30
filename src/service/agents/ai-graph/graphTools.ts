@@ -1,33 +1,27 @@
-/**
- * In-process MCP server exposing graph-analysis tools for the GraphAgent.
- *
- * Two tools:
- *   - read_sources: batch-read vault files + resolve wikilinks (in/out)
- *   - submit_graph: submit the final GraphOutput JSON
- *
- * Follows the same tool() + createSdkMcpServer() pattern as vaultMcpServer.ts.
- */
+/** Peak Harness tools used by the knowledge-graph agent. */
 
 import type { AppHandle } from '@/core/ports/AppHandle';
-import { tool, createSdkMcpServer } from '@anthropic-ai/claude-agent-sdk';
+import { ok, type ToolDef } from '@/core/types/tool';
 import { z } from 'zod';
 import { GraphOutputSchema, type GraphOutput } from './graph-output-types';
 
-export interface GraphMcpServerOptions {
+export interface GraphToolsOptions {
     app: AppHandle;
     onSubmitGraph: (graph: GraphOutput) => Promise<void>;
 }
 
-export function buildGraphMcpServer(options: GraphMcpServerOptions) {
+export function buildGraphTools(options: GraphToolsOptions): ToolDef[] {
     const { app, onSubmitGraph } = options;
 
-    const readSources = tool(
-        'read_sources',
-        'Read all source files content and their wikilinks in batch. Call this first with all source paths.',
-        {
+    const readSources: ToolDef = {
+        name: 'mcp__graph__read_sources',
+        description: 'Read all source files content and their wikilinks in batch. Call this first with all source paths.',
+        inputSchema: z.object({
             paths: z.array(z.string()).describe('Array of vault file paths to read'),
-        },
-        async (input, _extra) => {
+        }),
+        source: 'local',
+        kind: 'read',
+        async execute(input) {
             const results = [];
             for (const p of input.paths) {
                 const tfile = app.vault.getFileByPath(p);
@@ -37,41 +31,37 @@ export function buildGraphMcpServer(options: GraphMcpServerOptions) {
                 }
                 const content = await app.vault.cachedRead(tfile);
                 const metadata = app.metadataCache.getFileCache(tfile);
-                const outgoing = (metadata?.links ?? []).map(l => l.link);
-                const incoming = Object.entries(app.metadataCache.resolvedLinks)
+                const outgoing = (metadata?.links ?? [])
+                    .map((link: { link: string }) => link.link);
+                const resolvedLinks = app.metadataCache.resolvedLinks as Record<string, Record<string, unknown>>;
+                const incoming = Object.entries(resolvedLinks)
                     .filter(([, targets]) => p in targets)
                     .map(([source]) => source);
                 results.push({ path: p, content, outgoing_links: outgoing, incoming_links: incoming });
             }
-            return {
-                content: [{ type: 'text' as const, text: JSON.stringify(results, null, 2) }],
-            };
+            return ok(results);
         },
-    );
+    };
 
-    const submitGraph = tool(
-        'submit_graph',
-        'Submit the final graph structure. Call this after analyzing all documents.',
-        {
+    const submitGraph: ToolDef = {
+        name: 'mcp__graph__submit_graph',
+        description: 'Submit the final graph structure. Call this after analyzing all documents.',
+        inputSchema: z.object({
             nodes: GraphOutputSchema.shape.nodes,
             edges: GraphOutputSchema.shape.edges,
             clusters: GraphOutputSchema.shape.clusters,
             bridges: GraphOutputSchema.shape.bridges,
             evolution_chains: GraphOutputSchema.shape.evolution_chains,
             insights: GraphOutputSchema.shape.insights,
-        },
-        async (input, _extra) => {
+        }),
+        source: 'local',
+        kind: 'meta',
+        async execute(input) {
             const parsed = GraphOutputSchema.parse(input);
             await onSubmitGraph(parsed);
-            return {
-                content: [{ type: 'text' as const, text: 'Graph submitted successfully.' }],
-            };
+            return ok({ submitted: true });
         },
-    );
+    };
 
-    return createSdkMcpServer({
-        name: 'graph',
-        version: '1.0.0',
-        tools: [readSources, submitGraph],
-    });
+    return [readSources, submitGraph];
 }

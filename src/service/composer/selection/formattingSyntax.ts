@@ -31,7 +31,13 @@ export interface MarkSyntax {
 
 export type FormattingSyntaxMap = Record<ComposerInlineMark, MarkSyntax>;
 
-/** Documented domain fallback (see file header). */
+/**
+ * Read-compatible delimiter grammar.
+ *
+ * Markdown-only stacks still write these Markdown delimiters. HTML-backed marks
+ * are recognized here for legacy source/removal, while new writes go through
+ * the canonical combined-span serializer.
+ */
 export const DEFAULT_FORMATTING_SYNTAX: FormattingSyntaxMap = {
 	bold: { open: '**', close: '**' },
 	italic: { open: '*', close: '*' },
@@ -43,6 +49,16 @@ export const DEFAULT_FORMATTING_SYNTAX: FormattingSyntaxMap = {
 
 /** Marks whose result is written as raw HTML (needs a rendered fragment, not `**`). */
 export const HTML_MARKS: ReadonlySet<ComposerInlineMark> = new Set(['underline', 'text-color', 'highlight']);
+
+/** Fixed source grammar for canonical combined HTML style declarations. */
+export const CANONICAL_HTML_STYLE_SYNTAX = Object.freeze({
+	bold: Object.freeze({ property: 'font-weight', value: '700' }),
+	italic: Object.freeze({ property: 'font-style', value: 'italic' }),
+	decoration: 'text-decoration-line',
+	color: 'color',
+	highlight: 'background-color',
+	defaultHighlight: 'var(--text-highlight-bg)',
+});
 
 export function resolveFormattingSyntax(overrides?: Partial<FormattingSyntaxMap>): FormattingSyntaxMap {
 	if (!overrides) return DEFAULT_FORMATTING_SYNTAX;

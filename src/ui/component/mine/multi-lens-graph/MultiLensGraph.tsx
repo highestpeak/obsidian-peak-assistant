@@ -55,6 +55,8 @@ interface MultiLensGraphProps {
 	loadingSteps?: Array<{ id: string; label: string; status: 'pending' | 'running' | 'done'; detail?: string }>;
 	/** Callback to trigger AI graph generation */
 	onRequestGenerate?: () => void;
+	/** Surface-specific label for the pre-generation action. */
+	generateLabel?: string;
 	/** Callback to save graph data to vault as markdown */
 	onSaveToVault?: () => void;
 }
@@ -70,6 +72,7 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 	loading = false,
 	loadingSteps,
 	onRequestGenerate,
+	generateLabel = 'Generate Knowledge Graph',
 	onSaveToVault,
 }) => {
 	const [activeLens, setActiveLens] = useState<LensType>(defaultLens);
@@ -153,11 +156,11 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 					variant="ghost"
 					size="sm"
 					onClick={onRequestGenerate}
-					className="pktw-gap-1.5 pktw-border pktw-border-pk-accent/30 pktw-bg-transparent pktw-text-pk-accent hover:pktw-bg-pk-accent/10 hover:pktw-border-pk-accent/50 hover:pktw-text-pk-accent"
+					className="!pktw-h-9 !pktw-min-h-9 !pktw-max-h-9 !pktw-px-3 pktw-gap-1.5 pktw-border pktw-border-pk-accent/30 pktw-bg-transparent pktw-text-pk-accent hover:pktw-bg-pk-accent/10 hover:pktw-border-pk-accent/50 hover:pktw-text-pk-accent"
 					style={{ cursor: 'pointer' }}
 				>
 					<Network className="pktw-w-3.5 pktw-h-3.5" />
-					Generate Knowledge Graph
+					{generateLabel}
 				</Button>
 			</div>
 		);
@@ -176,7 +179,7 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 						variant={activeLens === l.type ? 'secondary' : 'ghost'}
 						size="sm"
 						onClick={() => handleLensSwitch(l.type)}
-						className="pktw-gap-1 pktw-text-xs"
+						className="!pktw-h-9 !pktw-min-h-9 !pktw-max-h-9 !pktw-px-3 pktw-gap-1 pktw-text-xs"
 						style={{ cursor: 'pointer' }}
 						title={LENS_TOOLTIPS[l.type]}
 					>
@@ -188,7 +191,14 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 			{onSaveToVault && (
 				<>
 					<div className="pktw-flex-1" />
-					<Button variant="ghost" size="sm" onClick={onSaveToVault} title="Save graph to vault" style={{ cursor: 'pointer' }}>
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={onSaveToVault}
+						title="Save graph to vault"
+						className="!pktw-h-9 !pktw-min-h-9 !pktw-max-h-9 !pktw-px-3"
+						style={{ cursor: 'pointer' }}
+					>
 						<Save className="pktw-w-3.5 pktw-h-3.5" />
 					</Button>
 				</>

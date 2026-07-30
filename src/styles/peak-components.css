@@ -367,23 +367,25 @@
 
 
 /* ── pk-icon-btn ────────────────────────────────────────────────────────────
-   Square 28px transparent button — header close/dismiss affordances,
+   Square 32px transparent button — header close/dismiss affordances,
    secondary toolbar icons.
    ─────────────────────────────────────────────────────────────────────────── */
 
 /* !important on width/height required: Obsidian's
    `.peak-design-root button { height: auto !important; min-height: 0 !important }`
-   reset rule beats the bare 28px values otherwise, collapsing icon buttons
+   reset rule beats the bare 32px values otherwise, collapsing icon buttons
    to their svg content height (~14px). Same fix pattern as pkchat-run-chip
    and pkchat-send. */
 :is(.pktw-root, .peak-design-root) .pk-icon-btn {
   background: transparent !important;
   border: 0 !important;
   padding: 0 !important;
-  width: 28px !important;
-  height: 28px !important;
-  min-width: 28px !important;
-  min-height: 28px !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  max-width: 32px !important;
+  max-height: 32px !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -401,8 +403,8 @@
 .pktw-root .pk-icon-btn > svg,
 .peak-design-root .pk-icon-btn > svg,
 :is(.pktw-root, .peak-design-root) .pk-icon-btn .icon {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
 }
 
 

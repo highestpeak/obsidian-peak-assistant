@@ -462,8 +462,8 @@ flowchart LR
           </table>
 
           <h3 style="margin-top: 22px;">Runtime · 谁在跑 agent loop</h3>
-          <p class="prose">Advanced · Agent runtime 里的 <code>agentBackend</code> 只有两种取值：<strong>auto</strong>（默认；优先用自研 Harness，必要时由 runtime 选择合适 tier）和 <strong>harness</strong>（强制自研 loop，跑在 Vercel AI SDK 上，支持已配置的 provider）。旧的 <code>claude-agent-sdk</code> 后端不再是用户可选项；Claude Agent SDK 仍作为库被部分 MCP/tool plumbing 使用，但不再代表一个可切换的 cloud backend。</p>
-          <p class="prose">Escalation policy 是 Harness 特有的：<code>allowEscalation</code>（默认开）+ <code>maxEscalationsPerLoop</code>（1–3，默认 3）+ <code>autoEscalateScoreBelow</code>（0–1，默认 0.4）。当 self-score 低于阈值时，Harness 会尝试升到下一 tier（fast → deep → online）。详细语义放在 <a href="21-infra-agent-harness.html">21 Agent Harness</a>。</p>
+          <p class="prose">当前没有可切换的 <code>agentBackend</code> setting：Peak Harness 是唯一 agent control plane，拥有 loop、tool、permission、trace、budget 与 cancellation。Vercel AI SDK adapter 只把 AI Setup 选中的 profile / model 变成模型调用；OpenRouter、Anthropic、OpenAI、Google、Ollama 等仍是推理 provider，不拥有 Peak 的 agent runtime。外部 MCP server 也会先适配成 Harness <code>ToolDef</code>，再进入同一权限与 trace 链路。</p>
+          <p class="prose">Escalation policy 属于 Harness：<code>allowEscalation</code>（默认开）+ <code>maxEscalationsPerLoop</code>（1–3，默认 3）+ <code>autoEscalateScoreBelow</code>（0–1，默认 0.4）。当 self-score 低于阈值时，多 tier loop 会尝试沿 <code>fast → research → stronger</code> 升级；固定模型的 Harness 调用不会升级。详细语义放在 <a href="21-infra-agent-harness.html">21 Agent Harness</a>。</p>
 
           <h3 style="margin-top: 22px;">Budget · 4 条 alert rule</h3>
           <p class="prose">Budget 现在直接持久化在 <code>harnessSettings.budget</code>：<code>monthlyUsd</code>（默认 40 美元；0 表示无预算）+ <code>resetDayOfMonth</code>（1–28）+ 4 条 <code>alertRules</code>。Settings tab 可以改，Setup Wizard / onboarding 也可以在首次配置时写入一组可接受的预算默认值。每条 rule 有独立 kind：</p>

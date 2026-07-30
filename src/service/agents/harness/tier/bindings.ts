@@ -53,9 +53,9 @@ function bindingFromRole(
  * Build the tier→binding map.
  *
  * Resolves each tier through `ProfileRegistry.resolveSlot` — the single
- * model-binding resolver shared with the SDK path (`queryWithProfile`). We
+ * model-binding resolver shared by all Harness consumers. We
  * first refresh the registry's tier mirror from the settings we were handed so
- * the harness and any concurrent SDK call resolve identical bindings. The three
+ * all concurrent Harness consumers resolve identical bindings. The three
  * cascade tiers (fast / research / stronger) ARE slots, so each maps to itself.
  * Tiers with neither an explicit pick nor a role fallback are absent;
  * TierController falls forward to the next bound tier.

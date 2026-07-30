@@ -286,7 +286,7 @@ type Capability = {
   outputContract:  Schema          // 产出什么 artifact
   permissionKind:  'read' | 'acceptEdits' | 'bypassPermissions'
   costTier:        'fast' | 'deep' | 'premium'
-  backendPolicy:   BackendPolicy   // Hermes / Claude SDK / provider
+  backendPolicy:   BackendPolicy   // Peak Harness / provider-direct
   skillRef:        SkillId         // 挂哪本工作手册
   surfaceBinding:  SurfaceId[]     // 允许出现在哪些 surface
   // + 上面三个 (surfaceId / surfaceLabel / getStatus)
@@ -326,8 +326,8 @@ type Capability = {
               </tr>
               <tr>
                 <td><code>backendPolicy</code></td>
-                <td>能用 Hermes Harness / Claude SDK / 普通 provider？</td>
-                <td><code>src/core/types/capability.ts · BackendPolicy</code>（type-only）；实际 backend 选择仍在 <code>agentBackend</code> setting + AgentBackend 逻辑里</td>
+                <td>由 Peak Harness 还是 provider-direct strategy 执行？</td>
+                <td><code>src/core/types/capability.ts · BackendPolicy</code>（当前闭集为 <code>hermes-harness | provider-direct</code>）；<code>BackendStrategyRegistry</code> 按 manifest 的 preferred / fallback 解析。旧 <code>agentBackend</code> setting 已退役。</td>
               </tr>
               <tr>
                 <td><code>skillRef</code></td>
@@ -558,7 +558,7 @@ flowchart LR
               </tr>
               <tr>
                 <td><code>VaultReviewRuntime</code></td>
-                <td>Digest 指纹缓存、agent SDK bindings。</td>
+                <td>Digest 指纹缓存、Peak Harness model/tool bindings。</td>
                 <td><code data-copy="src/app/copilot/vault/composeVaultReviewRuntime.ts">composeVaultReviewRuntime.ts</code></td>
                 <td><code>main.ts</code> initSqlite 内（依赖 Lint runtime）</td>
               </tr>

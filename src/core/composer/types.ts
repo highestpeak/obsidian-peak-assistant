@@ -24,8 +24,9 @@
  *      between blocks — is encoded here and in the tests so WP2 cannot regress
  *      it (see {@link SourceAnchor} notes).
  *
- *   3. Sub-block addressing is a first-class concern: list items, table cells,
- *      and callout bodies each get their own {@link ComposerSubBlockAnchor}
+ *   3. Sub-block addressing is a first-class concern: authored paragraph
+ *      lines, list items, table cells, and callout bodies each get their own
+ *      {@link ComposerSubBlockAnchor}
  *      with independent `{from,to}` byte ranges (mdast nested nodes carry their
  *      own offsets). WP4 (list/cross-unit editing) and WP6 (table cell
  *      selection/merge) depend on these anchors existing today.
@@ -64,8 +65,9 @@ export type ComposerBlockKind =
 	| 'excalidraw'
 	| 'unknown';
 
-/** Sub-block unit taxonomy for nested addressing (WP4 / WP6). */
+/** Sub-block unit taxonomy for authored-line and nested addressing (WP4 / WP6). */
 export type ComposerUnitKind =
+	| 'paragraph-line'
 	| 'list-item'
 	| 'table-row'
 	| 'table-cell'
@@ -94,8 +96,9 @@ export interface SourceAnchor {
 }
 
 /**
- * Anchor for an addressable sub-unit inside a block (a list item, a table
- * cell, a callout body paragraph). Mirrors {@link SourceAnchor} at finer
+ * Anchor for an addressable sub-unit inside a block (an authored paragraph
+ * line, list item, table cell, or callout body paragraph). Mirrors
+ * {@link SourceAnchor} at finer
  * granularity so WP4/WP6 can target and patch a single unit.
  */
 export interface ComposerSubBlockAnchor {

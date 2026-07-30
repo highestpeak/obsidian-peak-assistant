@@ -24,7 +24,7 @@ export interface PlanSnapshot {
 	evidence: Array<{ path: string; reason: string; taskId: string }>;
 	/** LLM-generated one-paragraph report plan. */
 	proposedOutline: string;
-	/** Suggested McKinsey-style section titles. */
+	/** Query-driven report section titles. */
 	suggestedSections: string[];
 	/** Coverage assessment. */
 	coverageAssessment: string;

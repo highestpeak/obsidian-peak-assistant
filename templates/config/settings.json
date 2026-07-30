@@ -272,7 +272,7 @@
       "sectionSub": "Read-only runtime state for debugging.",
       "runtimeRow": {
         "title": "Agent runtime",
-        "desc": "Which loop engine drives agents (Harness / Claude Agent SDK)."
+        "desc": "Peak Harness runtime and active model bindings."
       },
       "backendRow": {
         "title": "Backend status",
@@ -323,17 +323,6 @@
       "title": "Re-run setup wizard",
       "description": "Let the setup assistant re-pick tier bindings from your current environment.",
       "cta": "Run"
-    },
-    "backend": {
-      "sectionLabel": "Agent runtime",
-      "info": "Which loop engine runs agents. The in-process runtime sits on top of Vercel AI SDK and supports any Provider (Claude, GPT, Ollama, OpenRouter). The Claude Agent SDK runtime is Anthropic’s official SDK (Anthropic models only). Vault Search currently requires the Claude Agent SDK runtime until its tools are adapted.",
-      "fieldLabel": "Runtime",
-      "fieldHint": "Picks the loop engine; per-tier model selection is via Tier Bindings below.",
-      "options": {
-        "auto": "Auto (in-process where supported, Claude Agent SDK for the rest)",
-        "harness": "In-process runtime (Vercel AI SDK, any Provider)",
-        "claudeAgentSdk": "Claude Agent SDK (Anthropic only)"
-      }
     },
     "tierBindings": {
       "sectionLabel": "Tier model bindings",

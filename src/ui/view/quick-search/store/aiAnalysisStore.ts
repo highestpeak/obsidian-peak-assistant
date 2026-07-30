@@ -99,7 +99,7 @@ function bridgeSnapshotToSearchSessionStore(snapshot: CompletedAnalysisSnapshot,
 	if (isV2) {
 		// Restore V2 state — reconstruct V2Section[] from persisted report sections
 		const v2PlanSections: import('./searchSessionStore').V2Section[] = (snapshot.v2ReportSections ?? []).map((sec, i) => ({
-			id: `restored-sec-${i}`,
+			id: sec.id || `restored-sec-${i}`,
 			title: sec.title,
 			contentType: sec.contentType ?? '',
 			visualType: sec.visualType ?? '',
@@ -138,7 +138,8 @@ function bridgeSnapshotToSearchSessionStore(snapshot: CompletedAnalysisSnapshot,
 
 						// Restore to graphAgentStore (used by SourcesGraph → useGraphAgent)
 						const sourcePaths = (snapshot.sources ?? []).map(s => s.path).sort().join('|');
-						useGraphAgentStore.getState().setCacheKey(sourcePaths);
+						const graphQuery = String((snapshot as CompletedAnalysisSnapshot & { query?: string }).query ?? '').trim();
+						useGraphAgentStore.getState().setCacheKey(`${graphQuery}\n${sourcePaths}`);
 						useGraphAgentStore.getState().setGraphData(graphData);
 
 						// Also restore to aiGraphStore (used by standalone graph view)
@@ -178,6 +179,7 @@ function bridgeSnapshotToSearchSessionStore(snapshot: CompletedAnalysisSnapshot,
 			v2FollowUpQuestions: snapshot.v2FollowUpQuestions ?? [],
 			v2Summary: getSnapshotSummary(snapshot),
 			v2SummaryStreaming: false,
+			v2SectionFollowups: snapshot.blocksFollowupsByBlockId ?? {},
 			v2Steps: restoredSteps,
 			v2Timeline: restoredTimeline,
 		}));

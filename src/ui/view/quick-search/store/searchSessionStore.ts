@@ -16,6 +16,7 @@ import type { UserFeedback } from '@/service/agents/core/types';
 import type { V2ToolStep, V2TimelineItem, V2Source } from '../types/search-steps';
 import { V2_INITIAL_STATE } from '@/core/search/v2SessionTypes';
 import type { V2Section, Annotation, Round, V2SessionState } from '@/core/search/v2SessionTypes';
+import type { SectionAnalyzeResult } from '@/core/storage/vault/search-docs/analysisSnapshotTypes';
 import type { SessionStatus as NeutralSessionStatus, AutoSaveState as NeutralAutoSaveState } from '@/core/search/sessionTypes';
 import type { V2SessionSnapshot } from './sessionSnapshot';
 import { snapshotFromState } from './sessionSnapshot';
@@ -132,13 +133,13 @@ interface SearchSessionState extends V2SessionState {
 	hitlFeedbackCallback: ((feedback: UserFeedback) => void) | null;
 	autoSaveState: AutoSaveState;
 
-	// --- V2 (Agent SDK) state inherited from V2SessionState ---
+	// --- V2 Harness state inherited from V2SessionState ---
 
 	restoredFromHistory: boolean;
 	restoredFromVaultPath: string | null;
 	aiModalOpen: boolean;
 	dashboardUpdatedLine: string;
-	sourcesViewMode: 'list' | 'graph';
+	sourcesViewMode: 'list' | 'tree' | 'graph';
 }
 
 interface SearchSessionActions {
@@ -167,7 +168,7 @@ interface SearchSessionActions {
 	// V2 step management
 	setV2Active: (active: boolean) => void;
 	setV2View: (view: 'process' | 'report' | 'sources') => void;
-	setSourcesViewMode: (mode: 'list' | 'graph') => void;
+	setSourcesViewMode: (mode: 'list' | 'tree' | 'graph') => void;
 	pushV2Step: (step: V2ToolStep) => void;
 	updateV2Step: (id: string, updater: (step: V2ToolStep) => V2ToolStep) => void;
 	appendV2ReportChunk: (chunk: string) => void;
@@ -197,6 +198,7 @@ interface SearchSessionActions {
 	startSectionRegenerate: (id: string) => void;
 	setSummary: (text: string) => void;
 	setSummaryStreaming: (streaming: boolean) => void;
+	addSectionFollowup: (sectionId: string, turn: SectionAnalyzeResult) => void;
 
 	// Round management (Continue Append Mode)
 	freezeCurrentRound: () => void;
@@ -312,6 +314,7 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 			v2UserInsights: [],
 			v2Summary: '',
 			v2SummaryStreaming: false,
+			v2SectionFollowups: {},
 			rounds: [],
 			currentRoundIndex: 0,
 			// Preserve analysisMode and webEnabled (already in closure)
@@ -538,7 +541,18 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 	addUserInsight: (insight) => set((s) => ({ v2UserInsights: [...s.v2UserInsights, insight] })),
 	removeUserInsight: (index) => set((s) => ({ v2UserInsights: s.v2UserInsights.filter((_, i) => i !== index) })),
 
-	setPlanSections: (sections) => set({ v2PlanSections: sections }),
+	setPlanSections: (sections) => set((s) => {
+		const frozenIds = new Set(
+			s.rounds.flatMap((round) => round.sections.map((section) => section.id)),
+		);
+		return {
+			v2PlanSections: sections.map((section) => (
+				frozenIds.has(section.id)
+					? { ...section, id: `round-${s.currentRoundIndex}-${section.id}` }
+					: section
+			)),
+		};
+	}),
 
 	updatePlanSection: (id, updater) => set((s) => ({
 		v2PlanSections: s.v2PlanSections.map((sec) => sec.id === id ? updater(sec) : sec),
@@ -615,6 +629,12 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 
 	setSummary: (text) => set({ v2Summary: text }),
 	setSummaryStreaming: (streaming) => set({ v2SummaryStreaming: streaming }),
+	addSectionFollowup: (sectionId, turn) => set((s) => ({
+		v2SectionFollowups: {
+			...s.v2SectionFollowups,
+			[sectionId]: [...(s.v2SectionFollowups[sectionId] ?? []), turn],
+		},
+	})),
 
 	// -----------------------------------------------------------------------
 	// Round management (Continue Append Mode)
@@ -653,9 +673,10 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 		v2ReportComplete: false,
 		v2ToolCallIndex: new Map(),
 		v2PlanSections: [],
-		v2PlanApproved: false,
-		v2ProposedOutline: null,
-		v2Summary: '',
+			v2PlanApproved: false,
+			v2ProposedOutline: null,
+			v2UserInsights: [],
+			v2Summary: '',
 		v2SummaryStreaming: false,
 		v2FollowUpQuestions: [],
 		v2View: 'process' as const,
@@ -699,6 +720,8 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 			followUpQuestions: [],
 			proposedOutline: null,
 			annotations: [],
+			usage: null,
+			duration: null,
 		};
 		return {
 			rounds: [synthesizedRound],
@@ -734,6 +757,7 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 	restoreFromSnapshot: (snapshot) => set({
 		// Write all snapshot fields into the store
 		...snapshot,
+		v2SectionFollowups: snapshot.v2SectionFollowups ?? {},
 		// Reset runtime-only fields
 		restoredFromHistory: false,
 		restoredFromVaultPath: null,
@@ -769,4 +793,3 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 // ---------------------------------------------------------------------------
 // Round utility functions (derived state helpers)
 // ---------------------------------------------------------------------------
-

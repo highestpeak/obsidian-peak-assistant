@@ -13,6 +13,10 @@
  */
 
 import type { ComposerOperation, ComposerSelection, SelectionOpResult } from '@/core/composer';
+import {
+	canonicalizeExternalLinkSelection,
+	shouldCanonicalizeLinkAsHtml,
+} from './canonicalInlineHtml';
 import { visibleSelectionSegments, wrapVisibleSegments } from './visibleSegments';
 
 export interface PasteUrlOptions {
@@ -54,10 +58,37 @@ export function pasteUrlIntoSelection(
 	const trail = text.length - text.trimEnd().length;
 	const from = unit.from + lead;
 	const to = unit.to - trail;
-	const segments = visibleSelectionSegments(selection.sourceText, { ...unit, from, to })
-		.filter((segment) => !segment.linkTarget);
+	const allSegments = visibleSelectionSegments(selection.sourceText, { ...unit, from, to });
+	const segments = allSegments.filter((segment) => !segment.linkTarget);
 	if (segments.length === 0) {
 		return { ok: false, reason: 'empty-selection', message: 'The selected text is already linked.' };
+	}
+	if (shouldCanonicalizeLinkAsHtml(selection.sourceText, allSegments)) {
+		if (options.internalTarget) {
+			return {
+				ok: false,
+				reason: 'semantic-inline-html-format',
+				message: 'Vault wikilinks cannot be merged into an HTML style run.',
+			};
+		}
+		const canonical = canonicalizeExternalLinkSelection(
+			selection.sourceText,
+			{ ...unit, from, to },
+			segments,
+			url,
+		);
+		if (!canonical.ok) {
+			return {
+				ok: false,
+				reason: canonical.reason,
+				message: 'Links, inline code and formulas cannot be merged into an HTML style run.',
+			};
+		}
+		const op: ComposerOperation = {
+			kind: 'replaceRange',
+			...canonical.patch,
+		};
+		return { ok: true, operations: [op], label: options.label ?? 'Add link' };
 	}
 	const open = options.internalTarget ? `[[${options.internalTarget}|` : '[';
 	const close = options.internalTarget ? ']]' : `](${url})`;

@@ -4,3 +4,4 @@
  */
 export * from './linkAnalysis';
 export * from './embedSelectionAnchor';
+export * from './embedSelectionRange';

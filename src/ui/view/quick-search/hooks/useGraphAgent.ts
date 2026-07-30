@@ -48,7 +48,7 @@ export function useGraphAgent(
 	}), [settings, aiAnalysisHistoryService, eventBus, analysisDocVaultWriter]);
 
 	// Check if we already have cached data for these sources
-	const key = sources.map(s => s.path).sort().join('|');
+	const key = `${searchQuery.trim()}\n${sources.map(s => s.path).sort().join('|')}`;
 	const isCached = store.cacheKey === key && store.graphData != null;
 
 	const start = useCallback(() => {

@@ -10,6 +10,7 @@ import {
 	COMPOSER_ANALYSIS_RENDERER_ID,
 	COMPOSER_METADATA_SUGGESTION_RENDERER_ID,
 	COMPOSER_FORMULA_ANNOTATION_RENDERER_ID,
+	COMPOSER_LIST_ITEM_PATCH_RENDERER_ID,
 	COMPOSER_NATIVE_FILE_PATCH_RENDERER_ID,
 } from '@/core/composer';
 import { StreamingTextCandidateCard } from './StreamingTextCandidateCard';
@@ -40,6 +41,7 @@ export function createDefaultCandidateRendererRegistry(): CandidateRendererRegis
 	const registry = createCandidateRendererRegistry(UnsupportedCandidateCard);
 	registry.register(COMPOSER_ANALYSIS_RENDERER_ID, AnalysisCandidateCard);
 	registry.register(COMPOSER_STREAMING_TEXT_RENDERER_ID, StreamingTextCandidateCard);
+	registry.register(COMPOSER_LIST_ITEM_PATCH_RENDERER_ID, StreamingTextCandidateCard);
 	registry.register(COMPOSER_METADATA_SUGGESTION_RENDERER_ID, MetadataSuggestionCandidateCard);
 	registry.register(COMPOSER_FORMULA_ANNOTATION_RENDERER_ID, FormulaAnnotationCandidateCard);
 	// WP-INT — native structural edits (Base/Canvas/Excalidraw typed-patch review).

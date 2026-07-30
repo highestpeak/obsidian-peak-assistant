@@ -11,11 +11,11 @@
 //   - `BackendStrategy` — one concrete implementation per BackendKind.
 //     A strategy takes the same shape as CapabilityRunner's `execute`.
 //   - `BackendStrategyRegistry` — a map (BackendKind → BackendStrategy).
-//     The composition site populates it at boot (`AppRuntimeRegistry`)
-//     with the backends currently wired up (hermes-harness runner,
-//     Claude SDK client, raw provider fanout). Unavailable backends
-//     simply do not register — the resolver then skips them via the
-//     fallback list.
+//     An app composition site can populate it with hermes-harness and/or
+//     provider-direct execution. Unavailable backends simply do not register —
+//     the resolver then skips them via the fallback list. The current boot path
+//     creates this registry as a local composition value; long-lived ownership
+//     and Gateway consumption are separate convergence work.
 //   - `resolveBackendStrategy(policy, registry)` — walks
 //     `[policy.preferred, ...policy.fallback]` and returns the first
 //     registered strategy. Throws when none are available (fail-loud,
@@ -93,9 +93,9 @@ export function composeExecuteFromPolicy<TInput = unknown, TResult = unknown>(
 // Built-in stub strategies.
 // ---------------------------------------------------------------------------
 //
-// These are intentionally *stubs* — the real hermes-harness /
-// claude-sdk / provider-direct wiring lives in AppRuntimeRegistry at
-// composition time. Exposing named stubs here gives tests something to
+// These are intentionally *stubs* — real hermes-harness /
+// provider-direct wiring belongs to the app composition layer. Exposing named
+// stubs here gives tests something to
 // register that has zero live-provider dependencies, and gives the
 // composition site a documented pattern to follow.
 

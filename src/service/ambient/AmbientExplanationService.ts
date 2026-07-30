@@ -2,7 +2,7 @@
 //
 // Lifted out of `LlmAmbientExplanationAdapter` (T8): the adapter
 // previously owned cooldown state, prompt rendering through
-// TemplateManager, the queryWithProfile call, and result trimming +
+// TemplateManager, the Harness call, and result trimming +
 // 500-char truncation. This service now owns the cooldown gate,
 // prompt rendering, and result trimming. The adapter is reduced to
 // "resolve profile, run the prompt, hand back collected text".
@@ -18,8 +18,8 @@ import { TemplateManager } from '@/core/template/TemplateManager';
 
 /**
  * Adapter-supplied "run this prompt and give me the collected text"
- * surface. The adapter wraps `queryWithProfile` (or any other
- * provider) and concatenates / resolves the SDK message stream into a
+ * surface. The adapter wraps Peak Harness (or any other
+ * provider) and concatenates / resolves the model stream into a
  * single string. The service holds cooldown, prompt rendering, and
  * trimming.
  *
