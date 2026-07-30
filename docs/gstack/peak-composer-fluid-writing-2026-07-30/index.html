@@ -269,6 +269,22 @@
 		.markdown-token[data-structural-token="task"][data-checked="true"]::after {
 			content: "☑";
 		}
+		.markdown-inline[data-inline-mark="bold"] { font-weight: 720; }
+		.markdown-inline[data-inline-mark="italic"] { font-style: italic; }
+		.markdown-inline[data-inline-mark="underline"] {
+			text-decoration: underline;
+			text-underline-offset: 2px;
+		}
+		.markdown-inline[data-inline-mark="strikethrough"] {
+			text-decoration: line-through;
+		}
+		.markdown-inline[data-inline-mark="code"] {
+			padding: 1px 4px;
+			border-radius: 4px;
+			background: var(--surface-2);
+			font-family: var(--mono);
+			font-size: 0.92em;
+		}
 		.markdown-token[data-structural-token] {
 			opacity: 1;
 		}
@@ -399,7 +415,7 @@
 				<h2>写入路径</h2>
 				<p>主动作只负责继续写；复杂对象才进入选择。</p>
 				<div class="lane active"><span class="lane-index">1</span><span><strong>直接写 Markdown</strong><span>一次点击，空块聚焦</span></span></div>
-				<div class="lane"><span class="lane-index">2</span><span><strong>语法即时投影</strong><span># / - / &gt; / fence / $$</span></span></div>
+				<div class="lane"><span class="lane-index">2</span><span><strong>语法即时投影</strong><span>** / * / &lt;u&gt; / # / - / $$</span></span></div>
 				<div class="lane"><span class="lane-index">3</span><span><strong>事务写入</strong><span>⌘↵ → commit → reparse</span></span></div>
 				<div class="lane"><span class="lane-index">4</span><span><strong>复杂对象</strong><span>新建或引用已有</span></span></div>
 			</aside>
@@ -440,7 +456,7 @@
 							id="markdownEditor"
 							contenteditable="true"
 							spellcheck="false"
-							data-placeholder="直接输入 Markdown：# 标题、- 列表、> 引用、代码或公式…"
+							data-placeholder="直接输入 Markdown：**粗体**、*斜体*、# 标题、- 列表…"
 						></div>
 						<div class="draft-footer">
 							<span><kbd>Enter</kbd> 连续写 · <kbd>Tab</kbd> 层级 · <kbd>Shift Tab</kbd> 返回 · <kbd>⌘ Enter</kbd> 写入</span>
@@ -547,7 +563,29 @@
 			markdownSource = readEditorSource();
 			projectMarkdownSource(markdownSource, selection?.focus ?? markdownSource.length);
 		});
+		editor.addEventListener('beforeinput', event => {
+			const mark = {
+				formatBold: 'bold',
+				formatItalic: 'italic',
+				formatUnderline: 'underline',
+			}[event.inputType];
+			if (!mark) return;
+			event.preventDefault();
+			if (!event.isComposing) applyMarkdownInlineFormat(mark);
+		});
 		editor.addEventListener('keydown', event => {
+			const key = event.key.toLowerCase();
+			if (
+				(event.metaKey || event.ctrlKey) &&
+				!event.altKey &&
+				!event.isComposing &&
+				(key === 'b' || key === 'i' || key === 'u')
+			) {
+				event.preventDefault();
+				const mark = key === 'b' ? 'bold' : key === 'i' ? 'italic' : 'underline';
+				applyMarkdownInlineFormat(mark);
+				return;
+			}
 			if (
 				event.key === 'Tab' &&
 				!event.isComposing &&
@@ -690,6 +728,78 @@
 			return offset + delta;
 		}
 
+		function applyMarkdownInlineFormat(mark) {
+			const selection = readSourceSelection();
+			if (!selection) return;
+			const edit = formatMarkdownInlineSelection(
+				markdownSource,
+				selection.from,
+				selection.to,
+				mark,
+			);
+			if (!edit) return;
+			markdownSource = edit.value;
+			projectMarkdownSource(markdownSource, edit.selectionEnd);
+		}
+
+		function formatMarkdownInlineSelection(source, from, to, mark) {
+			const syntax = {
+				bold: { open: '**', close: '**' },
+				italic: { open: '*', close: '*' },
+				underline: { open: '<u>', close: '</u>' },
+			}[mark];
+			if (!syntax || markdownFenceOpenAt(source, from)) return null;
+			const start = Math.max(0, Math.min(source.length, Math.min(from, to)));
+			const end = Math.max(start, Math.min(source.length, Math.max(from, to)));
+			if (start === end) {
+				const value =
+					source.slice(0, start) +
+					syntax.open +
+					syntax.close +
+					source.slice(end);
+				const caret = start + syntax.open.length;
+				return { value, selectionStart: caret, selectionEnd: caret };
+			}
+			const selected = source.slice(start, end);
+			const before = source.slice(
+				Math.max(0, start - syntax.open.length),
+				start,
+			);
+			const after = source.slice(end, end + syntax.close.length);
+			if (
+				before.toLowerCase() === syntax.open.toLowerCase() &&
+				after.toLowerCase() === syntax.close.toLowerCase()
+			) {
+				const selectionStart = start - syntax.open.length;
+				return {
+					value:
+						source.slice(0, selectionStart) +
+						selected +
+						source.slice(end + syntax.close.length),
+					selectionStart,
+					selectionEnd: selectionStart + selected.length,
+				};
+			}
+			return {
+				value:
+					source.slice(0, start) +
+					syntax.open +
+					selected +
+					syntax.close +
+					source.slice(end),
+				selectionStart: start + syntax.open.length,
+				selectionEnd: end + syntax.open.length,
+			};
+		}
+
+		function markdownFenceOpenAt(source, offset) {
+			let open = false;
+			source.slice(0, offset).split('\n').forEach(line => {
+				if (/^\s*```/.test(line)) open = !open;
+			});
+			return open;
+		}
+
 		function insertMarkdownBreak(soft) {
 			const selection = readSourceSelection();
 			if (!selection) return;
@@ -780,7 +890,8 @@
 					codeOpen: false,
 					html: markdownBlock(
 						'heading',
-						structuralToken(heading[1], 'heading') + escapeHtml(heading[2]),
+						structuralToken(heading[1], 'heading') +
+							projectInlineMarkdown(heading[2]),
 					),
 				};
 			}
@@ -793,7 +904,7 @@
 						structuralToken(task[1], 'task', {
 							checked: task[2].toLowerCase() === 'x',
 							depth: markdownListIndentDepth(line),
-						}) + escapeHtml(task[3]),
+						}) + projectInlineMarkdown(task[3]),
 					),
 				};
 			}
@@ -811,7 +922,7 @@
 								marker: list[2],
 								depth: markdownListIndentDepth(line),
 							},
-						) + escapeHtml(list[4]),
+						) + projectInlineMarkdown(list[4]),
 					),
 				};
 			}
@@ -821,7 +932,8 @@
 					codeOpen: false,
 					html: markdownBlock(
 						'callout',
-						structuralToken(callout[1], 'callout') + escapeHtml(callout[2]),
+						structuralToken(callout[1], 'callout') +
+							projectInlineMarkdown(callout[2]),
 					),
 				};
 			}
@@ -831,7 +943,8 @@
 					codeOpen: false,
 					html: markdownBlock(
 						'quote',
-						structuralToken(quote[1], 'quote') + escapeHtml(quote[2]),
+						structuralToken(quote[1], 'quote') +
+							projectInlineMarkdown(quote[2]),
 					),
 				};
 			}
@@ -849,8 +962,106 @@
 			}
 			return {
 				codeOpen: false,
-				html: markdownBlock('paragraph', escapeHtml(line)),
+				html: markdownBlock('paragraph', projectInlineMarkdown(line)),
 			};
+		}
+
+		function projectInlineMarkdown(source) {
+			let html = '';
+			let cursor = 0;
+			while (cursor < source.length) {
+				const span = matchInlineMarkdownSpan(source, cursor);
+				if (!span) {
+					html += escapeHtml(source[cursor]);
+					cursor += 1;
+					continue;
+				}
+				const inner = source.slice(span.innerStart, span.innerEnd);
+				const content = span.literal ? escapeHtml(inner) : projectInlineMarkdown(inner);
+				html +=
+					inlineMarkdownToken(span.open, span.mark) +
+					`<span class="markdown-inline" data-inline-mark="${span.mark}">` +
+					content +
+					'</span>' +
+					inlineMarkdownToken(span.close, span.mark);
+				cursor = span.end;
+			}
+			return html;
+		}
+
+		function matchInlineMarkdownSpan(source, at) {
+			const rest = source.slice(at);
+			if (rest.startsWith('`')) {
+				const closeAt = source.indexOf('`', at + 1);
+				if (closeAt > at + 1) {
+					return inlineMarkdownSpan(source, at, 1, closeAt, 1, 'code', true);
+				}
+			}
+			if (rest.startsWith('**') || rest.startsWith('__')) {
+				const delimiter = rest.slice(0, 2);
+				const closeAt = findInlineMarkdownClose(source, at + 2, delimiter);
+				if (closeAt >= 0) {
+					return inlineMarkdownSpan(source, at, 2, closeAt, 2, 'bold');
+				}
+			}
+			if (rest.startsWith('*') || rest.startsWith('_')) {
+				const delimiter = rest[0];
+				const closeAt = findInlineMarkdownClose(source, at + 1, delimiter);
+				if (closeAt >= 0) {
+					return inlineMarkdownSpan(source, at, 1, closeAt, 1, 'italic');
+				}
+			}
+			if (rest.startsWith('~~')) {
+				const closeAt = findInlineMarkdownClose(source, at + 2, '~~');
+				if (closeAt >= 0) {
+					return inlineMarkdownSpan(source, at, 2, closeAt, 2, 'strikethrough');
+				}
+			}
+			if (rest.toLowerCase().startsWith('<u>')) {
+				const closeAt = source.toLowerCase().indexOf('</u>', at + 3);
+				if (closeAt > at + 3) {
+					return inlineMarkdownSpan(source, at, 3, closeAt, 4, 'underline');
+				}
+			}
+			return null;
+		}
+
+		function inlineMarkdownSpan(
+			source,
+			at,
+			openLength,
+			closeAt,
+			closeLength,
+			mark,
+			literal = false,
+		) {
+			return {
+				open: source.slice(at, at + openLength),
+				close: source.slice(closeAt, closeAt + closeLength),
+				innerStart: at + openLength,
+				innerEnd: closeAt,
+				end: closeAt + closeLength,
+				mark,
+				literal,
+			};
+		}
+
+		function findInlineMarkdownClose(source, from, delimiter) {
+			let closeAt = source.indexOf(delimiter, from);
+			while (closeAt >= 0) {
+				if (closeAt > from && !/\s/.test(source[closeAt - 1])) return closeAt;
+				closeAt = source.indexOf(delimiter, closeAt + 1);
+			}
+			return -1;
+		}
+
+		function inlineMarkdownToken(source, mark) {
+			return (
+				`<span class="markdown-token" contenteditable="false"` +
+				` data-inline-token="${mark}" aria-hidden="true">` +
+				escapeHtml(source) +
+				'</span>'
+			);
 		}
 
 		function markdownBlock(kind, content) {

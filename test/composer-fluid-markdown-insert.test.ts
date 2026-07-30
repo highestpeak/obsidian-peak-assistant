@@ -4,8 +4,10 @@ import {
 	composerDraftBlockRanges,
 	composerDraftHiddenRanges,
 	composerDraftPresentationKind,
+	formatMarkdownDraftSelection,
 	indentMarkdownDraftListItems,
 	insertMarkdownDraftBreak,
+	projectSourceVisualParts,
 } from '@/service/composer';
 import { DEFAULT_COMPOSER_CONFIG } from '@/ui/view/composer/config/composerConfig';
 
@@ -119,6 +121,68 @@ assert.equal(
 	indentMarkdownDraftListItems('- [ ] parent\n- [x] child', 24, 24)?.value,
 	'- [ ] parent\n\t- [x] child',
 	'task items preserve their checkbox marker while nesting',
+);
+
+assert.deepEqual(
+	formatMarkdownDraftSelection('plain', 0, 5, 'bold'),
+	{
+		value: '**plain**',
+		selectionStart: 2,
+		selectionEnd: 7,
+	},
+	'Cmd/Ctrl+B writes canonical Markdown instead of browser-owned rich DOM',
+);
+assert.deepEqual(
+	formatMarkdownDraftSelection('say ', 4, 4, 'italic'),
+	{
+		value: 'say **',
+		selectionStart: 5,
+		selectionEnd: 5,
+	},
+	'a collapsed italic shortcut inserts a source pair and leaves the caret inside',
+);
+assert.deepEqual(
+	formatMarkdownDraftSelection('under', 0, 5, 'underline'),
+	{
+		value: '<span style="text-decoration-line: underline">under</span>',
+		selectionStart: 46,
+		selectionEnd: 51,
+	},
+	'underline uses the canonical HTML style syntax supported by Obsidian Markdown',
+);
+assert.equal(
+	formatMarkdownDraftSelection('**bold**', 2, 6, 'underline')?.value,
+	'<span style="font-weight: 700; text-decoration-line: underline">bold</span>',
+	'adding an HTML-backed mark canonicalizes the whole overlapping style stack',
+);
+assert.equal(
+	formatMarkdownDraftSelection('```ts\ncode\n```', 7, 11, 'bold'),
+	null,
+	'format shortcuts stay disabled inside code blocks',
+);
+
+const inlineProjection = projectSourceVisualParts(
+	'**bold** *italic* <u>under</u>',
+	0,
+	{ mathMode: 'source' },
+);
+assert.ok(
+	inlineProjection.some(
+		(part) => part.kind === 'run' && part.text === 'bold' && part.style.bold,
+	),
+	'Markdown drafts visibly project bold source',
+);
+assert.ok(
+	inlineProjection.some(
+		(part) => part.kind === 'run' && part.text === 'italic' && part.style.italic,
+	),
+	'Markdown drafts visibly project italic source',
+);
+assert.ok(
+	inlineProjection.some(
+		(part) => part.kind === 'run' && part.text === 'under' && part.style.underline,
+	),
+	'Markdown drafts visibly project underline source',
 );
 
 const exitList = insertMarkdownDraftBreak('- first\n- ', 10, 10);

@@ -87,5 +87,15 @@ assert.ok(
 		draft.includes('indentMarkdownDraftListItems'),
 	'Tab and Shift+Tab are owned by the Markdown draft while focus is in a list',
 );
+assert.ok(
+	draft.includes("key === 'b'") &&
+		draft.includes("key === 'i'") &&
+		draft.includes("key === 'u'") &&
+		draft.includes("native.inputType === 'formatBold'") &&
+		draft.includes("native.inputType === 'formatItalic'") &&
+		draft.includes("native.inputType === 'formatUnderline'") &&
+		draft.includes('formatMarkdownDraftSelection'),
+	'keyboard and beforeinput formatting are serialized through Markdown source instead of native rich DOM',
+);
 
 console.log('composer-contenteditable-dom-ownership: passed');

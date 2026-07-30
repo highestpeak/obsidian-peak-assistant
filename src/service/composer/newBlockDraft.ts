@@ -1,12 +1,26 @@
 import { PromptId } from '@/core/types/prompt';
-import type { ComposerBlockKind } from '@/core/composer';
+import {
+	applyOperations,
+	type ComposerBlockKind,
+	type ComposerInlineMark,
+	type ComposerOperation,
+} from '@/core/composer';
 import { parseComposerDocument } from './documentParser';
 import type { ComposerCapabilityExecutorPort } from './capabilities/executorPort';
-import type { HiddenSourceRange } from './render/sourceVisualProjection';
+import {
+	projectSourceVisualParts,
+	type HiddenSourceRange,
+} from './render/sourceVisualProjection';
 import {
 	headingTextStart,
 	listItemContentStart,
+	partitionSourceRange,
 } from './selection/partitionSelection';
+import { applyMarkToSelection } from './selection/markSerializer';
+import {
+	openDelimiter,
+	resolveFormattingSyntax,
+} from './selection/formattingSyntax';
 
 export const COMPOSER_BLOCK_DRAFT_CAPABILITY_ID = 'composer.block-draft.generate';
 
@@ -146,6 +160,89 @@ export interface MarkdownDraftEdit {
 	value: string;
 	selectionStart: number;
 	selectionEnd: number;
+}
+
+export type MarkdownDraftInlineMark = Extract<
+	ComposerInlineMark,
+	'bold' | 'italic' | 'underline'
+>;
+
+/**
+ * Serialize draft formatting shortcuts through Markdown source.
+ *
+ * Native contenteditable formatting creates browser-owned `<b>/<i>/<u>` DOM
+ * that disappears when the draft is read back through `textContent`. This
+ * helper routes the same gesture through Composer's mark serializer so the
+ * source remains canonical, reversible and compatible with the live projector.
+ */
+export function formatMarkdownDraftSelection(
+	value: string,
+	selectionStart: number,
+	selectionEnd: number,
+	mark: MarkdownDraftInlineMark,
+): MarkdownDraftEdit | null {
+	const from = Math.max(0, Math.min(value.length, Math.min(selectionStart, selectionEnd)));
+	const to = Math.max(from, Math.min(value.length, Math.max(selectionStart, selectionEnd)));
+	const snapshot = parseComposerDocument(value);
+	if (from === to) {
+		const block = snapshot.blocks.find(
+			(candidate) => candidate.source.from <= from && candidate.source.to >= to,
+		);
+		if (block?.kind === 'code') return null;
+		const syntax = resolveFormattingSyntax()[mark];
+		const open = openDelimiter(syntax);
+		const inserted = `${open}${syntax.close}`;
+		const next = `${value.slice(0, from)}${inserted}${value.slice(to)}`;
+		const caret = from + open.length;
+		return { value: next, selectionStart: caret, selectionEnd: caret };
+	}
+	const selection = partitionSourceRange(snapshot, from, to);
+	const result = applyMarkToSelection(selection, mark);
+	if (!result.ok) return null;
+	const next = applyOperations(value, result.operations);
+	const mapped = formattedDraftSelectionRange(result.operations);
+	if (!mapped) return { value: next, selectionStart: from, selectionEnd: from };
+	return {
+		value: next,
+		selectionStart: mapped.from,
+		selectionEnd: mapped.to,
+	};
+}
+
+function formattedDraftSelectionRange(
+	operations: readonly ComposerOperation[],
+): { from: number; to: number } | null {
+	const replacements = operations
+		.filter(
+			(operation): operation is Extract<ComposerOperation, { kind: 'replaceRange' }> =>
+				operation.kind === 'replaceRange',
+		)
+		.sort((left, right) => left.from - right.from);
+	let delta = 0;
+	let selectionFrom = Number.POSITIVE_INFINITY;
+	let selectionTo = Number.NEGATIVE_INFINITY;
+	for (const replacement of replacements) {
+		const nextFrom = replacement.from + delta;
+		const visible = projectSourceVisualParts(replacement.text, nextFrom, {
+			mathMode: 'source',
+		}).filter((part) => part.kind !== 'hidden');
+		if (visible.length > 0) {
+			const first = visible[0];
+			const last = visible[visible.length - 1];
+			selectionFrom = Math.min(
+				selectionFrom,
+				first.kind === 'math' ? first.visibleFrom : first.from,
+			);
+			selectionTo = Math.max(
+				selectionTo,
+				last.kind === 'math' ? last.visibleTo : last.to,
+			);
+		}
+		delta += replacement.text.length - (replacement.to - replacement.from);
+	}
+	return Number.isFinite(selectionFrom) && Number.isFinite(selectionTo)
+		? { from: selectionFrom, to: selectionTo }
+		: null;
 }
 
 interface MarkdownListLine {

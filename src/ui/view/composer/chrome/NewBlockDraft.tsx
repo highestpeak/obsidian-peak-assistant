@@ -13,6 +13,7 @@ import {
 	composerDraftHasContent,
 	composerDraftReferenceSource,
 	composerDraftReferenceTarget,
+	formatMarkdownDraftSelection,
 	hasSourceVisualSyntaxChange,
 	indentMarkdownDraftListItems,
 	insertMarkdownDraftBreak,
@@ -20,6 +21,7 @@ import {
 	parseTableSource,
 	projectSourceVisualParts,
 	serializeTable,
+	type MarkdownDraftInlineMark,
 	type TableModel,
 } from '@/service/composer';
 import { StreamdownIsolated } from '@/ui/component/mine';
@@ -449,6 +451,31 @@ function VisualDraftTextEditor({
 		project(edit.value, nextSelection);
 		return true;
 	};
+	const formatInline = (mark: MarkdownDraftInlineMark): void => {
+		const el = ref.current;
+		if (!el) return;
+		const selection = el.ownerDocument.getSelection();
+		const mapped = selection ? mapDomSelectionToSource(el, selection) : null;
+		if (!mapped) return;
+		const edit = formatMarkdownDraftSelection(
+			el.textContent ?? '',
+			mapped.from,
+			mapped.to,
+			mark,
+		);
+		if (!edit) return;
+		const collapsed = edit.selectionStart === edit.selectionEnd;
+		const direction = collapsed ? 'collapsed' : mapped.direction;
+		const nextSelection: MappedSelection = {
+			from: edit.selectionStart,
+			to: edit.selectionEnd,
+			anchor: direction === 'backward' ? edit.selectionEnd : edit.selectionStart,
+			focus: direction === 'backward' ? edit.selectionStart : edit.selectionEnd,
+			direction,
+		};
+		onChange(edit.value);
+		project(edit.value, nextSelection);
+	};
 	return (
 		<div
 			ref={ref}
@@ -462,6 +489,19 @@ function VisualDraftTextEditor({
 			onInput={handleInput}
 			onBeforeInput={(event) => {
 				const native = event.nativeEvent as InputEvent;
+				const formatMark: MarkdownDraftInlineMark | undefined =
+					native.inputType === 'formatBold'
+						? 'bold'
+						: native.inputType === 'formatItalic'
+							? 'italic'
+							: native.inputType === 'formatUnderline'
+								? 'underline'
+								: undefined;
+				if (formatMark) {
+					event.preventDefault();
+					if (!native.isComposing) formatInline(formatMark);
+					return;
+				}
 				if (native.inputType !== 'insertParagraph' && native.inputType !== 'insertLineBreak') {
 					return;
 				}
@@ -491,6 +531,19 @@ function VisualDraftTextEditor({
 				handleInput();
 			}}
 			onKeyDown={(event) => {
+				const key = event.key.toLowerCase();
+				if (
+					(event.metaKey || event.ctrlKey) &&
+					!event.altKey &&
+					!event.nativeEvent.isComposing &&
+					(key === 'b' || key === 'i' || key === 'u')
+				) {
+					event.preventDefault();
+					const mark: MarkdownDraftInlineMark =
+						key === 'b' ? 'bold' : key === 'i' ? 'italic' : 'underline';
+					formatInline(mark);
+					return;
+				}
 				if (
 					event.key === 'Tab' &&
 					!event.nativeEvent.isComposing &&

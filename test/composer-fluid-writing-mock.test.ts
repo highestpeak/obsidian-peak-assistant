@@ -36,6 +36,20 @@ assert.ok(
 	mock.includes('--list-depth'),
 	'interaction mock exposes visible indentation for nested list markers',
 );
+assert.ok(
+	mock.includes('function projectInlineMarkdown(') &&
+		mock.includes('data-inline-mark="bold"') &&
+		mock.includes('data-inline-mark="italic"') &&
+		mock.includes('data-inline-mark="underline"'),
+	'interaction mock live-projects bold, italic and underline source',
+);
+assert.ok(
+	mock.includes("key === 'b'") &&
+		mock.includes("key === 'i'") &&
+		mock.includes("key === 'u'") &&
+		mock.includes('function formatMarkdownInlineSelection('),
+	'interaction mock owns source-safe bold, italic and underline shortcuts',
+);
 assert.equal(
 	mock.includes('.markdown-editor[data-kind="heading"]'),
 	false,
