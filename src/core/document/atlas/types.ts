@@ -119,6 +119,10 @@ export interface DocumentBlock {
 
 /** Kind-specific structured detail computed at parse time. */
 export interface BlockDetail {
+	/** Authored label/alias/alt text preserved from Markdown source. */
+	authoredLabel?: string;
+	/** Imported `URL | title` companion title, when present. */
+	companionTitle?: string;
 	/** External links: registrable domain / host. */
 	domain?: string;
 	/** Links: raw target (URL or vault path incl. #heading / #^block). */
@@ -127,6 +131,16 @@ export interface BlockDetail {
 	linkFragment?: string;
 	/** External links: true when the URL was bare (not `[text](url)`). */
 	nakedUrl?: boolean;
+	/** Properties: key, serialized value, and deterministic scalar family. */
+	propertyKey?: string;
+	propertyValue?: string;
+	propertyValueType?: 'array' | 'boolean' | 'date' | 'number' | 'object' | 'text' | 'url' | 'vault-link';
+	/** Tags: where the tag originated and how many times it occurs. */
+	tagSource?: 'frontmatter' | 'inline';
+	occurrenceCount?: number;
+	/** Footnote definition text and number of source references. */
+	definitionText?: string;
+	referenceCount?: number;
 	/** Code / math / mermaid: fenced language id. */
 	language?: string;
 	/** Code / list / table: line or item count. */
@@ -144,6 +158,9 @@ export interface BlockDetail {
 	calloutType?: string;
 	/** Images / embeds / attachments: resolved-ish file target. */
 	fileTarget?: string;
+	/** HTML paragraph subtype metadata. */
+	htmlBlock?: boolean;
+	commentOnly?: boolean;
 }
 
 /** Result of parsing a whole document into the Atlas tree. */

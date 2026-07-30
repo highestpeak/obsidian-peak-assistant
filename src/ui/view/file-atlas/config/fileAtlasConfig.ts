@@ -22,13 +22,15 @@ import type { RawBlockKind } from '@/core/document/atlas/types';
 export type KindType = 'heading' | 'block' | 'task' | 'resource';
 
 /** Top-level category used for collapsed-heading count summaries + stats. */
-export type KindCategory = 'block' | 'resource';
+export type KindCategory = 'block' | 'metadata' | 'resource';
 
 /** Badge palette class (maps to a `.pkfa-badge--*` variant). */
 export type BadgeClass = 'meta' | 'block' | 'ok' | 'media' | 'vault' | 'external';
 
 export interface KindConfig {
 	label: string;
+	/** User-facing plural label used in the advanced filter popover. */
+	filterLabel?: string;
 	badge: string;
 	badgeClass: BadgeClass;
 	type: KindType;
@@ -59,6 +61,68 @@ export interface FileAtlasRailConfig {
 	maxWidthPx: number;
 	/** Half-life for recency-weighted "Most used" ordering. */
 	frequencyHalfLifeDays: number;
+}
+
+export interface FileAtlasIdentityLabels {
+	bulletedList: string;
+	numberedList: string;
+	table: string;
+	displayMath: string;
+	diagram: string;
+	flowchart: string;
+	open: string;
+	done: string;
+	yes: string;
+	no: string;
+	htmlBlock: string;
+	vaultNote: string;
+	heading: string;
+	block: string;
+	noteSection: string;
+	embeddedNote: string;
+	canvas: string;
+	base: string;
+	video: string;
+	audio: string;
+	archive: string;
+	attachment: string;
+	frontmatter: string;
+	inline: string;
+	itemSingular: string;
+	itemPlural: string;
+	propertySingular: string;
+	propertyPlural: string;
+	tagSingular: string;
+	tagPlural: string;
+	lineSingular: string;
+	linePlural: string;
+	nodeSingular: string;
+	nodePlural: string;
+	paragraphSingular: string;
+	paragraphPlural: string;
+	resourceSingular: string;
+	resourcePlural: string;
+	nestedListSingular: string;
+	nestedListPlural: string;
+	taskSingular: string;
+	taskPlural: string;
+	occurrenceSingular: string;
+	occurrencePlural: string;
+	referencedOnce: string;
+	referencedTwice: string;
+	references: string;
+}
+
+export interface FileAtlasIdentityConfig {
+	labels: FileAtlasIdentityLabels;
+	providers: Record<string, string>;
+	languages: Record<string, string>;
+	fileTypes: Record<string, string>;
+	valueTypes: Record<string, string>;
+	/** RegExp source strings for transient import/enrichment placeholders. */
+	placeholderTitlePatterns: string[];
+	/** RegExp source strings stripped from imported companion-title suffixes. */
+	companionTitleSuffixPatterns: string[];
 }
 
 export interface FileAtlasStrings {
@@ -106,6 +170,9 @@ export interface FileAtlasStrings {
 	statCodeLines: string;
 	statLanguage: string;
 	statStatus: string;
+	statParagraphs: string;
+	statResources: string;
+	statNestedLists: string;
 	/** Left rail (open + recent documents) labels. */
 	railTitle: string;
 	railOpenTitle: string;
@@ -123,6 +190,14 @@ export interface FileAtlasStrings {
 	reveal: string;
 	addToTray: string;
 	copyLink: string;
+	openTarget: string;
+	sourceDetails: string;
+	valueLabel: string;
+	typeLabel: string;
+	targetLabel: string;
+	pathLabel: string;
+	ownerContextLabel: string;
+	occurrencesLabel: string;
 	locationCard: string;
 	lines: string;
 	nearestHeading: string;
@@ -146,49 +221,154 @@ export interface FileAtlasConfig {
 	kinds: Record<string, KindConfig>;
 	filterGroups: FilterGroup[];
 	presets: PresetConfig[];
+	identity: FileAtlasIdentityConfig;
 	rail: FileAtlasRailConfig;
 	strings: FileAtlasStrings;
 	keywordStopwords: KeywordStopwords;
 }
 
-/** Default active preset on open — the broadest view ("All"), leftmost tab. */
-export const DEFAULT_PRESET_ID = 'all';
+/** Default active preset on open — the compact owner-facing overview. */
+export const DEFAULT_PRESET_ID = 'overview';
 
 /** Compiled fallback — mirrors templates/config/file-atlas.json exactly. */
 export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
 	kinds: {
-		'property':      { label: 'Property',      badge: 'prop',     badgeClass: 'meta',     type: 'block',    category: 'resource', group: 'references' },
-		'tag':           { label: 'Tag',           badge: 'tag',      badgeClass: 'meta',     type: 'block',    category: 'resource', group: 'references' },
-		'paragraph':     { label: 'Paragraph',     badge: 'text',     badgeClass: 'block',    type: 'block',    category: 'block',    group: 'structure' },
-		'list':          { label: 'List',          badge: 'list',     badgeClass: 'block',    type: 'block',    category: 'block',    group: 'structure' },
-		'list-item':     { label: 'List item',     badge: 'item',     badgeClass: 'block',    type: 'block',    category: 'block',    group: 'structure', filterable: false },
-		'quote':         { label: 'Quote',         badge: 'quote',    badgeClass: 'block',    type: 'block',    category: 'block',    group: 'structure' },
-		'callout':       { label: 'Callout',       badge: 'callout',  badgeClass: 'block',    type: 'block',    category: 'block',    group: 'structure' },
-		'task':          { label: 'Task',          badge: 'task',     badgeClass: 'ok',       type: 'task',     category: 'block',    group: 'structure' },
-		'table':         { label: 'Table',         badge: 'table',    badgeClass: 'block',    type: 'block',    category: 'block',    group: 'rich' },
-		'code':          { label: 'Code',          badge: 'code',     badgeClass: 'block',    type: 'block',    category: 'block',    group: 'rich' },
-		'math':          { label: 'Math',          badge: 'math',     badgeClass: 'block',    type: 'block',    category: 'block',    group: 'rich' },
-		'mermaid':       { label: 'Mermaid',       badge: 'mermaid',  badgeClass: 'block',    type: 'block',    category: 'block',    group: 'rich' },
-		'image':         { label: 'Image',         badge: 'image',    badgeClass: 'media',    type: 'resource', category: 'resource', group: 'media' },
-		'embed':         { label: 'Embed',         badge: 'embed',    badgeClass: 'media',    type: 'resource', category: 'resource', group: 'media' },
-		'attachment':    { label: 'Attachment',    badge: 'file',     badgeClass: 'media',    type: 'resource', category: 'resource', group: 'media' },
-		'vault-link':    { label: 'Vault link',    badge: 'vault',    badgeClass: 'vault',    type: 'resource', category: 'resource', group: 'references' },
-		'external-link': { label: 'External link', badge: 'external', badgeClass: 'external', type: 'resource', category: 'resource', group: 'references' },
-		'footnote':      { label: 'Footnote',      badge: 'note',     badgeClass: 'meta',     type: 'block',    category: 'resource', group: 'references' },
+		'property':      { label: 'Property',      filterLabel: 'Properties',     badge: 'prop',     badgeClass: 'meta',     type: 'block',    category: 'metadata', group: 'metadata' },
+		'tag':           { label: 'Tag',           filterLabel: 'Tags',           badge: 'tag',      badgeClass: 'meta',     type: 'block',    category: 'metadata', group: 'metadata' },
+		'paragraph':     { label: 'Paragraph',     filterLabel: 'Paragraphs',     badge: 'text',     badgeClass: 'block',    type: 'block',    category: 'block',    group: 'content' },
+		'list':          { label: 'List',          filterLabel: 'Lists',          badge: 'list',     badgeClass: 'block',    type: 'block',    category: 'block',    group: 'content' },
+		'list-item':     { label: 'List item',                                      badge: 'item',     badgeClass: 'block',    type: 'block',    category: 'block',    group: 'content', filterable: false },
+		'quote':         { label: 'Quote',         filterLabel: 'Quotes',         badge: 'quote',    badgeClass: 'block',    type: 'block',    category: 'block',    group: 'content' },
+		'callout':       { label: 'Callout',       filterLabel: 'Callouts',       badge: 'callout',  badgeClass: 'block',    type: 'block',    category: 'block',    group: 'content' },
+		'task':          { label: 'Task',          filterLabel: 'Tasks',          badge: 'task',     badgeClass: 'ok',       type: 'task',     category: 'block',    group: 'content' },
+		'table':         { label: 'Table',         filterLabel: 'Tables',         badge: 'table',    badgeClass: 'block',    type: 'block',    category: 'resource', group: 'structured' },
+		'code':          { label: 'Code',          filterLabel: 'Code',           badge: 'code',     badgeClass: 'block',    type: 'block',    category: 'resource', group: 'structured' },
+		'math':          { label: 'Math',          filterLabel: 'Math',           badge: 'math',     badgeClass: 'block',    type: 'block',    category: 'resource', group: 'structured' },
+		'mermaid':       { label: 'Mermaid',       filterLabel: 'Diagrams',       badge: 'mermaid',  badgeClass: 'block',    type: 'block',    category: 'resource', group: 'structured' },
+		'image':         { label: 'Image',         filterLabel: 'Images',         badge: 'image',    badgeClass: 'media',    type: 'resource', category: 'resource', group: 'media' },
+		'embed':         { label: 'Embed',         filterLabel: 'Embeds',         badge: 'embed',    badgeClass: 'media',    type: 'resource', category: 'resource', group: 'media' },
+		'attachment':    { label: 'Attachment',    filterLabel: 'Attachments',    badge: 'file',     badgeClass: 'media',    type: 'resource', category: 'resource', group: 'media' },
+		'vault-link':    { label: 'Vault link',    filterLabel: 'Vault links',    badge: 'vault',    badgeClass: 'vault',    type: 'resource', category: 'resource', group: 'links' },
+		'external-link': { label: 'External link', filterLabel: 'External links', badge: 'external', badgeClass: 'external', type: 'resource', category: 'resource', group: 'links' },
+		'footnote':      { label: 'Footnote',      filterLabel: 'Footnotes',      badge: 'note',     badgeClass: 'meta',     type: 'block',    category: 'resource', group: 'links' },
 	},
 	filterGroups: [
-		{ id: 'structure',  title: 'Structure' },
-		{ id: 'rich',       title: 'Rich blocks' },
-		{ id: 'media',      title: 'Media & embeds' },
-		{ id: 'references', title: 'References' },
+		{ id: 'content',    title: 'Content' },
+		{ id: 'links',      title: 'Links & references' },
+		{ id: 'media',      title: 'Media & files' },
+		{ id: 'structured', title: 'Structured blocks' },
+		{ id: 'metadata',   title: 'Metadata' },
 	],
 	presets: [
-		{ id: 'all',       label: 'All',       kinds: ['property', 'tag', 'paragraph', 'list', 'quote', 'callout', 'task', 'table', 'code', 'math', 'mermaid', 'image', 'embed', 'attachment', 'vault-link', 'external-link', 'footnote'] as RawBlockKind[] },
-		{ id: 'overview',  label: 'Overview',  kinds: ['task', 'table', 'code', 'math', 'mermaid', 'vault-link', 'external-link', 'tag', 'footnote', 'property', 'image', 'embed', 'attachment'] as RawBlockKind[] },
-		{ id: 'reading',   label: 'Reading',   kinds: ['paragraph', 'list', 'quote', 'callout', 'task', 'image', 'table', 'mermaid'] as RawBlockKind[] },
-		{ id: 'writing',   label: 'Writing',   kinds: ['task', 'callout', 'quote'] as RawBlockKind[] },
-		{ id: 'resources', label: 'Resources', kinds: ['vault-link', 'external-link', 'tag', 'footnote', 'property', 'image', 'embed', 'attachment', 'table', 'code', 'math', 'mermaid'] as RawBlockKind[] },
+		{ id: 'overview',  label: 'Overview',     kinds: ['task', 'callout', 'table', 'mermaid', 'image', 'embed', 'attachment', 'vault-link', 'external-link', 'footnote'] as RawBlockKind[] },
+		{ id: 'reading',   label: 'Read',         kinds: ['paragraph', 'list', 'quote', 'callout', 'task', 'image', 'embed', 'table', 'code', 'math', 'mermaid'] as RawBlockKind[] },
+		{ id: 'writing',   label: 'Actions',      kinds: ['task', 'callout'] as RawBlockKind[] },
+		{ id: 'resources', label: 'Resources',    kinds: ['vault-link', 'external-link', 'footnote', 'image', 'embed', 'attachment', 'table', 'code', 'math', 'mermaid'] as RawBlockKind[] },
+		{ id: 'all',       label: 'All elements', kinds: ['property', 'tag', 'paragraph', 'list', 'quote', 'callout', 'task', 'table', 'code', 'math', 'mermaid', 'image', 'embed', 'attachment', 'vault-link', 'external-link', 'footnote'] as RawBlockKind[] },
 	],
+	identity: {
+		labels: {
+			bulletedList: 'Bulleted list',
+			numberedList: 'Numbered list',
+			table: 'Table',
+			displayMath: 'Display math',
+			diagram: 'Diagram',
+			flowchart: 'Flowchart',
+			open: 'Open',
+			done: 'Done',
+			yes: 'Yes',
+			no: 'No',
+			htmlBlock: 'HTML block',
+			vaultNote: 'Vault note',
+			heading: 'Heading',
+			block: 'Block',
+			noteSection: 'note section',
+			embeddedNote: 'Embedded note',
+			canvas: 'Canvas',
+			base: 'Base',
+			video: 'Video',
+			audio: 'Audio',
+			archive: 'Archive',
+			attachment: 'Attachment',
+			frontmatter: 'Frontmatter',
+			inline: 'Inline',
+			itemSingular: 'item',
+			itemPlural: 'items',
+			propertySingular: 'property',
+			propertyPlural: 'properties',
+			tagSingular: 'tag',
+			tagPlural: 'tags',
+			lineSingular: 'line',
+			linePlural: 'lines',
+			nodeSingular: 'node',
+			nodePlural: 'nodes',
+			paragraphSingular: 'paragraph',
+			paragraphPlural: 'paragraphs',
+			resourceSingular: 'resource',
+			resourcePlural: 'resources',
+			nestedListSingular: 'nested list',
+			nestedListPlural: 'nested lists',
+			taskSingular: 'task',
+			taskPlural: 'tasks',
+			occurrenceSingular: 'occurrence',
+			occurrencePlural: 'occurrences',
+			referencedOnce: 'referenced once',
+			referencedTwice: 'referenced twice',
+			references: 'references',
+		},
+		providers: {
+			'en.wikipedia.org': 'Wikipedia',
+			'wikipedia.org': 'Wikipedia',
+			'github.com': 'GitHub',
+			'help.obsidian.md': 'Obsidian Help',
+			'obsidian.md': 'Obsidian',
+			'developer.mozilla.org': 'MDN',
+			'platform.openai.com': 'OpenAI',
+			'openai.com': 'OpenAI',
+			'notion.so': 'Notion',
+			'www.notion.so': 'Notion',
+		},
+		languages: {
+			ts: 'TypeScript',
+			typescript: 'TypeScript',
+			js: 'JavaScript',
+			javascript: 'JavaScript',
+			py: 'Python',
+			python: 'Python',
+			json: 'JSON',
+			css: 'CSS',
+			html: 'HTML',
+			text: 'Text',
+		},
+		fileTypes: {
+			pdf: 'PDF',
+			mp4: 'Video',
+			mov: 'Video',
+			webm: 'Video',
+			mkv: 'Video',
+			mp3: 'Audio',
+			wav: 'Audio',
+			ogg: 'Audio',
+			m4a: 'Audio',
+			zip: 'Archive',
+			docx: 'Word',
+			pptx: 'PowerPoint',
+			xlsx: 'Excel',
+			epub: 'EPUB',
+		},
+		valueTypes: {
+			array: 'List',
+			boolean: 'Boolean',
+			date: 'Date',
+			number: 'Number',
+			object: 'Object',
+			text: 'Text',
+			url: 'URL',
+			'vault-link': 'Vault link',
+		},
+		placeholderTitlePatterns: ['^Fetching Title(?:#.*)?$'],
+		companionTitleSuffixPatterns: ['\\s+-\\s+(?:Wikipedia|维基百科)$'],
+	},
 	rail: {
 		capacity: 24,
 		defaultWidthPx: 300,
@@ -220,7 +400,7 @@ export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
 		filtersClearAll: 'Clear all',
 		expandAll: 'Expand all',
 		collapseAll: 'Collapse all',
-		frontmatterTitle: 'Frontmatter',
+		frontmatterTitle: 'Metadata',
 		keywordsTitle: 'Keywords · term frequency',
 		keywordsEmpty: 'No meaningful keywords',
 		statisticsTitle: 'Statistics',
@@ -236,6 +416,9 @@ export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
 		statCodeLines: 'Code lines',
 		statLanguage: 'Language',
 		statStatus: 'Status',
+		statParagraphs: 'Paragraphs',
+		statResources: 'Resources',
+		statNestedLists: 'Nested lists',
 		railTitle: 'Files',
 		railOpenTitle: 'Open',
 		railRecentTitle: 'Recent',
@@ -252,6 +435,14 @@ export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
 		reveal: 'Reveal',
 		addToTray: 'Add to tray',
 		copyLink: 'Copy link',
+		openTarget: 'Open target',
+		sourceDetails: 'Source details',
+		valueLabel: 'Value',
+		typeLabel: 'Type',
+		targetLabel: 'Target',
+		pathLabel: 'Path',
+		ownerContextLabel: 'Owner context',
+		occurrencesLabel: 'Occurrences',
 		locationCard: 'Location',
 		lines: 'Lines',
 		nearestHeading: 'Nearest heading',
@@ -279,6 +470,30 @@ export async function loadFileAtlasConfig(): Promise<FileAtlasConfig> {
 			kinds: parsed.kinds ?? DEFAULT_FILE_ATLAS_CONFIG.kinds,
 			filterGroups: parsed.filterGroups ?? DEFAULT_FILE_ATLAS_CONFIG.filterGroups,
 			presets: parsed.presets ?? DEFAULT_FILE_ATLAS_CONFIG.presets,
+			identity: {
+				...DEFAULT_FILE_ATLAS_CONFIG.identity,
+				...(parsed.identity ?? {}),
+				labels: {
+					...DEFAULT_FILE_ATLAS_CONFIG.identity.labels,
+					...(parsed.identity?.labels ?? {}),
+				},
+				providers: {
+					...DEFAULT_FILE_ATLAS_CONFIG.identity.providers,
+					...(parsed.identity?.providers ?? {}),
+				},
+				languages: {
+					...DEFAULT_FILE_ATLAS_CONFIG.identity.languages,
+					...(parsed.identity?.languages ?? {}),
+				},
+				fileTypes: {
+					...DEFAULT_FILE_ATLAS_CONFIG.identity.fileTypes,
+					...(parsed.identity?.fileTypes ?? {}),
+				},
+				valueTypes: {
+					...DEFAULT_FILE_ATLAS_CONFIG.identity.valueTypes,
+					...(parsed.identity?.valueTypes ?? {}),
+				},
+			},
 			rail: { ...DEFAULT_FILE_ATLAS_CONFIG.rail, ...(parsed.rail ?? {}) },
 			strings: { ...DEFAULT_FILE_ATLAS_CONFIG.strings, ...(parsed.strings ?? {}) },
 			keywordStopwords: parsed.keywordStopwords ?? DEFAULT_FILE_ATLAS_CONFIG.keywordStopwords,

@@ -1012,6 +1012,52 @@
 .pkfa-meta-row .pkfa-v { color: var(--pk-text-primary); font-weight: 660; min-width: 0; overflow-wrap: anywhere; }
 .pkfa-meta-row .pkfa-v.pkfa-mono { font-family: var(--pk-font-mono); font-size: var(--pk-text-xs); }
 
+.pkfa-typed-summary {
+	display: grid;
+	gap: 7px;
+	padding: 10px 12px;
+	border: 1px solid var(--pk-border-soft);
+	border-radius: var(--pk-radius-md);
+	background: var(--pk-surface-raised);
+}
+
+.pkfa-object-value {
+	display: grid;
+	gap: 5px;
+	padding: 10px 12px;
+	border: 1px solid var(--pk-border-soft);
+	border-radius: var(--pk-radius-md);
+	background: var(--pk-surface-raised);
+}
+
+.pkfa-object-value .pkfa-k {
+	color: var(--pk-text-faint);
+	font-size: var(--pk-text-xs);
+	font-weight: 780;
+	text-transform: uppercase;
+}
+
+.pkfa-object-value .pkfa-v {
+	color: var(--pk-text-primary);
+	font-size: var(--pk-text-md);
+	font-weight: 680;
+	overflow-wrap: anywhere;
+}
+
+.pkfa-source-details-card { overflow: visible; }
+
+.pkfa-source-details > summary {
+	padding: 12px 14px;
+	color: var(--pk-text-secondary);
+	font-size: var(--pk-text-base);
+	font-weight: 760;
+	cursor: pointer;
+}
+
+.pkfa-source-details[open] > summary {
+	border-bottom: 1px solid var(--pk-border-soft);
+}
+
 .pkfa-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
 .pkfa-preview-table { width: 100%; border-collapse: collapse; font-family: var(--pk-font-sans); font-size: var(--pk-text-base); }

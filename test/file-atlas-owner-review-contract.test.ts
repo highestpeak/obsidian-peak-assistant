@@ -13,6 +13,7 @@ const inspector = source('src/ui/view/file-atlas/components/AtlasInspector.tsx')
 const atlasBar = source('src/ui/view/file-atlas/components/AtlasBar.tsx');
 const panel = source('src/ui/view/file-atlas/FileAtlasPanel.tsx');
 const treeModel = source('src/ui/view/file-atlas/atlasTreeModel.ts');
+const displayModel = source('src/ui/view/file-atlas/atlasDisplayModel.ts');
 const graph = source('src/ui/view/file-atlas/components/FileAtlasGraph.tsx');
 const canvas = source('src/ui/component/graph/AtlasGraphCanvasImpl.tsx');
 const css = source('src/styles/file-atlas.css');
@@ -38,8 +39,10 @@ assert.doesNotMatch(
 	'editor reveal feedback must use host-scoped Obsidian tokens, not Peak-root-only tokens',
 );
 
-assert.match(inspector, /<KeywordCard text=\{keywordText\} config=\{config\} \/>/);
-assert.match(inspector, /<StatisticsCard block=\{block\} config=\{config\} \/>/);
+assert.match(inspector, /cardPolicy\.keywords && <KeywordCard/);
+assert.match(inspector, /cardPolicy\.statistics && <StatisticsCard/);
+assert.match(inspector, /<SourceDetails block=\{block\} config=\{config\} \/>/);
+assert.match(inspector, /displayIdentity\(block, config\)/);
 assert.match(inspector, /keywordsEmpty/);
 assert.match(inspector, /keywords\.map\(/);
 assert.doesNotMatch(inspector, /keywordsShowAll|pkfa-kw-toggle/);
@@ -53,7 +56,12 @@ assert.doesNotMatch(css, /\.pkfa-kw-list\s*\{[^}]*max-height:/);
 assert.match(treeModel, /limit = 8/);
 assert.doesNotMatch(inspector, /\{!isGroup && \(/);
 assert.match(atlasBar, /cfg\.filterable !== false/);
+assert.match(atlasBar, /filterLabel \?\? config\.kinds\[kind\]\.label/);
 assert.match(panel, /case 'toggleKind'[\s\S]*?collapsed: new Set\(\)/);
+assert.match(panel, /visibleKinds=\{state\.visibleKinds\}/);
+assert.match(tree, /isProjectionRow\(block, visibleKinds, showFrontmatterSummary\)/);
+assert.match(tree, /displayIdentity\(block, config, \{ ownerContext \}\)/);
+assert.match(displayModel, /companionTitle[\s\S]*githubIdentity[\s\S]*decodedSlug/);
 
 assert.match(graph, /data\.edges\.filter\(\(edge\) => semantic \|\| edge\.kind !== 'semantic'\)/);
 assert.match(graph, /summary=\{meta\}/);

@@ -54,6 +54,10 @@ ok('filter groups match', () => {
 	assert.deepStrictEqual(json.filterGroups, DEFAULT_FILE_ATLAS_CONFIG.filterGroups);
 });
 
+ok('display identity config matches', () => {
+	assert.deepStrictEqual(json.identity, DEFAULT_FILE_ATLAS_CONFIG.identity);
+});
+
 ok('rail settings match', () => {
 	assert.deepStrictEqual(json.rail, DEFAULT_FILE_ATLAS_CONFIG.rail);
 });

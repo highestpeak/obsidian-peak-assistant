@@ -10,7 +10,14 @@
 
 import type { DocumentBlock, FileAtlasAnchor, RawBlockKind } from '@/core/document/atlas/types';
 import { RawBlockKind as Kind } from '@/core/document/atlas/types';
-import type { KeywordStopwords, KindConfig } from './config/fileAtlasConfig';
+import {
+	DEFAULT_FILE_ATLAS_CONFIG,
+	type FileAtlasConfig,
+	type KeywordStopwords,
+	type KindConfig,
+} from './config/fileAtlasConfig';
+import { atlasSearchText } from './atlasDisplayModel';
+import { displayIdentity } from './atlasDisplayModel';
 
 const ANALYSIS_METADATA_KINDS = new Set<RawBlockKind>([
 	Kind.Image,
@@ -21,6 +28,19 @@ const ANALYSIS_METADATA_KINDS = new Set<RawBlockKind>([
 	Kind.Property,
 	Kind.Tag,
 	Kind.Footnote,
+]);
+
+const STAT_RESOURCE_KINDS = new Set<RawBlockKind>([
+	Kind.Table,
+	Kind.Code,
+	Kind.Math,
+	Kind.Mermaid,
+	Kind.Image,
+	Kind.Embed,
+	Kind.Attachment,
+	Kind.Footnote,
+	Kind.VaultLink,
+	Kind.ExternalLink,
 ]);
 
 /** Kinds that are containers even before their children are inspected. */
@@ -67,7 +87,6 @@ export function groupFrontmatter(blocks: DocumentBlock[], title: string): Docume
 		id: FRONTMATTER_GROUP_ID,
 		kind: Kind.Frontmatter,
 		title,
-		sub: `${children.length} ${children.length === 1 ? 'property' : 'properties'}`,
 		source: children.map((c) => c.source).join('\n'),
 		anchor,
 		children,
@@ -120,9 +139,14 @@ export function foldSummary(node: DocumentBlock, kinds: Record<string, KindConfi
 }
 
 /** Does a block's title/sub contain the (already-lowercased) search term? */
-export function matchesSearch(node: DocumentBlock, term: string): boolean {
+export function matchesSearch(
+	node: DocumentBlock,
+	term: string,
+	config: FileAtlasConfig = DEFAULT_FILE_ATLAS_CONFIG,
+	ownerContext?: string,
+): boolean {
 	if (!term) return true;
-	return `${node.title} ${node.sub ?? ''}`.toLowerCase().includes(term);
+	return atlasSearchText(node, config, ownerContext).includes(term);
 }
 
 export interface VisibilityResult {
@@ -143,26 +167,30 @@ export interface VisibilityResult {
 export function computeVisibility(
 	blocks: DocumentBlock[],
 	visibleKinds: Set<RawBlockKind>,
-	searchTerm: string
+	searchTerm: string,
+	config: FileAtlasConfig = DEFAULT_FILE_ATLAS_CONFIG,
+	options: { showFrontmatterSummary?: boolean } = {},
 ): VisibilityResult {
 	const visible = new Set<string>();
 	let hits = 0;
 
-	const visit = (node: DocumentBlock): boolean => {
+	const visit = (node: DocumentBlock, ownerContext?: string): boolean => {
+		if (node.detail?.commentOnly) return false;
 		if (isGroupNode(node)) {
 			let anyChild = false;
+			const childOwner = displayIdentity(node, config).primary;
 			for (const child of node.children ?? []) {
-				if (visit(child)) anyChild = true;
+				if (visit(child, childOwner)) anyChild = true;
 			}
 			const kindOn =
 				node.kind === Kind.Heading ||
-				node.kind === Kind.Frontmatter ||
+				(node.kind === Kind.Frontmatter && Boolean(options.showFrontmatterSummary)) ||
 				(node.kind === Kind.ListItem
 					? visibleKinds.has(Kind.List)
 					: visibleKinds.has(node.kind));
-			const selfMatch = matchesSearch(node, searchTerm);
+			const selfMatch = matchesSearch(node, searchTerm, config, ownerContext);
 			const show = !searchTerm
-				? node.kind === Kind.Heading || node.kind === Kind.Frontmatter || kindOn || anyChild
+				? node.kind === Kind.Heading || kindOn || anyChild
 				: anyChild || (kindOn && selfMatch);
 			if (show) {
 				visible.add(node.id);
@@ -181,7 +209,7 @@ export function computeVisibility(
 			node.kind === Kind.ListItem
 				? visibleKinds.has(Kind.List)
 				: visibleKinds.has(node.kind);
-		const show = kindOn && matchesSearch(node, searchTerm);
+		const show = kindOn && matchesSearch(node, searchTerm, config, ownerContext);
 		if (show) {
 			visible.add(node.id);
 			hits += 1;
@@ -189,7 +217,7 @@ export function computeVisibility(
 		return show;
 	};
 
-	blocks.forEach(visit);
+	blocks.forEach((block) => visit(block));
 	return { visible, hits };
 }
 
@@ -330,7 +358,10 @@ export function sectionText(node: DocumentBlock): string {
 		if (b.kind === Kind.List || b.kind === Kind.ListItem || b.kind === Kind.Task || b.kind === Kind.Frontmatter) {
 			return;
 		}
-		(b.children ?? []).forEach(walk);
+		for (const child of b.children ?? []) {
+			if (child.source && b.source.includes(child.source)) continue;
+			walk(child);
+		}
 	};
 	walk(node);
 	return parts.join('\n');
@@ -349,6 +380,9 @@ export interface BlockStatistics {
 	codeLines?: number;
 	language?: string;
 	status?: string;
+	paragraphs?: number;
+	resources?: number;
+	nestedLists?: number;
 }
 
 /** Clean, kind-aware text used by both Keywords and Statistics. */
@@ -397,6 +431,9 @@ export function statisticsOf(node: DocumentBlock): BlockStatistics {
 	const text = analysisText(node);
 	const taskNodes: DocumentBlock[] = [];
 	let listItemCount = 0;
+	let paragraphCount = 0;
+	let resourceCount = 0;
+	let nestedListCount = 0;
 	const collectListUnits = (current: DocumentBlock): void => {
 		if (current !== node && (current.kind === Kind.ListItem || current.kind === Kind.Task)) {
 			listItemCount += 1;
@@ -404,6 +441,13 @@ export function statisticsOf(node: DocumentBlock): BlockStatistics {
 		if (current.kind === Kind.Task) taskNodes.push(current);
 		(current.children ?? []).forEach(collectListUnits);
 	};
+	const collectStructure = (current: DocumentBlock): void => {
+		if (current !== node && current.kind === Kind.Paragraph) paragraphCount += 1;
+		if (current !== node && STAT_RESOURCE_KINDS.has(current.kind)) resourceCount += 1;
+		if (current !== node && current.kind === Kind.List) nestedListCount += 1;
+		(current.children ?? []).forEach(collectStructure);
+	};
+	collectStructure(node);
 	if (node.kind === Kind.List) collectListUnits(node);
 	const checked = taskNodes.filter((task) => task.detail?.checked === true).length;
 	const unchecked = taskNodes.filter((task) => task.detail?.checked === false).length;
@@ -423,6 +467,19 @@ export function statisticsOf(node: DocumentBlock): BlockStatistics {
 		result.tasks = taskNodes.length;
 		result.checked = checked;
 		result.unchecked = unchecked;
+		result.nestedLists = nestedListCount;
+	}
+	if (node.kind === Kind.Heading) {
+		result.paragraphs = paragraphCount;
+		result.resources = resourceCount;
+	}
+	if (node.kind === Kind.Callout) {
+		result.paragraphs = node.source
+			.split(/\r?\n/)
+			.slice(1)
+			.filter((line) => line.replace(/^>\s?/, '').trim().length > 0)
+			.length;
+		result.resources = resourceCount;
 	}
 	if (node.kind === Kind.Table) {
 		result.rows = node.detail?.rows;

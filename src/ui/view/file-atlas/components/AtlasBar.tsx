@@ -137,7 +137,9 @@ export const AtlasBar: React.FC<AtlasBarProps> = ({
 														<span className="pkfa-tt-icon">
 															<Icon />
 														</span>
-														<span className="pkfa-tt-label">{config.kinds[kind].label}</span>
+														<span className="pkfa-tt-label">
+															{config.kinds[kind].filterLabel ?? config.kinds[kind].label}
+														</span>
 														<span className="pkfa-tt-check">
 															<Check />
 														</span>

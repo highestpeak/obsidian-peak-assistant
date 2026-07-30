@@ -15,11 +15,14 @@ import { Button } from '@/ui/component/shared-ui/button';
 import type { FileAtlasConfig } from '../config/fileAtlasConfig';
 import { iconForKind } from '../config/kindIcons';
 import { foldSummary, isGroupNode } from '../atlasTreeModel';
+import { displayIdentity, isProjectionRow } from '../atlasDisplayModel';
 
 interface AtlasTreeProps {
 	blocks: DocumentBlock[];
 	config: FileAtlasConfig;
 	visible: Set<string>;
+	visibleKinds: Set<DocumentBlock['kind']>;
+	showFrontmatterSummary: boolean;
 	collapsed: Set<string>;
 	selectedId: string | null;
 	trayIds: Set<string>;
@@ -42,19 +45,49 @@ export const AtlasTree: React.FC<AtlasTreeProps> = (props) => {
 interface AtlasNodeProps extends AtlasTreeProps {
 	block: DocumentBlock;
 	depth: number;
+	ownerContext?: string;
 }
 
-const AtlasNode: React.FC<AtlasNodeProps> = ({ block, depth, ...props }) => {
-	const { config, visible, collapsed, selectedId, trayIds } = props;
+const AtlasNode: React.FC<AtlasNodeProps> = ({ block, depth, ownerContext, ...props }) => {
+	const {
+		config,
+		visible,
+		visibleKinds,
+		showFrontmatterSummary,
+		collapsed,
+		selectedId,
+		trayIds,
+	} = props;
 	if (!visible.has(block.id)) return null;
 
 	const isHeading = block.kind === RawBlockKind.Heading;
 	const isFrontmatter = block.kind === RawBlockKind.Frontmatter;
-	const isGroup = isGroupNode(block);
+	const display = displayIdentity(block, config, { ownerContext });
+	const projectionRow = isProjectionRow(block, visibleKinds, showFrontmatterSummary);
+	if (!projectionRow) {
+		const promotedOwner = isFrontmatter ? ownerContext : display.primary;
+		return (
+			<>
+				{(block.children ?? []).map((child) => (
+					<AtlasNode
+						key={child.id}
+						block={child}
+						depth={depth}
+						ownerContext={promotedOwner}
+						{...props}
+					/>
+				))}
+			</>
+		);
+	}
+
+	const hasChildren = Boolean(
+		block.children?.some((child) => visible.has(child.id)),
+	);
+	const isGroup = isGroupNode(block) && hasChildren;
 	const kindCfg = config.kinds[block.kind];
 	const isCollapsed = collapsed.has(block.id);
 	const Icon = iconForKind(block.kind);
-	const hasChildren = Boolean(block.children && block.children.length);
 
 	const badgeText = isHeading ? `H${block.level}` : kindCfg?.badge ?? block.kind;
 	const badgeClass = isHeading ? 'pkfa-badge--h' : `pkfa-badge--${kindCfg?.badgeClass ?? 'block'}`;
@@ -65,6 +98,9 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({ block, depth, ...props }) => {
 			: `pkfa-type-${kindCfg?.type ?? 'block'}`;
 	const inTray = trayIds.has(block.id);
 	const summary = isGroup && isCollapsed ? foldSummary(block, config.kinds) : '';
+	const showBadge = !isFrontmatter
+		&& block.kind !== RawBlockKind.Task
+		&& block.kind !== RawBlockKind.ListItem;
 
 	const onRowClick = (): void => props.onSelect(block);
 
@@ -114,8 +150,8 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({ block, depth, ...props }) => {
 						<Icon />
 					</span>
 					<span className="pkfa-label">
-						<span className="pkfa-name">{block.title}</span>
-						{block.sub && <span className="pkfa-sub">{block.sub}</span>}
+						<span className="pkfa-name">{display.primary}</span>
+						{display.secondary && <span className="pkfa-sub">{display.secondary}</span>}
 					</span>
 					{summary && <span className="pkfa-fold-sum">{summary}</span>}
 					<Button
@@ -132,7 +168,7 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({ block, depth, ...props }) => {
 					>
 						<Plus />
 					</Button>
-					{!isFrontmatter && <span className={`pkfa-badge ${badgeClass}`}>{badgeText}</span>}
+					{showBadge && <span className={`pkfa-badge ${badgeClass}`}>{badgeText}</span>}
 				</div>
 			</div>
 

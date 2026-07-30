@@ -43,8 +43,6 @@ const processor = remark().use(remarkFrontmatter, ['yaml']).use(remarkGfm);
 
 /** Kinds counted as "resources" in the doc-context stats bar. */
 const RESOURCE_KINDS: ReadonlySet<RawBlockKind> = new Set([
-	RawBlockKind.Tag,
-	RawBlockKind.Property,
 	RawBlockKind.Table,
 	RawBlockKind.Code,
 	RawBlockKind.Math,
@@ -116,6 +114,7 @@ export function parseDocumentBlocks(content: string, filePath: string): AtlasDoc
 	}
 
 	extendContainerLineRanges(top);
+	annotateOccurrences(content, top);
 	return { filePath, blocks: top, stats: computeStats(content, top) };
 }
 
@@ -155,14 +154,19 @@ function emitFrontmatter(ctx: ParseCtx, ast: Root, out: DocumentBlock[]): void {
 		const line = rel >= 0 ? startLine + 1 + rel : startLine;
 		const rendered = renderScalar(value);
 		const property = finalizeLeaf(ctx, {
-				kind: RawBlockKind.Property,
-				title: `${key}: ${truncate(rendered, 60)}`,
-				sub: 'Frontmatter property',
-				source: `${key}: ${rendered}`,
-				lineStart: line,
-				lineEnd: line,
-				ordinal: ordinal++,
-			});
+			kind: RawBlockKind.Property,
+			title: key,
+			sub: rendered,
+			source: `${key}: ${rendered}`,
+			lineStart: line,
+			lineEnd: line,
+			detail: {
+				propertyKey: key,
+				propertyValue: rendered,
+				propertyValueType: propertyValueType(value),
+			},
+			ordinal: ordinal++,
+		});
 		// Obsidian properties may contain wikilinks or Markdown links. Preserve
 		// the Property row while exposing those references as owned resources.
 		// Tags are emitted separately below, so exclude them here to avoid
@@ -174,15 +178,18 @@ function emitFrontmatter(ctx: ParseCtx, ast: Root, out: DocumentBlock[]): void {
 	}
 
 	if (data.tags !== undefined) {
+		const tagRel = yamlLines.findIndex((line) => line.trimStart().startsWith('tags:'));
+		const tagLine = tagRel >= 0 ? startLine + 1 + tagRel : startLine;
 		for (const tag of normalizeTags(data.tags)) {
 			out.push(
 				finalizeLeaf(ctx, {
 					kind: RawBlockKind.Tag,
 					title: `#${tag}`,
-					sub: 'Frontmatter tag',
+					sub: 'Frontmatter · tags',
 					source: `#${tag}`,
-					lineStart: startLine,
-					lineEnd: endLine,
+					lineStart: tagLine,
+					lineEnd: tagLine,
+					detail: { target: tag, tagSource: 'frontmatter' },
 					ordinal: ordinal++,
 				})
 			);
@@ -334,13 +341,15 @@ function makeBlocksFromNode(ctx: ParseCtx, node: RootContent): DocumentBlock[] {
 
 		case 'html': {
 			// Bare HTML (e.g. <!-- comment -->) — treat as paragraph-ish text.
+			const commentOnly = isCommentOnlyHtml(raw);
 			const block = finalizeLeaf(ctx, {
 				kind: RawBlockKind.Paragraph,
-				title: firstMeaningfulText(raw) || 'HTML block',
+				title: htmlText(raw) || 'HTML block',
 				sub: 'HTML block',
 				source: raw,
 				lineStart: start,
 				lineEnd: end,
+				detail: { htmlBlock: true, commentOnly },
 				ordinal: 0,
 			});
 			return [
@@ -499,21 +508,19 @@ function expandParagraph(ctx: ParseCtx, raw: string, start: number, end: number)
 	// the paragraph wrapper would just duplicate the same line, so drop it and keep
 	// only the resource(s). Paragraphs that carry real prose alongside a link stay.
 	const resources = extractInlineResources(ctx, raw, start, end);
-	if (resources.length > 0 && isResourceOnly(raw)) return resources;
+	if (resources.length > 0 && isResourceOnly(raw, resources)) return resources;
 
-	const out: DocumentBlock[] = [
-		finalizeLeaf(ctx, {
-			kind: RawBlockKind.Paragraph,
-			title: truncate(firstMeaningfulText(raw), 80) || 'Paragraph',
-			sub: 'Body paragraph',
-			source: raw,
-			lineStart: start,
-			lineEnd: end,
-			ordinal: 0,
-		}),
-	];
-	resources.forEach((b) => out.push(b));
-	return out;
+	const paragraph = finalizeLeaf(ctx, {
+		kind: RawBlockKind.Paragraph,
+		title: truncate(firstMeaningfulText(raw), 80) || 'Paragraph',
+		sub: 'Body paragraph',
+		source: raw,
+		lineStart: start,
+		lineEnd: end,
+		ordinal: 0,
+	});
+	if (resources.length) paragraph.children = resources;
+	return [paragraph];
 }
 
 /** True when a source slice is a standalone display-math block. */
@@ -541,7 +548,7 @@ const INLINE_TAG_RE = /(?:^|\s)#([A-Za-z一-鿿][\w一-鿿/-]*)/g;
  * (same order as {@link extractInlineResources}) and checks that no letters or
  * digits remain.
  */
-function isResourceOnly(raw: string): boolean {
+function isResourceOnly(raw: string, resources: DocumentBlock[]): boolean {
 	const stripped = raw
 		.replace(EMBED_RE, ' ')
 		.replace(MD_IMAGE_RE, ' ')
@@ -550,7 +557,9 @@ function isResourceOnly(raw: string): boolean {
 		.replace(AUTOLINK_RE, ' ')
 		.replace(BARE_URL_RE, ' ')
 		.replace(INLINE_TAG_RE, ' ');
-	return !/[\p{L}\p{N}]/u.test(stripped);
+	if (!/[\p{L}\p{N}]/u.test(stripped)) return true;
+	if (resources.length !== 1 || resources[0].kind !== RawBlockKind.ExternalLink) return false;
+	return Boolean(resources[0].detail?.companionTitle);
 }
 
 /**
@@ -596,31 +605,49 @@ export function extractInlineResources(
 
 	// Embeds first (they share the `[[…]]` shape but are prefixed with `!`).
 	for (const m of scanRaw.matchAll(EMBED_RE)) {
-		const target = m[1].split('|')[0].trim();
+		const [rawTarget, rawAlias] = m[1].split('|');
+		const target = rawTarget.trim();
+		const authoredLabel = rawAlias?.trim() || undefined;
+		const hashIdx = target.indexOf('#');
+		const linkFragment = hashIdx >= 0 ? target.slice(hashIdx) : undefined;
 		const { kind, fileTarget } = classifyEmbedTarget(target);
-		const label = fileTarget || target;
-		if (kind === RawBlockKind.Image) push(m, kind, label, 'Embedded image', m[0], { fileTarget });
+		const label = authoredLabel || fileTarget || target;
+		const shared = { authoredLabel, fileTarget, target, linkFragment };
+		if (kind === RawBlockKind.Image) push(m, kind, label, 'Embedded image', m[0], shared);
 		else if (kind === RawBlockKind.Attachment)
-			push(m, kind, label, 'Embedded attachment', m[0], { fileTarget });
-		else push(m, kind, label, 'Embedded note / media', m[0], { fileTarget });
+			push(m, kind, label, 'Embedded attachment', m[0], shared);
+		else push(m, kind, label, 'Embedded note / media', m[0], shared);
 	}
 
 	// Markdown images ![alt](path)
 	for (const m of scanRaw.matchAll(MD_IMAGE_RE)) {
 		const target = m[1];
+		const authoredLabel = markdownLabel(m[0]);
 		if (isExternalUrl(target)) {
-			push(m, RawBlockKind.Image, target, 'Remote image', m[0], { fileTarget: target, domain: extractDomain(target) });
+			push(m, RawBlockKind.Image, authoredLabel || target, 'Remote image', m[0], {
+				authoredLabel,
+				fileTarget: target,
+				target,
+				domain: extractDomain(target),
+			});
 		} else {
-			push(m, RawBlockKind.Image, target, 'Embedded image', m[0], { fileTarget: target });
+			push(m, RawBlockKind.Image, authoredLabel || target, 'Embedded image', m[0], {
+				authoredLabel,
+				fileTarget: target,
+				target,
+			});
 		}
 	}
 
 	// Vault wiki links [[note]] / [[note#heading]] / [[note#^block]]
 	for (const m of scanRaw.matchAll(WIKILINK_RE)) {
-		const inner = m[1].split('|')[0].trim();
+		const [rawTarget, rawAlias] = m[1].split('|');
+		const inner = rawTarget.trim();
+		const authoredLabel = rawAlias?.trim() || undefined;
 		const hashIdx = inner.indexOf('#');
 		const fragment = hashIdx >= 0 ? inner.slice(hashIdx) : undefined;
-		push(m, RawBlockKind.VaultLink, inner, 'Vault link', m[0], {
+		push(m, RawBlockKind.VaultLink, authoredLabel || inner, 'Vault link', m[0], {
+			authoredLabel,
 			target: inner,
 			linkFragment: fragment,
 		});
@@ -629,15 +656,20 @@ export function extractInlineResources(
 	// Markdown links [text](target)
 	for (const m of scanRaw.matchAll(MD_LINK_RE)) {
 		const target = m[1];
+		const authoredLabel = markdownLabel(m[0]);
 		if (isExternalUrl(target)) {
-			push(m, RawBlockKind.ExternalLink, extractDomain(target) || target, 'External link', m[0], {
+			push(m, RawBlockKind.ExternalLink, authoredLabel || extractDomain(target) || target, 'External link', m[0], {
+				authoredLabel,
 				target,
 				domain: extractDomain(target),
 				nakedUrl: false,
 			});
 		} else if (!target.startsWith('#')) {
 			// Relative/local path → vault link.
-			push(m, RawBlockKind.VaultLink, target, 'Vault link', m[0], { target });
+			push(m, RawBlockKind.VaultLink, authoredLabel || target, 'Vault link', m[0], {
+				authoredLabel,
+				target,
+			});
 		}
 	}
 
@@ -654,7 +686,9 @@ export function extractInlineResources(
 	// Bare URLs
 	for (const m of scanRaw.matchAll(BARE_URL_RE)) {
 		const url = m[0];
-		push(m, RawBlockKind.ExternalLink, extractDomain(url) || url, 'External link', url, {
+		const companionTitle = importedCompanionTitle(raw, (m.index ?? 0) + url.length);
+		push(m, RawBlockKind.ExternalLink, companionTitle || extractDomain(url) || url, 'External link', url, {
+			companionTitle,
 			target: url,
 			domain: extractDomain(url),
 			nakedUrl: true,
@@ -664,7 +698,10 @@ export function extractInlineResources(
 	// Inline tags
 	for (const m of scanRaw.matchAll(INLINE_TAG_RE)) {
 		const tag = m[1];
-		push(m, RawBlockKind.Tag, `#${tag}`, 'Inline tag', `#${tag}`, { target: tag });
+		push(m, RawBlockKind.Tag, `#${tag}`, 'Inline tag', `#${tag}`, {
+			target: tag,
+			tagSource: 'inline',
+		});
 	}
 
 	return matches
@@ -805,9 +842,88 @@ function firstMeaningfulText(raw: string): string {
 	return (line ?? '').replace(/[|*_`]/g, '').trim();
 }
 
+function markdownLabel(source: string): string | undefined {
+	const label = source.match(/^!?\[([^\]]*)\]/)?.[1]?.trim();
+	return label || undefined;
+}
+
+function importedCompanionTitle(raw: string, afterIndex: number): string | undefined {
+	const tail = raw.slice(afterIndex);
+	const match = tail.match(/^\s*(?:\||—)\s*(.+?)\s*$/);
+	return match?.[1]?.trim() || undefined;
+}
+
+function htmlText(raw: string): string {
+	return truncate(
+		raw
+			.replace(/<!--[\s\S]*?-->/g, ' ')
+			.replace(/<[^>]+>/g, ' ')
+			.replace(/\s+/g, ' ')
+			.trim(),
+		120,
+	);
+}
+
+function isCommentOnlyHtml(raw: string): boolean {
+	const withoutComments = raw.replace(/<!--[\s\S]*?-->/g, '').trim();
+	return withoutComments.length === 0;
+}
+
+function propertyValueType(value: unknown): NonNullable<BlockDetail['propertyValueType']> {
+	if (Array.isArray(value)) return 'array';
+	if (value instanceof Date) return 'date';
+	if (typeof value === 'boolean') return 'boolean';
+	if (typeof value === 'number') return 'number';
+	if (value && typeof value === 'object') return 'object';
+	const text = String(value ?? '').trim();
+	if (/^\[\[[^\]]+\]\]$/.test(text)) return 'vault-link';
+	if (isExternalUrl(text)) return 'url';
+	if (/^\d{4}-\d{2}-\d{2}(?:[T\s].*)?$/.test(text)) return 'date';
+	return 'text';
+}
+
+function annotateOccurrences(content: string, blocks: DocumentBlock[]): void {
+	const flat: DocumentBlock[] = [];
+	const visit = (items: DocumentBlock[]): void => {
+		for (const item of items) {
+			flat.push(item);
+			if (item.children) visit(item.children);
+		}
+	};
+	visit(blocks);
+
+	const tagCounts = new Map<string, number>();
+	for (const block of flat.filter((item) => item.kind === RawBlockKind.Tag)) {
+		const key = (block.detail?.target ?? block.title.replace(/^#/, '')).toLowerCase();
+		tagCounts.set(key, (tagCounts.get(key) ?? 0) + 1);
+	}
+	for (const block of flat) {
+		if (block.kind === RawBlockKind.Tag) {
+			const key = (block.detail?.target ?? block.title.replace(/^#/, '')).toLowerCase();
+			block.detail = {
+				...block.detail,
+				occurrenceCount: Math.max(1, tagCounts.get(key) ?? 1),
+			};
+		}
+		if (block.kind !== RawBlockKind.Footnote) continue;
+		const id = block.detail?.target ?? '';
+		const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		const references = content.match(new RegExp(`\\[\\^${escaped}\\]`, 'g'))?.length ?? 0;
+		const definitionText = block.source
+			.replace(new RegExp(`^\\s*\\[\\^${escaped}\\]:\\s*`), '')
+			.trim();
+		block.detail = {
+			...block.detail,
+			definitionText,
+			referenceCount: Math.max(0, references - 1),
+		};
+	}
+}
+
 function renderScalar(value: unknown): string {
 	if (value == null) return '';
 	if (Array.isArray(value)) return `[${value.map(renderScalar).join(', ')}]`;
+	if (value instanceof Date) return value.toISOString();
 	if (typeof value === 'object') return JSON.stringify(value);
 	return String(value);
 }

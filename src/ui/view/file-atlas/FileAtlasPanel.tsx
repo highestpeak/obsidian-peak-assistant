@@ -15,7 +15,8 @@
 import React, { type CSSProperties, useEffect, useMemo, useReducer, useState } from 'react';
 import { Search, Network, ListTree } from 'lucide-react';
 import { parseDocumentBlocks } from '@/core/document/atlas/documentBlockParser';
-import type { AtlasDocument, DocumentBlock, RawBlockKind } from '@/core/document/atlas/types';
+import { RawBlockKind } from '@/core/document/atlas/types';
+import type { AtlasDocument, DocumentBlock } from '@/core/document/atlas/types';
 import {
 	DEFAULT_PRESET_ID,
 	type FileAtlasConfig,
@@ -26,6 +27,7 @@ import {
 	blockIdAtLine,
 	defaultCollapsedIds,
 	firstSelectableId,
+	FRONTMATTER_GROUP_ID,
 	groupFrontmatter,
 } from './atlasTreeModel';
 import { AtlasBar } from './components/AtlasBar';
@@ -38,6 +40,11 @@ import { Button } from '@/ui/component/shared-ui/button';
 import type { FileAtlasHostPort } from './FileAtlasHostPort';
 import type { FileRailSections, FileRailSortMode } from './fileRailModel';
 import type { FileRailPreference } from './fileRailPreference';
+import {
+	displayIdentity,
+	firstProjectedId,
+	isProjectionRow,
+} from './atlasDisplayModel';
 
 type Subview = 'tree' | 'graph';
 
@@ -99,7 +106,9 @@ function reducer(state: AtlasState, action: AtlasAction): AtlasState {
 				visibleKinds: new Set(action.kinds),
 				// A preset is a request to inspect matching nodes. Do not leave
 				// those matches hidden behind stale structural folds.
-				collapsed: new Set(),
+				collapsed: action.id === 'overview'
+					? new Set([FRONTMATTER_GROUP_ID])
+					: new Set(),
 			};
 		case 'toggleKind': {
 			const next = new Set(state.visibleKinds);
@@ -194,9 +203,20 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [blocks, defaultKinds]);
 
+	const showFrontmatterSummary =
+		state.activePreset === 'overview'
+		|| state.visibleKinds.has(RawBlockKind.Property)
+		|| state.visibleKinds.has(RawBlockKind.Tag);
+
 	const { visible, hits } = useMemo(
-		() => computeVisibility(blocks, state.visibleKinds, searchTerm),
-		[blocks, state.visibleKinds, searchTerm]
+		() => computeVisibility(
+			blocks,
+			state.visibleKinds,
+			searchTerm,
+			config,
+				{ showFrontmatterSummary },
+			),
+			[blocks, state.visibleKinds, searchTerm, config, showFrontmatterSummary]
 	);
 
 	const blockById = useMemo(() => {
@@ -214,13 +234,43 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 	const selectedBlock = state.selectedId ? blockById.get(state.selectedId) ?? null : null;
 	const trayIds = useMemo(() => new Set(state.tray.map((t) => t.id)), [state.tray]);
 
+	useEffect(() => {
+		if (
+			selectedBlock
+			&& visible.has(selectedBlock.id)
+			&& isProjectionRow(selectedBlock, state.visibleKinds, showFrontmatterSummary)
+		) {
+			return;
+		}
+		const nextId = firstProjectedId(
+			blocks,
+			visible,
+			state.visibleKinds,
+			showFrontmatterSummary,
+		);
+		if (nextId) dispatch({ type: 'select', id: nextId });
+	}, [
+		blocks,
+		selectedBlock,
+		showFrontmatterSummary,
+		state.visibleKinds,
+		visible,
+	]);
+
 	// Expand every group when a search term is entered so hits stay reachable.
 	useEffect(() => {
 		if (searchTerm) dispatch({ type: 'expandAll' });
 	}, [searchTerm]);
 
 	const addToTray = (block: DocumentBlock): void => {
-		dispatch({ type: 'addToTray', item: { id: block.id, title: block.title, kind: block.kind } });
+		dispatch({
+			type: 'addToTray',
+			item: {
+				id: block.id,
+				title: displayIdentity(block, config).primary,
+				kind: block.kind,
+			},
+		});
 	};
 
 	const reveal = (block: DocumentBlock): void => {
@@ -363,6 +413,8 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 										blocks={blocks}
 										config={config}
 										visible={visible}
+										visibleKinds={state.visibleKinds}
+										showFrontmatterSummary={showFrontmatterSummary}
 										collapsed={state.collapsed}
 										selectedId={state.selectedId}
 										trayIds={trayIds}

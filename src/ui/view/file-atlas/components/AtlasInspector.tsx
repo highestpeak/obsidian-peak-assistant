@@ -20,7 +20,17 @@ import { StreamdownIsolated } from '@/ui/component/mine';
 import type { FileAtlasConfig } from '../config/fileAtlasConfig';
 import type { AtlasImageInfo, FileAtlasHostPort } from '../FileAtlasHostPort';
 import { iconForKind } from '../config/kindIcons';
-import { analysisText, isGroupNode, keywordsOf, statisticsOf } from '../atlasTreeModel';
+import {
+	analysisText,
+	isGroupNode,
+	keywordsOf,
+	sectionText,
+	statisticsOf,
+} from '../atlasTreeModel';
+import {
+	displayIdentity,
+	inspectorCardPolicy,
+} from '../atlasDisplayModel';
 
 interface AtlasInspectorProps {
 	block: DocumentBlock | null;
@@ -55,37 +65,6 @@ const RENDERED_KINDS = new Set<string>([
 	RawBlockKind.Code,
 ]);
 
-/**
- * Kinds whose `title` is a genuine label (heading text, file name, link text) and
- * worth showing above the preview. Everything else derives its title from its own
- * content (first line, `key: value`, `#tag`), so showing it would just repeat the
- * preview — those blocks show the kind + content preview only.
- */
-const TITLE_IS_LABEL = new Set<string>([
-	RawBlockKind.Heading,
-	RawBlockKind.Frontmatter,
-	RawBlockKind.VaultLink,
-	RawBlockKind.ExternalLink,
-	RawBlockKind.Image,
-	RawBlockKind.Embed,
-	RawBlockKind.Attachment,
-]);
-
-/**
- * Kinds whose `sub` carries real data (a count, status, or type) worth showing
- * under the kind label. Every other kind's sub just restates the kind itself
- * ("Body paragraph" under PARAGRAPH, "Vault link" under VAULT LINK), so it's
- * dropped as noise.
- */
-const SUB_IS_INFORMATIVE = new Set<string>([
-	RawBlockKind.Frontmatter, // "N properties"
-	RawBlockKind.List, // "N items"
-	RawBlockKind.Task, // "Checked" / "Unchecked"
-	RawBlockKind.Code, // "N lines"
-	RawBlockKind.Table, // "N rows · M columns"
-	RawBlockKind.Callout, // "<type> callout"
-]);
-
 export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 	block,
 	config,
@@ -109,21 +88,15 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 	const kindCfg = config.kinds[block.kind];
 	const Icon = iconForKind(block.kind);
 	const isGroup = isGroupNode(block);
+	const identity = displayIdentity(block, config);
+	const cardPolicy = inspectorCardPolicy(block);
 	const label =
 		block.kind === RawBlockKind.Heading
 			? `Heading H${block.level}`
 			: block.kind === RawBlockKind.Frontmatter
 				? config.strings.frontmatterTitle
 				: kindCfg?.label ?? block.kind;
-	const isHeading = block.kind === RawBlockKind.Heading;
 	const keywordText = analysisText(block);
-	// Content blocks (paragraph / list / quote / …) title themselves off their own
-	// first line, so the preview already shows it — only render the title span when
-	// it's a real, distinct label.
-	const showTitle = TITLE_IS_LABEL.has(block.kind);
-	// Only show the sub when it adds a count / status / type; otherwise it just
-	// restates the kind label above it ("Body paragraph" under PARAGRAPH).
-	const showSub = !!block.sub && SUB_IS_INFORMATIVE.has(block.kind);
 
 	return (
 		<>
@@ -145,17 +118,15 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 							{config.strings.reveal}
 						</Button>
 					</div>
-					{showTitle && <span className="pkfa-selected-title">{block.title}</span>}
-					{showSub && <span className="pkfa-selected-sub">{block.sub}</span>}
-					{/* Headings already show their full text as the title above — a mono
-					    "# heading" preview would just repeat it, so skip it here. */}
-					{!isHeading && <SourcePreview block={block} config={config} host={host} sourcePath={sourcePath} />}
+					<span className="pkfa-selected-title">{identity.primary}</span>
+					{identity.secondary && <span className="pkfa-selected-sub">{identity.secondary}</span>}
+					<SourcePreview block={block} config={config} host={host} sourcePath={sourcePath} />
 				</div>
 			</section>
 
-			<KeywordCard text={keywordText} config={config} />
+			{cardPolicy.keywords && <KeywordCard text={keywordText} config={config} />}
 
-			<StatisticsCard block={block} config={config} />
+			{cardPolicy.statistics && <StatisticsCard block={block} config={config} />}
 
 			<section className="pkfa-card">
 				<div className="pkfa-card-body">
@@ -175,6 +146,10 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 					</div>
 				</div>
 			</section>
+
+			{cardPolicy.sourceDetails && (
+				<SourceDetails block={block} config={config} />
+			)}
 
 			<section className="pkfa-card">
 				<div className="pkfa-card-body">
@@ -296,6 +271,7 @@ const ImagePreview: React.FC<{
 	sourcePath: string;
 }> = ({ block, config, host, sourcePath }) => {
 	const target = block.detail?.fileTarget ?? block.title;
+	const identity = displayIdentity(block, config);
 	const [info, setInfo] = useState<AtlasImageInfo | null>(null);
 	const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
 	const [failed, setFailed] = useState(false);
@@ -320,25 +296,38 @@ const ImagePreview: React.FC<{
 				<div className="pkfa-preview-media">
 					<FallbackIcon />
 					<div>
-						<div className="pkfa-preview-title">{target}</div>
-						<div className="pkfa-preview-sub">{block.sub ?? block.source}</div>
+						<div className="pkfa-preview-title">{identity.primary}</div>
+						<div className="pkfa-preview-sub">{identity.secondary ?? target}</div>
 					</div>
 				</div>
 			</CopyablePreview>
 		);
 	}
 
-	const extra = host.copyImage ? (
-		<CopyButton
-			config={config}
-			label="Copy image"
-			icon={<Copy />}
-			onCopy={async () => {
-				await host.copyImage!(target, sourcePath);
-				host.notify('Image copied');
-			}}
-		/>
-	) : undefined;
+	const extra = (
+		<>
+			<Button
+				variant="unstyled"
+				type="button"
+				className="pkfa-copy-btn"
+				onClick={() => host.openLink(target, sourcePath, false)}
+			>
+				<Eye />
+				{config.strings.openTarget}
+			</Button>
+			{host.copyImage && (
+				<CopyButton
+					config={config}
+					label="Copy image"
+					icon={<Copy />}
+					onCopy={async () => {
+						await host.copyImage!(target, sourcePath);
+						host.notify('Image copied');
+					}}
+				/>
+			)}
+		</>
+	);
 
 	return (
 		<CopyablePreview config={config} host={host} copyText={block.source} copyMessage="Markdown ref copied" extra={extra}>
@@ -403,20 +392,46 @@ const StatisticsCard: React.FC<{ block: DocumentBlock; config: FileAtlasConfig }
 }) => {
 	const stats = statisticsOf(block);
 	const s = config.strings;
-	const rows: Array<[string, string | number | undefined]> = [
-		[s.statWords, stats.words],
-		[s.statCharacters, stats.characters],
-		[s.statLines, stats.lines],
-		[s.statItems, stats.items],
-		[s.statTasks, stats.tasks],
-		[s.statChecked, stats.checked],
-		[s.statUnchecked, stats.unchecked],
-		[s.statRows, stats.rows],
-		[s.statColumns, stats.columns],
-		[s.statCodeLines, stats.codeLines],
-		[s.statLanguage, stats.language],
-		[s.statStatus, stats.status],
-	];
+	let rows: Array<[string, string | number | undefined]>;
+	if (block.kind === RawBlockKind.Heading) {
+		rows = [
+			[s.statParagraphs, stats.paragraphs],
+			[s.statResources, stats.resources],
+			[s.statLines, stats.lines],
+		];
+	} else if (block.kind === RawBlockKind.List) {
+		rows = [
+			[s.statItems, stats.items],
+			[s.statNestedLists, stats.nestedLists],
+			[s.statTasks, stats.tasks],
+			[s.statChecked, stats.checked],
+			[s.statUnchecked, stats.unchecked],
+		];
+	} else if (block.kind === RawBlockKind.Task) {
+		rows = [[s.statStatus, stats.status]];
+	} else if (block.kind === RawBlockKind.Table) {
+		rows = [
+			[s.statRows, stats.rows],
+			[s.statColumns, stats.columns],
+		];
+	} else if (block.kind === RawBlockKind.Code || block.kind === RawBlockKind.Mermaid) {
+		rows = [
+			[s.statCodeLines, stats.codeLines],
+			[s.statLanguage, stats.language],
+		];
+	} else if (block.kind === RawBlockKind.Callout) {
+		rows = [
+			[s.statParagraphs, stats.paragraphs],
+			[s.statResources, stats.resources],
+			[s.statLines, stats.lines],
+		];
+	} else {
+		rows = [
+			[s.statWords, stats.words],
+			[s.statCharacters, stats.characters],
+			[s.statLines, stats.lines],
+		];
+	}
 	return (
 		<section className="pkfa-card">
 			<div className="pkfa-card-body">
@@ -439,6 +454,44 @@ const StatisticsCard: React.FC<{ block: DocumentBlock; config: FileAtlasConfig }
 	);
 };
 
+const SourceDetails: React.FC<{
+	block: DocumentBlock;
+	config: FileAtlasConfig;
+}> = ({ block, config }) => {
+	const rows: Array<[string, string | undefined]> = [
+		[
+			config.strings.typeLabel,
+			block.detail?.propertyValueType
+				? config.identity.valueTypes[block.detail.propertyValueType]
+				: undefined,
+		],
+		[config.strings.targetLabel, block.detail?.target],
+		[config.strings.pathLabel, block.detail?.fileTarget],
+		[
+			config.strings.ownerContextLabel,
+			block.anchor.nearestHeading ?? undefined,
+		],
+	];
+	return (
+		<section className="pkfa-card pkfa-source-details-card">
+			<details className="pkfa-source-details">
+				<summary>{config.strings.sourceDetails}</summary>
+				<div className="pkfa-card-body">
+					{rows
+						.filter(([, value]) => Boolean(value))
+						.map(([label, value]) => (
+							<div className="pkfa-meta-row" key={label}>
+								<span className="pkfa-k">{label}</span>
+								<span className="pkfa-v pkfa-mono">{value}</span>
+							</div>
+						))}
+					<div className="pkfa-source-snippet">{block.source}</div>
+				</div>
+			</details>
+		</section>
+	);
+};
+
 /** Specialized, copyable preview per kind. */
 const SourcePreview: React.FC<{
 	block: DocumentBlock;
@@ -447,6 +500,71 @@ const SourcePreview: React.FC<{
 	sourcePath: string;
 }> = ({ block, config, host, sourcePath }) => {
 	const { kind, detail } = block;
+	const identity = displayIdentity(block, config);
+
+	if (kind === RawBlockKind.Frontmatter) {
+		return (
+			<div className="pkfa-typed-summary">
+				{(block.children ?? [])
+					.filter((child) => child.kind === RawBlockKind.Property)
+					.slice(0, 8)
+					.map((child) => {
+						const property = displayIdentity(child, config);
+						return (
+							<div className="pkfa-meta-row" key={child.id}>
+								<span className="pkfa-k">{property.primary}</span>
+								<span className="pkfa-v">{property.secondary || '—'}</span>
+							</div>
+						);
+					})}
+			</div>
+		);
+	}
+
+	if (kind === RawBlockKind.Property) {
+		return (
+			<div className="pkfa-object-value">
+				<span className="pkfa-k">{config.strings.valueLabel}</span>
+				<span className="pkfa-v">{identity.secondary || '—'}</span>
+			</div>
+		);
+	}
+
+	if (kind === RawBlockKind.Tag) {
+		return (
+			<div className="pkfa-object-value">
+				<span className="pkfa-k">{config.strings.occurrencesLabel}</span>
+				<span className="pkfa-v pkfa-mono">{detail?.occurrenceCount ?? 1}</span>
+			</div>
+		);
+	}
+
+	if (kind === RawBlockKind.Heading) {
+		return (
+			<CopyablePreview
+				config={config}
+				host={host}
+				copyText={sectionText(block)}
+				copyMessage="Section copied"
+			>
+				<RenderedPreview source={sectionText(block)} />
+			</CopyablePreview>
+		);
+	}
+
+	if (kind === RawBlockKind.Footnote) {
+		const definition = detail?.definitionText ?? block.source;
+		return (
+			<CopyablePreview
+				config={config}
+				host={host}
+				copyText={definition}
+				copyMessage="Footnote copied"
+			>
+				<RenderedPreview source={definition} />
+			</CopyablePreview>
+		);
+	}
 
 	if (kind === RawBlockKind.Image) {
 		return <ImagePreview block={block} config={config} host={host} sourcePath={sourcePath} />;
@@ -456,13 +574,22 @@ const SourcePreview: React.FC<{
 		const MediaIcon = iconForKind(kind);
 		return (
 			<CopyablePreview config={config} host={host} copyText={block.source} copyMessage="Ref copied">
-				<div className="pkfa-preview-media">
+				<Button
+					variant="unstyled"
+					type="button"
+					className="pkfa-preview-link is-clickable"
+					onClick={() => host.openLink(
+						detail?.target ?? detail?.fileTarget ?? block.title,
+						sourcePath,
+						false,
+					)}
+				>
 					<MediaIcon />
 					<div>
-						<div className="pkfa-preview-title">{detail?.fileTarget ?? block.title}</div>
-						<div className="pkfa-preview-sub">{block.sub ?? block.source}</div>
+						<div className="pkfa-preview-title">{identity.primary}</div>
+						<div className="pkfa-preview-sub">{identity.secondary ?? detail?.fileTarget}</div>
 					</div>
-				</div>
+				</Button>
 			</CopyablePreview>
 		);
 	}
@@ -487,7 +614,7 @@ const SourcePreview: React.FC<{
 				>
 					<LinkKindIcon />
 					<div>
-						<div className="pkfa-preview-title">{block.title}</div>
+						<div className="pkfa-preview-title">{config.strings.openTarget}</div>
 						<div className="pkfa-preview-sub">{target}</div>
 					</div>
 				</Button>
@@ -516,7 +643,7 @@ const SourcePreview: React.FC<{
 
 	// Heading, frontmatter group, property / tag rows, footnote defs, and any
 	// default: a plain mono snippet (their raw text is already the clean read).
-	const text = kind === RawBlockKind.Heading ? `${'#'.repeat(block.level ?? 1)} ${block.title}` : block.source;
+	const text = block.source;
 	return (
 		<CopyablePreview config={config} host={host} copyText={text} copyMessage="Copied to clipboard">
 			<div className="pkfa-source-snippet">{text}</div>
