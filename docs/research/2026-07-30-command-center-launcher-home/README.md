@@ -48,6 +48,14 @@ V3 将纠偏转成明确约束：
 6. Customize 复用同一画布原位编辑；完整目录只在 Add action 后临时出现。
 7. Home 是稀疏的导航起点；Pinned pages 沿纵向阅读路径出现，不是自由拼装 dashboard。
 
+V4 保留上述结构，只收紧视觉密度：
+
+- Modal 从 `920 × 590` 收敛到约 `860 × 480`。
+- 动作 tile 从 `100px` 收敛到约 `78px`，图标容器从 `34px` 收敛到 `28px`。
+- 组间只保留一套 `margin + separator + padding` 节奏，不再叠加 grid gap。
+- 删除组标题右侧的动作数量；数量不会帮助用户决定下一步。
+- Search 每个分组使用一列紧凑结果，两个分组仍在左右 lane 中并排出现。
+
 ## 录屏观察
 
 录屏时长约 8.1 秒，画面为 `2114 × 1822`，展示了原生 Obsidian Command Palette 的三个典型状态。

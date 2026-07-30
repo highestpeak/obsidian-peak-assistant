@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Peak Command Center · V3</title>
+  <title>Peak Command Center · V4</title>
   <style>
     :root {
       color-scheme: light;
@@ -394,16 +394,16 @@
       display: flex;
       align-items: flex-start;
       justify-content: center;
-      padding-top: clamp(46px, 7vh, 82px);
+      padding-top: clamp(34px, 5vh, 56px);
       background: rgba(31, 28, 34, 0.36);
       backdrop-filter: blur(1.5px);
     }
 
     .launcher {
-      width: 920px;
-      height: 590px;
+      width: 860px;
+      height: 480px;
       display: grid;
-      grid-template-rows: 64px minmax(0, 1fr) 42px;
+      grid-template-rows: 56px minmax(0, 1fr) 38px;
       overflow: hidden;
       border: 1px solid rgba(201, 197, 207, 0.96);
       border-radius: var(--radius);
@@ -415,7 +415,7 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 10px 10px 10px 18px;
+      padding: 8px 8px 8px 16px;
       border-bottom: 1px solid var(--line);
     }
 
@@ -424,25 +424,25 @@
       flex: 1;
       display: flex;
       align-items: center;
-      gap: 11px;
+      gap: 9px;
       color: var(--ink-faint);
     }
 
     .launcher-search .icon {
-      width: 19px;
-      height: 19px;
+      width: 17px;
+      height: 17px;
       flex: none;
     }
 
     .launcher-search input {
       width: 100%;
-      height: 38px;
+      height: 32px;
       padding: 0;
       border: 0;
       outline: 0;
       color: var(--ink);
       background: transparent;
-      font-size: 16px;
+      font-size: 14px;
     }
 
     .launcher-search input::placeholder {
@@ -450,13 +450,13 @@
     }
 
     .close-button {
-      width: 36px;
-      height: 36px;
+      width: 32px;
+      height: 32px;
       display: grid;
       flex: none;
       place-items: center;
       border: 0;
-      border-radius: 8px;
+      border-radius: 7px;
       color: #6d6972;
       background: transparent;
       cursor: pointer;
@@ -468,8 +468,8 @@
     }
 
     .close-button .icon {
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
     }
 
     .launcher-body {
@@ -481,21 +481,21 @@
       min-width: 0;
       min-height: 0;
       height: 100%;
-      padding: 22px 28px 24px;
+      padding: 16px 20px 18px;
       overflow: auto;
     }
 
     .flow-columns {
       display: grid;
-      grid-template-columns: minmax(0, 1.14fr) minmax(0, 0.86fr);
-      gap: 34px;
+      grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
+      gap: 22px;
       align-items: start;
     }
 
     .flow-column {
       min-width: 0;
       display: grid;
-      gap: 26px;
+      gap: 0;
       align-content: start;
     }
 
@@ -505,7 +505,8 @@
     }
 
     .flow-group + .flow-group {
-      padding-top: 24px;
+      margin-top: 14px;
+      padding-top: 14px;
       border-top: 1px solid var(--line);
     }
 
@@ -513,21 +514,21 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 14px;
-      height: 28px;
-      margin-bottom: 10px;
+      gap: 10px;
+      height: 24px;
+      margin-bottom: 6px;
     }
 
     .flow-group-title {
       min-width: 0;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 7px;
     }
 
     .flow-group-title .icon {
-      width: 16px;
-      height: 16px;
+      width: 14px;
+      height: 14px;
       flex: none;
       color: #716b78;
     }
@@ -535,20 +536,15 @@
     .flow-group-title strong {
       overflow: hidden;
       color: #454148;
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 650;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
-    .flow-group-count {
-      color: var(--ink-faint);
-      font-size: 10px;
-    }
-
     .flow-action-grid {
       display: grid;
-      gap: 7px;
+      gap: 5px;
     }
 
     .flow-group.wide .flow-action-grid {
@@ -562,14 +558,14 @@
     .action-tile {
       position: relative;
       min-width: 0;
-      height: 100px;
+      height: 78px;
       display: flex;
       flex-direction: column;
       align-items: flex-start;
       justify-content: flex-start;
-      padding: 13px 12px 11px;
+      padding: 9px 10px 8px;
       border: 1px solid transparent;
-      border-radius: 9px;
+      border-radius: 8px;
       background: transparent;
       text-align: left;
       cursor: pointer;
@@ -586,12 +582,12 @@
     }
 
     .action-icon {
-      width: 34px;
-      height: 34px;
+      width: 28px;
+      height: 28px;
       display: grid;
       place-items: center;
-      margin-bottom: 10px;
-      border-radius: 9px;
+      margin-bottom: 6px;
+      border-radius: 7px;
       color: var(--purple);
       background: var(--purple-soft);
     }
@@ -617,15 +613,15 @@
     }
 
     .action-icon .icon {
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
     }
 
     .action-name {
       width: 100%;
       overflow: hidden;
       color: #302e33;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 630;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -633,35 +629,35 @@
 
     .action-meta {
       width: 100%;
-      margin-top: 4px;
+      margin-top: 2px;
       overflow: hidden;
       color: var(--ink-faint);
-      font-size: 10px;
+      font-size: 9px;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
     .tile-hotkey {
       position: absolute;
-      top: 10px;
-      right: 8px;
+      top: 7px;
+      right: 6px;
       display: flex;
       gap: 2px;
     }
 
     kbd {
-      min-width: 18px;
-      height: 18px;
+      min-width: 16px;
+      height: 16px;
       display: inline-grid;
       place-items: center;
-      padding: 0 4px;
+      padding: 0 3px;
       border: 1px solid #dedbe2;
       border-bottom-color: #d1cdd6;
-      border-radius: 4px;
+      border-radius: 3px;
       color: #77737d;
       background: rgba(255, 255, 255, 0.82);
       box-shadow: 0 1px 0 rgba(34, 28, 43, 0.05);
-      font-size: 9px;
+      font-size: 8px;
       font-family: inherit;
       line-height: 1;
     }
@@ -670,24 +666,24 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 20px;
-      padding: 0 16px;
+      gap: 16px;
+      padding: 0 12px;
       border-top: 1px solid var(--line);
       color: var(--ink-faint);
       background: #fbfafc;
-      font-size: 10px;
+      font-size: 9px;
     }
 
     .key-hints {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 10px;
     }
 
     .key-hint {
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 4px;
       white-space: nowrap;
     }
 
@@ -696,16 +692,16 @@
     }
 
     .footer-action {
-      height: 27px;
+      height: 25px;
       display: flex;
       align-items: center;
-      gap: 7px;
-      padding: 0 8px;
+      gap: 6px;
+      padding: 0 7px;
       border: 0;
       border-radius: 6px;
       color: #77727d;
       background: transparent;
-      font-size: 10px;
+      font-size: 9px;
       cursor: pointer;
     }
 
@@ -715,8 +711,8 @@
     }
 
     .footer-action .icon {
-      width: 14px;
-      height: 14px;
+      width: 13px;
+      height: 13px;
     }
 
     .screen {
@@ -728,16 +724,16 @@
     }
 
     .search-area {
-      padding-top: 23px;
+      padding-top: 15px;
     }
 
     .search-summary {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 14px;
+      margin-bottom: 10px;
       color: var(--ink-faint);
-      font-size: 11px;
+      font-size: 10px;
     }
 
     .search-summary strong {
@@ -747,21 +743,21 @@
 
     .result-grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 4px;
     }
 
     .result-tile {
       position: relative;
       min-width: 0;
-      height: 104px;
+      height: 56px;
       display: grid;
-      grid-template-columns: 38px minmax(0, 1fr);
+      grid-template-columns: 30px minmax(0, 1fr);
       align-items: center;
-      gap: 11px;
-      padding: 12px;
+      gap: 8px;
+      padding: 7px 8px;
       border: 1px solid transparent;
-      border-radius: 9px;
+      border-radius: 7px;
       background: transparent;
       text-align: left;
     }
@@ -793,19 +789,19 @@
 
     .result-copy strong {
       color: #302e33;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 630;
     }
 
     .result-copy span {
-      margin-top: 5px;
+      margin-top: 3px;
       color: var(--ink-faint);
-      font-size: 10px;
+      font-size: 9px;
     }
 
     .result-tile .tile-hotkey {
-      top: 8px;
-      right: 8px;
+      top: 5px;
+      right: 6px;
     }
 
     .manage-header {
@@ -813,13 +809,13 @@
       flex: 1;
       display: flex;
       align-items: center;
-      gap: 11px;
+      gap: 9px;
       padding-left: 2px;
     }
 
     .manage-header .icon {
-      width: 19px;
-      height: 19px;
+      width: 17px;
+      height: 17px;
       color: var(--purple);
     }
 
@@ -829,14 +825,14 @@
     }
 
     .manage-header-copy strong {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 650;
     }
 
     .manage-header-copy span {
       margin-top: 2px;
       color: var(--ink-faint);
-      font-size: 10px;
+      font-size: 9px;
     }
 
     .drag-dots {
@@ -870,8 +866,8 @@
     }
 
     .group-add-button {
-      width: 26px;
-      height: 26px;
+      width: 24px;
+      height: 24px;
       display: grid;
       place-items: center;
       border: 0;
@@ -887,23 +883,23 @@
     }
 
     .group-add-button .icon {
-      width: 14px;
-      height: 14px;
+      width: 13px;
+      height: 13px;
     }
 
     .add-group-line {
       width: 100%;
-      height: 38px;
+      height: 32px;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      margin-top: 24px;
+      gap: 7px;
+      margin-top: 16px;
       border: 1px dashed #d9d5de;
       border-radius: 8px;
       color: #8a858f;
       background: #fff;
-      font-size: 11px;
+      font-size: 10px;
       cursor: pointer;
     }
 
@@ -914,8 +910,8 @@
     }
 
     .add-group-line .icon {
-      width: 15px;
-      height: 15px;
+      width: 14px;
+      height: 14px;
     }
 
     .manage-tile {
@@ -928,8 +924,8 @@
 
     .manage-tile .drag-corner {
       position: absolute;
-      top: 9px;
-      left: 8px;
+      top: 6px;
+      left: 6px;
       opacity: 0;
       transition: opacity 120ms ease;
     }
@@ -948,13 +944,13 @@
     }
 
     .done-button {
-      height: 27px;
-      padding: 0 13px;
+      height: 25px;
+      padding: 0 12px;
       border: 0;
       border-radius: 6px;
       color: #fff;
       background: var(--purple);
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 620;
       cursor: pointer;
     }
@@ -1335,22 +1331,22 @@
       }
 
       .scrim {
-        padding-top: 40px;
+        padding-top: 28px;
       }
 
       .launcher {
-        height: 560px;
+        height: 460px;
       }
 
       .action-tile {
-        height: 90px;
-        padding: 10px 10px 8px;
+        height: 74px;
+        padding: 8px 9px 7px;
       }
 
       .action-icon {
-        width: 30px;
-        height: 30px;
-        margin-bottom: 7px;
+        width: 26px;
+        height: 26px;
+        margin-bottom: 5px;
       }
 
       .home-content {
@@ -1401,7 +1397,7 @@
       <span class="prototype-mark"><svg class="icon"><use href="#i-command"/></svg></span>
       <span>
         <strong>Peak Command Center</strong>
-        <small>V3 · waterfall launcher</small>
+        <small>V4 · compact waterfall</small>
       </span>
     </div>
     <nav class="state-switcher" aria-label="原型状态">
@@ -1414,7 +1410,7 @@
   </header>
 
   <main class="stage">
-    <section class="app-frame" aria-label="Command Center V3 原型">
+    <section class="app-frame" aria-label="Command Center V4 原型">
       <div class="app-titlebar">
         <span class="traffic-lights"><i></i><i></i><i></i></span>
         <span class="app-title">Peak Assistant · Product vault</span>
@@ -1486,7 +1482,6 @@
                   <section class="flow-group wide">
                     <div class="flow-group-header">
                       <span class="flow-group-title"><svg class="icon"><use href="#i-sparkles"/></svg><strong>Peak Assistant</strong></span>
-                      <span class="flow-group-count">6</span>
                     </div>
                     <div class="flow-action-grid" data-action-grid>
                       <button class="action-tile selected">
@@ -1527,7 +1522,6 @@
                   <section class="flow-group wide">
                     <div class="flow-group-header">
                       <span class="flow-group-title"><svg class="icon"><use href="#i-workspace"/></svg><strong>Workspaces</strong></span>
-                      <span class="flow-group-count">3</span>
                     </div>
                     <div class="flow-action-grid">
                       <button class="action-tile">
@@ -1553,7 +1547,6 @@
                   <section class="flow-group compact">
                     <div class="flow-group-header">
                       <span class="flow-group-title"><svg class="icon"><use href="#i-plus"/></svg><strong>Quick create</strong></span>
-                      <span class="flow-group-count">4</span>
                     </div>
                     <div class="flow-action-grid">
                       <button class="action-tile">
@@ -1583,7 +1576,6 @@
                   <section class="flow-group compact">
                     <div class="flow-group-header">
                       <span class="flow-group-title"><svg class="icon"><use href="#i-canvas"/></svg><strong>Visual</strong></span>
-                      <span class="flow-group-count">2</span>
                     </div>
                     <div class="flow-action-grid">
                       <button class="action-tile">
@@ -1628,7 +1620,6 @@
                   <section class="flow-group">
                     <div class="flow-group-header">
                       <span class="flow-group-title"><svg class="icon"><use href="#i-sparkles"/></svg><strong>Peak Assistant</strong></span>
-                      <span class="flow-group-count">3</span>
                     </div>
                     <div class="result-grid">
                       <button class="result-tile selected">
@@ -1651,7 +1642,6 @@
                   <section class="flow-group">
                     <div class="flow-group-header">
                       <span class="flow-group-title"><svg class="icon"><use href="#i-workspace"/></svg><strong>Navigation</strong></span>
-                      <span class="flow-group-count">3</span>
                     </div>
                     <div class="result-grid">
                       <button class="result-tile">
@@ -1961,10 +1951,10 @@
       </section>
     </section>
 
-    <section class="design-note" aria-label="V3 design principles">
+    <section class="design-note" aria-label="V4 design principles">
       <div class="note-item">
         <strong>分组直接铺在画布上</strong>
-        <span>左右两列分别向下生长；标题、留白和细分隔线负责分区，不再增加侧边导航。</span>
+        <span>左右两列紧凑向下生长；短标题与一条细分隔线负责分区，不再用大块留白或侧边导航。</span>
       </div>
       <div class="note-item">
         <strong>管理不占用日常界面</strong>

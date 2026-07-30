@@ -2,7 +2,7 @@
 
 Date: 2026-07-30
 
-Visual direction revised: 2026-07-31 · V3 waterfall layout
+Visual direction revised: 2026-07-31 · V4 compact waterfall layout
 
 Status: Decided · design/spec ready · implementation pending
 
@@ -258,12 +258,14 @@ Destructive layout reset requires confirmation and export/import support before 
 
 ### 9.1 Modal geometry
 
-- Width: `min(920px, calc(100vw - 48px))`.
-- Height: approximately `590px`, capped by `calc(100vh - 72px)`.
+- Width: `min(860px, calc(100vw - 48px))`.
+- Height: approximately `480px`, capped by `calc(100vh - 72px)`.
 - Group canvas: two independently growing lanes with a slightly wider left lane.
 - Group internals: two or three action columns, chosen per group.
-- Action tile: approximately `100px` high with no resting border.
-- Fixed icon hit target: approximately `34 × 34px`.
+- Action tile: approximately `78px` high with no resting border.
+- Icon container: approximately `28 × 28px`; the whole tile remains the hit target.
+- Group headings do not show item counts; the visible tiles already communicate group size.
+- A vertical separator uses one compact spacing rhythm, not a grid gap plus additional section padding.
 - Modal radius: approximately `14px`; tile radius: approximately `10px`.
 - Accent: Obsidian / Peak purple only for focus, selection and primary entry.
 
