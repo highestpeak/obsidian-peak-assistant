@@ -7,10 +7,10 @@ import {
 } from 'lucide-react';
 import {
 	buildInsertBelowOps,
+	composerDraftBlockRanges,
 	composerDraftEditorKind,
 	composerDraftHiddenRanges,
 	composerDraftHasContent,
-	composerDraftPresentationKind,
 	composerDraftReferenceSource,
 	composerDraftReferenceTarget,
 	hasSourceVisualSyntaxChange,
@@ -296,12 +296,8 @@ function DraftEditor({
 			/>
 		);
 	}
-	const presentationKind = composerDraftPresentationKind(source);
 	return (
-		<div
-			className="pk-new-block-draft__visual"
-			data-markdown-kind={presentationKind}
-		>
+		<div className="pk-new-block-draft__visual">
 			<VisualDraftTextEditor
 				value={source}
 				placeholder={placeholder}
@@ -333,6 +329,10 @@ function VisualDraftTextEditor({
 		() => composerDraftHiddenRanges(projection.text),
 		[projection.text],
 	);
+	const blockRanges = React.useMemo(
+		() => composerDraftBlockRanges(projection.text),
+		[projection.text],
+	);
 	const parts = React.useMemo(
 		() => projectSourceVisualParts(projection.text, 0, {
 			hiddenRanges,
@@ -341,8 +341,8 @@ function VisualDraftTextEditor({
 		[hiddenRanges, projection.text],
 	);
 	const projectionHtml = React.useMemo(
-		() => renderContentEditableProjection(parts, undefined, hiddenRanges),
-		[hiddenRanges, parts],
+		() => renderContentEditableProjection(parts, undefined, hiddenRanges, blockRanges),
+		[blockRanges, hiddenRanges, parts],
 	);
 	const project = (next: string, selection: MappedSelection | null) => {
 		pendingSelection.current = selection;
@@ -362,11 +362,14 @@ function VisualDraftTextEditor({
 	React.useLayoutEffect(() => {
 		if (projectionRef.current.text === value) return;
 		if (focused.current) {
-			const beforeKind = composerDraftPresentationKind(projectionRef.current.text);
-			const afterKind = composerDraftPresentationKind(value);
+			const beforeBlocks = composerDraftBlockRanges(projectionRef.current.text);
+			const afterBlocks = composerDraftBlockRanges(value);
 			const beforeHidden = composerDraftHiddenRanges(projectionRef.current.text);
 			const afterHidden = composerDraftHiddenRanges(value);
-			if (beforeKind === afterKind && JSON.stringify(beforeHidden) === JSON.stringify(afterHidden)) {
+			if (
+				JSON.stringify(beforeBlocks) === JSON.stringify(afterBlocks) &&
+				JSON.stringify(beforeHidden) === JSON.stringify(afterHidden)
+			) {
 				return;
 			}
 			const el = ref.current;
@@ -386,9 +389,12 @@ function VisualDraftTextEditor({
 		onChange(next);
 		if (composing.current) return;
 		const nextHiddenRanges = composerDraftHiddenRanges(next);
+		const nextBlockRanges = composerDraftBlockRanges(next);
 		const hiddenRangesChanged =
 			JSON.stringify(hiddenRanges) !== JSON.stringify(nextHiddenRanges);
-		if (!hiddenRangesChanged && !hasSourceVisualSyntaxChange(
+		const blockRangesChanged =
+			JSON.stringify(blockRanges) !== JSON.stringify(nextBlockRanges);
+		if (!hiddenRangesChanged && !blockRangesChanged && !hasSourceVisualSyntaxChange(
 			projectionRef.current.text,
 			next,
 			0,

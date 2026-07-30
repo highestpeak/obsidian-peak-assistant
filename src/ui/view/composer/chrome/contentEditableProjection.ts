@@ -13,9 +13,73 @@ export function renderContentEditableProjection(
 	parts: readonly SourceVisualPart[],
 	unitId?: string,
 	structuralRanges: readonly Array<{ from: number; to: number; role: string }> = [],
+	blockRanges: readonly Array<{ from: number; to: number; kind: string }> = [],
 ): string {
 	if (parts.every((part) => part.kind !== 'math' && part.text.length === 0)) return '';
+	if (blockRanges.length > 0) {
+		return renderBlockProjection(parts, unitId, structuralRanges, blockRanges);
+	}
 	return parts.map((part) => renderPart(part, unitId, structuralRanges)).join('');
+}
+
+function renderBlockProjection(
+	parts: readonly SourceVisualPart[],
+	unitId: string | undefined,
+	structuralRanges: readonly Array<{ from: number; to: number; role: string }>,
+	blockRanges: readonly Array<{ from: number; to: number; kind: string }>,
+): string {
+	const ordered = [...blockRanges].sort((left, right) => left.from - right.from);
+	const sourceFrom = parts[0]?.from ?? 0;
+	const sourceTo = parts.at(-1)?.to ?? sourceFrom;
+	const html: string[] = [];
+	let cursor = sourceFrom;
+	for (const block of ordered) {
+		if (block.to <= cursor || block.from >= sourceTo) continue;
+		const from = Math.max(cursor, block.from);
+		const to = Math.min(sourceTo, block.to);
+		if (cursor < from) {
+			html.push(renderProjectionRange(parts, cursor, from, unitId, structuralRanges));
+		}
+		html.push(
+			'<span class="pk-new-block-draft__markdown-block"',
+			` data-markdown-block-kind="${escapeAttribute(block.kind)}">`,
+			renderProjectionRange(parts, from, to, unitId, structuralRanges),
+			'</span>',
+		);
+		cursor = to;
+	}
+	if (cursor < sourceTo) {
+		html.push(renderProjectionRange(parts, cursor, sourceTo, unitId, structuralRanges));
+	}
+	return html.join('');
+}
+
+function renderProjectionRange(
+	parts: readonly SourceVisualPart[],
+	from: number,
+	to: number,
+	unitId: string | undefined,
+	structuralRanges: readonly Array<{ from: number; to: number; role: string }>,
+): string {
+	return parts
+		.filter((part) => part.to > from && part.from < to)
+		.map((part) => renderPart(
+			slicePart(part, Math.max(from, part.from), Math.min(to, part.to)),
+			unitId,
+			structuralRanges,
+		))
+		.join('');
+}
+
+function slicePart(part: SourceVisualPart, from: number, to: number): SourceVisualPart {
+	if (from === part.from && to === part.to) return part;
+	if (part.kind === 'math') return part;
+	return {
+		...part,
+		from,
+		to,
+		text: part.text.slice(from - part.from, to - part.from),
+	};
 }
 
 function renderPart(

@@ -230,17 +230,60 @@
 			line-height: 1.65;
 		}
 		.markdown-editor:empty::before { content: attr(data-placeholder); color: #a1a3ad; }
-		.markdown-editor[data-kind="heading"] { font-size: 23px; font-weight: 720; line-height: 1.35; }
-		.markdown-editor[data-kind="list"],
-		.markdown-editor[data-kind="task"] { padding-left: 12px; }
-		.markdown-editor[data-kind="quote"],
-		.markdown-editor[data-kind="callout"] { padding-left: 12px; border-left: 3px solid var(--accent); }
-		.markdown-editor[data-kind="code"] {
+		.markdown-block[data-markdown-block-kind="heading"] {
+			font-size: 23px;
+			font-weight: 720;
+			line-height: 1.35;
+		}
+		.markdown-block[data-markdown-block-kind="quote"],
+		.markdown-block[data-markdown-block-kind="callout"] {
+			box-decoration-break: clone;
+			padding-left: 10px;
+			border-left: 3px solid var(--accent);
+		}
+		.markdown-block[data-markdown-block-kind="code"] {
+			box-decoration-break: clone;
 			padding: 9px;
 			border: 1px solid var(--line);
 			border-radius: 7px;
 			background: var(--surface-2);
 			font: 12px/1.6 var(--mono);
+		}
+		.markdown-token {
+			display: inline;
+			font-size: 0;
+			line-height: 0;
+			opacity: 0;
+			pointer-events: none;
+			user-select: none;
+		}
+		.markdown-token[data-structural-token="list"]::after {
+			content: "•";
+		}
+		.markdown-token[data-structural-token="ordered-list"]::after {
+			content: attr(data-marker);
+		}
+		.markdown-token[data-structural-token="task"]::after {
+			content: "☐";
+		}
+		.markdown-token[data-structural-token="task"][data-checked="true"]::after {
+			content: "☑";
+		}
+		.markdown-token[data-structural-token] {
+			opacity: 1;
+		}
+		.markdown-token[data-structural-token="list"]::after,
+		.markdown-token[data-structural-token="ordered-list"]::after,
+		.markdown-token[data-structural-token="task"]::after {
+			display: inline-block;
+			width: 18px;
+			margin-right: 5px;
+			color: var(--accent);
+			font-family: var(--sans);
+			font-size: 14px;
+			line-height: 1.65;
+			opacity: 1;
+			text-align: right;
 		}
 		.draft-footer {
 			display: flex;
@@ -396,7 +439,6 @@
 							id="markdownEditor"
 							contenteditable="true"
 							spellcheck="false"
-							data-kind="paragraph"
 							data-placeholder="直接输入 Markdown：# 标题、- 列表、> 引用、代码或公式…"
 						></div>
 						<div class="draft-footer">
@@ -468,6 +510,7 @@
 		const editor = document.getElementById('markdownEditor');
 		let selected = null;
 		let objectMode = 'create';
+		let markdownSource = '';
 
 		resourceRows.innerHTML = resources.map(item => `
 			<button class="resource-row" data-resource="${item.id}" type="button">
@@ -481,6 +524,7 @@
 			popover.classList.remove('open');
 			resourceButton.setAttribute('aria-expanded', 'false');
 			draft.classList.add('open');
+			projectMarkdownSource(markdownSource);
 			requestAnimationFrame(() => editor.focus());
 		});
 		resourceButton.addEventListener('click', () => {
@@ -489,40 +533,317 @@
 		});
 		document.getElementById('cancelDraft').addEventListener('click', () => {
 			draft.classList.remove('open');
-			editor.textContent = '';
-			updateKind();
+			markdownSource = '';
+			projectMarkdownSource(markdownSource);
 		});
 		document.getElementById('commitDraft').addEventListener('click', () => {
-			if (!editor.textContent.trim()) return editor.focus();
+			if (!markdownSource.trim()) return editor.focus();
 			draft.classList.remove('open');
 		});
-		editor.addEventListener('input', updateKind);
+		editor.addEventListener('input', () => {
+			const hasProjection = Boolean(editor.querySelector('.markdown-block'));
+			const selection = hasProjection ? readSourceSelection() : null;
+			markdownSource = readEditorSource();
+			projectMarkdownSource(markdownSource, selection?.focus ?? markdownSource.length);
+		});
 		editor.addEventListener('keydown', event => {
-			if (event.key !== 'Enter') return;
+			if (event.key !== 'Enter' || event.isComposing) return;
 			if (event.metaKey || event.ctrlKey) {
 				event.preventDefault();
 				document.getElementById('commitDraft').click();
 				return;
 			}
-			const text = editor.textContent || '';
-			if (text.split('\n').at(-1)?.startsWith('- ') && !text.endsWith('- ')) {
-				event.preventDefault();
-				document.execCommand('insertText', false, '\n- ');
-			}
+			event.preventDefault();
+			insertMarkdownBreak(event.shiftKey);
 		});
-		function updateKind() {
-			const text = editor.textContent || '';
-			let kind = 'paragraph';
+
+		function insertMarkdownBreak(soft) {
+			const selection = readSourceSelection();
+			if (!selection) return;
+			const from = selection.from;
+			const to = selection.to;
+			const lineStart = markdownSource.lastIndexOf('\n', Math.max(0, from - 1)) + 1;
+			const lineEndAt = markdownSource.indexOf('\n', from);
+			const lineEnd = lineEndAt < 0 ? markdownSource.length : lineEndAt;
+			const line = markdownSource.slice(lineStart, lineEnd);
+			const continuation = markdownContinuation(line);
+			if (!soft && continuation && line.slice(continuation.sourceLength).trim().length === 0) {
+				markdownSource =
+					markdownSource.slice(0, lineStart) +
+					'\n' +
+					markdownSource.slice(to);
+				projectMarkdownSource(markdownSource, lineStart + 1);
+				return;
+			}
+			const inserted = soft
+				? '\n'
+				: continuation
+					? `\n${continuation.nextPrefix}`
+					: '\n\n';
+			markdownSource =
+				markdownSource.slice(0, from) +
+				inserted +
+				markdownSource.slice(to);
+			projectMarkdownSource(markdownSource, from + inserted.length);
+		}
+
+		function markdownContinuation(line) {
+			const task = /^(\s*(?:>\s*)?)([-*+]|\d+[.)])\s+(\[[ xX]\])\s+/.exec(line);
+			if (task) {
+				return {
+					sourceLength: task[0].length,
+					nextPrefix: `${task[1]}${task[2]} [ ] `,
+				};
+			}
+			const list = /^(\s*(?:>\s*)?)([-*+]|\d+[.)])\s+/.exec(line);
+			if (list) {
+				return {
+					sourceLength: list[0].length,
+					nextPrefix: `${list[1]}${list[2]} `,
+				};
+			}
+			const quote = /^(\s*>\s*)/.exec(line);
+			if (!quote) return null;
+			return { sourceLength: quote[0].length, nextPrefix: quote[0] };
+		}
+
+		function projectMarkdownSource(source, caretOffset) {
+			const shouldRestore =
+				Number.isFinite(caretOffset) &&
+				document.activeElement === editor;
+			if (!source) {
+				editor.innerHTML = '';
+				updateLiveKind(source, 0);
+				return;
+			}
+			let codeOpen = false;
+			editor.innerHTML = source
+				.split('\n')
+				.map(line => {
+					const projected = projectMarkdownLine(line, codeOpen);
+					codeOpen = projected.codeOpen;
+					return projected.html;
+				})
+				.join('\n');
+			const offset = Math.max(0, Math.min(source.length, caretOffset ?? source.length));
+			updateLiveKind(source, offset);
+			if (shouldRestore) restoreSourceSelection(offset);
+		}
+
+		function projectMarkdownLine(line, codeOpen) {
+			const fence = /^(\s*```.*)$/.exec(line);
+			if (fence) {
+				return {
+					codeOpen: !codeOpen,
+					html: markdownBlock('code', structuralToken(fence[1], 'code')),
+				};
+			}
+			if (codeOpen) {
+				return { codeOpen: true, html: markdownBlock('code', escapeHtml(line)) };
+			}
+			const heading = /^(#{1,6}\s+)(.*)$/.exec(line);
+			if (heading) {
+				return {
+					codeOpen: false,
+					html: markdownBlock(
+						'heading',
+						structuralToken(heading[1], 'heading') + escapeHtml(heading[2]),
+					),
+				};
+			}
+			const task = /^(\s*(?:[-*+]|\d+[.)])\s+\[([ xX])\]\s+)(.*)$/.exec(line);
+			if (task) {
+				return {
+					codeOpen: false,
+					html: markdownBlock(
+						'task',
+						structuralToken(task[1], 'task', {
+							checked: task[2].toLowerCase() === 'x',
+						}) + escapeHtml(task[3]),
+					),
+				};
+			}
+			const list = /^(\s*)([-*+]|\d+[.)])(\s+)(.*)$/.exec(line);
+			if (list) {
+				const ordered = /^\d/.test(list[2]);
+				return {
+					codeOpen: false,
+					html: markdownBlock(
+						'list',
+						structuralToken(
+							`${list[1]}${list[2]}${list[3]}`,
+							ordered ? 'ordered-list' : 'list',
+							{ marker: list[2] },
+						) + escapeHtml(list[4]),
+					),
+				};
+			}
+			const callout = /^(\s*>\s*\[![^\]]+\]\s*)(.*)$/.exec(line);
+			if (callout) {
+				return {
+					codeOpen: false,
+					html: markdownBlock(
+						'callout',
+						structuralToken(callout[1], 'callout') + escapeHtml(callout[2]),
+					),
+				};
+			}
+			const quote = /^(\s*>\s?)(.*)$/.exec(line);
+			if (quote) {
+				return {
+					codeOpen: false,
+					html: markdownBlock(
+						'quote',
+						structuralToken(quote[1], 'quote') + escapeHtml(quote[2]),
+					),
+				};
+			}
+			const math = /^(\s*\$\$)(.*?)(\$\$\s*)$/.exec(line);
+			if (math) {
+				return {
+					codeOpen: false,
+					html: markdownBlock(
+						'math',
+						structuralToken(math[1], 'math') +
+						escapeHtml(math[2]) +
+						structuralToken(math[3], 'math'),
+					),
+				};
+			}
+			return {
+				codeOpen: false,
+				html: markdownBlock('paragraph', escapeHtml(line)),
+			};
+		}
+
+		function markdownBlock(kind, content) {
+			return `<span class="markdown-block" data-markdown-block-kind="${kind}">${content}</span>`;
+		}
+
+		function structuralToken(source, role, options = {}) {
+			const marker = options.marker
+				? ` data-marker="${escapeAttribute(options.marker)}"`
+				: '';
+			const checked = options.checked === undefined
+				? ''
+				: ` data-checked="${String(options.checked)}"`;
+			return (
+				`<span class="markdown-token" contenteditable="false"` +
+				` data-structural-token="${role}"${marker}${checked}>` +
+				`${escapeHtml(source)}</span>`
+			);
+		}
+
+		function readSourceSelection() {
+			const selection = window.getSelection();
+			if (!selection?.anchorNode || !selection.focusNode) return null;
+			if (!editor.contains(selection.anchorNode) || !editor.contains(selection.focusNode)) {
+				return null;
+			}
+			const anchor = sourceOffset(selection.anchorNode, selection.anchorOffset);
+			const focus = sourceOffset(selection.focusNode, selection.focusOffset);
+			return {
+				anchor,
+				focus,
+				from: Math.min(anchor, focus),
+				to: Math.max(anchor, focus),
+			};
+		}
+
+		function readEditorSource() {
+			if (editor.querySelector('.markdown-block')) return editor.textContent || '';
+			return readNativeEditableSource(editor);
+		}
+
+		function readNativeEditableSource(root) {
+			let source = '';
+			[...root.childNodes].forEach((node, index) => {
+				if (node.nodeType === Node.TEXT_NODE) {
+					source += node.textContent || '';
+					return;
+				}
+				if (!(node instanceof HTMLElement)) return;
+				if (node.tagName === 'BR') {
+					source += '\n';
+					return;
+				}
+				if (node.tagName === 'DIV' || node.tagName === 'P') {
+					if (index > 0) source += '\n';
+					const onlyBreak =
+						node.childNodes.length === 1 &&
+						node.firstChild?.nodeName === 'BR';
+					if (!onlyBreak) source += readNativeEditableSource(node);
+					return;
+				}
+				source += node.textContent || '';
+			});
+			return source.replaceAll('\r', '');
+		}
+
+		function sourceOffset(node, offset) {
+			const range = document.createRange();
+			range.selectNodeContents(editor);
+			range.setEnd(node, offset);
+			return range.toString().length;
+		}
+
+		function restoreSourceSelection(offset) {
+			const selection = window.getSelection();
+			const range = document.createRange();
+			const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+			let remaining = offset;
+			let node = walker.nextNode();
+			while (node) {
+				const length = node.textContent?.length ?? 0;
+				if (remaining <= length) {
+					const token = node.parentElement?.closest('.markdown-token');
+					if (token) {
+						if (remaining === 0) range.setStartBefore(token);
+						else range.setStartAfter(token);
+					} else {
+						range.setStart(node, remaining);
+					}
+					range.collapse(true);
+					selection.removeAllRanges();
+					selection.addRange(range);
+					return;
+				}
+				remaining -= length;
+				node = walker.nextNode();
+			}
+			range.selectNodeContents(editor);
+			range.collapse(false);
+			selection.removeAllRanges();
+			selection.addRange(range);
+		}
+
+		function updateLiveKind(source, offset) {
+			const lineStart = source.lastIndexOf('\n', Math.max(0, offset - 1)) + 1;
+			const lineEndAt = source.indexOf('\n', offset);
+			const lineEnd = lineEndAt < 0 ? source.length : lineEndAt;
+			const line = source.slice(lineStart, lineEnd);
 			let label = '段落';
-			if (/^#{1,6}\s/.test(text)) { kind = 'heading'; label = '标题'; }
-			else if (/^-\s+\[[ xX]\]\s/.test(text)) { kind = 'task'; label = '待办'; }
-			else if (/^(?:[-*+]|\d+[.)])\s/.test(text)) { kind = 'list'; label = '列表'; }
-			else if (/^>\s*\[!/.test(text)) { kind = 'callout'; label = 'Callout'; }
-			else if (/^>\s/.test(text)) { kind = 'quote'; label = '引用'; }
-			else if (/^```/.test(text)) { kind = 'code'; label = '代码'; }
-			else if (/^\$\$/.test(text)) { kind = 'math'; label = '公式'; }
-			editor.dataset.kind = kind;
+			if (/^#{1,6}\s/.test(line)) label = '标题';
+			else if (/^\s*(?:[-*+]|\d+[.)])\s+\[[ xX]\]\s/.test(line)) label = '待办';
+			else if (/^\s*(?:[-*+]|\d+[.)])\s/.test(line)) label = '列表';
+			else if (/^\s*>\s*\[!/.test(line)) label = 'Callout';
+			else if (/^\s*>\s?/.test(line)) label = '引用';
+			else if (/^\s*```/.test(line)) label = '代码';
+			else if (/^\s*\$\$/.test(line)) label = '公式';
 			document.getElementById('liveKind').textContent = label;
+		}
+
+		function escapeHtml(value) {
+			return value
+				.replaceAll('&', '&amp;')
+				.replaceAll('<', '&lt;')
+				.replaceAll('>', '&gt;');
+		}
+
+		function escapeAttribute(value) {
+			return escapeHtml(value)
+				.replaceAll('"', '&quot;')
+				.replaceAll("'", '&#39;');
 		}
 
 		resourceRows.addEventListener('click', event => {

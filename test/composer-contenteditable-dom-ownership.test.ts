@@ -1,6 +1,10 @@
 import assert from 'assert';
 import { readFileSync } from 'fs';
-import { projectSourceVisualParts } from '@/service/composer';
+import {
+	composerDraftBlockRanges,
+	composerDraftHiddenRanges,
+	projectSourceVisualParts,
+} from '@/service/composer';
 import { renderContentEditableProjection } from '@/ui/view/composer/chrome/contentEditableProjection';
 
 const hostile = '<img src=x onerror="boom"> **safe**';
@@ -14,6 +18,40 @@ assert.equal(
 	renderContentEditableProjection(projectSourceVisualParts('', 0), undefined),
 	'',
 	'an empty editable owns no React child or placeholder span',
+);
+
+const mixed = '# Title\n\nParagraph\n\n- first\n- second';
+const mixedHidden = composerDraftHiddenRanges(mixed);
+const mixedHtml = renderContentEditableProjection(
+	projectSourceVisualParts(mixed, 0, {
+		hiddenRanges: mixedHidden,
+		mathMode: 'source',
+	}),
+	undefined,
+	mixedHidden,
+	composerDraftBlockRanges(mixed),
+);
+assert.ok(
+	mixedHtml.includes('data-markdown-block-kind="heading"') &&
+		mixedHtml.includes('data-markdown-block-kind="paragraph"') &&
+		mixedHtml.includes('data-markdown-block-kind="list"'),
+	'mixed Markdown is wrapped by block range instead of inheriting the first block kind',
+);
+assert.equal(
+	(mixedHtml.match(/data-structural-token="list"/g) ?? []).length,
+	2,
+	'each list item owns one visual marker while retaining its source token',
+);
+assert.equal(
+	mixedHtml.replace(/<[^>]+>/g, ''),
+	mixed,
+	'block wrappers keep the mixed Markdown source byte-identical in textContent order',
+);
+const composerCss = readFileSync('src/styles/composer.css', 'utf8');
+assert.ok(
+	composerCss.includes('.pk-composer-source-token[data-structural-token]') &&
+		composerCss.includes('opacity: 1;'),
+	'structural pseudo markers override the hidden source token opacity',
 );
 
 const editable = readFileSync('src/ui/view/composer/chrome/EditableText.tsx', 'utf8');
@@ -35,6 +73,10 @@ assert.equal(
 	draft.includes('key={projection.version}'),
 	false,
 	'draft projection never unmounts React-owned descendants after native deletion',
+);
+assert.ok(
+	draft.includes('composerDraftBlockRanges(projection.text)'),
+	'draft projection computes independent visual ranges for mixed Markdown blocks',
 );
 
 console.log('composer-contenteditable-dom-ownership: passed');

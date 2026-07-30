@@ -1781,22 +1781,29 @@
 	min-height: 36px;
 	padding: 4px 2px;
 }
-.peak-composer-root .pk-new-block-draft__visual[data-markdown-kind='heading'] {
+.peak-composer-root
+	.pk-new-block-draft__markdown-block[data-markdown-block-kind='heading'] {
 	font-size: 1.45em;
 	font-weight: 700;
 }
-.peak-composer-root .pk-new-block-draft__visual[data-markdown-kind='quote'] {
+.peak-composer-root
+	.pk-new-block-draft__markdown-block[data-markdown-block-kind='quote'] {
+	box-decoration-break: clone;
 	padding-left: 12px;
 	border-left: 3px solid var(--pk-accent);
 	color: var(--pk-fg-muted);
 }
-.peak-composer-root .pk-new-block-draft__visual[data-markdown-kind='callout'] {
+.peak-composer-root
+	.pk-new-block-draft__markdown-block[data-markdown-block-kind='callout'] {
+	box-decoration-break: clone;
 	padding: 10px 12px;
 	border-left: 3px solid var(--pk-accent);
 	border-radius: var(--pk-radius-sm);
 	background: var(--pk-accent-tint);
 }
-.peak-composer-root .pk-new-block-draft__visual[data-markdown-kind='code'] {
+.peak-composer-root
+	.pk-new-block-draft__markdown-block[data-markdown-block-kind='code'] {
+	box-decoration-break: clone;
 	padding: 8px 10px;
 	border: 1px solid var(--pk-border);
 	border-radius: var(--pk-radius-sm);
@@ -1804,9 +1811,9 @@
 	font-family: var(--font-monospace);
 	font-size: var(--pk-text-xs);
 }
-.peak-composer-root .pk-new-block-draft__visual[data-markdown-kind='math'] {
-	justify-content: center;
-	min-height: 52px;
+.peak-composer-root
+	.pk-new-block-draft__markdown-block[data-markdown-block-kind='math'] {
+	padding-inline: 18px;
 	font-family: var(--font-monospace);
 }
 .peak-composer-root .pk-new-block-draft__visual
@@ -1822,6 +1829,14 @@
 .peak-composer-root .pk-new-block-draft__visual
 	.pk-composer-source-token[data-structural-token='ordered-task']::after {
 	content: '☐';
+}
+.peak-composer-root .pk-new-block-draft__visual
+	.pk-composer-source-token[data-structural-token] {
+	/*
+	 * The source bytes stay zero-size, but the structural ::after marker must
+	 * not inherit the generic token's opacity: 0.
+	 */
+	opacity: 1;
 }
 .peak-composer-root .pk-new-block-draft__visual
 	.pk-composer-source-token[data-structural-token='list']::after,

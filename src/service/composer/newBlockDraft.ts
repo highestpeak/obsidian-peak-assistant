@@ -82,6 +82,21 @@ export function composerDraftPresentationKind(source: string): ComposerBlockKind
 	return parseComposerDocument(source).blocks[0]?.kind ?? 'paragraph';
 }
 
+export interface ComposerDraftBlockRange {
+	from: number;
+	to: number;
+	kind: ComposerBlockKind;
+}
+
+/** Preserve every parsed block's independent visual range inside one draft. */
+export function composerDraftBlockRanges(source: string): ComposerDraftBlockRange[] {
+	return parseComposerDocument(source).blocks.map((block) => ({
+		from: block.source.from,
+		to: block.source.to,
+		kind: block.kind,
+	}));
+}
+
 /**
  * Keep structural Markdown bytes in textContent for lossless writeback while
  * hiding the leading syntax in the live draft projection.
@@ -95,7 +110,7 @@ export function composerDraftHiddenRanges(source: string): ComposerDraftHiddenRa
 	const hidden: ComposerDraftHiddenRange[] = [];
 	for (const block of snapshot.blocks) {
 		if (block.kind === 'heading') {
-			const to = headingTextStart(source, block);
+			const to = headingTextStart(source, block.source);
 			if (to > block.source.from) hidden.push({ from: block.source.from, to, role: 'heading' });
 			continue;
 		}
