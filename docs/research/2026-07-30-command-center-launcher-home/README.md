@@ -2,6 +2,8 @@
 
 > 日期：2026-07-30
 >
+> 视觉方向修订：2026-07-31
+>
 > 状态：Research complete；产品边界已进入正式设计，尚未实现
 >
 > 输入证据：`/Users/zhangjike/Downloads/iShot_2026-07-30_22.02.35.mp4`
@@ -17,15 +19,33 @@
 
 - 原生 `Cmd/Ctrl + P` 保留，继续承担“全生态兜底搜索”。
 - Peak Command Center 使用用户自己在 Obsidian 中绑定的快捷键打开。
-- 默认态是有限、可记忆的二维命令组，不是另一条无限长列表。
-- 同一份配置同时驱动轻量 Modal 和可固定的 Home View。
-- Home 首先组合现有 Vault 内容、Bookmarks、Workspace 和最近工作，不另造 Todo、日历或统计数据系统。
+- 默认态是“分组轨道 + 单组图标网格”，不是另一条无限长列表。
+- Modal 与 Home 共享 action identity 和呈现元数据，但不复制同一套页面布局。
+- Home 使用 Search、Quick access、Continue 和可选 Pinned pages 的固定阅读路径，不另造 Todo、日历、统计或 widget 数据系统。
 - 外部插件命令只通过集中兼容层读取和执行；不拦截、不修改原生 Command Palette。
 
 正式设计见：
 
 - [Command Center Launcher + Home design](../../superpowers/specs/2026-07-30-command-center-launcher-home-design.md)
 - [可交互视觉原型](../../gstack/command-center-launcher-home-2026-07-30/index.html)
+
+## 2026-07-31 视觉纠偏
+
+第一版原型的产品边界基本正确，但视觉模型错误。它把 Modal、Home 和管理态都套成了 dashboard：
+
+- Modal 顶部放了标题、当前文档、能力可用性、Home 和编辑按钮，启动前先要求用户读取说明。
+- 四个分组同时展开，每个分组又是一张卡，tile 继续嵌套在卡里。
+- Home 把最近文件、Workspace、嵌入文档和 Todo 作为平行组件竞争注意力。
+- 管理态同时展示分组表和完整命令目录，像后台配置页，不像对当前空间布局的直接编辑。
+
+V2 将纠偏转成明确约束：
+
+1. Modal 顶栏只保留搜索和关闭。
+2. 一次只显示一个分组。
+3. 分组在窄轨道切换，动作在无常驻边框的四列网格里定位。
+4. Search 继续使用二维结果，不退回一维长列表。
+5. Customize 在当前轨道和网格里原位发生；完整目录只在 Add action 后临时出现。
+6. Home 是稀疏的导航起点；Pinned pages 沿纵向阅读路径出现，不是自由拼装 dashboard。
 
 ## 录屏观察
 
@@ -128,6 +148,36 @@ Raycast Quicklinks 可以保存 URL、文件、文件夹和 deeplink，支持 ta
 
 - [Quicklinks](https://manual.raycast.com/quicklinks)
 - [Command aliases and hotkeys](https://manual.raycast.com/command-aliases-and-hotkeys)
+- [Grid](https://developers.raycast.com/api-reference/user-interface/grid)
+
+Raycast 的 Grid 把图标或图像作为对象的第一识别信号，同时仍保留搜索入口。对 Peak 的启示不是复制 Raycast 外观，而是让高频动作在空间里有固定位置。
+
+### Apple Spotlight Apps
+
+Apple 当前把 Spotlight 描述为搜索、浏览和打开 app 的中心位置。应用浏览支持分类过滤、Grid / List 切换、方向键导航和 `Esc` 关闭。
+
+来源：[View and open apps on Mac](https://support.apple.com/guide/mac-help/mh35840/mac)。
+
+这证明“分类 + 网格 + 搜索”可以共存。Peak 不需要同时展开所有分类；左侧组轨道足以维持上下文。
+
+### Arc Command Bar
+
+Arc 把打开页面、切换 Space 和执行 action 汇入 Command Bar。用户可以输入 `/` 过滤 actions，也能直接输入 Space 名称切换上下文。
+
+来源：
+
+- [Arc 2022 release notes](https://resources.arc.net/hc/en-us/articles/20498417809815-Arc-for-macOS-2022-Release-Notes)
+- [Spaces](https://resources.arc.net/hc/en-us/articles/19228064149143-Spaces-Distinct-Browsing-Areas)
+
+Peak 采用它的“入口先于说明”原则，不采用其一维结果结构。
+
+### Bonjourr
+
+Bonjourr 把 New Tab 定义为 refined、minimal 和 calm 的 start page，核心能力是 search bar 与 favorites quick access。
+
+来源：[Bonjourr](https://bonjourr.fr/)。
+
+对 Peak Home 的启示是保留大面积留白。默认首页先呈现少量固定入口和 Continue；用户固定的页面在后续纵向区域展开，不预装一套工作台组件。
 
 ### OneTab
 
@@ -153,8 +203,10 @@ Start.me 的 Bookmark Groups 支持 tab 或 collapsible list。它说明“二�
 | Obsidian Command Palette | 全生态、键盘快、原生 hotkey | 保留为兜底全集 | 一维长列表 |
 | Better Command Palette | recent、pin、hide、macro | 搜索可有 escape hatch | 仍以列表为中心 |
 | Commander / Buttons Panel | 用户自定义按钮与分组 | 组和 tile 是核心配置对象 | 不复制所有脚本和动画选项 |
-| Homepage / Hearth | 固定 Home、嵌入内容、最近文件 | Modal 与 Home 共用配置 | 不重建万能 dashboard builder |
-| Raycast | alias、hotkey、Quicklink | 显示真实快捷键，允许固定目的地 | 不做系统级 launcher |
+| Homepage / Hearth | 固定 Home、嵌入内容、最近文件 | 保留入口与继续工作 | 不重建万能 dashboard builder |
+| Raycast / Apple Apps | 搜索、分类、网格、键盘导航 | 单组可见；网格形成空间记忆 | 不做系统级 launcher |
+| Arc Command Bar | 同一入口切换页面、空间和 action | 入口先于说明 | 不照搬一维结果 |
+| Bonjourr | 安静、稀疏的 New Tab | Home 保留搜索与 Quick access | 不复制天气、时钟和装饰背景 |
 | OneTab / Start.me | group、quick list、可重排 | 空 query 保留空间记忆 | 不把所有 Vault 内容收成收藏夹 |
 
 ## 产品判断
@@ -162,12 +214,12 @@ Start.me 的 Bookmark Groups 支持 tab 或 collapsible list。它说明“二�
 ### 要做
 
 1. 一个 owner-approved 的 `Open Peak Command Center` 全局命令，快捷键由用户在 Obsidian Hotkeys 中设置。
-2. 空 query 显示二维命令组。
+2. 空 query 显示组轨道和当前组的二维动作网格。
 3. 运行态搜索只过滤已策展内容。
 4. 编辑态才允许搜索全部已注册命令并加入组。
 5. 每个 tile 显示图标、短标题、来源组和实际快捷键。
-6. 同一配置可在 full-tab Home View 展开。
-7. Home 支持 Pinned destinations、Continue working、Embedded Vault content 和 Command groups。
+6. 同一 action 配置可被 full-tab Home View 的 Quick access 引用。
+7. Home 支持 Search、Quick access、Continue 和可选 Pinned pages，并把 Note、Base、Canvas、Bookmark 或 Workspace 的内容所有权留给原 owner。
 
 ### 不做
 
@@ -177,6 +229,8 @@ Start.me 的 Bookmark Groups 支持 tab 或 collapsible list。它说明“二�
 4. 不在第一版引入脚本运行、任意 HTML、远程 widget 或复杂 macro。
 5. 不内建新的 Todo、Calendar、Pomodoro、Stats 数据系统。
 6. 不使用 AI 生成小图标。
+7. 不在 Modal 顶部展示当前文档、能力可用性或产品解释。
+8. 不让多个分组卡同时占满首屏。
 
 ## 为什么图标不用 AI 生成
 

@@ -2,6 +2,8 @@
 
 Date: 2026-07-30
 
+Visual direction revised: 2026-07-31
+
 Status: Decided · design/spec ready · implementation pending
 
 Owner intent: Important product integration surface
@@ -14,10 +16,10 @@ Research: [`docs/research/2026-07-30-command-center-launcher-home/README.md`](..
 
 Build Peak Command Center as a curated launcher that coexists with Obsidian's native Command Palette.
 
-One versioned board configuration drives two shells:
+One versioned collection configuration drives two focused shells:
 
 - **Command Center Modal** for quick, keyboard-first invocation.
-- **Home View** for a pinned navigation page with commands and Vault destinations.
+- **Home View** for a quiet navigation page with pinned actions and recent Vault destinations.
 
 This design does not replace `Cmd/Ctrl + P`, intercept Obsidian hooks, or remove third-party commands. The native Palette remains the exhaustive fallback. Command Center is the user's deliberately small, spatially stable subset.
 
@@ -65,7 +67,7 @@ Peak surface entry points use Command Gateway ownership. External plugin command
 
 ### G5 · Home continuity
 
-The same board can open as a full-tab Home View with pinned files, Bookmarks, Workspaces and selected Vault content.
+The same curated actions can appear in a full-tab Home View beside pinned files, Bookmarks, Workspaces and recent work. Home does not reproduce the Modal's exact layout.
 
 ### G6 · Native coexistence
 
@@ -85,22 +87,26 @@ The exhaustive native Command Palette stays one keystroke away.
 
 ## 6. Product model
 
-### 6.1 One board, two shells
+### 6.1 One collection, two presentations
 
 ```text
 CommandCenterBoardConfig
 ├─ Modal shell
-│  ├─ curated groups
-│  ├─ filtered search state
-│  └─ manage mode
+│  ├─ one selected group
+│  ├─ flat action grid
+│  └─ in-place customize mode
 └─ Home shell
+   ├─ global search entry
+   ├─ quick access
    ├─ continue working
-   ├─ pinned destinations
-   ├─ embedded Vault content
-   └─ curated command groups
+   └─ pinned pages
 ```
 
-The Modal and Home must not maintain separate copies of commands. Reordering a group updates both surfaces.
+The Modal and Home must not maintain separate copies of actions. They share action identity, label, icon, hotkey resolution and destination. Their composition differs:
+
+- Modal optimizes for keyboard navigation inside one selected group.
+- Home optimizes for returning to a small set of pinned destinations.
+- Reordering a Modal group does not force Home to reproduce every group or tile.
 
 ### 6.2 Action types
 
@@ -146,15 +152,15 @@ URL, macro and script actions are intentionally deferred. They widen permissions
 interface CommandCenterBoardConfig {
 	version: 1;
 	modal: {
-		columnCount: 2 | 3;
-		showContext: boolean;
+		columnCount: 3 | 4;
 	};
 	home: {
 		openOnStartup: boolean;
 		replaceEmptyTab: boolean;
+		quickAccessActionIds: string[];
+		pinnedTargetIds: string[];
 	};
 	groups: CommandCenterGroup[];
-	homeBlocks: HomeBlock[];
 }
 
 interface CommandCenterGroup {
@@ -174,12 +180,21 @@ Default group definitions belong in `templates/config/command-center-defaults.js
 
 The modal has four persistent regions:
 
-1. Title and current context.
-2. Search field.
-3. Curated group board.
-4. Footer help with Manage and native Palette escape.
+1. Search field and close button.
+2. Narrow group rail.
+3. One flat action grid for the selected group.
+4. Footer keyboard help.
 
-At the recommended desktop size, groups form a two-column board. Each group contains a compact grid of action tiles. The group is the primary visual unit; tiles do not float in one undifferentiated gallery.
+Only one group is visible at a time. The rail supplies the vertical dimension; the action grid supplies the horizontal and spatial dimension. The screen never nests several group cards inside the Modal.
+
+The header does not show:
+
+- product description;
+- current file;
+- capability availability summary;
+- Home or edit shortcuts.
+
+Home is an ordinary configured action. Customize is a low-emphasis rail action.
 
 ### 7.2 Search state
 
@@ -190,9 +205,8 @@ Rules:
 1. Match short label first.
 2. Match user aliases second.
 3. Match group and plugin label third.
-4. Preserve group headings in results.
+4. Keep a two-dimensional result grid.
 5. Do not include unconfigured commands.
-6. Offer `Open native Command Palette` as an explicit fallback.
 
 The full registered-command catalog appears only inside Manage → Add action. This is the main protection against the original “weird fuzzy matches” problem.
 
@@ -200,18 +214,18 @@ The full registered-command catalog appears only inside Manage → Add action. T
 
 Home is a navigation page, not an analytics dashboard.
 
-Default blocks:
+The default layout is fixed and deliberately sparse:
 
-- **Continue working**: recently active Vault files, with source path and last-opened time.
-- **Pinned destinations**: files, headings, Bookmarks, Workspaces and product views.
-- **Vault content**: a selected Note, Base or Canvas rendered through the owning Obsidian view.
-- **Command groups**: the same groups used by the Modal, at a more relaxed density.
+- **Search**: one centered launcher entry.
+- **Quick access**: a short row of pinned actions and destinations.
+- **Continue**: recent Vault files with source path and last-opened time.
+- **Pinned pages**: optional, owner-rendered previews in one vertical reading path.
 
-Tasks are shown only when the user pins a task-bearing Note or Base. Peak does not create a parallel task store.
+Pinned Notes, Bases and Canvases remain owned by their existing Obsidian views. Home can show bounded previews, but it does not create a freeform widget canvas or duplicate their state.
 
 ### 7.4 Manage mode
 
-Manage mode is explicit. Normal invocation never shows drag handles or edit controls.
+Customize mode is explicit. Normal invocation never shows drag handles or edit controls. It reuses the same group rail and action grid so the user edits the spatial layout in place.
 
 Available operations:
 
@@ -220,9 +234,11 @@ Available operations:
 - add action from a searchable catalog;
 - edit short label and aliases;
 - reorder groups and actions;
-- show / hide action in Modal or Home;
+- pin / unpin action in Home Quick access;
 - remove unavailable action;
 - reset only the selected group to its default.
+
+The full command catalog is a temporary picker opened by `Add action`. It is not a permanent second column.
 
 Destructive layout reset requires confirmation and export/import support before a global reset ships.
 
@@ -230,22 +246,25 @@ Destructive layout reset requires confirmation and export/import support before 
 
 | Screen / state | Primary job | Reads | Writes | Main actions | Empty / failure state | Entry / exit |
 | --- | --- | --- | --- | --- | --- | --- |
-| Modal · board | Invoke a curated action without typing | Board config, context, availability, hotkeys | Recent usage only | Arrow navigation, Enter, search, open Home | Starter groups or “add first group” | Hotkey / command; closes to previous focus |
-| Modal · search | Narrow configured actions | Curated action index | Query only | Type, move by arrow, Enter, clear | No curated result + native Palette fallback | Search field; returns to board on clear |
-| Home View | Return to important work and destinations | Board config, recents, bookmarks, selected Vault content | Block layout and destination state | Open destination, run command, manage | Guide to pin first destination | Ribbon / command / empty tab; exits to destination |
-| Manage | Curate board content | Full command catalog, plugins, hotkeys, current config | Groups, labels, aliases, order, visibility | Add, drag, edit, remove, export | Compatibility warning if catalog unavailable | Manage button; Done returns to same shell |
+| Modal · launcher | Invoke a curated action without typing | Groups, actions, availability, hotkeys | Recent usage only | Switch group, arrow navigation, Enter, search | Starter group or “add first action” | Hotkey / command; closes to prior focus |
+| Modal · search | Narrow configured actions | Curated action index | Query only | Type, spatial navigation, Enter, clear | Empty result with clear-query guidance | Search field; returns to launcher on clear |
+| Home View | Return to important work and destinations | Pinned actions, recents, bookmarks, Workspaces, pinned pages | Quick access and pin order | Search, open destination, customize | Guide to pin the first destination or page | Ribbon / command / empty tab; exits to destination |
+| Customize | Curate the current spatial layout | Current config; catalog only after Add action | Groups, labels, aliases, order, Home pins | Drag, add, edit, remove, Done | Compatibility warning inside catalog picker | Rail action; Done returns to launcher |
 
 ## 9. Visual design
 
 ### 9.1 Modal geometry
 
-- Width: `min(980px, calc(100vw - 48px))`.
-- Height: content-led up to `min(720px, calc(100vh - 72px))`.
-- Group board: two columns above 780px; one column below.
-- Action tile: minimum `120 × 68px`.
-- Fixed icon hit target: `36 × 36px`.
-- Radius: 8–10px; no pill-card wall.
+- Width: `min(880px, calc(100vw - 48px))`.
+- Height: approximately `570px`, capped by `calc(100vh - 72px)`.
+- Group rail: approximately `168px`.
+- Action grid: four columns at the recommended desktop size.
+- Action tile: approximately `126px` high with no resting border.
+- Fixed icon hit target: `38 × 38px`.
+- Modal radius: approximately `14px`; tile radius: approximately `10px`.
 - Accent: Obsidian / Peak purple only for focus, selection and primary entry.
+
+No gradient, nested group card, availability strip, descriptive hero or dashboard statistic appears in the Modal.
 
 ### 9.2 Action tile anatomy
 
@@ -253,9 +272,10 @@ Every tile has:
 
 1. Lucide icon.
 2. Short user-facing label.
-3. Optional real hotkey.
-4. Availability state.
-5. Tooltip with full command name and source plugin.
+3. Quiet source label.
+4. Optional real hotkey.
+5. Disabled treatment when unavailable.
+6. Tooltip with full command name and source plugin.
 
 Long native command labels such as “Create new drawing — in the current active window” become a short tile title such as `Current window`; the tooltip preserves the full source label.
 
@@ -335,16 +355,17 @@ Because Obsidian's public typings do not expose the full command catalog, this a
 
 ## 12. Context behavior
 
-Context helps ordering but must not make the board unstable.
+Context can affect whether an action is invokable, but it does not occupy permanent launcher chrome.
 
 Allowed:
 
-- show current file and active view in the header;
 - mark a command unavailable when its context check fails;
-- optionally place up to three context suggestions in a dedicated `Suggested now` strip.
+- explain the unavailable reason in a tooltip;
+- use the exact current file only after the user invokes an action that needs it.
 
 Not allowed:
 
+- show current file or “capability available” summaries above the grid;
 - reordering every group based on AI;
 - silently hiding user-pinned actions;
 - sending current file content to an AI model just to open the launcher;
@@ -363,16 +384,16 @@ Both behaviors are opt-in and off by default:
 
 Opening Home must not close existing tabs or load a Workspace unless the user explicitly invokes a Workspace tile.
 
-### Embedded content
+### Destination ownership
 
-Home can host content only through existing owners:
+Quick access and Continue can point to:
 
-- Markdown note through Obsidian render / editor modes;
-- Base through its native view;
-- Canvas through its native view;
-- product view through a registered view type.
+- Markdown notes and subpaths;
+- Bases and Canvases;
+- Bookmarks and Workspaces;
+- registered product views.
 
-Home does not copy content into its own database.
+Home navigates to destinations and lets existing owners render bounded previews for pinned pages. It does not become a generic widget canvas or copy destination content into its own database.
 
 ## 14. Defaults
 
@@ -392,9 +413,9 @@ Setup Wizard appears only while setup is incomplete. It does not occupy permanen
 ### Navigation
 
 - Home
-- Current file
 - Daily note
 - Bookmarks
+- one user-selected Workspace
 
 The user may add third-party groups such as Excalidraw or QuickAdd during Manage mode. Peak does not assume those plugins are installed.
 
@@ -410,7 +431,7 @@ Rejected as the primary solution. Better ranking cannot give a stable two-dimens
 
 ### Build only a full Home dashboard
 
-Rejected. It does not solve the in-context invocation problem and duplicates mature community plugins.
+Rejected. It does not solve the in-context invocation problem, creates competing widgets and duplicates mature community plugins.
 
 ### Build only a modal
 
@@ -435,15 +456,15 @@ This is an implementation sequence, not permission to ship incomplete UI as the 
 ### Track B · Modal
 
 - React modal shell;
-- two-dimensional groups;
+- group rail plus four-column action grid;
 - search over configured actions;
 - full keyboard and focus restoration;
-- native Palette escape.
+- close-only header.
 
 ### Track C · Manage
 
-- group and action editor;
-- full catalog picker;
+- in-place group and action editor;
+- on-demand catalog picker;
 - drag reorder;
 - invalid command handling;
 - export/import.
@@ -451,10 +472,11 @@ This is an implementation sequence, not permission to ship incomplete UI as the 
 ### Track D · Home
 
 - ItemView shell;
+- centered launcher entry;
+- quick access;
 - continue working;
-- pinned destinations;
-- embedded Vault content;
-- same command groups.
+- pinned pages;
+- pinned destinations through existing owners.
 
 ### Track E · Migration and cleanup
 
@@ -472,7 +494,7 @@ This is an implementation sequence, not permission to ship incomplete UI as the 
 - Search excludes unconfigured commands.
 - Missing command IDs fail closed.
 - Hotkey resolver never persists stale display strings.
-- Modal/Home render the same group order.
+- Modal/Home resolve the same action identity, label, icon and hotkey.
 - Keyboard grid navigation tests.
 - Focus restoration test.
 - Boundary test prevents UI or service code from reading private `app.commands` directly.
@@ -499,12 +521,14 @@ If CDP is unavailable, mark these interactions `INTERACTION NOT VERIFIED`; a sta
 - Native `Cmd/Ctrl + P` behavior is unchanged.
 - The user can bind one shortcut to open Peak Command Center.
 - Empty query shows grouped tiles in a two-dimensional layout.
-- Runtime search returns only configured actions and keeps group provenance.
+- Only one group is visible at a time; the group rail and tile grid remain spatially stable.
+- Runtime search returns only configured actions and keeps source provenance.
 - Every visible shortcut matches current Obsidian hotkey configuration.
 - A user can create an Excalidraw group and add a command without editing files.
 - A missing plugin does not crash or silently remap an action.
-- Home and Modal use one source of truth for groups.
+- Home and Modal use one source of truth for action identity and presentation metadata.
 - Home can pin a Vault file, Bookmark and Workspace.
+- Home defaults to Search, Quick access, Continue and optional Pinned pages instead of a block dashboard.
 - Home does not introduce a parallel tasks or calendar store.
 - The legacy AI planner is not presented as this launcher.
 
@@ -513,9 +537,9 @@ If CDP is unavailable, mark these interactions `INTERACTION NOT VERIFIED`; a sta
 | Risk | Impact | Control |
 | --- | --- | --- |
 | Private command catalog API changes | Third-party picker breaks | Central adapter, startup capability check, Peak-only fallback |
-| Board grows into another infinite catalog | Original problem returns | Runtime search only configured actions; group size guidance |
-| Home becomes a widget marketplace | Product scope fragments | First-party blocks limited to navigation and existing Vault content |
-| Dynamic suggestions destroy spatial memory | Daily use becomes unpredictable | Suggestions isolated; pinned positions never auto-move |
+| Board grows into another infinite catalog | Original problem returns | Runtime search only configured actions; one visible group |
+| Home becomes a widget marketplace | Product scope fragments | Fixed Search / Quick access / Continue / Pinned pages structure |
+| Dynamic suggestions destroy spatial memory | Daily use becomes unpredictable | No automatic suggestions in the first implementation |
 | Hotkey labels drift | User loses trust | Resolve live; never persist display string |
 | Old and new Command Center concepts coexist | Naming and ownership confusion | Rename/retire old planner during implementation |
 
@@ -523,5 +547,5 @@ Stop implementation and return for owner review if:
 
 - arbitrary command discovery cannot be isolated behind one compatibility port;
 - Home requires copying Note/Base/Workspace state into a second data model;
-- the first usable board needs more than four default groups;
+- the first usable board needs more than five default groups;
 - implementation proposes intercepting or rewriting native Command Palette behavior.

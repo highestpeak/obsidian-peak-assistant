@@ -13,7 +13,7 @@ Obsidian Command Palette 是稳定的产品级全局导航，不是功能开发�
 - Hub、Related Notes 和 review history 属于 Work Intelligence。
 - TTS、cover image 属于媒体生成 workflow。
 - Debug trace、component gallery 属于开发与 QA。
-- Command Center 属于实验性 planner surface。
+- 旧 Copilot Command Center 属于实验性 planner surface；新策展启动器尚未实现，也尚未进入批准清单。
 
 如果没有清晰的准入和退场规则，临时入口会永久残留，只能依靠 owner 人工发现。这里改为“产品规则 + 单一清单 + 自动测试”，不再把清理责任转嫁给 owner。
 
