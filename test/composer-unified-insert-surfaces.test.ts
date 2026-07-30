@@ -59,10 +59,6 @@ assert.match(
 	/\.pk-link-popover\s*\{[\s\S]*?max-width:\s*min\(300px/,
 	'the settled link preview stays compact',
 );
-assert.match(
-	css,
-	/\[data-composer-active-surface='link'\] \.pk-between-block-insert__trigger/,
-	'a link preview suppresses competing insertion chrome',
-);
+assert.equal(css.includes('pk-between-block-insert'), false, 'retired between-block chrome has no CSS');
 
 console.log('composer-unified-insert-surfaces: passed');

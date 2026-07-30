@@ -47,6 +47,8 @@ export interface EditableTextProps {
 	/** Resolve the CURRENT range for a flush (offsets shift after each commit). */
 	resolveRange: () => DirectEditRange | null;
 	className?: string;
+	/** Structural Enter handler for object-owned text, such as one list item. */
+	onInsertParagraph?: () => void | Promise<void>;
 }
 
 export function EditableText({
@@ -58,6 +60,7 @@ export function EditableText({
 	editable,
 	resolveRange,
 	className,
+	onInsertParagraph,
 }: EditableTextProps): React.ReactElement {
 	const {
 		runtime,
@@ -144,6 +147,12 @@ export function EditableText({
 		// Block-structure inputs (Enter splits) are not part of the WP4 text slice.
 		if (native.inputType === 'insertParagraph' || native.inputType === 'insertLineBreak') {
 			ev.preventDefault();
+			if (
+				native.inputType !== 'insertParagraph' ||
+				native.isComposing ||
+				!onInsertParagraph
+			) return;
+			void onInsertParagraph();
 		}
 		// Everything else is INTENTIONALLY left to the browser: this leaf is an
 		// uncontrolled contenteditable while focused. Text insertion (including

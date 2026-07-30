@@ -64,8 +64,6 @@ export interface ComposerSwatch {
 export interface ComposerChromeConfig {
 	/** Pointer must remain intentional this long before a large hover surface appears. */
 	surfacePreviewOpenDelayMs: number;
-	/** Shorter dwell used after the user has acquired a visible plus trigger. */
-	surfaceIntentOpenDelayMs: number;
 	/** Hover corridor grace period for moving from an action trigger into its floating surface. */
 	surfacePreviewCloseDelayMs: number;
 	/** Movement beyond this distance restarts hover intent acquisition. */
@@ -82,13 +80,6 @@ export interface ComposerChromeConfig {
 		drag: string;
 		directEdit: string;
 		disabledNoRuntime: string;
-		listGapLabel: string;
-		listGapInsertItem: string;
-		listGapInsertTask: string;
-		listGapAi: string;
-		listGapPlaceholder: string;
-		listGapGenerate: string;
-		listGapCancel: string;
 	};
 	insertDraft: {
 		chooserLabel: string;
@@ -316,7 +307,6 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 	},
 	chrome: {
 		surfacePreviewOpenDelayMs: 360,
-		surfaceIntentOpenDelayMs: 120,
 		surfacePreviewCloseDelayMs: 180,
 		surfacePointerTravelTolerancePx: 6,
 		actions: {
@@ -331,13 +321,6 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 				drag: '拖动块',
 				directEdit: '直接编辑',
 				disabledNoRuntime: '编辑运行时未接入',
-				listGapLabel: '在这里插入列表项',
-				listGapInsertItem: '列表项',
-				listGapInsertTask: '待办项',
-				listGapAi: 'AI 补项',
-				listGapPlaceholder: '描述这一项需要补什么（可选）',
-				listGapGenerate: '生成',
-				listGapCancel: '取消',
 			},
 			insertDraft: {
 				chooserLabel: '在下方插入',
@@ -562,8 +545,6 @@ function mergeChrome(parsed?: Partial<ComposerChromeConfig>): ComposerChromeConf
 	return {
 		surfacePreviewOpenDelayMs:
 			parsed.surfacePreviewOpenDelayMs ?? base.surfacePreviewOpenDelayMs,
-		surfaceIntentOpenDelayMs:
-			parsed.surfaceIntentOpenDelayMs ?? base.surfaceIntentOpenDelayMs,
 		surfacePreviewCloseDelayMs:
 			parsed.surfacePreviewCloseDelayMs ?? base.surfacePreviewCloseDelayMs,
 		surfacePointerTravelTolerancePx:

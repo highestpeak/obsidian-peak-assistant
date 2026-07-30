@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { applyOperations } from '@/core/composer';
 import {
 	buildInsertListItemOps,
@@ -83,47 +83,36 @@ assert.equal(
 );
 
 const root = readFileSync('src/ui/view/composer/ComposerRoot.tsx', 'utf8');
-const gap = readFileSync(
-	'src/ui/view/composer/chrome/ListItemInsertGap.tsx',
+const editable = readFileSync(
+	'src/ui/view/composer/chrome/EditableText.tsx',
 	'utf8',
 );
-assert.ok(root.includes('<ListItemInsertGap'), 'each top-level list gap uses the shared insertion grammar');
+assert.equal(
+	existsSync('src/ui/view/composer/chrome/ListItemInsertGap.tsx'),
+	false,
+	'the pointer-relative list-gap surface is retired',
+);
+assert.equal(root.includes('<ListItemInsertGap'), false, 'list rendering exposes no hover insertion gap');
 assert.ok(root.includes('buildInsertListItemOps'), 'direct insertion goes through Composer transactions');
-assert.ok(root.includes("kind: 'list-gap'"), 'gap invocation carries typed placement instead of prompt-only hints');
 assert.ok(root.includes('data-unit-id={unit.unitId}'), 'each list item is exposed as an addressable UI unit');
 assert.ok(
-	gap.includes('onPointerEnter={acquire}'),
-	'the list gap captures the pointer position once on entry',
-);
-assert.equal(
-	gap.includes('onPointerMove='),
-	false,
-	'the list plus does not drift with continuous pointer movement',
+	root.includes('await chrome.flushAll();') &&
+		root.indexOf('await chrome.flushAll();') < root.indexOf('chrome.runtime.session?.snapshot'),
+	'Enter flushes native text before resolving the current transaction snapshot',
 );
 assert.ok(
-	gap.includes('anchorCaptured.current = true'),
-	'repeated synthetic pointer-enter events cannot overwrite the acquired list anchor',
+	root.includes('matchBlocks(snapshot.blocks, currentSnapshot.blocks)'),
+	'Enter rematches the edited list block after the flush changes its block id',
 );
 assert.ok(
-	gap.includes('onPointerEnter={scheduleOpen}'),
-	'hovering the stable plus opens the direct insertion menu',
+	root.includes("onInsertParagraph={") &&
+		root.includes("checkbox ? 'task' : 'list'"),
+	'Enter inserts a same-kind sibling after the active list or task item',
 );
 assert.ok(
-	gap.includes("onClick={() => insert('list')}") &&
-		gap.includes("onClick={() => insert('task')}"),
-	'list and task insertion are direct first-class choices',
-);
-assert.ok(
-	gap.includes("onClick={() => setMode('ai')}"),
-	'the descriptive AI input requires an explicit Sparkles choice',
-);
-assert.ok(
-	gap.includes("mode === 'ai'"),
-	'the AI prompt is not the default hover surface',
-);
-assert.ok(
-	gap.includes('setSuppressed(true)'),
-	'completed insertion suppresses re-open until the pointer leaves that gap',
+	editable.includes('onInsertParagraph?: () => void | Promise<void>') &&
+		editable.includes('void onInsertParagraph();'),
+	'the editable leaf routes structural Enter through its object owner',
 );
 
 const css = readFileSync('src/styles/composer.css', 'utf8');
@@ -137,15 +126,6 @@ assert.match(
 	/\.pk-composer-list__row:hover[\s\S]*?var\(--pkc-block-hover-bg\)/,
 	'list items own the hover feedback',
 );
-assert.match(
-	css,
-	/\.pk-composer-list__gap-trigger\s*\{[\s\S]*?left:\s*clamp\(/,
-	'list-item plus uses the same captured pointer-relative horizontal anchor',
-);
-assert.match(
-	css,
-	/\.pk-composer-list__gap-trigger\s*\{[\s\S]*?margin:\s*-10px 0 0 -10px !important;[\s\S]*?transform:\s*none !important;/,
-	'the list plus cannot jump when the Obsidian hover reset changes transform',
-);
+assert.equal(css.includes('pk-composer-list__gap'), false, 'retired list-gap CSS leaves no hidden hit area');
 
 console.log('composer-list-insertion-anchor: passed');

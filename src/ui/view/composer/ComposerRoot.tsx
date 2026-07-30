@@ -33,7 +33,6 @@ import {
 	buildInsertListItemOps,
 	buildMoveBlockOps,
 	buildToggleTaskOps,
-	FILL_GAPS_CAPABILITY_ID,
 	POLISH_CAPABILITY_ID,
 	CODE_EXPLAIN_CAPABILITY_ID,
 	MERMAID_EXPLAIN_CAPABILITY_ID,
@@ -91,10 +90,6 @@ import {
 	type CommentDraftTarget,
 } from './chrome/CommentPanel';
 import { BlockHistoryPanel } from './chrome/BlockHistoryPanel';
-import {
-	adjacentInsertionAnchor,
-	BetweenBlockInsertGap,
-} from './chrome/BetweenBlockInsertGap';
 import { SelectionToolbar } from './chrome/SelectionToolbar';
 import { useCrossBlockTextSelection } from './chrome/useCrossBlockTextSelection';
 import { LinkPreviewLayer } from './chrome/LinkPreviewLayer';
@@ -103,7 +98,6 @@ import { UndoRedoBar } from './chrome/UndoRedoBar';
 import { TransactionNotice } from './chrome/TransactionNotice';
 import { BlockFindingPanel } from './chrome/BlockFindingPanel';
 import { NewBlockDraft } from './chrome/NewBlockDraft';
-import { ListItemInsertGap } from './chrome/ListItemInsertGap';
 import {
 	ComposerSurfaceProvider,
 	useComposerSurfaceCoordinatorState,
@@ -776,28 +770,8 @@ function ComposerDocument({
 			<div className="pk-composer-blocks">
 				{visibleBlocks.map((b, i) => {
 					const previousBlock = visibleBlocks[i - 1];
-					const insertionAnchor = previousBlock
-						? adjacentInsertionAnchor(snapshot.blocks, previousBlock.blockId, b.blockId)
-						: null;
-					const insertionDraftOpen =
-						panel?.blockId === insertionAnchor &&
-						panel.panel === 'insert-draft';
 					return (
 						<React.Fragment key={stableKey(b.blockId)}>
-						{editing && insertionAnchor && !insertionDraftOpen ? (
-							<BetweenBlockInsertGap
-								anchorBlockId={insertionAnchor}
-								nextSpacing={blockSpacingRole(b, previousBlock)}
-								onSelectInsertType={(typeId) =>
-									setPanel({
-										blockId: insertionAnchor,
-										panel: 'insert-draft',
-										pinned: true,
-										initialTypeId: typeId,
-									})
-								}
-							/>
-						) : null}
 						<ComposerBlockRow
 							block={b}
 							previousBlock={previousBlock}
@@ -1777,9 +1751,6 @@ function EditableListBody({
 	const listRef = React.useRef<HTMLDivElement | null>(null);
 	const pendingFocusIndexRef = React.useRef<number | null>(null);
 	const items = block.units.filter((u) => u.unitKind === 'list-item' && !u.parentUnitId);
-	const fillGapAction = chrome.projection
-		.actionsFor(aiSnapshot, 'block-row')
-		.find((action) => action.capabilityId === FILL_GAPS_CAPABILITY_ID);
 	const candidatesAt = (index: number): readonly ComposerCandidate[] =>
 		listItemCandidates.filter(
 			(candidate) => listItemInsertionIndex(candidate, items.length) === index,
@@ -1802,7 +1773,14 @@ function EditableListBody({
 	};
 	const insertListItem = async (index: number, kind: DirectListItemKind) => {
 		if (!hub) return;
-		const built = buildInsertListItemOps(snapshot, block.blockId, index, kind);
+		await chrome.flushAll();
+		const currentSnapshot = chrome.runtime.session?.snapshot ?? snapshot;
+		const currentBlockId =
+			matchBlocks(snapshot.blocks, currentSnapshot.blocks)
+				.find((match) => match.oldBlockId === block.blockId)
+				?.newBlockId
+			?? block.blockId;
+		const built = buildInsertListItemOps(currentSnapshot, currentBlockId, index, kind);
 		if (!built) return;
 		pendingFocusIndexRef.current = index;
 		try {
@@ -1834,30 +1812,6 @@ function EditableListBody({
 		});
 		return () => ownerWindow.cancelAnimationFrame(frame);
 	}, [items.length, snapshot.revision]);
-	const renderGap = (index: number): React.ReactElement | null => {
-		if (!editing || !hub) return null;
-		return (
-			<ListItemInsertGap
-				key={`gap-${index}`}
-				blockId={block.blockId}
-				index={index}
-				aiDisabledReason={
-					fillGapAction?.disabledReason
-					?? (fillGapAction ? undefined : chrome.config.chrome.insertDraft.generationUnavailable)
-				}
-				onInsert={(kind) => void insertListItem(index, kind)}
-				onAi={(instruction) => {
-					if (!fillGapAction || fillGapAction.disabledReason) return;
-					onInvoke(
-						fillGapAction,
-						aiSnapshot,
-						instruction,
-						{ kind: 'list-gap', insertionIndex: index },
-					);
-				}}
-			/>
-		);
-	};
 	const toggle = async (unitId: string) => {
 		if (!hub) return;
 		const built = buildToggleTaskOps(snapshot, block.blockId, unitId);
@@ -1883,7 +1837,6 @@ function EditableListBody({
 				const text = snapshot.sourceText.slice(contentStart, unit.to);
 				return (
 					<React.Fragment key={unit.unitId}>
-						{renderGap(itemIndex)}
 						{renderCandidatesAt(itemIndex)}
 						<div className="pk-composer-list__row" data-unit-id={unit.unitId}>
 							{checkbox ? (
@@ -1918,12 +1871,16 @@ function EditableListBody({
 									};
 								}}
 								className="pk-composer-list__text"
+								onInsertParagraph={
+									editing && hub
+										? () => insertListItem(itemIndex + 1, checkbox ? 'task' : 'list')
+										: undefined
+								}
 							/>
 						</div>
 					</React.Fragment>
 				);
 			})}
-			{renderGap(items.length)}
 			{renderCandidatesAt(items.length)}
 		</div>
 	);

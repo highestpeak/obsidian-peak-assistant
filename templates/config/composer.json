@@ -60,7 +60,6 @@
 	"chrome": {
 		"_doc": "WP4 editing-chrome copy. AI capability labels are NOT here — they arrive from the capability projection port. Typed fallback: composerConfig.ts DEFAULT_COMPOSER_CONFIG.chrome. Drift guard: composer-config.test.ts checks the top-level chrome sub-keys.",
 		"surfacePreviewOpenDelayMs": 360,
-		"surfaceIntentOpenDelayMs": 120,
 		"surfacePreviewCloseDelayMs": 180,
 		"surfacePointerTravelTolerancePx": 6,
 		"actions": {
@@ -74,14 +73,7 @@
 			"instructionSubmitHint": "按 Enter 执行",
 			"instructionClose": "返回操作",
 			"directEdit": "直接编辑",
-			"disabledNoRuntime": "编辑运行时未接入",
-			"listGapLabel": "在这里插入列表项",
-			"listGapInsertItem": "列表项",
-			"listGapInsertTask": "待办项",
-			"listGapAi": "AI 补项",
-			"listGapPlaceholder": "描述这一项需要补什么（可选）",
-			"listGapGenerate": "生成",
-			"listGapCancel": "取消"
+			"disabledNoRuntime": "编辑运行时未接入"
 		},
 		"insertDraft": {
 			"chooserLabel": "在下方插入",
