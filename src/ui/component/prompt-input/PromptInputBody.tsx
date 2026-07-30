@@ -13,64 +13,24 @@ import type { NavigableMenuItem } from '@/ui/component/mine/NavigableMenu';
 import { usePortalContainer } from '@/ui/react/PortalContainerContext';
 import { calculatePromptMenuPosition } from './promptMenuPosition';
 import { buildVaultReferenceSelection } from './promptMenuSelection';
+import {
+	detectPromptTrigger,
+	type PromptTriggerMatch,
+} from './promptTrigger';
 
 // ---------------------------------------------------------------------------
 // Trigger detection helpers
 // ---------------------------------------------------------------------------
 
-interface TriggerMatch {
-	trigger: '[[' | '/';
-	query: string;
-	/** Absolute offset of the trigger start (including `[[` or `/`) */
-	from: number;
-	/** Absolute offset of the cursor (end of the typed query) */
-	to: number;
-}
-
 /**
- * Scans the text to the left of `cursorPos` and returns a trigger match.
- *
  * Owners (chat-studio §8.3):
+ * - `@query` → shared context/agent picker supplied by the surface adapter.
  * - `[[query` → compact Vault document/folder picker.
  * - `/query` at the very start of the input → workflow palette.
- * - `@` is deliberately NOT a trigger this round — it stays plain text until
- *   a real Assistant/App mention source exists.
+ *
+ * A surface may provide no matching items; in that case the trigger remains
+ * ordinary text and no fake option is rendered.
  */
-function detectTrigger(docText: string, cursorPos: number): TriggerMatch | null {
-	// Look backwards from cursor (up to 200 chars) for the trigger character
-	const lookback = 200;
-	const start = Math.max(0, cursorPos - lookback);
-	const textBefore = docText.slice(start, cursorPos);
-
-	const bracketIdx = textBefore.lastIndexOf('[[');
-	if (bracketIdx >= 0) {
-		const afterBracket = textBefore.slice(bracketIdx + 2);
-		// Bail if already closed ]] or newline between trigger and cursor
-		if (!afterBracket.includes(']]') && !afterBracket.includes('\n')) {
-			return {
-				trigger: '[[',
-				query: afterBracket,
-				from: start + bracketIdx,
-				to: cursorPos,
-			};
-		}
-	}
-
-	// Workflow palette: `/` only as the very first character of the input.
-	if (docText.startsWith('/') && cursorPos <= docText.length) {
-		const firstLineEnd = docText.indexOf('\n');
-		const lineEnd = firstLineEnd === -1 ? docText.length : firstLineEnd;
-		if (cursorPos >= 1 && cursorPos <= lineEnd) {
-			const query = docText.slice(1, cursorPos);
-			// Bail once the user typed a space — they are writing prose like "/plan foo"
-			if (!query.includes(' ')) {
-				return { trigger: '/', query, from: 0, to: cursorPos };
-			}
-		}
-	}
-
-	return null;
-}
 
 // ---------------------------------------------------------------------------
 // Menu state (shared between context menu and prompt menu)
@@ -81,7 +41,7 @@ interface MenuState {
 	items: NavigableMenuItem[];
 	selectedIndex: number;
 	position: { top: number; left: number };
-	triggerMatch: TriggerMatch | null;
+	triggerMatch: PromptTriggerMatch | null;
 	isLoading: boolean;
 }
 
@@ -252,7 +212,7 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 		cacheRef: React.MutableRefObject<Map<string, NavigableMenuItem[]>>,
 		loaderRef: React.MutableRefObject<((q: string, currentFolder?: string) => Promise<NavigableMenuItem[]>) | undefined>,
 		fallbackRef: React.MutableRefObject<NavigableMenuItem[]>,
-		match: TriggerMatch,
+		match: PromptTriggerMatch,
 		pos: { top: number; left: number },
 		currentFolder?: string,
 	) => {
@@ -338,7 +298,7 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 	// ----- Trigger detection callback (called by CM update listener) -----
 	const handleTriggerUpdate = useCallback((view: EditorView) => {
 		const cursorPos = view.state.selection.main.head;
-		const match = detectTrigger(view.state.doc.toString(), cursorPos);
+		const match = detectPromptTrigger(view.state.doc.toString(), cursorPos);
 
 		if (!match) {
 			if (menuRef.current.visible) setMenu(INITIAL_MENU);
@@ -372,6 +332,13 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 				triggerMatch: match,
 				isLoading: false,
 			}));
+			return;
+		}
+		if (
+			contextItemsRef.current.length === 0
+			&& !onLoadContextItemsRef.current
+		) {
+			if (menuRef.current.visible) setMenu(INITIAL_MENU);
 			return;
 		}
 
@@ -420,9 +387,9 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 			return;
 		}
 
-		// Workflow selection: remove the `/query` trigger text — the workflow
-		// becomes a context chip owned by the Composer, not inline prose.
-		if (match.trigger === '/') {
+		// Mentions and workflows become context chips owned by the consumer,
+		// rather than leaking their trigger text into the natural-language body.
+		if (match.trigger === '/' || match.trigger === '@') {
 			view.dispatch({
 				changes: { from: match.from, to: match.to, insert: '' },
 				selection: { anchor: match.from },

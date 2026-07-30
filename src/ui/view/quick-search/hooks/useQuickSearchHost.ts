@@ -34,8 +34,11 @@ import type {
 	AIGraphArtifactRuntime,
 	AIGraphArtifactView,
 	AIGraphHistoryRow,
+	AIGraphOriginContextRef,
 	AIGraphSemanticDiff,
+	AIGraphSource,
 	AIGraphVersion,
+	AIGraphVersionComparison,
 	CreateAIGraphRequest,
 } from '@/service/ai-graph';
 
@@ -79,12 +82,26 @@ export interface QuickSearchHost {
 		paths: string[],
 		scope: 'evidence' | 'one-hop' | 'two-hop',
 	): Promise<ResultSubgraphOutput>;
+	resolveAIGraphSourceContents(
+		sources: readonly AIGraphSource[],
+	): Promise<Array<{ locator: string; content: string }>>;
 	persistGeneratedAIGraph(request: CreateAIGraphRequest): Promise<{ graphId: string; versionId: string } | null>;
 	listAIGraphArtifacts(): Promise<AIGraphHistoryRow[]>;
 	openAIGraphArtifact(graphId: string, versionId?: string): Promise<AIGraphArtifactView | null>;
+	peekAIGraphArtifact(graphId: string, versionId?: string): Promise<AIGraphArtifactView | null>;
 	listAIGraphVersions(graphId: string): Promise<AIGraphVersion[]>;
 	addActiveFileToAIGraphSources(graphId: string): Promise<AIGraphArtifactView>;
+	addAIGraphSource(
+		graphId: string,
+		input:
+			| { kind: 'web-page'; title: string; url: string }
+			| { kind: 'manual-text'; title: string; text: string }
+			| { kind: 'ai-graph-version'; title: string; graphId: string; versionId: string },
+	): Promise<AIGraphArtifactView>;
 	removeAIGraphSource(graphId: string, sourceId: string): Promise<AIGraphArtifactView>;
+	recheckAIGraphSource(graphId: string, sourceId: string): Promise<AIGraphArtifactView>;
+	openAIGraphEvidence(graphId: string, versionId: string, evidenceId: string): Promise<void>;
+	openAIGraphOrigin(contextRef: AIGraphOriginContextRef): Promise<void>;
 	proposeAIGraphUpdate(
 		graphId: string,
 		baseVersionId: string,
@@ -92,6 +109,27 @@ export interface QuickSearchHost {
 		selection?: { kind: 'node' | 'relation'; id: string },
 	): Promise<AIGraphSemanticDiff>;
 	acceptAIGraphUpdate(diff: AIGraphSemanticDiff): Promise<AIGraphArtifactView>;
+	compareAIGraphVersions(
+		graphId: string,
+		fromVersionId: string,
+		toVersionId: string,
+	): Promise<AIGraphVersionComparison>;
+	restoreAIGraphVersion(graphId: string, versionId: string): Promise<AIGraphArtifactView>;
+	duplicateAIGraphVersion(graphId: string, versionId: string): Promise<AIGraphArtifactView>;
+	reviewAIGraphRelation(
+		graphId: string,
+		baseVersionId: string,
+		relationId: string,
+		review: {
+			status: 'accepted' | 'edited' | 'rejected';
+			predicate?: string;
+			label?: string;
+			confidence?: number | null;
+			directed?: boolean;
+		},
+	): Promise<AIGraphArtifactView>;
+	exportAIGraphMarkdown(graphId: string, versionId: string): Promise<string>;
+	rebuildAIGraphProjection(): Promise<AIGraphHistoryRow[]>;
 
 	// Markdown save / persist
 	saveAnalysisToVault(params: SaveAnalysisResultParams): Promise<{ path: string }>;

@@ -131,6 +131,16 @@ function bridgeSnapshotToSearchSessionStore(snapshot: CompletedAnalysisSnapshot,
 		if (snapshot.v2GraphJson) {
 			try {
 				const graphPayload = JSON.parse(snapshot.v2GraphJson);
+				if (
+					graphPayload.artifactRef?.kind === 'ai-graph'
+					&& typeof graphPayload.artifactRef.graphId === 'string'
+					&& typeof graphPayload.artifactRef.versionId === 'string'
+				) {
+					useAIGraphStore.getState().setArtifactRef({
+						graphId: graphPayload.artifactRef.graphId,
+						versionId: graphPayload.artifactRef.versionId,
+					});
+				}
 				if (graphPayload.lenses) {
 					const lensKeys = Object.keys(graphPayload.lenses);
 					if (lensKeys.length > 0) {

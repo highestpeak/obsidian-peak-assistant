@@ -35,6 +35,7 @@ import {
 	displayIdentity,
 	inspectorCardPolicy,
 } from '../atlasDisplayModel';
+import { AIGraphContextArtifacts } from '@/ui/component/ai-graph';
 
 interface AtlasInspectorProps {
 	block: DocumentBlock | null;
@@ -160,6 +161,12 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 				config={config}
 				host={host}
 				sourcePath={sourcePath}
+			/>
+
+			<AIGraphContextArtifacts
+				contextRefs={[sourcePath]}
+				label="AI Graph artifacts"
+				className="pkfa-card pk-ai-graph-context-artifacts"
 			/>
 
 			<section className="pkfa-card">

@@ -36,16 +36,26 @@ export class QuickSearchModal extends Modal {
 	async onOpen(): Promise<void> {
 		const token = ++this.openToken;
 		this.closed = false;
-		if (this.openOptions?.aiMode || this.openOptions?.graphId) {
+		if (
+			this.openOptions?.aiMode
+			|| this.openOptions?.graphId
+			|| this.openOptions?.initialQuery !== undefined
+		) {
 			useSharedStore.getState().beginIntentOpen(
 				this.openOptions.aiMode ?? 'graph',
 				this.openOptions.graphId,
+				this.openOptions.graphVersionId,
 				this.openOptions.graphCreateOrigin,
 			);
+			if (this.openOptions.initialQuery !== undefined) {
+				useSharedStore.getState().setSearchQuery(this.openOptions.initialQuery);
+			}
 			useAIGraphStore.getState().setSelectedPaths(this.openOptions.selectedVaultPaths ?? []);
+			useAIGraphStore.getState().clearInitialSources();
 		} else {
 			useSharedStore.getState().beginOrdinaryOpen();
 			useAIGraphStore.getState().setSelectedPaths([]);
+			useAIGraphStore.getState().clearInitialSources();
 		}
 		// Kick off the AI-Suggest behavior recorder for this session. Stops in
 		// onClose. Cheap — subscribes to two Zustand stores + a debounce timer.

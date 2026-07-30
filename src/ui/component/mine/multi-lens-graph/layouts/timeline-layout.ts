@@ -10,6 +10,14 @@ export interface TimelineLayoutResult {
 	axisX: number;
 	chainEdges?: Array<{ source: string; target: string; kind: string; chainIndex: number }>;
 	timeTicks?: Array<{ y: number; label: string; timestamp: number }>;
+	unassignedGroup?: {
+		x: number;
+		y: number;
+		width: number;
+		height: number;
+		count: number;
+		label: string;
+	};
 	axisY: number;
 }
 
@@ -24,6 +32,8 @@ export function computeTimelineLayout(input: TimelineLayoutInput): TimelineLayou
 	const { nodes, evolutionChains = [] } = input;
 	const positions = new Map<string, { x: number; y: number }>();
 	const chainEdges: TimelineLayoutResult['chainEdges'] = [];
+	const timedNodes = nodes.filter((node) => node.createdAt != null);
+	const unassignedNodes = nodes.filter((node) => node.createdAt == null);
 
 	const nodeByPath = new Map<string, LensNodeData>();
 	for (const n of nodes) nodeByPath.set(n.path, n);
@@ -46,7 +56,7 @@ export function computeTimelineLayout(input: TimelineLayoutInput): TimelineLayou
 	for (let ci = 0; ci < evolutionChains.length; ci++) {
 		const chainNodes = evolutionChains[ci].chain
 			.map(p => nodeByPath.get(p))
-			.filter((n): n is LensNodeData => n != null);
+			.filter((n): n is LensNodeData => n?.createdAt != null);
 		if (chainNodes.length > 0) {
 			chainColumns.push(chainNodes);
 			activeChainIndices.push(ci);
@@ -56,12 +66,12 @@ export function computeTimelineLayout(input: TimelineLayoutInput): TimelineLayou
 	const placed = new Set<string>();
 	for (const col of chainColumns) for (const n of col) placed.add(n.path);
 
-	const soloNodes = nodes.filter(n => !placed.has(n.path));
+	const soloNodes = timedNodes.filter(n => !placed.has(n.path));
 	const hasSoloColumn = soloNodes.length > 0;
-	const totalColumns = chainColumns.length + (hasSoloColumn ? 1 : 0);
+	const timedColumnCount = chainColumns.length + (hasSoloColumn ? 1 : 0);
+	const totalColumns = timedColumnCount + (unassignedNodes.length > 0 ? 1 : 0);
 
-	const allNodesSorted = [...nodes]
-		.filter(n => n.createdAt != null)
+	const allNodesSorted = [...timedNodes]
 		.sort((a, b) => a.createdAt! - b.createdAt!);
 
 	// Build a flat list of { node, colIdx } sorted by timestamp, then assign rows
@@ -71,8 +81,7 @@ export function computeTimelineLayout(input: TimelineLayoutInput): TimelineLayou
 		for (const node of chainColumns[c]) items.push({ node, colIdx: c });
 	}
 	for (const node of soloNodes) items.push({ node, colIdx: chainColumns.length });
-	// Sort all items by timestamp (untimed nodes go last)
-	items.sort((a, b) => (a.node.createdAt ?? Infinity) - (b.node.createdAt ?? Infinity));
+	items.sort((a, b) => a.node.createdAt! - b.node.createdAt!);
 
 	// Assign rows: each node gets the next available row in its column
 	const colNextRow = new Array(totalColumns).fill(0);
@@ -86,6 +95,13 @@ export function computeTimelineLayout(input: TimelineLayoutInput): TimelineLayou
 		});
 		colNextRow[col] = row + 1;
 		globalRow = row + 1;
+	}
+	const unassignedColumn = timedColumnCount;
+	for (let index = 0; index < unassignedNodes.length; index++) {
+		positions.set(unassignedNodes[index].path, {
+			x: FIRST_COLUMN_LEFT + unassignedColumn * (COLUMN_WIDTH + COLUMN_GAP),
+			y: CANVAS_PADDING + index * ROW_HEIGHT,
+		});
 	}
 
 	// Generate chain edges
@@ -103,8 +119,25 @@ export function computeTimelineLayout(input: TimelineLayoutInput): TimelineLayou
 	// Generate time ticks from the actual node timestamps
 	const timestamps = allNodesSorted.map(n => n.createdAt!);
 	const timeTicks = generateTimeTicksFromNodes(timestamps, positions, nodeByPath);
+	const unassignedGroup = unassignedNodes.length > 0
+		? {
+				x: FIRST_COLUMN_LEFT + unassignedColumn * (COLUMN_WIDTH + COLUMN_GAP) - 24,
+				y: CANVAS_PADDING - 40,
+				width: COLUMN_WIDTH + 48,
+				height: Math.max(ROW_HEIGHT, unassignedNodes.length * ROW_HEIGHT) + 24,
+				count: unassignedNodes.length,
+				label: `No date / Unassigned · ${unassignedNodes.length}`,
+			}
+		: undefined;
 
-	return { positions, axisX: AXIS_X, axisY: 0, chainEdges, timeTicks };
+	return {
+		positions,
+		axisX: AXIS_X,
+		axisY: 0,
+		chainEdges,
+		timeTicks,
+		...(unassignedGroup ? { unassignedGroup } : {}),
+	};
 }
 
 /** Generate ticks at each unique month boundary that has nodes near it */

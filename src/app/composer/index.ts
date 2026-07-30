@@ -8,6 +8,7 @@ export { DocumentComposerView } from './DocumentComposerView';
 export { DocumentComposerRuntime } from './DocumentComposerRuntime';
 export { composeDocumentComposerRuntime } from './composeDocumentComposerRuntime';
 export { NativeMarkdownIntelligenceModal } from './NativeMarkdownIntelligenceModal';
+export * from './NativeMarkdownIntelligenceContext';
 export { NativeMarkdownComposerAffordance } from './NativeMarkdownComposerAffordance';
 export {
 	ComposerDocumentRouter,

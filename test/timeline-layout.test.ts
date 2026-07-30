@@ -75,3 +75,15 @@ test('returns time ticks', () => {
     assert(result.timeTicks!.length > 0, 'at least one tick');
     assert(result.timeTicks![0].label != null, 'tick has label');
 });
+
+test('groups nodes without a timestamp in a visible unassigned lane', () => {
+    const untimed = { label: 'Undated claim', path: 'undated.md' };
+    const result = computeTimelineLayout({
+        nodes: [...NODES, untimed],
+        evolutionChains: CHAINS,
+    });
+    assert(result.unassignedGroup != null, 'unassigned group is present');
+    assert(result.unassignedGroup!.count === 1, 'unassigned group reports its node count');
+    assert(result.unassignedGroup!.label.includes('Unassigned'), 'unassigned group is visibly labelled');
+    assert(result.positions.has(untimed.path), 'untimed node stays available in the layout');
+});

@@ -4,6 +4,7 @@ import { createReactElementWithServices } from '@/app/ui-host/ReactElementFactor
 import type { AppContext } from '@/app/context/AppContext';
 import {
 	DEFAULT_TRANSACTION_CONFIG,
+	type ComposerContextSnapshot,
 	type ComposerDocumentSnapshot,
 } from '@/core/composer';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
@@ -39,6 +40,7 @@ import type { DocumentComposerController } from './DocumentComposerController';
 import { DEFAULT_COMPOSER_NAVIGATION_STRINGS } from './ComposerNavigationDefaults';
 import { Button, IconButton } from '@/ui/components/primitives';
 import { History, MessageSquare, Sparkles, X } from 'lucide-react';
+import type { NativeMarkdownIntelligenceContext } from './NativeMarkdownIntelligenceContext';
 
 /**
  * Native Markdown companion host for the same app-owned Composer Intelligence
@@ -52,24 +54,21 @@ export class NativeMarkdownIntelligenceModal extends Modal {
 	private controllerSubscription: (() => void) | null = null;
 	private closed = true;
 	private config: ComposerConfig = DEFAULT_COMPOSER_CONFIG;
-	private previouslyFocused: HTMLElement | null = null;
+	private readonly previouslyFocused: HTMLElement | null;
 	private readonly originHostId = `markdown-intelligence-${crypto.randomUUID()}`;
 
 	constructor(
 		private readonly appContext: AppContext,
 		private readonly filePath: string,
-		private readonly initialContext?: {
-			blockId?: string;
-			findingId?: string;
-			sourceFrom?: number;
-			sourceTo?: number;
-		},
+		private readonly initialContext?: NativeMarkdownIntelligenceContext,
+		returnFocus?: HTMLElement | null,
 	) {
 		super(appContext.app);
+		this.previouslyFocused = returnFocus
+			?? appContext.app.workspace.containerEl.ownerDocument.activeElement as HTMLElement | null;
 	}
 
 	async onOpen(): Promise<void> {
-		this.previouslyFocused = this.containerEl.ownerDocument.activeElement as HTMLElement | null;
 		this.closed = false;
 		this.contentEl.empty();
 		this.modalEl.addClass('pk-native-intelligence-modal');
@@ -152,7 +151,7 @@ export class NativeMarkdownIntelligenceModal extends Modal {
 					onOpenExternal: (url) => {
 						this.contentEl.ownerDocument.defaultView?.open(url, '_blank');
 					},
-					onEscalate: () => {
+					onEscalate: (runId?: string) => {
 						const navigation = this.appContext.runtimeRegistry
 							.getDocumentComposerRuntime()
 							.navigation;
@@ -161,6 +160,7 @@ export class NativeMarkdownIntelligenceModal extends Modal {
 								filePath: snapshot.filePath,
 								disposition: 'replace-current',
 								reason: 'view-conversion',
+								...(runId ? { intelligenceRunId: runId } : {}),
 							});
 						}
 						this.close();
@@ -185,16 +185,11 @@ function NativeMarkdownIntelligencePanel({
 	editing: ComposerEditingRuntime;
 	snapshot: ComposerDocumentSnapshot;
 	config: ComposerConfig;
-	initialContext?: {
-		blockId?: string;
-		findingId?: string;
-		sourceFrom?: number;
-		sourceTo?: number;
-	};
+	initialContext?: NativeMarkdownIntelligenceContext;
 	onClose(): void;
 	onOpenSource(path: string): void;
 	onOpenExternal(url: string): void;
-	onEscalate(): void;
+	onEscalate(runId?: string): void;
 }): React.ReactElement {
 	const [candidateRegistry] = React.useState(createDefaultCandidateRendererRegistry);
 	const chromeValue = React.useMemo<ComposerChromeValue>(
@@ -223,9 +218,11 @@ function NativeMarkdownIntelligencePanel({
 		[candidateRegistry, config, editing, onOpenExternal, onOpenSource, snapshot],
 	);
 	const intelligence = editing.intelligence!;
+	const [includeInitialContext, setIncludeInitialContext] = React.useState(true);
+	const effectiveInitialContext = includeInitialContext ? initialContext : undefined;
 	const initialBlockId = React.useMemo(
-		() => resolveInitialBlockId(snapshot, initialContext),
-		[initialContext, snapshot],
+		() => resolveInitialBlockId(snapshot, effectiveInitialContext),
+		[effectiveInitialContext, snapshot],
 	);
 	const [sidecarConfig, setSidecarConfig] = React.useState<SidecarConfig>(DEFAULT_SIDECAR_CONFIG);
 	React.useEffect(() => {
@@ -247,24 +244,39 @@ function NativeMarkdownIntelligencePanel({
 		config: sidecarConfig,
 		onOpenSource,
 		getFocusedBlockId: () => initialBlockId,
-		resolveFocusContext: () => buildFocusRunContext(snapshot, initialBlockId),
+		resolveFocusContext: () => buildNativeFocusRunContext(
+			snapshot,
+			initialBlockId,
+			effectiveInitialContext,
+		),
 		resolveRelatedFocus: () => resolveRelatedFocus(snapshot, initialBlockId),
-		presentationOrigin: initialContext?.findingId && initialBlockId
+		presentationOrigin: effectiveInitialContext?.findingId && initialBlockId
 			? {
 					kind: 'automatic-suggestion',
-					findingId: initialContext.findingId,
+					findingId: effectiveInitialContext.findingId,
 					blockId: initialBlockId,
 				}
 			: {
 					kind: 'native-editor',
 					filePath: snapshot.filePath,
 				},
-	}), [editing, initialBlockId, initialContext?.findingId, intelligence, onOpenSource, sidecarConfig, snapshot]);
+	}), [
+		editing,
+		effectiveInitialContext,
+		initialBlockId,
+		intelligence,
+		onOpenSource,
+		sidecarConfig,
+		snapshot,
+	]);
 	return (
 		<ComposerChromeProvider value={chromeValue}>
 			<SidecarProvider value={sidecarValue}>
 				<NativeIntelligenceWorkspace
 					filePath={snapshot.filePath}
+					revision={snapshot.revision}
+					initialContext={effectiveInitialContext}
+					onClearContext={() => setIncludeInitialContext(false)}
 					onClose={onClose}
 					onEscalate={onEscalate}
 				/>
@@ -292,14 +304,63 @@ function resolveInitialBlockId(
 	return overlapping?.blockId ?? null;
 }
 
+function buildNativeFocusRunContext(
+	snapshot: ComposerDocumentSnapshot,
+	blockId: string | null,
+	context?: NativeMarkdownIntelligenceContext,
+): { snapshot: ComposerContextSnapshot; targetQuote: string } {
+	if (
+		!context?.selectionText
+		|| context.sourceFrom === undefined
+		|| context.sourceTo === undefined
+		|| context.sourceTo <= context.sourceFrom
+	) {
+		return buildFocusRunContext(snapshot, blockId);
+	}
+	const block = snapshot.blocks.find((candidate) => candidate.blockId === blockId)
+		?? snapshot.blocks.find((candidate) =>
+			candidate.source.to >= context.sourceFrom!
+			&& candidate.source.from <= context.sourceTo!);
+	if (!block) return buildFocusRunContext(snapshot, blockId);
+	const from = Math.max(block.source.from, context.sourceFrom);
+	const to = Math.min(block.source.to, context.sourceTo);
+	if (to <= from) return buildFocusRunContext(snapshot, blockId);
+	const targetSource = snapshot.sourceText.slice(from, to);
+	return {
+		snapshot: {
+			documentId: snapshot.documentId,
+			revision: snapshot.revision,
+			target: {
+				kind: 'selection',
+				blockId: block.blockId,
+				from,
+				to,
+			},
+			targetSource,
+			selectionText: targetSource,
+			nearby: {
+				before: snapshot.sourceText.slice(Math.max(0, from - 400), from),
+				after: snapshot.sourceText.slice(to, to + 400),
+			},
+		},
+		targetQuote: targetSource.trim(),
+	};
+}
+
 function NativeIntelligenceWorkspace({
 	filePath,
+	revision,
+	initialContext,
+	onClearContext,
 	onClose,
 	onEscalate,
 }: {
 	filePath: string;
+	revision: string;
+	initialContext?: NativeMarkdownIntelligenceContext;
+	onClearContext(): void;
 	onClose(): void;
-	onEscalate(): void;
+	onEscalate(runId?: string): void;
 }): React.ReactElement {
 	const { runtime, config } = useSidecar();
 	const projection = useSessionProjection(runtime);
@@ -313,7 +374,13 @@ function NativeIntelligenceWorkspace({
 					<strong>Copilot Intelligence</strong>
 					<small>{filePath}</small>
 				</span>
-				<Button variant="ghost" size="sm" onClick={onEscalate}>Open full Composer</Button>
+				<Button
+					variant="ghost"
+					size="sm"
+					onClick={() => onEscalate(projection.activeRunId ?? undefined)}
+				>
+					Open full Composer
+				</Button>
 				<IconButton label={config.strings.close} onClick={onClose}>
 					<X />
 				</IconButton>
@@ -337,6 +404,39 @@ function NativeIntelligenceWorkspace({
 					<History />
 					{config.strings.tabHistory}
 				</Button>
+			</div>
+			<div className="pk-native-intelligence-context" aria-label="Frozen Copilot context">
+				<span>
+					<strong>File</strong>
+					<small>{filePath}</small>
+				</span>
+				{initialContext?.selectionText ? (
+					<span>
+						<strong>Selection</strong>
+						<small>{initialContext.selectionText.slice(0, 160)}</small>
+						<Button variant="ghost" size="sm" onClick={onClearContext}>
+							Remove
+						</Button>
+					</span>
+				) : (
+					<span>
+						<strong>Heading / cursor</strong>
+						<small>{initialContext?.heading ?? 'Current document'}</small>
+						{initialContext && (
+							<Button variant="ghost" size="sm" onClick={onClearContext}>
+								Use whole file
+							</Button>
+						)}
+					</span>
+				)}
+				<span>
+					<strong>Source revision</strong>
+					<small>{revision.slice(0, 12)}</small>
+				</span>
+				<span>
+					<strong>Run snapshot</strong>
+					<small>{projection.activeRunId ? `Frozen · ${projection.activeRunId}` : 'Freezes on send'}</small>
+				</span>
 			</div>
 			{tab === 'history' ? (
 				<div className="pk-native-intelligence-history"><HistoryView /></div>

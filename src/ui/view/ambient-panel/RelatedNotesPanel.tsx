@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
 import { SessionContextService } from '@/service/context/SessionContextService';
 import type { WorkingTheme } from '@/service/context/types';
-import { Bug, FileText, RefreshCw, Sparkles, X } from 'lucide-react';
+import { Bug, FileText, Maximize2, Minimize2, RefreshCw, Sparkles, X } from 'lucide-react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useDebugTraceCopy } from '@/ui/hooks/useDebugTraceCopy';
 import { Button } from '@/ui/component/shared-ui/button';
@@ -37,6 +37,7 @@ export const RelatedNotesPanel: React.FC<RelatedNotesPanelProps> = ({
 	const { ambientRuntime, debugTracePort, vaultNavigation } = useServiceContext();
 	const copyDebugTrace = useDebugTraceCopy();
 	const [refreshing, setRefreshing] = useState(false);
+	const [collapsed, setCollapsed] = useState(false);
 
 	const startDrag = (event: React.PointerEvent<HTMLElement>): void => {
 		if (!floating || event.button !== 0) return;
@@ -98,7 +99,7 @@ export const RelatedNotesPanel: React.FC<RelatedNotesPanelProps> = ({
 	const summary = theme?.llmInferred?.summary?.trim() || theme?.ruleBased.summary?.trim() || '';
 
 	return (
-		<div className="peak-related-notes-panel">
+		<div className="peak-related-notes-panel" data-collapsed={collapsed ? 'true' : undefined}>
 			<header
 				className="peak-related-notes-header"
 				onPointerDown={startDrag}
@@ -137,6 +138,20 @@ export const RelatedNotesPanel: React.FC<RelatedNotesPanelProps> = ({
 						<Bug size={12} />
 					</Button>
 				)}
+				{floating && (
+					<Button
+						variant="unstyled"
+						geometry="action-icon"
+						type="button"
+						className="peak-related-notes-header-btn"
+						title={collapsed ? 'Expand Related Notes' : 'Collapse Related Notes'}
+						aria-label={collapsed ? 'Expand Related Notes' : 'Collapse Related Notes'}
+						aria-expanded={!collapsed}
+						onClick={() => setCollapsed((current) => !current)}
+					>
+						{collapsed ? <Maximize2 aria-hidden="true" /> : <Minimize2 aria-hidden="true" />}
+					</Button>
+				)}
 				{onClose ? (
 					<Button
 						variant="unstyled"
@@ -151,14 +166,14 @@ export const RelatedNotesPanel: React.FC<RelatedNotesPanelProps> = ({
 				) : null}
 			</header>
 
-			{summary.length > 0 && (
+			{!collapsed && summary.length > 0 && (
 				<section className="peak-related-notes-summary" aria-label="Working theme">
 					<span className="peak-related-notes-summary-label">Working theme</span>
-					<p className="peak-related-notes-summary-text">{summary}</p>
+					<span className="peak-related-notes-summary-text">{summary}</span>
 				</section>
 			)}
 
-			{items.length === 0 ? (
+			{!collapsed && (items.length === 0 ? (
 				<div className="peak-related-notes-empty">
 					{sourceFilePath
 						? 'No related notes suggested for this document yet.'
@@ -190,7 +205,7 @@ export const RelatedNotesPanel: React.FC<RelatedNotesPanelProps> = ({
 						</li>
 					))}
 				</ul>
-			)}
+			))}
 		</div>
 	);
 };

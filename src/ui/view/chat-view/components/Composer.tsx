@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUp, FileText, ImagePlus, Loader2, Music as MusicIcon, Network, Pencil, Video as VideoIcon, Workflow } from 'lucide-react';
 import { useComposerEditImageStore } from '../store/composerEditImageStore';
 import {
@@ -34,8 +34,12 @@ import { ComposerModelSelector } from './composer/ComposerModelSelector';
 import { ComposerAssistantSelector } from './composer/ComposerAssistantSelector';
 import { ComposerGenerateActions, type GenerateKind } from './composer/ComposerGenerateActions';
 import type { ToolAvailability } from '@/service/chat/tools/toolAvailability';
-import { createAIInstructionSubmission } from '@/core/instruction-composer';
+import {
+	normalizeAIInstructionAttachments,
+	SharedAIInstructionController,
+} from '@/core/instruction-composer';
 import { IconButton } from '@/ui/components/primitives';
+import { AIGraphContextArtifacts } from '@/ui/component/ai-graph';
 
 /**
  * Composer V2 — the single live editor of Chat Studio (chat-studio §8).
@@ -137,6 +141,40 @@ export const Composer: React.FC = () => {
 		handleCancelStream,
 		handleTextChange,
 	} = useInputSubmit();
+	const handleSubmitRef = useRef(handleSubmit);
+	const handleCancelStreamRef = useRef(handleCancelStream);
+	const pendingFilesRef = useRef<File[]>([]);
+	handleSubmitRef.current = handleSubmit;
+	handleCancelStreamRef.current = handleCancelStream;
+	const instructionController = useMemo(
+		() => new SharedAIInstructionController(
+			{
+				surface: 'chat',
+				capabilityId: 'chat.send-message',
+				placeholder: 'Send a message',
+				context: () => undefined,
+				submit: async (envelope) => {
+					await handleSubmitRef.current({
+						text: envelope.submission.instruction,
+						files: pendingFilesRef.current,
+					});
+				},
+				stop: async () => {
+					await handleCancelStreamRef.current();
+				},
+			},
+		),
+		[],
+	);
+	useEffect(() => {
+		instructionController.syncStatus(
+			status === 'submitted'
+				? 'submitting'
+				: status === 'streaming'
+					? 'streaming'
+					: 'idle',
+		);
+	}, [instructionController, status]);
 
 	const {
 		menuContextItems,
@@ -318,6 +356,14 @@ export const Composer: React.FC = () => {
 			);
 			store.updateDraft(merged);
 		}
+		if (trigger === '@' && !item.showArrow && item.value) {
+			useComposerStore.getState().addExplicitRef({
+				id: generateUuidWithoutHyphens(),
+				kind: 'vault-file',
+				uri: item.value,
+				title: item.label || item.value.split('/').pop() || item.value,
+			});
+		}
 		handleMenuSelect(trigger, item);
 	};
 
@@ -380,14 +426,52 @@ export const Composer: React.FC = () => {
 
 	return (
 		<div className="pkchat-composer-wrap" data-composer-root="true">
+			{activeConversation && (
+				<AIGraphContextArtifacts
+					contextRefs={[
+						activeConversation.meta.id,
+						...(activeConversation.meta.projectId
+							? [activeConversation.meta.projectId]
+							: []),
+					]}
+					label="Conversation graphs"
+					limit={2}
+					className="pk-ai-graph-context-artifacts pk-ai-graph-context-artifacts--chat"
+				/>
+			)}
 			<PromptInput
 				className={cn('pkchat-composer', `pkchat-composer--${status}`)}
 				globalDrop
 				multiple
 				inputFocusRef={inputFocusRef}
-				onSubmit={(message) => {
-					const submission = createAIInstructionSubmission(message.text);
-					return handleSubmit({ ...message, text: submission.instruction });
+				onSubmit={async (message) => {
+					const currentDraft = useComposerStore.getState().getDraft(activeKey);
+					const context = [
+						...(activeConversation ? [{
+							id: activeConversation.meta.id,
+							kind: 'custom' as const,
+							label: activeConversation.meta.title ?? activeConversation.meta.id,
+							source: 'automatic' as const,
+						}] : []),
+						...(activeConversation?.meta.projectId ? [{
+							id: activeConversation.meta.projectId,
+							kind: 'custom' as const,
+							label: `Project ${activeConversation.meta.projectId}`,
+							source: 'automatic' as const,
+						}] : []),
+						...currentDraft.explicitRefs.map((ref) => ({
+							id: ref.id,
+							kind: ref.kind === 'vault-file'
+								? 'vault-file' as const
+								: 'custom' as const,
+							label: ref.title || ref.uri,
+							source: 'explicit' as const,
+						})),
+					];
+					const attachments = await normalizeAIInstructionAttachments(message.files);
+					pendingFilesRef.current = message.files;
+					instructionController.setDraft(message.text);
+					await instructionController.submit(context, attachments);
 				}}
 				contextItems={menuContextItems}
 				onLoadContextItems={handleSearchContext}
@@ -460,7 +544,11 @@ export const Composer: React.FC = () => {
 					<div className="pkchat-composer__foot-right">
 						<ComposerAssistantSelector assistantId={assistantId} onSelect={onAssistantSelect} />
 						<ComposerModelSelector selection={modelSelection} onSelect={onModelSelect} />
-						<SendButton status={status} hasInput={hasInput} onCancel={handleCancelStream} />
+						<SendButton
+							status={status}
+							hasInput={hasInput}
+							onCancel={() => instructionController.stop()}
+						/>
 					</div>
 				</div>
 			</PromptInput>

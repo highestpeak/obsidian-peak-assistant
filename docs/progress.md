@@ -15,7 +15,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] **Shared AI input / unified AI workspace**：Chat、Composer Copilot、AI Search 与 AI Graph 使用共享 instruction submission/component；Quick Search 顶层收敛为 Vault Search + AI selector，普通打开重置 AI Search，低频 mode、run/history 与 artifact deep link 可按 intent 恢复。
 - [x] **AI Graph Artifact Platform**：稳定 graph/version identity、immutable JSON versions、来源/证据/review/provenance、显式 Web、semantic diff accept gate、source/update 分离、JSONL run events、SQLite rebuildable projection、版本历史与 relation direction/文字 inspector 已落地；File Atlas、Composer、Vault Search、Chat 通过统一 launcher 带真实 context 重开/创建同一类 artifact。
 - [x] **Folder layout**：仅直接拥有当前可见文档的目录生成 compound frame，空中转目录按最近可见祖先折叠，完整 path 保留。
-- [x] **验证边界**：15 个需求聚焦 suites 全通过；`npm run build` 通过。全量 suite 为 `389/393`，4 个失败来自未触碰的基线 Chat Streamdown / Composer 契约。隔离 worktree 未覆盖真实 Obsidian 插件目录，故交互状态仍为 `INTERACTION NOT VERIFIED`。
+- [x] **验证边界**：requirements-focused 15/15 与补充跨 surface / layout suites 全通过；`npm run build` 通过。全量 suite 为 `392/396`，4 个失败来自未触碰的基线 Chat Streamdown / Composer 契约。隔离 worktree 未覆盖真实 Obsidian 插件目录且没有 CDP listener，故交互状态仍为 `INTERACTION NOT VERIFIED`。完成审计见 [`2026-07-31-planned-requirements-completion-audit.md`](./superpowers/audits/2026-07-31-planned-requirements-completion-audit.md)。
 
 ## 2026-07-30 · Graph 边方向真值修复
 

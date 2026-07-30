@@ -159,8 +159,13 @@ export async function composeDocumentComposerRuntime(
 		setDefaultView: options?.setDefaultDocumentView ?? (async (view) => {
 			fallbackDefaultView = view;
 		}),
-		openIntelligenceCompanion: (filePath) => {
-			new NativeMarkdownIntelligenceModal(AppContext.getInstance(), filePath).open();
+		openIntelligenceCompanion: (filePath, context, returnFocus) => {
+			new NativeMarkdownIntelligenceModal(
+				AppContext.getInstance(),
+				filePath,
+				context,
+				returnFocus,
+			).open();
 		},
 	});
 	// One shared capability executor over the AI service (lazy prompter resolution,

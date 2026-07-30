@@ -165,6 +165,8 @@ export interface ComposerRootProps {
 	/** Last explicit workspace-level Intelligence open/close preference. */
 	initialIntelligenceOpen?: boolean;
 	onIntelligenceManualOpenChange?: (open: boolean) => void | Promise<void>;
+	/** One-shot Native modal → Composer Review/History handoff. */
+	initialIntelligenceRunId?: string;
 	/** One-shot app-owned location reveal for this bound Composer leaf. */
 	revealRequest?: { id: number; location: DocumentSourceLocation };
 }
@@ -200,6 +202,7 @@ export function ComposerRoot({
 	onOpenNativeMarkdown,
 	initialIntelligenceOpen = false,
 	onIntelligenceManualOpenChange,
+	initialIntelligenceRunId,
 	revealRequest,
 }: ComposerRootProps): React.ReactElement {
 	const rootRef = React.useRef<HTMLDivElement | null>(null);
@@ -312,6 +315,16 @@ export function ComposerRoot({
 		setActiveCommentId(null);
 		setIntelligencePresentation(initialIntelligencePresentationState(initialIntelligenceOpen));
 	}, [initialIntelligenceOpen, state.snapshot?.documentId]);
+	const openedIntelligenceRunRef = React.useRef<string | null>(null);
+	React.useEffect(() => {
+		if (!initialIntelligenceRunId || !intelligence) return;
+		if (openedIntelligenceRunRef.current === initialIntelligenceRunId) return;
+		openedIntelligenceRunRef.current = initialIntelligenceRunId;
+		openContextualIntelligence({
+			kind: 'history-deep-link',
+			runId: initialIntelligenceRunId,
+		});
+	}, [initialIntelligenceRunId, intelligence, openContextualIntelligence]);
 	React.useEffect(() => () => {
 		if (intelligenceMotionTimer.current) clearTimeout(intelligenceMotionTimer.current);
 	}, []);

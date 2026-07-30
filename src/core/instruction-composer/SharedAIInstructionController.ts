@@ -45,6 +45,49 @@ export function createAIInstructionSubmission(
 	};
 }
 
+export interface AIInstructionFileLike {
+	name: string;
+	type?: string;
+	size?: number;
+	lastModified?: number;
+	arrayBuffer?(): Promise<ArrayBuffer>;
+}
+
+async function fileFingerprint(file: AIInstructionFileLike): Promise<string> {
+	if (file.arrayBuffer && globalThis.crypto?.subtle) {
+		const digest = await globalThis.crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+		return [...new Uint8Array(digest)]
+			.map((value) => value.toString(16).padStart(2, '0'))
+			.join('');
+	}
+	return [
+		file.name,
+		file.type ?? '',
+		file.size ?? 0,
+		file.lastModified ?? 0,
+	].join(':');
+}
+
+/** Hash-based attachment normalization shared by every instruction consumer. */
+export async function normalizeAIInstructionAttachments(
+	files: readonly AIInstructionFileLike[],
+): Promise<AIInstructionAttachmentRef[]> {
+	const normalized: AIInstructionAttachmentRef[] = [];
+	const seen = new Set<string>();
+	for (const file of files) {
+		const hash = await fileFingerprint(file);
+		if (seen.has(hash)) continue;
+		seen.add(hash);
+		normalized.push({
+			id: `attachment-${hash.slice(0, 24)}`,
+			name: file.name,
+			mimeType: file.type || 'application/octet-stream',
+			hash,
+		});
+	}
+	return normalized;
+}
+
 /**
  * Headless shared behavior for every natural-language AI surface. It owns draft,
  * IME and submit/stop state only; each adapter owns domain context and output.
@@ -59,7 +102,7 @@ export class SharedAIInstructionController<TContext, TOutput> {
 	constructor(
 		private readonly adapter: AIInstructionSurfaceAdapter<TContext, TOutput>,
 		private readonly draftStore?: AIInstructionDraftStore,
-		private readonly draftKey = adapter.surface,
+		private readonly draftKey: string = adapter.surface,
 	) {
 		this.draft = draftStore?.load(draftKey) ?? '';
 	}
@@ -80,6 +123,7 @@ export class SharedAIInstructionController<TContext, TOutput> {
 	}
 
 	setDraft(draft: string): void {
+		if (this.draft === draft) return;
 		this.draft = draft;
 		this.draftStore?.save(this.draftKey, draft);
 		this.notify();
@@ -95,7 +139,10 @@ export class SharedAIInstructionController<TContext, TOutput> {
 		attachments: readonly AIInstructionAttachmentRef[] = [],
 	): Promise<TOutput | null> {
 		const submission = createAIInstructionSubmission(this.draft, context, attachments);
-		if (!submission.instruction || this.composing || this.status === 'submitting' || this.status === 'streaming') {
+		const hasPayload = Boolean(submission.instruction)
+			|| submission.context.length > 0
+			|| submission.attachments.length > 0;
+		if (!hasPayload || this.composing || this.status === 'submitting' || this.status === 'streaming') {
 			return null;
 		}
 		this.status = 'submitting';
@@ -127,6 +174,24 @@ export class SharedAIInstructionController<TContext, TOutput> {
 		await this.adapter.stop?.();
 		this.status = 'idle';
 		this.notify();
+	}
+
+	syncStatus(status: AIInstructionRunStatus, error: string | null = null): void {
+		if (this.status === status && this.error === error) return;
+		this.status = status;
+		this.error = error;
+		this.notify();
+	}
+
+	recent(limit = 20): readonly string[] {
+		return this.draftStore?.recent(this.draftKey, limit) ?? [];
+	}
+
+	restoreRecent(index: number): boolean {
+		const value = this.recent(index + 1)[index];
+		if (value === undefined) return false;
+		this.setDraft(value);
+		return true;
 	}
 
 	retry(): void {

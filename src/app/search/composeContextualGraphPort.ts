@@ -88,14 +88,30 @@ export function composeContextualGraphPort(appContext: AppContext): ContextualGr
 						? 'neighbor' as const
 						: 'bridge' as const,
 			}));
-			for (const hub of hubs.filter((item) => item.status === 'primary')) {
-				if (nodes.some((node) => node.path === hub.path)) continue;
+			if (!nodes.some((node) => node.id === currentNodeId)) {
 				nodes.push({
-					id: `hub:${hub.path}`,
+					id: currentNodeId,
+					label: filePath.slice(filePath.lastIndexOf('/') + 1).replace(/\.md$/i, ''),
+					path: filePath,
+					role: 'current',
+				});
+			}
+			const primaryHubNodeIds = new Map<string, string>();
+			for (const hub of hubs.filter((item) => item.status === 'primary')) {
+				const existing = nodes.find((node) => node.path === hub.path);
+				if (existing) {
+					existing.role = 'hub';
+					primaryHubNodeIds.set(hub.path, existing.id);
+					continue;
+				}
+				const hubNodeId = `hub:${hub.path}`;
+				nodes.push({
+					id: hubNodeId,
 					label: hub.label,
 					path: hub.path,
 					role: 'hub',
 				});
+				primaryHubNodeIds.set(hub.path, hubNodeId);
 			}
 
 			const edges: ContextualGraphEdge[] = neighborhood.edges.map((edge) => ({
@@ -105,8 +121,10 @@ export function composeContextualGraphPort(appContext: AppContext): ContextualGr
 				directionality: edge.directionality ?? 'directed',
 			}));
 			for (const hub of hubs.filter((item) => item.status === 'primary')) {
+				const hubNodeId = primaryHubNodeIds.get(hub.path);
+				if (!hubNodeId || hubNodeId === currentNodeId) continue;
 				edges.push({
-					source: `hub:${hub.path}`,
+					source: hubNodeId,
 					target: currentNodeId,
 					kind: 'hub',
 					directionality: 'directed',

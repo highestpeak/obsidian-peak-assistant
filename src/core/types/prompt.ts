@@ -210,6 +210,9 @@ export enum PromptId {
 	// Knowledge graph agent (search → graph structure)
 	GraphAgentSystem = 'graph-agent-system',
 	GraphAgentUser = 'graph-agent-user',
+	/** Typed heterogeneous node/relation extraction for canonical AI Graph artifacts. */
+	AIGraphArtifactExtractSystem = 'ai-graph-artifact-extract-system',
+	AIGraphArtifactExtract = 'ai-graph-artifact-extract',
 
 	// Thinking-tree inference (document hierarchy from titles + first lines)
 	GraphInferThinkingTreeSystem = 'graph-infer-thinking-tree-system',
@@ -828,6 +831,13 @@ export interface PromptVariables {
 	[PromptId.GraphAgentUser]: {
 		sourceCount: number;
 		searchQuery: string;
+	};
+	[PromptId.AIGraphArtifactExtractSystem]: Record<string, never>;
+	[PromptId.AIGraphArtifactExtract]: {
+		searchQuery: string;
+		graphType: string;
+		sourcesText: string;
+		currentGraph: string;
 	};
 
 	// Thinking-tree inference

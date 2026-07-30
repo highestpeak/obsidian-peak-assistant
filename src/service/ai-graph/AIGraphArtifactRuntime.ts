@@ -12,9 +12,11 @@ import {
 	type AIGraphSemanticDiff,
 	type AIGraphSource,
 	type AIGraphVersion,
+	type AIGraphVersionComparison,
 	type AIGraphProjectionPort,
 	type AIGraphRunEvent,
 	type AIGraphRunEventPort,
+	isActiveAIGraphSource,
 } from './domain';
 import { AIGraphArtifactRepository } from './AIGraphArtifactRepository';
 
@@ -43,6 +45,10 @@ export interface AIGraphUpdateContext {
 	sourceIds: string[];
 	lens?: string;
 	reviewContext?: string[];
+	updateFrom: {
+		surface: AIGraphOriginSurface;
+		contextRefs: AIGraphOriginContextRef[];
+	};
 }
 
 export type AIGraphUpdateEnvelope = AIInstructionEnvelope<AIGraphUpdateContext>;
@@ -214,10 +220,27 @@ export class AIGraphArtifactRuntime {
 		return view;
 	}
 
+	/** Read-only projection probe that does not count as a user open. */
+	peek(graphId: string, versionId?: string): Promise<AIGraphArtifactView | null> {
+		return this.repository.open(graphId, versionId);
+	}
+
 	async list(): Promise<AIGraphHistoryRow[]> {
 		const projected = await this.projection?.list() ?? null;
-		const artifactIds = await this.repository.artifactIds();
-		if (projected && projected.length === artifactIds.length) return projected;
+		const canonicalRows = await this.repository.list();
+		const canonicalById = new Map(
+			canonicalRows.map((row) => [row.graphId, row]),
+		);
+		const projectionMatchesCanonical = projected
+			&& projected.length === canonicalRows.length
+			&& projected.every((row) => {
+				const canonical = canonicalById.get(row.graphId);
+				return canonical?.versionId === row.versionId
+					&& canonical.versionNumber === row.versionNumber
+					&& canonical.updatedAt === row.updatedAt
+					&& canonical.changedSourceCount === row.changedSourceCount;
+			});
+		if (projectionMatchesCanonical) return projected;
 		const entries = await this.repository.projectionEntries();
 		if (this.projection) {
 			try {
@@ -226,7 +249,7 @@ export class AIGraphArtifactRuntime {
 				console.warn('[AI Graph] projection rebuild failed; using canonical artifacts.', error);
 			}
 		}
-		return this.repository.list();
+		return canonicalRows;
 	}
 
 	listVersions(graphId: string): Promise<AIGraphVersion[]> {
@@ -245,6 +268,46 @@ export class AIGraphArtifactRuntime {
 			versionNumber: await this.repository.versionCount(graphId),
 		});
 		return view;
+	}
+
+	async addSources(
+		graphId: string,
+		sources: readonly AIGraphSource[],
+	): Promise<AIGraphArtifactView> {
+		const view = await this.repository.open(graphId);
+		if (!view) throw new Error(`AI Graph ${graphId} does not exist.`);
+		const byId = new Map(view.sources.map((source) => [source.sourceId, source]));
+		for (const source of sources) {
+			const previous = byId.get(source.sourceId);
+			const { removedAt: _removedAt, ...previousWithoutTombstone } = previous ?? {};
+			byId.set(source.sourceId, {
+				...previousWithoutTombstone,
+				...source,
+				active: true,
+			});
+		}
+		return this.replaceSources(graphId, [...byId.values()]);
+	}
+
+	/**
+	 * Removing a source never deletes the registry record. Historical versions
+	 * and evidence continue to resolve while future updates omit inactive inputs.
+	 */
+	async deactivateSource(graphId: string, sourceId: string): Promise<AIGraphArtifactView> {
+		const view = await this.repository.open(graphId);
+		if (!view) throw new Error(`AI Graph ${graphId} does not exist.`);
+		if (!view.sources.some((source) => source.sourceId === sourceId)) return view;
+		return this.replaceSources(
+			graphId,
+			view.sources.map((source) => source.sourceId === sourceId
+				? {
+						...source,
+						active: false,
+						removedAt: this.now(),
+						freshness: 'unavailable' as const,
+					}
+				: source),
+		);
 	}
 
 	async markSourceFreshness(
@@ -294,6 +357,10 @@ export class AIGraphArtifactRuntime {
 			relations: changes.relations ?? { added: [], changed: [], removed: [] },
 			evidence: changes.evidence ?? { added: [], removed: [] },
 			sourceIds: changes.sourceIds ?? view.version.sourceIds,
+			updateProvenance: {
+				surface: envelope.surfaceContext.updateFrom.surface,
+				contextRefs: [...envelope.surfaceContext.updateFrom.contextRefs],
+			},
 		};
 	}
 
@@ -322,6 +389,7 @@ export class AIGraphArtifactRuntime {
 			(item) => item.evidenceId,
 		);
 		const createdAt = this.now();
+		const runId = diff.diffId;
 		const version: AIGraphVersion = {
 			schemaVersion: 1,
 			graphId: diff.graphId,
@@ -336,9 +404,14 @@ export class AIGraphArtifactRuntime {
 			relations,
 			evidence,
 			generation: {},
+			updateProvenance: {
+				surface: diff.updateProvenance.surface,
+				contextRefs: [...diff.updateProvenance.contextRefs],
+				baseVersionId: diff.baseVersionId,
+				runId,
+			},
 			stats: computeAIGraphStats({ nodes, relations, sourceIds: diff.sourceIds }),
 		};
-		const runId = diff.diffId;
 		await this.appendRunEvent({
 			schemaVersion: 1,
 			runId,
@@ -392,6 +465,141 @@ export class AIGraphArtifactRuntime {
 
 	/** Preview/cancel is deliberately a no-op against the canonical repository. */
 	cancelUpdate(_diff: AIGraphSemanticDiff): void {}
+
+	async compareVersions(
+		graphId: string,
+		fromVersionId: string,
+		toVersionId: string,
+	): Promise<AIGraphVersionComparison> {
+		const [from, to] = await Promise.all([
+			this.repository.open(graphId, fromVersionId),
+			this.repository.open(graphId, toVersionId),
+		]);
+		if (!from || !to) throw new Error(`AI Graph ${graphId} version comparison could not be resolved.`);
+		const changes = buildAIGraphChangeSet(from.version, {
+			nodes: to.version.nodes,
+			relations: to.version.relations,
+			evidence: to.version.evidence,
+			sourceIds: to.version.sourceIds,
+		});
+		return {
+			graphId,
+			fromVersionId,
+			toVersionId,
+			nodes: changes.nodes!,
+			relations: changes.relations!,
+			evidence: changes.evidence!,
+		};
+	}
+
+	/**
+	 * Restore is append-only: it copies the selected immutable body into a new
+	 * head version instead of moving the manifest pointer backwards.
+	 */
+	async restoreVersion(
+		graphId: string,
+		versionId: string,
+		updateFrom: {
+			surface: AIGraphOriginSurface;
+			contextRefs: AIGraphOriginContextRef[];
+		},
+	): Promise<AIGraphArtifactView> {
+		const [head, selected] = await Promise.all([
+			this.repository.open(graphId),
+			this.repository.open(graphId, versionId),
+		]);
+		if (!head || !selected) throw new Error(`AI Graph ${graphId} version restore could not be resolved.`);
+		const createdAt = this.now();
+		const next: AIGraphVersion = {
+			...selected.version,
+			versionId: `aigv-${this.idFactory()}`,
+			parentVersionId: head.version.versionId,
+			createdAt,
+			createdBy: 'user',
+			changeKind: 'restored',
+			prompt: `Restore ${versionId}`,
+			generation: {},
+			updateProvenance: {
+				surface: updateFrom.surface,
+				contextRefs: [...updateFrom.contextRefs],
+				baseVersionId: head.version.versionId,
+				restoredFromVersionId: versionId,
+			},
+		};
+		const restored = await this.repository.appendVersion(
+			graphId,
+			head.version.versionId,
+			next,
+		);
+		await this.tryProject({
+			view: restored,
+			versionNumber: await this.repository.versionCount(graphId),
+		});
+		return restored;
+	}
+
+	async duplicateVersion(input: {
+		graphId: string;
+		versionId: string;
+		title?: string;
+		createdFrom: CreateAIGraphRequest['createdFrom'];
+	}): Promise<AIGraphArtifactView> {
+		const source = await this.repository.open(input.graphId, input.versionId);
+		if (!source) throw new Error(`AI Graph ${input.graphId} version ${input.versionId} does not exist.`);
+		return this.create({
+			title: input.title?.trim() || `${source.manifest.title} copy`,
+			description: source.manifest.description,
+			graphType: source.manifest.graphType,
+			createdFrom: input.createdFrom,
+			prompt: `Duplicate ${input.graphId}/${input.versionId}`,
+			// Copy the complete registry, including tombstones. Historical
+			// evidence may reference an inactive source and must remain valid.
+			sources: source.sources,
+			nodes: source.version.nodes,
+			relations: source.version.relations,
+			evidence: source.version.evidence,
+			changeKind: 'generated',
+		});
+	}
+
+	async rebuildProjection(): Promise<AIGraphHistoryRow[]> {
+		const entries = await this.repository.projectionEntries();
+		await this.projection?.replaceAll(entries);
+		return this.repository.rebuildProjection();
+	}
+
+	async exportMarkdown(graphId: string, versionId?: string): Promise<string> {
+		const view = await this.repository.open(graphId, versionId);
+		if (!view) throw new Error(`AI Graph ${graphId} does not exist.`);
+		const lines = [
+			`# ${view.manifest.title}`,
+			'',
+			`AI Graph: ${view.manifest.graphId}`,
+			`Version: ${view.version.versionId}`,
+			`Created in: ${view.manifest.createdFrom.surface}`,
+			'',
+			'## Nodes',
+			'',
+			...view.version.nodes
+				.filter((node) => node.reviewStatus !== 'rejected')
+				.map((node) => `- **${node.label}** (${node.kind})`),
+			'',
+			'## Relations',
+			'',
+			...view.version.relations
+				.filter((relation) => relation.reviewStatus !== 'rejected')
+				.map((relation) => {
+					const source = view.version.nodes.find((node) => node.nodeId === relation.sourceNodeId);
+					const target = view.version.nodes.find((node) => node.nodeId === relation.targetNodeId);
+					const arrow = relation.directed ? '→' : '—';
+					return `- ${source?.label ?? relation.sourceNodeId} ${arrow} ${relation.predicate} ${arrow} ${target?.label ?? relation.targetNodeId}`;
+				}),
+			'',
+			'> Exported snapshot. Canonical AI Graph data remains versioned JSON.',
+			'',
+		];
+		return lines.join('\n');
+	}
 
 	private async recordSuccessfulRunPrelude(
 		runId: string,

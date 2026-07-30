@@ -62,6 +62,12 @@ export interface AIGraphSource {
 	contentHash: string | null;
 	capturedAt: number;
 	freshness: 'current' | 'changed' | 'unavailable' | 'unknown';
+	/**
+	 * Source registry entries are tombstoned instead of deleted so immutable
+	 * versions and evidence can always resolve their historical source.
+	 */
+	active?: boolean;
+	removedAt?: number;
 	parentSourceId?: string;
 	metadata?: Record<string, string | number | boolean | null>;
 }
@@ -147,7 +153,13 @@ export interface AIGraphVersion {
 	parentVersionId?: string;
 	createdAt: number;
 	createdBy: 'user' | 'assistant' | 'system';
-	changeKind: 'generated' | 'sources-added' | 'refreshed' | 'semantic-edit' | 'imported';
+	changeKind:
+		| 'generated'
+		| 'sources-added'
+		| 'refreshed'
+		| 'semantic-edit'
+		| 'restored'
+		| 'imported';
 	prompt?: string;
 	sourceIds: string[];
 	nodes: AIGraphNode[];
@@ -158,6 +170,17 @@ export interface AIGraphVersion {
 		provider?: string;
 		model?: string;
 		extractorVersion?: string;
+	};
+	/**
+	 * Creation origin lives on the manifest forever. Every later version records
+	 * where the update was requested without overwriting that creation origin.
+	 */
+	updateProvenance?: {
+		surface: AIGraphOriginSurface;
+		contextRefs: AIGraphOriginContextRef[];
+		baseVersionId: string;
+		runId?: string;
+		restoredFromVersionId?: string;
 	};
 	stats: AIGraphVersionStats;
 }
@@ -252,6 +275,34 @@ export interface AIGraphSemanticDiff {
 		removed: AIGraphEvidenceRef[];
 	};
 	sourceIds: string[];
+	updateProvenance: {
+		surface: AIGraphOriginSurface;
+		contextRefs: AIGraphOriginContextRef[];
+	};
+}
+
+export interface AIGraphVersionComparison {
+	graphId: string;
+	fromVersionId: string;
+	toVersionId: string;
+	nodes: {
+		added: AIGraphNode[];
+		changed: Array<{ before: AIGraphNode; after: AIGraphNode }>;
+		removed: AIGraphNode[];
+	};
+	relations: {
+		added: AIGraphRelation[];
+		changed: Array<{ before: AIGraphRelation; after: AIGraphRelation }>;
+		removed: AIGraphRelation[];
+	};
+	evidence: {
+		added: AIGraphEvidenceRef[];
+		removed: AIGraphEvidenceRef[];
+	};
+}
+
+export function isActiveAIGraphSource(source: AIGraphSource): boolean {
+	return source.active !== false;
 }
 
 export function computeAIGraphStats(input: {
@@ -287,6 +338,16 @@ export function validateAIGraphVersion(version: AIGraphVersion): void {
 		}
 	}
 	const evidenceIds = new Set(version.evidence.map((item) => item.evidenceId));
+	if (evidenceIds.size !== version.evidence.length) {
+		throw new Error('AI Graph contains duplicate evidence ids.');
+	}
+	for (const node of version.nodes) {
+		for (const evidenceId of node.evidenceIds) {
+			if (!evidenceIds.has(evidenceId)) {
+				throw new Error(`AI Graph node ${node.nodeId} references missing evidence.`);
+			}
+		}
+	}
 	for (const relation of version.relations) {
 		for (const evidenceId of relation.evidenceIds) {
 			if (!evidenceIds.has(evidenceId)) {

@@ -4,6 +4,7 @@ import { readFileSync } from 'fs';
 const copilot = readFileSync('src/ui/view/composer/sidecar/CopilotView.tsx', 'utf8');
 const related = readFileSync('src/ui/view/composer/sidecar/RelatedMaterialsModal.tsx', 'utf8');
 const css = readFileSync('src/styles/composer-sidecar.css', 'utf8');
+const productCss = readFileSync('src/styles/peak-components.css', 'utf8');
 
 assert.ok(copilot.includes('pk-session-start'), 'a new Copilot session has a non-empty start state');
 assert.ok(copilot.includes('pk-session-suggestion'), 'the start state offers concrete capability suggestions');
@@ -16,7 +17,8 @@ assert.equal(
 	false,
 	'the all-capabilities control must not regress to the tiny empty details popover',
 );
-assert.ok(copilot.includes('pk-session-context-chip'), 'the prompt explains which document object is in context');
+assert.ok(copilot.includes('<AIInstructionComposer'), 'the prompt uses the shared instruction capability');
+assert.ok(copilot.includes('source: \'automatic\''), 'the prompt marks document context as automatic');
 assert.ok(copilot.includes('formatCopilotContextLabel'), 'the prompt displays concise body context');
 assert.ok(copilot.includes('<ComposerModelSelector'), 'the prompt reuses Chat Studio model-selection UI');
 assert.equal(copilot.includes('function ModelPicker('), false, 'the prompt has no private model picker');
@@ -43,9 +45,9 @@ assert.equal(
 	'the starter content must remain top-aligned instead of floating in a large blank middle',
 );
 assert.match(
-	css,
-	/\.pk-session-context-chip > span\s*\{[\s\S]*?flex:\s*0 0 auto;/,
-	'the context label must not collapse into vertical characters',
+	productCss,
+	/\.pk-ai-instruction-context\s*\{[\s\S]*?flex-wrap:\s*wrap;/,
+	'the shared context shelf remains readable without leaking into the prompt body',
 );
 
 assert.ok(related.includes('<InspectorSidePanel'), 'the material explorer reuses the Search-style inspector');

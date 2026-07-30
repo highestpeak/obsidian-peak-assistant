@@ -51,6 +51,13 @@ export function graphOutputToLensData(output: GraphOutput, sourcePaths?: string[
 		summary: n.summary,
 		importance: n.importance,
 		createdAt: n.created_at,
+		artifactKind: n.artifact_kind,
+		canonicalRef: n.canonical_ref,
+		aliases: n.aliases,
+		evidenceQuotes: n.evidence?.map((item) => ({
+			sourcePath: resolve(item.source_path),
+			quote: item.quote,
+		})),
 	}));
 
 	const edges = output.edges.map(e => ({
@@ -59,7 +66,16 @@ export function graphOutputToLensData(output: GraphOutput, sourcePaths?: string[
 		kind: e.kind as LensGraphData['edges'][number]['kind'],
 		weight: e.weight,
 		label: e.label,
-		directionality: resolveGraphEdgeDirectionality(e.kind),
+		directionality: e.directed === undefined
+			? resolveGraphEdgeDirectionality(e.kind)
+			: e.directed ? 'directed' as const : 'undirected' as const,
+		predicate: e.predicate,
+		relationFamily: e.family,
+		qualifiers: e.qualifiers,
+		evidenceQuotes: e.evidence?.map((item) => ({
+			sourcePath: resolve(item.source_path),
+			quote: item.quote,
+		})),
 	}));
 
 	const availableLenses: LensType[] = ['topology'];

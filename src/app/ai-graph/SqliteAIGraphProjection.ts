@@ -106,7 +106,8 @@ export class SqliteAIGraphProjection implements AIGraphProjectionPort {
 		const { view, versionNumber } = entry;
 		const { manifest, version, sources } = view;
 		const changedSourceCount = sources.filter((source) =>
-			source.freshness === 'changed' || source.freshness === 'unavailable').length;
+			source.active !== false
+			&& (source.freshness === 'changed' || source.freshness === 'unavailable')).length;
 		db.prepare(`
 			INSERT INTO ai_graph_artifact_projection (
 				graph_id, title, graph_type, status, version_id, version_number,

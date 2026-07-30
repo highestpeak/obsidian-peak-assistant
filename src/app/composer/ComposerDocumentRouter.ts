@@ -27,11 +27,19 @@ import { NativeMarkdownComposerAffordance } from './NativeMarkdownComposerAfford
 import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
 import { selectDocumentLocationLeaf } from './DocumentLocationPolicy';
 import { revealMarkdownLocation } from './DocumentLocationReveal';
+import {
+	captureNativeMarkdownIntelligenceContext,
+	type NativeMarkdownIntelligenceContext,
+} from './NativeMarkdownIntelligenceContext';
 
 export interface ComposerDocumentRouterOptions {
 	getDefaultView(): DefaultDocumentView;
 	setDefaultView(view: DefaultDocumentView): Promise<void>;
-	openIntelligenceCompanion?(filePath: string): void;
+	openIntelligenceCompanion?(
+		filePath: string,
+		context: NativeMarkdownIntelligenceContext,
+		returnFocus?: HTMLElement | null,
+	): void | Promise<void>;
 	strings?: ComposerNavigationStrings;
 }
 
@@ -115,11 +123,22 @@ export class ComposerDocumentRouter {
 						});
 				});
 				if (this.options.openIntelligenceCompanion) {
+					const markdownView = leaf.view;
+					const returnFocus = markdownView.containerEl.ownerDocument
+						.activeElement as HTMLElement | null;
+					const nativeContext = captureNativeMarkdownIntelligenceContext(markdownView);
 					menu.addItem((item) => {
 						item
 							.setTitle(this.strings.openIntelligence)
 							.setIcon('sparkles')
-							.onClick(() => this.options.openIntelligenceCompanion?.(file.path));
+							.onClick(() => {
+								void markdownView.save().then(() =>
+									this.options.openIntelligenceCompanion?.(
+										file.path,
+										nativeContext,
+										returnFocus,
+									));
+							});
 					});
 				}
 			}),
@@ -164,7 +183,7 @@ export class ComposerDocumentRouter {
 			if (targetView === 'composer') {
 				await leaf.setViewState({
 					type: DOCUMENT_COMPOSER_VIEW_TYPE,
-					state: composerState(file.path),
+					state: composerState(file.path, request.intelligenceRunId),
 					active: true,
 				});
 				return;
@@ -457,11 +476,15 @@ function waitForHostFileOpenToSettle(app: App): Promise<void> {
 	});
 }
 
-function composerState(filePath: string): ComposerViewStateV2 {
+function composerState(
+	filePath: string,
+	intelligenceRunId?: string,
+): ComposerViewStateV2 {
 	return {
 		version: 2,
 		filePath,
 		displayMode: 'edit',
+		...(intelligenceRunId ? { intelligenceRunId } : {}),
 	};
 }
 

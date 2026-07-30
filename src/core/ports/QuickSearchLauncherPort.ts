@@ -26,10 +26,14 @@ export interface QuickSearchOpenOptions {
 	aiMode?: QuickSearchAIWorkspaceMode;
 	/** Opens the canonical persisted artifact after the graph workspace mounts. */
 	graphId?: string;
+	/** Optional immutable version deep link; omitted means the current head. */
+	graphVersionId?: string;
 	/** Context applied only if this modal creates a new graph. */
 	graphCreateOrigin?: QuickSearchGraphCreateOrigin;
 	/** Vault inputs prepared by a document-adjacent adapter. */
 	selectedVaultPaths?: string[];
+	/** Optional query restored by an explicit history/origin jump. */
+	initialQuery?: string;
 }
 
 export interface QuickSearchLauncherPort {

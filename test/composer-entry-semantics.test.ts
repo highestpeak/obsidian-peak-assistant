@@ -7,7 +7,7 @@
  *   `+`  → files / vault doc (reuses `[[`) / URL (ExplicitContextRef chip)
  *   `[[` → Vault picker only
  *   `/`  → workflows (Plan …) + generation actions (image/video/music)
- *   `@`  → intentionally unassigned
+ *   `@`  → shared explicit context chip
  *   starter → fills the editable draft only; never triggers submit
  *
  * These tests intentionally sit at the module level — they read the raw
@@ -121,20 +121,21 @@ function testSlashPaletteHostsGenerationActions(): void {
 }
 
 // ---------------------------------------------------------------------------
-// R3 — `/` trigger is scoped to input start; typing `/plan foo` after
-// content does not open the palette (avoids a duplicate slash surface).
+// R3 — `/` remains scoped to input start while the shared instruction
+// capability assigns `@` to explicit context chips.
 // ---------------------------------------------------------------------------
 
 function testSlashTriggerScopedToStart(): void {
-	const src = read('src/ui/component/prompt-input/PromptInputBody.tsx');
+	const src = read('src/ui/component/prompt-input/promptTrigger.ts');
+	const composer = read('src/ui/view/chat-view/components/Composer.tsx');
 	assert.match(
 		src,
 		/docText\.startsWith\(['"]\/['"]\)/,
 		'`/` trigger must only fire when the input starts with a slash',
 	);
-	// `@` remains unassigned — deliberately guarded by comment (see §8.3).
-	assert.match(src, /`@` is deliberately NOT a trigger/);
-	console.log('PASS: `/` trigger is start-anchored, `@` remains unassigned');
+	assert.match(src, /trigger:\s*['"]@['"]/);
+	assert.match(composer, /trigger === ['"]@['"][\s\S]{0,500}addExplicitRef/);
+	console.log('PASS: `/` is start-anchored and `@` creates explicit context');
 }
 
 // ---------------------------------------------------------------------------
@@ -180,7 +181,7 @@ function run(): void {
 	const tests: Array<[string, () => void]> = [
 		['plus menu owns resources only', testPlusMenuHasOnlyResourceEntries],
 		['slash palette hosts workflows + generation', testSlashPaletteHostsGenerationActions],
-		['`/` trigger start-anchored, `@` unassigned', testSlashTriggerScopedToStart],
+		['`/` trigger start-anchored, `@` explicit context', testSlashTriggerScopedToStart],
 		['starter buttons never auto-send', testStartersNeverAutoSend],
 		['starter shelf collapses on draft', testStartersHideWhenDraftPresent],
 	];

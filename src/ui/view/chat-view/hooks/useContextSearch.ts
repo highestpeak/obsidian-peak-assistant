@@ -109,8 +109,9 @@ export function useContextSearch() {
 	}, [handleSearchContext]);
 
 	const handleMenuSelect = useCallback(async (triggerChar: string, selectedItem?: any) => {
-		// PromptInputBody only emits '[[' | '/' triggers; '[[' owns context refs.
-		const isContextTrigger = triggerChar === '[[';
+		// `[[` inserts a readable wikilink while `@` becomes a context chip;
+		// both browse the same real Vault source hierarchy.
+		const isContextTrigger = triggerChar === '[[' || triggerChar === '@';
 		if (isContextTrigger && selectedItem?.showArrow) {
 			const folderPath = selectedItem.value as string;
 			setFolderStack((prev) => [...prev, folderPath]);

@@ -507,6 +507,8 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	// --- Knowledge graph agent (T11Y inline-prompt migration) ---
 	'graph-agent-system': meta('prompts', 'graph-agent-system', { label: 'Graph Agent (System)', description: 'System prompt that asks the LLM to read source documents and produce a knowledge graph.', group: 'searchAnalysis' }),
 	'graph-agent-user': meta('prompts', 'graph-agent-user', { systemPromptId: 'graph-agent-system' as PromptId, label: 'Graph Agent (User)', description: 'User prompt that names the search query and source count for the graph agent.', group: 'searchAnalysis' }),
+	'ai-graph-artifact-extract-system': meta('prompts', 'ai-graph-artifact-extract-system', { expectsJson: true, label: 'AI Graph Artifact Extraction (System)', description: 'Extracts typed artifact nodes, assertions, qualifiers, and grounded evidence from resolved sources.', group: 'searchAnalysis' }),
+	'ai-graph-artifact-extract': meta('prompts', 'ai-graph-artifact-extract', { systemPromptId: 'ai-graph-artifact-extract-system' as PromptId, expectsJson: true, label: 'AI Graph Artifact Extraction', description: 'Provides the graph intent, graph type, and bounded source contents for typed extraction.', group: 'searchAnalysis' }),
 
 	// --- Thinking-tree inference (T11Y inline-prompt migration) ---
 	'graph-infer-thinking-tree-system': meta('prompts', 'graph-infer-thinking-tree-system', { expectsJson: true, label: 'Infer Thinking Tree (System)', description: 'System prompt for the thinking-tree inference call.', group: 'searchAnalysis' }),

@@ -13,6 +13,24 @@ export type LensType = 'topology' | 'thinking-tree' | 'bridge' | 'timeline' | 'g
 export interface LensNodeData extends Record<string, unknown> {
 	label: string;
 	path: string;
+	/** Canonical artifact kind when the node is more than a Vault document. */
+	artifactKind?:
+		| 'vault-document'
+		| 'web-resource'
+		| 'concept'
+		| 'person'
+		| 'organization'
+		| 'place'
+		| 'event'
+		| 'work'
+		| 'product'
+		| 'claim'
+		| 'process'
+		| 'dataset'
+		| 'custom';
+	canonicalRef?: string;
+	aliases?: string[];
+	evidenceQuotes?: Array<{ sourcePath: string; quote: string }>;
 	role?: 'root' | 'hub' | 'bridge' | 'leaf' | 'orphan';
 	group?: string;
 	createdAt?: number;
@@ -38,6 +56,22 @@ export interface LensEdgeData extends Record<string, unknown> {
 	canonicalRelationId?: string;
 	/** Non-visual source → predicate → target description for inspectors and AT. */
 	accessibleLabel?: string;
+	/** Canonical AI Graph review metadata used for uncertainty styling. */
+	reviewStatus?: 'suggested' | 'accepted' | 'edited' | 'rejected';
+	confidence?: number | null;
+	evidenceCount?: number;
+	predicate?: string;
+	relationFamily?:
+		| 'semantic'
+		| 'taxonomic'
+		| 'causal'
+		| 'evidence'
+		| 'temporal'
+		| 'attribution'
+		| 'structural'
+		| 'custom';
+	qualifiers?: Array<{ key: string; value: string | number | boolean }>;
+	evidenceQuotes?: Array<{ sourcePath: string; quote: string }>;
 	/** True when edge count > 1.2x node count — suppresses labels unless hovered */
 	dense?: boolean;
 }
@@ -53,7 +87,14 @@ export interface LensGraphData {
 		directionality?: GraphEdgeDirectionality;
 		canonicalRelationId?: string;
 		accessibleLabel?: string;
-	}>;
+			reviewStatus?: LensEdgeData['reviewStatus'];
+			confidence?: number | null;
+			evidenceCount?: number;
+			predicate?: string;
+			relationFamily?: LensEdgeData['relationFamily'];
+			qualifiers?: LensEdgeData['qualifiers'];
+			evidenceQuotes?: LensEdgeData['evidenceQuotes'];
+		}>;
 	availableLenses: LensType[];
 	clusters?: Array<{ id: string; name: string; description: string }>;
 	bridges?: Array<{ node_path: string; connects: [string, string]; explanation: string }>;

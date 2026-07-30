@@ -53,6 +53,7 @@ class MemoryStorage implements AIGraphArtifactStoragePort {
 class MemoryProjection implements AIGraphProjectionPort {
 	entries: AIGraphProjectionEntry[] = [];
 	usageTouches = 0;
+	replaceAllCalls = 0;
 
 	async list(): Promise<AIGraphHistoryRow[]> {
 		return this.entries.map(({ view, versionNumber }) => ({
@@ -76,6 +77,7 @@ class MemoryProjection implements AIGraphProjectionPort {
 		];
 	}
 	async replaceAll(entries: readonly AIGraphProjectionEntry[]): Promise<void> {
+		this.replaceAllCalls += 1;
 		this.entries = [...entries];
 	}
 	async touchUsage(
@@ -198,6 +200,13 @@ async function run(): Promise<void> {
 		1,
 		'adding a source must not create an AI Graph version',
 	);
+	const sourceRemoved = await runtime.deactivateSource(created.manifest.graphId, 's2');
+	assert.equal(sourceRemoved.sources.find((source) => source.sourceId === 's2')?.active, false);
+	assert.equal(
+		(await runtime.listVersions(created.manifest.graphId)).length,
+		1,
+		'removing a source must retain its tombstone without creating a version',
+	);
 
 	const diff = await runtime.proposeUpdate({
 		surface: 'ai-graph',
@@ -207,6 +216,14 @@ async function run(): Promise<void> {
 			graphId: created.manifest.graphId,
 			baseVersionId: created.version.versionId,
 			sourceIds: ['s1'],
+			updateFrom: {
+				surface: 'ai-search',
+				contextRefs: [{
+					kind: 'search-query',
+					ref: 'add a third concept',
+					label: 'AI Graph update',
+				}],
+			},
 		},
 	}, {
 		nodes: {
@@ -231,14 +248,120 @@ async function run(): Promise<void> {
 		runEvents.events.filter((event) => event.event === 'ai-graph.version.created').length,
 		2,
 	);
+	const comparison = await runtime.compareVersions(
+		created.manifest.graphId,
+		created.version.versionId,
+		accepted.version.versionId,
+	);
+	assert.deepEqual(comparison.nodes.added.map((item) => item.nodeId), ['n3']);
+	const currentRelation = accepted.version.relations[0];
+	const reviewDiff = await runtime.proposeUpdate({
+		surface: 'ai-graph',
+		capabilityId: 'ai-graph.relation-review',
+		submission: createAIInstructionSubmission('accept relation'),
+		surfaceContext: {
+			graphId: created.manifest.graphId,
+			baseVersionId: accepted.version.versionId,
+			selection: { kind: 'relation', id: currentRelation.relationId },
+			sourceIds: accepted.version.sourceIds,
+			updateFrom: {
+				surface: 'ai-search',
+				contextRefs: [{
+					kind: 'search-query',
+					ref: 'relation review',
+					label: 'Relation review',
+				}],
+			},
+		},
+	}, {
+		relations: {
+			added: [],
+			changed: [{
+				before: currentRelation,
+				after: { ...currentRelation, reviewStatus: 'accepted' },
+			}],
+			removed: [],
+		},
+	});
+	const reviewed = await runtime.acceptUpdate(reviewDiff);
+	assert.equal(reviewed.version.relations[0].reviewStatus, 'accepted');
+	assert.equal(reviewed.version.parentVersionId, accepted.version.versionId);
+
+	const duplicate = await runtime.duplicateVersion({
+		graphId: created.manifest.graphId,
+		versionId: accepted.version.versionId,
+		createdFrom: {
+			surface: 'ai-search',
+			contextRefs: [{
+				kind: 'search-query',
+				ref: 'duplicate evidence map',
+				label: 'Duplicate evidence map',
+			}],
+		},
+	});
+	assert.notEqual(duplicate.manifest.graphId, created.manifest.graphId);
+	assert.equal(
+		duplicate.sources.some((source) => source.sourceId === 's2' && source.active === false),
+		true,
+		'duplicate must preserve tombstoned source records needed by historical evidence',
+	);
+
+	const restored = await runtime.restoreVersion(
+		created.manifest.graphId,
+		created.version.versionId,
+		{
+			surface: 'ai-search',
+			contextRefs: [{
+				kind: 'search-query',
+				ref: 'restore version one',
+				label: 'Restore version one',
+			}],
+		},
+	);
+	assert.equal(restored.version.nodes.length, 2);
+	assert.equal(restored.version.parentVersionId, reviewed.version.versionId);
+	assert.equal(restored.version.updateProvenance?.restoredFromVersionId, created.version.versionId);
+	assert.equal(
+		await storage.readVersion(created.manifest.graphId, accepted.version.versionId) !== null,
+		true,
+		'restore must append a new version rather than mutate the prior head',
+	);
+	const graphProjectionIndex = projection.entries.findIndex((entry) =>
+		entry.view.manifest.graphId === created.manifest.graphId);
+	const currentProjectionEntry = projection.entries[graphProjectionIndex]!;
+	projection.entries[graphProjectionIndex] = {
+		...currentProjectionEntry,
+		view: {
+			...currentProjectionEntry.view,
+			version: created.version,
+		},
+	};
+	const replaceAllCallsBeforeStaleRead = projection.replaceAllCalls;
+	assert.equal(
+		(await runtime.list()).find((row) => row.graphId === created.manifest.graphId)?.versionId,
+		restored.version.versionId,
+		'a same-count stale projection must not override the canonical manifest head',
+	);
+	assert.equal(
+		projection.replaceAllCalls,
+		replaceAllCallsBeforeStaleRead + 1,
+		'stale projection rows must rebuild from canonical artifacts',
+	);
 
 	const restarted = new AIGraphArtifactRuntime(new AIGraphArtifactRepository(storage));
-	assert.equal((await restarted.open(created.manifest.graphId))?.version.versionId, accepted.version.versionId);
-	assert.equal((await restarted.list())[0].versionNumber, 2);
+	assert.equal((await restarted.open(created.manifest.graphId))?.version.versionId, restored.version.versionId);
+	assert.equal(
+		(await restarted.list()).find((row) => row.graphId === created.manifest.graphId)?.versionNumber,
+		4,
+	);
 
 	projection.entries = [];
-	assert.equal((await runtime.list())[0].versionNumber, 2);
-	assert.equal(projection.entries.length, 1, 'an empty projection must rebuild from canonical artifacts');
+	const rebuilt = await runtime.rebuildProjection();
+	assert.equal(
+		rebuilt.find((row) => row.graphId === created.manifest.graphId)?.versionNumber,
+		4,
+	);
+	assert.equal(projection.entries.length, 2, 'projection must rebuild every canonical artifact');
 }
 
 void run();

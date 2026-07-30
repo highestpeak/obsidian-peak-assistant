@@ -19,6 +19,7 @@ import { resolveSidecarPreviewFixture } from './previewFixture';
 import { useBriefProjection, useFindings, useSidecar } from './SidecarContext';
 import type { SidecarConfig } from './sidecarConfig';
 import { useServiceContext } from '@/ui/context/ServiceContext';
+import { AIGraphContextArtifacts } from '@/ui/component/ai-graph';
 
 /** Brief state of the optional related-material request. */
 export type RelatedLoadState =
@@ -139,6 +140,12 @@ export function BriefView(): React.ReactElement {
 				setModalOpen={setModalOpen}
 				runtime={runtime}
 			/>
+			{documentFilePath && (
+				<AIGraphContextArtifacts
+					contextRefs={[documentFilePath]}
+					label="Graphs for this document"
+				/>
+			)}
 			<RelatedLoader focusAnchorId={brief.focus?.anchorId ?? 'document'} onStatus={setRelated} reloadToken={relatedReloadToken} />
 		</>
 	);

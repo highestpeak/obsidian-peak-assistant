@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+export const GraphEvidenceSchema = z.object({
+	source_path: z.string(),
+	quote: z.string().min(1),
+});
+
 export const GraphNodeSchema = z.object({
 	path: z.string(),
 	label: z.string(),
@@ -8,6 +13,24 @@ export const GraphNodeSchema = z.object({
 	summary: z.string(),
 	importance: z.number().min(0).max(1),
 	created_at: z.number().optional(),
+	artifact_kind: z.enum([
+		'vault-document',
+		'web-resource',
+		'concept',
+		'person',
+		'organization',
+		'place',
+		'event',
+		'work',
+		'product',
+		'claim',
+		'process',
+		'dataset',
+		'custom',
+	]).optional(),
+	canonical_ref: z.string().optional(),
+	aliases: z.array(z.string()).optional(),
+	evidence: z.array(GraphEvidenceSchema).optional(),
 });
 
 export const GraphEdgeSchema = z.object({
@@ -16,6 +39,23 @@ export const GraphEdgeSchema = z.object({
 	kind: z.enum(['builds_on', 'contrasts', 'complements', 'applies', 'references']),
 	label: z.string(),
 	weight: z.number().min(0).max(1),
+	predicate: z.string().optional(),
+	family: z.enum([
+		'semantic',
+		'taxonomic',
+		'causal',
+		'evidence',
+		'temporal',
+		'attribution',
+		'structural',
+		'custom',
+	]).optional(),
+	directed: z.boolean().optional(),
+	qualifiers: z.array(z.object({
+		key: z.string(),
+		value: z.union([z.string(), z.number(), z.boolean()]),
+	})).optional(),
+	evidence: z.array(GraphEvidenceSchema).optional(),
 });
 
 export const GraphClusterSchema = z.object({

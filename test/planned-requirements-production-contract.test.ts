@@ -16,14 +16,25 @@ const productCss = source('src/styles/peak-components.css');
 const atlasHost = source('src/app/file-atlas/composeFileAtlasHost.ts');
 const atlasBar = source('src/ui/view/file-atlas/components/AtlasBar.tsx');
 const nativeModal = source('src/app/composer/NativeMarkdownIntelligenceModal.tsx');
+const nativeContext = source('src/app/composer/NativeMarkdownIntelligenceContext.ts');
 const sharedComposer = source('src/ui/component/instruction-composer/AIInstructionComposer.tsx');
+const sharedController = source('src/core/instruction-composer/SharedAIInstructionController.ts');
+const promptTrigger = source('src/ui/component/prompt-input/promptTrigger.ts');
+const chatComposer = source('src/ui/view/chat-view/components/Composer.tsx');
+const composerCopilot = source('src/ui/view/composer/sidecar/CopilotView.tsx');
 const quickSearch = source('src/ui/view/quick-search/SearchModal.tsx');
 const quickStore = source('src/ui/view/quick-search/store/sharedStore.ts');
+const quickHost = source('src/app/search/composeQuickSearchHost.ts');
 const graphRuntime = source('src/service/ai-graph/AIGraphArtifactRuntime.ts');
 const graphRepository = source('src/service/ai-graph/AIGraphArtifactRepository.ts');
+const graphStore = source('src/ui/view/quick-search/store/aiGraphStore.ts');
+const searchSession = source('src/ui/view/quick-search/hooks/useSearchSession.ts');
 const graphEvents = source('src/app/ai-graph/ObsidianAIGraphRunEventStore.ts');
 const graphProjection = source('src/app/ai-graph/SqliteAIGraphProjection.ts');
+const graphAgent = source('src/service/agents/AIGraphAgent.ts');
+const graphContextArtifacts = source('src/ui/component/ai-graph/AIGraphContextArtifacts.tsx');
 const folderModel = source('src/ui/component/graph/folderCompoundModel.ts');
+const timelineLayout = source('src/ui/component/mine/multi-lens-graph/layouts/timeline-layout.ts');
 
 assert.match(contextualPort, /loadDocumentContext/);
 assert.match(vaultSegment, /Vault graph overview/);
@@ -47,16 +58,22 @@ assert.match(nativeModal, /Copilot/);
 assert.match(nativeModal, /History/);
 assert.doesNotMatch(nativeModal, /tabAmbient/);
 assert.match(nativeModal, /tryGetDocumentComposerRuntime/);
+assert.match(nativeModal, /Source revision/);
+assert.match(nativeModal, /projection\.activeRunId/);
+assert.match(nativeModal, /previouslyFocused\?\.focus/);
+assert.match(nativeContext, /selectionText/);
+assert.match(nativeContext, /headingAt/);
 
-for (const consumer of [
-	'src/ui/view/chat-view/components/Composer.tsx',
-	'src/ui/view/composer/sidecar/CopilotView.tsx',
-	'src/ui/view/quick-search/SearchModal.tsx',
-]) {
-	assert.match(source(consumer), /instruction-composer|AIInstructionComposer/);
-}
+assert.match(chatComposer, /SharedAIInstructionController/);
+assert.match(composerCopilot, /AIInstructionComposer/);
+assert.match(quickSearch, /AIInstructionComposer/);
 assert.match(sharedComposer, /PromptInputBody/);
-assert.match(sharedComposer, /createAIInstructionSubmission/);
+assert.match(sharedComposer, /SharedAIInstructionController/);
+assert.match(sharedComposer, /normalizeAIInstructionAttachments/);
+assert.match(sharedController, /setComposing/);
+assert.match(sharedController, /recent\(/);
+assert.match(promptTrigger, /trigger: '@'/);
+assert.match(promptTrigger, /'\[\['/);
 
 assert.match(quickSearch, /AI_WORKSPACE_OPTIONS/);
 assert.match(quickSearch, /AIGraphHistoryPanel/);
@@ -67,11 +84,31 @@ assert.match(quickStore, /aiGraphDeepLinkId/);
 assert.match(graphRuntime, /proposeUpdate/);
 assert.match(graphRuntime, /acceptUpdate/);
 assert.match(graphRuntime, /replaceSources/);
+assert.match(graphRuntime, /deactivateSource/);
+assert.match(graphRuntime, /compareVersions/);
+assert.match(graphRuntime, /restoreVersion/);
+assert.match(graphRuntime, /duplicateVersion/);
+assert.match(graphRuntime, /rebuildProjection/);
 assert.match(graphRepository, /writeNewVersion/);
+assert.match(graphStore, /exportAIGraphReferenceJson/);
+assert.match(graphStore, /kind: 'ai-graph'/);
+assert.doesNotMatch(
+	graphStore.match(/exportAIGraphReferenceJson[\s\S]*?export const useAIGraphStore/)?.[0] ?? '',
+	/lenses:\s*\{/,
+);
+assert.match(searchSession, /exportAIGraphReferenceJson/);
+assert.match(searchSession, /setArtifactRef\(artifactRef\)/);
 assert.match(graphEvents, /\.jsonl/);
 assert.match(graphProjection, /ai_graph_artifact_projection/);
 assert.match(quickSearch, /Use source changes in Update graph/);
 assert.match(quickSearch, /listAIGraphVersions/);
+assert.match(quickSearch, /Semantic diff/);
+assert.match(quickHost, /reviewAIGraphRelation/);
+assert.match(quickHost, /Web relations require a fetched Web source/);
+assert.match(quickHost, /resolveAIGraphSourceContents/);
+assert.match(graphAgent, /AIGraphArtifactExtract/);
+assert.match(graphContextArtifacts, /graphVersionId: row\.versionId/);
+assert.match(timelineLayout, /No date \/ Unassigned/);
 
 assert.match(folderModel, /directFolders/);
 assert.match(folderModel, /parentPath/);

@@ -91,9 +91,9 @@ export async function persistForegroundSession(
 
 	let graphJson: string | null = null;
 	try {
-		const { exportGraphJson } = require('../store/aiGraphStore');
+		const { exportAIGraphReferenceJson } = require('../store/aiGraphStore');
 		const { useGraphAgentStore } = require('../store/graphAgentStore');
-		graphJson = exportGraphJson() ?? null;
+		graphJson = exportAIGraphReferenceJson() ?? null;
 		if (!graphJson) {
 			const gStore = useGraphAgentStore.getState();
 			if (gStore.graphData) {
@@ -278,9 +278,48 @@ export function useSearchSession() {
 				useAIGraphStore.getState().setLoading(true);
 				useAIGraphStore.getState().setGraphData(null);
 				useAIGraphStore.getState().setQuery(searchQuery);
-				let webResearch = null;
+					let webResearch = null;
 
-				for await (const event of agent.startSession(searchQuery, { webEnabled })) {
+					const graphInputState = useAIGraphStore.getState();
+					const selectedPaths = graphInputState.selectedPaths;
+					const initialSources = graphInputState.initialSources;
+					const initialSourceContents = initialSources.length > 0
+						? await host.resolveAIGraphSourceContents(initialSources)
+						: [];
+					const initialContentByLocator = new Map(
+						initialSourceContents.map((source) => [source.locator, source.content]),
+					);
+					const graphType = useSharedStore.getState().aiGraphCreateType;
+					const graphEvents = selectedPaths.length > 0 || initialSources.length > 0
+						? agent.startFromResolvedSources(searchQuery, selectedPaths, {
+								graphType,
+								currentGraph: initialSources.length > 0
+									? JSON.stringify({
+											sources: initialSources.map((source) => ({
+												sourceId: source.sourceId,
+												kind: source.kind,
+												title: source.title,
+												locator: source.locator,
+												freshness: source.freshness,
+												...(initialContentByLocator.get(source.locator)
+													? {
+															content: initialContentByLocator
+																.get(source.locator)!
+																.slice(0, 6_000),
+														}
+													: {}),
+											})),
+										})
+									: '',
+								webEnabled,
+								signal,
+							})
+						: agent.startSession(searchQuery, {
+								webEnabled,
+								graphType,
+								signal,
+							});
+					for await (const event of graphEvents) {
 					if (signal?.aborted) break;
 					if (event.type === 'ui-signal' && (event as any).channel === 'ai-graph-data') {
 						useAIGraphStore.getState().setGraphData((event as any).data.graphData);
@@ -297,9 +336,11 @@ export function useSearchSession() {
 					title: searchQuery.slice(0, 80),
 					query: searchQuery,
 					graphData: graphState.graphData,
-					selectedPaths: graphState.selectedPaths,
+						selectedPaths: graphState.selectedPaths,
+						resolvedSources: initialSources,
 					webResearch,
 					runId: mySessionId,
+					graphType: useSharedStore.getState().aiGraphCreateType,
 					...(useSharedStore.getState().aiGraphCreateOrigin
 						? {
 							createdFrom: {
@@ -309,10 +350,12 @@ export function useSearchSession() {
 						}
 						: {}),
 				}));
-				if (!artifactRef) {
-					throw new Error('AI Graph artifact repository is unavailable.');
-				}
-				store.getState().markCompleted();
+					if (!artifactRef) {
+						throw new Error('AI Graph artifact repository is unavailable.');
+					}
+					useAIGraphStore.getState().setArtifactRef(artifactRef);
+					useAIGraphStore.getState().clearInitialSources();
+					store.getState().markCompleted();
 				return;
 			}
 

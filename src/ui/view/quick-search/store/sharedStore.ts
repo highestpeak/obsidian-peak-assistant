@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { QuickSearchGraphCreateOrigin } from '@/core/ports/QuickSearchLauncherPort';
+import type { AIGraphArtifactManifest } from '@/service/ai-graph';
 
 export type TabType = 'vault' | 'ai';
 export type AIWorkspaceMode = 'search' | 'graph' | 'vault-intelligence';
@@ -10,7 +11,9 @@ interface SharedStore {
 	activeTab: TabType;
 	aiWorkspaceMode: AIWorkspaceMode;
 	aiGraphDeepLinkId: string | null;
+	aiGraphDeepLinkVersionId: string | null;
 	aiGraphCreateOrigin: QuickSearchGraphCreateOrigin | null;
+	aiGraphCreateType: AIGraphArtifactManifest['graphType'];
 	/** Vault Search tab input; not shared with AI until user clicks Ask AI */
 	vaultSearchQuery: string;
 	/** AI Analysis tab input; also set from vault query when Ask AI is clicked */
@@ -24,9 +27,11 @@ interface SharedStore {
 	beginIntentOpen: (
 		mode: AIWorkspaceMode,
 		graphId?: string,
+		graphVersionId?: string,
 		origin?: QuickSearchGraphCreateOrigin,
 	) => void;
 	consumeAIGraphDeepLink: () => void;
+	setAIGraphCreateType: (graphType: AIGraphArtifactManifest['graphType']) => void;
 	setVaultSearchQuery: (query: string) => void;
 	setSearchQuery: (query: string) => void;
 	/** Record a query in recent history (deduplicates, caps at MAX_RECENT_QUERIES) */
@@ -39,7 +44,9 @@ export const useSharedStore = create<SharedStore>((set) => ({
 	activeTab: 'ai',
 	aiWorkspaceMode: 'search',
 	aiGraphDeepLinkId: null,
+	aiGraphDeepLinkVersionId: null,
 	aiGraphCreateOrigin: null,
+	aiGraphCreateType: 'free',
 	vaultSearchQuery: '',
 	searchQuery: '',
 	recentQueries: [],
@@ -65,15 +72,22 @@ export const useSharedStore = create<SharedStore>((set) => ({
 		activeTab: 'ai',
 		aiWorkspaceMode: 'search',
 		aiGraphDeepLinkId: null,
+		aiGraphDeepLinkVersionId: null,
 		aiGraphCreateOrigin: null,
+		aiGraphCreateType: 'free',
 	}),
-	beginIntentOpen: (mode, graphId, origin) => set({
+	beginIntentOpen: (mode, graphId, graphVersionId, origin) => set({
 		activeTab: 'ai',
 		aiWorkspaceMode: mode,
 		aiGraphDeepLinkId: graphId ?? null,
+		aiGraphDeepLinkVersionId: graphVersionId ?? null,
 		aiGraphCreateOrigin: origin ?? null,
 	}),
-	consumeAIGraphDeepLink: () => set({ aiGraphDeepLinkId: null }),
+	consumeAIGraphDeepLink: () => set({
+		aiGraphDeepLinkId: null,
+		aiGraphDeepLinkVersionId: null,
+	}),
+	setAIGraphCreateType: (aiGraphCreateType) => set({ aiGraphCreateType }),
 	setVaultSearchQuery: (query: string) => set({ vaultSearchQuery: query }),
 	setSearchQuery: (query: string) => set({ searchQuery: query }),
 	addRecentQuery: (query: string) => set((state) => {
@@ -87,7 +101,9 @@ export const useSharedStore = create<SharedStore>((set) => ({
 		activeTab: 'ai',
 		aiWorkspaceMode: 'search',
 		aiGraphDeepLinkId: null,
+		aiGraphDeepLinkVersionId: null,
 		aiGraphCreateOrigin: null,
+		aiGraphCreateType: 'free',
 		vaultSearchQuery: '',
 		searchQuery: '',
 	}),

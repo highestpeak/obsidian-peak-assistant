@@ -26,7 +26,6 @@ import {
 	Ruler,
 	Scale,
 	Search,
-	Send,
 	ShieldAlert,
 	Sigma,
 	Sparkles,
@@ -46,12 +45,6 @@ import type {
 import { composerTargetBlockId } from '@/core/composer';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import type { ModelSelection } from '@/core/types/chat-studio';
-import {
-	PromptInput,
-	PromptInputAttachments,
-	PromptInputBody,
-	type PromptInputEditorHandle,
-} from '@/ui/component/prompt-input';
 import { Button, IconButton } from '@/ui/components/primitives';
 import { ChatStudioStringsProvider } from '@/ui/view/chat-view/chatStudioStringsContext';
 import { ComposerModelSelector } from '@/ui/view/chat-view/components/composer/ComposerModelSelector';
@@ -60,7 +53,7 @@ import { BriefView } from './BriefView';
 import { RunReceiptCard } from './RunReceiptCard';
 import { useSessionProjection, useSidecar } from './SidecarContext';
 import type { SidecarStrings } from './sidecarConfig';
-import { createAIInstructionSubmission } from '@/core/instruction-composer';
+import { AIInstructionComposer } from '@/ui/component/instruction-composer';
 
 export {
 	BriefView,
@@ -104,14 +97,10 @@ function SessionView(): React.ReactElement {
 	const { projection: capabilityProjection, runtime: chromeRuntime } = useComposerChrome();
 	const projection = useSessionProjection(runtime);
 	const s = config.strings;
-	const inputFocusRef = React.useRef<PromptInputEditorHandle | null>(null);
 	const externalRuns = React.useRef(new Map<string, string>());
 	const candidates = React.useRef<readonly ComposerCandidate[]>([]);
-
-	React.useEffect(() => {
-		const frame = requestAnimationFrame(() => inputFocusRef.current?.focus());
-		return () => cancelAnimationFrame(frame);
-	}, []);
+	const activeCancelRef = React.useRef<(() => void) | null>(null);
+	const [instruction, setInstruction] = React.useState('');
 
 	const documentFallback = (): { snapshot: ComposerContextSnapshot; targetQuote: string } => ({
 		snapshot: {
@@ -170,10 +159,12 @@ function SessionView(): React.ReactElement {
 				return;
 			}
 			if (event.type === 'run-failed') {
+				activeCancelRef.current = null;
 				runtime.session.markError(sessionRunId, event.error);
 				return;
 			}
 			if (event.type === 'run-cancelled') {
+				activeCancelRef.current = null;
 				runtime.session.markCancelled(sessionRunId);
 				return;
 			}
@@ -200,6 +191,7 @@ function SessionView(): React.ReactElement {
 					status: 'ok',
 				}],
 			});
+			activeCancelRef.current = null;
 		});
 		return () => {
 			unsubscribeCandidates();
@@ -227,6 +219,7 @@ function SessionView(): React.ReactElement {
 				},
 			);
 			externalRuns.current.set(handle.runId, frozen.runId);
+			activeCancelRef.current = handle.cancel;
 			if (presentationOrigin) {
 				workspaceRuntime?.attachPresentationOrigin(handle.runId, presentationOrigin);
 			}
@@ -240,14 +233,20 @@ function SessionView(): React.ReactElement {
 	const chooseCapability = (action: ComposerActionDescriptor): void => {
 		if (action.disabledReason) return;
 		setSelectedCapabilityId(action.capabilityId);
-		inputFocusRef.current?.setValue(action.title);
-		inputFocusRef.current?.focus();
+		setInstruction(action.title);
 	};
 
 	const contextLabel = formatCopilotContextLabel(
 		context.targetQuote || context.snapshot.targetSource,
 		s.currentDocument,
 	);
+	const instructionStatus = projection.runStatus === 'assembling'
+		? 'submitting' as const
+		: projection.runStatus === 'streaming'
+			? 'streaming' as const
+			: projection.runStatus === 'error'
+				? 'error' as const
+				: 'idle' as const;
 
 	return (
 		<div className="pk-session" data-testid="pk-session">
@@ -342,35 +341,36 @@ function SessionView(): React.ReactElement {
 						))}
 					</div>
 				)}
-				<PromptInput
-					className="pk-prompt-input-shell"
-					inputFocusRef={inputFocusRef}
-					onSubmit={(message) => onSend(createAIInstructionSubmission(message.text).instruction)}
-				>
-					<PromptInputAttachments />
-					<div className="pk-session-context-chip" title={contextLabel}>
-						<span>{s.currentContext}</span>
-						<strong>{contextLabel}</strong>
-					</div>
-					<div className="pk-prompt-editor">
-						<PromptInputBody inputRef={inputFocusRef} placeholder={s.askComposerPlaceholder} />
-					</div>
-					<div className="pk-prompt-foot">
+				<AIInstructionComposer
+					surface="composer"
+					capabilityId={selectedCapability?.capabilityId ?? 'composer.unavailable'}
+					value={instruction}
+					onValueChange={setInstruction}
+					onSubmit={(submission) => onSend(submission.instruction)}
+					onStop={() => {
+						activeCancelRef.current?.();
+						activeCancelRef.current = null;
+						if (projection.activeRunId) runtime.session.markCancelled(projection.activeRunId);
+					}}
+					status={instructionStatus}
+					placeholder={s.askComposerPlaceholder}
+					context={[{
+						id: `${context.snapshot.documentId}:${context.snapshot.revision}`,
+						kind: context.snapshot.target.kind === 'document' ? 'vault-file' : 'selection',
+						label: contextLabel,
+						source: 'automatic',
+					}]}
+					draftKey={`composer:${context.snapshot.documentId}`}
+					submitDisabled={!selectedCapability}
+					autoFocus
+					trailingControls={(
 						<ComposerModelSelector
 							selection={modelSelection}
 							onSelect={setModelSelection}
 							profiles={copilotProfiles}
 						/>
-						<IconButton
-							type="submit"
-							className="pk-send-btn"
-							label={s.send}
-							disabled={!selectedCapability}
-						>
-							<Send size={14} />
-						</IconButton>
-					</div>
-				</PromptInput>
+					)}
+				/>
 			</div>
 		</div>
 	);

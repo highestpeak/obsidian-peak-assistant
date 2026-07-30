@@ -1,11 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { ExternalLink, Network } from 'lucide-react';
+import { Network } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
-import { cn } from '@/ui/react/lib/utils';
-import { humanReadableTime } from '@/core/utils/date-utils';
-import type { AIAnalysisHistoryRecord } from '@/service/AIAnalysisHistoryService';
+import type { AIGraphHistoryRow } from '@/service/ai-graph';
 import { useSharedStore } from '../../store';
-import { useSearchSessionStore } from '../../store/searchSessionStore';
 import { useQuickSearchHost } from '../../hooks/useQuickSearchHost';
 
 export interface AIGraphSectionProps {
@@ -13,95 +10,91 @@ export interface AIGraphSectionProps {
 	searchQuery: string;
 }
 
+/**
+ * Vault Search adapter for the canonical AI Graph artifact platform. It opens
+ * the exact graph/version inside the existing Quick Search modal; it never
+ * recreates a legacy Markdown graph or owns a second library.
+ */
 export const AIGraphSection: React.FC<AIGraphSectionProps> = ({
 	currentPath,
 	searchQuery,
 }) => {
 	const host = useQuickSearchHost();
-	const [pastResult, setPastResult] = useState<AIAnalysisHistoryRecord | null>(null);
+	const [rows, setRows] = useState<AIGraphHistoryRow[]>([]);
 	const [loading, setLoading] = useState(true);
 
-	const setActiveTab = useSharedStore((s) => s.setActiveTab);
-	const setAnalysisMode = useSearchSessionStore((s) => s.setAnalysisMode);
-
 	useEffect(() => {
-		let cancelled = false;
+		let active = true;
 		setLoading(true);
-
-		const svc = host.aiAnalysisHistory;
-		svc.findRelatedAIGraph(searchQuery)
-			.then((result) => {
-				if (!cancelled) {
-					setPastResult(result);
-					setLoading(false);
-				}
+		void host.listAIGraphArtifacts()
+			.then((allRows) => {
+				if (!active) return;
+				const normalizedQuery = searchQuery.trim().toLowerCase();
+				setRows(allRows.filter((row) => row.createdFrom.contextRefs.some((contextRef) =>
+					contextRef.ref === currentPath
+					|| contextRef.locator === currentPath
+					|| (
+						normalizedQuery.length > 0
+						&& contextRef.kind === 'search-query'
+						&& contextRef.ref.toLowerCase() === normalizedQuery
+					))).slice(0, 5));
 			})
-			.catch(() => {
-				if (!cancelled) {
-					setPastResult(null);
-					setLoading(false);
-				}
+			.finally(() => {
+				if (active) setLoading(false);
 			});
+		return () => {
+			active = false;
+		};
+	}, [currentPath, host, searchQuery]);
 
-		return () => { cancelled = true; };
-	}, [searchQuery]);
-
-	const handleOpenPastResult = () => {
-		if (!pastResult?.vault_rel_path) return;
-		host.openVaultPath(pastResult.vault_rel_path, { newLeaf: 'window' });
+	const openRow = (row: AIGraphHistoryRow): void => {
+		useSharedStore.getState().beginIntentOpen(
+			'graph',
+			row.graphId,
+			row.versionId,
+		);
 	};
 
-	const handleGenerate = () => {
-		setAnalysisMode('aiGraph');
-		setActiveTab('ai');
+	const createForCurrentSearch = (): void => {
+		const store = useSharedStore.getState();
+		store.setAIWorkspaceMode('graph');
+		store.setSearchQuery(searchQuery);
 	};
-
-	if (loading) {
-		return <span className="pktw-text-xs pktw-text-pk-foreground-muted">Loading...</span>;
-	}
 
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-gap-2">
-			{pastResult && (
-				<div className="pktw-flex pktw-flex-col pktw-gap-1 pktw-p-2 pktw-rounded pktw-bg-pk-accent-tint pktw-border pktw-border-pk-accent-soft">
-					<div className="pktw-flex pktw-items-start pktw-justify-between pktw-gap-2">
-						<div className="pktw-flex pktw-flex-col pktw-gap-0.5 pktw-min-w-0">
-							<span className="pktw-text-xs pktw-font-medium pktw-text-pk-foreground pktw-truncate" title={pastResult.query ?? ''}>
-								{pastResult.query ?? '(untitled)'}
-							</span>
-							<span className="pktw-text-pk-xs pktw-text-pk-foreground-muted">
-								{pastResult.graph_nodes_count ?? 0} nodes · {pastResult.graph_edges_count ?? 0} edges · {humanReadableTime(pastResult.created_at_ts)}
-							</span>
-						</div>
-						<Button
-							variant="ghost"
-							size="xs"
-							className="pktw-shadow-none pktw-h-6 pktw-px-1.5 pktw-text-pk-xs pktw-text-pk-accent hover:pktw-bg-pk-accent-tint pktw-shrink-0"
-							onClick={handleOpenPastResult}
-							title="Open in new window"
-						>
-							<ExternalLink className="pktw-w-3 pktw-h-3 pktw-mr-0.5" />
-							New window
-						</Button>
-					</div>
-				</div>
+			{loading && (
+				<span className="pktw-text-xs pktw-text-pk-foreground-muted">Loading…</span>
 			)}
-
-			<div className="pktw-flex pktw-flex-col pktw-gap-0.5">
+			{!loading && rows.length === 0 && (
+				<span className="pktw-text-xs pktw-text-pk-foreground-muted">
+					No persisted graph is linked to this file or query.
+				</span>
+			)}
+			{rows.map((row) => (
 				<Button
-					variant="outline"
-					size="sm"
-					className={cn(
-						'pktw-shadow-none pktw-w-full pktw-justify-start pktw-gap-1.5 pktw-bg-pk-background',
-						'pktw-text-xs pktw-text-pk-foreground hover:pktw-text-pk-accent hover:pktw-border-pk-accent-soft',
-					)}
-					onClick={handleGenerate}
+					key={row.graphId}
+					variant="ghost"
+					type="button"
+					className="pktw-h-auto pktw-min-h-0 pktw-w-full pktw-flex-col pktw-items-start pktw-gap-0.5 pktw-p-2"
+					onClick={() => openRow(row)}
 				>
-					<Network className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" />
-					Generate AI Graph
+					<span className="pktw-text-xs pktw-font-medium">{row.title}</span>
+					<small className="pktw-text-pk-xs pktw-text-pk-foreground-muted">
+						{row.stats.nodeCount} nodes · {row.stats.relationCount} relations ·
+						v{row.versionNumber}
+					</small>
 				</Button>
-				<span className="pktw-text-pk-xs pktw-text-pk-foreground-muted pktw-pl-1">Uses AI credits</span>
-			</div>
+			))}
+			<Button
+				variant="outline"
+				size="sm"
+				className="pktw-shadow-none pktw-w-full pktw-justify-start pktw-gap-1.5 pktw-bg-pk-background"
+				onClick={createForCurrentSearch}
+			>
+				<Network className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" />
+				Create AI Graph from this search
+			</Button>
 		</div>
 	);
 };

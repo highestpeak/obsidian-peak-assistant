@@ -14,12 +14,14 @@ export type ComposerOpenDisposition =
 	| 'new-tab'
 	| 'split';
 
-export interface ComposerViewStateV2 {
+export interface ComposerViewStateV2 extends Record<string, unknown> {
 	version: 2;
 	filePath: string;
 	displayMode: ComposerDisplayMode;
 	selectedBlockId?: string;
 	scrollAnchor?: unknown;
+	/** One-shot persisted Generation History handoff into the shared sidecar. */
+	intelligenceRunId?: string;
 }
 
 export interface ComposerOpenRequest {
@@ -34,6 +36,7 @@ export interface ComposerOpenRequest {
 		| 'recent'
 		| 'view-conversion'
 		| 'host-file-open';
+	intelligenceRunId?: string;
 }
 
 const LEGACY_FILE_KEYS = ['filePath', 'file'] as const;
@@ -54,12 +57,17 @@ export function normalizeComposerViewState(
 		typeof raw.selectedBlockId === 'string' && raw.selectedBlockId.trim()
 			? raw.selectedBlockId
 			: undefined;
+	const intelligenceRunId =
+		typeof raw.intelligenceRunId === 'string' && raw.intelligenceRunId.trim()
+			? raw.intelligenceRunId
+			: undefined;
 
 	return {
 		version: 2,
 		filePath,
 		displayMode,
 		...(selectedBlockId ? { selectedBlockId } : {}),
+		...(intelligenceRunId ? { intelligenceRunId } : {}),
 		...(raw.scrollAnchor !== undefined ? { scrollAnchor: raw.scrollAnchor } : {}),
 	};
 }

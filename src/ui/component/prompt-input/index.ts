@@ -5,4 +5,5 @@ export { PromptInputAttachments } from './PromptInputAttachments';
 export type { PromptInputMessage, FileAttachment, TokenUsageInfo, PromptInputStatus } from './types';
 export type { PromptInputProps } from './PromptInput';
 export type { PromptInputBodyProps, PromptInputEditorHandle } from './PromptInputBody';
+export * from './promptTrigger';
 export type { PromptInputAttachmentsProps } from './PromptInputAttachments';

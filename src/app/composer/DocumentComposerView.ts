@@ -202,6 +202,7 @@ export class DocumentComposerView extends ReactItemViewHost {
 					}
 					: undefined,
 				initialIntelligenceOpen: runtime?.getIntelligenceManualOpen() ?? false,
+				initialIntelligenceRunId: this.viewState?.intelligenceRunId,
 				onIntelligenceManualOpenChange: runtime
 					? async (open) => {
 						await runtime.setIntelligenceManualOpen(open);
@@ -226,8 +227,9 @@ export class DocumentComposerView extends ReactItemViewHost {
 		if (this.controller || !this.viewState) return;
 		this.controller = runtime.createController(this.originHostId);
 		this.controllerSubscription = this.controller.subscribe((state) => {
-			if (!state.filePath || this.viewState?.filePath === state.filePath) return;
-			this.viewState = { ...this.viewState, filePath: state.filePath };
+			const currentViewState = this.viewState;
+			if (!state.filePath || !currentViewState || currentViewState.filePath === state.filePath) return;
+			this.viewState = { ...currentViewState, filePath: state.filePath };
 			this.requestHeaderRefresh();
 		});
 		this.controller.start(this.viewState.filePath);

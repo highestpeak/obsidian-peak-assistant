@@ -59,6 +59,18 @@ export function LensEdgeComponent(props: EdgeProps<LensEdge>) {
 		targetPosition,
 	});
 	const style = KIND_STYLES[data?.kind ?? 'link'] ?? KIND_STYLES.link;
+	const uncertain = data?.reviewStatus === 'suggested'
+		|| (typeof data?.confidence === 'number' && data.confidence < 0.5)
+		|| data?.evidenceCount === 0;
+	const visualStyle = {
+		...style,
+		...(uncertain
+			? {
+					strokeDasharray: style.strokeDasharray ?? '5 4',
+					opacity: 0.55,
+				}
+			: {}),
+	};
 	const fullLabel = data?.edgeLabel || '';
 	const shortLabel = shortLabelOf(fullLabel, data?.kind);
 
@@ -73,7 +85,10 @@ export function LensEdgeComponent(props: EdgeProps<LensEdge>) {
 				path={edgePath}
 				markerStart={markerStart}
 				markerEnd={markerEnd}
-				style={{ ...style, strokeWidth: Math.max(1.5, (data?.weight ?? 0.5) * 3) }}
+				style={{
+					...visualStyle,
+					strokeWidth: Math.max(1.5, (data?.weight ?? 0.5) * 3),
+				}}
 			/>
 			{/* Invisible wider hit area for hover detection */}
 			<path
@@ -106,7 +121,7 @@ export function LensEdgeComponent(props: EdgeProps<LensEdge>) {
 							position: 'absolute',
 							transform: `translate(-50%, -50%) translate(${labelX + offsetX}px,${labelY + offsetY}px)`,
 							pointerEvents: 'none',
-							color: style.labelColor,
+							color: visualStyle.labelColor,
 						}}
 						className="pktw-text-pk-xs pktw-font-medium pktw-bg-white/90 pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-shadow-[0_0_2px_rgba(0,0,0,0.08)]"
 					>

@@ -29,6 +29,24 @@ function parseRecord<T>(text: string | null, label: string): T | null {
 	}
 }
 
+function validateSourcesForVersion(
+	version: AIGraphVersion,
+	sources: readonly AIGraphSource[],
+): void {
+	const sourceIds = new Set(sources.map((source) => source.sourceId));
+	if (sourceIds.size !== sources.length) throw new Error('AI Graph contains duplicate source ids.');
+	for (const sourceId of version.sourceIds) {
+		if (!sourceIds.has(sourceId)) {
+			throw new Error(`AI Graph version references missing source ${sourceId}.`);
+		}
+	}
+	for (const evidence of version.evidence) {
+		if (!sourceIds.has(evidence.sourceId)) {
+			throw new Error(`AI Graph evidence ${evidence.evidenceId} references missing source.`);
+		}
+	}
+}
+
 export class AIGraphArtifactRepository {
 	constructor(private readonly storage: AIGraphArtifactStoragePort) {}
 
@@ -44,6 +62,7 @@ export class AIGraphArtifactRepository {
 			throw new Error(`AI Graph ${manifest.graphId} already exists.`);
 		}
 		validateAIGraphVersion(version);
+		validateSourcesForVersion(version, sources);
 		await this.storage.writeNewVersion(
 			version.graphId,
 			version.versionId,
@@ -71,6 +90,7 @@ export class AIGraphArtifactRepository {
 			await this.storage.readSources(graphId),
 			'sources',
 		) ?? [];
+		validateSourcesForVersion(version, sources);
 		return { manifest, version, sources };
 	}
 
@@ -88,6 +108,7 @@ export class AIGraphArtifactRepository {
 			throw new Error('AI Graph update must extend the reviewed head version.');
 		}
 		validateAIGraphVersion(version);
+		validateSourcesForVersion(version, current.sources);
 		await this.storage.writeNewVersion(graphId, version.versionId, JSON.stringify(version, null, 2));
 		const manifest: AIGraphArtifactManifest = {
 			...current.manifest,
@@ -158,7 +179,8 @@ export class AIGraphArtifactRepository {
 			stats: computeAIGraphStats(view.version),
 			createdFrom: view.manifest.createdFrom,
 			changedSourceCount: view.sources.filter((source) =>
-				source.freshness === 'changed' || source.freshness === 'unavailable').length,
+				source.active !== false
+				&& (source.freshness === 'changed' || source.freshness === 'unavailable')).length,
 		};
 	}
 

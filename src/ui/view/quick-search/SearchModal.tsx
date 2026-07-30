@@ -16,6 +16,7 @@ import { GlobeOff } from '@/ui/component/icon';
 import { useSharedStore, useVaultSearchStore } from './store';
 import { loadCompletedAnalysisSnapshot } from './store/aiAnalysisStore';
 import { useSearchSessionStore } from './store/searchSessionStore';
+import { useAIGraphStore } from './store/aiGraphStore';
 import type { AnalysisMode } from './store/aiAnalysisStore';
 import type { QuickSearchMode } from './store/vaultSearchStore';
 import { useSearchSession } from './hooks/useSearchSession';
@@ -44,7 +45,13 @@ import type {
 	AIGraphArtifactView,
 	AIGraphHistoryRow,
 	AIGraphSemanticDiff,
+	AIGraphSource,
 	AIGraphVersion,
+	AIGraphVersionComparison,
+} from '@/service/ai-graph';
+import {
+	isActiveAIGraphSource,
+	stableAIGraphId,
 } from '@/service/ai-graph';
 import { MultiLensGraph } from '@/ui/component/mine/multi-lens-graph/MultiLensGraph';
 import type { LensGraphData } from '@/core/types/lens-graph';
@@ -101,6 +108,12 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, mode }) => {
 	const { eventBus } = useServiceContext();
 	const host = useQuickSearchHost();
 	const { searchQuery, setSearchQuery, recentQueries, clearRecentQueries } = useSharedStore();
+	const graphType = useSharedStore((state) => state.aiGraphCreateType);
+	const setGraphType = useSharedStore((state) => state.setAIGraphCreateType);
+	const selectedGraphPaths = useAIGraphStore((state) => state.selectedPaths);
+	const initialGraphSources = useAIGraphStore((state) => state.initialSources);
+	const addInitialGraphSource = useAIGraphStore((state) => state.addInitialSource);
+	const removeInitialGraphSource = useAIGraphStore((state) => state.removeInitialSource);
 	const webEnabled = useSearchSessionStore((s) => s.webEnabled);
 	const toggleWeb = useSearchSessionStore((s) => s.toggleWeb);
 	const sessionStatus = useSearchSessionStore((s) => s.status);
@@ -226,26 +239,47 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, mode }) => {
 								compact
 								autoFocus
 								trailingControls={!isMobile() ? (
-									<Button
-										variant="ghost"
-										geometry="action-icon"
-										type="button"
-										onClick={() => {
-											if (!webEnabled && !ProfileRegistry.getInstance().getActiveWebSearchProfile()) {
-												new Notice('No Web Search profile configured. Go to Settings → Profiles and assign a profile as "Web Search".', 5000);
-												return;
-											}
-											setSearchQuery(toggleWeb(searchQuery));
-										}}
-										title={webEnabled ? 'Web: ON' : 'Web: OFF'}
-										aria-label={webEnabled ? 'Disable Web search' : 'Enable Web search'}
-									>
-										{webEnabled ? <Globe className="pktw-w-5 pktw-h-5" /> : <GlobeOff className="pktw-w-5 pktw-h-5" />}
-									</Button>
+									<>
+										{mode === 'graph' && (
+											<label className="pk-ai-graph-type-field">
+												<span className="sr-only">Graph type</span>
+												<select
+													aria-label="Graph type"
+													value={graphType}
+													onChange={(event) => setGraphType(
+														event.target.value as typeof graphType,
+													)}
+												>
+													<option value="free">Free</option>
+													<option value="concept">Concept</option>
+													<option value="entity">Entity</option>
+													<option value="evidence">Evidence</option>
+													<option value="causal">Causal</option>
+													<option value="timeline">Timeline</option>
+												</select>
+											</label>
+										)}
+										<Button
+											variant="ghost"
+											geometry="action-icon"
+											type="button"
+											onClick={() => {
+												if (!webEnabled && !ProfileRegistry.getInstance().getActiveWebSearchProfile()) {
+													new Notice('No Web Search profile configured. Go to Settings → Profiles and assign a profile as "Web Search".', 5000);
+													return;
+												}
+												setSearchQuery(toggleWeb(searchQuery));
+											}}
+											title={webEnabled ? 'Web: ON' : 'Web: OFF'}
+											aria-label={webEnabled ? 'Disable Web search' : 'Enable Web search'}
+										>
+											{webEnabled ? <Globe className="pktw-w-5 pktw-h-5" /> : <GlobeOff className="pktw-w-5 pktw-h-5" />}
+										</Button>
+									</>
 								) : undefined}
 							/>
-						</div>
-					<div className="pktw-flex pktw-items-center pktw-gap-2">
+							</div>
+							<div className="pktw-flex pktw-items-center pktw-gap-2">
 						{!isAnalyzing && hasResult && (
 							<Button
 								onClick={() => { useSearchSessionStore.getState().resetAll(); useSharedStore.getState().setSearchQuery(''); }}
@@ -289,9 +323,32 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, mode }) => {
 								<span className="pktw-ml-2">Analyze</span>
 							</Button>
 						)}
+						</div>
 					</div>
+					{mode === 'graph' && (
+						<div className="pk-ai-graph-create-policy" role="status">
+							<span>
+								{selectedGraphPaths.length + initialGraphSources.length > 0
+									? `${selectedGraphPaths.length + initialGraphSources.length} explicit source${selectedGraphPaths.length + initialGraphSources.length === 1 ? '' : 's'}`
+									: 'Vault discovery: up to 30 candidate sources'}
+							</span>
+							<span>
+								{webEnabled
+									? 'Web access enabled · external source cost: higher'
+									: 'Web access off · external source cost: none'}
+							</span>
+							<span>Successful validation saves one immutable version automatically.</span>
+						</div>
+					)}
+					{mode === 'graph' && (
+						<AIGraphInitialSourceTray
+							selectedVaultPaths={selectedGraphPaths}
+							sources={initialGraphSources}
+							onAdd={addInitialGraphSource}
+							onRemove={removeInitialGraphSource}
+						/>
+					)}
 				</div>
-			</div>
 				{sessionStatus === 'idle' && (
 					<div className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto pktw-py-3">
 						{mode === 'graph' ? (
@@ -481,12 +538,172 @@ function AIWorkspaceSelector({
 	);
 }
 
+function AIGraphInitialSourceTray({
+	selectedVaultPaths,
+	sources,
+	onAdd,
+	onRemove,
+}: {
+	selectedVaultPaths: readonly string[];
+	sources: readonly AIGraphSource[];
+	onAdd(source: AIGraphSource): void;
+	onRemove(sourceId: string): void;
+}): React.ReactElement {
+	const [kind, setKind] = useState<'web-page' | 'manual-text' | 'ai-graph-version'>('manual-text');
+	const [title, setTitle] = useState('');
+	const [value, setValue] = useState('');
+	const [versionId, setVersionId] = useState('');
+	const stage = (): void => {
+		const capturedAt = Date.now();
+		const trimmed = value.trim();
+		if (!trimmed) return;
+		try {
+			if (kind === 'web-page') {
+				const url = new URL(trimmed);
+				if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+					throw new Error('Web sources must use http or https.');
+				}
+				onAdd({
+					sourceId: stableAIGraphId('source', `web:${url.toString()}`),
+					kind,
+					title: title.trim() || url.hostname,
+					locator: url.toString(),
+					contentHash: null,
+					capturedAt,
+					freshness: 'unknown',
+					active: true,
+					metadata: {
+						canonicalUrl: url.toString(),
+						captureStatus: 'create-staged',
+					},
+				});
+			} else if (kind === 'manual-text') {
+				onAdd({
+					sourceId: stableAIGraphId('source', `manual:${trimmed}`),
+					kind,
+					title: title.trim() || 'Pasted text',
+					locator: `manual://${stableAIGraphId('text', trimmed)}`,
+					contentHash: null,
+					capturedAt,
+					freshness: 'current',
+					active: true,
+					metadata: { content: trimmed },
+				});
+			} else {
+				if (!versionId.trim()) throw new Error('Enter an immutable graph version id.');
+				const locator = `aigraph://${trimmed}/${versionId.trim()}`;
+				onAdd({
+					sourceId: stableAIGraphId('source', locator),
+					kind,
+					title: title.trim() || `${trimmed} · ${versionId.trim()}`,
+					locator,
+					contentHash: null,
+					capturedAt,
+					freshness: 'unknown',
+					active: true,
+					metadata: {
+						graphId: trimmed,
+						versionId: versionId.trim(),
+					},
+				});
+			}
+			setTitle('');
+			setValue('');
+			setVersionId('');
+		} catch (error) {
+			new Notice(error instanceof Error ? error.message : String(error));
+		}
+	};
+	return (
+		<details className="pk-ai-graph-create-sources">
+			<summary>
+				Initial sources · {selectedVaultPaths.length + sources.length}
+			</summary>
+			{selectedVaultPaths.map((path) => (
+				<span key={path}>
+					<strong>{path}</strong>
+					<small>Vault file · supplied by the opening surface</small>
+				</span>
+			))}
+			{sources.map((source) => (
+				<span key={source.sourceId}>
+					<span>
+						<strong>{source.title}</strong>
+						<small>{source.kind}</small>
+					</span>
+					<Button
+						variant="ghost"
+						geometry="action-icon"
+						type="button"
+						aria-label={`Remove staged source ${source.title}`}
+						title={`Remove staged source ${source.title}`}
+						onClick={() => onRemove(source.sourceId)}
+					>
+						<X aria-hidden />
+					</Button>
+				</span>
+			))}
+			<div className="pk-ai-graph-create-source-form">
+				<select
+					aria-label="Initial source kind"
+					value={kind}
+					onChange={(event) => setKind(event.target.value as typeof kind)}
+				>
+					<option value="manual-text">Pasted text</option>
+					<option value="web-page">Web URL</option>
+					<option value="ai-graph-version">Existing graph version</option>
+				</select>
+				<input
+					aria-label="Initial source title"
+					placeholder="Optional source title"
+					value={title}
+					onChange={(event) => setTitle(event.target.value)}
+				/>
+				{kind === 'manual-text' ? (
+					<textarea
+						aria-label="Initial pasted text"
+						placeholder="Paste source text"
+						value={value}
+						onChange={(event) => setValue(event.target.value)}
+					/>
+				) : (
+					<input
+						aria-label={kind === 'web-page' ? 'Initial source URL' : 'Initial graph id'}
+						placeholder={kind === 'web-page' ? 'https://…' : 'Graph id'}
+						value={value}
+						onChange={(event) => setValue(event.target.value)}
+					/>
+				)}
+				{kind === 'ai-graph-version' && (
+					<input
+						aria-label="Initial graph version id"
+						placeholder="Version id"
+						value={versionId}
+						onChange={(event) => setVersionId(event.target.value)}
+					/>
+				)}
+				<Button
+					variant="ghost"
+					type="button"
+					disabled={!value.trim() || (kind === 'ai-graph-version' && !versionId.trim())}
+					onClick={stage}
+				>
+					Stage source
+				</Button>
+			</div>
+		</details>
+	);
+}
+
 function AIGraphHistoryPanel(): React.ReactElement {
 	const host = useQuickSearchHost();
 	const deepLinkId = useSharedStore((state) => state.aiGraphDeepLinkId);
+	const deepLinkVersionId = useSharedStore((state) => state.aiGraphDeepLinkVersionId);
 	const [rows, setRows] = useState<AIGraphHistoryRow[]>([]);
 	const [selected, setSelected] = useState<AIGraphArtifactView | null>(null);
 	const [loading, setLoading] = useState(true);
+	const listRef = useRef<HTMLDivElement | null>(null);
+	const listScrollTopRef = useRef(0);
 	const refresh = async (): Promise<void> => {
 		setLoading(true);
 		try {
@@ -501,10 +718,17 @@ function AIGraphHistoryPanel(): React.ReactElement {
 	useEffect(() => {
 		if (!deepLinkId) return;
 		useSharedStore.getState().consumeAIGraphDeepLink();
-		void host.openAIGraphArtifact(deepLinkId).then((view) => {
+		void host.openAIGraphArtifact(deepLinkId, deepLinkVersionId ?? undefined).then((view) => {
 			if (view) setSelected(view);
 		});
-	}, [deepLinkId, host]);
+	}, [deepLinkId, deepLinkVersionId, host]);
+	useEffect(() => {
+		if (selected) return;
+		const frame = requestAnimationFrame(() => {
+			if (listRef.current) listRef.current.scrollTop = listScrollTopRef.current;
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [selected]);
 	if (selected) {
 		return (
 			<AIGraphDetail
@@ -532,7 +756,15 @@ function AIGraphHistoryPanel(): React.ReactElement {
 					<span>Describe a graph above. Successful generation saves an immutable artifact automatically.</span>
 				</div>
 			)}
-			<div className="pk-ai-graph-history-list" role="listbox" aria-label="AI Graph history">
+			<div
+				ref={listRef}
+				className="pk-ai-graph-history-list"
+				role="listbox"
+				aria-label="AI Graph history"
+				onScroll={(event) => {
+					listScrollTopRef.current = event.currentTarget.scrollTop;
+				}}
+			>
 				{rows.map((row) => (
 					<Button
 						key={row.graphId}
@@ -578,17 +810,31 @@ function canonicalGraphData(view: AIGraphArtifactView): LensGraphData {
 			})),
 		edges: view.version.relations
 			.filter((relation) => relation.reviewStatus !== 'rejected')
-			.map((relation) => ({
+				.map((relation) => ({
 				source: nodeById.get(relation.sourceNodeId)?.canonicalRef?.replace(/^vault:\/\//, '')
 					?? relation.sourceNodeId,
 				target: nodeById.get(relation.targetNodeId)?.canonicalRef?.replace(/^vault:\/\//, '')
 					?? relation.targetNodeId,
-				kind: relation.family === 'temporal' ? 'temporal' : 'references',
+					kind: relation.family === 'temporal'
+						? 'temporal'
+						: relation.family === 'causal'
+							? 'derives'
+							: relation.family === 'taxonomic'
+								? 'builds_on'
+								: relation.family === 'structural'
+									? 'link'
+									: 'references',
 				label: relation.label,
 				directionality: relation.directed ? 'directed' : 'undirected',
 				canonicalRelationId: relation.relationId,
 				accessibleLabel: `${nodeById.get(relation.sourceNodeId)?.label ?? relation.sourceNodeId} → ${relation.predicate} → ${nodeById.get(relation.targetNodeId)?.label ?? relation.targetNodeId}`,
-			})),
+				reviewStatus: relation.reviewStatus,
+				confidence: relation.confidence,
+					evidenceCount: relation.evidenceIds.length,
+					predicate: relation.predicate,
+					relationFamily: relation.family,
+					qualifiers: relation.qualifiers,
+				})),
 		availableLenses: ['topology', 'thinking-tree', 'timeline'],
 	};
 }
@@ -605,8 +851,13 @@ function AIGraphDetail({
 	const [versions, setVersions] = useState<AIGraphVersion[]>([]);
 	const [instruction, setInstruction] = useState('');
 	const [diff, setDiff] = useState<AIGraphSemanticDiff | null>(null);
+	const [comparison, setComparison] = useState<AIGraphVersionComparison | null>(null);
 	const [status, setStatus] = useState<'idle' | 'submitting' | 'error'>('idle');
 	const [error, setError] = useState<string | null>(null);
+	const [sourceKind, setSourceKind] = useState<'web-page' | 'manual-text' | 'ai-graph-version'>('web-page');
+	const [sourceTitle, setSourceTitle] = useState('');
+	const [sourceValue, setSourceValue] = useState('');
+	const [sourceVersion, setSourceVersion] = useState('');
 	const [selection, setSelection] = useState<
 		| { kind: 'node'; nodeId: string }
 		| { kind: 'relation'; relationId: string }
@@ -618,7 +869,9 @@ function AIGraphDetail({
 			+ diff.evidence.added.length + diff.evidence.removed.length
 		: 0;
 	const isHeadVersion = view.version.versionId === view.manifest.headVersionId;
-	const changedSources = view.sources.filter((source) =>
+	const activeSources = view.sources.filter(isActiveAIGraphSource);
+	const inactiveSources = view.sources.filter((source) => !isActiveAIGraphSource(source));
+	const changedSources = activeSources.filter((source) =>
 		source.freshness === 'changed' || source.freshness === 'unavailable');
 	useEffect(() => {
 		void host.listAIGraphVersions(view.manifest.graphId).then(setVersions);
@@ -646,6 +899,38 @@ function AIGraphDetail({
 			setError(nextError instanceof Error ? nextError.message : String(nextError));
 		}
 	};
+	const addSource = async (): Promise<void> => {
+		setError(null);
+		try {
+			let updated: AIGraphArtifactView;
+			if (sourceKind === 'web-page') {
+				updated = await host.addAIGraphSource(view.manifest.graphId, {
+					kind: 'web-page',
+					title: sourceTitle,
+					url: sourceValue,
+				});
+			} else if (sourceKind === 'manual-text') {
+				updated = await host.addAIGraphSource(view.manifest.graphId, {
+					kind: 'manual-text',
+					title: sourceTitle,
+					text: sourceValue,
+				});
+			} else {
+				updated = await host.addAIGraphSource(view.manifest.graphId, {
+					kind: 'ai-graph-version',
+					title: sourceTitle,
+					graphId: sourceValue,
+					versionId: sourceVersion,
+				});
+			}
+			setView(updated);
+			setSourceTitle('');
+			setSourceValue('');
+			setSourceVersion('');
+		} catch (nextError) {
+			setError(nextError instanceof Error ? nextError.message : String(nextError));
+		}
+	};
 	return (
 		<section className="pk-ai-graph-detail">
 			<div className="pk-ai-graph-detail-head">
@@ -655,6 +940,43 @@ function AIGraphDetail({
 					<small>{view.manifest.graphType} · {view.version.versionId}</small>
 				</span>
 				<span>{view.version.stats.needsReviewCount} needs review</span>
+				<Button
+					variant="ghost"
+					type="button"
+					onClick={() => {
+						void host.exportAIGraphMarkdown(
+							view.manifest.graphId,
+							view.version.versionId,
+						).then((markdown) => navigator.clipboard.writeText(markdown));
+					}}
+				>
+					Copy Markdown export
+				</Button>
+			</div>
+			<div className="pk-ai-graph-origin">
+				<strong>Creation origin</strong>
+				<span>Created in {view.manifest.createdFrom.surface}</span>
+				{view.manifest.createdFrom.contextRefs.map((contextRef) => (
+					<Button
+						key={`${contextRef.kind}:${contextRef.ref}`}
+						variant="ghost"
+						type="button"
+						onClick={() => void host.openAIGraphOrigin(contextRef)}
+					>
+						{contextRef.label}
+					</Button>
+				))}
+				{view.version.updateProvenance && (
+					<span>
+						This version updated in {view.version.updateProvenance.surface}
+						<small>
+							base {view.version.updateProvenance.baseVersionId}
+							{view.version.updateProvenance.runId
+								? ` · run ${view.version.updateProvenance.runId}`
+								: ''}
+						</small>
+					</span>
+				)}
 			</div>
 			<AIInstructionComposer
 				surface="ai-graph"
@@ -671,7 +993,7 @@ function AIGraphDetail({
 						label: `${view.manifest.title} · ${view.version.versionId}`,
 						source: 'automatic',
 					},
-					...view.sources.slice(0, 3).map((source) => ({
+					...activeSources.slice(0, 3).map((source) => ({
 						id: source.sourceId,
 						kind: 'custom' as const,
 						label: source.title,
@@ -701,6 +1023,7 @@ function AIGraphDetail({
 							+{diff.relations.added.length} / ~{diff.relations.changed.length} / −{diff.relations.removed.length} relations
 						</small>
 					</span>
+					<AIGraphDiffBreakdown diff={diff} />
 					<Button variant="ghost" onClick={() => setDiff(null)}>Cancel</Button>
 					<Button
 						variant="default"
@@ -736,35 +1059,99 @@ function AIGraphDetail({
 						}}
 					/>
 				</div>
-				<aside className="pk-ai-graph-detail-aside">
-					<AIGraphSelectionInspector view={view} selection={selection} />
-					<strong>Versions</strong>
-					{versions.map((version, index) => (
+					<aside className="pk-ai-graph-detail-aside">
+							<AIGraphSelectionInspector
+								view={view}
+								selection={selection}
+								onViewChange={(next) => {
+									setView(next);
+									setSelection(null);
+									setDiff(null);
+								}}
+								onError={setError}
+							/>
+						<strong>Versions</strong>
+						{versions.map((version, index) => (
+							<div
+								key={version.versionId}
+								className="pk-ai-graph-version-row"
+								aria-current={version.versionId === view.version.versionId ? 'true' : undefined}
+							>
+								<Button
+									variant="ghost"
+									type="button"
+									onClick={() => {
+										void host.openAIGraphArtifact(
+											view.manifest.graphId,
+											version.versionId,
+										).then((historical) => {
+											if (historical) {
+												setView(historical);
+												setDiff(null);
+												setSelection(null);
+												setComparison(null);
+											}
+										});
+									}}
+								>
+									v{versions.length - index} · {version.changeKind}
+									<small>
+										{version.versionId === view.manifest.headVersionId ? 'head' : 'immutable'}
+									</small>
+								</Button>
+								<Button
+									variant="ghost"
+									type="button"
+									aria-label={`Compare version ${version.versionId} with head`}
+									onClick={() => {
+										void host.compareAIGraphVersions(
+											view.manifest.graphId,
+											version.versionId,
+											view.manifest.headVersionId,
+										).then(setComparison);
+									}}
+								>
+									Compare
+								</Button>
+								{version.versionId !== view.manifest.headVersionId && (
+									<Button
+										variant="ghost"
+										type="button"
+										aria-label={`Restore version ${version.versionId} as new head`}
+										onClick={() => {
+											void host.restoreAIGraphVersion(
+												view.manifest.graphId,
+												version.versionId,
+											).then((restored) => {
+												setView(restored);
+												setComparison(null);
+											});
+										}}
+									>
+										Restore
+									</Button>
+								)}
+								<Button
+									variant="ghost"
+									type="button"
+									aria-label={`Duplicate version ${version.versionId}`}
+									onClick={() => {
+										void host.duplicateAIGraphVersion(
+											view.manifest.graphId,
+											version.versionId,
+										).then((duplicate) => setView(duplicate));
+									}}
+								>
+									Duplicate
+								</Button>
+							</div>
+						))}
+						{comparison && <AIGraphVersionComparisonSummary comparison={comparison} />}
+						<strong>Sources</strong>
+						<span>
+							Source changes are staged here only. They do not run AI or create a version.
+						</span>
 						<Button
-							key={version.versionId}
-							variant="ghost"
-							type="button"
-							aria-current={version.versionId === view.version.versionId ? 'true' : undefined}
-							className="pk-ai-graph-version-row"
-							onClick={() => {
-								void host.openAIGraphArtifact(
-									view.manifest.graphId,
-									version.versionId,
-								).then((historical) => {
-									if (historical) {
-										setView(historical);
-										setDiff(null);
-										setSelection(null);
-									}
-								});
-							}}
-						>
-							v{versions.length - index} · {version.changeKind}
-							<small>{version.versionId === view.manifest.headVersionId ? 'head' : 'immutable'}</small>
-						</Button>
-					))}
-					<strong>Sources</strong>
-					<Button
 						variant="ghost"
 						type="button"
 						onClick={() => {
@@ -775,13 +1162,82 @@ function AIGraphDetail({
 									nextError instanceof Error ? nextError.message : String(nextError),
 								));
 						}}
-					>
-						Add current Vault file
-					</Button>
-					{view.sources.map((source) => (
-						<span key={source.sourceId} data-freshness={source.freshness}>
-							<span>{source.title}<small>{source.freshness}</small></span>
+						>
+							Add current Vault file
+						</Button>
+						<div className="pk-ai-graph-source-add">
+							<select
+								aria-label="Source kind"
+								value={sourceKind}
+								onChange={(event) => setSourceKind(
+									event.target.value as typeof sourceKind,
+								)}
+							>
+								<option value="web-page">Web URL</option>
+								<option value="manual-text">Pasted text</option>
+								<option value="ai-graph-version">Existing graph version</option>
+							</select>
+							<input
+								aria-label="Source title"
+								value={sourceTitle}
+								placeholder="Source title"
+								onChange={(event) => setSourceTitle(event.target.value)}
+							/>
+							{sourceKind === 'manual-text' ? (
+								<textarea
+									aria-label="Pasted source text"
+									value={sourceValue}
+									placeholder="Paste source text"
+									onChange={(event) => setSourceValue(event.target.value)}
+								/>
+							) : (
+								<input
+									aria-label={sourceKind === 'web-page' ? 'Source URL' : 'Source graph id'}
+									value={sourceValue}
+									placeholder={sourceKind === 'web-page' ? 'https://…' : 'Graph id'}
+									onChange={(event) => setSourceValue(event.target.value)}
+								/>
+							)}
+							{sourceKind === 'ai-graph-version' && (
+								<input
+									aria-label="Source graph version id"
+									value={sourceVersion}
+									placeholder="Version id"
+									onChange={(event) => setSourceVersion(event.target.value)}
+								/>
+							)}
 							<Button
+								variant="ghost"
+								type="button"
+								disabled={!sourceValue.trim() || (
+									sourceKind === 'ai-graph-version' && !sourceVersion.trim()
+								)}
+								onClick={() => void addSource()}
+							>
+								Add source
+							</Button>
+						</div>
+						{activeSources.map((source) => (
+							<span
+								key={source.sourceId}
+								className="pk-ai-graph-source-row"
+								data-freshness={source.freshness}
+							>
+								<span>{source.title}<small>{source.freshness}</small></span>
+								<Button
+									variant="ghost"
+									type="button"
+									aria-label={`Check source ${source.title}`}
+									onClick={() => {
+										void host.recheckAIGraphSource(
+											view.manifest.graphId,
+											source.sourceId,
+										).then(setView);
+									}}
+								>
+									Check
+								</Button>
+								<Button
 								variant="ghost"
 								type="button"
 								aria-label={`Remove source ${source.title}`}
@@ -794,8 +1250,14 @@ function AIGraphDetail({
 							>
 								Remove
 							</Button>
-						</span>
-					))}
+							</span>
+						))}
+						{inactiveSources.length > 0 && (
+							<span>
+								{inactiveSources.length} removed source record
+								{inactiveSources.length === 1 ? '' : 's'} retained for immutable history
+							</span>
+						)}
 					{changedSources.length > 0 && (
 						<Button
 							variant="ghost"
@@ -807,25 +1269,213 @@ function AIGraphDetail({
 							Use source changes in Update graph
 						</Button>
 					)}
-					<strong>Evidence & review</strong>
-					<span>{view.version.evidence.length} evidence records</span>
-					<span>{view.version.stats.needsReviewCount} suggested items</span>
-				</aside>
+						<strong>Evidence & review</strong>
+						<span>{view.version.evidence.length} evidence records</span>
+						<span>{view.version.stats.needsReviewCount} suggested items</span>
+						<AIGraphEvidenceList
+							view={view}
+							evidenceIds={view.version.evidence.map((item) => item.evidenceId)}
+						/>
+					</aside>
 			</div>
 		</section>
+	);
+}
+
+function AIGraphDiffBreakdown({
+	diff,
+}: {
+	diff: AIGraphSemanticDiff;
+}): React.ReactElement {
+	const groups = [
+		{
+			label: 'Nodes',
+			items: [
+				...diff.nodes.added.map((item) => `Added ${item.label}`),
+				...diff.nodes.changed.map((item) => `Changed ${item.before.label} → ${item.after.label}`),
+				...diff.nodes.removed.map((item) => `Removed ${item.label}`),
+			],
+		},
+		{
+			label: 'Relations',
+			items: [
+				...diff.relations.added.map((item) => `Added ${item.predicate}`),
+				...diff.relations.changed.map((item) => `Changed ${item.before.predicate} → ${item.after.predicate}`),
+				...diff.relations.removed.map((item) => `Removed ${item.predicate}`),
+			],
+		},
+		{
+			label: 'Evidence',
+			items: [
+				...diff.evidence.added.map((item) => `Added ${item.evidenceId}`),
+				...diff.evidence.removed.map((item) => `Removed ${item.evidenceId}`),
+			],
+		},
+	];
+	return (
+		<div className="pk-ai-graph-diff-breakdown">
+			{groups.map((group) => (
+				<span key={group.label}>
+					<strong>{group.label}</strong>
+					{group.items.length === 0
+						? <small>No changes</small>
+						: group.items.map((item) => <small key={item}>{item}</small>)}
+				</span>
+			))}
+		</div>
+	);
+}
+
+function AIGraphVersionComparisonSummary({
+	comparison,
+}: {
+	comparison: AIGraphVersionComparison;
+}): React.ReactElement {
+	return (
+		<div className="pk-ai-graph-version-comparison" role="status">
+			<strong>Version comparison</strong>
+			<span>{comparison.fromVersionId} → {comparison.toVersionId}</span>
+			<small>
+				Nodes +{comparison.nodes.added.length} / ~{comparison.nodes.changed.length}
+				/ −{comparison.nodes.removed.length}
+			</small>
+			<small>
+				Relations +{comparison.relations.added.length}
+				/ ~{comparison.relations.changed.length}
+				/ −{comparison.relations.removed.length}
+			</small>
+			<small>
+				Evidence +{comparison.evidence.added.length}
+				/ −{comparison.evidence.removed.length}
+			</small>
+		</div>
+	);
+}
+
+function AIGraphEvidenceList({
+	view,
+	evidenceIds,
+}: {
+	view: AIGraphArtifactView;
+	evidenceIds: readonly string[];
+}): React.ReactElement {
+	const host = useQuickSearchHost();
+	const evidenceById = new Map(view.version.evidence.map((item) => [item.evidenceId, item]));
+	const sourceById = new Map(view.sources.map((item) => [item.sourceId, item]));
+	const records = evidenceIds.flatMap((evidenceId) => {
+		const evidence = evidenceById.get(evidenceId);
+		if (!evidence) return [];
+		return [{ evidence, source: sourceById.get(evidence.sourceId) }];
+	});
+	if (records.length === 0) {
+		return <span className="pk-ai-graph-evidence-empty">No linked evidence.</span>;
+	}
+	return (
+		<div className="pk-ai-graph-evidence-list">
+			{records.map(({ evidence, source }) => (
+				<span key={evidence.evidenceId} className="pk-ai-graph-evidence-row">
+					<span>
+						<strong>{source?.title ?? evidence.sourceId}</strong>
+						<small>
+							{evidence.selector.kind} · captured{' '}
+							{new Intl.DateTimeFormat(undefined, {
+								dateStyle: 'medium',
+								timeStyle: 'short',
+							}).format(evidence.capturedAt)}
+						</small>
+					</span>
+					{evidence.quote && <small>{evidence.quote}</small>}
+					<Button
+						variant="ghost"
+						type="button"
+						disabled={!source}
+						onClick={() => {
+							void host.openAIGraphEvidence(
+								view.manifest.graphId,
+								view.version.versionId,
+								evidence.evidenceId,
+							);
+						}}
+					>
+						Open evidence
+					</Button>
+				</span>
+			))}
+		</div>
 	);
 }
 
 function AIGraphSelectionInspector({
 	view,
 	selection,
+	onViewChange,
+	onError,
 }: {
 	view: AIGraphArtifactView;
 	selection:
 		| { kind: 'node'; nodeId: string }
 		| { kind: 'relation'; relationId: string }
 		| null;
+	onViewChange(view: AIGraphArtifactView): void;
+	onError(error: string | null): void;
 }): React.ReactElement {
+	const host = useQuickSearchHost();
+	const selectedRelation = selection?.kind === 'relation'
+		? view.version.relations.find((candidate) => candidate.relationId === selection.relationId)
+		: undefined;
+	const [predicate, setPredicate] = useState('');
+	const [label, setLabel] = useState('');
+	const [confidence, setConfidence] = useState('');
+	const [directed, setDirected] = useState(false);
+	const [reviewing, setReviewing] = useState(false);
+	useEffect(() => {
+		setPredicate(selectedRelation?.predicate ?? '');
+		setLabel(selectedRelation?.label ?? '');
+		setConfidence(selectedRelation?.confidence === null || selectedRelation?.confidence === undefined
+			? ''
+			: String(selectedRelation.confidence));
+		setDirected(selectedRelation?.directed ?? false);
+	}, [selectedRelation?.relationId, view.version.versionId]);
+	const reviewRelation = async (
+		status: 'accepted' | 'edited' | 'rejected',
+	): Promise<void> => {
+		if (!selectedRelation || reviewing) return;
+		setReviewing(true);
+		onError(null);
+		try {
+			const parsedConfidence = confidence.trim() === ''
+				? null
+				: Number(confidence);
+			if (
+				parsedConfidence !== null
+				&& (!Number.isFinite(parsedConfidence)
+					|| parsedConfidence < 0
+					|| parsedConfidence > 1)
+			) {
+				throw new Error('Confidence must be a number between 0 and 1.');
+			}
+			onViewChange(await host.reviewAIGraphRelation(
+				view.manifest.graphId,
+				view.version.versionId,
+				selectedRelation.relationId,
+				{
+					status,
+					...(status === 'edited'
+						? {
+							predicate,
+							label,
+							confidence: parsedConfidence,
+							directed,
+						}
+						: {}),
+				},
+			));
+		} catch (nextError) {
+			onError(nextError instanceof Error ? nextError.message : String(nextError));
+		} finally {
+			setReviewing(false);
+		}
+	};
 	if (!selection) {
 		return (
 			<>
@@ -840,15 +1490,14 @@ function AIGraphSelectionInspector({
 		return (
 			<>
 				<strong>{node.label}</strong>
-				<span>{node.kind}<small>{node.reviewStatus}</small></span>
-				{node.description && <span>{node.description}</span>}
-				<span>{node.evidenceIds.length} evidence record{node.evidenceIds.length === 1 ? '' : 's'}</span>
-			</>
+					<span>{node.kind}<small>{node.reviewStatus}</small></span>
+					{node.description && <span>{node.description}</span>}
+					<span>{node.evidenceIds.length} evidence record{node.evidenceIds.length === 1 ? '' : 's'}</span>
+					<AIGraphEvidenceList view={view} evidenceIds={node.evidenceIds} />
+				</>
 		);
 	}
-	const relation = view.version.relations.find(
-		(candidate) => candidate.relationId === selection.relationId,
-	);
+	const relation = selectedRelation;
 	if (!relation) return <span>Selected relation is unavailable in this version.</span>;
 	const source = view.version.nodes.find((node) => node.nodeId === relation.sourceNodeId);
 	const target = view.version.nodes.find((node) => node.nodeId === relation.targetNodeId);
@@ -868,7 +1517,65 @@ function AIGraphSelectionInspector({
 				</span>
 			))}
 			<span>{relation.evidenceIds.length} evidence record{relation.evidenceIds.length === 1 ? '' : 's'}</span>
+			<AIGraphEvidenceList view={view} evidenceIds={relation.evidenceIds} />
 			{relation.explanation && <span>{relation.explanation}</span>}
+			{view.version.versionId === view.manifest.headVersionId && (
+				<div className="pk-ai-graph-relation-review">
+					<strong>Review relation</strong>
+					<input
+						aria-label="Relation predicate"
+						value={predicate}
+						onChange={(event) => setPredicate(event.target.value)}
+					/>
+					<input
+						aria-label="Relation label"
+						value={label}
+						onChange={(event) => setLabel(event.target.value)}
+					/>
+					<input
+						aria-label="Relation confidence"
+						inputMode="decimal"
+						value={confidence}
+						placeholder="Confidence 0–1"
+						onChange={(event) => setConfidence(event.target.value)}
+					/>
+					<label>
+						<input
+							type="checkbox"
+							checked={directed}
+							onChange={(event) => setDirected(event.target.checked)}
+						/>
+						Directed
+					</label>
+					<span>
+						<Button
+							variant="ghost"
+							type="button"
+							disabled={reviewing}
+							onClick={() => void reviewRelation('accepted')}
+						>
+							Accept
+						</Button>
+						<Button
+							variant="ghost"
+							type="button"
+							disabled={reviewing || !predicate.trim() || !label.trim()}
+							onClick={() => void reviewRelation('edited')}
+						>
+							Save edit
+						</Button>
+						<Button
+							variant="ghost"
+							type="button"
+							disabled={reviewing}
+							onClick={() => void reviewRelation('rejected')}
+						>
+							Reject
+						</Button>
+					</span>
+					<small>Review creates a new immutable semantic version.</small>
+				</div>
+			)}
 		</>
 	);
 }

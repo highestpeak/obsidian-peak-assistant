@@ -413,12 +413,14 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 					? {
 						selectedVaultPaths: [path],
 						graphCreateOrigin: {
-							surface: 'file-atlas',
-							contextRef: {
-								kind: 'atlas-file',
-								ref: path,
-								label: file instanceof TFile ? file.basename : path,
-								locator: path,
+								surface: 'file-atlas',
+								contextRef: {
+									kind: 'atlas-file',
+									ref: file instanceof TFile
+										? `vault-file:${file.stat.ctime}`
+										: path,
+									label: file instanceof TFile ? file.basename : path,
+									locator: path,
 							},
 						},
 					}
