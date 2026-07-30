@@ -134,6 +134,7 @@
           <button type="button" class="view-tab is-active" data-view="table"><svg><use href="#i-grid"/></svg><span>全部记录</span></button>
           <button type="button" class="view-tab" data-view="board"><svg><use href="#i-board"/></svg><span>求职看板</span></button>
           <button type="button" class="view-tab" data-view="calendar"><svg><use href="#i-calendar"/></svg><span>面试日历</span></button>
+          <button type="button" class="view-tab" data-view="gallery"><svg><use href="#i-gallery"/></svg><span>岗位画册</span></button>
           <button type="button" class="view-tab" data-view="dashboard"><svg><use href="#i-dashboard"/></svg><span>决策仪表盘</span></button>
           <button type="button" class="add-view-button" id="add-view" aria-label="添加视图" aria-expanded="false"><svg><use href="#i-plus"/></svg></button>
         </div>
@@ -151,7 +152,8 @@
           <button type="button" class="tool-button" id="toggle-filter"><svg><use href="#i-filter"/></svg>筛选 <em>2</em></button>
           <button type="button" class="tool-button is-applied" id="toggle-group"><svg><use href="#i-group"/></svg>分组 <em>1</em></button>
           <button type="button" class="tool-button"><svg><use href="#i-sort"/></svg>排序 <em>1</em></button>
-          <button type="button" class="tool-button"><svg><use href="#i-row"/></svg>紧凑行</button>
+          <button type="button" class="tool-button formula-button" id="open-formula"><span class="formula-mark">ƒx</span>公式</button>
+          <button type="button" class="tool-button is-applied" id="toggle-stats"><svg><use href="#i-dashboard"/></svg>统计 <em>6</em></button>
         </div>
         <div class="toolbar-secondary">
           <label class="record-search">
@@ -180,8 +182,8 @@
         <header><span><strong>添加视图</strong><small>选择查看同一份记录的方式</small></span><button type="button" class="icon-button compact" data-close-view-menu><svg><use href="#i-x"/></svg></button></header>
         <button type="button" data-menu-view="board"><svg><use href="#i-board"/></svg><span><strong>看板</strong><small>按阶段推进工作</small></span></button>
         <button type="button" data-menu-view="calendar"><svg><use href="#i-calendar"/></svg><span><strong>日历</strong><small>按面试和跟进日期查看</small></span></button>
+        <button type="button" data-menu-view="gallery"><svg><use href="#i-gallery"/></svg><span><strong>画册</strong><small>用卡片突出记录内容</small></span></button>
         <button type="button" data-menu-view="dashboard"><svg><use href="#i-dashboard"/></svg><span><strong>仪表盘</strong><small>聚合指标和分析图表</small></span></button>
-        <button type="button" disabled><svg><use href="#i-gallery"/></svg><span><strong>画册</strong><small>后续 View adapter</small></span><em>后续</em></button>
         <button type="button" disabled><svg><use href="#i-map"/></svg><span><strong>地图</strong><small>后续 Spatial adapter</small></span><em>后续</em></button>
       </section>
 
@@ -199,13 +201,28 @@
             <button type="button"><svg><use href="#i-location"/></svg><span>地点</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
             <button type="button"><svg><use href="#i-calendar"/></svg><span>申请日期</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
             <button type="button"><svg><use href="#i-money"/></svg><span>薪资范围</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
-            <button type="button"><svg><use href="#i-number"/></svg><span>匹配度</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
-            <button type="button"><svg><use href="#i-clock"/></svg><span>等待天数</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
+            <button type="button"><span class="formula-mark">ƒx</span><span>匹配度</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
+            <button type="button"><span class="formula-mark">ƒx</span><span>等待天数</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
             <button type="button" class="field-add"><svg><use href="#i-plus"/></svg><span>新增字段</span></button>
           </nav>
           <section class="field-editor">
             <label class="editor-label">字段名称<input type="text" value="阶段" aria-label="字段名称"></label>
-            <div class="editor-label">字段类型<button type="button" class="type-select"><span><svg><use href="#i-select"/></svg>单选</span><svg><use href="#i-chevron-down"/></svg></button></div>
+            <div class="editor-label">字段类型<button type="button" class="type-select" id="field-type-select"><span><svg><use href="#i-select"/></svg><b id="selected-field-type">单选</b></span><svg><use href="#i-chevron-down"/></svg></button></div>
+            <section class="field-type-menu" id="field-type-menu" hidden>
+              <header><strong>基础类型</strong><small>决定校验、排序与显示</small></header>
+              <div class="field-type-grid">
+                <button type="button" data-field-type="单行文本"><svg><use href="#i-text"/></svg><span>单行文本</span></button>
+                <button type="button" data-field-type="数字"><svg><use href="#i-number"/></svg><span>数字</span></button>
+                <button type="button" class="is-selected" data-field-type="单选"><svg><use href="#i-select"/></svg><span>单选</span></button>
+                <button type="button" data-field-type="多选"><svg><use href="#i-group"/></svg><span>多选</span></button>
+                <button type="button" data-field-type="日期"><svg><use href="#i-calendar"/></svg><span>日期</span></button>
+                <button type="button" data-field-type="复选框"><svg><use href="#i-check"/></svg><span>复选框</span></button>
+                <button type="button" data-field-type="链接"><svg><use href="#i-link"/></svg><span>链接</span></button>
+              </div>
+              <header class="computed-types"><strong>计算类型</strong><small>从其他字段派生</small></header>
+              <button type="button" class="computed-type" data-field-type="公式"><span class="formula-mark">ƒx</span><span><strong>公式</strong><small>字段引用、条件、文本和日期函数</small></span><em>核心</em></button>
+              <button type="button" class="computed-type" disabled><svg><use href="#i-link"/></svg><span><strong>查找引用</strong><small>跨表关系与聚合</small></span><em>后续</em></button>
+            </section>
             <div class="option-heading"><span>选项内容</span><button type="button"><svg><use href="#i-sort"/></svg>排序</button></div>
             <div class="field-options">
               <button type="button"><i class="option-dot gray"></i><span>待申请</span><svg><use href="#i-more"/></svg></button>
@@ -217,6 +234,41 @@
               <button type="button" class="option-add"><svg><use href="#i-plus"/></svg>添加选项</button>
             </div>
             <footer><button type="button" class="subtle-button" id="cancel-fields">取消</button><button type="button" class="confirm-button" id="save-fields">保存字段</button></footer>
+          </section>
+        </div>
+      </section>
+
+      <section class="formula-panel floating-surface" id="formula-panel" hidden aria-label="简单公式">
+        <header class="panel-header">
+          <span><strong>简单公式</strong><small>受限函数 · 逐记录计算 · revision 12</small></span>
+          <button type="button" class="icon-button" id="close-formula" aria-label="关闭公式面板"><svg><use href="#i-x"/></svg></button>
+        </header>
+        <div class="formula-panel-body">
+          <aside class="formula-fields">
+            <span>可引用字段</span>
+            <button type="button"><svg><use href="#i-number"/></svg>匹配度</button>
+            <button type="button"><svg><use href="#i-clock"/></svg>等待天数</button>
+            <button type="button"><svg><use href="#i-select"/></svg>阶段</button>
+            <button type="button"><svg><use href="#i-calendar"/></svg>申请日期</button>
+            <button type="button"><svg><use href="#i-money"/></svg>薪资范围</button>
+            <span class="formula-functions-label">常用函数</span>
+            <div class="formula-function-chips"><button type="button">IF</button><button type="button">AND</button><button type="button">OR</button><button type="button">ROUND</button><button type="button">DATE_DIFF</button></div>
+          </aside>
+          <section class="formula-editor">
+            <label>字段名称<input type="text" value="行动优先级" aria-label="公式字段名称"></label>
+            <span class="formula-label">公式</span>
+            <div class="formula-code" role="textbox" aria-label="公式表达式">
+              <b>IF</b><span>(</span><b>AND</b><span>(</span><em>{匹配度}</em><span> ≥ 85, </span><em>{等待天数}</em><span> ≥ 7),</span><br>
+              <span class="formula-indent">"优先跟进", "保持观察")</span>
+            </div>
+            <div class="formula-contract"><span><svg><use href="#i-check"/></svg>类型检查通过</span><span>24 条预览 · 0 个错误</span></div>
+            <span class="formula-label">结果预览</span>
+            <div class="formula-preview">
+              <span><b>Koru Digital</b><small>匹配 86 · 等待 11d</small><em class="formula-result high">优先跟进</em></span>
+              <span><b>Northstar Energy</b><small>匹配 82 · 等待 8d</small><em class="formula-result">保持观察</em></span>
+              <span><b>Alpine Data</b><small>匹配 90 · 等待 4d</small><em class="formula-result">保持观察</em></span>
+            </div>
+            <footer><button type="button" class="subtle-button" id="cancel-formula">取消</button><button type="button" class="confirm-button" id="save-formula">保存公式字段</button></footer>
           </section>
         </div>
       </section>
@@ -268,7 +320,7 @@
         <svg><use href="#i-arrow"/></svg>
         <span><svg><use href="#i-database"/></svg><strong>Dataset revision 12</strong><small>records + schema</small></span>
         <svg><use href="#i-arrow"/></svg>
-        <span><svg><use href="#i-dashboard"/></svg><strong>View projections</strong><small>Table · Board · Dashboard</small></span>
+        <span><svg><use href="#i-dashboard"/></svg><strong>View projections</strong><small>Table · Board · Calendar · Gallery · Dashboard</small></span>
       </div>
       <p>所有视图读取同一 revision；编辑先经过 transaction commit，再写回公开、本地可控的源格式。</p>
       <button type="button" class="confirm-button" id="confirm-source">知道了</button>

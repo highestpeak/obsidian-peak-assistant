@@ -47,6 +47,8 @@ const initial = await page.evaluate(() => ({
   groupRows: document.querySelectorAll('.record-table .group-row').length,
   activeView: document.querySelector('.view-tab.is-active')?.dataset.view,
   frozenColumnPosition: getComputedStyle(document.querySelector('.record-table td:nth-child(2)')).position,
+  summaryCells: document.querySelectorAll('.table-summary > span').length,
+  formulaColumns: document.querySelectorAll('.record-table thead .formula-mark').length,
   theme: document.body.dataset.theme,
   canvasColor: getComputedStyle(document.body).getPropertyValue('--bg').trim(),
 }));
@@ -58,6 +60,8 @@ assert.equal(initial.tableRows, 12, 'table fixture should render twelve records'
 assert.equal(initial.groupRows, 5, 'initial table should show five stage groups');
 assert.equal(initial.activeView, 'table', 'table should be the initial view');
 assert.equal(initial.frozenColumnPosition, 'sticky', 'primary record field should be frozen');
+assert.equal(initial.summaryCells, 6, 'table should expose six inline statistics');
+assert.equal(initial.formulaColumns, 2, 'table should identify two computed columns');
 assert.equal(initial.theme, 'light', 'mock should default to the light theme');
 assert.equal(initial.canvasColor, '#f6f7f4', 'default canvas should be neutral light');
 await page.screenshot({ path: path.join(dir, 'preview.png') });
@@ -72,8 +76,30 @@ await page.click('#open-fields');
 await page.waitForSelector('#field-panel:not([hidden])');
 assert.match(await page.textContent('#field-panel'), /字段类型/);
 assert.match(await page.textContent('#field-panel'), /单选/);
+await page.click('#field-type-select');
+await page.waitForSelector('#field-type-menu:not([hidden])');
+assert.equal(await page.locator('#field-type-menu .field-type-grid button').count(), 7);
+assert.match(await page.textContent('#field-type-menu'), /单行文本/);
+assert.match(await page.textContent('#field-type-menu'), /数字/);
+assert.match(await page.textContent('#field-type-menu'), /多选/);
+assert.match(await page.textContent('#field-type-menu'), /日期/);
+assert.match(await page.textContent('#field-type-menu'), /复选框/);
+assert.match(await page.textContent('#field-type-menu'), /链接/);
+assert.match(await page.textContent('#field-type-menu'), /公式/);
 await page.screenshot({ path: path.join(dir, 'preview-fields.png') });
-await page.click('#close-fields');
+await page.click('[data-field-type="公式"]');
+await page.waitForSelector('#formula-panel:not([hidden])');
+assert.match(await page.textContent('#formula-panel'), /IF/);
+assert.match(await page.textContent('#formula-panel'), /DATE_DIFF/);
+assert.match(await page.textContent('#formula-panel'), /24 条预览 · 0 个错误/);
+assert.equal(await page.locator('.formula-preview > span').count(), 3);
+await page.screenshot({ path: path.join(dir, 'preview-formula.png') });
+await page.click('#close-formula');
+
+await page.click('#toggle-stats');
+assert.equal(await page.locator('.table-summary').count(), 0);
+await page.click('#toggle-stats');
+assert.equal(await page.locator('.table-summary > span').count(), 6);
 
 await page.click('[data-view="board"]');
 await page.waitForSelector('.board-view');
@@ -82,6 +108,12 @@ assert.equal(await page.locator('.board-column').count(), 4);
 await page.click('[data-view="calendar"]');
 await page.waitForSelector('.calendar-grid');
 assert.equal(await page.locator('.calendar-day').count(), 35);
+
+await page.click('[data-view="gallery"]');
+await page.waitForSelector('.gallery-view');
+assert.equal(await page.locator('.gallery-card').count(), 12);
+assert.match(await page.textContent('.gallery-view'), /卡片字段/);
+await page.screenshot({ path: path.join(dir, 'preview-gallery.png') });
 
 await page.click('[data-view="dashboard"]');
 await page.waitForSelector('.dashboard');
@@ -120,8 +152,10 @@ console.log(JSON.stringify({
   viewport: '1600x1000',
   initialRows: initial.tableRows,
   groupRows: initial.groupRows,
+  statistics: initial.summaryCells,
+  computedColumns: initial.formulaColumns,
   localLinks: localHrefs.length,
-  viewsChecked: ['table', 'board', 'calendar', 'dashboard'],
-  flowsChecked: ['theme-switch', 'field-config', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
-  screenshots: ['preview.png', 'preview-dashboard.png', 'preview-fields.png', 'preview-plan.png', 'preview-mobile.png'],
+  viewsChecked: ['table', 'board', 'calendar', 'gallery', 'dashboard'],
+  flowsChecked: ['theme-switch', 'field-type-select', 'formula-preview', 'inline-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
+  screenshots: ['preview.png', 'preview-fields.png', 'preview-formula.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
 }, null, 2));

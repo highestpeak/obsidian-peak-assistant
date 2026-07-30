@@ -229,6 +229,7 @@ const state = {
   view: 'table',
   grouped: true,
   filtersVisible: true,
+  statsVisible: true,
   query: '',
   priorityOnly: false,
   selectedId: null,
@@ -241,6 +242,7 @@ const searchInput = document.querySelector('#record-search');
 const toast = document.querySelector('#toast');
 const aiDrawer = document.querySelector('#ai-drawer');
 const themeToggle = document.querySelector('#theme-toggle');
+const formulaPanel = document.querySelector('#formula-panel');
 
 function icon(id) {
   return `<svg><use href="#${id}"/></svg>`;
@@ -359,26 +361,52 @@ function renderTable() {
     body = visible.map(recordRow).join('');
   }
 
+  const averageFit = (visible.reduce((sum, record) => sum + record.fit, 0) / visible.length).toFixed(1);
+  const averageWait = (visible.reduce((sum, record) => sum + record.wait, 0) / visible.length).toFixed(1);
+  const salaryLowerBounds = [...visible]
+    .map((record) => Number(record.salary.split('–')[0]))
+    .sort((first, second) => first - second);
+  const salaryMidpoint = Math.floor(salaryLowerBounds.length / 2);
+  const medianSalary = salaryLowerBounds.length % 2 === 0
+    ? (salaryLowerBounds[salaryMidpoint - 1] + salaryLowerBounds[salaryMidpoint]) / 2
+    : salaryLowerBounds[salaryMidpoint];
+  const highValueCount = visible.filter((record) => record.urgency && record.fit >= 80).length;
+  const summary = state.statsVisible
+    ? `
+      <footer class="table-summary">
+        <span><small>记录数</small><strong>${visible.length}</strong><em>count</em></span>
+        <span><small>阶段</small><strong>${new Set(visible.map((record) => record.stage)).size}</strong><em>distinct</em></span>
+        <span><small>薪资下限中位</small><strong>${medianSalary}k</strong><em>median</em></span>
+        <span><small>平均匹配度</small><strong>${averageFit}</strong><em>average</em></span>
+        <span><small>平均等待</small><strong>${averageWait}d</strong><em>average</em></span>
+        <span><small>行动窗口</small><strong>${highValueCount}</strong><em>formula result</em></span>
+      </footer>
+    `
+    : '';
+
   stage.innerHTML = `
-    <section class="table-viewport">
-      <table class="record-table">
-        <colgroup><col><col><col><col><col><col><col><col><col><col></colgroup>
-        <thead>
-          <tr>
-            <th><input type="checkbox" aria-label="选择全部记录"></th>
-            <th><span class="field-heading">${icon('i-text')}<span>公司 / 职位</span></span></th>
-            <th><span class="field-heading">${icon('i-select')}<span>阶段</span></span></th>
-            <th><span class="field-heading">${icon('i-select')}<span>工作模式</span></span></th>
-            <th><span class="field-heading">${icon('i-location')}<span>地点</span></span></th>
-            <th><span class="field-heading">${icon('i-calendar')}<span>申请日期</span><em class="sort-mark">↓</em></span></th>
-            <th><span class="field-heading">${icon('i-money')}<span>薪资范围</span></span></th>
-            <th><span class="field-heading">${icon('i-number')}<span>匹配度</span></span></th>
-            <th><span class="field-heading">${icon('i-clock')}<span>等待天数</span></span></th>
-            <th><span class="field-heading">${icon('i-check')}<span>下一步</span></span></th>
-          </tr>
-        </thead>
-        <tbody>${body}</tbody>
-      </table>
+    <section class="table-view">
+      <div class="table-viewport">
+        <table class="record-table">
+          <colgroup><col><col><col><col><col><col><col><col><col><col></colgroup>
+          <thead>
+            <tr>
+              <th><input type="checkbox" aria-label="选择全部记录"></th>
+              <th><span class="field-heading">${icon('i-text')}<span>公司 / 职位</span></span></th>
+              <th><span class="field-heading">${icon('i-select')}<span>阶段</span></span></th>
+              <th><span class="field-heading">${icon('i-select')}<span>工作模式</span></span></th>
+              <th><span class="field-heading">${icon('i-location')}<span>地点</span></span></th>
+              <th><span class="field-heading">${icon('i-calendar')}<span>申请日期</span><em class="sort-mark">↓</em></span></th>
+              <th><span class="field-heading">${icon('i-money')}<span>薪资范围</span></span></th>
+              <th><span class="field-heading"><b class="formula-mark">ƒx</b><span>匹配度</span></span></th>
+              <th><span class="field-heading"><b class="formula-mark">ƒx</b><span>等待天数</span></span></th>
+              <th><span class="field-heading">${icon('i-check')}<span>下一步</span></span></th>
+            </tr>
+          </thead>
+          <tbody>${body}</tbody>
+        </table>
+      </div>
+      ${summary}
     </section>
   `;
 
@@ -415,6 +443,34 @@ function renderBoard() {
     `;
   }).join('');
   stage.innerHTML = `<section class="board-view">${columns}</section>`;
+}
+
+function renderGallery() {
+  const cards = visibleRecords().map((record) => {
+    const priority = record.urgency && record.fit >= 80 ? '优先行动' : '保持观察';
+    return `
+      <button type="button" class="gallery-card" data-record-id="${record.id}">
+        <header>
+          <span class="gallery-logo ${record.color}">${record.company.slice(0, 2).toUpperCase()}</span>
+          <span class="tag stage-${record.stageKey}">${record.stage}</span>
+        </header>
+        <span class="gallery-title"><strong>${record.company}</strong><small>${record.role}</small></span>
+        <div class="gallery-fields">
+          <span><small>工作模式</small><b>${record.workMode}</b></span>
+          <span><small>地点</small><b>${record.location}</b></span>
+          <span><small>薪资</small><b>${record.salary} NZD</b></span>
+          <span><small><i class="formula-mark">ƒx</i> 匹配度</small><b>${record.fit}</b></span>
+        </div>
+        <footer><span><i></i>${record.next}</span><em class="${priority === '优先行动' ? 'is-high' : ''}">${priority}</em></footer>
+      </button>
+    `;
+  }).join('');
+  stage.innerHTML = `
+    <section class="gallery-view">
+      <header><span><strong>岗位画册</strong><small>同一批 records · 卡片字段由当前视图配置决定</small></span><button type="button">${icon('i-fields')}卡片字段</button></header>
+      <div class="gallery-grid">${cards}</div>
+    </section>
+  `;
 }
 
 function renderCalendar() {
@@ -563,6 +619,10 @@ function updateStatus() {
     secondary.textContent = '按事件日期投影 · 6 个日程';
     return;
   }
+  if (state.view === 'gallery') {
+    secondary.textContent = '卡片字段配置 · 与 Table 同步';
+    return;
+  }
   secondary.textContent = '只读聚合 · 统一筛选刷新全部图表';
 }
 
@@ -571,6 +631,7 @@ function renderCurrentView() {
     table: renderTable,
     board: renderBoard,
     calendar: renderCalendar,
+    gallery: renderGallery,
     dashboard: renderDashboard,
   };
   renderers[state.view]();
@@ -582,7 +643,7 @@ function renderCurrentView() {
 }
 
 function setView(view) {
-  if (!view || !(view in { table: 1, board: 1, calendar: 1, dashboard: 1 })) return;
+  if (!view || !(view in { table: 1, board: 1, calendar: 1, gallery: 1, dashboard: 1 })) return;
   state.view = view;
   closeViewMenu();
   renderCurrentView();
@@ -610,17 +671,31 @@ function closeViewMenu() {
 
 function openFields() {
   document.querySelector('#field-panel').hidden = false;
+  closeFormula();
   closeViewMenu();
 }
 
 function closeFields() {
   document.querySelector('#field-panel').hidden = true;
+  document.querySelector('#field-type-menu').hidden = true;
+}
+
+function openFormula() {
+  formulaPanel.hidden = false;
+  closeFields();
+  closeViewMenu();
+  closeAi();
+}
+
+function closeFormula() {
+  formulaPanel.hidden = true;
 }
 
 function openAi() {
   aiDrawer.classList.add('is-open');
   aiDrawer.setAttribute('aria-hidden', 'false');
   closeFields();
+  closeFormula();
   closeViewMenu();
 }
 
@@ -672,6 +747,34 @@ document.querySelector('#save-fields').addEventListener('click', () => {
   showToast('字段已保存', '“阶段”选项已更新到当前 schema 草稿');
 });
 
+document.querySelector('#field-type-select').addEventListener('click', () => {
+  const menu = document.querySelector('#field-type-menu');
+  menu.hidden = !menu.hidden;
+});
+
+document.querySelectorAll('[data-field-type]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const fieldType = button.dataset.fieldType;
+    if (!fieldType) return;
+    document.querySelector('#selected-field-type').textContent = fieldType;
+    document.querySelectorAll('[data-field-type]').forEach((candidate) => {
+      candidate.classList.toggle('is-selected', candidate === button);
+    });
+    document.querySelector('#field-type-menu').hidden = true;
+    if (fieldType !== '公式') return;
+    closeFields();
+    openFormula();
+  });
+});
+
+document.querySelector('#open-formula').addEventListener('click', openFormula);
+document.querySelector('#close-formula').addEventListener('click', closeFormula);
+document.querySelector('#cancel-formula').addEventListener('click', closeFormula);
+document.querySelector('#save-formula').addEventListener('click', () => {
+  closeFormula();
+  showToast('公式字段已保存', '“行动优先级”将按 revision 12 重新计算');
+});
+
 document.querySelector('#toggle-filter').addEventListener('click', () => {
   state.filtersVisible = !state.filtersVisible;
   renderFilterLine();
@@ -683,6 +786,16 @@ document.querySelector('#toggle-group').addEventListener('click', () => {
   if (state.view !== 'table') setView('table');
   renderTable();
   updateStatus();
+});
+
+document.querySelector('#toggle-stats').addEventListener('click', () => {
+  state.statsVisible = !state.statsVisible;
+  document.querySelector('#toggle-stats').classList.toggle('is-applied', state.statsVisible);
+  if (state.view !== 'table') {
+    setView('table');
+    return;
+  }
+  renderTable();
 });
 
 searchInput.addEventListener('input', () => {
@@ -737,6 +850,7 @@ document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
   closeAi();
   closeFields();
+  closeFormula();
   closeViewMenu();
   closeDialog('#source-dialog');
   closeDialog('#mobile-overlay');
