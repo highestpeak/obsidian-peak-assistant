@@ -56,6 +56,14 @@ V4 保留上述结构，只收紧视觉密度：
 - 删除组标题右侧的动作数量；数量不会帮助用户决定下一步。
 - Search 每个分组使用一列紧凑结果，两个分组仍在左右 lane 中并排出现。
 
+V5 把 Customize 从静态示意图补成可操作原型：
+
+- Add group 直接创建可改名分组，Add action 打开临时 catalog。
+- 分组和 action 都可拖动；分组可在左右 lane 间移动或切成全宽。
+- 每个 action 独立选择“图标 + 文字”“仅图标”或“仅文字”。
+- Pin / Unpin 直接更新 Home Quick access，Modal 与 Home 不复制 action 定义。
+- 默认图标容器进一步缩到约 `24px`；Home Quick access 图标从 `44px` 缩到约 `30px`。
+
 ## 录屏观察
 
 录屏时长约 8.1 秒，画面为 `2114 × 1822`，展示了原生 Obsidian Command Palette 的三个典型状态。

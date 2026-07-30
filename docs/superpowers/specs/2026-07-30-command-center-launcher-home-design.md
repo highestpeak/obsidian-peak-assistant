@@ -2,7 +2,7 @@
 
 Date: 2026-07-30
 
-Visual direction revised: 2026-07-31 · V4 compact waterfall layout
+Visual direction revised: 2026-07-31 · V5 configurable waterfall layout
 
 Status: Decided · design/spec ready · implementation pending
 
@@ -167,10 +167,20 @@ interface CommandCenterGroup {
 	id: string;
 	label: string;
 	icon: string;
-	lane: 'left' | 'right';
-	columnCount: 2 | 3;
+	lane: 'left' | 'right' | 'full';
+	columnCount: 2 | 3 | 6;
 	order: number;
 	actions: CommandCenterActionItem[];
+}
+
+interface CommandCenterActionItem {
+	id: string;
+	action: CommandCenterAction;
+	shortLabel: string;
+	icon?: string;
+	display: 'icon-label' | 'icon-only' | 'text-only';
+	pinnedToHome: boolean;
+	order: number;
 }
 ```
 
@@ -228,7 +238,7 @@ Pinned Notes, Bases and Canvases remain owned by their existing Obsidian views. 
 
 ### 7.4 Manage mode
 
-Customize mode is explicit. Normal invocation never shows drag handles or edit controls. It reuses the same waterfall canvas so the user can reorder actions, move a group between lanes and change each group's internal column count in place.
+Customize mode is explicit. Normal invocation never shows drag handles or edit controls. It reuses the same waterfall canvas so the user can reorder actions, move a group between lanes, make a group span the full canvas and change action presentation in place.
 
 Available operations:
 
@@ -237,6 +247,8 @@ Available operations:
 - add action from a searchable catalog;
 - edit short label and aliases;
 - reorder groups and actions;
+- switch a group between left, right and full-width placement;
+- choose `icon + label`, `icon only` or `text only` for each action;
 - pin / unpin action in Home Quick access;
 - remove unavailable action;
 - reset only the selected group to its default.
@@ -261,9 +273,9 @@ Destructive layout reset requires confirmation and export/import support before 
 - Width: `min(860px, calc(100vw - 48px))`.
 - Height: approximately `480px`, capped by `calc(100vh - 72px)`.
 - Group canvas: two independently growing lanes with a slightly wider left lane.
-- Group internals: two or three action columns, chosen per group.
-- Action tile: approximately `78px` high with no resting border.
-- Icon container: approximately `28 × 28px`; the whole tile remains the hit target.
+- Group internals: two or three action columns, or six columns when a group spans the full canvas.
+- Action tile: approximately `72px` high with no resting border.
+- Default icon container: approximately `24 × 24px`; the whole tile remains the hit target.
 - Group headings do not show item counts; the visible tiles already communicate group size.
 - A vertical separator uses one compact spacing rhythm, not a grid gap plus additional section padding.
 - Modal radius: approximately `14px`; tile radius: approximately `10px`.
@@ -273,14 +285,13 @@ No group sidebar, gradient, nested group card, availability strip, descriptive h
 
 ### 9.2 Action tile anatomy
 
-Every tile has:
+Every tile has an action identity, accessible name and tooltip. Its visible anatomy is user-selectable:
 
-1. Lucide icon.
-2. Short user-facing label.
-3. Quiet source label.
-4. Optional real hotkey.
-5. Disabled treatment when unavailable.
-6. Tooltip with full command name and source plugin.
+1. `icon + label`: small Lucide icon, short label and optional quiet source;
+2. `icon only`: icon with `aria-label` and tooltip;
+3. `text only`: short label without an icon container.
+
+All three modes may show a real hotkey when space permits and use a disabled treatment when unavailable.
 
 Long native command labels such as “Create new drawing — in the current active window” become a short tile title such as `Current window`; the tooltip preserves the full source label.
 
@@ -462,7 +473,7 @@ This is an implementation sequence, not permission to ship incomplete UI as the 
 
 - React modal shell;
 - two-column waterfall group canvas;
-- per-group two- or three-column action grid;
+- per-group two-, three- or full-width six-column action grid;
 - search over configured actions;
 - full keyboard and focus restoration;
 - close-only header.
@@ -472,6 +483,8 @@ This is an implementation sequence, not permission to ship incomplete UI as the 
 - in-place group and action editor;
 - on-demand catalog picker;
 - drag reorder;
+- full-width group toggle;
+- per-action display mode and Home pin toggle;
 - invalid command handling;
 - export/import.
 
@@ -529,11 +542,13 @@ If CDP is unavailable, mark these interactions `INTERACTION NOT VERIFIED`; a sta
 - Empty query shows grouped tiles in a two-column waterfall layout.
 - All first-run groups are directly visible without a permanent group sidebar.
 - Group lane, group order and tile order remain spatially stable.
+- Customize can add a group, move groups/actions, toggle a full-width group and persist all three action display modes.
 - Runtime search returns only configured actions and keeps source provenance.
 - Every visible shortcut matches current Obsidian hotkey configuration.
 - A user can create an Excalidraw group and add a command without editing files.
 - A missing plugin does not crash or silently remap an action.
 - Home and Modal use one source of truth for action identity and presentation metadata.
+- Pin and unpin updates Home Quick access without creating a second action definition.
 - Home can pin a Vault file, Bookmark and Workspace.
 - Home defaults to Search, Quick access, Continue and optional Pinned pages instead of a block dashboard.
 - Home does not introduce a parallel tasks or calendar store.

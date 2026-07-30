@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Peak Command Center · V4</title>
+  <title>Peak Command Center · V5</title>
   <style>
     :root {
       color-scheme: light;
@@ -400,6 +400,7 @@
     }
 
     .launcher {
+      position: relative;
       width: 860px;
       height: 480px;
       display: grid;
@@ -499,6 +500,14 @@
       align-content: start;
     }
 
+    .flow-full-column {
+      grid-column: 1 / -1;
+    }
+
+    .flow-full-column:empty {
+      display: none;
+    }
+
     .flow-group {
       min-width: 0;
       break-inside: avoid;
@@ -555,10 +564,14 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .flow-group.full-width .flow-action-grid {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+
     .action-tile {
       position: relative;
       min-width: 0;
-      height: 78px;
+      height: 72px;
       display: flex;
       flex-direction: column;
       align-items: flex-start;
@@ -582,12 +595,12 @@
     }
 
     .action-icon {
-      width: 28px;
-      height: 28px;
+      width: 24px;
+      height: 24px;
       display: grid;
       place-items: center;
       margin-bottom: 6px;
-      border-radius: 7px;
+      border-radius: 6px;
       color: var(--purple);
       background: var(--purple-soft);
     }
@@ -613,8 +626,8 @@
     }
 
     .action-icon .icon {
-      width: 16px;
-      height: 16px;
+      width: 14px;
+      height: 14px;
     }
 
     .action-name {
@@ -635,6 +648,44 @@
       font-size: 9px;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .action-tile.display-icon {
+      align-items: center;
+      justify-content: center;
+      padding: 6px;
+    }
+
+    .action-tile.display-icon .action-icon {
+      width: 26px;
+      height: 26px;
+      margin: 0;
+    }
+
+    .action-tile.display-icon .action-name,
+    .action-tile.display-icon .action-meta,
+    .action-tile.display-icon .tile-hotkey {
+      display: none;
+    }
+
+    .action-tile.display-text {
+      justify-content: center;
+      padding: 8px 10px;
+    }
+
+    .action-tile.display-text .action-icon,
+    .action-tile.display-text .action-meta,
+    .action-tile.display-text .tile-hotkey {
+      display: none;
+    }
+
+    .action-tile.display-text .action-name {
+      overflow: visible;
+      font-size: 12px;
+      line-height: 1.25;
+      text-align: center;
+      text-overflow: clip;
+      white-space: normal;
     }
 
     .tile-hotkey {
@@ -861,10 +912,35 @@
       gap: 7px;
     }
 
+    .group-drag-handle {
+      cursor: grab;
+    }
+
+    .group-drag-handle:active {
+      cursor: grabbing;
+    }
+
+    .manage-group-title strong[contenteditable="true"] {
+      min-width: 28px;
+      border-radius: 4px;
+      outline: 0;
+    }
+
+    .manage-group-title strong[contenteditable="true"]:focus {
+      box-shadow: 0 0 0 2px var(--purple-soft);
+    }
+
     .manage-group-title .drag-dots {
       margin-right: 1px;
     }
 
+    .group-tools {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .group-width-button,
     .group-add-button {
       width: 24px;
       height: 24px;
@@ -877,11 +953,14 @@
       cursor: pointer;
     }
 
-    .group-add-button:hover {
+    .group-width-button:hover,
+    .group-add-button:hover,
+    .group-width-button.active {
       color: var(--purple);
       background: var(--purple-hover);
     }
 
+    .group-width-button .icon,
     .group-add-button .icon {
       width: 13px;
       height: 13px;
@@ -939,8 +1018,181 @@
       margin-left: 4px;
     }
 
+    .manage-tile.display-icon .action-icon {
+      margin-left: 0;
+    }
+
+    .manage-tile[data-pinned="true"]::after {
+      position: absolute;
+      top: 7px;
+      right: 7px;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--purple);
+      content: "";
+    }
+
+    .dragging {
+      opacity: 0.42;
+    }
+
+    .drop-target {
+      background: #f7f4fc;
+      box-shadow: inset 0 0 0 1px #d9ccf3;
+    }
+
     .manage-footer {
-      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .selection-editor {
+      min-width: 0;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .selection-editor-label {
+      max-width: 120px;
+      overflow: hidden;
+      color: var(--ink-soft);
+      font-size: 9px;
+      font-weight: 620;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .display-switcher {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 2px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+    }
+
+    .display-mode-button,
+    .pin-action-button {
+      height: 23px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 0 7px;
+      border: 0;
+      border-radius: 4px;
+      color: #77727d;
+      background: transparent;
+      font-size: 9px;
+      cursor: pointer;
+    }
+
+    .display-mode-button {
+      width: 25px;
+      padding: 0;
+    }
+
+    .display-mode-button:hover,
+    .display-mode-button.active,
+    .pin-action-button:hover,
+    .pin-action-button.active {
+      color: var(--purple);
+      background: var(--purple-hover);
+    }
+
+    .display-mode-button .icon,
+    .pin-action-button .icon {
+      width: 13px;
+      height: 13px;
+    }
+
+    .action-picker {
+      position: absolute;
+      top: 58px;
+      right: 14px;
+      z-index: 8;
+      width: 286px;
+      padding: 8px;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 14px 36px rgba(36, 28, 48, 0.2);
+    }
+
+    .action-picker[hidden] {
+      display: none;
+    }
+
+    .action-picker-search {
+      width: 100%;
+      height: 31px;
+      padding: 0 9px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      outline: 0;
+      color: var(--ink);
+      background: #fbfafc;
+      font-size: 10px;
+    }
+
+    .action-picker-search:focus {
+      border-color: #cbbce8;
+      box-shadow: 0 0 0 2px var(--purple-soft);
+    }
+
+    .action-picker-list {
+      display: grid;
+      gap: 2px;
+      margin-top: 6px;
+    }
+
+    .action-picker-item {
+      min-width: 0;
+      height: 36px;
+      display: grid;
+      grid-template-columns: 24px minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      padding: 0 7px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .action-picker-item:hover {
+      background: var(--purple-hover);
+    }
+
+    .action-picker-item[hidden] {
+      display: none;
+    }
+
+    .action-picker-item .action-icon {
+      margin: 0;
+    }
+
+    .action-picker-copy strong,
+    .action-picker-copy span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .action-picker-copy strong {
+      font-size: 10px;
+      font-weight: 620;
+    }
+
+    .action-picker-copy span {
+      margin-top: 2px;
+      color: var(--ink-faint);
+      font-size: 8px;
     }
 
     .done-button {
@@ -1122,10 +1374,10 @@
     }
 
     .quick-item .action-icon {
-      width: 44px;
-      height: 44px;
-      margin: 0 auto 9px;
-      border-radius: 12px;
+      width: 30px;
+      height: 30px;
+      margin: 0 auto 6px;
+      border-radius: 8px;
     }
 
     .quick-item strong,
@@ -1146,6 +1398,38 @@
       margin-top: 3px;
       color: var(--ink-faint);
       font-size: 9px;
+    }
+
+    .quick-item.display-icon {
+      display: grid;
+      min-height: 62px;
+      place-items: center;
+    }
+
+    .quick-item.display-icon .action-icon {
+      width: 30px;
+      height: 30px;
+      margin: 0;
+    }
+
+    .quick-item.display-icon strong,
+    .quick-item.display-icon > span {
+      display: none;
+    }
+
+    .quick-item.display-text {
+      display: grid;
+      min-height: 62px;
+      place-items: center;
+    }
+
+    .quick-item.display-text .action-icon,
+    .quick-item.display-text > span {
+      display: none;
+    }
+
+    .quick-item.display-text strong {
+      white-space: normal;
     }
 
     .continue-list {
@@ -1339,14 +1623,14 @@
       }
 
       .action-tile {
-        height: 74px;
-        padding: 8px 9px 7px;
+        height: 68px;
+        padding: 7px 8px 6px;
       }
 
       .action-icon {
-        width: 26px;
-        height: 26px;
-        margin-bottom: 5px;
+        width: 22px;
+        height: 22px;
+        margin-bottom: 4px;
       }
 
       .home-content {
@@ -1390,6 +1674,10 @@
     <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
     <symbol id="i-sidebar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
     <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="m16.5 3.5 4 4L8 20H4v-4Z"/></symbol>
+    <symbol id="i-maximize" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="m12 17 0 5M7 3h10M9 3l1 7-4 3v2h12v-2l-4-3 1-7"/></symbol>
+    <symbol id="i-type" viewBox="0 0 24 24"><path d="M5 5V3h14v2M12 3v18M8 21h8"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 15-5-5L5 20"/></symbol>
   </svg>
 
   <header class="prototype-bar">
@@ -1397,7 +1685,7 @@
       <span class="prototype-mark"><svg class="icon"><use href="#i-command"/></svg></span>
       <span>
         <strong>Peak Command Center</strong>
-        <small>V4 · compact waterfall</small>
+        <small>V5 · configurable waterfall</small>
       </span>
     </div>
     <nav class="state-switcher" aria-label="原型状态">
@@ -1410,7 +1698,7 @@
   </header>
 
   <main class="stage">
-    <section class="app-frame" aria-label="Command Center V4 原型">
+    <section class="app-frame" aria-label="Command Center V5 原型">
       <div class="app-titlebar">
         <span class="traffic-lights"><i></i><i></i><i></i></span>
         <span class="app-title">Peak Assistant · Product vault</span>
@@ -1477,8 +1765,8 @@
           </header>
           <div class="launcher-body">
             <div class="flow-area">
-              <div class="flow-columns">
-                <div class="flow-column">
+              <div class="flow-columns" id="launcher-board">
+                <div class="flow-column" data-lane="left">
                   <section class="flow-group wide">
                     <div class="flow-group-header">
                       <span class="flow-group-title"><svg class="icon"><use href="#i-sparkles"/></svg><strong>Peak Assistant</strong></span>
@@ -1543,7 +1831,7 @@
                   </section>
                 </div>
 
-                <div class="flow-column">
+                <div class="flow-column" data-lane="right">
                   <section class="flow-group compact">
                     <div class="flow-group-header">
                       <span class="flow-group-title"><svg class="icon"><use href="#i-plus"/></svg><strong>Quick create</strong></span>
@@ -1591,6 +1879,7 @@
                     </div>
                   </section>
                 </div>
+                <div class="flow-column flow-full-column" data-lane="full"></div>
               </div>
             </div>
           </div>
@@ -1685,8 +1974,8 @@
           </header>
           <div class="launcher-body">
             <div class="flow-area">
-              <div class="flow-columns">
-                <div class="flow-column">
+              <div class="flow-columns" id="manage-board">
+                <div class="flow-column" data-lane="left">
                   <section class="flow-group wide">
                     <div class="flow-group-header">
                       <span class="flow-group-title manage-group-title">
@@ -1768,7 +2057,7 @@
                   </section>
                 </div>
 
-                <div class="flow-column">
+                <div class="flow-column" data-lane="right">
                   <section class="flow-group compact">
                     <div class="flow-group-header">
                       <span class="flow-group-title manage-group-title">
@@ -1831,11 +2120,25 @@
                     </div>
                   </section>
                 </div>
+                <div class="flow-column flow-full-column" data-lane="full"></div>
               </div>
-              <button class="add-group-line"><svg class="icon"><use href="#i-plus"/></svg>Add group</button>
+              <button class="add-group-line" id="add-group-button"><svg class="icon"><use href="#i-plus"/></svg>Add group</button>
             </div>
           </div>
+          <div class="action-picker" id="action-picker" hidden>
+            <input class="action-picker-search" id="action-picker-search" type="text" placeholder="Find an action">
+            <div class="action-picker-list" id="action-picker-list"></div>
+          </div>
           <footer class="launcher-footer manage-footer">
+            <div class="selection-editor">
+              <strong class="selection-editor-label" id="selection-editor-label">Composer</strong>
+              <div class="display-switcher" aria-label="按钮显示方式">
+                <button class="display-mode-button active" data-display-mode="full" title="图标和文字" aria-label="图标和文字"><svg class="icon"><use href="#i-layout"/></svg></button>
+                <button class="display-mode-button" data-display-mode="icon" title="仅图标" aria-label="仅图标"><svg class="icon"><use href="#i-image"/></svg></button>
+                <button class="display-mode-button" data-display-mode="text" title="仅文字" aria-label="仅文字"><svg class="icon"><use href="#i-type"/></svg></button>
+              </div>
+              <button class="pin-action-button" id="pin-action-button"><svg class="icon"><use href="#i-pin"/></svg><span id="pin-action-label">Pin</span></button>
+            </div>
             <button class="done-button" data-open="launcher">Done</button>
           </footer>
         </section>
@@ -1877,8 +2180,8 @@
             </label>
 
             <section class="home-section">
-              <div class="home-section-title"><strong>Quick access</strong><span>6 pinned</span></div>
-              <div class="quick-access">
+              <div class="home-section-title"><strong>Quick access</strong><span id="home-pin-count">6 pinned</span></div>
+              <div class="quick-access" id="home-quick-access">
                 <button class="quick-item">
                   <span class="action-icon"><svg class="icon"><use href="#i-pen"/></svg></span>
                   <strong>Composer</strong><span>Peak</span>
@@ -1951,14 +2254,14 @@
       </section>
     </section>
 
-    <section class="design-note" aria-label="V4 design principles">
+    <section class="design-note" aria-label="V5 design principles">
       <div class="note-item">
         <strong>分组直接铺在画布上</strong>
         <span>左右两列紧凑向下生长；短标题与一条细分隔线负责分区，不再用大块留白或侧边导航。</span>
       </div>
       <div class="note-item">
-        <strong>管理不占用日常界面</strong>
-        <span>Customize 从底部进入，在同一张瀑布画布原位拖动；完整命令目录只在添加动作时临时出现。</span>
+        <strong>配置直接作用于画布</strong>
+        <span>Customize 可新增、拖动、切换全宽、改变按钮形态并 Pin 到 Home；完整命令目录只在添加动作时临时出现。</span>
       </div>
       <div class="note-item">
         <strong>Home 是安静的起点</strong>
@@ -1974,14 +2277,431 @@
     const homeShell = document.getElementById('home-shell');
     const launcherSearch = document.getElementById('launcher-search');
     const searchQuery = document.getElementById('search-query');
+    const launcherBoard = document.getElementById('launcher-board');
+    const manageBoard = document.getElementById('manage-board');
+    const addGroupButton = document.getElementById('add-group-button');
+    const actionPicker = document.getElementById('action-picker');
+    const actionPickerSearch = document.getElementById('action-picker-search');
+    const actionPickerList = document.getElementById('action-picker-list');
+    const selectionEditorLabel = document.getElementById('selection-editor-label');
+    const displayModeButtons = [...document.querySelectorAll('[data-display-mode]')];
+    const pinActionButton = document.getElementById('pin-action-button');
+    const pinActionLabel = document.getElementById('pin-action-label');
+    const homeQuickAccess = document.getElementById('home-quick-access');
+    const homePinCount = document.getElementById('home-pin-count');
     const openButtons = [...document.querySelectorAll('[data-open]')];
     const closeButtons = [...document.querySelectorAll('.close-button')];
-    const actionTiles = [...document.querySelectorAll('[data-screen="launcher"] .action-tile')];
+
+    const initialPinnedActions = new Set([
+      'Composer',
+      'Chat Studio',
+      'File Atlas',
+      'Research desk',
+      'Capture idea',
+      'Bookmarks',
+    ]);
+
+    const initialDisplayModes = new Map([
+      ['Quick Search', 'icon'],
+      ['Peak settings', 'icon'],
+      ['Daily note', 'icon'],
+      ['Bookmarks', 'text'],
+      ['New note', 'text'],
+      ['Current window', 'text'],
+    ]);
+
+    const actionCatalog = [
+      { name: 'Open calendar', meta: 'Calendar', icon: 'i-calendar', tone: 'blue' },
+      { name: 'New canvas', meta: 'Canvas', icon: 'i-canvas', tone: 'amber' },
+      { name: 'Focus mode', meta: 'Obsidian', icon: 'i-layout', tone: 'neutral' },
+      { name: 'Publish note', meta: 'Publish', icon: 'i-file-plus', tone: 'green' },
+      { name: 'Random note', meta: 'Core command', icon: 'i-file', tone: 'neutral' },
+    ];
+
+    let selectedAction = null;
+    let pickerGroup = null;
+    let draggedAction = null;
+    let draggedGroup = null;
+    let customGroupCount = 0;
+    let customActionCount = 0;
+
+    function getActionName(tile) {
+      return tile.querySelector('.action-name')?.textContent.trim() || 'Untitled action';
+    }
+
+    function getActionMeta(tile) {
+      return tile.querySelector('.action-meta')?.textContent.trim() || 'Command Center';
+    }
+
+    function slugify(value) {
+      const normalized = value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      return normalized || `item-${Date.now()}`;
+    }
+
+    function createIconUse(symbol) {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+      svg.setAttribute('class', 'icon');
+      use.setAttribute('href', `#${symbol}`);
+      svg.append(use);
+      return svg;
+    }
+
+    function createDragDots() {
+      const dots = document.createElement('span');
+      dots.className = 'drag-dots drag-corner';
+      dots.setAttribute('aria-hidden', 'true');
+      for (let index = 0; index < 6; index += 1) {
+        dots.append(document.createElement('i'));
+      }
+      return dots;
+    }
+
+    function applyDisplayMode(tile, mode) {
+      tile.classList.remove('display-icon', 'display-text');
+      tile.dataset.display = mode;
+
+      if (mode === 'icon') {
+        tile.classList.add('display-icon');
+      }
+
+      if (mode === 'text') {
+        tile.classList.add('display-text');
+      }
+
+      tile.setAttribute('aria-label', getActionName(tile));
+    }
+
+    function initializeAction(tile) {
+      const name = getActionName(tile);
+      if (!tile.dataset.actionId) {
+        customActionCount += 1;
+        tile.dataset.actionId = `${slugify(name)}-${customActionCount}`;
+      }
+
+      tile.draggable = true;
+      const mode = tile.dataset.display || initialDisplayModes.get(name) || 'full';
+      applyDisplayMode(tile, mode);
+
+      if (!tile.dataset.pinned) {
+        tile.dataset.pinned = String(initialPinnedActions.has(name));
+      }
+    }
+
+    function updateGroupWidthButton(group) {
+      const button = group.querySelector('.group-width-button');
+      if (!button) return;
+      const fullWidth = group.classList.contains('full-width');
+      button.classList.toggle('active', fullWidth);
+      button.setAttribute('aria-pressed', String(fullWidth));
+      button.setAttribute('aria-label', fullWidth ? '恢复双列分组' : '切换为全宽分组');
+      button.title = fullWidth ? '恢复双列分组' : '切换为全宽分组';
+    }
+
+    function initializeGroup(group) {
+      const title = group.querySelector('.manage-group-title strong');
+      const groupName = title?.textContent.trim() || 'Untitled group';
+
+      if (!group.dataset.groupId) {
+        group.dataset.groupId = slugify(groupName);
+      }
+
+      const dragHandle = group.querySelector('.manage-group-title');
+      dragHandle.classList.add('group-drag-handle');
+      dragHandle.draggable = true;
+      dragHandle.title = '拖动分组';
+
+      title.contentEditable = 'true';
+      title.spellcheck = false;
+
+      const header = group.querySelector('.flow-group-header');
+      const addButton = group.querySelector('.group-add-button');
+      let tools = header.querySelector('.group-tools');
+
+      if (!tools) {
+        tools = document.createElement('span');
+        tools.className = 'group-tools';
+
+        const widthButton = document.createElement('button');
+        widthButton.className = 'group-width-button';
+        widthButton.type = 'button';
+        widthButton.append(createIconUse('i-maximize'));
+
+        addButton.type = 'button';
+        addButton.title = '添加动作';
+        tools.append(widthButton, addButton);
+        header.append(tools);
+      }
+
+      updateGroupWidthButton(group);
+      group.querySelectorAll('.manage-tile').forEach(initializeAction);
+    }
+
+    function updateSelectionEditor() {
+      if (!selectedAction || !selectedAction.isConnected) {
+        selectedAction = manageBoard.querySelector('.manage-tile');
+      }
+
+      if (!selectedAction) {
+        selectionEditorLabel.textContent = 'Select an action';
+        pinActionButton.disabled = true;
+        displayModeButtons.forEach((button) => {
+          button.disabled = true;
+          button.classList.remove('active');
+        });
+        return;
+      }
+
+      const mode = selectedAction.dataset.display || 'full';
+      const pinned = selectedAction.dataset.pinned === 'true';
+      selectionEditorLabel.textContent = getActionName(selectedAction);
+      pinActionButton.disabled = false;
+      pinActionButton.classList.toggle('active', pinned);
+      pinActionButton.setAttribute('aria-pressed', String(pinned));
+      pinActionLabel.textContent = pinned ? 'Pinned' : 'Pin';
+
+      displayModeButtons.forEach((button) => {
+        button.disabled = false;
+        button.classList.toggle('active', button.dataset.displayMode === mode);
+      });
+    }
+
+    function selectAction(tile) {
+      manageBoard.querySelectorAll('.manage-tile.selected').forEach((candidate) => {
+        candidate.classList.remove('selected');
+      });
+      selectedAction = tile;
+      selectedAction.classList.add('selected');
+      updateSelectionEditor();
+    }
+
+    function cleanLauncherClone(group) {
+      const clone = group.cloneNode(true);
+      clone.classList.remove('dragging', 'drop-target');
+      clone.querySelectorAll('.drag-dots, .group-tools').forEach((node) => node.remove());
+
+      const title = clone.querySelector('.manage-group-title');
+      title?.classList.remove('manage-group-title', 'group-drag-handle');
+      title?.removeAttribute('draggable');
+      const editable = clone.querySelector('[contenteditable]');
+      editable?.removeAttribute('contenteditable');
+
+      clone.querySelectorAll('.manage-tile').forEach((tile) => {
+        tile.classList.remove('manage-tile', 'selected', 'dragging', 'drop-target');
+        tile.removeAttribute('draggable');
+      });
+
+      return clone;
+    }
+
+    function syncLauncher() {
+      launcherBoard.querySelectorAll(':scope > .flow-column').forEach((column) => {
+        column.replaceChildren();
+      });
+
+      manageBoard.querySelectorAll(':scope > .flow-column').forEach((sourceColumn) => {
+        const lane = sourceColumn.dataset.lane;
+        const targetColumn = launcherBoard.querySelector(`[data-lane="${lane}"]`);
+        [...sourceColumn.children].forEach((group) => {
+          if (!group.classList.contains('flow-group')) return;
+          targetColumn.append(cleanLauncherClone(group));
+        });
+      });
+
+      launcherBoard.querySelector('.action-tile')?.classList.add('selected');
+    }
+
+    function createQuickItem(tile) {
+      const item = document.createElement('button');
+      item.className = 'quick-item';
+      item.setAttribute('aria-label', getActionName(tile));
+
+      const mode = tile.dataset.display || 'full';
+      if (mode === 'icon') item.classList.add('display-icon');
+      if (mode === 'text') item.classList.add('display-text');
+
+      const icon = tile.querySelector('.action-icon')?.cloneNode(true);
+      const name = document.createElement('strong');
+      const meta = document.createElement('span');
+      name.textContent = getActionName(tile);
+      meta.textContent = getActionMeta(tile);
+      if (icon) item.append(icon);
+      item.append(name, meta);
+      return item;
+    }
+
+    function syncHomePins() {
+      const pinned = [...manageBoard.querySelectorAll('.manage-tile')]
+        .filter((tile) => tile.dataset.pinned === 'true');
+
+      homeQuickAccess.replaceChildren(...pinned.map(createQuickItem));
+      homePinCount.textContent = `${pinned.length} pinned`;
+    }
+
+    function syncConfiguredViews() {
+      syncLauncher();
+      syncHomePins();
+    }
+
+    function setGroupLane(group, lane) {
+      const targetColumn = manageBoard.querySelector(`[data-lane="${lane}"]`);
+      if (!targetColumn) return;
+
+      if (lane === 'full') {
+        const currentLane = group.parentElement?.dataset.lane;
+        if (currentLane && currentLane !== 'full') {
+          group.dataset.previousLane = currentLane;
+        }
+        group.classList.remove('wide', 'compact');
+        group.classList.add('full-width');
+      } else {
+        group.classList.remove('full-width', 'wide', 'compact');
+        group.classList.add(lane === 'left' ? 'wide' : 'compact');
+        group.dataset.previousLane = lane;
+      }
+
+      targetColumn.append(group);
+      updateGroupWidthButton(group);
+      syncConfiguredViews();
+    }
+
+    function toggleGroupWidth(group) {
+      if (group.classList.contains('full-width')) {
+        setGroupLane(group, group.dataset.previousLane || 'left');
+        return;
+      }
+      setGroupLane(group, 'full');
+    }
+
+    function createActionElement(action) {
+      const tile = document.createElement('button');
+      tile.className = 'action-tile manage-tile';
+      tile.type = 'button';
+      customActionCount += 1;
+      tile.dataset.actionId = `${slugify(action.name)}-custom-${Date.now()}-${customActionCount}`;
+      tile.dataset.display = action.display || 'full';
+      tile.dataset.pinned = 'false';
+      tile.append(createDragDots());
+
+      const icon = document.createElement('span');
+      icon.className = `action-icon ${action.tone || 'neutral'}`.trim();
+      icon.append(createIconUse(action.icon || 'i-command'));
+
+      const name = document.createElement('span');
+      name.className = 'action-name';
+      name.textContent = action.name;
+
+      const meta = document.createElement('span');
+      meta.className = 'action-meta';
+      meta.textContent = action.meta;
+
+      tile.append(icon, name, meta);
+      initializeAction(tile);
+      return tile;
+    }
+
+    function renderActionPicker() {
+      actionPickerList.replaceChildren();
+      actionCatalog.forEach((action) => {
+        const item = document.createElement('button');
+        item.className = 'action-picker-item';
+        item.type = 'button';
+        item.dataset.catalogName = action.name.toLowerCase();
+        item.dataset.actionName = action.name;
+
+        const icon = document.createElement('span');
+        icon.className = `action-icon ${action.tone}`.trim();
+        icon.append(createIconUse(action.icon));
+
+        const copy = document.createElement('span');
+        copy.className = 'action-picker-copy';
+        const name = document.createElement('strong');
+        const meta = document.createElement('span');
+        name.textContent = action.name;
+        meta.textContent = action.meta;
+        copy.append(name, meta);
+        item.append(icon, copy);
+        actionPickerList.append(item);
+      });
+    }
+
+    function openActionPicker(group) {
+      pickerGroup = group;
+      actionPicker.hidden = false;
+      actionPickerSearch.value = '';
+      actionPickerList.querySelectorAll('.action-picker-item').forEach((item) => {
+        item.hidden = false;
+      });
+      requestAnimationFrame(() => actionPickerSearch.focus());
+    }
+
+    function closeActionPicker() {
+      actionPicker.hidden = true;
+      pickerGroup = null;
+    }
+
+    function addCatalogAction(name) {
+      const action = actionCatalog.find((candidate) => candidate.name === name);
+      if (!action || !pickerGroup) return;
+      const tile = createActionElement(action);
+      pickerGroup.querySelector('.flow-action-grid').append(tile);
+      selectAction(tile);
+      closeActionPicker();
+      syncConfiguredViews();
+    }
+
+    function createGroup() {
+      customGroupCount += 1;
+      const left = manageBoard.querySelector('[data-lane="left"]');
+      const right = manageBoard.querySelector('[data-lane="right"]');
+      const leftCount = left.querySelectorAll(':scope > .flow-group').length;
+      const rightCount = right.querySelectorAll(':scope > .flow-group').length;
+      const lane = leftCount <= rightCount ? 'left' : 'right';
+      const target = lane === 'left' ? left : right;
+
+      const group = document.createElement('section');
+      group.className = `flow-group ${lane === 'left' ? 'wide' : 'compact'}`;
+      group.dataset.groupId = `custom-group-${customGroupCount}`;
+      group.dataset.previousLane = lane;
+      group.innerHTML = `
+        <div class="flow-group-header">
+          <span class="flow-group-title manage-group-title">
+            <span class="drag-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+            <svg class="icon"><use href="#i-folder"/></svg>
+            <strong>New group ${customGroupCount}</strong>
+          </span>
+          <button class="group-add-button" aria-label="添加动作"><svg class="icon"><use href="#i-plus"/></svg></button>
+        </div>
+        <div class="flow-action-grid"></div>
+      `;
+
+      target.append(group);
+      initializeGroup(group);
+      const title = group.querySelector('.manage-group-title strong');
+      title.focus();
+      const range = document.createRange();
+      range.selectNodeContents(title);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      syncConfiguredViews();
+    }
+
+    function clearDropState() {
+      document.querySelectorAll('.dragging, .drop-target').forEach((node) => {
+        node.classList.remove('dragging', 'drop-target');
+      });
+    }
+
+    function laneForColumn(column) {
+      return column?.dataset.lane || 'left';
+    }
 
     function setView(view) {
       const home = view === 'home';
       modalScrim.style.display = home ? 'none' : 'flex';
       homeShell.classList.toggle('active', home);
+      if (view !== 'manage') closeActionPicker();
 
       screens.forEach((screen) => {
         screen.classList.toggle('active', screen.dataset.screen === view);
@@ -2027,15 +2747,166 @@
       setView('search');
     });
 
-    actionTiles.forEach((tile) => {
-      tile.addEventListener('mouseenter', () => {
-        actionTiles.forEach((candidate) => candidate.classList.remove('selected'));
-        tile.classList.add('selected');
+    launcherBoard.addEventListener('mouseover', (event) => {
+      const tile = event.target.closest('.action-tile');
+      if (!tile) return;
+      launcherBoard.querySelectorAll('.action-tile.selected').forEach((candidate) => {
+        candidate.classList.remove('selected');
       });
+      tile.classList.add('selected');
+    });
+
+    manageBoard.addEventListener('click', (event) => {
+      const widthButton = event.target.closest('.group-width-button');
+      if (widthButton) {
+        toggleGroupWidth(widthButton.closest('.flow-group'));
+        return;
+      }
+
+      const addButton = event.target.closest('.group-add-button');
+      if (addButton) {
+        openActionPicker(addButton.closest('.flow-group'));
+        return;
+      }
+
+      const tile = event.target.closest('.manage-tile');
+      if (!tile) return;
+      selectAction(tile);
+    });
+
+    manageBoard.addEventListener('input', (event) => {
+      if (!event.target.matches('.manage-group-title strong[contenteditable="true"]')) return;
+      syncConfiguredViews();
+    });
+
+    displayModeButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        if (!selectedAction) return;
+        applyDisplayMode(selectedAction, button.dataset.displayMode);
+        updateSelectionEditor();
+        syncConfiguredViews();
+      });
+    });
+
+    pinActionButton.addEventListener('click', () => {
+      if (!selectedAction) return;
+      const pinned = selectedAction.dataset.pinned === 'true';
+      selectedAction.dataset.pinned = String(!pinned);
+      updateSelectionEditor();
+      syncConfiguredViews();
+    });
+
+    addGroupButton.addEventListener('click', createGroup);
+
+    actionPickerSearch.addEventListener('input', () => {
+      const query = actionPickerSearch.value.trim().toLowerCase();
+      actionPickerList.querySelectorAll('.action-picker-item').forEach((item) => {
+        item.hidden = Boolean(query) && !item.dataset.catalogName.includes(query);
+      });
+    });
+
+    actionPickerList.addEventListener('click', (event) => {
+      const item = event.target.closest('.action-picker-item');
+      if (!item) return;
+      addCatalogAction(item.dataset.actionName);
+    });
+
+    document.addEventListener('click', (event) => {
+      if (actionPicker.hidden) return;
+      if (event.target.closest('.action-picker, .group-add-button')) return;
+      closeActionPicker();
+    });
+
+    manageBoard.addEventListener('dragstart', (event) => {
+      const tile = event.target.closest('.manage-tile');
+      if (tile) {
+        draggedAction = tile;
+        tile.classList.add('dragging');
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', tile.dataset.actionId);
+        return;
+      }
+
+      const handle = event.target.closest('.group-drag-handle');
+      if (!handle || event.target.closest('[contenteditable="true"]')) return;
+      draggedGroup = handle.closest('.flow-group');
+      draggedGroup.classList.add('dragging');
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', draggedGroup.dataset.groupId);
+    });
+
+    manageBoard.addEventListener('dragover', (event) => {
+      if (!draggedAction && !draggedGroup) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      manageBoard.querySelectorAll('.drop-target').forEach((node) => node.classList.remove('drop-target'));
+
+      if (draggedAction) {
+        const tileTarget = event.target.closest('.manage-tile');
+        const grid = event.target.closest('.flow-action-grid');
+        if (!grid) return;
+        grid.classList.add('drop-target');
+
+        if (!tileTarget || tileTarget === draggedAction) {
+          if (event.target === grid) grid.append(draggedAction);
+          return;
+        }
+
+        const rect = tileTarget.getBoundingClientRect();
+        const before = event.clientY < rect.top + rect.height / 2
+          || (Math.abs(event.clientY - (rect.top + rect.height / 2)) < rect.height / 3
+            && event.clientX < rect.left + rect.width / 2);
+        grid.insertBefore(draggedAction, before ? tileTarget : tileTarget.nextSibling);
+        return;
+      }
+
+      const groupTarget = event.target.closest('.flow-group');
+      const column = event.target.closest('.flow-column');
+      if (!column) return;
+      column.classList.add('drop-target');
+
+      if (!groupTarget || groupTarget === draggedGroup) {
+        if (event.target === column) column.append(draggedGroup);
+      } else {
+        const rect = groupTarget.getBoundingClientRect();
+        const before = event.clientY < rect.top + rect.height / 2;
+        column.insertBefore(draggedGroup, before ? groupTarget : groupTarget.nextSibling);
+      }
+
+      const lane = laneForColumn(column);
+      if (lane === 'full') {
+        draggedGroup.classList.remove('wide', 'compact');
+        draggedGroup.classList.add('full-width');
+      } else {
+        draggedGroup.classList.remove('wide', 'compact', 'full-width');
+        draggedGroup.classList.add(lane === 'left' ? 'wide' : 'compact');
+        draggedGroup.dataset.previousLane = lane;
+      }
+      updateGroupWidthButton(draggedGroup);
+    });
+
+    manageBoard.addEventListener('drop', (event) => {
+      event.preventDefault();
+      clearDropState();
+      draggedAction = null;
+      draggedGroup = null;
+      syncConfiguredViews();
+    });
+
+    manageBoard.addEventListener('dragend', () => {
+      clearDropState();
+      draggedAction = null;
+      draggedGroup = null;
+      syncConfiguredViews();
     });
 
     document.addEventListener('keydown', (event) => {
       if (event.key !== 'Escape') return;
+
+      if (!actionPicker.hidden) {
+        closeActionPicker();
+        return;
+      }
 
       const activeView = tabs.find((tab) => tab.getAttribute('aria-pressed') === 'true')?.dataset.view;
       if (activeView === 'search' && searchQuery.value) {
@@ -2052,6 +2923,18 @@
 
       closeModal();
     });
+
+    manageBoard.querySelectorAll(':scope > .flow-column').forEach((column) => {
+      [...column.children].forEach((group) => {
+        if (!group.classList.contains('flow-group')) return;
+        group.dataset.previousLane = column.dataset.lane;
+        initializeGroup(group);
+      });
+    });
+
+    renderActionPicker();
+    selectAction(manageBoard.querySelector('.manage-tile.selected') || manageBoard.querySelector('.manage-tile'));
+    syncConfiguredViews();
   </script>
 </body>
 </html>
