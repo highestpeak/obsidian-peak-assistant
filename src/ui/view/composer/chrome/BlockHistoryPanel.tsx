@@ -8,6 +8,7 @@ import {
 import {
 	activityMatchesBlock,
 	projectComposerHistoryActivities,
+	type ComposerHistoryActivity,
 	type ComposerHistoryTransactionResolver,
 	type ComposerWorkspaceIntelligenceProjection,
 	type ComposerWorkspaceIntelligenceRuntime,
@@ -15,14 +16,12 @@ import {
 	type IntelligenceSessionProjection,
 } from '@/service/composer';
 import { Button } from '@/ui/components/primitives';
-import { restoreGenerationReview } from '../generationHistory';
 import {
 	activitySourceLabel,
 	activityStatusLabel,
 	composerHistoryActivityLabels,
 	formatHistoryTime,
 } from '../sidecar/HistoryView';
-import { HistoryDetailModal } from '../sidecar/HistoryDetailModal';
 import {
 	DEFAULT_SIDECAR_CONFIG,
 	loadSidecarConfig,
@@ -37,13 +36,13 @@ import { useComposerChrome } from './ComposerChromeContext';
  */
 export function BlockHistoryPanel({
 	blockId,
-	onLocate,
 	onViewAll,
+	onOpenActivity,
 	onClose,
 }: {
 	blockId: string;
-	onLocate: () => void;
 	onViewAll?: () => void;
+	onOpenActivity: (activity: ComposerHistoryActivity) => void;
 	onClose: () => void;
 }): React.ReactElement {
 	const { runtime, config, snapshot: liveSnapshot } = useComposerChrome();
@@ -53,7 +52,6 @@ export function BlockHistoryPanel({
 	const [sidecarConfig, setSidecarConfig] = React.useState<SidecarConfig>(
 		DEFAULT_SIDECAR_CONFIG,
 	);
-	const [selectedActivityId, setSelectedActivityId] = React.useState<string | null>(null);
 	const snapshot = liveSnapshot ?? runtime.session?.snapshot;
 	const documentId = snapshot?.documentId ?? '';
 	const c = config.chrome.history;
@@ -102,10 +100,6 @@ export function BlockHistoryPanel({
 		[allActivities, blockId],
 	);
 	const visibleActivities = blockActivities.slice(0, 3);
-	const selectedActivity = allActivities.find((activity) =>
-		activity.activityId === selectedActivityId,
-	);
-
 	return (
 		<div className="pk-block-history pk-composer-panel" data-chrome="true" aria-label={c.title}>
 			<div className="pk-block-history__head">
@@ -122,7 +116,7 @@ export function BlockHistoryPanel({
 						key={activity.activityId}
 						variant="ghost"
 						className="pk-block-history__row"
-						onClick={() => setSelectedActivityId(activity.activityId)}
+						onClick={() => onOpenActivity(activity)}
 						aria-label={`${s.historyOpenDetail}: ${activity.actionLabel}`}
 					>
 						<span className="pk-block-history__meta">
@@ -159,24 +153,6 @@ export function BlockHistoryPanel({
 				</Button>
 			</div>
 
-			{selectedActivity && (
-				<HistoryDetailModal
-					activity={selectedActivity}
-					snapshot={snapshot}
-					transactionResolver={transactionResolver}
-					strings={s}
-					onClose={() => setSelectedActivityId(null)}
-					onLocate={() => onLocate()}
-					onRestore={(runId) => {
-						const run = workspace?.runs.find((candidate) => candidate.runId === runId);
-						return run ? restoreGenerationReview(runtime, run) : false;
-					}}
-					onRollback={async (historyId) => {
-						await runtime.hub?.rollback(historyId);
-						setSelectedActivityId(null);
-					}}
-				/>
-			)}
 		</div>
 	);
 }

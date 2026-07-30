@@ -33,6 +33,7 @@ assert.equal(countTransactions([older, first, second]), 4, 'batch parents count 
 const source = readFileSync('src/ui/view/composer/sidecar/HistoryView.tsx', 'utf8');
 const detailSource = readFileSync('src/ui/view/composer/sidecar/HistoryDetailModal.tsx', 'utf8');
 const blockHistorySource = readFileSync('src/ui/view/composer/chrome/BlockHistoryPanel.tsx', 'utf8');
+const composerRootSource = readFileSync('src/ui/view/composer/ComposerRoot.tsx', 'utf8');
 const sidecarStyles = readFileSync('src/styles/composer-sidecar.css', 'utf8');
 assert.ok(source.includes('projectComposerHistoryActivities'), 'History projects one mixed activity timeline');
 assert.ok(source.includes('HistoryFilterBar'), 'the mixed timeline can be filtered without switching tabs');
@@ -66,7 +67,16 @@ assert.ok(
 	blockHistorySource.includes('blockActivities.slice(0, 3)'),
 	'the compact block surface is capped at three recent activities',
 );
-assert.ok(blockHistorySource.includes('HistoryDetailModal'), 'block history opens the shared detail modal');
+assert.ok(
+	blockHistorySource.includes('onOpenActivity(activity)')
+		&& composerRootSource.includes('<HistoryDetailModal'),
+	'block history delegates the shared detail modal to the stable Composer document owner',
+);
+assert.equal(
+	blockHistorySource.includes('<HistoryDetailModal'),
+	false,
+	'the transient block panel does not own a modal that would unmount on outside-pointer handling',
+);
 assert.ok(blockHistorySource.includes('historyViewAll'), 'block history links to the full mixed timeline');
 
 console.log('composer-history-view-presentation: passed');

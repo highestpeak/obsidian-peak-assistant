@@ -43,6 +43,8 @@ import {
 	originalTextForTextPatchCandidate,
 	partitionSourceRange,
 	pasteUrlIntoSelection,
+	type ComposerHistoryActivity,
+	type ComposerHistoryTransactionResolver,
 	type HiddenSourceRange,
 } from '@/service/composer';
 import { Button } from '@/ui/components/primitives';
@@ -103,6 +105,12 @@ import { firstClipboardImage } from './chrome/pasteImage';
 import { containComposerEscape } from './escapeContainment';
 import { IntelligenceSidecar } from './sidecar';
 import { buildFocusRunContext, resolveRelatedFocus } from './sidecar/focusContext';
+import { HistoryDetailModal } from './sidecar/HistoryDetailModal';
+import {
+	DEFAULT_SIDECAR_CONFIG,
+	loadSidecarConfig,
+	type SidecarConfig,
+} from './sidecar/sidecarConfig';
 import { restoreGenerationReview } from './generationHistory';
 import type { IntelligenceRuntime, SuggestionFinding } from '@/service/composer';
 
@@ -456,6 +464,10 @@ function ComposerDocument({
 		hub ? initialDisplayMode : 'clean',
 	);
 	const [panel, setPanel] = React.useState<PanelState | null>(null);
+	const [historyActivity, setHistoryActivity] = React.useState<ComposerHistoryActivity | null>(null);
+	const [historySidecarConfig, setHistorySidecarConfig] = React.useState<SidecarConfig>(
+		DEFAULT_SIDECAR_CONFIG,
+	);
 	const [commentDraft, setCommentDraft] = React.useState<CommentDraftTarget | null>(null);
 	const [commentRailOpen, setCommentRailOpen] = React.useState(false);
 	const [drag, setDrag] = React.useState<DragState | null>(null);
@@ -480,7 +492,28 @@ function ComposerDocument({
 		if (!hub) return;
 		setDisplayState(initialDisplayMode);
 		setCommentSurfaceOpen(false);
+		setHistoryActivity(null);
 	}, [hub, initialDisplayMode, snapshot.documentId]);
+	React.useEffect(() => {
+		let alive = true;
+		void loadSidecarConfig().then((loaded) => {
+			if (alive) setHistorySidecarConfig(loaded);
+		});
+		return () => {
+			alive = false;
+		};
+	}, []);
+	const historyTransactionResolver = React.useMemo<
+		ComposerHistoryTransactionResolver | undefined
+	>(
+		() => hub
+			? {
+					preview: (historyId) => hub.historyPreview(historyId),
+					transaction: (historyId) => hub.historyTransaction(historyId),
+				}
+			: undefined,
+		[hub],
+	);
 
 	React.useEffect(() => {
 		if (!panel) return;
@@ -781,6 +814,10 @@ function ComposerDocument({
 										setPanel(null);
 									}
 								: undefined}
+							onOpenHistoryActivity={(activity) => {
+								setPanel(null);
+								setHistoryActivity(activity);
+							}}
 						/>
 						{panel?.blockId === b.blockId && panel.panel === 'insert-draft' && (
 							<div data-composer-surface-owner={b.blockId}>
@@ -824,6 +861,32 @@ function ComposerDocument({
 				</div>
 			)}
 			<TransactionNotice />
+			{historyActivity && (
+				<HistoryDetailModal
+					activity={historyActivity}
+					snapshot={snapshot}
+					transactionResolver={historyTransactionResolver}
+					strings={historySidecarConfig.strings}
+					onClose={() => setHistoryActivity(null)}
+					onLocate={(blockId) => {
+						const block = containerRef.current?.querySelector<HTMLElement>(
+							`[data-block-id="${CSS.escape(blockId)}"]`,
+						);
+						markScrollIntent(scrollerOf(containerRef.current));
+						block?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+					}}
+					onRestore={(runId) => {
+						const run = runtime.workspaceIntelligence
+							?.projection()
+							.runs.find((candidate) => candidate.runId === runId);
+						return run ? restoreGenerationReview(runtime, run) : false;
+					}}
+					onRollback={async (historyId) => {
+						await hub?.rollback(historyId);
+						setHistoryActivity(null);
+					}}
+				/>
+			)}
 			</div>
 			<CommentRail
 				shellRef={containerRef}
@@ -892,6 +955,7 @@ function ComposerBlockRow({
 	onActiveComment,
 	onOpenComment,
 	onViewHistory,
+	onOpenHistoryActivity,
 }: {
 	block: ComposerBlock;
 	previousBlock?: ComposerBlock;
@@ -922,6 +986,7 @@ function ComposerBlockRow({
 	onActiveComment: (commentId: string | null) => void;
 	onOpenComment: () => void;
 	onViewHistory?: () => void;
+	onOpenHistoryActivity: (activity: ComposerHistoryActivity) => void;
 }): React.ReactElement {
 	const chrome = useComposerChrome();
 	const folded = useStore(foldStore, (s) => s.folded.has(block.blockId));
@@ -1175,10 +1240,6 @@ function ComposerBlockRow({
 							<div data-composer-surface-owner={block.blockId}>
 								<BlockHistoryPanel
 									blockId={block.blockId}
-									onLocate={() => {
-										markScrollIntent(scrollerOf(bodyRef.current)); // INT-1 guard
-										bodyRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-									}}
 									onClose={() => {
 										dismissPreview();
 										setPanel(null);
@@ -1189,6 +1250,10 @@ function ComposerBlockRow({
 												onViewHistory();
 											}
 										: undefined}
+									onOpenActivity={(activity) => {
+										dismissPreview();
+										onOpenHistoryActivity(activity);
+									}}
 								/>
 							</div>
 						)}

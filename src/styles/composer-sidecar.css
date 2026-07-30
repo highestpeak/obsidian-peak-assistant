@@ -1701,42 +1701,7 @@
 	cursor: pointer;
 }
 
-/* ── history ───────────────────────────────────────────────────────────────── */
-.pk-history-switcher {
-	display: flex;
-	min-height: 100%;
-	flex-direction: column;
-}
-.pk-history-kind-tabs {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: 3px;
-	margin: 10px 14px 0;
-	padding: 3px;
-	border-radius: var(--pk-radius-md);
-	background: var(--pk-surface-sunken);
-}
-.peak-design-root .pk-history-kind-tab {
-	display: inline-flex;
-	justify-content: center;
-	gap: 5px;
-	min-height: 27px !important;
-	height: 27px !important;
-	padding: 0 8px !important;
-	border: 0 !important;
-	border-radius: 6px !important;
-	color: var(--pk-text-secondary) !important;
-	font-size: 9.5px !important;
-}
-.peak-design-root .pk-history-kind-tab[data-active] {
-	background: var(--pk-surface) !important;
-	color: var(--pk-foreground) !important;
-	box-shadow: 0 1px 2px color-mix(in srgb, var(--pk-foreground) 10%, transparent);
-}
-.pk-history-kind-tab > span {
-	color: var(--pk-text-tertiary);
-	font-size: 8px;
-}
+/* ── unified activity history ─────────────────────────────────────────────── */
 .pk-history {
 	display: flex;
 	flex-direction: column;
@@ -1809,12 +1774,10 @@
 	min-height: 54px;
 	border-bottom: 1px solid var(--pk-border-soft);
 }
-.pk-history-list > :last-child,
-.pk-history-batch-entries > :last-child {
+.pk-history-list > :last-child {
 	border-bottom: 0;
 }
-.peak-design-root .pk-history-main,
-.peak-design-root .pk-history-batch-summary {
+.peak-design-root .pk-history-main {
 	display: flex;
 	align-items: center;
 	width: 100% !important;
@@ -1829,13 +1792,8 @@
 	color: var(--pk-foreground) !important;
 	text-align: left;
 }
-.peak-design-root .pk-history-main:hover:not(:disabled),
-.peak-design-root .pk-history-batch-summary:hover {
+.peak-design-root .pk-history-main:hover {
 	background: var(--pk-surface-sunken) !important;
-}
-.pk-history-main:disabled {
-	opacity: 1;
-	cursor: default;
 }
 .pk-history-copy {
 	display: flex;
@@ -1874,22 +1832,6 @@
 	font-size: 8px;
 	line-height: 1.25;
 }
-.pk-history-dot {
-	flex: 0 0 auto;
-	width: 7px;
-	height: 7px;
-	border: 2px solid var(--pk-surface);
-	border-radius: var(--pk-radius-full);
-	box-shadow: 0 0 0 1px var(--pk-border);
-	background: var(--pk-info);
-}
-.pk-history-dot[data-origin='ai'],
-.pk-history-dot[data-origin='mixed'] {
-	background: var(--pk-accent);
-}
-.pk-history-dot[data-origin='system-rollback'] {
-	background: var(--pk-warning);
-}
 .pk-history-meta {
 	display: flex;
 	align-items: flex-end;
@@ -1905,157 +1847,6 @@
 	font-size: 8px;
 	font-weight: 650;
 }
-.pk-history-batch {
-	border-bottom: 1px solid var(--pk-border-soft);
-}
-.pk-history-batch-summary .pk-history-meta {
-	flex-direction: row;
-	align-items: center;
-	gap: 5px;
-}
-.pk-history-batch-chevron {
-	transition: transform 160ms ease;
-}
-.pk-history-batch-chevron--expanded {
-	transform: rotate(180deg);
-}
-.pk-history-batch-entries {
-	margin-left: 20px;
-	border-top: 1px solid var(--pk-border-soft);
-	background: color-mix(in srgb, var(--pk-surface-sunken) 48%, transparent);
-}
-.pk-history-row--nested {
-	min-height: 50px;
-}
-.pk-history-detail {
-	position: sticky;
-	bottom: 0;
-	z-index: 4;
-	display: flex;
-	flex-direction: column;
-	gap: 10px;
-	padding: 11px;
-	border: 1px solid var(--pk-border);
-	border-radius: var(--pk-radius-lg);
-	background: var(--pk-surface-overlay);
-	box-shadow: var(--pk-shadow-popover);
-}
-.pk-history-detail > header {
-	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: 8px;
-}
-.pk-history-detail > header > div {
-	display: flex;
-	min-width: 0;
-	flex-direction: column;
-	gap: 2px;
-}
-.pk-history-detail > header span {
-	color: var(--pk-text-tertiary);
-	font-size: 9px;
-}
-.pk-history-detail > header strong {
-	overflow: hidden;
-	color: var(--pk-foreground);
-	font-size: var(--pk-text-sm);
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-.pk-history-diff {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: 6px;
-}
-.pk-history-diff > div {
-	min-width: 0;
-	padding: 7px;
-	border-radius: var(--pk-radius-md);
-	background: var(--pk-surface-sunken);
-}
-.pk-history-diff span {
-	color: var(--pk-text-tertiary);
-	font-size: 8.5px;
-}
-.pk-history-diff pre {
-	max-height: 112px;
-	margin: 4px 0 0;
-	overflow: auto;
-	color: var(--pk-text-secondary);
-	font: inherit;
-	font-size: 9.5px;
-	line-height: 1.45;
-	white-space: pre-wrap;
-	overflow-wrap: anywhere;
-}
-.pk-history-detail-empty {
-	color: var(--pk-text-tertiary);
-	font-size: var(--pk-text-xs);
-}
-.pk-history-detail > footer {
-	display: flex;
-	align-items: center;
-	justify-content: flex-end;
-	gap: 5px;
-}
-.pk-history-detail > footer button {
-	min-height: 26px !important;
-	height: 26px !important;
-	padding: 0 7px !important;
-	font-size: 9px !important;
-}
-.pk-generation-list {
-	display: flex;
-	flex-direction: column;
-	overflow: hidden;
-	border: 1px solid var(--pk-border-soft);
-	border-radius: var(--pk-radius-lg);
-}
-.pk-generation-group + .pk-generation-group {
-	border-top: 1px solid var(--pk-border-soft);
-}
-.peak-design-root .pk-generation-summary {
-	display: flex;
-	align-items: center;
-	width: 100% !important;
-	min-height: 54px !important;
-	gap: 8px;
-	padding: 8px 9px !important;
-	border: 0 !important;
-	border-radius: 0 !important;
-	background: transparent !important;
-	color: var(--pk-foreground) !important;
-	text-align: left;
-}
-.peak-design-root .pk-generation-summary:hover {
-	background: var(--pk-surface-sunken) !important;
-}
-.pk-generation-summary .pk-history-meta {
-	flex-direction: row;
-	align-items: center;
-	gap: 5px;
-}
-.pk-generation-runs {
-	display: flex;
-	flex-direction: column;
-	margin-left: 20px;
-	border-top: 1px solid var(--pk-border-soft);
-	background: color-mix(in srgb, var(--pk-surface-sunken) 48%, transparent);
-}
-.pk-generation-run {
-	display: flex;
-	min-width: 0;
-	flex-direction: column;
-	gap: 5px;
-	padding: 8px 9px;
-	border-bottom: 1px solid var(--pk-border-soft);
-}
-.pk-generation-run:last-child {
-	border-bottom: 0;
-}
-
-/* ── unified activity history ─────────────────────────────────────────────── */
 .pk-history-filter-bar {
 	display: flex;
 	align-items: center;

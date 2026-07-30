@@ -1,7 +1,7 @@
 # Composer 统一历史与详情 Modal 实现计划
 
 > 日期：2026-07-30
-> 状态：Owner 方向已确认 · Ready for implementation
+> 状态：Implementation complete in worktree · Real Obsidian interaction NOT VERIFIED
 > Artifact type：技术设计补充 + 迁移计划 + 可执行任务计划
 > 范围：Composer History、Copilot run receipt、Generation History、Document History、块内历史入口
 > 不包含：重做 Composer AI Agent Loop、改变候选写回语义、修改 Chat Studio 历史
@@ -1207,3 +1207,36 @@ reference；大列表后续可虚拟化，但不能为性能删除历史。
 6. 评审这个数据合同后，再进入 persistence 和 UI。
 
 只要第一步没有完成，直接改侧栏样式都会继续把内部 ledger 结构泄漏到用户界面。
+
+## 20. 2026-07-30 实施结果
+
+### COMPLETE
+
+- 新增统一的 `ComposerHistoryActivity` projector、过滤器和跨 generation / Copilot receipt /
+  document transaction 的精确关联与去重；
+- Copilot instruction、receipt、external run alias 与 document transaction ledger 进入
+  DataStore JSONL，并支持重启 replay、corrupt-tail 容忍、rename/path reuse 防护；
+- History 默认改为 generation、Copilot 与 document activity 混合时间线，取消二级永久 tab；
+- 筛选支持来源、操作、状态和对象；
+- 用户可见标题不再回退到 capability ID，旧记录使用明确的 generic label 和 incomplete 状态；
+- 侧栏和块内历史复用 `HistoryDetailModal`；块内面板最多显示 3 条，不再显示重复定位动作；
+- 块内 Modal selection 已提升到稳定的 Composer document owner，临时块面板卸载不会关闭 Modal；
+- rewrite/metadata 使用横向对比；insert/structural/media/analyze 使用垂直对比；
+- Modal 分开显示当时原文、结果、当前正文、instruction、Sources、Trace、恢复与回滚动作；
+- 已删除旧 generation/document tabs、accordion 和行内 diff 的死 CSS。
+
+### VERIFIED
+
+- 9 个 History/Composer focused tests 通过；
+- production `npm run build` 通过；
+- `git diff --check` 通过；
+- 全量测试 374 项中 370 项通过。4 项失败位于本次未改动的 Chat Studio、code theme、
+  既有 Composer architecture guard 和 Frontmatter presentation baseline；History 相关测试全部通过。
+
+### NOT VERIFIED
+
+- 未控制或 reload Obsidian；
+- 没有 CDP listener，因此 Modal focus restore、Escape、筛选交互、定位、恢复、回滚、
+  drawer geometry 和真实截图/录屏均未做真实应用验收；
+- owner 明确要求不要尝试控制 Obsidian，后续除非 owner 重新授权，否则保持
+  `INTERACTION NOT VERIFIED`。
