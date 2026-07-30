@@ -46,6 +46,20 @@ const root = readFileSync('src/ui/view/composer/ComposerRoot.tsx', 'utf8');
 assert.ok(root.includes('pk-composer-list__gap-anchor'), 'each top-level list gap has a visible interaction anchor');
 assert.ok(root.includes("kind: 'list-gap'"), 'gap invocation carries typed placement instead of prompt-only hints');
 assert.ok(root.includes('data-unit-id={unit.unitId}'), 'each list item is exposed as an addressable UI unit');
+assert.ok(root.includes('onPointerMove={trackListGapPointer}'), 'list-item plus follows the pointer horizontally');
+assert.ok(
+	root.includes('onPointerEnter={() => openListGap(index)}'),
+	'hovering the list-item plus opens its existing typed gap form',
+);
+assert.equal(
+	root.includes('onClick={() => setActiveGapIndex(index)}'),
+	false,
+	'list-item gap no longer requires a click to open',
+);
+assert.ok(
+	root.includes('suppressedGapIndex'),
+	'closing the hover-opened form suppresses re-open until the pointer leaves that gap',
+);
 
 const css = readFileSync('src/styles/composer.css', 'utf8');
 assert.match(
@@ -57,6 +71,11 @@ assert.match(
 	css,
 	/\.pk-composer-list__row:hover[\s\S]*?var\(--pkc-block-hover-bg\)/,
 	'list items own the hover feedback',
+);
+assert.match(
+	css,
+	/\.pk-composer-list__gap-trigger\s*\{[\s\S]*?left:\s*clamp\(/,
+	'list-item plus uses the same pointer-relative horizontal anchor',
 );
 
 console.log('composer-list-insertion-anchor: passed');

@@ -147,12 +147,17 @@ check('block action row scrolls instead of silently clipping real quick actions'
 check('insert-below uses one Markdown draft with preview and explicit AI acceptance', () => {
 	const root = readFileSync('src/ui/view/composer/ComposerRoot.tsx', 'utf8');
 	const actionRow = readFileSync('src/ui/view/composer/chrome/BlockActionRow.tsx', 'utf8');
+	const insertTypeMenu = readFileSync(
+		'src/ui/view/composer/chrome/InsertTypeMenu.tsx',
+		'utf8',
+	);
 	const draft = readFileSync('src/ui/view/composer/chrome/NewBlockDraft.tsx', 'utf8');
 	const css = readFileSync('src/styles/composer.css', 'utf8');
 	assert.ok(root.includes("panel: 'insert-draft'"));
 	assert.ok(root.includes('pinned: boolean'));
 	assert.ok(root.includes('previewPanel'));
-	assert.ok(actionRow.includes('pk-insert-type-menu'));
+	assert.ok(actionRow.includes('<InsertTypeMenu'));
+	assert.ok(insertTypeMenu.includes('pk-insert-type-menu'));
 	assert.ok(actionRow.includes('surfacePreviewCloseDelayMs'));
 	assert.ok(actionRow.includes("onPointerEnter={() => showPreview('insert-menu')}"));
 	assert.ok(actionRow.includes("onPointerEnter={() => showPreview('copy')}"));
@@ -191,7 +196,7 @@ check('insert-below uses one Markdown draft with preview and explicit AI accepta
 		/\.pk-insert-type-menu\s*\{[\s\S]*?flex-wrap:\s*nowrap;[\s\S]*?width:\s*max-content;[\s\S]*?overflow-x:\s*auto;/,
 		'insert shortcuts should read as one compact toolbar rail, not a sparse option grid',
 	);
-	assert.ok(actionRow.includes('className="pk-action-capsule pk-insert-type-menu__item"'));
+	assert.ok(insertTypeMenu.includes('className="pk-action-capsule pk-insert-type-menu__item"'));
 	const easyCopy = readFileSync('src/ui/view/composer/chrome/EasyCopyMenu.tsx', 'utf8');
 	assert.ok(easyCopy.includes('className="pk-action-capsule pk-easy-copy__tile"'));
 	assert.ok(draft.includes('StreamdownIsolated'));

@@ -12,6 +12,7 @@ import {
 import type { ComposerActionDescriptor, ComposerContextSnapshot } from '@/core/composer';
 import { Button, IconButton } from '@/ui/components/primitives';
 import { useComposerChrome } from './ComposerChromeContext';
+import { InsertTypeMenu } from './InsertTypeMenu';
 
 /**
  * Single flattened block action row (WP4, handoff §6.4 / consistency §1).
@@ -288,27 +289,13 @@ export function BlockActionRow({
 					</span>
 				</div>
 				{insertOpen && onSelectInsertType && (
-					<div
-						className="pk-block-action-row__expanded-surface pk-insert-type-menu"
-						role="menu"
-					>
-						{config.chrome.insertDraft.types.map((type) => (
-							<Button
-								key={type.id}
-								type="button"
-								variant="ghost"
-								size="sm"
-								className="pk-action-capsule pk-insert-type-menu__item"
-								role="menuitem"
-								onClick={() => {
-									hidePreview('insert-menu', true);
-									onSelectInsertType(type.id);
-								}}
-							>
-								{type.label}
-							</Button>
-						))}
-					</div>
+					<InsertTypeMenu
+						className="pk-block-action-row__expanded-surface"
+						onSelect={(typeId) => {
+							hidePreview('insert-menu', true);
+							onSelectInsertType(typeId);
+						}}
+					/>
 				)}
 				{copyOpen && copySurface && (
 					<div className="pk-block-action-row__expanded-surface">

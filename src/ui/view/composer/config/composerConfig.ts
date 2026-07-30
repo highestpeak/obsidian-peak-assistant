@@ -101,6 +101,7 @@ export interface ComposerChromeConfig {
 			/** Stable option id; labels and source templates remain config-owned. */
 			id: string;
 			label: string;
+			default: boolean;
 			initialValue: string;
 			placeholder: string;
 			/** Markdown inserted at the caret when this option is used as a syntax shortcut. */
@@ -361,19 +362,19 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 				cancel: '取消',
 				shortcutHint: '⌘↵ 写入',
 				types: [
-					{ id: 'paragraph', label: '段落', initialValue: '', placeholder: '直接写 Markdown，或输入希望 AI 生成的内容…', syntaxPrefix: '', syntaxSuffix: '', shortcut: false, mode: 'markdown' },
-					{ id: 'heading', label: '标题', initialValue: '## ', placeholder: '输入标题…', syntaxPrefix: '## ', syntaxSuffix: '', shortcut: true, mode: 'markdown' },
-					{ id: 'list', label: '列表', initialValue: '- ', placeholder: '输入列表项…', syntaxPrefix: '- ', syntaxSuffix: '', shortcut: true, mode: 'markdown' },
-					{ id: 'task', label: '待办', initialValue: '- [ ] ', placeholder: '输入待办事项…', syntaxPrefix: '- [ ] ', syntaxSuffix: '', shortcut: true, mode: 'markdown' },
-					{ id: 'quote', label: '引用', initialValue: '> ', placeholder: '输入引用内容…', syntaxPrefix: '> ', syntaxSuffix: '', shortcut: true, mode: 'markdown' },
-					{ id: 'callout', label: 'Callout', initialValue: '> [!note]\n> ', placeholder: '输入提示内容…', syntaxPrefix: '> [!note]\n> ', syntaxSuffix: '', shortcut: true, mode: 'markdown' },
-					{ id: 'formula', label: '公式', initialValue: '$$E = mc^2$$', placeholder: '输入 LaTeX 公式…', syntaxPrefix: '$$', syntaxSuffix: '$$', shortcut: true, mode: 'markdown' },
-					{ id: 'image', label: '图片', initialValue: '![[附件.png]]', placeholder: '输入图片嵌入，例如 ![[附件.png]]', syntaxPrefix: '![[', syntaxSuffix: ']]', shortcut: true, mode: 'markdown' },
-					{ id: 'table', label: '表格', initialValue: '| 项目 | 说明 |\n| --- | --- |\n| 新项目 | 待填写 |', placeholder: '输入 Markdown 表格…', syntaxPrefix: '| 项目 | 说明 |\n| --- | --- |\n| 新项目 | 待填写 |', syntaxSuffix: '', shortcut: true, mode: 'markdown' },
-					{ id: 'base', label: 'Base', initialValue: '![[新视图.base]]', placeholder: '输入 Base 嵌入，例如 ![[视图.base]]', syntaxPrefix: '![[', syntaxSuffix: '.base]]', shortcut: false, mode: 'markdown' },
-					{ id: 'canvas', label: 'Canvas', initialValue: '![[新画布.canvas]]', placeholder: '输入 Canvas 嵌入，例如 ![[画布.canvas]]', syntaxPrefix: '![[', syntaxSuffix: '.canvas]]', shortcut: false, mode: 'markdown' },
-					{ id: 'excalidraw', label: 'Excalidraw', initialValue: '![[新草图.excalidraw.md]]', placeholder: '输入 Excalidraw 嵌入，例如 ![[草图.excalidraw.md]]', syntaxPrefix: '![[', syntaxSuffix: '.excalidraw.md]]', shortcut: false, mode: 'markdown' },
-					{ id: 'ai', label: 'AI 续写', initialValue: '', placeholder: '描述希望 AI 在这里补充什么…', syntaxPrefix: '', syntaxSuffix: '', shortcut: false, mode: 'ai' },
+					{ id: 'paragraph', label: '段落', default: true, initialValue: '', placeholder: '直接写 Markdown，或输入希望 AI 生成的内容…', syntaxPrefix: '', syntaxSuffix: '', shortcut: false, mode: 'markdown' },
+					{ id: 'heading', label: '标题', default: false, initialValue: '## ', placeholder: '输入标题…', syntaxPrefix: '## ', syntaxSuffix: '', shortcut: true, mode: 'markdown' },
+					{ id: 'list', label: '列表', default: false, initialValue: '- ', placeholder: '输入列表项…', syntaxPrefix: '- ', syntaxSuffix: '', shortcut: true, mode: 'markdown' },
+					{ id: 'task', label: '待办', default: false, initialValue: '- [ ] ', placeholder: '输入待办事项…', syntaxPrefix: '- [ ] ', syntaxSuffix: '', shortcut: true, mode: 'markdown' },
+					{ id: 'quote', label: '引用', default: false, initialValue: '> ', placeholder: '输入引用内容…', syntaxPrefix: '> ', syntaxSuffix: '', shortcut: true, mode: 'markdown' },
+					{ id: 'callout', label: 'Callout', default: false, initialValue: '> [!note]\n> ', placeholder: '输入提示内容…', syntaxPrefix: '> [!note]\n> ', syntaxSuffix: '', shortcut: true, mode: 'markdown' },
+					{ id: 'formula', label: '公式', default: false, initialValue: '$$E = mc^2$$', placeholder: '输入 LaTeX 公式…', syntaxPrefix: '$$', syntaxSuffix: '$$', shortcut: true, mode: 'markdown' },
+					{ id: 'image', label: '图片', default: false, initialValue: '![[附件.png]]', placeholder: '输入图片嵌入，例如 ![[附件.png]]', syntaxPrefix: '![[', syntaxSuffix: ']]', shortcut: true, mode: 'markdown' },
+					{ id: 'table', label: '表格', default: false, initialValue: '| 项目 | 说明 |\n| --- | --- |\n| 新项目 | 待填写 |', placeholder: '输入 Markdown 表格…', syntaxPrefix: '| 项目 | 说明 |\n| --- | --- |\n| 新项目 | 待填写 |', syntaxSuffix: '', shortcut: true, mode: 'markdown' },
+					{ id: 'base', label: 'Base', default: false, initialValue: '![[新视图.base]]', placeholder: '输入 Base 嵌入，例如 ![[视图.base]]', syntaxPrefix: '![[', syntaxSuffix: '.base]]', shortcut: false, mode: 'markdown' },
+					{ id: 'canvas', label: 'Canvas', default: false, initialValue: '![[新画布.canvas]]', placeholder: '输入 Canvas 嵌入，例如 ![[画布.canvas]]', syntaxPrefix: '![[', syntaxSuffix: '.canvas]]', shortcut: false, mode: 'markdown' },
+					{ id: 'excalidraw', label: 'Excalidraw', default: false, initialValue: '![[新草图.excalidraw.md]]', placeholder: '输入 Excalidraw 嵌入，例如 ![[草图.excalidraw.md]]', syntaxPrefix: '![[', syntaxSuffix: '.excalidraw.md]]', shortcut: false, mode: 'markdown' },
+					{ id: 'ai', label: 'AI 续写', default: false, initialValue: '', placeholder: '描述希望 AI 在这里补充什么…', syntaxPrefix: '', syntaxSuffix: '', shortcut: false, mode: 'ai' },
 				],
 			},
 			undo: {

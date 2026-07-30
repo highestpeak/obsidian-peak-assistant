@@ -85,6 +85,10 @@ import {
 	type CommentDraftTarget,
 } from './chrome/CommentPanel';
 import { BlockHistoryPanel } from './chrome/BlockHistoryPanel';
+import {
+	adjacentInsertionAnchor,
+	BetweenBlockInsertGap,
+} from './chrome/BetweenBlockInsertGap';
 import { SelectionToolbar } from './chrome/SelectionToolbar';
 import { useCrossBlockTextSelection } from './chrome/useCrossBlockTextSelection';
 import { LinkPreviewLayer } from './chrome/LinkPreviewLayer';
@@ -692,11 +696,33 @@ function ComposerDocument({
 			{state.status === 'stale' && <StaleBanner strings={config.strings} onRevalidate={onRevalidate} />}
 			<AddFrontmatterEntry editing={editing} />
 			<div className="pk-composer-blocks">
-				{visibleBlocks.map((b, i) => (
-					<React.Fragment key={stableKey(b.blockId)}>
+				{visibleBlocks.map((b, i) => {
+					const previousBlock = visibleBlocks[i - 1];
+					const insertionAnchor = previousBlock
+						? adjacentInsertionAnchor(snapshot.blocks, previousBlock.blockId, b.blockId)
+						: null;
+					const insertionDraftOpen =
+						panel?.blockId === insertionAnchor &&
+						panel.panel === 'insert-draft';
+					return (
+						<React.Fragment key={stableKey(b.blockId)}>
+						{editing && insertionAnchor && !insertionDraftOpen ? (
+							<BetweenBlockInsertGap
+								anchorBlockId={insertionAnchor}
+								nextSpacing={blockSpacingRole(b, previousBlock)}
+								onSelectInsertType={(typeId) =>
+									setPanel({
+										blockId: insertionAnchor,
+										panel: 'insert-draft',
+										pinned: true,
+										initialTypeId: typeId,
+									})
+								}
+							/>
+						) : null}
 						<ComposerBlockRow
 							block={b}
-							previousBlock={visibleBlocks[i - 1]}
+							previousBlock={previousBlock}
 							snapshot={snapshot}
 							config={config}
 							foldStore={foldStore}
@@ -757,8 +783,9 @@ function ComposerDocument({
 								/>
 							</div>
 						)}
-					</React.Fragment>
-				))}
+						</React.Fragment>
+					);
+				})}
 				{drag?.dropIndex === visibleBlocks.length && <div className="pk-drop-indicator" data-chrome="true" />}
 			</div>
 			{editing && (
@@ -1527,6 +1554,7 @@ function EditableListBody({
 	const chrome = useComposerChrome();
 	const hub = chrome.runtime.hub;
 	const [activeGapIndex, setActiveGapIndex] = React.useState<number | null>(null);
+	const [suppressedGapIndex, setSuppressedGapIndex] = React.useState<number | null>(null);
 	const [gapInstruction, setGapInstruction] = React.useState('');
 	const items = block.units.filter((u) => u.unitKind === 'list-item' && !u.parentUnitId);
 	const fillGapAction = chrome.projection
@@ -1552,6 +1580,25 @@ function EditableListBody({
 			</div>
 		));
 	};
+	const openListGap = (index: number) => {
+		if (suppressedGapIndex === index) return;
+		setSuppressedGapIndex(null);
+		setGapInstruction('');
+		setActiveGapIndex(index);
+	};
+	const closeListGap = (index: number) => {
+		setActiveGapIndex(null);
+		setSuppressedGapIndex(index);
+		setGapInstruction('');
+	};
+	const trackListGapPointer = (event: React.PointerEvent<HTMLDivElement>) => {
+		if (activeGapIndex !== null) return;
+		const rect = event.currentTarget.getBoundingClientRect();
+		event.currentTarget.style.setProperty(
+			'--pk-list-gap-pointer-x',
+			`${event.clientX - rect.left}px`,
+		);
+	};
 	const renderGap = (index: number): React.ReactElement | null => {
 		if (!editing || !candidateRuntime || !fillGapAction) return null;
 		const active = activeGapIndex === index;
@@ -1562,6 +1609,11 @@ function EditableListBody({
 				data-list-gap-index={index}
 				data-active={active || undefined}
 				data-chrome="true"
+				onPointerMove={trackListGapPointer}
+				onPointerLeave={() => {
+					if (suppressedGapIndex !== index) return;
+					setSuppressedGapIndex(null);
+				}}
 				onMouseDown={(event) => event.stopPropagation()}
 			>
 				{active ? (
@@ -1576,8 +1628,7 @@ function EditableListBody({
 							onKeyDown={(event) => {
 								if (event.key === 'Escape') {
 									event.preventDefault();
-									setActiveGapIndex(null);
-									setGapInstruction('');
+									closeListGap(index);
 								}
 								if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
 								event.preventDefault();
@@ -1588,8 +1639,7 @@ function EditableListBody({
 									gapInstruction.trim() || undefined,
 									{ kind: 'list-gap', insertionIndex: index },
 								);
-								setActiveGapIndex(null);
-								setGapInstruction('');
+								closeListGap(index);
 							}}
 						/>
 						<Button
@@ -1598,10 +1648,7 @@ function EditableListBody({
 							className="pk-composer-list__gap-cancel"
 							aria-label={chrome.config.chrome.actions.listGapCancel}
 							title={chrome.config.chrome.actions.listGapCancel}
-							onClick={() => {
-								setActiveGapIndex(null);
-								setGapInstruction('');
-							}}
+							onClick={() => closeListGap(index)}
 						>
 							<X size={12} />
 						</Button>
@@ -1618,8 +1665,7 @@ function EditableListBody({
 									gapInstruction.trim() || undefined,
 									{ kind: 'list-gap', insertionIndex: index },
 								);
-								setActiveGapIndex(null);
-								setGapInstruction('');
+								closeListGap(index);
 							}}
 						>
 							{chrome.config.chrome.actions.listGapGenerate}
@@ -1633,7 +1679,8 @@ function EditableListBody({
 						aria-label={chrome.config.chrome.actions.listGapLabel}
 						title={fillGapAction.disabledReason ?? chrome.config.chrome.actions.listGapLabel}
 						disabled={Boolean(fillGapAction.disabledReason)}
-						onClick={() => setActiveGapIndex(index)}
+						onPointerEnter={() => openListGap(index)}
+						onFocus={() => openListGap(index)}
 					>
 						<Plus size={12} />
 					</Button>
