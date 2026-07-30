@@ -2192,15 +2192,6 @@
 	font-size: var(--pk-text-xs);
 	white-space: nowrap;
 }
-.peak-composer-root .pk-composer-current-view-switch {
-	flex: none;
-	height: 28px !important;
-	min-height: 28px !important;
-	max-height: 28px !important;
-	padding: 0 8px !important;
-	border-radius: var(--pk-radius-md) !important;
-	white-space: nowrap;
-}
 .peak-composer-root .pk-composer-review-all {
 	white-space: nowrap;
 }

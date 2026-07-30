@@ -62,6 +62,7 @@ const sidecar = readFileSync('src/ui/view/composer/sidecar/IntelligenceSidecar.t
 const sidecarCss = readFileSync('src/styles/composer-sidecar.css', 'utf8');
 const composerCss = readFileSync('src/styles/composer.css', 'utf8');
 const settingsLoader = readFileSync('src/app/settings/PluginSettingsLoader.ts', 'utf8');
+const undoRedoBar = readFileSync('src/ui/view/composer/chrome/UndoRedoBar.tsx', 'utf8');
 const nativeAffordance = readFileSync(
 	'src/app/composer/NativeMarkdownComposerAffordance.tsx',
 	'utf8',
@@ -78,7 +79,22 @@ assert.match(
 	/pk-sidecar-anchor--user-transition/,
 	'desktop width transitions are gated behind an explicit user-transition class',
 );
-assert.match(root, /onConvertCurrentView/, 'current-leaf conversion is separate from future-open policy');
+assert.match(root, /onConvertCurrentView/, 'Composer still receives the current-leaf conversion port');
+assert.match(
+	undoRedoBar,
+	/onValueChange=\{selectDocumentView\}/,
+	'the left document-view selector owns the visible Markdown switch',
+);
+assert.match(
+	undoRedoBar,
+	/if \(view !== 'markdown'\) return;\s*onConvertCurrentView\?\.\(view\);/,
+	'selecting Native Markdown converts the current leaf',
+);
+assert.doesNotMatch(
+	undoRedoBar,
+	/pk-composer-current-view-switch|switchCurrentToMarkdown|FileText/,
+	'the duplicate right-side Native Markdown button must stay removed',
+);
 assert.match(nativeAffordance, /getLeavesOfType\('markdown'\)/);
 assert.match(nativeAffordance, /<Button/);
 assert.match(nativeAffordance, /convert\(leaf\)/);

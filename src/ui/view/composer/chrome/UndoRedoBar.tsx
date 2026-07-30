@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { FileText, Layers3, MessageSquare, Sparkles, Undo2, Redo2 } from 'lucide-react';
+import { Layers3, MessageSquare, Sparkles, Undo2, Redo2 } from 'lucide-react';
 import { Button, Chip, IconButton, Segmented } from '@/ui/components/primitives';
 import type { DefaultDocumentView } from '@/core/composer';
 import { useOwnerDocumentListener } from '@/ui/hooks/useOwnerWindow';
@@ -86,6 +86,11 @@ export function UndoRedoBar({
 	const doRedo = React.useCallback(() => {
 		void hub?.redo();
 	}, [hub]);
+	function selectDocumentView(view: DefaultDocumentView): void {
+		onDefaultDocumentView?.(view);
+		if (view !== 'markdown') return;
+		onConvertCurrentView?.(view);
+	}
 
 	const onKeyDown = React.useCallback(
 		(ev: KeyboardEvent) => {
@@ -121,7 +126,7 @@ export function UndoRedoBar({
 						size="sm"
 						thumbLayoutId="composer-default-document-view-thumb"
 						value={defaultDocumentView}
-						onValueChange={onDefaultDocumentView}
+						onValueChange={selectDocumentView}
 						options={[
 							{ value: 'markdown', label: config.chrome.defaultDocumentView.markdown },
 							{ value: 'composer', label: config.chrome.defaultDocumentView.composer },
@@ -144,17 +149,6 @@ export function UndoRedoBar({
 				</Button>
 			) : null}
 			<span className="pk-composer-controlbar__spacer" />
-			{onConvertCurrentView ? (
-				<Button
-					variant="ghost"
-					size="sm"
-					className="pk-composer-current-view-switch"
-					onClick={() => onConvertCurrentView('markdown')}
-				>
-					<FileText size={14} />
-					<span>{config.chrome.defaultDocumentView.switchCurrentToMarkdown}</span>
-				</Button>
-			) : null}
 			{comments && (
 				<Button
 					variant={commentOpen ? 'primary' : 'ghost'}

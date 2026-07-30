@@ -129,8 +129,7 @@
 			"futureLabel": "以后打开",
 			"markdown": "原生 Markdown",
 			"composer": "Composer",
-			"switchCurrentToMarkdown": "切到原生 Markdown",
-			"help": "只影响之后普通打开的 Markdown 文件，不切换当前标签页。"
+			"help": "选择原生 Markdown 会同时切换当前标签页；选择 Composer 只更新之后的打开方式。"
 		},
 		"selection": {
 			"formats": {
