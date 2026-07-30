@@ -7,6 +7,7 @@ export * from './documentParser';
 export * from './nativeClassification';
 export * from './blockIdentity';
 export * from './sourceRevisionService';
+export * from './sourceLocation';
 export * from './documentSession';
 export * from './transactionEngine';
 export * from './candidateStore';

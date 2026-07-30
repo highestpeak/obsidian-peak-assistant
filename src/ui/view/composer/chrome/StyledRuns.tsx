@@ -54,6 +54,8 @@ function StyledRun({ run, unitId }: { run: InlineRun; unitId?: string }): React.
 				data-unit-id={unitId}
 				data-link-target={run.linkTarget}
 				data-link-kind={run.linkKind}
+				data-src-link-from={run.linkRange?.from}
+				data-src-link-to={run.linkRange?.to}
 				tabIndex={0}
 			>
 				{run.text}

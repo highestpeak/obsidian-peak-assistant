@@ -36,6 +36,27 @@ export interface OpenVaultPathAtLineOptions extends VaultNavigationOpenOptions {
 	line: number;
 }
 
+/**
+ * Stable source location shared by Markdown and Composer document hosts.
+ *
+ * `line` is the portable fallback. `from`/`to` use JavaScript UTF-16 string
+ * offsets and let structured hosts distinguish multiple resources on one line.
+ * `frontmatterKey` addresses a rendered Properties row whose DOM is not a
+ * direct text projection of the YAML source.
+ */
+export interface DocumentSourceLocation {
+	/** Zero-indexed source line. */
+	line: number;
+	from?: number;
+	to?: number;
+	text?: string;
+	frontmatterKey?: string;
+}
+
+export interface OpenVaultPathAtLocationOptions extends VaultNavigationOpenOptions {
+	location: DocumentSourceLocation;
+}
+
 export interface VaultNavigationPort {
 	/**
 	 * Open a vault file by path or wikilink target. Falls back to
@@ -57,6 +78,16 @@ export interface VaultNavigationPort {
 	 * if the editor view has not finished mounting.
 	 */
 	openVaultPathAtLine(path: string, opts: OpenVaultPathAtLineOptions): Promise<void>;
+
+	/**
+	 * Reveal a source location while preserving the current document View when
+	 * possible. Markdown owns cursor positioning; Composer owns block/unit
+	 * expansion, scrolling, and transient reveal feedback.
+	 */
+	openVaultPathAtLocation(
+		path: string,
+		opts: OpenVaultPathAtLocationOptions,
+	): Promise<boolean>;
 
 	/**
 	 * Open a search-result item: routes to `openVaultPathAtLine` when

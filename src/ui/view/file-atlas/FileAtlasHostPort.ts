@@ -7,6 +7,8 @@
  * at the app layer (see FileAtlasModal). Keeps runtime ownership out of the UI.
  */
 
+import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
+
 /** One entry in the left rail: an open or recently viewed Markdown document. */
 export interface OpenDocMeta {
 	/** Vault-relative path (also the stable id). */
@@ -60,6 +62,8 @@ export interface AtlasImageInfo {
 }
 
 export interface FileAtlasHostPort {
+	/** File identity owned by the active Markdown or Composer leaf. */
+	getActiveDocumentPath(): string | null;
 	/** Snapshot of currently-open markdown documents (for the rail). */
 	listOpenDocs(): OpenDocMeta[];
 	/** Recent + frequently viewed Markdown candidates used to fill the rail. */
@@ -78,8 +82,8 @@ export interface FileAtlasHostPort {
 	openLink(target: string, sourcePath: string, external: boolean): void;
 	/** Close the document's leaf. */
 	closeDoc(path: string): void;
-	/** Open `path` and move its editor to `line` (0-based). */
-	revealLine(path: string, line: number): void | Promise<void>;
+	/** Reveal a source location without changing an existing document View. */
+	revealLocation(path: string, location: DocumentSourceLocation): Promise<boolean>;
 	/**
 	 * The 1-based cursor line in `path`'s open editor, or null when the note isn't
 	 * open in an editor / has no cursor. Used to frame the tree on the block the

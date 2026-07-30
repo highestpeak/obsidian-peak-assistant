@@ -21,13 +21,14 @@ import {
 	writeFileRailPreference,
 	type FileRailPreference,
 } from './fileRailPreference';
+import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
 
 interface FileAtlasHostProps {
 	host: FileAtlasHostPort;
 	initialPath: string | null;
 	initialContent: string;
 	ownerDocument?: Document | null;
-	onOpenBlock: (path: string, line: number) => void;
+	onOpenBlock: (path: string, location: DocumentSourceLocation) => void;
 }
 
 export const FileAtlasHost: React.FC<FileAtlasHostProps> = ({

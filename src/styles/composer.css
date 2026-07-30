@@ -1546,7 +1546,8 @@
  * The one-shot class is removed by ComposerRoot on animation end so a second
  * locate retriggers the same visible confirmation without changing layout.
  */
-.peak-composer-root [data-block-id].pk-history-locate-flash {
+.peak-composer-root [data-block-id].pk-history-locate-flash,
+.peak-composer-root .pk-document-reveal-flash {
 	border-radius: var(--pk-radius-md);
 	animation: pk-history-locate-block-flash 1200ms ease-out;
 }
@@ -1580,7 +1581,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.peak-composer-root [data-block-id].pk-history-locate-flash {
+	.peak-composer-root [data-block-id].pk-history-locate-flash,
+	.peak-composer-root .pk-document-reveal-flash {
 		animation-duration: 700ms;
 	}
 }

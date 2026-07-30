@@ -21,6 +21,7 @@ import { DEFAULT_COMPOSER_CONFIG } from '@/ui/view/composer';
 import { DOCUMENT_COMPOSER_VIEW_TYPE } from './viewType';
 import type { DocumentComposerController } from './DocumentComposerController';
 import { DEFAULT_COMPOSER_NAVIGATION_STRINGS } from './ComposerNavigationDefaults';
+import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
 
 export { DOCUMENT_COMPOSER_VIEW_TYPE };
 
@@ -51,6 +52,24 @@ export class DocumentComposerView extends ReactItemViewHost {
 	private pendingRawState: unknown = null;
 	private controllerSubscription: (() => void) | null = null;
 	private readonly originHostId = `composer-leaf-${crypto.randomUUID()}`;
+	private revealSequence = 0;
+	private pendingReveal: { id: number; location: DocumentSourceLocation } | null = null;
+	private lastFocusedSourceOffset: number | null = null;
+	private readonly onComposerFocusIn = (event: FocusEvent): void => {
+		const target = event.target as HTMLElement | null;
+		if (!target?.closest) return;
+		const projected = target.closest<HTMLElement>('[data-src-text-from]');
+		const projectedFrom = Number(projected?.dataset.srcTextFrom);
+		if (Number.isFinite(projectedFrom)) {
+			this.lastFocusedSourceOffset = projectedFrom;
+			return;
+		}
+		const blockId = target.closest<HTMLElement>('[data-block-id]')?.dataset.blockId;
+		const block = this.controller?.getState().snapshot?.blocks.find(
+			(candidate) => candidate.blockId === blockId,
+		);
+		if (block) this.lastFocusedSourceOffset = block.source.from;
+	};
 
 	constructor(leaf: WorkspaceLeaf, appContext: AppContext) {
 		super(leaf, appContext);
@@ -68,6 +87,7 @@ export class DocumentComposerView extends ReactItemViewHost {
 			this.ensureController(runtime);
 		}
 		await super.onOpen();
+		this.contentEl.addEventListener('focusin', this.onComposerFocusIn);
 		// Load the runtime-editable config, then re-render once resolved.
 		void loadComposerConfig().then((cfg) => {
 			this.config = cfg;
@@ -76,6 +96,7 @@ export class DocumentComposerView extends ReactItemViewHost {
 	}
 
 	async onClose(): Promise<void> {
+		this.contentEl.removeEventListener('focusin', this.onComposerFocusIn);
 		this.controllerSubscription?.();
 		this.controllerSubscription = null;
 		this.controller?.stop();
@@ -86,6 +107,22 @@ export class DocumentComposerView extends ReactItemViewHost {
 	/** Vault file currently bound to this product view, for workspace file navigators. */
 	getSourceFilePath(): string | null {
 		return this.viewState?.filePath ?? this.controller?.getState().filePath ?? null;
+	}
+
+	/** Queue a one-shot source reveal without changing this leaf into Markdown. */
+	revealSourceLocation(location: DocumentSourceLocation): boolean {
+		if (!this.getSourceFilePath()) return false;
+		this.pendingReveal = { id: ++this.revealSequence, location };
+		this.getReactRenderer()?.render(this.renderElement());
+		return true;
+	}
+
+	/** Last focused Composer source line, exposed to File Atlas framing. */
+	getCursorLine(): number | null {
+		if (this.lastFocusedSourceOffset === null) return null;
+		const source = this.controller?.getState().snapshot?.sourceText;
+		if (source === undefined) return null;
+		return source.slice(0, this.lastFocusedSourceOffset).split('\n').length;
 	}
 
 	getDisplayText(): string {
@@ -107,6 +144,9 @@ export class DocumentComposerView extends ReactItemViewHost {
 			runtime?.navigation?.getLegacyActiveMarkdownPath(),
 		);
 		if (normalized) {
+			if (this.viewState?.filePath !== normalized.filePath) {
+				this.lastFocusedSourceOffset = null;
+			}
 			this.viewState = normalized;
 			if (this.controller) this.controller.bindFile(normalized.filePath);
 			else if (runtime) this.ensureController(runtime);
@@ -175,6 +215,7 @@ export class DocumentComposerView extends ReactItemViewHost {
 					}
 					: undefined,
 				onOpenLink: (kind, target) => this.openLink(kind, target),
+				revealRequest: this.pendingReveal ?? undefined,
 			},
 			this.appContext,
 		);

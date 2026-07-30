@@ -9,6 +9,7 @@
  */
 
 import type { DocumentBlock, FileAtlasAnchor, RawBlockKind } from '@/core/document/atlas/types';
+import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
 import { RawBlockKind as Kind } from '@/core/document/atlas/types';
 import {
 	DEFAULT_FILE_ATLAS_CONFIG,
@@ -56,6 +57,18 @@ export function isGroupNode(node: DocumentBlock): boolean {
 /** Stable id for the synthetic frontmatter group node. */
 export const FRONTMATTER_GROUP_ID = 'fa-frontmatter-group';
 
+export function documentLocationForAtlasBlock(block: DocumentBlock): DocumentSourceLocation {
+	const frontmatterKey = block.detail?.propertyKey
+		?? (block.kind === Kind.Tag && block.detail?.tagSource === 'frontmatter' ? 'tags' : undefined);
+	return {
+		line: Math.max(0, block.anchor.lineStart - 1),
+		...(block.anchor.sourceFrom !== undefined ? { from: block.anchor.sourceFrom } : {}),
+		...(block.anchor.sourceTo !== undefined ? { to: block.anchor.sourceTo } : {}),
+		...(block.source ? { text: block.source } : {}),
+		...(frontmatterKey ? { frontmatterKey } : {}),
+	};
+}
+
 /**
  * Wrap the document's leading run of Property/Tag blocks into one synthetic
  * {@link Kind.Frontmatter} group so metadata reads (and folds) like a titled
@@ -81,6 +94,8 @@ export function groupFrontmatter(blocks: DocumentBlock[], title: string): Docume
 		contentHash: '',
 		lineStart,
 		lineEnd,
+		sourceFrom: children[0].anchor.sourceFrom,
+		sourceTo: children[children.length - 1].anchor.sourceTo,
 		status: 'active',
 	};
 	const group: DocumentBlock = {

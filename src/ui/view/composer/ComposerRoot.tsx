@@ -28,6 +28,7 @@ import {
 	stubComposerCapabilityProjection,
 } from '@/core/composer';
 import type { ComposerListItemPatchPayload } from '@/core/schemas/composer';
+import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
 import {
 	buildCommentSourceRef,
 	buildMoveBlockOps,
@@ -46,6 +47,8 @@ import {
 	type ComposerHistoryActivity,
 	type ComposerHistoryTransactionResolver,
 	type HiddenSourceRange,
+	type ResolvedComposerSourceLocation,
+	resolveComposerSourceLocation,
 } from '@/service/composer';
 import { Button } from '@/ui/components/primitives';
 import {
@@ -163,6 +166,8 @@ export interface ComposerRootProps {
 	/** Last explicit workspace-level Intelligence open/close preference. */
 	initialIntelligenceOpen?: boolean;
 	onIntelligenceManualOpenChange?: (open: boolean) => void | Promise<void>;
+	/** One-shot app-owned location reveal for this bound Composer leaf. */
+	revealRequest?: { id: number; location: DocumentSourceLocation };
 }
 
 interface PanelState {
@@ -198,12 +203,14 @@ export function ComposerRoot({
 	onConvertCurrentView,
 	initialIntelligenceOpen = false,
 	onIntelligenceManualOpenChange,
+	revealRequest,
 }: ComposerRootProps): React.ReactElement {
 	const rootRef = React.useRef<HTMLDivElement | null>(null);
 	const subscribe = React.useCallback((cb: () => void) => source.subscribe(cb), [source]);
 	const getSnapshot = React.useCallback(() => source.getState(), [source]);
 	const state = React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 	const [foldStore] = React.useState(createComposerFoldStore);
+	const processedRevealId = React.useRef<number | null>(null);
 	// The default streaming-text card + the three WP7 image cards (asset / caption /
 	// layout), registered by stable renderer id after the default set so image
 	// candidates dispatch without touching the candidates barrel (harness included).
@@ -223,6 +230,23 @@ export function ComposerRoot({
 		scrollGuardGestureWindowMs
 		?? runtime.transactionConfig?.scrollGuardGestureWindowMs
 		?? DEFAULT_TRANSACTION_CONFIG.scrollGuardGestureWindowMs;
+
+	React.useEffect(() => {
+		if (!revealRequest || !state.snapshot) return;
+		if (processedRevealId.current === revealRequest.id) return;
+		const resolved = resolveComposerSourceLocation(state.snapshot, revealRequest.location);
+		processedRevealId.current = revealRequest.id;
+		if (!resolved) return;
+		unfoldForDocumentLocation(foldStore, state.snapshot.blocks, resolved.block.blockId);
+		const root = rootRef.current;
+		const win = root?.ownerDocument.defaultView;
+		if (!root || !win) return;
+		win.requestAnimationFrame(() => {
+			win.requestAnimationFrame(() => {
+				locateAndFlashComposerLocation(root, resolved);
+			});
+		});
+	}, [foldStore, revealRequest, state.snapshot]);
 
 	const [flushers] = React.useState(() => new Set<() => Promise<void>>());
 	const chromeValue = React.useMemo<ComposerChromeValue>(
@@ -1957,6 +1981,72 @@ function locateAndFlashComposerBlock(shell: HTMLElement | null, blockId: string)
 	block.scrollIntoView({ block: 'center', behavior: 'smooth' });
 	flashLocatedComposerBlock(block);
 	return true;
+}
+
+function unfoldForDocumentLocation(
+	foldStore: ComposerFoldStore,
+	blocks: readonly ComposerBlock[],
+	targetBlockId: string,
+): void {
+	const folded = foldStore.getState().folded;
+	const toUnfold = [targetBlockId];
+	for (const block of blocks) {
+		if (block.kind !== 'heading' || !folded.has(block.blockId)) continue;
+		if (sectionBlockIds(blocks, block.blockId).includes(targetBlockId)) {
+			toUnfold.push(block.blockId);
+		}
+	}
+	foldStore.getState().unfold(toUnfold);
+}
+
+function locateAndFlashComposerLocation(
+	shell: HTMLElement,
+	location: ResolvedComposerSourceLocation,
+): boolean {
+	const block = shell.querySelector<HTMLElement>(
+		`.pk-composer-block[data-block-id="${CSS.escape(location.block.blockId)}"]`,
+	);
+	if (!block) return false;
+	const frontmatter = location.frontmatterKey
+		? block.querySelector<HTMLElement>(
+				`[data-frontmatter-key="${CSS.escape(location.frontmatterKey)}"]`,
+			)
+		: null;
+	const unit = location.unit
+		? block.querySelector<HTMLElement>(
+				`[data-unit-id="${CSS.escape(location.unit.unitId)}"]`,
+			)
+		: null;
+	const exactLink = Array.from(
+		block.querySelectorAll<HTMLElement>('[data-src-link-from]'),
+	).find((element) => (
+		Number(element.dataset.srcLinkFrom) === location.sourceFrom
+			&& Number(element.dataset.srcLinkTo) === location.sourceTo
+	));
+	const exactRuns = Array.from(
+		block.querySelectorAll<HTMLElement>('[data-src-text-from]'),
+	).filter((element) => Number(element.dataset.srcTextFrom) === location.sourceFrom);
+	const target = frontmatter ?? exactLink ?? exactRuns.at(-1) ?? unit ?? block;
+	markScrollIntent(scrollerOf(shell));
+	target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+	flashDocumentLocation(target);
+	return true;
+}
+
+const documentLocationFlashCleanup = new WeakMap<HTMLElement, () => void>();
+
+function flashDocumentLocation(target: HTMLElement): void {
+	documentLocationFlashCleanup.get(target)?.();
+	target.classList.remove('pk-document-reveal-flash');
+	void target.offsetWidth;
+	const cleanup = () => {
+		target.classList.remove('pk-document-reveal-flash');
+		target.removeEventListener('animationend', cleanup);
+		documentLocationFlashCleanup.delete(target);
+	};
+	documentLocationFlashCleanup.set(target, cleanup);
+	target.addEventListener('animationend', cleanup);
+	target.classList.add('pk-document-reveal-flash');
 }
 
 function flashLocatedComposerBlock(block: HTMLElement): void {

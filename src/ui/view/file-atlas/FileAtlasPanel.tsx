@@ -26,6 +26,7 @@ import {
 	computeVisibility,
 	blockIdAtLine,
 	defaultCollapsedIds,
+	documentLocationForAtlasBlock,
 	firstSelectableId,
 	FRONTMATTER_GROUP_ID,
 	groupFrontmatter,
@@ -40,6 +41,7 @@ import { Button } from '@/ui/component/shared-ui/button';
 import type { FileAtlasHostPort } from './FileAtlasHostPort';
 import type { FileRailSections, FileRailSortMode } from './fileRailModel';
 import type { FileRailPreference } from './fileRailPreference';
+import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
 import {
 	displayIdentity,
 	firstProjectedId,
@@ -56,7 +58,7 @@ export interface FileAtlasPanelProps {
 	displayPath: string;
 	content: string;
 	host: FileAtlasHostPort;
-	onOpenBlock: (path: string, line: number) => void;
+	onOpenBlock: (path: string, location: DocumentSourceLocation) => void;
 	onSelectDoc: (path: string) => void;
 	onCloseDoc: (path: string) => void;
 	onSortModeChange: (mode: FileRailSortMode) => void;
@@ -274,8 +276,7 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 	};
 
 	const reveal = (block: DocumentBlock): void => {
-		// Editor lines are 0-based; anchor lines are 1-based.
-		onOpenBlock(activePath, Math.max(0, block.anchor.lineStart - 1));
+		onOpenBlock(activePath, documentLocationForAtlasBlock(block));
 	};
 
 	const copyLink = (block: DocumentBlock): void => {

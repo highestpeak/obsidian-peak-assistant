@@ -13,6 +13,7 @@ export interface ComposerFoldState {
 	/** Ids of blocks (or headings, whose whole section collapses) that are folded. */
 	folded: ReadonlySet<string>;
 	toggle: (blockId: string) => void;
+	unfold: (blockIds: readonly string[]) => void;
 	isFolded: (blockId: string) => boolean;
 }
 
@@ -24,6 +25,13 @@ export function createComposerFoldStore() {
 				const next = new Set(state.folded);
 				if (next.has(blockId)) next.delete(blockId);
 				else next.add(blockId);
+				return { folded: next };
+			}),
+		unfold: (blockIds) =>
+			set((state) => {
+				if (!blockIds.some((blockId) => state.folded.has(blockId))) return state;
+				const next = new Set(state.folded);
+				for (const blockId of blockIds) next.delete(blockId);
 				return { folded: next };
 			}),
 		isFolded: (blockId) => get().folded.has(blockId),

@@ -57,7 +57,9 @@ const RESOURCE_KINDS: ReadonlySet<RawBlockKind> = new Set([
 
 interface ParseCtx {
 	filePath: string;
+	content: string;
 	lines: string[];
+	lineStarts: number[];
 	/** monotonically increasing per-parse counter for blockId uniqueness. */
 	seq: number;
 }
@@ -69,7 +71,13 @@ interface ParseCtx {
  * @param filePath Vault-relative path — stored on every anchor.
  */
 export function parseDocumentBlocks(content: string, filePath: string): AtlasDocument {
-	const ctx: ParseCtx = { filePath, lines: content.split(/\r?\n/), seq: 0 };
+	const ctx: ParseCtx = {
+		filePath,
+		content,
+		lines: content.split(/\r?\n/),
+		lineStarts: lineStartsOf(content),
+		seq: 0,
+	};
 	const ast = safeParse(content);
 
 	const top: DocumentBlock[] = [];
@@ -171,7 +179,7 @@ function emitFrontmatter(ctx: ParseCtx, ast: Root, out: DocumentBlock[]): void {
 		// the Property row while exposing those references as owned resources.
 		// Tags are emitted separately below, so exclude them here to avoid
 		// representing the same frontmatter tag twice.
-		const references = extractInlineResources(ctx, inlineResourceText(value), line, line)
+		const references = extractInlineResources(ctx, inlineResourceText(value), line, line, false)
 			.filter((resource) => resource.kind !== RawBlockKind.Tag);
 		if (references.length) property.children = references;
 		out.push(property);
@@ -572,7 +580,8 @@ export function extractInlineResources(
 	ctx: ParseCtx,
 	raw: string,
 	lineStart: number,
-	lineEnd: number
+	lineEnd: number,
+	exactSource = true,
 ): DocumentBlock[] {
 	const matches: Array<{
 		index: number;
@@ -581,6 +590,8 @@ export function extractInlineResources(
 		title: string;
 		sub: string;
 		source: string;
+		sourceIndex: number;
+		sourceLength: number;
 		detail?: BlockDetail;
 	}> = [];
 	const push = (
@@ -591,6 +602,7 @@ export function extractInlineResources(
 		source: string,
 		detail?: BlockDetail
 	): void => {
+		const sourceIndexInMatch = Math.max(0, match[0].indexOf(source));
 		matches.push({
 			index: match.index ?? 0,
 			discoveryOrder: matches.length,
@@ -598,6 +610,8 @@ export function extractInlineResources(
 			title,
 			sub,
 			source,
+			sourceIndex: (match.index ?? 0) + sourceIndexInMatch,
+			sourceLength: source.length,
 			detail,
 		});
 	};
@@ -711,6 +725,8 @@ export function extractInlineResources(
 			const matchedLines = (match.source.match(/\n/g) ?? []).length;
 			const resourceLineStart = Math.min(lineEnd, lineStart + linesBefore);
 			const resourceLineEnd = Math.min(lineEnd, resourceLineStart + matchedLines);
+			const localFrom = match.sourceIndex;
+			const localTo = localFrom + match.sourceLength;
 			return finalizeLeaf(ctx, {
 				kind: match.kind,
 				title: match.title,
@@ -720,6 +736,12 @@ export function extractInlineResources(
 				lineEnd: resourceLineEnd,
 				detail: match.detail,
 				ordinal,
+				...(exactSource
+					? {
+							sourceFrom: sourceOffsetFromSlice(ctx, raw, lineStart, localFrom),
+							sourceTo: sourceOffsetFromSlice(ctx, raw, lineStart, localTo),
+						}
+					: {}),
 			});
 		});
 }
@@ -746,11 +768,14 @@ interface LeafSpec {
 	lineEnd: number;
 	ordinal: number;
 	detail?: BlockDetail;
+	sourceFrom?: number;
+	sourceTo?: number;
 }
 
 function finalizeLeaf(ctx: ParseCtx, spec: LeafSpec): DocumentBlock {
 	const contentHash = hashString(spec.source, 32);
 	const blockId = `${spec.kind}-${spec.lineStart}-${(ctx.seq++).toString(36)}-${contentHash.slice(0, 8)}`;
+	const fallbackRange = sourceRangeForLines(ctx, spec.lineStart, spec.lineEnd);
 	const anchor: FileAtlasAnchor = {
 		filePath: ctx.filePath,
 		blockId,
@@ -760,6 +785,8 @@ function finalizeLeaf(ctx: ParseCtx, spec: LeafSpec): DocumentBlock {
 		contentHash,
 		lineStart: spec.lineStart,
 		lineEnd: spec.lineEnd,
+		sourceFrom: spec.sourceFrom ?? fallbackRange.from,
+		sourceTo: spec.sourceTo ?? fallbackRange.to,
 		status: 'active',
 	};
 	return {
@@ -810,6 +837,42 @@ function computeStats(content: string, top: DocumentBlock[]): AtlasStats {
 /** 1-based inclusive line slice from the source. */
 function sliceLines(ctx: ParseCtx, start: number, end: number): string {
 	return ctx.lines.slice(start - 1, end).join('\n');
+}
+
+function lineStartsOf(content: string): number[] {
+	const starts = [0];
+	for (let index = 0; index < content.length; index += 1) {
+		if (content.charCodeAt(index) === 10) starts.push(index + 1);
+	}
+	return starts;
+}
+
+function sourceRangeForLines(
+	ctx: ParseCtx,
+	startLine: number,
+	endLine: number,
+): { from: number; to: number } {
+	const safeStart = Math.max(1, Math.min(startLine, ctx.lineStarts.length));
+	const safeEnd = Math.max(safeStart, Math.min(endLine, ctx.lineStarts.length));
+	const from = ctx.lineStarts[safeStart - 1] ?? 0;
+	const nextLine = ctx.lineStarts[safeEnd] ?? ctx.content.length;
+	let to = nextLine;
+	while (to > from && (ctx.content[to - 1] === '\n' || ctx.content[to - 1] === '\r')) to -= 1;
+	return { from, to };
+}
+
+/** Map an offset in a normalized `sliceLines()` string back to the source. */
+function sourceOffsetFromSlice(
+	ctx: ParseCtx,
+	raw: string,
+	startLine: number,
+	localOffset: number,
+): number {
+	const before = raw.slice(0, Math.max(0, localOffset));
+	const pieces = before.split('\n');
+	const lineIndex = Math.max(0, startLine - 1 + pieces.length - 1);
+	const lineFrom = ctx.lineStarts[lineIndex] ?? ctx.content.length;
+	return Math.min(ctx.content.length, lineFrom + (pieces.at(-1)?.length ?? 0));
 }
 
 function matchCalloutType(raw: string): string | null {

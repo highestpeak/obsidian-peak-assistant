@@ -25,12 +25,11 @@ assert.ok(
 	'fold and tray controls must not bubble a row double-click',
 );
 assert.match(modal, /this\.close\(\)/);
-assert.match(modal, /host\.revealLine\(path, line\)/);
-assert.match(hostAdapter, /view\?\.editor\?\.focus\(\)/);
-assert.match(hostAdapter, /flashRevealedEditorLine\(view\)/);
-assert.match(hostAdapter, /\.cm-line\.cm-activeLine/);
-assert.match(hostAdapter, /requestAnimationFrame/);
-assert.match(css, /\.markdown-source-view \.cm-line\.pkfa-editor-reveal-flash/);
+assert.match(modal, /host\.revealLocation\(path, location\)/);
+assert.match(hostAdapter, /openVaultPathAtLocation/);
+assert.match(hostAdapter, /getActiveDocumentPath/);
+assert.doesNotMatch(hostAdapter, /flashRevealedEditorLine/);
+assert.match(css, /\.markdown-source-view \.cm-line\.pk-document-reveal-flash/);
 assert.match(css, /@keyframes pkfa-editor-reveal-line-flash/);
 assert.match(css, /var\(--interactive-accent\)/);
 assert.doesNotMatch(

@@ -485,7 +485,7 @@ function PropertyGrid({
 		<div className="pk-fm-grid">
 			{fields.map((field) => (
 				<React.Fragment key={field.key}>
-					<span className="pk-fm-grid__key">
+					<span className="pk-fm-grid__key" data-frontmatter-key={field.key}>
 						{field.key}
 						<OriginChip origin={field.origin} config={config} />
 					</span>

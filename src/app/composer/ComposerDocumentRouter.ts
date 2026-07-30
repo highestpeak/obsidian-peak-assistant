@@ -24,12 +24,22 @@ import {
 	selectHostOpenedLeaf,
 } from './ComposerHostOpenPolicy';
 import { NativeMarkdownComposerAffordance } from './NativeMarkdownComposerAffordance';
+import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
+import { selectDocumentLocationLeaf } from './DocumentLocationPolicy';
+import { revealMarkdownLocation } from './DocumentLocationReveal';
 
 export interface ComposerDocumentRouterOptions {
 	getDefaultView(): DefaultDocumentView;
 	setDefaultView(view: DefaultDocumentView): Promise<void>;
 	openIntelligenceCompanion?(filePath: string): void;
 	strings?: ComposerNavigationStrings;
+}
+
+export interface ComposerLocationRevealRequest {
+	filePath: string;
+	location: DocumentSourceLocation;
+	disposition: ComposerOpenRequest['disposition'];
+	reason: ComposerOpenRequest['reason'];
 }
 
 interface ComposerLeafConversionOptions {
@@ -165,6 +175,53 @@ export class ComposerDocumentRouter {
 		});
 		await this.app.workspace.revealLeaf(leaf);
 		return leaf;
+	}
+
+	/**
+	 * Reveal a source location without converting an existing document leaf.
+	 * New targets preserve the current document View for replace/reuse opens and
+	 * use the configured default for explicit new tabs/splits.
+	 */
+	async revealLocation(request: ComposerLocationRevealRequest): Promise<boolean> {
+		const file = this.app.vault.getAbstractFileByPath(request.filePath);
+		if (!(file instanceof TFile) || file.extension !== 'md') return false;
+		const activeLeaf = this.app.workspace.activeLeaf;
+		const activeView = activeLeaf ? documentViewForLeaf(activeLeaf) : null;
+		const preferredView = activeView ?? this.getDefaultView();
+		const createsNewLeaf =
+			request.disposition === 'new-tab' || request.disposition === 'split';
+		const candidates = [
+			...this.app.workspace.getLeavesOfType('markdown'),
+			...this.app.workspace.getLeavesOfType(DOCUMENT_COMPOSER_VIEW_TYPE),
+		].map((leaf) => ({
+			leaf,
+			path: filePathForLeaf(leaf),
+			view: documentViewForLeaf(leaf),
+			active: leaf === activeLeaf,
+		}));
+		let leaf = createsNewLeaf
+			? null
+			: selectDocumentLocationLeaf(candidates, file.path, preferredView);
+		if (!leaf) {
+			const targetView = createsNewLeaf ? this.getDefaultView() : preferredView;
+			leaf = await this.open({
+				filePath: file.path,
+				view: targetView,
+				disposition: request.disposition,
+				reason: request.reason,
+			});
+		}
+		if (!leaf) return false;
+		await this.app.workspace.revealLeaf(leaf);
+		if (leaf.view instanceof MarkdownView) {
+			return revealMarkdownLocation(leaf.view, request.location);
+		}
+		const composer = leaf.view as {
+			getSourceFilePath?: () => string | null;
+			revealSourceLocation?: (location: DocumentSourceLocation) => boolean;
+		};
+		if (composer.getSourceFilePath?.() !== file.path) return false;
+		return composer.revealSourceLocation?.(request.location) ?? false;
 	}
 
 	async convertLeaf(

@@ -16,7 +16,7 @@
  * This intentionally global, one-shot class highlights the complete active
  * editor line after navigation; the app adapter removes it on animation end.
  */
-.markdown-source-view .cm-line.pkfa-editor-reveal-flash {
+.markdown-source-view .cm-line.pk-document-reveal-flash {
 	animation: pkfa-editor-reveal-line-flash 1150ms ease-out;
 	border-radius: var(--radius-s);
 }
@@ -40,7 +40,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.markdown-source-view .cm-line.pkfa-editor-reveal-flash {
+	.markdown-source-view .cm-line.pk-document-reveal-flash {
 		animation: pkfa-editor-reveal-line-flash-reduced 700ms ease-out;
 	}
 }

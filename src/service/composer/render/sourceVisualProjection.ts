@@ -27,6 +27,7 @@ export type SourceVisualPart =
 		markRanges?: InlineMarkRanges;
 		linkTarget?: string;
 		linkKind?: 'wikilink' | 'markdown' | 'bare-url' | 'html';
+		linkRange?: { from: number; to: number };
 	}
 	| {
 		kind: 'math';
@@ -49,6 +50,7 @@ interface CandidatePart {
 	markRanges?: InlineMarkRanges;
 	linkTarget?: string;
 	linkKind?: 'wikilink' | 'markdown' | 'bare-url' | 'html';
+	linkRange?: { from: number; to: number };
 }
 
 /**
@@ -134,6 +136,7 @@ function visibleCandidates(text: string, baseFrom: number, mathMode: 'atom' | 's
 				markRanges: part.run.markRanges,
 				linkTarget: part.run.linkTarget,
 				linkKind: part.run.linkKind,
+				linkRange: part.run.linkRange,
 			});
 			continue;
 		}
@@ -219,6 +222,7 @@ function mergeWithHiddenGaps(
 				...(part.markRanges ? { markRanges: part.markRanges } : {}),
 				linkTarget: part.linkTarget,
 				linkKind: part.linkKind,
+				linkRange: part.linkRange,
 			});
 		}
 		cursor = Math.max(cursor, part.to);

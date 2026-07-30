@@ -134,10 +134,13 @@ export const HeadingModeContainer: React.FC<HeadingModeContainerProps> = ({ file
 		if (!vaultNavigation) return;
 		try {
 			// Convert 1-based UI line to 0-based editor line.
-			await vaultNavigation.openVaultPathAtLine(filePath, { line: Math.max(0, line - 1), newLeaf: false });
+			await vaultNavigation.openVaultPathAtLocation(filePath, {
+				location: { line: Math.max(0, line - 1) },
+				newLeaf: false,
+			});
 			onClose?.();
 		} catch (err) {
-			console.warn('[HeadingModeContainer] openVaultPathAtLine failed', err);
+			console.warn('[HeadingModeContainer] location reveal failed', err);
 		}
 	}, [vaultNavigation, filePath, onClose]);
 

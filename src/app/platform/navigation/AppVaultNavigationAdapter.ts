@@ -9,14 +9,16 @@
 // search `createOpenSourceCallback`. Adapter may use raw Obsidian
 // primitives internally — the port intentionally hides them.
 
-import { App, TFile, ViewState, WorkspaceLeaf } from 'obsidian';
+import { App, MarkdownView, TFile, ViewState, WorkspaceLeaf } from 'obsidian';
 import type {
+	OpenVaultPathAtLocationOptions,
 	OpenVaultPathAtLineOptions,
 	VaultNavigationOpenOptions,
 	VaultNavigationPort,
 } from '@/core/ports/VaultNavigationPort';
 import type { SearchResultItem } from '@/core/search/searchTypes';
 import type { ComposerDocumentRouter } from '@/app/composer/ComposerDocumentRouter';
+import { revealMarkdownLocation } from '@/app/composer/DocumentLocationReveal';
 
 function isFile(f: unknown): f is TFile {
 	return !!f && typeof f === 'object' && 'extension' in (f as Record<string, unknown>);
@@ -31,8 +33,20 @@ export class AppVaultNavigationAdapter implements VaultNavigationPort {
 	async openLink(path: string, opts: VaultNavigationOpenOptions = {}): Promise<void> {
 		const newLeaf = opts.newLeaf ?? 'tab';
 		const sourcePath = opts.sourcePath ?? this.app.workspace.getActiveFile()?.path ?? '';
-		const file = this.app.vault.getAbstractFileByPath(path);
+		const { linkPath, fragment } = splitVaultLinkTarget(path);
+		const direct = this.app.vault.getAbstractFileByPath(linkPath || sourcePath);
+		const file = isFile(direct)
+			? direct
+			: this.app.metadataCache.getFirstLinkpathDest(linkPath, sourcePath);
 		if (isFile(file)) {
+			const line = fragment ? this.sourceLineForFragment(file, fragment) : null;
+			if (line !== null) {
+				await this.openVaultPathAtLocation(file.path, {
+					newLeaf,
+					location: { line },
+				});
+				return;
+			}
 			if (await this.openMarkdownThroughPolicy(file, newLeaf, 'wikilink')) return;
 			await this.app.workspace.getLeaf(newLeaf as any).openFile(file);
 			return;
@@ -52,50 +66,41 @@ export class AppVaultNavigationAdapter implements VaultNavigationPort {
 	}
 
 	async openVaultPathAtLine(path: string, opts: OpenVaultPathAtLineOptions): Promise<void> {
+		await this.openVaultPathAtLocation(path, {
+			...opts,
+			location: { line: opts.line },
+		});
+	}
+
+	async openVaultPathAtLocation(
+		path: string,
+		opts: OpenVaultPathAtLocationOptions,
+	): Promise<boolean> {
 		const file = this.app.vault.getAbstractFileByPath(path);
 		if (!isFile(file)) {
 			console.warn(`[vault-nav] File not found: ${path}`);
-			return;
+			return false;
 		}
 		const newLeaf = opts.newLeaf ?? false;
+		const router = this.getComposerRouter();
+		if (file.extension === 'md' && router && newLeaf !== 'window') {
+			const revealed = await router.revealLocation({
+				filePath: file.path,
+				location: opts.location,
+				disposition: newLeaf === true || newLeaf === 'tab' ? 'new-tab' : 'reuse-existing',
+				reason: 'search',
+			});
+			if (revealed) return true;
+		}
 		const leaf = this.app.workspace.getLeaf(newLeaf as any);
 		await leaf.openFile(file);
 
-		// Wait briefly for the editor view to mount before we set the cursor.
+		// Non-Markdown and detached-window fallbacks remain native. Give an
+		// available Markdown editor one brief mount boundary before locating.
 		await new Promise((resolve) => setTimeout(resolve, 100));
-
-		const view = leaf.view as any;
-		const editor = view?.editor;
-		if (!editor || typeof editor.setCursor !== 'function') return;
-
-		let safeLine = opts.line;
-		try {
-			let lineCount = 0;
-			if (typeof editor.lineCount === 'function') {
-				lineCount = editor.lineCount();
-			} else if (editor.state?.doc) {
-				lineCount = editor.state.doc.lines;
-			}
-			if (lineCount > 0 && safeLine >= lineCount) {
-				safeLine = Math.max(0, lineCount - 1);
-			}
-		} catch (e) {
-			console.warn('[vault-nav] line-count probe failed', e);
-		}
-
-		try {
-			editor.setCursor({ line: safeLine, ch: 0 });
-		} catch (e) {
-			console.warn('[vault-nav] setCursor failed', e);
-		}
-
-		try {
-			if (typeof editor.scrollIntoView === 'function') {
-				editor.scrollIntoView({ from: { line: safeLine, ch: 0 }, to: { line: safeLine, ch: 0 } }, true);
-			}
-		} catch (e) {
-			console.warn('[vault-nav] scrollIntoView failed', e);
-		}
+		return leaf.view instanceof MarkdownView
+			? revealMarkdownLocation(leaf.view, opts.location)
+			: false;
 	}
 
 	async openSearchResult(
@@ -103,7 +108,10 @@ export class AppVaultNavigationAdapter implements VaultNavigationPort {
 		opts: VaultNavigationOpenOptions = {},
 	): Promise<void> {
 		if (typeof item === 'object' && item.loc?.line) {
-			await this.openVaultPathAtLine(item.path, { ...opts, line: item.loc.line - 1 });
+			await this.openVaultPathAtLocation(item.path, {
+				...opts,
+				location: { line: item.loc.line - 1 },
+			});
 			return;
 		}
 		const path = typeof item === 'string' ? item : item.path;
@@ -193,5 +201,40 @@ export class AppVaultNavigationAdapter implements VaultNavigationPort {
 			reason,
 		});
 		return Boolean(leaf);
+	}
+
+	private sourceLineForFragment(file: TFile, fragment: string): number | null {
+		const cache = this.app.metadataCache.getFileCache(file);
+		if (!cache) return null;
+		const decoded = safeDecodeURIComponent(fragment);
+		if (decoded.startsWith('^')) {
+			const block = cache.blocks?.[decoded.slice(1)];
+			return block ? Math.max(0, block.position.start.line) : null;
+		}
+		const heading = cache.headings?.find(
+			(candidate) => normalizeHeadingFragment(candidate.heading) === normalizeHeadingFragment(decoded),
+		);
+		return heading ? Math.max(0, heading.position.start.line) : null;
+	}
+}
+
+function splitVaultLinkTarget(target: string): { linkPath: string; fragment: string | null } {
+	const index = target.indexOf('#');
+	if (index < 0) return { linkPath: target, fragment: null };
+	return {
+		linkPath: target.slice(0, index),
+		fragment: target.slice(index + 1) || null,
+	};
+}
+
+function normalizeHeadingFragment(value: string): string {
+	return value.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+}
+
+function safeDecodeURIComponent(value: string): string {
+	try {
+		return decodeURIComponent(value);
+	} catch {
+		return value;
 	}
 }

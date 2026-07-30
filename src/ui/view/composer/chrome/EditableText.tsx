@@ -333,6 +333,8 @@ function VisualPart({ part, unitId }: { part: SourceVisualPart; unitId?: string 
 				data-unit-id={unitId}
 				data-link-target={part.linkTarget}
 				data-link-kind={part.linkKind}
+				data-src-link-from={part.linkRange?.from}
+				data-src-link-to={part.linkRange?.to}
 				tabIndex={0}
 			>
 				{part.text}

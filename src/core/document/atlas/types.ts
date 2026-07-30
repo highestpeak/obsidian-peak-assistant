@@ -86,6 +86,9 @@ export interface FileAtlasAnchor {
 	lineStart: number;
 	/** 1-based inclusive end line in the source file. */
 	lineEnd: number;
+	/** UTF-16 source range in the current document revision. */
+	sourceFrom?: number;
+	sourceTo?: number;
 	status: 'active' | 'stale' | 'unresolved';
 }
 

@@ -17,6 +17,7 @@ import { createReactElementWithServices } from '@/app/ui-host/ReactElementFactor
 import { AppContext } from '@/app/context/AppContext';
 import { FileAtlasHost } from '@/ui/view/file-atlas/FileAtlasHost';
 import { composeFileAtlasHost } from './composeFileAtlasHost';
+import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
 
 export class FileAtlasModal extends Modal {
 	private reactRenderer: ReactRenderer | null = null;
@@ -40,20 +41,19 @@ export class FileAtlasModal extends Modal {
 		this.modalEl.style.padding = '0';
 		this.contentEl.style.padding = '0';
 
-		const app = this.appContext.app;
-		const file = app.workspace.getActiveFile();
+		const host = composeFileAtlasHost(this.appContext);
+		const initialPath = host.getActiveDocumentPath();
 		let initialContent = '';
-		if (file) {
-			initialContent = await app.vault.cachedRead(file);
+		if (initialPath) {
+			initialContent = await host.readDoc(initialPath);
 			if (this.closed || token !== this.openToken) return;
 		}
 
-		const host = composeFileAtlasHost(this.appContext);
 		const ownerWindow = this.contentEl.ownerDocument.defaultView;
-		const openBlock = (path: string, line: number): void => {
+		const openBlock = (path: string, location: DocumentSourceLocation): void => {
 			this.close();
 			(ownerWindow ?? window).setTimeout(() => {
-				void host.revealLine(path, line);
+				void host.revealLocation(path, location);
 			}, 0);
 		};
 		this.reactRenderer = new ReactRenderer(this.containerEl);
@@ -62,7 +62,7 @@ export class FileAtlasModal extends Modal {
 				FileAtlasHost,
 				{
 					host,
-					initialPath: file?.path ?? null,
+					initialPath,
 					initialContent,
 					ownerDocument: this.contentEl.ownerDocument,
 					onOpenBlock: openBlock,

@@ -23,37 +23,10 @@ import type {
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { getConnectedLinks, getDiscoveredConnections } from '@/service/search/inspectorService';
 import { DOCUMENT_COMPOSER_VIEW_TYPE } from '@/app/composer/viewType';
+import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
 
 /** Neighborhood node cap — matches the Result Graph's NODE_CAP so both stay legible. */
 const NEIGHBORHOOD_CAP = 60;
-const FILE_ATLAS_REVEAL_FLASH_CLASS = 'pkfa-editor-reveal-flash';
-
-/**
- * CodeMirror applies `.cm-activeLine` after the cursor transaction reaches the
- * renderer. Wait for two paint frames, then flash that real line rather than
- * guessing its DOM position from the File Atlas source anchor.
- */
-function flashRevealedEditorLine(view: MarkdownView): void {
-	const win = view.containerEl.ownerDocument.defaultView;
-	if (!win) return;
-	win.requestAnimationFrame(() => {
-		win.requestAnimationFrame(() => {
-			const activeLine = view.containerEl.querySelector<HTMLElement>('.cm-line.cm-activeLine');
-			if (!activeLine) return;
-			for (const previous of view.containerEl.querySelectorAll<HTMLElement>(`.${FILE_ATLAS_REVEAL_FLASH_CLASS}`)) {
-				previous.classList.remove(FILE_ATLAS_REVEAL_FLASH_CLASS);
-			}
-			// Force a style boundary so repeated Reveal actions restart the pulse.
-			void activeLine.offsetWidth;
-			activeLine.classList.add(FILE_ATLAS_REVEAL_FLASH_CLASS);
-			activeLine.addEventListener(
-				'animationend',
-				() => activeLine.classList.remove(FILE_ATLAS_REVEAL_FLASH_CLASS),
-				{ once: true },
-			);
-		});
-	});
-}
 
 function basenameOf(path: string): string {
 	return path.split('/').pop()?.replace(/\.md$/i, '') ?? path;
@@ -81,8 +54,19 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 		return sourceAwareView?.getSourceFilePath?.() ?? null;
 	};
 
-	const fileContextLeaves = (): Array<{ path: string; active: boolean; detach: () => void; reveal: () => Promise<void> }> => {
+	const fileContextLeaves = (): Array<{
+		path: string;
+		active: boolean;
+		view: 'markdown' | 'composer';
+		detach: () => void;
+		reveal: () => Promise<void>;
+	}> => {
 		const activeLeaf = app.workspace.activeLeaf;
+		const preferredView = activeLeaf?.view instanceof MarkdownView
+			? 'markdown'
+			: activeLeaf?.getViewState().type === DOCUMENT_COMPOSER_VIEW_TYPE
+				? 'composer'
+				: null;
 		const leaves = [
 			...app.workspace.getLeavesOfType('markdown'),
 			...app.workspace.getLeavesOfType(DOCUMENT_COMPOSER_VIEW_TYPE),
@@ -90,13 +74,18 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 		return leaves.flatMap((leaf) => {
 			const path = sourcePathForView(leaf.view);
 			if (!path) return [];
+			const view: 'markdown' | 'composer' =
+				leaf.view instanceof MarkdownView ? 'markdown' : 'composer';
 			return [{
 				path,
 				active: leaf === activeLeaf,
+				view,
 				detach: () => leaf.detach(),
 				reveal: () => app.workspace.revealLeaf(leaf),
 			}];
-		}).sort((a, b) => Number(b.active) - Number(a.active));
+		}).sort((a, b) =>
+			Number(b.active) - Number(a.active)
+			|| Number(b.view === preferredView) - Number(a.view === preferredView));
 	};
 
 	const activeFileContextPath = (): string | null => {
@@ -126,6 +115,10 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 	};
 
 	return {
+		getActiveDocumentPath(): string | null {
+			return activeFileContextPath();
+		},
+
 		listOpenDocs(): OpenDocMeta[] {
 			const seen = new Set<string>();
 			const docs: OpenDocMeta[] = [];
@@ -292,22 +285,27 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 			}
 		},
 
-		async revealLine(path: string, line: number): Promise<void> {
-			await appContext.vaultNavigation.openVaultPathAtLine(path, { line, newLeaf: false });
-			const activeLeaf = app.workspace.activeLeaf;
-			const activeView = activeLeaf?.view;
-			const leaf = activeView instanceof MarkdownView && activeView.file?.path === path
-				? activeLeaf
-				: app.workspace.getLeavesOfType('markdown').find((candidate) => {
-				const view = candidate.view as MarkdownView | undefined;
-				return view?.file?.path === path;
+		async revealLocation(path: string, location: DocumentSourceLocation): Promise<boolean> {
+			return appContext.vaultNavigation.openVaultPathAtLocation(path, {
+				location,
+				newLeaf: false,
 			});
-			const view = leaf?.view as MarkdownView | undefined;
-			view?.editor?.focus();
-			if (view) flashRevealedEditorLine(view);
 		},
 
 		getCursorLine(path: string): number | null {
+			const composerLeaves = app.workspace
+				.getLeavesOfType(DOCUMENT_COMPOSER_VIEW_TYPE)
+				.sort((left, right) =>
+					Number(right === app.workspace.activeLeaf) - Number(left === app.workspace.activeLeaf));
+			for (const leaf of composerLeaves) {
+				const view = leaf.view as {
+					getSourceFilePath?: () => string | null;
+					getCursorLine?: () => number | null;
+				};
+				if (view.getSourceFilePath?.() !== path) continue;
+				const line = view.getCursorLine?.();
+				if (typeof line === 'number') return line;
+			}
 			// Read the last cursor position from the note's open editor (works even
 			// when File Atlas is the frontmost modal). Editor lines are 0-based; anchor
 			// line ranges are 1-based, so shift up by one to match.
