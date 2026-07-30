@@ -52,13 +52,14 @@ import { ComposerAiExecutorAdapter } from './capabilities/ComposerAiExecutorAdap
 import { createComposerFormulaDetailGenerator } from './capabilities/ComposerFormulaDetailGenerator';
 import { createComposerImageTextAdapter } from './capabilities/ComposerImageTextAdapter';
 import { NativeMarkdownIntelligenceModal } from './NativeMarkdownIntelligenceModal';
+import { joinAdapterPath } from './ObsidianComposerDataStore';
+import { loadComposerStorageConfig } from './ComposerStorageConfig';
 
-/** Subfolder (under the plugin's own data dir) for the per-document comment store. */
-const COMMENT_STORE_SUBDIR = 'composer-comments';
-/** Subfolder (under the plugin's own data dir) for the §12.7 telemetry stream. */
-const TELEMETRY_SUBDIR = 'telemetry';
-/** Canonical append-only Current Work State / Scope / Frozen Run records. */
-const WORKSPACE_STATE_SUBDIR = 'composer-state';
+const LEGACY_COMMENT_STORE_SUBDIR = 'composer-comments';
+const LEGACY_TELEMETRY_SUBDIR = 'telemetry';
+const LEGACY_WORKSPACE_STATE_SUBDIR = 'composer-state';
+const LEGACY_WORKSPACE_STATE_FILE = 'composer-workspace-state.jsonl';
+const LEGACY_TELEMETRY_FILE = 'composer-intelligence.jsonl';
 
 /**
  * Read the active `SearchClient` if one is bound, else `null`. It is typed
@@ -110,29 +111,44 @@ function composerMediaProducer(): ComposerMediaProducer {
 
 /**
  * Wire Obsidian adapters into the app-owned {@link DocumentComposerRuntime}.
- * `pluginDir` is the plugin's manifest directory — the comment store lives under
- * it so its JSON never enters the vault note tree / metadata cache.
+ * Canonical machine data lives under `dataStoreDir`, never the plugin
+ * installation/source directory. `legacyPluginDir` is read-only migration input.
  */
 export interface ComposeDocumentComposerRuntimeOptions {
+	legacyPluginDir?: string;
 	getDefaultDocumentView(): DefaultDocumentView;
 	setDefaultDocumentView(view: DefaultDocumentView): Promise<void>;
 	getIntelligenceManualOpen(): boolean;
 	setIntelligenceManualOpen(open: boolean): Promise<void>;
 }
 
-export function composeDocumentComposerRuntime(
+export async function composeDocumentComposerRuntime(
 	app: App,
-	pluginDir?: string,
+	dataStoreDir: string,
 	options?: ComposeDocumentComposerRuntimeOptions,
-): DocumentComposerRuntime {
+): Promise<DocumentComposerRuntime> {
 	const source = new ObsidianComposerSourceAdapter(app);
 	const write = new ObsidianComposerWriteAdapter(app);
 	const events = new ObsidianComposerFileEventsAdapter(app);
 	const revisionService = new ComposerSourceRevisionService();
-	const dataDir = pluginDir ?? app.vault.configDir;
-	const commentBaseDir = `${dataDir}/${COMMENT_STORE_SUBDIR}`;
-	const telemetryBaseDir = `${dataDir}/${TELEMETRY_SUBDIR}`;
-	const workspaceStateBaseDir = `${dataDir}/${WORKSPACE_STATE_SUBDIR}`;
+	const storage = await loadComposerStorageConfig();
+	const commentBaseDir = joinAdapterPath(dataStoreDir, storage.commentsSubdir);
+	const telemetryBaseDir = joinAdapterPath(dataStoreDir, storage.telemetrySubdir);
+	const workspaceStateBaseDir = joinAdapterPath(dataStoreDir, storage.workspaceStateSubdir);
+	const legacyPluginDir = options?.legacyPluginDir;
+	const legacyCommentBaseDir = legacyPluginDir
+		? joinAdapterPath(legacyPluginDir, LEGACY_COMMENT_STORE_SUBDIR)
+		: undefined;
+	const legacyWorkspaceStateFile = legacyPluginDir
+		? joinAdapterPath(
+				legacyPluginDir,
+				LEGACY_WORKSPACE_STATE_SUBDIR,
+				LEGACY_WORKSPACE_STATE_FILE,
+			)
+		: undefined;
+	const legacyTelemetryFile = legacyPluginDir
+		? joinAdapterPath(legacyPluginDir, LEGACY_TELEMETRY_SUBDIR, LEGACY_TELEMETRY_FILE)
+		: undefined;
 	let fallbackDefaultView: DefaultDocumentView = 'markdown';
 	let fallbackIntelligenceManualOpen = false;
 	const navigation = new ComposerDocumentRouter(app, {
@@ -171,14 +187,32 @@ export function composeDocumentComposerRuntime(
 		workspaceStatePersistence: new ObsidianComposerWorkspaceStatePersistence(
 			app,
 			workspaceStateBaseDir,
+			{
+				fileName: storage.workspaceStateFile,
+				legacyFilePath: legacyWorkspaceStateFile,
+				compactionEventThreshold: storage.workspaceCompactionEventThreshold,
+			},
 		),
-		commentPersistence: new ObsidianComposerCommentPersistence(app, commentBaseDir),
+		commentPersistence: new ObsidianComposerCommentPersistence(
+			app,
+			commentBaseDir,
+			legacyCommentBaseDir,
+		),
 		linkPort: new ObsidianComposerLinkMetadata(app),
 		// WP9 §12.4 — related materials over the existing vector search (lazy client
 		// resolution, degrades to empty before SQLite search initializes).
 		relatedMaterials: new ObsidianComposerRelatedMaterials(safeGetSearchClient),
-		// WP9 §12.7 — privacy-safe evaluation telemetry to a plugin-dir JSONL stream.
-		intelligenceTelemetry: new ObsidianComposerIntelligenceTelemetry(app, telemetryBaseDir),
+		// WP9 §12.7 — privacy-safe, bounded evaluation telemetry under DataStore.
+		intelligenceTelemetry: new ObsidianComposerIntelligenceTelemetry(
+			app,
+			telemetryBaseDir,
+			{
+				fileName: storage.telemetryFile,
+				legacyFilePath: legacyTelemetryFile,
+				rotationBytes: storage.telemetryRotationBytes,
+				retentionFiles: storage.telemetryRetentionFiles,
+			},
+		),
 		openWritingMoves: () => ({
 			uncheckedTaskReason: sidecarConfig.strings.openTaskReasonPrefix,
 			uncheckedTaskSummary: sidecarConfig.strings.openTaskSummary,

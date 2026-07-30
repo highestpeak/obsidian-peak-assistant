@@ -850,6 +850,17 @@
 			"emptyBriefBody": "当前没有来自已接入数据源的新项目。你可以继续写作，或主动问 Copilot。"
 		}
 	},
+	"storage": {
+		"_doc": "All paths are relative to the configured Peak Assistant DataStore. Runtime records must never be written under the plugin installation/source directory.",
+		"commentsSubdir": "composer/comments",
+		"workspaceStateSubdir": "records/composer/workspaces",
+		"workspaceStateFile": "current.jsonl",
+		"telemetrySubdir": "telemetry/composer",
+		"telemetryFile": "composer-intelligence.jsonl",
+		"workspaceCompactionEventThreshold": 200,
+		"telemetryRotationBytes": 1048576,
+		"telemetryRetentionFiles": 14
+	},
 	"telemetry": {
 		"_doc": "WP9 §12.7 proactive-intelligence metric catalog. Ten dimensions; each event's name + field schema is the source of truth for runtime/store instrumentation. Document content / prompt / evidence never appear in fields (privacy boundary).",
 		"maxFieldStringLength": 120,

@@ -417,12 +417,14 @@ export default class MyPlugin extends Plugin {
 
 		// Peak Composer (WP1): compose the app-owned Document Composer runtime
 		// and bind it on the registry BEFORE workspace layout restore can
-		// re-open a Composer leaf. Synchronous (no sqlite dependency), so it is
-		// safe to bind here; released in onunload via clearDocumentComposerRuntime.
+		// re-open a Composer leaf. This only awaits template-backed storage
+		// policy (no sqlite dependency), so it is safe to bind here; released in
+		// onunload via clearDocumentComposerRuntime.
 		try {
 			const { composeDocumentComposerRuntime } = await import('@/app/composer');
 			appContext.runtimeRegistry.setDocumentComposerRuntime(
-				composeDocumentComposerRuntime(this.app, this.manifest.dir, {
+				await composeDocumentComposerRuntime(this.app, this.settings.dataStorageFolder, {
+					legacyPluginDir: this.manifest.dir,
 					getDefaultDocumentView: () => this.settings.composer.defaultDocumentView,
 					setDefaultDocumentView: async (view) => {
 						this.settings.composer.defaultDocumentView = view;

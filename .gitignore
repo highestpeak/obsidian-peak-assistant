@@ -63,3 +63,9 @@ output/
 
 # Dev-only scaffolding / preview harnesses / screenshots (not shipped)
 .dev/
+
+# Runtime-owned Composer data. Canonical copies live under the configured
+# knowledge-base DataStore and must never enter the plugin source repository.
+composer-comments/
+composer-state/
+telemetry/

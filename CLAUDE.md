@@ -57,6 +57,7 @@ Four-layer architecture: `app/` → `service/` → `core/` → `ui/`
 - Agents: follow `runAgentLoop` / `AgentLoop` (`service/agents/core`); reuse tool + schema patterns from existing agents; wire through `src/core/schemas/` for Zod
 - Streaming: normalize with `src/core/providers/helpers/stream-helper.ts` (`streamTransform`, etc.) and `LLMStreamEvent`; UI streaming hooks live under `ui/view/chat-view/hooks/`
 - Repo hygiene: never create scaffolding / preview harnesses / screenshot dirs in the project root. All dev-only tooling goes under `.dev/` (gitignored, not shipped — e.g. `.dev/harness/` for the File Atlas browser preview). One-off temp artifacts (frame grabs, throwaway HTML/scripts) go to the agent scratchpad, never the project. See `.dev/README.md`.
+- Commit ownership is the default delivery contract: after relevant verification passes, commit only the changes created for the task and report the SHA. Record the starting `git status`; never use broad `git add -A` around pre-existing/parallel changes or include runtime data. Worktree/subagent work must be committed before handoff. If ownership cannot be separated safely, stop and report the overlap. Do not push, rebase, or commit another task's changes without owner authorization. An explicit no-commit instruction overrides this default.
 
 ## Project Rules
 

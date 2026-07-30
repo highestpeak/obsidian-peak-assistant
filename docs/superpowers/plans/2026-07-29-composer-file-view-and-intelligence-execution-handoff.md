@@ -845,7 +845,7 @@ File Atlas、Native Markdown companion 和其他插件自有文件入口必须�
 - 用侧边聊天框替代 origin-anchor candidate 反馈；
 - 为达到交付速度保留永久旧新双路径；
 - 把测试 fixture 或静态 harness 说成真实 Obsidian 验收；
-- 自动 commit、push、rebase 或清理用户改动；
+- 提交本任务之外的改动，或自动 push、rebase、清理用户改动；
 - 删除主要 Composer 功能来降低复杂度。
 
 ---
@@ -984,7 +984,7 @@ npm run build
 8. 测试和 build 命令及结果；
 9. 真实 Obsidian 场景与证据路径；
 10. 未验证项、外部阻塞、已知风险；
-11. 没有 commit / push 的说明，除非 owner 另行授权。
+11. 本任务 commit SHA，以及未 push 的说明。
 
 最终给 owner 的聊天摘要必须先说结果，再说：
 
@@ -1032,7 +1032,7 @@ Owner 已授权：先完成 handoff 的 Stage A 只读预检；只要代码事�
 - 编辑视图中的 action row 与 candidate card 不得同时消失，AI invoke/runtime/provider/prompt 错误不得静默吞掉；
 - 新路径验证后删除旧 active-file follower、单 Composer leaf 和 per-view Intelligence owner；
 - 不得用 fixture、harness 或 green build 冒充真实 Obsidian 验收；
-- 不要 commit 或 push，除非我另行明确授权。
+- 相关验证通过后，只提交本任务自己产生的变更并报告 commit SHA；不要 push。
 
 若没有命中 handoff 的停止条件，请持续执行到完成，不要只返回研究报告或下一步建议。最后创建 handoff 指定的 implementation note，并按 R1–R10 给出 COMPLETE / PARTIAL 的诚实 verdict。文件视图完成但编辑/阅读显示或 AI 运行反馈未完成时，整体仍是 PARTIAL。
 ```

@@ -88,6 +88,97 @@ export interface ComposerWorkspaceStatePersistencePort {
 	append(event: ComposerWorkspaceStateEvent): Promise<void>;
 }
 
+/**
+ * Fold append-only workspace events into an equivalent replay snapshot.
+ *
+ * Workspace state is a current-state ledger, not an audit log: only the latest
+ * path/scope/run envelope and the last work segment are required for recovery.
+ * Document transaction history remains in its own canonical per-document
+ * stream and is never compacted here.
+ */
+export function compactComposerWorkspaceStateEvents(
+	events: readonly ComposerWorkspaceStateEvent[],
+): ComposerWorkspaceStateEvent[] {
+	let activeSegment: ComposerWorkSegment | null = null;
+	let scopeEvent: Extract<ComposerWorkspaceStateEvent, { type: 'scope-changed' }> | null = null;
+	const documents = new Map<string, { filePath: string; at: number }>();
+	const runs = new Map<string, Extract<ComposerWorkspaceStateEvent, { type: 'run-upserted' }>>();
+
+	for (const event of events) {
+		if (event.type === 'segment-started') {
+			activeSegment = {
+				...event.segment,
+				documentIds: [...event.segment.documentIds],
+			};
+			continue;
+		}
+		if (event.type === 'segment-ended') {
+			if (activeSegment && activeSegment.segmentId === event.segmentId) {
+				activeSegment = { ...activeSegment, endedAt: event.at };
+			}
+			continue;
+		}
+		if (event.type === 'document-tracked') {
+			documents.set(event.documentId, { filePath: event.filePath, at: event.at });
+			if (activeSegment && activeSegment.segmentId === event.segmentId) {
+				activeSegment = {
+					...activeSegment,
+					documentIds: [...new Set([...activeSegment.documentIds, event.documentId])],
+				};
+			}
+			continue;
+		}
+		if (event.type === 'document-renamed') {
+			documents.set(event.documentId, { filePath: event.filePath, at: event.at });
+			continue;
+		}
+		if (event.type === 'scope-changed') {
+			scopeEvent = {
+				...event,
+				scope: cloneScope(event.scope)!,
+			};
+			continue;
+		}
+		runs.set(event.run.runId, {
+			...event,
+			run: cloneRun(event.run),
+		});
+	}
+
+	const compacted: ComposerWorkspaceStateEvent[] = [];
+	if (activeSegment) {
+		compacted.push({
+			type: 'segment-started',
+			at: activeSegment.startedAt,
+			segment: {
+				...activeSegment,
+				documentIds: [...activeSegment.documentIds],
+				endedAt: undefined,
+			},
+		});
+	}
+	for (const [documentId, document] of [...documents.entries()].sort(([left], [right]) => left.localeCompare(right))) {
+		compacted.push({
+			type: 'document-tracked',
+			at: document.at,
+			documentId,
+			filePath: document.filePath,
+		});
+	}
+	if (scopeEvent) compacted.push(scopeEvent);
+	for (const event of [...runs.values()].sort((left, right) => left.at - right.at)) {
+		compacted.push(event);
+	}
+	if (activeSegment?.endedAt) {
+		compacted.push({
+			type: 'segment-ended',
+			at: activeSegment.endedAt,
+			segmentId: activeSegment.segmentId,
+		});
+	}
+	return compacted;
+}
+
 export interface StartWorkspaceRunInput {
 	event: Extract<ComposerCapabilityRunEvent, { type: 'run-started' }>;
 	candidate: ComposerCandidate;

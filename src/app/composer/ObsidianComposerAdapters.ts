@@ -33,6 +33,11 @@ import {
 import { ComposerConflictError } from '@/core/composer';
 import type { SearchClient } from '@/service/search/SearchClient';
 import type { SearchResultItem } from '@/core/search/searchTypes';
+import {
+	copyLegacyFileIfNeeded,
+	ensureAdapterDirectory,
+	joinAdapterPath,
+} from './ObsidianComposerDataStore';
 
 /** Reads document bytes via the vault's cached read. */
 export class ObsidianComposerSourceAdapter implements ComposerSourcePort {
@@ -117,26 +122,27 @@ function isMarkdown(file: TAbstractFile): file is TFile {
 }
 
 /**
- * Per-document comment persistence backed by plugin-owned JSON files (WP4.5).
+ * Per-document comment persistence backed by DataStore-owned JSON files (WP4.5).
  *
  * Comments are metadata, never Markdown body text, so they live OUTSIDE the
- * vault's note tree: one `<sanitized-doc-id>.json` per document under the
- * plugin's own data directory (`app.vault.adapter`), which Obsidian's metadata
- * cache / search index never touch. Reads/writes are whole-file (comments are
- * small, one doc at a time) — no revision guard needed since only the composer
- * writes here. Failures degrade to an empty list rather than throwing, so a
- * corrupt/absent store never blocks opening a document.
+ * authored note tree: one `<sanitized-doc-id>.json` per document under the
+ * configured Peak Assistant DataStore, which the plugin's search/index ignores.
+ * Reads/writes are whole-file (comments are small, one doc at a time) — no
+ * revision guard is needed since only the composer writes here.
  */
 export class ObsidianComposerCommentPersistence implements ComposerCommentPersistencePort {
 	constructor(
 		private readonly app: App,
-		/** Plugin-owned directory for the comment store (e.g. `<pluginDir>/composer-comments`). */
+		/** Canonical comment directory under the configured DataStore. */
 		private readonly baseDir: string,
+		/** Pre-migration plugin-directory location; copied lazily, never deleted here. */
+		private readonly legacyBaseDir?: string,
 	) {}
 
 	async load(documentId: string): Promise<ComposerComment[]> {
 		const path = this.pathFor(documentId);
 		try {
+			await this.migrateLegacyDocument(documentId);
 			if (!(await this.app.vault.adapter.exists(path))) return [];
 			const raw = await this.app.vault.adapter.read(path);
 			const parsed = JSON.parse(raw);
@@ -150,9 +156,8 @@ export class ObsidianComposerCommentPersistence implements ComposerCommentPersis
 
 	async save(documentId: string, comments: readonly ComposerComment[]): Promise<void> {
 		try {
-			if (!(await this.app.vault.adapter.exists(this.baseDir))) {
-				await this.app.vault.adapter.mkdir(this.baseDir);
-			}
+			await this.migrateLegacyDocument(documentId);
+			await ensureAdapterDirectory(this.app, this.baseDir);
 			await this.app.vault.adapter.write(this.pathFor(documentId), JSON.stringify(comments, null, 2));
 		} catch {
 			// Persistence is best-effort — an unwritable store must not crash editing.
@@ -160,7 +165,17 @@ export class ObsidianComposerCommentPersistence implements ComposerCommentPersis
 	}
 
 	private pathFor(documentId: string): string {
-		return `${this.baseDir}/${sanitizeDocId(documentId)}.json`;
+		return joinAdapterPath(this.baseDir, `${sanitizeDocId(documentId)}.json`);
+	}
+
+	private async migrateLegacyDocument(documentId: string): Promise<void> {
+		if (!this.legacyBaseDir) return;
+		const fileName = `${sanitizeDocId(documentId)}.json`;
+		await copyLegacyFileIfNeeded(
+			this.app,
+			joinAdapterPath(this.legacyBaseDir, fileName),
+			joinAdapterPath(this.baseDir, fileName),
+		);
 	}
 }
 
@@ -277,32 +292,32 @@ function isSameDocument(item: SearchResultItem, documentId: string): boolean {
 }
 
 /**
- * Privacy-safe telemetry sink backed by a plugin-owned JSONL stream (WP9 §12.7).
+ * Privacy-safe telemetry sink backed by a DataStore JSONL stream (WP9 §12.7).
  *
  * The proactive-intelligence evaluation stream is a distinct concern from the
  * cost/token usage dashboard (`UsageTrackingService`), so it is NOT routed there.
- * Local-first: events append one JSON object per line to
- * `<pluginDir>/telemetry/composer-intelligence.jsonl`, outside the vault note
- * tree (Obsidian's metadata cache / search index never touch it), mirroring the
- * comment store's plugin-dir file pattern. `IntelligenceRuntime` wraps every emit
- * in {@link RedactingTelemetry}, so content/prompt/evidence are already stripped
- * before they reach this sink. Writes are fire-and-forget and best-effort: an
- * unwritable stream must never crash editing.
+ * Events append one JSON object per line under the configured DataStore.
+ * Rotation and retention keep the diagnostic stream bounded. The legacy
+ * plugin-directory file is copied once for continuity but never mutated again.
  */
 export class ObsidianComposerIntelligenceTelemetry implements IntelligenceTelemetryPort {
-	private ensured = false;
 	private readonly sink: JsonlTelemetrySink;
 	private readonly filePath: string;
+	private initialization: Promise<void> | null = null;
+	private rotationSequence = 0;
 
 	constructor(
 		private readonly app: App,
-		/** Plugin-owned directory for the telemetry stream (e.g. `<pluginDir>/telemetry`). */
+		/** Canonical telemetry directory under the configured DataStore. */
 		private readonly baseDir: string,
-		fileName = 'composer-intelligence.jsonl',
+		private readonly options: {
+			fileName: string;
+			legacyFilePath?: string;
+			rotationBytes: number;
+			retentionFiles: number;
+		},
 	) {
-		this.filePath = `${baseDir}/${fileName}`;
-		// The neutral sink owns JSONL serialization + append ordering; this class only
-		// binds the append to the plugin-dir vault adapter (lazy mkdir, best-effort).
+		this.filePath = joinAdapterPath(baseDir, options.fileName);
 		this.sink = new JsonlTelemetrySink({ appendLine: (line) => this.append(line) });
 	}
 
@@ -310,14 +325,61 @@ export class ObsidianComposerIntelligenceTelemetry implements IntelligenceTeleme
 		this.sink.emit(event);
 	}
 
+	drain(): Promise<void> {
+		return this.sink.drain();
+	}
+
 	private async append(line: string): Promise<void> {
-		if (!this.ensured) {
-			if (!(await this.app.vault.adapter.exists(this.baseDir))) {
-				await this.app.vault.adapter.mkdir(this.baseDir);
-			}
-			this.ensured = true;
+		await this.ensureInitialized();
+		const stat = await this.app.vault.adapter.stat(this.filePath);
+		const incomingBytes = new TextEncoder().encode(line).byteLength;
+		if (stat?.type === 'file' && stat.size + incomingBytes > this.options.rotationBytes) {
+			await this.rotate();
 		}
-		await this.app.vault.adapter.append(this.filePath, line);
+		if (await this.app.vault.adapter.exists(this.filePath)) {
+			await this.app.vault.adapter.append(this.filePath, line);
+		} else {
+			await this.app.vault.adapter.write(this.filePath, line);
+		}
+	}
+
+	private async ensureInitialized(): Promise<void> {
+		if (!this.initialization) {
+			this.initialization = (async () => {
+				await ensureAdapterDirectory(this.app, this.baseDir);
+				await copyLegacyFileIfNeeded(this.app, this.options.legacyFilePath, this.filePath);
+			})();
+		}
+		await this.initialization;
+	}
+
+	private async rotate(): Promise<void> {
+		this.rotationSequence += 1;
+		const extensionIndex = this.options.fileName.lastIndexOf('.');
+		const stem = extensionIndex > 0
+			? this.options.fileName.slice(0, extensionIndex)
+			: this.options.fileName;
+		const extension = extensionIndex > 0
+			? this.options.fileName.slice(extensionIndex)
+			: '.jsonl';
+		const archive = joinAdapterPath(
+			this.baseDir,
+			`${stem}-${Date.now()}-${this.rotationSequence}${extension}`,
+		);
+		await this.app.vault.adapter.rename(this.filePath, archive);
+		await this.pruneArchives(stem, extension);
+	}
+
+	private async pruneArchives(stem: string, extension: string): Promise<void> {
+		const listed = await this.app.vault.adapter.list(this.baseDir);
+		const prefix = `${joinAdapterPath(this.baseDir, stem)}-`;
+		const archives = listed.files
+			.filter((path) => path.startsWith(prefix) && path.endsWith(extension))
+			.sort()
+			.reverse();
+		for (const stale of archives.slice(this.options.retentionFiles)) {
+			await this.app.vault.adapter.remove(stale);
+		}
 	}
 }
 

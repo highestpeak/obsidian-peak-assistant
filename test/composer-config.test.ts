@@ -9,6 +9,7 @@ import path from 'path';
 import { DEFAULT_COMPOSER_CONFIG } from '@/ui/view/composer/config/composerConfig';
 import { DEFAULT_TABLE_BLOCK_STRINGS } from '@/ui/view/composer/blocks/table/tableViewConfig';
 import { DEFAULT_TRANSACTION_CONFIG } from '@/core/composer';
+import { DEFAULT_COMPOSER_STORAGE_CONFIG } from '@/app/composer/ComposerStorageConfig';
 
 let failures = 0;
 let count = 0;
@@ -67,6 +68,21 @@ function main(): void {
 	check('transaction keys match', fbTxn.join(',') === jsonTxn.join(','), `fb=${fbTxn.join(',')} json=${jsonTxn.join(',')}`);
 	check('transaction values match', (json.transaction?.burstWindowMs ?? null) === DEFAULT_TRANSACTION_CONFIG.burstWindowMs);
 	check('transaction scrollGuardGestureWindowMs matches', (json.transaction?.scrollGuardGestureWindowMs ?? null) === DEFAULT_TRANSACTION_CONFIG.scrollGuardGestureWindowMs);
+
+	// Runtime records are DataStore-owned and their retention/compaction knobs
+	// stay config-backed rather than becoming logic-file literals.
+	const fbStorage = Object.keys(DEFAULT_COMPOSER_STORAGE_CONFIG).sort();
+	const jsonStorage = Object.keys(json.storage ?? {}).filter((key) => !key.startsWith('_')).sort();
+	check(
+		'storage keys match',
+		fbStorage.join(',') === jsonStorage.join(','),
+		`fb=${fbStorage.join(',')} json=${jsonStorage.join(',')}`,
+	);
+	check(
+		'storage values match',
+		fbStorage.every((key) =>
+			json.storage?.[key] === DEFAULT_COMPOSER_STORAGE_CONFIG[key as keyof typeof DEFAULT_COMPOSER_STORAGE_CONFIG]),
+	);
 
 	// WP6: table + chart block UI copy mirrors the typed fallback.
 	const fbTblToolbar = Object.keys(DEFAULT_TABLE_BLOCK_STRINGS.toolbar).sort();

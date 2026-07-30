@@ -77,7 +77,7 @@ AI provider 并没有同时失效。候选在 provider 调用前已经创建，�
 - Scope/View/file 切换不会移动已有 Run；
 - 外部 revision 漂移会立即把 candidate 和 Run 标 stale；
 - late provider completion 不能把 stale candidate / Run 重新覆盖成 ready；
-- plugin-owned `composer-state/composer-workspace-state.jsonl` 保存 machine events；
+- 知识库 DataStore 下的 `records/composer/workspaces/current.jsonl` 保存 machine events；
 - Frozen Run 同时保存可序列化 candidate payload、variant 状态和 capability/image
   renderer runtime metadata；
 - hydration 处理 workspace leaf 比 JSONL read 更早恢复的竞态；

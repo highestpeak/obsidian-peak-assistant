@@ -132,9 +132,9 @@ export const NOOP_INTELLIGENCE_TELEMETRY: IntelligenceTelemetryPort = {
 
 /**
  * Minimal append-only file port the {@link JsonlTelemetrySink} writes through.
- * The app binds it to a plugin-dir file (Obsidian `vault.adapter.append`); tests
- * bind an in-memory fake — so the JSONL serialization/ordering logic stays
- * framework-neutral and unit-testable (no obsidian import in this layer).
+ * The app binds it to the configured DataStore (Obsidian
+ * `vault.adapter.append`); tests bind an in-memory fake — so JSONL
+ * serialization/ordering stays framework-neutral and unit-testable.
  */
 export interface JsonlAppendPort {
 	appendLine(line: string): Promise<void>;

@@ -1,5 +1,6 @@
 import {
 	ComposerWorkspaceIntelligenceRuntime,
+	compactComposerWorkspaceStateEvents,
 	type ComposerWorkspaceStateEvent,
 	type ComposerWorkspaceStatePersistencePort,
 } from '@/service/composer';
@@ -240,6 +241,37 @@ async function main(): Promise<void> {
 		'live startup scope wins after canonical replay',
 		delayed.projection().scope?.kind === 'document'
 			&& delayed.projection().scope.documentId === 'doc-live',
+	);
+
+	const compacted = compactComposerWorkspaceStateEvents([
+		{
+			type: 'segment-started',
+			at: 1,
+			segment: { segmentId: 'segment-1', startedAt: 1, documentIds: [] },
+		},
+		{ type: 'document-tracked', at: 2, documentId: 'doc-a', filePath: 'Old.md', segmentId: 'segment-1' },
+		{ type: 'document-renamed', at: 3, documentId: 'doc-a', filePath: 'New.md' },
+		{ type: 'scope-changed', at: 4, scope: { kind: 'document', documentId: 'doc-a' } },
+		{ type: 'run-upserted', at: 5, run: { ...frozen, status: 'streaming' } },
+		{ type: 'run-upserted', at: 6, run: { ...frozen, status: 'ready' } },
+		{ type: 'segment-ended', at: 7, segmentId: 'segment-1' },
+	]);
+	check('compaction removes superseded workspace events', compacted.length === 5, String(compacted.length));
+	check(
+		'compaction keeps the latest document path',
+		compacted.some((event) =>
+			event.type === 'document-tracked'
+			&& event.documentId === 'doc-a'
+			&& event.filePath === 'New.md'),
+	);
+	check(
+		'compaction keeps only the latest run snapshot',
+		compacted.filter((event) => event.type === 'run-upserted').length === 1
+			&& compacted.some((event) => event.type === 'run-upserted' && event.run.status === 'ready'),
+	);
+	check(
+		'compaction preserves the ended active segment',
+		compacted.some((event) => event.type === 'segment-ended' && event.at === 7),
 	);
 
 	console.log(`composer-workspace-intelligence: ${count - failures}/${count} checks passed`);

@@ -71,7 +71,7 @@ export interface DocumentComposerRuntimeAdapters {
 	};
 	/** Canonical JSONL persistence for workspace scope, segments and Frozen Runs. */
 	workspaceStatePersistence?: ComposerWorkspaceStatePersistencePort;
-	/** Per-document comment JSON persistence (plugin-owned store). */
+	/** Per-document comment JSON persistence under the configured DataStore. */
 	commentPersistence?: ComposerCommentPersistencePort;
 	/** Vault link metadata (Obsidian metadata cache). */
 	linkPort?: ComposerLinkMetadataPort;

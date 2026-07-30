@@ -274,7 +274,7 @@ fail closed。
 
 沿用已接受的 machine-record 规则：
 
-- workspace segment/scope/run transition 追加到 plugin-owned JSONL；
+- workspace segment/scope/run transition 追加到知识库 DataStore 下的 Composer JSONL stream；
 - SQLite 不是本次新增 canonical store；
 - Markdown 只保存用户文档；
 - plugin settings 保存轻量默认 View 和 scope pointer；

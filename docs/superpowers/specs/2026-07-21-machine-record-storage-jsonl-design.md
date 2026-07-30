@@ -1,8 +1,8 @@
 # 机器运行记录存储重构：JSONL 事实源、SQLite 索引与 Markdown 导出
 
-日期：2026-07-21  
-状态：**Accepted design · implementation not started**  
-范围：Chat Studio、AI Analysis、新 Composer Copilot / History，以及与这些能力直接相邻的机器存储  
+日期：2026-07-21
+状态：**Accepted design · partial implementation**
+范围：Chat Studio、AI Analysis、新 Composer Copilot / History，以及与这些能力直接相邻的机器存储
 不包含：旧 Copilot review/report 历史迁移、真实用户 Vault 文件数量盘点、现有知识文档格式迁移
 
 > 本文只依据插件源码定义目标存储边界。当前生产代码仍以 SQLite + Vault Markdown 混合方式运行；在迁移完成并通过验证前，源码行为仍是当前事实，本文是目标设计事实。
@@ -145,8 +145,14 @@ DataStore/
 │   │   └── runs/<run-id>.jsonl
 │   ├── copilot/
 │   │   └── sessions/<session-id>.jsonl
+│   ├── composer/
+│   │   └── workspaces/current.jsonl
 │   └── document-history/
 │       └── <document-stable-id>.jsonl
+├── composer/
+│   └── comments/<document-stable-id>.json
+├── telemetry/
+│   └── composer/composer-intelligence.jsonl
 ├── chat.sqlite
 └── vault.sqlite
 ```
@@ -574,3 +580,18 @@ src/
 - **读路径**:Recent AI-Analysis 列表 + 快照回放读 JSON;legacy `.md`(若存在)兼容合并列出。
 - **存量迁移**:`scripts/migrate-ai-analysis.mjs`(esbuild 现场编译 `analysis-markdown-parser` 在纯 Node 执行);2026-07-23 已迁 1139/1139 零失败,解析失败兜底路径为 `DataStore/ai-analysis/legacy-md/*.md.txt` 原文保留(本次未触发)。
 - 与 §5 目录布局的关系:`ai-analysis/` 即本文 `records/` 家族的第一个落地域;后续 Phase 推进时并入统一布局,本切片不构成偏离授权。
+
+## 附：2026-07-30 Composer 数据目录与有界日志切片
+
+Composer 评论、Current Work State 和 Intelligence telemetry 已停止把插件安装目录当作 canonical data root：
+
+- `main.ts` 通过配置化 `dataStorageFolder` 组合 Composer runtime；
+- 评论迁到 `DataStore/composer/comments/<document-stable-id>.json`；
+- workspace state 迁到 `DataStore/records/composer/workspaces/current.jsonl`；
+- telemetry 迁到 `DataStore/telemetry/composer/composer-intelligence.jsonl`；
+- 旧 `composer-comments/`、`composer-state/`、`telemetry/` 文件只做一次性、逐字节验证后的复制迁移，不在迁移代码中删除；
+- workspace state 按配置阈值折叠 superseded path/scope/run snapshot，保留等价 replay 状态；
+- telemetry 按配置大小轮转并限制 archive 数量；
+- 三个旧插件根目录被 Git 忽略，已经进入历史的 runtime 文件取消追踪。
+
+该切片没有完成 Chat、Copilot session、Document History 或 SQLite projection 的全量 Phase 1–5，因此本文整体状态仍是 partial implementation。
