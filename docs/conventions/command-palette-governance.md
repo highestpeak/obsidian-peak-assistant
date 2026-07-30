@@ -19,7 +19,7 @@ Obsidian Command Palette 是稳定的产品级全局导航，不是功能开发�
 
 ## Approved Production Surface
 
-当前 owner-approved Command Palette 只有以下六项，顺序也属于产品清单：
+当前 owner-approved Command Palette 只有以下七项，顺序也属于产品清单：
 
 1. `Settings`
 2. `Setup Wizard`
@@ -27,6 +27,7 @@ Obsidian Command Palette 是稳定的产品级全局导航，不是功能开发�
 4. `Open File Atlas`
 5. `Usage Dashboard`
 6. `Open Chat Studio`
+7. `Open document in Peak Composer`
 
 代码唯一真值是：
 
@@ -121,4 +122,3 @@ assert.deepStrictEqual(bindingIds, manifestIds);
 - [ ] feature 完成时是否同步清掉临时注册、manifest、binding、快捷键和过时测试？
 - [ ] `test/command-gateway-wire-in.test.ts` 是否通过？
 - [ ] `npm run build` 是否通过？
-

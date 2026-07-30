@@ -335,10 +335,10 @@
                 <td><span class="pill gold">decided · design/spec ready · implementation pending</span></td>
               </tr>
               <tr>
-                <td><strong>Copilot Command Center Redesign</strong></td>
-                <td>点 Copilot / Knowledge Analysis 后自动规划 capability，再用侧边/弹出/review panel 承载。</td>
-                <td><code>2026-05-14-copilot-command-center-user-centered-redesign.md</code></td>
-                <td><span class="pill gold">planned (spec only)</span></td>
+                <td><strong>Peak Command Center Launcher + Home</strong></td>
+                <td>与原生 <code>Cmd/Ctrl + P</code> 并存的策展启动器。空 query 使用二维命令组；运行态搜索只过滤已配置内容；编辑态才读取完整命令 catalog。同一份 board 配置驱动快捷键召唤的 Modal 与可固定 Home View，Home 组合最近文件、Bookmark、Workspace 和已有 Note / Base / Canvas，不另造 Todo / Calendar / Stats 数据系统。旧 <code>CopilotCommandCenterModal</code> 是 AI capability planner，不作为本功能基础。</td>
+                <td><a href="superpowers/specs/2026-07-30-command-center-launcher-home-design.md">正式设计</a><br><a href="gstack/command-center-launcher-home-2026-07-30/index.html">可交互原型</a><br><a href="research/2026-07-30-command-center-launcher-home/README.md">调研</a></td>
+                <td><span class="pill gold">decided · design/spec ready · implementation pending</span></td>
               </tr>
               <tr>
                 <td><strong>AN / AO / AP 收尾</strong></td>
@@ -481,7 +481,7 @@
               <tr>
                 <td>2026-07-27</td>
                 <td><strong>六大能力走查框架 + 生态取代/结合策略</strong></td>
-                <td>六能力骨架成立，风险在生态清单边界失控。裁决：生态扩张 gate 在六能力走查通过之后；取代清单分三层（射程内 / 重定义走 Peak Sheet / 不碰 DQL 兼容），结合清单大半归为 Composer 原生能力；先立三个共享内核（VoiceInput / ResultList / Transcript）；Command Center 定位"并存策展启动器 + HomePage"而非替代 Cmd+P；Terminal(codex/claude code) 是唯一差异化集成项。<br><strong>同日续作</strong>：四份代码实地盘点（audit-01~04）+ <a href="research/2026-07-27-capability-walkthrough-ecosystem-strategy/capability-matrix.md">产品能力矩阵</a>——六能力成熟度评级、五大系统性主题（入口层最弱 / 最后一公里不接线 / 双实现分叉 / 索引新鲜度 / 测试与风险倒挂）、P0×7 修复清单。</td>
+                <td>六能力骨架成立，风险在生态清单边界失控。裁决：生态扩张 gate 在六能力走查通过之后；取代清单分三层（射程内 / 重定义走 Peak Sheet / 不碰 DQL 兼容），结合清单大半归为 Composer 原生能力；先立三个共享内核（VoiceInput / ResultList / Transcript）；Command Center 定位"并存策展启动器 + HomePage"而非替代 Cmd+P；Terminal(codex/claude code) 是唯一差异化集成项。<br><strong>同日续作</strong>：四份代码实地盘点（audit-01~04）+ <a href="research/2026-07-27-capability-walkthrough-ecosystem-strategy/capability-matrix.md">产品能力矩阵</a>——六能力成熟度评级、五大系统性主题（入口层最弱 / 最后一公里不接线 / 双实现分叉 / 索引新鲜度 / 测试与风险倒挂）、P0×7 修复清单。<br><strong>2026-07-30 续作：</strong>该启动器方向已拆除旧 AI planner 混淆并进入 <a href="superpowers/specs/2026-07-30-command-center-launcher-home-design.md">正式设计</a>。</td>
                 <td><a href="research/2026-07-27-capability-walkthrough-ecosystem-strategy/README.md">研究报告</a></td>
               </tr>
               <tr>
@@ -499,7 +499,7 @@
               <tr>
                 <td>2026-07-28</td>
                 <td><strong>全面审计：外部证据增量（用户之声/生态/产品格局/学界/技术趋势）+ 内部四维评审（战略/设计/文档/执行）</strong></td>
-                <td>裁决"三真三债"：Composer/Ambient/AI Analysis 是真能力（ambient 与深度报告在生态仍是真空白），Chat Studio/Atlas/Usage Dashboard 是负债（Claudian 7.7 个月 154 万下载吞掉 chat 战场）；护城河已从架构（被 Reflect Open 开源复刻）移到"ambient 提议 + 块级来源 + 可回放证据链"——但三层当前零调用。学界硬化三公理（provenance 必做：混合来源 6 天后辨识仅 37.7%；北极星须信任+自我效能双测；AI Graph 拿到可视化过度信任反向证据）。文档登记闭环系统性失效（#decided 25% 失真、63 份 spec 无 status）；执行 P0=止损 checkpoint + spec 契约矛盾修复 + Document Copilot 三件套接活为唯一主线，三份 07-28 新 spec 冻结。<br><strong>Owner 复议</strong>：Chat 保留为稳定管道、File Atlas 修断点继续做深（结构导航方向外部无强竞品）、Usage Dashboard 保真删假——"三债"修正为投入方式差异；真正砍掉的只有 Terminal 集成与 Command Center。</td>
+                <td>裁决"三真三债"：Composer/Ambient/AI Analysis 是真能力（ambient 与深度报告在生态仍是真空白），Chat Studio/Atlas/Usage Dashboard 是负债（Claudian 7.7 个月 154 万下载吞掉 chat 战场）；护城河已从架构（被 Reflect Open 开源复刻）移到"ambient 提议 + 块级来源 + 可回放证据链"——但三层当前零调用。学界硬化三公理（provenance 必做：混合来源 6 天后辨识仅 37.7%；北极星须信任+自我效能双测；AI Graph 拿到可视化过度信任反向证据）。文档登记闭环系统性失效（#decided 25% 失真、63 份 spec 无 status）；执行 P0=止损 checkpoint + spec 契约矛盾修复 + Document Copilot 三件套接活为唯一主线，三份 07-28 新 spec 冻结。<br><strong>2026-07-28 Owner 复议</strong>：Chat 保留为稳定管道、File Atlas 修断点继续做深（结构导航方向外部无强竞品）、Usage Dashboard 保真删假——"三债"修正为投入方式差异；当时真正砍掉的只有 Terminal 集成与旧 Command Center。<br><strong>2026-07-30 Owner 再复议</strong>：恢复的是独立的“策展启动器 + Home”，不是旧 AI planner，也不替代原生 Cmd+P；已进入 #decided。</td>
                 <td><a href="research/2026-07-28-project-audit-and-recommendations/README.md">研究报告</a>（01-03 三篇原稿）</td>
               </tr>
             </tbody>

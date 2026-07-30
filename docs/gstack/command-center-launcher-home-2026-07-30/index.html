@@ -1,0 +1,2086 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak Command Center · Launcher + Home</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #eeedf1;
+      --page-grid: rgba(84, 78, 95, 0.045);
+      --panel: #ffffff;
+      --panel-soft: #f7f6f8;
+      --panel-quiet: #fbfafc;
+      --text: #252329;
+      --muted: #6e6975;
+      --faint: #9a95a1;
+      --line: #dedbe3;
+      --line-strong: #cbc6d2;
+      --purple: #7857b7;
+      --purple-strong: #6342a1;
+      --purple-soft: #f0eafa;
+      --purple-quiet: #f7f3fc;
+      --blue: #326fa8;
+      --blue-soft: #eaf3fb;
+      --green: #2d7858;
+      --green-soft: #eaf5ef;
+      --amber: #9a681d;
+      --amber-soft: #fbf3e3;
+      --danger: #ad4e4e;
+      --shadow-lg: 0 28px 80px rgba(36, 29, 46, 0.22);
+      --shadow-sm: 0 8px 24px rgba(36, 29, 46, 0.08);
+      --radius: 10px;
+      --focus: 0 0 0 3px rgba(120, 87, 183, 0.2);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: var(--text);
+      background:
+        linear-gradient(var(--page-grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--page-grid) 1px, transparent 1px),
+        var(--page);
+      background-size: 32px 32px;
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 15px;
+      line-height: 1.62;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      color: inherit;
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    a:focus-visible {
+      outline: none;
+      box-shadow: var(--focus);
+    }
+
+    a {
+      color: var(--purple-strong);
+      text-underline-offset: 3px;
+    }
+
+    .icon {
+      width: 18px;
+      height: 18px;
+      flex: 0 0 auto;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+
+    .report-nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      min-height: 52px;
+      border-bottom: 1px solid rgba(203, 198, 210, 0.82);
+      background: rgba(250, 249, 251, 0.91);
+      backdrop-filter: blur(18px);
+    }
+
+    .report-nav-inner {
+      width: min(1220px, calc(100vw - 40px));
+      min-height: 52px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      font-weight: 680;
+      letter-spacing: -0.01em;
+    }
+
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: var(--purple);
+      border-radius: 7px;
+    }
+
+    .report-links {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 13px;
+    }
+
+    .report-links a {
+      color: var(--muted);
+      text-decoration: none;
+    }
+
+    .report-links a:hover {
+      color: var(--text);
+    }
+
+    main {
+      width: min(1220px, calc(100vw - 40px));
+      margin: 0 auto;
+      padding: 56px 0 88px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);
+      gap: 44px;
+      align-items: end;
+      margin-bottom: 42px;
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      color: var(--purple-strong);
+      font-size: 13px;
+      font-weight: 680;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      max-width: 100%;
+      margin-bottom: 18px;
+      font-size: clamp(36px, 5vw, 58px);
+      line-height: 1.06;
+      letter-spacing: -0.045em;
+    }
+
+    .hero-copy {
+      max-width: 720px;
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.72;
+    }
+
+    .decision-note {
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--purple);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 16px 17px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .decision-note strong {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+
+    .decision-note p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .prototype-section {
+      scroll-margin-top: 72px;
+    }
+
+    .prototype-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    .state-tabs {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: rgba(255, 255, 255, 0.76);
+    }
+
+    .state-tab {
+      min-height: 34px;
+      border: 0;
+      border-radius: 6px;
+      padding: 0 13px;
+      color: var(--muted);
+      background: transparent;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 620;
+    }
+
+    .state-tab[aria-pressed="true"] {
+      color: var(--purple-strong);
+      background: var(--panel);
+      box-shadow: 0 1px 4px rgba(36, 29, 46, 0.12);
+    }
+
+    .prototype-label {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .stage {
+      position: relative;
+      min-height: 810px;
+      overflow: hidden;
+      border: 1px solid #c7c2cd;
+      border-radius: 14px;
+      background: #f4f2f5;
+      box-shadow: 0 34px 90px rgba(36, 29, 46, 0.18);
+    }
+
+    .obsidian-shell {
+      min-height: 810px;
+      display: grid;
+      grid-template-columns: 54px 220px minmax(0, 1fr) 260px;
+      color: #67616e;
+      filter: saturate(0.66);
+    }
+
+    .obsidian-ribbon {
+      padding: 16px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 17px;
+      color: #a6a0aa;
+      background: #eceaed;
+      border-right: 1px solid #d8d4dc;
+    }
+
+    .ribbon-dot {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 6px;
+    }
+
+    .ribbon-dot.active {
+      color: var(--purple);
+      background: #ded5ee;
+    }
+
+    .obsidian-sidebar,
+    .obsidian-outline {
+      padding: 18px 14px;
+      background: #f0eef1;
+    }
+
+    .obsidian-sidebar {
+      border-right: 1px solid #d8d4dc;
+    }
+
+    .obsidian-outline {
+      border-left: 1px solid #d8d4dc;
+    }
+
+    .ghost-title {
+      margin-bottom: 13px;
+      font-size: 12px;
+      font-weight: 670;
+    }
+
+    .ghost-row {
+      height: 28px;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      border-radius: 5px;
+      padding: 0 8px;
+      font-size: 11px;
+    }
+
+    .ghost-row.active {
+      color: #5e4c7c;
+      background: #e5deef;
+    }
+
+    .obsidian-editor {
+      padding: 76px 74px;
+      background: #fbfafb;
+    }
+
+    .obsidian-editor h2 {
+      color: #4b4650;
+      font-size: 30px;
+      letter-spacing: -0.025em;
+    }
+
+    .ghost-copy {
+      max-width: 690px;
+      height: 12px;
+      margin-bottom: 13px;
+      border-radius: 3px;
+      background: #e5e2e7;
+    }
+
+    .ghost-copy.short {
+      width: 64%;
+    }
+
+    .ghost-copy.mid {
+      width: 82%;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 36px;
+      background: rgba(42, 38, 46, 0.42);
+    }
+
+    .screen {
+      display: none;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    .modal {
+      width: min(980px, calc(100vw - 96px));
+      max-height: 720px;
+      overflow: hidden;
+      border: 1px solid var(--line-strong);
+      border-radius: 11px;
+      background: var(--panel);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .modal-header {
+      padding: 18px 20px 15px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .modal-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 13px;
+    }
+
+    .modal-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .modal-logo {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #ddd3ec;
+      border-radius: 8px;
+      color: var(--purple-strong);
+      background: var(--purple-soft);
+    }
+
+    .modal-title strong {
+      display: block;
+      font-size: 16px;
+      line-height: 1.25;
+    }
+
+    .context-line {
+      display: block;
+      max-width: 560px;
+      margin-top: 3px;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 12px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .header-buttons {
+      display: flex;
+      gap: 7px;
+    }
+
+    .icon-btn {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--muted);
+      background: var(--panel-soft);
+      cursor: pointer;
+    }
+
+    .search-box {
+      height: 42px;
+      display: grid;
+      grid-template-columns: 22px 1fr auto;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      padding: 0 12px;
+      background: #fff;
+    }
+
+    .search-box:focus-within {
+      border-color: rgba(120, 87, 183, 0.62);
+      box-shadow: var(--focus);
+    }
+
+    .search-box input {
+      min-width: 0;
+      border: 0;
+      outline: 0;
+      color: var(--text);
+      background: transparent;
+      font-size: 14px;
+    }
+
+    .search-box input::placeholder {
+      color: var(--faint);
+    }
+
+    kbd {
+      min-width: 23px;
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #d5d0d9;
+      border-bottom-color: #beb8c3;
+      border-radius: 5px;
+      padding: 0 6px;
+      color: #625d68;
+      background: #f7f5f8;
+      box-shadow: 0 1px 0 #e7e3e9;
+      font-family: inherit;
+      font-size: 11px;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .modal-body {
+      max-height: 575px;
+      overflow: auto;
+      padding: 17px 20px 18px;
+      background: var(--panel-quiet);
+    }
+
+    .group-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 13px;
+    }
+
+    .command-group {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--panel);
+      overflow: hidden;
+    }
+
+    .group-header {
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border-bottom: 1px solid #ebe8ee;
+      padding: 0 12px;
+      color: var(--muted);
+      background: #fbfafc;
+    }
+
+    .group-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      font-size: 12px;
+      font-weight: 670;
+    }
+
+    .group-count {
+      color: var(--faint);
+      font-size: 11px;
+    }
+
+    .tile-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1px;
+      background: #ece9ef;
+    }
+
+    .action-tile {
+      position: relative;
+      min-width: 0;
+      min-height: 76px;
+      border: 0;
+      padding: 11px 10px 9px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      justify-items: start;
+      gap: 5px;
+      color: var(--text);
+      background: #fff;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .action-tile:hover {
+      z-index: 1;
+      background: var(--purple-quiet);
+      box-shadow: inset 0 0 0 1px rgba(120, 87, 183, 0.24);
+    }
+
+    .action-tile.selected {
+      z-index: 1;
+      background: var(--purple-soft);
+      box-shadow: inset 0 0 0 1px rgba(120, 87, 183, 0.34);
+    }
+
+    .tile-icon {
+      width: 29px;
+      height: 29px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      color: var(--purple-strong);
+      background: var(--purple-soft);
+    }
+
+    .tile-icon.blue {
+      color: var(--blue);
+      background: var(--blue-soft);
+    }
+
+    .tile-icon.green {
+      color: var(--green);
+      background: var(--green-soft);
+    }
+
+    .tile-icon.amber {
+      color: var(--amber);
+      background: var(--amber-soft);
+    }
+
+    .tile-title {
+      max-width: 100%;
+      overflow: hidden;
+      font-size: 12px;
+      font-weight: 640;
+      line-height: 1.3;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .tile-meta {
+      min-height: 18px;
+      color: var(--faint);
+      font-size: 10px;
+    }
+
+    .tile-meta kbd {
+      height: 18px;
+      padding: 0 4px;
+      font-size: 9px;
+    }
+
+    .modal-footer {
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-top: 1px solid var(--line);
+      padding: 0 20px;
+      color: var(--muted);
+      background: #faf9fb;
+      font-size: 11px;
+    }
+
+    .footer-hints {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .footer-link {
+      border: 0;
+      padding: 0;
+      color: var(--purple-strong);
+      background: transparent;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 640;
+    }
+
+    .search-results {
+      display: grid;
+      gap: 12px;
+    }
+
+    .search-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .result-group {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .result-header {
+      min-height: 37px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid #ebe8ee;
+      padding: 0 12px;
+      color: var(--muted);
+      background: #faf9fb;
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .result-row {
+      min-height: 57px;
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 11px;
+      border-bottom: 1px solid #efedf1;
+      padding: 8px 12px;
+      background: #fff;
+    }
+
+    .result-row:last-child {
+      border-bottom: 0;
+    }
+
+    .result-row.active {
+      background: var(--purple-quiet);
+      box-shadow: inset 3px 0 0 var(--purple);
+    }
+
+    .result-icon {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      color: var(--amber);
+      background: var(--amber-soft);
+    }
+
+    .result-title {
+      display: block;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .result-source {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .escape-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      border: 1px dashed var(--line-strong);
+      border-radius: 8px;
+      padding: 11px 12px;
+      color: var(--muted);
+      background: #f9f8fa;
+      font-size: 12px;
+    }
+
+    .manage-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 280px;
+      min-height: 490px;
+    }
+
+    .manage-main {
+      padding: 16px;
+      background: var(--panel-quiet);
+    }
+
+    .manage-side {
+      border-left: 1px solid var(--line);
+      padding: 16px;
+      background: #fff;
+    }
+
+    .manage-title {
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .manage-title strong {
+      font-size: 13px;
+    }
+
+    .quiet-btn,
+    .primary-btn {
+      min-height: 32px;
+      border-radius: 7px;
+      padding: 0 11px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 640;
+    }
+
+    .quiet-btn {
+      border: 1px solid var(--line);
+      background: var(--panel-soft);
+    }
+
+    .primary-btn {
+      border: 1px solid var(--purple-strong);
+      color: #fff;
+      background: var(--purple);
+    }
+
+    .editable-group {
+      margin-bottom: 10px;
+      display: grid;
+      grid-template-columns: 24px 36px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 9px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px 10px;
+      background: #fff;
+    }
+
+    .drag {
+      color: var(--faint);
+      cursor: grab;
+    }
+
+    .editable-group .group-mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      color: var(--purple-strong);
+      background: var(--purple-soft);
+    }
+
+    .editable-group strong {
+      display: block;
+      font-size: 12px;
+    }
+
+    .editable-group span {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .visibility {
+      min-width: 80px;
+      color: var(--green);
+      font-size: 10px;
+      text-align: right;
+    }
+
+    .catalog-search {
+      height: 36px;
+      width: 100%;
+      margin-bottom: 12px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      padding: 0 10px;
+      outline: 0;
+    }
+
+    .catalog-label {
+      margin-bottom: 7px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .catalog-row {
+      min-height: 46px;
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr) 26px;
+      align-items: center;
+      gap: 8px;
+      border-top: 1px solid #efedf1;
+      font-size: 11px;
+    }
+
+    .catalog-row strong,
+    .catalog-row span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .catalog-row span {
+      color: var(--muted);
+      font-size: 9px;
+    }
+
+    .add-icon {
+      width: 25px;
+      height: 25px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--purple-strong);
+      background: var(--purple-quiet);
+    }
+
+    .home-stage {
+      position: absolute;
+      inset: 0;
+      display: none;
+      background: #f7f6f8;
+    }
+
+    .home-stage.active {
+      display: grid;
+      grid-template-columns: 54px 220px minmax(0, 1fr);
+    }
+
+    .home-content {
+      min-width: 0;
+      overflow: auto;
+      padding: 30px 34px 44px;
+      background: #fbfafc;
+    }
+
+    .home-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .home-top h2 {
+      margin-bottom: 2px;
+      font-size: 23px;
+      letter-spacing: -0.02em;
+    }
+
+    .home-top p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .home-actions {
+      display: flex;
+      gap: 7px;
+    }
+
+    .home-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+      gap: 14px;
+    }
+
+    .home-card {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .home-card.span {
+      grid-column: 1 / -1;
+    }
+
+    .home-card-head {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid #ebe8ee;
+      padding: 0 14px;
+      background: #fbfafc;
+    }
+
+    .home-card-head strong {
+      font-size: 12px;
+    }
+
+    .home-card-head span {
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .recent-list {
+      padding: 4px 0;
+    }
+
+    .recent-row {
+      min-height: 58px;
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid #f0eef2;
+      padding: 7px 14px;
+    }
+
+    .recent-row:last-child {
+      border-bottom: 0;
+    }
+
+    .recent-icon {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      color: var(--blue);
+      background: var(--blue-soft);
+    }
+
+    .recent-row strong,
+    .recent-row span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .recent-row strong {
+      font-size: 12px;
+    }
+
+    .recent-row span {
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .recent-time {
+      color: var(--faint);
+      font-size: 10px;
+    }
+
+    .destination-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      padding: 12px;
+    }
+
+    .destination {
+      min-height: 78px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 11px;
+      background: #fff;
+    }
+
+    .destination:hover {
+      border-color: rgba(120, 87, 183, 0.45);
+      background: var(--purple-quiet);
+    }
+
+    .destination .tile-icon {
+      margin-bottom: 7px;
+    }
+
+    .destination strong,
+    .destination span {
+      display: block;
+    }
+
+    .destination strong {
+      font-size: 11px;
+    }
+
+    .destination span {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 9px;
+    }
+
+    .note-preview {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 230px;
+      min-height: 190px;
+    }
+
+    .note-copy {
+      padding: 16px 18px;
+    }
+
+    .note-copy h3 {
+      margin-bottom: 8px;
+      font-size: 15px;
+    }
+
+    .note-copy p {
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.65;
+    }
+
+    .task-list {
+      border-left: 1px solid var(--line);
+      padding: 14px;
+      background: #faf9fb;
+    }
+
+    .task-list strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 11px;
+    }
+
+    .task {
+      min-height: 30px;
+      display: grid;
+      grid-template-columns: 15px 1fr;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .check {
+      width: 13px;
+      height: 13px;
+      margin-top: 2px;
+      border: 1px solid var(--line-strong);
+      border-radius: 3px;
+      background: #fff;
+    }
+
+    .compact-groups {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 9px;
+      padding: 12px;
+    }
+
+    .compact-group {
+      min-height: 86px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 11px;
+      background: #fff;
+    }
+
+    .compact-group strong,
+    .compact-group span {
+      display: block;
+    }
+
+    .compact-group strong {
+      margin-top: 9px;
+      font-size: 11px;
+    }
+
+    .compact-group span {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 9px;
+    }
+
+    .annotation-grid {
+      scroll-margin-top: 72px;
+      margin-top: 42px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .annotation {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      padding: 18px;
+      background: rgba(255, 255, 255, 0.76);
+    }
+
+    .annotation .number {
+      width: 28px;
+      height: 28px;
+      margin-bottom: 12px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #d8cbea;
+      border-radius: 7px;
+      color: var(--purple-strong);
+      background: var(--purple-soft);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .annotation h3 {
+      margin-bottom: 7px;
+      font-size: 15px;
+    }
+
+    .annotation p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.62;
+    }
+
+    .flow-section {
+      scroll-margin-top: 72px;
+      margin-top: 52px;
+    }
+
+    .section-head {
+      max-width: 720px;
+      margin-bottom: 18px;
+    }
+
+    .section-head h2 {
+      margin-bottom: 8px;
+      font-size: 25px;
+      letter-spacing: -0.025em;
+    }
+
+    .section-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .flow-lanes {
+      display: grid;
+      gap: 10px;
+    }
+
+    .flow-lane {
+      min-height: 84px;
+      display: grid;
+      grid-template-columns: 132px repeat(4, minmax(0, 1fr));
+      align-items: stretch;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.76);
+    }
+
+    .lane-name,
+    .flow-node {
+      padding: 13px;
+    }
+
+    .lane-name {
+      display: flex;
+      align-items: center;
+      color: var(--purple-strong);
+      background: var(--purple-soft);
+      font-size: 12px;
+      font-weight: 680;
+    }
+
+    .flow-node {
+      position: relative;
+      border-left: 1px solid var(--line);
+    }
+
+    .flow-node::after {
+      content: "→";
+      position: absolute;
+      right: -7px;
+      top: 29px;
+      z-index: 2;
+      width: 14px;
+      height: 22px;
+      display: grid;
+      place-items: center;
+      color: var(--faint);
+      background: #fff;
+      font-size: 12px;
+    }
+
+    .flow-node:last-child::after {
+      display: none;
+    }
+
+    .flow-node strong,
+    .flow-node span {
+      display: block;
+    }
+
+    .flow-node strong {
+      margin-bottom: 4px;
+      font-size: 12px;
+    }
+
+    .flow-node span {
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.5;
+    }
+
+    .boundary {
+      scroll-margin-top: 72px;
+      margin-top: 52px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .boundary-card {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      padding: 19px;
+      background: rgba(255, 255, 255, 0.76);
+    }
+
+    .boundary-card h2 {
+      margin-bottom: 12px;
+      font-size: 19px;
+    }
+
+    .boundary-card ul {
+      margin: 0;
+      padding-left: 20px;
+      color: var(--muted);
+    }
+
+    .boundary-card li {
+      margin-bottom: 7px;
+      font-size: 12px;
+    }
+
+    .boundary-card.do {
+      border-top: 3px solid var(--green);
+    }
+
+    .boundary-card.dont {
+      border-top: 3px solid var(--danger);
+    }
+
+    .report-footer {
+      margin-top: 52px;
+      border-top: 1px solid var(--line-strong);
+      padding-top: 18px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 28px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .report-footer p {
+      max-width: 720px;
+      margin: 0;
+    }
+
+    @media (max-width: 980px) {
+      .hero {
+        grid-template-columns: 1fr;
+      }
+
+      .obsidian-shell {
+        grid-template-columns: 48px 170px minmax(0, 1fr);
+      }
+
+      .obsidian-outline {
+        display: none;
+      }
+
+      .modal {
+        width: min(820px, calc(100vw - 48px));
+      }
+
+      .group-grid,
+      .home-grid,
+      .boundary {
+        grid-template-columns: 1fr;
+      }
+
+      .home-card.span {
+        grid-column: auto;
+      }
+
+      .compact-groups {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .annotation-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .flow-lane {
+        grid-template-columns: 110px repeat(4, minmax(150px, 1fr));
+        overflow-x: auto;
+      }
+    }
+
+    @media (max-width: 720px) {
+      main,
+      .report-nav-inner {
+        width: min(100% - 24px, 1220px);
+      }
+
+      main {
+        padding-top: 34px;
+      }
+
+      .report-links {
+        display: none;
+      }
+
+      .prototype-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .state-tabs {
+        width: 100%;
+        overflow-x: auto;
+      }
+
+      .stage {
+        min-height: 760px;
+      }
+
+      .obsidian-shell {
+        display: block;
+      }
+
+      .obsidian-ribbon,
+      .obsidian-sidebar,
+      .obsidian-outline {
+        display: none;
+      }
+
+      .obsidian-editor {
+        min-height: 760px;
+        padding: 42px 24px;
+      }
+
+      .overlay {
+        padding: 12px;
+      }
+
+      .modal {
+        width: 100%;
+        max-height: 710px;
+      }
+
+      .group-grid,
+      .tile-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .action-tile {
+        min-height: 64px;
+        grid-template-columns: 34px minmax(0, 1fr) auto;
+        grid-template-rows: 1fr;
+        align-items: center;
+      }
+
+      .modal-footer {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 10px 14px;
+      }
+
+      .manage-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .manage-side {
+        display: none;
+      }
+
+      .home-stage.active {
+        display: block;
+      }
+
+      .home-stage .obsidian-ribbon,
+      .home-stage .obsidian-sidebar {
+        display: none;
+      }
+
+      .home-content {
+        height: 760px;
+        padding: 22px 16px;
+      }
+
+      .home-top,
+      .note-preview,
+      .report-footer {
+        grid-template-columns: 1fr;
+        flex-direction: column;
+      }
+
+      .task-list {
+        border-top: 1px solid var(--line);
+        border-left: 0;
+      }
+
+      .compact-groups {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <svg aria-hidden="true" width="0" height="0" style="position:absolute">
+    <symbol id="i-command" viewBox="0 0 24 24"><path d="M18 9a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12Z"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="m18 6-12 12"/><path d="m6 6 12 12"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></symbol>
+    <symbol id="i-message" viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"/></symbol>
+    <symbol id="i-atlas" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.5 2.5 3.8 5.5 3.8 9S14.5 18.5 12 21c-2.5-2.5-3.8-5.5-3.8-9S9.5 5.5 12 3Z"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 16v-5"/><path d="M12 16V8"/><path d="M17 16V5"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></symbol>
+    <symbol id="i-lightbulb" viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M8.5 14.5A7 7 0 1 1 15.5 14.5c-.8.6-1.5 1.4-1.5 2.5h-4c0-1.1-.7-1.9-1.5-2.5Z"/></symbol>
+    <symbol id="i-drawing" viewBox="0 0 24 24"><path d="m3 21 3.8-1 11-11a2.8 2.8 0 0 0-4-4l-11 11Z"/><path d="m12.5 6.5 4 4"/><path d="M15 21h6"/></symbol>
+    <symbol id="i-workspace" viewBox="0 0 24 24"><rect width="18" height="14" x="3" y="4" rx="2"/><path d="M8 20h8"/><path d="M12 18v2"/></symbol>
+    <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4Z"/></symbol>
+    <symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></symbol>
+    <symbol id="i-rail" viewBox="0 0 24 24"><path d="M4 4h16v16H4Z"/><path d="M9 4v16"/></symbol>
+  </svg>
+
+  <nav class="report-nav" aria-label="报告导航">
+    <div class="report-nav-inner">
+      <div class="brand">
+        <span class="brand-mark"><svg class="icon"><use href="#i-command"/></svg></span>
+        <span>Peak Command Center</span>
+      </div>
+      <div class="report-links">
+        <a href="#prototype">交互原型</a>
+        <a href="#flows">关键路径</a>
+        <a href="#boundaries">产品边界</a>
+        <a href="../../superpowers/specs/2026-07-30-command-center-launcher-home-design.md">正式设计</a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <header class="hero">
+      <div>
+        <p class="eyebrow">设计原型 · 约 6 分钟阅读</p>
+        <h1>把命令全集，变成自己的工作入口</h1>
+        <p class="hero-copy">原生 Command Palette 继续承担全生态搜索。Peak Command Center 只呈现用户主动策展的高频动作，并让同一份配置自然展开成 Home 导航页。</p>
+      </div>
+      <aside class="decision-note">
+        <strong>核心裁决</strong>
+        <p>这不是旧的 AI capability planner，也不拦截 Cmd+P。默认用二维位置帮助记忆，搜索只过滤已经配置的内容。</p>
+      </aside>
+    </header>
+
+    <section class="prototype-section" id="prototype">
+      <div class="prototype-toolbar">
+        <div class="state-tabs" role="group" aria-label="原型状态">
+          <button class="state-tab" data-view="modal" aria-pressed="true">命令 Modal</button>
+          <button class="state-tab" data-view="search" aria-pressed="false">搜索态</button>
+          <button class="state-tab" data-view="home" aria-pressed="false">Home 页</button>
+          <button class="state-tab" data-view="manage" aria-pressed="false">管理分组</button>
+        </div>
+        <span class="prototype-label">可点击状态切换 · Mock，不代表已实现</span>
+      </div>
+
+      <div class="stage">
+        <div class="obsidian-shell" aria-hidden="true">
+          <div class="obsidian-ribbon">
+            <span class="ribbon-dot active"><svg class="icon"><use href="#i-file"/></svg></span>
+            <span class="ribbon-dot"><svg class="icon"><use href="#i-search"/></svg></span>
+            <span class="ribbon-dot"><svg class="icon"><use href="#i-atlas"/></svg></span>
+            <span class="ribbon-dot"><svg class="icon"><use href="#i-message"/></svg></span>
+          </div>
+          <div class="obsidian-sidebar">
+            <div class="ghost-title">Files</div>
+            <div class="ghost-row">⌄ 01 Projects</div>
+            <div class="ghost-row active">PKM 产品类别分析.md</div>
+            <div class="ghost-row">Command Center.md</div>
+            <div class="ghost-row">⌄ 02 Research</div>
+            <div class="ghost-row">AI editor landscape.md</div>
+            <div class="ghost-row">⌄ Daily</div>
+          </div>
+          <div class="obsidian-editor">
+            <h2>PKM 产品类别分析：从信息获取到输出</h2>
+            <div class="ghost-copy"></div>
+            <div class="ghost-copy mid"></div>
+            <div class="ghost-copy short"></div>
+            <div style="height:28px"></div>
+            <div class="ghost-copy"></div>
+            <div class="ghost-copy"></div>
+            <div class="ghost-copy mid"></div>
+            <div style="height:28px"></div>
+            <div class="ghost-copy short"></div>
+            <div class="ghost-copy"></div>
+          </div>
+          <div class="obsidian-outline">
+            <div class="ghost-title">Outline</div>
+            <div class="ghost-row active">1. 知识库不是单一目录</div>
+            <div class="ghost-row">2. 从获取到输出</div>
+            <div class="ghost-row">3. 产品能力边界</div>
+          </div>
+        </div>
+
+        <div class="overlay" id="modal-overlay">
+          <section class="screen active" data-screen="modal">
+            <div class="modal">
+              <header class="modal-header">
+                <div class="modal-heading">
+                  <div class="modal-title">
+                    <span class="modal-logo"><svg class="icon"><use href="#i-command"/></svg></span>
+                    <span>
+                      <strong>Peak Command Center</strong>
+                      <span class="context-line">当前：PKM 产品类别分析.md · Composer 可用</span>
+                    </span>
+                  </div>
+                  <div class="header-buttons">
+                    <button class="icon-btn" data-open="home" aria-label="打开 Home"><svg class="icon"><use href="#i-home"/></svg></button>
+                    <button class="icon-btn" data-open="manage" aria-label="管理分组"><svg class="icon"><use href="#i-edit"/></svg></button>
+                    <button class="icon-btn" aria-label="关闭"><svg class="icon"><use href="#i-x"/></svg></button>
+                  </div>
+                </div>
+                <label class="search-box">
+                  <svg class="icon"><use href="#i-search"/></svg>
+                  <input id="command-search" type="text" placeholder="筛选我的命令、文件和 Workspace">
+                  <kbd>/</kbd>
+                </label>
+              </header>
+              <div class="modal-body">
+                <div class="group-grid">
+                  <article class="command-group">
+                    <header class="group-header">
+                      <span class="group-label"><svg class="icon"><use href="#i-command"/></svg>Peak Assistant</span>
+                      <span class="group-count">6 个入口</span>
+                    </header>
+                    <div class="tile-grid">
+                      <button class="action-tile selected">
+                        <span class="tile-icon"><svg class="icon"><use href="#i-file"/></svg></span>
+                        <span class="tile-title">Composer</span>
+                        <span class="tile-meta"><kbd>⌘ ⇧ O</kbd></span>
+                      </button>
+                      <button class="action-tile">
+                        <span class="tile-icon"><svg class="icon"><use href="#i-message"/></svg></span>
+                        <span class="tile-title">Chat Studio</span>
+                        <span class="tile-meta">Open view</span>
+                      </button>
+                      <button class="action-tile">
+                        <span class="tile-icon"><svg class="icon"><use href="#i-atlas"/></svg></span>
+                        <span class="tile-title">File Atlas</span>
+                        <span class="tile-meta">Navigate</span>
+                      </button>
+                      <button class="action-tile">
+                        <span class="tile-icon blue"><svg class="icon"><use href="#i-search"/></svg></span>
+                        <span class="tile-title">Quick Search</span>
+                        <span class="tile-meta"><kbd>⌘ O</kbd></span>
+                      </button>
+                      <button class="action-tile">
+                        <span class="tile-icon blue"><svg class="icon"><use href="#i-chart"/></svg></span>
+                        <span class="tile-title">Usage</span>
+                        <span class="tile-meta">Dashboard</span>
+                      </button>
+                      <button class="action-tile">
+                        <span class="tile-icon"><svg class="icon"><use href="#i-settings"/></svg></span>
+                        <span class="tile-title">Settings</span>
+                        <span class="tile-meta">Peak setup</span>
+                      </button>
+                    </div>
+                  </article>
+
+                  <article class="command-group">
+                    <header class="group-header">
+                      <span class="group-label"><svg class="icon"><use href="#i-workspace"/></svg>我的空间</span>
+                      <span class="group-count">4 个目的地</span>
+                    </header>
+                    <div class="tile-grid">
+                      <button class="action-tile" data-open="home">
+                        <span class="tile-icon green"><svg class="icon"><use href="#i-home"/></svg></span>
+                        <span class="tile-title">Home</span>
+                        <span class="tile-meta">Pinned view</span>
+                      </button>
+                      <button class="action-tile">
+                        <span class="tile-icon green"><svg class="icon"><use href="#i-workspace"/></svg></span>
+                        <span class="tile-title">Research desk</span>
+                        <span class="tile-meta">Workspace</span>
+                      </button>
+                      <button class="action-tile">
+                        <span class="tile-icon green"><svg class="icon"><use href="#i-bookmark"/></svg></span>
+                        <span class="tile-title">Bookmarks</span>
+                        <span class="tile-meta">Core plugin</span>
+                      </button>
+                      <button class="action-tile">
+                        <span class="tile-icon green"><svg class="icon"><use href="#i-file"/></svg></span>
+                        <span class="tile-title">Product map</span>
+                        <span class="tile-meta">Pinned note</span>
+                      </button>
+                    </div>
+                  </article>
+
+                  <article class="command-group">
+                    <header class="group-header">
+                      <span class="group-label"><svg class="icon"><use href="#i-lightbulb"/></svg>快速创建</span>
+                      <span class="group-count">3 个动作</span>
+                    </header>
+                    <div class="tile-grid">
+                      <button class="action-tile">
+                        <span class="tile-icon blue"><svg class="icon"><use href="#i-calendar"/></svg></span>
+                        <span class="tile-title">Daily note</span>
+                        <span class="tile-meta">Core command</span>
+                      </button>
+                      <button class="action-tile">
+                        <span class="tile-icon blue"><svg class="icon"><use href="#i-lightbulb"/></svg></span>
+                        <span class="tile-title">Capture idea</span>
+                        <span class="tile-meta"><kbd>⌘ ⇧ I</kbd></span>
+                      </button>
+                      <button class="action-tile">
+                        <span class="tile-icon blue"><svg class="icon"><use href="#i-file"/></svg></span>
+                        <span class="tile-title">Meeting note</span>
+                        <span class="tile-meta">QuickAdd</span>
+                      </button>
+                    </div>
+                  </article>
+
+                  <article class="command-group">
+                    <header class="group-header">
+                      <span class="group-label"><svg class="icon"><use href="#i-drawing"/></svg>Excalidraw</span>
+                      <span class="group-count">3 个精选动作</span>
+                    </header>
+                    <div class="tile-grid">
+                      <button class="action-tile">
+                        <span class="tile-icon amber"><svg class="icon"><use href="#i-drawing"/></svg></span>
+                        <span class="tile-title">New drawing</span>
+                        <span class="tile-meta">New tab</span>
+                      </button>
+                      <button class="action-tile">
+                        <span class="tile-icon amber"><svg class="icon"><use href="#i-drawing"/></svg></span>
+                        <span class="tile-title">Current window</span>
+                        <span class="tile-meta">Replace pane</span>
+                      </button>
+                      <button class="action-tile">
+                        <span class="tile-icon amber"><svg class="icon"><use href="#i-plus"/></svg></span>
+                        <span class="tile-title">Insert drawing</span>
+                        <span class="tile-meta">Embed</span>
+                      </button>
+                    </div>
+                  </article>
+                </div>
+              </div>
+              <footer class="modal-footer">
+                <div class="footer-hints"><span><kbd>↑ ↓ ← →</kbd> 移动</span><span><kbd>↵</kbd> 打开</span><span><kbd>Esc</kbd> 关闭</span></div>
+                <button class="footer-link" data-open="search">找不到？打开原生 Command Palette · ⌘P</button>
+              </footer>
+            </div>
+          </section>
+
+          <section class="screen" data-screen="search">
+            <div class="modal">
+              <header class="modal-header">
+                <div class="modal-heading">
+                  <div class="modal-title">
+                    <span class="modal-logo"><svg class="icon"><use href="#i-search"/></svg></span>
+                    <span>
+                      <strong>搜索我的入口</strong>
+                      <span class="context-line">只筛选已配置内容，不把整个 Obsidian 命令全集拉进来</span>
+                    </span>
+                  </div>
+                  <div class="header-buttons">
+                    <button class="icon-btn" data-open="modal" aria-label="返回"><svg class="icon"><use href="#i-x"/></svg></button>
+                  </div>
+                </div>
+                <label class="search-box">
+                  <svg class="icon"><use href="#i-search"/></svg>
+                  <input type="text" value="drawing" aria-label="搜索词">
+                  <kbd>Esc</kbd>
+                </label>
+              </header>
+              <div class="modal-body">
+                <div class="search-results">
+                  <div class="search-summary">
+                    <span>3 个已配置动作</span>
+                    <span>命中：标题 · 别名 · 组名</span>
+                  </div>
+                  <article class="result-group">
+                    <header class="result-header"><svg class="icon"><use href="#i-drawing"/></svg>Excalidraw</header>
+                    <div class="result-row active">
+                      <span class="result-icon"><svg class="icon"><use href="#i-drawing"/></svg></span>
+                      <span><strong class="result-title">New drawing</strong><span class="result-source">Excalidraw · Create new drawing in a new tab</span></span>
+                      <kbd>↵</kbd>
+                    </div>
+                    <div class="result-row">
+                      <span class="result-icon"><svg class="icon"><use href="#i-drawing"/></svg></span>
+                      <span><strong class="result-title">Current window</strong><span class="result-source">Excalidraw · Create new drawing in current active window</span></span>
+                      <span></span>
+                    </div>
+                    <div class="result-row">
+                      <span class="result-icon"><svg class="icon"><use href="#i-plus"/></svg></span>
+                      <span><strong class="result-title">Insert drawing</strong><span class="result-source">Excalidraw · Create and embed in active document</span></span>
+                      <span></span>
+                    </div>
+                  </article>
+                  <div class="escape-card">
+                    <span>要运行尚未固定的命令？原生 Palette 仍保留完整生态。</span>
+                    <button class="quiet-btn">Open Command Palette <kbd>⌘ P</kbd></button>
+                  </div>
+                </div>
+              </div>
+              <footer class="modal-footer">
+                <div class="footer-hints"><span><kbd>↑ ↓</kbd> 移动</span><span><kbd>↵</kbd> 打开</span><span><kbd>Esc</kbd> 清空</span></div>
+                <button class="footer-link" data-open="manage">管理已固定动作</button>
+              </footer>
+            </div>
+          </section>
+
+          <section class="screen" data-screen="manage">
+            <div class="modal">
+              <header class="modal-header">
+                <div class="modal-heading">
+                  <div class="modal-title">
+                    <span class="modal-logo"><svg class="icon"><use href="#i-edit"/></svg></span>
+                    <span>
+                      <strong>管理 Command Center</strong>
+                      <span class="context-line">分组、短标题和显示位置由用户控制</span>
+                    </span>
+                  </div>
+                  <button class="primary-btn" data-open="modal">完成</button>
+                </div>
+              </header>
+              <div class="manage-layout">
+                <div class="manage-main">
+                  <div class="manage-title">
+                    <strong>命令组</strong>
+                    <button class="quiet-btn"><svg class="icon" style="width:13px;height:13px;vertical-align:-2px"><use href="#i-plus"/></svg> 新建组</button>
+                  </div>
+                  <div class="editable-group">
+                    <svg class="icon drag"><use href="#i-grip"/></svg>
+                    <span class="group-mark"><svg class="icon"><use href="#i-command"/></svg></span>
+                    <span><strong>Peak Assistant</strong><span>6 个动作 · Modal 与 Home</span></span>
+                    <span class="visibility">固定显示</span>
+                  </div>
+                  <div class="editable-group">
+                    <svg class="icon drag"><use href="#i-grip"/></svg>
+                    <span class="group-mark"><svg class="icon"><use href="#i-workspace"/></svg></span>
+                    <span><strong>我的空间</strong><span>4 个目的地 · Modal 与 Home</span></span>
+                    <span class="visibility">固定显示</span>
+                  </div>
+                  <div class="editable-group">
+                    <svg class="icon drag"><use href="#i-grip"/></svg>
+                    <span class="group-mark"><svg class="icon"><use href="#i-lightbulb"/></svg></span>
+                    <span><strong>快速创建</strong><span>3 个动作 · Modal</span></span>
+                    <span class="visibility">仅 Modal</span>
+                  </div>
+                  <div class="editable-group">
+                    <svg class="icon drag"><use href="#i-grip"/></svg>
+                    <span class="group-mark"><svg class="icon"><use href="#i-drawing"/></svg></span>
+                    <span><strong>Excalidraw</strong><span>3 个动作 · 自定义短标题</span></span>
+                    <span class="visibility">固定显示</span>
+                  </div>
+                </div>
+                <aside class="manage-side">
+                  <div class="manage-title"><strong>添加动作</strong><span style="color:var(--muted);font-size:10px">仅在此处看全集</span></div>
+                  <input class="catalog-search" value="Excalidraw" aria-label="搜索全部命令">
+                  <div class="catalog-label">Excalidraw · 已启用</div>
+                  <div class="catalog-row">
+                    <svg class="icon"><use href="#i-drawing"/></svg>
+                    <span><strong>Create new drawing</strong><span>New tab</span></span>
+                    <span class="add-icon"><svg class="icon" style="width:13px;height:13px"><use href="#i-plus"/></svg></span>
+                  </div>
+                  <div class="catalog-row">
+                    <svg class="icon"><use href="#i-drawing"/></svg>
+                    <span><strong>Create new drawing</strong><span>Current active window</span></span>
+                    <span class="add-icon"><svg class="icon" style="width:13px;height:13px"><use href="#i-plus"/></svg></span>
+                  </div>
+                  <div class="catalog-row">
+                    <svg class="icon"><use href="#i-drawing"/></svg>
+                    <span><strong>Create and embed</strong><span>Active document</span></span>
+                    <span class="add-icon"><svg class="icon" style="width:13px;height:13px"><use href="#i-plus"/></svg></span>
+                  </div>
+                </aside>
+              </div>
+              <footer class="modal-footer">
+                <span>Lucide 图标 · 用户别名 · 真实 command ID</span>
+                <button class="footer-link">Export layout</button>
+              </footer>
+            </div>
+          </section>
+        </div>
+
+        <section class="home-stage" data-screen="home">
+          <div class="obsidian-ribbon">
+            <span class="ribbon-dot active"><svg class="icon"><use href="#i-home"/></svg></span>
+            <span class="ribbon-dot"><svg class="icon"><use href="#i-search"/></svg></span>
+            <span class="ribbon-dot"><svg class="icon"><use href="#i-atlas"/></svg></span>
+          </div>
+          <div class="obsidian-sidebar">
+            <div class="ghost-title">Files</div>
+            <div class="ghost-row active">Home</div>
+            <div class="ghost-row">PKM 产品类别分析.md</div>
+            <div class="ghost-row">Command Center.md</div>
+            <div class="ghost-row">⌄ Projects</div>
+            <div class="ghost-row">⌄ Research</div>
+          </div>
+          <div class="home-content">
+            <header class="home-top">
+              <div>
+                <h2>晚上好，回到你的 Vault</h2>
+                <p>导航页 · 不复制文件内容，不改变当前 Workspace</p>
+              </div>
+              <div class="home-actions">
+                <button class="quiet-btn" data-open="modal"><svg class="icon" style="width:13px;height:13px;vertical-align:-2px"><use href="#i-command"/></svg> Command Center</button>
+                <button class="quiet-btn" data-open="manage"><svg class="icon" style="width:13px;height:13px;vertical-align:-2px"><use href="#i-edit"/></svg> 管理</button>
+              </div>
+            </header>
+            <div class="home-grid">
+              <article class="home-card">
+                <header class="home-card-head"><strong>继续工作</strong><span>来自最近打开记录</span></header>
+                <div class="recent-list">
+                  <div class="recent-row">
+                    <span class="recent-icon"><svg class="icon"><use href="#i-file"/></svg></span>
+                    <span><strong>PKM 产品类别分析.md</strong><span>01 Projects / Knowledge systems</span></span>
+                    <span class="recent-time">3 分钟前</span>
+                  </div>
+                  <div class="recent-row">
+                    <span class="recent-icon"><svg class="icon"><use href="#i-file"/></svg></span>
+                    <span><strong>Command Center research.md</strong><span>02 Research / Product surfaces</span></span>
+                    <span class="recent-time">昨天</span>
+                  </div>
+                  <div class="recent-row">
+                    <span class="recent-icon"><svg class="icon"><use href="#i-file"/></svg></span>
+                    <span><strong>Composer implementation note.md</strong><span>03 Delivery / Peak Assistant</span></span>
+                    <span class="recent-time">周二</span>
+                  </div>
+                </div>
+              </article>
+
+              <article class="home-card">
+                <header class="home-card-head"><strong>固定目的地</strong><span>文件 · Bookmark · Workspace</span></header>
+                <div class="destination-grid">
+                  <div class="destination">
+                    <span class="tile-icon green"><svg class="icon"><use href="#i-workspace"/></svg></span>
+                    <strong>Research desk</strong>
+                    <span>Workspace</span>
+                  </div>
+                  <div class="destination">
+                    <span class="tile-icon green"><svg class="icon"><use href="#i-bookmark"/></svg></span>
+                    <strong>Product map</strong>
+                    <span>Bookmark group</span>
+                  </div>
+                  <div class="destination">
+                    <span class="tile-icon blue"><svg class="icon"><use href="#i-calendar"/></svg></span>
+                    <strong>Daily note</strong>
+                    <span>Core command</span>
+                  </div>
+                  <div class="destination">
+                    <span class="tile-icon"><svg class="icon"><use href="#i-atlas"/></svg></span>
+                    <strong>File Atlas</strong>
+                    <span>Peak view</span>
+                  </div>
+                </div>
+              </article>
+
+              <article class="home-card span">
+                <header class="home-card-head"><strong>Today.md</strong><span>Vault Note · 只使用原文件</span></header>
+                <div class="note-preview">
+                  <div class="note-copy">
+                    <h3>今天要推进什么？</h3>
+                    <p>把 Command Center 的产品边界确定下来：解决命令组织与返回工作的问题，不进入新的 dashboard widget 战场。</p>
+                    <p>这块内容由 Obsidian 的 Note renderer 展示。Home 只负责布局和导航，不把正文复制进自己的配置。</p>
+                  </div>
+                  <div class="task-list">
+                    <strong>当前笔记中的任务</strong>
+                    <span class="task"><i class="check"></i><span>核对现有 roadmap</span></span>
+                    <span class="task"><i class="check"></i><span>完成竞品研究</span></span>
+                    <span class="task"><i class="check"></i><span>评审 launcher 与 Home 原型</span></span>
+                  </div>
+                </div>
+              </article>
+
+              <article class="home-card span">
+                <header class="home-card-head"><strong>命令组</strong><span>与 Modal 共用一份配置</span></header>
+                <div class="compact-groups">
+                  <div class="compact-group"><span class="tile-icon"><svg class="icon"><use href="#i-command"/></svg></span><strong>Peak Assistant</strong><span>6 个入口</span></div>
+                  <div class="compact-group"><span class="tile-icon green"><svg class="icon"><use href="#i-workspace"/></svg></span><strong>我的空间</strong><span>4 个目的地</span></div>
+                  <div class="compact-group"><span class="tile-icon blue"><svg class="icon"><use href="#i-lightbulb"/></svg></span><strong>快速创建</strong><span>3 个动作</span></div>
+                  <div class="compact-group"><span class="tile-icon amber"><svg class="icon"><use href="#i-drawing"/></svg></span><strong>Excalidraw</strong><span>3 个精选动作</span></div>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section class="annotation-grid" aria-label="设计判断">
+      <article class="annotation">
+        <span class="number">1</span>
+        <h3>空 query 保留空间记忆</h3>
+        <p>用户不是每次都想搜索。四个稳定分组比二十条动态排序结果更容易形成肌肉记忆。</p>
+      </article>
+      <article class="annotation">
+        <span class="number">2</span>
+        <h3>搜索只筛选已策展内容</h3>
+        <p>完整命令 catalog 只在管理态出现。日常搜索不会再次退化成原生 Palette 的无限全集。</p>
+      </article>
+      <article class="annotation">
+        <span class="number">3</span>
+        <h3>Home 不再造数据系统</h3>
+        <p>Todo、Base、Canvas 和文档都由原有 owner 渲染。Home 负责固定位置、导航和继续工作。</p>
+      </article>
+    </section>
+
+    <section class="flow-section" id="flows">
+      <div class="section-head">
+        <h2>三条主路径</h2>
+        <p>Modal、搜索和 Home 都回到明确目的地，不在 Command Center 内继续膨胀成工作台。</p>
+      </div>
+      <div class="flow-lanes">
+        <div class="flow-lane">
+          <div class="lane-name">高频命令</div>
+          <div class="flow-node"><strong>用户快捷键</strong><span>Obsidian Hotkeys 中绑定</span></div>
+          <div class="flow-node"><strong>二维 Modal</strong><span>分组位置稳定</span></div>
+          <div class="flow-node"><strong>直接执行</strong><span>Peak Gateway 或 exact command ID</span></div>
+          <div class="flow-node"><strong>返回原文档</strong><span>恢复焦点与选区</span></div>
+        </div>
+        <div class="flow-lane">
+          <div class="lane-name">临时查找</div>
+          <div class="flow-node"><strong>输入关键词</strong><span>标题、别名和组名</span></div>
+          <div class="flow-node"><strong>已配置结果</strong><span>保留来源组</span></div>
+          <div class="flow-node"><strong>找不到</strong><span>显式打开原生 Cmd+P</span></div>
+          <div class="flow-node"><strong>不污染配置</strong><span>临时运行不自动固定</span></div>
+        </div>
+        <div class="flow-lane">
+          <div class="lane-name">返回工作</div>
+          <div class="flow-node"><strong>打开 Home</strong><span>命令、Ribbon 或空 tab</span></div>
+          <div class="flow-node"><strong>继续工作</strong><span>最近文件与固定目的地</span></div>
+          <div class="flow-node"><strong>打开原 owner</strong><span>Note、Base、Workspace、View</span></div>
+          <div class="flow-node"><strong>保持单一真值</strong><span>不复制内容与任务状态</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="boundary" id="boundaries">
+      <article class="boundary-card do">
+        <h2>这次要做</h2>
+        <ul>
+          <li>一个可绑定快捷键的 Peak Command Center 入口。</li>
+          <li>二维命令组、真实快捷键、插件可用状态和用户短标题。</li>
+          <li>同一配置驱动 Modal 与 Home。</li>
+          <li>文件、Bookmark、Workspace 和现有 Vault 内容作为目的地。</li>
+        </ul>
+      </article>
+      <article class="boundary-card dont">
+        <h2>这次不做</h2>
+        <ul>
+          <li>不劫持或改写原生 Cmd+P。</li>
+          <li>不复用旧 AI planner 作为启动器。</li>
+          <li>不引入任意脚本、远程 widget 或 dashboard 市场。</li>
+          <li>不使用 AI 生成 20px 功能图标；统一使用 Lucide。</li>
+        </ul>
+      </article>
+    </section>
+
+    <footer class="report-footer">
+      <p>这是设计原型，不是生产 UI 证据。正式实现仍需经过 focused tests、production build、Obsidian CDP 键盘与焦点验证，以及真实应用截图。</p>
+      <a href="../../research/2026-07-30-command-center-launcher-home/README.md">查看研究依据</a>
+    </footer>
+  </main>
+
+  <script>
+    const tabs = Array.from(document.querySelectorAll('.state-tab'));
+    const screens = Array.from(document.querySelectorAll('.screen'));
+    const overlay = document.getElementById('modal-overlay');
+    const home = document.querySelector('.home-stage');
+    const commandSearch = document.getElementById('command-search');
+
+    function setView(view) {
+      tabs.forEach((tab) => {
+        tab.setAttribute('aria-pressed', String(tab.dataset.view === view));
+      });
+
+      const isHome = view === 'home';
+      home.classList.toggle('active', isHome);
+      overlay.style.display = isHome ? 'none' : 'flex';
+
+      screens.forEach((screen) => {
+        screen.classList.toggle('active', screen.dataset.screen === view);
+      });
+    }
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => setView(tab.dataset.view));
+    });
+
+    document.querySelectorAll('[data-open]').forEach((control) => {
+      control.addEventListener('click', () => setView(control.dataset.open));
+    });
+
+    commandSearch.addEventListener('input', () => {
+      if (!commandSearch.value.trim()) return;
+      setView('search');
+    });
+  </script>
+</body>
+</html>
