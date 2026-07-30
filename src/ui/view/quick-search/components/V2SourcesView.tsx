@@ -26,6 +26,10 @@ import { useGraphAgent } from '../hooks/useGraphAgent';
 import { useQuickSearchHost } from '../hooks/useQuickSearchHost';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import type { V2Source } from '../types/search-steps';
+import {
+	isSourcesDensityVisible,
+	resolveSourcesKeyboardIntent,
+} from './v2SourcesInteraction';
 
 type GraphKind = 'vault' | 'ai';
 type VaultGraphScope = 'evidence' | 'one-hop' | 'two-hop';
@@ -274,6 +278,10 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 			? graphSelectedPath ?? results[0]?.path ?? null
 			: results[selectedIndex]?.path ?? results[0]?.path ?? null;
 
+	const focusSourcesProjection = useCallback((): void => {
+		projectionRef.current?.focus({ preventScroll: true });
+	}, []);
+
 	const handleOpen = useCallback((pathOrResult: string, newTab = true) => {
 		createOpenSourceCallback(onClose, newTab, vaultNavigation)(pathOrResult);
 	}, [onClose, vaultNavigation]);
@@ -289,6 +297,7 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 	const setInspectorVisible = useCallback((open: boolean): void => {
 		if (!open) {
 			setInspectorOpen(false);
+			focusSourcesProjection();
 			return;
 		}
 		if (!selectedPath) return;
@@ -298,36 +307,35 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 		}
 		setInspectorPath(selectedPath);
 		setInspectorOpen(true);
-	}, [handleOpen, selectedPath]);
+	}, [focusSourcesProjection, handleOpen, selectedPath]);
 
 	const handleProjectionKey = useCallback((event: KeyboardEvent): void => {
-		if (view === 'tree') return;
 		const target = event.target as Element | null;
-		if (!target || !rootRef.current?.contains(target)) return;
-		if (!target.closest('[data-v2-sources-projection]')) return;
-		if (target.closest('input, textarea, [contenteditable="true"]')) return;
-
-		if (event.key === 'ArrowRight') {
-			event.preventDefault();
+		const intent = resolveSourcesKeyboardIntent({
+			view,
+			key: event.key,
+			insideWorkspace: Boolean(target && rootRef.current?.contains(target)),
+			editableTarget: Boolean(target?.closest?.('input, textarea, [contenteditable="true"]')),
+			inspectorOpen,
+			hasSelection: Boolean(selectedPath),
+			resultCount: results.length,
+		});
+		if (!intent) return;
+		event.preventDefault();
+		if (intent.type === 'open-inspector') {
 			setInspectorVisible(true);
 			return;
 		}
-		if (event.key === 'ArrowLeft' && inspectorOpen) {
-			event.preventDefault();
+		if (intent.type === 'close-inspector') {
 			setInspectorVisible(false);
 			return;
 		}
-		if (view !== 'list' || results.length === 0) return;
-		if (event.key === 'Enter') {
+		if (intent.type === 'open-selected') {
 			if (!selectedPath) return;
-			event.preventDefault();
 			handleOpen(selectedPath, event.metaKey || event.ctrlKey);
 			return;
 		}
-		if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
-		event.preventDefault();
-		const direction = event.key === 'ArrowDown' ? 1 : -1;
-		const nextIndex = (selectedIndex + direction + results.length) % results.length;
+		const nextIndex = (selectedIndex + intent.direction + results.length) % results.length;
 		setSelectedIndex(nextIndex);
 		const nextPath = results[nextIndex].path;
 		setCursor(nextPath);
@@ -344,6 +352,10 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 	]);
 
 	useOwnerDocumentListener(rootRef, 'keydown', handleProjectionKey);
+
+	useEffect(() => {
+		focusSourcesProjection();
+	}, [focusSourcesProjection, view]);
 
 	useEffect(() => {
 		if (results.length === 0) return;
@@ -408,18 +420,13 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 			exit={{ opacity: 0 }}
 			className="pktw-flex pktw-min-h-0 pktw-flex-col pktw-gap-2 pktw-px-1 pktw-py-1"
 		>
-			<div className="pktw-flex pktw-min-h-8 pktw-items-center pktw-gap-2 pktw-px-1">
-				<FileText className="pktw-h-4 pktw-w-4 pktw-text-pk-accent" />
-				<span className="pktw-text-sm pktw-font-semibold pktw-text-pk-foreground">
-					Sources · {sources.length} cited files
-				</span>
-			</div>
-
 			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-pk-surface-raised pktw-p-1.5">
 				<ResultBrowserViewToggle view={view} onViewChange={setView} />
 				{view === 'graph' && <GraphKindToggle value={graphKind} onChange={setGraphKind} />}
 				<div className="pktw-flex-1" />
-				<ResultBrowserDensityToggle density={density} onDensityChange={setDensity} />
+				{isSourcesDensityVisible(view) && (
+					<ResultBrowserDensityToggle density={density} onDensityChange={setDensity} />
+				)}
 			</div>
 
 			{view === 'graph' && graphKind === 'vault' && (
