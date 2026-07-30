@@ -64,10 +64,11 @@ const SegmentedButton: React.FC<{
 	<Button
 		variant={active ? 'default' : 'ghost'}
 		size="sm"
+		geometry="toolbar"
 		title={title}
 		onClick={onClick}
 		className={cn(
-			'!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 pktw-rounded-full !pktw-px-3 pktw-text-sm',
+			'pktw-rounded-full pktw-text-sm',
 			active ? '' : 'pktw-text-pk-foreground-muted',
 		)}
 	>
@@ -189,8 +190,9 @@ const AIRelationshipMap: React.FC<{
 				<Button
 					variant="ghost"
 					size="sm"
+					geometry="toolbar"
 					onClick={() => setEditingSources((value) => !value)}
-					className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 pktw-gap-1.5 pktw-rounded-md !pktw-px-3"
+					className="pktw-gap-1.5 pktw-rounded-md"
 				>
 					<Pencil className="pktw-h-3.5 pktw-w-3.5" />
 					{editingSources ? 'Done' : 'Edit sources'}
@@ -433,8 +435,9 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 					<Button
 						variant="ghost"
 						size="sm"
+						geometry="toolbar"
 						onClick={() => void copySourcePaths()}
-						className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 pktw-gap-1.5 pktw-rounded-md !pktw-px-3"
+						className="pktw-gap-1.5 pktw-rounded-md"
 					>
 						<Copy className="pktw-h-4 pktw-w-4" />
 						Copy source links

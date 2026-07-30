@@ -58,8 +58,9 @@ export const V2ReportContinueComposer: React.FC = () => {
                 />
                 <Button
                     size="icon"
+                    geometry="action-icon"
                     disabled={!input.trim()}
-                    className="!pktw-w-9 !pktw-h-9 !pktw-min-w-9 !pktw-min-h-9 !pktw-max-w-9 !pktw-max-h-9 !pktw-p-0 !pktw-rounded-full"
+                    className="!pktw-rounded-full"
                     title="Continue analysis"
                     onClick={() => submit()}
                 >

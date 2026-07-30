@@ -38,14 +38,28 @@ export interface ButtonProps
 	extends React.ButtonHTMLAttributes<HTMLButtonElement>,
 		VariantProps<typeof buttonVariants> {
 	asChild?: boolean;
+	geometry?: ButtonGeometry;
 }
 
+export type ButtonGeometry =
+	| 'toolbar'
+	| 'toolbar-full'
+	| 'toolbar-icon'
+	| 'action'
+	| 'action-icon'
+	| 'cta'
+	| 'prominent';
+
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-	({ className, variant, size, asChild = false, ...props }, ref) => {
+	({ className, variant, size, geometry, asChild = false, ...props }, ref) => {
 		const Comp = asChild ? Slot : 'button';
 		return (
 			<Comp
-				className={cn(buttonVariants({ variant, size, className }))}
+				className={cn(
+					buttonVariants({ variant, size, className }),
+					geometry && 'pk-button-geometry',
+				)}
+				data-geometry={geometry}
 				ref={ref}
 				{...props}
 			/>
@@ -55,4 +69,3 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 Button.displayName = 'Button';
 
 export { Button, buttonVariants };
-

@@ -17,7 +17,8 @@ const ActivityDebugTraceButton: React.FC = () => {
             <Button
                 variant="ghost"
                 size="sm"
-                className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-px-2.5 pktw-gap-1.5 pktw-text-xs pktw-text-pk-foreground-faint"
+                geometry="toolbar"
+                className="pktw-gap-1.5 pktw-text-xs pktw-text-pk-foreground-faint"
                 title="Copy analyze activity debug trace"
                 aria-label="Copy analyze activity debug trace"
                 onClick={() => {

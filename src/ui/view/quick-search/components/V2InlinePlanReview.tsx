@@ -73,8 +73,9 @@ const SectionCard: React.FC<{
 				<Button
 					variant="ghost"
 					size="icon"
+					geometry="toolbar-icon"
 					disabled={index === 0}
-					className="!pktw-w-8 !pktw-h-8 !pktw-min-w-8 !pktw-min-h-8 !pktw-max-w-8 !pktw-max-h-8 !pktw-p-0 pktw-rounded-md"
+					className="pktw-rounded-md"
 					title="Move section up"
 					onClick={() => onMove(section.id, -1)}
 				>
@@ -83,8 +84,9 @@ const SectionCard: React.FC<{
 				<Button
 					variant="ghost"
 					size="icon"
+					geometry="toolbar-icon"
 					disabled={index === total - 1}
-					className="!pktw-w-8 !pktw-h-8 !pktw-min-w-8 !pktw-min-h-8 !pktw-max-w-8 !pktw-max-h-8 !pktw-p-0 pktw-rounded-md"
+					className="pktw-rounded-md"
 					title="Move section down"
 					onClick={() => onMove(section.id, 1)}
 				>
@@ -93,7 +95,8 @@ const SectionCard: React.FC<{
 				<Button
 					variant="ghost"
 					size="icon"
-					className="!pktw-w-8 !pktw-h-8 !pktw-min-w-8 !pktw-min-h-8 !pktw-max-w-8 !pktw-max-h-8 !pktw-p-0 pktw-rounded-md hover:pktw-text-pk-error"
+					geometry="toolbar-icon"
+					className="pktw-rounded-md hover:pktw-text-pk-error"
 					title="Remove section"
 					onClick={() => onRemove(section.id)}
 				>
@@ -194,10 +197,11 @@ export const V2InlinePlanReview: React.FC<{ onApprove: () => void }> = ({ onAppr
 
 			{!approved && (
 				<div className="pktw-px-3 pktw-py-3 pktw-border-t pktw-border-pk-border pktw-bg-pk-surface-raised">
-						<Button
-							variant="outline"
-							size="sm"
-							className="!pktw-h-9 !pktw-min-h-9 !pktw-max-h-9 !pktw-px-3 pktw-text-xs pktw-mb-3"
+					<Button
+						variant="outline"
+						size="sm"
+						geometry="action"
+						className="pktw-text-xs pktw-mb-3"
 						onClick={() => addPlanSection('synthesis')}
 					>
 						<Plus className="pktw-w-3.5 pktw-h-3.5 pktw-mr-1" />
@@ -233,9 +237,9 @@ export const V2InlinePlanReview: React.FC<{ onApprove: () => void }> = ({ onAppr
 						<Button
 							variant="outline"
 							size="sm"
+							geometry="action"
 							disabled={!direction.trim()}
 							onClick={addDirection}
-							className="!pktw-h-9 !pktw-min-h-9 !pktw-max-h-9 !pktw-px-3"
 						>
 							Apply to plan
 						</Button>
@@ -243,8 +247,9 @@ export const V2InlinePlanReview: React.FC<{ onApprove: () => void }> = ({ onAppr
 					<div className="pktw-flex pktw-justify-end pktw-mt-3">
 						<Button
 							onClick={onApprove}
+							geometry="cta"
 							disabled={sections.length === 0}
-							className="!pktw-h-10 !pktw-min-h-10 !pktw-max-h-10 !pktw-px-5 !pktw-rounded-full"
+							className="!pktw-rounded-full"
 						>
 							<Sparkles className="pktw-w-4 pktw-h-4 pktw-mr-2" />
 							Generate report

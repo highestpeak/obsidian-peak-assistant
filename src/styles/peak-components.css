@@ -407,6 +407,59 @@
   height: 16px;
 }
 
+/* ── shared Button fixed geometry ───────────────────────────────────────────
+   `shared-ui/Button` normally allows content-driven sizing. Surfaces that
+   promise a fixed hit target opt into `geometry`, which adds this class and a
+   data attribute. The scoped selector and !important dimensions are required
+   to beat `.peak-design-root button` without re-locking flexible card buttons.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:is(.pktw-root, .peak-design-root) .pk-button-geometry {
+  --pk-button-geometry-height: 36px;
+  --pk-button-geometry-padding-x: 12px;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: var(--pk-button-geometry-height) !important;
+  min-height: var(--pk-button-geometry-height) !important;
+  max-height: var(--pk-button-geometry-height) !important;
+  padding: 0 var(--pk-button-geometry-padding-x) !important;
+  justify-content: center !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-button-geometry[data-geometry="toolbar"],
+:is(.pktw-root, .peak-design-root) .pk-button-geometry[data-geometry="toolbar-full"],
+:is(.pktw-root, .peak-design-root) .pk-button-geometry[data-geometry="toolbar-icon"] {
+  --pk-button-geometry-height: 32px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-button-geometry[data-geometry="toolbar-full"] {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-button-geometry[data-geometry="action"],
+:is(.pktw-root, .peak-design-root) .pk-button-geometry[data-geometry="action-icon"] {
+  --pk-button-geometry-height: 36px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-button-geometry[data-geometry="cta"] {
+  --pk-button-geometry-height: 40px;
+  --pk-button-geometry-padding-x: 20px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-button-geometry[data-geometry="prominent"] {
+  --pk-button-geometry-height: 42px;
+  --pk-button-geometry-padding-x: 20px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-button-geometry[data-geometry$="-icon"] {
+  width: var(--pk-button-geometry-height) !important;
+  min-width: var(--pk-button-geometry-height) !important;
+  max-width: var(--pk-button-geometry-height) !important;
+  padding: 0 !important;
+}
+
 
 /* ── pk-segmented ───────────────────────────────────────────────────────────
    Inline segmented control (e.g. Index mode picker, view toggles).

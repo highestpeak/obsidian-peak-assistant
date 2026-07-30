@@ -21,6 +21,7 @@ const BUTTON_PRIMITIVE_CLASSES = [
 	'.pk-pop-item',
 	'.pk-segmented__opt',
 	'.pk-result-browser-toolbar__option',
+	'.pk-button-geometry',
 ] as const;
 
 const DIMENSION_PROPERTIES = new Set([
@@ -101,5 +102,30 @@ assert.match(
 	/:is\(\.pktw-root, \.peak-design-root\) \.pk-result-browser-toolbar__option\s*\{[\s\S]*?height:\s*32px !important;[\s\S]*?min-height:\s*32px !important;[\s\S]*?max-height:\s*32px !important;[\s\S]*?padding:\s*0 12px !important;/,
 	'Result Browser options must use a scoped selector that beats the peak-design-root button reset',
 );
+
+assert.match(
+	primitiveCss,
+	/:is\(\.pktw-root, \.peak-design-root\) \.pk-button-geometry\s*\{[\s\S]*?width:\s*auto !important;[\s\S]*?min-width:\s*0 !important;[\s\S]*?max-width:\s*none !important;[\s\S]*?height:\s*var\(--pk-button-geometry-height\) !important;[\s\S]*?min-height:\s*var\(--pk-button-geometry-height\) !important;[\s\S]*?max-height:\s*var\(--pk-button-geometry-height\) !important;[\s\S]*?padding:\s*0 var\(--pk-button-geometry-padding-x\) !important;/,
+	'shared Button fixed geometry must defeat the peak-design-root reset',
+);
+
+assert.match(
+	primitiveCss,
+	/:is\(\.pktw-root, \.peak-design-root\) \.pk-button-geometry\[data-geometry\$="-icon"\]\s*\{[\s\S]*?width:\s*var\(--pk-button-geometry-height\) !important;[\s\S]*?min-width:\s*var\(--pk-button-geometry-height\) !important;[\s\S]*?max-width:\s*var\(--pk-button-geometry-height\) !important;[\s\S]*?padding:\s*0 !important;/,
+	'shared Button icon geometry must remain square under the reset',
+);
+
+for (const [geometry, height] of [
+	['toolbar', '32px'],
+	['action', '36px'],
+	['cta', '40px'],
+	['prominent', '42px'],
+] as const) {
+	assert.match(
+		primitiveCss,
+		new RegExp(`\\.pk-button-geometry\\[data-geometry="${geometry}"\\][^{]*\\{[\\s\\S]*?--pk-button-geometry-height:\\s*${height};`),
+		`${geometry} Button geometry must retain its intended ${height} hit target`,
+	);
+}
 
 console.log('shared-button-reset-defense: passed');

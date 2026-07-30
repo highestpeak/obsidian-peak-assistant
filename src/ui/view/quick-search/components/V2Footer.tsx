@@ -183,8 +183,9 @@ export const V2Footer: React.FC<{
 						key={id}
 						variant={v2View === id ? 'default' : 'ghost'}
 						size="sm"
+						geometry="toolbar"
 						onClick={() => setV2View(id)}
-						className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 pktw-gap-1.5 pktw-rounded-lg !pktw-px-3 pktw-text-sm"
+						className="pktw-gap-1.5 pktw-rounded-lg pktw-text-sm"
 					>
 						<Icon className="pktw-h-4 pktw-w-4" />
 						{label}
@@ -195,9 +196,9 @@ export const V2Footer: React.FC<{
 					<Button
 						variant={showToc ? 'secondary' : 'ghost'}
 						size="icon"
+						geometry="toolbar-icon"
 						onClick={() => setShowToc((prev) => !prev)}
 						title="Table of Contents"
-						className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-w-8 !pktw-min-w-8 !pktw-max-w-8 !pktw-p-0"
 					>
 						<List className="pktw-h-4 pktw-w-4" />
 					</Button>
@@ -207,8 +208,9 @@ export const V2Footer: React.FC<{
 						key={id}
 						variant={v2View === id ? 'default' : 'ghost'}
 						size="sm"
+						geometry="toolbar"
 						onClick={() => setV2View(id)}
-						className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 pktw-gap-1.5 pktw-rounded-lg !pktw-px-3 pktw-text-sm"
+						className="pktw-gap-1.5 pktw-rounded-lg pktw-text-sm"
 					>
 						<Icon className="pktw-h-4 pktw-w-4" />
 						{label}
@@ -231,10 +233,11 @@ export const V2Footer: React.FC<{
 						ref={copyBtnRef}
 						variant="ghost"
 						size="icon"
+						geometry="toolbar-icon"
 						onClick={handleDefaultCopy}
 						onMouseEnter={startHoverTimer}
 						onMouseLeave={startHideTimer}
-						className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-w-8 !pktw-min-w-8 !pktw-max-w-8 !pktw-p-0 pktw-text-pk-text-secondary"
+						className="pktw-text-pk-text-secondary"
 						title={copied ? 'Copied!' : copyLabel}
 					>
 						{copied ? <Check className="pktw-h-4 pktw-w-4 pktw-text-pk-success" /> : <Copy className="pktw-h-4 pktw-w-4" />}
@@ -251,8 +254,9 @@ export const V2Footer: React.FC<{
 									key={id}
 									variant="ghost"
 									size="sm"
+									geometry="toolbar-full"
 									onClick={() => { void doCopy(id); setShowCopyMenu(false); }}
-									className={`!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 pktw-w-full pktw-justify-start pktw-gap-2 pktw-rounded-none !pktw-px-3 pktw-text-sm ${
+									className={`pktw-w-full pktw-justify-start pktw-gap-2 pktw-rounded-none pktw-text-sm ${
 										id === defaultCopyTarget
 											? 'pktw-text-pk-accent pktw-font-medium pktw-bg-pk-accent/5'
 											: 'pktw-text-pk-foreground'
@@ -269,8 +273,9 @@ export const V2Footer: React.FC<{
 				<Button
 					variant="ghost"
 					size="icon"
+					geometry="toolbar-icon"
 					onClick={onSave}
-					className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-w-8 !pktw-min-w-8 !pktw-max-w-8 !pktw-p-0 pktw-text-pk-text-secondary"
+					className="pktw-text-pk-text-secondary"
 					title="Export analysis as Markdown note"
 				>
 					<Save className="pktw-h-4 pktw-w-4" />
@@ -279,8 +284,9 @@ export const V2Footer: React.FC<{
 					<Button
 						variant="ghost"
 						size="icon"
+						geometry="toolbar-icon"
 						onClick={onSaveGraph}
-						className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-w-8 !pktw-min-w-8 !pktw-max-w-8 !pktw-p-0 pktw-text-pk-text-secondary"
+						className="pktw-text-pk-text-secondary"
 						title="Save Graph to Vault"
 					>
 						<Download className="pktw-h-4 pktw-w-4" />
@@ -290,10 +296,11 @@ export const V2Footer: React.FC<{
 					<Button
 						variant="ghost"
 						size="icon"
+						geometry="toolbar-icon"
 						onClick={() => {
 							host.openVaultPath(lastSavedPath, { newLeaf: false });
 						}}
-						className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-w-8 !pktw-min-w-8 !pktw-max-w-8 !pktw-p-0 pktw-text-pk-text-secondary"
+						className="pktw-text-pk-text-secondary"
 						title="Open saved analysis note"
 					>
 						<FileSearch className="pktw-h-4 pktw-w-4" />
@@ -303,8 +310,9 @@ export const V2Footer: React.FC<{
 					<Button
 						variant="outline"
 						size="sm"
+						geometry="action"
 						onClick={onSynthesize}
-						className="!pktw-h-9 !pktw-min-h-9 !pktw-max-h-9 !pktw-px-3 pktw-text-xs"
+						className="pktw-text-xs"
 					>
 						<Sparkles className="pktw-w-3.5 pktw-h-3.5 pktw-mr-1" />
 						Synthesize All
@@ -314,8 +322,9 @@ export const V2Footer: React.FC<{
 					<Button
 						variant="outline"
 						size="sm"
+						geometry="action"
 						onClick={onContinue}
-						className="!pktw-h-9 !pktw-min-h-9 !pktw-max-h-9 pktw-gap-1.5 pktw-rounded-lg !pktw-px-3 pktw-text-sm"
+						className="pktw-gap-1.5 pktw-rounded-lg pktw-text-sm"
 					>
 						<MessageSquare className="pktw-h-4 pktw-w-4" />
 						Ask follow-up
@@ -324,8 +333,9 @@ export const V2Footer: React.FC<{
 				<Button
 					variant="default"
 					size="sm"
+					geometry="action"
 					onClick={onOpenInChat}
-					className="!pktw-h-9 !pktw-min-h-9 !pktw-max-h-9 pktw-gap-1.5 pktw-rounded-lg !pktw-px-3 pktw-text-sm"
+					className="pktw-gap-1.5 pktw-rounded-lg pktw-text-sm"
 				>
 					Open in Chat
 					<ExternalLink className="pktw-h-4 pktw-w-4" />

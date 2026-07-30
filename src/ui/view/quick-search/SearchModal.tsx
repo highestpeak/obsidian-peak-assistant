@@ -226,9 +226,10 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 								<Button
 									variant="unstyled"
 									size="sm"
+									geometry="toolbar"
 									onClick={() => setShowModeMenu((v) => !v)}
 									className={cn(
-										'!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-px-3 !pktw-py-0 pktw-rounded-full pktw-text-sm pktw-font-medium pktw-select-none pktw-transition-all',
+										'pktw-rounded-full pktw-text-sm pktw-font-medium pktw-select-none pktw-transition-all',
 										'pktw-bg-pk-highlight pktw-text-pk-accent pktw-border pktw-border-pk-accent/20 hover:pktw-bg-pk-accent-muted pktw-cursor-pointer'
 									)}
 									title={`${PRESET_LABELS[analysisMode].full} (⌥↑/⌥↓ to switch)`}
@@ -276,6 +277,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 							{!isMobile() && (
 								<Button
 									variant="ghost"
+									geometry="action-icon"
 									onClick={() => {
 										// Check if web search profile is configured before enabling
 										if (!webEnabled && !ProfileRegistry.getInstance().getActiveWebSearchProfile()) {
@@ -285,8 +287,8 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 										const newQuery = toggleWeb(searchQuery);
 										setSearchQuery(newQuery);
 									}}
-									className={`pktw-shadow-none pktw-absolute pktw-right-2 pktw-top-1/2 -pktw-translate-y-1/2 pktw-p-1.5 pktw-rounded pktw-transition-colors
-										!pktw-h-9 !pktw-min-h-9 !pktw-max-h-9 !pktw-w-9 !pktw-min-w-9 !pktw-max-w-9 !pktw-p-0 !pktw-rounded-full
+									className={`pktw-shadow-none pktw-absolute pktw-right-2 pktw-top-1/2 -pktw-translate-y-1/2 pktw-rounded pktw-transition-colors
+										!pktw-rounded-full
 										${webEnabled ? 'pktw-text-pk-info pktw-border pktw-border-pk-info/30' : 'pktw-border-0 pktw-bg-transparent '} pktw-cursor-pointer`}
 									title={webEnabled ? 'Web: ON' : 'Web: OFF'}
 								>
@@ -331,7 +333,8 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 						{!isAnalyzing && !hasResult && searchQuery.trim() && (
 							<Button
 								onClick={handleAnalyze}
-								className="pktw-shadow-none !pktw-h-[42px] !pktw-min-h-[42px] !pktw-max-h-[42px] !pktw-px-5 !pktw-py-2.5 !pktw-rounded-full pktw-whitespace-nowrap pktw-bg-pk-accent pktw-text-pk-text-inverted hover:pktw-bg-pk-accent-hover pktw-cursor-pointer"
+								geometry="prominent"
+								className="pktw-shadow-none !pktw-rounded-full pktw-whitespace-nowrap pktw-bg-pk-accent pktw-text-pk-text-inverted hover:pktw-bg-pk-accent-hover pktw-cursor-pointer"
 								title="Start AI analysis"
 							>
 								<Sparkles className="pktw-w-4 pktw-h-4" />

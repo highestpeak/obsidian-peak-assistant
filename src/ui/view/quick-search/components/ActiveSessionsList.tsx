@@ -90,8 +90,9 @@ const SessionCard: React.FC<{
 				<Button
 					variant="outline"
 					size="sm"
+					geometry="toolbar"
 					onClick={() => onRestore(session.id)}
-					className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-px-3 pktw-text-sm pktw-font-semibold pktw-text-pk-info-text pktw-bg-pk-info-bg pktw-border-pk-highlight-info-border pktw-rounded-md pktw-shrink-0"
+					className="pktw-text-sm pktw-font-semibold pktw-text-pk-info-text pktw-bg-pk-info-bg pktw-border-pk-highlight-info-border pktw-rounded-md pktw-shrink-0"
 				>
 					Review plan
 				</Button>
@@ -99,9 +100,10 @@ const SessionCard: React.FC<{
 			<Button
 				variant="ghost"
 				size="icon"
+				geometry="toolbar-icon"
 				onClick={() => onCancel(session.id)}
 				className={cn(
-					'!pktw-w-8 !pktw-min-w-8 !pktw-max-w-8 !pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-p-0 pktw-rounded-md pktw-shrink-0',
+					'pktw-rounded-md pktw-shrink-0',
 					'pktw-opacity-0 group-hover:pktw-opacity-100 focus-visible:pktw-opacity-100 pktw-transition-all',
 					'pktw-text-pk-foreground-muted hover:pktw-bg-pk-error-bg hover:pktw-text-pk-error-text',
 				)}

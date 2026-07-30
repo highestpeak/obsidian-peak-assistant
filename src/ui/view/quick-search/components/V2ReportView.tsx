@@ -159,17 +159,17 @@ const SectionBlock: React.FC<{
 				)}
 				{section.status === 'done' && (
 					<div className="pktw-flex pktw-items-center pktw-gap-1 pktw-shrink-0">
-						<Button variant="ghost" size="sm" className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-px-2.5 pktw-text-xs" onClick={() => setShowAsk((value) => !value)}>
+						<Button variant="ghost" size="sm" geometry="toolbar" className="pktw-text-xs" onClick={() => setShowAsk((value) => !value)}>
 							<MessageSquareText className="pktw-w-4 pktw-h-4 pktw-mr-1" />
 							Ask
 						</Button>
 						{onRegenerate && (
-							<Button variant="ghost" size="sm" className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-px-2.5 pktw-text-xs" onClick={handleRegenerate}>
+							<Button variant="ghost" size="sm" geometry="toolbar" className="pktw-text-xs" onClick={handleRegenerate}>
 								<RefreshCw className="pktw-w-4 pktw-h-4 pktw-mr-1" />
 								Revise
 							</Button>
 						)}
-						<Button variant="ghost" size="sm" className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-px-2.5 pktw-text-xs" onClick={handleCopy}>
+						<Button variant="ghost" size="sm" geometry="toolbar" className="pktw-text-xs" onClick={handleCopy}>
 							{copied ? <Check className="pktw-w-4 pktw-h-4 pktw-mr-1 pktw-text-pk-success" /> : <Copy className="pktw-w-4 pktw-h-4 pktw-mr-1" />}
 							{copied ? 'Copied' : 'Copy'}
 						</Button>
@@ -200,11 +200,11 @@ const SectionBlock: React.FC<{
 								className="pktw-flex-1 pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-border pktw-border-pk-border pktw-rounded-lg pktw-outline-none focus:pktw-ring-2 focus:pktw-ring-pk-accent/50"
 								autoFocus
 							/>
-								<Button
-									size="sm"
-									className="!pktw-h-9 !pktw-min-h-9 !pktw-max-h-9 !pktw-px-3"
-									onClick={() => { onRegenerate?.(section.id, prompt.trim() || undefined); setPrompt(''); setShowPrompt(false); }}
-								>
+							<Button
+								size="sm"
+								geometry="action"
+								onClick={() => { onRegenerate?.(section.id, prompt.trim() || undefined); setPrompt(''); setShowPrompt(false); }}
+							>
 								Revise
 							</Button>
 						</div>
@@ -278,8 +278,9 @@ const SectionBlock: React.FC<{
 								/>
 								<Button
 									size="icon"
+									geometry="toolbar-icon"
 									disabled={!question.trim() || asking || !onAsk}
-									className="!pktw-w-8 !pktw-h-8 !pktw-min-w-8 !pktw-min-h-8 !pktw-max-w-8 !pktw-max-h-8 !pktw-p-0 !pktw-rounded-full"
+									className="!pktw-rounded-full"
 									title="Ask about this section"
 									onClick={() => void handleAsk()}
 								>
@@ -309,7 +310,8 @@ const SectionBlock: React.FC<{
 								key={t}
 								variant={annotationType === t ? 'default' : 'outline'}
 								size="sm"
-								className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-px-2.5 pktw-text-pk-xs"
+								geometry="toolbar"
+								className="pktw-text-pk-xs"
 								onClick={() => setAnnotationType(t)}
 							>
 								{ANNOTATION_TYPE_SYMBOL[t]} {t}
@@ -330,7 +332,7 @@ const SectionBlock: React.FC<{
 							}}
 							autoFocus
 						/>
-						<Button size="sm" className="!pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-px-3 pktw-text-xs" onClick={handleSubmitAnnotation}>
+						<Button size="sm" geometry="toolbar" className="pktw-text-xs" onClick={handleSubmitAnnotation}>
 							Add
 						</Button>
 					</div>
