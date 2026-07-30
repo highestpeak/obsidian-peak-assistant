@@ -27,23 +27,23 @@ assert.deepEqual(
 	{ type: 'open-inspector' },
 	'Graph shares the same Right Arrow inspector contract',
 );
-assert.equal(
+assert.deepEqual(
 	resolveSourcesKeyboardIntent({
 		...baseContext,
 		key: 'ArrowRight',
 		editableTarget: true,
 	}),
-	null,
-	'editable text keeps ownership of arrow keys',
+	{ type: 'open-inspector' },
+	'Right Arrow opens the inspector even when the AI query editor still owns focus',
 );
-assert.equal(
+assert.deepEqual(
 	resolveSourcesKeyboardIntent({
 		...baseContext,
 		key: 'ArrowRight',
 		insideWorkspace: false,
 	}),
-	null,
-	'keyboard handling stays scoped to the active Sources workspace',
+	{ type: 'open-inspector' },
+	'the mounted Sources view owns its Inspector shortcut beyond the projection DOM',
 );
 assert.deepEqual(
 	resolveSourcesKeyboardIntent({
@@ -62,6 +62,25 @@ assert.equal(
 	}),
 	null,
 	'the shared Tree projection remains authoritative for expand-before-inspect behavior',
+);
+assert.deepEqual(
+	resolveSourcesKeyboardIntent({
+		...baseContext,
+		view: 'tree',
+		key: 'ArrowRight',
+		insideWorkspace: false,
+	}),
+	{ type: 'open-inspector' },
+	'Tree can still open the inspector when focus remains outside its projection',
+);
+assert.equal(
+	resolveSourcesKeyboardIntent({
+		...baseContext,
+		key: 'ArrowDown',
+		insideWorkspace: false,
+	}),
+	null,
+	'only Inspector shortcuts escape the projection; result navigation stays scoped',
 );
 
 assert.equal(isSourcesDensityVisible('list'), true);

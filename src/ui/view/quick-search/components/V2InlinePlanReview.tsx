@@ -216,12 +216,19 @@ export const V2InlinePlanReview: React.FC<{ onApprove: () => void }> = ({ onAppr
 							))}
 						</div>
 					)}
-					<div className="pktw-flex pktw-items-end pktw-gap-2">
-						<label className="pktw-flex-1 pktw-min-w-0">
-							<span className="pktw-block pktw-text-xs pktw-font-medium pktw-text-pk-text-primary pktw-mb-1">
-								Additional report direction
-							</span>
+					<div className="pktw-min-w-0">
+						<label
+							htmlFor="peak-ai-report-direction"
+							className="pktw-block pktw-text-xs pktw-font-medium pktw-text-pk-text-primary pktw-mb-1"
+						>
+							Additional report direction
+						</label>
+						<div
+							data-report-direction-field
+							className="pktw-relative"
+						>
 							<textarea
+								id="peak-ai-report-direction"
 								value={direction}
 								onChange={(event) => setDirection(event.target.value)}
 								onKeyDown={(event) => {
@@ -231,20 +238,21 @@ export const V2InlinePlanReview: React.FC<{ onApprove: () => void }> = ({ onAppr
 									addDirection();
 								}}
 								placeholder="For example: separate proven findings from open questions."
-								className="pktw-w-full pktw-min-h-[58px] pktw-resize-y pktw-px-3 pktw-py-2 pktw-text-xs pktw-border pktw-border-pk-border pktw-rounded-lg pktw-bg-pk-background pktw-outline-none focus:pktw-border-pk-accent"
+								className="pktw-w-full pktw-min-h-[76px] pktw-resize-none pktw-pl-3 pktw-pr-32 pktw-pt-2 pktw-pb-12 pktw-text-xs pktw-border pktw-border-pk-border pktw-rounded-lg pktw-bg-pk-background pktw-outline-none focus:pktw-border-pk-accent"
 							/>
-						</label>
-						<Button
-							variant="outline"
-							size="sm"
-							geometry="action"
-							disabled={!direction.trim()}
-							onClick={addDirection}
-						>
-							Apply to plan
-						</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								geometry="action"
+								disabled={!direction.trim()}
+								onClick={addDirection}
+								className="pktw-absolute pktw-bottom-2 pktw-right-2 pktw-rounded-md pktw-shadow-sm"
+							>
+								Apply to plan
+							</Button>
+						</div>
 					</div>
-					<div className="pktw-flex pktw-justify-end pktw-mt-3">
+					<div className="pktw-flex pktw-justify-center pktw-mt-4 pktw-pb-1">
 						<Button
 							onClick={onApprove}
 							geometry="cta"

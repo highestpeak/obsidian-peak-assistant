@@ -122,6 +122,7 @@ assert(sourceView.includes('isSourcesDensityVisible(view)'));
 assert(sourceView.includes('resolveSourcesKeyboardIntent'));
 assert(sourceView.includes('focusSourcesProjection'));
 assert(!sourceView.includes("target.closest('[data-v2-sources-projection]')"));
+assert(sourceView.includes("useOwnerDocumentListener(rootRef, 'keydown', handleProjectionKey, true)"));
 
 const aiMapBody = sourceView.match(
 	/const AIRelationshipMap[\s\S]*?export const V2SourcesView/,

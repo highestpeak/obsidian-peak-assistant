@@ -351,7 +351,9 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 		view,
 	]);
 
-	useOwnerDocumentListener(rootRef, 'keydown', handleProjectionKey);
+	// Capture before CodeMirror/Obsidian can stop the event: Sources remains the
+	// active projection even when the top query editor still owns DOM focus.
+	useOwnerDocumentListener(rootRef, 'keydown', handleProjectionKey, true);
 
 	useEffect(() => {
 		focusSourcesProjection();

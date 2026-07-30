@@ -42,7 +42,10 @@ export const V2ReportContinueComposer: React.FC = () => {
                     </span>
                 </div>
             </div>
-            <div className="pktw-flex pktw-items-end pktw-gap-2 pktw-mt-3">
+            <div
+                data-report-followup-field
+                className="pktw-relative pktw-mt-3"
+            >
                 <textarea
                     ref={inputRef}
                     value={input}
@@ -54,13 +57,13 @@ export const V2ReportContinueComposer: React.FC = () => {
                         submit();
                     }}
                     placeholder="Ask a follow-up that needs more evidence..."
-                    className="pktw-flex-1 pktw-min-h-[64px] pktw-resize-y pktw-px-3 pktw-py-2 pktw-text-sm pktw-border pktw-border-pk-border pktw-rounded-lg pktw-bg-pk-background pktw-outline-none focus:pktw-border-pk-accent"
+                    className="pktw-w-full pktw-min-h-[76px] pktw-resize-none pktw-pl-3 pktw-pr-14 pktw-pt-2 pktw-pb-12 pktw-text-sm pktw-border pktw-border-pk-border pktw-rounded-lg pktw-bg-pk-background pktw-outline-none focus:pktw-border-pk-accent"
                 />
                 <Button
                     size="icon"
                     geometry="action-icon"
                     disabled={!input.trim()}
-                    className="!pktw-rounded-full"
+                    className="pktw-absolute pktw-bottom-2 pktw-right-2 !pktw-rounded-full pktw-shadow-sm"
                     title="Continue analysis"
                     onClick={() => submit()}
                 >

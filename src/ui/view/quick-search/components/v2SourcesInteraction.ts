@@ -19,8 +19,13 @@ export interface SourcesKeyboardContext {
 export function resolveSourcesKeyboardIntent(
 	context: SourcesKeyboardContext,
 ): SourcesKeyboardIntent | null {
-	if (context.view === 'tree') return null;
-	if (!context.insideWorkspace || context.editableTarget) return null;
+	// Tree keeps its expand/collapse precedence while focus is inside the
+	// projection. Outside it, the mounted Sources surface still owns ←/→ so a
+	// query editor or footer button cannot strand the selected source.
+	const treeOwnsProjectionKey = context.view === 'tree'
+		&& context.insideWorkspace
+		&& !context.editableTarget;
+	if (treeOwnsProjectionKey) return null;
 
 	if (context.key === 'ArrowRight') {
 		return context.hasSelection ? { type: 'open-inspector' } : null;
@@ -29,6 +34,7 @@ export function resolveSourcesKeyboardIntent(
 		return context.inspectorOpen ? { type: 'close-inspector' } : null;
 	}
 	if (context.view !== 'list') return null;
+	if (!context.insideWorkspace || context.editableTarget) return null;
 	if (context.key === 'Enter') {
 		return context.hasSelection ? { type: 'open-selected' } : null;
 	}
