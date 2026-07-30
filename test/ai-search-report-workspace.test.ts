@@ -189,7 +189,17 @@ const graphHook = readFileSync(
 assert(graphHook.includes('`${searchQuery.trim()}\\n${sources.map'));
 
 const landing = readFileSync('src/ui/view/quick-search/SearchModal.tsx', 'utf8');
-assert(!landing.includes('RecentAnalysisList'));
-assert(!landing.includes('RecentQueriesDropdown'));
+assert(landing.includes('RecentAnalysisList'));
+assert(landing.includes('RecentQueriesDropdown'));
+assert(landing.includes('loadCompletedAnalysisSnapshot'));
+assert(landing.includes('resolveAnalysisSnapshotFromVault'));
+assert(
+	landing.indexOf('<ActiveSessionsList') < landing.indexOf('<RecentQueriesDropdown'),
+	'unfinished analyses must stay above recent-query shortcuts',
+);
+assert(
+	landing.indexOf('<RecentQueriesDropdown') < landing.indexOf('<RecentAnalysisList'),
+	'recent-query shortcuts must stay above completed analysis history',
+);
 
 console.log('AI Search report workspace contract tests passed');

@@ -14,6 +14,7 @@ import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { GlobeOff } from '@/ui/component/icon';
 import { useSharedStore, useVaultSearchStore } from './store';
+import { loadCompletedAnalysisSnapshot } from './store/aiAnalysisStore';
 import { useSearchSessionStore } from './store/searchSessionStore';
 import type { AnalysisMode } from './store/aiAnalysisStore';
 import type { QuickSearchMode } from './store/vaultSearchStore';
@@ -29,6 +30,10 @@ import { matchPatterns, type MatchedSuggestion } from '@/service/context/Pattern
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { SuggestionGrid } from './components/SuggestionGrid';
 import { ActiveSessionsList } from './components/ActiveSessionsList';
+import { RecentAnalysisList } from './components/RecentAnalysisList';
+import { RecentQueriesDropdown } from './components/RecentQueriesDropdown';
+import { resolveAnalysisSnapshotFromVault } from '@/core/storage/vault/search-docs/AiAnalysisJsonStore';
+import type { AIAnalysisHistoryRecord } from '@/service/AIAnalysisHistoryService';
 import { createOpenSourceCallback } from './callbacks/open-source-file';
 import { ResultPaneGraphControls, ResultDensityToggle, ViewModeToggle } from './components/ResultPaneHeader';
 import { ResultBrowserSearchInput } from '@/ui/component/result-browser';
@@ -86,7 +91,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 	const inputRef = useRef<{ focus: () => void; select: () => void } | null>(null);
 	const { eventBus } = useServiceContext();
 	const host = useQuickSearchHost();
-	const { searchQuery, setSearchQuery } = useSharedStore();
+	const { searchQuery, setSearchQuery, recentQueries, clearRecentQueries } = useSharedStore();
 	const webEnabled = useSearchSessionStore((s) => s.webEnabled);
 	const toggleWeb = useSearchSessionStore((s) => s.toggleWeb);
 	const sessionStatus = useSearchSessionStore((s) => s.status);
@@ -117,6 +122,42 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 			eventBus.dispatch(new SearchQueryEvent({ query: searchQuery.trim() }));
 		} catch { /* EventBus may not be initialized */ }
 		performAnalysis(undefined);
+	};
+
+	const openSavedAnalysis = async (record: AIAnalysisHistoryRecord) => {
+		const path = String(record.vault_rel_path ?? '').trim();
+		if (!path) {
+			if (record.query) setSearchQuery(record.query);
+			return;
+		}
+
+		try {
+			let text = await host.readVaultFileText(path);
+			if (!text) text = await host.getAnalysisMarkdownForReplay(path);
+			if (!text) {
+				new Notice('Analysis record not found.');
+				return;
+			}
+
+			const loaded = resolveAnalysisSnapshotFromVault(
+				path,
+				text,
+				Number.isFinite(record.created_at_ts) ? record.created_at_ts : undefined,
+			);
+			if (!loaded) {
+				new Notice('Failed to load saved analysis.');
+				return;
+			}
+
+			loadCompletedAnalysisSnapshot(loaded.snapshot, path);
+			const restoredQuery = loaded.query || record.query || '';
+			if (!restoredQuery) return;
+			useSharedStore.getState().setSearchQuery(restoredQuery);
+			useSearchSessionStore.setState({ query: restoredQuery });
+		} catch (error) {
+			console.warn('[SearchModal] Failed to load saved analysis:', error);
+			new Notice('Failed to load saved analysis.');
+		}
 	};
 
 	const PRESETS: AnalysisMode[] = isMobile() ? ['vaultFull'] : ['vaultFull', 'aiGraph'];
@@ -346,6 +387,18 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 			</div>
 			{sessionStatus === 'idle' && (
 				<div className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto pktw-py-3">
+					<ActiveSessionsList onRestore={restoreFromBackground} />
+					{!searchQuery.trim() && (
+						<RecentQueriesDropdown
+							queries={recentQueries.slice(0, 5)}
+							onSelect={(query) => {
+								setSearchQuery(query);
+								useSearchSessionStore.getState().resetAll();
+								useSearchSessionStore.getState().incrementTriggerAnalysis();
+							}}
+							onClear={clearRecentQueries}
+						/>
+					)}
 					<SuggestionGrid
 						suggestions={suggestions}
 						onSelect={(s) => {
@@ -366,12 +419,16 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 							})();
 						}}
 					/>
-					<ActiveSessionsList onRestore={restoreFromBackground} />
-					{suggestions.length === 0 && (
-						<div className="pktw-px-4 pktw-py-8 pktw-text-center pktw-text-sm pktw-text-pk-foreground-muted">
-							Type a question above to start from your current Vault context.
-						</div>
-					)}
+					<RecentAnalysisList
+						filterQuery={searchQuery}
+						limit={6}
+						onSelectQuery={(query) => {
+							setSearchQuery(query);
+							useSearchSessionStore.getState().resetAll();
+							useSearchSessionStore.getState().incrementTriggerAnalysis();
+						}}
+						onSelectRecord={openSavedAnalysis}
+					/>
 				</div>
 			)}
 			{/* Only render AISearchTab when NOT showing the idle landing — avoids competing scroll zones */}

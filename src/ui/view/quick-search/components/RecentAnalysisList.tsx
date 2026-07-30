@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Brain, Network } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import type { AIAnalysisHistoryRecord } from '@/service/AIAnalysisHistoryService';
 import { humanReadableTime } from '@/core/utils/date-utils';
 import { useQuickSearchHost } from '../hooks/useQuickSearchHost';
+import { Button } from '@/ui/component/shared-ui/button';
 
 // ---------------------------------------------------------------------------
 // AnalysisRow
@@ -18,10 +19,11 @@ const AnalysisRow: React.FC<{
 	const title = record.title ?? record.query ?? 'Untitled analysis';
 
 	return (
-		<div
+		<Button
+			variant="unstyled"
 			onClick={() => onSelect(record)}
 			className={cn(
-				'pktw-flex pktw-items-center pktw-gap-3 pktw-px-1 pktw-py-2.5',
+				'!pktw-h-auto !pktw-min-h-12 !pktw-max-h-none pktw-w-full pktw-justify-start pktw-gap-3 !pktw-px-1 !pktw-py-2.5 pktw-text-left',
 				'pktw-border-b pktw-border-pk-border/50 last:pktw-border-b-0',
 				'hover:pktw-bg-pk-accent-tint pktw-cursor-pointer pktw-transition-colors pktw-group',
 			)}
@@ -38,10 +40,7 @@ const AnalysisRow: React.FC<{
 					{humanReadableTime(record.created_at_ts)}
 				</span>
 			</div>
-			<span className="pktw-text-pk-sm pktw-text-pk-foreground-muted pktw-shrink-0">
-				{humanReadableTime(record.created_at_ts)}
-			</span>
-		</div>
+		</Button>
 	);
 };
 
@@ -59,73 +58,64 @@ export interface RecentAnalysisListProps {
 export const RecentAnalysisList: React.FC<RecentAnalysisListProps> = ({
 	onSelectQuery,
 	onSelectRecord,
-	limit = 20,
+	limit = 6,
 	filterQuery,
 }) => {
 	const host = useQuickSearchHost();
 	const [records, setRecords] = useState<AIAnalysisHistoryRecord[]>([]);
 	const [totalCount, setTotalCount] = useState(0);
 	const [loading, setLoading] = useState(false);
-	const sentinelRef = useRef<HTMLDivElement>(null);
-	const offsetRef = useRef(0);
-	const doneRef = useRef(false);
+	const [visibleLimit, setVisibleLimit] = useState(limit);
+	const normalizedFilter = filterQuery?.trim() ?? '';
 
-	const loadMore = useCallback(async () => {
-		if (loading || doneRef.current) return;
-		setLoading(true);
-		try {
-			const svc = host.aiAnalysisHistory;
-			const hasFilter = !!filterQuery?.trim();
-			const [rows, count] = await Promise.all([
-				hasFilter
-					? svc.search(filterQuery!.trim(), { limit, offset: offsetRef.current })
-					: svc.list({ limit, offset: offsetRef.current }),
-				offsetRef.current === 0
-					? (hasFilter ? svc.searchCount(filterQuery!.trim()) : svc.count())
-					: Promise.resolve(totalCount),
-			]);
-			if (offsetRef.current === 0) setTotalCount(count);
-			if (rows.length < limit) doneRef.current = true;
-			offsetRef.current += rows.length;
-			const validRows = rows.filter(r => r.query || r.title);
-			setRecords((prev) => [...prev, ...validRows]);
-		} catch (e) {
-			console.warn('[RecentAnalysisList] load failed:', e);
-		} finally {
-			setLoading(false);
-		}
-	}, [limit, totalCount, loading, filterQuery]);
-
-	// Reset and reload when filterQuery changes
 	useEffect(() => {
-		setRecords([]);
-		offsetRef.current = 0;
-		doneRef.current = false;
-		void loadMore();
-	}, [filterQuery]);
+		setVisibleLimit(limit);
+	}, [limit, normalizedFilter]);
 
-	// Initial load
-	useEffect(() => { void loadMore(); }, []);
-
-	// IntersectionObserver for infinite scroll
 	useEffect(() => {
-		const el = sentinelRef.current;
-		if (!el) return;
-		const observer = new IntersectionObserver(
-			(entries) => { if (entries[0]?.isIntersecting) void loadMore(); },
-			{ rootMargin: '200px' },
-		);
-		observer.observe(el);
-		return () => observer.disconnect();
-	}, [loadMore]);
-
-	if (records.length === 0 && !loading) return null;
+		let cancelled = false;
+		const load = async () => {
+			setLoading(true);
+			try {
+				const service = host.aiAnalysisHistory;
+				const [rows, count] = await Promise.all([
+					normalizedFilter
+						? service.search(normalizedFilter, { limit: visibleLimit, offset: 0 })
+						: service.list({ limit: visibleLimit, offset: 0 }),
+					normalizedFilter
+						? service.searchCount(normalizedFilter)
+						: service.count(),
+				]);
+				if (cancelled) return;
+				setRecords(rows.filter((record) => record.query || record.title));
+				setTotalCount(count);
+			} catch (error) {
+				if (cancelled) return;
+				console.warn('[RecentAnalysisList] load failed:', error);
+				setRecords([]);
+				setTotalCount(0);
+			} finally {
+				if (!cancelled) setLoading(false);
+			}
+		};
+		void load();
+		return () => {
+			cancelled = true;
+		};
+	}, [host.aiAnalysisHistory, normalizedFilter, visibleLimit]);
 
 	return (
-		<div className="pktw-border-t pktw-border-pk-border/50 pktw-mt-2 pktw-px-4">
-			<span className="pktw-block pktw-text-pk-xs pktw-font-medium pktw-uppercase pktw-tracking-widest pktw-text-pk-foreground-muted pktw-pt-4 pktw-pb-2">
-				Recent
-			</span>
+		<div className="pktw-border-t pktw-border-pk-border/50 pktw-mt-3 pktw-px-4 pktw-pt-4">
+			<div className="pktw-flex pktw-items-center pktw-justify-between pktw-pb-2">
+				<span className="pktw-text-xs pktw-font-medium pktw-text-pk-foreground-muted">
+					Analysis history
+				</span>
+				{totalCount > 0 && (
+					<span className="pktw-text-xs pktw-text-pk-foreground-muted">
+						{totalCount} saved
+					</span>
+				)}
+			</div>
 			<div className="pktw-flex pktw-flex-col">
 				{records.map((r, idx) => (
 					<div key={r.id ?? idx} style={{ contentVisibility: 'auto', containIntrinsicSize: '0 48px' }}>
@@ -139,13 +129,27 @@ export const RecentAnalysisList: React.FC<RecentAnalysisListProps> = ({
 					</div>
 				))}
 			</div>
-			<div ref={sentinelRef}>
-				{loading && (
-					<div className="pktw-py-3 pktw-text-center pktw-text-xs pktw-text-pk-foreground-muted">
-						Loading...
-					</div>
-				)}
-			</div>
+			{loading && (
+				<div className="pktw-py-3 pktw-text-center pktw-text-xs pktw-text-pk-foreground-muted">
+					Loading history...
+				</div>
+			)}
+			{!loading && records.length === 0 && (
+				<div className="pktw-py-4 pktw-text-sm pktw-text-pk-foreground-muted">
+					{normalizedFilter ? 'No saved analyses match this query.' : 'No saved analyses yet.'}
+				</div>
+			)}
+			{!loading && records.length < totalCount && (
+				<Button
+					variant="ghost"
+					size="sm"
+					geometry="toolbar"
+					onClick={() => setVisibleLimit((current) => current + limit)}
+					className="pktw-mt-2 pktw-mb-1 pktw-text-xs pktw-text-pk-accent"
+				>
+					Show more
+				</Button>
+			)}
 		</div>
 	);
 };

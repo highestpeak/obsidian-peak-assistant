@@ -17,8 +17,11 @@ sidecar. The review HTML remains a design reference, not a second UI runtime.
 
 ### Landing
 
-- Completed analysis history is not shown on the landing surface.
-- Only unfinished background analyses appear under `Continue analysis`.
+- Unfinished background analyses appear first under `Continue analysis`,
+  including plans ready for review.
+- Recent query shortcuts remain distinct from saved analysis history: a recent
+  query starts that question again, while a saved analysis reopens its result.
+- Saved analysis history is compact on first render and expands only on demand.
 - Context-derived starters use sentence case and the label
   `Suggested from current context`.
 - Keep the existing Web on/off icon and behavior.
@@ -95,8 +98,10 @@ sidecar. The review HTML remains a design reference, not a second UI runtime.
 
 ## Acceptance
 
-- No `Recent`, completed history, `Suggested for you`, `Report Outline` or
-  `Process` label remains on the V2 workspace surfaces.
+- `Continue analysis` stays above recent-query shortcuts and saved analysis
+  history; the two history semantics remain visibly distinct.
+- No `Suggested for you`, `Report Outline` or `Process` label remains on the V2
+  workspace surfaces.
 - Generate switches to Report before the first section completes.
 - Activity remains reachable during and after generation.
 - A section Ask answer is visible without mutating the section body and survives

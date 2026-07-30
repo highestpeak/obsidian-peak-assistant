@@ -17,40 +17,42 @@ export const RecentQueriesDropdown: React.FC<RecentQueriesDropdownProps> = ({
 	if (queries.length === 0) return null;
 
 	return (
-		<div className="pktw-px-4 pktw-py-2">
+		<div className="pktw-px-4 pktw-py-2 pktw-mb-1">
 			<div className="pktw-flex pktw-items-center pktw-justify-between pktw-mb-1.5">
-				<span className="pktw-text-pk-xs pktw-font-medium pktw-uppercase pktw-tracking-widest pktw-text-pk-foreground-muted">
+				<span className="pktw-text-xs pktw-font-medium pktw-text-pk-foreground-muted">
 					Recent searches
 				</span>
 				<Button
 					variant="ghost"
-					size="sm"
+					size="icon"
 					onClick={(e) => {
 						e.stopPropagation();
 						onClear();
 					}}
-					className="pktw-shadow-none pktw-h-5 pktw-px-1.5 pktw-text-pk-xs pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground pktw-cursor-pointer"
+					className="!pktw-h-7 !pktw-min-h-7 !pktw-max-h-7 !pktw-w-7 !pktw-min-w-7 !pktw-max-w-7 !pktw-p-0 pktw-shadow-none pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground pktw-cursor-pointer"
+					aria-label="Clear recent searches"
+					title="Clear recent searches"
 				>
-					<X className="pktw-w-3 pktw-h-3 pktw-mr-0.5" />
-					Clear
+					<X className="pktw-w-3.5 pktw-h-3.5" />
 				</Button>
 			</div>
 			<div className="pktw-flex pktw-flex-col">
 				{queries.map((query) => (
-					<div
+					<Button
 						key={query}
+						variant="unstyled"
 						onClick={() => onSelect(query)}
 						className={cn(
-							'pktw-flex pktw-items-center pktw-gap-2 pktw-px-2 pktw-py-1.5',
-							'pktw-rounded-md pktw-cursor-pointer pktw-transition-colors',
+							'!pktw-h-auto !pktw-min-h-8 !pktw-max-h-none pktw-w-full pktw-justify-start pktw-gap-2 !pktw-px-2 !pktw-py-1.5',
+							'pktw-rounded-md pktw-text-left pktw-cursor-pointer pktw-transition-colors',
 							'hover:pktw-bg-pk-accent-tint',
 						)}
 					>
 						<Clock className="pktw-w-3 pktw-h-3 pktw-text-pk-foreground-muted pktw-shrink-0" />
-						<span className="pktw-text-sm pktw-text-pk-foreground pktw-truncate">
+						<span className="pktw-min-w-0 pktw-flex-1 pktw-text-sm pktw-font-normal pktw-text-pk-foreground pktw-truncate">
 							{query}
 						</span>
-					</div>
+					</Button>
 				))}
 			</div>
 		</div>

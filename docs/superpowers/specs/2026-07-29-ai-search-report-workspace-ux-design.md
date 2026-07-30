@@ -203,7 +203,10 @@ Primary job: ask a question or continue an unfinished analysis.
 - Replace `Suggested for you` with sentence-case `Start with current context`. These are context-derived starters, not personalization and not history.
 - Resolve every context variable before display.
 - Use `Continue analysis` only for unfinished states such as running, queued, error recovery, or plan ready for review.
-- Do not show completed history or a separate recent-query block on the landing page.
+- Keep `Continue analysis` first, then show a compact recent-query block for
+  rerunning questions and a separate saved-analysis history for reopening
+  results. The two history surfaces must remain visibly distinct and the saved
+  list expands only on demand.
 - Preserve the original `GlobeOff` / `Globe` icon and tooltip rather than replacing it with bare text.
 - Keep the `Analyze` action inside the pill composer and give it the same pill-radius geometry.
 - Expose automatic scope as concrete context chips such as current note and Vault.
@@ -365,7 +368,8 @@ This table is an implementation direction, not an instruction to merge the deter
 
 ## 8. Acceptance criteria
 
-- Landing has no completed history surface, only unfinished `Continue analysis`, and no unresolved template variables.
+- Landing orders unfinished `Continue analysis` before recent-query shortcuts
+  and saved analysis history, and has no unresolved template variables.
 - Landing retains the original Web state icon, aligned Analyze geometry, and quiet opt-in context pinning.
 - Activity shows the complete agent run and the report plan follows it.
 - The plan contains only sections justified by the current answer contract.
