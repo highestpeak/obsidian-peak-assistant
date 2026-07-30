@@ -103,6 +103,7 @@ export function composerDraftBlockRanges(source: string): ComposerDraftBlockRang
  */
 export interface ComposerDraftHiddenRange extends HiddenSourceRange {
 	role: 'heading' | 'list' | 'ordered-list' | 'task' | 'ordered-task';
+	depth?: number;
 }
 
 export function composerDraftHiddenRanges(source: string): ComposerDraftHiddenRange[] {
@@ -118,8 +119,16 @@ export function composerDraftHiddenRanges(source: string): ComposerDraftHiddenRa
 		const role = composerDraftListRole(block.kind, block.renderModel.ordered);
 		for (const unit of block.units) {
 			if (unit.unitKind !== 'list-item') continue;
-			const to = listItemContentStart(source, unit);
-			if (to > unit.from) hidden.push({ from: unit.from, to, role });
+			const lineStart = source.lastIndexOf('\n', Math.max(0, unit.from - 1)) + 1;
+			const to = listItemContentStart(source, { from: lineStart, to: unit.to });
+			if (to <= lineStart) continue;
+			const indent = leadingMarkdownWhitespace(source.slice(lineStart, to));
+			hidden.push({
+				from: lineStart,
+				to,
+				role,
+				depth: markdownListIndentDepth(indent),
+			});
 		}
 	}
 	return hidden;
@@ -137,6 +146,57 @@ export interface MarkdownDraftEdit {
 	value: string;
 	selectionStart: number;
 	selectionEnd: number;
+}
+
+interface MarkdownListLine {
+	start: number;
+	end: number;
+	indentColumns: number;
+}
+
+interface MarkdownLineEdit {
+	at: number;
+	remove: number;
+	insert: string;
+}
+
+/**
+ * Own Tab/Shift+Tab while the draft selection touches list items.
+ *
+ * Tab inserts one Markdown tab before every selected item. The first item at a
+ * level cannot indent without a preceding sibling, but the key is still
+ * handled so focus never escapes the editor. Shift+Tab removes one indentation
+ * level and accepts either tabs or pasted space indentation.
+ */
+export function indentMarkdownDraftListItems(
+	value: string,
+	selectionStart: number,
+	selectionEnd: number,
+	outdent = false,
+): MarkdownDraftEdit | null {
+	const from = Math.max(0, Math.min(value.length, Math.min(selectionStart, selectionEnd)));
+	const to = Math.max(from, Math.min(value.length, Math.max(selectionStart, selectionEnd)));
+	const lines = selectedMarkdownListLines(value, from, to);
+	if (lines.length === 0) return null;
+	if (!outdent && !hasPreviousListSibling(value, lines[0])) {
+		return { value, selectionStart: from, selectionEnd: to };
+	}
+	const edits = lines
+		.map((line): MarkdownLineEdit | null => {
+			if (!outdent) return { at: line.start, remove: 0, insert: '\t' };
+			const removable = removableMarkdownIndent(value.slice(line.start, line.end));
+			return removable > 0
+				? { at: line.start, remove: removable, insert: '' }
+				: null;
+		})
+		.filter((edit): edit is MarkdownLineEdit => Boolean(edit));
+	if (edits.length === 0) return { value, selectionStart: from, selectionEnd: to };
+	const next = applyMarkdownLineEdits(value, edits);
+	return {
+		value: next,
+		selectionStart: mapMarkdownEditOffset(from, edits),
+		selectionEnd: mapMarkdownEditOffset(to, edits),
+	};
 }
 
 /**
@@ -239,6 +299,113 @@ function orderedListPrefix(value: string): { length: number; next: string } | nu
 	if ((punctuation !== '.' && punctuation !== ')') || value[digitEnd + 1] !== ' ') return null;
 	const token = value.slice(0, digitEnd + 2);
 	return { length: token.length, next: token };
+}
+
+function selectedMarkdownListLines(
+	value: string,
+	from: number,
+	to: number,
+): MarkdownListLine[] {
+	const selected: MarkdownListLine[] = [];
+	let lineStart = value.lastIndexOf('\n', Math.max(0, from - 1)) + 1;
+	const effectiveEnd = to > from && value[to - 1] === '\n' ? to - 1 : to;
+	while (lineStart <= effectiveEnd) {
+		const lineEndAt = value.indexOf('\n', lineStart);
+		const lineEnd = lineEndAt < 0 ? value.length : lineEndAt;
+		const line = markdownListLine(value, lineStart, lineEnd);
+		if (line) selected.push(line);
+		if (lineEndAt < 0 || lineEndAt >= effectiveEnd) break;
+		lineStart = lineEndAt + 1;
+	}
+	return selected;
+}
+
+function markdownListLine(
+	value: string,
+	start: number,
+	end: number,
+): MarkdownListLine | null {
+	const line = value.slice(start, end);
+	const indent = leadingMarkdownWhitespace(line);
+	const body = line.slice(indent.length);
+	if (!taskPrefix(body) && !listPrefix(body)) return null;
+	return {
+		start,
+		end,
+		indentColumns: markdownIndentColumns(indent),
+	};
+}
+
+function hasPreviousListSibling(value: string, line: MarkdownListLine): boolean {
+	let cursor = line.start;
+	while (cursor > 0) {
+		const previousEnd = cursor - 1;
+		const previousStart = value.lastIndexOf('\n', Math.max(0, previousEnd - 1)) + 1;
+		const previousText = value.slice(previousStart, previousEnd);
+		if (previousText.trim().length === 0) return false;
+		const previous = markdownListLine(value, previousStart, previousEnd);
+		if (!previous) return false;
+		if (previous.indentColumns === line.indentColumns) return true;
+		if (previous.indentColumns < line.indentColumns) return false;
+		cursor = previousStart;
+	}
+	return false;
+}
+
+function removableMarkdownIndent(line: string): number {
+	if (line.startsWith('\t')) return 1;
+	let spaces = 0;
+	while (spaces < line.length && line[spaces] === ' ' && spaces < 4) spaces += 1;
+	return spaces;
+}
+
+function applyMarkdownLineEdits(value: string, edits: readonly MarkdownLineEdit[]): string {
+	let next = '';
+	let cursor = 0;
+	for (const edit of edits) {
+		next += value.slice(cursor, edit.at);
+		next += edit.insert;
+		cursor = edit.at + edit.remove;
+	}
+	return next + value.slice(cursor);
+}
+
+function mapMarkdownEditOffset(
+	offset: number,
+	edits: readonly MarkdownLineEdit[],
+): number {
+	let delta = 0;
+	for (const edit of edits) {
+		if (offset < edit.at) break;
+		if (offset <= edit.at + edit.remove) {
+			return edit.at + delta + edit.insert.length;
+		}
+		delta += edit.insert.length - edit.remove;
+	}
+	return offset + delta;
+}
+
+function leadingMarkdownWhitespace(value: string): string {
+	let end = 0;
+	while (value[end] === ' ' || value[end] === '\t') end += 1;
+	return value.slice(0, end);
+}
+
+function markdownIndentColumns(indent: string): number {
+	let columns = 0;
+	for (const character of indent) {
+		if (character === '\t') {
+			columns += 4 - (columns % 4);
+			continue;
+		}
+		columns += 1;
+	}
+	return columns;
+}
+
+function markdownListIndentDepth(indent: string): number {
+	const columns = markdownIndentColumns(indent);
+	return columns === 0 ? 0 : Math.ceil(columns / 4);
 }
 
 /** Extract the editable visual body while keeping structural Markdown private. */

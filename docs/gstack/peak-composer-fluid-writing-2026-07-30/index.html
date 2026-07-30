@@ -277,6 +277,7 @@
 		.markdown-token[data-structural-token="task"]::after {
 			display: inline-block;
 			width: 18px;
+			margin-left: calc(var(--list-depth, 0) * 18px);
 			margin-right: 5px;
 			color: var(--accent);
 			font-family: var(--sans);
@@ -442,7 +443,7 @@
 							data-placeholder="直接输入 Markdown：# 标题、- 列表、> 引用、代码或公式…"
 						></div>
 						<div class="draft-footer">
-							<span><kbd>Enter</kbd> 连续写 · <kbd>⌘ Enter</kbd> 写入为块</span>
+							<span><kbd>Enter</kbd> 连续写 · <kbd>Tab</kbd> 层级 · <kbd>Shift Tab</kbd> 返回 · <kbd>⌘ Enter</kbd> 写入</span>
 							<span class="right">
 								<button class="footer-action" id="cancelDraft" type="button">取消</button>
 								<button class="footer-action" type="button">AI 生成</button>
@@ -547,6 +548,33 @@
 			projectMarkdownSource(markdownSource, selection?.focus ?? markdownSource.length);
 		});
 		editor.addEventListener('keydown', event => {
+			if (
+				event.key === 'Tab' &&
+				!event.isComposing &&
+				!event.metaKey &&
+				!event.ctrlKey &&
+				!event.altKey
+			) {
+				const selection = readSourceSelection();
+				const edit = selection
+					? indentMarkdownListItems(
+							markdownSource,
+							selection.from,
+							selection.to,
+							event.shiftKey,
+						)
+					: null;
+				if (!edit) return;
+				event.preventDefault();
+				markdownSource = edit.value;
+				projectMarkdownSource(
+					markdownSource,
+					selection.anchor > selection.focus
+						? edit.selectionStart
+						: edit.selectionEnd,
+				);
+				return;
+			}
 			if (event.key !== 'Enter' || event.isComposing) return;
 			if (event.metaKey || event.ctrlKey) {
 				event.preventDefault();
@@ -556,6 +584,111 @@
 			event.preventDefault();
 			insertMarkdownBreak(event.shiftKey);
 		});
+
+		function indentMarkdownListItems(source, from, to, outdent) {
+			const lines = selectedMarkdownListLines(source, from, to);
+			if (lines.length === 0) return null;
+			if (!outdent && !hasPreviousListSibling(source, lines[0])) {
+				return { value: source, selectionStart: from, selectionEnd: to };
+			}
+			const edits = lines
+				.map(line => {
+					if (!outdent) return { at: line.start, remove: 0, insert: '\t' };
+					const removable = removableMarkdownIndent(
+						source.slice(line.start, line.end),
+					);
+					return removable > 0
+						? { at: line.start, remove: removable, insert: '' }
+						: null;
+				})
+				.filter(Boolean);
+			if (edits.length === 0) {
+				return { value: source, selectionStart: from, selectionEnd: to };
+			}
+			return {
+				value: applyMarkdownLineEdits(source, edits),
+				selectionStart: mapMarkdownEditOffset(from, edits),
+				selectionEnd: mapMarkdownEditOffset(to, edits),
+			};
+		}
+
+		function selectedMarkdownListLines(source, from, to) {
+			const selected = [];
+			let lineStart = source.lastIndexOf('\n', Math.max(0, from - 1)) + 1;
+			const effectiveEnd = to > from && source[to - 1] === '\n' ? to - 1 : to;
+			while (lineStart <= effectiveEnd) {
+				const lineEndAt = source.indexOf('\n', lineStart);
+				const lineEnd = lineEndAt < 0 ? source.length : lineEndAt;
+				const line = markdownListLine(source, lineStart, lineEnd);
+				if (line) selected.push(line);
+				if (lineEndAt < 0 || lineEndAt >= effectiveEnd) break;
+				lineStart = lineEndAt + 1;
+			}
+			return selected;
+		}
+
+		function markdownListLine(source, start, end) {
+			const text = source.slice(start, end);
+			const indent = leadingMarkdownWhitespace(text);
+			const body = text.slice(indent.length);
+			if (!/^(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?/.test(body)) {
+				return null;
+			}
+			return {
+				start,
+				end,
+				indentColumns: markdownIndentColumns(indent),
+			};
+		}
+
+		function hasPreviousListSibling(source, line) {
+			let cursor = line.start;
+			while (cursor > 0) {
+				const previousEnd = cursor - 1;
+				const previousStart =
+					source.lastIndexOf('\n', Math.max(0, previousEnd - 1)) + 1;
+				const previousText = source.slice(previousStart, previousEnd);
+				if (!previousText.trim()) return false;
+				const previous = markdownListLine(source, previousStart, previousEnd);
+				if (!previous) return false;
+				if (previous.indentColumns === line.indentColumns) return true;
+				if (previous.indentColumns < line.indentColumns) return false;
+				cursor = previousStart;
+			}
+			return false;
+		}
+
+		function removableMarkdownIndent(line) {
+			if (line.startsWith('\t')) return 1;
+			let spaces = 0;
+			while (spaces < line.length && line[spaces] === ' ' && spaces < 4) {
+				spaces += 1;
+			}
+			return spaces;
+		}
+
+		function applyMarkdownLineEdits(source, edits) {
+			let next = '';
+			let cursor = 0;
+			edits.forEach(edit => {
+				next += source.slice(cursor, edit.at);
+				next += edit.insert;
+				cursor = edit.at + edit.remove;
+			});
+			return next + source.slice(cursor);
+		}
+
+		function mapMarkdownEditOffset(offset, edits) {
+			let delta = 0;
+			for (const edit of edits) {
+				if (offset < edit.at) break;
+				if (offset <= edit.at + edit.remove) {
+					return edit.at + delta + edit.insert.length;
+				}
+				delta += edit.insert.length - edit.remove;
+			}
+			return offset + delta;
+		}
 
 		function insertMarkdownBreak(soft) {
 			const selection = readSourceSelection();
@@ -659,6 +792,7 @@
 						'task',
 						structuralToken(task[1], 'task', {
 							checked: task[2].toLowerCase() === 'x',
+							depth: markdownListIndentDepth(line),
 						}) + escapeHtml(task[3]),
 					),
 				};
@@ -673,7 +807,10 @@
 						structuralToken(
 							`${list[1]}${list[2]}${list[3]}`,
 							ordered ? 'ordered-list' : 'list',
-							{ marker: list[2] },
+							{
+								marker: list[2],
+								depth: markdownListIndentDepth(line),
+							},
 						) + escapeHtml(list[4]),
 					),
 				};
@@ -727,11 +864,40 @@
 			const checked = options.checked === undefined
 				? ''
 				: ` data-checked="${String(options.checked)}"`;
+			const depth = options.depth === undefined
+				? ''
+				: (
+					` data-list-depth="${options.depth}"` +
+					` style="--list-depth:${options.depth}"`
+				);
 			return (
 				`<span class="markdown-token" contenteditable="false"` +
-				` data-structural-token="${role}"${marker}${checked}>` +
+				` data-structural-token="${role}"${marker}${checked}${depth}>` +
 				`${escapeHtml(source)}</span>`
 			);
+		}
+
+		function leadingMarkdownWhitespace(value) {
+			let end = 0;
+			while (value[end] === ' ' || value[end] === '\t') end += 1;
+			return value.slice(0, end);
+		}
+
+		function markdownIndentColumns(indent) {
+			let columns = 0;
+			for (const character of indent) {
+				if (character === '\t') {
+					columns += 4 - (columns % 4);
+					continue;
+				}
+				columns += 1;
+			}
+			return columns;
+		}
+
+		function markdownListIndentDepth(line) {
+			const columns = markdownIndentColumns(leadingMarkdownWhitespace(line));
+			return columns === 0 ? 0 : Math.ceil(columns / 4);
 		}
 
 		function readSourceSelection() {

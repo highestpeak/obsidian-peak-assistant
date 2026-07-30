@@ -4,6 +4,7 @@ import {
 	composerDraftBlockRanges,
 	composerDraftHiddenRanges,
 	composerDraftPresentationKind,
+	indentMarkdownDraftListItems,
 	insertMarkdownDraftBreak,
 } from '@/service/composer';
 import { DEFAULT_COMPOSER_CONFIG } from '@/ui/view/composer/config/composerConfig';
@@ -60,6 +61,65 @@ assert.equal(list.selectionStart, list.value.length);
 
 const task = insertMarkdownDraftBreak('- [x] done', 10, 10);
 assert.equal(task.value, '- [x] done\n- [ ] ');
+
+const nested = indentMarkdownDraftListItems('- parent\n- child', 16, 16);
+assert.ok(nested, 'Tab is handled inside a list item');
+assert.equal(nested?.value, '- parent\n\t- child');
+assert.equal(nested?.selectionStart, 17);
+assert.deepEqual(
+	composerDraftHiddenRanges(nested?.value ?? '').map((range) => ({
+		role: range.role,
+		depth: range.depth,
+		source: nested?.value.slice(range.from, range.to),
+	})),
+	[
+		{ role: 'list', depth: 0, source: '- ' },
+		{ role: 'list', depth: 1, source: '\t- ' },
+	],
+	'nested list markers retain source indentation and expose visual depth',
+);
+const nestedBreak = insertMarkdownDraftBreak(
+	nested?.value ?? '',
+	nested?.selectionStart ?? 0,
+	nested?.selectionEnd ?? 0,
+);
+assert.equal(nestedBreak.value, '- parent\n\t- child\n\t- ');
+
+const outdented = indentMarkdownDraftListItems(
+	nestedBreak.value,
+	nestedBreak.selectionStart,
+	nestedBreak.selectionEnd,
+	true,
+);
+assert.equal(outdented?.value, '- parent\n\t- child\n- ');
+
+const selectedItems = '- parent\n- child\n- sibling';
+const multiIndent = indentMarkdownDraftListItems(
+	selectedItems,
+	selectedItems.indexOf('- child'),
+	selectedItems.length,
+);
+assert.equal(multiIndent?.value, '- parent\n\t- child\n\t- sibling');
+assert.equal(
+	indentMarkdownDraftListItems('Paragraph', 4, 4),
+	null,
+	'Tab outside a list remains native focus navigation',
+);
+assert.deepEqual(
+	indentMarkdownDraftListItems('- first', 4, 4),
+	{ value: '- first', selectionStart: 4, selectionEnd: 4 },
+	'first list item keeps focus but cannot indent without a parent item',
+);
+assert.equal(
+	indentMarkdownDraftListItems('1. parent\n2. child', 18, 18)?.value,
+	'1. parent\n\t2. child',
+	'ordered items use the same source-safe nesting behavior',
+);
+assert.equal(
+	indentMarkdownDraftListItems('- [ ] parent\n- [x] child', 24, 24)?.value,
+	'- [ ] parent\n\t- [x] child',
+	'task items preserve their checkbox marker while nesting',
+);
 
 const exitList = insertMarkdownDraftBreak('- first\n- ', 10, 10);
 assert.equal(exitList.value, '- first\n\n');

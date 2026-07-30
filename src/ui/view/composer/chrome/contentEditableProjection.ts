@@ -2,6 +2,13 @@ import katex from 'katex';
 import type { SourceVisualPart } from '@/service/composer';
 import { styleAttrs } from './StyledRuns';
 
+interface StructuralProjectionRange {
+	from: number;
+	to: number;
+	role: string;
+	depth?: number;
+}
+
 /**
  * Serialize Composer's source projection for a browser-owned contenteditable.
  *
@@ -12,7 +19,7 @@ import { styleAttrs } from './StyledRuns';
 export function renderContentEditableProjection(
 	parts: readonly SourceVisualPart[],
 	unitId?: string,
-	structuralRanges: readonly Array<{ from: number; to: number; role: string }> = [],
+	structuralRanges: readonly StructuralProjectionRange[] = [],
 	blockRanges: readonly Array<{ from: number; to: number; kind: string }> = [],
 ): string {
 	if (parts.every((part) => part.kind !== 'math' && part.text.length === 0)) return '';
@@ -25,7 +32,7 @@ export function renderContentEditableProjection(
 function renderBlockProjection(
 	parts: readonly SourceVisualPart[],
 	unitId: string | undefined,
-	structuralRanges: readonly Array<{ from: number; to: number; role: string }>,
+	structuralRanges: readonly StructuralProjectionRange[],
 	blockRanges: readonly Array<{ from: number; to: number; kind: string }>,
 ): string {
 	const ordered = [...blockRanges].sort((left, right) => left.from - right.from);
@@ -59,7 +66,7 @@ function renderProjectionRange(
 	from: number,
 	to: number,
 	unitId: string | undefined,
-	structuralRanges: readonly Array<{ from: number; to: number; role: string }>,
+	structuralRanges: readonly StructuralProjectionRange[],
 ): string {
 	return parts
 		.filter((part) => part.to > from && part.from < to)
@@ -85,17 +92,26 @@ function slicePart(part: SourceVisualPart, from: number, to: number): SourceVisu
 function renderPart(
 	part: SourceVisualPart,
 	unitId: string | undefined,
-	structuralRanges: readonly Array<{ from: number; to: number; role: string }>,
+	structuralRanges: readonly StructuralProjectionRange[],
 ): string {
 	if (part.kind === 'hidden') {
 		const structural = structuralRanges.find(
 			(range) => range.from === part.from && range.to === part.to,
 		);
+		const depth = structural?.depth === undefined
+			? undefined
+			: Math.max(0, Math.floor(structural.depth));
+		const listMarker = structural?.role === 'ordered-list'
+			? orderedListMarker(part.text)
+			: undefined;
 		return [
 			'<span class="pk-composer-source-token" contenteditable="false"',
 			` data-src-token-from="${part.from}" data-src-token-to="${part.to}"`,
 			structural ? ` data-structural-token="${escapeAttribute(structural.role)}"` : '',
 			structural ? ` data-src-token-text="${escapeAttribute(part.text)}"` : '',
+			listMarker ? ` data-list-marker="${escapeAttribute(listMarker)}"` : '',
+			depth === undefined ? '' : ` data-list-depth="${depth}"`,
+			depth === undefined ? '' : ` style="--pk-composer-list-depth:${depth}"`,
 			' aria-hidden="true">',
 			escapeHtml(part.text),
 			'</span>',
@@ -135,6 +151,12 @@ function renderPart(
 		part.linkTarget ? ' tabindex="0"' : '',
 	].join('');
 	return `<span${attributes}>${escapeHtml(part.text)}</span>`;
+}
+
+function orderedListMarker(source: string): string {
+	const trimmed = source.trimStart();
+	const separator = trimmed.indexOf(' ');
+	return separator < 0 ? trimmed : trimmed.slice(0, separator);
 }
 
 function serializeStyle(style: React.CSSProperties): string {

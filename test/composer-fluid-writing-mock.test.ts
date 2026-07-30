@@ -27,6 +27,15 @@ assert.ok(
 	mock.includes('function restoreSourceSelection('),
 	'projection restores the caret by source offset after replacing DOM',
 );
+assert.ok(
+	mock.includes("event.key === 'Tab'") &&
+		mock.includes('function indentMarkdownListItems('),
+	'interaction mock keeps Tab inside list editing and supports Shift+Tab',
+);
+assert.ok(
+	mock.includes('--list-depth'),
+	'interaction mock exposes visible indentation for nested list markers',
+);
 assert.equal(
 	mock.includes('.markdown-editor[data-kind="heading"]'),
 	false,

@@ -1822,7 +1822,7 @@
 }
 .peak-composer-root .pk-new-block-draft__visual
 	.pk-composer-source-token[data-structural-token='ordered-list']::after {
-	content: attr(data-src-token-text);
+	content: attr(data-list-marker);
 }
 .peak-composer-root .pk-new-block-draft__visual
 	.pk-composer-source-token[data-structural-token='task']::after,
@@ -1848,6 +1848,7 @@
 	.pk-composer-source-token[data-structural-token='ordered-task']::after {
 	display: inline-block;
 	width: 18px;
+	margin-left: calc(var(--pk-composer-list-depth, 0) * 18px);
 	margin-right: 4px;
 	color: var(--pk-accent-text);
 	font-family: var(--font-interface);

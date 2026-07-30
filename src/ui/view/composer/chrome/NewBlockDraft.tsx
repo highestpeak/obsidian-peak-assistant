@@ -14,6 +14,7 @@ import {
 	composerDraftReferenceSource,
 	composerDraftReferenceTarget,
 	hasSourceVisualSyntaxChange,
+	indentMarkdownDraftListItems,
 	insertMarkdownDraftBreak,
 	modelToHtml,
 	parseTableSource,
@@ -421,6 +422,33 @@ function VisualDraftTextEditor({
 		onChange(edit.value);
 		project(edit.value, nextSelection);
 	};
+	const indentList = (outdent: boolean): boolean => {
+		const el = ref.current;
+		if (!el) return false;
+		const selection = el.ownerDocument.getSelection();
+		const mapped = selection ? mapDomSelectionToSource(el, selection) : null;
+		if (!mapped) return false;
+		const liveText = el.textContent ?? '';
+		const edit = indentMarkdownDraftListItems(
+			liveText,
+			mapped.from,
+			mapped.to,
+			outdent,
+		);
+		if (!edit) return false;
+		const collapsed = edit.selectionStart === edit.selectionEnd;
+		const direction = collapsed ? 'collapsed' : mapped.direction;
+		const nextSelection: MappedSelection = {
+			from: edit.selectionStart,
+			to: edit.selectionEnd,
+			anchor: direction === 'backward' ? edit.selectionEnd : edit.selectionStart,
+			focus: direction === 'backward' ? edit.selectionStart : edit.selectionEnd,
+			direction,
+		};
+		onChange(edit.value);
+		project(edit.value, nextSelection);
+		return true;
+	};
 	return (
 		<div
 			ref={ref}
@@ -463,6 +491,17 @@ function VisualDraftTextEditor({
 				handleInput();
 			}}
 			onKeyDown={(event) => {
+				if (
+					event.key === 'Tab' &&
+					!event.nativeEvent.isComposing &&
+					!event.metaKey &&
+					!event.ctrlKey &&
+					!event.altKey
+				) {
+					if (!indentList(event.shiftKey)) return;
+					event.preventDefault();
+					return;
+				}
 				if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
 				if (event.metaKey || event.ctrlKey) return;
 				event.preventDefault();

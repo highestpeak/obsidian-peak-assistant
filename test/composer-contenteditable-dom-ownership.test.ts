@@ -53,6 +53,10 @@ assert.ok(
 		composerCss.includes('opacity: 1;'),
 	'structural pseudo markers override the hidden source token opacity',
 );
+assert.ok(
+	composerCss.includes('--pk-composer-list-depth'),
+	'nested list markers project source indentation into visible offset',
+);
 
 const editable = readFileSync('src/ui/view/composer/chrome/EditableText.tsx', 'utf8');
 assert.ok(
@@ -77,6 +81,11 @@ assert.equal(
 assert.ok(
 	draft.includes('composerDraftBlockRanges(projection.text)'),
 	'draft projection computes independent visual ranges for mixed Markdown blocks',
+);
+assert.ok(
+	draft.includes("event.key === 'Tab'") &&
+		draft.includes('indentMarkdownDraftListItems'),
+	'Tab and Shift+Tab are owned by the Markdown draft while focus is in a list',
 );
 
 console.log('composer-contenteditable-dom-ownership: passed');
