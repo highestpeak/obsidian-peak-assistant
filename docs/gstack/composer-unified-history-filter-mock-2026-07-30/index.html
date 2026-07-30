@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Composer History · Filter and Row Mock</title>
+  <link rel="stylesheet" href="./mock.css">
+</head>
+<body>
+  <svg class="sprite" aria-hidden="true">
+    <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3 1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5Z"/><path d="m19 15 .7 2.3L22 18l-2.3.7L19 21l-.7-2.3L16 18l2.3-.7Z"/></symbol>
+    <symbol id="i-message" viewBox="0 0 24 24"><path d="M5 5h14v11H8l-3 3Z"/><path d="M9 9h6"/><path d="M9 12h4"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v6h6"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-file-pen" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9Z"/><path d="M14 3v7h6"/><path d="m9 17 1.2-3.7L17 6.5l2.5 2.5-6.8 6.8Z"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 5h16l-6 7v6l-4 2v-8Z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12"/><path d="m18 6-12 12"/></symbol>
+  </svg>
+
+  <main class="stage">
+    <header class="mock-note">
+      <span>Composer · History redesign</span>
+      <strong>筛选打开状态</strong>
+      <small>点击类型、筛选项和“完成”可以体验</small>
+    </header>
+
+    <section class="sidecar" aria-label="Composer History redesigned mock">
+      <nav class="top-tabs" aria-label="Intelligence sections">
+        <button type="button" class="top-tab">
+          <svg><use href="#i-message"/></svg>
+          <span>Copilot</span>
+        </button>
+        <button type="button" class="top-tab is-active">
+          <svg><use href="#i-history"/></svg>
+          <span>History</span>
+          <b id="tab-count">17</b>
+        </button>
+      </nav>
+
+      <section class="history">
+        <header class="history-head">
+          <div>
+            <h1>活动历史</h1>
+            <p>生成、Copilot 和正文修改都在这里，未采用内容也会保留。</p>
+          </div>
+          <span id="total-count">17 条活动</span>
+        </header>
+
+        <section class="filter-shell">
+          <div class="primary-filters" role="group" aria-label="记录类型">
+            <button type="button" class="source-filter is-active" data-source="all">
+              全部 <b>17</b>
+            </button>
+            <button type="button" class="source-filter" data-source="generation">
+              AI 生成 <b>8</b>
+            </button>
+            <button type="button" class="source-filter" data-source="copilot">
+              Copilot <b>3</b>
+            </button>
+            <button type="button" class="source-filter" data-source="document">
+              正文编辑 <b>6</b>
+            </button>
+            <button type="button" class="more-filter is-open" id="more-filter" aria-expanded="true">
+              <svg><use href="#i-filter"/></svg>
+              更多
+              <span id="advanced-count" hidden>0</span>
+            </button>
+          </div>
+
+          <div class="active-filters" id="active-filters" hidden></div>
+
+          <section class="filter-popover is-open" id="filter-popover" aria-label="更多筛选">
+            <header class="filter-popover-head">
+              <span>
+                <strong>更多筛选</strong>
+                <small>只显示当前历史中存在的选项</small>
+              </span>
+              <button type="button" class="icon-button" id="close-filter" aria-label="关闭筛选">
+                <svg><use href="#i-x"/></svg>
+              </button>
+            </header>
+
+            <div class="filter-group" data-group="effect">
+              <span class="filter-group-label">改动方式</span>
+              <div class="filter-options">
+                <button type="button" data-filter-group="effect" data-filter-value="rewrite">
+                  <svg><use href="#i-check"/></svg>改写 <b>5</b>
+                </button>
+                <button type="button" data-filter-group="effect" data-filter-value="insert">
+                  <svg><use href="#i-check"/></svg>新增 <b>4</b>
+                </button>
+                <button type="button" data-filter-group="effect" data-filter-value="transform">
+                  <svg><use href="#i-check"/></svg>结构调整 <b>3</b>
+                </button>
+              </div>
+            </div>
+
+            <div class="filter-group" data-group="status">
+              <span class="filter-group-label">结果状态</span>
+              <div class="filter-options">
+                <button type="button" data-filter-group="status" data-filter-value="pending">
+                  <svg><use href="#i-check"/></svg>待审阅 <b>2</b>
+                </button>
+                <button type="button" data-filter-group="status" data-filter-value="not-adopted">
+                  <svg><use href="#i-check"/></svg>未采用 <b>5</b>
+                </button>
+                <button type="button" data-filter-group="status" data-filter-value="accepted">
+                  <svg><use href="#i-check"/></svg>已采用 <b>7</b>
+                </button>
+              </div>
+            </div>
+
+            <div class="filter-group" data-group="target">
+              <span class="filter-group-label">作用范围</span>
+              <div class="filter-options">
+                <button type="button" data-filter-group="target" data-filter-value="block">
+                  <svg><use href="#i-check"/></svg>整段 <b>9</b>
+                </button>
+                <button type="button" data-filter-group="target" data-filter-value="unit">
+                  <svg><use href="#i-check"/></svg>列表项 <b>4</b>
+                </button>
+                <button type="button" data-filter-group="target" data-filter-value="selection">
+                  <svg><use href="#i-check"/></svg>文本选区 <b>4</b>
+                </button>
+              </div>
+            </div>
+
+            <footer class="filter-popover-foot">
+              <button type="button" class="clear-filter" id="clear-filter">清除</button>
+              <span id="result-hint">显示 17 条</span>
+              <button type="button" class="done-filter" id="done-filter">完成</button>
+            </footer>
+          </section>
+        </section>
+
+        <section class="history-day">
+          <header>
+            <strong>今天</strong>
+            <span id="visible-count">5 条</span>
+          </header>
+
+          <div class="history-list" id="history-list">
+            <button type="button" class="history-row" data-source="generation" data-effect="insert" data-status="not-adopted" data-target="unit">
+              <span class="source-icon generation"><svg><use href="#i-sparkles"/></svg></span>
+              <span class="history-copy">
+                <span class="title-line">
+                  <strong>补缺项</strong>
+                  <em>未采用</em>
+                </span>
+                <small>列表项 · “需要考量的系统”</small>
+                <span class="summary">新增 3 个列表项：网络结构、树形结构、时间线结构</span>
+              </span>
+              <time>17:33</time>
+              <svg class="row-chevron"><use href="#i-chevron"/></svg>
+            </button>
+
+            <button type="button" class="history-row" data-source="generation" data-effect="rewrite" data-status="not-adopted" data-target="block">
+              <span class="source-icon generation"><svg><use href="#i-sparkles"/></svg></span>
+              <span class="history-copy">
+                <span class="title-line">
+                  <strong>润色文本</strong>
+                  <em class="muted">源已变化</em>
+                </span>
+                <small>正文块 · “创建一个知识库，其实是大脑的延伸……”</small>
+                <span class="summary">调整表达顺序并压缩重复信息</span>
+              </span>
+              <time>13:44</time>
+              <svg class="row-chevron"><use href="#i-chevron"/></svg>
+            </button>
+
+            <button type="button" class="history-row" data-source="copilot" data-effect="analyze" data-status="accepted" data-target="selection">
+              <span class="source-icon copilot"><svg><use href="#i-message"/></svg></span>
+              <span class="history-copy">
+                <span class="title-line">
+                  <strong>分析结构问题</strong>
+                  <em class="success">已完成</em>
+                </span>
+                <small>文本选区 · “PKM 产品类别分析”</small>
+                <span class="summary">识别出输入、组织、检索和输出四个阶段</span>
+              </span>
+              <time>12:18</time>
+              <svg class="row-chevron"><use href="#i-chevron"/></svg>
+            </button>
+
+            <button type="button" class="history-row" data-source="document" data-effect="rewrite" data-status="accepted" data-target="block">
+              <span class="source-icon document"><svg><use href="#i-file-pen"/></svg></span>
+              <span class="history-copy">
+                <span class="title-line">
+                  <strong>编辑段落</strong>
+                  <em class="success">已保存</em>
+                </span>
+                <small>正文块 · “Composer 视图的设计目标……”</small>
+                <span class="summary">手动补充了正文与历史记录的关系</span>
+              </span>
+              <time>11:46</time>
+              <svg class="row-chevron"><use href="#i-chevron"/></svg>
+            </button>
+
+            <button type="button" class="history-row" data-source="generation" data-effect="transform" data-status="accepted" data-target="unit">
+              <span class="source-icon generation"><svg><use href="#i-sparkles"/></svg></span>
+              <span class="history-copy">
+                <span class="title-line">
+                  <strong>重排列表</strong>
+                  <em class="success">已采用</em>
+                </span>
+                <small>列表项 · “需要考量的系统”</small>
+                <span class="summary">按信息获取、组织和输出重新排列 6 项内容</span>
+              </span>
+              <time>10:22</time>
+              <svg class="row-chevron"><use href="#i-chevron"/></svg>
+            </button>
+          </div>
+
+          <div class="empty-state" id="empty-state" hidden>
+            <strong>没有符合条件的历史</strong>
+            <span>清除部分筛选后再试。</span>
+          </div>
+        </section>
+      </section>
+    </section>
+  </main>
+
+  <script src="./mock.js"></script>
+</body>
+</html>
