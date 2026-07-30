@@ -102,7 +102,7 @@ const Thumb: React.FC<{ layoutId: string }> = ({ layoutId }) => (
 	/>
 );
 
-const VIEW_OPT_BASE = 'pktw-relative pktw-inline-flex pktw-items-center pktw-gap-1.5 !pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-px-3 !pktw-py-0 pktw-rounded-full pktw-text-sm pktw-font-medium';
+const TOOLBAR_OPT_BASE = 'pk-result-browser-toolbar__option pktw-relative pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-rounded-full pktw-text-sm pktw-font-medium';
 const ACTIVE_LABEL = 'pktw-relative pktw-z-10 pktw-text-white';
 const IDLE_LABEL = 'pktw-relative pktw-z-10 pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-transition-colors';
 
@@ -134,7 +134,7 @@ export const ResultBrowserViewToggle: React.FC<ViewModeToggleProps> = ({ view, o
 						size="sm"
 						title={VIEW_TITLES[id]}
 						onClick={() => { if (view !== id) onViewChange(id); }}
-						className={cn(VIEW_OPT_BASE, active ? ACTIVE_LABEL : IDLE_LABEL)}
+						className={cn(TOOLBAR_OPT_BASE, active ? ACTIVE_LABEL : IDLE_LABEL)}
 				>
 					{active && <Thumb layoutId="view-mode-thumb" />}
 					<span className="pktw-relative pktw-z-10 pktw-inline-flex pktw-items-center pktw-gap-1.5">
@@ -155,8 +155,6 @@ export interface DensityToggleProps {
 	onDensityChange: (density: ResultBrowserDensity) => void;
 }
 
-const DENSITY_OPT_BASE = 'pktw-relative pktw-inline-flex pktw-items-center !pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-px-3 !pktw-py-0 pktw-rounded-full pktw-text-sm pktw-font-medium';
-
 export const ResultBrowserDensityToggle: React.FC<DensityToggleProps> = ({ density, onDensityChange }) => (
 	<div
 		role="tablist"
@@ -175,7 +173,7 @@ export const ResultBrowserDensityToggle: React.FC<DensityToggleProps> = ({ densi
 					aria-selected={active}
 					title={d === 'compact' ? 'Compact — one line per result' : 'Detailed — result title + snippet + path / anchor'}
 					onClick={() => onDensityChange(d)}
-					className={cn(DENSITY_OPT_BASE, active ? 'pktw-text-white' : 'pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-transition-colors')}
+					className={cn(TOOLBAR_OPT_BASE, active ? 'pktw-text-white' : 'pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-transition-colors')}
 				>
 					{active && <Thumb layoutId="result-density-thumb" />}
 					<span className="pktw-relative pktw-z-10">{d === 'compact' ? 'Compact' : 'Detailed'}</span>
@@ -218,7 +216,7 @@ const GraphPresetSegmented: React.FC<Pick<GraphControlsProps, 'preset' | 'onPres
 					title={title}
 					onClick={() => onPresetChange(id)}
 						className={cn(
-							'pktw-relative pktw-inline-flex pktw-items-center !pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-px-3 !pktw-py-0 pktw-rounded-full pktw-text-sm pktw-font-medium',
+							TOOLBAR_OPT_BASE,
 							active ? 'pktw-text-white' : 'pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-transition-colors',
 						)}
 				>

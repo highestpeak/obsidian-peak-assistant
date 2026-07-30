@@ -165,7 +165,8 @@ const resultToolbar = readFileSync(
 	'utf8',
 );
 assert(!resultToolbar.includes('<button'));
-assert(resultToolbar.includes('!pktw-h-8'));
+assert(resultToolbar.includes('pk-result-browser-toolbar__option'));
+assert(!resultToolbar.includes('!pktw-h-8'));
 
 const sessionHook = readFileSync(
 	'src/ui/view/quick-search/hooks/useSearchSession.ts',

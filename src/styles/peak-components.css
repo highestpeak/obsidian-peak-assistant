@@ -588,6 +588,21 @@
   max-height: var(--pk-result-browser-frame-height);
 }
 
+/* Result Browser segmented options are real buttons rendered under the
+   `.peak-design-root button` reset. Keep the selector more specific than that
+   reset so the intended 32px hit target survives in Quick Search, AI Search,
+   and Composer Related Materials. */
+:is(.pktw-root, .peak-design-root) .pk-result-browser-toolbar__option {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  padding: 0 12px !important;
+  justify-content: center !important;
+}
+
 :is(.pktw-root, .peak-design-root) .pk-modal-overlay {
   position: fixed;
   inset: 0;

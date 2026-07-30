@@ -20,6 +20,7 @@ const BUTTON_PRIMITIVE_CLASSES = [
 	'.pk-pill',
 	'.pk-pop-item',
 	'.pk-segmented__opt',
+	'.pk-result-browser-toolbar__option',
 ] as const;
 
 const DIMENSION_PROPERTIES = new Set([
@@ -93,6 +94,12 @@ assert.deepStrictEqual(
 		'Add !important to effective dimensions and padding.',
 		...violations,
 	].join('\n'),
+);
+
+assert.match(
+	primitiveCss,
+	/:is\(\.pktw-root, \.peak-design-root\) \.pk-result-browser-toolbar__option\s*\{[\s\S]*?height:\s*32px !important;[\s\S]*?min-height:\s*32px !important;[\s\S]*?max-height:\s*32px !important;[\s\S]*?padding:\s*0 12px !important;/,
+	'Result Browser options must use a scoped selector that beats the peak-design-root button reset',
 );
 
 console.log('shared-button-reset-defense: passed');
