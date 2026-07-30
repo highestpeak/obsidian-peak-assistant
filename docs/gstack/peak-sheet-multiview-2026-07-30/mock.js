@@ -240,6 +240,7 @@ const filterLine = document.querySelector('#filter-line');
 const searchInput = document.querySelector('#record-search');
 const toast = document.querySelector('#toast');
 const aiDrawer = document.querySelector('#ai-drawer');
+const themeToggle = document.querySelector('#theme-toggle');
 
 function icon(id) {
   return `<svg><use href="#${id}"/></svg>`;
@@ -722,6 +723,14 @@ document.querySelector('#close-mobile').addEventListener('click', () => closeDia
 
 document.querySelector('#refresh-data').addEventListener('click', () => {
   showToast('Dataset 已刷新', 'Job Applications.md → revision 12 · 无冲突');
+});
+
+themeToggle.addEventListener('click', () => {
+  const isDark = document.body.dataset.theme === 'dark';
+  const nextTheme = isDark ? 'light' : 'dark';
+  document.body.dataset.theme = nextTheme;
+  document.querySelector('#theme-icon use').setAttribute('href', nextTheme === 'dark' ? '#i-sun' : '#i-moon');
+  themeToggle.setAttribute('aria-label', nextTheme === 'dark' ? '切换浅色主题' : '切换深色主题');
 });
 
 document.addEventListener('keydown', (event) => {

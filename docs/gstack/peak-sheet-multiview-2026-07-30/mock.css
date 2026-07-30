@@ -26,6 +26,34 @@
   --font: Inter, "SF Pro Text", "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+body[data-theme="light"] {
+  --bg: #f6f7f4;
+  --sidebar: #f3f5f1;
+  --surface: #ffffff;
+  --surface-2: #f7f8f5;
+  --surface-3: #eef2ec;
+  --hover: #edf1eb;
+  --line: #dce2d9;
+  --line-soft: #e8ece5;
+  --line-strong: #c8d1c4;
+  --text: #182019;
+  --text-soft: #3c473e;
+  --muted: #6d786e;
+  --quiet: #9ba49c;
+  --accent: #5e8a43;
+  --accent-strong: #4e7836;
+  --accent-soft: #edf5e8;
+  --teal: #2e9e93;
+  --blue: #4d86c4;
+  --purple: #8b68b3;
+  --amber: #bd782d;
+  --orange: #bd6f3f;
+  --red: #b7555d;
+  --green: #5f9959;
+  --shadow: 0 24px 65px rgba(35, 45, 36, .18);
+  color-scheme: light;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -2974,6 +3002,241 @@ svg {
   margin-top: 4px;
   color: var(--muted);
   font-size: 8px;
+}
+
+/* The mock defaults to a neutral light workspace. Dark remains an optional
+   theme, so hierarchy and data density—not black surfaces—carry the design. */
+body[data-theme="light"] .brand-mark,
+body[data-theme="light"] .document-icon,
+body[data-theme="light"] .ai-mark {
+  border-color: #b9cda9;
+  background: #eef6e9;
+}
+
+body[data-theme="light"] .workspace-avatar {
+  background: #e6efdf;
+}
+
+body[data-theme="light"] .sidebar-search,
+body[data-theme="light"] .revision-state,
+body[data-theme="light"] .record-search,
+body[data-theme="light"] .field-list > label,
+body[data-theme="light"] .editor-label input,
+body[data-theme="light"] .type-select,
+body[data-theme="light"] .ai-context,
+body[data-theme="light"] .ai-composer {
+  background: #fbfcfa;
+}
+
+body[data-theme="light"] .data-table-item.is-active {
+  background: #eaf3e5;
+}
+
+body[data-theme="light"] .analysis-icon {
+  background: #e9f2e4;
+}
+
+body[data-theme="light"] .analysis-icon.muted {
+  background: #ecefeb;
+}
+
+body[data-theme="light"] .view-tabs,
+body[data-theme="light"] .filter-line,
+body[data-theme="light"] .workspace-status {
+  background: #fafbf9;
+}
+
+body[data-theme="light"] .view-tab:hover {
+  background: #f1f3ef;
+}
+
+body[data-theme="light"] .add-record-button,
+body[data-theme="light"] .confirm-button,
+body[data-theme="light"] .priority-banner button,
+body[data-theme="light"] .ai-composer button {
+  color: #ffffff;
+}
+
+body[data-theme="light"] .tool-button em {
+  background: #e9ede7;
+}
+
+body[data-theme="light"] .tool-button.is-applied em {
+  background: #dbe9d2;
+}
+
+body[data-theme="light"] .ask-button {
+  border-color: #b8cca9;
+  background: #edf5e8;
+}
+
+body[data-theme="light"] .ask-button:hover {
+  border-color: #9bb58b;
+  background: #e5f0de;
+}
+
+body[data-theme="light"] .table-viewport,
+body[data-theme="light"] .dashboard-scroll {
+  scrollbar-color: #c7cec4 #f3f5f1;
+}
+
+body[data-theme="light"] .record-table th {
+  background: #f1f3ef;
+}
+
+body[data-theme="light"] .record-table th:first-child,
+body[data-theme="light"] .record-table td:first-child,
+body[data-theme="light"] .record-table th:nth-child(2),
+body[data-theme="light"] .record-table td:nth-child(2) {
+  background: #fbfcfa;
+}
+
+body[data-theme="light"] .record-table tbody tr:not(.group-row):hover td {
+  background: #f1f5ee;
+}
+
+body[data-theme="light"] .record-table tbody tr:not(.group-row):hover td:first-child,
+body[data-theme="light"] .record-table tbody tr:not(.group-row):hover td:nth-child(2) {
+  background: #edf3e9;
+}
+
+body[data-theme="light"] .record-table tbody tr.is-selected td,
+body[data-theme="light"] .record-table tbody tr.is-selected td:first-child,
+body[data-theme="light"] .record-table tbody tr.is-selected td:nth-child(2) {
+  background: #e8f2e3;
+}
+
+body[data-theme="light"] .group-row td,
+body[data-theme="light"] .board-column > header {
+  background: #f4f6f2 !important;
+}
+
+body[data-theme="light"] .company-logo {
+  background: #ffffff;
+}
+
+body[data-theme="light"] .company-logo.purple { border-color: #c9b7dc; color: #76569a; }
+body[data-theme="light"] .company-logo.teal { border-color: #a7d2ce; color: #267c75; }
+body[data-theme="light"] .company-logo.orange { border-color: #ddbea8; color: #9c5e34; }
+body[data-theme="light"] .company-logo.blue { border-color: #adc5df; color: #3f6f9f; }
+body[data-theme="light"] .company-logo.green { border-color: #b6ceb2; color: #4c8148; }
+body[data-theme="light"] .company-logo.red { border-color: #ddafb3; color: #9d474e; }
+
+body[data-theme="light"] .tag.stage-interview { border-color: #d9c9e8; background: #f4eff9; color: #745298; }
+body[data-theme="light"] .tag.stage-followup { border-color: #e2c7a5; background: #fcf4e8; color: #9e6529; }
+body[data-theme="light"] .tag.stage-applied { border-color: #bdd1e4; background: #eef5fb; color: #3f6f9f; }
+body[data-theme="light"] .tag.stage-offer { border-color: #bfd7b8; background: #eff7eb; color: #4e8147; }
+body[data-theme="light"] .tag.stage-ended { border-color: #e0bdc0; background: #fbf0f1; color: #9e4b52; }
+
+body[data-theme="light"] .score-ring::after {
+  background: #ffffff;
+}
+
+body[data-theme="light"] .wait-bar,
+body[data-theme="light"] .funnel-row > span:nth-child(2),
+body[data-theme="light"] .stage-row > span:nth-child(2) {
+  background: #e5e9e3;
+}
+
+body[data-theme="light"] .calendar-heading {
+  background: #fafbf9;
+}
+
+body[data-theme="light"] .calendar-weekdays {
+  background: #f1f3ef;
+}
+
+body[data-theme="light"] .calendar-day.is-outside {
+  background: #f0f2ef;
+}
+
+body[data-theme="light"] .calendar-day.is-today > b {
+  color: #ffffff;
+}
+
+body[data-theme="light"] .calendar-event {
+  background: color-mix(in srgb, var(--event-color) 11%, white);
+}
+
+body[data-theme="light"] .dashboard-scroll {
+  background: #f6f7f4;
+}
+
+body[data-theme="light"] .priority-banner,
+body[data-theme="light"] .ai-insight,
+body[data-theme="light"] .phone-priority {
+  border-color: #bfd2b3;
+  background: #eff6eb;
+}
+
+body[data-theme="light"] .analysis-panel,
+body[data-theme="light"] .floating-surface,
+body[data-theme="light"] .ai-drawer,
+body[data-theme="light"] .ai-drawer > header,
+body[data-theme="light"] .dialog-card,
+body[data-theme="light"] .phone-frame,
+body[data-theme="light"] .phone-chart,
+body[data-theme="light"] .phone-actions {
+  background: #ffffff;
+}
+
+body[data-theme="light"] .chart-gridline,
+body[data-theme="light"] .phone-grid {
+  stroke: #dfe5dc;
+}
+
+body[data-theme="light"] .field-list {
+  background: #f6f8f4;
+}
+
+body[data-theme="light"] .field-options > button {
+  background: #fbfcfa;
+}
+
+body[data-theme="light"] .ai-insight {
+  border-color: #b8cda9;
+}
+
+body[data-theme="light"] .plan-preview,
+body[data-theme="light"] .ai-suggestions button {
+  background: #ffffff;
+}
+
+body[data-theme="light"] .data-flow > span {
+  background: #f8faf7;
+}
+
+body[data-theme="light"] .dialog-card > p {
+  background: #f1f6ee;
+}
+
+body[data-theme="light"] .phone-title,
+body[data-theme="light"] .phone-footer {
+  background: #fafbf9;
+}
+
+body[data-theme="light"] .phone-metrics {
+  background: #ffffff;
+}
+
+body[data-theme="light"] .phone-tabs {
+  background: #ffffff;
+}
+
+body[data-theme="light"] .phone-tabs em {
+  color: #ffffff;
+}
+
+body[data-theme="light"] .phone-line.primary,
+body[data-theme="light"] .phone-dots.primary,
+body[data-theme="light"] .phone-line.secondary,
+body[data-theme="light"] .phone-dots.secondary {
+  fill: #ffffff;
+}
+
+body[data-theme="light"] .toast {
+  border-color: #b7cba9;
+  background: #eff6eb;
 }
 
 @media (max-width: 1260px) {

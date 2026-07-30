@@ -47,6 +47,8 @@ const initial = await page.evaluate(() => ({
   groupRows: document.querySelectorAll('.record-table .group-row').length,
   activeView: document.querySelector('.view-tab.is-active')?.dataset.view,
   frozenColumnPosition: getComputedStyle(document.querySelector('.record-table td:nth-child(2)')).position,
+  theme: document.body.dataset.theme,
+  canvasColor: getComputedStyle(document.body).getPropertyValue('--bg').trim(),
 }));
 
 assert.equal(initial.bodyOverflow, 0, 'page should not overflow horizontally at 1600px');
@@ -56,7 +58,15 @@ assert.equal(initial.tableRows, 12, 'table fixture should render twelve records'
 assert.equal(initial.groupRows, 5, 'initial table should show five stage groups');
 assert.equal(initial.activeView, 'table', 'table should be the initial view');
 assert.equal(initial.frozenColumnPosition, 'sticky', 'primary record field should be frozen');
+assert.equal(initial.theme, 'light', 'mock should default to the light theme');
+assert.equal(initial.canvasColor, '#f6f7f4', 'default canvas should be neutral light');
 await page.screenshot({ path: path.join(dir, 'preview.png') });
+
+await page.click('#theme-toggle');
+assert.equal(await page.getAttribute('body', 'data-theme'), 'dark');
+assert.match(await page.getAttribute('#theme-toggle', 'aria-label'), /浅色/);
+await page.click('#theme-toggle');
+assert.equal(await page.getAttribute('body', 'data-theme'), 'light');
 
 await page.click('#open-fields');
 await page.waitForSelector('#field-panel:not([hidden])');
@@ -112,6 +122,6 @@ console.log(JSON.stringify({
   groupRows: initial.groupRows,
   localLinks: localHrefs.length,
   viewsChecked: ['table', 'board', 'calendar', 'dashboard'],
-  flowsChecked: ['field-config', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
+  flowsChecked: ['theme-switch', 'field-config', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
   screenshots: ['preview.png', 'preview-dashboard.png', 'preview-fields.png', 'preview-plan.png', 'preview-mobile.png'],
 }, null, 2));
