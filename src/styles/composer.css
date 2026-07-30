@@ -664,6 +664,17 @@
 	transform: translateY(0);
 	transition-delay: 0s;
 }
+/* A pointer leaving a block for its following insertion gap must not collapse
+   the in-flow action-row slot under that pointer. The gap owns this short-lived
+   bridge and clears it after its configured pointer corridor closes. */
+.peak-composer-root .pk-composer-block[data-gap-hover-bridge] .pk-block-action-row {
+	height: auto;
+	margin-top: 8px;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transform: translateY(-3px);
+}
 /* Selection toolbar has one clear owner: rows hide while a selection is live. */
 .peak-composer-root [data-has-selection] .pk-block-action-row {
 	height: 0 !important;

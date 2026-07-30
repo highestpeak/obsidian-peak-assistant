@@ -46,6 +46,21 @@ export function BetweenBlockInsertGap({
 	const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 	const [open, setOpen] = React.useState(false);
 
+	const anchorBlock = (): HTMLElement | null => {
+		const candidate = laneRef.current?.previousElementSibling;
+		if (!(candidate instanceof HTMLElement)) return null;
+		return candidate.dataset.blockId === anchorBlockId ? candidate : null;
+	};
+	const clearAnchorHoverBridge = () => {
+		anchorBlock()?.removeAttribute('data-gap-hover-bridge');
+	};
+	const startAnchorHoverBridge = (relatedTarget: EventTarget | null) => {
+		const anchor = anchorBlock();
+		const NodeCtor = anchor?.ownerDocument.defaultView?.Node;
+		if (!anchor || !NodeCtor || !(relatedTarget instanceof NodeCtor)) return;
+		if (!anchor.contains(relatedTarget)) return;
+		anchor.setAttribute('data-gap-hover-bridge', 'true');
+	};
 	const clearClose = () => {
 		if (!closeTimer.current) return;
 		clearTimeout(closeTimer.current);
@@ -73,6 +88,7 @@ export function BetweenBlockInsertGap({
 		closeTimer.current = setTimeout(() => {
 			closeTimer.current = null;
 			setOpen(false);
+			clearAnchorHoverBridge();
 		}, closeDelayMs);
 	};
 	const trackPointer = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -97,7 +113,10 @@ export function BetweenBlockInsertGap({
 			ownerWindow?.removeEventListener('resize', positionMenu);
 		};
 	}, [open]);
-	React.useEffect(() => () => clearClose(), []);
+	React.useEffect(() => () => {
+		clearClose();
+		clearAnchorHoverBridge();
+	}, []);
 
 	return (
 		<div
@@ -108,8 +127,18 @@ export function BetweenBlockInsertGap({
 			data-open={open || undefined}
 			data-chrome="true"
 			data-composer-surface-owner={anchorBlockId}
-			onPointerEnter={clearClose}
-			onPointerLeave={scheduleClose}
+			onPointerEnter={(event) => {
+				clearClose();
+				startAnchorHoverBridge(event.relatedTarget);
+			}}
+			onPointerLeave={(event) => {
+				const anchor = anchorBlock();
+				const NodeCtor = anchor?.ownerDocument.defaultView?.Node;
+				if (anchor && NodeCtor && event.relatedTarget instanceof NodeCtor) {
+					if (anchor.contains(event.relatedTarget)) clearAnchorHoverBridge();
+				}
+				scheduleClose();
+			}}
 			onFocusCapture={clearClose}
 			onBlurCapture={(event) => {
 				if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
@@ -120,6 +149,7 @@ export function BetweenBlockInsertGap({
 				event.preventDefault();
 				clearClose();
 				setOpen(false);
+				clearAnchorHoverBridge();
 				triggerRef.current?.focus();
 			}}
 		>
@@ -149,6 +179,7 @@ export function BetweenBlockInsertGap({
 						onSelect={(typeId) => {
 							clearClose();
 							setOpen(false);
+							clearAnchorHoverBridge();
 							onSelectInsertType(typeId);
 						}}
 					/>

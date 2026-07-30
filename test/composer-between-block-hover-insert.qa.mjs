@@ -87,7 +87,11 @@ async function openGapAt(page, gap, fraction) {
 
 try {
 	await waitForVite();
-	const browser = await chromium.launch({ headless: true });
+	const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
+	const browser = await chromium.launch({
+		headless: true,
+		...(executablePath ? { executablePath } : {}),
+	});
 	const page = await browser.newPage({
 		viewport: { width: 1400, height: 980 },
 		deviceScaleFactor: 2,
@@ -102,6 +106,8 @@ try {
 	const gap = page.locator('.pk-between-block-insert[data-next-spacing="paragraph"]').first();
 	const anchorBlockId = await gap.getAttribute('data-insert-after-block');
 	assert.ok(anchorBlockId, 'gap records its real source insertion owner');
+	const anchorBlock = page.locator(`.pk-composer-block[data-block-id="${anchorBlockId}"]`);
+	const anchorRow = anchorBlock.locator('.pk-block-action-row');
 	const trigger = gap.locator('.pk-between-block-insert__trigger');
 	await trigger.evaluate((element) => {
 		window.__pkBetweenBlockTriggerClicks = 0;
@@ -109,6 +115,58 @@ try {
 			window.__pkBetweenBlockTriggerClicks += 1;
 		});
 	});
+
+	await anchorBlock.hover();
+	await page.waitForTimeout(200);
+	const expandedGapBox = await gap.locator('.pk-between-block-insert__hit-area').boundingBox();
+	assert.ok(expandedGapBox, 'gap has geometry while its anchor action row is expanded');
+	const handoffPointer = {
+		x: expandedGapBox.x + expandedGapBox.width * 0.5,
+		y: expandedGapBox.y + expandedGapBox.height / 2,
+	};
+	await page.mouse.move(handoffPointer.x, handoffPointer.y);
+	await page.waitForTimeout(220);
+	const handedOffGapBox = await gap.locator('.pk-between-block-insert__hit-area').boundingBox();
+	assert.ok(handedOffGapBox, 'the same source gap survives the block-to-gap handoff');
+	assert.ok(
+		Math.abs(handedOffGapBox.y - expandedGapBox.y) <= 1,
+		`block-to-gap hover handoff keeps gap Y stable (${expandedGapBox.y} vs ${handedOffGapBox.y})`,
+	);
+	const reservedRow = await anchorRow.evaluate((element) => {
+		const style = getComputedStyle(element);
+		return {
+			height: element.getBoundingClientRect().height,
+			opacity: style.opacity,
+			pointerEvents: style.pointerEvents,
+		};
+	});
+	assert.ok(reservedRow.height >= 38, `handoff preserves the action-row slot (${reservedRow.height})`);
+	assert.equal(reservedRow.opacity, '0', 'handoff fades the old action row out');
+	assert.equal(reservedRow.pointerEvents, 'none', 'the invisible reserved row cannot steal pointer input');
+
+	await leaveInsertionSurface(page);
+	const neutralGapBox = await gap.locator('.pk-between-block-insert__hit-area').boundingBox();
+	assert.ok(neutralGapBox, 'the gap returns to its neutral geometry');
+	await page.mouse.move(
+		neutralGapBox.x + neutralGapBox.width + 24,
+		neutralGapBox.y + neutralGapBox.height / 2,
+	);
+	await page.mouse.move(
+		neutralGapBox.x + neutralGapBox.width / 2,
+		neutralGapBox.y + neutralGapBox.height / 2,
+	);
+	await page.waitForTimeout(220);
+	const lateralGapBox = await gap.locator('.pk-between-block-insert__hit-area').boundingBox();
+	assert.ok(lateralGapBox, 'the laterally entered gap keeps its geometry');
+	assert.ok(
+		Math.abs(lateralGapBox.y - neutralGapBox.y) <= 1,
+		`lateral gap entry does not create a reverse jump (${neutralGapBox.y} vs ${lateralGapBox.y})`,
+	);
+	assert.equal(
+		await anchorBlock.getAttribute('data-gap-hover-bridge'),
+		null,
+		'lateral entry does not reserve an action row that was never visible',
+	);
 
 	const leftOpen = await openGapAt(page, gap, 0.24);
 	assert.equal(

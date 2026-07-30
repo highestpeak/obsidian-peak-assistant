@@ -90,6 +90,10 @@ assert.ok(
 	gapSource.includes('surfacePreviewCloseDelayMs'),
 	'the pointer corridor reuses the configured Composer surface close delay',
 );
+assert.ok(
+	gapSource.includes("setAttribute('data-gap-hover-bridge', 'true')"),
+	'entering a gap from its anchor block records a temporary hover handoff',
+);
 assert.ok(gapSource.includes('<InsertTypeMenu'), 'the gap and block row share one type-menu implementation');
 assert.ok(menuSource.includes('config.types.map'), 'menu options remain template-driven');
 assert.ok(menuSource.includes('data-default={type.default'), 'the config-owned default type is visibly emphasized');
@@ -113,6 +117,11 @@ assert.match(
 	css,
 	/\.pk-between-block-insert__menu\s*\{[\s\S]*?left:\s*var\(--pk-between-block-menu-left\)/,
 	'the menu is anchored near the pointer and can be shifted inside document bounds',
+);
+assert.match(
+	css,
+	/\.pk-composer-block\[data-gap-hover-bridge\]\s+\.pk-block-action-row\s*\{[\s\S]*?height:\s*auto;[\s\S]*?margin-top:\s*8px;[\s\S]*?opacity:\s*0;[\s\S]*?pointer-events:\s*none;/,
+	'the block-to-gap handoff hides the old action row without collapsing its in-flow slot',
 );
 
 console.log('composer-between-block-hover-insert: passed');
