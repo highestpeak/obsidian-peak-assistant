@@ -3,15 +3,15 @@ import {
 	ChevronLeft,
 	ChevronRight,
 	MapPin,
-	RotateCcw,
-	Undo2,
 } from 'lucide-react';
 import type { ComposerDocumentSnapshot } from '@/core/composer';
 import {
+	diffWords,
 	generationSourceText,
 	generationVariantText,
 	type ComposerHistoryActivity,
 	type ComposerHistoryTransactionResolver,
+	type DiffSegment,
 } from '@/service/composer';
 import { Button, IconButton, Modal } from '@/ui/components/primitives';
 import type { SidecarStrings } from './sidecarConfig';
@@ -22,8 +22,13 @@ export interface HistoryDetailModalProps {
 	transactionResolver?: ComposerHistoryTransactionResolver;
 	strings: SidecarStrings;
 	onClose(): void;
-	onLocate?(blockId: string): void;
+	onLocate?(blockId: string): boolean | void;
+	/**
+	 * Kept temporarily for call-site compatibility. History detail is read-only:
+	 * a stale generation must never be presented as safely restorable.
+	 */
 	onRestore?(runId: string): boolean;
+	/** @deprecated History detail no longer mutates the document. */
 	onRollback?(historyId: string): Promise<void> | void;
 }
 
@@ -34,8 +39,6 @@ export function HistoryDetailModal({
 	strings,
 	onClose,
 	onLocate,
-	onRestore,
-	onRollback,
 }: HistoryDetailModalProps): React.ReactElement {
 	const runs = activity.generation?.runs ?? [];
 	const [variantIndex, setVariantIndex] = React.useState(Math.max(0, runs.length - 1));
@@ -63,17 +66,14 @@ export function HistoryDetailModal({
 			?? '';
 	const current = resolveCurrentTarget(activity, snapshot);
 	const sourceChanged = Boolean(
-		run
-		&& snapshot
-		&& run.originRevision !== snapshot.revision,
-	);
-	const restorableRun = [...runs]
-		.reverse()
-		.find((candidate) =>
-			candidate.disposition === 'not-adopted' && Boolean(candidate.review),
-		);
-	const rollbackItem = activity.transactions.find((item) =>
-		!item.isRollback && item.origin !== 'system-rollback',
+		snapshot
+		&& (
+			current.resolution !== 'same'
+			|| (
+				run
+				&& run.originRevision !== snapshot.revision
+			)
+		),
 	);
 
 	return (
@@ -156,49 +156,24 @@ export function HistoryDetailModal({
 						strings={strings}
 					/>
 
-					<section className="pk-history-modal__current">
-						<span>{strings.historyCurrentDocument}</span>
-						{current.resolution === 'missing' ? (
-							<strong>{strings.historyCurrentMissing}</strong>
-						) : (
-							<pre>{current.text || strings.historyNoContent}</pre>
-						)}
-					</section>
-
 					{activity.receipt && (
 						<HistoryProcess activity={activity} strings={strings} />
 					)}
 				</Modal.Body>
 
-				<Modal.Footer className="pk-history-modal__footer">
-					{activity.targetBlockId && (
+				{current.blockId && onLocate && (
+					<Modal.Footer className="pk-history-modal__footer">
 						<Button
 							variant="outline"
-							onClick={() => onLocate?.(activity.targetBlockId!)}
+							onClick={() => {
+								if (onLocate(current.blockId!) !== false) onClose();
+							}}
 						>
 							<MapPin />
 							{strings.locateInDocument}
 						</Button>
-					)}
-					{restorableRun && (
-						<Button
-							variant="outline"
-							onClick={() => onRestore?.(restorableRun.runId)}
-						>
-							<Undo2 />
-							{strings.generationHistoryRestore}
-						</Button>
-					)}
-					{rollbackItem && (
-						<Button
-							variant="outline"
-							onClick={() => onRollback?.(rollbackItem.historyId)}
-						>
-							<RotateCcw />
-							{strings.historyRollbackAction}
-						</Button>
-					)}
-				</Modal.Footer>
+					</Modal.Footer>
+				)}
 			</Modal.Content>
 		</Modal>
 	);
@@ -224,6 +199,17 @@ function HistoryComparison({
 			</div>
 		);
 	}
+	if (kind === 'rewrite') {
+		const segments = diffWords(originalText, generatedText);
+		return (
+			<section className="pk-history-modal__comparison" data-kind={kind}>
+				<div data-side="diff">
+					<span>{strings.historyDiff}</span>
+					<pre>{segments.map(renderDiffSegment)}</pre>
+				</div>
+			</section>
+		);
+	}
 	return (
 		<section className="pk-history-modal__comparison" data-kind={kind}>
 			<div data-side="original">
@@ -236,6 +222,24 @@ function HistoryComparison({
 			</div>
 		</section>
 	);
+}
+
+function renderDiffSegment(segment: DiffSegment, index: number): React.ReactElement {
+	if (segment.kind === 'del') {
+		return (
+			<del key={index} className="pk-history-diff-del">
+				{segment.text}
+			</del>
+		);
+	}
+	if (segment.kind === 'ins') {
+		return (
+			<ins key={index} className="pk-history-diff-ins">
+				{segment.text}
+			</ins>
+		);
+	}
+	return <React.Fragment key={index}>{segment.text}</React.Fragment>;
 }
 
 function HistoryProcess({
@@ -281,7 +285,11 @@ function HistoryProcess({
 function resolveCurrentTarget(
 	activity: ComposerHistoryActivity,
 	snapshot: ComposerDocumentSnapshot | undefined,
-): { resolution: 'same' | 'changed' | 'missing'; text: string } {
+): {
+	resolution: 'same' | 'changed' | 'missing';
+	text: string;
+	blockId?: string;
+} {
 	if (!snapshot) return { resolution: 'missing', text: '' };
 	if (!activity.targetBlockId) {
 		return {
@@ -298,6 +306,7 @@ function resolveCurrentTarget(
 	return {
 		resolution: exact ? 'same' : 'changed',
 		text: snapshot.sourceText.slice(target.source.from, target.source.to),
+		blockId: target.blockId,
 	};
 }
 

@@ -1530,6 +1530,50 @@
 	color: var(--pk-accent-text) !important;
 }
 
+/*
+ * History "定位正文" lands on the current best matching Composer block.
+ * The one-shot class is removed by ComposerRoot on animation end so a second
+ * locate retriggers the same visible confirmation without changing layout.
+ */
+.peak-composer-root [data-block-id].pk-history-locate-flash {
+	border-radius: var(--pk-radius-md);
+	animation: pk-history-locate-block-flash 1200ms ease-out;
+}
+
+@keyframes pk-history-locate-block-flash {
+	0%,
+	100% {
+		background-color: transparent;
+		outline: 2px solid transparent;
+		outline-offset: 3px;
+		box-shadow: inset 0 0 0 transparent;
+	}
+	12%,
+	48% {
+		background-color: color-mix(in srgb, var(--pk-accent) 15%, transparent);
+		outline: 2px solid var(--pk-accent);
+		outline-offset: 3px;
+		box-shadow:
+			inset 4px 0 0 var(--pk-accent),
+			0 0 0 5px color-mix(in srgb, var(--pk-accent) 12%, transparent);
+	}
+	30%,
+	66% {
+		background-color: color-mix(in srgb, var(--pk-accent) 7%, transparent);
+		outline: 1px solid color-mix(in srgb, var(--pk-accent) 58%, transparent);
+		outline-offset: 2px;
+		box-shadow:
+			inset 2px 0 0 color-mix(in srgb, var(--pk-accent) 48%, transparent),
+			0 0 0 3px color-mix(in srgb, var(--pk-accent) 6%, transparent);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.peak-composer-root [data-block-id].pk-history-locate-flash {
+		animation-duration: 700ms;
+	}
+}
+
 /* ── link preview popover ──────────────────────────────────────────────────── */
 .peak-composer-root .pk-composer-link {
 	color: var(--pk-accent-text);

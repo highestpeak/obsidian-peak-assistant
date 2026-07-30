@@ -195,6 +195,7 @@ export interface SidecarStrings {
 	historyDetailTitle: string;
 	historyDetailSubtitle: string;
 	historyInstruction: string;
+	historyDiff: string;
 	historyOriginal: string;
 	historyGenerated: string;
 	historyCurrentDocument: string;
@@ -489,15 +490,16 @@ export const DEFAULT_SIDECAR_CONFIG: SidecarConfig = {
 			historyLegacyGeneration: '旧 AI 生成',
 			historyOpenDetail: '查看详情',
 			historyDetailTitle: '历史详情',
-			historyDetailSubtitle: '查看生成时的原文、结果和当前正文。',
+			historyDetailSubtitle: '查看这次活动发生时保存的原文与结果；不会修改当前正文。',
 			historyInstruction: '当时的指令',
+			historyDiff: '当时差异',
 			historyOriginal: '当时原文',
 			historyGenerated: '生成结果',
 			historyCurrentDocument: '当前正文',
 			historyProcess: '过程记录',
-			historySourceChanged: '正文在这次活动之后已经变化，恢复时会继续执行安全检查。',
+			historySourceChanged: '当前正文后来已经变化；下面仍展示这次活动发生时保存的差异。',
 			historyCurrentMissing: '当前正文中已经找不到原来的目标位置。',
-			historyNoContent: '这条旧记录没有可恢复的正文详情。',
+			historyNoContent: '这条旧记录没有可显示的历史正文详情。',
 			historyVersion: '版本 {current}/{total}',
 			historyPreviousVersion: '上一个版本',
 			historyNextVersion: '下一个版本',

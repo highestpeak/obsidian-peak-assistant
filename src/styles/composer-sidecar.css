@@ -2106,6 +2106,10 @@
 	border-color: var(--pk-accent-secondary-border);
 	background: color-mix(in srgb, var(--pk-accent-tint) 58%, var(--pk-surface));
 }
+.pk-history-modal__comparison > div[data-side='diff'] {
+	border-color: var(--pk-accent-secondary-border);
+	background: color-mix(in srgb, var(--pk-accent-tint) 34%, var(--pk-surface));
+}
 .pk-history-modal pre {
 	max-height: 260px;
 	margin: 7px 0 0;
@@ -2116,6 +2120,24 @@
 	line-height: 1.55;
 	overflow-wrap: anywhere;
 	white-space: pre-wrap;
+}
+.pk-history-diff-del,
+.pk-history-diff-ins {
+	padding: 1px 2px;
+	border-radius: 3px;
+	-webkit-box-decoration-break: clone;
+	box-decoration-break: clone;
+}
+.pk-history-diff-del {
+	color: var(--pk-error-text);
+	background: color-mix(in srgb, var(--pk-error) 11%, transparent);
+	text-decoration-color: color-mix(in srgb, var(--pk-error) 70%, currentColor);
+	text-decoration-thickness: 1.5px;
+}
+.pk-history-diff-ins {
+	color: var(--pk-success-text);
+	background: color-mix(in srgb, var(--pk-success) 13%, transparent);
+	text-decoration: none;
 }
 .pk-history-modal__current pre {
 	max-height: 180px;

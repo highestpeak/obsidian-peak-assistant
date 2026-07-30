@@ -299,9 +299,7 @@ export function ComposerRoot({
 	// to the whole note.
 	const lastFocusedBlockIdRef = React.useRef<string | null>(null);
 	const locateBlock = React.useCallback((blockId: string) => {
-		const el = rootRef.current?.querySelector<HTMLElement>(`[data-block-id="${CSS.escape(blockId)}"]`);
-		markScrollIntent(rootRef.current); // INT-1 guard: intentional scroll
-		el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+		return locateAndFlashComposerBlock(rootRef.current, blockId);
 	}, []);
 
 	// WP9 §12.2 — resolve the REAL focused block from chrome focus so a Copilot run
@@ -869,11 +867,7 @@ function ComposerDocument({
 					strings={historySidecarConfig.strings}
 					onClose={() => setHistoryActivity(null)}
 					onLocate={(blockId) => {
-						const block = containerRef.current?.querySelector<HTMLElement>(
-							`[data-block-id="${CSS.escape(blockId)}"]`,
-						);
-						markScrollIntent(scrollerOf(containerRef.current));
-						block?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+						return locateAndFlashComposerBlock(containerRef.current, blockId);
 					}}
 					onRestore={(runId) => {
 						const run = runtime.workspaceIntelligence
@@ -1950,6 +1944,33 @@ function markScrollIntent(el: Element | null): void {
 	if (!el) return;
 	const win = el.ownerDocument.defaultView ?? window;
 	scrollIntentAt.set(el, win.performance.now());
+}
+
+const historyLocateFlashCleanup = new WeakMap<HTMLElement, () => void>();
+
+function locateAndFlashComposerBlock(shell: HTMLElement | null, blockId: string): boolean {
+	const block = shell?.querySelector<HTMLElement>(
+		`[data-block-id="${CSS.escape(blockId)}"]`,
+	);
+	if (!block) return false;
+	markScrollIntent(scrollerOf(shell));
+	block.scrollIntoView({ block: 'center', behavior: 'smooth' });
+	flashLocatedComposerBlock(block);
+	return true;
+}
+
+function flashLocatedComposerBlock(block: HTMLElement): void {
+	historyLocateFlashCleanup.get(block)?.();
+	block.classList.remove('pk-history-locate-flash');
+	void block.offsetWidth;
+	const cleanup = () => {
+		block.classList.remove('pk-history-locate-flash');
+		block.removeEventListener('animationend', cleanup);
+		historyLocateFlashCleanup.delete(block);
+	};
+	historyLocateFlashCleanup.set(block, cleanup);
+	block.addEventListener('animationend', cleanup);
+	block.classList.add('pk-history-locate-flash');
 }
 
 /**

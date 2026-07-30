@@ -42,17 +42,36 @@ assert.equal(
 	false,
 	'generation and document history are not split into competing tabs',
 );
-assert.ok(source.includes('onRestoreGeneration'), 'not-adopted output can be reopened from History');
 assert.equal(
 	source.includes('disabled={!blockId}'),
 	false,
 	'a transaction row remains readable and previewable when its document anchor is unavailable',
 );
 assert.ok(source.includes('HistoryDetailModal'), 'rows open one shared wide history detail');
-assert.ok(detailSource.includes('historyRollbackAction'), 'rollback remains available from the transaction detail');
+assert.equal(
+	detailSource.includes('strings.generationHistoryRestore')
+		|| detailSource.includes('strings.historyRollbackAction'),
+	false,
+	'history detail is a read-only audit surface and exposes no stale restore or rollback action',
+);
+assert.ok(detailSource.includes('diffWords'), 'rewrite history renders the saved word-level diff');
+assert.ok(detailSource.includes('data-side="diff"'), 'rewrite history uses one focused diff surface');
 assert.ok(detailSource.includes('historyOriginal'), 'detail preserves the original source');
 assert.ok(detailSource.includes('historyGenerated'), 'detail shows the generated or committed result');
-assert.ok(detailSource.includes('historyCurrentDocument'), 'detail resolves the current document state separately');
+assert.equal(
+	detailSource.includes('strings.historyCurrentDocument'),
+	false,
+	'current mutable document text does not displace the saved historical diff',
+);
+assert.ok(
+	composerRootSource.includes('pk-history-locate-flash')
+		&& composerRootSource.includes('locateAndFlashComposerBlock'),
+	'locating a historical target scrolls to it and retriggers a visible flash',
+);
+assert.ok(
+	detailSource.includes('if (onLocate(current.blockId!) !== false) onClose()'),
+	'the modal closes only after the current target was actually located',
+);
 assert.ok(
 	sidecarStyles.includes("[data-kind='insert']")
 		&& sidecarStyles.includes("[data-kind='structural']"),
