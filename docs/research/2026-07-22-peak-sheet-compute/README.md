@@ -2,8 +2,9 @@
 
 **Status:** 调研完成，建议进入 roadmap 的“调研候选”；尚未接受为实施项目  
 **Date:** 2026-07-22  
+**Updated:** 2026-07-30 · 多视图工作流、View adapter 与移动消费模式需求调整
 **读者:** Peak Assistant owner、产品规划者和后续 spec / 原型负责人  
-**关联:** [Roadmap · 调研候选](../../roadmap.html#researching) · [Composer Block AI Contract](../../superpowers/specs/2026-07-15-composer-block-ai-capability-contract.md) · [Peak Share / Portal 调研](../2026-07-22-obsidian-one-click-sharing/README.md)
+**关联:** [Roadmap · 调研候选](../../roadmap.html#researching) · [多视图交互 Mock](../../gstack/peak-sheet-multiview-2026-07-30/index.html) · [Composer Block AI Contract](../../superpowers/specs/2026-07-15-composer-block-ai-capability-contract.md) · [Peak Share / Portal 调研](../2026-07-22-obsidian-one-click-sharing/README.md)
 
 ## 结论先行
 
@@ -24,6 +25,8 @@
 
 第一版不加入 Relation、Kanban、Calendar、Python、Portal、定时刷新、任意网络请求或任意 AI 生成 JavaScript。先证明“自由数据可以渐进变成长期维护的 Dataset”，并且“保存 Schema / recipe + 刷新”真的比一次性 Chat 输出更有价值。
 
+2026-07-30 的代码复核确认，Composer 已具备可写回的 `TableModel`、CSV 导入导出、表格选择与操作，以及独立的 table → chart 生成能力。这降低了首个交互原型的成本，但没有改变核心缺口：当前仍不存在 Dataset runtime、稳定 record ID、versioned schema、view registry、ComputePlan 或 refresh contract。
+
 ## Roadmap 判断
 
 | 维度 | 判断 | 原因 |
@@ -36,6 +39,50 @@
 | 商业潜力 | 中高但未验证 | Portal 数据应用与模板可能收费，但本地 Sheet 本身是否足以形成独立付费理由仍需用户验证 |
 
 **建议状态：** `research candidate`，战略价值高，但不是紧接当前 Composer / runtime 主线之后就可直接实施的完整大波。先完成 Dataset + Compute spike 和渐进式转换交互验证，再决定是否升到“已决策待建”。
+
+## 2026-07-30 需求调整：从“表格功能”转向“同一数据，多种工作视图”
+
+### 外部产品信号
+
+一条 2026-07-30 抓取的[小红书产品预告](https://www.xiaohongshu.com/explore/6a6b235f00000000280315ea)把多维表、画廊、看板、日历、地图、3D 地球和数据仪表盘放进 Obsidian，并用旅行、项目、内容排期、客户、收藏和资产管理解释用途。作者还明确提出，移动端更适合查看数据与报表，不适合高密度录入。
+
+这条材料没有媒体资源、产品名、数据模型或可操作版本；抓取时只有 12 赞、7 收藏和 2 条期待型评论。它只能作为产品表达与工作流方向的信号，不能作为需求规模、实现质量或技术路线的证明。
+
+### 吸收后的产品判断
+
+Peak Sheet 的用户价值应表达为：
+
+> 同一份本地 Dataset，可以按当前任务切换成表格、图表或其他视图；AI 帮用户生成可审阅、可重复运行的数据处理计划，而不是替每个视图维护一份数据副本。
+
+这次调整吸收三个方向：
+
+- **工作流先于功能清单。** 用求职追踪、内容排期和旅行计划等完整任务验证价值，不按“已有多少字段和视图”验收。
+- **View adapter 成为早期合同。** 第一版只交付 Table 与只读 Chart，但底层合同要能容纳后续 Gallery、Calendar、Board、Map 和第三方视图。
+- **移动端按消费模式设计。** 移动端先支持查看、筛选、刷新和审批；完整 grid 录入不是首版门槛。
+
+### 调整后的产品需求
+
+| 需求 | 首个可验证版本 | 边界 |
+| --- | --- | --- |
+| 一个 Dataset，多种投影 | Table 可编辑；Chart 只读且与 Table 使用同一 revision | View 不复制或拥有 records |
+| 工作流入口 | 用求职追踪 fixture 完成导入、建模、筛选、计算和刷新 | 模板不是独立数据格式 |
+| 可审阅 AI 计算 | 自然语言生成 ComputePlan；先展示步骤、受影响记录和输出 | 不执行任意 AI 脚本 |
+| View 能力声明 | 每种 View 声明 read / edit / group / spatial 等能力 | 不让 View 静默获得写权限 |
+| 渐进式多视图 | Gallery / Calendar / Board / Map 只进入 adapter 原型或概念验证 | 不把七种视图塞入 MVP |
+| 移动消费模式 | 查看、筛选、手动刷新、接受或拒绝待审阅结果 | 不承诺复杂录入与批量编辑 |
+| 本地真值 | records、schema、recipe 与最后结果均可由用户读取和导出 | SQLite 仍是可重建投影 |
+
+### Mock 的屏幕与状态范围
+
+[多视图交互 Mock](../../gstack/peak-sheet-multiview-2026-07-30/index.html) 使用“求职追踪”作为真实 fixture，展示以下状态：
+
+1. Dataset workspace：来源、记录数、revision、刷新状态和主要动作同屏可见。
+2. Table / Chart：首个交付闭环中的可编辑主视图与只读派生视图。
+3. Board / Gallery / Calendar / Map：验证同一 Dataset 的 View adapter 方向，并明确标为后续阶段。
+4. Ask Peak：自然语言请求先进入 plan preview，再由用户接受写回。
+5. Mobile consumption：只展示查看、筛选、刷新和审批，不伪装完整编辑能力。
+
+Mock 是设计探索，不代表这些视图已经实现，也不把 Peak Sheet 从 `research candidate` 升为已决策项目。
 
 ## 对新增多维表格提案的判断
 
@@ -89,13 +136,13 @@
 | 能力 | 当前事实 | 对 Peak Sheet 的意义 |
 | --- | --- | --- |
 | Peak Dataset runtime | 代码中只有 Chat artifact 的 `dataset` kind / table 映射；没有 production Dataset schema、record store、view registry 或 relation engine | 多维表格不是已有能力的 UI 包装，需要独立底座 spike |
-| 表格编辑与 AI review | [Composer Block AI Contract](../../superpowers/specs/2026-07-15-composer-block-ai-capability-contract.md) 已定义 cell / row / column / formula / transpose / CSV，但仍是产品合同和实施 roadmap | 可复用交互语法，不能把它误报成已有生产表格编辑器 |
+| 表格编辑与 AI review | Composer 已有 typed [`TableModel`](../../../src/service/composer/packs/table/tableModel.ts)、cell range selection、merge / sort / transpose、CSV 导入导出、Markdown / HTML serialization，以及 transaction writeback；AI table patch 也已接入 capability pack | 可直接复用首个 Table projection 的解析、选择和写回底座，但它仍是文档块模型，不是 Dataset runtime |
 | 结构化产物 | [`artifact_create`](../../../src/core/schemas/tools/artifactCreate.ts) 目前支持 Dataview、Excalidraw、draw.io、Extract、Reminder；producer 已有 validate → Vault write → receipt 闭环 | 可扩展为 compute recipe / table result，但现在没有 table 或 compute 类型 |
 | 运行生命周期 | [`RunEnvelope`](../../../src/service/run-envelope/types.ts) 已有 run status、progress、artifact、error、log，且支持 manual / scheduled / agent trigger | 可作为 Compute run 的统一运行记录，但尚无数据依赖、资源预算或 refresh contract |
 | 权限 | [`PermissionGuard`](../../../src/service/agents/harness/permission/PermissionGuard.ts) 支持 read / edit / destructive 分类、deny-first 和 ask | 可复用确认机制，但对脚本执行仍太粗；缺文件 allowlist、网络域名、CPU / memory / time / row limit 等能力级限制 |
 | CSV / XLSX | [`TableDocumentLoader`](../../../src/core/document/loader/TableDocumentLoader.ts) 能读取 CSV 供索引；XLSX 分支当前明确返回“不支持” | CSV 可作为首批来源；XLSX 不能列入已具备能力 |
 | Obsidian Bases | Chat 已能生成 `.base` YAML 并 Save & Open；官方 Bases 也支持对 note properties 查看、编辑、排序、筛选、分组、公式和 CSV 导出 | 对“每行是一篇笔记”的数据，应优先扩展 Bases；它不等同于任意 CSV / Markdown table 的计算引擎 |
-| 图表 | 仓库已有 `recharts`，Usage Dashboard 等 surface 有图表组件 | 渲染依赖可复用，但还没有通用 dataset → chart artifact contract |
+| 图表 | Composer 已有 table → [`ChartSpec`](../../../src/service/composer/packs/chart/chartModel.ts)、bar / line / pie 渲染和独立 fenced chart writeback；chart 与源表当前不会互相刷新 | 可复用 Chart projection 的 spec 与 renderer，但仍需 dataset revision、refresh 和 derived-view ownership 合同 |
 | Portal | [Peak Share / Portal](../2026-07-22-obsidian-one-click-sharing/README.md) 已作为独立调研候选，身份、审计、同步和安全仍待验证 | Compute 只提供可发布输出；不要在同一 MVP 内重做 Portal |
 
 补充官方边界：
@@ -252,6 +299,7 @@ CSV / clipboard ─> grid adapter ────┘
 - text、number、date、boolean、single-select、note-link、computed 七类字段；
 - 一个开放的 file-backed record format；
 - Table view 一个编辑投影；
+- Chart view 一个只读投影，与 Table 使用同一 Dataset revision；
 - filter、sort、derive、group、aggregate、dedupe、cast、日期与文本标准化；
 - Markdown / CSV 导出；
 - schema / step preview、显式接受、撤销、手动刷新；
@@ -261,18 +309,18 @@ CSV / clipboard ─> grid adapter ────┘
 ### 第一条验证闭环不包含
 
 - CSV / JSON live source、指定文件夹和 Base 当前结果；
-- Kanban、Calendar、Gallery、Form 或 Dashboard；
+- Kanban、Calendar、Gallery、Board、Map、3D globe、Form 或 Dashboard builder；
 - Relation、Lookup、Rollup 和跨 Dataset query；
 - 多选、文件、图片、电话、邮箱、AI 或按钮字段；
 - 自动推荐并创建多套视图；
-- native Chart view builder；
+- 自由布局的 Chart builder；首版只提供从 Dataset 字段生成的受限 Chart projection；
 - 任意 AI 生成 JavaScript；
 - Python、Pyodide、本地 Python bridge 或云端计算；
 - XLSX 高保真编辑；
 - API / 数据库 / Google Sheets / Notion connector；
 - 定时、打开文件时或数据变化自动刷新；
 - Portal 发布、评论、表单或双向同步；
-- 完整移动端。
+- 完整移动端录入；首版只验证移动消费模式。
 
 ## 分阶段建议
 
@@ -300,13 +348,14 @@ CSV / clipboard ─> grid adapter ────┘
 - 保存 recipe + manual refresh；
 - RunEnvelope + Artifact receipt 贯通。
 
-这一步应复用 Composer Block AI Contract，不新建第二套 review UI。
+这一步复用已经落地的 Composer Table / Chart 解析、选择、渲染与 transaction writeback，不新建第二套 review UI。Chart 在这一阶段仍是相邻衍生块，不冒充 live Dataset view。
 
 ### Phase 2 · 结构化 Dataset 基础
 
 - Markdown table → Dataset 的显式转换；
 - stable record ID + basic schema + validation；
-- file-backed store + Table view；
+- file-backed store + View adapter contract；
+- 同一 Dataset revision 上的 editable Table + read-only Chart；
 - schema drift、记录冲突和恢复；
 - 导出 Markdown / CSV。
 
@@ -315,7 +364,8 @@ CSV / clipboard ─> grid adapter ────┘
 - note-backed Dataset / Bases adapter；
 - CSV / clipboard import；
 - chart output contract；
-- 基于同一 Dataset 的第二个 projection PoC；
+- 从 Gallery / Calendar / Board / Map 中选择一个真实工作流需要的 projection PoC；
+- 移动消费模式：查看、筛选、手动刷新和审批；
 - 不在这一阶段引入 Relation。
 
 ### Phase 4 · Relation 与多视图
@@ -323,7 +373,8 @@ CSV / clipboard ─> grid adapter ────┘
 - Relation / reverse relation；
 - Lookup / Rollup / Count；
 - 删除、合并、移动和 ID 冲突语义；
-- 只在真实 workflow 证明需要时增加 Kanban / Calendar native view。
+- 只在真实 workflow 证明需要时增加 Gallery / Calendar / Board / Map native view；
+- 3D globe 只作为可插拔 spatial adapter 实验，不进入核心 view 清单。
 
 ### Phase 5 · 受控脚本 escape hatch
 
@@ -340,10 +391,12 @@ CSV / clipboard ─> grid adapter ────┘
 3. file-backed format 通过可读性、原子写入、冲突恢复和 schema migration spike。
 4. ComputePlan spike 证明基础任务不需要任意代码执行。
 5. Composer table preview / accept / undo 的交互原型通过审阅。
-6. Table-only Dataset 已有价值；Kanban / Calendar 不再是首版成立条件。
-7. Bases custom view 与独立 grid 的职责有明确结论。
-8. 若仍要开放脚本，sandbox threat model 和隔离 PoC 先通过。
-9. Portal 保持独立 scope，不作为本地 MVP 的完成条件。
+6. Table 与 Chart 能从同一 Dataset revision 重建，刷新不会产生两份数据真值。
+7. Table-only Dataset 已有价值；Gallery / Calendar / Board / Map 不再是首版成立条件。
+8. Bases custom view 与独立 grid 的职责有明确结论。
+9. 移动消费模式原型证明查看和审批有独立价值，不依赖完整录入。
+10. 若仍要开放脚本，sandbox threat model 和隔离 PoC 先通过。
+11. Portal 保持独立 scope，不作为本地 MVP 的完成条件。
 
 ## Stop conditions
 
@@ -382,4 +435,4 @@ Peak Sheet 有资格成为 Peak Assistant 在 Chat、Composer、Vault Intelligen
 4. 预览和接受优先于直接写回，本地 Dataset 先于 Portal；
 5. 共享 RunEnvelope / Permission / Artifact / Composer contracts，不建立第二套系统。
 
-下一份正式产物应是 **Peak Dataset + Compute Engine 技术 spike spec，以及自由 Sheet → Dataset 的单表交互原型**，而不是把当前完整愿景直接翻译成实施任务。
+下一份正式产物应是 **Peak Dataset + Compute Engine 技术 spike spec**。交互基线采用 [多视图交互 Mock](../../gstack/peak-sheet-multiview-2026-07-30/index.html)，但实现仍从自由 Sheet → Dataset → Table + Chart 的窄闭环开始，不把当前完整愿景直接翻译成实施任务。
