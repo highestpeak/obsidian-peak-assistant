@@ -19,7 +19,7 @@
 
 - 原生 `Cmd/Ctrl + P` 保留，继续承担“全生态兜底搜索”。
 - Peak Command Center 使用用户自己在 Obsidian 中绑定的快捷键打开。
-- 默认态是“分组轨道 + 单组图标网格”，不是另一条无限长列表。
+- 默认态是“无侧栏的双列瀑布分组画布”，不是另一条无限长列表。
 - Modal 与 Home 共享 action identity 和呈现元数据，但不复制同一套页面布局。
 - Home 使用 Search、Quick access、Continue 和可选 Pinned pages 的固定阅读路径，不另造 Todo、日历、统计或 widget 数据系统。
 - 外部插件命令只通过集中兼容层读取和执行；不拦截、不修改原生 Command Palette。
@@ -38,14 +38,15 @@
 - Home 把最近文件、Workspace、嵌入文档和 Todo 作为平行组件竞争注意力。
 - 管理态同时展示分组表和完整命令目录，像后台配置页，不像对当前空间布局的直接编辑。
 
-V2 将纠偏转成明确约束：
+V3 将纠偏转成明确约束：
 
 1. Modal 顶栏只保留搜索和关闭。
-2. 一次只显示一个分组。
-3. 分组在窄轨道切换，动作在无常驻边框的四列网格里定位。
-4. Search 继续使用二维结果，不退回一维长列表。
-5. Customize 在当前轨道和网格里原位发生；完整目录只在 Add action 后临时出现。
-6. Home 是稀疏的导航起点；Pinned pages 沿纵向阅读路径出现，不是自由拼装 dashboard。
+2. 不设置常驻分组侧栏，分组直接铺在共享画布上。
+3. 画布分成左右两列，各列独立向下生长；分组内部按内容选择两列或三列动作。
+4. 分组只用标题、留白和细分隔线建立层级，不再嵌套外层卡片。
+5. Search 保持同一套分组瀑布流，不退回一维长列表。
+6. Customize 复用同一画布原位编辑；完整目录只在 Add action 后临时出现。
+7. Home 是稀疏的导航起点；Pinned pages 沿纵向阅读路径出现，不是自由拼装 dashboard。
 
 ## 录屏观察
 
@@ -158,7 +159,7 @@ Apple 当前把 Spotlight 描述为搜索、浏览和打开 app 的中心位置�
 
 来源：[View and open apps on Mac](https://support.apple.com/guide/mac-help/mh35840/mac)。
 
-这证明“分类 + 网格 + 搜索”可以共存。Peak 不需要同时展开所有分类；左侧组轨道足以维持上下文。
+这证明“分类 + 网格 + 搜索”可以共存。Peak 把有限的高频分组直接放进内容画布，不再额外建设一层分类导航。
 
 ### Arc Command Bar
 
@@ -204,7 +205,7 @@ Start.me 的 Bookmark Groups 支持 tab 或 collapsible list。它说明“二�
 | Better Command Palette | recent、pin、hide、macro | 搜索可有 escape hatch | 仍以列表为中心 |
 | Commander / Buttons Panel | 用户自定义按钮与分组 | 组和 tile 是核心配置对象 | 不复制所有脚本和动画选项 |
 | Homepage / Hearth | 固定 Home、嵌入内容、最近文件 | 保留入口与继续工作 | 不重建万能 dashboard builder |
-| Raycast / Apple Apps | 搜索、分类、网格、键盘导航 | 单组可见；网格形成空间记忆 | 不做系统级 launcher |
+| Raycast / Apple Apps | 搜索、分类、网格、键盘导航 | 分类留在内容区；网格形成空间记忆 | 不做系统级 launcher |
 | Arc Command Bar | 同一入口切换页面、空间和 action | 入口先于说明 | 不照搬一维结果 |
 | Bonjourr | 安静、稀疏的 New Tab | Home 保留搜索与 Quick access | 不复制天气、时钟和装饰背景 |
 | OneTab / Start.me | group、quick list、可重排 | 空 query 保留空间记忆 | 不把所有 Vault 内容收成收藏夹 |
@@ -214,7 +215,7 @@ Start.me 的 Bookmark Groups 支持 tab 或 collapsible list。它说明“二�
 ### 要做
 
 1. 一个 owner-approved 的 `Open Peak Command Center` 全局命令，快捷键由用户在 Obsidian Hotkeys 中设置。
-2. 空 query 显示组轨道和当前组的二维动作网格。
+2. 空 query 显示无侧栏的双列瀑布分组画布，左右列独立向下生长。
 3. 运行态搜索只过滤已策展内容。
 4. 编辑态才允许搜索全部已注册命令并加入组。
 5. 每个 tile 显示图标、短标题、来源组和实际快捷键。
@@ -230,7 +231,7 @@ Start.me 的 Bookmark Groups 支持 tab 或 collapsible list。它说明“二�
 5. 不内建新的 Todo、Calendar、Pomodoro、Stats 数据系统。
 6. 不使用 AI 生成小图标。
 7. 不在 Modal 顶部展示当前文档、能力可用性或产品解释。
-8. 不让多个分组卡同时占满首屏。
+8. 不用侧栏或分组外层卡片分割有限的高频入口。
 
 ## 为什么图标不用 AI 生成
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Peak Command Center · V2</title>
+  <title>Peak Command Center · V3</title>
   <style>
     :root {
       color-scheme: light;
@@ -400,8 +400,8 @@
     }
 
     .launcher {
-      width: 880px;
-      height: 570px;
+      width: 920px;
+      height: 590px;
       display: grid;
       grid-template-rows: 64px minmax(0, 1fr) 42px;
       overflow: hidden;
@@ -474,126 +474,102 @@
 
     .launcher-body {
       min-height: 0;
-      display: grid;
-      grid-template-columns: 168px minmax(0, 1fr);
+      overflow: hidden;
     }
 
-    .group-rail {
-      min-height: 0;
-      padding: 18px 12px 14px;
-      border-right: 1px solid var(--line);
-      background: #fbfafc;
-    }
-
-    .group-list {
-      display: grid;
-      gap: 4px;
-    }
-
-    .group-button {
-      width: 100%;
-      height: 38px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 0 10px;
-      border: 0;
-      border-radius: 7px;
-      color: #6b6870;
-      background: transparent;
-      font-size: 12px;
-      text-align: left;
-      cursor: pointer;
-    }
-
-    .group-button:hover {
-      color: var(--ink);
-      background: #f3f1f5;
-    }
-
-    .group-button.active {
-      color: var(--purple-deep);
-      background: var(--purple-soft);
-      font-weight: 620;
-    }
-
-    .group-button .icon {
-      width: 17px;
-      height: 17px;
-      flex: none;
-    }
-
-    .rail-bottom {
-      margin-top: 22px;
-      padding-top: 14px;
-      border-top: 1px solid var(--line);
-    }
-
-    .customize-link {
-      width: 100%;
-      height: 34px;
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      padding: 0 10px;
-      border: 0;
-      color: var(--ink-faint);
-      background: transparent;
-      font-size: 11px;
-      cursor: pointer;
-    }
-
-    .customize-link:hover {
-      color: var(--ink-soft);
-    }
-
-    .customize-link .icon {
-      width: 15px;
-      height: 15px;
-    }
-
-    .action-area {
+    .flow-area {
       min-width: 0;
       min-height: 0;
-      padding: 26px 30px 22px;
+      height: 100%;
+      padding: 22px 28px 24px;
       overflow: auto;
     }
 
-    .section-heading {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 20px;
-      margin-bottom: 15px;
-    }
-
-    .section-heading strong {
-      font-size: 13px;
-      font-weight: 650;
-    }
-
-    .section-heading span {
-      color: var(--ink-faint);
-      font-size: 11px;
-    }
-
-    .action-grid {
+    .flow-columns {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: minmax(0, 1.14fr) minmax(0, 0.86fr);
+      gap: 34px;
+      align-items: start;
+    }
+
+    .flow-column {
+      min-width: 0;
+      display: grid;
+      gap: 26px;
+      align-content: start;
+    }
+
+    .flow-group {
+      min-width: 0;
+      break-inside: avoid;
+    }
+
+    .flow-group + .flow-group {
+      padding-top: 24px;
+      border-top: 1px solid var(--line);
+    }
+
+    .flow-group-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      height: 28px;
+      margin-bottom: 10px;
+    }
+
+    .flow-group-title {
+      min-width: 0;
+      display: flex;
+      align-items: center;
       gap: 8px;
+    }
+
+    .flow-group-title .icon {
+      width: 16px;
+      height: 16px;
+      flex: none;
+      color: #716b78;
+    }
+
+    .flow-group-title strong {
+      overflow: hidden;
+      color: #454148;
+      font-size: 12px;
+      font-weight: 650;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .flow-group-count {
+      color: var(--ink-faint);
+      font-size: 10px;
+    }
+
+    .flow-action-grid {
+      display: grid;
+      gap: 7px;
+    }
+
+    .flow-group.wide .flow-action-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .flow-group.compact .flow-action-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .action-tile {
       position: relative;
       min-width: 0;
-      height: 126px;
+      height: 100px;
       display: flex;
       flex-direction: column;
       align-items: flex-start;
       justify-content: flex-start;
-      padding: 15px 13px 12px;
+      padding: 13px 12px 11px;
       border: 1px solid transparent;
-      border-radius: 10px;
+      border-radius: 9px;
       background: transparent;
       text-align: left;
       cursor: pointer;
@@ -610,12 +586,12 @@
     }
 
     .action-icon {
-      width: 38px;
-      height: 38px;
+      width: 34px;
+      height: 34px;
       display: grid;
       place-items: center;
-      margin-bottom: 12px;
-      border-radius: 10px;
+      margin-bottom: 10px;
+      border-radius: 9px;
       color: var(--purple);
       background: var(--purple-soft);
     }
@@ -641,8 +617,8 @@
     }
 
     .action-icon .icon {
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
     }
 
     .action-name {
@@ -667,8 +643,8 @@
 
     .tile-hotkey {
       position: absolute;
-      top: 13px;
-      right: 10px;
+      top: 10px;
+      right: 8px;
       display: flex;
       gap: 2px;
     }
@@ -719,6 +695,30 @@
       color: #817b89;
     }
 
+    .footer-action {
+      height: 27px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 8px;
+      border: 0;
+      border-radius: 6px;
+      color: #77727d;
+      background: transparent;
+      font-size: 10px;
+      cursor: pointer;
+    }
+
+    .footer-action:hover {
+      color: var(--ink);
+      background: #f0eef2;
+    }
+
+    .footer-action .icon {
+      width: 14px;
+      height: 14px;
+    }
+
     .screen {
       display: none;
     }
@@ -747,7 +747,7 @@
 
     .result-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
     }
 
@@ -839,10 +839,6 @@
       font-size: 10px;
     }
 
-    .editable-group {
-      position: relative;
-    }
-
     .drag-dots {
       width: 13px;
       height: 22px;
@@ -863,15 +859,63 @@
       background: currentColor;
     }
 
-    .editable-group .group-button {
-      padding-left: 5px;
+    .manage-group-title {
+      display: flex;
+      align-items: center;
+      gap: 7px;
     }
 
-    .add-group {
-      margin-top: 10px;
+    .manage-group-title .drag-dots {
+      margin-right: 1px;
+    }
+
+    .group-add-button {
+      width: 26px;
+      height: 26px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 6px;
+      color: #807b86;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .group-add-button:hover {
+      color: var(--purple);
+      background: var(--purple-hover);
+    }
+
+    .group-add-button .icon {
+      width: 14px;
+      height: 14px;
+    }
+
+    .add-group-line {
+      width: 100%;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 24px;
       border: 1px dashed #d9d5de;
+      border-radius: 8px;
       color: #8a858f;
       background: #fff;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .add-group-line:hover {
+      border-color: #bfb3d5;
+      color: var(--purple);
+      background: var(--purple-hover);
+    }
+
+    .add-group-line .icon {
+      width: 15px;
+      height: 15px;
     }
 
     .manage-tile {
@@ -897,34 +941,6 @@
 
     .manage-tile .action-icon {
       margin-left: 4px;
-    }
-
-    .add-action {
-      align-items: center;
-      justify-content: center;
-      border-color: #dcd8e1;
-      border-style: dashed;
-      color: #817c87;
-      background: #fcfbfd;
-      text-align: center;
-      cursor: pointer;
-    }
-
-    .add-action:hover {
-      border-color: #bfb3d5;
-      color: var(--purple);
-      background: var(--purple-hover);
-    }
-
-    .add-action .icon {
-      width: 22px;
-      height: 22px;
-      margin-bottom: 8px;
-    }
-
-    .add-action span {
-      font-size: 11px;
-      font-weight: 590;
     }
 
     .manage-footer {
@@ -1323,11 +1339,18 @@
       }
 
       .launcher {
-        height: 540px;
+        height: 560px;
       }
 
       .action-tile {
-        height: 116px;
+        height: 90px;
+        padding: 10px 10px 8px;
+      }
+
+      .action-icon {
+        width: 30px;
+        height: 30px;
+        margin-bottom: 7px;
       }
 
       .home-content {
@@ -1378,7 +1401,7 @@
       <span class="prototype-mark"><svg class="icon"><use href="#i-command"/></svg></span>
       <span>
         <strong>Peak Command Center</strong>
-        <small>V2 · flat launcher</small>
+        <small>V3 · waterfall launcher</small>
       </span>
     </div>
     <nav class="state-switcher" aria-label="原型状态">
@@ -1391,7 +1414,7 @@
   </header>
 
   <main class="stage">
-    <section class="app-frame" aria-label="Command Center V2 原型">
+    <section class="app-frame" aria-label="Command Center V3 原型">
       <div class="app-titlebar">
         <span class="traffic-lights"><i></i><i></i><i></i></span>
         <span class="app-title">Peak Assistant · Product vault</span>
@@ -1457,64 +1480,125 @@
             <button class="close-button" aria-label="关闭"><svg class="icon"><use href="#i-x"/></svg></button>
           </header>
           <div class="launcher-body">
-            <aside class="group-rail">
-              <div class="group-list">
-                <button class="group-button active"><svg class="icon"><use href="#i-star"/></svg>Favorites</button>
-                <button class="group-button"><svg class="icon"><use href="#i-sparkles"/></svg>Peak Assistant</button>
-                <button class="group-button"><svg class="icon"><use href="#i-plus"/></svg>Create</button>
-                <button class="group-button"><svg class="icon"><use href="#i-canvas"/></svg>Visual</button>
-                <button class="group-button"><svg class="icon"><use href="#i-workspace"/></svg>Workspaces</button>
-              </div>
-              <div class="rail-bottom">
-                <button class="customize-link" data-open="manage"><svg class="icon"><use href="#i-sliders"/></svg>Customize</button>
-              </div>
-            </aside>
-            <div class="action-area">
-              <div class="section-heading"><strong>Favorites</strong><span>8 actions</span></div>
-              <div class="action-grid" data-action-grid>
-                <button class="action-tile selected">
-                  <span class="action-icon"><svg class="icon"><use href="#i-pen"/></svg></span>
-                  <span class="action-name">Composer</span>
-                  <span class="action-meta">Peak Assistant</span>
-                  <span class="tile-hotkey"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>O</kbd></span>
-                </button>
-                <button class="action-tile">
-                  <span class="action-icon"><svg class="icon"><use href="#i-message"/></svg></span>
-                  <span class="action-name">Chat Studio</span>
-                  <span class="action-meta">Peak Assistant</span>
-                </button>
-                <button class="action-tile">
-                  <span class="action-icon blue"><svg class="icon"><use href="#i-map"/></svg></span>
-                  <span class="action-name">File Atlas</span>
-                  <span class="action-meta">Explore vault</span>
-                </button>
-                <button class="action-tile">
-                  <span class="action-icon blue"><svg class="icon"><use href="#i-file-search"/></svg></span>
-                  <span class="action-name">Quick Search</span>
-                  <span class="action-meta">Search vault</span>
-                  <span class="tile-hotkey"><kbd>⌘</kbd><kbd>O</kbd></span>
-                </button>
-                <button class="action-tile">
-                  <span class="action-icon green"><svg class="icon"><use href="#i-home"/></svg></span>
-                  <span class="action-name">Home</span>
-                  <span class="action-meta">Pinned view</span>
-                </button>
-                <button class="action-tile">
-                  <span class="action-icon green"><svg class="icon"><use href="#i-workspace"/></svg></span>
-                  <span class="action-name">Research desk</span>
-                  <span class="action-meta">Workspace</span>
-                </button>
-                <button class="action-tile">
-                  <span class="action-icon amber"><svg class="icon"><use href="#i-lightbulb"/></svg></span>
-                  <span class="action-name">Capture idea</span>
-                  <span class="action-meta">QuickAdd</span>
-                  <span class="tile-hotkey"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>I</kbd></span>
-                </button>
-                <button class="action-tile">
-                  <span class="action-icon neutral"><svg class="icon"><use href="#i-settings"/></svg></span>
-                  <span class="action-name">Peak settings</span>
-                  <span class="action-meta">Settings</span>
-                </button>
+            <div class="flow-area">
+              <div class="flow-columns">
+                <div class="flow-column">
+                  <section class="flow-group wide">
+                    <div class="flow-group-header">
+                      <span class="flow-group-title"><svg class="icon"><use href="#i-sparkles"/></svg><strong>Peak Assistant</strong></span>
+                      <span class="flow-group-count">6</span>
+                    </div>
+                    <div class="flow-action-grid" data-action-grid>
+                      <button class="action-tile selected">
+                        <span class="action-icon"><svg class="icon"><use href="#i-pen"/></svg></span>
+                        <span class="action-name">Composer</span>
+                        <span class="action-meta">Write and review</span>
+                        <span class="tile-hotkey"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>O</kbd></span>
+                      </button>
+                      <button class="action-tile">
+                        <span class="action-icon"><svg class="icon"><use href="#i-message"/></svg></span>
+                        <span class="action-name">Chat Studio</span>
+                        <span class="action-meta">Open view</span>
+                      </button>
+                      <button class="action-tile">
+                        <span class="action-icon blue"><svg class="icon"><use href="#i-map"/></svg></span>
+                        <span class="action-name">File Atlas</span>
+                        <span class="action-meta">Explore vault</span>
+                      </button>
+                      <button class="action-tile">
+                        <span class="action-icon blue"><svg class="icon"><use href="#i-file-search"/></svg></span>
+                        <span class="action-name">Quick Search</span>
+                        <span class="action-meta">Search vault</span>
+                        <span class="tile-hotkey"><kbd>⌘</kbd><kbd>O</kbd></span>
+                      </button>
+                      <button class="action-tile">
+                        <span class="action-icon green"><svg class="icon"><use href="#i-home"/></svg></span>
+                        <span class="action-name">Home</span>
+                        <span class="action-meta">Pinned view</span>
+                      </button>
+                      <button class="action-tile">
+                        <span class="action-icon neutral"><svg class="icon"><use href="#i-settings"/></svg></span>
+                        <span class="action-name">Peak settings</span>
+                        <span class="action-meta">Settings</span>
+                      </button>
+                    </div>
+                  </section>
+
+                  <section class="flow-group wide">
+                    <div class="flow-group-header">
+                      <span class="flow-group-title"><svg class="icon"><use href="#i-workspace"/></svg><strong>Workspaces</strong></span>
+                      <span class="flow-group-count">3</span>
+                    </div>
+                    <div class="flow-action-grid">
+                      <button class="action-tile">
+                        <span class="action-icon green"><svg class="icon"><use href="#i-workspace"/></svg></span>
+                        <span class="action-name">Research desk</span>
+                        <span class="action-meta">Workspace</span>
+                      </button>
+                      <button class="action-tile">
+                        <span class="action-icon neutral"><svg class="icon"><use href="#i-bookmark"/></svg></span>
+                        <span class="action-name">Bookmarks</span>
+                        <span class="action-meta">Obsidian</span>
+                      </button>
+                      <button class="action-tile">
+                        <span class="action-icon amber"><svg class="icon"><use href="#i-canvas"/></svg></span>
+                        <span class="action-name">Product map</span>
+                        <span class="action-meta">Canvas</span>
+                      </button>
+                    </div>
+                  </section>
+                </div>
+
+                <div class="flow-column">
+                  <section class="flow-group compact">
+                    <div class="flow-group-header">
+                      <span class="flow-group-title"><svg class="icon"><use href="#i-plus"/></svg><strong>Quick create</strong></span>
+                      <span class="flow-group-count">4</span>
+                    </div>
+                    <div class="flow-action-grid">
+                      <button class="action-tile">
+                        <span class="action-icon blue"><svg class="icon"><use href="#i-calendar"/></svg></span>
+                        <span class="action-name">Daily note</span>
+                        <span class="action-meta">Core command</span>
+                      </button>
+                      <button class="action-tile">
+                        <span class="action-icon amber"><svg class="icon"><use href="#i-lightbulb"/></svg></span>
+                        <span class="action-name">Capture idea</span>
+                        <span class="action-meta">QuickAdd</span>
+                        <span class="tile-hotkey"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>I</kbd></span>
+                      </button>
+                      <button class="action-tile">
+                        <span class="action-icon blue"><svg class="icon"><use href="#i-file-plus"/></svg></span>
+                        <span class="action-name">Meeting note</span>
+                        <span class="action-meta">Template</span>
+                      </button>
+                      <button class="action-tile">
+                        <span class="action-icon neutral"><svg class="icon"><use href="#i-file-plus"/></svg></span>
+                        <span class="action-name">New note</span>
+                        <span class="action-meta">Obsidian</span>
+                      </button>
+                    </div>
+                  </section>
+
+                  <section class="flow-group compact">
+                    <div class="flow-group-header">
+                      <span class="flow-group-title"><svg class="icon"><use href="#i-canvas"/></svg><strong>Visual</strong></span>
+                      <span class="flow-group-count">2</span>
+                    </div>
+                    <div class="flow-action-grid">
+                      <button class="action-tile">
+                        <span class="action-icon amber"><svg class="icon"><use href="#i-pen"/></svg></span>
+                        <span class="action-name">New drawing</span>
+                        <span class="action-meta">Excalidraw</span>
+                      </button>
+                      <button class="action-tile">
+                        <span class="action-icon amber"><svg class="icon"><use href="#i-layout"/></svg></span>
+                        <span class="action-name">Current window</span>
+                        <span class="action-meta">Excalidraw</span>
+                      </button>
+                    </div>
+                  </section>
+                </div>
               </div>
             </div>
           </div>
@@ -1524,7 +1608,7 @@
               <span class="key-hint"><kbd>↵</kbd> open</span>
               <span class="key-hint"><kbd>Esc</kbd> close</span>
             </div>
-            <span class="footer-current">Favorites</span>
+            <button class="footer-action" data-open="manage"><svg class="icon"><use href="#i-sliders"/></svg>Customize</button>
           </footer>
         </section>
 
@@ -1537,42 +1621,54 @@
             <button class="close-button" aria-label="关闭"><svg class="icon"><use href="#i-x"/></svg></button>
           </header>
           <div class="launcher-body">
-            <aside class="group-rail">
-              <div class="group-list">
-                <button class="group-button active"><svg class="icon"><use href="#i-search"/></svg>Results</button>
-                <button class="group-button"><svg class="icon"><use href="#i-sparkles"/></svg>Peak Assistant</button>
-                <button class="group-button"><svg class="icon"><use href="#i-file"/></svg>Files</button>
-                <button class="group-button"><svg class="icon"><use href="#i-workspace"/></svg>Workspaces</button>
-              </div>
-            </aside>
-            <div class="action-area search-area">
+            <div class="flow-area search-area">
               <div class="search-summary"><span><strong>6</strong> curated results</span><span>Only your Command Center</span></div>
-              <div class="result-grid">
-                <button class="result-tile selected">
-                  <span class="action-icon"><svg class="icon"><use href="#i-pen"/></svg></span>
-                  <span class="result-copy"><strong>Open Composer</strong><span>Peak Assistant</span></span>
-                  <span class="tile-hotkey"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>O</kbd></span>
-                </button>
-                <button class="result-tile">
-                  <span class="action-icon"><svg class="icon"><use href="#i-message"/></svg></span>
-                  <span class="result-copy"><strong>Open Chat Studio</strong><span>Peak Assistant</span></span>
-                </button>
-                <button class="result-tile">
-                  <span class="action-icon blue"><svg class="icon"><use href="#i-map"/></svg></span>
-                  <span class="result-copy"><strong>Open File Atlas</strong><span>Peak Assistant</span></span>
-                </button>
-                <button class="result-tile">
-                  <span class="action-icon green"><svg class="icon"><use href="#i-home"/></svg></span>
-                  <span class="result-copy"><strong>Open Home</strong><span>Pinned view</span></span>
-                </button>
-                <button class="result-tile">
-                  <span class="action-icon green"><svg class="icon"><use href="#i-workspace"/></svg></span>
-                  <span class="result-copy"><strong>Open Research desk</strong><span>Workspace</span></span>
-                </button>
-                <button class="result-tile">
-                  <span class="action-icon amber"><svg class="icon"><use href="#i-canvas"/></svg></span>
-                  <span class="result-copy"><strong>Open product map</strong><span>Canvas</span></span>
-                </button>
+              <div class="flow-columns">
+                <div class="flow-column">
+                  <section class="flow-group">
+                    <div class="flow-group-header">
+                      <span class="flow-group-title"><svg class="icon"><use href="#i-sparkles"/></svg><strong>Peak Assistant</strong></span>
+                      <span class="flow-group-count">3</span>
+                    </div>
+                    <div class="result-grid">
+                      <button class="result-tile selected">
+                        <span class="action-icon"><svg class="icon"><use href="#i-pen"/></svg></span>
+                        <span class="result-copy"><strong>Open Composer</strong><span>Write and review</span></span>
+                        <span class="tile-hotkey"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>O</kbd></span>
+                      </button>
+                      <button class="result-tile">
+                        <span class="action-icon"><svg class="icon"><use href="#i-message"/></svg></span>
+                        <span class="result-copy"><strong>Open Chat Studio</strong><span>Peak Assistant</span></span>
+                      </button>
+                      <button class="result-tile">
+                        <span class="action-icon blue"><svg class="icon"><use href="#i-map"/></svg></span>
+                        <span class="result-copy"><strong>Open File Atlas</strong><span>Peak Assistant</span></span>
+                      </button>
+                    </div>
+                  </section>
+                </div>
+                <div class="flow-column">
+                  <section class="flow-group">
+                    <div class="flow-group-header">
+                      <span class="flow-group-title"><svg class="icon"><use href="#i-workspace"/></svg><strong>Navigation</strong></span>
+                      <span class="flow-group-count">3</span>
+                    </div>
+                    <div class="result-grid">
+                      <button class="result-tile">
+                        <span class="action-icon green"><svg class="icon"><use href="#i-home"/></svg></span>
+                        <span class="result-copy"><strong>Open Home</strong><span>Pinned view</span></span>
+                      </button>
+                      <button class="result-tile">
+                        <span class="action-icon green"><svg class="icon"><use href="#i-workspace"/></svg></span>
+                        <span class="result-copy"><strong>Open Research desk</strong><span>Workspace</span></span>
+                      </button>
+                      <button class="result-tile">
+                        <span class="action-icon amber"><svg class="icon"><use href="#i-canvas"/></svg></span>
+                        <span class="result-copy"><strong>Open product map</strong><span>Canvas</span></span>
+                      </button>
+                    </div>
+                  </section>
+                </div>
               </div>
             </div>
           </div>
@@ -1591,86 +1687,162 @@
             <div class="manage-header">
               <svg class="icon"><use href="#i-sliders"/></svg>
               <span class="manage-header-copy">
-                <strong>Customize Favorites</strong>
-                <span>Drag actions or choose another group</span>
+                <strong>Customize Command Center</strong>
+                <span>Drag groups and actions in place</span>
               </span>
             </div>
             <button class="close-button" aria-label="关闭"><svg class="icon"><use href="#i-x"/></svg></button>
           </header>
           <div class="launcher-body">
-            <aside class="group-rail">
-              <div class="group-list">
-                <div class="editable-group">
-                  <button class="group-button active">
-                    <span class="drag-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-                    Favorites
-                  </button>
+            <div class="flow-area">
+              <div class="flow-columns">
+                <div class="flow-column">
+                  <section class="flow-group wide">
+                    <div class="flow-group-header">
+                      <span class="flow-group-title manage-group-title">
+                        <span class="drag-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <svg class="icon"><use href="#i-sparkles"/></svg>
+                        <strong>Peak Assistant</strong>
+                      </span>
+                      <button class="group-add-button" aria-label="向 Peak Assistant 添加动作"><svg class="icon"><use href="#i-plus"/></svg></button>
+                    </div>
+                    <div class="flow-action-grid">
+                      <button class="action-tile manage-tile selected">
+                        <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <span class="action-icon"><svg class="icon"><use href="#i-pen"/></svg></span>
+                        <span class="action-name">Composer</span>
+                        <span class="action-meta">Write and review</span>
+                      </button>
+                      <button class="action-tile manage-tile">
+                        <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <span class="action-icon"><svg class="icon"><use href="#i-message"/></svg></span>
+                        <span class="action-name">Chat Studio</span>
+                        <span class="action-meta">Open view</span>
+                      </button>
+                      <button class="action-tile manage-tile">
+                        <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <span class="action-icon blue"><svg class="icon"><use href="#i-map"/></svg></span>
+                        <span class="action-name">File Atlas</span>
+                        <span class="action-meta">Explore vault</span>
+                      </button>
+                      <button class="action-tile manage-tile">
+                        <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <span class="action-icon blue"><svg class="icon"><use href="#i-file-search"/></svg></span>
+                        <span class="action-name">Quick Search</span>
+                        <span class="action-meta">Search vault</span>
+                      </button>
+                      <button class="action-tile manage-tile">
+                        <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <span class="action-icon green"><svg class="icon"><use href="#i-home"/></svg></span>
+                        <span class="action-name">Home</span>
+                        <span class="action-meta">Pinned view</span>
+                      </button>
+                      <button class="action-tile manage-tile">
+                        <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <span class="action-icon neutral"><svg class="icon"><use href="#i-settings"/></svg></span>
+                        <span class="action-name">Peak settings</span>
+                        <span class="action-meta">Settings</span>
+                      </button>
+                    </div>
+                  </section>
+
+                  <section class="flow-group wide">
+                    <div class="flow-group-header">
+                      <span class="flow-group-title manage-group-title">
+                        <span class="drag-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <svg class="icon"><use href="#i-workspace"/></svg>
+                        <strong>Workspaces</strong>
+                      </span>
+                      <button class="group-add-button" aria-label="向 Workspaces 添加动作"><svg class="icon"><use href="#i-plus"/></svg></button>
+                    </div>
+                    <div class="flow-action-grid">
+                      <button class="action-tile manage-tile">
+                        <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <span class="action-icon green"><svg class="icon"><use href="#i-workspace"/></svg></span>
+                        <span class="action-name">Research desk</span>
+                        <span class="action-meta">Workspace</span>
+                      </button>
+                      <button class="action-tile manage-tile">
+                        <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <span class="action-icon neutral"><svg class="icon"><use href="#i-bookmark"/></svg></span>
+                        <span class="action-name">Bookmarks</span>
+                        <span class="action-meta">Obsidian</span>
+                      </button>
+                      <button class="action-tile manage-tile">
+                        <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <span class="action-icon amber"><svg class="icon"><use href="#i-canvas"/></svg></span>
+                        <span class="action-name">Product map</span>
+                        <span class="action-meta">Canvas</span>
+                      </button>
+                    </div>
+                  </section>
                 </div>
-                <div class="editable-group">
-                  <button class="group-button">
-                    <span class="drag-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-                    Peak Assistant
-                  </button>
+
+                <div class="flow-column">
+                  <section class="flow-group compact">
+                    <div class="flow-group-header">
+                      <span class="flow-group-title manage-group-title">
+                        <span class="drag-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <svg class="icon"><use href="#i-plus"/></svg>
+                        <strong>Quick create</strong>
+                      </span>
+                      <button class="group-add-button" aria-label="向 Quick create 添加动作"><svg class="icon"><use href="#i-plus"/></svg></button>
+                    </div>
+                    <div class="flow-action-grid">
+                      <button class="action-tile manage-tile">
+                        <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <span class="action-icon blue"><svg class="icon"><use href="#i-calendar"/></svg></span>
+                        <span class="action-name">Daily note</span>
+                        <span class="action-meta">Core command</span>
+                      </button>
+                      <button class="action-tile manage-tile">
+                        <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <span class="action-icon amber"><svg class="icon"><use href="#i-lightbulb"/></svg></span>
+                        <span class="action-name">Capture idea</span>
+                        <span class="action-meta">QuickAdd</span>
+                      </button>
+                      <button class="action-tile manage-tile">
+                        <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <span class="action-icon blue"><svg class="icon"><use href="#i-file-plus"/></svg></span>
+                        <span class="action-name">Meeting note</span>
+                        <span class="action-meta">Template</span>
+                      </button>
+                      <button class="action-tile manage-tile">
+                        <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <span class="action-icon neutral"><svg class="icon"><use href="#i-file-plus"/></svg></span>
+                        <span class="action-name">New note</span>
+                        <span class="action-meta">Obsidian</span>
+                      </button>
+                    </div>
+                  </section>
+
+                  <section class="flow-group compact">
+                    <div class="flow-group-header">
+                      <span class="flow-group-title manage-group-title">
+                        <span class="drag-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <svg class="icon"><use href="#i-canvas"/></svg>
+                        <strong>Visual</strong>
+                      </span>
+                      <button class="group-add-button" aria-label="向 Visual 添加动作"><svg class="icon"><use href="#i-plus"/></svg></button>
+                    </div>
+                    <div class="flow-action-grid">
+                      <button class="action-tile manage-tile">
+                        <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <span class="action-icon amber"><svg class="icon"><use href="#i-pen"/></svg></span>
+                        <span class="action-name">New drawing</span>
+                        <span class="action-meta">Excalidraw</span>
+                      </button>
+                      <button class="action-tile manage-tile">
+                        <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <span class="action-icon amber"><svg class="icon"><use href="#i-layout"/></svg></span>
+                        <span class="action-name">Current window</span>
+                        <span class="action-meta">Excalidraw</span>
+                      </button>
+                    </div>
+                  </section>
                 </div>
-                <div class="editable-group">
-                  <button class="group-button">
-                    <span class="drag-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-                    Create
-                  </button>
-                </div>
-                <div class="editable-group">
-                  <button class="group-button">
-                    <span class="drag-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-                    Visual
-                  </button>
-                </div>
-                <button class="group-button add-group"><svg class="icon"><use href="#i-plus"/></svg>Add group</button>
               </div>
-            </aside>
-            <div class="action-area">
-              <div class="section-heading"><strong>Favorites</strong><span>Drag to reorder</span></div>
-              <div class="action-grid">
-                <button class="action-tile manage-tile selected">
-                  <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-                  <span class="action-icon"><svg class="icon"><use href="#i-pen"/></svg></span>
-                  <span class="action-name">Composer</span>
-                  <span class="action-meta">Peak Assistant</span>
-                </button>
-                <button class="action-tile manage-tile">
-                  <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-                  <span class="action-icon"><svg class="icon"><use href="#i-message"/></svg></span>
-                  <span class="action-name">Chat Studio</span>
-                  <span class="action-meta">Peak Assistant</span>
-                </button>
-                <button class="action-tile manage-tile">
-                  <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-                  <span class="action-icon blue"><svg class="icon"><use href="#i-map"/></svg></span>
-                  <span class="action-name">File Atlas</span>
-                  <span class="action-meta">Explore vault</span>
-                </button>
-                <button class="action-tile manage-tile">
-                  <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-                  <span class="action-icon blue"><svg class="icon"><use href="#i-file-search"/></svg></span>
-                  <span class="action-name">Quick Search</span>
-                  <span class="action-meta">Search vault</span>
-                </button>
-                <button class="action-tile manage-tile">
-                  <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-                  <span class="action-icon green"><svg class="icon"><use href="#i-home"/></svg></span>
-                  <span class="action-name">Home</span>
-                  <span class="action-meta">Pinned view</span>
-                </button>
-                <button class="action-tile manage-tile">
-                  <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-                  <span class="action-icon green"><svg class="icon"><use href="#i-workspace"/></svg></span>
-                  <span class="action-name">Research desk</span>
-                  <span class="action-meta">Workspace</span>
-                </button>
-                <button class="action-tile add-action">
-                  <svg class="icon"><use href="#i-plus"/></svg>
-                  <span>Add action</span>
-                </button>
-              </div>
+              <button class="add-group-line"><svg class="icon"><use href="#i-plus"/></svg>Add group</button>
             </div>
           </div>
           <footer class="launcher-footer manage-footer">
@@ -1773,7 +1945,7 @@
               <div class="pinned-pages">
                 <article class="pinned-page">
                   <div class="pinned-page-heading"><strong>Today</strong><span>Daily note</span></div>
-                  <p>把 Command Center 的 V2 视觉方向收敛为单组网格，并确认 Home 只保留稳定的导航骨架。</p>
+                  <p>把 Command Center 收敛为无侧栏的瀑布分组，并确认 Home 只保留稳定的导航骨架。</p>
                 </article>
                 <article class="pinned-page">
                   <div class="pinned-page-heading"><strong>Next actions</strong><span>Tasks note</span></div>
@@ -1789,14 +1961,14 @@
       </section>
     </section>
 
-    <section class="design-note" aria-label="V2 design principles">
+    <section class="design-note" aria-label="V3 design principles">
       <div class="note-item">
-        <strong>一次只看一组</strong>
-        <span>分组承担纵向导航，图标网格承担横向与空间记忆。页面不再同时展开四个容器。</span>
+        <strong>分组直接铺在画布上</strong>
+        <span>左右两列分别向下生长；标题、留白和细分隔线负责分区，不再增加侧边导航。</span>
       </div>
       <div class="note-item">
         <strong>管理不占用日常界面</strong>
-        <span>Customize 从左下角进入，在同一网格原位拖动；命令目录只在 Add action 时临时出现。</span>
+        <span>Customize 从底部进入，在同一张瀑布画布原位拖动；完整命令目录只在添加动作时临时出现。</span>
       </div>
       <div class="note-item">
         <strong>Home 是安静的起点</strong>

@@ -2,7 +2,7 @@
 
 Date: 2026-07-30
 
-Visual direction revised: 2026-07-31
+Visual direction revised: 2026-07-31 · V3 waterfall layout
 
 Status: Decided · design/spec ready · implementation pending
 
@@ -92,8 +92,8 @@ The exhaustive native Command Palette stays one keystroke away.
 ```text
 CommandCenterBoardConfig
 ├─ Modal shell
-│  ├─ one selected group
-│  ├─ flat action grid
+│  ├─ two-column waterfall groups
+│  ├─ flat action tiles
 │  └─ in-place customize mode
 └─ Home shell
    ├─ global search entry
@@ -104,9 +104,9 @@ CommandCenterBoardConfig
 
 The Modal and Home must not maintain separate copies of actions. They share action identity, label, icon, hotkey resolution and destination. Their composition differs:
 
-- Modal optimizes for keyboard navigation inside one selected group.
+- Modal optimizes for scanning and keyboard navigation across a bounded set of visible groups.
 - Home optimizes for returning to a small set of pinned destinations.
-- Reordering a Modal group does not force Home to reproduce every group or tile.
+- Group placement in the Modal does not force Home to reproduce the waterfall layout.
 
 ### 6.2 Action types
 
@@ -152,7 +152,7 @@ URL, macro and script actions are intentionally deferred. They widen permissions
 interface CommandCenterBoardConfig {
 	version: 1;
 	modal: {
-		columnCount: 3 | 4;
+		laneRatio: 'balanced' | 'wide-left';
 	};
 	home: {
 		openOnStartup: boolean;
@@ -167,6 +167,8 @@ interface CommandCenterGroup {
 	id: string;
 	label: string;
 	icon: string;
+	lane: 'left' | 'right';
+	columnCount: 2 | 3;
 	order: number;
 	actions: CommandCenterActionItem[];
 }
@@ -178,14 +180,15 @@ Default group definitions belong in `templates/config/command-center-defaults.js
 
 ### 7.1 Command Center Modal
 
-The modal has four persistent regions:
+The modal has three persistent regions:
 
 1. Search field and close button.
-2. Narrow group rail.
-3. One flat action grid for the selected group.
-4. Footer keyboard help.
+2. Two-column waterfall group canvas.
+3. Footer keyboard help and Customize entry.
 
-Only one group is visible at a time. The rail supplies the vertical dimension; the action grid supplies the horizontal and spatial dimension. The screen never nests several group cards inside the Modal.
+Groups sit directly on the shared canvas. The left and right lanes grow independently so groups can occupy different heights without creating an empty sidebar or a rigid row matrix. Group boundaries use a short heading, whitespace and a hairline between vertically adjacent groups.
+
+There is no permanent group navigation rail. Groups also have no outer card background or border.
 
 The header does not show:
 
@@ -194,7 +197,7 @@ The header does not show:
 - capability availability summary;
 - Home or edit shortcuts.
 
-Home is an ordinary configured action. Customize is a low-emphasis rail action.
+Home is an ordinary configured action. Customize is a low-emphasis footer action.
 
 ### 7.2 Search state
 
@@ -205,7 +208,7 @@ Rules:
 1. Match short label first.
 2. Match user aliases second.
 3. Match group and plugin label third.
-4. Keep a two-dimensional result grid.
+4. Keep matched groups in the same two-column flow.
 5. Do not include unconfigured commands.
 
 The full registered-command catalog appears only inside Manage → Add action. This is the main protection against the original “weird fuzzy matches” problem.
@@ -225,7 +228,7 @@ Pinned Notes, Bases and Canvases remain owned by their existing Obsidian views. 
 
 ### 7.4 Manage mode
 
-Customize mode is explicit. Normal invocation never shows drag handles or edit controls. It reuses the same group rail and action grid so the user edits the spatial layout in place.
+Customize mode is explicit. Normal invocation never shows drag handles or edit controls. It reuses the same waterfall canvas so the user can reorder actions, move a group between lanes and change each group's internal column count in place.
 
 Available operations:
 
@@ -246,25 +249,25 @@ Destructive layout reset requires confirmation and export/import support before 
 
 | Screen / state | Primary job | Reads | Writes | Main actions | Empty / failure state | Entry / exit |
 | --- | --- | --- | --- | --- | --- | --- |
-| Modal · launcher | Invoke a curated action without typing | Groups, actions, availability, hotkeys | Recent usage only | Switch group, arrow navigation, Enter, search | Starter group or “add first action” | Hotkey / command; closes to prior focus |
+| Modal · launcher | Invoke a curated action without typing | Groups, actions, availability, hotkeys | Recent usage only | Scan groups, spatial navigation, Enter, search | Starter groups or “add first action” | Hotkey / command; closes to prior focus |
 | Modal · search | Narrow configured actions | Curated action index | Query only | Type, spatial navigation, Enter, clear | Empty result with clear-query guidance | Search field; returns to launcher on clear |
 | Home View | Return to important work and destinations | Pinned actions, recents, bookmarks, Workspaces, pinned pages | Quick access and pin order | Search, open destination, customize | Guide to pin the first destination or page | Ribbon / command / empty tab; exits to destination |
-| Customize | Curate the current spatial layout | Current config; catalog only after Add action | Groups, labels, aliases, order, Home pins | Drag, add, edit, remove, Done | Compatibility warning inside catalog picker | Rail action; Done returns to launcher |
+| Customize | Curate the current spatial layout | Current config; catalog only after Add action | Groups, labels, aliases, order, Home pins | Drag, add, edit, remove, Done | Compatibility warning inside catalog picker | Footer action; Done returns to launcher |
 
 ## 9. Visual design
 
 ### 9.1 Modal geometry
 
-- Width: `min(880px, calc(100vw - 48px))`.
-- Height: approximately `570px`, capped by `calc(100vh - 72px)`.
-- Group rail: approximately `168px`.
-- Action grid: four columns at the recommended desktop size.
-- Action tile: approximately `126px` high with no resting border.
-- Fixed icon hit target: `38 × 38px`.
+- Width: `min(920px, calc(100vw - 48px))`.
+- Height: approximately `590px`, capped by `calc(100vh - 72px)`.
+- Group canvas: two independently growing lanes with a slightly wider left lane.
+- Group internals: two or three action columns, chosen per group.
+- Action tile: approximately `100px` high with no resting border.
+- Fixed icon hit target: approximately `34 × 34px`.
 - Modal radius: approximately `14px`; tile radius: approximately `10px`.
 - Accent: Obsidian / Peak purple only for focus, selection and primary entry.
 
-No gradient, nested group card, availability strip, descriptive hero or dashboard statistic appears in the Modal.
+No group sidebar, gradient, nested group card, availability strip, descriptive hero or dashboard statistic appears in the Modal.
 
 ### 9.2 Action tile anatomy
 
@@ -456,7 +459,8 @@ This is an implementation sequence, not permission to ship incomplete UI as the 
 ### Track B · Modal
 
 - React modal shell;
-- group rail plus four-column action grid;
+- two-column waterfall group canvas;
+- per-group two- or three-column action grid;
 - search over configured actions;
 - full keyboard and focus restoration;
 - close-only header.
@@ -520,8 +524,9 @@ If CDP is unavailable, mark these interactions `INTERACTION NOT VERIFIED`; a sta
 
 - Native `Cmd/Ctrl + P` behavior is unchanged.
 - The user can bind one shortcut to open Peak Command Center.
-- Empty query shows grouped tiles in a two-dimensional layout.
-- Only one group is visible at a time; the group rail and tile grid remain spatially stable.
+- Empty query shows grouped tiles in a two-column waterfall layout.
+- All first-run groups are directly visible without a permanent group sidebar.
+- Group lane, group order and tile order remain spatially stable.
 - Runtime search returns only configured actions and keeps source provenance.
 - Every visible shortcut matches current Obsidian hotkey configuration.
 - A user can create an Excalidraw group and add a command without editing files.
@@ -537,7 +542,7 @@ If CDP is unavailable, mark these interactions `INTERACTION NOT VERIFIED`; a sta
 | Risk | Impact | Control |
 | --- | --- | --- |
 | Private command catalog API changes | Third-party picker breaks | Central adapter, startup capability check, Peak-only fallback |
-| Board grows into another infinite catalog | Original problem returns | Runtime search only configured actions; one visible group |
+| Board grows into another infinite catalog | Original problem returns | Runtime search only configured actions; bounded visible groups |
 | Home becomes a widget marketplace | Product scope fragments | Fixed Search / Quick access / Continue / Pinned pages structure |
 | Dynamic suggestions destroy spatial memory | Daily use becomes unpredictable | No automatic suggestions in the first implementation |
 | Hotkey labels drift | User loses trust | Resolve live; never persist display string |
@@ -547,5 +552,5 @@ Stop implementation and return for owner review if:
 
 - arbitrary command discovery cannot be isolated behind one compatibility port;
 - Home requires copying Note/Base/Workspace state into a second data model;
-- the first usable board needs more than five default groups;
+- the first usable board needs more than four default groups;
 - implementation proposes intercepting or rewriting native Command Palette behavior.
