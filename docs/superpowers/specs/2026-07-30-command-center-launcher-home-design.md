@@ -2,7 +2,7 @@
 
 Date: 2026-07-30
 
-Visual direction revised: 2026-07-31 · V5 configurable waterfall layout
+Visual direction revised: 2026-07-31 · V6 quiet command canvas
 
 Status: Decided · design/spec ready · implementation pending
 
@@ -93,7 +93,7 @@ The exhaustive native Command Palette stays one keystroke away.
 CommandCenterBoardConfig
 ├─ Modal shell
 │  ├─ two-column waterfall groups
-│  ├─ flat action tiles
+│  ├─ compact wrapping action buttons
 │  └─ in-place customize mode
 └─ Home shell
    ├─ global search entry
@@ -168,7 +168,7 @@ interface CommandCenterGroup {
 	label: string;
 	icon: string;
 	lane: 'left' | 'right' | 'full';
-	columnCount: 2 | 3 | 6;
+	actionLayout: 'wrap';
 	order: number;
 	actions: CommandCenterActionItem[];
 }
@@ -240,6 +240,13 @@ Pinned Notes, Bases and Canvases remain owned by their existing Obsidian views. 
 
 Customize mode is explicit. Normal invocation never shows drag handles or edit controls. It reuses the same waterfall canvas so the user can reorder actions, move a group between lanes, make a group span the full canvas and change action presentation in place.
 
+Customize must also stay visually quiet:
+
+- group drag affordance and group tools appear only on group hover or focus;
+- clicking an action opens one small contextual editor for display mode and Home pin state;
+- no action-level edit toolbar is permanently repeated across the canvas;
+- `Add group` is a low-emphasis inline action, not a full-width empty card.
+
 Available operations:
 
 - add / rename / delete group;
@@ -270,15 +277,15 @@ Destructive layout reset requires confirmation and export/import support before 
 
 ### 9.1 Modal geometry
 
-- Width: `min(860px, calc(100vw - 48px))`.
-- Height: approximately `480px`, capped by `calc(100vh - 72px)`.
+- Width: `min(800px, calc(100vw - 48px))`.
+- Height: approximately `370px`, capped by `calc(100vh - 72px)`.
 - Group canvas: two independently growing lanes with a slightly wider left lane.
-- Group internals: two or three action columns, or six columns when a group spans the full canvas.
-- Action tile: approximately `72px` high with no resting border.
-- Default icon container: approximately `24 × 24px`; the whole tile remains the hit target.
+- Group internals: natural-width actions wrap horizontally; full-width groups use the same wrapping rule.
+- Action button: `32px` high in all three presentation modes.
+- Default icon: approximately `15 × 15px`, bare rather than placed inside a colored icon container; the whole button remains the hit target.
 - Group headings do not show item counts; the visible tiles already communicate group size.
 - A vertical separator uses one compact spacing rhythm, not a grid gap plus additional section padding.
-- Modal radius: approximately `14px`; tile radius: approximately `10px`.
+- Modal radius: approximately `14px`; action radius: approximately `7px`.
 - Accent: Obsidian / Peak purple only for focus, selection and primary entry.
 
 No group sidebar, gradient, nested group card, availability strip, descriptive hero or dashboard statistic appears in the Modal.
@@ -287,11 +294,11 @@ No group sidebar, gradient, nested group card, availability strip, descriptive h
 
 Every tile has an action identity, accessible name and tooltip. Its visible anatomy is user-selectable:
 
-1. `icon + label`: small Lucide icon, short label and optional quiet source;
+1. `icon + label`: small Lucide icon, short label and an optional real hotkey suffix;
 2. `icon only`: icon with `aria-label` and tooltip;
-3. `text only`: short label without an icon container.
+3. `text only`: short label without an icon.
 
-All three modes may show a real hotkey when space permits and use a disabled treatment when unavailable.
+All three modes share one `32px` height. Icon-only remains a square; the other modes use natural content width. All modes use a disabled treatment when unavailable.
 
 Long native command labels such as “Create new drawing — in the current active window” become a short tile title such as `Current window`; the tooltip preserves the full source label.
 
@@ -473,7 +480,7 @@ This is an implementation sequence, not permission to ship incomplete UI as the 
 
 - React modal shell;
 - two-column waterfall group canvas;
-- per-group two-, three- or full-width six-column action grid;
+- per-group natural-width wrapping action canvas;
 - search over configured actions;
 - full keyboard and focus restoration;
 - close-only header.

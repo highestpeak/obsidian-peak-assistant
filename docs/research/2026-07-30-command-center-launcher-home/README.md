@@ -64,6 +64,16 @@ V5 把 Customize 从静态示意图补成可操作原型：
 - Pin / Unpin 直接更新 Home Quick access，Modal 与 Home 不复制 action 定义。
 - 默认图标容器进一步缩到约 `24px`；Home Quick access 图标从 `44px` 缩到约 `30px`。
 
+V6 保留这些操作能力，但撤掉 V5 暴露过量编辑 chrome 的视觉模型：
+
+- Action 不再是高卡片，也不再被锁进二列、三列或六列小网格；统一为 `32px` 高、自然宽度、横向换行的紧凑按钮。
+- 图标统一约 `15px`，默认直接落在按钮里，不再套彩色方块；Peak 紫只负责 focus、selection 和主入口。
+- 图标 + 文字、仅图标、仅文字共享同一高度；仅图标保持方形，其余按内容宽度展开。
+- 分组拖拽点和 Add action / 全宽工具只在 hover 或 focus 时出现。
+- Action 的显示方式和 Pin 只在选中后通过一个浮动上下文条出现；未选中时 Customize 与普通画布几乎一致。
+- Add group 收成低强调文字动作，不再伪装成一张横跨画布的空卡片。
+- Home Quick access 使用同一套紧凑按钮语法，并移除无必要的右上角工具和大号品牌图标。
+
 ## 录屏观察
 
 录屏时长约 8.1 秒，画面为 `2114 × 1822`，展示了原生 Obsidian Command Palette 的三个典型状态。

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Peak Command Center · V5</title>
+  <title>Peak Command Center · V6</title>
   <style>
     :root {
       color-scheme: light;
@@ -401,10 +401,10 @@
 
     .launcher {
       position: relative;
-      width: 860px;
-      height: 480px;
+      width: 800px;
+      height: 370px;
       display: grid;
-      grid-template-rows: 56px minmax(0, 1fr) 38px;
+      grid-template-rows: 52px minmax(0, 1fr) 36px;
       overflow: hidden;
       border: 1px solid rgba(201, 197, 207, 0.96);
       border-radius: var(--radius);
@@ -482,14 +482,14 @@
       min-width: 0;
       min-height: 0;
       height: 100%;
-      padding: 16px 20px 18px;
+      padding: 13px 16px 14px;
       overflow: auto;
     }
 
     .flow-columns {
       display: grid;
       grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
-      gap: 22px;
+      gap: 24px;
       align-items: start;
     }
 
@@ -514,8 +514,8 @@
     }
 
     .flow-group + .flow-group {
-      margin-top: 14px;
-      padding-top: 14px;
+      margin-top: 10px;
+      padding-top: 10px;
       border-top: 1px solid var(--line);
     }
 
@@ -524,8 +524,8 @@
       align-items: center;
       justify-content: space-between;
       gap: 10px;
-      height: 24px;
-      margin-bottom: 6px;
+      height: 22px;
+      margin-bottom: 5px;
     }
 
     .flow-group-title {
@@ -536,8 +536,8 @@
     }
 
     .flow-group-title .icon {
-      width: 14px;
-      height: 14px;
+      width: 13px;
+      height: 13px;
       flex: none;
       color: #716b78;
     }
@@ -545,93 +545,86 @@
     .flow-group-title strong {
       overflow: hidden;
       color: #454148;
-      font-size: 11.5px;
+      font-size: 11px;
       font-weight: 650;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
     .flow-action-grid {
-      display: grid;
+      display: flex;
+      flex-wrap: wrap;
       gap: 5px;
-    }
-
-    .flow-group.wide .flow-action-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .flow-group.compact .flow-action-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .flow-group.full-width .flow-action-grid {
-      grid-template-columns: repeat(6, minmax(0, 1fr));
     }
 
     .action-tile {
       position: relative;
+      width: auto;
       min-width: 0;
-      height: 72px;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      justify-content: flex-start;
-      padding: 9px 10px 8px;
+      height: 32px;
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 0 9px;
       border: 1px solid transparent;
-      border-radius: 8px;
-      background: transparent;
+      border-radius: 7px;
+      background: #f6f5f7;
       text-align: left;
       cursor: pointer;
     }
 
     .action-tile:hover {
-      background: #f7f6f8;
+      border-color: #e0dce3;
+      background: #efedf1;
     }
 
     .action-tile.selected {
       border-color: #d9ccf3;
       background: var(--purple-hover);
-      box-shadow: 0 0 0 1px rgba(111, 76, 195, 0.05);
+      box-shadow: none;
     }
 
     .action-icon {
-      width: 24px;
-      height: 24px;
-      display: grid;
+      width: 15px;
+      height: 15px;
+      display: inline-grid;
+      flex: none;
       place-items: center;
-      margin-bottom: 6px;
-      border-radius: 6px;
+      margin: 0;
+      border-radius: 0;
       color: var(--purple);
-      background: var(--purple-soft);
+      background: transparent;
     }
 
     .action-icon.blue {
-      color: var(--blue);
-      background: var(--blue-soft);
+      color: #68636d;
+      background: transparent;
     }
 
     .action-icon.green {
-      color: var(--green);
-      background: var(--green-soft);
+      color: #68636d;
+      background: transparent;
     }
 
     .action-icon.amber {
-      color: var(--amber);
-      background: var(--amber-soft);
+      color: #68636d;
+      background: transparent;
     }
 
     .action-icon.neutral {
       color: #67636b;
-      background: #efedf1;
+      background: transparent;
     }
 
     .action-icon .icon {
-      width: 14px;
-      height: 14px;
+      width: 15px;
+      height: 15px;
     }
 
     .action-name {
-      width: 100%;
+      width: auto;
       overflow: hidden;
       color: #302e33;
       font-size: 11px;
@@ -641,24 +634,17 @@
     }
 
     .action-meta {
-      width: 100%;
-      margin-top: 2px;
-      overflow: hidden;
-      color: var(--ink-faint);
-      font-size: 9px;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      display: none;
     }
 
     .action-tile.display-icon {
-      align-items: center;
-      justify-content: center;
-      padding: 6px;
+      width: 32px;
+      padding: 0;
     }
 
     .action-tile.display-icon .action-icon {
-      width: 26px;
-      height: 26px;
+      width: 15px;
+      height: 15px;
       margin: 0;
     }
 
@@ -669,8 +655,7 @@
     }
 
     .action-tile.display-text {
-      justify-content: center;
-      padding: 8px 10px;
+      padding: 0 10px;
     }
 
     .action-tile.display-text .action-icon,
@@ -681,19 +666,29 @@
 
     .action-tile.display-text .action-name {
       overflow: visible;
-      font-size: 12px;
-      line-height: 1.25;
+      font-size: 11px;
+      line-height: 1;
       text-align: center;
       text-overflow: clip;
-      white-space: normal;
+      white-space: nowrap;
     }
 
     .tile-hotkey {
-      position: absolute;
-      top: 7px;
-      right: 6px;
-      display: flex;
-      gap: 2px;
+      position: static;
+      display: inline-flex;
+      gap: 0;
+      margin-left: 2px;
+    }
+
+    .action-tile .tile-hotkey kbd {
+      min-width: 0;
+      height: auto;
+      padding: 0;
+      border: 0;
+      color: #918c96;
+      background: transparent;
+      box-shadow: none;
+      font-size: 8px;
     }
 
     kbd {
@@ -801,12 +796,12 @@
     .result-tile {
       position: relative;
       min-width: 0;
-      height: 56px;
+      height: 42px;
       display: grid;
-      grid-template-columns: 30px minmax(0, 1fr);
+      grid-template-columns: 18px minmax(0, 1fr);
       align-items: center;
       gap: 8px;
-      padding: 7px 8px;
+      padding: 5px 8px;
       border: 1px solid transparent;
       border-radius: 7px;
       background: transparent;
@@ -860,30 +855,12 @@
       flex: 1;
       display: flex;
       align-items: center;
-      gap: 9px;
       padding-left: 2px;
     }
 
-    .manage-header .icon {
-      width: 17px;
-      height: 17px;
-      color: var(--purple);
-    }
-
-    .manage-header-copy strong,
-    .manage-header-copy span {
-      display: block;
-    }
-
-    .manage-header-copy strong {
+    .manage-header strong {
       font-size: 13px;
       font-weight: 650;
-    }
-
-    .manage-header-copy span {
-      margin-top: 2px;
-      color: var(--ink-faint);
-      font-size: 9px;
     }
 
     .drag-dots {
@@ -932,12 +909,28 @@
 
     .manage-group-title .drag-dots {
       margin-right: 1px;
+      opacity: 0;
+      transition: opacity 120ms ease;
+    }
+
+    .flow-group:hover .manage-group-title .drag-dots,
+    .flow-group:focus-within .manage-group-title .drag-dots {
+      opacity: 1;
     }
 
     .group-tools {
       display: flex;
       align-items: center;
       gap: 2px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 120ms ease;
+    }
+
+    .flow-group:hover .group-tools,
+    .flow-group:focus-within .group-tools {
+      opacity: 1;
+      pointer-events: auto;
     }
 
     .group-width-button,
@@ -967,23 +960,23 @@
     }
 
     .add-group-line {
-      width: 100%;
-      height: 32px;
-      display: flex;
+      width: auto;
+      height: 28px;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 7px;
-      margin-top: 16px;
-      border: 1px dashed #d9d5de;
-      border-radius: 8px;
-      color: #8a858f;
-      background: #fff;
+      gap: 5px;
+      margin-top: 12px;
+      padding: 0 6px;
+      border: 0;
+      border-radius: 5px;
+      color: #827d87;
+      background: transparent;
       font-size: 10px;
       cursor: pointer;
     }
 
     .add-group-line:hover {
-      border-color: #bfb3d5;
       color: var(--purple);
       background: var(--purple-hover);
     }
@@ -1002,35 +995,15 @@
     }
 
     .manage-tile .drag-corner {
-      position: absolute;
-      top: 6px;
-      left: 6px;
-      opacity: 0;
-      transition: opacity 120ms ease;
-    }
-
-    .manage-tile:hover .drag-corner,
-    .manage-tile.selected .drag-corner {
-      opacity: 1;
+      display: none;
     }
 
     .manage-tile .action-icon {
-      margin-left: 4px;
+      margin-left: 0;
     }
 
     .manage-tile.display-icon .action-icon {
       margin-left: 0;
-    }
-
-    .manage-tile[data-pinned="true"]::after {
-      position: absolute;
-      top: 7px;
-      right: 7px;
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: var(--purple);
-      content: "";
     }
 
     .dragging {
@@ -1043,19 +1016,32 @@
     }
 
     .manage-footer {
-      gap: 10px;
+      justify-content: flex-end;
     }
 
     .selection-editor {
+      position: absolute;
+      left: 50%;
+      bottom: 43px;
+      z-index: 7;
       min-width: 0;
-      flex: 1;
       display: flex;
       align-items: center;
       gap: 8px;
+      padding: 5px 6px 5px 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 9px;
+      background: rgba(255, 255, 255, 0.97);
+      box-shadow: 0 10px 26px rgba(36, 28, 48, 0.16);
+      transform: translateX(-50%);
+    }
+
+    .selection-editor:not(.visible) {
+      display: none;
     }
 
     .selection-editor-label {
-      max-width: 120px;
+      max-width: 110px;
       overflow: hidden;
       color: var(--ink-soft);
       font-size: 9px;
@@ -1068,22 +1054,22 @@
       display: flex;
       align-items: center;
       gap: 2px;
-      padding: 2px;
-      border: 1px solid var(--line);
+      padding: 0;
+      border: 0;
       border-radius: 6px;
       background: #fff;
     }
 
     .display-mode-button,
     .pin-action-button {
-      height: 23px;
+      height: 26px;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 5px;
       padding: 0 7px;
       border: 0;
-      border-radius: 4px;
+      border-radius: 6px;
       color: #77727d;
       background: transparent;
       font-size: 9px;
@@ -1091,7 +1077,7 @@
     }
 
     .display-mode-button {
-      width: 25px;
+      width: 26px;
       padding: 0;
     }
 
@@ -1111,11 +1097,11 @@
 
     .action-picker {
       position: absolute;
-      top: 58px;
+      top: 54px;
       right: 14px;
       z-index: 8;
-      width: 286px;
-      padding: 8px;
+      width: 276px;
+      padding: 7px;
       border: 1px solid var(--line-strong);
       border-radius: 10px;
       background: #fff;
@@ -1151,7 +1137,7 @@
 
     .action-picker-item {
       min-width: 0;
-      height: 36px;
+      height: 32px;
       display: grid;
       grid-template-columns: 24px minmax(0, 1fr);
       align-items: center;
@@ -1235,52 +1221,17 @@
       background: #fcfcfd;
     }
 
-    .home-top-actions {
-      position: absolute;
-      top: 16px;
-      right: 20px;
-      display: flex;
-      gap: 5px;
-    }
-
-    .home-small-button {
-      width: 32px;
-      height: 32px;
-      display: grid;
-      place-items: center;
-      border: 0;
-      border-radius: 7px;
-      color: #77737c;
-      background: transparent;
-    }
-
-    .home-small-button:hover {
-      color: var(--ink);
-      background: #f0eef2;
-    }
-
-    .home-small-button .icon {
-      width: 17px;
-      height: 17px;
-    }
-
     .home-content {
       width: min(860px, calc(100% - 80px));
       margin: 0 auto;
-      padding: 86px 0 64px;
+      padding: 74px 0 64px;
     }
 
     .home-wordmark {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
-      margin-bottom: 25px;
-    }
-
-    .home-wordmark .prototype-mark {
-      width: 34px;
-      height: 34px;
+      margin-bottom: 20px;
     }
 
     .home-wordmark strong {
@@ -1354,35 +1305,40 @@
     }
 
     .quick-access {
-      display: grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
-      gap: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
     }
 
     .quick-item {
       min-width: 0;
-      padding: 8px 4px;
-      border: 0;
-      border-radius: 10px;
-      background: transparent;
-      text-align: center;
+      height: 34px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 10px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: #f6f5f7;
+      text-align: left;
       cursor: pointer;
     }
 
     .quick-item:hover {
-      background: #f5f3f7;
+      border-color: #e0dce3;
+      background: #efedf1;
     }
 
     .quick-item .action-icon {
-      width: 30px;
-      height: 30px;
-      margin: 0 auto 6px;
-      border-radius: 8px;
+      width: 15px;
+      height: 15px;
+      margin: 0;
+      border-radius: 0;
     }
 
     .quick-item strong,
     .quick-item span {
-      display: block;
+      display: inline-block;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -1395,20 +1351,22 @@
     }
 
     .quick-item span {
-      margin-top: 3px;
+      display: none;
+      margin-top: 0;
       color: var(--ink-faint);
       font-size: 9px;
     }
 
     .quick-item.display-icon {
-      display: grid;
-      min-height: 62px;
-      place-items: center;
+      width: 34px;
+      min-height: 34px;
+      justify-content: center;
+      padding: 0;
     }
 
     .quick-item.display-icon .action-icon {
-      width: 30px;
-      height: 30px;
+      width: 15px;
+      height: 15px;
       margin: 0;
     }
 
@@ -1418,9 +1376,8 @@
     }
 
     .quick-item.display-text {
-      display: grid;
-      min-height: 62px;
-      place-items: center;
+      min-height: 34px;
+      justify-content: center;
     }
 
     .quick-item.display-text .action-icon,
@@ -1619,18 +1576,7 @@
       }
 
       .launcher {
-        height: 460px;
-      }
-
-      .action-tile {
-        height: 68px;
-        padding: 7px 8px 6px;
-      }
-
-      .action-icon {
-        width: 22px;
-        height: 22px;
-        margin-bottom: 4px;
+        height: 360px;
       }
 
       .home-content {
@@ -1685,7 +1631,7 @@
       <span class="prototype-mark"><svg class="icon"><use href="#i-command"/></svg></span>
       <span>
         <strong>Peak Command Center</strong>
-        <small>V5 · configurable waterfall</small>
+        <small>V6 · quiet command canvas</small>
       </span>
     </div>
     <nav class="state-switcher" aria-label="原型状态">
@@ -1698,7 +1644,7 @@
   </header>
 
   <main class="stage">
-    <section class="app-frame" aria-label="Command Center V5 原型">
+    <section class="app-frame" aria-label="Command Center V6 原型">
       <div class="app-titlebar">
         <span class="traffic-lights"><i></i><i></i><i></i></span>
         <span class="app-title">Peak Assistant · Product vault</span>
@@ -1964,11 +1910,7 @@
         <section class="launcher screen" data-screen="manage" aria-label="Command Center Customize">
           <header class="launcher-header">
             <div class="manage-header">
-              <svg class="icon"><use href="#i-sliders"/></svg>
-              <span class="manage-header-copy">
-                <strong>Customize Command Center</strong>
-                <span>Drag groups and actions in place</span>
-              </span>
+              <strong>Customize</strong>
             </div>
             <button class="close-button" aria-label="关闭"><svg class="icon"><use href="#i-x"/></svg></button>
           </header>
@@ -2164,13 +2106,8 @@
           </div>
         </aside>
         <div class="home-main">
-          <div class="home-top-actions">
-            <button class="home-small-button" aria-label="Customize Home"><svg class="icon"><use href="#i-edit"/></svg></button>
-            <button class="home-small-button" aria-label="More"><svg class="icon"><use href="#i-more"/></svg></button>
-          </div>
           <div class="home-content">
             <div class="home-wordmark">
-              <span class="prototype-mark"><svg class="icon"><use href="#i-command"/></svg></span>
               <strong>Home</strong>
             </div>
             <label class="home-search">
@@ -2254,14 +2191,14 @@
       </section>
     </section>
 
-    <section class="design-note" aria-label="V5 design principles">
+    <section class="design-note" aria-label="V6 design principles">
       <div class="note-item">
-        <strong>分组直接铺在画布上</strong>
-        <span>左右两列紧凑向下生长；短标题与一条细分隔线负责分区，不再用大块留白或侧边导航。</span>
+        <strong>按钮服从同一节奏</strong>
+        <span>图标 + 文字、仅图标和仅文字都使用相同高度；差异来自内容，不来自三套尺寸和装饰。</span>
       </div>
       <div class="note-item">
-        <strong>配置直接作用于画布</strong>
-        <span>Customize 可新增、拖动、切换全宽、改变按钮形态并 Pin 到 Home；完整命令目录只在添加动作时临时出现。</span>
+        <strong>编辑控件按需出现</strong>
+        <span>组工具只在 hover / focus 时显示；action 配置只在选中后浮出，日常画布不承担后台编辑器 chrome。</span>
       </div>
       <div class="note-item">
         <strong>Home 是安静的起点</strong>
@@ -2283,6 +2220,7 @@
     const actionPicker = document.getElementById('action-picker');
     const actionPickerSearch = document.getElementById('action-picker-search');
     const actionPickerList = document.getElementById('action-picker-list');
+    const selectionEditor = document.querySelector('.selection-editor');
     const selectionEditorLabel = document.getElementById('selection-editor-label');
     const displayModeButtons = [...document.querySelectorAll('[data-display-mode]')];
     const pinActionButton = document.getElementById('pin-action-button');
@@ -2439,10 +2377,11 @@
 
     function updateSelectionEditor() {
       if (!selectedAction || !selectedAction.isConnected) {
-        selectedAction = manageBoard.querySelector('.manage-tile');
+        selectedAction = null;
       }
 
       if (!selectedAction) {
+        selectionEditor.classList.remove('visible');
         selectionEditorLabel.textContent = 'Select an action';
         pinActionButton.disabled = true;
         displayModeButtons.forEach((button) => {
@@ -2454,6 +2393,7 @@
 
       const mode = selectedAction.dataset.display || 'full';
       const pinned = selectedAction.dataset.pinned === 'true';
+      selectionEditor.classList.add('visible');
       selectionEditorLabel.textContent = getActionName(selectedAction);
       pinActionButton.disabled = false;
       pinActionButton.classList.toggle('active', pinned);
@@ -2471,7 +2411,7 @@
         candidate.classList.remove('selected');
       });
       selectedAction = tile;
-      selectedAction.classList.add('selected');
+      selectedAction?.classList.add('selected');
       updateSelectionEditor();
     }
 
@@ -2812,9 +2752,14 @@
     });
 
     document.addEventListener('click', (event) => {
-      if (actionPicker.hidden) return;
-      if (event.target.closest('.action-picker, .group-add-button')) return;
-      closeActionPicker();
+      if (!actionPicker.hidden && !event.target.closest('.action-picker, .group-add-button')) {
+        closeActionPicker();
+      }
+
+      const customizeActive = document.querySelector('[data-screen="manage"]').classList.contains('active');
+      if (!customizeActive) return;
+      if (event.target.closest('.selection-editor, .manage-tile, .group-tools')) return;
+      selectAction(null);
     });
 
     manageBoard.addEventListener('dragstart', (event) => {
@@ -2933,7 +2878,8 @@
     });
 
     renderActionPicker();
-    selectAction(manageBoard.querySelector('.manage-tile.selected') || manageBoard.querySelector('.manage-tile'));
+    manageBoard.querySelectorAll('.manage-tile.selected').forEach((tile) => tile.classList.remove('selected'));
+    selectAction(null);
     syncConfiguredViews();
   </script>
 </body>
