@@ -8,6 +8,13 @@
 
 Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding → 配置 → Chat → Search → Graph 每个环节都能跑通，体验完整。同时推进技术债清理和架构重构。
 
+## 2026-07-30 · Graph 边方向真值修复
+
+- [x] **File Atlas 方向恢复**：邻域图不再把 incoming backlink 强制改造成“当前文档 → 邻居”；一跳和二跳都按索引中的真实 `from/to` 构图，`A-2-processing → AI-peak-assistant-obsidian` 与 Vault/SQLite 真值一致。
+- [x] **统一 edge directionality**：新增 `directed / undirected / bidirectional` 契约；互相引用合并为双向边，semantic、contrasts、complements、cross-domain 关系按无向边处理。
+- [x] **跨 surface 收口**：Sources Graph 不再把数据库边降成无向邻居后按遍历顺序重建；Cytoscape 与 MultiLens/ReactFlow 都按 directionality 显示单向箭头、双箭头或无箭头，Mermaid 导出同步。
+- [x] **验证与提交**：4 组 focused graph suites 全部通过；`npm run build` 及 bundle/simulator boundary 检查通过。全量测试为 `378/382`，4 个失败来自未触碰的 Chat Studio/Composer 契约。当前无 Obsidian CDP listener，真实交互标记为 `INTERACTION NOT VERIFIED`。实现提交：`a3b221bc`（`fix: preserve graph edge directions`）。
+
 ## 2026-07-29 · AI Search Simulator 独立 sidecar
 
 - [x] **独立 Provider 进程**：AI Search Simulator 从插件进程内 mock 迁到 `tools/ai-search-simulator/`；`npm run simulator` 单独启动，`npm run dev:simulator` 同时启动插件 watchers 与独立 sidecar。
