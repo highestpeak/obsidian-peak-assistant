@@ -14,6 +14,7 @@ import { streamWithRepetitionGuard, detectRepetition } from './stream-utils';
 import type { DebugRunHandle, DebugTracePort } from '@/core/debug-trace';
 import {
 	type AnalysisSectionToolUse,
+	recordAnalysisArtifact,
 	recordAnalysisPlan,
 	recordAnalysisSectionGeneration,
 	recordAnalysisSkip,
@@ -70,10 +71,22 @@ export class ReportOrchestrator {
         return this.activeDebugRun;
     }
 
-    /** Seal the currently-open analyze debug run, if any. */
-    sealActiveDebugRun(status: 'completed' | 'failed' | 'cancelled' = 'completed'): void {
+    /**
+     * Seal the currently-open analyze debug run, optionally recording the
+     * machine-record path produced by milestone persistence first.
+     */
+    sealActiveDebugRun(
+        status: 'completed' | 'failed' | 'cancelled' = 'completed',
+        artifactPath?: string,
+    ): void {
         if (!this.activeDebugRun) return;
         try {
+            if (artifactPath) {
+                recordAnalysisArtifact(this.activeDebugRun, {
+                    path: artifactPath,
+                    kind: 'analysis-record',
+                });
+            }
             this.activeDebugRun.finish(status);
         } finally {
             this.activeDebugRun = null;

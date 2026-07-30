@@ -35,8 +35,9 @@ export function composeQuickSearchHost(
 	const search = settings.search;
 
 	// Closure-owned handle to the most recent ReportOrchestrator so
-	// saveAnalysisToVault can reach for its still-open debug run and attach
-	// an artifact.write span before sealing it.
+	// saveAnalysisToVault can attach an artifact.write span to a still-open
+	// debug run. The report flow owns final sealing after generation and
+	// milestone persistence; an export must never commit a partial trace.
 	let lastOrchestrator: ReportOrchestrator | null = null;
 	const fileAtlasHost = composeFileAtlasHost(appContext);
 
@@ -88,11 +89,9 @@ export function composeQuickSearchHost(
 		}),
 		createGraphAgent: () => new GraphAgent(app, plugin.manifest.id),
 		createContextProvider: () => new ContextProvider(app),
-		// Debug trace plumbing: the save site records an artifact.write span
-		// on the orchestrator's still-open debug run before sealing it. We
-		// remember the most recently constructed orchestrator here so the
-		// save callback can reach the active run without changing the
-		// host contract.
+		// Debug trace plumbing: remember the most recently constructed
+		// orchestrator so explicit Markdown export can attach an artifact span.
+		// Final sealing remains with useSearchSession.handleApprovePlan.
 		createReportOrchestrator: () => {
 			const orch = new ReportOrchestrator(
 				manager,
@@ -176,7 +175,6 @@ export function composeQuickSearchHost(
 					path: result.path,
 					kind: 'report',
 				});
-				lastOrchestrator?.sealActiveDebugRun('completed');
 			}
 			return result;
 		},

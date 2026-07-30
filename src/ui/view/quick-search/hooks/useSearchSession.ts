@@ -26,7 +26,10 @@ import type { StreamConsumerContext } from './streamConsumer';
 import { useEventRouter } from './useEventRouter';
 import { useContinueAnalysis } from './useContinueAnalysis';
 import { consumeFollowupStream, streamSearchFollowup } from './useAIAnalysisPostAIInteractions';
-import { persistSessionToVault } from '@/service/search/analysisDocPersistence';
+import {
+	persistSessionToVault,
+	type PersistSessionResult,
+} from '@/service/search/analysisDocPersistence';
 import type { AnalysisDocVaultWriterPort } from '@/core/ports/AnalysisDocVaultWriterPort';
 import type { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import type { EventBus } from '@/core/eventBus';
@@ -77,10 +80,10 @@ function buildReportDirectionContext(outline: string | null, directions: string[
  * `vaultWriter` from `useServiceContext()` so this helper no longer reaches
  * `AppContext.getInstance()`.
  */
-export function persistForegroundSession(
+export async function persistForegroundSession(
 	deps: PersistForegroundSessionDeps,
 	existingPath?: string | null,
-): void {
+): Promise<PersistSessionResult | null> {
 	const store = useSearchSessionStore.getState();
 	const snapshot = snapshotFromState(store);
 	const resolvedExistingPath =
@@ -103,7 +106,7 @@ export function persistForegroundSession(
 		}
 	} catch { /* graph stores not available */ }
 
-	void persistSessionToVault(snapshot, {
+	const result = await persistSessionToVault(snapshot, {
 		vaultWriter: deps.vaultWriter,
 		existingPath: resolvedExistingPath,
 		graphJson,
@@ -112,11 +115,11 @@ export function persistForegroundSession(
 		historyService: deps.historyService,
 		eventBus: deps.eventBus,
 		rootFolder: deps.settings.ai.rootFolder,
-	}).then((result) => {
-		if (result) {
-			useSearchSessionStore.getState().setAutoSaveState({ lastSavedPath: result.path });
-		}
 	});
+	if (result) {
+		useSearchSessionStore.getState().setAutoSaveState({ lastSavedPath: result.path });
+	}
+	return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -285,7 +288,7 @@ export function useSearchSession() {
 				useAIGraphStore.getState().setLoading(false);
 				store.getState().markCompleted();
 				// Persist graph to markdown — aiGraph mode produces the graph as its primary result
-				persistForegroundSession(persistDeps);
+				void persistForegroundSession(persistDeps);
 				return;
 			}
 
@@ -359,10 +362,13 @@ export function useSearchSession() {
 
 		// Mark plan as approved — this is the user's explicit action
 		store.getState().approvePlan();
+		store.getState().setReportDebugRunId(null);
 		// Report is the generation surface. Keep Activity available in the
 		// footer, but stream each section directly into its final report slot.
 		store.getState().setV2View('report');
 
+		let traceStatus: 'completed' | 'failed' = 'failed';
+		let artifactPath: string | undefined;
 		try {
 			// B2.analysis (2026-07-03): route report generation through
 			// the RunEnvelope so each user "approve plan" click becomes
@@ -381,9 +387,21 @@ export function useSearchSession() {
 				},
 			});
 			// Milestone: report fully generated — persist to vault
-			persistForegroundSession(persistDeps, store.getState().autoSaveState.lastSavedPath);
+			const persisted = await persistForegroundSession(
+				persistDeps,
+				store.getState().autoSaveState.lastSavedPath,
+			);
+			artifactPath = persisted?.path;
+			traceStatus = 'completed';
 		} catch (err: any) {
 			store.getState().recordError(err?.message ?? 'Report generation failed');
+		} finally {
+			const debugRun = reportOrchestrator.getActiveDebugRun();
+			if (debugRun) {
+				const runId = debugRun.runId;
+				reportOrchestrator.sealActiveDebugRun(traceStatus, artifactPath);
+				store.getState().setReportDebugRunId(runId);
+			}
 		}
 	}, []);
 
@@ -406,7 +424,7 @@ export function useSearchSession() {
 				userPrompt,
 			);
 			// Persist updated section to vault
-			persistForegroundSession(persistDeps, store.getState().autoSaveState.lastSavedPath);
+			void persistForegroundSession(persistDeps, store.getState().autoSaveState.lastSavedPath);
 		} catch (err: any) {
 			store.getState().failSection(sectionId, err?.message ?? 'Regeneration failed');
 		}
@@ -457,7 +475,7 @@ export function useSearchSession() {
 		if (!answer.trim()) throw new Error('No follow-up answer generated');
 
 		store.getState().addSectionFollowup(sectionId, { question, answer });
-		persistForegroundSession(persistDeps, store.getState().autoSaveState.lastSavedPath);
+		void persistForegroundSession(persistDeps, store.getState().autoSaveState.lastSavedPath);
 		return answer;
 	}, [host, manager, persistDeps, store]);
 

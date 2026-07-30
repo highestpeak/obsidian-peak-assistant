@@ -25,7 +25,6 @@ const AI_SEARCH_FIXED_GEOMETRY_FILES = [
 	'src/ui/view/quick-search/components/V2SourcesView.tsx',
 	'src/ui/view/quick-search/components/V2ReportView.tsx',
 	'src/ui/view/quick-search/components/V2ContinueAnalysisInput.tsx',
-	'src/ui/view/quick-search/components/V2ProcessView.tsx',
 	'src/ui/view/quick-search/components/ActiveSessionsList.tsx',
 	'src/ui/view/quick-search/components/inspector/InspectorSidePanel.tsx',
 	'src/ui/view/quick-search/SearchModal.tsx',

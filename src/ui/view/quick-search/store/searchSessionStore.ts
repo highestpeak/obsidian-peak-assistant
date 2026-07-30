@@ -118,6 +118,8 @@ interface SearchSessionState extends V2SessionState {
 	phaseUsages: Array<{ phase: string; modelId: string; inputTokens: number; outputTokens: number }>;
 	/** Raw agent event log for debug export: tool calls, reasoning, plan messages */
 	agentDebugLog: Array<{ ts: number; type: string; taskIndex?: number; data: Record<string, unknown> }>;
+	/** Runtime-only ID for the current round's committed report-generation trace. */
+	reportDebugRunId: string | null;
 	title: string | null;
 	error: string | null;
 	analysisMode: AnalysisMode;
@@ -156,6 +158,7 @@ interface SearchSessionActions {
 	accumulateUsage: (usage: LLMUsage) => void;
 	addPhaseUsage: (usage: { phase: string; modelId: string; inputTokens: number; outputTokens: number }) => void;
 	appendAgentDebugLog: (entry: { type: string; taskIndex?: number; data: Record<string, unknown> }) => void;
+	setReportDebugRunId: (runId: string | null) => void;
 	setDuration: (duration: number) => void;
 	setHasAnalyzed: (v: boolean) => void;
 	setDashboardUpdatedLine: (line: string) => void;
@@ -238,6 +241,7 @@ const INITIAL_STATE: SearchSessionState = {
 	usage: null,
 	phaseUsages: [],
 	agentDebugLog: [],
+	reportDebugRunId: null,
 	title: null,
 	error: null,
 	analysisMode: 'vaultFull',
@@ -287,6 +291,7 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 			startedAt: ts,
 			duration: null,
 			usage: null,
+			reportDebugRunId: null,
 			title: null,
 			error: null,
 			runAnalysisMode: analysisMode,
@@ -415,6 +420,7 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 			return { agentDebugLog: [...trimmed, { ts: now, ...entry }] };
 		});
 	},
+	setReportDebugRunId: (runId) => set({ reportDebugRunId: runId }),
 	setDuration: (duration) => set({ duration }),
 	setHasAnalyzed: (v) => set({ hasAnalyzed: v }),
 	setDashboardUpdatedLine: (line) => set({ dashboardUpdatedLine: line ?? '' }),
@@ -666,6 +672,7 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 	startContinueRound: (followUpQuery) => set(() => ({
 		query: followUpQuery,
 		status: 'starting' as const,
+		reportDebugRunId: null,
 		hasStartedStreaming: false,
 		v2Steps: [],
 		v2Timeline: [],
@@ -762,6 +769,7 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 		restoredFromHistory: false,
 		restoredFromVaultPath: null,
 		isInputFrozen: false,
+		reportDebugRunId: null,
 		// Clear function refs (not serializable)
 		hitlFeedbackCallback: null,
 		// Preserve UI-only fields at their defaults

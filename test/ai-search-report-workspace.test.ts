@@ -160,6 +160,17 @@ assert(reportFooter.includes('buildReportTextFromParts(state.rounds'));
 assert(reportFooter.includes('formatProcessSteps(round.steps)'));
 assert(reportFooter.includes('Ask follow-up'));
 assert(reportFooter.includes("v2View !== 'report'"));
+assert(reportFooter.includes('<span>Debug trace</span>'));
+assert(reportFooter.includes('debugTracePort.getRun(reportDebugRunId)'));
+assert(reportFooter.includes('copyDebugTrace(reportDebugRunId)'));
+assert(!reportFooter.includes('listRecent('));
+
+const processView = readFileSync(
+	'src/ui/view/quick-search/components/V2ProcessView.tsx',
+	'utf8',
+);
+assert(!processView.includes('ActivityDebugTraceButton'));
+assert(!processView.includes('Copy activity trace'));
 
 const resultWorkspace = readFileSync(
 	'src/ui/view/quick-search/components/V2SearchResultView.tsx',
@@ -188,6 +199,16 @@ const sessionHook = readFileSync(
 );
 assert(sessionHook.includes('User report directions:'));
 assert(sessionHook.includes('state.v2UserInsights'));
+assert(sessionHook.includes('reportOrchestrator.getActiveDebugRun()'));
+assert(sessionHook.includes('reportOrchestrator.sealActiveDebugRun(traceStatus, artifactPath)'));
+assert(sessionHook.includes('setReportDebugRunId(runId)'));
+
+const quickSearchHost = readFileSync(
+	'src/app/search/composeQuickSearchHost.ts',
+	'utf8',
+);
+assert(quickSearchHost.includes('recordAnalysisArtifact(debugRun'));
+assert(!quickSearchHost.includes("lastOrchestrator?.sealActiveDebugRun('completed')"));
 
 const sessionStore = readFileSync(
 	'src/ui/view/quick-search/store/searchSessionStore.ts',
@@ -195,6 +216,7 @@ const sessionStore = readFileSync(
 );
 assert(sessionStore.includes('const frozenIds = new Set('));
 assert(sessionStore.includes('v2UserInsights: []'));
+assert(sessionStore.includes('reportDebugRunId: null'));
 
 const graphHook = readFileSync(
 	'src/ui/view/quick-search/hooks/useGraphAgent.ts',

@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Save, Copy, MessageSquare, Check, ExternalLink, Sparkles, Activity, Eye, FileText, List, FileSearch, Network, Download } from 'lucide-react';
+import { Save, Copy, MessageSquare, Check, ExternalLink, Sparkles, Activity, Eye, FileText, List, FileSearch, Network, Download, Bug } from 'lucide-react';
 import { V2TableOfContents } from './V2TableOfContents';
 import { Button } from '@/ui/component/shared-ui/button';
+import { useServiceContext } from '@/ui/context/ServiceContext';
+import { useDebugTraceCopy } from '@/ui/hooks/useDebugTraceCopy';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import { exportGraphJson, useAIGraphStore } from '../store/aiGraphStore';
 import { useQuickSearchHost } from '../hooks/useQuickSearchHost';
@@ -86,6 +88,8 @@ export const V2Footer: React.FC<{
 	onOpenInChat: () => void;
 }> = ({ onContinue, onSynthesize, onSave, onSaveGraph, onOpenInChat }) => {
 	const host = useQuickSearchHost();
+	const { debugTracePort } = useServiceContext();
+	const copyDebugTrace = useDebugTraceCopy();
 	const v2View = useSearchSessionStore((s) => s.v2View);
 	const usage = useSearchSessionStore((s) => s.usage);
 	const duration = useSearchSessionStore((s) => s.duration);
@@ -94,11 +98,12 @@ export const V2Footer: React.FC<{
 	const v2PlanSections = useSearchSessionStore((s) => s.v2PlanSections);
 	const v2Summary = useSearchSessionStore((s) => s.v2Summary);
 	const v2SummaryStreaming = useSearchSessionStore((s) => s.v2SummaryStreaming);
+	const reportDebugRunId = useSearchSessionStore((s) => s.reportDebugRunId);
 	const lastSavedPath = useSearchSessionStore((s) => s.autoSaveState.lastSavedPath);
 	const hasGraphData = useAIGraphStore((s) => s.graphData !== null);
 	const [showToc, setShowToc] = useState(false);
 	const [showCopyMenu, setShowCopyMenu] = useState(false);
-	const [copied, setCopied] = useState<CopyTarget | 'default' | null>(null);
+	const [copied, setCopied] = useState<CopyTarget | 'debug' | null>(null);
 	const copyMenuRef = useRef<HTMLDivElement>(null);
 	const copyBtnRef = useRef<HTMLButtonElement>(null);
 	const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -108,6 +113,11 @@ export const V2Footer: React.FC<{
 		v2PlanSections,
 		v2Summary,
 		v2SummaryStreaming,
+	);
+	const canCopyDebugTrace = Boolean(
+		debugTracePort?.isEnabled()
+		&& reportDebugRunId
+		&& debugTracePort.getRun(reportDebugRunId),
 	);
 
 	const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
@@ -135,6 +145,14 @@ export const V2Footer: React.FC<{
 	const handleDefaultCopy = useCallback(() => {
 		void doCopy(defaultCopyTarget);
 	}, [doCopy, defaultCopyTarget]);
+
+	const handleDebugTraceCopy = useCallback(async () => {
+		if (!reportDebugRunId) return;
+		await copyDebugTrace(reportDebugRunId);
+		setCopied('debug');
+		setShowCopyMenu(false);
+		setTimeout(() => setCopied(null), 1200);
+	}, [copyDebugTrace, reportDebugRunId]);
 
 	// Close menu when clicking outside
 	useEffect(() => {
@@ -267,6 +285,23 @@ export const V2Footer: React.FC<{
 									{copied === id && <Check className="pktw-w-3 pktw-h-3 pktw-text-pk-success pktw-ml-auto" />}
 								</Button>
 							))}
+							{canCopyDebugTrace && (
+								<>
+									<div className="pktw-my-1 pktw-border-t pktw-border-pk-border" />
+									<Button
+										variant="ghost"
+										size="sm"
+										geometry="toolbar-full"
+										onClick={() => { void handleDebugTraceCopy(); }}
+										className="pktw-w-full pktw-justify-start pktw-gap-2 pktw-rounded-none pktw-text-sm pktw-text-pk-foreground-muted"
+										title="Copy report generation debug trace"
+									>
+										<Bug className="pktw-h-4 pktw-w-4" />
+										<span>Debug trace</span>
+										{copied === 'debug' && <Check className="pktw-w-3 pktw-h-3 pktw-text-pk-success pktw-ml-auto" />}
+									</Button>
+								</>
+							)}
 						</div>
 					)}
 				</div>

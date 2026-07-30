@@ -1,38 +1,9 @@
 import React, { useRef, useEffect } from 'react';
-import { Loader2, Brain, Bug } from 'lucide-react';
-import { useDebugTraceCopy } from '@/ui/hooks/useDebugTraceCopy';
-import { useServiceContext } from '@/ui/context/ServiceContext';
-import { Button } from '@/ui/component/shared-ui/button';
+import { Loader2, Brain } from 'lucide-react';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import { V2RoundBlock } from './V2RoundBlock';
 import { V2InlinePlanReview } from './V2InlinePlanReview';
 import { V2ActivitySummary } from './V2ActivitySummary';
-
-const ActivityDebugTraceButton: React.FC = () => {
-    const { debugTracePort } = useServiceContext();
-    const copyDebugTrace = useDebugTraceCopy();
-    if (!debugTracePort?.isEnabled()) return null;
-    return (
-        <div className="pktw-flex pktw-justify-end pktw-px-1 pktw-pb-1">
-            <Button
-                variant="ghost"
-                size="sm"
-                geometry="toolbar"
-                className="pktw-gap-1.5 pktw-text-xs pktw-text-pk-foreground-faint"
-                title="Copy analyze activity debug trace"
-                aria-label="Copy analyze activity debug trace"
-                onClick={() => {
-                    const recent = debugTracePort.listRecent(5);
-                    const analyzeRun = recent.find((run) => run.surface === 'analyze');
-                    void copyDebugTrace(analyzeRun?.runId);
-                }}
-            >
-                <Bug className="pktw-w-4 pktw-h-4" />
-                Copy activity trace
-            </Button>
-        </div>
-    );
-};
 
 export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove }) => {
     const rounds = useSearchSessionStore((s) => s.rounds);
@@ -76,7 +47,6 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
 
     return (
         <div ref={scrollRef} className="pktw-py-2 pktw-px-1">
-            <ActivityDebugTraceButton />
             {/* Frozen rounds */}
             {rounds.map((round) => (
                 <V2RoundBlock

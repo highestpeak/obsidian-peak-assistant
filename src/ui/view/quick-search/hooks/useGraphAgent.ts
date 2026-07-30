@@ -14,7 +14,7 @@ function persistAfterGraphReady(deps: PersistForegroundSessionDeps): void {
 	const sessionStatus = useSearchSessionStore.getState().status;
 	if (sessionStatus !== 'completed') return;
 	void import('./useSearchSession').then(({ persistForegroundSession }) => {
-		persistForegroundSession(deps);
+		return persistForegroundSession(deps);
 	}).catch((e) => console.warn('[useGraphAgent] persist after graph failed:', e));
 }
 
