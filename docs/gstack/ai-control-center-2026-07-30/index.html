@@ -1,0 +1,1140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak · AI Control Center design mock</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f5f3;
+      --surface: #ffffff;
+      --surface-2: #fafaf8;
+      --surface-3: #f1f1ee;
+      --line: #e3e3df;
+      --line-strong: #d2d2cc;
+      --text: #282825;
+      --muted: #73736d;
+      --subtle: #989890;
+      --accent: #6557c8;
+      --accent-soft: #f0edff;
+      --green: #317259;
+      --green-soft: #e9f4ed;
+      --amber: #8a641e;
+      --amber-soft: #fbf1dc;
+      --red: #9b4545;
+      --red-soft: #faebeb;
+      --blue: #366f9c;
+      --blue-soft: #eaf2f8;
+      --radius: 8px;
+      --font: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body { color: var(--text); background: var(--bg); font: 13px/1.45 var(--font); }
+    button, input { color: inherit; font: inherit; }
+    button { cursor: pointer; }
+    svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .hidden { display: none !important; }
+
+    .app {
+      display: grid;
+      grid-template-rows: 40px minmax(0, 1fr);
+      width: 100vw;
+      height: 100vh;
+      background: var(--surface);
+    }
+
+    .tabbar {
+      display: flex;
+      align-items: stretch;
+      padding-left: 48px;
+      border-bottom: 1px solid #d8d8d4;
+      background: #ececea;
+    }
+
+    .obsidian-tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 220px;
+      padding: 0 14px;
+      background: var(--surface);
+      border-top: 2px solid var(--accent);
+      border-right: 1px solid #d8d8d4;
+      font-weight: 620;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(250px, 1fr) auto minmax(260px, 370px);
+      gap: 18px;
+      align-items: center;
+      min-height: 56px;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .title {
+      display: flex;
+      align-items: baseline;
+      min-width: 0;
+      gap: 10px;
+    }
+
+    .title strong { font-size: 16px; white-space: nowrap; }
+    .title span { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .workspace-tabs {
+      display: flex;
+      gap: 3px;
+      padding: 3px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface-2);
+    }
+
+    .workspace-tab {
+      height: 28px;
+      padding: 0 11px;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .workspace-tab.active {
+      color: var(--text);
+      background: var(--surface);
+      box-shadow: 0 1px 3px rgba(30, 30, 28, .12);
+    }
+
+    .search {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .search svg { position: absolute; left: 10px; color: var(--subtle); pointer-events: none; }
+    .search input {
+      width: 100%;
+      height: 34px;
+      padding: 0 12px 0 34px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      outline: 0;
+      background: var(--surface-2);
+    }
+
+    .search input:focus {
+      border-color: #aaa1dc;
+      background: white;
+      box-shadow: 0 0 0 2px var(--accent-soft);
+    }
+
+    .shell {
+      display: grid;
+      grid-template-rows: 56px minmax(0, 1fr);
+      min-height: 0;
+    }
+
+    .summarybar {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      min-width: 0;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface-2);
+    }
+
+    .summary-stat { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+    .summary-stat strong { font-size: 15px; }
+    .summary-stat span { color: var(--muted); }
+    .summary-note {
+      margin-left: auto;
+      color: var(--subtle);
+      font-size: 11px;
+      font-family: var(--mono);
+      white-space: nowrap;
+    }
+
+    .body {
+      display: grid;
+      grid-template-columns: 224px minmax(330px, 430px) minmax(520px, 1fr);
+      min-height: 0;
+    }
+
+    .rail, .list, .inspector { min-height: 0; overflow: auto; }
+    .rail { padding: 14px 10px; border-right: 1px solid var(--line); background: var(--surface-2); }
+    .list { border-right: 1px solid var(--line); background: var(--surface); }
+    .inspector { background: var(--surface); }
+
+    .rail-title {
+      padding: 0 9px 8px;
+      color: var(--subtle);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .rail-button {
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      width: 100%;
+      min-height: 36px;
+      padding: 7px 9px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      text-align: left;
+    }
+
+    .rail-button:hover { background: var(--surface-3); }
+    .rail-button.active { color: var(--accent); background: var(--accent-soft); }
+    .rail-button small { color: var(--subtle); }
+    .rail-separator { height: 1px; margin: 12px 8px; background: var(--line); }
+
+    .list-head {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      padding: 15px 16px 12px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, .96);
+    }
+
+    .list-head strong { display: block; font-size: 14px; }
+    .list-head span { display: block; margin-top: 3px; color: var(--muted); }
+
+    .rows { padding: 6px; }
+    .row {
+      display: grid;
+      grid-template-columns: 32px minmax(0, 1fr) auto;
+      gap: 10px;
+      width: 100%;
+      padding: 10px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      text-align: left;
+    }
+
+    .row:hover { background: var(--surface-2); }
+    .row.active { background: var(--accent-soft); }
+    .row-icon {
+      display: grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: white;
+      color: var(--muted);
+    }
+
+    .row.active .row-icon { color: var(--accent); border-color: #cfc8f1; }
+    .row-copy { min-width: 0; }
+    .row-title { display: block; overflow: hidden; font-weight: 650; white-space: nowrap; text-overflow: ellipsis; }
+    .row-meta { display: block; margin-top: 3px; overflow: hidden; color: var(--muted); white-space: nowrap; text-overflow: ellipsis; }
+    .row-id { display: block; margin-top: 5px; overflow: hidden; color: var(--subtle); font: 10px var(--mono); white-space: nowrap; text-overflow: ellipsis; }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      height: 20px;
+      padding: 0 7px;
+      border-radius: 999px;
+      background: var(--surface-3);
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .pill.green { color: var(--green); background: var(--green-soft); }
+    .pill.amber { color: var(--amber); background: var(--amber-soft); }
+    .pill.red { color: var(--red); background: var(--red-soft); }
+    .pill.blue { color: var(--blue); background: var(--blue-soft); }
+    .pill.purple { color: var(--accent); background: var(--accent-soft); }
+
+    .inspector-head {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      padding: 18px 22px 0;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, .97);
+    }
+
+    .breadcrumbs { color: var(--muted); font-size: 11px; }
+    .inspector-title-row { display: flex; align-items: flex-start; gap: 12px; margin-top: 7px; }
+    .inspector-title-row h1 { flex: 1; margin: 0; font-size: 21px; line-height: 1.25; }
+    .inspector-subtitle { max-width: 820px; margin: 7px 0 14px; color: var(--muted); font-size: 13px; }
+    .inspector-tabs { display: flex; gap: 18px; }
+    .inspector-tab {
+      height: 34px;
+      padding: 0;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 620;
+    }
+
+    .inspector-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .panel { display: none; padding: 20px 22px 80px; }
+    .panel.active { display: block; }
+
+    .section { margin-bottom: 24px; }
+    .section h2 { margin: 0 0 10px; font-size: 14px; }
+    .section p { margin: 0; color: var(--muted); }
+    .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .card { padding: 13px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); }
+    .card strong { display: block; margin-bottom: 4px; }
+    .card span { color: var(--muted); }
+
+    .facts {
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr);
+      margin: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .facts dt, .facts dd { margin: 0; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+    .facts dt { color: var(--muted); background: var(--surface-2); }
+    .facts dd { min-width: 0; }
+    .facts dt:last-of-type, .facts dd:last-of-type { border-bottom: 0; }
+    code { font-family: var(--mono); font-size: 11px; }
+
+    .notice {
+      display: flex;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid #dcd6f5;
+      border-radius: var(--radius);
+      color: #514797;
+      background: var(--accent-soft);
+    }
+
+    .notice svg { flex: 0 0 auto; margin-top: 1px; }
+    .flow { display: grid; gap: 10px; }
+    .flow-stage {
+      display: grid;
+      grid-template-columns: 108px minmax(0, 1fr);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .flow-label {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 12px;
+      border-right: 1px solid var(--line);
+      background: var(--surface-2);
+      font-weight: 700;
+    }
+
+    .steps { display: grid; gap: 0; }
+    .step {
+      display: grid;
+      grid-template-columns: 24px minmax(0, 1fr) auto;
+      gap: 9px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .step:last-child { border-bottom: 0; }
+    .step-num { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; color: var(--muted); background: var(--surface-3); font-size: 10px; font-weight: 700; }
+    .step strong { display: block; }
+    .step span { display: block; margin-top: 2px; color: var(--muted); }
+
+    .prompt-box {
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface-2);
+    }
+
+    .prompt-box + .prompt-box { margin-top: 9px; }
+    .prompt-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .prompt-body { margin-top: 9px; padding: 11px; border: 1px solid var(--line); border-radius: 6px; background: white; color: #50504b; font: 11px/1.55 var(--mono); white-space: pre-wrap; }
+
+    .route {
+      display: grid;
+      grid-template-columns: 20px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      margin-top: 9px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface-2);
+    }
+
+    .route.active { border-color: #cfc8f1; background: var(--accent-soft); }
+    .route input { accent-color: var(--accent); }
+    .route strong, .route span { display: block; }
+    .route span { color: var(--muted); }
+    .route-effective { text-align: right; }
+    .route-effective code { display: block; color: var(--text); margin-top: 3px; }
+
+    .run {
+      display: grid;
+      grid-template-columns: 10px minmax(0, 1fr) auto;
+      gap: 11px;
+      padding: 11px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .run:last-child { border-bottom: 0; }
+    .run-dot { width: 8px; height: 8px; margin-top: 5px; border-radius: 50%; background: var(--green); }
+    .run.failed .run-dot { background: var(--red); }
+    .run strong, .run span { display: block; }
+    .run span { margin-top: 2px; color: var(--muted); }
+    .run-meta { color: var(--muted); text-align: right; white-space: nowrap; }
+
+    .model-slots { display: grid; gap: 8px; }
+    .model-slot {
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface-2);
+    }
+
+    .model-slot strong, .model-slot span { display: block; }
+    .model-slot span { color: var(--muted); }
+    .link-button {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: var(--accent);
+      font-weight: 620;
+    }
+
+    .empty { padding: 30px 18px; color: var(--muted); text-align: center; }
+    .design-note {
+      position: fixed;
+      right: 12px;
+      bottom: 10px;
+      z-index: 20;
+      padding: 5px 8px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      color: var(--subtle);
+      background: rgba(255,255,255,.92);
+      font: 10px var(--mono);
+    }
+
+    @media (max-width: 1120px) {
+      .body { grid-template-columns: 190px 340px minmax(460px, 1fr); }
+      .topbar { grid-template-columns: 1fr auto; }
+      .search { display: none; }
+      .cards { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="tabbar">
+      <div class="obsidian-tab">
+        <svg viewBox="0 0 24 24"><path d="M12 3 4.5 7.3v9.4L12 21l7.5-4.3V7.3z"/><path d="m8 11 2.5 2.5L16 8"/></svg>
+        <span>AI Control Center</span>
+      </div>
+    </div>
+
+    <div class="shell">
+      <header class="topbar">
+        <div class="title">
+          <strong>AI Control Center</strong>
+          <span>Capabilities, prompts, model routing, and runs</span>
+        </div>
+        <nav class="workspace-tabs" aria-label="AI Control Center workspaces">
+          <button class="workspace-tab active" data-workspace="capabilities">Capabilities</button>
+          <button class="workspace-tab" data-workspace="prompts">Prompts</button>
+          <button class="workspace-tab" data-workspace="models">Models &amp; routing</button>
+          <button class="workspace-tab" data-workspace="runs">Runs</button>
+        </nav>
+        <label class="search">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
+          <input id="searchInput" type="search" placeholder="Search capability, prompt, model, or run…">
+        </label>
+      </header>
+
+      <div class="summarybar" id="summarybar">
+        <div class="summary-stat"><strong id="summaryPrimary">9</strong><span id="summaryPrimaryLabel">representative capabilities</span></div>
+        <div class="summary-stat"><strong>7</strong><span>execution shapes</span></div>
+        <div class="summary-stat"><strong>4</strong><span>evidence levels shown</span></div>
+        <span class="summary-note">Design fixture · counts are illustrative</span>
+      </div>
+
+      <div class="body">
+        <aside class="rail" id="rail"></aside>
+        <section class="list">
+          <div class="list-head"><strong id="listTitle">All capabilities</strong><span id="listDescription">What Peak asks AI to do, grouped by product behavior.</span></div>
+          <div class="rows" id="rows"></div>
+        </section>
+        <main class="inspector" id="inspector"></main>
+      </div>
+    </div>
+  </div>
+
+  <div class="design-note">Design mock · no product settings are changed</div>
+
+  <script>
+    const icons = {
+      search: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>',
+      spark: '<svg viewBox="0 0 24 24"><path d="m12 3 1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z"/><path d="m18 15 .8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z"/></svg>',
+      graph: '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="m7 11 9-4M7 13l9 4"/></svg>',
+      file: '<svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 13h6M9 17h5"/></svg>',
+      message: '<svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg>',
+      vault: '<svg viewBox="0 0 24 24"><path d="m12 3 7 4v10l-7 4-7-4V7z"/><path d="m8 9 4 2 4-2M12 11v6"/></svg>',
+      image: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m4 17 5-5 4 4 2-2 5 5"/></svg>',
+      database: '<svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v7c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12v7c0 1.7 3.6 3 8 3s8-1.3 8-3v-7"/></svg>',
+      prompt: '<svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h6M8 16h4"/></svg>',
+      model: '<svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 9h6v6H9zM9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>',
+      run: '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',
+      alert: '<svg viewBox="0 0 24 24"><path d="M12 3 2.8 19h18.4z"/><path d="M12 9v4M12 17h.01"/></svg>',
+      all: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><rect x="14" y="14" width="6" height="6"/></svg>'
+    };
+
+    const capabilities = [
+      {
+        id: 'search.query.refine',
+        title: 'Vault Search · Refine',
+        group: 'search',
+        icon: 'search',
+        surface: 'Vault Search',
+        shape: 'Single structured call',
+        status: 'partial',
+        route: 'Fast Lookup',
+        description: 'Turn the current query and recent search behavior into grounded Hyper Search candidates without starting AI Search.',
+        success: 'Shows 3–5 valid query candidates with short grounding reasons. Selecting one fills the search box; it does not silently run a new search.',
+        mustNot: 'Must not invent Vault folders, block the normal search path, or present rule fallback as an LLM result.',
+        prompts: ['query-rewrite-system', 'query-rewrite'],
+        tools: ['Behavior event snapshot', 'Known Vault folders'],
+        output: 'Structured query candidates',
+        review: 'Candidate picker',
+        evidence: ['Registered', 'Referenced', 'Reachable'],
+        before: [
+          ['Collect current state', 'Query, active file, recent queries, known folders, and modal behavior events.'],
+          ['Resolve model', 'Fast Lookup → Agent Fast → Conversation fallback.'],
+          ['Render prompt pair', 'Query Rewrite system + user variables.']
+        ],
+        during: [
+          ['Generate candidates', 'One structured provider call; no AgentLoop and no tools.'],
+          ['Fallback', 'Rule-based candidates when the provider call fails or returns no usable output.']
+        ],
+        after: [
+          ['Validate syntax', 'Reject malformed candidates and unsupported operators.'],
+          ['Present choice', 'User chooses a candidate; current query is not overwritten automatically.'],
+          ['Record feedback', 'Store candidate selection and the actual model used.']
+        ]
+      },
+      {
+        id: 'analysis.vault.search',
+        title: 'AI Search · Gather evidence',
+        group: 'analysis',
+        icon: 'spark',
+        surface: 'AI Search',
+        shape: 'Multi-tier AgentLoop',
+        status: 'live',
+        route: 'Research → Stronger',
+        description: 'Investigate a Vault question by planning, using Vault tools, collecting evidence, and producing a reviewable report plan.',
+        success: 'Returns a grounded plan and evidence receipts before report generation starts.',
+        mustNot: 'Must not skip plan review, fabricate sources, or treat a tool-free planning paragraph as completed research.',
+        prompts: ['ai-analysis-vault-harness-playbook', 'ai-analysis-proceed-nudge'],
+        tools: ['vault_list', 'vault_grep', 'vault_read_note', 'submit_plan'],
+        output: 'Evidence set + report plan',
+        review: 'Inline plan review',
+        evidence: ['Registered', 'Referenced', 'Reachable', 'Receipted'],
+        before: [
+          ['Freeze request', 'Query, selected scope, source mode, budget, and current run id.'],
+          ['Build tool set', 'Vault tools, optional Web access, permission and tier policy.'],
+          ['Resolve route', 'Research slot with optional escalation to Stronger.']
+        ],
+        during: [
+          ['Run AgentLoop', 'Collect evidence through typed tools and stable tool receipts.'],
+          ['Escalate when needed', 'Quality or explicit escalation may move to the next bound tier.'],
+          ['Submit plan', 'The agent must call submit_plan with a grounded section plan.']
+        ],
+        after: [
+          ['Open review', 'User can approve, edit, or reject the plan.'],
+          ['Persist evidence', 'Sources and tool receipts stay attached to the run.'],
+          ['Hand off', 'Approved plan starts the report workflow, not a second unrelated session.']
+        ]
+      },
+      {
+        id: 'analysis.report.generate',
+        title: 'AI Search · Generate report',
+        group: 'analysis',
+        icon: 'file',
+        surface: 'AI Search report',
+        shape: 'Multi-step workflow',
+        status: 'live',
+        route: 'Research',
+        description: 'Generate approved report sections from collected evidence, then summarize and validate the report artifact.',
+        success: 'Streams grounded sections, preserves source links, records tool use, and produces a durable report artifact.',
+        mustNot: 'Must not start before plan approval or claim missing tool receipts as known activity.',
+        prompts: ['ai-analysis-report-section', 'ai-analysis-vault-report-summary', 'ai-analysis-mermaid-fix'],
+        tools: ['Search graph inspector tools', 'Mermaid validation'],
+        output: 'Versioned report artifact',
+        review: 'Report view + Sources',
+        evidence: ['Registered', 'Referenced', 'Receipted'],
+        before: [
+          ['Load approved plan', 'Section order, evidence allocations, user notes, and report revision.'],
+          ['Resolve Research model', 'One fixed model per generation step; no tier cascade.']
+        ],
+        during: [
+          ['Generate sections', 'Each section uses its own prompt variables and source bundle.'],
+          ['Create summary', 'Executive summary is generated after sections complete.'],
+          ['Repair Mermaid', 'Only invalid Mermaid enters the repair step.']
+        ],
+        after: [
+          ['Validate artifact', 'Check sources, Markdown structure, Mermaid, and partial failures.'],
+          ['Persist version', 'Save report body, source references, and run links.'],
+          ['Expose follow-up', 'Topic, Sources, Graph, Blocks, and Continue reuse the same analysis context.']
+        ]
+      },
+      {
+        id: 'graph.generate',
+        title: 'AI Graph · Generate structure',
+        group: 'analysis',
+        icon: 'graph',
+        surface: 'AI Graph',
+        shape: 'Fixed-model Harness',
+        status: 'live',
+        route: 'Active Agent',
+        description: 'Transform grounded sources into a typed graph with nodes, directed relationships, provenance, and a persistent graph artifact.',
+        success: 'Produces schema-valid nodes and edges that preserve source direction and can be reviewed in Graph and Sources views.',
+        mustNot: 'Must not infer direction from traversal order or render a source-free relationship as confirmed.',
+        prompts: ['graph-agent-system', 'graph-agent-user'],
+        tools: ['Source graph tools'],
+        output: 'AI Graph artifact',
+        review: 'Graph detail + Sources',
+        evidence: ['Registered', 'Referenced', 'Reachable'],
+        before: [
+          ['Collect sources', 'Approved Vault/Web evidence and requested graph intent.'],
+          ['Resolve model', 'Current Agent role, fixed for the run.']
+        ],
+        during: [
+          ['Generate typed graph', 'Model output is parsed against graph schemas.'],
+          ['Infer optional hierarchy', 'Thinking-tree inference is a separate step with its own prompt pair.']
+        ],
+        after: [
+          ['Validate relationships', 'Preserve directed, undirected, and bidirectional truth.'],
+          ['Save artifact', 'Stable graph id, version, provenance, and originating surface.']
+        ]
+      },
+      {
+        id: 'composer.prose.transform',
+        title: 'Composer · Transform prose',
+        group: 'composer',
+        icon: 'file',
+        surface: 'Composer block row',
+        shape: 'Streaming candidate',
+        status: 'live',
+        route: 'Copilot / Agent binding',
+        description: 'Generate a source-safe candidate for prose, heading, list, task, quote, or callout actions without writing before acceptance.',
+        success: 'Streams one typed candidate against a frozen target and commits one atomic transaction only after Accept.',
+        mustNot: 'Must not write into the Vault during generation or reuse stale selection offsets.',
+        prompts: ['composer-prose-transform'],
+        tools: ['Context snapshot', 'Transaction hub'],
+        output: 'Text patch / block insertion / list item patch',
+        review: 'Inline candidate + Generation History',
+        evidence: ['Registered', 'Referenced', 'Reachable', 'Receipted'],
+        before: [
+          ['Freeze target', 'File path, source revision, selected range, block source, and nearby context.'],
+          ['Resolve action', 'Action-specific instruction is inserted into the shared prompt.']
+        ],
+        during: [
+          ['Stream candidate', 'Shared prompt produces a typed result for the selected action.'],
+          ['Keep source unchanged', 'The document remains untouched until review completes.']
+        ],
+        after: [
+          ['Materialize result', 'Parse the action-specific result kind and renderer.'],
+          ['Review candidate', 'Accept, reject, regenerate, or switch variant.'],
+          ['Commit and reparse', 'One transaction, then reparse the updated Markdown.']
+        ]
+      },
+      {
+        id: 'copilot.vault.review',
+        title: 'Vault Intelligence · Review Vault',
+        group: 'intelligence',
+        icon: 'vault',
+        surface: 'Composer Copilot · Vault',
+        shape: 'Fixed-model tool loop',
+        status: 'partial',
+        route: 'Agent / Agent Fast',
+        description: 'Review whole-Vault signals, use tools, and collect findings, sources, proposed actions, and trace receipts across one or more rounds.',
+        success: 'Produces a review snapshot whose findings can be explained, located, or turned into reviewable changes.',
+        mustNot: 'Must not duplicate a Chat session, expose hidden reasoning, or lose unaccepted findings.',
+        prompts: ['vault-meta-agent-system-base', 'vault-meta-agent-fast-mode-suffix', 'vault-meta-agent-complete-mode-suffix'],
+        tools: ['propose_action', 'propose_source', 'note_finding', 'submit_review'],
+        output: 'Vault review snapshot',
+        review: 'Changes / Insights / Sources / Trace',
+        evidence: ['Registered', 'Referenced', 'Receipted'],
+        before: [
+          ['Build Vault digest', 'Fingerprint, freshness, active theme, signals, and prior review.'],
+          ['Select mode', 'Fast or complete selects a fixed binding and suffix.']
+        ],
+        during: [
+          ['Run review round', 'Tool loop records findings and source evidence.'],
+          ['Continue or finish', 'submit_review controls another compacted round or completion.']
+        ],
+        after: [
+          ['Build artifacts', 'Changes, Insights, Sources, and Trace stay in one run receipt.'],
+          ['Persist history', 'Completed and cancelled review snapshots remain recoverable.']
+        ]
+      },
+      {
+        id: 'chat.conversation.run',
+        title: 'Chat Studio · Conversation turn',
+        group: 'chat',
+        icon: 'message',
+        surface: 'Chat Studio Composer',
+        shape: 'Fixed-model AgentLoop',
+        status: 'live',
+        route: 'Conversation / Assistant override',
+        description: 'Assemble conversation context, route the selected Assistant and model, run allowed tools, and stream one recoverable turn.',
+        success: 'Streams text and tool states, persists one turn receipt, and links generated artifacts back to the message.',
+        mustNot: 'Must not reintroduce a second tool loop, bypass Assistant deny rules, or hide the actual model used.',
+        prompts: ['conversation-system', 'plan-mode-system'],
+        tools: ['Vault search', 'Web search', 'MCP', 'artifact_create', 'media_generate'],
+        output: 'Assistant message + artifacts',
+        review: 'Message actions + Resources',
+        evidence: ['Registered', 'Referenced', 'Reachable', 'Receipted'],
+        before: [
+          ['Resolve Assistant', 'Instructions, knowledge refs, tool policy, and preferred model.'],
+          ['Assemble context', 'System, profile, project, files, messages, and budget receipts.'],
+          ['Build tools', 'Apply availability, capability, allow/deny, and permission checks.']
+        ],
+        during: [
+          ['Run AgentLoop', 'One fixed model streams text and tool events.'],
+          ['Handle permission', 'Ask-required tools suspend until a user decision arrives.']
+        ],
+        after: [
+          ['Save message', 'Persist final status, finish reason, and actual model.'],
+          ['Link artifacts', 'Generated media and structured artifacts attach to the turn.'],
+          ['Offer follow-ups', 'Suggestions are a separate helper linked to this turn.']
+        ]
+      },
+      {
+        id: 'media.generate',
+        title: 'Generation · Image, video, or music',
+        group: 'chat',
+        icon: 'image',
+        surface: 'Chat Studio / Composer',
+        shape: 'Durable media job',
+        status: 'partial',
+        route: 'Media route preflight',
+        description: 'Preflight provider, model, capability, cost, references, and policy before submitting a media generation job.',
+        success: 'Returns one or more durable media receipts, survives async polling, and writes files only through the media attachment owner.',
+        mustNot: 'Must not silently switch billing providers, skip music terms, or mark an untested paid route as verified.',
+        prompts: [],
+        tools: ['fal adapter', 'OpenAI native adapter', 'Media attachment writer'],
+        output: 'Media job receipts + files',
+        review: 'Gallery / Resources / Composer candidate',
+        evidence: ['Registered', 'Referenced', 'Receipted'],
+        before: [
+          ['Run preflight', 'Route, model, profile, capability, quantity, references, mask, and policy.'],
+          ['Confirm cost or terms', 'Required confirmation becomes a durable job state.']
+        ],
+        during: [
+          ['Submit job', 'Native or fal adapter receives the normalized request.'],
+          ['Poll or stream', 'Durable async jobs can be cancelled, retried, and resumed.']
+        ],
+        after: [
+          ['Download and validate', 'Validate bytes, media type, expected quantity, and paths.'],
+          ['Write attachment', 'Use the configured writer and emit usage receipts.']
+        ]
+      },
+      {
+        id: 'knowledge.index.embedding',
+        title: 'Knowledge Index · Embedding',
+        group: 'knowledge',
+        icon: 'database',
+        surface: 'Index build and semantic search',
+        shape: 'Embedding',
+        status: 'live',
+        route: 'Knowledge Index',
+        description: 'Create and query vector representations for document chunks without using a chat Prompt or AgentLoop.',
+        success: 'Stores embeddings with model identity and uses the same binding for compatible query vectors.',
+        mustNot: 'Must not appear as a Prompt-driven text generation or silently mix incompatible embedding dimensions.',
+        prompts: [],
+        tools: ['Chunker', 'Embedding client', 'Vector repository'],
+        output: 'Embedding vectors',
+        review: 'Index status / search receipts',
+        evidence: ['Registered', 'Referenced', 'Reachable'],
+        before: [
+          ['Prepare chunks', 'Normalize document content and determine changed chunks.'],
+          ['Resolve binding', 'Knowledge Index Profile and embedding model.']
+        ],
+        during: [
+          ['Embed batch', 'Generate vectors with stable model and dimension metadata.']
+        ],
+        after: [
+          ['Persist vectors', 'Update the rebuildable index and record failures.'],
+          ['Query compatibility', 'Semantic search uses a compatible query vector.']
+        ]
+      }
+    ];
+
+    const prompts = [
+      { id: 'composer-prose-transform', title: 'Composer prose transform', group: 'Composer', kind: 'Shared executable prompt', owners: 18, version: 'Built-in + Vault override', status: 'live' },
+      { id: 'query-rewrite', title: 'Vault Search query rewrite', group: 'Search', kind: 'Executable prompt', owners: 1, version: 'Built-in', status: 'live' },
+      { id: 'ai-analysis-report-section', title: 'Generate report section', group: 'AI Search', kind: 'Workflow step prompt', owners: 1, version: 'Built-in', status: 'live' },
+      { id: 'conversation-system', title: 'Conversation system', group: 'Chat', kind: 'Context template', owners: 1, version: 'Built-in + dynamic slots', status: 'live' },
+      { id: 'vault-meta-agent-system-base', title: 'Vault review base', group: 'Vault Intelligence', kind: 'System fragment', owners: 1, version: 'Built-in', status: 'partial' },
+      { id: 'gap-explanation', title: 'Gap explanation', group: 'Knowledge', kind: 'Registered prompt', owners: 0, version: 'Built-in', status: 'unwired' }
+    ];
+
+    const modelSlots = [
+      ['Conversation', 'Claude profile · claude-sonnet-4', 'Chat turn + 6 helpers'],
+      ['Fast Lookup', 'OpenAI profile · gpt-4.1-mini', 'Refine + follow-up + Ambient'],
+      ['Research', 'Claude profile · claude-sonnet-4', 'AI Search + reports'],
+      ['Use stronger model', 'OpenRouter profile · qwen3-max', 'Escalation only'],
+      ['Knowledge Index', 'OpenAI embedding profile', 'Index + semantic query']
+    ];
+
+    const runRows = [
+      ['analysis.vault.search', 'AI Search · Gather evidence', 'completed', 'Research → claude-sonnet-4', '12 tools · 18.4s'],
+      ['composer.prose.transform', 'Composer · Transform prose', 'completed', 'Copilot → gpt-4.1', 'accepted · 2.1s'],
+      ['search.query.refine', 'Vault Search · Refine', 'failed', 'Fast Lookup → gpt-4.1-mini', 'rule fallback · 0.8s'],
+      ['chat.conversation.run', 'Chat Studio · Conversation turn', 'completed', 'Assistant override → claude-sonnet-4', '3 tools · 9.7s']
+    ];
+
+    let workspace = 'capabilities';
+    let activeGroup = 'all';
+    let activeItem = capabilities[0];
+    let inspectorTab = 'overview';
+
+    const rail = document.getElementById('rail');
+    const rows = document.getElementById('rows');
+    const inspector = document.getElementById('inspector');
+    const searchInput = document.getElementById('searchInput');
+    const listTitle = document.getElementById('listTitle');
+    const listDescription = document.getElementById('listDescription');
+
+    const groups = [
+      ['all', 'all', 'All capabilities'],
+      ['search', 'search', 'Search & Knowledge'],
+      ['analysis', 'spark', 'AI Search & Graph'],
+      ['composer', 'file', 'Composer & Copilot'],
+      ['chat', 'message', 'Chat & Generation'],
+      ['intelligence', 'vault', 'Vault Intelligence'],
+      ['knowledge', 'database', 'Index & background']
+    ];
+
+    function statusPill(status) {
+      if (status === 'live') return '<span class="pill green">Production path</span>';
+      if (status === 'partial') return '<span class="pill amber">Partial wiring</span>';
+      if (status === 'unwired') return '<span class="pill red">Unwired</span>';
+      return `<span class="pill">${status}</span>`;
+    }
+
+    function renderRail() {
+      if (workspace !== 'capabilities') {
+        const items = workspace === 'prompts'
+          ? [['all', 'prompt', 'All prompts'], ['live', 'file', 'Used by capabilities'], ['unwired', 'alert', 'Unwired / review']]
+          : workspace === 'models'
+            ? [['all', 'model', 'Model slots'], ['override', 'spark', 'Step overrides'], ['gap', 'alert', 'Routing gaps']]
+            : [['all', 'run', 'Recent runs'], ['completed', 'file', 'Completed'], ['failed', 'alert', 'Failed / fallback']];
+        rail.innerHTML = `<div class="rail-title">${workspace === 'prompts' ? 'Prompt status' : workspace === 'models' ? 'Routing views' : 'Run status'}</div>` +
+          items.map(([id, icon, label], index) => `<button class="rail-button ${index === 0 ? 'active' : ''}" data-filter="${id}">${icons[icon]}<span>${label}</span></button>`).join('');
+        return;
+      }
+
+      rail.innerHTML = `<div class="rail-title">Product groups</div>` +
+        groups.map(([id, icon, label]) => {
+          const count = id === 'all' ? capabilities.length : capabilities.filter(item => item.group === id).length;
+          return `<button class="rail-button ${activeGroup === id ? 'active' : ''}" data-group="${id}">${icons[icon]}<span>${label}</span><small>${count}</small></button>`;
+        }).join('') +
+        `<div class="rail-separator"></div>
+         <div class="rail-title">Coverage</div>
+         <button class="rail-button" data-group="partial">${icons.alert}<span>Partial wiring</span><small>${capabilities.filter(item => item.status === 'partial').length}</small></button>`;
+    }
+
+    function capabilityRow(item) {
+      return `<button class="row ${activeItem?.id === item.id ? 'active' : ''}" data-id="${item.id}">
+        <span class="row-icon">${icons[item.icon]}</span>
+        <span class="row-copy">
+          <span class="row-title">${item.title}</span>
+          <span class="row-meta">${item.shape} · ${item.route}</span>
+          <span class="row-id">${item.id}</span>
+        </span>
+        ${statusPill(item.status)}
+      </button>`;
+    }
+
+    function promptRow(item) {
+      return `<button class="row ${activeItem?.id === item.id ? 'active' : ''}" data-prompt-id="${item.id}">
+        <span class="row-icon">${icons.prompt}</span>
+        <span class="row-copy">
+          <span class="row-title">${item.title}</span>
+          <span class="row-meta">${item.kind} · ${item.owners} capability owner${item.owners === 1 ? '' : 's'}</span>
+          <span class="row-id">${item.id}</span>
+        </span>
+        ${statusPill(item.status)}
+      </button>`;
+    }
+
+    function renderRows() {
+      const query = searchInput.value.trim().toLowerCase();
+      if (workspace === 'capabilities') {
+        listTitle.textContent = activeGroup === 'all' ? 'All capabilities' : groups.find(item => item[0] === activeGroup)?.[2] ?? 'Coverage gaps';
+        listDescription.textContent = 'What Peak asks AI to do, grouped by product behavior.';
+        const filtered = capabilities.filter(item => {
+          const groupMatch = activeGroup === 'all' || (activeGroup === 'partial' ? item.status === 'partial' : item.group === activeGroup);
+          return groupMatch && [item.id, item.title, item.surface, item.shape, item.route].join(' ').toLowerCase().includes(query);
+        });
+        rows.innerHTML = filtered.length ? filtered.map(capabilityRow).join('') : '<div class="empty">No capability matches this filter.</div>';
+        return;
+      }
+
+      if (workspace === 'prompts') {
+        listTitle.textContent = 'Prompts';
+        listDescription.textContent = 'Instruction sources linked back to capability steps and real runs.';
+        const filtered = prompts.filter(item => [item.id, item.title, item.group, item.kind].join(' ').toLowerCase().includes(query));
+        rows.innerHTML = filtered.length ? filtered.map(promptRow).join('') : '<div class="empty">No prompt matches this search.</div>';
+        return;
+      }
+
+      if (workspace === 'models') {
+        listTitle.textContent = 'Models & routing';
+        listDescription.textContent = 'A consumer map of AI Setup slots, step overrides, and unresolved paths.';
+        rows.innerHTML = modelSlots.map((slot, index) => `<button class="row ${index === 0 ? 'active' : ''}" data-model-index="${index}">
+          <span class="row-icon">${icons.model}</span>
+          <span class="row-copy"><span class="row-title">${slot[0]}</span><span class="row-meta">${slot[1]}</span><span class="row-id">${slot[2]}</span></span>
+          <span class="pill blue">Slot</span>
+        </button>`).join('');
+        return;
+      }
+
+      listTitle.textContent = 'Recent runs';
+      listDescription.textContent = 'Actual execution facts linked to capabilities, prompts, models, tools, and artifacts.';
+      rows.innerHTML = runRows.map((run, index) => `<button class="row ${index === 0 ? 'active' : ''}" data-run-index="${index}">
+        <span class="row-icon">${icons.run}</span>
+        <span class="row-copy"><span class="row-title">${run[1]}</span><span class="row-meta">${run[3]}</span><span class="row-id">${run[0]}</span></span>
+        ${run[2] === 'completed' ? '<span class="pill green">Completed</span>' : '<span class="pill red">Fallback</span>'}
+      </button>`).join('');
+    }
+
+    function inspectorHeader(item, type) {
+      const title = type === 'capability' ? item.title : item.title;
+      const subtitle = type === 'capability'
+        ? item.description
+        : type === 'prompt'
+          ? 'Review the instruction source, linked capability steps, versions, and the runs that actually used it.'
+          : '';
+      return `<div class="inspector-head">
+        <div class="breadcrumbs">${type === 'capability' ? `${item.surface} · ${item.id}` : type === 'prompt' ? `${item.group} · Prompt` : type}</div>
+        <div class="inspector-title-row"><h1>${title}</h1>${type === 'capability' || type === 'prompt' ? statusPill(item.status) : ''}</div>
+        <p class="inspector-subtitle">${subtitle}</p>
+        ${type === 'capability' ? `<div class="inspector-tabs">
+          <button class="inspector-tab ${inspectorTab === 'overview' ? 'active' : ''}" data-tab="overview">Overview</button>
+          <button class="inspector-tab ${inspectorTab === 'flow' ? 'active' : ''}" data-tab="flow">Run flow</button>
+          <button class="inspector-tab ${inspectorTab === 'config' ? 'active' : ''}" data-tab="config">Prompt &amp; model</button>
+          <button class="inspector-tab ${inspectorTab === 'history' ? 'active' : ''}" data-tab="history">Recent runs</button>
+        </div>` : ''}
+      </div>`;
+    }
+
+    function renderCapabilityInspector(item) {
+      const evidence = item.evidence.map(label => `<span class="pill ${label === 'Receipted' ? 'purple' : 'green'}">${label}</span>`).join(' ');
+      const promptList = item.prompts.length
+        ? item.prompts.map(id => `<div class="prompt-box"><div class="prompt-head"><strong>${id}</strong><button class="link-button">Open Prompt</button></div><div class="prompt-body">Prompt content and variables are versioned separately from this capability contract.</div></div>`).join('')
+        : '<div class="notice">' + icons.alert + '<span>This capability has no text Prompt. Model/provider configuration belongs to the execution step.</span></div>';
+      inspector.innerHTML = inspectorHeader(item, 'capability') + `
+        <section class="panel ${inspectorTab === 'overview' ? 'active' : ''}" data-panel="overview">
+          <div class="section">
+            <h2>Expected behavior</h2>
+            <div class="cards">
+              <div class="card"><strong>Success</strong><span>${item.success}</span></div>
+              <div class="card"><strong>Must not</strong><span>${item.mustNot}</span></div>
+            </div>
+          </div>
+          <div class="section">
+            <h2>Runtime contract</h2>
+            <dl class="facts">
+              <dt>Execution shape</dt><dd>${item.shape}</dd>
+              <dt>Default route</dt><dd>${item.route}</dd>
+              <dt>Tools / inputs</dt><dd>${item.tools.join(' · ') || 'None'}</dd>
+              <dt>Output</dt><dd>${item.output}</dd>
+              <dt>Review surface</dt><dd>${item.review}</dd>
+              <dt>Evidence</dt><dd>${evidence}</dd>
+            </dl>
+          </div>
+          <div class="notice">${icons.alert}<span>Capability behavior is product truth and is read-only here. Prompt content and model overrides are configurable in their own sections.</span></div>
+        </section>
+        <section class="panel ${inspectorTab === 'flow' ? 'active' : ''}" data-panel="flow">
+          <div class="section">
+            <h2>Before, during, and after the run</h2>
+            <div class="flow">
+              ${flowStage('Before run', 'file', item.before)}
+              ${flowStage('During run', 'run', item.during)}
+              ${flowStage('After run', 'spark', item.after)}
+            </div>
+          </div>
+        </section>
+        <section class="panel ${inspectorTab === 'config' ? 'active' : ''}" data-panel="config">
+          <div class="section"><h2>Prompt sources</h2>${promptList}</div>
+          <div class="section">
+            <h2>Model policy · capability step owner</h2>
+            <label class="route active"><input type="radio" checked><span><strong>Use the registered AI Setup slot</strong><span>Recommended. Keeps future model changes centralized.</span></span><span class="route-effective">Next run<code>${item.route}</code></span></label>
+            <label class="route"><input type="radio"><span><strong>Use a different model for this step</strong><span>Only affects this executable step, not every Prompt caller.</span></span><span class="route-effective">Override<code>Not set</code></span></label>
+          </div>
+          <div class="notice">${icons.model}<span>Companion templates never own a model. Shared Prompts link to each capability step instead of silently applying one global model override.</span></div>
+        </section>
+        <section class="panel ${inspectorTab === 'history' ? 'active' : ''}" data-panel="history">
+          <div class="section"><h2>Actual runs</h2>${runListFor(item.id)}</div>
+          <div class="notice">${icons.run}<span>A run links the capability step to the actual Prompt version, Profile, model, tools, artifacts, usage, and final review outcome.</span></div>
+        </section>`;
+    }
+
+    function flowStage(label, icon, steps) {
+      return `<div class="flow-stage"><div class="flow-label">${icons[icon]}<span>${label}</span></div><div class="steps">${steps.map((step, index) => `<div class="step"><span class="step-num">${index + 1}</span><span><strong>${step[0]}</strong><span>${step[1]}</span></span><span class="pill">${index === steps.length - 1 ? 'Required' : 'Step'}</span></div>`).join('')}</div></div>`;
+    }
+
+    function runListFor(id) {
+      const matches = runRows.filter(run => run[0] === id);
+      const list = matches.length ? matches : [
+        [id, activeItem.title, 'completed', `${activeItem.route} · resolved model`, 'Design fixture · no production data'],
+        [id, activeItem.title, 'failed', `${activeItem.route} · previous revision`, 'Validation failed · result retained']
+      ];
+      return list.map(run => `<div class="run ${run[2] === 'failed' ? 'failed' : ''}"><span class="run-dot"></span><span><strong>${run[1]}</strong><span>${run[3]}</span></span><span class="run-meta">${run[4]}</span></div>`).join('');
+    }
+
+    function renderPromptInspector(item) {
+      inspector.innerHTML = inspectorHeader(item, 'prompt') + `<section class="panel active">
+        <div class="section">
+          <h2>Identity</h2>
+          <dl class="facts">
+            <dt>PromptId</dt><dd><code>${item.id}</code></dd>
+            <dt>Kind</dt><dd>${item.kind}</dd>
+            <dt>Version</dt><dd>${item.version}</dd>
+            <dt>Capability owners</dt><dd>${item.owners || 'None found in production source'}</dd>
+          </dl>
+        </div>
+        <div class="section">
+          <h2>Default and Vault override</h2>
+          <div class="prompt-box"><div class="prompt-head"><strong>Built-in default</strong><button class="link-button">Compare override</button></div><div class="prompt-body">Stable instructions live in the Prompt template. Dynamic source content, tools, and model routing belong to the capability run.</div></div>
+        </div>
+        <div class="section">
+          <h2>Model ownership</h2>
+          <div class="notice">${icons.model}<span>${item.owners > 1 ? `This Prompt is shared by ${item.owners} capability steps. Choose a capability step to change its model policy.` : item.owners === 1 ? 'This Prompt has one executable owner. Its model policy is edited on that capability step.' : 'No executable owner was found, so model override is disabled.'}</span></div>
+        </div>
+      </section>`;
+    }
+
+    function renderModelInspector(index = 0) {
+      const selected = modelSlots[index];
+      inspector.innerHTML = `<div class="inspector-head"><div class="breadcrumbs">AI Setup consumer map</div><div class="inspector-title-row"><h1>${selected[0]}</h1><span class="pill blue">Model slot</span></div><p class="inspector-subtitle">See the effective Profile + model and every capability step that consumes this slot. Provider keys remain in AI Setup.</p></div>
+      <section class="panel active">
+        <div class="section"><h2>Effective binding</h2><div class="model-slots">${modelSlots.map((slot, slotIndex) => `<div class="model-slot"><span><strong>${slot[0]}</strong><span>${slot[2]}</span></span><strong>${slot[1]}</strong><button class="link-button">${slotIndex === index ? 'Selected' : 'Inspect'}</button></div>`).join('')}</div></div>
+        <div class="notice">${icons.alert}<span>Routing gaps remain visible here: active-role paths and provider-direct helpers cannot be described as slot-aware until they use the shared resolver.</span></div>
+      </section>`;
+    }
+
+    function renderRunInspector(index = 0) {
+      const run = runRows[index];
+      inspector.innerHTML = `<div class="inspector-head"><div class="breadcrumbs">Run evidence · ${run[0]}</div><div class="inspector-title-row"><h1>${run[1]}</h1>${run[2] === 'completed' ? '<span class="pill green">Completed</span>' : '<span class="pill red">Fallback</span>'}</div><p class="inspector-subtitle">Actual execution facts. This timeline never displays hidden model reasoning.</p></div>
+      <section class="panel active">
+        <div class="section"><h2>Run summary</h2><dl class="facts"><dt>Capability</dt><dd><code>${run[0]}</code></dd><dt>Actual model</dt><dd>${run[3]}</dd><dt>Outcome</dt><dd>${run[4]}</dd><dt>Prompt version</dt><dd>Built-in source hash + Vault override hash</dd><dt>Artifacts</dt><dd>1 reviewable result · linked to originating surface</dd></dl></div>
+        <div class="section"><h2>Timeline</h2><div class="flow">${flowStage('Execution', 'run', [['Context assembled', 'Automatic and explicit sources recorded.'], ['Model resolved', run[3]], ['Tools / model calls', run[4]], ['Validation and artifact', 'Final status and review outcome persisted.']])}</div></div>
+      </section>`;
+    }
+
+    function renderInspector() {
+      if (workspace === 'capabilities') return renderCapabilityInspector(activeItem);
+      if (workspace === 'prompts') return renderPromptInspector(activeItem);
+      if (workspace === 'models') return renderModelInspector(0);
+      return renderRunInspector(0);
+    }
+
+    function renderAll() {
+      renderRail();
+      renderRows();
+      renderInspector();
+    }
+
+    document.addEventListener('click', event => {
+      const workspaceButton = event.target.closest('[data-workspace]');
+      if (workspaceButton) {
+        workspace = workspaceButton.dataset.workspace;
+        activeGroup = 'all';
+        inspectorTab = 'overview';
+        document.querySelectorAll('[data-workspace]').forEach(button => button.classList.toggle('active', button === workspaceButton));
+        if (workspace === 'capabilities') activeItem = capabilities[0];
+        if (workspace === 'prompts') activeItem = prompts[0];
+        document.getElementById('summaryPrimary').textContent = workspace === 'capabilities' ? capabilities.length : workspace === 'prompts' ? prompts.length : workspace === 'models' ? modelSlots.length : runRows.length;
+        document.getElementById('summaryPrimaryLabel').textContent = workspace === 'capabilities' ? 'representative capabilities' : workspace === 'prompts' ? 'representative prompts' : workspace === 'models' ? 'model slots' : 'recent run fixtures';
+        renderAll();
+        return;
+      }
+
+      const groupButton = event.target.closest('[data-group]');
+      if (groupButton) {
+        activeGroup = groupButton.dataset.group;
+        const visible = capabilities.filter(item => activeGroup === 'all' || (activeGroup === 'partial' ? item.status === 'partial' : item.group === activeGroup));
+        if (visible.length) activeItem = visible[0];
+        renderAll();
+        return;
+      }
+
+      const row = event.target.closest('[data-id]');
+      if (row) {
+        activeItem = capabilities.find(item => item.id === row.dataset.id);
+        inspectorTab = 'overview';
+        renderRows();
+        renderInspector();
+        return;
+      }
+
+      const promptRowButton = event.target.closest('[data-prompt-id]');
+      if (promptRowButton) {
+        activeItem = prompts.find(item => item.id === promptRowButton.dataset.promptId);
+        renderRows();
+        renderInspector();
+        return;
+      }
+
+      const modelRow = event.target.closest('[data-model-index]');
+      if (modelRow) {
+        document.querySelectorAll('[data-model-index]').forEach(button => button.classList.toggle('active', button === modelRow));
+        renderModelInspector(Number(modelRow.dataset.modelIndex));
+        return;
+      }
+
+      const runRow = event.target.closest('[data-run-index]');
+      if (runRow) {
+        document.querySelectorAll('[data-run-index]').forEach(button => button.classList.toggle('active', button === runRow));
+        renderRunInspector(Number(runRow.dataset.runIndex));
+        return;
+      }
+
+      const tab = event.target.closest('[data-tab]');
+      if (tab) {
+        inspectorTab = tab.dataset.tab;
+        renderInspector();
+      }
+    });
+
+    searchInput.addEventListener('input', renderRows);
+    renderAll();
+  </script>
+</body>
+</html>

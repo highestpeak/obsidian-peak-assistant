@@ -512,7 +512,7 @@
           </div>
           <div class="claim">
             <strong>2026-07-30 当前实现校正</strong>
-            <p>Claude Agent SDK 已完全退役。当前生成式调用分为三种执行形状：带多 tier 的 Peak Harness loop、固定模型的 Peak Harness run，以及少量仍直接调用 provider adapter 的单轮 helper；embedding 另走 Knowledge Index binding。用途槽、active Agent / Copilot role 与 feature-local fallback 仍未完全收敛成一个 resolver。旧 <code>promptModelMap</code> 虽会被加载，但主要 <code>queryText</code> / <code>queryStream</code> / <code>queryTextStream</code> 没有消费它，所以“逐 Prompt 选模型”现在不是可用功能。目标收敛方式和页面设计见 <a href="superpowers/specs/2026-07-28-prompt-control-center-design.md">Prompt Control Center 设计</a>。</p>
+            <p>Claude Agent SDK 已完全退役。当前生成式调用分为三种执行形状：带多 tier 的 Peak Harness loop、固定模型的 Peak Harness run，以及少量仍直接调用 provider adapter 的单轮 helper；embedding 另走 Knowledge Index binding。用途槽、active Agent / Copilot role 与 feature-local fallback 仍未完全收敛成一个 resolver。旧 <code>promptModelMap</code> 虽会被加载，但主要 <code>queryText</code> / <code>queryStream</code> / <code>queryTextStream</code> 没有消费它，所以“逐 Prompt 选模型”现在不是可用功能。目标收敛方式、能力级模型所有权与页面设计见 <a href="superpowers/specs/2026-07-30-ai-control-center-design.md">AI Control Center 设计</a>。</p>
           </div>
         </section>
 
@@ -708,7 +708,7 @@ knowledgeIndex = active Embedding</code></pre>
               <tr><td>AI Analysis 一直不升级到 Stronger</td><td>升级需要 <code>stronger</code> tier 已绑定（配了 Use stronger model，或其 fallback Conversation 有值）。都空则无处可升。</td></tr>
               <tr><td>Chat 用的模型不是我预期的</td><td>Chat 走 <code>conversation</code> 槽（Conversation 行），不是 Fast Lookup；且不升级。</td></tr>
               <tr><td>错误先写 “Claude Code returned”，后面却是 OpenRouter 402</td><td>旧前缀来自已退役 runtime 的错误包装文案；真正失败方是模型 provider。当前代码已删除 Claude Agent SDK 路径。若再次看到 OpenRouter 402，含义是 Harness 选中的 binding 正好指向 OpenRouter，且该 provider 因余额 / <code>max_tokens</code> 拒绝请求，不表示 Claude Agent SDK 仍在调用 OpenRouter。</td></tr>
-              <tr><td>不同页面的模型列表长得不一样</td><td>这是当前 UI 复用缺口：<code>modelPickerData.ts</code> 已共享 catalog 与筛选数据，但 Chat 的 <code>ComposerModelSelector</code> 和 Settings 的 <code>RoleModelPicker</code> 仍分别实现弹层。目标是公共 <code>ProfileModelPicker</code>；Prompt Control Center 不得增加第四套，见 <a href="superpowers/specs/2026-07-28-prompt-control-center-design.md">设计 §5.1</a>。</td></tr>
+              <tr><td>不同页面的模型列表长得不一样</td><td>这是当前 UI 复用缺口：<code>modelPickerData.ts</code> 已共享 catalog 与筛选数据，但 Chat 的 <code>ComposerModelSelector</code> 和 Settings 的 <code>RoleModelPicker</code> 仍分别实现弹层。目标是公共 <code>ProfileModelPicker</code>；AI Control Center 不得增加第四套，见 <a href="superpowers/specs/2026-07-30-ai-control-center-design.md">合并设计</a>。</td></tr>
             </tbody>
           </table>
         </section>

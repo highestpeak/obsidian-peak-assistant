@@ -139,7 +139,7 @@
         <a href="#catalog">151 个 Prompt 总表</a>
         <a href="#outside">目录外还有什么</a>
         <a href="#gaps">当前发现的问题</a>
-        <a href="#control-center">逐 Prompt 控制页面</a>
+        <a href="#control-center">AI Control Center</a>
         <a href="#rules">以后怎么统一维护</a>
         <div class="nav-note">普通产品讨论读到“动态建议”即可。改 Prompt 或排查调用时，再看后面的总表和维护规则。</div>
       </nav>
@@ -354,17 +354,17 @@ flowchart LR
         </section>
 
         <section id="control-center">
-          <h2>8. 逐 Prompt 控制页面：需求已经记录，尚未实现</h2>
-          <p class="lead">目标是在 Settings 的 AI Setup 里放一个小入口，点击后打开独立的 Obsidian View。页面按能力分组列出 Prompt，可直接审阅和覆盖正文，也能为真正发起 AI run 的 Prompt 选择用途槽、Profile 和模型。</p>
+          <h2>8. Prompt 目录已并入 AI Control Center</h2>
+          <p class="lead">Prompt 只是一次 AI 动作的指令来源，不是完整运行合同。新的 AI Control Center 默认按 capability / action 梳理入口、预期行为、运行前后步骤、Prompt、模型、工具、产物和真实 runs；本页的 151 个模板目录作为其中的 Prompts 子页继续保留。</p>
           <div class="grid">
-            <div class="card"><h3>当前到底有没有逐 Prompt 选模型？</h3><p>只剩部分骨架。设置结构、旧 map 和 resolver 还在，但 <code>queryText</code>、<code>queryStream</code>、<code>queryTextStream</code> 等实际调用直接取当前 Profile / Copilot Profile，因此旧 map 对主要生产调用不生效。</p></div>
-            <div class="card"><h3>为什么不直接做一张 151 行模型表？</h3><p>151 是物理模板数，不是 151 次独立 AI 调用。配套 system 模板可以单独改正文，但模型必须跟随所属的可执行 Prompt；未接线 Prompt 也不能保存一个永远不会被读取的模型设置。</p></div>
-            <div class="card"><h3>默认不用改，例外才单独选</h3><p>普通 Prompt 继续使用 AI Setup 里“写作与对话、快速任务、研究、深度思考”等默认设置。只有确实需要特殊模型的 Prompt 才单独选择，避免模型升级后维护一百多行。</p></div>
-            <div class="card"><h3>页面上线前的硬条件</h3><p>所有正文先统一经过 Prompt resolver，所有模型先统一经过 model resolver，模型选择复用 Chat / AI Setup 的公共 <code>ProfileModelPicker</code>，运行历史还要记录实际 Prompt 版本、有效模型、fallback 和未采纳结果。否则页面会出现“能保存但不生效”或第四套模型选择 UI。</p></div>
+            <div class="card"><h3>Capability 是主对象</h3><p>Vault Search Refine、AI Search、AI Graph、Composer transform、Vault Review 和 Chat turn 都是能力。一个能力可以有多个 Prompt、tool 和执行步骤，也可以完全没有文本 Prompt。</p></div>
+            <div class="card"><h3>Prompt 仍可审阅和 override</h3><p>默认正文、Vault override、system / user 配对、变量、输出 schema 和版本继续在 Prompts 子页维护，并能反查使用它的 capability steps 和真实 runs。</p></div>
+            <div class="card"><h3>模型属于执行步骤</h3><p>companion template 不拥有模型；共享 Prompt 不应把所有调用者锁到同一模型。模型 override 绑定真正发起模型调用的 capability step，再显示下一次实际使用的 Profile + model。</p></div>
+            <div class="card"><h3>设计与执行真值互相核对</h3><p>Capability contract 描述预期行为，run receipt 记录实际 Prompt 版本、model、tools、artifact、fallback 和 review outcome。页面必须同时呈现二者的差异。</p></div>
           </div>
           <div class="claim">
             <span class="claim-title">可审阅产物</span>
-            <p><a href="superpowers/specs/2026-07-28-prompt-control-center-design.md">完整产品与运行时设计</a> · <a href="gstack/prompt-control-center-2026-07-28/index.html">打开可点击页面 mock</a>。这两份都是设计产物，没有修改产品代码或真实设置。</p>
+            <p><a href="superpowers/specs/2026-07-30-ai-control-center-design.md">AI Control Center 正式设计</a> · <a href="superpowers/audits/2026-07-30-ai-capability-run-inventory.md">全仓 AI 能力与运行链审计</a> · <a href="gstack/ai-control-center-2026-07-30/index.html">新版可点击页面 mock</a>。这些都是设计产物，没有修改产品代码或真实设置。</p>
           </div>
         </section>
 
@@ -403,7 +403,7 @@ flowchart LR
         </section>
 
         <div class="footer">
-          <p>相关文档：<a href="index.html">文档总索引</a> · <a href="19-feature-peak-composer-ai-runtime.html">19 · Composer AI 运行链</a> · <a href="11-feature-chat-context.html">11 · Chat 上下文</a> · <a href="21-infra-agent-harness.html">21 · Agent Harness</a> · <a href="24-infra-ai-model-routing.html">24 · AI 模型路由</a> · <a href="superpowers/specs/2026-07-28-prompt-control-center-design.md">Prompt Control Center 设计</a>。</p>
+          <p>相关文档：<a href="index.html">文档总索引</a> · <a href="19-feature-peak-composer-ai-runtime.html">19 · Composer AI 运行链</a> · <a href="11-feature-chat-context.html">11 · Chat 上下文</a> · <a href="21-infra-agent-harness.html">21 · Agent Harness</a> · <a href="24-infra-ai-model-routing.html">24 · AI 模型路由</a> · <a href="superpowers/specs/2026-07-30-ai-control-center-design.md">AI Control Center 设计</a>。</p>
         </div>
       </main>
     </div>

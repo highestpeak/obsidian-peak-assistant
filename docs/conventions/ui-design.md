@@ -1098,7 +1098,7 @@ If the data model lacks fields the mock needs (`durationMs`, `toolCount`, `artif
 - Chat `ComposerModelSelector` renders a full searchable/filterable Profile-qualified picker.
 - Settings `RoleModelPicker` independently renders another Profile-qualified picker.
 - Settings `ModelCombobox` renders a third, single-Profile model list.
-- The first Prompt Control Center mock incorrectly added two raw `<select>` elements, which would have created a fourth model-selection UI.
+- The first, superseded Prompt Control Center mock incorrectly added two raw `<select>` elements, which would have created a fourth model-selection UI.
 
 Sharing a catalog is necessary but insufficient. Search, grouping, capability tags, selection identity, unavailable reasons, keyboard navigation, focus, popover placement, scroll behavior and empty states are part of the component contract too.
 
@@ -1135,7 +1135,7 @@ Editing a Profile's own primary model may use a single-Profile mode of the same 
 **Review test.**
 
 - [ ] Search for new model-selection JSX outside `src/ui/component/model-picker/`; any full model list needs an explicit exception.
-- [ ] Chat, AI Setup and Prompt Control Center show identical model rows and capability tags for the same catalog entry.
+- [ ] Chat, AI Setup and AI Control Center show identical model rows and capability tags for the same catalog entry.
 - [ ] A catalog update changes all three surfaces without editing their surface components.
 - [ ] Keyboard navigation and unavailable-model behavior have one shared test suite.
 - [ ] Static mocks show the shared picker contract, not native Profile + model dropdowns.

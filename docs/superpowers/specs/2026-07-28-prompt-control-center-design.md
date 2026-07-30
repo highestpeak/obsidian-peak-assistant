@@ -1,10 +1,12 @@
-# Prompt Control Center 设计
+# Prompt Control Center 设计（已并入 AI Control Center）
 
-> - 状态：设计已记录，尚未实现
+> - 状态：已被 [`2026-07-30-ai-control-center-design.md`](./2026-07-30-ai-control-center-design.md) 合并取代
 > - 日期：2026-07-28
 > - 范围：Prompt 审阅、正文 override、逐 Prompt 模型与输出参数 override
 > - 入口：Settings → AI Setup → Prompt Control Center
 > - 交互稿：[打开可点击 mock](../../gstack/prompt-control-center-2026-07-28/index.html)
+
+> 本文保留原 Prompt 子系统的设计依据。新的顶层设计以 AI capability / action 为主对象，将 Prompt、模型路由、运行前后步骤与真实 run history 放进同一个 AI Control Center；后续实现与评审应以新设计为准。
 
 ## 1. 先说结论
 
