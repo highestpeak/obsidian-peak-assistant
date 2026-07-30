@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useStore } from 'zustand';
-import { Plus, RefreshCw, Sparkles, X } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import {
 	COMPOSER_LIST_ITEM_PATCH_RENDERER_ID,
 	COMPOSER_METADATA_SUGGESTION_RENDERER_ID,
@@ -30,6 +30,7 @@ import type { ComposerListItemPatchPayload } from '@/core/schemas/composer';
 import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
 import {
 	buildCommentSourceRef,
+	buildInsertListItemOps,
 	buildMoveBlockOps,
 	buildToggleTaskOps,
 	FILL_GAPS_CAPABILITY_ID,
@@ -47,6 +48,7 @@ import {
 	type ComposerHistoryTransactionResolver,
 	type HiddenSourceRange,
 	type ResolvedComposerSourceLocation,
+	type DirectListItemKind,
 	resolveComposerSourceLocation,
 } from '@/service/composer';
 import { Button } from '@/ui/components/primitives';
@@ -101,6 +103,12 @@ import { UndoRedoBar } from './chrome/UndoRedoBar';
 import { TransactionNotice } from './chrome/TransactionNotice';
 import { BlockFindingPanel } from './chrome/BlockFindingPanel';
 import { NewBlockDraft } from './chrome/NewBlockDraft';
+import { ListItemInsertGap } from './chrome/ListItemInsertGap';
+import {
+	ComposerSurfaceProvider,
+	useComposerSurfaceCoordinatorState,
+	useComposerSurfaces,
+} from './chrome/ComposerSurfaceCoordinator';
 import type { ComposerDisplayState } from './chrome/DisplayStateSwitch';
 import { mapDomRangeToSource } from './chrome/selectionMapping';
 import { firstClipboardImage } from './chrome/pasteImage';
@@ -367,57 +375,61 @@ export function ComposerRoot({
 	React.useEffect(() => {
 		updateBriefFocus();
 	}, [updateBriefFocus]);
+	const surfaces = useComposerSurfaceCoordinatorState();
 
 	return (
 		<ComposerChromeProvider value={chromeValue}>
-			<div
-				ref={rootRef}
+			<ComposerSurfaceProvider value={surfaces}>
+				<div
+					ref={rootRef}
 					className="peak-design-root peak-composer-root"
 					data-with-sidecar={intelligence ? 'true' : undefined}
+					data-composer-active-surface={surfaces.active?.kind}
 					onKeyDown={containComposerEscape}
 				>
 					<div className="pk-composer-main" onFocusCapture={onComposerBodyFocusCapture}>
-					<ComposerBody
-						state={state}
-						config={config}
-						foldStore={foldStore}
-						onRevalidate={onRevalidate}
-						intelligence={intelligence}
-						intelligenceOpen={intelligencePresentation.open}
-						onIntelligenceManualOpen={setManualIntelligenceOpen}
-						onIntelligenceContextualOpen={openContextualIntelligence}
-						activeCommentId={activeCommentId}
-						onActiveComment={setActiveCommentId}
-						initialDisplayMode={initialDisplayMode}
-						onDisplayModeChange={onDisplayModeChange}
-						onOpenNativeMarkdown={onOpenNativeMarkdown}
-					/>
+						<ComposerBody
+							state={state}
+							config={config}
+							foldStore={foldStore}
+							onRevalidate={onRevalidate}
+							intelligence={intelligence}
+							intelligenceOpen={intelligencePresentation.open}
+							onIntelligenceManualOpen={setManualIntelligenceOpen}
+							onIntelligenceContextualOpen={openContextualIntelligence}
+							activeCommentId={activeCommentId}
+							onActiveComment={setActiveCommentId}
+							initialDisplayMode={initialDisplayMode}
+							onDisplayModeChange={onDisplayModeChange}
+							onOpenNativeMarkdown={onOpenNativeMarkdown}
+						/>
+					</div>
+					{intelligence && currentSnapshot && (
+						<IntelligenceSidecar
+							runtime={intelligence}
+							workspaceRuntime={runtime.workspaceIntelligence}
+							hub={runtime.hub}
+							documentId={currentSnapshot.documentId}
+							documentSnapshot={currentSnapshot}
+							documentFilePath={currentSnapshot.filePath}
+							open={intelligencePresentation.open}
+							motion={intelligencePresentation.animate ? 'user' : 'none'}
+							presentationOrigin={intelligencePresentation.origin}
+							onOpenChange={(open) => setManualIntelligenceOpen(open)}
+							onLocate={locateBlock}
+							onLocateComment={(commentId, blockId) => {
+								setActiveCommentId(commentId);
+								locateBlock(blockId);
+							}}
+							onOpenSource={(path) => onOpenLink?.('vault', path)}
+							getFocusedBlockId={getFocusedBlockId}
+							resolveFocusContext={resolveFocusContext}
+							resolveRelatedFocus={resolveFocus}
+							onRestoreGeneration={restoreGeneration}
+						/>
+					)}
 				</div>
-				{intelligence && currentSnapshot && (
-					<IntelligenceSidecar
-						runtime={intelligence}
-						workspaceRuntime={runtime.workspaceIntelligence}
-						hub={runtime.hub}
-						documentId={currentSnapshot.documentId}
-						documentSnapshot={currentSnapshot}
-						documentFilePath={currentSnapshot.filePath}
-						open={intelligencePresentation.open}
-						motion={intelligencePresentation.animate ? 'user' : 'none'}
-						presentationOrigin={intelligencePresentation.origin}
-						onOpenChange={(open) => setManualIntelligenceOpen(open)}
-						onLocate={locateBlock}
-						onLocateComment={(commentId, blockId) => {
-							setActiveCommentId(commentId);
-							locateBlock(blockId);
-						}}
-						onOpenSource={(path) => onOpenLink?.('vault', path)}
-						getFocusedBlockId={getFocusedBlockId}
-						resolveFocusContext={resolveFocusContext}
-						resolveRelatedFocus={resolveFocus}
-						onRestoreGeneration={restoreGeneration}
-					/>
-				)}
-			</div>
+			</ComposerSurfaceProvider>
 		</ComposerChromeProvider>
 	);
 }
@@ -482,6 +494,11 @@ function ComposerDocument({
 	const [commentRailOpen, setCommentRailOpen] = React.useState(false);
 	const [drag, setDrag] = React.useState<DragState | null>(null);
 	const [hasSelection, setHasSelection] = React.useState(false);
+	const documentSurfaces = useComposerSurfaces();
+	const canClaimDocumentSurface = documentSurfaces.canClaim;
+	const claimDocumentSurface = documentSurfaces.claim;
+	const releaseDocumentSurface = documentSurfaces.release;
+	const selectionSurfaceId = React.useId();
 	const [guard, setGuard] = React.useState<string | null>(null);
 	const [invokeErrors, setInvokeErrors] = React.useState<Record<string, string>>({});
 	const [reviewAll, setReviewAll] = React.useState(false);
@@ -497,6 +514,29 @@ function ComposerDocument({
 		onDisplayModeChange?.(next);
 		if (next === 'clean') setCommentSurfaceOpen(false);
 	}, [onDisplayModeChange, setCommentSurfaceOpen]);
+	React.useEffect(() => {
+		if (!hasSelection) {
+			releaseDocumentSurface(selectionSurfaceId);
+			return;
+		}
+		if (!canClaimDocumentSurface('selection', selectionSurfaceId)) return;
+		claimDocumentSurface({
+			id: selectionSurfaceId,
+			kind: 'selection',
+			ownerId: snapshot.documentId,
+		});
+	}, [
+		canClaimDocumentSurface,
+		claimDocumentSurface,
+		hasSelection,
+		releaseDocumentSurface,
+		selectionSurfaceId,
+		snapshot.documentId,
+	]);
+	React.useEffect(
+		() => () => releaseDocumentSurface(selectionSurfaceId),
+		[releaseDocumentSurface, selectionSurfaceId],
+	);
 
 	React.useEffect(() => {
 		if (!hub) return;
@@ -1063,6 +1103,102 @@ function ComposerBlockRow({
 	const spacing = blockSpacingRole(block, previousBlock);
 	const ownPanel = panel?.blockId === block.blockId ? panel : null;
 	const frontmatterLibraryOpen = ownPanel?.panel === 'vault-library';
+	const surfaces = useComposerSurfaces();
+	const {
+		active: activeSurface,
+		canClaim: canClaimSurface,
+		claim: claimSurface,
+		release: releaseSurface,
+	} = surfaces;
+	const actionSurfaceId = React.useId();
+	const actionOpenTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+	const actionCloseTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+	const [actionRowVisible, setActionRowVisible] = React.useState(false);
+	const clearActionOpen = () => {
+		if (!actionOpenTimer.current) return;
+		clearTimeout(actionOpenTimer.current);
+		actionOpenTimer.current = null;
+	};
+	const clearActionClose = () => {
+		if (!actionCloseTimer.current) return;
+		clearTimeout(actionCloseTimer.current);
+		actionCloseTimer.current = null;
+	};
+	const showActionRow = (immediate = false) => {
+		clearActionClose();
+		if (ownPanel?.panel === 'insert-draft') return;
+		if (!canClaimSurface('block-actions', actionSurfaceId)) return;
+		const reveal = () => {
+			actionOpenTimer.current = null;
+			if (!canClaimSurface('block-actions', actionSurfaceId)) return;
+			claimSurface({ id: actionSurfaceId, kind: 'block-actions', ownerId: block.blockId });
+			setActionRowVisible(true);
+		};
+		if (immediate) {
+			clearActionOpen();
+			reveal();
+			return;
+		}
+		if (actionOpenTimer.current) return;
+		actionOpenTimer.current = setTimeout(reveal, config.chrome.surfacePreviewOpenDelayMs);
+	};
+	const hideActionRow = () => {
+		clearActionOpen();
+		if (ownPanel?.pinned) return;
+		clearActionClose();
+		actionCloseTimer.current = setTimeout(() => {
+			actionCloseTimer.current = null;
+			setActionRowVisible(false);
+			releaseSurface(actionSurfaceId);
+		}, config.chrome.surfacePreviewCloseDelayMs);
+	};
+	React.useEffect(() => {
+		if (!ownPanel) {
+			if (actionRowVisible) {
+				claimSurface({
+					id: actionSurfaceId,
+					kind: 'block-actions',
+					ownerId: block.blockId,
+				});
+			}
+			return;
+		}
+		if (ownPanel.panel === 'insert-draft') {
+			clearActionOpen();
+			clearActionClose();
+			setActionRowVisible(false);
+			releaseSurface(actionSurfaceId);
+			return;
+		}
+		clearActionOpen();
+		clearActionClose();
+		setActionRowVisible(true);
+		claimSurface({
+			id: actionSurfaceId,
+			kind: ownPanel.pinned || ownPanel.panel === 'instruction' ? 'draft' : 'menu',
+			ownerId: block.blockId,
+		});
+	}, [
+		actionRowVisible,
+		actionSurfaceId,
+		block.blockId,
+		claimSurface,
+		ownPanel,
+		releaseSurface,
+	]);
+	React.useEffect(() => {
+		if (!activeSurface || activeSurface.id === actionSurfaceId) return;
+		if (!actionRowVisible || canClaimSurface('block-actions', actionSurfaceId)) return;
+		setActionRowVisible(false);
+	}, [actionRowVisible, actionSurfaceId, activeSurface, canClaimSurface]);
+	React.useEffect(() => () => {
+		clearActionOpen();
+		clearActionClose();
+		releaseSurface(actionSurfaceId);
+	}, [actionSurfaceId, releaseSurface]);
+	const actionRowDisplayed =
+		actionRowVisible &&
+		(!activeSurface || activeSurface.id === actionSurfaceId);
 
 	const openPanel = (kind: BlockPanelKind) => {
 		if (kind === 'comment') {
@@ -1103,12 +1239,16 @@ function ComposerBlockRow({
 					: undefined
 			}
 			data-drop-before={dropBefore || undefined}
+			data-action-row-visible={actionRowDisplayed || undefined}
 			// FIX-1 F2: a mousedown in the row's dead zone (right of the text edge,
 			// rail gutter padding, run gaps) targets this WRAPPER, so the browser
 			// never focuses the contenteditable leaf — typing then goes to the
 			// workspace. Forward such clicks: focus the nearest leaf and place the
 			// caret at the closest text position (line-end for past-the-edge clicks).
 			onMouseDown={editing ? (ev) => forwardBlockClickToEditable(ev.currentTarget, ev) : undefined}
+			onPointerEnter={editing ? () => showActionRow(false) : undefined}
+			onPointerLeave={editing ? hideActionRow : undefined}
+			onFocusCapture={editing ? () => showActionRow(true) : undefined}
 			onMouseLeave={() => {
 				if (ownPanel?.panel === 'instruction') setPanel(null);
 			}}
@@ -1634,9 +1774,8 @@ function EditableListBody({
 }): React.ReactElement {
 	const chrome = useComposerChrome();
 	const hub = chrome.runtime.hub;
-	const [activeGapIndex, setActiveGapIndex] = React.useState<number | null>(null);
-	const [suppressedGapIndex, setSuppressedGapIndex] = React.useState<number | null>(null);
-	const [gapInstruction, setGapInstruction] = React.useState('');
+	const listRef = React.useRef<HTMLDivElement | null>(null);
+	const pendingFocusIndexRef = React.useRef<number | null>(null);
 	const items = block.units.filter((u) => u.unitKind === 'list-item' && !u.parentUnitId);
 	const fillGapAction = chrome.projection
 		.actionsFor(aiSnapshot, 'block-row')
@@ -1661,112 +1800,62 @@ function EditableListBody({
 			</div>
 		));
 	};
-	const openListGap = (index: number) => {
-		if (suppressedGapIndex === index) return;
-		setSuppressedGapIndex(null);
-		setGapInstruction('');
-		setActiveGapIndex(index);
+	const insertListItem = async (index: number, kind: DirectListItemKind) => {
+		if (!hub) return;
+		const built = buildInsertListItemOps(snapshot, block.blockId, index, kind);
+		if (!built) return;
+		pendingFocusIndexRef.current = index;
+		try {
+			await hub.commit({
+				origin: 'direct',
+				label: chrome.config.chrome.actions.insertBelow,
+				operations: built.operations,
+				target: built.target,
+				expectedBlockDelta: built.expectedBlockDelta,
+			});
+		} catch {
+			pendingFocusIndexRef.current = null;
+		}
 	};
-	const closeListGap = (index: number) => {
-		setActiveGapIndex(null);
-		setSuppressedGapIndex(index);
-		setGapInstruction('');
-	};
-	const trackListGapPointer = (event: React.PointerEvent<HTMLDivElement>) => {
-		if (activeGapIndex !== null) return;
-		const rect = event.currentTarget.getBoundingClientRect();
-		event.currentTarget.style.setProperty(
-			'--pk-list-gap-pointer-x',
-			`${event.clientX - rect.left}px`,
-		);
-	};
+	React.useLayoutEffect(() => {
+		const index = pendingFocusIndexRef.current;
+		const root = listRef.current;
+		const ownerWindow = root?.ownerDocument.defaultView;
+		if (index === null || index === undefined || !root || !ownerWindow) return;
+		const frame = ownerWindow.requestAnimationFrame(() => {
+			const rows = Array.from(root.querySelectorAll<HTMLElement>('.pk-composer-list__row'));
+			const editable = rows[index]?.querySelector<HTMLElement>('.pk-composer-editable');
+			if (!editable) return;
+			pendingFocusIndexRef.current = null;
+			editable.focus();
+			const selection = editable.ownerDocument.getSelection();
+			if (!selection) return;
+			selection.collapse(editable, 0);
+		});
+		return () => ownerWindow.cancelAnimationFrame(frame);
+	}, [items.length, snapshot.revision]);
 	const renderGap = (index: number): React.ReactElement | null => {
-		if (!editing || !candidateRuntime || !fillGapAction) return null;
-		const active = activeGapIndex === index;
+		if (!editing || !hub) return null;
 		return (
-			<div
+			<ListItemInsertGap
 				key={`gap-${index}`}
-				className="pk-composer-list__gap-anchor"
-				data-list-gap-index={index}
-				data-active={active || undefined}
-				data-chrome="true"
-				onPointerMove={trackListGapPointer}
-				onPointerLeave={() => {
-					if (suppressedGapIndex !== index) return;
-					setSuppressedGapIndex(null);
+				blockId={block.blockId}
+				index={index}
+				aiDisabledReason={
+					fillGapAction?.disabledReason
+					?? (fillGapAction ? undefined : chrome.config.chrome.insertDraft.generationUnavailable)
+				}
+				onInsert={(kind) => void insertListItem(index, kind)}
+				onAi={(instruction) => {
+					if (!fillGapAction || fillGapAction.disabledReason) return;
+					onInvoke(
+						fillGapAction,
+						aiSnapshot,
+						instruction,
+						{ kind: 'list-gap', insertionIndex: index },
+					);
 				}}
-				onMouseDown={(event) => event.stopPropagation()}
-			>
-				{active ? (
-					<div className="pk-composer-list__gap-form">
-						<Sparkles size={13} aria-hidden />
-						<input
-							autoFocus
-							value={gapInstruction}
-							placeholder={chrome.config.chrome.actions.listGapPlaceholder}
-							aria-label={chrome.config.chrome.actions.listGapPlaceholder}
-							onChange={(event) => setGapInstruction(event.currentTarget.value)}
-							onKeyDown={(event) => {
-								if (event.key === 'Escape') {
-									event.preventDefault();
-									closeListGap(index);
-								}
-								if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
-								event.preventDefault();
-								if (fillGapAction.disabledReason) return;
-								onInvoke(
-									fillGapAction,
-									aiSnapshot,
-									gapInstruction.trim() || undefined,
-									{ kind: 'list-gap', insertionIndex: index },
-								);
-								closeListGap(index);
-							}}
-						/>
-						<Button
-							variant="ghost"
-							size="sm"
-							className="pk-composer-list__gap-cancel"
-							aria-label={chrome.config.chrome.actions.listGapCancel}
-							title={chrome.config.chrome.actions.listGapCancel}
-							onClick={() => closeListGap(index)}
-						>
-							<X size={12} />
-						</Button>
-						<Button
-							variant="secondary"
-							size="sm"
-							className="pk-composer-list__gap-submit"
-							disabled={Boolean(fillGapAction.disabledReason)}
-							title={fillGapAction.disabledReason}
-							onClick={() => {
-								onInvoke(
-									fillGapAction,
-									aiSnapshot,
-									gapInstruction.trim() || undefined,
-									{ kind: 'list-gap', insertionIndex: index },
-								);
-								closeListGap(index);
-							}}
-						>
-							{chrome.config.chrome.actions.listGapGenerate}
-						</Button>
-					</div>
-				) : (
-					<Button
-						variant="ghost"
-						size="icon"
-						className="pk-composer-list__gap-trigger"
-						aria-label={chrome.config.chrome.actions.listGapLabel}
-						title={fillGapAction.disabledReason ?? chrome.config.chrome.actions.listGapLabel}
-						disabled={Boolean(fillGapAction.disabledReason)}
-						onPointerEnter={() => openListGap(index)}
-						onFocus={() => openListGap(index)}
-					>
-						<Plus size={12} />
-					</Button>
-				)}
-			</div>
+			/>
 		);
 	};
 	const toggle = async (unitId: string) => {
@@ -1786,7 +1875,7 @@ function EditableListBody({
 		}
 	};
 	return (
-		<div className="pk-composer-list" data-block-id={block.blockId}>
+		<div ref={listRef} className="pk-composer-list" data-block-id={block.blockId}>
 			{items.map((unit, itemIndex) => {
 				const contentStart = listItemContentStart(snapshot.sourceText, unit);
 				const slice = snapshot.sourceText.slice(unit.from, unit.to);

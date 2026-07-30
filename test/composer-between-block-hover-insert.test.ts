@@ -83,9 +83,32 @@ assert.ok(
 	'choosing a gap type reuses the existing NewBlockDraft path',
 );
 
-assert.ok(gapSource.includes('onPointerMove={trackPointer}'), 'the insertion anchor follows pointer x');
-assert.ok(gapSource.includes('onPointerEnter={openMenu}'), 'hovering the plus opens the type menu');
+assert.ok(
+	gapSource.includes('onPointerEnter={acquirePointer}'),
+	'the gap captures one pointer-relative anchor on entry',
+);
+assert.equal(
+	gapSource.includes('onPointerMove='),
+	false,
+	'the visible plus must not drift while the pointer moves nearby',
+);
+assert.ok(
+	gapSource.includes('anchorCaptured.current = true'),
+	'repeated synthetic pointer-enter events cannot overwrite the acquired anchor',
+);
+assert.ok(
+	gapSource.includes('onPointerEnter={scheduleOpen}'),
+	'hovering the stable plus opens the type menu after an intent delay',
+);
+assert.ok(
+	gapSource.includes('surfaceIntentOpenDelayMs'),
+	'plus hover intent is template-configured',
+);
 assert.equal(gapSource.includes('onClick={openMenu}'), false, 'opening the menu never requires a click');
+assert.ok(
+	gapSource.includes("claimSurface({ id: surfaceId, kind: 'menu'"),
+	'the menu participates in Composer transient-surface arbitration',
+);
 assert.ok(
 	gapSource.includes('surfacePreviewCloseDelayMs'),
 	'the pointer corridor reuses the configured Composer surface close delay',
@@ -110,8 +133,18 @@ assert.match(
 );
 assert.match(
 	css,
+	/\.pk-between-block-insert__trigger\s*\{[\s\S]*?margin:\s*-11px 0 0 -11px !important;[\s\S]*?transform:\s*none !important;/,
+	'the pointer anchor uses fixed offsets that cannot be reset on button hover',
+);
+assert.match(
+	css,
 	/\.pk-between-block-insert__trigger\s*\{[\s\S]*?left:\s*clamp\(/,
-	'the plus is clamped around the live pointer position rather than fixed at the left edge',
+	'the plus is clamped around the captured pointer position rather than fixed at the left edge',
+);
+assert.match(
+	css,
+	/\.pk-between-block-insert\[data-armed\] \.pk-between-block-insert__trigger/,
+	'the plus remains visible from explicit acquired state rather than raw hover churn',
 );
 assert.match(
 	css,

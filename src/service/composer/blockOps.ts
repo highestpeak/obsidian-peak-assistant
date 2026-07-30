@@ -12,6 +12,7 @@
 
 import type { ComposerDocumentSnapshot, ComposerOperation, ComposerTarget } from '@/core/composer';
 import { countDraftBlocks } from './newBlockDraft';
+import { listItemContentStart } from './selection/partitionSelection';
 
 export interface BuiltOps {
 	operations: ComposerOperation[];
@@ -96,6 +97,79 @@ export function buildInsertBelowOps(
 		target: { kind: 'block', blockId },
 		expectedBlockDelta,
 	};
+}
+
+export type DirectListItemKind = 'list' | 'task';
+
+/**
+ * Insert one empty top-level list item at an explicit visual gap.
+ *
+ * The item inherits indentation and ordered/unordered marker style from the
+ * neighboring source item. Only the checkbox marker is controlled by `kind`.
+ * The transaction keeps the surrounding list as one parsed block, so History,
+ * Undo and the reparse guard remain unchanged.
+ */
+export function buildInsertListItemOps(
+	snapshot: ComposerDocumentSnapshot,
+	blockId: string,
+	insertionIndex: number,
+	kind: DirectListItemKind,
+): BuiltOps | null {
+	const block = snapshot.blocks.find((candidate) => candidate.blockId === blockId);
+	if (!block || (block.kind !== 'list' && block.kind !== 'task')) return null;
+	const items = block.units.filter(
+		(unit) => unit.unitKind === 'list-item' && !unit.parentUnitId,
+	);
+	if (!Number.isInteger(insertionIndex) || insertionIndex < 0 || insertionIndex > items.length) {
+		return null;
+	}
+	const next = items[insertionIndex];
+	const previous = items[insertionIndex - 1];
+	const reference = next ?? previous ?? items[0];
+	const marker = directListMarker(snapshot.sourceText, block.renderModel.ordered, reference, kind);
+	const newline = snapshot.sourceText.includes('\r\n') ? '\r\n' : '\n';
+	if (next) {
+		return {
+			operations: [{
+				kind: 'replaceRange',
+				from: next.from,
+				to: next.from,
+				text: `${marker}${newline}`,
+			}],
+			target: { kind: 'block', blockId },
+			expectedBlockDelta: 0,
+		};
+	}
+	const lead = snapshot.sourceText.slice(block.source.from, block.source.to).endsWith(newline)
+		? ''
+		: newline;
+	return {
+		operations: [{
+			kind: 'replaceRange',
+			from: block.source.to,
+			to: block.source.to,
+			text: `${lead}${marker}`,
+		}],
+		target: { kind: 'block', blockId },
+		expectedBlockDelta: 0,
+	};
+}
+
+function directListMarker(
+	source: string,
+	ordered: boolean | undefined,
+	reference: { from: number; to: number } | undefined,
+	kind: DirectListItemKind,
+): string {
+	const rawMarker = reference
+		? source.slice(reference.from, listItemContentStart(source, reference))
+		: '';
+	const match = /^(\s*)([-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?/.exec(rawMarker);
+	const indent = match?.[1] ?? '';
+	const token = match?.[2] ?? (ordered ? '1.' : '-');
+	return kind === 'task'
+		? `${indent}${token} [ ] `
+		: `${indent}${token} `;
 }
 
 /** Toggle a task item's checkbox: flips the `[ ]` / `[x]` at the item's marker. */

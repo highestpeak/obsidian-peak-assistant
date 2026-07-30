@@ -1,6 +1,14 @@
 import { PromptId } from '@/core/types/prompt';
 import {
 	COMPOSER_BLOCK_DRAFT_CAPABILITY_ID,
+	composerDraftBody,
+	composerDraftEditorKind,
+	composerDraftFormula,
+	composerDraftFormulaSource,
+	composerDraftHasContent,
+	composerDraftReferenceSource,
+	composerDraftReferenceTarget,
+	composerDraftSource,
 	countDraftBlocks,
 	createComposerBlockDraftGenerationPort,
 	insertDraftSyntax,
@@ -24,6 +32,20 @@ async function main(): Promise<void> {
 	check('one paragraph counts as one draft block', countDraftBlocks('Paragraph') === 1);
 	check('arbitrary Markdown can insert multiple blocks', countDraftBlocks('## Heading\n\nParagraph') === 2);
 	check('empty Markdown inserts no block', countDraftBlocks('   ') === 0);
+	check('headings use the visual text editor', composerDraftEditorKind('heading') === 'text');
+	check('tables use a cell editor', composerDraftEditorKind('table') === 'table');
+	check('native references use an object editor', composerDraftEditorKind('canvas') === 'reference');
+	check('heading syntax stays outside the visual body', composerDraftBody('heading', '## Title') === 'Title');
+	check('visual heading text serializes back to Markdown', composerDraftSource('heading', 'Title') === '## Title');
+	check('task syntax stays outside the visual body', composerDraftBody('task', '- [ ] Ship') === 'Ship');
+	check('visual task text serializes back to Markdown', composerDraftSource('task', 'Ship') === '- [ ] Ship');
+	check('formula editor extracts LaTeX', composerDraftFormula('$$x^2$$') === 'x^2');
+	check('formula editor serializes LaTeX', composerDraftFormulaSource('x^2') === '$$x^2$$');
+	check('reference editor extracts the target', composerDraftReferenceTarget('![[Map.canvas]]') === 'Map.canvas');
+	check('reference editor serializes the target', composerDraftReferenceSource('Map.canvas') === '![[Map.canvas]]');
+	check('structural heading shell cannot be committed', !composerDraftHasContent('heading', '## '));
+	check('structural task shell cannot be committed', !composerDraftHasContent('task', '- [ ] '));
+	check('a real visual body can be committed', composerDraftHasContent('paragraph', 'Body'));
 
 	const requests: ComposerExecutionRequest[] = [];
 	const executor: ComposerCapabilityExecutorPort = {

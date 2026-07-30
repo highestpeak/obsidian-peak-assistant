@@ -54,6 +54,81 @@ export interface DraftSyntaxInsertion {
 	selectionEnd: number;
 }
 
+export type ComposerDraftEditorKind =
+	| 'text'
+	| 'table'
+	| 'formula'
+	| 'reference'
+	| 'ai';
+
+export function composerDraftEditorKind(typeId: string): ComposerDraftEditorKind {
+	if (typeId === 'table') return 'table';
+	if (typeId === 'formula') return 'formula';
+	if (typeId === 'image' || typeId === 'base' || typeId === 'canvas' || typeId === 'excalidraw') {
+		return 'reference';
+	}
+	if (typeId === 'ai') return 'ai';
+	return 'text';
+}
+
+/** Extract the editable visual body while keeping structural Markdown private. */
+export function composerDraftBody(typeId: string, source: string): string {
+	if (typeId === 'heading') return source.replace(/^#{1,6}\s*/, '');
+	if (typeId === 'task') return source.replace(/^\s*(?:[-*+]|\d+[.)])\s+\[[ xX]\]\s*/, '');
+	if (typeId === 'list') return source.replace(/^\s*(?:[-*+]|\d+[.)])\s+/, '');
+	if (typeId === 'quote') return source.split('\n').map((line) => line.replace(/^>\s?/, '')).join('\n');
+	if (typeId === 'callout') {
+		return source
+			.split('\n')
+			.slice(1)
+			.map((line) => line.replace(/^>\s?/, ''))
+			.join('\n');
+	}
+	return source;
+}
+
+/** Serialize a visual text body to the selected standard Markdown block kind. */
+export function composerDraftSource(typeId: string, body: string): string {
+	if (typeId === 'heading') return `## ${body}`;
+	if (typeId === 'task') return `- [ ] ${body}`;
+	if (typeId === 'list') return `- ${body}`;
+	if (typeId === 'quote') return body.split('\n').map((line) => `> ${line}`).join('\n');
+	if (typeId === 'callout') {
+		const lines = body.split('\n').map((line) => `> ${line}`).join('\n');
+		return `> [!note]\n${lines}`;
+	}
+	return body;
+}
+
+export function composerDraftFormula(source: string): string {
+	return source.trim().replace(/^\$\$/, '').replace(/\$\$$/, '');
+}
+
+export function composerDraftFormulaSource(latex: string): string {
+	return `$$${latex}$$`;
+}
+
+export function composerDraftReferenceTarget(source: string): string {
+	const wiki = /^!\[\[([\s\S]+)\]\]$/.exec(source.trim());
+	if (wiki) return wiki[1];
+	const markdown = /^!\[[^\]]*\]\(([\s\S]+)\)$/.exec(source.trim());
+	return markdown?.[1] ?? source.trim();
+}
+
+export function composerDraftReferenceSource(target: string): string {
+	return `![[${target.trim()}]]`;
+}
+
+/** True when the visual editor contains user content beyond its structural shell. */
+export function composerDraftHasContent(typeId: string, source: string): boolean {
+	const kind = composerDraftEditorKind(typeId);
+	if (kind === 'formula') return Boolean(composerDraftFormula(source).trim());
+	if (kind === 'reference') return Boolean(composerDraftReferenceTarget(source).trim());
+	if (kind === 'ai') return Boolean(source.trim());
+	if (kind === 'table') return Boolean(source.replace(/[\s|:-]/g, ''));
+	return Boolean(composerDraftBody(typeId, source).trim());
+}
+
 /** Insert a visible Markdown shortcut at the current selection/caret. */
 export function insertDraftSyntax(
 	value: string,

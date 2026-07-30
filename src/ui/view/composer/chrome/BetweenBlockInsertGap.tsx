@@ -4,6 +4,7 @@ import type { ComposerBlock } from '@/core/composer';
 import { Button } from '@/ui/components/primitives';
 import { useComposerChrome } from './ComposerChromeContext';
 import { InsertTypeMenu } from './InsertTypeMenu';
+import { useComposerSurfaces } from './ComposerSurfaceCoordinator';
 
 export interface BetweenBlockInsertGapProps {
 	anchorBlockId: string;
@@ -30,8 +31,9 @@ export function adjacentInsertionAnchor(
 /**
  * Zero-height insertion layer over the existing semantic block margin.
  *
- * Pointer movement only updates the horizontal anchor. Hovering/focusing the
- * plus freezes it and opens the shared type rail; no click is required.
+ * Entering the gap captures one horizontal anchor. Hovering/focusing the stable
+ * plus opens the shared type rail after the configured intent delay; no click
+ * is required.
  */
 export function BetweenBlockInsertGap({
 	anchorBlockId,
@@ -40,10 +42,21 @@ export function BetweenBlockInsertGap({
 }: BetweenBlockInsertGapProps): React.ReactElement {
 	const config = useComposerChrome().config.chrome;
 	const closeDelayMs = config.surfacePreviewCloseDelayMs;
+	const surfaces = useComposerSurfaces();
+	const {
+		active: activeSurface,
+		canClaim: canClaimSurface,
+		claim: claimSurface,
+		release: releaseSurface,
+	} = surfaces;
+	const surfaceId = React.useId();
 	const laneRef = React.useRef<HTMLDivElement | null>(null);
 	const triggerRef = React.useRef<HTMLButtonElement | null>(null);
 	const menuRef = React.useRef<HTMLDivElement | null>(null);
+	const openTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 	const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+	const anchorCaptured = React.useRef(false);
+	const [armed, setArmed] = React.useState(false);
 	const [open, setOpen] = React.useState(false);
 
 	const anchorBlock = (): HTMLElement | null => {
@@ -66,6 +79,11 @@ export function BetweenBlockInsertGap({
 		clearTimeout(closeTimer.current);
 		closeTimer.current = null;
 	};
+	const clearOpen = () => {
+		if (!openTimer.current) return;
+		clearTimeout(openTimer.current);
+		openTimer.current = null;
+	};
 	const positionMenu = () => {
 		const lane = laneRef.current;
 		const trigger = triggerRef.current;
@@ -80,26 +98,42 @@ export function BetweenBlockInsertGap({
 		lane.style.setProperty('--pk-between-block-menu-left', `${boundedLeft}px`);
 	};
 	const openMenu = () => {
+		if (!canClaimSurface('menu', surfaceId)) return;
+		clearOpen();
 		clearClose();
+		claimSurface({ id: surfaceId, kind: 'menu', ownerId: anchorBlockId });
 		setOpen(true);
 	};
+	const scheduleOpen = () => {
+		if (open || openTimer.current) return;
+		openTimer.current = setTimeout(() => {
+			openTimer.current = null;
+			openMenu();
+		}, config.surfaceIntentOpenDelayMs);
+	};
 	const scheduleClose = () => {
+		clearOpen();
 		clearClose();
 		closeTimer.current = setTimeout(() => {
 			closeTimer.current = null;
+			anchorCaptured.current = false;
 			setOpen(false);
+			setArmed(false);
+			releaseSurface(surfaceId);
 			clearAnchorHoverBridge();
 		}, closeDelayMs);
 	};
-	const trackPointer = (event: React.PointerEvent<HTMLDivElement>) => {
-		if (open) return;
+	const acquirePointer = (event: React.PointerEvent<HTMLDivElement>) => {
+		if (anchorCaptured.current || open) return;
 		const lane = laneRef.current;
 		if (!lane) return;
+		anchorCaptured.current = true;
 		const hitAreaRect = event.currentTarget.getBoundingClientRect();
 		lane.style.setProperty(
 			'--pk-between-block-pointer-x',
 			`${event.clientX - hitAreaRect.left}px`,
 		);
+		setArmed(true);
 	};
 
 	React.useEffect(() => {
@@ -114,9 +148,19 @@ export function BetweenBlockInsertGap({
 		};
 	}, [open]);
 	React.useEffect(() => () => {
+		clearOpen();
 		clearClose();
+		releaseSurface(surfaceId);
 		clearAnchorHoverBridge();
-	}, []);
+	}, [releaseSurface, surfaceId]);
+	React.useEffect(() => {
+		if (!activeSurface || activeSurface.id === surfaceId || !open) return;
+		if (canClaimSurface('menu', surfaceId)) return;
+		anchorCaptured.current = false;
+		setOpen(false);
+		setArmed(false);
+		clearAnchorHoverBridge();
+	}, [activeSurface, canClaimSurface, open, surfaceId]);
 
 	return (
 		<div
@@ -124,6 +168,7 @@ export function BetweenBlockInsertGap({
 			className="pk-between-block-insert"
 			data-next-spacing={nextSpacing}
 			data-insert-after-block={anchorBlockId}
+			data-armed={armed || undefined}
 			data-open={open || undefined}
 			data-chrome="true"
 			data-composer-surface-owner={anchorBlockId}
@@ -149,11 +194,13 @@ export function BetweenBlockInsertGap({
 				event.preventDefault();
 				clearClose();
 				setOpen(false);
+				setArmed(true);
+				releaseSurface(surfaceId);
 				clearAnchorHoverBridge();
 				triggerRef.current?.focus();
 			}}
 		>
-			<div className="pk-between-block-insert__hit-area" onPointerMove={trackPointer}>
+			<div className="pk-between-block-insert__hit-area" onPointerEnter={acquirePointer}>
 				<span className="pk-between-block-insert__line" aria-hidden />
 				<Button
 					ref={triggerRef}
@@ -163,7 +210,7 @@ export function BetweenBlockInsertGap({
 					aria-label={config.insertDraft.chooserLabel}
 					aria-haspopup="menu"
 					aria-expanded={open}
-					onPointerEnter={openMenu}
+					onPointerEnter={scheduleOpen}
 					onFocus={openMenu}
 				>
 					<Plus size={13} />
@@ -178,7 +225,10 @@ export function BetweenBlockInsertGap({
 					<InsertTypeMenu
 						onSelect={(typeId) => {
 							clearClose();
+							anchorCaptured.current = false;
 							setOpen(false);
+							setArmed(false);
+							releaseSurface(surfaceId);
 							clearAnchorHoverBridge();
 							onSelectInsertType(typeId);
 						}}

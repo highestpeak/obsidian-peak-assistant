@@ -144,7 +144,7 @@ check('block action row scrolls instead of silently clipping real quick actions'
 	);
 });
 
-check('insert-below uses one Markdown draft with preview and explicit AI acceptance', () => {
+check('insert-below uses one full-width live editor with explicit AI acceptance', () => {
 	const root = readFileSync('src/ui/view/composer/ComposerRoot.tsx', 'utf8');
 	const actionRow = readFileSync('src/ui/view/composer/chrome/BlockActionRow.tsx', 'utf8');
 	const insertTypeMenu = readFileSync(
@@ -172,6 +172,8 @@ check('insert-below uses one Markdown draft with preview and explicit AI accepta
 	assert.ok(actionRow.includes('pk-block-action-row__expanded-surface'));
 	assert.equal(actionRow.includes("aria-label={instructionOpen ? a.instruction : 'Block actions'}"), false);
 	assert.equal(actionRow.includes('Block actions'), false);
+	assert.ok(root.includes('surfacePreviewOpenDelayMs'));
+	assert.ok(root.includes('data-action-row-visible={actionRowDisplayed || undefined}'));
 	assert.match(
 		css,
 		/\.pk-block-action-row__expanded-surface\s*\{[\s\S]*?display:\s*block;[\s\S]*?margin-top:\s*6px;/,
@@ -202,12 +204,29 @@ check('insert-below uses one Markdown draft with preview and explicit AI accepta
 	assert.ok(draft.includes('StreamdownIsolated'));
 	assert.ok(draft.includes('blockDraftGeneration'));
 	assert.ok(draft.includes('config.acceptGenerated'));
-	assert.ok(draft.includes('insertDraftSyntax'));
+	assert.ok(draft.includes('<VisualDraftTextEditor'));
+	assert.ok(draft.includes('<DraftTableEditor'));
+	assert.ok(draft.includes('<DraftFormulaEditor'));
+	assert.ok(draft.includes('<DraftReferenceEditor'));
+	assert.ok(draft.includes('hasSourceVisualSyntaxChange'));
+	assert.ok(draft.includes('key={projection.version}'));
+	assert.ok(draft.includes('onCompositionStart'));
+	assert.equal(draft.includes('pk-new-block-draft__header'), false);
+	assert.equal(draft.includes('pk-new-block-draft__shortcuts'), false);
+	assert.equal(draft.includes('pk-new-block-draft__pane'), false);
+	assert.equal(draft.includes('sourceLabel'), false);
+	assert.equal(draft.includes('previewLabel'), false);
 	assert.equal(draft.includes('selectedTypeId'), false);
 	assert.equal(draft.includes('selectedType.blockKind'), false);
 	assert.equal(draft.includes('lastUsed'), false);
 	assert.equal(root.includes('insertDraftAfter'), false);
 	assert.equal(draft.includes('onBlur={() => void commit()}'), false);
+	assert.match(
+		css,
+		/\.pk-new-block-draft\s*\{[\s\S]*?width:\s*100%;[\s\S]*?margin:\s*var\(--pk-space-2\) 0/,
+		'the draft aligns to the document column at full width',
+	);
+	assert.equal(css.includes('grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)'), false);
 });
 
 check('document controls share one non-overlay control bar', () => {

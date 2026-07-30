@@ -62,8 +62,14 @@ export interface ComposerSwatch {
  * messages) routed through config per configurability.md.
  */
 export interface ComposerChromeConfig {
+	/** Pointer must remain intentional this long before a large hover surface appears. */
+	surfacePreviewOpenDelayMs: number;
+	/** Shorter dwell used after the user has acquired a visible plus trigger. */
+	surfaceIntentOpenDelayMs: number;
 	/** Hover corridor grace period for moving from an action trigger into its floating surface. */
 	surfacePreviewCloseDelayMs: number;
+	/** Movement beyond this distance restarts hover intent acquisition. */
+	surfacePointerTravelTolerancePx: number;
 	actions: {
 		insertBelow: string;
 		copy: string;
@@ -77,17 +83,15 @@ export interface ComposerChromeConfig {
 		directEdit: string;
 		disabledNoRuntime: string;
 		listGapLabel: string;
+		listGapInsertItem: string;
+		listGapInsertTask: string;
+		listGapAi: string;
 		listGapPlaceholder: string;
 		listGapGenerate: string;
 		listGapCancel: string;
 	};
 	insertDraft: {
 		chooserLabel: string;
-		title: string;
-		description: string;
-		sourceLabel: string;
-		previewLabel: string;
-		previewEmpty: string;
 		commit: string;
 		generate: string;
 		generating: string;
@@ -175,16 +179,7 @@ export interface ComposerChromeConfig {
 		openVault: string;
 		openExternal: string;
 		brokenTitle: string;
-		fixLabel: string;
 		pathLabel: string;
-		explainRelation: string;
-		syncTargetPoints: string;
-		repairLink: string;
-		explainRelationInstruction: string;
-		syncTargetPointsInstruction: string;
-		 repairLinkInstruction: string;
-		previewEmbed: string;
-		previewEmbedTitle: string;
 	};
 	inlineStyle: {
 		removeBold: string;
@@ -320,7 +315,10 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 		blocksSuffix: 'blocks',
 	},
 	chrome: {
+		surfacePreviewOpenDelayMs: 360,
+		surfaceIntentOpenDelayMs: 120,
 		surfacePreviewCloseDelayMs: 180,
+		surfacePointerTravelTolerancePx: 6,
 		actions: {
 				insertBelow: '在下方插入',
 			copy: '复制',
@@ -333,18 +331,16 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 				drag: '拖动块',
 				directEdit: '直接编辑',
 				disabledNoRuntime: '编辑运行时未接入',
-				listGapLabel: '在这里补缺项',
+				listGapLabel: '在这里插入列表项',
+				listGapInsertItem: '列表项',
+				listGapInsertTask: '待办项',
+				listGapAi: 'AI 补项',
 				listGapPlaceholder: '描述这一项需要补什么（可选）',
 				listGapGenerate: '生成',
 				listGapCancel: '取消',
 			},
 			insertDraft: {
 				chooserLabel: '在下方插入',
-				title: '新块草稿',
-				description: '直接写 Markdown 并即时预览，或把输入作为指令交给 AI 生成。',
-				sourceLabel: 'Markdown',
-				previewLabel: '预览',
-				previewEmpty: '开始输入后，这里会显示最终写入效果。',
 				commit: '写入为块',
 				generate: 'AI 生成',
 				generating: '正在生成…',
@@ -355,18 +351,18 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 				cancel: '取消',
 				shortcutHint: '⌘↵ 写入',
 				types: [
-					{ id: 'paragraph', label: '段落', default: true, initialValue: '', placeholder: '直接写 Markdown，或输入希望 AI 生成的内容…', syntaxPrefix: '', syntaxSuffix: '', shortcut: false, mode: 'markdown' },
+					{ id: 'paragraph', label: '段落', default: true, initialValue: '', placeholder: '输入正文，格式会即时呈现…', syntaxPrefix: '', syntaxSuffix: '', shortcut: false, mode: 'markdown' },
 					{ id: 'heading', label: '标题', default: false, initialValue: '## ', placeholder: '输入标题…', syntaxPrefix: '## ', syntaxSuffix: '', shortcut: true, mode: 'markdown' },
 					{ id: 'list', label: '列表', default: false, initialValue: '- ', placeholder: '输入列表项…', syntaxPrefix: '- ', syntaxSuffix: '', shortcut: true, mode: 'markdown' },
 					{ id: 'task', label: '待办', default: false, initialValue: '- [ ] ', placeholder: '输入待办事项…', syntaxPrefix: '- [ ] ', syntaxSuffix: '', shortcut: true, mode: 'markdown' },
 					{ id: 'quote', label: '引用', default: false, initialValue: '> ', placeholder: '输入引用内容…', syntaxPrefix: '> ', syntaxSuffix: '', shortcut: true, mode: 'markdown' },
 					{ id: 'callout', label: 'Callout', default: false, initialValue: '> [!note]\n> ', placeholder: '输入提示内容…', syntaxPrefix: '> [!note]\n> ', syntaxSuffix: '', shortcut: true, mode: 'markdown' },
 					{ id: 'formula', label: '公式', default: false, initialValue: '$$E = mc^2$$', placeholder: '输入 LaTeX 公式…', syntaxPrefix: '$$', syntaxSuffix: '$$', shortcut: true, mode: 'markdown' },
-					{ id: 'image', label: '图片', default: false, initialValue: '![[附件.png]]', placeholder: '输入图片嵌入，例如 ![[附件.png]]', syntaxPrefix: '![[', syntaxSuffix: ']]', shortcut: true, mode: 'markdown' },
+					{ id: 'image', label: '图片', default: false, initialValue: '![[附件.png]]', placeholder: '输入图片或附件名称…', syntaxPrefix: '![[', syntaxSuffix: ']]', shortcut: true, mode: 'markdown' },
 					{ id: 'table', label: '表格', default: false, initialValue: '| 项目 | 说明 |\n| --- | --- |\n| 新项目 | 待填写 |', placeholder: '输入 Markdown 表格…', syntaxPrefix: '| 项目 | 说明 |\n| --- | --- |\n| 新项目 | 待填写 |', syntaxSuffix: '', shortcut: true, mode: 'markdown' },
-					{ id: 'base', label: 'Base', default: false, initialValue: '![[新视图.base]]', placeholder: '输入 Base 嵌入，例如 ![[视图.base]]', syntaxPrefix: '![[', syntaxSuffix: '.base]]', shortcut: false, mode: 'markdown' },
-					{ id: 'canvas', label: 'Canvas', default: false, initialValue: '![[新画布.canvas]]', placeholder: '输入 Canvas 嵌入，例如 ![[画布.canvas]]', syntaxPrefix: '![[', syntaxSuffix: '.canvas]]', shortcut: false, mode: 'markdown' },
-					{ id: 'excalidraw', label: 'Excalidraw', default: false, initialValue: '![[新草图.excalidraw.md]]', placeholder: '输入 Excalidraw 嵌入，例如 ![[草图.excalidraw.md]]', syntaxPrefix: '![[', syntaxSuffix: '.excalidraw.md]]', shortcut: false, mode: 'markdown' },
+					{ id: 'base', label: 'Base', default: false, initialValue: '![[新视图.base]]', placeholder: '输入 Base 文件名…', syntaxPrefix: '![[', syntaxSuffix: '.base]]', shortcut: false, mode: 'markdown' },
+					{ id: 'canvas', label: 'Canvas', default: false, initialValue: '![[新画布.canvas]]', placeholder: '输入 Canvas 文件名…', syntaxPrefix: '![[', syntaxSuffix: '.canvas]]', shortcut: false, mode: 'markdown' },
+					{ id: 'excalidraw', label: 'Excalidraw', default: false, initialValue: '![[新草图.excalidraw.md]]', placeholder: '输入 Excalidraw 文件名…', syntaxPrefix: '![[', syntaxSuffix: '.excalidraw.md]]', shortcut: false, mode: 'markdown' },
 					{ id: 'ai', label: 'AI 续写', default: false, initialValue: '', placeholder: '描述希望 AI 在这里补充什么…', syntaxPrefix: '', syntaxSuffix: '', shortcut: false, mode: 'ai' },
 				],
 			},
@@ -454,16 +450,7 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 			openVault: '打开 {title}',
 			openExternal: '访问 {url}',
 			brokenTitle: '链接未解析',
-			fixLabel: '修复建议',
 			pathLabel: '路径',
-			explainRelation: '解释引用关系',
-			syncTargetPoints: '同步目标要点',
-			repairLink: '修复此链接',
-			explainRelationInstruction: 'Clarify the relationship between this wikilink and its surrounding statement. Preserve the existing link token and unrelated text; return the complete block source.',
-			syncTargetPointsInstruction: 'Synchronize the most relevant target-note key points into this local statement. Keep the existing wikilink, add only concise grounded context, and return the complete block source.',
-			repairLinkInstruction: 'Repair this unresolved link using the available suggestion or the closest intended vault target. Preserve unrelated text and return the complete block source.',
-			previewEmbed: '预览内容',
-			previewEmbedTitle: '将此链接切换为嵌入预览',
 		},
 		inlineStyle: {
 			removeBold: '取消加粗',
@@ -573,8 +560,14 @@ function mergeChrome(parsed?: Partial<ComposerChromeConfig>): ComposerChromeConf
 	const base = DEFAULT_COMPOSER_CONFIG.chrome;
 	if (!parsed) return base;
 	return {
+		surfacePreviewOpenDelayMs:
+			parsed.surfacePreviewOpenDelayMs ?? base.surfacePreviewOpenDelayMs,
+		surfaceIntentOpenDelayMs:
+			parsed.surfaceIntentOpenDelayMs ?? base.surfaceIntentOpenDelayMs,
 		surfacePreviewCloseDelayMs:
 			parsed.surfacePreviewCloseDelayMs ?? base.surfacePreviewCloseDelayMs,
+		surfacePointerTravelTolerancePx:
+			parsed.surfacePointerTravelTolerancePx ?? base.surfacePointerTravelTolerancePx,
 		actions: { ...base.actions, ...parsed.actions },
 		insertDraft: {
 			...base.insertDraft,

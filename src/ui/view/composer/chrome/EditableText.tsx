@@ -283,7 +283,7 @@ export function EditableText({
 			}}
 		>
 			{visualParts.map((part) => (
-				<VisualPart
+				<SourceVisualPartView
 					key={`${part.from - renderState.sourceFrom}-${part.to - renderState.sourceFrom}-${part.kind}`}
 					part={part}
 					unitId={unitId}
@@ -301,7 +301,13 @@ function mapSelectionInside(el: HTMLElement): MappedSelection | null {
 	return anchorInside && focusInside ? mapDomSelectionToSource(el, selection) : null;
 }
 
-function VisualPart({ part, unitId }: { part: SourceVisualPart; unitId?: string }): React.ReactElement {
+export function SourceVisualPartView({
+	part,
+	unitId,
+}: {
+	part: SourceVisualPart;
+	unitId?: string;
+}): React.ReactElement {
 	if (part.kind === 'hidden') {
 		return (
 			<span

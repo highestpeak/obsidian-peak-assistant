@@ -1,8 +1,11 @@
 import assert from 'assert';
 import { readFileSync } from 'fs';
+import { applyOperations } from '@/core/composer';
 import {
+	buildInsertListItemOps,
 	createListItemPatchMaterializer,
 	insertValidatedListItem,
+	parseComposerDocument,
 } from '@/service/composer';
 
 const source = '- notion\n- google docs\n- rome search';
@@ -42,23 +45,85 @@ assert.equal(
 	'validated insertion still supports every middle gap',
 );
 
-const root = readFileSync('src/ui/view/composer/ComposerRoot.tsx', 'utf8');
-assert.ok(root.includes('pk-composer-list__gap-anchor'), 'each top-level list gap has a visible interaction anchor');
-assert.ok(root.includes("kind: 'list-gap'"), 'gap invocation carries typed placement instead of prompt-only hints');
-assert.ok(root.includes('data-unit-id={unit.unitId}'), 'each list item is exposed as an addressable UI unit');
-assert.ok(root.includes('onPointerMove={trackListGapPointer}'), 'list-item plus follows the pointer horizontally');
-assert.ok(
-	root.includes('onPointerEnter={() => openListGap(index)}'),
-	'hovering the list-item plus opens its existing typed gap form',
+const directSource = '- Alpha\n- Beta';
+const directSnapshot = parseComposerDocument(directSource, { filePath: 'direct-list.md' });
+const directBlock = directSnapshot.blocks[0];
+const listInsert = directBlock
+	? buildInsertListItemOps(directSnapshot, directBlock.blockId, 1, 'list')
+	: null;
+assert.ok(listInsert, 'direct insertion produces a transaction for a real list gap');
+const directListResult = applyOperations(directSource, listInsert?.operations ?? []);
+assert.equal(
+	directListResult,
+	'- Alpha\n- \n- Beta',
+	'direct insertion adds an editable list item without invoking AI',
 );
 assert.equal(
-	root.includes('onClick={() => setActiveGapIndex(index)}'),
+	parseComposerDocument(directListResult, { filePath: 'direct-list.md' }).blocks[0]?.units.length,
+	3,
+	'the empty inserted row reparses as an addressable list item',
+);
+const taskInsert = directBlock
+	? buildInsertListItemOps(directSnapshot, directBlock.blockId, 1, 'task')
+	: null;
+assert.equal(
+	applyOperations(directSource, taskInsert?.operations ?? []),
+	'- Alpha\n- [ ] \n- Beta',
+	'the same gap can explicitly insert a task item',
+);
+const endInsert = directBlock
+	? buildInsertListItemOps(directSnapshot, directBlock.blockId, 2, 'list')
+	: null;
+const directEndResult = applyOperations(directSource, endInsert?.operations ?? []);
+assert.equal(directEndResult, '- Alpha\n- Beta\n- ');
+assert.equal(
+	parseComposerDocument(directEndResult, { filePath: 'direct-list.md' }).blocks[0]?.units.length,
+	3,
+	'an empty final row also survives reparse for focus restoration',
+);
+
+const root = readFileSync('src/ui/view/composer/ComposerRoot.tsx', 'utf8');
+const gap = readFileSync(
+	'src/ui/view/composer/chrome/ListItemInsertGap.tsx',
+	'utf8',
+);
+assert.ok(root.includes('<ListItemInsertGap'), 'each top-level list gap uses the shared insertion grammar');
+assert.ok(root.includes('buildInsertListItemOps'), 'direct insertion goes through Composer transactions');
+assert.ok(root.includes("kind: 'list-gap'"), 'gap invocation carries typed placement instead of prompt-only hints');
+assert.ok(root.includes('data-unit-id={unit.unitId}'), 'each list item is exposed as an addressable UI unit');
+assert.ok(
+	gap.includes('onPointerEnter={acquire}'),
+	'the list gap captures the pointer position once on entry',
+);
+assert.equal(
+	gap.includes('onPointerMove='),
 	false,
-	'list-item gap no longer requires a click to open',
+	'the list plus does not drift with continuous pointer movement',
 );
 assert.ok(
-	root.includes('suppressedGapIndex'),
-	'closing the hover-opened form suppresses re-open until the pointer leaves that gap',
+	gap.includes('anchorCaptured.current = true'),
+	'repeated synthetic pointer-enter events cannot overwrite the acquired list anchor',
+);
+assert.ok(
+	gap.includes('onPointerEnter={scheduleOpen}'),
+	'hovering the stable plus opens the direct insertion menu',
+);
+assert.ok(
+	gap.includes("onClick={() => insert('list')}") &&
+		gap.includes("onClick={() => insert('task')}"),
+	'list and task insertion are direct first-class choices',
+);
+assert.ok(
+	gap.includes("onClick={() => setMode('ai')}"),
+	'the descriptive AI input requires an explicit Sparkles choice',
+);
+assert.ok(
+	gap.includes("mode === 'ai'"),
+	'the AI prompt is not the default hover surface',
+);
+assert.ok(
+	gap.includes('setSuppressed(true)'),
+	'completed insertion suppresses re-open until the pointer leaves that gap',
 );
 
 const css = readFileSync('src/styles/composer.css', 'utf8');
@@ -75,7 +140,12 @@ assert.match(
 assert.match(
 	css,
 	/\.pk-composer-list__gap-trigger\s*\{[\s\S]*?left:\s*clamp\(/,
-	'list-item plus uses the same pointer-relative horizontal anchor',
+	'list-item plus uses the same captured pointer-relative horizontal anchor',
+);
+assert.match(
+	css,
+	/\.pk-composer-list__gap-trigger\s*\{[\s\S]*?margin:\s*-10px 0 0 -10px !important;[\s\S]*?transform:\s*none !important;/,
+	'the list plus cannot jump when the Obsidian hover reset changes transform',
 );
 
 console.log('composer-list-insertion-anchor: passed');

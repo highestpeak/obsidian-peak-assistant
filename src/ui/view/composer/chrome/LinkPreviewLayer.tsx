@@ -1,204 +1,247 @@
 import * as React from 'react';
-import { ExternalLink, FileText, Sparkles, TriangleAlert } from 'lucide-react';
+import { ExternalLink, FileText, TriangleAlert } from 'lucide-react';
 import { Button, Chip } from '@/ui/components/primitives';
-import type { ComposerContextSnapshot } from '@/core/composer';
-import { LINK_TIDY_CAPABILITY_ID } from '@/service/composer';
-import { analyzeLinks, buildLinkPreview, linkToEmbed, type ComposerLinkPreview } from '@/service/composer';
+import { buildLinkPreview, type ComposerLinkPreview } from '@/service/composer';
 import { useOwnerDocumentListener } from '@/ui/hooks/useOwnerWindow';
 import { useComposerChrome } from './ComposerChromeContext';
+import { useComposerSurfaces } from './ComposerSurfaceCoordinator';
+
+interface LinkPopoverState {
+	preview: ComposerLinkPreview;
+	top: number;
+	left: number;
+	target: string;
+}
+
+interface PendingLink {
+	element: HTMLElement;
+	x: number;
+	y: number;
+}
 
 /**
- * Link hover/keyboard preview layer (WP4, §7.7). Event-delegated over the
- * composer root: `mouseover` AND `focusin` (dual channel) on any
- * `.pk-composer-link` reveal a popover with — vault: title / path / summary +
- * 打开定位; external: domain / full URL + 打开; broken: repair suggestions that
- * never block viewing the raw target. Listeners and geometry are owner-scoped
- * (popout-safe); the popover renders inside the composer root, not a global
- * body portal, so it lives in the correct document by construction.
+ * Delayed, informational link preview.
+ *
+ * Crossing a link no longer opens a command card. The pointer must settle
+ * first; the resulting compact surface owns Composer hover until its safe
+ * corridor closes. Transform/AI actions remain on explicit block surfaces.
  */
 export function LinkPreviewLayer({
 	containerRef,
 }: {
 	containerRef: React.RefObject<HTMLElement | null>;
 }): React.ReactElement | null {
-	const { runtime, projection, config, snapshot, onOpenLink } = useComposerChrome();
+	const { runtime, config, snapshot, onOpenLink } = useComposerChrome();
 	const c = config.chrome.link;
-	const [state, setState] = React.useState<{
-		preview: ComposerLinkPreview;
-		top: number;
-		left: number;
-		blockId: string | null;
-	} | null>(null);
+	const surfaces = useComposerSurfaces();
+	const {
+		active: activeSurface,
+		canClaim: canClaimSurface,
+		claim: claimSurface,
+		release: releaseSurface,
+	} = surfaces;
+	const surfaceId = React.useId();
+	const [state, setState] = React.useState<LinkPopoverState | null>(null);
+	const openTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 	const hideTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+	const pending = React.useRef<PendingLink | null>(null);
 
+	const clearOpen = React.useCallback(() => {
+		if (!openTimer.current) return;
+		clearTimeout(openTimer.current);
+		openTimer.current = null;
+	}, []);
+	const clearHide = React.useCallback(() => {
+		if (!hideTimer.current) return;
+		clearTimeout(hideTimer.current);
+		hideTimer.current = null;
+	}, []);
+	const hide = React.useCallback(() => {
+		clearOpen();
+		clearHide();
+		pending.current = null;
+		setState(null);
+		releaseSurface(surfaceId);
+	}, [clearHide, clearOpen, releaseSurface, surfaceId]);
 	const showFor = React.useCallback(
-		(el: HTMLElement) => {
+		(element: HTMLElement) => {
 			const root = containerRef.current;
-			const target = el.dataset.linkTarget;
+			const target = element.dataset.linkTarget;
 			if (!root || !target || !runtime.linkPort) return;
+			if (!canClaimSurface('link', surfaceId)) return;
 			const preview = buildLinkPreview(target, snapshot?.filePath ?? '', runtime.linkPort);
-			const rect = el.getBoundingClientRect();
+			const rect = element.getBoundingClientRect();
 			const rootRect = root.getBoundingClientRect();
-			const blockId = el.closest<HTMLElement>('[data-block-id]')?.dataset.blockId ?? null;
+			claimSurface({ id: surfaceId, kind: 'link', ownerId: target });
 			setState({
 				preview,
-				// Keep transient link UI above its anchor so it never obscures the
-				// block's persistent action row below the text.
-				top: rect.top - rootRect.top + root.scrollTop - 8,
+				target,
+				top: rect.top - rootRect.top + root.scrollTop - 7,
 				left: Math.max(4, rect.left - rootRect.left),
-				blockId,
 			});
+			pending.current = null;
 		},
-		[containerRef, runtime.linkPort, snapshot],
+		[
+			canClaimSurface,
+			claimSurface,
+			containerRef,
+			runtime.linkPort,
+			snapshot,
+			surfaceId,
+		],
 	);
-
+	const scheduleShow = React.useCallback((element: HTMLElement, x: number, y: number) => {
+		clearOpen();
+		clearHide();
+		pending.current = { element, x, y };
+		openTimer.current = setTimeout(() => {
+			openTimer.current = null;
+			if (pending.current?.element !== element) return;
+			showFor(element);
+		}, config.chrome.surfacePreviewOpenDelayMs);
+	}, [
+		clearHide,
+		clearOpen,
+		config.chrome.surfacePreviewOpenDelayMs,
+		showFor,
+	]);
 	const scheduleHide = React.useCallback(() => {
-		if (hideTimer.current) clearTimeout(hideTimer.current);
-		hideTimer.current = setTimeout(() => setState(null), 220);
-	}, []);
-	const cancelHide = React.useCallback(() => {
-		if (hideTimer.current) clearTimeout(hideTimer.current);
-	}, []);
+		clearOpen();
+		clearHide();
+		pending.current = null;
+		hideTimer.current = setTimeout(hide, config.chrome.surfacePreviewCloseDelayMs);
+	}, [
+		clearHide,
+		clearOpen,
+		config.chrome.surfacePreviewCloseDelayMs,
+		hide,
+	]);
 
-	const onOver = React.useCallback(
-		(ev: MouseEvent) => {
-			const link = (ev.target as HTMLElement | null)?.closest?.<HTMLElement>('.pk-composer-link');
-			if (link) {
-				cancelHide();
-				showFor(link);
-				return;
-			}
-			if ((ev.target as HTMLElement | null)?.closest?.('.pk-link-popover')) {
-				cancelHide();
-				return;
-			}
-			scheduleHide();
-		},
-		[showFor, scheduleHide, cancelHide],
-	);
-	const onFocusIn = React.useCallback(
-		(ev: FocusEvent) => {
-			const link = (ev.target as HTMLElement | null)?.closest?.<HTMLElement>('.pk-composer-link');
-			if (link) showFor(link);
-			else if (!(ev.target as HTMLElement | null)?.closest?.('.pk-link-popover')) setState(null);
-		},
-		[showFor],
-	);
+	const onOver = React.useCallback((event: MouseEvent) => {
+		const target = event.target as HTMLElement | null;
+		const link = target?.closest?.<HTMLElement>('.pk-composer-link');
+		if (link) {
+			clearHide();
+			if (state?.target === link.dataset.linkTarget) return;
+			scheduleShow(link, event.clientX, event.clientY);
+			return;
+		}
+		if (target?.closest?.('.pk-link-popover')) {
+			clearHide();
+			return;
+		}
+		scheduleHide();
+	}, [clearHide, scheduleHide, scheduleShow, state?.target]);
+	const onPointerMove = React.useCallback((event: PointerEvent) => {
+		const waiting = pending.current;
+		if (!waiting) return;
+		const target = event.target as HTMLElement | null;
+		const link = target?.closest?.<HTMLElement>('.pk-composer-link');
+		if (link !== waiting.element) return;
+		const distance = Math.hypot(event.clientX - waiting.x, event.clientY - waiting.y);
+		if (distance <= config.chrome.surfacePointerTravelTolerancePx) return;
+		scheduleShow(waiting.element, event.clientX, event.clientY);
+	}, [config.chrome.surfacePointerTravelTolerancePx, scheduleShow]);
+	const onFocusIn = React.useCallback((event: FocusEvent) => {
+		const target = event.target as HTMLElement | null;
+		const link = target?.closest?.<HTMLElement>('.pk-composer-link');
+		if (link) {
+			clearOpen();
+			clearHide();
+			showFor(link);
+			return;
+		}
+		if (!target?.closest?.('.pk-link-popover')) hide();
+	}, [clearHide, clearOpen, hide, showFor]);
+
 	useOwnerDocumentListener(containerRef, 'mouseover', onOver);
+	useOwnerDocumentListener(containerRef, 'pointermove', onPointerMove);
 	useOwnerDocumentListener(containerRef, 'focusin', onFocusIn);
-	React.useEffect(() => () => { if (hideTimer.current) clearTimeout(hideTimer.current); }, []);
-	const invokeLinkAction = (instruction: string) => {
-		if (!snapshot || !state?.blockId) return;
-		const block = snapshot.blocks.find((candidate) => candidate.blockId === state.blockId);
-		if (!block) return;
-		const context: ComposerContextSnapshot = {
-			documentId: snapshot.documentId,
-			revision: snapshot.revision,
-			target: { kind: 'block', blockId: block.blockId },
-			targetSource: snapshot.sourceText.slice(block.source.from, block.source.to),
-		};
-		const action = projection.actionsFor(context, 'block-row').find((candidate) => candidate.capabilityId === LINK_TIDY_CAPABILITY_ID);
-		if (!action || action.disabledReason) return;
-		projection.invoke(action.capabilityId, context, { instruction });
-		setState(null);
-	};
-	const showEmbed = () => {
-		if (!snapshot || !state?.blockId || !runtime.hub || state.preview.kind !== 'vault') return;
-		const block = snapshot.blocks.find((candidate) => candidate.blockId === state.blockId);
-		if (!block) return;
-		const link = analyzeLinks(block.renderModel.raw).find((candidate) =>
-			(candidate.kind === 'internal' || candidate.kind === 'internal-heading') && candidate.target === state.preview.target,
-		);
-		if (!link) return;
-		void runtime.hub.commit({
-			origin: 'direct',
-			label: c.previewEmbed,
-			operations: [{ kind: 'replaceRange', from: block.source.from + link.from, to: block.source.from + link.to, text: linkToEmbed(link.raw) }],
-			target: { kind: 'block', blockId: block.blockId },
-			expectedBlockDelta: 0,
-		});
-		setState(null);
-	};
+	React.useEffect(() => {
+		if (!activeSurface || activeSurface.id === surfaceId || !state) return;
+		if (canClaimSurface('link', surfaceId)) return;
+		hide();
+	}, [activeSurface, canClaimSurface, hide, state, surfaceId]);
+	React.useEffect(() => () => {
+		clearOpen();
+		clearHide();
+		pending.current = null;
+		releaseSurface(surfaceId);
+	}, [clearHide, clearOpen, releaseSurface, surfaceId]);
 
 	if (!state) return null;
-	const p = state.preview;
+	const preview = state.preview;
 	return (
 		<div
 			className="pk-link-popover pk-composer-panel"
 			data-chrome="true"
+			data-composer-surface-owner={state.target}
 			role="dialog"
 			style={{ top: state.top, left: state.left, transform: 'translateY(-100%)' }}
-			onMouseLeave={scheduleHide}
-			onMouseEnter={cancelHide}
+			onPointerLeave={scheduleHide}
+			onPointerEnter={clearHide}
 		>
-			{p.kind === 'vault' && (
+			{preview.kind === 'vault' && (
 				<>
 					<div className="pk-link-popover__head">
 						<FileText size={13} />
-						<span className="pk-link-popover__title">{p.title}</span>
-					</div>
-					<span className="pk-link-popover__path">{`${c.pathLabel} · ${p.path ?? ''}`}</span>
-					{p.summary && <span className="pk-link-popover__summary">{p.summary}</span>}
-					<Button
-						variant="secondary"
-						size="sm"
-						data-link-open="true"
-						onClick={() => onOpenLink?.('vault', p.path ?? p.target)}
-					>
-						{c.openVault.replace('{title}', p.title ?? p.target)}
-					</Button>
-					<Button variant="ghost" size="sm" title={c.previewEmbedTitle} onClick={showEmbed}>
-						{c.previewEmbed}
-					</Button>
-					<div className="pk-link-popover__ai-actions">
-						<Button variant="ghost" size="sm" onClick={() => invokeLinkAction(c.explainRelationInstruction)}>
-							<Sparkles size={13} />
-							{c.explainRelation}
-						</Button>
-						<Button variant="ghost" size="sm" onClick={() => invokeLinkAction(c.syncTargetPointsInstruction)}>
-							{c.syncTargetPoints}
+						<span className="pk-link-popover__title">{preview.title}</span>
+						<Button
+							variant="ghost"
+							size="sm"
+							className="pk-link-popover__open"
+							aria-label={c.openVault.replace('{title}', preview.title ?? preview.target)}
+							title={c.openVault.replace('{title}', preview.title ?? preview.target)}
+							onClick={() => onOpenLink?.('vault', preview.path ?? preview.target)}
+						>
+							<ExternalLink size={13} />
 						</Button>
 					</div>
+					<span className="pk-link-popover__path">
+						{`${c.pathLabel} · ${preview.path ?? ''}`}
+					</span>
 				</>
 			)}
-			{p.kind === 'external' && (
+			{preview.kind === 'external' && (
 				<>
 					<div className="pk-link-popover__head">
 						<ExternalLink size={13} />
-						<span className="pk-link-popover__title">{p.domain}</span>
+						<span className="pk-link-popover__title">{preview.domain}</span>
+						<Button
+							variant="ghost"
+							size="sm"
+							className="pk-link-popover__open"
+							aria-label={c.openExternal.replace('{url}', preview.url ?? preview.target)}
+							title={c.openExternal.replace('{url}', preview.url ?? preview.target)}
+							onClick={() => onOpenLink?.('external', preview.url ?? preview.target)}
+						>
+							<ExternalLink size={13} />
+						</Button>
 					</div>
-					<span className="pk-link-popover__path">{p.url}</span>
-					<Button
-						variant="secondary"
-						size="sm"
-						data-link-open="true"
-						onClick={() => onOpenLink?.('external', p.url ?? p.target)}
-					>
-						{c.openExternal.replace('{url}', p.url ?? p.target)}
-					</Button>
+					<span className="pk-link-popover__path">{preview.url}</span>
 				</>
 			)}
-			{p.kind === 'broken' && (
+			{preview.kind === 'broken' && (
 				<>
 					<div className="pk-link-popover__head">
 						<TriangleAlert size={13} />
 						<span className="pk-link-popover__title">{c.brokenTitle}</span>
 					</div>
-					<span className="pk-link-popover__path">{p.target}</span>
-					{(p.suggestions ?? []).length > 0 && (
+					<span className="pk-link-popover__path">{preview.target}</span>
+					{(preview.suggestions ?? []).length > 0 && (
 						<div className="pk-link-popover__fixes">
-							<span className="pk-link-popover__fix-label">{c.fixLabel}</span>
-							{(p.suggestions ?? []).map((s) => (
-								<Chip key={s} variant="info" className="pk-link-popover__fix" onClick={() => onOpenLink?.('vault', s)}>
-									{s}
+							{(preview.suggestions ?? []).slice(0, 2).map((suggestion) => (
+								<Chip
+									key={suggestion}
+									variant="info"
+									className="pk-link-popover__fix"
+									onClick={() => onOpenLink?.('vault', suggestion)}
+								>
+									{suggestion}
 								</Chip>
 							))}
 						</div>
 					)}
-					<Button variant="ghost" size="sm" onClick={() => invokeLinkAction(c.repairLinkInstruction)}>
-						<Sparkles size={13} />
-						{c.repairLink}
-					</Button>
 				</>
 			)}
 		</div>
