@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { isMobile, Notice } from 'obsidian';
+import { Notice } from 'obsidian';
 import { motion } from 'framer-motion';
 import { Check, Copy, Database, FileText, Loader2, Pencil } from 'lucide-react';
 import type { SearchResultItem } from '@/core/search/searchTypes';
@@ -17,6 +17,7 @@ import {
 } from '@/ui/component/result-browser';
 import { MultiLensGraph } from '@/ui/component/mine/multi-lens-graph/MultiLensGraph';
 import { Button } from '@/ui/component/shared-ui/button';
+import { isMobile } from '@/core/platform';
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useOwnerWindowListener } from '@/ui/hooks/useOwnerWindow';

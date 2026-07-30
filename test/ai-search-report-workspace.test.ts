@@ -121,6 +121,8 @@ assert(sourceView.indexOf('<ResultBrowserViewToggle') < sourceView.indexOf('<Gra
 assert(sourceView.includes('isSourcesDensityVisible(view)'));
 assert(sourceView.includes('resolveSourcesKeyboardIntent'));
 assert(sourceView.includes('focusSourcesProjection'));
+assert(sourceView.includes("import { isMobile } from '@/core/platform';"));
+assert(!sourceView.includes("import { isMobile, Notice } from 'obsidian';"));
 assert(!sourceView.includes("target.closest('[data-v2-sources-projection]')"));
 assert(sourceView.includes("useOwnerWindowListener(rootRef, 'keydown', handleProjectionKey, true)"));
 assert(sourceView.includes("target?.closest?.('[data-result-browser-row]')"));
