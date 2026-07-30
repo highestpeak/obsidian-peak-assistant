@@ -11,8 +11,19 @@ assert.doesNotMatch(displaySwitch, /value:\s*'work'/, 'legacy work view cannot r
 assert.doesNotMatch(displaySwitch, /value:\s*'all'/, 'review-all cannot remain a visible state');
 assert.equal(config.chrome.displayStates.edit, '编辑视图');
 assert.equal(config.chrome.displayStates.clean, '纯净阅读');
+assert.equal(config.chrome.displayStates.nativeMarkdown, '原生 Markdown');
 assert.match(undoBar, /reviewAll/, 'review-all must remain a contextual action');
 assert.match(root, /reviewAll/, 'review-all must expand pending candidates without becoming a third mode');
-assert.match(undoBar, /defaultDocumentView/, 'future-open policy must be separate from display state');
+assert.match(
+	displaySwitch,
+	/\{ value: 'markdown' as const, label: s\.nativeMarkdown \}/,
+	'Native Markdown must be the third current-view action',
+);
+assert.doesNotMatch(
+	undoBar,
+	/defaultDocumentView|futureLabel|pk-composer-default-view/,
+	'the Composer toolbar must not expose future-open policy or a redundant Composer option',
+);
+assert.equal(config.chrome.defaultDocumentView, undefined);
 
 console.log('composer-display-state-contract: passed');

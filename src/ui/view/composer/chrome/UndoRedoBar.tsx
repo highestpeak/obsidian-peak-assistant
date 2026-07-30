@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { Layers3, MessageSquare, Sparkles, Undo2, Redo2 } from 'lucide-react';
-import { Button, Chip, IconButton, Segmented } from '@/ui/components/primitives';
-import type { DefaultDocumentView } from '@/core/composer';
+import { Button, Chip, IconButton } from '@/ui/components/primitives';
 import { useOwnerDocumentListener } from '@/ui/hooks/useOwnerWindow';
 import { DisplayStateSwitch, type ComposerDisplayState } from './DisplayStateSwitch';
 import { useComposerChrome } from './ComposerChromeContext';
@@ -31,9 +30,7 @@ export function UndoRedoBar({
 	intelligenceAvailable,
 	intelligenceOpen,
 	onIntelligenceOpen,
-	defaultDocumentView,
-	onDefaultDocumentView,
-	onConvertCurrentView,
+	onOpenNativeMarkdown,
 	reviewCandidateCount = 0,
 	reviewAll = false,
 	onReviewAll,
@@ -48,9 +45,7 @@ export function UndoRedoBar({
 	intelligenceAvailable: boolean;
 	intelligenceOpen: boolean;
 	onIntelligenceOpen: (open: boolean) => void;
-	defaultDocumentView?: DefaultDocumentView;
-	onDefaultDocumentView?: (view: DefaultDocumentView) => void;
-	onConvertCurrentView?: (view: DefaultDocumentView) => void;
+	onOpenNativeMarkdown?: () => void;
 	reviewCandidateCount?: number;
 	reviewAll?: boolean;
 	onReviewAll?: (open: boolean) => void;
@@ -86,11 +81,6 @@ export function UndoRedoBar({
 	const doRedo = React.useCallback(() => {
 		void hub?.redo();
 	}, [hub]);
-	function selectDocumentView(view: DefaultDocumentView): void {
-		onDefaultDocumentView?.(view);
-		if (view !== 'markdown') return;
-		onConvertCurrentView?.(view);
-	}
 
 	const onKeyDown = React.useCallback(
 		(ev: KeyboardEvent) => {
@@ -111,29 +101,14 @@ export function UndoRedoBar({
 	return (
 		<div className="pk-composer-controlbar" data-chrome="true" aria-label={config.chrome.displayStates.groupLabel}>
 			{canEdit ? (
-				<DisplayStateSwitch value={displayState} onChange={onDisplayState} />
+				<DisplayStateSwitch
+					value={displayState}
+					onChange={onDisplayState}
+					onOpenNativeMarkdown={onOpenNativeMarkdown}
+				/>
 			) : (
 				<span className="pk-composer-controlbar__badge">{readOnlyLabel}</span>
 			)}
-			{defaultDocumentView && onDefaultDocumentView ? (
-				<div className="pk-composer-default-view-policy">
-					<span>{config.chrome.defaultDocumentView.futureLabel}</span>
-					<Segmented<DefaultDocumentView>
-						className="pk-composer-default-view-switch"
-						aria-label={config.chrome.defaultDocumentView.groupLabel}
-						title={config.chrome.defaultDocumentView.help}
-						variant="animated-pill"
-						size="sm"
-						thumbLayoutId="composer-default-document-view-thumb"
-						value={defaultDocumentView}
-						onValueChange={selectDocumentView}
-						options={[
-							{ value: 'markdown', label: config.chrome.defaultDocumentView.markdown },
-							{ value: 'composer', label: config.chrome.defaultDocumentView.composer },
-						]}
-					/>
-				</div>
-			) : null}
 			{reviewCandidateCount >= 2 && onReviewAll ? (
 				<Button
 					variant={reviewAll ? 'primary' : 'ghost'}

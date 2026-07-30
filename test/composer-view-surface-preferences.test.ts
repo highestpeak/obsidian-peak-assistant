@@ -79,21 +79,16 @@ assert.match(
 	/pk-sidecar-anchor--user-transition/,
 	'desktop width transitions are gated behind an explicit user-transition class',
 );
-assert.match(root, /onConvertCurrentView/, 'Composer still receives the current-leaf conversion port');
+assert.match(root, /onOpenNativeMarkdown/, 'Composer receives the current-leaf Native Markdown action');
 assert.match(
 	undoRedoBar,
-	/onValueChange=\{selectDocumentView\}/,
-	'the left document-view selector owns the visible Markdown switch',
-);
-assert.match(
-	undoRedoBar,
-	/if \(view !== 'markdown'\) return;\s*onConvertCurrentView\?\.\(view\);/,
-	'selecting Native Markdown converts the current leaf',
+	/onOpenNativeMarkdown=\{onOpenNativeMarkdown\}/,
+	'the left display switch owns the visible Native Markdown action',
 );
 assert.doesNotMatch(
 	undoRedoBar,
-	/pk-composer-current-view-switch|switchCurrentToMarkdown|FileText/,
-	'the duplicate right-side Native Markdown button must stay removed',
+	/defaultDocumentView|futureLabel|pk-composer-default-view|onConvertCurrentView/,
+	'future-open policy and the duplicate view switch must stay out of the Composer toolbar',
 );
 assert.match(nativeAffordance, /getLeavesOfType\('markdown'\)/);
 assert.match(nativeAffordance, /<Button/);

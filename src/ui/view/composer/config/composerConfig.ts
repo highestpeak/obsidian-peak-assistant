@@ -124,15 +124,9 @@ export interface ComposerChromeConfig {
 		groupLabel: string;
 		edit: string;
 		clean: string;
+		nativeMarkdown: string;
 		/** `{count}` is replaced with the pending candidate count. */
 		reviewAll: string;
-	};
-	defaultDocumentView: {
-		groupLabel: string;
-		futureLabel: string;
-		markdown: string;
-		composer: string;
-		help: string;
 	};
 	selection: {
 		formats: {
@@ -386,17 +380,11 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 			shortcutRedo: '⇧⌘Z',
 		},
 		displayStates: {
-			groupLabel: '正文工作状态',
+			groupLabel: '文档视图',
 			edit: '编辑视图',
 			clean: '纯净阅读',
+			nativeMarkdown: '原生 Markdown',
 			reviewAll: '审阅全部改动 · {count}',
-		},
-		defaultDocumentView: {
-			groupLabel: '后续文件默认打开方式',
-			futureLabel: '以后打开',
-			markdown: '原生 Markdown',
-			composer: 'Composer',
-			help: '选择原生 Markdown 会同时切换当前标签页；选择 Composer 只更新之后的打开方式。',
 		},
 		selection: {
 			formats: {
@@ -595,7 +583,6 @@ function mergeChrome(parsed?: Partial<ComposerChromeConfig>): ComposerChromeConf
 		},
 		undo: { ...base.undo, ...parsed.undo },
 		displayStates: { ...base.displayStates, ...parsed.displayStates },
-		defaultDocumentView: { ...base.defaultDocumentView, ...parsed.defaultDocumentView },
 		selection: {
 			...base.selection,
 			...parsed.selection,

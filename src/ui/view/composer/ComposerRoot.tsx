@@ -19,7 +19,6 @@ import {
 	type ComposerInvocationPlacement,
 	type ComposerResultEnvelope,
 	type ComposerStateSource,
-	type DefaultDocumentView,
 	type DocumentComposerState,
 	type IntelligencePresentationIntent,
 	type IntelligencePresentationOrigin,
@@ -158,11 +157,8 @@ export interface ComposerRootProps {
 	/** Versioned leaf-local display state (`work`/`all` migrate to `edit`). */
 	initialDisplayMode?: ComposerDisplayMode;
 	onDisplayModeChange?: (mode: ComposerDisplayMode) => void;
-	/** Workspace policy for future file opens; does not convert this leaf. */
-	defaultDocumentView?: DefaultDocumentView;
-	onDefaultDocumentViewChange?: (view: DefaultDocumentView) => void | Promise<void>;
-	/** Explicit same-leaf conversion; independent from the future-open policy. */
-	onConvertCurrentView?: (view: DefaultDocumentView) => void | Promise<void>;
+	/** Convert this leaf to Obsidian's Native Markdown view. */
+	onOpenNativeMarkdown?: () => void | Promise<void>;
 	/** Last explicit workspace-level Intelligence open/close preference. */
 	initialIntelligenceOpen?: boolean;
 	onIntelligenceManualOpenChange?: (open: boolean) => void | Promise<void>;
@@ -198,9 +194,7 @@ export function ComposerRoot({
 	intelligenceSource,
 	initialDisplayMode = 'edit',
 	onDisplayModeChange,
-	defaultDocumentView,
-	onDefaultDocumentViewChange,
-	onConvertCurrentView,
+	onOpenNativeMarkdown,
 	initialIntelligenceOpen = false,
 	onIntelligenceManualOpenChange,
 	revealRequest,
@@ -396,9 +390,7 @@ export function ComposerRoot({
 						onActiveComment={setActiveCommentId}
 						initialDisplayMode={initialDisplayMode}
 						onDisplayModeChange={onDisplayModeChange}
-						defaultDocumentView={defaultDocumentView}
-						onDefaultDocumentViewChange={onDefaultDocumentViewChange}
-						onConvertCurrentView={onConvertCurrentView}
+						onOpenNativeMarkdown={onOpenNativeMarkdown}
 					/>
 				</div>
 				{intelligence && currentSnapshot && (
@@ -443,9 +435,7 @@ interface BodyProps {
 	onActiveComment?: (commentId: string | null) => void;
 	initialDisplayMode?: ComposerDisplayMode;
 	onDisplayModeChange?: (mode: ComposerDisplayMode) => void;
-	defaultDocumentView?: DefaultDocumentView;
-	onDefaultDocumentViewChange?: (view: DefaultDocumentView) => void | Promise<void>;
-	onConvertCurrentView?: (view: DefaultDocumentView) => void | Promise<void>;
+	onOpenNativeMarkdown?: () => void | Promise<void>;
 }
 
 function ComposerBody(props: BodyProps): React.ReactElement {
@@ -471,9 +461,7 @@ function ComposerDocument({
 	onActiveComment = () => undefined,
 	initialDisplayMode = 'edit',
 	onDisplayModeChange,
-	defaultDocumentView,
-	onDefaultDocumentViewChange,
-	onConvertCurrentView,
+	onOpenNativeMarkdown,
 }: BodyProps): React.ReactElement {
 	const chrome = useComposerChrome();
 	const { runtime, projection } = chrome;
@@ -725,15 +713,9 @@ function ComposerDocument({
 				intelligenceAvailable={Boolean(intelligence)}
 				intelligenceOpen={intelligenceOpen}
 				onIntelligenceOpen={onIntelligenceManualOpen}
-				defaultDocumentView={defaultDocumentView}
-				onDefaultDocumentView={onDefaultDocumentViewChange
-					? (view) => {
-							void onDefaultDocumentViewChange(view);
-						}
-					: undefined}
-				onConvertCurrentView={onConvertCurrentView
-					? (view) => {
-							void onConvertCurrentView(view);
+				onOpenNativeMarkdown={onOpenNativeMarkdown
+					? () => {
+							void onOpenNativeMarkdown();
 						}
 					: undefined}
 				reviewCandidateCount={reviewCandidates.length}

@@ -2192,18 +2192,8 @@
 	padding: 0 7px !important;
 	border-radius: var(--pk-radius-full) !important;
 }
-.peak-composer-root .pk-composer-default-view-switch,
 .peak-composer-root .pk-composer-display-switch {
 	flex: none;
-}
-.peak-composer-root .pk-composer-default-view-policy {
-	display: inline-flex;
-	align-items: center;
-	gap: 5px;
-	flex: none;
-	color: var(--pk-text-tertiary);
-	font-size: var(--pk-text-xs);
-	white-space: nowrap;
 }
 .peak-composer-root .pk-composer-review-all {
 	white-space: nowrap;

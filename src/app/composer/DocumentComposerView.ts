@@ -192,17 +192,10 @@ export class DocumentComposerView extends ReactItemViewHost {
 					if (!this.viewState || this.viewState.displayMode === displayMode) return;
 					this.viewState = { ...this.viewState, displayMode };
 				},
-				defaultDocumentView: runtime?.navigation?.getDefaultView() ?? 'markdown',
-				onDefaultDocumentViewChange: runtime?.navigation
-					? async (view) => {
-						await runtime.navigation!.setDefaultView(view);
-						this.getReactRenderer()?.render(this.renderElement());
-					}
-					: undefined,
-				onConvertCurrentView: runtime?.navigation
-					? async (view) => {
+				onOpenNativeMarkdown: runtime?.navigation
+					? async () => {
 						try {
-							await runtime.navigation!.convertLeaf(this.leaf, view);
+							await runtime.navigation!.convertLeaf(this.leaf, 'markdown');
 						} catch {
 							new Notice(DEFAULT_COMPOSER_NAVIGATION_STRINGS.conversionFailed);
 						}
