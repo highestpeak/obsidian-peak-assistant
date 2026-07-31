@@ -379,8 +379,63 @@ assert.equal(
 const asterStarred = page.locator('tr[data-record-id="aster"] td[data-field="starred"]');
 await asterStarred.scrollIntoViewIfNeeded();
 assert.equal(await asterStarred.locator('.boolean-cell').getAttribute('aria-checked'), 'true');
+const checkboxViewportBefore = await page.locator('.table-viewport').evaluate((viewport) => {
+  viewport.dataset.continuityProbe = 'checkbox';
+  viewport.continuityTable = viewport.querySelector('.record-table');
+  return {
+    scrollLeft: viewport.scrollLeft,
+    scrollTop: viewport.scrollTop,
+  };
+});
+assert.ok(checkboxViewportBefore.scrollLeft > 0, 'right-side checkbox should exercise a horizontally scrolled viewport');
 await asterStarred.locator('.boolean-cell').click();
 assert.equal(await asterStarred.locator('.boolean-cell').getAttribute('aria-checked'), 'false');
+const checkboxViewportAfter = await page.locator('.table-viewport').evaluate((viewport) => ({
+  sameViewport: viewport.dataset.continuityProbe === 'checkbox',
+  sameTable: viewport.continuityTable === viewport.querySelector('.record-table'),
+  scrollLeft: viewport.scrollLeft,
+  scrollTop: viewport.scrollTop,
+}));
+assert.equal(checkboxViewportAfter.sameViewport, true, 'checkbox commit should not replace the table viewport');
+assert.equal(checkboxViewportAfter.sameTable, true, 'checkbox commit should not rebuild the record table');
+assert.ok(
+  Math.abs(checkboxViewportAfter.scrollLeft - checkboxViewportBefore.scrollLeft) <= 1,
+  'checkbox commit should preserve horizontal scroll position',
+);
+assert.ok(
+  Math.abs(checkboxViewportAfter.scrollTop - checkboxViewportBefore.scrollTop) <= 1,
+  'checkbox commit should preserve vertical scroll position',
+);
+
+const asterSkills = page.locator('tr[data-record-id="aster"] td[data-field="skills"]');
+await asterSkills.dblclick();
+await page.locator('input.cell-editor').fill('Product Strategy, Systems Thinking');
+const textViewportBefore = await page.locator('.table-viewport').evaluate((viewport) => {
+  viewport.dataset.continuityProbe = 'text';
+  viewport.continuityTable = viewport.querySelector('.record-table');
+  return {
+    scrollLeft: viewport.scrollLeft,
+    scrollTop: viewport.scrollTop,
+  };
+});
+await page.locator('.cell-editor').press('Enter');
+assert.match(await asterSkills.textContent(), /Product Strategy/);
+const textViewportAfter = await page.locator('.table-viewport').evaluate((viewport) => ({
+  sameViewport: viewport.dataset.continuityProbe === 'text',
+  sameTable: viewport.continuityTable === viewport.querySelector('.record-table'),
+  scrollLeft: viewport.scrollLeft,
+  scrollTop: viewport.scrollTop,
+}));
+assert.equal(textViewportAfter.sameViewport, true, 'text commit should not replace the table viewport');
+assert.equal(textViewportAfter.sameTable, true, 'text commit should not rebuild the record table');
+assert.ok(
+  Math.abs(textViewportAfter.scrollLeft - textViewportBefore.scrollLeft) <= 1,
+  'text commit should preserve horizontal scroll position',
+);
+assert.ok(
+  Math.abs(textViewportAfter.scrollTop - textViewportBefore.scrollTop) <= 1,
+  'text commit should preserve vertical scroll position',
+);
 
 const asterPriority = page.locator('tr[data-record-id="aster"] td[data-field="priority"]');
 await asterPriority.scrollIntoViewIfNeeded();
@@ -552,6 +607,6 @@ console.log(JSON.stringify({
   },
   localLinks: localHrefs.length,
   viewsChecked: ['table', 'board', 'calendar', 'gallery', 'dashboard'],
-  flowsChecked: ['long-text-reader', 'bounded-row-wrap', 'inline-text-edit', 'typed-select-edit', 'numeric-edit', 'checkbox-toggle', 'keyboard-f2-cancel', 'keyboard-tab-commit', 'computed-cell-readonly', 'selection-stat-recompute', 'theme-switch', 'number-format', 'conditional-format', 'field-type-select', 'formula-library', 'selection-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
+  flowsChecked: ['long-text-reader', 'bounded-row-wrap', 'inline-text-edit', 'typed-select-edit', 'numeric-edit', 'checkbox-toggle', 'keyboard-f2-cancel', 'keyboard-tab-commit', 'scroll-continuity', 'computed-cell-readonly', 'selection-stat-recompute', 'theme-switch', 'number-format', 'conditional-format', 'field-type-select', 'formula-library', 'selection-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
   screenshots: ['preview.png', 'preview-table.png', 'preview-table-types.png', 'preview-long-text.png', 'preview-long-text-wrap.png', 'preview-cell-edit.png', 'preview-dark.png', 'preview-format.png', 'preview-conditional.png', 'preview-fields.png', 'preview-formula.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
 }, null, 2));

@@ -105,8 +105,6 @@ body[data-visual-version="editorial-v2"] textarea {
 }
 
 body[data-visual-version="editorial-v2"] button,
-body[data-visual-version="editorial-v2"] .record-table td,
-body[data-visual-version="editorial-v2"] .record-table th,
 body[data-visual-version="editorial-v2"] .tag,
 body[data-visual-version="editorial-v2"] .skill-tag,
 body[data-visual-version="editorial-v2"] .priority-token,
@@ -982,6 +980,9 @@ body[data-visual-version="editorial-v2"] .record-table td.is-current-cell {
   position: relative;
   z-index: 2;
   background-color: color-mix(in srgb, var(--accent) 3%, var(--surface)) !important;
+  transition:
+    background-color 140ms ease,
+    box-shadow 140ms var(--ease-standard);
 }
 
 body[data-visual-version="editorial-v2"] .record-table td.is-editing {
@@ -1032,16 +1033,16 @@ body[data-visual-version="editorial-v2"] .cell-editor[type="date"] {
 }
 
 body[data-visual-version="editorial-v2"] .record-table td.is-just-committed {
-  animation: editorial-cell-commit 460ms var(--ease-standard) both;
+  animation: editorial-cell-commit 160ms var(--ease-standard) both;
 }
 
 body[data-visual-version="editorial-v2"] .record-table td.is-readonly-pulse {
-  animation: editorial-readonly-pulse 360ms var(--ease-standard) both;
+  animation: editorial-readonly-pulse 220ms var(--ease-standard) both;
 }
 
 @keyframes editorial-cell-commit {
   0% {
-    background-color: color-mix(in srgb, var(--accent) 16%, var(--surface));
+    background-color: color-mix(in srgb, var(--accent) 8%, var(--surface));
     box-shadow: inset 0 0 0 1.5px var(--accent);
   }
   100% {

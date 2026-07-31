@@ -1216,6 +1216,66 @@ function cellSelector(recordId, field) {
   return `tr[data-record-id="${recordId}"] td[data-field="${field}"]`;
 }
 
+const dependentCellFields = Object.freeze({
+  company: ['jobLink'],
+  stage: ['starred', 'progress'],
+  fit: ['priority', 'starred'],
+  wait: ['priority'],
+});
+
+function renderDetachedRecordRow(record) {
+  const table = document.createElement('table');
+  const body = table.createTBody();
+  body.innerHTML = recordRow(record);
+  return body.querySelector(`tr[data-record-id="${record.id}"]`);
+}
+
+function refreshRecordCells(recordId, changedField) {
+  const record = records.find((candidate) => candidate.id === recordId);
+  if (!record) return null;
+  const renderedRow = renderDetachedRecordRow(record);
+  if (!renderedRow) return null;
+  const fields = [changedField, ...(dependentCellFields[changedField] ?? [])];
+  fields.forEach((field) => {
+    const currentCell = document.querySelector(cellSelector(recordId, field));
+    const nextCell = renderedRow.querySelector(`td[data-field="${field}"]`);
+    if (!currentCell || !nextCell) return;
+    currentCell.replaceWith(nextCell);
+  });
+  return document.querySelector(cellSelector(recordId, changedField));
+}
+
+function renderTablePreservingViewport() {
+  const currentViewport = document.querySelector('.table-viewport');
+  const scrollLeft = currentViewport?.scrollLeft ?? 0;
+  const scrollTop = currentViewport?.scrollTop ?? 0;
+  renderTable();
+  const nextViewport = document.querySelector('.table-viewport');
+  if (!nextViewport) return;
+  nextViewport.scrollLeft = Math.min(
+    scrollLeft,
+    Math.max(0, nextViewport.scrollWidth - nextViewport.clientWidth),
+  );
+  nextViewport.scrollTop = Math.min(
+    scrollTop,
+    Math.max(0, nextViewport.scrollHeight - nextViewport.clientHeight),
+  );
+}
+
+function editRequiresStructuralRender(field) {
+  if (state.query.trim()) return true;
+  if (state.priorityOnly && field === 'fit') return true;
+  return state.grouped && field === 'stage';
+}
+
+function refreshCommittedCell(recordId, field) {
+  if (editRequiresStructuralRender(field)) {
+    renderTablePreservingViewport();
+    return document.querySelector(cellSelector(recordId, field));
+  }
+  return refreshRecordCells(recordId, field);
+}
+
 function updateFormulaBarForSelection() {
   const selection = state.cellSelection;
   if (!selection) return;
@@ -1263,10 +1323,12 @@ function selectCell(recordId, field, options = {}) {
 
 function flashCell(cell, className) {
   if (!cell) return;
-  cell.classList.remove(className);
-  void cell.offsetWidth;
+  if (cell.classList.contains(className)) {
+    cell.classList.remove(className);
+    void cell.offsetWidth;
+  }
   cell.classList.add(className);
-  window.setTimeout(() => cell.classList.remove(className), 520);
+  window.setTimeout(() => cell.classList.remove(className), 240);
 }
 
 function pulseReadOnlyCell(cell) {
@@ -1282,10 +1344,9 @@ function toggleBooleanCell(recordId, field = 'starred') {
   if (!record || definition?.type !== 'checkbox') return;
   selectCell(recordId, field, { focus: false });
   definition.set(record, !Boolean(definition.get(record)));
-  renderTable();
+  const cell = refreshCommittedCell(recordId, field);
   updateFormulaBarForSelection();
   updateStatus();
-  const cell = document.querySelector(cellSelector(recordId, field));
   cell?.focus({ preventScroll: true });
   flashCell(cell, 'is-just-committed');
 }
@@ -1382,27 +1443,25 @@ function commitCellEdit(value, moveKey = null) {
   if (!record || !definition?.set) return;
   definition.set(record, value);
   state.editingCell = null;
-  renderTable();
+  const cell = refreshCommittedCell(editing.recordId, editing.field);
   updateFormulaBarForSelection();
   updateStatus();
-  const cell = document.querySelector(cellSelector(editing.recordId, editing.field));
   flashCell(cell, 'is-just-committed');
   if (moveKey) {
     moveCellSelection(cell, moveKey, true);
   } else {
     cell?.focus({ preventScroll: true });
   }
-  showToast('单元格已更新', `${cellReference(editing.recordId, editing.field)} · ${definition.label}已写入当前草稿`);
 }
 
 function cancelCellEdit() {
   const editing = state.editingCell;
   if (!editing) return false;
   state.editingCell = null;
-  renderTable();
+  const cell = refreshRecordCells(editing.recordId, editing.field);
   updateFormulaBarForSelection();
   updateStatus();
-  document.querySelector(cellSelector(editing.recordId, editing.field))?.focus({ preventScroll: true });
+  cell?.focus({ preventScroll: true });
   return true;
 }
 
