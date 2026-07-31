@@ -63,6 +63,14 @@ const initial = await page.evaluate(() => ({
   structuralLine: getComputedStyle(document.querySelector('.record-table td:nth-child(2)')).borderRightColor,
   activeCellEdge: getComputedStyle(document.querySelector('.record-table .active-cell')).boxShadow,
   rowHeight: document.querySelector('.record-table td')?.getBoundingClientRect().height ?? 0,
+  companyFontSize: getComputedStyle(document.querySelector('.company-cell strong')).fontSize,
+  companyDirection: getComputedStyle(document.querySelector('.company-line')).flexDirection,
+  stageTagHeight: document.querySelector('.stage-cell .tag')?.getBoundingClientRect().height ?? 0,
+  stageTagFontSize: getComputedStyle(document.querySelector('.stage-cell .tag')).fontSize,
+  workModeBorderWidth: getComputedStyle(document.querySelector('.work-mode')).borderTopWidth,
+  scoreRingCount: document.querySelectorAll('.score-ring').length,
+  rowNumberOverflow: [...document.querySelectorAll('.record-table .row-number')]
+    .some((cell) => cell.scrollWidth > cell.clientWidth),
   letterHeaderBottom: document.querySelector('.record-table .column-letters th:nth-child(2)')?.getBoundingClientRect().bottom ?? 0,
   fieldHeaderTop: document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(2)')?.getBoundingClientRect().top ?? 0,
 }));
@@ -89,8 +97,16 @@ assert.equal(initial.canvasColor, '#0d0f0e', 'default canvas should use graphite
 assert.notEqual(initial.gridLine, initial.structuralLine, 'grid hairlines and frozen-column dividers should use different weights');
 assert.match(initial.activeCellEdge, /rgb\(165, 200, 118\)/, 'active data edge should use the restrained sage accent');
 assert.equal(initial.rowHeight, 44, 'graphite table should use a dense but readable 44px row rhythm');
+assert.equal(initial.companyFontSize, '13px', 'primary record text should use a normal readable 13px size');
+assert.equal(initial.companyDirection, 'row', 'primary record metadata should stay on one aligned line');
+assert.equal(initial.stageTagHeight, 24, 'stage tags should share a stable 24px control height');
+assert.equal(initial.stageTagFontSize, '11px', 'stage tags should use readable 11px text');
+assert.equal(initial.workModeBorderWidth, '0px', 'secondary categorical fields should not all become boxed tags');
+assert.equal(initial.scoreRingCount, 20, 'each visible record should have one compact score glyph');
+assert.equal(initial.rowNumberOverflow, false, 'two-digit row numbers should remain fully visible');
 assert.equal(initial.letterHeaderBottom, initial.fieldHeaderTop, 'column letters and typed field headers should stack without overlap');
 await page.screenshot({ path: path.join(dir, 'preview.png') });
+await page.locator('.table-view').screenshot({ path: path.join(dir, 'preview-table.png') });
 
 await page.click('#theme-toggle');
 assert.equal(await page.getAttribute('body', 'data-theme'), 'light');
@@ -211,5 +227,5 @@ console.log(JSON.stringify({
   localLinks: localHrefs.length,
   viewsChecked: ['table', 'board', 'calendar', 'gallery', 'dashboard'],
   flowsChecked: ['theme-switch', 'number-format', 'conditional-format', 'field-type-select', 'formula-library', 'selection-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
-  screenshots: ['preview.png', 'preview-light.png', 'preview-format.png', 'preview-conditional.png', 'preview-fields.png', 'preview-formula.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
+  screenshots: ['preview.png', 'preview-table.png', 'preview-light.png', 'preview-format.png', 'preview-conditional.png', 'preview-fields.png', 'preview-formula.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
 }, null, 2));

@@ -474,26 +474,28 @@ function recordRow(record) {
       <td class="frozen-record-cell">
         <span class="company-cell">
           <span class="company-logo ${record.color}">${record.company.slice(0, 2).toUpperCase()}</span>
-          <span><strong>${record.company}</strong><small>${record.role}</small></span>
+          <span class="company-line"><strong>${record.company}</strong><small>${record.role}</small></span>
         </span>
       </td>
-      <td><span class="tag stage-${record.stageKey}">${record.stage}</span></td>
-      <td><span class="work-mode">${record.workMode}</span></td>
-      <td>${record.location}</td>
-      <td>${formatDate(record.applied)}</td>
-      <td><span class="salary"><strong>${record.salary}</strong><small>NZD</small></span></td>
-      <td class="numeric-cell ${inSelectedRange ? 'selected-range' : ''} ${record.id === 'aster' ? 'range-start' : ''} ${record.id === 'koru' ? 'range-end' : ''}">
-        <span class="cell-data-bar" style="--value:${record.fit}%"></span>
-        <strong>${record.fit}</strong>
+      <td class="stage-cell"><span class="tag stage-${record.stageKey}">${record.stage}</span></td>
+      <td><span class="work-mode"><i></i>${record.workMode}</span></td>
+      <td class="location-cell">${record.location}</td>
+      <td class="date-cell"><time datetime="${record.applied}">${formatDate(record.applied)}</time></td>
+      <td class="salary-cell"><span class="salary"><strong>${record.salary}</strong><small>NZD</small></span></td>
+      <td class="numeric-cell score-metric ${inSelectedRange ? 'selected-range' : ''} ${record.id === 'aster' ? 'range-start' : ''} ${record.id === 'koru' ? 'range-end' : ''}">
+        <span class="score-cell">
+          <i class="score-ring" style="--score:${record.fit}" aria-hidden="true"></i>
+          <strong>${record.fit}</strong>
+        </span>
       </td>
-      <td class="numeric-cell ${record.wait > 7 ? 'conditional-alert' : ''}">
+      <td class="numeric-cell wait-metric ${record.wait > 7 ? 'conditional-alert' : ''}">
         <span class="wait-cell ${record.wait > 7 ? 'is-alert' : ''}">
           <span class="wait-bar"><i style="--wait:${waitWidth}%"></i></span>
-          <strong>${record.wait}d</strong>
+          <strong>${record.wait}<small>天</small></strong>
         </span>
       </td>
-      <td><span class="next-action ${record.urgency ? 'is-soon' : ''}"><i></i>${record.next}</span></td>
-      <td class="formula-value ${isActiveCell ? 'active-cell' : ''}"><span class="${priority === '优先跟进' ? 'priority-high' : ''}">${priority}</span>${isActiveCell ? '<i class="fill-handle"></i>' : ''}</td>
+      <td class="next-action-cell"><span class="next-action ${record.urgency ? 'is-soon' : ''}"><i></i><span>${record.next}</span></span></td>
+      <td class="formula-value ${isActiveCell ? 'active-cell' : ''}"><span class="priority-token ${priority === '优先跟进' ? 'priority-high' : ''}">${priority}</span>${isActiveCell ? '<i class="fill-handle"></i>' : ''}</td>
     </tr>
   `;
 }
