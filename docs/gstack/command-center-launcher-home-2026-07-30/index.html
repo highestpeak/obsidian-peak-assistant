@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Peak Command Center · V13</title>
+  <title>Peak Command Center · V14</title>
   <style>
     :root {
       color-scheme: light;
@@ -423,7 +423,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 7px 8px 5px 15px;
+      padding: 7px 8px 5px 16px;
       border-bottom: 0;
     }
 
@@ -493,7 +493,7 @@
     }
 
     .filter-shell {
-      padding: 0 15px 9px;
+      padding: 0 16px 9px;
       border-bottom: 1px solid #f0f1f3;
       background: #fff;
     }
@@ -503,7 +503,7 @@
       min-width: 0;
       display: flex;
       align-items: center;
-      gap: 3px;
+      gap: 4px;
     }
 
     .scope-strip {
@@ -536,7 +536,7 @@
     }
 
     .scope-tab {
-      width: 31px;
+      width: 30px;
       padding: 0;
       border-radius: 5px;
       transition: color 120ms ease, opacity 120ms ease;
@@ -560,14 +560,14 @@
     }
 
     .scope-tab .icon {
-      width: 17px;
-      height: 17px;
+      width: 16px;
+      height: 16px;
     }
 
     .scope-tab:hover {
       color: var(--ink);
       background: transparent;
-      opacity: 0.72;
+      opacity: 1;
     }
 
     .scope-tab.scope-add:hover,
@@ -604,94 +604,65 @@
     }
 
     .scope-tab.scope-tone-0 {
-      --scope-tone: #6046b8;
-      color: #6046b8;
+      color: #684eb4;
     }
 
     .scope-tab.scope-tone-1 {
-      --scope-tone: #2c8a68;
-      color: #2c8a68;
+      color: #5f646b;
     }
 
     .scope-tab.scope-tone-2 {
-      --scope-tone: #d06a26;
-      color: #d06a26;
+      color: #5f646b;
     }
 
     .scope-tab.scope-tone-3 {
-      --scope-tone: #367ab6;
-      color: #367ab6;
+      color: #5f646b;
     }
 
     .scope-tab.scope-text {
       width: auto;
-      gap: 5px;
-      padding: 0 7px;
-      color: #555a61;
-      font-size: 10.5px;
-      font-weight: 520;
+      padding: 0 6px;
+      color: #5f646b;
+      font-size: 10px;
+      font-weight: 540;
       letter-spacing: -0.01em;
     }
 
     .scope-tab.scope-text::before {
-      width: 5px;
-      height: 5px;
-      flex: none;
-      border-radius: 50%;
-      background: var(--scope-tone, #858990);
-      content: "";
+      content: none;
     }
 
     .facet-chip {
-      gap: 4px;
-      padding: 0 6px;
-      border-color: transparent;
-      border-radius: 5px;
-      background: transparent;
+      height: 24px;
+      gap: 5px;
+      padding: 0 7px;
+      border-color: #e1e3e7;
+      border-radius: 6px;
+      color: #62676e;
+      background: #fff;
       font-size: 9.5px;
-      font-weight: 450;
+      font-weight: 500;
       letter-spacing: -0.006em;
+      transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
     }
 
     .facet-chip .icon {
-      display: none;
-    }
-
-    .facet-chip::before {
-      width: 4px;
-      height: 4px;
-      flex: none;
-      border-radius: 50%;
-      background: var(--facet-dot, #8a8e94);
-      content: "";
-    }
-
-    .facet-chip[data-facet="ai"] {
-      --facet-dot: #7055c6;
-    }
-
-    .facet-chip[data-facet="create"] {
-      --facet-dot: #d27034;
-    }
-
-    .facet-chip[data-facet="navigate"] {
-      --facet-dot: #397e66;
-    }
-
-    .facet-chip[data-facet="visual"] {
-      --facet-dot: #3b78aa;
+      width: 12px;
+      height: 12px;
+      display: block;
+      color: #777c83;
     }
 
     .facet-chip.active {
-      border-color: transparent;
-      color: #303338;
-      background: #f1f2f4;
+      border-color: #cfd3d8;
+      color: #2f3338;
+      background: #f6f7f8;
     }
 
     .scope-panels {
       min-width: 0;
       min-height: 0;
-      padding: 9px 13px 11px;
+      padding: 8px 9px 10px;
       overflow: auto;
     }
 
@@ -706,127 +677,90 @@
     .command-tile-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 2px 4px;
+      gap: 2px 7px;
     }
 
     .command-tile-grid .action-tile {
       width: 100%;
-      height: 44px;
+      height: 38px;
       display: grid;
-      grid-template-columns: 20px minmax(0, 1fr) auto;
-      grid-template-rows: 16px 12px;
-      align-content: center;
+      grid-template-columns: 18px minmax(0, 1fr) auto;
+      grid-template-rows: 1fr;
+      align-items: center;
       justify-content: initial;
-      column-gap: 8px;
-      row-gap: 0;
-      padding: 5px 7px;
+      column-gap: 7px;
+      padding: 0 7px;
       border-color: transparent;
-      border-radius: 6px;
+      border-radius: 5px;
       background: transparent;
       transition: background-color 120ms ease, color 120ms ease;
     }
 
     .command-tile-grid .action-tile:hover {
       border-color: transparent;
-      background: #fafafa;
+      background: #f7f8f9;
     }
 
     .command-tile-grid .action-tile.selected {
       border-color: transparent;
-      background: #fafafa;
+      background: #f7f8f9;
       box-shadow: none;
     }
 
     .command-tile-grid .action-icon {
-      grid-row: 1 / span 2;
-      align-self: center;
-      width: 18px;
-      height: 18px;
+      grid-column: 1;
+      grid-row: 1;
+      width: 16px;
+      height: 16px;
       border-radius: 0;
-      color: #6651b9;
+      color: #70757c;
       background: transparent;
     }
 
     .command-tile-grid .action-icon.blue {
-      color: #3977a0;
+      color: #70757c;
       background: transparent;
     }
 
     .command-tile-grid .action-icon.green {
-      color: #387f66;
+      color: #70757c;
       background: transparent;
     }
 
     .command-tile-grid .action-icon.amber {
-      color: #9a712e;
+      color: #70757c;
       background: transparent;
     }
 
     .command-tile-grid .action-icon.neutral {
-      color: #676c73;
+      color: #70757c;
       background: transparent;
     }
 
-    .command-tile-grid .action-icon.source-tone-0 {
-      color: #6651b9;
-    }
-
-    .command-tile-grid .action-icon.source-tone-1 {
-      color: #347d62;
-    }
-
-    .command-tile-grid .action-icon.source-tone-2 {
-      color: #c5682d;
-    }
-
-    .command-tile-grid .action-icon.source-tone-3 {
-      color: #3677a8;
-    }
-
     .command-tile-grid .action-icon .icon {
-      width: 17px;
-      height: 17px;
-    }
-
-    .command-tile-grid .action-icon.source-wordmark {
-      display: grid;
-      place-items: center;
-    }
-
-    .source-monogram {
-      font-size: 7.5px;
-      font-weight: 760;
-      line-height: 1;
-      letter-spacing: -0.045em;
+      width: 16px;
+      height: 16px;
     }
 
     .command-tile-grid .action-name {
       grid-column: 2;
       grid-row: 1;
-      align-self: end;
-      color: #292c31;
-      font-size: 11px;
-      font-weight: 590;
-      letter-spacing: -0.012em;
+      align-self: center;
+      color: #30343a;
+      font-size: 11.5px;
+      font-weight: 540;
+      line-height: 1;
+      letter-spacing: -0.01em;
     }
 
     .command-tile-grid .action-meta {
-      grid-column: 2 / span 2;
-      grid-row: 2;
-      display: block;
-      overflow: hidden;
-      color: #8b8f95;
-      font-size: 8.5px;
-      line-height: 12px;
-      letter-spacing: -0.004em;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      display: none;
     }
 
     .command-tile-grid .tile-hotkey {
       grid-column: 3;
       grid-row: 1;
-      align-self: end;
+      align-self: center;
       margin-left: 2px;
     }
 
@@ -838,8 +772,8 @@
     .command-tile-grid .action-tile.display-icon .action-icon {
       grid-column: 1 / -1;
       grid-row: 1 / -1;
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
       place-self: center;
     }
 
@@ -852,7 +786,7 @@
       grid-column: 1 / -1;
       grid-row: 1 / -1;
       place-self: center;
-      font-size: 10.5px;
+      font-size: 11px;
     }
 
     .command-tile-grid .action-tile[hidden] {
@@ -2421,15 +2355,6 @@
       <path fill="currentColor" stroke="none" d="M12 2.7c.7 4.7 2.6 7.2 7.4 8.2-4.8 1-6.7 3.5-7.4 8.3-.7-4.8-2.6-7.3-7.4-8.3 4.8-1 6.7-3.5 7.4-8.2Z"/>
       <circle cx="18.7" cy="5.2" r="1.7" fill="currentColor" stroke="none"/>
     </symbol>
-    <symbol id="i-workspace-mark" viewBox="0 0 24 24">
-      <rect x="3" y="5" width="8" height="8" rx="2" fill="currentColor" stroke="none" opacity=".42"/>
-      <rect x="8" y="8" width="13" height="11" rx="2.5" fill="currentColor" stroke="none"/>
-      <path d="M12 12h5M12 15h5" stroke="white" stroke-width="1.4"/>
-    </symbol>
-    <symbol id="i-visual-mark" viewBox="0 0 24 24">
-      <path fill="currentColor" stroke="none" d="M12 2.8 21.2 12 12 21.2 2.8 12 12 2.8Z"/>
-      <path d="m8.1 15.8 1-3.5 5.7-5.7 2.6 2.6-5.7 5.7-3.6.9Z" stroke="white" stroke-width="1.2" fill="none"/>
-    </symbol>
     <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     <symbol id="i-pen" viewBox="0 0 24 24"><path d="m4 20 4.2-1 10.6-10.6a2 2 0 0 0 0-2.8l-.4-.4a2 2 0 0 0-2.8 0L5 15.8Z"/><path d="m13.8 7 3.2 3.2M4 20h5"/></symbol>
     <symbol id="i-layout" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M9 10h12"/></symbol>
@@ -2460,7 +2385,7 @@
       <span class="prototype-mark"><svg class="icon"><use href="#i-command"/></svg></span>
       <span>
         <strong>Peak Command Center</strong>
-        <small>V13 · command-directory customization</small>
+        <small>V14 · disciplined command matrix</small>
       </span>
     </div>
     <nav class="state-switcher" aria-label="原型状态">
@@ -2473,7 +2398,7 @@
   </header>
 
   <main class="stage">
-    <section class="app-frame" aria-label="Command Center V13 原型">
+    <section class="app-frame" aria-label="Command Center V14 原型">
       <div class="app-titlebar">
         <span class="traffic-lights"><i></i><i></i><i></i></span>
         <span class="app-title">Peak Assistant · Product vault</span>
@@ -2542,10 +2467,10 @@
             <div class="filter-shell">
               <div class="scope-strip" id="launcher-scope-tabs" aria-label="按分组切换"></div>
               <div class="facet-strip" id="launcher-facet-tabs" aria-label="按能力类型筛选">
-                <button class="facet-chip" data-facet="ai" aria-pressed="false">AI</button>
-                <button class="facet-chip" data-facet="create" aria-pressed="false">Create</button>
-                <button class="facet-chip" data-facet="navigate" aria-pressed="false">Navigate</button>
-                <button class="facet-chip" data-facet="visual" aria-pressed="false">Visual</button>
+                <button class="facet-chip" data-facet="ai" aria-pressed="false"><svg class="icon"><use href="#i-sparkles"/></svg>AI</button>
+                <button class="facet-chip" data-facet="create" aria-pressed="false"><svg class="icon"><use href="#i-file-plus"/></svg>Create</button>
+                <button class="facet-chip" data-facet="navigate" aria-pressed="false"><svg class="icon"><use href="#i-map"/></svg>Navigate</button>
+                <button class="facet-chip" data-facet="visual" aria-pressed="false"><svg class="icon"><use href="#i-pen"/></svg>Visual</button>
               </div>
             </div>
             <div class="scope-panels" id="launcher-board"></div>
@@ -2572,10 +2497,10 @@
             <div class="filter-shell">
               <div class="scope-strip" id="search-scope-tabs" aria-label="在搜索结果中按分组切换"></div>
               <div class="facet-strip" id="search-facet-tabs" aria-label="在搜索结果中按能力类型筛选">
-                <button class="facet-chip" data-facet="ai" aria-pressed="false">AI</button>
-                <button class="facet-chip" data-facet="create" aria-pressed="false">Create</button>
-                <button class="facet-chip" data-facet="navigate" aria-pressed="false">Navigate</button>
-                <button class="facet-chip" data-facet="visual" aria-pressed="false">Visual</button>
+                <button class="facet-chip" data-facet="ai" aria-pressed="false"><svg class="icon"><use href="#i-sparkles"/></svg>AI</button>
+                <button class="facet-chip" data-facet="create" aria-pressed="false"><svg class="icon"><use href="#i-file-plus"/></svg>Create</button>
+                <button class="facet-chip" data-facet="navigate" aria-pressed="false"><svg class="icon"><use href="#i-map"/></svg>Navigate</button>
+                <button class="facet-chip" data-facet="visual" aria-pressed="false"><svg class="icon"><use href="#i-pen"/></svg>Visual</button>
               </div>
             </div>
             <div class="scope-panels">
@@ -2674,7 +2599,7 @@
                     <div class="flow-group-header">
                       <span class="flow-group-title manage-group-title">
                         <span class="drag-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-                        <svg class="icon"><use href="#i-workspace-mark"/></svg>
+                        <svg class="icon"><use href="#i-workspace"/></svg>
                         <strong>Workspaces</strong>
                       </span>
                       <button class="group-add-button" aria-label="向 Workspaces 添加动作"><svg class="icon"><use href="#i-plus"/></svg></button>
@@ -2740,7 +2665,7 @@
                     <div class="flow-group-header">
                       <span class="flow-group-title manage-group-title">
                         <span class="drag-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-                        <svg class="icon"><use href="#i-visual-mark"/></svg>
+                        <svg class="icon"><use href="#i-pen"/></svg>
                         <strong>Visual</strong>
                       </span>
                       <button class="group-add-button" aria-label="向 Visual 添加动作"><svg class="icon"><use href="#i-plus"/></svg></button>
@@ -2766,8 +2691,8 @@
           </div>
           <div class="manage-icon-picker" id="manage-icon-picker" hidden>
             <button type="button" data-group-icon="i-peak-mark" aria-label="Peak mark"><svg class="icon"><use href="#i-peak-mark"/></svg></button>
-            <button type="button" data-group-icon="i-workspace-mark" aria-label="Workspace mark"><svg class="icon"><use href="#i-workspace-mark"/></svg></button>
-            <button type="button" data-group-icon="i-visual-mark" aria-label="Visual mark"><svg class="icon"><use href="#i-visual-mark"/></svg></button>
+            <button type="button" data-group-icon="i-workspace" aria-label="Workspace"><svg class="icon"><use href="#i-workspace"/></svg></button>
+            <button type="button" data-group-icon="i-pen" aria-label="Writing and visual"><svg class="icon"><use href="#i-pen"/></svg></button>
             <button type="button" data-group-icon="i-sparkles" aria-label="Sparkles"><svg class="icon"><use href="#i-sparkles"/></svg></button>
             <button type="button" data-group-icon="i-folder" aria-label="Folder"><svg class="icon"><use href="#i-folder"/></svg></button>
             <button type="button" data-group-icon="i-calendar" aria-label="Calendar"><svg class="icon"><use href="#i-calendar"/></svg></button>
@@ -2899,18 +2824,18 @@
       </section>
     </section>
 
-    <section class="design-note" aria-label="V13 design principles">
+    <section class="design-note" aria-label="V14 design principles">
       <div class="note-item">
-        <strong>Customize 延续 Command Palette 心智</strong>
-        <span>搜索完整命令目录，每行用 switch 加入或移出当前分组；不再维护另一块卡片画布。</span>
+        <strong>来源与动作使用不同图形语言</strong>
+        <span>顶部 scope 承担来源识别；内容区恢复每个 command 自己的语义图标，不再重复 group mark。</span>
       </div>
       <div class="note-item">
-        <strong>分组身份直接编辑</strong>
-        <span>顶部选择分组，随后直接重命名并选择 source mark；新建组由同一排末尾的加号完成。</span>
+        <strong>三列不是三列卡片</strong>
+        <span>action 收成 38px 单行 command cell，只保留 icon、label 与真实 hotkey；说明进入搜索和 Customize。</span>
       </div>
       <div class="note-item">
-        <strong>高级设置只在需要时展开</strong>
-        <span>已加入命令可以拖动排序；点击该行才展开 Icon + text / Icon / Text 与 Pin to Home，不重复堆工具条。</span>
+        <strong>边界用来表达控件，而不是装饰</strong>
+        <span>facet 恢复 icon + label hairline chip；颜色只保留给可信品牌资产，其他结构保持中性。</span>
       </div>
     </section>
   </main>
@@ -3491,22 +3416,6 @@
       tile.removeAttribute('draggable');
       tile.dataset.scope = groupId;
       tile.dataset.facet = getActionFacet(source);
-
-      const sourceGroup = source.closest('.flow-group');
-      const sourceIcon = sourceGroup?.querySelector('.manage-group-title > .icon');
-      const iconHolder = tile.querySelector('.action-icon');
-      const groupIndex = getManageGroups().indexOf(sourceGroup);
-      if (iconHolder && sourceIcon) {
-        iconHolder.className = `action-icon source-tone-${Math.max(groupIndex, 0) % 4}`;
-        iconHolder.replaceChildren(sourceIcon.cloneNode(true));
-      }
-      if (iconHolder && !sourceIcon) {
-        const monogram = document.createElement('span');
-        monogram.className = 'source-monogram';
-        monogram.textContent = buildMonogram(getGroupLabel(sourceGroup));
-        iconHolder.className = `action-icon source-wordmark source-tone-${Math.max(groupIndex, 0) % 4}`;
-        iconHolder.replaceChildren(monogram);
-      }
 
       appendHotkey(tile);
       return tile;

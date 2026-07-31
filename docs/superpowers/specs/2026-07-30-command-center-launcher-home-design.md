@@ -2,7 +2,7 @@
 
 Date: 2026-07-30
 
-Visual direction revised: 2026-07-31 · V13 command-directory customization
+Visual direction revised: 2026-07-31 · V14 disciplined command matrix
 
 Status: Decided · design/spec ready · implementation pending
 
@@ -284,15 +284,16 @@ Destructive layout reset requires confirmation and export/import support before 
 - Width: `min(640px, calc(100vw - 48px))`.
 - Height: approximately `400px`, capped by `calc(100vh - 72px)`.
 - Overlay: a light neutral wash, not a dark modal scrim.
-- First filter row: `All`, source-led group scopes and one trailing Customize button. A group with a trusted mark uses the mark; a group without one uses its short text label and a small source color dot.
-- Second filter row: borderless type toggles with tiny color dots; selecting an active facet again clears it.
+- First filter row: `All`, source-led group scopes and one trailing Customize button. A group uses a trusted product mark when one exists; otherwise it uses a user-selected system icon or a short text label. Arbitrary group colors are not an identity system.
+- Second filter row: compact `icon + label` type controls with a hairline boundary; selecting an active facet again clears it.
 - Content canvas: three equal columns at the reference width, responsive down to fewer columns.
-- Action cell: approximately `44px` high, borderless at rest, with only a quiet neutral hover / selection fill.
-- Search, action title and provenance form an intentional `12 / 11 / 9px` type scale. Do not shrink all interface copy to make the surface feel dense.
-- Trusted scope and action marks render at approximately `17px`. Peak Assistant, Workspaces and Visual use distinct purpose-drawn marks in the prototype; Quick create intentionally demonstrates the no-icon text fallback.
+- Action cell: approximately `38px` high and single-line, borderless at rest, with only a quiet neutral hover / selection fill.
+- Search, action title and filter label form an intentional `12 / 11.5 / 9.5px` type scale. Runtime cells do not show a second provenance line.
+- Source marks render at approximately `16px`. Peak Assistant uses its trusted product mark; Workspaces and Visual use neutral semantic system icons, while Quick create demonstrates the no-icon text fallback.
 - The content canvas starts immediately after the filters; no `All commands`, group heading or item-count row is repeated.
 - Modal radius: approximately `12px`; action radius: approximately `6px`.
-- Accent: colored group/action icons carry identity; black underline and neutral fills carry navigation state.
+- Header, filters and action labels share one `16px` left axis. The three-column cell padding completes that alignment instead of creating a nested-card inset.
+- Accent: only a trusted source mark may carry brand color. Filter controls and action icons stay neutral; black underline and neutral fills carry navigation state.
 
 No group sidebar, vertical group stack, outlined card wall, gradient, availability strip, descriptive hero or dashboard statistic appears in the Modal.
 
@@ -300,25 +301,25 @@ No group sidebar, vertical group stack, outlined card wall, gradient, availabili
 
 Every tile has an action identity, accessible name and tooltip. The default board uses `icon + label` consistently so the first view has a complete rhythm. Its visible anatomy remains user-selectable:
 
-1. `icon + label`: source mark or monogram, short label, quiet provenance and an optional real hotkey;
+1. `icon + label`: semantic action icon, short label and an optional real hotkey;
 2. `icon only`: centered icon with `aria-label` and tooltip;
 3. `text only`: centered short label without an icon.
 
-All three modes share one grid geometry. The presentation choice changes visible content, not row rhythm or spatial position. Icon-only and text-only remain explicit customization choices rather than mixed first-run defaults. Cells have no permanent outline; resting state has no preselected gray block. Unavailable actions keep their position and use a disabled treatment.
+All three modes share one grid geometry. The presentation choice changes visible content, not row rhythm or spatial position. Icon-only and text-only remain explicit customization choices rather than mixed first-run defaults. Cells have no permanent outline; resting state has no preselected gray block. Provenance and description stay in the tooltip or Customize directory instead of becoming a default second line. Unavailable actions keep their position and use a disabled treatment.
 
 Long native command labels such as “Create new drawing — in the current active window” become a short tile title such as `Current window`; the tooltip preserves the full source label.
 
 ### 9.3 Icon policy
 
-Use product / plugin source marks first, Lucide second, and never AI-generated bitmap icons.
+Separate source identity from action semantics, and never use AI-generated bitmap icons.
 
-- Peak actions reuse a dedicated Peak mark.
-- Actions from the same plugin or source inherit that source mark by default; action semantics stay in the label.
-- Generic action semantics use Lucide.
-- Plugin groups may use a trusted plugin mark or user-selected Lucide icon, but an icon is not required.
-- A group without an icon stays legible as text in the scope row; its action cells use a deterministic one- or two-character source monogram.
-- Actions inherit the group icon when no clear action icon exists.
-- Color is secondary; shape and label carry meaning.
+- Source identity belongs to the top scope row and is not stamped repeatedly into every action.
+- Peak Assistant reuses its dedicated Peak mark in the scope row.
+- A third-party plugin uses its trusted product mark only when that asset actually exists.
+- A source without a trusted mark uses a user-selected system icon or a short text label; the prototype does not invent substitute brand marks.
+- Every action uses its own semantic icon from the shared icon family.
+- When an action has no suitable icon, configuration may choose a neutral monogram or text-only mode; it does not inherit the group logo.
+- Color is reserved for trusted product identity. Shape, label and position carry the command semantics.
 
 AI-generated icons are excluded because they are inconsistent at small sizes, hard to theme and difficult to keep semantically stable across versions.
 

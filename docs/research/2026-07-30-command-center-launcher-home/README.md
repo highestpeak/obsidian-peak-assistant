@@ -2,7 +2,7 @@
 
 > 日期：2026-07-30
 >
-> 视觉方向修订：2026-07-31 · V13 command-directory customization
+> 视觉方向修订：2026-07-31 · V14 disciplined command matrix
 >
 > 状态：Research complete；产品边界已进入正式设计，尚未实现
 >
@@ -136,6 +136,16 @@ V13 只重做 Customize，纠正“为编辑 Launcher 又发明一块卡片画�
 - switch 关闭等同于从当前 group 移除，打开等同于加入；切换 group 后，同一条命令可以呈现不同 membership。
 - Added 区可以拖动排序。点击一条已加入命令后，只在该 row 下展开 `Icon + text / Icon / Text` 与 `Pin to Home`，不再出现悬浮编辑工具条。
 - 完整命令目录只存在于 Customize；Launcher 与运行态 Search 仍然只显示已策展命令，因此不会退回原生 Palette 的高噪音体验。
+
+V14 保留 V13 的 Customize，只重做 Launcher / Search 的视觉语言：
+
+- 三列继续保留，但每个 action 从带副标题的 mini card 收成约 `38px` 的单行命令；默认只显示语义图标、短名称与真实快捷键，来源和说明留在 tooltip / Customize directory。
+- source identity 只出现在第一排 scope tabs，不再重复盖到每个 action 上。Peak 使用已有产品标志；Workspaces / Visual 使用中性系统图标；Quick create 演示无图标时的短文字 fallback。
+- 删除为 Workspaces / Visual 伪造的“品牌 mark”，也删除用任意颜色点解释来源的图例系统。除可信品牌标志外，控制与命令图标统一使用中性色。
+- 第二排恢复参考图式的 `icon + label` hairline controls。它们有轻微边界，但不是高饱和 pill，也不依赖彩色圆点才可理解。
+- Search、facet 与 action 使用约 `12 / 9.5 / 11.5px` 的克制字阶。header、filters 与每列 action 内容落在同一条 `16px` 左轴上。
+- 三列矩阵不是三列卡片墙：resting state 没有边框或填充，只有 hover / keyboard selection 才出现极浅中性底色。文本只占一行，空间结构比装饰更先被看到。
+- `icon + text / icon only / text only` 仍可逐项配置；首屏默认完整模式保持一致，避免随机混排破坏节奏。
 
 ## 录屏观察
 
