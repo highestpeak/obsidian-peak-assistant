@@ -71,13 +71,34 @@ const initial = await page.evaluate(() => ({
   stageTagFontSize: getComputedStyle(document.querySelector('.stage-cell .tag')).fontSize,
   workModeBorderWidth: getComputedStyle(document.querySelector('.work-mode')).borderTopWidth,
   scoreRingCount: document.querySelectorAll('.score-ring').length,
-  multiSelectCellCount: document.querySelectorAll('.skill-tags').length,
+  multiSelectColumnCount: document.querySelectorAll('.skills-column').length,
+  multiSelectValueCount: document.querySelectorAll('.skill-tags').length,
+  maxVisibleSkillTags: Math.max(...[...document.querySelectorAll('.skills-column')]
+    .map((cell) => cell.querySelectorAll('.skill-tag').length)),
+  skillOverflowCount: document.querySelectorAll('.tag-overflow').length,
+  skillTagPaletteCount: new Set([...document.querySelectorAll('.skill-tag')]
+    .map((tag) => {
+      const style = getComputedStyle(tag);
+      return `${style.backgroundColor}|${style.borderColor}|${style.color}`;
+    })).size,
+  stageTagPaletteCount: new Set([...document.querySelectorAll('.stage-cell .tag')]
+    .map((tag) => getComputedStyle(tag).backgroundColor)).size,
   checkboxCellCount: document.querySelectorAll('.boolean-cell').length,
+  linkColumnCount: document.querySelectorAll('.link-column').length,
   linkCellCount: document.querySelectorAll('.link-cell').length,
+  attachmentColumnCount: document.querySelectorAll('.attachment-column').length,
   attachmentCellCount: document.querySelectorAll('.attachment-cell').length,
+  multipleAttachmentCount: document.querySelectorAll('.attachment-cell.is-multiple').length,
   dateTimeCellCount: document.querySelectorAll('.datetime-cell').length,
   progressCellCount: document.querySelectorAll('.progress-cell').length,
-  noteCellCount: document.querySelectorAll('.note-cell').length,
+  noteColumnCount: document.querySelectorAll('.note-column').length,
+  emptyCellCount: document.querySelectorAll('.cell-empty').length,
+  emptyCellGlyphs: [...new Set([...document.querySelectorAll('.cell-empty')]
+    .map((cell) => cell.textContent?.trim()))],
+  emptyCellBorderWidth: getComputedStyle(document.querySelector('.cell-empty')).borderTopWidth,
+  clippedValueCount: [...document.querySelectorAll('.skill-tag > span, .link-cell > span, .note-cell')]
+    .filter((cell) => cell.scrollWidth > cell.clientWidth).length,
+  rightFieldFontSize: getComputedStyle(document.querySelector('.link-cell')).fontSize,
   rowNumberOverflow: [...document.querySelectorAll('.record-table .row-number')]
     .some((cell) => cell.scrollWidth > cell.clientWidth),
   letterHeaderBottom: document.querySelector('.record-table .column-letters th:nth-child(2)')?.getBoundingClientRect().bottom ?? 0,
@@ -110,17 +131,30 @@ assert.match(initial.activeCellEdge, /rgb\(165, 200, 118\)/, 'active data edge s
 assert.equal(initial.rowHeight, 44, 'graphite table should use a dense but readable 44px row rhythm');
 assert.equal(initial.companyFontSize, '13px', 'primary record text should use a normal readable 13px size');
 assert.equal(initial.companyDirection, 'row', 'primary record metadata should stay on one aligned line');
-assert.equal(initial.stageTagHeight, 24, 'stage tags should share a stable 24px control height');
-assert.equal(initial.stageTagFontSize, '11px', 'stage tags should use readable 11px text');
+assert.equal(initial.stageTagHeight, 26, 'stage tags should share a stable 26px control height');
+assert.equal(initial.stageTagFontSize, '11.5px', 'stage tags should use readable 11.5px text');
 assert.equal(initial.workModeBorderWidth, '0px', 'secondary categorical fields should not all become boxed tags');
 assert.equal(initial.scoreRingCount, 20, 'each visible record should have one compact score glyph');
-assert.equal(initial.multiSelectCellCount, 20, 'each visible record should render the multi-select field');
+assert.equal(initial.multiSelectColumnCount, 20, 'each visible record should render the multi-select field');
+assert.ok(initial.multiSelectValueCount > 0, 'multi-select columns should contain real populated combinations');
+assert.ok(initial.maxVisibleSkillTags <= 2, 'multi-select cells should show at most two tags before overflow');
+assert.ok(initial.skillOverflowCount > 0, 'multi-select cells should expose a +N overflow state');
+assert.equal(initial.skillTagPaletteCount, 1, 'skill tags should use one coherent neutral palette');
+assert.ok(initial.stageTagPaletteCount >= 5, 'single-select stage tags should retain semantic option colors');
 assert.equal(initial.checkboxCellCount, 20, 'each visible record should render the checkbox field');
-assert.equal(initial.linkCellCount, 20, 'each visible record should render the link field');
-assert.equal(initial.attachmentCellCount, 20, 'each visible record should render the attachment field');
+assert.equal(initial.linkColumnCount, 20, 'each visible record should render the link field');
+assert.ok(initial.linkCellCount < initial.linkColumnCount, 'link fields should include real empty states');
+assert.equal(initial.attachmentColumnCount, 20, 'each visible record should render the attachment field');
+assert.ok(initial.attachmentCellCount < initial.attachmentColumnCount, 'attachment fields should include real empty states');
+assert.ok(initial.multipleAttachmentCount > 0, 'attachment fields should include a multiple-file state');
 assert.equal(initial.dateTimeCellCount, 20, 'each visible record should render the date-time field');
 assert.equal(initial.progressCellCount, 20, 'each visible record should render the formatted numeric progress field');
-assert.equal(initial.noteCellCount, 20, 'each visible record should render the multi-line text projection');
+assert.equal(initial.noteColumnCount, 20, 'each visible record should render the multi-line text projection');
+assert.ok(initial.emptyCellCount >= 20, 'typed fields should exercise visible empty-value states');
+assert.deepEqual(initial.emptyCellGlyphs, ['—'], 'all empty typed cells should share one quiet glyph');
+assert.equal(initial.emptyCellBorderWidth, '0px', 'empty values should not become fake boxed controls');
+assert.ok(initial.clippedValueCount > 0, 'long values should exercise real one-line ellipsis behavior');
+assert.equal(initial.rightFieldFontSize, '12px', 'right-side typed fields should use the normal table text size');
 assert.equal(initial.rowNumberOverflow, false, 'two-digit row numbers should remain fully visible');
 assert.equal(initial.letterHeaderBottom, initial.fieldHeaderTop, 'column letters and typed field headers should stack without overlap');
 await page.screenshot({ path: path.join(dir, 'preview.png') });

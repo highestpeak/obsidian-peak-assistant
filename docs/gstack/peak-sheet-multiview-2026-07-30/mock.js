@@ -362,24 +362,24 @@ const records = [
 ];
 
 const skillSets = [
-  ['Product', 'AI'],
-  ['React', 'Systems'],
-  ['Product', 'UX'],
-  ['TypeScript', 'Health'],
-  ['Platform', 'Cloud'],
-  ['Energy', 'Full-stack'],
+  ['Product Strategy', 'AI Agents', 'B2B SaaS'],
+  ['React', 'System Design'],
+  ['Product Engineering'],
+  [],
+  ['Platform', 'Cloud Migration', 'Observability'],
+  ['Energy Domain', 'Full-stack'],
   ['React', 'Cloud'],
-  ['Data Viz', 'Design'],
-  ['Fintech', 'Product'],
-  ['Design System', 'A11y'],
-  ['Commerce', 'Web'],
+  ['Data Visualization', 'Design'],
+  [],
+  ['Design Systems', 'Accessibility', 'React'],
+  ['Commerce'],
   ['Robotics', 'C++'],
-  ['Agents', 'Product'],
-  ['Platform', 'Infra'],
-  ['React', 'Tooling'],
-  ['Health', 'Backend'],
-  ['Design', 'Frontend'],
-  ['Research', 'Tools'],
+  ['AI Agents', 'Product'],
+  ['Platform', 'Infrastructure'],
+  ['React', 'Tooling', 'TypeScript'],
+  ['Healthcare', 'Backend'],
+  ['Design Engineering'],
+  [],
   ['Analytics', 'B2B'],
   ['Product', 'Web'],
 ];
@@ -391,6 +391,29 @@ const interviewSlots = {
   halcyon: '待确认',
   meridian: '08/04 · 11:00',
 };
+
+const attachmentSets = [
+  ['offer-comparison.md'],
+  ['job-description.pdf', 'system-design.md'],
+  [],
+  ['final-interview-feedback.md'],
+  ['follow-up-draft.md', 'migration-case-study.pdf', 'cover-letter.pdf'],
+  [],
+  ['job-description.pdf'],
+  ['portfolio-notes.md', 'job-description.pdf'],
+  [],
+  ['design-system-case-study.pdf'],
+  ['job-description.pdf', 'company-notes.md'],
+  ['rejection-feedback.md'],
+  ['agent-workflow-case-study.pdf', 'cover-letter.pdf'],
+  [],
+  ['platform-notes.md'],
+  ['healthcare-boundaries.md', 'system-design.md'],
+  ['portfolio.pdf'],
+  [],
+  ['rejection-email.pdf'],
+  ['relocation-notes.md'],
+];
 
 const progressByStage = {
   offer: 92,
@@ -405,11 +428,63 @@ function extendedFields(record) {
   return {
     skills: skillSets[index] ?? ['Product'],
     starred: record.fit >= 88 || record.stageKey === 'offer',
-    attachmentCount: (index % 3) + 1,
-    interviewAt: interviewSlots[record.id] ?? '—',
+    attachments: attachmentSets[index] ?? [],
+    interviewAt: interviewSlots[record.id] ?? null,
     progress: progressByStage[record.stageKey] ?? 0,
-    jobLink: `${record.company.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.jobs`,
+    jobLink: index % 6 === 3
+      ? null
+      : `careers.${record.company.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.jobs/open-roles`,
+    displayNote: index % 7 === 3 ? '' : record.note,
   };
+}
+
+function emptyCell(label = '空值') {
+  return `<span class="cell-empty" title="${label}" aria-label="${label}">—</span>`;
+}
+
+function renderSkillTags(skills) {
+  if (skills.length === 0) return emptyCell('未填写技能标签');
+  const canShowTwo = skills.length > 1
+    && skills[0].length + skills[1].length <= 20;
+  const visible = skills.slice(0, canShowTwo ? 2 : 1);
+  const remaining = skills.length - visible.length;
+  const tags = visible
+    .map((skill) => `<span class="skill-tag" title="${skill}"><span>${skill}</span></span>`)
+    .join('');
+  const overflow = remaining > 0
+    ? `<span class="tag-overflow" title="另外 ${remaining} 个标签">+${remaining}</span>`
+    : '';
+  return `<span class="skill-tags" title="${skills.join(' · ')}">${tags}${overflow}</span>`;
+}
+
+function renderLink(value) {
+  if (!value) return emptyCell('未填写链接');
+  return `<span class="link-cell" title="${value}">${icon('i-link')}<span>${value}</span></span>`;
+}
+
+function renderAttachments(attachments) {
+  if (attachments.length === 0) return emptyCell('没有附件');
+  if (attachments.length === 1) {
+    const [fileName] = attachments;
+    return `<span class="attachment-cell" title="${fileName}">${icon('i-paperclip')}<span>${fileName}</span></span>`;
+  }
+  return `
+    <span class="attachment-cell is-multiple" title="${attachments.join(' · ')}">
+      <span class="attachment-stack" aria-hidden="true"><i></i><i></i></span>
+      <span>${attachments.length} 个文件</span>
+    </span>
+  `;
+}
+
+function renderDateTime(value) {
+  if (!value) return emptyCell('未安排面试时间');
+  if (value === '待确认') return `<span class="datetime-state">${value}</span>`;
+  return `<span class="datetime-value">${value}</span>`;
+}
+
+function renderNote(value) {
+  if (!value) return emptyCell('未填写备注');
+  return `<span class="note-cell" title="${value}">${value}</span>`;
 }
 
 const groupMeta = {
@@ -463,7 +538,9 @@ function visibleRecords() {
       record.note,
       extra.jobLink,
       ...extra.skills,
-    ].some((value) => value.toLowerCase().includes(query));
+    ]
+      .filter((value) => typeof value === 'string')
+      .some((value) => value.toLowerCase().includes(query));
   });
 }
 
@@ -552,13 +629,13 @@ function recordRow(record) {
       </td>
       <td class="next-action-cell"><span class="next-action ${record.urgency ? 'is-soon' : ''}"><i></i><span>${record.next}</span></span></td>
       <td class="formula-value ${isActiveCell ? 'active-cell' : ''}"><span class="priority-token ${priority === '优先跟进' ? 'priority-high' : ''}">${priority}</span>${isActiveCell ? '<i class="fill-handle"></i>' : ''}</td>
-      <td><span class="skill-tags">${extra.skills.map((skill, index) => `<span class="skill-tag tone-${index + 1}">${skill}</span>`).join('')}</span></td>
+      <td class="skills-column">${renderSkillTags(extra.skills)}</td>
       <td class="boolean-column"><span class="boolean-cell ${extra.starred ? 'is-checked' : ''}" role="checkbox" aria-checked="${extra.starred}">${extra.starred ? icon('i-check') : ''}</span></td>
-      <td><span class="link-cell">${icon('i-link')}<span>${extra.jobLink}</span></span></td>
-      <td><span class="attachment-cell">${icon('i-paperclip')}<span>${extra.attachmentCount} 个文件</span></span></td>
-      <td class="datetime-cell"><span>${extra.interviewAt}</span></td>
+      <td class="link-column">${renderLink(extra.jobLink)}</td>
+      <td class="attachment-column">${renderAttachments(extra.attachments)}</td>
+      <td class="datetime-cell">${renderDateTime(extra.interviewAt)}</td>
       <td class="progress-column"><span class="progress-cell"><i><b style="--progress:${extra.progress}%"></b></i><strong>${extra.progress}%</strong></span></td>
-      <td><span class="note-cell" title="${record.note}">${record.note}</span></td>
+      <td class="note-column">${renderNote(extra.displayNote)}</td>
     </tr>
   `;
 }

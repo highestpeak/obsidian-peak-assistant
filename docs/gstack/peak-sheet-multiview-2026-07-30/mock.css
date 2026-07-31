@@ -6611,13 +6611,15 @@ body[data-theme="light"] .view-menu > header {
 .record-table {
   min-width: 2802px;
   font-family:
-    Inter,
-    ui-sans-serif,
     -apple-system,
     BlinkMacSystemFont,
+    "SF Pro Text",
+    "PingFang SC",
     "Segoe UI",
     "Noto Sans SC",
     sans-serif;
+  font-feature-settings: "tnum" 1, "kern" 1;
+  -webkit-font-smoothing: antialiased;
 }
 
 .record-table col:nth-child(1) { width: 36px; }
@@ -6647,7 +6649,7 @@ body[data-theme="light"] .record-table th,
 body[data-theme="light"] .record-table td {
   height: 44px;
   padding: 0 10px;
-  font-size: 12px;
+  font-size: 12.5px;
   line-height: 1;
   letter-spacing: 0;
   vertical-align: middle;
@@ -6695,7 +6697,7 @@ body[data-theme="light"] .record-table .column-letters th {
 .field-heading > span {
   overflow: hidden;
   min-width: 0;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   white-space: nowrap;
 }
 
@@ -6962,17 +6964,84 @@ body[data-theme="dark"] .formula-value {
   white-space: nowrap;
 }
 
-.priority-token,
-body[data-theme="dark"] .formula-value .priority-high {
+body[data-theme] .record-table .tag,
+body[data-theme] .record-table .priority-token,
+body[data-theme="dark"] .record-table .formula-value .priority-high {
   display: inline-flex;
-  height: 24px;
+  max-width: 100%;
+  height: 26px;
   align-items: center;
-  padding: 0 8px;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 540;
-  line-height: 22px;
+  padding: 0 9px;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  background: var(--surface-2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .025);
+  font-size: 11.5px;
+  font-weight: 550;
+  line-height: 24px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body[data-theme="dark"] .record-table .tag.stage-interview {
+  border-color: #574a60;
+  background: #2b2330;
+  color: #d4bce0;
+}
+
+body[data-theme="dark"] .record-table .tag.stage-followup {
+  border-color: #634d35;
+  background: #2d2319;
+  color: #e3b779;
+}
+
+body[data-theme="dark"] .record-table .tag.stage-applied {
+  border-color: #3e5868;
+  background: #1b2830;
+  color: #a7c9dc;
+}
+
+body[data-theme="dark"] .record-table .tag.stage-offer {
+  border-color: #526846;
+  background: #22301f;
+  color: #b8d69e;
+}
+
+body[data-theme="dark"] .record-table .tag.stage-ended {
+  border-color: #66474a;
+  background: #2e2022;
+  color: #dda0a5;
+}
+
+body[data-theme="light"] .record-table .tag.stage-interview {
+  border-color: #d6c8df;
+  background: #f1ebf5;
+  color: #694e78;
+}
+
+body[data-theme="light"] .record-table .tag.stage-followup {
+  border-color: #dfc9aa;
+  background: #f8f0e4;
+  color: #805825;
+}
+
+body[data-theme="light"] .record-table .tag.stage-applied {
+  border-color: #c3d3dc;
+  background: #ebf1f4;
+  color: #456577;
+}
+
+body[data-theme="light"] .record-table .tag.stage-offer {
+  border-color: #c4d4b9;
+  background: #edf3e9;
+  color: #4f6f40;
+}
+
+body[data-theme="light"] .record-table .tag.stage-ended {
+  border-color: #dfc4c6;
+  background: #f6ebec;
+  color: #874f53;
 }
 
 .formula-value > .priority-token:not(.priority-high) {
@@ -7003,35 +7072,55 @@ body[data-theme="light"] .formula-value > .priority-token:not(.priority-high) {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   overflow: hidden;
   white-space: nowrap;
 }
 
 .skill-tag {
   display: inline-flex;
-  height: 22px;
+  min-width: 0;
+  max-width: 132px;
+  height: 24px;
   align-items: center;
-  padding: 0 7px;
-  border: 1px solid var(--line-strong);
-  border-radius: 4px;
-  background: var(--surface-2);
-  color: var(--text-soft);
-  font-size: 10px;
+  padding: 0 8px;
+  border: 1px solid #3a423b;
+  border-radius: 3px;
+  background: #1a1e1a;
+  color: #bdc5bd;
+  font-size: 11px;
   font-weight: 520;
-  line-height: 20px;
+  line-height: 22px;
 }
 
-.skill-tag.tone-1 {
-  border-color: color-mix(in srgb, var(--teal) 38%, var(--line));
-  background: color-mix(in srgb, var(--teal) 10%, var(--surface));
-  color: color-mix(in srgb, var(--teal) 78%, var(--text));
+.skill-tag > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.skill-tag.tone-2 {
-  border-color: color-mix(in srgb, var(--purple) 38%, var(--line));
-  background: color-mix(in srgb, var(--purple) 10%, var(--surface));
-  color: color-mix(in srgb, var(--purple) 74%, var(--text));
+body[data-theme="light"] .skill-tag {
+  border-color: #cbd1c8;
+  background: #eef0ec;
+  color: #4f584f;
+}
+
+.tag-overflow {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 560;
+}
+
+.cell-empty {
+  display: inline-flex;
+  align-items: center;
+  color: color-mix(in srgb, var(--quiet) 76%, transparent);
+  font-size: 12px;
+  font-weight: 440;
+  line-height: 1;
 }
 
 .boolean-column {
@@ -7067,8 +7156,9 @@ body[data-theme="light"] .formula-value > .priority-token:not(.priority-high) {
   align-items: center;
   gap: 6px;
   overflow: hidden;
-  color: color-mix(in srgb, var(--teal) 72%, var(--text));
-  font-size: 11px;
+  color: color-mix(in srgb, var(--teal) 58%, var(--text));
+  font-size: 12px;
+  font-weight: 470;
   white-space: nowrap;
 }
 
@@ -7080,7 +7170,7 @@ body[data-theme="light"] .formula-value > .priority-token:not(.priority-high) {
 }
 
 .link-cell > span,
-.attachment-cell > span {
+.attachment-cell > span:last-child {
   overflow: hidden;
   min-width: 0;
   text-overflow: ellipsis;
@@ -7090,11 +7180,48 @@ body[data-theme="light"] .formula-value > .priority-token:not(.priority-high) {
   color: var(--text-soft);
 }
 
+.attachment-stack {
+  position: relative;
+  width: 16px;
+  height: 15px;
+  flex: 0 0 auto;
+  overflow: visible !important;
+}
+
+.attachment-stack i {
+  position: absolute;
+  width: 10px;
+  height: 12px;
+  border: 1px solid var(--muted);
+  border-radius: 1px;
+  background: var(--surface);
+}
+
+.attachment-stack i:first-child {
+  top: 0;
+  left: 4px;
+}
+
+.attachment-stack i:last-child {
+  top: 3px;
+  left: 0;
+}
+
 .datetime-cell {
   color: var(--text-soft);
-  font-size: 11px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+.datetime-state {
+  color: color-mix(in srgb, var(--amber) 72%, var(--text-soft));
+  font-weight: 500;
+}
+
+.datetime-value {
+  color: var(--text-soft);
+  font-weight: 500;
 }
 
 .progress-column {
@@ -7125,7 +7252,7 @@ body[data-theme="light"] .formula-value > .priority-token:not(.priority-high) {
 .progress-cell > strong {
   width: 34px;
   color: var(--text);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-align: right;
 }
@@ -7134,7 +7261,8 @@ body[data-theme="light"] .formula-value > .priority-token:not(.priority-high) {
   display: block;
   overflow: hidden;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 430;
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
