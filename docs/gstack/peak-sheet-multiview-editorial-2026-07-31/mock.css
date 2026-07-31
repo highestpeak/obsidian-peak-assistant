@@ -653,7 +653,7 @@ body[data-visual-version="editorial-v2"] .record-table tbody tr:nth-child(odd) t
 body[data-visual-version="editorial-v2"] .record-table tbody tr:not(.group-row):hover td,
 body[data-visual-version="editorial-v2"] .record-table tbody tr:not(.group-row):hover td:first-child,
 body[data-visual-version="editorial-v2"] .record-table tbody tr:not(.group-row):hover td:nth-child(2) {
-  background: color-mix(in srgb, var(--text) 1.8%, var(--surface));
+  background: var(--surface);
 }
 
 body[data-visual-version="editorial-v2"] .record-table th:first-child,
@@ -968,6 +968,12 @@ body[data-visual-version="editorial-v2"] .record-table td.is-current-cell {
   box-shadow: inset 0 0 0 1.5px var(--accent);
 }
 
+body[data-visual-version="editorial-v2"] .record-table td.active-cell,
+body[data-visual-version="editorial-v2"] .record-table td.active-long-cell,
+body[data-visual-version="editorial-v2"] .record-table td.is-current-cell {
+  overflow: hidden !important;
+}
+
 body[data-visual-version="editorial-v2"] .record-table td[data-field] {
   cursor: cell;
 }
@@ -977,23 +983,14 @@ body[data-visual-version="editorial-v2"] .record-table td[data-readonly="true"] 
 }
 
 body[data-visual-version="editorial-v2"] .record-table td.is-current-cell {
-  position: relative;
-  z-index: 2;
   background-color: color-mix(in srgb, var(--accent) 3%, var(--surface)) !important;
-  transition:
-    background-color 140ms ease,
-    box-shadow 140ms var(--ease-standard);
 }
 
 body[data-visual-version="editorial-v2"] .record-table td.is-editing {
-  position: relative;
-  z-index: 12;
-  overflow: visible;
+  overflow: hidden;
   padding: 0 5px !important;
   background: var(--surface) !important;
-  box-shadow:
-    inset 0 0 0 2px var(--accent),
-    0 6px 18px rgba(27, 32, 26, .12);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
 }
 
 body[data-visual-version="editorial-v2"] .cell-editor {
@@ -1032,23 +1029,8 @@ body[data-visual-version="editorial-v2"] .cell-editor[type="date"] {
   font-family: var(--font-mono);
 }
 
-body[data-visual-version="editorial-v2"] .record-table td.is-just-committed {
-  animation: editorial-cell-commit 160ms var(--ease-standard) both;
-}
-
 body[data-visual-version="editorial-v2"] .record-table td.is-readonly-pulse {
   animation: editorial-readonly-pulse 220ms var(--ease-standard) both;
-}
-
-@keyframes editorial-cell-commit {
-  0% {
-    background-color: color-mix(in srgb, var(--accent) 8%, var(--surface));
-    box-shadow: inset 0 0 0 1.5px var(--accent);
-  }
-  100% {
-    background-color: color-mix(in srgb, var(--accent) 3%, var(--surface));
-    box-shadow: inset 0 0 0 1.5px var(--accent);
-  }
 }
 
 @keyframes editorial-readonly-pulse {
@@ -1057,9 +1039,11 @@ body[data-visual-version="editorial-v2"] .record-table td.is-readonly-pulse {
 }
 
 body[data-visual-version="editorial-v2"] .fill-handle {
-  width: 5px;
-  height: 5px;
-  border: 1px solid var(--surface);
+  right: 0;
+  bottom: 0;
+  width: 4px;
+  height: 4px;
+  border: 0;
   background: var(--accent);
 }
 

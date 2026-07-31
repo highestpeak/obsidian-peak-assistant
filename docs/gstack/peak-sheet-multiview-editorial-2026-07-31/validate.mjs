@@ -437,6 +437,47 @@ assert.ok(
   'text commit should preserve vertical scroll position',
 );
 
+const pohutukawaCompany = page.locator('tr[data-record-id="pohutukawa"] td[data-field="company"]');
+await pohutukawaCompany.click();
+const frozenSelection = await page.evaluate(() => {
+  const current = document.querySelector('tr[data-record-id="pohutukawa"] td[data-field="company"]');
+  const reference = document.querySelector('tr[data-record-id="southern"] td[data-field="company"]');
+  const currentRect = current?.getBoundingClientRect();
+  const referenceRect = reference?.getBoundingClientRect();
+  const style = current ? getComputedStyle(current) : null;
+  return {
+    position: style?.position ?? '',
+    overflow: style?.overflow ?? '',
+    leftDelta: currentRect && referenceRect ? currentRect.left - referenceRect.left : Infinity,
+    rightDelta: currentRect && referenceRect ? currentRect.right - referenceRect.right : Infinity,
+  };
+});
+assert.equal(frozenSelection.position, 'sticky', 'selected primary cells should remain frozen');
+assert.equal(frozenSelection.overflow, 'hidden', 'selected cells should keep their outline inside the cell');
+assert.ok(Math.abs(frozenSelection.leftDelta) <= 1, 'selected frozen cells should not drift from the column axis');
+assert.ok(Math.abs(frozenSelection.rightDelta) <= 1, 'selected frozen cells should not cover adjacent fields');
+await page.screenshot({ path: path.join(dir, 'preview-frozen-selection.png') });
+
+await pohutukawaCompany.dblclick();
+const frozenEditor = await pohutukawaCompany.evaluate((cell) => {
+  const style = getComputedStyle(cell);
+  return {
+    position: style.position,
+    overflow: style.overflow,
+    boxShadow: style.boxShadow,
+  };
+});
+assert.equal(frozenEditor.position, 'sticky', 'editing should not replace frozen-cell positioning');
+assert.equal(frozenEditor.overflow, 'hidden', 'editing controls should stay clipped to the cell');
+assert.doesNotMatch(frozenEditor.boxShadow, /6px 18px/, 'editing should not add a floating elevation shadow');
+await page.locator('.cell-editor').press('Escape');
+
+const ordinaryCell = page.locator('tr[data-record-id="southern"] td[data-field="workMode"]');
+const ordinaryBackground = await ordinaryCell.evaluate((cell) => getComputedStyle(cell).backgroundColor);
+await ordinaryCell.hover();
+const hoveredBackground = await ordinaryCell.evaluate((cell) => getComputedStyle(cell).backgroundColor);
+assert.equal(hoveredBackground, ordinaryBackground, 'row hover should not recolor or lift the table surface');
+
 const asterPriority = page.locator('tr[data-record-id="aster"] td[data-field="priority"]');
 await asterPriority.scrollIntoViewIfNeeded();
 await asterPriority.dblclick();
@@ -607,6 +648,6 @@ console.log(JSON.stringify({
   },
   localLinks: localHrefs.length,
   viewsChecked: ['table', 'board', 'calendar', 'gallery', 'dashboard'],
-  flowsChecked: ['long-text-reader', 'bounded-row-wrap', 'inline-text-edit', 'typed-select-edit', 'numeric-edit', 'checkbox-toggle', 'keyboard-f2-cancel', 'keyboard-tab-commit', 'scroll-continuity', 'computed-cell-readonly', 'selection-stat-recompute', 'theme-switch', 'number-format', 'conditional-format', 'field-type-select', 'formula-library', 'selection-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
-  screenshots: ['preview.png', 'preview-table.png', 'preview-table-types.png', 'preview-long-text.png', 'preview-long-text-wrap.png', 'preview-cell-edit.png', 'preview-dark.png', 'preview-format.png', 'preview-conditional.png', 'preview-fields.png', 'preview-formula.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
+  flowsChecked: ['long-text-reader', 'bounded-row-wrap', 'inline-text-edit', 'typed-select-edit', 'numeric-edit', 'checkbox-toggle', 'keyboard-f2-cancel', 'keyboard-tab-commit', 'scroll-continuity', 'frozen-cell-selection', 'bounded-cell-editor', 'stable-row-hover', 'computed-cell-readonly', 'selection-stat-recompute', 'theme-switch', 'number-format', 'conditional-format', 'field-type-select', 'formula-library', 'selection-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
+  screenshots: ['preview.png', 'preview-table.png', 'preview-table-types.png', 'preview-long-text.png', 'preview-long-text-wrap.png', 'preview-cell-edit.png', 'preview-frozen-selection.png', 'preview-dark.png', 'preview-format.png', 'preview-conditional.png', 'preview-fields.png', 'preview-formula.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
 }, null, 2));

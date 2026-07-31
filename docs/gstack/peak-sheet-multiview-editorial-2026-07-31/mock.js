@@ -1348,7 +1348,6 @@ function toggleBooleanCell(recordId, field = 'starred') {
   updateFormulaBarForSelection();
   updateStatus();
   cell?.focus({ preventScroll: true });
-  flashCell(cell, 'is-just-committed');
 }
 
 function createCellEditor(definition, record) {
@@ -1446,7 +1445,6 @@ function commitCellEdit(value, moveKey = null) {
   const cell = refreshCommittedCell(editing.recordId, editing.field);
   updateFormulaBarForSelection();
   updateStatus();
-  flashCell(cell, 'is-just-committed');
   if (moveKey) {
     moveCellSelection(cell, moveKey, true);
   } else {
