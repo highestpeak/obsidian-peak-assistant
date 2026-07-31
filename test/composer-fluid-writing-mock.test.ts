@@ -83,6 +83,10 @@ assert.ok(
 		mock.includes("key === 'y'"),
 	'manual Markdown history replaces the native undo stack lost during projection',
 );
+assert.ok(
+	mock.includes('function exitInlineMarkdownBeforeBreak('),
+	'paragraph insertion exits closing inline delimiters before writing line breaks',
+);
 assert.equal(
 	mock.includes('.markdown-editor[data-kind="heading"]'),
 	false,

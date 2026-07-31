@@ -1125,8 +1125,12 @@
 		function insertMarkdownBreak(soft) {
 			const selection = readSourceSelection();
 			if (!selection) return;
-			const from = selection.from;
-			const to = selection.to;
+			let from = selection.from;
+			let to = selection.to;
+			if (selection.direction === 'collapsed') {
+				from = exitInlineMarkdownBeforeBreak(markdownSource, from);
+				to = from;
+			}
 			const lineStart = markdownSource.lastIndexOf('\n', Math.max(0, from - 1)) + 1;
 			const lineEndAt = markdownSource.indexOf('\n', from);
 			const lineEnd = lineEndAt < 0 ? markdownSource.length : lineEndAt;
@@ -1160,6 +1164,33 @@
 				markdownSource,
 				nextSelection,
 			);
+		}
+
+		function exitInlineMarkdownBeforeBreak(source, offset) {
+			let cursor = offset;
+			const lineStart = source.lastIndexOf('\n', Math.max(0, cursor - 1)) + 1;
+			const closingPairs = [
+				{ open: '<span', close: '</span>' },
+				{ open: '<u>', close: '</u>' },
+				{ open: '<a ', close: '</a>' },
+				{ open: '***', close: '***' },
+				{ open: '___', close: '___' },
+				{ open: '**', close: '**' },
+				{ open: '__', close: '__' },
+				{ open: '~~', close: '~~' },
+				{ open: '*', close: '*' },
+				{ open: '_', close: '_' },
+				{ open: '`', close: '`' },
+			];
+			while (cursor < source.length) {
+				const pair = closingPairs.find(candidate => {
+					if (!source.startsWith(candidate.close, cursor)) return false;
+					return source.lastIndexOf(candidate.open, cursor - 1) >= lineStart;
+				});
+				if (!pair) break;
+				cursor += pair.close.length;
+			}
+			return cursor;
 		}
 
 		function markdownContinuation(line) {

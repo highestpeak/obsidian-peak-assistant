@@ -150,6 +150,34 @@ try {
 	await page.keyboard.press('Meta+U');
 	assert.equal(await readMarkdownSource(page), 'first\n\nnext');
 
+	for (const formattingCase of [
+		{ shortcut: 'Meta+B', source: '**marked**', mark: 'bold' },
+		{ shortcut: 'Meta+I', source: '*marked*', mark: 'italic' },
+		{ shortcut: 'Meta+U', source: '<u>marked</u>', mark: 'underline' },
+	]) {
+		await page.locator('#cancelDraft').click();
+		await page.locator('#insertMarkdown').click();
+		await editor.focus();
+		await page.keyboard.type('marked');
+		await page.keyboard.press('Meta+Shift+ArrowLeft');
+		await page.keyboard.press(formattingCase.shortcut);
+		await page.keyboard.press('ArrowRight');
+		await page.keyboard.press('Enter');
+		await page.keyboard.type('continued');
+		assert.equal(
+			await readMarkdownSource(page),
+			`${formattingCase.source}\n\ncontinued`,
+			`${formattingCase.mark} closes before the paragraph break`,
+		);
+		assert.equal(
+			await editor
+				.locator(`[data-inline-mark="${formattingCase.mark}"]`)
+				.textContent(),
+			'marked',
+			`${formattingCase.mark} remains intact after Enter`,
+		);
+	}
+
 	await page.locator('#cancelDraft').click();
 	await page.locator('#insertMarkdown').click();
 	await editor.focus();
@@ -187,13 +215,19 @@ try {
 	);
 	await page.keyboard.press('Meta+B');
 	assert.equal(await readMarkdownSource(page), '- parent\n\t- child');
+	await page.keyboard.press('Meta+B');
+	assert.equal(await readMarkdownSource(page), '- parent\n\t- **child**');
 	await page.keyboard.press('ArrowRight');
 	await page.keyboard.press('Enter');
-	assert.equal(await readMarkdownSource(page), '- parent\n\t- child\n\t- ');
+	assert.equal(
+		await readMarkdownSource(page),
+		'- parent\n\t- **child**\n\t- ',
+		'Enter exits inline formatting before continuing a nested list',
+	);
 	await page.keyboard.press('Shift+Tab');
 	assert.equal(
 		await readMarkdownSource(page),
-		'- parent\n\t- child\n- ',
+		'- parent\n\t- **child**\n- ',
 		'Shift+Tab outdents the continued nested item',
 	);
 	assert.deepEqual(pageErrors, [], `mock must not raise page errors: ${pageErrors.join('\n')}`);
