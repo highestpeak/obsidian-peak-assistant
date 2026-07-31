@@ -2,7 +2,7 @@
 
 Date: 2026-07-30
 
-Visual direction revised: 2026-07-31 · V9 scope tabs + faceted action grid
+Visual direction revised: 2026-07-31 · V10 reference-faithful flat command surface
 
 Status: Decided · design/spec ready · implementation pending
 
@@ -279,18 +279,19 @@ Destructive layout reset requires confirmation and export/import support before 
 
 ### 9.1 Modal geometry
 
-- Width: `min(680px, calc(100vw - 48px))`.
-- Height: approximately `430px`, capped by `calc(100vh - 72px)`.
+- Width: `min(620px, calc(100vw - 48px))`.
+- Height: approximately `372px`, capped by `calc(100vh - 72px)`.
+- Overlay: a light neutral wash, not a dark modal scrim.
 - First filter row: `All`, icon-led group scopes and one trailing Customize button.
 - Second filter row: compact text-and-icon type facets.
-- Content canvas: four equal columns at the reference width, responsive down to fewer columns.
-- Action button: approximately `50px` high in all three presentation modes.
-- Default icon: approximately `15 × 15px`, bare rather than placed inside a colored icon container; the whole button remains the hit target.
-- Scope heading shows the active label and a quiet count; individual groups are not repeated in the content area.
-- Modal radius: approximately `14px`; action radius: approximately `7px`.
-- Accent: Obsidian / Peak purple only for focus, selection and primary entry.
+- Content canvas: three equal columns at the reference width, responsive down to fewer columns.
+- Action cell: approximately `39px` high, borderless at rest, with only a quiet neutral hover / selection fill.
+- Default icon: approximately `12px` inside a restrained `22 × 22px` tinted well, echoing the reference's compact app/avatar markers.
+- The content canvas starts immediately after the filters; no `All commands`, group heading or item-count row is repeated.
+- Modal radius: approximately `12px`; action radius: approximately `6px`.
+- Accent: colored group/action icons carry identity; black underline and neutral fills carry navigation state.
 
-No group sidebar, vertical group stack, gradient, nested group card, availability strip, descriptive hero or dashboard statistic appears in the Modal.
+No group sidebar, vertical group stack, outlined card wall, gradient, availability strip, descriptive hero or dashboard statistic appears in the Modal.
 
 ### 9.2 Action tile anatomy
 
@@ -300,7 +301,7 @@ Every tile has an action identity, accessible name and tooltip. Its visible anat
 2. `icon only`: centered icon with `aria-label` and tooltip;
 3. `text only`: centered short label without an icon.
 
-All three modes share one grid geometry. The presentation choice changes visible content, not row rhythm or spatial position. Unavailable actions keep their position and use a disabled treatment.
+All three modes share one grid geometry. The presentation choice changes visible content, not row rhythm or spatial position. Cells have no permanent outline; icon-only and text-only modes still inherit the same flat hover target. Unavailable actions keep their position and use a disabled treatment.
 
 Long native command labels such as “Create new drawing — in the current active window” become a short tile title such as `Current window`; the tooltip preserves the full source label.
 
@@ -330,8 +331,8 @@ The project does not assign a default hotkey. The user sets it in Obsidian Setti
 - `/` or normal typing focuses search.
 - `Esc` clears query first, then closes the modal.
 - `Tab` moves between structural controls.
-- Left and Right move within a group.
-- Up and Down move to the nearest action in the previous or next group.
+- Left and Right move across scope tabs, facet chips or one grid row.
+- Up and Down move between filter rows and the nearest action in the adjacent grid row.
 - `Enter` invokes the focused tile.
 - `Cmd/Ctrl + P` may close Command Center and open the native Palette.
 - Closing restores the prior active element and editor selection.
@@ -484,7 +485,7 @@ This is an implementation sequence, not permission to ship incomplete UI as the 
 - React modal shell;
 - dynamic group scope tabs;
 - type facets shared by launcher and search;
-- four-column action grid with responsive column count;
+- three-column borderless action grid with responsive column count;
 - search over configured actions;
 - full keyboard and focus restoration;
 - close-only header.

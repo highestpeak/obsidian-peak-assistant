@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Peak Command Center · V9</title>
+  <title>Peak Command Center · V10</title>
   <style>
     :root {
       color-scheme: light;
@@ -14,8 +14,8 @@
       --ink: #1d1c20;
       --ink-soft: #636168;
       --ink-faint: #77737d;
-      --line: #e7e5ea;
-      --line-strong: #d9d6df;
+      --line: #ebecef;
+      --line-strong: #dfe1e5;
       --purple: #6f4cc3;
       --purple-deep: #56329e;
       --purple-soft: #f0ebfb;
@@ -26,8 +26,8 @@
       --blue: #3677a7;
       --amber-soft: #fbf1df;
       --amber: #95681b;
-      --shadow: 0 28px 72px rgba(36, 28, 48, 0.22), 0 4px 16px rgba(36, 28, 48, 0.09);
-      --radius: 14px;
+      --shadow: 0 16px 42px rgba(35, 38, 45, 0.11), 0 2px 8px rgba(35, 38, 45, 0.05);
+      --radius: 12px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
         "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
     }
@@ -394,19 +394,19 @@
       display: flex;
       align-items: flex-start;
       justify-content: center;
-      padding-top: clamp(34px, 5vh, 56px);
-      background: rgba(31, 28, 34, 0.36);
-      backdrop-filter: blur(1.5px);
+      padding-top: clamp(42px, 6vh, 66px);
+      background: rgba(247, 248, 250, 0.72);
+      backdrop-filter: blur(2px);
     }
 
     .launcher {
       position: relative;
-      width: 680px;
-      height: 430px;
+      width: 620px;
+      height: 372px;
       display: grid;
-      grid-template-rows: 52px minmax(0, 1fr) 36px;
+      grid-template-rows: 42px minmax(0, 1fr) 32px;
       overflow: hidden;
-      border: 1px solid rgba(201, 197, 207, 0.96);
+      border: 1px solid #e3e4e8;
       border-radius: var(--radius);
       background: var(--surface);
       box-shadow: var(--shadow);
@@ -415,9 +415,9 @@
     .launcher-header {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 8px 8px 8px 16px;
-      border-bottom: 1px solid var(--line);
+      gap: 8px;
+      padding: 5px 7px 4px 14px;
+      border-bottom: 0;
     }
 
     .launcher-search {
@@ -425,52 +425,52 @@
       flex: 1;
       display: flex;
       align-items: center;
-      gap: 9px;
-      color: var(--ink-faint);
+      gap: 7px;
+      color: #6f737a;
     }
 
     .launcher-search .icon {
-      width: 17px;
-      height: 17px;
+      width: 14px;
+      height: 14px;
       flex: none;
     }
 
     .launcher-search input {
       width: 100%;
-      height: 32px;
+      height: 30px;
       padding: 0;
       border: 0;
       outline: 0;
       color: var(--ink);
       background: transparent;
-      font-size: 14px;
+      font-size: 11px;
     }
 
     .launcher-search input::placeholder {
-      color: #aaa7af;
+      color: #8f9399;
     }
 
     .close-button {
-      width: 32px;
-      height: 32px;
+      width: 27px;
+      height: 27px;
       display: grid;
       flex: none;
       place-items: center;
       border: 0;
-      border-radius: 7px;
-      color: #6d6972;
+      border-radius: 6px;
+      color: #8a8d93;
       background: transparent;
       cursor: pointer;
     }
 
     .close-button:hover {
       color: var(--ink);
-      background: #f1eff3;
+      background: #f4f5f6;
     }
 
     .close-button .icon {
-      width: 16px;
-      height: 16px;
+      width: 13px;
+      height: 13px;
     }
 
     .launcher-body {
@@ -484,9 +484,9 @@
     }
 
     .filter-shell {
-      padding: 8px 14px 9px;
+      padding: 0 13px 8px;
       border-bottom: 1px solid var(--line);
-      background: #fdfcfd;
+      background: #fff;
     }
 
     .scope-strip,
@@ -494,7 +494,7 @@
       min-width: 0;
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 3px;
     }
 
     .scope-strip {
@@ -507,66 +507,67 @@
     }
 
     .facet-strip {
-      margin-top: 7px;
+      margin-top: 5px;
     }
 
     .scope-tab,
     .facet-chip {
-      height: 26px;
+      height: 25px;
       display: inline-flex;
       flex: none;
       align-items: center;
       justify-content: center;
       border: 1px solid transparent;
-      color: #706b76;
+      color: #63676d;
       background: transparent;
       cursor: pointer;
     }
 
     .scope-tab {
-      width: 28px;
+      width: 29px;
       padding: 0;
-      border-radius: 6px;
+      border-radius: 5px;
     }
 
     .scope-tab.scope-all {
       width: auto;
-      padding: 0 8px;
+      padding: 0 9px;
       font-size: 10px;
-      font-weight: 650;
+      font-weight: 600;
     }
 
     .scope-tab.scope-add {
-      margin-left: 2px;
-      border-color: var(--line);
-      color: #8b8690;
+      margin-left: 3px;
+      border-color: #e3e5e8;
+      border-radius: 50%;
+      color: #858990;
     }
 
     .scope-tab .icon {
-      width: 14px;
-      height: 14px;
+      width: 15px;
+      height: 15px;
     }
 
     .scope-tab:hover,
     .facet-chip:hover {
       color: var(--ink);
-      background: #f3f1f4;
+      background: #f5f6f7;
     }
 
     .scope-tab.active {
-      border-color: #ddd8e5;
-      color: var(--ink);
-      background: #f1eef4;
+      border-color: transparent;
+      color: #202226;
+      background: transparent;
     }
 
     .scope-tab.active::after {
       position: absolute;
-      right: 5px;
+      right: 4px;
       bottom: 0;
-      left: 5px;
-      height: 2px;
-      border-radius: 2px;
-      background: var(--purple);
+      left: 4px;
+      height: 1.5px;
+      border-radius: 1px;
+      background: #202226;
       content: "";
     }
 
@@ -575,34 +576,50 @@
     }
 
     .scope-tab.scope-all.active::after {
-      right: 7px;
-      left: 7px;
+      right: 8px;
+      left: 8px;
+    }
+
+    .scope-tab.scope-tone-0 {
+      color: #6046b8;
+    }
+
+    .scope-tab.scope-tone-1 {
+      color: #2c8a68;
+    }
+
+    .scope-tab.scope-tone-2 {
+      color: #d06a26;
+    }
+
+    .scope-tab.scope-tone-3 {
+      color: #367ab6;
     }
 
     .facet-chip {
-      gap: 5px;
-      padding: 0 8px;
-      border-color: var(--line);
-      border-radius: 13px;
+      gap: 4px;
+      padding: 0 7px;
+      border-color: #e3e5e8;
+      border-radius: 6px;
       background: #fff;
       font-size: 9px;
     }
 
     .facet-chip .icon {
-      width: 12px;
-      height: 12px;
+      width: 11px;
+      height: 11px;
     }
 
     .facet-chip.active {
-      border-color: #d8d2df;
-      color: #4d4852;
-      background: #f1eff3;
+      border-color: #d9dbdf;
+      color: #303338;
+      background: #f5f6f7;
     }
 
     .scope-panels {
       min-width: 0;
       min-height: 0;
-      padding: 12px 14px 14px;
+      padding: 8px 12px 10px;
       overflow: auto;
     }
 
@@ -610,64 +627,80 @@
       display: none;
     }
 
-    .scope-panel-heading {
-      min-height: 18px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 7px;
-      color: var(--ink-faint);
-      font-size: 9px;
-    }
-
-    .scope-panel-heading strong {
-      color: #4a464e;
-      font-size: 10px;
-      font-weight: 650;
-    }
-
     .command-tile-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 6px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 2px 3px;
     }
 
     .command-tile-grid .action-tile {
       width: 100%;
-      height: 50px;
+      height: 39px;
       display: grid;
-      grid-template-columns: 17px minmax(0, 1fr) auto;
-      grid-template-rows: 16px 12px;
+      grid-template-columns: 23px minmax(0, 1fr) auto;
+      grid-template-rows: 14px 11px;
       align-content: center;
       justify-content: initial;
       column-gap: 7px;
-      row-gap: 1px;
-      padding: 5px 8px;
-      border-color: var(--line);
-      border-radius: 7px;
-      background: #fff;
+      row-gap: 0;
+      padding: 4px 6px;
+      border-color: transparent;
+      border-radius: 6px;
+      background: transparent;
     }
 
     .command-tile-grid .action-tile:hover {
-      border-color: #d9d5dd;
-      background: #f8f7f9;
+      border-color: transparent;
+      background: #f5f6f7;
     }
 
     .command-tile-grid .action-tile.selected {
-      border-color: #cfc4e6;
-      background: var(--purple-hover);
+      border-color: transparent;
+      background: #f1f2f4;
     }
 
     .command-tile-grid .action-icon {
       grid-row: 1 / span 2;
       align-self: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 5px;
+      color: #6b4cc6;
+      background: #f0ecfa;
+    }
+
+    .command-tile-grid .action-icon.blue {
+      color: #3477a9;
+      background: #eaf3fb;
+    }
+
+    .command-tile-grid .action-icon.green {
+      color: #2f7f62;
+      background: #e9f5ef;
+    }
+
+    .command-tile-grid .action-icon.amber {
+      color: #9a6b1f;
+      background: #fbf1df;
+    }
+
+    .command-tile-grid .action-icon.neutral {
+      color: #666b72;
+      background: #eff0f2;
+    }
+
+    .command-tile-grid .action-icon .icon {
+      width: 12px;
+      height: 12px;
     }
 
     .command-tile-grid .action-name {
       grid-column: 2;
       grid-row: 1;
       align-self: end;
-      font-size: 10px;
+      color: #292c31;
+      font-size: 9.5px;
+      font-weight: 590;
     }
 
     .command-tile-grid .action-meta {
@@ -675,9 +708,9 @@
       grid-row: 2;
       display: block;
       overflow: hidden;
-      color: #918c96;
-      font-size: 8px;
-      line-height: 12px;
+      color: #8b8f95;
+      font-size: 7.5px;
+      line-height: 11px;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
@@ -686,7 +719,7 @@
       grid-column: 3;
       grid-row: 1;
       align-self: end;
-      margin-left: 3px;
+      margin-left: 2px;
     }
 
     .command-tile-grid .action-tile.display-icon {
@@ -697,6 +730,8 @@
     .command-tile-grid .action-tile.display-icon .action-icon {
       grid-column: 1 / -1;
       grid-row: 1 / -1;
+      width: 22px;
+      height: 22px;
       place-self: center;
     }
 
@@ -709,7 +744,7 @@
       grid-column: 1 / -1;
       grid-row: 1 / -1;
       place-self: center;
-      font-size: 10px;
+      font-size: 9.5px;
     }
 
     .command-tile-grid .action-tile[hidden] {
@@ -952,52 +987,49 @@
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      padding: 0 12px;
+      padding: 0 8px 0 12px;
       border-top: 1px solid var(--line);
-      color: var(--ink-faint);
-      background: #fbfafc;
-      font-size: 9px;
+      color: #777b82;
+      background: #fff;
+      font-size: 8px;
     }
 
     .key-hints {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 9px;
     }
 
     .key-hint {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 3px;
       white-space: nowrap;
     }
 
-    .footer-current {
-      color: #817b89;
-    }
-
     .footer-action {
+      width: 25px;
       height: 25px;
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
-      padding: 0 7px;
+      padding: 0;
       border: 0;
       border-radius: 6px;
       color: #77727d;
       background: transparent;
-      font-size: 9px;
       cursor: pointer;
     }
 
     .footer-action:hover {
       color: var(--ink);
-      background: #f0eef2;
+      background: #f4f5f6;
     }
 
     .footer-action .icon {
-      width: 13px;
-      height: 13px;
+      width: 12px;
+      height: 12px;
     }
 
     .screen {
@@ -1006,20 +1038,6 @@
 
     .screen.active {
       display: grid;
-    }
-
-    .search-summary {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 8px;
-      color: var(--ink-faint);
-      font-size: 9px;
-    }
-
-    .search-summary strong {
-      color: var(--ink-soft);
-      font-weight: 590;
     }
 
     .manage-header {
@@ -1801,7 +1819,7 @@
       <span class="prototype-mark"><svg class="icon"><use href="#i-command"/></svg></span>
       <span>
         <strong>Peak Command Center</strong>
-        <small>V9 · scope tabs, two-dimensional actions</small>
+        <small>V10 · reference-faithful flat command surface</small>
       </span>
     </div>
     <nav class="state-switcher" aria-label="原型状态">
@@ -1814,7 +1832,7 @@
   </header>
 
   <main class="stage">
-    <section class="app-frame" aria-label="Command Center V9 原型">
+    <section class="app-frame" aria-label="Command Center V10 原型">
       <div class="app-titlebar">
         <span class="traffic-lights"><i></i><i></i><i></i></span>
         <span class="app-title">Peak Assistant · Product vault</span>
@@ -1898,7 +1916,7 @@
               <span class="key-hint"><kbd>↵</kbd> open</span>
               <span class="key-hint"><kbd>Esc</kbd> close</span>
             </div>
-            <span class="footer-current" id="launcher-current-scope">All · 15 actions</span>
+            <button class="footer-action" data-open="manage" aria-label="Customize"><svg class="icon"><use href="#i-settings"/></svg></button>
           </footer>
         </section>
 
@@ -1922,7 +1940,6 @@
               </div>
             </div>
             <div class="scope-panels">
-              <div class="search-summary"><span><strong id="search-result-count">0</strong> curated results</span><span>Configured actions only</span></div>
               <div class="command-tile-grid" id="search-results"></div>
               <div class="empty-filter-state" id="search-empty-state" hidden>No configured action matches this scope.</div>
             </div>
@@ -1933,7 +1950,7 @@
               <span class="key-hint"><kbd>↵</kbd> open</span>
               <span class="key-hint"><kbd>Esc</kbd> clear / close</span>
             </div>
-            <span class="footer-current">Filters narrow the grid</span>
+            <button class="footer-action" data-open="manage" aria-label="Customize"><svg class="icon"><use href="#i-settings"/></svg></button>
           </footer>
         </section>
 
@@ -2217,14 +2234,14 @@
       </section>
     </section>
 
-    <section class="design-note" aria-label="V9 design principles">
+    <section class="design-note" aria-label="V10 design principles">
       <div class="note-item">
-        <strong>第一排先切换工作范围</strong>
-        <span>All、Peak Assistant、Workspaces、Quick create 与 Visual 是稳定 scope；一次只展开一个上下文，不再同时扫完整 group stack。</span>
+        <strong>先忠于参考图的轻盈感</strong>
+        <span>浅色遮罩、白色小面板、黑色细下划线与低对比边界组成主视觉；不再把命令做成一墙紫色后台卡片。</span>
       </div>
       <div class="note-item">
-        <strong>第二排只负责能力类型</strong>
-        <span>AI、Create、Navigate、Visual 是轻量 facet；scope 与 facet 组合后，下面始终是二维 action grid，不退回命令列表。</span>
+        <strong>二维不等于卡片墙</strong>
+        <span>内容区使用三列无边框 action cells；保留空间记忆，但外观延续参考图的平铺结果，而不是 dashboard tile。</span>
       </div>
       <div class="note-item">
         <strong>Home 是安静的起点</strong>
@@ -2243,11 +2260,9 @@
     const launcherBoard = document.getElementById('launcher-board');
     const launcherScopeTabs = document.getElementById('launcher-scope-tabs');
     const launcherFacetTabs = document.getElementById('launcher-facet-tabs');
-    const launcherCurrentScope = document.getElementById('launcher-current-scope');
     const searchScopeTabs = document.getElementById('search-scope-tabs');
     const searchFacetTabs = document.getElementById('search-facet-tabs');
     const searchResults = document.getElementById('search-results');
-    const searchResultCount = document.getElementById('search-result-count');
     const searchEmptyState = document.getElementById('search-empty-state');
     const manageBoard = document.getElementById('manage-board');
     const addGroupButton = document.getElementById('add-group-button');
@@ -2505,7 +2520,7 @@
       return tile;
     }
 
-    function createScopeTab(scope, label, icon, active) {
+    function createScopeTab(scope, label, icon, active, toneIndex = null) {
       const button = document.createElement('button');
       button.className = 'scope-tab';
       button.type = 'button';
@@ -2521,6 +2536,9 @@
         return button;
       }
 
+      if (toneIndex !== null) {
+        button.classList.add(`scope-tone-${toneIndex % 4}`);
+      }
       if (icon) button.append(icon.cloneNode(true));
       return button;
     }
@@ -2528,13 +2546,14 @@
     function renderScopeTabs(container, groups, activeScope) {
       const tabs = [
         createScopeTab('all', 'All groups', null, activeScope === 'all'),
-        ...groups.map((group) => {
+        ...groups.map((group, index) => {
           const icon = group.querySelector('.manage-group-title > .icon');
           return createScopeTab(
             group.dataset.groupId,
             getGroupLabel(group),
             icon,
             activeScope === group.dataset.groupId,
+            index,
           );
         }),
       ];
@@ -2549,18 +2568,10 @@
       container.replaceChildren(...tabs, addButton);
     }
 
-    function createScopePanel(scope, label, sourceActions) {
+    function createScopePanel(scope, sourceActions) {
       const panel = document.createElement('section');
       panel.className = 'scope-panel';
       panel.dataset.scopePanel = scope;
-
-      const heading = document.createElement('div');
-      heading.className = 'scope-panel-heading';
-      const title = document.createElement('strong');
-      const count = document.createElement('span');
-      title.textContent = label;
-      count.dataset.scopeCount = 'true';
-      heading.append(title, count);
 
       const grid = document.createElement('div');
       grid.className = 'command-tile-grid';
@@ -2570,31 +2581,26 @@
       empty.className = 'empty-filter-state';
       empty.textContent = 'No action in this type yet.';
       empty.hidden = true;
-      panel.append(heading, grid, empty);
+      panel.append(grid, empty);
       return panel;
     }
 
     function updateLauncherProjection() {
       const panels = [...launcherBoard.querySelectorAll('.scope-panel')];
-      let visibleCount = 0;
-      let activeLabel = 'All';
 
       panels.forEach((panel) => {
         const isActive = panel.dataset.scopePanel === activeLauncherScope;
         panel.hidden = !isActive;
         if (!isActive) return;
 
-        activeLabel = panel.querySelector('.scope-panel-heading strong')?.textContent || 'All';
         const tiles = [...panel.querySelectorAll('.action-tile')];
         tiles.forEach((tile) => {
           const visible = activeLauncherFacet === 'all' || tile.dataset.facet === activeLauncherFacet;
           tile.hidden = !visible;
           tile.classList.remove('selected');
-          if (visible) visibleCount += 1;
         });
 
-        panel.querySelector('[data-scope-count]').textContent = `${visibleCount} actions`;
-        panel.querySelector('.empty-filter-state').hidden = visibleCount > 0;
+        panel.querySelector('.empty-filter-state').hidden = tiles.some((tile) => !tile.hidden);
         tiles.find((tile) => !tile.hidden)?.classList.add('selected');
       });
 
@@ -2609,8 +2615,6 @@
         button.classList.toggle('active', active);
         button.setAttribute('aria-pressed', String(active));
       });
-
-      launcherCurrentScope.textContent = `${activeLabel} · ${visibleCount} actions`;
     }
 
     function renderSearchResults() {
@@ -2632,7 +2636,6 @@
       });
 
       searchResults.replaceChildren(...matching);
-      searchResultCount.textContent = String(matching.length);
       searchEmptyState.hidden = matching.length > 0;
       matching[0]?.classList.add('selected');
 
@@ -2668,14 +2671,14 @@
           groupId: group.dataset.groupId,
         }))
       ));
-      const panels = [createScopePanel('all', 'All commands', allActions)];
+      const panels = [createScopePanel('all', allActions)];
 
       groups.forEach((group) => {
         const groupActions = [...group.querySelectorAll('.manage-tile')].map((tile) => ({
           tile,
           groupId: group.dataset.groupId,
         }));
-        panels.push(createScopePanel(group.dataset.groupId, getGroupLabel(group), groupActions));
+        panels.push(createScopePanel(group.dataset.groupId, groupActions));
       });
 
       launcherBoard.replaceChildren(...panels);

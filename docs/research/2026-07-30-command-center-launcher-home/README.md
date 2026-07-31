@@ -2,7 +2,7 @@
 
 > 日期：2026-07-30
 >
-> 视觉方向修订：2026-07-31 · V9 scope tabs + faceted action grid
+> 视觉方向修订：2026-07-31 · V10 reference-faithful flat command surface
 >
 > 状态：Research complete；产品边界已进入正式设计，尚未实现
 >
@@ -101,6 +101,15 @@ V9 用新的参考设计解决了 V8 仍然“需要一次扫完所有组”的�
 - 内容区固定为四列 action tile grid；搜索结果仍留在同一 grid，不因输入 query 退化成一维列表。
 - 图标 + 文字、仅图标、仅文字共享同一个 cell 几何，因此个别显示模式不会打散整个版面。
 - V9 仍保留 Add group、分组 / action 拖动、Pin 与 Home 同步；V8 的纵向 group stack 只保留在 Customize 编辑态。
+
+V10 纠正 V9 “信息结构接近、视觉仍像后台卡片墙”的落差：
+
+- Modal 从 `680 × 430px` 收到约 `620 × 372px`，重阴影和深色 scrim 改成参考图式的浅色 wash、细边界和轻阴影。
+- Search、scope tabs、facet chips 组成一块连续的白色 command surface；搜索栏与第一排 tabs 之间不再人为加分隔线。
+- scope 激活态使用黑色细下划线，不再使用紫色描边和填充；不同 scope 仅靠小型彩色图标建立识别。
+- 内容区从四列有边框 tile 改成三列无边框 action cells。默认透明，hover / selection 只出现极浅的中性底色。
+- 删除 `All commands`、action count 和 Search summary；过滤栏之后立即进入动作，不要求用户先读界面说明。
+- footer 对齐参考图的轻量快捷键提示，并将 Customize 收成右下角齿轮。
 
 ## 录屏观察
 
