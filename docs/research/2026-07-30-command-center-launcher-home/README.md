@@ -2,7 +2,7 @@
 
 > 日期：2026-07-30
 >
-> 视觉方向修订：2026-07-31 · V11 quiet branded command surface
+> 视觉方向修订：2026-07-31 · V12 fluid source tabs and typographic polish
 >
 > 状态：Research complete；产品边界已进入正式设计，尚未实现
 >
@@ -118,6 +118,15 @@ V11 根据真实渲染截图继续纠偏廉价感：
 - 首屏不再预设混合 `icon-only / text-only`，所有 action 先以完整模式形成连续三列。三种模式仍能在 Customize 中逐项设置。
 - resting state 不自动选中 Composer；只有真实 hover / keyboard focus 才出现极浅反馈，离开后恢复白色。
 - 内容区裸图标不再使用 pastel well；颜色只编码来源，不把每个命令包装成一张小卡片。
+
+V12 不再调整信息架构，而是补齐决定完成度的排版、来源回退与动效系统：
+
+- Modal 以约 `640 × 400px` 承载更稳定的呼吸感；Search / action title / provenance 收敛为约 `12 / 11 / 9px` 的明确字阶，action cell 调整到约 `44px` 高。
+- source mark 从 `15px` 增至约 `17px`，不再像行首装饰点；边框只保留 Modal 外框、filter/content 分界和 footer 分界。
+- 插件有可信图标时使用 source mark；没有图标时不伪造“廉价通用图标”。scope tab 直接显示短文字，action cell 使用稳定的来源缩写。原型用 `Quick create → QC` 展示这条 fallback。
+- 每排 scope 不再各自生成激活下划线，而是共享一条约 `220ms` 的滑动 indicator；切换 scope 时内容使用约 `180ms / 5px` 的轻量承接。
+- facet 切换只对结果做更短的淡入；搜索输入不在每个字符上重复整页动画。`prefers-reduced-motion` 会关闭这些过渡。
+- 三列二维 grid 保留。它现在是稳定空间导航，而不是把原生 list 简单改成三列卡片。
 
 ## 录屏观察
 

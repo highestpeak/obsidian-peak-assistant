@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Peak Command Center · V11</title>
+  <title>Peak Command Center · V12</title>
   <style>
     :root {
       color-scheme: light;
@@ -26,10 +26,11 @@
       --blue: #3677a7;
       --amber-soft: #fbf1df;
       --amber: #95681b;
-      --shadow: 0 16px 42px rgba(35, 38, 45, 0.11), 0 2px 8px rgba(35, 38, 45, 0.05);
+      --shadow: 0 20px 56px rgba(31, 35, 42, 0.1), 0 2px 9px rgba(31, 35, 42, 0.045);
       --radius: 12px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
-        "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      font-family: "SF Pro Text", "SF Pro Display", Inter, ui-sans-serif, -apple-system,
+        BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+        "Microsoft YaHei", sans-serif;
     }
 
     * {
@@ -46,6 +47,8 @@
       min-height: 100vh;
       color: var(--ink);
       background: var(--page);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
     }
 
     button,
@@ -401,12 +404,12 @@
 
     .launcher {
       position: relative;
-      width: 620px;
-      height: 372px;
+      width: 640px;
+      height: 400px;
       display: grid;
-      grid-template-rows: 42px minmax(0, 1fr) 32px;
+      grid-template-rows: 46px minmax(0, 1fr) 34px;
       overflow: hidden;
-      border: 1px solid #e3e4e8;
+      border: 1px solid #e5e7ea;
       border-radius: var(--radius);
       background: var(--surface);
       box-shadow: var(--shadow);
@@ -416,7 +419,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 5px 7px 4px 14px;
+      padding: 7px 8px 5px 15px;
       border-bottom: 0;
     }
 
@@ -425,13 +428,13 @@
       flex: 1;
       display: flex;
       align-items: center;
-      gap: 7px;
+      gap: 8px;
       color: #6f737a;
     }
 
     .launcher-search .icon {
-      width: 14px;
-      height: 14px;
+      width: 15px;
+      height: 15px;
       flex: none;
     }
 
@@ -443,7 +446,9 @@
       outline: 0;
       color: var(--ink);
       background: transparent;
-      font-size: 11px;
+      font-size: 12px;
+      font-weight: 420;
+      letter-spacing: -0.008em;
     }
 
     .launcher-search input::placeholder {
@@ -484,7 +489,7 @@
     }
 
     .filter-shell {
-      padding: 0 13px 8px;
+      padding: 0 15px 9px;
       border-bottom: 1px solid #f0f1f3;
       background: #fff;
     }
@@ -498,6 +503,9 @@
     }
 
     .scope-strip {
+      position: relative;
+      min-height: 29px;
+      padding-bottom: 3px;
       overflow-x: auto;
       scrollbar-width: none;
     }
@@ -507,12 +515,12 @@
     }
 
     .facet-strip {
-      margin-top: 5px;
+      margin-top: 4px;
     }
 
     .scope-tab,
     .facet-chip {
-      height: 25px;
+      height: 26px;
       display: inline-flex;
       flex: none;
       align-items: center;
@@ -524,20 +532,23 @@
     }
 
     .scope-tab {
-      width: 29px;
+      width: 31px;
       padding: 0;
       border-radius: 5px;
+      transition: color 120ms ease, opacity 120ms ease;
     }
 
     .scope-tab.scope-all {
       width: auto;
-      padding: 0 9px;
-      font-size: 10px;
-      font-weight: 600;
+      padding: 0 8px;
+      font-size: 10.5px;
+      font-weight: 620;
+      letter-spacing: -0.012em;
     }
 
     .scope-tab.scope-add {
-      margin-left: 3px;
+      width: 27px;
+      margin-left: 4px;
       border-color: transparent;
       border-radius: 50%;
       color: #858990;
@@ -545,8 +556,8 @@
     }
 
     .scope-tab .icon {
-      width: 15px;
-      height: 15px;
+      width: 17px;
+      height: 17px;
     }
 
     .scope-tab:hover {
@@ -567,49 +578,75 @@
       background: transparent;
     }
 
-    .scope-tab.active::after {
+    .scope-indicator {
       position: absolute;
-      right: 4px;
       bottom: 0;
-      left: 4px;
+      left: 0;
+      width: 0;
       height: 1.5px;
       border-radius: 1px;
       background: #202226;
-      content: "";
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(0);
+      transition:
+        width 220ms cubic-bezier(0.22, 1, 0.36, 1),
+        transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 120ms ease;
     }
 
-    .scope-tab {
-      position: relative;
-    }
-
-    .scope-tab.scope-all.active::after {
-      right: 8px;
-      left: 8px;
+    .scope-indicator.no-motion {
+      transition: none;
     }
 
     .scope-tab.scope-tone-0 {
+      --scope-tone: #6046b8;
       color: #6046b8;
     }
 
     .scope-tab.scope-tone-1 {
+      --scope-tone: #2c8a68;
       color: #2c8a68;
     }
 
     .scope-tab.scope-tone-2 {
+      --scope-tone: #d06a26;
       color: #d06a26;
     }
 
     .scope-tab.scope-tone-3 {
+      --scope-tone: #367ab6;
       color: #367ab6;
+    }
+
+    .scope-tab.scope-text {
+      width: auto;
+      gap: 5px;
+      padding: 0 7px;
+      color: #555a61;
+      font-size: 10.5px;
+      font-weight: 520;
+      letter-spacing: -0.01em;
+    }
+
+    .scope-tab.scope-text::before {
+      width: 5px;
+      height: 5px;
+      flex: none;
+      border-radius: 50%;
+      background: var(--scope-tone, #858990);
+      content: "";
     }
 
     .facet-chip {
       gap: 4px;
-      padding: 0 7px;
+      padding: 0 6px;
       border-color: transparent;
       border-radius: 5px;
       background: transparent;
-      font-size: 9px;
+      font-size: 9.5px;
+      font-weight: 450;
+      letter-spacing: -0.006em;
     }
 
     .facet-chip .icon {
@@ -650,7 +687,7 @@
     .scope-panels {
       min-width: 0;
       min-height: 0;
-      padding: 8px 12px 10px;
+      padding: 9px 13px 11px;
       overflow: auto;
     }
 
@@ -658,26 +695,31 @@
       display: none;
     }
 
+    .scope-panel:not([hidden]) {
+      animation: scope-panel-enter 180ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
     .command-tile-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 2px 3px;
+      gap: 2px 4px;
     }
 
     .command-tile-grid .action-tile {
       width: 100%;
-      height: 39px;
+      height: 44px;
       display: grid;
-      grid-template-columns: 16px minmax(0, 1fr) auto;
-      grid-template-rows: 14px 11px;
+      grid-template-columns: 20px minmax(0, 1fr) auto;
+      grid-template-rows: 16px 12px;
       align-content: center;
       justify-content: initial;
-      column-gap: 7px;
+      column-gap: 8px;
       row-gap: 0;
-      padding: 4px 6px;
+      padding: 5px 7px;
       border-color: transparent;
       border-radius: 6px;
       background: transparent;
+      transition: background-color 120ms ease, color 120ms ease;
     }
 
     .command-tile-grid .action-tile:hover {
@@ -694,8 +736,8 @@
     .command-tile-grid .action-icon {
       grid-row: 1 / span 2;
       align-self: center;
-      width: 14px;
-      height: 14px;
+      width: 18px;
+      height: 18px;
       border-radius: 0;
       color: #6651b9;
       background: transparent;
@@ -738,8 +780,20 @@
     }
 
     .command-tile-grid .action-icon .icon {
-      width: 14px;
-      height: 14px;
+      width: 17px;
+      height: 17px;
+    }
+
+    .command-tile-grid .action-icon.source-wordmark {
+      display: grid;
+      place-items: center;
+    }
+
+    .source-monogram {
+      font-size: 7.5px;
+      font-weight: 760;
+      line-height: 1;
+      letter-spacing: -0.045em;
     }
 
     .command-tile-grid .action-name {
@@ -747,8 +801,9 @@
       grid-row: 1;
       align-self: end;
       color: #292c31;
-      font-size: 10px;
-      font-weight: 600;
+      font-size: 11px;
+      font-weight: 590;
+      letter-spacing: -0.012em;
     }
 
     .command-tile-grid .action-meta {
@@ -757,8 +812,9 @@
       display: block;
       overflow: hidden;
       color: #8b8f95;
-      font-size: 8px;
-      line-height: 11px;
+      font-size: 8.5px;
+      line-height: 12px;
+      letter-spacing: -0.004em;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
@@ -778,8 +834,8 @@
     .command-tile-grid .action-tile.display-icon .action-icon {
       grid-column: 1 / -1;
       grid-row: 1 / -1;
-      width: 14px;
-      height: 14px;
+      width: 18px;
+      height: 18px;
       place-self: center;
     }
 
@@ -792,11 +848,50 @@
       grid-column: 1 / -1;
       grid-row: 1 / -1;
       place-self: center;
-      font-size: 9.5px;
+      font-size: 10.5px;
     }
 
     .command-tile-grid .action-tile[hidden] {
       display: none;
+    }
+
+    .command-tile-grid.filter-transition .action-tile:not([hidden]) {
+      animation: action-filter-enter 150ms ease-out;
+    }
+
+    @keyframes scope-panel-enter {
+      from {
+        opacity: 0;
+        transform: translateY(5px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes action-filter-enter {
+      from {
+        opacity: 0;
+        transform: translateY(3px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .scope-indicator {
+        transition: none;
+      }
+
+      .scope-panel:not([hidden]),
+      .command-tile-grid.filter-transition .action-tile:not([hidden]) {
+        animation: none;
+      }
     }
 
     .empty-filter-state {
@@ -1846,9 +1941,6 @@
       <rect x="8" y="8" width="13" height="11" rx="2.5" fill="currentColor" stroke="none"/>
       <path d="M12 12h5M12 15h5" stroke="white" stroke-width="1.4"/>
     </symbol>
-    <symbol id="i-quickadd-mark" viewBox="0 0 24 24">
-      <path fill="currentColor" stroke="none" d="M13.7 2.8 5.4 13.2h5.5l-.8 8 8.5-11h-5.7l.8-7.4Z"/>
-    </symbol>
     <symbol id="i-visual-mark" viewBox="0 0 24 24">
       <path fill="currentColor" stroke="none" d="M12 2.8 21.2 12 12 21.2 2.8 12 12 2.8Z"/>
       <path d="m8.1 15.8 1-3.5 5.7-5.7 2.6 2.6-5.7 5.7-3.6.9Z" stroke="white" stroke-width="1.2" fill="none"/>
@@ -1883,7 +1975,7 @@
       <span class="prototype-mark"><svg class="icon"><use href="#i-command"/></svg></span>
       <span>
         <strong>Peak Command Center</strong>
-        <small>V11 · quiet branded command surface</small>
+        <small>V12 · fluid tabs and typographic polish</small>
       </span>
     </div>
     <nav class="state-switcher" aria-label="原型状态">
@@ -1896,7 +1988,7 @@
   </header>
 
   <main class="stage">
-    <section class="app-frame" aria-label="Command Center V11 原型">
+    <section class="app-frame" aria-label="Command Center V12 原型">
       <div class="app-titlebar">
         <span class="traffic-lights"><i></i><i></i><i></i></span>
         <span class="app-title">Peak Assistant · Product vault</span>
@@ -2110,7 +2202,6 @@
                     <div class="flow-group-header">
                       <span class="flow-group-title manage-group-title">
                         <span class="drag-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-                        <svg class="icon"><use href="#i-quickadd-mark"/></svg>
                         <strong>Quick create</strong>
                       </span>
                       <button class="group-add-button" aria-label="向 Quick create 添加动作"><svg class="icon"><use href="#i-plus"/></svg></button>
@@ -2296,18 +2387,18 @@
       </section>
     </section>
 
-    <section class="design-note" aria-label="V11 design principles">
+    <section class="design-note" aria-label="V12 design principles">
       <div class="note-item">
-        <strong>品牌识别替代通用图标</strong>
-        <span>scope 与 action 都从所属来源继承专门绘制的 mark；不再用 Lucide + 马卡龙底盒模拟品牌。</span>
+        <strong>有图标与无图标都成立</strong>
+        <span>有品牌资产时使用 17px source mark；没有资产时，tab 显示短文字，action 使用来源缩写，不再硬塞通用图标。</span>
       </div>
       <div class="note-item">
-        <strong>默认画面必须完整、有节奏</strong>
-        <span>默认 action 统一使用完整模式；icon-only / text-only 仍可配置，但不再预设成随机空洞。三列内容保持连续对齐。</span>
+        <strong>切换是连续移动，不是页面闪切</strong>
+        <span>scope 下划线在来源之间滑动，内容以短距离淡入承接；同时遵守 reduced-motion 偏好。</span>
       </div>
       <div class="note-item">
-        <strong>Home 是安静的起点</strong>
-        <span>搜索、固定入口与继续工作仍沿一条纵向阅读路径出现；Customize 继续负责 Add group、拖动、显示模式和 Pin。</span>
+        <strong>字体、边界、间距共同定质感</strong>
+        <span>12 / 11 / 9px 信息层级、44px action 行与单层浅边界共同构成密度；三列仍是二维入口，不退化成 Command Palette list。</span>
       </div>
     </section>
   </main>
@@ -2564,6 +2655,14 @@
       tile.append(hotkey);
     }
 
+    function buildMonogram(label) {
+      const words = label.trim().split(/\s+/).filter(Boolean);
+      if (words.length > 1) {
+        return words.slice(0, 2).map((word) => word[0]).join('').toUpperCase();
+      }
+      return (words[0] || '?').slice(0, 2).toUpperCase();
+    }
+
     function cleanLauncherAction(source, groupId) {
       const tile = source.cloneNode(true);
       tile.classList.remove('manage-tile', 'selected', 'dragging', 'drop-target');
@@ -2579,6 +2678,13 @@
       if (iconHolder && sourceIcon) {
         iconHolder.className = `action-icon source-tone-${Math.max(groupIndex, 0) % 4}`;
         iconHolder.replaceChildren(sourceIcon.cloneNode(true));
+      }
+      if (iconHolder && !sourceIcon) {
+        const monogram = document.createElement('span');
+        monogram.className = 'source-monogram';
+        monogram.textContent = buildMonogram(getGroupLabel(sourceGroup));
+        iconHolder.className = `action-icon source-wordmark source-tone-${Math.max(groupIndex, 0) % 4}`;
+        iconHolder.replaceChildren(monogram);
       }
 
       appendHotkey(tile);
@@ -2604,8 +2710,31 @@
       if (toneIndex !== null) {
         button.classList.add(`scope-tone-${toneIndex % 4}`);
       }
-      if (icon) button.append(icon.cloneNode(true));
+      if (icon) {
+        button.append(icon.cloneNode(true));
+        return button;
+      }
+
+      button.classList.add('scope-text');
+      const text = document.createElement('span');
+      text.className = 'scope-label';
+      text.textContent = label;
+      button.append(text);
       return button;
+    }
+
+    function positionScopeIndicator(container, scope, immediate = false) {
+      const indicator = container.querySelector('.scope-indicator');
+      const active = [...container.querySelectorAll('[data-scope]')]
+        .find((button) => button.dataset.scope === scope);
+      if (!indicator || !active) return;
+
+      if (immediate) indicator.classList.add('no-motion');
+      indicator.style.width = `${active.offsetWidth}px`;
+      indicator.style.transform = `translateX(${active.offsetLeft}px)`;
+      indicator.style.opacity = '1';
+      if (!immediate) return;
+      requestAnimationFrame(() => indicator.classList.remove('no-motion'));
     }
 
     function renderScopeTabs(container, groups, activeScope) {
@@ -2630,7 +2759,12 @@
       addButton.setAttribute('aria-label', 'Customize groups');
       addButton.dataset.scopeAdd = 'true';
       addButton.append(createIconUse('i-plus'));
-      container.replaceChildren(...tabs, addButton);
+
+      const indicator = document.createElement('span');
+      indicator.className = 'scope-indicator';
+      indicator.setAttribute('aria-hidden', 'true');
+      container.replaceChildren(...tabs, addButton, indicator);
+      requestAnimationFrame(() => positionScopeIndicator(container, activeScope, true));
     }
 
     function createScopePanel(scope, sourceActions) {
@@ -2650,7 +2784,16 @@
       return panel;
     }
 
-    function updateLauncherProjection() {
+    function animateActionGrid(grid) {
+      if (!grid) return;
+      grid.classList.remove('filter-transition');
+      requestAnimationFrame(() => {
+        grid.classList.add('filter-transition');
+        window.setTimeout(() => grid.classList.remove('filter-transition'), 180);
+      });
+    }
+
+    function updateLauncherProjection(animate = false) {
       const panels = [...launcherBoard.querySelectorAll('.scope-panel')];
 
       panels.forEach((panel) => {
@@ -2666,6 +2809,7 @@
         });
 
         panel.querySelector('.empty-filter-state').hidden = tiles.some((tile) => !tile.hidden);
+        if (animate) animateActionGrid(panel.querySelector('.command-tile-grid'));
       });
 
       launcherScopeTabs.querySelectorAll('[data-scope]').forEach((button) => {
@@ -2673,6 +2817,7 @@
         button.classList.toggle('active', active);
         button.setAttribute('aria-pressed', String(active));
       });
+      positionScopeIndicator(launcherScopeTabs, activeLauncherScope);
 
       launcherFacetTabs.querySelectorAll('[data-facet]').forEach((button) => {
         const active = button.dataset.facet === activeLauncherFacet;
@@ -2681,7 +2826,7 @@
       });
     }
 
-    function renderSearchResults() {
+    function renderSearchResults(animate = false) {
       const query = searchQuery.value.trim().toLowerCase();
       const groups = getManageGroups();
       const matching = [];
@@ -2700,12 +2845,14 @@
       });
 
       searchResults.replaceChildren(...matching);
+      if (animate) animateActionGrid(searchResults);
       searchEmptyState.hidden = matching.length > 0;
       searchScopeTabs.querySelectorAll('[data-scope]').forEach((button) => {
         const active = button.dataset.scope === activeSearchScope;
         button.classList.toggle('active', active);
         button.setAttribute('aria-pressed', String(active));
       });
+      positionScopeIndicator(searchScopeTabs, activeSearchScope);
 
       searchFacetTabs.querySelectorAll('[data-facet]').forEach((button) => {
         const active = button.dataset.facet === activeSearchFacet;
@@ -2909,7 +3056,10 @@
       });
 
       if (view === 'launcher') {
-        requestAnimationFrame(() => launcherSearch.focus());
+        requestAnimationFrame(() => {
+          positionScopeIndicator(launcherScopeTabs, activeLauncherScope, true);
+          launcherSearch.focus();
+        });
       }
 
       if (view === 'search') {
@@ -2956,7 +3106,7 @@
       const tab = event.target.closest('[data-scope]');
       if (!tab) return;
       activeLauncherScope = tab.dataset.scope;
-      updateLauncherProjection();
+      updateLauncherProjection(true);
     });
 
     launcherFacetTabs.addEventListener('click', (event) => {
@@ -2965,7 +3115,7 @@
       activeLauncherFacet = activeLauncherFacet === chip.dataset.facet
         ? 'all'
         : chip.dataset.facet;
-      updateLauncherProjection();
+      updateLauncherProjection(true);
     });
 
     searchScopeTabs.addEventListener('click', (event) => {
@@ -2978,7 +3128,7 @@
       const tab = event.target.closest('[data-scope]');
       if (!tab) return;
       activeSearchScope = tab.dataset.scope;
-      renderSearchResults();
+      renderSearchResults(true);
     });
 
     searchFacetTabs.addEventListener('click', (event) => {
@@ -2987,10 +3137,15 @@
       activeSearchFacet = activeSearchFacet === chip.dataset.facet
         ? 'all'
         : chip.dataset.facet;
-      renderSearchResults();
+      renderSearchResults(true);
     });
 
-    searchQuery.addEventListener('input', renderSearchResults);
+    searchQuery.addEventListener('input', () => renderSearchResults());
+
+    window.addEventListener('resize', () => {
+      positionScopeIndicator(launcherScopeTabs, activeLauncherScope, true);
+      positionScopeIndicator(searchScopeTabs, activeSearchScope, true);
+    });
 
     launcherBoard.addEventListener('mouseover', (event) => {
       const tile = event.target.closest('.action-tile');

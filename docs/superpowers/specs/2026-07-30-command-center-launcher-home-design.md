@@ -2,7 +2,7 @@
 
 Date: 2026-07-30
 
-Visual direction revised: 2026-07-31 · V11 quiet branded command surface
+Visual direction revised: 2026-07-31 · V12 fluid source tabs and typographic polish
 
 Status: Decided · design/spec ready · implementation pending
 
@@ -167,7 +167,7 @@ interface CommandCenterBoardConfig {
 interface CommandCenterGroup {
 	id: string;
 	label: string;
-	icon: string;
+	icon?: string;
 	actionLayout: 'grid';
 	order: number;
 	actions: CommandCenterActionItem[];
@@ -279,14 +279,15 @@ Destructive layout reset requires confirmation and export/import support before 
 
 ### 9.1 Modal geometry
 
-- Width: `min(620px, calc(100vw - 48px))`.
-- Height: approximately `372px`, capped by `calc(100vh - 72px)`.
+- Width: `min(640px, calc(100vw - 48px))`.
+- Height: approximately `400px`, capped by `calc(100vh - 72px)`.
 - Overlay: a light neutral wash, not a dark modal scrim.
-- First filter row: `All`, icon-led group scopes and one trailing Customize button.
+- First filter row: `All`, source-led group scopes and one trailing Customize button. A group with a trusted mark uses the mark; a group without one uses its short text label and a small source color dot.
 - Second filter row: borderless type toggles with tiny color dots; selecting an active facet again clears it.
 - Content canvas: three equal columns at the reference width, responsive down to fewer columns.
-- Action cell: approximately `39px` high, borderless at rest, with only a quiet neutral hover / selection fill.
-- Scope and action icons inherit a compact source mark. Peak Assistant, Workspaces, Quick create and Visual use distinct purpose-drawn marks in the prototype; generic Lucide actions are not promoted as fake brand identities.
+- Action cell: approximately `44px` high, borderless at rest, with only a quiet neutral hover / selection fill.
+- Search, action title and provenance form an intentional `12 / 11 / 9px` type scale. Do not shrink all interface copy to make the surface feel dense.
+- Trusted scope and action marks render at approximately `17px`. Peak Assistant, Workspaces and Visual use distinct purpose-drawn marks in the prototype; Quick create intentionally demonstrates the no-icon text fallback.
 - The content canvas starts immediately after the filters; no `All commands`, group heading or item-count row is repeated.
 - Modal radius: approximately `12px`; action radius: approximately `6px`.
 - Accent: colored group/action icons carry identity; black underline and neutral fills carry navigation state.
@@ -297,7 +298,7 @@ No group sidebar, vertical group stack, outlined card wall, gradient, availabili
 
 Every tile has an action identity, accessible name and tooltip. The default board uses `icon + label` consistently so the first view has a complete rhythm. Its visible anatomy remains user-selectable:
 
-1. `icon + label`: small Lucide icon, short label, quiet provenance and an optional real hotkey;
+1. `icon + label`: source mark or monogram, short label, quiet provenance and an optional real hotkey;
 2. `icon only`: centered icon with `aria-label` and tooltip;
 3. `text only`: centered short label without an icon.
 
@@ -312,12 +313,19 @@ Use product / plugin source marks first, Lucide second, and never AI-generated b
 - Peak actions reuse a dedicated Peak mark.
 - Actions from the same plugin or source inherit that source mark by default; action semantics stay in the label.
 - Generic action semantics use Lucide.
-- Plugin groups use a user-selected Lucide icon.
+- Plugin groups may use a trusted plugin mark or user-selected Lucide icon, but an icon is not required.
+- A group without an icon stays legible as text in the scope row; its action cells use a deterministic one- or two-character source monogram.
 - Actions inherit the group icon when no clear action icon exists.
-- A two-character monogram is the final fallback.
 - Color is secondary; shape and label carry meaning.
 
 AI-generated icons are excluded because they are inconsistent at small sizes, hard to theme and difficult to keep semantically stable across versions.
+
+### 9.4 Motion
+
+- Switching group scope moves one shared underline between tabs over approximately `220ms`; tabs do not each flash a new underline into existence.
+- The newly active scope panel enters with `opacity` and at most `5px` of vertical travel over approximately `180ms`.
+- Facet changes may use a shorter `150ms` result-grid fade. Query typing must not replay a full-page transition on every keystroke.
+- Motion never changes layout ownership or action order and must be disabled by `prefers-reduced-motion`.
 
 ## 10. Keyboard and focus contract
 
