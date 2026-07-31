@@ -2,7 +2,7 @@
 
 Date: 2026-07-30
 
-Visual direction revised: 2026-07-31 · V14 disciplined command matrix
+Visual direction revised: 2026-07-31 · V15 stable command directory
 
 Status: Decided · design/spec ready · implementation pending
 
@@ -246,12 +246,13 @@ Customize mode is explicit. Normal invocation never shows drag handles or edit c
 - the header is a command search field;
 - the first row selects the group being edited and ends with a small `New group` action;
 - the selected group's icon and name are edited directly in one compact identity row;
-- the command directory is split into `Added to <group>` and `Available commands`;
+- every registered command stays in one continuous directory; there are no `Added` and `Available` sections;
 - every command row keeps its full label, source, current hotkey and one trailing membership switch;
-- added commands can be dragged in their section to change the group's spatial order;
+- toggling membership changes only the switch state and keeps that command at the same directory index;
+- active commands can be dragged against any row to change the group's spatial order explicitly;
 - clicking an added row expands only that row's display mode and `Pin to Home` controls.
 
-There is no group card wall, repeated `Add action` button, floating selection toolbar or permanent second inspector. Switching groups changes only the membership projection of the same command directory.
+There is no group card wall, repeated `Add action` button, floating selection toolbar or permanent second inspector. Switching groups changes the membership projection inside the same stable directory surface.
 
 Available operations:
 
@@ -275,7 +276,7 @@ Destructive layout reset requires confirmation and export/import support before 
 | Modal · launcher | Invoke a curated action without typing | Groups, facets, actions, availability, hotkeys | Recent usage only | Switch scope, filter type, spatial navigation, Enter, search | Starter grid or “add first action” | Hotkey / command; closes to prior focus |
 | Modal · search | Narrow configured actions | Curated action index | Query only | Type, retain scope/facet, grid navigation, Enter, clear | Empty result with clear-query guidance | Search field; returns to launcher on clear |
 | Home View | Return to important work and destinations | Pinned actions, recents, bookmarks, Workspaces, pinned pages | Quick access and pin order | Search, open destination, customize | Guide to pin the first destination or page | Ribbon / command / empty tab; exits to destination |
-| Customize | Curate one group's membership and order | Current config and registered command catalog | Group icon/name, membership, order, display mode, Home pins | Select group, search commands, switch membership, drag added rows, expand row settings, Done | Empty search result or compatibility warning in the directory | Footer action; Done returns to launcher |
+| Customize | Curate one group's membership and order | Current config and registered command catalog | Group icon/name, membership, stable directory order, display mode, Home pins | Select group, search one continuous directory, switch membership in place, drag active rows, expand row settings, Done | Empty search result or compatibility warning in the directory | Footer action; Done returns to launcher |
 
 ## 9. Visual design
 
@@ -336,7 +337,10 @@ AI-generated icons are excluded because they are inconsistent at small sizes, ha
 - Customize may grow to approximately `510px` high so the full directory has a useful scan window; Launcher and runtime Search remain approximately `400px`.
 - The directory uses neutral hover fills and separators rather than outlined command cards.
 - Group selection stays above the directory. Renaming and icon choice are direct edits, not a settings form.
+- The command directory is one continuous, stable list. It never splits into `Added` and `Available` regions.
 - Membership uses one binary switch scoped to the active group. It must announce `aria-checked` and an add/remove accessible label.
+- Toggling membership keeps the row at the same directory index and preserves the current scroll position. A row moves only after an explicit drag.
+- Active rows remain draggable inside the unified directory. Their order defines the group's Launcher order; inactive rows are stable drop anchors rather than a second section.
 - Advanced action presentation is progressive disclosure: only an explicitly selected added row exposes display mode and Home Pin.
 
 ## 10. Keyboard and focus contract
@@ -575,7 +579,7 @@ If CDP is unavailable, mark these interactions `INTERACTION NOT VERIFIED`; a sta
 - All first-run groups are available as stable top-row scope tabs without a permanent group sidebar.
 - Type facets narrow the selected scope without moving actions into a list.
 - Group order and action order remain stable.
-- Customize can add and reorder groups/actions and persist all three action display modes.
+- Customize presents one stable command directory, can add and reorder groups/actions, and persists all three action display modes.
 - Runtime search returns only configured actions and keeps source provenance.
 - Every visible shortcut matches current Obsidian hotkey configuration.
 - A user can create an Excalidraw group and add a command without editing files.

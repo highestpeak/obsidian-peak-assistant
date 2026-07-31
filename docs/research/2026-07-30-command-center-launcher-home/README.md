@@ -2,7 +2,7 @@
 
 > 日期：2026-07-30
 >
-> 视觉方向修订：2026-07-31 · V14 disciplined command matrix
+> 视觉方向修订：2026-07-31 · V15 stable command directory
 >
 > 状态：Research complete；产品边界已进入正式设计，尚未实现
 >
@@ -146,6 +146,13 @@ V14 保留 V13 的 Customize，只重做 Launcher / Search 的视觉语言：
 - Search、facet 与 action 使用约 `12 / 9.5 / 11.5px` 的克制字阶。header、filters 与每列 action 内容落在同一条 `16px` 左轴上。
 - 三列矩阵不是三列卡片墙：resting state 没有边框或填充，只有 hover / keyboard selection 才出现极浅中性底色。文本只占一行，空间结构比装饰更先被看到。
 - `icon + text / icon only / text only` 仍可逐项配置；首屏默认完整模式保持一致，避免随机混排破坏节奏。
+
+V15 收紧 Customize 的目录稳定性：
+
+- 删除 `Added to <group>` 与 `Available commands` 两个分区，所有命令只存在于一张连续目录里。
+- membership switch 只改变当前 group 的归属状态；切换前后 command 保持同一目录位置，并保留当前滚动位置。
+- active command 仍可拖动。拖动会改变当前 group 的 Launcher 顺序，但 inactive command 只是稳定的落点，不会重新形成第二个区域。
+- 搜索始终过滤同一份稳定目录；清空 query 后恢复原目录顺序，不按 membership 重新分桶。
 
 ## 录屏观察
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Peak Command Center · V14</title>
+  <title>Peak Command Center · V15</title>
   <style>
     :root {
       color-scheme: light;
@@ -1328,18 +1328,6 @@
       overflow-y: auto;
     }
 
-    .manage-list-heading {
-      height: 25px;
-      display: flex;
-      align-items: center;
-      padding: 3px 9px 0;
-      color: #9a9da2;
-      font-size: 8px;
-      font-weight: 650;
-      letter-spacing: 0.055em;
-      text-transform: uppercase;
-    }
-
     .manage-command-row {
       min-height: 40px;
       display: grid;
@@ -1357,6 +1345,10 @@
 
     .manage-command-row.drop-before {
       box-shadow: inset 0 1.5px #6f4cc3;
+    }
+
+    .manage-command-row.drop-after {
+      box-shadow: inset 0 -1.5px #6f4cc3;
     }
 
     .manage-command-main {
@@ -2385,7 +2377,7 @@
       <span class="prototype-mark"><svg class="icon"><use href="#i-command"/></svg></span>
       <span>
         <strong>Peak Command Center</strong>
-        <small>V14 · disciplined command matrix</small>
+        <small>V15 · stable command directory</small>
       </span>
     </div>
     <nav class="state-switcher" aria-label="原型状态">
@@ -2398,7 +2390,7 @@
   </header>
 
   <main class="stage">
-    <section class="app-frame" aria-label="Command Center V14 原型">
+    <section class="app-frame" aria-label="Command Center V15 原型">
       <div class="app-titlebar">
         <span class="traffic-lights"><i></i><i></i><i></i></span>
         <span class="app-title">Peak Assistant · Product vault</span>
@@ -2824,7 +2816,7 @@
       </section>
     </section>
 
-    <section class="design-note" aria-label="V14 design principles">
+    <section class="design-note" aria-label="V15 design principles">
       <div class="note-item">
         <strong>来源与动作使用不同图形语言</strong>
         <span>顶部 scope 承担来源识别；内容区恢复每个 command 自己的语义图标，不再重复 group mark。</span>
@@ -2834,8 +2826,8 @@
         <span>action 收成 38px 单行 command cell，只保留 icon、label 与真实 hotkey；说明进入搜索和 Customize。</span>
       </div>
       <div class="note-item">
-        <strong>边界用来表达控件，而不是装饰</strong>
-        <span>facet 恢复 icon + label hairline chip；颜色只保留给可信品牌资产，其他结构保持中性。</span>
+        <strong>Customize 只有一张稳定目录</strong>
+        <span>不再分 Added / Available；switch 只改变 membership，command 留在原位置，拖动只发生在用户主动排序时。</span>
       </div>
     </section>
   </main>
@@ -2938,6 +2930,7 @@
     let activeSearchFacet = 'all';
     let activeManageGroupId = '';
     let commandDefinitions = [];
+    const manageDirectoryOrders = new Map();
     let draggedManageActionName = '';
     let draggedManageGroupId = '';
 
@@ -3141,6 +3134,52 @@
         .find((tile) => getActionName(tile) === name) || null;
     }
 
+    function getManageDirectoryOrder(group) {
+      const groupId = group.dataset.groupId;
+      const definitionNames = commandDefinitions.map((definition) => definition.name);
+      const knownNames = new Set(definitionNames);
+      const activeNames = [...group.querySelectorAll('.manage-tile')].map(getActionName);
+      const activeNameSet = new Set(activeNames);
+      const initial = [
+        ...activeNames,
+        ...definitionNames.filter((name) => !activeNameSet.has(name)),
+      ];
+      const previous = manageDirectoryOrders.get(groupId) || initial;
+      const next = previous.filter((name) => knownNames.has(name));
+      const retained = new Set(next);
+
+      definitionNames.forEach((name) => {
+        if (retained.has(name)) return;
+        next.push(name);
+        retained.add(name);
+      });
+
+      manageDirectoryOrders.set(groupId, next);
+      return next;
+    }
+
+    function syncGroupActionOrderToDirectory(group) {
+      const grid = group.querySelector('.flow-action-grid');
+      if (!grid) return;
+
+      getManageDirectoryOrder(group).forEach((name) => {
+        const tile = findGroupAction(group, name);
+        if (tile) grid.append(tile);
+      });
+    }
+
+    function moveManageDirectoryEntry(group, sourceName, targetName, before) {
+      if (sourceName === targetName) return;
+
+      const order = getManageDirectoryOrder(group).filter((name) => name !== sourceName);
+      const targetIndex = order.indexOf(targetName);
+      if (targetIndex < 0) return;
+
+      order.splice(targetIndex + (before ? 0 : 1), 0, sourceName);
+      manageDirectoryOrders.set(group.dataset.groupId, order);
+      syncGroupActionOrderToDirectory(group);
+    }
+
     function createManageGroupTab(group, index) {
       const button = document.createElement('button');
       button.className = 'manage-group-tab';
@@ -3184,7 +3223,7 @@
       manageGroupName.value = getGroupLabel(group);
       const count = group.querySelectorAll('.manage-tile').length;
       manageGroupCount.textContent = `${count} command${count === 1 ? '' : 's'}`;
-      manageFooterStatus.textContent = `${count} added · drag added commands to reorder`;
+      manageFooterStatus.textContent = `${count} active · stable list · drag active rows to reorder`;
     }
 
     function createManageRowGrip() {
@@ -3294,6 +3333,7 @@
       const group = getActiveManageGroup();
       if (!group) return;
 
+      const previousScrollTop = manageCommandList.scrollTop;
       const query = manageCommandSearch.value.trim().toLowerCase();
       const addedTiles = [...group.querySelectorAll('.manage-tile')];
       const addedByName = new Map(addedTiles.map((tile) => [getActionName(tile), tile]));
@@ -3302,37 +3342,26 @@
         return `${definition.name} ${definition.meta} ${definition.source}`.toLowerCase().includes(query);
       };
 
-      const definitionsByName = new Map(commandDefinitions.map((definition) => [definition.name, definition]));
-      const added = addedTiles
-        .map((tile) => definitionsByName.get(getActionName(tile)))
+      const definitionsByName = new Map(
+        commandDefinitions.map((definition) => [definition.name, definition]),
+      );
+      const visibleDefinitions = getManageDirectoryOrder(group)
+        .map((name) => definitionsByName.get(name))
         .filter(Boolean)
         .filter(matchesQuery);
-      const available = commandDefinitions
-        .filter((definition) => !addedByName.has(definition.name))
-        .filter(matchesQuery);
-
       const fragment = document.createDocumentFragment();
-      const appendSection = (label, definitions, allowDrag) => {
-        if (!definitions.length) return;
-        const heading = document.createElement('div');
-        heading.className = 'manage-list-heading';
-        heading.textContent = label;
-        fragment.append(heading);
-        definitions.forEach((definition) => {
-          fragment.append(createManageCommandRow(
-            definition,
-            addedByName.get(definition.name),
-            allowDrag,
-          ));
-        });
-      };
-
-      appendSection(`Added to ${getGroupLabel(group)}`, added, !query);
-      appendSection('Available commands', available, false);
+      visibleDefinitions.forEach((definition) => {
+        fragment.append(createManageCommandRow(
+          definition,
+          addedByName.get(definition.name),
+          !query,
+        ));
+      });
       manageCommandList.replaceChildren(fragment);
-      const empty = !added.length && !available.length;
+      const empty = visibleDefinitions.length === 0;
       manageCommandList.hidden = empty;
       manageEmptyState.hidden = !empty;
+      manageCommandList.scrollTop = previousScrollTop;
     }
 
     function renderManageWorkspace() {
@@ -3362,6 +3391,7 @@
         group.querySelector('.flow-action-grid').append(tile);
       }
 
+      syncGroupActionOrderToDirectory(group);
       syncConfiguredViews();
       renderManageWorkspace();
     }
@@ -4032,28 +4062,31 @@
     });
 
     manageCommandList.addEventListener('dragover', (event) => {
-      const row = event.target.closest('.manage-command-row.is-added');
+      const row = event.target.closest('.manage-command-row');
       if (!row || !draggedManageActionName || row.dataset.commandName === draggedManageActionName) return;
       event.preventDefault();
-      manageCommandList.querySelectorAll('.drop-before').forEach((candidate) => {
-        candidate.classList.remove('drop-before');
+      manageCommandList.querySelectorAll('.drop-before, .drop-after').forEach((candidate) => {
+        candidate.classList.remove('drop-before', 'drop-after');
       });
-      row.classList.add('drop-before');
+      const rect = row.getBoundingClientRect();
+      const before = event.clientY < rect.top + rect.height / 2;
+      row.classList.add(before ? 'drop-before' : 'drop-after');
     });
 
     manageCommandList.addEventListener('drop', (event) => {
-      const row = event.target.closest('.manage-command-row.is-added');
+      const row = event.target.closest('.manage-command-row');
       const group = getActiveManageGroup();
       if (!row || !group || !draggedManageActionName) return;
       event.preventDefault();
 
-      const source = findGroupAction(group, draggedManageActionName);
-      const target = findGroupAction(group, row.dataset.commandName);
-      if (source && target && source !== target) {
-        const rect = row.getBoundingClientRect();
-        const before = event.clientY < rect.top + rect.height / 2;
-        target.parentElement.insertBefore(source, before ? target : target.nextSibling);
-      }
+      const rect = row.getBoundingClientRect();
+      const before = event.clientY < rect.top + rect.height / 2;
+      moveManageDirectoryEntry(
+        group,
+        draggedManageActionName,
+        row.dataset.commandName,
+        before,
+      );
 
       draggedManageActionName = '';
       syncConfiguredViews();
@@ -4062,8 +4095,8 @@
 
     manageCommandList.addEventListener('dragend', () => {
       draggedManageActionName = '';
-      manageCommandList.querySelectorAll('.drop-before').forEach((row) => {
-        row.classList.remove('drop-before');
+      manageCommandList.querySelectorAll('.drop-before, .drop-after').forEach((row) => {
+        row.classList.remove('drop-before', 'drop-after');
       });
     });
 
