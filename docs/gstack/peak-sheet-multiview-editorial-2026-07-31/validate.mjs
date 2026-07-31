@@ -36,8 +36,19 @@ page.on('console', (message) => {
 });
 page.on('pageerror', (error) => pageErrors.push(error.message));
 
+async function settleMotion() {
+  await page.evaluate(async () => {
+    await Promise.allSettled(
+      document.getAnimations().map((animation) => animation.finished),
+    );
+  });
+}
+
 await page.goto(pathToFileURL(htmlPath).href);
 await page.waitForSelector('.record-table');
+await page.locator('.view-stage > *').evaluate(async (view) => {
+  await Promise.all(view.getAnimations().map((animation) => animation.finished));
+});
 
 const initial = await page.evaluate(() => ({
   bodyOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -62,6 +73,9 @@ const initial = await page.evaluate(() => ({
   theme: document.body.dataset.theme,
   visualVersion: document.body.dataset.visualVersion,
   canvasColor: getComputedStyle(document.body).getPropertyValue('--bg').trim(),
+  motionBase: getComputedStyle(document.body).getPropertyValue('--motion-base').trim(),
+  viewAnimationName: getComputedStyle(document.querySelector('.view-stage > *')).animationName,
+  buttonTransitionDuration: getComputedStyle(document.querySelector('.tool-button')).transitionDuration,
   headerHeights: [
     '.document-bar',
     '.view-tabs',
@@ -176,6 +190,9 @@ assert.match(initial.formulaValue, /^=IF\(AND\(G6>=85,H6>=7\)/, 'formula bar sho
 assert.equal(initial.theme, 'light', 'Editorial V2 should default to the approved Paper direction');
 assert.equal(initial.visualVersion, 'editorial-v2', 'mock should expose an explicit independent visual version');
 assert.equal(initial.canvasColor, '#eef0ec', 'Paper canvas should use a warm mineral grey');
+assert.equal(initial.motionBase, '180ms', 'motion should use one shared interaction timing token');
+assert.equal(initial.viewAnimationName, 'editorial-view-enter', 'view changes should use the restrained editorial entrance');
+assert.match(initial.buttonTransitionDuration, /0.12s/, 'toolbar actions should expose fast state transitions');
 assert.deepEqual(initial.headerHeights, [52, 38, 38, 32, 28], 'Header bands should share the approved compact vertical rhythm');
 assert.equal(new Set(initial.headerBackgrounds).size, 1, 'Header bands should read as one continuous paper surface');
 assert.equal(initial.toolbarDividerWidth, 0, 'toolbar groups should use spacing instead of vertical divider cages');
@@ -248,6 +265,9 @@ await page.locator('.table-viewport').evaluate((viewport) => {
 
 await page.locator('[data-long-cell="aster"]').click();
 await page.waitForSelector('#cell-reader:not([hidden])');
+await page.locator('.active-cell.is-suspended-active').evaluate(async (cell) => {
+  await Promise.all(cell.getAnimations().map((animation) => animation.finished));
+});
 const truncatedLongText = await page.evaluate(() => {
   const row = document.querySelector('tr[data-record-id="aster"]');
   const note = row?.querySelector('.note-cell');
@@ -307,9 +327,85 @@ await page.locator('.table-viewport').evaluate((viewport) => {
   viewport.scrollLeft = 0;
 });
 
+const asterLocation = page.locator('tr[data-record-id="aster"] td[data-field="location"]');
+await asterLocation.dblclick();
+await page.waitForSelector('tr[data-record-id="aster"] td[data-field="location"].is-editing .cell-editor');
+assert.equal(await page.getAttribute('.cell-editor', 'aria-label'), '编辑 地点');
+await page.locator('.cell-editor').fill('Auckland CBD');
+assert.equal(await page.inputValue('#formula-input'), 'Auckland CBD', 'formula bar should mirror the in-progress cell value');
+await page.screenshot({ path: path.join(dir, 'preview-cell-edit.png') });
+await page.locator('.cell-editor').press('Enter');
+assert.equal((await asterLocation.textContent())?.trim(), 'Auckland CBD');
+assert.equal(await page.textContent('#active-cell-name'), 'D2');
+assert.match(await page.textContent('#status-secondary'), /双击或 Enter 编辑/);
+assert.equal(await page.locator('.cell-editor').count(), 0);
+
+const tideCompany = page.locator('tr[data-record-id="tide"] td[data-field="company"]');
+await tideCompany.dblclick();
+await page.locator('.cell-editor').fill('Temporary Company');
+await page.locator('.cell-editor').press('Escape');
+assert.equal((await tideCompany.locator('.company-cell strong').textContent())?.trim(), 'Tide Systems');
+
+const asterWorkMode = page.locator('tr[data-record-id="aster"] td[data-field="workMode"]');
+await asterWorkMode.dblclick();
+await page.locator('select.cell-editor').selectOption('On-site');
+assert.equal((await asterWorkMode.textContent())?.trim(), 'On-site');
+
+const asterFit = page.locator('tr[data-record-id="aster"] td[data-field="fit"]');
+await asterFit.dblclick();
+await page.locator('input.cell-editor[type="number"]').fill('93');
+await page.locator('.cell-editor').press('Enter');
+assert.equal((await asterFit.locator('.score-cell strong').textContent())?.trim(), '93');
+
+const asterNext = page.locator('tr[data-record-id="aster"] td[data-field="next"]');
+await asterNext.scrollIntoViewIfNeeded();
+await asterNext.focus();
+await asterNext.press('F2');
+assert.equal(await page.locator('input.cell-editor').count(), 1, 'F2 should enter inline editing');
+await page.locator('.cell-editor').press('Escape');
+assert.match(await asterNext.textContent(), /薪资与成长路径比较/);
+
+const tideLocation = page.locator('tr[data-record-id="tide"] td[data-field="location"]');
+await tideLocation.dblclick();
+await page.locator('.cell-editor').fill('Wellington Central');
+await page.locator('.cell-editor').press('Tab');
+assert.equal((await tideLocation.textContent())?.trim(), 'Wellington Central');
+assert.equal(
+  await page.getAttribute('tr[data-record-id="tide"] td.is-current-cell', 'data-field'),
+  'applied',
+  'Tab should commit and advance to the next editable field',
+);
+
+const asterStarred = page.locator('tr[data-record-id="aster"] td[data-field="starred"]');
+await asterStarred.scrollIntoViewIfNeeded();
+assert.equal(await asterStarred.locator('.boolean-cell').getAttribute('aria-checked'), 'true');
+await asterStarred.locator('.boolean-cell').click();
+assert.equal(await asterStarred.locator('.boolean-cell').getAttribute('aria-checked'), 'false');
+
+const asterPriority = page.locator('tr[data-record-id="aster"] td[data-field="priority"]');
+await asterPriority.scrollIntoViewIfNeeded();
+await asterPriority.dblclick();
+assert.equal(await asterPriority.locator('.cell-editor').count(), 0, 'computed cells should remain read-only');
+assert.equal((await page.textContent('#toast-title'))?.trim(), '这是只读字段');
+assert.match(await page.inputValue('#formula-input'), /^=IF\(AND\(G2>=85,H2>=7\)/);
+
+await page.click('[data-view="board"]');
+await page.waitForSelector('.board-view');
+await page.click('[data-view="table"]');
+await page.waitForSelector('.record-table');
+await settleMotion();
+assert.equal(await page.locator('.record-table .selected-range').count(), 5);
+assert.equal(await page.locator('.record-table .active-cell').count(), 1);
+assert.equal((await page.locator('.selection-statistics b').nth(1).textContent())?.trim(), '442');
+assert.equal((await page.locator('.selection-statistics b').nth(2).textContent())?.trim(), '88.4');
+await page.locator('.table-viewport').evaluate((viewport) => {
+  viewport.scrollLeft = 0;
+});
+
 await page.click('#theme-toggle');
 assert.equal(await page.getAttribute('body', 'data-theme'), 'dark');
 assert.match(await page.getAttribute('#theme-toggle', 'aria-label'), /浅色/);
+await settleMotion();
 await page.screenshot({ path: path.join(dir, 'preview-dark.png') });
 await page.click('#theme-toggle');
 assert.equal(await page.getAttribute('body', 'data-theme'), 'light');
@@ -321,12 +417,14 @@ assert.match(await page.textContent('#format-menu'), /货币/);
 assert.match(await page.textContent('#format-menu'), /百分比/);
 assert.match(await page.textContent('#format-menu'), /日期时间/);
 assert.match(await page.textContent('#format-menu'), /自定义/);
+await settleMotion();
 await page.screenshot({ path: path.join(dir, 'preview-format.png') });
 await page.click('#open-conditional-from-menu');
 await page.waitForSelector('#conditional-panel:not([hidden])');
 assert.equal(await page.locator('.conditional-rule').count(), 2);
 assert.match(await page.textContent('#conditional-panel'), /数据条/);
 assert.match(await page.textContent('#conditional-panel'), /等待超过 7 天/);
+await settleMotion();
 await page.screenshot({ path: path.join(dir, 'preview-conditional.png') });
 await page.click('#close-conditional-format');
 
@@ -349,6 +447,7 @@ assert.match(await page.textContent('#field-type-menu'), /链接/);
 assert.match(await page.textContent('#field-type-menu'), /Vault 附件/);
 assert.match(await page.textContent('#field-type-menu'), /公式/);
 assert.match(await page.textContent('#field-type-menu'), /自动编号/);
+await settleMotion();
 await page.screenshot({ path: path.join(dir, 'preview-fields.png') });
 await page.click('[data-field-type="公式"]');
 await page.waitForSelector('#formula-panel:not([hidden])');
@@ -359,6 +458,7 @@ assert.match(await page.textContent('#formula-panel'), /自定义函数/);
 assert.ok(await page.locator('[data-function]').count() >= 40, 'formula library should expose a broad basic-function baseline');
 assert.match(await page.textContent('#formula-panel'), /20 条预览 · 0 个错误 · 无循环引用/);
 assert.equal(await page.locator('.formula-preview > span').count(), 3);
+await settleMotion();
 await page.screenshot({ path: path.join(dir, 'preview-formula.png') });
 await page.click('#close-formula');
 
@@ -379,18 +479,21 @@ await page.click('[data-view="gallery"]');
 await page.waitForSelector('.gallery-view');
 assert.equal(await page.locator('.gallery-card').count(), 20);
 assert.match(await page.textContent('.gallery-view'), /卡片字段/);
+await settleMotion();
 await page.screenshot({ path: path.join(dir, 'preview-gallery.png') });
 
 await page.click('[data-view="dashboard"]');
 await page.waitForSelector('.dashboard');
 assert.equal(await page.locator('.metric').count(), 5);
 assert.equal(await page.locator('.analysis-panel').count(), 5);
+await settleMotion();
 await page.screenshot({ path: path.join(dir, 'preview-dashboard.png') });
 
 await page.click('#dashboard-open-ai');
 await page.waitForSelector('#ai-drawer.is-open');
 await page.click('#generate-plan');
 await page.waitForSelector('#plan-preview:not([hidden])');
+await settleMotion();
 await page.screenshot({ path: path.join(dir, 'preview-plan.png') });
 await page.click('#accept-plan');
 await page.waitForSelector('.record-table');
@@ -406,8 +509,18 @@ await page.click('#confirm-source');
 await page.click('#open-mobile');
 await page.waitForSelector('#mobile-overlay:not([hidden])');
 assert.match(await page.textContent('.phone-footer'), /只读消费模式/);
+await settleMotion();
 await page.screenshot({ path: path.join(dir, 'preview-mobile.png') });
 await page.click('#close-mobile');
+
+await page.emulateMedia({ reducedMotion: 'reduce' });
+const reducedMotion = await page.evaluate(() => ({
+  buttonTransitionDuration: getComputedStyle(document.querySelector('.tool-button')).transitionDuration,
+  scrollBehavior: getComputedStyle(document.documentElement).scrollBehavior,
+}));
+assert.match(reducedMotion.buttonTransitionDuration, /(?:0\.00001|1e-05)s/, 'reduced-motion should collapse interaction transitions');
+assert.notEqual(reducedMotion.scrollBehavior, 'smooth', 'reduced-motion should not force animated scrolling');
+await page.emulateMedia({ reducedMotion: 'no-preference' });
 
 assert.deepEqual(consoleErrors, [], `console errors: ${consoleErrors.join(' | ')}`);
 assert.deepEqual(pageErrors, [], `page errors: ${pageErrors.join(' | ')}`);
@@ -426,6 +539,11 @@ console.log(JSON.stringify({
   computedColumns: initial.formulaColumns,
   basicFunctions: basicFunctionCount,
   defaultTheme: initial.theme,
+  motion: {
+    base: initial.motionBase,
+    view: initial.viewAnimationName,
+    reducedMotion: true,
+  },
   lineSystem: {
     vertical: initial.ordinaryVerticalLine,
     row: initial.ordinaryHorizontalLine,
@@ -434,6 +552,6 @@ console.log(JSON.stringify({
   },
   localLinks: localHrefs.length,
   viewsChecked: ['table', 'board', 'calendar', 'gallery', 'dashboard'],
-  flowsChecked: ['long-text-reader', 'bounded-row-wrap', 'theme-switch', 'number-format', 'conditional-format', 'field-type-select', 'formula-library', 'selection-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
-  screenshots: ['preview.png', 'preview-table.png', 'preview-table-types.png', 'preview-long-text.png', 'preview-long-text-wrap.png', 'preview-dark.png', 'preview-format.png', 'preview-conditional.png', 'preview-fields.png', 'preview-formula.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
+  flowsChecked: ['long-text-reader', 'bounded-row-wrap', 'inline-text-edit', 'typed-select-edit', 'numeric-edit', 'checkbox-toggle', 'keyboard-f2-cancel', 'keyboard-tab-commit', 'computed-cell-readonly', 'selection-stat-recompute', 'theme-switch', 'number-format', 'conditional-format', 'field-type-select', 'formula-library', 'selection-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
+  screenshots: ['preview.png', 'preview-table.png', 'preview-table-types.png', 'preview-long-text.png', 'preview-long-text-wrap.png', 'preview-cell-edit.png', 'preview-dark.png', 'preview-format.png', 'preview-conditional.png', 'preview-fields.png', 'preview-formula.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
 }, null, 2));

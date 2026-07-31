@@ -423,23 +423,36 @@ const progressByStage = {
   ended: 100,
 };
 
+const cellOverrides = Object.create(null);
+
 function extendedFields(record) {
   const index = records.indexOf(record);
+  const overrides = cellOverrides[record.id] ?? {};
   return {
-    skills: skillSets[index] ?? ['Product'],
-    starred: record.fit >= 88 || record.stageKey === 'offer',
-    attachments: attachmentSets[index] ?? [],
-    interviewAt: interviewSlots[record.id] ?? null,
-    progress: progressByStage[record.stageKey] ?? 0,
-    jobLink: index % 6 === 3
+    skills: overrides.skills ?? skillSets[index] ?? ['Product'],
+    starred: overrides.starred ?? (record.fit >= 88 || record.stageKey === 'offer'),
+    attachments: overrides.attachments ?? attachmentSets[index] ?? [],
+    interviewAt: overrides.interviewAt ?? interviewSlots[record.id] ?? null,
+    progress: overrides.progress ?? progressByStage[record.stageKey] ?? 0,
+    jobLink: overrides.jobLink ?? (index % 6 === 3
       ? null
-      : `careers.${record.company.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.jobs/open-roles`,
-    displayNote: index % 7 === 3 ? '' : record.note,
+      : `careers.${record.company.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.jobs/open-roles`),
+    displayNote: overrides.displayNote ?? (index % 7 === 3 ? '' : record.note),
   };
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
 function emptyCell(label = '空值') {
-  return `<span class="cell-empty" title="${label}" aria-label="${label}">—</span>`;
+  const safeLabel = escapeHtml(label);
+  return `<span class="cell-empty" title="${safeLabel}" aria-label="${safeLabel}">—</span>`;
 }
 
 function renderSkillTags(skills) {
@@ -449,27 +462,32 @@ function renderSkillTags(skills) {
   const visible = skills.slice(0, canShowTwo ? 2 : 1);
   const remaining = skills.length - visible.length;
   const tags = visible
-    .map((skill) => `<span class="skill-tag" title="${skill}"><span>${skill}</span></span>`)
+    .map((skill) => {
+      const safeSkill = escapeHtml(skill);
+      return `<span class="skill-tag" title="${safeSkill}"><span>${safeSkill}</span></span>`;
+    })
     .join('');
   const overflow = remaining > 0
     ? `<span class="tag-overflow" title="另外 ${remaining} 个标签">+${remaining}</span>`
     : '';
-  return `<span class="skill-tags" title="${skills.join(' · ')}">${tags}${overflow}</span>`;
+  return `<span class="skill-tags" title="${escapeHtml(skills.join(' · '))}">${tags}${overflow}</span>`;
 }
 
 function renderLink(value) {
   if (!value) return emptyCell('未填写链接');
-  return `<span class="link-cell" title="${value}">${icon('i-link')}<span>${value}</span></span>`;
+  const safeValue = escapeHtml(value);
+  return `<span class="link-cell" title="${safeValue}">${icon('i-link')}<span>${safeValue}</span></span>`;
 }
 
 function renderAttachments(attachments) {
   if (attachments.length === 0) return emptyCell('没有附件');
   if (attachments.length === 1) {
     const [fileName] = attachments;
-    return `<span class="attachment-cell" title="${fileName}">${icon('i-paperclip')}<span>${fileName}</span></span>`;
+    const safeFileName = escapeHtml(fileName);
+    return `<span class="attachment-cell" title="${safeFileName}">${icon('i-paperclip')}<span>${safeFileName}</span></span>`;
   }
   return `
-    <span class="attachment-cell is-multiple" title="${attachments.join(' · ')}">
+    <span class="attachment-cell is-multiple" title="${escapeHtml(attachments.join(' · '))}">
       <span class="attachment-stack" aria-hidden="true"><i></i><i></i></span>
       <span>${attachments.length} 个文件</span>
     </span>
@@ -478,15 +496,16 @@ function renderAttachments(attachments) {
 
 function renderDateTime(value) {
   if (!value) return emptyCell('未安排面试时间');
-  if (value === '待确认') return `<span class="datetime-state">${value}</span>`;
-  return `<span class="datetime-value">${value}</span>`;
+  if (value === '待确认') return `<span class="datetime-state">${escapeHtml(value)}</span>`;
+  return `<span class="datetime-value">${escapeHtml(value)}</span>`;
 }
 
 function renderNote(value, recordId) {
   if (!value) {
     return `<span class="cell-empty long-text-trigger" data-long-cell="${recordId}" role="button" tabindex="0" title="打开空备注单元格">—</span>`;
   }
-  return `<span class="note-cell long-text-trigger" data-long-cell="${recordId}" role="button" tabindex="0" title="${value}">${value}</span>`;
+  const safeValue = escapeHtml(value);
+  return `<span class="note-cell long-text-trigger" data-long-cell="${recordId}" role="button" tabindex="0" title="${safeValue}">${safeValue}</span>`;
 }
 
 const groupMeta = {
@@ -495,6 +514,156 @@ const groupMeta = {
   followup: { label: '待跟进', order: 2, color: 'var(--amber)' },
   applied: { label: '已申请', order: 3, color: 'var(--blue)' },
   ended: { label: '已结束', order: 4, color: 'var(--red)' },
+};
+
+const cellFields = {
+  company: {
+    column: 'A',
+    label: '公司 / 职位',
+    type: 'text',
+    get: (record) => record.company,
+    set: (record, value) => { record.company = value.trim() || record.company; },
+  },
+  stage: {
+    column: 'B',
+    label: '阶段',
+    type: 'select',
+    options: Object.entries(groupMeta).map(([value, meta]) => ({ value, label: meta.label })),
+    get: (record) => record.stageKey,
+    display: (record) => record.stage,
+    set: (record, value) => {
+      if (!groupMeta[value]) return;
+      record.stageKey = value;
+      record.stage = groupMeta[value].label;
+    },
+  },
+  workMode: {
+    column: 'C',
+    label: '工作模式',
+    type: 'select',
+    options: ['Remote', 'Hybrid', 'On-site'].map((value) => ({ value, label: value })),
+    get: (record) => record.workMode,
+    set: (record, value) => { record.workMode = value; },
+  },
+  location: {
+    column: 'D',
+    label: '地点',
+    type: 'text',
+    get: (record) => record.location,
+    set: (record, value) => { record.location = value.trim(); },
+  },
+  applied: {
+    column: 'E',
+    label: '申请日期',
+    type: 'date',
+    get: (record) => record.applied,
+    set: (record, value) => { if (value) record.applied = value; },
+  },
+  salary: {
+    column: 'F',
+    label: '薪资范围',
+    type: 'text',
+    get: (record) => record.salary,
+    set: (record, value) => { record.salary = value.trim(); },
+  },
+  fit: {
+    column: 'G',
+    label: '匹配度',
+    type: 'number',
+    min: 0,
+    max: 100,
+    get: (record) => record.fit,
+    set: (record, value) => { record.fit = Math.max(0, Math.min(100, Math.round(Number(value) || 0))); },
+  },
+  wait: {
+    column: 'H',
+    label: '等待天数',
+    type: 'number',
+    min: 0,
+    max: 365,
+    get: (record) => record.wait,
+    set: (record, value) => { record.wait = Math.max(0, Math.min(365, Math.round(Number(value) || 0))); },
+  },
+  next: {
+    column: 'I',
+    label: '下一步',
+    type: 'text',
+    get: (record) => record.next,
+    set: (record, value) => { record.next = value.trim(); },
+  },
+  priority: {
+    column: 'J',
+    label: '行动优先级',
+    readOnly: true,
+    display: (record) => (record.fit >= 85 && record.wait >= 7 ? '优先跟进' : '保持观察'),
+    formula: (rowNumber) => `=IF(AND(G${rowNumber}>=85,H${rowNumber}>=7),"优先跟进","保持观察")`,
+  },
+  skills: {
+    column: 'K',
+    label: '技能标签',
+    type: 'text',
+    get: (record) => extendedFields(record).skills.join(', '),
+    set: (record, value) => {
+      const skills = value.split(',').map((skill) => skill.trim()).filter(Boolean);
+      cellOverrides[record.id] = { ...(cellOverrides[record.id] ?? {}), skills };
+    },
+  },
+  starred: {
+    column: 'L',
+    label: '已收藏',
+    type: 'checkbox',
+    get: (record) => extendedFields(record).starred,
+    display: (record) => (extendedFields(record).starred ? '已收藏' : '未收藏'),
+    set: (record, value) => {
+      cellOverrides[record.id] = { ...(cellOverrides[record.id] ?? {}), starred: Boolean(value) };
+    },
+  },
+  jobLink: {
+    column: 'M',
+    label: 'JD 链接',
+    type: 'url',
+    get: (record) => extendedFields(record).jobLink ?? '',
+    set: (record, value) => {
+      cellOverrides[record.id] = { ...(cellOverrides[record.id] ?? {}), jobLink: value.trim() };
+    },
+  },
+  attachments: {
+    column: 'N',
+    label: '附件',
+    readOnly: true,
+    display: (record) => extendedFields(record).attachments.join(', ') || '没有附件',
+  },
+  interviewAt: {
+    column: 'O',
+    label: '面试时间',
+    type: 'text',
+    get: (record) => extendedFields(record).interviewAt ?? '',
+    set: (record, value) => {
+      cellOverrides[record.id] = { ...(cellOverrides[record.id] ?? {}), interviewAt: value.trim() };
+    },
+  },
+  progress: {
+    column: 'P',
+    label: '进度',
+    type: 'number',
+    min: 0,
+    max: 100,
+    get: (record) => extendedFields(record).progress,
+    set: (record, value) => {
+      const progress = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+      cellOverrides[record.id] = { ...(cellOverrides[record.id] ?? {}), progress };
+    },
+  },
+  note: {
+    column: 'Q',
+    label: '备注',
+    type: 'text',
+    get: (record) => extendedFields(record).displayNote,
+    set: (record, value) => {
+      record.note = value;
+      cellOverrides[record.id] = { ...(cellOverrides[record.id] ?? {}), displayNote: value };
+    },
+  },
 };
 
 const state = {
@@ -507,6 +676,8 @@ const state = {
   selectedId: null,
   activeLongTextId: null,
   longTextMode: 'truncate',
+  cellSelection: null,
+  editingCell: null,
 };
 
 const stage = document.querySelector('#view-stage');
@@ -531,6 +702,47 @@ const defaultFormulaScope = formulaScope.textContent;
 
 function icon(id) {
   return `<svg><use href="#${id}"/></svg>`;
+}
+
+function isSelectedCell(recordId, field) {
+  return state.cellSelection?.recordId === recordId
+    && state.cellSelection?.field === field;
+}
+
+function isInitialFormulaCell(recordId, field) {
+  return !state.cellSelection && recordId === 'koru' && field === 'priority';
+}
+
+function cellClass(record, field, ...classes) {
+  return [
+    ...classes,
+    isSelectedCell(record.id, field) ? 'is-current-cell' : '',
+    isInitialFormulaCell(record.id, field) ? 'active-cell' : '',
+  ].filter(Boolean).join(' ');
+}
+
+function cellAttributes(record, field) {
+  const definition = cellFields[field];
+  const readOnly = definition?.readOnly === true;
+  const tabIndex = isSelectedCell(record.id, field) || isInitialFormulaCell(record.id, field)
+    ? 0
+    : -1;
+  return [
+    `data-record-id="${escapeHtml(record.id)}"`,
+    `data-field="${field}"`,
+    `data-editable="${readOnly ? 'false' : 'true'}"`,
+    readOnly ? 'data-readonly="true"' : '',
+    `tabindex="${tabIndex}"`,
+  ].filter(Boolean).join(' ');
+}
+
+function getCellValue(record, field, forDisplay = false) {
+  const definition = cellFields[field];
+  if (!definition) return '';
+  if (forDisplay && definition.display) return definition.display(record);
+  if (definition.get) return definition.get(record);
+  if (definition.display) return definition.display(record);
+  return '';
 }
 
 function visibleRecords() {
@@ -610,44 +822,53 @@ function recordRow(record) {
   const waitWidth = Math.min(100, Math.round((record.wait / 14) * 100));
   const rowNumber = records.indexOf(record) + 2;
   const extra = extendedFields(record);
-  const inSelectedRange = rowNumber >= 2 && rowNumber <= 6;
-  const isActiveCell = record.id === 'koru';
+  const inSelectedRange = !state.cellSelection && rowNumber >= 2 && rowNumber <= 6;
   const priority = record.fit >= 85 && record.wait >= 7 ? '优先跟进' : '保持观察';
+  const priorityIsActive = isSelectedCell(record.id, 'priority')
+    || isInitialFormulaCell(record.id, 'priority');
   return `
     <tr data-record-id="${record.id}" class="${state.selectedId === record.id ? 'is-selected' : ''}">
       <td class="row-number">${rowNumber}</td>
-      <td class="frozen-record-cell">
+      <td class="${cellClass(record, 'company', 'frozen-record-cell')}" ${cellAttributes(record, 'company')}>
         <span class="company-cell">
-          <span class="company-logo ${record.color}">${record.company.slice(0, 2).toUpperCase()}</span>
-          <span class="company-line"><strong>${record.company}</strong><small>${record.role}</small></span>
+          <span class="company-logo ${record.color}">${escapeHtml(record.company.slice(0, 2).toUpperCase())}</span>
+          <span class="company-line"><strong>${escapeHtml(record.company)}</strong><small>${escapeHtml(record.role)}</small></span>
         </span>
       </td>
-      <td class="stage-cell"><span class="tag stage-${record.stageKey}">${record.stage}</span></td>
-      <td><span class="work-mode"><i></i>${record.workMode}</span></td>
-      <td class="location-cell">${record.location}</td>
-      <td class="date-cell"><time datetime="${record.applied}">${formatDate(record.applied)}</time></td>
-      <td class="salary-cell"><span class="salary"><strong>${record.salary}</strong><small>NZD</small></span></td>
-      <td class="numeric-cell score-metric ${inSelectedRange ? 'selected-range' : ''} ${record.id === 'aster' ? 'range-start' : ''} ${record.id === 'koru' ? 'range-end' : ''}">
+      <td class="${cellClass(record, 'stage', 'stage-cell')}" ${cellAttributes(record, 'stage')}><span class="tag stage-${record.stageKey}">${escapeHtml(record.stage)}</span></td>
+      <td class="${cellClass(record, 'workMode')}" ${cellAttributes(record, 'workMode')}><span class="work-mode"><i></i>${escapeHtml(record.workMode)}</span></td>
+      <td class="${cellClass(record, 'location', 'location-cell')}" ${cellAttributes(record, 'location')}>${escapeHtml(record.location)}</td>
+      <td class="${cellClass(record, 'applied', 'date-cell')}" ${cellAttributes(record, 'applied')}><time datetime="${escapeHtml(record.applied)}">${formatDate(record.applied)}</time></td>
+      <td class="${cellClass(record, 'salary', 'salary-cell')}" ${cellAttributes(record, 'salary')}><span class="salary"><strong>${escapeHtml(record.salary)}</strong><small>NZD</small></span></td>
+      <td class="${cellClass(
+        record,
+        'fit',
+        'numeric-cell',
+        'score-metric',
+        inSelectedRange ? 'selected-range' : '',
+        inSelectedRange && record.id === 'aster' ? 'range-start' : '',
+        inSelectedRange && record.id === 'koru' ? 'range-end' : '',
+      )}" ${cellAttributes(record, 'fit')}>
         <span class="score-cell">
           <i class="score-ring" style="--score:${record.fit}" aria-hidden="true"></i>
           <strong>${record.fit}</strong>
         </span>
       </td>
-      <td class="numeric-cell wait-metric ${record.wait > 7 ? 'conditional-alert' : ''}">
+      <td class="${cellClass(record, 'wait', 'numeric-cell', 'wait-metric', record.wait > 7 ? 'conditional-alert' : '')}" ${cellAttributes(record, 'wait')}>
         <span class="wait-cell ${record.wait > 7 ? 'is-alert' : ''}">
           <span class="wait-bar"><i style="--wait:${waitWidth}%"></i></span>
           <strong>${record.wait}<small>天</small></strong>
         </span>
       </td>
-      <td class="next-action-cell"><span class="next-action ${record.urgency ? 'is-soon' : ''}"><i></i><span>${record.next}</span></span></td>
-      <td class="formula-value ${isActiveCell ? 'active-cell' : ''}"><span class="priority-token ${priority === '优先跟进' ? 'priority-high' : ''}">${priority}</span>${isActiveCell ? '<i class="fill-handle"></i>' : ''}</td>
-      <td class="skills-column">${renderSkillTags(extra.skills)}</td>
-      <td class="boolean-column"><span class="boolean-cell ${extra.starred ? 'is-checked' : ''}" role="checkbox" aria-checked="${extra.starred}">${extra.starred ? icon('i-check') : ''}</span></td>
-      <td class="link-column">${renderLink(extra.jobLink)}</td>
-      <td class="attachment-column">${renderAttachments(extra.attachments)}</td>
-      <td class="datetime-cell">${renderDateTime(extra.interviewAt)}</td>
-      <td class="progress-column"><span class="progress-cell"><i><b style="--progress:${extra.progress}%"></b></i><strong>${extra.progress}%</strong></span></td>
-      <td class="note-column">${renderNote(extra.displayNote, record.id)}</td>
+      <td class="${cellClass(record, 'next', 'next-action-cell')}" ${cellAttributes(record, 'next')}><span class="next-action ${record.urgency ? 'is-soon' : ''}"><i></i><span>${escapeHtml(record.next)}</span></span></td>
+      <td class="${cellClass(record, 'priority', 'formula-value')}" ${cellAttributes(record, 'priority')}><span class="priority-token ${priority === '优先跟进' ? 'priority-high' : ''}">${priority}</span>${priorityIsActive ? '<i class="fill-handle"></i>' : ''}</td>
+      <td class="${cellClass(record, 'skills', 'skills-column')}" ${cellAttributes(record, 'skills')}>${renderSkillTags(extra.skills)}</td>
+      <td class="${cellClass(record, 'starred', 'boolean-column')}" ${cellAttributes(record, 'starred')}><span class="boolean-cell ${extra.starred ? 'is-checked' : ''}" role="checkbox" aria-checked="${extra.starred}">${extra.starred ? icon('i-check') : ''}</span></td>
+      <td class="${cellClass(record, 'jobLink', 'link-column')}" ${cellAttributes(record, 'jobLink')}>${renderLink(extra.jobLink)}</td>
+      <td class="${cellClass(record, 'attachments', 'attachment-column')}" ${cellAttributes(record, 'attachments')}>${renderAttachments(extra.attachments)}</td>
+      <td class="${cellClass(record, 'interviewAt', 'datetime-cell')}" ${cellAttributes(record, 'interviewAt')}>${renderDateTime(extra.interviewAt)}</td>
+      <td class="${cellClass(record, 'progress', 'progress-column')}" ${cellAttributes(record, 'progress')}><span class="progress-cell"><i><b style="--progress:${extra.progress}%"></b></i><strong>${extra.progress}%</strong></span></td>
+      <td class="${cellClass(record, 'note', 'note-column')}" ${cellAttributes(record, 'note')}>${renderNote(extra.displayNote, record.id)}</td>
     </tr>
   `;
 }
@@ -707,29 +928,10 @@ function renderTable() {
     </section>
   `;
 
-  stage.querySelectorAll('tr[data-record-id]').forEach((row) => {
-    row.addEventListener('click', (event) => {
-      if (event.target instanceof HTMLInputElement) return;
-      const longTextTarget = event.target instanceof Element
-        ? event.target.closest('[data-long-cell]')
-        : null;
-      if (longTextTarget) {
-        openLongTextCell(row.dataset.recordId);
-        return;
-      }
-      closeLongTextCell();
-      state.selectedId = row.dataset.recordId;
-      renderTable();
-    });
-  });
-
-  stage.querySelectorAll('[data-long-cell]').forEach((trigger) => {
-    trigger.addEventListener('keydown', (event) => {
-      if (!['Enter', ' '].includes(event.key)) return;
-      event.preventDefault();
-      openLongTextCell(trigger.dataset.longCell);
-    });
-  });
+  const table = stage.querySelector('.record-table');
+  table?.addEventListener('click', handleTableClick);
+  table?.addEventListener('dblclick', handleTableDoubleClick);
+  table?.addEventListener('keydown', handleTableKeyDown);
 }
 
 function renderBoard() {
@@ -920,10 +1122,32 @@ function updateStatus() {
   const primary = document.querySelector('#status-primary');
   const secondary = document.querySelector('#status-secondary');
   const selectionStatistics = document.querySelector('#selection-statistics');
-  selectionStatistics.hidden = state.view !== 'table' || !state.statsVisible;
+  selectionStatistics.hidden = state.view !== 'table'
+    || !state.statsVisible
+    || Boolean(state.cellSelection);
   if (state.view === 'table') {
+    if (state.cellSelection) {
+      const definition = cellFields[state.cellSelection.field];
+      primary.textContent = cellReference(state.cellSelection.recordId, state.cellSelection.field);
+      secondary.textContent = definition?.readOnly
+        ? `${definition.label} · 只读`
+        : `${definition?.label ?? '单元格'} · 双击或 Enter 编辑`;
+      return;
+    }
     primary.textContent = 'G2:G6';
     secondary.textContent = `5 个单元格 · ${state.grouped ? '按阶段分组' : `${visible} 条记录`}`;
+    const selectedValues = records.slice(0, 5).map((record) => record.fit);
+    const sum = selectedValues.reduce((total, value) => total + value, 0);
+    const values = [
+      selectedValues.length,
+      sum,
+      (sum / selectedValues.length).toFixed(1),
+      Math.min(...selectedValues),
+      Math.max(...selectedValues),
+    ];
+    selectionStatistics.querySelectorAll('b').forEach((value, index) => {
+      value.textContent = String(values[index]);
+    });
     return;
   }
   primary.textContent = state.view === 'dashboard' ? 'Dashboard · 24 records' : `${visible} records`;
@@ -942,7 +1166,17 @@ function updateStatus() {
   secondary.textContent = '只读聚合 · 统一筛选刷新全部图表';
 }
 
-function renderCurrentView() {
+function animateViewStage() {
+  stage.classList.remove('is-view-entering');
+  void stage.offsetWidth;
+  stage.classList.add('is-view-entering');
+  window.clearTimeout(animateViewStage.timer);
+  animateViewStage.timer = window.setTimeout(() => {
+    stage.classList.remove('is-view-entering');
+  }, 300);
+}
+
+function renderCurrentView(options = {}) {
   const renderers = {
     table: renderTable,
     board: renderBoard,
@@ -958,17 +1192,312 @@ function renderCurrentView() {
   });
   renderFilterLine();
   updateStatus();
+  if (options.animate) animateViewStage();
 }
 
 function setView(view) {
   if (!view || !(view in { table: 1, board: 1, calendar: 1, gallery: 1, dashboard: 1 })) return;
   closeLongTextCell();
+  state.cellSelection = null;
+  state.editingCell = null;
   state.view = view;
   closeViewMenu();
-  renderCurrentView();
+  renderCurrentView({ animate: true });
+}
+
+function cellReference(recordId, field) {
+  const record = records.find((candidate) => candidate.id === recordId);
+  const definition = cellFields[field];
+  if (!record || !definition) return '';
+  return `${definition.column}${records.indexOf(record) + 2}`;
+}
+
+function cellSelector(recordId, field) {
+  return `tr[data-record-id="${recordId}"] td[data-field="${field}"]`;
+}
+
+function updateFormulaBarForSelection() {
+  const selection = state.cellSelection;
+  if (!selection) return;
+  const record = records.find((candidate) => candidate.id === selection.recordId);
+  const definition = cellFields[selection.field];
+  if (!record || !definition) return;
+  const rowNumber = records.indexOf(record) + 2;
+  activeCellName.textContent = cellReference(record.id, selection.field);
+  formulaInput.value = definition.formula
+    ? definition.formula(rowNumber)
+    : String(getCellValue(record, selection.field, true) ?? '');
+  formulaState.innerHTML = definition.readOnly
+    ? `${icon('i-lock')}只读字段`
+    : `${icon('i-text')}可编辑`;
+  formulaScope.textContent = definition.readOnly
+    ? `${definition.label} · 由 schema 或公式维护`
+    : `${definition.label} · 双击或 Enter / F2 编辑`;
+}
+
+function selectCell(recordId, field, options = {}) {
+  const record = records.find((candidate) => candidate.id === recordId);
+  if (!record || !cellFields[field]) return;
+  state.cellSelection = { recordId, field };
+  state.selectedId = null;
+  document.querySelectorAll('.record-table td[data-field]').forEach((cell) => {
+    cell.classList.remove(
+      'active-cell',
+      'active-long-cell',
+      'is-current-cell',
+      'selected-range',
+      'range-start',
+      'range-end',
+    );
+    cell.setAttribute('tabindex', '-1');
+  });
+  document.querySelectorAll('.fill-handle').forEach((handle) => handle.remove());
+  const cell = document.querySelector(cellSelector(recordId, field));
+  cell?.classList.add('is-current-cell');
+  cell?.setAttribute('tabindex', '0');
+  updateFormulaBarForSelection();
+  updateStatus();
+  if (options.focus === false) return;
+  cell?.focus({ preventScroll: true });
+}
+
+function flashCell(cell, className) {
+  if (!cell) return;
+  cell.classList.remove(className);
+  void cell.offsetWidth;
+  cell.classList.add(className);
+  window.setTimeout(() => cell.classList.remove(className), 520);
+}
+
+function pulseReadOnlyCell(cell) {
+  flashCell(cell, 'is-readonly-pulse');
+  const field = cell?.dataset.field;
+  const definition = field ? cellFields[field] : null;
+  showToast('这是只读字段', `${definition?.label ?? '当前列'}由公式、schema 或附件管理器维护`);
+}
+
+function toggleBooleanCell(recordId, field = 'starred') {
+  const record = records.find((candidate) => candidate.id === recordId);
+  const definition = cellFields[field];
+  if (!record || definition?.type !== 'checkbox') return;
+  selectCell(recordId, field, { focus: false });
+  definition.set(record, !Boolean(definition.get(record)));
+  renderTable();
+  updateFormulaBarForSelection();
+  updateStatus();
+  const cell = document.querySelector(cellSelector(recordId, field));
+  cell?.focus({ preventScroll: true });
+  flashCell(cell, 'is-just-committed');
+}
+
+function createCellEditor(definition, record) {
+  if (definition.type === 'select') {
+    const select = document.createElement('select');
+    definition.options.forEach((option) => {
+      const element = document.createElement('option');
+      element.value = option.value;
+      element.textContent = option.label;
+      select.append(element);
+    });
+    select.value = String(definition.get(record) ?? '');
+    return select;
+  }
+  const input = document.createElement('input');
+  input.type = definition.type ?? 'text';
+  input.value = String(definition.get(record) ?? '');
+  if (definition.min !== undefined) input.min = String(definition.min);
+  if (definition.max !== undefined) input.max = String(definition.max);
+  if (definition.type === 'number') input.step = '1';
+  return input;
+}
+
+function startCellEdit(cell) {
+  if (!(cell instanceof HTMLElement)) return;
+  const { recordId, field } = cell.dataset;
+  const record = records.find((candidate) => candidate.id === recordId);
+  const definition = field ? cellFields[field] : null;
+  if (!record || !definition || !recordId || !field) return;
+  selectCell(recordId, field, { focus: false });
+  if (definition.readOnly) {
+    pulseReadOnlyCell(cell);
+    return;
+  }
+  if (definition.type === 'checkbox') {
+    toggleBooleanCell(recordId, field);
+    return;
+  }
+  closeLongTextCell();
+  state.editingCell = { recordId, field };
+  cell.classList.add('is-editing');
+  const editor = createCellEditor(definition, record);
+  editor.className = 'cell-editor';
+  editor.setAttribute('aria-label', `编辑 ${definition.label}`);
+  cell.replaceChildren(editor);
+
+  const commit = (moveKey = null) => {
+    commitCellEdit(editor.value, moveKey);
+  };
+  editor.addEventListener('click', (event) => event.stopPropagation());
+  editor.addEventListener('dblclick', (event) => event.stopPropagation());
+  editor.addEventListener('input', () => {
+    formulaInput.value = editor.value;
+  });
+  editor.addEventListener('keydown', (event) => {
+    event.stopPropagation();
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      cancelCellEdit();
+      return;
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      commit();
+      return;
+    }
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      commit(event.shiftKey ? 'Shift+Tab' : 'Tab');
+    }
+  });
+  if (definition.type === 'select') {
+    editor.addEventListener('change', () => commit());
+  }
+  editor.addEventListener('blur', () => {
+    window.setTimeout(() => {
+      if (state.editingCell?.recordId !== recordId || state.editingCell?.field !== field) return;
+      commit();
+    }, 0);
+  });
+  window.requestAnimationFrame(() => {
+    editor.focus({ preventScroll: true });
+    if (editor instanceof HTMLInputElement) editor.select();
+  });
+}
+
+function commitCellEdit(value, moveKey = null) {
+  const editing = state.editingCell;
+  if (!editing) return;
+  const record = records.find((candidate) => candidate.id === editing.recordId);
+  const definition = cellFields[editing.field];
+  if (!record || !definition?.set) return;
+  definition.set(record, value);
+  state.editingCell = null;
+  renderTable();
+  updateFormulaBarForSelection();
+  updateStatus();
+  const cell = document.querySelector(cellSelector(editing.recordId, editing.field));
+  flashCell(cell, 'is-just-committed');
+  if (moveKey) {
+    moveCellSelection(cell, moveKey, true);
+  } else {
+    cell?.focus({ preventScroll: true });
+  }
+  showToast('单元格已更新', `${cellReference(editing.recordId, editing.field)} · ${definition.label}已写入当前草稿`);
+}
+
+function cancelCellEdit() {
+  const editing = state.editingCell;
+  if (!editing) return false;
+  state.editingCell = null;
+  renderTable();
+  updateFormulaBarForSelection();
+  updateStatus();
+  document.querySelector(cellSelector(editing.recordId, editing.field))?.focus({ preventScroll: true });
+  return true;
+}
+
+function moveCellSelection(cell, key, editableOnly = false) {
+  if (!(cell instanceof HTMLElement)) return;
+  const rows = [...document.querySelectorAll('.record-table tbody tr[data-record-id]')];
+  const row = cell.closest('tr[data-record-id]');
+  const rowIndex = rows.indexOf(row);
+  const rowCells = [...row.querySelectorAll('td[data-field]')];
+  const columnIndex = rowCells.indexOf(cell);
+  let target = null;
+
+  if (key === 'ArrowLeft' || key === 'ArrowRight') {
+    const offset = key === 'ArrowLeft' ? -1 : 1;
+    target = rowCells[columnIndex + offset] ?? null;
+  }
+  if (key === 'ArrowUp' || key === 'ArrowDown') {
+    const offset = key === 'ArrowUp' ? -1 : 1;
+    target = rows[rowIndex + offset]?.querySelectorAll('td[data-field]')[columnIndex] ?? null;
+  }
+  if (key === 'Tab' || key === 'Shift+Tab') {
+    const selector = editableOnly
+      ? 'td[data-field][data-editable="true"]'
+      : 'td[data-field]';
+    const cells = [...document.querySelectorAll(`.record-table tbody ${selector}`)];
+    const currentIndex = cells.findIndex((candidate) => (
+      candidate.dataset.recordId === cell.dataset.recordId
+      && candidate.dataset.field === cell.dataset.field
+    ));
+    const offset = key === 'Shift+Tab' ? -1 : 1;
+    target = cells[currentIndex + offset] ?? cells[key === 'Shift+Tab' ? cells.length - 1 : 0] ?? null;
+  }
+  if (!(target instanceof HTMLElement)) return;
+  selectCell(target.dataset.recordId, target.dataset.field);
+}
+
+function handleTableClick(event) {
+  if (!(event.target instanceof Element)) return;
+  if (event.target.closest('.cell-editor')) return;
+  const cell = event.target.closest('td[data-field]');
+  const row = event.target.closest('tr[data-record-id]');
+  if (!(cell instanceof HTMLElement) || !(row instanceof HTMLElement)) {
+    if (!row) return;
+    state.selectedId = row.dataset.recordId;
+    renderTable();
+    return;
+  }
+  const { recordId, field } = cell.dataset;
+  if (!recordId || !field) return;
+  if (event.target.closest('[data-long-cell]')) {
+    openLongTextCell(recordId);
+    return;
+  }
+  closeLongTextCell();
+  selectCell(recordId, field, { focus: false });
+  if (field === 'starred' && event.target.closest('.boolean-cell')) {
+    toggleBooleanCell(recordId, field);
+    return;
+  }
+}
+
+function handleTableDoubleClick(event) {
+  if (!(event.target instanceof Element)) return;
+  const cell = event.target.closest('td[data-field]');
+  if (!(cell instanceof HTMLElement)) return;
+  event.preventDefault();
+  closeLongTextCell();
+  startCellEdit(cell);
+}
+
+function handleTableKeyDown(event) {
+  if (!(event.target instanceof Element) || event.target.closest('.cell-editor')) return;
+  const cell = event.target.closest('td[data-field]');
+  if (!(cell instanceof HTMLElement)) return;
+  if (event.key === 'Enter' || event.key === 'F2') {
+    event.preventDefault();
+    startCellEdit(cell);
+    return;
+  }
+  if (event.key === ' ' && cell.dataset.field === 'starred') {
+    event.preventDefault();
+    toggleBooleanCell(cell.dataset.recordId, cell.dataset.field);
+    return;
+  }
+  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab'].includes(event.key)) {
+    event.preventDefault();
+    moveCellSelection(cell, event.shiftKey && event.key === 'Tab' ? 'Shift+Tab' : event.key);
+  }
 }
 
 function restoreFormulaBar() {
+  if (state.cellSelection) {
+    updateFormulaBarForSelection();
+    return;
+  }
   activeCellName.textContent = 'J6';
   formulaInput.value = defaultFormulaValue;
   formulaState.innerHTML = defaultFormulaState;
@@ -1316,6 +1845,10 @@ themeToggle.addEventListener('click', () => {
 
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
+  if (cancelCellEdit()) {
+    event.preventDefault();
+    return;
+  }
   closeAi();
   closeFields();
   closeFormula();
@@ -1327,4 +1860,4 @@ document.addEventListener('keydown', (event) => {
   closeDialog('#mobile-overlay');
 });
 
-renderCurrentView();
+renderCurrentView({ animate: true });
