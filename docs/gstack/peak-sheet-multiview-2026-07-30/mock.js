@@ -14,7 +14,7 @@ const records = [
     next: '薪资与成长路径比较',
     urgency: true,
     source: 'Referral',
-    note: '周五前回复，重点确认 equity 与远程政策。',
+    note: '周五前回复，重点确认 equity、年度调薪与远程政策；如果远程只适用于奥克兰，需要继续核对每季度到岗频率、差旅承担方式，以及试用期结束后的调整空间。',
     color: 'green',
   },
   {
@@ -482,9 +482,11 @@ function renderDateTime(value) {
   return `<span class="datetime-value">${value}</span>`;
 }
 
-function renderNote(value) {
-  if (!value) return emptyCell('未填写备注');
-  return `<span class="note-cell" title="${value}">${value}</span>`;
+function renderNote(value, recordId) {
+  if (!value) {
+    return `<span class="cell-empty long-text-trigger" data-long-cell="${recordId}" role="button" tabindex="0" title="打开空备注单元格">—</span>`;
+  }
+  return `<span class="note-cell long-text-trigger" data-long-cell="${recordId}" role="button" tabindex="0" title="${value}">${value}</span>`;
 }
 
 const groupMeta = {
@@ -503,6 +505,8 @@ const state = {
   query: '',
   priorityOnly: false,
   selectedId: null,
+  activeLongTextId: null,
+  longTextMode: 'truncate',
 };
 
 const stage = document.querySelector('#view-stage');
@@ -516,6 +520,14 @@ const formulaPanel = document.querySelector('#formula-panel');
 const formulaBar = document.querySelector('#formula-bar');
 const formatMenu = document.querySelector('#format-menu');
 const conditionalPanel = document.querySelector('#conditional-panel');
+const cellReader = document.querySelector('#cell-reader');
+const activeCellName = document.querySelector('#active-cell-name');
+const formulaInput = document.querySelector('#formula-input');
+const formulaState = document.querySelector('.formula-state');
+const formulaScope = document.querySelector('.formula-scope');
+const defaultFormulaValue = formulaInput.value;
+const defaultFormulaState = formulaState.innerHTML;
+const defaultFormulaScope = formulaScope.textContent;
 
 function icon(id) {
   return `<svg><use href="#${id}"/></svg>`;
@@ -635,7 +647,7 @@ function recordRow(record) {
       <td class="attachment-column">${renderAttachments(extra.attachments)}</td>
       <td class="datetime-cell">${renderDateTime(extra.interviewAt)}</td>
       <td class="progress-column"><span class="progress-cell"><i><b style="--progress:${extra.progress}%"></b></i><strong>${extra.progress}%</strong></span></td>
-      <td class="note-column">${renderNote(extra.displayNote)}</td>
+      <td class="note-column">${renderNote(extra.displayNote, record.id)}</td>
     </tr>
   `;
 }
@@ -698,8 +710,24 @@ function renderTable() {
   stage.querySelectorAll('tr[data-record-id]').forEach((row) => {
     row.addEventListener('click', (event) => {
       if (event.target instanceof HTMLInputElement) return;
+      const longTextTarget = event.target instanceof Element
+        ? event.target.closest('[data-long-cell]')
+        : null;
+      if (longTextTarget) {
+        openLongTextCell(row.dataset.recordId);
+        return;
+      }
+      closeLongTextCell();
       state.selectedId = row.dataset.recordId;
       renderTable();
+    });
+  });
+
+  stage.querySelectorAll('[data-long-cell]').forEach((trigger) => {
+    trigger.addEventListener('keydown', (event) => {
+      if (!['Enter', ' '].includes(event.key)) return;
+      event.preventDefault();
+      openLongTextCell(trigger.dataset.longCell);
     });
   });
 }
@@ -934,9 +962,80 @@ function renderCurrentView() {
 
 function setView(view) {
   if (!view || !(view in { table: 1, board: 1, calendar: 1, gallery: 1, dashboard: 1 })) return;
+  closeLongTextCell();
   state.view = view;
   closeViewMenu();
   renderCurrentView();
+}
+
+function restoreFormulaBar() {
+  activeCellName.textContent = 'J6';
+  formulaInput.value = defaultFormulaValue;
+  formulaState.innerHTML = defaultFormulaState;
+  formulaScope.textContent = defaultFormulaScope;
+}
+
+function closeLongTextCell() {
+  if (!cellReader) return;
+  cellReader.hidden = true;
+  document.querySelectorAll('.active-long-cell').forEach((cell) => {
+    cell.classList.remove('active-long-cell');
+  });
+  document.querySelectorAll('.has-wrapped-cell').forEach((row) => {
+    row.classList.remove('has-wrapped-cell');
+  });
+  document.querySelectorAll('.is-suspended-range').forEach((cell) => {
+    cell.classList.remove('is-suspended-range');
+  });
+  document.querySelectorAll('.is-suspended-active').forEach((cell) => {
+    cell.classList.remove('is-suspended-active');
+  });
+  state.activeLongTextId = null;
+  state.longTextMode = 'truncate';
+  restoreFormulaBar();
+}
+
+function setLongTextMode(mode) {
+  if (!['truncate', 'wrap'].includes(mode)) return;
+  const record = records.find((candidate) => candidate.id === state.activeLongTextId);
+  if (!record) return;
+  const value = extendedFields(record).displayNote;
+  state.longTextMode = mode;
+  document
+    .querySelector(`tr[data-record-id="${state.activeLongTextId}"]`)
+    ?.classList.toggle('has-wrapped-cell', mode === 'wrap');
+  document.querySelectorAll('[data-cell-display]').forEach((button) => {
+    button.classList.toggle('is-active', button.dataset.cellDisplay === mode);
+  });
+  document.querySelector('#cell-reader-meta').textContent = mode === 'wrap'
+    ? '多行文本 · 当前行最多显示三行'
+    : '多行文本 · 默认单行截断';
+  formulaScope.textContent = `多行文本 · ${value.length} 字 · ${mode === 'wrap' ? '自动换行' : '单行截断'}`;
+}
+
+function openLongTextCell(recordId) {
+  const record = records.find((candidate) => candidate.id === recordId);
+  if (!record) return;
+  closeLongTextCell();
+  const value = extendedFields(record).displayNote;
+  const rowNumber = records.indexOf(record) + 2;
+  const trigger = document.querySelector(`[data-long-cell="${recordId}"]`);
+  document.querySelectorAll('.selected-range').forEach((cell) => {
+    cell.classList.add('is-suspended-range');
+  });
+  document.querySelectorAll('.active-cell').forEach((cell) => {
+    cell.classList.add('is-suspended-active');
+  });
+  trigger?.closest('td')?.classList.add('active-long-cell');
+  state.activeLongTextId = recordId;
+  cellReader.hidden = false;
+  document.querySelector('#cell-reader-title').textContent = `Q${rowNumber} · 备注`;
+  document.querySelector('#cell-reader-copy').textContent = value || '当前单元格为空。';
+  document.querySelector('#cell-reader-count').textContent = `${value.length} 字`;
+  activeCellName.textContent = `Q${rowNumber}`;
+  formulaInput.value = value;
+  formulaState.innerHTML = `${icon('i-text')}文本值`;
+  setLongTextMode('truncate');
 }
 
 function showToast(title, copy) {
@@ -961,6 +1060,7 @@ function closeViewMenu() {
 
 function openFields() {
   document.querySelector('#field-panel').hidden = false;
+  closeLongTextCell();
   closeFormula();
   closeFormatMenu();
   closeConditionalFormat();
@@ -974,6 +1074,7 @@ function closeFields() {
 
 function openFormula() {
   formulaPanel.hidden = false;
+  closeLongTextCell();
   closeFields();
   closeFormatMenu();
   closeConditionalFormat();
@@ -987,6 +1088,7 @@ function closeFormula() {
 
 function openFormatMenu() {
   formatMenu.hidden = false;
+  closeLongTextCell();
   document.querySelector('#open-format-menu').setAttribute('aria-expanded', 'true');
   closeFields();
   closeFormula();
@@ -1002,6 +1104,7 @@ function closeFormatMenu() {
 
 function openConditionalFormat() {
   conditionalPanel.hidden = false;
+  closeLongTextCell();
   closeFormatMenu();
   closeFields();
   closeFormula();
@@ -1016,6 +1119,7 @@ function closeConditionalFormat() {
 function openAi() {
   aiDrawer.classList.add('is-open');
   aiDrawer.setAttribute('aria-hidden', 'false');
+  closeLongTextCell();
   closeFields();
   closeFormula();
   closeFormatMenu();
@@ -1167,6 +1271,10 @@ searchInput.addEventListener('input', () => {
 
 document.querySelector('#open-ai').addEventListener('click', openAi);
 document.querySelector('#close-ai').addEventListener('click', closeAi);
+document.querySelector('#close-cell-reader').addEventListener('click', closeLongTextCell);
+document.querySelectorAll('[data-cell-display]').forEach((button) => {
+  button.addEventListener('click', () => setLongTextMode(button.dataset.cellDisplay));
+});
 
 document.querySelectorAll('[data-prompt]').forEach((button) => {
   button.addEventListener('click', () => {
@@ -1214,6 +1322,7 @@ document.addEventListener('keydown', (event) => {
   closeFormatMenu();
   closeConditionalFormat();
   closeViewMenu();
+  closeLongTextCell();
   closeDialog('#source-dialog');
   closeDialog('#mobile-overlay');
 });

@@ -349,6 +349,19 @@
         <footer><button type="button" class="subtle-button">仅预览</button><button type="button" class="confirm-button" id="accept-plan">应用到当前视图</button></footer>
       </section>
     </aside>
+
+    <section class="cell-reader floating-surface" id="cell-reader" hidden aria-label="长文本单元格查看器">
+      <header>
+        <span><strong id="cell-reader-title">Q2 · 备注</strong><small id="cell-reader-meta">多行文本 · 默认单行截断</small></span>
+        <button type="button" class="icon-button compact" id="close-cell-reader" aria-label="关闭单元格查看器"><svg><use href="#i-x"/></svg></button>
+      </header>
+      <nav class="cell-reader-modes" aria-label="单元格文字显示方式">
+        <button type="button" class="is-active" data-cell-display="truncate">单行截断</button>
+        <button type="button" data-cell-display="wrap">自动换行</button>
+      </nav>
+      <article id="cell-reader-copy"></article>
+      <footer><span>公式栏始终显示完整原始值</span><em id="cell-reader-count">0 字</em></footer>
+    </section>
   </main>
 
   <section class="source-dialog dialog-overlay" id="source-dialog" hidden>

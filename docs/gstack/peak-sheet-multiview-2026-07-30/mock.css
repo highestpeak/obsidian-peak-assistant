@@ -6647,9 +6647,9 @@ body[data-theme="dark"] .record-table th,
 body[data-theme="dark"] .record-table td,
 body[data-theme="light"] .record-table th,
 body[data-theme="light"] .record-table td {
-  height: 44px;
+  height: 46px;
   padding: 0 10px;
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1;
   letter-spacing: 0;
   vertical-align: middle;
@@ -6658,8 +6658,8 @@ body[data-theme="light"] .record-table td {
 .record-table th,
 body[data-theme="dark"] .record-table th,
 body[data-theme="light"] .record-table th {
-  height: 40px;
-  font-size: 11px;
+  height: 42px;
+  font-size: 11.5px;
   font-weight: 560;
 }
 
@@ -6747,7 +6747,7 @@ body[data-theme="dark"] .company-cell strong,
 body[data-theme="light"] .company-cell strong {
   flex: 0 0 auto;
   color: var(--text);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1.2;
   white-space: nowrap;
@@ -6769,7 +6769,7 @@ body[data-theme="light"] .company-cell small {
   margin: 0;
   overflow: hidden;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 420;
   line-height: 1.2;
   text-overflow: ellipsis;
@@ -6810,7 +6810,7 @@ body[data-theme="dark"] .work-mode {
   border: 0;
   background: transparent;
   color: var(--text-soft);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -6828,7 +6828,7 @@ body[data-theme="dark"] .work-mode {
 .date-cell {
   overflow: hidden;
   color: var(--text-soft);
-  font-size: 12px;
+  font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -6851,7 +6851,7 @@ body[data-theme="dark"] .work-mode {
 .salary strong,
 body[data-theme="dark"] .salary strong,
 body[data-theme="light"] .salary strong {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -6900,7 +6900,7 @@ body[data-theme="light"] .score-ring::after {
 .score-cell strong,
 .numeric-cell > strong {
   min-width: 24px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   text-align: right;
 }
@@ -6927,7 +6927,7 @@ body[data-theme="dark"] .wait-cell strong {
   align-items: baseline;
   justify-content: flex-end;
   gap: 2px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -6942,7 +6942,7 @@ body[data-theme="dark"] .wait-cell strong {
   min-width: 0;
   gap: 8px;
   color: var(--text-soft);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.2;
 }
 
@@ -6969,7 +6969,7 @@ body[data-theme] .record-table .priority-token,
 body[data-theme="dark"] .record-table .formula-value .priority-high {
   display: inline-flex;
   max-width: 100%;
-  height: 26px;
+  height: 28px;
   align-items: center;
   padding: 0 9px;
   overflow: hidden;
@@ -6977,9 +6977,9 @@ body[data-theme="dark"] .record-table .formula-value .priority-high {
   border-radius: 3px;
   background: var(--surface-2);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .025);
-  font-size: 11.5px;
-  font-weight: 550;
-  line-height: 24px;
+  font-size: 12.5px;
+  font-weight: 580;
+  line-height: 26px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -7081,16 +7081,16 @@ body[data-theme="light"] .formula-value > .priority-token:not(.priority-high) {
   display: inline-flex;
   min-width: 0;
   max-width: 132px;
-  height: 24px;
+  height: 28px;
   align-items: center;
   padding: 0 8px;
   border: 1px solid #3a423b;
   border-radius: 3px;
   background: #1a1e1a;
   color: #bdc5bd;
-  font-size: 11px;
-  font-weight: 520;
-  line-height: 22px;
+  font-size: 12.5px;
+  font-weight: 540;
+  line-height: 26px;
 }
 
 .skill-tag > span {
@@ -7109,7 +7109,7 @@ body[data-theme="light"] .skill-tag {
 .tag-overflow {
   flex: 0 0 auto;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
   font-weight: 560;
 }
@@ -7118,7 +7118,7 @@ body[data-theme="light"] .skill-tag {
   display: inline-flex;
   align-items: center;
   color: color-mix(in srgb, var(--quiet) 76%, transparent);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 440;
   line-height: 1;
 }
@@ -7157,7 +7157,7 @@ body[data-theme="light"] .skill-tag {
   gap: 6px;
   overflow: hidden;
   color: color-mix(in srgb, var(--teal) 58%, var(--text));
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 470;
   white-space: nowrap;
 }
@@ -7209,7 +7209,7 @@ body[data-theme="light"] .skill-tag {
 
 .datetime-cell {
   color: var(--text-soft);
-  font-size: 12px;
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -7252,7 +7252,7 @@ body[data-theme="light"] .skill-tag {
 .progress-cell > strong {
   width: 34px;
   color: var(--text);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   text-align: right;
 }
@@ -7261,11 +7261,180 @@ body[data-theme="light"] .skill-tag {
   display: block;
   overflow: hidden;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 430;
-  line-height: 1.2;
+  line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.note-column {
+  position: relative;
+}
+
+.long-text-trigger {
+  cursor: pointer;
+}
+
+.long-text-trigger:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.record-table td.active-long-cell,
+body[data-theme="dark"] .record-table td.active-long-cell,
+body[data-theme="light"] .record-table td.active-long-cell {
+  position: relative;
+  z-index: 3;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+body[data-theme] .record-table .selected-range.is-suspended-range {
+  border-top: 0 !important;
+  border-right: 1px solid var(--line-soft) !important;
+  border-bottom: 1px solid var(--line-soft) !important;
+  border-left: 0 !important;
+  background: transparent !important;
+  box-shadow: none;
+}
+
+body[data-theme] .record-table .active-cell.is-suspended-active {
+  box-shadow: none;
+}
+
+.active-cell.is-suspended-active .fill-handle {
+  display: none;
+}
+
+.record-table tbody tr.has-wrapped-cell td,
+body[data-theme="dark"] .record-table tbody tr.has-wrapped-cell td,
+body[data-theme="light"] .record-table tbody tr.has-wrapped-cell td {
+  height: 92px;
+}
+
+.record-table tbody tr.has-wrapped-cell .note-cell {
+  display: -webkit-box;
+  overflow: hidden;
+  line-height: 1.45;
+  text-overflow: clip;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.cell-reader {
+  position: fixed;
+  z-index: 40;
+  right: 22px;
+  bottom: 42px;
+  display: grid;
+  width: min(460px, calc(100vw - 44px));
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  box-shadow:
+    0 22px 58px rgba(0, 0, 0, .28),
+    0 2px 8px rgba(0, 0, 0, .18);
+  backdrop-filter: blur(18px);
+}
+
+.cell-reader[hidden] {
+  display: none;
+}
+
+.cell-reader > header {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 12px 9px 16px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.cell-reader > header > span {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.cell-reader > header strong {
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 620;
+}
+
+.cell-reader > header small {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.cell-reader-modes {
+  display: flex;
+  gap: 3px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  background: color-mix(in srgb, var(--surface-2) 68%, transparent);
+}
+
+.cell-reader-modes button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 540;
+}
+
+.cell-reader-modes button:hover {
+  color: var(--text);
+}
+
+.cell-reader-modes button.is-active {
+  border-color: var(--line-strong);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.cell-reader article {
+  min-height: 112px;
+  max-height: 230px;
+  padding: 16px;
+  overflow: auto;
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 440;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.cell-reader > footer {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 16px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--quiet);
+  font-size: 10.5px;
+}
+
+.cell-reader > footer em {
+  color: var(--muted);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+body[data-theme="light"] .cell-reader {
+  background: rgba(252, 252, 249, .97);
+  box-shadow:
+    0 22px 58px rgba(36, 43, 35, .16),
+    0 2px 8px rgba(36, 43, 35, .1);
 }
 
 .field-panel {

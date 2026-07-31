@@ -128,11 +128,11 @@ assert.equal(initial.theme, 'dark', 'mock should default to the premium graphite
 assert.equal(initial.canvasColor, '#0d0f0e', 'default canvas should use graphite rather than pure black');
 assert.notEqual(initial.gridLine, initial.structuralLine, 'grid hairlines and frozen-column dividers should use different weights');
 assert.match(initial.activeCellEdge, /rgb\(165, 200, 118\)/, 'active data edge should use the restrained sage accent');
-assert.equal(initial.rowHeight, 44, 'graphite table should use a dense but readable 44px row rhythm');
-assert.equal(initial.companyFontSize, '13px', 'primary record text should use a normal readable 13px size');
+assert.equal(initial.rowHeight, 46, 'graphite table should use a readable 46px row rhythm');
+assert.equal(initial.companyFontSize, '14px', 'primary record text should use a normal desktop 14px size');
 assert.equal(initial.companyDirection, 'row', 'primary record metadata should stay on one aligned line');
-assert.equal(initial.stageTagHeight, 26, 'stage tags should share a stable 26px control height');
-assert.equal(initial.stageTagFontSize, '11.5px', 'stage tags should use readable 11.5px text');
+assert.equal(initial.stageTagHeight, 28, 'stage tags should share a stable 28px control height');
+assert.equal(initial.stageTagFontSize, '12.5px', 'stage tags should use readable 12.5px text');
 assert.equal(initial.workModeBorderWidth, '0px', 'secondary categorical fields should not all become boxed tags');
 assert.equal(initial.scoreRingCount, 20, 'each visible record should have one compact score glyph');
 assert.equal(initial.multiSelectColumnCount, 20, 'each visible record should render the multi-select field');
@@ -154,7 +154,7 @@ assert.ok(initial.emptyCellCount >= 20, 'typed fields should exercise visible em
 assert.deepEqual(initial.emptyCellGlyphs, ['—'], 'all empty typed cells should share one quiet glyph');
 assert.equal(initial.emptyCellBorderWidth, '0px', 'empty values should not become fake boxed controls');
 assert.ok(initial.clippedValueCount > 0, 'long values should exercise real one-line ellipsis behavior');
-assert.equal(initial.rightFieldFontSize, '12px', 'right-side typed fields should use the normal table text size');
+assert.equal(initial.rightFieldFontSize, '13px', 'right-side typed fields should use the normal table text size');
 assert.equal(initial.rowNumberOverflow, false, 'two-digit row numbers should remain fully visible');
 assert.equal(initial.letterHeaderBottom, initial.fieldHeaderTop, 'column letters and typed field headers should stack without overlap');
 await page.screenshot({ path: path.join(dir, 'preview.png') });
@@ -169,6 +169,67 @@ const horizontalScroll = await page.locator('.table-viewport').evaluate((viewpor
 assert.ok(horizontalScroll.max > 1000, 'diverse typed fields should extend the internal spreadsheet canvas');
 assert.ok(horizontalScroll.left > 0, 'table viewport should support horizontal field exploration');
 await page.locator('.table-view').screenshot({ path: path.join(dir, 'preview-table-types.png') });
+await page.locator('.table-viewport').evaluate((viewport) => {
+  viewport.scrollLeft = 0;
+});
+
+await page.locator('[data-long-cell="aster"]').click();
+await page.waitForSelector('#cell-reader:not([hidden])');
+const truncatedLongText = await page.evaluate(() => {
+  const row = document.querySelector('tr[data-record-id="aster"]');
+  const note = row?.querySelector('.note-cell');
+  return {
+    activeCellName: document.querySelector('#active-cell-name')?.textContent,
+    formulaValue: document.querySelector('#formula-input')?.value,
+    formulaState: document.querySelector('.formula-state')?.textContent?.trim(),
+    readerTitle: document.querySelector('#cell-reader-title')?.textContent,
+    readerCopy: document.querySelector('#cell-reader-copy')?.textContent,
+    readerCount: document.querySelector('#cell-reader-count')?.textContent,
+    activeLongCells: document.querySelectorAll('.active-long-cell').length,
+    suspendedRangeCells: document.querySelectorAll('.selected-range.is-suspended-range').length,
+    suspendedFormulaEdge: getComputedStyle(document.querySelector('.active-cell')).boxShadow,
+    rowHeight: row?.querySelector('td')?.getBoundingClientRect().height ?? 0,
+    noteWhiteSpace: note ? getComputedStyle(note).whiteSpace : '',
+    noteClipped: note ? note.scrollWidth > note.clientWidth : false,
+  };
+});
+assert.equal(truncatedLongText.activeCellName, 'Q2', 'name box should follow the selected long-text cell');
+assert.match(truncatedLongText.formulaValue, /年度调薪与远程政策/, 'formula bar should expose the complete raw text value');
+assert.equal(truncatedLongText.formulaState, '文本值', 'formula bar should identify text rather than formula state');
+assert.equal(truncatedLongText.readerTitle, 'Q2 · 备注', 'cell reader should identify the field and row');
+assert.match(truncatedLongText.readerCopy, /试用期结束后的调整空间/, 'cell reader should expose the complete long value');
+assert.match(truncatedLongText.readerCount, /^\d+ 字$/, 'cell reader should expose the raw character count');
+assert.equal(truncatedLongText.activeLongCells, 1, 'only one long-text cell should be active');
+assert.equal(truncatedLongText.suspendedRangeCells, 5, 'the previous range should be suspended while another cell owns focus');
+assert.equal(truncatedLongText.suspendedFormulaEdge, 'none', 'the previous formula cell should not leave a second active outline');
+assert.equal(truncatedLongText.rowHeight, 46, 'opening the reader should not disturb the default compact row rhythm');
+assert.equal(truncatedLongText.noteWhiteSpace, 'nowrap', 'long text should default to one aligned line');
+assert.equal(truncatedLongText.noteClipped, true, 'long text should visibly exercise ellipsis');
+await page.screenshot({ path: path.join(dir, 'preview-long-text.png') });
+
+await page.click('[data-cell-display="wrap"]');
+const wrappedLongText = await page.evaluate(() => {
+  const row = document.querySelector('tr[data-record-id="aster"]');
+  const note = row?.querySelector('.note-cell');
+  return {
+    wrappedRows: document.querySelectorAll('.has-wrapped-cell').length,
+    rowHeight: row?.querySelector('td')?.getBoundingClientRect().height ?? 0,
+    noteWhiteSpace: note ? getComputedStyle(note).whiteSpace : '',
+    lineClamp: note ? getComputedStyle(note).webkitLineClamp : '',
+    scope: document.querySelector('.formula-scope')?.textContent,
+  };
+});
+assert.equal(wrappedLongText.wrappedRows, 1, 'only the active row should expand for wrapped text');
+assert.equal(wrappedLongText.rowHeight, 92, 'auto-wrap should expand the active row to a bounded three-line rhythm');
+assert.equal(wrappedLongText.noteWhiteSpace, 'normal', 'auto-wrap should restore natural word wrapping');
+assert.equal(wrappedLongText.lineClamp, '3', 'auto-wrap should remain bounded to three lines');
+assert.match(wrappedLongText.scope, /自动换行/, 'formula metadata should expose the current cell display mode');
+await page.screenshot({ path: path.join(dir, 'preview-long-text-wrap.png') });
+
+await page.click('#close-cell-reader');
+assert.equal(await page.locator('#cell-reader').isHidden(), true);
+assert.equal(await page.textContent('#active-cell-name'), 'J6');
+assert.match(await page.inputValue('#formula-input'), /^=IF\(AND\(G6>=85,H6>=7\)/);
 await page.locator('.table-viewport').evaluate((viewport) => {
   viewport.scrollLeft = 0;
 });
@@ -299,6 +360,6 @@ console.log(JSON.stringify({
   },
   localLinks: localHrefs.length,
   viewsChecked: ['table', 'board', 'calendar', 'gallery', 'dashboard'],
-  flowsChecked: ['theme-switch', 'number-format', 'conditional-format', 'field-type-select', 'formula-library', 'selection-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
-  screenshots: ['preview.png', 'preview-table.png', 'preview-table-types.png', 'preview-light.png', 'preview-format.png', 'preview-conditional.png', 'preview-fields.png', 'preview-formula.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
+  flowsChecked: ['long-text-reader', 'bounded-row-wrap', 'theme-switch', 'number-format', 'conditional-format', 'field-type-select', 'formula-library', 'selection-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
+  screenshots: ['preview.png', 'preview-table.png', 'preview-table-types.png', 'preview-long-text.png', 'preview-long-text-wrap.png', 'preview-light.png', 'preview-format.png', 'preview-conditional.png', 'preview-fields.png', 'preview-formula.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
 }, null, 2));
