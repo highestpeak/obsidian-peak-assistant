@@ -50,6 +50,39 @@ assert.ok(
 		mock.includes('function formatMarkdownInlineSelection('),
 	'interaction mock owns source-safe bold, italic and underline shortcuts',
 );
+assert.ok(
+	mock.includes('selection.setBaseAndExtent(') &&
+		mock.includes('direction: selection.direction'),
+	'projection restores the full source selection, including its direction',
+);
+assert.equal(
+	mock.includes('projectMarkdownSource(markdownSource, edit.selectionEnd)'),
+	false,
+	'formatting never collapses a selected range to its trailing caret',
+);
+assert.ok(
+	mock.includes('function deleteMarkdownSelection(') &&
+		mock.includes("inputType.startsWith('delete')"),
+	'selection deletion is serialized through Markdown source and removes empty mark shells',
+);
+assert.ok(
+	mock.includes('keyboardFormatGuard') &&
+		mock.includes('consumeKeyboardFormatGuard'),
+	'keydown and beforeinput share one formatting command owner',
+);
+assert.ok(
+	mock.includes("editor.addEventListener('compositionstart'") &&
+		mock.includes("editor.addEventListener('compositionend'") &&
+		mock.includes('editorComposing'),
+	'IME composition owns the native DOM until compositionend',
+);
+assert.ok(
+	mock.includes('function recordMarkdownHistory(') &&
+		mock.includes('function stepMarkdownHistory(') &&
+		mock.includes("key === 'z'") &&
+		mock.includes("key === 'y'"),
+	'manual Markdown history replaces the native undo stack lost during projection',
+);
 assert.equal(
 	mock.includes('.markdown-editor[data-kind="heading"]'),
 	false,

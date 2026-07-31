@@ -225,11 +225,15 @@
 			min-height: 48px;
 			padding: 4px 2px;
 			outline: 0;
-			white-space: pre-wrap;
 			font-size: 15px;
 			line-height: 1.65;
 		}
 		.markdown-editor:empty::before { content: attr(data-placeholder); color: #a1a3ad; }
+		.markdown-block {
+			display: block;
+			min-height: 1.65em;
+			white-space: pre-wrap;
+		}
 		.markdown-block[data-markdown-block-kind="heading"] {
 			font-size: 23px;
 			font-weight: 720;
@@ -271,6 +275,10 @@
 		}
 		.markdown-inline[data-inline-mark="bold"] { font-weight: 720; }
 		.markdown-inline[data-inline-mark="italic"] { font-style: italic; }
+		.markdown-inline[data-inline-mark="bold-italic"] {
+			font-style: italic;
+			font-weight: 720;
+		}
 		.markdown-inline[data-inline-mark="underline"] {
 			text-decoration: underline;
 			text-underline-offset: 2px;
@@ -528,6 +536,22 @@
 		let selected = null;
 		let objectMode = 'create';
 		let markdownSource = '';
+		let keyboardFormatGuard = null;
+		let keyboardFormatGuardTimer = null;
+		let editorComposing = false;
+		let markdownHistory = [{
+			source: '',
+			selection: {
+				anchor: 0,
+				focus: 0,
+				from: 0,
+				to: 0,
+				direction: 'collapsed',
+			},
+		}];
+		let markdownHistoryIndex = 0;
+		let markdownHistoryBurstOpen = false;
+		let markdownHistoryBurstTimer = null;
 
 		resourceRows.innerHTML = resources.map(item => `
 			<button class="resource-row" data-resource="${item.id}" type="button">
@@ -551,38 +575,96 @@
 		document.getElementById('cancelDraft').addEventListener('click', () => {
 			draft.classList.remove('open');
 			markdownSource = '';
+			resetMarkdownHistory();
 			projectMarkdownSource(markdownSource);
 		});
 		document.getElementById('commitDraft').addEventListener('click', () => {
 			if (!markdownSource.trim()) return editor.focus();
 			draft.classList.remove('open');
 		});
-		editor.addEventListener('input', () => {
+		editor.addEventListener('input', synchronizeMarkdownInput);
+		editor.addEventListener('compositionstart', () => {
+			editorComposing = true;
+		});
+		editor.addEventListener('compositionend', () => {
+			editorComposing = false;
+			synchronizeMarkdownInput();
+		});
+
+		function synchronizeMarkdownInput() {
 			const hasProjection = Boolean(editor.querySelector('.markdown-block'));
 			const selection = hasProjection ? readSourceSelection() : null;
 			markdownSource = readEditorSource();
-			projectMarkdownSource(markdownSource, selection?.focus ?? markdownSource.length);
-		});
+			if (editorComposing) return;
+			const nextSelection =
+				selection ?? collapsedSourceSelection(markdownSource.length);
+			recordMarkdownHistory(markdownSource, nextSelection, 'burst');
+			projectMarkdownSource(
+				markdownSource,
+				nextSelection,
+			);
+		}
+
 		editor.addEventListener('beforeinput', event => {
+			const inputType = event.inputType || '';
+			if (inputType === 'historyUndo' || inputType === 'historyRedo') {
+				event.preventDefault();
+				stepMarkdownHistory(inputType === 'historyRedo' ? 1 : -1);
+				return;
+			}
 			const mark = {
 				formatBold: 'bold',
 				formatItalic: 'italic',
 				formatUnderline: 'underline',
-			}[event.inputType];
-			if (!mark) return;
+			}[inputType];
+			if (mark) {
+				event.preventDefault();
+				if (consumeKeyboardFormatGuard()) return;
+				if (!event.isComposing) applyMarkdownInlineFormat(mark);
+				return;
+			}
+			if (!inputType.startsWith('delete') || event.isComposing) return;
+			const selection = readSourceSelection();
+			if (!selection || selection.from === selection.to) return;
+			const edit = deleteMarkdownSelection(
+				markdownSource,
+				selection.from,
+				selection.to,
+			);
+			if (!edit) return;
 			event.preventDefault();
-			if (!event.isComposing) applyMarkdownInlineFormat(mark);
+			markdownSource = edit.value;
+			const nextSelection = collapsedSourceSelection(edit.selectionStart);
+			recordMarkdownHistory(markdownSource, nextSelection);
+			projectMarkdownSource(
+				markdownSource,
+				nextSelection,
+			);
 		});
+
 		editor.addEventListener('keydown', event => {
 			const key = event.key.toLowerCase();
+			const mod = event.metaKey || event.ctrlKey;
 			if (
-				(event.metaKey || event.ctrlKey) &&
+				mod &&
+				!event.altKey &&
+				!event.isComposing &&
+				(key === 'z' || key === 'y')
+			) {
+				event.preventDefault();
+				const redo = key === 'y' || (key === 'z' && event.shiftKey);
+				stepMarkdownHistory(redo ? 1 : -1);
+				return;
+			}
+			if (
+				mod &&
 				!event.altKey &&
 				!event.isComposing &&
 				(key === 'b' || key === 'i' || key === 'u')
 			) {
 				event.preventDefault();
 				const mark = key === 'b' ? 'bold' : key === 'i' ? 'italic' : 'underline';
+				armKeyboardFormatGuard(mark);
 				applyMarkdownInlineFormat(mark);
 				return;
 			}
@@ -605,11 +687,11 @@
 				if (!edit) return;
 				event.preventDefault();
 				markdownSource = edit.value;
+				const nextSelection = sourceSelectionForEdit(edit, selection);
+				recordMarkdownHistory(markdownSource, nextSelection);
 				projectMarkdownSource(
 					markdownSource,
-					selection.anchor > selection.focus
-						? edit.selectionStart
-						: edit.selectionEnd,
+					nextSelection,
 				);
 				return;
 			}
@@ -728,6 +810,117 @@
 			return offset + delta;
 		}
 
+		function collapsedSourceSelection(offset) {
+			return {
+				anchor: offset,
+				focus: offset,
+				from: offset,
+				to: offset,
+				direction: 'collapsed',
+			};
+		}
+
+		function sourceSelectionForEdit(edit, selection) {
+			if (edit.selectionStart === edit.selectionEnd) {
+				return collapsedSourceSelection(edit.selectionStart);
+			}
+			const backward = selection.direction === 'backward';
+			return {
+				anchor: backward ? edit.selectionEnd : edit.selectionStart,
+				focus: backward ? edit.selectionStart : edit.selectionEnd,
+				from: edit.selectionStart,
+				to: edit.selectionEnd,
+				direction: selection.direction,
+			};
+		}
+
+		function recordMarkdownHistory(source, selection, mode = 'atomic') {
+			const entry = {
+				source,
+				selection: { ...selection },
+			};
+			if (mode === 'burst') {
+				if (!markdownHistoryBurstOpen) {
+					markdownHistoryBurstOpen = true;
+					pushMarkdownHistoryEntry(entry);
+				} else {
+					markdownHistory[markdownHistoryIndex] = entry;
+				}
+				if (markdownHistoryBurstTimer !== null) {
+					window.clearTimeout(markdownHistoryBurstTimer);
+				}
+				markdownHistoryBurstTimer = window.setTimeout(() => {
+					markdownHistoryBurstOpen = false;
+					markdownHistoryBurstTimer = null;
+				}, 700);
+				return;
+			}
+			closeMarkdownHistoryBurst();
+			pushMarkdownHistoryEntry(entry);
+		}
+
+		function pushMarkdownHistoryEntry(entry) {
+			const current = markdownHistory[markdownHistoryIndex];
+			if (current?.source === entry.source) {
+				markdownHistory[markdownHistoryIndex] = entry;
+				return;
+			}
+			markdownHistory = markdownHistory.slice(0, markdownHistoryIndex + 1);
+			markdownHistory.push(entry);
+			if (markdownHistory.length > 100) markdownHistory.shift();
+			markdownHistoryIndex = markdownHistory.length - 1;
+		}
+
+		function stepMarkdownHistory(delta) {
+			closeMarkdownHistoryBurst();
+			const nextIndex = Math.max(
+				0,
+				Math.min(markdownHistory.length - 1, markdownHistoryIndex + delta),
+			);
+			if (nextIndex === markdownHistoryIndex) return;
+			markdownHistoryIndex = nextIndex;
+			const entry = markdownHistory[markdownHistoryIndex];
+			markdownSource = entry.source;
+			projectMarkdownSource(markdownSource, entry.selection);
+		}
+
+		function resetMarkdownHistory() {
+			closeMarkdownHistoryBurst();
+			markdownHistory = [{
+				source: '',
+				selection: collapsedSourceSelection(0),
+			}];
+			markdownHistoryIndex = 0;
+		}
+
+		function closeMarkdownHistoryBurst() {
+			markdownHistoryBurstOpen = false;
+			if (markdownHistoryBurstTimer === null) return;
+			window.clearTimeout(markdownHistoryBurstTimer);
+			markdownHistoryBurstTimer = null;
+		}
+
+		function armKeyboardFormatGuard(mark) {
+			keyboardFormatGuard = mark;
+			if (keyboardFormatGuardTimer !== null) {
+				window.clearTimeout(keyboardFormatGuardTimer);
+			}
+			keyboardFormatGuardTimer = window.setTimeout(() => {
+				keyboardFormatGuard = null;
+				keyboardFormatGuardTimer = null;
+			}, 250);
+		}
+
+		function consumeKeyboardFormatGuard() {
+			if (!keyboardFormatGuard) return false;
+			keyboardFormatGuard = null;
+			if (keyboardFormatGuardTimer !== null) {
+				window.clearTimeout(keyboardFormatGuardTimer);
+				keyboardFormatGuardTimer = null;
+			}
+			return true;
+		}
+
 		function applyMarkdownInlineFormat(mark) {
 			const selection = readSourceSelection();
 			if (!selection) return;
@@ -739,7 +932,12 @@
 			);
 			if (!edit) return;
 			markdownSource = edit.value;
-			projectMarkdownSource(markdownSource, edit.selectionEnd);
+			const nextSelection = sourceSelectionForEdit(edit, selection);
+			recordMarkdownHistory(markdownSource, nextSelection);
+			projectMarkdownSource(
+				markdownSource,
+				nextSelection,
+			);
 		}
 
 		function formatMarkdownInlineSelection(source, from, to, mark) {
@@ -749,8 +947,9 @@
 				underline: { open: '<u>', close: '</u>' },
 			}[mark];
 			if (!syntax || markdownFenceOpenAt(source, from)) return null;
-			const start = Math.max(0, Math.min(source.length, Math.min(from, to)));
-			const end = Math.max(start, Math.min(source.length, Math.max(from, to)));
+			const bounds = normalizeMarkdownInlineSelection(source, from, to);
+			const start = bounds.from;
+			const end = bounds.to;
 			if (start === end) {
 				const value =
 					source.slice(0, start) +
@@ -761,6 +960,35 @@
 				return { value, selectionStart: caret, selectionEnd: caret };
 			}
 			const selected = source.slice(start, end);
+			if (mark === 'bold' || mark === 'italic') {
+				const removal = markdownEmphasisRemoval(
+					source,
+					start,
+					end,
+					mark,
+				);
+				if (removal) {
+					const selectionStart = start - removal;
+					return {
+						value:
+							source.slice(0, selectionStart) +
+							selected +
+							source.slice(end + removal),
+						selectionStart,
+						selectionEnd: selectionStart + selected.length,
+					};
+				}
+				return {
+					value:
+						source.slice(0, start) +
+						syntax.open +
+						selected +
+						syntax.close +
+						source.slice(end),
+					selectionStart: start + syntax.open.length,
+					selectionEnd: end + syntax.open.length,
+				};
+			}
 			const before = source.slice(
 				Math.max(0, start - syntax.open.length),
 				start,
@@ -792,6 +1020,100 @@
 			};
 		}
 
+		function normalizeMarkdownInlineSelection(source, from, to) {
+			let start = Math.max(0, Math.min(source.length, Math.min(from, to)));
+			const end = Math.max(start, Math.min(source.length, Math.max(from, to)));
+			const lineStart = source.lastIndexOf('\n', Math.max(0, start - 1)) + 1;
+			const lineEndAt = source.indexOf('\n', start);
+			const lineEnd = lineEndAt < 0 ? source.length : lineEndAt;
+			if (end <= lineEnd) {
+				const prefixLength = markdownStructuralPrefixLength(
+					source.slice(lineStart, lineEnd),
+				);
+				start = Math.max(start, lineStart + prefixLength);
+			}
+			return { from: start, to: Math.max(start, end) };
+		}
+
+		function markdownStructuralPrefixLength(line) {
+			const structural =
+				/^(?:#{1,6}\s+|\s*(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?|\s*>\s*(?:\[![^\]]+\]\s*)?)/.exec(
+					line,
+				);
+			return structural?.[0].length ?? 0;
+		}
+
+		function markdownEmphasisRemoval(source, start, end, mark) {
+			for (const delimiter of ['*', '_']) {
+				const opening = adjacentDelimiterRun(source, start, delimiter, -1);
+				const closing = adjacentDelimiterRun(source, end, delimiter, 1);
+				const shared = Math.min(opening, closing);
+				if (mark === 'bold' && shared >= 2) return 2;
+				if (mark === 'italic' && shared % 2 === 1) return 1;
+			}
+			return 0;
+		}
+
+		function adjacentDelimiterRun(source, offset, delimiter, direction) {
+			let count = 0;
+			let cursor = direction < 0 ? offset - 1 : offset;
+			while (
+				cursor >= 0 &&
+				cursor < source.length &&
+				source[cursor] === delimiter
+			) {
+				count += 1;
+				cursor += direction;
+			}
+			return count;
+		}
+
+		function deleteMarkdownSelection(source, from, to) {
+			const start = Math.max(0, Math.min(source.length, Math.min(from, to)));
+			const end = Math.max(start, Math.min(source.length, Math.max(from, to)));
+			if (start === end) return null;
+			let value = source.slice(0, start) + source.slice(end);
+			let caret = start;
+			const shells = [
+				{ open: '<u>', close: '</u>' },
+				{ open: '**', close: '**' },
+				{ open: '__', close: '__' },
+				{ open: '~~', close: '~~' },
+				{ open: '*', close: '*' },
+				{ open: '_', close: '_' },
+			];
+			let removed = true;
+			while (removed) {
+				removed = false;
+				for (const shell of shells) {
+					const openAt = caret - shell.open.length;
+					const closeAt = caret;
+					if (openAt < 0) continue;
+					const before = value.slice(openAt, caret).toLowerCase();
+					const after = value
+						.slice(closeAt, closeAt + shell.close.length)
+						.toLowerCase();
+					if (
+						before !== shell.open.toLowerCase() ||
+						after !== shell.close.toLowerCase()
+					) {
+						continue;
+					}
+					value =
+						value.slice(0, openAt) +
+						value.slice(closeAt + shell.close.length);
+					caret = openAt;
+					removed = true;
+					break;
+				}
+			}
+			return {
+				value,
+				selectionStart: caret,
+				selectionEnd: caret,
+			};
+		}
+
 		function markdownFenceOpenAt(source, offset) {
 			let open = false;
 			source.slice(0, offset).split('\n').forEach(line => {
@@ -815,7 +1137,12 @@
 					markdownSource.slice(0, lineStart) +
 					'\n' +
 					markdownSource.slice(to);
-				projectMarkdownSource(markdownSource, lineStart + 1);
+				const nextSelection = collapsedSourceSelection(lineStart + 1);
+				recordMarkdownHistory(markdownSource, nextSelection);
+				projectMarkdownSource(
+					markdownSource,
+					nextSelection,
+				);
 				return;
 			}
 			const inserted = soft
@@ -827,7 +1154,12 @@
 				markdownSource.slice(0, from) +
 				inserted +
 				markdownSource.slice(to);
-			projectMarkdownSource(markdownSource, from + inserted.length);
+			const nextSelection = collapsedSourceSelection(from + inserted.length);
+			recordMarkdownHistory(markdownSource, nextSelection);
+			projectMarkdownSource(
+				markdownSource,
+				nextSelection,
+			);
 		}
 
 		function markdownContinuation(line) {
@@ -850,9 +1182,9 @@
 			return { sourceLength: quote[0].length, nextPrefix: quote[0] };
 		}
 
-		function projectMarkdownSource(source, caretOffset) {
+		function projectMarkdownSource(source, sourceSelection) {
 			const shouldRestore =
-				Number.isFinite(caretOffset) &&
+				Boolean(sourceSelection) &&
 				document.activeElement === editor;
 			if (!source) {
 				editor.innerHTML = '';
@@ -860,17 +1192,30 @@
 				return;
 			}
 			let codeOpen = false;
+			let lineFrom = 0;
 			editor.innerHTML = source
 				.split('\n')
 				.map(line => {
 					const projected = projectMarkdownLine(line, codeOpen);
 					codeOpen = projected.codeOpen;
-					return projected.html;
+					const html = projected.html.replace(
+						'<span class="markdown-block"',
+						(
+							`<span class="markdown-block"` +
+							` data-source-from="${lineFrom}"` +
+							` data-source-to="${lineFrom + line.length}"`
+						),
+					);
+					lineFrom += line.length + 1;
+					return html;
 				})
-				.join('\n');
-			const offset = Math.max(0, Math.min(source.length, caretOffset ?? source.length));
+				.join('');
+			const offset = Math.max(
+				0,
+				Math.min(source.length, sourceSelection?.focus ?? source.length),
+			);
 			updateLiveKind(source, offset);
-			if (shouldRestore) restoreSourceSelection(offset);
+			if (shouldRestore) restoreSourceSelection(sourceSelection);
 		}
 
 		function projectMarkdownLine(line, codeOpen) {
@@ -997,6 +1342,20 @@
 					return inlineMarkdownSpan(source, at, 1, closeAt, 1, 'code', true);
 				}
 			}
+			if (rest.startsWith('***') || rest.startsWith('___')) {
+				const delimiter = rest.slice(0, 3);
+				const closeAt = findInlineMarkdownClose(source, at + 3, delimiter);
+				if (closeAt >= 0) {
+					return inlineMarkdownSpan(
+						source,
+						at,
+						3,
+						closeAt,
+						3,
+						'bold-italic',
+					);
+				}
+			}
 			if (rest.startsWith('**') || rest.startsWith('__')) {
 				const delimiter = rest.slice(0, 2);
 				const closeAt = findInlineMarkdownClose(source, at + 2, delimiter);
@@ -1119,16 +1478,29 @@
 			}
 			const anchor = sourceOffset(selection.anchorNode, selection.anchorOffset);
 			const focus = sourceOffset(selection.focusNode, selection.focusOffset);
+			const direction =
+				anchor === focus
+					? 'collapsed'
+					: anchor < focus
+						? 'forward'
+						: 'backward';
 			return {
 				anchor,
 				focus,
 				from: Math.min(anchor, focus),
 				to: Math.max(anchor, focus),
+				direction,
 			};
 		}
 
 		function readEditorSource() {
-			if (editor.querySelector('.markdown-block')) return editor.textContent || '';
+			const blocks = [...editor.querySelectorAll(':scope > .markdown-block')];
+			if (blocks.length > 0) {
+				return blocks
+					.map(block => block.textContent || '')
+					.join('\n')
+					.replaceAll('\r', '');
+			}
 			return readNativeEditableSource(editor);
 		}
 
@@ -1158,40 +1530,107 @@
 		}
 
 		function sourceOffset(node, offset) {
+			if (node === editor) {
+				const child = editor.childNodes[offset] ?? null;
+				if (child instanceof HTMLElement) {
+					const from = Number(child.dataset.sourceFrom);
+					if (Number.isFinite(from)) return from;
+				}
+				if (offset >= editor.childNodes.length) return markdownSource.length;
+			}
+			const element =
+				node.nodeType === Node.TEXT_NODE
+					? node.parentElement
+					: node;
+			const block = element?.closest?.('.markdown-block');
+			if (block instanceof HTMLElement) {
+				const from = Number(block.dataset.sourceFrom);
+				if (Number.isFinite(from)) {
+					const range = document.createRange();
+					range.selectNodeContents(block);
+					range.setEnd(node, offset);
+					return from + range.toString().length;
+				}
+			}
 			const range = document.createRange();
 			range.selectNodeContents(editor);
 			range.setEnd(node, offset);
 			return range.toString().length;
 		}
 
-		function restoreSourceSelection(offset) {
+		function restoreSourceSelection(mapped) {
 			const selection = window.getSelection();
+			const anchor = sourcePoint(mapped.anchor);
+			const focus = sourcePoint(mapped.focus);
+			if (!selection || !anchor || !focus) return;
+			selection.removeAllRanges();
+			if (typeof selection.setBaseAndExtent === 'function') {
+				selection.setBaseAndExtent(
+					anchor.node,
+					anchor.offset,
+					focus.node,
+					focus.offset,
+				);
+				return;
+			}
 			const range = document.createRange();
-			const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
-			let remaining = offset;
+			const forward = mapped.anchor <= mapped.focus;
+			const start = forward ? anchor : focus;
+			const end = forward ? focus : anchor;
+			range.setStart(start.node, start.offset);
+			range.setEnd(end.node, end.offset);
+			selection.addRange(range);
+		}
+
+		function sourcePoint(offset) {
+			const blocks = [...editor.querySelectorAll(':scope > .markdown-block')];
+			if (blocks.length === 0) return { node: editor, offset: 0 };
+			const clamped = Math.max(0, Math.min(markdownSource.length, offset));
+			const starting = blocks.find(
+				block => Number(block.dataset.sourceFrom) === clamped,
+			);
+			if (starting) return pointInsideBlock(starting, 0);
+			const containing = blocks.find(block => {
+				const from = Number(block.dataset.sourceFrom);
+				const to = Number(block.dataset.sourceTo);
+				return from < clamped && clamped <= to;
+			});
+			if (containing) {
+				return pointInsideBlock(
+					containing,
+					clamped - Number(containing.dataset.sourceFrom),
+				);
+			}
+			const last = blocks[blocks.length - 1];
+			return pointInsideBlock(last, (last.textContent || '').length);
+		}
+
+		function pointInsideBlock(block, requestedOffset) {
+			const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+			let remaining = requestedOffset;
+			let last = null;
 			let node = walker.nextNode();
 			while (node) {
+				last = node;
 				const length = node.textContent?.length ?? 0;
 				if (remaining <= length) {
 					const token = node.parentElement?.closest('.markdown-token');
 					if (token) {
-						if (remaining === 0) range.setStartBefore(token);
-						else range.setStartAfter(token);
-					} else {
-						range.setStart(node, remaining);
+						return remaining === 0
+							? { node: token.parentNode, offset: childIndex(token) }
+							: { node: token.parentNode, offset: childIndex(token) + 1 };
 					}
-					range.collapse(true);
-					selection.removeAllRanges();
-					selection.addRange(range);
-					return;
+					return { node, offset: remaining };
 				}
 				remaining -= length;
 				node = walker.nextNode();
 			}
-			range.selectNodeContents(editor);
-			range.collapse(false);
-			selection.removeAllRanges();
-			selection.addRange(range);
+			if (last) return { node: last, offset: last.textContent?.length ?? 0 };
+			return { node: block, offset: 0 };
+		}
+
+		function childIndex(node) {
+			return [...node.parentNode.childNodes].indexOf(node);
 		}
 
 		function updateLiveKind(source, offset) {
