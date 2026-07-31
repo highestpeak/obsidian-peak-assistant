@@ -2,7 +2,7 @@
 
 Date: 2026-07-30
 
-Visual direction revised: 2026-07-31 · V15 stable command directory
+Visual direction revised: 2026-07-31 · V17 per-item icon browser
 
 Status: Decided · design/spec ready · implementation pending
 
@@ -49,9 +49,9 @@ The user does not need a better global ranking algorithm for daily work. They ne
 
 ## 4. Goals
 
-### G1 · Stable scoped retrieval
+### G1 · Stable scoped navigation
 
-Frequently used actions stay in predictable scope tabs and grid positions when search is empty.
+Frequently used commands and destinations stay in predictable scope tabs and grid positions when search is empty.
 
 ### G2 · User curation
 
@@ -65,9 +65,9 @@ Each action keeps its real command ID, current availability and current user-con
 
 Peak surface entry points use Command Gateway ownership. External plugin commands remain adapters, not new Peak capabilities.
 
-### G5 · Home continuity
+### G5 · Destination continuity
 
-The same curated actions can appear in a full-tab Home View beside pinned files, Bookmarks, Workspaces and recent work. Home does not reproduce the Modal's exact layout.
+The Modal and full-tab Home View share the same bounded destination types: commands, product views, Vault files, Bookmarks and Workspaces. Home does not reproduce the Modal's exact layout.
 
 ### G6 · Native coexistence
 
@@ -93,8 +93,7 @@ The exhaustive native Command Palette stays one keystroke away.
 CommandCenterBoardConfig
 ├─ Modal shell
 │  ├─ group scope tabs
-│  ├─ cross-scope type facets
-│  ├─ two-dimensional action grid
+│  ├─ two-dimensional launcher-item grid
 │  └─ explicit customize mode
 └─ Home shell
    ├─ global search entry
@@ -105,7 +104,7 @@ CommandCenterBoardConfig
 
 The Modal and Home must not maintain separate copies of actions. They share action identity, label, icon, hotkey resolution and destination. Their composition differs:
 
-- Modal optimizes for switching context, narrowing by type and navigating a bounded grid.
+- Modal optimizes for switching user-owned groups, searching and navigating a bounded grid.
 - Home optimizes for returning to a small set of pinned destinations.
 - Group order in the Modal does not force Home to reproduce every group.
 
@@ -173,11 +172,15 @@ interface CommandCenterGroup {
 	actions: CommandCenterActionItem[];
 }
 
+type CommandCenterItemIcon =
+	| { kind: 'lucide'; name: string }
+	| { kind: 'emoji'; value: string };
+
 interface CommandCenterActionItem {
 	id: string;
 	action: CommandCenterAction;
 	shortLabel: string;
-	icon?: string;
+	icon?: CommandCenterItemIcon;
 	display: 'icon-label' | 'icon-only' | 'text-only';
 	pinnedToHome: boolean;
 	order: number;
@@ -193,12 +196,14 @@ Default group definitions belong in `templates/config/command-center-defaults.js
 The modal has three persistent regions:
 
 1. Search field and close button.
-2. A two-row filter shell followed by one two-dimensional action grid.
+2. One group-scope row followed by one two-dimensional launcher-item grid.
 3. Footer keyboard help and current-scope feedback.
 
-The first filter row projects user-defined groups as compact scope tabs. `All` precedes the group tabs; a trailing add button opens Customize. Only one scope is expanded at a time, so group count does not create a long page.
+The scope row projects user-defined groups as compact tabs. `All` precedes the group tabs; a trailing add button opens Customize. Only one scope is expanded at a time, so group count does not create a long page.
 
-The second row uses orthogonal type facets such as `AI`, `Create`, `Navigate` and `Visual`. Selecting a scope and facet narrows the same grid; it never changes into a result list.
+There is no second type-navigation row. `AI`, `Create`, `Navigate` and `Visual` duplicate information already carried by the user group, semantic icon and label, and make the modal read like a taxonomy browser.
+
+The grid is not command-only. A `Pinned` group can place Home, Usage Dashboard, a Base or other dashboard, Vault documents, Bookmarks and Workspaces beside executable commands. These all use `CommandCenterActionItem`; target kind changes execution, not the cell geometry.
 
 There is no permanent side rail, accordion stack, nested group card or vertically repeated group chrome.
 
@@ -220,11 +225,11 @@ Rules:
 1. Match short label first.
 2. Match user aliases second.
 3. Match group and plugin label third.
-4. Keep scope tabs and type facets available while filtering.
+4. Keep group scope tabs available while filtering.
 5. Show matches in the same two-dimensional action grid.
 6. Do not include unconfigured commands.
 
-The full registered-command catalog appears only inside Manage → Add action. This is the main protection against the original “weird fuzzy matches” problem.
+The full registered-command catalog and addressable destination picker appear only inside Customize. A Vault file, Bookmark, Workspace or owner-registered view can also expose `Pin to Command Center` on its own surface. Runtime search never expands into the full command catalog; this is the main protection against the original “weird fuzzy matches” problem.
 
 ### 7.3 Home View
 
@@ -243,11 +248,11 @@ Pinned Notes, Bases and Canvases remain owned by their existing Obsidian views. 
 
 Customize mode is explicit. Normal invocation never shows drag handles or edit controls. Customize reuses the familiar Command Palette retrieval model instead of introducing a second card canvas:
 
-- the header is a command search field;
+- the header searches commands and destinations;
 - the first row selects the group being edited and ends with a small `New group` action;
 - the selected group's icon and name are edited directly in one compact identity row;
-- every registered command stays in one continuous directory; there are no `Added` and `Available` sections;
-- every command row keeps its full label, source, current hotkey and one trailing membership switch;
+- every registered command and saved destination stays in one continuous directory; there are no `Added` and `Available` sections;
+- every item row keeps its full label, source, applicable hotkey and one trailing membership switch;
 - toggling membership changes only the switch state and keeps that command at the same directory index;
 - active commands can be dragged against any row to change the group's spatial order explicitly;
 - clicking an added row expands only that row's display mode and `Pin to Home` controls.
@@ -259,13 +264,14 @@ Available operations:
 - add / rename group;
 - choose group icon;
 - add / remove action with the scoped membership switch;
+- add the current Vault document, Bookmark, Workspace, Base, Canvas or registered view as a destination;
 - edit short label and aliases;
 - reorder groups and actions;
 - choose `icon + label`, `icon only` or `text only` for each action;
 - pin / unpin action in Home Quick access;
 - remove unavailable action.
 
-The full registered-command catalog appears only in Customize. It is the primary content of that state, not a temporary popover and not a permanent second column beside a group editor. Runtime Launcher and Search still filter only configured actions.
+The full command-and-destination directory appears only in Customize. It is the primary content of that state, not a temporary popover and not a permanent second column beside a group editor. Runtime Launcher and Search still filter only configured items.
 
 Destructive layout reset requires confirmation and export/import support before a global reset ships.
 
@@ -273,10 +279,10 @@ Destructive layout reset requires confirmation and export/import support before 
 
 | Screen / state | Primary job | Reads | Writes | Main actions | Empty / failure state | Entry / exit |
 | --- | --- | --- | --- | --- | --- | --- |
-| Modal · launcher | Invoke a curated action without typing | Groups, facets, actions, availability, hotkeys | Recent usage only | Switch scope, filter type, spatial navigation, Enter, search | Starter grid or “add first action” | Hotkey / command; closes to prior focus |
-| Modal · search | Narrow configured actions | Curated action index | Query only | Type, retain scope/facet, grid navigation, Enter, clear | Empty result with clear-query guidance | Search field; returns to launcher on clear |
+| Modal · launcher | Open a curated command or destination without typing | Groups, launcher items, availability, hotkeys | Recent usage only | Switch group scope, spatial navigation, Enter, search | Starter grid or “add first item” | Hotkey / command; closes to prior focus |
+| Modal · search | Narrow configured commands and destinations | Curated launcher-item index | Query only | Type, retain group scope, grid navigation, Enter, clear | Empty result with clear-query guidance | Search field; returns to launcher on clear |
 | Home View | Return to important work and destinations | Pinned actions, recents, bookmarks, Workspaces, pinned pages | Quick access and pin order | Search, open destination, customize | Guide to pin the first destination or page | Ribbon / command / empty tab; exits to destination |
-| Customize | Curate one group's membership and order | Current config and registered command catalog | Group icon/name, membership, stable directory order, display mode, Home pins | Select group, search one continuous directory, switch membership in place, drag active rows, expand row settings, Done | Empty search result or compatibility warning in the directory | Footer action; Done returns to launcher |
+| Customize | Curate one group's membership and order | Current config, registered command catalog and addressable destinations | Group icon/name, membership, stable directory order, display mode, Home pins | Select group, search one continuous item directory, switch membership in place, drag active rows, expand row settings, Done | Empty search result or compatibility warning in the directory | Footer action; Done returns to launcher |
 
 ## 9. Visual design
 
@@ -285,8 +291,7 @@ Destructive layout reset requires confirmation and export/import support before 
 - Width: `min(640px, calc(100vw - 48px))`.
 - Height: approximately `400px`, capped by `calc(100vh - 72px)`.
 - Overlay: a light neutral wash, not a dark modal scrim.
-- First filter row: `All`, source-led group scopes and one trailing Customize button. A group uses a trusted product mark when one exists; otherwise it uses a user-selected system icon or a short text label. Arbitrary group colors are not an identity system.
-- Second filter row: compact `icon + label` type controls with a hairline boundary; selecting an active facet again clears it.
+- One navigation row only: `All`, user-owned group scopes and one trailing Customize button. A group uses a trusted product mark when one exists; otherwise it uses a user-selected system icon or a short text label. Arbitrary group colors are not an identity system.
 - Content canvas: three equal columns at the reference width, responsive down to fewer columns.
 - Action cell: approximately `38px` high and single-line, borderless at rest, with only a quiet neutral hover / selection fill.
 - Search, action title and filter label form an intentional `12 / 11.5 / 9.5px` type scale. Runtime cells do not show a second provenance line.
@@ -318,8 +323,11 @@ Separate source identity from action semantics, and never use AI-generated bitma
 - Peak Assistant reuses its dedicated Peak mark in the scope row.
 - A third-party plugin uses its trusted product mark only when that asset actually exists.
 - A source without a trusted mark uses a user-selected system icon or a short text label; the prototype does not invent substitute brand marks.
-- Every action uses its own semantic icon from the shared icon family.
-- When an action has no suitable icon, configuration may choose a neutral monogram or text-only mode; it does not inherit the group logo.
+- Every command or destination item owns its presentation icon independently from the group icon and underlying command registration.
+- The default may come from the product or Lucide, but the user can override each active item through one searchable Icon Browser.
+- The browser has two explicit sources: searchable Lucide names and a curated Unicode Emoji set. Switching source does not change the item label, target or hotkey.
+- Emoji values are stored as Unicode text, limited to one visible grapheme sequence and rendered through the system emoji font. Peak does not upload or generate emoji artwork.
+- `No icon` remains available. If an icon-only item clears its icon, it safely falls back to text-only instead of becoming an invisible cell.
 - Color is reserved for trusted product identity. Shape, label and position carry the command semantics.
 
 AI-generated icons are excluded because they are inconsistent at small sizes, hard to theme and difficult to keep semantically stable across versions.
@@ -328,20 +336,20 @@ AI-generated icons are excluded because they are inconsistent at small sizes, ha
 
 - Switching group scope moves one shared underline between tabs over approximately `220ms`; tabs do not each flash a new underline into existence.
 - The newly active scope panel enters with `opacity` and at most `5px` of vertical travel over approximately `180ms`.
-- Facet changes may use a shorter `150ms` result-grid fade. Query typing must not replay a full-page transition on every keystroke.
+- Query typing must not replay a full-page transition on every keystroke.
 - Motion never changes layout ownership or action order and must be disabled by `prefers-reduced-motion`.
 
-### 9.5 Customize command directory
+### 9.5 Customize item directory
 
 - Geometry and typography should recall Obsidian's native Command Palette: one search field, compact continuous rows and trailing hotkeys or state controls.
 - Customize may grow to approximately `510px` high so the full directory has a useful scan window; Launcher and runtime Search remain approximately `400px`.
 - The directory uses neutral hover fills and separators rather than outlined command cards.
 - Group selection stays above the directory. Renaming and icon choice are direct edits, not a settings form.
-- The command directory is one continuous, stable list. It never splits into `Added` and `Available` regions.
+- The command-and-destination directory is one continuous, stable list. It never splits into `Added` and `Available` regions.
 - Membership uses one binary switch scoped to the active group. It must announce `aria-checked` and an add/remove accessible label.
 - Toggling membership keeps the row at the same directory index and preserves the current scroll position. A row moves only after an explicit drag.
 - Active rows remain draggable inside the unified directory. Their order defines the group's Launcher order; inactive rows are stable drop anchors rather than a second section.
-- Advanced action presentation is progressive disclosure: only an explicitly selected added row exposes display mode and Home Pin.
+- Advanced action presentation is progressive disclosure: only an explicitly selected added row exposes its Icon Browser entry, display mode and Home Pin.
 
 ## 10. Keyboard and focus contract
 
@@ -356,8 +364,8 @@ The project does not assign a default hotkey. The user sets it in Obsidian Setti
 - `/` or normal typing focuses search.
 - `Esc` clears query first, then closes the modal.
 - `Tab` moves between structural controls.
-- Left and Right move across scope tabs, facet chips or one grid row.
-- Up and Down move between filter rows and the nearest action in the adjacent grid row.
+- Left and Right move across scope tabs or one grid row.
+- Up and Down move between the single scope row and the nearest item in the adjacent grid row.
 - `Enter` invokes the focused tile.
 - `Cmd/Ctrl + P` may close Command Center and open the native Palette.
 - Closing restores the prior active element and editor selection.
@@ -451,22 +459,29 @@ Home navigates to destinations and lets existing owners render bounded previews 
 
 The default first-run board is intentionally small.
 
+### Pinned
+
+- Home;
+- Usage Dashboard;
+- Bookmarks collection and one user-selected Bookmark;
+- one user-selected dashboard, Base or Canvas;
+- up to two user-pinned Vault documents.
+
+The Pinned group is not a second Home page. It is a compact set of direct destinations inside the same modal grid. Pinning stores stable target identity and presentation metadata; it does not copy document or dashboard content.
+
 ### Peak Assistant
 
 - Composer
 - Chat Studio
 - File Atlas
 - Quick Search
-- Usage Dashboard
 - Settings
 
 Setup Wizard appears only while setup is incomplete. It does not occupy permanent first-run space after completion.
 
 ### Navigation
 
-- Home
 - Daily note
-- Bookmarks
 - one user-selected Workspace
 
 The user may add third-party groups such as Excalidraw or QuickAdd during Manage mode. Peak does not assume those plugins are installed.
@@ -509,9 +524,8 @@ This is an implementation sequence, not permission to ship incomplete UI as the 
 
 - React modal shell;
 - dynamic group scope tabs;
-- type facets shared by launcher and search;
-- three-column borderless action grid with responsive column count;
-- search over configured actions;
+- three-column borderless launcher-item grid with responsive column count;
+- search over configured commands and destinations;
 - full keyboard and focus restoration;
 - close-only header.
 
@@ -550,7 +564,7 @@ This is an implementation sequence, not permission to ship incomplete UI as the 
 - Missing command IDs fail closed.
 - Hotkey resolver never persists stale display strings.
 - Modal/Home resolve the same action identity, label, icon and hotkey.
-- Keyboard tests across filter rows and the action grid.
+- Keyboard tests across the scope row and launcher-item grid.
 - Focus restoration test.
 - Boundary test prevents UI or service code from reading private `app.commands` directly.
 - Build and existing command gateway tests.
@@ -561,13 +575,14 @@ Use the canonical CDP protocol.
 
 1. Open from a user-bound hotkey.
 2. Verify board geometry and computed hit targets.
-3. Switch group scope, select a type facet and navigate the grid in both axes.
+3. Switch group scope and navigate the grid in both axes.
 4. Search a curated Excalidraw scope without changing to a list.
-5. Execute a Peak command and a third-party command.
+5. Execute a Peak command, open Home, open a dashboard and open a pinned Vault document.
 6. Disable the third-party plugin and verify the unavailable state.
 7. Close with Escape and verify active element and editor selection restoration.
 8. Open Home in a new tab and return without workspace loss.
-9. Record a short clip for focus, keyboard and manage drag behavior.
+9. On one active item, choose a Lucide icon, then an Emoji, and verify Launcher, Search and Home update from the same presentation metadata.
+10. Record a short clip for Icon Browser focus restoration, keyboard behavior and manage drag behavior.
 
 If CDP is unavailable, mark these interactions `INTERACTION NOT VERIFIED`; a static prototype and green build are not acceptance.
 
@@ -577,9 +592,11 @@ If CDP is unavailable, mark these interactions `INTERACTION NOT VERIFIED`; a sta
 - The user can bind one shortcut to open Peak Command Center.
 - Empty query shows one selected scope as a two-dimensional action grid.
 - All first-run groups are available as stable top-row scope tabs without a permanent group sidebar.
-- Type facets narrow the selected scope without moving actions into a list.
+- No second type-navigation row competes with the user-owned group scopes.
+- The same grid can open commands, Home, registered dashboards, pinned Vault documents, Bookmarks and Workspaces.
 - Group order and action order remain stable.
-- Customize presents one stable command directory, can add and reorder groups/actions, and persists all three action display modes.
+- Customize presents one stable item directory, can add and reorder groups/items, and persists all three display modes.
+- Every active item can choose a Lucide icon, an Emoji or no icon through one searchable browser; the result stays synchronized across Launcher, Search and Home.
 - Runtime search returns only configured actions and keeps source provenance.
 - Every visible shortcut matches current Obsidian hotkey configuration.
 - A user can create an Excalidraw group and add a command without editing files.

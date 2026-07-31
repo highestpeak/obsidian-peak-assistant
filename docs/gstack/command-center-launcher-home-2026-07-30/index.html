@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Peak Command Center · V15</title>
+  <title>Peak Command Center · V17</title>
   <style>
     :root {
       color-scheme: light;
@@ -493,13 +493,12 @@
     }
 
     .filter-shell {
-      padding: 0 16px 9px;
+      padding: 0 16px 4px;
       border-bottom: 1px solid #f0f1f3;
       background: #fff;
     }
 
-    .scope-strip,
-    .facet-strip {
+    .scope-strip {
       min-width: 0;
       display: flex;
       align-items: center;
@@ -518,12 +517,7 @@
       display: none;
     }
 
-    .facet-strip {
-      margin-top: 4px;
-    }
-
-    .scope-tab,
-    .facet-chip {
+    .scope-tab {
       height: 26px;
       display: inline-flex;
       flex: none;
@@ -570,8 +564,7 @@
       opacity: 1;
     }
 
-    .scope-tab.scope-add:hover,
-    .facet-chip:hover {
+    .scope-tab.scope-add:hover {
       background: #f3f4f5;
       opacity: 1;
     }
@@ -604,7 +597,7 @@
     }
 
     .scope-tab.scope-tone-0 {
-      color: #684eb4;
+      color: #5f646b;
     }
 
     .scope-tab.scope-tone-1 {
@@ -619,6 +612,10 @@
       color: #5f646b;
     }
 
+    .scope-tab.scope-brand {
+      color: #684eb4;
+    }
+
     .scope-tab.scope-text {
       width: auto;
       padding: 0 6px;
@@ -630,33 +627,6 @@
 
     .scope-tab.scope-text::before {
       content: none;
-    }
-
-    .facet-chip {
-      height: 24px;
-      gap: 5px;
-      padding: 0 7px;
-      border-color: #e1e3e7;
-      border-radius: 6px;
-      color: #62676e;
-      background: #fff;
-      font-size: 9.5px;
-      font-weight: 500;
-      letter-spacing: -0.006em;
-      transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
-    }
-
-    .facet-chip .icon {
-      width: 12px;
-      height: 12px;
-      display: block;
-      color: #777c83;
-    }
-
-    .facet-chip.active {
-      border-color: #cfd3d8;
-      color: #2f3338;
-      background: #f6f7f8;
     }
 
     .scope-panels {
@@ -975,6 +945,17 @@
     .action-icon .icon {
       width: 15px;
       height: 15px;
+    }
+
+    .action-icon.is-emoji {
+      font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+      font-size: 15px;
+      line-height: 1;
+    }
+
+    .emoji-icon {
+      display: block;
+      line-height: 1;
     }
 
     .action-name {
@@ -1408,6 +1389,12 @@
       height: 16px;
     }
 
+    .manage-command-icon.is-emoji {
+      font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+      font-size: 15px;
+      line-height: 1;
+    }
+
     .manage-command-copy {
       min-width: 0;
     }
@@ -1501,6 +1488,42 @@
       border-top: 1px solid #e9eaed;
       color: #888c92;
       font-size: 8.5px;
+    }
+
+    .inline-icon-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .inline-icon-button {
+      width: 25px;
+      height: 23px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 1px solid #e0e2e6;
+      border-radius: 5px;
+      color: #656a72;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .inline-icon-button:hover,
+    .inline-icon-button[aria-expanded="true"] {
+      border-color: #c9bce4;
+      color: #6046b8;
+      background: #f7f4fc;
+    }
+
+    .inline-icon-button .icon {
+      width: 14px;
+      height: 14px;
+    }
+
+    .inline-icon-button .emoji-icon {
+      font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+      font-size: 14px;
     }
 
     .inline-display-switcher {
@@ -1599,6 +1622,224 @@
     .manage-icon-picker span {
       font-size: 9px;
       font-weight: 650;
+    }
+
+    .item-icon-browser {
+      position: absolute;
+      top: 86px;
+      right: 15px;
+      z-index: 12;
+      width: 304px;
+      height: 302px;
+      display: grid;
+      grid-template-rows: 42px 39px minmax(0, 1fr) 31px;
+      overflow: hidden;
+      border: 1px solid #dadde2;
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 18px 46px rgba(31, 35, 42, 0.18);
+    }
+
+    .item-icon-browser[hidden] {
+      display: none;
+    }
+
+    .icon-browser-header,
+    .icon-browser-toolbar,
+    .icon-browser-footer {
+      display: flex;
+      align-items: center;
+    }
+
+    .icon-browser-header {
+      gap: 8px;
+      padding: 0 9px 0 12px;
+      border-bottom: 1px solid #eceef1;
+    }
+
+    .icon-browser-title {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .icon-browser-title strong,
+    .icon-browser-title span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .icon-browser-title strong {
+      color: #303338;
+      font-size: 10.5px;
+      font-weight: 620;
+    }
+
+    .icon-browser-title span {
+      margin-top: 2px;
+      color: #94989e;
+      font-size: 8px;
+    }
+
+    .icon-browser-close {
+      width: 25px;
+      height: 25px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 0;
+      border-radius: 5px;
+      color: #858990;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .icon-browser-close:hover {
+      color: #3f4349;
+      background: #f3f4f5;
+    }
+
+    .icon-browser-close .icon {
+      width: 12px;
+      height: 12px;
+    }
+
+    .icon-browser-toolbar {
+      gap: 6px;
+      padding: 6px 8px;
+      border-bottom: 1px solid #f0f1f3;
+    }
+
+    .icon-browser-search {
+      min-width: 0;
+      height: 27px;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 8px;
+      border: 1px solid #e2e4e8;
+      border-radius: 6px;
+      color: #848990;
+      background: #fafbfc;
+    }
+
+    .icon-browser-search .icon {
+      width: 12px;
+      height: 12px;
+      flex: none;
+    }
+
+    .icon-browser-search input {
+      width: 100%;
+      padding: 0;
+      border: 0;
+      outline: 0;
+      color: #35393f;
+      background: transparent;
+      font-size: 9px;
+    }
+
+    .icon-browser-tabs {
+      height: 27px;
+      display: flex;
+      align-items: center;
+      padding: 2px;
+      border-radius: 6px;
+      background: #f1f2f4;
+    }
+
+    .icon-browser-tab {
+      height: 23px;
+      padding: 0 7px;
+      border: 0;
+      border-radius: 4px;
+      color: #7b7f86;
+      background: transparent;
+      font-size: 8px;
+      cursor: pointer;
+    }
+
+    .icon-browser-tab.active {
+      color: #34383e;
+      background: #fff;
+      box-shadow: 0 1px 2px rgba(31, 35, 42, 0.1);
+    }
+
+    .icon-browser-grid {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      grid-auto-rows: 36px;
+      gap: 2px;
+      align-content: start;
+      padding: 8px;
+      overflow-y: auto;
+    }
+
+    .icon-browser-option {
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      color: #666b72;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .icon-browser-option:hover {
+      color: #6046b8;
+      background: #f4f1fa;
+    }
+
+    .icon-browser-option.active {
+      border-color: #cfc3e8;
+      color: #6046b8;
+      background: #f2edfb;
+    }
+
+    .icon-browser-option .icon {
+      width: 17px;
+      height: 17px;
+    }
+
+    .icon-browser-option .emoji-icon {
+      font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+      font-size: 18px;
+    }
+
+    .icon-browser-empty {
+      grid-column: 1 / -1;
+      padding: 28px 8px;
+      color: #9a9da3;
+      font-size: 9px;
+      text-align: center;
+    }
+
+    .icon-browser-footer {
+      justify-content: space-between;
+      padding: 0 9px;
+      border-top: 1px solid #eceef1;
+      color: #979ba1;
+      font-size: 8px;
+    }
+
+    .icon-browser-clear {
+      height: 22px;
+      padding: 0 6px;
+      border: 0;
+      border-radius: 4px;
+      color: #777b82;
+      background: transparent;
+      font-size: 8px;
+      cursor: pointer;
+    }
+
+    .icon-browser-clear:hover {
+      color: #4c5057;
+      background: #f2f3f4;
     }
 
     .manage-footer-status {
@@ -2377,7 +2618,7 @@
       <span class="prototype-mark"><svg class="icon"><use href="#i-command"/></svg></span>
       <span>
         <strong>Peak Command Center</strong>
-        <small>V15 · stable command directory</small>
+        <small>V17 · per-item icon browser</small>
       </span>
     </div>
     <nav class="state-switcher" aria-label="原型状态">
@@ -2390,7 +2631,7 @@
   </header>
 
   <main class="stage">
-    <section class="app-frame" aria-label="Command Center V15 原型">
+    <section class="app-frame" aria-label="Command Center V17 原型">
       <div class="app-titlebar">
         <span class="traffic-lights"><i></i><i></i><i></i></span>
         <span class="app-title">Peak Assistant · Product vault</span>
@@ -2458,12 +2699,6 @@
           <div class="launcher-body command-body">
             <div class="filter-shell">
               <div class="scope-strip" id="launcher-scope-tabs" aria-label="按分组切换"></div>
-              <div class="facet-strip" id="launcher-facet-tabs" aria-label="按能力类型筛选">
-                <button class="facet-chip" data-facet="ai" aria-pressed="false"><svg class="icon"><use href="#i-sparkles"/></svg>AI</button>
-                <button class="facet-chip" data-facet="create" aria-pressed="false"><svg class="icon"><use href="#i-file-plus"/></svg>Create</button>
-                <button class="facet-chip" data-facet="navigate" aria-pressed="false"><svg class="icon"><use href="#i-map"/></svg>Navigate</button>
-                <button class="facet-chip" data-facet="visual" aria-pressed="false"><svg class="icon"><use href="#i-pen"/></svg>Visual</button>
-              </div>
             </div>
             <div class="scope-panels" id="launcher-board"></div>
           </div>
@@ -2488,16 +2723,10 @@
           <div class="launcher-body command-body">
             <div class="filter-shell">
               <div class="scope-strip" id="search-scope-tabs" aria-label="在搜索结果中按分组切换"></div>
-              <div class="facet-strip" id="search-facet-tabs" aria-label="在搜索结果中按能力类型筛选">
-                <button class="facet-chip" data-facet="ai" aria-pressed="false"><svg class="icon"><use href="#i-sparkles"/></svg>AI</button>
-                <button class="facet-chip" data-facet="create" aria-pressed="false"><svg class="icon"><use href="#i-file-plus"/></svg>Create</button>
-                <button class="facet-chip" data-facet="navigate" aria-pressed="false"><svg class="icon"><use href="#i-map"/></svg>Navigate</button>
-                <button class="facet-chip" data-facet="visual" aria-pressed="false"><svg class="icon"><use href="#i-pen"/></svg>Visual</button>
-              </div>
             </div>
             <div class="scope-panels">
               <div class="command-tile-grid" id="search-results"></div>
-              <div class="empty-filter-state" id="search-empty-state" hidden>No configured action matches this scope.</div>
+              <div class="empty-filter-state" id="search-empty-state" hidden>No configured item matches this group.</div>
             </div>
           </div>
           <footer class="launcher-footer">
@@ -2514,7 +2743,7 @@
           <header class="launcher-header">
             <label class="launcher-search">
               <svg class="icon"><use href="#i-search"/></svg>
-              <input id="manage-command-search" type="text" autocomplete="off" placeholder="Find commands to add…">
+              <input id="manage-command-search" type="text" autocomplete="off" placeholder="Find commands or destinations…">
             </label>
             <button class="close-button" aria-label="关闭"><svg class="icon"><use href="#i-x"/></svg></button>
           </header>
@@ -2533,11 +2762,66 @@
               </div>
             </div>
             <div class="manage-command-list" id="manage-command-list" aria-live="polite"></div>
-            <div class="manage-empty-state" id="manage-empty-state" hidden>No command matches this search.</div>
+            <div class="manage-empty-state" id="manage-empty-state" hidden>No item matches this search.</div>
 
             <div class="flow-area" hidden aria-hidden="true">
               <div class="flow-columns" id="manage-board">
                 <div class="flow-column" data-lane="main">
+                  <section class="flow-group">
+                    <div class="flow-group-header">
+                      <span class="flow-group-title manage-group-title">
+                        <span class="drag-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <svg class="icon"><use href="#i-pin"/></svg>
+                        <strong>Pinned</strong>
+                      </span>
+                      <button class="group-add-button" aria-label="向 Pinned 添加入口"><svg class="icon"><use href="#i-plus"/></svg></button>
+                    </div>
+                    <div class="flow-action-grid">
+                      <button class="action-tile manage-tile">
+                        <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <span class="action-icon green"><svg class="icon"><use href="#i-home"/></svg></span>
+                        <span class="action-name">Home</span>
+                        <span class="action-meta">Peak view</span>
+                      </button>
+                      <button class="action-tile manage-tile">
+                        <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <span class="action-icon neutral"><svg class="icon"><use href="#i-layout"/></svg></span>
+                        <span class="action-name">Usage Dashboard</span>
+                        <span class="action-meta">Peak view</span>
+                      </button>
+                      <button class="action-tile manage-tile">
+                        <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <span class="action-icon amber"><svg class="icon"><use href="#i-layout"/></svg></span>
+                        <span class="action-name">Research dashboard</span>
+                        <span class="action-meta">Pinned Base</span>
+                      </button>
+                      <button class="action-tile manage-tile">
+                        <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <span class="action-icon neutral"><svg class="icon"><use href="#i-file"/></svg></span>
+                        <span class="action-name">PKM product analysis</span>
+                        <span class="action-meta">Pinned document · 01 Projects</span>
+                      </button>
+                      <button class="action-tile manage-tile">
+                        <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <span class="action-icon neutral"><svg class="icon"><use href="#i-file"/></svg></span>
+                        <span class="action-name">Command center research</span>
+                        <span class="action-meta">Pinned document · 02 Research</span>
+                      </button>
+                      <button class="action-tile manage-tile">
+                        <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <span class="action-icon neutral"><svg class="icon"><use href="#i-bookmark"/></svg></span>
+                        <span class="action-name">Bookmarks</span>
+                        <span class="action-meta">Obsidian collection</span>
+                      </button>
+                      <button class="action-tile manage-tile">
+                        <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        <span class="action-icon neutral"><svg class="icon"><use href="#i-bookmark"/></svg></span>
+                        <span class="action-name">AI research hub</span>
+                        <span class="action-meta">Bookmark · Obsidian</span>
+                      </button>
+                    </div>
+                  </section>
+
                   <section class="flow-group">
                     <div class="flow-group-header">
                       <span class="flow-group-title manage-group-title">
@@ -2574,12 +2858,6 @@
                       </button>
                       <button class="action-tile manage-tile">
                         <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-                        <span class="action-icon green"><svg class="icon"><use href="#i-home"/></svg></span>
-                        <span class="action-name">Home</span>
-                        <span class="action-meta">Pinned view</span>
-                      </button>
-                      <button class="action-tile manage-tile">
-                        <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
                         <span class="action-icon neutral"><svg class="icon"><use href="#i-settings"/></svg></span>
                         <span class="action-name">Peak settings</span>
                         <span class="action-meta">Settings</span>
@@ -2602,12 +2880,6 @@
                         <span class="action-icon green"><svg class="icon"><use href="#i-workspace"/></svg></span>
                         <span class="action-name">Research desk</span>
                         <span class="action-meta">Workspace</span>
-                      </button>
-                      <button class="action-tile manage-tile">
-                        <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-                        <span class="action-icon neutral"><svg class="icon"><use href="#i-bookmark"/></svg></span>
-                        <span class="action-name">Bookmarks</span>
-                        <span class="action-meta">Obsidian</span>
                       </button>
                       <button class="action-tile manage-tile">
                         <span class="drag-dots drag-corner" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
@@ -2690,6 +2962,32 @@
             <button type="button" data-group-icon="i-calendar" aria-label="Calendar"><svg class="icon"><use href="#i-calendar"/></svg></button>
             <button type="button" data-group-icon="i-bookmark" aria-label="Bookmark"><svg class="icon"><use href="#i-bookmark"/></svg></button>
             <button type="button" data-group-icon="" aria-label="Use text label"><span>Aa</span></button>
+          </div>
+          <div class="item-icon-browser" id="item-icon-browser" role="dialog" aria-label="Choose item icon" hidden>
+            <div class="icon-browser-header">
+              <span class="icon-browser-title">
+                <strong>Choose icon</strong>
+                <span id="icon-browser-context">Selected item</span>
+              </span>
+              <button class="icon-browser-close" id="icon-browser-close" type="button" aria-label="Close icon browser">
+                <svg class="icon"><use href="#i-x"/></svg>
+              </button>
+            </div>
+            <div class="icon-browser-toolbar">
+              <label class="icon-browser-search">
+                <svg class="icon"><use href="#i-search"/></svg>
+                <input id="icon-browser-search" type="text" placeholder="Search icons…" autocomplete="off">
+              </label>
+              <div class="icon-browser-tabs" role="tablist" aria-label="Icon source">
+                <button class="icon-browser-tab active" type="button" data-icon-browser-mode="lucide" role="tab" aria-selected="true">Lucide</button>
+                <button class="icon-browser-tab" type="button" data-icon-browser-mode="emoji" role="tab" aria-selected="false">Emoji</button>
+              </div>
+            </div>
+            <div class="icon-browser-grid" id="icon-browser-grid"></div>
+            <div class="icon-browser-footer">
+              <button class="icon-browser-clear" id="icon-browser-clear" type="button">No icon</button>
+              <span>Lucide or Unicode emoji</span>
+            </div>
           </div>
           <div class="action-picker" id="action-picker" hidden>
             <input class="action-picker-search" id="action-picker-search" type="text" placeholder="Find an action">
@@ -2816,18 +3114,18 @@
       </section>
     </section>
 
-    <section class="design-note" aria-label="V15 design principles">
+    <section class="design-note" aria-label="V17 design principles">
       <div class="note-item">
-        <strong>来源与动作使用不同图形语言</strong>
-        <span>顶部 scope 承担来源识别；内容区恢复每个 command 自己的语义图标，不再重复 group mark。</span>
+        <strong>Group 与 item 使用不同图形语言</strong>
+        <span>顶部 scope 承担 group 识别；内容区使用 command 或 destination 自己的语义图标，不重复 group mark。</span>
       </div>
       <div class="note-item">
-        <strong>三列不是三列卡片</strong>
-        <span>action 收成 38px 单行 command cell，只保留 icon、label 与真实 hotkey；说明进入搜索和 Customize。</span>
+        <strong>Command Center 不是 command-only</strong>
+        <span>Home、Dashboard、Pinned document、Bookmark 与 Workspace 和命令共享同一种 launcher item。</span>
       </div>
       <div class="note-item">
-        <strong>Customize 只有一张稳定目录</strong>
-        <span>不再分 Added / Available；switch 只改变 membership，command 留在原位置，拖动只发生在用户主动排序时。</span>
+        <strong>每个 item 都能自定义 icon</strong>
+        <span>展开 item 后打开 Icon Browser；Lucide 可搜索，Emoji 独立浏览，选择会同步 Launcher、Search 与 Home。</span>
       </div>
     </section>
   </main>
@@ -2841,9 +3139,7 @@
     const searchQuery = document.getElementById('search-query');
     const launcherBoard = document.getElementById('launcher-board');
     const launcherScopeTabs = document.getElementById('launcher-scope-tabs');
-    const launcherFacetTabs = document.getElementById('launcher-facet-tabs');
     const searchScopeTabs = document.getElementById('search-scope-tabs');
-    const searchFacetTabs = document.getElementById('search-facet-tabs');
     const searchResults = document.getElementById('search-results');
     const searchEmptyState = document.getElementById('search-empty-state');
     const manageBoard = document.getElementById('manage-board');
@@ -2856,6 +3152,13 @@
     const manageCommandList = document.getElementById('manage-command-list');
     const manageEmptyState = document.getElementById('manage-empty-state');
     const manageIconPicker = document.getElementById('manage-icon-picker');
+    const itemIconBrowser = document.getElementById('item-icon-browser');
+    const iconBrowserContext = document.getElementById('icon-browser-context');
+    const iconBrowserClose = document.getElementById('icon-browser-close');
+    const iconBrowserSearch = document.getElementById('icon-browser-search');
+    const iconBrowserGrid = document.getElementById('icon-browser-grid');
+    const iconBrowserClear = document.getElementById('icon-browser-clear');
+    const iconBrowserTabs = [...document.querySelectorAll('[data-icon-browser-mode]')];
     const manageFooterStatus = document.getElementById('manage-footer-status');
     const actionPicker = document.getElementById('action-picker');
     const actionPickerSearch = document.getElementById('action-picker-search');
@@ -2871,38 +3174,16 @@
     const closeButtons = [...document.querySelectorAll('.close-button')];
 
     const initialPinnedActions = new Set([
-      'Composer',
-      'Chat Studio',
-      'File Atlas',
-      'Research desk',
-      'Capture idea',
+      'Home',
+      'Usage Dashboard',
+      'Research dashboard',
+      'PKM product analysis',
+      'Command center research',
       'Bookmarks',
+      'AI research hub',
     ]);
 
     const initialDisplayModes = new Map();
-
-    const actionFacets = new Map([
-      ['Composer', 'ai'],
-      ['Chat Studio', 'ai'],
-      ['File Atlas', 'ai'],
-      ['Quick Search', 'ai'],
-      ['Home', 'navigate'],
-      ['Peak settings', 'navigate'],
-      ['Research desk', 'navigate'],
-      ['Bookmarks', 'navigate'],
-      ['Product map', 'navigate'],
-      ['Daily note', 'create'],
-      ['Capture idea', 'create'],
-      ['Meeting note', 'create'],
-      ['New note', 'create'],
-      ['New drawing', 'visual'],
-      ['Current window', 'visual'],
-      ['Open calendar', 'navigate'],
-      ['New canvas', 'visual'],
-      ['Focus mode', 'navigate'],
-      ['Publish note', 'create'],
-      ['Random note', 'navigate'],
-    ]);
 
     const actionHotkeys = new Map([
       ['Composer', ['⌘', '⇧', 'O']],
@@ -2918,6 +3199,58 @@
       { name: 'Random note', meta: 'Core command', icon: 'i-file', tone: 'neutral' },
     ];
 
+    const lucideIconOptions = [
+      ['i-home', 'Home'],
+      ['i-star', 'Star favorite'],
+      ['i-sparkles', 'Sparkles AI'],
+      ['i-pen', 'Writing pen'],
+      ['i-layout', 'Dashboard layout'],
+      ['i-folder', 'Folder'],
+      ['i-message', 'Chat message'],
+      ['i-map', 'Map atlas'],
+      ['i-file-search', 'File search'],
+      ['i-settings', 'Settings'],
+      ['i-calendar', 'Calendar'],
+      ['i-lightbulb', 'Idea lightbulb'],
+      ['i-file-plus', 'New file'],
+      ['i-canvas', 'Canvas'],
+      ['i-workspace', 'Workspace'],
+      ['i-bookmark', 'Bookmark'],
+      ['i-file', 'Document file'],
+      ['i-sliders', 'Controls'],
+      ['i-sidebar', 'Sidebar'],
+      ['i-edit', 'Edit'],
+      ['i-pin', 'Pin'],
+      ['i-type', 'Text'],
+      ['i-image', 'Image'],
+      ['i-search', 'Search'],
+      ['i-command', 'Command'],
+    ];
+
+    const emojiIconOptions = [
+      ['✨', 'Sparkles'],
+      ['🚀', 'Rocket'],
+      ['🧠', 'Brain'],
+      ['🤖', 'Robot'],
+      ['🏠', 'Home'],
+      ['✍️', 'Writing'],
+      ['💬', 'Chat'],
+      ['🔎', 'Search'],
+      ['📁', 'Folder'],
+      ['📄', 'Document'],
+      ['🔖', 'Bookmark'],
+      ['📅', 'Calendar'],
+      ['📊', 'Dashboard chart'],
+      ['🗺️', 'Map'],
+      ['💡', 'Idea'],
+      ['🎯', 'Target'],
+      ['📌', 'Pin'],
+      ['💼', 'Workspace'],
+      ['📚', 'Research books'],
+      ['🔗', 'Link'],
+      ['📝', 'Note'],
+    ];
+
     let selectedAction = null;
     let pickerGroup = null;
     let draggedAction = null;
@@ -2925,12 +3258,12 @@
     let customGroupCount = 0;
     let customActionCount = 0;
     let activeLauncherScope = 'all';
-    let activeLauncherFacet = 'all';
     let activeSearchScope = 'all';
-    let activeSearchFacet = 'all';
     let activeManageGroupId = '';
     let commandDefinitions = [];
     const manageDirectoryOrders = new Map();
+    let iconBrowserMode = 'lucide';
+    let iconBrowserTarget = null;
     let draggedManageActionName = '';
     let draggedManageGroupId = '';
 
@@ -2954,6 +3287,50 @@
       use.setAttribute('href', `#${symbol}`);
       svg.append(use);
       return svg;
+    }
+
+    function createEmojiIcon(value) {
+      const emoji = document.createElement('span');
+      emoji.className = 'emoji-icon';
+      emoji.textContent = value;
+      return emoji;
+    }
+
+    function renderIconChoice(holder, type, value) {
+      holder.replaceChildren();
+      holder.classList.toggle('is-emoji', type === 'emoji');
+      if (type === 'lucide' && value) holder.append(createIconUse(value));
+      if (type === 'emoji' && value) holder.append(createEmojiIcon(value));
+    }
+
+    function getActionIconChoice(tile) {
+      const holder = tile.querySelector('.action-icon');
+      const emoji = holder?.querySelector('.emoji-icon')?.textContent || '';
+      if (emoji) return { type: 'emoji', value: emoji };
+
+      const href = holder?.querySelector('use')?.getAttribute('href') || '';
+      if (href) return { type: 'lucide', value: href.replace(/^#/, '') };
+      return { type: 'none', value: '' };
+    }
+
+    function setActionIcon(tile, type, value) {
+      const holder = tile.querySelector('.action-icon');
+      if (!holder) return;
+
+      renderIconChoice(holder, type, value);
+      tile.dataset.iconType = type;
+      tile.dataset.iconValue = value;
+      if (type === 'none' && tile.dataset.display === 'icon') {
+        applyDisplayMode(tile, 'text');
+      }
+
+      const definition = commandDefinitions.find(
+        (candidate) => candidate.name === getActionName(tile),
+      );
+      if (!definition) return;
+      definition.iconType = type;
+      definition.iconValue = value;
+      if (type === 'lucide') definition.icon = value;
     }
 
     function createDragDots() {
@@ -2992,6 +3369,9 @@
       tile.draggable = true;
       const mode = tile.dataset.display || initialDisplayModes.get(name) || 'full';
       applyDisplayMode(tile, mode);
+      const iconChoice = getActionIconChoice(tile);
+      tile.dataset.iconType = iconChoice.type;
+      tile.dataset.iconValue = iconChoice.value;
 
       if (!tile.dataset.pinned) {
         tile.dataset.pinned = String(initialPinnedActions.has(name));
@@ -3092,11 +3472,6 @@
       return groups[0] || null;
     }
 
-    function getActionIconSymbol(tile) {
-      const href = tile.querySelector('.action-icon use')?.getAttribute('href') || '';
-      return href.replace(/^#/, '') || 'i-command';
-    }
-
     function getActionTone(tile) {
       return ['blue', 'green', 'amber', 'neutral']
         .find((tone) => tile.querySelector('.action-icon')?.classList.contains(tone)) || 'neutral';
@@ -3109,11 +3484,14 @@
         group.querySelectorAll('.manage-tile').forEach((tile) => {
           const name = getActionName(tile);
           if (definitions.has(name)) return;
+          const iconChoice = getActionIconChoice(tile);
           definitions.set(name, {
             name,
             meta: getActionMeta(tile),
             source,
-            icon: getActionIconSymbol(tile),
+            icon: iconChoice.type === 'lucide' ? iconChoice.value : 'i-command',
+            iconType: iconChoice.type,
+            iconValue: iconChoice.value,
             tone: getActionTone(tile),
           });
         });
@@ -3222,7 +3600,7 @@
 
       manageGroupName.value = getGroupLabel(group);
       const count = group.querySelectorAll('.manage-tile').length;
-      manageGroupCount.textContent = `${count} command${count === 1 ? '' : 's'}`;
+      manageGroupCount.textContent = `${count} item${count === 1 ? '' : 's'}`;
       manageFooterStatus.textContent = `${count} active · stable list · drag active rows to reorder`;
     }
 
@@ -3239,6 +3617,24 @@
     function createInlineActionDetail(tile) {
       const detail = document.createElement('div');
       detail.className = 'manage-command-detail';
+
+      const iconControl = document.createElement('span');
+      iconControl.className = 'inline-icon-control';
+      const iconLabel = document.createElement('span');
+      iconLabel.textContent = 'Icon';
+      const iconButton = document.createElement('button');
+      const iconChoice = getActionIconChoice(tile);
+      iconButton.className = 'inline-icon-button';
+      iconButton.type = 'button';
+      iconButton.dataset.inlineIcon = 'true';
+      iconButton.setAttribute('aria-label', `Choose icon for ${getActionName(tile)}`);
+      iconButton.setAttribute(
+        'aria-expanded',
+        String(!itemIconBrowser.hidden && iconBrowserTarget === tile),
+      );
+      renderIconChoice(iconButton, iconChoice.type, iconChoice.value);
+      if (iconChoice.type === 'none') iconButton.append(createIconUse('i-plus'));
+      iconControl.append(iconLabel, iconButton);
 
       const label = document.createElement('span');
       label.textContent = 'Button';
@@ -3274,7 +3670,7 @@
       pinSwitch.setAttribute('aria-label', 'Pin to Home');
       pin.append(pinLabel, pinSwitch);
 
-      detail.append(label, display, pin);
+      detail.append(iconControl, label, display, pin);
       return detail;
     }
 
@@ -3296,7 +3692,13 @@
 
       const icon = document.createElement('span');
       icon.className = 'manage-command-icon';
-      icon.append(createIconUse(definition.icon || 'i-command'));
+      const iconChoice = tile
+        ? getActionIconChoice(tile)
+        : {
+            type: definition.iconType || 'lucide',
+            value: definition.iconValue || definition.icon || 'i-command',
+          };
+      renderIconChoice(icon, iconChoice.type, iconChoice.value);
 
       const copy = document.createElement('span');
       copy.className = 'manage-command-copy';
@@ -3374,6 +3776,7 @@
       activeManageGroupId = groupId;
       selectedAction = null;
       manageIconPicker.hidden = true;
+      closeItemIconBrowser();
       renderManageWorkspace();
     }
 
@@ -3385,6 +3788,7 @@
       const existing = findGroupAction(group, name);
       if (existing) {
         if (selectedAction === existing) selectedAction = null;
+        if (iconBrowserTarget === existing) closeItemIconBrowser();
         existing.remove();
       } else {
         const tile = createActionElement(definition);
@@ -3412,8 +3816,88 @@
       renderManageWorkspace();
     }
 
-    function getActionFacet(tile) {
-      return actionFacets.get(getActionName(tile)) || 'navigate';
+    function renderItemIconBrowser() {
+      if (!iconBrowserTarget) {
+        iconBrowserGrid.replaceChildren();
+        return;
+      }
+
+      const query = iconBrowserSearch.value.trim().toLowerCase();
+      const source = iconBrowserMode === 'emoji' ? emojiIconOptions : lucideIconOptions;
+      const current = getActionIconChoice(iconBrowserTarget);
+      const options = source.filter(([value, label]) => {
+        if (!query) return true;
+        return `${label} ${value}`.toLowerCase().includes(query);
+      });
+
+      const fragment = document.createDocumentFragment();
+      options.forEach(([value, label]) => {
+        const button = document.createElement('button');
+        button.className = 'icon-browser-option';
+        button.classList.toggle(
+          'active',
+          current.type === iconBrowserMode && current.value === value,
+        );
+        button.type = 'button';
+        button.dataset.itemIconType = iconBrowserMode;
+        button.dataset.itemIconValue = value;
+        button.title = label;
+        button.setAttribute('aria-label', label);
+        if (iconBrowserMode === 'emoji') {
+          button.append(createEmojiIcon(value));
+        } else {
+          button.append(createIconUse(value));
+        }
+        fragment.append(button);
+      });
+
+      if (!options.length) {
+        const empty = document.createElement('span');
+        empty.className = 'icon-browser-empty';
+        empty.textContent = 'No icon matches this search.';
+        fragment.append(empty);
+      }
+
+      iconBrowserGrid.replaceChildren(fragment);
+      iconBrowserTabs.forEach((tab) => {
+        const active = tab.dataset.iconBrowserMode === iconBrowserMode;
+        tab.classList.toggle('active', active);
+        tab.setAttribute('aria-selected', String(active));
+      });
+    }
+
+    function openItemIconBrowser(tile) {
+      manageIconPicker.hidden = true;
+      iconBrowserTarget = tile;
+      const current = getActionIconChoice(tile);
+      iconBrowserMode = current.type === 'emoji' ? 'emoji' : 'lucide';
+      iconBrowserContext.textContent = getActionName(tile);
+      iconBrowserSearch.value = '';
+      itemIconBrowser.hidden = false;
+      renderItemIconBrowser();
+      requestAnimationFrame(() => iconBrowserSearch.focus());
+    }
+
+    function closeItemIconBrowser(restoreFocus = false) {
+      itemIconBrowser.hidden = true;
+      const target = iconBrowserTarget;
+      iconBrowserTarget = null;
+      if (!target) return;
+      const row = [...manageCommandList.querySelectorAll('.manage-command-row')]
+        .find((candidate) => candidate.dataset.commandName === getActionName(target));
+      const button = row?.querySelector('[data-inline-icon]');
+      button?.setAttribute('aria-expanded', 'false');
+      if (restoreFocus) button?.focus();
+    }
+
+    function chooseItemIcon(type, value) {
+      if (!iconBrowserTarget) return;
+      const tile = iconBrowserTarget;
+      setActionIcon(tile, type, value);
+      selectedAction = tile;
+      closeItemIconBrowser();
+      syncConfiguredViews();
+      renderManageWorkspace();
     }
 
     function appendHotkey(tile) {
@@ -3445,7 +3929,6 @@
       tile.querySelectorAll('.drag-dots').forEach((node) => node.remove());
       tile.removeAttribute('draggable');
       tile.dataset.scope = groupId;
-      tile.dataset.facet = getActionFacet(source);
 
       appendHotkey(tile);
       return tile;
@@ -3471,6 +3954,8 @@
         button.classList.add(`scope-tone-${toneIndex % 4}`);
       }
       if (icon) {
+        const symbol = icon.querySelector('use')?.getAttribute('href');
+        if (symbol === '#i-peak-mark') button.classList.add('scope-brand');
         button.append(icon.cloneNode(true));
         return button;
       }
@@ -3538,7 +4023,7 @@
 
       const empty = document.createElement('div');
       empty.className = 'empty-filter-state';
-      empty.textContent = 'No action in this type yet.';
+      empty.textContent = 'No item in this group yet.';
       empty.hidden = true;
       panel.append(grid, empty);
       return panel;
@@ -3563,12 +4048,11 @@
 
         const tiles = [...panel.querySelectorAll('.action-tile')];
         tiles.forEach((tile) => {
-          const visible = activeLauncherFacet === 'all' || tile.dataset.facet === activeLauncherFacet;
-          tile.hidden = !visible;
+          tile.hidden = false;
           tile.classList.remove('selected');
         });
 
-        panel.querySelector('.empty-filter-state').hidden = tiles.some((tile) => !tile.hidden);
+        panel.querySelector('.empty-filter-state').hidden = tiles.length > 0;
         if (animate) animateActionGrid(panel.querySelector('.command-tile-grid'));
       });
 
@@ -3578,12 +4062,6 @@
         button.setAttribute('aria-pressed', String(active));
       });
       positionScopeIndicator(launcherScopeTabs, activeLauncherScope);
-
-      launcherFacetTabs.querySelectorAll('[data-facet]').forEach((button) => {
-        const active = button.dataset.facet === activeLauncherFacet;
-        button.classList.toggle('active', active);
-        button.setAttribute('aria-pressed', String(active));
-      });
     }
 
     function renderSearchResults(animate = false) {
@@ -3596,10 +4074,8 @@
         const groupLabel = getGroupLabel(group);
         group.querySelectorAll('.manage-tile').forEach((tile) => {
           const scopeMatches = activeSearchScope === 'all' || activeSearchScope === groupId;
-          const facet = getActionFacet(tile);
-          const facetMatches = activeSearchFacet === 'all' || activeSearchFacet === facet;
           const haystack = `${getActionName(tile)} ${getActionMeta(tile)} ${groupLabel}`.toLowerCase();
-          if (!scopeMatches || !facetMatches || (query && !haystack.includes(query))) return;
+          if (!scopeMatches || (query && !haystack.includes(query))) return;
           matching.push(cleanLauncherAction(tile, groupId));
         });
       });
@@ -3613,12 +4089,6 @@
         button.setAttribute('aria-pressed', String(active));
       });
       positionScopeIndicator(searchScopeTabs, activeSearchScope);
-
-      searchFacetTabs.querySelectorAll('[data-facet]').forEach((button) => {
-        const active = button.dataset.facet === activeSearchFacet;
-        button.classList.toggle('active', active);
-        button.setAttribute('aria-pressed', String(active));
-      });
     }
 
     function syncLauncher() {
@@ -3699,7 +4169,11 @@
 
       const icon = document.createElement('span');
       icon.className = `action-icon ${action.tone || 'neutral'}`.trim();
-      icon.append(createIconUse(action.icon || 'i-command'));
+      renderIconChoice(
+        icon,
+        action.iconType || 'lucide',
+        action.iconValue || action.icon || 'i-command',
+      );
 
       const name = document.createElement('span');
       name.className = 'action-name';
@@ -3807,6 +4281,7 @@
       homeShell.classList.toggle('active', home);
       if (view !== 'manage') closeActionPicker();
       if (view !== 'manage') manageIconPicker.hidden = true;
+      if (view !== 'manage') closeItemIconBrowser();
 
       screens.forEach((screen) => {
         screen.classList.toggle('active', screen.dataset.screen === view);
@@ -3875,15 +4350,6 @@
       updateLauncherProjection(true);
     });
 
-    launcherFacetTabs.addEventListener('click', (event) => {
-      const chip = event.target.closest('[data-facet]');
-      if (!chip) return;
-      activeLauncherFacet = activeLauncherFacet === chip.dataset.facet
-        ? 'all'
-        : chip.dataset.facet;
-      updateLauncherProjection(true);
-    });
-
     searchScopeTabs.addEventListener('click', (event) => {
       const addButton = event.target.closest('[data-scope-add]');
       if (addButton) {
@@ -3894,15 +4360,6 @@
       const tab = event.target.closest('[data-scope]');
       if (!tab) return;
       activeSearchScope = tab.dataset.scope;
-      renderSearchResults(true);
-    });
-
-    searchFacetTabs.addEventListener('click', (event) => {
-      const chip = event.target.closest('[data-facet]');
-      if (!chip) return;
-      activeSearchFacet = activeSearchFacet === chip.dataset.facet
-        ? 'all'
-        : chip.dataset.facet;
       renderSearchResults(true);
     });
 
@@ -4003,6 +4460,7 @@
 
     manageIconButton.addEventListener('click', (event) => {
       event.stopPropagation();
+      closeItemIconBrowser();
       manageIconPicker.hidden = !manageIconPicker.hidden;
     });
 
@@ -4011,6 +4469,22 @@
       if (!button) return;
       setActiveGroupIcon(button.dataset.groupIcon);
     });
+
+    iconBrowserClose.addEventListener('click', () => closeItemIconBrowser(true));
+    iconBrowserSearch.addEventListener('input', renderItemIconBrowser);
+    iconBrowserTabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        iconBrowserMode = tab.dataset.iconBrowserMode;
+        iconBrowserSearch.value = '';
+        renderItemIconBrowser();
+      });
+    });
+    iconBrowserGrid.addEventListener('click', (event) => {
+      const option = event.target.closest('[data-item-icon-type]');
+      if (!option) return;
+      chooseItemIcon(option.dataset.itemIconType, option.dataset.itemIconValue);
+    });
+    iconBrowserClear.addEventListener('click', () => chooseItemIcon('none', ''));
 
     manageCommandList.addEventListener('click', (event) => {
       const row = event.target.closest('.manage-command-row');
@@ -4026,6 +4500,13 @@
       const group = getActiveManageGroup();
       const tile = group ? findGroupAction(group, name) : null;
       if (!tile) return;
+
+      const icon = event.target.closest('[data-inline-icon]');
+      if (icon) {
+        openItemIconBrowser(tile);
+        renderManageCommands();
+        return;
+      }
 
       const display = event.target.closest('[data-inline-display]');
       if (display) {
@@ -4156,10 +4637,20 @@
       if (!manageIconPicker.hidden && !event.target.closest('.manage-icon-picker, .manage-icon-button')) {
         manageIconPicker.hidden = true;
       }
+      if (
+        !itemIconBrowser.hidden
+        && !event.target.closest('.item-icon-browser, [data-inline-icon]')
+      ) {
+        closeItemIconBrowser();
+      }
 
       const customizeActive = document.querySelector('[data-screen="manage"]').classList.contains('active');
       if (!customizeActive) return;
-      if (event.target.closest('.manage-command-row, .manage-group-shell, .manage-icon-picker')) return;
+      if (
+        event.target.closest(
+          '.manage-command-row, .manage-group-shell, .manage-icon-picker, .item-icon-browser',
+        )
+      ) return;
       selectAction(null);
       renderManageCommands();
     });
@@ -4240,6 +4731,11 @@
 
     document.addEventListener('keydown', (event) => {
       if (event.key !== 'Escape') return;
+
+      if (!itemIconBrowser.hidden) {
+        closeItemIconBrowser(true);
+        return;
+      }
 
       if (!manageIconPicker.hidden) {
         manageIconPicker.hidden = true;

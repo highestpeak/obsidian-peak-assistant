@@ -2,7 +2,7 @@
 
 > 日期：2026-07-30
 >
-> 视觉方向修订：2026-07-31 · V15 stable command directory
+> 视觉方向修订：2026-07-31 · V17 per-item icon browser
 >
 > 状态：Research complete；产品边界已进入正式设计，尚未实现
 >
@@ -19,7 +19,8 @@
 
 - 原生 `Cmd/Ctrl + P` 保留，继续承担“全生态兜底搜索”。
 - Peak Command Center 使用用户自己在 Obsidian 中绑定的快捷键打开。
-- 默认态是“两排过滤 + 二维 action grid”：第一排切用户分组 scope，第二排切能力类型；只显示用户策展的动作，不是原生命令全集。
+- 默认态是“一排用户分组 + 二维 launcher grid”；删除 AI / Create / Navigate / Visual 类型导航，避免用户 group 之下再套一层产品分类。
+- grid 不只放 command：Home、Usage Dashboard、Base / Canvas dashboard、用户固定文档、Bookmarks 和 Workspaces 都是可策展 destination。
 - Modal 与 Home 共享 action identity 和呈现元数据，但不复制同一套页面布局。
 - Home 使用 Search、Quick access、Continue 和可选 Pinned pages 的固定阅读路径，不另造 Todo、日历、统计或 widget 数据系统。
 - 外部插件命令只通过集中兼容层读取和执行；不拦截、不修改原生 Command Palette。
@@ -153,6 +154,24 @@ V15 收紧 Customize 的目录稳定性：
 - membership switch 只改变当前 group 的归属状态；切换前后 command 保持同一目录位置，并保留当前滚动位置。
 - active command 仍可拖动。拖动会改变当前 group 的 Launcher 顺序，但 inactive command 只是稳定的落点，不会重新形成第二个区域。
 - 搜索始终过滤同一份稳定目录；清空 query 后恢复原目录顺序，不按 membership 重新分桶。
+
+V16 纠正“Command Center 仍然只是命令分类器”的产品偏差：
+
+- 删除 Launcher 与 Search 的第二排 `AI / Create / Navigate / Visual` facet。用户自建 group 已经提供稳定心智，第二排让界面像一个产品 taxonomy browser，也挤压真正内容。
+- `CommandCenterActionItem` 统一承载 command 与 destination。Home、Usage Dashboard、其他注册 view、Base / Canvas、Vault document、Bookmark 和 Workspace 使用同一个三列 cell 几何。
+- 原型增加 Pinned group，直接展示 Home、两个 dashboard、两个 pinned documents 与 Bookmarks；它们不是 Home widget preview，而是打开既有 owner surface 的稳定入口。
+- Pinned group 与 Peak Assistant、Workspaces、Quick create、Visual 并列。用户仍可重命名、换 icon、调整顺序或把同一 destination 加入自己的其他 group。
+- 运行态 Search 直接过滤配置过的 command 与 destination，结果留在同一 grid；不需要先判断它属于 AI、Create 还是 Navigate。
+- Home 与 Modal 共享 target identity，但不复制布局：Modal 负责快速打开，Home 仍负责更宽松的 Quick access、Continue 和 owner-rendered pinned pages。
+
+V17 补齐 item 级 icon 自定义：
+
+- 每条已加入的 command / destination 展开后都有独立 Icon 入口，不再只能继承默认图标或 group icon。
+- Icon Browser 是 Customize 内的轻量浮层，提供 `Lucide / Emoji` 两个明确来源；Lucide 按名称搜索，Emoji 使用可搜索的 Unicode 标签。
+- 选择 icon 只更新 `CommandCenterActionItem` 的 presentation metadata，不改 Obsidian command、目标文件、Bookmark 或 Workspace identity。
+- Lucide 与 Emoji 会立即同步到 Launcher、Search、Customize row 和 Home Quick access；同一 item 不维护四份 icon 状态。
+- 支持 `No icon`。如果当前是 icon-only，清空 icon 会安全回退到 text-only，避免生成不可见按钮。
+- Emoji 保存 Unicode grapheme，并使用系统 emoji font；不引入 AI 生成图片、上传流程或额外图标资产目录。
 
 ## 录屏观察
 
@@ -311,7 +330,7 @@ Start.me 的 Bookmark Groups 支持 tab 或 collapsible list。它说明 tab 可
 | Better Command Palette | recent、pin、hide、macro | 搜索可有 escape hatch | 仍以列表为中心 |
 | Commander / Buttons Panel | 用户自定义按钮与分组 | 组和 tile 是核心配置对象 | 不复制所有脚本和动画选项 |
 | Homepage / Hearth | 固定 Home、嵌入内容、最近文件 | 保留入口与继续工作 | 不重建万能 dashboard builder |
-| Raycast / Apple Apps / Command Menu | 搜索、scope、类型筛选、网格、键盘导航 | 两排过滤缩小上下文；网格形成空间记忆 | 不复制纵向结果 list，不做系统级 launcher |
+| Raycast / Apple Apps / Command Menu | 搜索、scope、网格、键盘导航、跨类型 destination | 单排用户 scope 与网格形成空间记忆；固定页面和命令共用入口 | 不复制纵向结果 list，不照搬参考图的第二排产品 taxonomy |
 | Arc Command Bar | 同一入口切换页面、空间和 action | 入口先于说明 | 不照搬一维结果 |
 | Bonjourr | 安静、稀疏的 New Tab | Home 保留搜索与 Quick access | 不复制天气、时钟和装饰背景 |
 | OneTab / Start.me | group、quick list、可重排 | 空 query 保留空间记忆 | 不把所有 Vault 内容收成收藏夹 |
@@ -321,8 +340,8 @@ Start.me 的 Bookmark Groups 支持 tab 或 collapsible list。它说明 tab 可
 ### 要做
 
 1. 一个 owner-approved 的 `Open Peak Command Center` 全局命令，快捷键由用户在 Obsidian Hotkeys 中设置。
-2. 空 query 显示两排过滤与二维 action grid；第一排切用户 group，第二排切能力类型。
-3. 运行态搜索只过滤已策展内容，并保持相同的 scope / facet / grid 结构。
+2. 空 query 显示一排用户 group 与二维 launcher grid；没有第二排类型导航。
+3. 运行态搜索只过滤已策展的 command 与 destination，并保持相同的 scope / grid 结构。
 4. 编辑态才允许搜索全部已注册命令并加入组。
 5. 每个 tile 显示图标、短标题、来源组和实际快捷键。
 6. 同一 action 配置可被 full-tab Home View 的 Quick access 引用。
