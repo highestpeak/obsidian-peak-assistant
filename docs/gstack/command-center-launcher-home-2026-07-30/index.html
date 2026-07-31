@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Peak Command Center · V7</title>
+  <title>Peak Command Center · V8</title>
   <style>
     :root {
       color-scheme: light;
@@ -402,7 +402,7 @@
     .launcher {
       position: relative;
       width: 640px;
-      height: 520px;
+      height: 400px;
       display: grid;
       grid-template-rows: 52px minmax(0, 1fr) 36px;
       overflow: hidden;
@@ -545,32 +545,32 @@
 
     .flow-action-grid {
       display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 2px;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 5px;
     }
 
     .action-tile {
       position: relative;
-      width: 100%;
+      width: auto;
       min-width: 0;
       height: 30px;
       display: inline-flex;
       flex: none;
       align-items: center;
-      justify-content: flex-start;
+      justify-content: center;
       gap: 6px;
       padding: 0 8px;
       border: 1px solid transparent;
       border-radius: 6px;
-      background: transparent;
+      background: #f6f5f7;
       text-align: left;
       cursor: pointer;
     }
 
     .action-tile:hover {
-      border-color: transparent;
-      background: #f1eff2;
+      border-color: #e0dce3;
+      background: #efedf1;
     }
 
     .action-tile.selected {
@@ -671,7 +671,7 @@
       position: static;
       display: inline-flex;
       gap: 0;
-      margin-left: auto;
+      margin-left: 2px;
     }
 
     .action-tile .tile-hotkey kbd {
@@ -783,7 +783,7 @@
 
     .result-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1fr);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 4px;
     }
 
@@ -1296,13 +1296,13 @@
 
     .quick-access {
       display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 2px;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 7px;
     }
 
     .quick-item {
-      width: 100%;
+      width: auto;
       min-width: 0;
       height: 32px;
       display: inline-flex;
@@ -1311,14 +1311,14 @@
       padding: 0 10px;
       border: 1px solid transparent;
       border-radius: 6px;
-      background: transparent;
+      background: #f6f5f7;
       text-align: left;
       cursor: pointer;
     }
 
     .quick-item:hover {
-      border-color: transparent;
-      background: #f1eff2;
+      border-color: #e0dce3;
+      background: #efedf1;
     }
 
     .quick-item .action-icon {
@@ -1569,7 +1569,7 @@
       }
 
       .launcher {
-        height: 500px;
+        height: 390px;
       }
 
       .home-content {
@@ -1623,7 +1623,7 @@
       <span class="prototype-mark"><svg class="icon"><use href="#i-command"/></svg></span>
       <span>
         <strong>Peak Command Center</strong>
-        <small>V7 · vertical command stack</small>
+        <small>V8 · horizontal groups, vertical stack</small>
       </span>
     </div>
     <nav class="state-switcher" aria-label="原型状态">
@@ -1636,7 +1636,7 @@
   </header>
 
   <main class="stage">
-    <section class="app-frame" aria-label="Command Center V7 原型">
+    <section class="app-frame" aria-label="Command Center V8 原型">
       <div class="app-titlebar">
         <span class="traffic-lights"><i></i><i></i><i></i></span>
         <span class="app-title">Peak Assistant · Product vault</span>
@@ -1819,7 +1819,7 @@
           </div>
           <footer class="launcher-footer">
             <div class="key-hints">
-              <span class="key-hint"><kbd>↑</kbd><kbd>↓</kbd> move</span>
+              <span class="key-hint"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> move</span>
               <span class="key-hint"><kbd>↵</kbd> open</span>
               <span class="key-hint"><kbd>Esc</kbd> close</span>
             </div>
@@ -1885,7 +1885,7 @@
           </div>
           <footer class="launcher-footer">
             <div class="key-hints">
-              <span class="key-hint"><kbd>↑</kbd><kbd>↓</kbd> move</span>
+              <span class="key-hint"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> move</span>
               <span class="key-hint"><kbd>↵</kbd> open</span>
               <span class="key-hint"><kbd>Esc</kbd> clear / close</span>
             </div>
@@ -2173,14 +2173,14 @@
       </section>
     </section>
 
-    <section class="design-note" aria-label="V7 design principles">
+    <section class="design-note" aria-label="V8 design principles">
       <div class="note-item">
-        <strong>只有一条阅读路径</strong>
-        <span>分组和命令都从上到下排列，不再要求用户在左右区域之间来回扫描。</span>
+        <strong>组与组只向下排列</strong>
+        <span>Peak Assistant、Workspaces、Quick create 等 block 共享一条纵向路径，不再左右并列。</span>
       </div>
       <div class="note-item">
-        <strong>分组负责秩序</strong>
-        <span>它仍然不是原生命令全集：只显示用户策展的动作，并用短标题和分隔线建立清楚层级。</span>
+        <strong>一个 block 内横向展开</strong>
+        <span>同组动作保持在一行并按空间换行；横向只发生在组内部，不跨越组边界。</span>
       </div>
       <div class="note-item">
         <strong>Home 是安静的起点</strong>

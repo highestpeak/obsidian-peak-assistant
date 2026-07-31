@@ -2,7 +2,7 @@
 
 Date: 2026-07-30
 
-Visual direction revised: 2026-07-31 · V7 vertical command stack
+Visual direction revised: 2026-07-31 · V8 horizontal groups in a vertical stack
 
 Status: Decided · design/spec ready · implementation pending
 
@@ -93,7 +93,7 @@ The exhaustive native Command Palette stays one keystroke away.
 CommandCenterBoardConfig
 ├─ Modal shell
 │  ├─ one vertical group stack
-│  ├─ compact vertical action rows
+│  ├─ horizontal actions inside each group
 │  └─ in-place customize mode
 └─ Home shell
    ├─ global search entry
@@ -167,7 +167,7 @@ interface CommandCenterGroup {
 	id: string;
 	label: string;
 	icon: string;
-	actionLayout: 'vertical';
+	actionLayout: 'horizontal-wrap';
 	order: number;
 	actions: CommandCenterActionItem[];
 }
@@ -229,7 +229,7 @@ Home is a navigation page, not an analytics dashboard.
 The default layout is fixed and deliberately sparse:
 
 - **Search**: one centered launcher entry.
-- **Quick access**: a short vertical list of pinned actions and destinations.
+- **Quick access**: a short horizontal block of pinned actions and destinations.
 - **Continue**: recent Vault files with source path and last-opened time.
 - **Pinned pages**: optional, owner-rendered previews in one vertical reading path.
 
@@ -266,8 +266,8 @@ Destructive layout reset requires confirmation and export/import support before 
 
 | Screen / state | Primary job | Reads | Writes | Main actions | Empty / failure state | Entry / exit |
 | --- | --- | --- | --- | --- | --- | --- |
-| Modal · launcher | Invoke a curated action without typing | Groups, actions, availability, hotkeys | Recent usage only | Scan groups, vertical navigation, Enter, search | Starter groups or “add first action” | Hotkey / command; closes to prior focus |
-| Modal · search | Narrow configured actions | Curated action index | Query only | Type, vertical navigation, Enter, clear | Empty result with clear-query guidance | Search field; returns to launcher on clear |
+| Modal · launcher | Invoke a curated action without typing | Groups, actions, availability, hotkeys | Recent usage only | Scan groups, spatial navigation, Enter, search | Starter groups or “add first action” | Hotkey / command; closes to prior focus |
+| Modal · search | Narrow configured actions | Curated action index | Query only | Type, grouped spatial navigation, Enter, clear | Empty result with clear-query guidance | Search field; returns to launcher on clear |
 | Home View | Return to important work and destinations | Pinned actions, recents, bookmarks, Workspaces, pinned pages | Quick access and pin order | Search, open destination, customize | Guide to pin the first destination or page | Ribbon / command / empty tab; exits to destination |
 | Customize | Curate the current grouped order | Current config; catalog only after Add action | Groups, labels, aliases, order, Home pins | Drag, add, edit, remove, Done | Compatibility warning inside catalog picker | Footer action; Done returns to launcher |
 
@@ -276,9 +276,9 @@ Destructive layout reset requires confirmation and export/import support before 
 ### 9.1 Modal geometry
 
 - Width: `min(640px, calc(100vw - 48px))`.
-- Height: approximately `520px`, capped by `calc(100vh - 72px)`.
+- Height: approximately `400px`, capped by `calc(100vh - 72px)`.
 - Group canvas: one vertical reading path; groups never sit side by side.
-- Group internals: actions follow one vertical order; they never wrap into adjacent columns.
+- Group internals: actions run horizontally and wrap only inside their owning group.
 - Action button: approximately `30px` high in all three presentation modes.
 - Default icon: approximately `15 × 15px`, bare rather than placed inside a colored icon container; the whole button remains the hit target.
 - Group headings do not show item counts; the visible tiles already communicate group size.
@@ -296,7 +296,7 @@ Every tile has an action identity, accessible name and tooltip. Its visible anat
 2. `icon only`: icon with `aria-label` and tooltip;
 3. `text only`: short label without an icon.
 
-All three modes share one compact height. Icon-only remains a square; the other modes use natural content width. Each action owns its own vertical row, and all modes use a disabled treatment when unavailable.
+All three modes share one compact height. Icon-only remains a square; the other modes use natural content width. All modes stay inside the horizontal action block and use a disabled treatment when unavailable.
 
 Long native command labels such as “Create new drawing — in the current active window” become a short tile title such as `Current window`; the tooltip preserves the full source label.
 
@@ -326,7 +326,8 @@ The project does not assign a default hotkey. The user sets it in Obsidian Setti
 - `/` or normal typing focuses search.
 - `Esc` clears query first, then closes the modal.
 - `Tab` moves between structural controls.
-- Up and Down move between visible actions.
+- Left and Right move within a group.
+- Up and Down move to the nearest action in the previous or next group.
 - `Enter` invokes the focused tile.
 - `Cmd/Ctrl + P` may close Command Center and open the native Palette.
 - Closing restores the prior active element and editor selection.
@@ -477,8 +478,8 @@ This is an implementation sequence, not permission to ship incomplete UI as the 
 ### Track B · Modal
 
 - React modal shell;
-- single-column vertical group stack;
-- per-group vertical action rows;
+- vertical group stack with no side-by-side groups;
+- per-group horizontal wrapping action block;
 - search over configured actions;
 - full keyboard and focus restoration;
 - close-only header.
@@ -518,7 +519,7 @@ This is an implementation sequence, not permission to ship incomplete UI as the 
 - Missing command IDs fail closed.
 - Hotkey resolver never persists stale display strings.
 - Modal/Home resolve the same action identity, label, icon and hotkey.
-- Keyboard vertical navigation tests.
+- Keyboard grouped spatial-navigation tests.
 - Focus restoration test.
 - Boundary test prevents UI or service code from reading private `app.commands` directly.
 - Build and existing command gateway tests.
@@ -529,7 +530,7 @@ Use the canonical CDP protocol.
 
 1. Open from a user-bound hotkey.
 2. Verify board geometry and computed hit targets.
-3. Navigate the grouped stack with Up and Down.
+3. Navigate within a group with Left / Right and between groups with Up / Down.
 4. Search a curated Excalidraw group.
 5. Execute a Peak command and a third-party command.
 6. Disable the third-party plugin and verify the unavailable state.

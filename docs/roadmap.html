@@ -336,8 +336,8 @@
               </tr>
               <tr>
                 <td><strong>Peak Command Center Launcher + Home</strong></td>
-                <td>与原生 <code>Cmd/Ctrl + P</code> 并存的策展启动器。2026-07-31 V7 视觉方向改成唯一一条纵向路径：Modal、Search 和 Customize 都不再有左右 lane，分组与 action 从上到下排列；Home Quick access 同步使用纵向列表。Add group、分组/action 拖动、图标 + 文字 / 仅图标 / 仅文字和 Pin 均保留；单列下无意义的全宽开关已删除。完整 catalog 仅由 Add action 临时打开，运行态搜索只过滤已配置内容；旧 <code>CopilotCommandCenterModal</code> 仍是另一个 AI capability planner。本项尚未实现。</td>
-                <td><a href="superpowers/specs/2026-07-30-command-center-launcher-home-design.md">正式设计</a><br><a href="gstack/command-center-launcher-home-2026-07-30/index.html">V7 可交互原型</a><br><a href="research/2026-07-30-command-center-launcher-home/README.md">调研</a></td>
+                <td>与原生 <code>Cmd/Ctrl + P</code> 并存的策展启动器。2026-07-31 V8 视觉方向明确为“group 纵向、组内 action 横向”：Modal、Search 和 Customize 都只有一条纵向 group stack，但 Peak Assistant 等每个 block 内的动作横向排列并只在本组换行；Home Quick access 使用同一横向 block 语法。Add group、分组/action 拖动、图标 + 文字 / 仅图标 / 仅文字和 Pin 均保留；单列下无意义的全宽开关维持删除。完整 catalog 仅由 Add action 临时打开，运行态搜索只过滤已配置内容；旧 <code>CopilotCommandCenterModal</code> 仍是另一个 AI capability planner。本项尚未实现。</td>
+                <td><a href="superpowers/specs/2026-07-30-command-center-launcher-home-design.md">正式设计</a><br><a href="gstack/command-center-launcher-home-2026-07-30/index.html">V8 可交互原型</a><br><a href="research/2026-07-30-command-center-launcher-home/README.md">调研</a></td>
                 <td><span class="pill gold">decided · design/spec ready · implementation pending</span></td>
               </tr>
               <tr>
@@ -475,7 +475,7 @@
               <tr>
                 <td>2026-07-22</td>
                 <td><strong>Peak Sheet</strong>（Peak Dataset + Peak Compute Engine）</td>
-                <td>多维表格提案补齐 Dataset 层：自由 Sheet 可经确认转换为稳定 ID + 基础 Schema 的结构化数据。首版只验证 Markdown table → Dataset → Table + Chart → ComputePlan → preview / accept → manual refresh。<br><strong>2026-07-30 需求调整：</strong>外部多视图工作流信号确认“一份 Dataset，多种工作视图”的产品表达；早期增加 View adapter 合同和移动消费模式，但 Gallery、Calendar、Board、Map、3D globe、Relation、脚本、自动化与 Portal 继续后移。仍属调研候选，不代表实施承诺。</td>
+                <td>多维表格提案补齐 Dataset 层：自由 Sheet 可经确认转换为稳定 ID + 基础 Schema 的结构化数据。首版只验证 Markdown table → Dataset → Table + Chart → ComputePlan → preview / accept → manual refresh。<br><strong>2026-07-30 需求调整：</strong>外部多视图工作流信号确认“一份 Dataset，多种工作视图”的产品表达；早期增加 View adapter 合同和移动消费模式，但 Gallery、Calendar、Board、Map、3D globe、Relation、脚本、自动化与 Portal 继续后移。<br><strong>2026-07-31 计算工作面纠偏：</strong>Peak Sheet 不能退化成简单多维表格。默认工作面回到自由单元格 / 区域公式、公式栏、选区统计、数字与日期格式、对齐换行和条件格式；结构化字段、计算列与多视图叠加在这层能力之上。Mock 展示较完整的产品基线，不等于把全部函数和视图塞进同一实施波。仍属调研候选，不代表实施承诺。</td>
                 <td><a href="research/2026-07-22-peak-sheet-compute/README.md">产品与架构评估</a><br><a href="gstack/peak-sheet-multiview-2026-07-30/index.html">交互 Mock</a></td>
               </tr>
               <tr>
