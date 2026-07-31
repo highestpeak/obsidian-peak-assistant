@@ -1,0 +1,934 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak Assistant 文件格式能力审计</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7f8;
+      --paper: #ffffff;
+      --ink: #17211c;
+      --muted: #66736c;
+      --line: #dfe6e2;
+      --soft: #eef3f0;
+      --accent: #1f6b4f;
+      --accent-soft: #e7f3ed;
+      --blue: #285f91;
+      --blue-soft: #e8f1f8;
+      --amber: #8a5b13;
+      --amber-soft: #fbf2df;
+      --red: #9a3e37;
+      --red-soft: #f9e9e7;
+      --purple: #67519a;
+      --purple-soft: #f0ebf8;
+      --shadow: 0 18px 60px rgba(30, 48, 39, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      line-height: 1.72;
+    }
+
+    a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+    a:hover { color: #144b37; }
+
+    code {
+      border: 1px solid #d9e2dd;
+      border-radius: 5px;
+      background: #f5f8f6;
+      padding: 0.12em 0.38em;
+      color: #254b3a;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 0.9em;
+      overflow-wrap: break-word;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      border-bottom: 1px solid rgba(210, 221, 215, 0.92);
+      background: rgba(250, 252, 251, 0.94);
+      backdrop-filter: blur(16px);
+    }
+
+    .topbar-inner {
+      width: min(1180px, calc(100% - 40px));
+      min-height: 56px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 22px;
+    }
+
+    .brand {
+      flex: 0 0 auto;
+      color: var(--ink);
+      font-weight: 730;
+      text-decoration: none;
+    }
+
+    .nav-links {
+      display: flex;
+      min-width: 0;
+      gap: 4px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .nav-links::-webkit-scrollbar { display: none; }
+    .nav-links a {
+      flex: 0 0 auto;
+      padding: 7px 9px;
+      border-radius: 7px;
+      color: var(--muted);
+      font-size: 13px;
+      text-decoration: none;
+    }
+    .nav-links a:hover { background: var(--soft); color: var(--ink); }
+
+    main {
+      width: min(1080px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 64px 0 96px;
+    }
+
+    section { scroll-margin-top: 82px; }
+
+    .hero {
+      padding: 52px 56px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+    }
+
+    .eyebrow {
+      margin: 0 0 14px;
+      color: var(--accent);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    h1 {
+      max-width: 100%;
+      margin: 0;
+      font-size: clamp(36px, 5vw, 56px);
+      line-height: 1.12;
+      letter-spacing: -0.035em;
+    }
+
+    .subtitle {
+      max-width: 780px;
+      margin: 22px 0 0;
+      color: #435149;
+      font-size: 19px;
+      line-height: 1.72;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-top: 28px;
+    }
+
+    .meta span {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fafcfb;
+      padding: 5px 10px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    h2 {
+      margin: 74px 0 12px;
+      font-size: 30px;
+      line-height: 1.26;
+      letter-spacing: -0.025em;
+    }
+
+    h3 {
+      margin: 34px 0 10px;
+      font-size: 21px;
+      line-height: 1.35;
+    }
+
+    p { max-width: 820px; margin: 10px 0; }
+    ul, ol { max-width: 830px; padding-left: 1.35em; }
+    li + li { margin-top: 7px; }
+
+    .callout {
+      margin-top: 24px;
+      border: 1px solid #bed8ca;
+      border-left: 5px solid var(--accent);
+      border-radius: 10px;
+      background: var(--accent-soft);
+      padding: 18px 20px;
+    }
+
+    .callout.warning {
+      border-color: #e8ca90;
+      border-left-color: var(--amber);
+      background: var(--amber-soft);
+    }
+
+    .callout.danger {
+      border-color: #e5bcb8;
+      border-left-color: var(--red);
+      background: var(--red-soft);
+    }
+
+    .callout-title {
+      margin-bottom: 4px;
+      font-weight: 760;
+    }
+
+    .callout p { margin: 4px 0 0; }
+
+    .verdict-grid,
+    .method-grid,
+    .copy-grid,
+    .gap-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 24px;
+    }
+
+    .card {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--paper);
+      padding: 20px;
+    }
+
+    .card-title {
+      margin: 0 0 8px;
+      font-size: 16px;
+      font-weight: 760;
+      line-height: 1.38;
+    }
+
+    .card p { margin: 0; color: #4f5e56; font-size: 14px; }
+    .card ul { margin: 10px 0 0; color: #435149; font-size: 14px; }
+
+    .capability-ladder {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+      margin: 24px 0 14px;
+    }
+
+    .capability-step {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--paper);
+      padding: 14px 12px;
+      text-align: center;
+    }
+
+    .capability-step b {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    .capability-step span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .table-wrap {
+      margin-top: 18px;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--paper);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 13.5px;
+    }
+
+    th, td {
+      padding: 11px 13px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      line-height: 1.52;
+      word-break: normal;
+      overflow-wrap: break-word;
+      hyphens: none;
+    }
+
+    th {
+      background: #f5f8f6;
+      color: #47564e;
+      font-size: 12px;
+      font-weight: 730;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+    td:first-child { color: #263a30; font-weight: 680; }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 3px 8px;
+      white-space: nowrap;
+      font-size: 11px;
+      font-weight: 720;
+    }
+
+    .pill.strong { background: var(--accent-soft); color: var(--accent); }
+    .pill.conditional { background: var(--blue-soft); color: var(--blue); }
+    .pill.internal { background: var(--amber-soft); color: var(--amber); }
+    .pill.no { background: var(--red-soft); color: var(--red); }
+    .pill.future { background: var(--purple-soft); color: var(--purple); }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    blockquote {
+      margin: 20px 0;
+      border-left: 4px solid var(--accent);
+      background: var(--paper);
+      padding: 18px 22px;
+      font-size: 18px;
+      line-height: 1.65;
+    }
+
+    .copy-yes { border-top: 4px solid var(--accent); }
+    .copy-no { border-top: 4px solid var(--red); }
+
+    .rank {
+      display: inline-block;
+      min-width: 34px;
+      margin-right: 8px;
+      color: var(--accent);
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 13px;
+      font-weight: 720;
+    }
+
+    .evidence-list {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .evidence-group {
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: var(--paper);
+      padding: 17px;
+    }
+
+    .evidence-group h3 { margin: 0 0 10px; font-size: 15px; }
+    .evidence-group a {
+      display: block;
+      margin-top: 8px;
+      font-size: 13px;
+      text-decoration: none;
+    }
+
+    .evidence-group a:hover { text-decoration: underline; }
+
+    .footer {
+      margin-top: 76px;
+      padding-top: 24px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 900px) {
+      .hero { padding: 38px 30px; }
+      .capability-ladder { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .evidence-list { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 680px) {
+      .topbar-inner, main { width: min(100% - 24px, 1080px); }
+      .topbar-inner { gap: 10px; }
+      .brand { display: none; }
+      .verdict-grid, .method-grid, .copy-grid, .gap-grid { grid-template-columns: 1fr; }
+      .capability-ladder { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .hero { padding: 30px 22px; }
+      h1 { font-size: 34px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#top">文件能力审计</a>
+      <nav class="nav-links" aria-label="报告导航">
+        <a href="#judgment">结论</a>
+        <a href="#definition">如何定义支持</a>
+        <a href="#matrix">完整矩阵</a>
+        <a href="#editing">怎么修改</a>
+        <a href="#marketing">宣传口径</a>
+        <a href="#gaps">关键缺口</a>
+        <a href="#roadmap">路线建议</a>
+        <a href="#evidence">证据</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <p class="eyebrow">Owner-facing source audit · 2026-07-31</p>
+      <h1>Peak Assistant 文件格式能力审计</h1>
+      <p class="subtitle">
+        这份报告回答两个容易被混在一起的问题：插件今天到底能对哪些文件做什么，
+        以及哪些能力已经足够成为宣传卖点。结论以当前代码、配置、测试和已登记设计为依据，
+        不把文件图标、扩展名识别或未来方案算成已交付能力。
+      </p>
+      <div class="meta">
+        <span>代码快照 eb827f63e761</span>
+        <span>约 6,000 字 · 15 分钟</span>
+        <span>只读调研 · 未修改生产代码</span>
+        <span>未执行真实 Obsidian 文件交互验收</span>
+      </div>
+    </section>
+
+    <section id="judgment">
+      <h2>结论：当前是 Markdown-first 多格式工作台</h2>
+      <p>
+        Peak Assistant 今天最强的故事不是“所有文件都能编辑”，而是以 Markdown Composer 为主工作面，
+        将多种文件纳入不同深度的知识工作流。不同格式停在不同层级，不能只用一个“支持”概括。
+      </p>
+
+      <div class="verdict-grid">
+        <article class="card">
+          <h3 class="card-title">最完整：Markdown</h3>
+          <p>可打开、解析、直接修改并完成 AI 审阅写回，覆盖常见 Markdown 块与 Obsidian 扩展语法。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title">覆盖最广：读取与索引</h3>
+          <p>Loader 已覆盖常见文档、数据、Office 与 Obsidian 原生画布格式，但多数默认关闭。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title">差异化：嵌入对象修改</h3>
+          <p>在 Markdown Composer 中，可对引用的 <code>.base</code>、<code>.canvas</code> 与 Excalidraw 文件做受控结构化写回。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title">未来故事：File Workspace 与 Peak Sheet</h3>
+          <p>独立图片/HTML/PDF 工作区和 Peak Sheet 都已有设计或调研，但仍未成为生产功能。</p>
+        </article>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">当前最诚实的产品定位</div>
+        <p>
+          “Markdown 为核心的多格式知识工作台”已经成立；“全格式 AI 编辑器”还没有成立。
+          这一区分会直接决定宣传可信度。
+        </p>
+      </div>
+    </section>
+
+    <section id="definition">
+      <h2>先定义“支持”到底指什么</h2>
+      <p>
+        一个扩展名出现在类型列表里，只能证明插件认识它。对外表达时至少要说明能力停在哪一步，
+        否则“支持 PDF”“支持 CSV”会被用户自然理解成可打开、可问 AI、可编辑和可保存。
+      </p>
+
+      <div class="capability-ladder" aria-label="文件能力层级">
+        <div class="capability-step"><b>识别</b><span>知道扩展名和图标</span></div>
+        <div class="capability-step"><b>预览</b><span>悬浮或宿主查看</span></div>
+        <div class="capability-step"><b>读取</b><span>提取文本或二进制</span></div>
+        <div class="capability-step"><b>索引</b><span>进入搜索与摘要</span></div>
+        <div class="capability-step"><b>修改</b><span>直接或 AI 写回</span></div>
+        <div class="capability-step"><b>生成</b><span>创建或导出新文件</span></div>
+      </div>
+
+      <ul>
+        <li><strong>Loader 支持不等于文件工作区。</strong>Loader 负责读取、切块、摘要和索引，不负责独立 View、编辑器或保存体验。</li>
+        <li><strong>附件可上传不等于模型已读取。</strong>文件可以被保存和显示，但还要确认实际字节或转文本内容是否进入模型请求。</li>
+        <li><strong>能生成不等于能回读和编辑。</strong>例如 <code>.drawio</code> 可以生成，但 Peak 没有对应 Loader 或独立编辑面。</li>
+        <li><strong>宿主能打开不等于 Peak 能修改。</strong>PDF、Bases、Canvas 与 Excalidraw 的原生显示能力来自 Obsidian 或生态插件。</li>
+      </ul>
+
+      <div class="legend" aria-label="状态说明">
+        <span class="pill strong">可作为当前卖点</span>
+        <span class="pill conditional">可宣传但要限定</span>
+        <span class="pill internal">内部基础能力</span>
+        <span class="pill no">暂不宣传</span>
+        <span class="pill future">仅设计或调研</span>
+      </div>
+    </section>
+
+    <section id="matrix">
+      <h2>当前文件格式能力矩阵</h2>
+      <p>
+        下表按用户真正能完成的事情分类。凡是没有独立 Peak 文件 View 的格式，
+        “打开”通常只是 Obsidian 原生视图、悬浮预览或文本片段，不代表 Peak 自己提供了编辑器。
+      </p>
+
+      <h3>文档与通用文本</h3>
+      <div class="table-wrap">
+        <table>
+          <colgroup>
+            <col style="width: 150px">
+            <col style="width: 31%">
+            <col>
+            <col style="width: 150px">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>格式</th>
+              <th>当前已确认</th>
+              <th>修改与边界</th>
+              <th>对外状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Markdown<br><code>.md</code> <code>.markdown</code></td>
+              <td>读取、索引、原生打开、Composer 打开</td>
+              <td>直接编辑与 AI 审阅写回；当前唯一完整主工作面</td>
+              <td><span class="pill strong">可作为当前卖点</span></td>
+            </tr>
+            <tr>
+              <td>纯文本<br><code>.txt</code></td>
+              <td>读取与索引 Loader 已存在；默认关闭</td>
+              <td>无 Peak 独立编辑器；设置页未暴露 TXT 开关</td>
+              <td><span class="pill internal">内部基础能力</span></td>
+            </tr>
+            <tr>
+              <td>PDF<br><code>.pdf</code></td>
+              <td>逐页文本提取、索引、悬浮 iframe 预览</td>
+              <td>无 Peak PDF 编辑；无页码/选区 AI companion</td>
+              <td><span class="pill conditional">限定为读取与检索</span></td>
+            </tr>
+            <tr>
+              <td>HTML<br><code>.html</code> <code>.htm</code></td>
+              <td>读取源代码并按标签切块；默认关闭</td>
+              <td>无渲染工作区、sandbox、源码编辑或 AI patch</td>
+              <td><span class="pill internal">内部基础能力</span></td>
+            </tr>
+            <tr>
+              <td>XML<br><code>.xml</code></td>
+              <td>由 HTML/XML Loader 读取，但文档类型记为 HTML</td>
+              <td>XML 开关与实际分类不一致；无结构化编辑</td>
+              <td><span class="pill no">暂不宣传</span></td>
+            </tr>
+            <tr>
+              <td>Word<br><code>.docx</code></td>
+              <td>Mammoth 提取纯文本；可选索引</td>
+              <td>不保留 Word 排版；无 Peak 查看或写回</td>
+              <td><span class="pill conditional">限定为文本提取</span></td>
+            </tr>
+            <tr>
+              <td>旧 Word<br><code>.doc</code></td>
+              <td>扩展名被 Loader 声明，但无专项测试</td>
+              <td>仍调用 Mammoth；不能据此承诺旧二进制 DOC</td>
+              <td><span class="pill no">暂不宣传</span></td>
+            </tr>
+            <tr>
+              <td>PowerPoint<br><code>.pptx</code></td>
+              <td>officeparser 提取文本；可选索引</td>
+              <td>不还原幻灯片版式；无 Peak 查看或写回</td>
+              <td><span class="pill conditional">限定为文本提取</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>数据、表格与 Obsidian 原生对象</h3>
+      <div class="table-wrap">
+        <table>
+          <colgroup>
+            <col style="width: 150px">
+            <col style="width: 31%">
+            <col>
+            <col style="width: 150px">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>格式</th>
+              <th>当前已确认</th>
+              <th>修改与边界</th>
+              <th>对外状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>CSV<br><code>.csv</code></td>
+              <td>读取、逐行切块、可选索引；默认关闭</td>
+              <td>Markdown 表格可导入、复制和导出 CSV；无独立 CSV 编辑器</td>
+              <td><span class="pill conditional">限定为互操作</span></td>
+            </tr>
+            <tr>
+              <td>JSON<br><code>.json</code></td>
+              <td>读取与索引；数组按元素切块；默认关闭</td>
+              <td>无树形查看、Schema 校验或结构化写回</td>
+              <td><span class="pill conditional">限定为读取与检索</span></td>
+            </tr>
+            <tr>
+              <td>Excel<br><code>.xlsx</code></td>
+              <td>类型和设置 UI 中存在</td>
+              <td>Loader 明确返回不支持；依赖中也没有 XLSX 解析库</td>
+              <td><span class="pill no">不可宣传</span></td>
+            </tr>
+            <tr>
+              <td>Canvas<br><code>.canvas</code></td>
+              <td>提取节点文本、文件引用和边标签；可选索引</td>
+              <td>嵌入 Markdown 时可做 revision-guarded 结构化 AI 写回</td>
+              <td><span class="pill conditional">限定嵌入对象场景</span></td>
+            </tr>
+            <tr>
+              <td>Excalidraw<br><code>.excalidraw</code></td>
+              <td>读取与默认索引；Chat 可生成绘图文件</td>
+              <td>嵌入 Markdown 时可结构化 AI 写回；渲染依赖生态插件</td>
+              <td><span class="pill conditional">可作为生态卖点</span></td>
+            </tr>
+            <tr>
+              <td>Obsidian Bases<br><code>.base</code></td>
+              <td>Chat 可生成并调用原生 Bases 打开</td>
+              <td>嵌入 Markdown 时可结构化修改；不在文档索引 Loader 中</td>
+              <td><span class="pill conditional">限定为 Bases 集成</span></td>
+            </tr>
+            <tr>
+              <td>draw.io<br><code>.drawio</code></td>
+              <td>Chat 可校验 XML 并生成文件</td>
+              <td>Peak 无 Loader 或编辑器；使用依赖外部查看工具</td>
+              <td><span class="pill conditional">限定为生成</span></td>
+            </tr>
+            <tr>
+              <td>Peak Sheet / Dataset</td>
+              <td>Markdown 表格、CSV 和 Bases 可作为现有基础</td>
+              <td>没有生产文件格式、Dataset runtime、Schema 或 ComputePlan</td>
+              <td><span class="pill future">仅调研候选</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>图片、音频与视频</h3>
+      <div class="table-wrap">
+        <table>
+          <colgroup>
+            <col style="width: 165px">
+            <col style="width: 31%">
+            <col>
+            <col style="width: 150px">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>格式</th>
+              <th>当前已确认</th>
+              <th>修改与边界</th>
+              <th>对外状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>PNG / JPEG / WebP</td>
+              <td>悬浮预览、附件保存、媒体生成与引用图读取</td>
+              <td>Chat/Composer 可调用 AI 改图并生成新文件；无独立 Image Workspace</td>
+              <td><span class="pill conditional">可宣传生成与改图</span></td>
+            </tr>
+            <tr>
+              <td>GIF / BMP / SVG</td>
+              <td>图片 Loader 与悬浮预览覆盖这些扩展名</td>
+              <td>不在当前 AI 改图引用白名单；SVG 还缺独立安全边界</td>
+              <td><span class="pill internal">仅基础预览</span></td>
+            </tr>
+            <tr>
+              <td>HEIC / HEIF / AVIF</td>
+              <td>部分 UI 分类器认识其中若干扩展名</td>
+              <td>Loader、预览和改图支持列表不一致</td>
+              <td><span class="pill no">暂不宣传</span></td>
+            </tr>
+            <tr>
+              <td>音频<br>MP3 / WAV 等</td>
+              <td>附件保存；配置转录服务后可生成 transcript；可生成音频</td>
+              <td>无索引 Loader 或音频工作区；能力取决于 provider 配置</td>
+              <td><span class="pill conditional">带条件宣传</span></td>
+            </tr>
+            <tr>
+              <td>视频<br>MP4 / MOV 等</td>
+              <td>附件保存；可提取音轨转录；可生成 MP4</td>
+              <td>原生视频直读链路未闭环；无视频索引或编辑工作区</td>
+              <td><span class="pill conditional">限定转录或生成</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout warning">
+        <div class="callout-title">“未知文件也能上传”不计入格式支持</div>
+        <p>
+          Chat 文件选择器可以接收更广泛的文件，但未知扩展名没有对应 Loader、预览合同或编辑能力。
+          文件被保存到 Vault，不代表模型读取了内容。
+        </p>
+      </div>
+    </section>
+
+    <section id="editing">
+      <h2>这些文件今天是怎么被修改的</h2>
+      <p>
+        当前不存在一个“任意文件编辑器”。实际修改路径分为五种，每种都有不同的 source of truth 和保存边界。
+      </p>
+
+      <div class="method-grid">
+        <article class="card">
+          <h3 class="card-title"><span class="rank">01</span>Markdown 主文件</h3>
+          <p>Composer 直接读取和写回 <code>.md</code>。确定性操作与 AI 候选都经过 transaction/review 语义。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title"><span class="rank">02</span>Markdown 内结构化块</h3>
+          <p>表格、图表、Mermaid、代码等仍保存回 Markdown 源文件。CSV 在这里是导入/导出格式，不是独立工作区。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title"><span class="rank">03</span>被引用的原生文件</h3>
+          <p><code>.base</code>、<code>.canvas</code>、Excalidraw 在 Markdown 内被引用时，可通过 typed patch 修改原文件，并带 revision guard。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title"><span class="rank">04</span>媒体生成与图片编辑</h3>
+          <p>图片编辑读取 Vault 引用图，产出新的图片文件。音频和视频生成同样创建新产物，不是原文件原位编辑。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title"><span class="rank">05</span>结构化产物生成</h3>
+          <p>Chat 可创建 Markdown、Bases、Excalidraw、draw.io 等文件，并记录 receipt。能创建不代表 Peak 也能完整编辑。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title"><span class="rank">06</span>Loader-only 文件</h3>
+          <p>Loader-only 文件当前主要用于读取、摘要或索引。修改仍要回到外部或 Obsidian 原生工具。</p>
+        </article>
+      </div>
+
+      <div class="callout danger">
+        <div class="callout-title">聊天附件的 AI 直读链路目前不能作为卖点</div>
+        <p>
+          默认配置选择 direct attachment，但当前最近消息渲染器没有把资源字节构造成模型消息 part。
+          转文本模式可以借助 Loader/转录生成摘要，但“把任意 PDF、图片、Office 文件拖进来直接问”尚缺闭环证据。
+        </p>
+      </div>
+    </section>
+
+    <section id="marketing">
+      <h2>宣传口径：哪些话现在能说</h2>
+
+      <h3>建议使用的总定位</h3>
+      <blockquote>
+        Peak Assistant 是以 Markdown 为核心的多格式知识工作台。它能提取与检索 PDF、DOCX 和 PPTX 的文本，
+        并可按设置读取 CSV、JSON、HTML 与 TXT。在 Composer 中，用户可以审阅式修改 Markdown 与嵌入对象，
+        再把 AI 结果保存为可继续使用的 Vault 文件。
+      </blockquote>
+
+      <div class="copy-grid">
+        <article class="card copy-yes">
+          <h3 class="card-title">可以直接说</h3>
+          <ul>
+            <li>Markdown 的完整编辑与 AI 协作</li>
+            <li>PDF 文本提取、索引和悬浮预览</li>
+            <li>Markdown 表格的 CSV 导入与导出</li>
+            <li>生成与编辑 PNG/JPEG/WebP 图片</li>
+            <li>生成 Bases、Excalidraw、draw.io 等 Vault 产物</li>
+          </ul>
+        </article>
+        <article class="card copy-yes">
+          <h3 class="card-title">带条件说</h3>
+          <ul>
+            <li>启用后索引多种文本、数据、Office 与 Obsidian 原生对象格式</li>
+            <li>DOCX/PPTX 仅提取文本，不保留原始版式</li>
+            <li>Canvas/Base/Excalidraw 修改发生在 Markdown 嵌入对象场景</li>
+            <li>音频转录取决于已配置的 provider</li>
+            <li>生态格式的最终渲染依赖 Obsidian 或社区插件</li>
+          </ul>
+        </article>
+        <article class="card copy-no">
+          <h3 class="card-title">现在不要说</h3>
+          <ul>
+            <li>支持 Excel / XLSX</li>
+            <li>支持独立编辑 CSV、JSON、HTML 或 PDF</li>
+            <li>支持所有图片的语义搜索</li>
+            <li>任何附件都能被模型直接理解</li>
+            <li>Peak Sheet 已经可用</li>
+          </ul>
+        </article>
+        <article class="card copy-no">
+          <h3 class="card-title">容易误导的短句</h3>
+          <ul>
+            <li>“支持 Office”会把文本提取误解为版式查看与编辑</li>
+            <li>“支持 HTML”会被理解为浏览器式预览与修改</li>
+            <li>“支持图片”会把预览、索引、理解和改图混成一件事</li>
+            <li>“支持 CSV”会被理解为电子表格工作区</li>
+            <li>“支持多模态附件”会越过当前 direct part 缺口</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section id="gaps">
+      <h2>影响可信宣传的关键缺口</h2>
+      <p>
+        下面这些不是“以后可以更好”的普通增强，而是会让产品页、设置页和真实行为相互矛盾的合同问题。
+      </p>
+
+      <div class="gap-grid">
+        <article class="card">
+          <h3 class="card-title">XLSX 是最明显的假阳性</h3>
+          <p>类型、Loader 扩展名和设置 UI 都出现 XLSX，但读取分支直接返回 <code>null</code>。当前应视为不支持。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title">HTML/XML 类型合并造成开关漂移</h3>
+          <p>XML 由同一 Loader 读取，却产生 HTML 类型；设置页又没有 XML 开关，真实启用语义不清晰。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title">TXT 有 Loader，却没有设置入口</h3>
+          <p>默认配置包含 TXT，但 Knowledge Index 的文件类型 chips 不包含它。用户无法从当前 UI 理解或控制这项能力。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title">图片索引不是真多模态理解</h3>
+          <p>Image Loader 会读取二进制并计算 hash，但描述函数明确没有把图片字节发送给模型，通常只留下占位文本。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title">附件 direct mode 没有构造模型内容</h3>
+          <p>模型路由会识别 vision/PDF 能力，但最近消息 slot 的 direct 分支没有追加 image/file part。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title">Loader 缺少格式级回归测试</h3>
+          <p>当前有表格、原生对象、媒体相关 focused tests，但没发现覆盖全部 Loader 的 fixture/E2E 测试面。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title">图片格式清单不一致</h3>
+          <p>Loader、附件分类、UI 图标和 AI 改图白名单各自维护扩展名，HEIC/AVIF/SVG 等处于不同状态。</p>
+        </article>
+        <article class="card">
+          <h3 class="card-title">File Workspace 仍是 implementation pending</h3>
+          <p>当前 ViewManager 没有扩展名接管；Composer 入口也明确只接受 Markdown。</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="roadmap">
+      <h2>建议把文件能力分成三条产品线</h2>
+      <p>
+        宣传重点不应等待所有格式都达到同一成熟度。更稳妥的做法是保留一个统一总定位，
+        同时把当前、下一阶段和远期能力明确拆开。
+      </p>
+
+      <ol>
+        <li>
+          <strong>当前：Markdown 与多格式知识摄取。</strong>
+          以 Markdown Composer、PDF/文本/数据/Office 读取索引、CSV 互操作、原生对象协作为主。
+        </li>
+        <li>
+          <strong>下一阶段：Peak File Workspace。</strong>
+          图片、HTML 和 PDF 获得一致的打开、AI 协作与版本保存体验。
+        </li>
+        <li>
+          <strong>远期：Peak Sheet。</strong>
+          将现有表格基础升级为可计算的 Sheet 与结构化 Dataset 系统。
+        </li>
+      </ol>
+
+      <h3>未来需要一个机器可读的文件能力清单</h3>
+      <p>
+        本次调研发现扩展名散落在多套类型、运行时与 UI 注册点中。
+        后续应由一个 app-owned capability manifest 生成用户设置和宣传矩阵，至少记录：
+      </p>
+      <ul>
+        <li>扩展名与 MIME；</li>
+        <li>读取与索引能力；</li>
+        <li>预览、直接 AI 输入与独立编辑能力；</li>
+        <li>嵌入编辑、生成与导出能力；</li>
+        <li>默认开关、依赖的 provider 或生态插件；</li>
+        <li>对应 fixture、自动化测试和真实 Obsidian 验收状态。</li>
+      </ul>
+
+      <div class="callout">
+        <div class="callout-title">本轮不建议马上扩大格式数量</div>
+        <p>
+          先修正 XLSX、附件 direct mode、图片索引和类型清单漂移，能够显著提高现有宣传的可信度。
+          在这些合同收口前继续添加扩展名，只会让“识别了”与“真的可用”之间的落差更大。
+        </p>
+      </div>
+    </section>
+
+    <section id="evidence">
+      <h2>证据范围与验证边界</h2>
+      <p>
+        本报告来自当前仓库的源代码、配置、测试与既有设计文档。它是 source-confirmed capability audit，
+        不是一次真实 Obsidian 中逐格式打开、拖放、索引和编辑的端到端验收。
+      </p>
+
+      <div class="evidence-list">
+        <article class="evidence-group">
+          <h3>类型、读取与索引</h3>
+          <a href="../../../src/core/document/types.ts">Document types</a>
+          <a href="../../../src/core/document/loader/helper/DocumentLoaderManager.ts">Document loader registry</a>
+          <a href="../../../src/core/config/settingsTypes.ts">Default search settings</a>
+          <a href="../../../src/ui/view/settings/tabs/KnowledgeIndexTab.tsx">Knowledge Index settings UI</a>
+        </article>
+        <article class="evidence-group">
+          <h3>编辑、附件与媒体</h3>
+          <a href="../../../src/app/composer/ComposerDocumentRouter.ts">Composer Markdown routing</a>
+          <a href="../../../src/service/composer/packs/table/tableModel.ts">Table and CSV model</a>
+          <a href="../../../src/service/chat/context/slots/RecentMessagesSlot.ts">Chat attachment rendering</a>
+          <a href="../../../templates/config/media-generation.json">Media generation limits</a>
+        </article>
+        <article class="evidence-group">
+          <h3>设计与未来状态</h3>
+          <a href="../../superpowers/specs/2026-07-24-peak-file-workspace.md">Peak File Workspace spec</a>
+          <a href="../2026-07-24-peak-file-workspace/README.md">File Workspace source audit</a>
+          <a href="../2026-07-22-peak-sheet-compute/README.md">Peak Sheet research</a>
+          <a href="../../roadmap.html">Current roadmap snapshot</a>
+        </article>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">本轮 focused verification</div>
+        <ul>
+          <li>已通过：表格/CSV、原生对象写回、结构化产物/Bases、媒体理解与图片编辑相关测试。</li>
+          <li>未覆盖：Loader fixture E2E 与真实 Obsidian 逐格式交互。</li>
+        </ul>
+      </div>
+
+      <div class="callout warning">
+        <div class="callout-title">下一次对外发布前需要补的验收</div>
+        <p>
+          用固定 fixture 在真实 Obsidian 中逐格式验证完整链路，并记录失败提示与生态依赖。
+          没有这组证据时，报告中的“读取/索引”仍应视为源代码确认，而非生产 E2E 认证。
+        </p>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <p>
+        报告目的：为 Peak Assistant 的文件能力宣传、产品规划和后续能力清单治理提供当前 source of truth。
+        本轮未修改任何生产实现，也未把 File Workspace 或 Peak Sheet 的设计状态升级为已交付。
+      </p>
+    </footer>
+  </main>
+</body>
+</html>
