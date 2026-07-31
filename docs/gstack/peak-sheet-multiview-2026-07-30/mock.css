@@ -113,7 +113,7 @@ svg {
 .app-shell {
   position: relative;
   display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   width: 100vw;
   height: 100vh;
   min-width: 1180px;
@@ -2258,8 +2258,9 @@ body[data-theme="dark"] .gallery-logo {
 
 .field-panel {
   top: 148px;
-  left: 112px;
+  left: 50%;
   width: 560px;
+  transform: translateX(-50%);
 }
 
 .field-panel .panel-header {
@@ -2607,8 +2608,9 @@ body[data-theme="dark"] .gallery-logo {
 /* Formula editor */
 .formula-panel {
   top: 148px;
-  left: 128px;
+  left: 50%;
   width: 720px;
+  transform: translateX(-50%);
 }
 
 .formula-panel .panel-header {
@@ -3855,7 +3857,7 @@ body[data-theme="light"] .toast {
 
 @media (max-width: 1260px) {
   .app-shell {
-    grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .data-toolbar {

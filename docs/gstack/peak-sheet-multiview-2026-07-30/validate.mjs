@@ -43,6 +43,8 @@ const initial = await page.evaluate(() => ({
   bodyOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
   appWidth: document.querySelector('.app-shell')?.getBoundingClientRect().width ?? 0,
   appHeight: document.querySelector('.app-shell')?.getBoundingClientRect().height ?? 0,
+  workspaceWidth: document.querySelector('.workspace')?.getBoundingClientRect().width ?? 0,
+  sidebarCount: document.querySelectorAll('.data-sidebar').length,
   tableRows: document.querySelectorAll('.record-table tbody tr[data-record-id]').length,
   groupRows: document.querySelectorAll('.record-table .group-row').length,
   activeView: document.querySelector('.view-tab.is-active')?.dataset.view,
@@ -56,6 +58,8 @@ const initial = await page.evaluate(() => ({
 assert.equal(initial.bodyOverflow, 0, 'page should not overflow horizontally at 1600px');
 assert.equal(initial.appWidth, 1600, 'desktop app should fill the viewport');
 assert.equal(initial.appHeight, 1000, 'desktop app should fill the viewport height');
+assert.equal(initial.workspaceWidth, 1600, 'single Dataset workspace should own the full viewport width');
+assert.equal(initial.sidebarCount, 0, 'mock should not duplicate Obsidian navigation with an app sidebar');
 assert.equal(initial.tableRows, 12, 'table fixture should render twelve records');
 assert.equal(initial.groupRows, 5, 'initial table should show five stage groups');
 assert.equal(initial.activeView, 'table', 'table should be the initial view');
