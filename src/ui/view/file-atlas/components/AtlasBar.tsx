@@ -12,6 +12,8 @@ import type { RawBlockKind } from '@/core/document/atlas/types';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { FileAtlasConfig } from '../config/fileAtlasConfig';
 import { iconForKind } from '../config/kindIcons';
+import { usePeakEscapeLayer } from '@/ui/keyboard/usePeakKeyboardSurface';
+import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
 
 interface AtlasBarProps {
 	config: FileAtlasConfig;
@@ -44,14 +46,50 @@ export const AtlasBar: React.FC<AtlasBarProps> = ({
 }) => {
 	const [filterOpen, setFilterOpen] = useState(false);
 	const menuRef = useRef<HTMLDivElement>(null);
+	const popoverRef = useRef<HTMLDivElement>(null);
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	const presetRef = useRef<HTMLDivElement>(null);
+	usePeakEscapeLayer(
+		filterOpen,
+		popoverRef,
+		'file-atlas-filter-menu',
+		() => setFilterOpen(false),
+		triggerRef.current,
+	);
+	useRovingComposite(popoverRef, {
+		itemSelector: 'button:not([disabled])',
+		enabled: filterOpen,
+		orientation: 'vertical',
+	});
+	useRovingComposite(presetRef, {
+		itemSelector: '[role="tab"]',
+		orientation: 'horizontal',
+		onActiveItem: (item) => {
+			const presetId = item.dataset.presetId;
+			if (presetId) onApplyPreset(presetId);
+		},
+	});
+	useEffect(() => {
+		if (!filterOpen) return;
+		const popover = popoverRef.current;
+		const win = popover?.ownerDocument.defaultView;
+		win?.requestAnimationFrame(() => {
+			popover?.querySelector<HTMLElement>('button:not([disabled])')?.focus({ preventScroll: true });
+		});
+	}, [filterOpen]);
 
 	useEffect(() => {
 		if (!filterOpen) return;
+		const ownerDocument = menuRef.current?.ownerDocument;
+		const NodeCtor = ownerDocument?.defaultView?.Node;
+		if (!ownerDocument || !NodeCtor) return;
 		const onDocClick = (e: MouseEvent): void => {
-			if (menuRef.current && !menuRef.current.contains(e.target as Node)) setFilterOpen(false);
+			if (e.target instanceof NodeCtor && menuRef.current && !menuRef.current.contains(e.target)) {
+				setFilterOpen(false);
+			}
 		};
-		document.addEventListener('mousedown', onDocClick);
-		return () => document.removeEventListener('mousedown', onDocClick);
+		ownerDocument.addEventListener('mousedown', onDocClick);
+		return () => ownerDocument.removeEventListener('mousedown', onDocClick);
 	}, [filterOpen]);
 
 	const kindsInGroup = (groupId: string): RawBlockKind[] =>
@@ -67,7 +105,7 @@ export const AtlasBar: React.FC<AtlasBarProps> = ({
 
 	return (
 		<section className="pkfa-atlas-bar">
-			<div className="pkfa-preset-switch" role="tablist" aria-label="Layer presets">
+			<div ref={presetRef} className="pkfa-preset-switch" role="tablist" aria-label="Layer presets">
 				{config.presets.map((preset) => (
 					<Button
 						key={preset.id}
@@ -75,6 +113,9 @@ export const AtlasBar: React.FC<AtlasBarProps> = ({
 						type="button"
 						role="tab"
 						aria-selected={activePreset === preset.id}
+						tabIndex={activePreset === preset.id ? 0 : -1}
+						data-preset-id={preset.id}
+						data-peak-focus-id={`file-atlas-preset-${preset.id}`}
 						className={`pkfa-preset-tab${activePreset === preset.id ? ' is-active' : ''}`}
 						onClick={() => onApplyPreset(preset.id)}
 					>
@@ -86,6 +127,7 @@ export const AtlasBar: React.FC<AtlasBarProps> = ({
 
 			<div className="pkfa-filter-menu" ref={menuRef}>
 				<Button
+					ref={triggerRef}
 					variant="unstyled"
 					type="button"
 					className="pkfa-bar-icon-btn"
@@ -97,7 +139,12 @@ export const AtlasBar: React.FC<AtlasBarProps> = ({
 					<ListFilter />
 				</Button>
 				{filterOpen && (
-					<div className="pkfa-filter-popover" aria-label="Type filters">
+					<div
+						ref={popoverRef}
+						className="pkfa-filter-popover"
+						aria-label="Type filters"
+						role="menu"
+					>
 						<div className="pkfa-filter-popover-head">
 							<span>{config.strings.filtersTitle}</span>
 							<span className="pkfa-hint">{config.strings.filtersHeadingHint}</span>

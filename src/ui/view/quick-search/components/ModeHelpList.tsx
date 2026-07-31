@@ -1,6 +1,7 @@
 import React from 'react';
 import { Search, Hash, HelpCircle } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
+import { PEAK_KEYBOARD_A11Y_STRINGS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 interface ModeItem {
 	prefix: string;
@@ -37,19 +38,31 @@ interface ModeHelpListProps {
 
 export const ModeHelpList: React.FC<ModeHelpListProps> = ({ onSelectMode, selectedIndex, onSelectIndex }) => {
 	return (
-		<div className="pktw-py-1">
+		<div className="pktw-py-1" role="group" aria-label={PEAK_KEYBOARD_A11Y_STRINGS.searchModes}>
 			{MODES.map((mode, i) => {
 				const Icon = mode.icon;
 				const isSelected = i === selectedIndex;
 				return (
 					<div
 						key={mode.name}
+						role="option"
+						aria-selected={isSelected}
+						tabIndex={isSelected ? 0 : -1}
+						data-result-browser-row
+						data-result-index={i}
+						data-peak-focus-id={`vault-search-mode-${mode.name.toLocaleLowerCase()}`}
 						className={cn(
 							'pktw-flex pktw-items-center pktw-gap-3 pktw-px-4 pktw-py-2.5 pktw-cursor-pointer pktw-relative pktw-transition-colors',
 							isSelected ? 'pktw-bg-pk-highlight' : 'hover:pktw-bg-pk-surface-raised'
 						)}
 						onClick={() => onSelectMode(mode.prefix)}
+						onFocus={() => onSelectIndex(i)}
 						onMouseEnter={() => onSelectIndex(i)}
+						onKeyDown={(event) => {
+							if (event.key !== 'Enter' && event.key !== ' ') return;
+							event.preventDefault();
+							onSelectMode(mode.prefix);
+						}}
 					>
 						{/* Selected accent bar */}
 						{isSelected && (

@@ -42,7 +42,8 @@ export const SearchResultRow: React.FC<{
 	itemRef: (el: HTMLDivElement | null) => void;
 	onClose?: () => void;
 	newTab?: boolean;
-}> = ({ currentQuery, result, index, isSelected, onSelect, itemRef, onClose, newTab }) => {
+	onInspect?: (result: SearchResultItem) => void;
+}> = ({ currentQuery, result, index, isSelected, onSelect, itemRef, onClose, newTab, onInspect }) => {
 	const { vaultNavigation } = useServiceContext();
 	const density = useVaultSearchStore((s) => s.resultDensity);
 
@@ -80,6 +81,7 @@ export const SearchResultRow: React.FC<{
 			itemRef={itemRef}
 			onSelect={onSelect}
 			onOpen={handleOpen}
+			onInspect={onInspect}
 			onHoverStart={startHover}
 			onHoverEnd={endHover}
 		/>

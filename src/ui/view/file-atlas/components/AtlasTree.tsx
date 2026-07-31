@@ -7,7 +7,7 @@
  * count usage per the spec).
  */
 
-import React from 'react';
+import React, { useMemo, useRef } from 'react';
 import { ChevronDown, Plus } from 'lucide-react';
 import type { DocumentBlock } from '@/core/document/atlas/types';
 import { RawBlockKind } from '@/core/document/atlas/types';
@@ -16,6 +16,8 @@ import type { FileAtlasConfig } from '../config/fileAtlasConfig';
 import { iconForKind } from '../config/kindIcons';
 import { flattenAtlasRows, foldSummary, isGroupNode } from '../atlasTreeModel';
 import { displayIdentity, isProjectionRow } from '../atlasDisplayModel';
+import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
+import { PEAK_KEYBOARD_A11Y_STRINGS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 interface AtlasTreeProps {
 	blocks: DocumentBlock[];
@@ -34,6 +36,28 @@ interface AtlasTreeProps {
 }
 
 export const AtlasTree: React.FC<AtlasTreeProps> = (props) => {
+	const treeRef = useRef<HTMLDivElement>(null);
+	const blockById = useMemo(() => {
+		const map = new Map<string, DocumentBlock>();
+		const visit = (blocks: DocumentBlock[]): void => {
+			for (const block of blocks) {
+				map.set(block.id, block);
+				visit(block.children ?? []);
+			}
+		};
+		visit(props.blocks);
+		return map;
+	}, [props.blocks]);
+	useRovingComposite(treeRef, {
+		itemSelector: '[role="treeitem"]',
+		orientation: 'vertical',
+		rememberBy: 'data-block-id',
+		onActiveItem: (item) => {
+			const block = blockById.get(item.dataset.blockId ?? '');
+			if (block) props.onSelect(block);
+		},
+	});
+
 	if (props.flattened) {
 		const rows = flattenAtlasRows(
 			props.blocks,
@@ -43,13 +67,19 @@ export const AtlasTree: React.FC<AtlasTreeProps> = (props) => {
 			props.config,
 		);
 		return (
-			<div className="pkfa-tree pkfa-tree--flattened">
+			<div
+				ref={treeRef}
+				className="pkfa-tree pkfa-tree--flattened"
+				role="tree"
+				aria-label={PEAK_KEYBOARD_A11Y_STRINGS.documentBlocks}
+			>
 				{rows.map((row) => (
 					<AtlasNode
 						key={row.block.id}
 						block={row.block}
 						depth={0}
 						ownerContext={row.ownerContext}
+						parentId={null}
 						flatBreadcrumb={row.breadcrumb}
 						suppressChildren
 						{...props}
@@ -59,9 +89,14 @@ export const AtlasTree: React.FC<AtlasTreeProps> = (props) => {
 		);
 	}
 	return (
-		<div className="pkfa-tree">
+		<div
+			ref={treeRef}
+			className="pkfa-tree"
+			role="tree"
+			aria-label={PEAK_KEYBOARD_A11Y_STRINGS.documentBlocks}
+		>
 			{props.blocks.map((block) => (
-				<AtlasNode key={block.id} block={block} depth={0} {...props} />
+				<AtlasNode key={block.id} block={block} depth={0} parentId={null} {...props} />
 			))}
 		</div>
 	);
@@ -73,6 +108,7 @@ interface AtlasNodeProps extends AtlasTreeProps {
 	ownerContext?: string;
 	flatBreadcrumb?: string;
 	suppressChildren?: boolean;
+	parentId: string | null;
 }
 
 const AtlasNode: React.FC<AtlasNodeProps> = ({
@@ -81,6 +117,7 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({
 	ownerContext,
 	flatBreadcrumb,
 	suppressChildren = false,
+	parentId,
 	...props
 }) => {
 	const {
@@ -108,6 +145,7 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({
 						block={child}
 						depth={depth}
 						ownerContext={promotedOwner}
+						parentId={parentId}
 						{...props}
 					/>
 				))}
@@ -141,8 +179,14 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({
 	return (
 		<>
 			<div
-				role="button"
-				tabIndex={0}
+				role="treeitem"
+				tabIndex={selectedId === block.id ? 0 : -1}
+				aria-level={depth + 1}
+				aria-selected={selectedId === block.id}
+				aria-expanded={isGroup ? !isCollapsed : undefined}
+				data-block-id={block.id}
+				data-parent-id={parentId ?? undefined}
+				data-peak-focus-id={block.id}
 				className={`pkfa-node ${typeClass}${selectedId === block.id ? ' is-selected' : ''}${
 					isCollapsed ? ' is-collapsed' : ''
 				}`}
@@ -150,14 +194,53 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({
 				onClick={onRowClick}
 				onDoubleClick={() => props.onOpenInEditor(block)}
 				onKeyDown={(e) => {
+					if (e.key === 'ArrowRight' && isGroup) {
+						e.preventDefault();
+						if (isCollapsed) {
+							props.onToggleFold(block.id);
+							return;
+						}
+						const escapedId = e.currentTarget.ownerDocument.defaultView?.CSS.escape(block.id)
+							?? block.id.replace(/["\\]/g, '\\$&');
+						const child = e.currentTarget.parentElement?.querySelector<HTMLElement>(
+							`[role="treeitem"][data-parent-id="${escapedId}"]`,
+						);
+						child?.focus({ preventScroll: true });
+						return;
+					}
+					if (e.key === 'ArrowLeft') {
+						e.preventDefault();
+						if (isGroup && !isCollapsed) {
+							props.onToggleFold(block.id);
+							return;
+						}
+						if (!parentId) return;
+						const escapedParentId = e.currentTarget.ownerDocument.defaultView?.CSS.escape(parentId)
+							?? parentId.replace(/["\\]/g, '\\$&');
+						const tree = e.currentTarget.closest('[role="tree"]');
+						tree?.querySelector<HTMLElement>(
+							`[role="treeitem"][data-block-id="${escapedParentId}"]`,
+						)?.focus({ preventScroll: true });
+						return;
+					}
+					if (e.shiftKey && e.key === 'F10') {
+						e.preventDefault();
+						e.currentTarget.querySelector<HTMLElement>('.pkfa-add-btn')?.focus();
+						return;
+					}
 					if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
 						e.preventDefault();
 						props.onOpenInEditor(block);
 						return;
 					}
-					if (e.key === 'Enter' || e.key === ' ') {
+					if (e.key === 'Enter') {
 						e.preventDefault();
-						onRowClick();
+						props.onOpenInEditor(block);
+						return;
+					}
+					if (e.key === ' ') {
+						e.preventDefault();
+						props.onAddToTray(block);
 					}
 				}}
 			>
@@ -169,6 +252,7 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({
 							type="button"
 							className="pkfa-twisty"
 							aria-label="Toggle section"
+							tabIndex={-1}
 							onClick={(e) => {
 								e.stopPropagation();
 								props.onToggleFold(block.id);
@@ -195,6 +279,7 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({
 						className={`pkfa-add-btn${inTray ? ' is-in-tray' : ''}`}
 						aria-label="Add to tray"
 						title="Add to tray"
+						tabIndex={-1}
 						onClick={(e) => {
 							e.stopPropagation();
 							props.onAddToTray(block);
@@ -209,12 +294,19 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({
 
 			{!suppressChildren && isGroup && hasChildren && (
 				<div
+					role="group"
 					className={`pkfa-kids${isFrontmatter ? ' pkfa-frontmatter-kids' : ''}${
 						isCollapsed ? ' is-collapsed' : ''
 					}`}
 				>
 					{block.children!.map((child) => (
-						<AtlasNode key={child.id} block={child} depth={depth + 1} {...props} />
+						<AtlasNode
+							key={child.id}
+							block={child}
+							depth={depth + 1}
+							parentId={block.id}
+							{...props}
+						/>
 					))}
 				</div>
 			)}

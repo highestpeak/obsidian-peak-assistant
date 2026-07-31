@@ -10177,3 +10177,185 @@
     display: none;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Keyboard navigation kernel — shared live region and searchable map.
+ * The map is rendered by an Obsidian Modal, so it cannot rely on a surface-
+ * specific stylesheet being present.
+ * ─────────────────────────────────────────────────────────────────────── */
+.pk-keyboard-live-region {
+  position: fixed !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.pk-keyboard-map-modal .modal-content {
+  width: min(760px, calc(100vw - 48px));
+  max-height: min(720px, calc(100vh - 64px));
+}
+
+.pk-keyboard-map {
+  display: flex;
+  flex-direction: column;
+  min-height: 420px;
+  max-height: min(680px, calc(100vh - 96px));
+  color: var(--pk-text-primary, var(--text-normal));
+}
+
+.pk-keyboard-map__header,
+.pk-keyboard-map__scope,
+.pk-keyboard-map__row {
+  display: flex;
+  align-items: center;
+}
+
+.pk-keyboard-map__header {
+  justify-content: space-between;
+  gap: var(--pk-space-3, 12px);
+  padding: var(--pk-space-4, 16px);
+  border-bottom: 1px solid var(--pk-border, var(--background-modifier-border));
+}
+
+.pk-keyboard-map__title,
+.pk-keyboard-map__context {
+  display: block;
+}
+
+.pk-keyboard-map__title {
+  font-size: var(--pk-font-size-lg, 16px);
+  font-weight: 750;
+}
+
+.pk-keyboard-map__context,
+.pk-keyboard-map__meta {
+  margin-top: 2px;
+  color: var(--pk-text-secondary, var(--text-muted));
+  font-size: var(--pk-font-size-xs, 11px);
+}
+
+.pk-keyboard-map__search {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2, 8px);
+  margin: var(--pk-space-4, 16px);
+  padding: 0 var(--pk-space-3, 12px);
+  border: 1px solid var(--pk-border, var(--background-modifier-border));
+  border-radius: var(--pk-radius-md, 8px);
+}
+
+.pk-keyboard-map__search svg {
+  width: 16px;
+  height: 16px;
+  color: var(--pk-text-secondary, var(--text-muted));
+}
+
+.pk-keyboard-map__search input {
+  flex: 1;
+  min-width: 0;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.pk-keyboard-map__scope {
+  gap: var(--pk-space-2, 8px);
+  padding: 0 var(--pk-space-4, 16px) var(--pk-space-3, 12px);
+}
+
+.pk-keyboard-map__list {
+  min-height: 0;
+  overflow: auto;
+  border-top: 1px solid var(--pk-border-soft, var(--background-modifier-border));
+}
+
+.pk-keyboard-map__row {
+  gap: var(--pk-space-3, 12px);
+  padding: var(--pk-space-3, 12px) var(--pk-space-4, 16px);
+  border-bottom: 1px solid var(--pk-border-soft, var(--background-modifier-border));
+}
+
+.pk-keyboard-map__description {
+  flex: 1;
+  min-width: 0;
+}
+
+.pk-keyboard-map__label {
+  display: block;
+  font-weight: 650;
+}
+
+.pk-keyboard-map kbd {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border: 1px solid var(--pk-border, var(--background-modifier-border));
+  border-bottom-width: 2px;
+  border-radius: var(--pk-radius-sm, 5px);
+  background: var(--pk-surface-sunken, var(--background-secondary));
+  font: inherit;
+  font-size: var(--pk-font-size-xs, 11px);
+  white-space: nowrap;
+}
+
+.pk-keyboard-map__empty {
+  padding: var(--pk-space-6, 24px);
+  text-align: center;
+  color: var(--pk-text-secondary, var(--text-muted));
+}
+
+.pk-graph-node-list {
+  position: absolute;
+  inset: 44px 8px 8px auto;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  width: min(360px, calc(100% - 16px));
+  max-height: calc(100% - 52px);
+  overflow: auto;
+  padding: 6px;
+  border: 1px solid var(--pk-border, var(--background-modifier-border));
+  border-radius: var(--pk-radius-lg, 10px);
+  background: var(--pk-surface-raised, var(--background-primary));
+  box-shadow: var(--pk-shadow-lg, 0 12px 28px rgb(0 0 0 / 18%));
+}
+
+:is(.pktw-root, .peak-design-root) .pk-graph-node-list__item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: auto !important;
+  min-height: 36px !important;
+  max-height: none !important;
+  padding: 7px 10px !important;
+  border: 0 !important;
+  border-radius: var(--pk-radius-md, 8px) !important;
+  background: transparent !important;
+  color: var(--pk-text-primary, var(--text-normal));
+  text-align: left;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-graph-node-list__item:hover,
+:is(.pktw-root, .peak-design-root) .pk-graph-node-list__item[aria-selected="true"] {
+  background: var(--pk-surface-hover, var(--background-modifier-hover)) !important;
+}
+
+.pk-graph-node-list__item > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pk-graph-node-list__item > span:last-child {
+  flex: 0 1 45%;
+  color: var(--pk-text-tertiary, var(--text-faint));
+  font-size: var(--pk-font-size-xs, 11px);
+}

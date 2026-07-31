@@ -33,6 +33,7 @@ import { ComposerSourcesPopover } from './composer/ComposerSourcesPopover';
 import { ComposerModelSelector } from './composer/ComposerModelSelector';
 import { ComposerAssistantSelector } from './composer/ComposerAssistantSelector';
 import { ComposerGenerateActions, type GenerateKind } from './composer/ComposerGenerateActions';
+import { PEAK_KEYBOARD_ZONE_LABELS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 import type { ToolAvailability } from '@/service/chat/tools/toolAvailability';
 import {
 	normalizeAIInstructionAttachments,
@@ -425,7 +426,13 @@ export const Composer: React.FC = () => {
 	};
 
 	return (
-		<div className="pkchat-composer-wrap" data-composer-root="true">
+		<div
+			className="pkchat-composer-wrap"
+			data-composer-root="true"
+			data-peak-keyboard-zone="cs-composer"
+			data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['cs-composer']}
+			data-peak-keyboard-order="3"
+		>
 			{activeConversation && (
 				<AIGraphContextArtifacts
 					contextRefs={[

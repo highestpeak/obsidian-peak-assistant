@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Bug, Filter, SearchX } from 'lucide-react';
 import { useDebugTraceCopy } from '@/ui/hooks/useDebugTraceCopy';
-import { useOwnerDocumentListener } from '@/ui/hooks/useOwnerWindow';
 import { EmptyState } from '../../component/mine/EmptyState';
 import { ResultBrowserFooterHints } from '@/ui/component/result-browser';
 import { SearchResultRow } from './components/VaultSearchResult';
@@ -12,7 +11,7 @@ import { useVaultSearch, useSearchQuery } from './hooks/useVaultSearch';
 import { createOpenSourceCallback } from './callbacks/open-source-file';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useHasSearchQuery } from './hooks/useVaultSearch';
-import { ModeHelpList, MODE_COUNT } from './components/ModeHelpList';
+import { ModeHelpList } from './components/ModeHelpList';
 import { SearchClickRepo } from '@/core/storage/sqlite/repositories/SearchClickRepo';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { SearchUpgradePrompt } from './components/SearchUpgradePrompt';
@@ -20,6 +19,8 @@ import { RecentQueriesDropdown } from './components/RecentQueriesDropdown';
 import { ResultGraphView } from './components/result-graph/ResultGraphView';
 import { ResultTreeView } from './components/result-tree/ResultTreeView';
 import { useOpenHubGraphSubview } from './hooks/useOpenHubGraphSubview';
+import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
+import { PEAK_KEYBOARD_A11Y_STRINGS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 const NoResultsState: React.FC = () => (
 	<EmptyState
@@ -73,12 +74,19 @@ interface VaultSearchTabProps {
 	onSelectForInspector?: (path: string) => void;
 	/** When set, selects the result matching this path (from inspector navigation). */
 	navigateToPath?: string | null;
+	/** Move focus into the Inspector after the explicit Right-arrow command. */
+	onRequestInspectorFocus?: () => void;
 }
 
 /**
  * Quick search tab for regular vault search results.
  */
-export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelectForInspector, navigateToPath }) => {
+export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({
+	onClose,
+	onSelectForInspector,
+	navigateToPath,
+	onRequestInspectorFocus,
+}) => {
 	const { vaultNavigation, debugTracePort, vaultStats } = useServiceContext();
 	const { quickSearchMode, isSearching, lastSearchResults: displayedResults, fuzzyCorrection, parsedQuery } = useVaultSearchStore();
 	const inspectorOpen = useVaultSearchStore((s) => s.inspectorOpen);
@@ -123,115 +131,15 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 		}
 	}, [displayedResults.length, hasSearchQuery]);
 
-	// Handle keyboard navigation. Bound to the results container's
-	// `ownerDocument` (via `useOwnerDocumentListener`) instead of the global
-	// `window` so it survives detached (popout) windows — plan §B "Move
-	// keyboard handling from `window` listeners to the focused `ResultBrowser`
-	// root" + WP0 owner-window finding. Tree/graph own their own scoped
-	// keyboard; this handler stays authoritative for list + inspector + the
-	// tree/graph Esc-to-list flip.
-	const handleKeyDown = async (e: KeyboardEvent): Promise<void> => {
-			// Navigation keys (ArrowUp, ArrowDown, Enter) should work even when focus is in input
-			// Other keys should be ignored if focus is in input/textarea
-			const isNavigationKey = e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter'
-				|| e.key === 'ArrowRight' || e.key === 'ArrowLeft';
-			if (
-				(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) &&
-				!isNavigationKey
-			) {
-				return;
-			}
-
-			const currentMode = useVaultSearchStore.getState().quickSearchMode;
-
-			// T5: heading mode owns its own arrow/enter behavior via
-			// `useHeadingModeKeyboard`. Only Esc (handled below) should
-			// pass through the tab-level handler when in heading + list.
-			if (currentMode === 'heading' && useVaultSearchStore.getState().resultView === 'list') {
-				if (e.key !== 'Escape') return;
-			}
-
-			const maxIndex = currentMode === 'help' ? MODE_COUNT - 1 : displayedResults.length - 1;
-
-			// T3: Esc while result-view is graph flips back to list instead of
-			// closing the modal. Only intercept when in graph — otherwise the
-			// modal's own Esc handler runs.
-			if (e.key === 'Escape' && useVaultSearchStore.getState().resultView === 'graph') {
-				e.preventDefault();
-				e.stopPropagation();
-				useVaultSearchStore.getState().setResultView('list');
-				return;
-			}
-			// 2026-07-08: same Esc-flip for tree view. Tree owns its own
-			// arrow / enter handling (file-only nav) — bail out here for any
-			// non-Esc key so the tree's handler is authoritative.
-			if (useVaultSearchStore.getState().resultView === 'tree') {
-				if (e.key === 'Escape') {
-					e.preventDefault();
-					e.stopPropagation();
-					useVaultSearchStore.getState().setResultView('list');
-				}
-				return;
-			}
-
-			switch (e.key) {
-				case 'ArrowRight':
-					e.preventDefault();
-					useVaultSearchStore.getState().setInspectorOpen(true);
-					break;
-				case 'ArrowLeft':
-					if (useVaultSearchStore.getState().inspectorOpen) {
-						e.preventDefault();
-						useVaultSearchStore.getState().setInspectorOpen(false);
-					}
-					break;
-				case 'ArrowUp':
-					if (maxIndex < 0) return;
-					e.preventDefault();
-					setSelectedIndex((prev) => (prev > 0 ? prev - 1 : maxIndex));
-					break;
-				case 'ArrowDown':
-					if (maxIndex < 0) return;
-					e.preventDefault();
-					setSelectedIndex((prev) => (prev < maxIndex ? prev + 1 : 0));
-					break;
-				case 'Enter': {
-					if (maxIndex < 0) return;
-					e.preventDefault();
-					if (currentMode === 'help') {
-						const prefixes = ['', '#', '?'];
-						const prefix = prefixes[selectedIndex] ?? '';
-						useSharedStore.getState().setVaultSearchQuery(prefix);
-						break;
-					}
-					// Open selected result — Ctrl/Cmd+Enter forces new tab
-					const selectedResult = displayedResults[selectedIndex];
-					if (selectedResult) {
-						const vaultQuery = useVaultSearchStore.getState().parsedQuery?.text ?? '';
-						if (vaultQuery.trim()) {
-							useSharedStore.getState().addRecentQuery(vaultQuery.trim());
-						}
-						try {
-							const db = sqliteStoreManager.getDatabase('vault');
-							const query = useVaultSearchStore.getState().parsedQuery?.text ?? '';
-							if (db && query) {
-								const clickRepo = new SearchClickRepo(db);
-								const queryStems = SearchClickRepo.buildQueryStems(query.split(/\s+/).filter(Boolean));
-								if (queryStems) clickRepo.record(queryStems, selectedResult.path, selectedIndex);
-							}
-						} catch { /* non-critical */ }
-						// `all` opens in new tab by default; heading mode opens in place
-						// (T5 will refine heading-mode navigation via the outline service).
-						const defaultNewTab = currentMode !== 'heading';
-						const openInNewTab = (e.metaKey || e.ctrlKey) || defaultNewTab;
-						await createOpenSourceCallback(onClose, openInNewTab, vaultNavigation)(selectedResult);
-					}
-					break;
-				}
-			}
-	};
-
-	useOwnerDocumentListener(scrollContainerRef, 'keydown', handleKeyDown);
+	useRovingComposite(scrollContainerRef, {
+		itemSelector: '[data-result-browser-row]',
+		orientation: 'vertical',
+		rememberBy: 'data-peak-focus-id',
+		onActiveItem: (item) => {
+			const index = Number(item.dataset.resultIndex);
+			if (Number.isInteger(index)) setSelectedIndex(index);
+		},
+	});
 
 	// Scroll to selected item when selection changes
 	useEffect(() => {
@@ -269,7 +177,21 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-min-h-0 pktw-overflow-hidden">
 			{/* Results — list or (T4) graph. Inspector is rendered side-by-side in parent. */}
-			<div ref={scrollContainerRef} className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto" style={{ flexBasis: 0, minHeight: 0 }}>
+			<div
+				ref={scrollContainerRef}
+				className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto"
+				style={{ flexBasis: 0, minHeight: 0 }}
+				role={showTree || showGraph ? undefined : 'listbox'}
+				aria-label={PEAK_KEYBOARD_A11Y_STRINGS.vaultSearchResults}
+				onKeyDown={(event) => {
+					if (event.key !== 'Escape') return;
+					const view = useVaultSearchStore.getState().resultView;
+					if (view !== 'tree' && view !== 'graph') return;
+					event.preventDefault();
+					event.stopPropagation();
+					useVaultSearchStore.getState().setResultView('list');
+				}}
+			>
 				{showGraph ? (
 					<ResultGraphView
 						onClose={onClose}
@@ -336,6 +258,12 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 										}}
 										onClose={onClose}
 										newTab={quickSearchMode !== 'heading'}
+										onInspect={(selected) => {
+											setSelectedIndex(index);
+											useVaultSearchStore.getState().setInspectorOpen(true);
+											onSelectForInspector?.(selected.path);
+											onRequestInspectorFocus?.();
+										}}
 									/>
 								))}
 								{hasSearchQuery && !isSearching && displayedResults.length >= RESULT_HINT_THRESHOLD && (

@@ -676,6 +676,10 @@ export const MessageViewItem: React.FC<MessageItemProps> = ({
 	return (
 		<article
 			className="pkchat-msg"
+			role="group"
+			tabIndex={-1}
+			aria-label={`${message.role} message`}
+			data-peak-focus-id={message.id}
 			data-message-id={message.id}
 			data-message-role={message.role}
 			data-variant-group={message.variantGroupId ?? undefined}
@@ -888,6 +892,10 @@ const UserMessageBody: React.FC<{
 	return (
 		<article
 			className={cn('pkchat-msg', 'pkchat-msg--user')}
+			role="group"
+			tabIndex={-1}
+			aria-label="User message"
+			data-peak-focus-id={message.id}
 			data-message-id={message.id}
 			data-message-role={message.role}
 		>

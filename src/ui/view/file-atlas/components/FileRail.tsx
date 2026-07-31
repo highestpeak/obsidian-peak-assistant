@@ -12,6 +12,8 @@ import { Button } from '@/ui/component/shared-ui/button';
 import type { OpenDocMeta } from '../FileAtlasHostPort';
 import type { FileRailSections, FileRailSortMode } from '../fileRailModel';
 import type { FileAtlasRailConfig } from '../config/fileAtlasConfig';
+import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
+import { PEAK_KEYBOARD_ZONE_LABELS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 interface FileRailRowProps {
 	doc: OpenDocMeta;
@@ -23,12 +25,19 @@ interface FileRailRowProps {
 const FileRailRow: React.FC<FileRailRowProps> = ({ doc, activePath, onSelect, onClose }) => (
 	<div
 		role="button"
-		tabIndex={0}
+		tabIndex={doc.path === activePath ? 0 : -1}
+		data-peak-focus-id={doc.path}
+		data-path={doc.path}
 		className={`pkfa-rail-item${doc.path === activePath ? ' is-active' : ''}${doc.open ? ' is-open' : ' is-recent'}`}
 		data-unsaved={doc.unsaved ? 'true' : undefined}
 		title={doc.path}
 		onClick={() => onSelect(doc.path)}
 		onKeyDown={(event) => {
+			if (event.shiftKey && event.key === 'F10') {
+				event.preventDefault();
+				event.currentTarget.querySelector<HTMLElement>('.pkfa-rail-close')?.focus();
+				return;
+			}
 			if (event.key !== 'Enter' && event.key !== ' ') return;
 			event.preventDefault();
 			onSelect(doc.path);
@@ -46,6 +55,7 @@ const FileRailRow: React.FC<FileRailRowProps> = ({ doc, activePath, onSelect, on
 				className="pkfa-rail-close"
 				aria-label={`Close ${doc.title}`}
 				title="Close"
+				tabIndex={-1}
 				onClick={(event) => {
 					event.stopPropagation();
 					onClose(doc.path);
@@ -132,8 +142,15 @@ export const FileRail: React.FC<FileRailProps> = ({
 	onWidthCommit,
 }) => {
 	const [sortOpen, setSortOpen] = React.useState(false);
+	const railRef = useRef<HTMLDivElement>(null);
+	const listRef = useRef<HTMLDivElement>(null);
 	const sortMenuId = useId();
 	const sortControlRef = useRef<HTMLDivElement>(null);
+	useRovingComposite(listRef, {
+		itemSelector: '.pkfa-rail-item',
+		orientation: 'vertical',
+		rememberBy: 'data-path',
+	});
 
 	useEffect(() => {
 		if (!sortOpen) return;
@@ -184,10 +201,12 @@ export const FileRail: React.FC<FileRailProps> = ({
 
 	const resizeWithKey = (event: React.KeyboardEvent<HTMLDivElement>): void => {
 		let nextWidth = widthPx;
-		if (event.key === 'ArrowLeft') nextWidth -= 16;
-		else if (event.key === 'ArrowRight') nextWidth += 16;
+		const step = event.shiftKey ? 16 : 4;
+		if (event.key === 'ArrowLeft') nextWidth -= step;
+		else if (event.key === 'ArrowRight') nextWidth += step;
 		else if (event.key === 'Home') nextWidth = widthLimits.minWidthPx;
 		else if (event.key === 'End') nextWidth = widthLimits.maxWidthPx;
+		else if (event.key === 'Enter' || event.key === ' ') nextWidth = widthLimits.defaultWidthPx;
 		else return;
 		event.preventDefault();
 		const clamped = clampWidth(nextWidth);
@@ -196,7 +215,13 @@ export const FileRail: React.FC<FileRailProps> = ({
 	};
 
 	return (
-		<div className="pkfa-rail">
+		<div
+			ref={railRef}
+			className="pkfa-rail"
+			data-peak-keyboard-zone="fa-file-rail"
+			data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['fa-file-rail']}
+			data-peak-keyboard-order="1"
+		>
 			<div className="pkfa-rail-head">
 				<span className="pkfa-rail-title">
 					<FileText />
@@ -246,7 +271,7 @@ export const FileRail: React.FC<FileRailProps> = ({
 					)}
 				</div>
 			</div>
-			<div className="pkfa-rail-list">
+			<div ref={listRef} className="pkfa-rail-list" role="listbox" aria-label={title}>
 				<FileRailGroup
 					title={openTitle}
 					docs={sections.open}

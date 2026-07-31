@@ -123,6 +123,7 @@ export function createReactElementWithServices<T extends Record<string, any>>(
 			contextualGraph: composeContextualGraphPort(appContext),
 			quickSearchLauncher: composeQuickSearchLauncher(appContext),
 			pluginCommandGateway: appContext.runtimeRegistry.tryGetPluginCommandGatewayRuntime(),
+			keyboardNavigation: appContext.runtimeRegistry.tryGetKeyboardNavigationRuntime(),
 			children: React.createElement(Component, props as T)
 		}
 	);

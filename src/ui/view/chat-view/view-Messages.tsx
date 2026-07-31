@@ -12,6 +12,7 @@ import { useAutoScroll } from './hooks/useAutoScroll';
 import { ChatStringsProvider } from './chatStringsContext';
 import { ChatStudioStringsProvider, useChatStudioStrings } from './chatStudioStringsContext';
 import { ChatStartState, ChatStarters } from './components/composer/ChatStartState';
+import { PEAK_KEYBOARD_ZONE_LABELS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 /**
  * Messages view — the retained chat surface (header + body + composer).
@@ -51,7 +52,13 @@ const EmptyThreadHero: React.FC = () => {
 	return (
 		<div className="peak-design-root pkchat-shell">
 			<div className="pkchat-center">
-				<div className="pktw-flex pktw-items-center pktw-justify-center pktw-h-full pktw-min-h-[400px]">
+				<div
+					className="pktw-flex pktw-items-center pktw-justify-center pktw-h-full pktw-min-h-[400px]"
+					data-peak-keyboard-zone="cs-centre-content"
+					data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['cs-centre-content']}
+					data-peak-keyboard-order="2"
+					tabIndex={-1}
+				>
 					<span className="pktw-text-2xl pktw-font-light pktw-text-muted-foreground pktw-text-center">
 						{studioStrings.greeting.emptyThread}
 					</span>
@@ -123,7 +130,13 @@ const MessagesViewInner: React.FC = () => {
 							{studioStrings.projectHome.newChatHeaderTitle}
 						</span>
 					</div>
-					<div className="pkchat-body pktw-flex pktw-flex-col pktw-items-center pktw-justify-center">
+					<div
+						className="pkchat-body pktw-flex pktw-flex-col pktw-items-center pktw-justify-center"
+						data-peak-keyboard-zone="cs-centre-content"
+						data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['cs-centre-content']}
+						data-peak-keyboard-order="2"
+						tabIndex={-1}
+					>
 						<div className="pktw-w-full pktw-max-w-[760px] pktw-flex pktw-flex-col">
 							<ChatStartState scope={startScope} />
 							<Composer />
@@ -149,6 +162,9 @@ const MessagesViewInner: React.FC = () => {
 					ref={bodyScrollRef}
 					className="pkchat-body"
 					style={{ scrollBehavior: 'smooth' }}
+					data-peak-keyboard-zone="cs-message-timeline"
+					data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['cs-message-timeline']}
+					data-peak-keyboard-order="2"
 				>
 					{/*
 					  PR-Chat-2: document-style message rendering lives inside

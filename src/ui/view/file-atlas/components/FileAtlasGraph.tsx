@@ -12,7 +12,7 @@
  * subgraph contract and owns the scope / semantic / layout controls.
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Network } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { DocumentBlock } from '@/core/document/atlas/types';
@@ -21,6 +21,8 @@ import type { ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph
 import { AtlasGraphCanvas, type AtlasGraphPreset } from '@/ui/component/graph/AtlasGraphCanvas';
 import type { AtlasGraphData, FileAtlasHostPort } from '../FileAtlasHostPort';
 import type { FileAtlasConfig } from '../config/fileAtlasConfig';
+import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
+import { PEAK_KEYBOARD_ZONE_LABELS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 interface FileAtlasGraphProps {
 	path: string;
@@ -96,6 +98,24 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, conf
 	const [data, setData] = useState<AtlasGraphData | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState(false);
+	const scopeRef = useRef<HTMLDivElement>(null);
+	const layoutRef = useRef<HTMLDivElement>(null);
+	useRovingComposite(scopeRef, {
+		itemSelector: '[role="tab"]',
+		orientation: 'horizontal',
+		onActiveItem: (item) => {
+			const nextScope = item.dataset.graphScope as Scope | undefined;
+			if (nextScope) setScope(nextScope);
+		},
+	});
+	useRovingComposite(layoutRef, {
+		itemSelector: '[role="tab"]',
+		orientation: 'horizontal',
+		onActiveItem: (item) => {
+			const nextLayout = item.dataset.graphLayout as AtlasGraphPreset | undefined;
+			if (nextLayout) setLayout(nextLayout);
+		},
+	});
 
 	// Fetch both reference + semantic edges up front; the semantic toggle is a
 	// render-only concern the canvas handles, so scope is the only refetch key.
@@ -128,14 +148,22 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, conf
 	const unavailable = !host.loadNeighborhood || error;
 
 	return (
-		<div className="pkfa-graph">
+		<div
+			className="pkfa-graph"
+			data-peak-keyboard-zone="fa-atlas"
+			data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['fa-atlas-graph']}
+			data-peak-keyboard-order="3"
+		>
 			<div className="pkfa-graph-bar">
-				<div className="pkfa-graph-scope" role="tablist" aria-label="Graph scope">
+				<div ref={scopeRef} className="pkfa-graph-scope" role="tablist" aria-label="Graph scope">
 					<Button
 						variant="unstyled"
 						type="button"
 						role="tab"
 						aria-selected={scope === 'local'}
+						tabIndex={scope === 'local' ? 0 : -1}
+						data-graph-scope="local"
+						data-peak-focus-id="file-atlas-graph-local"
 						className={`pkfa-graph-scope-tab${scope === 'local' ? ' is-active' : ''}`}
 						onClick={() => setScope('local')}
 					>
@@ -146,6 +174,9 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, conf
 						type="button"
 						role="tab"
 						aria-selected={scope === 'two-hop'}
+						tabIndex={scope === 'two-hop' ? 0 : -1}
+						data-graph-scope="two-hop"
+						data-peak-focus-id="file-atlas-graph-two-hop"
 						className={`pkfa-graph-scope-tab${scope === 'two-hop' ? ' is-active' : ''}`}
 						onClick={() => setScope('two-hop')}
 					>
@@ -153,7 +184,7 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, conf
 					</Button>
 				</div>
 
-				<div className="pkfa-graph-scope" role="tablist" aria-label="Graph layout">
+				<div ref={layoutRef} className="pkfa-graph-scope" role="tablist" aria-label="Graph layout">
 					{LAYOUTS.map((l) => (
 						<Button
 							key={l.id}
@@ -161,6 +192,9 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, conf
 							type="button"
 							role="tab"
 							aria-selected={layout === l.id}
+							tabIndex={layout === l.id ? 0 : -1}
+							data-graph-layout={l.id}
+							data-peak-focus-id={`file-atlas-layout-${l.id}`}
 							className={`pkfa-graph-scope-tab${layout === l.id ? ' is-active' : ''}`}
 							onClick={() => setLayout(l.id)}
 						>
@@ -179,7 +213,6 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, conf
 					<span className="pkfa-semantic-switch" aria-hidden="true" />
 					{s.graphSemanticLabel}
 				</Button>
-
 			</div>
 
 			<div className="pkfa-graph-canvas">

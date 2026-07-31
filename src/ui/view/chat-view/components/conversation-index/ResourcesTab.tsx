@@ -149,6 +149,9 @@ function ResourceRowItem({
 			<button
 				type="button"
 				className="pkchat-idx-row__main"
+				data-peak-chat-index-item
+				data-peak-focus-id={row.id}
+				tabIndex={-1}
 				onClick={() => onSelect(row)}
 			>
 				<span className="pkchat-idx-row__icon" data-kind={row.kind}>
@@ -176,6 +179,7 @@ function ResourceRowItem({
 					className="pkchat-idx-row__action"
 					aria-label={strings.openLabel}
 					title={strings.openLabel}
+					tabIndex={-1}
 					onClick={() => onOpen(row)}
 				>
 					<ExternalLink aria-hidden />

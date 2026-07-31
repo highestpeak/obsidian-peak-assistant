@@ -51,6 +51,15 @@ import {
 } from '@/service/ai-graph';
 import { MultiLensGraph } from '@/ui/component/mine/multi-lens-graph/MultiLensGraph';
 import type { LensGraphData } from '@/core/types/lens-graph';
+import {
+	usePeakEscapeLayer,
+	usePeakKeyboardSurface,
+} from '@/ui/keyboard/usePeakKeyboardSurface';
+import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
+import {
+	PEAK_KEYBOARD_A11Y_STRINGS,
+	PEAK_KEYBOARD_ZONE_LABELS,
+} from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 type TabType = 'vault' | 'ai';
 
@@ -70,6 +79,10 @@ const TabButton: React.FC<TabButtonProps> = ({ tab, label, activeTab, onClick, c
 	return (
 		<Button
 			variant="ghost"
+			role="tab"
+			aria-selected={isActive}
+			tabIndex={isActive ? 0 : -1}
+			data-peak-focus-id={`search-surface-${tab}`}
 			onClick={onClick}
 			className={cn(
 				'pktw-shadow-none pktw-rounded-none pktw-inline-flex pktw-items-center pktw-justify-center pktw-whitespace-nowrap pktw-font-medium focus-visible:pktw-outline-none focus-visible:pktw-ring-2 focus-visible:pktw-ring-offset-0 disabled:pktw-pointer-events-none disabled:pktw-opacity-50 pktw-flex-1 pktw-relative',
@@ -273,7 +286,12 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, mode }) => {
 	return (
 		<>
 			{sessionStatus === 'idle' ? (
-				<div className="pktw-flex-shrink-0 pktw-p-2 pktw-bg-pk-background pktw-border-b pktw-border-pk-border">
+				<div
+					className="pktw-flex-shrink-0 pktw-p-2 pktw-bg-pk-background pktw-border-b pktw-border-pk-border"
+					data-peak-keyboard-zone="as-mode-query"
+					data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['as-mode-query']}
+					data-peak-keyboard-order="1"
+				>
 					<div className="pktw-relative pktw-min-w-0">
 						<AIInstructionComposer
 							surface={mode === 'graph' ? 'ai-graph' : 'ai-search'}
@@ -364,7 +382,12 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, mode }) => {
 				/>
 			)}
 			{sessionStatus === 'idle' && (
-				<div className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto pktw-py-3">
+				<div
+					className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto pktw-py-3"
+					data-peak-keyboard-zone="as-suggestions"
+					data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['as-suggestions']}
+					data-peak-keyboard-order="2"
+				>
 					{mode === 'graph' ? (
 						<AIGraphHistoryPanel />
 					) : (
@@ -461,8 +484,21 @@ function AIWorkspaceSelector({
 	const [activeIndex, setActiveIndex] = useState(() =>
 		Math.max(0, AI_WORKSPACE_OPTIONS.findIndex((item) => item.mode === mode)));
 	const triggerRef = useRef<HTMLButtonElement | null>(null);
+	const menuRef = useRef<HTMLDivElement | null>(null);
 	const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
 	const selected = AI_WORKSPACE_OPTIONS.find((item) => item.mode === mode) ?? AI_WORKSPACE_OPTIONS[0];
+	usePeakEscapeLayer(
+		open,
+		menuRef,
+		'ai-workspace-selector',
+		() => setOpen(false),
+		triggerRef.current,
+	);
+	useRovingComposite(menuRef, {
+		itemSelector: '[role="option"]',
+		enabled: open,
+		orientation: 'vertical',
+	});
 
 	useEffect(() => {
 		setActiveIndex(Math.max(0, AI_WORKSPACE_OPTIONS.findIndex((item) => item.mode === mode)));
@@ -474,7 +510,8 @@ function AIWorkspaceSelector({
 
 	const closeAndRestore = (): void => {
 		setOpen(false);
-		requestAnimationFrame(() => triggerRef.current?.focus());
+		triggerRef.current?.ownerDocument.defaultView?.requestAnimationFrame(() =>
+			triggerRef.current?.focus());
 	};
 	const select = (nextMode: AIWorkspaceMode): void => {
 		onModeChange(nextMode);
@@ -486,8 +523,12 @@ function AIWorkspaceSelector({
 				ref={triggerRef}
 				variant="ghost"
 				type="button"
-				className={cn('pk-ai-workspace-trigger', active && 'is-active')}
-				aria-haspopup="listbox"
+					className={cn('pk-ai-workspace-trigger', active && 'is-active')}
+					role="tab"
+					aria-selected={active}
+					tabIndex={active ? 0 : -1}
+					data-peak-focus-id="search-surface-ai"
+					aria-haspopup="listbox"
 				aria-expanded={open}
 				onClick={() => {
 					onActivate();
@@ -504,9 +545,10 @@ function AIWorkspaceSelector({
 				<span>{selected.label}</span>
 				<ChevronDown aria-hidden />
 			</Button>
-			{open && (
-				<div
-					className="pk-ai-workspace-menu"
+				{open && (
+					<div
+						ref={menuRef}
+						className="pk-ai-workspace-menu"
 					role="listbox"
 					aria-label="AI workspace"
 					onKeyDown={(event) => {
@@ -1612,40 +1654,85 @@ const SuggestButton: React.FC<{
 	const [entries, setEntries] = React.useState<SuggestHistoryEntry[]>(() => suggestHistoryStore.list());
 	const openTimerRef = React.useRef<number | null>(null);
 	const closeTimerRef = React.useRef<number | null>(null);
+	const triggerRef = React.useRef<HTMLButtonElement>(null);
+	const popoverRef = React.useRef<HTMLDivElement>(null);
+	const keyboardOpenRef = React.useRef(false);
+	const showPopover = popoverOpen && entries.length > 0 && !!onReplay;
+	usePeakEscapeLayer(
+		showPopover,
+		popoverRef,
+		'ai-search-refine-history',
+		() => setPopoverOpen(false),
+		triggerRef.current,
+	);
+	useRovingComposite(popoverRef, {
+		itemSelector: '[role="menuitem"]',
+		enabled: showPopover,
+		orientation: 'vertical',
+	});
 
 	React.useEffect(() => {
 		const unsub = suggestHistoryStore.subscribe(() => setEntries([...suggestHistoryStore.list()]));
+		const ownerWindow = triggerRef.current?.ownerDocument.defaultView;
 		return () => {
 			unsub();
-			if (openTimerRef.current) window.clearTimeout(openTimerRef.current);
-			if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+			if (openTimerRef.current) ownerWindow?.clearTimeout(openTimerRef.current);
+			if (closeTimerRef.current) ownerWindow?.clearTimeout(closeTimerRef.current);
 		};
 	}, []);
+	React.useEffect(() => {
+		if (!showPopover || !keyboardOpenRef.current) return;
+		const popover = popoverRef.current;
+		popover?.ownerDocument.defaultView?.requestAnimationFrame(() => {
+			popover?.querySelector<HTMLElement>('[role="menuitem"]')?.focus({ preventScroll: true });
+		});
+		keyboardOpenRef.current = false;
+	}, [showPopover]);
 
 	const scheduleOpen = () => {
-		if (closeTimerRef.current) { window.clearTimeout(closeTimerRef.current); closeTimerRef.current = null; }
+		const ownerWindow = triggerRef.current?.ownerDocument.defaultView;
+		if (!ownerWindow) return;
+		keyboardOpenRef.current = false;
+		if (closeTimerRef.current) { ownerWindow.clearTimeout(closeTimerRef.current); closeTimerRef.current = null; }
 		if (openTimerRef.current) return;
-		openTimerRef.current = window.setTimeout(() => {
+		openTimerRef.current = ownerWindow.setTimeout(() => {
 			openTimerRef.current = null;
 			setPopoverOpen(true);
 		}, 300);
 	};
 	const scheduleClose = () => {
-		if (openTimerRef.current) { window.clearTimeout(openTimerRef.current); openTimerRef.current = null; }
+		const ownerWindow = triggerRef.current?.ownerDocument.defaultView;
+		if (!ownerWindow) return;
+		if (openTimerRef.current) { ownerWindow.clearTimeout(openTimerRef.current); openTimerRef.current = null; }
 		if (closeTimerRef.current) return;
-		closeTimerRef.current = window.setTimeout(() => {
+		closeTimerRef.current = ownerWindow.setTimeout(() => {
 			closeTimerRef.current = null;
 			setPopoverOpen(false);
 		}, 150);
 	};
 
-	const showPopover = popoverOpen && entries.length > 0 && !!onReplay;
-
 	return (
 		<div className="pktw-relative pktw-flex-shrink-0" onMouseEnter={scheduleOpen} onMouseLeave={scheduleClose}>
-			<button
+			<Button
+				ref={triggerRef}
+				variant="unstyled"
 				type="button"
 				onClick={onOpen}
+				onKeyDown={(event) => {
+					if (event.key !== 'ArrowDown' && !(event.shiftKey && event.key === 'F10')) return;
+					if (entries.length === 0 || !onReplay) return;
+					event.preventDefault();
+					keyboardOpenRef.current = true;
+					setPopoverOpen(true);
+				}}
+				onContextMenu={(event) => {
+					if (entries.length === 0 || !onReplay) return;
+					event.preventDefault();
+					keyboardOpenRef.current = true;
+					setPopoverOpen(true);
+				}}
+				aria-haspopup="menu"
+				aria-expanded={showPopover}
 				aria-label="AI suggests queries based on your browsing"
 				title="AI suggests queries based on your actions — hover for recent"
 				className={cn(
@@ -1658,9 +1745,10 @@ const SuggestButton: React.FC<{
 			>
 				<Sparkles className="pktw-w-3 pktw-h-3" />
 				Refine
-			</button>
+			</Button>
 			{showPopover && (
 				<div
+					ref={popoverRef}
 					className={cn(
 						'pktw-absolute pktw-top-full pktw-right-0 pktw-mt-1 pktw-z-50',
 						'pktw-w-[320px] pktw-max-h-[320px] pktw-overflow-y-auto',
@@ -1673,11 +1761,13 @@ const SuggestButton: React.FC<{
 						<Clock className="pktw-w-3 pktw-h-3" />
 						Recent Refine ({entries.length})
 					</div>
-					{entries.slice(0, 20).map((e) => (
-						<button
+					{entries.slice(0, 20).map((e, index) => (
+						<Button
+							variant="unstyled"
 							key={e.id}
 							type="button"
 							role="menuitem"
+							tabIndex={index === 0 ? 0 : -1}
 							onClick={() => {
 								setPopoverOpen(false);
 								onReplay?.(e.id);
@@ -1716,7 +1806,7 @@ const SuggestButton: React.FC<{
 									</>
 								)}
 							</div>
-						</button>
+						</Button>
 					))}
 				</div>
 			)}
@@ -1763,45 +1853,32 @@ function transformQueryForMode(raw: string, toMode: QuickSearchMode): string {
  */
 const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, setActiveTab, onOpenSuggest, onReplaySuggest }) => {
 	const inputRef = useRef<{ focus: () => void; select: () => void } | null>(null);
+	const inspectorZoneRef = useRef<HTMLDivElement | null>(null);
 	const { vaultStats, vaultNavigation } = useServiceContext();
 	const quickSearchHost = useQuickSearchHost();
 	const { vaultSearchQuery, setVaultSearchQuery, setSearchQuery } = useSharedStore();
 	const { updateParsedQuery, isSearching, quickSearchMode, inspectorOpen, lastSearchDuration, lastSearchResults, resultView } = useVaultSearchStore();
+	useRovingComposite(inspectorZoneRef, {
+		itemSelector: 'button:not([disabled]), a[href], [tabindex="0"]',
+		enabled: inspectorOpen,
+		orientation: 'vertical',
+		pageSize: 6,
+	});
 	const hasSearchQuery = !!vaultSearchQuery.trim();
 	const [inspectorPath, setInspectorPath] = useState<string | null>(null);
 	const [navigateToPath, setNavigateToPath] = useState<string | null>(null);
 
 	// Heading mode moved to Copilot Modal's Atlas tab — no `#` cycling here.
 
-	const handleInputKeyDown = (e: React.KeyboardEvent) => {
-		if (e.key === 'Tab' && !e.shiftKey) {
-			e.preventDefault();
-			e.stopPropagation();
-			setActiveTab('ai');
-			return;
-		}
-		// Alt+ArrowUp/Down previously cycled sub-modes; heading mode moved
-		// to Copilot Modal's Atlas tab, so this shortcut is retired.
-		if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-			e.preventDefault();
-			return;
-		}
-		if (e.key === 'ArrowRight' && !vaultSearchQuery) {
-			e.preventDefault();
-			useVaultSearchStore.getState().setInspectorOpen(true);
-			return;
-		}
-		if (e.key === 'ArrowLeft' && useVaultSearchStore.getState().inspectorOpen) {
-			e.preventDefault();
-			useVaultSearchStore.getState().setInspectorOpen(false);
-			return;
-		}
-		if ((e.key === 'a' || e.key === 'A') && (e.metaKey || e.ctrlKey) && inputRef.current) {
-			e.preventDefault();
-			e.stopPropagation();
-			inputRef.current?.select?.();
-			return;
-		}
+	const handleInputKeyDown = (event: React.KeyboardEvent) => {
+		if (event.key !== 'ArrowDown') return;
+		const root = (event.currentTarget as HTMLElement).closest<HTMLElement>(
+			'[data-peak-keyboard-surface="vault-search"]',
+		);
+		const result = root?.querySelector<HTMLElement>('[data-result-browser-row][tabindex="0"]');
+		if (!result) return;
+		event.preventDefault();
+		result.focus({ preventScroll: true });
 	};
 
 	useEffect(() => {
@@ -1815,7 +1892,12 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 	return (
 		<>
 			{/* Input row */}
-			<div className="pktw-flex-shrink-0 pktw-p-2 pktw-bg-pk-background pktw-border-b pktw-border-pk-border">
+			<div
+				className="pktw-flex-shrink-0 pktw-p-2 pktw-bg-pk-background pktw-border-b pktw-border-pk-border"
+				data-peak-keyboard-zone="vs-query"
+				data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['vs-query']}
+				data-peak-keyboard-order="2"
+			>
 				<div className="pktw-flex pktw-gap-3 pktw-items-center">
 					<div className="pktw-relative pktw-flex-1 pktw-min-w-0">
 						<ResultBrowserSearchInput
@@ -1840,7 +1922,12 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 			    Left: 3-way ViewModeToggle (List / Tree view / Graph view).
 			    Right: graph-only controls (presets + semantic) that appear
 			    when Graph view is active. */}
-			<div className="pktw-flex-shrink-0 pktw-px-3 pktw-py-1.5 pktw-bg-pk-background pktw-border-b pktw-border-pk-border pktw-flex pktw-items-center pktw-gap-2.5">
+			<div
+				className="pktw-flex-shrink-0 pktw-px-3 pktw-py-1.5 pktw-bg-pk-background pktw-border-b pktw-border-pk-border pktw-flex pktw-items-center pktw-gap-2.5"
+				data-peak-keyboard-zone="vs-view-toolbar"
+				data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['vs-view-toolbar']}
+				data-peak-keyboard-order="3"
+			>
 				<ViewModeToggle />
 				{resultView === 'graph' ? (
 					<ResultPaneGraphControls mode={quickSearchMode} className="pktw-ml-auto" />
@@ -1854,20 +1941,53 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 			{/* Content area — side-by-side results + inspector */}
 			<div className="pktw-flex-1 pktw-min-h-0 pktw-flex">
 				{/* Results panel — always visible */}
-				<div className={cn(
-					'pktw-min-w-0 pktw-overflow-hidden',
-					inspectorOpen ? 'pktw-flex-1' : 'pktw-w-full',
-				)}>
+				<div
+					data-peak-keyboard-zone="vs-results"
+					data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['vs-results']}
+					data-peak-keyboard-order="4"
+					className={cn(
+						'pktw-min-w-0 pktw-overflow-hidden',
+						inspectorOpen ? 'pktw-flex-1' : 'pktw-w-full',
+					)}
+				>
 					<VaultSearchTab
 						onClose={onClose}
 						onSelectForInspector={(path) => setInspectorPath(path)}
 						navigateToPath={navigateToPath}
+						onRequestInspectorFocus={() => {
+							const win = inspectorZoneRef.current?.ownerDocument.defaultView;
+							win?.requestAnimationFrame(() => {
+								win.requestAnimationFrame(() => {
+									inspectorZoneRef.current?.querySelector<HTMLElement>(
+										'button:not([disabled]), a[href], [tabindex="0"]',
+									)?.focus({ preventScroll: true });
+								});
+							});
+						}}
 					/>
 				</div>
 
 				{/* Inspector side panel — 340px, conditional */}
 				{inspectorOpen && !isMobile() && (
-					<div className="pktw-w-[340px] pktw-flex-shrink-0 pktw-border-l pktw-border-pk-border pktw-overflow-hidden">
+					<div
+						ref={inspectorZoneRef}
+						className="pktw-w-[340px] pktw-flex-shrink-0 pktw-border-l pktw-border-pk-border pktw-overflow-hidden"
+						data-peak-keyboard-zone="vs-inspector"
+						data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['vs-inspector']}
+						data-peak-keyboard-order="5"
+						onKeyDown={(event) => {
+							if (event.key !== 'ArrowLeft') return;
+							const root = event.currentTarget.closest<HTMLElement>(
+								'[data-peak-keyboard-surface="vault-search"]',
+							);
+							const selected = root?.querySelector<HTMLElement>(
+								'[data-result-browser-row][tabindex="0"]',
+							);
+							if (!selected) return;
+							event.preventDefault();
+							selected.focus({ preventScroll: true });
+						}}
+					>
 						<InspectorSidePanel
 							currentPath={inspectorPath}
 							searchQuery={vaultSearchQuery}
@@ -1953,6 +2073,16 @@ export const QuickSearchModalContent: React.FC<QuickSearchModalContentProps> = (
 	const resultView = useVaultSearchStore((s) => s.resultView);
 	const isGraph = activeTab === 'vault' && resultView === 'graph';
 	const rootRef = React.useRef<HTMLDivElement | null>(null);
+	const tabListRef = React.useRef<HTMLDivElement | null>(null);
+	usePeakKeyboardSurface(
+		activeTab === 'vault' ? 'vault-search' : 'ai-search',
+		rootRef,
+	);
+	useRovingComposite(tabListRef, {
+		itemSelector: '[role="tab"]',
+		orientation: 'horizontal',
+		onActiveItem: (item) => item.click(),
+	});
 
 	// The Obsidian `Modal` wrapper (`.modal` ancestor) is set up in
 	// `QuickSearchModal.onOpen()` with a content-driven height. To make
@@ -1981,7 +2111,17 @@ export const QuickSearchModalContent: React.FC<QuickSearchModalContentProps> = (
 			tabIndex={-1}
 			style={modalStyle}
 		>
-			<div className="pktw-flex-shrink-0 pktw-relative pktw-flex pktw-border-b pktw-border-pk-border pktw-bg-pk-surface-raised pktw-min-h-[48px]">
+			<div
+				ref={tabListRef}
+				className="pktw-flex-shrink-0 pktw-relative pktw-flex pktw-border-b pktw-border-pk-border pktw-bg-pk-surface-raised pktw-min-h-[48px]"
+				role="tablist"
+				aria-label={PEAK_KEYBOARD_A11Y_STRINGS.searchSurface}
+				data-peak-keyboard-zone={activeTab === 'vault' ? 'vs-search-mode' : undefined}
+				data-peak-keyboard-zone-label={
+					activeTab === 'vault' ? PEAK_KEYBOARD_ZONE_LABELS['vs-search-mode'] : undefined
+				}
+				data-peak-keyboard-order={activeTab === 'vault' ? '1' : undefined}
+			>
 				<TabButton
 					tab="vault"
 					label="Vault Search"

@@ -122,7 +122,7 @@ export const ResultBrowserListRow: React.FC<ResultBrowserListRowProps> = ({
 }) => {
 	const isCompact = density === 'compact';
 
-	const handleClick = (e: React.MouseEvent) => {
+	const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
 		e.currentTarget.focus({ preventScroll: true });
 		onSelect(index);
 		if (openOnSelect) onOpen(result, { newTab: e.metaKey || e.ctrlKey });
@@ -173,11 +173,21 @@ export const ResultBrowserListRow: React.FC<ResultBrowserListRowProps> = ({
 				}`}
 			data-result-browser-variant={variant}
 			data-result-browser-row
-			data-selected={isSelected ? 'true' : 'false'}
-			tabIndex={0}
+			data-result-index={index}
+			data-peak-focus-id={result.path}
+				data-selected={isSelected ? 'true' : 'false'}
+				role="option"
+				aria-selected={isSelected}
+				tabIndex={isSelected ? 0 : -1}
 			onClick={handleClick}
 			onDoubleClick={handleDoubleClick}
 			onKeyDown={handleKeyDown}
+			onContextMenu={(event) => {
+				event.preventDefault();
+				event.currentTarget.querySelector<HTMLElement>(
+					'[data-result-browser-open-new-tab]',
+				)?.focus({ preventScroll: true });
+			}}
 			onMouseEnter={() => onHoverStart?.(result)}
 			onMouseLeave={() => onHoverEnd?.(result)}
 		>
@@ -192,6 +202,8 @@ export const ResultBrowserListRow: React.FC<ResultBrowserListRowProps> = ({
 				variant="ghost"
 				size="icon"
 				title="Open in new tab"
+				tabIndex={-1}
+				data-result-browser-open-new-tab
 				className="pktw-absolute pktw-top-1.5 pktw-right-2 !pktw-h-8 !pktw-min-h-8 !pktw-max-h-8 !pktw-w-8 !pktw-min-w-8 !pktw-max-w-8 !pktw-p-0 pktw-rounded-md pktw-opacity-0 group-hover:pktw-opacity-100 focus-visible:pktw-opacity-100 pktw-transition-opacity"
 				onClick={(e) => {
 					e.stopPropagation();

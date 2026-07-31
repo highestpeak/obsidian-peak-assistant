@@ -12,7 +12,7 @@
  * Everything touching the Obsidian runtime goes through the injected host port.
  */
 
-import React, { type CSSProperties, useEffect, useMemo, useReducer, useState } from 'react';
+import React, { type CSSProperties, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { Search, Network, ListTree } from 'lucide-react';
 import { parseDocumentBlocks } from '@/core/document/atlas/documentBlockParser';
 import { RawBlockKind } from '@/core/document/atlas/types';
@@ -48,6 +48,9 @@ import {
 	firstProjectedId,
 	isProjectionRow,
 } from './atlasDisplayModel';
+import { usePeakKeyboardSurface } from '@/ui/keyboard/usePeakKeyboardSurface';
+import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
+import { PEAK_KEYBOARD_ZONE_LABELS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 type Subview = 'tree' | 'graph';
 
@@ -164,6 +167,17 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 	const [searchTerm, setSearchTerm] = useState('');
 	const [subview, setSubview] = useState<Subview>('tree');
 	const [flattened, setFlattened] = useState(false);
+	const rootRef = useRef<HTMLDivElement>(null);
+	const viewTabsRef = useRef<HTMLDivElement>(null);
+	usePeakKeyboardSurface('file-atlas', rootRef);
+	useRovingComposite(viewTabsRef, {
+		itemSelector: '[role="tab"]',
+		orientation: 'horizontal',
+		onActiveItem: (item) => {
+			if (item.dataset.peakFocusId === 'file-atlas-tree-view') setSubview('tree');
+			if (item.dataset.peakFocusId === 'file-atlas-graph-view') setSubview('graph');
+		},
+	});
 
 	const doc: AtlasDocument = useMemo(
 		() => parseDocumentBlocks(content, activePath),
@@ -274,6 +288,7 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 				id: block.id,
 				title: displayIdentity(block, config).primary,
 				kind: block.kind,
+				path: block.anchor.filePath,
 			},
 		});
 	};
@@ -301,6 +316,7 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 
 	return (
 		<div
+			ref={rootRef}
 			className="peak-file-atlas-modal pkfa-root pkfa-standalone peak-design-root"
 			data-subview={subview}
 			style={rootStyle}
@@ -354,13 +370,20 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 				</div>
 
 				{/* Tree / Graph subview tabs */}
-				<div className="pkfa-tab-row">
-					<div className="pkfa-atlas-tabs" role="tablist" aria-label="Atlas view">
+				<div
+					className="pkfa-tab-row"
+					data-peak-keyboard-zone="fa-view-filters"
+					data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['fa-view-filters']}
+					data-peak-keyboard-order="2"
+				>
+					<div ref={viewTabsRef} className="pkfa-atlas-tabs" role="tablist" aria-label="Atlas view">
 						<Button
 							variant="unstyled"
 							type="button"
 							role="tab"
 							aria-selected={subview === 'tree'}
+							tabIndex={subview === 'tree' ? 0 : -1}
+							data-peak-focus-id="file-atlas-tree-view"
 							className={`pkfa-atlas-tab${subview === 'tree' ? ' is-active' : ''}`}
 							onClick={() => setSubview('tree')}
 						>
@@ -372,6 +395,8 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 							type="button"
 							role="tab"
 							aria-selected={subview === 'graph'}
+							tabIndex={subview === 'graph' ? 0 : -1}
+							data-peak-focus-id="file-atlas-graph-view"
 							className={`pkfa-atlas-tab${subview === 'graph' ? ' is-active' : ''}`}
 							onClick={() => setSubview('graph')}
 						>
@@ -425,7 +450,12 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 
 						{/* main split */}
 						<section className="pkfa-main">
-							<div className="pkfa-tree-pane">
+							<div
+								className="pkfa-tree-pane"
+								data-peak-keyboard-zone="fa-atlas"
+								data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['fa-atlas-tree']}
+								data-peak-keyboard-order="3"
+							>
 								<div className="pkfa-tree-scroll">
 									{firstVisibleId ? <AtlasTree
 										blocks={blocks}
@@ -446,7 +476,12 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 									)}
 								</div>
 							</div>
-							<aside className="pkfa-inspector">
+							<aside
+								className="pkfa-inspector"
+								data-peak-keyboard-zone="fa-inspector"
+								data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['fa-inspector']}
+								data-peak-keyboard-order="4"
+							>
 								<div className="pkfa-inspector-scroll">
 									<AtlasInspector
 										block={projectedSelectedBlock}
@@ -463,7 +498,19 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 						</section>
 
 						{/* tray */}
-						<AtlasTray items={state.tray} config={config} onRemove={(id) => dispatch({ type: 'removeFromTray', id })} />
+						<AtlasTray
+							items={state.tray}
+							config={config}
+							onRemove={(id) => dispatch({ type: 'removeFromTray', id })}
+							onReveal={(item) => {
+								const block = blockById.get(item.id);
+								if (block) {
+									reveal(block);
+									return;
+								}
+								if (item.path) void host.activateDoc(item.path);
+							}}
+						/>
 					</>
 				)}
 			</div>

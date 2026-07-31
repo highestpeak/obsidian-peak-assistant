@@ -31,6 +31,14 @@ const EXPECTED_PALETTE_COMMAND_IDS = [
 	'peak-usage-dashboard',
 	'peak-open-chat-studio',
 	'peak-open-document-composer',
+	'peak-focus-vault-search',
+	'peak-focus-ai-search',
+	'peak-focus-file-atlas',
+	'peak-focus-chat-studio',
+	'peak-focus-next-zone',
+	'peak-focus-previous-zone',
+	'peak-return-last-focus',
+	'peak-show-keyboard-map',
 ] as const;
 
 function makeCounter(): { fn: () => void; count: () => number } {
@@ -53,6 +61,14 @@ function makeActions(recorder: Record<string, () => void>): PaletteCommandAction
 		openUsageDashboard: recorder.openUsageDashboard,
 		openChatStudio: recorder.openChatStudio,
 		openDocumentComposer: recorder.openDocumentComposer,
+		focusVaultSearch: recorder.focusVaultSearch,
+		focusAISearch: recorder.focusAISearch,
+		focusFileAtlas: recorder.focusFileAtlas,
+		focusChatStudio: recorder.focusChatStudio,
+		focusNextZone: recorder.focusNextZone,
+		focusPreviousZone: recorder.focusPreviousZone,
+		returnToLastPeakFocus: recorder.returnToLastPeakFocus,
+		showKeyboardMap: recorder.showKeyboardMap,
 	};
 }
 
@@ -68,6 +84,14 @@ function testManifestCoverageMatchesBindings(): void {
 		openUsageDashboard: () => {},
 		openChatStudio: () => {},
 		openDocumentComposer: () => {},
+		focusVaultSearch: () => {},
+		focusAISearch: () => {},
+		focusFileAtlas: () => {},
+		focusChatStudio: () => {},
+		focusNextZone: () => {},
+		focusPreviousZone: () => {},
+		returnToLastPeakFocus: () => {},
+		showKeyboardMap: () => {},
 	});
 	const bindings = composeCommandGatewayBindings(dummy);
 	const manifestIds = Object.keys(PALETTE_COMMAND_MANIFESTS);
@@ -75,7 +99,7 @@ function testManifestCoverageMatchesBindings(): void {
 	assert.deepStrictEqual(
 		manifestIds,
 		[...EXPECTED_PALETTE_COMMAND_IDS],
-		'global command palette must stay limited to the ten owner-approved entry points',
+		'global command palette must stay limited to the owner-approved surface and keyboard entry points',
 	);
 	assert.deepStrictEqual(
 		bindingIds,
@@ -103,6 +127,14 @@ async function testDispatchInvokesActionExactlyOnce(): Promise<void> {
 		openUsageDashboard: makeCounter(),
 		openChatStudio: makeCounter(),
 		openDocumentComposer: makeCounter(),
+		focusVaultSearch: makeCounter(),
+		focusAISearch: makeCounter(),
+		focusFileAtlas: makeCounter(),
+		focusChatStudio: makeCounter(),
+		focusNextZone: makeCounter(),
+		focusPreviousZone: makeCounter(),
+		returnToLastPeakFocus: makeCounter(),
+		showKeyboardMap: makeCounter(),
 	};
 	const actions = makeActions(
 		Object.fromEntries(Object.entries(counters).map(([k, c]) => [k, c.fn])) as Record<string, () => void>,
@@ -124,6 +156,14 @@ async function testDispatchInvokesActionExactlyOnce(): Promise<void> {
 		['peak-usage-dashboard', 'openUsageDashboard'],
 		['peak-open-chat-studio', 'openChatStudio'],
 		['peak-open-document-composer', 'openDocumentComposer'],
+		['peak-focus-vault-search', 'focusVaultSearch'],
+		['peak-focus-ai-search', 'focusAISearch'],
+		['peak-focus-file-atlas', 'focusFileAtlas'],
+		['peak-focus-chat-studio', 'focusChatStudio'],
+		['peak-focus-next-zone', 'focusNextZone'],
+		['peak-focus-previous-zone', 'focusPreviousZone'],
+		['peak-return-last-focus', 'returnToLastPeakFocus'],
+		['peak-show-keyboard-map', 'showKeyboardMap'],
 	];
 
 	for (const [commandId, actionKey] of commandToAction) {

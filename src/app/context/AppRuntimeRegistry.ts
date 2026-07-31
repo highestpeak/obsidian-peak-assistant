@@ -39,6 +39,7 @@ import { createDefaultGeneratedOutputRegistry } from '@/core/storage/generated-o
 import type { GeneratedOutputRegistry } from '@/core/storage/generated-output';
 import type { GeneratedOutputPersistenceRuntime } from '@/core/storage/generated-output';
 import type { PluginCommandGatewayRuntime } from '@/service/command-gateway/PluginCommandGatewayRuntime';
+import type { PeakKeyboardNavigationPort } from '@/ui/keyboard/KeyboardNavigationPort';
 
 /**
  * Bundle of the three usage-telemetry services. They boot and dispose
@@ -72,6 +73,7 @@ export class AppRuntimeRegistry {
 	private documentComposerRuntime: DocumentComposerRuntime | null = null;
 	private aiGraphArtifactRuntime: AIGraphArtifactRuntime | null = null;
 	private commandCenterRuntime: CommandCenterRuntime | null = null;
+	private keyboardNavigationRuntime: PeakKeyboardNavigationPort | null = null;
 
 	constructor(generatedOutputRegistry: GeneratedOutputRegistry = createDefaultGeneratedOutputRegistry()) {
 		this.generatedOutputRegistry = generatedOutputRegistry;
@@ -349,6 +351,36 @@ export class AppRuntimeRegistry {
 		const runtime = this.copilotActionRuntime;
 		this.copilotActionRuntime = null;
 		runtime?.dispose?.();
+	}
+
+	// ─── App-owned keyboard navigation runtime ──────────────────────────
+
+	setKeyboardNavigationRuntime(runtime: PeakKeyboardNavigationPort): void {
+		if (this.keyboardNavigationRuntime !== null) {
+			throw new Error(
+				'AppRuntimeRegistry.setKeyboardNavigationRuntime: a runtime is already bound. Call clearKeyboardNavigationRuntime first if this is intentional.',
+			);
+		}
+		this.keyboardNavigationRuntime = runtime;
+	}
+
+	getKeyboardNavigationRuntime(): PeakKeyboardNavigationPort {
+		if (this.keyboardNavigationRuntime === null) {
+			throw new Error(
+				'AppRuntimeRegistry.getKeyboardNavigationRuntime: no runtime is bound. Plugin boot must bind the keyboard runtime before rendering Peak surfaces.',
+			);
+		}
+		return this.keyboardNavigationRuntime;
+	}
+
+	tryGetKeyboardNavigationRuntime(): PeakKeyboardNavigationPort | null {
+		return this.keyboardNavigationRuntime;
+	}
+
+	clearKeyboardNavigationRuntime(): void {
+		const runtime = this.keyboardNavigationRuntime;
+		this.keyboardNavigationRuntime = null;
+		runtime?.dispose();
 	}
 
 	// ─── T13: IndexService ────────────────────────────────────────────────

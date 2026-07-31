@@ -74,6 +74,7 @@ import { CapabilityRegistry } from '@/service/capabilities';
 import { openSettingsModal } from '@/app/commands/PeakCommandActions';
 import { composePluginCommandGatewayRuntime } from '@/app/commands/gateway/composePluginCommandGatewayRuntime';
 import type { PluginCommandGatewayRuntime } from '@/service/command-gateway/PluginCommandGatewayRuntime';
+import { composePeakKeyboardRuntime } from '@/app/keyboard/composePeakKeyboardRuntime';
 // Note: `openSettingsModal` is also passed into `composeCommandGatewayBindings`
 // (below) via the same import binding; a second import would collide.
 
@@ -304,6 +305,8 @@ export default class MyPlugin extends Plugin {
 		this.aiServiceManager.setGeneratedOutputPersistenceRuntime(
 			appContext.runtimeRegistry.getGeneratedOutputPersistenceRuntime(),
 		);
+		const keyboardNavigation = composePeakKeyboardRuntime(appContext);
+		appContext.runtimeRegistry.setKeyboardNavigationRuntime(keyboardNavigation);
 
 		// T10: bind the Quick Search background-session runtime as
 		// soon as AppContext exists. The runtime is in-memory only —
@@ -520,6 +523,36 @@ export default class MyPlugin extends Plugin {
 			openUsageDashboard,
 			openChatStudio,
 			openDocumentComposer,
+			focusVaultSearch: () => {
+				useSharedStore.getState().setActiveTab('vault');
+				openQuickSearch();
+				keyboardNavigation.requestSurfaceFocus('vault-search', 'vs-query');
+			},
+			focusAISearch: () => {
+				useSharedStore.getState().setActiveTab('ai');
+				openQuickSearch();
+				keyboardNavigation.requestSurfaceFocus('ai-search', 'as-mode-query');
+			},
+			focusFileAtlas: async () => {
+				await openFileAtlas();
+				keyboardNavigation.requestSurfaceFocus('file-atlas', 'fa-file-rail');
+			},
+			focusChatStudio: async () => {
+				await appContext.viewManager.openChatStudio();
+				keyboardNavigation.requestSurfaceFocus('chat-studio', 'cs-left-navigation');
+			},
+			focusNextZone: () => {
+				keyboardNavigation.focusNextZone(false);
+			},
+			focusPreviousZone: () => {
+				keyboardNavigation.focusNextZone(true);
+			},
+			returnToLastPeakFocus: () => {
+				keyboardNavigation.returnToLastPeakFocus();
+			},
+			showKeyboardMap: () => {
+				keyboardNavigation.showKeyboardMap();
+			},
 		});
 		for (const binding of gatewayBindings) {
 			commandGateway.register(binding);

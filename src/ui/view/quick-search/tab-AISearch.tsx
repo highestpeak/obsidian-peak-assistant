@@ -11,6 +11,7 @@ import { useUIEventStore } from '@/ui/store/uiEventStore';
 import { V2Footer } from './components/V2Footer';
 import { useAIGraphStore } from './store/aiGraphStore';
 import { Notice } from 'obsidian';
+import { PEAK_KEYBOARD_ZONE_LABELS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 interface AISearchTabProps {
 	onClose?: () => void;
@@ -192,7 +193,13 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 			)}
 
 			{/* Main content — compact top inset keeps section headers attached to the workspace. */}
-			<div ref={contentContainerRef} className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto pktw-pt-2 pktw-px-4 pktw-pb-4">
+			<div
+				ref={contentContainerRef}
+				className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto pktw-pt-2 pktw-px-4 pktw-pb-4"
+				data-peak-keyboard-zone="as-primary"
+				data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['as-primary']}
+				data-peak-keyboard-order="3"
+			>
 				<SearchResultView
 					onClose={onClose}
 					onRetry={handleRetry}

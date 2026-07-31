@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState, useMemo } from 'react';
+import React, { useEffect, useCallback, useState, useMemo, useRef } from 'react';
 import { ProjectsSection } from './ProjectsSection';
 import { ConversationsSection } from './ConversationsSection';
 import { PinnedSection } from './PinnedSection';
@@ -17,6 +17,8 @@ import { showToast } from '@/ui/utils/toast';
 import { useChatNavigation } from '@/ui/view/chat-view/useChatNavigation';
 import { DEFAULT_NEW_CONVERSATION_TITLE } from '@/core/constant';
 import { splitPinnedAndRecent } from '@/ui/view/chat-studio-view/chatStudioLeftLogic';
+import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
+import { PEAK_KEYBOARD_A11Y_STRINGS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 interface ProjectListViewComponentProps {
 	/**
@@ -52,6 +54,17 @@ const ProjectListInner: React.FC = () => {
 	const [recentMetas, setRecentMetas] = useState<ChatConversationMeta[]>([]);
 	const [typewriterEnabled, setTypewriterEnabled] = useState<Map<string, boolean>>(new Map());
 	const [pickerOpen, setPickerOpen] = useState(false);
+	const navigationRef = useRef<HTMLDivElement>(null);
+	useRovingComposite(navigationRef, {
+		itemSelector: [
+			'.pkstudio-sidebar-command',
+			'.pkstudio-nav-row[role="treeitem"]',
+			'.pkstudio-section-label__add',
+			'.pkstudio-section-link',
+		].join(','),
+		orientation: 'vertical',
+		rememberBy: 'data-conversation-id',
+	});
 
 	const refreshRecentMetas = useCallback(async () => {
 		try {
@@ -201,7 +214,10 @@ const ProjectListInner: React.FC = () => {
 
 	return (
 		<div
+			ref={navigationRef}
 			className="pktw-flex pktw-flex-col pktw-h-full pktw-p-0 pktw-box-border pktw-overflow-y-auto pktw-bg-transparent"
+			role="tree"
+			aria-label={PEAK_KEYBOARD_A11Y_STRINGS.conversations}
 		>
 			{/* SHELL-01 / LEFT-01 — top actions: New chat, Search knowledge base.
 			    Nav rows, not filled CTAs (mock `.sidebar-command`). No Peak

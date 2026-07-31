@@ -16,6 +16,11 @@ import {
 	decideResponsiveCollapse,
 } from './chatStudioLeftLogic';
 import { readLayoutPreference, writeLayoutPreference } from './chatStudioLayoutStorage';
+import {
+	usePeakEscapeLayer,
+	usePeakKeyboardSurface,
+} from '@/ui/keyboard/usePeakKeyboardSurface';
+import { PEAK_KEYBOARD_ZONE_LABELS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 /** Central column minimum width (mock `minmax(440px, 1fr)`). */
 const STUDIO_CENTRE_MIN_WIDTH_PX = 440;
@@ -37,6 +42,9 @@ const STUDIO_CENTRE_MIN_WIDTH_PX = 440;
  */
 const ChatStudioPanelInner: React.FC = () => {
 	const rootRef = useRef<HTMLDivElement | null>(null);
+	const leftDrawerRef = useRef<HTMLDivElement | null>(null);
+	const leftDrawerTriggerRef = useRef<HTMLDivElement | null>(null);
+	usePeakKeyboardSurface('chat-studio', rootRef);
 	const activeConversation = useChatDataStore((s) => s.activeConversation);
 	const rightColumnVisible = activeConversation !== null;
 	// Shell chrome strings (drawer toggles + splitter aria-labels) come from the
@@ -95,6 +103,25 @@ const ChatStudioPanelInner: React.FC = () => {
 	const [leftDrawerOpen, setLeftDrawerOpen] = useState(false);
 	const leftVisible = leftDrawerOnly ? leftDrawerOpen : !pref.leftCollapsed;
 	const rightMounted = rightColumnVisible && !responsive.rightCollapsed;
+	usePeakEscapeLayer(
+		leftDrawerOnly && leftDrawerOpen,
+		leftDrawerRef,
+		'chat-studio-left-drawer',
+		() => setLeftDrawerOpen(false),
+		leftDrawerTriggerRef.current?.querySelector('button') ?? null,
+		true,
+	);
+	useEffect(() => {
+		if (!leftDrawerOnly || !leftDrawerOpen) return;
+		const drawer = leftDrawerRef.current;
+		const win = drawer?.ownerDocument.defaultView;
+		win?.requestAnimationFrame(() => {
+			const target = drawer?.querySelector<HTMLElement>(
+				'[data-peak-focus-id], button:not([disabled]), [tabindex="0"]',
+			);
+			(target ?? drawer)?.focus({ preventScroll: true });
+		});
+	}, [leftDrawerOnly, leftDrawerOpen]);
 
 	const persist = useCallback((next: Partial<StudioLayoutPreference>) => {
 		setPref((prev) => {
@@ -124,6 +151,15 @@ const ChatStudioPanelInner: React.FC = () => {
 	}, [persist]);
 	const onRightCollapse = useCallback(() => {
 		persist({ rightCollapsed: true });
+		const root = rootRef.current;
+		const win = root?.ownerDocument.defaultView;
+		win?.requestAnimationFrame(() => {
+			win.requestAnimationFrame(() => {
+				root?.querySelector<HTMLElement>('[data-peak-chat-restore-right]')?.focus({
+					preventScroll: true,
+				});
+			});
+		});
 	}, [persist]);
 
 	// S5 — expose a "restore right column" callback to the middle-column
@@ -149,8 +185,13 @@ const ChatStudioPanelInner: React.FC = () => {
 			ref={rootRef}
 			className="pktw-flex pktw-h-full pktw-w-full pktw-overflow-hidden pktw-relative"
 		>
-			{leftDrawerOnly && !leftDrawerOpen && (
-				<div className="pktw-absolute pktw-top-2 pktw-left-2 pktw-z-10">
+				{leftDrawerOnly && (
+					<div
+						ref={leftDrawerTriggerRef}
+						className={`pktw-absolute pktw-top-2 pktw-left-2 pktw-z-10${
+							leftDrawerOpen ? ' pktw-hidden' : ''
+						}`}
+					>
 					<IconButton
 						label={shell.openLeftDrawerLabel}
 						title={shell.openLeftDrawerLabel}
@@ -163,8 +204,12 @@ const ChatStudioPanelInner: React.FC = () => {
 			{leftVisible && (
 				<>
 					<div
+						ref={leftDrawerRef}
 						className="pkchat-studio__left pktw-h-full pktw-overflow-auto pktw-relative"
 						style={{ width: pref.leftWidth, flexShrink: 0 }}
+						data-peak-keyboard-zone="cs-left-navigation"
+						data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['cs-left-navigation']}
+						data-peak-keyboard-order="1"
 					>
 						{leftDrawerOnly && (
 							<div className="pktw-absolute pktw-top-2 pktw-right-2 pktw-z-10">
@@ -220,6 +265,9 @@ const ChatStudioPanelInner: React.FC = () => {
 					<div
 						className="pkchat-studio__right pktw-h-full pktw-overflow-auto"
 						style={{ width: pref.rightWidth, flexShrink: 0 }}
+						data-peak-keyboard-zone="cs-conversation-index"
+						data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['cs-conversation-index']}
+						data-peak-keyboard-order="4"
 					>
 						<ConversationIndex onCollapse={onRightCollapse} />
 					</div>
@@ -310,12 +358,13 @@ const StudioResizerHandle: React.FC<StudioResizerHandleProps> = ({
 	}, []);
 
 	const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+		const keyboardStep = e.shiftKey ? step * 4 : step;
 		if (e.key === 'ArrowLeft') {
 			e.preventDefault();
-			onResizeRef.current(-step);
+			onResizeRef.current(-keyboardStep);
 		} else if (e.key === 'ArrowRight') {
 			e.preventDefault();
-			onResizeRef.current(step);
+			onResizeRef.current(keyboardStep);
 		} else if (e.key === 'Home' && valueMin !== undefined && valueNow !== undefined) {
 			e.preventDefault();
 			onResizeRef.current(valueMin - valueNow);

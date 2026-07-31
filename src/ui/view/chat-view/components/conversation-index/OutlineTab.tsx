@@ -65,6 +65,9 @@ function OutlineRow({
 		<button
 			type="button"
 			className={`pkchat-idx-row${isActive ? ' pkchat-idx-row--active' : ''}`}
+			data-peak-chat-index-item
+			data-peak-focus-id={item.id}
+			tabIndex={isActive ? 0 : -1}
 			data-outline-kind={item.kind}
 			onClick={() => onSelect(item)}
 			aria-current={isActive ? 'true' : undefined}
@@ -131,6 +134,9 @@ export const OutlineTab: React.FC<OutlineTabProps> = ({
 							<button
 								type="button"
 								className="pkchat-idx-topic__head"
+								data-peak-chat-index-item
+								data-peak-focus-id={`topic:${g.id}`}
+								tabIndex={-1}
 								aria-expanded={expanded}
 								onClick={() => toggle(g.id)}
 							>

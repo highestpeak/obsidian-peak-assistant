@@ -66,8 +66,9 @@ export const NavRow: React.FC<NavRowProps> = ({
 			className={cn('pkstudio-nav-row', isChild && 'is-child', selected && 'is-selected')}
 			data-conversation-id={dataConversationId}
 			draggable={draggable}
-			role="button"
-			tabIndex={0}
+			role="treeitem"
+			tabIndex={selected ? 0 : -1}
+			data-peak-focus-id={dataConversationId ?? labelTitle}
 			aria-current={selected ? 'true' : undefined}
 			aria-label={labelTitle}
 			onDragStart={onDragStart}
@@ -86,6 +87,7 @@ export const NavRow: React.FC<NavRowProps> = ({
 				<button
 					type="button"
 					className="pkstudio-row-menu"
+					tabIndex={-1}
 					aria-label={menuLabel}
 					title={menuLabel}
 					onClick={(e) => { e.stopPropagation(); onOpenMenu(e); }}

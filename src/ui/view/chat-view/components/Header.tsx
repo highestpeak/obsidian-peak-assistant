@@ -158,6 +158,7 @@ export const Header: React.FC<HeaderProps> = () => {
 					<IconButton
 						label={strings.header.restoreRightLabel}
 						title={strings.header.restoreRightLabel}
+						data-peak-chat-restore-right
 						onClick={restoreRight}
 					>
 						<PanelRight />

@@ -1464,7 +1464,7 @@
 }
 
 /* ---------- graph subview ---------- */
-.pkfa-graph { min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); background: var(--pk-surface); }
+.pkfa-graph { position: relative; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); background: var(--pk-surface); }
 
 .pkfa-graph-bar {
 	display: flex;

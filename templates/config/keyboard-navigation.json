@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "strings": {
+    "title": "Peak keyboard map",
+    "searchPlaceholder": "Search actions, controls, contexts, or keys…",
+    "showAll": "Show all contexts",
+    "currentContext": "Current context",
+    "noMatches": "No keyboard actions match this search.",
+    "unbound": "Unbound",
+    "openHotkeys": "Open Obsidian Hotkeys",
+    "close": "Close",
+    "defaultSurface": "Peak",
+    "conflictPrefix": "Conflict"
+  },
+  "surfaceLabels": {
+    "vault-search": "Vault Search",
+    "ai-search": "AI Search",
+    "file-atlas": "File Atlas",
+    "chat-studio": "Chat Studio"
+  },
+  "zoneLabels": {
+    "vs-search-mode": "Search mode",
+    "vs-query": "Query",
+    "vs-view-toolbar": "View and scope",
+    "vs-results": "Results",
+    "vs-inspector": "Inspector",
+    "as-mode-query": "AI mode and query",
+    "as-suggestions": "Suggestions and history",
+    "as-lifecycle": "Activity, report, and sources",
+    "as-primary": "Primary content",
+    "as-outline": "Report outline",
+    "as-actions": "Actions",
+    "fa-file-rail": "Files",
+    "fa-view-filters": "View tabs and filters",
+    "fa-atlas-tree": "Atlas tree",
+    "fa-atlas-graph": "Atlas graph",
+    "fa-inspector": "Inspector",
+    "fa-selection-tray": "Selection tray",
+    "cs-left-navigation": "Conversations",
+    "cs-centre-content": "Centre content",
+    "cs-message-timeline": "Messages",
+    "cs-composer": "Composer",
+    "cs-conversation-index": "Conversation index"
+  },
+  "a11y": {
+    "searchSurface": "Search surface",
+    "aiSearchMode": "AI Search mode",
+    "searchModes": "Search modes",
+    "vaultSearchResults": "Vault Search results",
+    "aiSearchLifecycle": "AI Search lifecycle",
+    "aiSearchActions": "AI Search actions",
+    "copyAnalysis": "Copy analysis",
+    "tableOfContents": "Table of contents",
+    "openTableOfContents": "Open table of contents",
+    "closeTableOfContents": "Close table of contents",
+    "reportHeadings": "Report headings",
+    "documentBlocks": "Document blocks",
+    "graphNodes": "Graph nodes",
+    "openGraphNodeList": "Open graph node list",
+    "closeGraphNodeList": "Close graph node list",
+    "graphInstructions": "Knowledge graph. Use arrow keys to move between nodes, Enter to open, Space to select, plus and minus to zoom, and zero to fit.",
+    "conversations": "Conversations"
+  },
+  "bindings": {
+    "focusNextZone": "F6",
+    "focusPreviousZone": "Shift+F6",
+    "showKeyboardMap": "?",
+    "itemActions": "Shift+F10",
+    "primaryAction": "Enter",
+    "toggleSelection": "Space"
+  },
+  "commands": {
+    "focusVaultSearch": "peak-focus-vault-search",
+    "focusAISearch": "peak-focus-ai-search",
+    "focusFileAtlas": "peak-focus-file-atlas",
+    "focusChatStudio": "peak-focus-chat-studio",
+    "focusNextZone": "peak-focus-next-zone",
+    "focusPreviousZone": "peak-focus-previous-zone",
+    "returnToLastFocus": "peak-return-last-focus",
+    "showKeyboardMap": "peak-show-keyboard-map"
+  }
+}

@@ -142,6 +142,40 @@
 	}
 }
 
+/* Keyboard navigation focus contract. This deliberately follows the legacy
+   `.peak-no-native-outline` reset and restores a non-color-only indicator for
+   every kernel-owned entry or zone, including forced-colors mode. */
+:is(.pktw-root, .peak-design-root)
+  :is(
+    [data-peak-keyboard-entry],
+    [data-peak-focus-id],
+    [data-peak-keyboard-zone],
+    [role="tab"],
+    [role="treeitem"],
+    [role="option"],
+    [role="separator"]
+  ):focus-visible {
+	outline: 2px solid var(--pk-accent, var(--interactive-accent)) !important;
+	outline-offset: 2px !important;
+	box-shadow: 0 0 0 1px var(--pk-surface, var(--background-primary)) !important;
+}
+
+@media (forced-colors: active) {
+	:is(.pktw-root, .peak-design-root)
+	  :is(
+	    [data-peak-keyboard-entry],
+	    [data-peak-focus-id],
+	    [data-peak-keyboard-zone],
+	    [role="tab"],
+	    [role="treeitem"],
+	    [role="option"],
+	    [role="separator"]
+	  ):focus-visible {
+		outline: 3px solid CanvasText !important;
+		box-shadow: none !important;
+	}
+}
+
 /* Breathing glow border for IntelligenceFrame - compact spread to avoid clipping by overflow parents */
 @keyframes pktw-pulseGlow {
 

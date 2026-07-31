@@ -24,14 +24,18 @@ import fcose from 'cytoscape-fcose';
 import cise from 'cytoscape-cise';
 import cola from 'cytoscape-cola';
 import dagre from 'cytoscape-dagre';
-import { Check, Image as ImageIcon, Workflow } from 'lucide-react';
+import { Check, Image as ImageIcon, List, Workflow } from 'lucide-react';
 import { IconButton } from '@/ui/components/primitives';
+import { Button } from '@/ui/component/shared-ui/button';
 import type { ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph';
 import { coalesceGraphEdges } from '@/core/types/graph-edge';
 import {
 	buildVisibleFolderGroups,
 	visibleFolderGroupIdForDocument,
 } from './folderCompoundModel';
+import { findDirectionalGraphNode } from '@/ui/keyboard/graphKeyboardNavigation';
+import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
+import { PEAK_KEYBOARD_A11Y_STRINGS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 // ─── One-time Cytoscape extension registration ──────────────────────────────
 let extensionsRegistered = false;
@@ -198,6 +202,7 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{ selector: 'edge', style: { 'transition-property': 'line-color, source-arrow-color, target-arrow-color, width, opacity', 'transition-duration': 260, 'transition-timing-function': 'ease-out' } as never },
 	{ selector: '.dimmed', style: { opacity: 0.12 } as never },
 	{ selector: 'node.highlighted', style: { 'border-color': '#f59e0b', 'border-width': 3, opacity: 1, 'z-index': 999 } as never },
+	{ selector: 'node.keyboard-active', style: { 'border-color': '#2563eb', 'border-width': 5, opacity: 1, 'z-index': 1000 } as never },
 	{ selector: 'edge.highlighted', style: { 'line-color': '#f59e0b', 'source-arrow-color': '#f59e0b', 'target-arrow-color': '#f59e0b', opacity: 1, 'z-index': 999, 'arrow-scale': 1.4 } as never },
 	{ selector: 'edge.reference.highlighted', style: { 'line-style': 'solid', width: 2.6 } as never },
 	{ selector: 'edge.semantic.highlighted', style: { 'line-style': 'dashed', 'line-dash-pattern': [10, 6], width: 2.0 } as never },
@@ -316,7 +321,11 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 }) => {
 	const [copiedMode, setCopiedMode] = useState<'mermaid' | 'image' | null>(null);
 	const [hoveredLabel, setHoveredLabel] = useState<{ label: string; path: string } | null>(null);
+	const [keyboardNodeId, setKeyboardNodeId] = useState<string | null>(null);
+	const [keyboardNodeLabel, setKeyboardNodeLabel] = useState('');
+	const [nodeListOpen, setNodeListOpen] = useState(false);
 	const containerRef = useRef<HTMLDivElement | null>(null);
+	const nodeListRef = useRef<HTMLDivElement | null>(null);
 	const cyRef = useRef<Core | null>(null);
 	const animRef = useRef<number | null>(null);
 	const folderPickerRef = useRef(makeFolderColorPicker());
@@ -328,6 +337,16 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	tapRef.current = onNodeTap;
 	dblRef.current = onNodeDblTap;
 	hoverRef.current = onNodeHover;
+	useRovingComposite(nodeListRef, {
+		itemSelector: '[role="option"]',
+		enabled: nodeListOpen,
+		orientation: 'vertical',
+		rememberBy: 'data-node-id',
+		onActiveItem: (item) => {
+			const nodeId = item.dataset.nodeId;
+			if (nodeId) setKeyboardNodeId(nodeId);
+		},
+	});
 
 	useEffect(() => {
 		ensureExtensionsRegistered();
@@ -440,6 +459,93 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		});
 	}, [subgraph, preset, showSemantic]);
 
+	useEffect(() => {
+		const cy = cyRef.current;
+		if (!cy) return;
+		cy.nodes().removeClass('keyboard-active');
+		if (!keyboardNodeId) return;
+		const node = cy.getElementById(keyboardNodeId);
+		if (!node || node.empty()) return;
+		node.addClass('keyboard-active');
+		setKeyboardNodeLabel(String(node.data('label') ?? node.id()).replace(/\n/g, ' '));
+		cy.animate({ center: { eles: node }, duration: 120 });
+	}, [keyboardNodeId, subgraph, preset, showSemantic]);
+
+	const graphNodes = useCallback((): NodeSingular[] => {
+		const cy = cyRef.current;
+		if (!cy) return [];
+			return cy.nodes()
+				.filter((node) => !node.hasClass('folderGroup') && !node.hasClass('regionLabel'))
+				.toArray() as NodeSingular[];
+	}, []);
+
+	const handleGraphKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+		if (event.target !== event.currentTarget) return;
+		const nodes = graphNodes();
+		if (nodes.length === 0) return;
+		const active = nodes.find((node) => node.id() === keyboardNodeId) ?? nodes[0];
+		if (event.key === 'Home') {
+			event.preventDefault();
+			setKeyboardNodeId(nodes[0].id());
+			return;
+		}
+		if (event.key === 'End') {
+			event.preventDefault();
+			setKeyboardNodeId(nodes[nodes.length - 1].id());
+			return;
+		}
+		if (event.key === '0') {
+			event.preventDefault();
+			cyRef.current?.fit(undefined, 40);
+			return;
+		}
+		if (event.key === '+' || event.key === '=') {
+			event.preventDefault();
+			const cy = cyRef.current;
+			if (cy) cy.zoom({ level: Math.min(cy.maxZoom(), cy.zoom() * 1.2), renderedPosition: active.renderedPosition() });
+			return;
+		}
+		if (event.key === '-') {
+			event.preventDefault();
+			const cy = cyRef.current;
+			if (cy) cy.zoom({ level: Math.max(cy.minZoom(), cy.zoom() / 1.2), renderedPosition: active.renderedPosition() });
+			return;
+		}
+		if (event.key === 'Enter') {
+			event.preventDefault();
+			const path = String(active.data('path') ?? '');
+			dblRef.current?.({ id: active.id(), path });
+			return;
+		}
+		if (event.key === ' ') {
+			event.preventDefault();
+			tapRef.current?.({
+				id: active.id(),
+				path: String(active.data('path') ?? ''),
+				isHub: active.hasClass('hub'),
+				modKey: false,
+			});
+			return;
+		}
+		const direction = event.key === 'ArrowLeft' ? 'left'
+			: event.key === 'ArrowRight' ? 'right'
+				: event.key === 'ArrowUp' ? 'up'
+					: event.key === 'ArrowDown' ? 'down'
+						: null;
+		if (!direction) return;
+		event.preventDefault();
+		const currentPosition = active.renderedPosition();
+		const nextId = findDirectionalGraphNode(
+			{ id: active.id(), x: currentPosition.x, y: currentPosition.y },
+			nodes.map((node) => {
+				const point = node.renderedPosition();
+				return { id: node.id(), x: point.x, y: point.y };
+			}),
+			direction,
+		);
+		if (nextId) setKeyboardNodeId(nextId);
+	}, [graphNodes, keyboardNodeId]);
+
 	const handleCopyMermaid = useCallback(() => {
 		if (!subgraph) return;
 		try {
@@ -481,7 +587,20 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	}, [subgraph, buildingLabel, emptyLabel]);
 
 	return (
-		<div className="pktw-relative pktw-w-full pktw-h-full pktw-overflow-hidden pktw-min-h-[420px]">
+		<div
+			className="pktw-relative pktw-w-full pktw-h-full pktw-overflow-hidden pktw-min-h-[420px]"
+			tabIndex={0}
+			role="application"
+			aria-label={PEAK_KEYBOARD_A11Y_STRINGS.graphInstructions}
+			data-peak-keyboard-entry
+			onFocus={() => {
+				if (!keyboardNodeId) setKeyboardNodeId(graphNodes()[0]?.id() ?? null);
+			}}
+			onKeyDown={handleGraphKeyDown}
+		>
+			<span className="pk-keyboard-live-region" aria-live="polite">
+				{keyboardNodeLabel}
+			</span>
 			<div ref={containerRef} className="pktw-absolute pktw-inset-0" />
 			{emptyMessage && (
 				<div className="pktw-absolute pktw-inset-0 pktw-flex pktw-items-center pktw-justify-center pktw-p-6 pktw-text-sm pktw-text-pk-text-tertiary">
@@ -501,6 +620,18 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 					</>
 				)}
 				<IconButton
+					label={
+						nodeListOpen
+							? PEAK_KEYBOARD_A11Y_STRINGS.closeGraphNodeList
+							: PEAK_KEYBOARD_A11Y_STRINGS.openGraphNodeList
+					}
+					aria-expanded={nodeListOpen}
+					onClick={() => setNodeListOpen((open) => !open)}
+					data-active={nodeListOpen ? 'true' : undefined}
+				>
+					<List className="pktw-w-3.5 pktw-h-3.5" />
+				</IconButton>
+				<IconButton
 					label={copiedMode === 'mermaid' ? 'Copied Mermaid to clipboard' : 'Copy graph as Mermaid'}
 					onClick={handleCopyMermaid}
 					data-active={copiedMode === 'mermaid' ? 'true' : undefined}
@@ -519,6 +650,46 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 						: <ImageIcon className="pktw-w-3.5 pktw-h-3.5" />}
 				</IconButton>
 			</div>
+			{nodeListOpen && subgraph && (
+				<div
+					ref={nodeListRef}
+					className="pk-graph-node-list"
+					role="listbox"
+					aria-label={PEAK_KEYBOARD_A11Y_STRINGS.graphNodes}
+				>
+					{subgraph.resultNodes.map((node, index) => (
+						<Button
+							key={node.id}
+							variant="unstyled"
+							type="button"
+							role="option"
+							aria-selected={keyboardNodeId === node.id}
+							tabIndex={keyboardNodeId === node.id || (!keyboardNodeId && index === 0) ? 0 : -1}
+							data-node-id={node.id}
+							data-peak-focus-id={`graph-node-${node.id}`}
+							className="pk-graph-node-list__item"
+							onClick={() => {
+								setKeyboardNodeId(node.id);
+								dblRef.current?.({ id: node.id, path: node.path });
+							}}
+							onKeyDown={(event) => {
+								if (event.key !== ' ') return;
+								event.preventDefault();
+								event.stopPropagation();
+								tapRef.current?.({
+									id: node.id,
+									path: node.path,
+									isHub: false,
+									modKey: false,
+								});
+							}}
+						>
+							<span>{node.title || node.path || node.id}</span>
+							<span>{node.path}</span>
+						</Button>
+					))}
+				</div>
+			)}
 			{hoveredLabel && (() => {
 				const [title, ...rest] = hoveredLabel.label.split('\n');
 				const meta = rest.join(' ').trim();

@@ -480,6 +480,7 @@ export class AppContext {
 			AppContext.instance.runtimeRegistry.clearVaultReviewRuntime();
 			AppContext.instance.runtimeRegistry.clearQuickSearchBackgroundRuntime();
 			AppContext.instance.runtimeRegistry.clearCopilotActionRuntime();
+			AppContext.instance.runtimeRegistry.clearKeyboardNavigationRuntime();
 			// T13 additions — release the migrated singletons.
 			AppContext.instance.runtimeRegistry.clearUsageServices();
 			AppContext.instance.runtimeRegistry.clearSkillRegistry();

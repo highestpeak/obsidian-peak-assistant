@@ -4,7 +4,7 @@
  * We can't run React under Node in this harness, so instead of a DOM walk we
  * assert on the source files that own the accessibility contracts:
  *
- *   • NavRow — clickable row must be keyboard operable (role="button",
+ *   • NavRow — composite tree row must be keyboard operable (role="treeitem",
  *     tabIndex, onKeyDown handling Enter/Space) and the "…" menu button
  *     must carry aria-label + title.
  *   • Chat Studio splitter — role="separator", aria-orientation, aria-label,
@@ -30,8 +30,11 @@ function read(rel: string): string {
 
 function testNavRowKeyboardStructure(): void {
 	const src = read('src/ui/view/project-list-view/NavRow.tsx');
-	assert.ok(/role="button"/.test(src), 'NavRow row must expose role="button"');
-	assert.ok(/tabIndex=\{0\}/.test(src), 'NavRow row must be keyboard-focusable (tabIndex=0)');
+	assert.ok(/role="treeitem"/.test(src), 'NavRow row must expose role="treeitem"');
+	assert.ok(
+		/tabIndex=\{selected \? 0 : -1\}/.test(src),
+		'NavRow must participate in a selected-item roving tab stop',
+	);
 	assert.ok(/onKeyDown=/.test(src), 'NavRow row must handle onKeyDown');
 	assert.ok(/e\.key === 'Enter'/.test(src) && /e\.key === ' '/.test(src),
 		'NavRow onKeyDown must activate on Enter and Space');
@@ -84,8 +87,8 @@ function testConversationIndexTabs(): void {
 	assert.ok(/aria-selected=/.test(src), 'tabs must publish aria-selected');
 	assert.ok(/tabIndex=\{tab === value \? 0 : -1\}/.test(src),
 		'tabs must implement roving tabIndex');
-	assert.ok(/ArrowRight/.test(src) && /ArrowLeft/.test(src),
-		'tabs must support ArrowLeft/ArrowRight cycling');
+	assert.ok(/useRovingComposite\(tabsRef/.test(src) && /orientation: 'horizontal'/.test(src),
+		'tabs must support ArrowLeft/ArrowRight through the shared roving primitive');
 	// Scroll spy must re-observe when messages change (RIGHT-02).
 	assert.ok(/messages\.length/.test(src), 'scroll-spy must depend on messages.length so streaming turns are observed');
 	console.log('PASS: conversationIndexTabs');

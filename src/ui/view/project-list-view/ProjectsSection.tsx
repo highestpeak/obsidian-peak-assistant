@@ -78,6 +78,28 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 		await chatNavigation.openProjectOverviewInChat(project);
 	}, [chatNavigation, project, setActiveProject]);
 
+	const handleProjectKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+		if (e.key === 'ArrowRight' && !isExpanded) {
+			e.preventDefault();
+			toggleProjectExpanded(project.meta.id);
+			return;
+		}
+		if (e.key === 'ArrowLeft' && isExpanded) {
+			e.preventDefault();
+			toggleProjectExpanded(project.meta.id);
+			return;
+		}
+		if (e.shiftKey && e.key === 'F10') {
+			e.preventDefault();
+			e.currentTarget.querySelector<HTMLElement>('.pkstudio-row-menu')?.focus();
+			return;
+		}
+		if (e.key !== 'Enter' && e.key !== ' ') return;
+		e.preventDefault();
+		setActiveProject(project);
+		void chatNavigation.openProjectOverviewInChat(project);
+	}, [chatNavigation, isExpanded, project, setActiveProject, toggleProjectExpanded]);
+
 	const handleConversationClick = async (conversation: ChatConversation) => {
 		await chatNavigation.openConversationInChat(conversation);
 	};
@@ -296,10 +318,19 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 			    expand, the open button navigates to project home, the persistent
 			    "…" button (hover-revealed) opens the project action menu (which
 			    still carries "New conversation" — mock has no inline create row). */}
-			<div className={cn('pkstudio-nav-row', 'is-project', isProjectSelected && 'is-selected')}>
+			<div
+				className={cn('pkstudio-nav-row', 'is-project', isProjectSelected && 'is-selected')}
+				role="treeitem"
+				aria-expanded={isExpanded}
+				aria-selected={isProjectSelected}
+				tabIndex={isProjectSelected ? 0 : -1}
+				data-peak-focus-id={`project:${project.meta.id}`}
+				onKeyDown={handleProjectKeyDown}
+			>
 				<button
 					type="button"
 					className="pkstudio-project-disclosure"
+					tabIndex={-1}
 					aria-label={(isExpanded ? strings.ariaCollapseProject : strings.ariaExpandProject).replace('{name}', project.meta.name)}
 					aria-expanded={isExpanded}
 					onClick={handleChevronClick}
@@ -310,6 +341,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 				<button
 					type="button"
 					className="pkstudio-project-open"
+					tabIndex={-1}
 					aria-label={strings.ariaOpenProject.replace('{name}', project.meta.name)}
 					onClick={(e) => void handleNameClick(e)}
 					onContextMenu={(e) => handleContextMenu(e, 'project', project)}
@@ -324,6 +356,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 				<button
 					type="button"
 					className="pkstudio-row-menu"
+					tabIndex={-1}
 					aria-label={strings.projectMenuLabel}
 					onClick={(e) => handleContextMenu(e, 'project', project)}
 				>

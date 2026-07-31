@@ -36,6 +36,7 @@ import {
 	inspectorCardPolicy,
 } from '../atlasDisplayModel';
 import { AIGraphContextArtifacts } from '@/ui/component/ai-graph';
+import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
 
 interface AtlasInspectorProps {
 	block: DocumentBlock | null;
@@ -80,13 +81,21 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 	onAddToTray,
 	onCopyLink,
 }) => {
+	const inspectorRef = useRef<HTMLDivElement>(null);
+	useRovingComposite(inspectorRef, {
+		itemSelector: 'button:not([disabled]), [tabindex="0"]',
+		orientation: 'vertical',
+		pageSize: 6,
+	});
 	if (!block) {
 		return (
-			<section className="pkfa-card">
-				<div className="pkfa-card-body">
-					<span className="pkfa-selected-sub">{config.strings.inspectorEmpty}</span>
-				</div>
-			</section>
+			<div ref={inspectorRef}>
+				<section className="pkfa-card" tabIndex={-1}>
+					<div className="pkfa-card-body">
+						<span className="pkfa-selected-sub">{config.strings.inspectorEmpty}</span>
+					</div>
+				</section>
+			</div>
 		);
 	}
 
@@ -104,7 +113,7 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 	const keywordText = analysisText(block);
 
 	return (
-		<>
+		<div ref={inspectorRef}>
 			<section className="pkfa-card">
 				<div className="pkfa-card-body">
 					<div className="pkfa-selected-top">
@@ -192,7 +201,7 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 					</div>
 				</div>
 			</section>
-		</>
+		</div>
 	);
 };
 

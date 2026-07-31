@@ -9,6 +9,12 @@ import { exportGraphJson, useAIGraphStore } from '../store/aiGraphStore';
 import { useQuickSearchHost } from '../hooks/useQuickSearchHost';
 import type { Round, V2Section } from '@/core/search/v2SessionTypes';
 import { isReportReadyForFollowup } from './reportState';
+import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
+import { usePeakEscapeLayer } from '@/ui/keyboard/usePeakKeyboardSurface';
+import {
+	PEAK_KEYBOARD_A11Y_STRINGS,
+	PEAK_KEYBOARD_ZONE_LABELS,
+} from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 
 type CopyTarget = 'process' | 'report' | 'graph';
 
@@ -106,7 +112,69 @@ export const V2Footer: React.FC<{
 	const [copied, setCopied] = useState<CopyTarget | 'debug' | null>(null);
 	const copyMenuRef = useRef<HTMLDivElement>(null);
 	const copyBtnRef = useRef<HTMLButtonElement>(null);
+	const copyKeyboardOpenRef = useRef(false);
+	const tocLayerRef = useRef<HTMLDivElement>(null);
+	const tocBtnRef = useRef<HTMLButtonElement>(null);
+	const tocKeyboardOpenRef = useRef(false);
 	const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const lifecycleRef = useRef<HTMLDivElement>(null);
+	const actionsRef = useRef<HTMLDivElement>(null);
+	useRovingComposite(lifecycleRef, {
+		itemSelector: '[role="tab"]',
+		orientation: 'horizontal',
+		onActiveItem: (item) => {
+			const nextView = item.dataset.aiLifecycleView as 'process' | 'report' | 'sources' | undefined;
+			if (nextView) setV2View(nextView);
+		},
+	});
+	useRovingComposite(actionsRef, {
+		itemSelector: ':scope > button:not([disabled]), :scope > div > button:not([disabled])',
+		orientation: 'horizontal',
+	});
+	useRovingComposite(copyMenuRef, {
+		itemSelector: '[role="menuitem"]',
+		enabled: showCopyMenu,
+		orientation: 'vertical',
+	});
+	const closeToc = useCallback(() => {
+		setShowToc(false);
+		const trigger = tocBtnRef.current;
+		trigger?.ownerDocument.defaultView?.requestAnimationFrame(() => {
+			trigger.focus({ preventScroll: true });
+		});
+	}, []);
+	usePeakEscapeLayer(
+		showCopyMenu,
+		copyMenuRef,
+		'ai-search-copy-menu',
+		() => setShowCopyMenu(false),
+		copyBtnRef.current,
+	);
+	usePeakEscapeLayer(
+		showToc,
+		tocLayerRef,
+		'ai-search-table-of-contents',
+		closeToc,
+		tocBtnRef.current,
+	);
+	useEffect(() => {
+		if (!showCopyMenu || !copyKeyboardOpenRef.current) return;
+		const menu = copyMenuRef.current;
+		menu?.ownerDocument.defaultView?.requestAnimationFrame(() => {
+			menu?.querySelector<HTMLElement>('[role="menuitem"]')?.focus({ preventScroll: true });
+		});
+		copyKeyboardOpenRef.current = false;
+	}, [showCopyMenu]);
+	useEffect(() => {
+		if (!showToc || !tocKeyboardOpenRef.current) return;
+		const layer = tocLayerRef.current;
+		layer?.ownerDocument.defaultView?.requestAnimationFrame(() => {
+			layer?.querySelector<HTMLElement>('[data-peak-toc-close]')?.focus({
+				preventScroll: true,
+			});
+		});
+		tocKeyboardOpenRef.current = false;
+	}, [showToc]);
 
 	const reportMarkdown = buildReportTextFromParts(rounds, v2PlanSections, v2Summary);
 	const reportReady = isReportReadyForFollowup(
@@ -157,16 +225,20 @@ export const V2Footer: React.FC<{
 	// Close menu when clicking outside
 	useEffect(() => {
 		if (!showCopyMenu) return;
+		const ownerDocument = copyBtnRef.current?.ownerDocument;
+		const NodeCtor = ownerDocument?.defaultView?.Node;
+		if (!ownerDocument || !NodeCtor) return;
 		const handler = (e: MouseEvent) => {
-			if (copyMenuRef.current?.contains(e.target as Node)) return;
-			if (copyBtnRef.current?.contains(e.target as Node)) return;
+			if (e.target instanceof NodeCtor && copyMenuRef.current?.contains(e.target)) return;
+			if (e.target instanceof NodeCtor && copyBtnRef.current?.contains(e.target)) return;
 			setShowCopyMenu(false);
 		};
-		document.addEventListener('mousedown', handler);
-		return () => document.removeEventListener('mousedown', handler);
+		ownerDocument.addEventListener('mousedown', handler);
+		return () => ownerDocument.removeEventListener('mousedown', handler);
 	}, [showCopyMenu]);
 
 	const startHoverTimer = () => {
+		copyKeyboardOpenRef.current = false;
 		if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
 		hideTimerRef.current = setTimeout(() => setShowCopyMenu(true), 400);
 	};
@@ -187,21 +259,40 @@ export const V2Footer: React.FC<{
 		<div className="pktw-relative pktw-border-t pktw-border-pk-border pktw-bg-pk-background pktw-px-3 pktw-py-2 pktw-flex pktw-items-center pktw-justify-between pktw-flex-shrink-0 pktw-min-w-0 pktw-gap-2 pktw-flex-wrap">
 			{/* TOC popover — rendered above the footer, anchored bottom-left of this container */}
 			{showToc && reportMarkdown.length > 0 && (
-				<V2TableOfContents
-					markdown={reportMarkdown}
-					initialCollapsed={false}
+				<div
+					ref={tocLayerRef}
 					className="pktw-absolute pktw-bottom-full pktw-left-3 pktw-mb-1 pktw-z-50"
-					onNavigate={() => setShowToc(false)}
-				/>
+				>
+					<V2TableOfContents
+						markdown={reportMarkdown}
+						initialCollapsed={false}
+						className="pktw-relative"
+						onNavigate={closeToc}
+						onClose={closeToc}
+					/>
+				</div>
 			)}
 			{/* Left: View tabs */}
-			<div className="pktw-flex pktw-items-center pktw-gap-1 pktw-flex-shrink-0">
+			<div
+				ref={lifecycleRef}
+				className="pktw-flex pktw-items-center pktw-gap-1 pktw-flex-shrink-0"
+				role="tablist"
+				aria-label={PEAK_KEYBOARD_A11Y_STRINGS.aiSearchLifecycle}
+				data-peak-keyboard-zone="as-lifecycle"
+				data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['as-lifecycle']}
+				data-peak-keyboard-order="2"
+			>
 				{views.slice(0, 2).map(({ id, icon: Icon, label }) => (
 					<Button
 						key={id}
 						variant={v2View === id ? 'default' : 'ghost'}
 						size="sm"
 						geometry="toolbar"
+						role="tab"
+						aria-selected={v2View === id}
+						tabIndex={v2View === id ? 0 : -1}
+							data-peak-focus-id={`ai-lifecycle-${id}`}
+							data-ai-lifecycle-view={id}
 						onClick={() => setV2View(id)}
 						className="pktw-gap-1.5 pktw-rounded-lg pktw-text-sm"
 					>
@@ -212,11 +303,23 @@ export const V2Footer: React.FC<{
 				{/* TOC toggle — icon only, visually grouped with Report button */}
 				{reportMarkdown.length > 0 && (
 					<Button
+						ref={tocBtnRef}
 						variant={showToc ? 'secondary' : 'ghost'}
 						size="icon"
 						geometry="toolbar-icon"
-						onClick={() => setShowToc((prev) => !prev)}
+						onClick={(event) => {
+							if (!showToc && event.detail === 0) tocKeyboardOpenRef.current = true;
+							setShowToc((prev) => !prev);
+						}}
+						onKeyDown={(event) => {
+							if (event.key !== 'ArrowUp') return;
+							event.preventDefault();
+							tocKeyboardOpenRef.current = true;
+							setShowToc(true);
+						}}
 						title="Table of Contents"
+						aria-haspopup="dialog"
+						aria-expanded={showToc}
 					>
 						<List className="pktw-h-4 pktw-w-4" />
 					</Button>
@@ -227,6 +330,11 @@ export const V2Footer: React.FC<{
 						variant={v2View === id ? 'default' : 'ghost'}
 						size="sm"
 						geometry="toolbar"
+						role="tab"
+						aria-selected={v2View === id}
+						tabIndex={v2View === id ? 0 : -1}
+							data-peak-focus-id={`ai-lifecycle-${id}`}
+							data-ai-lifecycle-view={id}
 						onClick={() => setV2View(id)}
 						className="pktw-gap-1.5 pktw-rounded-lg pktw-text-sm"
 					>
@@ -244,7 +352,15 @@ export const V2Footer: React.FC<{
 			)}
 
 			{/* Right: Actions */}
-			<div className="pktw-flex pktw-items-center pktw-gap-1 pktw-flex-shrink-0">
+			<div
+				ref={actionsRef}
+				className="pktw-flex pktw-items-center pktw-gap-1 pktw-flex-shrink-0"
+				role="toolbar"
+				aria-label={PEAK_KEYBOARD_A11Y_STRINGS.aiSearchActions}
+				data-peak-keyboard-zone="as-actions"
+				data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['as-actions']}
+				data-peak-keyboard-order="5"
+			>
 				{/* Copy button with hover menu */}
 				<div className="pktw-relative">
 					<Button
@@ -253,8 +369,21 @@ export const V2Footer: React.FC<{
 						size="icon"
 						geometry="toolbar-icon"
 						onClick={handleDefaultCopy}
+						onKeyDown={(event) => {
+							if (event.key !== 'ArrowUp' && !(event.shiftKey && event.key === 'F10')) return;
+							event.preventDefault();
+							copyKeyboardOpenRef.current = true;
+							setShowCopyMenu(true);
+						}}
+						onContextMenu={(event) => {
+							event.preventDefault();
+							copyKeyboardOpenRef.current = true;
+							setShowCopyMenu(true);
+						}}
 						onMouseEnter={startHoverTimer}
 						onMouseLeave={startHideTimer}
+						aria-haspopup="menu"
+						aria-expanded={showCopyMenu}
 						className="pktw-text-pk-text-secondary"
 						title={copied ? 'Copied!' : copyLabel}
 					>
@@ -263,6 +392,8 @@ export const V2Footer: React.FC<{
 					{showCopyMenu && (
 						<div
 							ref={copyMenuRef}
+							role="menu"
+							aria-label={PEAK_KEYBOARD_A11Y_STRINGS.copyAnalysis}
 							onMouseEnter={cancelHideTimer}
 							onMouseLeave={startHideTimer}
 							className="pktw-absolute pktw-bottom-full pktw-right-0 pktw-mb-1 pktw-bg-popover pktw-border pktw-border-pk-border pktw-rounded-lg pktw-shadow-lg pktw-py-1 pktw-z-50 pktw-min-w-[140px]"
@@ -273,6 +404,8 @@ export const V2Footer: React.FC<{
 									variant="ghost"
 									size="sm"
 									geometry="toolbar-full"
+									role="menuitem"
+									tabIndex={id === defaultCopyTarget ? 0 : -1}
 									onClick={() => { void doCopy(id); setShowCopyMenu(false); }}
 									className={`pktw-w-full pktw-justify-start pktw-gap-2 pktw-rounded-none pktw-text-sm ${
 										id === defaultCopyTarget
@@ -292,6 +425,8 @@ export const V2Footer: React.FC<{
 										variant="ghost"
 										size="sm"
 										geometry="toolbar-full"
+										role="menuitem"
+										tabIndex={-1}
 										onClick={() => { void handleDebugTraceCopy(); }}
 										className="pktw-w-full pktw-justify-start pktw-gap-2 pktw-rounded-none pktw-text-sm pktw-text-pk-foreground-muted"
 										title="Copy report generation debug trace"

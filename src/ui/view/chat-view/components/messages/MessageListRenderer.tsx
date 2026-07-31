@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { ChatRole } from '@/core/providers/types';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { DEFAULT_AI_SERVICE_SETTINGS } from '@/core/config/settingsTypes';
@@ -8,6 +8,7 @@ import { MessageViewItem, MessageItemProps } from './MessageViewItem';
 import { PermissionAskCard } from './PermissionAskCard';
 import { useChatStrings } from '../../chatStringsContext';
 import type { ChatMessage } from '@/service/chat/types';
+import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
 
 /** Get date-only string for comparison */
 function getDateOnly(ts: number | undefined): string {
@@ -24,6 +25,12 @@ function getDateOnly(ts: number | undefined): string {
  *     model-attribution identity chip — MSG-01)
  */
 export const MessageListRenderer: React.FC = () => {
+	const listRef = useRef<HTMLDivElement>(null);
+	useRovingComposite(listRef, {
+		itemSelector: '[data-message-id]',
+		orientation: 'vertical',
+		rememberBy: 'data-message-id',
+	});
 	const strings = useChatStrings();
 	const {
 		messages,
@@ -107,6 +114,7 @@ export const MessageListRenderer: React.FC = () => {
 
 	return (
 		<div
+			ref={listRef}
 			className="pkchat-msg-list"
 			// A11Y-03 — treat the assistant thread as a log region so screen
 			// readers announce new turns but do NOT re-read updated tokens
@@ -116,6 +124,37 @@ export const MessageListRenderer: React.FC = () => {
 			aria-live="polite"
 			aria-relevant="additions"
 			aria-atomic="false"
+			onContextMenu={(event) => {
+				const target = event.target as HTMLElement;
+				const message = target.closest<HTMLElement>('[data-message-id]');
+				if (!message) return;
+				event.preventDefault();
+				const moreAction = message.querySelector<HTMLElement>('.pkchat-msg__action--more');
+				const fallbackAction = message.querySelector<HTMLElement>('.pkchat-msg__action');
+				const action = moreAction ?? fallbackAction;
+				if (!action) return;
+				action.focus({ preventScroll: true });
+				if (moreAction) moreAction.click();
+			}}
+			onKeyDown={(event) => {
+				const target = event.target as HTMLElement;
+				const message = target.closest<HTMLElement>('[data-message-id]');
+				if (!message) return;
+				if (event.key === 'Enter' && target === message) {
+					const contentTarget = message.querySelector<HTMLElement>(
+						'a[href], button:not([disabled]), [tabindex="0"]',
+					);
+					if (!contentTarget) return;
+					event.preventDefault();
+					contentTarget.focus({ preventScroll: true });
+					return;
+				}
+				if (event.key === 'Escape' && target !== message) {
+					event.preventDefault();
+					event.stopPropagation();
+					message.focus({ preventScroll: true });
+				}
+			}}
 		>
 			{savedMessagesToRender.map((item, index) => {
 				const prevItem = index > 0 ? savedMessagesToRender[index - 1] : null;

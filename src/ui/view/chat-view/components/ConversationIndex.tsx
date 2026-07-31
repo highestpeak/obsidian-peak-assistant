@@ -28,6 +28,7 @@ import {
 import { OutlineTab } from './conversation-index/OutlineTab';
 import { ResourcesTab } from './conversation-index/ResourcesTab';
 import { ResourcesFilterBar } from './conversation-index/ResourcesFilterBar';
+import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
 
 /**
  * ConversationIndex — right-side navigator with Outline / Resources tabs.
@@ -63,8 +64,9 @@ function scrollToMessageInDoc(messageId: string, doc: Document): void {
 	// in a different document and querySelector returns null.
 	const win = doc.defaultView ?? window;
 	win.requestAnimationFrame(() => {
+		const escapedId = win.CSS.escape(messageId);
 		const el = doc.querySelector(
-			`[data-message-id="${CSS.escape(messageId)}"]`,
+			`[data-message-id="${escapedId}"]`,
 		) as HTMLElement | null;
 		if (!el) return;
 		el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -129,8 +131,9 @@ function useMessageScrollSpy(dependency: unknown): string | null {
 			let bestId: string | null = null;
 			let bestTop = Number.POSITIVE_INFINITY;
 			for (const id of ids) {
+				const escapedId = win.CSS.escape(id);
 				const el = doc.querySelector(
-					`[data-message-id="${CSS.escape(id)}"]`,
+					`[data-message-id="${escapedId}"]`,
 				) as HTMLElement | null;
 				if (!el) continue;
 				const top = el.getBoundingClientRect().top;
@@ -242,6 +245,18 @@ const ConversationIndexInner: React.FC<ConversationIndexProps> = ({ onCollapse, 
 	const [tab, setTab] = useState<TabId>('outline');
 	const [query, setQuery] = useState('');
 	const [resourceFilter, setResourceFilter] = useState<ResourceFilter>(DEFAULT_RESOURCE_FILTER);
+	const tabsRef = useRef<HTMLDivElement>(null);
+	const listRef = useRef<HTMLDivElement>(null);
+	useRovingComposite(tabsRef, {
+		itemSelector: '[role="tab"]',
+		orientation: 'horizontal',
+		onActiveItem: (item) => setTab(item.dataset.chatIndexTab as TabId),
+	});
+	useRovingComposite(listRef, {
+		itemSelector: '[data-peak-chat-index-item]',
+		orientation: 'vertical',
+		pageSize: 8,
+	});
 
 	useEffect(() => {
 		setTab('outline');
@@ -403,6 +418,7 @@ const ConversationIndexInner: React.FC<ConversationIndexProps> = ({ onCollapse, 
 			</div>
 
 			<div
+				ref={tabsRef}
 				className={`pkchat-idx__tabs${compact ? ' pkchat-idx__tabs--centered' : ''}`}
 				role="tablist"
 				aria-label={legacyStrings.index.panelTitle}
@@ -417,16 +433,11 @@ const ConversationIndexInner: React.FC<ConversationIndexProps> = ({ onCollapse, 
 						key={value}
 						type="button"
 						role="tab"
+						data-chat-index-tab={value}
 						aria-selected={tab === value}
 						tabIndex={tab === value ? 0 : -1}
 						className={`pkchat-idx__tab${tab === value ? ' pkchat-idx__tab--active' : ''}`}
 						onClick={() => setTab(value)}
-						onKeyDown={(e) => {
-							if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-								e.preventDefault();
-								setTab((t) => (t === 'outline' ? 'resources' : 'outline'));
-							}
-						}}
 					>
 						<span className="pkchat-idx__tab-label">{label}</span>
 					</button>
@@ -441,7 +452,7 @@ const ConversationIndexInner: React.FC<ConversationIndexProps> = ({ onCollapse, 
 				/>
 			)}
 
-			<div className="pkchat-idx__list">
+			<div ref={listRef} className="pkchat-idx__list">
 				{tab === 'outline' && (
 					<OutlineTab
 						groups={outlineFiltered}
