@@ -101,6 +101,70 @@ export function buildInsertBelowOps(
 
 export type DirectListItemKind = 'list' | 'task';
 
+export interface BuiltListIndentOps extends BuiltOps {
+	/** A valid list item owns Tab even when the first item cannot indent. */
+	handled: true;
+}
+
+/**
+ * Indent/outdent one persisted list item by changing only its source prefix.
+ *
+ * The editable leaf intentionally excludes the list marker, so Tab is routed
+ * to this structure owner after pending text is flushed. A first sibling cannot
+ * indent, but still handles the key so focus never escapes Composer.
+ */
+export function buildIndentListItemOps(
+	snapshot: ComposerDocumentSnapshot,
+	blockId: string,
+	unitId: string,
+	outdent = false,
+): BuiltListIndentOps | null {
+	const block = snapshot.blocks.find((candidate) => candidate.blockId === blockId);
+	if (!block || (block.kind !== 'list' && block.kind !== 'task')) return null;
+	const items = block.units.filter((unit) => unit.unitKind === 'list-item');
+	const item = items.find((unit) => unit.unitId === unitId);
+	if (!item) return null;
+	const lineStart = snapshot.sourceText.lastIndexOf('\n', Math.max(0, item.from - 1)) + 1;
+	const line = snapshot.sourceText.slice(lineStart, item.to);
+	if (outdent) {
+		const remove = removableListIndent(line);
+		if (remove === 0) return { handled: true, operations: [] };
+		return {
+			handled: true,
+			operations: [{
+				kind: 'replaceRange',
+				from: lineStart,
+				to: lineStart + remove,
+				text: '',
+			}],
+			target: { kind: 'unit', blockId, unitId },
+			expectedBlockDelta: 0,
+		};
+	}
+	const siblings = items.filter((candidate) => candidate.parentUnitId === item.parentUnitId);
+	if (siblings.findIndex((candidate) => candidate.unitId === unitId) <= 0) {
+		return { handled: true, operations: [] };
+	}
+	return {
+		handled: true,
+		operations: [{
+			kind: 'replaceRange',
+			from: lineStart,
+			to: lineStart,
+			text: '\t',
+		}],
+		target: { kind: 'unit', blockId, unitId },
+		expectedBlockDelta: 0,
+	};
+}
+
+function removableListIndent(line: string): number {
+	if (line.startsWith('\t')) return 1;
+	let spaces = 0;
+	while (spaces < line.length && spaces < 4 && line[spaces] === ' ') spaces += 1;
+	return spaces;
+}
+
 /**
  * Insert one empty top-level list item at an explicit visual gap.
  *

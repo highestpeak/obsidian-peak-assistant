@@ -30,6 +30,7 @@ import type { ComposerListItemPatchPayload } from '@/core/schemas/composer';
 import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
 import {
 	buildCommentSourceRef,
+	buildIndentListItemOps,
 	buildInsertListItemOps,
 	buildMoveBlockOps,
 	buildToggleTaskOps,
@@ -1750,7 +1751,9 @@ function EditableListBody({
 	const hub = chrome.runtime.hub;
 	const listRef = React.useRef<HTMLDivElement | null>(null);
 	const pendingFocusIndexRef = React.useRef<number | null>(null);
-	const items = block.units.filter((u) => u.unitKind === 'list-item' && !u.parentUnitId);
+	const pendingIndentIndexRef = React.useRef<number | null>(null);
+	const allItems = block.units.filter((u) => u.unitKind === 'list-item');
+	const items = allItems.filter((u) => !u.parentUnitId);
 	const candidatesAt = (index: number): readonly ComposerCandidate[] =>
 		listItemCandidates.filter(
 			(candidate) => listItemInsertionIndex(candidate, items.length) === index,
@@ -1795,23 +1798,72 @@ function EditableListBody({
 			pendingFocusIndexRef.current = null;
 		}
 	};
+	const indentListItem = async (itemIndex: number, outdent: boolean) => {
+		if (!hub) return;
+		await chrome.flushAll();
+		const currentSnapshot = chrome.runtime.session?.snapshot ?? snapshot;
+		const currentBlockId =
+			matchBlocks(snapshot.blocks, currentSnapshot.blocks)
+				.find((match) => match.oldBlockId === block.blockId)
+				?.newBlockId
+			?? block.blockId;
+		const currentBlock = currentSnapshot.blocks.find(
+			(candidate) => candidate.blockId === currentBlockId,
+		);
+		const currentItems = currentBlock?.units.filter((unit) => unit.unitKind === 'list-item') ?? [];
+		const currentUnit = currentItems[itemIndex];
+		if (!currentUnit) return;
+		const built = buildIndentListItemOps(
+			currentSnapshot,
+			currentBlockId,
+			currentUnit.unitId,
+			outdent,
+		);
+		if (!built?.handled) return;
+		if (built.operations.length === 0) return;
+		pendingIndentIndexRef.current = itemIndex;
+		try {
+			await hub.commit({
+				origin: 'direct',
+				label: chrome.config.chrome.actions.directEdit,
+				operations: built.operations,
+				target: built.target,
+				expectedBlockDelta: built.expectedBlockDelta,
+			});
+		} catch {
+			pendingIndentIndexRef.current = null;
+		}
+	};
 	React.useLayoutEffect(() => {
 		const index = pendingFocusIndexRef.current;
+		const indentIndex = pendingIndentIndexRef.current;
 		const root = listRef.current;
 		const ownerWindow = root?.ownerDocument.defaultView;
-		if (index === null || index === undefined || !root || !ownerWindow) return;
+		if (
+			(index === null || index === undefined)
+			&& (indentIndex === null || indentIndex === undefined)
+		) return;
+		if (!root || !ownerWindow) return;
 		const frame = ownerWindow.requestAnimationFrame(() => {
-			const rows = Array.from(root.querySelectorAll<HTMLElement>('.pk-composer-list__row'));
-			const editable = rows[index]?.querySelector<HTMLElement>('.pk-composer-editable');
+			const rows = Array.from(
+				root.querySelectorAll<HTMLElement>('.pk-composer-list__row'),
+			);
+			const topRows = rows.filter((row) => row.dataset.listTopLevel === 'true');
+			const row = indentIndex === null || indentIndex === undefined
+				? topRows[index ?? 0]
+				: rows[indentIndex];
+			const editable = row?.querySelector<HTMLElement>('.pk-composer-editable');
 			if (!editable) return;
 			pendingFocusIndexRef.current = null;
+			pendingIndentIndexRef.current = null;
 			editable.focus();
 			const selection = editable.ownerDocument.getSelection();
 			if (!selection) return;
-			selection.collapse(editable, 0);
+			selection.selectAllChildren(editable);
+			selection.collapseToEnd();
 		});
 		return () => ownerWindow.cancelAnimationFrame(frame);
-	}, [items.length, snapshot.revision]);
+	}, [allItems.length, items.length, snapshot.revision]);
 	const toggle = async (unitId: string) => {
 		if (!hub) return;
 		const built = buildToggleTaskOps(snapshot, block.blockId, unitId);
@@ -1830,15 +1882,25 @@ function EditableListBody({
 	};
 	return (
 		<div ref={listRef} className="pk-composer-list" data-block-id={block.blockId}>
-			{items.map((unit, itemIndex) => {
+			{allItems.map((unit, itemIndex) => {
+				const topIndex = items.findIndex((candidate) => candidate.unitId === unit.unitId);
+				const topLevel = topIndex >= 0;
+				const depth = listItemDepth(unit, allItems);
 				const contentStart = listItemContentStart(snapshot.sourceText, unit);
-				const slice = snapshot.sourceText.slice(unit.from, unit.to);
+				const contentEnd = listItemOwnContentEnd(snapshot.sourceText, unit, allItems);
+				const slice = snapshot.sourceText.slice(unit.from, contentStart);
 				const checkbox = /^(\s*(?:[-*+]|\d+[.)])\s+\[)([ xX])\]/.exec(slice);
-				const text = snapshot.sourceText.slice(contentStart, unit.to);
+				const text = snapshot.sourceText.slice(contentStart, contentEnd);
 				return (
 					<React.Fragment key={unit.unitId}>
-						{renderCandidatesAt(itemIndex)}
-						<div className="pk-composer-list__row" data-unit-id={unit.unitId}>
+						{topLevel ? renderCandidatesAt(topIndex) : null}
+						<div
+							className="pk-composer-list__row"
+							data-unit-id={unit.unitId}
+							data-list-top-level={topLevel ? 'true' : 'false'}
+							data-list-depth={depth}
+							style={{ '--pk-composer-row-depth': depth } as React.CSSProperties}
+						>
 							{checkbox ? (
 								<input
 									type="checkbox"
@@ -1862,18 +1924,34 @@ function EditableListBody({
 									const current = locateBlock(snapshot, block.blockId);
 									const u = current?.units.find((x) => x.unitId === unit.unitId);
 									if (!current || !u) return null;
+									const currentItems = current.units.filter(
+										(candidate) => candidate.unitKind === 'list-item',
+									);
 									const from = listItemContentStart(snapshot.sourceText, u);
+									const to = listItemOwnContentEnd(
+										snapshot.sourceText,
+										u,
+										currentItems,
+									);
 									return {
 										from,
-										to: u.to,
-										current: snapshot.sourceText.slice(from, u.to),
+										to,
+										current: snapshot.sourceText.slice(from, to),
 										target: { kind: 'unit' as const, blockId: current.blockId, unitId: u.unitId },
 									};
 								}}
 								className="pk-composer-list__text"
 								onInsertParagraph={
+									editing && hub && topLevel
+										? () => insertListItem(topIndex + 1, checkbox ? 'task' : 'list')
+										: undefined
+								}
+								onIndentListItem={
 									editing && hub
-										? () => insertListItem(itemIndex + 1, checkbox ? 'task' : 'list')
+										? (outdent) => {
+												void indentListItem(itemIndex, outdent);
+												return true;
+											}
 										: undefined
 								}
 							/>
@@ -1884,6 +1962,34 @@ function EditableListBody({
 			{renderCandidatesAt(items.length)}
 		</div>
 	);
+}
+
+function listItemDepth(
+	unit: ComposerBlock['units'][number],
+	items: readonly ComposerBlock['units'][number][],
+): number {
+	let depth = 0;
+	let parentId = unit.parentUnitId;
+	const seen = new Set<string>();
+	while (parentId && !seen.has(parentId)) {
+		seen.add(parentId);
+		depth += 1;
+		parentId = items.find((candidate) => candidate.unitId === parentId)?.parentUnitId;
+	}
+	return depth;
+}
+
+function listItemOwnContentEnd(
+	source: string,
+	unit: ComposerBlock['units'][number],
+	items: readonly ComposerBlock['units'][number][],
+): number {
+	const firstChild = items
+		.filter((candidate) => candidate.parentUnitId === unit.unitId)
+		.sort((left, right) => left.from - right.from)[0];
+	let to = firstChild?.from ?? unit.to;
+	while (to > unit.from && (source[to - 1] === '\n' || source[to - 1] === '\r')) to -= 1;
+	return to;
 }
 
 function listItemInsertionIndex(candidate: ComposerCandidate, itemCount: number): number {

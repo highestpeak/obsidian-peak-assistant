@@ -2,6 +2,7 @@ import assert from 'assert';
 import { existsSync, readFileSync } from 'fs';
 import { applyOperations } from '@/core/composer';
 import {
+	buildIndentListItemOps,
 	buildInsertListItemOps,
 	createListItemPatchMaterializer,
 	insertValidatedListItem,
@@ -82,6 +83,39 @@ assert.equal(
 	'an empty final row also survives reparse for focus restoration',
 );
 
+const childUnit = directBlock?.units.find(
+	(unit) => unit.unitKind === 'list-item' && directSource.slice(unit.from, unit.to).includes('Beta'),
+);
+const indentChild = directBlock && childUnit
+	? buildIndentListItemOps(directSnapshot, directBlock.blockId, childUnit.unitId, false)
+	: null;
+assert.ok(indentChild?.handled, 'Tab is owned by a valid persisted list item');
+assert.equal(
+	applyOperations(directSource, indentChild?.operations ?? []),
+	'- Alpha\n\t- Beta',
+	'persisted list indentation changes the structural marker, not the text leaf',
+);
+const nestedSnapshot = parseComposerDocument('- Alpha\n\t- Beta', { filePath: 'direct-list.md' });
+const nestedBlock = nestedSnapshot.blocks[0];
+const nestedChild = nestedBlock?.units.find((unit) => Boolean(unit.parentUnitId));
+const outdentChild = nestedBlock && nestedChild
+	? buildIndentListItemOps(nestedSnapshot, nestedBlock.blockId, nestedChild.unitId, true)
+	: null;
+assert.equal(
+	applyOperations(nestedSnapshot.sourceText, outdentChild?.operations ?? []),
+	'- Alpha\n- Beta',
+	'Shift+Tab promotes a persisted nested item by one source indentation level',
+);
+const firstUnit = directBlock?.units.find((unit) => unit.unitKind === 'list-item');
+const indentFirst = directBlock && firstUnit
+	? buildIndentListItemOps(directSnapshot, directBlock.blockId, firstUnit.unitId, false)
+	: null;
+assert.deepEqual(
+	indentFirst,
+	{ handled: true, operations: [] },
+	'the first item retains focus when it cannot be nested',
+);
+
 const root = readFileSync('src/ui/view/composer/ComposerRoot.tsx', 'utf8');
 const editable = readFileSync(
 	'src/ui/view/composer/chrome/EditableText.tsx',
@@ -111,7 +145,7 @@ assert.ok(
 );
 assert.ok(
 	editable.includes('onInsertParagraph?: () => void | Promise<void>') &&
-		editable.includes('void onInsertParagraph();'),
+		editable.includes('onIndentListItem?:'),
 	'the editable leaf routes structural Enter through its object owner',
 );
 

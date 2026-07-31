@@ -16,7 +16,10 @@ import {
 	listItemContentStart,
 	partitionSourceRange,
 } from './selection/partitionSelection';
-import { applyMarkToSelection } from './selection/markSerializer';
+import {
+	applyMarkToSelection,
+	removeInlineMarkWrapper,
+} from './selection/markSerializer';
 import {
 	openDelimiter,
 	resolveFormattingSyntax,
@@ -196,6 +199,14 @@ export function formatMarkdownDraftSelection(
 		const caret = from + open.length;
 		return { value: next, selectionStart: caret, selectionEnd: caret };
 	}
+	const removal = draftMarkRemovalOperations(value, from, to, mark);
+	if (removal) {
+		const next = applyOperations(value, removal);
+		const mapped = formattedDraftSelectionRange(removal);
+		return mapped
+			? { value: next, selectionStart: mapped.from, selectionEnd: mapped.to }
+			: { value: next, selectionStart: from, selectionEnd: from };
+	}
 	const selection = partitionSourceRange(snapshot, from, to);
 	const result = applyMarkToSelection(selection, mark);
 	if (!result.ok) return null;
@@ -207,6 +218,52 @@ export function formatMarkdownDraftSelection(
 		selectionStart: mapped.from,
 		selectionEnd: mapped.to,
 	};
+}
+
+function draftMarkRemovalOperations(
+	value: string,
+	from: number,
+	to: number,
+	mark: MarkdownDraftInlineMark,
+): ComposerOperation[] | null {
+	const runs = projectSourceVisualParts(value, 0, { mathMode: 'source' })
+		.filter((part) => part.kind === 'run' && part.from < to && part.to > from);
+	if (runs.length === 0) return null;
+	const ranges = new Map<string, { from: number; to: number }>();
+	for (const run of runs) {
+		if (run.kind !== 'run' || !draftRunHasMark(run.style, mark)) return null;
+		const range = run.markRanges?.[mark];
+		if (!range) return null;
+		ranges.set(`${range.from}:${range.to}`, range);
+	}
+	for (const range of ranges.values()) {
+		const markedRuns = projectSourceVisualParts(value, 0, { mathMode: 'source' })
+			.filter((part) =>
+				part.kind === 'run'
+				&& part.markRanges?.[mark]?.from === range.from
+				&& part.markRanges?.[mark]?.to === range.to,
+			);
+		const visibleFrom = Math.min(...markedRuns.map((run) => run.from));
+		const visibleTo = Math.max(...markedRuns.map((run) => run.to));
+		if (from > visibleFrom || to < visibleTo) return null;
+	}
+	const operations = [...ranges.values()]
+		.map((range) => removeInlineMarkWrapper(value, mark, range))
+		.filter((operation): operation is ComposerOperation => Boolean(operation));
+	return operations.length === ranges.size ? operations : null;
+}
+
+function draftRunHasMark(
+	style: {
+		bold?: boolean;
+		italic?: boolean;
+		underline?: boolean;
+	},
+	mark: MarkdownDraftInlineMark,
+): boolean {
+	if (mark === 'bold') return Boolean(style.bold);
+	if (mark === 'italic') return Boolean(style.italic);
+	return Boolean(style.underline);
 }
 
 function formattedDraftSelectionRange(
@@ -309,8 +366,18 @@ export function insertMarkdownDraftBreak(
 	selectionEnd: number,
 	soft = false,
 ): MarkdownDraftEdit {
-	const from = Math.max(0, Math.min(value.length, selectionStart));
-	const to = Math.max(from, Math.min(value.length, selectionEnd));
+	const selectionFrom = Math.max(
+		0,
+		Math.min(value.length, Math.min(selectionStart, selectionEnd)),
+	);
+	const selectionTo = Math.max(
+		selectionFrom,
+		Math.min(value.length, Math.max(selectionStart, selectionEnd)),
+	);
+	const from = selectionFrom === selectionTo
+		? exitInlineMarkdownBeforeBreak(value, selectionFrom)
+		: selectionFrom;
+	const to = selectionFrom === selectionTo ? from : selectionTo;
 	const lineStart = value.lastIndexOf('\n', Math.max(0, from - 1)) + 1;
 	const lineEndAt = value.indexOf('\n', from);
 	const lineEnd = lineEndAt < 0 ? value.length : lineEndAt;
@@ -329,6 +396,106 @@ export function insertMarkdownDraftBreak(
 	const next = `${value.slice(0, from)}${inserted}${value.slice(to)}`;
 	const caret = from + inserted.length;
 	return { value: next, selectionStart: caret, selectionEnd: caret };
+}
+
+/**
+ * A visible caret at the end of a formatted run maps before its hidden closing
+ * source token. Move it past every adjacent close token before inserting a
+ * structural break so the next paragraph/list item does not inherit the mark.
+ */
+function exitInlineMarkdownBeforeBreak(value: string, offset: number): number {
+	let cursor = Math.max(0, Math.min(value.length, offset));
+	const lineStart = value.lastIndexOf('\n', Math.max(0, cursor - 1)) + 1;
+	const pairs = [
+		{ open: '<span', close: '</span>' },
+		{ open: '<u', close: '</u>' },
+		{ open: '<mark', close: '</mark>' },
+		{ open: '<a ', close: '</a>' },
+		{ open: '***', close: '***' },
+		{ open: '___', close: '___' },
+		{ open: '**', close: '**' },
+		{ open: '__', close: '__' },
+		{ open: '~~', close: '~~' },
+		{ open: '*', close: '*' },
+		{ open: '_', close: '_' },
+		{ open: '`', close: '`' },
+	] as const;
+	while (cursor < value.length) {
+		const pair = pairs.find((candidate) => {
+			if (!value.startsWith(candidate.close, cursor)) return false;
+			return value.lastIndexOf(candidate.open, cursor - 1) >= lineStart;
+		});
+		if (!pair) break;
+		cursor += pair.close.length;
+	}
+	return cursor;
+}
+
+/**
+ * Delete a source selection and remove any now-empty adjacent inline wrappers.
+ *
+ * Browsers otherwise delete only the visible run and leave hidden Markdown or
+ * canonical HTML delimiters in the unmanaged contenteditable subtree.
+ */
+export function deleteMarkdownDraftSelection(
+	value: string,
+	selectionStart: number,
+	selectionEnd: number,
+): MarkdownDraftEdit | null {
+	const from = Math.max(
+		0,
+		Math.min(value.length, Math.min(selectionStart, selectionEnd)),
+	);
+	const to = Math.max(from, Math.min(value.length, Math.max(selectionStart, selectionEnd)));
+	if (from === to) return null;
+	let next = `${value.slice(0, from)}${value.slice(to)}`;
+	let caret = from;
+	let removed = true;
+	while (removed) {
+		removed = false;
+		const html = emptyHtmlWrapperAt(next, caret);
+		if (html) {
+			next = `${next.slice(0, html.from)}${next.slice(html.to)}`;
+			caret = html.from;
+			removed = true;
+			continue;
+		}
+		for (const shell of [
+			{ open: '***', close: '***' },
+			{ open: '___', close: '___' },
+			{ open: '**', close: '**' },
+			{ open: '__', close: '__' },
+			{ open: '~~', close: '~~' },
+			{ open: '*', close: '*' },
+			{ open: '_', close: '_' },
+			{ open: '`', close: '`' },
+		]) {
+			const openAt = caret - shell.open.length;
+			if (openAt < 0) continue;
+			if (next.slice(openAt, caret) !== shell.open) continue;
+			if (next.slice(caret, caret + shell.close.length) !== shell.close) continue;
+			next = `${next.slice(0, openAt)}${next.slice(caret + shell.close.length)}`;
+			caret = openAt;
+			removed = true;
+			break;
+		}
+	}
+	return { value: next, selectionStart: caret, selectionEnd: caret };
+}
+
+function emptyHtmlWrapperAt(
+	value: string,
+	caret: number,
+): { from: number; to: number } | null {
+	const opening = /<(span|u|mark|a)\b[^>]*>$/i.exec(value.slice(0, caret));
+	if (!opening) return null;
+	const tag = opening[1];
+	const closing = new RegExp(`^<\\/${tag}\\s*>`, 'i').exec(value.slice(caret));
+	if (!closing) return null;
+	return {
+		from: caret - opening[0].length,
+		to: caret + closing[0].length,
+	};
 }
 
 function markdownLineContinuation(

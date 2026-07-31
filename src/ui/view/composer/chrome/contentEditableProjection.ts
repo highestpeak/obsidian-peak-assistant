@@ -171,14 +171,14 @@ function serializeStyle(style: React.CSSProperties): string {
 	return declarations.join(';');
 }
 
-function escapeHtml(value: string): string {
-	return value
+function escapeHtml(value: string | undefined): string {
+	return (value ?? '')
 		.replaceAll('&', '&amp;')
 		.replaceAll('<', '&lt;')
 		.replaceAll('>', '&gt;');
 }
 
-function escapeAttribute(value: string): string {
+function escapeAttribute(value: string | undefined): string {
 	return escapeHtml(value)
 		.replaceAll('"', '&quot;')
 		.replaceAll("'", '&#39;');

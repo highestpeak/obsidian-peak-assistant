@@ -59,19 +59,27 @@ assert.ok(
 );
 
 const editable = readFileSync('src/ui/view/composer/chrome/EditableText.tsx', 'utf8');
+const sharedEditor = readFileSync(
+	'src/ui/view/composer/chrome/MarkdownSourceEditor.tsx',
+	'utf8',
+);
 assert.ok(
-	editable.includes('dangerouslySetInnerHTML={editableProjection}'),
-	'editable body projects unmanaged innerHTML instead of React-owned child fibers',
+	editable.includes('<MarkdownSourceEditor'),
+	'existing Markdown leaves use the shared production editor',
 );
 assert.ok(
 	editable.includes('editable && Boolean(hub)'),
 	'only the browser-editable branch relinquishes child ownership',
 );
+assert.ok(
+	sharedEditor.includes('dangerouslySetInnerHTML={{ __html: projectionHtml }}'),
+	'the shared editor owns the only browser-editable unmanaged subtree',
+);
 
 const draft = readFileSync('src/ui/view/composer/chrome/NewBlockDraft.tsx', 'utf8');
 assert.ok(
-	draft.includes('dangerouslySetInnerHTML={{ __html: projectionHtml }}'),
-	'new Markdown drafts use the same single-owner DOM contract',
+	draft.includes('<MarkdownSourceEditor'),
+	'new Markdown drafts use the same production editor component',
 );
 assert.equal(
 	draft.includes('key={projection.version}'),
@@ -79,22 +87,22 @@ assert.equal(
 	'draft projection never unmounts React-owned descendants after native deletion',
 );
 assert.ok(
-	draft.includes('composerDraftBlockRanges(projection.text)'),
-	'draft projection computes independent visual ranges for mixed Markdown blocks',
+	sharedEditor.includes('composerDraftBlockRanges(renderState.text)'),
+	'shared editor computes independent visual ranges for mixed Markdown blocks',
 );
 assert.ok(
-	draft.includes("event.key === 'Tab'") &&
-		draft.includes('indentMarkdownDraftListItems'),
+	sharedEditor.includes("event.key === 'Tab'") &&
+		sharedEditor.includes('indentMarkdownDraftListItems'),
 	'Tab and Shift+Tab are owned by the Markdown draft while focus is in a list',
 );
 assert.ok(
-	draft.includes("key === 'b'") &&
-		draft.includes("key === 'i'") &&
-		draft.includes("key === 'u'") &&
-		draft.includes("native.inputType === 'formatBold'") &&
-		draft.includes("native.inputType === 'formatItalic'") &&
-		draft.includes("native.inputType === 'formatUnderline'") &&
-		draft.includes('formatMarkdownDraftSelection'),
+		sharedEditor.includes("key === 'b'") &&
+		sharedEditor.includes("key === 'i'") &&
+		sharedEditor.includes("key === 'u'") &&
+		sharedEditor.includes("inputType === 'formatBold'") &&
+		sharedEditor.includes("inputType === 'formatItalic'") &&
+		sharedEditor.includes("inputType === 'formatUnderline'") &&
+		sharedEditor.includes('formatMarkdownDraftSelection'),
 	'keyboard and beforeinput formatting are serialized through Markdown source instead of native rich DOM',
 );
 

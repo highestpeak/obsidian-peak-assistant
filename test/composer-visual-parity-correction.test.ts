@@ -152,6 +152,8 @@ check('insert-below uses one full-width live editor with explicit AI acceptance'
 		'utf8',
 	);
 	const draft = readFileSync('src/ui/view/composer/chrome/NewBlockDraft.tsx', 'utf8');
+	const editableText = readFileSync('src/ui/view/composer/chrome/EditableText.tsx', 'utf8');
+	const markdownEditor = readFileSync('src/ui/view/composer/chrome/MarkdownSourceEditor.tsx', 'utf8');
 	const css = readFileSync('src/styles/composer.css', 'utf8');
 	assert.ok(root.includes("panel: 'insert-draft'"));
 	assert.ok(root.includes('pinned: boolean'));
@@ -204,12 +206,13 @@ check('insert-below uses one full-width live editor with explicit AI acceptance'
 	assert.ok(draft.includes('StreamdownIsolated'));
 	assert.ok(draft.includes('blockDraftGeneration'));
 	assert.ok(draft.includes('config.acceptGenerated'));
-	assert.ok(draft.includes('<VisualDraftTextEditor'));
+	assert.ok(draft.includes('<MarkdownSourceEditor'));
+	assert.ok(editableText.includes('<MarkdownSourceEditor'));
 	assert.ok(draft.includes('<DraftTableEditor'));
 	assert.ok(draft.includes('<DraftReferenceEditor'));
-	assert.ok(draft.includes('hasSourceVisualSyntaxChange'));
-	assert.ok(draft.includes('dangerouslySetInnerHTML={{ __html: projectionHtml }}'));
-	assert.ok(draft.includes('onCompositionStart'));
+	assert.ok(markdownEditor.includes('hasSourceVisualSyntaxChange'));
+	assert.ok(markdownEditor.includes('dangerouslySetInnerHTML={{ __html: projectionHtml }}'));
+	assert.ok(markdownEditor.includes('onCompositionStart'));
 	assert.equal(draft.includes('pk-new-block-draft__header'), false);
 	assert.equal(draft.includes('pk-new-block-draft__shortcuts'), false);
 	assert.equal(draft.includes('pk-new-block-draft__pane'), false);

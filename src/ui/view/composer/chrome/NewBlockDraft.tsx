@@ -7,33 +7,20 @@ import {
 } from 'lucide-react';
 import {
 	buildInsertBelowOps,
-	composerDraftBlockRanges,
 	composerDraftEditorKind,
-	composerDraftHiddenRanges,
 	composerDraftHasContent,
 	composerDraftReferenceSource,
 	composerDraftReferenceTarget,
-	formatMarkdownDraftSelection,
-	hasSourceVisualSyntaxChange,
-	indentMarkdownDraftListItems,
-	insertMarkdownDraftBreak,
 	modelToHtml,
 	parseTableSource,
-	projectSourceVisualParts,
 	serializeTable,
-	type MarkdownDraftInlineMark,
 	type TableModel,
 } from '@/service/composer';
 import { StreamdownIsolated } from '@/ui/component/mine';
 import { Button } from '@/ui/components/primitives';
-import {
-	mapDomSelectionToSource,
-	restoreDomSelectionFromSource,
-	type MappedSelection,
-} from './selectionMapping';
 import { useComposerChrome } from './ComposerChromeContext';
 import { useComposerSurfaces } from './ComposerSurfaceCoordinator';
-import { renderContentEditableProjection } from './contentEditableProjection';
+import { MarkdownSourceEditor } from './MarkdownSourceEditor';
 
 export interface NewBlockDraftProps {
 	blockId: string;
@@ -301,267 +288,16 @@ function DraftEditor({
 	}
 	return (
 		<div className="pk-new-block-draft__visual">
-			<VisualDraftTextEditor
+			<MarkdownSourceEditor
 				value={source}
 				placeholder={placeholder}
-				onChange={onSource}
+				autoFocus
+				projectStructure
+				historyMode="local"
+				className="pk-new-block-draft__editor"
+				onSourceChange={onSource}
 			/>
 		</div>
-	);
-}
-
-function VisualDraftTextEditor({
-	value,
-	placeholder,
-	onChange,
-}: {
-	value: string;
-	placeholder: string;
-	onChange(value: string): void;
-}): React.ReactElement {
-	const ref = React.useRef<HTMLDivElement | null>(null);
-	const pendingSelection = React.useRef<MappedSelection | null>(null);
-	const focused = React.useRef(false);
-	const composing = React.useRef(false);
-	// Replace the projected subtree only when Markdown structure changes. This
-	// avoids React rendering a second copy beside contentEditable's native DOM.
-	const [projection, setProjection] = React.useState({ text: value, version: 0 });
-	const projectionRef = React.useRef(projection);
-	projectionRef.current = projection;
-	const hiddenRanges = React.useMemo(
-		() => composerDraftHiddenRanges(projection.text),
-		[projection.text],
-	);
-	const blockRanges = React.useMemo(
-		() => composerDraftBlockRanges(projection.text),
-		[projection.text],
-	);
-	const parts = React.useMemo(
-		() => projectSourceVisualParts(projection.text, 0, {
-			hiddenRanges,
-			mathMode: 'source',
-		}),
-		[hiddenRanges, projection.text],
-	);
-	const projectionHtml = React.useMemo(
-		() => renderContentEditableProjection(parts, undefined, hiddenRanges, blockRanges),
-		[blockRanges, hiddenRanges, parts],
-	);
-	const project = (next: string, selection: MappedSelection | null) => {
-		pendingSelection.current = selection;
-		setProjection((current) => ({
-			text: next,
-			version: current.version + 1,
-		}));
-	};
-	React.useLayoutEffect(() => {
-		const el = ref.current;
-		const pending = pendingSelection.current;
-		if (!el || !pending || !focused.current) return;
-		el.focus({ preventScroll: true });
-		restoreDomSelectionFromSource(el, pending);
-		pendingSelection.current = null;
-	}, [projection]);
-	React.useLayoutEffect(() => {
-		if (projectionRef.current.text === value) return;
-		if (focused.current) {
-			const beforeBlocks = composerDraftBlockRanges(projectionRef.current.text);
-			const afterBlocks = composerDraftBlockRanges(value);
-			const beforeHidden = composerDraftHiddenRanges(projectionRef.current.text);
-			const afterHidden = composerDraftHiddenRanges(value);
-			if (
-				JSON.stringify(beforeBlocks) === JSON.stringify(afterBlocks) &&
-				JSON.stringify(beforeHidden) === JSON.stringify(afterHidden)
-			) {
-				return;
-			}
-			const el = ref.current;
-			const selection = el?.ownerDocument.getSelection();
-			project(value, el && selection ? mapDomSelectionToSource(el, selection) : null);
-			return;
-		}
-		setProjection((current) => ({
-			text: value,
-			version: current.version + 1,
-		}));
-	}, [value]);
-	const handleInput = () => {
-		const el = ref.current;
-		if (!el) return;
-		const next = el.textContent ?? '';
-		onChange(next);
-		if (composing.current) return;
-		const nextHiddenRanges = composerDraftHiddenRanges(next);
-		const nextBlockRanges = composerDraftBlockRanges(next);
-		const hiddenRangesChanged =
-			JSON.stringify(hiddenRanges) !== JSON.stringify(nextHiddenRanges);
-		const blockRangesChanged =
-			JSON.stringify(blockRanges) !== JSON.stringify(nextBlockRanges);
-		if (!hiddenRangesChanged && !blockRangesChanged && !hasSourceVisualSyntaxChange(
-			projectionRef.current.text,
-			next,
-			0,
-			{ hiddenRanges: nextHiddenRanges, mathMode: 'source' },
-		)) return;
-		const selection = el.ownerDocument.getSelection();
-		project(next, selection ? mapDomSelectionToSource(el, selection) : null);
-	};
-	const insertBreak = (soft: boolean) => {
-		const el = ref.current;
-		if (!el) return;
-		const selection = el.ownerDocument.getSelection();
-		const mapped = selection ? mapDomSelectionToSource(el, selection) : null;
-		if (!mapped) return;
-		const liveText = el.textContent ?? '';
-		const edit = insertMarkdownDraftBreak(liveText, mapped.from, mapped.to, soft);
-		const nextSelection: MappedSelection = {
-			from: edit.selectionStart,
-			to: edit.selectionEnd,
-			anchor: edit.selectionStart,
-			focus: edit.selectionEnd,
-			direction: 'collapsed',
-		};
-		onChange(edit.value);
-		project(edit.value, nextSelection);
-	};
-	const indentList = (outdent: boolean): boolean => {
-		const el = ref.current;
-		if (!el) return false;
-		const selection = el.ownerDocument.getSelection();
-		const mapped = selection ? mapDomSelectionToSource(el, selection) : null;
-		if (!mapped) return false;
-		const liveText = el.textContent ?? '';
-		const edit = indentMarkdownDraftListItems(
-			liveText,
-			mapped.from,
-			mapped.to,
-			outdent,
-		);
-		if (!edit) return false;
-		const collapsed = edit.selectionStart === edit.selectionEnd;
-		const direction = collapsed ? 'collapsed' : mapped.direction;
-		const nextSelection: MappedSelection = {
-			from: edit.selectionStart,
-			to: edit.selectionEnd,
-			anchor: direction === 'backward' ? edit.selectionEnd : edit.selectionStart,
-			focus: direction === 'backward' ? edit.selectionStart : edit.selectionEnd,
-			direction,
-		};
-		onChange(edit.value);
-		project(edit.value, nextSelection);
-		return true;
-	};
-	const formatInline = (mark: MarkdownDraftInlineMark): void => {
-		const el = ref.current;
-		if (!el) return;
-		const selection = el.ownerDocument.getSelection();
-		const mapped = selection ? mapDomSelectionToSource(el, selection) : null;
-		if (!mapped) return;
-		const edit = formatMarkdownDraftSelection(
-			el.textContent ?? '',
-			mapped.from,
-			mapped.to,
-			mark,
-		);
-		if (!edit) return;
-		const collapsed = edit.selectionStart === edit.selectionEnd;
-		const direction = collapsed ? 'collapsed' : mapped.direction;
-		const nextSelection: MappedSelection = {
-			from: edit.selectionStart,
-			to: edit.selectionEnd,
-			anchor: direction === 'backward' ? edit.selectionEnd : edit.selectionStart,
-			focus: direction === 'backward' ? edit.selectionStart : edit.selectionEnd,
-			direction,
-		};
-		onChange(edit.value);
-		project(edit.value, nextSelection);
-	};
-	return (
-		<div
-			ref={ref}
-			className="pk-new-block-draft__editor pk-composer-editable"
-			contentEditable
-			suppressContentEditableWarning
-			spellCheck={false}
-			data-draft-autofocus="true"
-			data-placeholder={placeholder}
-			data-src-text-from={0}
-			onInput={handleInput}
-			onBeforeInput={(event) => {
-				const native = event.nativeEvent as InputEvent;
-				const formatMark: MarkdownDraftInlineMark | undefined =
-					native.inputType === 'formatBold'
-						? 'bold'
-						: native.inputType === 'formatItalic'
-							? 'italic'
-							: native.inputType === 'formatUnderline'
-								? 'underline'
-								: undefined;
-				if (formatMark) {
-					event.preventDefault();
-					if (!native.isComposing) formatInline(formatMark);
-					return;
-				}
-				if (native.inputType !== 'insertParagraph' && native.inputType !== 'insertLineBreak') {
-					return;
-				}
-				event.preventDefault();
-				if (native.isComposing) return;
-				insertBreak(native.inputType === 'insertLineBreak');
-			}}
-			onFocus={() => {
-				focused.current = true;
-			}}
-			onBlur={() => {
-				const next = ref.current?.textContent ?? value;
-				focused.current = false;
-				pendingSelection.current = null;
-				onChange(next);
-				if (projectionRef.current.text === next) return;
-				setProjection((current) => ({
-					text: next,
-					version: current.version + 1,
-				}));
-			}}
-			onCompositionStart={() => {
-				composing.current = true;
-			}}
-			onCompositionEnd={() => {
-				composing.current = false;
-				handleInput();
-			}}
-			onKeyDown={(event) => {
-				const key = event.key.toLowerCase();
-				if (
-					(event.metaKey || event.ctrlKey) &&
-					!event.altKey &&
-					!event.nativeEvent.isComposing &&
-					(key === 'b' || key === 'i' || key === 'u')
-				) {
-					event.preventDefault();
-					const mark: MarkdownDraftInlineMark =
-						key === 'b' ? 'bold' : key === 'i' ? 'italic' : 'underline';
-					formatInline(mark);
-					return;
-				}
-				if (
-					event.key === 'Tab' &&
-					!event.nativeEvent.isComposing &&
-					!event.metaKey &&
-					!event.ctrlKey &&
-					!event.altKey
-				) {
-					if (!indentList(event.shiftKey)) return;
-					event.preventDefault();
-					return;
-				}
-				if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
-				if (event.metaKey || event.ctrlKey) return;
-				event.preventDefault();
-				insertBreak(event.shiftKey);
-			}}
-			dangerouslySetInnerHTML={{ __html: projectionHtml }}
-		/>
 	);
 }
 

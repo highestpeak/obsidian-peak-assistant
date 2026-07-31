@@ -1707,7 +1707,7 @@
 	display: flex;
 	align-items: flex-start;
 	gap: var(--pk-space-2);
-	margin: 0 -7px;
+	margin: 0 -7px 0 calc((var(--pk-composer-row-depth, 0) * 18px) - 7px);
 	padding: 1px 7px;
 	border-radius: var(--pk-radius-sm);
 	font-size: var(--pkc-prose-size);

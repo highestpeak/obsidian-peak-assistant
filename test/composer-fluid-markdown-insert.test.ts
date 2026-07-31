@@ -4,6 +4,7 @@ import {
 	composerDraftBlockRanges,
 	composerDraftHiddenRanges,
 	composerDraftPresentationKind,
+	deleteMarkdownDraftSelection,
 	formatMarkdownDraftSelection,
 	indentMarkdownDraftListItems,
 	insertMarkdownDraftBreak,
@@ -155,6 +156,22 @@ assert.equal(
 	'<span style="font-weight: 700; text-decoration-line: underline">bold</span>',
 	'adding an HTML-backed mark canonicalizes the whole overlapping style stack',
 );
+assert.deepEqual(
+	formatMarkdownDraftSelection('*italic*', 1, 7, 'italic'),
+	{ value: 'italic', selectionStart: 0, selectionEnd: 6 },
+	'repeating italic over its complete visible run toggles the source wrapper off',
+);
+const canonicalUnderline = '<span style="text-decoration-line: underline">under</span>';
+assert.deepEqual(
+	formatMarkdownDraftSelection(
+		canonicalUnderline,
+		canonicalUnderline.lastIndexOf('under'),
+		canonicalUnderline.indexOf('</span>'),
+		'underline',
+	),
+	{ value: 'under', selectionStart: 0, selectionEnd: 5 },
+	'repeating underline removes only the canonical underline wrapper',
+);
 assert.equal(
 	formatMarkdownDraftSelection('```ts\ncode\n```', 7, 11, 'bold'),
 	null,
@@ -195,6 +212,52 @@ assert.equal(paragraph.value, 'First\n\n');
 const softBreak = insertMarkdownDraftBreak('First', 5, 5, true);
 assert.equal(softBreak.value, 'First\n');
 
+for (const formattedBreak of [
+	{ source: '**bold**', caret: 6, expected: '**bold**\n\n' },
+	{ source: '*italic*', caret: 7, expected: '*italic*\n\n' },
+	{
+		source: '<span style="text-decoration-line: underline">under</span>',
+		caret: '<span style="text-decoration-line: underline">under</span>'.indexOf('</span>'),
+		expected: '<span style="text-decoration-line: underline">under</span>\n\n',
+	},
+]) {
+	const edit = insertMarkdownDraftBreak(
+		formattedBreak.source,
+		formattedBreak.caret,
+		formattedBreak.caret,
+	);
+	assert.equal(edit.value, formattedBreak.expected, 'Enter exits the adjacent inline closing stack');
+	assert.equal(edit.selectionStart, formattedBreak.expected.length);
+}
+
+const formattedNestedList = '- parent\n\t- **child**';
+const nestedFormattedBreak = insertMarkdownDraftBreak(
+	formattedNestedList,
+	formattedNestedList.indexOf('**', formattedNestedList.indexOf('child') + 'child'.length),
+	formattedNestedList.indexOf('**', formattedNestedList.indexOf('child') + 'child'.length),
+);
+assert.equal(
+	nestedFormattedBreak.value,
+	'- parent\n\t- **child**\n\t- ',
+	'list continuation happens after the closing inline delimiter',
+);
+
+assert.deepEqual(
+	deleteMarkdownDraftSelection('**bold**', 2, 6),
+	{ value: '', selectionStart: 0, selectionEnd: 0 },
+	'deleting selected formatted text removes the empty Markdown wrapper',
+);
+const underlined = '<span style="text-decoration-line: underline">under</span>';
+assert.deepEqual(
+	deleteMarkdownDraftSelection(
+		underlined,
+		underlined.lastIndexOf('under'),
+		underlined.indexOf('</span>'),
+	),
+	{ value: '', selectionStart: 0, selectionEnd: 0 },
+	'deleting selected formatted text removes the empty canonical HTML wrapper',
+);
+
 const root = readFileSync('src/ui/view/composer/ComposerRoot.tsx', 'utf8');
 assert.ok(
 	root.includes("panel: 'insert-draft'") &&
@@ -203,8 +266,18 @@ assert.ok(
 );
 
 const draft = readFileSync('src/ui/view/composer/chrome/NewBlockDraft.tsx', 'utf8');
-assert.ok(draft.includes('insertMarkdownDraftBreak'));
-assert.ok(draft.includes('event.metaKey || event.ctrlKey'));
-assert.ok(draft.includes('composerDraftBlockRanges(projection.text)'));
+const sharedEditor = readFileSync(
+	'src/ui/view/composer/chrome/MarkdownSourceEditor.tsx',
+	'utf8',
+);
+assert.ok(draft.includes('<MarkdownSourceEditor'));
+assert.equal(
+	draft.includes('contentEditable'),
+	false,
+	'the draft no longer owns an independent contenteditable lifecycle',
+);
+assert.ok(sharedEditor.includes('insertMarkdownDraftBreak'));
+assert.ok(sharedEditor.includes('keyboardCommandGuard'));
+assert.ok(sharedEditor.includes('onCompositionStart'));
 
 console.log('composer-fluid-markdown-insert: passed');
