@@ -361,6 +361,57 @@ const records = [
   },
 ];
 
+const skillSets = [
+  ['Product', 'AI'],
+  ['React', 'Systems'],
+  ['Product', 'UX'],
+  ['TypeScript', 'Health'],
+  ['Platform', 'Cloud'],
+  ['Energy', 'Full-stack'],
+  ['React', 'Cloud'],
+  ['Data Viz', 'Design'],
+  ['Fintech', 'Product'],
+  ['Design System', 'A11y'],
+  ['Commerce', 'Web'],
+  ['Robotics', 'C++'],
+  ['Agents', 'Product'],
+  ['Platform', 'Infra'],
+  ['React', 'Tooling'],
+  ['Health', 'Backend'],
+  ['Design', 'Frontend'],
+  ['Research', 'Tools'],
+  ['Analytics', 'B2B'],
+  ['Product', 'Web'],
+];
+
+const interviewSlots = {
+  aster: '07/31 · 15:00',
+  tide: '08/01 · 10:30',
+  fern: '08/02 · 14:00',
+  halcyon: '待确认',
+  meridian: '08/04 · 11:00',
+};
+
+const progressByStage = {
+  offer: 92,
+  interview: 72,
+  followup: 54,
+  applied: 28,
+  ended: 100,
+};
+
+function extendedFields(record) {
+  const index = records.indexOf(record);
+  return {
+    skills: skillSets[index] ?? ['Product'],
+    starred: record.fit >= 88 || record.stageKey === 'offer',
+    attachmentCount: (index % 3) + 1,
+    interviewAt: interviewSlots[record.id] ?? '—',
+    progress: progressByStage[record.stageKey] ?? 0,
+    jobLink: `${record.company.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.jobs`,
+  };
+}
+
 const groupMeta = {
   offer: { label: 'Offer', order: 0, color: 'var(--green)' },
   interview: { label: '面试中', order: 1, color: 'var(--purple)' },
@@ -400,6 +451,7 @@ function visibleRecords() {
   return records.filter((record) => {
     if (state.priorityOnly && !(record.urgency && record.fit >= 80)) return false;
     if (!query) return true;
+    const extra = extendedFields(record);
     return [
       record.company,
       record.role,
@@ -408,6 +460,9 @@ function visibleRecords() {
       record.location,
       record.next,
       record.source,
+      record.note,
+      extra.jobLink,
+      ...extra.skills,
     ].some((value) => value.toLowerCase().includes(query));
   });
 }
@@ -444,7 +499,7 @@ function groupRows(groupKey, groupRecords) {
   const rows = groupRecords.map(recordRow).join('');
   return `
     <tr class="group-row">
-      <td colspan="11">
+      <td colspan="18">
         <div class="group-summary">
           <span class="group-name">
             ${icon('i-chevron')}
@@ -465,6 +520,7 @@ function groupRows(groupKey, groupRecords) {
 function recordRow(record) {
   const waitWidth = Math.min(100, Math.round((record.wait / 14) * 100));
   const rowNumber = records.indexOf(record) + 2;
+  const extra = extendedFields(record);
   const inSelectedRange = rowNumber >= 2 && rowNumber <= 6;
   const isActiveCell = record.id === 'koru';
   const priority = record.fit >= 85 && record.wait >= 7 ? '优先跟进' : '保持观察';
@@ -496,6 +552,13 @@ function recordRow(record) {
       </td>
       <td class="next-action-cell"><span class="next-action ${record.urgency ? 'is-soon' : ''}"><i></i><span>${record.next}</span></span></td>
       <td class="formula-value ${isActiveCell ? 'active-cell' : ''}"><span class="priority-token ${priority === '优先跟进' ? 'priority-high' : ''}">${priority}</span>${isActiveCell ? '<i class="fill-handle"></i>' : ''}</td>
+      <td><span class="skill-tags">${extra.skills.map((skill, index) => `<span class="skill-tag tone-${index + 1}">${skill}</span>`).join('')}</span></td>
+      <td class="boolean-column"><span class="boolean-cell ${extra.starred ? 'is-checked' : ''}" role="checkbox" aria-checked="${extra.starred}">${extra.starred ? icon('i-check') : ''}</span></td>
+      <td><span class="link-cell">${icon('i-link')}<span>${extra.jobLink}</span></span></td>
+      <td><span class="attachment-cell">${icon('i-paperclip')}<span>${extra.attachmentCount} 个文件</span></span></td>
+      <td class="datetime-cell"><span>${extra.interviewAt}</span></td>
+      <td class="progress-column"><span class="progress-cell"><i><b style="--progress:${extra.progress}%"></b></i><strong>${extra.progress}%</strong></span></td>
+      <td><span class="note-cell" title="${record.note}">${record.note}</span></td>
     </tr>
   `;
 }
@@ -522,11 +585,11 @@ function renderTable() {
     <section class="table-view">
       <div class="table-viewport">
         <table class="record-table">
-          <colgroup><col><col><col><col><col><col><col><col><col><col><col></colgroup>
+          <colgroup><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col></colgroup>
           <thead>
             <tr class="column-letters">
               <th class="sheet-corner"></th>
-              ${['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].map((letter) => `<th>${letter}</th>`).join('')}
+              ${['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q'].map((letter) => `<th>${letter}</th>`).join('')}
             </tr>
             <tr>
               <th class="row-number-header">#</th>
@@ -540,6 +603,13 @@ function renderTable() {
               <th><span class="field-heading"><b class="formula-mark">ƒx</b><span>等待天数</span></span></th>
               <th><span class="field-heading">${icon('i-check')}<span>下一步</span></span></th>
               <th><span class="field-heading"><b class="formula-mark">ƒx</b><span>行动优先级</span></span></th>
+              <th><span class="field-heading">${icon('i-group')}<span>技能标签</span></span></th>
+              <th><span class="field-heading">${icon('i-check')}<span>已收藏</span></span></th>
+              <th><span class="field-heading">${icon('i-link')}<span>JD 链接</span></span></th>
+              <th><span class="field-heading">${icon('i-paperclip')}<span>附件</span></span></th>
+              <th><span class="field-heading">${icon('i-clock')}<span>面试时间</span></span></th>
+              <th><span class="field-heading">${icon('i-number')}<span>进度</span><em class="format-badge">%</em></span></th>
+              <th><span class="field-heading">${icon('i-note')}<span>备注</span></span></th>
             </tr>
           </thead>
           <tbody>${body}</tbody>

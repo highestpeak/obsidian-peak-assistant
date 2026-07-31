@@ -46,6 +46,7 @@
     <symbol id="i-building" viewBox="0 0 24 24"><path d="M4 21V5l8-3v19M12 8h8v13M7 7h2M7 11h2M7 15h2M15 11h2M15 15h2M2 21h20"/></symbol>
     <symbol id="i-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M16 4a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 5v2"/></symbol>
     <symbol id="i-note" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9Z"/><path d="M14 3v7h6M8 14h8M8 18h5"/></symbol>
+    <symbol id="i-paperclip" viewBox="0 0 24 24"><path d="m21.4 11.6-8.9 8.9a6 6 0 0 1-8.5-8.5l9.6-9.6a4 4 0 0 1 5.7 5.7l-9.6 9.6a2 2 0 0 1-2.8-2.8l8.9-8.9"/></symbol>
     <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
     <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 15.3A8.7 8.7 0 0 1 8.7 3.5 9 9 0 1 0 20.5 15.3Z"/></symbol>
     <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 7 4 12l5 5"/><path d="M5 12h8a6 6 0 0 1 6 6"/></symbol>
@@ -129,7 +130,7 @@
         <button type="button" class="fx-button" id="formula-function-button" aria-label="打开函数库">fx</button>
         <input id="formula-input" aria-label="公式栏" value='=IF(AND(G6&gt;=85,H6&gt;=7),"优先跟进","保持观察")'>
         <span class="formula-state"><svg><use href="#i-check"/></svg>公式有效</span>
-        <span class="formula-scope">计算列 · 24 条记录</span>
+        <span class="formula-scope">计算列 · 20 条记录</span>
       </section>
 
       <section class="filter-line" id="filter-line">
@@ -183,7 +184,7 @@
 
       <section class="conditional-panel floating-surface" id="conditional-panel" hidden aria-label="条件格式">
         <header class="panel-header"><span><strong>条件格式</strong><small>应用到当前视图 · 2 条规则</small></span><button type="button" class="icon-button" id="close-conditional-format"><svg><use href="#i-x"/></svg></button></header>
-        <div class="conditional-scope"><span>应用范围</span><b>G2:H13</b></div>
+        <div class="conditional-scope"><span>应用范围</span><b>G2:H21</b></div>
         <article class="conditional-rule">
           <header><span><i class="rule-swatch data-bar"></i><strong>匹配度数据条</strong></span><button type="button"><svg><use href="#i-more"/></svg></button></header>
           <p>G 列 · 0 到 100 · 蓝色数据条</p>
@@ -200,7 +201,7 @@
 
       <section class="field-panel floating-surface" id="field-panel" hidden aria-label="字段配置">
         <header class="panel-header">
-          <span><strong>字段配置</strong><small>10 个字段 · 3 个计算字段</small></span>
+          <span><strong>字段配置</strong><small>17 个字段 · 3 个计算字段</small></span>
           <button type="button" class="icon-button" id="close-fields" aria-label="关闭字段配置"><svg><use href="#i-x"/></svg></button>
         </header>
         <div class="field-panel-body">
@@ -214,24 +215,44 @@
             <button type="button"><svg><use href="#i-money"/></svg><span>薪资范围</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
             <button type="button"><span class="formula-mark">ƒx</span><span>匹配度</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
             <button type="button"><span class="formula-mark">ƒx</span><span>等待天数</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
+            <button type="button"><svg><use href="#i-text"/></svg><span>下一步</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
+            <button type="button"><span class="formula-mark">ƒx</span><span>行动优先级</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
+            <button type="button"><svg><use href="#i-group"/></svg><span>技能标签</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
+            <button type="button"><svg><use href="#i-check"/></svg><span>已收藏</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
+            <button type="button"><svg><use href="#i-link"/></svg><span>JD 链接</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
+            <button type="button"><svg><use href="#i-paperclip"/></svg><span>附件</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
+            <button type="button"><svg><use href="#i-clock"/></svg><span>面试时间</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
+            <button type="button"><svg><use href="#i-number"/></svg><span>进度</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
+            <button type="button"><svg><use href="#i-note"/></svg><span>备注</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
             <button type="button" class="field-add"><svg><use href="#i-plus"/></svg><span>新增字段</span></button>
           </nav>
           <section class="field-editor">
             <label class="editor-label">字段名称<input type="text" value="阶段" aria-label="字段名称"></label>
             <div class="editor-label">字段类型<button type="button" class="type-select" id="field-type-select"><span><svg><use href="#i-select"/></svg><b id="selected-field-type">单选</b></span><svg><use href="#i-chevron-down"/></svg></button></div>
             <section class="field-type-menu" id="field-type-menu" hidden>
-              <header><strong>基础类型</strong><small>决定校验、排序与显示</small></header>
-              <div class="field-type-grid">
-                <button type="button" data-field-type="单行文本"><svg><use href="#i-text"/></svg><span>单行文本</span></button>
-                <button type="button" data-field-type="数字"><svg><use href="#i-number"/></svg><span>数字</span></button>
-                <button type="button" class="is-selected" data-field-type="单选"><svg><use href="#i-select"/></svg><span>单选</span></button>
-                <button type="button" data-field-type="多选"><svg><use href="#i-group"/></svg><span>多选</span></button>
-                <button type="button" data-field-type="日期"><svg><use href="#i-calendar"/></svg><span>日期</span></button>
-                <button type="button" data-field-type="复选框"><svg><use href="#i-check"/></svg><span>复选框</span></button>
-                <button type="button" data-field-type="链接"><svg><use href="#i-link"/></svg><span>链接</span></button>
-              </div>
-              <header class="computed-types"><strong>计算类型</strong><small>从其他字段派生</small></header>
+              <section class="field-type-section">
+                <header><strong>基础值</strong><small>原始值与校验</small></header>
+                <div class="field-type-grid">
+                  <button type="button" data-field-type="单行文本"><svg><use href="#i-text"/></svg><span>单行文本</span></button>
+                  <button type="button" data-field-type="多行文本"><svg><use href="#i-note"/></svg><span>多行文本</span></button>
+                  <button type="button" data-field-type="数字"><svg><use href="#i-number"/></svg><span>数字</span></button>
+                  <button type="button" data-field-type="复选框"><svg><use href="#i-check"/></svg><span>复选框</span></button>
+                </div>
+              </section>
+              <section class="field-type-section">
+                <header><strong>结构化值</strong><small>选择、时间与引用</small></header>
+                <div class="field-type-grid">
+                  <button type="button" class="is-selected" data-field-type="单选"><svg><use href="#i-select"/></svg><span>单选</span></button>
+                  <button type="button" data-field-type="多选"><svg><use href="#i-group"/></svg><span>多选</span></button>
+                  <button type="button" data-field-type="日期与时间"><svg><use href="#i-calendar"/></svg><span>日期与时间</span></button>
+                  <button type="button" data-field-type="链接"><svg><use href="#i-link"/></svg><span>链接</span></button>
+                  <button type="button" data-field-type="附件"><svg><use href="#i-paperclip"/></svg><span>Vault 附件</span></button>
+                </div>
+              </section>
+              <header class="computed-types"><strong>计算与系统</strong><small>派生值不改写来源字段</small></header>
               <button type="button" class="computed-type" data-field-type="公式"><span class="formula-mark">ƒx</span><span><strong>公式</strong><small>字段引用、条件、文本和日期函数</small></span><em>核心</em></button>
+              <button type="button" class="computed-type" data-field-type="自动编号"><span class="formula-mark">#</span><span><strong>自动编号</strong><small>稳定显示序号，不作为 record ID</small></span><em>系统</em></button>
+              <button type="button" class="computed-type" disabled><svg><use href="#i-clock"/></svg><span><strong>创建 / 修改时间</strong><small>由 Dataset adapter 维护</small></span><em>系统</em></button>
               <button type="button" class="computed-type" disabled><svg><use href="#i-link"/></svg><span><strong>查找引用</strong><small>跨表关系与聚合</small></span><em>后续</em></button>
             </section>
             <div class="option-heading"><span>选项内容</span><button type="button"><svg><use href="#i-sort"/></svg>排序</button></div>
@@ -273,12 +294,12 @@
             <div class="formula-mode"><span><b>作用域</b><small>引用语义不同，共享 parser / evaluator</small></span><button type="button">自由单元格</button><button type="button" class="is-active">计算列</button></div>
             <label>计算列名称<input type="text" value="行动优先级" aria-label="公式字段名称"></label>
             <div class="formula-help"><span><b>IF</b><small>按条件返回两个值之一</small></span><code>IF(condition, value_if_true, value_if_false)</code></div>
-            <span class="formula-label">公式 · J2:J13</span>
+            <span class="formula-label">公式 · J2:J21</span>
             <div class="formula-code" role="textbox" aria-label="公式表达式">
               <b>=IF</b><span>(</span><b>AND</b><span>(</span><em>G2</em><span> &gt;= 85, </span><em>H2</em><span> &gt;= 7),</span><br>
               <span class="formula-indent">"优先跟进", "保持观察")</span>
             </div>
-            <div class="formula-contract"><span><svg><use href="#i-check"/></svg>类型检查通过</span><span>24 条预览 · 0 个错误 · 无循环引用</span></div>
+            <div class="formula-contract"><span><svg><use href="#i-check"/></svg>类型检查通过</span><span>20 条预览 · 0 个错误 · 无循环引用</span></div>
             <div class="formula-references"><span><i style="--ref:#3b69d8"></i><b>G2</b> 匹配度 · Number</span><span><i style="--ref:#c07a23"></i><b>H2</b> 等待天数 · Duration</span></div>
             <span class="formula-label">结果预览</span>
             <div class="formula-preview">

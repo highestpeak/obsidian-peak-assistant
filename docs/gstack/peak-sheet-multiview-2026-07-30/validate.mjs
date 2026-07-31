@@ -50,7 +50,9 @@ const initial = await page.evaluate(() => ({
   activeView: document.querySelector('.view-tab.is-active')?.dataset.view,
   frozenColumnPosition: getComputedStyle(document.querySelector('.record-table td:nth-child(2)')).position,
   columnLetters: document.querySelectorAll('.record-table .column-letters th:not(.sheet-corner)').length,
+  typedFieldHeaders: document.querySelectorAll('.record-table thead tr:nth-child(2) th:not(.row-number-header)').length,
   rowNumbers: document.querySelectorAll('.record-table .row-number').length,
+  firstRecordCellCount: document.querySelector('.record-table tbody tr[data-record-id]')?.cells.length ?? 0,
   selectedRangeCells: document.querySelectorAll('.record-table .selected-range').length,
   activeCells: document.querySelectorAll('.record-table .active-cell').length,
   selectionStatistics: document.querySelectorAll('.selection-statistics > span').length,
@@ -69,6 +71,13 @@ const initial = await page.evaluate(() => ({
   stageTagFontSize: getComputedStyle(document.querySelector('.stage-cell .tag')).fontSize,
   workModeBorderWidth: getComputedStyle(document.querySelector('.work-mode')).borderTopWidth,
   scoreRingCount: document.querySelectorAll('.score-ring').length,
+  multiSelectCellCount: document.querySelectorAll('.skill-tags').length,
+  checkboxCellCount: document.querySelectorAll('.boolean-cell').length,
+  linkCellCount: document.querySelectorAll('.link-cell').length,
+  attachmentCellCount: document.querySelectorAll('.attachment-cell').length,
+  dateTimeCellCount: document.querySelectorAll('.datetime-cell').length,
+  progressCellCount: document.querySelectorAll('.progress-cell').length,
+  noteCellCount: document.querySelectorAll('.note-cell').length,
   rowNumberOverflow: [...document.querySelectorAll('.record-table .row-number')]
     .some((cell) => cell.scrollWidth > cell.clientWidth),
   letterHeaderBottom: document.querySelector('.record-table .column-letters th:nth-child(2)')?.getBoundingClientRect().bottom ?? 0,
@@ -84,8 +93,10 @@ assert.equal(initial.tableRows, 20, 'table fixture should render twenty visible 
 assert.equal(initial.groupRows, 0, 'initial table should preserve the continuous computational grid');
 assert.equal(initial.activeView, 'table', 'table should be the initial view');
 assert.equal(initial.frozenColumnPosition, 'sticky', 'primary record field should be frozen');
-assert.equal(initial.columnLetters, 10, 'table should expose spreadsheet column letters A-J');
+assert.equal(initial.columnLetters, 17, 'table should expose spreadsheet column letters A-Q');
+assert.equal(initial.typedFieldHeaders, 17, 'table should expose seventeen typed Dataset fields');
 assert.equal(initial.rowNumbers, 20, 'table should expose stable row numbers');
+assert.equal(initial.firstRecordCellCount, 18, 'each record row should align with the row header plus seventeen fields');
 assert.equal(initial.selectedRangeCells, 5, 'initial grid should show the G2:G6 selection');
 assert.equal(initial.activeCells, 1, 'initial grid should show one active formula cell');
 assert.equal(initial.selectionStatistics, 5, 'status bar should expose count, sum, average, min and max');
@@ -103,10 +114,30 @@ assert.equal(initial.stageTagHeight, 24, 'stage tags should share a stable 24px 
 assert.equal(initial.stageTagFontSize, '11px', 'stage tags should use readable 11px text');
 assert.equal(initial.workModeBorderWidth, '0px', 'secondary categorical fields should not all become boxed tags');
 assert.equal(initial.scoreRingCount, 20, 'each visible record should have one compact score glyph');
+assert.equal(initial.multiSelectCellCount, 20, 'each visible record should render the multi-select field');
+assert.equal(initial.checkboxCellCount, 20, 'each visible record should render the checkbox field');
+assert.equal(initial.linkCellCount, 20, 'each visible record should render the link field');
+assert.equal(initial.attachmentCellCount, 20, 'each visible record should render the attachment field');
+assert.equal(initial.dateTimeCellCount, 20, 'each visible record should render the date-time field');
+assert.equal(initial.progressCellCount, 20, 'each visible record should render the formatted numeric progress field');
+assert.equal(initial.noteCellCount, 20, 'each visible record should render the multi-line text projection');
 assert.equal(initial.rowNumberOverflow, false, 'two-digit row numbers should remain fully visible');
 assert.equal(initial.letterHeaderBottom, initial.fieldHeaderTop, 'column letters and typed field headers should stack without overlap');
 await page.screenshot({ path: path.join(dir, 'preview.png') });
 await page.locator('.table-view').screenshot({ path: path.join(dir, 'preview-table.png') });
+const horizontalScroll = await page.locator('.table-viewport').evaluate((viewport) => {
+  viewport.scrollLeft = 1450;
+  return {
+    left: viewport.scrollLeft,
+    max: viewport.scrollWidth - viewport.clientWidth,
+  };
+});
+assert.ok(horizontalScroll.max > 1000, 'diverse typed fields should extend the internal spreadsheet canvas');
+assert.ok(horizontalScroll.left > 0, 'table viewport should support horizontal field exploration');
+await page.locator('.table-view').screenshot({ path: path.join(dir, 'preview-table-types.png') });
+await page.locator('.table-viewport').evaluate((viewport) => {
+  viewport.scrollLeft = 0;
+});
 
 await page.click('#theme-toggle');
 assert.equal(await page.getAttribute('body', 'data-theme'), 'light');
@@ -135,16 +166,21 @@ await page.click('#open-fields');
 await page.waitForSelector('#field-panel:not([hidden])');
 assert.match(await page.textContent('#field-panel'), /字段类型/);
 assert.match(await page.textContent('#field-panel'), /单选/);
+assert.equal(await page.locator('.field-list > button:not(.field-add)').count(), 17);
 await page.click('#field-type-select');
 await page.waitForSelector('#field-type-menu:not([hidden])');
-assert.equal(await page.locator('#field-type-menu .field-type-grid button').count(), 7);
+assert.equal(await page.locator('#field-type-menu .field-type-grid button').count(), 9);
+assert.equal(await page.locator('#field-type-menu [data-field-type]').count(), 11);
 assert.match(await page.textContent('#field-type-menu'), /单行文本/);
+assert.match(await page.textContent('#field-type-menu'), /多行文本/);
 assert.match(await page.textContent('#field-type-menu'), /数字/);
 assert.match(await page.textContent('#field-type-menu'), /多选/);
-assert.match(await page.textContent('#field-type-menu'), /日期/);
+assert.match(await page.textContent('#field-type-menu'), /日期与时间/);
 assert.match(await page.textContent('#field-type-menu'), /复选框/);
 assert.match(await page.textContent('#field-type-menu'), /链接/);
+assert.match(await page.textContent('#field-type-menu'), /Vault 附件/);
 assert.match(await page.textContent('#field-type-menu'), /公式/);
+assert.match(await page.textContent('#field-type-menu'), /自动编号/);
 await page.screenshot({ path: path.join(dir, 'preview-fields.png') });
 await page.click('[data-field-type="公式"]');
 await page.waitForSelector('#formula-panel:not([hidden])');
@@ -153,7 +189,7 @@ assert.match(await page.textContent('#formula-panel'), /DATE_DIFF/);
 assert.match(await page.textContent('#formula-panel'), /条件聚合/);
 assert.match(await page.textContent('#formula-panel'), /自定义函数/);
 assert.ok(await page.locator('[data-function]').count() >= 40, 'formula library should expose a broad basic-function baseline');
-assert.match(await page.textContent('#formula-panel'), /24 条预览 · 0 个错误 · 无循环引用/);
+assert.match(await page.textContent('#formula-panel'), /20 条预览 · 0 个错误 · 无循环引用/);
 assert.equal(await page.locator('.formula-preview > span').count(), 3);
 await page.screenshot({ path: path.join(dir, 'preview-formula.png') });
 await page.click('#close-formula');
@@ -209,11 +245,14 @@ assert.deepEqual(consoleErrors, [], `console errors: ${consoleErrors.join(' | ')
 assert.deepEqual(pageErrors, [], `page errors: ${pageErrors.join(' | ')}`);
 
 const basicFunctionCount = await page.locator('[data-function]').count();
+const fieldTypeCount = await page.locator('#field-type-menu [data-field-type]').count();
 await browser.close();
 console.log(JSON.stringify({
   status: 'PASS',
   viewport: '1600x1000',
   initialRows: initial.tableRows,
+  typedFields: initial.typedFieldHeaders,
+  fieldTypesExposed: fieldTypeCount,
   groupRows: initial.groupRows,
   selectionStatistics: initial.selectionStatistics,
   computedColumns: initial.formulaColumns,
@@ -227,5 +266,5 @@ console.log(JSON.stringify({
   localLinks: localHrefs.length,
   viewsChecked: ['table', 'board', 'calendar', 'gallery', 'dashboard'],
   flowsChecked: ['theme-switch', 'number-format', 'conditional-format', 'field-type-select', 'formula-library', 'selection-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
-  screenshots: ['preview.png', 'preview-table.png', 'preview-light.png', 'preview-format.png', 'preview-conditional.png', 'preview-fields.png', 'preview-formula.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
+  screenshots: ['preview.png', 'preview-table.png', 'preview-table-types.png', 'preview-light.png', 'preview-format.png', 'preview-conditional.png', 'preview-fields.png', 'preview-formula.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
 }, null, 2));
