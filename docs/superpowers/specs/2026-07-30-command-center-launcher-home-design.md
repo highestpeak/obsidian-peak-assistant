@@ -2,7 +2,7 @@
 
 Date: 2026-07-30
 
-Visual direction revised: 2026-07-31 · V6 quiet command canvas
+Visual direction revised: 2026-07-31 · V7 vertical command stack
 
 Status: Decided · design/spec ready · implementation pending
 
@@ -21,7 +21,7 @@ One versioned collection configuration drives two focused shells:
 - **Command Center Modal** for quick, keyboard-first invocation.
 - **Home View** for a quiet navigation page with pinned actions and recent Vault destinations.
 
-This design does not replace `Cmd/Ctrl + P`, intercept Obsidian hooks, or remove third-party commands. The native Palette remains the exhaustive fallback. Command Center is the user's deliberately small, spatially stable subset.
+This design does not replace `Cmd/Ctrl + P`, intercept Obsidian hooks, or remove third-party commands. The native Palette remains the exhaustive fallback. Command Center is the user's deliberately small, grouped and order-stable subset.
 
 ## 2. Scope correction
 
@@ -49,9 +49,9 @@ The user does not need a better global ranking algorithm for daily work. They ne
 
 ## 4. Goals
 
-### G1 · Spatial retrieval
+### G1 · Stable grouped retrieval
 
-Frequently used actions stay in a predictable two-dimensional location when search is empty.
+Frequently used actions stay in a predictable vertical group and order when search is empty.
 
 ### G2 · User curation
 
@@ -92,8 +92,8 @@ The exhaustive native Command Palette stays one keystroke away.
 ```text
 CommandCenterBoardConfig
 ├─ Modal shell
-│  ├─ two-column waterfall groups
-│  ├─ compact wrapping action buttons
+│  ├─ one vertical group stack
+│  ├─ compact vertical action rows
 │  └─ in-place customize mode
 └─ Home shell
    ├─ global search entry
@@ -106,7 +106,7 @@ The Modal and Home must not maintain separate copies of actions. They share acti
 
 - Modal optimizes for scanning and keyboard navigation across a bounded set of visible groups.
 - Home optimizes for returning to a small set of pinned destinations.
-- Group placement in the Modal does not force Home to reproduce the waterfall layout.
+- Group order in the Modal does not force Home to reproduce every group.
 
 ### 6.2 Action types
 
@@ -152,7 +152,7 @@ URL, macro and script actions are intentionally deferred. They widen permissions
 interface CommandCenterBoardConfig {
 	version: 1;
 	modal: {
-		laneRatio: 'balanced' | 'wide-left';
+		density: 'compact';
 	};
 	home: {
 		openOnStartup: boolean;
@@ -167,8 +167,7 @@ interface CommandCenterGroup {
 	id: string;
 	label: string;
 	icon: string;
-	lane: 'left' | 'right' | 'full';
-	actionLayout: 'wrap';
+	actionLayout: 'vertical';
 	order: number;
 	actions: CommandCenterActionItem[];
 }
@@ -193,10 +192,10 @@ Default group definitions belong in `templates/config/command-center-defaults.js
 The modal has three persistent regions:
 
 1. Search field and close button.
-2. Two-column waterfall group canvas.
+2. One vertical stack of curated groups.
 3. Footer keyboard help and Customize entry.
 
-Groups sit directly on the shared canvas. The left and right lanes grow independently so groups can occupy different heights without creating an empty sidebar or a rigid row matrix. Group boundaries use a short heading, whitespace and a hairline between vertically adjacent groups.
+Groups sit directly on the shared canvas and follow one top-to-bottom reading path. Group boundaries use a short heading, whitespace and a hairline between vertically adjacent groups.
 
 There is no permanent group navigation rail. Groups also have no outer card background or border.
 
@@ -218,7 +217,7 @@ Rules:
 1. Match short label first.
 2. Match user aliases second.
 3. Match group and plugin label third.
-4. Keep matched groups in the same two-column flow.
+4. Keep matched groups in the same vertical order.
 5. Do not include unconfigured commands.
 
 The full registered-command catalog appears only inside Manage → Add action. This is the main protection against the original “weird fuzzy matches” problem.
@@ -230,7 +229,7 @@ Home is a navigation page, not an analytics dashboard.
 The default layout is fixed and deliberately sparse:
 
 - **Search**: one centered launcher entry.
-- **Quick access**: a short row of pinned actions and destinations.
+- **Quick access**: a short vertical list of pinned actions and destinations.
 - **Continue**: recent Vault files with source path and last-opened time.
 - **Pinned pages**: optional, owner-rendered previews in one vertical reading path.
 
@@ -238,7 +237,7 @@ Pinned Notes, Bases and Canvases remain owned by their existing Obsidian views. 
 
 ### 7.4 Manage mode
 
-Customize mode is explicit. Normal invocation never shows drag handles or edit controls. It reuses the same waterfall canvas so the user can reorder actions, move a group between lanes, make a group span the full canvas and change action presentation in place.
+Customize mode is explicit. Normal invocation never shows drag handles or edit controls. It reuses the same vertical stack so the user can reorder groups and actions and change action presentation in place.
 
 Customize must also stay visually quiet:
 
@@ -254,7 +253,6 @@ Available operations:
 - add action from a searchable catalog;
 - edit short label and aliases;
 - reorder groups and actions;
-- switch a group between left, right and full-width placement;
 - choose `icon + label`, `icon only` or `text only` for each action;
 - pin / unpin action in Home Quick access;
 - remove unavailable action;
@@ -268,24 +266,24 @@ Destructive layout reset requires confirmation and export/import support before 
 
 | Screen / state | Primary job | Reads | Writes | Main actions | Empty / failure state | Entry / exit |
 | --- | --- | --- | --- | --- | --- | --- |
-| Modal · launcher | Invoke a curated action without typing | Groups, actions, availability, hotkeys | Recent usage only | Scan groups, spatial navigation, Enter, search | Starter groups or “add first action” | Hotkey / command; closes to prior focus |
-| Modal · search | Narrow configured actions | Curated action index | Query only | Type, spatial navigation, Enter, clear | Empty result with clear-query guidance | Search field; returns to launcher on clear |
+| Modal · launcher | Invoke a curated action without typing | Groups, actions, availability, hotkeys | Recent usage only | Scan groups, vertical navigation, Enter, search | Starter groups or “add first action” | Hotkey / command; closes to prior focus |
+| Modal · search | Narrow configured actions | Curated action index | Query only | Type, vertical navigation, Enter, clear | Empty result with clear-query guidance | Search field; returns to launcher on clear |
 | Home View | Return to important work and destinations | Pinned actions, recents, bookmarks, Workspaces, pinned pages | Quick access and pin order | Search, open destination, customize | Guide to pin the first destination or page | Ribbon / command / empty tab; exits to destination |
-| Customize | Curate the current spatial layout | Current config; catalog only after Add action | Groups, labels, aliases, order, Home pins | Drag, add, edit, remove, Done | Compatibility warning inside catalog picker | Footer action; Done returns to launcher |
+| Customize | Curate the current grouped order | Current config; catalog only after Add action | Groups, labels, aliases, order, Home pins | Drag, add, edit, remove, Done | Compatibility warning inside catalog picker | Footer action; Done returns to launcher |
 
 ## 9. Visual design
 
 ### 9.1 Modal geometry
 
-- Width: `min(800px, calc(100vw - 48px))`.
-- Height: approximately `370px`, capped by `calc(100vh - 72px)`.
-- Group canvas: two independently growing lanes with a slightly wider left lane.
-- Group internals: natural-width actions wrap horizontally; full-width groups use the same wrapping rule.
-- Action button: `32px` high in all three presentation modes.
+- Width: `min(640px, calc(100vw - 48px))`.
+- Height: approximately `520px`, capped by `calc(100vh - 72px)`.
+- Group canvas: one vertical reading path; groups never sit side by side.
+- Group internals: actions follow one vertical order; they never wrap into adjacent columns.
+- Action button: approximately `30px` high in all three presentation modes.
 - Default icon: approximately `15 × 15px`, bare rather than placed inside a colored icon container; the whole button remains the hit target.
 - Group headings do not show item counts; the visible tiles already communicate group size.
 - A vertical separator uses one compact spacing rhythm, not a grid gap plus additional section padding.
-- Modal radius: approximately `14px`; action radius: approximately `7px`.
+- Modal radius: approximately `14px`; action radius: approximately `6px`.
 - Accent: Obsidian / Peak purple only for focus, selection and primary entry.
 
 No group sidebar, gradient, nested group card, availability strip, descriptive hero or dashboard statistic appears in the Modal.
@@ -298,7 +296,7 @@ Every tile has an action identity, accessible name and tooltip. Its visible anat
 2. `icon only`: icon with `aria-label` and tooltip;
 3. `text only`: short label without an icon.
 
-All three modes share one `32px` height. Icon-only remains a square; the other modes use natural content width. All modes use a disabled treatment when unavailable.
+All three modes share one compact height. Icon-only remains a square; the other modes use natural content width. Each action owns its own vertical row, and all modes use a disabled treatment when unavailable.
 
 Long native command labels such as “Create new drawing — in the current active window” become a short tile title such as `Current window`; the tooltip preserves the full source label.
 
@@ -328,7 +326,7 @@ The project does not assign a default hotkey. The user sets it in Obsidian Setti
 - `/` or normal typing focuses search.
 - `Esc` clears query first, then closes the modal.
 - `Tab` moves between structural controls.
-- Arrow keys move spatially between tiles.
+- Up and Down move between visible actions.
 - `Enter` invokes the focused tile.
 - `Cmd/Ctrl + P` may close Command Center and open the native Palette.
 - Closing restores the prior active element and editor selection.
@@ -394,7 +392,7 @@ Not allowed:
 - sending current file content to an AI model just to open the launcher;
 - turning the default board into a recommendation feed.
 
-The user's spatial memory wins over dynamic optimization.
+The user's group order wins over dynamic optimization.
 
 ## 13. Home behavior
 
@@ -450,7 +448,7 @@ Rejected. It breaks the exhaustive discovery path, creates compatibility risk an
 
 ### Improve fuzzy ranking only
 
-Rejected as the primary solution. Better ranking cannot give a stable two-dimensional location to frequent actions.
+Rejected as the primary solution. Better ranking cannot give frequent actions stable user-owned groups and order.
 
 ### Build only a full Home dashboard
 
@@ -479,8 +477,8 @@ This is an implementation sequence, not permission to ship incomplete UI as the 
 ### Track B · Modal
 
 - React modal shell;
-- two-column waterfall group canvas;
-- per-group natural-width wrapping action canvas;
+- single-column vertical group stack;
+- per-group vertical action rows;
 - search over configured actions;
 - full keyboard and focus restoration;
 - close-only header.
@@ -490,7 +488,6 @@ This is an implementation sequence, not permission to ship incomplete UI as the 
 - in-place group and action editor;
 - on-demand catalog picker;
 - drag reorder;
-- full-width group toggle;
 - per-action display mode and Home pin toggle;
 - invalid command handling;
 - export/import.
@@ -521,7 +518,7 @@ This is an implementation sequence, not permission to ship incomplete UI as the 
 - Missing command IDs fail closed.
 - Hotkey resolver never persists stale display strings.
 - Modal/Home resolve the same action identity, label, icon and hotkey.
-- Keyboard grid navigation tests.
+- Keyboard vertical navigation tests.
 - Focus restoration test.
 - Boundary test prevents UI or service code from reading private `app.commands` directly.
 - Build and existing command gateway tests.
@@ -532,7 +529,7 @@ Use the canonical CDP protocol.
 
 1. Open from a user-bound hotkey.
 2. Verify board geometry and computed hit targets.
-3. Navigate the 2D grid in all four directions.
+3. Navigate the grouped stack with Up and Down.
 4. Search a curated Excalidraw group.
 5. Execute a Peak command and a third-party command.
 6. Disable the third-party plugin and verify the unavailable state.
@@ -546,10 +543,10 @@ If CDP is unavailable, mark these interactions `INTERACTION NOT VERIFIED`; a sta
 
 - Native `Cmd/Ctrl + P` behavior is unchanged.
 - The user can bind one shortcut to open Peak Command Center.
-- Empty query shows grouped tiles in a two-column waterfall layout.
-- All first-run groups are directly visible without a permanent group sidebar.
-- Group lane, group order and tile order remain spatially stable.
-- Customize can add a group, move groups/actions, toggle a full-width group and persist all three action display modes.
+- Empty query shows curated groups in one vertical stack.
+- All first-run groups are available in one continuous scroll path without a permanent group sidebar.
+- Group order and action order remain stable.
+- Customize can add and reorder groups/actions and persist all three action display modes.
 - Runtime search returns only configured actions and keeps source provenance.
 - Every visible shortcut matches current Obsidian hotkey configuration.
 - A user can create an Excalidraw group and add a command without editing files.
@@ -568,7 +565,7 @@ If CDP is unavailable, mark these interactions `INTERACTION NOT VERIFIED`; a sta
 | Private command catalog API changes | Third-party picker breaks | Central adapter, startup capability check, Peak-only fallback |
 | Board grows into another infinite catalog | Original problem returns | Runtime search only configured actions; bounded visible groups |
 | Home becomes a widget marketplace | Product scope fragments | Fixed Search / Quick access / Continue / Pinned pages structure |
-| Dynamic suggestions destroy spatial memory | Daily use becomes unpredictable | No automatic suggestions in the first implementation |
+| Dynamic suggestions destroy stable order | Daily use becomes unpredictable | No automatic suggestions in the first implementation |
 | Hotkey labels drift | User loses trust | Resolve live; never persist display string |
 | Old and new Command Center concepts coexist | Naming and ownership confusion | Rename/retire old planner during implementation |
 

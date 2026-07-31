@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Peak Command Center · V6</title>
+  <title>Peak Command Center · V7</title>
   <style>
     :root {
       color-scheme: light;
@@ -401,8 +401,8 @@
 
     .launcher {
       position: relative;
-      width: 800px;
-      height: 370px;
+      width: 640px;
+      height: 520px;
       display: grid;
       grid-template-rows: 52px minmax(0, 1fr) 36px;
       overflow: hidden;
@@ -488,8 +488,8 @@
 
     .flow-columns {
       display: grid;
-      grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
-      gap: 24px;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0;
       align-items: start;
     }
 
@@ -498,14 +498,6 @@
       display: grid;
       gap: 0;
       align-content: start;
-    }
-
-    .flow-full-column {
-      grid-column: 1 / -1;
-    }
-
-    .flow-full-column:empty {
-      display: none;
     }
 
     .flow-group {
@@ -553,31 +545,32 @@
 
     .flow-action-grid {
       display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
     }
 
     .action-tile {
       position: relative;
-      width: auto;
+      width: 100%;
       min-width: 0;
-      height: 32px;
+      height: 30px;
       display: inline-flex;
-      flex: 0 0 auto;
+      flex: none;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       gap: 6px;
-      padding: 0 9px;
+      padding: 0 8px;
       border: 1px solid transparent;
-      border-radius: 7px;
-      background: #f6f5f7;
+      border-radius: 6px;
+      background: transparent;
       text-align: left;
       cursor: pointer;
     }
 
     .action-tile:hover {
-      border-color: #e0dce3;
-      background: #efedf1;
+      border-color: transparent;
+      background: #f1eff2;
     }
 
     .action-tile.selected {
@@ -638,7 +631,7 @@
     }
 
     .action-tile.display-icon {
-      width: 32px;
+      width: 30px;
       padding: 0;
     }
 
@@ -655,6 +648,7 @@
     }
 
     .action-tile.display-text {
+      width: auto;
       padding: 0 10px;
     }
 
@@ -677,7 +671,7 @@
       position: static;
       display: inline-flex;
       gap: 0;
-      margin-left: 2px;
+      margin-left: auto;
     }
 
     .action-tile .tile-hotkey kbd {
@@ -796,9 +790,9 @@
     .result-tile {
       position: relative;
       min-width: 0;
-      height: 42px;
+      height: 38px;
       display: grid;
-      grid-template-columns: 18px minmax(0, 1fr);
+      grid-template-columns: 18px minmax(0, 1fr) auto;
       align-items: center;
       gap: 8px;
       padding: 5px 8px;
@@ -846,8 +840,8 @@
     }
 
     .result-tile .tile-hotkey {
-      top: 5px;
-      right: 6px;
+      grid-column: 3;
+      margin-left: 0;
     }
 
     .manage-header {
@@ -933,7 +927,6 @@
       pointer-events: auto;
     }
 
-    .group-width-button,
     .group-add-button {
       width: 24px;
       height: 24px;
@@ -946,14 +939,11 @@
       cursor: pointer;
     }
 
-    .group-width-button:hover,
-    .group-add-button:hover,
-    .group-width-button.active {
+    .group-add-button:hover {
       color: var(--purple);
       background: var(--purple-hover);
     }
 
-    .group-width-button .icon,
     .group-add-button .icon {
       width: 13px;
       height: 13px;
@@ -1306,27 +1296,29 @@
 
     .quick-access {
       display: flex;
-      flex-wrap: wrap;
-      gap: 7px;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
     }
 
     .quick-item {
+      width: 100%;
       min-width: 0;
-      height: 34px;
+      height: 32px;
       display: inline-flex;
       align-items: center;
       gap: 7px;
       padding: 0 10px;
       border: 1px solid transparent;
-      border-radius: 8px;
-      background: #f6f5f7;
+      border-radius: 6px;
+      background: transparent;
       text-align: left;
       cursor: pointer;
     }
 
     .quick-item:hover {
-      border-color: #e0dce3;
-      background: #efedf1;
+      border-color: transparent;
+      background: #f1eff2;
     }
 
     .quick-item .action-icon {
@@ -1358,8 +1350,8 @@
     }
 
     .quick-item.display-icon {
-      width: 34px;
-      min-height: 34px;
+      width: 32px;
+      min-height: 32px;
       justify-content: center;
       padding: 0;
     }
@@ -1376,7 +1368,8 @@
     }
 
     .quick-item.display-text {
-      min-height: 34px;
+      width: auto;
+      min-height: 32px;
       justify-content: center;
     }
 
@@ -1576,7 +1569,7 @@
       }
 
       .launcher {
-        height: 360px;
+        height: 500px;
       }
 
       .home-content {
@@ -1620,7 +1613,6 @@
     <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
     <symbol id="i-sidebar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
     <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="m16.5 3.5 4 4L8 20H4v-4Z"/></symbol>
-    <symbol id="i-maximize" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></symbol>
     <symbol id="i-pin" viewBox="0 0 24 24"><path d="m12 17 0 5M7 3h10M9 3l1 7-4 3v2h12v-2l-4-3 1-7"/></symbol>
     <symbol id="i-type" viewBox="0 0 24 24"><path d="M5 5V3h14v2M12 3v18M8 21h8"/></symbol>
     <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 15-5-5L5 20"/></symbol>
@@ -1631,7 +1623,7 @@
       <span class="prototype-mark"><svg class="icon"><use href="#i-command"/></svg></span>
       <span>
         <strong>Peak Command Center</strong>
-        <small>V6 · quiet command canvas</small>
+        <small>V7 · vertical command stack</small>
       </span>
     </div>
     <nav class="state-switcher" aria-label="原型状态">
@@ -1644,7 +1636,7 @@
   </header>
 
   <main class="stage">
-    <section class="app-frame" aria-label="Command Center V6 原型">
+    <section class="app-frame" aria-label="Command Center V7 原型">
       <div class="app-titlebar">
         <span class="traffic-lights"><i></i><i></i><i></i></span>
         <span class="app-title">Peak Assistant · Product vault</span>
@@ -1712,8 +1704,8 @@
           <div class="launcher-body">
             <div class="flow-area">
               <div class="flow-columns" id="launcher-board">
-                <div class="flow-column" data-lane="left">
-                  <section class="flow-group wide">
+                <div class="flow-column" data-lane="main">
+                  <section class="flow-group">
                     <div class="flow-group-header">
                       <span class="flow-group-title"><svg class="icon"><use href="#i-sparkles"/></svg><strong>Peak Assistant</strong></span>
                     </div>
@@ -1753,7 +1745,7 @@
                     </div>
                   </section>
 
-                  <section class="flow-group wide">
+                  <section class="flow-group">
                     <div class="flow-group-header">
                       <span class="flow-group-title"><svg class="icon"><use href="#i-workspace"/></svg><strong>Workspaces</strong></span>
                     </div>
@@ -1775,10 +1767,7 @@
                       </button>
                     </div>
                   </section>
-                </div>
-
-                <div class="flow-column" data-lane="right">
-                  <section class="flow-group compact">
+                  <section class="flow-group">
                     <div class="flow-group-header">
                       <span class="flow-group-title"><svg class="icon"><use href="#i-plus"/></svg><strong>Quick create</strong></span>
                     </div>
@@ -1807,7 +1796,7 @@
                     </div>
                   </section>
 
-                  <section class="flow-group compact">
+                  <section class="flow-group">
                     <div class="flow-group-header">
                       <span class="flow-group-title"><svg class="icon"><use href="#i-canvas"/></svg><strong>Visual</strong></span>
                     </div>
@@ -1825,13 +1814,12 @@
                     </div>
                   </section>
                 </div>
-                <div class="flow-column flow-full-column" data-lane="full"></div>
               </div>
             </div>
           </div>
           <footer class="launcher-footer">
             <div class="key-hints">
-              <span class="key-hint"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> move</span>
+              <span class="key-hint"><kbd>↑</kbd><kbd>↓</kbd> move</span>
               <span class="key-hint"><kbd>↵</kbd> open</span>
               <span class="key-hint"><kbd>Esc</kbd> close</span>
             </div>
@@ -1872,8 +1860,6 @@
                       </button>
                     </div>
                   </section>
-                </div>
-                <div class="flow-column">
                   <section class="flow-group">
                     <div class="flow-group-header">
                       <span class="flow-group-title"><svg class="icon"><use href="#i-workspace"/></svg><strong>Navigation</strong></span>
@@ -1899,11 +1885,11 @@
           </div>
           <footer class="launcher-footer">
             <div class="key-hints">
-              <span class="key-hint"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> move</span>
+              <span class="key-hint"><kbd>↑</kbd><kbd>↓</kbd> move</span>
               <span class="key-hint"><kbd>↵</kbd> open</span>
               <span class="key-hint"><kbd>Esc</kbd> clear / close</span>
             </div>
-            <span class="footer-current">Search stays spatial</span>
+            <span class="footer-current">Search stays grouped</span>
           </footer>
         </section>
 
@@ -1917,8 +1903,8 @@
           <div class="launcher-body">
             <div class="flow-area">
               <div class="flow-columns" id="manage-board">
-                <div class="flow-column" data-lane="left">
-                  <section class="flow-group wide">
+                <div class="flow-column" data-lane="main">
+                  <section class="flow-group">
                     <div class="flow-group-header">
                       <span class="flow-group-title manage-group-title">
                         <span class="drag-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
@@ -1967,7 +1953,7 @@
                     </div>
                   </section>
 
-                  <section class="flow-group wide">
+                  <section class="flow-group">
                     <div class="flow-group-header">
                       <span class="flow-group-title manage-group-title">
                         <span class="drag-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
@@ -1997,10 +1983,7 @@
                       </button>
                     </div>
                   </section>
-                </div>
-
-                <div class="flow-column" data-lane="right">
-                  <section class="flow-group compact">
+                  <section class="flow-group">
                     <div class="flow-group-header">
                       <span class="flow-group-title manage-group-title">
                         <span class="drag-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
@@ -2037,7 +2020,7 @@
                     </div>
                   </section>
 
-                  <section class="flow-group compact">
+                  <section class="flow-group">
                     <div class="flow-group-header">
                       <span class="flow-group-title manage-group-title">
                         <span class="drag-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
@@ -2062,7 +2045,6 @@
                     </div>
                   </section>
                 </div>
-                <div class="flow-column flow-full-column" data-lane="full"></div>
               </div>
               <button class="add-group-line" id="add-group-button"><svg class="icon"><use href="#i-plus"/></svg>Add group</button>
             </div>
@@ -2191,14 +2173,14 @@
       </section>
     </section>
 
-    <section class="design-note" aria-label="V6 design principles">
+    <section class="design-note" aria-label="V7 design principles">
       <div class="note-item">
-        <strong>按钮服从同一节奏</strong>
-        <span>图标 + 文字、仅图标和仅文字都使用相同高度；差异来自内容，不来自三套尺寸和装饰。</span>
+        <strong>只有一条阅读路径</strong>
+        <span>分组和命令都从上到下排列，不再要求用户在左右区域之间来回扫描。</span>
       </div>
       <div class="note-item">
-        <strong>编辑控件按需出现</strong>
-        <span>组工具只在 hover / focus 时显示；action 配置只在选中后浮出，日常画布不承担后台编辑器 chrome。</span>
+        <strong>分组负责秩序</strong>
+        <span>它仍然不是原生命令全集：只显示用户策展的动作，并用短标题和分隔线建立清楚层级。</span>
       </div>
       <div class="note-item">
         <strong>Home 是安静的起点</strong>
@@ -2326,16 +2308,6 @@
       }
     }
 
-    function updateGroupWidthButton(group) {
-      const button = group.querySelector('.group-width-button');
-      if (!button) return;
-      const fullWidth = group.classList.contains('full-width');
-      button.classList.toggle('active', fullWidth);
-      button.setAttribute('aria-pressed', String(fullWidth));
-      button.setAttribute('aria-label', fullWidth ? '恢复双列分组' : '切换为全宽分组');
-      button.title = fullWidth ? '恢复双列分组' : '切换为全宽分组';
-    }
-
     function initializeGroup(group) {
       const title = group.querySelector('.manage-group-title strong');
       const groupName = title?.textContent.trim() || 'Untitled group';
@@ -2360,18 +2332,12 @@
         tools = document.createElement('span');
         tools.className = 'group-tools';
 
-        const widthButton = document.createElement('button');
-        widthButton.className = 'group-width-button';
-        widthButton.type = 'button';
-        widthButton.append(createIconUse('i-maximize'));
-
         addButton.type = 'button';
         addButton.title = '添加动作';
-        tools.append(widthButton, addButton);
+        tools.append(addButton);
         header.append(tools);
       }
 
-      updateGroupWidthButton(group);
       group.querySelectorAll('.manage-tile').forEach(initializeAction);
     }
 
@@ -2483,36 +2449,6 @@
       syncHomePins();
     }
 
-    function setGroupLane(group, lane) {
-      const targetColumn = manageBoard.querySelector(`[data-lane="${lane}"]`);
-      if (!targetColumn) return;
-
-      if (lane === 'full') {
-        const currentLane = group.parentElement?.dataset.lane;
-        if (currentLane && currentLane !== 'full') {
-          group.dataset.previousLane = currentLane;
-        }
-        group.classList.remove('wide', 'compact');
-        group.classList.add('full-width');
-      } else {
-        group.classList.remove('full-width', 'wide', 'compact');
-        group.classList.add(lane === 'left' ? 'wide' : 'compact');
-        group.dataset.previousLane = lane;
-      }
-
-      targetColumn.append(group);
-      updateGroupWidthButton(group);
-      syncConfiguredViews();
-    }
-
-    function toggleGroupWidth(group) {
-      if (group.classList.contains('full-width')) {
-        setGroupLane(group, group.dataset.previousLane || 'left');
-        return;
-      }
-      setGroupLane(group, 'full');
-    }
-
     function createActionElement(action) {
       const tile = document.createElement('button');
       tile.className = 'action-tile manage-tile';
@@ -2592,17 +2528,11 @@
 
     function createGroup() {
       customGroupCount += 1;
-      const left = manageBoard.querySelector('[data-lane="left"]');
-      const right = manageBoard.querySelector('[data-lane="right"]');
-      const leftCount = left.querySelectorAll(':scope > .flow-group').length;
-      const rightCount = right.querySelectorAll(':scope > .flow-group').length;
-      const lane = leftCount <= rightCount ? 'left' : 'right';
-      const target = lane === 'left' ? left : right;
+      const target = manageBoard.querySelector('[data-lane="main"]');
 
       const group = document.createElement('section');
-      group.className = `flow-group ${lane === 'left' ? 'wide' : 'compact'}`;
+      group.className = 'flow-group';
       group.dataset.groupId = `custom-group-${customGroupCount}`;
-      group.dataset.previousLane = lane;
       group.innerHTML = `
         <div class="flow-group-header">
           <span class="flow-group-title manage-group-title">
@@ -2631,10 +2561,6 @@
       document.querySelectorAll('.dragging, .drop-target').forEach((node) => {
         node.classList.remove('dragging', 'drop-target');
       });
-    }
-
-    function laneForColumn(column) {
-      return column?.dataset.lane || 'left';
     }
 
     function setView(view) {
@@ -2697,12 +2623,6 @@
     });
 
     manageBoard.addEventListener('click', (event) => {
-      const widthButton = event.target.closest('.group-width-button');
-      if (widthButton) {
-        toggleGroupWidth(widthButton.closest('.flow-group'));
-        return;
-      }
-
       const addButton = event.target.closest('.group-add-button');
       if (addButton) {
         openActionPicker(addButton.closest('.flow-group'));
@@ -2798,9 +2718,7 @@
         }
 
         const rect = tileTarget.getBoundingClientRect();
-        const before = event.clientY < rect.top + rect.height / 2
-          || (Math.abs(event.clientY - (rect.top + rect.height / 2)) < rect.height / 3
-            && event.clientX < rect.left + rect.width / 2);
+        const before = event.clientY < rect.top + rect.height / 2;
         grid.insertBefore(draggedAction, before ? tileTarget : tileTarget.nextSibling);
         return;
       }
@@ -2818,16 +2736,6 @@
         column.insertBefore(draggedGroup, before ? groupTarget : groupTarget.nextSibling);
       }
 
-      const lane = laneForColumn(column);
-      if (lane === 'full') {
-        draggedGroup.classList.remove('wide', 'compact');
-        draggedGroup.classList.add('full-width');
-      } else {
-        draggedGroup.classList.remove('wide', 'compact', 'full-width');
-        draggedGroup.classList.add(lane === 'left' ? 'wide' : 'compact');
-        draggedGroup.dataset.previousLane = lane;
-      }
-      updateGroupWidthButton(draggedGroup);
     });
 
     manageBoard.addEventListener('drop', (event) => {
@@ -2872,7 +2780,6 @@
     manageBoard.querySelectorAll(':scope > .flow-column').forEach((column) => {
       [...column.children].forEach((group) => {
         if (!group.classList.contains('flow-group')) return;
-        group.dataset.previousLane = column.dataset.lane;
         initializeGroup(group);
       });
     });

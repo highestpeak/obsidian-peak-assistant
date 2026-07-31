@@ -19,7 +19,7 @@
 
 - 原生 `Cmd/Ctrl + P` 保留，继续承担“全生态兜底搜索”。
 - Peak Command Center 使用用户自己在 Obsidian 中绑定的快捷键打开。
-- 默认态是“无侧栏的双列瀑布分组画布”，不是另一条无限长列表。
+- 默认态是“无侧栏的单列纵向分组”，只显示用户策展的动作，不是原生命令全集。
 - Modal 与 Home 共享 action identity 和呈现元数据，但不复制同一套页面布局。
 - Home 使用 Search、Quick access、Continue 和可选 Pinned pages 的固定阅读路径，不另造 Todo、日历、统计或 widget 数据系统。
 - 外部插件命令只通过集中兼容层读取和执行；不拦截、不修改原生 Command Palette。
@@ -73,6 +73,15 @@ V6 保留这些操作能力，但撤掉 V5 暴露过量编辑 chrome 的视觉�
 - Action 的显示方式和 Pin 只在选中后通过一个浮动上下文条出现；未选中时 Customize 与普通画布几乎一致。
 - Add group 收成低强调文字动作，不再伪装成一张横跨画布的空卡片。
 - Home Quick access 使用同一套紧凑按钮语法，并移除无必要的右上角工具和大号品牌图标。
+
+V7 进一步撤掉横向并列：
+
+- Modal 从左右 lane 改成唯一一条纵向分组路径；Search 与 Customize 使用同一顺序。
+- 组内 action 也不再横向换行，而是每个 action 独占一行，从上到下排列。
+- Modal 收窄到约 `640px`，通过约 `520px` 高的可滚动区域承载分组，不再用宽度换取信息密度。
+- 全宽分组在单列结构中没有意义，因此删除该开关；Add group、分组/action 拖动、三种显示方式和 Pin 仍保留。
+- 键盘主导航简化为 Up / Down，搜索结果继续保留分组边界和用户顺序。
+- Home Quick access 同步改成纵向列表，避免另一个横向按钮集合重新制造视觉噪音。
 
 ## 录屏观察
 
@@ -241,7 +250,7 @@ Start.me 的 Bookmark Groups 支持 tab 或 collapsible list。它说明“二�
 ### 要做
 
 1. 一个 owner-approved 的 `Open Peak Command Center` 全局命令，快捷键由用户在 Obsidian Hotkeys 中设置。
-2. 空 query 显示无侧栏的双列瀑布分组画布，左右列独立向下生长。
+2. 空 query 显示无侧栏的单列纵向分组；分组与 action 都只沿一条阅读路径排列。
 3. 运行态搜索只过滤已策展内容。
 4. 编辑态才允许搜索全部已注册命令并加入组。
 5. 每个 tile 显示图标、短标题、来源组和实际快捷键。
