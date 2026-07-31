@@ -13,6 +13,7 @@ import {
 } from '@/service/copilot/actions/agent-actions';
 import type { CopilotActionAgentPort } from '@/core/ports/CopilotActionPorts';
 import type { AnalysisHistoryPort } from '@/core/ports/AnalysisHistoryPort';
+import type { PluginCommandGatewayPort } from '@/core/ports/PluginCommandGatewayPort';
 
 export interface AppCopilotActionAgentAdapterOptions {
 	app: App;
@@ -21,6 +22,8 @@ export interface AppCopilotActionAgentAdapterOptions {
 	resolveSearchClient: () => SearchClient | null | undefined;
 	/** T11L: narrow port handed to the vault MCP server's recent-analysis tool. */
 	analysisHistory: AnalysisHistoryPort;
+	/** Lazy because the gateway is composed after the manual action catalog. */
+	resolvePluginCommandGateway: () => PluginCommandGatewayPort | null;
 }
 
 export function createAppCopilotActionAgentAdapter(
@@ -52,5 +55,6 @@ export function createAppCopilotActionAgentAdapter(
 		resolveActiveBinding: () => ProfileRegistry.getInstance().getActiveAgentConfig(),
 		search: searchFn,
 		analysisHistory: opts.analysisHistory,
+		resolvePluginCommandGateway: opts.resolvePluginCommandGateway,
 	});
 }

@@ -61,6 +61,8 @@ export enum PromptId {
 	HubMaterializationCritique = 'hub-materialization-critique',
 	/** System: Copilot Command Center capability plan drafting. */
 	CopilotCommandCenterPlan = 'copilot-command-center-plan',
+	/** Curates external Obsidian plugin commands into review-only findings. */
+	PluginCommandGatewayCurate = 'plugin-command-gateway-curate',
 
 	// Search prompts
 	// AI analysis title (generated at end of analysis; used for save/recent/folder suggestion)
@@ -382,6 +384,19 @@ export interface PromptVariables {
 		activeFilePath: string;
 		activeFileExcerpt: string;
 		availableCommands: Array<{ commandId: string; commandLabel: string; description: string }>;
+	};
+	[PromptId.PluginCommandGatewayCurate]: {
+		commands: Array<{
+			commandId: string;
+			commandName: string;
+			pluginId: string;
+			pluginName: string;
+			pluginVersion: string;
+			availability: string;
+			deterministicRisk: string;
+			deterministicPurpose: string;
+			deterministicInteraction: string;
+		}>;
 	};
 	[PromptId.DocTagGenerateJson]: {
 		content: string;

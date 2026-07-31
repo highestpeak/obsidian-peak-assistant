@@ -139,6 +139,11 @@ export function buildChatHarnessToolsDetailed(
 		}
 	}
 
+	for (const def of deps.pluginCommandTools ?? []) {
+		tools.push(def);
+		availability.push({ toolId: def.name, state: 'available' });
+	}
+
 	return { tools, availability };
 }
 

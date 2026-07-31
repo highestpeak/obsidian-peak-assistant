@@ -17,7 +17,8 @@ export type CapabilityName =
 	| 'Fast Lookup'
 	| 'Knowledge Index'
 	| 'Web Access'
-	| 'Safety';
+	| 'Safety'
+	| 'External plugin commands';
 
 /** Readiness state. Mirrors the chip color: green/yellow/red/neutral. */
 export type ReadinessStatus = 'ready' | 'needs-attention' | 'not-ready' | 'optional';

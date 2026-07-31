@@ -38,6 +38,7 @@ import type { CommandCenterRuntime } from '@/app/command-center';
 import { createDefaultGeneratedOutputRegistry } from '@/core/storage/generated-output';
 import type { GeneratedOutputRegistry } from '@/core/storage/generated-output';
 import type { GeneratedOutputPersistenceRuntime } from '@/core/storage/generated-output';
+import type { PluginCommandGatewayRuntime } from '@/service/command-gateway/PluginCommandGatewayRuntime';
 
 /**
  * Bundle of the three usage-telemetry services. They boot and dispose
@@ -63,6 +64,7 @@ export class AppRuntimeRegistry {
 	private skillRegistry: SkillRegistry | null = null;
 	private capabilityRegistry: CapabilityRegistry | null = null;
 	private commandGateway: CommandGateway | null = null;
+	private pluginCommandGatewayRuntime: PluginCommandGatewayRuntime | null = null;
 	private usageServices: UsageServices | null = null;
 	private hubGenerationRuntime: HubGenerationRuntime | null = null;
 	private hubCurationScheduler: HubCurationScheduler | null = null;
@@ -518,6 +520,38 @@ export class AppRuntimeRegistry {
 
 	clearCommandCenterRuntime(): void {
 		this.commandCenterRuntime = null;
+	}
+
+	// ─── External Obsidian plugin command gateway ─────────────────────────
+
+	setPluginCommandGatewayRuntime(runtime: PluginCommandGatewayRuntime): void {
+		if (this.pluginCommandGatewayRuntime !== null) {
+			throw new Error(
+				'AppRuntimeRegistry.setPluginCommandGatewayRuntime: a runtime is already bound. Call clearPluginCommandGatewayRuntime first if this is intentional.',
+			);
+		}
+		this.pluginCommandGatewayRuntime = runtime;
+	}
+
+	getPluginCommandGatewayRuntime(): PluginCommandGatewayRuntime {
+		if (this.pluginCommandGatewayRuntime === null) {
+			throw new Error(
+				'AppRuntimeRegistry.getPluginCommandGatewayRuntime: no runtime is bound. Plugin boot must compose it before consumers reach it.',
+			);
+		}
+		return this.pluginCommandGatewayRuntime;
+	}
+
+	tryGetPluginCommandGatewayRuntime(): PluginCommandGatewayRuntime | null {
+		return this.pluginCommandGatewayRuntime;
+	}
+
+	clearPluginCommandGatewayRuntime(): void {
+		const runtime = this.pluginCommandGatewayRuntime;
+		this.pluginCommandGatewayRuntime = null;
+		void runtime?.dispose().catch((error) => {
+			console.warn('[PluginCommandGateway] audit drain failed during unload:', error);
+		});
 	}
 
 	// ─── T13: UsageServices bundle (tracking + outcome + optimization) ────

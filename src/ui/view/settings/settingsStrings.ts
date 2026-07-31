@@ -158,6 +158,34 @@ export interface SettingsStrings {
             sectionTitle: string;
             sectionSub: string;
         };
+        pluginCommands: {
+            sectionTitle: string;
+            sectionSub: string;
+            unavailable: string;
+            empty: string;
+            scan: string;
+            analyze: string;
+            analyzing: string;
+            searchPlaceholder: string;
+            approved: string;
+            blocked: string;
+            stale: string;
+            off: string;
+            allow: string;
+            deny: string;
+            clear: string;
+            sourceChanged: string;
+            systemBlocked: string;
+            commandUnavailable: string;
+            noFinding: string;
+            recentRuns: string;
+            noRuns: string;
+            noObservableChange: string;
+            riskLabel: string;
+            purposeLabel: string;
+            risks: Record<import('@/core/types/plugin-command-gateway').PluginCommandRisk, string>;
+            purposes: Record<import('@/core/types/plugin-command-gateway').PluginCommandPurpose, string>;
+        };
         webAccess: {
             sectionTitle: string;
             provider: { title: string; desc: string; optional: string; notConfigured: string; setup: string };

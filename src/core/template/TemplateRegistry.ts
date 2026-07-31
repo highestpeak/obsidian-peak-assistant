@@ -156,6 +156,7 @@ export const ConfigTemplateId = {
 	// — per-type labels, filename stems, extensions, excalidraw skeleton
 	// frontmatter, error copy. Producer service consumes via loadJson.
 	ArtifactCreate: 'config-artifact-create' as const,
+	PluginCommandGateway: 'config-plugin-command-gateway' as const,
 } as const;
 
 export type ConfigTemplateId = (typeof ConfigTemplateId)[keyof typeof ConfigTemplateId];
@@ -412,6 +413,13 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 		description: 'Generates contextual action suggestions for the conversation.',
 		group: 'chat',
 	}),
+	'plugin-command-gateway-curate': meta('prompts', 'plugin-command-gateway-curate', {
+		expectsJson: true,
+		jsonConstraint: 'Return only the JSON object with a findings array. Never invent commandIds.',
+		label: 'Plugin Command Gateway Curator',
+		description: 'Drafts review-only risk, purpose, tool, and skill proposals for external Obsidian plugin commands.',
+		group: 'copilot',
+	}),
 
 	// Ambient context / session intelligence
 	'working-theme-inference': meta('prompts', 'working-theme-inference', { expectsJson: true, jsonConstraint: 'Return only the JSON object with summary and relatedFiles, nothing else.', label: 'Working Theme Inference', description: 'Infers the current working theme from recent activity.', group: 'ambientContext' }),
@@ -483,6 +491,7 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	[ConfigTemplateId.CommandCenter]: meta('config', 'command-center-defaults', { expectsJson: true }),
 	[ConfigTemplateId.MediaGeneration]: meta('config', 'media-generation', { expectsJson: true }),
 	[ConfigTemplateId.ArtifactCreate]: meta('config', 'artifact-create', { expectsJson: true }),
+	[ConfigTemplateId.PluginCommandGateway]: meta('config', 'plugin-command-gateway', { expectsJson: true }),
 
 	// --- Structural analysis prompts ---
 	'gap-explanation': meta('prompts', 'gap-explanation', { label: 'Gap Explanation', description: 'LLM prompt for lazy gap explanations.', group: 'indexing' }),

@@ -13,6 +13,7 @@ import type { MyPluginSettings } from '@/core/config/settingsTypes';
 import type { SettingsUpdates } from '../hooks/useSettingsUpdate';
 import { MCPServerSection } from '../components/MCPServerSection';
 import { useSettingsStrings } from '../settingsStrings';
+import { PluginCommandGatewaySection } from '../components/PluginCommandGatewaySection';
 
 interface ToolsTabProps {
     settings: MyPluginSettings;
@@ -32,6 +33,8 @@ export function ToolsTab({ settings, settingsUpdates }: ToolsTabProps) {
                 </div>
                 <MCPServerSection settings={settings} settingsUpdates={settingsUpdates} />
             </div>
+
+            <PluginCommandGatewaySection />
 
             <div className="pkset-section">
                 <div className="pkset-section__head">

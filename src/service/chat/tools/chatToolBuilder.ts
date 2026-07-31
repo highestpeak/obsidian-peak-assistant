@@ -17,6 +17,7 @@ import type { MediaGenerationService } from '@/service/media/MediaGenerationServ
 import type { MediaReferenceInput } from '@/core/types/media-generation';
 import type { ArtifactProducerService } from '@/service/chat/artifacts/artifactProducers';
 import type { ChatArtifactReceipt } from '@/core/types/chat-studio';
+import type { ToolDef } from '@/core/types/tool';
 
 /**
  * T11Y-6: web search tool system prompt body moved to
@@ -101,6 +102,8 @@ export interface ChatToolDeps {
      * accumulation; the tool still persists receipts through its own sink.
      */
     onArtifactReceipt?: (receipt: ChatArtifactReceipt) => void;
+    /** Current human-approved external Obsidian command tool definitions. */
+    pluginCommandTools?: readonly ToolDef[];
 }
 
 export interface ChatToolSet {

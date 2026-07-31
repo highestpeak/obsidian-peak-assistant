@@ -33,7 +33,7 @@ import { obsidianHttpClient } from '@/app/platform/HttpClientAdapter';
 import { obsidianNotifier } from '@/app/platform/NoticeNotifier';
 import { VAULT_DB_FILENAME } from '@/core/constant';
 import { AppContext } from '@/app/context/AppContext';
-import { EventBus, UsageRecordedViewEvent } from '@/core/eventBus';
+import { EventBus, SettingsUpdatedEvent, UsageRecordedViewEvent } from '@/core/eventBus';
 import { setEmbeddingUsageReporter } from '@/service/search/embeddings/embedClient';
 import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import { registerTemplateEngineHelpers } from '@/core/template-engine-helper';
@@ -72,6 +72,8 @@ import { getAISkillsFolder } from '@/core/config/folderPaths';
 import { SkillRegistry } from '@/service/skills/SkillRegistry';
 import { CapabilityRegistry } from '@/service/capabilities';
 import { openSettingsModal } from '@/app/commands/PeakCommandActions';
+import { composePluginCommandGatewayRuntime } from '@/app/commands/gateway/composePluginCommandGatewayRuntime';
+import type { PluginCommandGatewayRuntime } from '@/service/command-gateway/PluginCommandGatewayRuntime';
 // Note: `openSettingsModal` is also passed into `composeCommandGatewayBindings`
 // (below) via the same import binding; a second import would collide.
 
@@ -545,6 +547,30 @@ export default class MyPlugin extends Plugin {
 			void leaf.setViewState({ type: 'peak-command-center-home', active: true });
 		}));
 
+		let pluginCommandGatewayRuntime: PluginCommandGatewayRuntime | null = null;
+		try {
+			if (!this.templateManager) {
+				throw new Error('TemplateManager is not available during command gateway composition.');
+			}
+			pluginCommandGatewayRuntime = await composePluginCommandGatewayRuntime({
+				app: this.app,
+				pluginId: this.manifest.id,
+				dataStorageFolder: this.settings.dataStorageFolder,
+				aiServiceManager: this.aiServiceManager,
+				templateManager: this.templateManager,
+				getSettings: () => this.settings,
+				persistSettings: async (settings) => {
+					this.settings.pluginCommandGateway = settings;
+					await this.saveSettings();
+					appContext.eventBus.dispatch(new SettingsUpdatedEvent(this.settings));
+				},
+			});
+			AppContext.setPluginCommandGatewayRuntime(pluginCommandGatewayRuntime);
+			this.aiServiceManager.conv.setPluginCommandGateway(pluginCommandGatewayRuntime);
+		} catch (error) {
+			console.warn('[Peak Assistant] Plugin Command Gateway unavailable:', error);
+		}
+
 		// Note: `buildCoreCommands` used to be the palette table; it is
 		// intentionally left imported (see top of file) and unused so
 		// audits that grep for it can still land on this file until it
@@ -598,6 +624,18 @@ export default class MyPlugin extends Plugin {
 				const fastConfig = profileRegistry.getActiveAgentFastConfig();
 				const fastReady = !!fastConfig?.modelId;
 				const researchReady = !!profile?.primaryModel;
+				let externalCommandCount: number | null = null;
+				if (pluginCommandGatewayRuntime) {
+					try {
+						externalCommandCount =
+							(await pluginCommandGatewayRuntime.getSnapshot()).approvedCount;
+					} catch (error) {
+						console.warn(
+							'[Peak Assistant] External command readiness check failed:',
+							error,
+						);
+					}
+				}
 				return [
 					{
 						capability: 'Fast Lookup',
@@ -622,6 +660,21 @@ export default class MyPlugin extends Plugin {
 						// optional from copilot's perspective.
 						capability: 'Safety',
 						status: 'optional',
+					},
+					{
+						capability: 'External plugin commands',
+						status: externalCommandCount !== null && externalCommandCount > 0
+							? 'ready'
+							: 'optional',
+						reason: externalCommandCount === null
+							? 'External command registry unavailable'
+							: externalCommandCount > 0
+								? `${externalCommandCount} command(s) approved`
+								: 'No external plugin commands approved',
+						repair: {
+							label: 'Review external commands',
+							action: () => openSettingsModal('tools'),
+						},
 					},
 				];
 			},
@@ -1221,6 +1274,7 @@ export default class MyPlugin extends Plugin {
 		// Kept as a fail-loud break in case the AppContext is already torn
 		// down when this code path runs (e.g. crash-recovery unload).
 		try { AppContext.clearMcpClientManager(); } catch { /* not bound — ignore */ }
+		try { AppContext.clearPluginCommandGatewayRuntime(); } catch { /* not bound — ignore */ }
 		// Debug Trace recorder: release the in-memory ring buffer so the
 		// hot-reloaded bundle starts with an empty history.
 		try { AppContext.clearDebugTracePort(); } catch { /* not bound — ignore */ }

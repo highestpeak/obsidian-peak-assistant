@@ -66,6 +66,8 @@ import {
 	type ResolvedAssistant,
 } from '@/service/chat/assistant/assistantResolver';
 import { EphemeralAssistantRegistry } from '@/service/chat/assistant/EphemeralAssistantRegistry';
+import type { PluginCommandGatewayPort } from '@/core/ports/PluginCommandGatewayPort';
+import { loadApprovedPluginCommandTools } from '@/service/command-gateway/pluginCommandToolCatalog';
 import {
 	loadModelRoutingConfig,
 	routeAutoModel,
@@ -141,6 +143,7 @@ export class ConversationService {
 	 * entirely (not merely unreachable).
 	 */
 	private mcpClientManager: MCPClientManager | null = null;
+	private pluginCommandGateway: PluginCommandGatewayPort | null = null;
 	/**
 	 * Live permission-ask resolver (B1 §5.2 R4). App layer binds this via
 	 * `setPermissionAskResolver`. Absent → any `ask` decision defaults to
@@ -223,6 +226,10 @@ export class ConversationService {
 	 */
 	setMcpClientManager(manager: MCPClientManager | null): void {
 		this.mcpClientManager = manager;
+	}
+
+	setPluginCommandGateway(runtime: PluginCommandGatewayPort | null): void {
+		this.pluginCommandGateway = runtime;
 	}
 
 	/**
@@ -607,6 +614,8 @@ export class ConversationService {
 					// any other ToolDef; PermissionGuard gates them because
 					// the adapter marks them `kind:'edit'`.
 					mcpClientManager: self.mcpClientManager,
+					pluginCommandTools:
+						await loadApprovedPluginCommandTools(self.pluginCommandGateway),
 					// D1 §R1/R2: expose the app-owned MediaGenerationService
 					// + its sync availability probe so `media_generate` can
 					// register as a real Chat tool with truthful anchors.

@@ -20,6 +20,8 @@ import {
 	streamHarnessModel,
 } from '@/service/agents/harness/HarnessModelRunner';
 import { buildVaultHarnessTools } from '@/service/agents/vault/vaultHarnessTools';
+import type { PluginCommandGatewayPort } from '@/core/ports/PluginCommandGatewayPort';
+import { loadApprovedPluginCommandTools } from '@/service/command-gateway/pluginCommandToolCatalog';
 
 import {
 	buildCopilotOutputTools,
@@ -77,6 +79,8 @@ export interface MetaAgentOptions {
 	analysisHistory: import('@/core/ports/AnalysisHistoryPort').AnalysisHistoryPort;
 	/** Search client for grep_vault helper — injected by caller so this module never reaches AppContext. */
 	searchClient: import('@/service/search/SearchClient').SearchClient;
+	/** Current app-owned allowlist of external plugin commands. */
+	pluginCommandGateway?: PluginCommandGatewayPort | null;
 }
 
 /**
@@ -290,6 +294,9 @@ export async function* buildCopilotMetaAgentStream(
 	const copilotTools = buildCopilotOutputTools({
 		collector: options.collector,
 	});
+	const pluginCommandTools = await loadApprovedPluginCommandTools(
+		options.pluginCommandGateway,
+	);
 
 	const systemPrompt = await buildMetaAgentSystemPrompt({
 		mode: options.mode,
@@ -311,10 +318,11 @@ export async function* buildCopilotMetaAgentStream(
 			'mcp__vault__vault_grep',
 			'mcp__vault__vault_wikilink_expand',
 			...COPILOT_OUTPUT_TOOL_NAMES,
+			...pluginCommandTools.map((tool) => tool.name),
 		];
 
 		const allowedToolNames = new Set(allowedTools);
-		const tools = [...vaultTools, ...copilotTools]
+		const tools = [...vaultTools, ...copilotTools, ...pluginCommandTools]
 			.filter((tool) => allowedToolNames.has(tool.name));
 		const submissionsBefore = options.collector.getSnapshot().submissions.length;
 		const stream = streamHarnessModel({

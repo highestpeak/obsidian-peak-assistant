@@ -2708,3 +2708,33 @@ finding producer，并解释/修复真实 related refresh 为 0 的数据链路�
 [`2026-07-27-peak-composer-implementation-note.md`](./superpowers/plans/2026-07-27-peak-composer-implementation-note.md)
 与
 [`2026-07-25-composer-wave-execution-log.md`](./superpowers/plans/2026-07-25-composer-wave-execution-log.md)。
+
+## 2026-07-31 · T12 Obsidian Plugin Command Gateway（独立 worktree）
+
+**范围纠正**：本任务不是 Command Center，也不是 Peak 自有 palette command
+的 dispatch 包装。正确目标是让现有 Chat/Copilot Harness 在人工授权后调用
+其他已启用 Obsidian 插件提供的 command。
+
+- app-owned `CommandPort` 发现第三方命令并支持 callback、checkCallback、
+  editorCallback 与 editorCheckCallback；Peak/core/disabled 命令不进入候选。
+- AI curator 只生成结构化 finding；所有 command 默认关闭，只有 Settings →
+  Tools 的人工 allow 才能进入 compiled Skill。审批绑定 source hash 和被审阅
+  curator draft hash，插件/命令/AI 草案任一变化都会自动失效。
+- 一个受限的 `obsidian_command_execute` ToolDef 接入生产 Chat、文档 Review
+  Copilot、Vault Review Copilot 与手动 action Copilot 的既有 Harness，
+  复用 PermissionGuard 与 RunEnvelope；unknown/destructive/modal-only 始终
+  系统拒绝自动执行。
+- 每次调用记录 active file/leaf、modal、vault file count、changed path 总数
+  与有界样本；receipt 追加到 `<DataStore>/command-gateway/runs.jsonl` 并轮转。
+- 新增 6 个聚焦测试文件；聚焦套件 6/6、相关回归 22/22、build 通过。全量
+  390/394，4 个失败均为本任务未修改的既有 Composer/Streamdown 守卫。
+- `tsc --noEmit` 的仓库基线仍为 392 个错误（866 行输出）；新增 gateway
+  模块无诊断，编辑过的 host 文件仅命中未修改的既有错误行。
+- 本工作只在 `codex/plugin-command-gateway-20260731` 独立分支；未 merge、
+  未 push、未改 owner 主 checkout。由于没有 Obsidian CDP listener，真实界面
+  与真实第三方 command 调用标记为 `INTERACTION NOT VERIFIED`。
+
+设计与验收入口：
+[`2026-07-31-obsidian-plugin-command-gateway-implementation-design.md`](./superpowers/specs/2026-07-31-obsidian-plugin-command-gateway-implementation-design.md)
+与
+[`2026-07-31-obsidian-plugin-command-gateway-implementation-plan.md`](./superpowers/plans/2026-07-31-obsidian-plugin-command-gateway-implementation-plan.md)。

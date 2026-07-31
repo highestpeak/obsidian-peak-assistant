@@ -238,6 +238,48 @@
       "sectionTitle": "External tools",
       "sectionSub": "Connect external tool servers to extend agent capabilities."
     },
+    "pluginCommands": {
+      "sectionTitle": "External plugin commands",
+      "sectionSub": "Review commands contributed by enabled Obsidian plugins before Copilot can use them. Everything is off by default.",
+      "unavailable": "The command gateway is not available in this runtime.",
+      "empty": "No commands from enabled external plugins were found.",
+      "scan": "Scan",
+      "analyze": "Analyze with AI",
+      "analyzing": "Analyzing…",
+      "searchPlaceholder": "Filter plugins or commands",
+      "approved": "Approved",
+      "blocked": "Blocked",
+      "stale": "Needs review",
+      "off": "Off",
+      "allow": "Allow",
+      "deny": "Block",
+      "clear": "Turn off",
+      "sourceChanged": "Plugin metadata, command metadata, or the AI draft changed. Review again.",
+      "systemBlocked": "Unknown, destructive, and modal-only commands cannot be exposed to Copilot.",
+      "commandUnavailable": "Unavailable",
+      "noFinding": "No AI explanation yet. Deterministic metadata hints are shown.",
+      "recentRuns": "Recent command runs",
+      "noRuns": "No external plugin command has run yet.",
+      "noObservableChange": "No observable workspace or vault change",
+      "riskLabel": "Risk",
+      "purposeLabel": "Purpose",
+      "risks": {
+        "read": "Read / navigate",
+        "edit": "Edits workspace or vault",
+        "destructive": "Destructive",
+        "unknown": "Unknown"
+      },
+      "purposes": {
+        "navigation": "Navigation",
+        "capture": "Capture",
+        "planning": "Planning",
+        "tasks": "Tasks",
+        "query": "Query",
+        "formatting": "Formatting",
+        "system": "System",
+        "other": "Other"
+      }
+    },
     "webAccess": {
       "sectionTitle": "Web Access",
       "provider": {

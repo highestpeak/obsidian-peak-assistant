@@ -20,6 +20,8 @@ import {
 } from '@/core/config/folderPaths';
 import type { DefaultDocumentView } from '@/core/composer';
 import type { CommandCenterBoardConfig } from '@/core/command-center';
+import type { PluginCommandGatewaySettings } from '@/core/types/plugin-command-gateway';
+import { DEFAULT_PLUGIN_COMMAND_GATEWAY_SETTINGS } from '@/core/types/plugin-command-gateway';
 
 export interface ChunkingSettings {
 	maxChunkSize: number;
@@ -353,6 +355,9 @@ export interface MyPluginSettings {
 	/** External MCP server connections (stdio/SSE). */
 	mcpServers?: MCPServerConfig[];
 
+	/** Human-reviewed policy and AI findings for third-party Obsidian commands. */
+	pluginCommandGateway: PluginCommandGatewaySettings;
+
 	/** Vault folder for user-defined skills. Defaults under ai.rootFolder. */
 	skillsFolder?: string;
 
@@ -449,4 +454,8 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 	skillsFolder: getAISkillsFolder(DEFAULT_AI_SERVICE_SETTINGS.rootFolder),
 	inboxFolder: getAIInboxFolder(DEFAULT_AI_SERVICE_SETTINGS.rootFolder),
 	customPromptsFolder: getAICustomPromptsFolder(DEFAULT_AI_SERVICE_SETTINGS.rootFolder),
+	pluginCommandGateway: {
+		reviews: { ...DEFAULT_PLUGIN_COMMAND_GATEWAY_SETTINGS.reviews },
+		findings: { ...DEFAULT_PLUGIN_COMMAND_GATEWAY_SETTINGS.findings },
+	},
 };

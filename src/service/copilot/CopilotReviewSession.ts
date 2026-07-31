@@ -93,6 +93,7 @@ export interface CopilotReviewDeps {
 	pluginId: string;
 	analysisHistory: AnalysisHistoryPort;
 	searchClient: import('@/service/search/SearchClient').SearchClient;
+	pluginCommandGateway?: import('@/core/ports/PluginCommandGatewayPort').PluginCommandGatewayPort | null;
 	userProfileText?: string;
 }
 
@@ -189,6 +190,7 @@ export async function* runCopilotReview(
 				pluginId: options.deps.pluginId,
 				analysisHistory: options.deps.analysisHistory,
 				searchClient: options.deps.searchClient,
+				pluginCommandGateway: options.deps.pluginCommandGateway,
 				onTurnIncrement: () => {
 					round.turnCount += 1;
 				},

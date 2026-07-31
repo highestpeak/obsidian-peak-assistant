@@ -2,6 +2,13 @@ import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, DEFAULT_DEBUG_TRACE_SET
 import { ProviderConfig, LLMOutputControlSettings } from '@/core/providers/types';
 import { DEFAULT_AMBIENT_PUSH_SETTINGS, type AmbientPushSettings } from '@/core/types/ambient';
 import type { ProfileSettings } from '@/core/profiles/types';
+import type {
+	PluginCommandCurationFinding,
+	PluginCommandGatewaySettings,
+	PluginCommandPurpose,
+	PluginCommandReview,
+	PluginCommandRisk,
+} from '@/core/types/plugin-command-gateway';
 import {
 	getAIAnalysisFolder,
 	getAICustomPromptsFolder,
@@ -323,6 +330,7 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 			intelligenceManualOpen:
 				(raw?.composer as { intelligenceManualOpen?: unknown } | undefined)?.intelligenceManualOpen === true,
 		},
+		pluginCommandGateway: normalizePluginCommandGatewaySettings(raw?.pluginCommandGateway),
 	};
 
 	if (raw?.commandCenter && typeof raw.commandCenter === 'object') {
@@ -463,6 +471,105 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 	settings.debugTrace = sanitizeDebugTrace(raw?.debugTrace);
 
 	return settings;
+}
+
+const PLUGIN_COMMAND_RISKS = new Set<PluginCommandRisk>([
+	'read',
+	'edit',
+	'destructive',
+	'unknown',
+]);
+const PLUGIN_COMMAND_PURPOSES = new Set<PluginCommandPurpose>([
+	'navigation',
+	'capture',
+	'planning',
+	'tasks',
+	'query',
+	'formatting',
+	'system',
+	'other',
+]);
+
+function normalizePluginCommandGatewaySettings(raw: unknown): PluginCommandGatewaySettings {
+	if (!raw || typeof raw !== 'object') return { reviews: {}, findings: {} };
+	const source = raw as Record<string, unknown>;
+	const reviews: Record<string, PluginCommandReview> = {};
+	const findings: Record<string, PluginCommandCurationFinding> = {};
+
+	if (source.reviews && typeof source.reviews === 'object') {
+		for (const [commandId, value] of Object.entries(source.reviews as Record<string, unknown>)) {
+			if (!value || typeof value !== 'object') continue;
+			const row = value as Record<string, unknown>;
+			if (row.decision !== 'allow' && row.decision !== 'deny') continue;
+			if (!PLUGIN_COMMAND_RISKS.has(row.risk as PluginCommandRisk)) continue;
+			if (!PLUGIN_COMMAND_PURPOSES.has(row.purpose as PluginCommandPurpose)) continue;
+			if (
+				typeof row.sourceHash !== 'string' ||
+				typeof row.curationHash !== 'string' ||
+				typeof row.reviewedAt !== 'number'
+			) continue;
+			reviews[commandId] = {
+				decision: row.decision,
+				risk: row.risk as PluginCommandRisk,
+				purpose: row.purpose as PluginCommandPurpose,
+				sourceHash: row.sourceHash,
+				curationHash: row.curationHash,
+				reviewedAt: row.reviewedAt,
+			};
+		}
+	}
+
+	if (source.findings && typeof source.findings === 'object') {
+		for (const [commandId, value] of Object.entries(source.findings as Record<string, unknown>)) {
+			if (!value || typeof value !== 'object') continue;
+			const row = value as Record<string, unknown>;
+			if (row.commandId !== commandId) continue;
+			if (typeof row.sourceHash !== 'string') continue;
+			if (typeof row.recommend !== 'boolean') continue;
+			if (!PLUGIN_COMMAND_RISKS.has(row.risk as PluginCommandRisk)) continue;
+			if (!PLUGIN_COMMAND_PURPOSES.has(row.purpose as PluginCommandPurpose)) continue;
+			if (typeof row.summary !== 'string' || !Array.isArray(row.evidence)) continue;
+			if (typeof row.curatedAt !== 'number') continue;
+			const interaction =
+				row.interaction === 'direct' || row.interaction === 'modal' || row.interaction === 'unknown'
+					? row.interaction
+					: 'unknown';
+			const expectedObservation =
+				row.expectedObservation === 'workspace' ||
+				row.expectedObservation === 'vault' ||
+				row.expectedObservation === 'modal' ||
+				row.expectedObservation === 'none' ||
+				row.expectedObservation === 'unknown'
+					? row.expectedObservation
+					: 'unknown';
+			const confirmation =
+				row.confirmation === 'none' ||
+				row.confirmation === 'per-run' ||
+				row.confirmation === 'always'
+					? row.confirmation
+					: 'always';
+			findings[commandId] = {
+				commandId,
+				sourceHash: row.sourceHash,
+				recommend: row.recommend,
+				risk: row.risk as PluginCommandRisk,
+				purpose: row.purpose as PluginCommandPurpose,
+				summary: row.summary,
+				evidence: row.evidence.filter((entry): entry is string => typeof entry === 'string'),
+				requiresActiveEditor: row.requiresActiveEditor === true,
+				interaction,
+				expectedObservation,
+				toolDescription: typeof row.toolDescription === 'string' ? row.toolDescription : row.summary,
+				confirmation,
+				skillName: typeof row.skillName === 'string' ? row.skillName : commandId,
+				skillDescription: typeof row.skillDescription === 'string' ? row.skillDescription : row.summary,
+				skillInstructions: typeof row.skillInstructions === 'string' ? row.skillInstructions : row.summary,
+				curatedAt: row.curatedAt,
+			};
+		}
+	}
+
+	return { reviews, findings };
 }
 
 function sanitizeDebugTrace(raw: unknown): DebugTraceSettings {

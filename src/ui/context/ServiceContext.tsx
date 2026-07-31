@@ -33,6 +33,7 @@ import type { DebugTracePort } from '@/core/debug-trace';
 import type { HeadingModeDeps } from '@/core/ports/HeadingModePort';
 import type { ResultSubgraphDeps } from '@/service/search/graph/resultSubgraph';
 import type { ContextualGraphPort } from '@/core/ports/ContextualGraphPort';
+import type { PluginCommandGatewayPort } from '@/core/ports/PluginCommandGatewayPort';
 import type MyPlugin from 'main';
 
 /** T13: Usage-telemetry bundle mirrored from `AppRuntimeRegistry.usageServices`. */
@@ -132,6 +133,8 @@ interface ServiceContextValue {
 	 * Null in mock harness / early boot — the left-column button hides itself.
 	 */
 	quickSearchLauncher: QuickSearchLauncherPort | null;
+	/** Human-reviewed external Obsidian plugin command control plane. */
+	pluginCommandGateway: PluginCommandGatewayPort | null;
 }
 
 const ServiceContext = createContext<ServiceContextValue | null>(null);
@@ -180,7 +183,8 @@ export const ServiceProvider: React.FC<{
 	resultSubgraph?: ResultSubgraphDeps | null;
 	contextualGraph?: ContextualGraphPort | null;
 	quickSearchLauncher?: QuickSearchLauncherPort | null;
-}> = ({ children, manager, eventBus, searchClient, plugin, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, copilotActionRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps, indexService, mcpClientManager, usageServices, debugTracePort = null, headingMode = null, resultSubgraph = null, contextualGraph = null, quickSearchLauncher = null }) => {
+	pluginCommandGateway?: PluginCommandGatewayPort | null;
+}> = ({ children, manager, eventBus, searchClient, plugin, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, copilotActionRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps, indexService, mcpClientManager, usageServices, debugTracePort = null, headingMode = null, resultSubgraph = null, contextualGraph = null, quickSearchLauncher = null, pluginCommandGateway = null }) => {
 	const value = useMemo<ServiceContextValue>(() => ({
 		manager,
 		eventBus,
@@ -216,7 +220,8 @@ export const ServiceProvider: React.FC<{
 		resultSubgraph,
 		contextualGraph,
 		quickSearchLauncher,
-	}), [eventBus, manager, plugin, searchClient, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, copilotActionRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps, indexService, mcpClientManager, usageServices, debugTracePort, headingMode, resultSubgraph, contextualGraph, quickSearchLauncher]);
+		pluginCommandGateway,
+	}), [eventBus, manager, plugin, searchClient, vaultLintRuntime, ambientRuntime, vaultReviewRuntime, copilotActionRuntime, quickSearchBackgroundRuntime, aiAnalysisHistoryService, isMockEnv, settings, settingsActions, analysisDocVaultWriter, reportSessionPort, copilotPanelVault, vaultPreview, vaultNavigation, wikilink, editorCommands, chatVaultWriter, chatNavigation, vaultStats, quickSearchHost, copilotReviewHistory, copilotReviewDeps, indexService, mcpClientManager, usageServices, debugTracePort, headingMode, resultSubgraph, contextualGraph, quickSearchLauncher, pluginCommandGateway]);
 
 	return <ServiceContext.Provider value={value}>{children}</ServiceContext.Provider>;
 };

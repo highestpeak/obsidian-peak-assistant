@@ -78,6 +78,8 @@ export function composeCopilotActionRuntime(app: App): CopilotActionRuntime {
 			pluginId,
 			resolveSearchClient: () => safeGetSearchClient(),
 			analysisHistory: appContext.aiAnalysisHistoryService,
+			resolvePluginCommandGateway: () =>
+				AppContext.tryGetPluginCommandGatewayRuntime(),
 		}),
 		promptTemplates: {
 			render: (template, variables) =>

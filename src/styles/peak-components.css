@@ -3622,6 +3622,238 @@
   gap: 6px;
 }
 
+/* ── External plugin command gateway review surface ───────────────────────── */
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway {
+  padding-top: var(--pk-space-3);
+  border-top: 1px solid var(--pk-border-soft);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-toolbar,
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-actions,
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-stats {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-toolbar {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-actions .pk-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-search {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  min-height: 34px;
+  padding: 0 var(--pk-space-3);
+  border: 1px solid var(--pk-border-soft);
+  border-radius: var(--pk-radius-md);
+  color: var(--pk-text-tertiary);
+  background: var(--pk-surface-sunken);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-search:focus-within {
+  border-color: var(--pk-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pk-accent) 18%, transparent);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-search input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--pk-text-primary);
+  font-size: 12px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-error {
+  padding: var(--pk-space-3);
+  border: 1px solid color-mix(in srgb, var(--pk-danger) 42%, var(--pk-border-soft));
+  border-radius: var(--pk-radius-md);
+  color: var(--pk-danger);
+  background: color-mix(in srgb, var(--pk-danger) 8%, var(--pk-surface-raised));
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-plugin-group {
+  overflow: hidden;
+  border: 1px solid var(--pk-border-soft);
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-surface-raised);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-plugin-group__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pk-space-3);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--pk-border-soft);
+  background: var(--pk-surface-sunken);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-plugin-group__name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  min-width: 0;
+  color: var(--pk-text-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-plugin-group__meta,
+:is(.pktw-root, .peak-design-root) .pk-command-review-row__id {
+  color: var(--pk-text-tertiary);
+  font-family: var(--font-monospace);
+  font-size: 10px;
+  overflow-wrap: break-word;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-plugin-group__list {
+  display: flex;
+  flex-direction: column;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-review-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 250px;
+  gap: var(--pk-space-4);
+  padding: 12px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-review-row + .pk-command-review-row {
+  border-top: 1px solid var(--pk-border-soft);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-review-row__main,
+:is(.pktw-root, .peak-design-root) .pk-command-review-row__controls {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-review-row__title-line,
+:is(.pktw-root, .peak-design-root) .pk-command-review-row__buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  flex-wrap: wrap;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-review-row__title {
+  min-width: 0;
+  color: var(--pk-text-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-review-row__summary,
+:is(.pktw-root, .peak-design-root) .pk-command-review-row__evidence,
+:is(.pktw-root, .peak-design-root) .pk-command-review-row__warning {
+  color: var(--pk-text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-review-row__evidence {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--pk-text-tertiary);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-review-row__warning {
+  color: var(--pk-warning);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-review-select {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--pk-space-2);
+  color: var(--pk-text-tertiary);
+  font-size: 10px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-review-select select {
+  width: 100%;
+  min-width: 0;
+  min-height: 30px;
+  padding: 3px 28px 3px 8px;
+  border: 1px solid var(--pk-border-soft);
+  border-radius: var(--pk-radius-sm);
+  color: var(--pk-text-primary);
+  background-color: var(--pk-surface-sunken);
+  font-size: 11px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-runs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: var(--pk-space-2);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-runs__title {
+  color: var(--pk-text-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-runs__empty {
+  color: var(--pk-text-tertiary);
+  font-size: 11px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-run {
+  display: grid;
+  grid-template-columns: auto minmax(120px, 0.35fr) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--pk-space-2);
+  padding: 8px 10px;
+  border: 1px solid var(--pk-border-soft);
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-surface-sunken);
+  font-size: 11px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-run__name {
+  color: var(--pk-text-primary);
+  font-weight: 500;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-run__summary {
+  min-width: 0;
+  color: var(--pk-text-tertiary);
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 760px) {
+  :is(.pktw-root, .peak-design-root) .pk-command-review-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  :is(.pktw-root, .peak-design-root) .pk-command-run {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  :is(.pktw-root, .peak-design-root) .pk-command-run__summary {
+    grid-column: 1 / -1;
+  }
+}
+
 
 /* ── pkset-empty — empty-state copy for readiness panel (PR-E) ─────────────── */
 

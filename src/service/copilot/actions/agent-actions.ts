@@ -30,6 +30,8 @@ import {
 	usageFromHarnessResult,
 } from '@/service/agents/harness/HarnessModelRunner';
 import { buildVaultHarnessTools } from '@/service/agents/vault/vaultHarnessTools';
+import type { PluginCommandGatewayPort } from '@/core/ports/PluginCommandGatewayPort';
+import { loadApprovedPluginCommandTools } from '@/service/command-gateway/pluginCommandToolCatalog';
 
 /** Vault-grep callback shape the agent loop needs. */
 export type CopilotAgentSearchFn = (q: string, limit: number) => Promise<GrepHit[]>;
@@ -44,6 +46,8 @@ export interface CopilotAgentPortDeps {
 	search: CopilotAgentSearchFn;
 	/** T11L: narrow port the embedded `get_recent_analysis` tool needs. */
 	analysisHistory: AnalysisHistoryPort;
+	/** Resolve lazily because app boot composes this catalog before the gateway. */
+	resolvePluginCommandGateway(): PluginCommandGatewayPort | null;
 }
 
 /**
@@ -108,6 +112,9 @@ export function createCopilotAgentPort(deps: CopilotAgentPortDeps): CopilotActio
 				: [buildSubmitResultTool((result) => {
 					capturedResult = result;
 				})];
+			const pluginCommandTools = await loadApprovedPluginCommandTools(
+				deps.resolvePluginCommandGateway(),
+			);
 
 			const submissionsBefore = collector?.getSnapshot().submissions.length ?? 0;
 			let usage: ActionUsage | undefined;
@@ -122,10 +129,11 @@ export function createCopilotAgentPort(deps: CopilotAgentPortDeps): CopilotActio
 					...(collector
 						? [...COPILOT_OUTPUT_TOOL_NAMES]
 						: ['mcp__copilot__submit_result']),
+					...pluginCommandTools.map((tool) => tool.name),
 				];
 
 				const allowedToolNames = new Set(allowedTools);
-				const tools = [...vaultTools, ...copilotTools]
+				const tools = [...vaultTools, ...copilotTools, ...pluginCommandTools]
 					.filter((tool) => allowedToolNames.has(tool.name));
 				const stream = streamHarnessModel({
 					loopId: `copilot-action-${pluginId}-${Date.now()}`,

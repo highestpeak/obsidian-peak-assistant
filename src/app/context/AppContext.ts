@@ -413,6 +413,24 @@ export class AppContext {
 		AppContext.getInstance().runtimeRegistry.clearCommandGateway();
 	}
 
+	public static setPluginCommandGatewayRuntime(
+		runtime: import('@/service/command-gateway/PluginCommandGatewayRuntime').PluginCommandGatewayRuntime,
+	): void {
+		AppContext.getInstance().runtimeRegistry.setPluginCommandGatewayRuntime(runtime);
+	}
+
+	public static getPluginCommandGatewayRuntime(): import('@/service/command-gateway/PluginCommandGatewayRuntime').PluginCommandGatewayRuntime {
+		return AppContext.getInstance().runtimeRegistry.getPluginCommandGatewayRuntime();
+	}
+
+	public static tryGetPluginCommandGatewayRuntime(): import('@/service/command-gateway/PluginCommandGatewayRuntime').PluginCommandGatewayRuntime | null {
+		return AppContext.getInstance().runtimeRegistry.tryGetPluginCommandGatewayRuntime();
+	}
+
+	public static clearPluginCommandGatewayRuntime(): void {
+		AppContext.getInstance().runtimeRegistry.clearPluginCommandGatewayRuntime();
+	}
+
 	// ─── T13: UsageServices bundle ────────────────────────────────────────
 
 	public static setUsageServices(services: UsageServices): void {

@@ -27,6 +27,8 @@ import {
 	streamHarnessModel,
 } from '@/service/agents/harness/HarnessModelRunner';
 import { buildVaultHarnessTools } from '@/service/agents/vault/vaultHarnessTools';
+import type { PluginCommandGatewayPort } from '@/core/ports/PluginCommandGatewayPort';
+import { loadApprovedPluginCommandTools } from '@/service/command-gateway/pluginCommandToolCatalog';
 
 import {
 	buildCopilotOutputTools,
@@ -168,6 +170,8 @@ export interface VaultMetaAgentRunDeps {
 	searchClient: SearchClient;
 	/** T11L: narrow port the vault MCP server passes to `get_recent_analysis`. */
 	analysisHistory: AnalysisHistoryPort;
+	/** Current app-owned allowlist of external plugin commands. */
+	pluginCommandGateway?: PluginCommandGatewayPort | null;
 }
 
 export async function* buildVaultMetaAgentStream(
@@ -218,6 +222,9 @@ export async function* buildVaultMetaAgentStream(
 	const copilotTools = buildCopilotOutputTools({
 		collector: options.collector,
 	});
+	const pluginCommandTools = await loadApprovedPluginCommandTools(
+		deps.pluginCommandGateway,
+	);
 
 	const systemPrompt = await buildVaultMetaAgentSystemPrompt({
 		mode: options.mode,
@@ -235,10 +242,11 @@ export async function* buildVaultMetaAgentStream(
 			'mcp__vault__vault_grep',
 			'mcp__vault__vault_wikilink_expand',
 			...COPILOT_VAULT_TOOL_NAMES,
+			...pluginCommandTools.map((tool) => tool.name),
 		];
 
 		const allowedToolNames = new Set(allowedTools);
-		const tools = [...vaultTools, ...copilotTools]
+		const tools = [...vaultTools, ...copilotTools, ...pluginCommandTools]
 			.filter((tool) => allowedToolNames.has(tool.name));
 		const submissionsBefore = options.collector.getSnapshot().submissions.length;
 		const stream = streamHarnessModel({
