@@ -2,7 +2,7 @@
 
 > 日期：2026-07-30
 >
-> 视觉方向修订：2026-07-31
+> 视觉方向修订：2026-07-31 · V9 scope tabs + faceted action grid
 >
 > 状态：Research complete；产品边界已进入正式设计，尚未实现
 >
@@ -19,7 +19,7 @@
 
 - 原生 `Cmd/Ctrl + P` 保留，继续承担“全生态兜底搜索”。
 - Peak Command Center 使用用户自己在 Obsidian 中绑定的快捷键打开。
-- 默认态是“分组纵向堆叠、组内 action 横向排列”，只显示用户策展的动作，不是原生命令全集。
+- 默认态是“两排过滤 + 二维 action grid”：第一排切用户分组 scope，第二排切能力类型；只显示用户策展的动作，不是原生命令全集。
 - Modal 与 Home 共享 action identity 和呈现元数据，但不复制同一套页面布局。
 - Home 使用 Search、Quick access、Continue 和可选 Pinned pages 的固定阅读路径，不另造 Todo、日历、统计或 widget 数据系统。
 - 外部插件命令只通过集中兼容层读取和执行；不拦截、不修改原生 Command Palette。
@@ -91,6 +91,16 @@ V8 对“横向并列”做了更准确的边界修正：
 - Modal 高度从 V7 的约 `520px` 收回到约 `400px`，因为横向 block 已经恢复信息密度。
 - Home Quick access 恢复横向 block；它属于一个明确分组，不会和其他 Home section 并排竞争。
 - 全宽切换仍不恢复：单列 group stack 中，每个 group 天然占满可用宽度。
+
+V9 用新的参考设计解决了 V8 仍然“需要一次扫完所有组”的问题：
+
+- [Command Menu](https://dribbble.com/shots/26707604-Command-Menu) 顶部把平台 / scope 与内容类型做成两排紧凑可点对象，切换成本低，也符合“先选范围、再选类型”的用户心智。
+- Peak 借用的是上方两层扁平切换语法，不复制参考图下方的纵向结果 list；后者与原生 Command Palette 的检索负担没有本质区别。
+- 第一排将 `All` 与用户自定义 group 映射为 scope tabs；尾部 `+` 直接进入 Customize。
+- 第二排提供 `AI / Create / Navigate / Visual` 等正交 facet。scope 与 facet 可以组合，用户不必输入完整命令名。
+- 内容区固定为四列 action tile grid；搜索结果仍留在同一 grid，不因输入 query 退化成一维列表。
+- 图标 + 文字、仅图标、仅文字共享同一个 cell 几何，因此个别显示模式不会打散整个版面。
+- V9 仍保留 Add group、分组 / action 拖动、Pin 与 Home 同步；V8 的纵向 group stack 只保留在 Customize 编辑态。
 
 ## 录屏观察
 
@@ -237,7 +247,7 @@ OneTab 把大量浏览器 tab 收进可重排 group，并额外提供 quick list
 
 ### Start.me
 
-Start.me 的 Bookmark Groups 支持 tab 或 collapsible list。它说明“二维 board”和“搜索态列表”不冲突：默认用空间组织，规模变大后再进入聚合筛选。
+Start.me 的 Bookmark Groups 支持 tab 或 collapsible list。它说明 tab 可以承载稳定上下文切换；Peak 进一步要求默认态与搜索态都保留二维空间，不重新落回结果列表。
 
 来源：[Bookmark Groups](https://support.start.me/en/articles/9182820-bookmark-groups)。
 
@@ -249,7 +259,7 @@ Start.me 的 Bookmark Groups 支持 tab 或 collapsible list。它说明“二�
 | Better Command Palette | recent、pin、hide、macro | 搜索可有 escape hatch | 仍以列表为中心 |
 | Commander / Buttons Panel | 用户自定义按钮与分组 | 组和 tile 是核心配置对象 | 不复制所有脚本和动画选项 |
 | Homepage / Hearth | 固定 Home、嵌入内容、最近文件 | 保留入口与继续工作 | 不重建万能 dashboard builder |
-| Raycast / Apple Apps | 搜索、分类、网格、键盘导航 | 分类留在内容区；网格形成空间记忆 | 不做系统级 launcher |
+| Raycast / Apple Apps / Command Menu | 搜索、scope、类型筛选、网格、键盘导航 | 两排过滤缩小上下文；网格形成空间记忆 | 不复制纵向结果 list，不做系统级 launcher |
 | Arc Command Bar | 同一入口切换页面、空间和 action | 入口先于说明 | 不照搬一维结果 |
 | Bonjourr | 安静、稀疏的 New Tab | Home 保留搜索与 Quick access | 不复制天气、时钟和装饰背景 |
 | OneTab / Start.me | group、quick list、可重排 | 空 query 保留空间记忆 | 不把所有 Vault 内容收成收藏夹 |
@@ -259,8 +269,8 @@ Start.me 的 Bookmark Groups 支持 tab 或 collapsible list。它说明“二�
 ### 要做
 
 1. 一个 owner-approved 的 `Open Peak Command Center` 全局命令，快捷键由用户在 Obsidian Hotkeys 中设置。
-2. 空 query 显示无侧栏的单列 group stack；group 之间纵向排列，action 只在自己的 group 内横向排列。
-3. 运行态搜索只过滤已策展内容。
+2. 空 query 显示两排过滤与二维 action grid；第一排切用户 group，第二排切能力类型。
+3. 运行态搜索只过滤已策展内容，并保持相同的 scope / facet / grid 结构。
 4. 编辑态才允许搜索全部已注册命令并加入组。
 5. 每个 tile 显示图标、短标题、来源组和实际快捷键。
 6. 同一 action 配置可被 full-tab Home View 的 Quick access 引用。
@@ -275,7 +285,7 @@ Start.me 的 Bookmark Groups 支持 tab 或 collapsible list。它说明“二�
 5. 不内建新的 Todo、Calendar、Pomodoro、Stats 数据系统。
 6. 不使用 AI 生成小图标。
 7. 不在 Modal 顶部展示当前文档、能力可用性或产品解释。
-8. 不用侧栏或分组外层卡片分割有限的高频入口。
+8. 不用侧栏、纵向 group stack 或分组外层卡片分割有限的高频入口。
 
 ## 为什么图标不用 AI 生成
 

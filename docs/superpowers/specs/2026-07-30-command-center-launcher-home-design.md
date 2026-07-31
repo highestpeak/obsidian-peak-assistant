@@ -2,7 +2,7 @@
 
 Date: 2026-07-30
 
-Visual direction revised: 2026-07-31 · V8 horizontal groups in a vertical stack
+Visual direction revised: 2026-07-31 · V9 scope tabs + faceted action grid
 
 Status: Decided · design/spec ready · implementation pending
 
@@ -49,9 +49,9 @@ The user does not need a better global ranking algorithm for daily work. They ne
 
 ## 4. Goals
 
-### G1 · Stable grouped retrieval
+### G1 · Stable scoped retrieval
 
-Frequently used actions stay in a predictable vertical group and order when search is empty.
+Frequently used actions stay in predictable scope tabs and grid positions when search is empty.
 
 ### G2 · User curation
 
@@ -92,9 +92,10 @@ The exhaustive native Command Palette stays one keystroke away.
 ```text
 CommandCenterBoardConfig
 ├─ Modal shell
-│  ├─ one vertical group stack
-│  ├─ horizontal actions inside each group
-│  └─ in-place customize mode
+│  ├─ group scope tabs
+│  ├─ cross-scope type facets
+│  ├─ two-dimensional action grid
+│  └─ explicit customize mode
 └─ Home shell
    ├─ global search entry
    ├─ quick access
@@ -104,7 +105,7 @@ CommandCenterBoardConfig
 
 The Modal and Home must not maintain separate copies of actions. They share action identity, label, icon, hotkey resolution and destination. Their composition differs:
 
-- Modal optimizes for scanning and keyboard navigation across a bounded set of visible groups.
+- Modal optimizes for switching context, narrowing by type and navigating a bounded grid.
 - Home optimizes for returning to a small set of pinned destinations.
 - Group order in the Modal does not force Home to reproduce every group.
 
@@ -167,7 +168,7 @@ interface CommandCenterGroup {
 	id: string;
 	label: string;
 	icon: string;
-	actionLayout: 'horizontal-wrap';
+	actionLayout: 'grid';
 	order: number;
 	actions: CommandCenterActionItem[];
 }
@@ -192,12 +193,14 @@ Default group definitions belong in `templates/config/command-center-defaults.js
 The modal has three persistent regions:
 
 1. Search field and close button.
-2. One vertical stack of curated groups.
-3. Footer keyboard help and Customize entry.
+2. A two-row filter shell followed by one two-dimensional action grid.
+3. Footer keyboard help and current-scope feedback.
 
-Groups sit directly on the shared canvas and follow one top-to-bottom reading path. Group boundaries use a short heading, whitespace and a hairline between vertically adjacent groups.
+The first filter row projects user-defined groups as compact scope tabs. `All` precedes the group tabs; a trailing add button opens Customize. Only one scope is expanded at a time, so group count does not create a long page.
 
-There is no permanent group navigation rail. Groups also have no outer card background or border.
+The second row uses orthogonal type facets such as `AI`, `Create`, `Navigate` and `Visual`. Selecting a scope and facet narrows the same grid; it never changes into a result list.
+
+There is no permanent side rail, accordion stack, nested group card or vertically repeated group chrome.
 
 The header does not show:
 
@@ -206,7 +209,7 @@ The header does not show:
 - capability availability summary;
 - Home or edit shortcuts.
 
-Home is an ordinary configured action. Customize is a low-emphasis footer action.
+Home is an ordinary configured action. Customize is reached from the trailing add button and remains a distinct editing state.
 
 ### 7.2 Search state
 
@@ -217,8 +220,9 @@ Rules:
 1. Match short label first.
 2. Match user aliases second.
 3. Match group and plugin label third.
-4. Keep matched groups in the same vertical order.
-5. Do not include unconfigured commands.
+4. Keep scope tabs and type facets available while filtering.
+5. Show matches in the same two-dimensional action grid.
+6. Do not include unconfigured commands.
 
 The full registered-command catalog appears only inside Manage → Add action. This is the main protection against the original “weird fuzzy matches” problem.
 
@@ -237,7 +241,7 @@ Pinned Notes, Bases and Canvases remain owned by their existing Obsidian views. 
 
 ### 7.4 Manage mode
 
-Customize mode is explicit. Normal invocation never shows drag handles or edit controls. It reuses the same vertical stack so the user can reorder groups and actions and change action presentation in place.
+Customize mode is explicit. Normal invocation never shows drag handles or edit controls. Customize uses a vertical group editor because it is editing the scope order rather than acting as the runtime retrieval surface.
 
 Customize must also stay visually quiet:
 
@@ -266,8 +270,8 @@ Destructive layout reset requires confirmation and export/import support before 
 
 | Screen / state | Primary job | Reads | Writes | Main actions | Empty / failure state | Entry / exit |
 | --- | --- | --- | --- | --- | --- | --- |
-| Modal · launcher | Invoke a curated action without typing | Groups, actions, availability, hotkeys | Recent usage only | Scan groups, spatial navigation, Enter, search | Starter groups or “add first action” | Hotkey / command; closes to prior focus |
-| Modal · search | Narrow configured actions | Curated action index | Query only | Type, grouped spatial navigation, Enter, clear | Empty result with clear-query guidance | Search field; returns to launcher on clear |
+| Modal · launcher | Invoke a curated action without typing | Groups, facets, actions, availability, hotkeys | Recent usage only | Switch scope, filter type, spatial navigation, Enter, search | Starter grid or “add first action” | Hotkey / command; closes to prior focus |
+| Modal · search | Narrow configured actions | Curated action index | Query only | Type, retain scope/facet, grid navigation, Enter, clear | Empty result with clear-query guidance | Search field; returns to launcher on clear |
 | Home View | Return to important work and destinations | Pinned actions, recents, bookmarks, Workspaces, pinned pages | Quick access and pin order | Search, open destination, customize | Guide to pin the first destination or page | Ribbon / command / empty tab; exits to destination |
 | Customize | Curate the current grouped order | Current config; catalog only after Add action | Groups, labels, aliases, order, Home pins | Drag, add, edit, remove, Done | Compatibility warning inside catalog picker | Footer action; Done returns to launcher |
 
@@ -275,28 +279,28 @@ Destructive layout reset requires confirmation and export/import support before 
 
 ### 9.1 Modal geometry
 
-- Width: `min(640px, calc(100vw - 48px))`.
-- Height: approximately `400px`, capped by `calc(100vh - 72px)`.
-- Group canvas: one vertical reading path; groups never sit side by side.
-- Group internals: actions run horizontally and wrap only inside their owning group.
-- Action button: approximately `30px` high in all three presentation modes.
+- Width: `min(680px, calc(100vw - 48px))`.
+- Height: approximately `430px`, capped by `calc(100vh - 72px)`.
+- First filter row: `All`, icon-led group scopes and one trailing Customize button.
+- Second filter row: compact text-and-icon type facets.
+- Content canvas: four equal columns at the reference width, responsive down to fewer columns.
+- Action button: approximately `50px` high in all three presentation modes.
 - Default icon: approximately `15 × 15px`, bare rather than placed inside a colored icon container; the whole button remains the hit target.
-- Group headings do not show item counts; the visible tiles already communicate group size.
-- A vertical separator uses one compact spacing rhythm, not a grid gap plus additional section padding.
-- Modal radius: approximately `14px`; action radius: approximately `6px`.
+- Scope heading shows the active label and a quiet count; individual groups are not repeated in the content area.
+- Modal radius: approximately `14px`; action radius: approximately `7px`.
 - Accent: Obsidian / Peak purple only for focus, selection and primary entry.
 
-No group sidebar, gradient, nested group card, availability strip, descriptive hero or dashboard statistic appears in the Modal.
+No group sidebar, vertical group stack, gradient, nested group card, availability strip, descriptive hero or dashboard statistic appears in the Modal.
 
 ### 9.2 Action tile anatomy
 
-Every tile has an action identity, accessible name and tooltip. Its visible anatomy is user-selectable:
+Every tile has an action identity, accessible name and tooltip. Its visible anatomy is user-selectable while the grid cell remains stable:
 
-1. `icon + label`: small Lucide icon, short label and an optional real hotkey suffix;
-2. `icon only`: icon with `aria-label` and tooltip;
-3. `text only`: short label without an icon.
+1. `icon + label`: small Lucide icon, short label, quiet provenance and an optional real hotkey;
+2. `icon only`: centered icon with `aria-label` and tooltip;
+3. `text only`: centered short label without an icon.
 
-All three modes share one compact height. Icon-only remains a square; the other modes use natural content width. All modes stay inside the horizontal action block and use a disabled treatment when unavailable.
+All three modes share one grid geometry. The presentation choice changes visible content, not row rhythm or spatial position. Unavailable actions keep their position and use a disabled treatment.
 
 Long native command labels such as “Create new drawing — in the current active window” become a short tile title such as `Current window`; the tooltip preserves the full source label.
 
@@ -478,8 +482,9 @@ This is an implementation sequence, not permission to ship incomplete UI as the 
 ### Track B · Modal
 
 - React modal shell;
-- vertical group stack with no side-by-side groups;
-- per-group horizontal wrapping action block;
+- dynamic group scope tabs;
+- type facets shared by launcher and search;
+- four-column action grid with responsive column count;
 - search over configured actions;
 - full keyboard and focus restoration;
 - close-only header.
@@ -519,7 +524,7 @@ This is an implementation sequence, not permission to ship incomplete UI as the 
 - Missing command IDs fail closed.
 - Hotkey resolver never persists stale display strings.
 - Modal/Home resolve the same action identity, label, icon and hotkey.
-- Keyboard grouped spatial-navigation tests.
+- Keyboard tests across filter rows and the action grid.
 - Focus restoration test.
 - Boundary test prevents UI or service code from reading private `app.commands` directly.
 - Build and existing command gateway tests.
@@ -530,8 +535,8 @@ Use the canonical CDP protocol.
 
 1. Open from a user-bound hotkey.
 2. Verify board geometry and computed hit targets.
-3. Navigate within a group with Left / Right and between groups with Up / Down.
-4. Search a curated Excalidraw group.
+3. Switch group scope, select a type facet and navigate the grid in both axes.
+4. Search a curated Excalidraw scope without changing to a list.
 5. Execute a Peak command and a third-party command.
 6. Disable the third-party plugin and verify the unavailable state.
 7. Close with Escape and verify active element and editor selection restoration.
@@ -544,8 +549,9 @@ If CDP is unavailable, mark these interactions `INTERACTION NOT VERIFIED`; a sta
 
 - Native `Cmd/Ctrl + P` behavior is unchanged.
 - The user can bind one shortcut to open Peak Command Center.
-- Empty query shows curated groups in one vertical stack.
-- All first-run groups are available in one continuous scroll path without a permanent group sidebar.
+- Empty query shows one selected scope as a two-dimensional action grid.
+- All first-run groups are available as stable top-row scope tabs without a permanent group sidebar.
+- Type facets narrow the selected scope without moving actions into a list.
 - Group order and action order remain stable.
 - Customize can add and reorder groups/actions and persist all three action display modes.
 - Runtime search returns only configured actions and keeps source provenance.

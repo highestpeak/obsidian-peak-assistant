@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Peak Command Center · V8</title>
+  <title>Peak Command Center · V9</title>
   <style>
     :root {
       color-scheme: light;
@@ -401,8 +401,8 @@
 
     .launcher {
       position: relative;
-      width: 640px;
-      height: 400px;
+      width: 680px;
+      height: 430px;
       display: grid;
       grid-template-rows: 52px minmax(0, 1fr) 36px;
       overflow: hidden;
@@ -476,6 +476,251 @@
     .launcher-body {
       min-height: 0;
       overflow: hidden;
+    }
+
+    .command-body {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    .filter-shell {
+      padding: 8px 14px 9px;
+      border-bottom: 1px solid var(--line);
+      background: #fdfcfd;
+    }
+
+    .scope-strip,
+    .facet-strip {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .scope-strip {
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .scope-strip::-webkit-scrollbar {
+      display: none;
+    }
+
+    .facet-strip {
+      margin-top: 7px;
+    }
+
+    .scope-tab,
+    .facet-chip {
+      height: 26px;
+      display: inline-flex;
+      flex: none;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid transparent;
+      color: #706b76;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .scope-tab {
+      width: 28px;
+      padding: 0;
+      border-radius: 6px;
+    }
+
+    .scope-tab.scope-all {
+      width: auto;
+      padding: 0 8px;
+      font-size: 10px;
+      font-weight: 650;
+    }
+
+    .scope-tab.scope-add {
+      margin-left: 2px;
+      border-color: var(--line);
+      color: #8b8690;
+    }
+
+    .scope-tab .icon {
+      width: 14px;
+      height: 14px;
+    }
+
+    .scope-tab:hover,
+    .facet-chip:hover {
+      color: var(--ink);
+      background: #f3f1f4;
+    }
+
+    .scope-tab.active {
+      border-color: #ddd8e5;
+      color: var(--ink);
+      background: #f1eef4;
+    }
+
+    .scope-tab.active::after {
+      position: absolute;
+      right: 5px;
+      bottom: 0;
+      left: 5px;
+      height: 2px;
+      border-radius: 2px;
+      background: var(--purple);
+      content: "";
+    }
+
+    .scope-tab {
+      position: relative;
+    }
+
+    .scope-tab.scope-all.active::after {
+      right: 7px;
+      left: 7px;
+    }
+
+    .facet-chip {
+      gap: 5px;
+      padding: 0 8px;
+      border-color: var(--line);
+      border-radius: 13px;
+      background: #fff;
+      font-size: 9px;
+    }
+
+    .facet-chip .icon {
+      width: 12px;
+      height: 12px;
+    }
+
+    .facet-chip.active {
+      border-color: #d8d2df;
+      color: #4d4852;
+      background: #f1eff3;
+    }
+
+    .scope-panels {
+      min-width: 0;
+      min-height: 0;
+      padding: 12px 14px 14px;
+      overflow: auto;
+    }
+
+    .scope-panel[hidden] {
+      display: none;
+    }
+
+    .scope-panel-heading {
+      min-height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 7px;
+      color: var(--ink-faint);
+      font-size: 9px;
+    }
+
+    .scope-panel-heading strong {
+      color: #4a464e;
+      font-size: 10px;
+      font-weight: 650;
+    }
+
+    .command-tile-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .command-tile-grid .action-tile {
+      width: 100%;
+      height: 50px;
+      display: grid;
+      grid-template-columns: 17px minmax(0, 1fr) auto;
+      grid-template-rows: 16px 12px;
+      align-content: center;
+      justify-content: initial;
+      column-gap: 7px;
+      row-gap: 1px;
+      padding: 5px 8px;
+      border-color: var(--line);
+      border-radius: 7px;
+      background: #fff;
+    }
+
+    .command-tile-grid .action-tile:hover {
+      border-color: #d9d5dd;
+      background: #f8f7f9;
+    }
+
+    .command-tile-grid .action-tile.selected {
+      border-color: #cfc4e6;
+      background: var(--purple-hover);
+    }
+
+    .command-tile-grid .action-icon {
+      grid-row: 1 / span 2;
+      align-self: center;
+    }
+
+    .command-tile-grid .action-name {
+      grid-column: 2;
+      grid-row: 1;
+      align-self: end;
+      font-size: 10px;
+    }
+
+    .command-tile-grid .action-meta {
+      grid-column: 2 / span 2;
+      grid-row: 2;
+      display: block;
+      overflow: hidden;
+      color: #918c96;
+      font-size: 8px;
+      line-height: 12px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .command-tile-grid .tile-hotkey {
+      grid-column: 3;
+      grid-row: 1;
+      align-self: end;
+      margin-left: 3px;
+    }
+
+    .command-tile-grid .action-tile.display-icon {
+      width: 100%;
+      padding: 0;
+    }
+
+    .command-tile-grid .action-tile.display-icon .action-icon {
+      grid-column: 1 / -1;
+      grid-row: 1 / -1;
+      place-self: center;
+    }
+
+    .command-tile-grid .action-tile.display-text {
+      width: 100%;
+      padding: 0 8px;
+    }
+
+    .command-tile-grid .action-tile.display-text .action-name {
+      grid-column: 1 / -1;
+      grid-row: 1 / -1;
+      place-self: center;
+      font-size: 10px;
+    }
+
+    .command-tile-grid .action-tile[hidden] {
+      display: none;
+    }
+
+    .empty-filter-state {
+      padding: 32px 12px;
+      color: var(--ink-faint);
+      font-size: 10px;
+      text-align: center;
     }
 
     .flow-area {
@@ -763,85 +1008,18 @@
       display: grid;
     }
 
-    .search-area {
-      padding-top: 15px;
-    }
-
     .search-summary {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
       color: var(--ink-faint);
-      font-size: 10px;
+      font-size: 9px;
     }
 
     .search-summary strong {
       color: var(--ink-soft);
       font-weight: 590;
-    }
-
-    .result-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 4px;
-    }
-
-    .result-tile {
-      position: relative;
-      min-width: 0;
-      height: 38px;
-      display: grid;
-      grid-template-columns: 18px minmax(0, 1fr) auto;
-      align-items: center;
-      gap: 8px;
-      padding: 5px 8px;
-      border: 1px solid transparent;
-      border-radius: 7px;
-      background: transparent;
-      text-align: left;
-    }
-
-    .result-tile:hover {
-      background: #f7f6f8;
-    }
-
-    .result-tile.selected {
-      border-color: #d9ccf3;
-      background: var(--purple-hover);
-    }
-
-    .result-tile .action-icon {
-      margin: 0;
-    }
-
-    .result-copy {
-      min-width: 0;
-    }
-
-    .result-copy strong,
-    .result-copy span {
-      display: block;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .result-copy strong {
-      color: #302e33;
-      font-size: 11px;
-      font-weight: 630;
-    }
-
-    .result-copy span {
-      margin-top: 3px;
-      color: var(--ink-faint);
-      font-size: 9px;
-    }
-
-    .result-tile .tile-hotkey {
-      grid-column: 3;
-      margin-left: 0;
     }
 
     .manage-header {
@@ -1623,7 +1801,7 @@
       <span class="prototype-mark"><svg class="icon"><use href="#i-command"/></svg></span>
       <span>
         <strong>Peak Command Center</strong>
-        <small>V8 · horizontal groups, vertical stack</small>
+        <small>V9 · scope tabs, two-dimensional actions</small>
       </span>
     </div>
     <nav class="state-switcher" aria-label="原型状态">
@@ -1636,7 +1814,7 @@
   </header>
 
   <main class="stage">
-    <section class="app-frame" aria-label="Command Center V8 原型">
+    <section class="app-frame" aria-label="Command Center V9 原型">
       <div class="app-titlebar">
         <span class="traffic-lights"><i></i><i></i><i></i></span>
         <span class="app-title">Peak Assistant · Product vault</span>
@@ -1701,121 +1879,18 @@
             </label>
             <button class="close-button" aria-label="关闭"><svg class="icon"><use href="#i-x"/></svg></button>
           </header>
-          <div class="launcher-body">
-            <div class="flow-area">
-              <div class="flow-columns" id="launcher-board">
-                <div class="flow-column" data-lane="main">
-                  <section class="flow-group">
-                    <div class="flow-group-header">
-                      <span class="flow-group-title"><svg class="icon"><use href="#i-sparkles"/></svg><strong>Peak Assistant</strong></span>
-                    </div>
-                    <div class="flow-action-grid" data-action-grid>
-                      <button class="action-tile selected">
-                        <span class="action-icon"><svg class="icon"><use href="#i-pen"/></svg></span>
-                        <span class="action-name">Composer</span>
-                        <span class="action-meta">Write and review</span>
-                        <span class="tile-hotkey"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>O</kbd></span>
-                      </button>
-                      <button class="action-tile">
-                        <span class="action-icon"><svg class="icon"><use href="#i-message"/></svg></span>
-                        <span class="action-name">Chat Studio</span>
-                        <span class="action-meta">Open view</span>
-                      </button>
-                      <button class="action-tile">
-                        <span class="action-icon blue"><svg class="icon"><use href="#i-map"/></svg></span>
-                        <span class="action-name">File Atlas</span>
-                        <span class="action-meta">Explore vault</span>
-                      </button>
-                      <button class="action-tile">
-                        <span class="action-icon blue"><svg class="icon"><use href="#i-file-search"/></svg></span>
-                        <span class="action-name">Quick Search</span>
-                        <span class="action-meta">Search vault</span>
-                        <span class="tile-hotkey"><kbd>⌘</kbd><kbd>O</kbd></span>
-                      </button>
-                      <button class="action-tile">
-                        <span class="action-icon green"><svg class="icon"><use href="#i-home"/></svg></span>
-                        <span class="action-name">Home</span>
-                        <span class="action-meta">Pinned view</span>
-                      </button>
-                      <button class="action-tile">
-                        <span class="action-icon neutral"><svg class="icon"><use href="#i-settings"/></svg></span>
-                        <span class="action-name">Peak settings</span>
-                        <span class="action-meta">Settings</span>
-                      </button>
-                    </div>
-                  </section>
-
-                  <section class="flow-group">
-                    <div class="flow-group-header">
-                      <span class="flow-group-title"><svg class="icon"><use href="#i-workspace"/></svg><strong>Workspaces</strong></span>
-                    </div>
-                    <div class="flow-action-grid">
-                      <button class="action-tile">
-                        <span class="action-icon green"><svg class="icon"><use href="#i-workspace"/></svg></span>
-                        <span class="action-name">Research desk</span>
-                        <span class="action-meta">Workspace</span>
-                      </button>
-                      <button class="action-tile">
-                        <span class="action-icon neutral"><svg class="icon"><use href="#i-bookmark"/></svg></span>
-                        <span class="action-name">Bookmarks</span>
-                        <span class="action-meta">Obsidian</span>
-                      </button>
-                      <button class="action-tile">
-                        <span class="action-icon amber"><svg class="icon"><use href="#i-canvas"/></svg></span>
-                        <span class="action-name">Product map</span>
-                        <span class="action-meta">Canvas</span>
-                      </button>
-                    </div>
-                  </section>
-                  <section class="flow-group">
-                    <div class="flow-group-header">
-                      <span class="flow-group-title"><svg class="icon"><use href="#i-plus"/></svg><strong>Quick create</strong></span>
-                    </div>
-                    <div class="flow-action-grid">
-                      <button class="action-tile">
-                        <span class="action-icon blue"><svg class="icon"><use href="#i-calendar"/></svg></span>
-                        <span class="action-name">Daily note</span>
-                        <span class="action-meta">Core command</span>
-                      </button>
-                      <button class="action-tile">
-                        <span class="action-icon amber"><svg class="icon"><use href="#i-lightbulb"/></svg></span>
-                        <span class="action-name">Capture idea</span>
-                        <span class="action-meta">QuickAdd</span>
-                        <span class="tile-hotkey"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>I</kbd></span>
-                      </button>
-                      <button class="action-tile">
-                        <span class="action-icon blue"><svg class="icon"><use href="#i-file-plus"/></svg></span>
-                        <span class="action-name">Meeting note</span>
-                        <span class="action-meta">Template</span>
-                      </button>
-                      <button class="action-tile">
-                        <span class="action-icon neutral"><svg class="icon"><use href="#i-file-plus"/></svg></span>
-                        <span class="action-name">New note</span>
-                        <span class="action-meta">Obsidian</span>
-                      </button>
-                    </div>
-                  </section>
-
-                  <section class="flow-group">
-                    <div class="flow-group-header">
-                      <span class="flow-group-title"><svg class="icon"><use href="#i-canvas"/></svg><strong>Visual</strong></span>
-                    </div>
-                    <div class="flow-action-grid">
-                      <button class="action-tile">
-                        <span class="action-icon amber"><svg class="icon"><use href="#i-pen"/></svg></span>
-                        <span class="action-name">New drawing</span>
-                        <span class="action-meta">Excalidraw</span>
-                      </button>
-                      <button class="action-tile">
-                        <span class="action-icon amber"><svg class="icon"><use href="#i-layout"/></svg></span>
-                        <span class="action-name">Current window</span>
-                        <span class="action-meta">Excalidraw</span>
-                      </button>
-                    </div>
-                  </section>
-                </div>
+          <div class="launcher-body command-body">
+            <div class="filter-shell">
+              <div class="scope-strip" id="launcher-scope-tabs" aria-label="按分组切换"></div>
+              <div class="facet-strip" id="launcher-facet-tabs" aria-label="按能力类型筛选">
+                <button class="facet-chip active" data-facet="all" aria-pressed="true">All</button>
+                <button class="facet-chip" data-facet="ai" aria-pressed="false"><svg class="icon"><use href="#i-sparkles"/></svg>AI</button>
+                <button class="facet-chip" data-facet="create" aria-pressed="false"><svg class="icon"><use href="#i-plus"/></svg>Create</button>
+                <button class="facet-chip" data-facet="navigate" aria-pressed="false"><svg class="icon"><use href="#i-workspace"/></svg>Navigate</button>
+                <button class="facet-chip" data-facet="visual" aria-pressed="false"><svg class="icon"><use href="#i-canvas"/></svg>Visual</button>
               </div>
             </div>
+            <div class="scope-panels" id="launcher-board"></div>
           </div>
           <footer class="launcher-footer">
             <div class="key-hints">
@@ -1823,7 +1898,7 @@
               <span class="key-hint"><kbd>↵</kbd> open</span>
               <span class="key-hint"><kbd>Esc</kbd> close</span>
             </div>
-            <button class="footer-action" data-open="manage"><svg class="icon"><use href="#i-sliders"/></svg>Customize</button>
+            <span class="footer-current" id="launcher-current-scope">All · 15 actions</span>
           </footer>
         </section>
 
@@ -1831,56 +1906,25 @@
           <header class="launcher-header">
             <label class="launcher-search">
               <svg class="icon"><use href="#i-search"/></svg>
-              <input id="search-query" type="text" value="open" autocomplete="off">
+              <input id="search-query" type="text" placeholder="Search your configured actions" autocomplete="off">
             </label>
             <button class="close-button" aria-label="关闭"><svg class="icon"><use href="#i-x"/></svg></button>
           </header>
-          <div class="launcher-body">
-            <div class="flow-area search-area">
-              <div class="search-summary"><span><strong>6</strong> curated results</span><span>Only your Command Center</span></div>
-              <div class="flow-columns">
-                <div class="flow-column">
-                  <section class="flow-group">
-                    <div class="flow-group-header">
-                      <span class="flow-group-title"><svg class="icon"><use href="#i-sparkles"/></svg><strong>Peak Assistant</strong></span>
-                    </div>
-                    <div class="result-grid">
-                      <button class="result-tile selected">
-                        <span class="action-icon"><svg class="icon"><use href="#i-pen"/></svg></span>
-                        <span class="result-copy"><strong>Open Composer</strong><span>Write and review</span></span>
-                        <span class="tile-hotkey"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>O</kbd></span>
-                      </button>
-                      <button class="result-tile">
-                        <span class="action-icon"><svg class="icon"><use href="#i-message"/></svg></span>
-                        <span class="result-copy"><strong>Open Chat Studio</strong><span>Peak Assistant</span></span>
-                      </button>
-                      <button class="result-tile">
-                        <span class="action-icon blue"><svg class="icon"><use href="#i-map"/></svg></span>
-                        <span class="result-copy"><strong>Open File Atlas</strong><span>Peak Assistant</span></span>
-                      </button>
-                    </div>
-                  </section>
-                  <section class="flow-group">
-                    <div class="flow-group-header">
-                      <span class="flow-group-title"><svg class="icon"><use href="#i-workspace"/></svg><strong>Navigation</strong></span>
-                    </div>
-                    <div class="result-grid">
-                      <button class="result-tile">
-                        <span class="action-icon green"><svg class="icon"><use href="#i-home"/></svg></span>
-                        <span class="result-copy"><strong>Open Home</strong><span>Pinned view</span></span>
-                      </button>
-                      <button class="result-tile">
-                        <span class="action-icon green"><svg class="icon"><use href="#i-workspace"/></svg></span>
-                        <span class="result-copy"><strong>Open Research desk</strong><span>Workspace</span></span>
-                      </button>
-                      <button class="result-tile">
-                        <span class="action-icon amber"><svg class="icon"><use href="#i-canvas"/></svg></span>
-                        <span class="result-copy"><strong>Open product map</strong><span>Canvas</span></span>
-                      </button>
-                    </div>
-                  </section>
-                </div>
+          <div class="launcher-body command-body">
+            <div class="filter-shell">
+              <div class="scope-strip" id="search-scope-tabs" aria-label="在搜索结果中按分组切换"></div>
+              <div class="facet-strip" id="search-facet-tabs" aria-label="在搜索结果中按能力类型筛选">
+                <button class="facet-chip active" data-facet="all" aria-pressed="true">All</button>
+                <button class="facet-chip" data-facet="ai" aria-pressed="false"><svg class="icon"><use href="#i-sparkles"/></svg>AI</button>
+                <button class="facet-chip" data-facet="create" aria-pressed="false"><svg class="icon"><use href="#i-plus"/></svg>Create</button>
+                <button class="facet-chip" data-facet="navigate" aria-pressed="false"><svg class="icon"><use href="#i-workspace"/></svg>Navigate</button>
+                <button class="facet-chip" data-facet="visual" aria-pressed="false"><svg class="icon"><use href="#i-canvas"/></svg>Visual</button>
               </div>
+            </div>
+            <div class="scope-panels">
+              <div class="search-summary"><span><strong id="search-result-count">0</strong> curated results</span><span>Configured actions only</span></div>
+              <div class="command-tile-grid" id="search-results"></div>
+              <div class="empty-filter-state" id="search-empty-state" hidden>No configured action matches this scope.</div>
             </div>
           </div>
           <footer class="launcher-footer">
@@ -1889,7 +1933,7 @@
               <span class="key-hint"><kbd>↵</kbd> open</span>
               <span class="key-hint"><kbd>Esc</kbd> clear / close</span>
             </div>
-            <span class="footer-current">Search stays grouped</span>
+            <span class="footer-current">Filters narrow the grid</span>
           </footer>
         </section>
 
@@ -2173,18 +2217,18 @@
       </section>
     </section>
 
-    <section class="design-note" aria-label="V8 design principles">
+    <section class="design-note" aria-label="V9 design principles">
       <div class="note-item">
-        <strong>组与组只向下排列</strong>
-        <span>Peak Assistant、Workspaces、Quick create 等 block 共享一条纵向路径，不再左右并列。</span>
+        <strong>第一排先切换工作范围</strong>
+        <span>All、Peak Assistant、Workspaces、Quick create 与 Visual 是稳定 scope；一次只展开一个上下文，不再同时扫完整 group stack。</span>
       </div>
       <div class="note-item">
-        <strong>一个 block 内横向展开</strong>
-        <span>同组动作保持在一行并按空间换行；横向只发生在组内部，不跨越组边界。</span>
+        <strong>第二排只负责能力类型</strong>
+        <span>AI、Create、Navigate、Visual 是轻量 facet；scope 与 facet 组合后，下面始终是二维 action grid，不退回命令列表。</span>
       </div>
       <div class="note-item">
         <strong>Home 是安静的起点</strong>
-        <span>搜索、固定入口与继续工作先出现；用户固定的页面沿一条纵向阅读路径展开，不组成自由布局 dashboard。</span>
+        <span>搜索、固定入口与继续工作仍沿一条纵向阅读路径出现；Customize 继续负责 Add group、拖动、显示模式和 Pin。</span>
       </div>
     </section>
   </main>
@@ -2197,6 +2241,14 @@
     const launcherSearch = document.getElementById('launcher-search');
     const searchQuery = document.getElementById('search-query');
     const launcherBoard = document.getElementById('launcher-board');
+    const launcherScopeTabs = document.getElementById('launcher-scope-tabs');
+    const launcherFacetTabs = document.getElementById('launcher-facet-tabs');
+    const launcherCurrentScope = document.getElementById('launcher-current-scope');
+    const searchScopeTabs = document.getElementById('search-scope-tabs');
+    const searchFacetTabs = document.getElementById('search-facet-tabs');
+    const searchResults = document.getElementById('search-results');
+    const searchResultCount = document.getElementById('search-result-count');
+    const searchEmptyState = document.getElementById('search-empty-state');
     const manageBoard = document.getElementById('manage-board');
     const addGroupButton = document.getElementById('add-group-button');
     const actionPicker = document.getElementById('action-picker');
@@ -2230,6 +2282,35 @@
       ['Current window', 'text'],
     ]);
 
+    const actionFacets = new Map([
+      ['Composer', 'ai'],
+      ['Chat Studio', 'ai'],
+      ['File Atlas', 'ai'],
+      ['Quick Search', 'ai'],
+      ['Home', 'navigate'],
+      ['Peak settings', 'navigate'],
+      ['Research desk', 'navigate'],
+      ['Bookmarks', 'navigate'],
+      ['Product map', 'navigate'],
+      ['Daily note', 'create'],
+      ['Capture idea', 'create'],
+      ['Meeting note', 'create'],
+      ['New note', 'create'],
+      ['New drawing', 'visual'],
+      ['Current window', 'visual'],
+      ['Open calendar', 'navigate'],
+      ['New canvas', 'visual'],
+      ['Focus mode', 'navigate'],
+      ['Publish note', 'create'],
+      ['Random note', 'navigate'],
+    ]);
+
+    const actionHotkeys = new Map([
+      ['Composer', ['⌘', '⇧', 'O']],
+      ['Quick Search', ['⌘', 'O']],
+      ['Capture idea', ['⌘', '⇧', 'I']],
+    ]);
+
     const actionCatalog = [
       { name: 'Open calendar', meta: 'Calendar', icon: 'i-calendar', tone: 'blue' },
       { name: 'New canvas', meta: 'Canvas', icon: 'i-canvas', tone: 'amber' },
@@ -2244,6 +2325,10 @@
     let draggedGroup = null;
     let customGroupCount = 0;
     let customActionCount = 0;
+    let activeLauncherScope = 'all';
+    let activeLauncherFacet = 'all';
+    let activeSearchScope = 'all';
+    let activeSearchFacet = 'all';
 
     function getActionName(tile) {
       return tile.querySelector('.action-name')?.textContent.trim() || 'Untitled action';
@@ -2290,6 +2375,7 @@
       }
 
       tile.setAttribute('aria-label', getActionName(tile));
+      tile.title = getActionName(tile);
     }
 
     function initializeAction(tile) {
@@ -2381,40 +2467,220 @@
       updateSelectionEditor();
     }
 
-    function cleanLauncherClone(group) {
-      const clone = group.cloneNode(true);
-      clone.classList.remove('dragging', 'drop-target');
-      clone.querySelectorAll('.drag-dots, .group-tools').forEach((node) => node.remove());
-
-      const title = clone.querySelector('.manage-group-title');
-      title?.classList.remove('manage-group-title', 'group-drag-handle');
-      title?.removeAttribute('draggable');
-      const editable = clone.querySelector('[contenteditable]');
-      editable?.removeAttribute('contenteditable');
-
-      clone.querySelectorAll('.manage-tile').forEach((tile) => {
-        tile.classList.remove('manage-tile', 'selected', 'dragging', 'drop-target');
-        tile.removeAttribute('draggable');
-      });
-
-      return clone;
+    function getManageGroups() {
+      return [...manageBoard.querySelectorAll(':scope > .flow-column > .flow-group')];
     }
 
-    function syncLauncher() {
-      launcherBoard.querySelectorAll(':scope > .flow-column').forEach((column) => {
-        column.replaceChildren();
+    function getGroupLabel(group) {
+      return group.querySelector('.manage-group-title strong')?.textContent.trim() || 'Untitled group';
+    }
+
+    function getActionFacet(tile) {
+      return actionFacets.get(getActionName(tile)) || 'navigate';
+    }
+
+    function appendHotkey(tile) {
+      tile.querySelector('.tile-hotkey')?.remove();
+      const keys = actionHotkeys.get(getActionName(tile));
+      if (!keys) return;
+
+      const hotkey = document.createElement('span');
+      hotkey.className = 'tile-hotkey';
+      keys.forEach((key) => {
+        const keycap = document.createElement('kbd');
+        keycap.textContent = key;
+        hotkey.append(keycap);
+      });
+      tile.append(hotkey);
+    }
+
+    function cleanLauncherAction(source, groupId) {
+      const tile = source.cloneNode(true);
+      tile.classList.remove('manage-tile', 'selected', 'dragging', 'drop-target');
+      tile.querySelectorAll('.drag-dots').forEach((node) => node.remove());
+      tile.removeAttribute('draggable');
+      tile.dataset.scope = groupId;
+      tile.dataset.facet = getActionFacet(source);
+      appendHotkey(tile);
+      return tile;
+    }
+
+    function createScopeTab(scope, label, icon, active) {
+      const button = document.createElement('button');
+      button.className = 'scope-tab';
+      button.type = 'button';
+      button.dataset.scope = scope;
+      button.title = label;
+      button.setAttribute('aria-label', label);
+      button.setAttribute('aria-pressed', String(active));
+      button.classList.toggle('active', active);
+
+      if (scope === 'all') {
+        button.classList.add('scope-all');
+        button.textContent = 'All';
+        return button;
+      }
+
+      if (icon) button.append(icon.cloneNode(true));
+      return button;
+    }
+
+    function renderScopeTabs(container, groups, activeScope) {
+      const tabs = [
+        createScopeTab('all', 'All groups', null, activeScope === 'all'),
+        ...groups.map((group) => {
+          const icon = group.querySelector('.manage-group-title > .icon');
+          return createScopeTab(
+            group.dataset.groupId,
+            getGroupLabel(group),
+            icon,
+            activeScope === group.dataset.groupId,
+          );
+        }),
+      ];
+
+      const addButton = document.createElement('button');
+      addButton.className = 'scope-tab scope-add';
+      addButton.type = 'button';
+      addButton.title = 'Customize groups';
+      addButton.setAttribute('aria-label', 'Customize groups');
+      addButton.dataset.scopeAdd = 'true';
+      addButton.append(createIconUse('i-plus'));
+      container.replaceChildren(...tabs, addButton);
+    }
+
+    function createScopePanel(scope, label, sourceActions) {
+      const panel = document.createElement('section');
+      panel.className = 'scope-panel';
+      panel.dataset.scopePanel = scope;
+
+      const heading = document.createElement('div');
+      heading.className = 'scope-panel-heading';
+      const title = document.createElement('strong');
+      const count = document.createElement('span');
+      title.textContent = label;
+      count.dataset.scopeCount = 'true';
+      heading.append(title, count);
+
+      const grid = document.createElement('div');
+      grid.className = 'command-tile-grid';
+      grid.append(...sourceActions.map(({ tile, groupId }) => cleanLauncherAction(tile, groupId)));
+
+      const empty = document.createElement('div');
+      empty.className = 'empty-filter-state';
+      empty.textContent = 'No action in this type yet.';
+      empty.hidden = true;
+      panel.append(heading, grid, empty);
+      return panel;
+    }
+
+    function updateLauncherProjection() {
+      const panels = [...launcherBoard.querySelectorAll('.scope-panel')];
+      let visibleCount = 0;
+      let activeLabel = 'All';
+
+      panels.forEach((panel) => {
+        const isActive = panel.dataset.scopePanel === activeLauncherScope;
+        panel.hidden = !isActive;
+        if (!isActive) return;
+
+        activeLabel = panel.querySelector('.scope-panel-heading strong')?.textContent || 'All';
+        const tiles = [...panel.querySelectorAll('.action-tile')];
+        tiles.forEach((tile) => {
+          const visible = activeLauncherFacet === 'all' || tile.dataset.facet === activeLauncherFacet;
+          tile.hidden = !visible;
+          tile.classList.remove('selected');
+          if (visible) visibleCount += 1;
+        });
+
+        panel.querySelector('[data-scope-count]').textContent = `${visibleCount} actions`;
+        panel.querySelector('.empty-filter-state').hidden = visibleCount > 0;
+        tiles.find((tile) => !tile.hidden)?.classList.add('selected');
       });
 
-      manageBoard.querySelectorAll(':scope > .flow-column').forEach((sourceColumn) => {
-        const lane = sourceColumn.dataset.lane;
-        const targetColumn = launcherBoard.querySelector(`[data-lane="${lane}"]`);
-        [...sourceColumn.children].forEach((group) => {
-          if (!group.classList.contains('flow-group')) return;
-          targetColumn.append(cleanLauncherClone(group));
+      launcherScopeTabs.querySelectorAll('[data-scope]').forEach((button) => {
+        const active = button.dataset.scope === activeLauncherScope;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', String(active));
+      });
+
+      launcherFacetTabs.querySelectorAll('[data-facet]').forEach((button) => {
+        const active = button.dataset.facet === activeLauncherFacet;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', String(active));
+      });
+
+      launcherCurrentScope.textContent = `${activeLabel} · ${visibleCount} actions`;
+    }
+
+    function renderSearchResults() {
+      const query = searchQuery.value.trim().toLowerCase();
+      const groups = getManageGroups();
+      const matching = [];
+
+      groups.forEach((group) => {
+        const groupId = group.dataset.groupId;
+        const groupLabel = getGroupLabel(group);
+        group.querySelectorAll('.manage-tile').forEach((tile) => {
+          const scopeMatches = activeSearchScope === 'all' || activeSearchScope === groupId;
+          const facet = getActionFacet(tile);
+          const facetMatches = activeSearchFacet === 'all' || activeSearchFacet === facet;
+          const haystack = `${getActionName(tile)} ${getActionMeta(tile)} ${groupLabel}`.toLowerCase();
+          if (!scopeMatches || !facetMatches || (query && !haystack.includes(query))) return;
+          matching.push(cleanLauncherAction(tile, groupId));
         });
       });
 
-      launcherBoard.querySelector('.action-tile')?.classList.add('selected');
+      searchResults.replaceChildren(...matching);
+      searchResultCount.textContent = String(matching.length);
+      searchEmptyState.hidden = matching.length > 0;
+      matching[0]?.classList.add('selected');
+
+      searchScopeTabs.querySelectorAll('[data-scope]').forEach((button) => {
+        const active = button.dataset.scope === activeSearchScope;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', String(active));
+      });
+
+      searchFacetTabs.querySelectorAll('[data-facet]').forEach((button) => {
+        const active = button.dataset.facet === activeSearchFacet;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', String(active));
+      });
+    }
+
+    function syncLauncher() {
+      const groups = getManageGroups();
+      const availableScopes = new Set(groups.map((group) => group.dataset.groupId));
+      if (activeLauncherScope !== 'all' && !availableScopes.has(activeLauncherScope)) {
+        activeLauncherScope = 'all';
+      }
+      if (activeSearchScope !== 'all' && !availableScopes.has(activeSearchScope)) {
+        activeSearchScope = 'all';
+      }
+
+      renderScopeTabs(launcherScopeTabs, groups, activeLauncherScope);
+      renderScopeTabs(searchScopeTabs, groups, activeSearchScope);
+
+      const allActions = groups.flatMap((group) => (
+        [...group.querySelectorAll('.manage-tile')].map((tile) => ({
+          tile,
+          groupId: group.dataset.groupId,
+        }))
+      ));
+      const panels = [createScopePanel('all', 'All commands', allActions)];
+
+      groups.forEach((group) => {
+        const groupActions = [...group.querySelectorAll('.manage-tile')].map((tile) => ({
+          tile,
+          groupId: group.dataset.groupId,
+        }));
+        panels.push(createScopePanel(group.dataset.groupId, getGroupLabel(group), groupActions));
+      });
+
+      launcherBoard.replaceChildren(...panels);
+      updateLauncherProjection();
+      renderSearchResults();
     }
 
     function createQuickItem(tile) {
@@ -2582,6 +2848,7 @@
       }
 
       if (view === 'search') {
+        renderSearchResults();
         requestAnimationFrame(() => {
           searchQuery.focus();
           searchQuery.setSelectionRange(searchQuery.value.length, searchQuery.value.length);
@@ -2610,13 +2877,65 @@
     launcherSearch.addEventListener('input', () => {
       if (!launcherSearch.value.trim()) return;
       searchQuery.value = launcherSearch.value;
+      renderSearchResults();
       setView('search');
     });
+
+    launcherScopeTabs.addEventListener('click', (event) => {
+      const addButton = event.target.closest('[data-scope-add]');
+      if (addButton) {
+        setView('manage');
+        return;
+      }
+
+      const tab = event.target.closest('[data-scope]');
+      if (!tab) return;
+      activeLauncherScope = tab.dataset.scope;
+      updateLauncherProjection();
+    });
+
+    launcherFacetTabs.addEventListener('click', (event) => {
+      const chip = event.target.closest('[data-facet]');
+      if (!chip) return;
+      activeLauncherFacet = chip.dataset.facet;
+      updateLauncherProjection();
+    });
+
+    searchScopeTabs.addEventListener('click', (event) => {
+      const addButton = event.target.closest('[data-scope-add]');
+      if (addButton) {
+        setView('manage');
+        return;
+      }
+
+      const tab = event.target.closest('[data-scope]');
+      if (!tab) return;
+      activeSearchScope = tab.dataset.scope;
+      renderSearchResults();
+    });
+
+    searchFacetTabs.addEventListener('click', (event) => {
+      const chip = event.target.closest('[data-facet]');
+      if (!chip) return;
+      activeSearchFacet = chip.dataset.facet;
+      renderSearchResults();
+    });
+
+    searchQuery.addEventListener('input', renderSearchResults);
 
     launcherBoard.addEventListener('mouseover', (event) => {
       const tile = event.target.closest('.action-tile');
       if (!tile) return;
       launcherBoard.querySelectorAll('.action-tile.selected').forEach((candidate) => {
+        candidate.classList.remove('selected');
+      });
+      tile.classList.add('selected');
+    });
+
+    searchResults.addEventListener('mouseover', (event) => {
+      const tile = event.target.closest('.action-tile');
+      if (!tile) return;
+      searchResults.querySelectorAll('.action-tile.selected').forEach((candidate) => {
         candidate.classList.remove('selected');
       });
       tile.classList.add('selected');
@@ -2718,7 +3037,10 @@
         }
 
         const rect = tileTarget.getBoundingClientRect();
-        const before = event.clientY < rect.top + rect.height / 2;
+        const pointerIsOnRow = event.clientY >= rect.top && event.clientY <= rect.bottom;
+        const before = pointerIsOnRow
+          ? event.clientX < rect.left + rect.width / 2
+          : event.clientY < rect.top + rect.height / 2;
         grid.insertBefore(draggedAction, before ? tileTarget : tileTarget.nextSibling);
         return;
       }
