@@ -96,7 +96,6 @@ export function MarkdownSourceEditor({
 	const ref = React.useRef<HTMLDivElement | null>(null);
 	const focused = React.useRef(false);
 	const composing = React.useRef(false);
-	const projectionFrame = React.useRef<number | null>(null);
 	const pendingSelection = React.useRef<MappedSelection | null>(null);
 	const [focusState, setFocusState] = React.useState(false);
 	const [renderState, setRenderState] = React.useState<RenderState>({ text: value, sourceFrom });
@@ -111,6 +110,7 @@ export function MarkdownSourceEditor({
 		kind: 'format' | 'break';
 		timer: number;
 	} | null>(null);
+	const nativeFormatShortcut = React.useRef<(key: string) => boolean>(() => false);
 
 	const structuralRanges = React.useMemo(
 		() => projectStructure
@@ -314,6 +314,15 @@ export function MarkdownSourceEditor({
 		return true;
 	};
 
+	const applyFormatShortcut = (key: string): boolean => {
+		const mark: MarkdownDraftInlineMark | undefined =
+			key === 'b' ? 'bold' : key === 'i' ? 'italic' : key === 'u' ? 'underline' : undefined;
+		if (!mark || !formatInline(mark)) return false;
+		armKeyboardCommandGuard('format');
+		return true;
+	};
+	nativeFormatShortcut.current = applyFormatShortcut;
+
 	const handleInput = () => {
 		const el = ref.current;
 		if (!el) return;
@@ -321,7 +330,7 @@ export function MarkdownSourceEditor({
 		const selection = mapSelectionInside(el);
 		sourceChangeRef.current(next, { kind: 'native', selection });
 		if (selection) recordLocalHistory(next, selection, 'burst');
-		if (composing.current || projectionFrame.current !== null) return;
+		if (composing.current) return;
 		const current = renderStateRef.current;
 		if (next === current.text) return;
 		if (!needsProjection(
@@ -334,14 +343,7 @@ export function MarkdownSourceEditor({
 			renderStateRef.current = { text: next, sourceFrom: current.sourceFrom };
 			return;
 		}
-		const win = el.ownerDocument.defaultView ?? window;
-		projectionFrame.current = win.requestAnimationFrame(() => {
-			projectionFrame.current = null;
-			const currentEl = ref.current;
-			if (!currentEl || !focused.current || composing.current) return;
-			const latest = currentEl.textContent ?? '';
-			project(latest, mapSelectionInside(currentEl));
-		});
+		project(next, selection);
 	};
 
 	React.useLayoutEffect(() => {
@@ -370,11 +372,36 @@ export function MarkdownSourceEditor({
 	}, [historyMode, sourceFrom, suspendExternalSync, value]);
 
 	React.useEffect(() => () => {
-		const el = ref.current;
-		const win = el?.ownerDocument.defaultView ?? window;
-		if (projectionFrame.current !== null) win.cancelAnimationFrame(projectionFrame.current);
+		const win = ref.current?.ownerDocument.defaultView ?? window;
 		if (keyboardCommandGuard.current) win.clearTimeout(keyboardCommandGuard.current.timer);
 		if (history.current.timer !== null) win.clearTimeout(history.current.timer);
+	}, []);
+
+	React.useEffect(() => {
+		const el = ref.current;
+		const win = el?.ownerDocument.defaultView;
+		if (!el || !win) return;
+		const capture = (event: KeyboardEvent) => {
+			if (!focused.current || el.ownerDocument.activeElement !== el) return;
+			if (
+				event.target !== el
+				&& !(event.target instanceof win.Node && el.contains(event.target))
+			) {
+				return;
+			}
+			const key = event.key.toLowerCase();
+			if (
+				!(event.metaKey || event.ctrlKey)
+				|| event.altKey
+				|| event.isComposing
+				|| (key !== 'b' && key !== 'i' && key !== 'u')
+			) return;
+			if (!event.repeat && !nativeFormatShortcut.current(key)) return;
+			event.preventDefault();
+			event.stopImmediatePropagation();
+		};
+		win.addEventListener('keydown', capture, true);
+		return () => win.removeEventListener('keydown', capture, true);
 	}, []);
 
 	return (
@@ -456,8 +483,7 @@ export function MarkdownSourceEditor({
 					&& (key === 'b' || key === 'i' || key === 'u')
 				) {
 					event.preventDefault();
-					armKeyboardCommandGuard('format');
-					formatInline(key === 'b' ? 'bold' : key === 'i' ? 'italic' : 'underline');
+					applyFormatShortcut(key);
 					return;
 				}
 				if (
@@ -486,11 +512,6 @@ export function MarkdownSourceEditor({
 			}}
 			onBlur={() => {
 				const el = ref.current;
-				if (projectionFrame.current !== null) {
-					const win = el?.ownerDocument.defaultView ?? window;
-					win.cancelAnimationFrame(projectionFrame.current);
-					projectionFrame.current = null;
-				}
 				const live = el?.textContent ?? renderStateRef.current.text;
 				focused.current = false;
 				setFocusState(false);

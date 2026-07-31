@@ -47,6 +47,14 @@ try {
 	// wrappers after selected deletion.
 	const draft = await openMarkdownDraft(page);
 	await draft.focus();
+	await page.evaluate(() => {
+		document.addEventListener('keydown', (event) => {
+			const key = event.key.toLowerCase();
+			if (!(event.metaKey || event.ctrlKey) || !['b', 'i', 'u'].includes(key)) return;
+			event.preventDefault();
+			event.stopPropagation();
+		}, true);
+	});
 	await page.keyboard.type('marked');
 	await selectText(draft, 'marked');
 	await page.keyboard.press('Meta+B');
@@ -86,6 +94,31 @@ try {
 		await page.keyboard.press('Backspace');
 		assert.equal(await sourceOf(draft), '');
 	}
+	await page.keyboard.press('Meta+B');
+	assert.equal(await sourceOf(draft), '****', 'collapsed bold creates a source pair');
+	await page.keyboard.type('mode');
+	assert.equal(await sourceOf(draft), '**mode**', 'typing stays inside the hidden bold delimiters');
+	await page.waitForFunction(() => Boolean(
+		document.querySelector('.pk-new-block-draft__editor span[style*="font-weight"]'),
+	));
+	await selectText(draft, 'mode');
+	await page.keyboard.press('Meta+B');
+	assert.equal(await sourceOf(draft), 'mode', 'collapsed-format typing remains toggleable');
+	await selectText(draft, 'mode');
+	await page.keyboard.press('Backspace');
+	assert.equal(await sourceOf(draft), '');
+	await page.keyboard.type('**typed**');
+	await page.waitForFunction(() => Boolean(
+		document.querySelector('.pk-new-block-draft__editor span[style*="font-weight"]'),
+	));
+	const projectedBoldWeight = await draft.evaluate((element) => {
+		const run = element.querySelector('span[style*="font-weight"]');
+		return run ? getComputedStyle(run).fontWeight : null;
+	});
+	assert.equal(projectedBoldWeight, '700', 'typed Markdown syntax projects as visible bold');
+	await selectText(draft, 'typed');
+	await page.keyboard.press('Backspace');
+	assert.equal(await sourceOf(draft), '');
 
 	// Same draft surface: list continuation and multi-level Tab never move focus
 	// out of the editor.

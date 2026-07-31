@@ -105,6 +105,7 @@ function renderPart(
 			? orderedListMarker(part.text)
 			: undefined;
 		return [
+			renderSourceAnchor(part.from, unitId),
 			'<span class="pk-composer-source-token" contenteditable="false"',
 			` data-src-token-from="${part.from}" data-src-token-to="${part.to}"`,
 			structural ? ` data-structural-token="${escapeAttribute(structural.role)}"` : '',
@@ -115,6 +116,7 @@ function renderPart(
 			' aria-hidden="true">',
 			escapeHtml(part.text),
 			'</span>',
+			renderSourceAnchor(part.to, unitId),
 		].join('');
 	}
 	if (part.kind === 'math') {
@@ -151,6 +153,15 @@ function renderPart(
 		part.linkTarget ? ' tabindex="0"' : '',
 	].join('');
 	return `<span${attributes}>${escapeHtml(part.text)}</span>`;
+}
+
+function renderSourceAnchor(offset: number, unitId: string | undefined): string {
+	const unit = unitId ? ` data-unit-id="${escapeAttribute(unitId)}"` : '';
+	return [
+		'<span class="pk-composer-source-anchor"',
+		` data-src-text-from="${offset}"${unit}>`,
+		'</span>',
+	].join('');
 }
 
 function orderedListMarker(source: string): string {

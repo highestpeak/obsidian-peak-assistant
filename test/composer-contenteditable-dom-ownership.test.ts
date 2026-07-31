@@ -42,6 +42,22 @@ assert.equal(
 	2,
 	'each list item owns one visual marker while retaining its source token',
 );
+const listPrefix = '- ';
+const listPrefixHidden = composerDraftHiddenRanges(listPrefix);
+const listPrefixHtml = renderContentEditableProjection(
+	projectSourceVisualParts(listPrefix, 0, {
+		hiddenRanges: listPrefixHidden,
+		mathMode: 'source',
+	}),
+	undefined,
+	listPrefixHidden,
+	composerDraftBlockRanges(listPrefix),
+);
+assert.ok(
+	listPrefixHtml.includes('class="pk-composer-source-anchor"') &&
+		listPrefixHtml.includes('data-src-text-from="2"'),
+	'a structural-only prefix keeps an editable source anchor after its hidden token',
+);
 assert.equal(
 	mixedHtml.replace(/<[^>]+>/g, ''),
 	mixed,
@@ -104,6 +120,11 @@ assert.ok(
 		sharedEditor.includes("inputType === 'formatUnderline'") &&
 		sharedEditor.includes('formatMarkdownDraftSelection'),
 	'keyboard and beforeinput formatting are serialized through Markdown source instead of native rich DOM',
+);
+assert.ok(
+	sharedEditor.includes("win.addEventListener('keydown', capture, true)") &&
+		sharedEditor.includes('event.stopImmediatePropagation()'),
+	'focused formatting shortcuts capture before Obsidian host keymaps',
 );
 
 console.log('composer-contenteditable-dom-ownership: passed');
