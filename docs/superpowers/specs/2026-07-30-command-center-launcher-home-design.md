@@ -2,7 +2,7 @@
 
 Date: 2026-07-30
 
-Visual direction revised: 2026-07-31 · V12 fluid source tabs and typographic polish
+Visual direction revised: 2026-07-31 · V13 command-directory customization
 
 Status: Decided · design/spec ready · implementation pending
 
@@ -241,28 +241,30 @@ Pinned Notes, Bases and Canvases remain owned by their existing Obsidian views. 
 
 ### 7.4 Manage mode
 
-Customize mode is explicit. Normal invocation never shows drag handles or edit controls. Customize uses a vertical group editor because it is editing the scope order rather than acting as the runtime retrieval surface.
+Customize mode is explicit. Normal invocation never shows drag handles or edit controls. Customize reuses the familiar Command Palette retrieval model instead of introducing a second card canvas:
 
-Customize must also stay visually quiet:
+- the header is a command search field;
+- the first row selects the group being edited and ends with a small `New group` action;
+- the selected group's icon and name are edited directly in one compact identity row;
+- the command directory is split into `Added to <group>` and `Available commands`;
+- every command row keeps its full label, source, current hotkey and one trailing membership switch;
+- added commands can be dragged in their section to change the group's spatial order;
+- clicking an added row expands only that row's display mode and `Pin to Home` controls.
 
-- group drag affordance and group tools appear only on group hover or focus;
-- clicking an action opens one small contextual editor for display mode and Home pin state;
-- no action-level edit toolbar is permanently repeated across the canvas;
-- `Add group` is a low-emphasis inline action, not a full-width empty card.
+There is no group card wall, repeated `Add action` button, floating selection toolbar or permanent second inspector. Switching groups changes only the membership projection of the same command directory.
 
 Available operations:
 
-- add / rename / delete group;
+- add / rename group;
 - choose group icon;
-- add action from a searchable catalog;
+- add / remove action with the scoped membership switch;
 - edit short label and aliases;
 - reorder groups and actions;
 - choose `icon + label`, `icon only` or `text only` for each action;
 - pin / unpin action in Home Quick access;
-- remove unavailable action;
-- reset only the selected group to its default.
+- remove unavailable action.
 
-The full command catalog is a temporary picker opened by `Add action`. It is not a permanent second column.
+The full registered-command catalog appears only in Customize. It is the primary content of that state, not a temporary popover and not a permanent second column beside a group editor. Runtime Launcher and Search still filter only configured actions.
 
 Destructive layout reset requires confirmation and export/import support before a global reset ships.
 
@@ -273,7 +275,7 @@ Destructive layout reset requires confirmation and export/import support before 
 | Modal · launcher | Invoke a curated action without typing | Groups, facets, actions, availability, hotkeys | Recent usage only | Switch scope, filter type, spatial navigation, Enter, search | Starter grid or “add first action” | Hotkey / command; closes to prior focus |
 | Modal · search | Narrow configured actions | Curated action index | Query only | Type, retain scope/facet, grid navigation, Enter, clear | Empty result with clear-query guidance | Search field; returns to launcher on clear |
 | Home View | Return to important work and destinations | Pinned actions, recents, bookmarks, Workspaces, pinned pages | Quick access and pin order | Search, open destination, customize | Guide to pin the first destination or page | Ribbon / command / empty tab; exits to destination |
-| Customize | Curate the current grouped order | Current config; catalog only after Add action | Groups, labels, aliases, order, Home pins | Drag, add, edit, remove, Done | Compatibility warning inside catalog picker | Footer action; Done returns to launcher |
+| Customize | Curate one group's membership and order | Current config and registered command catalog | Group icon/name, membership, order, display mode, Home pins | Select group, search commands, switch membership, drag added rows, expand row settings, Done | Empty search result or compatibility warning in the directory | Footer action; Done returns to launcher |
 
 ## 9. Visual design
 
@@ -326,6 +328,15 @@ AI-generated icons are excluded because they are inconsistent at small sizes, ha
 - The newly active scope panel enters with `opacity` and at most `5px` of vertical travel over approximately `180ms`.
 - Facet changes may use a shorter `150ms` result-grid fade. Query typing must not replay a full-page transition on every keystroke.
 - Motion never changes layout ownership or action order and must be disabled by `prefers-reduced-motion`.
+
+### 9.5 Customize command directory
+
+- Geometry and typography should recall Obsidian's native Command Palette: one search field, compact continuous rows and trailing hotkeys or state controls.
+- Customize may grow to approximately `510px` high so the full directory has a useful scan window; Launcher and runtime Search remain approximately `400px`.
+- The directory uses neutral hover fills and separators rather than outlined command cards.
+- Group selection stays above the directory. Renaming and icon choice are direct edits, not a settings form.
+- Membership uses one binary switch scoped to the active group. It must announce `aria-checked` and an add/remove accessible label.
+- Advanced action presentation is progressive disclosure: only an explicitly selected added row exposes display mode and Home Pin.
 
 ## 10. Keyboard and focus contract
 

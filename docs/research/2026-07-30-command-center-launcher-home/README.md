@@ -2,7 +2,7 @@
 
 > 日期：2026-07-30
 >
-> 视觉方向修订：2026-07-31 · V12 fluid source tabs and typographic polish
+> 视觉方向修订：2026-07-31 · V13 command-directory customization
 >
 > 状态：Research complete；产品边界已进入正式设计，尚未实现
 >
@@ -127,6 +127,15 @@ V12 不再调整信息架构，而是补齐决定完成度的排版、来源回�
 - 每排 scope 不再各自生成激活下划线，而是共享一条约 `220ms` 的滑动 indicator；切换 scope 时内容使用约 `180ms / 5px` 的轻量承接。
 - facet 切换只对结果做更短的淡入；搜索输入不在每个字符上重复整页动画。`prefers-reduced-motion` 会关闭这些过渡。
 - 三列二维 grid 保留。它现在是稳定空间导航，而不是把原生 list 简单改成三列卡片。
+
+V13 只重做 Customize，纠正“为编辑 Launcher 又发明一块卡片画布”的问题：
+
+- Customize 回到 Obsidian Command Palette 的熟悉心智：顶部直接搜索完整命令目录，命令以连续单列 row 出现；该状态可增高到约 `510px`，Launcher 仍保持约 `400px`。
+- 第一排选择当前编辑的 group，末尾 `+` 新建分组；下一排直接编辑 group icon 和名称，不再进入额外设置页。
+- 命令分成 `Added to <group>` 与 `Available commands` 两段。每行保留完整名称、来源、说明和真实快捷键，最右侧 switch 表示它是否属于当前分组。
+- switch 关闭等同于从当前 group 移除，打开等同于加入；切换 group 后，同一条命令可以呈现不同 membership。
+- Added 区可以拖动排序。点击一条已加入命令后，只在该 row 下展开 `Icon + text / Icon / Text` 与 `Pin to Home`，不再出现悬浮编辑工具条。
+- 完整命令目录只存在于 Customize；Launcher 与运行态 Search 仍然只显示已策展命令，因此不会退回原生 Palette 的高噪音体验。
 
 ## 录屏观察
 

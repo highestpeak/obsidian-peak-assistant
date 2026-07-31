@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Peak Command Center · V12</title>
+  <title>Peak Command Center · V13</title>
   <style>
     :root {
       color-scheme: light;
@@ -413,6 +413,10 @@
       border-radius: var(--radius);
       background: var(--surface);
       box-shadow: var(--shadow);
+    }
+
+    .launcher[data-screen="manage"] {
+      height: min(510px, calc(100% - 28px));
     }
 
     .launcher-header {
@@ -1196,6 +1200,487 @@
       font-weight: 650;
     }
 
+    .manage-command-body {
+      position: relative;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      overflow: hidden;
+    }
+
+    .manage-group-shell {
+      border-bottom: 1px solid #f0f1f3;
+      background: #fff;
+    }
+
+    .manage-group-nav {
+      height: 34px;
+      display: flex;
+      align-items: stretch;
+      gap: 4px;
+      padding: 0 13px;
+    }
+
+    .manage-group-tabs {
+      min-width: 0;
+      display: flex;
+      flex: 1;
+      align-items: stretch;
+      gap: 2px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .manage-group-tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    .manage-group-tab {
+      position: relative;
+      min-width: 0;
+      height: 34px;
+      display: inline-flex;
+      flex: none;
+      align-items: center;
+      gap: 6px;
+      padding: 0 8px;
+      border: 0;
+      color: #72767c;
+      background: transparent;
+      font-size: 10px;
+      font-weight: 520;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+    }
+
+    .manage-group-tab .icon {
+      width: 14px;
+      height: 14px;
+      color: var(--group-tone, #6a50bd);
+    }
+
+    .manage-group-tab span {
+      max-width: 88px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .manage-group-tab::after {
+      position: absolute;
+      right: 8px;
+      bottom: 0;
+      left: 8px;
+      height: 1.5px;
+      border-radius: 2px;
+      background: #25272b;
+      opacity: 0;
+      transform: scaleX(0.65);
+      transition: opacity 140ms ease, transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+      content: "";
+    }
+
+    .manage-group-tab:hover,
+    .manage-group-tab.active {
+      color: #25272b;
+    }
+
+    .manage-group-tab.active::after {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+
+    .manage-group-tab.dragging {
+      opacity: 0.4;
+    }
+
+    .manage-add-group {
+      width: 27px;
+      height: 27px;
+      display: grid;
+      flex: none;
+      place-items: center;
+      align-self: center;
+      border: 0;
+      border-radius: 50%;
+      color: #858990;
+      background: #f5f6f7;
+      cursor: pointer;
+    }
+
+    .manage-add-group:hover {
+      color: #4d5158;
+      background: #eceef0;
+    }
+
+    .manage-add-group .icon {
+      width: 13px;
+      height: 13px;
+    }
+
+    .manage-group-identity {
+      height: 42px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 15px;
+      background: #fcfcfd;
+    }
+
+    .manage-icon-button {
+      width: 25px;
+      height: 25px;
+      display: grid;
+      flex: none;
+      place-items: center;
+      border: 1px solid #e5e7ea;
+      border-radius: 6px;
+      color: #6651b9;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .manage-icon-button:hover {
+      border-color: #cfd2d7;
+      background: #f7f7f8;
+    }
+
+    .manage-icon-button .icon {
+      width: 15px;
+      height: 15px;
+    }
+
+    .manage-icon-monogram {
+      font-size: 8px;
+      font-weight: 750;
+      letter-spacing: -0.04em;
+    }
+
+    .manage-group-name {
+      width: min(210px, 44%);
+      height: 27px;
+      padding: 0 6px;
+      border: 1px solid transparent;
+      border-radius: 5px;
+      outline: 0;
+      color: #2d3035;
+      background: transparent;
+      font-size: 11px;
+      font-weight: 590;
+      letter-spacing: -0.012em;
+    }
+
+    .manage-group-name:hover {
+      border-color: #e4e6e9;
+      background: #fff;
+    }
+
+    .manage-group-name:focus {
+      border-color: #c9bce4;
+      background: #fff;
+      box-shadow: 0 0 0 2px #f0ebfb;
+    }
+
+    .manage-group-count {
+      margin-left: auto;
+      color: #92969c;
+      font-size: 9px;
+      white-space: nowrap;
+    }
+
+    .manage-command-list {
+      grid-row: 2;
+      min-height: 0;
+      padding: 5px 10px 9px;
+      overflow-y: auto;
+    }
+
+    .manage-list-heading {
+      height: 25px;
+      display: flex;
+      align-items: center;
+      padding: 3px 9px 0;
+      color: #9a9da2;
+      font-size: 8px;
+      font-weight: 650;
+      letter-spacing: 0.055em;
+      text-transform: uppercase;
+    }
+
+    .manage-command-row {
+      min-height: 40px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto 36px;
+      align-items: center;
+      column-gap: 8px;
+      border-radius: 6px;
+      background: transparent;
+    }
+
+    .manage-command-row:hover,
+    .manage-command-row.expanded {
+      background: #f7f7f8;
+    }
+
+    .manage-command-row.drop-before {
+      box-shadow: inset 0 1.5px #6f4cc3;
+    }
+
+    .manage-command-main {
+      min-width: 0;
+      height: 40px;
+      display: grid;
+      grid-template-columns: 12px 20px minmax(0, 1fr);
+      align-items: center;
+      gap: 7px;
+      padding: 0 0 0 7px;
+      border: 0;
+      background: transparent;
+      text-align: left;
+      cursor: default;
+    }
+
+    .manage-command-row.is-added .manage-command-main {
+      cursor: pointer;
+    }
+
+    .manage-row-grip {
+      width: 12px;
+      height: 18px;
+      display: grid;
+      grid-template-columns: repeat(2, 2px);
+      grid-auto-rows: 2px;
+      gap: 2px;
+      align-content: center;
+      justify-content: center;
+      color: #b4b7bc;
+      opacity: 0;
+      cursor: grab;
+      transition: opacity 120ms ease;
+    }
+
+    .manage-row-grip i {
+      width: 2px;
+      height: 2px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .manage-command-row.is-added:hover .manage-row-grip {
+      opacity: 1;
+    }
+
+    .manage-command-icon {
+      width: 18px;
+      height: 18px;
+      display: grid;
+      place-items: center;
+      color: #747980;
+    }
+
+    .manage-command-icon .icon {
+      width: 16px;
+      height: 16px;
+    }
+
+    .manage-command-copy {
+      min-width: 0;
+    }
+
+    .manage-command-copy strong,
+    .manage-command-copy span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .manage-command-copy strong {
+      color: #303338;
+      font-size: 10.5px;
+      font-weight: 560;
+      letter-spacing: -0.01em;
+    }
+
+    .manage-command-copy span {
+      margin-top: 2px;
+      color: #92969c;
+      font-size: 8.5px;
+    }
+
+    .manage-command-hotkey {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .manage-command-hotkey kbd {
+      min-width: 16px;
+      height: 17px;
+      display: grid;
+      place-items: center;
+      padding: 0 4px;
+      border: 1px solid #e3e5e8;
+      border-radius: 4px;
+      color: #757980;
+      background: #fff;
+      box-shadow: 0 1px 0 #eceef0;
+      font-size: 8px;
+    }
+
+    .membership-switch,
+    .inline-pin-switch {
+      position: relative;
+      width: 28px;
+      height: 17px;
+      padding: 0;
+      border: 0;
+      border-radius: 9px;
+      background: #d9dce0;
+      cursor: pointer;
+      transition: background-color 150ms ease;
+    }
+
+    .membership-switch::after,
+    .inline-pin-switch::after {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(31, 35, 42, 0.2);
+      transition: transform 170ms cubic-bezier(0.22, 1, 0.36, 1);
+      content: "";
+    }
+
+    .membership-switch.active,
+    .inline-pin-switch.active {
+      background: #6b50b8;
+    }
+
+    .membership-switch.active::after,
+    .inline-pin-switch.active::after {
+      transform: translateX(11px);
+    }
+
+    .manage-command-detail {
+      grid-column: 1 / -1;
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin: -2px 7px 5px 39px;
+      padding-top: 4px;
+      border-top: 1px solid #e9eaed;
+      color: #888c92;
+      font-size: 8.5px;
+    }
+
+    .inline-display-switcher {
+      display: flex;
+      gap: 2px;
+    }
+
+    .inline-display-button {
+      height: 23px;
+      padding: 0 7px;
+      border: 0;
+      border-radius: 5px;
+      color: #777b82;
+      background: transparent;
+      font-size: 8.5px;
+      cursor: pointer;
+    }
+
+    .inline-display-button:hover,
+    .inline-display-button.active {
+      color: #6046b8;
+      background: #eeeafa;
+    }
+
+    .inline-pin-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+    }
+
+    .inline-pin-switch {
+      width: 26px;
+      height: 16px;
+    }
+
+    .inline-pin-switch::after {
+      width: 12px;
+      height: 12px;
+    }
+
+    .inline-pin-switch.active::after {
+      transform: translateX(10px);
+    }
+
+    .manage-empty-state {
+      grid-row: 2;
+      padding: 36px 16px;
+      color: #93979d;
+      font-size: 10px;
+      text-align: center;
+    }
+
+    .manage-icon-picker {
+      position: absolute;
+      top: 116px;
+      left: 15px;
+      z-index: 9;
+      width: 150px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 3px;
+      padding: 6px;
+      border: 1px solid #e2e4e8;
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: 0 12px 30px rgba(31, 35, 42, 0.16);
+    }
+
+    .manage-icon-picker[hidden] {
+      display: none;
+    }
+
+    .manage-icon-picker button {
+      width: 31px;
+      height: 31px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 6px;
+      color: #666b72;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .manage-icon-picker button:hover {
+      color: #6046b8;
+      background: #f1edfa;
+    }
+
+    .manage-icon-picker .icon {
+      width: 16px;
+      height: 16px;
+    }
+
+    .manage-icon-picker span {
+      font-size: 9px;
+      font-weight: 650;
+    }
+
+    .manage-footer-status {
+      margin-right: auto;
+      color: #8e9298;
+      font-size: 9px;
+    }
+
     .drag-dots {
       width: 13px;
       height: 22px;
@@ -1975,7 +2460,7 @@
       <span class="prototype-mark"><svg class="icon"><use href="#i-command"/></svg></span>
       <span>
         <strong>Peak Command Center</strong>
-        <small>V12 · fluid tabs and typographic polish</small>
+        <small>V13 · command-directory customization</small>
       </span>
     </div>
     <nav class="state-switcher" aria-label="原型状态">
@@ -1988,7 +2473,7 @@
   </header>
 
   <main class="stage">
-    <section class="app-frame" aria-label="Command Center V12 原型">
+    <section class="app-frame" aria-label="Command Center V13 原型">
       <div class="app-titlebar">
         <span class="traffic-lights"><i></i><i></i><i></i></span>
         <span class="app-title">Peak Assistant · Product vault</span>
@@ -2110,13 +2595,30 @@
 
         <section class="launcher screen" data-screen="manage" aria-label="Command Center Customize">
           <header class="launcher-header">
-            <div class="manage-header">
-              <strong>Customize</strong>
-            </div>
+            <label class="launcher-search">
+              <svg class="icon"><use href="#i-search"/></svg>
+              <input id="manage-command-search" type="text" autocomplete="off" placeholder="Find commands to add…">
+            </label>
             <button class="close-button" aria-label="关闭"><svg class="icon"><use href="#i-x"/></svg></button>
           </header>
-          <div class="launcher-body">
-            <div class="flow-area">
+          <div class="launcher-body manage-command-body">
+            <div class="manage-group-shell">
+              <div class="manage-group-nav">
+                <div class="manage-group-tabs" id="manage-group-tabs" aria-label="选择要编辑的分组"></div>
+                <button class="manage-add-group" id="add-group-button" type="button" title="New group" aria-label="New group">
+                  <svg class="icon"><use href="#i-plus"/></svg>
+                </button>
+              </div>
+              <div class="manage-group-identity">
+                <button class="manage-icon-button" id="manage-icon-button" type="button" aria-label="Choose group icon"></button>
+                <input class="manage-group-name" id="manage-group-name" type="text" aria-label="Group name">
+                <span class="manage-group-count" id="manage-group-count"></span>
+              </div>
+            </div>
+            <div class="manage-command-list" id="manage-command-list" aria-live="polite"></div>
+            <div class="manage-empty-state" id="manage-empty-state" hidden>No command matches this search.</div>
+
+            <div class="flow-area" hidden aria-hidden="true">
               <div class="flow-columns" id="manage-board">
                 <div class="flow-column" data-lane="main">
                   <section class="flow-group">
@@ -2260,15 +2762,25 @@
                   </section>
                 </div>
               </div>
-              <button class="add-group-line" id="add-group-button"><svg class="icon"><use href="#i-plus"/></svg>Add group</button>
             </div>
+          </div>
+          <div class="manage-icon-picker" id="manage-icon-picker" hidden>
+            <button type="button" data-group-icon="i-peak-mark" aria-label="Peak mark"><svg class="icon"><use href="#i-peak-mark"/></svg></button>
+            <button type="button" data-group-icon="i-workspace-mark" aria-label="Workspace mark"><svg class="icon"><use href="#i-workspace-mark"/></svg></button>
+            <button type="button" data-group-icon="i-visual-mark" aria-label="Visual mark"><svg class="icon"><use href="#i-visual-mark"/></svg></button>
+            <button type="button" data-group-icon="i-sparkles" aria-label="Sparkles"><svg class="icon"><use href="#i-sparkles"/></svg></button>
+            <button type="button" data-group-icon="i-folder" aria-label="Folder"><svg class="icon"><use href="#i-folder"/></svg></button>
+            <button type="button" data-group-icon="i-calendar" aria-label="Calendar"><svg class="icon"><use href="#i-calendar"/></svg></button>
+            <button type="button" data-group-icon="i-bookmark" aria-label="Bookmark"><svg class="icon"><use href="#i-bookmark"/></svg></button>
+            <button type="button" data-group-icon="" aria-label="Use text label"><span>Aa</span></button>
           </div>
           <div class="action-picker" id="action-picker" hidden>
             <input class="action-picker-search" id="action-picker-search" type="text" placeholder="Find an action">
             <div class="action-picker-list" id="action-picker-list"></div>
           </div>
           <footer class="launcher-footer manage-footer">
-            <div class="selection-editor">
+            <span class="manage-footer-status" id="manage-footer-status"></span>
+            <div class="selection-editor" hidden>
               <strong class="selection-editor-label" id="selection-editor-label">Composer</strong>
               <div class="display-switcher" aria-label="按钮显示方式">
                 <button class="display-mode-button active" data-display-mode="full" title="图标和文字" aria-label="图标和文字"><svg class="icon"><use href="#i-layout"/></svg></button>
@@ -2387,18 +2899,18 @@
       </section>
     </section>
 
-    <section class="design-note" aria-label="V12 design principles">
+    <section class="design-note" aria-label="V13 design principles">
       <div class="note-item">
-        <strong>有图标与无图标都成立</strong>
-        <span>有品牌资产时使用 17px source mark；没有资产时，tab 显示短文字，action 使用来源缩写，不再硬塞通用图标。</span>
+        <strong>Customize 延续 Command Palette 心智</strong>
+        <span>搜索完整命令目录，每行用 switch 加入或移出当前分组；不再维护另一块卡片画布。</span>
       </div>
       <div class="note-item">
-        <strong>切换是连续移动，不是页面闪切</strong>
-        <span>scope 下划线在来源之间滑动，内容以短距离淡入承接；同时遵守 reduced-motion 偏好。</span>
+        <strong>分组身份直接编辑</strong>
+        <span>顶部选择分组，随后直接重命名并选择 source mark；新建组由同一排末尾的加号完成。</span>
       </div>
       <div class="note-item">
-        <strong>字体、边界、间距共同定质感</strong>
-        <span>12 / 11 / 9px 信息层级、44px action 行与单层浅边界共同构成密度；三列仍是二维入口，不退化成 Command Palette list。</span>
+        <strong>高级设置只在需要时展开</strong>
+        <span>已加入命令可以拖动排序；点击该行才展开 Icon + text / Icon / Text 与 Pin to Home，不重复堆工具条。</span>
       </div>
     </section>
   </main>
@@ -2419,6 +2931,15 @@
     const searchEmptyState = document.getElementById('search-empty-state');
     const manageBoard = document.getElementById('manage-board');
     const addGroupButton = document.getElementById('add-group-button');
+    const manageCommandSearch = document.getElementById('manage-command-search');
+    const manageGroupTabs = document.getElementById('manage-group-tabs');
+    const manageIconButton = document.getElementById('manage-icon-button');
+    const manageGroupName = document.getElementById('manage-group-name');
+    const manageGroupCount = document.getElementById('manage-group-count');
+    const manageCommandList = document.getElementById('manage-command-list');
+    const manageEmptyState = document.getElementById('manage-empty-state');
+    const manageIconPicker = document.getElementById('manage-icon-picker');
+    const manageFooterStatus = document.getElementById('manage-footer-status');
     const actionPicker = document.getElementById('action-picker');
     const actionPickerSearch = document.getElementById('action-picker-search');
     const actionPickerList = document.getElementById('action-picker-list');
@@ -2490,6 +3011,10 @@
     let activeLauncherFacet = 'all';
     let activeSearchScope = 'all';
     let activeSearchFacet = 'all';
+    let activeManageGroupId = '';
+    let commandDefinitions = [];
+    let draggedManageActionName = '';
+    let draggedManageGroupId = '';
 
     function getActionName(tile) {
       return tile.querySelector('.action-name')?.textContent.trim() || 'Untitled action';
@@ -2634,6 +3159,302 @@
 
     function getGroupLabel(group) {
       return group.querySelector('.manage-group-title strong')?.textContent.trim() || 'Untitled group';
+    }
+
+    function getGroupIconSymbol(group) {
+      const href = group.querySelector('.manage-group-title > .icon use')?.getAttribute('href') || '';
+      return href.replace(/^#/, '');
+    }
+
+    function getActiveManageGroup() {
+      const groups = getManageGroups();
+      const active = groups.find((group) => group.dataset.groupId === activeManageGroupId);
+      if (active) return active;
+      activeManageGroupId = groups[0]?.dataset.groupId || '';
+      return groups[0] || null;
+    }
+
+    function getActionIconSymbol(tile) {
+      const href = tile.querySelector('.action-icon use')?.getAttribute('href') || '';
+      return href.replace(/^#/, '') || 'i-command';
+    }
+
+    function getActionTone(tile) {
+      return ['blue', 'green', 'amber', 'neutral']
+        .find((tone) => tile.querySelector('.action-icon')?.classList.contains(tone)) || 'neutral';
+    }
+
+    function buildCommandDefinitions() {
+      const definitions = new Map();
+      getManageGroups().forEach((group) => {
+        const source = getGroupLabel(group);
+        group.querySelectorAll('.manage-tile').forEach((tile) => {
+          const name = getActionName(tile);
+          if (definitions.has(name)) return;
+          definitions.set(name, {
+            name,
+            meta: getActionMeta(tile),
+            source,
+            icon: getActionIconSymbol(tile),
+            tone: getActionTone(tile),
+          });
+        });
+      });
+
+      actionCatalog.forEach((action) => {
+        if (definitions.has(action.name)) return;
+        definitions.set(action.name, {
+          ...action,
+          source: action.meta,
+        });
+      });
+      return [...definitions.values()];
+    }
+
+    function findGroupAction(group, name) {
+      return [...group.querySelectorAll('.manage-tile')]
+        .find((tile) => getActionName(tile) === name) || null;
+    }
+
+    function createManageGroupTab(group, index) {
+      const button = document.createElement('button');
+      button.className = 'manage-group-tab';
+      button.type = 'button';
+      button.dataset.manageGroup = group.dataset.groupId;
+      button.classList.toggle('active', group.dataset.groupId === activeManageGroupId);
+      button.setAttribute('aria-pressed', String(group.dataset.groupId === activeManageGroupId));
+      button.draggable = true;
+      button.style.setProperty('--group-tone', ['#6046b8', '#2c8a68', '#d06a26', '#367ab6'][index % 4]);
+
+      const icon = group.querySelector('.manage-group-title > .icon');
+      if (icon) button.append(icon.cloneNode(true));
+
+      const label = document.createElement('span');
+      label.textContent = getGroupLabel(group);
+      button.append(label);
+      return button;
+    }
+
+    function renderManageGroupTabs() {
+      const groups = getManageGroups();
+      getActiveManageGroup();
+      manageGroupTabs.replaceChildren(...groups.map(createManageGroupTab));
+    }
+
+    function renderManageGroupIdentity() {
+      const group = getActiveManageGroup();
+      if (!group) return;
+
+      const icon = group.querySelector('.manage-group-title > .icon');
+      manageIconButton.replaceChildren();
+      if (icon) {
+        manageIconButton.append(icon.cloneNode(true));
+      } else {
+        const monogram = document.createElement('span');
+        monogram.className = 'manage-icon-monogram';
+        monogram.textContent = buildMonogram(getGroupLabel(group));
+        manageIconButton.append(monogram);
+      }
+
+      manageGroupName.value = getGroupLabel(group);
+      const count = group.querySelectorAll('.manage-tile').length;
+      manageGroupCount.textContent = `${count} command${count === 1 ? '' : 's'}`;
+      manageFooterStatus.textContent = `${count} added · drag added commands to reorder`;
+    }
+
+    function createManageRowGrip() {
+      const grip = document.createElement('span');
+      grip.className = 'manage-row-grip';
+      grip.setAttribute('aria-hidden', 'true');
+      for (let index = 0; index < 6; index += 1) {
+        grip.append(document.createElement('i'));
+      }
+      return grip;
+    }
+
+    function createInlineActionDetail(tile) {
+      const detail = document.createElement('div');
+      detail.className = 'manage-command-detail';
+
+      const label = document.createElement('span');
+      label.textContent = 'Button';
+
+      const display = document.createElement('div');
+      display.className = 'inline-display-switcher';
+      [
+        ['full', 'Icon + text'],
+        ['icon', 'Icon'],
+        ['text', 'Text'],
+      ].forEach(([mode, copy]) => {
+        const button = document.createElement('button');
+        button.className = 'inline-display-button';
+        button.classList.toggle('active', (tile.dataset.display || 'full') === mode);
+        button.type = 'button';
+        button.dataset.inlineDisplay = mode;
+        button.textContent = copy;
+        display.append(button);
+      });
+
+      const pin = document.createElement('span');
+      pin.className = 'inline-pin-control';
+      const pinLabel = document.createElement('span');
+      pinLabel.textContent = 'Pin to Home';
+      const pinSwitch = document.createElement('button');
+      const pinned = tile.dataset.pinned === 'true';
+      pinSwitch.className = 'inline-pin-switch';
+      pinSwitch.classList.toggle('active', pinned);
+      pinSwitch.type = 'button';
+      pinSwitch.dataset.inlinePin = 'true';
+      pinSwitch.setAttribute('role', 'switch');
+      pinSwitch.setAttribute('aria-checked', String(pinned));
+      pinSwitch.setAttribute('aria-label', 'Pin to Home');
+      pin.append(pinLabel, pinSwitch);
+
+      detail.append(label, display, pin);
+      return detail;
+    }
+
+    function createManageCommandRow(definition, tile, allowDrag) {
+      const added = Boolean(tile);
+      const row = document.createElement('div');
+      row.className = 'manage-command-row';
+      row.classList.toggle('is-added', added);
+      row.classList.toggle('expanded', added && selectedAction === tile);
+      row.dataset.commandName = definition.name;
+      row.draggable = added && allowDrag;
+
+      const main = document.createElement('button');
+      main.className = 'manage-command-main';
+      main.type = 'button';
+      main.dataset.commandMain = definition.name;
+      main.setAttribute('aria-disabled', String(!added));
+      main.append(createManageRowGrip());
+
+      const icon = document.createElement('span');
+      icon.className = 'manage-command-icon';
+      icon.append(createIconUse(definition.icon || 'i-command'));
+
+      const copy = document.createElement('span');
+      copy.className = 'manage-command-copy';
+      const name = document.createElement('strong');
+      const meta = document.createElement('span');
+      name.textContent = definition.name;
+      meta.textContent = `${definition.source} · ${definition.meta}`;
+      copy.append(name, meta);
+      main.append(icon, copy);
+
+      const hotkey = document.createElement('span');
+      hotkey.className = 'manage-command-hotkey';
+      (actionHotkeys.get(definition.name) || []).forEach((key) => {
+        const keycap = document.createElement('kbd');
+        keycap.textContent = key;
+        hotkey.append(keycap);
+      });
+
+      const toggle = document.createElement('button');
+      toggle.className = 'membership-switch';
+      toggle.classList.toggle('active', added);
+      toggle.type = 'button';
+      toggle.dataset.membershipToggle = definition.name;
+      toggle.setAttribute('role', 'switch');
+      toggle.setAttribute('aria-checked', String(added));
+      toggle.setAttribute('aria-label', `${added ? 'Remove' : 'Add'} ${definition.name}`);
+
+      row.append(main, hotkey, toggle);
+      if (added && selectedAction === tile) row.append(createInlineActionDetail(tile));
+      return row;
+    }
+
+    function renderManageCommands() {
+      const group = getActiveManageGroup();
+      if (!group) return;
+
+      const query = manageCommandSearch.value.trim().toLowerCase();
+      const addedTiles = [...group.querySelectorAll('.manage-tile')];
+      const addedByName = new Map(addedTiles.map((tile) => [getActionName(tile), tile]));
+      const matchesQuery = (definition) => {
+        if (!query) return true;
+        return `${definition.name} ${definition.meta} ${definition.source}`.toLowerCase().includes(query);
+      };
+
+      const definitionsByName = new Map(commandDefinitions.map((definition) => [definition.name, definition]));
+      const added = addedTiles
+        .map((tile) => definitionsByName.get(getActionName(tile)))
+        .filter(Boolean)
+        .filter(matchesQuery);
+      const available = commandDefinitions
+        .filter((definition) => !addedByName.has(definition.name))
+        .filter(matchesQuery);
+
+      const fragment = document.createDocumentFragment();
+      const appendSection = (label, definitions, allowDrag) => {
+        if (!definitions.length) return;
+        const heading = document.createElement('div');
+        heading.className = 'manage-list-heading';
+        heading.textContent = label;
+        fragment.append(heading);
+        definitions.forEach((definition) => {
+          fragment.append(createManageCommandRow(
+            definition,
+            addedByName.get(definition.name),
+            allowDrag,
+          ));
+        });
+      };
+
+      appendSection(`Added to ${getGroupLabel(group)}`, added, !query);
+      appendSection('Available commands', available, false);
+      manageCommandList.replaceChildren(fragment);
+      const empty = !added.length && !available.length;
+      manageCommandList.hidden = empty;
+      manageEmptyState.hidden = !empty;
+    }
+
+    function renderManageWorkspace() {
+      renderManageGroupTabs();
+      renderManageGroupIdentity();
+      renderManageCommands();
+    }
+
+    function setActiveManageGroup(groupId) {
+      activeManageGroupId = groupId;
+      selectedAction = null;
+      manageIconPicker.hidden = true;
+      renderManageWorkspace();
+    }
+
+    function toggleCommandMembership(name) {
+      const group = getActiveManageGroup();
+      const definition = commandDefinitions.find((candidate) => candidate.name === name);
+      if (!group || !definition) return;
+
+      const existing = findGroupAction(group, name);
+      if (existing) {
+        if (selectedAction === existing) selectedAction = null;
+        existing.remove();
+      } else {
+        const tile = createActionElement(definition);
+        group.querySelector('.flow-action-grid').append(tile);
+      }
+
+      syncConfiguredViews();
+      renderManageWorkspace();
+    }
+
+    function setActiveGroupIcon(symbol) {
+      const group = getActiveManageGroup();
+      if (!group) return;
+
+      const title = group.querySelector('.manage-group-title');
+      title.querySelector(':scope > .icon')?.remove();
+      if (symbol) {
+        const strong = title.querySelector('strong');
+        title.insertBefore(createIconUse(symbol), strong);
+      }
+
+      manageIconPicker.hidden = true;
+      syncConfiguredViews();
+      renderManageWorkspace();
     }
 
     function getActionFacet(tile) {
@@ -3025,14 +3846,14 @@
 
       target.append(group);
       initializeGroup(group);
-      const title = group.querySelector('.manage-group-title strong');
-      title.focus();
-      const range = document.createRange();
-      range.selectNodeContents(title);
-      const selection = window.getSelection();
-      selection.removeAllRanges();
-      selection.addRange(range);
+      activeManageGroupId = group.dataset.groupId;
+      selectedAction = null;
       syncConfiguredViews();
+      renderManageWorkspace();
+      requestAnimationFrame(() => {
+        manageGroupName.focus();
+        manageGroupName.select();
+      });
     }
 
     function clearDropState() {
@@ -3046,6 +3867,7 @@
       modalScrim.style.display = home ? 'none' : 'flex';
       homeShell.classList.toggle('active', home);
       if (view !== 'manage') closeActionPicker();
+      if (view !== 'manage') manageIconPicker.hidden = true;
 
       screens.forEach((screen) => {
         screen.classList.toggle('active', screen.dataset.screen === view);
@@ -3068,6 +3890,11 @@
           searchQuery.focus();
           searchQuery.setSelectionRange(searchQuery.value.length, searchQuery.value.length);
         });
+      }
+
+      if (view === 'manage') {
+        renderManageWorkspace();
+        requestAnimationFrame(() => manageCommandSearch.focus());
       }
     }
 
@@ -3177,6 +4004,160 @@
       });
     });
 
+    manageCommandSearch.addEventListener('input', renderManageCommands);
+
+    manageGroupTabs.addEventListener('click', (event) => {
+      const tab = event.target.closest('[data-manage-group]');
+      if (!tab) return;
+      setActiveManageGroup(tab.dataset.manageGroup);
+    });
+
+    manageGroupTabs.addEventListener('dragstart', (event) => {
+      const tab = event.target.closest('[data-manage-group]');
+      if (!tab) return;
+      draggedManageGroupId = tab.dataset.manageGroup;
+      tab.classList.add('dragging');
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', draggedManageGroupId);
+    });
+
+    manageGroupTabs.addEventListener('dragover', (event) => {
+      const targetTab = event.target.closest('[data-manage-group]');
+      if (!targetTab || !draggedManageGroupId) return;
+      event.preventDefault();
+      const groups = getManageGroups();
+      const source = groups.find((group) => group.dataset.groupId === draggedManageGroupId);
+      const target = groups.find((group) => group.dataset.groupId === targetTab.dataset.manageGroup);
+      if (!source || !target || source === target) return;
+      const rect = targetTab.getBoundingClientRect();
+      const before = event.clientX < rect.left + rect.width / 2;
+      target.parentElement.insertBefore(source, before ? target : target.nextSibling);
+    });
+
+    manageGroupTabs.addEventListener('drop', (event) => {
+      event.preventDefault();
+      draggedManageGroupId = '';
+      syncConfiguredViews();
+      renderManageWorkspace();
+    });
+
+    manageGroupTabs.addEventListener('dragend', () => {
+      draggedManageGroupId = '';
+      renderManageGroupTabs();
+    });
+
+    manageGroupName.addEventListener('input', () => {
+      const group = getActiveManageGroup();
+      if (!group) return;
+      const title = group.querySelector('.manage-group-title strong');
+      title.textContent = manageGroupName.value || 'Untitled group';
+      syncConfiguredViews();
+      renderManageGroupTabs();
+      renderManageCommands();
+    });
+
+    manageGroupName.addEventListener('blur', () => {
+      if (manageGroupName.value.trim()) return;
+      manageGroupName.value = 'Untitled group';
+      manageGroupName.dispatchEvent(new Event('input'));
+    });
+
+    manageIconButton.addEventListener('click', (event) => {
+      event.stopPropagation();
+      manageIconPicker.hidden = !manageIconPicker.hidden;
+    });
+
+    manageIconPicker.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-group-icon]');
+      if (!button) return;
+      setActiveGroupIcon(button.dataset.groupIcon);
+    });
+
+    manageCommandList.addEventListener('click', (event) => {
+      const row = event.target.closest('.manage-command-row');
+      if (!row) return;
+      const name = row.dataset.commandName;
+
+      const membership = event.target.closest('[data-membership-toggle]');
+      if (membership) {
+        toggleCommandMembership(name);
+        return;
+      }
+
+      const group = getActiveManageGroup();
+      const tile = group ? findGroupAction(group, name) : null;
+      if (!tile) return;
+
+      const display = event.target.closest('[data-inline-display]');
+      if (display) {
+        applyDisplayMode(tile, display.dataset.inlineDisplay);
+        selectedAction = tile;
+        syncConfiguredViews();
+        renderManageWorkspace();
+        return;
+      }
+
+      const pin = event.target.closest('[data-inline-pin]');
+      if (pin) {
+        tile.dataset.pinned = String(tile.dataset.pinned !== 'true');
+        selectedAction = tile;
+        syncConfiguredViews();
+        renderManageWorkspace();
+        return;
+      }
+
+      if (!event.target.closest('[data-command-main]')) return;
+      selectedAction = selectedAction === tile ? null : tile;
+      renderManageCommands();
+    });
+
+    manageCommandList.addEventListener('dragstart', (event) => {
+      const row = event.target.closest('.manage-command-row.is-added');
+      if (!row || manageCommandSearch.value.trim()) {
+        event.preventDefault();
+        return;
+      }
+      draggedManageActionName = row.dataset.commandName;
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', draggedManageActionName);
+    });
+
+    manageCommandList.addEventListener('dragover', (event) => {
+      const row = event.target.closest('.manage-command-row.is-added');
+      if (!row || !draggedManageActionName || row.dataset.commandName === draggedManageActionName) return;
+      event.preventDefault();
+      manageCommandList.querySelectorAll('.drop-before').forEach((candidate) => {
+        candidate.classList.remove('drop-before');
+      });
+      row.classList.add('drop-before');
+    });
+
+    manageCommandList.addEventListener('drop', (event) => {
+      const row = event.target.closest('.manage-command-row.is-added');
+      const group = getActiveManageGroup();
+      if (!row || !group || !draggedManageActionName) return;
+      event.preventDefault();
+
+      const source = findGroupAction(group, draggedManageActionName);
+      const target = findGroupAction(group, row.dataset.commandName);
+      if (source && target && source !== target) {
+        const rect = row.getBoundingClientRect();
+        const before = event.clientY < rect.top + rect.height / 2;
+        target.parentElement.insertBefore(source, before ? target : target.nextSibling);
+      }
+
+      draggedManageActionName = '';
+      syncConfiguredViews();
+      renderManageWorkspace();
+    });
+
+    manageCommandList.addEventListener('dragend', () => {
+      draggedManageActionName = '';
+      manageCommandList.querySelectorAll('.drop-before').forEach((row) => {
+        row.classList.remove('drop-before');
+      });
+    });
+
     manageBoard.addEventListener('click', (event) => {
       const addButton = event.target.closest('.group-add-button');
       if (addButton) {
@@ -3230,11 +4211,15 @@
       if (!actionPicker.hidden && !event.target.closest('.action-picker, .group-add-button')) {
         closeActionPicker();
       }
+      if (!manageIconPicker.hidden && !event.target.closest('.manage-icon-picker, .manage-icon-button')) {
+        manageIconPicker.hidden = true;
+      }
 
       const customizeActive = document.querySelector('[data-screen="manage"]').classList.contains('active');
       if (!customizeActive) return;
-      if (event.target.closest('.selection-editor, .manage-tile, .group-tools')) return;
+      if (event.target.closest('.manage-command-row, .manage-group-shell, .manage-icon-picker')) return;
       selectAction(null);
+      renderManageCommands();
     });
 
     manageBoard.addEventListener('dragstart', (event) => {
@@ -3314,6 +4299,12 @@
     document.addEventListener('keydown', (event) => {
       if (event.key !== 'Escape') return;
 
+      if (!manageIconPicker.hidden) {
+        manageIconPicker.hidden = true;
+        manageIconButton.focus();
+        return;
+      }
+
       if (!actionPicker.hidden) {
         closeActionPicker();
         return;
@@ -3328,6 +4319,12 @@
       }
 
       if (activeView === 'manage') {
+        if (manageCommandSearch.value) {
+          manageCommandSearch.value = '';
+          renderManageCommands();
+          manageCommandSearch.focus();
+          return;
+        }
         setView('launcher');
         return;
       }
@@ -3342,10 +4339,13 @@
       });
     });
 
+    activeManageGroupId = getManageGroups()[0]?.dataset.groupId || '';
+    commandDefinitions = buildCommandDefinitions();
     renderActionPicker();
     manageBoard.querySelectorAll('.manage-tile.selected').forEach((tile) => tile.classList.remove('selected'));
     selectAction(null);
     syncConfiguredViews();
+    renderManageWorkspace();
   </script>
 </body>
 </html>
