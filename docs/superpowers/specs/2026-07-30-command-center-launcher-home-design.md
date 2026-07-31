@@ -2,7 +2,7 @@
 
 Date: 2026-07-30
 
-Visual direction revised: 2026-07-31 · V10 reference-faithful flat command surface
+Visual direction revised: 2026-07-31 · V11 quiet branded command surface
 
 Status: Decided · design/spec ready · implementation pending
 
@@ -283,10 +283,10 @@ Destructive layout reset requires confirmation and export/import support before 
 - Height: approximately `372px`, capped by `calc(100vh - 72px)`.
 - Overlay: a light neutral wash, not a dark modal scrim.
 - First filter row: `All`, icon-led group scopes and one trailing Customize button.
-- Second filter row: compact text-and-icon type facets.
+- Second filter row: borderless type toggles with tiny color dots; selecting an active facet again clears it.
 - Content canvas: three equal columns at the reference width, responsive down to fewer columns.
 - Action cell: approximately `39px` high, borderless at rest, with only a quiet neutral hover / selection fill.
-- Default icon: approximately `12px` inside a restrained `22 × 22px` tinted well, echoing the reference's compact app/avatar markers.
+- Scope and action icons inherit a compact source mark. Peak Assistant, Workspaces, Quick create and Visual use distinct purpose-drawn marks in the prototype; generic Lucide actions are not promoted as fake brand identities.
 - The content canvas starts immediately after the filters; no `All commands`, group heading or item-count row is repeated.
 - Modal radius: approximately `12px`; action radius: approximately `6px`.
 - Accent: colored group/action icons carry identity; black underline and neutral fills carry navigation state.
@@ -295,21 +295,22 @@ No group sidebar, vertical group stack, outlined card wall, gradient, availabili
 
 ### 9.2 Action tile anatomy
 
-Every tile has an action identity, accessible name and tooltip. Its visible anatomy is user-selectable while the grid cell remains stable:
+Every tile has an action identity, accessible name and tooltip. The default board uses `icon + label` consistently so the first view has a complete rhythm. Its visible anatomy remains user-selectable:
 
 1. `icon + label`: small Lucide icon, short label, quiet provenance and an optional real hotkey;
 2. `icon only`: centered icon with `aria-label` and tooltip;
 3. `text only`: centered short label without an icon.
 
-All three modes share one grid geometry. The presentation choice changes visible content, not row rhythm or spatial position. Cells have no permanent outline; icon-only and text-only modes still inherit the same flat hover target. Unavailable actions keep their position and use a disabled treatment.
+All three modes share one grid geometry. The presentation choice changes visible content, not row rhythm or spatial position. Icon-only and text-only remain explicit customization choices rather than mixed first-run defaults. Cells have no permanent outline; resting state has no preselected gray block. Unavailable actions keep their position and use a disabled treatment.
 
 Long native command labels such as “Create new drawing — in the current active window” become a short tile title such as `Current window`; the tooltip preserves the full source label.
 
 ### 9.3 Icon policy
 
-Use Lucide React, not AI-generated bitmap icons.
+Use product / plugin source marks first, Lucide second, and never AI-generated bitmap icons.
 
-- Peak actions reuse existing mappings.
+- Peak actions reuse a dedicated Peak mark.
+- Actions from the same plugin or source inherit that source mark by default; action semantics stay in the label.
 - Generic action semantics use Lucide.
 - Plugin groups use a user-selected Lucide icon.
 - Actions inherit the group icon when no clear action icon exists.

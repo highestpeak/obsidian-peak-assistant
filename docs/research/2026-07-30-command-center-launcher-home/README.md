@@ -2,7 +2,7 @@
 
 > 日期：2026-07-30
 >
-> 视觉方向修订：2026-07-31 · V10 reference-faithful flat command surface
+> 视觉方向修订：2026-07-31 · V11 quiet branded command surface
 >
 > 状态：Research complete；产品边界已进入正式设计，尚未实现
 >
@@ -110,6 +110,14 @@ V10 纠正 V9 “信息结构接近、视觉仍像后台卡片墙”的落差：
 - 内容区从四列有边框 tile 改成三列无边框 action cells。默认透明，hover / selection 只出现极浅的中性底色。
 - 删除 `All commands`、action count 和 Search summary；过滤栏之后立即进入动作，不要求用户先读界面说明。
 - footer 对齐参考图的轻量快捷键提示，并将 Customize 收成右下角齿轮。
+
+V11 根据真实渲染截图继续纠偏廉价感：
+
+- V10 的马卡龙小方块仍然是假品牌感；V11 为 Peak Assistant、Workspaces、Quick create、Visual 绘制独立 source mark，并让 action 默认继承所属来源标志。
+- 第二排删除重复的 `All` 和所有描边 pill，改成带 4px 色点的无边框 toggle；再次点击当前类型即可清除过滤。
+- 首屏不再预设混合 `icon-only / text-only`，所有 action 先以完整模式形成连续三列。三种模式仍能在 Customize 中逐项设置。
+- resting state 不自动选中 Composer；只有真实 hover / keyboard focus 才出现极浅反馈，离开后恢复白色。
+- 内容区裸图标不再使用 pastel well；颜色只编码来源，不把每个命令包装成一张小卡片。
 
 ## 录屏观察
 
