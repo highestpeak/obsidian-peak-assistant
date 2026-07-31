@@ -59,6 +59,12 @@ const initial = await page.evaluate(() => ({
   formulaValue: document.querySelector('#formula-input')?.value,
   theme: document.body.dataset.theme,
   canvasColor: getComputedStyle(document.body).getPropertyValue('--bg').trim(),
+  gridLine: getComputedStyle(document.querySelector('.record-table td:nth-child(4)')).borderRightColor,
+  structuralLine: getComputedStyle(document.querySelector('.record-table td:nth-child(2)')).borderRightColor,
+  activeCellEdge: getComputedStyle(document.querySelector('.record-table .active-cell')).boxShadow,
+  rowHeight: document.querySelector('.record-table td')?.getBoundingClientRect().height ?? 0,
+  letterHeaderBottom: document.querySelector('.record-table .column-letters th:nth-child(2)')?.getBoundingClientRect().bottom ?? 0,
+  fieldHeaderTop: document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(2)')?.getBoundingClientRect().top ?? 0,
 }));
 
 assert.equal(initial.bodyOverflow, 0, 'page should not overflow horizontally at 1600px');
@@ -66,27 +72,32 @@ assert.equal(initial.appWidth, 1600, 'desktop app should fill the viewport');
 assert.equal(initial.appHeight, 1000, 'desktop app should fill the viewport height');
 assert.equal(initial.workspaceWidth, 1600, 'single Dataset workspace should own the full viewport width');
 assert.equal(initial.sidebarCount, 0, 'mock should not duplicate Obsidian navigation with an app sidebar');
-assert.equal(initial.tableRows, 12, 'table fixture should render twelve records');
+assert.equal(initial.tableRows, 20, 'table fixture should render twenty visible records');
 assert.equal(initial.groupRows, 0, 'initial table should preserve the continuous computational grid');
 assert.equal(initial.activeView, 'table', 'table should be the initial view');
 assert.equal(initial.frozenColumnPosition, 'sticky', 'primary record field should be frozen');
 assert.equal(initial.columnLetters, 10, 'table should expose spreadsheet column letters A-J');
-assert.equal(initial.rowNumbers, 12, 'table should expose stable row numbers');
+assert.equal(initial.rowNumbers, 20, 'table should expose stable row numbers');
 assert.equal(initial.selectedRangeCells, 5, 'initial grid should show the G2:G6 selection');
 assert.equal(initial.activeCells, 1, 'initial grid should show one active formula cell');
 assert.equal(initial.selectionStatistics, 5, 'status bar should expose count, sum, average, min and max');
 assert.equal(initial.formulaColumns, 3, 'table should identify three computed columns');
 assert.equal(initial.activeCellName, 'J6', 'formula name box should identify the active cell');
 assert.match(initial.formulaValue, /^=IF\(AND\(G6>=85,H6>=7\)/, 'formula bar should expose the active formula');
-assert.equal(initial.theme, 'light', 'mock should default to the light theme');
-assert.equal(initial.canvasColor, '#f5f6f8', 'default canvas should be neutral light');
+assert.equal(initial.theme, 'dark', 'mock should default to the premium graphite theme');
+assert.equal(initial.canvasColor, '#0d0f0e', 'default canvas should use graphite rather than pure black');
+assert.notEqual(initial.gridLine, initial.structuralLine, 'grid hairlines and frozen-column dividers should use different weights');
+assert.match(initial.activeCellEdge, /rgb\(165, 200, 118\)/, 'active data edge should use the restrained sage accent');
+assert.equal(initial.rowHeight, 44, 'graphite table should use a dense but readable 44px row rhythm');
+assert.equal(initial.letterHeaderBottom, initial.fieldHeaderTop, 'column letters and typed field headers should stack without overlap');
 await page.screenshot({ path: path.join(dir, 'preview.png') });
 
 await page.click('#theme-toggle');
-assert.equal(await page.getAttribute('body', 'data-theme'), 'dark');
-assert.match(await page.getAttribute('#theme-toggle', 'aria-label'), /浅色/);
-await page.click('#theme-toggle');
 assert.equal(await page.getAttribute('body', 'data-theme'), 'light');
+assert.match(await page.getAttribute('#theme-toggle', 'aria-label'), /深色/);
+await page.screenshot({ path: path.join(dir, 'preview-light.png') });
+await page.click('#theme-toggle');
+assert.equal(await page.getAttribute('body', 'data-theme'), 'dark');
 
 await page.click('#open-format-menu');
 await page.waitForSelector('#format-menu:not([hidden])');
@@ -126,7 +137,7 @@ assert.match(await page.textContent('#formula-panel'), /DATE_DIFF/);
 assert.match(await page.textContent('#formula-panel'), /条件聚合/);
 assert.match(await page.textContent('#formula-panel'), /自定义函数/);
 assert.ok(await page.locator('[data-function]').count() >= 40, 'formula library should expose a broad basic-function baseline');
-assert.match(await page.textContent('#formula-panel'), /12 条预览 · 0 个错误 · 无循环引用/);
+assert.match(await page.textContent('#formula-panel'), /24 条预览 · 0 个错误 · 无循环引用/);
 assert.equal(await page.locator('.formula-preview > span').count(), 3);
 await page.screenshot({ path: path.join(dir, 'preview-formula.png') });
 await page.click('#close-formula');
@@ -146,7 +157,7 @@ assert.equal(await page.locator('.calendar-day').count(), 35);
 
 await page.click('[data-view="gallery"]');
 await page.waitForSelector('.gallery-view');
-assert.equal(await page.locator('.gallery-card').count(), 12);
+assert.equal(await page.locator('.gallery-card').count(), 20);
 assert.match(await page.textContent('.gallery-view'), /卡片字段/);
 await page.screenshot({ path: path.join(dir, 'preview-gallery.png') });
 
@@ -191,8 +202,14 @@ console.log(JSON.stringify({
   selectionStatistics: initial.selectionStatistics,
   computedColumns: initial.formulaColumns,
   basicFunctions: basicFunctionCount,
+  defaultTheme: initial.theme,
+  lineSystem: {
+    grid: initial.gridLine,
+    structural: initial.structuralLine,
+    active: initial.activeCellEdge,
+  },
   localLinks: localHrefs.length,
   viewsChecked: ['table', 'board', 'calendar', 'gallery', 'dashboard'],
   flowsChecked: ['theme-switch', 'number-format', 'conditional-format', 'field-type-select', 'formula-library', 'selection-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
-  screenshots: ['preview.png', 'preview-format.png', 'preview-conditional.png', 'preview-fields.png', 'preview-formula.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
+  screenshots: ['preview.png', 'preview-light.png', 'preview-format.png', 'preview-conditional.png', 'preview-fields.png', 'preview-formula.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
 }, null, 2));
