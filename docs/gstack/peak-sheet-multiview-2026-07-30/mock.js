@@ -227,7 +227,7 @@ const groupMeta = {
 
 const state = {
   view: 'table',
-  grouped: true,
+  grouped: false,
   filtersVisible: true,
   statsVisible: true,
   query: '',
@@ -243,6 +243,9 @@ const toast = document.querySelector('#toast');
 const aiDrawer = document.querySelector('#ai-drawer');
 const themeToggle = document.querySelector('#theme-toggle');
 const formulaPanel = document.querySelector('#formula-panel');
+const formulaBar = document.querySelector('#formula-bar');
+const formatMenu = document.querySelector('#format-menu');
+const conditionalPanel = document.querySelector('#conditional-panel');
 
 function icon(id) {
   return `<svg><use href="#${id}"/></svg>`;
@@ -297,7 +300,7 @@ function groupRows(groupKey, groupRecords) {
   const rows = groupRecords.map(recordRow).join('');
   return `
     <tr class="group-row">
-      <td colspan="10">
+      <td colspan="11">
         <div class="group-summary">
           <span class="group-name">
             ${icon('i-chevron')}
@@ -317,10 +320,14 @@ function groupRows(groupKey, groupRecords) {
 
 function recordRow(record) {
   const waitWidth = Math.min(100, Math.round((record.wait / 14) * 100));
+  const rowNumber = records.indexOf(record) + 2;
+  const inSelectedRange = rowNumber >= 2 && rowNumber <= 6;
+  const isActiveCell = record.id === 'koru';
+  const priority = record.fit >= 85 && record.wait >= 7 ? '优先跟进' : '保持观察';
   return `
     <tr data-record-id="${record.id}" class="${state.selectedId === record.id ? 'is-selected' : ''}">
-      <td><input type="checkbox" aria-label="选择 ${record.company}"></td>
-      <td>
+      <td class="row-number">${rowNumber}</td>
+      <td class="frozen-record-cell">
         <span class="company-cell">
           <span class="company-logo ${record.color}">${record.company.slice(0, 2).toUpperCase()}</span>
           <span><strong>${record.company}</strong><small>${record.role}</small></span>
@@ -331,14 +338,18 @@ function recordRow(record) {
       <td>${record.location}</td>
       <td>${formatDate(record.applied)}</td>
       <td><span class="salary"><strong>${record.salary}</strong><small>NZD</small></span></td>
-      <td><span class="score-cell"><span class="score-ring" style="--score:${record.fit}"></span><strong>${record.fit}</strong></span></td>
-      <td>
+      <td class="numeric-cell ${inSelectedRange ? 'selected-range' : ''} ${record.id === 'aster' ? 'range-start' : ''} ${record.id === 'koru' ? 'range-end' : ''}">
+        <span class="cell-data-bar" style="--value:${record.fit}%"></span>
+        <strong>${record.fit}</strong>
+      </td>
+      <td class="numeric-cell ${record.wait > 7 ? 'conditional-alert' : ''}">
         <span class="wait-cell ${record.wait > 7 ? 'is-alert' : ''}">
           <span class="wait-bar"><i style="--wait:${waitWidth}%"></i></span>
           <strong>${record.wait}d</strong>
         </span>
       </td>
       <td><span class="next-action ${record.urgency ? 'is-soon' : ''}"><i></i>${record.next}</span></td>
+      <td class="formula-value ${isActiveCell ? 'active-cell' : ''}"><span class="${priority === '优先跟进' ? 'priority-high' : ''}">${priority}</span>${isActiveCell ? '<i class="fill-handle"></i>' : ''}</td>
     </tr>
   `;
 }
@@ -361,37 +372,18 @@ function renderTable() {
     body = visible.map(recordRow).join('');
   }
 
-  const averageFit = (visible.reduce((sum, record) => sum + record.fit, 0) / visible.length).toFixed(1);
-  const averageWait = (visible.reduce((sum, record) => sum + record.wait, 0) / visible.length).toFixed(1);
-  const salaryLowerBounds = [...visible]
-    .map((record) => Number(record.salary.split('–')[0]))
-    .sort((first, second) => first - second);
-  const salaryMidpoint = Math.floor(salaryLowerBounds.length / 2);
-  const medianSalary = salaryLowerBounds.length % 2 === 0
-    ? (salaryLowerBounds[salaryMidpoint - 1] + salaryLowerBounds[salaryMidpoint]) / 2
-    : salaryLowerBounds[salaryMidpoint];
-  const highValueCount = visible.filter((record) => record.urgency && record.fit >= 80).length;
-  const summary = state.statsVisible
-    ? `
-      <footer class="table-summary">
-        <span><small>记录数</small><strong>${visible.length}</strong><em>count</em></span>
-        <span><small>阶段</small><strong>${new Set(visible.map((record) => record.stage)).size}</strong><em>distinct</em></span>
-        <span><small>薪资下限中位</small><strong>${medianSalary}k</strong><em>median</em></span>
-        <span><small>平均匹配度</small><strong>${averageFit}</strong><em>average</em></span>
-        <span><small>平均等待</small><strong>${averageWait}d</strong><em>average</em></span>
-        <span><small>行动窗口</small><strong>${highValueCount}</strong><em>formula result</em></span>
-      </footer>
-    `
-    : '';
-
   stage.innerHTML = `
     <section class="table-view">
       <div class="table-viewport">
         <table class="record-table">
-          <colgroup><col><col><col><col><col><col><col><col><col><col></colgroup>
+          <colgroup><col><col><col><col><col><col><col><col><col><col><col></colgroup>
           <thead>
+            <tr class="column-letters">
+              <th class="sheet-corner"></th>
+              ${['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].map((letter) => `<th>${letter}</th>`).join('')}
+            </tr>
             <tr>
-              <th><input type="checkbox" aria-label="选择全部记录"></th>
+              <th class="row-number-header">#</th>
               <th><span class="field-heading">${icon('i-text')}<span>公司 / 职位</span></span></th>
               <th><span class="field-heading">${icon('i-select')}<span>阶段</span></span></th>
               <th><span class="field-heading">${icon('i-select')}<span>工作模式</span></span></th>
@@ -401,12 +393,12 @@ function renderTable() {
               <th><span class="field-heading"><b class="formula-mark">ƒx</b><span>匹配度</span></span></th>
               <th><span class="field-heading"><b class="formula-mark">ƒx</b><span>等待天数</span></span></th>
               <th><span class="field-heading">${icon('i-check')}<span>下一步</span></span></th>
+              <th><span class="field-heading"><b class="formula-mark">ƒx</b><span>行动优先级</span></span></th>
             </tr>
           </thead>
           <tbody>${body}</tbody>
         </table>
       </div>
-      ${summary}
     </section>
   `;
 
@@ -606,11 +598,14 @@ function updateStatus() {
   const visible = visibleRecords().length;
   const primary = document.querySelector('#status-primary');
   const secondary = document.querySelector('#status-secondary');
-  primary.textContent = state.view === 'dashboard' ? 'Dashboard · 24 records' : `${visible} records`;
+  const selectionStatistics = document.querySelector('#selection-statistics');
+  selectionStatistics.hidden = state.view !== 'table' || !state.statsVisible;
   if (state.view === 'table') {
-    secondary.textContent = `${state.grouped ? '按阶段分组' : '未分组'} · ${state.priorityOnly ? '3' : '2'} 个筛选条件`;
+    primary.textContent = 'G2:G6';
+    secondary.textContent = `5 个单元格 · ${state.grouped ? '按阶段分组' : `${visible} 条记录`}`;
     return;
   }
+  primary.textContent = state.view === 'dashboard' ? 'Dashboard · 24 records' : `${visible} records`;
   if (state.view === 'board') {
     secondary.textContent = '按阶段推进 · 与 Table 同步';
     return;
@@ -635,6 +630,8 @@ function renderCurrentView() {
     dashboard: renderDashboard,
   };
   renderers[state.view]();
+  workspace.classList.toggle('is-table-view', state.view === 'table');
+  formulaBar.hidden = state.view !== 'table';
   document.querySelectorAll('[data-view]').forEach((button) => {
     button.classList.toggle('is-active', button.dataset.view === state.view);
   });
@@ -672,6 +669,8 @@ function closeViewMenu() {
 function openFields() {
   document.querySelector('#field-panel').hidden = false;
   closeFormula();
+  closeFormatMenu();
+  closeConditionalFormat();
   closeViewMenu();
 }
 
@@ -683,6 +682,8 @@ function closeFields() {
 function openFormula() {
   formulaPanel.hidden = false;
   closeFields();
+  closeFormatMenu();
+  closeConditionalFormat();
   closeViewMenu();
   closeAi();
 }
@@ -691,11 +692,41 @@ function closeFormula() {
   formulaPanel.hidden = true;
 }
 
+function openFormatMenu() {
+  formatMenu.hidden = false;
+  document.querySelector('#open-format-menu').setAttribute('aria-expanded', 'true');
+  closeFields();
+  closeFormula();
+  closeConditionalFormat();
+  closeViewMenu();
+  closeAi();
+}
+
+function closeFormatMenu() {
+  formatMenu.hidden = true;
+  document.querySelector('#open-format-menu').setAttribute('aria-expanded', 'false');
+}
+
+function openConditionalFormat() {
+  conditionalPanel.hidden = false;
+  closeFormatMenu();
+  closeFields();
+  closeFormula();
+  closeViewMenu();
+  closeAi();
+}
+
+function closeConditionalFormat() {
+  conditionalPanel.hidden = true;
+}
+
 function openAi() {
   aiDrawer.classList.add('is-open');
   aiDrawer.setAttribute('aria-hidden', 'false');
   closeFields();
   closeFormula();
+  closeFormatMenu();
+  closeConditionalFormat();
   closeViewMenu();
 }
 
@@ -768,11 +799,47 @@ document.querySelectorAll('[data-field-type]').forEach((button) => {
 });
 
 document.querySelector('#open-formula').addEventListener('click', openFormula);
+document.querySelector('#formula-function-button').addEventListener('click', openFormula);
 document.querySelector('#close-formula').addEventListener('click', closeFormula);
 document.querySelector('#cancel-formula').addEventListener('click', closeFormula);
 document.querySelector('#save-formula').addEventListener('click', () => {
   closeFormula();
   showToast('公式字段已保存', '“行动优先级”将按 revision 12 重新计算');
+});
+
+document.querySelector('#open-format-menu').addEventListener('click', () => {
+  if (formatMenu.hidden) {
+    openFormatMenu();
+    return;
+  }
+  closeFormatMenu();
+});
+document.querySelector('#close-format-menu').addEventListener('click', closeFormatMenu);
+document.querySelectorAll('[data-number-format]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const selectedFormat = button.dataset.numberFormat;
+    document.querySelectorAll('[data-number-format]').forEach((candidate) => {
+      candidate.classList.toggle('is-selected', candidate === button);
+      candidate.querySelector('svg')?.remove();
+    });
+    button.insertAdjacentHTML('beforeend', icon('i-check'));
+    document.querySelector('#open-format-menu span').textContent = `${selectedFormat}格式`;
+  });
+});
+document.querySelector('#open-conditional-format').addEventListener('click', openConditionalFormat);
+document.querySelector('#open-conditional-from-menu').addEventListener('click', openConditionalFormat);
+document.querySelector('#close-conditional-format').addEventListener('click', closeConditionalFormat);
+document.querySelector('#save-conditional-format').addEventListener('click', () => {
+  closeConditionalFormat();
+  showToast('条件格式已保存', '2 条显示规则已应用到 G2:H13');
+});
+
+document.querySelectorAll('[data-function]').forEach((button) => {
+  button.addEventListener('click', () => {
+    document.querySelectorAll('[data-function]').forEach((candidate) => {
+      candidate.classList.toggle('is-selected', candidate === button);
+    });
+  });
 });
 
 document.querySelector('#toggle-filter').addEventListener('click', () => {
@@ -795,7 +862,7 @@ document.querySelector('#toggle-stats').addEventListener('click', () => {
     setView('table');
     return;
   }
-  renderTable();
+  updateStatus();
 });
 
 searchInput.addEventListener('input', () => {
@@ -851,6 +918,8 @@ document.addEventListener('keydown', (event) => {
   closeAi();
   closeFields();
   closeFormula();
+  closeFormatMenu();
+  closeConditionalFormat();
   closeViewMenu();
   closeDialog('#source-dialog');
   closeDialog('#mobile-overlay');

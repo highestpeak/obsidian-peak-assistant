@@ -52,7 +52,7 @@
 
 Peak Sheet 的用户价值应表达为：
 
-> 同一份本地 Dataset，可以按当前任务切换成表格、图表或其他视图；AI 帮用户生成可审阅、可重复运行的数据处理计划，而不是替每个视图维护一份数据副本。
+> 在 Obsidian 里直接完成接近电子表格的计算、格式化与分析；需要长期维护时，再把自由 Sheet 升级为有稳定字段和记录身份的 Dataset，并从同一份数据生成不同视图。
 
 这次调整吸收三个方向：
 
@@ -66,7 +66,8 @@ Peak Sheet 的用户价值应表达为：
 | --- | --- | --- |
 | 字段类型系统 | Text、Number、Boolean、Date、Single select、Multi select、URL；字段类型参与校验、排序和显示 | Attachment、Person、Phone、Email 等领域类型后移 |
 | 一个 Dataset，多种投影 | Table 可编辑；Chart 只读且与 Table 使用同一 revision | View 不复制或拥有 records |
-| 简单公式与统计 | 字段引用、四则运算、比较、`IF`、布尔组合、日期差；支持 count / sum / average / min / max / distinct count 与分组统计 | 不执行循环、文件 I/O、网络请求或任意 JavaScript / Python |
+| 基础公式与统计 | 自由单元格 / 区域公式和 Dataset 计算列共享受限 evaluator；覆盖数学、逻辑、条件聚合、文本、日期与信息判断；选区支持 count / sum / average / min / max | 不执行循环、文件 I/O、网络请求或任意 JavaScript / Python |
+| 数字与单元格格式 | 数字、货币、百分比、日期时间、时长、自定义显示；对齐、换行、字体强调、填充、边框与条件格式 | 值的语义类型与显示格式分离；富格式保存在 Sheet / View metadata，不写进 Markdown 单元格字符串 |
 | 工作流入口 | 用求职追踪 fixture 完成导入、建模、筛选、计算和刷新 | 模板不是独立数据格式 |
 | 可审阅 AI 计算 | 自然语言生成 ComputePlan；先展示步骤、受影响记录和输出 | 不执行任意 AI 脚本 |
 | View 能力声明 | 每种 View 声明 read / edit / group / spatial 等能力 | 不让 View 静默获得写权限 |
@@ -78,48 +79,58 @@ Peak Sheet 的用户价值应表达为：
 
 [多视图交互 Mock](../../gstack/peak-sheet-multiview-2026-07-30/index.html) 使用“求职追踪”作为真实 fixture，展示以下状态：
 
-1. Dataset workspace：左侧管理数据表，顶部管理当前数据表的多个视图；来源、记录数、revision 和刷新状态保持可见。
-2. Table / Dashboard：以高密度可编辑表格作为主工作区，以数据表级独立仪表盘作为只读派生视图。
-3. Board / Calendar：验证同一 Dataset 的 View adapter 方向；Gallery / Map 只保留为后续候选，不占据主导航。
-4. Field configuration：字段列表、字段类型与枚举选项是结构化数据的主操作，不藏在 AI 或装饰性说明卡中。
-5. Ask Peak：默认收起为辅助入口；自然语言请求先进入 plan preview，再由用户接受并改变当前视图。
-6. Mobile consumption：只展示查看、筛选、刷新和审批，不伪装完整编辑能力。
+1. Computational grid：首屏是带列标、行号、选区和公式栏的可计算工作面；公式、数字格式、条件格式和选区统计直接贴着表格。
+2. Structured Dataset：字段类型、稳定记录和计算列叠加在电子表格之上，而不是取代单元格与区域计算。
+3. Table / Dashboard：以高密度可编辑表格作为主工作区，以数据集级独立仪表盘作为只读派生视图。
+4. Board / Calendar / Gallery：只验证同一 Dataset 的 View adapter 方向，不定义首版实现数量。
+5. Field configuration：字段列表、字段类型与枚举选项是结构化数据的主操作，不藏在 AI 或装饰性说明卡中。
+6. Ask Peak：默认收起为辅助入口；自然语言请求先进入 plan preview，再由用户接受并改变当前视图。
+7. Mobile consumption：只展示查看、筛选、刷新和审批，不伪装完整编辑能力。
 
 Mock 是设计探索，不代表这些视图已经实现，也不把 Peak Sheet 从 `research candidate` 升为已决策项目。
 
 ### 2026-07-31 设计纠偏：从“功能陈列页”改为“数据决策工作台”
 
-用户提供的高密度多维表格示例，以及[飞书多维表格产品分析](https://www.woshipm.com/evaluating/5935411.html)，补充了前一版 Mock 缺少的产品层级。后者把基本对象明确区分为数据表、视图、字段和记录，并说明数据表列表适合放在左侧、视图操作适合留在当前数据表内，仪表盘则作为数据表级独立页面集中承载图表和统一筛选结果。
+用户提供的高密度多维表格示例，以及[飞书多维表格产品分析](https://www.woshipm.com/evaluating/5935411.html)，补充了前一版 Mock 缺少的字段、视图和记录层级。由于 Peak Sheet 运行在 Obsidian 宿主里，数据集文件切换继续由宿主导航承担，当前 Sheet 只保留视图栏；仪表盘则作为当前数据集的只读派生视图。
 
 据此加入以下设计要求：
 
-- **信息架构必须先区分数据表与视图。** 左侧是 Dataset 内的数据表；当前数据表的 Table / Board / Calendar / Dashboard 放在顶部视图栏。不能把所有层级平铺成一个“视图清单”。
+- **信息架构必须先区分数据集与视图。** Obsidian 负责文件与数据集导航；当前数据集的 Table / Board / Calendar / Dashboard 放在顶部视图栏，不能再造一套常驻“数据表 / 分析页”侧栏。
 - **表格是默认工作面。** 首屏优先展示记录、字段和分组统计；冻结主字段，使用紧凑行高、稳定网格和字段内微型数据图形。说明条、AI 面板和大面积卡片不能抢走数据区。
 - **仪表盘是独立的只读分析视图。** KPI、趋势、漏斗和分布共享当前数据表的筛选定义，并一起响应 Dataset revision；不要把图表零散插进可编辑 grid。
 - **字段配置是核心结构操作。** 字段名、类型、枚举选项、显示状态和后续能力声明必须可见、可审阅。
 - **AI 保持辅助位置。** Ask Peak 默认不常驻占宽；它可以总结优先级、生成 ComputePlan 和建议视图，但不能替代字段与视图的直接操作。
 - **视觉主题不是产品合同。** Mock 默认采用中性浅色工作台，并保留深色切换，用来验证设计感来自密度、层级和数据图形而不是黑色背景；生产实现必须继承 Obsidian theme token。
 
-### 2026-07-31 产品优先级纠偏：先建立数据语言
+### 2026-07-31 产品优先级纠偏：先建立计算语言
 
-Peak Sheet 的核心不应从 Dashboard 或 AI 开始。产品能力的依赖顺序调整为：
+Peak Sheet 的核心不应从 Dashboard、AI 或“有多少种视图”开始。它也不能退化成只有字段类型、筛选和分组的多维表格。产品能力的依赖顺序调整为：
 
-1. **字段类型。** 先定义值的类型、空值、校验、显示和类型迁移，记录才不只是字符串矩阵。
-2. **视图类型。** 视图保存字段可见性、顺序、筛选、排序、分组和布局，并消费同一份 records；首版实现数量可以少，但 View contract 必须是核心。
-3. **简单公式和统计。** 公式产生逐记录派生值；统计对当前筛选后的记录集或分组做聚合。两者都绑定 Dataset revision，可重算且不可隐藏执行任意代码。
-4. **AI 辅助。** AI 可以建议字段类型、生成受限公式 AST、创建视图配置或解释统计结果，但它只操作前三层的显式合同。
+1. **自由 Sheet 计算。** 保留单元格、区域、A1 引用、公式栏、选区统计和复制粘贴，让临时数据无需先建模就能计算。
+2. **格式系统。** 数据值与显示格式分离；数字、货币、百分比、日期、对齐、换行和条件格式都是基础工作面，不是仪表盘装饰。
+3. **结构化字段。** 长期维护时再定义值类型、空值、校验、显示、类型迁移、稳定 record ID 和计算列。
+4. **视图投影。** 视图保存字段可见性、顺序、筛选、排序、分组和布局，并消费同一份 records；首版实现数量可以少，但 View contract 必须是核心。
+5. **统计与只读分析。** 选区统计、列统计和分组统计先成立，Dashboard 再消费同一 revision 上的聚合结果。
+6. **AI 辅助。** AI 可以解释公式、建议字段类型、生成受限公式 AST、创建视图配置或解释统计结果，但它只操作前五层的显式合同。
 
 在 Obsidian 宿主内，Peak Sheet 默认只打开当前 Dataset，不提供常驻的多数据表 / 分析页应用侧栏。文件与工作区导航复用 Obsidian；Dashboard 是 Dataset 的一种 View，不是平行的一级内容系统。只有跨 Dataset 切换成为真实高频需求时，才在标题区增加轻量切换器。
 
-首个实现不需要追求 Excel 函数覆盖率。最小公式集合包含：
+公式基线应足够覆盖日常电子表格任务，但仍保持确定性和可审阅：
 
-- 数值运算：`+`、`-`、`*`、`/` 和基本舍入；
-- 条件：比较、`AND`、`OR`、`NOT`、`IF` 和空值判断；
-- 文本：拼接和简单格式化；
-- 日期：日期差、加减天数和格式化；
-- 聚合：count、sum、average、min、max、distinct count，并可按当前分组显示。
+- 数学 / 统计：`SUM`、`AVERAGE`、`MIN`、`MAX`、`MEDIAN`、`ROUND`、`ABS`；
+- 逻辑：`IF`、`IFS`、`AND`、`OR`、`NOT`、`IFERROR`；
+- 条件聚合：`COUNTIF(S)`、`SUMIF(S)`、`AVERAGEIF(S)`；
+- 文本：`CONCAT`、`TEXTJOIN`、`LEFT`、`RIGHT`、`MID`、`LEN`、`TRIM`、`UPPER`、`LOWER`、`SUBSTITUTE`；
+- 日期：`TODAY`、`DATE`、`YEAR`、`MONTH`、`DAY`、`DATE_DIFF`、`WORKDAY`；
+- 信息判断：`ISBLANK`、`ISNUMBER`、`ISTEXT`。
 
-公式结果默认是派生投影，不静默覆盖源字段。需要物化写回时，必须成为单独的、可预览的 ComputePlan。
+首个实施波可以从这些类别中裁出较小子集，但 parser、typed error、循环引用检测和依赖图合同不能被一次性字符串替换逻辑取代。Lookup、数组公式、跨 Sheet 引用和自定义函数继续后移。
+
+自由单元格公式与 Dataset 计算列是两种作用域：前者使用单元格 / 区域引用，后者按记录使用字段引用；两者共享 parser、类型系统和 evaluator。公式结果默认是派生投影，不静默覆盖源字段。需要物化写回时，必须成为单独的、可预览的 ComputePlan。
+
+格式基线包含自动、数字、货币、百分比、日期、日期时间、时长和自定义显示格式，以及对齐、换行、字体强调、填充、边框和条件格式。条件格式首批覆盖比较规则、数据条和色阶。Markdown 导入导出不承诺无损保存这些富格式；它们属于 Sheet / View metadata，并始终与原始语义值分离。
+
+这一能力分类参考 [Google Sheets 函数列表](https://support.google.com/docs/table/25273?hl=en)、[Google Sheets 数字格式](https://support.google.com/docs/answer/56470?co=GENIE.Platform%3DDesktop&hl=en-en)、[Google Sheets 条件格式](https://support.google.com/docs/answer/78413?hl=en-GB)、[Excel 数字格式](https://support.microsoft.com/en-us/excel/get-started/available-number-formats-in-excel)和[Excel 数据条 / 色阶 / 图标集](https://support.microsoft.com/en-us/excel/use-data-bars-color-scales-and-icon-sets-to-highlight-data)。它们用于确认日常表格的基础语言，不表示 Peak Sheet 追求 Excel / Sheets 函数兼容或界面复刻。
 
 ## 对新增多维表格提案的判断
 

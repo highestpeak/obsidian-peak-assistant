@@ -49,8 +49,14 @@ const initial = await page.evaluate(() => ({
   groupRows: document.querySelectorAll('.record-table .group-row').length,
   activeView: document.querySelector('.view-tab.is-active')?.dataset.view,
   frozenColumnPosition: getComputedStyle(document.querySelector('.record-table td:nth-child(2)')).position,
-  summaryCells: document.querySelectorAll('.table-summary > span').length,
+  columnLetters: document.querySelectorAll('.record-table .column-letters th:not(.sheet-corner)').length,
+  rowNumbers: document.querySelectorAll('.record-table .row-number').length,
+  selectedRangeCells: document.querySelectorAll('.record-table .selected-range').length,
+  activeCells: document.querySelectorAll('.record-table .active-cell').length,
+  selectionStatistics: document.querySelectorAll('.selection-statistics > span').length,
   formulaColumns: document.querySelectorAll('.record-table thead .formula-mark').length,
+  activeCellName: document.querySelector('#active-cell-name')?.textContent,
+  formulaValue: document.querySelector('#formula-input')?.value,
   theme: document.body.dataset.theme,
   canvasColor: getComputedStyle(document.body).getPropertyValue('--bg').trim(),
 }));
@@ -61,13 +67,19 @@ assert.equal(initial.appHeight, 1000, 'desktop app should fill the viewport heig
 assert.equal(initial.workspaceWidth, 1600, 'single Dataset workspace should own the full viewport width');
 assert.equal(initial.sidebarCount, 0, 'mock should not duplicate Obsidian navigation with an app sidebar');
 assert.equal(initial.tableRows, 12, 'table fixture should render twelve records');
-assert.equal(initial.groupRows, 5, 'initial table should show five stage groups');
+assert.equal(initial.groupRows, 0, 'initial table should preserve the continuous computational grid');
 assert.equal(initial.activeView, 'table', 'table should be the initial view');
 assert.equal(initial.frozenColumnPosition, 'sticky', 'primary record field should be frozen');
-assert.equal(initial.summaryCells, 6, 'table should expose six inline statistics');
-assert.equal(initial.formulaColumns, 2, 'table should identify two computed columns');
+assert.equal(initial.columnLetters, 10, 'table should expose spreadsheet column letters A-J');
+assert.equal(initial.rowNumbers, 12, 'table should expose stable row numbers');
+assert.equal(initial.selectedRangeCells, 5, 'initial grid should show the G2:G6 selection');
+assert.equal(initial.activeCells, 1, 'initial grid should show one active formula cell');
+assert.equal(initial.selectionStatistics, 5, 'status bar should expose count, sum, average, min and max');
+assert.equal(initial.formulaColumns, 3, 'table should identify three computed columns');
+assert.equal(initial.activeCellName, 'J6', 'formula name box should identify the active cell');
+assert.match(initial.formulaValue, /^=IF\(AND\(G6>=85,H6>=7\)/, 'formula bar should expose the active formula');
 assert.equal(initial.theme, 'light', 'mock should default to the light theme');
-assert.equal(initial.canvasColor, '#f6f7f4', 'default canvas should be neutral light');
+assert.equal(initial.canvasColor, '#f5f6f8', 'default canvas should be neutral light');
 await page.screenshot({ path: path.join(dir, 'preview.png') });
 
 await page.click('#theme-toggle');
@@ -75,6 +87,22 @@ assert.equal(await page.getAttribute('body', 'data-theme'), 'dark');
 assert.match(await page.getAttribute('#theme-toggle', 'aria-label'), /浅色/);
 await page.click('#theme-toggle');
 assert.equal(await page.getAttribute('body', 'data-theme'), 'light');
+
+await page.click('#open-format-menu');
+await page.waitForSelector('#format-menu:not([hidden])');
+assert.equal(await page.locator('[data-number-format]').count(), 8);
+assert.match(await page.textContent('#format-menu'), /货币/);
+assert.match(await page.textContent('#format-menu'), /百分比/);
+assert.match(await page.textContent('#format-menu'), /日期时间/);
+assert.match(await page.textContent('#format-menu'), /自定义/);
+await page.screenshot({ path: path.join(dir, 'preview-format.png') });
+await page.click('#open-conditional-from-menu');
+await page.waitForSelector('#conditional-panel:not([hidden])');
+assert.equal(await page.locator('.conditional-rule').count(), 2);
+assert.match(await page.textContent('#conditional-panel'), /数据条/);
+assert.match(await page.textContent('#conditional-panel'), /等待超过 7 天/);
+await page.screenshot({ path: path.join(dir, 'preview-conditional.png') });
+await page.click('#close-conditional-format');
 
 await page.click('#open-fields');
 await page.waitForSelector('#field-panel:not([hidden])');
@@ -95,15 +123,18 @@ await page.click('[data-field-type="公式"]');
 await page.waitForSelector('#formula-panel:not([hidden])');
 assert.match(await page.textContent('#formula-panel'), /IF/);
 assert.match(await page.textContent('#formula-panel'), /DATE_DIFF/);
-assert.match(await page.textContent('#formula-panel'), /24 条预览 · 0 个错误/);
+assert.match(await page.textContent('#formula-panel'), /条件聚合/);
+assert.match(await page.textContent('#formula-panel'), /自定义函数/);
+assert.ok(await page.locator('[data-function]').count() >= 40, 'formula library should expose a broad basic-function baseline');
+assert.match(await page.textContent('#formula-panel'), /12 条预览 · 0 个错误 · 无循环引用/);
 assert.equal(await page.locator('.formula-preview > span').count(), 3);
 await page.screenshot({ path: path.join(dir, 'preview-formula.png') });
 await page.click('#close-formula');
 
 await page.click('#toggle-stats');
-assert.equal(await page.locator('.table-summary').count(), 0);
+assert.equal(await page.locator('#selection-statistics').isHidden(), true);
 await page.click('#toggle-stats');
-assert.equal(await page.locator('.table-summary > span').count(), 6);
+assert.equal(await page.locator('#selection-statistics').isVisible(), true);
 
 await page.click('[data-view="board"]');
 await page.waitForSelector('.board-view');
@@ -150,16 +181,18 @@ await page.click('#close-mobile');
 assert.deepEqual(consoleErrors, [], `console errors: ${consoleErrors.join(' | ')}`);
 assert.deepEqual(pageErrors, [], `page errors: ${pageErrors.join(' | ')}`);
 
+const basicFunctionCount = await page.locator('[data-function]').count();
 await browser.close();
 console.log(JSON.stringify({
   status: 'PASS',
   viewport: '1600x1000',
   initialRows: initial.tableRows,
   groupRows: initial.groupRows,
-  statistics: initial.summaryCells,
+  selectionStatistics: initial.selectionStatistics,
   computedColumns: initial.formulaColumns,
+  basicFunctions: basicFunctionCount,
   localLinks: localHrefs.length,
   viewsChecked: ['table', 'board', 'calendar', 'gallery', 'dashboard'],
-  flowsChecked: ['theme-switch', 'field-type-select', 'formula-preview', 'inline-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
-  screenshots: ['preview.png', 'preview-fields.png', 'preview-formula.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
+  flowsChecked: ['theme-switch', 'number-format', 'conditional-format', 'field-type-select', 'formula-library', 'selection-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
+  screenshots: ['preview.png', 'preview-format.png', 'preview-conditional.png', 'preview-fields.png', 'preview-formula.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
 }, null, 2));

@@ -48,6 +48,12 @@
     <symbol id="i-note" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9Z"/><path d="M14 3v7h6M8 14h8M8 18h5"/></symbol>
     <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
     <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 15.3A8.7 8.7 0 0 1 8.7 3.5 9 9 0 1 0 20.5 15.3Z"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 7 4 12l5 5"/><path d="M5 12h8a6 6 0 0 1 6 6"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 7 5 5-5 5"/><path d="M19 12h-8a6 6 0 0 0-6 6"/></symbol>
+    <symbol id="i-align" viewBox="0 0 24 24"><path d="M5 6h14M8 10h8M5 14h14M8 18h8"/></symbol>
+    <symbol id="i-wrap" viewBox="0 0 24 24"><path d="M4 6h16M4 11h12a3 3 0 0 1 0 6h-3"/><path d="m15 14-3 3 3 3M4 17h5"/></symbol>
+    <symbol id="i-border" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16"/><path d="M12 4v16M4 12h16"/></symbol>
+    <symbol id="i-paint" viewBox="0 0 24 24"><path d="m5 15 9-9 4 4-9 9H5Z"/><path d="m12 8 4 4M4 21h16"/></symbol>
   </svg>
 
   <main class="app-shell" aria-label="Peak Sheet 数据决策工作台概念原型">
@@ -82,16 +88,32 @@
         </div>
       </nav>
 
-      <header class="data-toolbar">
+      <header class="data-toolbar sheet-toolbar">
         <div class="toolbar-primary">
-          <button type="button" class="add-record-button"><svg><use href="#i-plus"/></svg>添加记录</button>
+          <button type="button" class="icon-button compact sheet-command" aria-label="撤销"><svg><use href="#i-undo"/></svg></button>
+          <button type="button" class="icon-button compact sheet-command" aria-label="重做"><svg><use href="#i-redo"/></svg></button>
           <span class="toolbar-divider"></span>
-          <button type="button" class="tool-button" id="open-fields"><svg><use href="#i-fields"/></svg>字段配置</button>
+          <button type="button" class="add-record-button"><svg><use href="#i-plus"/></svg>记录</button>
+          <button type="button" class="tool-button" id="open-fields"><svg><use href="#i-fields"/></svg>字段</button>
           <button type="button" class="tool-button" id="toggle-filter"><svg><use href="#i-filter"/></svg>筛选 <em>2</em></button>
-          <button type="button" class="tool-button is-applied" id="toggle-group"><svg><use href="#i-group"/></svg>分组 <em>1</em></button>
           <button type="button" class="tool-button"><svg><use href="#i-sort"/></svg>排序 <em>1</em></button>
-          <button type="button" class="tool-button formula-button" id="open-formula"><span class="formula-mark">ƒx</span>公式</button>
-          <button type="button" class="tool-button is-applied" id="toggle-stats"><svg><use href="#i-dashboard"/></svg>统计 <em>6</em></button>
+          <button type="button" class="tool-button" id="toggle-group"><svg><use href="#i-group"/></svg>分组</button>
+          <span class="toolbar-divider"></span>
+          <button type="button" class="format-selector" id="open-format-menu" aria-expanded="false"><b>123</b><span>自动格式</span><svg><use href="#i-chevron-down"/></svg></button>
+          <button type="button" class="text-tool" aria-label="货币格式">$</button>
+          <button type="button" class="text-tool" aria-label="百分比格式">%</button>
+          <button type="button" class="text-tool decimal-tool" aria-label="增加小数位">.0→.00</button>
+          <span class="toolbar-divider"></span>
+          <button type="button" class="text-tool emphasis-tool" aria-label="粗体"><b>B</b></button>
+          <button type="button" class="text-tool emphasis-tool" aria-label="斜体"><i>I</i></button>
+          <button type="button" class="icon-button compact sheet-command" aria-label="对齐"><svg><use href="#i-align"/></svg></button>
+          <button type="button" class="icon-button compact sheet-command" aria-label="自动换行"><svg><use href="#i-wrap"/></svg></button>
+          <button type="button" class="icon-button compact sheet-command" aria-label="边框"><svg><use href="#i-border"/></svg></button>
+          <button type="button" class="icon-button compact sheet-command" aria-label="填充颜色"><svg><use href="#i-paint"/></svg></button>
+          <button type="button" class="tool-button conditional-button" id="open-conditional-format">条件格式</button>
+          <span class="toolbar-divider"></span>
+          <button type="button" class="tool-button formula-button" id="open-formula"><span class="formula-mark">fx</span>函数</button>
+          <button type="button" class="tool-button is-applied" id="toggle-stats">Σ 统计</button>
         </div>
         <div class="toolbar-secondary">
           <label class="record-search">
@@ -101,6 +123,14 @@
           <button type="button" class="ask-button" id="open-ai"><svg><use href="#i-sparkles"/></svg>分析</button>
         </div>
       </header>
+
+      <section class="formula-bar" id="formula-bar">
+        <button type="button" class="name-box" id="active-cell-name">J6</button>
+        <button type="button" class="fx-button" id="formula-function-button" aria-label="打开函数库">fx</button>
+        <input id="formula-input" aria-label="公式栏" value='=IF(AND(G6&gt;=85,H6&gt;=7),"优先跟进","保持观察")'>
+        <span class="formula-state"><svg><use href="#i-check"/></svg>公式有效</span>
+        <span class="formula-scope">计算列 · 12 行</span>
+      </section>
 
       <section class="filter-line" id="filter-line">
         <span>当前条件</span>
@@ -112,7 +142,8 @@
       <section class="view-stage" id="view-stage" aria-live="polite"></section>
 
       <footer class="workspace-status">
-        <span><i></i><b id="status-primary">24 records</b><em>·</em><span id="status-secondary">按阶段分组 · 2 个筛选条件</span></span>
+        <span><i></i><b id="status-primary">G2:G6</b><em>·</em><span id="status-secondary">5 个单元格</span></span>
+        <span class="selection-statistics" id="selection-statistics"><span>计数 <b>5</b></span><span>求和 <b>443</b></span><span>平均 <b>88.6</b></span><span>最小 <b>84</b></span><span>最大 <b>94</b></span></span>
         <span class="status-truth"><svg><use href="#i-database"/></svg>同一 Dataset · 所有视图共享 revision 12</span>
       </footer>
 
@@ -125,9 +156,51 @@
         <button type="button" disabled><svg><use href="#i-map"/></svg><span><strong>地图</strong><small>后续 Spatial adapter</small></span><em>后续</em></button>
       </section>
 
+      <section class="format-menu floating-surface" id="format-menu" hidden aria-label="数字与单元格格式">
+        <header><span><strong>数字与单元格格式</strong><small>显示格式不会改写原始值</small></span><button type="button" class="icon-button compact" id="close-format-menu"><svg><use href="#i-x"/></svg></button></header>
+        <div class="format-menu-section">
+          <span class="format-section-title">数字格式</span>
+          <div class="number-format-grid">
+            <button type="button" class="is-selected" data-number-format="自动"><span><b>123</b>自动</span><svg><use href="#i-check"/></svg></button>
+            <button type="button" data-number-format="数字"><span><b>1,234.00</b>数字</span></button>
+            <button type="button" data-number-format="货币"><span><b>$1,234</b>货币</span></button>
+            <button type="button" data-number-format="百分比"><span><b>88.6%</b>百分比</span></button>
+            <button type="button" data-number-format="日期"><span><b>2026/07/31</b>日期</span></button>
+            <button type="button" data-number-format="日期时间"><span><b>7/31 14:30</b>日期时间</span></button>
+            <button type="button" data-number-format="时长"><span><b>11d 4h</b>时长</span></button>
+            <button type="button" data-number-format="自定义"><span><b>0.0 "分"</b>自定义</span></button>
+          </div>
+        </div>
+        <div class="format-menu-section format-layout-section">
+          <span class="format-section-title">单元格</span>
+          <button type="button"><svg><use href="#i-align"/></svg>对齐</button>
+          <button type="button"><svg><use href="#i-wrap"/></svg>自动换行</button>
+          <button type="button"><svg><use href="#i-border"/></svg>边框</button>
+          <button type="button"><svg><use href="#i-paint"/></svg>填充</button>
+        </div>
+        <button type="button" class="open-conditional-from-menu" id="open-conditional-from-menu"><span><b>条件格式</b><small>规则、高亮、数据条与色阶</small></span><svg><use href="#i-chevron"/></svg></button>
+      </section>
+
+      <section class="conditional-panel floating-surface" id="conditional-panel" hidden aria-label="条件格式">
+        <header class="panel-header"><span><strong>条件格式</strong><small>应用到当前视图 · 2 条规则</small></span><button type="button" class="icon-button" id="close-conditional-format"><svg><use href="#i-x"/></svg></button></header>
+        <div class="conditional-scope"><span>应用范围</span><b>G2:H13</b></div>
+        <article class="conditional-rule">
+          <header><span><i class="rule-swatch data-bar"></i><strong>匹配度数据条</strong></span><button type="button"><svg><use href="#i-more"/></svg></button></header>
+          <p>G 列 · 0 到 100 · 蓝色数据条</p>
+          <div class="rule-preview data-bar-preview"><i></i><b>86</b></div>
+        </article>
+        <article class="conditional-rule">
+          <header><span><i class="rule-swatch alert"></i><strong>等待超过 7 天</strong></span><button type="button"><svg><use href="#i-more"/></svg></button></header>
+          <p>H 列 · 值 &gt; 7 · 琥珀底色 + 深色文字</p>
+          <div class="rule-preview alert-preview"><b>11d</b><span>需要跟进</span></div>
+        </article>
+        <button type="button" class="add-rule-button"><svg><use href="#i-plus"/></svg>新增条件规则</button>
+        <footer><span>规则只影响显示，不改写数值。</span><button type="button" class="confirm-button" id="save-conditional-format">完成</button></footer>
+      </section>
+
       <section class="field-panel floating-surface" id="field-panel" hidden aria-label="字段配置">
         <header class="panel-header">
-          <span><strong>字段配置</strong><small>10 个字段 · 1 个计算字段</small></span>
+          <span><strong>字段配置</strong><small>10 个字段 · 3 个计算字段</small></span>
           <button type="button" class="icon-button" id="close-fields" aria-label="关闭字段配置"><svg><use href="#i-x"/></svg></button>
         </header>
         <div class="field-panel-body">
@@ -176,37 +249,44 @@
         </div>
       </section>
 
-      <section class="formula-panel floating-surface" id="formula-panel" hidden aria-label="简单公式">
+      <section class="formula-panel floating-surface" id="formula-panel" hidden aria-label="公式与函数">
         <header class="panel-header">
-          <span><strong>简单公式</strong><small>受限函数 · 逐记录计算 · revision 12</small></span>
+          <span><strong>公式与函数</strong><small>自由单元格 + Dataset 计算列 · 共享受限 evaluator</small></span>
           <button type="button" class="icon-button" id="close-formula" aria-label="关闭公式面板"><svg><use href="#i-x"/></svg></button>
         </header>
         <div class="formula-panel-body">
-          <aside class="formula-fields">
-            <span>可引用字段</span>
-            <button type="button"><svg><use href="#i-number"/></svg>匹配度</button>
-            <button type="button"><svg><use href="#i-clock"/></svg>等待天数</button>
-            <button type="button"><svg><use href="#i-select"/></svg>阶段</button>
-            <button type="button"><svg><use href="#i-calendar"/></svg>申请日期</button>
-            <button type="button"><svg><use href="#i-money"/></svg>薪资范围</button>
-            <span class="formula-functions-label">常用函数</span>
-            <div class="formula-function-chips"><button type="button">IF</button><button type="button">AND</button><button type="button">OR</button><button type="button">ROUND</button><button type="button">DATE_DIFF</button></div>
+          <aside class="formula-catalog">
+            <label><svg><use href="#i-search"/></svg><input type="search" placeholder="搜索 41 个基础函数" aria-label="搜索函数"></label>
+            <nav class="formula-categories">
+              <button type="button" class="is-active">常用</button><button type="button">数学</button><button type="button">逻辑</button><button type="button">条件聚合</button><button type="button">文本</button><button type="button">日期</button><button type="button">信息</button>
+            </nav>
+            <div class="function-library" aria-label="基础函数库">
+              <section><span>数学 / 统计</span><div><button type="button" data-function="SUM">SUM</button><button type="button" data-function="AVERAGE">AVERAGE</button><button type="button" data-function="COUNT">COUNT</button><button type="button" data-function="COUNTA">COUNTA</button><button type="button" data-function="MIN">MIN</button><button type="button" data-function="MAX">MAX</button><button type="button" data-function="MEDIAN">MEDIAN</button><button type="button" data-function="ROUND">ROUND</button><button type="button" data-function="ABS">ABS</button></div></section>
+              <section><span>逻辑</span><div><button type="button" class="is-selected" data-function="IF">IF</button><button type="button" data-function="IFS">IFS</button><button type="button" data-function="AND">AND</button><button type="button" data-function="OR">OR</button><button type="button" data-function="NOT">NOT</button><button type="button" data-function="IFERROR">IFERROR</button></div></section>
+              <section><span>条件聚合</span><div><button type="button" data-function="COUNTIF">COUNTIF</button><button type="button" data-function="COUNTIFS">COUNTIFS</button><button type="button" data-function="SUMIF">SUMIF</button><button type="button" data-function="SUMIFS">SUMIFS</button><button type="button" data-function="AVERAGEIF">AVERAGEIF</button><button type="button" data-function="AVERAGEIFS">AVERAGEIFS</button></div></section>
+              <section><span>文本</span><div><button type="button" data-function="CONCAT">CONCAT</button><button type="button" data-function="TEXTJOIN">TEXTJOIN</button><button type="button" data-function="LEFT">LEFT</button><button type="button" data-function="RIGHT">RIGHT</button><button type="button" data-function="MID">MID</button><button type="button" data-function="LEN">LEN</button><button type="button" data-function="TRIM">TRIM</button><button type="button" data-function="UPPER">UPPER</button><button type="button" data-function="LOWER">LOWER</button><button type="button" data-function="SUBSTITUTE">SUBSTITUTE</button></div></section>
+              <section><span>日期</span><div><button type="button" data-function="TODAY">TODAY</button><button type="button" data-function="DATE">DATE</button><button type="button" data-function="YEAR">YEAR</button><button type="button" data-function="MONTH">MONTH</button><button type="button" data-function="DAY">DAY</button><button type="button" data-function="DATE_DIFF">DATE_DIFF</button><button type="button" data-function="WORKDAY">WORKDAY</button></div></section>
+              <section><span>信息判断</span><div><button type="button" data-function="ISBLANK">ISBLANK</button><button type="button" data-function="ISNUMBER">ISNUMBER</button><button type="button" data-function="ISTEXT">ISTEXT</button></div></section>
+            </div>
           </aside>
           <section class="formula-editor">
-            <label>字段名称<input type="text" value="行动优先级" aria-label="公式字段名称"></label>
-            <span class="formula-label">公式</span>
+            <div class="formula-mode"><span><b>作用域</b><small>引用语义不同，共享 parser / evaluator</small></span><button type="button">自由单元格</button><button type="button" class="is-active">计算列</button></div>
+            <label>计算列名称<input type="text" value="行动优先级" aria-label="公式字段名称"></label>
+            <div class="formula-help"><span><b>IF</b><small>按条件返回两个值之一</small></span><code>IF(condition, value_if_true, value_if_false)</code></div>
+            <span class="formula-label">公式 · J2:J13</span>
             <div class="formula-code" role="textbox" aria-label="公式表达式">
-              <b>IF</b><span>(</span><b>AND</b><span>(</span><em>{匹配度}</em><span> ≥ 85, </span><em>{等待天数}</em><span> ≥ 7),</span><br>
+              <b>=IF</b><span>(</span><b>AND</b><span>(</span><em>G2</em><span> &gt;= 85, </span><em>H2</em><span> &gt;= 7),</span><br>
               <span class="formula-indent">"优先跟进", "保持观察")</span>
             </div>
-            <div class="formula-contract"><span><svg><use href="#i-check"/></svg>类型检查通过</span><span>24 条预览 · 0 个错误</span></div>
+            <div class="formula-contract"><span><svg><use href="#i-check"/></svg>类型检查通过</span><span>12 条预览 · 0 个错误 · 无循环引用</span></div>
+            <div class="formula-references"><span><i style="--ref:#3b69d8"></i><b>G2</b> 匹配度 · Number</span><span><i style="--ref:#c07a23"></i><b>H2</b> 等待天数 · Duration</span></div>
             <span class="formula-label">结果预览</span>
             <div class="formula-preview">
               <span><b>Koru Digital</b><small>匹配 86 · 等待 11d</small><em class="formula-result high">优先跟进</em></span>
               <span><b>Northstar Energy</b><small>匹配 82 · 等待 8d</small><em class="formula-result">保持观察</em></span>
               <span><b>Alpine Data</b><small>匹配 90 · 等待 4d</small><em class="formula-result">保持观察</em></span>
             </div>
-            <footer><button type="button" class="subtle-button" id="cancel-formula">取消</button><button type="button" class="confirm-button" id="save-formula">保存公式字段</button></footer>
+            <footer><span>后续：Lookup、数组、跨 Sheet、自定义函数</span><button type="button" class="subtle-button" id="cancel-formula">取消</button><button type="button" class="confirm-button" id="save-formula">保存计算列</button></footer>
           </section>
         </div>
       </section>
