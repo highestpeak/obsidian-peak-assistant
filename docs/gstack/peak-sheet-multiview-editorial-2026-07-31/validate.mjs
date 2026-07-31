@@ -62,6 +62,41 @@ const initial = await page.evaluate(() => ({
   theme: document.body.dataset.theme,
   visualVersion: document.body.dataset.visualVersion,
   canvasColor: getComputedStyle(document.body).getPropertyValue('--bg').trim(),
+  headerHeights: [
+    '.document-bar',
+    '.view-tabs',
+    '.data-toolbar',
+    '.formula-bar',
+    '.filter-line',
+  ].map((selector) => document.querySelector(selector)?.getBoundingClientRect().height ?? 0),
+  headerBackgrounds: [
+    '.document-bar',
+    '.view-tabs',
+    '.data-toolbar',
+    '.formula-bar',
+    '.filter-line',
+  ].map((selector) => getComputedStyle(document.querySelector(selector)).backgroundColor),
+  toolbarDividerWidth: document.querySelector('.toolbar-divider')?.getBoundingClientRect().width ?? 0,
+  fieldHeaderFontSize: getComputedStyle(document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(2)')).fontSize,
+  textHeaderAlignment: getComputedStyle(document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(4) .field-heading')).justifyContent,
+  numericHeaderAlignment: getComputedStyle(document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(8) .field-heading')).justifyContent,
+  booleanHeaderAlignment: getComputedStyle(document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(13) .field-heading')).justifyContent,
+  companyHeaderLeft: document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(2) .field-heading > span')?.getBoundingClientRect().left ?? 0,
+  companyValueLeft: document.querySelector('tr[data-record-id="aster"] .company-cell strong')?.getBoundingClientRect().left ?? 0,
+  workModeHeaderLeft: document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(4) .field-heading > span')?.getBoundingClientRect().left ?? 0,
+  workModeValueLeft: document.querySelector('tr[data-record-id="aster"] .work-mode')?.getBoundingClientRect().left ?? 0,
+  salaryHeaderRight: document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(7) .field-heading > span')?.getBoundingClientRect().right ?? 0,
+  salaryValueRight: document.querySelector('tr[data-record-id="aster"] .salary')?.getBoundingClientRect().right ?? 0,
+  scoreHeaderRight: document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(8) .field-heading > span')?.getBoundingClientRect().right ?? 0,
+  scoreValueRight: document.querySelector('tr[data-record-id="aster"] .score-cell strong')?.getBoundingClientRect().right ?? 0,
+  booleanHeaderCenter: (() => {
+    const rect = document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(13) .field-heading > span')?.getBoundingClientRect();
+    return rect ? rect.left + rect.width / 2 : 0;
+  })(),
+  booleanValueCenter: (() => {
+    const rect = document.querySelector('tr[data-record-id="aster"] .boolean-cell')?.getBoundingClientRect();
+    return rect ? rect.left + rect.width / 2 : 0;
+  })(),
   ordinaryVerticalLine: getComputedStyle(document.querySelector('.record-table td:nth-child(4)')).borderRightWidth,
   ordinaryHorizontalLine: getComputedStyle(document.querySelector('.record-table td:nth-child(4)')).borderBottomWidth,
   headerRule: getComputedStyle(document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(4)')).borderBottomWidth,
@@ -141,6 +176,18 @@ assert.match(initial.formulaValue, /^=IF\(AND\(G6>=85,H6>=7\)/, 'formula bar sho
 assert.equal(initial.theme, 'light', 'Editorial V2 should default to the approved Paper direction');
 assert.equal(initial.visualVersion, 'editorial-v2', 'mock should expose an explicit independent visual version');
 assert.equal(initial.canvasColor, '#eef0ec', 'Paper canvas should use a warm mineral grey');
+assert.deepEqual(initial.headerHeights, [52, 38, 38, 32, 28], 'Header bands should share the approved compact vertical rhythm');
+assert.equal(new Set(initial.headerBackgrounds).size, 1, 'Header bands should read as one continuous paper surface');
+assert.equal(initial.toolbarDividerWidth, 0, 'toolbar groups should use spacing instead of vertical divider cages');
+assert.equal(initial.fieldHeaderFontSize, '11.5px', 'field headers should use the same readable type scale as table metadata');
+assert.equal(initial.textHeaderAlignment, 'flex-start', 'text field headers should follow the left reading axis');
+assert.equal(initial.numericHeaderAlignment, 'flex-end', 'numeric field headers should follow the right reading axis');
+assert.equal(initial.booleanHeaderAlignment, 'center', 'boolean field headers should follow the centered control axis');
+assert.ok(Math.abs(initial.companyHeaderLeft - initial.companyValueLeft) <= 1, 'primary text header should align with its values');
+assert.ok(Math.abs(initial.workModeHeaderLeft - initial.workModeValueLeft) <= 1, 'plain text header should align with its values');
+assert.ok(Math.abs(initial.salaryHeaderRight - initial.salaryValueRight) <= 1, 'salary header should align with the numeric edge');
+assert.ok(Math.abs(initial.scoreHeaderRight - initial.scoreValueRight) <= 1, 'formula number header should align with the numeric edge');
+assert.ok(Math.abs(initial.booleanHeaderCenter - initial.booleanValueCenter) <= 1, 'checkbox header should align with the control center');
 assert.equal(initial.ordinaryVerticalLine, '0px', 'ordinary fields should not form a vertical cage');
 assert.equal(initial.ordinaryHorizontalLine, '1px', 'records should use one quiet horizontal separator');
 assert.equal(initial.headerRule, '2px', 'field headers should terminate in one authoritative rule');

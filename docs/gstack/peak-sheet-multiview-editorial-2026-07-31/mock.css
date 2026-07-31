@@ -86,11 +86,11 @@ body[data-visual-version="editorial-v2"] .table-view {
 }
 
 body[data-visual-version="editorial-v2"] .workspace {
-  grid-template-rows: 56px 42px 40px 34px 32px minmax(0, 1fr) 29px;
+  grid-template-rows: 52px 38px 38px 32px 28px minmax(0, 1fr) 29px;
 }
 
 body[data-visual-version="editorial-v2"] .workspace:not(.is-table-view) {
-  grid-template-rows: 56px 42px 40px 32px minmax(0, 1fr) 29px;
+  grid-template-rows: 52px 38px 38px 28px minmax(0, 1fr) 29px;
 }
 
 body[data-visual-version="editorial-v2"] button,
@@ -102,9 +102,9 @@ body[data-visual-version="editorial-v2"] textarea {
 /* Document and view chrome */
 
 body[data-visual-version="editorial-v2"] .document-bar {
-  min-height: 56px;
+  min-height: 52px;
   padding: 0 17px 0 19px;
-  border-bottom: 0;
+  border-bottom: 1px solid var(--line-soft);
   background: var(--surface);
 }
 
@@ -115,8 +115,8 @@ body[data-visual-version="editorial-v2"] .document-title {
 body[data-visual-version="editorial-v2"] .document-icon {
   width: 26px;
   height: 26px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
+  border: 0;
+  border-radius: 0;
   background: transparent;
   color: var(--accent);
 }
@@ -148,10 +148,10 @@ body[data-visual-version="editorial-v2"] .document-actions {
 
 body[data-visual-version="editorial-v2"] .revision-state {
   height: 24px;
-  padding: 0 8px;
+  padding: 0 6px;
   border: 0;
-  border-radius: 3px;
-  background: var(--surface-2);
+  border-radius: 0;
+  background: transparent;
   color: var(--muted);
   font-family: var(--font-mono);
   font-size: 9.5px;
@@ -181,10 +181,10 @@ body[data-visual-version="editorial-v2"] .icon-button:hover {
 }
 
 body[data-visual-version="editorial-v2"] .view-tabs {
-  height: 42px;
+  height: 38px;
   padding: 0 10px;
   border-top: 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--line-soft);
   background: var(--surface);
 }
 
@@ -194,10 +194,9 @@ body[data-visual-version="editorial-v2"] .view-tab-scroll {
 
 body[data-visual-version="editorial-v2"] .view-tab,
 body[data-visual-version="editorial-v2"] .add-view-button {
-  height: 42px;
+  height: 38px;
   padding: 0 10px;
   border: 0;
-  border-bottom: 2px solid transparent;
   border-radius: 0;
   background: transparent;
   color: var(--muted);
@@ -215,8 +214,13 @@ body[data-visual-version="editorial-v2"] .view-tab:hover {
   color: var(--text);
 }
 
+body[data-visual-version="editorial-v2"] .view-tab::after {
+  right: 10px;
+  left: 10px;
+  height: 1.5px;
+}
+
 body[data-visual-version="editorial-v2"] .view-tab.is-active {
-  border-bottom-color: var(--accent);
   background: transparent;
   box-shadow: none;
   color: var(--text);
@@ -240,10 +244,10 @@ body[data-visual-version="editorial-v2"] .view-tab-actions {
 /* Editing toolbar */
 
 body[data-visual-version="editorial-v2"] .data-toolbar {
-  min-height: 40px;
+  min-height: 38px;
   padding: 0 10px;
   border-bottom: 1px solid var(--line-soft);
-  background: var(--surface-2);
+  background: var(--surface);
 }
 
 body[data-visual-version="editorial-v2"] .toolbar-primary,
@@ -252,10 +256,10 @@ body[data-visual-version="editorial-v2"] .toolbar-secondary {
 }
 
 body[data-visual-version="editorial-v2"] .toolbar-divider {
-  width: 1px;
-  height: 16px;
-  margin: 0 5px;
-  background: var(--line);
+  width: 0;
+  height: 0;
+  margin: 0 6px;
+  background: transparent;
 }
 
 body[data-visual-version="editorial-v2"] .tool-button,
@@ -301,8 +305,8 @@ body[data-visual-version="editorial-v2"] .add-record-button:hover {
 
 body[data-visual-version="editorial-v2"] .format-selector {
   height: 28px;
-  border: 1px solid var(--line);
-  background: var(--surface);
+  border: 0;
+  background: var(--surface-2);
 }
 
 body[data-visual-version="editorial-v2"] .format-selector b,
@@ -325,7 +329,9 @@ body[data-visual-version="editorial-v2"] .tool-button em {
 }
 
 body[data-visual-version="editorial-v2"] .tool-button.is-applied {
-  background: var(--accent-soft);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: inset 0 -1.5px var(--accent);
   color: var(--accent-strong);
 }
 
@@ -333,9 +339,9 @@ body[data-visual-version="editorial-v2"] .record-search {
   width: 128px;
   height: 28px;
   padding: 0 7px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--surface);
+  border: 0;
+  border-radius: 3px;
+  background: var(--surface-2);
 }
 
 body[data-visual-version="editorial-v2"] .record-search input {
@@ -344,8 +350,8 @@ body[data-visual-version="editorial-v2"] .record-search input {
 
 body[data-visual-version="editorial-v2"] .ask-button {
   padding: 0 10px;
-  border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--line));
-  background: var(--surface);
+  border: 0;
+  background: var(--accent-soft);
   color: var(--accent-strong);
   font-weight: 570;
 }
@@ -357,14 +363,14 @@ body[data-visual-version="editorial-v2"] .ask-button:hover {
 /* Formula and filter bands */
 
 body[data-visual-version="editorial-v2"] .formula-bar {
-  height: 34px;
+  height: 32px;
   border-bottom: 1px solid var(--line-soft);
   background: var(--surface);
 }
 
 body[data-visual-version="editorial-v2"] .name-box,
 body[data-visual-version="editorial-v2"] .fx-button {
-  height: 34px;
+  height: 32px;
   border: 0;
   border-right: 1px solid var(--line-soft);
   border-radius: 0;
@@ -386,7 +392,7 @@ body[data-visual-version="editorial-v2"] .fx-button {
 }
 
 body[data-visual-version="editorial-v2"] .formula-bar input {
-  height: 34px;
+  height: 32px;
   border: 0;
   background: transparent;
   color: var(--text);
@@ -406,7 +412,7 @@ body[data-visual-version="editorial-v2"] .formula-state {
 }
 
 body[data-visual-version="editorial-v2"] .filter-line {
-  height: 32px;
+  height: 28px;
   gap: 6px;
   padding: 0 10px;
   border-bottom: 1px solid var(--line-soft);
@@ -416,11 +422,11 @@ body[data-visual-version="editorial-v2"] .filter-line {
 }
 
 body[data-visual-version="editorial-v2"] .filter-line button {
-  height: 22px;
-  padding: 0 7px;
+  height: 20px;
+  padding: 0 4px;
   border: 0;
-  border-radius: 3px;
-  background: var(--surface-2);
+  border-radius: 0;
+  background: transparent;
   color: var(--muted);
   font-size: 10px;
 }
@@ -463,11 +469,11 @@ body[data-visual-version="editorial-v2"] .record-table thead tr:nth-child(2) th 
   height: 36px;
   border-bottom: 2px solid var(--text) !important;
   background: var(--surface);
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  font-weight: 590;
-  letter-spacing: .045em;
+  color: var(--text-soft);
+  font-family: var(--font);
+  font-size: 11.5px;
+  font-weight: 560;
+  letter-spacing: 0;
 }
 
 body[data-visual-version="editorial-v2"] .record-table .column-letters th {
@@ -484,6 +490,21 @@ body[data-visual-version="editorial-v2"] .record-table .column-letters th {
 
 body[data-visual-version="editorial-v2"] .field-heading {
   gap: 0;
+  width: 100%;
+  justify-content: flex-start;
+}
+
+body[data-visual-version="editorial-v2"] .record-table thead tr:nth-child(2) th:is(
+  :nth-child(7),
+  :nth-child(8),
+  :nth-child(9),
+  :nth-child(17)
+) .field-heading {
+  justify-content: flex-end;
+}
+
+body[data-visual-version="editorial-v2"] .record-table thead tr:nth-child(2) th:nth-child(13) .field-heading {
+  justify-content: center;
 }
 
 body[data-visual-version="editorial-v2"] .field-heading > svg {
@@ -614,6 +635,11 @@ body[data-visual-version="editorial-v2"] .score-ring {
 
 body[data-visual-version="editorial-v2"] .score-cell {
   gap: 0;
+}
+
+body[data-visual-version="editorial-v2"] .score-metric,
+body[data-visual-version="editorial-v2"] .wait-metric {
+  padding-right: 12px !important;
 }
 
 body[data-visual-version="editorial-v2"] .wait-bar {
