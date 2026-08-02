@@ -1188,6 +1188,7 @@
 
     function renderRows() {
       const query = searchInput.value.trim().toLowerCase();
+      listDescription.classList.remove('hidden');
       if (query) {
         const matchedCapabilities = capabilities.filter(item => [item.id, item.title, item.surface, item.shape, item.route].join(' ').toLowerCase().includes(query));
         const matchedPrompts = prompts.filter(item => [item.id, item.title, item.group, item.kind, item.callers].join(' ').toLowerCase().includes(query));
@@ -1230,9 +1231,8 @@
       const outputGroupLabel = outputGroups.find(([id]) => id === activeOutputGroup)?.[2] ?? 'Output types';
       const filteredOutputs = outputs.filter(item => outputGroupMatches(item, activeOutputGroup));
       listTitle.textContent = outputGroupLabel;
-      listDescription.textContent = activeOutputGroup === 'all'
-        ? `${filteredOutputs.length} registered type contracts. Artifact instances stay in their owning product surfaces.`
-        : `${filteredOutputs.length} registered ${outputGroupLabel.toLowerCase()}. Select a type to inspect its owner and storage contract.`;
+      listDescription.textContent = '';
+      listDescription.classList.add('hidden');
       rows.innerHTML = filteredOutputs.length
         ? activeOutputGroup === 'all' ? groupedOutputRows(filteredOutputs) : filteredOutputs.map(outputRow).join('')
         : '<div class="empty">No output contract is registered for this category.</div>';
