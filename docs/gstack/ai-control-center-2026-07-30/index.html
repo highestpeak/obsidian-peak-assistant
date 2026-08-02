@@ -77,8 +77,6 @@
       background: var(--surface);
     }
 
-    .topbar .search { width: min(390px, 38vw); margin-left: auto; }
-
     .title {
       display: flex;
       align-items: baseline;
@@ -498,10 +496,6 @@
           <strong>AI Control Center</strong>
           <span>Manage AI actions, shared prompts, and output contracts</span>
         </div>
-        <label class="search">
-          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
-          <input id="searchInput" type="search" placeholder="Search actions, prompts, or output types…">
-        </label>
       </header>
 
       <div class="body">
@@ -510,6 +504,10 @@
           <div class="list-head">
             <strong id="listTitle">All AI actions</strong>
             <span id="listDescription">Choose an action to review its behavior and configuration.</span>
+            <label class="search">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
+              <input id="searchInput" type="search" placeholder="Search actions, prompts, or output types…">
+            </label>
           </div>
           <div class="rows" id="rows"></div>
         </section>
