@@ -68,9 +68,7 @@
     }
 
     .topbar {
-      display: grid;
-      grid-template-columns: minmax(250px, 1fr) minmax(280px, 420px);
-      gap: 18px;
+      display: flex;
       align-items: center;
       min-height: 56px;
       padding: 0 18px;
@@ -165,6 +163,7 @@
 
     .list-head strong { display: block; font-size: 14px; }
     .list-head span { display: block; margin-top: 3px; color: var(--muted); }
+    .list-head .search { margin-top: 10px; }
 
     .rows { padding: 6px; }
     .family-head {
@@ -405,8 +404,6 @@
 
     @media (max-width: 1120px) {
       .body { grid-template-columns: 190px 340px minmax(460px, 1fr); }
-      .topbar { grid-template-columns: 1fr; }
-      .search { display: none; }
       .cards { grid-template-columns: 1fr; }
     }
   </style>
@@ -426,16 +423,19 @@
           <strong>AI Control Center</strong>
           <span>Manage AI actions and shared prompts</span>
         </div>
-        <label class="search">
-          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
-          <input id="searchInput" type="search" placeholder="Search AI actions or prompts…">
-        </label>
       </header>
 
       <div class="body">
         <aside class="rail" id="rail"></aside>
         <section class="list">
-          <div class="list-head"><strong id="listTitle">All AI actions</strong><span id="listDescription">Choose an action to review its behavior and configuration.</span></div>
+          <div class="list-head">
+            <strong id="listTitle">All AI actions</strong>
+            <span id="listDescription">Choose an action to review its behavior and configuration.</span>
+            <label class="search">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
+              <input id="searchInput" type="search" placeholder="Search this list…">
+            </label>
+          </div>
           <div class="rows" id="rows"></div>
         </section>
         <main class="inspector" id="inspector"></main>
