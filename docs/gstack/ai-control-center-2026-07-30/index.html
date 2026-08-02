@@ -452,6 +452,17 @@
     .inline-controls .field { margin: 0; }
     .inline-controls .field.wide { grid-column: 1 / -1; }
     .inline-save-status { margin-right: auto; color: var(--green); font-size: 11px; font-weight: 650; }
+    .stepper { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto 34px; align-items: center; min-height: 34px; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 6px; background: white; }
+    .stepper:focus-within { border-color: #aaa1dc; box-shadow: 0 0 0 2px var(--accent-soft); }
+    .stepper input { min-width: 0; min-height: 32px; padding: 6px 8px; border: 0; border-radius: 0; outline: 0; box-shadow: none; background: transparent; }
+    .stepper input:focus { box-shadow: none; }
+    .stepper input::-webkit-inner-spin-button, .stepper input::-webkit-outer-spin-button { margin: 0; appearance: none; }
+    .stepper-unit { padding: 0 7px; color: var(--muted); font-size: 11px; white-space: nowrap; }
+    .stepper-button { display: grid; place-items: center; align-self: stretch; padding: 0; border: 0; background: var(--surface-2); color: var(--muted); }
+    .stepper-button:first-child { border-right: 1px solid var(--line); }
+    .stepper-button:last-child { border-left: 1px solid var(--line); }
+    .stepper-button:hover { color: var(--accent); background: var(--accent-soft); }
+    .stepper-button svg { width: 14px; height: 14px; }
 
     .empty { padding: 30px 18px; color: var(--muted); text-align: center; }
     .design-note {
@@ -537,6 +548,8 @@
       model: '<svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 9h6v6H9zM9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>',
       run: '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',
       output: '<svg viewBox="0 0 24 24"><path d="m12 3 8 4-8 4-8-4z"/><path d="m4 7 8 4 8-4v10l-8 4-8-4z"/><path d="M12 11v10"/></svg>',
+      minus: '<svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>',
+      plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
       alert: '<svg viewBox="0 0 24 24"><path d="M12 3 2.8 19h18.4z"/><path d="M12 9v4M12 17h.01"/></svg>',
       all: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><rect x="14" y="14" width="6" height="6"/></svg>'
     };
@@ -1344,11 +1357,10 @@
       return `<div class="section" data-inline-output-controls>
         <h2>Output controls</h2>
         <div class="inline-controls">
-          <label class="field wide"><span>Response</span><input data-inline-output-input value="${escapeHtml(item.output)}"></label>
           <label class="field"><span>Sampling</span><select data-inline-output-input><option>Use Profile default</option><option>Low variance</option><option>Balanced</option><option>Creative</option></select></label>
-          <label class="field"><span>Maximum output tokens</span><input data-inline-output-input type="number" value="4096"></label>
-          <label class="field"><span>Timeout</span><input data-inline-output-input value="60 seconds"></label>
           <label class="field"><span>Retry</span><select data-inline-output-input><option>Use runtime default</option><option>Never</option><option>Once</option><option>Twice</option></select></label>
+          <label class="field"><span>Maximum output tokens</span><span class="stepper"><button class="stepper-button" type="button" data-stepper-delta="-1" aria-label="Decrease maximum output tokens">${icons.minus}</button><input data-inline-output-input data-stepper-input type="number" value="4096" min="256" max="32768" step="256"><span class="stepper-unit">tokens</span><button class="stepper-button" type="button" data-stepper-delta="1" aria-label="Increase maximum output tokens">${icons.plus}</button></span></label>
+          <label class="field"><span>Timeout</span><span class="stepper"><button class="stepper-button" type="button" data-stepper-delta="-1" aria-label="Decrease timeout">${icons.minus}</button><input data-inline-output-input data-stepper-input type="number" value="60" min="5" max="600" step="5"><span class="stepper-unit">seconds</span><button class="stepper-button" type="button" data-stepper-delta="1" aria-label="Increase timeout">${icons.plus}</button></span></label>
         </div>
         <div class="button-row"><span class="inline-save-status" data-inline-save-status></span><button class="action-button primary" data-save-inline-output>Save output controls</button></div>
       </div>`;
@@ -1465,6 +1477,23 @@
         if (status) status.textContent = 'Saved for this action';
         inlineOutputSave.textContent = 'Saved';
         inlineOutputSave.disabled = true;
+        return;
+      }
+
+      const stepperButton = event.target.closest('[data-stepper-delta]');
+      if (stepperButton) {
+        const stepper = stepperButton.closest('.stepper');
+        const input = stepper?.querySelector('[data-stepper-input]');
+        if (!input) return;
+        const step = Number(input.step) || 1;
+        const minimum = Number(input.min);
+        const maximum = Number(input.max);
+        const current = Number(input.value);
+        const base = Number.isFinite(current) ? current : Number.isFinite(minimum) ? minimum : 0;
+        const requested = base + Number(stepperButton.dataset.stepperDelta) * step;
+        const bounded = Math.min(Number.isFinite(maximum) ? maximum : requested, Math.max(Number.isFinite(minimum) ? minimum : requested, requested));
+        input.value = String(bounded);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
         return;
       }
 
