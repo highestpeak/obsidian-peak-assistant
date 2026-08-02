@@ -1123,18 +1123,21 @@ function renderBoard() {
     return `
       <section class="board-column" style="--column-color:${groupMeta[groupKey].color}" data-board-column="${groupKey}">
         <header>
-          <span><i></i>${groupMeta[groupKey].label}</span>
-          <em>${items.length}</em>
+          <span class="board-column-label"><i></i><strong>${groupMeta[groupKey].label}</strong><em>${items.length}</em></span>
+          <button type="button" class="board-column-add" data-board-add="${groupKey}" aria-label="添加到${groupMeta[groupKey].label}">${icon('i-plus')}</button>
         </header>
         <div class="board-stack">
           ${items.map((record) => `
             <button type="button" class="board-card ${record.urgency ? 'is-priority' : ''}" data-board-record="${record.id}">
-              <header>
-                <span><strong>${record.company}</strong><small>${record.role}</small></span>
-                <b>${record.fit}</b>
+              <header class="board-card-header">
+                <span class="board-card-title"><strong>${escapeHtml(record.company)}</strong><small>${escapeHtml(record.role)}</small></span>
+                <span class="board-fit"><b>${record.fit}</b><small>匹配</small></span>
               </header>
-              <span class="board-next"><i></i>${record.next}</span>
-              <footer><span>${record.workMode} · ${record.location}</span><em>${record.wait} 天</em></footer>
+              <span class="board-card-focus"><small>下一步</small><strong>${escapeHtml(record.next)}</strong></span>
+              <footer>
+                <span class="board-card-place"><b>${escapeHtml(record.workMode)}</b><i></i><span>${escapeHtml(record.location)}</span></span>
+                <em class="${record.wait >= 7 ? 'is-aged' : ''}">${record.wait === 0 ? '今天' : `${record.wait} 天`}</em>
+              </footer>
             </button>
           `).join('')}
         </div>
@@ -1144,8 +1147,12 @@ function renderBoard() {
   stage.innerHTML = `
     <section class="board-view">
       <header class="board-local-header">
-        <span><strong>按阶段推进</strong><small>${activeCount} 条活跃记录 · 阶段变化写回同一 Dataset</small></span>
-        <span class="board-view-meta"><span>分组字段 <b>阶段</b></span><span>卡片字段 <b>4</b></span><span>已结束 <b>${archivedCount}</b></span></span>
+        <span class="board-heading"><strong>申请流程</strong><small>${activeCount} 条活跃记录 · 同一 Dataset 的阶段投影</small></span>
+        <span class="board-view-meta">
+          <button type="button" data-board-control="group">${icon('i-group')}按阶段${icon('i-chevron-down')}</button>
+          <button type="button" data-board-control="fields">${icon('i-fields')}4 个卡片字段</button>
+          <span class="board-completed">已结束 <b>${archivedCount}</b></span>
+        </span>
       </header>
       <div class="board-lanes">${columns}</div>
     </section>
@@ -1155,6 +1162,19 @@ function renderBoard() {
       const record = records.find((candidate) => candidate.id === button.dataset.boardRecord);
       if (!record) return;
       showToast(record.company, `${record.role} · ${record.next}`);
+    });
+  });
+  stage.querySelectorAll('[data-board-add]').forEach((button) => {
+    button.addEventListener('click', () => {
+      showToast(`添加到${groupMeta[button.dataset.boardAdd].label}`, '设计稿保留明确入口；尚未创建新记录');
+    });
+  });
+  stage.querySelectorAll('[data-board-control]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const copy = button.dataset.boardControl === 'group'
+        ? '当前按“阶段”字段分组'
+        : '当前显示：公司、职位、下一步、地点与等待时间';
+      showToast('看板视图配置', copy);
     });
   });
 }

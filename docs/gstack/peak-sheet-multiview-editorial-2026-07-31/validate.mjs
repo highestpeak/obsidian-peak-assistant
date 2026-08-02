@@ -848,9 +848,51 @@ await page.waitForSelector('.board-view');
 assert.equal(await page.locator('.board-column').count(), 4);
 assert.deepEqual(await page.locator('.board-column').evaluateAll((columns) => columns.map((column) => column.dataset.boardColumn)), ['applied', 'followup', 'interview', 'offer']);
 assert.equal(await page.locator('.board-card').count(), 18, 'ended records should be summarized instead of becoming a noisy fifth lane');
+assert.equal(await page.locator('.board-column-add').count(), 4, 'each workflow lane should expose a nearby add action');
+assert.equal(await page.locator('[data-board-control]').count(), 2, 'grouping and card fields should remain configurable from the board header');
+assert.equal(await page.locator('.board-card-title').count(), 18);
+assert.equal(await page.locator('.board-fit').count(), 18);
+assert.equal(await page.locator('.board-card-focus').count(), 18);
 assert.match(await page.textContent('.board-local-header'), /已结束\s*2/);
+const boardSurface = await page.evaluate(() => {
+  const lane = document.querySelector('.board-column');
+  const card = document.querySelector('.board-card');
+  const lanes = document.querySelector('.board-lanes');
+  const laneStyle = getComputedStyle(lane);
+  const cardStyle = getComputedStyle(card);
+  const lanesStyle = getComputedStyle(lanes);
+  return {
+    laneBorderTop: laneStyle.borderTopWidth,
+    laneBackground: laneStyle.backgroundColor,
+    cardRadius: cardStyle.borderRadius,
+    cardShadow: cardStyle.boxShadow,
+    cardHeight: card.getBoundingClientRect().height,
+    laneGap: lanesStyle.columnGap,
+    transform: cardStyle.transform,
+  };
+});
+assert.equal(boardSurface.laneBorderTop, '0px', 'lanes should read as transparent workflow tracks rather than full-height cages');
+assert.equal(boardSurface.laneBackground, 'rgba(0, 0, 0, 0)');
+assert.equal(boardSurface.cardRadius, '6px');
+assert.notEqual(boardSurface.cardShadow, 'none');
+assert.ok(boardSurface.cardHeight >= 130, 'cards should have enough vertical rhythm for title, next step and metadata');
+assert.equal(boardSurface.laneGap, '16px');
+assert.equal(boardSurface.transform, 'none', 'resting cards should never be displaced');
 await settleMotion();
 await page.screenshot({ path: path.join(dir, 'preview-board.png') });
+const boardCardTop = await page.locator('.board-card').first().evaluate((card) => card.getBoundingClientRect().top);
+await page.locator('.board-card').first().hover();
+await settleMotion();
+const hoveredBoardCard = await page.locator('.board-card').first().evaluate((card) => ({
+  top: card.getBoundingClientRect().top,
+  transform: getComputedStyle(card).transform,
+}));
+assert.ok(Math.abs(hoveredBoardCard.top - boardCardTop) < 0.5, 'hover should not move the card');
+assert.equal(hoveredBoardCard.transform, 'none');
+await page.click('[data-board-add="offer"]');
+assert.match(await page.textContent('#toast-title'), /添加到Offer/);
+await page.click('[data-board-control="fields"]');
+assert.match(await page.textContent('#toast-title'), /看板视图配置/);
 
 await page.click('[data-view="calendar"]');
 await page.waitForSelector('.calendar-grid');
