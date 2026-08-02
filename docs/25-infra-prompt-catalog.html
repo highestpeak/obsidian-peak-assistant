@@ -136,7 +136,7 @@
         <a href="#source">唯一来源怎么工作</a>
         <a href="#composer-fixed">Composer 固定建议</a>
         <a href="#dynamic">Copilot / Ambient 动态建议</a>
-        <a href="#catalog">151 个 Prompt 总表</a>
+        <a href="#catalog">157 个 Prompt 总表</a>
         <a href="#outside">目录外还有什么</a>
         <a href="#gaps">当前发现的问题</a>
         <a href="#control-center">AI Control Center</a>
@@ -151,14 +151,14 @@
           <p class="prose">点击后，固定操作会把自己的指令、当前块和附近内容装进共享 Prompt，再交给模型。Copilot / Ambient 如果要根据正文持续提出新问题、新任务或新改法，应该走另一条“发现 → 建议 → Agent Run”链。当前代码里，固定操作是完整的；动态建议只有部分链路，不能把两者混成一个按钮列表。</p>
 
           <div class="stats">
-            <div class="stat"><strong>151</strong><span><code>templates/prompts/</code> 下的 Markdown 模板；每个物理文件都由 TemplateRegistry 映射。</span></div>
-            <div class="stat"><strong>124</strong><span>公开的 <code>PromptId</code>；功能代码用它选 Prompt，避免到处写文件名。</span></div>
-            <div class="stat"><strong>119</strong><span>能在生产源码里找到直接引用的 PromptId。这里的“引用”不等于界面入口一定可达。</span></div>
+            <div class="stat"><strong>157</strong><span><code>templates/prompts/</code> 下的 Markdown 模板；每个物理文件都由 TemplateRegistry 映射。</span></div>
+            <div class="stat"><strong>128</strong><span>公开的 <code>PromptId</code>；功能代码用它选 Prompt，避免到处写文件名。</span></div>
+            <div class="stat"><strong>122</strong><span>能在生产源码里找到直接引用的 PromptId。这里的“引用”不等于界面入口一定可达。</span></div>
             <div class="stat"><strong>5</strong><span>已注册但没找到生产调用者的 PromptId，需要确认是待接线、旧入口还是可删除项。</span></div>
           </div>
 
           <div class="claim warn">
-            <span class="claim-title">为什么不把 151 份 Prompt 正文再复制到这个 HTML？</span>
+            <span class="claim-title">为什么不把 157 份 Prompt 正文再复制到这个 HTML？</span>
             <p>复制会产生第二份真相，后面一定漂移。本页的“在本页审阅”会直接读取对应的 <code>templates/prompts/*.md</code>，因此你能在目录里看到完整正文，但真正正文仍然只有一份。</p>
           </div>
         </section>
@@ -288,13 +288,13 @@ flowchart LR
 
         <section id="catalog">
           <h2>5. 全项目 Prompt 总表</h2>
-          <p class="lead">下面按当前代码自动审计出的 151 条 Registry 映射列出。点击任意一行的“在本页审阅”，会在该行下面直接展开完整 Prompt；有 system 配对时会并排显示两份正文。</p>
+          <p class="lead">下面按当前代码自动审计出的 157 条 Registry 映射列出。点击任意一行的“在本页审阅”，会在该行下面直接展开完整 Prompt；有 system 配对时会并排显示两份正文。</p>
           <div class="toolbar" aria-label="Prompt 筛选">
             <input id="promptSearch" type="search" placeholder="搜索 Prompt、用途、变量或调用文件…" autocomplete="off">
             <select id="groupFilter">
-              <option value="">全部分组（151）</option>
-              <option value="copilot">Copilot / Composer（87）</option>
-              <option value="searchAnalysis">Search &amp; Analysis（24）</option>
+              <option value="">全部分组（157）</option>
+              <option value="copilot">Copilot / Composer（91）</option>
+              <option value="searchAnalysis">Search &amp; Analysis（26）</option>
               <option value="chat">Chat（15）</option>
               <option value="indexing">Indexing（14）</option>
               <option value="ambientContext">Ambient Context（6）</option>
@@ -320,7 +320,7 @@ flowchart LR
         </section>
 
         <section id="outside">
-          <h2>6. 151 个模板之外，还有哪些 Prompt 来源？</h2>
+          <h2>6. 157 个模板之外，还有哪些 Prompt 来源？</h2>
           <p class="lead">统一维护不能只盯着 <code>templates/prompts</code>。下面这些地方也会改变最终交给模型的任务包。</p>
           <div class="table-wrap">
             <table>
@@ -328,7 +328,7 @@ flowchart LR
               <thead><tr><th>来源</th><th>它负责什么</th><th>当前边界</th><th>入口</th></tr></thead>
               <tbody>
                 <tr><td><strong>Composer 固定指令</strong></td><td>20 条块级 quick action 的具体要求。</td><td>属于产品配置，不是独立 Prompt 模板；运行时作为 <code>instruction</code> 填入共享模板。</td><td><a class="path" href="../templates/config/composer.json">templates/config/composer.json</a></td></tr>
-                <tr><td><strong>用户 Custom Prompt</strong></td><td>用户在 Vault 中写自己的 Markdown Prompt，通过 frontmatter 变成 Copilot action。</td><td>它是用户数据，不能枚举进内置 151 条，也不能被插件升级覆盖。</td><td><a class="path" href="../src/service/copilot/CustomPromptRegistry.ts">CustomPromptRegistry.ts</a></td></tr>
+                <tr><td><strong>用户 Custom Prompt</strong></td><td>用户在 Vault 中写自己的 Markdown Prompt，通过 frontmatter 变成 Copilot action。</td><td>它是用户数据，不能枚举进内置 157 条，也不能被插件升级覆盖。</td><td><a class="path" href="../src/service/copilot/CustomPromptRegistry.ts">CustomPromptRegistry.ts</a></td></tr>
                 <tr><td><strong>Vault Prompt override</strong></td><td>为某个 TemplateId 覆盖内置正文。</td><td>文件名为 <code>&lt;id&gt;.prompt.md</code>；删除后恢复内置模板。</td><td><a class="path" href="../src/service/prompt/PromptService.ts">PromptService.ts</a></td></tr>
                 <tr><td><strong>Assistant / Skill</strong></td><td>用户定义 Assistant 指令，以及 Skill 文件里的 System Prompt。</td><td>它们是运行时内容来源，不应复制成内置模板。</td><td><a class="path" href="../src/service/chat/context/slots/AssistantSlot.ts">AssistantSlot.ts</a> · <a class="path" href="../src/service/skills/SkillParser.ts">SkillParser.ts</a></td></tr>
                 <tr><td><strong>Agent 上下文装配</strong></td><td>把 signal report、Vault digest、工具结果、历史轮次和用户偏好拼到模板后面。</td><td>动态数据应该留在装配器；固定规则应该回到模板。</td><td><a class="path" href="../src/service/agents/harness/loop/AgentLoop.ts">AgentLoop.ts</a></td></tr>
@@ -476,6 +476,8 @@ doc-correct-content|doc-correct-content|Correct Content|Identifies factual error
 doc-correct-content-system|doc-correct-content-system|Correct Content (System)|System instructions for content error correction.|copilot||配套||
 composer-prose-transform|composer-prose-transform|Composer Prose Transform|Transforms one Markdown text block according to a projected block action.|copilot|composer-prose-transform-system|引用|blockKind,instruction,before,content,after|src/service/composer/capabilities/packs/prose.ts
 composer-prose-transform-system|composer-prose-transform-system|Composer Prose Transform (System)|System instructions for source-safe Composer text-block transforms.|copilot||配套||
+composer-block-draft|composer-block-draft|Composer New Block Draft|Generates reviewable Markdown for insertion below the active block.|copilot|composer-block-draft-system|引用|instruction,targetSource,before,after|src/service/composer/newBlockDraft.ts
+composer-block-draft-system|composer-block-draft-system|Composer New Block Draft (System)|System instructions for source-safe new-block Markdown generation.|copilot||配套||
 composer-suggest-properties|composer-suggest-properties|Suggest Properties|Suggests frontmatter fields from the document body and vault conventions.|copilot|composer-suggest-properties-system|引用|title,currentProperties,content,instruction|src/service/composer/capabilities/packs/frontmatter.ts
 composer-suggest-properties-system|composer-suggest-properties-system|Suggest Properties (System)|System instructions for frontmatter property suggestion.|copilot||配套||
 composer-explain-formula|composer-explain-formula|Explain Formula|Explains one display formula in natural language.|copilot|composer-formula-system|引用|label,latex,instruction|src/service/composer/capabilities/packs/math.ts
@@ -496,6 +498,8 @@ doc-mermaid-edit|doc-mermaid-edit|Edit Diagram|Edits a Mermaid diagram source pe
 doc-mermaid-edit-system|doc-mermaid-edit-system|Edit Diagram (System)|System instructions + output contract for Mermaid diagram edits.|copilot||配套||
 doc-code-edit|doc-code-edit|Edit Code|Rewrites or refactors a fenced code block per a targeted instruction.|copilot|doc-code-edit-system|引用|language,content,instruction|src/service/composer/capabilities/packs/native.ts
 doc-code-edit-system|doc-code-edit-system|Edit Code (System)|System instructions + output contract for code block edits.|copilot||配套||
+doc-native-explain|doc-native-explain|Explain Native Source|Explains a code or Mermaid source without changing it.|copilot|doc-native-explain-system|引用|content,nativeKind,language,instruction|src/service/composer/capabilities/packs/native.ts
+doc-native-explain-system|doc-native-explain-system|Explain Native Source (System)|System instructions for read-only code and Mermaid explanations.|copilot||配套||
 doc-link-tidy|doc-link-tidy|Tidy Links|Repairs and enriches links in a block per a targeted instruction.|copilot|doc-link-tidy-system|引用|content,instruction|src/service/composer/capabilities/packs/link.ts
 doc-link-tidy-system|doc-link-tidy-system|Tidy Links (System)|System instructions + output contract for link tidy.|copilot||配套||
 doc-native-edit|doc-native-edit|Edit Native Object|Emits a typed structural patch for a Base / Canvas / Excalidraw file.|copilot|doc-native-edit-system|引用|format,native,instruction|src/service/composer/capabilities/packs/native.ts
@@ -543,6 +547,8 @@ insight-inline-chat-draft-proposal-system|insight-inline-chat-draft-proposal-sys
 insight-inline-chat-followup-system|insight-inline-chat-followup-system|Insight Chat (Follow-up)|System prompt for following up on an Auto Review insight.|copilot||引用|subjectPath,subjectBasename,insightTitle,insightBody|src/ui/view/copilot/review/InsightInlineChat.tsx
 graph-agent-system|graph-agent-system|Graph Agent (System)|System prompt that asks the LLM to read source documents and produce a knowledge graph.|searchAnalysis||引用|searchQuery,sourcesTable|src/service/agents/ai-graph/graph-system-prompt.ts
 graph-agent-user|graph-agent-user|Graph Agent (User)|User prompt that names the search query and source count for the graph agent.|searchAnalysis|graph-agent-system|引用|sourceCount,searchQuery|src/service/agents/ai-graph/GraphAgent.ts
+ai-graph-artifact-extract-system|ai-graph-artifact-extract-system|AI Graph Artifact Extraction (System)|Extracts typed artifact nodes, assertions, qualifiers, and grounded evidence from resolved sources.|searchAnalysis||配套||
+ai-graph-artifact-extract|ai-graph-artifact-extract|AI Graph Artifact Extraction|Provides the graph intent, graph type, and bounded source contents for typed extraction.|searchAnalysis|ai-graph-artifact-extract-system|引用|searchQuery,graphType,sourcesText,currentGraph|src/service/agents/AIGraphAgent.ts
 graph-infer-thinking-tree-system|graph-infer-thinking-tree-system|Infer Thinking Tree (System)|System prompt for the thinking-tree inference call.|searchAnalysis||引用||src/service/agents/ai-graph/infer-thinking-tree.ts
 graph-infer-thinking-tree-user|graph-infer-thinking-tree-user|Infer Thinking Tree (User)|User prompt with files for thinking-tree inference.|searchAnalysis|graph-infer-thinking-tree-system|引用|filesText|src/service/agents/ai-graph/infer-thinking-tree.ts
 report-assign-insights|report-assign-insights|Report Assign Insights|Assigns user insights to plan sections (or creates new sections).|searchAnalysis||引用|sectionList,insightList,userQuery|src/service/agents/report/ReportOrchestrator.ts

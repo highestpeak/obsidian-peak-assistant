@@ -2,6 +2,7 @@
 
 > - 状态：当前源码静态审计，供 AI Control Center 设计使用
 > - 日期：2026-07-30
+> - 目录快照复核：2026-08-02（141 个 AI action；157 个内置 Prompt）
 > - 范围：用户可见 AI 能力、后台 AI 任务、Prompt、模型路由、工具、产物与运行记录
 > - 不包含：确定性 UI 操作、没有模型调用的普通 Search 排序、尚未接线的纯设计愿景
 
@@ -188,6 +189,29 @@ Chat Studio 至少包含以下 AI 动作：
 | Vault Lint AI repair | broken link、missing target、noise、orphan、tag、cleanup | Lint finding 与修复 Prompt 是两层对象 |
 | Curator setup | 推荐 Profile / model bindings | 属于配置辅助，不是内容生成 |
 | Usage optimization | 成本和质量建议 | 必须从真实 usage receipt 计算，不得虚构收益 |
+
+### 4.8 AI Control Center 全量动作快照
+
+2026-08-02 复核后的设计目录不再只放“代表能力”。它把当前能从源码、registry、capability pack、Prompt 调用和运行端口追到的用户动作与后台 AI 行为都列成独立行，共 **141 个 AI action**。这里的 action 是产品行为或可独立审计的后台行为，不等于 141 个独立 Prompt，也不等于 141 个不同模型调用。
+
+| AI Control Center 分组 | 子族与数量 | 小计 |
+| --- | --- | ---: |
+| Search, Analysis & Knowledge | Search assistance 3；AI Search 7；AI Graph 3；Knowledge and hubs 4 | 17 |
+| Composer & Copilot | Paragraph / selection 4；Heading / list / task / quote / callout 15；Properties / links 4；Tables / formulas 8；Mermaid / code / native object 8；Images / new blocks 4；Copilot document actions 16；Review / chat / Ambient 9 | 68 |
+| Chat & Generation | Conversation 5；Media generation / understanding 7；Structured artifacts 6；Conversation / project helpers 8；Built-in skills 3 | 29 |
+| Vault Intelligence | Manual Vault actions 10；Vault Auto Review 1；Vault Health AI follow-ups 6 | 17 |
+| System & background | Knowledge Index enrichment 5；Runtime / setup helpers 5 | 10 |
+| **合计** | **22 个可折叠子族** | **141** |
+
+分组裁决如下：
+
+- Search、Vault Search、AI Search、AI Graph、Pattern / Intuition / Hub discovery 是同一条“查找 → 分析 → 组织知识”产品链，因此合为一个顶层组；
+- Composer 与 Copilot 不能只登记一个 prose transform。当前目录逐项展开段落、表格、公式、Mermaid、代码、Base / Canvas / Excalidraw、图片、new block、固定 Copilot action、Document Auto Review、insight follow-up / draft、Command Center plan、Copilot chat、Ambient Push 和 Morning Briefing；
+- Chat & Generation 同时覆盖对话、plan / enhance / follow-up / regenerate、图片 / 视频 / 音乐、媒体理解、结构化 artifact，以及标题、摘要、memory / profile helper；
+- Vault Intelligence 同时覆盖 10 个手动 Vault action、Vault Auto Review 和 6 个 Vault Health AI follow-up；
+- embedding、index summary / tag / image enrichment、context compact、setup curator、usage optimization、Prompt audit 和 Web-search sub-run 仍进入目录，但标成后台或支撑行为，避免与用户入口混淆。
+
+具体 141 行及其 Prompt / model / output / review 配置见 [AI Control Center 可交互目录](../../gstack/ai-control-center-2026-07-30/index.html)。该 HTML 是设计审计 fixture，不是生产 registry；未来产品实现必须从 app-owned execution contract registry 生成，不能让这 141 行变成第二份手工真值。
 
 ## 5. 运行前与运行后步骤
 

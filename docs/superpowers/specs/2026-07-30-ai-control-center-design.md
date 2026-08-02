@@ -105,7 +105,7 @@ Run 是一次真实执行。Artifact 是该次执行生成的候选、报告、g
 AI Control Center 不是：
 
 - Provider key 管理页；
-- 一张 151 行 Prompt × model 表；
+- 一张随 Prompt 数量增长的 Prompt × model 表；
 - 可视化 workflow 编排器；
 - Chain-of-thought viewer；
 - 通用 Usage Dashboard 替代品；
@@ -122,14 +122,14 @@ AI Control Center 不是：
 
 建议分组：
 
-1. Search 与 Knowledge；
-2. AI Search、Analysis 与 Graph；
-3. Composer 与 Copilot；
-4. Chat 与 Generation；
-5. Vault Intelligence 与 Ambient；
-6. Index、Hub 与后台任务；
-7. User-defined；
-7. User-defined。
+1. Search、Analysis 与 Knowledge（包含 Vault Search、AI Search、AI Graph、Pattern / Intuition / Hub discovery）；
+2. Composer 与 Copilot（包含块级操作、表格、公式、Mermaid、native object、Document Review、Copilot chat 与 Ambient）；
+3. Chat 与 Generation；
+4. Vault Intelligence；
+5. System 与后台任务；
+6. User-defined（存在用户自定义 action 时显示）。
+
+目录必须完整登记当前源码可追踪行为，不能只放每组 1–2 个代表项。2026-08-02 的设计审计快照为 **141 个 AI action**：Search / Analysis / Knowledge 17、Composer / Copilot 68、Chat / Generation 29、Vault Intelligence 17、System / background 10。组内用可折叠子族保持可浏览性，而不是删掉动作来换取短列表。
 
 每一行显示：
 
@@ -142,13 +142,13 @@ AI Control Center 不是：
 
 ### 4.2 Prompt Library
 
-Prompt Library 作为左侧目录中的一个入口，与 AI Actions 共用列表和 inspector，不再占一个顶层 Tab。Prompt 使用平铺、可搜索的完整列表。
+Prompt Library 作为左侧目录中的一个入口，与 AI Actions 共用列表和 inspector，不再占一个顶层 Tab。Prompt 使用平铺、可搜索的完整列表；当前源码快照必须显示全部 157 个内置模板，而不是只显示被当前 action fixture 直接引用的子集。
 
 它展示：
 
 - 用户可读名称与产品分组；
 - 被多少个 AI action 使用；
-- `Default / Customized / Unused` 状态；
+- `Default / Customized / Source helper / Catalog only` 状态；
 - 内置默认正文与 Vault override；
 - shared Prompt 的影响范围提醒。
 
@@ -462,8 +462,9 @@ flowchart LR
 ### Phase 1 · Registry
 
 - 扩展 `CapabilityManifest` 的 AI execution metadata；
-- 先接 Composer、Chat、AI Search、AI Graph 四条代表链；
-- 生成只读 catalog 并与静态审计对比。
+- 把静态审计中的全部 AI action 先登记为只读 catalog，并为未接统一 resolver 的项保留诚实状态；
+- Composer、Chat、AI Search、AI Graph 可作为四种执行形状的 runtime 联调样本，但不能因此从目录中隐藏 Media、Vault Intelligence、Ambient、Hub、Index 或 helper；
+- 生成 catalog 并与 141-action / 157-Prompt 静态快照对比，任何缺失都要有明确 skip evidence。
 
 ### Phase 2 · Resolver 与 receipt
 
@@ -479,9 +480,9 @@ flowchart LR
 - 在同一目录中实现平铺、可搜索的 Prompt Library；
 - action inspector 只保留 Behavior 与 Configuration。
 
-### Phase 4 · Coverage
+### Phase 4 · Runtime coverage closure
 
-- 接入 Media、Ambient、Hub、Index、User-defined 和 provider-direct helpers；
+- 将已经在只读目录里的 Media、Ambient、Hub、Index、User-defined 和 provider-direct helpers 逐步接到统一 resolver / receipt；
 - 增加覆盖缺口视图；
 - 删除只为旧 Prompt page 存在的兼容路径。
 

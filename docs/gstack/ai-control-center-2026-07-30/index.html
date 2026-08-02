@@ -167,6 +167,19 @@
     .list-head span { display: block; margin-top: 3px; color: var(--muted); }
 
     .rows { padding: 6px; }
+    .family-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 10px 5px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: .01em;
+    }
+    .family-head:first-child { padding-top: 7px; }
+    .family-head small { color: var(--subtle); font-weight: 650; }
     .row {
       display: grid;
       grid-template-columns: 32px minmax(0, 1fr) auto;
@@ -432,6 +445,7 @@
 
   <div class="design-note">Design mock · no product settings are changed</div>
 
+  <script src="prompt-catalog-data.js"></script>
   <script>
     const icons = {
       search: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>',
@@ -449,296 +463,299 @@
       all: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><rect x="14" y="14" width="6" height="6"/></svg>'
     };
 
-    const capabilities = [
-      {
-        id: 'search.query.refine',
-        title: 'Vault Search · Refine',
-        group: 'search',
-        icon: 'search',
-        surface: 'Vault Search',
-        shape: 'Single structured call',
-        status: 'partial',
-        route: 'Fast Lookup',
-        description: 'Turn the current query and recent search behavior into grounded Hyper Search candidates without starting AI Search.',
-        success: 'Shows 3–5 valid query candidates with short grounding reasons. Selecting one fills the search box; it does not silently run a new search.',
-        mustNot: 'Must not invent Vault folders, block the normal search path, or present rule fallback as an LLM result.',
-        prompts: ['query-rewrite-system', 'query-rewrite'],
-        tools: ['Behavior event snapshot', 'Known Vault folders'],
-        output: 'Structured query candidates',
-        review: 'Candidate picker',
-        evidence: ['Registered', 'Referenced', 'Reachable'],
-        before: [
-          ['Collect current state', 'Query, active file, recent queries, known folders, and modal behavior events.'],
-          ['Resolve model', 'Fast Lookup → Agent Fast → Conversation fallback.'],
-          ['Render prompt pair', 'Query Rewrite system + user variables.']
-        ],
-        during: [
-          ['Generate candidates', 'One structured provider call; no AgentLoop and no tools.'],
-          ['Fallback', 'Rule-based candidates when the provider call fails or returns no usable output.']
-        ],
-        after: [
-          ['Validate syntax', 'Reject malformed candidates and unsupported operators.'],
-          ['Present choice', 'User chooses a candidate; current query is not overwritten automatically.'],
-          ['Record feedback', 'Store candidate selection and the actual model used.']
-        ]
+    const actionDefaults = {
+      search: {
+        icon: 'search', surface: 'Search workspace', shape: 'Search or agent workflow', status: 'live', route: 'Search / Research',
+        success: 'Returns a grounded result that stays attached to its query, sources, and originating workspace.',
+        mustNot: 'Must not invent Vault evidence, merge separate run identities, or silently write an unreviewed result.',
+        tools: ['Search context', 'Source receipts'], output: 'Grounded search result', review: 'Search workspace',
+        before: [['Freeze request', 'Capture query, scope, selected sources, current result, and run identity.']],
+        during: [['Run the selected behavior', 'Use the registered prompt, model policy, and tools for this action.']],
+        after: [['Validate and attach', 'Keep sources, artifacts, and follow-ups attached to the same search workspace.']]
       },
-      {
-        id: 'analysis.vault.search',
-        title: 'AI Search · Gather evidence',
-        group: 'analysis',
-        icon: 'spark',
-        surface: 'AI Search',
-        shape: 'Multi-tier AgentLoop',
-        status: 'live',
-        route: 'Research → Stronger',
-        description: 'Investigate a Vault question by planning, using Vault tools, collecting evidence, and producing a reviewable report plan.',
-        success: 'Returns a grounded plan and evidence receipts before report generation starts.',
-        mustNot: 'Must not skip plan review, fabricate sources, or treat a tool-free planning paragraph as completed research.',
-        prompts: ['ai-analysis-vault-harness-playbook', 'ai-analysis-proceed-nudge'],
-        tools: ['vault_list', 'vault_grep', 'vault_read_note', 'submit_plan'],
-        output: 'Evidence set + report plan',
-        review: 'Inline plan review',
-        evidence: ['Registered', 'Referenced', 'Reachable', 'Receipted'],
-        before: [
-          ['Freeze request', 'Query, selected scope, source mode, budget, and current run id.'],
-          ['Build tool set', 'Vault tools, optional Web access, permission and tier policy.'],
-          ['Resolve route', 'Research slot with optional escalation to Stronger.']
-        ],
-        during: [
-          ['Run AgentLoop', 'Collect evidence through typed tools and stable tool receipts.'],
-          ['Escalate when needed', 'Quality or explicit escalation may move to the next bound tier.'],
-          ['Submit plan', 'The agent must call submit_plan with a grounded section plan.']
-        ],
-        after: [
-          ['Open review', 'User can approve, edit, or reject the plan.'],
-          ['Persist evidence', 'Sources and tool receipts stay attached to the run.'],
-          ['Hand off', 'Approved plan starts the report workflow, not a second unrelated session.']
-        ]
+      composer: {
+        icon: 'file', surface: 'Composer / Copilot', shape: 'Review-before-write candidate', status: 'live', route: 'Copilot / Agent',
+        success: 'Produces a source-safe candidate against a frozen target and changes the document only after explicit acceptance.',
+        mustNot: 'Must not write while generating, reuse stale source offsets, or collapse distinct block actions into one opaque prompt.',
+        tools: ['Frozen Composer context', 'Candidate materializer', 'Transaction hub'], output: 'Typed candidate or review artifact', review: 'Inline candidate / Copilot review',
+        before: [['Freeze target', 'Capture document revision, block or selection, nearby context, and requested action.']],
+        during: [['Generate candidate', 'Run the action-specific instruction and stream or collect its typed result.']],
+        after: [['Review and commit', 'Accept, reject, retry, or apply one revision-checked transaction.']]
       },
-      {
-        id: 'analysis.report.generate',
-        title: 'AI Search · Generate report',
-        group: 'analysis',
-        icon: 'file',
-        surface: 'AI Search report',
-        shape: 'Multi-step workflow',
-        status: 'live',
-        route: 'Research',
-        description: 'Generate approved report sections from collected evidence, then summarize and validate the report artifact.',
-        success: 'Streams grounded sections, preserves source links, records tool use, and produces a durable report artifact.',
-        mustNot: 'Must not start before plan approval or claim missing tool receipts as known activity.',
-        prompts: ['ai-analysis-report-section', 'ai-analysis-vault-report-summary', 'ai-analysis-mermaid-fix'],
-        tools: ['Search graph inspector tools', 'Mermaid validation'],
-        output: 'Versioned report artifact',
-        review: 'Report view + Sources',
-        evidence: ['Registered', 'Referenced', 'Receipted'],
-        before: [
-          ['Load approved plan', 'Section order, evidence allocations, user notes, and report revision.'],
-          ['Resolve Research model', 'One fixed model per generation step; no tier cascade.']
-        ],
-        during: [
-          ['Generate sections', 'Each section uses its own prompt variables and source bundle.'],
-          ['Create summary', 'Executive summary is generated after sections complete.'],
-          ['Repair Mermaid', 'Only invalid Mermaid enters the repair step.']
-        ],
-        after: [
-          ['Validate artifact', 'Check sources, Markdown structure, Mermaid, and partial failures.'],
-          ['Persist version', 'Save report body, source references, and run links.'],
-          ['Expose follow-up', 'Topic, Sources, Graph, Blocks, and Continue reuse the same analysis context.']
-        ]
+      chat: {
+        icon: 'message', surface: 'Chat Studio', shape: 'Conversation helper or durable job', status: 'live', route: 'Conversation / Media',
+        success: 'Returns a recoverable message, helper result, or generated artifact with its actual model and source context.',
+        mustNot: 'Must not bypass Assistant tool policy, lose job receipts, or present an internal helper as user-authored content.',
+        tools: ['Conversation context', 'Assistant policy', 'Artifact receipts'], output: 'Message, suggestion, or artifact', review: 'Chat message / Resources',
+        before: [['Assemble context', 'Resolve conversation, Assistant, sources, permissions, and requested output.']],
+        during: [['Run helper or job', 'Stream a turn, call a focused helper, or execute a durable generation job.']],
+        after: [['Persist result', 'Attach output, actual route, errors, and artifacts to the owning conversation.']]
       },
-      {
-        id: 'graph.generate',
-        title: 'AI Graph · Generate structure',
-        group: 'analysis',
-        icon: 'graph',
-        surface: 'AI Graph',
-        shape: 'Fixed-model Harness',
-        status: 'live',
-        route: 'Active Agent',
-        description: 'Transform grounded sources into a typed graph with nodes, directed relationships, provenance, and a persistent graph artifact.',
-        success: 'Produces schema-valid nodes and edges that preserve source direction and can be reviewed in Graph and Sources views.',
-        mustNot: 'Must not infer direction from traversal order or render a source-free relationship as confirmed.',
-        prompts: ['graph-agent-system', 'graph-agent-user'],
-        tools: ['Source graph tools'],
-        output: 'AI Graph artifact',
-        review: 'Graph detail + Sources',
-        evidence: ['Registered', 'Referenced', 'Reachable'],
-        before: [
-          ['Collect sources', 'Approved Vault/Web evidence and requested graph intent.'],
-          ['Resolve model', 'Current Agent role, fixed for the run.']
-        ],
-        during: [
-          ['Generate typed graph', 'Model output is parsed against graph schemas.'],
-          ['Infer optional hierarchy', 'Thinking-tree inference is a separate step with its own prompt pair.']
-        ],
-        after: [
-          ['Validate relationships', 'Preserve directed, undirected, and bidirectional truth.'],
-          ['Save artifact', 'Stable graph id, version, provenance, and originating surface.']
-        ]
+      intelligence: {
+        icon: 'vault', surface: 'Vault Intelligence', shape: 'Vault scan, action, or review', status: 'live', route: 'Agent / Agent Fast',
+        success: 'Produces evidence-backed Vault findings or proposals that remain reviewable before any content change.',
+        mustNot: 'Must not treat heuristics as model conclusions, fabricate note paths, or apply batch changes without review.',
+        tools: ['Vault digest', 'Search and graph signals', 'Review artifacts'], output: 'Vault finding, proposal, or review snapshot', review: 'Vault Intelligence',
+        before: [['Build Vault evidence', 'Collect the bounded fingerprint, findings, scope, freshness, and current review mode.']],
+        during: [['Analyze or propose', 'Run the registered action or review loop against real Vault evidence.']],
+        after: [['Keep proposals reviewable', 'Persist findings, sources, and suggested actions without silent writeback.']]
       },
-      {
-        id: 'composer.prose.transform',
-        title: 'Composer · Transform prose',
-        group: 'composer',
-        icon: 'file',
-        surface: 'Composer block row',
-        shape: 'Streaming candidate',
-        status: 'live',
-        route: 'Copilot / Agent binding',
-        description: 'Generate a source-safe candidate for prose, heading, list, task, quote, or callout actions without writing before acceptance.',
-        success: 'Streams one typed candidate against a frozen target and commits one atomic transaction only after Accept.',
-        mustNot: 'Must not write into the Vault during generation or reuse stale selection offsets.',
-        prompts: ['composer-prose-transform'],
-        tools: ['Context snapshot', 'Transaction hub'],
-        output: 'Text patch / block insertion / list item patch',
-        review: 'Inline candidate + Generation History',
-        evidence: ['Registered', 'Referenced', 'Reachable', 'Receipted'],
-        before: [
-          ['Freeze target', 'File path, source revision, selected range, block source, and nearby context.'],
-          ['Resolve action', 'Action-specific instruction is inserted into the shared prompt.']
-        ],
-        during: [
-          ['Stream candidate', 'Shared prompt produces a typed result for the selected action.'],
-          ['Keep source unchanged', 'The document remains untouched until review completes.']
-        ],
-        after: [
-          ['Materialize result', 'Parse the action-specific result kind and renderer.'],
-          ['Review candidate', 'Accept, reject, regenerate, or switch variant.'],
-          ['Commit and reparse', 'One transaction, then reparse the updated Markdown.']
-        ]
-      },
-      {
-        id: 'copilot.vault.review',
-        title: 'Vault Intelligence · Review Vault',
-        group: 'intelligence',
-        icon: 'vault',
-        surface: 'Composer Copilot · Vault',
-        shape: 'Fixed-model tool loop',
-        status: 'partial',
-        route: 'Agent / Agent Fast',
-        description: 'Review whole-Vault signals, use tools, and collect findings, sources, proposed actions, and trace receipts across one or more rounds.',
-        success: 'Produces a review snapshot whose findings can be explained, located, or turned into reviewable changes.',
-        mustNot: 'Must not duplicate a Chat session, expose hidden reasoning, or lose unaccepted findings.',
-        prompts: ['vault-meta-agent-system-base', 'vault-meta-agent-fast-mode-suffix', 'vault-meta-agent-complete-mode-suffix'],
-        tools: ['propose_action', 'propose_source', 'note_finding', 'submit_review'],
-        output: 'Vault review snapshot',
-        review: 'Changes / Insights / Sources / Trace',
-        evidence: ['Registered', 'Referenced', 'Receipted'],
-        before: [
-          ['Build Vault digest', 'Fingerprint, freshness, active theme, signals, and prior review.'],
-          ['Select mode', 'Fast or complete selects a fixed binding and suffix.']
-        ],
-        during: [
-          ['Run review round', 'Tool loop records findings and source evidence.'],
-          ['Continue or finish', 'submit_review controls another compacted round or completion.']
-        ],
-        after: [
-          ['Build artifacts', 'Changes, Insights, Sources, and Trace stay in one run receipt.'],
-          ['Persist history', 'Completed and cancelled review snapshots remain recoverable.']
-        ]
-      },
-      {
-        id: 'chat.conversation.run',
-        title: 'Chat Studio · Conversation turn',
-        group: 'chat',
-        icon: 'message',
-        surface: 'Chat Studio Composer',
-        shape: 'Fixed-model AgentLoop',
-        status: 'live',
-        route: 'Conversation / Assistant override',
-        description: 'Assemble conversation context, route the selected Assistant and model, run allowed tools, and stream one recoverable turn.',
-        success: 'Streams text and tool states, persists one turn receipt, and links generated artifacts back to the message.',
-        mustNot: 'Must not reintroduce a second tool loop, bypass Assistant deny rules, or hide the actual model used.',
-        prompts: ['conversation-system', 'plan-mode-system'],
-        tools: ['Vault search', 'Web search', 'MCP', 'artifact_create', 'media_generate'],
-        output: 'Assistant message + artifacts',
-        review: 'Message actions + Resources',
-        evidence: ['Registered', 'Referenced', 'Reachable', 'Receipted'],
-        before: [
-          ['Resolve Assistant', 'Instructions, knowledge refs, tool policy, and preferred model.'],
-          ['Assemble context', 'System, profile, project, files, messages, and budget receipts.'],
-          ['Build tools', 'Apply availability, capability, allow/deny, and permission checks.']
-        ],
-        during: [
-          ['Run AgentLoop', 'One fixed model streams text and tool events.'],
-          ['Handle permission', 'Ask-required tools suspend until a user decision arrives.']
-        ],
-        after: [
-          ['Save message', 'Persist final status, finish reason, and actual model.'],
-          ['Link artifacts', 'Generated media and structured artifacts attach to the turn.'],
-          ['Offer follow-ups', 'Suggestions are a separate helper linked to this turn.']
-        ]
-      },
-      {
-        id: 'media.generate',
-        title: 'Generation · Image, video, or music',
-        group: 'chat',
-        icon: 'image',
-        surface: 'Chat Studio / Composer',
-        shape: 'Durable media job',
-        status: 'partial',
-        route: 'Media route preflight',
-        description: 'Preflight provider, model, capability, cost, references, and policy before submitting a media generation job.',
-        success: 'Returns one or more durable media receipts, survives async polling, and writes files only through the media attachment owner.',
-        mustNot: 'Must not silently switch billing providers, skip music terms, or mark an untested paid route as verified.',
-        prompts: [],
-        tools: ['fal adapter', 'OpenAI native adapter', 'Media attachment writer'],
-        output: 'Media job receipts + files',
-        review: 'Gallery / Resources / Composer candidate',
-        evidence: ['Registered', 'Referenced', 'Receipted'],
-        before: [
-          ['Run preflight', 'Route, model, profile, capability, quantity, references, mask, and policy.'],
-          ['Confirm cost or terms', 'Required confirmation becomes a durable job state.']
-        ],
-        during: [
-          ['Submit job', 'Native or fal adapter receives the normalized request.'],
-          ['Poll or stream', 'Durable async jobs can be cancelled, retried, and resumed.']
-        ],
-        after: [
-          ['Download and validate', 'Validate bytes, media type, expected quantity, and paths.'],
-          ['Write attachment', 'Use the configured writer and emit usage receipts.']
-        ]
-      },
-      {
-        id: 'knowledge.index.embedding',
-        title: 'Knowledge Index · Embedding',
-        group: 'knowledge',
-        icon: 'database',
-        surface: 'Index build and semantic search',
-        shape: 'Embedding',
-        status: 'live',
-        route: 'Knowledge Index',
-        description: 'Create and query vector representations for document chunks without using a chat Prompt or AgentLoop.',
-        success: 'Stores embeddings with model identity and uses the same binding for compatible query vectors.',
-        mustNot: 'Must not appear as a Prompt-driven text generation or silently mix incompatible embedding dimensions.',
-        prompts: [],
-        tools: ['Chunker', 'Embedding client', 'Vector repository'],
-        output: 'Embedding vectors',
-        review: 'Index status / search receipts',
-        evidence: ['Registered', 'Referenced', 'Reachable'],
-        before: [
-          ['Prepare chunks', 'Normalize document content and determine changed chunks.'],
-          ['Resolve binding', 'Knowledge Index Profile and embedding model.']
-        ],
-        during: [
-          ['Embed batch', 'Generate vectors with stable model and dimension metadata.']
-        ],
-        after: [
-          ['Persist vectors', 'Update the rebuildable index and record failures.'],
-          ['Query compatibility', 'Semantic search uses a compatible query vector.']
-        ]
+      system: {
+        icon: 'database', surface: 'System background', shape: 'Background AI step', status: 'support', route: 'Purpose-specific binding',
+        success: 'Completes one bounded support task and records enough identity to explain cost, freshness, and downstream use.',
+        mustNot: 'Must not masquerade as a user action, mix incompatible model outputs, or create user-owned content silently.',
+        tools: ['Scheduled input', 'Rebuildable projection', 'Usage receipt'], output: 'Machine fact or configuration suggestion', review: 'Owning settings or product surface',
+        before: [['Prepare bounded input', 'Select changed records, budget, binding, and output schema.']],
+        during: [['Run support step', 'Execute one helper, embedding batch, or configuration curator.']],
+        after: [['Record projection', 'Persist rebuildable output, failures, model identity, and freshness.']]
       }
+    };
+
+    function actionRows(group, family, rows, shared = {}) {
+      return rows.map(([id, title, description, promptRefs = [], overrides = {}]) => ({
+        ...actionDefaults[group],
+        ...shared,
+        ...overrides,
+        id,
+        title,
+        description,
+        group,
+        family,
+        prompts: Array.isArray(promptRefs) ? promptRefs : [promptRefs],
+        evidence: overrides.evidence ?? (overrides.status === 'support' || actionDefaults[group].status === 'support'
+          ? ['Registered', 'Referenced']
+          : ['Registered', 'Referenced', 'Reachable'])
+      }));
+    }
+
+    const capabilities = [
+      ...actionRows('search', 'Search assistance', [
+        ['search.query.refine', 'Vault Search · Refine query', 'Turn the current query and recent search behavior into grounded Hyper Search candidates.', ['query-rewrite-system', 'query-rewrite'], { shape: 'Single structured call', route: 'Fast Lookup', status: 'partial', output: 'Query candidates', review: 'Query candidate picker' }],
+        ['search.query.parse-language', 'Vault Search · Parse natural language', 'Compile a natural-language request into Hyper Search syntax and fall back to the original text when parsing fails.', [], { shape: 'Single structured call', status: 'partial', output: 'Parsed search expression' }],
+        ['search.results.rerank', 'Vault Search · LLM rerank', 'Reorder a bounded result set by semantic relevance when the LLM reranker is selected.', ['search-rerank-rank-gpt'], { shape: 'Single ranking call', route: 'Rerank helper', status: 'partial', output: 'Reordered search results' }]
+      ], { surface: 'Vault Search' }),
+
+      ...actionRows('search', 'AI Search', [
+        ['analysis.vault.search', 'AI Search · Gather evidence', 'Plan a Vault investigation, use typed tools, collect sources, and submit a reviewable report plan.', ['ai-analysis-vault-harness-playbook', 'ai-analysis-proceed-nudge'], { shape: 'Multi-tier AgentLoop', route: 'Research → Stronger', output: 'Evidence set + report plan', review: 'Inline plan review' }],
+        ['analysis.report.generate', 'AI Search · Generate report', 'Generate approved report sections, summary, citations, and validated Mermaid from collected evidence.', ['ai-analysis-report-section', 'ai-analysis-vault-report-summary', 'ai-analysis-mermaid-fix-system', 'ai-analysis-mermaid-fix', 'report-assign-insights'], { shape: 'Multi-step workflow', route: 'Research', output: 'Versioned analysis report' }],
+        ['analysis.continue', 'AI Search · Continue analysis', 'Start another evidence round from the existing analysis context and a focused follow-up request.', ['ai-analysis-continue-system', 'ai-analysis-continue'], { shape: 'Multi-tier AgentLoop', route: 'Research → Stronger', output: 'Additional evidence round' }],
+        ['analysis.synthesize-rounds', 'AI Search · Synthesize rounds', 'Merge multiple analysis rounds into one coherent result without discarding their source receipts.', ['ai-analysis-synthesize-system', 'ai-analysis-synthesize'], { shape: 'Structured workflow step', status: 'support', output: 'Merged analysis state' }],
+        ['analysis.followup', 'AI Search · Ask about results', 'Answer a question against the current report, sources, graph, blocks, and analysis history.', ['ai-analysis-followup-system'], { shape: 'Fixed-model tool loop', route: 'Agent Fast', output: 'Grounded follow-up answer' }],
+        ['analysis.save.filename', 'AI Search · Suggest save filename', 'Suggest a stable, readable filename from the completed analysis query and summary.', ['ai-analysis-save-filename'], { shape: 'Single text helper', route: 'Fast Lookup', status: 'support', output: 'Filename suggestion' }],
+        ['analysis.save.folder', 'AI Search · Suggest save folder', 'Suggest an existing or configured Vault folder for an exported analysis result.', ['ai-analysis-save-folder'], { shape: 'Single text helper', route: 'Fast Lookup', status: 'support', output: 'Folder suggestion' }]
+      ], { surface: 'AI Search' }),
+
+      ...actionRows('search', 'AI Graph', [
+        ['graph.generate', 'AI Graph · Generate graph', 'Transform selected Vault or Web sources into schema-valid nodes, directed relationships, and provenance.', ['graph-agent-system', 'graph-agent-user', 'ai-graph-artifact-extract'], { icon: 'graph', shape: 'Fixed-model Harness', route: 'Active Agent', output: 'Versioned AI Graph' }],
+        ['graph.update', 'AI Graph · Update graph', 'Apply a new instruction to an existing graph version while preserving graph identity, sources, and version history.', ['graph-agent-system', 'graph-agent-user', 'ai-graph-artifact-extract'], { icon: 'graph', shape: 'Fixed-model Harness', route: 'Active Agent', output: 'New AI Graph version' }],
+        ['graph.thinking-tree', 'AI Graph · Infer thinking tree', 'Add an optional hierarchical reasoning lens from the graph source documents as a separate inference step.', ['graph-infer-thinking-tree-system', 'graph-infer-thinking-tree-user'], { icon: 'graph', shape: 'Single structured call', output: 'Thinking-tree lens' }]
+      ], { surface: 'AI Graph' }),
+
+      ...actionRows('search', 'Knowledge and hubs', [
+        ['knowledge.pattern-discovery', 'Knowledge · Discover patterns', 'Detect reusable patterns from query and interaction history as structured candidates.', ['pattern-discovery'], { shape: 'Single text call', status: 'partial', output: 'Pattern candidates' }],
+        ['knowledge.intuition', 'Knowledge · Build intuition', 'Plan and investigate emerging Vault themes with tools before submitting a structured knowledge intuition.', ['knowledge-intuition-plan-system', 'knowledge-intuition-plan', 'knowledge-intuition-submit'], { shape: 'Agent workflow', status: 'partial', output: 'Knowledge intuition record' }],
+        ['knowledge.hub.curate', 'Knowledge · Curate hubs', 'Decide which knowledge clusters should become, merge into, or retire as Hubs.', ['hub-curation-plan', 'hub-curation-submit'], { shape: 'Plan + structured submit', status: 'partial', output: 'Hub curation plan' }],
+        ['knowledge.hub.materialize', 'Knowledge · Materialize hub', 'Draft and critique a Hub document from approved members before guarded persistence.', ['hub-materialization-draft', 'hub-materialization-critique'], { shape: 'Draft + critique workflow', status: 'partial', output: 'Hub draft and version' }]
+      ], { surface: 'Knowledge Index / Hub workflow' }),
+
+      ...actionRows('composer', 'Paragraph and selection', [
+        ['composer.prose.polish', 'Polish text', 'Improve clarity and style for a selection or document target without changing its meaning.', ['doc-polish']],
+        ['composer.prose.polish-block', 'Polish paragraph', 'Improve the current paragraph’s order, tone, and transitions while keeping its Markdown shape.', ['composer-prose-transform']],
+        ['composer.prose.add-example', 'Add an example', 'Insert one concrete example below the current paragraph without rewriting the paragraph.', ['composer-prose-transform']],
+        ['composer.prose.to-table', 'Convert paragraph to table', 'Turn parallel concepts in a paragraph into an editable Markdown table.', ['composer-prose-transform']]
+      ]),
+      ...actionRows('composer', 'Heading, list, task, quote, and callout', [
+        ['composer.heading.shorten', 'Shorten heading', 'Create a shorter directory-like heading while preserving its level.', ['composer-prose-transform']],
+        ['composer.heading.outline', 'Add outline', 'Insert a next-level writing outline under the selected heading.', ['composer-prose-transform']],
+        ['composer.heading.questions', 'Add guiding questions', 'Insert two or three questions the section should answer.', ['composer-prose-transform']],
+        ['composer.list.fill-gaps', 'Fill missing list item', 'Find one important missing category and insert it at the correct semantic position.', ['composer-prose-transform']],
+        ['composer.list.reorder', 'Reorder list', 'Rearrange list items into a clearer semantic order.', ['composer-prose-transform']],
+        ['composer.list.to-table', 'Convert list to table', 'Preserve all list information while converting it to an editable table.', ['composer-prose-transform']],
+        ['composer.task.find-blockers', 'Find task blockers', 'Add blockers and unresolved questions below the current task area.', ['composer-prose-transform']],
+        ['composer.task.add-next-step', 'Add next step', 'Insert the smallest executable next step as a Markdown task.', ['composer-prose-transform']],
+        ['composer.task.prioritize', 'Prioritize tasks', 'Reorder tasks by impact and urgency without changing completion state.', ['composer-prose-transform']],
+        ['composer.quote.explain', 'Explain quote', 'Add an explanation of the quote’s role in the current context.', ['composer-prose-transform']],
+        ['composer.quote.counterexample', 'Find counterexample', 'Add a counterexample or applicability boundary below the quote.', ['composer-prose-transform']],
+        ['composer.quote.to-callout', 'Convert quote to Callout', 'Choose an appropriate Obsidian Callout while preserving the quoted text.', ['composer-prose-transform']],
+        ['composer.callout.change-type', 'Change Callout type', 'Choose a Callout type that better matches the content’s intent.', ['composer-prose-transform']],
+        ['composer.callout.expand', 'Expand Callout principle', 'Turn a short Callout principle into an executable writing rule.', ['composer-prose-transform']],
+        ['composer.callout.to-checklist', 'Convert Callout to checklist', 'Turn the Callout into verifiable Markdown task items.', ['composer-prose-transform']]
+      ]),
+      ...actionRows('composer', 'Properties and links', [
+        ['composer.frontmatter.suggest-properties', 'Suggest properties', 'Propose frontmatter fields from document content and Vault conventions, one field at a time.', ['composer-suggest-properties']],
+        ['composer.frontmatter.suggest-tags', 'Suggest frontmatter tags', 'Suggest restrained reusable tags while preserving the existing YAML structure.', ['composer-suggest-properties']],
+        ['composer.frontmatter.normalize-properties', 'Normalize properties', 'Check common property names and values for consistent formatting.', ['composer-suggest-properties']],
+        ['composer.link.tidy', 'Tidy links', 'Repair anchors, expand embeds, convert footnotes, and improve links in one block.', ['doc-link-tidy']]
+      ]),
+      ...actionRows('composer', 'Tables and formulas', [
+        ['composer.table.summarize', 'Summarize table', 'Condense and normalize a table through a typed table patch.', ['doc-table-summarize']],
+        ['composer.table.add-column', 'Add table column', 'Propose a useful derived column and populate it through a typed patch.', ['doc-table-add-column']],
+        ['composer.table.check-units', 'Check table units', 'Normalize inconsistent units or measures across a table column.', ['doc-table-check-units']],
+        ['composer.table.extract-formula', 'Extract table formula', 'Derive a computed column from existing table data.', ['doc-table-extract-formula']],
+        ['composer.table.generate-chart', 'Generate chart from table', 'Create a reviewable chart-source block from table data.', ['doc-table-generate-chart']],
+        ['composer.math.explain', 'Explain formula', 'Explain one display formula in natural language without modifying it.', ['composer-explain-formula']],
+        ['composer.math.split', 'Split formula', 'Break a formula into individually understandable components.', ['composer-split-formula']],
+        ['composer.math.variables', 'Build variable table', 'List each symbol in a formula and explain its meaning.', ['composer-formula-variables']]
+      ]),
+      ...actionRows('composer', 'Mermaid, code, and native objects', [
+        ['composer.mermaid.explain', 'Explain Mermaid diagram', 'Describe the flow, relationships, and visible gaps without changing Mermaid source.', ['doc-native-explain']],
+        ['composer.mermaid.edit', 'Edit Mermaid diagram', 'Incrementally edit Mermaid source and re-render it before acceptance.', ['doc-mermaid-edit']],
+        ['composer.mermaid.fill-branches', 'Fill Mermaid branches', 'Add only clearly missing exception, fallback, or decision branches.', ['doc-mermaid-edit']],
+        ['composer.code.explain', 'Explain code block', 'Describe code structure, key logic, and visible risks without editing source.', ['doc-native-explain']],
+        ['composer.code.edit', 'Edit code block', 'Rewrite or refactor fenced code according to a targeted instruction.', ['doc-code-edit']],
+        ['composer.base.edit', 'Edit Base', 'Propose typed edits to Base columns, formulas, filters, or view structure.', ['doc-native-edit']],
+        ['composer.canvas.edit', 'Edit Canvas', 'Propose typed edits to Canvas nodes, edges, labels, and layout.', ['doc-native-edit']],
+        ['composer.excalidraw.edit', 'Edit Excalidraw', 'Propose typed edits to an Excalidraw scene and background.', ['doc-native-edit']]
+      ]),
+      ...actionRows('composer', 'Images and new blocks', [
+        ['composer.image.edit', 'Edit image', 'Change or restyle the selected image through the media generation pipeline.', [], { shape: 'Durable media candidate', route: 'Media route', status: 'partial' }],
+        ['composer.image.caption', 'Write image caption', 'Generate a concise context-aware caption for an image block.', ['composer-image-caption']],
+        ['composer.image.layout', 'Arrange multiple images', 'Generate a typed layout proposal for a multi-image selection.', ['composer-image-layout']],
+        ['composer.block-draft.generate', 'Generate new block', 'Generate an inline Markdown block from an instruction and insert it only after review.', ['composer-block-draft']]
+      ]),
+      ...actionRows('composer', 'Copilot document actions', [
+        ['copilot.format-polish', 'Format Polish', 'Fix heading hierarchy, list consistency, whitespace, and broken links.', ['doc-format-polish']],
+        ['copilot.correct-content', 'Correct Content', 'Find factual errors, logical inconsistencies, broken references, and typos.', ['doc-correct-content']],
+        ['copilot.review', 'Review Article', 'Return structured feedback on article structure and content.', ['doc-review']],
+        ['copilot.suggest-links', 'Suggest Links', 'Use a tool-enabled agent to find potential wikilink connections.', ['copilot-agent-suggest-links']],
+        ['copilot.suggest-semantic-links', 'Suggest Links from graph', 'Find unlinked semantic neighbors already present in the knowledge graph.', []],
+        ['copilot.suggest-split', 'Suggest document split', 'Propose how to split a long document into coherent notes.', ['doc-split-suggestion']],
+        ['copilot.suggest-tags', 'Suggest document tags', 'Rank tag suggestions using content, graph, and folder signals.', ['doc-suggest-tags']],
+        ['copilot.summarize', 'Summarize document', 'Generate a concise summary of the current document or selection.', ['doc-summarize']],
+        ['copilot.extract-concepts', 'Extract Concepts', 'Identify key concepts and definitions as structured results.', ['doc-extract-concepts']],
+        ['copilot.translate', 'Translate document', 'Translate the selected scope between Chinese and English by default.', ['doc-translate']],
+        ['copilot.check-task-list', 'Check Task List', 'Analyze tasks for priority, overdue items, blockers, and staleness.', ['copilot-agent-check-task-list']],
+        ['copilot.continue-writing', 'Continue Writing', 'Continue the current document from where the author stopped.', ['writing-continue']],
+        ['copilot.rewrite-selection', 'Rewrite Selection', 'Rewrite selected text for concise clarity while retaining intent.', ['writing-rewrite']],
+        ['copilot.add-evidence', 'Add Evidence', 'Find supporting Vault evidence and prepare grounded additions.', ['copilot-agent-add-evidence']],
+        ['copilot.writing-plan', 'Create Writing Plan', 'Build a structured writing plan grounded in Vault notes.', ['copilot-agent-writing-plan']],
+        ['copilot.write-article', 'Write Article', 'Synthesize an article from Vault notes with wikilink citations.', ['copilot-agent-write-article']]
+      ]),
+      ...actionRows('composer', 'Copilot review, chat, and Ambient', [
+        ['copilot.document.auto-review', 'Document Auto Review', 'Run a fast or complete tool loop that produces Changes, Insights, Sources, and Trace for the active note.', ['copilot-meta-agent-system-base', 'copilot-meta-agent-fast-mode-suffix', 'copilot-meta-agent-complete-mode-suffix'], { shape: 'Fixed-model tool loop', route: 'Agent / Agent Fast' }],
+        ['copilot.insight.followup', 'Ask about an insight', 'Continue a grounded inline conversation about one Auto Review insight.', ['insight-inline-chat-followup-system'], { shape: 'Inline follow-up stream' }],
+        ['copilot.insight.draft-proposal', 'Draft edits from insight', 'Turn one Auto Review insight into one to three concrete edit proposals.', ['insight-inline-chat-draft-proposal-system'], { shape: 'Inline proposal stream' }],
+        ['copilot.custom-prompt', 'Run custom prompt action', 'Run a Vault-authored custom Copilot prompt with document, selection, tags, and tool access.', [], { status: 'partial', output: 'Custom action result' }],
+        ['copilot.command-center.plan', 'Plan a command sequence', 'Turn a plain-language goal into a reviewable sequence of registered capability commands.', ['copilot-command-center-plan'], { shape: 'Structured planning call', status: 'partial', output: 'Capability plan' }],
+        ['composer.copilot.session', 'Copilot · Custom instruction', 'Choose a Composer capability, add a custom instruction, and run it against the focused block or document.', [], { shape: 'Capability-backed Copilot session' }],
+        ['ambient.push', 'Ambient Push · Related notes', 'Recall direct, semantic, recurring, and serendipitous notes from the paragraph currently being written.', ['ambient-explanation-system', 'ambient-explanation-user'], { icon: 'spark', shape: 'Hybrid retrieval + optional explanation', route: 'Search + Agent Fast', output: 'Related-note cards', review: 'Composer Brief / gutter' }],
+        ['ambient.working-theme', 'Ambient · Infer working theme', 'Infer the current working theme from recent Vault activity so related context can follow the task in progress.', ['working-theme-inference'], { icon: 'spark', shape: 'Single text helper', route: 'Agent Fast', status: 'support', output: 'Working-theme context' }],
+        ['ambient.morning-briefing', 'Ambient · Morning Briefing', 'Re-surface high-value Vault items after a long session gap using persisted activity signals.', [], { icon: 'spark', shape: 'Signal-based briefing', status: 'support', output: 'Morning briefing cards' }]
+      ]),
+
+      ...actionRows('chat', 'Conversation', [
+        ['chat.conversation.run', 'Conversation turn', 'Assemble Assistant, context, sources, model, and tools into one recoverable streaming turn.', ['conversation-system', 'context-memory', 'user-profile-context', 'working-context-render', 'activity-index-render'], { shape: 'Fixed-model AgentLoop', route: 'Conversation / Assistant override' }],
+        ['chat.plan-mode', 'Plan mode turn', 'Run one conversation turn with planning instructions and no implied execution.', ['conversation-system', 'plan-mode-system'], { shape: 'Fixed-model AgentLoop' }],
+        ['chat.prompt-enhance', 'Enhance prompt', 'Rewrite a vague draft into a clearer, more specific prompt before sending.', ['prompt-enhance'], { shape: 'Single text call', route: 'Conversation' }],
+        ['chat.suggest-followups', 'Suggest follow-up questions', 'Generate and persist next-question chips after a completed assistant message.', ['chat-suggest-followups'], { shape: 'Single structured call', route: 'Conversation' }],
+        ['chat.regenerate', 'Regenerate response', 'Run the selected conversation branch again while preserving the prior variant.', ['conversation-system'], { shape: 'Conversation replay' }]
+      ]),
+      ...actionRows('chat', 'Media generation and understanding', [
+        ['media.image.generate', 'Generate image', 'Generate one or more images after route, quantity, aspect, and cost preflight.', [], { icon: 'image', shape: 'Durable media job', route: 'Native / fal', status: 'partial' }],
+        ['media.image.edit', 'Edit image', 'Edit a user-selected base image with optional mask and explicit route preflight.', [], { icon: 'image', shape: 'Durable media job', route: 'Native / fal', status: 'partial' }],
+        ['media.video.generate', 'Generate video', 'Submit, poll, and persist a short video generation job after cost confirmation.', [], { icon: 'image', shape: 'Async durable media job', route: 'Native / fal', status: 'partial' }],
+        ['media.music.generate', 'Generate music', 'Submit a music-generation job after provider, duration, cost, and terms checks.', [], { icon: 'image', shape: 'Async durable media job', route: 'fal', status: 'partial' }],
+        ['media.image.understand', 'Understand attached image', 'Pass an image to a vision-capable conversation model and record the attachment as source context.', [], { icon: 'image', shape: 'Multimodal conversation input' }],
+        ['media.audio.transcribe', 'Transcribe attached audio', 'Transcribe audio with the configured adapter before adding it to conversation context.', [], { icon: 'image', shape: 'Transcription helper', route: 'Transcription binding', status: 'partial' }],
+        ['media.video.understand', 'Understand attached video', 'Use native video input when supported or extract and transcribe the audio track as a fallback.', [], { icon: 'image', shape: 'Multimodal / transcription helper', status: 'partial' }]
+      ]),
+      ...actionRows('chat', 'Structured artifacts', [
+        ['chat.artifact.document', 'Generate document', 'Ask the chat agent to create a grounded document artifact and save it through the artifact writer.', [], { icon: 'file', output: 'Document artifact' }],
+        ['chat.artifact.dataview', 'Create Dataview query', 'Validate and save a DQL or DataviewJS query note.', [], { icon: 'file', output: 'Dataview artifact' }],
+        ['chat.artifact.excalidraw', 'Create Excalidraw drawing', 'Validate and save a structured Excalidraw scene artifact.', [], { icon: 'file', output: 'Excalidraw artifact' }],
+        ['chat.artifact.drawio', 'Create draw.io diagram', 'Validate and save a draw.io XML diagram artifact.', [], { icon: 'file', output: 'draw.io artifact' }],
+        ['chat.artifact.extract', 'Create editable extract', 'Save a user-editable Markdown extract with conversation and Vault provenance.', [], { icon: 'file', output: 'Markdown extract' }],
+        ['chat.artifact.reminder', 'Create reminder', 'Validate an absolute time and save a reminder artifact watched by the scheduler.', [], { icon: 'file', output: 'Reminder artifact' }]
+      ]),
+      ...actionRows('chat', 'Conversation and project helpers', [
+        ['chat.assistant.draft', 'Draft Assistant', 'Draft an editable Assistant name, summary, and instructions from a natural-language request.', ['chat-assistant-draft'], { shape: 'Single structured call' }],
+        ['chat.project.description', 'Draft project description', 'Draft a project description that remains editable before saving.', ['project-description-draft'], { shape: 'Single text call' }],
+        ['chat.conversation.title', 'Generate conversation title', 'Generate a concise title from the first useful conversation messages.', ['application-generate-title'], { shape: 'Single text call', status: 'support' }],
+        ['chat.conversation.summary', 'Summarize conversation', 'Produce short and, when needed, full summaries for context recovery.', ['conversation-summary-short', 'conversation-summary-full'], { shape: 'Short + full summary workflow', status: 'support' }],
+        ['chat.project.summary', 'Summarize project', 'Produce short and full summaries from project conversations and resources.', ['project-summary-short', 'project-summary-full'], { shape: 'Short + full summary workflow', status: 'support' }],
+        ['chat.topic.aggregate', 'Aggregate conversation topics', 'Group conversations into LLM-derived topic clusters for project navigation.', ['chat-topic-aggregation'], { shape: 'Single structured call', status: 'support' }],
+        ['chat.memory.extract', 'Extract memory candidates', 'Extract possible user memory updates from real conversation and Vault evidence.', ['memory-extract-candidates-json'], { shape: 'Single structured call', status: 'support' }],
+        ['chat.profile.organize', 'Organize user profile', 'Build or reorganize the user profile Markdown from approved candidates and Vault evidence.', ['profile-from-vault-json', 'user-profile-organize-markdown'], { shape: 'Profile workflow', status: 'support' }]
+      ]),
+      ...actionRows('chat', 'Built-in skills', [
+        ['chat.skill.weekly-report', 'Run Weekly Report skill', 'Use the built-in weekly-report instruction pack with the current conversation and Vault context.', ['skill-weekly-report'], { shape: 'Skill-guided conversation' }],
+        ['chat.skill.literature-review', 'Run Literature Review skill', 'Use the built-in literature-review instruction pack for a bounded topic and source set.', ['skill-literature-review'], { shape: 'Skill-guided conversation' }],
+        ['chat.skill.vault-health-check', 'Run Vault Health Check skill', 'Use the built-in Vault-health instruction pack through the Chat agent and its allowed tools.', ['skill-vault-health-check'], { shape: 'Skill-guided conversation' }]
+      ]),
+
+      ...actionRows('intelligence', 'Manual Vault actions', [
+        ['copilot.find-related', 'Find Related', 'Find semantically related notes for the active document.', []],
+        ['copilot.knowledge-gaps', 'Knowledge Gaps', 'Use a Vault agent to identify missing topics and evidence gaps.', ['copilot-agent-knowledge-gaps']],
+        ['copilot.synthesize-topic', 'Synthesize Topic', 'Build a topic overview from the seed note and related Vault evidence.', ['copilot-agent-synthesize-topic']],
+        ['copilot.vault-health', 'Vault Health', 'Analyze Vault structure for orphans, duplicates, and stale notes.', ['vault-health']],
+        ['copilot.vault-summary', 'Vault Summary', 'Summarize recent Vault activity over a selected time period.', ['vault-summary']],
+        ['copilot.extract-todos', 'Extract Todos', 'Collect unchecked tasks across the Vault as a structured result.', []],
+        ['copilot.deduplicate-scan', 'Deduplicate Scan', 'Find files with identical content hashes and group them for review.', []],
+        ['copilot.find-solve-tasks', 'Find & Solve Tasks', 'Find question-like open tasks and research suggested answers from Vault notes.', ['copilot-find-and-solve-tasks-system', 'copilot-find-and-solve-tasks-user']],
+        ['copilot.smart-connections', 'Smart Connections', 'Find semantically similar unlinked notes through the graph inspector.', []],
+        ['copilot.detect-and-file', 'Detect & File', 'Suggest which existing note should receive a piece of text.', ['copilot-agent-detect-and-file']]
+      ]),
+      ...actionRows('intelligence', 'Vault review', [
+        ['copilot.vault.review', 'Vault Auto Review', 'Run a fast or complete multi-round Vault review and collect findings, sources, clusters, gaps, actions, and trace.', ['vault-meta-agent-system-base', 'vault-meta-agent-fast-mode-suffix', 'vault-meta-agent-complete-mode-suffix'], { shape: 'Fixed-model tool loop', output: 'Vault review snapshot' }]
+      ]),
+      ...actionRows('intelligence', 'Vault Health AI follow-ups', [
+        ['vault-health.repair-links', 'Ask AI to repair broken links', 'Draft a repair plan for the highest-impact unresolved links.', ['lint-broken-link-repair'], { status: 'partial' }],
+        ['vault-health.map-targets', 'Map or create missing targets', 'Plan aliases or new notes for repeatedly referenced missing targets.', ['lint-missing-targets'], { status: 'partial' }],
+        ['vault-health.classify-noise', 'Classify broken-link noise', 'Decide whether concentrated link noise comes from imported or generated material.', ['lint-noise-source'], { status: 'partial' }],
+        ['vault-health.reconnect-orphans', 'Reconnect orphan notes', 'Suggest evidence-backed links for notes disconnected from the Vault graph.', ['lint-orphan-reconnect'], { status: 'partial' }],
+        ['vault-health.suggest-tags', 'Improve tag coverage', 'Suggest restrained tags for a reviewed sample of untagged notes.', ['lint-tag-coverage'], { status: 'partial' }],
+        ['vault-health.triage-content', 'Triage empty or stub notes', 'Propose delete, merge, or expand decisions for empty and stub notes.', ['lint-content-cleanup'], { status: 'partial' }]
+      ]),
+
+      ...actionRows('system', 'Knowledge Index enrichment', [
+        ['knowledge.index.embedding', 'Generate embeddings', 'Create compatible vector representations for changed document chunks and semantic queries.', [], { shape: 'Embedding batch', route: 'Knowledge Index' }],
+        ['knowledge.index.summary', 'Generate document summaries', 'Generate short and optional full summaries for indexed documents.', ['doc-summary-short', 'doc-summary-full'], { shape: 'One or two text calls' }],
+        ['knowledge.index.tags', 'Generate document tags', 'Generate structured LLM tags while keeping deterministic and user tags distinguishable.', ['doc-tag-generate-json'], { shape: 'Single structured call' }],
+        ['knowledge.index.image-description', 'Describe indexed image', 'Generate a description used for image indexing and retrieval.', ['image-description'], { shape: 'Vision helper', status: 'partial' }],
+        ['knowledge.index.image-summary', 'Summarize indexed image', 'Generate a short searchable summary for an image document.', ['image-summary'], { shape: 'Vision helper', status: 'partial' }]
+      ]),
+      ...actionRows('system', 'Runtime and setup helpers', [
+        ['harness.context.compact', 'Compact agent context', 'Summarize an over-budget agent context into a recoverable continuation state.', [], { shape: 'Single text call' }],
+        ['system.profile.curator', 'Recommend AI setup', 'Recommend Profile and model bindings from onboarding answers and environment probes.', ['curator-system'], { shape: 'Curator agent', status: 'partial' }],
+        ['system.usage.optimize', 'Generate usage optimization advice', 'Turn real usage receipts into bounded cost and quality recommendations.', ['usage-optimization-system'], { shape: 'Structured curator call', status: 'partial' }],
+        ['system.prompt.audit', 'Audit Prompt Library', 'Evaluate registered prompt templates and suggest focused improvements.', ['copilot-agent-prompt-audit'], { shape: 'Tool-enabled agent', status: 'partial' }],
+        ['system.web-search.delegate', 'Delegate Web search', 'Run a web-search-capable helper when a parent Chat, AI Search, or Graph action requests Web evidence.', ['web-search-tool-system'], { shape: 'Tool sub-run', status: 'support' }]
+      ])
     ];
 
-    const prompts = [
-      { id: 'composer-prose-transform', title: 'Composer prose transform', group: 'Composer', kind: 'Shared executable prompt', owners: 18, version: 'Built-in + Vault override', status: 'live' },
-      { id: 'query-rewrite', title: 'Vault Search query rewrite', group: 'Search', kind: 'Executable prompt', owners: 1, version: 'Built-in', status: 'live' },
-      { id: 'ai-analysis-report-section', title: 'Generate report section', group: 'AI Search', kind: 'Workflow step prompt', owners: 1, version: 'Built-in', status: 'live' },
-      { id: 'conversation-system', title: 'Conversation system', group: 'Chat', kind: 'Context template', owners: 1, version: 'Built-in + dynamic slots', status: 'live' },
-      { id: 'vault-meta-agent-system-base', title: 'Vault review base', group: 'Vault Intelligence', kind: 'System fragment', owners: 1, version: 'Built-in', status: 'partial' },
-      { id: 'gap-explanation', title: 'Gap explanation', group: 'Knowledge', kind: 'Registered prompt', owners: 0, version: 'Built-in', status: 'unwired' }
-    ];
+    const promptGroupLabels = {
+      chat: 'Chat', searchAnalysis: 'Search & Analysis', indexing: 'Knowledge Index',
+      copilot: 'Copilot / Composer', userProfile: 'User Profile'
+    };
+    const prompts = String(window.PEAK_PROMPT_CATALOG_TEXT ?? '')
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+      .map(line => {
+        const [id, stem, title, description, group, system, sourceStatus, variables, callers] = line.split('|');
+        const status = sourceStatus === '引用' ? 'live' : sourceStatus === '配套' ? 'support' : 'unwired';
+        return {
+          id,
+          stem,
+          title,
+          description,
+          group: promptGroupLabels[group] ?? group,
+          system,
+          variables,
+          callers,
+          kind: system ? 'Executable prompt' : id.includes('system') ? 'System prompt' : 'Registered prompt',
+          owners: 0,
+          version: 'Built-in default; optional Vault override',
+          customized: false,
+          status
+        };
+      });
+
+    for (const prompt of prompts) {
+      const pairedPromptIds = prompts.filter(candidate => candidate.system === prompt.id).map(candidate => candidate.id);
+      const ownedIds = new Set([prompt.id, ...pairedPromptIds]);
+      prompt.owners = capabilities.filter(item => item.prompts.some(id => ownedIds.has(id))).length;
+    }
 
     for (const capability of capabilities) {
       for (const promptId of capability.prompts) {
@@ -749,7 +766,8 @@
           group: capability.surface,
           kind: 'Capability prompt',
           owners: capabilities.filter(item => item.prompts.includes(promptId)).length,
-          version: 'Built-in',
+          version: 'Missing from Prompt Catalog',
+          customized: false,
           status: capability.status
         });
       }
@@ -769,24 +787,25 @@
 
     const groups = [
       ['all', 'all', 'All AI actions'],
-      ['search', 'search', 'Search & Knowledge'],
-      ['analysis', 'spark', 'AI Search & Graph'],
+      ['search', 'search', 'Search, Analysis & Knowledge'],
       ['composer', 'file', 'Composer & Copilot'],
       ['chat', 'message', 'Chat & Generation'],
       ['intelligence', 'vault', 'Vault Intelligence'],
-      ['knowledge', 'database', 'Index & background']
+      ['system', 'database', 'System & background']
     ];
 
     function statusPill(status) {
-      if (status === 'live') return '<span class="pill green">Available</span>';
-      if (status === 'partial') return '<span class="pill amber">Limited</span>';
-      if (status === 'unwired') return '<span class="pill red">Unavailable</span>';
+      if (status === 'live') return '<span class="pill green">Source wired</span>';
+      if (status === 'partial') return '<span class="pill amber">Partial path</span>';
+      if (status === 'support') return '<span class="pill blue">Background</span>';
+      if (status === 'unwired') return '<span class="pill red">Catalog only</span>';
       return `<span class="pill">${status}</span>`;
     }
 
     function promptPill(item) {
-      if (item.owners === 0) return '<span class="pill amber">Unused</span>';
-      if (item.version.includes('override')) return '<span class="pill purple">Customized</span>';
+      if (item.customized) return '<span class="pill purple">Customized</span>';
+      if (item.owners === 0 && item.status === 'unwired') return '<span class="pill red">Catalog only</span>';
+      if (item.owners === 0) return '<span class="pill blue">Source helper</span>';
       return '<span class="pill">Default</span>';
     }
 
@@ -813,6 +832,24 @@
       </button>`;
     }
 
+    function groupedCapabilityRows(items) {
+      const sections = [];
+      for (const item of items) {
+        const key = `${item.group}:${item.family}`;
+        let section = sections.find(candidate => candidate.key === key);
+        if (!section) {
+          section = { key, group: item.group, family: item.family, items: [] };
+          sections.push(section);
+        }
+        section.items.push(item);
+      }
+      return sections.map(section => {
+        const groupLabel = groups.find(group => group[0] === section.group)?.[2] ?? section.group;
+        const label = activeGroup === 'all' ? `${groupLabel} · ${section.family}` : section.family;
+        return `<div class="family-head"><span>${label}</span><small>${section.items.length}</small></div>${section.items.map(capabilityRow).join('')}`;
+      }).join('');
+    }
+
     function promptRow(item) {
       return `<button class="row ${activeItem?.id === item.id ? 'active' : ''}" data-prompt-id="${item.id}">
         <span class="row-icon">${icons.prompt}</span>
@@ -828,26 +865,30 @@
       const query = searchInput.value.trim().toLowerCase();
       if (workspace === 'capabilities') {
         listTitle.textContent = activeGroup === 'all' ? 'All AI actions' : groups.find(item => item[0] === activeGroup)?.[2] ?? 'AI actions';
-        listDescription.textContent = 'Choose an action to review its behavior and configuration.';
+        listDescription.textContent = `${filteredCount(activeGroup)} source-backed behaviors, grouped by the product action a person recognizes.`;
         const filtered = capabilities.filter(item => {
           const groupMatch = activeGroup === 'all' || item.group === activeGroup;
           return groupMatch && [item.id, item.title, item.surface, item.shape, item.route].join(' ').toLowerCase().includes(query);
         });
-        rows.innerHTML = filtered.length ? filtered.map(capabilityRow).join('') : '<div class="empty">No AI action matches this filter.</div>';
+        rows.innerHTML = filtered.length ? groupedCapabilityRows(filtered) : '<div class="empty">No AI action matches this filter.</div>';
         return;
       }
 
       listTitle.textContent = 'All prompts';
-      listDescription.textContent = 'All registered prompts are flat and searchable; this design fixture shows representative rows.';
+      listDescription.textContent = `All ${prompts.length} built-in Prompt templates are flat and searchable. AI action ownership is derived from the catalog.`;
       const filtered = prompts.filter(item => [item.id, item.title, item.group, item.kind].join(' ').toLowerCase().includes(query));
       rows.innerHTML = filtered.length ? filtered.map(promptRow).join('') : '<div class="empty">No prompt matches this search.</div>';
+    }
+
+    function filteredCount(groupId) {
+      return groupId === 'all' ? capabilities.length : capabilities.filter(item => item.group === groupId).length;
     }
 
     function inspectorHeader(item, type) {
       const isCapability = type === 'capability';
       const subtitle = type === 'capability'
         ? item.description
-        : `Used by ${item.owners} AI action${item.owners === 1 ? '' : 's'}. Edit the Vault override without changing the built-in default.`;
+        : `${item.description ?? 'Registered Prompt template'} ${item.owners ? `Mapped to ${item.owners} AI action${item.owners === 1 ? '' : 's'}.` : 'No top-level AI action is mapped in this design fixture.'}`;
       return `<div class="inspector-head">
         <div class="breadcrumbs">${isCapability ? item.surface : `Prompt Library · ${item.group}`}</div>
         <div class="inspector-title-row"><h1>${item.title}</h1>${isCapability ? statusPill(item.status) : promptPill(item)}</div>
@@ -901,13 +942,13 @@
           <h2>Usage</h2>
           <dl class="facts">
             <dt>Category</dt><dd>${item.group}</dd>
-            <dt>Used by</dt><dd>${item.owners ? `${item.owners} AI action${item.owners === 1 ? '' : 's'}` : 'No current AI action'}</dd>
+            <dt>Used by</dt><dd>${item.owners ? `${item.owners} AI action${item.owners === 1 ? '' : 's'}` : 'No mapped top-level AI action'}</dd>
             <dt>Source</dt><dd>${item.version}</dd>
           </dl>
         </div>
         <div class="section">
           <h2>Prompt instructions</h2>
-          <div class="prompt-box"><div class="prompt-head"><strong>Vault override</strong><button class="link-button">View built-in default</button></div><textarea class="prompt-editor">Keep the response grounded in the provided sources and follow the output requirements for ${item.title}. Preserve user-authored content unless the selected action explicitly asks for a rewrite.</textarea><div class="button-row"><button class="action-button">Reset to default</button><button class="action-button primary">Save override</button></div></div>
+          <div class="prompt-box"><div class="prompt-head"><strong>Vault override</strong><button class="link-button">View built-in default</button></div><textarea class="prompt-editor" placeholder="No Vault override. Add instructions here to override the built-in default."></textarea><div class="button-row"><button class="action-button" disabled>Reset to default</button><button class="action-button primary">Save override</button></div></div>
         </div>
         ${item.owners > 1 ? `<div class="notice">${icons.prompt}<span>This prompt is shared. Saving an override changes the instructions for all ${item.owners} actions that use it.</span></div>` : ''}
       </section>`;
