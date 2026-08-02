@@ -519,13 +519,20 @@ const groupMeta = {
 const cellFields = {
   company: {
     column: 'A',
-    label: '公司 / 职位',
+    label: '公司',
     type: 'text',
     get: (record) => record.company,
     set: (record, value) => { record.company = value.trim() || record.company; },
   },
-  stage: {
+  role: {
     column: 'B',
+    label: '职位',
+    type: 'text',
+    get: (record) => record.role,
+    set: (record, value) => { record.role = value.trim() || record.role; },
+  },
+  stage: {
+    column: 'C',
     label: '阶段',
     type: 'select',
     options: Object.entries(groupMeta).map(([value, meta]) => ({ value, label: meta.label })),
@@ -538,7 +545,7 @@ const cellFields = {
     },
   },
   workMode: {
-    column: 'C',
+    column: 'D',
     label: '工作模式',
     type: 'select',
     options: ['Remote', 'Hybrid', 'On-site'].map((value) => ({ value, label: value })),
@@ -546,28 +553,28 @@ const cellFields = {
     set: (record, value) => { record.workMode = value; },
   },
   location: {
-    column: 'D',
+    column: 'E',
     label: '地点',
     type: 'text',
     get: (record) => record.location,
     set: (record, value) => { record.location = value.trim(); },
   },
   applied: {
-    column: 'E',
+    column: 'F',
     label: '申请日期',
     type: 'date',
     get: (record) => record.applied,
     set: (record, value) => { if (value) record.applied = value; },
   },
   salary: {
-    column: 'F',
+    column: 'G',
     label: '薪资范围',
     type: 'text',
     get: (record) => record.salary,
     set: (record, value) => { record.salary = value.trim(); },
   },
   fit: {
-    column: 'G',
+    column: 'H',
     label: '匹配度',
     type: 'number',
     min: 0,
@@ -576,7 +583,7 @@ const cellFields = {
     set: (record, value) => { record.fit = Math.max(0, Math.min(100, Math.round(Number(value) || 0))); },
   },
   wait: {
-    column: 'H',
+    column: 'I',
     label: '等待天数',
     type: 'number',
     min: 0,
@@ -585,21 +592,21 @@ const cellFields = {
     set: (record, value) => { record.wait = Math.max(0, Math.min(365, Math.round(Number(value) || 0))); },
   },
   next: {
-    column: 'I',
+    column: 'J',
     label: '下一步',
     type: 'text',
     get: (record) => record.next,
     set: (record, value) => { record.next = value.trim(); },
   },
   priority: {
-    column: 'J',
+    column: 'K',
     label: '行动优先级',
     readOnly: true,
     display: (record) => (record.fit >= 85 && record.wait >= 7 ? '优先跟进' : '保持观察'),
-    formula: (rowNumber) => `=IF(AND(G${rowNumber}>=85,H${rowNumber}>=7),"优先跟进","保持观察")`,
+    formula: (rowNumber) => `=IF(AND(H${rowNumber}>=85,I${rowNumber}>=7),"优先跟进","保持观察")`,
   },
   skills: {
-    column: 'K',
+    column: 'L',
     label: '技能标签',
     type: 'text',
     get: (record) => extendedFields(record).skills.join(', '),
@@ -609,7 +616,7 @@ const cellFields = {
     },
   },
   starred: {
-    column: 'L',
+    column: 'M',
     label: '已收藏',
     type: 'checkbox',
     get: (record) => extendedFields(record).starred,
@@ -619,7 +626,7 @@ const cellFields = {
     },
   },
   jobLink: {
-    column: 'M',
+    column: 'N',
     label: 'JD 链接',
     type: 'url',
     get: (record) => extendedFields(record).jobLink ?? '',
@@ -628,13 +635,13 @@ const cellFields = {
     },
   },
   attachments: {
-    column: 'N',
+    column: 'O',
     label: '附件',
     readOnly: true,
     display: (record) => extendedFields(record).attachments.join(', ') || '没有附件',
   },
   interviewAt: {
-    column: 'O',
+    column: 'P',
     label: '面试时间',
     type: 'text',
     get: (record) => extendedFields(record).interviewAt ?? '',
@@ -643,7 +650,7 @@ const cellFields = {
     },
   },
   progress: {
-    column: 'P',
+    column: 'Q',
     label: '进度',
     type: 'number',
     min: 0,
@@ -655,7 +662,7 @@ const cellFields = {
     },
   },
   note: {
-    column: 'Q',
+    column: 'R',
     label: '备注',
     type: 'text',
     get: (record) => extendedFields(record).displayNote,
@@ -668,11 +675,11 @@ const cellFields = {
 
 const state = {
   view: 'table',
-  grouped: false,
-  filtersVisible: true,
+  groupBy: null,
+  filter: null,
+  sort: null,
   statsVisible: true,
   query: '',
-  priorityOnly: false,
   selectedId: null,
   activeLongTextId: null,
   longTextMode: 'truncate',
@@ -690,7 +697,9 @@ const themeToggle = document.querySelector('#theme-toggle');
 const formulaPanel = document.querySelector('#formula-panel');
 const formulaBar = document.querySelector('#formula-bar');
 const formatMenu = document.querySelector('#format-menu');
-const conditionalPanel = document.querySelector('#conditional-panel');
+const filterPanel = document.querySelector('#filter-panel');
+const sortPanel = document.querySelector('#sort-panel');
+const groupPanel = document.querySelector('#group-panel');
 const cellReader = document.querySelector('#cell-reader');
 const activeCellName = document.querySelector('#active-cell-name');
 const formulaInput = document.querySelector('#formula-input');
@@ -745,27 +754,80 @@ function getCellValue(record, field, forDisplay = false) {
   return '';
 }
 
+const fieldLabels = {
+  stageKey: '阶段',
+  workMode: '工作模式',
+  location: '地点',
+  fit: '匹配度',
+  company: '公司',
+  applied: '申请日期',
+  wait: '等待天数',
+};
+
+const operatorLabels = {
+  equals: '等于',
+  notEquals: '不等于',
+  contains: '包含',
+  gte: '大于等于',
+};
+
+const groupLabels = {
+  stageKey: '阶段',
+  workMode: '工作模式',
+  location: '地点',
+};
+
+function filterValue(record, field) {
+  if (field === 'stageKey') return record.stage;
+  return record[field];
+}
+
+function matchesFilter(record) {
+  if (!state.filter) return true;
+  const actual = filterValue(record, state.filter.field);
+  const expected = state.filter.value;
+  if (state.filter.operator === 'gte') return Number(actual) >= Number(expected);
+  const actualText = String(actual ?? '').trim().toLowerCase();
+  const expectedText = String(expected ?? '').trim().toLowerCase();
+  if (state.filter.operator === 'notEquals') return actualText !== expectedText;
+  if (state.filter.operator === 'contains') return actualText.includes(expectedText);
+  return actualText === expectedText;
+}
+
+function compareRecords(first, second) {
+  if (!state.sort) return records.indexOf(first) - records.indexOf(second);
+  const firstValue = filterValue(first, state.sort.field);
+  const secondValue = filterValue(second, state.sort.field);
+  const numeric = ['fit', 'wait'].includes(state.sort.field);
+  const comparison = numeric
+    ? Number(firstValue) - Number(secondValue)
+    : String(firstValue ?? '').localeCompare(String(secondValue ?? ''), 'zh-CN', { numeric: true });
+  return state.sort.direction === 'asc' ? comparison : -comparison;
+}
+
 function visibleRecords() {
   const query = state.query.trim().toLowerCase();
-  return records.filter((record) => {
-    if (state.priorityOnly && !(record.urgency && record.fit >= 80)) return false;
-    if (!query) return true;
-    const extra = extendedFields(record);
-    return [
-      record.company,
-      record.role,
-      record.stage,
-      record.workMode,
-      record.location,
-      record.next,
-      record.source,
-      record.note,
-      extra.jobLink,
-      ...extra.skills,
-    ]
-      .filter((value) => typeof value === 'string')
-      .some((value) => value.toLowerCase().includes(query));
-  });
+  return records
+    .filter((record) => {
+      if (!matchesFilter(record)) return false;
+      if (!query) return true;
+      const extra = extendedFields(record);
+      return [
+        record.company,
+        record.role,
+        record.stage,
+        record.workMode,
+        record.location,
+        record.next,
+        record.source,
+        record.note,
+        extra.jobLink,
+        ...extra.skills,
+      ]
+        .filter((value) => typeof value === 'string')
+        .some((value) => value.toLowerCase().includes(query));
+    })
+    .sort(compareRecords);
 }
 
 function formatDate(value) {
@@ -774,23 +836,17 @@ function formatDate(value) {
 }
 
 function renderFilterLine() {
-  filterLine.hidden = !state.filtersVisible;
-  if (!state.filtersVisible) return;
-  const priorityChip = state.priorityOnly
-    ? `<button type="button" id="remove-priority-filter">高价值待跟进 <svg><use href="#i-x"/></svg></button>`
-    : '';
+  workspace.classList.toggle('has-active-filter', Boolean(state.filter));
+  filterLine.hidden = !state.filter;
+  if (!state.filter) return;
   const visible = visibleRecords().length;
   filterLine.innerHTML = `
-    <span>当前条件</span>
-    <button type="button">状态 ≠ 已归档 ${icon('i-x')}</button>
-    <button type="button">申请日期 · 最近 90 天 ${icon('i-x')}</button>
-    ${priorityChip}
+    <span>已应用筛选</span>
+    <button type="button" id="remove-filter">${escapeHtml(fieldLabels[state.filter.field])} ${escapeHtml(operatorLabels[state.filter.operator])} ${escapeHtml(state.filter.value)} ${icon('i-x')}</button>
     <span class="filter-result">显示 ${visible} 条记录</span>
   `;
-  document.querySelector('#remove-priority-filter')?.addEventListener('click', () => {
-    state.priorityOnly = false;
-    renderFilterLine();
-    renderCurrentView();
+  document.querySelector('#remove-filter')?.addEventListener('click', () => {
+    clearFilter();
   });
 }
 
@@ -800,11 +856,11 @@ function groupRows(groupKey, groupRecords) {
   const rows = groupRecords.map(recordRow).join('');
   return `
     <tr class="group-row">
-      <td colspan="18">
+      <td colspan="19">
         <div class="group-summary">
           <span class="group-name">
             ${icon('i-chevron')}
-            <strong>${groupMeta[groupKey].label}</strong>
+            <strong>${escapeHtml(groupKey)}</strong>
             <em>${groupRecords.length} 条</em>
           </span>
           <span class="group-metrics">
@@ -816,6 +872,11 @@ function groupRows(groupKey, groupRecords) {
     </tr>
     ${rows}
   `;
+}
+
+function sortIndicator(field) {
+  if (state.sort?.field !== field) return '';
+  return `<em class="sort-mark">${state.sort.direction === 'desc' ? '↓' : '↑'}</em>`;
 }
 
 function recordRow(record) {
@@ -832,9 +893,10 @@ function recordRow(record) {
       <td class="${cellClass(record, 'company', 'frozen-record-cell')}" ${cellAttributes(record, 'company')}>
         <span class="company-cell">
           <span class="company-logo ${record.color}">${escapeHtml(record.company.slice(0, 2).toUpperCase())}</span>
-          <span class="company-line"><strong>${escapeHtml(record.company)}</strong><small>${escapeHtml(record.role)}</small></span>
+          <span class="company-line"><strong>${escapeHtml(record.company)}</strong></span>
         </span>
       </td>
+      <td class="${cellClass(record, 'role', 'role-cell')}" ${cellAttributes(record, 'role')}><span title="${escapeHtml(record.role)}">${escapeHtml(record.role)}</span></td>
       <td class="${cellClass(record, 'stage', 'stage-cell')}" ${cellAttributes(record, 'stage')}><span class="tag stage-${record.stageKey}">${escapeHtml(record.stage)}</span></td>
       <td class="${cellClass(record, 'workMode')}" ${cellAttributes(record, 'workMode')}><span class="work-mode"><i></i>${escapeHtml(record.workMode)}</span></td>
       <td class="${cellClass(record, 'location', 'location-cell')}" ${cellAttributes(record, 'location')}>${escapeHtml(record.location)}</td>
@@ -854,8 +916,8 @@ function recordRow(record) {
           <strong>${record.fit}</strong>
         </span>
       </td>
-      <td class="${cellClass(record, 'wait', 'numeric-cell', 'wait-metric', record.wait > 7 ? 'conditional-alert' : '')}" ${cellAttributes(record, 'wait')}>
-        <span class="wait-cell ${record.wait > 7 ? 'is-alert' : ''}">
+      <td class="${cellClass(record, 'wait', 'numeric-cell', 'wait-metric')}" ${cellAttributes(record, 'wait')}>
+        <span class="wait-cell">
           <span class="wait-bar"><i style="--wait:${waitWidth}%"></i></span>
           <strong>${record.wait}<small>天</small></strong>
         </span>
@@ -881,11 +943,18 @@ function renderTable() {
   }
 
   let body = '';
-  if (state.grouped) {
-    const groups = Object.keys(groupMeta)
-      .map((groupKey) => [groupKey, visible.filter((record) => record.stageKey === groupKey)])
-      .filter(([, items]) => items.length > 0)
-      .sort(([first], [second]) => groupMeta[first].order - groupMeta[second].order);
+  if (state.groupBy) {
+    const groupedRecords = new Map();
+    visible.forEach((record) => {
+      const groupKey = String(filterValue(record, state.groupBy) || '未填写');
+      groupedRecords.set(groupKey, [...(groupedRecords.get(groupKey) ?? []), record]);
+    });
+    const groups = [...groupedRecords.entries()].sort(([first], [second]) => {
+      if (state.groupBy !== 'stageKey') return first.localeCompare(second, 'zh-CN');
+      const firstKey = Object.keys(groupMeta).find((key) => groupMeta[key].label === first);
+      const secondKey = Object.keys(groupMeta).find((key) => groupMeta[key].label === second);
+      return (groupMeta[firstKey]?.order ?? 99) - (groupMeta[secondKey]?.order ?? 99);
+    });
     body = groups.map(([groupKey, items]) => groupRows(groupKey, items)).join('');
   } else {
     body = visible.map(recordRow).join('');
@@ -895,22 +964,23 @@ function renderTable() {
     <section class="table-view">
       <div class="table-viewport">
         <table class="record-table">
-          <colgroup><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col></colgroup>
+          <colgroup><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col></colgroup>
           <thead>
             <tr class="column-letters">
               <th class="sheet-corner"></th>
-              ${['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q'].map((letter) => `<th>${letter}</th>`).join('')}
+              ${['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R'].map((letter) => `<th>${letter}</th>`).join('')}
             </tr>
             <tr>
               <th class="row-number-header">#</th>
-              <th><span class="field-heading">${icon('i-text')}<span>公司 / 职位</span></span></th>
+              <th><span class="field-heading">${icon('i-text')}<span>公司</span>${sortIndicator('company')}</span></th>
+              <th><span class="field-heading">${icon('i-text')}<span>职位</span></span></th>
               <th><span class="field-heading">${icon('i-select')}<span>阶段</span></span></th>
               <th><span class="field-heading">${icon('i-select')}<span>工作模式</span></span></th>
               <th><span class="field-heading">${icon('i-location')}<span>地点</span></span></th>
-              <th><span class="field-heading">${icon('i-calendar')}<span>申请日期</span><em class="sort-mark">↓</em></span></th>
+              <th><span class="field-heading">${icon('i-calendar')}<span>申请日期</span>${sortIndicator('applied')}</span></th>
               <th><span class="field-heading">${icon('i-money')}<span>薪资范围</span></span></th>
-              <th><span class="field-heading"><b class="formula-mark">ƒx</b><span>匹配度</span></span></th>
-              <th><span class="field-heading"><b class="formula-mark">ƒx</b><span>等待天数</span></span></th>
+              <th><span class="field-heading"><b class="formula-mark">ƒx</b><span>匹配度</span>${sortIndicator('fit')}</span></th>
+              <th><span class="field-heading"><b class="formula-mark">ƒx</b><span>等待天数</span>${sortIndicator('wait')}</span></th>
               <th><span class="field-heading">${icon('i-check')}<span>下一步</span></span></th>
               <th><span class="field-heading"><b class="formula-mark">ƒx</b><span>行动优先级</span></span></th>
               <th><span class="field-heading">${icon('i-group')}<span>技能标签</span></span></th>
@@ -1134,8 +1204,8 @@ function updateStatus() {
         : `${definition?.label ?? '单元格'} · 双击或 Enter 编辑`;
       return;
     }
-    primary.textContent = 'G2:G6';
-    secondary.textContent = `5 个单元格 · ${state.grouped ? '按阶段分组' : `${visible} 条记录`}`;
+    primary.textContent = 'H2:H6';
+    secondary.textContent = `5 个单元格 · ${state.groupBy ? `按${groupLabels[state.groupBy]}分组` : `${visible} 条记录`}`;
     const selectedValues = records.slice(0, 5).map((record) => record.fit);
     const sum = selectedValues.reduce((total, value) => total + value, 0);
     const values = [
@@ -1264,8 +1334,10 @@ function renderTablePreservingViewport() {
 
 function editRequiresStructuralRender(field) {
   if (state.query.trim()) return true;
-  if (state.priorityOnly && field === 'fit') return true;
-  return state.grouped && field === 'stage';
+  if (state.filter?.field === field || (state.filter?.field === 'stageKey' && field === 'stage')) return true;
+  if (state.sort?.field === field) return true;
+  if (state.groupBy === field) return true;
+  return state.groupBy === 'stageKey' && field === 'stage';
 }
 
 function refreshCommittedCell(recordId, field) {
@@ -1555,7 +1627,7 @@ function restoreFormulaBar() {
     updateFormulaBarForSelection();
     return;
   }
-  activeCellName.textContent = 'J6';
+  activeCellName.textContent = 'K6';
   formulaInput.value = defaultFormulaValue;
   formulaState.innerHTML = defaultFormulaState;
   formulaScope.textContent = defaultFormulaScope;
@@ -1615,10 +1687,10 @@ function openLongTextCell(recordId) {
   trigger?.closest('td')?.classList.add('active-long-cell');
   state.activeLongTextId = recordId;
   cellReader.hidden = false;
-  document.querySelector('#cell-reader-title').textContent = `Q${rowNumber} · 备注`;
+  document.querySelector('#cell-reader-title').textContent = `${cellFields.note.column}${rowNumber} · 备注`;
   document.querySelector('#cell-reader-copy').textContent = value || '当前单元格为空。';
   document.querySelector('#cell-reader-count').textContent = `${value.length} 字`;
-  activeCellName.textContent = `Q${rowNumber}`;
+  activeCellName.textContent = `${cellFields.note.column}${rowNumber}`;
   formulaInput.value = value;
   formulaState.innerHTML = `${icon('i-text')}文本值`;
   setLongTextMode('truncate');
@@ -1644,28 +1716,60 @@ function closeViewMenu() {
   document.querySelector('#add-view').setAttribute('aria-expanded', 'false');
 }
 
+function positionAnchoredSurface(trigger, panel, align = 'start') {
+  if (!trigger || !panel) return;
+  const workspaceRect = workspace.getBoundingClientRect();
+  const triggerRect = trigger.getBoundingClientRect();
+  const panelRect = panel.getBoundingClientRect();
+  const desiredLeft = align === 'end'
+    ? triggerRect.right - workspaceRect.left - panelRect.width
+    : triggerRect.left - workspaceRect.left;
+  const maxLeft = Math.max(8, workspaceRect.width - panelRect.width - 8);
+  panel.style.left = `${Math.max(8, Math.min(desiredLeft, maxLeft))}px`;
+  panel.style.right = 'auto';
+  panel.style.top = `${triggerRect.bottom - workspaceRect.top + 5}px`;
+  panel.style.transform = 'none';
+}
+
+function closeRulePanels(except = null) {
+  [
+    ['open-filter', filterPanel],
+    ['open-sort', sortPanel],
+    ['open-group', groupPanel],
+  ].forEach(([triggerId, panel]) => {
+    if (panel === except) return;
+    panel.hidden = true;
+    document.querySelector(`#${triggerId}`).setAttribute('aria-expanded', 'false');
+  });
+}
+
 function openFields() {
-  document.querySelector('#field-panel').hidden = false;
+  const panel = document.querySelector('#field-panel');
   closeLongTextCell();
   closeFormula();
   closeFormatMenu();
-  closeConditionalFormat();
+  closeRulePanels();
   closeViewMenu();
+  closeAi();
+  panel.hidden = false;
+  document.querySelector('#open-fields').setAttribute('aria-expanded', 'true');
+  positionAnchoredSurface(document.querySelector('#open-fields'), panel);
 }
 
 function closeFields() {
   document.querySelector('#field-panel').hidden = true;
   document.querySelector('#field-type-menu').hidden = true;
+  document.querySelector('#open-fields').setAttribute('aria-expanded', 'false');
 }
 
 function openFormula() {
-  formulaPanel.hidden = false;
   closeLongTextCell();
   closeFields();
   closeFormatMenu();
-  closeConditionalFormat();
+  closeRulePanels();
   closeViewMenu();
   closeAi();
+  formulaPanel.hidden = false;
 }
 
 function closeFormula() {
@@ -1673,14 +1777,15 @@ function closeFormula() {
 }
 
 function openFormatMenu() {
-  formatMenu.hidden = false;
   closeLongTextCell();
-  document.querySelector('#open-format-menu').setAttribute('aria-expanded', 'true');
   closeFields();
   closeFormula();
-  closeConditionalFormat();
+  closeRulePanels();
   closeViewMenu();
   closeAi();
+  formatMenu.hidden = false;
+  document.querySelector('#open-format-menu').setAttribute('aria-expanded', 'true');
+  positionAnchoredSurface(document.querySelector('#open-format-menu'), formatMenu);
 }
 
 function closeFormatMenu() {
@@ -1688,18 +1793,32 @@ function closeFormatMenu() {
   document.querySelector('#open-format-menu').setAttribute('aria-expanded', 'false');
 }
 
-function openConditionalFormat() {
-  conditionalPanel.hidden = false;
+function openRulePanel(trigger, panel) {
   closeLongTextCell();
   closeFormatMenu();
   closeFields();
   closeFormula();
+  closeRulePanels(panel);
   closeViewMenu();
   closeAi();
+  panel.hidden = false;
+  trigger.setAttribute('aria-expanded', 'true');
+  positionAnchoredSurface(trigger, panel);
 }
 
-function closeConditionalFormat() {
-  conditionalPanel.hidden = true;
+function closeFilterPanel() {
+  filterPanel.hidden = true;
+  document.querySelector('#open-filter').setAttribute('aria-expanded', 'false');
+}
+
+function closeSortPanel() {
+  sortPanel.hidden = true;
+  document.querySelector('#open-sort').setAttribute('aria-expanded', 'false');
+}
+
+function closeGroupPanel() {
+  groupPanel.hidden = true;
+  document.querySelector('#open-group').setAttribute('aria-expanded', 'false');
 }
 
 function openAi() {
@@ -1709,13 +1828,69 @@ function openAi() {
   closeFields();
   closeFormula();
   closeFormatMenu();
-  closeConditionalFormat();
+  closeRulePanels();
   closeViewMenu();
 }
 
 function closeAi() {
   aiDrawer.classList.remove('is-open');
   aiDrawer.setAttribute('aria-hidden', 'true');
+}
+
+function updateRuleToolbar() {
+  const filterButton = document.querySelector('#open-filter');
+  const filterCount = document.querySelector('#filter-count');
+  filterCount.hidden = !state.filter;
+  filterCount.textContent = state.filter ? '1' : '0';
+  filterButton.classList.toggle('is-applied', Boolean(state.filter));
+
+  const sortButton = document.querySelector('#open-sort');
+  const sortCount = document.querySelector('#sort-count');
+  sortCount.hidden = !state.sort;
+  sortCount.textContent = state.sort ? '1' : '0';
+  sortButton.classList.toggle('is-applied', Boolean(state.sort));
+
+  const groupButton = document.querySelector('#open-group');
+  const groupCount = document.querySelector('#group-count');
+  groupCount.hidden = !state.groupBy;
+  groupCount.textContent = state.groupBy ? '1' : '0';
+  groupButton.classList.toggle('is-applied', Boolean(state.groupBy));
+}
+
+function renderAfterRuleChange() {
+  updateRuleToolbar();
+  renderCurrentView();
+}
+
+function clearFilter() {
+  state.filter = null;
+  closeFilterPanel();
+  renderAfterRuleChange();
+}
+
+function clearSort() {
+  state.sort = null;
+  closeSortPanel();
+  renderAfterRuleChange();
+}
+
+function clearGroup() {
+  state.groupBy = null;
+  closeGroupPanel();
+  renderAfterRuleChange();
+}
+
+function syncFilterPreview() {
+  const field = document.querySelector('#filter-field').value;
+  const operator = document.querySelector('#filter-operator').value;
+  const value = document.querySelector('#filter-value').value.trim() || '未填写';
+  document.querySelector('#filter-preview').textContent = `${fieldLabels[field]} ${operatorLabels[operator]} ${value}`;
+}
+
+function syncSortPreview() {
+  const field = document.querySelector('#sort-field').value;
+  const direction = document.querySelector('#sort-direction').value;
+  document.querySelector('#sort-preview').textContent = `${fieldLabels[field]} · ${direction === 'desc' ? '新到旧 / 高到低' : '旧到新 / 低到高'}`;
 }
 
 function showDialog(selector) {
@@ -1786,8 +1961,29 @@ document.querySelector('#formula-function-button').addEventListener('click', ope
 document.querySelector('#close-formula').addEventListener('click', closeFormula);
 document.querySelector('#cancel-formula').addEventListener('click', closeFormula);
 document.querySelector('#save-formula').addEventListener('click', () => {
+  const selected = document.querySelector('.formula-candidate.is-selected .candidate-choice strong')?.textContent ?? '公式建议';
   closeFormula();
-  showToast('公式字段已保存', '“行动优先级”将按 revision 12 重新计算');
+  showToast('AI 公式已确认', `已选择“${selected}”；“行动优先级”将按 revision 12 重新计算`);
+});
+
+document.querySelector('#generate-formula-candidates').addEventListener('click', () => {
+  const prompt = document.querySelector('#ai-formula-prompt').value.trim();
+  if (!prompt) {
+    showToast('先描述计算规则', '写一句业务语言，AI 才能生成候选公式');
+    return;
+  }
+  document.querySelector('#formula-candidates').classList.remove('is-generated');
+  void document.querySelector('#formula-candidates').offsetWidth;
+  document.querySelector('#formula-candidates').classList.add('is-generated');
+  document.querySelector('#formula-generation-state').textContent = '刚刚生成 · 3 个候选 · 已完成类型检查';
+});
+
+document.querySelectorAll('[data-formula-candidate]').forEach((button) => {
+  button.addEventListener('click', () => {
+    document.querySelectorAll('[data-formula-candidate]').forEach((candidate) => {
+      candidate.classList.toggle('is-selected', candidate === button);
+    });
+  });
 });
 
 document.querySelector('#open-format-menu').addEventListener('click', () => {
@@ -1806,15 +2002,8 @@ document.querySelectorAll('[data-number-format]').forEach((button) => {
       candidate.querySelector('svg')?.remove();
     });
     button.insertAdjacentHTML('beforeend', icon('i-check'));
-    document.querySelector('#open-format-menu span').textContent = `${selectedFormat}格式`;
+    document.querySelector('#open-format-menu span').textContent = selectedFormat === '常规' ? '显示格式' : selectedFormat;
   });
-});
-document.querySelector('#open-conditional-format').addEventListener('click', openConditionalFormat);
-document.querySelector('#open-conditional-from-menu').addEventListener('click', openConditionalFormat);
-document.querySelector('#close-conditional-format').addEventListener('click', closeConditionalFormat);
-document.querySelector('#save-conditional-format').addEventListener('click', () => {
-  closeConditionalFormat();
-  showToast('条件格式已保存', '2 条显示规则已应用到 G2:H13');
 });
 
 document.querySelectorAll('[data-function]').forEach((button) => {
@@ -1825,17 +2014,72 @@ document.querySelectorAll('[data-function]').forEach((button) => {
   });
 });
 
-document.querySelector('#toggle-filter').addEventListener('click', () => {
-  state.filtersVisible = !state.filtersVisible;
-  renderFilterLine();
+document.querySelector('#open-filter').addEventListener('click', () => {
+  if (!filterPanel.hidden) {
+    closeFilterPanel();
+    return;
+  }
+  openRulePanel(document.querySelector('#open-filter'), filterPanel);
+});
+document.querySelector('#close-filter').addEventListener('click', closeFilterPanel);
+document.querySelector('#clear-filter').addEventListener('click', clearFilter);
+document.querySelector('#apply-filter').addEventListener('click', () => {
+  const value = document.querySelector('#filter-value').value.trim();
+  if (!value) {
+    showToast('筛选值不能为空', '请输入要匹配的内容；打开面板本身不会改变记录');
+    return;
+  }
+  state.filter = {
+    field: document.querySelector('#filter-field').value,
+    operator: document.querySelector('#filter-operator').value,
+    value,
+  };
+  closeFilterPanel();
+  renderAfterRuleChange();
+});
+['#filter-field', '#filter-operator', '#filter-value'].forEach((selector) => {
+  document.querySelector(selector).addEventListener('input', syncFilterPreview);
 });
 
-document.querySelector('#toggle-group').addEventListener('click', () => {
-  state.grouped = !state.grouped;
-  document.querySelector('#toggle-group').classList.toggle('is-applied', state.grouped);
-  if (state.view !== 'table') setView('table');
-  renderTable();
-  updateStatus();
+document.querySelector('#open-sort').addEventListener('click', () => {
+  if (!sortPanel.hidden) {
+    closeSortPanel();
+    return;
+  }
+  openRulePanel(document.querySelector('#open-sort'), sortPanel);
+});
+document.querySelector('#close-sort').addEventListener('click', closeSortPanel);
+document.querySelector('#clear-sort').addEventListener('click', clearSort);
+document.querySelector('#apply-sort').addEventListener('click', () => {
+  state.sort = {
+    field: document.querySelector('#sort-field').value,
+    direction: document.querySelector('#sort-direction').value,
+  };
+  closeSortPanel();
+  renderAfterRuleChange();
+});
+['#sort-field', '#sort-direction'].forEach((selector) => {
+  document.querySelector(selector).addEventListener('input', syncSortPreview);
+});
+
+document.querySelector('#open-group').addEventListener('click', () => {
+  if (!groupPanel.hidden) {
+    closeGroupPanel();
+    return;
+  }
+  openRulePanel(document.querySelector('#open-group'), groupPanel);
+});
+document.querySelector('#close-group').addEventListener('click', closeGroupPanel);
+document.querySelector('#clear-group').addEventListener('click', clearGroup);
+document.querySelector('#apply-group').addEventListener('click', () => {
+  state.groupBy = document.querySelector('#group-field').value || null;
+  closeGroupPanel();
+  updateRuleToolbar();
+  if (state.view !== 'table') {
+    setView('table');
+  } else {
+    renderAfterRuleChange();
+  }
 });
 
 document.querySelector('#toggle-stats').addEventListener('click', () => {
@@ -1874,11 +2118,11 @@ document.querySelector('#generate-plan').addEventListener('click', () => {
 });
 
 document.querySelector('#accept-plan').addEventListener('click', () => {
-  state.priorityOnly = true;
-  state.filtersVisible = true;
+  state.filter = { field: 'fit', operator: 'gte', value: '80' };
   closeAi();
   setView('table');
-  showToast('“高价值待跟进”已应用', '5 条记录进入临时视图；源 Markdown 尚未改写');
+  updateRuleToolbar();
+  showToast('“高匹配岗位”筛选已应用', '匹配度不低于 80；源 Markdown 尚未改写');
 });
 
 document.querySelector('#show-source').addEventListener('click', () => showDialog('#source-dialog'));
@@ -1910,11 +2154,12 @@ document.addEventListener('keydown', (event) => {
   closeFields();
   closeFormula();
   closeFormatMenu();
-  closeConditionalFormat();
+  closeRulePanels();
   closeViewMenu();
   closeLongTextCell();
   closeDialog('#source-dialog');
   closeDialog('#mobile-overlay');
 });
 
+updateRuleToolbar();
 renderCurrentView({ animate: true });

@@ -54,6 +54,7 @@ const initial = await page.evaluate(() => ({
   bodyOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
   appWidth: document.querySelector('.app-shell')?.getBoundingClientRect().width ?? 0,
   appHeight: document.querySelector('.app-shell')?.getBoundingClientRect().height ?? 0,
+  appOverflow: getComputedStyle(document.querySelector('.app-shell')).overflow,
   workspaceWidth: document.querySelector('.workspace')?.getBoundingClientRect().width ?? 0,
   sidebarCount: document.querySelectorAll('.data-sidebar').length,
   tableRows: document.querySelectorAll('.record-table tbody tr[data-record-id]').length,
@@ -92,31 +93,31 @@ const initial = await page.evaluate(() => ({
   ].map((selector) => getComputedStyle(document.querySelector(selector)).backgroundColor),
   toolbarDividerWidth: document.querySelector('.toolbar-divider')?.getBoundingClientRect().width ?? 0,
   fieldHeaderFontSize: getComputedStyle(document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(2)')).fontSize,
-  textHeaderAlignment: getComputedStyle(document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(4) .field-heading')).justifyContent,
-  numericHeaderAlignment: getComputedStyle(document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(8) .field-heading')).justifyContent,
-  booleanHeaderAlignment: getComputedStyle(document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(13) .field-heading')).justifyContent,
+  textHeaderAlignment: getComputedStyle(document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(5) .field-heading')).justifyContent,
+  numericHeaderAlignment: getComputedStyle(document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(9) .field-heading')).justifyContent,
+  booleanHeaderAlignment: getComputedStyle(document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(14) .field-heading')).justifyContent,
   companyHeaderLeft: document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(2) .field-heading > span')?.getBoundingClientRect().left ?? 0,
   companyValueLeft: document.querySelector('tr[data-record-id="aster"] .company-cell strong')?.getBoundingClientRect().left ?? 0,
-  workModeHeaderLeft: document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(4) .field-heading > span')?.getBoundingClientRect().left ?? 0,
+  workModeHeaderLeft: document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(5) .field-heading > span')?.getBoundingClientRect().left ?? 0,
   workModeValueLeft: document.querySelector('tr[data-record-id="aster"] .work-mode')?.getBoundingClientRect().left ?? 0,
-  salaryHeaderRight: document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(7) .field-heading > span')?.getBoundingClientRect().right ?? 0,
+  salaryHeaderRight: document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(8) .field-heading > span')?.getBoundingClientRect().right ?? 0,
   salaryValueRight: document.querySelector('tr[data-record-id="aster"] .salary')?.getBoundingClientRect().right ?? 0,
-  scoreHeaderRight: document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(8) .field-heading > span')?.getBoundingClientRect().right ?? 0,
+  scoreHeaderRight: document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(9) .field-heading > span')?.getBoundingClientRect().right ?? 0,
   scoreValueRight: document.querySelector('tr[data-record-id="aster"] .score-cell strong')?.getBoundingClientRect().right ?? 0,
   booleanHeaderCenter: (() => {
-    const rect = document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(13) .field-heading > span')?.getBoundingClientRect();
+    const rect = document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(14) .field-heading > span')?.getBoundingClientRect();
     return rect ? rect.left + rect.width / 2 : 0;
   })(),
   booleanValueCenter: (() => {
     const rect = document.querySelector('tr[data-record-id="aster"] .boolean-cell')?.getBoundingClientRect();
     return rect ? rect.left + rect.width / 2 : 0;
   })(),
-  ordinaryVerticalLine: getComputedStyle(document.querySelector('.record-table td:nth-child(4)')).borderRightWidth,
-  ordinaryHorizontalLine: getComputedStyle(document.querySelector('.record-table td:nth-child(4)')).borderBottomWidth,
-  headerRule: getComputedStyle(document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(4)')).borderBottomWidth,
+  ordinaryVerticalLine: getComputedStyle(document.querySelector('.record-table td:nth-child(5)')).borderRightWidth,
+  ordinaryHorizontalLine: getComputedStyle(document.querySelector('.record-table td:nth-child(5)')).borderBottomWidth,
+  headerRule: getComputedStyle(document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(5)')).borderBottomWidth,
   frozenColumnEdge: getComputedStyle(document.querySelector('.record-table td:nth-child(2)')).boxShadow,
   activeCellEdge: getComputedStyle(document.querySelector('.record-table .active-cell')).boxShadow,
-  cellBackgroundImage: getComputedStyle(document.querySelector('.record-table td:nth-child(4)')).backgroundImage,
+  cellBackgroundImage: getComputedStyle(document.querySelector('.record-table td:nth-child(5)')).backgroundImage,
   rowHeight: document.querySelector('.record-table td')?.getBoundingClientRect().height ?? 0,
   companyFontSize: getComputedStyle(document.querySelector('.company-cell strong')).fontSize,
   companyDirection: getComputedStyle(document.querySelector('.company-line')).flexDirection,
@@ -127,8 +128,8 @@ const initial = await page.evaluate(() => ({
   workModeBorderWidth: getComputedStyle(document.querySelector('.work-mode')).borderTopWidth,
   workModeBackground: getComputedStyle(document.querySelector('.work-mode')).backgroundColor,
   workModePaddingLeft: getComputedStyle(document.querySelector('.work-mode')).paddingLeft,
-  oddRowBackground: getComputedStyle(document.querySelector('tr[data-record-id="aster"] td:nth-child(4)')).backgroundColor,
-  evenRowBackground: getComputedStyle(document.querySelector('tr[data-record-id="tide"] td:nth-child(4)')).backgroundColor,
+  oddRowBackground: getComputedStyle(document.querySelector('tr[data-record-id="aster"] td:nth-child(5)')).backgroundColor,
+  evenRowBackground: getComputedStyle(document.querySelector('tr[data-record-id="tide"] td:nth-child(5)')).backgroundColor,
   oddFrozenBackground: getComputedStyle(document.querySelector('tr[data-record-id="aster"] td:nth-child(2)')).backgroundColor,
   evenFrozenBackground: getComputedStyle(document.querySelector('tr[data-record-id="tide"] td:nth-child(2)')).backgroundColor,
   visibleScoreRings: [...document.querySelectorAll('.score-ring')]
@@ -171,29 +172,30 @@ const initial = await page.evaluate(() => ({
 assert.equal(initial.bodyOverflow, 0, 'page should not overflow horizontally at 1600px');
 assert.equal(initial.appWidth, 1600, 'desktop app should fill the viewport');
 assert.equal(initial.appHeight, 1000, 'desktop app should fill the viewport height');
+assert.equal(initial.appOverflow, 'clip', 'the off-canvas AI drawer must not turn the app shell into a hidden scroll container');
 assert.equal(initial.workspaceWidth, 1600, 'single Dataset workspace should own the full viewport width');
 assert.equal(initial.sidebarCount, 0, 'mock should not duplicate Obsidian navigation with an app sidebar');
 assert.equal(initial.tableRows, 20, 'table fixture should render twenty visible records');
 assert.equal(initial.groupRows, 0, 'initial table should preserve the continuous computational grid');
 assert.equal(initial.activeView, 'table', 'table should be the initial view');
 assert.equal(initial.frozenColumnPosition, 'sticky', 'primary record field should be frozen');
-assert.equal(initial.columnLetters, 17, 'table should expose spreadsheet column letters A-Q');
-assert.equal(initial.typedFieldHeaders, 17, 'table should expose seventeen typed Dataset fields');
+assert.equal(initial.columnLetters, 18, 'table should expose spreadsheet column letters A-R');
+assert.equal(initial.typedFieldHeaders, 18, 'table should expose eighteen typed Dataset fields');
 assert.equal(initial.rowNumbers, 20, 'table should expose stable row numbers');
-assert.equal(initial.firstRecordCellCount, 18, 'each record row should align with the row header plus seventeen fields');
-assert.equal(initial.selectedRangeCells, 5, 'initial grid should show the G2:G6 selection');
+assert.equal(initial.firstRecordCellCount, 19, 'each record row should align with the row header plus eighteen fields');
+assert.equal(initial.selectedRangeCells, 5, 'initial grid should show the H2:H6 selection');
 assert.equal(initial.activeCells, 1, 'initial grid should show one active formula cell');
 assert.equal(initial.selectionStatistics, 5, 'status bar should expose count, sum, average, min and max');
 assert.equal(initial.formulaColumns, 3, 'table should identify three computed columns');
-assert.equal(initial.activeCellName, 'J6', 'formula name box should identify the active cell');
-assert.match(initial.formulaValue, /^=IF\(AND\(G6>=85,H6>=7\)/, 'formula bar should expose the active formula');
+assert.equal(initial.activeCellName, 'K6', 'formula name box should identify the active cell');
+assert.match(initial.formulaValue, /^=IF\(AND\(H6>=85,I6>=7\)/, 'formula bar should expose the active formula');
 assert.equal(initial.theme, 'light', 'Editorial V2 should default to the approved Paper direction');
 assert.equal(initial.visualVersion, 'editorial-v2', 'mock should expose an explicit independent visual version');
 assert.equal(initial.canvasColor, '#eef0ec', 'Paper canvas should use a warm mineral grey');
 assert.equal(initial.motionBase, '180ms', 'motion should use one shared interaction timing token');
 assert.equal(initial.viewAnimationName, 'editorial-view-enter', 'view changes should use the restrained editorial entrance');
 assert.match(initial.buttonTransitionDuration, /0.12s/, 'toolbar actions should expose fast state transitions');
-assert.deepEqual(initial.headerHeights, [52, 38, 38, 32, 28], 'Header bands should share the approved compact vertical rhythm');
+assert.deepEqual(initial.headerHeights, [52, 38, 38, 32, 0], 'inactive filters should not reserve a blank header band');
 assert.equal(new Set(initial.headerBackgrounds).size, 1, 'Header bands should read as one continuous paper surface');
 assert.equal(initial.toolbarDividerWidth, 0, 'toolbar groups should use spacing instead of vertical divider cages');
 assert.equal(initial.fieldHeaderFontSize, '11.5px', 'field headers should use the same readable type scale as table metadata');
@@ -286,10 +288,10 @@ const truncatedLongText = await page.evaluate(() => {
     noteClipped: note ? note.scrollWidth > note.clientWidth : false,
   };
 });
-assert.equal(truncatedLongText.activeCellName, 'Q2', 'name box should follow the selected long-text cell');
+assert.equal(truncatedLongText.activeCellName, 'R2', 'name box should follow the selected long-text cell');
 assert.match(truncatedLongText.formulaValue, /年度调薪与远程政策/, 'formula bar should expose the complete raw text value');
 assert.equal(truncatedLongText.formulaState, '文本值', 'formula bar should identify text rather than formula state');
-assert.equal(truncatedLongText.readerTitle, 'Q2 · 备注', 'cell reader should identify the field and row');
+assert.equal(truncatedLongText.readerTitle, 'R2 · 备注', 'cell reader should identify the field and row');
 assert.match(truncatedLongText.readerCopy, /试用期结束后的调整空间/, 'cell reader should expose the complete long value');
 assert.match(truncatedLongText.readerCount, /^\d+ 字$/, 'cell reader should expose the raw character count');
 assert.equal(truncatedLongText.activeLongCells, 1, 'only one long-text cell should be active');
@@ -321,8 +323,8 @@ await page.screenshot({ path: path.join(dir, 'preview-long-text-wrap.png') });
 
 await page.click('#close-cell-reader');
 assert.equal(await page.locator('#cell-reader').isHidden(), true);
-assert.equal(await page.textContent('#active-cell-name'), 'J6');
-assert.match(await page.inputValue('#formula-input'), /^=IF\(AND\(G6>=85,H6>=7\)/);
+assert.equal(await page.textContent('#active-cell-name'), 'K6');
+assert.match(await page.inputValue('#formula-input'), /^=IF\(AND\(H6>=85,I6>=7\)/);
 await page.locator('.table-viewport').evaluate((viewport) => {
   viewport.scrollLeft = 0;
 });
@@ -336,7 +338,7 @@ assert.equal(await page.inputValue('#formula-input'), 'Auckland CBD', 'formula b
 await page.screenshot({ path: path.join(dir, 'preview-cell-edit.png') });
 await page.locator('.cell-editor').press('Enter');
 assert.equal((await asterLocation.textContent())?.trim(), 'Auckland CBD');
-assert.equal(await page.textContent('#active-cell-name'), 'D2');
+assert.equal(await page.textContent('#active-cell-name'), 'E2');
 assert.match(await page.textContent('#status-secondary'), /双击或 Enter 编辑/);
 assert.equal(await page.locator('.cell-editor').count(), 0);
 
@@ -345,6 +347,12 @@ await tideCompany.dblclick();
 await page.locator('.cell-editor').fill('Temporary Company');
 await page.locator('.cell-editor').press('Escape');
 assert.equal((await tideCompany.locator('.company-cell strong').textContent())?.trim(), 'Tide Systems');
+
+const tideRole = page.locator('tr[data-record-id="tide"] td[data-field="role"]');
+await tideRole.dblclick();
+await page.locator('.cell-editor').fill('Principal Frontend Engineer');
+await page.locator('.cell-editor').press('Enter');
+assert.equal((await tideRole.textContent())?.trim(), 'Principal Frontend Engineer', 'role should be an independent editable field');
 
 const asterWorkMode = page.locator('tr[data-record-id="aster"] td[data-field="workMode"]');
 await asterWorkMode.dblclick();
@@ -483,7 +491,7 @@ await asterPriority.scrollIntoViewIfNeeded();
 await asterPriority.dblclick();
 assert.equal(await asterPriority.locator('.cell-editor').count(), 0, 'computed cells should remain read-only');
 assert.equal((await page.textContent('#toast-title'))?.trim(), '这是只读字段');
-assert.match(await page.inputValue('#formula-input'), /^=IF\(AND\(G2>=85,H2>=7\)/);
+assert.match(await page.inputValue('#formula-input'), /^=IF\(AND\(H2>=85,I2>=7\)/);
 
 await page.click('[data-view="board"]');
 await page.waitForSelector('.board-view');
@@ -515,20 +523,27 @@ assert.match(await page.textContent('#format-menu'), /日期时间/);
 assert.match(await page.textContent('#format-menu'), /自定义/);
 await settleMotion();
 await page.screenshot({ path: path.join(dir, 'preview-format.png') });
-await page.click('#open-conditional-from-menu');
-await page.waitForSelector('#conditional-panel:not([hidden])');
-assert.equal(await page.locator('.conditional-rule').count(), 2);
-assert.match(await page.textContent('#conditional-panel'), /数据条/);
-assert.match(await page.textContent('#conditional-panel'), /等待超过 7 天/);
-await settleMotion();
-await page.screenshot({ path: path.join(dir, 'preview-conditional.png') });
-await page.click('#close-conditional-format');
+assert.equal(await page.locator('#conditional-panel, #open-conditional-format, #open-conditional-from-menu').count(), 0, 'conditional formatting should not remain in this mock');
+await page.click('#close-format-menu');
 
 await page.click('#open-fields');
 await page.waitForSelector('#field-panel:not([hidden])');
+await settleMotion();
+const fieldPanelAnchor = await page.evaluate(() => {
+  const trigger = document.querySelector('#open-fields')?.getBoundingClientRect();
+  const panel = document.querySelector('#field-panel')?.getBoundingClientRect();
+  return {
+    leftDelta: trigger && panel ? panel.left - trigger.left : Infinity,
+    topGap: trigger && panel ? panel.top - trigger.bottom : Infinity,
+  };
+});
+assert.ok(Math.abs(fieldPanelAnchor.leftDelta) <= 1, 'field panel should align to the Fields trigger');
+assert.ok(fieldPanelAnchor.topGap >= 4 && fieldPanelAnchor.topGap <= 7, 'field panel should open directly under the toolbar');
 assert.match(await page.textContent('#field-panel'), /字段类型/);
 assert.match(await page.textContent('#field-panel'), /单选/);
-assert.equal(await page.locator('.field-list > button:not(.field-add)').count(), 17);
+assert.match(await page.textContent('#field-panel'), /公司/);
+assert.match(await page.textContent('#field-panel'), /职位/);
+assert.equal(await page.locator('.field-list > button:not(.field-add)').count(), 18);
 await page.click('#field-type-select');
 await page.waitForSelector('#field-type-menu:not([hidden])');
 assert.equal(await page.locator('#field-type-menu .field-type-grid button').count(), 9);
@@ -547,16 +562,91 @@ await settleMotion();
 await page.screenshot({ path: path.join(dir, 'preview-fields.png') });
 await page.click('[data-field-type="公式"]');
 await page.waitForSelector('#formula-panel:not([hidden])');
-assert.match(await page.textContent('#formula-panel'), /IF/);
-assert.match(await page.textContent('#formula-panel'), /DATE_DIFF/);
-assert.match(await page.textContent('#formula-panel'), /条件聚合/);
-assert.match(await page.textContent('#formula-panel'), /自定义函数/);
-assert.ok(await page.locator('[data-function]').count() >= 40, 'formula library should expose a broad basic-function baseline');
-assert.match(await page.textContent('#formula-panel'), /20 条预览 · 0 个错误 · 无循环引用/);
-assert.equal(await page.locator('.formula-preview > span').count(), 3);
+await settleMotion();
+const formulaSurfaceState = await page.evaluate(() => {
+  const panel = document.querySelector('#formula-panel')?.getBoundingClientRect();
+  return {
+    left: panel?.left ?? -1,
+    right: panel?.right ?? Infinity,
+    appScrollLeft: document.querySelector('.app-shell')?.scrollLeft ?? -1,
+    aiDrawerOpen: document.querySelector('#ai-drawer')?.classList.contains('is-open') ?? true,
+  };
+});
+assert.ok(formulaSurfaceState.left >= 0 && formulaSurfaceState.right <= 1600, 'AI formula surface should remain centered inside the viewport');
+assert.equal(formulaSurfaceState.appScrollLeft, 0, 'right-side cell interactions must not shift the entire workspace');
+assert.equal(formulaSurfaceState.aiDrawerOpen, false, 'AI formula authoring should not leave the analysis drawer open');
+assert.match(await page.textContent('#formula-panel'), /用一句话描述规则/);
+assert.match(await page.textContent('#formula-panel'), /生成公式建议/);
+assert.equal(await page.locator('[data-formula-candidate]').count(), 3, 'AI formula flow should offer multiple selectable candidates');
+assert.equal(await page.locator('[data-function]').count(), 8, 'manual functions should remain a secondary compact escape hatch');
+assert.match(await page.textContent('#formula-panel'), /类型检查通过/);
+assert.equal(await page.locator('.formula-result-preview > div').count(), 3);
+await page.fill('#ai-formula-prompt', 'Offer 需要立即决策，其余高匹配且等待七天的岗位优先跟进');
+await page.click('#generate-formula-candidates');
+assert.match(await page.textContent('#formula-generation-state'), /刚刚生成/);
+await page.click('[data-formula-candidate="stage-aware"]');
+assert.equal(await page.locator('[data-formula-candidate="stage-aware"]').getAttribute('class'), 'formula-candidate is-selected');
 await settleMotion();
 await page.screenshot({ path: path.join(dir, 'preview-formula.png') });
-await page.click('#close-formula');
+await page.click('#save-formula');
+assert.match(await page.textContent('#toast-title'), /AI 公式已确认/);
+
+await page.click('#open-filter');
+await page.waitForSelector('#filter-panel:not([hidden])');
+await settleMotion();
+assert.equal(await page.locator('.record-table tr[data-record-id]').count(), 20, 'opening Filter must not apply a rule or blank the table');
+const filterPanelAnchor = await page.evaluate(() => {
+  const trigger = document.querySelector('#open-filter')?.getBoundingClientRect();
+  const panel = document.querySelector('#filter-panel')?.getBoundingClientRect();
+  return {
+    leftDelta: trigger && panel ? panel.left - trigger.left : Infinity,
+    topGap: trigger && panel ? panel.top - trigger.bottom : Infinity,
+  };
+});
+assert.ok(Math.abs(filterPanelAnchor.leftDelta) <= 1, 'filter panel should align to the Filter trigger');
+assert.ok(filterPanelAnchor.topGap >= 4 && filterPanelAnchor.topGap <= 7, 'filter panel should open directly under the toolbar');
+await page.screenshot({ path: path.join(dir, 'preview-filter-panel.png') });
+await page.selectOption('#filter-field', 'stageKey');
+await page.selectOption('#filter-operator', 'equals');
+await page.fill('#filter-value', '面试中');
+await page.click('#apply-filter');
+const filteredCount = await page.locator('.record-table tr[data-record-id]').count();
+assert.ok(filteredCount > 0 && filteredCount < 20, 'an explicit filter should narrow records without producing an accidental blank view');
+assert.match(await page.textContent('#filter-line'), /阶段 等于 面试中/);
+assert.equal(await page.locator('#filter-count').isHidden(), false);
+await page.screenshot({ path: path.join(dir, 'preview-filter-rule.png') });
+await page.click('#remove-filter');
+assert.equal(await page.locator('.record-table tr[data-record-id]').count(), 20);
+
+await page.click('#open-sort');
+await page.waitForSelector('#sort-panel:not([hidden])');
+await settleMotion();
+await page.screenshot({ path: path.join(dir, 'preview-sort-panel.png') });
+await page.selectOption('#sort-field', 'fit');
+await page.selectOption('#sort-direction', 'desc');
+assert.match(await page.textContent('#sort-preview'), /匹配度/);
+await page.click('#apply-sort');
+assert.equal((await page.locator('.record-table tr[data-record-id]').first().getAttribute('data-record-id')), 'aster');
+assert.equal(await page.locator('.record-table .sort-mark').count(), 1, 'the sorted column should visibly own the direction indicator');
+assert.equal(await page.locator('#sort-count').isHidden(), false);
+await page.click('#open-sort');
+await page.click('#clear-sort');
+
+await page.click('#open-group');
+await page.waitForSelector('#group-panel:not([hidden])');
+await settleMotion();
+await page.screenshot({ path: path.join(dir, 'preview-group-panel.png') });
+await page.selectOption('#group-field', 'workMode');
+await page.click('#apply-group');
+assert.equal(await page.locator('.record-table .group-row').count(), 3, 'work mode should produce three selectable groups');
+assert.match(await page.textContent('.record-table'), /Remote/);
+assert.match(await page.textContent('.record-table'), /Hybrid/);
+assert.match(await page.textContent('.record-table'), /On-site/);
+assert.match(await page.textContent('#status-secondary'), /按工作模式分组/);
+await page.screenshot({ path: path.join(dir, 'preview-group-rule.png') });
+await page.click('#open-group');
+await page.click('#clear-group');
+assert.equal(await page.locator('.record-table .group-row').count(), 0);
 
 await page.click('#toggle-stats');
 assert.equal(await page.locator('#selection-statistics').isHidden(), true);
@@ -593,8 +683,9 @@ await settleMotion();
 await page.screenshot({ path: path.join(dir, 'preview-plan.png') });
 await page.click('#accept-plan');
 await page.waitForSelector('.record-table');
-assert.equal(await page.locator('.record-table tr[data-record-id]').count(), 5);
-assert.match(await page.textContent('#filter-line'), /高价值待跟进/);
+const aiFilteredCount = await page.locator('.record-table tr[data-record-id]').count();
+assert.ok(aiFilteredCount > 0 && aiFilteredCount < 20);
+assert.match(await page.textContent('#filter-line'), /匹配度 大于等于 80/);
 
 await page.click('#show-source');
 await page.waitForSelector('#source-dialog:not([hidden])');
@@ -648,6 +739,6 @@ console.log(JSON.stringify({
   },
   localLinks: localHrefs.length,
   viewsChecked: ['table', 'board', 'calendar', 'gallery', 'dashboard'],
-  flowsChecked: ['long-text-reader', 'bounded-row-wrap', 'inline-text-edit', 'typed-select-edit', 'numeric-edit', 'checkbox-toggle', 'keyboard-f2-cancel', 'keyboard-tab-commit', 'scroll-continuity', 'frozen-cell-selection', 'bounded-cell-editor', 'stable-row-hover', 'computed-cell-readonly', 'selection-stat-recompute', 'theme-switch', 'number-format', 'conditional-format', 'field-type-select', 'formula-library', 'selection-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
-  screenshots: ['preview.png', 'preview-table.png', 'preview-table-types.png', 'preview-long-text.png', 'preview-long-text-wrap.png', 'preview-cell-edit.png', 'preview-frozen-selection.png', 'preview-dark.png', 'preview-format.png', 'preview-conditional.png', 'preview-fields.png', 'preview-formula.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
+  flowsChecked: ['long-text-reader', 'bounded-row-wrap', 'independent-role-edit', 'inline-text-edit', 'typed-select-edit', 'numeric-edit', 'checkbox-toggle', 'keyboard-f2-cancel', 'keyboard-tab-commit', 'scroll-continuity', 'frozen-cell-selection', 'bounded-cell-editor', 'stable-row-hover', 'computed-cell-readonly', 'selection-stat-recompute', 'theme-switch', 'number-format', 'anchored-field-panel', 'explicit-filter-rule', 'explicit-sort-rule', 'selectable-group-rule', 'ai-formula-candidates', 'selection-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
+  screenshots: ['preview.png', 'preview-table.png', 'preview-table-types.png', 'preview-long-text.png', 'preview-long-text-wrap.png', 'preview-cell-edit.png', 'preview-frozen-selection.png', 'preview-dark.png', 'preview-format.png', 'preview-fields.png', 'preview-formula.png', 'preview-filter-panel.png', 'preview-filter-rule.png', 'preview-sort-panel.png', 'preview-group-panel.png', 'preview-group-rule.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
 }, null, 2));

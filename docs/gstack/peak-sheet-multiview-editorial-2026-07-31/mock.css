@@ -90,12 +90,24 @@ body[data-visual-version="editorial-v2"] .table-view {
   background: var(--surface);
 }
 
+body[data-visual-version="editorial-v2"] .app-shell {
+  overflow: clip;
+}
+
 body[data-visual-version="editorial-v2"] .workspace {
   grid-template-rows: 52px 38px 38px 32px 28px minmax(0, 1fr) 29px;
 }
 
 body[data-visual-version="editorial-v2"] .workspace:not(.is-table-view) {
   grid-template-rows: 52px 38px 38px 28px minmax(0, 1fr) 29px;
+}
+
+body[data-visual-version="editorial-v2"] .workspace.is-table-view:not(.has-active-filter) {
+  grid-template-rows: 52px 38px 38px 32px minmax(0, 1fr) 29px;
+}
+
+body[data-visual-version="editorial-v2"] .workspace:not(.is-table-view):not(.has-active-filter) {
+  grid-template-rows: 52px 38px 38px minmax(0, 1fr) 29px;
 }
 
 body[data-visual-version="editorial-v2"] button,
@@ -570,6 +582,30 @@ body[data-visual-version="editorial-v2"] .record-table {
   background: var(--surface);
 }
 
+body[data-visual-version="editorial-v2"] .record-table {
+  min-width: 3002px;
+}
+
+body[data-visual-version="editorial-v2"] .record-table col:nth-child(1) { width: 36px; }
+body[data-visual-version="editorial-v2"] .record-table col:nth-child(2) { width: 190px; }
+body[data-visual-version="editorial-v2"] .record-table col:nth-child(3) { width: 220px; }
+body[data-visual-version="editorial-v2"] .record-table col:nth-child(4) { width: 118px; }
+body[data-visual-version="editorial-v2"] .record-table col:nth-child(5) { width: 116px; }
+body[data-visual-version="editorial-v2"] .record-table col:nth-child(6) { width: 135px; }
+body[data-visual-version="editorial-v2"] .record-table col:nth-child(7) { width: 110px; }
+body[data-visual-version="editorial-v2"] .record-table col:nth-child(8) { width: 145px; }
+body[data-visual-version="editorial-v2"] .record-table col:nth-child(9) { width: 112px; }
+body[data-visual-version="editorial-v2"] .record-table col:nth-child(10) { width: 118px; }
+body[data-visual-version="editorial-v2"] .record-table col:nth-child(11) { width: 230px; }
+body[data-visual-version="editorial-v2"] .record-table col:nth-child(12) { width: 160px; }
+body[data-visual-version="editorial-v2"] .record-table col:nth-child(13) { width: 210px; }
+body[data-visual-version="editorial-v2"] .record-table col:nth-child(14) { width: 92px; }
+body[data-visual-version="editorial-v2"] .record-table col:nth-child(15) { width: 170px; }
+body[data-visual-version="editorial-v2"] .record-table col:nth-child(16) { width: 130px; }
+body[data-visual-version="editorial-v2"] .record-table col:nth-child(17) { width: 150px; }
+body[data-visual-version="editorial-v2"] .record-table col:nth-child(18) { width: 150px; }
+body[data-visual-version="editorial-v2"] .record-table col:nth-child(19) { width: 300px; }
+
 body[data-visual-version="editorial-v2"] .record-table th,
 body[data-visual-version="editorial-v2"] .record-table td {
   height: 42px;
@@ -620,12 +656,14 @@ body[data-visual-version="editorial-v2"] .record-table thead tr:nth-child(2) th:
   :nth-child(7),
   :nth-child(8),
   :nth-child(9),
-  :nth-child(17)
+  :nth-child(10),
+  :nth-child(17),
+  :nth-child(18)
 ) .field-heading {
   justify-content: flex-end;
 }
 
-body[data-visual-version="editorial-v2"] .record-table thead tr:nth-child(2) th:nth-child(13) .field-heading {
+body[data-visual-version="editorial-v2"] .record-table thead tr:nth-child(2) th:nth-child(14) .field-heading {
   justify-content: center;
 }
 
@@ -701,6 +739,19 @@ body[data-visual-version="editorial-v2"] .company-cell small {
 
 body[data-visual-version="editorial-v2"] .company-cell small::before {
   color: var(--quiet);
+}
+
+body[data-visual-version="editorial-v2"] .role-cell {
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 460;
+}
+
+body[data-visual-version="editorial-v2"] .role-cell > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 body[data-visual-version="editorial-v2"] .work-mode {
@@ -1047,15 +1098,6 @@ body[data-visual-version="editorial-v2"] .fill-handle {
   background: var(--accent);
 }
 
-body[data-visual-version="editorial-v2"] .conditional-alert {
-  background: color-mix(in srgb, #b88355 9%, var(--surface)) !important;
-  color: #8c613a !important;
-}
-
-body[data-visual-version="editorial-v2"][data-theme="dark"] .conditional-alert {
-  color: #d4aa83 !important;
-}
-
 body[data-visual-version="editorial-v2"] .group-row td {
   height: 38px;
   padding: 8px 12px 3px;
@@ -1143,6 +1185,434 @@ body[data-visual-version="editorial-v2"] .cell-reader-modes button {
 body[data-visual-version="editorial-v2"] .cell-reader-modes button.is-active {
   background: var(--surface);
   box-shadow: inset 0 0 0 1px var(--line);
+}
+
+/* Anchored rule editors: opening a tool never applies data changes. */
+
+body[data-visual-version="editorial-v2"] .field-panel {
+  width: 620px;
+  max-width: calc(100vw - 16px);
+}
+
+body[data-visual-version="editorial-v2"] .field-panel-body {
+  max-height: min(620px, calc(100vh - 150px));
+  overflow: hidden;
+}
+
+body[data-visual-version="editorial-v2"] .field-list,
+body[data-visual-version="editorial-v2"] .field-editor {
+  overflow: auto;
+}
+
+body[data-visual-version="editorial-v2"] .rule-panel {
+  z-index: 21;
+  width: 390px;
+  padding: 0;
+}
+
+body[data-visual-version="editorial-v2"] .rule-panel .panel-header {
+  min-height: 54px;
+  padding: 0 8px 0 14px;
+  background: var(--surface);
+}
+
+body[data-visual-version="editorial-v2"] .rule-panel-body {
+  padding: 14px;
+}
+
+body[data-visual-version="editorial-v2"] .rule-label {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: .04em;
+}
+
+body[data-visual-version="editorial-v2"] .rule-editor-row {
+  display: grid;
+  grid-template-columns: 105px 100px minmax(0, 1fr);
+  gap: 6px;
+}
+
+body[data-visual-version="editorial-v2"] .rule-editor-row.two-columns {
+  grid-template-columns: 145px minmax(0, 1fr);
+}
+
+body[data-visual-version="editorial-v2"] .rule-editor-row select,
+body[data-visual-version="editorial-v2"] .rule-editor-row input,
+body[data-visual-version="editorial-v2"] .full-select {
+  width: 100%;
+  height: 34px;
+  min-width: 0;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  outline: none;
+  background: var(--surface-2);
+  color: var(--text-soft);
+  font-size: 11px;
+}
+
+body[data-visual-version="editorial-v2"] .rule-editor-row select:focus,
+body[data-visual-version="editorial-v2"] .rule-editor-row input:focus,
+body[data-visual-version="editorial-v2"] .full-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+body[data-visual-version="editorial-v2"] .rule-preview-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--quiet);
+  font-size: 9px;
+}
+
+body[data-visual-version="editorial-v2"] .rule-preview-line b {
+  color: var(--text-soft);
+  font-size: 10px;
+  font-weight: 560;
+}
+
+body[data-visual-version="editorial-v2"] .rule-panel > footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--line-soft);
+}
+
+body[data-visual-version="editorial-v2"] .group-examples {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+body[data-visual-version="editorial-v2"] .group-examples > span {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  align-items: baseline;
+  padding-top: 7px;
+  border-top: 1px solid var(--line-soft);
+}
+
+body[data-visual-version="editorial-v2"] .group-examples b {
+  color: var(--text-soft);
+  font-size: 10px;
+}
+
+body[data-visual-version="editorial-v2"] .group-examples small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* AI-first formula authoring. The function list remains secondary. */
+
+body[data-visual-version="editorial-v2"] .formula-panel {
+  top: 116px;
+  left: 50%;
+  width: min(980px, calc(100vw - 40px));
+  transform: none;
+  translate: -50% 0;
+}
+
+body[data-visual-version="editorial-v2"] .ai-formula-layout {
+  display: grid;
+  min-height: 560px;
+  max-height: calc(100vh - 170px);
+  grid-template-columns: 390px minmax(0, 1fr);
+  overflow: hidden;
+}
+
+body[data-visual-version="editorial-v2"] .ai-formula-request,
+body[data-visual-version="editorial-v2"] .ai-formula-results {
+  min-width: 0;
+  padding: 18px;
+  overflow: auto;
+}
+
+body[data-visual-version="editorial-v2"] .ai-formula-request {
+  border-right: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+body[data-visual-version="editorial-v2"] .formula-step {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 620;
+}
+
+body[data-visual-version="editorial-v2"] .formula-step b {
+  display: grid;
+  width: 19px;
+  height: 19px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font: 650 9px var(--font-mono);
+}
+
+body[data-visual-version="editorial-v2"] .ai-formula-request > label {
+  display: grid;
+  gap: 6px;
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 9.5px;
+  font-weight: 600;
+}
+
+body[data-visual-version="editorial-v2"] .ai-formula-request input,
+body[data-visual-version="editorial-v2"] .ai-formula-request textarea {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  outline: none;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+body[data-visual-version="editorial-v2"] .ai-formula-request input:focus,
+body[data-visual-version="editorial-v2"] .ai-formula-request textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+body[data-visual-version="editorial-v2"] .ai-formula-context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+body[data-visual-version="editorial-v2"] .ai-formula-context > span {
+  margin-right: 3px;
+  color: var(--quiet);
+  font-size: 9px;
+}
+
+body[data-visual-version="editorial-v2"] .ai-formula-context button {
+  height: 23px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 9px;
+}
+
+body[data-visual-version="editorial-v2"] .generate-formula-button {
+  display: grid;
+  width: 100%;
+  min-height: 48px;
+  grid-template-columns: 18px minmax(0, 1fr) 14px;
+  align-items: center;
+  gap: 9px;
+  margin-top: 16px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--text);
+  color: var(--surface);
+  text-align: left;
+}
+
+body[data-visual-version="editorial-v2"] .generate-formula-button > span {
+  display: grid;
+  gap: 3px;
+}
+
+body[data-visual-version="editorial-v2"] .generate-formula-button strong {
+  font-size: 11px;
+}
+
+body[data-visual-version="editorial-v2"] .generate-formula-button small {
+  opacity: .68;
+  font-size: 8.5px;
+}
+
+body[data-visual-version="editorial-v2"] .manual-formula {
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 9.5px;
+}
+
+body[data-visual-version="editorial-v2"] .manual-formula summary {
+  padding: 12px 0 8px;
+  cursor: pointer;
+}
+
+body[data-visual-version="editorial-v2"] .manual-formula > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+body[data-visual-version="editorial-v2"] .manual-formula button {
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--text-soft);
+  font: 600 9px var(--font-mono);
+}
+
+body[data-visual-version="editorial-v2"] .ai-formula-results > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+body[data-visual-version="editorial-v2"] .ai-formula-results > header small {
+  color: var(--muted);
+  font-size: 8.5px;
+}
+
+body[data-visual-version="editorial-v2"] .formula-candidates {
+  display: grid;
+  gap: 7px;
+}
+
+body[data-visual-version="editorial-v2"] .formula-candidate {
+  display: grid;
+  gap: 7px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text-soft);
+  text-align: left;
+}
+
+body[data-visual-version="editorial-v2"] .formula-candidate:hover {
+  border-color: var(--line-strong);
+}
+
+body[data-visual-version="editorial-v2"] .formula-candidate.is-selected {
+  border-color: var(--accent);
+  box-shadow: inset 3px 0 var(--accent);
+}
+
+body[data-visual-version="editorial-v2"] .candidate-choice {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+body[data-visual-version="editorial-v2"] .candidate-choice i {
+  width: 11px;
+  height: 11px;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+}
+
+body[data-visual-version="editorial-v2"] .formula-candidate.is-selected .candidate-choice i {
+  border: 3px solid var(--accent);
+}
+
+body[data-visual-version="editorial-v2"] .candidate-choice strong {
+  font-size: 10.5px;
+}
+
+body[data-visual-version="editorial-v2"] .candidate-choice em {
+  margin-left: auto;
+  color: var(--accent-strong);
+  font-size: 8.5px;
+  font-style: normal;
+}
+
+body[data-visual-version="editorial-v2"] .formula-candidate code {
+  display: block;
+  overflow: hidden;
+  color: var(--text);
+  font: 500 10px/1.5 var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body[data-visual-version="editorial-v2"] .candidate-explanation,
+body[data-visual-version="editorial-v2"] .candidate-contract {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+body[data-visual-version="editorial-v2"] .candidate-contract {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #52795a;
+}
+
+body[data-visual-version="editorial-v2"] .candidate-contract svg {
+  width: 10px;
+}
+
+body[data-visual-version="editorial-v2"] .formula-candidates.is-generated {
+  animation: editorial-view-enter var(--motion-slow) var(--ease-emphasized) both;
+}
+
+body[data-visual-version="editorial-v2"] .formula-result-preview {
+  margin-top: 16px;
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+}
+
+body[data-visual-version="editorial-v2"] .formula-result-preview > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+body[data-visual-version="editorial-v2"] .formula-result-preview > div > span {
+  display: grid;
+  gap: 3px;
+}
+
+body[data-visual-version="editorial-v2"] .formula-result-preview b {
+  color: var(--text-soft);
+  font-size: 10px;
+}
+
+body[data-visual-version="editorial-v2"] .formula-result-preview small {
+  color: var(--muted);
+  font-size: 8.5px;
+}
+
+body[data-visual-version="editorial-v2"] .ai-formula-results > footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  margin-top: 14px;
+}
+
+body[data-visual-version="editorial-v2"] .ai-formula-results > footer > span {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: 8.5px;
 }
 
 /* Secondary views inherit the same paper-and-rule language. */
