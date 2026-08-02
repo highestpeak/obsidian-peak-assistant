@@ -737,9 +737,9 @@ const aiDrawer = document.querySelector('#ai-drawer');
 const themeToggle = document.querySelector('#theme-toggle');
 const formulaPanel = document.querySelector('#formula-panel');
 const formulaBar = document.querySelector('#formula-bar');
-const formulaDirect = document.querySelector('#formula-direct');
-const inlineFormulaComposer = document.querySelector('#inline-formula-composer');
-const inlineFormulaPrompt = document.querySelector('#inline-formula-prompt');
+const formulaFunctionButton = document.querySelector('#formula-function-button');
+const formulaEntryGuide = document.querySelector('#formula-entry-guide');
+const formulaGenerateButton = document.querySelector('#generate-inline-formula');
 const formatMenu = document.querySelector('#format-menu');
 const filterPanel = document.querySelector('#filter-panel');
 const sortPanel = document.querySelector('#sort-panel');
@@ -753,6 +753,9 @@ const formulaScope = document.querySelector('.formula-scope');
 const defaultFormulaValue = formulaInput.value;
 const defaultFormulaState = formulaState.innerHTML;
 const defaultFormulaScope = formulaScope.textContent;
+let formulaCommittedValue = defaultFormulaValue;
+let formulaCommittedState = defaultFormulaState;
+let formulaCommittedScope = defaultFormulaScope;
 
 function icon(id) {
   return `<svg><use href="#${id}"/></svg>`;
@@ -1456,6 +1459,74 @@ function refreshCommittedCell(recordId, field) {
   return refreshRecordCells(recordId, field);
 }
 
+function formulaSupportsAiEntry() {
+  if (state.activeLongTextId) return false;
+  if (!state.cellSelection) return true;
+  return Boolean(cellFields[state.cellSelection.field]?.formula);
+}
+
+function rememberFormulaContext() {
+  formulaCommittedValue = formulaInput.value;
+  formulaCommittedState = formulaState.innerHTML;
+  formulaCommittedScope = formulaScope.textContent;
+}
+
+function setFormulaFunctionMark(isAiEntry) {
+  if (!isAiEntry) {
+    formulaFunctionButton.textContent = 'fx';
+    return;
+  }
+  formulaFunctionButton.innerHTML = icon('i-sparkles');
+}
+
+function updateFormulaEntryMode() {
+  const supportsAi = formulaSupportsAiEntry();
+  const value = formulaInput.value.trim();
+  const isAiEntry = supportsAi && value.length > 0 && !value.startsWith('=');
+  const isFormulaDraft = supportsAi && value.startsWith('=') && value !== formulaCommittedValue;
+  formulaBar.classList.toggle('is-plain-cell', !supportsAi);
+  formulaBar.classList.toggle('is-ai-entry', isAiEntry);
+  setFormulaFunctionMark(isAiEntry);
+  formulaGenerateButton.hidden = !isAiEntry;
+  formulaEntryGuide.querySelector('span').textContent = isAiEntry ? 'AI 规则' : '文字直接交给 AI';
+  if (!supportsAi) return;
+  if (isAiEntry) {
+    formulaState.innerHTML = `${icon('i-sparkles')}AI 规则`;
+    formulaScope.textContent = 'Enter 生成候选';
+    return;
+  }
+  if (isFormulaDraft) {
+    formulaState.innerHTML = `${icon('i-text')}公式草稿`;
+    formulaScope.textContent = 'Enter 应用公式';
+    return;
+  }
+  formulaState.innerHTML = formulaCommittedState;
+  formulaScope.textContent = formulaCommittedScope;
+}
+
+function submitFormulaBar() {
+  if (!formulaSupportsAiEntry()) {
+    showToast('当前不是计算字段', '选择公式列后，可在这里直接写公式或描述 AI 规则');
+    return;
+  }
+  const value = formulaInput.value.trim();
+  if (!value) {
+    showToast('公式栏还是空的', '输入 = 公式，或直接写一句业务规则');
+    formulaInput.focus();
+    return;
+  }
+  if (!value.startsWith('=')) {
+    openFormulaCandidates(value);
+    return;
+  }
+  formulaInput.value = value;
+  formulaState.innerHTML = `${icon('i-check')}公式有效`;
+  formulaScope.textContent = '计算列 · 20 条记录';
+  rememberFormulaContext();
+  updateFormulaEntryMode();
+  showToast('公式已应用', '行动优先级已按当前公式重新计算');
+}
+
 function updateFormulaBarForSelection() {
   const selection = state.cellSelection;
   if (!selection) return;
@@ -1473,6 +1544,8 @@ function updateFormulaBarForSelection() {
   formulaScope.textContent = definition.readOnly
     ? `${definition.label} · 由 schema 或公式维护`
     : `${definition.label} · 双击或 Enter / F2 编辑`;
+  rememberFormulaContext();
+  updateFormulaEntryMode();
 }
 
 function selectCell(recordId, field, options = {}) {
@@ -1581,6 +1654,7 @@ function startCellEdit(cell) {
   editor.addEventListener('dblclick', (event) => event.stopPropagation());
   editor.addEventListener('input', () => {
     formulaInput.value = editor.value;
+    updateFormulaEntryMode();
   });
   editor.addEventListener('keydown', (event) => {
     event.stopPropagation();
@@ -1739,6 +1813,8 @@ function restoreFormulaBar() {
   formulaInput.value = defaultFormulaValue;
   formulaState.innerHTML = defaultFormulaState;
   formulaScope.textContent = defaultFormulaScope;
+  rememberFormulaContext();
+  updateFormulaEntryMode();
 }
 
 function closeLongTextCell() {
@@ -1801,6 +1877,7 @@ function openLongTextCell(recordId) {
   activeCellName.textContent = `${cellFields.note.column}${rowNumber}`;
   formulaInput.value = value;
   formulaState.innerHTML = `${icon('i-text')}文本值`;
+  updateFormulaEntryMode();
   setLongTextMode('truncate');
 }
 
@@ -2000,7 +2077,6 @@ function openFields() {
   toast.hidden = true;
   closeLongTextCell();
   closeFormula();
-  closeInlineFormula();
   closeFormatMenu();
   closeRulePanels();
   closeDedupe();
@@ -2016,28 +2092,6 @@ function closeFields() {
   document.querySelector('#field-panel').hidden = true;
   document.querySelector('#field-type-menu').hidden = true;
   document.querySelector('#open-fields').setAttribute('aria-expanded', 'false');
-}
-
-function closeInlineFormula() {
-  inlineFormulaComposer.hidden = true;
-  formulaDirect.hidden = false;
-  document.querySelector('#open-formula').setAttribute('aria-pressed', 'false');
-}
-
-function openInlineFormula() {
-  toast.hidden = true;
-  closeLongTextCell();
-  closeFields();
-  closeFormula();
-  closeFormatMenu();
-  closeRulePanels();
-  closeDedupe();
-  closeViewMenu();
-  closeAi();
-  formulaDirect.hidden = true;
-  inlineFormulaComposer.hidden = false;
-  document.querySelector('#open-formula').setAttribute('aria-pressed', 'true');
-  window.requestAnimationFrame(() => inlineFormulaPrompt.focus());
 }
 
 function openFormulaCandidates(prompt = '') {
@@ -2062,7 +2116,6 @@ function openFormatMenu() {
   closeLongTextCell();
   closeFields();
   closeFormula();
-  closeInlineFormula();
   closeRulePanels();
   closeDedupe();
   closeViewMenu();
@@ -2083,7 +2136,6 @@ function openRulePanel(trigger, panel) {
   closeFormatMenu();
   closeFields();
   closeFormula();
-  closeInlineFormula();
   closeRulePanels(panel);
   closeDedupe();
   closeViewMenu();
@@ -2113,7 +2165,6 @@ function openDedupe() {
   closeLongTextCell();
   closeFields();
   closeFormula();
-  closeInlineFormula();
   closeFormatMenu();
   closeRulePanels();
   closeViewMenu();
@@ -2150,7 +2201,6 @@ function openAi() {
   closeLongTextCell();
   closeFields();
   closeFormula();
-  closeInlineFormula();
   closeFormatMenu();
   closeRulePanels();
   closeDedupe();
@@ -2389,33 +2439,48 @@ document.querySelectorAll('[data-field-type]').forEach((button) => {
 });
 
 document.querySelector('#open-formula').addEventListener('click', () => {
-  if (inlineFormulaComposer.hidden) {
-    openInlineFormula();
-    return;
-  }
-  closeInlineFormula();
+  closeLongTextCell();
+  closeFields();
+  closeFormula();
+  closeFormatMenu();
+  closeRulePanels();
+  closeDedupe();
+  closeViewMenu();
+  closeAi();
+  if (!formulaSupportsAiEntry()) selectCell('koru', 'priority');
+  formulaInput.focus();
+  formulaInput.select();
 });
 document.querySelector('#formula-function-button').addEventListener('click', () => {
-  closeInlineFormula();
   formulaInput.focus();
 });
-document.querySelector('#cancel-inline-formula').addEventListener('click', closeInlineFormula);
-document.querySelector('#generate-inline-formula').addEventListener('click', () => {
-  const prompt = inlineFormulaPrompt.value.trim();
-  if (!prompt) {
-    showToast('先描述业务规则', '在公式栏直接写一句话，再生成可验证的候选');
-    inlineFormulaPrompt.focus();
+formulaInput.addEventListener('input', updateFormulaEntryMode);
+formulaInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    submitFormulaBar();
     return;
   }
-  closeInlineFormula();
-  openFormulaCandidates(prompt);
+  if (event.key !== 'Escape' || !formulaSupportsAiEntry()) return;
+  event.preventDefault();
+  event.stopPropagation();
+  formulaInput.value = formulaCommittedValue;
+  updateFormulaEntryMode();
+  formulaInput.blur();
 });
+formulaGenerateButton.addEventListener('click', submitFormulaBar);
 document.querySelector('#close-formula').addEventListener('click', closeFormula);
 document.querySelector('#cancel-formula').addEventListener('click', closeFormula);
 document.querySelector('#save-formula').addEventListener('click', () => {
   const selected = document.querySelector('.formula-candidate.is-selected .candidate-choice strong')?.textContent ?? '公式建议';
+  const rawFormula = document.querySelector('.formula-candidate.is-selected code')?.textContent?.trim();
+  const rowNumber = activeCellName.textContent.match(/\d+$/)?.[0] ?? '2';
+  if (rawFormula) formulaInput.value = rawFormula.replace(/([A-Z]+)2\b/g, `$1${rowNumber}`);
+  formulaState.innerHTML = `${icon('i-check')}公式有效`;
+  formulaScope.textContent = '计算列 · 20 条记录';
+  rememberFormulaContext();
+  updateFormulaEntryMode();
   closeFormula();
-  closeInlineFormula();
   showToast('AI 公式已确认', `已选择“${selected}”；“行动优先级”将按 revision 12 重新计算`);
 });
 
@@ -2693,7 +2758,6 @@ document.addEventListener('keydown', (event) => {
   closeAi();
   closeFields();
   closeFormula();
-  closeInlineFormula();
   closeFormatMenu();
   closeRulePanels();
   closeDedupe();

@@ -117,7 +117,7 @@
           <button type="button" class="icon-button compact sheet-command" aria-label="边框"><svg><use href="#i-border"/></svg></button>
           <button type="button" class="icon-button compact sheet-command" aria-label="填充颜色"><svg><use href="#i-paint"/></svg></button>
           <span class="toolbar-divider"></span>
-          <button type="button" class="tool-button formula-button" id="open-formula" aria-pressed="false"><span class="formula-mark">fx</span>AI 公式</button>
+          <button type="button" class="tool-button formula-button" id="open-formula"><span class="formula-mark">fx</span>AI 公式</button>
           <button type="button" class="tool-button is-applied" id="toggle-stats">Σ 统计</button>
           <span class="toolbar-divider"></span>
           <button type="button" class="tool-button data-quality-button" id="open-dedupe" aria-expanded="false"><svg><use href="#i-database"/></svg>重复项</button>
@@ -127,17 +127,13 @@
 
       <section class="formula-bar" id="formula-bar">
         <button type="button" class="name-box" id="active-cell-name">K6</button>
-        <button type="button" class="fx-button" id="formula-function-button" aria-label="返回直接公式编辑">fx</button>
+        <button type="button" class="fx-button" id="formula-function-button" aria-label="聚焦公式栏">fx</button>
         <div class="formula-direct" id="formula-direct">
-          <input id="formula-input" aria-label="公式栏" value='=IF(AND(H6&gt;=85,I6&gt;=7),"优先跟进","保持观察")'>
+          <input id="formula-input" aria-label="公式栏：输入等号公式，或直接描述业务规则让 AI 生成" autocomplete="off" spellcheck="false" value='=IF(AND(H6&gt;=85,I6&gt;=7),"优先跟进","保持观察")'>
+          <span class="formula-entry-guide" id="formula-entry-guide"><svg><use href="#i-sparkles"/></svg><span>文字直接交给 AI</span></span>
           <span class="formula-state"><svg><use href="#i-check"/></svg>公式有效</span>
           <span class="formula-scope">计算列 · 20 条记录</span>
-        </div>
-        <div class="inline-formula-composer" id="inline-formula-composer" hidden>
-          <svg><use href="#i-sparkles"/></svg>
-          <input id="inline-formula-prompt" aria-label="用自然语言描述公式" placeholder="例如：匹配度高于 85 且等待超过 7 天时，标记为优先跟进">
-          <button type="button" class="inline-ai-cancel" id="cancel-inline-formula">取消</button>
-          <button type="button" class="inline-ai-generate" id="generate-inline-formula">生成候选 <svg><use href="#i-arrow"/></svg></button>
+          <button type="button" class="inline-ai-generate" id="generate-inline-formula" hidden>生成候选 <svg><use href="#i-arrow"/></svg></button>
         </div>
       </section>
 

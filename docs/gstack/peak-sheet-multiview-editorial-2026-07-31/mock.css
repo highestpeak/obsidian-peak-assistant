@@ -1716,60 +1716,84 @@ body[data-visual-version="editorial-v2"] .toolbar-primary {
   flex-wrap: nowrap;
 }
 
-body[data-visual-version="editorial-v2"] .formula-direct,
-body[data-visual-version="editorial-v2"] .inline-formula-composer {
+body[data-visual-version="editorial-v2"] .formula-direct {
   display: flex;
+  height: 31px;
   min-width: 0;
   flex: 1;
   align-items: center;
+  transition: background-color var(--motion-fast) var(--ease-standard);
 }
 
-body[data-visual-version="editorial-v2"] .formula-direct input,
-body[data-visual-version="editorial-v2"] .inline-formula-composer input {
+body[data-visual-version="editorial-v2"] .formula-direct input {
   min-width: 0;
   flex: 1;
   padding: 0 10px;
 }
 
-body[data-visual-version="editorial-v2"] .inline-formula-composer {
-  height: 31px;
-  background: color-mix(in srgb, var(--accent-soft) 58%, var(--surface));
+body[data-visual-version="editorial-v2"] .formula-entry-guide {
+  display: inline-flex;
+  height: 20px;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  margin-right: 8px;
+  padding: 0 7px;
+  border-left: 1px solid var(--line-soft);
+  color: var(--quiet);
+  font-size: 9.5px;
+  white-space: nowrap;
 }
 
-body[data-visual-version="editorial-v2"] .inline-formula-composer > svg {
-  width: 13px;
-  height: 13px;
-  margin-left: 10px;
+body[data-visual-version="editorial-v2"] .formula-entry-guide svg {
+  width: 11px;
+  height: 11px;
   color: var(--accent);
 }
 
-body[data-visual-version="editorial-v2"] .inline-formula-composer input {
-  font-family: var(--font);
-}
-
-body[data-visual-version="editorial-v2"] .inline-ai-cancel,
 body[data-visual-version="editorial-v2"] .inline-ai-generate {
   height: 25px;
+  flex: none;
+  align-items: center;
+  gap: 5px;
   margin-right: 5px;
   padding: 0 9px;
   border: 0;
   border-radius: 3px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 10px;
-}
-
-body[data-visual-version="editorial-v2"] .inline-ai-generate {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
   background: var(--text);
   color: var(--surface);
+  font-size: 10px;
   font-weight: 600;
+}
+
+body[data-visual-version="editorial-v2"] .inline-ai-generate:not([hidden]) {
+  display: inline-flex;
 }
 
 body[data-visual-version="editorial-v2"] .inline-ai-generate svg {
   width: 11px;
+}
+
+body[data-visual-version="editorial-v2"] .formula-bar.is-ai-entry .formula-direct {
+  background: color-mix(in srgb, var(--accent-soft) 58%, var(--surface));
+}
+
+body[data-visual-version="editorial-v2"] .formula-bar.is-ai-entry .formula-direct input {
+  font-family: var(--font);
+}
+
+body[data-visual-version="editorial-v2"] .formula-bar.is-ai-entry .fx-button,
+body[data-visual-version="editorial-v2"] .formula-bar.is-ai-entry .formula-entry-guide {
+  color: var(--accent-strong);
+}
+
+body[data-visual-version="editorial-v2"] .formula-bar.is-ai-entry .formula-entry-guide svg,
+body[data-visual-version="editorial-v2"] .formula-bar.is-ai-entry .formula-state {
+  display: none;
+}
+
+body[data-visual-version="editorial-v2"] .formula-bar.is-plain-cell .formula-entry-guide {
+  display: none;
 }
 
 body[data-visual-version="editorial-v2"] .toolbar-record-search {

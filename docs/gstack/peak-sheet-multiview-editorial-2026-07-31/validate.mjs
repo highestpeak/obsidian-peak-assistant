@@ -370,6 +370,8 @@ await page.waitForSelector('tr[data-record-id="aster"] td[data-field="location"]
 assert.equal(await page.getAttribute('.cell-editor', 'aria-label'), '编辑 地点');
 await page.locator('.cell-editor').fill('Auckland CBD');
 assert.equal(await page.inputValue('#formula-input'), 'Auckland CBD', 'formula bar should mirror the in-progress cell value');
+assert.equal(await page.locator('#formula-bar').getAttribute('class'), 'formula-bar is-plain-cell', 'plain text cells must not be misread as AI formula prompts');
+assert.equal(await page.locator('#generate-inline-formula').isHidden(), true, 'AI generation belongs to computed-field context');
 await page.screenshot({ path: path.join(dir, 'preview-cell-edit.png') });
 await page.locator('.cell-editor').press('Enter');
 assert.equal((await asterLocation.textContent())?.trim(), 'Auckland CBD');
@@ -618,12 +620,15 @@ assert.equal(await page.locator('.record-table thead tr:nth-child(2) th:not(.row
 assert.equal(await page.locator('.record-table .column-letters th:not(.sheet-corner)').count(), 19);
 assert.match(await page.textContent('.record-table .column-letters'), /S/);
 
-await page.click('#open-formula');
-await page.waitForSelector('#inline-formula-composer:not([hidden])');
-assert.equal(await page.locator('#formula-panel').isHidden(), true, 'AI formula should begin inline instead of opening a modal immediately');
-await page.fill('#inline-formula-prompt', 'Offer 需要立即决策，其余高匹配且等待七天的岗位优先跟进');
+assert.equal(await page.locator('#formula-panel').isHidden(), true, 'the candidate surface should remain closed before formula-bar submission');
+await page.fill('#formula-input', 'Offer 需要立即决策，其余高匹配且等待七天的岗位优先跟进');
+assert.match(await page.getAttribute('#formula-bar', 'class'), /is-ai-entry/, 'natural language in the existing formula input should switch to AI mode automatically');
+assert.equal(await page.locator('#generate-inline-formula').isVisible(), true, 'the generation action should appear inside the existing formula bar');
+assert.match(await page.textContent('.formula-state'), /AI 规则/);
+assert.match(await page.textContent('.formula-scope'), /Enter 生成候选/);
+assert.equal(await page.locator('#formula-panel').isHidden(), true, 'typing the rule should stay in place and not open a second composer');
 await page.screenshot({ path: path.join(dir, 'preview-formula-inline.png') });
-await page.click('#generate-inline-formula');
+await page.press('#formula-input', 'Enter');
 await page.waitForSelector('#formula-panel:not([hidden])');
 await settleMotion();
 const formulaSurfaceState = await page.evaluate(() => {
@@ -856,6 +861,6 @@ console.log(JSON.stringify({
   },
   localLinks: localHrefs.length,
   viewsChecked: ['table', 'board', 'calendar', 'gallery', 'dashboard'],
-  flowsChecked: ['long-text-reader', 'bounded-row-wrap', 'independent-role-edit', 'inline-text-edit', 'typed-select-edit', 'numeric-edit', 'checkbox-toggle', 'keyboard-f2-cancel', 'keyboard-tab-commit', 'scroll-continuity', 'frozen-cell-selection', 'bounded-cell-editor', 'stable-row-hover', 'computed-cell-readonly', 'selection-stat-recompute', 'theme-switch', 'number-format', 'persistent-field-workbench', 'saved-custom-field', 'inline-ai-formula', 'ai-formula-candidates', 'ai-filter-composition', 'multi-priority-sort', 'multi-level-group', 'compact-toolbar-search', 'configurable-dedupe-fields', 'dedupe-preview', 'editorial-analysis-drawer', 'selection-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
+  flowsChecked: ['long-text-reader', 'bounded-row-wrap', 'independent-role-edit', 'inline-text-edit', 'typed-select-edit', 'numeric-edit', 'checkbox-toggle', 'keyboard-f2-cancel', 'keyboard-tab-commit', 'scroll-continuity', 'frozen-cell-selection', 'bounded-cell-editor', 'stable-row-hover', 'computed-cell-readonly', 'selection-stat-recompute', 'theme-switch', 'number-format', 'persistent-field-workbench', 'saved-custom-field', 'formula-bar-ai-entry', 'ai-formula-candidates', 'ai-filter-composition', 'multi-priority-sort', 'multi-level-group', 'compact-toolbar-search', 'configurable-dedupe-fields', 'dedupe-preview', 'editorial-analysis-drawer', 'selection-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
   screenshots: ['preview.png', 'preview-table.png', 'preview-table-types.png', 'preview-long-text.png', 'preview-long-text-wrap.png', 'preview-cell-edit.png', 'preview-frozen-selection.png', 'preview-dark.png', 'preview-format.png', 'preview-fields.png', 'preview-field-added.png', 'preview-formula-inline.png', 'preview-formula.png', 'preview-filter-panel.png', 'preview-filter-rule.png', 'preview-sort-panel.png', 'preview-group-panel.png', 'preview-group-rule.png', 'preview-dedupe-panel.png', 'preview-analysis.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
 }, null, 2));
