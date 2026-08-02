@@ -12,8 +12,10 @@ Owner feedback incorporated:
 - each eligible row has one far-right `Allowed` switch; off means `Not allowed`
   and on means `Allowed`, with no enclosing button panel, row menu, or explicit
   `Block` state;
+- the Access column uses one fixed switch/icon slot and one fixed status-label
+  slot, so label length never shifts the control horizontally;
 - system-excluded rows replace the switch with one visually bare, disabled
-  `Unavailable` status;
+  `Unavailable` status using the same alignment slots;
 - `Allow filtered` applies to the current search and filters;
 - the split menu also exposes `Allow all eligible commands`;
 - bulk Allow excludes unknown, destructive, modal-only, unavailable, already

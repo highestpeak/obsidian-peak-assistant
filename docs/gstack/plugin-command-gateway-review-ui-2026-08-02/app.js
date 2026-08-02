@@ -64,12 +64,12 @@ function stateLabel(state) {
 
 function accessControl(command, index) {
   if (command.state === 'unavailable') {
-    return `<div class="access-cell"><div><button type="button" class="access-unavailable" disabled><svg><use href="#i-lock"/></svg><span>Unavailable</span></button><span class="system-note"><svg><use href="#i-lock"/></svg>${escapeHtml(command.reason)}</span></div></div>`;
+    return `<div class="access-cell"><div class="access-state"><button type="button" class="access-unavailable" disabled><svg><use href="#i-lock"/></svg><span>Unavailable</span></button><span class="system-note">${escapeHtml(command.reason)}</span></div></div>`;
   }
   return `<div class="access-cell">
     <button type="button" class="access-toggle" data-access-toggle="${index}" data-state="${command.state}" role="switch" aria-checked="${command.state === 'allowed'}" aria-label="Allow ${escapeHtml(command.name)}">
       <span class="access-toggle__track" aria-hidden="true"><i></i></span>
-      <span>${command.state === 'allowed' ? 'Allowed' : 'Not allowed'}</span>
+      <span class="access-toggle__label">${command.state === 'allowed' ? 'Allowed' : 'Not allowed'}</span>
     </button>
   </div>`;
 }
