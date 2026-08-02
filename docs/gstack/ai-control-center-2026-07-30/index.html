@@ -1209,9 +1209,8 @@
       }
       if (workspace === 'capabilities') {
         listTitle.textContent = activeGroup === 'all' ? 'All AI actions' : groups.find(item => item[0] === activeGroup)?.[2] ?? 'AI actions';
-        listDescription.textContent = activeGroup === 'all'
-          ? '141 built-in actions plus live User-defined registries, grouped by product behavior.'
-          : `${filteredCount(activeGroup)} source-backed behaviors, grouped by the product action a person recognizes.`;
+        listDescription.textContent = '';
+        listDescription.classList.add('hidden');
         const filtered = capabilities.filter(item => {
           const groupMatch = activeGroup === 'all' || item.group === activeGroup;
           return groupMatch && [item.id, item.title, item.surface, item.shape, item.route].join(' ').toLowerCase().includes(query);
@@ -1222,7 +1221,8 @@
 
       if (workspace === 'prompts') {
         listTitle.textContent = 'All prompts';
-        listDescription.textContent = `${prompts.length} retained or migrating prompts. No no-caller catalog placeholders are shown.`;
+        listDescription.textContent = '';
+        listDescription.classList.add('hidden');
         const filtered = prompts.filter(item => [item.id, item.title, item.group, item.kind].join(' ').toLowerCase().includes(query));
         rows.innerHTML = filtered.length ? filtered.map(promptRow).join('') : '<div class="empty">No prompt matches this search.</div>';
         return;
@@ -1236,10 +1236,6 @@
       rows.innerHTML = filteredOutputs.length
         ? activeOutputGroup === 'all' ? groupedOutputRows(filteredOutputs) : filteredOutputs.map(outputRow).join('')
         : '<div class="empty">No output contract is registered for this category.</div>';
-    }
-
-    function filteredCount(groupId) {
-      return groupId === 'all' ? capabilities.length : capabilities.filter(item => item.group === groupId).length;
     }
 
     function escapeHtml(value) {
