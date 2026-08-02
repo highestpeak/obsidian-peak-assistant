@@ -1,6 +1,6 @@
-/* Generated from docs/25-infra-prompt-catalog.html prompt-data.
- * Shared by the AI Control Center design fixture so the flat Prompt Library
- * shows the same complete 157-row source-backed catalog.
+/* Source-backed target catalog for the AI Control Center design fixture.
+ * Four no-caller records are intentionally absent. Four live inline runtime
+ * instructions remain visible as migration targets until they enter registry.
  */
 window.PEAK_PROMPT_CATALOG_TEXT = String.raw`
 conversation-system|conversation-system|Chat System Prompt|Core system instruction for all conversations. Defines AI persona, capabilities, and response style.|chat||引用|conventionMarkdown|src/service/chat/context/slots/SystemPromptSlot.ts
@@ -11,15 +11,16 @@ project-summary-full|project-summary-full|Project Summary (Full)|Detailed projec
 search-rerank-rank-gpt|search-rerank-rank-gpt|Search Rerank (RankGPT)|LLM-based reranker that reorders search results by relevance.|chat||引用|query,index,text,boostInfo|src/core/providers/rerank/llm.ts
 query-rewrite-system|query-rewrite-system|Query Suggest (System)|System prompt for the AI Suggest button — generates structured query candidates from user browsing behavior.|searchAnalysis||引用||src/ui/view/quick-search/rewrite/AIQueryRewriteService.ts
 query-rewrite|query-rewrite|Query Suggest (User)|User prompt carrying behavior context + task for the AI Suggest button.|searchAnalysis|query-rewrite-system|引用|currentQuery,activeFilePath,currentResultView,recentQueriesLine,recentOpenedFilesLine,pinnedLine,knownTopFoldersLine,typedTrail,firstScreenLine,eventCount,sessionTimeline|src/ui/view/quick-search/rewrite/AIQueryRewriteService.ts
+hyper-search-query-parser-system|hyper-search-query-parser-system|Hyper Search Parser (System)|System instruction for compiling natural-language search requests into Hyper Search syntax.|searchAnalysis||需迁移||src/service/search/query/aiQueryParser.ts
+hyper-search-query-parser-user|hyper-search-query-parser-user|Hyper Search Parser (User)|User instruction carrying the natural-language request into the Hyper Search compiler.|searchAnalysis|hyper-search-query-parser-system|需迁移|query|src/service/search/query/aiQueryParser.ts
 application-generate-title|application-generate-title|Generate Title|Auto-generates a conversation title from the first few messages.|chat||引用|contextInfo,role,content|src/service/chat/service-conversation.ts
 memory-extract-candidates-json|memory-extract-candidates-json|Memory Extraction|Identifies facts worth remembering from conversation messages.|userProfile||引用|this,userMessage,assistantReply|src/service/chat/context/UserProfileService.ts
 doc-summary-short|doc-summary-short|Doc Summary (Short)|One-sentence summary for indexing and embeddings.|indexing||引用|maxWords,textrankKeywords,textrankSentences,title,path,content|src/core/document/loader/helper/DocumentLoaderHelpers.ts
 doc-summary-full|doc-summary-full|Doc Summary (Full)|Detailed summary using short summary + TextRank anchors.|indexing||引用|targetWords,shortSummary,textrankKeywords,textrankSentences,title,path,content|src/core/document/loader/helper/DocumentLoaderHelpers.ts
 image-description|image-description|Image Description|Generates a text description of an image for indexing.|indexing||引用||src/core/document/loader/ImageDocumentLoader.ts
 image-summary|image-summary|Image Summary|Generates a concise summary of image content.|indexing||引用|title,path,content|src/core/document/loader/ImageDocumentLoader.ts
-ai-analysis-followup|ai-analysis-followup|Follow-up Chat|User prompt for follow-up questions on search results.|searchAnalysis||待核对|originalQuery,contextContent,question|
+ai-analysis-followup|ai-analysis-followup|Follow-up Chat|User prompt for follow-up questions on search results.|searchAnalysis|ai-analysis-followup-system|引用|originalQuery,contextContent,question|src/ui/view/quick-search/hooks/useSearchSession.ts
 ai-analysis-followup-system|ai-analysis-followup-system|Follow-up Chat (System)|System prompt for follow-up conversations.|searchAnalysis||引用||src/service/agents/FollowupChatAgent.ts
-ai-analysis-title|ai-analysis-dashboard-title|Analysis Title|Generates a title for search analysis results.|searchAnalysis||待核对|query,summary|
 ai-analysis-mermaid-fix-system|ai-analysis-mermaid-fix-system|Mermaid Fix (System)|System prompt for fixing mermaid syntax errors.|searchAnalysis||引用||src/service/agents/report/ReportOrchestrator.ts
 ai-analysis-mermaid-fix|ai-analysis-mermaid-fix|Mermaid Fix|Fixes broken mermaid diagram syntax in reports.|searchAnalysis||引用|brokenMermaid,errorMessage|src/service/agents/report/ReportOrchestrator.ts
 ai-analysis-save-filename|ai-analysis-save-filename|Save Filename|Suggests a filename when saving analysis results.|searchAnalysis||引用|query,summary|src/ui/view/quick-search/hooks/useAIAnalysisPostAIInteractions.ts
@@ -48,7 +49,6 @@ context-memory|context-memory|Context Memory|Renders long-term memory entries in
 user-profile-context|user-profile-context|User Profile Context|Renders the user profile into the conversation context window.|userProfile||引用|category,texts|src/service/chat/context/slots/UserProfileSlot.ts
 profile-from-vault-json|profile-from-vault-json|Profile Extraction|Extracts structured user profile data from vault notes.|userProfile||引用|vaultContent|src/service/chat/context/BuildUserProfileRunner.ts
 user-profile-organize-markdown|user-profile-organize-markdown|Profile Organize|Organizes raw profile data into a clean markdown format.|userProfile||引用|currentProfileMarkdown,newItemsMarkdown|src/service/chat/context/UserProfileService.ts
-message-resources|message-resources|Message Resources|Formats attached resources for inclusion in messages.|ambientContext||待核对|id|
 doc-format-polish|doc-format-polish|Format Polish|Fixes heading hierarchy, list consistency, trailing whitespace, and broken link syntax.|copilot|doc-format-polish-system|引用|title,content|src/service/copilot/actions/index.ts
 doc-format-polish-system|doc-format-polish-system|Format Polish (System)|System instructions for the format polish action.|copilot||配套||
 doc-polish|doc-polish|Document Polish|Polishes writing for clarity, grammar, and flow.|copilot|doc-polish-system|引用|title,content,instruction|src/service/composer/capabilities/packs/prose.ts,src/ui/view/copilot/panels/ReviewPanel.tsx
@@ -122,12 +122,10 @@ chat-topic-aggregation|chat-topic-aggregation|Topic Aggregation|Groups conversat
 chat-suggest-followups|chat-suggest-followups|Suggest Follow-ups|Generates 3 suggested follow-up questions shown below the last message.|chat||引用|userMessage,assistantMessage|src/ui/view/chat-view/hooks/useStreamChat.ts
 chat-assistant-draft|chat-assistant-draft|Assistant Draft|Drafts an editable Assistant definition (name/summary/instructions) from a natural-language prompt. Never saved without explicit user confirmation.|chat||引用|userPrompt|src/ui/view/chat-view/components/composer/AssistantBuilderModal.tsx
 project-description-draft|project-description-draft|Project Description Draft|Drafts a user-editable project description from project materials. Never overwrites until the user saves.|chat||引用|projectName,generatedSummary,conversationTitles,currentDescription|src/ui/view/chat-view/components/project-home/ProjectDescriptionEditor.tsx
-chat-suggest-actions|chat-suggest-actions|Suggest Actions|Generates contextual action suggestions for the conversation.|chat||待核对|messages|
 working-theme-inference|working-theme-inference|Working Theme Inference|Infers the current working theme from recent activity.|ambientContext||引用|type,summary|src/service/context/WorkingThemeInferrer.ts
 working-context-render|working-context-render|Working Context Render|Renders working context into conversation context.|ambientContext||引用|activeFile.title,activeFile.path,theme,timeAgo,summary|src/service/chat/context/slots/WorkingContextSlot.ts
 activity-index-render|activity-index-render|Activity Index Render|Renders recent vault activity into conversation context.|ambientContext||引用|id,timeAgo,summary|src/service/chat/context/slots/ActivityIndexSlot.ts
 prompt-enhance|prompt-enhance|Prompt Enhance|Rewrites vague prompts into clear, specific ones.|chat||引用|userPrompt|src/ui/view/chat-view/components/PromptEnhanceSuggestion.tsx
-gap-explanation|gap-explanation|Gap Explanation|LLM prompt for lazy gap explanations.|indexing||待核对|communityALabel,communityBLabel,gapScore,sourceLabel,targetLabel,similarity|
 ambient-explanation-system|ambient-explanation-system|Ambient Explanation (System)|System instructions for the ambient micro-explanation LLM call.|ambientContext||引用||src/service/ambient/AmbientExplanationService.ts
 ambient-explanation-user|ambient-explanation-user|Ambient Explanation|One-sentence explanation of how a pushed note relates to the current writing.|ambientContext|ambient-explanation-system|引用|currentParagraph,pushNoteTitle,pushNoteExcerpt|src/service/ambient/AmbientExplanationService.ts
 copilot-meta-agent-system-base|copilot-meta-agent-system-base|Auto Review Meta-Agent (Base)|Base system block for the Auto Review meta-agent — assembled with signal report + mode suffix at call time.|copilot||引用||src/service/copilot/CopilotMetaAgentStream.ts
@@ -147,6 +145,8 @@ graph-infer-thinking-tree-user|graph-infer-thinking-tree-user|Infer Thinking Tre
 report-assign-insights|report-assign-insights|Report Assign Insights|Assigns user insights to plan sections (or creates new sections).|searchAnalysis||引用|sectionList,insightList,userQuery|src/service/agents/report/ReportOrchestrator.ts
 curator-system|curator-system|Curator (System)|System prompt for the Peak Assistant configuration curator agent.|copilot||引用||src/service/agents/harness/curator/prompt.ts
 usage-optimization-system|usage-optimization-system|Usage Optimization (System)|System prompt for the AI usage optimization curator.|copilot||引用||src/service/usage/optimization/prompt.ts
+harness-context-compact-system|harness-context-compact-system|Agent Context Compact (System)|System instruction for condensing an over-budget agent context into a recoverable continuation state.|copilot||需迁移||src/service/agents/harness/context/compactSummarizerRuntime.ts
+harness-context-compact-user|harness-context-compact-user|Agent Context Compact (User)|User instruction carrying the bounded agent transcript and continuation requirements into compaction.|copilot|harness-context-compact-system|需迁移|context,budget|src/service/agents/harness/context/compactSummarizerRuntime.ts
 copilot-find-and-solve-tasks-system|copilot-find-and-solve-tasks-system|Find & Solve Tasks (System)|System prompt for the Find & Solve Tasks Copilot action.|copilot||引用||src/service/copilot/actions/index.ts
 copilot-find-and-solve-tasks-user|copilot-find-and-solve-tasks-user|Find & Solve Tasks (User)|User prompt listing open vault tasks that look like questions to resolve.|copilot|copilot-find-and-solve-tasks-system|引用|taskList|src/service/copilot/actions/index.ts
 lint-broken-link-repair|lint-broken-link-repair|Lint: Broken Link Repair|Repair plan prompt for the broken-link-repair vault health insight.|copilot||引用|topFiles|src/service/lint/insights.ts

@@ -129,7 +129,7 @@ AI Control Center 不是：
 5. System 与后台任务；
 6. User-defined（存在用户自定义 action 时显示）。
 
-目录必须完整登记当前源码可追踪行为，不能只放每组 1–2 个代表项。2026-08-02 的设计审计快照为 **141 个 AI action**：Search / Analysis / Knowledge 17、Composer / Copilot 68、Chat / Generation 29、Vault Intelligence 17、System / background 10。组内用可折叠子族保持可浏览性，而不是删掉动作来换取短列表。
+目录必须完整登记当前源码可追踪行为，不能只放每组 1–2 个代表项。2026-08-02 的设计审计快照为 **141 个内置 AI action**：Search / Analysis / Knowledge 17、Composer / Copilot 68、Chat / Generation 29、Vault Intelligence 17、System / background 10。组内用可折叠子族保持可浏览性，而不是删掉动作来换取短列表。Custom Prompt、Vault Skill 与 Chat Assistant 属于运行时生成的 `User-defined` 项，不计入固定 141 基线。
 
 每一行显示：
 
@@ -142,7 +142,15 @@ AI Control Center 不是：
 
 ### 4.2 Prompt Library
 
-Prompt Library 作为左侧目录中的一个入口，与 AI Actions 共用列表和 inspector，不再占一个顶层 Tab。Prompt 使用平铺、可搜索的完整列表；当前源码快照必须显示全部 157 个内置模板，而不是只显示被当前 action fixture 直接引用的子集。
+Prompt Library 作为左侧目录中的一个入口，与 AI Actions 共用列表和 inspector，不再占一个顶层 Tab。Prompt 使用平铺、可搜索的完整列表。2026-08-02 源码快照有 157 个注册模板，但数量不是发布目标：正式目录只保留有 production caller、companion owner、动态 owner 或已登记迁移任务的 Prompt。
+
+本轮 caller audit 的处理结论固定为：
+
+- 删除无生产调用的 `ai-analysis-title`、`message-resources`、`chat-suggest-actions` 与 `gap-explanation`；
+- 将 Hyper Search query parser 的 system/user instruction 迁成一对注册 Prompt；
+- 将 Agent context compact 的 system/user instruction 迁成一对注册 Prompt；
+- 给 `analysis.followup` 同时登记 `ai-analysis-followup` 与 `ai-analysis-followup-system`；
+- `Catalog only` 只允许作为开发期审计状态，不进入正式配置中心。
 
 它展示：
 
@@ -328,12 +336,34 @@ capability 默认用途槽
 - 测试和接线证据；
 - recent run facts。
 
+### 7.3 所有 AI 行为都有配置归属
+
+“都可以配置”指每个 AI 行为都有一个真实 owner 和适用的控制方式，不表示所有运行合同都可以任意改写：
+
+- text / structured call：Prompt、action instruction、model 和 output controls；
+- AgentLoop：Prompt、model/tier、tool policy、approval 与预算；
+- embedding / rerank：enable、Profile/model、scope 和 index policy；
+- media job：user prompt、route、model/preset、数量、时长和成本确认；
+- deterministic helper：enable、scope、threshold 或 owning settings link，并明确标注没有文本模型；
+- parent Agent 的 delegated child / tool：配置 enable、allow/deny 与 approval，model route 继承 parent run，不显示假的独立模型选择器；
+- User-defined：Custom Prompt、Skill、Assistant、Project 与 Conversation instruction 由各自 owner 编辑，Control Center 汇总并跳转。
+
+output schema、tool schema、安全边界、writeback validation、stop condition 与 persistence contract 必须在 Configuration 中可查看，但保持锁定。稳定的模型 instruction 不能隐藏在源码 builder、nudge 或 tool description 中：它必须迁到 registered Prompt、action instruction 或 locked contract registry。
+
+### 7.4 无调用即删除
+
+正式 Prompt Library 不保存“以后可能会用”的模板。若 PromptId 找不到 production caller、companion owner 或动态 owner，则从 PromptId、变量类型、TemplateRegistry、模板文件和 catalog 中完整删除。未来需要时按新 Prompt 重新注册，不保留无效 model override 或假可配置状态。
+
+### 7.5 配置消费证明
+
+配置控件只有在统一 resolver 已有消费路径时才能启用。每个 Save 操作必须有 focused test 证明下一次 run 使用新值，并由 receipt 记录 requested/effective policy。当前直接 `TemplateManager.render(PromptId.*)`、companion system Prompt 绕过 Vault override、`promptModelMap` 未进入主要 query path，以及 helper call 未传 output controls 的路径都属于 Phase 2 阻塞项。
+
 改变这些内容属于产品或代码设计变更，不能伪装成普通设置。
 
-### 7.3 默认不提供
+### 7.6 默认不提供
 
 - 在中心直接运行会修改 Vault 的 capability；
-- 任意编辑工具权限或 schema；
+- 任意改写 tool schema、安全边界，或绕过 owner 暴露的 allow / deny / approval policy；
 - 修改内置 Prompt 文件；
 - 显示 raw secrets；
 - 显示 hidden reasoning；
@@ -458,6 +488,7 @@ flowchart LR
 - 冻结现有 AI touchpoint 清单；
 - 为每个触点标注 owner、入口、执行形状和 receipt；
 - 加守卫，防止新增未注册 AI call。
+- 删除确认无 caller 的 Prompt，并将 inline system/user Prompt、action instruction、runtime nudge 分类为 editable 或 locked contract。
 
 ### Phase 1 · Registry
 
@@ -472,6 +503,8 @@ flowchart LR
 - 收敛 model resolver；
 - 建立 capability / step / prompt-version / run 的关联；
 - 迁移旧 `promptModelMap`。
+- 统一 PromptService / TemplateManager 的 override 消费，禁止模型调用直接绕过 resolver；
+- 为 model、output control、tool policy、budget、embedding/rerank 与 media 配置增加运行时消费测试。
 
 ### Phase 3 · Shared UI
 
@@ -485,13 +518,15 @@ flowchart LR
 - 将已经在只读目录里的 Media、Ambient、Hub、Index、User-defined 和 provider-direct helpers 逐步接到统一 resolver / receipt；
 - 增加覆盖缺口视图；
 - 删除只为旧 Prompt page 存在的兼容路径。
+- 将 Custom Prompt、Vault Skill、Chat Assistant、Project / Conversation instruction 和 MCP tool policy 投影到动态 `User-defined` 分组。
 
 ## 12. 验收标准
 
 ### 12.1 目录完整性
 
 - 当前所有生成式 AI、embedding、rerank 和 media job 都能归属到一个 capability / step；
-- 每个 `PromptId` 能找到调用者、companion owner 或 `unwired` 状态；
+- 每个正式 `PromptId` 能找到调用者、companion owner 或明确的动态 owner；开发期 `unwired` 条目必须在发布前删除或完成迁移；
+- 正式配置中心不存在无 caller 的 `Catalog only` Prompt；
 - 新增 AI call 没有 capability identity 时守卫测试失败；
 - deterministic-only action 不会被误标为 AI。
 
@@ -509,6 +544,8 @@ flowchart LR
 - companion template 不能设置模型；
 - 共享 Prompt 不会静默把所有调用者锁到同一个模型；
 - AI Setup、Chat 和 Control Center 使用同一个 `ProfileModelPicker` 组件族。
+- 每个可保存配置都有运行时消费测试，receipt 同时记录 requested 与 effective value；
+- locked runtime contract 可查看但没有 Save override；
 
 ### 12.4 产品体验
 

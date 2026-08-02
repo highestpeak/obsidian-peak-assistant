@@ -273,7 +273,7 @@ flowchart LR
                 <tr><td><strong>Vault Review</strong></td><td><code>vault-meta-agent-system-base</code> + fast / complete suffix</td><td>读取 Vault digest，发现跨文档结构问题和行动项。</td><td><span class="status live">生产源码引用</span></td></tr>
                 <tr><td><strong>Copilot Agent 操作</strong></td><td><code>copilot-agent-*</code></td><td>找链接、找知识缺口、补证据、写计划、写文章、检查任务等；属于用户触发的 agent playbook。</td><td><span class="status live">生产源码引用</span></td></tr>
                 <tr><td><strong>Chat 后续问题</strong></td><td><code>chat-suggest-followups</code></td><td>根据最后一轮对话生成三个后续问题。</td><td><span class="status live">生产源码引用</span></td></tr>
-                <tr><td><strong>Chat 动作建议</strong></td><td><code>chat-suggest-actions</code></td><td>模板已经注册，但当前扫描不到生产调用者。</td><td><span class="status check">待接线或清理</span></td></tr>
+                <tr><td><strong>Chat 动作建议</strong></td><td><code>chat-suggest-actions</code></td><td>模板已经注册，但当前扫描不到生产调用者。</td><td><span class="status check">已决定删除</span></td></tr>
                 <tr><td><strong>Ambient 相关说明</strong></td><td><code>ambient-explanation-system/user</code></td><td>解释“这条 pushed note 为什么和当前段落相关”，不是生成新的 finding。</td><td><span class="status live">生产源码引用</span></td></tr>
                 <tr><td><strong>Ambient 工作主题</strong></td><td><code>working-theme-inference</code></td><td>推断当前工作主题，供上下文使用；它也不是正文建议生成器。</td><td><span class="status live">生产源码引用</span></td></tr>
                 <tr><td><strong>Composer 动态 finding</strong></td><td>没有独立、已接通的生产 Prompt</td><td>当前 Brief 的 finding producer 主要还是规则扫描；完整 AI finding → 正文/Brief 投影 → Agent Run 仍是缺口。</td><td><span class="status check">目标设计未接完</span></td></tr>
@@ -327,12 +327,12 @@ flowchart LR
               <colgroup><col style="width:25%"><col style="width:31%"><col style="width:28%"><col></colgroup>
               <thead><tr><th>来源</th><th>它负责什么</th><th>当前边界</th><th>入口</th></tr></thead>
               <tbody>
-                <tr><td><strong>Composer 固定指令</strong></td><td>20 条块级 quick action 的具体要求。</td><td>属于产品配置，不是独立 Prompt 模板；运行时作为 <code>instruction</code> 填入共享模板。</td><td><a class="path" href="../templates/config/composer.json">templates/config/composer.json</a></td></tr>
+                <tr><td><strong>Composer action instruction</strong></td><td><code>composer.json</code> 中 21 条 preset instruction，加上 Link Tidy 的源码默认 instruction。</td><td>属于 action-level 配置，不是独立 Prompt 模板；必须在对应 action 的 Configuration 中可覆盖。</td><td><a class="path" href="../templates/config/composer.json">templates/config/composer.json</a> · <a class="path" href="../src/service/composer/capabilities/packs/link.ts">link.ts</a></td></tr>
                 <tr><td><strong>用户 Custom Prompt</strong></td><td>用户在 Vault 中写自己的 Markdown Prompt，通过 frontmatter 变成 Copilot action。</td><td>它是用户数据，不能枚举进内置 157 条，也不能被插件升级覆盖。</td><td><a class="path" href="../src/service/copilot/CustomPromptRegistry.ts">CustomPromptRegistry.ts</a></td></tr>
                 <tr><td><strong>Vault Prompt override</strong></td><td>为某个 TemplateId 覆盖内置正文。</td><td>文件名为 <code>&lt;id&gt;.prompt.md</code>；删除后恢复内置模板。</td><td><a class="path" href="../src/service/prompt/PromptService.ts">PromptService.ts</a></td></tr>
                 <tr><td><strong>Assistant / Skill</strong></td><td>用户定义 Assistant 指令，以及 Skill 文件里的 System Prompt。</td><td>它们是运行时内容来源，不应复制成内置模板。</td><td><a class="path" href="../src/service/chat/context/slots/AssistantSlot.ts">AssistantSlot.ts</a> · <a class="path" href="../src/service/skills/SkillParser.ts">SkillParser.ts</a></td></tr>
                 <tr><td><strong>Agent 上下文装配</strong></td><td>把 signal report、Vault digest、工具结果、历史轮次和用户偏好拼到模板后面。</td><td>动态数据应该留在装配器；固定规则应该回到模板。</td><td><a class="path" href="../src/service/agents/harness/loop/AgentLoop.ts">AgentLoop.ts</a></td></tr>
-                <tr><td><strong>代码内残留 Prompt</strong></td><td>Hyper Search 的自然语言编译器仍把完整 system prompt 写在 TypeScript 中。</td><td>这是明确绕过统一模板体系的现状，应纳入后续治理。</td><td><a class="path" href="../src/service/search/query/aiQueryParser.ts">aiQueryParser.ts</a></td></tr>
+                <tr><td><strong>代码内残留 Prompt</strong></td><td>Hyper Search 自然语言编译器与 Agent context compact 都把稳定 system/user instruction 留在 TypeScript 中。</td><td>两组都已登记为迁移项，必须进入 PromptId、TemplateRegistry 与统一 resolver 后才开放 override。</td><td><a class="path" href="../src/service/search/query/aiQueryParser.ts">aiQueryParser.ts</a> · <a class="path" href="../src/service/agents/harness/context/compactSummarizerRuntime.ts">compactSummarizerRuntime.ts</a></td></tr>
                 <tr><td><strong>代码内 user prompt 包装</strong></td><td>Copilot agent、meta-agent、usage curator 等用数组拼本次 user prompt。</td><td>如果只是包裹本次数据可以保留；如果包含稳定行为规则，就应该迁回模板。</td><td><a class="path" href="../src/service/copilot/actions/index.ts">copilot/actions/index.ts</a></td></tr>
               </tbody>
             </table>
@@ -342,14 +342,14 @@ flowchart LR
         <section id="gaps">
           <h2>7. 这次审计发现的具体问题</h2>
           <div class="grid">
-            <div class="card"><h3>5 个注册项没有生产调用者</h3><p><code>ai-analysis-title</code>、<code>ai-analysis-followup</code>、<code>message-resources</code>、<code>chat-suggest-actions</code>、<code>gap-explanation</code>。需要逐项判断是待接线、动态间接调用，还是旧能力残留。</p></div>
-            <div class="card"><h3>一个 ID 和物理文件不同名</h3><p>Registry 的 <code>ai-analysis-title</code> 实际加载 <code>ai-analysis-dashboard-title.md</code>。当前映射可以工作，但搜索、审计和人工维护容易误判。</p></div>
-            <div class="card"><h3>仍有完整 Prompt 写在代码里</h3><p><code>aiQueryParser.ts</code> 的 Hyper Search system prompt 是明显例子；现有 no-inline 测试只检查少数英文开头，覆盖不到所有拼接方式。</p></div>
+            <div class="card"><h3>4 个注册项没有生产调用者</h3><p><code>ai-analysis-title</code>、<code>message-resources</code>、<code>chat-suggest-actions</code>、<code>gap-explanation</code> 已决定完整删除，不进入正式配置中心。<code>ai-analysis-followup</code> 有真实 caller，需要补全 action 映射。</p></div>
+            <div class="card"><h3>一个即将删除的 ID 与文件不同名</h3><p><code>ai-analysis-title</code> 实际加载 <code>ai-analysis-dashboard-title.md</code>。实施时应同时删除 PromptId、Registry metadata、变量类型、模板文件与 catalog，避免留下半条记录。</p></div>
+            <div class="card"><h3>两组完整 Prompt 仍写在代码里</h3><p>Hyper Search parser 与 Agent context compact 的 system/user instruction 都要迁入 registry；现有 no-inline 测试也要覆盖 builder、nudge 与长 instruction。</p></div>
             <div class="card"><h3>Ambient 没有完整 AI finding Prompt 链</h3><p>现有 Prompt 能解释相关性、推断工作主题，但没有看到一个已接通的“持续生成 Composer finding”的生产入口。</p></div>
           </div>
           <div class="claim gap">
             <span class="claim-title">不要把“模板存在”写成“功能已经可用”</span>
-            <p>本页的状态来自 2026-07-28 当前源码静态审计。Registry 有记录只证明模板可被加载；生产引用只证明代码提到它；真正可用还需要入口、运行时、结果解析和 UI 反馈全部接通。</p>
+            <p>本页目录来自当前 Registry；caller 与治理结论已按 2026-08-02 复核。Registry 有记录只证明模板可被加载；生产引用只证明代码提到它；真正可用还需要入口、运行时、结果解析和 UI 反馈全部接通。</p>
           </div>
         </section>
 
@@ -359,12 +359,13 @@ flowchart LR
           <div class="grid">
             <div class="card"><h3>Capability 是主对象</h3><p>Vault Search Refine、AI Search、AI Graph、Composer transform、Vault Review 和 Chat turn 都是能力。一个能力可以有多个 Prompt、tool 和执行步骤，也可以完全没有文本 Prompt。</p></div>
             <div class="card"><h3>Prompt 仍可审阅和 override</h3><p>默认正文、Vault override、system / user 配对、变量和版本继续在平铺 Prompt Library 中维护；共享 Prompt 保存前必须提示影响多少个 AI action。</p></div>
-            <div class="card"><h3>模型在 action 中配置</h3><p>companion template 不拥有模型；共享 Prompt 不应把所有调用者锁到同一模型。模型 default / override 只出现在对应 AI action 的 Configuration。</p></div>
+            <div class="card"><h3>配置按执行类型展开</h3><p>text / AgentLoop 配 Prompt、model、output、tools、approval 与 budget；embedding、rerank、media、deterministic helper 使用各自控制。schema、安全边界与 writeback contract 只读。</p></div>
+            <div class="card"><h3>User-defined 实时汇总</h3><p>Custom Prompt、Vault Skill、Chat Assistant、Project / Conversation instruction 和 MCP tool policy 保持原 owner，Control Center 只投影并跳转，不复制第二份定义。</p></div>
             <div class="card"><h3>内部诊断不挤占主界面</h3><p>run receipt 仍记录实际 Prompt、model、tools 和 artifact，但 Effective routing、Run history 与 evidence 留在 Advanced、Debug Trace 或所属产品历史中。</p></div>
           </div>
           <div class="claim">
             <span class="claim-title">可审阅产物</span>
-            <p><a href="superpowers/specs/2026-07-30-ai-control-center-design.md">AI Control Center 正式设计</a> · <a href="superpowers/audits/2026-07-30-ai-capability-run-inventory.md">全仓 AI 能力与运行链审计</a> · <a href="gstack/ai-control-center-2026-07-30/index.html">新版可点击页面 mock</a>。这些都是设计产物，没有修改产品代码或真实设置。</p>
+            <p><a href="superpowers/specs/2026-07-30-ai-control-center-design.md">AI Control Center 正式设计</a> · <a href="superpowers/plans/2026-08-02-ai-control-center-configuration-closure-plan.md">配置闭环计划</a> · <a href="superpowers/audits/2026-07-30-ai-capability-run-inventory.md">全仓 AI 能力与运行链审计</a> · <a href="gstack/ai-control-center-2026-07-30/index.html">新版可点击页面 mock</a>。这些都是设计产物，没有修改产品代码或真实设置。</p>
           </div>
         </section>
 
@@ -424,7 +425,7 @@ doc-summary-short|doc-summary-short|Doc Summary (Short)|One-sentence summary for
 doc-summary-full|doc-summary-full|Doc Summary (Full)|Detailed summary using short summary + TextRank anchors.|indexing||引用|targetWords,shortSummary,textrankKeywords,textrankSentences,title,path,content|src/core/document/loader/helper/DocumentLoaderHelpers.ts
 image-description|image-description|Image Description|Generates a text description of an image for indexing.|indexing||引用||src/core/document/loader/ImageDocumentLoader.ts
 image-summary|image-summary|Image Summary|Generates a concise summary of image content.|indexing||引用|title,path,content|src/core/document/loader/ImageDocumentLoader.ts
-ai-analysis-followup|ai-analysis-followup|Follow-up Chat|User prompt for follow-up questions on search results.|searchAnalysis||待核对|originalQuery,contextContent,question|
+ai-analysis-followup|ai-analysis-followup|Follow-up Chat|User prompt for follow-up questions on search results.|searchAnalysis|ai-analysis-followup-system|引用|originalQuery,contextContent,question|src/ui/view/quick-search/hooks/useSearchSession.ts
 ai-analysis-followup-system|ai-analysis-followup-system|Follow-up Chat (System)|System prompt for follow-up conversations.|searchAnalysis||引用||src/service/agents/FollowupChatAgent.ts
 ai-analysis-title|ai-analysis-dashboard-title|Analysis Title|Generates a title for search analysis results.|searchAnalysis||待核对|query,summary|
 ai-analysis-mermaid-fix-system|ai-analysis-mermaid-fix-system|Mermaid Fix (System)|System prompt for fixing mermaid syntax errors.|searchAnalysis||引用||src/service/agents/report/ReportOrchestrator.ts

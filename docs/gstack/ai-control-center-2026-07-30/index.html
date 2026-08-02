@@ -70,11 +70,14 @@
     .topbar {
       display: flex;
       align-items: center;
+      gap: 18px;
       min-height: 56px;
       padding: 0 18px;
       border-bottom: 1px solid var(--line);
       background: var(--surface);
     }
+
+    .topbar .search { width: min(390px, 38vw); margin-left: auto; }
 
     .title {
       display: flex;
@@ -289,6 +292,7 @@
     }
 
     .notice svg { flex: 0 0 auto; margin-top: 1px; }
+    .notice.amber { color: var(--amber); border-color: #ead7ae; background: var(--amber-soft); }
     .flow { display: grid; gap: 10px; }
     .flow-stage {
       display: grid;
@@ -348,6 +352,8 @@
     }
 
     .prompt-editor:focus { border-color: #aaa1dc; box-shadow: 0 0 0 2px var(--accent-soft); }
+    .prompt-editor.compact { min-height: 112px; }
+    .prompt-editor:disabled { color: var(--muted); background: var(--surface-3); }
 
     .button-row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
     .action-button {
@@ -360,6 +366,7 @@
     }
 
     .action-button.primary { color: white; border-color: var(--accent); background: var(--accent); }
+    .action-button:disabled { cursor: not-allowed; opacity: .5; }
 
     .route {
       display: grid;
@@ -423,6 +430,10 @@
           <strong>AI Control Center</strong>
           <span>Manage AI actions and shared prompts</span>
         </div>
+        <label class="search">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
+          <input id="searchInput" type="search" placeholder="Search AI actions or prompts…">
+        </label>
       </header>
 
       <div class="body">
@@ -431,10 +442,6 @@
           <div class="list-head">
             <strong id="listTitle">All AI actions</strong>
             <span id="listDescription">Choose an action to review its behavior and configuration.</span>
-            <label class="search">
-              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
-              <input id="searchInput" type="search" placeholder="Search this list…">
-            </label>
           </div>
           <div class="rows" id="rows"></div>
         </section>
@@ -508,6 +515,15 @@
         before: [['Prepare bounded input', 'Select changed records, budget, binding, and output schema.']],
         during: [['Run support step', 'Execute one helper, embedding batch, or configuration curator.']],
         after: [['Record projection', 'Persist rebuildable output, failures, model identity, and freshness.']]
+      },
+      user: {
+        icon: 'spark', surface: 'User-defined registries', shape: 'Dynamic owner collection', status: 'partial', route: 'Owner-defined policy',
+        success: 'Shows live user-authored AI definitions together with the exact surface that owns and edits them.',
+        mustNot: 'Must not copy dynamic definitions into a second store or imply that a static design fixture is a live user instance.',
+        tools: ['Runtime registry', 'Owning editor', 'Capability projection'], output: 'Live user-defined actions', review: 'Owning editor',
+        before: [['Read owner registry', 'Resolve the current Custom Prompts, Skills, Assistants, Project, and Conversation definitions.']],
+        during: [['Project effective controls', 'Show content, model, tool, and approval settings supported by the owner.']],
+        after: [['Return to owner', 'Save in the owning surface and refresh the projected effective configuration.']]
       }
     };
 
@@ -531,7 +547,7 @@
     const capabilities = [
       ...actionRows('search', 'Search assistance', [
         ['search.query.refine', 'Vault Search · Refine query', 'Turn the current query and recent search behavior into grounded Hyper Search candidates.', ['query-rewrite-system', 'query-rewrite'], { shape: 'Single structured call', route: 'Fast Lookup', status: 'partial', output: 'Query candidates', review: 'Query candidate picker' }],
-        ['search.query.parse-language', 'Vault Search · Parse natural language', 'Compile a natural-language request into Hyper Search syntax and fall back to the original text when parsing fails.', [], { shape: 'Single structured call', status: 'partial', output: 'Parsed search expression' }],
+        ['search.query.parse-language', 'Vault Search · Parse natural language', 'Compile a natural-language request into Hyper Search syntax and fall back to the original text when parsing fails.', ['hyper-search-query-parser-system', 'hyper-search-query-parser-user'], { shape: 'Single structured call', status: 'partial', output: 'Parsed search expression' }],
         ['search.results.rerank', 'Vault Search · LLM rerank', 'Reorder a bounded result set by semantic relevance when the LLM reranker is selected.', ['search-rerank-rank-gpt'], { shape: 'Single ranking call', route: 'Rerank helper', status: 'partial', output: 'Reordered search results' }]
       ], { surface: 'Vault Search' }),
 
@@ -540,7 +556,7 @@
         ['analysis.report.generate', 'AI Search · Generate report', 'Generate approved report sections, summary, citations, and validated Mermaid from collected evidence.', ['ai-analysis-report-section', 'ai-analysis-vault-report-summary', 'ai-analysis-mermaid-fix-system', 'ai-analysis-mermaid-fix', 'report-assign-insights'], { shape: 'Multi-step workflow', route: 'Research', output: 'Versioned analysis report' }],
         ['analysis.continue', 'AI Search · Continue analysis', 'Start another evidence round from the existing analysis context and a focused follow-up request.', ['ai-analysis-continue-system', 'ai-analysis-continue'], { shape: 'Multi-tier AgentLoop', route: 'Research → Stronger', output: 'Additional evidence round' }],
         ['analysis.synthesize-rounds', 'AI Search · Synthesize rounds', 'Merge multiple analysis rounds into one coherent result without discarding their source receipts.', ['ai-analysis-synthesize-system', 'ai-analysis-synthesize'], { shape: 'Structured workflow step', status: 'support', output: 'Merged analysis state' }],
-        ['analysis.followup', 'AI Search · Ask about results', 'Answer a question against the current report, sources, graph, blocks, and analysis history.', ['ai-analysis-followup-system'], { shape: 'Fixed-model tool loop', route: 'Agent Fast', output: 'Grounded follow-up answer' }],
+        ['analysis.followup', 'AI Search · Ask about results', 'Answer a question against the current report, sources, graph, blocks, and analysis history.', ['ai-analysis-followup-system', 'ai-analysis-followup'], { shape: 'Fixed-model tool loop', route: 'Agent Fast', output: 'Grounded follow-up answer' }],
         ['analysis.save.filename', 'AI Search · Suggest save filename', 'Suggest a stable, readable filename from the completed analysis query and summary.', ['ai-analysis-save-filename'], { shape: 'Single text helper', route: 'Fast Lookup', status: 'support', output: 'Filename suggestion' }],
         ['analysis.save.folder', 'AI Search · Suggest save folder', 'Suggest an existing or configured Vault folder for an exported analysis result.', ['ai-analysis-save-folder'], { shape: 'Single text helper', route: 'Fast Lookup', status: 'support', output: 'Folder suggestion' }]
       ], { surface: 'AI Search' }),
@@ -715,17 +731,73 @@
         ['knowledge.index.image-summary', 'Summarize indexed image', 'Generate a short searchable summary for an image document.', ['image-summary'], { shape: 'Vision helper', status: 'partial' }]
       ]),
       ...actionRows('system', 'Runtime and setup helpers', [
-        ['harness.context.compact', 'Compact agent context', 'Summarize an over-budget agent context into a recoverable continuation state.', [], { shape: 'Single text call' }],
+        ['harness.context.compact', 'Compact agent context', 'Summarize an over-budget agent context into a recoverable continuation state.', ['harness-context-compact-system', 'harness-context-compact-user'], { shape: 'Single text call', status: 'partial' }],
         ['system.profile.curator', 'Recommend AI setup', 'Recommend Profile and model bindings from onboarding answers and environment probes.', ['curator-system'], { shape: 'Curator agent', status: 'partial' }],
         ['system.usage.optimize', 'Generate usage optimization advice', 'Turn real usage receipts into bounded cost and quality recommendations.', ['usage-optimization-system'], { shape: 'Structured curator call', status: 'partial' }],
         ['system.prompt.audit', 'Audit Prompt Library', 'Evaluate registered prompt templates and suggest focused improvements.', ['copilot-agent-prompt-audit'], { shape: 'Tool-enabled agent', status: 'partial' }],
         ['system.web-search.delegate', 'Delegate Web search', 'Run a web-search-capable helper when a parent Chat, AI Search, or Graph action requests Web evidence.', ['web-search-tool-system'], { shape: 'Tool sub-run', status: 'support' }]
+      ]),
+
+      ...actionRows('user', 'Live registry collections', [
+        ['user.custom-prompts', 'Custom Prompts', 'List every Vault-authored custom prompt action and open its owning editor for prompt, variables, surface, and model policy.', [], { output: 'Dynamic Custom Prompt actions' }],
+        ['user.vault-skills', 'Vault Skills', 'List every Vault Skill and open its owning editor for instructions, phases, model preference, tools, and quarantine state.', [], { output: 'Dynamic Skill actions' }],
+        ['user.chat-assistants', 'Chat Assistants', 'List every Chat Assistant and open its owning editor for instructions, knowledge, model, tools, and approvals.', [], { output: 'Dynamic Assistant actions' }]
       ])
     ];
 
+    const actionInstructionDefaults = {
+      'composer.prose.polish-block': '优化表达顺序、语气和连接词，保持原意与 Markdown 段落形态。',
+      'composer.prose.add-example': '只输出一个要插入到当前段落下方的具体例子，不重复或改写原段落。',
+      'composer.prose.to-table': '把并列概念、阶段或路径整理成 Markdown 表格，保留原信息并便于后续编辑。',
+      'composer.heading.shorten': '把标题改得更短、更像目录项，保留原来的 heading 层级。',
+      'composer.heading.outline': '只输出要插入到当前标题下方的下一层 Markdown 写作提纲，不重复或改写标题。',
+      'composer.heading.questions': '只输出要插入到当前标题下方的 2 到 3 个导读问题，不重复或改写标题。',
+      'composer.list.fill-gaps': '检查列表是否遗漏一个重要类别，补出一个必要的新项，并选择它在现有列表中的最佳语义位置。',
+      'composer.list.reorder': '按最清晰的逻辑顺序重排列表，保持合法 Markdown 列表语法。',
+      'composer.list.to-table': '把当前列表转换为 Markdown 表格，保留全部信息。',
+      'composer.task.find-blockers': '只输出要插入到当前任务区下方的阻塞与待确认事项列表，不重复或改写原任务。',
+      'composer.task.add-next-step': '只输出要插入到当前任务区下方的最小可执行下一步，保持为一个 Markdown task list 块。',
+      'composer.task.prioritize': '按影响和紧急度重排任务，保持完成状态不变。',
+      'composer.quote.explain': '只输出要插入到引用下方的解释段落，不重复或改写原引用。',
+      'composer.quote.counterexample': '只输出要插入到引用下方的反例或适用边界段落，不重复或改写原引用。',
+      'composer.quote.to-callout': '把引用转换为合适的 Obsidian Callout，并保留原句。',
+      'composer.callout.change-type': '把 Callout 类型改成更贴合内容语气的类型，保留正文。',
+      'composer.callout.expand': '把当前原则扩写为一条可执行的写作规则。',
+      'composer.callout.to-checklist': '把 Callout 转换成可验证的 Markdown task list。',
+      'composer.frontmatter.suggest-tags': '只建议 tags 字段；根据标题和正文补全可复用标签，保留原始 YAML 结构。',
+      'composer.frontmatter.normalize-properties': '检查 created、updated、tags、type、status 等字段的格式一致性；不要改写程序维护字段。',
+      'composer.mermaid.fill-branches': '检查流程中明确缺少的异常、回退或决策分支；只补必要分支并保留现有结构。',
+      'composer.link.tidy': 'Repair and tidy the links in this block. Return the full block text, preserving all non-link content verbatim.'
+    };
+
+    const deterministicActionIds = new Set([
+      'copilot.find-related', 'copilot.extract-todos', 'copilot.deduplicate-scan',
+      'copilot.smart-connections', 'copilot.suggest-semantic-links', 'ambient.morning-briefing'
+    ]);
+    const delegatedActionIds = new Set([
+      'composer.copilot.session', 'chat.artifact.document', 'chat.artifact.dataview',
+      'chat.artifact.excalidraw', 'chat.artifact.drawio', 'chat.artifact.extract', 'chat.artifact.reminder'
+    ]);
+
+    function getExecutionKind(item) {
+      if (item.group === 'user' || item.id === 'copilot.custom-prompt') return 'user';
+      if (deterministicActionIds.has(item.id)) return 'deterministic';
+      if (delegatedActionIds.has(item.id)) return 'delegated';
+      if (item.id.includes('embedding')) return 'embedding';
+      if (item.id.includes('rerank')) return 'rerank';
+      if (item.id === 'composer.image.edit' || (item.id.startsWith('media.') && !item.id.endsWith('.understand'))) return 'media';
+      if (/agent|tool loop|workflow|harness/i.test(item.shape)) return 'agent';
+      return 'text';
+    }
+
+    for (const capability of capabilities) {
+      capability.actionInstruction = actionInstructionDefaults[capability.id] ?? '';
+      capability.executionKind = getExecutionKind(capability);
+    }
+
     const promptGroupLabels = {
       chat: 'Chat', searchAnalysis: 'Search & Analysis', indexing: 'Knowledge Index',
-      copilot: 'Copilot / Composer', userProfile: 'User Profile'
+      copilot: 'Copilot / Composer', userProfile: 'User Profile', ambientContext: 'Ambient / Context'
     };
     const prompts = String(window.PEAK_PROMPT_CATALOG_TEXT ?? '')
       .trim()
@@ -733,7 +805,7 @@
       .filter(Boolean)
       .map(line => {
         const [id, stem, title, description, group, system, sourceStatus, variables, callers] = line.split('|');
-        const status = sourceStatus === '引用' ? 'live' : sourceStatus === '配套' ? 'support' : 'unwired';
+        const status = sourceStatus === '引用' ? 'live' : sourceStatus === '配套' ? 'support' : sourceStatus === '需迁移' ? 'migration' : 'unwired';
         return {
           id,
           stem,
@@ -745,7 +817,7 @@
           callers,
           kind: system ? 'Executable prompt' : id.includes('system') ? 'System prompt' : 'Registered prompt',
           owners: 0,
-          version: 'Built-in default; optional Vault override',
+          version: sourceStatus === '需迁移' ? 'Runtime source; registration required' : 'Built-in default; optional Vault override',
           customized: false,
           status
         };
@@ -791,19 +863,22 @@
       ['composer', 'file', 'Composer & Copilot'],
       ['chat', 'message', 'Chat & Generation'],
       ['intelligence', 'vault', 'Vault Intelligence'],
-      ['system', 'database', 'System & background']
+      ['system', 'database', 'System & background'],
+      ['user', 'spark', 'User-defined']
     ];
 
     function statusPill(status) {
       if (status === 'live') return '<span class="pill green">Source wired</span>';
       if (status === 'partial') return '<span class="pill amber">Partial path</span>';
       if (status === 'support') return '<span class="pill blue">Background</span>';
+      if (status === 'migration') return '<span class="pill amber">Runtime migration</span>';
       if (status === 'unwired') return '<span class="pill red">Catalog only</span>';
       return `<span class="pill">${status}</span>`;
     }
 
     function promptPill(item) {
       if (item.customized) return '<span class="pill purple">Customized</span>';
+      if (item.status === 'migration') return '<span class="pill amber">Runtime migration</span>';
       if (item.owners === 0 && item.status === 'unwired') return '<span class="pill red">Catalog only</span>';
       if (item.owners === 0) return '<span class="pill blue">Source helper</span>';
       return '<span class="pill">Default</span>';
@@ -863,9 +938,25 @@
 
     function renderRows() {
       const query = searchInput.value.trim().toLowerCase();
+      if (query) {
+        const matchedCapabilities = capabilities.filter(item => [item.id, item.title, item.surface, item.shape, item.route].join(' ').toLowerCase().includes(query));
+        const matchedPrompts = prompts.filter(item => [item.id, item.title, item.group, item.kind, item.callers].join(' ').toLowerCase().includes(query));
+        listTitle.textContent = 'Search results';
+        listDescription.textContent = `${matchedCapabilities.length} AI actions · ${matchedPrompts.length} prompts`;
+        const capabilityResults = matchedCapabilities.length
+          ? `<div class="family-head"><span>AI actions</span><small>${matchedCapabilities.length}</small></div>${matchedCapabilities.map(capabilityRow).join('')}`
+          : '';
+        const promptResults = matchedPrompts.length
+          ? `<div class="family-head"><span>Prompts</span><small>${matchedPrompts.length}</small></div>${matchedPrompts.map(promptRow).join('')}`
+          : '';
+        rows.innerHTML = capabilityResults + promptResults || '<div class="empty">No AI action or prompt matches this search.</div>';
+        return;
+      }
       if (workspace === 'capabilities') {
         listTitle.textContent = activeGroup === 'all' ? 'All AI actions' : groups.find(item => item[0] === activeGroup)?.[2] ?? 'AI actions';
-        listDescription.textContent = `${filteredCount(activeGroup)} source-backed behaviors, grouped by the product action a person recognizes.`;
+        listDescription.textContent = activeGroup === 'all'
+          ? '141 built-in actions plus live User-defined registries, grouped by product behavior.'
+          : `${filteredCount(activeGroup)} source-backed behaviors, grouped by the product action a person recognizes.`;
         const filtered = capabilities.filter(item => {
           const groupMatch = activeGroup === 'all' || item.group === activeGroup;
           return groupMatch && [item.id, item.title, item.surface, item.shape, item.route].join(' ').toLowerCase().includes(query);
@@ -875,7 +966,7 @@
       }
 
       listTitle.textContent = 'All prompts';
-      listDescription.textContent = `All ${prompts.length} built-in Prompt templates are flat and searchable. AI action ownership is derived from the catalog.`;
+      listDescription.textContent = `${prompts.length} retained or migrating prompts. No no-caller catalog placeholders are shown.`;
       const filtered = prompts.filter(item => [item.id, item.title, item.group, item.kind].join(' ').toLowerCase().includes(query));
       rows.innerHTML = filtered.length ? filtered.map(promptRow).join('') : '<div class="empty">No prompt matches this search.</div>';
     }
@@ -900,56 +991,85 @@
       </div>`;
     }
 
+    function renderPromptControls(item) {
+      const promptList = item.prompts.map(id => {
+        const prompt = prompts.find(candidate => candidate.id === id);
+        const actionLabel = prompt?.status === 'migration' ? 'Review migration' : 'Edit in Prompt Library';
+        return `<div class="prompt-box"><div class="prompt-head"><strong>${prompt?.title ?? id}</strong><button class="link-button" data-open-prompt="${id}">${actionLabel}</button></div><div class="prompt-body">${prompt?.kind ?? 'Capability prompt'} · ${prompt?.version ?? 'Built-in'}</div></div>`;
+      }).join('');
+      const actionInstruction = item.actionInstruction
+        ? `<div class="prompt-box"><div class="prompt-head"><strong>Action instruction</strong><span class="pill purple">This action only</span></div><textarea class="prompt-editor compact">${item.actionInstruction}</textarea><div class="button-row"><button class="action-button" disabled>Reset</button><button class="action-button primary">Save instruction</button></div></div>`
+        : '';
+      if (promptList || actionInstruction) return promptList + actionInstruction;
+      if (item.executionKind === 'deterministic') return `<div class="notice">${icons.prompt}<span>No text Prompt by design. This action is deterministic; configure its scope and thresholds below.</span></div>`;
+      if (item.executionKind === 'media') return `<div class="notice">${icons.prompt}<span>The user writes the generation Prompt when the job starts. Shared route, preset, quantity, duration, and cost controls live here.</span></div>`;
+      if (item.executionKind === 'user') return `<div class="notice">${icons.prompt}<span>Definitions are loaded from the live owner registry. Open the owner to edit content, variables, knowledge, and instructions.</span></div>`;
+      return `<div class="notice">${icons.prompt}<span>No shared Prompt is registered for this action. It uses user input or a parent Agent tool request.</span></div>`;
+    }
+
+    function renderModelControls(item) {
+      if (item.executionKind === 'deterministic') {
+        return `<div class="notice">${icons.model}<span>This action does not call a text model. There is no model override to configure.</span></div>`;
+      }
+      if (item.executionKind === 'delegated') {
+        return `<div class="notice">${icons.model}<span>This action is a child tool or dispatcher. It inherits the parent Chat or Copilot route and has no separate model override.</span></div>`;
+      }
+      if (item.executionKind === 'user') {
+        return `<div class="route active">${icons.spark}<span><strong>Owner-defined policy</strong><span>Each live definition keeps its own model, tools, and approval policy.</span></span><button class="action-button">Open owner</button></div>`;
+      }
+      if (item.executionKind === 'media') {
+        return `<label class="route active"><input type="radio" name="model-policy" checked><span><strong>Use generation route</strong><span>Resolve a compatible provider, model, and preset at job preflight.</span></span><span class="route-effective">Current<code>${item.route}</code></span></label><label class="route"><input type="radio" name="model-policy"><span><strong>Choose route and model</strong><span>Override this media action only.</span></span><button class="action-button">Choose route</button></label>`;
+      }
+      const profileLabel = item.executionKind === 'embedding' ? 'embedding Profile' : item.executionKind === 'rerank' ? 'rerank Profile' : 'model';
+      return `<label class="route active"><input type="radio" name="model-policy" checked><span><strong>Use the AI Setup default</strong><span>Follows future changes to the shared ${profileLabel} setting.</span></span><span class="route-effective">Current<code>${item.route}</code></span></label><label class="route"><input type="radio" name="model-policy"><span><strong>Choose a ${profileLabel} for this action</strong><span>Overrides the default only for this AI action.</span></span><button class="action-button">Choose ${item.executionKind === 'text' || item.executionKind === 'agent' ? 'model' : 'Profile'}</button></label>`;
+    }
+
+    function renderExecutionControls(item) {
+      if (item.executionKind === 'agent') {
+        return `<div class="section"><h2>Tools, approval &amp; budget</h2><dl class="facts"><dt>Tool policy</dt><dd>Allow listed tools · ask before write-capable tools</dd><dt>Approval</dt><dd>Review before document or Vault change</dd><dt>Budget</dt><dd>Agent turns, tool calls, token and cost limits</dd></dl><div class="button-row"><button class="action-button">Edit agent controls</button></div></div><div class="section"><h2>Output controls</h2><dl class="facts"><dt>Response</dt><dd>${item.output}</dd><dt>Sampling</dt><dd>Profile default · action override available</dd><dt>Limits</dt><dd>Max output tokens and timeout</dd></dl><div class="button-row"><button class="action-button">Edit output controls</button></div></div>`;
+      }
+      if (item.executionKind === 'embedding' || item.executionKind === 'rerank') {
+        return `<div class="section"><h2>Index &amp; scope</h2><dl class="facts"><dt>Scope</dt><dd>Changed documents and explicit rebuilds</dd><dt>Batch policy</dt><dd>Profile-compatible batch size and retry</dd><dt>Compatibility</dt><dd>Locked vector/index invariant</dd></dl><div class="button-row"><button class="action-button">Edit scope</button></div></div>`;
+      }
+      if (item.executionKind === 'media') {
+        return `<div class="section"><h2>Job controls</h2><dl class="facts"><dt>Preset</dt><dd>Aspect, quality, duration, or transcription mode</dd><dt>Quantity</dt><dd>Per-run generation count</dd><dt>Confirmation</dt><dd>Require cost and provider preflight</dd></dl><div class="button-row"><button class="action-button">Edit job controls</button></div></div>`;
+      }
+      if (item.executionKind === 'deterministic') {
+        return `<div class="section"><h2>Scope &amp; thresholds</h2><dl class="facts"><dt>Scope</dt><dd>Owning surface and eligible files</dd><dt>Thresholds</dt><dd>Similarity, freshness, or result limits where applicable</dd><dt>AI calls</dt><dd>None</dd></dl><div class="button-row"><button class="action-button">Open owning settings</button></div></div>`;
+      }
+      if (item.executionKind === 'delegated') {
+        return `<div class="section"><h2>Parent tool policy</h2><dl class="facts"><dt>Availability</dt><dd>Allow or deny this tool for the parent Assistant / Copilot run</dd><dt>Approval</dt><dd>Ask before persistent artifact creation</dd><dt>Model route</dt><dd>Inherited from the parent run</dd></dl><div class="button-row"><button class="action-button">Edit tool policy</button></div></div>`;
+      }
+      if (item.executionKind === 'user') {
+        return `<div class="section"><h2>Dynamic owner</h2><dl class="facts"><dt>Source</dt><dd>Live runtime registry</dd><dt>Controls</dt><dd>Content, model, tools, approval, scope</dd><dt>Persistence</dt><dd>Owned by the original editor</dd></dl><div class="button-row"><button class="action-button">Open owner registry</button></div></div>`;
+      }
+      return `<div class="section"><h2>Output controls</h2><dl class="facts"><dt>Response</dt><dd>${item.output}</dd><dt>Sampling</dt><dd>Temperature and top-p when supported</dd><dt>Limits</dt><dd>Max output tokens, timeout, retry</dd></dl><div class="button-row"><button class="action-button">Edit output controls</button></div></div>`;
+    }
+
     function renderCapabilityInspector(item) {
-      const promptList = item.prompts.length
-        ? item.prompts.map(id => {
-          const prompt = prompts.find(candidate => candidate.id === id);
-          return `<div class="prompt-box"><div class="prompt-head"><strong>${prompt?.title ?? id}</strong><button class="link-button" data-open-prompt="${id}">Edit in Prompt Library</button></div><div class="prompt-body">${prompt?.kind ?? 'Capability prompt'} · ${prompt?.version ?? 'Built-in'}</div></div>`;
-        }).join('')
-        : '<div class="notice">' + icons.prompt + '<span>This action has no editable text prompt. Its behavior comes from the selected model or embedding service.</span></div>';
       inspector.innerHTML = inspectorHeader(item, 'capability') + `
         <section class="panel ${inspectorTab === 'overview' ? 'active' : ''}" data-panel="overview">
-          <div class="section">
-            <h2>Expected behavior</h2>
-            <div class="cards">
-              <div class="card"><strong>What you get</strong><span>${item.success}</span></div>
-              <div class="card"><strong>Safety boundary</strong><span>${item.mustNot}</span></div>
-            </div>
-          </div>
-          <div class="section">
-            <h2>At a glance</h2>
-            <dl class="facts">
-              <dt>Available in</dt><dd>${item.surface}</dd>
-              <dt>Response style</dt><dd>${item.shape}</dd>
-              <dt>Produces</dt><dd>${item.output}</dd>
-              <dt>You review it in</dt><dd>${item.review}</dd>
-            </dl>
-          </div>
+          <div class="section"><h2>Expected behavior</h2><div class="cards"><div class="card"><strong>What you get</strong><span>${item.success}</span></div><div class="card"><strong>Safety boundary</strong><span>${item.mustNot}</span></div></div></div>
+          <div class="section"><h2>At a glance</h2><dl class="facts"><dt>Available in</dt><dd>${item.surface}</dd><dt>Execution kind</dt><dd>${item.executionKind}</dd><dt>Response style</dt><dd>${item.shape}</dd><dt>Produces</dt><dd>${item.output}</dd><dt>You review it in</dt><dd>${item.review}</dd></dl></div>
         </section>
         <section class="panel ${inspectorTab === 'config' ? 'active' : ''}" data-panel="config">
-          <div class="section">
-            <h2>Model</h2>
-            <label class="route active"><input type="radio" name="model-policy" checked><span><strong>Use the AI Setup default</strong><span>Follows future changes to the shared model setting.</span></span><span class="route-effective">Current<code>${item.route}</code></span></label>
-            <label class="route"><input type="radio" name="model-policy"><span><strong>Choose a model for this action</strong><span>Overrides the default only for this AI action.</span></span><button class="action-button">Choose model</button></label>
-          </div>
-          <div class="section"><h2>Prompt instructions</h2>${promptList}</div>
+          <div class="notice amber">${icons.alert}<span>Configuration is a design target. Keep each Save control disabled in production until a resolver-consumption test proves the next run uses it.</span></div>
+          <div class="section"><h2>Availability</h2><label class="route active"><input type="checkbox" checked><span><strong>Enable this action</strong><span>Applies to this capability-step owner without changing other actions.</span></span><span class="pill green">On</span></label></div>
+          <div class="section"><h2>${item.executionKind === 'media' ? 'Route & model' : 'Model policy'}</h2>${renderModelControls(item)}</div>
+          <div class="section"><h2>Prompt &amp; instructions</h2>${renderPromptControls(item)}</div>
+          ${renderExecutionControls(item)}
+          <div class="section"><h2>Locked runtime contract</h2><dl class="facts"><dt>Input / output schema</dt><dd>Visible, versioned, not editable here</dd><dt>Safety &amp; validation</dt><dd>${item.mustNot}</dd><dt>Writeback / persistence</dt><dd>${item.review}</dd><dt>Tools declared</dt><dd>${item.tools.join(' · ')}</dd></dl></div>
         </section>`;
     }
 
     function renderPromptInspector(item) {
+      const migrating = item.status === 'migration';
+      const editor = migrating
+        ? `<div class="notice amber">${icons.alert}<span>This live runtime instruction must enter PromptId and the shared resolver before it can be overridden.</span></div><div class="prompt-box"><div class="prompt-head"><strong>Runtime source</strong><span class="pill amber">Registration required</span></div><textarea class="prompt-editor" disabled placeholder="Current inline runtime instruction; override unavailable until migration."></textarea><div class="button-row"><button class="action-button" disabled>Reset</button><button class="action-button primary" disabled>Save override</button></div></div>`
+        : `<div class="prompt-box"><div class="prompt-head"><strong>Vault override</strong><button class="link-button">View built-in default</button></div><textarea class="prompt-editor" placeholder="No Vault override. Add instructions here to override the built-in default."></textarea><div class="button-row"><button class="action-button" disabled>Reset to default</button><button class="action-button primary">Save override</button></div></div>`;
       inspector.innerHTML = inspectorHeader(item, 'prompt') + `<section class="panel active">
-        <div class="section">
-          <h2>Usage</h2>
-          <dl class="facts">
-            <dt>Category</dt><dd>${item.group}</dd>
-            <dt>Used by</dt><dd>${item.owners ? `${item.owners} AI action${item.owners === 1 ? '' : 's'}` : 'No mapped top-level AI action'}</dd>
-            <dt>Source</dt><dd>${item.version}</dd>
-          </dl>
-        </div>
-        <div class="section">
-          <h2>Prompt instructions</h2>
-          <div class="prompt-box"><div class="prompt-head"><strong>Vault override</strong><button class="link-button">View built-in default</button></div><textarea class="prompt-editor" placeholder="No Vault override. Add instructions here to override the built-in default."></textarea><div class="button-row"><button class="action-button" disabled>Reset to default</button><button class="action-button primary">Save override</button></div></div>
-        </div>
+        <div class="section"><h2>Usage</h2><dl class="facts"><dt>Category</dt><dd>${item.group}</dd><dt>Used by</dt><dd>${item.owners ? `${item.owners} AI action${item.owners === 1 ? '' : 's'}` : 'Direct runtime caller; no top-level action mapped'}</dd><dt>Runtime callers</dt><dd>${item.callers || 'Companion of an executable Prompt'}</dd><dt>Source</dt><dd>${item.version}</dd></dl></div>
+        <div class="section"><h2>Prompt instructions</h2>${editor}</div>
         ${item.owners > 1 ? `<div class="notice">${icons.prompt}<span>This prompt is shared. Saving an override changes the instructions for all ${item.owners} actions that use it.</span></div>` : ''}
       </section>`;
     }
@@ -990,8 +1110,10 @@
 
       const row = event.target.closest('[data-id]');
       if (row) {
+        workspace = 'capabilities';
         activeItem = capabilities.find(item => item.id === row.dataset.id);
         inspectorTab = 'overview';
+        renderRail();
         renderRows();
         renderInspector();
         return;
@@ -1010,7 +1132,9 @@
 
       const promptRowButton = event.target.closest('[data-prompt-id]');
       if (promptRowButton) {
+        workspace = 'prompts';
         activeItem = prompts.find(item => item.id === promptRowButton.dataset.promptId);
+        renderRail();
         renderRows();
         renderInspector();
         return;
