@@ -63,7 +63,7 @@
         <div class="settings-content">
           <header class="content-head">
             <div><span class="content-kicker">Tools</span><h2>External plugin commands</h2><p>Choose which commands from enabled Obsidian plugins Copilot may call.</p></div>
-            <div class="head-actions"><button class="button" type="button" id="scan-button"><svg><use href="#i-refresh"/></svg>Scan</button><button class="button" type="button" id="analyze-button"><svg><use href="#i-sparkles"/></svg>Analyze with AI</button></div>
+            <div class="head-actions"><button class="button" type="button" id="scan-button"><svg id="scan-button-icon"><use href="#i-refresh"/></svg><span id="scan-button-label">Scan</span></button><button class="button" type="button" id="analyze-button"><svg><use href="#i-sparkles"/></svg>Analyze with AI</button></div>
           </header>
 
           <section class="summary-strip" aria-label="Gateway summary">
@@ -72,6 +72,15 @@
             <div class="summary-stat"><span>Blocked</span><strong id="blocked-total">0</strong></div>
             <div class="summary-stat"><span>System excluded</span><strong id="excluded-total">0</strong></div>
             <div class="summary-note"><svg><use href="#i-info"/></svg><span>AI drafts explanations only. It never changes access.</span></div>
+          </section>
+
+          <section class="scan-progress" id="scan-progress" aria-live="polite" hidden>
+            <div class="scan-progress__icon"><svg><use href="#i-refresh"/></svg></div>
+            <div class="scan-progress__body">
+              <div class="scan-progress__head"><div><strong id="scan-phase">Scanning enabled plugins</strong><span id="scan-current-plugin">Reading Obsidian command registry…</span></div><span id="scan-percent">0%</span></div>
+              <div class="scan-progress__track"><i id="scan-progress-bar"></i></div>
+              <div class="scan-progress__meta"><span id="scan-plugin-count">0 / 6 plugins</span><span id="scan-command-count">0 commands found</span><span>Nothing is executed or authorized during Scan</span></div>
+            </div>
           </section>
 
           <section class="filter-surface" aria-label="Command filters and bulk action">
@@ -97,7 +106,7 @@
             </div>
           </section>
 
-          <div class="column-head" aria-hidden="true"><span>Command</span><span>Risk</span><span>Purpose</span><span>Access</span></div>
+          <div class="column-head" aria-hidden="true"><span>Command</span><span>Risk</span><span>Access</span></div>
           <section class="command-list" id="command-list" aria-live="polite"></section>
 
           <footer class="list-footer"><span id="footer-summary">Showing all commands</span><button type="button" class="text-button" id="reset-demo">Reset mock data</button></footer>
@@ -106,9 +115,9 @@
     </section>
 
     <section class="decision-note">
-      <div><span class="decision-index">01</span><strong>行级动作只有一个位置</strong><p>最右列始终是当前 access state；展开后再选择 Allow、Block 或 Turn off，不在卡片角落堆动作。</p></div>
+      <div><span class="decision-index">01</span><strong>行级动作直接点选</strong><p>最右列固定显示 Off / Allow / Block 三态分段控件，不展开菜单，不在卡片角落堆动作。</p></div>
       <div><span class="decision-index">02</span><strong>批量动作绑定当前筛选</strong><p>主按钮清楚写明数量。菜单仍提供 “Allow all eligible commands”，但 unknown、destructive、modal 和 unavailable 永远排除。</p></div>
-      <div><span class="decision-index">03</span><strong>插件是分组，不是大 Card</strong><p>每个 command 是一行，风险、用途和 access 形成稳定列；证据留在简短说明里，密度接近真实 Settings。</p></div>
+      <div><span class="decision-index">03</span><strong>只保留授权判断需要的信息</strong><p>Purpose 属于内部 curator 元数据，不让 owner 编辑；预期效果直接写进 command 摘要，只保留 Risk 与 Access 两列。</p></div>
     </section>
   </main>
 

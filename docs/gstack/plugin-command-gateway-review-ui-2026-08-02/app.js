@@ -1,20 +1,20 @@
 const initialCommands = [
-  { plugin: 'calendar', pluginName: 'Calendar', version: '1.5.10', id: 'calendar:open-week', name: 'Open weekly calendar', summary: 'Open the weekly calendar view when the user explicitly asks to inspect their schedule.', risk: 'read', purpose: 'planning', state: 'allowed', ai: true },
-  { plugin: 'calendar', pluginName: 'Calendar', version: '1.5.10', id: 'calendar:open-month', name: 'Open monthly calendar', summary: 'Navigate to the monthly calendar without modifying Vault content.', risk: 'read', purpose: 'navigation', state: 'off', ai: true },
-  { plugin: 'periodic-notes', pluginName: 'Periodic Notes', version: '0.0.17', id: 'periodic-notes:create-weekly', name: 'Create weekly note', summary: 'Create or open this week’s periodic note; may add a Markdown file and change the active file.', risk: 'edit', purpose: 'planning', state: 'off', ai: true },
-  { plugin: 'periodic-notes', pluginName: 'Periodic Notes', version: '0.0.17', id: 'periodic-notes:open-daily', name: 'Open daily note', summary: 'Open today’s note. If the plugin creates a missing note, host observations will record the change.', risk: 'edit', purpose: 'planning', state: 'off', ai: true },
-  { plugin: 'dataview', pluginName: 'Dataview', version: '0.5.68', id: 'dataview:force-refresh-views', name: 'Force refresh all views', summary: 'Refresh visible Dataview results without granting access to arbitrary plugin commands.', risk: 'read', purpose: 'query', state: 'off', ai: true },
-  { plugin: 'dataview', pluginName: 'Dataview', version: '0.5.68', id: 'dataview:rebuild-index', name: 'Rebuild full index', summary: 'Potentially expensive maintenance command; classified as destructive and excluded from automatic use.', risk: 'destructive', purpose: 'system', state: 'unavailable', reason: 'Destructive commands cannot be exposed to Copilot.', ai: true },
-  { plugin: 'templater-obsidian', pluginName: 'Templater', version: '2.9.1', id: 'templater-obsidian:replace-in-file-templater', name: 'Replace templates in active file', summary: 'Resolve templates inside the active editor. Requires an active Markdown editor.', risk: 'edit', purpose: 'formatting', state: 'blocked', ai: true },
-  { plugin: 'templater-obsidian', pluginName: 'Templater', version: '2.9.1', id: 'templater-obsidian:create-new-note-from-template', name: 'Create note from template', summary: 'Opens a template picker; Copilot cannot safely complete the interactive modal.', risk: 'unknown', purpose: 'capture', state: 'unavailable', reason: 'Modal-only command.', ai: true },
-  { plugin: 'quickadd', pluginName: 'QuickAdd', version: '2.4.1', id: 'quickadd:open-capture', name: 'Open capture modal', summary: 'Opens QuickAdd’s interactive chooser rather than completing a deterministic action.', risk: 'unknown', purpose: 'capture', state: 'unavailable', reason: 'Modal-only command.', ai: true },
-  { plugin: 'file-chucker', pluginName: 'File Chucker', version: '1.2.0', id: 'file-chucker:move-active-file', name: 'Move active file', summary: 'Move the current file according to plugin rules; requires per-run edit permission.', risk: 'edit', purpose: 'formatting', state: 'off', ai: false },
+  { plugin: 'calendar', pluginName: 'Calendar', version: '1.5.10', id: 'calendar:open-week', name: 'Open weekly calendar', summary: 'Opens the weekly calendar view; expected effect: active view changes, Vault content stays unchanged.', risk: 'read', state: 'allowed', ai: true },
+  { plugin: 'calendar', pluginName: 'Calendar', version: '1.5.10', id: 'calendar:open-month', name: 'Open monthly calendar', summary: 'Opens the monthly calendar; expected effect: active view changes, Vault content stays unchanged.', risk: 'read', state: 'off', ai: true },
+  { plugin: 'periodic-notes', pluginName: 'Periodic Notes', version: '0.0.17', id: 'periodic-notes:create-weekly', name: 'Create weekly note', summary: 'May create a Markdown file and open it; expected effect: file count and active file can change.', risk: 'edit', state: 'off', ai: true },
+  { plugin: 'periodic-notes', pluginName: 'Periodic Notes', version: '0.0.17', id: 'periodic-notes:open-daily', name: 'Open daily note', summary: 'Opens today’s note and may create it if missing; expected effect is stated directly here.', risk: 'edit', state: 'off', ai: true },
+  { plugin: 'dataview', pluginName: 'Dataview', version: '0.5.68', id: 'dataview:force-refresh-views', name: 'Force refresh all views', summary: 'Refreshes visible Dataview results; expected effect: rendered query views update.', risk: 'read', state: 'off', ai: true },
+  { plugin: 'dataview', pluginName: 'Dataview', version: '0.5.68', id: 'dataview:rebuild-index', name: 'Rebuild full index', summary: 'Potentially expensive maintenance command; destructive classification excludes it from Copilot.', risk: 'destructive', state: 'unavailable', reason: 'Destructive commands cannot be exposed to Copilot.', ai: true },
+  { plugin: 'templater-obsidian', pluginName: 'Templater', version: '2.9.1', id: 'templater-obsidian:replace-in-file-templater', name: 'Replace templates in active file', summary: 'Changes the active Markdown file; expected effect: current file content changes.', risk: 'edit', state: 'blocked', ai: true },
+  { plugin: 'templater-obsidian', pluginName: 'Templater', version: '2.9.1', id: 'templater-obsidian:create-new-note-from-template', name: 'Create note from template', summary: 'Opens a template picker that Copilot cannot safely complete.', risk: 'unknown', state: 'unavailable', reason: 'Modal-only command.', ai: true },
+  { plugin: 'quickadd', pluginName: 'QuickAdd', version: '2.4.1', id: 'quickadd:open-capture', name: 'Open capture modal', summary: 'Opens QuickAdd’s interactive chooser rather than completing a deterministic action.', risk: 'unknown', state: 'unavailable', reason: 'Modal-only command.', ai: true },
+  { plugin: 'file-chucker', pluginName: 'File Chucker', version: '1.2.0', id: 'file-chucker:move-active-file', name: 'Move active file', summary: 'Moves the current file; expected effect: active path changes and requires edit permission.', risk: 'edit', state: 'off', ai: false },
 ];
 
 let commands = structuredClone(initialCommands);
 let pendingBulk = { mode: 'filtered', indexes: [] };
-let openAccessIndex = null;
 let toastTimer = null;
+let scanTimer = null;
 
 const commandList = document.getElementById('command-list');
 const searchInput = document.getElementById('search-input');
@@ -62,21 +62,15 @@ function stateLabel(state) {
   return { allowed: 'Allowed', blocked: 'Blocked', off: 'Off', unavailable: 'Unavailable' }[state];
 }
 
-function purposeLabel(purpose) {
-  return { navigation: 'Navigation', capture: 'Capture', planning: 'Planning', query: 'Query', formatting: 'Formatting', system: 'System', other: 'Other' }[purpose] ?? purpose;
-}
-
-function accessMenu(command, index) {
+function accessControl(command, index) {
   if (command.state === 'unavailable') {
-    return `<div class="access-cell"><div><button type="button" class="access-button" data-state="unavailable" disabled><span>Unavailable</span><svg><use href="#i-lock"/></svg></button><span class="system-note"><svg><use href="#i-lock"/></svg>${escapeHtml(command.reason)}</span></div></div>`;
+    return `<div class="access-cell"><div><button type="button" class="access-unavailable" disabled><svg><use href="#i-lock"/></svg><span>Unavailable</span></button><span class="system-note"><svg><use href="#i-lock"/></svg>${escapeHtml(command.reason)}</span></div></div>`;
   }
-  const isOpen = openAccessIndex === index;
   return `<div class="access-cell">
-    <button type="button" class="access-button" data-state="${command.state}" data-access-index="${index}" aria-expanded="${isOpen}"><span>${stateLabel(command.state)}</span><svg><use href="#i-chevron-down"/></svg></button>
-    <div class="access-menu" data-menu-index="${index}" ${isOpen ? '' : 'hidden'}>
-      <button type="button" data-choice="allowed" data-command-index="${index}"><svg><use href="#i-check"/></svg>Allow</button>
-      <button type="button" data-choice="blocked" data-command-index="${index}"><svg><use href="#i-ban"/></svg>Block</button>
-      <button type="button" data-choice="off" data-command-index="${index}"><svg><use href="#i-refresh"/></svg>Turn off</button>
+    <div class="access-segmented" role="group" aria-label="Access for ${escapeHtml(command.name)}">
+      <button type="button" class="access-option" data-choice="off" data-command-index="${index}" aria-pressed="${command.state === 'off'}"><svg><use href="#i-refresh"/></svg>Off</button>
+      <button type="button" class="access-option" data-choice="allowed" data-command-index="${index}" aria-pressed="${command.state === 'allowed'}"><svg><use href="#i-check"/></svg>Allow</button>
+      <button type="button" class="access-option" data-choice="blocked" data-command-index="${index}" aria-pressed="${command.state === 'blocked'}"><svg><use href="#i-ban"/></svg>Block</button>
     </div>
   </div>`;
 }
@@ -89,8 +83,7 @@ function commandRow(command, index) {
       <p class="command-summary">${escapeHtml(command.summary)}</p>
     </div>
     <div><span class="risk-pill" data-risk="${command.risk}">${escapeHtml(command.risk)}</span></div>
-    <label class="cell-select"><select data-purpose-index="${index}" ${isSystemExcluded(command) ? 'disabled' : ''}>${['navigation','capture','planning','query','formatting','system','other'].map((purpose) => `<option value="${purpose}" ${purpose === command.purpose ? 'selected' : ''}>${purposeLabel(purpose)}</option>`).join('')}</select><svg><use href="#i-chevron-down"/></svg></label>
-    ${accessMenu(command, index)}
+    ${accessControl(command, index)}
   </article>`;
 }
 
@@ -154,7 +147,6 @@ function openBulkConfirm(mode) {
 }
 
 function closeMenus() {
-  openAccessIndex = null;
   batchMenu.hidden = true;
   batchToggle.setAttribute('aria-expanded', 'false');
 }
@@ -167,27 +159,12 @@ function showToast(message) {
 }
 
 commandList.addEventListener('click', (event) => {
-  const accessButton = event.target.closest('[data-access-index]');
-  if (accessButton) {
-    const index = Number(accessButton.dataset.accessIndex);
-    openAccessIndex = openAccessIndex === index ? null : index;
-    batchMenu.hidden = true;
-    render();
-    return;
-  }
   const choice = event.target.closest('[data-choice]');
   if (!choice) return;
   const index = Number(choice.dataset.commandIndex);
   commands[index].state = choice.dataset.choice;
-  openAccessIndex = null;
   render();
   showToast(`${commands[index].name}: ${stateLabel(commands[index].state)}`);
-});
-
-commandList.addEventListener('change', (event) => {
-  const select = event.target.closest('[data-purpose-index]');
-  if (!select) return;
-  commands[Number(select.dataset.purposeIndex)].purpose = select.value;
 });
 
 for (const control of [searchInput, pluginFilter, riskFilter, stateFilter]) {
@@ -227,7 +204,59 @@ document.getElementById('confirm-bulk').addEventListener('click', () => {
 });
 bulkModal.addEventListener('click', (event) => { if (event.target === bulkModal) bulkModal.hidden = true; });
 
-document.getElementById('scan-button').addEventListener('click', () => showToast('Scan complete · 10 commands found'));
+function runScan() {
+  if (scanTimer) return;
+  const steps = [
+    { plugin: 'Reading Obsidian command registry…', plugins: 0, commands: 0, percent: 8 },
+    { plugin: 'Calendar · checking 2 commands', plugins: 1, commands: 2, percent: 24 },
+    { plugin: 'Periodic Notes · checking editor requirements', plugins: 2, commands: 4, percent: 42 },
+    { plugin: 'Dataview · classifying maintenance commands', plugins: 3, commands: 6, percent: 58 },
+    { plugin: 'Templater · detecting modal-only commands', plugins: 4, commands: 8, percent: 74 },
+    { plugin: 'QuickAdd and File Chucker · final preflight', plugins: 6, commands: 10, percent: 93 },
+    { plugin: 'Source hashes recorded · access decisions unchanged', plugins: 6, commands: 10, percent: 100 },
+  ];
+  let index = 0;
+  const scanButton = document.getElementById('scan-button');
+  const analyzeButton = document.getElementById('analyze-button');
+  const scanProgress = document.getElementById('scan-progress');
+  scanProgress.hidden = false;
+  scanButton.disabled = true;
+  analyzeButton.disabled = true;
+  scanButton.classList.add('is-scanning');
+  document.getElementById('scan-button-label').textContent = 'Scanning…';
+  commandList.classList.add('is-scanning');
+  commandList.setAttribute('aria-busy', 'true');
+
+  const applyStep = () => {
+    const step = steps[index];
+    document.getElementById('scan-current-plugin').textContent = step.plugin;
+    document.getElementById('scan-plugin-count').textContent = `${step.plugins} / 6 plugins`;
+    document.getElementById('scan-command-count').textContent = `${step.commands} commands found`;
+    document.getElementById('scan-percent').textContent = `${step.percent}%`;
+    document.getElementById('scan-progress-bar').style.width = `${step.percent}%`;
+    if (step.percent === 100) document.getElementById('scan-phase').textContent = 'Scan complete';
+    index += 1;
+    if (index < steps.length) return;
+    window.clearInterval(scanTimer);
+    scanTimer = null;
+    window.setTimeout(() => {
+      scanProgress.hidden = true;
+      scanButton.disabled = false;
+      analyzeButton.disabled = false;
+      scanButton.classList.remove('is-scanning');
+      document.getElementById('scan-button-label').textContent = 'Scan';
+      commandList.classList.remove('is-scanning');
+      commandList.setAttribute('aria-busy', 'false');
+      document.getElementById('scan-phase').textContent = 'Scanning enabled plugins';
+      showToast('Scan complete · 10 commands found · access unchanged');
+    }, 700);
+  };
+
+  applyStep();
+  scanTimer = window.setInterval(applyStep, 360);
+}
+
+document.getElementById('scan-button').addEventListener('click', runScan);
 document.getElementById('analyze-button').addEventListener('click', () => showToast('AI draft refreshed · access unchanged'));
 document.getElementById('reset-demo').addEventListener('click', () => {
   commands = structuredClone(initialCommands);
