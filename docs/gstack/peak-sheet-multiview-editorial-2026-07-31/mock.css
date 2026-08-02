@@ -2151,10 +2151,14 @@ body[data-visual-version="editorial-v2"] .gallery-card:hover {
 }
 
 body[data-visual-version="editorial-v2"] .calendar-day {
+  position: relative;
   padding: 7px;
   border-right: 1px solid var(--line-soft);
   border-bottom: 1px solid var(--line-soft);
   background: var(--surface);
+  cursor: cell;
+  outline: 0;
+  user-select: none;
 }
 
 body[data-visual-version="editorial-v2"] .calendar-day.is-weekend {
@@ -2164,6 +2168,42 @@ body[data-visual-version="editorial-v2"] .calendar-day.is-weekend {
 body[data-visual-version="editorial-v2"] .calendar-day.is-outside {
   background: color-mix(in srgb, var(--surface-2) 55%, var(--surface));
   color: var(--quiet);
+}
+
+body[data-visual-version="editorial-v2"] .calendar-day:focus-visible {
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+  z-index: 2;
+}
+
+body[data-visual-version="editorial-v2"] .calendar-day.is-range-selected,
+body[data-visual-version="editorial-v2"] .calendar-day.is-range-selected.is-weekend,
+body[data-visual-version="editorial-v2"] .calendar-day.is-range-selected.is-outside {
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+  z-index: 1;
+}
+
+body[data-visual-version="editorial-v2"] .calendar-day.is-range-selected::after {
+  position: absolute;
+  z-index: 0;
+  inset: -1px 0;
+  border-top: 1.5px solid var(--accent);
+  border-bottom: 1.5px solid var(--accent);
+  pointer-events: none;
+  content: "";
+}
+
+body[data-visual-version="editorial-v2"] .calendar-day.is-range-start::after {
+  border-left: 1.5px solid var(--accent);
+  border-radius: 5px 0 0 5px;
+}
+
+body[data-visual-version="editorial-v2"] .calendar-day.is-range-end::after {
+  border-right: 1.5px solid var(--accent);
+  border-radius: 0 5px 5px 0;
+}
+
+body[data-visual-version="editorial-v2"] .calendar-day.is-range-start.is-range-end::after {
+  border-radius: 5px;
 }
 
 body[data-visual-version="editorial-v2"] .calendar-date {
@@ -2194,6 +2234,8 @@ body[data-visual-version="editorial-v2"] .calendar-day.is-today .calendar-date >
 }
 
 body[data-visual-version="editorial-v2"] .calendar-event {
+  position: relative;
+  z-index: 1;
   display: grid;
   width: 100%;
   min-height: 29px;
@@ -2209,6 +2251,11 @@ body[data-visual-version="editorial-v2"] .calendar-event {
   color: var(--text-soft);
   text-align: left;
   box-shadow: none;
+  cursor: pointer;
+}
+
+body[data-visual-version="editorial-v2"] .calendar-event:hover {
+  background: color-mix(in srgb, var(--event-color) 13%, var(--surface));
 }
 
 body[data-visual-version="editorial-v2"] .calendar-event > span {
@@ -2232,11 +2279,11 @@ body[data-visual-version="editorial-v2"] .calendar-event > em {
 }
 
 body[data-visual-version="editorial-v2"] .calendar-view {
-  grid-template-rows: 52px minmax(0, 1fr);
+  grid-template-rows: 58px minmax(0, 1fr);
 }
 
 body[data-visual-version="editorial-v2"] .calendar-heading {
-  padding: 0 14px;
+  padding: 0 16px 0 18px;
   border-bottom: 1px solid var(--line);
   background: var(--surface);
 }
@@ -2247,13 +2294,14 @@ body[data-visual-version="editorial-v2"] .calendar-period {
 }
 
 body[data-visual-version="editorial-v2"] .calendar-period strong {
-  font-size: 11.5px;
-  font-weight: 620;
+  font-size: 13px;
+  font-weight: 660;
+  letter-spacing: -.015em;
 }
 
 body[data-visual-version="editorial-v2"] .calendar-period small {
   margin-top: 0;
-  font-size: 9px;
+  font-size: 8.5px;
 }
 
 body[data-visual-version="editorial-v2"] .calendar-actions {
@@ -2271,17 +2319,28 @@ body[data-visual-version="editorial-v2"] .calendar-actions > span {
   align-items: center;
   padding: 0 8px;
   border: 1px solid var(--line);
-  border-radius: 2px;
+  border-radius: 4px;
   background: var(--surface);
   color: var(--muted);
   font-size: 9px;
 }
 
-body[data-visual-version="editorial-v2"] .calendar-actions button:nth-of-type(2),
-body[data-visual-version="editorial-v2"] .calendar-actions button:nth-of-type(3) {
+body[data-visual-version="editorial-v2"] .calendar-actions button:nth-of-type(3),
+body[data-visual-version="editorial-v2"] .calendar-actions button:nth-of-type(4) {
   width: 27px;
   justify-content: center;
   padding: 0;
+}
+
+body[data-visual-version="editorial-v2"] .calendar-actions .calendar-create {
+  gap: 5px;
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--surface);
+}
+
+body[data-visual-version="editorial-v2"] .calendar-actions .calendar-create svg {
+  width: 11px;
 }
 
 body[data-visual-version="editorial-v2"] .calendar-actions > span {
@@ -2293,7 +2352,7 @@ body[data-visual-version="editorial-v2"] .calendar-body {
   display: grid;
   min-width: 0;
   min-height: 0;
-  grid-template-columns: minmax(0, 1fr) 276px;
+  grid-template-columns: minmax(0, 1fr) 320px;
   overflow: hidden;
 }
 
@@ -2338,6 +2397,37 @@ body[data-visual-version="editorial-v2"] .calendar-agenda > header {
   gap: 8px;
   padding: 13px 12px 11px;
   border-bottom: 1px solid var(--line);
+}
+
+body[data-visual-version="editorial-v2"] .calendar-agenda > .calendar-editor-header {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  justify-content: initial;
+  gap: 9px;
+  padding: 12px;
+}
+
+body[data-visual-version="editorial-v2"] .calendar-editor-header > button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--muted);
+}
+
+body[data-visual-version="editorial-v2"] .calendar-editor-header > button svg {
+  width: 10px;
+  transform: rotate(180deg);
+}
+
+body[data-visual-version="editorial-v2"] .calendar-editor-header > span {
+  display: grid;
+  gap: 3px;
 }
 
 body[data-visual-version="editorial-v2"] .calendar-agenda > header > span {
@@ -2424,6 +2514,107 @@ body[data-visual-version="editorial-v2"] .calendar-agenda > footer {
 body[data-visual-version="editorial-v2"] .calendar-agenda > footer b {
   color: var(--text-soft);
   font-weight: 560;
+}
+
+body[data-visual-version="editorial-v2"] .calendar-editor {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 14px;
+  padding: 15px 13px 13px;
+  overflow-y: auto;
+}
+
+body[data-visual-version="editorial-v2"] .calendar-date-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 9px;
+}
+
+body[data-visual-version="editorial-v2"] .calendar-field {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 8.5px;
+}
+
+body[data-visual-version="editorial-v2"] .calendar-field-title > span {
+  color: var(--text-soft);
+  font-weight: 600;
+}
+
+body[data-visual-version="editorial-v2"] .calendar-field input,
+body[data-visual-version="editorial-v2"] .calendar-field select {
+  width: 100%;
+  height: 34px;
+  min-width: 0;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  outline: 0;
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 9.5px;
+}
+
+body[data-visual-version="editorial-v2"] .calendar-field input:focus,
+body[data-visual-version="editorial-v2"] .calendar-field select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+body[data-visual-version="editorial-v2"] .calendar-editor-note {
+  padding: 9px 10px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--quiet);
+  font-size: 8px;
+  line-height: 1.55;
+}
+
+body[data-visual-version="editorial-v2"] .calendar-editor > footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+}
+
+body[data-visual-version="editorial-v2"] .calendar-editor > footer > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+body[data-visual-version="editorial-v2"] .calendar-editor > footer button {
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text-soft);
+  font-size: 8.5px;
+}
+
+body[data-visual-version="editorial-v2"] .calendar-editor > footer .calendar-save {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--surface);
+}
+
+body[data-visual-version="editorial-v2"] .calendar-editor > footer .calendar-delete {
+  border-color: transparent;
+  background: transparent;
+  color: var(--red);
+}
+
+body.is-calendar-range-selecting,
+body.is-calendar-range-selecting * {
+  cursor: cell !important;
 }
 
 body[data-visual-version="editorial-v2"] .dashboard {

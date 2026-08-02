@@ -904,15 +904,60 @@ await page.click('[data-board-add="offer"]');
 assert.match(await page.textContent('#toast-title'), /添加到Offer/);
 await page.click('[data-board-control="fields"]');
 assert.match(await page.textContent('#toast-title'), /看板视图配置/);
+await page.evaluate(() => { document.querySelector('#toast').hidden = true; });
 
 await page.click('[data-view="calendar"]');
 await page.waitForSelector('.calendar-grid');
 assert.equal(await page.locator('.calendar-day').count(), 35);
 assert.equal(await page.locator('.calendar-event').count(), 6);
 assert.equal(await page.locator('.agenda-list button').count(), 4);
-assert.match(await page.textContent('.calendar-agenda'), /面试时间 · 下一步/);
+assert.match(await page.textContent('.calendar-agenda'), /拖动日期可创建范围安排/);
+assert.equal(await page.locator('#create-calendar-event').count(), 1);
 await settleMotion();
 await page.screenshot({ path: path.join(dir, 'preview-calendar.png') });
+
+const calendarRangeStart = await page.locator('[data-calendar-index="15"]').boundingBox();
+const calendarRangeEnd = await page.locator('[data-calendar-index="17"]').boundingBox();
+assert.ok(calendarRangeStart && calendarRangeEnd, 'calendar range endpoints should be visible');
+await page.mouse.move(calendarRangeStart.x + (calendarRangeStart.width / 2), calendarRangeStart.y + (calendarRangeStart.height / 2));
+await page.mouse.down();
+await page.mouse.move(calendarRangeEnd.x + (calendarRangeEnd.width / 2), calendarRangeEnd.y + (calendarRangeEnd.height / 2), { steps: 8 });
+await page.mouse.up();
+await page.waitForSelector('#calendar-event-form');
+assert.equal(await page.locator('.calendar-day.is-range-selected').count(), 3);
+assert.equal(await page.inputValue('#calendar-event-start'), '2026-07-14');
+assert.equal(await page.inputValue('#calendar-event-end'), '2026-07-16');
+assert.match(await page.textContent('.calendar-editor-header'), /7月14日 — 7月16日/);
+await settleMotion();
+await page.screenshot({ path: path.join(dir, 'preview-calendar-range.png') });
+
+await page.fill('#calendar-event-title', '准备作品集案例');
+await page.fill('#calendar-event-time', '全天');
+await page.selectOption('#calendar-event-kind', { label: '跟进' });
+await page.selectOption('#calendar-event-record', 'alpine');
+await page.click('.calendar-save');
+assert.match(await page.textContent('#toast-title'), /安排已创建/);
+assert.equal(await page.locator('.calendar-event').count(), 7);
+assert.match(await page.textContent('.calendar-grid'), /准备作品集案例/);
+await page.evaluate(() => { document.querySelector('#toast').hidden = true; });
+
+await page.locator('[data-calendar-event-id="calendar-user-7"]').first().click();
+await page.waitForSelector('#calendar-event-form');
+assert.equal(await page.inputValue('#calendar-event-title'), '准备作品集案例');
+assert.equal(await page.locator('#delete-calendar-event').count(), 1);
+await page.fill('#calendar-event-title', '准备作品集与系统设计案例');
+await page.fill('#calendar-event-time', '13:30');
+await settleMotion();
+await page.screenshot({ path: path.join(dir, 'preview-calendar-edit.png') });
+await page.click('.calendar-save');
+assert.match(await page.textContent('#toast-title'), /安排已更新/);
+assert.match(await page.textContent('.calendar-grid'), /准备作品集与系统设计案例/);
+
+await page.locator('[data-calendar-event-id="calendar-user-7"]').first().click();
+await page.click('#delete-calendar-event');
+assert.match(await page.textContent('#toast-title'), /安排已删除/);
+assert.equal(await page.locator('.calendar-event').count(), 6);
+assert.doesNotMatch(await page.textContent('.calendar-grid'), /准备作品集与系统设计案例/);
 
 await page.click('#add-view');
 await page.waitForSelector('#view-menu:not([hidden])');
@@ -995,6 +1040,6 @@ console.log(JSON.stringify({
   },
   localLinks: localHrefs.length,
   viewsChecked: ['table', 'board', 'calendar'],
-  flowsChecked: ['long-text-reader', 'bounded-row-wrap', 'independent-role-edit', 'inline-text-edit', 'typed-select-edit', 'numeric-edit', 'checkbox-toggle', 'keyboard-f2-cancel', 'keyboard-tab-commit', 'single-click-keyboard-edit', 'scroll-continuity', 'frozen-cell-selection', 'rectangular-cell-drag-selection', 'native-text-selection-suppression', 'bounded-cell-editor', 'stable-row-hover', 'computed-cell-readonly', 'selection-stat-recompute', 'theme-switch', 'number-format', 'persistent-field-workbench', 'saved-custom-field', 'formula-bar-ai-entry', 'bounded-formula-actions', 'ai-formula-candidates', 'ai-filter-composition', 'multi-priority-sort', 'multi-level-group', 'compact-toolbar-search', 'configurable-dedupe-fields', 'dedupe-preview', 'copilot-session-analysis', 'selection-statistics', 'board-workflow', 'calendar-agenda', 'copilot-html-artifacts', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
-  screenshots: ['preview.png', 'preview-table.png', 'preview-table-types.png', 'preview-long-text.png', 'preview-long-text-wrap.png', 'preview-cell-edit.png', 'preview-frozen-selection.png', 'preview-cell-range.png', 'preview-dark.png', 'preview-format.png', 'preview-fields.png', 'preview-field-added.png', 'preview-formula-inline.png', 'preview-formula.png', 'preview-filter-panel.png', 'preview-filter-rule.png', 'preview-sort-panel.png', 'preview-group-panel.png', 'preview-group-rule.png', 'preview-dedupe-panel.png', 'preview-analysis.png', 'preview-board.png', 'preview-calendar.png', 'preview-html-artifact.png', 'preview-plan.png', 'preview-mobile.png'],
+  flowsChecked: ['long-text-reader', 'bounded-row-wrap', 'independent-role-edit', 'inline-text-edit', 'typed-select-edit', 'numeric-edit', 'checkbox-toggle', 'keyboard-f2-cancel', 'keyboard-tab-commit', 'single-click-keyboard-edit', 'scroll-continuity', 'frozen-cell-selection', 'rectangular-cell-drag-selection', 'native-text-selection-suppression', 'bounded-cell-editor', 'stable-row-hover', 'computed-cell-readonly', 'selection-stat-recompute', 'theme-switch', 'number-format', 'persistent-field-workbench', 'saved-custom-field', 'formula-bar-ai-entry', 'bounded-formula-actions', 'ai-formula-candidates', 'ai-filter-composition', 'multi-priority-sort', 'multi-level-group', 'compact-toolbar-search', 'configurable-dedupe-fields', 'dedupe-preview', 'copilot-session-analysis', 'selection-statistics', 'board-workflow', 'calendar-agenda', 'calendar-range-crud', 'copilot-html-artifacts', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
+  screenshots: ['preview.png', 'preview-table.png', 'preview-table-types.png', 'preview-long-text.png', 'preview-long-text-wrap.png', 'preview-cell-edit.png', 'preview-frozen-selection.png', 'preview-cell-range.png', 'preview-dark.png', 'preview-format.png', 'preview-fields.png', 'preview-field-added.png', 'preview-formula-inline.png', 'preview-formula.png', 'preview-filter-panel.png', 'preview-filter-rule.png', 'preview-sort-panel.png', 'preview-group-panel.png', 'preview-group-rule.png', 'preview-dedupe-panel.png', 'preview-analysis.png', 'preview-board.png', 'preview-calendar.png', 'preview-calendar-range.png', 'preview-calendar-edit.png', 'preview-html-artifact.png', 'preview-plan.png', 'preview-mobile.png'],
 }, null, 2));

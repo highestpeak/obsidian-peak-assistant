@@ -729,6 +729,19 @@ const state = {
   editingCell: null,
 };
 
+const calendarStartUtc = Date.UTC(2026, 5, 29);
+const calendarEvents = [
+  { id: 'calendar-tide', recordId: 'tide', title: '系统设计面试', startIndex: 11, endIndex: 11, type: 'purple', time: '10:30', kind: '面试' },
+  { id: 'calendar-fern', recordId: 'fern', title: '文化面试', startIndex: 12, endIndex: 12, type: 'purple', time: '14:00', kind: '面试' },
+  { id: 'calendar-aster', recordId: 'aster', title: 'Offer 比较', startIndex: 14, endIndex: 14, type: 'green', time: '09:00', kind: '决策' },
+  { id: 'calendar-koru', recordId: 'koru', title: '二次跟进', startIndex: 18, endIndex: 18, type: 'amber', time: '16:00', kind: '跟进' },
+  { id: 'calendar-halcyon', recordId: 'halcyon', title: '反馈窗口', startIndex: 20, endIndex: 20, type: 'blue', time: '全天', kind: '反馈' },
+  { id: 'calendar-northstar', recordId: 'northstar', title: '联系推荐人', startIndex: 25, endIndex: 25, type: 'amber', time: '11:00', kind: '跟进' },
+];
+let calendarEventSequence = calendarEvents.length;
+let calendarSelection = null;
+let calendarRangeDrag = null;
+
 const stage = document.querySelector('#view-stage');
 const workspace = document.querySelector('.workspace');
 const filterLine = document.querySelector('#filter-line');
@@ -1221,73 +1234,272 @@ function renderBoard() {
   });
 }
 
-function renderCalendar() {
-  const days = [
-    ['29', true], ['30', true], ['1'], ['2'], ['3'], ['4'], ['5'],
-    ['6'], ['7'], ['8'], ['9'], ['10'], ['11'], ['12'],
-    ['13'], ['14'], ['15'], ['16'], ['17'], ['18'], ['19'],
-    ['20'], ['21'], ['22'], ['23'], ['24'], ['25'], ['26'],
-    ['27'], ['28'], ['29'], ['30'], ['31'], ['1', true], ['2', true],
-  ];
-  const events = {
-    11: [{ recordId: 'tide', title: 'Tide · 系统设计', type: 'purple', time: '10:30', kind: '面试' }],
-    12: [{ recordId: 'fern', title: 'Fern · 文化面试', type: 'purple', time: '14:00', kind: '面试' }],
-    14: [{ recordId: 'aster', title: 'Aster · Offer 比较', type: 'green', time: '09:00', kind: '决策' }],
-    18: [{ recordId: 'koru', title: 'Koru · 二次跟进', type: 'amber', time: '16:00', kind: '跟进' }],
-    20: [{ recordId: 'halcyon', title: 'Halcyon · 反馈窗口', type: 'blue', time: '全天', kind: '反馈' }],
-    25: [{ recordId: 'northstar', title: 'Northstar · 推荐人', type: 'amber', time: '11:00', kind: '跟进' }],
-  };
-  const colorMap = {
-    green: 'var(--green)',
-    purple: 'var(--purple)',
-    amber: 'var(--amber)',
-    blue: 'var(--blue)',
-  };
-  const cells = days.map(([day, outside], index) => {
-    const dayEvents = (events[index] ?? []).map((event) => `
-      <button type="button" class="calendar-event" data-calendar-record="${event.recordId}" style="--event-color:${colorMap[event.type]}">
-        <span><b>${event.time}</b>${event.title}</span><em>${event.kind}</em>
-      </button>
-    `).join('');
-    const today = index === 11;
-    const weekend = index % 7 >= 5;
-    return `<div class="calendar-day ${outside ? 'is-outside' : ''} ${today ? 'is-today' : ''} ${weekend ? 'is-weekend' : ''}"><span class="calendar-date"><b>${day}</b>${today ? '<em>今天</em>' : ''}</span>${dayEvents}</div>`;
-  }).join('');
+const calendarColorMap = {
+  green: 'var(--green)',
+  purple: 'var(--purple)',
+  amber: 'var(--amber)',
+  blue: 'var(--blue)',
+};
 
+const calendarKindMap = {
+  面试: 'purple',
+  决策: 'green',
+  跟进: 'amber',
+  反馈: 'blue',
+};
+
+function calendarDateValue(index) {
+  return new Date(calendarStartUtc + (index * 86400000)).toISOString().slice(0, 10);
+}
+
+function calendarIndexFromValue(value) {
+  const parsed = Date.parse(`${value}T00:00:00Z`);
+  if (!Number.isFinite(parsed)) return 11;
+  return Math.max(0, Math.min(34, Math.round((parsed - calendarStartUtc) / 86400000)));
+}
+
+function calendarDateParts(index) {
+  const date = new Date(calendarStartUtc + (index * 86400000));
+  return {
+    day: date.getUTCDate(),
+    month: date.getUTCMonth() + 1,
+    weekday: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][date.getUTCDay()],
+    weekend: date.getUTCDay() === 0 || date.getUTCDay() === 6,
+    outside: date.getUTCMonth() !== 6,
+  };
+}
+
+function calendarRangeLabel(startIndex, endIndex) {
+  const start = calendarDateParts(startIndex);
+  const end = calendarDateParts(endIndex);
+  if (startIndex === endIndex) return `${start.month}月${start.day}日`;
+  return `${start.month}月${start.day}日 — ${end.month}月${end.day}日`;
+}
+
+function calendarEventName(event) {
+  const record = records.find((candidate) => candidate.id === event.recordId);
+  return record ? `${record.company} · ${event.title}` : event.title;
+}
+
+function calendarEventMarkup(event) {
+  const duration = event.endIndex - event.startIndex + 1;
+  return `
+    <button type="button" class="calendar-event" data-calendar-event-id="${event.id}" data-calendar-record="${event.recordId ?? ''}" style="--event-color:${calendarColorMap[event.type]}">
+      <span><b>${escapeHtml(event.time)}</b>${escapeHtml(calendarEventName(event))}</span><em>${duration > 1 ? `${duration} 天` : escapeHtml(event.kind)}</em>
+    </button>
+  `;
+}
+
+function calendarAgendaMarkup() {
+  const agendaEvents = calendarEvents
+    .filter((event) => event.startIndex >= 11 && event.startIndex <= 18)
+    .sort((first, second) => first.startIndex - second.startIndex)
+    .slice(0, 4);
+  return `
+    <header><span><strong>接下来 7 天</strong><small>${agendaEvents.length} 个行动窗口</small></span><em>7/10—7/17</em></header>
+    <div class="agenda-list">
+      ${agendaEvents.map((event) => {
+        const date = calendarDateParts(event.startIndex);
+        const record = records.find((candidate) => candidate.id === event.recordId);
+        return `
+          <button type="button" data-calendar-event-id="${event.id}">
+            <span><b>${date.day}</b><small>${date.weekday}</small></span>
+            <span><strong>${escapeHtml(record?.company ?? event.title)}</strong><small>${escapeHtml(event.time)} · ${escapeHtml(event.title)}</small></span>
+            <em>${escapeHtml(event.kind)}</em>
+          </button>
+        `;
+      }).join('')}
+    </div>
+    <footer><span>单击事件查看与编辑</span><b>拖动日期可创建范围安排</b></footer>
+  `;
+}
+
+function paintCalendarSelection() {
+  stage.querySelectorAll('.calendar-day').forEach((day) => {
+    const index = Number(day.dataset.calendarIndex);
+    const selected = calendarSelection && index >= calendarSelection.startIndex && index <= calendarSelection.endIndex;
+    day.classList.toggle('is-range-selected', Boolean(selected));
+    day.classList.toggle('is-range-start', Boolean(selected && index === calendarSelection.startIndex));
+    day.classList.toggle('is-range-end', Boolean(selected && index === calendarSelection.endIndex));
+    day.setAttribute('aria-selected', String(Boolean(selected)));
+  });
+}
+
+function bindCalendarEventButtons() {
+  stage.querySelectorAll('[data-calendar-event-id]').forEach((button) => {
+    button.addEventListener('pointerdown', (event) => event.stopPropagation());
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const calendarEvent = calendarEvents.find((candidate) => candidate.id === button.dataset.calendarEventId);
+      if (!calendarEvent) return;
+      openCalendarEditor(calendarEvent);
+    });
+  });
+}
+
+function showCalendarAgenda() {
+  const sidecar = stage.querySelector('.calendar-agenda');
+  if (!sidecar) return;
+  calendarSelection = null;
+  paintCalendarSelection();
+  sidecar.innerHTML = calendarAgendaMarkup();
+  bindCalendarEventButtons();
+}
+
+function openCalendarEditor(calendarEvent = null, range = calendarSelection) {
+  const sidecar = stage.querySelector('.calendar-agenda');
+  if (!sidecar) return;
+  const isNew = !calendarEvent;
+  const startIndex = calendarEvent?.startIndex ?? range?.startIndex ?? 11;
+  const endIndex = calendarEvent?.endIndex ?? range?.endIndex ?? startIndex;
+  calendarSelection = { startIndex: Math.min(startIndex, endIndex), endIndex: Math.max(startIndex, endIndex) };
+  paintCalendarSelection();
+  const selectedRecord = calendarEvent?.recordId ?? '';
+  sidecar.innerHTML = `
+    <header class="calendar-editor-header">
+      <button type="button" data-calendar-back aria-label="返回议程">${icon('i-chevron')}</button>
+      <span><strong>${isNew ? '新建安排' : '安排详情'}</strong><small>${calendarRangeLabel(calendarSelection.startIndex, calendarSelection.endIndex)}</small></span>
+    </header>
+    <form class="calendar-editor" id="calendar-event-form">
+      <label class="calendar-field calendar-field-title"><span>标题</span><input id="calendar-event-title" name="title" value="${escapeHtml(calendarEvent?.title ?? '')}" placeholder="例如：准备系统设计案例" required></label>
+      <div class="calendar-date-fields">
+        <label class="calendar-field"><span>开始</span><input id="calendar-event-start" name="start" type="date" value="${calendarDateValue(calendarSelection.startIndex)}"></label>
+        <label class="calendar-field"><span>结束</span><input id="calendar-event-end" name="end" type="date" value="${calendarDateValue(calendarSelection.endIndex)}"></label>
+      </div>
+      <div class="calendar-date-fields">
+        <label class="calendar-field"><span>时间</span><input id="calendar-event-time" name="time" value="${escapeHtml(calendarEvent?.time ?? '09:00')}" placeholder="全天或 09:00"></label>
+        <label class="calendar-field"><span>类型</span><select id="calendar-event-kind" name="kind">${Object.keys(calendarKindMap).map((kind) => `<option ${calendarEvent?.kind === kind ? 'selected' : ''}>${kind}</option>`).join('')}</select></label>
+      </div>
+      <label class="calendar-field"><span>关联记录</span><select id="calendar-event-record" name="recordId"><option value="">不关联记录</option>${records.filter((record) => record.stageKey !== 'ended').map((record) => `<option value="${record.id}" ${selectedRecord === record.id ? 'selected' : ''}>${escapeHtml(record.company)} · ${escapeHtml(record.role)}</option>`).join('')}</select></label>
+      <span class="calendar-editor-note">保存后只更新当前 Dataset 的日历投影；设计稿不会改写 Markdown 源文件。</span>
+      <footer>
+        ${isNew ? '<span></span>' : '<button type="button" class="calendar-delete" id="delete-calendar-event">删除</button>'}
+        <span><button type="button" data-calendar-back>取消</button><button type="submit" class="calendar-save">${isNew ? '创建安排' : '保存更改'}</button></span>
+      </footer>
+    </form>
+  `;
+  sidecar.querySelectorAll('[data-calendar-back]').forEach((button) => button.addEventListener('click', showCalendarAgenda));
+  const syncRange = () => {
+    const start = calendarIndexFromValue(sidecar.querySelector('#calendar-event-start').value);
+    const end = calendarIndexFromValue(sidecar.querySelector('#calendar-event-end').value);
+    calendarSelection = { startIndex: Math.min(start, end), endIndex: Math.max(start, end) };
+    sidecar.querySelector('.calendar-editor-header small').textContent = calendarRangeLabel(calendarSelection.startIndex, calendarSelection.endIndex);
+    paintCalendarSelection();
+  };
+  sidecar.querySelector('#calendar-event-start').addEventListener('change', syncRange);
+  sidecar.querySelector('#calendar-event-end').addEventListener('change', syncRange);
+  sidecar.querySelector('#calendar-event-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    syncRange();
+    const data = new FormData(event.currentTarget);
+    const kind = String(data.get('kind'));
+    const nextEvent = {
+      id: calendarEvent?.id ?? `calendar-user-${++calendarEventSequence}`,
+      recordId: String(data.get('recordId') ?? ''),
+      title: String(data.get('title') ?? '').trim(),
+      startIndex: calendarSelection.startIndex,
+      endIndex: calendarSelection.endIndex,
+      type: calendarKindMap[kind] ?? 'blue',
+      time: String(data.get('time') ?? '').trim() || '全天',
+      kind,
+    };
+    if (calendarEvent) Object.assign(calendarEvent, nextEvent);
+    else calendarEvents.push(nextEvent);
+    showToast(isNew ? '安排已创建' : '安排已更新', `${calendarRangeLabel(nextEvent.startIndex, nextEvent.endIndex)} · ${nextEvent.title}`);
+    renderCalendar();
+  });
+  sidecar.querySelector('#delete-calendar-event')?.addEventListener('click', () => {
+    const index = calendarEvents.findIndex((candidate) => candidate.id === calendarEvent.id);
+    if (index < 0) return;
+    const [deleted] = calendarEvents.splice(index, 1);
+    showToast('安排已删除', deleted.title);
+    renderCalendar();
+  });
+  sidecar.querySelector('#calendar-event-title').focus();
+}
+
+function renderCalendar() {
+  calendarSelection = null;
+  calendarRangeDrag = null;
+  document.body.classList.remove('is-calendar-range-selecting');
+  const cells = Array.from({ length: 35 }, (_, index) => {
+    const date = calendarDateParts(index);
+    const dayEvents = calendarEvents.filter((event) => event.startIndex === index).map(calendarEventMarkup).join('');
+    const today = index === 11;
+    return `
+      <div class="calendar-day ${date.outside ? 'is-outside' : ''} ${today ? 'is-today' : ''} ${date.weekend ? 'is-weekend' : ''}" data-calendar-index="${index}" data-calendar-date="${calendarDateValue(index)}" role="gridcell" tabindex="0" aria-selected="false">
+        <span class="calendar-date"><b>${date.day}</b>${today ? '<em>今天</em>' : ''}</span>${dayEvents}
+      </div>
+    `;
+  }).join('');
   stage.innerHTML = `
     <section class="calendar-view">
       <header class="calendar-heading">
-        <span class="calendar-period"><strong>2026 年 7 月</strong><small>面试时间与下一步日期 · 6 个事件</small></span>
-        <span class="calendar-actions"><button type="button" data-calendar-nav="today">今天</button><button type="button" data-calendar-nav="previous" aria-label="上个月">‹</button><button type="button" data-calendar-nav="next" aria-label="下个月">›</button><span>月视图</span></span>
+        <span class="calendar-period"><strong>2026 年 7 月</strong><small>拖动日期创建范围 · ${calendarEvents.length} 个事件</small></span>
+        <span class="calendar-actions"><button type="button" class="calendar-create" id="create-calendar-event">${icon('i-plus')}新建安排</button><button type="button" data-calendar-nav="today">今天</button><button type="button" data-calendar-nav="previous" aria-label="上个月">‹</button><button type="button" data-calendar-nav="next" aria-label="下个月">›</button><span>月视图</span></span>
       </header>
       <div class="calendar-body">
         <section class="calendar-month">
           <div class="calendar-weekdays">${['周一', '周二', '周三', '周四', '周五', '周六', '周日'].map((day) => `<span>${day}</span>`).join('')}</div>
-          <div class="calendar-scroll"><div class="calendar-grid">${cells}</div></div>
+          <div class="calendar-scroll"><div class="calendar-grid" role="grid">${cells}</div></div>
         </section>
-        <aside class="calendar-agenda">
-          <header><span><strong>接下来 7 天</strong><small>4 个行动窗口</small></span><em>7/10—7/17</em></header>
-          <div class="agenda-list">
-            <button type="button" data-calendar-record="tide"><span><b>10</b><small>周五</small></span><span><strong>Tide Systems</strong><small>10:30 · 系统设计面试</small></span><em>面试</em></button>
-            <button type="button" data-calendar-record="fern"><span><b>11</b><small>周六</small></span><span><strong>Fern Studio</strong><small>14:00 · 文化面试</small></span><em>面试</em></button>
-            <button type="button" data-calendar-record="aster"><span><b>13</b><small>周一</small></span><span><strong>Aster Labs</strong><small>09:00 · Offer 比较</small></span><em>决策</em></button>
-            <button type="button" data-calendar-record="koru"><span><b>17</b><small>周五</small></span><span><strong>Koru Digital</strong><small>16:00 · 二次跟进</small></span><em>跟进</em></button>
-          </div>
-          <footer><span>事件来自两个日期字段</span><b>面试时间 · 下一步</b></footer>
-        </aside>
+        <aside class="calendar-agenda">${calendarAgendaMarkup()}</aside>
       </div>
     </section>
   `;
-  stage.querySelectorAll('[data-calendar-record]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const record = records.find((candidate) => candidate.id === button.dataset.calendarRecord);
-      if (!record) return;
-      showToast(record.company, `${record.role} · ${record.next}`);
+  bindCalendarEventButtons();
+  const grid = stage.querySelector('.calendar-grid');
+  grid.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0 || event.target.closest('[data-calendar-event-id]')) return;
+    const day = event.target.closest('.calendar-day');
+    if (!day) return;
+    const index = Number(day.dataset.calendarIndex);
+    calendarRangeDrag = { anchor: index };
+    calendarSelection = { startIndex: index, endIndex: index };
+    document.body.classList.add('is-calendar-range-selecting');
+    paintCalendarSelection();
+    event.preventDefault();
+  });
+  grid.addEventListener('pointerover', (event) => {
+    if (!calendarRangeDrag) return;
+    const day = event.target.closest('.calendar-day');
+    if (!day) return;
+    const index = Number(day.dataset.calendarIndex);
+    calendarSelection = {
+      startIndex: Math.min(calendarRangeDrag.anchor, index),
+      endIndex: Math.max(calendarRangeDrag.anchor, index),
+    };
+    paintCalendarSelection();
+  });
+  grid.addEventListener('pointerup', (event) => {
+    if (!calendarRangeDrag) return;
+    const day = event.target.closest('.calendar-day');
+    const index = day ? Number(day.dataset.calendarIndex) : calendarRangeDrag.anchor;
+    calendarSelection = {
+      startIndex: Math.min(calendarRangeDrag.anchor, index),
+      endIndex: Math.max(calendarRangeDrag.anchor, index),
+    };
+    calendarRangeDrag = null;
+    document.body.classList.remove('is-calendar-range-selecting');
+    paintCalendarSelection();
+    openCalendarEditor(null, calendarSelection);
+  });
+  stage.querySelectorAll('.calendar-day').forEach((day) => {
+    day.addEventListener('keydown', (event) => {
+      if (!['Enter', ' '].includes(event.key)) return;
+      event.preventDefault();
+      const index = Number(day.dataset.calendarIndex);
+      calendarSelection = { startIndex: index, endIndex: index };
+      openCalendarEditor(null, calendarSelection);
     });
+  });
+  stage.querySelector('#create-calendar-event').addEventListener('click', () => {
+    calendarSelection = { startIndex: 11, endIndex: 11 };
+    openCalendarEditor(null, calendarSelection);
   });
   stage.querySelectorAll('[data-calendar-nav]').forEach((button) => {
     button.addEventListener('click', () => {
-      showToast('日历范围未改变', '设计稿固定在 2026 年 7 月，用于比较视图结构');
+      showToast('日历范围未改变', '设计稿固定在 2026 年 7 月，用于比较 CRUD 与 Range 交互');
     });
   });
 }
