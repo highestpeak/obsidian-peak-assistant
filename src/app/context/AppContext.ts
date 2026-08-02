@@ -467,6 +467,8 @@ export class AppContext {
 			AppContext.instance.runtimeRegistry.clearSkillRegistry();
 			AppContext.instance.runtimeRegistry.clearMcpClientManager();
 			AppContext.instance.runtimeRegistry.clearCapabilityRegistry();
+			AppContext.instance.runtimeRegistry.clearCommandCenterRuntime();
+			AppContext.instance.runtimeRegistry.clearCommandGateway();
 			AppContext.instance.runtimeRegistry.clearIndexService();
 			AppContext.instance.runtimeRegistry.clearGeneratedOutputPersistenceRuntime();
 			AppContext.instance = null;

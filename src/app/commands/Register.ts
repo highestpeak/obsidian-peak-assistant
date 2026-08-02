@@ -45,6 +45,14 @@ export function buildCoreCommands(
 
 	return [
 		{
+			id: 'peak-open-command-center',
+			name: 'Open Peak Command Center',
+			callback: () => {
+				const runtime = viewManager.appContext.runtimeRegistry.tryGetCommandCenterRuntime();
+				if (runtime) runtime.openLauncher();
+			},
+		},
+		{
 			id: 'peak-open-settings',
 			name: 'Settings',
 			callback: openSettingsModal,

@@ -20,6 +20,7 @@ import {
 	getAISkillsFolder,
 } from '@/core/config/folderPaths';
 import type { DefaultDocumentView } from '@/core/composer';
+import type { CommandCenterBoardConfig } from '@/core/command-center';
 
 export interface ChunkingSettings {
 	maxChunkSize: number;
@@ -392,6 +393,9 @@ export interface MyPluginSettings {
 	/** Peak Composer file-view and workspace routing preferences. */
 	composer: ComposerSettings;
 
+	/** User-owned curated launcher board. Initialized from the template on first use. */
+	commandCenter?: CommandCenterBoardConfig;
+
 }
 
 /**
@@ -454,6 +458,7 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 	harnessSettings: { ...DEFAULT_HARNESS_SETTINGS },
 	debugTrace: { ...DEFAULT_DEBUG_TRACE_SETTINGS },
 	composer: { ...DEFAULT_COMPOSER_SETTINGS },
+	commandCenter: undefined,
 	graphViz: {
 		mstPruneDepth: 2,
 		skeletonBackboneOnly: false,

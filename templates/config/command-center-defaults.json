@@ -1,0 +1,124 @@
+{
+  "version": 1,
+  "modal": {
+    "density": "compact"
+  },
+  "home": {
+    "openOnStartup": false,
+    "replaceEmptyTab": false,
+    "quickAccessActionIds": [
+      "pinned-home",
+      "pinned-usage"
+    ],
+    "pinnedTargetIds": []
+  },
+  "groups": [
+    {
+      "id": "pinned",
+      "label": "Pinned",
+      "icon": { "kind": "lucide", "name": "pin" },
+      "actionLayout": "layered",
+      "order": 0,
+      "actions": [
+        {
+          "id": "pinned-home",
+          "action": { "kind": "view", "viewType": "peak-command-center-home" },
+          "shortLabel": "Home",
+          "aliases": ["start", "dashboard"],
+          "icon": { "kind": "lucide", "name": "house" },
+          "display": "icon-label",
+          "pinnedToHome": true,
+          "order": 0
+        },
+        {
+          "id": "pinned-usage",
+          "action": { "kind": "view", "viewType": "peak-usage-dashboard" },
+          "shortLabel": "Usage",
+          "aliases": ["dashboard", "tokens"],
+          "icon": { "kind": "lucide", "name": "chart-no-axes-column" },
+          "display": "icon-label",
+          "pinnedToHome": true,
+          "order": 1
+        }
+      ]
+    },
+    {
+      "id": "peak-assistant",
+      "label": "Peak Assistant",
+      "icon": { "kind": "lucide", "name": "sparkles" },
+      "actionLayout": "layered",
+      "order": 1,
+      "actions": [
+        {
+          "id": "peak-composer",
+          "action": { "kind": "peak-command", "commandId": "peak-open-document-composer" },
+          "shortLabel": "Composer",
+          "aliases": ["write", "document"],
+          "icon": { "kind": "lucide", "name": "pen-line" },
+          "display": "icon-label",
+          "pinnedToHome": false,
+          "order": 0
+        },
+        {
+          "id": "peak-chat-studio",
+          "action": { "kind": "peak-command", "commandId": "peak-open-chat-studio" },
+          "shortLabel": "Chat Studio",
+          "aliases": ["chat", "conversation"],
+          "icon": { "kind": "lucide", "name": "message-square" },
+          "display": "icon-label",
+          "pinnedToHome": false,
+          "order": 1
+        },
+        {
+          "id": "peak-file-atlas",
+          "action": { "kind": "peak-command", "commandId": "peak-file-atlas-open" },
+          "shortLabel": "File Atlas",
+          "aliases": ["map", "document graph"],
+          "icon": { "kind": "lucide", "name": "map" },
+          "display": "icon-label",
+          "pinnedToHome": false,
+          "order": 2
+        },
+        {
+          "id": "peak-quick-search",
+          "action": { "kind": "peak-command", "commandId": "peak-quick-search" },
+          "shortLabel": "Quick Search",
+          "aliases": ["vault search", "find"],
+          "icon": { "kind": "lucide", "name": "search" },
+          "display": "icon-label",
+          "pinnedToHome": false,
+          "order": 3
+        },
+        {
+          "id": "peak-settings",
+          "action": { "kind": "peak-command", "commandId": "peak-open-settings" },
+          "shortLabel": "Settings",
+          "aliases": ["preferences", "configure"],
+          "icon": { "kind": "lucide", "name": "settings-2" },
+          "display": "icon-label",
+          "pinnedToHome": false,
+          "order": 4
+        }
+      ]
+    },
+    {
+      "id": "navigation",
+      "label": "Navigation",
+      "icon": { "kind": "lucide", "name": "compass" },
+      "actionLayout": "layered",
+      "order": 2,
+      "actions": [
+        {
+          "id": "navigation-daily-note",
+          "action": { "kind": "obsidian-command", "commandId": "daily-notes:goto", "pluginId": "daily-notes" },
+          "shortLabel": "Daily note",
+          "aliases": ["today"],
+          "icon": { "kind": "lucide", "name": "calendar-days" },
+          "display": "icon-label",
+          "pinnedToHome": false,
+          "order": 0
+        }
+      ]
+    }
+  ]
+}

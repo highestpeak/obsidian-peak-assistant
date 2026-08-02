@@ -122,6 +122,19 @@ export const DOCUMENT_COMPOSER_MANIFEST: CapabilityManifest = {
 	surfaceBinding: ['copilot'],
 };
 
+export const COMMAND_CENTER_MANIFEST: CapabilityManifest = {
+	id: 'ui.open.command-center',
+	title: 'Open Peak Command Center',
+	description: 'Open the user-curated Peak launcher without changing Obsidian Command Palette behavior.',
+	inputContract: SURFACE_OPEN_INPUT,
+	outputContract: SURFACE_OPEN_OUTPUT,
+	permissionKind: 'read',
+	costTier: 'fast',
+	backendPolicy: DEFAULT_BACKEND,
+	skillRef: 'ui.surface-open.v1',
+	surfaceBinding: ['chat'],
+};
+
 /**
  * All palette-command manifests keyed by their Obsidian command id.
  * Used by `composeCommandGatewayBindings` to build a GatewayBinding
@@ -129,6 +142,7 @@ export const DOCUMENT_COMPOSER_MANIFEST: CapabilityManifest = {
  * every registered command has a matching manifest.
  */
 export const PALETTE_COMMAND_MANIFESTS: Readonly<Record<string, CapabilityManifest>> = Object.freeze({
+	'peak-open-command-center': COMMAND_CENTER_MANIFEST,
 	'peak-open-settings': SETTINGS_MODAL_MANIFEST,
 	'peak-harness-setup-wizard': HARNESS_WIZARD_MANIFEST,
 	'peak-quick-search': QUICK_SEARCH_MANIFEST,

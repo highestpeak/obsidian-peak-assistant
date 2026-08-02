@@ -21,6 +21,7 @@ import type { GatewayBinding } from '@/service/capabilities/CommandGateway';
 import type { CapabilityRunContext, CapabilityExecutionOutput } from '@/service/capabilities/CapabilityRunner';
 import {
 	CHAT_STUDIO_MANIFEST,
+	COMMAND_CENTER_MANIFEST,
 	DOCUMENT_COMPOSER_MANIFEST,
 	FILE_ATLAS_MANIFEST,
 	HARNESS_WIZARD_MANIFEST,
@@ -48,6 +49,7 @@ const SURFACE_OPEN_SKILL: CompiledSkill = {
  * plugin-lifecycle references.
  */
 export interface PaletteCommandActions {
+	readonly openCommandCenter: () => void | Promise<void>;
 	readonly openSettingsModal: () => void | Promise<void>;
 	readonly openHarnessSetupWizard: () => void | Promise<void>;
 	readonly openQuickSearch: () => void | Promise<void>;
@@ -75,6 +77,14 @@ export function composeCommandGatewayBindings(
 	actions: PaletteCommandActions,
 ): GatewayBinding[] {
 	return [
+		{
+			commandId: 'peak-open-command-center',
+			commandLabel: 'Open Peak Command Center',
+			manifest: COMMAND_CENTER_MANIFEST,
+			compiledSkill: SURFACE_OPEN_SKILL,
+			execute: surfaceOpenStrategy(actions.openCommandCenter),
+			trigger: 'manual',
+		},
 		{
 			commandId: 'peak-open-settings',
 			commandLabel: 'Settings',

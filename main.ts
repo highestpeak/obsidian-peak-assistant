@@ -411,6 +411,23 @@ export default class MyPlugin extends Plugin {
 		// the call site (e.g. "search index still building").
 		this.appContext = appContext;
 
+		// Command Center is an app-owned navigation runtime. Compose it before
+		// ViewManager registration so a restored Home leaf sees the same board
+		// config as the launcher. Command bindings are added below after the UI
+		// shell is registered; the runtime safely resolves them at invocation.
+		const commandGateway = new CommandGateway();
+		AppContext.setCommandGateway(commandGateway);
+		if (this.templateManager) {
+			try {
+				const { composeCommandCenterRuntime } = await import('@/app/command-center');
+				appContext.runtimeRegistry.setCommandCenterRuntime(
+					await composeCommandCenterRuntime(this, this.templateManager, commandGateway, appContext),
+				);
+			} catch (e) {
+				console.warn('[Peak Command Center] runtime compose failed:', e);
+			}
+		}
+
 		// Create ViewManager with AppContext
 		this.viewManager = new ViewManager(this, appContext);
 		// Set viewManager in AppContext after creation
@@ -484,9 +501,15 @@ export default class MyPlugin extends Plugin {
 		});
 		void backendStrategies; // consumers wire in during Wave 1
 
-		const commandGateway = new CommandGateway();
-		AppContext.setCommandGateway(commandGateway);
 		const gatewayBindings = composeCommandGatewayBindings({
+			openCommandCenter: () => {
+				const runtime = appContext.runtimeRegistry.tryGetCommandCenterRuntime();
+				if (!runtime) {
+					new Notice('Peak Command Center is still loading.', 4000);
+					return;
+				}
+				runtime.openLauncher();
+			},
 			openSettingsModal,
 			openHarnessSetupWizard,
 			openQuickSearch,
@@ -509,6 +532,17 @@ export default class MyPlugin extends Plugin {
 				},
 			});
 		}
+
+		if (this.settings.commandCenter?.home.openOnStartup) {
+			this.app.workspace.onLayoutReady(() => {
+				void appContext.runtimeRegistry.tryGetCommandCenterRuntime()?.openHome();
+			});
+		}
+		this.registerEvent(this.app.workspace.on('active-leaf-change', (leaf) => {
+			if (!this.settings.commandCenter?.home.replaceEmptyTab) return;
+			if (!leaf || leaf.view.getViewType() !== 'empty') return;
+			void leaf.setViewState({ type: 'peak-command-center-home', active: true });
+		}));
 
 		// Note: `buildCoreCommands` used to be the palette table; it is
 		// intentionally left imported (see top of file) and unused so

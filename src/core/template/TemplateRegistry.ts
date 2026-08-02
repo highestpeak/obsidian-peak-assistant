@@ -147,6 +147,7 @@ export const ConfigTemplateId = {
 	RichOutputTypes: 'config-rich-output-types' as const,
 	FileAtlas: 'config-file-atlas' as const,
 	Composer: 'config-composer' as const,
+	CommandCenter: 'config-command-center' as const,
 	// Task C1 (2026-07-21): Media generation runtime config — presets,
 	// routing defaults, cost estimates, poll timings. Replaces
 	// FalMediaAdapter's hardcoded model ids / voice / poll deadline.
@@ -279,7 +280,7 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 		expectsJson: true,
 		jsonConstraint:
 			'Return only one JSON object matching CapabilityPlan: planTitle, summary, goalRestatement, steps (min 1 max 8; each stepNumber/commandId/commandLabel/rationale/optional reviewHint/readOnly), confidence (0..1).',
-		label: 'Copilot Command Center Plan',
+		label: 'Capability Planner Plan',
 		description: 'Meta-agent drafts a capability sequence from a plain-language user goal.',
 		group: 'copilot',
 	}),
@@ -480,6 +481,7 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	[ConfigTemplateId.RichOutputTypes]: meta('config', 'rich-output-types', { expectsJson: true }),
 	[ConfigTemplateId.FileAtlas]: meta('config', 'file-atlas', { expectsJson: true }),
 	[ConfigTemplateId.Composer]: meta('config', 'composer', { expectsJson: true }),
+	[ConfigTemplateId.CommandCenter]: meta('config', 'command-center-defaults', { expectsJson: true }),
 	[ConfigTemplateId.MediaGeneration]: meta('config', 'media-generation', { expectsJson: true }),
 	[ConfigTemplateId.ArtifactCreate]: meta('config', 'artifact-create', { expectsJson: true }),
 

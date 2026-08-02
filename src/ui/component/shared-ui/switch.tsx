@@ -4,6 +4,8 @@ import { cn } from '@/ui/react/lib/utils';
 export interface SwitchProps {
 	checked: boolean;
 	onChange: (checked: boolean) => void;
+	/** Accessible name for the switch. Required at icon/row-only call sites. */
+	label?: string;
 	disabled?: boolean;
 	size?: 'default' | 'sm';
 	className?: string;
@@ -13,7 +15,7 @@ export interface SwitchProps {
  * Toggle switch component for settings.
  */
 export const Switch = React.forwardRef<HTMLLabelElement, SwitchProps>(
-	({ checked, onChange, disabled = false, size = 'default', className }, ref) => {
+	({ checked, onChange, label, disabled = false, size = 'default', className }, ref) => {
 		const sizeClasses = {
 			default: {
 				container: 'pktw-w-11 pktw-h-6',
@@ -43,6 +45,16 @@ export const Switch = React.forwardRef<HTMLLabelElement, SwitchProps>(
 			<label
 				ref={ref}
 				onClick={handleClick}
+				onKeyDown={(event) => {
+					if (disabled || (event.key !== 'Enter' && event.key !== ' ')) return;
+					event.preventDefault();
+					onChange(!checked);
+				}}
+				role="switch"
+				aria-checked={checked}
+				aria-label={label}
+				aria-disabled={disabled}
+				tabIndex={disabled ? -1 : 0}
 				className={cn(
 					'pktw-relative pktw-inline-block pktw-cursor-pointer',
 					sizeConfig.container,

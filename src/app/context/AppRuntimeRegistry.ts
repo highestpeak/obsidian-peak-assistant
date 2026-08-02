@@ -34,6 +34,7 @@ import type { HubCurationScheduler } from '@/service/hub/HubCurationScheduler';
 import type { DebugTracePort } from '@/core/debug-trace';
 import type { DocumentComposerRuntime } from '@/app/composer/DocumentComposerRuntime';
 import type { AIGraphArtifactRuntime } from '@/service/ai-graph';
+import type { CommandCenterRuntime } from '@/app/command-center';
 import { createDefaultGeneratedOutputRegistry } from '@/core/storage/generated-output';
 import type { GeneratedOutputRegistry } from '@/core/storage/generated-output';
 import type { GeneratedOutputPersistenceRuntime } from '@/core/storage/generated-output';
@@ -68,6 +69,7 @@ export class AppRuntimeRegistry {
 	private debugTracePort: DebugTracePort | null = null;
 	private documentComposerRuntime: DocumentComposerRuntime | null = null;
 	private aiGraphArtifactRuntime: AIGraphArtifactRuntime | null = null;
+	private commandCenterRuntime: CommandCenterRuntime | null = null;
 
 	constructor(generatedOutputRegistry: GeneratedOutputRegistry = createDefaultGeneratedOutputRegistry()) {
 		this.generatedOutputRegistry = generatedOutputRegistry;
@@ -492,6 +494,30 @@ export class AppRuntimeRegistry {
 
 	clearCommandGateway(): void {
 		this.commandGateway = null;
+	}
+
+	// ─── Peak Command Center ──────────────────────────────────────────────
+
+	setCommandCenterRuntime(runtime: CommandCenterRuntime): void {
+		if (this.commandCenterRuntime !== null) {
+			throw new Error('AppRuntimeRegistry.setCommandCenterRuntime: a runtime is already bound.');
+		}
+		this.commandCenterRuntime = runtime;
+	}
+
+	getCommandCenterRuntime(): CommandCenterRuntime {
+		if (this.commandCenterRuntime === null) {
+			throw new Error('AppRuntimeRegistry.getCommandCenterRuntime: no runtime is bound.');
+		}
+		return this.commandCenterRuntime;
+	}
+
+	tryGetCommandCenterRuntime(): CommandCenterRuntime | null {
+		return this.commandCenterRuntime;
+	}
+
+	clearCommandCenterRuntime(): void {
+		this.commandCenterRuntime = null;
 	}
 
 	// ─── T13: UsageServices bundle (tracking + outcome + optimization) ────

@@ -346,6 +346,10 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 		},
 	};
 
+	if (raw?.commandCenter && typeof raw.commandCenter === 'object') {
+		settings.commandCenter = raw.commandCenter as MyPluginSettings['commandCenter'];
+	}
+
 	settings.skillsFolder = resolveFolderSetting(
 		raw?.skillsFolder,
 		getAISkillsFolder(ai.rootFolder),

@@ -40,7 +40,7 @@ export class CopilotCommandCenterModal extends Modal {
 
 	private renderGoalPhase(): void {
 		this.contentEl.empty();
-		this.contentEl.createEl('h2', { text: 'Copilot Command Center' });
+		this.contentEl.createEl('h2', { text: 'Capability Planner' });
 		this.contentEl.createEl('p', {
 			text: 'Describe what you want to accomplish. The planner will draft a capability sequence.',
 		});
@@ -88,7 +88,7 @@ export class CopilotCommandCenterModal extends Modal {
 
 	private renderPlanningState(): void {
 		this.contentEl.empty();
-		this.contentEl.createEl('h2', { text: 'Copilot Command Center' });
+		this.contentEl.createEl('h2', { text: 'Capability Planner' });
 		this.contentEl.createEl('p', { text: 'Drafting capability plan…' });
 	}
 
@@ -144,11 +144,11 @@ export class CopilotCommandCenterModal extends Modal {
 			const failed = result.stepOutcomes.filter((o) => o.status === 'failed').length;
 			const skipped = result.stepOutcomes.filter((o) => o.status === 'skipped').length;
 			new Notice(
-				`Copilot Command Center: ${succeeded} succeeded · ${failed} failed · ${skipped} skipped`,
+				`Capability Planner: ${succeeded} succeeded · ${failed} failed · ${skipped} skipped`,
 				10000,
 			);
 		} catch (err) {
-			new Notice(`Command Center execution failed: ${(err as Error).message}`, 10000);
+			new Notice(`Capability Planner execution failed: ${(err as Error).message}`, 10000);
 		}
 		this.close();
 	}

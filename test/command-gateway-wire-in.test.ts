@@ -21,6 +21,7 @@ import {
 import { PALETTE_COMMAND_MANIFESTS } from '@/app/commands/gateway/manifests';
 
 const EXPECTED_PALETTE_COMMAND_IDS = [
+	'peak-open-command-center',
 	'peak-open-settings',
 	'peak-harness-setup-wizard',
 	'peak-quick-search',
@@ -40,6 +41,7 @@ function makeCounter(): { fn: () => void; count: () => number } {
 
 function makeActions(recorder: Record<string, () => void>): PaletteCommandActions {
 	return {
+		openCommandCenter: recorder.openCommandCenter,
 		openSettingsModal: recorder.openSettingsModal,
 		openHarnessSetupWizard: recorder.openHarnessSetupWizard,
 		openQuickSearch: recorder.openQuickSearch,
@@ -53,6 +55,7 @@ function makeActions(recorder: Record<string, () => void>): PaletteCommandAction
 function testManifestCoverageMatchesBindings(): void {
 	const dummy = makeActions({
 		openSettingsModal: () => {},
+		openCommandCenter: () => {},
 		openHarnessSetupWizard: () => {},
 		openQuickSearch: () => {},
 		openFileAtlas: () => {},
@@ -66,7 +69,7 @@ function testManifestCoverageMatchesBindings(): void {
 	assert.deepStrictEqual(
 		manifestIds,
 		[...EXPECTED_PALETTE_COMMAND_IDS],
-		'global command palette must stay limited to the seven owner-approved entry points',
+		'global command palette must stay limited to the eight owner-approved entry points',
 	);
 	assert.deepStrictEqual(
 		bindingIds,
@@ -84,6 +87,7 @@ function testManifestCoverageMatchesBindings(): void {
 
 async function testDispatchInvokesActionExactlyOnce(): Promise<void> {
 	const counters: Record<string, ReturnType<typeof makeCounter>> = {
+		openCommandCenter: makeCounter(),
 		openSettingsModal: makeCounter(),
 		openHarnessSetupWizard: makeCounter(),
 		openQuickSearch: makeCounter(),
@@ -102,6 +106,7 @@ async function testDispatchInvokesActionExactlyOnce(): Promise<void> {
 
 	// Map commandId → action key. Order matches composeCommandGatewayBindings.
 	const commandToAction: Array<[string, keyof typeof counters]> = [
+		['peak-open-command-center', 'openCommandCenter'],
 		['peak-open-settings', 'openSettingsModal'],
 		['peak-harness-setup-wizard', 'openHarnessSetupWizard'],
 		['peak-quick-search', 'openQuickSearch'],

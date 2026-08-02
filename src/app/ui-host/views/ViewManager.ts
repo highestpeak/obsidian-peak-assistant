@@ -12,6 +12,7 @@ import { InputModal } from '@/app/ui-host/modals/InputModal';
 import { App, Notice, ViewCreator } from 'obsidian';
 import { AppContext } from '@/app/context/AppContext';
 import { DEFAULT_COMPOSER_NAVIGATION_STRINGS } from '@/app/composer/ComposerNavigationDefaults';
+import { CommandCenterHomeView, COMMAND_CENTER_HOME_VIEW_TYPE } from '@/app/ui-host/views/CommandCenterHomeView';
 
 /**
  * Manages view registrations, related commands, and lifecycle cleanup.
@@ -47,6 +48,9 @@ export class ViewManager {
 		});
 		this.viewCreators.set(DOCUMENT_COMPOSER_VIEW_TYPE, (leaf) => {
 			return new DocumentComposerView(leaf, appContext);
+		});
+		this.viewCreators.set(COMMAND_CENTER_HOME_VIEW_TYPE, (leaf) => {
+			return new CommandCenterHomeView(leaf, appContext);
 		});
 	}
 

@@ -4,13 +4,15 @@ Date: 2026-07-30
 
 Visual direction revised: 2026-08-02 · V18 layered launcher projection
 
-Status: Decided · design/spec ready · implementation pending
+Status: Implemented in source · production build verified · real-Obsidian interaction pending
 
 Owner intent: Important product integration surface
 
 Visual prototype: [`docs/gstack/command-center-launcher-home-2026-07-30/index.html`](../../gstack/command-center-launcher-home-2026-07-30/index.html)
 
 Research: [`docs/research/2026-07-30-command-center-launcher-home/README.md`](../../research/2026-07-30-command-center-launcher-home/README.md)
+
+Implementation record: 2026-08-02. The production launcher, unified Customize directory, shared Home `ItemView`, template-backed configuration, app-owned runtime, governed command entry and focused contract tests are present. No Obsidian CDP listener was available during the implementation session, so keyboard, focus restoration, drag and visible real-app geometry remain `INTERACTION NOT VERIFIED` rather than being inferred from the static harness.
 
 ## 1. Decision
 

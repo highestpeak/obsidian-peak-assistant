@@ -313,9 +313,9 @@
               </tr>
               <tr>
                 <td><strong>Peak Command Center Launcher + Home</strong></td>
-                <td>与原生 <code>Cmd/Ctrl + P</code> 并存的个人导航入口。2026-08-02 V18 将运行态收敛为单排 user group segmented tabs 与分层 projection：Home、Dashboard、Vault document、Bookmark、Workspace 等 destination 进入四列 Dial；常用 command 进入最多两行的五列 Grid；超出部分保持配置顺序进入 Overflow List。新增 item 不重排稳定 Dial 或前两行 command。Customize 继续使用一张不拆 Added / Available 的连续目录，并提供 membership、Rename、Lucide / Emoji / No icon、显示模式、Home pin 与排序。运行态 Search 只过滤已配置内容，并保持同一 Dial / Grid / Overflow 语言；Home 仍与 Modal 共用 target 与 presentation 真值。本项尚未实现。</td>
-                <td><a href="superpowers/specs/2026-07-30-command-center-launcher-home-design.md">正式设计</a><br><a href="gstack/command-center-launcher-home-2026-07-30/index.html">V18 可交互原型</a><br><a href="research/2026-07-30-command-center-launcher-home/README.md">调研</a></td>
-                <td><span class="pill gold">decided · design/spec ready · implementation pending</span></td>
+                <td>与原生 <code>Cmd/Ctrl + P</code> 并存的个人导航入口。2026-08-02 已实现单排 user group tabs 与分层 projection：Home、Dashboard、Vault document、Bookmark、Workspace 等 destination 进入四列 Dial；常用 command 进入最多两行的五列 Grid；超出部分保持配置顺序进入 Overflow List。Customize 使用一张不拆 Added / Available 的连续目录，并提供原地 membership、Rename、Lucide / Emoji / No icon、显示模式、Home pin 与拖动排序；Home 是共享同一配置和 action identity 的主区 <code>ItemView</code>。运行态 Search 只过滤已配置内容，原生 Command Palette 保持不变。source contracts、focused tests 与 production build 已通过；因当次无 Obsidian CDP listener，真实键盘、焦点、拖动与可见 geometry 仍待实机验收。</td>
+                <td><a href="superpowers/specs/2026-07-30-command-center-launcher-home-design.md">正式设计与实施记录</a><br><a href="gstack/command-center-launcher-home-2026-07-30/index.html">V18 可交互原型</a><br><a href="research/2026-07-30-command-center-launcher-home/README.md">调研</a></td>
+                <td><span class="pill green">implemented · build verified · live QA pending</span></td>
               </tr>
               <tr>
                 <td><strong>AN / AO / AP 收尾</strong></td>
