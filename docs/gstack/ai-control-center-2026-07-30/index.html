@@ -1023,6 +1023,7 @@
 
     let workspace = 'capabilities';
     let activeGroup = 'all';
+    let activeOutputGroup = 'all';
     let activeItem = capabilities[0];
     let inspectorTab = 'overview';
 
@@ -1052,6 +1053,16 @@
       ['user', 'spark', 'User-defined']
     ];
 
+    const outputGroups = [
+      ['all', 'output', 'All output types'],
+      ['user-artifact', 'file', 'User-owned artifacts'],
+      ['durable-record', 'database', 'Durable records'],
+      ['projection', 'graph', 'Rebuildable projections'],
+      ['cache', 'database', 'Local caches'],
+      ['telemetry', 'run', 'Bounded telemetry'],
+      ['migration-source', 'alert', 'Migration sources']
+    ];
+
     function statusPill(status) {
       if (status === 'live') return '<span class="pill green">Source wired</span>';
       if (status === 'partial') return '<span class="pill amber">Partial path</span>';
@@ -1070,12 +1081,21 @@
     }
 
     function outputFamily(item) {
-      if (item.lifecycle === 'migration-source') return 'Historical migration sources';
+      if (item.lifecycle === 'migration-source') return 'Migration sources';
       if (item.outputClass === 'user-artifact') return 'User-owned artifacts';
-      if (item.outputClass === 'durable-record') return 'Durable machine records';
+      if (item.outputClass === 'durable-record') return 'Durable records';
       if (item.outputClass === 'projection') return 'Rebuildable projections';
       if (item.outputClass === 'cache') return 'Local caches';
       return 'Bounded telemetry';
+    }
+
+    function outputGroupId(item) {
+      if (item.lifecycle === 'migration-source') return 'migration-source';
+      return item.outputClass;
+    }
+
+    function outputGroupMatches(item, groupId) {
+      return groupId === 'all' || outputGroupId(item) === groupId;
     }
 
     function outputPill(item) {
@@ -1098,8 +1118,12 @@
          <div class="rail-title">Prompt library</div>
          <button class="rail-button ${workspace === 'prompts' ? 'active' : ''}" data-catalog="prompts">${icons.prompt}<span>All prompts</span><small>${prompts.length}</small></button>
          <div class="rail-separator"></div>
-         <div class="rail-title">Output registry</div>
-         <button class="rail-button ${workspace === 'outputs' ? 'active' : ''}" data-catalog="outputs">${icons.output}<span>All output types</span><small>${outputs.length}</small></button>`;
+         <div class="rail-title">Output registry</div>` +
+        outputGroups.map(([id, icon, label]) => {
+          const count = outputs.filter(item => outputGroupMatches(item, id)).length;
+          const active = workspace === 'outputs' && activeOutputGroup === id;
+          return `<button class="rail-button ${active ? 'active' : ''}" data-output-group="${id}">${icons[icon]}<span>${label}</span><small>${count}</small></button>`;
+        }).join('');
     }
 
     function capabilityRow(item) {
@@ -1154,7 +1178,7 @@
     }
 
     function groupedOutputRows(items) {
-      const familyOrder = ['User-owned artifacts', 'Durable machine records', 'Rebuildable projections', 'Local caches', 'Bounded telemetry', 'Historical migration sources'];
+      const familyOrder = outputGroups.slice(1).map(([, , label]) => label);
       return familyOrder.map(family => {
         const familyItems = items.filter(item => outputFamily(item) === family);
         if (!familyItems.length) return '';
@@ -1203,9 +1227,15 @@
         return;
       }
 
-      listTitle.textContent = 'All output types';
-      listDescription.textContent = `${outputs.length} registered type contracts. Artifact instances stay in their owning product surfaces.`;
-      rows.innerHTML = outputs.length ? groupedOutputRows(outputs) : '<div class="empty">No output contract is registered.</div>';
+      const outputGroupLabel = outputGroups.find(([id]) => id === activeOutputGroup)?.[2] ?? 'Output types';
+      const filteredOutputs = outputs.filter(item => outputGroupMatches(item, activeOutputGroup));
+      listTitle.textContent = outputGroupLabel;
+      listDescription.textContent = activeOutputGroup === 'all'
+        ? `${filteredOutputs.length} registered type contracts. Artifact instances stay in their owning product surfaces.`
+        : `${filteredOutputs.length} registered ${outputGroupLabel.toLowerCase()}. Select a type to inspect its owner and storage contract.`;
+      rows.innerHTML = filteredOutputs.length
+        ? activeOutputGroup === 'all' ? groupedOutputRows(filteredOutputs) : filteredOutputs.map(outputRow).join('')
+        : '<div class="empty">No output contract is registered for this category.</div>';
     }
 
     function filteredCount(groupId) {
@@ -1469,10 +1499,12 @@
         return;
       }
 
-      const outputCatalogButton = event.target.closest('[data-catalog="outputs"]');
-      if (outputCatalogButton) {
+      const outputGroupButton = event.target.closest('[data-output-group]');
+      if (outputGroupButton) {
         workspace = 'outputs';
-        activeItem = outputs[0];
+        activeOutputGroup = outputGroupButton.dataset.outputGroup;
+        const visibleOutputs = outputs.filter(item => outputGroupMatches(item, activeOutputGroup));
+        if (visibleOutputs.length) activeItem = visibleOutputs[0];
         inspectorTab = 'overview';
         searchInput.value = '';
         renderAll();
