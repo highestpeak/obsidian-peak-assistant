@@ -1808,8 +1808,10 @@ body[data-visual-version="editorial-v2"] .table-command-bar {
 
 body[data-visual-version="editorial-v2"] .table-command-bar .record-search {
   display: flex;
-  width: min(320px, 34vw);
+  width: auto;
   height: 26px;
+  min-width: 240px;
+  flex: 1;
   align-items: center;
   gap: 7px;
   padding: 0 8px;
@@ -1839,6 +1841,7 @@ body[data-visual-version="editorial-v2"] .table-command-bar kbd {
 }
 
 body[data-visual-version="editorial-v2"] .query-result {
+  flex: 0 0 auto;
   margin-right: 2px;
   padding-right: 12px;
   border-right: 1px solid var(--line);
@@ -1849,6 +1852,7 @@ body[data-visual-version="editorial-v2"] .query-result {
 body[data-visual-version="editorial-v2"] .table-ai-action {
   display: flex;
   height: 28px;
+  flex: 0 0 auto;
   align-items: center;
   gap: 6px;
   padding: 0 8px;
