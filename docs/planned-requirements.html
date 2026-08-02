@@ -85,10 +85,10 @@
   <main class="page">
     <header>
       <div class="eyebrow">Peak Assistant Planned Requirements</div>
-      <h1>当前有 1 个开放需求。</h1>
+      <h1>当前有 2 个开放需求。</h1>
       <p class="subtitle">本页登记尚未完成 production implementation 与真实交互验收的需求。正式 spec 与 Roadmap 负责设计真值；这里保留明确的实施 closure，完成、合并或撤销后即移除。</p>
       <div class="meta">
-        <span>Open: 1</span>
+        <span>Open: 2</span>
         <span>Updated: 2026-08-02</span>
       </div>
       <nav class="nav" aria-label="cross document navigation">
@@ -115,6 +115,22 @@
         </ul>
         <p><strong>完成条件：</strong>0 个无 owner Prompt、0 个稳定 inline instruction 绕过 resolver、0 个无消费证明的可保存配置；旧 <code>promptModelMap</code> 与绕过 PromptService 的兼容路径完成迁移和清理。</p>
         <p class="links"><a href="superpowers/plans/2026-08-02-ai-control-center-configuration-closure-plan.md">配置闭环计划</a> · <a href="superpowers/specs/2026-07-30-ai-control-center-design.md">正式设计</a> · <a href="gstack/ai-control-center-2026-07-30/index.html">交互 Mock</a> · <a href="roadmap.html">Roadmap</a></p>
+      </article>
+
+      <article class="requirement-card" id="pr-peak-sheet-view-adapter-spikes">
+        <span class="requirement-status">planned · spike-first · research candidate</span>
+        <h3>Peak Sheet 表格、看板与日历适配器验证</h3>
+        <code class="requirement-id">PR-PEAK-SHEET-VIEW-ADAPTER-SPIKES</code>
+        <p>先建立共享 Dataset、FieldDefinition、ViewDefinition、Compute 与 DatasetPatch 合同，再用隔离 Spike 决定 renderer；任何视图都不能拥有或复制第二份记录状态。</p>
+        <ul class="requirement-list">
+          <li>Glide Data Grid 只作为表格 viewport 候选；字段、公式、统计、组合筛选 / 排序 / 分组、AI 与持久化继续由 Peak 管理。</li>
+          <li>FullCalendar 只使用免费 MIT Standard 插件验证 range CRUD、drag / resize、sidecar 与失败回滚；禁止 Premium / Scheduler。</li>
+          <li>看板保持自研，不使用 Atlassian Pragmatic Drag and Drop；显式 Move、键盘路径和 pointer drag 共用同一 DatasetPatch。</li>
+          <li>现有 Composer Markdown 表格继续保留，不改造成 Dataset grid，也不由 Peak Sheet 替换。</li>
+          <li>只有组件 gate、跨视图 revision、focused tests、build 与真实 Obsidian 交互证据全部成立后，才能完成本需求。</li>
+        </ul>
+        <p><strong>状态边界：</strong>此登记冻结实施顺序与采用标准，不代表 production runtime 已开始，也不把 Roadmap 中的 Peak Sheet 从 research candidate 自动升级为交付承诺。</p>
+        <p class="links"><a href="superpowers/plans/2026-08-02-peak-sheet-view-adapter-spike-and-rollout-plan.md">实现与 Spike 计划</a> · <a href="research/2026-07-22-peak-sheet-compute/README.md">Dataset / Compute 研究</a> · <a href="gstack/peak-sheet-multiview-editorial-2026-07-31/index.html">Editorial Mock</a> · <a href="roadmap.html">Roadmap</a></p>
       </article>
     </section>
   </main>
