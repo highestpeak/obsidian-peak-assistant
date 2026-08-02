@@ -7,10 +7,6 @@ import { AppContext } from '@/app/context/AppContext';
 import { VaultAutoRunModal } from '@/app/copilot/modals/VaultAutoRunModal';
 import { openVaultReviewHistoryRecord } from '@/app/copilot/modals/openVaultReviewHistoryRecord';
 import type { VaultReviewHistoryRecord } from '@/service/copilot/vault/VaultReviewReportService';
-import { composeCopilotPanelVault } from '@/app/copilot/panels/composeCopilotPanelVault';
-import { DocumentContextBuilder } from '@/service/copilot/DocumentContextBuilder';
-import { getSelectedTextFromActiveEditor } from '@/app/platform/vault/obsidian-utils';
-import type { DocumentContext } from '@/service/copilot/CopilotActionRegistry';
 import { AIQueryRewriteModal } from '@/app/ui-host/modals/AIQueryRewriteModal';
 import { behaviorRecorder } from '@/ui/view/quick-search/rewrite/BehaviorContextRecorder';
 import { useSharedStore } from '@/ui/view/quick-search/store';
@@ -23,9 +19,6 @@ import { useAIGraphStore } from '@/ui/view/quick-search/store/aiGraphStore';
 export class QuickSearchModal extends Modal {
 	private reactRenderer: ReactRenderer | null = null;
 
-	private openToken = 0;
-	private closed = true;
-
 	constructor(
 		private readonly appContext: AppContext,
 		private readonly openOptions?: QuickSearchOpenOptions,
@@ -34,8 +27,6 @@ export class QuickSearchModal extends Modal {
 	}
 
 	async onOpen(): Promise<void> {
-		const token = ++this.openToken;
-		this.closed = false;
 		if (
 			this.openOptions?.aiMode
 			|| this.openOptions?.graphId
@@ -60,22 +51,10 @@ export class QuickSearchModal extends Modal {
 		// Kick off the AI-Suggest behavior recorder for this session. Stops in
 		// onClose. Cheap — subscribes to two Zustand stores + a debounce timer.
 		behaviorRecorder.start();
-		const app = this.appContext.app;
-		// Build DocumentContext (same as CopilotPickerModal) so Vault
-		// Intelligence panel can render vault stats + history correctly.
-		const file = app.workspace.getActiveFile();
-		let ctx: DocumentContext | null = null;
-		if (file) {
-			const content = await composeCopilotPanelVault(this.appContext).vault.readFileContent(file);
-			if (this.closed || token !== this.openToken) return;
-			const selected = getSelectedTextFromActiveEditor(app) ?? undefined;
-			ctx = DocumentContextBuilder.build(app, file, content, selected);
-		}
-		if (this.closed || token !== this.openToken) return;
-		this.doRender(ctx);
+		this.doRender();
 	}
 
-	private doRender(ctx: DocumentContext | null): void {
+	private doRender(): void {
 		// Note: Opening the modal (esp. when Vault Search tab is active) can trigger [Violation] Forced reflow.
 		// Root cause: layout reads during mount. Deferred for now.
 		const { contentEl, modalEl } = this;
@@ -104,7 +83,6 @@ export class QuickSearchModal extends Modal {
 				QuickSearchModalContent,
 				{
 					onClose: () => this.close(),
-					intelCtx: ctx,
 					onVaultAuto: (mode: 'fast' | 'complete') => {
 						this.close();
 						new VaultAutoRunModal(app, { mode }).open();
@@ -133,8 +111,6 @@ export class QuickSearchModal extends Modal {
 	}
 
 	onClose(): void {
-		this.closed = true;
-		this.openToken++;
 		// Detach the behavior recorder — dumps its buffer and unhooks the
 		// Zustand subscriptions so nothing lingers between sessions.
 		try { behaviorRecorder.stop(); } catch { /* ignore */ }

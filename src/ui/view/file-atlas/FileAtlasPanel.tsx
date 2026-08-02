@@ -37,6 +37,7 @@ import { AtlasInspector } from './components/AtlasInspector';
 import { AtlasTray, type TrayItem } from './components/AtlasTray';
 import { FileRail } from './components/FileRail';
 import { FileAtlasGraph } from './components/FileAtlasGraph';
+import { FileAtlasDocumentContext } from './components/FileAtlasDocumentContext';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { FileAtlasHostPort } from './FileAtlasHostPort';
 import type { FileRailSections, FileRailSortMode } from './fileRailModel';
@@ -342,6 +343,11 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 						<span>{doc.stats.resources} resources</span>
 					</span>
 				</div>
+
+				<FileAtlasDocumentContext
+					filePath={activePath}
+					onOpenLocalGraph={() => setSubview('graph')}
+				/>
 
 				{/* Tree / Graph subview tabs */}
 				<div className="pkfa-tab-row">

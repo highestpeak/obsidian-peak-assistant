@@ -12,7 +12,6 @@ import { InputModal } from '@/app/ui-host/modals/InputModal';
 import { App, Notice, ViewCreator } from 'obsidian';
 import { AppContext } from '@/app/context/AppContext';
 import { DEFAULT_COMPOSER_NAVIGATION_STRINGS } from '@/app/composer/ComposerNavigationDefaults';
-import { AmbientFloatingPanelHost } from '@/app/ambient/AmbientFloatingPanelHost';
 
 /**
  * Manages view registrations, related commands, and lifecycle cleanup.
@@ -21,14 +20,12 @@ export class ViewManager {
 	private readonly viewSwicthConsistenter: ViewSwitchConsistentHandler;
 	private readonly viewCreators: Map<string, ViewCreator> = new Map();
 	private ribbonIconEl: HTMLElement | null = null;
-	private readonly ambientFloatingPanel: AmbientFloatingPanelHost;
 
 	constructor(
 		private readonly plugin: MyPlugin,
 		public readonly appContext: AppContext,
 	) {
 		this.viewSwicthConsistenter = new ViewSwitchConsistentHandler(this.plugin.app);
-		this.ambientFloatingPanel = new AmbientFloatingPanelHost(appContext);
 		// Pass appContext to View constructors
 		this.viewCreators.set(CHAT_VIEW_TYPE, (leaf) => {
 			return new ChatView(leaf, appContext);
@@ -86,7 +83,6 @@ export class ViewManager {
 			this.ribbonIconEl.remove();
 		}
 		this.ribbonIconEl = null;
-		this.ambientFloatingPanel.dispose();
 		this.viewCreators.forEach((creator, type) => {
 			this.plugin.app.workspace.getLeavesOfType(type).forEach((leaf) => leaf.detach());
 		});
@@ -110,16 +106,20 @@ export class ViewManager {
 	}
 
 	/**
-	 * Open the window-local Ambient floating companion. A legacy sidebar leaf
-	 * restored from an older workspace is detached so only one canonical
-	 * Related Notes surface remains visible.
+	 * Open the legacy Related Notes view. The planned floating companion was
+	 * retired; Composer Intelligence owns future Ambient presentation.
 	 */
 	async activateRelatedNotesView(): Promise<void> {
 		const { workspace } = this.plugin.app;
-		for (const leaf of workspace.getLeavesOfType(RELATED_NOTES_VIEW_TYPE)) {
-			leaf.detach();
+		const existing = workspace.getLeavesOfType(RELATED_NOTES_VIEW_TYPE);
+		if (existing.length > 0) {
+			workspace.revealLeaf(existing[0]);
+			return;
 		}
-		this.ambientFloatingPanel.open();
+		const leaf = workspace.getRightLeaf(false);
+		if (!leaf) return;
+		await leaf.setViewState({ type: RELATED_NOTES_VIEW_TYPE, active: true });
+		workspace.revealLeaf(leaf);
 	}
 
 	/**

@@ -352,14 +352,24 @@
 
     <header>
       <div class="eyebrow">Planned requirement · Contextual graph surfaces</div>
-      <h1>当前文档和搜索结果都应该能看见它属于哪些 Hub，以及它在局部图谱里的位置。</h1>
-      <p class="subtitle">这份文档记录两个未实现的小需求：Document tab 增加当前文档的 hub / source chain / local graph；General Search 的右侧 drawer 在选中文档时展示 hub 上下文，并链接到 hub 文档或 hub local graph。</p>
+      <h1>当前文档的 Hub、链接与局部图谱统一归 File Atlas。</h1>
+      <p class="subtitle">2026-08-02 owner correction：旧稿中的 Document tab 与 Search Hub Drawer 不再是目标 surface。File Atlas 是唯一完整上下文 owner；Search 只提供 handoff。</p>
       <div class="meta">
-        <span>Status: planned · no implementation</span>
+        <span>Status: corrected · File Atlas implemented</span>
         <span>Fidelity: wireframe</span>
         <span>Primary viewport: desktop editor</span>
       </div>
     </header>
+
+    <section id="file-atlas">
+      <h2>当前决定：File Atlas 拥有完整文档上下文</h2>
+      <p class="lead">File Atlas 顶部 context row 展示 primary / candidate hubs 与 inbound / outgoing link counts；同一 surface 的 Graph subview 展示 local / two-hop neighborhood。旧 <code>Document tab</code> context strip 仅作为历史方案保留在下方，不应实现或恢复。</p>
+    </section>
+
+    <section id="search-handoff">
+      <h2>当前决定：Search 不再建设 Hub Drawer</h2>
+      <p class="lead">Vault Search inspector 保留 connected / discovered / AI Graph 等搜索语义，并提供 <code>Open in File Atlas</code>。hub membership、source chain 与 local graph 由 File Atlas 继续展示，避免两套右侧面板在能力和状态上漂移。</p>
+    </section>
 
     <section id="why">
       <h2>为什么需要它</h2>
@@ -372,7 +382,7 @@
     </section>
 
     <section id="document-tab">
-      <h2>Document tab：当前文档的局部图谱</h2>
+      <h2>历史方案（已 superseded）：Document tab 局部图谱</h2>
       <p class="lead">在 current note 信息行和 review card 之间增加一个 context strip。它不替代 Review Article，也不自动改文档，只是让用户看见当前文档的 hub、出处链和局部图谱。</p>
 
       <div class="wireframe">
@@ -466,7 +476,7 @@
     </section>
 
     <section id="search-drawer">
-      <h2>General Search drawer：搜索结果也要带 Hub 上下文</h2>
+      <h2>历史方案（已 merged）：General Search Hub Drawer</h2>
       <p class="lead">Quick Search 选中一篇文档时，右侧 drawer 不只显示 connected / discovered，也应该告诉用户这篇文档锁在哪个 hub 或候选 hub 里。用户可以从结果直接进入 hub 文档或 local graph。</p>
 
       <div class="search-shell">

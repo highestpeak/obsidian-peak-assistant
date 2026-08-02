@@ -1,11 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { VaultSearchTab, VaultSearchFooterHints } from './tab-VaultSearch';
 import { AISearchTab } from './tab-AISearch';
-import { CopilotPickerContent } from '@/ui/view/copilot/CopilotPickerContent';
-import type { CopilotAction, DocumentContext } from '@/service/copilot/CopilotActionRegistry';
-import type { CopilotReviewHistoryRecord } from '@/service/copilot/CopilotReviewHistoryService';
 import type { VaultReviewHistoryRecord } from '@/service/copilot/vault/VaultReviewReportService';
-import type { IntentTabId } from '@/service/copilot/intent-hub';
 import { Search, Sparkles, Globe, X, RotateCcw, Library, Network, ChevronDown, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { suggestHistoryStore, type SuggestHistoryEntry } from '@/ui/view/quick-search/rewrite/SuggestHistoryStore';
 import { Button } from '@/ui/component/shared-ui/button';
@@ -38,8 +34,8 @@ import type { AIAnalysisHistoryRecord } from '@/service/AIAnalysisHistoryService
 import { createOpenSourceCallback } from './callbacks/open-source-file';
 import { ResultPaneGraphControls, ResultDensityToggle, ViewModeToggle } from './components/ResultPaneHeader';
 import { ResultBrowserSearchInput } from '@/ui/component/result-browser';
-import { useOpenHubGraphSubview } from './hooks/useOpenHubGraphSubview';
 import { AIInstructionComposer } from '@/ui/component/instruction-composer';
+import { VaultIntelligenceWorkspace } from './VaultIntelligenceWorkspace';
 import type { AIWorkspaceMode } from './store/sharedStore';
 import type {
 	AIGraphArtifactView,
@@ -1750,12 +1746,12 @@ function transformQueryForMode(raw: string, toMode: QuickSearchMode): string {
 const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, setActiveTab, onOpenSuggest, onReplaySuggest }) => {
 	const inputRef = useRef<{ focus: () => void; select: () => void } | null>(null);
 	const { vaultStats, vaultNavigation } = useServiceContext();
+	const quickSearchHost = useQuickSearchHost();
 	const { vaultSearchQuery, setVaultSearchQuery, setSearchQuery } = useSharedStore();
 	const { updateParsedQuery, isSearching, quickSearchMode, inspectorOpen, lastSearchDuration, lastSearchResults, resultView } = useVaultSearchStore();
 	const hasSearchQuery = !!vaultSearchQuery.trim();
 	const [inspectorPath, setInspectorPath] = useState<string | null>(null);
 	const [navigateToPath, setNavigateToPath] = useState<string | null>(null);
-	const openHubGraphSubview = useOpenHubGraphSubview();
 
 	// Heading mode moved to Copilot Modal's Atlas tab — no `#` cycling here.
 
@@ -1866,13 +1862,8 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 								setInspectorPath(path);
 								setNavigateToPath(path);
 							}}
-							onOpenHubLocalGraph={(path) => {
-								void openHubGraphSubview(path);
-							}}
-							onFindRelated={(path) => {
-								const title = path.split('/').pop()?.replace(/\.md$/i, '') ?? path;
-								setVaultSearchQuery(title);
-								useVaultSearchStore.getState().setResultView('graph');
+							onOpenFileAtlas={(path) => {
+								void quickSearchHost.openFileAtlas(path);
 							}}
 						/>
 					</div>
@@ -1907,8 +1898,6 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 
 interface QuickSearchModalContentProps {
 	onClose?: () => void;
-	/** Optional Vault Intelligence context supplied by QuickSearchModal wrapper. */
-	intelCtx?: DocumentContext | null;
 	/** Fired when the user runs a vault-intelligence auto-run. */
 	onVaultAuto?: (mode: 'fast' | 'complete') => void;
 	/** Fired when the user opens a past vault review record. */
@@ -1930,7 +1919,6 @@ interface QuickSearchModalContentProps {
 /** Root quick search: Vault Search plus one AI workspace selector. */
 export const QuickSearchModalContent: React.FC<QuickSearchModalContentProps> = ({
 	onClose,
-	intelCtx = null,
 	onVaultAuto,
 	onOpenVaultRecord,
 	onOpenSuggest,
@@ -1992,16 +1980,9 @@ export const QuickSearchModalContent: React.FC<QuickSearchModalContentProps> = (
 			</div>
 			{activeTab === 'ai' ? (
 				aiWorkspaceMode === 'vault-intelligence' ? (
-					<CopilotPickerContent
-						hideTabBar
-						initialTab="vault"
-						ctx={intelCtx}
-						onSelect={() => { /* Vault actions dispatched separately */ }}
-						onAuto={(_tab, mode) => onVaultAuto?.(mode)}
-						onOpenHistoryRecord={() => { /* document-scope only; unused here */ }}
-						onOpenAllHistory={() => { /* wired via Copilot Modal path */ }}
-						onOpenVaultRecord={(record) => onOpenVaultRecord?.(record)}
-						onClose={onClose}
+					<VaultIntelligenceWorkspace
+						onRunReview={(mode) => onVaultAuto?.(mode)}
+						onOpenRecord={(record) => onOpenVaultRecord?.(record)}
 					/>
 				) : (
 					<AITabContent onClose={onClose} mode={aiWorkspaceMode} />

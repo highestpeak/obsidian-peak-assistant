@@ -170,38 +170,62 @@
   function renderVaultIntelligence() {
     modalBody.innerHTML = `
       <div class="content-shell">
-        ${composer({
-          placeholder: "Ask about vault health, structure, or stale knowledge…",
-          action: "Review",
-        })}
         <div class="mode-intro">
           <div>
             <h3>Vault Intelligence</h3>
-            <p>选择模式不会自动运行扫描；这里提供快速提问与历史，完整维护仍在 Copilot Vault workspace。</p>
+            <p>Vault graph、结构健康与 review history 都属于这个 workspace；选择模式不会自动运行扫描。</p>
           </div>
-          <button class="secondary-action" id="open-vault-workspace" type="button">Open Vault workspace</button>
+          <div class="inline-actions">
+            <button class="secondary-action" type="button" data-review-action="quick">Quick review</button>
+            <button class="composer-action" type="button" data-review-action="complete">Complete review</button>
+          </div>
         </div>
         <div class="intel-summary" aria-label="Vault Intelligence summary">
           <article class="intel-card">
-            <strong>Vault health</strong>
-            <b>82</b>
-            <span>Last complete review · 4 days ago</span>
+            <strong>Notes</strong>
+            <b>3.8k</b>
+            <span>1.4m indexed words</span>
           </article>
           <article class="intel-card">
-            <strong>Stale hubs</strong>
-            <b>7</b>
-            <span>3 changed since last review</span>
+            <strong>Communities</strong>
+            <b>18</b>
+            <span>42 detected hubs</span>
           </article>
           <article class="intel-card">
-            <strong>Structural holes</strong>
+            <strong>Attention</strong>
             <b>11</b>
-            <span>5 high-confidence candidates</span>
+            <span>7 stale hubs · 4 structural holes</span>
+          </article>
+        </div>
+        <div class="vault-intel-grid">
+          <article class="vault-graph-card">
+            <div class="list-heading compact">
+              <div><h3>Vault graph overview</h3><p>Top hubs and current-note position</p></div>
+            </div>
+            <div class="vault-graph-stage" aria-label="Vault graph overview mock">
+              <span class="vault-edge e1"></span><span class="vault-edge e2"></span><span class="vault-edge e3"></span><span class="vault-edge e4"></span>
+              <button class="vault-node core" type="button">PKM</button>
+              <button class="vault-node n1" type="button">Composer</button>
+              <button class="vault-node n2" type="button">AI Search</button>
+              <button class="vault-node n3" type="button">Agent Runtime</button>
+              <button class="vault-node n4" type="button">Product Research</button>
+              <span class="vault-node current">Current note</span>
+            </div>
+            <div class="bridge-list"><span>Bridge gap · Composer ↔ Search</span><span>Bridge gap · Research ↔ Runtime</span></div>
+          </article>
+          <article class="vault-hub-card">
+            <div class="list-heading compact"><div><h3>Hubs</h3><p>Open a hub document</p></div></div>
+            <button type="button">Peak Composer <span>126 notes</span></button>
+            <button type="button">AI Search <span>84 notes</span></button>
+            <button type="button">Agent Runtime <span>73 notes</span></button>
+            <button type="button">Product research <span>61 notes</span></button>
+            <small>7 stale hubs need review</small>
           </article>
         </div>
         <div class="list-heading">
           <div>
             <h3>Recent reviews</h3>
-            <p>这是历史投影，不复制完整维护面板。</p>
+            <p>重开真实 Vault review record。</p>
           </div>
         </div>
         <div class="history-list" data-history-list>
@@ -298,8 +322,10 @@
       });
     });
 
-    byId("open-vault-workspace")?.addEventListener("click", () => {
-      showToast("目标行为：打开 Copilot Vault workspace，并保留当前 modal 返回点");
+    all("[data-review-action]").forEach((button) => {
+      button.addEventListener("click", () => {
+        showToast(`${button.dataset.reviewAction === "quick" ? "Quick" : "Complete"} Vault review 只在明确点击后启动`);
+      });
     });
   }
 

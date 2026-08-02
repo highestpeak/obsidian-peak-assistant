@@ -217,6 +217,11 @@ export function composeQuickSearchHost(
 			return f instanceof TFile ? f : null;
 		},
 		getActiveFilePath: () => app.workspace.getActiveFile()?.path ?? null,
+		openFileAtlas: async (path) => {
+			await appContext.vaultNavigation.openVaultPath(path, { newLeaf: 'tab' });
+			const { FileAtlasModal } = await import('@/app/file-atlas/FileAtlasModal');
+			new FileAtlasModal(appContext, path).open();
+		},
 
 		enableDevTools,
 		isMockEnv,

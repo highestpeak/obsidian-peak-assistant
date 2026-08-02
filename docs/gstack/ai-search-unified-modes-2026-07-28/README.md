@@ -15,7 +15,7 @@
 - AI Graph 不再拥有独立卡片 Library；全部 graph 以同一 modal 内的紧凑历史列表呈现。
 - 每个 AI Graph history row 显示稳定的创建来源与主要上下文，例如 `Created in File Atlas · AI 编辑器生态调研.md`；后续更新不覆盖创建来源。
 - AI Graph 持久化、版本、Graph Detail 与 repository 设计保持不变，变化的是 browse surface。
-- `Vault Intelligence` 在本 modal 中只提供快捷提问与历史投影，完整 Vault Maintenance 仍由 Copilot Vault workspace 承担。
+- `Vault Intelligence` 在本 modal 中直接提供 Vault graph overview、hubs、health 与 recent review projection，不再跳转旧 Copilot Vault workspace；进入模式本身不会启动扫描。
 - 模式菜单与历史列表使用真实 DOM button、focus 和键盘事件，不是 SVG 截图。
 - `Tab` 用于组件导航；menu 使用 `ArrowUp / ArrowDown / Enter / Escape`；`Alt/Option + Up/Down` 只作为后续可配置加速层，编辑输入时不拦截。
 

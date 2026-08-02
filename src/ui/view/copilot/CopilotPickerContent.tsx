@@ -36,12 +36,10 @@ import {
 	vaultReadiness,
 	settingReadiness,
 } from './PickerReadinessAdapters';
-import { DocumentContextGraphStrip } from './context/DocumentContextGraphStrip';
-import { VaultMaintenanceSegment } from './vault/VaultMaintenanceSegment';
 
 // Copilot Modal tab bar. Atlas moved out to the standalone File Atlas surface
-// (see FileAtlasModal); Vault Intelligence lives in the Search Modal (rendered
-// via `hideTabBar=true`, initialTab='vault'); Settings is command-palette only.
+// (see FileAtlasModal); Vault Intelligence is a dedicated Search Modal
+// workspace and is not mounted through this picker. Settings is command-palette only.
 const SCOPE_TABS: Array<{ id: IntentTabId; title: string; subtitle: string; placeholder: string }> = [
 	{ id: 'document', title: 'Document Copilot', subtitle: '= Copilot',    placeholder: 'Search or ask in current document... (@ note, ? help)' },
 	{ id: 'ambient',  title: 'Ambient',          subtitle: '= Related',    placeholder: 'Related notes around your cursor...' },
@@ -186,19 +184,6 @@ export const CopilotPickerContent: React.FC<{
 					vaultLastRecord={vaultState.lastRecord}
 					fallbackLine={model.contextLine}
 				/>
-
-				{activeTab === 'document' && ctx?.file.path ? (
-					<DocumentContextGraphStrip filePath={ctx.file.path} />
-				) : null}
-				{activeTab === 'vault' ? (
-					<VaultMaintenanceSegment
-						lastReport={vaultState.lastRecord}
-						onOpenLastReport={() => {
-							if (vaultState.lastRecord) onOpenVaultRecord(vaultState.lastRecord);
-						}}
-						onRunReview={() => onAuto('vault', 'complete')}
-					/>
-				) : null}
 
 				{/* Readiness card */}
 				<PickerReadinessCard {...readinessProps} />

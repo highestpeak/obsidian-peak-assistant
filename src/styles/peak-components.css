@@ -4469,80 +4469,11 @@
   font-size: var(--pk-text-sm);
 }
 
-.peak-ambient-floating-host {
-	position: absolute;
-	top: 72px;
-	right: 24px;
-	z-index: var(--pk-z-modal, 80);
-	width: min(390px, calc(100% - 32px));
-	max-height: min(680px, calc(100% - 96px));
-	overflow: hidden;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 10px;
-	background: var(--background-primary);
-	box-shadow: 0 16px 44px rgb(0 0 0 / 0.24);
-}
-
-.peak-ambient-floating-host .peak-related-notes-panel {
-	max-height: inherit;
-	overflow-y: auto;
-}
-
-.peak-ambient-floating-host .peak-related-notes-panel[data-collapsed="true"] {
-  gap: 0;
-  padding: 6px 8px;
-  overflow: hidden;
-}
-
-.peak-ambient-floating-host:has(.peak-related-notes-panel[data-collapsed="true"]) {
-  width: min(310px, calc(100% - 32px));
-  max-height: 44px;
-}
-
 :is(.pktw-root, .peak-design-root) .peak-related-notes-header {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   color: var(--pk-text-secondary);
-}
-
-:is(.pktw-root, .peak-design-root) .peak-related-notes-header[data-draggable="true"] {
-	cursor: grab;
-	user-select: none;
-}
-
-:is(.pktw-root, .peak-design-root) .peak-related-notes-header[data-draggable="true"]:active {
-	cursor: grabbing;
-}
-
-:is(.pktw-root, .peak-design-root) .peak-related-notes-header-btn {
-	width: 28px !important;
-	min-width: 28px !important;
-	max-width: 28px !important;
-	height: 28px !important;
-	min-height: 28px !important;
-	max-height: 28px !important;
-	padding: 6px !important;
-	border-radius: 5px !important;
-	color: var(--pk-text-tertiary) !important;
-}
-
-:is(.pktw-root, .peak-design-root) .peak-related-notes-header-btn:hover:not(:disabled) {
-	background: var(--pk-state-hover) !important;
-	color: var(--pk-text-primary) !important;
-}
-
-:is(.pktw-root, .peak-design-root) .peak-related-notes-header-btn svg {
-	width: 14px;
-	height: 14px;
-}
-
-:is(.pktw-root, .peak-design-root) .peak-related-notes-header-btn svg.is-spinning {
-	animation: peak-related-spin 600ms linear infinite;
-}
-
-@keyframes peak-related-spin {
-	to { transform: rotate(360deg); }
 }
 
 :is(.pktw-root, .peak-design-root) .peak-related-notes-title {
@@ -4749,6 +4680,50 @@
 	gap: 10px;
 }
 
+:is(.pktw-root, .peak-design-root) .pk-vault-intelligence-workspace {
+	display: flex;
+	min-height: 0;
+	flex: 1;
+	flex-direction: column;
+	gap: 12px;
+	overflow-y: auto;
+	padding: 18px;
+	background: var(--pk-background);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-vault-intelligence-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-vault-intelligence-header > div:first-child {
+	display: flex;
+	min-width: 0;
+	flex-direction: column;
+	gap: 3px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-vault-intelligence-actions {
+	display: flex;
+	flex-shrink: 0;
+	gap: 7px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-vault-intelligence-loading,
+:is(.pktw-root, .peak-design-root) .pk-vault-intelligence-empty {
+	display: flex;
+	min-height: 96px;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	border: 1px dashed var(--pk-border);
+	border-radius: var(--pk-radius-lg);
+	color: var(--pk-text-muted);
+	font-size: 12px;
+}
+
 :is(.pktw-root, .peak-design-root) .pk-vault-maintenance-head {
 	display: flex;
 	align-items: center;
@@ -4796,7 +4771,7 @@
 
 :is(.pktw-root, .peak-design-root) .pk-vault-maintenance-grid {
 	display: grid;
-	grid-template-columns: minmax(0, 1.35fr) repeat(2, minmax(0, 1fr));
+	grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
 	gap: 8px;
 }
 
@@ -4879,6 +4854,68 @@
 	color: var(--pk-text-primary);
 	font-size: 12px;
 	font-weight: 600;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-vault-intelligence-history {
+	display: flex;
+	flex-direction: column;
+	gap: 7px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-vault-intelligence-history-title {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	color: var(--pk-text-primary);
+	font-size: 12px;
+	font-weight: 700;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-vault-intelligence-history-title small {
+	color: var(--pk-text-muted);
+	font-size: 10px;
+	font-weight: 500;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-vault-intelligence-history-row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto auto;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	min-height: 48px !important;
+	padding: 8px 10px !important;
+	border: 1px solid var(--pk-border-soft) !important;
+	border-radius: var(--pk-radius-md) !important;
+	background: var(--pk-surface) !important;
+	text-align: left;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-vault-intelligence-history-row > span {
+	display: flex;
+	min-width: 0;
+	flex-direction: column;
+	gap: 2px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-vault-intelligence-history-row strong {
+	overflow: hidden;
+	color: var(--pk-text-primary);
+	font-size: 12px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-vault-intelligence-history-row small,
+:is(.pktw-root, .peak-design-root) .pk-vault-intelligence-history-row time {
+	color: var(--pk-text-muted);
+	font-size: 10px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-vault-intelligence-history-row svg {
+	width: 14px;
+	height: 14px;
+	color: var(--pk-text-faint);
 }
 
 @media (max-width: 900px) {

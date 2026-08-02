@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { FileText, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { FileText, Map, X, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { cn } from '@/ui/react/lib/utils';
 import { ConnectedSection } from './ConnectedSection';
 import { DiscoveredSection } from './DiscoveredSection';
 import { AIGraphSection } from './AIGraphSection';
-import { HubSection } from './HubSection';
 import { useVaultSearchStore } from '../../store';
 import { renderSnippetContent } from '../snippet/renderSnippetHighlights';
 
@@ -66,19 +65,18 @@ export interface InspectorSidePanelProps {
 	onOpenDocument: (notePath: string) => void;
 	/** Re-target the inspector panel to another doc without opening it. */
 	onInspectInPanel: (notePath: string) => void;
-	/** Open the selected hub as a pinned result graph. */
-	onOpenHubLocalGraph?: (hubPath: string) => void;
-	/** Seed a related-note search for an orphan. */
-	onFindRelated?: (notePath: string) => void;
+	/** Hand the selected result to File Atlas, the canonical local-graph owner. */
+	onOpenFileAtlas: (notePath: string) => void;
 }
 
 /**
  * Side-panel inspector shown next to search results (340px).
- * Contains collapsible Hub / Connected / Discovered / AI Graph sections.
+ * Contains search-owned Connected / Discovered / AI Graph sections and a
+ * handoff to File Atlas for document hubs and neighborhood graphs.
  */
 export const InspectorSidePanel: React.FC<InspectorSidePanelProps> = ({
 	currentPath, searchQuery, onClose, showSearchSnippet = true, onOpenDocument, onInspectInPanel,
-	onOpenHubLocalGraph, onFindRelated,
+	onOpenFileAtlas,
 }) => {
 	if (!currentPath) {
 		return (
@@ -101,6 +99,17 @@ export const InspectorSidePanel: React.FC<InspectorSidePanelProps> = ({
 				>
 					{title}
 				</span>
+				<Button
+					variant="ghost"
+					size="icon"
+					geometry="toolbar-icon"
+					title="Open in File Atlas"
+					aria-label="Open in File Atlas"
+					className="pktw-shadow-none"
+					onClick={() => onOpenFileAtlas(currentPath)}
+				>
+					<Map className="pktw-h-4 pktw-w-4 pktw-text-pk-foreground-muted" />
+				</Button>
 				<Button
 					variant="ghost"
 					size="icon"
@@ -134,15 +143,6 @@ export const InspectorSidePanel: React.FC<InspectorSidePanelProps> = ({
 						searchQuery={searchQuery}
 						onOpenDocument={onOpenDocument}
 						onInspectInPanel={onInspectInPanel}
-					/>
-				</CollapsibleSection>
-				<CollapsibleSection title="Hubs">
-					<HubSection
-						currentPath={currentPath}
-						onOpenDocument={onOpenDocument}
-						onInspectInPanel={onInspectInPanel}
-						onOpenLocalGraph={onOpenHubLocalGraph}
-						onFindRelated={onFindRelated}
 					/>
 				</CollapsibleSection>
 				<CollapsibleSection title="AI Graph">

@@ -7,10 +7,9 @@ function source(relativePath: string): string {
 }
 
 const contextualPort = source('src/core/ports/ContextualGraphPort.ts');
-const vaultSegment = source('src/ui/view/copilot/vault/VaultMaintenanceSegment.tsx');
-const documentStrip = source('src/ui/view/copilot/context/DocumentContextGraphStrip.tsx');
-const hubDrawer = source('src/ui/view/quick-search/components/inspector/HubSection.tsx');
-const ambientHost = source('src/app/ambient/AmbientFloatingPanelHost.tsx');
+const vaultWorkspace = source('src/ui/view/quick-search/VaultIntelligenceWorkspace.tsx');
+const documentContext = source('src/ui/view/file-atlas/components/FileAtlasDocumentContext.tsx');
+const searchInspector = source('src/ui/view/quick-search/components/inspector/InspectorSidePanel.tsx');
 const ambientPanel = source('src/ui/view/ambient-panel/RelatedNotesPanel.tsx');
 const productCss = source('src/styles/peak-components.css');
 const atlasHost = source('src/app/file-atlas/composeFileAtlasHost.ts');
@@ -37,16 +36,19 @@ const folderModel = source('src/ui/component/graph/folderCompoundModel.ts');
 const timelineLayout = source('src/ui/component/mine/multi-lens-graph/layouts/timeline-layout.ts');
 
 assert.match(contextualPort, /loadDocumentContext/);
-assert.match(vaultSegment, /Vault graph overview/);
-assert.match(documentStrip, /Local graph/);
-assert.match(hubDrawer, /hub\.status === 'primary'/);
-assert.match(hubDrawer, /candidate/);
-assert.match(hubDrawer, /orphanStatus/);
+assert.match(vaultWorkspace, /Vault graph overview/);
+assert.match(vaultWorkspace, /Opening this mode never starts a scan/);
+assert.match(documentContext, /Open local graph/);
+assert.match(documentContext, /hub\.status === 'primary'/);
+assert.match(documentContext, /candidate/);
+assert.match(documentContext, /orphanStatus/);
+assert.match(searchInspector, /Open in File Atlas/);
+assert.doesNotMatch(searchInspector, /<HubSection/);
 
-assert.match(ambientHost, /ReactRenderer/);
-assert.match(ambientHost, /workspaceEl\.appendChild/);
-assert.match(ambientPanel, /triggerManual/);
-assert.match(productCss, /\.peak-ambient-floating-host[\s\S]*position:\s*fixed/);
+assert.doesNotMatch(ambientPanel, /floating\??:/);
+assert.doesNotMatch(ambientPanel, /data-draggable/);
+assert.doesNotMatch(ambientPanel, /triggerManual/);
+assert.doesNotMatch(productCss, /\.peak-ambient-floating-host/);
 
 assert.match(atlasHost, /getMostUsed/);
 assert.match(atlasHost, /loadCopilotSuggestions/);
@@ -76,6 +78,8 @@ assert.match(promptTrigger, /trigger: '@'/);
 assert.match(promptTrigger, /'\[\['/);
 
 assert.match(quickSearch, /AI_WORKSPACE_OPTIONS/);
+assert.match(quickSearch, /VaultIntelligenceWorkspace/);
+assert.doesNotMatch(quickSearch, /CopilotPickerContent/);
 assert.match(quickSearch, /AIGraphHistoryPanel/);
 assert.doesNotMatch(quickSearch, /event\.key === 'Tab'/);
 assert.match(quickStore, /beginOrdinaryOpen/);

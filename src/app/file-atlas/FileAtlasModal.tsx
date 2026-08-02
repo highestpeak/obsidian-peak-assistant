@@ -24,7 +24,10 @@ export class FileAtlasModal extends Modal {
 	private openToken = 0;
 	private closed = true;
 
-	constructor(private appContext: AppContext) {
+	constructor(
+		private appContext: AppContext,
+		private readonly requestedInitialPath?: string,
+	) {
 		super(appContext.app);
 	}
 
@@ -42,7 +45,7 @@ export class FileAtlasModal extends Modal {
 		this.contentEl.style.padding = '0';
 
 		const host = composeFileAtlasHost(this.appContext);
-		const initialPath = host.getActiveDocumentPath();
+		const initialPath = this.requestedInitialPath ?? host.getActiveDocumentPath();
 		let initialContent = '';
 		if (initialPath) {
 			initialContent = await host.readDoc(initialPath);

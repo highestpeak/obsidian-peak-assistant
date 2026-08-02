@@ -2,11 +2,12 @@
 
 日期：2026-07-28
 产品方向：**Decided**
-设计状态：**Review-ready**
-生产状态：**Implementation pending**
+设计状态：**Owner-corrected**
+生产状态：**Implemented in isolated worktree; real Obsidian interaction pending**
 
 配套材料：
 
+- [可视化正式设计](../../gstack/ai-search-unified-modes-2026-07-28/design-review.html)
 - [可交互 mock](../../gstack/ai-search-unified-modes-2026-07-28/index.html)
 - [AI Graph Artifact Platform](./2026-07-28-ai-graph-artifact-platform.md)
 - [Shared AI Instruction Composer](./2026-07-28-shared-ai-instruction-composer.md)
@@ -14,7 +15,7 @@
 - [Vault Intelligence](../../13-feature-vault-intelligence.html#user-workflows)
 - [Roadmap](../../roadmap.html)
 
-> 本文只定义 Quick Search modal 的目标信息架构与交互。它没有修改生产 UI、history service、AI runtime、AI Graph persistence 或 Vault Intelligence runtime。
+> 2026-08-02 owner correction：本文同时记录当前实现边界。Vault Intelligence 的完整 graph / health / review projection 归本 modal，不再转跳旧 Copilot Vault workspace；选择 mode 本身仍不启动扫描。
 
 ## 1. 核心裁决
 
@@ -35,7 +36,7 @@ Quick Search modal 顶层只保留两个位置：
 | Vault Intelligence 是顶栏右侧独立按钮 | [`SearchModal.tsx`](../../../src/ui/view/quick-search/SearchModal.tsx) | 收进同一个 AI workspace selector |
 | Recent history 已能区分普通 analysis 与 graph record | [`RecentAnalysisList.tsx`](../../../src/ui/view/quick-search/components/RecentAnalysisList.tsx) | 复用同一列表心智，不另造 Graph card grid |
 | 现有 `Tab` handler 直接切换 Vault / AI | [`SearchModal.tsx`](../../../src/ui/view/quick-search/SearchModal.tsx) | 回到全键盘规格：`Tab` 在组件间走，mode menu 使用标准 listbox/menu 键盘 |
-| Vault Intelligence 的完整维护工作区属于 Copilot Vault tab | [Vault Intelligence](../../13-feature-vault-intelligence.html#user-workflows) | Quick Search 只承担快捷提问、摘要和历史投影 |
+| 旧稿把完整 Vault graph / maintenance projection 放在 Copilot Vault tab | [Vault Intelligence](../../13-feature-vault-intelligence.html#user-workflows) | 该 projection 迁入 Quick Search 的 Vault Intelligence workspace；不复制旧 picker panel |
 
 根因不是视觉样式，而是同一个 modal 同时暴露了三种层级：
 
@@ -59,7 +60,7 @@ Quick Search modal 顶层只保留两个位置：
 ### 3.2 非目标
 
 - 不合并 Vault Search 与 AI Search 的 runtime。
-- 不把 Vault Intelligence 的完整维护 UI 塞进 Quick Search。
+- 不从 Quick Search 再跳回或复制旧 Copilot Vault workspace。
 - 不删除 AI Graph artifact repository、version、source、evidence 或 Graph Detail。
 - 不让 mode selection 自动触发 Web、Vault scan 或昂贵 AI run。
 - 不为三个 mode 新增 Command Palette 命令。
@@ -154,7 +155,14 @@ Primary job：快速询问 Vault 健康与结构、重开最近 Vault review。
 - recent reviews；
 - `Open Vault workspace`。
 
-本模式不复制 detector、finding review、hub update 和 maintenance controls。完整工作区继续归 Copilot Vault tab。切到本模式只换 projection，不自动运行 complete review。
+本模式直接拥有只读 Vault graph / health projection 与显式 review entry：
+
+- overview graph、hubs、structural holes；
+- notes / words / communities / orphans stats；
+- recent review history；
+- Quick review / Complete review 显式动作。
+
+它不挂载 <code>CopilotPickerContent</code>，也不提供 “Open Copilot Vault workspace”。切到本模式只读取 projection，不自动运行 complete review。
 
 ## 6. 共享输入与 mode adapter
 
@@ -219,7 +227,7 @@ mode adapter 拥有：
 | --- | --- | --- | --- | --- |
 | AI Search landing | 提问与重开分析 | suggestions + analysis history | analysis run ref | analysis detail / close |
 | AI Graph history | 找到、重开或创建 graph | artifact browse projection | create run ref | Graph Detail |
-| Vault Intelligence landing | 看摘要、重开 review | review projection | review run ref | review detail / Vault workspace |
+| Vault Intelligence landing | 看 Vault graph、摘要并重开 review | digest + review projection | explicit review run ref | review detail / close |
 | Mode menu | 切换 AI task | current session mode | transient modal state | selected landing |
 | Graph Detail | 阅读、审阅和更新 graph | canonical artifact version | semantic draft / new version | AI Graph history |
 
@@ -265,10 +273,10 @@ mode adapter 拥有：
 - 每个 graph row 显示不可变的创建 surface 与主要创建上下文；File Atlas 来源必须显示精确文件名。
 - graph row 可打开同一个 Graph Detail，并能返回原列表位置。
 - Vault Intelligence mode 不因被选中而自动运行 complete review。
-- Vault Intelligence 可进入 Copilot Vault workspace，但不复制完整 maintenance UI。
+- Vault Intelligence 直接显示 Vault graph / health / recent reviews，不进入旧 Copilot Vault workspace。
 - `Tab` 不切 mode；mode menu、history list 与 Escape focus restoration 可全键盘完成。
 - input / IME 不被 mode shortcut 截获。
-- UI、roadmap 与 AI Graph spec 均明确标记 implementation pending。
+- UI 与 docs 明确标记真实 Obsidian interaction pending，不能把 build 升级为实机验收。
 
 ## 12. 明确不要做
 

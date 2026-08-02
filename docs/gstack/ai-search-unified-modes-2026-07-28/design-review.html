@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Search unified modes · Formal visual design</title>
+  <link rel="stylesheet" href="./styles.css">
+  <style>
+    .design-shell { width: min(1180px, calc(100vw - 40px)); margin: 24px auto 64px; }
+    .design-hero, .design-section { border: 1px solid var(--line); background: var(--paper); box-shadow: 0 8px 24px rgba(29,39,34,.045); }
+    .design-hero { padding: 32px 36px; }
+    .design-hero h1 { max-width: 900px; margin-top: 8px; font-size: clamp(30px, 4vw, 48px); line-height: 1.12; letter-spacing: -.035em; }
+    .design-hero p { max-width: 920px; margin-top: 10px; color: var(--muted); font-size: 16px; }
+    .design-links { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 18px; font-size: 13px; }
+    .design-section { margin-top: 18px; padding: 26px; }
+    .design-section h2 { font-size: 24px; }
+    .design-section > p { max-width: 900px; margin-top: 6px; color: var(--muted); }
+    .ia-flow { display: grid; grid-template-columns: .8fr 1.2fr; gap: 16px; margin-top: 18px; }
+    .ia-node { padding: 16px; border: 1px solid var(--line); background: var(--soft); }
+    .ia-node strong { display: block; font-size: 14px; }
+    .ia-node span { display: block; margin-top: 5px; color: var(--muted); font-size: 12px; }
+    .mode-stack { display: grid; gap: 8px; }
+    .mode-card { display: grid; grid-template-columns: 42px minmax(0,1fr) auto; align-items: center; gap: 12px; padding: 13px; border: 1px solid var(--line); background: var(--paper); }
+    .mode-card b { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 8px; background: var(--accent-soft); color: var(--accent); }
+    .mode-card strong, .mode-card small { display: block; }
+    .mode-card small { margin-top: 3px; color: var(--muted); }
+    .mode-card em { color: var(--green); font-size: 11px; font-style: normal; font-weight: 750; }
+    .screen-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; margin-top: 18px; }
+    .screen-card { overflow: hidden; border: 1px solid var(--line); background: var(--paper); }
+    .screen-top { display: flex; height: 34px; align-items: center; justify-content: space-between; padding: 0 9px; border-bottom: 1px solid var(--line); background: #f2f4f2; font-size: 10px; font-weight: 750; }
+    .screen-body { min-height: 250px; padding: 12px; }
+    .mini-input { height: 32px; border: 1px solid var(--line); border-radius: 6px; background: var(--soft); }
+    .mini-title { margin: 13px 0 7px; font-size: 11px; font-weight: 760; }
+    .mini-row { height: 42px; margin-top: 5px; border: 1px solid var(--soft-line); border-radius: 5px; background: var(--soft); }
+    .mini-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 4px; }
+    .mini-stats span { display: grid; min-height: 48px; place-items: center; border: 1px solid var(--soft-line); background: var(--soft); color: var(--muted); font-size: 9px; text-align: center; }
+    .mini-graph { position: relative; height: 94px; margin-top: 7px; border: 1px solid var(--soft-line); background: var(--paper); }
+    .mini-graph i { position: absolute; display: grid; width: 35px; height: 22px; place-items: center; border: 1px solid var(--accent-line); border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 7px; font-style: normal; }
+    .mini-graph i:nth-child(1){left:42%;top:36%;}.mini-graph i:nth-child(2){left:8%;top:12%;}.mini-graph i:nth-child(3){right:8%;top:12%;}.mini-graph i:nth-child(4){left:10%;bottom:10%;}.mini-graph i:nth-child(5){right:10%;bottom:10%;}
+    .boundary-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin-top: 16px; }
+    .boundary { padding: 14px; border-left: 4px solid var(--green); background: var(--green-soft); }
+    .boundary.retired { border-color: var(--amber); background: var(--amber-soft); }
+    .boundary strong { display: block; }
+    .boundary span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+    @media(max-width:800px){.ia-flow,.screen-grid,.boundary-grid{grid-template-columns:1fr}.design-shell{width:calc(100vw - 20px);margin-top:10px}}
+  </style>
+</head>
+<body>
+  <main class="design-shell">
+    <header class="design-hero">
+      <div class="report-kicker">Peak Assistant · Formal visual design · 2026-08-02 correction</div>
+      <h1>Quick Search 只有两个顶层位置，AI 工作区有三种明确任务。</h1>
+      <p>这页用于 review 信息架构与 surface ownership；真正点击和键盘行为请进入交互 Mock。Vault Intelligence 在这里是完整 Vault graph / health projection，不再是旧 Copilot Vault panel 的跳板。</p>
+      <nav class="design-links">
+        <a href="./index.html">打开可交互 Mock</a>
+        <a href="../../planned-requirements.html#pr-ai-search-unified-modes">返回需求卡</a>
+        <a href="../../superpowers/specs/2026-07-28-ai-search-unified-modes.md">查看 Markdown source spec</a>
+      </nav>
+    </header>
+
+    <section class="design-section">
+      <h2>信息架构</h2>
+      <p>顶层不是四个 tab；Vault Search 与 AI workspace selector 左右等分。AI selector 默认 AI Search，低频任务从同一个菜单进入。</p>
+      <div class="ia-flow">
+        <article class="ia-node"><strong>Vault Search</strong><span>确定性找回：files、headings、blocks、properties。搜索结果的 hub / local graph 通过 Open in File Atlas handoff。</span></article>
+        <div class="mode-stack">
+          <article class="mode-card"><b>AI</b><span><strong>AI Search</strong><small>向 Vault 提问、分析、重开 recent analyses。</small></span><em>Default</em></article>
+          <article class="mode-card"><b>G</b><span><strong>AI Graph</strong><small>创建、浏览和维护持久化 graph artifacts。</small></span><em>Artifact</em></article>
+          <article class="mode-card"><b>VI</b><span><strong>Vault Intelligence</strong><small>Vault graph overview、hubs、health、recent reviews。</small></span><em>Read until run</em></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="design-section">
+      <h2>三种 AI mode 的屏幕职责</h2>
+      <p>三者共享 modal shell、history row 语法和 focus 规则，但读取不同事实源，不合并 runtime。</p>
+      <div class="screen-grid">
+        <article class="screen-card"><div class="screen-top"><span>AI Search</span><span>default</span></div><div class="screen-body"><div class="mini-input"></div><div class="mini-title">Suggestions</div><div class="mini-row"></div><div class="mini-row"></div><div class="mini-title">Recent analyses</div><div class="mini-row"></div><div class="mini-row"></div></div></article>
+        <article class="screen-card"><div class="screen-top"><span>AI Graph</span><span>artifact history</span></div><div class="screen-body"><div class="mini-input"></div><div class="mini-title">All persisted graphs</div><div class="mini-row"></div><div class="mini-row"></div><div class="mini-row"></div><div class="mini-row"></div></div></article>
+        <article class="screen-card"><div class="screen-top"><span>Vault Intelligence</span><span>manual run</span></div><div class="screen-body"><div class="mini-stats"><span>3.8k<br>notes</span><span>18<br>communities</span><span>11<br>attention</span></div><div class="mini-title">Vault graph overview</div><div class="mini-graph"><i>PKM</i><i>Composer</i><i>Search</i><i>Runtime</i><i>Research</i></div><div class="mini-title">Recent reviews</div><div class="mini-row"></div></div></article>
+      </div>
+    </section>
+
+    <section class="design-section">
+      <h2>纠偏边界</h2>
+      <div class="boundary-grid">
+        <article class="boundary"><strong>保留：Vault Intelligence capability</strong><span>digest、graph overview、hubs、structural holes、review history 与显式 run。</span></article>
+        <article class="boundary"><strong>保留：AI Graph Artifact Platform</strong><span>Graph history 是统一入口；Detail / Create 是持久化 artifact 的后续屏幕。</span></article>
+        <article class="boundary retired"><strong>撤销：Copilot Vault panel ownership</strong><span>Vault Intelligence 不再通过 CopilotPickerContent 渲染，也没有 Open Vault workspace。</span></article>
+        <article class="boundary retired"><strong>撤销：Search Hub Drawer</strong><span>Search 只 handoff 到 File Atlas；不复制 hubs 和 local graph。</span></article>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -48,6 +48,8 @@ export interface QuickSearchHost {
 	readVaultFileText(path: string): Promise<string | null>;
 	findFileByPath(path: string): TFile | null;
 	getActiveFilePath(): string | null;
+	/** Open the canonical File Atlas surface focused on a search result. */
+	openFileAtlas(path: string): Promise<void>;
 
 	// Settings-derived flags (computed at hook call time, NOT raw settings tree)
 	enableDevTools: boolean;

@@ -9,7 +9,11 @@ const aiGraphPageUrl = pathToFileURL(path.join(directory, "..", "ai-graph-artifa
 const screenshotPath = path.join("/tmp", "ai-search-unified-modes-preview.png");
 const menuScreenshotPath = path.join("/tmp", "ai-search-mode-menu-preview.png");
 const graphScreenshotPath = path.join("/tmp", "ai-search-ai-graph-list-preview.png");
+const vaultIntelligenceScreenshotPath = path.join("/tmp", "ai-search-vault-intelligence-preview.png");
 const embeddedScreenshotPath = path.join("/tmp", "ai-graph-unified-entry-preview.png");
+const designScreenshotPath = path.join("/tmp", "ai-search-formal-design-preview.png");
+const graphDetailScreenshotPath = path.join("/tmp", "ai-graph-detail-preview.png");
+const graphCreateScreenshotPath = path.join("/tmp", "ai-graph-create-preview.png");
 const repoRoot = path.resolve(directory, "..", "..", "..");
 
 const browser = await chromium.launch({ headless: true });
@@ -93,9 +97,16 @@ assert(await page.locator("#ai-mode-trigger").evaluate((element) => element === 
 
 await page.locator("#ai-mode-trigger").press("Alt+ArrowDown");
 assert(await page.locator("#ai-mode-trigger-label").textContent() === "Vault Intelligence", "modifier shortcut should cycle modes outside editable fields");
+assert(await page.locator(".vault-graph-stage").count() === 1, "Vault Intelligence must render its Vault graph projection");
+assert(await page.locator(".vault-hub-card").count() === 1, "Vault Intelligence must render hubs in the Search workspace");
+assert(await page.locator("#open-vault-workspace").count() === 0, "Vault Intelligence must not route back to the retired Copilot Vault workspace");
+await page.locator(".search-modal").screenshot({ path: vaultIntelligenceScreenshotPath });
+
+await page.locator("#ai-mode-trigger").click();
+await page.locator('[data-mode="search"]').click();
 await page.locator("#workspace-input").focus();
 await page.keyboard.press("Alt+ArrowDown");
-assert(await page.locator("#ai-mode-trigger-label").textContent() === "Vault Intelligence", "modifier shortcut must not steal editable input");
+assert(await page.locator("#ai-mode-trigger-label").textContent() === "AI Search", "modifier shortcut must not steal editable input");
 
 await page.locator("#vault-search-tab").click();
 assert(await page.locator("#search-modal").getAttribute("data-active-surface") === "vault", "Vault Search surface did not activate");
@@ -111,7 +122,18 @@ assert(errors.length === 0, `browser errors: ${errors.join(" | ")}`);
 
 await page.screenshot({ path: screenshotPath, fullPage: true });
 
+await page.goto(pathToFileURL(path.join(directory, "design-review.html")).href, { waitUntil: "load" });
+assert(await page.locator(".mode-card").count() === 3, "formal design must visualize all three AI modes");
+assert(await page.locator(".screen-card").count() === 3, "formal design must include one reviewable screen per AI mode");
+await page.screenshot({ path: designScreenshotPath, fullPage: true });
+
 await page.goto(aiGraphPageUrl, { waitUntil: "load" });
+assert(await page.locator("#graph-detail-shell").count() === 1, "AI Graph page must contain a styled Graph Detail prototype");
+assert(await page.locator("#create-title").count() === 1, "AI Graph page must contain a styled Create Graph prototype");
+await page.locator("#detail").scrollIntoViewIfNeeded();
+await page.locator("#graph-detail-shell").screenshot({ path: graphDetailScreenshotPath });
+await page.locator("#create").scrollIntoViewIfNeeded();
+await page.locator("#create").screenshot({ path: graphCreateScreenshotPath });
 const embedded = page.frameLocator(".unified-search-frame");
 assert(await embedded.locator("#ai-mode-trigger-label").textContent() === "AI Search", "AI Graph prototype must embed the same default AI Search mock");
 const parentOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
@@ -126,4 +148,8 @@ console.log(`PASS ${aiGraphPageUrl}`);
 console.log(`SCREENSHOT ${screenshotPath}`);
 console.log(`SCREENSHOT ${menuScreenshotPath}`);
 console.log(`SCREENSHOT ${graphScreenshotPath}`);
+console.log(`SCREENSHOT ${vaultIntelligenceScreenshotPath}`);
 console.log(`SCREENSHOT ${embeddedScreenshotPath}`);
+console.log(`SCREENSHOT ${designScreenshotPath}`);
+console.log(`SCREENSHOT ${graphDetailScreenshotPath}`);
+console.log(`SCREENSHOT ${graphCreateScreenshotPath}`);

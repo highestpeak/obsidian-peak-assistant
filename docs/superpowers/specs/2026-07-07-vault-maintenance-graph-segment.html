@@ -339,14 +339,20 @@
 
     <header>
       <div class="eyebrow">Low fidelity prototype · Vault Maintenance</div>
-      <h1>Vault 面板应该先让用户看见结构，而不是要求用户逐篇展开图谱。</h1>
-      <p class="subtitle">这份草图说明 Vault tab 里的一个 segment：把 overview graph、hub list、当前文档位置、last report 和 review 入口放在同一个 Vault Maintenance 区域。它不是最终 compare panel 设计，只是给后续 UI 重做留一个稳定的心智模型。</p>
+      <h1>Vault Intelligence 应该先让用户看见结构，而不是要求用户逐篇展开图谱。</h1>
+      <p class="subtitle">2026-08-02 owner correction：能力内容保留，但 surface 从旧 Copilot Vault tab 移到 <code>Quick Search → Vault Intelligence</code>。overview graph、hub list、current note 与 review history 在一个专用 workspace 中呈现。</p>
       <div class="meta">
         <span>Audience: product / implementation handoff</span>
         <span>Fidelity: wireframe</span>
         <span>Primary viewport: desktop editor</span>
       </div>
     </header>
+
+    <section id="current-surface">
+      <h2>当前 surface 决定</h2>
+      <p class="lead">Vault graph overview 不再由 <code>CopilotPickerContent</code> 或旧 Vault tab 挂载。它由 Search Modal 的 <code>VaultIntelligenceWorkspace</code> 读取现有 Vault review runtime；进入 mode 只读取 projection，只有明确点击 Quick / Complete review 才启动运行。</p>
+      <div class="note"><div class="note-title">下方线框是历史布局参考</div>其中的三栏 Copilot tab chrome 已失效；review 时以 <a href="../../gstack/ai-search-unified-modes-2026-07-28/index.html">AI Search 统一入口 Mock</a> 为准。</div>
+    </section>
 
     <section id="why">
       <h2>为什么要有这个 segment</h2>

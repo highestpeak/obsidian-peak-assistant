@@ -458,6 +458,98 @@
 	border-radius: var(--pk-radius-pill);
 }
 
+/* Document hubs + link provenance. The actual neighborhood graph remains the
+   Graph subview; this row only makes its ownership and entry explicit. */
+.pkfa-document-context {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(180px, auto) auto;
+	align-items: center;
+	gap: 12px;
+	min-height: 46px;
+	padding: 7px var(--pk-space-6);
+	border-bottom: 1px solid var(--pk-border-soft);
+	background: var(--pk-surface-sunken);
+}
+
+.pkfa-document-context.is-loading {
+	display: flex;
+	color: var(--pk-text-tertiary);
+	font-size: var(--pk-text-xs);
+}
+
+.pkfa-context-group,
+.pkfa-context-values {
+	display: flex;
+	min-width: 0;
+	align-items: center;
+	gap: 6px;
+}
+
+.pkfa-context-label {
+	display: inline-flex;
+	flex: 0 0 auto;
+	align-items: center;
+	gap: 5px;
+	color: var(--pk-text-tertiary);
+	font-size: var(--pk-text-xs);
+	font-weight: 720;
+}
+
+.pkfa-context-label svg,
+.pkfa-context-values > svg {
+	width: 12px;
+	height: 12px;
+}
+
+.pkfa-context-values {
+	overflow: hidden;
+	color: var(--pk-text-secondary);
+	font-size: var(--pk-text-xs);
+	white-space: nowrap;
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-context-chip {
+	max-width: 160px;
+	height: 24px !important;
+	min-height: 24px !important;
+	padding: 0 8px !important;
+	overflow: hidden;
+	border: 1px solid var(--pk-border) !important;
+	border-radius: var(--pk-radius-pill) !important;
+	background: var(--pk-surface) !important;
+	color: var(--pk-text-secondary) !important;
+	font-size: var(--pk-text-xs);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-context-chip.is-primary {
+	border-color: var(--pk-border-accent) !important;
+	background: var(--pk-accent-tint) !important;
+	color: var(--pk-accent-fg) !important;
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-context-chip.is-candidate {
+	border-style: dashed !important;
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-context-graph-action {
+	height: 28px !important;
+	min-height: 28px !important;
+	padding: 0 9px !important;
+	white-space: nowrap;
+}
+
+@media (max-width: 960px) {
+	.pkfa-document-context {
+		grid-template-columns: minmax(0, 1fr) auto;
+	}
+
+	.pkfa-document-context .pkfa-context-group:nth-child(2) {
+		display: none;
+	}
+}
+
 /* ---------- tab row: Tree / Graph subviews ---------- */
 .pkfa-tab-row {
 	display: flex;

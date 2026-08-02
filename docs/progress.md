@@ -8,7 +8,17 @@
 
 Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding → 配置 → Chat → Search → Graph 每个环节都能跑通，体验完整。同时推进技术债清理和架构重构。
 
+## 2026-08-02 · Planned Requirements 产品归属纠偏
+
+- [x] **Vault Intelligence 回归 AI Search**：Vault Graph、hubs、结构洞和 review history 由 Quick Search 的 `Vault Intelligence` mode 直接承载，不再复用旧 Copilot Vault workspace。
+- [x] **文档图谱回归 File Atlas**：当前文档所属 hubs、入链/出链与 local graph 统一放入 File Atlas；Search 结果检查器只提供 `Open in File Atlas`，旧 Search Hub Drawer 已合并退役。
+- [x] **Ambient 浮窗退役**：删除本分支新增的 window-local floating host；Ambient 只保留 sensing/finding 能力，未来投影归 Composer Intelligence / Copilot，而不是独立 panel/modal。旧 Related Notes leaf 仅作为已保存 workspace 的兼容入口。
+- [x] **Review 入口修复**：`planned-requirements.html` 逐项说明当前 surface、变更和验收路径；AI Search / Vault Intelligence 增加可交互有样式 mock 与正式视觉设计；AI Graph 的 Graph Detail / Create Graph 改为直接链接到对应有样式原型。
+- [x] **自动验证**：planned-requirements production contract、13 个相关 graph/File Atlas/Composer/AI Graph suites、生产 build 与 Playwright mock validation 均通过。真实 Obsidian 本轮未连接 CDP，交互结论保持 `INTERACTION NOT VERIFIED`。逐项清单见 [`2026-08-02-planned-requirements-product-ia-correction.md`](./superpowers/audits/2026-08-02-planned-requirements-product-ia-correction.md)。
+
 ## 2026-07-31 · Planned Requirements 11 项完整实现
+
+> 历史记录：本节反映 2026-07-31 的首次实现判断；其中 Vault/Copilot、Search Hub Drawer 与 Ambient floating surface 已被上方 2026-08-02 纠偏记录取代。
 
 - [x] **Contextual graph surfaces**：Vault Maintenance、Document Copilot 与 Quick Search drawer 共用 app-composed read-only graph port，落地 overview / hubs / source chain / local graph / orphan actions。
 - [x] **Ambient / File Atlas / Native Copilot**：Ambient 改为 Obsidian window-local floating host并提供显式刷新；File Atlas work-file rail 支持 recent / frequent / name、同源 Copilot suggestions、icon-only filter/flatten 与 breadcrumb；原生 Markdown modal 复用 Document Composer runtime，顶层只保留 Copilot / History。
