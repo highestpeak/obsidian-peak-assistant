@@ -756,6 +756,7 @@ const defaultFormulaScope = formulaScope.textContent;
 let formulaCommittedValue = defaultFormulaValue;
 let formulaCommittedState = defaultFormulaState;
 let formulaCommittedScope = defaultFormulaScope;
+let htmlArtifactCount = 2;
 
 function icon(id) {
   return `<svg><use href="#${id}"/></svg>`;
@@ -1107,56 +1108,48 @@ function renderTable() {
 
 function renderBoard() {
   const visible = visibleRecords();
-  const groups = ['offer', 'interview', 'followup', 'applied'];
+  const groups = ['applied', 'followup', 'interview', 'offer'];
+  const activeCount = visible.filter((record) => record.stageKey !== 'ended').length;
+  const archivedCount = visible.filter((record) => record.stageKey === 'ended').length;
   const columns = groups.map((groupKey) => {
     const items = visible.filter((record) => record.stageKey === groupKey);
     return `
-      <section class="board-column" style="--column-color:${groupMeta[groupKey].color}">
-        <header><span>${groupMeta[groupKey].label}</span><em>${items.length}</em></header>
+      <section class="board-column" style="--column-color:${groupMeta[groupKey].color}" data-board-column="${groupKey}">
+        <header>
+          <span><i></i>${groupMeta[groupKey].label}</span>
+          <em>${items.length}</em>
+        </header>
         <div class="board-stack">
           ${items.map((record) => `
-            <button type="button" class="board-card" data-record-id="${record.id}">
+            <button type="button" class="board-card ${record.urgency ? 'is-priority' : ''}" data-board-record="${record.id}">
               <header>
-                <span class="company-logo ${record.color}">${record.company.slice(0, 2).toUpperCase()}</span>
                 <span><strong>${record.company}</strong><small>${record.role}</small></span>
+                <b>${record.fit}</b>
               </header>
-              <p>${record.note}</p>
-              <footer><span>${record.workMode} · ${record.location}</span><b class="mini-score">${record.fit}</b></footer>
+              <span class="board-next"><i></i>${record.next}</span>
+              <footer><span>${record.workMode} · ${record.location}</span><em>${record.wait} 天</em></footer>
             </button>
           `).join('')}
         </div>
       </section>
     `;
   }).join('');
-  stage.innerHTML = `<section class="board-view">${columns}</section>`;
-}
-
-function renderGallery() {
-  const cards = visibleRecords().map((record) => {
-    const priority = record.urgency && record.fit >= 80 ? '优先行动' : '保持观察';
-    return `
-      <button type="button" class="gallery-card" data-record-id="${record.id}">
-        <header>
-          <span class="gallery-logo ${record.color}">${record.company.slice(0, 2).toUpperCase()}</span>
-          <span class="tag stage-${record.stageKey}">${record.stage}</span>
-        </header>
-        <span class="gallery-title"><strong>${record.company}</strong><small>${record.role}</small></span>
-        <div class="gallery-fields">
-          <span><small>工作模式</small><b>${record.workMode}</b></span>
-          <span><small>地点</small><b>${record.location}</b></span>
-          <span><small>薪资</small><b>${record.salary} NZD</b></span>
-          <span><small><i class="formula-mark">ƒx</i> 匹配度</small><b>${record.fit}</b></span>
-        </div>
-        <footer><span><i></i>${record.next}</span><em class="${priority === '优先行动' ? 'is-high' : ''}">${priority}</em></footer>
-      </button>
-    `;
-  }).join('');
   stage.innerHTML = `
-    <section class="gallery-view">
-      <header><span><strong>岗位画册</strong><small>同一批 records · 卡片字段由当前视图配置决定</small></span><button type="button">${icon('i-fields')}卡片字段</button></header>
-      <div class="gallery-grid">${cards}</div>
+    <section class="board-view">
+      <header class="board-local-header">
+        <span><strong>按阶段推进</strong><small>${activeCount} 条活跃记录 · 阶段变化写回同一 Dataset</small></span>
+        <span class="board-view-meta"><span>分组字段 <b>阶段</b></span><span>卡片字段 <b>4</b></span><span>已结束 <b>${archivedCount}</b></span></span>
+      </header>
+      <div class="board-lanes">${columns}</div>
     </section>
   `;
+  stage.querySelectorAll('[data-board-record]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const record = records.find((candidate) => candidate.id === button.dataset.boardRecord);
+      if (!record) return;
+      showToast(record.company, `${record.role} · ${record.next}`);
+    });
+  });
 }
 
 function renderCalendar() {
@@ -1168,12 +1161,12 @@ function renderCalendar() {
     ['27'], ['28'], ['29'], ['30'], ['31'], ['1', true], ['2', true],
   ];
   const events = {
-    8: [{ title: 'Aster · Offer 比较', type: 'green', time: '09:00' }],
-    11: [{ title: 'Fern · 文化面试', type: 'purple', time: '14:00' }],
-    15: [{ title: 'Tide · 系统设计', type: 'purple', time: '10:30' }],
-    17: [{ title: 'Koru · 二次跟进', type: 'amber', time: '16:00' }],
-    19: [{ title: 'Halcyon · 反馈窗口', type: 'blue', time: '全天' }],
-    25: [{ title: 'Northstar · 推荐人', type: 'amber', time: '11:00' }],
+    11: [{ recordId: 'tide', title: 'Tide · 系统设计', type: 'purple', time: '10:30', kind: '面试' }],
+    12: [{ recordId: 'fern', title: 'Fern · 文化面试', type: 'purple', time: '14:00', kind: '面试' }],
+    14: [{ recordId: 'aster', title: 'Aster · Offer 比较', type: 'green', time: '09:00', kind: '决策' }],
+    18: [{ recordId: 'koru', title: 'Koru · 二次跟进', type: 'amber', time: '16:00', kind: '跟进' }],
+    20: [{ recordId: 'halcyon', title: 'Halcyon · 反馈窗口', type: 'blue', time: '全天', kind: '反馈' }],
+    25: [{ recordId: 'northstar', title: 'Northstar · 推荐人', type: 'amber', time: '11:00', kind: '跟进' }],
   };
   const colorMap = {
     green: 'var(--green)',
@@ -1183,109 +1176,51 @@ function renderCalendar() {
   };
   const cells = days.map(([day, outside], index) => {
     const dayEvents = (events[index] ?? []).map((event) => `
-      <span class="calendar-event" style="--event-color:${colorMap[event.type]}">
-        <span>${event.title}<br><em>${event.time}</em></span>
-      </span>
+      <button type="button" class="calendar-event" data-calendar-record="${event.recordId}" style="--event-color:${colorMap[event.type]}">
+        <span><b>${event.time}</b>${event.title}</span><em>${event.kind}</em>
+      </button>
     `).join('');
-    const today = index === 15;
-    return `<div class="calendar-day ${outside ? 'is-outside' : ''} ${today ? 'is-today' : ''}"><b>${day}</b>${dayEvents}</div>`;
+    const today = index === 11;
+    const weekend = index % 7 >= 5;
+    return `<div class="calendar-day ${outside ? 'is-outside' : ''} ${today ? 'is-today' : ''} ${weekend ? 'is-weekend' : ''}"><span class="calendar-date"><b>${day}</b>${today ? '<em>今天</em>' : ''}</span>${dayEvents}</div>`;
   }).join('');
 
   stage.innerHTML = `
     <section class="calendar-view">
       <header class="calendar-heading">
-        <span><strong>2026 年 7 月</strong><small>面试日期与跟进计划 · 6 个事件</small></span>
-        <span class="calendar-actions"><button type="button">今天</button><button type="button">‹</button><button type="button">›</button><button type="button">月</button></span>
+        <span class="calendar-period"><strong>2026 年 7 月</strong><small>面试时间与下一步日期 · 6 个事件</small></span>
+        <span class="calendar-actions"><button type="button" data-calendar-nav="today">今天</button><button type="button" data-calendar-nav="previous" aria-label="上个月">‹</button><button type="button" data-calendar-nav="next" aria-label="下个月">›</button><span>月视图</span></span>
       </header>
-      <div class="calendar-weekdays">${['周一', '周二', '周三', '周四', '周五', '周六', '周日'].map((day) => `<span>${day}</span>`).join('')}</div>
-      <div class="calendar-scroll"><div class="calendar-grid">${cells}</div></div>
+      <div class="calendar-body">
+        <section class="calendar-month">
+          <div class="calendar-weekdays">${['周一', '周二', '周三', '周四', '周五', '周六', '周日'].map((day) => `<span>${day}</span>`).join('')}</div>
+          <div class="calendar-scroll"><div class="calendar-grid">${cells}</div></div>
+        </section>
+        <aside class="calendar-agenda">
+          <header><span><strong>接下来 7 天</strong><small>4 个行动窗口</small></span><em>7/10—7/17</em></header>
+          <div class="agenda-list">
+            <button type="button" data-calendar-record="tide"><span><b>10</b><small>周五</small></span><span><strong>Tide Systems</strong><small>10:30 · 系统设计面试</small></span><em>面试</em></button>
+            <button type="button" data-calendar-record="fern"><span><b>11</b><small>周六</small></span><span><strong>Fern Studio</strong><small>14:00 · 文化面试</small></span><em>面试</em></button>
+            <button type="button" data-calendar-record="aster"><span><b>13</b><small>周一</small></span><span><strong>Aster Labs</strong><small>09:00 · Offer 比较</small></span><em>决策</em></button>
+            <button type="button" data-calendar-record="koru"><span><b>17</b><small>周五</small></span><span><strong>Koru Digital</strong><small>16:00 · 二次跟进</small></span><em>跟进</em></button>
+          </div>
+          <footer><span>事件来自两个日期字段</span><b>面试时间 · 下一步</b></footer>
+        </aside>
+      </div>
     </section>
   `;
-}
-
-function metricGlyph(values) {
-  return `<span class="metric-glyph">${values.map((value) => `<i style="--h:${value}px"></i>`).join('')}</span>`;
-}
-
-function renderDashboard() {
-  stage.innerHTML = `
-    <section class="dashboard-scroll">
-      <section class="dashboard">
-        <header class="dashboard-heading">
-          <span><strong>求职驾驶舱</strong><small>从 24 条申请记录聚合 · revision 12 · 只读分析视图</small></span>
-          <span class="dashboard-filters"><button type="button">最近 90 天⌄</button><button type="button">全部岗位⌄</button></span>
-        </header>
-        <section class="metric-strip">
-          <article class="metric"><span>有效申请</span><strong>24</strong><small><b>+9</b> 较上月</small>${metricGlyph([8, 13, 10, 18, 16, 23, 19, 27])}</article>
-          <article class="metric"><span>回复率</span><strong>33%</strong><small><b>+8%</b> 较上月</small>${metricGlyph([9, 11, 15, 12, 18, 20, 24, 26])}</article>
-          <article class="metric"><span>进入面试</span><strong>4</strong><small>转化率 <b>16.7%</b></small>${metricGlyph([5, 6, 8, 11, 10, 14, 18, 22])}</article>
-          <article class="metric"><span>平均匹配</span><strong>84</strong><small><b>+5</b> 分</small>${metricGlyph([13, 15, 17, 16, 20, 22, 24, 25])}</article>
-          <article class="metric"><span>行动窗口</span><strong>3</strong><small>未来 7 天</small>${metricGlyph([6, 7, 8, 10, 14, 16, 21, 26])}</article>
-        </section>
-        <section class="priority-banner">
-          ${icon('i-sparkles')}
-          <span><strong>本周先处理 3 个高价值机会</strong><small>Aster Labs 的 Offer 决策、Tide Systems 与 Fern Studio 的面试准备。</small></span>
-          <button type="button" id="dashboard-open-ai">生成行动计划 ${icon('i-arrow')}</button>
-        </section>
-        <section class="dashboard-grid">
-          <article class="analysis-panel wide">
-            <header>
-              <span><strong>申请与回复趋势</strong><small>最近 6 周 · 申请量增长未牺牲平均匹配度</small></span>
-              <span class="chart-legend"><span><i style="--legend:var(--accent)"></i>申请</span><span><i style="--legend:var(--teal)"></i>回复</span></span>
-            </header>
-            <svg class="trend-chart" viewBox="0 0 700 285" role="img" aria-label="申请与回复趋势图">
-              <path class="chart-gridline" d="M54 32H676M54 82H676M54 132H676M54 182H676M54 232H676"/>
-              <text class="chart-axis" x="24" y="35">12</text><text class="chart-axis" x="29" y="85">9</text><text class="chart-axis" x="29" y="135">6</text><text class="chart-axis" x="29" y="185">3</text><text class="chart-axis" x="29" y="235">0</text>
-              <text class="chart-axis" x="52" y="260">W1</text><text class="chart-axis" x="170" y="260">W2</text><text class="chart-axis" x="288" y="260">W3</text><text class="chart-axis" x="406" y="260">W4</text><text class="chart-axis" x="524" y="260">W5</text><text class="chart-axis" x="642" y="260">W6</text>
-              <path class="chart-area" d="M58 198 L176 165 L294 148 L412 98 L530 48 L648 115 L648 232 L58 232 Z"/>
-              <path class="chart-line primary" d="M58 198 L176 165 L294 148 L412 98 L530 48 L648 115"/>
-              <path class="chart-line secondary" d="M58 232 L176 215 L294 198 L412 182 L530 148 L648 198"/>
-              ${[[58, 198], [176, 165], [294, 148], [412, 98], [530, 48], [648, 115]].map(([x, y]) => `<circle class="chart-dot primary" cx="${x}" cy="${y}" r="4"/>`).join('')}
-              ${[[58, 232], [176, 215], [294, 198], [412, 182], [530, 148], [648, 198]].map(([x, y]) => `<circle class="chart-dot secondary" cx="${x}" cy="${y}" r="4"/>`).join('')}
-            </svg>
-          </article>
-          <article class="analysis-panel">
-            <header><span><strong>申请漏斗</strong><small>从申请到 Offer</small></span><span class="chart-legend">转化 4.2%</span></header>
-            <div class="funnel">
-              <div class="funnel-row"><span>申请</span><span><i style="--w:100%;--bar:var(--blue)"></i></span><b>24</b></div>
-              <div class="funnel-row"><span>回复</span><span><i style="--w:58%;--bar:var(--teal)"></i></span><b>8</b></div>
-              <div class="funnel-row"><span>面试</span><span><i style="--w:36%;--bar:var(--purple)"></i></span><b>4</b></div>
-              <div class="funnel-row"><span>终面</span><span><i style="--w:22%;--bar:var(--amber)"></i></span><b>2</b></div>
-              <div class="funnel-row"><span>Offer</span><span><i style="--w:12%;--bar:var(--green)"></i></span><b>1</b></div>
-            </div>
-          </article>
-          <article class="analysis-panel">
-            <header><span><strong>渠道回复率</strong><small>Referral 质量最高</small></span></header>
-            <table class="channel-table">
-              <thead><tr><th>渠道</th><th>申请</th><th>回复率</th></tr></thead>
-              <tbody><tr><td>Referral</td><td>7</td><td>58%</td></tr><tr><td>Recruiter</td><td>2</td><td>50%</td></tr><tr><td>Company site</td><td>9</td><td>35%</td></tr><tr><td>LinkedIn</td><td>6</td><td>25%</td></tr></tbody>
-            </table>
-          </article>
-        </section>
-        <section class="dashboard-bottom">
-          <article class="analysis-panel">
-            <header><span><strong>机会优先级</strong><small>按阶段、匹配度与时间窗口排序</small></span><span class="chart-legend">Top 4</span></header>
-            <div class="opportunity-list">
-              <div><i style="--dot:var(--green)"></i><span><strong>Aster Labs · Offer</strong><small>匹配 94 · 周五前回复</small></span><em>立即</em></div>
-              <div><i style="--dot:var(--purple)"></i><span><strong>Tide Systems · 面试</strong><small>匹配 91 · 明天 10:30</small></span><em>准备</em></div>
-              <div><i style="--dot:var(--purple)"></i><span><strong>Fern Studio · 面试</strong><small>匹配 88 · 周四</small></span><em>准备</em></div>
-              <div><i style="--dot:var(--amber)"></i><span><strong>Koru Digital · 跟进</strong><small>匹配 86 · 已等待 11 天</small></span><em>跟进</em></div>
-            </div>
-          </article>
-          <article class="analysis-panel">
-            <header><span><strong>阶段分布</strong><small>活跃 Pipeline · 11 条</small></span></header>
-            <div class="stage-distribution">
-              <div class="stage-row"><span>已申请</span><span><i style="--w:100%;--bar:var(--blue)"></i></span><b>4</b></div>
-              <div class="stage-row"><span>待跟进</span><span><i style="--w:75%;--bar:var(--amber)"></i></span><b>3</b></div>
-              <div class="stage-row"><span>面试中</span><span><i style="--w:75%;--bar:var(--purple)"></i></span><b>3</b></div>
-              <div class="stage-row"><span>Offer</span><span><i style="--w:25%;--bar:var(--green)"></i></span><b>1</b></div>
-            </div>
-          </article>
-        </section>
-      </section>
-    </section>
-  `;
-  document.querySelector('#dashboard-open-ai')?.addEventListener('click', openAi);
+  stage.querySelectorAll('[data-calendar-record]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const record = records.find((candidate) => candidate.id === button.dataset.calendarRecord);
+      if (!record) return;
+      showToast(record.company, `${record.role} · ${record.next}`);
+    });
+  });
+  stage.querySelectorAll('[data-calendar-nav]').forEach((button) => {
+    button.addEventListener('click', () => {
+      showToast('日历范围未改变', '设计稿固定在 2026 年 7 月，用于比较视图结构');
+    });
+  });
 }
 
 function updateStatus() {
@@ -1324,20 +1259,15 @@ function updateStatus() {
     });
     return;
   }
-  primary.textContent = state.view === 'dashboard' ? 'Dashboard · 24 records' : `${visible} records`;
+  primary.textContent = `${visible} 条记录`;
   if (state.view === 'board') {
-    secondary.textContent = '按阶段推进 · 与 Table 同步';
+    secondary.textContent = '按阶段推进 · 固定视图';
     return;
   }
   if (state.view === 'calendar') {
-    secondary.textContent = '按事件日期投影 · 6 个日程';
+    secondary.textContent = '按事件日期投影 · 6 个事件';
     return;
   }
-  if (state.view === 'gallery') {
-    secondary.textContent = '卡片字段配置 · 与 Table 同步';
-    return;
-  }
-  secondary.textContent = '只读聚合 · 统一筛选刷新全部图表';
 }
 
 function animateViewStage() {
@@ -1355,8 +1285,6 @@ function renderCurrentView(options = {}) {
     table: renderTable,
     board: renderBoard,
     calendar: renderCalendar,
-    gallery: renderGallery,
-    dashboard: renderDashboard,
   };
   renderers[state.view]();
   workspace.classList.toggle('is-table-view', state.view === 'table');
@@ -1376,7 +1304,7 @@ function renderCurrentView(options = {}) {
 }
 
 function setView(view) {
-  if (!view || !(view in { table: 1, board: 1, calendar: 1, gallery: 1, dashboard: 1 })) return;
+  if (!view || !(view in { table: 1, board: 1, calendar: 1 })) return;
   closeLongTextCell();
   state.cellSelection = null;
   state.editingCell = null;
@@ -2190,12 +2118,12 @@ function updateDedupeSummary() {
 
 function openAi() {
   toast.hidden = true;
-  const contextItems = document.querySelectorAll('.ai-context span');
   const visibleCount = visibleRecords().length;
-  document.querySelector('.ai-title small').textContent = `${visibleCount} 条记录 · revision 12`;
-  if (contextItems[0]) contextItems[0].innerHTML = `${icon('i-database')}${state.view === 'table' ? '当前表格' : '当前视图'}`;
-  if (contextItems[1]) contextItems[1].textContent = state.filters.length ? `${state.filters.length} 个筛选条件` : '无筛选';
-  if (contextItems[2]) contextItems[2].textContent = `字段 ${fieldSchemas.filter((field) => field.saved).length}`;
+  document.querySelector('#sheet-copilot-subtitle').textContent = `Sheet intelligence · revision 12`;
+  document.querySelector('#sheet-copilot-context-label').innerHTML = `${icon('i-database')}${state.view === 'table' ? '当前表格' : '当前视图'}`;
+  document.querySelector('#sheet-copilot-records').textContent = `${visibleCount} 条记录`;
+  document.querySelector('#sheet-copilot-filter').textContent = state.filters.length ? `${state.filters.length} 个筛选条件` : '无筛选';
+  document.querySelector('#sheet-copilot-fields').textContent = `字段 ${fieldSchemas.filter((field) => field.saved).length}`;
   aiDrawer.classList.add('is-open');
   aiDrawer.setAttribute('aria-hidden', 'false');
   closeLongTextCell();
@@ -2210,6 +2138,22 @@ function openAi() {
 function closeAi() {
   aiDrawer.classList.remove('is-open');
   aiDrawer.setAttribute('aria-hidden', 'true');
+}
+
+function focusHtmlArtifactRequest() {
+  openAi();
+  const prompt = document.querySelector('#ai-prompt');
+  prompt.value = '基于当前视图生成一份本周行动窗口 HTML 分析页，突出优先机会、时间窗口和证据记录';
+  window.setTimeout(() => prompt.focus(), 180);
+}
+
+function generateHtmlArtifact() {
+  const artifact = document.querySelector('#html-artifact-receipt');
+  htmlArtifactCount += 1;
+  document.querySelector('#copilot-history-count').textContent = String(htmlArtifactCount);
+  artifact.querySelector('header > em').textContent = `第 ${htmlArtifactCount} 份`;
+  artifact.hidden = false;
+  artifact.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 function updateRuleToolbar() {
@@ -2377,13 +2321,6 @@ document.querySelectorAll('.view-tab').forEach((button) => {
   button.addEventListener('click', () => setView(button.dataset.view));
 });
 
-document.querySelectorAll('[data-open-dashboard]').forEach((button) => {
-  button.addEventListener('click', () => {
-    closeAi();
-    setView('dashboard');
-  });
-});
-
 document.querySelector('#add-view').addEventListener('click', () => {
   const menu = document.querySelector('#view-menu');
   if (menu.hidden) {
@@ -2398,6 +2335,7 @@ document.querySelector('[data-close-view-menu]').addEventListener('click', close
 document.querySelectorAll('[data-menu-view]').forEach((button) => {
   button.addEventListener('click', () => setView(button.dataset.menuView));
 });
+document.querySelector('#generate-html-from-view').addEventListener('click', focusHtmlArtifactRequest);
 
 document.querySelector('#open-fields').addEventListener('click', openFields);
 document.querySelector('#close-fields').addEventListener('click', closeFields);
@@ -2667,7 +2605,6 @@ document.querySelector('#toggle-stats').addEventListener('click', () => {
 searchInput.addEventListener('input', () => {
   state.query = searchInput.value;
   renderFilterLine();
-  if (state.view === 'dashboard') return;
   renderCurrentView();
 });
 
@@ -2704,6 +2641,10 @@ document.querySelector('#preview-dedupe').addEventListener('click', () => {
 
 document.querySelector('#open-ai').addEventListener('click', openAi);
 document.querySelector('#close-ai').addEventListener('click', closeAi);
+document.querySelector('#generate-html-artifact').addEventListener('click', generateHtmlArtifact);
+document.querySelector('#open-html-artifact').addEventListener('click', () => {
+  showToast('已打开 HTML 分析页', '独立产物保留原始 revision 与生成记录；此设计稿不加载实际文件');
+});
 document.querySelector('#close-cell-reader').addEventListener('click', closeLongTextCell);
 document.querySelectorAll('[data-cell-display]').forEach((button) => {
   button.addEventListener('click', () => setLongTextMode(button.dataset.cellDisplay));
@@ -2716,6 +2657,11 @@ document.querySelectorAll('[data-prompt]').forEach((button) => {
 });
 
 document.querySelector('#generate-plan').addEventListener('click', () => {
+  const prompt = document.querySelector('#ai-prompt').value;
+  if (/HTML|分析页|仪表盘/i.test(prompt)) {
+    generateHtmlArtifact();
+    return;
+  }
   document.querySelector('#plan-preview').hidden = false;
   document.querySelector('#plan-preview').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 });

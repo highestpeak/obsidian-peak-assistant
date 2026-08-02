@@ -79,8 +79,6 @@
           <button type="button" class="view-tab is-active" data-view="table"><svg><use href="#i-grid"/></svg><span>全部记录</span></button>
           <button type="button" class="view-tab" data-view="board"><svg><use href="#i-board"/></svg><span>求职看板</span></button>
           <button type="button" class="view-tab" data-view="calendar"><svg><use href="#i-calendar"/></svg><span>面试日历</span></button>
-          <button type="button" class="view-tab" data-view="gallery"><svg><use href="#i-gallery"/></svg><span>岗位画册</span></button>
-          <button type="button" class="view-tab" data-view="dashboard"><svg><use href="#i-dashboard"/></svg><span>决策仪表盘</span></button>
           <button type="button" class="add-view-button" id="add-view" aria-label="添加视图" aria-expanded="false"><svg><use href="#i-plus"/></svg></button>
         </div>
         <div class="view-tab-actions">
@@ -153,9 +151,11 @@
         <header><span><strong>添加视图</strong><small>选择查看同一份记录的方式</small></span><button type="button" class="icon-button compact" data-close-view-menu><svg><use href="#i-x"/></svg></button></header>
         <button type="button" data-menu-view="board"><svg><use href="#i-board"/></svg><span><strong>看板</strong><small>按阶段推进工作</small></span></button>
         <button type="button" data-menu-view="calendar"><svg><use href="#i-calendar"/></svg><span><strong>日历</strong><small>按面试和跟进日期查看</small></span></button>
-        <button type="button" data-menu-view="gallery"><svg><use href="#i-gallery"/></svg><span><strong>画册</strong><small>用卡片突出记录内容</small></span></button>
-        <button type="button" data-menu-view="dashboard"><svg><use href="#i-dashboard"/></svg><span><strong>仪表盘</strong><small>聚合指标和分析图表</small></span></button>
-        <button type="button" disabled><svg><use href="#i-map"/></svg><span><strong>地图</strong><small>后续 Spatial adapter</small></span><em>后续</em></button>
+        <div class="view-menu-ai-note">
+          <svg><use href="#i-sparkles"/></svg>
+          <span><strong>需要分析页？</strong><small>让 Copilot 生成 HTML，可保存多份，不占用固定视图 Tab。</small></span>
+          <button type="button" id="generate-html-from-view">生成</button>
+        </div>
       </section>
 
       <section class="format-menu floating-surface" id="format-menu" hidden aria-label="数字与单元格格式">
@@ -363,46 +363,68 @@
       </section>
     </section>
 
-    <aside class="ai-drawer" id="ai-drawer" aria-hidden="true">
-      <header>
-        <span class="ai-title"><span class="ai-mark"><svg><use href="#i-sparkles"/></svg></span><span><strong>分析当前视图</strong><small>20 条记录 · revision 12</small></span></span>
-        <button type="button" class="icon-button" id="close-ai" aria-label="关闭分析面板"><svg><use href="#i-x"/></svg></button>
+    <aside class="ai-drawer sheet-copilot" id="ai-drawer" aria-hidden="true">
+      <header class="sheet-copilot-header">
+        <span class="ai-title"><span class="ai-mark"><svg><use href="#i-sparkles"/></svg></span><span><strong>Peak Copilot</strong><small id="sheet-copilot-subtitle">Sheet intelligence · revision 12</small></span></span>
+        <button type="button" class="icon-button" id="close-ai" aria-label="关闭 Copilot"><svg><use href="#i-x"/></svg></button>
       </header>
-      <section class="ai-context">
-        <span><svg><use href="#i-database"/></svg>全部记录</span>
-        <span>无筛选</span>
-        <span>字段 18</span>
+      <nav class="sheet-copilot-tabs" aria-label="Copilot 会话">
+        <button type="button" class="is-active">Copilot</button>
+        <button type="button">历史 <em id="copilot-history-count">2</em></button>
+      </nav>
+      <section class="ai-context" aria-label="当前分析上下文">
+        <span id="sheet-copilot-context-label"><svg><use href="#i-database"/></svg>当前表格</span>
+        <span id="sheet-copilot-records">20 条记录</span>
+        <span id="sheet-copilot-filter">无筛选</span>
+        <span id="sheet-copilot-fields">字段 18</span>
       </section>
-      <section class="ai-editorial-lead">
-        <span class="insight-kicker">CURRENT READ</span>
-        <strong>三条记录已经进入行动窗口</strong>
-        <p>优先处理 Offer 决策和两场近期面试；其他记录暂时不值得增加投入。</p>
-      </section>
-      <section class="ai-evidence-list" aria-label="分析证据">
-        <article><span>01</span><div><strong>Aster Labs</strong><small>Offer · 匹配 94 · 周五前回复</small></div><em>决策</em></article>
-        <article><span>02</span><div><strong>Tide Systems</strong><small>面试中 · 匹配 91 · 明天 10:30</small></div><em>准备</em></article>
-        <article><span>03</span><div><strong>Koru Digital</strong><small>待跟进 · 匹配 86 · 已等待 11 天</small></div><em>跟进</em></article>
-      </section>
-      <button type="button" class="ai-dashboard-link" data-open-dashboard>在仪表盘中展开证据 <svg><use href="#i-arrow"/></svg></button>
-      <section class="ai-suggestions">
-        <span>继续分析</span>
-        <button type="button" data-prompt="比较高匹配岗位的薪资、阶段和等待时间">比较高匹配岗位</button>
-        <button type="button" data-prompt="找出本周需要行动、且匹配度高于 80 的申请">找出需要跟进的申请</button>
-        <button type="button" data-prompt="按渠道分析回复率，并生成仪表盘图表">分析渠道回复率</button>
-      </section>
-      <label class="ai-composer">
-        <textarea id="ai-prompt" rows="3" placeholder="用自然语言分析当前表格…">找出本周需要行动、且匹配度高于 80 的申请</textarea>
-        <span><small>生成可预览的 ComputePlan</small><button type="button" id="generate-plan" aria-label="生成分析计划"><svg><use href="#i-arrow"/></svg></button></span>
-      </label>
-      <section class="plan-preview" id="plan-preview" hidden>
-        <header><span><strong>变更计划</strong><small>不会直接改写源文件</small></span><em>影响 5 条</em></header>
-        <ol>
-          <li><span>1</span><div><strong>筛选记录</strong><small>urgency = true AND fitScore ≥ 80</small></div><svg><use href="#i-check"/></svg></li>
-          <li><span>2</span><div><strong>添加临时标记</strong><small>priority = “本周跟进”</small></div><svg><use href="#i-check"/></svg></li>
-          <li><span>3</span><div><strong>保存为视图</strong><small>“高价值待跟进” · 不复制 records</small></div><svg><use href="#i-check"/></svg></li>
-        </ol>
-        <footer><button type="button" class="subtle-button">仅预览</button><button type="button" class="confirm-button" id="accept-plan">应用到当前视图</button></footer>
-      </section>
+      <div class="sheet-copilot-thread">
+        <article class="sheet-run-receipt">
+          <header><span><strong>分析当前视图</strong><small>刚刚 · 基于当前 revision</small></span><em><i></i>已完成</em></header>
+          <section class="ai-editorial-lead">
+            <span class="insight-kicker">CURRENT READ</span>
+            <strong>三条记录已经进入行动窗口</strong>
+            <p>优先处理 Offer 决策和两场近期面试；其他记录暂时不值得增加投入。</p>
+          </section>
+          <section class="ai-evidence-list" aria-label="分析证据">
+            <article><span>01</span><div><strong>Aster Labs</strong><small>Offer · 匹配 94 · 周五前回复</small></div><em>决策</em></article>
+            <article><span>02</span><div><strong>Tide Systems</strong><small>面试中 · 匹配 91 · 明天 10:30</small></div><em>准备</em></article>
+            <article><span>03</span><div><strong>Koru Digital</strong><small>待跟进 · 匹配 86 · 已等待 11 天</small></div><em>跟进</em></article>
+          </section>
+          <footer class="sheet-run-actions">
+            <span>结果已保留在本次 Copilot 会话</span>
+            <button type="button" id="generate-html-artifact"><svg><use href="#i-dashboard"/></svg>生成 HTML 分析页</button>
+          </footer>
+        </article>
+        <article class="html-artifact-receipt" id="html-artifact-receipt" hidden>
+          <header><span><svg><use href="#i-dashboard"/></svg><span><strong>本周行动窗口.html</strong><small>AI 生成分析页 · 436 KB</small></span></span><em>第 3 份</em></header>
+          <div class="html-artifact-preview" aria-label="HTML 分析页缩略预览">
+            <span><b>本周行动窗口</b><small>3 个优先机会</small></span>
+            <i style="--artifact-height:72%"></i><i style="--artifact-height:48%"></i><i style="--artifact-height:63%"></i><i style="--artifact-height:38%"></i>
+          </div>
+          <p>它是独立产物，不是固定视图。可继续生成渠道复盘、薪资比较或面试准备页，旧版本都保留在历史中。</p>
+          <footer><span><svg><use href="#i-check"/></svg>绑定 Dataset revision 12</span><button type="button" id="open-html-artifact">打开查看</button></footer>
+        </article>
+        <section class="plan-preview" id="plan-preview" hidden>
+          <header><span><strong>变更计划</strong><small>不会直接改写源文件</small></span><em>影响 5 条</em></header>
+          <ol>
+            <li><span>1</span><div><strong>筛选记录</strong><small>urgency = true AND fitScore ≥ 80</small></div><svg><use href="#i-check"/></svg></li>
+            <li><span>2</span><div><strong>添加临时标记</strong><small>priority = “本周跟进”</small></div><svg><use href="#i-check"/></svg></li>
+            <li><span>3</span><div><strong>保存为视图</strong><small>“高价值待跟进” · 不复制 records</small></div><svg><use href="#i-check"/></svg></li>
+          </ol>
+          <footer><button type="button" class="subtle-button">仅预览</button><button type="button" class="confirm-button" id="accept-plan">应用到当前视图</button></footer>
+        </section>
+      </div>
+      <footer class="sheet-copilot-composer">
+        <section class="ai-suggestions">
+          <span>快捷指令</span>
+          <div><button type="button" data-prompt="比较高匹配岗位的薪资、阶段和等待时间">比较岗位</button><button type="button" data-prompt="找出本周需要行动、且匹配度高于 80 的申请">本周行动</button><button type="button" data-prompt="按渠道分析回复率，并生成一份独立 HTML 分析页" data-html-prompt>生成分析页</button></div>
+        </section>
+        <label class="ai-composer">
+          <textarea id="ai-prompt" rows="3" placeholder="询问数据，或描述要生成的 HTML 分析页…">找出本周需要行动、且匹配度高于 80 的申请</textarea>
+          <span><small>Enter 生成计划 · 产物保存到历史</small><button type="button" id="generate-plan" aria-label="发送给 Copilot"><svg><use href="#i-arrow"/></svg></button></span>
+        </label>
+      </footer>
     </aside>
 
     <section class="cell-reader floating-surface" id="cell-reader" hidden aria-label="长文本单元格查看器">
@@ -427,9 +449,9 @@
         <svg><use href="#i-arrow"/></svg>
         <span><svg><use href="#i-database"/></svg><strong>Dataset revision 12</strong><small>records + schema</small></span>
         <svg><use href="#i-arrow"/></svg>
-        <span><svg><use href="#i-dashboard"/></svg><strong>View projections</strong><small>Table · Board · Calendar · Gallery · Dashboard</small></span>
+        <span><svg><use href="#i-dashboard"/></svg><strong>Fixed view projections</strong><small>Table · Board · Calendar</small></span>
       </div>
-      <p>所有视图读取同一 revision；编辑先经过 transaction commit，再写回公开、本地可控的源格式。</p>
+      <p>三个固定视图读取同一 revision；Copilot 可基于任一视图生成多份 HTML 分析产物，但不会把产物伪装成 Dataset 视图。</p>
       <button type="button" class="confirm-button" id="confirm-source">知道了</button>
     </div>
   </section>
@@ -442,7 +464,7 @@
         <span><small>Peak Sheet</small><strong>求职驾驶舱</strong></span>
         <button type="button"><svg><use href="#i-more"/></svg></button>
       </header>
-      <nav class="phone-tabs"><button type="button">记录</button><button type="button" class="is-active">仪表盘</button><button type="button">待审批 <em>1</em></button></nav>
+      <nav class="phone-tabs"><button type="button">记录</button><button type="button" class="is-active">AI 分析页</button><button type="button">待审批 <em>1</em></button></nav>
       <section class="phone-content">
         <div class="phone-filter"><span>最近 90 天</span><span>全部岗位</span></div>
         <section class="phone-priority">

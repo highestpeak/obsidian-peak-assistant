@@ -794,6 +794,8 @@ await settleMotion();
 assert.equal(await page.locator('.ai-evidence-list article').count(), 3, 'analysis should lead with compact evidence rows rather than repeated cards');
 assert.match(await page.textContent('.ai-editorial-lead'), /三条记录已经进入行动窗口/);
 assert.match(await page.textContent('.ai-context'), /字段 19/, 'analysis context should follow the live schema after a field is added');
+assert.equal(await page.locator('.sheet-copilot-tabs button').count(), 2, 'Sheet analysis should share the Copilot and History session shape');
+assert.equal(await page.locator('.sheet-run-receipt').count(), 1, 'analysis should be represented as a session run receipt');
 const analysisSurface = await page.locator('#ai-drawer').evaluate((drawer) => ({
   width: drawer.getBoundingClientRect().width,
   radius: getComputedStyle(drawer).borderRadius,
@@ -810,30 +812,44 @@ assert.equal(await page.locator('#selection-statistics').isHidden(), true);
 await page.click('#toggle-stats');
 assert.equal(await page.locator('#selection-statistics').isVisible(), true);
 
+assert.equal(await page.locator('.view-tab[data-view]').count(), 3, 'the fixed view registry should only expose Table, Board and Calendar');
+assert.equal(await page.locator('[data-view="gallery"], [data-view="dashboard"]').count(), 0, 'Gallery and Dashboard should not ship as fixed tabs');
+
 await page.click('[data-view="board"]');
 await page.waitForSelector('.board-view');
 assert.equal(await page.locator('.board-column').count(), 4);
+assert.deepEqual(await page.locator('.board-column').evaluateAll((columns) => columns.map((column) => column.dataset.boardColumn)), ['applied', 'followup', 'interview', 'offer']);
+assert.equal(await page.locator('.board-card').count(), 18, 'ended records should be summarized instead of becoming a noisy fifth lane');
+assert.match(await page.textContent('.board-local-header'), /已结束\s*2/);
+await settleMotion();
+await page.screenshot({ path: path.join(dir, 'preview-board.png') });
 
 await page.click('[data-view="calendar"]');
 await page.waitForSelector('.calendar-grid');
 assert.equal(await page.locator('.calendar-day').count(), 35);
-
-await page.click('[data-view="gallery"]');
-await page.waitForSelector('.gallery-view');
-assert.equal(await page.locator('.gallery-card').count(), 20);
-assert.match(await page.textContent('.gallery-view'), /卡片字段/);
+assert.equal(await page.locator('.calendar-event').count(), 6);
+assert.equal(await page.locator('.agenda-list button').count(), 4);
+assert.match(await page.textContent('.calendar-agenda'), /面试时间 · 下一步/);
 await settleMotion();
-await page.screenshot({ path: path.join(dir, 'preview-gallery.png') });
+await page.screenshot({ path: path.join(dir, 'preview-calendar.png') });
 
-await page.click('[data-view="dashboard"]');
-await page.waitForSelector('.dashboard');
-assert.equal(await page.locator('.metric').count(), 5);
-assert.equal(await page.locator('.analysis-panel').count(), 5);
-await settleMotion();
-await page.screenshot({ path: path.join(dir, 'preview-dashboard.png') });
-
-await page.click('#dashboard-open-ai');
+await page.click('#add-view');
+await page.waitForSelector('#view-menu:not([hidden])');
+assert.equal(await page.locator('#view-menu [data-menu-view]').count(), 2, 'the add-view menu should only offer missing fixed views');
+assert.equal(await page.locator('#view-menu [data-menu-view="gallery"], #view-menu [data-menu-view="dashboard"]').count(), 0);
+assert.match(await page.textContent('.view-menu-ai-note'), /Copilot 生成 HTML/);
+await page.click('#generate-html-from-view');
 await page.waitForSelector('#ai-drawer.is-open');
+assert.match(await page.inputValue('#ai-prompt'), /HTML 分析页/);
+await page.click('#generate-plan');
+await page.waitForSelector('#html-artifact-receipt:not([hidden])');
+assert.match(await page.textContent('#html-artifact-receipt'), /第 3 份/);
+assert.equal(await page.textContent('#copilot-history-count'), '3');
+assert.match(await page.textContent('#html-artifact-receipt'), /不是固定视图/);
+await settleMotion();
+await page.screenshot({ path: path.join(dir, 'preview-html-artifact.png') });
+
+await page.click('[data-prompt^="找出本周需要行动"]');
 await page.click('#generate-plan');
 await page.waitForSelector('#plan-preview:not([hidden])');
 await settleMotion();
@@ -847,7 +863,9 @@ assert.match(await page.textContent('#filter-line'), /匹配度 大于等于 80/
 await page.click('#show-source');
 await page.waitForSelector('#source-dialog:not([hidden])');
 assert.match(await page.textContent('#source-dialog'), /Markdown source/);
-assert.match(await page.textContent('#source-dialog'), /View projections/);
+assert.match(await page.textContent('#source-dialog'), /Fixed view projections/);
+assert.match(await page.textContent('#source-dialog'), /Table · Board · Calendar/);
+assert.doesNotMatch(await page.textContent('#source-dialog'), /Gallery|Dashboard/);
 await page.click('#confirm-source');
 
 await page.click('#open-mobile');
@@ -895,7 +913,7 @@ console.log(JSON.stringify({
     active: initial.activeCellEdge,
   },
   localLinks: localHrefs.length,
-  viewsChecked: ['table', 'board', 'calendar', 'gallery', 'dashboard'],
-  flowsChecked: ['long-text-reader', 'bounded-row-wrap', 'independent-role-edit', 'inline-text-edit', 'typed-select-edit', 'numeric-edit', 'checkbox-toggle', 'keyboard-f2-cancel', 'keyboard-tab-commit', 'scroll-continuity', 'frozen-cell-selection', 'bounded-cell-editor', 'stable-row-hover', 'computed-cell-readonly', 'selection-stat-recompute', 'theme-switch', 'number-format', 'persistent-field-workbench', 'saved-custom-field', 'formula-bar-ai-entry', 'bounded-formula-actions', 'ai-formula-candidates', 'ai-filter-composition', 'multi-priority-sort', 'multi-level-group', 'compact-toolbar-search', 'configurable-dedupe-fields', 'dedupe-preview', 'editorial-analysis-drawer', 'selection-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
-  screenshots: ['preview.png', 'preview-table.png', 'preview-table-types.png', 'preview-long-text.png', 'preview-long-text-wrap.png', 'preview-cell-edit.png', 'preview-frozen-selection.png', 'preview-dark.png', 'preview-format.png', 'preview-fields.png', 'preview-field-added.png', 'preview-formula-inline.png', 'preview-formula.png', 'preview-filter-panel.png', 'preview-filter-rule.png', 'preview-sort-panel.png', 'preview-group-panel.png', 'preview-group-rule.png', 'preview-dedupe-panel.png', 'preview-analysis.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
+  viewsChecked: ['table', 'board', 'calendar'],
+  flowsChecked: ['long-text-reader', 'bounded-row-wrap', 'independent-role-edit', 'inline-text-edit', 'typed-select-edit', 'numeric-edit', 'checkbox-toggle', 'keyboard-f2-cancel', 'keyboard-tab-commit', 'scroll-continuity', 'frozen-cell-selection', 'bounded-cell-editor', 'stable-row-hover', 'computed-cell-readonly', 'selection-stat-recompute', 'theme-switch', 'number-format', 'persistent-field-workbench', 'saved-custom-field', 'formula-bar-ai-entry', 'bounded-formula-actions', 'ai-formula-candidates', 'ai-filter-composition', 'multi-priority-sort', 'multi-level-group', 'compact-toolbar-search', 'configurable-dedupe-fields', 'dedupe-preview', 'copilot-session-analysis', 'selection-statistics', 'board-workflow', 'calendar-agenda', 'copilot-html-artifacts', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
+  screenshots: ['preview.png', 'preview-table.png', 'preview-table-types.png', 'preview-long-text.png', 'preview-long-text-wrap.png', 'preview-cell-edit.png', 'preview-frozen-selection.png', 'preview-dark.png', 'preview-format.png', 'preview-fields.png', 'preview-field-added.png', 'preview-formula-inline.png', 'preview-formula.png', 'preview-filter-panel.png', 'preview-filter-rule.png', 'preview-sort-panel.png', 'preview-group-panel.png', 'preview-group-rule.png', 'preview-dedupe-panel.png', 'preview-analysis.png', 'preview-board.png', 'preview-calendar.png', 'preview-html-artifact.png', 'preview-plan.png', 'preview-mobile.png'],
 }, null, 2));
