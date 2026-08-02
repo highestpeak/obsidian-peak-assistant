@@ -15,7 +15,6 @@
     <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7h-5V2M4 17h5v5M20 7a8 8 0 0 0-13.7-3M4 17a8 8 0 0 0 13.7 3"/></symbol>
     <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
-    <symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></symbol>
     <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
     <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
     <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 5h16l-6 7v5l-4 2v-7z"/></symbol>
@@ -68,8 +67,7 @@
 
           <section class="summary-strip" aria-label="Gateway summary">
             <div class="summary-stat"><span>Approved</span><strong id="approved-total">0</strong></div>
-            <div class="summary-stat"><span>Off</span><strong id="off-total">0</strong></div>
-            <div class="summary-stat"><span>Blocked</span><strong id="blocked-total">0</strong></div>
+            <div class="summary-stat"><span>Not allowed</span><strong id="not-allowed-total">0</strong></div>
             <div class="summary-stat"><span>System excluded</span><strong id="excluded-total">0</strong></div>
             <div class="summary-note"><svg><use href="#i-info"/></svg><span>AI drafts explanations only. It never changes access.</span></div>
           </section>
@@ -88,7 +86,7 @@
               <label class="search-control"><svg><use href="#i-search"/></svg><input id="search-input" type="search" placeholder="Search plugin or command"></label>
               <label class="select-control"><span>Plugin</span><select id="plugin-filter"><option value="all">All plugins</option></select><svg><use href="#i-chevron-down"/></svg></label>
               <label class="select-control"><span>Risk</span><select id="risk-filter"><option value="all">All risks</option><option value="read">Read</option><option value="edit">Edit</option><option value="unknown">Unknown</option><option value="destructive">Destructive</option></select><svg><use href="#i-chevron-down"/></svg></label>
-              <label class="select-control"><span>Access</span><select id="state-filter"><option value="all">All access</option><option value="off">Off</option><option value="allowed">Allowed</option><option value="blocked">Blocked</option><option value="unavailable">Unavailable</option></select><svg><use href="#i-chevron-down"/></svg></label>
+              <label class="select-control"><span>Access</span><select id="state-filter"><option value="all">All access</option><option value="off">Not allowed</option><option value="allowed">Allowed</option><option value="unavailable">Unavailable</option></select><svg><use href="#i-chevron-down"/></svg></label>
               <button class="icon-button filter-reset" type="button" id="clear-filters" aria-label="Clear filters"><svg><use href="#i-filter"/></svg><span>Clear</span></button>
             </div>
 
@@ -98,9 +96,8 @@
                 <button type="button" class="batch-main" id="allow-filtered"><svg><use href="#i-check"/></svg><span id="allow-filtered-label">Allow filtered</span></button>
                 <button type="button" class="batch-toggle" id="batch-toggle" aria-label="More bulk actions" aria-expanded="false"><svg><use href="#i-chevron-down"/></svg></button>
                 <div class="batch-menu" id="batch-menu" hidden>
-                  <button type="button" data-bulk="filtered"><span><strong>Allow current filter</strong><small>Only eligible Off commands now visible</small></span><kbd id="filtered-menu-count">0</kbd></button>
+                  <button type="button" data-bulk="filtered"><span><strong>Allow current filter</strong><small>Only eligible commands now visible</small></span><kbd id="filtered-menu-count">0</kbd></button>
                   <button type="button" data-bulk="all"><span><strong>Allow all eligible commands</strong><small>Across plugins; unsafe commands stay excluded</small></span><kbd id="all-menu-count">0</kbd></button>
-                  <button type="button" data-bulk="block"><span><strong>Block current filter</strong><small>Preserves system-excluded commands</small></span><kbd id="block-menu-count">0</kbd></button>
                 </div>
               </div>
             </div>
@@ -115,7 +112,7 @@
     </section>
 
     <section class="decision-note">
-      <div><span class="decision-index">01</span><strong>行级动作直接点选</strong><p>最右列固定显示 Off / Allow / Block 三态分段控件，不展开菜单，不在卡片角落堆动作。</p></div>
+      <div><span class="decision-index">01</span><strong>授权只有二态</strong><p>最右只是一颗 Allowed 开关：关是 Not allowed，开是 Allowed；危险项由系统显示 Unavailable。</p></div>
       <div><span class="decision-index">02</span><strong>批量动作绑定当前筛选</strong><p>主按钮清楚写明数量。菜单仍提供 “Allow all eligible commands”，但 unknown、destructive、modal 和 unavailable 永远排除。</p></div>
       <div><span class="decision-index">03</span><strong>只保留授权判断需要的信息</strong><p>Purpose 属于内部 curator 元数据，不让 owner 编辑；预期效果直接写进 command 摘要，只保留 Risk 与 Access 两列。</p></div>
     </section>

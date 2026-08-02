@@ -5,7 +5,7 @@ const initialCommands = [
   { plugin: 'periodic-notes', pluginName: 'Periodic Notes', version: '0.0.17', id: 'periodic-notes:open-daily', name: 'Open daily note', summary: 'Opens today’s note and may create it if missing; expected effect is stated directly here.', risk: 'edit', state: 'off', ai: true },
   { plugin: 'dataview', pluginName: 'Dataview', version: '0.5.68', id: 'dataview:force-refresh-views', name: 'Force refresh all views', summary: 'Refreshes visible Dataview results; expected effect: rendered query views update.', risk: 'read', state: 'off', ai: true },
   { plugin: 'dataview', pluginName: 'Dataview', version: '0.5.68', id: 'dataview:rebuild-index', name: 'Rebuild full index', summary: 'Potentially expensive maintenance command; destructive classification excludes it from Copilot.', risk: 'destructive', state: 'unavailable', reason: 'Destructive commands cannot be exposed to Copilot.', ai: true },
-  { plugin: 'templater-obsidian', pluginName: 'Templater', version: '2.9.1', id: 'templater-obsidian:replace-in-file-templater', name: 'Replace templates in active file', summary: 'Changes the active Markdown file; expected effect: current file content changes.', risk: 'edit', state: 'blocked', ai: true },
+  { plugin: 'templater-obsidian', pluginName: 'Templater', version: '2.9.1', id: 'templater-obsidian:replace-in-file-templater', name: 'Replace templates in active file', summary: 'Changes the active Markdown file; expected effect: current file content changes.', risk: 'edit', state: 'off', ai: true },
   { plugin: 'templater-obsidian', pluginName: 'Templater', version: '2.9.1', id: 'templater-obsidian:create-new-note-from-template', name: 'Create note from template', summary: 'Opens a template picker that Copilot cannot safely complete.', risk: 'unknown', state: 'unavailable', reason: 'Modal-only command.', ai: true },
   { plugin: 'quickadd', pluginName: 'QuickAdd', version: '2.4.1', id: 'quickadd:open-capture', name: 'Open capture modal', summary: 'Opens QuickAdd’s interactive chooser rather than completing a deterministic action.', risk: 'unknown', state: 'unavailable', reason: 'Modal-only command.', ai: true },
   { plugin: 'file-chucker', pluginName: 'File Chucker', version: '1.2.0', id: 'file-chucker:move-active-file', name: 'Move active file', summary: 'Moves the current file; expected effect: active path changes and requires edit permission.', risk: 'edit', state: 'off', ai: false },
@@ -59,7 +59,7 @@ function filteredEntries() {
 }
 
 function stateLabel(state) {
-  return { allowed: 'Allowed', blocked: 'Blocked', off: 'Off', unavailable: 'Unavailable' }[state];
+  return { allowed: 'Allowed', off: 'Not allowed', unavailable: 'Unavailable' }[state];
 }
 
 function accessControl(command, index) {
@@ -67,11 +67,10 @@ function accessControl(command, index) {
     return `<div class="access-cell"><div><button type="button" class="access-unavailable" disabled><svg><use href="#i-lock"/></svg><span>Unavailable</span></button><span class="system-note"><svg><use href="#i-lock"/></svg>${escapeHtml(command.reason)}</span></div></div>`;
   }
   return `<div class="access-cell">
-    <div class="access-segmented" role="group" aria-label="Access for ${escapeHtml(command.name)}">
-      <button type="button" class="access-option" data-choice="off" data-command-index="${index}" aria-pressed="${command.state === 'off'}"><svg><use href="#i-refresh"/></svg>Off</button>
-      <button type="button" class="access-option" data-choice="allowed" data-command-index="${index}" aria-pressed="${command.state === 'allowed'}"><svg><use href="#i-check"/></svg>Allow</button>
-      <button type="button" class="access-option" data-choice="blocked" data-command-index="${index}" aria-pressed="${command.state === 'blocked'}"><svg><use href="#i-ban"/></svg>Block</button>
-    </div>
+    <button type="button" class="access-toggle" data-access-toggle="${index}" data-state="${command.state}" role="switch" aria-checked="${command.state === 'allowed'}" aria-label="Allow ${escapeHtml(command.name)}">
+      <span class="access-toggle__track" aria-hidden="true"><i></i></span>
+      <span>${command.state === 'allowed' ? 'Allowed' : 'Not allowed'}</span>
+    </button>
   </div>`;
 }
 
@@ -111,38 +110,32 @@ function render() {
 
   const eligibleFiltered = entries.filter(({ command }) => isBulkEligible(command));
   const eligibleAll = commands.filter(isBulkEligible);
-  const filteredNonSystem = entries.filter(({ command }) => !isSystemExcluded(command));
   document.getElementById('result-count').textContent = `${entries.length} command${entries.length === 1 ? '' : 's'}`;
   document.getElementById('eligible-summary').textContent = `${eligibleFiltered.length} eligible for bulk Allow`;
   document.getElementById('allow-filtered-label').textContent = `Allow filtered · ${eligibleFiltered.length}`;
   document.getElementById('filtered-menu-count').textContent = eligibleFiltered.length;
   document.getElementById('all-menu-count').textContent = eligibleAll.length;
-  document.getElementById('block-menu-count').textContent = filteredNonSystem.length;
   document.getElementById('allow-filtered').disabled = eligibleFiltered.length === 0;
   batchToggle.disabled = entries.length === 0;
   document.getElementById('footer-summary').textContent = `Showing ${entries.length} of ${commands.length} commands across ${groups.size} plugin${groups.size === 1 ? '' : 's'}`;
   document.getElementById('approved-total').textContent = commands.filter((command) => command.state === 'allowed').length;
-  document.getElementById('off-total').textContent = commands.filter((command) => command.state === 'off').length;
-  document.getElementById('blocked-total').textContent = commands.filter((command) => command.state === 'blocked').length;
+  document.getElementById('not-allowed-total').textContent = commands.filter((command) => command.state === 'off').length;
   document.getElementById('excluded-total').textContent = commands.filter(isSystemExcluded).length;
 }
 
 function openBulkConfirm(mode) {
   const entries = mode === 'all' ? commands.map((command, index) => ({ command, index })) : filteredEntries();
-  const indexes = mode === 'block'
-    ? entries.filter(({ command }) => !isSystemExcluded(command)).map(({ index }) => index)
-    : entries.filter(({ command }) => isBulkEligible(command)).map(({ index }) => index);
+  const indexes = entries.filter(({ command }) => isBulkEligible(command)).map(({ index }) => index);
   if (indexes.length === 0) return;
   pendingBulk = { mode, indexes };
-  const verb = mode === 'block' ? 'Block' : 'Allow';
-  document.getElementById('confirm-title').textContent = `${verb} ${indexes.length} command${indexes.length === 1 ? '' : 's'}?`;
+  document.getElementById('confirm-title').textContent = `Allow ${indexes.length} command${indexes.length === 1 ? '' : 's'}?`;
   document.getElementById('confirm-copy').textContent = mode === 'all'
-    ? 'This applies across every plugin, but only to currently eligible Off commands.'
+    ? 'This applies across every plugin, but only to currently eligible commands.'
     : 'This applies only to commands in the current filter and preserves system exclusions.';
-  document.getElementById('confirm-list').innerHTML = indexes.slice(0, 6).map((index) => `<span><svg><use href="#${mode === 'block' ? 'i-ban' : 'i-check'}"/></svg>${escapeHtml(commands[index].pluginName)} · ${escapeHtml(commands[index].name)}</span>`).join('') + (indexes.length > 6 ? `<span>+ ${indexes.length - 6} more commands</span>` : '');
+  document.getElementById('confirm-list').innerHTML = indexes.slice(0, 6).map((index) => `<span><svg><use href="#i-check"/></svg>${escapeHtml(commands[index].pluginName)} · ${escapeHtml(commands[index].name)}</span>`).join('') + (indexes.length > 6 ? `<span>+ ${indexes.length - 6} more commands</span>` : '');
   const excluded = commands.filter(isSystemExcluded).length;
   document.getElementById('confirm-exclusion-copy').textContent = `${excluded} unknown, destructive, modal-only, or unavailable commands remain excluded.`;
-  document.querySelector('#confirm-bulk span').textContent = `${verb} commands`;
+  document.querySelector('#confirm-bulk span').textContent = 'Allow commands';
   bulkModal.hidden = false;
 }
 
@@ -159,10 +152,10 @@ function showToast(message) {
 }
 
 commandList.addEventListener('click', (event) => {
-  const choice = event.target.closest('[data-choice]');
-  if (!choice) return;
-  const index = Number(choice.dataset.commandIndex);
-  commands[index].state = choice.dataset.choice;
+  const toggle = event.target.closest('[data-access-toggle]');
+  if (!toggle) return;
+  const index = Number(toggle.dataset.accessToggle);
+  commands[index].state = commands[index].state === 'allowed' ? 'off' : 'allowed';
   render();
   showToast(`${commands[index].name}: ${stateLabel(commands[index].state)}`);
 });
@@ -196,11 +189,10 @@ batchMenu.addEventListener('click', (event) => {
 
 document.getElementById('cancel-confirm').addEventListener('click', () => { bulkModal.hidden = true; });
 document.getElementById('confirm-bulk').addEventListener('click', () => {
-  const nextState = pendingBulk.mode === 'block' ? 'blocked' : 'allowed';
-  for (const index of pendingBulk.indexes) commands[index].state = nextState;
+  for (const index of pendingBulk.indexes) commands[index].state = 'allowed';
   bulkModal.hidden = true;
   render();
-  showToast(`${pendingBulk.indexes.length} commands changed to ${stateLabel(nextState)}`);
+  showToast(`${pendingBulk.indexes.length} commands changed to Allowed`);
 });
 bulkModal.addEventListener('click', (event) => { if (event.target === bulkModal) bulkModal.hidden = true; });
 
