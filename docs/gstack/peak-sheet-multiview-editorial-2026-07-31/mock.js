@@ -1116,30 +1116,58 @@ function renderTable() {
 function renderBoard() {
   const visible = visibleRecords();
   const groups = ['applied', 'followup', 'interview', 'offer'];
-  const activeCount = visible.filter((record) => record.stageKey !== 'ended').length;
+  const activeRecords = visible.filter((record) => record.stageKey !== 'ended');
+  const activeCount = activeRecords.length;
   const archivedCount = visible.filter((record) => record.stageKey === 'ended').length;
-  const columns = groups.map((groupKey) => {
+  const needsAttention = (record) => record.urgency || record.wait >= 7 || record.fit >= 90;
+  const attentionCount = activeRecords.filter(needsAttention).length;
+  const averageFit = Math.round(activeRecords.reduce((sum, record) => sum + record.fit, 0) / activeCount);
+  const renderCard = (record, priority) => `
+    <button type="button" class="board-card ${priority ? 'is-priority' : ''}" data-board-record="${record.id}">
+      <header class="board-card-header">
+        <span class="board-card-title"><strong>${escapeHtml(record.company)}</strong><small>${escapeHtml(record.role)}</small></span>
+        <span class="board-fit" aria-label="匹配度 ${record.fit}"><b>${record.fit}</b><small>匹配</small></span>
+      </header>
+      <span class="board-card-meta">
+        <span class="board-mode">${escapeHtml(record.workMode)}</span>
+        <span class="board-location">${icon('i-location')}${escapeHtml(record.location)}</span>
+      </span>
+      <span class="board-card-action">
+        <i class="board-card-action-icon">${icon('i-arrow')}</i>
+        <span><small>下一步</small><strong>${escapeHtml(record.next)}</strong></span>
+        <time class="${record.wait >= 7 ? 'is-aged' : ''}">${record.wait === 0 ? '今天' : `${record.wait} 天`}</time>
+      </span>
+    </button>
+  `;
+  const renderGroup = (label, items, key) => {
+    if (!items.length) return '';
+    const collapsed = key === 'steady';
+    return `
+      <section class="board-card-group ${collapsed ? 'is-collapsed' : ''}" data-board-group="${key}">
+        <button type="button" class="board-group-toggle" data-board-group-toggle aria-expanded="${collapsed ? 'false' : 'true'}">
+          <span>${label}</span><em>${items.length}</em>${icon('i-chevron-down')}
+        </button>
+        <div ${collapsed ? 'hidden' : ''}>${items.map((record) => renderCard(record, key === 'attention')).join('')}</div>
+      </section>
+    `;
+  };
+  const columns = groups.map((groupKey, index) => {
     const items = visible.filter((record) => record.stageKey === groupKey);
+    const attention = items.filter(needsAttention).sort((first, second) => second.wait - first.wait || second.fit - first.fit);
+    const steady = items.filter((record) => !needsAttention(record)).sort((first, second) => second.fit - first.fit);
     return `
       <section class="board-column" style="--column-color:${groupMeta[groupKey].color}" data-board-column="${groupKey}">
-        <header>
-          <span class="board-column-label"><i></i><strong>${groupMeta[groupKey].label}</strong><em>${items.length}</em></span>
+        <header class="board-column-header">
+          <span class="board-stage-number">0${index + 1}</span>
+          <span class="board-column-copy">
+            <span class="board-column-label"><i></i><strong>${groupMeta[groupKey].label}</strong><em>${items.length}</em></span>
+            <small>${attention.length ? `${attention.length} 条需要行动` : '当前节奏正常'}</small>
+          </span>
           <button type="button" class="board-column-add" data-board-add="${groupKey}" aria-label="添加到${groupMeta[groupKey].label}">${icon('i-plus')}</button>
         </header>
         <div class="board-stack">
-          ${items.map((record) => `
-            <button type="button" class="board-card ${record.urgency ? 'is-priority' : ''}" data-board-record="${record.id}">
-              <header class="board-card-header">
-                <span class="board-card-title"><strong>${escapeHtml(record.company)}</strong><small>${escapeHtml(record.role)}</small></span>
-                <span class="board-fit"><b>${record.fit}</b><small>匹配</small></span>
-              </header>
-              <span class="board-card-focus"><small>下一步</small><strong>${escapeHtml(record.next)}</strong></span>
-              <footer>
-                <span class="board-card-place"><b>${escapeHtml(record.workMode)}</b><i></i><span>${escapeHtml(record.location)}</span></span>
-                <em class="${record.wait >= 7 ? 'is-aged' : ''}">${record.wait === 0 ? '今天' : `${record.wait} 天`}</em>
-              </footer>
-            </button>
-          `).join('')}
+          ${renderGroup('当前行动', attention, 'attention')}
+          ${renderGroup('其余记录', steady, 'steady')}
         </div>
       </section>
     `;
@@ -1147,10 +1175,13 @@ function renderBoard() {
   stage.innerHTML = `
     <section class="board-view">
       <header class="board-local-header">
-        <span class="board-heading"><strong>申请流程</strong><small>${activeCount} 条活跃记录 · 同一 Dataset 的阶段投影</small></span>
+        <span class="board-heading">
+          <strong>申请流程</strong>
+          <span class="board-heading-metrics"><small><b>${activeCount}</b> 活跃</small><i></i><small><b>${attentionCount}</b> 需行动</small><i></i><small>平均匹配 <b>${averageFit}</b></small></span>
+        </span>
         <span class="board-view-meta">
           <button type="button" data-board-control="group">${icon('i-group')}按阶段${icon('i-chevron-down')}</button>
-          <button type="button" data-board-control="fields">${icon('i-fields')}4 个卡片字段</button>
+          <button type="button" data-board-control="fields">${icon('i-fields')}卡片字段${icon('i-chevron-down')}</button>
           <span class="board-completed">已结束 <b>${archivedCount}</b></span>
         </span>
       </header>
@@ -1173,8 +1204,19 @@ function renderBoard() {
     button.addEventListener('click', () => {
       const copy = button.dataset.boardControl === 'group'
         ? '当前按“阶段”字段分组'
-        : '当前显示：公司、职位、下一步、地点与等待时间';
+        : '当前显示：公司、职位、工作方式、地点、下一步与等待时间';
       showToast('看板视图配置', copy);
+    });
+  });
+  stage.querySelectorAll('[data-board-group-toggle]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const group = button.closest('.board-card-group');
+      const content = group?.querySelector(':scope > div');
+      if (!group || !content) return;
+      const collapsed = !group.classList.contains('is-collapsed');
+      group.classList.toggle('is-collapsed', collapsed);
+      content.hidden = collapsed;
+      button.setAttribute('aria-expanded', String(!collapsed));
     });
   });
 }
