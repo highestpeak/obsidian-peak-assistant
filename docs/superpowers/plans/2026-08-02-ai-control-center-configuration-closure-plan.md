@@ -152,9 +152,11 @@ Control Center 增加按实时 registry 生成的 `User-defined` 分组：
 1. AI Actions 与 Prompt Library 继续共用三栏目录；
 2. action inspector 保留 Behavior / Configuration；
 3. Configuration 按 execution kind 展示适用控制；
-4. Prompt Library 只显示 retained、migrating 和 user-defined Prompt；
-5. locked contract 使用只读区，不提供 Save override；
-6. Run、Usage、History 和 Debug 继续链接到原 owner surface。
+4. Configuration 中的 Prompt、instruction、model、output、agent、media、scope 与 tool-policy 编辑统一使用原地 modal；
+5. modal 关闭后恢复同一 action、Configuration tab、滚动位置和触发按钮焦点，不自动切换到 Prompt Library；
+6. Prompt Library 只显示 retained、migrating 和 user-defined Prompt；
+7. locked contract 使用只读区，不提供 Save override；
+8. Run、Usage、History 和 Debug 继续链接到原 owner surface。
 
 ### Track F · Proof and cleanup
 
@@ -173,7 +175,7 @@ Control Center 增加按实时 registry 生成的 `User-defined` 分组：
 | Save-consumption tests | 每个可保存字段至少有一个执行路径断言 effective value |
 | Resolver audit | 模型调用不直接选择未登记 Profile/model，不直接绕过 Prompt override |
 | Receipt audit | capability、step、Prompt version、requested/effective model、tool policy、output controls 可追溯 |
-| UI audit | 无 model call 的 action 不显示假的 text-model picker；locked contract 不显示 Save |
+| UI audit | 无 model call 的 action 不显示假的 text-model picker；locked contract 不显示 Save；secondary editor 使用 modal 并恢复 action / tab / scroll / focus |
 | Product verification | 真实 Obsidian 中修改配置后，下一次 run 与 receipt 同时反映新值 |
 
 ## 7. 回滚与清理

@@ -395,6 +395,54 @@
       font-weight: 620;
     }
 
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(28, 28, 25, .34);
+    }
+
+    .modal {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      width: min(620px, calc(100vw - 48px));
+      max-height: min(720px, calc(100vh - 48px));
+      overflow: hidden;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: var(--surface);
+      box-shadow: 0 24px 70px rgba(28, 28, 25, .24);
+    }
+
+    .modal-head, .modal-footer { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
+    .modal-head { border-bottom: 1px solid var(--line); }
+    .modal-head-copy { flex: 1; min-width: 0; }
+    .modal-head strong { display: block; font-size: 15px; }
+    .modal-head span { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
+    .modal-close { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; }
+    .modal-body { min-height: 0; overflow: auto; padding: 16px; }
+    .modal-footer { justify-content: flex-end; border-top: 1px solid var(--line); background: var(--surface-2); }
+    .modal-copy { margin-bottom: 14px; color: var(--muted); }
+    .field { display: grid; gap: 6px; margin-top: 12px; }
+    .field:first-child { margin-top: 0; }
+    .field > span { font-weight: 650; }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      min-height: 34px;
+      padding: 8px 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      outline: 0;
+      background: white;
+      color: var(--text);
+      font: inherit;
+    }
+    .field textarea { min-height: 180px; resize: vertical; font-family: var(--mono); font-size: 11px; line-height: 1.55; }
+    .field input:focus, .field select:focus, .field textarea:focus { border-color: #aaa1dc; box-shadow: 0 0 0 2px var(--accent-soft); }
+
     .empty { padding: 30px 18px; color: var(--muted); text-align: center; }
     .design-note {
       position: fixed;
@@ -451,6 +499,17 @@
   </div>
 
   <div class="design-note">Design mock · no product settings are changed</div>
+
+  <div class="modal-backdrop hidden" id="editorModal" role="dialog" aria-modal="true" aria-labelledby="editorModalTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-head-copy"><strong id="editorModalTitle">Edit configuration</strong><span id="editorModalSubtitle">Changes apply to the current AI action.</span></div>
+        <button class="action-button modal-close" id="editorModalClose" aria-label="Close editor"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </div>
+      <div class="modal-body" id="editorModalBody"></div>
+      <div class="modal-footer"><button class="action-button" id="editorModalCancel">Cancel</button><button class="action-button primary" id="editorModalSave">Save changes</button></div>
+    </div>
+  </div>
 
   <script src="prompt-catalog-data.js"></script>
   <script>
@@ -856,6 +915,15 @@
     const searchInput = document.getElementById('searchInput');
     const listTitle = document.getElementById('listTitle');
     const listDescription = document.getElementById('listDescription');
+    const editorModal = document.getElementById('editorModal');
+    const editorModalTitle = document.getElementById('editorModalTitle');
+    const editorModalSubtitle = document.getElementById('editorModalSubtitle');
+    const editorModalBody = document.getElementById('editorModalBody');
+    const editorModalClose = document.getElementById('editorModalClose');
+    const editorModalCancel = document.getElementById('editorModalCancel');
+    const editorModalSave = document.getElementById('editorModalSave');
+    let editorReturnFocus = null;
+    let editorInspectorScrollTop = 0;
 
     const groups = [
       ['all', 'all', 'All AI actions'],
@@ -991,14 +1059,69 @@
       </div>`;
     }
 
+    function editorContent(type, promptId) {
+      const prompt = promptId ? prompts.find(candidate => candidate.id === promptId) : null;
+      const sharedSubtitle = `${activeItem.title} · changes stay scoped to this Configuration view.`;
+      if (type === 'prompt') {
+        const migrating = prompt?.status === 'migration';
+        return {
+          title: migrating ? `Review ${prompt?.title ?? promptId}` : `Edit ${prompt?.title ?? promptId}`,
+          subtitle: migrating ? 'Registration is required before this runtime instruction can be overridden.' : sharedSubtitle,
+          saveDisabled: migrating,
+          body: `${migrating ? `<div class="notice amber">${icons.alert}<span>Move this inline runtime instruction into Prompt Registry and the shared resolver first.</span></div>` : ''}<p class="modal-copy">Edit the Vault override here without leaving the current AI action. Saving or cancelling returns to the same action and scroll position.</p><label class="field"><span>Vault override</span><textarea ${migrating ? 'disabled' : ''} placeholder="No Vault override. Add instructions for this Prompt here."></textarea></label><label class="field"><span>Applies to</span><input value="${prompt?.owners ?? 0} mapped AI action${prompt?.owners === 1 ? '' : 's'}" disabled></label>`
+        };
+      }
+      if (type === 'instruction') {
+        return { title: 'Edit action instruction', subtitle: sharedSubtitle, body: `<p class="modal-copy">This override affects only <code>${activeItem.id}</code>; the shared Prompt remains unchanged.</p><label class="field"><span>Action instruction</span><textarea>${activeItem.actionInstruction}</textarea></label>` };
+      }
+      if (type === 'model') {
+        return { title: activeItem.executionKind === 'media' ? 'Choose route and model' : 'Choose model', subtitle: sharedSubtitle, body: `<p class="modal-copy">The selection is stored on this capability step, not on a shared Prompt.</p><label class="field"><span>Policy</span><select><option>Use AI Setup default</option><option selected>Override this action</option></select></label><label class="field"><span>Profile and model</span><select><option>${activeItem.route}</option><option>Fast Lookup · configured model</option><option>Research · configured model</option><option>Choose another compatible model…</option></select></label>` };
+      }
+      if (type === 'output') {
+        return { title: 'Edit output controls', subtitle: sharedSubtitle, body: `<label class="field"><span>Response</span><input value="${activeItem.output}"></label><label class="field"><span>Sampling</span><select><option>Use Profile default</option><option>Low variance</option><option>Balanced</option><option>Creative</option></select></label><label class="field"><span>Maximum output tokens</span><input type="number" value="4096"></label><label class="field"><span>Timeout</span><input value="60 seconds"></label>` };
+      }
+      if (type === 'agent') {
+        return { title: 'Edit agent controls', subtitle: sharedSubtitle, body: `<label class="field"><span>Tool policy</span><select><option>Allow listed read tools</option><option>Ask for every tool</option><option>Disable tools</option></select></label><label class="field"><span>Write-capable tools</span><select><option>Always ask for approval</option><option>Disable</option></select></label><label class="field"><span>Run budget</span><input value="12 turns · 24 tool calls · configured cost limit"></label>` };
+      }
+      if (type === 'media') {
+        return { title: 'Edit job controls', subtitle: sharedSubtitle, body: `<label class="field"><span>Preset</span><select><option>Use route default</option><option>High quality</option><option>Fast preview</option></select></label><label class="field"><span>Quantity or duration</span><input value="1 output"></label><label class="field"><span>Cost confirmation</span><select><option>Always confirm before submit</option><option>Use configured threshold</option></select></label>` };
+      }
+      if (type === 'scope') {
+        return { title: 'Edit scope and thresholds', subtitle: sharedSubtitle, body: `<label class="field"><span>Scope</span><select><option>Owning surface default</option><option>Current document only</option><option>Current Vault</option></select></label><label class="field"><span>Result limit</span><input type="number" value="20"></label><label class="field"><span>Threshold</span><input value="Use owner default"></label>` };
+      }
+      if (type === 'tool') {
+        return { title: 'Edit parent tool policy', subtitle: sharedSubtitle, body: `<p class="modal-copy">This child action inherits the parent run model. Only availability and approval are editable here.</p><label class="field"><span>Availability</span><select><option>Allow for parent run</option><option>Ask before use</option><option>Disable</option></select></label><label class="field"><span>Persistent writes</span><select><option>Always ask</option><option>Disable</option></select></label>` };
+      }
+      return { title: 'Edit definition', subtitle: sharedSubtitle, body: `<p class="modal-copy">This modal writes through the original owner adapter; Control Center does not create a second definition store.</p><label class="field"><span>Instructions</span><textarea placeholder="User-defined instructions"></textarea></label><label class="field"><span>Model policy</span><select><option>Use owner default</option><option>Override this definition</option></select></label><label class="field"><span>Tools and approval</span><select><option>Use owner policy</option><option>Review permissions…</option></select></label>` };
+    }
+
+    function openEditorModal(trigger, type, promptId) {
+      const content = editorContent(type, promptId);
+      editorReturnFocus = trigger;
+      editorInspectorScrollTop = inspector.scrollTop;
+      editorModalTitle.textContent = content.title;
+      editorModalSubtitle.textContent = content.subtitle;
+      editorModalBody.innerHTML = content.body;
+      editorModalSave.disabled = Boolean(content.saveDisabled);
+      editorModal.classList.remove('hidden');
+      editorModalClose.focus();
+    }
+
+    function closeEditorModal() {
+      editorModal.classList.add('hidden');
+      inspector.scrollTop = editorInspectorScrollTop;
+      editorReturnFocus?.focus();
+      editorReturnFocus = null;
+    }
+
     function renderPromptControls(item) {
       const promptList = item.prompts.map(id => {
         const prompt = prompts.find(candidate => candidate.id === id);
-        const actionLabel = prompt?.status === 'migration' ? 'Review migration' : 'Edit in Prompt Library';
-        return `<div class="prompt-box"><div class="prompt-head"><strong>${prompt?.title ?? id}</strong><button class="link-button" data-open-prompt="${id}">${actionLabel}</button></div><div class="prompt-body">${prompt?.kind ?? 'Capability prompt'} · ${prompt?.version ?? 'Built-in'}</div></div>`;
+        const actionLabel = prompt?.status === 'migration' ? 'Review migration' : 'Edit prompt';
+        return `<div class="prompt-box"><div class="prompt-head"><strong>${prompt?.title ?? id}</strong><button class="link-button" data-editor="prompt" data-prompt-id="${id}">${actionLabel}</button></div><div class="prompt-body">${prompt?.kind ?? 'Capability prompt'} · ${prompt?.version ?? 'Built-in'}</div></div>`;
       }).join('');
       const actionInstruction = item.actionInstruction
-        ? `<div class="prompt-box"><div class="prompt-head"><strong>Action instruction</strong><span class="pill purple">This action only</span></div><textarea class="prompt-editor compact">${item.actionInstruction}</textarea><div class="button-row"><button class="action-button" disabled>Reset</button><button class="action-button primary">Save instruction</button></div></div>`
+        ? `<div class="prompt-box"><div class="prompt-head"><strong>Action instruction</strong><button class="link-button" data-editor="instruction">Edit instruction</button></div><div class="prompt-body">${item.actionInstruction}</div></div>`
         : '';
       if (promptList || actionInstruction) return promptList + actionInstruction;
       if (item.executionKind === 'deterministic') return `<div class="notice">${icons.prompt}<span>No text Prompt by design. This action is deterministic; configure its scope and thresholds below.</span></div>`;
@@ -1015,35 +1138,35 @@
         return `<div class="notice">${icons.model}<span>This action is a child tool or dispatcher. It inherits the parent Chat or Copilot route and has no separate model override.</span></div>`;
       }
       if (item.executionKind === 'user') {
-        return `<div class="route active">${icons.spark}<span><strong>Owner-defined policy</strong><span>Each live definition keeps its own model, tools, and approval policy.</span></span><button class="action-button">Open owner</button></div>`;
+        return `<div class="route active">${icons.spark}<span><strong>Owner-defined policy</strong><span>Each live definition keeps its own model, tools, and approval policy.</span></span><button class="action-button" data-editor="owner">Edit definition</button></div>`;
       }
       if (item.executionKind === 'media') {
-        return `<label class="route active"><input type="radio" name="model-policy" checked><span><strong>Use generation route</strong><span>Resolve a compatible provider, model, and preset at job preflight.</span></span><span class="route-effective">Current<code>${item.route}</code></span></label><label class="route"><input type="radio" name="model-policy"><span><strong>Choose route and model</strong><span>Override this media action only.</span></span><button class="action-button">Choose route</button></label>`;
+        return `<label class="route active"><input type="radio" name="model-policy" checked><span><strong>Use generation route</strong><span>Resolve a compatible provider, model, and preset at job preflight.</span></span><span class="route-effective">Current<code>${item.route}</code></span></label><div class="route"><span></span><span><strong>Choose route and model</strong><span>Override this media action only.</span></span><button class="action-button" data-editor="model">Choose route</button></div>`;
       }
       const profileLabel = item.executionKind === 'embedding' ? 'embedding Profile' : item.executionKind === 'rerank' ? 'rerank Profile' : 'model';
-      return `<label class="route active"><input type="radio" name="model-policy" checked><span><strong>Use the AI Setup default</strong><span>Follows future changes to the shared ${profileLabel} setting.</span></span><span class="route-effective">Current<code>${item.route}</code></span></label><label class="route"><input type="radio" name="model-policy"><span><strong>Choose a ${profileLabel} for this action</strong><span>Overrides the default only for this AI action.</span></span><button class="action-button">Choose ${item.executionKind === 'text' || item.executionKind === 'agent' ? 'model' : 'Profile'}</button></label>`;
+      return `<label class="route active"><input type="radio" name="model-policy" checked><span><strong>Use the AI Setup default</strong><span>Follows future changes to the shared ${profileLabel} setting.</span></span><span class="route-effective">Current<code>${item.route}</code></span></label><div class="route"><span></span><span><strong>Choose a ${profileLabel} for this action</strong><span>Overrides the default only for this AI action.</span></span><button class="action-button" data-editor="model">Choose ${item.executionKind === 'text' || item.executionKind === 'agent' ? 'model' : 'Profile'}</button></div>`;
     }
 
     function renderExecutionControls(item) {
       if (item.executionKind === 'agent') {
-        return `<div class="section"><h2>Tools, approval &amp; budget</h2><dl class="facts"><dt>Tool policy</dt><dd>Allow listed tools · ask before write-capable tools</dd><dt>Approval</dt><dd>Review before document or Vault change</dd><dt>Budget</dt><dd>Agent turns, tool calls, token and cost limits</dd></dl><div class="button-row"><button class="action-button">Edit agent controls</button></div></div><div class="section"><h2>Output controls</h2><dl class="facts"><dt>Response</dt><dd>${item.output}</dd><dt>Sampling</dt><dd>Profile default · action override available</dd><dt>Limits</dt><dd>Max output tokens and timeout</dd></dl><div class="button-row"><button class="action-button">Edit output controls</button></div></div>`;
+        return `<div class="section"><h2>Tools, approval &amp; budget</h2><dl class="facts"><dt>Tool policy</dt><dd>Allow listed tools · ask before write-capable tools</dd><dt>Approval</dt><dd>Review before document or Vault change</dd><dt>Budget</dt><dd>Agent turns, tool calls, token and cost limits</dd></dl><div class="button-row"><button class="action-button" data-editor="agent">Edit agent controls</button></div></div><div class="section"><h2>Output controls</h2><dl class="facts"><dt>Response</dt><dd>${item.output}</dd><dt>Sampling</dt><dd>Profile default · action override available</dd><dt>Limits</dt><dd>Max output tokens and timeout</dd></dl><div class="button-row"><button class="action-button" data-editor="output">Edit output controls</button></div></div>`;
       }
       if (item.executionKind === 'embedding' || item.executionKind === 'rerank') {
-        return `<div class="section"><h2>Index &amp; scope</h2><dl class="facts"><dt>Scope</dt><dd>Changed documents and explicit rebuilds</dd><dt>Batch policy</dt><dd>Profile-compatible batch size and retry</dd><dt>Compatibility</dt><dd>Locked vector/index invariant</dd></dl><div class="button-row"><button class="action-button">Edit scope</button></div></div>`;
+        return `<div class="section"><h2>Index &amp; scope</h2><dl class="facts"><dt>Scope</dt><dd>Changed documents and explicit rebuilds</dd><dt>Batch policy</dt><dd>Profile-compatible batch size and retry</dd><dt>Compatibility</dt><dd>Locked vector/index invariant</dd></dl><div class="button-row"><button class="action-button" data-editor="scope">Edit scope</button></div></div>`;
       }
       if (item.executionKind === 'media') {
-        return `<div class="section"><h2>Job controls</h2><dl class="facts"><dt>Preset</dt><dd>Aspect, quality, duration, or transcription mode</dd><dt>Quantity</dt><dd>Per-run generation count</dd><dt>Confirmation</dt><dd>Require cost and provider preflight</dd></dl><div class="button-row"><button class="action-button">Edit job controls</button></div></div>`;
+        return `<div class="section"><h2>Job controls</h2><dl class="facts"><dt>Preset</dt><dd>Aspect, quality, duration, or transcription mode</dd><dt>Quantity</dt><dd>Per-run generation count</dd><dt>Confirmation</dt><dd>Require cost and provider preflight</dd></dl><div class="button-row"><button class="action-button" data-editor="media">Edit job controls</button></div></div>`;
       }
       if (item.executionKind === 'deterministic') {
-        return `<div class="section"><h2>Scope &amp; thresholds</h2><dl class="facts"><dt>Scope</dt><dd>Owning surface and eligible files</dd><dt>Thresholds</dt><dd>Similarity, freshness, or result limits where applicable</dd><dt>AI calls</dt><dd>None</dd></dl><div class="button-row"><button class="action-button">Open owning settings</button></div></div>`;
+        return `<div class="section"><h2>Scope &amp; thresholds</h2><dl class="facts"><dt>Scope</dt><dd>Owning surface and eligible files</dd><dt>Thresholds</dt><dd>Similarity, freshness, or result limits where applicable</dd><dt>AI calls</dt><dd>None</dd></dl><div class="button-row"><button class="action-button" data-editor="scope">Edit scope</button></div></div>`;
       }
       if (item.executionKind === 'delegated') {
-        return `<div class="section"><h2>Parent tool policy</h2><dl class="facts"><dt>Availability</dt><dd>Allow or deny this tool for the parent Assistant / Copilot run</dd><dt>Approval</dt><dd>Ask before persistent artifact creation</dd><dt>Model route</dt><dd>Inherited from the parent run</dd></dl><div class="button-row"><button class="action-button">Edit tool policy</button></div></div>`;
+        return `<div class="section"><h2>Parent tool policy</h2><dl class="facts"><dt>Availability</dt><dd>Allow or deny this tool for the parent Assistant / Copilot run</dd><dt>Approval</dt><dd>Ask before persistent artifact creation</dd><dt>Model route</dt><dd>Inherited from the parent run</dd></dl><div class="button-row"><button class="action-button" data-editor="tool">Edit tool policy</button></div></div>`;
       }
       if (item.executionKind === 'user') {
-        return `<div class="section"><h2>Dynamic owner</h2><dl class="facts"><dt>Source</dt><dd>Live runtime registry</dd><dt>Controls</dt><dd>Content, model, tools, approval, scope</dd><dt>Persistence</dt><dd>Owned by the original editor</dd></dl><div class="button-row"><button class="action-button">Open owner registry</button></div></div>`;
+        return `<div class="section"><h2>Dynamic owner</h2><dl class="facts"><dt>Source</dt><dd>Live runtime registry</dd><dt>Controls</dt><dd>Content, model, tools, approval, scope</dd><dt>Persistence</dt><dd>Saved through the original owner adapter</dd></dl><div class="button-row"><button class="action-button" data-editor="owner">Edit definition</button></div></div>`;
       }
-      return `<div class="section"><h2>Output controls</h2><dl class="facts"><dt>Response</dt><dd>${item.output}</dd><dt>Sampling</dt><dd>Temperature and top-p when supported</dd><dt>Limits</dt><dd>Max output tokens, timeout, retry</dd></dl><div class="button-row"><button class="action-button">Edit output controls</button></div></div>`;
+      return `<div class="section"><h2>Output controls</h2><dl class="facts"><dt>Response</dt><dd>${item.output}</dd><dt>Sampling</dt><dd>Temperature and top-p when supported</dd><dt>Limits</dt><dd>Max output tokens, timeout, retry</dd></dl><div class="button-row"><button class="action-button" data-editor="output">Edit output controls</button></div></div>`;
     }
 
     function renderCapabilityInspector(item) {
@@ -1086,6 +1209,12 @@
     }
 
     document.addEventListener('click', event => {
+      const editorButton = event.target.closest('[data-editor]');
+      if (editorButton) {
+        openEditorModal(editorButton, editorButton.dataset.editor, editorButton.dataset.promptId);
+        return;
+      }
+
       const catalogButton = event.target.closest('[data-catalog="prompts"]');
       if (catalogButton) {
         workspace = 'prompts';
@@ -1119,17 +1248,6 @@
         return;
       }
 
-      const openPromptButton = event.target.closest('[data-open-prompt]');
-      if (openPromptButton) {
-        const prompt = prompts.find(item => item.id === openPromptButton.dataset.openPrompt);
-        if (!prompt) return;
-        workspace = 'prompts';
-        activeItem = prompt;
-        searchInput.value = '';
-        renderAll();
-        return;
-      }
-
       const promptRowButton = event.target.closest('[data-prompt-id]');
       if (promptRowButton) {
         workspace = 'prompts';
@@ -1147,6 +1265,15 @@
       }
     });
 
+    editorModalClose.addEventListener('click', closeEditorModal);
+    editorModalCancel.addEventListener('click', closeEditorModal);
+    editorModalSave.addEventListener('click', closeEditorModal);
+    editorModal.addEventListener('click', event => {
+      if (event.target === editorModal) closeEditorModal();
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !editorModal.classList.contains('hidden')) closeEditorModal();
+    });
     searchInput.addEventListener('input', renderRows);
     renderAll();
   </script>

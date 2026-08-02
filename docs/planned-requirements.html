@@ -111,6 +111,7 @@
           <li>把 Composer 的 21 个 preset instruction 与 Link Tidy 默认 instruction 纳入各自 action Configuration。</li>
           <li>动态汇总 Custom Prompt、Vault Skill、Chat Assistant、Project / Conversation instruction 与 MCP tool policy，不复制第二份 owner state。</li>
           <li>按 execution kind 提供 Prompt、model、output、tools、approval、budget、route、scope 或 threshold；schema、安全边界、writeback 与 stop condition 保持只读。</li>
+          <li>Configuration 内所有 secondary edit action 使用原地 modal；Save、Cancel、遮罩关闭或 Escape 后恢复同一 action、tab、滚动位置与触发按钮焦点，不自动跳转 Prompt Library。</li>
           <li>每个 Save 控件必须有 resolver-consumption test，receipt 同时记录 requested 与 effective configuration，并完成真实 Obsidian 修改后下一次 run 的消费验证。</li>
         </ul>
         <p><strong>完成条件：</strong>0 个无 owner Prompt、0 个稳定 inline instruction 绕过 resolver、0 个无消费证明的可保存配置；旧 <code>promptModelMap</code> 与绕过 PromptService 的兼容路径完成迁移和清理。</p>

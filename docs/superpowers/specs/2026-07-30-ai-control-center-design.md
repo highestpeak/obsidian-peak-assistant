@@ -198,8 +198,10 @@ Configuration 只放用户能够真正修改且运行时会读取的设置：
 
 - 使用 AI Setup 默认模型；
 - 为当前 action 选择独立模型 override；
-- 查看并跳转编辑当前 action 使用的 Prompt；
+- 查看当前 action 使用的 Prompt，并在原地 modal 中编辑 override；
 - 在允许用户控制时调整 tool / budget policy。
+
+Configuration 中的 `Edit prompt`、`Edit instruction`、`Choose model`、`Edit output controls` 与同类 secondary action 都打开当前页 modal，不切换 workspace，也不强迫用户进入 Prompt Library。Save、Cancel、点击遮罩或 Escape 后必须返回同一个 action、同一个 Configuration tab 和原 inspector 滚动位置；用户可以连续编辑多个配置项。只有用户主动选择左侧 `All prompts` 时才进入平铺 Prompt Library。
 
 运行前后步骤、schema、writeback owner、receipt 和完整证据链仍保存在 execution contract 中，供代码、测试和内部诊断消费，不在普通配置 UI 平铺。
 
@@ -444,8 +446,9 @@ flowchart LR
     Center --> Action["按产品分组选择 AI action"]
     Action --> Behavior["查看预期结果与安全边界"]
     Action --> Config["配置 action 的模型与 Prompt"]
+    Config --> Modal["原地 modal 编辑"]
+    Modal --> Config
     Center --> Library["打开平铺 Prompt Library"]
-    Config --> Library
     Library --> Edit["编辑 Vault Prompt override"]
 ```
 
@@ -455,7 +458,8 @@ flowchart LR
 2. Behavior 解释它只提供查询候选，不执行 AI Search；
 3. Configuration 显示它继承 Fast Lookup，也允许为该 action 选择独立模型；
 4. Prompt instructions 显示 Query Rewrite system/user pair；
-5. 点击 Prompt 后进入同一目录中的 Prompt Library。
+5. 点击 `Edit prompt` 后在原地 modal 修改，保存或关闭后仍停留在当前 action 的 Configuration 与原滚动位置；
+6. 只有用户主动选择 `All prompts` 时才进入完整 Prompt Library。
 
 ### 9.2 从 Prompt 出发
 
