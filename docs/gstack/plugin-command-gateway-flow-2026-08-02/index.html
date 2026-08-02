@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak Assistant · Plugin Command Gateway flow mock</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --canvas: #101115;
+      --surface: #181a20;
+      --surface-raised: #1e2128;
+      --surface-soft: #242730;
+      --border: #30343e;
+      --border-strong: #454b59;
+      --text: #f0f1f4;
+      --text-2: #b8bcc7;
+      --text-3: #7f8592;
+      --accent: #8b7cf6;
+      --accent-soft: rgba(139, 124, 246, 0.14);
+      --green: #63c59b;
+      --green-soft: rgba(99, 197, 155, 0.12);
+      --amber: #dfa95b;
+      --amber-soft: rgba(223, 169, 91, 0.12);
+      --red: #e67b83;
+      --red-soft: rgba(230, 123, 131, 0.12);
+      --blue: #6ca9e7;
+      --shadow: 0 18px 60px rgba(0, 0, 0, 0.26);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: var(--text);
+      background: var(--canvas);
+    }
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+    svg { display: block; }
+
+    .page {
+      width: min(1480px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 34px 0 64px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--green);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    .eyebrow::before {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      content: "";
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(340px, 0.75fr);
+      gap: 22px;
+      align-items: stretch;
+    }
+    .hero-main, .scope-card, .flow-section, .demo-section, .truth-section {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .hero-main {
+      padding: 34px;
+      border-radius: 12px;
+    }
+    .hero h1 {
+      max-width: 860px;
+      margin: 14px 0 12px;
+      font-size: clamp(30px, 4.4vw, 56px);
+      line-height: 1.03;
+      letter-spacing: -0.045em;
+    }
+    .hero-copy {
+      max-width: 840px;
+      margin: 0;
+      color: var(--text-2);
+      font-size: 15px;
+      line-height: 1.65;
+    }
+    .status-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 24px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 25px;
+      padding: 4px 9px;
+      border: 1px solid var(--border-strong);
+      border-radius: 999px;
+      color: var(--text-2);
+      background: var(--surface-raised);
+      font-size: 10px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+    .pill--green { border-color: rgba(99, 197, 155, 0.35); color: var(--green); background: var(--green-soft); }
+    .pill--amber { border-color: rgba(223, 169, 91, 0.35); color: var(--amber); background: var(--amber-soft); }
+    .pill--red { border-color: rgba(230, 123, 131, 0.35); color: var(--red); background: var(--red-soft); }
+    .pill--accent { border-color: rgba(139, 124, 246, 0.36); color: #b8afff; background: var(--accent-soft); }
+
+    .scope-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 26px;
+      border-radius: 12px;
+    }
+    .scope-title { margin: 0 0 16px; font-size: 13px; color: var(--text-2); }
+    .compare { display: grid; gap: 10px; }
+    .compare-row {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface-raised);
+    }
+    .compare-row[data-kind="gateway"] { border-color: rgba(139, 124, 246, 0.42); }
+    .compare-icon {
+      display: grid;
+      width: 36px;
+      height: 36px;
+      place-items: center;
+      border: 1px solid var(--border-strong);
+      border-radius: 7px;
+      color: var(--text-2);
+    }
+    .compare-row[data-kind="gateway"] .compare-icon { color: #b8afff; background: var(--accent-soft); }
+    .compare strong { display: block; margin-bottom: 4px; font-size: 12px; }
+    .compare small { display: block; color: var(--text-3); font-size: 10px; line-height: 1.45; }
+    .scope-note { margin: 16px 0 0; color: var(--text-3); font-size: 10px; line-height: 1.55; }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: end;
+      margin-bottom: 20px;
+    }
+    .section-head h2 { margin: 0 0 5px; font-size: 18px; letter-spacing: -0.02em; }
+    .section-head p { margin: 0; color: var(--text-3); font-size: 11px; line-height: 1.5; }
+
+    .flow-section {
+      margin-top: 22px;
+      padding: 26px;
+      border-radius: 12px;
+    }
+    .flow-lane { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 16px; align-items: center; }
+    .flow-lane + .flow-lane { margin-top: 16px; }
+    .lane-label {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      color: var(--text-2);
+      font-size: 11px;
+      font-weight: 650;
+    }
+    .lane-label small { color: var(--text-3); font-size: 9px; font-weight: 500; }
+    .flow-track {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 28px;
+    }
+    .flow-node {
+      position: relative;
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr);
+      gap: 11px;
+      align-items: center;
+      min-height: 78px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      color: var(--text);
+      background: var(--surface-raised);
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+    }
+    .flow-node:hover, .flow-node:focus-visible { border-color: var(--accent); background: var(--surface-soft); outline: 0; transform: translateY(-1px); }
+    .flow-node:not(:last-child)::after {
+      position: absolute;
+      top: 50%;
+      right: -21px;
+      width: 12px;
+      height: 1px;
+      background: var(--border-strong);
+      content: "";
+    }
+    .flow-node:not(:last-child)::before {
+      position: absolute;
+      top: calc(50% - 3px);
+      right: -22px;
+      width: 6px;
+      height: 6px;
+      border-top: 1px solid var(--border-strong);
+      border-right: 1px solid var(--border-strong);
+      transform: rotate(45deg);
+      content: "";
+    }
+    .node-thumb {
+      display: grid;
+      width: 44px;
+      height: 48px;
+      padding: 6px;
+      grid-template-rows: 5px 1fr 1fr;
+      gap: 4px;
+      border: 1px solid var(--border-strong);
+      border-radius: 5px;
+      background: #14161b;
+    }
+    .node-thumb i { display: block; border-radius: 2px; background: var(--border-strong); }
+    .node-thumb i:first-child { width: 55%; background: var(--accent); }
+    .node-thumb i:nth-child(2) { width: 100%; }
+    .node-thumb i:nth-child(3) { width: 72%; }
+    .flow-node strong { display: block; margin-bottom: 4px; font-size: 11px; }
+    .flow-node small { display: block; color: var(--text-3); font-size: 9px; line-height: 1.42; }
+
+    .demo-section {
+      margin-top: 22px;
+      overflow: hidden;
+      border-radius: 12px;
+    }
+    .demo-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 15px 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-raised);
+    }
+    .demo-toolbar__title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .demo-toolbar__title strong { font-size: 12px; }
+    .demo-toolbar__title span { color: var(--text-3); font-size: 10px; }
+    .window-dots { display: flex; gap: 5px; }
+    .window-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--border-strong); }
+    .quiet-btn, .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 31px;
+      padding: 6px 11px;
+      border: 1px solid var(--border-strong);
+      border-radius: 6px;
+      color: var(--text-2);
+      background: var(--surface-raised);
+      font-size: 10px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+    .quiet-btn:hover, .btn:hover { border-color: #646b7b; color: var(--text); }
+    .btn--primary { border-color: var(--accent); color: #fff; background: var(--accent); }
+    .btn--success { border-color: var(--green); color: #0f1a15; background: var(--green); }
+    .btn--danger { color: var(--red); background: var(--red-soft); border-color: rgba(230, 123, 131, 0.34); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .step-rail {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      border-bottom: 1px solid var(--border);
+      background: #15171c;
+    }
+    .step-tab {
+      position: relative;
+      display: flex;
+      gap: 9px;
+      align-items: center;
+      min-width: 0;
+      padding: 13px 12px;
+      border: 0;
+      border-right: 1px solid var(--border);
+      color: var(--text-3);
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+    }
+    .step-tab:last-child { border-right: 0; }
+    .step-tab[data-active="true"] { color: var(--text); background: var(--accent-soft); }
+    .step-tab[data-active="true"]::after {
+      position: absolute;
+      right: 10px;
+      bottom: -1px;
+      left: 10px;
+      height: 2px;
+      background: var(--accent);
+      content: "";
+    }
+    .step-num {
+      display: grid;
+      flex: 0 0 auto;
+      width: 21px;
+      height: 21px;
+      place-items: center;
+      border: 1px solid currentColor;
+      border-radius: 50%;
+      font-size: 9px;
+      font-weight: 700;
+    }
+    .step-label { min-width: 0; }
+    .step-label strong { display: block; overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+    .step-label small { display: block; overflow: hidden; margin-top: 2px; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+
+    .obsidian-shell {
+      display: grid;
+      grid-template-columns: 210px minmax(0, 1fr);
+      min-height: 720px;
+    }
+    .obsidian-nav {
+      padding: 18px 12px;
+      border-right: 1px solid var(--border);
+      background: #14161a;
+    }
+    .vault-name { display: flex; align-items: center; gap: 9px; margin: 0 7px 17px; font-size: 11px; font-weight: 700; }
+    .nav-group { margin-top: 18px; }
+    .nav-group__label { margin: 0 8px 6px; color: var(--text-3); font-size: 8px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      min-height: 32px;
+      padding: 6px 8px;
+      border: 0;
+      border-radius: 5px;
+      color: var(--text-3);
+      background: transparent;
+      font-size: 10px;
+      text-align: left;
+    }
+    .nav-item[data-active="true"] { color: var(--text); background: var(--surface-soft); }
+    .nav-item svg, .compare-icon svg, .inline-icon { width: 15px; height: 15px; stroke-width: 1.7; }
+
+    .workspace { min-width: 0; background: var(--surface); }
+    .workspace-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 58px;
+      padding: 12px 22px;
+      border-bottom: 1px solid var(--border);
+    }
+    .workspace-title { min-width: 0; }
+    .workspace-title strong { display: block; font-size: 13px; }
+    .workspace-title small { display: block; margin-top: 3px; color: var(--text-3); font-size: 9px; }
+    .workspace-actions { display: flex; gap: 8px; }
+    .screen { display: none; padding: 22px; }
+    .screen[data-active="true"] { display: block; animation: appear 150ms ease; }
+    @keyframes appear { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
+
+    .settings-section { max-width: 1040px; }
+    .section-title-line { display: flex; justify-content: space-between; gap: 12px; align-items: start; margin-bottom: 16px; }
+    .section-title-line h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 5px; font-size: 13px; }
+    .section-title-line p { margin: 0; color: var(--text-3); font-size: 9px; line-height: 1.5; }
+    .stats, .actions, .filters { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+    .gateway-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 13px; }
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 0 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-3);
+      background: #15171c;
+    }
+    .search-box input { width: 100%; border: 0; outline: 0; color: var(--text); background: transparent; font-size: 10px; }
+    .callout {
+      display: flex;
+      gap: 10px;
+      align-items: start;
+      margin: 12px 0;
+      padding: 11px 12px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--text-2);
+      background: var(--surface-raised);
+      font-size: 10px;
+      line-height: 1.5;
+    }
+    .callout--accent { border-color: rgba(139, 124, 246, 0.34); background: var(--accent-soft); }
+    .callout--amber { border-color: rgba(223, 169, 91, 0.34); background: var(--amber-soft); }
+
+    .plugin-group {
+      overflow: hidden;
+      margin-top: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface-raised);
+    }
+    .plugin-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); background: #17191f; }
+    .plugin-head strong { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+    .plugin-head small { color: var(--text-3); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 8px; }
+    .command-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(230px, 0.4fr);
+      gap: 16px;
+      padding: 12px;
+    }
+    .command-row + .command-row { border-top: 1px solid var(--border); }
+    .command-title { display: flex; gap: 7px; align-items: center; font-size: 10px; font-weight: 700; }
+    .command-id { display: block; margin-top: 4px; color: var(--text-3); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 8px; }
+    .command-copy { margin: 7px 0 0; color: var(--text-2); font-size: 9px; line-height: 1.48; }
+    .evidence { margin: 6px 0 0; padding-left: 17px; color: var(--text-3); font-size: 8px; line-height: 1.55; }
+    .command-controls { display: grid; gap: 7px; align-content: start; }
+    .control-row { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 7px; align-items: center; color: var(--text-3); font-size: 8px; }
+    .control-row select { min-width: 0; height: 29px; padding: 3px 7px; border: 1px solid var(--border); border-radius: 5px; color: var(--text-2); background: #15171c; font-size: 9px; }
+    .control-actions { display: flex; gap: 6px; margin-top: 2px; }
+
+    .chat-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; }
+    .chat-panel, .run-panel, .permission-card, .receipt-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface-raised);
+    }
+    .chat-panel { min-height: 560px; padding: 18px; }
+    .chat-kicker { color: var(--text-3); font-size: 8px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+    .message { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; margin-top: 18px; }
+    .avatar { display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid var(--border-strong); border-radius: 6px; color: var(--text-2); background: #15171c; font-size: 9px; font-weight: 700; }
+    .avatar--peak { color: #b8afff; background: var(--accent-soft); }
+    .message strong { display: block; margin-bottom: 6px; font-size: 10px; }
+    .message p { margin: 0; color: var(--text-2); font-size: 10px; line-height: 1.6; }
+    .tool-call { margin-top: 12px; border: 1px solid rgba(139, 124, 246, 0.34); border-radius: 7px; background: #16171d; }
+    .tool-head { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 9px 10px; border-bottom: 1px solid var(--border); }
+    .tool-head strong { margin: 0; color: #c0b8ff; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9px; }
+    .tool-body { padding: 10px; color: var(--text-3); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 8px; line-height: 1.65; }
+    .run-panel { padding: 14px; }
+    .run-panel h4 { margin: 0 0 12px; font-size: 10px; }
+    .trace-row { display: grid; grid-template-columns: 8px minmax(0, 1fr); gap: 8px; color: var(--text-3); font-size: 8px; line-height: 1.45; }
+    .trace-row + .trace-row { margin-top: 10px; }
+    .trace-dot { width: 7px; height: 7px; margin-top: 2px; border-radius: 50%; background: var(--border-strong); }
+    .trace-row[data-state="done"] .trace-dot { background: var(--green); }
+    .trace-row[data-state="active"] .trace-dot { background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+    .trace-row strong { display: block; color: var(--text-2); font-size: 9px; }
+
+    .permission-wrap { display: grid; min-height: 560px; place-items: center; }
+    .permission-card { width: min(560px, 100%); padding: 20px; box-shadow: 0 24px 70px rgba(0,0,0,0.36); }
+    .permission-icon { display: grid; width: 38px; height: 38px; margin-bottom: 14px; place-items: center; border: 1px solid rgba(223,169,91,0.35); border-radius: 8px; color: var(--amber); background: var(--amber-soft); }
+    .permission-card h3, .receipt-card h3 { margin: 0 0 7px; font-size: 15px; }
+    .permission-card > p, .receipt-card > p { margin: 0; color: var(--text-2); font-size: 10px; line-height: 1.55; }
+    .permission-detail { display: grid; grid-template-columns: 110px minmax(0,1fr); gap: 8px; margin: 17px 0; padding: 12px; border: 1px solid var(--border); border-radius: 7px; background: #15171c; font-size: 9px; }
+    .permission-detail span:nth-child(odd) { color: var(--text-3); }
+    .permission-actions { display: flex; justify-content: flex-end; gap: 7px; }
+
+    .receipt-layout { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 14px; }
+    .receipt-card { padding: 18px; }
+    .receipt-head { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+    .observation-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 9px; margin-top: 16px; }
+    .observation { padding: 11px; border: 1px solid var(--border); border-radius: 7px; background: #15171c; }
+    .observation span { display: block; color: var(--text-3); font-size: 8px; }
+    .observation strong { display: block; margin-top: 5px; font-size: 10px; }
+    .audit-code { margin: 15px 0 0; padding: 12px; overflow: auto; border: 1px solid var(--border); border-radius: 7px; color: #aab3c5; background: #111318; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 8px; line-height: 1.6; white-space: pre; }
+    .recent-runs { padding: 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-raised); }
+    .recent-runs h4 { margin: 0 0 11px; font-size: 10px; }
+    .run-row { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 8px; padding: 9px 0; border-top: 1px solid var(--border); }
+    .run-row:first-of-type { border-top: 0; }
+    .run-row strong { display: block; font-size: 9px; }
+    .run-row small { display: block; margin-top: 3px; color: var(--text-3); font-size: 8px; line-height: 1.45; }
+
+    .screen-nav { display: flex; justify-content: space-between; gap: 10px; margin-top: 18px; }
+    .screen-nav__right { display: flex; gap: 7px; }
+
+    .truth-section { margin-top: 22px; padding: 24px; border-radius: 12px; }
+    .truth-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
+    .truth-card { padding: 15px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-raised); }
+    .truth-card h3 { display: flex; gap: 8px; align-items: center; margin: 0 0 9px; font-size: 11px; }
+    .truth-card p { margin: 0; color: var(--text-3); font-size: 9px; line-height: 1.6; }
+
+    @media (max-width: 980px) {
+      .hero, .truth-grid { grid-template-columns: 1fr; }
+      .flow-lane { grid-template-columns: 1fr; }
+      .step-rail { grid-template-columns: repeat(3, minmax(0,1fr)); }
+      .step-tab:nth-child(3) { border-right: 0; }
+      .obsidian-shell { grid-template-columns: 1fr; }
+      .obsidian-nav { display: none; }
+      .chat-layout, .receipt-layout { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 700px) {
+      .page { width: min(100% - 20px, 1480px); padding-top: 10px; }
+      .hero-main, .scope-card, .flow-section { padding: 18px; }
+      .flow-track { grid-template-columns: 1fr; }
+      .flow-node:not(:last-child)::after, .flow-node:not(:last-child)::before { display: none; }
+      .step-rail { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .step-tab:nth-child(2n) { border-right: 0; }
+      .workspace-head { align-items: start; flex-direction: column; }
+      .screen { padding: 14px; }
+      .command-row { grid-template-columns: 1fr; }
+      .gateway-toolbar, .section-title-line { align-items: start; flex-direction: column; }
+      .observation-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" aria-hidden="true" style="position:absolute">
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-command" viewBox="0 0 24 24"><path d="M18 9a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-plug" viewBox="0 0 24 24"><path d="M12 22v-5M9 8V2m6 6V2M18 8v4a6 6 0 0 1-12 0V8z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" fill="none" stroke="currentColor"/><path d="m21 21-4.3-4.3" fill="none" stroke="currentColor" stroke-linecap="round"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3-1.6 4.4L6 9l4.4 1.6L12 15l1.6-4.4L18 9l-4.4-1.6zM5 16l-.8 2.2L2 19l2.2.8L5 22l.8-2.2L8 19l-2.2-.8zM19 15l-.8 2.2L16 18l2.2.8L19 21l.8-2.2L22 18l-2.2-.8z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-message" viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2" fill="none" stroke="currentColor"/><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-linecap="round"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="none" stroke="currentColor"/><path d="M14 2v6h6M8 13h8M8 17h6" fill="none" stroke="currentColor" stroke-linecap="round"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" fill="none" stroke="currentColor" stroke-linecap="round"/><path d="M3 3v5h5M12 7v5l3 2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7h-5V2M4 17h5v5M20 7a8 8 0 0 0-13.7-3M4 17a8 8 0 0 0 13.7 3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </svg>
+
+  <main class="page">
+    <section class="hero">
+      <div class="hero-main">
+        <span class="eyebrow">Corrected scope · interactive flow mock</span>
+        <h1>Command Gateway<br>不是 Command Center</h1>
+        <p class="hero-copy">
+          这是 Copilot 调用第三方 Obsidian 插件 command 的安全桥。UI 只负责发现、解释和人工授权；真正执行发生在现有 Chat / Copilot Harness 中，而不是另造一个 launcher。
+        </p>
+        <div class="status-row">
+          <span class="pill pill--accent">独立 worktree</span>
+          <span class="pill pill--green">源码已实现</span>
+          <span class="pill pill--amber">未合入当前工作区</span>
+          <span class="pill pill--red">INTERACTION NOT VERIFIED</span>
+        </div>
+      </div>
+
+      <aside class="scope-card">
+        <div>
+          <p class="scope-title">两个产品面，职责不同</p>
+          <div class="compare">
+            <div class="compare-row" data-kind="center">
+              <span class="compare-icon"><svg><use href="#i-command"/></svg></span>
+              <div><strong>Command Center</strong><small>人主动浏览、选择和启动 Peak 能力。它已经是独立的人机入口。</small></div>
+            </div>
+            <div class="compare-row" data-kind="gateway">
+              <span class="compare-icon"><svg><use href="#i-shield"/></svg></span>
+              <div><strong>Command Gateway</strong><small>Agent 只能调用经过人工批准的第三方 plugin command，并留下权限与执行证据。</small></div>
+            </div>
+          </div>
+        </div>
+        <p class="scope-note">本 Mock 描绘 Gateway 本身的完整流程，不复用旧 Command Center launcher 稿，也不代表已经完成真实 Obsidian 验收。</p>
+      </aside>
+    </section>
+
+    <section class="flow-section" aria-labelledby="flow-title">
+      <div class="section-head">
+        <div><h2 id="flow-title">一眼看完整流程</h2><p>点击任意 screen node，可直接跳到下面对应的交互状态。</p></div>
+        <span class="pill">6 screens · 2 lanes</span>
+      </div>
+      <div class="flow-lane">
+        <div class="lane-label">配置与授权<small>Settings → Tools</small></div>
+        <div class="flow-track">
+          <button class="flow-node" data-jump="1"><span class="node-thumb"><i></i><i></i><i></i></span><span><strong>1 · Scan</strong><small>发现已启用插件提供的 commands</small></span></button>
+          <button class="flow-node" data-jump="2"><span class="node-thumb"><i></i><i></i><i></i></span><span><strong>2 · Analyze</strong><small>AI 只给风险、用途和调用建议</small></span></button>
+          <button class="flow-node" data-jump="3"><span class="node-thumb"><i></i><i></i><i></i></span><span><strong>3 · Review</strong><small>人逐项 Allow / Block，默认全关</small></span></button>
+        </div>
+      </div>
+      <div class="flow-lane">
+        <div class="lane-label">请求与执行<small>Chat / Copilot Harness</small></div>
+        <div class="flow-track">
+          <button class="flow-node" data-jump="4"><span class="node-thumb"><i></i><i></i><i></i></span><span><strong>4 · Request</strong><small>Copilot 选择唯一受控 Gateway tool</small></span></button>
+          <button class="flow-node" data-jump="5"><span class="node-thumb"><i></i><i></i><i></i></span><span><strong>5 · Permission</strong><small>编辑命令进入当前 Harness 确认</small></span></button>
+          <button class="flow-node" data-jump="6"><span class="node-thumb"><i></i><i></i><i></i></span><span><strong>6 · Receipt</strong><small>观察副作用并写 RunEnvelope / JSONL</small></span></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="demo-section" id="prototype" aria-labelledby="demo-title">
+      <div class="demo-toolbar">
+        <div class="demo-toolbar__title"><span class="window-dots"><i></i><i></i><i></i></span><strong id="demo-title">Peak Assistant · Gateway flow prototype</strong><span>Mock data only</span></div>
+        <button class="quiet-btn" id="reset-demo"><svg class="inline-icon"><use href="#i-refresh"/></svg>Reset flow</button>
+      </div>
+
+      <nav class="step-rail" aria-label="Gateway flow steps">
+        <button class="step-tab" data-step="1" data-active="true"><span class="step-num">1</span><span class="step-label"><strong>Scan</strong><small>Discover</small></span></button>
+        <button class="step-tab" data-step="2" data-active="false"><span class="step-num">2</span><span class="step-label"><strong>Analyze</strong><small>AI draft</small></span></button>
+        <button class="step-tab" data-step="3" data-active="false"><span class="step-num">3</span><span class="step-label"><strong>Review</strong><small>Human gate</small></span></button>
+        <button class="step-tab" data-step="4" data-active="false"><span class="step-num">4</span><span class="step-label"><strong>Request</strong><small>Copilot</small></span></button>
+        <button class="step-tab" data-step="5" data-active="false"><span class="step-num">5</span><span class="step-label"><strong>Permission</strong><small>Harness</small></span></button>
+        <button class="step-tab" data-step="6" data-active="false"><span class="step-num">6</span><span class="step-label"><strong>Receipt</strong><small>Observe</small></span></button>
+      </nav>
+
+      <div class="obsidian-shell">
+        <aside class="obsidian-nav">
+          <div class="vault-name"><svg class="inline-icon"><use href="#i-shield"/></svg>Peak Assistant</div>
+          <div class="nav-group">
+            <div class="nav-group__label">Product</div>
+            <button class="nav-item" data-nav="chat"><svg><use href="#i-message"/></svg>Chat Studio</button>
+            <button class="nav-item" data-nav="commands"><svg><use href="#i-command"/></svg>Command Center</button>
+          </div>
+          <div class="nav-group">
+            <div class="nav-group__label">Settings</div>
+            <button class="nav-item"><svg><use href="#i-settings"/></svg>Overview</button>
+            <button class="nav-item"><svg><use href="#i-spark"/></svg>AI Setup</button>
+            <button class="nav-item" data-nav="tools" data-active="true"><svg><use href="#i-plug"/></svg>Tools</button>
+            <button class="nav-item"><svg><use href="#i-history"/></svg>Advanced</button>
+          </div>
+        </aside>
+
+        <div class="workspace">
+          <header class="workspace-head">
+            <div class="workspace-title"><strong id="screen-title">External plugin commands</strong><small id="screen-subtitle">Settings → Tools · discover commands from enabled plugins</small></div>
+            <div class="workspace-actions"><span class="pill pill--amber" id="screen-state">0 approved</span></div>
+          </header>
+
+          <section class="screen" data-screen="1" data-active="true">
+            <div class="settings-section">
+              <div class="section-title-line">
+                <div><h3><svg class="inline-icon"><use href="#i-shield"/></svg>External plugin commands</h3><p>Review commands contributed by enabled Obsidian plugins before Copilot can use them. Everything is off by default.</p></div>
+                <div class="actions"><button class="btn btn--primary" data-next="2" id="scan-button"><svg class="inline-icon"><use href="#i-refresh"/></svg>Scan enabled plugins</button></div>
+              </div>
+              <div class="gateway-toolbar"><div class="stats"><span class="pill">0 Approved</span><span class="pill">0 Blocked</span></div></div>
+              <label class="search-box"><svg class="inline-icon"><use href="#i-search"/></svg><input value="" placeholder="Filter plugins or commands" disabled></label>
+              <div class="callout callout--accent"><svg class="inline-icon"><use href="#i-lock"/></svg><span>Discovery is read-only. Scanning lists command metadata; it does not execute any command and does not authorize Copilot.</span></div>
+              <div class="plugin-group" style="opacity:.58">
+                <div class="plugin-head"><strong><svg class="inline-icon"><use href="#i-plug"/></svg>No scan yet</strong><small>waiting for owner action</small></div>
+                <div class="command-row"><div><span class="command-title">Commands will be grouped by source plugin</span><span class="command-id">plugin-id:command-id</span><p class="command-copy">Peak commands, disabled plugins and commands without callable handlers are excluded.</p></div><div class="command-controls"><span class="pill">Off by default</span></div></div>
+              </div>
+            </div>
+            <div class="screen-nav"><span></span><div class="screen-nav__right"><button class="btn btn--primary" data-next="2">Run mock scan</button></div></div>
+          </section>
+
+          <section class="screen" data-screen="2" data-active="false">
+            <div class="settings-section">
+              <div class="gateway-toolbar"><div class="stats"><span class="pill">0 Approved</span><span class="pill pill--red">2 System blocked</span><span class="pill">4 plugins · 7 commands</span></div><div class="actions"><button class="btn"><svg class="inline-icon"><use href="#i-refresh"/></svg>Scan</button><button class="btn btn--primary" data-next="3"><svg class="inline-icon"><use href="#i-spark"/></svg>Analyze with AI</button></div></div>
+              <label class="search-box"><svg class="inline-icon"><use href="#i-search"/></svg><input value="" placeholder="Filter plugins or commands"></label>
+              <div class="callout"><svg class="inline-icon"><use href="#i-spark"/></svg><span>AI receives command ID, title, plugin identity and deterministic hints. It can draft explanations; it cannot click Allow or change existing decisions.</span></div>
+
+              <div class="plugin-group">
+                <div class="plugin-head"><strong><svg class="inline-icon"><use href="#i-plug"/></svg>Calendar</strong><small>calendar · 1.5.10 · 2 commands</small></div>
+                <div class="command-row"><div><span class="command-title">Open weekly calendar <span class="pill">Off</span></span><span class="command-id">calendar:open-week</span><p class="command-copy">No AI explanation yet. Deterministic metadata suggests a read/navigation command.</p></div><div class="command-controls"><span class="pill pill--green">Available</span><span class="pill">Risk · read</span></div></div>
+              </div>
+              <div class="plugin-group">
+                <div class="plugin-head"><strong><svg class="inline-icon"><use href="#i-plug"/></svg>Periodic Notes</strong><small>periodic-notes · 0.0.17 · 2 commands</small></div>
+                <div class="command-row"><div><span class="command-title">Create weekly note <span class="pill">Off</span></span><span class="command-id">periodic-notes:create-weekly</span><p class="command-copy">Likely edits the vault. The owner must review the actual plugin behavior before allowing it.</p></div><div class="command-controls"><span class="pill pill--amber">Risk · edit</span><span class="pill">Purpose · planning</span></div></div>
+              </div>
+            </div>
+            <div class="screen-nav"><button class="btn" data-prev="1">Back</button><div class="screen-nav__right"><button class="btn btn--primary" data-next="3">Analyze with AI</button></div></div>
+          </section>
+
+          <section class="screen" data-screen="3" data-active="false">
+            <div class="settings-section">
+              <div class="gateway-toolbar"><div class="stats"><span class="pill pill--green" id="approved-count">1 Approved</span><span class="pill pill--red">2 System blocked</span><span class="pill">4 Off</span></div><div class="actions"><button class="btn"><svg class="inline-icon"><use href="#i-refresh"/></svg>Scan</button><button class="btn"><svg class="inline-icon"><use href="#i-spark"/></svg>Analyze again</button></div></div>
+              <label class="search-box"><svg class="inline-icon"><use href="#i-search"/></svg><input value="" placeholder="Filter plugins or commands"></label>
+
+              <div class="plugin-group">
+                <div class="plugin-head"><strong><svg class="inline-icon"><use href="#i-plug"/></svg>Calendar</strong><small>calendar · 1.5.10 · source verified</small></div>
+                <div class="command-row"><div><span class="command-title">Open weekly calendar <span class="pill pill--green">Approved</span></span><span class="command-id">calendar:open-week</span><p class="command-copy">Navigate to the weekly calendar view when the user explicitly asks to open or inspect their calendar.</p><ul class="evidence"><li>Command title begins with “Open”</li><li>Plugin contributes a callback without editor requirement</li></ul></div><div class="command-controls"><label class="control-row"><span>Risk</span><select><option>Read / navigate</option></select></label><label class="control-row"><span>Purpose</span><select><option>Planning</option></select></label><div class="control-actions"><button class="btn btn--success">Allowed</button><button class="btn">Turn off</button></div></div></div>
+              </div>
+
+              <div class="plugin-group">
+                <div class="plugin-head"><strong><svg class="inline-icon"><use href="#i-plug"/></svg>Periodic Notes</strong><small>periodic-notes · 0.0.17 · review required</small></div>
+                <div class="command-row"><div><span class="command-title">Create weekly note <span class="pill pill--amber" id="weekly-status">Off</span></span><span class="command-id">periodic-notes:create-weekly</span><p class="command-copy">Create or open this week’s periodic note. This may create a new Markdown file and change the active file.</p><ul class="evidence"><li>“Create” matches the configured edit pattern</li><li>Expected observation: vault file count or active file changes</li></ul></div><div class="command-controls"><label class="control-row"><span>Risk</span><select><option>Edits workspace or vault</option></select></label><label class="control-row"><span>Purpose</span><select><option>Planning</option></select></label><div class="control-actions"><button class="btn btn--primary" id="allow-weekly">Allow</button><button class="btn">Block</button></div></div></div>
+              </div>
+
+              <div class="plugin-group">
+                <div class="plugin-head"><strong><svg class="inline-icon"><use href="#i-plug"/></svg>QuickAdd</strong><small>quickadd · 2.4.1 · automatic execution blocked</small></div>
+                <div class="command-row"><div><span class="command-title">Open capture modal <span class="pill pill--red">System blocked</span></span><span class="command-id">quickadd:open-capture</span><p class="command-copy">This command opens an interactive picker. Copilot cannot safely complete the hidden modal interaction.</p></div><div class="command-controls"><span class="pill pill--red">Modal-only</span><button class="btn" disabled>Cannot allow</button></div></div>
+              </div>
+            </div>
+            <div class="screen-nav"><button class="btn" data-prev="2">Back</button><div class="screen-nav__right"><button class="btn btn--primary" data-next="4">Continue to Copilot request</button></div></div>
+          </section>
+
+          <section class="screen" data-screen="4" data-active="false">
+            <div class="chat-layout">
+              <div class="chat-panel">
+                <span class="chat-kicker">Chat Studio · existing Harness surface</span>
+                <div class="message"><span class="avatar">YOU</span><div><strong>You</strong><p>用 Periodic Notes 创建本周周记，然后打开它。</p></div></div>
+                <div class="message"><span class="avatar avatar--peak">PK</span><div><strong>Peak Copilot</strong><p>我会调用你已经授权的 Periodic Notes command。这个动作可能创建文件，因此执行前需要你的确认。</p><div class="tool-call"><div class="tool-head"><strong>obsidian_command_execute</strong><span class="pill pill--amber">Permission required</span></div><div class="tool-body">{<br>&nbsp;&nbsp;"commandId": "periodic-notes:create-weekly"<br>}<br><br>Source: Periodic Notes 0.0.17<br>Policy: human-approved · sourceHash matched · curationHash matched</div></div></div></div>
+              </div>
+              <aside class="run-panel"><h4>Agent run</h4><div class="trace-row" data-state="done"><i class="trace-dot"></i><div><strong>Intent understood</strong>User explicitly requested a weekly note.</div></div><div class="trace-row" data-state="done"><i class="trace-dot"></i><div><strong>Approved tool selected</strong>Only one namespaced gateway tool is exposed.</div></div><div class="trace-row" data-state="active"><i class="trace-dot"></i><div><strong>Waiting for permission</strong>Edit-risk command pauses the Harness run.</div></div><div class="trace-row"><i class="trace-dot"></i><div><strong>Execute and observe</strong>Not started.</div></div></aside>
+            </div>
+            <div class="screen-nav"><button class="btn" data-prev="3">Back to review</button><div class="screen-nav__right"><button class="btn btn--primary" data-next="5">Show permission gate</button></div></div>
+          </section>
+
+          <section class="screen" data-screen="5" data-active="false">
+            <div class="permission-wrap">
+              <div class="permission-card">
+                <div class="permission-icon"><svg class="inline-icon"><use href="#i-lock"/></svg></div>
+                <span class="eyebrow" style="color:var(--amber)">PermissionGuard · edit action</span>
+                <h3>Allow Periodic Notes to create this week’s note?</h3>
+                <p>Peak is asking to execute one exact, previously approved command. Approval here applies to this run; it does not grant arbitrary plugin access.</p>
+                <div class="permission-detail"><span>Command</span><strong>periodic-notes:create-weekly</strong><span>Source plugin</span><strong>Periodic Notes · 0.0.17</strong><span>Risk</span><strong style="color:var(--amber)">Edits workspace or vault</strong><span>Expected effect</span><strong>Create/open Weekly/2026-W31.md</strong></div>
+                <div class="callout callout--amber"><svg class="inline-icon"><use href="#i-shield"/></svg><span>If the plugin command or reviewed AI draft changed since approval, this call would already have been rejected as stale.</span></div>
+                <div class="permission-actions"><button class="btn btn--danger" data-next="4">Deny</button><button class="btn btn--primary" data-next="6">Allow once</button></div>
+              </div>
+            </div>
+            <div class="screen-nav"><button class="btn" data-prev="4">Back</button><span></span></div>
+          </section>
+
+          <section class="screen" data-screen="6" data-active="false">
+            <div class="receipt-layout">
+              <div class="receipt-card">
+                <div class="receipt-head"><div><span class="eyebrow">Run completed</span><h3>Weekly note created and opened</h3><p>The gateway observed the host after the command settled. It reports observable effects, not a semantic claim about plugin internals.</p></div><span class="pill pill--green"><svg class="inline-icon"><use href="#i-check"/></svg>Completed</span></div>
+                <div class="observation-grid"><div class="observation"><span>Active file</span><strong>Weekly/2026-W31.md</strong></div><div class="observation"><span>Vault file count</span><strong>+1</strong></div><div class="observation"><span>Changed paths</span><strong>1 observed</strong></div></div>
+                <pre class="audit-code">runId        plugin-command-periodic-notes-01
+tool         obsidian_command_execute
+commandId    periodic-notes:create-weekly
+skill        plugin-command-gateway.c3f77a5b9d...
+permission   allow-once · edit
+observation  active-file, vault-files:+1, changed-paths:1
+audit        &lt;DataStore&gt;/command-gateway/runs.jsonl</pre>
+              </div>
+              <aside class="recent-runs"><h4>Recent command runs</h4><div class="run-row"><span class="pill pill--green">Completed</span><div><strong>Create weekly note</strong><small>active-file, vault-files:+1, changed-paths:1</small></div></div><div class="run-row"><span class="pill pill--green">Completed</span><div><strong>Open weekly calendar</strong><small>active-leaf</small></div></div><div class="run-row"><span class="pill pill--red">Rejected</span><div><strong>Open capture modal</strong><small>plugin-command-policy:modal-only</small></div></div></aside>
+            </div>
+            <div class="screen-nav"><button class="btn" data-prev="5">Back</button><div class="screen-nav__right"><button class="btn" id="run-again">Restart mock flow</button></div></div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section class="truth-section" aria-labelledby="truth-title">
+      <div class="section-head"><div><h2 id="truth-title">Mock 与当前实现边界</h2><p>避免再把设计稿、分支实现和当前产品混成一种状态。</p></div></div>
+      <div class="truth-grid">
+        <article class="truth-card"><h3><span class="pill pill--accent">Mock</span>你现在看到的</h3><p>完整流程、真实命名和交互关系的静态演示。所有插件、文件与执行记录都是示例数据，不会操作 Vault。</p></article>
+        <article class="truth-card"><h3><span class="pill pill--green">Branch</span>已经写好的代码</h3><p>Settings 审阅 UI、第三方 command adapter、strict Skill、Chat/Copilot 注入、PermissionGuard、RunEnvelope 和 JSONL audit 均在独立 worktree。</p></article>
+        <article class="truth-card"><h3><span class="pill pill--red">Not live</span>还没有完成</h3><p>尚未 forward-port 到当前主线，未注册 8 月 2 日的新 generated output policy，也没有真实 Obsidian CDP 第三方 command 验收。</p></article>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const titles = {
+      1: ["External plugin commands", "Settings → Tools · discover commands from enabled plugins", "0 approved", "tools"],
+      2: ["External plugin commands", "Scan result · AI analysis is optional and cannot authorize", "0 approved", "tools"],
+      3: ["Review external commands", "Human authorization · every command remains off until explicitly allowed", "1 approved", "tools"],
+      4: ["Chat Studio", "Copilot selects the single approved gateway tool", "Tool requested", "chat"],
+      5: ["Permission required", "Existing Harness PermissionGuard · one exact edit command", "Run paused", "chat"],
+      6: ["Command receipt", "RunEnvelope observation · auditable host effects", "Completed", "chat"],
+    };
+
+    let currentStep = 1;
+    let weeklyAllowed = false;
+
+    function showStep(step, shouldScroll = false) {
+      currentStep = Math.max(1, Math.min(6, Number(step)));
+      document.querySelectorAll("[data-screen]").forEach((screen) => {
+        screen.dataset.active = String(Number(screen.dataset.screen) === currentStep);
+      });
+      document.querySelectorAll("[data-step]").forEach((tab) => {
+        tab.dataset.active = String(Number(tab.dataset.step) === currentStep);
+      });
+      const [title, subtitle, state, nav] = titles[currentStep];
+      document.getElementById("screen-title").textContent = title;
+      document.getElementById("screen-subtitle").textContent = subtitle;
+      document.getElementById("screen-state").textContent = state;
+      document.querySelectorAll("[data-nav]").forEach((item) => {
+        item.dataset.active = String(item.dataset.nav === nav);
+      });
+      if (shouldScroll) document.getElementById("prototype").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    document.querySelectorAll("[data-step]").forEach((button) => button.addEventListener("click", () => showStep(button.dataset.step)));
+    document.querySelectorAll("[data-jump]").forEach((button) => button.addEventListener("click", () => showStep(button.dataset.jump, true)));
+    document.querySelectorAll("[data-next]").forEach((button) => button.addEventListener("click", () => showStep(button.dataset.next)));
+    document.querySelectorAll("[data-prev]").forEach((button) => button.addEventListener("click", () => showStep(button.dataset.prev)));
+
+    document.getElementById("allow-weekly").addEventListener("click", (event) => {
+      weeklyAllowed = true;
+      event.currentTarget.textContent = "Allowed";
+      event.currentTarget.classList.remove("btn--primary");
+      event.currentTarget.classList.add("btn--success");
+      document.getElementById("weekly-status").textContent = "Approved";
+      document.getElementById("weekly-status").className = "pill pill--green";
+      document.getElementById("approved-count").textContent = "2 Approved";
+      document.getElementById("screen-state").textContent = "2 approved";
+    });
+
+    function resetFlow() {
+      weeklyAllowed = false;
+      const button = document.getElementById("allow-weekly");
+      button.textContent = "Allow";
+      button.className = "btn btn--primary";
+      const status = document.getElementById("weekly-status");
+      status.textContent = "Off";
+      status.className = "pill pill--amber";
+      document.getElementById("approved-count").textContent = "1 Approved";
+      showStep(1);
+    }
+
+    document.getElementById("reset-demo").addEventListener("click", resetFlow);
+    document.getElementById("run-again").addEventListener("click", resetFlow);
+    showStep(1);
+  </script>
+</body>
+</html>
