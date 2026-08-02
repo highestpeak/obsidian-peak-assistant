@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak Assistant · External plugin commands review UI</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <svg width="0" height="0" aria-hidden="true" class="icon-sprite">
+    <symbol id="i-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-plug" viewBox="0 0 24 24"><path d="M12 22v-5M9 8V2m6 6V2M18 8v4a6 6 0 0 1-12 0V8z"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3-1.6 4.4L6 9l4.4 1.6L12 15l1.6-4.4L18 9l-4.4-1.6zM5 16l-.8 2.2L2 19l2.2.8L5 22l.8-2.2L8 19l-2.2-.8z"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7h-5V2M4 17h5v5M20 7a8 8 0 0 0-13.7-3M4 17a8 8 0 0 0 13.7 3"/></symbol>
+    <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 5h16l-6 7v5l-4 2v-7z"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1z"/></symbol>
+    <symbol id="i-tools" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5-5L12 3.6 8.4 7.2 6.1 4.9a4 4 0 0 0 5 5l7.6 7.6a2 2 0 0 1-2.8 2.8L8.3 12.7"/></symbol>
+    <symbol id="i-brain" viewBox="0 0 24 24"><path d="M9.5 4A3.5 3.5 0 0 0 6 7.5v.2A3.5 3.5 0 0 0 4 11v1a3 3 0 0 0 3 3h.5v1.5A3.5 3.5 0 0 0 11 20V4zM14.5 4A3.5 3.5 0 0 1 18 7.5v.2a3.5 3.5 0 0 1 2 3.3v1a3 3 0 0 1-3 3h-.5v1.5A3.5 3.5 0 0 1 13 20V4z"/></symbol>
+    <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v7c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12v7c0 1.7 3.6 3 8 3s8-1.3 8-3v-7"/></symbol>
+  </svg>
+
+  <main class="canvas">
+    <header class="artifact-head">
+      <div>
+        <span class="artifact-kicker">Production UI reference · design only</span>
+        <h1>External plugin commands</h1>
+        <p>真实 Review surface 稿：紧凑列表、最右统一状态按钮、按当前筛选批量 Allow。</p>
+      </div>
+      <div class="artifact-status">
+        <span class="badge badge--accent">Correct Gateway scope</span>
+        <span class="badge">Isolated worktree</span>
+        <span class="badge badge--warning">Not merged</span>
+      </div>
+    </header>
+
+    <section class="obsidian-window" aria-label="Peak Assistant Settings mock">
+      <header class="window-titlebar">
+        <div class="window-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+        <span>Peak Assistant Settings</span>
+        <button class="icon-button" type="button" aria-label="Close mock">×</button>
+      </header>
+
+      <div class="settings-layout">
+        <aside class="settings-nav">
+          <div class="settings-brand"><span class="brand-mark"><svg><use href="#i-shield-check"/></svg></span><span><strong>Peak Assistant</strong><small>Settings</small></span></div>
+          <nav aria-label="Settings tabs">
+            <span class="nav-label">Configure</span>
+            <button type="button" class="nav-row"><svg><use href="#i-settings"/></svg><span>Overview</span></button>
+            <button type="button" class="nav-row"><svg><use href="#i-brain"/></svg><span>AI Setup</span></button>
+            <button type="button" class="nav-row"><svg><use href="#i-database"/></svg><span>Knowledge Index</span></button>
+            <button type="button" class="nav-row nav-row--active"><svg><use href="#i-tools"/></svg><span>Tools</span></button>
+            <button type="button" class="nav-row"><svg><use href="#i-settings"/></svg><span>Advanced</span></button>
+          </nav>
+          <div class="nav-note"><svg><use href="#i-lock"/></svg><span>External commands are off until you approve them.</span></div>
+        </aside>
+
+        <div class="settings-content">
+          <header class="content-head">
+            <div><span class="content-kicker">Tools</span><h2>External plugin commands</h2><p>Choose which commands from enabled Obsidian plugins Copilot may call.</p></div>
+            <div class="head-actions"><button class="button" type="button" id="scan-button"><svg><use href="#i-refresh"/></svg>Scan</button><button class="button" type="button" id="analyze-button"><svg><use href="#i-sparkles"/></svg>Analyze with AI</button></div>
+          </header>
+
+          <section class="summary-strip" aria-label="Gateway summary">
+            <div class="summary-stat"><span>Approved</span><strong id="approved-total">0</strong></div>
+            <div class="summary-stat"><span>Off</span><strong id="off-total">0</strong></div>
+            <div class="summary-stat"><span>Blocked</span><strong id="blocked-total">0</strong></div>
+            <div class="summary-stat"><span>System excluded</span><strong id="excluded-total">0</strong></div>
+            <div class="summary-note"><svg><use href="#i-info"/></svg><span>AI drafts explanations only. It never changes access.</span></div>
+          </section>
+
+          <section class="filter-surface" aria-label="Command filters and bulk action">
+            <div class="filter-row">
+              <label class="search-control"><svg><use href="#i-search"/></svg><input id="search-input" type="search" placeholder="Search plugin or command"></label>
+              <label class="select-control"><span>Plugin</span><select id="plugin-filter"><option value="all">All plugins</option></select><svg><use href="#i-chevron-down"/></svg></label>
+              <label class="select-control"><span>Risk</span><select id="risk-filter"><option value="all">All risks</option><option value="read">Read</option><option value="edit">Edit</option><option value="unknown">Unknown</option><option value="destructive">Destructive</option></select><svg><use href="#i-chevron-down"/></svg></label>
+              <label class="select-control"><span>Access</span><select id="state-filter"><option value="all">All access</option><option value="off">Off</option><option value="allowed">Allowed</option><option value="blocked">Blocked</option><option value="unavailable">Unavailable</option></select><svg><use href="#i-chevron-down"/></svg></label>
+              <button class="icon-button filter-reset" type="button" id="clear-filters" aria-label="Clear filters"><svg><use href="#i-filter"/></svg><span>Clear</span></button>
+            </div>
+
+            <div class="batch-row">
+              <div class="result-summary"><strong id="result-count">0 commands</strong><span id="eligible-summary">0 eligible for bulk Allow</span><span class="filter-scope"><svg><use href="#i-filter"/></svg>Batch actions apply to the current filter</span></div>
+              <div class="batch-control" id="batch-control">
+                <button type="button" class="batch-main" id="allow-filtered"><svg><use href="#i-check"/></svg><span id="allow-filtered-label">Allow filtered</span></button>
+                <button type="button" class="batch-toggle" id="batch-toggle" aria-label="More bulk actions" aria-expanded="false"><svg><use href="#i-chevron-down"/></svg></button>
+                <div class="batch-menu" id="batch-menu" hidden>
+                  <button type="button" data-bulk="filtered"><span><strong>Allow current filter</strong><small>Only eligible Off commands now visible</small></span><kbd id="filtered-menu-count">0</kbd></button>
+                  <button type="button" data-bulk="all"><span><strong>Allow all eligible commands</strong><small>Across plugins; unsafe commands stay excluded</small></span><kbd id="all-menu-count">0</kbd></button>
+                  <button type="button" data-bulk="block"><span><strong>Block current filter</strong><small>Preserves system-excluded commands</small></span><kbd id="block-menu-count">0</kbd></button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div class="column-head" aria-hidden="true"><span>Command</span><span>Risk</span><span>Purpose</span><span>Access</span></div>
+          <section class="command-list" id="command-list" aria-live="polite"></section>
+
+          <footer class="list-footer"><span id="footer-summary">Showing all commands</span><button type="button" class="text-button" id="reset-demo">Reset mock data</button></footer>
+        </div>
+      </div>
+    </section>
+
+    <section class="decision-note">
+      <div><span class="decision-index">01</span><strong>行级动作只有一个位置</strong><p>最右列始终是当前 access state；展开后再选择 Allow、Block 或 Turn off，不在卡片角落堆动作。</p></div>
+      <div><span class="decision-index">02</span><strong>批量动作绑定当前筛选</strong><p>主按钮清楚写明数量。菜单仍提供 “Allow all eligible commands”，但 unknown、destructive、modal 和 unavailable 永远排除。</p></div>
+      <div><span class="decision-index">03</span><strong>插件是分组，不是大 Card</strong><p>每个 command 是一行，风险、用途和 access 形成稳定列；证据留在简短说明里，密度接近真实 Settings。</p></div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="bulk-modal" hidden>
+    <section class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+      <div class="confirm-icon"><svg><use href="#i-shield-check"/></svg></div>
+      <h2 id="confirm-title">Allow filtered commands?</h2>
+      <p id="confirm-copy">Only eligible commands in the current filter will be changed.</p>
+      <div class="confirm-list" id="confirm-list"></div>
+      <div class="confirm-exclusion"><svg><use href="#i-lock"/></svg><span id="confirm-exclusion-copy">Unsafe commands remain excluded.</span></div>
+      <div class="confirm-actions"><button class="button" type="button" id="cancel-confirm">Cancel</button><button class="button button--primary" type="button" id="confirm-bulk"><svg><use href="#i-check"/></svg><span>Allow commands</span></button></div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status" hidden><svg><use href="#i-check"/></svg><span id="toast-copy">Access updated</span></div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
