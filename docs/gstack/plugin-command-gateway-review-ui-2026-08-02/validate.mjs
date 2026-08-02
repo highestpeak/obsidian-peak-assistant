@@ -41,6 +41,8 @@ assert(!script.includes('access-menu'), 'Row access must not require a dropdown 
 assert(!script.includes("state: 'blocked'"), 'Primary Review state must not expose explicit Block.');
 assert(!html.includes('data-bulk="block"'), 'Bulk menu must not expose Block.');
 assert(!script.includes('data-choice'), 'Row access must be a direct two-state switch.');
+assert(/\.access-toggle \{[^}]*border: 0;[^}]*background: transparent;/s.test(css), 'Allowed switch must not have an enclosing button panel.');
+assert(/\.access-unavailable \{[^}]*border: 0;[^}]*background: transparent;/s.test(css), 'Unavailable status must not have an enclosing panel.');
 assert(!html.includes('Analyze with AI'), 'AI analysis must not be exposed as a second owner action.');
 assert(!html.includes('id="analyze-button"'), 'Review UI must expose one unified Scan action.');
 assert(script.includes('Preparing explanations for new and changed commands'), 'Scan must include explanation preparation in its visible pipeline.');
@@ -52,6 +54,7 @@ new Function(script);
 
 console.log('PASS: focused Review UI is not a flow prototype');
 console.log('PASS: stable far-right two-state Allowed switch');
+console.log('PASS: Access controls have no enclosing button panel');
 console.log('PASS: visible animated Scan state');
 console.log('PASS: Scan is the single command-refresh and review-preparation action');
 console.log('PASS: Purpose removed from owner-facing Review UI');

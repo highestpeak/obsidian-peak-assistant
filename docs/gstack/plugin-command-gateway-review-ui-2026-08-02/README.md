@@ -10,9 +10,10 @@ Owner feedback incorporated:
 
 - row actions are anchored in one stable far-right `Access` column;
 - each eligible row has one far-right `Allowed` switch; off means `Not allowed`
-  and on means `Allowed`, with no row menu or explicit `Block` state;
-- system-excluded rows replace the switch with one disabled
-  `Unavailable` state;
+  and on means `Allowed`, with no enclosing button panel, row menu, or explicit
+  `Block` state;
+- system-excluded rows replace the switch with one visually bare, disabled
+  `Unavailable` status;
 - `Allow filtered` applies to the current search and filters;
 - the split menu also exposes `Allow all eligible commands`;
 - bulk Allow excludes unknown, destructive, modal-only, unavailable, already
