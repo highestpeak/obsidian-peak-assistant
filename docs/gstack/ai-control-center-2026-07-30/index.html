@@ -241,24 +241,13 @@
     .inspector-title-row { display: flex; align-items: flex-start; gap: 12px; margin-top: 7px; }
     .inspector-title-row h1 { flex: 1; margin: 0; font-size: 21px; line-height: 1.25; }
     .inspector-subtitle { max-width: 820px; margin: 7px 0 14px; color: var(--muted); font-size: 13px; }
-    .inspector-tabs { display: flex; gap: 18px; }
-    .inspector-tab {
-      height: 34px;
-      padding: 0;
-      border: 0;
-      border-bottom: 2px solid transparent;
-      background: transparent;
-      color: var(--muted);
-      font-weight: 620;
-    }
-
-    .inspector-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
     .panel { display: none; padding: 20px 22px 80px; }
     .panel.active { display: block; }
 
     .section { margin-bottom: 24px; }
     .section h2 { margin: 0 0 10px; font-size: 14px; }
     .section p { margin: 0; color: var(--muted); }
+    .section-divider { margin: 32px 0 18px; padding-top: 22px; border-top: 1px solid var(--line); font-size: 16px; font-weight: 750; }
     .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
     .card { padding: 13px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); }
     .card strong { display: block; margin-bottom: 4px; }
@@ -291,6 +280,7 @@
 
     .notice svg { flex: 0 0 auto; margin-top: 1px; }
     .notice.amber { color: var(--amber); border-color: #ead7ae; background: var(--amber-soft); }
+    .config-notice { margin-bottom: 24px; }
     .flow { display: grid; gap: 10px; }
     .flow-stage {
       display: grid;
@@ -1025,7 +1015,6 @@
     let activeGroup = 'all';
     let activeOutputGroup = 'all';
     let activeItem = capabilities[0];
-    let inspectorTab = 'overview';
 
     const rail = document.getElementById('rail');
     const rows = document.getElementById('rows');
@@ -1261,10 +1250,6 @@
         <div class="breadcrumbs">${breadcrumbs}</div>
         <div class="inspector-title-row"><h1>${item.title}</h1>${pill}</div>
         <p class="inspector-subtitle">${subtitle}</p>
-        ${isCapability ? `<div class="inspector-tabs">
-          <button class="inspector-tab ${inspectorTab === 'overview' ? 'active' : ''}" data-tab="overview">Behavior</button>
-          <button class="inspector-tab ${inspectorTab === 'config' ? 'active' : ''}" data-tab="config">Configuration</button>
-        </div>` : ''}
       </div>`;
     }
 
@@ -1380,12 +1365,11 @@
 
     function renderCapabilityInspector(item) {
       inspector.innerHTML = inspectorHeader(item, 'capability') + `
-        <section class="panel ${inspectorTab === 'overview' ? 'active' : ''}" data-panel="overview">
+        <section class="panel active">
           <div class="section"><h2>Expected behavior</h2><div class="cards"><div class="card"><strong>What you get</strong><span>${item.success}</span></div><div class="card"><strong>Safety boundary</strong><span>${item.mustNot}</span></div></div></div>
           <div class="section"><h2>At a glance</h2><dl class="facts"><dt>Available in</dt><dd>${item.surface}</dd><dt>Execution kind</dt><dd>${item.executionKind}</dd><dt>Response style</dt><dd>${item.shape}</dd><dt>Produces</dt><dd>${item.output}</dd><dt>You review it in</dt><dd>${item.review}</dd></dl></div>
-        </section>
-        <section class="panel ${inspectorTab === 'config' ? 'active' : ''}" data-panel="config">
-          <div class="notice amber">${icons.alert}<span>Configuration is a design target. Keep each Save control disabled in production until a resolver-consumption test proves the next run uses it.</span></div>
+          <div class="section-divider">Configuration</div>
+          <div class="notice amber config-notice">${icons.alert}<span>Configuration is a design target. Keep each Save control disabled in production until a resolver-consumption test proves the next run uses it.</span></div>
           <div class="section"><h2>Availability</h2><label class="route active"><input type="checkbox" checked><span><strong>Enable this action</strong><span>Applies to this capability-step owner without changing other actions.</span></span><span class="pill green">On</span></label></div>
           <div class="section"><h2>${item.executionKind === 'media' ? 'Route & model' : 'Model policy'}</h2>${renderModelControls(item)}</div>
           <div class="section"><h2>Prompt &amp; instructions</h2>${renderPromptControls(item)}</div>
@@ -1479,7 +1463,6 @@
         workspace = 'capabilities';
         activeGroup = nextAction.group;
         activeItem = nextAction;
-        inspectorTab = 'overview';
         searchInput.value = '';
         renderAll();
         return;
@@ -1489,7 +1472,6 @@
       if (catalogButton) {
         workspace = 'prompts';
         activeItem = prompts[0];
-        inspectorTab = 'overview';
         searchInput.value = '';
         renderAll();
         return;
@@ -1501,7 +1483,6 @@
         activeOutputGroup = outputGroupButton.dataset.outputGroup;
         const visibleOutputs = outputs.filter(item => outputGroupMatches(item, activeOutputGroup));
         if (visibleOutputs.length) activeItem = visibleOutputs[0];
-        inspectorTab = 'overview';
         searchInput.value = '';
         renderAll();
         return;
@@ -1513,7 +1494,6 @@
         activeGroup = groupButton.dataset.group;
         const visible = capabilities.filter(item => activeGroup === 'all' || item.group === activeGroup);
         if (visible.length) activeItem = visible[0];
-        inspectorTab = 'overview';
         searchInput.value = '';
         renderAll();
         return;
@@ -1523,7 +1503,6 @@
       if (row) {
         workspace = 'capabilities';
         activeItem = capabilities.find(item => item.id === row.dataset.id);
-        inspectorTab = 'overview';
         renderRail();
         renderRows();
         renderInspector();
@@ -1544,18 +1523,12 @@
       if (outputRowButton) {
         workspace = 'outputs';
         activeItem = outputs.find(item => item.id === outputRowButton.dataset.outputId);
-        inspectorTab = 'overview';
         renderRail();
         renderRows();
         renderInspector();
         return;
       }
 
-      const tab = event.target.closest('[data-tab]');
-      if (tab) {
-        inspectorTab = tab.dataset.tab;
-        renderInspector();
-      }
     });
 
     editorModalClose.addEventListener('click', closeEditorModal);
