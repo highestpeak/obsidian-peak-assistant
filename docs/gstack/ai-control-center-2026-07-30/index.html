@@ -247,7 +247,7 @@
     .section { margin-bottom: 24px; }
     .section h2 { margin: 0 0 10px; font-size: 14px; }
     .section p { margin: 0; color: var(--muted); }
-    .section-divider { margin: 32px 0 18px; padding-top: 22px; border-top: 1px solid var(--line); font-size: 16px; font-weight: 750; }
+    .configuration-start { margin-top: 32px; padding-top: 22px; border-top: 1px solid var(--line); }
     .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
     .card { padding: 13px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); }
     .card strong { display: block; margin-bottom: 4px; }
@@ -280,7 +280,6 @@
 
     .notice svg { flex: 0 0 auto; margin-top: 1px; }
     .notice.amber { color: var(--amber); border-color: #ead7ae; background: var(--amber-soft); }
-    .config-notice { margin-bottom: 24px; }
     .flow { display: grid; gap: 10px; }
     .flow-stage {
       display: grid;
@@ -450,6 +449,10 @@
     }
     .field textarea { min-height: 180px; resize: vertical; font-family: var(--mono); font-size: 11px; line-height: 1.55; }
     .field input:focus, .field select:focus, .field textarea:focus { border-color: #aaa1dc; box-shadow: 0 0 0 2px var(--accent-soft); }
+    .inline-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); }
+    .inline-controls .field { margin: 0; }
+    .inline-controls .field.wide { grid-column: 1 / -1; }
+    .inline-save-status { margin-right: auto; color: var(--green); font-size: 11px; font-weight: 650; }
 
     .empty { padding: 30px 18px; color: var(--muted); text-align: center; }
     .design-note {
@@ -1271,9 +1274,6 @@
       if (type === 'model') {
         return { title: activeItem.executionKind === 'media' ? 'Choose route and model' : 'Choose model', subtitle: sharedSubtitle, body: `<p class="modal-copy">The selection is stored on this capability step, not on a shared Prompt.</p><label class="field"><span>Policy</span><select><option>Use AI Setup default</option><option selected>Override this action</option></select></label><label class="field"><span>Profile and model</span><select><option>${activeItem.route}</option><option>Fast Lookup · configured model</option><option>Research · configured model</option><option>Choose another compatible model…</option></select></label>` };
       }
-      if (type === 'output') {
-        return { title: 'Edit output controls', subtitle: sharedSubtitle, body: `<label class="field"><span>Response</span><input value="${activeItem.output}"></label><label class="field"><span>Sampling</span><select><option>Use Profile default</option><option>Low variance</option><option>Balanced</option><option>Creative</option></select></label><label class="field"><span>Maximum output tokens</span><input type="number" value="4096"></label><label class="field"><span>Timeout</span><input value="60 seconds"></label>` };
-      }
       if (type === 'agent') {
         return { title: 'Edit agent controls', subtitle: sharedSubtitle, body: `<label class="field"><span>Tool policy</span><select><option>Allow listed read tools</option><option>Ask for every tool</option><option>Disable tools</option></select></label><label class="field"><span>Write-capable tools</span><select><option>Always ask for approval</option><option>Disable</option></select></label><label class="field"><span>Run budget</span><input value="12 turns · 24 tool calls · configured cost limit"></label>` };
       }
@@ -1341,9 +1341,23 @@
       return `<label class="route active"><input type="radio" name="model-policy" checked><span><strong>Use the AI Setup default</strong><span>Follows future changes to the shared ${profileLabel} setting.</span></span><span class="route-effective">Current<code>${item.route}</code></span></label><div class="route"><span></span><span><strong>Choose a ${profileLabel} for this action</strong><span>Overrides the default only for this AI action.</span></span><button class="action-button" data-editor="model">Choose ${item.executionKind === 'text' || item.executionKind === 'agent' ? 'model' : 'Profile'}</button></div>`;
     }
 
+    function renderInlineOutputControls(item) {
+      return `<div class="section" data-inline-output-controls>
+        <h2>Output controls</h2>
+        <div class="inline-controls">
+          <label class="field wide"><span>Response</span><input data-inline-output-input value="${escapeHtml(item.output)}"></label>
+          <label class="field"><span>Sampling</span><select data-inline-output-input><option>Use Profile default</option><option>Low variance</option><option>Balanced</option><option>Creative</option></select></label>
+          <label class="field"><span>Maximum output tokens</span><input data-inline-output-input type="number" value="4096"></label>
+          <label class="field"><span>Timeout</span><input data-inline-output-input value="60 seconds"></label>
+          <label class="field"><span>Retry</span><select data-inline-output-input><option>Use runtime default</option><option>Never</option><option>Once</option><option>Twice</option></select></label>
+        </div>
+        <div class="button-row"><span class="inline-save-status" data-inline-save-status></span><button class="action-button primary" data-save-inline-output>Save output controls</button></div>
+      </div>`;
+    }
+
     function renderExecutionControls(item) {
       if (item.executionKind === 'agent') {
-        return `<div class="section"><h2>Tools, approval &amp; budget</h2><dl class="facts"><dt>Tool policy</dt><dd>Allow listed tools · ask before write-capable tools</dd><dt>Approval</dt><dd>Review before document or Vault change</dd><dt>Budget</dt><dd>Agent turns, tool calls, token and cost limits</dd></dl><div class="button-row"><button class="action-button" data-editor="agent">Edit agent controls</button></div></div><div class="section"><h2>Output controls</h2><dl class="facts"><dt>Response</dt><dd>${item.output}</dd><dt>Sampling</dt><dd>Profile default · action override available</dd><dt>Limits</dt><dd>Max output tokens and timeout</dd></dl><div class="button-row"><button class="action-button" data-editor="output">Edit output controls</button></div></div>`;
+        return `<div class="section"><h2>Tools, approval &amp; budget</h2><dl class="facts"><dt>Tool policy</dt><dd>Allow listed tools · ask before write-capable tools</dd><dt>Approval</dt><dd>Review before document or Vault change</dd><dt>Budget</dt><dd>Agent turns, tool calls, token and cost limits</dd></dl><div class="button-row"><button class="action-button" data-editor="agent">Edit agent controls</button></div></div>${renderInlineOutputControls(item)}`;
       }
       if (item.executionKind === 'embedding' || item.executionKind === 'rerank') {
         return `<div class="section"><h2>Index &amp; scope</h2><dl class="facts"><dt>Scope</dt><dd>Changed documents and explicit rebuilds</dd><dt>Batch policy</dt><dd>Profile-compatible batch size and retry</dd><dt>Compatibility</dt><dd>Locked vector/index invariant</dd></dl><div class="button-row"><button class="action-button" data-editor="scope">Edit scope</button></div></div>`;
@@ -1360,7 +1374,7 @@
       if (item.executionKind === 'user') {
         return `<div class="section"><h2>Dynamic owner</h2><dl class="facts"><dt>Source</dt><dd>Live runtime registry</dd><dt>Controls</dt><dd>Content, model, tools, approval, scope</dd><dt>Persistence</dt><dd>Saved through the original owner adapter</dd></dl><div class="button-row"><button class="action-button" data-editor="owner">Edit definition</button></div></div>`;
       }
-      return `<div class="section"><h2>Output controls</h2><dl class="facts"><dt>Response</dt><dd>${item.output}</dd><dt>Sampling</dt><dd>Temperature and top-p when supported</dd><dt>Limits</dt><dd>Max output tokens, timeout, retry</dd></dl><div class="button-row"><button class="action-button" data-editor="output">Edit output controls</button></div></div>`;
+      return renderInlineOutputControls(item);
     }
 
     function renderCapabilityInspector(item) {
@@ -1368,9 +1382,7 @@
         <section class="panel active">
           <div class="section"><h2>Expected behavior</h2><div class="cards"><div class="card"><strong>What you get</strong><span>${item.success}</span></div><div class="card"><strong>Safety boundary</strong><span>${item.mustNot}</span></div></div></div>
           <div class="section"><h2>At a glance</h2><dl class="facts"><dt>Available in</dt><dd>${item.surface}</dd><dt>Execution kind</dt><dd>${item.executionKind}</dd><dt>Response style</dt><dd>${item.shape}</dd><dt>Produces</dt><dd>${item.output}</dd><dt>You review it in</dt><dd>${item.review}</dd></dl></div>
-          <div class="section-divider">Configuration</div>
-          <div class="notice amber config-notice">${icons.alert}<span>Configuration is a design target. Keep each Save control disabled in production until a resolver-consumption test proves the next run uses it.</span></div>
-          <div class="section"><h2>Availability</h2><label class="route active"><input type="checkbox" checked><span><strong>Enable this action</strong><span>Applies to this capability-step owner without changing other actions.</span></span><span class="pill green">On</span></label></div>
+          <div class="section configuration-start"><h2>Availability</h2><label class="route active"><input type="checkbox" checked><span><strong>Enable this action</strong><span>Applies to this capability-step owner without changing other actions.</span></span><span class="pill green">On</span></label></div>
           <div class="section"><h2>${item.executionKind === 'media' ? 'Route & model' : 'Model policy'}</h2>${renderModelControls(item)}</div>
           <div class="section"><h2>Prompt &amp; instructions</h2>${renderPromptControls(item)}</div>
           ${renderExecutionControls(item)}
@@ -1450,6 +1462,16 @@
     }
 
     document.addEventListener('click', event => {
+      const inlineOutputSave = event.target.closest('[data-save-inline-output]');
+      if (inlineOutputSave) {
+        const controls = inlineOutputSave.closest('[data-inline-output-controls]');
+        const status = controls?.querySelector('[data-inline-save-status]');
+        if (status) status.textContent = 'Saved for this action';
+        inlineOutputSave.textContent = 'Saved';
+        inlineOutputSave.disabled = true;
+        return;
+      }
+
       const editorButton = event.target.closest('[data-editor]');
       if (editorButton) {
         openEditorModal(editorButton, editorButton.dataset.editor, editorButton.dataset.promptId);
@@ -1539,6 +1561,18 @@
     });
     document.addEventListener('keydown', event => {
       if (event.key === 'Escape' && !editorModal.classList.contains('hidden')) closeEditorModal();
+    });
+    document.addEventListener('input', event => {
+      const inlineField = event.target.closest('[data-inline-output-input]');
+      if (!inlineField) return;
+      const controls = inlineField.closest('[data-inline-output-controls]');
+      const save = controls?.querySelector('[data-save-inline-output]');
+      const status = controls?.querySelector('[data-inline-save-status]');
+      if (save) {
+        save.textContent = 'Save output controls';
+        save.disabled = false;
+      }
+      if (status) status.textContent = '';
     });
     searchInput.addEventListener('input', renderRows);
     renderAll();
