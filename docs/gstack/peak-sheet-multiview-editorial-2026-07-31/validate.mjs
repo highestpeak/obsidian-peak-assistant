@@ -82,7 +82,6 @@ const initial = await page.evaluate(() => ({
     '.view-tabs',
     '.data-toolbar',
     '.formula-bar',
-    '.table-command-bar',
     '.filter-line',
   ].map((selector) => document.querySelector(selector)?.getBoundingClientRect().height ?? 0),
   headerBackgrounds: [
@@ -90,22 +89,34 @@ const initial = await page.evaluate(() => ({
     '.view-tabs',
     '.data-toolbar',
     '.formula-bar',
-    '.table-command-bar',
     '.filter-line',
   ].map((selector) => getComputedStyle(document.querySelector(selector)).backgroundColor),
   toolbarDividerWidth: document.querySelector('.toolbar-divider')?.getBoundingClientRect().width ?? 0,
-  searchLeft: document.querySelector('#record-search')?.getBoundingClientRect().left ?? Infinity,
-  searchWidth: document.querySelector('.record-search')?.getBoundingClientRect().width ?? 0,
-  tableCommandBeforeStage: document.querySelector('#table-command-bar')?.nextElementSibling?.id === 'filter-line',
-  commandGroupGap: (() => {
-    const count = document.querySelector('#query-result')?.getBoundingClientRect();
-    const action = document.querySelector('#preview-dedupe')?.getBoundingClientRect();
-    return count && action ? action.left - count.right : Infinity;
+  searchLeft: document.querySelector('.toolbar-record-search')?.getBoundingClientRect().left ?? Infinity,
+  searchWidth: document.querySelector('.toolbar-record-search')?.getBoundingClientRect().width ?? 0,
+  tableCommandBars: document.querySelectorAll('#table-command-bar').length,
+  duplicateViewSearches: document.querySelectorAll('.view-tab-actions [aria-label*="搜索"]').length,
+  toolbarOverflow: (() => {
+    const toolbar = document.querySelector('.toolbar-primary');
+    return toolbar ? toolbar.scrollWidth - toolbar.clientWidth : Infinity;
   })(),
-  commandRightGap: (() => {
-    const bar = document.querySelector('#table-command-bar')?.getBoundingClientRect();
-    const action = document.querySelector('#open-ai')?.getBoundingClientRect();
-    return bar && action ? bar.right - action.right : Infinity;
+  searchToFieldsGap: (() => {
+    const search = document.querySelector('.toolbar-record-search')?.getBoundingClientRect();
+    const fields = document.querySelector('#open-fields')?.getBoundingClientRect();
+    return search && fields ? fields.left - search.right : Infinity;
+  })(),
+  dataActionGap: (() => {
+    const dedupe = document.querySelector('#open-dedupe')?.getBoundingClientRect();
+    const analysis = document.querySelector('#open-ai')?.getBoundingClientRect();
+    return dedupe && analysis ? analysis.left - dedupe.right : Infinity;
+  })(),
+  dedupeHitTarget: (() => {
+    const rect = document.querySelector('#open-dedupe')?.getBoundingClientRect();
+    return rect ? [rect.width, rect.height] : [0, 0];
+  })(),
+  analysisHitTarget: (() => {
+    const rect = document.querySelector('#open-ai')?.getBoundingClientRect();
+    return rect ? [rect.width, rect.height] : [0, 0];
   })(),
   fieldHeaderFontSize: getComputedStyle(document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(2)')).fontSize,
   textHeaderAlignment: getComputedStyle(document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(5) .field-heading')).justifyContent,
@@ -210,14 +221,18 @@ assert.equal(initial.canvasColor, '#eef0ec', 'Paper canvas should use a warm min
 assert.equal(initial.motionBase, '180ms', 'motion should use one shared interaction timing token');
 assert.equal(initial.viewAnimationName, 'editorial-view-enter', 'view changes should use the restrained editorial entrance');
 assert.match(initial.buttonTransitionDuration, /0.12s/, 'toolbar actions should expose fast state transitions');
-assert.deepEqual(initial.headerHeights, [52, 38, 38, 32, 36, 0], 'search should own one compact band while inactive filters reserve no blank space');
-assert.ok(new Set(initial.headerBackgrounds).size <= 2, 'Header and command bands should remain within one quiet paper hierarchy');
+assert.deepEqual(initial.headerHeights, [52, 38, 38, 32, 0], 'toolbar search should not create a separate oversized command band');
+assert.ok(new Set(initial.headerBackgrounds).size <= 1, 'Header bands should remain within one continuous paper hierarchy');
 assert.equal(initial.toolbarDividerWidth, 0, 'toolbar groups should use spacing instead of vertical divider cages');
-assert.ok(initial.searchLeft < 80, 'record search should sit on the table reading axis instead of the remote top-right corner');
-assert.ok(initial.searchWidth > 900, 'the flexible search surface should own the middle space instead of leaving an unstructured void');
-assert.equal(initial.tableCommandBeforeStage, true, 'search and data actions should remain directly above the table stage');
-assert.ok(initial.commandGroupGap >= 0 && initial.commandGroupGap <= 16, 'record count and table actions should form one continuous group without a meaningless middle void');
-assert.ok(initial.commandRightGap >= 0 && initial.commandRightGap <= 16, 'record metadata and actions should terminate the same continuous command rail at the right edge');
+assert.ok(initial.searchLeft > 80 && initial.searchLeft < 260, 'record search should follow Add Record inside the primary toolbar');
+assert.ok(initial.searchWidth >= 188 && initial.searchWidth <= 230, 'record search should stay compact instead of becoming a full-width frame');
+assert.equal(initial.tableCommandBars, 0, 'the obsolete separate search rail should be removed');
+assert.equal(initial.duplicateViewSearches, 0, 'the view header should not retain a second remote search entry');
+assert.ok(initial.toolbarOverflow <= 0, 'the redesigned primary toolbar should remain fully reachable at 1600px');
+assert.ok(initial.searchToFieldsGap >= 0 && initial.searchToFieldsGap <= 8, 'search and field controls should remain one reachable sequence');
+assert.ok(initial.dataActionGap >= 0 && initial.dataActionGap <= 8, 'data quality and AI analysis should remain adjacent rather than scattered');
+assert.ok(initial.dedupeHitTarget[0] >= 50 && initial.dedupeHitTarget[1] >= 28, 'duplicate checking should expose a practical toolbar hit target');
+assert.ok(initial.analysisHitTarget[0] >= 50 && initial.analysisHitTarget[1] >= 28, 'AI analysis should expose a practical toolbar hit target');
 assert.equal(initial.fieldHeaderFontSize, '11.5px', 'field headers should use the same readable type scale as table metadata');
 assert.equal(initial.textHeaderAlignment, 'flex-start', 'text field headers should follow the left reading axis');
 assert.equal(initial.numericHeaderAlignment, 'flex-end', 'numeric field headers should follow the right reading axis');
@@ -713,9 +728,22 @@ await page.click('#close-group');
 
 await page.fill('#record-search', 'Tide Systems');
 assert.equal(await page.locator('.record-table tr[data-record-id]').count(), 1, 'table-local search should update the current data surface');
-assert.match(await page.textContent('#query-result'), /1 条记录/);
+assert.equal((await page.textContent('#query-result'))?.trim(), '1');
 await page.fill('#record-search', '');
 assert.equal(await page.locator('.record-table tr[data-record-id]').count(), 20);
+await page.click('#open-dedupe');
+await page.waitForSelector('#dedupe-panel:not([hidden])');
+await settleMotion();
+assert.equal(await page.locator('[data-dedupe-field].is-selected').count(), 2, 'duplicate checking should default to Company plus Role');
+const dedupeFieldHeights = await page.locator('[data-dedupe-field]').evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect().height));
+assert.ok(dedupeFieldHeights.every((height) => height === 32), 'dedupe fields should be real 32px controls rather than tiny secondary copy');
+await page.click('[data-dedupe-field="公司"]');
+assert.equal(await page.getAttribute('[data-dedupe-field="公司"]', 'aria-pressed'), 'false');
+assert.match(await page.textContent('#dedupe-rule-summary'), /^职位/);
+await page.click('[data-dedupe-field="公司"]');
+assert.equal(await page.getAttribute('[data-dedupe-field="公司"]', 'aria-pressed'), 'true');
+assert.match(await page.textContent('#dedupe-rule-summary'), /公司 \+ 职位/);
+await page.screenshot({ path: path.join(dir, 'preview-dedupe-panel.png') });
 await page.click('#preview-dedupe');
 assert.match(await page.textContent('#toast-title'), /2 组可能重复项/);
 assert.match(await page.textContent('#toast-copy'), /尚未删除任何记录/);
@@ -828,6 +856,6 @@ console.log(JSON.stringify({
   },
   localLinks: localHrefs.length,
   viewsChecked: ['table', 'board', 'calendar', 'gallery', 'dashboard'],
-  flowsChecked: ['long-text-reader', 'bounded-row-wrap', 'independent-role-edit', 'inline-text-edit', 'typed-select-edit', 'numeric-edit', 'checkbox-toggle', 'keyboard-f2-cancel', 'keyboard-tab-commit', 'scroll-continuity', 'frozen-cell-selection', 'bounded-cell-editor', 'stable-row-hover', 'computed-cell-readonly', 'selection-stat-recompute', 'theme-switch', 'number-format', 'persistent-field-workbench', 'saved-custom-field', 'inline-ai-formula', 'ai-formula-candidates', 'ai-filter-composition', 'multi-priority-sort', 'multi-level-group', 'table-local-search', 'dedupe-preview', 'editorial-analysis-drawer', 'selection-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
-  screenshots: ['preview.png', 'preview-table.png', 'preview-table-types.png', 'preview-long-text.png', 'preview-long-text-wrap.png', 'preview-cell-edit.png', 'preview-frozen-selection.png', 'preview-dark.png', 'preview-format.png', 'preview-fields.png', 'preview-field-added.png', 'preview-formula-inline.png', 'preview-formula.png', 'preview-filter-panel.png', 'preview-filter-rule.png', 'preview-sort-panel.png', 'preview-group-panel.png', 'preview-group-rule.png', 'preview-analysis.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
+  flowsChecked: ['long-text-reader', 'bounded-row-wrap', 'independent-role-edit', 'inline-text-edit', 'typed-select-edit', 'numeric-edit', 'checkbox-toggle', 'keyboard-f2-cancel', 'keyboard-tab-commit', 'scroll-continuity', 'frozen-cell-selection', 'bounded-cell-editor', 'stable-row-hover', 'computed-cell-readonly', 'selection-stat-recompute', 'theme-switch', 'number-format', 'persistent-field-workbench', 'saved-custom-field', 'inline-ai-formula', 'ai-formula-candidates', 'ai-filter-composition', 'multi-priority-sort', 'multi-level-group', 'compact-toolbar-search', 'configurable-dedupe-fields', 'dedupe-preview', 'editorial-analysis-drawer', 'selection-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
+  screenshots: ['preview.png', 'preview-table.png', 'preview-table-types.png', 'preview-long-text.png', 'preview-long-text-wrap.png', 'preview-cell-edit.png', 'preview-frozen-selection.png', 'preview-dark.png', 'preview-format.png', 'preview-fields.png', 'preview-field-added.png', 'preview-formula-inline.png', 'preview-formula.png', 'preview-filter-panel.png', 'preview-filter-rule.png', 'preview-sort-panel.png', 'preview-group-panel.png', 'preview-group-rule.png', 'preview-dedupe-panel.png', 'preview-analysis.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
 }, null, 2));

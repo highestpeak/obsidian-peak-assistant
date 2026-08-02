@@ -84,7 +84,6 @@
           <button type="button" class="add-view-button" id="add-view" aria-label="添加视图" aria-expanded="false"><svg><use href="#i-plus"/></svg></button>
         </div>
         <div class="view-tab-actions">
-          <button type="button" class="icon-button" aria-label="搜索当前视图"><svg><use href="#i-search"/></svg></button>
           <button type="button" class="icon-button" aria-label="视图菜单"><svg><use href="#i-more"/></svg></button>
         </div>
       </nav>
@@ -95,6 +94,12 @@
           <button type="button" class="icon-button compact sheet-command" aria-label="重做"><svg><use href="#i-redo"/></svg></button>
           <span class="toolbar-divider"></span>
           <button type="button" class="add-record-button"><svg><use href="#i-plus"/></svg>记录</button>
+          <label class="toolbar-record-search">
+            <svg><use href="#i-search"/></svg>
+            <input id="record-search" type="search" placeholder="搜索当前视图" aria-label="搜索记录">
+            <span class="query-result" id="query-result">20</span>
+            <kbd>⌘K</kbd>
+          </label>
           <button type="button" class="tool-button" id="open-fields" aria-expanded="false"><svg><use href="#i-fields"/></svg>字段</button>
           <button type="button" class="tool-button" id="open-filter" aria-expanded="false"><svg><use href="#i-filter"/></svg>筛选 <em id="filter-count" hidden>0</em></button>
           <button type="button" class="tool-button" id="open-sort" aria-expanded="false"><svg><use href="#i-sort"/></svg>排序 <em id="sort-count" hidden>0</em></button>
@@ -114,6 +119,9 @@
           <span class="toolbar-divider"></span>
           <button type="button" class="tool-button formula-button" id="open-formula" aria-pressed="false"><span class="formula-mark">fx</span>AI 公式</button>
           <button type="button" class="tool-button is-applied" id="toggle-stats">Σ 统计</button>
+          <span class="toolbar-divider"></span>
+          <button type="button" class="tool-button data-quality-button" id="open-dedupe" aria-expanded="false"><svg><use href="#i-database"/></svg>重复项</button>
+          <button type="button" class="tool-button toolbar-ai-button" id="open-ai"><svg><use href="#i-sparkles"/></svg>AI 分析</button>
         </div>
       </header>
 
@@ -131,17 +139,6 @@
           <button type="button" class="inline-ai-cancel" id="cancel-inline-formula">取消</button>
           <button type="button" class="inline-ai-generate" id="generate-inline-formula">生成候选 <svg><use href="#i-arrow"/></svg></button>
         </div>
-      </section>
-
-      <section class="table-command-bar" id="table-command-bar">
-        <label class="record-search">
-          <svg><use href="#i-search"/></svg>
-          <input id="record-search" type="search" placeholder="在当前表格中搜索…" aria-label="搜索记录">
-          <kbd>⌘ K</kbd>
-        </label>
-        <span class="query-result" id="query-result">20 条记录</span>
-        <button type="button" class="table-ai-action" id="preview-dedupe"><svg><use href="#i-database"/></svg><span><strong>一键去重</strong><small>公司 + 职位</small></span></button>
-        <button type="button" class="table-ai-action primary" id="open-ai"><svg><use href="#i-sparkles"/></svg><span><strong>AI 分析</strong><small>当前视图</small></span></button>
       </section>
 
       <section class="filter-line" id="filter-line" hidden></section>
@@ -224,6 +221,24 @@
           <div class="rule-preview-line"><span>分组预览</span><b id="group-preview">尚未应用</b></div>
         </div>
         <footer><span id="group-rule-count">2 个分组层级</span><button type="button" class="subtle-button" id="clear-group">取消分组</button><button type="button" class="confirm-button" id="apply-group">应用分组</button></footer>
+      </section>
+
+      <section class="dedupe-panel floating-surface" id="dedupe-panel" hidden aria-label="重复项检查">
+        <header class="panel-header"><span><strong>检查重复记录</strong><small>先选择用于判断重复的字段，再安全预览</small></span><button type="button" class="icon-button compact" id="close-dedupe" aria-label="关闭重复项检查"><svg><use href="#i-x"/></svg></button></header>
+        <div class="dedupe-panel-body">
+          <section class="dedupe-readout"><span>当前规则</span><strong id="dedupe-rule-summary">公司 + 职位完全相同</strong><small>预计发现 2 组可能重复项；预览不会删除记录。</small></section>
+          <div class="dedupe-section">
+            <span class="dedupe-section-label">比较字段</span>
+            <div class="dedupe-fields" aria-label="选择重复项比较字段">
+              <button type="button" class="is-selected" data-dedupe-field="公司" aria-pressed="true"><svg><use href="#i-check"/></svg>公司</button>
+              <button type="button" class="is-selected" data-dedupe-field="职位" aria-pressed="true"><svg><use href="#i-check"/></svg>职位</button>
+              <button type="button" data-dedupe-field="地点" aria-pressed="false">地点</button>
+              <button type="button" data-dedupe-field="JD 链接" aria-pressed="false">JD 链接</button>
+            </div>
+          </div>
+          <label class="dedupe-mode"><span>匹配方式<small>文本会忽略首尾空格</small></span><select id="dedupe-match-mode"><option value="exact">完全相同</option><option value="normalized">忽略大小写与标点</option></select></label>
+        </div>
+        <footer><button type="button" class="subtle-button" id="cancel-dedupe">取消</button><button type="button" class="confirm-button" id="preview-dedupe">预览 2 组重复项</button></footer>
       </section>
 
       <section class="field-panel floating-surface" id="field-panel" hidden aria-label="字段配置">

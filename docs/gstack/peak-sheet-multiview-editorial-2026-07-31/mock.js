@@ -744,6 +744,7 @@ const formatMenu = document.querySelector('#format-menu');
 const filterPanel = document.querySelector('#filter-panel');
 const sortPanel = document.querySelector('#sort-panel');
 const groupPanel = document.querySelector('#group-panel');
+const dedupePanel = document.querySelector('#dedupe-panel');
 const cellReader = document.querySelector('#cell-reader');
 const activeCellName = document.querySelector('#active-cell-name');
 const formulaInput = document.querySelector('#formula-input');
@@ -1357,13 +1358,16 @@ function renderCurrentView(options = {}) {
   renderers[state.view]();
   workspace.classList.toggle('is-table-view', state.view === 'table');
   formulaBar.hidden = state.view !== 'table';
-  document.querySelector('#table-command-bar').hidden = state.view !== 'table';
   document.querySelectorAll('[data-view]').forEach((button) => {
     button.classList.toggle('is-active', button.dataset.view === state.view);
   });
   renderFilterLine();
   const queryResult = document.querySelector('#query-result');
-  if (queryResult) queryResult.textContent = `${visibleRecords().length} 条记录`;
+  if (queryResult) {
+    const count = visibleRecords().length;
+    queryResult.textContent = String(count);
+    queryResult.title = `${count} 条记录`;
+  }
   updateStatus();
   if (options.animate) animateViewStage();
 }
@@ -1999,6 +2003,7 @@ function openFields() {
   closeInlineFormula();
   closeFormatMenu();
   closeRulePanels();
+  closeDedupe();
   closeViewMenu();
   closeAi();
   panel.hidden = false;
@@ -2026,6 +2031,7 @@ function openInlineFormula() {
   closeFormula();
   closeFormatMenu();
   closeRulePanels();
+  closeDedupe();
   closeViewMenu();
   closeAi();
   formulaDirect.hidden = true;
@@ -2040,6 +2046,7 @@ function openFormulaCandidates(prompt = '') {
   closeFields();
   closeFormatMenu();
   closeRulePanels();
+  closeDedupe();
   closeViewMenu();
   closeAi();
   if (prompt) document.querySelector('#ai-formula-prompt').value = prompt;
@@ -2057,6 +2064,7 @@ function openFormatMenu() {
   closeFormula();
   closeInlineFormula();
   closeRulePanels();
+  closeDedupe();
   closeViewMenu();
   closeAi();
   formatMenu.hidden = false;
@@ -2077,6 +2085,7 @@ function openRulePanel(trigger, panel) {
   closeFormula();
   closeInlineFormula();
   closeRulePanels(panel);
+  closeDedupe();
   closeViewMenu();
   closeAi();
   panel.hidden = false;
@@ -2099,6 +2108,35 @@ function closeGroupPanel() {
   document.querySelector('#open-group').setAttribute('aria-expanded', 'false');
 }
 
+function openDedupe() {
+  toast.hidden = true;
+  closeLongTextCell();
+  closeFields();
+  closeFormula();
+  closeInlineFormula();
+  closeFormatMenu();
+  closeRulePanels();
+  closeViewMenu();
+  closeAi();
+  dedupePanel.hidden = false;
+  document.querySelector('#open-dedupe').setAttribute('aria-expanded', 'true');
+  positionAnchoredSurface(document.querySelector('#open-dedupe'), dedupePanel, 'end');
+}
+
+function closeDedupe() {
+  dedupePanel.hidden = true;
+  document.querySelector('#open-dedupe').setAttribute('aria-expanded', 'false');
+}
+
+function updateDedupeSummary() {
+  const selected = [...document.querySelectorAll('[data-dedupe-field].is-selected')]
+    .map((button) => button.dataset.dedupeField);
+  const mode = document.querySelector('#dedupe-match-mode').value === 'exact'
+    ? '完全相同'
+    : '忽略大小写与标点';
+  document.querySelector('#dedupe-rule-summary').textContent = `${selected.join(' + ')}${mode}`;
+}
+
 function openAi() {
   toast.hidden = true;
   const contextItems = document.querySelectorAll('.ai-context span');
@@ -2115,6 +2153,7 @@ function openAi() {
   closeInlineFormula();
   closeFormatMenu();
   closeRulePanels();
+  closeDedupe();
   closeViewMenu();
 }
 
@@ -2567,8 +2606,35 @@ searchInput.addEventListener('input', () => {
   renderCurrentView();
 });
 
+document.querySelector('#open-dedupe').addEventListener('click', () => {
+  if (dedupePanel.hidden) {
+    openDedupe();
+    return;
+  }
+  closeDedupe();
+});
+document.querySelector('#close-dedupe').addEventListener('click', closeDedupe);
+document.querySelector('#cancel-dedupe').addEventListener('click', closeDedupe);
+document.querySelectorAll('[data-dedupe-field]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const selectedCount = document.querySelectorAll('[data-dedupe-field].is-selected').length;
+    if (button.classList.contains('is-selected') && selectedCount === 1) {
+      showToast('至少保留一个比较字段', '重复项检查需要一个稳定的判断依据');
+      return;
+    }
+    button.classList.toggle('is-selected');
+    const selected = button.classList.contains('is-selected');
+    button.setAttribute('aria-pressed', String(selected));
+    updateDedupeSummary();
+  });
+});
+document.querySelector('#dedupe-match-mode').addEventListener('change', updateDedupeSummary);
 document.querySelector('#preview-dedupe').addEventListener('click', () => {
-  showToast('发现 2 组可能重复项', '已按“公司 + 职位”生成预览；尚未删除任何记录');
+  const selected = [...document.querySelectorAll('[data-dedupe-field].is-selected')]
+    .map((button) => button.dataset.dedupeField)
+    .join(' + ');
+  closeDedupe();
+  showToast('发现 2 组可能重复项', `已按“${selected}”生成预览；尚未删除任何记录`);
 });
 
 document.querySelector('#open-ai').addEventListener('click', openAi);
@@ -2630,6 +2696,7 @@ document.addEventListener('keydown', (event) => {
   closeInlineFormula();
   closeFormatMenu();
   closeRulePanels();
+  closeDedupe();
   closeViewMenu();
   closeLongTextCell();
   closeDialog('#source-dialog');
