@@ -20,11 +20,19 @@
     body { margin: 0; line-height: 1.72; }
     a { color: var(--green); text-decoration: none; font-weight: 760; }
     a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    code {
+      padding: 2px 5px;
+      border-radius: 5px;
+      background: #eef3ee;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.92em;
+    }
     .page { width: min(840px, calc(100vw - 64px)); margin: 0 auto; padding: 48px 0 72px; }
     header { padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
     .eyebrow { color: var(--green); font-size: 13px; font-weight: 820; }
     h1 { margin: 14px 0 16px; font-size: 42px; line-height: 1.1; }
     h2 { margin: 0 0 12px; font-size: 28px; line-height: 1.2; }
+    h3 { margin: 8px 0 10px; font-size: 21px; line-height: 1.25; }
     p { margin: 0; }
     .subtitle { max-width: 760px; color: var(--muted); font-size: 18px; }
     .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; color: var(--muted); font-size: 13px; }
@@ -42,6 +50,31 @@
       box-shadow: 0 10px 24px rgba(23, 34, 29, 0.04);
     }
     .empty-state strong { display: block; margin-bottom: 4px; color: var(--ink); font-size: 17px; }
+    .requirement-card {
+      margin-top: 18px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--green);
+      border-radius: 8px;
+      background: var(--paper);
+      box-shadow: 0 10px 24px rgba(23, 34, 29, 0.04);
+    }
+    .requirement-card p { color: var(--muted); }
+    .requirement-card p + p { margin-top: 12px; }
+    .requirement-id { color: var(--muted); font-size: 12px; }
+    .requirement-status {
+      display: inline-flex;
+      padding: 3px 9px;
+      border: 1px solid rgba(31, 107, 82, 0.24);
+      border-radius: 999px;
+      color: var(--green);
+      background: #eef6f1;
+      font-size: 12px;
+      font-weight: 780;
+    }
+    .requirement-list { margin: 14px 0; padding-left: 22px; color: var(--muted); }
+    .requirement-list li + li { margin-top: 6px; }
+    .links { margin-top: 16px; }
     @media (max-width: 720px) {
       .page { width: min(100vw - 24px, 840px); }
       h1 { font-size: 34px; }
@@ -52,10 +85,10 @@
   <main class="page">
     <header>
       <div class="eyebrow">Peak Assistant Planned Requirements</div>
-      <h1>当前没有开放的局部需求。</h1>
-      <p class="subtitle">本页只登记尚未实现、且尚未升级为正式规格或 Roadmap 里程碑的局部需求。需求完成、合并或撤销后即从本页移除。</p>
+      <h1>当前有 1 个开放需求。</h1>
+      <p class="subtitle">本页登记尚未完成 production implementation 与真实交互验收的需求。正式 spec 与 Roadmap 负责设计真值；这里保留明确的实施 closure，完成、合并或撤销后即移除。</p>
       <div class="meta">
-        <span>Open: 0</span>
+        <span>Open: 1</span>
         <span>Updated: 2026-08-02</span>
       </div>
       <nav class="nav" aria-label="cross document navigation">
@@ -67,10 +100,22 @@
 
     <section id="active-planned">
       <h2>开放需求</h2>
-      <div class="empty-state">
-        <strong>暂无待实现的小需求</strong>
-        新的局部需求可以继续登记在这里；形成正式设计后移入对应规格或 Roadmap。
-      </div>
+      <article class="requirement-card" id="pr-ai-control-center-configuration-closure">
+        <span class="requirement-status">design ready · production implementation pending</span>
+        <h3>AI Control Center 全量配置闭环</h3>
+        <code class="requirement-id">PR-AI-CONTROL-CENTER-CONFIGURATION-CLOSURE</code>
+        <p>所有生成式 AI、AgentLoop、embedding、rerank、media、deterministic helper、delegated child/tool 与 User-defined 行为，都必须拥有明确的 capability-step owner 和适合其执行类型的真实配置；不能继续存在“能保存但运行时不读取”的假设置。</p>
+        <ul class="requirement-list">
+          <li>完整删除无生产 caller 的 <code>ai-analysis-title</code>、<code>message-resources</code>、<code>chat-suggest-actions</code> 与 <code>gap-explanation</code>。</li>
+          <li>把 Hyper Search parser 与 Agent context compact 的 system/user instruction 迁入 Prompt Registry，并补全 <code>analysis.followup</code> 的 user/system 映射。</li>
+          <li>把 Composer 的 21 个 preset instruction 与 Link Tidy 默认 instruction 纳入各自 action Configuration。</li>
+          <li>动态汇总 Custom Prompt、Vault Skill、Chat Assistant、Project / Conversation instruction 与 MCP tool policy，不复制第二份 owner state。</li>
+          <li>按 execution kind 提供 Prompt、model、output、tools、approval、budget、route、scope 或 threshold；schema、安全边界、writeback 与 stop condition 保持只读。</li>
+          <li>每个 Save 控件必须有 resolver-consumption test，receipt 同时记录 requested 与 effective configuration，并完成真实 Obsidian 修改后下一次 run 的消费验证。</li>
+        </ul>
+        <p><strong>完成条件：</strong>0 个无 owner Prompt、0 个稳定 inline instruction 绕过 resolver、0 个无消费证明的可保存配置；旧 <code>promptModelMap</code> 与绕过 PromptService 的兼容路径完成迁移和清理。</p>
+        <p class="links"><a href="superpowers/plans/2026-08-02-ai-control-center-configuration-closure-plan.md">配置闭环计划</a> · <a href="superpowers/specs/2026-07-30-ai-control-center-design.md">正式设计</a> · <a href="gstack/ai-control-center-2026-07-30/index.html">交互 Mock</a> · <a href="roadmap.html">Roadmap</a></p>
+      </article>
     </section>
   </main>
 </body>
