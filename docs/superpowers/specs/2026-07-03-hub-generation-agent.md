@@ -4,6 +4,8 @@ Date: 2026-07-03
 Parent research: `docs/research/2026-07-03-hub-generation-agent-design/README.md`
 Backlog node: `docs/superpowers/plans/2026-07-03-full-backlog-execution-plan.md` §C-HUB2
 
+> **2026-08-02 ownership update:** 本文记录已实现的 Curator + Materializer pipeline，仍是当前代码行为依据；其中“每个 Hub 都写回 Markdown”的目标不再是长期存储方向。新目标是 Hub manifest / events 为 canonical truth、SQLite 为 virtual Hub projection、Markdown 仅在用户要求编辑、链接或进入原生 Obsidian Graph 时物化。见 [生成产物注册表](../../conventions/generated-artifact-registry.md) 与 [存储治理实现设计](./2026-08-02-generated-artifact-storage-governance-implementation-design.md)。在新 runtime 完成前，不得据此删除现有 Hub Markdown 或绕过当前生产 reader。
+
 ## Goal
 
 替换 `HubDocService.regenerateHubByNodeId` 的 stub 实现，让 hub doc 从"stub warning 输出"变成"agent 决定生成什么、生成给谁看、并写回 vault"。整体拆成两个 agent 串联：

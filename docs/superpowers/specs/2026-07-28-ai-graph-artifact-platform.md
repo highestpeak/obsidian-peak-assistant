@@ -13,6 +13,8 @@
 - [Planned Requirements](../../planned-requirements.html#pr-composer-ai-graph)
 - [Shared AI Instruction Composer](./2026-07-28-shared-ai-instruction-composer.md)
 - [机器运行记录 JSONL 设计](./2026-07-21-machine-record-storage-jsonl-design.md)
+- [生成产物注册表](../../conventions/generated-artifact-registry.md)
+- [生成产物与存储治理实现设计](./2026-08-02-generated-artifact-storage-governance-implementation-design.md)
 - [Roadmap](../../roadmap.html)
 
 > 本文定义 AI Graph 的目标产品、数据和 runtime 边界。它不是当前生产行为说明，也不授权立即修改代码。

@@ -1,13 +1,15 @@
 # 机器运行记录存储重构：JSONL 事实源、SQLite 索引与 Markdown 导出
 
 日期：2026-07-21
-状态：**Accepted design · partial implementation**
+状态：**Accepted historical design · partial implementation · partially superseded**
 范围：Chat Studio、AI Analysis、新 Composer Copilot / History，以及与这些能力直接相邻的机器存储
 不包含：旧 Copilot review/report 历史迁移、真实用户 Vault 文件数量盘点、现有知识文档格式迁移
 
 > 本文只依据插件源码定义目标存储边界。当前生产代码仍以 SQLite + Vault Markdown 混合方式运行；在迁移完成并通过验证前，源码行为仍是当前事实，本文是目标设计事实。
 
 > **2026-07-28 补充：** Composer 的 Copilot session stream 需要保存完整 Generation History，包括未采用、失败、取消和 stale 的所有模型产物。Document History 仍然只保存真实提交。详见 [`2026-07-28-composer-agent-runs-and-generation-history.md`](./2026-07-28-composer-agent-runs-and-generation-history.md)。
+
+> **2026-08-02 存储治理更新：** 本文建立了 JSONL / SQLite / Markdown 的基础边界，但“Hub 一律保持 Markdown”“Project Summary 继续作为单一当前状态”“Resource Summary 只是普通 cache”等表述已经被细化。当前 canonical 决策见 [生成产物注册表](../../conventions/generated-artifact-registry.md) 与 [分阶段实现设计](./2026-08-02-generated-artifact-storage-governance-implementation-design.md)：Hub 默认 virtual、按需物化 Markdown；Project machine state 与用户 Brief 分开；Resource Summary 是需同步的昂贵 JSON snapshot；SQLite、全文索引、embedding、cache 和 telemetry 保持本地可重建。冲突处以 2026-08-02 文档为准。
 
 ## 1. 核心决定
 

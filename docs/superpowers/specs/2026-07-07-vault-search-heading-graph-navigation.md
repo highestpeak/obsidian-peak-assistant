@@ -5,6 +5,8 @@
 **Owner surface:** Vault Search / Quick Search
 **Concept image:** [`docs/gstack/vault-search-navigation-2026-07-07/concept-board-v4.png`](../../gstack/vault-search-navigation-2026-07-07/concept-board-v4.png) — predates the Result Graph View pivot; the concept board still shows a standalone Graph mode. Text in this spec is authoritative; the concept image is kept as historical reference only.
 
+> **2026-08-02 Hub storage update:** 本文的 `hub_doc` Markdown lookup 与 open-path 行为仍描述当前实现。长期目标改为 Hub manifest canonical + SQLite virtual projection；Result Graph 可直接显示 virtual Hub，默认打开 Peak Hub Detail，只有显式物化的 Hub 才按 Markdown path 打开并进入原生 Obsidian Graph。见 [生成产物注册表](../../conventions/generated-artifact-registry.md) 与 [存储治理实现设计](./2026-08-02-generated-artifact-storage-governance-implementation-design.md)。
+
 ## Summary
 
 Vault Search should move from a flat keyword-result picker toward two changes:

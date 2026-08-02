@@ -39,7 +39,7 @@ Four-layer architecture: `app/` → `service/` → `core/` → `ui/`
 - `MultiProviderChatService` (`core/providers/MultiProviderChatService.ts`) — Factory pattern supporting Claude, OpenAI, Google, Perplexity, Ollama, OpenRouter
 - **AI Search Simulator** (`tools/ai-search-simulator/`) — Standalone localhost Provider for deterministic, zero-cost AI Search flow testing. It implements OpenAI Chat for planning and Anthropic Messages for report generation; the plugin keeps only a thin client/config adapter. Configure it through the normal Simulator Provider card and bind it to Research. See [`2026-07-29-ai-search-simulator-provider-design.md`](./docs/superpowers/specs/2026-07-29-ai-search-simulator-provider-design.md).
 
-**Storage:** Current production uses two SQLite databases (`vault.sqlite` for search/embeddings, `chat.sqlite` for conversations) plus Vault markdown files for chat history/projects. The accepted, not-yet-implemented persistence redesign moves machine run records to JSONL streams, keeps SQLite as rebuildable read models, and reserves Markdown for user documents/explicit exports; see [`2026-07-21-machine-record-storage-jsonl-design.md`](./docs/superpowers/specs/2026-07-21-machine-record-storage-jsonl-design.md).
+**Storage:** Current production uses two SQLite databases (`vault.sqlite` for search/embeddings, `chat.sqlite` for conversations) plus mixed Vault Markdown/JSON/JSONL outputs. The target governance keeps user-owned or explicitly materialized artifacts in Markdown/native formats, stores expensive machine facts in JSON/partitioned JSONL, and treats SQLite, full-text indexes, embeddings, caches, and telemetry as local rebuildable state. Before adding or changing any persistent writer, consult the canonical [`generated-artifact-registry.md`](./docs/conventions/generated-artifact-registry.md) and the phased [`2026-08-02 implementation design`](./docs/superpowers/specs/2026-08-02-generated-artifact-storage-governance-implementation-design.md); the older [`2026-07-21 JSONL design`](./docs/superpowers/specs/2026-07-21-machine-record-storage-jsonl-design.md) remains background.
 
 **State management:** Zustand for global stores (`projectStore`, `uiEventStore`), per-view scoped stores, React Context for service injection.
 
@@ -71,6 +71,7 @@ Detailed conventions live in `docs/conventions/`. Read `docs/conventions/README.
 - **Configurability** — no inline i18n / regex / label maps / color, thresholds, weights, timing knobs, or style configs; route through `templates/config/` plus a documented domain fallback when needed. [`configurability.md`](./docs/conventions/configurability.md)
 - **Root docs** — final-state `docs/*.html` manuals, not work logs; status language, dense tables, long paths, Mermaid, formulas, and viewport QA rules. [`root-docs.md`](./docs/conventions/root-docs.md)
 - **Spec + tests one doc** — spec 与 acceptance criteria / test 文件清单 / bad-case 复现写在同一份 `docs/superpowers/specs/*.md`，不拆到 `test-plan.md` / `qa.md`。[`spec-and-tests.md`](./docs/conventions/spec-and-tests.md)
+- **Generated artifact governance** — 每个持久化 writer 必须登记 output ID、事实源、同步、Peak knowledge index 与物化规则；Markdown/native 只给用户资产或显式产物，durable JSON/JSONL 同步，SQLite/index/cache/telemetry 留本地。[`generated-artifact-registry.md`](./docs/conventions/generated-artifact-registry.md)
 
 ### Obsidian Real-UI Non-Negotiables
 

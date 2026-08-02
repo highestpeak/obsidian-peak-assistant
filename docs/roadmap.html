@@ -250,10 +250,10 @@
                 <td><span class="pill gold">decided · queued</span></td>
               </tr>
               <tr>
-                <td><strong>机器运行记录 JSONL 重构</strong></td>
-                <td>Chat、AI Analysis、新 Composer Copilot/History 使用分片 JSONL；SQLite 作为可重建索引，Markdown 仅用于用户文档和独立 Export。单条 Chat <code>Save to Vault</code> 不保留，旧 Copilot 不迁移。</td>
-                <td><a href="superpowers/specs/2026-07-21-machine-record-storage-jsonl-design.md">Storage design</a></td>
-                <td><span class="pill gold">accepted · implementation pending</span></td>
+                <td><strong>生成产物与存储治理</strong></td>
+                <td>建立全量 Artifact Registry：Markdown/native 只保留用户拥有、显式创建、导出或物化的产物；昂贵且不可廉价重建的机器事实使用 JSON snapshot / 分片 JSONL 并同步；SQLite、全文索引、embedding、cache、telemetry 是本地可重建状态。Project machine state 与 Brief 分离；Resource Summary 改 durable JSON；Hub 默认 virtual、需要原生 Obsidian Graph 或用户编辑时才物化 Markdown。实施按 registry guard → shared store/rebuild → Resource/Profile/Project/receipts → Chat cutover → Hub/AI Graph → legacy retirement 推进，现有文件不自动删除。</td>
+                <td><a href="conventions/generated-artifact-registry.md">Artifact Registry</a><br><a href="superpowers/specs/2026-08-02-generated-artifact-storage-governance-implementation-design.md">Implementation design</a><br><a href="superpowers/specs/2026-07-21-machine-record-storage-jsonl-design.md">Earlier JSONL design</a></td>
+                <td><span class="pill gold">accepted · phased implementation pending</span></td>
               </tr>
               <!-- Chat Studio 完整生产实现 2026-07-20 shipped as commits a7ad6cd1/70e3283d/726f494a — see #done -->
               <tr>
