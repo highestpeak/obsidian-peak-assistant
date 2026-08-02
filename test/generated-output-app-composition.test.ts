@@ -20,6 +20,21 @@ function testAppRuntimeOwnsGeneratedOutputRegistry(): void {
 	console.log('PASS: AppRuntimeRegistry owns generated output registry');
 }
 
+function testAppRuntimeOwnsPersistenceRuntimeSlot(): void {
+	const runtimeRegistry = new AppRuntimeRegistry();
+	const fakeRuntime = { marker: 'generated-output-runtime' } as never;
+	assert.equal(runtimeRegistry.tryGetGeneratedOutputPersistenceRuntime(), null);
+	runtimeRegistry.setGeneratedOutputPersistenceRuntime(fakeRuntime);
+	assert.equal(runtimeRegistry.getGeneratedOutputPersistenceRuntime(), fakeRuntime);
+	assert.throws(
+		() => runtimeRegistry.setGeneratedOutputPersistenceRuntime(fakeRuntime),
+		/a runtime is already bound/,
+	);
+	runtimeRegistry.clearGeneratedOutputPersistenceRuntime();
+	assert.equal(runtimeRegistry.tryGetGeneratedOutputPersistenceRuntime(), null);
+	console.log('PASS: AppRuntimeRegistry owns generated output persistence runtime');
+}
+
 function activeRecord(
 	documentationId: string,
 	id: string,
@@ -61,4 +76,5 @@ function testAIGraphCompositionUsesRegistryPaths(): void {
 }
 
 testAppRuntimeOwnsGeneratedOutputRegistry();
+testAppRuntimeOwnsPersistenceRuntimeSlot();
 testAIGraphCompositionUsesRegistryPaths();

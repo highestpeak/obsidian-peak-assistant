@@ -418,6 +418,8 @@ Hub manifest 至少保存：
 
 ### Phase 1：共享 store、schema 与 projection rebuild 地基
 
+状态：**已实现（2026-08-02）**。实现与验证边界见 [`Phase 1 实施记录`](../plans/2026-08-02-generated-artifact-storage-governance-phase-1-implementation-note.md)。领域 read path 尚未在本 Phase 切换。
+
 - app-owned registry 与 output router；
 - atomic JSON snapshot、append-only JSONL、artifact body store；
 - schema version / checksum / corruption quarantine；

@@ -19,6 +19,7 @@ function testCatalogMatchesCanonicalDocumentation(): void {
 	const expected = [
 		...documentationIds('UA', 15),
 		...documentationIds('DR', 16),
+		'DR-17',
 		...documentationIds('LP', 10),
 		...documentationIds('LG', 8),
 	].sort();
@@ -147,6 +148,7 @@ const DIRECT_WRITER_PATTERNS = [
 
 const PERSISTENCE_INFRASTRUCTURE_ALLOWLIST = new Set([
 	'src/app/composer/ObsidianComposerDataStore.ts',
+	'src/app/storage/ObsidianGeneratedOutputDataAdapter.ts',
 	'src/app/platform/vault/vault-helpers.ts',
 	'src/core/storage/vault/vault-ops.ts',
 ]);

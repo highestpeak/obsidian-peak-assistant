@@ -13,6 +13,7 @@ import { SessionContextService } from '@/service/context/SessionContextService';
 import { registerDevtools, unregisterDevtools } from '@/app/context/devtools';
 import { HarnessRunBridge } from '@/service/agents/harness-bridge/HarnessRunBridge';
 import { AppRuntimeRegistry } from '@/app/context/AppRuntimeRegistry';
+import { composeGeneratedOutputPersistenceRuntime } from '@/app/storage/composeGeneratedOutputPersistenceRuntime';
 import type { VaultLintRuntime } from '@/service/lint/VaultLintRuntime';
 import type { AmbientRuntime } from '@/service/ambient/AmbientRuntime';
 import type { VaultReviewRuntime } from '@/service/copilot/vault/VaultReviewRuntime';
@@ -467,6 +468,7 @@ export class AppContext {
 			AppContext.instance.runtimeRegistry.clearMcpClientManager();
 			AppContext.instance.runtimeRegistry.clearCapabilityRegistry();
 			AppContext.instance.runtimeRegistry.clearIndexService();
+			AppContext.instance.runtimeRegistry.clearGeneratedOutputPersistenceRuntime();
 			AppContext.instance = null;
 		}
 	}
@@ -493,6 +495,18 @@ export class AppContext {
 		this.eventBus = EventBus.getInstance(app);
 		this._bridge = new HarnessRunBridge();
 		this.runtimeRegistry = new AppRuntimeRegistry();
+		this.runtimeRegistry.setGeneratedOutputPersistenceRuntime(
+			composeGeneratedOutputPersistenceRuntime(
+				app,
+				this.runtimeRegistry.getGeneratedOutputRegistry(),
+				{
+					vaultRoot: '',
+					aiRoot: settings.ai.rootFolder,
+					dataStore: settings.dataStorageFolder,
+					pluginData: plugin.manifest.dir ?? `.obsidian/plugins/${plugin.manifest.id}`,
+				},
+			),
+		);
 		this.progressReporter = new ObsidianProgressReporter();
 		this.vaultPreview = composeVaultPreview(app);
 		this.vaultNavigation = composeVaultNavigation(

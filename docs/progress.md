@@ -22,7 +22,8 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] **Writer coverage gate**：自动扫描 `src/` 的直接 Vault / adapter / fs writer，25 个直接 writer 全部映射到 catalog evidence 或 3 个通用 persistence adapter allowlist；新增未登记 writer 会让测试失败。
 - [x] **首个真实 adopter**：AI Graph artifact 与 run-event 目录从硬编码改为通过 app-owned registry 解析，物理路径保持 `DataStore/artifacts/ai-graphs` 与 `DataStore/records/analysis/runs`，没有数据迁移或用户文件改写。
 - [x] **验证边界**：2 个新 focused suites 与 AppRuntime/AI Graph 相关 4 suites 通过；生产 build、bundle check、simulator boundary 和 architecture audit 通过，boundary 维持 19、service→app/ui 为 0。全量为 `394/398`；4 个失败来自未触碰的 Chat Streamdown 与并行 Composer 共享选择器/标签候选变更。本 Phase 未迁移 Chat、Project、Resource Summary、Hub，也未删除任何 legacy Markdown。
-- [ ] **下一步**：Phase 1 实现 atomic JSON snapshot、append-only JSONL、artifact body store、schema/checksum/quarantine、projection rebuild 与 sync inclusion manifest；通过 rebuild fixture 后再进入 Resource/Profile/Project 等 Phase 2 writer 迁移。
+- [x] **Phase 1 已完成**：atomic JSON snapshot、partitioned JSONL、immutable artifact body、schema/checksum/quarantine、DR-17 migration journal、projection rebuild registry 与由 typed catalog 派生的 sync manifest 已接到 app-owned persistence runtime；focused tests、build 与 boundary audit 通过。详见 [`Phase 1 实施记录`](./superpowers/plans/2026-08-02-generated-artifact-storage-governance-phase-1-implementation-note.md)。
+- [ ] **下一步**：Phase 2 迁移 Resource Summary、User Profile、Project state/Brief 与 run/artifact/media receipts；所有 legacy source 先 import + checksum + parity，禁止自动删除。
 
 ## 2026-08-02 · Planned Requirements 产品归属纠偏
 

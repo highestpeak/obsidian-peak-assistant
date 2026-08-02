@@ -36,6 +36,7 @@ import type { DocumentComposerRuntime } from '@/app/composer/DocumentComposerRun
 import type { AIGraphArtifactRuntime } from '@/service/ai-graph';
 import { createDefaultGeneratedOutputRegistry } from '@/core/storage/generated-output';
 import type { GeneratedOutputRegistry } from '@/core/storage/generated-output';
+import type { GeneratedOutputPersistenceRuntime } from '@/core/storage/generated-output';
 
 /**
  * Bundle of the three usage-telemetry services. They boot and dispose
@@ -50,6 +51,7 @@ export interface UsageServices {
 
 export class AppRuntimeRegistry {
 	private readonly generatedOutputRegistry: GeneratedOutputRegistry;
+	private generatedOutputPersistenceRuntime: GeneratedOutputPersistenceRuntime | null = null;
 	private vaultLintRuntime: VaultLintRuntime | null = null;
 	private ambientRuntime: AmbientRuntime | null = null;
 	private vaultReviewRuntime: VaultReviewRuntime | null = null;
@@ -77,6 +79,28 @@ export class AppRuntimeRegistry {
 	 */
 	getGeneratedOutputRegistry(): GeneratedOutputRegistry {
 		return this.generatedOutputRegistry;
+	}
+
+	setGeneratedOutputPersistenceRuntime(runtime: GeneratedOutputPersistenceRuntime): void {
+		if (this.generatedOutputPersistenceRuntime !== null) {
+			throw new Error('AppRuntimeRegistry.setGeneratedOutputPersistenceRuntime: a runtime is already bound.');
+		}
+		this.generatedOutputPersistenceRuntime = runtime;
+	}
+
+	getGeneratedOutputPersistenceRuntime(): GeneratedOutputPersistenceRuntime {
+		if (this.generatedOutputPersistenceRuntime === null) {
+			throw new Error('AppRuntimeRegistry.getGeneratedOutputPersistenceRuntime: no runtime is bound.');
+		}
+		return this.generatedOutputPersistenceRuntime;
+	}
+
+	tryGetGeneratedOutputPersistenceRuntime(): GeneratedOutputPersistenceRuntime | null {
+		return this.generatedOutputPersistenceRuntime;
+	}
+
+	clearGeneratedOutputPersistenceRuntime(): void {
+		this.generatedOutputPersistenceRuntime = null;
 	}
 
 	/**

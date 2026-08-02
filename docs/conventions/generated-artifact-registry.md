@@ -12,7 +12,7 @@
 
 配套实施设计见 [生成产物与存储治理实现设计](../superpowers/specs/2026-08-02-generated-artifact-storage-governance-implementation-design.md)。较早的 [机器运行记录 JSONL 设计](../superpowers/specs/2026-07-21-machine-record-storage-jsonl-design.md) 仍保留历史背景；两者冲突时，以本文和 2026-08-02 实现设计为准。
 
-运行时 Phase 0 已落地：typed catalog 位于 `src/core/storage/generated-output/`，49 个 descriptor 与下方 49 个文档 ID 一一对应；`AppRuntimeRegistry` 拥有唯一实例，AI Graph artifact 与 run-event 路径是首个 adopter。当前 Chat、Project、Resource Summary 和 Hub 的格式迁移仍未开始，表中的“待迁移 / 待实现”状态继续有效。
+运行时 Phase 0–1 已落地：typed catalog 位于 `src/core/storage/generated-output/`，50 个 descriptor 与下方 50 个文档 ID 一一对应；`AppRuntimeRegistry` 拥有唯一 policy 与 persistence runtime，AI Graph artifact 与 run-event 路径是首个 adopter。原子 JSON、分区 JSONL、artifact body、迁移日志、sync manifest 与 projection rebuild 合同已经可用；当前 Chat、Project、Resource Summary 和 Hub 的领域格式迁移仍按后续阶段推进。
 
 ## Why
 
@@ -136,6 +136,7 @@ Peak index policy 不等于 Obsidian metadata policy。任何 Vault 内 Markdown
 | DR-14 | Document History | `records/document-history/<record-id>.jsonl` + identity index | 保持 JSONL；identity index 是可同步的小型映射 | 已符合 |
 | DR-15 | Composer Copilot generation history | `records/copilot/sessions/<record-id>.jsonl` | 保持 JSONL，包含失败、取消、stale、未采用候选 | 已符合 |
 | DR-16 | User Profile AI proposals | 当前可能直接覆盖 Profile Markdown | proposal / accept / reject 写 run JSONL；只有 accepted current content 写 UA-01 | 待收口 |
+| DR-17 | 生成产物迁移日志 | 无统一、可恢复的 migration checkpoint | `records/system/generated-output-migrations.jsonl`；记录 source/target、checksum 与 cutover 状态，稳定事件 ID 保证幂等 | 已实现 |
 
 主要 writer 证据：
 
