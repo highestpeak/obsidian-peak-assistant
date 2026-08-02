@@ -161,7 +161,7 @@
       z-index: 2;
       padding: 15px 16px 12px;
       border-bottom: 1px solid var(--line);
-      background: rgba(255, 255, 255, .96);
+      background: var(--surface);
     }
 
     .list-head strong { display: block; font-size: 14px; }
@@ -395,6 +395,26 @@
       font-weight: 620;
     }
 
+    .output-actions { display: grid; gap: 8px; }
+    .output-action {
+      display: grid;
+      grid-template-columns: 20px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface-2);
+      text-align: left;
+    }
+    .output-action:hover { border-color: #cfc8f1; background: var(--accent-soft); }
+    .output-action strong, .output-action span { display: block; }
+    .output-action span { margin-top: 2px; color: var(--muted); }
+    .output-action > small { color: var(--accent); font-weight: 650; white-space: nowrap; }
+    .source-list { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+    .source-list li { padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); overflow-wrap: anywhere; }
+
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -476,11 +496,11 @@
       <header class="topbar">
         <div class="title">
           <strong>AI Control Center</strong>
-          <span>Manage AI actions and shared prompts</span>
+          <span>Manage AI actions, shared prompts, and output contracts</span>
         </div>
         <label class="search">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
-          <input id="searchInput" type="search" placeholder="Search AI actions or prompts…">
+          <input id="searchInput" type="search" placeholder="Search actions, prompts, or output types…">
         </label>
       </header>
 
@@ -512,6 +532,7 @@
   </div>
 
   <script src="prompt-catalog-data.js"></script>
+  <script src="output-catalog-data.js"></script>
   <script>
     const icons = {
       search: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>',
@@ -525,6 +546,7 @@
       prompt: '<svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h6M8 16h4"/></svg>',
       model: '<svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 9h6v6H9zM9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>',
       run: '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',
+      output: '<svg viewBox="0 0 24 24"><path d="m12 3 8 4-8 4-8-4z"/><path d="m4 7 8 4 8-4v10l-8 4-8-4z"/><path d="M12 11v10"/></svg>',
       alert: '<svg viewBox="0 0 24 24"><path d="M12 3 2.8 19h18.4z"/><path d="M12 9v4M12 17h.01"/></svg>',
       all: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><rect x="14" y="14" width="6" height="6"/></svg>'
     };
@@ -904,6 +926,103 @@
       }
     }
 
+    const outputOwnerSurfaces = {
+      'user-profile': 'User Profile',
+      prompt: 'Prompt Library',
+      skill: 'Skills',
+      chat: 'Chat Studio',
+      'chat-project': 'Projects',
+      'chat-artifact': 'Chat Resources / Artifacts',
+      'run-envelope': 'Owning run detail',
+      'chat-assistant': 'Assistant Builder',
+      'ai-analysis': 'AI Search',
+      'chat-context': 'Chat context',
+      hub: 'Vault Intelligence / Hub detail',
+      'ai-graph': 'AI Graph',
+      'generated-output-governance': 'System maintenance',
+      media: 'Chat / Composer generation',
+      'copilot-composer': 'Composer',
+      'composer-file-workspace': 'File Workspace',
+      composer: 'Composer / History',
+      'composer-copilot': 'Composer Copilot',
+      'search-index': 'Vault Search',
+      'storage-projection': 'Owning preview surface',
+      'developer-tools': 'Developer tools',
+      'sqlite-runtime': 'System & background',
+      'legacy-copilot': 'Read-only migration history'
+    };
+
+    const outputActionMap = {
+      'user-profile.markdown': ['chat.profile.organize'],
+      'user-profile.proposal-events': ['chat.memory.extract', 'chat.profile.organize'],
+      'project.brief': ['chat.project.description', 'chat.project.summary'],
+      'artifact.dataview': ['chat.artifact.dataview'],
+      'artifact.excalidraw': ['chat.artifact.excalidraw'],
+      'artifact.drawio': ['chat.artifact.drawio'],
+      'artifact.extract': ['chat.artifact.extract'],
+      'artifact.reminder': ['chat.artifact.reminder'],
+      'chat.conversation-events': ['chat.conversation.run', 'chat.regenerate'],
+      'chat.project-state': ['chat.project.description', 'chat.project.summary'],
+      'run.events': ['analysis.vault.search', 'graph.generate', 'chat.conversation.run', 'composer.copilot.session'],
+      'chat.artifact-receipt': ['chat.artifact.document', 'chat.artifact.dataview', 'chat.artifact.excalidraw', 'chat.artifact.drawio', 'chat.artifact.extract', 'chat.artifact.reminder'],
+      'chat.assistant-definition': ['chat.assistant.draft'],
+      'chat.project-plan-state': ['chat.plan-mode'],
+      'analysis.markdown-export': ['analysis.report.generate'],
+      'resource.summary-snapshot': ['chat.conversation.summary', 'chat.project.summary'],
+      'analysis.snapshot': ['analysis.vault.search', 'analysis.report.generate', 'analysis.continue'],
+      'hub.materialized-note': ['knowledge.hub.materialize'],
+      'ai-graph.markdown-export': ['graph.generate', 'graph.update'],
+      'hub.manifest': ['knowledge.hub.materialize'],
+      'hub.events': ['knowledge.hub.curate', 'knowledge.hub.materialize'],
+      'ai-graph.artifact': ['graph.generate', 'graph.update', 'graph.thinking-tree'],
+      'projection.hub-graph': ['knowledge.hub.curate'],
+      'media.generated-attachment': ['media.image.generate', 'media.image.edit', 'media.video.generate', 'media.music.generate'],
+      'document.accepted-writeback': ['composer.copilot.session', 'copilot.rewrite-selection', 'copilot.write-article'],
+      'artifact.native-file': ['composer.image.edit', 'composer.canvas.edit', 'composer.excalidraw.edit'],
+      'media.job-events': ['media.image.generate', 'media.image.edit', 'media.video.generate', 'media.music.generate'],
+      'run.artifact-body': ['analysis.report.generate', 'graph.generate', 'chat.artifact.document'],
+      'composer.document-history': ['copilot.document.auto-review', 'composer.copilot.session'],
+      'composer.generation-history': ['copilot.document.auto-review', 'copilot.insight.draft-proposal', 'composer.copilot.session'],
+      'index.embedding': ['knowledge.index.embedding'],
+      'cache.summary-preview': ['knowledge.index.summary'],
+      'telemetry.composer': ['ambient.push', 'composer.copilot.session']
+    };
+
+    const outputClassDescriptions = {
+      'user-artifact': 'A user-owned or explicitly materialized output that stays in its owning product surface.',
+      'durable-record': 'Canonical machine state that survives projection rebuilds and is reviewed through its owning surface.',
+      projection: 'A local, rebuildable read model. It is not a synced document or a second source of truth.',
+      cache: 'A local performance artifact that can be regenerated from canonical state.',
+      telemetry: 'Bounded local operational evidence used to explain or improve the owning behavior.'
+    };
+
+    const outputTitleOverrides = {
+      'user-profile.markdown': 'User Profile',
+      'prompt.override': 'Prompt override',
+      'skill.vault-definition': 'Vault skill definition',
+      'project.brief': 'Project Brief',
+      'analysis.markdown-export': 'AI Search Markdown export',
+      'ai-graph.markdown-export': 'AI Graph Markdown export',
+      'media.generated-attachment': 'Generated media attachment',
+      'document.accepted-writeback': 'Accepted document writeback',
+      'artifact.native-file': 'Native file artifact'
+    };
+
+    function humanizeOutputId(id) {
+      const acronyms = { ai: 'AI', sqlite: 'SQLite', json: 'JSON', jsonl: 'JSONL' };
+      return id.split(/[.-]/).map(word => acronyms[word] ?? word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    }
+
+    const outputs = (window.PEAK_OUTPUT_CATALOG ?? []).map(item => ({
+      ...item,
+      title: outputTitleOverrides[item.id] ?? humanizeOutputId(item.id),
+      surface: outputOwnerSurfaces[item.owner] ?? humanizeOutputId(item.owner),
+      actionIds: outputActionMap[item.id] ?? [],
+      description: item.lifecycle === 'migration-source'
+        ? 'A read-only legacy source retained for safe migration. New instances must use its registered replacement.'
+        : outputClassDescriptions[item.outputClass]
+    }));
+
     let workspace = 'capabilities';
     let activeGroup = 'all';
     let activeItem = capabilities[0];
@@ -952,6 +1071,24 @@
       return '<span class="pill">Default</span>';
     }
 
+    function outputFamily(item) {
+      if (item.lifecycle === 'migration-source') return 'Historical migration sources';
+      if (item.outputClass === 'user-artifact') return 'User-owned artifacts';
+      if (item.outputClass === 'durable-record') return 'Durable machine records';
+      if (item.outputClass === 'projection') return 'Rebuildable projections';
+      if (item.outputClass === 'cache') return 'Local caches';
+      return 'Bounded telemetry';
+    }
+
+    function outputPill(item) {
+      if (item.lifecycle === 'migration-source') return '<span class="pill amber">Migration source</span>';
+      if (item.outputClass === 'user-artifact') return '<span class="pill green">User-owned</span>';
+      if (item.outputClass === 'durable-record') return '<span class="pill blue">Durable</span>';
+      if (item.outputClass === 'projection') return '<span class="pill purple">Rebuildable</span>';
+      if (item.outputClass === 'telemetry') return '<span class="pill amber">Bounded</span>';
+      return '<span class="pill">Local only</span>';
+    }
+
     function renderRail() {
       rail.innerHTML = `<div class="rail-title">AI actions</div>` +
         groups.map(([id, icon, label]) => {
@@ -961,7 +1098,10 @@
         }).join('') +
         `<div class="rail-separator"></div>
          <div class="rail-title">Prompt library</div>
-         <button class="rail-button ${workspace === 'prompts' ? 'active' : ''}" data-catalog="prompts">${icons.prompt}<span>All prompts</span></button>`;
+         <button class="rail-button ${workspace === 'prompts' ? 'active' : ''}" data-catalog="prompts">${icons.prompt}<span>All prompts</span><small>${prompts.length}</small></button>
+         <div class="rail-separator"></div>
+         <div class="rail-title">Output registry</div>
+         <button class="rail-button ${workspace === 'outputs' ? 'active' : ''}" data-catalog="outputs">${icons.output}<span>All output types</span><small>${outputs.length}</small></button>`;
     }
 
     function capabilityRow(item) {
@@ -1004,20 +1144,44 @@
       </button>`;
     }
 
+    function outputRow(item) {
+      return `<button class="row ${activeItem?.id === item.id ? 'active' : ''}" data-output-id="${item.id}">
+        <span class="row-icon">${icons.output}</span>
+        <span class="row-copy">
+          <span class="row-title">${item.title}</span>
+          <span class="row-meta">${item.documentationId} · ${item.carrier} · ${item.owner}</span>
+        </span>
+        ${outputPill(item)}
+      </button>`;
+    }
+
+    function groupedOutputRows(items) {
+      const familyOrder = ['User-owned artifacts', 'Durable machine records', 'Rebuildable projections', 'Local caches', 'Bounded telemetry', 'Historical migration sources'];
+      return familyOrder.map(family => {
+        const familyItems = items.filter(item => outputFamily(item) === family);
+        if (!familyItems.length) return '';
+        return `<div class="family-head"><span>${family}</span><small>${familyItems.length}</small></div>${familyItems.map(outputRow).join('')}`;
+      }).join('');
+    }
+
     function renderRows() {
       const query = searchInput.value.trim().toLowerCase();
       if (query) {
         const matchedCapabilities = capabilities.filter(item => [item.id, item.title, item.surface, item.shape, item.route].join(' ').toLowerCase().includes(query));
         const matchedPrompts = prompts.filter(item => [item.id, item.title, item.group, item.kind, item.callers].join(' ').toLowerCase().includes(query));
+        const matchedOutputs = outputs.filter(item => [item.documentationId, item.id, item.title, item.owner, item.outputClass, item.carrier, item.surface, item.path.template].join(' ').toLowerCase().includes(query));
         listTitle.textContent = 'Search results';
-        listDescription.textContent = `${matchedCapabilities.length} AI actions · ${matchedPrompts.length} prompts`;
+        listDescription.textContent = `${matchedCapabilities.length} AI actions · ${matchedPrompts.length} prompts · ${matchedOutputs.length} output types`;
         const capabilityResults = matchedCapabilities.length
           ? `<div class="family-head"><span>AI actions</span><small>${matchedCapabilities.length}</small></div>${matchedCapabilities.map(capabilityRow).join('')}`
           : '';
         const promptResults = matchedPrompts.length
           ? `<div class="family-head"><span>Prompts</span><small>${matchedPrompts.length}</small></div>${matchedPrompts.map(promptRow).join('')}`
           : '';
-        rows.innerHTML = capabilityResults + promptResults || '<div class="empty">No AI action or prompt matches this search.</div>';
+        const outputResults = matchedOutputs.length
+          ? `<div class="family-head"><span>Output types</span><small>${matchedOutputs.length}</small></div>${matchedOutputs.map(outputRow).join('')}`
+          : '';
+        rows.innerHTML = capabilityResults + promptResults + outputResults || '<div class="empty">No AI action, prompt, or output type matches this search.</div>';
         return;
       }
       if (workspace === 'capabilities') {
@@ -1033,24 +1197,45 @@
         return;
       }
 
-      listTitle.textContent = 'All prompts';
-      listDescription.textContent = `${prompts.length} retained or migrating prompts. No no-caller catalog placeholders are shown.`;
-      const filtered = prompts.filter(item => [item.id, item.title, item.group, item.kind].join(' ').toLowerCase().includes(query));
-      rows.innerHTML = filtered.length ? filtered.map(promptRow).join('') : '<div class="empty">No prompt matches this search.</div>';
+      if (workspace === 'prompts') {
+        listTitle.textContent = 'All prompts';
+        listDescription.textContent = `${prompts.length} retained or migrating prompts. No no-caller catalog placeholders are shown.`;
+        const filtered = prompts.filter(item => [item.id, item.title, item.group, item.kind].join(' ').toLowerCase().includes(query));
+        rows.innerHTML = filtered.length ? filtered.map(promptRow).join('') : '<div class="empty">No prompt matches this search.</div>';
+        return;
+      }
+
+      listTitle.textContent = 'All output types';
+      listDescription.textContent = `${outputs.length} registered type contracts. Artifact instances stay in their owning product surfaces.`;
+      rows.innerHTML = outputs.length ? groupedOutputRows(outputs) : '<div class="empty">No output contract is registered.</div>';
     }
 
     function filteredCount(groupId) {
       return groupId === 'all' ? capabilities.length : capabilities.filter(item => item.group === groupId).length;
     }
 
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
     function inspectorHeader(item, type) {
       const isCapability = type === 'capability';
-      const subtitle = type === 'capability'
+      const isOutput = type === 'output';
+      const subtitle = isCapability
         ? item.description
-        : `${item.description ?? 'Registered Prompt template'} ${item.owners ? `Mapped to ${item.owners} AI action${item.owners === 1 ? '' : 's'}.` : 'No top-level AI action is mapped in this design fixture.'}`;
+        : isOutput
+          ? `${item.description} This page describes the output type, not a stored artifact instance.`
+          : `${item.description ?? 'Registered Prompt template'} ${item.owners ? `Mapped to ${item.owners} AI action${item.owners === 1 ? '' : 's'}.` : 'No top-level AI action is mapped in this design fixture.'}`;
+      const breadcrumbs = isCapability ? item.surface : isOutput ? `Output Registry · ${outputFamily(item)}` : `Prompt Library · ${item.group}`;
+      const pill = isCapability ? statusPill(item.status) : isOutput ? outputPill(item) : promptPill(item);
       return `<div class="inspector-head">
-        <div class="breadcrumbs">${isCapability ? item.surface : `Prompt Library · ${item.group}`}</div>
-        <div class="inspector-title-row"><h1>${item.title}</h1>${isCapability ? statusPill(item.status) : promptPill(item)}</div>
+        <div class="breadcrumbs">${breadcrumbs}</div>
+        <div class="inspector-title-row"><h1>${item.title}</h1>${pill}</div>
         <p class="inspector-subtitle">${subtitle}</p>
         ${isCapability ? `<div class="inspector-tabs">
           <button class="inspector-tab ${inspectorTab === 'overview' ? 'active' : ''}" data-tab="overview">Behavior</button>
@@ -1197,9 +1382,57 @@
       </section>`;
     }
 
+    function renderOutputInspector(item) {
+      const actions = item.actionIds
+        .map(id => capabilities.find(candidate => candidate.id === id))
+        .filter(Boolean);
+      const actionRows = actions.map(action => `<button class="output-action" data-open-action="${action.id}">
+        ${icons[action.icon]}
+        <span><strong>${action.title}</strong><span>${action.surface} · ${action.shape}</span></span>
+        <small>Open action</small>
+      </button>`).join('');
+      const visibility = item.lifecycle === 'migration-source'
+        ? `Read-only migration source. New output uses <code>${escapeHtml(item.replacementId)}</code>.`
+        : item.outputClass === 'user-artifact'
+          ? `Open or edit the resulting artifact in ${item.surface}.`
+          : item.outputClass === 'durable-record'
+            ? `Review its effect through ${item.surface}; the machine record is not presented as a document.`
+            : `Infrastructure-only. People see its effect in ${item.surface}, not the stored file itself.`;
+      const writerRows = item.writerEvidence.map(source => `<li><code>${escapeHtml(source)}</code></li>`).join('');
+      const replacementRow = item.replacementId ? `<dt>Replacement</dt><dd><code>${escapeHtml(item.replacementId)}</code></dd>` : '';
+      const schemaRow = item.schemaVersion ? `<dt>Schema version</dt><dd>${item.schemaVersion}</dd>` : '';
+
+      inspector.innerHTML = inspectorHeader(item, 'output') + `<section class="panel active">
+        <div class="section"><h2>Registry boundary</h2><div class="cards">
+          <div class="card"><strong>What is registered</strong><span>Ownership, canonical carrier, sync, Peak index, materialization, retention, lifecycle, and writer evidence.</span></div>
+          <div class="card"><strong>What stays elsewhere</strong><span>Actual conversations, reports, graphs, documents, and media stay in Chat, AI Search, AI Graph, Composer, or their owning history.</span></div>
+        </div></div>
+        <div class="section"><h2>Storage contract</h2><dl class="facts">
+          <dt>Registry ID</dt><dd><code>${item.documentationId}</code> · <code>${item.id}</code></dd>
+          <dt>Owner</dt><dd>${item.owner}</dd>
+          <dt>Output class</dt><dd>${item.outputClass}</dd>
+          <dt>Canonical carrier</dt><dd>${item.carrier}</dd>
+          <dt>Path policy</dt><dd><code>${item.path.scope} · ${escapeHtml(item.path.template)}</code></dd>
+          <dt>Sync policy</dt><dd>${item.syncPolicy}</dd>
+          <dt>Peak index</dt><dd>${item.peakIndexPolicy}</dd>
+          <dt>Materialization</dt><dd>${item.materializationPolicy}</dd>
+          <dt>Retention</dt><dd>${item.retentionPolicy}</dd>
+          <dt>Lifecycle flag</dt><dd>${item.lifecycle}</dd>
+          ${schemaRow}${replacementRow}
+        </dl></div>
+        <div class="section"><h2>Where the result belongs</h2><dl class="facts"><dt>Owning surface</dt><dd>${item.surface}</dd><dt>User access</dt><dd>${visibility}</dd></dl></div>
+        <div class="section"><h2>Produced or referenced by AI actions</h2>
+          ${actionRows ? `<div class="output-actions">${actionRows}</div>` : `<div class="notice">${icons.output}<span>No direct AI action is mapped. This is a definition, governance record, infrastructure output, or migration source owned outside a single action.</span></div>`}
+        </div>
+        <div class="section"><h2>Source ownership</h2><ul class="source-list">${writerRows}</ul></div>
+        <div class="notice">${icons.output}<span>Read-only here. The production source of truth is the typed GeneratedOutputRegistry; Control Center must consume that registry instead of creating a second output catalog.</span></div>
+      </section>`;
+    }
+
     function renderInspector() {
       if (workspace === 'capabilities') return renderCapabilityInspector(activeItem);
-      return renderPromptInspector(activeItem);
+      if (workspace === 'prompts') return renderPromptInspector(activeItem);
+      return renderOutputInspector(activeItem);
     }
 
     function renderAll() {
@@ -1215,10 +1448,33 @@
         return;
       }
 
+      const linkedAction = event.target.closest('[data-open-action]');
+      if (linkedAction) {
+        const nextAction = capabilities.find(item => item.id === linkedAction.dataset.openAction);
+        if (!nextAction) return;
+        workspace = 'capabilities';
+        activeGroup = nextAction.group;
+        activeItem = nextAction;
+        inspectorTab = 'overview';
+        searchInput.value = '';
+        renderAll();
+        return;
+      }
+
       const catalogButton = event.target.closest('[data-catalog="prompts"]');
       if (catalogButton) {
         workspace = 'prompts';
         activeItem = prompts[0];
+        inspectorTab = 'overview';
+        searchInput.value = '';
+        renderAll();
+        return;
+      }
+
+      const outputCatalogButton = event.target.closest('[data-catalog="outputs"]');
+      if (outputCatalogButton) {
+        workspace = 'outputs';
+        activeItem = outputs[0];
         inspectorTab = 'overview';
         searchInput.value = '';
         renderAll();
@@ -1252,6 +1508,17 @@
       if (promptRowButton) {
         workspace = 'prompts';
         activeItem = prompts.find(item => item.id === promptRowButton.dataset.promptId);
+        renderRail();
+        renderRows();
+        renderInspector();
+        return;
+      }
+
+      const outputRowButton = event.target.closest('[data-output-id]');
+      if (outputRowButton) {
+        workspace = 'outputs';
+        activeItem = outputs.find(item => item.id === outputRowButton.dataset.outputId);
+        inspectorTab = 'overview';
         renderRail();
         renderRows();
         renderInspector();
