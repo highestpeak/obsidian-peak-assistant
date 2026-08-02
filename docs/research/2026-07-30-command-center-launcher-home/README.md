@@ -2,7 +2,7 @@
 
 > 日期：2026-07-30
 >
-> 视觉方向修订：2026-07-31 · V17 per-item icon browser
+> 视觉方向修订：2026-08-02 · V18 layered Dial / Grid / Overflow projection
 >
 > 状态：Research complete；产品边界已进入正式设计，尚未实现
 >
@@ -173,6 +173,15 @@ V17 补齐 item 级 icon 自定义：
 - 支持 `No icon`。如果当前是 icon-only，清空 icon 会安全回退到 text-only，避免生成不可见按钮。
 - Emoji 保存 Unicode grapheme，并使用系统 emoji font；不引入 AI 生成图片、上传流程或额外图标资产目录。
 
+V18 根据 `Peak Command Center (standalone).html` 与 `Peak Command Center Spec (standalone).html` 收敛运行态密度：
+
+- 单一三列矩阵被替换为一个没有分区标题的三层 projection：Destination 使用四列 Dial，常用 command 使用五列 Grid，超过两行的 command 才进入 Overflow List。
+- Dial 负责 Home、Dashboard、Base、Canvas、Vault document、Bookmark、Workspace 与 registered view。它使用安静浅底和较大的位置单元，服务“认位置”的 New Tab / speed-dial 心智。
+- Command Grid 保持二维，但首屏上限固定为两行。新增 command 只追加，不重排已形成肌肉记忆的前两行；Overflow List 是容量降级，不是重新把整个产品做成 Command Palette。
+- 顶部只保留带短名称的 group segmented tabs、一个分隔后的 `All`，以及 footer 中的 Customize。删除 scope 行里的重复加号入口。
+- Customize 改为 Back / `Customize` / Done 标题栏，group chips、直接 group identity 编辑、目录搜索和一张连续 stable directory。Icon Browser、显示模式、Home pin 与 membership 仍在 item 原行渐进展开。
+- 原型默认尺寸对齐 standalone spec：Launcher / Search 约 `640 × 448px`，Customize 约 `680 × 560px`。这次只采纳信息架构、密度和交互契约，不把 theme / vibe / density 参数作为生产设置承诺。
+
 ## 录屏观察
 
 录屏时长约 8.1 秒，画面为 `2114 × 1822`，展示了原生 Obsidian Command Palette 的三个典型状态。
@@ -340,10 +349,10 @@ Start.me 的 Bookmark Groups 支持 tab 或 collapsible list。它说明 tab 可
 ### 要做
 
 1. 一个 owner-approved 的 `Open Peak Command Center` 全局命令，快捷键由用户在 Obsidian Hotkeys 中设置。
-2. 空 query 显示一排用户 group 与二维 launcher grid；没有第二排类型导航。
-3. 运行态搜索只过滤已策展的 command 与 destination，并保持相同的 scope / grid 结构。
+2. 空 query 显示一排用户 group 与 `Destination Dial → Command Grid → Overflow List` 的稳定二维 projection；没有第二排类型导航。
+3. 运行态搜索只过滤已策展的 command 与 destination，并保持相同的 scope / layered projection 结构。
 4. 编辑态才允许搜索全部已注册命令并加入组。
-5. 每个 tile 显示图标、短标题、来源组和实际快捷键。
+5. Dial / Grid item 默认显示语义图标与短标题；真实快捷键按空间允许展示，完整来源留在 tooltip、Customize 或 Overflow List。
 6. 同一 action 配置可被 full-tab Home View 的 Quick access 引用。
 7. Home 支持 Search、Quick access、Continue 和可选 Pinned pages，并把 Note、Base、Canvas、Bookmark 或 Workspace 的内容所有权留给原 owner。
 

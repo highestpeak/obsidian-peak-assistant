@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Peak Command Center · V17</title>
+  <title>Peak Command Center · V18</title>
   <style>
     :root {
       color-scheme: light;
@@ -405,7 +405,7 @@
     .launcher {
       position: relative;
       width: 640px;
-      height: 400px;
+      height: 448px;
       display: grid;
       grid-template-rows: 46px minmax(0, 1fr) 34px;
       overflow: hidden;
@@ -416,7 +416,61 @@
     }
 
     .launcher[data-screen="manage"] {
-      height: min(510px, calc(100% - 28px));
+      width: 680px;
+      height: min(560px, calc(100% - 28px));
+      grid-template-rows: 46px minmax(0, 1fr);
+    }
+
+    .manage-titlebar {
+      gap: 9px;
+      padding: 0 10px;
+      border-bottom: 1px solid #eef0f2;
+    }
+
+    .manage-back-button,
+    .manage-done-button {
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .manage-back-button {
+      width: 26px;
+      color: #7b7f86;
+    }
+
+    .manage-back-button:hover {
+      color: #292c31;
+      background: #f3f4f5;
+    }
+
+    .manage-back-button .icon {
+      width: 15px;
+      height: 15px;
+    }
+
+    .manage-title {
+      color: #2b2e33;
+      font-size: 12px;
+      font-weight: 650;
+      letter-spacing: -0.01em;
+    }
+
+    .manage-done-button {
+      margin-left: auto;
+      padding: 0 10px;
+      color: #684eb4;
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .manage-done-button:hover {
+      background: #f2eef9;
     }
 
     .launcher-header {
@@ -530,10 +584,14 @@
     }
 
     .scope-tab {
-      width: 30px;
-      padding: 0;
+      width: auto;
+      gap: 6px;
+      padding: 0 9px;
       border-radius: 5px;
       transition: color 120ms ease, opacity 120ms ease;
+      font-size: 10.5px;
+      font-weight: 520;
+      white-space: nowrap;
     }
 
     .scope-tab.scope-all {
@@ -554,13 +612,13 @@
     }
 
     .scope-tab .icon {
-      width: 16px;
-      height: 16px;
+      width: 13px;
+      height: 13px;
     }
 
     .scope-tab:hover {
       color: var(--ink);
-      background: transparent;
+      background: #f5f5f6;
       opacity: 1;
     }
 
@@ -572,10 +630,12 @@
     .scope-tab.active {
       border-color: transparent;
       color: #202226;
-      background: transparent;
+      background: #f0f0f2;
+      font-weight: 620;
     }
 
     .scope-indicator {
+      display: none;
       position: absolute;
       bottom: 0;
       left: 0;
@@ -618,7 +678,7 @@
 
     .scope-tab.scope-text {
       width: auto;
-      padding: 0 6px;
+      padding: 0 9px;
       color: #5f646b;
       font-size: 10px;
       font-weight: 540;
@@ -627,6 +687,14 @@
 
     .scope-tab.scope-text::before {
       content: none;
+    }
+
+    .scope-divider {
+      width: 1px;
+      height: 14px;
+      flex: none;
+      margin: 0 2px;
+      background: #eceef1;
     }
 
     .scope-panels {
@@ -644,126 +712,167 @@
       animation: scope-panel-enter 180ms cubic-bezier(0.22, 1, 0.36, 1);
     }
 
-    .command-tile-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 2px 7px;
+    .launcher-projection {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
 
-    .command-tile-grid .action-tile {
+    .launcher-dial-grid,
+    .launcher-command-grid {
+      display: grid;
+      gap: 4px;
+    }
+
+    .launcher-dial-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .launcher-command-grid {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .launcher-overflow-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      padding-top: 6px;
+      border-top: 1px solid #eef0f2;
+    }
+
+    .launcher-projection .action-tile {
       width: 100%;
-      height: 38px;
-      display: grid;
-      grid-template-columns: 18px minmax(0, 1fr) auto;
-      grid-template-rows: 1fr;
-      align-items: center;
-      justify-content: initial;
-      column-gap: 7px;
-      padding: 0 7px;
+      min-width: 0;
       border-color: transparent;
-      border-radius: 5px;
+      border-radius: 6px;
+      color: #30343a;
       background: transparent;
-      transition: background-color 120ms ease, color 120ms ease;
+      transition: background-color 110ms ease, box-shadow 110ms ease;
     }
 
-    .command-tile-grid .action-tile:hover {
+    .launcher-projection .action-tile:hover,
+    .launcher-projection .action-tile.selected {
       border-color: transparent;
-      background: #f7f8f9;
+      background: #f1eff6;
+      box-shadow: inset 0 0 0 1px #ddd7eb;
     }
 
-    .command-tile-grid .action-tile.selected {
-      border-color: transparent;
-      background: #f7f8f9;
-      box-shadow: none;
-    }
-
-    .command-tile-grid .action-icon {
-      grid-column: 1;
-      grid-row: 1;
+    .launcher-projection .action-tile .action-icon,
+    .launcher-projection .action-tile .action-icon.blue,
+    .launcher-projection .action-tile .action-icon.green,
+    .launcher-projection .action-tile .action-icon.amber,
+    .launcher-projection .action-tile .action-icon.neutral {
       width: 16px;
       height: 16px;
       border-radius: 0;
-      color: #70757c;
+      color: #656a72;
       background: transparent;
     }
 
-    .command-tile-grid .action-icon.blue {
-      color: #70757c;
-      background: transparent;
-    }
-
-    .command-tile-grid .action-icon.green {
-      color: #70757c;
-      background: transparent;
-    }
-
-    .command-tile-grid .action-icon.amber {
-      color: #70757c;
-      background: transparent;
-    }
-
-    .command-tile-grid .action-icon.neutral {
-      color: #70757c;
-      background: transparent;
-    }
-
-    .command-tile-grid .action-icon .icon {
+    .launcher-projection .action-tile .action-icon .icon {
       width: 16px;
       height: 16px;
+      stroke-width: 1.75;
     }
 
-    .command-tile-grid .action-name {
-      grid-column: 2;
-      grid-row: 1;
-      align-self: center;
+    .launcher-projection .action-tile .action-name {
+      max-width: 100%;
       color: #30343a;
       font-size: 11.5px;
-      font-weight: 540;
-      line-height: 1;
+      font-weight: 520;
+      line-height: 1.15;
       letter-spacing: -0.01em;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    .command-tile-grid .action-meta {
+    .launcher-dial-grid .action-tile,
+    .launcher-command-grid .action-tile {
+      height: 58px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 0 7px;
+      text-align: center;
+    }
+
+    .launcher-dial-grid .action-tile {
+      background: #f7f7f8;
+    }
+
+    .launcher-command-grid .action-tile {
+      height: 62px;
+    }
+
+    .launcher-dial-grid .action-tile .action-meta,
+    .launcher-command-grid .action-tile .action-meta,
+    .launcher-dial-grid .action-tile .tile-hotkey,
+    .launcher-command-grid .action-tile .tile-hotkey {
       display: none;
     }
 
-    .command-tile-grid .tile-hotkey {
-      grid-column: 3;
-      grid-row: 1;
-      align-self: center;
-      margin-left: 2px;
-    }
-
-    .command-tile-grid .action-tile.display-icon {
+    .launcher-dial-grid .action-tile.display-icon,
+    .launcher-command-grid .action-tile.display-icon,
+    .launcher-dial-grid .action-tile.display-text,
+    .launcher-command-grid .action-tile.display-text {
       width: 100%;
-      padding: 0;
+      padding: 0 7px;
     }
 
-    .command-tile-grid .action-tile.display-icon .action-icon {
-      grid-column: 1 / -1;
-      grid-row: 1 / -1;
-      width: 16px;
-      height: 16px;
-      place-self: center;
+    .launcher-overflow-list .action-tile {
+      height: 32px;
+      display: grid;
+      grid-template-columns: 16px minmax(92px, 0.7fr) minmax(0, 1.5fr) auto;
+      align-items: center;
+      gap: 9px;
+      padding: 0 10px;
+      text-align: left;
     }
 
-    .command-tile-grid .action-tile.display-text {
+    .launcher-overflow-list .action-tile .action-name {
+      overflow: hidden;
+    }
+
+    .launcher-overflow-list .action-tile .action-meta {
+      display: block;
+      overflow: hidden;
+      color: #8b8f96;
+      font-size: 10.5px;
+      font-weight: 430;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .launcher-overflow-list .action-tile .tile-hotkey {
+      margin-left: auto;
+    }
+
+    .launcher-overflow-list .action-tile.display-icon,
+    .launcher-overflow-list .action-tile.display-text {
       width: 100%;
-      padding: 0 8px;
+      padding: 0 10px;
     }
 
-    .command-tile-grid .action-tile.display-text .action-name {
-      grid-column: 1 / -1;
-      grid-row: 1 / -1;
-      place-self: center;
-      font-size: 11px;
+    .launcher-overflow-list .action-tile.display-icon {
+      grid-template-columns: 16px minmax(0, 1fr) auto;
     }
 
-    .command-tile-grid .action-tile[hidden] {
-      display: none;
+    .launcher-overflow-list .action-tile.display-icon .action-meta {
+      display: block;
     }
 
-    .command-tile-grid.filter-transition .action-tile:not([hidden]) {
+    .launcher-overflow-list .action-tile.display-text {
+      grid-template-columns: minmax(92px, 0.7fr) minmax(0, 1.5fr) auto;
+    }
+
+    .launcher-overflow-list .action-tile.display-text .action-name {
+      display: block;
+      text-align: left;
+    }
+
+    .launcher-projection.filter-transition .action-tile {
       animation: action-filter-enter 150ms ease-out;
     }
 
@@ -797,7 +906,7 @@
       }
 
       .scope-panel:not([hidden]),
-      .command-tile-grid.filter-transition .action-tile:not([hidden]) {
+      .launcher-projection.filter-transition .action-tile {
         animation: none;
       }
     }
@@ -807,6 +916,31 @@
       color: var(--ink-faint);
       font-size: 10px;
       text-align: center;
+    }
+
+    .empty-filter-state span {
+      display: block;
+    }
+
+    .empty-filter-action {
+      margin-top: 9px;
+      padding: 3px 7px;
+      border: 0;
+      border-radius: 5px;
+      color: #684eb4;
+      background: transparent;
+      font-size: 10px;
+      cursor: pointer;
+    }
+
+    .empty-filter-action:hover {
+      background: #f3effa;
+    }
+
+    .empty-native-hint {
+      margin-top: 9px;
+      color: #9a9da3;
+      font-size: 9px;
     }
 
     .flow-area {
@@ -1070,13 +1204,13 @@
     }
 
     .footer-action {
-      width: 25px;
+      width: auto;
       height: 25px;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
-      padding: 0;
+      padding: 0 8px;
       border: 0;
       border-radius: 6px;
       color: #77727d;
@@ -1092,6 +1226,11 @@
     .footer-action .icon {
       width: 12px;
       height: 12px;
+    }
+
+    .footer-action span {
+      font-size: 9px;
+      font-weight: 540;
     }
 
     .screen {
@@ -1128,19 +1267,19 @@
     }
 
     .manage-group-nav {
-      height: 34px;
+      min-height: 38px;
       display: flex;
-      align-items: stretch;
-      gap: 4px;
-      padding: 0 13px;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px 3px;
     }
 
     .manage-group-tabs {
       min-width: 0;
       display: flex;
       flex: 1;
-      align-items: stretch;
-      gap: 2px;
+      align-items: center;
+      gap: 4px;
       overflow-x: auto;
       scrollbar-width: none;
     }
@@ -1150,15 +1289,15 @@
     }
 
     .manage-group-tab {
-      position: relative;
       min-width: 0;
-      height: 34px;
+      height: 25px;
       display: inline-flex;
       flex: none;
       align-items: center;
       gap: 6px;
-      padding: 0 8px;
+      padding: 0 10px;
       border: 0;
+      border-radius: 999px;
       color: #72767c;
       background: transparent;
       font-size: 10px;
@@ -1180,28 +1319,16 @@
       white-space: nowrap;
     }
 
-    .manage-group-tab::after {
-      position: absolute;
-      right: 8px;
-      bottom: 0;
-      left: 8px;
-      height: 1.5px;
-      border-radius: 2px;
-      background: #25272b;
-      opacity: 0;
-      transform: scaleX(0.65);
-      transition: opacity 140ms ease, transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
-      content: "";
+    .manage-group-tab:hover {
+      color: #25272b;
+      background: #f5f5f6;
     }
 
-    .manage-group-tab:hover,
     .manage-group-tab.active {
       color: #25272b;
-    }
-
-    .manage-group-tab.active::after {
-      opacity: 1;
-      transform: scaleX(1);
+      background: #f0eef4;
+      box-shadow: inset 0 0 0 1px #ded9e8;
+      font-weight: 620;
     }
 
     .manage-group-tab.dragging {
@@ -1209,16 +1336,20 @@
     }
 
     .manage-add-group {
-      width: 27px;
-      height: 27px;
-      display: grid;
+      width: auto;
+      height: 25px;
+      display: inline-flex;
       flex: none;
-      place-items: center;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
       align-self: center;
       border: 0;
-      border-radius: 50%;
+      border-radius: 999px;
+      padding: 0 9px;
       color: #858990;
-      background: #f5f6f7;
+      background: transparent;
+      font-size: 9.5px;
       cursor: pointer;
     }
 
@@ -1239,6 +1370,39 @@
       gap: 7px;
       padding: 0 15px;
       background: #fcfcfd;
+    }
+
+    .manage-directory-search {
+      height: 37px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 16px;
+      border-top: 1px solid #f3f4f5;
+      color: #858990;
+      background: #fff;
+    }
+
+    .manage-directory-search .icon {
+      width: 14px;
+      height: 14px;
+      flex: none;
+    }
+
+    .manage-directory-search input {
+      width: 100%;
+      min-width: 0;
+      height: 30px;
+      padding: 0;
+      border: 0;
+      outline: 0;
+      color: #303338;
+      background: transparent;
+      font-size: 11.5px;
+    }
+
+    .manage-directory-search input::placeholder {
+      color: #989ba1;
     }
 
     .manage-icon-button {
@@ -2582,6 +2746,7 @@
     <symbol id="i-command" viewBox="0 0 24 24"><path d="M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM8.5 6h7M6 8.5v7m12-7v7M8.5 18h7"/></symbol>
     <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7.5"/><path d="m20 20-3.6-3.6"/></symbol>
     <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6M9 12h11"/></symbol>
     <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9Z"/></symbol>
     <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3-1 3.1A7.2 7.2 0 0 1 6.2 11L3 12l3.2 1A7.2 7.2 0 0 1 11 17.9l1 3.1 1-3.1a7.2 7.2 0 0 1 4.8-4.9l3.2-1-3.2-1A7.2 7.2 0 0 1 13 6.1Z"/></symbol>
     <symbol id="i-peak-mark" viewBox="0 0 24 24">
@@ -2618,7 +2783,7 @@
       <span class="prototype-mark"><svg class="icon"><use href="#i-command"/></svg></span>
       <span>
         <strong>Peak Command Center</strong>
-        <small>V17 · per-item icon browser</small>
+        <small>V18 · layered dial and command grid</small>
       </span>
     </div>
     <nav class="state-switcher" aria-label="原型状态">
@@ -2631,7 +2796,7 @@
   </header>
 
   <main class="stage">
-    <section class="app-frame" aria-label="Command Center V17 原型">
+    <section class="app-frame" aria-label="Command Center V18 原型">
       <div class="app-titlebar">
         <span class="traffic-lights"><i></i><i></i><i></i></span>
         <span class="app-title">Peak Assistant · Product vault</span>
@@ -2706,9 +2871,10 @@
             <div class="key-hints">
               <span class="key-hint"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> move</span>
               <span class="key-hint"><kbd>↵</kbd> open</span>
+              <span class="key-hint"><kbd>⇥</kbd> group</span>
               <span class="key-hint"><kbd>Esc</kbd> close</span>
             </div>
-            <button class="footer-action" data-open="manage" aria-label="Customize"><svg class="icon"><use href="#i-settings"/></svg></button>
+            <button class="footer-action" data-open="manage" aria-label="Customize"><svg class="icon"><use href="#i-settings"/></svg><span>Customize</span></button>
           </footer>
         </section>
 
@@ -2725,34 +2891,39 @@
               <div class="scope-strip" id="search-scope-tabs" aria-label="在搜索结果中按分组切换"></div>
             </div>
             <div class="scope-panels">
-              <div class="command-tile-grid" id="search-results"></div>
-              <div class="empty-filter-state" id="search-empty-state" hidden>No configured item matches this group.</div>
+              <div class="launcher-projection" id="search-results"></div>
+              <div class="empty-filter-state" id="search-empty-state" hidden>
+                <span>No configured item matches this group.</span>
+                <button class="empty-filter-action" id="search-all-groups" type="button">Search all groups</button>
+                <span class="empty-native-hint">Everything else lives in the native palette · ⌘P</span>
+              </div>
             </div>
           </div>
           <footer class="launcher-footer">
             <div class="key-hints">
               <span class="key-hint"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> move</span>
               <span class="key-hint"><kbd>↵</kbd> open</span>
+              <span class="key-hint"><kbd>⇥</kbd> group</span>
               <span class="key-hint"><kbd>Esc</kbd> clear / close</span>
             </div>
-            <button class="footer-action" data-open="manage" aria-label="Customize"><svg class="icon"><use href="#i-settings"/></svg></button>
+            <button class="footer-action" data-open="manage" aria-label="Customize"><svg class="icon"><use href="#i-settings"/></svg><span>Customize</span></button>
           </footer>
         </section>
 
         <section class="launcher screen" data-screen="manage" aria-label="Command Center Customize">
-          <header class="launcher-header">
-            <label class="launcher-search">
-              <svg class="icon"><use href="#i-search"/></svg>
-              <input id="manage-command-search" type="text" autocomplete="off" placeholder="Find commands or destinations…">
-            </label>
-            <button class="close-button" aria-label="关闭"><svg class="icon"><use href="#i-x"/></svg></button>
+          <header class="launcher-header manage-titlebar">
+            <button class="manage-back-button" type="button" data-open="launcher" aria-label="Back to launcher">
+              <svg class="icon"><use href="#i-arrow-left"/></svg>
+            </button>
+            <span class="manage-title">Customize</span>
+            <button class="manage-done-button" type="button" data-open="launcher">Done</button>
           </header>
           <div class="launcher-body manage-command-body">
             <div class="manage-group-shell">
               <div class="manage-group-nav">
                 <div class="manage-group-tabs" id="manage-group-tabs" aria-label="选择要编辑的分组"></div>
                 <button class="manage-add-group" id="add-group-button" type="button" title="New group" aria-label="New group">
-                  <svg class="icon"><use href="#i-plus"/></svg>
+                  <svg class="icon"><use href="#i-plus"/></svg><span>New group</span>
                 </button>
               </div>
               <div class="manage-group-identity">
@@ -2760,10 +2931,13 @@
                 <input class="manage-group-name" id="manage-group-name" type="text" aria-label="Group name">
                 <span class="manage-group-count" id="manage-group-count"></span>
               </div>
+              <label class="manage-directory-search">
+                <svg class="icon"><use href="#i-search"/></svg>
+                <input id="manage-command-search" type="text" autocomplete="off" placeholder="Search commands, files, views…">
+              </label>
             </div>
             <div class="manage-command-list" id="manage-command-list" aria-live="polite"></div>
             <div class="manage-empty-state" id="manage-empty-state" hidden>No item matches this search.</div>
-
             <div class="flow-area" hidden aria-hidden="true">
               <div class="flow-columns" id="manage-board">
                 <div class="flow-column" data-lane="main">
@@ -2993,19 +3167,6 @@
             <input class="action-picker-search" id="action-picker-search" type="text" placeholder="Find an action">
             <div class="action-picker-list" id="action-picker-list"></div>
           </div>
-          <footer class="launcher-footer manage-footer">
-            <span class="manage-footer-status" id="manage-footer-status"></span>
-            <div class="selection-editor" hidden>
-              <strong class="selection-editor-label" id="selection-editor-label">Composer</strong>
-              <div class="display-switcher" aria-label="按钮显示方式">
-                <button class="display-mode-button active" data-display-mode="full" title="图标和文字" aria-label="图标和文字"><svg class="icon"><use href="#i-layout"/></svg></button>
-                <button class="display-mode-button" data-display-mode="icon" title="仅图标" aria-label="仅图标"><svg class="icon"><use href="#i-image"/></svg></button>
-                <button class="display-mode-button" data-display-mode="text" title="仅文字" aria-label="仅文字"><svg class="icon"><use href="#i-type"/></svg></button>
-              </div>
-              <button class="pin-action-button" id="pin-action-button"><svg class="icon"><use href="#i-pin"/></svg><span id="pin-action-label">Pin</span></button>
-            </div>
-            <button class="done-button" data-open="launcher">Done</button>
-          </footer>
         </section>
       </div>
 
@@ -3114,18 +3275,18 @@
       </section>
     </section>
 
-    <section class="design-note" aria-label="V17 design principles">
+    <section class="design-note" aria-label="V18 design principles">
       <div class="note-item">
-        <strong>Group 与 item 使用不同图形语言</strong>
-        <span>顶部 scope 承担 group 识别；内容区使用 command 或 destination 自己的语义图标，不重复 group mark。</span>
+        <strong>Destination 先形成速拨记忆</strong>
+        <span>Home、Dashboard、Pinned document、Bookmark 与 Workspace 进入四列 Dial；浅底大格提供类似浏览器新标签页的稳定位置。</span>
       </div>
       <div class="note-item">
-        <strong>Command Center 不是 command-only</strong>
-        <span>Home、Dashboard、Pinned document、Bookmark 与 Workspace 和命令共享同一种 launcher item。</span>
+        <strong>Command 保持二维，但限制高度</strong>
+        <span>常用命令使用五列紧凑 Grid，最多两行；更多命令只在下方降级为高密度 Overflow List，首屏位置不会被新增项目打乱。</span>
       </div>
       <div class="note-item">
-        <strong>每个 item 都能自定义 icon</strong>
-        <span>展开 item 后打开 Icon Browser；Lucide 可搜索，Emoji 独立浏览，选择会同步 Launcher、Search 与 Home。</span>
+        <strong>Customize 仍是一张稳定目录</strong>
+        <span>Added 与 Available 不分区；membership、Rename、Icon Browser、显示模式和 Home pin 都在原行完成，切换不会造成列表跳动。</span>
       </div>
     </section>
   </main>
@@ -3142,6 +3303,7 @@
     const searchScopeTabs = document.getElementById('search-scope-tabs');
     const searchResults = document.getElementById('search-results');
     const searchEmptyState = document.getElementById('search-empty-state');
+    const searchAllGroups = document.getElementById('search-all-groups');
     const manageBoard = document.getElementById('manage-board');
     const addGroupButton = document.getElementById('add-group-button');
     const manageCommandSearch = document.getElementById('manage-command-search');
@@ -3159,15 +3321,9 @@
     const iconBrowserGrid = document.getElementById('icon-browser-grid');
     const iconBrowserClear = document.getElementById('icon-browser-clear');
     const iconBrowserTabs = [...document.querySelectorAll('[data-icon-browser-mode]')];
-    const manageFooterStatus = document.getElementById('manage-footer-status');
     const actionPicker = document.getElementById('action-picker');
     const actionPickerSearch = document.getElementById('action-picker-search');
     const actionPickerList = document.getElementById('action-picker-list');
-    const selectionEditor = document.querySelector('.selection-editor');
-    const selectionEditorLabel = document.getElementById('selection-editor-label');
-    const displayModeButtons = [...document.querySelectorAll('[data-display-mode]')];
-    const pinActionButton = document.getElementById('pin-action-button');
-    const pinActionLabel = document.getElementById('pin-action-label');
     const homeQuickAccess = document.getElementById('home-quick-access');
     const homePinCount = document.getElementById('home-pin-count');
     const openButtons = [...document.querySelectorAll('[data-open]')];
@@ -3198,6 +3354,18 @@
       { name: 'Publish note', meta: 'Publish', icon: 'i-file-plus', tone: 'green' },
       { name: 'Random note', meta: 'Core command', icon: 'i-file', tone: 'neutral' },
     ];
+
+    const destinationMetaPrefixes = [
+      'Peak view',
+      'Pinned Base',
+      'Pinned document',
+      'Obsidian collection',
+      'Bookmark',
+      'Workspace',
+      'Canvas',
+    ];
+
+    const launcherCommandGridCapacity = 10;
 
     const lucideIconOptions = [
       ['i-home', 'Home'],
@@ -3372,6 +3540,11 @@
       const iconChoice = getActionIconChoice(tile);
       tile.dataset.iconType = iconChoice.type;
       tile.dataset.iconValue = iconChoice.value;
+      if (!tile.dataset.actionKind) {
+        const meta = getActionMeta(tile);
+        const isDestination = destinationMetaPrefixes.some((prefix) => meta.startsWith(prefix));
+        tile.dataset.actionKind = isDestination ? 'destination' : 'command';
+      }
 
       if (!tile.dataset.pinned) {
         tile.dataset.pinned = String(initialPinnedActions.has(name));
@@ -3411,44 +3584,12 @@
       group.querySelectorAll('.manage-tile').forEach(initializeAction);
     }
 
-    function updateSelectionEditor() {
-      if (!selectedAction || !selectedAction.isConnected) {
-        selectedAction = null;
-      }
-
-      if (!selectedAction) {
-        selectionEditor.classList.remove('visible');
-        selectionEditorLabel.textContent = 'Select an action';
-        pinActionButton.disabled = true;
-        displayModeButtons.forEach((button) => {
-          button.disabled = true;
-          button.classList.remove('active');
-        });
-        return;
-      }
-
-      const mode = selectedAction.dataset.display || 'full';
-      const pinned = selectedAction.dataset.pinned === 'true';
-      selectionEditor.classList.add('visible');
-      selectionEditorLabel.textContent = getActionName(selectedAction);
-      pinActionButton.disabled = false;
-      pinActionButton.classList.toggle('active', pinned);
-      pinActionButton.setAttribute('aria-pressed', String(pinned));
-      pinActionLabel.textContent = pinned ? 'Pinned' : 'Pin';
-
-      displayModeButtons.forEach((button) => {
-        button.disabled = false;
-        button.classList.toggle('active', button.dataset.displayMode === mode);
-      });
-    }
-
     function selectAction(tile) {
       manageBoard.querySelectorAll('.manage-tile.selected').forEach((candidate) => {
         candidate.classList.remove('selected');
       });
       selectedAction = tile;
       selectedAction?.classList.add('selected');
-      updateSelectionEditor();
     }
 
     function getManageGroups() {
@@ -3489,6 +3630,7 @@
             name,
             meta: getActionMeta(tile),
             source,
+            kind: tile.dataset.actionKind || 'command',
             icon: iconChoice.type === 'lucide' ? iconChoice.value : 'i-command',
             iconType: iconChoice.type,
             iconValue: iconChoice.value,
@@ -3601,7 +3743,6 @@
       manageGroupName.value = getGroupLabel(group);
       const count = group.querySelectorAll('.manage-tile').length;
       manageGroupCount.textContent = `${count} item${count === 1 ? '' : 's'}`;
-      manageFooterStatus.textContent = `${count} active · stable list · drag active rows to reorder`;
     }
 
     function createManageRowGrip() {
@@ -3923,15 +4064,64 @@
       return (words[0] || '?').slice(0, 2).toUpperCase();
     }
 
-    function cleanLauncherAction(source, groupId) {
+    function cleanLauncherAction(source, groupId, projection) {
       const tile = source.cloneNode(true);
       tile.classList.remove('manage-tile', 'selected', 'dragging', 'drop-target');
       tile.querySelectorAll('.drag-dots').forEach((node) => node.remove());
       tile.removeAttribute('draggable');
       tile.dataset.scope = groupId;
+      tile.dataset.projection = projection;
 
       appendHotkey(tile);
       return tile;
+    }
+
+    function createProjectionSection(className, sourceActions, projection) {
+      const section = document.createElement('div');
+      section.className = className;
+      section.dataset.projectionSection = projection;
+      section.append(...sourceActions.map(({ tile, groupId }) => (
+        cleanLauncherAction(tile, groupId, projection)
+      )));
+      return section;
+    }
+
+    function renderLayeredProjection(container, sourceActions) {
+      const destinations = sourceActions.filter(({ tile }) => (
+        tile.dataset.actionKind === 'destination'
+      ));
+      const commands = sourceActions.filter(({ tile }) => (
+        tile.dataset.actionKind !== 'destination'
+      ));
+      const primaryCommands = commands.slice(0, launcherCommandGridCapacity);
+      const overflowCommands = commands.slice(launcherCommandGridCapacity);
+      const sections = [];
+
+      if (destinations.length) {
+        sections.push(createProjectionSection(
+          'launcher-dial-grid',
+          destinations,
+          'dial',
+        ));
+      }
+
+      if (primaryCommands.length) {
+        sections.push(createProjectionSection(
+          'launcher-command-grid',
+          primaryCommands,
+          'command-grid',
+        ));
+      }
+
+      if (overflowCommands.length) {
+        sections.push(createProjectionSection(
+          'launcher-overflow-list',
+          overflowCommands,
+          'overflow-list',
+        ));
+      }
+
+      container.replaceChildren(...sections);
     }
 
     function createScopeTab(scope, label, icon, active, toneIndex = null) {
@@ -3946,24 +4136,19 @@
 
       if (scope === 'all') {
         button.classList.add('scope-all');
-        button.textContent = 'All';
-        return button;
-      }
-
-      if (toneIndex !== null) {
+      } else if (toneIndex !== null) {
         button.classList.add(`scope-tone-${toneIndex % 4}`);
       }
-      if (icon) {
+
+      if (icon && scope !== 'all') {
         const symbol = icon.querySelector('use')?.getAttribute('href');
         if (symbol === '#i-peak-mark') button.classList.add('scope-brand');
         button.append(icon.cloneNode(true));
-        return button;
       }
 
-      button.classList.add('scope-text');
       const text = document.createElement('span');
       text.className = 'scope-label';
-      text.textContent = label;
+      text.textContent = scope === 'all' ? 'All' : label;
       button.append(text);
       return button;
     }
@@ -3984,7 +4169,6 @@
 
     function renderScopeTabs(container, groups, activeScope) {
       const tabs = [
-        createScopeTab('all', 'All groups', null, activeScope === 'all'),
         ...groups.map((group, index) => {
           const icon = group.querySelector('.manage-group-title > .icon');
           return createScopeTab(
@@ -3995,20 +4179,17 @@
             index,
           );
         }),
+        Object.assign(document.createElement('span'), {
+          className: 'scope-divider',
+          ariaHidden: 'true',
+        }),
+        createScopeTab('all', 'All groups', null, activeScope === 'all'),
       ];
-
-      const addButton = document.createElement('button');
-      addButton.className = 'scope-tab scope-add';
-      addButton.type = 'button';
-      addButton.title = 'Customize groups';
-      addButton.setAttribute('aria-label', 'Customize groups');
-      addButton.dataset.scopeAdd = 'true';
-      addButton.append(createIconUse('i-plus'));
 
       const indicator = document.createElement('span');
       indicator.className = 'scope-indicator';
       indicator.setAttribute('aria-hidden', 'true');
-      container.replaceChildren(...tabs, addButton, indicator);
+      container.replaceChildren(...tabs, indicator);
       requestAnimationFrame(() => positionScopeIndicator(container, activeScope, true));
     }
 
@@ -4017,15 +4198,15 @@
       panel.className = 'scope-panel';
       panel.dataset.scopePanel = scope;
 
-      const grid = document.createElement('div');
-      grid.className = 'command-tile-grid';
-      grid.append(...sourceActions.map(({ tile, groupId }) => cleanLauncherAction(tile, groupId)));
+      const projection = document.createElement('div');
+      projection.className = 'launcher-projection';
+      renderLayeredProjection(projection, sourceActions);
 
       const empty = document.createElement('div');
       empty.className = 'empty-filter-state';
       empty.textContent = 'No item in this group yet.';
-      empty.hidden = true;
-      panel.append(grid, empty);
+      empty.hidden = sourceActions.length > 0;
+      panel.append(projection, empty);
       return panel;
     }
 
@@ -4053,7 +4234,7 @@
         });
 
         panel.querySelector('.empty-filter-state').hidden = tiles.length > 0;
-        if (animate) animateActionGrid(panel.querySelector('.command-tile-grid'));
+        if (animate) animateActionGrid(panel.querySelector('.launcher-projection'));
       });
 
       launcherScopeTabs.querySelectorAll('[data-scope]').forEach((button) => {
@@ -4076,13 +4257,14 @@
           const scopeMatches = activeSearchScope === 'all' || activeSearchScope === groupId;
           const haystack = `${getActionName(tile)} ${getActionMeta(tile)} ${groupLabel}`.toLowerCase();
           if (!scopeMatches || (query && !haystack.includes(query))) return;
-          matching.push(cleanLauncherAction(tile, groupId));
+          matching.push({ tile, groupId });
         });
       });
 
-      searchResults.replaceChildren(...matching);
+      renderLayeredProjection(searchResults, matching);
       if (animate) animateActionGrid(searchResults);
       searchEmptyState.hidden = matching.length > 0;
+      searchAllGroups.hidden = activeSearchScope === 'all';
       searchScopeTabs.querySelectorAll('[data-scope]').forEach((button) => {
         const active = button.dataset.scope === activeSearchScope;
         button.classList.toggle('active', active);
@@ -4165,6 +4347,7 @@
       tile.dataset.actionId = `${slugify(action.name)}-custom-${Date.now()}-${customActionCount}`;
       tile.dataset.display = action.display || 'full';
       tile.dataset.pinned = 'false';
+      tile.dataset.actionKind = action.kind || 'command';
       tile.append(createDragDots());
 
       const icon = document.createElement('span');
@@ -4347,6 +4530,7 @@
       const tab = event.target.closest('[data-scope]');
       if (!tab) return;
       activeLauncherScope = tab.dataset.scope;
+      activeSearchScope = activeLauncherScope;
       updateLauncherProjection(true);
     });
 
@@ -4364,6 +4548,12 @@
     });
 
     searchQuery.addEventListener('input', () => renderSearchResults());
+
+    searchAllGroups.addEventListener('click', () => {
+      activeSearchScope = 'all';
+      renderSearchResults(true);
+      searchQuery.focus();
+    });
 
     window.addEventListener('resize', () => {
       positionScopeIndicator(launcherScopeTabs, activeLauncherScope, true);
@@ -4398,6 +4588,122 @@
       searchResults.querySelectorAll('.action-tile.selected').forEach((tile) => {
         tile.classList.remove('selected');
       });
+    });
+
+    function getActiveProjectionHost(view) {
+      if (view === 'search') return searchResults;
+      if (view !== 'launcher') return null;
+      return launcherBoard.querySelector('.scope-panel:not([hidden]) .launcher-projection');
+    }
+
+    function selectProjectionItem(host, item) {
+      if (!host || !item) return;
+      host.querySelectorAll('.action-tile.selected').forEach((candidate) => {
+        candidate.classList.remove('selected');
+      });
+      item.classList.add('selected');
+      item.scrollIntoView({ block: 'nearest' });
+    }
+
+    function moveProjectionSelection(host, key) {
+      if (!host) return;
+      const items = [...host.querySelectorAll('.action-tile')];
+      if (!items.length) return;
+      const selected = host.querySelector('.action-tile.selected');
+      if (!selected) {
+        selectProjectionItem(host, items[0]);
+        return;
+      }
+      const current = selected;
+      const index = items.indexOf(current);
+
+      if (key === 'ArrowLeft' || key === 'ArrowRight') {
+        const delta = key === 'ArrowLeft' ? -1 : 1;
+        const next = items[Math.max(0, Math.min(items.length - 1, index + delta))];
+        selectProjectionItem(host, next);
+        return;
+      }
+
+      const currentRect = current.getBoundingClientRect();
+      const currentX = currentRect.left + currentRect.width / 2;
+      const currentY = currentRect.top + currentRect.height / 2;
+      const direction = key === 'ArrowUp' ? -1 : 1;
+      const candidates = items
+        .filter((item) => item !== current)
+        .map((item) => {
+          const rect = item.getBoundingClientRect();
+          const x = rect.left + rect.width / 2;
+          const y = rect.top + rect.height / 2;
+          const vertical = (y - currentY) * direction;
+          return { item, vertical, horizontal: Math.abs(x - currentX) };
+        })
+        .filter(({ vertical }) => vertical > 2)
+        .sort((a, b) => (
+          (a.vertical - b.vertical) || (a.horizontal - b.horizontal)
+        ));
+      selectProjectionItem(host, candidates[0]?.item || current);
+    }
+
+    function switchProjectionGroup(view, reverse) {
+      const container = view === 'search' ? searchScopeTabs : launcherScopeTabs;
+      const scopeButtons = [...container.querySelectorAll('[data-scope]')];
+      if (!scopeButtons.length) return;
+      const currentScope = view === 'search' ? activeSearchScope : activeLauncherScope;
+      const currentIndex = scopeButtons.findIndex((button) => button.dataset.scope === currentScope);
+      const delta = reverse ? -1 : 1;
+      const nextIndex = (currentIndex + delta + scopeButtons.length) % scopeButtons.length;
+      const nextScope = scopeButtons[nextIndex].dataset.scope;
+
+      if (view === 'search') {
+        activeSearchScope = nextScope;
+        renderSearchResults(true);
+        return;
+      }
+
+      activeLauncherScope = nextScope;
+      activeSearchScope = activeLauncherScope;
+      updateLauncherProjection(true);
+    }
+
+    function invokeProjectionItem(item) {
+      if (!item) return;
+      item.classList.add('selected');
+      window.setTimeout(closeModal, 90);
+    }
+
+    launcherBoard.addEventListener('click', (event) => {
+      invokeProjectionItem(event.target.closest('.action-tile'));
+    });
+
+    searchResults.addEventListener('click', (event) => {
+      invokeProjectionItem(event.target.closest('.action-tile'));
+    });
+
+    document.addEventListener('keydown', (event) => {
+      const activeView = tabs.find(
+        (tab) => tab.getAttribute('aria-pressed') === 'true',
+      )?.dataset.view;
+      if (activeView !== 'launcher' && activeView !== 'search') return;
+
+      if (event.key === 'Tab') {
+        event.preventDefault();
+        switchProjectionGroup(activeView, event.shiftKey);
+        return;
+      }
+
+      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+        event.preventDefault();
+        moveProjectionSelection(getActiveProjectionHost(activeView), event.key);
+        return;
+      }
+
+      if (event.key !== 'Enter') return;
+      const host = getActiveProjectionHost(activeView);
+      const selected = host?.querySelector('.action-tile.selected')
+        || host?.querySelector('.action-tile');
+      if (!selected) return;
+      event.preventDefault();
+      invokeProjectionItem(selected);
     });
 
     manageCommandSearch.addEventListener('input', renderManageCommands);
@@ -4598,23 +4904,6 @@
       syncConfiguredViews();
     });
 
-    displayModeButtons.forEach((button) => {
-      button.addEventListener('click', () => {
-        if (!selectedAction) return;
-        applyDisplayMode(selectedAction, button.dataset.displayMode);
-        updateSelectionEditor();
-        syncConfiguredViews();
-      });
-    });
-
-    pinActionButton.addEventListener('click', () => {
-      if (!selectedAction) return;
-      const pinned = selectedAction.dataset.pinned === 'true';
-      selectedAction.dataset.pinned = String(!pinned);
-      updateSelectionEditor();
-      syncConfiguredViews();
-    });
-
     addGroupButton.addEventListener('click', createGroup);
 
     actionPickerSearch.addEventListener('input', () => {
@@ -4777,7 +5066,12 @@
       });
     });
 
-    activeManageGroupId = getManageGroups()[0]?.dataset.groupId || '';
+    const defaultLauncherGroup = getManageGroups().find(
+      (group) => getGroupLabel(group) === 'Peak Assistant',
+    ) || getManageGroups()[0];
+    activeManageGroupId = defaultLauncherGroup?.dataset.groupId || '';
+    activeLauncherScope = activeManageGroupId || 'all';
+    activeSearchScope = activeLauncherScope;
     commandDefinitions = buildCommandDefinitions();
     renderActionPicker();
     manageBoard.querySelectorAll('.manage-tile.selected').forEach((tile) => tile.classList.remove('selected'));

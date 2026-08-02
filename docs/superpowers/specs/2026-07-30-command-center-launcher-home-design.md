@@ -2,7 +2,7 @@
 
 Date: 2026-07-30
 
-Visual direction revised: 2026-07-31 · V17 per-item icon browser
+Visual direction revised: 2026-08-02 · V18 layered launcher projection
 
 Status: Decided · design/spec ready · implementation pending
 
@@ -93,7 +93,9 @@ The exhaustive native Command Palette stays one keystroke away.
 CommandCenterBoardConfig
 ├─ Modal shell
 │  ├─ group scope tabs
-│  ├─ two-dimensional launcher-item grid
+│  ├─ destination Dial
+│  ├─ bounded command Grid
+│  ├─ command Overflow List
 │  └─ explicit customize mode
 └─ Home shell
    ├─ global search entry
@@ -104,7 +106,7 @@ CommandCenterBoardConfig
 
 The Modal and Home must not maintain separate copies of actions. They share action identity, label, icon, hotkey resolution and destination. Their composition differs:
 
-- Modal optimizes for switching user-owned groups, searching and navigating a bounded grid.
+- Modal optimizes for switching user-owned groups, searching and navigating one bounded layered projection.
 - Home optimizes for returning to a small set of pinned destinations.
 - Group order in the Modal does not force Home to reproduce every group.
 
@@ -167,7 +169,7 @@ interface CommandCenterGroup {
 	id: string;
 	label: string;
 	icon?: string;
-	actionLayout: 'grid';
+	actionLayout: 'layered' | 'rows';
 	order: number;
 	actions: CommandCenterActionItem[];
 }
@@ -196,14 +198,20 @@ Default group definitions belong in `templates/config/command-center-defaults.js
 The modal has three persistent regions:
 
 1. Search field and close button.
-2. One group-scope row followed by one two-dimensional launcher-item grid.
+2. One group-scope row followed by one layered launcher projection.
 3. Footer keyboard help and current-scope feedback.
 
-The scope row projects user-defined groups as compact tabs. `All` precedes the group tabs; a trailing add button opens Customize. Only one scope is expanded at a time, so group count does not create a long page.
+The scope row projects user-defined groups as compact named tabs. `All` follows a quiet divider at the end. Customize lives in the footer and does not compete with group selection. Only one scope is expanded at a time, so group count does not create a long page.
 
 There is no second type-navigation row. `AI`, `Create`, `Navigate` and `Visual` duplicate information already carried by the user group, semantic icon and label, and make the modal read like a taxonomy browser.
 
-The grid is not command-only. A `Pinned` group can place Home, Usage Dashboard, a Base or other dashboard, Vault documents, Bookmarks and Workspaces beside executable commands. These all use `CommandCenterActionItem`; target kind changes execution, not the cell geometry.
+The projection is not command-only. It separates two recognition tasks without adding a second navigation taxonomy:
+
+1. **Destination Dial** — Home, Dashboard, Base, Canvas, Vault document, Bookmark, Workspace and registered views use four-column speed-dial cells with a quiet inset fill. These targets depend on position recognition and can occupy multiple Dial rows.
+2. **Command Grid** — executable Peak, Obsidian and plugin commands use a compact icon-and-label grid. The default `dial-tiles` presentation uses five columns and never grows beyond two rows.
+3. **Overflow List** — commands beyond the two-row Grid keep their configured order and continue in one dense list with icon, short name, full source label and current hotkey.
+
+New items append inside their own layer. The system never reorders the stable Dial or the first two command rows. The Overflow List is a pressure-release layer, not the primary runtime shape and not a return to an all-command palette.
 
 There is no permanent side rail, accordion stack, nested group card or vertically repeated group chrome.
 
@@ -214,7 +222,7 @@ The header does not show:
 - capability availability summary;
 - Home or edit shortcuts.
 
-Home is an ordinary configured action. Customize is reached from the trailing add button and remains a distinct editing state.
+Home is an ordinary configured destination. Customize is reached from the footer action and remains a distinct editing state.
 
 ### 7.2 Search state
 
@@ -226,7 +234,7 @@ Rules:
 2. Match user aliases second.
 3. Match group and plugin label third.
 4. Keep group scope tabs available while filtering.
-5. Show matches in the same two-dimensional action grid.
+5. Show matches in the same Dial / Command Grid / Overflow hierarchy; search does not switch to a different result language.
 6. Do not include unconfigured commands.
 
 The full registered-command catalog and addressable destination picker appear only inside Customize. A Vault file, Bookmark, Workspace or owner-registered view can also expose `Pin to Command Center` on its own surface. Runtime search never expands into the full command catalog; this is the main protection against the original “weird fuzzy matches” problem.
@@ -248,8 +256,9 @@ Pinned Notes, Bases and Canvases remain owned by their existing Obsidian views. 
 
 Customize mode is explicit. Normal invocation never shows drag handles or edit controls. Customize reuses the familiar Command Palette retrieval model instead of introducing a second card canvas:
 
-- the header searches commands and destinations;
-- the first row selects the group being edited and ends with a small `New group` action;
+- the header provides Back, a clear `Customize` title and Done;
+- the first content row selects the group being edited and ends with a small `New group` action;
+- search stays directly above the continuous directory rather than occupying the runtime-launcher header;
 - the selected group's icon and name are edited directly in one compact identity row;
 - every registered command and saved destination stays in one continuous directory; there are no `Added` and `Available` sections;
 - every item row keeps its full label, source, applicable hotkey and one trailing membership switch;
@@ -289,29 +298,30 @@ Destructive layout reset requires confirmation and export/import support before 
 ### 9.1 Modal geometry
 
 - Width: `min(640px, calc(100vw - 48px))`.
-- Height: approximately `400px`, capped by `calc(100vh - 72px)`.
+- Height: approximately `448px`, capped by `calc(100vh - 72px)`.
 - Overlay: a light neutral wash, not a dark modal scrim.
-- One navigation row only: `All`, user-owned group scopes and one trailing Customize button. A group uses a trusted product mark when one exists; otherwise it uses a user-selected system icon or a short text label. Arbitrary group colors are not an identity system.
-- Content canvas: three equal columns at the reference width, responsive down to fewer columns.
-- Action cell: approximately `38px` high and single-line, borderless at rest, with only a quiet neutral hover / selection fill.
-- Search, action title and filter label form an intentional `12 / 11.5 / 9.5px` type scale. Runtime cells do not show a second provenance line.
+- One navigation row only: named user-owned group scopes, one quiet divider and `All`. Customize is a footer action. A group may use a trusted product mark or a user-selected system icon beside its short label. Arbitrary group colors are not an identity system.
+- Destination Dial: four columns, approximately `58px` high in compact density, with a quiet inset fill and icon above the short label.
+- Command Grid: five columns in compact density, approximately `62px` high, limited to two rows. A row-style alternative may use three columns when command-name readability is more important than density.
+- Overflow List: one `32px` row per remaining command after the stable first two Grid rows.
+- Search, action title and filter label form an intentional compact type scale. Dial and Grid cells do not show a second provenance line; the Overflow List may show the full source label.
 - Source marks render at approximately `16px`. Peak Assistant uses its trusted product mark; Workspaces and Visual use neutral semantic system icons, while Quick create demonstrates the no-icon text fallback.
-- The content canvas starts immediately after the filters; no `All commands`, group heading or item-count row is repeated.
+- The content canvas starts immediately after the group tabs; no `All commands`, group heading or item-count row is repeated. Layers are communicated through geometry and spacing, not headings.
 - Modal radius: approximately `12px`; action radius: approximately `6px`.
-- Header, filters and action labels share one `16px` left axis. The three-column cell padding completes that alignment instead of creating a nested-card inset.
-- Accent: only a trusted source mark may carry brand color. Filter controls and action icons stay neutral; black underline and neutral fills carry navigation state.
+- Header, tabs and content share one `14–16px` left axis.
+- Accent: only a trusted source mark or selected control may carry restrained accent color. Action icons stay neutral; segmented fills carry navigation state.
 
 No group sidebar, vertical group stack, outlined card wall, gradient, availability strip, descriptive hero or dashboard statistic appears in the Modal.
 
 ### 9.2 Action tile anatomy
 
-Every tile has an action identity, accessible name and tooltip. The default board uses `icon + label` consistently so the first view has a complete rhythm. Its visible anatomy remains user-selectable:
+Every item has an action identity, accessible name and tooltip. Dial and Command Grid use `icon + label` consistently at first run; Overflow List adds the full source label and current hotkey. The visible anatomy remains user-selectable:
 
 1. `icon + label`: semantic action icon, short label and an optional real hotkey;
 2. `icon only`: centered icon with `aria-label` and tooltip;
 3. `text only`: centered short label without an icon.
 
-All three modes share one grid geometry. The presentation choice changes visible content, not row rhythm or spatial position. Icon-only and text-only remain explicit customization choices rather than mixed first-run defaults. Cells have no permanent outline; resting state has no preselected gray block. Provenance and description stay in the tooltip or Customize directory instead of becoming a default second line. Unavailable actions keep their position and use a disabled treatment.
+All three modes preserve the geometry of the item's current layer. The presentation choice changes visible content, not row rhythm or spatial position. Icon-only and text-only remain explicit customization choices rather than mixed first-run defaults. Dial has a quiet inset surface; Command Grid stays borderless at rest; both use one restrained hover / keyboard-selection treatment. Unavailable actions keep their position and use a disabled treatment.
 
 Long native command labels such as “Create new drawing — in the current active window” become a short tile title such as `Current window`; the tooltip preserves the full source label.
 
@@ -334,7 +344,7 @@ AI-generated icons are excluded because they are inconsistent at small sizes, ha
 
 ### 9.4 Motion
 
-- Switching group scope moves one shared underline between tabs over approximately `220ms`; tabs do not each flash a new underline into existence.
+- The selected group uses one restrained segmented fill. If an underline variant is evaluated, it must use one shared moving indicator rather than independent underline flashes; it is not the V18 default.
 - The newly active scope panel enters with `opacity` and at most `5px` of vertical travel over approximately `180ms`.
 - Query typing must not replay a full-page transition on every keystroke.
 - Motion never changes layout ownership or action order and must be disabled by `prefers-reduced-motion`.
@@ -342,7 +352,7 @@ AI-generated icons are excluded because they are inconsistent at small sizes, ha
 ### 9.5 Customize item directory
 
 - Geometry and typography should recall Obsidian's native Command Palette: one search field, compact continuous rows and trailing hotkeys or state controls.
-- Customize may grow to approximately `510px` high so the full directory has a useful scan window; Launcher and runtime Search remain approximately `400px`.
+- Customize may grow to approximately `560px` high so the full directory has a useful scan window; Launcher and runtime Search remain approximately `448px`.
 - The directory uses neutral hover fills and separators rather than outlined command cards.
 - Group selection stays above the directory. Renaming and icon choice are direct edits, not a settings form.
 - The command-and-destination directory is one continuous, stable list. It never splits into `Added` and `Available` regions.
@@ -363,9 +373,9 @@ The project does not assign a default hotkey. The user sets it in Obsidian Setti
 
 - `/` or normal typing focuses search.
 - `Esc` clears query first, then closes the modal.
-- `Tab` moves between structural controls.
-- Left and Right move across scope tabs or one grid row.
-- Up and Down move between the single scope row and the nearest item in the adjacent grid row.
+- `Tab` / `Shift+Tab` cycles group scopes, including `All`.
+- Left and Right move through the flattened item order and cross layer boundaries continuously.
+- Up and Down use the current layer's column count; when crossing a layer boundary they preserve the nearest horizontal position.
 - `Enter` invokes the focused tile.
 - `Cmd/Ctrl + P` may close Command Center and open the native Palette.
 - Closing restores the prior active element and editor selection.
@@ -524,7 +534,9 @@ This is an implementation sequence, not permission to ship incomplete UI as the 
 
 - React modal shell;
 - dynamic group scope tabs;
-- three-column borderless launcher-item grid with responsive column count;
+- four-column Destination Dial;
+- bounded five-column Command Grid with a two-row cap;
+- ordered command Overflow List after the cap;
 - search over configured commands and destinations;
 - full keyboard and focus restoration;
 - close-only header.
@@ -564,7 +576,7 @@ This is an implementation sequence, not permission to ship incomplete UI as the 
 - Missing command IDs fail closed.
 - Hotkey resolver never persists stale display strings.
 - Modal/Home resolve the same action identity, label, icon and hotkey.
-- Keyboard tests across the scope row and launcher-item grid.
+- Keyboard tests across scope tabs and all three projection layers.
 - Focus restoration test.
 - Boundary test prevents UI or service code from reading private `app.commands` directly.
 - Build and existing command gateway tests.
@@ -575,8 +587,8 @@ Use the canonical CDP protocol.
 
 1. Open from a user-bound hotkey.
 2. Verify board geometry and computed hit targets.
-3. Switch group scope and navigate the grid in both axes.
-4. Search a curated Excalidraw scope without changing to a list.
+3. Switch group scope and navigate Dial, Command Grid and Overflow List continuously in both axes.
+4. Search a curated Excalidraw scope without replacing the layered projection with an unrelated result layout.
 5. Execute a Peak command, open Home, open a dashboard and open a pinned Vault document.
 6. Disable the third-party plugin and verify the unavailable state.
 7. Close with Escape and verify active element and editor selection restoration.
@@ -590,10 +602,12 @@ If CDP is unavailable, mark these interactions `INTERACTION NOT VERIFIED`; a sta
 
 - Native `Cmd/Ctrl + P` behavior is unchanged.
 - The user can bind one shortcut to open Peak Command Center.
-- Empty query shows one selected scope as a two-dimensional action grid.
+- Empty query shows one selected scope as a stable layered projection.
 - All first-run groups are available as stable top-row scope tabs without a permanent group sidebar.
 - No second type-navigation row competes with the user-owned group scopes.
-- The same grid can open commands, Home, registered dashboards, pinned Vault documents, Bookmarks and Workspaces.
+- Destination Dial can open Home, registered dashboards, pinned Vault documents, Bookmarks and Workspaces.
+- Command Grid remains capped at two rows; excess commands continue in stable order in the Overflow List.
+- Adding an item never reorders existing Dial positions or the first two command rows.
 - Group order and action order remain stable.
 - Customize presents one stable item directory, can add and reorder groups/items, and persists all three display modes.
 - Every active item can choose a Lucide icon, an Emoji or no icon through one searchable browser; the result stays synchronized across Launcher, Search and Home.

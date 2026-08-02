@@ -313,8 +313,8 @@
               </tr>
               <tr>
                 <td><strong>Peak Command Center Launcher + Home</strong></td>
-                <td>与原生 <code>Cmd/Ctrl + P</code> 并存的个人导航入口。2026-07-31 V17 延续单排用户 group、三列 command / destination matrix、Pinned destinations 与稳定 Customize directory，并为每条 active item 增加 Icon Browser：用户可搜索 Lucide、浏览 Emoji 或选择 No icon；icon 作为 item presentation metadata 同步到 Launcher、Search、Customize 与 Home，不修改底层 command / target identity。icon-only 清空 icon 时安全回退 text-only。运行态 Search 只过滤已配置的 command 与 destination，不回到原生 Palette 的全集噪音；旧 <code>CopilotCommandCenterModal</code> 仍是另一个 AI capability planner。本项尚未实现。</td>
-                <td><a href="superpowers/specs/2026-07-30-command-center-launcher-home-design.md">正式设计</a><br><a href="gstack/command-center-launcher-home-2026-07-30/index.html">V17 可交互原型</a><br><a href="research/2026-07-30-command-center-launcher-home/README.md">调研</a></td>
+                <td>与原生 <code>Cmd/Ctrl + P</code> 并存的个人导航入口。2026-08-02 V18 将运行态收敛为单排 user group segmented tabs 与分层 projection：Home、Dashboard、Vault document、Bookmark、Workspace 等 destination 进入四列 Dial；常用 command 进入最多两行的五列 Grid；超出部分保持配置顺序进入 Overflow List。新增 item 不重排稳定 Dial 或前两行 command。Customize 继续使用一张不拆 Added / Available 的连续目录，并提供 membership、Rename、Lucide / Emoji / No icon、显示模式、Home pin 与排序。运行态 Search 只过滤已配置内容，并保持同一 Dial / Grid / Overflow 语言；Home 仍与 Modal 共用 target 与 presentation 真值。本项尚未实现。</td>
+                <td><a href="superpowers/specs/2026-07-30-command-center-launcher-home-design.md">正式设计</a><br><a href="gstack/command-center-launcher-home-2026-07-30/index.html">V18 可交互原型</a><br><a href="research/2026-07-30-command-center-launcher-home/README.md">调研</a></td>
                 <td><span class="pill gold">decided · design/spec ready · implementation pending</span></td>
               </tr>
               <tr>
