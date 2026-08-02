@@ -199,21 +199,19 @@ bulkModal.addEventListener('click', (event) => { if (event.target === bulkModal)
 function runScan() {
   if (scanTimer) return;
   const steps = [
-    { plugin: 'Reading Obsidian command registry…', plugins: 0, commands: 0, percent: 8 },
-    { plugin: 'Calendar · checking 2 commands', plugins: 1, commands: 2, percent: 24 },
+    { plugin: 'Reading enabled plugin commands…', plugins: 0, commands: 0, percent: 8 },
+    { plugin: 'Calendar · comparing 2 commands with the last scan', plugins: 1, commands: 2, percent: 24 },
     { plugin: 'Periodic Notes · checking editor requirements', plugins: 2, commands: 4, percent: 42 },
-    { plugin: 'Dataview · classifying maintenance commands', plugins: 3, commands: 6, percent: 58 },
-    { plugin: 'Templater · detecting modal-only commands', plugins: 4, commands: 8, percent: 74 },
-    { plugin: 'QuickAdd and File Chucker · final preflight', plugins: 6, commands: 10, percent: 93 },
-    { plugin: 'Source hashes recorded · access decisions unchanged', plugins: 6, commands: 10, percent: 100 },
+    { plugin: 'Dataview · excluding unsafe maintenance actions', plugins: 3, commands: 6, percent: 58 },
+    { plugin: 'Templater · detecting commands that require a modal', plugins: 4, commands: 8, percent: 74 },
+    { plugin: 'Preparing explanations for new and changed commands', plugins: 6, commands: 10, percent: 91 },
+    { plugin: 'Review is ready · access decisions unchanged', plugins: 6, commands: 10, percent: 100 },
   ];
   let index = 0;
   const scanButton = document.getElementById('scan-button');
-  const analyzeButton = document.getElementById('analyze-button');
   const scanProgress = document.getElementById('scan-progress');
   scanProgress.hidden = false;
   scanButton.disabled = true;
-  analyzeButton.disabled = true;
   scanButton.classList.add('is-scanning');
   document.getElementById('scan-button-label').textContent = 'Scanning…';
   commandList.classList.add('is-scanning');
@@ -234,13 +232,12 @@ function runScan() {
     window.setTimeout(() => {
       scanProgress.hidden = true;
       scanButton.disabled = false;
-      analyzeButton.disabled = false;
       scanButton.classList.remove('is-scanning');
-      document.getElementById('scan-button-label').textContent = 'Scan';
+      document.getElementById('scan-button-label').textContent = 'Scan commands';
       commandList.classList.remove('is-scanning');
       commandList.setAttribute('aria-busy', 'false');
-      document.getElementById('scan-phase').textContent = 'Scanning enabled plugins';
-      showToast('Scan complete · 10 commands found · access unchanged');
+      document.getElementById('scan-phase').textContent = 'Preparing commands for review';
+      showToast('Scan complete · review ready · access unchanged');
     }, 700);
   };
 
@@ -249,7 +246,6 @@ function runScan() {
 }
 
 document.getElementById('scan-button').addEventListener('click', runScan);
-document.getElementById('analyze-button').addEventListener('click', () => showToast('AI draft refreshed · access unchanged'));
 document.getElementById('reset-demo').addEventListener('click', () => {
   commands = structuredClone(initialCommands);
   searchInput.value = '';

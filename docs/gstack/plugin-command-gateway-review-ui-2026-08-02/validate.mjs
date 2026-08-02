@@ -16,6 +16,7 @@ assert(new Set(ids).size === ids.length, 'HTML IDs must be unique.');
 
 for (const marker of [
   'External plugin commands',
+  'Scan commands',
   'Allow filtered',
   'Allow all eligible commands',
   'Batch actions apply to the current filter',
@@ -40,6 +41,9 @@ assert(!script.includes('access-menu'), 'Row access must not require a dropdown 
 assert(!script.includes("state: 'blocked'"), 'Primary Review state must not expose explicit Block.');
 assert(!html.includes('data-bulk="block"'), 'Bulk menu must not expose Block.');
 assert(!script.includes('data-choice'), 'Row access must be a direct two-state switch.');
+assert(!html.includes('Analyze with AI'), 'AI analysis must not be exposed as a second owner action.');
+assert(!html.includes('id="analyze-button"'), 'Review UI must expose one unified Scan action.');
+assert(script.includes('Preparing explanations for new and changed commands'), 'Scan must include explanation preparation in its visible pipeline.');
 assert(!html.includes('<option value="blocked">'), 'Access filter must not expose Block.');
 assert(!html.includes('<span>Blocked</span>'), 'Summary must not expose Block.');
 assert(!html.includes('data-screen='), 'Focused Review UI must not be another flow prototype.');
@@ -49,6 +53,7 @@ new Function(script);
 console.log('PASS: focused Review UI is not a flow prototype');
 console.log('PASS: stable far-right two-state Allowed switch');
 console.log('PASS: visible animated Scan state');
+console.log('PASS: Scan is the single command-refresh and review-preparation action');
 console.log('PASS: Purpose removed from owner-facing Review UI');
 console.log('PASS: filter-scoped and all-eligible bulk actions present');
 console.log('PASS: unsafe commands remain excluded from bulk Allow');

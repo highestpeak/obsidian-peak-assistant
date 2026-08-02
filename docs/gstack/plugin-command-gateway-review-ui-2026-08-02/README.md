@@ -20,8 +20,13 @@ Owner feedback incorporated:
 - plugin containers are compact list groups rather than action cards.
 - Purpose stays internal to curator/runtime policy and is not shown as an
   owner-editable field; expected effects are written directly into summaries.
-- Scan shows live plugin name, plugin/command counts, progress, spinner, and a
-  temporarily locked command list before returning to the stable Review state.
+- `Scan commands` is the only refresh action. It discovers commands, compares
+  changes, applies deterministic safety checks, and prepares explanations for
+  review in one pipeline. Whether an explanation uses AI is an internal detail,
+  not a second owner action.
+- Scan shows live phase text, plugin/command counts, progress, spinner, and a
+  temporarily locked command list before returning to the stable Review state;
+  it never changes access.
 
 An explicit-deny distinction may still exist in internal policy or migration
 data, but it is intentionally not exposed in the primary owner Review UI. The

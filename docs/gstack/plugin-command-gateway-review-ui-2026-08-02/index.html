@@ -11,7 +11,6 @@
     <symbol id="i-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3z"/><path d="m9 12 2 2 4-4"/></symbol>
     <symbol id="i-plug" viewBox="0 0 24 24"><path d="M12 22v-5M9 8V2m6 6V2M18 8v4a6 6 0 0 1-12 0V8z"/></symbol>
     <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
-    <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3-1.6 4.4L6 9l4.4 1.6L12 15l1.6-4.4L18 9l-4.4-1.6zM5 16l-.8 2.2L2 19l2.2.8L5 22l.8-2.2L8 19l-2.2-.8z"/></symbol>
     <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7h-5V2M4 17h5v5M20 7a8 8 0 0 0-13.7-3M4 17a8 8 0 0 0 13.7 3"/></symbol>
     <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
@@ -62,20 +61,20 @@
         <div class="settings-content">
           <header class="content-head">
             <div><span class="content-kicker">Tools</span><h2>External plugin commands</h2><p>Choose which commands from enabled Obsidian plugins Copilot may call.</p></div>
-            <div class="head-actions"><button class="button" type="button" id="scan-button"><svg id="scan-button-icon"><use href="#i-refresh"/></svg><span id="scan-button-label">Scan</span></button><button class="button" type="button" id="analyze-button"><svg><use href="#i-sparkles"/></svg>Analyze with AI</button></div>
+            <div class="head-actions"><button class="button" type="button" id="scan-button"><svg id="scan-button-icon"><use href="#i-refresh"/></svg><span id="scan-button-label">Scan commands</span></button></div>
           </header>
 
           <section class="summary-strip" aria-label="Gateway summary">
             <div class="summary-stat"><span>Approved</span><strong id="approved-total">0</strong></div>
             <div class="summary-stat"><span>Not allowed</span><strong id="not-allowed-total">0</strong></div>
             <div class="summary-stat"><span>System excluded</span><strong id="excluded-total">0</strong></div>
-            <div class="summary-note"><svg><use href="#i-info"/></svg><span>AI drafts explanations only. It never changes access.</span></div>
+            <div class="summary-note"><svg><use href="#i-info"/></svg><span>Scan refreshes command facts and explanations. It never changes access.</span></div>
           </section>
 
           <section class="scan-progress" id="scan-progress" aria-live="polite" hidden>
             <div class="scan-progress__icon"><svg><use href="#i-refresh"/></svg></div>
             <div class="scan-progress__body">
-              <div class="scan-progress__head"><div><strong id="scan-phase">Scanning enabled plugins</strong><span id="scan-current-plugin">Reading Obsidian command registry…</span></div><span id="scan-percent">0%</span></div>
+              <div class="scan-progress__head"><div><strong id="scan-phase">Preparing commands for review</strong><span id="scan-current-plugin">Reading enabled plugin commands…</span></div><span id="scan-percent">0%</span></div>
               <div class="scan-progress__track"><i id="scan-progress-bar"></i></div>
               <div class="scan-progress__meta"><span id="scan-plugin-count">0 / 6 plugins</span><span id="scan-command-count">0 commands found</span><span>Nothing is executed or authorized during Scan</span></div>
             </div>
