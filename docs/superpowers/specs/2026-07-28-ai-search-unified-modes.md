@@ -13,7 +13,7 @@
 - [Shared AI Instruction Composer](./2026-07-28-shared-ai-instruction-composer.md)
 - [Peak 全键盘导航系统](./2026-07-24-peak-keyboard-navigation-system.md)
 - [Vault Intelligence](../../13-feature-vault-intelligence.html#user-workflows)
-- [Planned Requirements 关闭记录](../../planned-requirements.html#pr-ai-search-unified-modes)
+- [产品 IA 纠偏与 Review 清单](../audits/2026-08-02-planned-requirements-product-ia-correction.md)
 
 > 2026-08-02 owner correction：本文同时记录当前实现边界。Vault Intelligence 的完整 graph / health / review projection 归本 modal，不再转跳旧 Copilot Vault workspace；选择 mode 本身仍不启动扫描。
 

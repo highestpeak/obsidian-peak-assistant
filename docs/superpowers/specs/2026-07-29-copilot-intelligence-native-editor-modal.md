@@ -5,7 +5,7 @@
 **范围：** 当前 Obsidian 原生编辑器中的当前文件 / 选区 / 光标上下文
 **不包含：** 本文不改代码，不新增 AI model，不把 Composer View 的完整编辑能力搬进原生 CodeMirror
 **配套 mock：** [Copilot Intelligence Native Editor Modal Mock](../../gstack/copilot-intelligence-native-modal-2026-07-29/index.html) · [File Atlas Copilot / Flatten Mock](../../gstack/file-atlas-copilot-flatten-2026-07-29/index.html)
-**关闭记录：** [PR-COPILOT-INTELLIGENCE-NATIVE-MODAL](../../planned-requirements.html#pr-copilot-intelligence-native-modal) · [PR-FILE-ATLAS-COPILOT-SUGGESTIONS-FLATTEN](../../planned-requirements.html#pr-file-atlas-copilot-suggestions-flatten)
+**实现审计：** [产品 IA 纠偏与 Review 清单](../audits/2026-08-02-planned-requirements-product-ia-correction.md)
 
 > 2026-08-02 closure：Native modal、原生 editor context、Copilot / History、Composer handoff 与 focus restoration contract 已进入原工作区；选区、真实发送、handoff 和关闭后的 focus 仍需真实 Obsidian QA。本文保留为设计与验收依据。
 
@@ -577,7 +577,7 @@ Contract:
 
 已关闭的问题：
 
-- Native modal 与 Atlas element handoff 已实现并进入 `docs/planned-requirements.html` 的关闭批次；不再作为 `roadmap.html#decided` 的待建项。
+- Native modal 与 Atlas element handoff 已实现，不再出现在 `docs/planned-requirements.html` 或 `roadmap.html#decided`；实现证据由产品 IA 纠偏审计承接。
 
 ## 15. 参考资料
 

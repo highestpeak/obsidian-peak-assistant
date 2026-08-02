@@ -10,12 +10,11 @@
 - [现状审计与外部研究](../../research/2026-07-28-ai-graph-artifact-platform/README.md)
 - [可交互产品原型](../../gstack/ai-graph-artifact-platform-2026-07-28/index.html)
 - [AI Search 统一模式入口](./2026-07-28-ai-search-unified-modes.md)
-- [Planned Requirements](../../planned-requirements.html#pr-composer-ai-graph)
 - [Shared AI Instruction Composer](./2026-07-28-shared-ai-instruction-composer.md)
 - [机器运行记录 JSONL 设计](./2026-07-21-machine-record-storage-jsonl-design.md)
 - [生成产物注册表](../../conventions/generated-artifact-registry.md)
 - [生成产物与存储治理实现设计](./2026-08-02-generated-artifact-storage-governance-implementation-design.md)
-- [Planned Requirements 关闭记录](../../planned-requirements.html#pr-composer-ai-graph)
+- [产品 IA 纠偏与 Review 清单](../audits/2026-08-02-planned-requirements-product-ia-correction.md)
 
 > 本文最初定义 AI Graph 的目标产品、数据和 runtime 边界；对应生产 contract 已进入原工作区。本文继续作为设计与验收依据，真实 provider run、Web source、版本 round-trip 和 canvas interaction 仍需 owner QA。
 

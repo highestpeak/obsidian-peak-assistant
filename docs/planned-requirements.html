@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Peak Assistant 局部需求登记与关闭批次</title>
+  <title>Peak Assistant Planned Requirements</title>
   <style>
     :root {
       --bg: #f7f8f4;
@@ -12,110 +12,38 @@
       --muted: #69766f;
       --line: #d9e1d8;
       --green: #1f6b52;
-      --blue: #245f7a;
-      --gold: #80611f;
-      --soft-green: #eef6f1;
-      --soft-blue: #eef5f7;
-      --soft-gold: #f7f2e8;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       color: var(--ink);
       background: var(--bg);
     }
     * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body { margin: 0; line-height: 1.72; letter-spacing: 0; }
+    body { margin: 0; line-height: 1.72; }
     a { color: var(--green); text-decoration: none; font-weight: 760; }
     a:hover { text-decoration: underline; text-underline-offset: 3px; }
-    code {
-      padding: 2px 5px;
-      border-radius: 5px;
-      background: #eef3ee;
-      color: var(--ink);
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 0.92em;
-    }
-    .page { width: min(1040px, calc(100vw - 64px)); margin: 0 auto; padding: 48px 0 72px; }
+    .page { width: min(840px, calc(100vw - 64px)); margin: 0 auto; padding: 48px 0 72px; }
     header { padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
     .eyebrow { color: var(--green); font-size: 13px; font-weight: 820; }
-    h1 { max-width: 100%; margin: 14px 0 16px; font-size: 42px; line-height: 1.1; letter-spacing: 0; }
+    h1 { margin: 14px 0 16px; font-size: 42px; line-height: 1.1; }
     h2 { margin: 0 0 12px; font-size: 28px; line-height: 1.2; }
-    h3 { margin: 0 0 8px; font-size: 19px; line-height: 1.28; }
-    .item-id { display: block; width: fit-content; margin: -2px 0 10px; color: var(--muted); font-size: 12px; }
     p { margin: 0; }
-    .subtitle { max-width: 900px; color: var(--muted); font-size: 18px; }
+    .subtitle { max-width: 760px; color: var(--muted); font-size: 18px; }
     .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; color: var(--muted); font-size: 13px; }
     .meta span { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); }
     .nav { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; font-size: 14px; }
     section { padding: 40px 0; border-bottom: 1px solid var(--line); }
-    .lead { color: var(--ink); font-size: 17px; }
-    .prose { color: var(--muted); font-size: 15px; }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 14px;
-      margin-top: 20px;
-    }
-    .card {
-      padding: 16px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--paper);
-      box-shadow: 0 12px 28px rgba(23, 34, 29, 0.045);
-    }
-    .card p { color: var(--muted); font-size: 14px; line-height: 1.58; }
-    .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      min-height: 23px;
-      padding: 2px 8px;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      background: var(--paper);
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 760;
-      white-space: nowrap;
-    }
-    .green { color: var(--green); background: var(--soft-green); border-color: rgba(31, 107, 82, 0.24); }
-    .blue { color: var(--blue); background: var(--soft-blue); border-color: rgba(36, 95, 122, 0.24); }
-    .gold { color: var(--gold); background: var(--soft-gold); border-color: rgba(128, 97, 31, 0.24); }
-    table {
-      width: 100%;
+    .empty-state {
       margin-top: 18px;
-      border-collapse: collapse;
-      table-layout: fixed;
+      padding: 22px;
       border: 1px solid var(--line);
-      border-radius: 8px;
-      overflow: hidden;
-      background: var(--paper);
-      font-size: 14px;
-      box-shadow: 0 10px 26px rgba(23, 34, 29, 0.04);
-    }
-    th, td {
-      padding: 11px 13px;
-      border-bottom: 1px solid var(--line);
-      text-align: left;
-      vertical-align: top;
-      line-height: 1.52;
-      overflow-wrap: break-word;
-    }
-    th { color: var(--ink); background: var(--soft-green); font-weight: 780; }
-    tr:last-child td { border-bottom: 0; }
-    td { color: var(--muted); }
-    td strong { color: var(--ink); }
-    .note {
-      margin-top: 18px;
-      padding: 14px 16px;
       border-left: 4px solid var(--green);
+      border-radius: 8px;
       background: var(--paper);
       color: var(--muted);
       box-shadow: 0 10px 24px rgba(23, 34, 29, 0.04);
     }
-    .note-title { margin-bottom: 3px; color: var(--ink); font-weight: 820; }
-    @media (max-width: 980px) {
-      .page { width: min(100vw - 24px, 760px); }
-      .grid { grid-template-columns: 1fr; }
+    .empty-state strong { display: block; margin-bottom: 4px; color: var(--ink); font-size: 17px; }
+    @media (max-width: 720px) {
+      .page { width: min(100vw - 24px, 840px); }
       h1 { font-size: 34px; }
     }
   </style>
@@ -123,232 +51,26 @@
 <body>
   <main class="page">
     <header>
-      <div class="eyebrow">Peak Assistant 局部需求登记</div>
-      <h1>开放需求与 2026-07-31 关闭批次</h1>
-      <p class="subtitle">这里登记尚未升级为正式规格或 Roadmap 里程碑的局部需求。2026-07-31 批次已经完成实现与产品归属纠偏；原有 PR ID 和 review 入口继续保留，供验收与历史追踪使用。</p>
+      <div class="eyebrow">Peak Assistant Planned Requirements</div>
+      <h1>当前没有开放的局部需求。</h1>
+      <p class="subtitle">本页只登记尚未实现、且尚未升级为正式规格或 Roadmap 里程碑的局部需求。需求完成、合并或撤销后即从本页移除。</p>
       <div class="meta">
         <span>Open: 0</span>
-        <span>Closed batch: 9 implemented · 1 merged · 1 retired</span>
-        <span>Acceptance: real Obsidian interaction QA pending</span>
         <span>Updated: 2026-08-02</span>
       </div>
       <nav class="nav" aria-label="cross document navigation">
         <a href="index.html">← 文档总索引</a>
         <a href="roadmap.html">Roadmap</a>
-        <a href="13-feature-vault-intelligence.html">13 · Vault Intelligence</a>
-        <a href="14-feature-ambient-push.html">14 · Ambient Push</a>
-        <a href="12-feature-search.html">12 · Search</a>
-        <a href="16-feature-document-copilot.html">16 · Document Copilot</a>
+        <a href="progress.md">Progress</a>
       </nav>
     </header>
 
-    <section id="how-to-use">
-      <h2>怎么使用这份登记</h2>
-      <p class="lead">先看“开放需求”判断是否还有待实施的小项。已关闭批次按当前生产入口组织：能力卡负责 owner review，功能正稿和 Roadmap 负责当前产品真值，历史规格只保留决策证据。</p>
-      <div class="note">
-        <div class="note-title">升级规则</div>
-        新的局部需求先进入“开放需求”。需要跨模块设计时升级为正式 spec；成为产品里程碑后迁入 <a href="roadmap.html">Roadmap</a>，不在多个页面重复维护待办状态。
-      </div>
-      <div class="note">
-        <div class="note-title">2026-07-31 批次已经写回原工作区</div>
-        实现与纠偏已进入 <code>codex/peak-modernization-refactor</code>：<code>3dc93041</code>、<code>7d63b6ef</code>、<code>3d8f10c4</code>。自动化覆盖 source contract、focused tests、build 与 docs mock；真实 Obsidian 的 focus、handoff、pointer 与 provider run 仍标记为 <code>INTERACTION NOT VERIFIED</code>。完整 review 顺序见 <a href="superpowers/audits/2026-08-02-planned-requirements-product-ia-correction.md">产品 IA 纠偏与逐项 Review 清单</a>。
-      </div>
-    </section>
-
     <section id="active-planned">
       <h2>开放需求</h2>
-      <div class="note">
-        <div class="note-title">当前没有开放的局部需求</div>
-        下面的 11 个 PR ID 属于已关闭批次，不应再作为 implementation backlog 使用。新的小需求可继续登记在本节；正式能力状态以 <a href="roadmap.html">Roadmap</a> 和对应功能正稿为准。
+      <div class="empty-state">
+        <strong>暂无待实现的小需求</strong>
+        新的局部需求可以继续登记在这里；形成正式设计后移入对应规格或 Roadmap。
       </div>
-    </section>
-
-    <section id="closed-2026-07">
-      <h2>2026-07-31 关闭批次</h2>
-      <p class="lead">九项能力已经实现并等待 owner 的真实 Obsidian 交互验收；Search Hub Drawer 已合并进 File Atlas handoff，Ambient floating panel 已撤销。以下卡片保留稳定 anchor、当前归属和 review 动作。</p>
-      <div class="grid">
-        <article class="card" id="pr-vault-graph-segment">
-          <div class="pill-row"><span class="pill green">AI Search → Vault Intelligence</span><span class="pill gold">implemented · owner interaction QA pending</span></div>
-          <h3>Vault Intelligence 图谱概览</h3>
-          <code class="item-id">PR-VAULT-GRAPH-SEGMENT</code>
-          <p>Vault graph overview、hubs、结构断点、health stats 与 recent reviews 全部属于 Quick Search 的 <code>Vault Intelligence</code> mode。它不再通过旧 Copilot Vault panel 渲染；选中 mode 本身不会启动扫描。</p>
-          <p><strong>Review：</strong>打开统一入口 Mock，切到 Vault Intelligence；确认图谱概览和 review history 同屏，并且没有 “Open Copilot Vault workspace”。</p>
-          <p><a href="gstack/ai-search-unified-modes-2026-07-28/index.html">Vault Intelligence 交互 Mock</a> · <a href="superpowers/specs/2026-07-07-vault-maintenance-graph-segment.html">已纠偏能力设计</a></p>
-        </article>
-        <article class="card" id="pr-doc-local-graph">
-          <div class="pill-row"><span class="pill green">File Atlas</span><span class="pill gold">implemented · owner interaction QA pending</span></div>
-          <h3>File Atlas 文档上下文与局部图谱</h3>
-          <code class="item-id">PR-DOC-LOCAL-GRAPH</code>
-          <p>当前文档属于哪些 hub、inbound / outgoing links 与局部 neighborhood graph 都属于 File Atlas。顶部 context row 负责摘要，<code>Graph</code> subview 负责真实 local / two-hop 画布。</p>
-          <p><strong>Review：</strong>打开 File Atlas，确认 context row 可见 hubs 与 link counts；点击 <code>Open local graph</code> 必须切到同一 Atlas 内的 Graph subview。</p>
-          <p><a href="superpowers/specs/2026-07-07-contextual-hub-local-graph-surfaces.html#file-atlas">File Atlas context 设计</a></p>
-        </article>
-        <article class="card" id="pr-search-hub-drawer">
-          <div class="pill-row"><span class="pill blue">Merged into File Atlas handoff</span><span class="pill">no standalone drawer</span></div>
-          <h3>Search 到 File Atlas 的上下文交接</h3>
-          <code class="item-id">PR-SEARCH-HUB-DRAWER</code>
-          <p>这个名字指“搜索结果右侧再显示一套 hub / local graph panel”。它与 File Atlas 重复，因此不再作为独立需求实现。Search inspector 只保留 <code>Open in File Atlas</code> handoff，hub 与局部图由 Atlas 展示。</p>
-          <p><strong>Review：</strong>选中 Vault Search 结果，确认 inspector 没有 Hubs drawer；点击地图按钮应打开该文件的 File Atlas。</p>
-          <p><a href="superpowers/specs/2026-07-07-contextual-hub-local-graph-surfaces.html#search-handoff">合并决策</a></p>
-        </article>
-        <article class="card" id="pr-ambient-floating-panel">
-          <div class="pill-row"><span class="pill gold">Retired</span><span class="pill">Composer Intelligence owns Ambient</span></div>
-          <h3>Ambient 浮窗撤销</h3>
-          <code class="item-id">PR-AMBIENT-FLOATING-PANEL</code>
-          <p>撤销 floating panel、拖拽、折叠与独立刷新 UI。Ambient 保留的是 sensing / finding producer 能力，输出进入 Composer Intelligence 的 Brief / Copilot lifecycle；它不是独立 modal、panel 或第三个 tab。</p>
-          <p><strong>Review：</strong>源码和样式中都不应存在 <code>AmbientFloatingPanelHost</code> 或 <code>.peak-ambient-floating-host</code>。</p>
-          <p><a href="superpowers/specs/2026-07-07-ambient-floating-panel.html">撤销记录</a> · <a href="14-feature-ambient-push.html#doc-map">Ambient 文档地图</a></p>
-        </article>
-        <article class="card" id="pr-file-atlas-work-file-rail">
-          <div class="pill-row"><span class="pill green">File Atlas</span><span class="pill gold">implemented · owner interaction QA pending</span></div>
-          <h3>File Atlas 工作文件栏</h3>
-          <code class="item-id">PR-FILE-ATLAS-WORK-FILE-RAIL</code>
-          <p>左侧工作文件 rail 要加宽并优先让完整文件名可读；先展示当前打开文件，再用最近查看文件补足固定容量。默认按最后查看时间排序，不复制顶部 tab 顺序；用户可切换最近查看、最常使用或文件名排序。</p>
-          <p><a href="superpowers/specs/2026-07-08-file-atlas-design.md">File Atlas spec · 2026-07-27 owner feedback</a></p>
-        </article>
-        <article class="card" id="pr-copilot-intelligence-native-modal">
-          <div class="pill-row"><span class="pill green">Document Copilot · Native editor</span><span class="pill gold">implemented · owner interaction QA pending</span></div>
-          <h3>原生 Markdown Copilot Intelligence</h3>
-          <code class="item-id">PR-COPILOT-INTELLIGENCE-NATIVE-MODAL</code>
-          <p>在 Obsidian 原生 Markdown 编辑器上方打开一个 <code>Copilot Intelligence</code> modal，让用户不进入 Composer View 也能围绕当前文件 / 选区使用同一 Document Intelligence 能力。它不是新 AI model，也不是 Chat Studio 子模式。</p>
-          <p>顶层 IA 只保留 <code>Copilot / History</code>。<code>Copilot</code> 内部用两列呈现同一能力：自动建议和对话；不要暴露 <code>Ambient</code>、<code>Session</code>、<code>候选</code> 这类新 tab。自动建议必须复用 Composer Copilot 的建议组件、preset、排序和卡片语义；对话必须复用共享输入组件。</p>
-          <p>全面 review 或复杂写入不在 modal 里持续展示候选面板，而是 handoff 到 Composer Review，并保留 run identity、context snapshot、sources 和 receipt。History 独立显示当前文件真实写入记录；未采用建议仍归 generation history / run receipt。</p>
-          <p><a href="superpowers/specs/2026-07-29-copilot-intelligence-native-editor-modal.md">正式设计</a> · <a href="gstack/copilot-intelligence-native-modal-2026-07-29/index.html">Native modal mock</a></p>
-        </article>
-        <article class="card" id="pr-file-atlas-copilot-suggestions-flatten">
-          <div class="pill-row"><span class="pill green">File Atlas · Element Copilot</span><span class="pill gold">implemented · owner interaction QA pending</span></div>
-          <h3>File Atlas Copilot 建议与扁平视图</h3>
-          <code class="item-id">PR-FILE-ATLAS-COPILOT-SUGGESTIONS-FLATTEN</code>
-          <p>File Atlas 右侧 inspector 可以展示当前选中 heading / block / resource 的 Copilot 建议，但它必须是 Composer Copilot 建议在 Atlas 里的呈现位置，而不是一套新的 Atlas-only action 体系。</p>
-          <p>同一功能、不同呈现位置：建议 generator、preset、排序、文案语义、run receipt 和 prompt composer 都与 Composer Copilot 对齐。Atlas 只负责选择、定位、检查和 context handoff；需要写入时进入 Copilot Intelligence 或 Composer Review，不直接改 Markdown。</p>
-          <p>工具栏的 filter 与 flatten 控制采用 icon-only button；视觉上不写 <code>Filters</code> / <code>Flatten all</code>，但必须保留 <code>aria-label</code> 与 tooltip。Flatten 模式按正文顺序展平所有元素，并用 path crumb 保留原始层级，不破坏搜索和筛选结果。</p>
-          <p><a href="gstack/file-atlas-copilot-flatten-2026-07-29/index.html">Atlas Copilot / flatten mock</a> · <a href="superpowers/specs/2026-07-08-file-atlas-design.md">File Atlas spec</a></p>
-        </article>
-        <article class="card" id="pr-shared-ai-instruction-composer">
-          <div class="pill-row"><span class="pill green">Cross-surface · Shared AI input</span><span class="pill gold">implemented · owner interaction QA pending</span></div>
-          <h3>跨表面 AI 指令输入</h3>
-          <code class="item-id">PR-SHARED-AI-INSTRUCTION-COMPOSER</code>
-          <p>把自然语言指挥 AI 的输入体验提升为独立共享产品能力，与 AI Graph Artifact Platform 平级。Chat Studio、Composer Copilot、AI Graph Update 和后续 AI surface 都消费同一套 shared PromptInput capability，而不是分别实现输入框、附件、引用、draft、history 和提交状态机。</p>
-          <p>共享范围包括文本、<code>@</code> / <code>[[</code> / <code>/</code> context trigger、附件与去重、IME、Enter / Shift+Enter / Escape、focus、draft / history、loading / streaming / error、submit / stop 与 accessibility。各 surface 只提供自动 context、placeholder / chrome slot 和 submit adapter，并持有自己的 runtime 与输出语义。</p>
-          <p>Chat Studio、Composer Copilot、AI Search 与 AI Graph adapter 已接入共享 controller、typed submission contract 和 PromptInput primitives。自动化契约已通过；中文 IME、focus、stop / regenerate 与跨表面 draft 恢复仍待真实 Obsidian 交互验收。</p>
-          <p><a href="superpowers/specs/2026-07-28-shared-ai-instruction-composer.md">Shared AI Instruction Composer 正式规格</a></p>
-        </article>
-        <article class="card" id="pr-ai-search-unified-modes">
-          <div class="pill-row"><span class="pill green">Quick Search · Unified AI modes</span><span class="pill gold">implemented · owner interaction QA pending</span></div>
-          <h3>AI Search 统一模式</h3>
-          <code class="item-id">PR-AI-SEARCH-UNIFIED-MODES</code>
-          <p>Quick Search modal 顶层只保留 <code>Vault Search</code> 与一个 AI workspace selector，并保持原有左右等分布局。两侧可点击区域必须占满同一顶栏高度，文字严格垂直居中；嵌套在 menu anchor 内的 AI selector 不能贴近顶边。普通打开默认 <code>AI Search</code>；低频的 <code>AI Graph</code> 与 <code>Vault Intelligence</code> 从同一下拉进入，并且不跨 modal 记住低频 mode。恢复中的 run、history record 与 artifact deep link 可以直接恢复对应模式。</p>
-          <p>移除输入框里重复的 <code>Vault Analysis / AI Graph</code> mode pill和独立 Vault Intelligence 顶栏按钮。三种 AI mode 复用 Shared AI Instruction Composer、history list 与键盘语法；每个 adapter 只改变 placeholder、suggestions、run envelope、history projection 与 detail route。</p>
-          <p>AI Graph 不再拥有独立 All AI Graphs Library。全部 persisted graphs 在 AI Graph mode 中用一列紧凑 history row 浏览；不显示 Vault / Web / Mixed、Graph type filter rows 或 graph preview card grid。Vault Intelligence 在这里拥有 Vault graph overview、hubs、health 与 recent reviews；它不再转跳旧 Copilot Vault workspace，选择 mode 本身也不自动触发 scan。</p>
-          <p>键盘接入既有全键盘体系：<code>Tab</code> 在组件间移动；mode menu 使用方向键、Enter / Space 与 Escape；modifier shortcut 只作可发现的加速层，并且不能抢 input、PromptInput 或 IME。</p>
-          <p><a href="gstack/ai-search-unified-modes-2026-07-28/design-review.html">正式设计（可视化）</a> · <a href="gstack/ai-search-unified-modes-2026-07-28/index.html">可交互 Mock</a> · <a href="superpowers/specs/2026-07-28-ai-search-unified-modes.md">Markdown source spec</a> · <a href="superpowers/specs/2026-07-24-peak-keyboard-navigation-system.md">键盘体系</a></p>
-        </article>
-        <article class="card" id="pr-composer-ai-graph">
-          <div class="pill-row"><span class="pill green">Cross-surface · AI Graph</span><span class="pill gold">implemented · owner interaction QA pending</span></div>
-          <h3>AI Graph 产物平台</h3>
-          <code class="item-id">PR-COMPOSER-AI-GRAPH</code>
-          <p>AI Graph 升级为独立、持久化、可版本化的知识图谱 artifact，而不是 AI Search 某次运行里附带的一张文件关系图。每张图拥有稳定 <code>graphId</code>、不可变版本、来源、证据和 review 状态；全部 graph 在 <a href="#pr-ai-search-unified-modes"><code>AI Search → AI Graph</code></a> 的紧凑历史列表中浏览，AI Search、Composer / File Atlas、Vault Search 与 Chat 重开的是同一份 graph。</p>
-          <p><strong>创建来源可见：</strong>每个 history row 显示不可变的 creation surface 与主要上下文，例如 <code>Created in File Atlas · AI 编辑器生态调研.md</code>。File Atlas 必须记录稳定 file ref 与当时的可读文件名；AI Search / Vault Search 记录 query，Composer 记录文档 / 选区，Chat Studio 记录 project / conversation。图从别处更新时不覆盖创建来源，更新位置进入 version / run provenance；完整来源在 Graph Detail 中查看和跳转。</p>
-          <p>节点不仅是 Vault 文件，还支持词汇 / 概念、人物、组织、产品、事件、流程、主张、网页与 custom object。关系保存 predicate、qualifier、evidence、confidence、生成方式和 review 状态；Vault、Web、粘贴文本和已有 Graph 都可作为 source。Web 必须由用户主动开启，snippet 不能单独充当证据，成功验证后自动保存新版本，但不自动改写笔记或 Vault links。</p>
-          <p><strong>关系方向标记：</strong>renderer 必须读取 relation 的 <code>directed</code> 语义，而不是把所有关系画成无方向线。directed relation 在 target 端显示清晰箭头；symmetric relation 不显示箭头。Hierarchy 的 parent → child、Timeline 的 earlier → later 必须始终可辨；Bridges 的纯结构连接保持中性，只有具体有向 predicate 才显示箭头。Inspector 同时以文字显示 <code>source → predicate → target</code>，不能只依赖颜色或箭头形状。</p>
-          <p><strong>自然语言更新入口：</strong>Graph Detail 的主修改动作命名为 <code>Update graph</code>，直接输入“希望这张图如何变化”，自动带入 current graph / head version、当前选中 node 或 relation、已有 sources 与 review context；不要求用户回到首次创建表单重新选择 Graph type。AI 必须先给 added / changed / removed nodes、relations、evidence 与 review status 的 semantic diff，只有用户接受后才创建新的 immutable version。</p>
-          <p><strong>共享能力依赖：</strong>Update graph 是 <a href="#pr-shared-ai-instruction-composer">Shared AI Instruction Composer</a> 的 consumer。AI Graph 只提供 graphId、baseVersion、selection、sources / lens / review context adapter，并把 submit 路由到 semantic diff；输入核心由平级共享能力拥有。</p>
-          <p><strong>Sources 与 Update 分离：</strong><code>Sources</code> 只管理来源、可用性与 freshness。Add / remove source 或检查到 Web source changed 都不能自动改图、触发 run 或创建版本；用户可明确选择 “Use source changes in Update graph” 再进入更新预览。Graph Detail 不提供语义含混的顶层 <code>Add sources</code> / <code>Refresh</code> 作为更新入口；Create Graph 只负责首次生成。</p>
-          <p>Composer 只提供当前文档 / 选区 context、入口、preview 与打开 Graph Detail 的 adapter，不另建 agent、runtime 或 store。canonical body 使用 versioned JSON artifact，运行事件使用 JSONL 并只引用 artifact，SQLite 作为可重建 browse / search projection；Markdown 仅用于显式 export。</p>
-          <p><a href="gstack/ai-graph-artifact-platform-2026-07-28/index.html#judgment">正式产品设计（可视化）</a> · <a href="gstack/ai-graph-artifact-platform-2026-07-28/index.html#detail">Graph Detail 交互原型</a> · <a href="gstack/ai-graph-artifact-platform-2026-07-28/index.html#create">Create Graph 交互原型</a> · <a href="gstack/ai-search-unified-modes-2026-07-28/index.html">统一入口 Mock</a> · <a href="superpowers/specs/2026-07-28-ai-graph-artifact-platform.md">Markdown source spec</a> · <a href="research/2026-07-28-ai-graph-artifact-platform/README.md">现状审计与外部研究</a></p>
-        </article>
-        <article class="card" id="pr-composer-graph-empty-folder-collapse">
-          <div class="pill-row"><span class="pill green">Peak Composer · Graph / Folder tree</span><span class="pill gold">implemented · owner interaction QA pending</span></div>
-          <h3>Folder tree 空目录折叠</h3>
-          <code class="item-id">PR-COMPOSER-GRAPH-EMPTY-FOLDER-COLLAPSE</code>
-          <p>Folder tree 图谱不要为“本级没有直接可见内容、只是通向下级目录”的中转目录绘制独立边框和大块留白。例如 <code>B-2-创意和想法管理</code> 若本级没有直接文件节点，就不应只为包住下一层目录再画一层框。</p>
-          <p>目录框只在该层直接拥有当前图谱中的可见内容节点时显示；纯目录链自动折叠，后代节点与它们真正有内容的最近目录组继续正常呈现。折叠只影响布局，不丢失层级信息：完整 Vault path 仍保留在节点详情 / tooltip / 打开文件行为中。搜索、scope 或 filter 导致本级内容不可见时，也按当前可见结果重新判断。</p>
-          <p>实现通过 <code>folderCompoundModel</code> 区分直接拥有可见内容的目录与纯中转父目录；深层单链、同级多分支和过滤后空目录由 focused contract test 覆盖。真实大图的缩放与布局视觉仍待 owner QA。</p>
-        </article>
-      </div>
-    </section>
-
-    <section id="register-table">
-      <h2>关闭批次索引</h2>
-      <table>
-        <colgroup>
-          <col style="width: 20%">
-          <col style="width: 22%">
-          <col style="width: 34%">
-          <col>
-        </colgroup>
-        <thead>
-          <tr><th>ID</th><th>当前 Surface</th><th>用户价值</th><th>证据 / Review</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><strong>PR-VAULT-GRAPH-SEGMENT</strong></td>
-            <td>AI Search → Vault Intelligence</td>
-            <td>用户先看到 Vault 结构、hubs、last report，不需要去多个命令里找。</td>
-            <td><a href="superpowers/specs/2026-07-07-vault-maintenance-graph-segment.html">low fidelity spec</a></td>
-          </tr>
-          <tr>
-            <td><strong>PR-DOC-LOCAL-GRAPH</strong></td>
-            <td>File Atlas → context row / Graph subview</td>
-            <td>写当前文档时直接知道它属于哪些 hub、从哪里来、局部图谱怎么连接。</td>
-            <td><a href="superpowers/specs/2026-07-07-contextual-hub-local-graph-surfaces.html#file-atlas">contextual graph spec</a></td>
-          </tr>
-          <tr>
-            <td><strong>PR-SEARCH-HUB-DRAWER</strong></td>
-            <td>Merged · Search → File Atlas handoff</td>
-            <td>搜索只负责选择结果；完整 hub / local graph 由 File Atlas 展示，避免两套 inspector。</td>
-            <td><a href="superpowers/specs/2026-07-07-contextual-hub-local-graph-surfaces.html#search-handoff">merge decision</a></td>
-          </tr>
-          <tr>
-            <td><strong>PR-AMBIENT-FLOATING-PANEL</strong></td>
-            <td>Retired · Composer Intelligence owns output</td>
-            <td>不再建设浮层；保留 sensing / finding producer，进入 Composer Brief / Copilot lifecycle。</td>
-            <td><a href="superpowers/specs/2026-07-07-ambient-floating-panel.html">retirement record</a><br><a href="14-feature-ambient-push.html#doc-map">Ambient doc map</a></td>
-          </tr>
-          <tr>
-            <td><strong>PR-FILE-ATLAS-WORK-FILE-RAIL</strong></td>
-            <td>File Atlas → Open / Recent rail</td>
-            <td>不靠顶部被截断的 tab 猜文件：左栏能读清文件名，优先汇总各 tab group / split / pop-out 的打开文件，再从最近查看历史补足固定容量，并支持切换排序。</td>
-            <td><a href="superpowers/specs/2026-07-08-file-atlas-design.md">File Atlas spec · owner UI feedback</a></td>
-          </tr>
-          <tr>
-            <td><strong>PR-COPILOT-INTELLIGENCE-NATIVE-MODAL</strong></td>
-            <td>Document Copilot → Native editor modal</td>
-            <td>用户不打开 Composer View 也能围绕当前文件 / 选区获得同一 Copilot Intelligence：顶层只保留 Copilot / History，Copilot 内部两列呈现自动建议和对话，全面 review handoff 到 Composer Review。</td>
-            <td><a href="superpowers/specs/2026-07-29-copilot-intelligence-native-editor-modal.md">正式设计</a><br><a href="gstack/copilot-intelligence-native-modal-2026-07-29/index.html">Native modal mock</a><br><a href="#pr-copilot-intelligence-native-modal">本页需求卡</a></td>
-          </tr>
-          <tr>
-            <td><strong>PR-FILE-ATLAS-COPILOT-SUGGESTIONS-FLATTEN</strong></td>
-            <td>File Atlas → Inspector / toolbar</td>
-            <td>Atlas 右侧展示当前元素的 Copilot 建议，但建议生成器、preset、排序和卡片语义必须与 Composer Copilot 完全一致；filter / flatten 用 icon-only 控制，flatten 以 path crumb 保留层级。</td>
-            <td><a href="gstack/file-atlas-copilot-flatten-2026-07-29/index.html">Atlas mock</a><br><a href="#pr-file-atlas-copilot-suggestions-flatten">本页需求卡</a></td>
-          </tr>
-          <tr>
-            <td><strong>PR-SHARED-AI-INSTRUCTION-COMPOSER</strong></td>
-            <td>Chat Studio / Composer Copilot / AI Graph / future AI surfaces</td>
-            <td>建立平级共享的 AI instruction input capability；统一 PromptInput、context、附件、draft、history、IME、键盘和 submit / stop 行为，各 surface 只提供 adapter。</td>
-            <td><a href="superpowers/specs/2026-07-28-shared-ai-instruction-composer.md">正式设计</a><br><a href="#pr-shared-ai-instruction-composer">本页需求卡</a></td>
-          </tr>
-          <tr>
-            <td><strong>PR-AI-SEARCH-UNIFIED-MODES</strong></td>
-            <td>Quick Search / AI Search / AI Graph / Vault Intelligence</td>
-            <td>只保留 Vault Search 与一个 AI workspace selector；默认 AI Search，低频 mode 下拉进入。AI Graph 复用紧凑 history list，不再建设独立 Library、source/type filters 或 preview card grid。</td>
-            <td><a href="gstack/ai-search-unified-modes-2026-07-28/design-review.html">可视化正式设计</a><br><a href="gstack/ai-search-unified-modes-2026-07-28/index.html">可交互 Mock</a><br><a href="#pr-ai-search-unified-modes">本页需求卡</a></td>
-          </tr>
-          <tr>
-            <td><strong>PR-COMPOSER-AI-GRAPH</strong></td>
-            <td>AI Search / Composer / Search / Chat</td>
-            <td>把 AI Graph 作为跨 surface 的持久化 artifact：AI Graph history 可看全部图，并显示 <code>Created in surface · primary context</code>；File Atlas 来源精确到文件。Vault、Web、词汇、实体、主张与 custom object 可共同成图；关系有证据、版本、review 状态和 relation-aware 方向箭头。</td>
-            <td><a href="gstack/ai-graph-artifact-platform-2026-07-28/index.html#judgment">可视化正式设计</a><br><a href="gstack/ai-graph-artifact-platform-2026-07-28/index.html#detail">Graph Detail prototype</a><br><a href="gstack/ai-graph-artifact-platform-2026-07-28/index.html#create">Create Graph prototype</a><br><a href="gstack/ai-search-unified-modes-2026-07-28/index.html">统一入口 Mock</a><br><a href="research/2026-07-28-ai-graph-artifact-platform/README.md">current-gap audit</a></td>
-          </tr>
-          <tr>
-            <td><strong>PR-COMPOSER-GRAPH-EMPTY-FOLDER-COLLAPSE</strong></td>
-            <td>Peak Composer → Graph → Folder tree</td>
-            <td>本级没有直接可见内容时不画空目录框，折叠纯中转目录链，减少无信息的大框、嵌套和留白；完整文件路径仍可追溯。</td>
-            <td><a href="#pr-composer-graph-empty-folder-collapse">本页显示规则</a><br><code>graph-folder-compound-model</code> contract test</td>
-          </tr>
-        </tbody>
-      </table>
     </section>
   </main>
 </body>

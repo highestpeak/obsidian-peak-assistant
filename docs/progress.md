@@ -8,11 +8,11 @@
 
 Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding → 配置 → Chat → Search → Graph 每个环节都能跑通，体验完整。同时推进技术债清理和架构重构。
 
-## 2026-08-02 · Planned Requirements 文档关闭
+## 2026-08-02 · Planned Requirements 清理
 
-- [x] **登记页不再伪装 backlog**：`planned-requirements.html` 明确分成开放需求（当前 0）与 2026-07-31 关闭批次（9 implemented / 1 merged / 1 retired），保留全部稳定 PR anchor 和逐项 owner review。
+- [x] **登记页只保留待办**：`planned-requirements.html` 只展示开放需求（当前 0）；已实现、合并或撤销的项目全部从页面移除，不再保留关闭卡片或 PR anchor。
 - [x] **当前入口同步**：Search 正稿改为 `Vault Search + AI workspace selector`；Vault Intelligence 正稿移除旧 Copilot Vault tab；文档 hub / link / local graph 归 File Atlas；Ambient sensing / refresh / 候选解释归 Composer Intelligence 的 Copilot Brief，独立浮窗明确退役。
-- [x] **文档层级收口**：Roadmap 把本批次移到 Done，删除 4 条重复的 implementation-pending 里程碑；根索引说明开放 / 关闭职责；Linked specs 更新为原工作区已实现或历史 / superseded 状态，旧审计和实施计划保留但不再冒充当前真值。
+- [x] **文档层级收口**：Roadmap 记录已完成里程碑，Progress 保留历史流水，产品 IA 审计承接逐项 review；根索引明确 Planned Requirements 只放当前待办。Linked specs 更新为原工作区已实现或 historical / superseded 状态。
 - [x] **验证边界**：本轮只改文档；本地 HTML href / anchor、关键状态词、focused requirements contract 与 diff whitespace 检查通过后提交。真实 Obsidian 交互仍沿用逐项清单中的 `INTERACTION NOT VERIFIED`，没有升级为产品 E2E 验收。
 
 ## 2026-08-02 · 生成产物与存储治理 Phase 0
@@ -30,7 +30,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] **Vault Intelligence 回归 AI Search**：Vault Graph、hubs、结构洞和 review history 由 Quick Search 的 `Vault Intelligence` mode 直接承载，不再复用旧 Copilot Vault workspace。
 - [x] **文档图谱回归 File Atlas**：当前文档所属 hubs、入链/出链与 local graph 统一放入 File Atlas；Search 结果检查器只提供 `Open in File Atlas`，旧 Search Hub Drawer 已合并退役。
 - [x] **Ambient 浮窗退役**：删除本分支新增的 window-local floating host；Ambient 只保留 sensing/finding 能力，未来投影归 Composer Intelligence / Copilot，而不是独立 panel/modal。旧 Related Notes leaf 仅作为已保存 workspace 的兼容入口。
-- [x] **Review 入口修复**：`planned-requirements.html` 逐项说明当前 surface、变更和验收路径；AI Search / Vault Intelligence 增加可交互有样式 mock 与正式视觉设计；AI Graph 的 Graph Detail / Create Graph 改为直接链接到对应有样式原型。
+- [x] **Review 入口修复**：逐项 surface、变更和验收路径统一放进产品 IA 纠偏审计；AI Search / Vault Intelligence 增加可交互有样式 mock 与正式视觉设计；AI Graph 的 Graph Detail / Create Graph 改为直接链接到对应有样式原型。
 - [x] **自动验证**：planned-requirements production contract、13 个相关 graph/File Atlas/Composer/AI Graph suites、生产 build 与 Playwright mock validation 均通过。真实 Obsidian 本轮未连接 CDP，交互结论保持 `INTERACTION NOT VERIFIED`。逐项清单见 [`2026-08-02-planned-requirements-product-ia-correction.md`](./superpowers/audits/2026-08-02-planned-requirements-product-ia-correction.md)。
 
 ## 2026-07-31 · Planned Requirements 11 项完整实现

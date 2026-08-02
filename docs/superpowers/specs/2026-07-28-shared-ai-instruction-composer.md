@@ -8,14 +8,14 @@
 配套入口：
 
 - [根级文档索引](../../index.html)
-- [Planned Requirements](../../planned-requirements.html#pr-shared-ai-instruction-composer)
+- [产品 IA 纠偏与 Review 清单](../audits/2026-08-02-planned-requirements-product-ia-correction.md)
 - [AI Graph Artifact Platform](./2026-07-28-ai-graph-artifact-platform.md)
 - [Chat Studio](../../11-feature-chat-studio-ui-ux.html)
 - [Composer Copilot](../../16-feature-document-copilot.html)
 
 > 这是与 AI Graph Artifact Platform、Peak File Workspace 平级的共享产品能力，不属于 Chat Studio、Composer Copilot 或 AI Graph 中的任何一个。
 
-> 2026-08-02 closure：Chat Studio、Composer Copilot 与 AI Search / AI Graph 已共用 `SharedAIInstructionController`、PromptInput primitives 和统一 attachment/context/submission contract。中文 IME、focus、stop / regenerate 仍需真实 Obsidian 交互复核；关闭记录见 [PR-SHARED-AI-INSTRUCTION-COMPOSER](../../planned-requirements.html#pr-shared-ai-instruction-composer)。
+> 2026-08-02 closure：Chat Studio、Composer Copilot 与 AI Search / AI Graph 已共用 `SharedAIInstructionController`、PromptInput primitives 和统一 attachment/context/submission contract。中文 IME、focus、stop / regenerate 仍需真实 Obsidian 交互复核；逐项证据见 [产品 IA 纠偏与 Review 清单](../audits/2026-08-02-planned-requirements-product-ia-correction.md)。
 
 ## 1. 核心判断
 
