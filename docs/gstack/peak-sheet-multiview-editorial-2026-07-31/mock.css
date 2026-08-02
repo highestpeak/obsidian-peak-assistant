@@ -985,18 +985,34 @@ body[data-visual-version="editorial-v2"] .progress-cell > i > b {
 }
 
 body[data-visual-version="editorial-v2"] .selected-range {
-  border-right: 1.5px solid var(--accent) !important;
-  border-left: 1.5px solid var(--accent) !important;
-  background: color-mix(in srgb, var(--accent) 6%, var(--surface)) !important;
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface)) !important;
   box-shadow: none;
 }
 
+body[data-visual-version="editorial-v2"] .selected-range.range-top,
 body[data-visual-version="editorial-v2"] .selected-range.range-start {
   border-top: 1.5px solid var(--accent) !important;
 }
 
+body[data-visual-version="editorial-v2"] .selected-range.range-bottom,
 body[data-visual-version="editorial-v2"] .selected-range.range-end {
   border-bottom: 1.5px solid var(--accent) !important;
+}
+
+body[data-visual-version="editorial-v2"] .selected-range.range-left {
+  border-left: 1.5px solid var(--accent) !important;
+}
+
+body[data-visual-version="editorial-v2"] .selected-range.range-right {
+  border-right: 1.5px solid var(--accent) !important;
+}
+
+body[data-visual-version="editorial-v2"] .selected-range.range-anchor {
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface)) !important;
+}
+
+body[data-visual-version="editorial-v2"] .selected-range.range-anchor:focus-visible {
+  outline: 0;
 }
 
 body[data-visual-version="editorial-v2"] .active-cell,
@@ -1013,6 +1029,21 @@ body[data-visual-version="editorial-v2"] .record-table td.is-current-cell {
 
 body[data-visual-version="editorial-v2"] .record-table td[data-field] {
   cursor: cell;
+  user-select: none;
+}
+
+body[data-visual-version="editorial-v2"] .record-table td[data-field] * {
+  user-select: none;
+}
+
+body[data-visual-version="editorial-v2"] .record-table td[data-field] .cell-editor,
+body[data-visual-version="editorial-v2"] .record-table td[data-field] .cell-editor * {
+  user-select: text;
+}
+
+body[data-visual-version="editorial-v2"].is-range-selecting,
+body[data-visual-version="editorial-v2"].is-range-selecting .record-table td[data-field] {
+  cursor: crosshair;
 }
 
 body[data-visual-version="editorial-v2"] .record-table td[data-readonly="true"] {
@@ -1043,6 +1074,7 @@ body[data-visual-version="editorial-v2"] .cell-editor {
   font-family: var(--font);
   font-size: 13.5px;
   font-variant-numeric: inherit;
+  user-select: text;
   font-weight: 500;
   line-height: 32px;
   box-shadow: none;

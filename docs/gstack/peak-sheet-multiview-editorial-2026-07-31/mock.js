@@ -725,6 +725,7 @@ const state = {
   activeLongTextId: null,
   longTextMode: 'truncate',
   cellSelection: null,
+  cellRange: null,
   editingCell: null,
 };
 
@@ -757,6 +758,8 @@ let formulaCommittedValue = defaultFormulaValue;
 let formulaCommittedState = defaultFormulaState;
 let formulaCommittedScope = defaultFormulaScope;
 let htmlArtifactCount = 2;
+let cellRangeDrag = null;
+let suppressCellClick = false;
 
 function icon(id) {
   return `<svg><use href="#${id}"/></svg>`;
@@ -977,8 +980,10 @@ function recordRow(record) {
         'numeric-cell',
         'score-metric',
         inSelectedRange ? 'selected-range' : '',
-        inSelectedRange && record.id === 'aster' ? 'range-start' : '',
-        inSelectedRange && record.id === 'koru' ? 'range-end' : '',
+        inSelectedRange ? 'range-left' : '',
+        inSelectedRange ? 'range-right' : '',
+        inSelectedRange && record.id === 'aster' ? 'range-top' : '',
+        inSelectedRange && record.id === 'koru' ? 'range-bottom' : '',
       )}" ${cellAttributes(record, 'fit')}>
         <span class="score-cell">
           <i class="score-ring" style="--score:${record.fit}" aria-hidden="true"></i>
@@ -1101,6 +1106,8 @@ function renderTable() {
   `;
 
   const table = stage.querySelector('.record-table');
+  table?.addEventListener('pointerdown', handleCellRangePointerDown);
+  table?.addEventListener('pointerover', handleCellRangePointerOver);
   table?.addEventListener('click', handleTableClick);
   table?.addEventListener('dblclick', handleTableDoubleClick);
   table?.addEventListener('keydown', handleTableKeyDown);
@@ -1223,6 +1230,34 @@ function renderCalendar() {
   });
 }
 
+function updateRangeStatus(primary, secondary, selectionStatistics) {
+  const cells = [...document.querySelectorAll('.record-table td.selected-range[data-field]')];
+  if (cells.length === 0) return false;
+  const first = cells[0];
+  const last = cells[cells.length - 1];
+  primary.textContent = `${cellReference(first.dataset.recordId, first.dataset.field)}:${cellReference(last.dataset.recordId, last.dataset.field)}`;
+  secondary.textContent = `${cells.length} 个单元格 · 拖动框选`;
+  const numericValues = cells.map((cell) => {
+    const definition = cellFields[cell.dataset.field];
+    const record = records.find((candidate) => candidate.id === cell.dataset.recordId);
+    if (!record || definition?.type !== 'number') return null;
+    const value = Number(getCellValue(record, cell.dataset.field));
+    return Number.isFinite(value) ? value : null;
+  }).filter((value) => value !== null);
+  const sum = numericValues.reduce((total, value) => total + value, 0);
+  const values = [
+    cells.length,
+    numericValues.length ? sum : '—',
+    numericValues.length ? (sum / numericValues.length).toFixed(1) : '—',
+    numericValues.length ? Math.min(...numericValues) : '—',
+    numericValues.length ? Math.max(...numericValues) : '—',
+  ];
+  selectionStatistics.querySelectorAll('b').forEach((value, index) => {
+    value.textContent = String(values[index]);
+  });
+  return true;
+}
+
 function updateStatus() {
   const visible = visibleRecords().length;
   const primary = document.querySelector('#status-primary');
@@ -1230,8 +1265,9 @@ function updateStatus() {
   const selectionStatistics = document.querySelector('#selection-statistics');
   selectionStatistics.hidden = state.view !== 'table'
     || !state.statsVisible
-    || Boolean(state.cellSelection);
+    || (Boolean(state.cellSelection) && !state.cellRange);
   if (state.view === 'table') {
+    if (state.cellRange && updateRangeStatus(primary, secondary, selectionStatistics)) return;
     if (state.cellSelection) {
       const definition = cellFields[state.cellSelection.field];
       primary.textContent = cellReference(state.cellSelection.recordId, state.cellSelection.field);
@@ -1307,7 +1343,10 @@ function setView(view) {
   if (!view || !(view in { table: 1, board: 1, calendar: 1 })) return;
   closeLongTextCell();
   state.cellSelection = null;
+  state.cellRange = null;
   state.editingCell = null;
+  cellRangeDrag = null;
+  document.body.classList.remove('is-range-selecting');
   state.view = view;
   closeViewMenu();
   renderCurrentView({ animate: true });
@@ -1476,23 +1515,33 @@ function updateFormulaBarForSelection() {
   updateFormulaEntryMode();
 }
 
-function selectCell(recordId, field, options = {}) {
-  const record = records.find((candidate) => candidate.id === recordId);
-  if (!record || !cellFields[field]) return;
-  state.cellSelection = { recordId, field };
-  state.selectedId = null;
+function clearCellSelectionClasses() {
   document.querySelectorAll('.record-table td[data-field]').forEach((cell) => {
     cell.classList.remove(
       'active-cell',
       'active-long-cell',
       'is-current-cell',
       'selected-range',
+      'range-top',
+      'range-bottom',
+      'range-left',
+      'range-right',
+      'range-anchor',
       'range-start',
       'range-end',
     );
     cell.setAttribute('tabindex', '-1');
   });
   document.querySelectorAll('.fill-handle').forEach((handle) => handle.remove());
+}
+
+function selectCell(recordId, field, options = {}) {
+  const record = records.find((candidate) => candidate.id === recordId);
+  if (!record || !cellFields[field]) return;
+  state.cellSelection = { recordId, field };
+  state.cellRange = null;
+  state.selectedId = null;
+  clearCellSelectionClasses();
   const cell = document.querySelector(cellSelector(recordId, field));
   cell?.classList.add('is-current-cell');
   cell?.setAttribute('tabindex', '0');
@@ -1500,6 +1549,105 @@ function selectCell(recordId, field, options = {}) {
   updateStatus();
   if (options.focus === false) return;
   cell?.focus({ preventScroll: true });
+}
+
+function getCellRangeBounds(anchor, focus) {
+  const rows = [...document.querySelectorAll('.record-table tbody tr[data-record-id]')];
+  if (rows.length === 0) return null;
+  const fields = [...rows[0].querySelectorAll('td[data-field]')]
+    .map((cell) => cell.dataset.field)
+    .filter(Boolean);
+  const anchorRow = rows.findIndex((row) => row.dataset.recordId === anchor.recordId);
+  const focusRow = rows.findIndex((row) => row.dataset.recordId === focus.recordId);
+  const anchorColumn = fields.indexOf(anchor.field);
+  const focusColumn = fields.indexOf(focus.field);
+  if ([anchorRow, focusRow, anchorColumn, focusColumn].some((index) => index < 0)) return null;
+  return {
+    rows,
+    fields,
+    top: Math.min(anchorRow, focusRow),
+    bottom: Math.max(anchorRow, focusRow),
+    left: Math.min(anchorColumn, focusColumn),
+    right: Math.max(anchorColumn, focusColumn),
+  };
+}
+
+function selectCellRange(anchor, focus) {
+  const bounds = getCellRangeBounds(anchor, focus);
+  if (!bounds) return;
+  state.cellSelection = { ...anchor };
+  state.cellRange = { anchor: { ...anchor }, focus: { ...focus } };
+  state.selectedId = null;
+  clearCellSelectionClasses();
+  let anchorCell = null;
+  for (let rowIndex = bounds.top; rowIndex <= bounds.bottom; rowIndex += 1) {
+    for (let columnIndex = bounds.left; columnIndex <= bounds.right; columnIndex += 1) {
+      const cell = bounds.rows[rowIndex].querySelector(`td[data-field="${bounds.fields[columnIndex]}"]`);
+      if (!(cell instanceof HTMLElement)) continue;
+      cell.classList.add('selected-range');
+      if (rowIndex === bounds.top) cell.classList.add('range-top');
+      if (rowIndex === bounds.bottom) cell.classList.add('range-bottom');
+      if (columnIndex === bounds.left) cell.classList.add('range-left');
+      if (columnIndex === bounds.right) cell.classList.add('range-right');
+      if (cell.dataset.recordId === anchor.recordId && cell.dataset.field === anchor.field) {
+        cell.classList.add('range-anchor');
+        cell.setAttribute('tabindex', '0');
+        anchorCell = cell;
+      }
+    }
+  }
+  anchorCell?.focus({ preventScroll: true });
+  updateFormulaBarForSelection();
+  updateStatus();
+}
+
+function pointerCell(event) {
+  if (!(event.target instanceof Element)) return null;
+  const cell = event.target.closest('td[data-field]');
+  if (!(cell instanceof HTMLElement)) return null;
+  const { recordId, field } = cell.dataset;
+  if (!recordId || !field) return null;
+  return { cell, point: { recordId, field } };
+}
+
+function handleCellRangePointerDown(event) {
+  if (event.button !== 0 || event.pointerType === 'touch') return;
+  if (!(event.target instanceof Element) || event.target.closest('.cell-editor')) return;
+  const target = pointerCell(event);
+  if (!target) return;
+  event.preventDefault();
+  window.getSelection()?.removeAllRanges();
+  cellRangeDrag = {
+    pointerId: event.pointerId,
+    anchor: target.point,
+    focus: target.point,
+    moved: false,
+  };
+  document.body.classList.add('is-range-selecting');
+}
+
+function handleCellRangePointerOver(event) {
+  if (!cellRangeDrag || cellRangeDrag.pointerId !== event.pointerId) return;
+  if ((event.buttons & 1) !== 1) return;
+  const target = pointerCell(event);
+  if (!target) return;
+  if (target.point.recordId === cellRangeDrag.focus.recordId
+    && target.point.field === cellRangeDrag.focus.field) return;
+  cellRangeDrag.focus = target.point;
+  cellRangeDrag.moved = true;
+  window.getSelection()?.removeAllRanges();
+  selectCellRange(cellRangeDrag.anchor, cellRangeDrag.focus);
+}
+
+function finishCellRangeDrag(event) {
+  if (!cellRangeDrag || (event.pointerId !== undefined && cellRangeDrag.pointerId !== event.pointerId)) return;
+  const moved = cellRangeDrag.moved;
+  cellRangeDrag = null;
+  document.body.classList.remove('is-range-selecting');
+  window.getSelection()?.removeAllRanges();
+  if (!moved) return;
+  suppressCellClick = true;
+  window.setTimeout(() => { suppressCellClick = false; }, 0);
 }
 
 function flashCell(cell, className) {
@@ -1680,6 +1828,10 @@ function moveCellSelection(cell, key, editableOnly = false) {
 
 function handleTableClick(event) {
   if (!(event.target instanceof Element)) return;
+  if (suppressCellClick) {
+    suppressCellClick = false;
+    return;
+  }
   if (event.target.closest('.cell-editor')) return;
   const cell = event.target.closest('td[data-field]');
   const row = event.target.closest('tr[data-record-id]');
@@ -1696,7 +1848,7 @@ function handleTableClick(event) {
     return;
   }
   closeLongTextCell();
-  selectCell(recordId, field, { focus: false });
+  selectCell(recordId, field);
   if (field === 'starred' && event.target.closest('.boolean-cell')) {
     toggleBooleanCell(recordId, field);
     return;
@@ -2694,6 +2846,9 @@ themeToggle.addEventListener('click', () => {
   document.querySelector('#theme-icon use').setAttribute('href', nextTheme === 'dark' ? '#i-sun' : '#i-moon');
   themeToggle.setAttribute('aria-label', nextTheme === 'dark' ? '切换浅色主题' : '切换深色主题');
 });
+
+window.addEventListener('pointerup', finishCellRangeDrag);
+window.addEventListener('pointercancel', finishCellRangeDrag);
 
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;

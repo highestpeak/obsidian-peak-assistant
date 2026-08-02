@@ -530,6 +530,34 @@ assert.equal(await asterPriority.locator('.cell-editor').count(), 0, 'computed c
 assert.equal((await page.textContent('#toast-title'))?.trim(), '这是只读字段');
 assert.match(await page.inputValue('#formula-input'), /^=IF\(AND\(H2>=85,I2>=7\)/);
 
+await page.locator('.table-viewport').evaluate((viewport) => { viewport.scrollLeft = 0; });
+const rangeStart = page.locator('tr[data-record-id="fern"] td[data-field="role"]');
+const rangeEnd = page.locator('tr[data-record-id="northstar"] td[data-field="next"]');
+const startBox = await rangeStart.boundingBox();
+const endBox = await rangeEnd.boundingBox();
+assert.ok(startBox && endBox, 'range endpoints should be visible before drag selection');
+await page.mouse.move(startBox.x + startBox.width / 2, startBox.y + startBox.height / 2);
+await page.mouse.down();
+await page.mouse.move(endBox.x + endBox.width / 2, endBox.y + endBox.height / 2, { steps: 12 });
+await page.mouse.up();
+assert.equal(await page.locator('.record-table td.selected-range').count(), 36, 'dragging should select a 4 × 9 rectangular cell range');
+assert.equal(await page.locator('.record-table td.selected-range.range-top').count(), 9);
+assert.equal(await page.locator('.record-table td.selected-range.range-bottom').count(), 9);
+assert.equal(await page.locator('.record-table td.selected-range.range-left').count(), 4);
+assert.equal(await page.locator('.record-table td.selected-range.range-right').count(), 4);
+assert.equal(await page.locator('.record-table td.range-anchor').count(), 1, 'range selection should keep one active anchor cell');
+assert.equal(await page.evaluate(() => window.getSelection()?.toString() ?? ''), '', 'cell dragging must not leak into browser text selection');
+assert.equal((await page.textContent('#status-primary'))?.trim(), 'B4:J7');
+assert.match(await page.textContent('#status-secondary'), /36 个单元格/);
+assert.equal((await page.locator('.selection-statistics b').first().textContent())?.trim(), '36');
+await page.screenshot({ path: path.join(dir, 'preview-cell-range.png') });
+await rangeStart.click();
+assert.equal(await page.locator('.record-table td.selected-range').count(), 0, 'a normal click should collapse the range back to one cell');
+assert.match(await rangeStart.getAttribute('class'), /is-current-cell/);
+await page.keyboard.press('F2');
+assert.equal(await rangeStart.locator('.cell-editor').count(), 1, 'a clicked cell should retain keyboard editing focus');
+await page.keyboard.press('Escape');
+
 await page.click('[data-view="board"]');
 await page.waitForSelector('.board-view');
 await page.click('[data-view="table"]');
@@ -914,6 +942,6 @@ console.log(JSON.stringify({
   },
   localLinks: localHrefs.length,
   viewsChecked: ['table', 'board', 'calendar'],
-  flowsChecked: ['long-text-reader', 'bounded-row-wrap', 'independent-role-edit', 'inline-text-edit', 'typed-select-edit', 'numeric-edit', 'checkbox-toggle', 'keyboard-f2-cancel', 'keyboard-tab-commit', 'scroll-continuity', 'frozen-cell-selection', 'bounded-cell-editor', 'stable-row-hover', 'computed-cell-readonly', 'selection-stat-recompute', 'theme-switch', 'number-format', 'persistent-field-workbench', 'saved-custom-field', 'formula-bar-ai-entry', 'bounded-formula-actions', 'ai-formula-candidates', 'ai-filter-composition', 'multi-priority-sort', 'multi-level-group', 'compact-toolbar-search', 'configurable-dedupe-fields', 'dedupe-preview', 'copilot-session-analysis', 'selection-statistics', 'board-workflow', 'calendar-agenda', 'copilot-html-artifacts', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
-  screenshots: ['preview.png', 'preview-table.png', 'preview-table-types.png', 'preview-long-text.png', 'preview-long-text-wrap.png', 'preview-cell-edit.png', 'preview-frozen-selection.png', 'preview-dark.png', 'preview-format.png', 'preview-fields.png', 'preview-field-added.png', 'preview-formula-inline.png', 'preview-formula.png', 'preview-filter-panel.png', 'preview-filter-rule.png', 'preview-sort-panel.png', 'preview-group-panel.png', 'preview-group-rule.png', 'preview-dedupe-panel.png', 'preview-analysis.png', 'preview-board.png', 'preview-calendar.png', 'preview-html-artifact.png', 'preview-plan.png', 'preview-mobile.png'],
+  flowsChecked: ['long-text-reader', 'bounded-row-wrap', 'independent-role-edit', 'inline-text-edit', 'typed-select-edit', 'numeric-edit', 'checkbox-toggle', 'keyboard-f2-cancel', 'keyboard-tab-commit', 'single-click-keyboard-edit', 'scroll-continuity', 'frozen-cell-selection', 'rectangular-cell-drag-selection', 'native-text-selection-suppression', 'bounded-cell-editor', 'stable-row-hover', 'computed-cell-readonly', 'selection-stat-recompute', 'theme-switch', 'number-format', 'persistent-field-workbench', 'saved-custom-field', 'formula-bar-ai-entry', 'bounded-formula-actions', 'ai-formula-candidates', 'ai-filter-composition', 'multi-priority-sort', 'multi-level-group', 'compact-toolbar-search', 'configurable-dedupe-fields', 'dedupe-preview', 'copilot-session-analysis', 'selection-statistics', 'board-workflow', 'calendar-agenda', 'copilot-html-artifacts', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
+  screenshots: ['preview.png', 'preview-table.png', 'preview-table-types.png', 'preview-long-text.png', 'preview-long-text-wrap.png', 'preview-cell-edit.png', 'preview-frozen-selection.png', 'preview-cell-range.png', 'preview-dark.png', 'preview-format.png', 'preview-fields.png', 'preview-field-added.png', 'preview-formula-inline.png', 'preview-formula.png', 'preview-filter-panel.png', 'preview-filter-rule.png', 'preview-sort-panel.png', 'preview-group-panel.png', 'preview-group-rule.png', 'preview-dedupe-panel.png', 'preview-analysis.png', 'preview-board.png', 'preview-calendar.png', 'preview-html-artifact.png', 'preview-plan.png', 'preview-mobile.png'],
 }, null, 2));
