@@ -3,7 +3,7 @@
 > - 状态：设计已记录，尚未实现
 > - 日期：2026-07-30
 > - 前身：Prompt Control Center
-> - 范围：AI capability 目录、运行合同、Prompt / model 配置、Run history 与覆盖缺口
+> - 范围：AI action 目录、运行合同、Prompt / model 配置，以及不进入普通 UI 的内部诊断边界
 > - 入口：Settings → AI Setup → AI Control Center
 > - 交互稿：[打开可点击 mock](../../gstack/ai-control-center-2026-07-30/index.html)
 > - 当前证据：[AI 能力与运行链审计](../audits/2026-07-30-ai-capability-run-inventory.md)
@@ -12,7 +12,7 @@
 
 原 **Prompt Control Center** 合并升级为 **AI Control Center**。
 
-Prompt 管理不会删除。它成为中心中的一个子能力，与 AI capability、模型路由和真实 run history 互相链接。
+Prompt 管理不会删除。它成为同一目录中的 Prompt Library，并与使用它的 AI action 互相链接。
 
 默认主对象从 `PromptId` 改为 **AI capability / action**，因为一次用户可理解的 AI 动作可能：
 
@@ -63,7 +63,7 @@ Prompt 管理不会删除。它成为中心中的一个子能力，与 AI capabi
 
 Prompt 负责稳定指令。动态上下文负责本次输入、来源、用户偏好和工具结果。
 
-Prompt 子页继续支持：
+Prompt Library 继续支持：
 
 - 内置正文审阅；
 - system / user 配对；
@@ -114,11 +114,11 @@ AI Control Center 不是：
 
 ## 4. 信息架构
 
-独立 Obsidian View 使用四个顶层工作区。
+独立 Obsidian View 使用一个目录，不再把 Capabilities、Prompts、Models 与 Runs 画成四个同级工作区。
 
-### 4.1 Capabilities
+### 4.1 AI Actions
 
-默认工作区。按用户能力分组，而不是按源码目录排序。
+默认目录按用户可理解的 AI action 分组，而不是按源码目录排序。
 
 建议分组：
 
@@ -129,73 +129,49 @@ AI Control Center 不是：
 5. Vault Intelligence 与 Ambient；
 6. Index、Hub 与后台任务；
 7. User-defined；
-8. 未接线 / 待核对。
+7. User-defined。
 
 每一行显示：
 
-- capability 名称和稳定 id；
-- surface 与触发入口；
-- 执行形状；
-- 默认 model slot 或特殊 binding；
-- 当前证据状态；
-- Prompt、tool、artifact 和 recent run 数量。
+- action 名称；
+- 所属产品 surface；
+- 简短响应形态和默认模型用途；
+- `Available / Limited / Unavailable` 用户状态。
 
-### 4.2 Prompts
+内部 capability id、receipt 等级、tool trace 和 run 数量不在普通用户目录中显示。
 
-继承原 Prompt Control Center 设计。
+### 4.2 Prompt Library
+
+Prompt Library 作为左侧目录中的一个入口，与 AI Actions 共用列表和 inspector，不再占一个顶层 Tab。Prompt 使用平铺、可搜索的完整列表。
 
 它展示：
 
-- 物理 template；
-- `PromptId`；
-- system / user companion；
-- variables 和 output schema；
-- 默认正文与 Vault override diff；
-- 使用它的 capability steps；
-- 使用该版本的 recent runs。
+- 用户可读名称与产品分组；
+- 被多少个 AI action 使用；
+- `Default / Customized / Unused` 状态；
+- 内置默认正文与 Vault override；
+- shared Prompt 的影响范围提醒。
 
-模型选择不再默认属于 Prompt：
+Prompt inspector 只负责 Prompt 正文。模型选择属于 AI Action 的 Configuration：
 
 - companion template 永远不显示 model picker；
-- 多调用者 Prompt 显示“由各 capability step 决定”；
-- 一对一 Prompt 可以把 step route 以简化形式显示在同一 inspector；
-- workflow 中的 Prompt 必须跳转到所属 step 调整模型。
+- 共享 Prompt 的一次 override 会明确提示影响多少个 action；
+- workflow 中不同 step 的模型仍由所属 action 配置。
 
-### 4.3 Models & routing
+### 4.3 不进入用户顶层的内容
 
-该工作区不复制 AI Setup。
+`Effective routing` 和 `Run history` 不再作为普通用户的顶层 Tab。
 
-它提供的是消费视图：
+- Provider、凭据、Profile 与全局用途槽继续由 AI Setup 管理；
+- action 的模型 default / override 在该 action 的 Configuration 中管理；
+- receipt、实际模型、tool trace、resolver gap 与证据等级属于内部诊断；
+- 用户生成结果继续由原有 Generation History、AI Search history 或对应产品 surface 承载。
 
-- 五个用途槽当前解析到的 Profile + model；
-- 哪些 capability steps 消费每个槽；
-- 哪些能力仍绕过统一 resolver；
-- capability-step overrides；
-- capability requirement 与模型能力不匹配；
-- fallback 和 escalation 规则。
+若未来需要暴露诊断入口，应放进 Advanced / Troubleshooting，并按需打开，不得重新与 AI Actions、Prompt Library 并列。
 
-Provider、凭据和 Profile 本身仍在 AI Setup 管理。
+## 5. AI Action inspector
 
-### 4.4 Runs
-
-Runs 工作区是运行证据浏览器，不是 hidden reasoning viewer。
-
-它按 capability、surface、status、model、Prompt version 和时间筛选。单次 run 显示：
-
-- 触发入口和 frozen input references；
-- 前置检查；
-- context assembly receipt；
-- step timeline；
-- model calls；
-- tool / retrieval / embedding events；
-- artifact 和 review outcome；
-- usage、latency、error 与 stop reason。
-
-Trace 只展示可验证事实。不得展示 chain-of-thought、thinking text 或把模型自述当作系统事实。
-
-## 5. Capability inspector
-
-### 5.1 Overview
+### 5.1 Behavior
 
 首先用人话回答：
 
@@ -204,62 +180,20 @@ Trace 只展示可验证事实。不得展示 chain-of-thought、thinking text �
 - 什么时候应该使用；
 - 成功时用户得到什么；
 - 什么情况下应该失败、禁用或降级；
-- 当前是生产路径、部分接线还是待核对。
+- 当前是 Available、Limited 还是 Unavailable。
 
 “预期行为”属于 capability definition。它默认只读，不能通过 Vault Prompt override 改写。
 
-### 5.2 Run flow
+### 5.2 Configuration
 
-Run flow 按三个区块呈现。
+Configuration 只放用户能够真正修改且运行时会读取的设置：
 
-#### Before run
+- 使用 AI Setup 默认模型；
+- 为当前 action 选择独立模型 override；
+- 查看并跳转编辑当前 action 使用的 Prompt；
+- 在允许用户控制时调整 tool / budget policy。
 
-- eligibility / readiness；
-- target 与 revision freeze；
-- context assembly；
-- Prompt / Assistant / Skill resolution；
-- model resolution 与 capability check；
-- tool availability；
-- permission、budget 和 cost confirmation；
-- run identity。
-
-#### During run
-
-运行形状必须显式标注：
-
-- single text call；
-- structured call；
-- model stream；
-- fixed-model tool loop；
-- multi-tier AgentLoop；
-- multi-step workflow；
-- media job；
-- embedding / rerank。
-
-每个 step 显示 Prompt、模型策略、工具和 stop condition。
-
-#### After run
-
-- schema / typed output validation；
-- materialization；
-- candidate / artifact；
-- review、accept、reject、retry 和 stop；
-- transaction / writer；
-- history、usage、receipt 和 feedback。
-
-不适用的步骤显示 `Not part of this capability`，不能伪造一个统一流程。
-
-### 5.3 Prompt & model
-
-Capability inspector 汇总本能力全部执行步骤。
-
-每个 step 可以：
-
-- 继承注册时声明的用途槽；
-- 在高级设置中改用其他用途槽；
-- 极少数情况下固定到 Profile + model；
-- 继承全局 output controls；
-- 设置有明确理由的 output control override。
+运行前后步骤、schema、writeback owner、receipt 和完整证据链仍保存在 execution contract 中，供代码、测试和内部诊断消费，不在普通配置 UI 平铺。
 
 主界面继续使用人话：
 
@@ -270,33 +204,9 @@ Research → Claude profile → claude-sonnet-4
 
 `route`、`binding` 和内部 tier 名称只在高级说明中出现。
 
-### 5.4 Tools, permissions & outputs
+### 5.3 Prompt editor
 
-该区块显示：
-
-- 可用工具与工具来源；
-- read / edit / external / paid 操作；
-- ask / allow / deny policy；
-- 费用确认和预算；
-- output schema；
-- artifact 类型；
-- review surface；
-- persistence 与 writeback owner。
-
-### 5.5 Evidence
-
-每项能力必须显示证据等级：
-
-| 证据 | 含义 |
-| --- | --- |
-| Registered | 有 capability / Prompt 注册信息 |
-| Referenced | 生产源码存在调用 |
-| Reachable | 能从当前产品入口到达 |
-| Receipted | 真实 run 能记录完整 receipt |
-| Tested | 有与合同对应的自动测试 |
-| Interaction verified | 在真实 Obsidian 中验证关键交互 |
-
-状态不能压缩成一个 `shipped` badge。
+Prompt editor 显示 Vault override、内置默认正文、来源和使用 action 数量。保存 shared Prompt 前必须提示影响范围。模型不在 Prompt editor 中重复配置。
 
 ## 6. 目标数据合同
 
@@ -501,46 +411,42 @@ Peak 不照搬：
 ```mermaid
 flowchart LR
     Settings["Settings · AI Setup"] --> Center["AI Control Center"]
-    Center --> Capability["选择 AI capability"]
-    Capability --> Contract["查看预期行为与 run flow"]
-    Contract --> Config["审阅 Prompt / model / tools"]
-    Contract --> Runs["打开 recent runs"]
-    Runs --> Trace["检查实际 Prompt、model、tools 与 artifact"]
-    Trace --> Config
+    Center --> Action["按产品分组选择 AI action"]
+    Action --> Behavior["查看预期结果与安全边界"]
+    Action --> Config["配置 action 的模型与 Prompt"]
+    Center --> Library["打开平铺 Prompt Library"]
+    Config --> Library
+    Library --> Edit["编辑 Vault Prompt override"]
 ```
 
 ### 9.1 从 capability 出发
 
 1. 用户按产品分组找到 `Vault Search · Refine`；
-2. Overview 解释它只提供查询候选，不执行 AI Search；
-3. Run flow 显示行为 context、Fast Lookup resolver、structured output 和 rule fallback；
-4. Prompt & model 打开 Query Rewrite system/user pair；
-5. Runs 显示真实使用模型、候选和用户是否采纳。
+2. Behavior 解释它只提供查询候选，不执行 AI Search；
+3. Configuration 显示它继承 Fast Lookup，也允许为该 action 选择独立模型；
+4. Prompt instructions 显示 Query Rewrite system/user pair；
+5. 点击 Prompt 后进入同一目录中的 Prompt Library。
 
 ### 9.2 从 Prompt 出发
 
 1. 用户搜索 `composer-prose-transform`；
 2. Prompt inspector 显示它被多项 Composer action 复用；
 3. 用户可以修改正文 override；
-4. 模型区提示“由 18 个 capability steps 决定”；
-5. 点击某个 action 后再修改该 step 的 model policy。
+4. 保存前明确提示这次修改会影响 18 个 action；
+5. 模型不在 Prompt editor 重复配置，返回相应 action 的 Configuration 修改。
 
-### 9.3 从真实 run 出发
+### 9.3 运行记录边界
 
-1. 用户打开一条 AI Search report run；
-2. timeline 显示取证 AgentLoop 和报告 workflow；
-3. 选择报告 section generation；
-4. 查看实际 Prompt version、Research model、tool receipts 和来源；
-5. 跳回 capability contract 核对这次运行是否符合预期。
+真实 run、tool timeline、usage 和 artifact history 继续在 AI Search、Generation History、Usage Dashboard 或内部 Debug Trace 中查看。AI Control Center 不复制这些页面。
 
 ## 10. 与现有页面的关系
 
 | 现有页面 | 继续负责 | AI Control Center 负责 |
 | --- | --- | --- |
-| AI Setup | Provider、凭据、Profile、用途槽 | 哪些 capability 消费这些配置以及 override |
-| Usage Dashboard | 全局成本、趋势和优化 | 某项 capability / run 的执行证据 |
-| Generation History | 用户生成结果和采纳状态 | 结果所对应的能力合同、Prompt 与模型 |
-| Debug Trace | 深度诊断与复制 | 可读的 run timeline 和跳转 |
+| AI Setup | Provider、凭据、Profile、用途槽 | action 继承哪个默认值，以及 action-local override |
+| Usage Dashboard | 全局成本、趋势和优化 | 不复制；必要时只提供跳转 |
+| Generation History | 用户生成结果和采纳状态 | 不复制；只维护生成 action 的行为与配置 |
+| Debug Trace | 实际模型、tool timeline、receipt 和诊断 | 不进入普通用户目录 |
 | Prompt catalog 文档 | 静态代码阅读与审计 | 运行时可查询和配置 |
 
 ## 11. 实施顺序
@@ -569,8 +475,9 @@ flowchart LR
 ### Phase 3 · Shared UI
 
 - 收敛公共 `ProfileModelPicker`；
-- 实现 Capabilities 和 Prompts；
-- 再实现 Models & routing 和 Runs。
+- 实现单一 AI Actions 目录；
+- 在同一目录中实现平铺、可搜索的 Prompt Library；
+- action inspector 只保留 Behavior 与 Configuration。
 
 ### Phase 4 · Coverage
 
@@ -604,8 +511,9 @@ flowchart LR
 
 ### 12.4 产品体验
 
-- 用户能从 capability、Prompt 和 run 三个入口互相跳转；
-- 5–10 分钟内能回答“这个 AI 动作做什么、怎么跑、用什么模型、上次实际发生了什么”；
+- 用户能从 AI action 跳到它使用的 Prompt，也能从 Prompt 看见影响范围；
+- 2–3 分钟内能回答“这个 AI 动作做什么、用什么模型、Prompt 在哪里改”；
+- effective routing、run history、receipt 和内部 evidence 不占据普通用户顶层导航；
 - 页面不会暴露 chain-of-thought；
 - 页面不会暗示未接线能力已经可用；
 - 没有真实 Obsidian 交互证据时，验收标记为 `INTERACTION NOT VERIFIED`。

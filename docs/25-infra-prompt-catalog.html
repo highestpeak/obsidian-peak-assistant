@@ -355,12 +355,12 @@ flowchart LR
 
         <section id="control-center">
           <h2>8. Prompt 目录已并入 AI Control Center</h2>
-          <p class="lead">Prompt 只是一次 AI 动作的指令来源，不是完整运行合同。新的 AI Control Center 默认按 capability / action 梳理入口、预期行为、运行前后步骤、Prompt、模型、工具、产物和真实 runs；本页的 151 个模板目录作为其中的 Prompts 子页继续保留。</p>
+          <p class="lead">Prompt 只是一次 AI 动作的指令来源，不是完整运行合同。新的 AI Control Center 使用一个目录：默认按 AI action 梳理行为与配置，All Prompts 则把模板平铺成可搜索的 Prompt Library；模型路由诊断与 run history 不进入普通用户顶层导航。</p>
           <div class="grid">
             <div class="card"><h3>Capability 是主对象</h3><p>Vault Search Refine、AI Search、AI Graph、Composer transform、Vault Review 和 Chat turn 都是能力。一个能力可以有多个 Prompt、tool 和执行步骤，也可以完全没有文本 Prompt。</p></div>
-            <div class="card"><h3>Prompt 仍可审阅和 override</h3><p>默认正文、Vault override、system / user 配对、变量、输出 schema 和版本继续在 Prompts 子页维护，并能反查使用它的 capability steps 和真实 runs。</p></div>
-            <div class="card"><h3>模型属于执行步骤</h3><p>companion template 不拥有模型；共享 Prompt 不应把所有调用者锁到同一模型。模型 override 绑定真正发起模型调用的 capability step，再显示下一次实际使用的 Profile + model。</p></div>
-            <div class="card"><h3>设计与执行真值互相核对</h3><p>Capability contract 描述预期行为，run receipt 记录实际 Prompt 版本、model、tools、artifact、fallback 和 review outcome。页面必须同时呈现二者的差异。</p></div>
+            <div class="card"><h3>Prompt 仍可审阅和 override</h3><p>默认正文、Vault override、system / user 配对、变量和版本继续在平铺 Prompt Library 中维护；共享 Prompt 保存前必须提示影响多少个 AI action。</p></div>
+            <div class="card"><h3>模型在 action 中配置</h3><p>companion template 不拥有模型；共享 Prompt 不应把所有调用者锁到同一模型。模型 default / override 只出现在对应 AI action 的 Configuration。</p></div>
+            <div class="card"><h3>内部诊断不挤占主界面</h3><p>run receipt 仍记录实际 Prompt、model、tools 和 artifact，但 Effective routing、Run history 与 evidence 留在 Advanced、Debug Trace 或所属产品历史中。</p></div>
           </div>
           <div class="claim">
             <span class="claim-title">可审阅产物</span>

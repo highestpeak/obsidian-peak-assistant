@@ -69,7 +69,7 @@
 
     .topbar {
       display: grid;
-      grid-template-columns: minmax(250px, 1fr) auto minmax(260px, 370px);
+      grid-template-columns: minmax(250px, 1fr) minmax(280px, 420px);
       gap: 18px;
       align-items: center;
       min-height: 56px;
@@ -87,31 +87,6 @@
 
     .title strong { font-size: 16px; white-space: nowrap; }
     .title span { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-    .workspace-tabs {
-      display: flex;
-      gap: 3px;
-      padding: 3px;
-      border: 1px solid var(--line);
-      border-radius: 7px;
-      background: var(--surface-2);
-    }
-
-    .workspace-tab {
-      height: 28px;
-      padding: 0 11px;
-      border: 0;
-      border-radius: 5px;
-      background: transparent;
-      color: var(--muted);
-      font-weight: 600;
-    }
-
-    .workspace-tab.active {
-      color: var(--text);
-      background: var(--surface);
-      box-shadow: 0 1px 3px rgba(30, 30, 28, .12);
-    }
 
     .search {
       position: relative;
@@ -138,29 +113,8 @@
 
     .shell {
       display: grid;
-      grid-template-rows: 56px 44px minmax(0, 1fr);
+      grid-template-rows: 56px minmax(0, 1fr);
       min-height: 0;
-    }
-
-    .summarybar {
-      display: flex;
-      align-items: center;
-      gap: 18px;
-      min-width: 0;
-      padding: 0 18px;
-      border-bottom: 1px solid var(--line);
-      background: var(--surface-2);
-    }
-
-    .summary-stat { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
-    .summary-stat strong { font-size: 15px; }
-    .summary-stat span { color: var(--muted); }
-    .summary-note {
-      margin-left: auto;
-      color: var(--subtle);
-      font-size: 11px;
-      font-family: var(--mono);
-      white-space: nowrap;
     }
 
     .body {
@@ -242,8 +196,6 @@
     .row-copy { min-width: 0; }
     .row-title { display: block; overflow: hidden; font-weight: 650; white-space: nowrap; text-overflow: ellipsis; }
     .row-meta { display: block; margin-top: 3px; overflow: hidden; color: var(--muted); white-space: nowrap; text-overflow: ellipsis; }
-    .row-id { display: block; margin-top: 5px; overflow: hidden; color: var(--subtle); font: 10px var(--mono); white-space: nowrap; text-overflow: ellipsis; }
-
     .pill {
       display: inline-flex;
       align-items: center;
@@ -369,6 +321,34 @@
     .prompt-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .prompt-body { margin-top: 9px; padding: 11px; border: 1px solid var(--line); border-radius: 6px; background: white; color: #50504b; font: 11px/1.55 var(--mono); white-space: pre-wrap; }
 
+    .prompt-editor {
+      width: 100%;
+      min-height: 210px;
+      margin-top: 10px;
+      padding: 12px;
+      resize: vertical;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      outline: 0;
+      background: white;
+      color: #50504b;
+      font: 11px/1.6 var(--mono);
+    }
+
+    .prompt-editor:focus { border-color: #aaa1dc; box-shadow: 0 0 0 2px var(--accent-soft); }
+
+    .button-row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+    .action-button {
+      min-height: 30px;
+      padding: 0 11px;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      background: white;
+      font-weight: 620;
+    }
+
+    .action-button.primary { color: white; border-color: var(--accent); background: var(--accent); }
+
     .route {
       display: grid;
       grid-template-columns: 20px minmax(0, 1fr) auto;
@@ -388,35 +368,6 @@
     .route-effective { text-align: right; }
     .route-effective code { display: block; color: var(--text); margin-top: 3px; }
 
-    .run {
-      display: grid;
-      grid-template-columns: 10px minmax(0, 1fr) auto;
-      gap: 11px;
-      padding: 11px 0;
-      border-bottom: 1px solid var(--line);
-    }
-
-    .run:last-child { border-bottom: 0; }
-    .run-dot { width: 8px; height: 8px; margin-top: 5px; border-radius: 50%; background: var(--green); }
-    .run.failed .run-dot { background: var(--red); }
-    .run strong, .run span { display: block; }
-    .run span { margin-top: 2px; color: var(--muted); }
-    .run-meta { color: var(--muted); text-align: right; white-space: nowrap; }
-
-    .model-slots { display: grid; gap: 8px; }
-    .model-slot {
-      display: grid;
-      grid-template-columns: 150px minmax(0, 1fr) auto;
-      gap: 12px;
-      align-items: center;
-      padding: 12px;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: var(--surface-2);
-    }
-
-    .model-slot strong, .model-slot span { display: block; }
-    .model-slot span { color: var(--muted); }
     .link-button {
       padding: 0;
       border: 0;
@@ -441,7 +392,7 @@
 
     @media (max-width: 1120px) {
       .body { grid-template-columns: 190px 340px minmax(460px, 1fr); }
-      .topbar { grid-template-columns: 1fr auto; }
+      .topbar { grid-template-columns: 1fr; }
       .search { display: none; }
       .cards { grid-template-columns: 1fr; }
     }
@@ -460,31 +411,18 @@
       <header class="topbar">
         <div class="title">
           <strong>AI Control Center</strong>
-          <span>Capabilities, prompts, model routing, and runs</span>
+          <span>Manage AI actions and shared prompts</span>
         </div>
-        <nav class="workspace-tabs" aria-label="AI Control Center workspaces">
-          <button class="workspace-tab active" data-workspace="capabilities">Capabilities</button>
-          <button class="workspace-tab" data-workspace="prompts">Prompts</button>
-          <button class="workspace-tab" data-workspace="models">Models &amp; routing</button>
-          <button class="workspace-tab" data-workspace="runs">Runs</button>
-        </nav>
         <label class="search">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
-          <input id="searchInput" type="search" placeholder="Search capability, prompt, model, or run…">
+          <input id="searchInput" type="search" placeholder="Search AI actions or prompts…">
         </label>
       </header>
-
-      <div class="summarybar" id="summarybar">
-        <div class="summary-stat"><strong id="summaryPrimary">9</strong><span id="summaryPrimaryLabel">representative capabilities</span></div>
-        <div class="summary-stat"><strong>7</strong><span>execution shapes</span></div>
-        <div class="summary-stat"><strong>4</strong><span>evidence levels shown</span></div>
-        <span class="summary-note">Design fixture · counts are illustrative</span>
-      </div>
 
       <div class="body">
         <aside class="rail" id="rail"></aside>
         <section class="list">
-          <div class="list-head"><strong id="listTitle">All capabilities</strong><span id="listDescription">What Peak asks AI to do, grouped by product behavior.</span></div>
+          <div class="list-head"><strong id="listTitle">All AI actions</strong><span id="listDescription">Choose an action to review its behavior and configuration.</span></div>
           <div class="rows" id="rows"></div>
         </section>
         <main class="inspector" id="inspector"></main>
@@ -802,20 +740,20 @@
       { id: 'gap-explanation', title: 'Gap explanation', group: 'Knowledge', kind: 'Registered prompt', owners: 0, version: 'Built-in', status: 'unwired' }
     ];
 
-    const modelSlots = [
-      ['Conversation', 'Claude profile · claude-sonnet-4', 'Chat turn + 6 helpers'],
-      ['Fast Lookup', 'OpenAI profile · gpt-4.1-mini', 'Refine + follow-up + Ambient'],
-      ['Research', 'Claude profile · claude-sonnet-4', 'AI Search + reports'],
-      ['Use stronger model', 'OpenRouter profile · qwen3-max', 'Escalation only'],
-      ['Knowledge Index', 'OpenAI embedding profile', 'Index + semantic query']
-    ];
-
-    const runRows = [
-      ['analysis.vault.search', 'AI Search · Gather evidence', 'completed', 'Research → claude-sonnet-4', '12 tools · 18.4s'],
-      ['composer.prose.transform', 'Composer · Transform prose', 'completed', 'Copilot → gpt-4.1', 'accepted · 2.1s'],
-      ['search.query.refine', 'Vault Search · Refine', 'failed', 'Fast Lookup → gpt-4.1-mini', 'rule fallback · 0.8s'],
-      ['chat.conversation.run', 'Chat Studio · Conversation turn', 'completed', 'Assistant override → claude-sonnet-4', '3 tools · 9.7s']
-    ];
+    for (const capability of capabilities) {
+      for (const promptId of capability.prompts) {
+        if (prompts.some(prompt => prompt.id === promptId)) continue;
+        prompts.push({
+          id: promptId,
+          title: promptId.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+          group: capability.surface,
+          kind: 'Capability prompt',
+          owners: capabilities.filter(item => item.prompts.includes(promptId)).length,
+          version: 'Built-in',
+          status: capability.status
+        });
+      }
+    }
 
     let workspace = 'capabilities';
     let activeGroup = 'all';
@@ -830,7 +768,7 @@
     const listDescription = document.getElementById('listDescription');
 
     const groups = [
-      ['all', 'all', 'All capabilities'],
+      ['all', 'all', 'All AI actions'],
       ['search', 'search', 'Search & Knowledge'],
       ['analysis', 'spark', 'AI Search & Graph'],
       ['composer', 'file', 'Composer & Copilot'],
@@ -840,32 +778,28 @@
     ];
 
     function statusPill(status) {
-      if (status === 'live') return '<span class="pill green">Production path</span>';
-      if (status === 'partial') return '<span class="pill amber">Partial wiring</span>';
-      if (status === 'unwired') return '<span class="pill red">Unwired</span>';
+      if (status === 'live') return '<span class="pill green">Available</span>';
+      if (status === 'partial') return '<span class="pill amber">Limited</span>';
+      if (status === 'unwired') return '<span class="pill red">Unavailable</span>';
       return `<span class="pill">${status}</span>`;
     }
 
-    function renderRail() {
-      if (workspace !== 'capabilities') {
-        const items = workspace === 'prompts'
-          ? [['all', 'prompt', 'All prompts'], ['live', 'file', 'Used by capabilities'], ['unwired', 'alert', 'Unwired / review']]
-          : workspace === 'models'
-            ? [['all', 'model', 'Model slots'], ['override', 'spark', 'Step overrides'], ['gap', 'alert', 'Routing gaps']]
-            : [['all', 'run', 'Recent runs'], ['completed', 'file', 'Completed'], ['failed', 'alert', 'Failed / fallback']];
-        rail.innerHTML = `<div class="rail-title">${workspace === 'prompts' ? 'Prompt status' : workspace === 'models' ? 'Routing views' : 'Run status'}</div>` +
-          items.map(([id, icon, label], index) => `<button class="rail-button ${index === 0 ? 'active' : ''}" data-filter="${id}">${icons[icon]}<span>${label}</span></button>`).join('');
-        return;
-      }
+    function promptPill(item) {
+      if (item.owners === 0) return '<span class="pill amber">Unused</span>';
+      if (item.version.includes('override')) return '<span class="pill purple">Customized</span>';
+      return '<span class="pill">Default</span>';
+    }
 
-      rail.innerHTML = `<div class="rail-title">Product groups</div>` +
+    function renderRail() {
+      rail.innerHTML = `<div class="rail-title">AI actions</div>` +
         groups.map(([id, icon, label]) => {
           const count = id === 'all' ? capabilities.length : capabilities.filter(item => item.group === id).length;
-          return `<button class="rail-button ${activeGroup === id ? 'active' : ''}" data-group="${id}">${icons[icon]}<span>${label}</span><small>${count}</small></button>`;
+          const active = workspace === 'capabilities' && activeGroup === id;
+          return `<button class="rail-button ${active ? 'active' : ''}" data-group="${id}">${icons[icon]}<span>${label}</span><small>${count}</small></button>`;
         }).join('') +
         `<div class="rail-separator"></div>
-         <div class="rail-title">Coverage</div>
-         <button class="rail-button" data-group="partial">${icons.alert}<span>Partial wiring</span><small>${capabilities.filter(item => item.status === 'partial').length}</small></button>`;
+         <div class="rail-title">Prompt library</div>
+         <button class="rail-button ${workspace === 'prompts' ? 'active' : ''}" data-catalog="prompts">${icons.prompt}<span>All prompts</span><small>${prompts.length}</small></button>`;
     }
 
     function capabilityRow(item) {
@@ -874,7 +808,6 @@
         <span class="row-copy">
           <span class="row-title">${item.title}</span>
           <span class="row-meta">${item.shape} · ${item.route}</span>
-          <span class="row-id">${item.id}</span>
         </span>
         ${statusPill(item.status)}
       </button>`;
@@ -885,184 +818,104 @@
         <span class="row-icon">${icons.prompt}</span>
         <span class="row-copy">
           <span class="row-title">${item.title}</span>
-          <span class="row-meta">${item.kind} · ${item.owners} capability owner${item.owners === 1 ? '' : 's'}</span>
-          <span class="row-id">${item.id}</span>
+          <span class="row-meta">${item.group} · Used by ${item.owners} AI action${item.owners === 1 ? '' : 's'}</span>
         </span>
-        ${statusPill(item.status)}
+        ${promptPill(item)}
       </button>`;
     }
 
     function renderRows() {
       const query = searchInput.value.trim().toLowerCase();
       if (workspace === 'capabilities') {
-        listTitle.textContent = activeGroup === 'all' ? 'All capabilities' : groups.find(item => item[0] === activeGroup)?.[2] ?? 'Coverage gaps';
-        listDescription.textContent = 'What Peak asks AI to do, grouped by product behavior.';
+        listTitle.textContent = activeGroup === 'all' ? 'All AI actions' : groups.find(item => item[0] === activeGroup)?.[2] ?? 'AI actions';
+        listDescription.textContent = 'Choose an action to review its behavior and configuration.';
         const filtered = capabilities.filter(item => {
-          const groupMatch = activeGroup === 'all' || (activeGroup === 'partial' ? item.status === 'partial' : item.group === activeGroup);
+          const groupMatch = activeGroup === 'all' || item.group === activeGroup;
           return groupMatch && [item.id, item.title, item.surface, item.shape, item.route].join(' ').toLowerCase().includes(query);
         });
-        rows.innerHTML = filtered.length ? filtered.map(capabilityRow).join('') : '<div class="empty">No capability matches this filter.</div>';
+        rows.innerHTML = filtered.length ? filtered.map(capabilityRow).join('') : '<div class="empty">No AI action matches this filter.</div>';
         return;
       }
 
-      if (workspace === 'prompts') {
-        listTitle.textContent = 'Prompts';
-        listDescription.textContent = 'Instruction sources linked back to capability steps and real runs.';
-        const filtered = prompts.filter(item => [item.id, item.title, item.group, item.kind].join(' ').toLowerCase().includes(query));
-        rows.innerHTML = filtered.length ? filtered.map(promptRow).join('') : '<div class="empty">No prompt matches this search.</div>';
-        return;
-      }
-
-      if (workspace === 'models') {
-        listTitle.textContent = 'Models & routing';
-        listDescription.textContent = 'A consumer map of AI Setup slots, step overrides, and unresolved paths.';
-        rows.innerHTML = modelSlots.map((slot, index) => `<button class="row ${index === 0 ? 'active' : ''}" data-model-index="${index}">
-          <span class="row-icon">${icons.model}</span>
-          <span class="row-copy"><span class="row-title">${slot[0]}</span><span class="row-meta">${slot[1]}</span><span class="row-id">${slot[2]}</span></span>
-          <span class="pill blue">Slot</span>
-        </button>`).join('');
-        return;
-      }
-
-      listTitle.textContent = 'Recent runs';
-      listDescription.textContent = 'Actual execution facts linked to capabilities, prompts, models, tools, and artifacts.';
-      rows.innerHTML = runRows.map((run, index) => `<button class="row ${index === 0 ? 'active' : ''}" data-run-index="${index}">
-        <span class="row-icon">${icons.run}</span>
-        <span class="row-copy"><span class="row-title">${run[1]}</span><span class="row-meta">${run[3]}</span><span class="row-id">${run[0]}</span></span>
-        ${run[2] === 'completed' ? '<span class="pill green">Completed</span>' : '<span class="pill red">Fallback</span>'}
-      </button>`).join('');
+      listTitle.textContent = 'All prompts';
+      listDescription.textContent = 'Every shared instruction in one flat, searchable list.';
+      const filtered = prompts.filter(item => [item.id, item.title, item.group, item.kind].join(' ').toLowerCase().includes(query));
+      rows.innerHTML = filtered.length ? filtered.map(promptRow).join('') : '<div class="empty">No prompt matches this search.</div>';
     }
 
     function inspectorHeader(item, type) {
-      const title = type === 'capability' ? item.title : item.title;
+      const isCapability = type === 'capability';
       const subtitle = type === 'capability'
         ? item.description
-        : type === 'prompt'
-          ? 'Review the instruction source, linked capability steps, versions, and the runs that actually used it.'
-          : '';
+        : `Used by ${item.owners} AI action${item.owners === 1 ? '' : 's'}. Edit the Vault override without changing the built-in default.`;
       return `<div class="inspector-head">
-        <div class="breadcrumbs">${type === 'capability' ? `${item.surface} · ${item.id}` : type === 'prompt' ? `${item.group} · Prompt` : type}</div>
-        <div class="inspector-title-row"><h1>${title}</h1>${type === 'capability' || type === 'prompt' ? statusPill(item.status) : ''}</div>
+        <div class="breadcrumbs">${isCapability ? item.surface : `Prompt Library · ${item.group}`}</div>
+        <div class="inspector-title-row"><h1>${item.title}</h1>${isCapability ? statusPill(item.status) : promptPill(item)}</div>
         <p class="inspector-subtitle">${subtitle}</p>
-        ${type === 'capability' ? `<div class="inspector-tabs">
-          <button class="inspector-tab ${inspectorTab === 'overview' ? 'active' : ''}" data-tab="overview">Overview</button>
-          <button class="inspector-tab ${inspectorTab === 'flow' ? 'active' : ''}" data-tab="flow">Run flow</button>
-          <button class="inspector-tab ${inspectorTab === 'config' ? 'active' : ''}" data-tab="config">Prompt &amp; model</button>
-          <button class="inspector-tab ${inspectorTab === 'history' ? 'active' : ''}" data-tab="history">Recent runs</button>
+        ${isCapability ? `<div class="inspector-tabs">
+          <button class="inspector-tab ${inspectorTab === 'overview' ? 'active' : ''}" data-tab="overview">Behavior</button>
+          <button class="inspector-tab ${inspectorTab === 'config' ? 'active' : ''}" data-tab="config">Configuration</button>
         </div>` : ''}
       </div>`;
     }
 
     function renderCapabilityInspector(item) {
-      const evidence = item.evidence.map(label => `<span class="pill ${label === 'Receipted' ? 'purple' : 'green'}">${label}</span>`).join(' ');
       const promptList = item.prompts.length
-        ? item.prompts.map(id => `<div class="prompt-box"><div class="prompt-head"><strong>${id}</strong><button class="link-button">Open Prompt</button></div><div class="prompt-body">Prompt content and variables are versioned separately from this capability contract.</div></div>`).join('')
-        : '<div class="notice">' + icons.alert + '<span>This capability has no text Prompt. Model/provider configuration belongs to the execution step.</span></div>';
+        ? item.prompts.map(id => {
+          const prompt = prompts.find(candidate => candidate.id === id);
+          return `<div class="prompt-box"><div class="prompt-head"><strong>${prompt?.title ?? id}</strong><button class="link-button" data-open-prompt="${id}">Edit in Prompt Library</button></div><div class="prompt-body">${prompt?.kind ?? 'Capability prompt'} · ${prompt?.version ?? 'Built-in'}</div></div>`;
+        }).join('')
+        : '<div class="notice">' + icons.prompt + '<span>This action has no editable text prompt. Its behavior comes from the selected model or embedding service.</span></div>';
       inspector.innerHTML = inspectorHeader(item, 'capability') + `
         <section class="panel ${inspectorTab === 'overview' ? 'active' : ''}" data-panel="overview">
           <div class="section">
             <h2>Expected behavior</h2>
             <div class="cards">
-              <div class="card"><strong>Success</strong><span>${item.success}</span></div>
-              <div class="card"><strong>Must not</strong><span>${item.mustNot}</span></div>
+              <div class="card"><strong>What you get</strong><span>${item.success}</span></div>
+              <div class="card"><strong>Safety boundary</strong><span>${item.mustNot}</span></div>
             </div>
           </div>
           <div class="section">
-            <h2>Runtime contract</h2>
+            <h2>At a glance</h2>
             <dl class="facts">
-              <dt>Execution shape</dt><dd>${item.shape}</dd>
-              <dt>Default route</dt><dd>${item.route}</dd>
-              <dt>Tools / inputs</dt><dd>${item.tools.join(' · ') || 'None'}</dd>
-              <dt>Output</dt><dd>${item.output}</dd>
-              <dt>Review surface</dt><dd>${item.review}</dd>
-              <dt>Evidence</dt><dd>${evidence}</dd>
+              <dt>Available in</dt><dd>${item.surface}</dd>
+              <dt>Response style</dt><dd>${item.shape}</dd>
+              <dt>Produces</dt><dd>${item.output}</dd>
+              <dt>You review it in</dt><dd>${item.review}</dd>
             </dl>
-          </div>
-          <div class="notice">${icons.alert}<span>Capability behavior is product truth and is read-only here. Prompt content and model overrides are configurable in their own sections.</span></div>
-        </section>
-        <section class="panel ${inspectorTab === 'flow' ? 'active' : ''}" data-panel="flow">
-          <div class="section">
-            <h2>Before, during, and after the run</h2>
-            <div class="flow">
-              ${flowStage('Before run', 'file', item.before)}
-              ${flowStage('During run', 'run', item.during)}
-              ${flowStage('After run', 'spark', item.after)}
-            </div>
           </div>
         </section>
         <section class="panel ${inspectorTab === 'config' ? 'active' : ''}" data-panel="config">
-          <div class="section"><h2>Prompt sources</h2>${promptList}</div>
           <div class="section">
-            <h2>Model policy · capability step owner</h2>
-            <label class="route active"><input type="radio" checked><span><strong>Use the registered AI Setup slot</strong><span>Recommended. Keeps future model changes centralized.</span></span><span class="route-effective">Next run<code>${item.route}</code></span></label>
-            <label class="route"><input type="radio"><span><strong>Use a different model for this step</strong><span>Only affects this executable step, not every Prompt caller.</span></span><span class="route-effective">Override<code>Not set</code></span></label>
+            <h2>Model</h2>
+            <label class="route active"><input type="radio" name="model-policy" checked><span><strong>Use the AI Setup default</strong><span>Follows future changes to the shared model setting.</span></span><span class="route-effective">Current<code>${item.route}</code></span></label>
+            <label class="route"><input type="radio" name="model-policy"><span><strong>Choose a model for this action</strong><span>Overrides the default only for this AI action.</span></span><button class="action-button">Choose model</button></label>
           </div>
-          <div class="notice">${icons.model}<span>Companion templates never own a model. Shared Prompts link to each capability step instead of silently applying one global model override.</span></div>
-        </section>
-        <section class="panel ${inspectorTab === 'history' ? 'active' : ''}" data-panel="history">
-          <div class="section"><h2>Actual runs</h2>${runListFor(item.id)}</div>
-          <div class="notice">${icons.run}<span>A run links the capability step to the actual Prompt version, Profile, model, tools, artifacts, usage, and final review outcome.</span></div>
+          <div class="section"><h2>Prompt instructions</h2>${promptList}</div>
         </section>`;
-    }
-
-    function flowStage(label, icon, steps) {
-      return `<div class="flow-stage"><div class="flow-label">${icons[icon]}<span>${label}</span></div><div class="steps">${steps.map((step, index) => `<div class="step"><span class="step-num">${index + 1}</span><span><strong>${step[0]}</strong><span>${step[1]}</span></span><span class="pill">${index === steps.length - 1 ? 'Required' : 'Step'}</span></div>`).join('')}</div></div>`;
-    }
-
-    function runListFor(id) {
-      const matches = runRows.filter(run => run[0] === id);
-      const list = matches.length ? matches : [
-        [id, activeItem.title, 'completed', `${activeItem.route} · resolved model`, 'Design fixture · no production data'],
-        [id, activeItem.title, 'failed', `${activeItem.route} · previous revision`, 'Validation failed · result retained']
-      ];
-      return list.map(run => `<div class="run ${run[2] === 'failed' ? 'failed' : ''}"><span class="run-dot"></span><span><strong>${run[1]}</strong><span>${run[3]}</span></span><span class="run-meta">${run[4]}</span></div>`).join('');
     }
 
     function renderPromptInspector(item) {
       inspector.innerHTML = inspectorHeader(item, 'prompt') + `<section class="panel active">
         <div class="section">
-          <h2>Identity</h2>
+          <h2>Usage</h2>
           <dl class="facts">
-            <dt>PromptId</dt><dd><code>${item.id}</code></dd>
-            <dt>Kind</dt><dd>${item.kind}</dd>
-            <dt>Version</dt><dd>${item.version}</dd>
-            <dt>Capability owners</dt><dd>${item.owners || 'None found in production source'}</dd>
+            <dt>Category</dt><dd>${item.group}</dd>
+            <dt>Used by</dt><dd>${item.owners ? `${item.owners} AI action${item.owners === 1 ? '' : 's'}` : 'No current AI action'}</dd>
+            <dt>Source</dt><dd>${item.version}</dd>
           </dl>
         </div>
         <div class="section">
-          <h2>Default and Vault override</h2>
-          <div class="prompt-box"><div class="prompt-head"><strong>Built-in default</strong><button class="link-button">Compare override</button></div><div class="prompt-body">Stable instructions live in the Prompt template. Dynamic source content, tools, and model routing belong to the capability run.</div></div>
+          <h2>Prompt instructions</h2>
+          <div class="prompt-box"><div class="prompt-head"><strong>Vault override</strong><button class="link-button">View built-in default</button></div><textarea class="prompt-editor">Keep the response grounded in the provided sources and follow the output requirements for ${item.title}. Preserve user-authored content unless the selected action explicitly asks for a rewrite.</textarea><div class="button-row"><button class="action-button">Reset to default</button><button class="action-button primary">Save override</button></div></div>
         </div>
-        <div class="section">
-          <h2>Model ownership</h2>
-          <div class="notice">${icons.model}<span>${item.owners > 1 ? `This Prompt is shared by ${item.owners} capability steps. Choose a capability step to change its model policy.` : item.owners === 1 ? 'This Prompt has one executable owner. Its model policy is edited on that capability step.' : 'No executable owner was found, so model override is disabled.'}</span></div>
-        </div>
-      </section>`;
-    }
-
-    function renderModelInspector(index = 0) {
-      const selected = modelSlots[index];
-      inspector.innerHTML = `<div class="inspector-head"><div class="breadcrumbs">AI Setup consumer map</div><div class="inspector-title-row"><h1>${selected[0]}</h1><span class="pill blue">Model slot</span></div><p class="inspector-subtitle">See the effective Profile + model and every capability step that consumes this slot. Provider keys remain in AI Setup.</p></div>
-      <section class="panel active">
-        <div class="section"><h2>Effective binding</h2><div class="model-slots">${modelSlots.map((slot, slotIndex) => `<div class="model-slot"><span><strong>${slot[0]}</strong><span>${slot[2]}</span></span><strong>${slot[1]}</strong><button class="link-button">${slotIndex === index ? 'Selected' : 'Inspect'}</button></div>`).join('')}</div></div>
-        <div class="notice">${icons.alert}<span>Routing gaps remain visible here: active-role paths and provider-direct helpers cannot be described as slot-aware until they use the shared resolver.</span></div>
-      </section>`;
-    }
-
-    function renderRunInspector(index = 0) {
-      const run = runRows[index];
-      inspector.innerHTML = `<div class="inspector-head"><div class="breadcrumbs">Run evidence · ${run[0]}</div><div class="inspector-title-row"><h1>${run[1]}</h1>${run[2] === 'completed' ? '<span class="pill green">Completed</span>' : '<span class="pill red">Fallback</span>'}</div><p class="inspector-subtitle">Actual execution facts. This timeline never displays hidden model reasoning.</p></div>
-      <section class="panel active">
-        <div class="section"><h2>Run summary</h2><dl class="facts"><dt>Capability</dt><dd><code>${run[0]}</code></dd><dt>Actual model</dt><dd>${run[3]}</dd><dt>Outcome</dt><dd>${run[4]}</dd><dt>Prompt version</dt><dd>Built-in source hash + Vault override hash</dd><dt>Artifacts</dt><dd>1 reviewable result · linked to originating surface</dd></dl></div>
-        <div class="section"><h2>Timeline</h2><div class="flow">${flowStage('Execution', 'run', [['Context assembled', 'Automatic and explicit sources recorded.'], ['Model resolved', run[3]], ['Tools / model calls', run[4]], ['Validation and artifact', 'Final status and review outcome persisted.']])}</div></div>
+        ${item.owners > 1 ? `<div class="notice">${icons.prompt}<span>This prompt is shared. Saving an override changes the instructions for all ${item.owners} actions that use it.</span></div>` : ''}
       </section>`;
     }
 
     function renderInspector() {
       if (workspace === 'capabilities') return renderCapabilityInspector(activeItem);
-      if (workspace === 'prompts') return renderPromptInspector(activeItem);
-      if (workspace === 'models') return renderModelInspector(0);
-      return renderRunInspector(0);
+      return renderPromptInspector(activeItem);
     }
 
     function renderAll() {
@@ -1072,25 +925,24 @@
     }
 
     document.addEventListener('click', event => {
-      const workspaceButton = event.target.closest('[data-workspace]');
-      if (workspaceButton) {
-        workspace = workspaceButton.dataset.workspace;
-        activeGroup = 'all';
+      const catalogButton = event.target.closest('[data-catalog="prompts"]');
+      if (catalogButton) {
+        workspace = 'prompts';
+        activeItem = prompts[0];
         inspectorTab = 'overview';
-        document.querySelectorAll('[data-workspace]').forEach(button => button.classList.toggle('active', button === workspaceButton));
-        if (workspace === 'capabilities') activeItem = capabilities[0];
-        if (workspace === 'prompts') activeItem = prompts[0];
-        document.getElementById('summaryPrimary').textContent = workspace === 'capabilities' ? capabilities.length : workspace === 'prompts' ? prompts.length : workspace === 'models' ? modelSlots.length : runRows.length;
-        document.getElementById('summaryPrimaryLabel').textContent = workspace === 'capabilities' ? 'representative capabilities' : workspace === 'prompts' ? 'representative prompts' : workspace === 'models' ? 'model slots' : 'recent run fixtures';
+        searchInput.value = '';
         renderAll();
         return;
       }
 
       const groupButton = event.target.closest('[data-group]');
       if (groupButton) {
+        workspace = 'capabilities';
         activeGroup = groupButton.dataset.group;
-        const visible = capabilities.filter(item => activeGroup === 'all' || (activeGroup === 'partial' ? item.status === 'partial' : item.group === activeGroup));
+        const visible = capabilities.filter(item => activeGroup === 'all' || item.group === activeGroup);
         if (visible.length) activeItem = visible[0];
+        inspectorTab = 'overview';
+        searchInput.value = '';
         renderAll();
         return;
       }
@@ -1104,25 +956,22 @@
         return;
       }
 
+      const openPromptButton = event.target.closest('[data-open-prompt]');
+      if (openPromptButton) {
+        const prompt = prompts.find(item => item.id === openPromptButton.dataset.openPrompt);
+        if (!prompt) return;
+        workspace = 'prompts';
+        activeItem = prompt;
+        searchInput.value = '';
+        renderAll();
+        return;
+      }
+
       const promptRowButton = event.target.closest('[data-prompt-id]');
       if (promptRowButton) {
         activeItem = prompts.find(item => item.id === promptRowButton.dataset.promptId);
         renderRows();
         renderInspector();
-        return;
-      }
-
-      const modelRow = event.target.closest('[data-model-index]');
-      if (modelRow) {
-        document.querySelectorAll('[data-model-index]').forEach(button => button.classList.toggle('active', button === modelRow));
-        renderModelInspector(Number(modelRow.dataset.modelIndex));
-        return;
-      }
-
-      const runRow = event.target.closest('[data-run-index]');
-      if (runRow) {
-        document.querySelectorAll('[data-run-index]').forEach(button => button.classList.toggle('active', button === runRow));
-        renderRunInspector(Number(runRow.dataset.runIndex));
         return;
       }
 
