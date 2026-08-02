@@ -82,6 +82,7 @@ const initial = await page.evaluate(() => ({
     '.view-tabs',
     '.data-toolbar',
     '.formula-bar',
+    '.table-command-bar',
     '.filter-line',
   ].map((selector) => document.querySelector(selector)?.getBoundingClientRect().height ?? 0),
   headerBackgrounds: [
@@ -89,9 +90,12 @@ const initial = await page.evaluate(() => ({
     '.view-tabs',
     '.data-toolbar',
     '.formula-bar',
+    '.table-command-bar',
     '.filter-line',
   ].map((selector) => getComputedStyle(document.querySelector(selector)).backgroundColor),
   toolbarDividerWidth: document.querySelector('.toolbar-divider')?.getBoundingClientRect().width ?? 0,
+  searchLeft: document.querySelector('#record-search')?.getBoundingClientRect().left ?? Infinity,
+  tableCommandBeforeStage: document.querySelector('#table-command-bar')?.nextElementSibling?.id === 'filter-line',
   fieldHeaderFontSize: getComputedStyle(document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(2)')).fontSize,
   textHeaderAlignment: getComputedStyle(document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(5) .field-heading')).justifyContent,
   numericHeaderAlignment: getComputedStyle(document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(9) .field-heading')).justifyContent,
@@ -195,9 +199,11 @@ assert.equal(initial.canvasColor, '#eef0ec', 'Paper canvas should use a warm min
 assert.equal(initial.motionBase, '180ms', 'motion should use one shared interaction timing token');
 assert.equal(initial.viewAnimationName, 'editorial-view-enter', 'view changes should use the restrained editorial entrance');
 assert.match(initial.buttonTransitionDuration, /0.12s/, 'toolbar actions should expose fast state transitions');
-assert.deepEqual(initial.headerHeights, [52, 38, 38, 32, 0], 'inactive filters should not reserve a blank header band');
-assert.equal(new Set(initial.headerBackgrounds).size, 1, 'Header bands should read as one continuous paper surface');
+assert.deepEqual(initial.headerHeights, [52, 38, 38, 32, 36, 0], 'search should own one compact band while inactive filters reserve no blank space');
+assert.ok(new Set(initial.headerBackgrounds).size <= 2, 'Header and command bands should remain within one quiet paper hierarchy');
 assert.equal(initial.toolbarDividerWidth, 0, 'toolbar groups should use spacing instead of vertical divider cages');
+assert.ok(initial.searchLeft < 80, 'record search should sit on the table reading axis instead of the remote top-right corner');
+assert.equal(initial.tableCommandBeforeStage, true, 'search and data actions should remain directly above the table stage');
 assert.equal(initial.fieldHeaderFontSize, '11.5px', 'field headers should use the same readable type scale as table metadata');
 assert.equal(initial.textHeaderAlignment, 'flex-start', 'text field headers should follow the left reading axis');
 assert.equal(initial.numericHeaderAlignment, 'flex-end', 'numeric field headers should follow the right reading axis');
@@ -544,6 +550,10 @@ assert.match(await page.textContent('#field-panel'), /单选/);
 assert.match(await page.textContent('#field-panel'), /公司/);
 assert.match(await page.textContent('#field-panel'), /职位/);
 assert.equal(await page.locator('.field-list > button:not(.field-add)').count(), 18);
+await page.click('[data-field-key="role"]');
+assert.equal(await page.inputValue('#field-name-input'), '职位', 'the persistent field list should switch the editor in place');
+await page.click('[data-field-key="stage"]');
+assert.equal(await page.inputValue('#field-name-input'), '阶段');
 await page.click('#field-type-select');
 await page.waitForSelector('#field-type-menu:not([hidden])');
 assert.equal(await page.locator('#field-type-menu .field-type-grid button').count(), 9);
@@ -561,6 +571,30 @@ assert.match(await page.textContent('#field-type-menu'), /自动编号/);
 await settleMotion();
 await page.screenshot({ path: path.join(dir, 'preview-fields.png') });
 await page.click('[data-field-type="公式"]');
+assert.equal(await page.locator('#field-panel').isVisible(), true, 'choosing a field type must not close the workbench');
+assert.equal(await page.locator('#formula-panel').isHidden(), true, 'field type selection should not prematurely launch formula candidates');
+await page.click('#save-fields');
+assert.equal(await page.locator('#field-panel').isVisible(), true, 'saving one field must keep the workbench open');
+assert.match(await page.textContent('#field-save-status'), /可继续选择其他字段/);
+await page.click('#add-field');
+assert.equal(await page.locator('.field-list > button:not(.field-add)').count(), 19, 'Add Field should create a selectable draft in the persistent list');
+await page.fill('#field-name-input', '负责人');
+await page.click('#save-fields');
+assert.equal(await page.locator('#field-panel').isVisible(), true);
+assert.match(await page.textContent('#field-count'), /19 个字段/);
+assert.match(await page.textContent('.field-list'), /负责人/);
+await page.screenshot({ path: path.join(dir, 'preview-field-added.png') });
+await page.click('#close-fields');
+assert.equal(await page.locator('.record-table thead tr:nth-child(2) th:not(.row-number-header)').count(), 19, 'saved fields should become real table columns');
+assert.equal(await page.locator('.record-table .column-letters th:not(.sheet-corner)').count(), 19);
+assert.match(await page.textContent('.record-table .column-letters'), /S/);
+
+await page.click('#open-formula');
+await page.waitForSelector('#inline-formula-composer:not([hidden])');
+assert.equal(await page.locator('#formula-panel').isHidden(), true, 'AI formula should begin inline instead of opening a modal immediately');
+await page.fill('#inline-formula-prompt', 'Offer 需要立即决策，其余高匹配且等待七天的岗位优先跟进');
+await page.screenshot({ path: path.join(dir, 'preview-formula-inline.png') });
+await page.click('#generate-inline-formula');
 await page.waitForSelector('#formula-panel:not([hidden])');
 await settleMotion();
 const formulaSurfaceState = await page.evaluate(() => {
@@ -576,7 +610,8 @@ assert.ok(formulaSurfaceState.left >= 0 && formulaSurfaceState.right <= 1600, 'A
 assert.equal(formulaSurfaceState.appScrollLeft, 0, 'right-side cell interactions must not shift the entire workspace');
 assert.equal(formulaSurfaceState.aiDrawerOpen, false, 'AI formula authoring should not leave the analysis drawer open');
 assert.match(await page.textContent('#formula-panel'), /用一句话描述规则/);
-assert.match(await page.textContent('#formula-panel'), /生成公式建议/);
+assert.match(await page.textContent('#formula-panel'), /重新生成候选/);
+assert.match(await page.inputValue('#ai-formula-prompt'), /Offer 需要立即决策/);
 assert.equal(await page.locator('[data-formula-candidate]').count(), 3, 'AI formula flow should offer multiple selectable candidates');
 assert.equal(await page.locator('[data-function]').count(), 8, 'manual functions should remain a secondary compact escape hatch');
 assert.match(await page.textContent('#formula-panel'), /类型检查通过/);
@@ -605,48 +640,88 @@ const filterPanelAnchor = await page.evaluate(() => {
 });
 assert.ok(Math.abs(filterPanelAnchor.leftDelta) <= 1, 'filter panel should align to the Filter trigger');
 assert.ok(filterPanelAnchor.topGap >= 4 && filterPanelAnchor.topGap <= 7, 'filter panel should open directly under the toolbar');
+assert.equal(await page.locator('#filter-rules .combination-rule').count(), 2, 'filter should begin with a useful multi-condition draft');
 await page.screenshot({ path: path.join(dir, 'preview-filter-panel.png') });
-await page.selectOption('#filter-field', 'stageKey');
-await page.selectOption('#filter-operator', 'equals');
-await page.fill('#filter-value', '面试中');
+await page.fill('#filter-ai-prompt', '高匹配、等待超过一周、且尚未结束');
+await page.click('#generate-filter-rules');
+assert.equal(await page.locator('#filter-rules .combination-rule').count(), 3, 'AI filter input should generate a composable condition set');
 await page.click('#apply-filter');
 const filteredCount = await page.locator('.record-table tr[data-record-id]').count();
 assert.ok(filteredCount > 0 && filteredCount < 20, 'an explicit filter should narrow records without producing an accidental blank view');
-assert.match(await page.textContent('#filter-line'), /阶段 等于 面试中/);
+assert.equal(await page.locator('#filter-line [data-remove-filter]').count(), 3);
+assert.match(await page.textContent('#filter-line'), /匹配度 大于等于 85/);
+assert.match(await page.textContent('#filter-line'), /阶段 不等于 已结束/);
 assert.equal(await page.locator('#filter-count').isHidden(), false);
 await page.screenshot({ path: path.join(dir, 'preview-filter-rule.png') });
-await page.click('#remove-filter');
+await page.click('[data-remove-filter="0"]');
+assert.equal(await page.locator('#filter-line [data-remove-filter]').count(), 2, 'individual conditions should be removable without clearing the set');
+await page.click('#open-filter');
+await page.click('#clear-filter');
 assert.equal(await page.locator('.record-table tr[data-record-id]').count(), 20);
+await page.click('#close-filter');
 
 await page.click('#open-sort');
 await page.waitForSelector('#sort-panel:not([hidden])');
 await settleMotion();
 await page.screenshot({ path: path.join(dir, 'preview-sort-panel.png') });
-await page.selectOption('#sort-field', 'fit');
-await page.selectOption('#sort-direction', 'desc');
-assert.match(await page.textContent('#sort-preview'), /匹配度/);
+assert.equal(await page.locator('#sort-rules .combination-rule').count(), 2);
+await page.fill('#sort-ai-prompt', '高匹配优先，其次等待更久，再按申请日期');
+await page.click('#generate-sort-rules');
+assert.equal(await page.locator('#sort-rules .combination-rule').count(), 3, 'sort should support ordered secondary and tertiary rules');
+assert.match(await page.textContent('#sort-preview'), /匹配度 ↓ → 等待天数 ↓ → 申请日期 ↓/);
 await page.click('#apply-sort');
 assert.equal((await page.locator('.record-table tr[data-record-id]').first().getAttribute('data-record-id')), 'aster');
-assert.equal(await page.locator('.record-table .sort-mark').count(), 1, 'the sorted column should visibly own the direction indicator');
+assert.equal(await page.locator('.record-table .sort-mark').count(), 3, 'each active sort priority should own a numbered direction indicator');
 assert.equal(await page.locator('#sort-count').isHidden(), false);
 await page.click('#open-sort');
 await page.click('#clear-sort');
+await page.click('#close-sort');
 
 await page.click('#open-group');
 await page.waitForSelector('#group-panel:not([hidden])');
 await settleMotion();
 await page.screenshot({ path: path.join(dir, 'preview-group-panel.png') });
-await page.selectOption('#group-field', 'workMode');
+assert.equal(await page.locator('#group-rules .combination-rule').count(), 2);
+await page.fill('#group-ai-prompt', '先按阶段，再按工作模式分组');
+await page.click('#generate-group-rules');
+assert.equal(await page.locator('#group-rules .combination-rule').count(), 2);
 await page.click('#apply-group');
-assert.equal(await page.locator('.record-table .group-row').count(), 3, 'work mode should produce three selectable groups');
+assert.ok(await page.locator('.record-table .group-row').count() > 3, 'two-level grouping should produce composite groups');
 assert.match(await page.textContent('.record-table'), /Remote/);
 assert.match(await page.textContent('.record-table'), /Hybrid/);
 assert.match(await page.textContent('.record-table'), /On-site/);
-assert.match(await page.textContent('#status-secondary'), /按工作模式分组/);
+assert.match(await page.textContent('#status-secondary'), /阶段 → 工作模式/);
 await page.screenshot({ path: path.join(dir, 'preview-group-rule.png') });
 await page.click('#open-group');
 await page.click('#clear-group');
 assert.equal(await page.locator('.record-table .group-row').count(), 0);
+await page.click('#close-group');
+
+await page.fill('#record-search', 'Tide Systems');
+assert.equal(await page.locator('.record-table tr[data-record-id]').count(), 1, 'table-local search should update the current data surface');
+assert.match(await page.textContent('#query-result'), /1 条记录/);
+await page.fill('#record-search', '');
+assert.equal(await page.locator('.record-table tr[data-record-id]').count(), 20);
+await page.click('#preview-dedupe');
+assert.match(await page.textContent('#toast-title'), /2 组可能重复项/);
+assert.match(await page.textContent('#toast-copy'), /尚未删除任何记录/);
+
+await page.click('#open-ai');
+await page.waitForSelector('#ai-drawer.is-open');
+await settleMotion();
+assert.equal(await page.locator('.ai-evidence-list article').count(), 3, 'analysis should lead with compact evidence rows rather than repeated cards');
+assert.match(await page.textContent('.ai-editorial-lead'), /三条记录已经进入行动窗口/);
+assert.match(await page.textContent('.ai-context'), /字段 19/, 'analysis context should follow the live schema after a field is added');
+const analysisSurface = await page.locator('#ai-drawer').evaluate((drawer) => ({
+  width: drawer.getBoundingClientRect().width,
+  radius: getComputedStyle(drawer).borderRadius,
+  background: getComputedStyle(drawer).backgroundColor,
+}));
+assert.equal(analysisSurface.width, 438);
+assert.equal(analysisSurface.radius, '0px');
+assert.notEqual(analysisSurface.background, 'rgba(0, 0, 0, 0)');
+await page.screenshot({ path: path.join(dir, 'preview-analysis.png') });
+await page.click('#close-ai');
 
 await page.click('#toggle-stats');
 assert.equal(await page.locator('#selection-statistics').isHidden(), true);
@@ -739,6 +814,6 @@ console.log(JSON.stringify({
   },
   localLinks: localHrefs.length,
   viewsChecked: ['table', 'board', 'calendar', 'gallery', 'dashboard'],
-  flowsChecked: ['long-text-reader', 'bounded-row-wrap', 'independent-role-edit', 'inline-text-edit', 'typed-select-edit', 'numeric-edit', 'checkbox-toggle', 'keyboard-f2-cancel', 'keyboard-tab-commit', 'scroll-continuity', 'frozen-cell-selection', 'bounded-cell-editor', 'stable-row-hover', 'computed-cell-readonly', 'selection-stat-recompute', 'theme-switch', 'number-format', 'anchored-field-panel', 'explicit-filter-rule', 'explicit-sort-rule', 'selectable-group-rule', 'ai-formula-candidates', 'selection-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
-  screenshots: ['preview.png', 'preview-table.png', 'preview-table-types.png', 'preview-long-text.png', 'preview-long-text-wrap.png', 'preview-cell-edit.png', 'preview-frozen-selection.png', 'preview-dark.png', 'preview-format.png', 'preview-fields.png', 'preview-formula.png', 'preview-filter-panel.png', 'preview-filter-rule.png', 'preview-sort-panel.png', 'preview-group-panel.png', 'preview-group-rule.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
+  flowsChecked: ['long-text-reader', 'bounded-row-wrap', 'independent-role-edit', 'inline-text-edit', 'typed-select-edit', 'numeric-edit', 'checkbox-toggle', 'keyboard-f2-cancel', 'keyboard-tab-commit', 'scroll-continuity', 'frozen-cell-selection', 'bounded-cell-editor', 'stable-row-hover', 'computed-cell-readonly', 'selection-stat-recompute', 'theme-switch', 'number-format', 'persistent-field-workbench', 'saved-custom-field', 'inline-ai-formula', 'ai-formula-candidates', 'ai-filter-composition', 'multi-priority-sort', 'multi-level-group', 'table-local-search', 'dedupe-preview', 'editorial-analysis-drawer', 'selection-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
+  screenshots: ['preview.png', 'preview-table.png', 'preview-table-types.png', 'preview-long-text.png', 'preview-long-text-wrap.png', 'preview-cell-edit.png', 'preview-frozen-selection.png', 'preview-dark.png', 'preview-format.png', 'preview-fields.png', 'preview-field-added.png', 'preview-formula-inline.png', 'preview-formula.png', 'preview-filter-panel.png', 'preview-filter-rule.png', 'preview-sort-panel.png', 'preview-group-panel.png', 'preview-group-rule.png', 'preview-analysis.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
 }, null, 2));

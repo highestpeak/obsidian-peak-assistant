@@ -112,24 +112,36 @@
           <button type="button" class="icon-button compact sheet-command" aria-label="边框"><svg><use href="#i-border"/></svg></button>
           <button type="button" class="icon-button compact sheet-command" aria-label="填充颜色"><svg><use href="#i-paint"/></svg></button>
           <span class="toolbar-divider"></span>
-          <button type="button" class="tool-button formula-button" id="open-formula"><span class="formula-mark">fx</span>AI 公式</button>
+          <button type="button" class="tool-button formula-button" id="open-formula" aria-pressed="false"><span class="formula-mark">fx</span>AI 公式</button>
           <button type="button" class="tool-button is-applied" id="toggle-stats">Σ 统计</button>
-        </div>
-        <div class="toolbar-secondary">
-          <label class="record-search">
-            <svg><use href="#i-search"/></svg>
-            <input id="record-search" type="search" placeholder="搜索记录" aria-label="搜索记录">
-          </label>
-          <button type="button" class="ask-button" id="open-ai"><svg><use href="#i-sparkles"/></svg>分析</button>
         </div>
       </header>
 
       <section class="formula-bar" id="formula-bar">
         <button type="button" class="name-box" id="active-cell-name">K6</button>
-        <button type="button" class="fx-button" id="formula-function-button" aria-label="使用 AI 生成公式">fx</button>
-        <input id="formula-input" aria-label="公式栏" value='=IF(AND(H6&gt;=85,I6&gt;=7),"优先跟进","保持观察")'>
-        <span class="formula-state"><svg><use href="#i-check"/></svg>公式有效</span>
-        <span class="formula-scope">计算列 · 20 条记录</span>
+        <button type="button" class="fx-button" id="formula-function-button" aria-label="返回直接公式编辑">fx</button>
+        <div class="formula-direct" id="formula-direct">
+          <input id="formula-input" aria-label="公式栏" value='=IF(AND(H6&gt;=85,I6&gt;=7),"优先跟进","保持观察")'>
+          <span class="formula-state"><svg><use href="#i-check"/></svg>公式有效</span>
+          <span class="formula-scope">计算列 · 20 条记录</span>
+        </div>
+        <div class="inline-formula-composer" id="inline-formula-composer" hidden>
+          <svg><use href="#i-sparkles"/></svg>
+          <input id="inline-formula-prompt" aria-label="用自然语言描述公式" placeholder="例如：匹配度高于 85 且等待超过 7 天时，标记为优先跟进">
+          <button type="button" class="inline-ai-cancel" id="cancel-inline-formula">取消</button>
+          <button type="button" class="inline-ai-generate" id="generate-inline-formula">生成候选 <svg><use href="#i-arrow"/></svg></button>
+        </div>
+      </section>
+
+      <section class="table-command-bar" id="table-command-bar">
+        <label class="record-search">
+          <svg><use href="#i-search"/></svg>
+          <input id="record-search" type="search" placeholder="在当前表格中搜索…" aria-label="搜索记录">
+          <kbd>⌘ K</kbd>
+        </label>
+        <span class="query-result" id="query-result">20 条记录</span>
+        <button type="button" class="table-ai-action" id="preview-dedupe"><svg><use href="#i-database"/></svg><span><strong>一键去重</strong><small>公司 + 职位</small></span></button>
+        <button type="button" class="table-ai-action primary" id="open-ai"><svg><use href="#i-sparkles"/></svg><span><strong>AI 分析</strong><small>当前视图</small></span></button>
       </section>
 
       <section class="filter-line" id="filter-line" hidden></section>
@@ -176,50 +188,52 @@
       </section>
 
       <section class="rule-panel filter-panel floating-surface" id="filter-panel" hidden aria-label="筛选规则">
-        <header class="panel-header"><span><strong>筛选记录</strong><small>只有点击“应用筛选”才会改变结果</small></span><button type="button" class="icon-button compact" id="close-filter" aria-label="关闭筛选"><svg><use href="#i-x"/></svg></button></header>
+        <header class="panel-header"><span><strong>筛选记录</strong><small>组合多个条件，只有应用后才改变结果</small></span><button type="button" class="icon-button compact" id="close-filter" aria-label="关闭筛选"><svg><use href="#i-x"/></svg></button></header>
         <div class="rule-panel-body">
-          <span class="rule-label">满足以下条件</span>
-          <div class="rule-editor-row">
-            <select id="filter-field" aria-label="筛选字段"><option value="stageKey">阶段</option><option value="workMode">工作模式</option><option value="location">地点</option><option value="fit">匹配度</option><option value="company">公司</option></select>
-            <select id="filter-operator" aria-label="筛选运算符"><option value="equals">等于</option><option value="notEquals">不等于</option><option value="contains">包含</option><option value="gte">大于等于</option></select>
-            <input id="filter-value" type="text" value="面试中" aria-label="筛选值">
+          <label class="rule-ai-composer"><svg><use href="#i-sparkles"/></svg><input id="filter-ai-prompt" type="text" placeholder="例如：高匹配、等待超过一周、还在面试中的岗位"><button type="button" id="generate-filter-rules">AI 生成</button></label>
+          <div class="rule-section-heading">
+            <span>条件组合</span>
+            <label>满足<select id="filter-logic" aria-label="筛选条件关系"><option value="all">全部条件</option><option value="any">任一条件</option></select></label>
           </div>
-          <div class="rule-preview-line"><span>预览</span><b id="filter-preview">阶段 等于 面试中</b></div>
+          <div class="rule-list" id="filter-rules"></div>
+          <button type="button" class="add-combination-rule" id="add-filter-rule"><svg><use href="#i-plus"/></svg>添加筛选条件</button>
+          <div class="rule-preview-line"><span>结果预览</span><b id="filter-preview">尚未应用 · 20 条记录</b></div>
         </div>
-        <footer><button type="button" class="subtle-button" id="clear-filter">清除筛选</button><button type="button" class="confirm-button" id="apply-filter">应用筛选</button></footer>
+        <footer><span id="filter-rule-count">2 个条件</span><button type="button" class="subtle-button" id="clear-filter">清除全部</button><button type="button" class="confirm-button" id="apply-filter">应用筛选</button></footer>
       </section>
 
       <section class="rule-panel sort-panel floating-surface" id="sort-panel" hidden aria-label="排序规则">
-        <header class="panel-header"><span><strong>排序记录</strong><small>选择规则后再应用，不使用隐式排序</small></span><button type="button" class="icon-button compact" id="close-sort" aria-label="关闭排序"><svg><use href="#i-x"/></svg></button></header>
+        <header class="panel-header"><span><strong>排序记录</strong><small>从上到下依次比较多个排序条件</small></span><button type="button" class="icon-button compact" id="close-sort" aria-label="关闭排序"><svg><use href="#i-x"/></svg></button></header>
         <div class="rule-panel-body">
-          <span class="rule-label">排序依据</span>
-          <div class="rule-editor-row two-columns">
-            <select id="sort-field" aria-label="排序字段"><option value="applied">申请日期</option><option value="fit">匹配度</option><option value="wait">等待天数</option><option value="company">公司</option></select>
-            <select id="sort-direction" aria-label="排序方向"><option value="desc">新到旧 / 高到低</option><option value="asc">旧到新 / 低到高</option></select>
-          </div>
-          <div class="rule-preview-line"><span>当前规则</span><b id="sort-preview">申请日期 · 新到旧</b></div>
+          <label class="rule-ai-composer"><svg><use href="#i-sparkles"/></svg><input id="sort-ai-prompt" type="text" placeholder="例如：高匹配优先，其次等待更久，再按申请日期"><button type="button" id="generate-sort-rules">AI 生成</button></label>
+          <div class="rule-section-heading"><span>优先级顺序</span><small>拖动可调整</small></div>
+          <div class="rule-list" id="sort-rules"></div>
+          <button type="button" class="add-combination-rule" id="add-sort-rule"><svg><use href="#i-plus"/></svg>添加排序条件</button>
+          <div class="rule-preview-line"><span>当前顺序</span><b id="sort-preview">尚未应用</b></div>
         </div>
-        <footer><button type="button" class="subtle-button" id="clear-sort">清除排序</button><button type="button" class="confirm-button" id="apply-sort">应用排序</button></footer>
+        <footer><span id="sort-rule-count">2 个排序条件</span><button type="button" class="subtle-button" id="clear-sort">清除全部</button><button type="button" class="confirm-button" id="apply-sort">应用排序</button></footer>
       </section>
 
       <section class="rule-panel group-panel floating-surface" id="group-panel" hidden aria-label="分组规则">
-        <header class="panel-header"><span><strong>分组记录</strong><small>选择一个字段，不会改写原始数据</small></span><button type="button" class="icon-button compact" id="close-group" aria-label="关闭分组"><svg><use href="#i-x"/></svg></button></header>
+        <header class="panel-header"><span><strong>分组记录</strong><small>建立一级、二级分组，不会改写原始数据</small></span><button type="button" class="icon-button compact" id="close-group" aria-label="关闭分组"><svg><use href="#i-x"/></svg></button></header>
         <div class="rule-panel-body">
-          <span class="rule-label">分组依据</span>
-          <select id="group-field" class="full-select" aria-label="分组字段"><option value="">不分组</option><option value="stageKey">阶段</option><option value="workMode">工作模式</option><option value="location">地点</option></select>
-          <div class="group-examples"><span><b>阶段</b><small>Offer、面试中、待跟进…</small></span><span><b>工作模式</b><small>Remote、Hybrid、On-site</small></span><span><b>地点</b><small>按城市或地区聚合</small></span></div>
+          <label class="rule-ai-composer"><svg><use href="#i-sparkles"/></svg><input id="group-ai-prompt" type="text" placeholder="例如：先按阶段，再按工作模式分组"><button type="button" id="generate-group-rules">AI 生成</button></label>
+          <div class="rule-section-heading"><span>分组层级</span><small>最多 3 层</small></div>
+          <div class="rule-list" id="group-rules"></div>
+          <button type="button" class="add-combination-rule" id="add-group-rule"><svg><use href="#i-plus"/></svg>添加分组层级</button>
+          <div class="rule-preview-line"><span>分组预览</span><b id="group-preview">尚未应用</b></div>
         </div>
-        <footer><button type="button" class="subtle-button" id="clear-group">取消分组</button><button type="button" class="confirm-button" id="apply-group">应用分组</button></footer>
+        <footer><span id="group-rule-count">2 个分组层级</span><button type="button" class="subtle-button" id="clear-group">取消分组</button><button type="button" class="confirm-button" id="apply-group">应用分组</button></footer>
       </section>
 
       <section class="field-panel floating-surface" id="field-panel" hidden aria-label="字段配置">
         <header class="panel-header">
-          <span><strong>字段配置</strong><small>18 个字段 · 3 个计算字段</small></span>
+          <span><strong>字段配置</strong><small id="field-count">18 个字段 · 3 个计算字段</small></span>
           <button type="button" class="icon-button" id="close-fields" aria-label="关闭字段配置"><svg><use href="#i-x"/></svg></button>
         </header>
         <div class="field-panel-body">
           <nav class="field-list">
-            <label><svg><use href="#i-search"/></svg><input type="search" placeholder="查找字段" aria-label="查找字段"></label>
+            <label><svg><use href="#i-search"/></svg><input id="field-search" type="search" placeholder="查找字段" aria-label="查找字段"></label>
             <button type="button"><svg><use href="#i-text"/></svg><span>公司</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
             <button type="button"><svg><use href="#i-text"/></svg><span>职位</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
             <button type="button" class="is-active"><svg><use href="#i-select"/></svg><span>阶段</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
@@ -238,10 +252,11 @@
             <button type="button"><svg><use href="#i-clock"/></svg><span>面试时间</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
             <button type="button"><svg><use href="#i-number"/></svg><span>进度</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
             <button type="button"><svg><use href="#i-note"/></svg><span>备注</span><svg class="field-eye"><use href="#i-eye"/></svg></button>
-            <button type="button" class="field-add"><svg><use href="#i-plus"/></svg><span>新增字段</span></button>
+            <button type="button" class="field-add" id="add-field"><svg><use href="#i-plus"/></svg><span>新增字段</span></button>
           </nav>
           <section class="field-editor">
-            <label class="editor-label">字段名称<input type="text" value="阶段" aria-label="字段名称"></label>
+            <div class="field-editor-context"><span id="field-editor-column">C 列</span><em id="field-editor-state">已保存</em></div>
+            <label class="editor-label">字段名称<input id="field-name-input" type="text" value="阶段" aria-label="字段名称"></label>
             <div class="editor-label">字段类型<button type="button" class="type-select" id="field-type-select"><span><svg><use href="#i-select"/></svg><b id="selected-field-type">单选</b></span><svg><use href="#i-chevron-down"/></svg></button></div>
             <section class="field-type-menu" id="field-type-menu" hidden>
               <section class="field-type-section">
@@ -269,8 +284,8 @@
               <button type="button" class="computed-type" disabled><svg><use href="#i-clock"/></svg><span><strong>创建 / 修改时间</strong><small>由 Dataset adapter 维护</small></span><em>系统</em></button>
               <button type="button" class="computed-type" disabled><svg><use href="#i-link"/></svg><span><strong>查找引用</strong><small>跨表关系与聚合</small></span><em>后续</em></button>
             </section>
-            <div class="option-heading"><span>选项内容</span><button type="button"><svg><use href="#i-sort"/></svg>排序</button></div>
-            <div class="field-options">
+            <div class="option-heading" id="field-option-heading"><span>选项内容</span><button type="button"><svg><use href="#i-sort"/></svg>排序</button></div>
+            <div class="field-options" id="field-options">
               <button type="button"><i class="option-dot gray"></i><span>待申请</span><svg><use href="#i-more"/></svg></button>
               <button type="button"><i class="option-dot blue"></i><span>已申请</span><svg><use href="#i-more"/></svg></button>
               <button type="button"><i class="option-dot amber"></i><span>待跟进</span><svg><use href="#i-more"/></svg></button>
@@ -279,14 +294,14 @@
               <button type="button"><i class="option-dot red"></i><span>已结束</span><svg><use href="#i-more"/></svg></button>
               <button type="button" class="option-add"><svg><use href="#i-plus"/></svg>添加选项</button>
             </div>
-            <footer><button type="button" class="subtle-button" id="cancel-fields">取消</button><button type="button" class="confirm-button" id="save-fields">保存字段</button></footer>
+            <footer><span class="field-save-status" id="field-save-status">选择左侧字段可连续配置</span><button type="button" class="subtle-button" id="cancel-fields">撤销更改</button><button type="button" class="confirm-button" id="save-fields">保存此字段</button></footer>
           </section>
         </div>
       </section>
 
       <section class="formula-panel floating-surface" id="formula-panel" hidden aria-label="AI 生成公式">
         <header class="panel-header">
-          <span><strong>AI 生成公式</strong><small>先描述业务规则，再从可验证的候选公式中选择</small></span>
+          <span><strong>选择 AI 公式</strong><small>原地描述已完成；在这里比较、调整并确认候选</small></span>
           <button type="button" class="icon-button" id="close-formula" aria-label="关闭公式面板"><svg><use href="#i-x"/></svg></button>
         </header>
         <div class="ai-formula-layout">
@@ -295,7 +310,7 @@
             <label>新字段名称<input type="text" id="ai-formula-name" value="行动优先级" aria-label="公式字段名称"></label>
             <label>用一句话描述规则<textarea id="ai-formula-prompt" rows="5">当匹配度不低于 85，并且等待天数达到 7 天时，标记为“优先跟进”，否则标记为“保持观察”。</textarea></label>
             <div class="ai-formula-context"><span>可用字段</span><button type="button">匹配度</button><button type="button">等待天数</button><button type="button">阶段</button><button type="button">面试时间</button></div>
-            <button type="button" class="generate-formula-button" id="generate-formula-candidates"><svg><use href="#i-sparkles"/></svg><span><strong>生成公式建议</strong><small>AI 只生成草稿，不会直接写入表格</small></span><svg><use href="#i-arrow"/></svg></button>
+            <button type="button" class="generate-formula-button" id="generate-formula-candidates"><svg><use href="#i-sparkles"/></svg><span><strong>重新生成候选</strong><small>修改描述后再次生成，不会直接写入表格</small></span><svg><use href="#i-arrow"/></svg></button>
             <details class="manual-formula">
               <summary>我想手动查看函数</summary>
               <div><button type="button" data-function="IF">IF</button><button type="button" data-function="IFS">IFS</button><button type="button" data-function="AND">AND</button><button type="button" data-function="OR">OR</button><button type="button" data-function="COUNTIF">COUNTIF</button><button type="button" data-function="DATE_DIFF">DATE_DIFF</button><button type="button" data-function="TEXTJOIN">TEXTJOIN</button><button type="button" data-function="IFERROR">IFERROR</button></div>
@@ -337,29 +352,34 @@
 
     <aside class="ai-drawer" id="ai-drawer" aria-hidden="true">
       <header>
-        <span class="ai-title"><span class="ai-mark"><svg><use href="#i-sparkles"/></svg></span><span><strong>Peak 分析</strong><small>先计划，再改变视图</small></span></span>
+        <span class="ai-title"><span class="ai-mark"><svg><use href="#i-sparkles"/></svg></span><span><strong>分析当前视图</strong><small>20 条记录 · revision 12</small></span></span>
         <button type="button" class="icon-button" id="close-ai" aria-label="关闭分析面板"><svg><use href="#i-x"/></svg></button>
       </header>
       <section class="ai-context">
-        <span><svg><use href="#i-database"/></svg>申请记录</span>
-        <span>revision 12</span>
-        <span>24 records</span>
+        <span><svg><use href="#i-database"/></svg>全部记录</span>
+        <span>无筛选</span>
+        <span>字段 18</span>
       </section>
-      <section class="ai-insight">
-        <span class="insight-kicker">今日优先级</span>
-        <strong>3 个高匹配岗位进入行动窗口</strong>
-        <p>Aster Labs 已到 Offer 决策期；Tide Systems 与 Fern Studio 本周有面试。建议先完成薪资比较，再准备两场面试。</p>
-        <button type="button" data-open-dashboard>在仪表盘中查看 <svg><use href="#i-arrow"/></svg></button>
+      <section class="ai-editorial-lead">
+        <span class="insight-kicker">CURRENT READ</span>
+        <strong>三条记录已经进入行动窗口</strong>
+        <p>优先处理 Offer 决策和两场近期面试；其他记录暂时不值得增加投入。</p>
       </section>
+      <section class="ai-evidence-list" aria-label="分析证据">
+        <article><span>01</span><div><strong>Aster Labs</strong><small>Offer · 匹配 94 · 周五前回复</small></div><em>决策</em></article>
+        <article><span>02</span><div><strong>Tide Systems</strong><small>面试中 · 匹配 91 · 明天 10:30</small></div><em>准备</em></article>
+        <article><span>03</span><div><strong>Koru Digital</strong><small>待跟进 · 匹配 86 · 已等待 11 天</small></div><em>跟进</em></article>
+      </section>
+      <button type="button" class="ai-dashboard-link" data-open-dashboard>在仪表盘中展开证据 <svg><use href="#i-arrow"/></svg></button>
       <section class="ai-suggestions">
-        <span>试着问</span>
+        <span>继续分析</span>
         <button type="button" data-prompt="比较高匹配岗位的薪资、阶段和等待时间">比较高匹配岗位</button>
         <button type="button" data-prompt="找出本周需要行动、且匹配度高于 80 的申请">找出需要跟进的申请</button>
         <button type="button" data-prompt="按渠道分析回复率，并生成仪表盘图表">分析渠道回复率</button>
       </section>
       <label class="ai-composer">
-        <textarea id="ai-prompt" rows="4">找出本周需要行动、且匹配度高于 80 的申请</textarea>
-        <span><small>仅生成受限 ComputePlan</small><button type="button" id="generate-plan" aria-label="生成分析计划"><svg><use href="#i-arrow"/></svg></button></span>
+        <textarea id="ai-prompt" rows="3" placeholder="用自然语言分析当前表格…">找出本周需要行动、且匹配度高于 80 的申请</textarea>
+        <span><small>生成可预览的 ComputePlan</small><button type="button" id="generate-plan" aria-label="生成分析计划"><svg><use href="#i-arrow"/></svg></button></span>
       </label>
       <section class="plan-preview" id="plan-preview" hidden>
         <header><span><strong>变更计划</strong><small>不会直接改写源文件</small></span><em>影响 5 条</em></header>

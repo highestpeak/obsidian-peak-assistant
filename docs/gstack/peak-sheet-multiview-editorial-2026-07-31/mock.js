@@ -673,11 +673,52 @@ const cellFields = {
   },
 };
 
+const fieldTypeLabels = {
+  text: '单行文本',
+  select: '单选',
+  date: '日期与时间',
+  number: '数字',
+  checkbox: '复选框',
+  url: '链接',
+};
+
+const fieldSchemas = Object.entries(cellFields).map(([key, definition]) => ({
+  key,
+  name: definition.label,
+  column: definition.column,
+  type: definition.readOnly && definition.formula ? '公式' : fieldTypeLabels[definition.type] ?? '附件',
+  options: key === 'stage'
+    ? Object.values(groupMeta).map((meta) => meta.label)
+    : [],
+  saved: true,
+}));
+const customFields = [];
+let selectedFieldKey = 'stage';
+let ruleId = 0;
+
+function createRuleId(prefix) {
+  ruleId += 1;
+  return `${prefix}-${ruleId}`;
+}
+
 const state = {
   view: 'table',
-  groupBy: null,
-  filter: null,
-  sort: null,
+  filters: [],
+  filterLogic: 'all',
+  sortRules: [],
+  groupRules: [],
+  filterDrafts: [
+    { id: createRuleId('filter'), field: 'stageKey', operator: 'notEquals', value: '已结束' },
+    { id: createRuleId('filter'), field: 'fit', operator: 'gte', value: '80' },
+  ],
+  sortDrafts: [
+    { id: createRuleId('sort'), field: 'fit', direction: 'desc' },
+    { id: createRuleId('sort'), field: 'wait', direction: 'desc' },
+  ],
+  groupDrafts: [
+    { id: createRuleId('group'), field: 'stageKey', direction: 'asc' },
+    { id: createRuleId('group'), field: 'workMode', direction: 'asc' },
+  ],
   statsVisible: true,
   query: '',
   selectedId: null,
@@ -696,6 +737,9 @@ const aiDrawer = document.querySelector('#ai-drawer');
 const themeToggle = document.querySelector('#theme-toggle');
 const formulaPanel = document.querySelector('#formula-panel');
 const formulaBar = document.querySelector('#formula-bar');
+const formulaDirect = document.querySelector('#formula-direct');
+const inlineFormulaComposer = document.querySelector('#inline-formula-composer');
+const inlineFormulaPrompt = document.querySelector('#inline-formula-prompt');
 const formatMenu = document.querySelector('#format-menu');
 const filterPanel = document.querySelector('#filter-panel');
 const sortPanel = document.querySelector('#sort-panel');
@@ -760,8 +804,11 @@ const fieldLabels = {
   location: '地点',
   fit: '匹配度',
   company: '公司',
+  role: '职位',
   applied: '申请日期',
   wait: '等待天数',
+  salary: '薪资范围',
+  progress: '进度',
 };
 
 const operatorLabels = {
@@ -769,6 +816,7 @@ const operatorLabels = {
   notEquals: '不等于',
   contains: '包含',
   gte: '大于等于',
+  lte: '小于等于',
 };
 
 const groupLabels = {
@@ -779,37 +827,47 @@ const groupLabels = {
 
 function filterValue(record, field) {
   if (field === 'stageKey') return record.stage;
+  if (cellFields[field]) return getCellValue(record, field, true);
   return record[field];
 }
 
-function matchesFilter(record) {
-  if (!state.filter) return true;
-  const actual = filterValue(record, state.filter.field);
-  const expected = state.filter.value;
-  if (state.filter.operator === 'gte') return Number(actual) >= Number(expected);
+function matchesRule(record, rule) {
+  const actual = filterValue(record, rule.field);
+  const expected = rule.value;
+  if (rule.operator === 'gte') return Number(actual) >= Number(expected);
+  if (rule.operator === 'lte') return Number(actual) <= Number(expected);
   const actualText = String(actual ?? '').trim().toLowerCase();
   const expectedText = String(expected ?? '').trim().toLowerCase();
-  if (state.filter.operator === 'notEquals') return actualText !== expectedText;
-  if (state.filter.operator === 'contains') return actualText.includes(expectedText);
+  if (rule.operator === 'notEquals') return actualText !== expectedText;
+  if (rule.operator === 'contains') return actualText.includes(expectedText);
   return actualText === expectedText;
 }
 
+function matchesRuleSet(record, rules, logic = 'all') {
+  if (rules.length === 0) return true;
+  if (logic === 'any') return rules.some((rule) => matchesRule(record, rule));
+  return rules.every((rule) => matchesRule(record, rule));
+}
+
 function compareRecords(first, second) {
-  if (!state.sort) return records.indexOf(first) - records.indexOf(second);
-  const firstValue = filterValue(first, state.sort.field);
-  const secondValue = filterValue(second, state.sort.field);
-  const numeric = ['fit', 'wait'].includes(state.sort.field);
-  const comparison = numeric
-    ? Number(firstValue) - Number(secondValue)
-    : String(firstValue ?? '').localeCompare(String(secondValue ?? ''), 'zh-CN', { numeric: true });
-  return state.sort.direction === 'asc' ? comparison : -comparison;
+  for (const rule of state.sortRules) {
+    const firstValue = filterValue(first, rule.field);
+    const secondValue = filterValue(second, rule.field);
+    const numeric = ['fit', 'wait', 'progress'].includes(rule.field);
+    const comparison = numeric
+      ? Number(firstValue) - Number(secondValue)
+      : String(firstValue ?? '').localeCompare(String(secondValue ?? ''), 'zh-CN', { numeric: true });
+    if (comparison === 0) continue;
+    return rule.direction === 'asc' ? comparison : -comparison;
+  }
+  return records.indexOf(first) - records.indexOf(second);
 }
 
 function visibleRecords() {
   const query = state.query.trim().toLowerCase();
   return records
     .filter((record) => {
-      if (!matchesFilter(record)) return false;
+      if (!matchesRuleSet(record, state.filters, state.filterLogic)) return false;
       if (!query) return true;
       const extra = extendedFields(record);
       return [
@@ -836,17 +894,22 @@ function formatDate(value) {
 }
 
 function renderFilterLine() {
-  workspace.classList.toggle('has-active-filter', Boolean(state.filter));
-  filterLine.hidden = !state.filter;
-  if (!state.filter) return;
+  const hasFilters = state.filters.length > 0;
+  workspace.classList.toggle('has-active-filter', hasFilters);
+  filterLine.hidden = !hasFilters;
+  if (!hasFilters) return;
   const visible = visibleRecords().length;
+  const joiner = state.filterLogic === 'all' ? '且' : '或';
   filterLine.innerHTML = `
     <span>已应用筛选</span>
-    <button type="button" id="remove-filter">${escapeHtml(fieldLabels[state.filter.field])} ${escapeHtml(operatorLabels[state.filter.operator])} ${escapeHtml(state.filter.value)} ${icon('i-x')}</button>
+    ${state.filters.map((rule, index) => `${index > 0 ? `<em>${joiner}</em>` : ''}<button type="button" data-remove-filter="${index}">${escapeHtml(fieldLabels[rule.field] ?? cellFields[rule.field]?.label ?? rule.field)} ${escapeHtml(operatorLabels[rule.operator])} ${escapeHtml(rule.value)} ${icon('i-x')}</button>`).join('')}
     <span class="filter-result">显示 ${visible} 条记录</span>
   `;
-  document.querySelector('#remove-filter')?.addEventListener('click', () => {
-    clearFilter();
+  document.querySelectorAll('[data-remove-filter]').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.filters.splice(Number(button.dataset.removeFilter), 1);
+      renderAfterRuleChange();
+    });
   });
 }
 
@@ -856,7 +919,7 @@ function groupRows(groupKey, groupRecords) {
   const rows = groupRecords.map(recordRow).join('');
   return `
     <tr class="group-row">
-      <td colspan="19">
+      <td colspan="${19 + customFields.filter((field) => field.saved).length}">
         <div class="group-summary">
           <span class="group-name">
             ${icon('i-chevron')}
@@ -875,8 +938,9 @@ function groupRows(groupKey, groupRecords) {
 }
 
 function sortIndicator(field) {
-  if (state.sort?.field !== field) return '';
-  return `<em class="sort-mark">${state.sort.direction === 'desc' ? '↓' : '↑'}</em>`;
+  const index = state.sortRules.findIndex((rule) => rule.field === field);
+  if (index < 0) return '';
+  return `<em class="sort-mark">${state.sortRules[index].direction === 'desc' ? '↓' : '↑'}${state.sortRules.length > 1 ? index + 1 : ''}</em>`;
 }
 
 function recordRow(record) {
@@ -931,8 +995,40 @@ function recordRow(record) {
       <td class="${cellClass(record, 'interviewAt', 'datetime-cell')}" ${cellAttributes(record, 'interviewAt')}>${renderDateTime(extra.interviewAt)}</td>
       <td class="${cellClass(record, 'progress', 'progress-column')}" ${cellAttributes(record, 'progress')}><span class="progress-cell"><i><b style="--progress:${extra.progress}%"></b></i><strong>${extra.progress}%</strong></span></td>
       <td class="${cellClass(record, 'note', 'note-column')}" ${cellAttributes(record, 'note')}>${renderNote(extra.displayNote, record.id)}</td>
+      ${customFields.filter((field) => field.saved).map((field) => {
+        const value = getCellValue(record, field.key, true);
+        return `<td class="${cellClass(record, field.key, 'custom-field-column')}" ${cellAttributes(record, field.key)}><span title="${escapeHtml(value)}">${value ? escapeHtml(value) : emptyCell(`未填写${field.name}`)}</span></td>`;
+      }).join('')}
     </tr>
   `;
+}
+
+function columnLetters() {
+  return Object.values(cellFields)
+    .filter((definition) => !definition.custom || definition.saved)
+    .map((definition) => definition.column);
+}
+
+function fieldIcon(definition) {
+  if (definition.formula) return '<b class="formula-mark">ƒx</b>';
+  const iconByType = {
+    select: 'i-select',
+    date: 'i-calendar',
+    number: 'i-number',
+    checkbox: 'i-check',
+    url: 'i-link',
+  };
+  return icon(iconByType[definition.type] ?? 'i-text');
+}
+
+function customFieldHeaders() {
+  return customFields
+    .filter((field) => field.saved)
+    .map((field) => {
+      const definition = cellFields[field.key];
+      return `<th><span class="field-heading">${fieldIcon(definition)}<span>${escapeHtml(definition.label)}</span>${sortIndicator(field.key)}</span></th>`;
+    })
+    .join('');
 }
 
 function renderTable() {
@@ -943,17 +1039,17 @@ function renderTable() {
   }
 
   let body = '';
-  if (state.groupBy) {
+  if (state.groupRules.length > 0) {
     const groupedRecords = new Map();
     visible.forEach((record) => {
-      const groupKey = String(filterValue(record, state.groupBy) || '未填写');
+      const groupKey = state.groupRules
+        .map((rule) => String(filterValue(record, rule.field) || '未填写'))
+        .join(' · ');
       groupedRecords.set(groupKey, [...(groupedRecords.get(groupKey) ?? []), record]);
     });
     const groups = [...groupedRecords.entries()].sort(([first], [second]) => {
-      if (state.groupBy !== 'stageKey') return first.localeCompare(second, 'zh-CN');
-      const firstKey = Object.keys(groupMeta).find((key) => groupMeta[key].label === first);
-      const secondKey = Object.keys(groupMeta).find((key) => groupMeta[key].label === second);
-      return (groupMeta[firstKey]?.order ?? 99) - (groupMeta[secondKey]?.order ?? 99);
+      const comparison = first.localeCompare(second, 'zh-CN', { numeric: true });
+      return state.groupRules[0].direction === 'desc' ? -comparison : comparison;
     });
     body = groups.map(([groupKey, items]) => groupRows(groupKey, items)).join('');
   } else {
@@ -963,12 +1059,12 @@ function renderTable() {
   stage.innerHTML = `
     <section class="table-view">
       <div class="table-viewport">
-        <table class="record-table">
-          <colgroup><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col><col></colgroup>
+        <table class="record-table" style="min-width:${3002 + (customFields.filter((field) => field.saved).length * 160)}px">
+          <colgroup>${columnLetters().map(() => '<col>').join('')}<col></colgroup>
           <thead>
             <tr class="column-letters">
               <th class="sheet-corner"></th>
-              ${['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R'].map((letter) => `<th>${letter}</th>`).join('')}
+              ${columnLetters().map((letter) => `<th>${letter}</th>`).join('')}
             </tr>
             <tr>
               <th class="row-number-header">#</th>
@@ -990,6 +1086,7 @@ function renderTable() {
               <th><span class="field-heading">${icon('i-clock')}<span>面试时间</span></span></th>
               <th><span class="field-heading">${icon('i-number')}<span>进度</span><em class="format-badge">%</em></span></th>
               <th><span class="field-heading">${icon('i-note')}<span>备注</span></span></th>
+              ${customFieldHeaders()}
             </tr>
           </thead>
           <tbody>${body}</tbody>
@@ -1205,7 +1302,10 @@ function updateStatus() {
       return;
     }
     primary.textContent = 'H2:H6';
-    secondary.textContent = `5 个单元格 · ${state.groupBy ? `按${groupLabels[state.groupBy]}分组` : `${visible} 条记录`}`;
+    const grouping = state.groupRules
+      .map((rule) => fieldLabels[rule.field] ?? cellFields[rule.field]?.label ?? rule.field)
+      .join(' → ');
+    secondary.textContent = `5 个单元格 · ${grouping ? `按 ${grouping} 分组` : `${visible} 条记录`}`;
     const selectedValues = records.slice(0, 5).map((record) => record.fit);
     const sum = selectedValues.reduce((total, value) => total + value, 0);
     const values = [
@@ -1257,10 +1357,13 @@ function renderCurrentView(options = {}) {
   renderers[state.view]();
   workspace.classList.toggle('is-table-view', state.view === 'table');
   formulaBar.hidden = state.view !== 'table';
+  document.querySelector('#table-command-bar').hidden = state.view !== 'table';
   document.querySelectorAll('[data-view]').forEach((button) => {
     button.classList.toggle('is-active', button.dataset.view === state.view);
   });
   renderFilterLine();
+  const queryResult = document.querySelector('#query-result');
+  if (queryResult) queryResult.textContent = `${visibleRecords().length} 条记录`;
   updateStatus();
   if (options.animate) animateViewStage();
 }
@@ -1334,10 +1437,11 @@ function renderTablePreservingViewport() {
 
 function editRequiresStructuralRender(field) {
   if (state.query.trim()) return true;
-  if (state.filter?.field === field || (state.filter?.field === 'stageKey' && field === 'stage')) return true;
-  if (state.sort?.field === field) return true;
-  if (state.groupBy === field) return true;
-  return state.groupBy === 'stageKey' && field === 'stage';
+  const touchesField = (rule) => rule.field === field
+    || (rule.field === 'stageKey' && field === 'stage');
+  return state.filters.some(touchesField)
+    || state.sortRules.some(touchesField)
+    || state.groupRules.some(touchesField);
 }
 
 function refreshCommittedCell(recordId, field) {
@@ -1743,16 +1847,163 @@ function closeRulePanels(except = null) {
   });
 }
 
+let fieldDraft = null;
+
+function fieldSchema(key = selectedFieldKey) {
+  return fieldSchemas.find((candidate) => candidate.key === key) ?? null;
+}
+
+function fieldListButtons() {
+  return [...document.querySelectorAll('.field-list > button[data-field-key]')];
+}
+
+function renderFieldOptions(options = []) {
+  const optionsContainer = document.querySelector('#field-options');
+  const heading = document.querySelector('#field-option-heading');
+  const hasOptions = ['单选', '多选'].includes(fieldDraft?.type);
+  heading.hidden = !hasOptions;
+  optionsContainer.hidden = !hasOptions;
+  if (!hasOptions) return;
+  const colors = ['gray', 'blue', 'amber', 'purple', 'green', 'red'];
+  optionsContainer.innerHTML = `
+    ${options.map((option, index) => `<button type="button"><i class="option-dot ${colors[index % colors.length]}"></i><span>${escapeHtml(option)}</span>${icon('i-more')}</button>`).join('')}
+    <button type="button" class="option-add">${icon('i-plus')}添加选项</button>
+  `;
+}
+
+function selectFieldConfig(key) {
+  const schema = fieldSchema(key);
+  if (!schema) return;
+  selectedFieldKey = key;
+  fieldDraft = {
+    name: schema.name,
+    type: schema.type,
+    options: [...(schema.options ?? [])],
+  };
+  fieldListButtons().forEach((button) => {
+    button.classList.toggle('is-active', button.dataset.fieldKey === key);
+  });
+  document.querySelector('#field-editor-column').textContent = `${schema.column} 列`;
+  document.querySelector('#field-editor-state').textContent = schema.saved ? '已保存' : '新增草稿';
+  document.querySelector('#field-name-input').value = fieldDraft.name;
+  document.querySelector('#selected-field-type').textContent = fieldDraft.type;
+  document.querySelector('#field-save-status').textContent = schema.saved
+    ? '可继续切换左侧字段，面板不会关闭'
+    : '填写名称和类型后保存；仍可继续新增字段';
+  document.querySelectorAll('[data-field-type]').forEach((button) => {
+    button.classList.toggle('is-selected', button.dataset.fieldType === fieldDraft.type);
+  });
+  renderFieldOptions(fieldDraft.options);
+}
+
+function addFieldListButton(schema) {
+  const addButton = document.querySelector('#add-field');
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.dataset.fieldKey = schema.key;
+  button.innerHTML = `${icon('i-text')}<span>${escapeHtml(schema.name)}</span><svg class="field-eye"><use href="#i-eye"/></svg>`;
+  button.addEventListener('click', () => selectFieldConfig(schema.key));
+  addButton.before(button);
+  return button;
+}
+
+function nextColumnLetter() {
+  const index = Object.keys(cellFields).length;
+  let value = index;
+  let result = '';
+  do {
+    result = String.fromCharCode(65 + (value % 26)) + result;
+    value = Math.floor(value / 26) - 1;
+  } while (value >= 0);
+  return result;
+}
+
+function createCustomField() {
+  const key = `custom${customFields.length + 1}`;
+  const schema = {
+    key,
+    name: `新字段 ${customFields.length + 1}`,
+    column: nextColumnLetter(),
+    type: '单行文本',
+    options: [],
+    saved: false,
+  };
+  cellFields[key] = {
+    column: schema.column,
+    label: schema.name,
+    type: 'text',
+    custom: true,
+    saved: false,
+    get: (record) => cellOverrides[record.id]?.[key] ?? '',
+    set: (record, value) => {
+      cellOverrides[record.id] = { ...(cellOverrides[record.id] ?? {}), [key]: String(value).trim() };
+    },
+  };
+  fieldSchemas.push(schema);
+  customFields.push(schema);
+  addFieldListButton(schema);
+  selectFieldConfig(key);
+  document.querySelector('#field-name-input').focus();
+  document.querySelector('#field-name-input').select();
+}
+
+function saveCurrentField() {
+  const schema = fieldSchema();
+  const definition = cellFields[selectedFieldKey];
+  if (!schema || !definition || !fieldDraft) return;
+  const name = document.querySelector('#field-name-input').value.trim();
+  if (!name) {
+    showToast('字段名称不能为空', '先填写一个清楚、可辨认的字段名称');
+    return;
+  }
+  schema.name = name;
+  schema.type = fieldDraft.type;
+  schema.options = [...fieldDraft.options];
+  schema.saved = true;
+  definition.label = name;
+  definition.saved = true;
+  const typeMap = {
+    '单行文本': 'text',
+    '多行文本': 'text',
+    '数字': 'number',
+    '复选框': 'checkbox',
+    '日期与时间': 'date',
+    '链接': 'url',
+  };
+  if (!definition.readOnly) definition.type = typeMap[fieldDraft.type] ?? definition.type;
+  const listButton = document.querySelector(`[data-field-key="${selectedFieldKey}"]`);
+  listButton?.querySelector('span:not(.formula-mark)')?.replaceChildren(name);
+  document.querySelector('#field-editor-state').textContent = '刚刚保存';
+  document.querySelector('#field-save-status').textContent = `“${name}”已保存，可继续选择其他字段`;
+  document.querySelector('#field-count').textContent = `${fieldSchemas.filter((field) => field.saved).length} 个字段 · 3 个计算字段`;
+  renderCurrentView();
+  positionAnchoredSurface(document.querySelector('#open-fields'), document.querySelector('#field-panel'));
+}
+
+function configureFieldList() {
+  const staticButtons = [...document.querySelectorAll('.field-list > button:not(.field-add)')];
+  staticButtons.forEach((button, index) => {
+    const schema = fieldSchemas[index];
+    if (!schema) return;
+    button.dataset.fieldKey = schema.key;
+    button.addEventListener('click', () => selectFieldConfig(schema.key));
+  });
+  selectFieldConfig(selectedFieldKey);
+}
+
 function openFields() {
   const panel = document.querySelector('#field-panel');
+  toast.hidden = true;
   closeLongTextCell();
   closeFormula();
+  closeInlineFormula();
   closeFormatMenu();
   closeRulePanels();
   closeViewMenu();
   closeAi();
   panel.hidden = false;
   document.querySelector('#open-fields').setAttribute('aria-expanded', 'true');
+  selectFieldConfig(selectedFieldKey);
   positionAnchoredSurface(document.querySelector('#open-fields'), panel);
 }
 
@@ -1762,13 +2013,37 @@ function closeFields() {
   document.querySelector('#open-fields').setAttribute('aria-expanded', 'false');
 }
 
-function openFormula() {
+function closeInlineFormula() {
+  inlineFormulaComposer.hidden = true;
+  formulaDirect.hidden = false;
+  document.querySelector('#open-formula').setAttribute('aria-pressed', 'false');
+}
+
+function openInlineFormula() {
+  toast.hidden = true;
+  closeLongTextCell();
+  closeFields();
+  closeFormula();
+  closeFormatMenu();
+  closeRulePanels();
+  closeViewMenu();
+  closeAi();
+  formulaDirect.hidden = true;
+  inlineFormulaComposer.hidden = false;
+  document.querySelector('#open-formula').setAttribute('aria-pressed', 'true');
+  window.requestAnimationFrame(() => inlineFormulaPrompt.focus());
+}
+
+function openFormulaCandidates(prompt = '') {
+  toast.hidden = true;
   closeLongTextCell();
   closeFields();
   closeFormatMenu();
   closeRulePanels();
   closeViewMenu();
   closeAi();
+  if (prompt) document.querySelector('#ai-formula-prompt').value = prompt;
+  document.querySelector('#formula-generation-state').textContent = `已根据当前 ${fieldSchemas.filter((field) => field.saved).length} 个字段生成 3 个候选`;
   formulaPanel.hidden = false;
 }
 
@@ -1780,6 +2055,7 @@ function openFormatMenu() {
   closeLongTextCell();
   closeFields();
   closeFormula();
+  closeInlineFormula();
   closeRulePanels();
   closeViewMenu();
   closeAi();
@@ -1794,10 +2070,12 @@ function closeFormatMenu() {
 }
 
 function openRulePanel(trigger, panel) {
+  toast.hidden = true;
   closeLongTextCell();
   closeFormatMenu();
   closeFields();
   closeFormula();
+  closeInlineFormula();
   closeRulePanels(panel);
   closeViewMenu();
   closeAi();
@@ -1822,11 +2100,19 @@ function closeGroupPanel() {
 }
 
 function openAi() {
+  toast.hidden = true;
+  const contextItems = document.querySelectorAll('.ai-context span');
+  const visibleCount = visibleRecords().length;
+  document.querySelector('.ai-title small').textContent = `${visibleCount} 条记录 · revision 12`;
+  if (contextItems[0]) contextItems[0].innerHTML = `${icon('i-database')}${state.view === 'table' ? '当前表格' : '当前视图'}`;
+  if (contextItems[1]) contextItems[1].textContent = state.filters.length ? `${state.filters.length} 个筛选条件` : '无筛选';
+  if (contextItems[2]) contextItems[2].textContent = `字段 ${fieldSchemas.filter((field) => field.saved).length}`;
   aiDrawer.classList.add('is-open');
   aiDrawer.setAttribute('aria-hidden', 'false');
   closeLongTextCell();
   closeFields();
   closeFormula();
+  closeInlineFormula();
   closeFormatMenu();
   closeRulePanels();
   closeViewMenu();
@@ -1840,21 +2126,21 @@ function closeAi() {
 function updateRuleToolbar() {
   const filterButton = document.querySelector('#open-filter');
   const filterCount = document.querySelector('#filter-count');
-  filterCount.hidden = !state.filter;
-  filterCount.textContent = state.filter ? '1' : '0';
-  filterButton.classList.toggle('is-applied', Boolean(state.filter));
+  filterCount.hidden = state.filters.length === 0;
+  filterCount.textContent = String(state.filters.length);
+  filterButton.classList.toggle('is-applied', state.filters.length > 0);
 
   const sortButton = document.querySelector('#open-sort');
   const sortCount = document.querySelector('#sort-count');
-  sortCount.hidden = !state.sort;
-  sortCount.textContent = state.sort ? '1' : '0';
-  sortButton.classList.toggle('is-applied', Boolean(state.sort));
+  sortCount.hidden = state.sortRules.length === 0;
+  sortCount.textContent = String(state.sortRules.length);
+  sortButton.classList.toggle('is-applied', state.sortRules.length > 0);
 
   const groupButton = document.querySelector('#open-group');
   const groupCount = document.querySelector('#group-count');
-  groupCount.hidden = !state.groupBy;
-  groupCount.textContent = state.groupBy ? '1' : '0';
-  groupButton.classList.toggle('is-applied', Boolean(state.groupBy));
+  groupCount.hidden = state.groupRules.length === 0;
+  groupCount.textContent = String(state.groupRules.length);
+  groupButton.classList.toggle('is-applied', state.groupRules.length > 0);
 }
 
 function renderAfterRuleChange() {
@@ -1863,34 +2149,130 @@ function renderAfterRuleChange() {
 }
 
 function clearFilter() {
-  state.filter = null;
-  closeFilterPanel();
+  state.filters = [];
+  state.filterDrafts = [];
+  renderFilterRules();
   renderAfterRuleChange();
 }
 
 function clearSort() {
-  state.sort = null;
-  closeSortPanel();
+  state.sortRules = [];
+  state.sortDrafts = [];
+  renderSortRules();
   renderAfterRuleChange();
 }
 
 function clearGroup() {
-  state.groupBy = null;
-  closeGroupPanel();
+  state.groupRules = [];
+  state.groupDrafts = [];
+  renderGroupRules();
   renderAfterRuleChange();
 }
 
-function syncFilterPreview() {
-  const field = document.querySelector('#filter-field').value;
-  const operator = document.querySelector('#filter-operator').value;
-  const value = document.querySelector('#filter-value').value.trim() || '未填写';
-  document.querySelector('#filter-preview').textContent = `${fieldLabels[field]} ${operatorLabels[operator]} ${value}`;
+const ruleFields = [
+  ['stageKey', '阶段'],
+  ['workMode', '工作模式'],
+  ['location', '地点'],
+  ['fit', '匹配度'],
+  ['wait', '等待天数'],
+  ['applied', '申请日期'],
+  ['company', '公司'],
+  ['role', '职位'],
+  ['salary', '薪资范围'],
+  ['progress', '进度'],
+];
+
+function optionList(options, selected) {
+  return options.map(([value, label]) => `<option value="${escapeHtml(value)}" ${value === selected ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('');
 }
 
-function syncSortPreview() {
-  const field = document.querySelector('#sort-field').value;
-  const direction = document.querySelector('#sort-direction').value;
-  document.querySelector('#sort-preview').textContent = `${fieldLabels[field]} · ${direction === 'desc' ? '新到旧 / 高到低' : '旧到新 / 低到高'}`;
+function renderFilterRules() {
+  const container = document.querySelector('#filter-rules');
+  const operators = Object.entries(operatorLabels);
+  container.innerHTML = state.filterDrafts.map((rule, index) => `
+    <div class="combination-rule" data-rule-id="${rule.id}">
+      <span class="rule-order">${index + 1}</span>
+      <select data-rule-part="field" aria-label="筛选字段">${optionList(ruleFields, rule.field)}</select>
+      <select data-rule-part="operator" aria-label="筛选运算符">${optionList(operators, rule.operator)}</select>
+      <input data-rule-part="value" value="${escapeHtml(rule.value)}" aria-label="筛选值" placeholder="输入值">
+      <button type="button" class="rule-remove" data-rule-action="remove" aria-label="删除条件">${icon('i-x')}</button>
+    </div>
+  `).join('');
+  updateFilterPreviewText();
+  document.querySelector('#filter-rule-count').textContent = `${state.filterDrafts.length} 个条件`;
+}
+
+function updateFilterPreviewText() {
+  const tentative = records.filter((record) => matchesRuleSet(record, state.filterDrafts, state.filterLogic)).length;
+  document.querySelector('#filter-preview').textContent = state.filterDrafts.length === 0
+    ? '无条件'
+    : `预计显示 ${tentative} 条记录`;
+}
+
+function orderedRuleActions(index, length) {
+  return `
+    <button type="button" data-rule-action="up" ${index === 0 ? 'disabled' : ''} aria-label="上移">↑</button>
+    <button type="button" data-rule-action="down" ${index === length - 1 ? 'disabled' : ''} aria-label="下移">↓</button>
+    <button type="button" data-rule-action="remove" aria-label="删除">${icon('i-x')}</button>
+  `;
+}
+
+function renderSortRules() {
+  const container = document.querySelector('#sort-rules');
+  const directions = [['desc', '降序 · 高到低'], ['asc', '升序 · 低到高']];
+  container.innerHTML = state.sortDrafts.map((rule, index) => `
+    <div class="combination-rule ordered-rule" data-rule-id="${rule.id}">
+      <span class="rule-order">${index + 1}</span>
+      <select data-rule-part="field" aria-label="排序字段">${optionList(ruleFields, rule.field)}</select>
+      <select data-rule-part="direction" aria-label="排序方向">${optionList(directions, rule.direction)}</select>
+      <span class="rule-row-actions">${orderedRuleActions(index, state.sortDrafts.length)}</span>
+    </div>
+  `).join('');
+  document.querySelector('#sort-preview').textContent = state.sortDrafts.length
+    ? state.sortDrafts.map((rule) => `${fieldLabels[rule.field] ?? rule.field} ${rule.direction === 'desc' ? '↓' : '↑'}`).join(' → ')
+    : '不改变原始顺序';
+  document.querySelector('#sort-rule-count').textContent = `${state.sortDrafts.length} 个排序条件`;
+}
+
+function renderGroupRules() {
+  const container = document.querySelector('#group-rules');
+  const groupFields = ruleFields.filter(([key]) => ['stageKey', 'workMode', 'location', 'company', 'role'].includes(key));
+  const directions = [['asc', '升序'], ['desc', '降序']];
+  container.innerHTML = state.groupDrafts.map((rule, index) => `
+    <div class="combination-rule ordered-rule" data-rule-id="${rule.id}">
+      <span class="rule-order">${index + 1}</span>
+      <select data-rule-part="field" aria-label="分组字段">${optionList(groupFields, rule.field)}</select>
+      <select data-rule-part="direction" aria-label="分组方向">${optionList(directions, rule.direction)}</select>
+      <span class="rule-row-actions">${orderedRuleActions(index, state.groupDrafts.length)}</span>
+    </div>
+  `).join('');
+  document.querySelector('#group-preview').textContent = state.groupDrafts.length
+    ? state.groupDrafts.map((rule) => fieldLabels[rule.field] ?? rule.field).join(' → ')
+    : '不分组';
+  document.querySelector('#group-rule-count').textContent = `${state.groupDrafts.length} 个分组层级`;
+}
+
+function updateRuleDraft(event, rules, render) {
+  const row = event.target.closest('[data-rule-id]');
+  const part = event.target.dataset.rulePart;
+  if (!row || !part) return;
+  const rule = rules.find((candidate) => candidate.id === row.dataset.ruleId);
+  if (!rule) return;
+  rule[part] = event.target.value;
+  render();
+}
+
+function handleRuleAction(event, rules, render) {
+  const button = event.target.closest('[data-rule-action]');
+  const row = event.target.closest('[data-rule-id]');
+  if (!button || !row) return;
+  const index = rules.findIndex((candidate) => candidate.id === row.dataset.ruleId);
+  if (index < 0) return;
+  const action = button.dataset.ruleAction;
+  if (action === 'remove') rules.splice(index, 1);
+  if (action === 'up' && index > 0) [rules[index - 1], rules[index]] = [rules[index], rules[index - 1]];
+  if (action === 'down' && index < rules.length - 1) [rules[index + 1], rules[index]] = [rules[index], rules[index + 1]];
+  render();
 }
 
 function showDialog(selector) {
@@ -1930,10 +2312,20 @@ document.querySelectorAll('[data-menu-view]').forEach((button) => {
 
 document.querySelector('#open-fields').addEventListener('click', openFields);
 document.querySelector('#close-fields').addEventListener('click', closeFields);
-document.querySelector('#cancel-fields').addEventListener('click', closeFields);
-document.querySelector('#save-fields').addEventListener('click', () => {
-  closeFields();
-  showToast('字段已保存', '“阶段”选项已更新到当前 schema 草稿');
+document.querySelector('#cancel-fields').addEventListener('click', () => selectFieldConfig(selectedFieldKey));
+document.querySelector('#save-fields').addEventListener('click', saveCurrentField);
+document.querySelector('#add-field').addEventListener('click', createCustomField);
+document.querySelector('#field-name-input').addEventListener('input', (event) => {
+  if (!fieldDraft) return;
+  fieldDraft.name = event.target.value;
+  document.querySelector('#field-editor-state').textContent = '未保存';
+  document.querySelector('#field-save-status').textContent = '当前字段有未保存更改';
+});
+document.querySelector('#field-search').addEventListener('input', (event) => {
+  const query = event.target.value.trim().toLowerCase();
+  fieldListButtons().forEach((button) => {
+    button.hidden = !button.textContent.toLowerCase().includes(query);
+  });
 });
 
 document.querySelector('#field-type-select').addEventListener('click', () => {
@@ -1946,23 +2338,45 @@ document.querySelectorAll('[data-field-type]').forEach((button) => {
     const fieldType = button.dataset.fieldType;
     if (!fieldType) return;
     document.querySelector('#selected-field-type').textContent = fieldType;
+    if (fieldDraft) fieldDraft.type = fieldType;
     document.querySelectorAll('[data-field-type]').forEach((candidate) => {
       candidate.classList.toggle('is-selected', candidate === button);
     });
     document.querySelector('#field-type-menu').hidden = true;
-    if (fieldType !== '公式') return;
-    closeFields();
-    openFormula();
+    document.querySelector('#field-editor-state').textContent = '未保存';
+    document.querySelector('#field-save-status').textContent = `字段类型已改为“${fieldType}”，等待保存`;
+    renderFieldOptions(fieldDraft?.options ?? []);
   });
 });
 
-document.querySelector('#open-formula').addEventListener('click', openFormula);
-document.querySelector('#formula-function-button').addEventListener('click', openFormula);
+document.querySelector('#open-formula').addEventListener('click', () => {
+  if (inlineFormulaComposer.hidden) {
+    openInlineFormula();
+    return;
+  }
+  closeInlineFormula();
+});
+document.querySelector('#formula-function-button').addEventListener('click', () => {
+  closeInlineFormula();
+  formulaInput.focus();
+});
+document.querySelector('#cancel-inline-formula').addEventListener('click', closeInlineFormula);
+document.querySelector('#generate-inline-formula').addEventListener('click', () => {
+  const prompt = inlineFormulaPrompt.value.trim();
+  if (!prompt) {
+    showToast('先描述业务规则', '在公式栏直接写一句话，再生成可验证的候选');
+    inlineFormulaPrompt.focus();
+    return;
+  }
+  closeInlineFormula();
+  openFormulaCandidates(prompt);
+});
 document.querySelector('#close-formula').addEventListener('click', closeFormula);
 document.querySelector('#cancel-formula').addEventListener('click', closeFormula);
 document.querySelector('#save-formula').addEventListener('click', () => {
   const selected = document.querySelector('.formula-candidate.is-selected .candidate-choice strong')?.textContent ?? '公式建议';
   closeFormula();
+  closeInlineFormula();
   showToast('AI 公式已确认', `已选择“${selected}”；“行动优先级”将按 revision 12 重新计算`);
 });
 
@@ -2024,21 +2438,40 @@ document.querySelector('#open-filter').addEventListener('click', () => {
 document.querySelector('#close-filter').addEventListener('click', closeFilterPanel);
 document.querySelector('#clear-filter').addEventListener('click', clearFilter);
 document.querySelector('#apply-filter').addEventListener('click', () => {
-  const value = document.querySelector('#filter-value').value.trim();
-  if (!value) {
-    showToast('筛选值不能为空', '请输入要匹配的内容；打开面板本身不会改变记录');
+  if (state.filterDrafts.some((rule) => !String(rule.value).trim())) {
+    showToast('筛选值不能为空', '补全每个组合条件后再应用');
     return;
   }
-  state.filter = {
-    field: document.querySelector('#filter-field').value,
-    operator: document.querySelector('#filter-operator').value,
-    value,
-  };
+  state.filters = state.filterDrafts.map((rule) => ({ ...rule }));
+  state.filterLogic = document.querySelector('#filter-logic').value;
   closeFilterPanel();
   renderAfterRuleChange();
 });
-['#filter-field', '#filter-operator', '#filter-value'].forEach((selector) => {
-  document.querySelector(selector).addEventListener('input', syncFilterPreview);
+document.querySelector('#filter-logic').addEventListener('change', (event) => {
+  state.filterLogic = event.target.value;
+  renderFilterRules();
+});
+document.querySelector('#filter-rules').addEventListener('input', (event) => updateRuleDraft(event, state.filterDrafts, updateFilterPreviewText));
+document.querySelector('#filter-rules').addEventListener('change', (event) => updateRuleDraft(event, state.filterDrafts, renderFilterRules));
+document.querySelector('#filter-rules').addEventListener('click', (event) => handleRuleAction(event, state.filterDrafts, renderFilterRules));
+document.querySelector('#add-filter-rule').addEventListener('click', () => {
+  state.filterDrafts.push({ id: createRuleId('filter'), field: 'stageKey', operator: 'equals', value: '' });
+  renderFilterRules();
+});
+document.querySelector('#generate-filter-rules').addEventListener('click', () => {
+  const prompt = document.querySelector('#filter-ai-prompt').value.trim();
+  if (!prompt) {
+    showToast('先描述筛选目标', '例如：高匹配、等待超过一周、且尚未结束');
+    return;
+  }
+  state.filterLogic = 'all';
+  document.querySelector('#filter-logic').value = 'all';
+  state.filterDrafts = [
+    { id: createRuleId('filter'), field: 'fit', operator: 'gte', value: '85' },
+    { id: createRuleId('filter'), field: 'wait', operator: 'gte', value: '7' },
+    { id: createRuleId('filter'), field: 'stageKey', operator: 'notEquals', value: '已结束' },
+  ];
+  renderFilterRules();
 });
 
 document.querySelector('#open-sort').addEventListener('click', () => {
@@ -2051,15 +2484,28 @@ document.querySelector('#open-sort').addEventListener('click', () => {
 document.querySelector('#close-sort').addEventListener('click', closeSortPanel);
 document.querySelector('#clear-sort').addEventListener('click', clearSort);
 document.querySelector('#apply-sort').addEventListener('click', () => {
-  state.sort = {
-    field: document.querySelector('#sort-field').value,
-    direction: document.querySelector('#sort-direction').value,
-  };
+  state.sortRules = state.sortDrafts.map((rule) => ({ ...rule }));
   closeSortPanel();
   renderAfterRuleChange();
 });
-['#sort-field', '#sort-direction'].forEach((selector) => {
-  document.querySelector(selector).addEventListener('input', syncSortPreview);
+document.querySelector('#sort-rules').addEventListener('change', (event) => updateRuleDraft(event, state.sortDrafts, renderSortRules));
+document.querySelector('#sort-rules').addEventListener('click', (event) => handleRuleAction(event, state.sortDrafts, renderSortRules));
+document.querySelector('#add-sort-rule').addEventListener('click', () => {
+  state.sortDrafts.push({ id: createRuleId('sort'), field: 'applied', direction: 'desc' });
+  renderSortRules();
+});
+document.querySelector('#generate-sort-rules').addEventListener('click', () => {
+  const prompt = document.querySelector('#sort-ai-prompt').value.trim();
+  if (!prompt) {
+    showToast('先描述排序目标', '例如：匹配度优先，其次等待时间，再按申请日期');
+    return;
+  }
+  state.sortDrafts = [
+    { id: createRuleId('sort'), field: 'fit', direction: 'desc' },
+    { id: createRuleId('sort'), field: 'wait', direction: 'desc' },
+    { id: createRuleId('sort'), field: 'applied', direction: 'desc' },
+  ];
+  renderSortRules();
 });
 
 document.querySelector('#open-group').addEventListener('click', () => {
@@ -2072,7 +2518,7 @@ document.querySelector('#open-group').addEventListener('click', () => {
 document.querySelector('#close-group').addEventListener('click', closeGroupPanel);
 document.querySelector('#clear-group').addEventListener('click', clearGroup);
 document.querySelector('#apply-group').addEventListener('click', () => {
-  state.groupBy = document.querySelector('#group-field').value || null;
+  state.groupRules = state.groupDrafts.map((rule) => ({ ...rule }));
   closeGroupPanel();
   updateRuleToolbar();
   if (state.view !== 'table') {
@@ -2080,6 +2526,28 @@ document.querySelector('#apply-group').addEventListener('click', () => {
   } else {
     renderAfterRuleChange();
   }
+});
+document.querySelector('#group-rules').addEventListener('change', (event) => updateRuleDraft(event, state.groupDrafts, renderGroupRules));
+document.querySelector('#group-rules').addEventListener('click', (event) => handleRuleAction(event, state.groupDrafts, renderGroupRules));
+document.querySelector('#add-group-rule').addEventListener('click', () => {
+  if (state.groupDrafts.length >= 3) {
+    showToast('最多三层分组', '先调整或删除现有层级');
+    return;
+  }
+  state.groupDrafts.push({ id: createRuleId('group'), field: 'location', direction: 'asc' });
+  renderGroupRules();
+});
+document.querySelector('#generate-group-rules').addEventListener('click', () => {
+  const prompt = document.querySelector('#group-ai-prompt').value.trim();
+  if (!prompt) {
+    showToast('先描述分组方式', '例如：先按阶段，再按工作模式');
+    return;
+  }
+  state.groupDrafts = [
+    { id: createRuleId('group'), field: 'stageKey', direction: 'asc' },
+    { id: createRuleId('group'), field: 'workMode', direction: 'asc' },
+  ];
+  renderGroupRules();
 });
 
 document.querySelector('#toggle-stats').addEventListener('click', () => {
@@ -2097,6 +2565,10 @@ searchInput.addEventListener('input', () => {
   renderFilterLine();
   if (state.view === 'dashboard') return;
   renderCurrentView();
+});
+
+document.querySelector('#preview-dedupe').addEventListener('click', () => {
+  showToast('发现 2 组可能重复项', '已按“公司 + 职位”生成预览；尚未删除任何记录');
 });
 
 document.querySelector('#open-ai').addEventListener('click', openAi);
@@ -2118,7 +2590,9 @@ document.querySelector('#generate-plan').addEventListener('click', () => {
 });
 
 document.querySelector('#accept-plan').addEventListener('click', () => {
-  state.filter = { field: 'fit', operator: 'gte', value: '80' };
+  state.filters = [{ id: createRuleId('filter'), field: 'fit', operator: 'gte', value: '80' }];
+  state.filterDrafts = state.filters.map((rule) => ({ ...rule }));
+  state.filterLogic = 'all';
   closeAi();
   setView('table');
   updateRuleToolbar();
@@ -2153,6 +2627,7 @@ document.addEventListener('keydown', (event) => {
   closeAi();
   closeFields();
   closeFormula();
+  closeInlineFormula();
   closeFormatMenu();
   closeRulePanels();
   closeViewMenu();
@@ -2161,5 +2636,9 @@ document.addEventListener('keydown', (event) => {
   closeDialog('#mobile-overlay');
 });
 
+configureFieldList();
+renderFilterRules();
+renderSortRules();
+renderGroupRules();
 updateRuleToolbar();
 renderCurrentView({ animate: true });
