@@ -81,9 +81,9 @@
     <header>
       <div class="eyebrow">Peak Assistant Roadmap</div>
       <h1>状态快照：里程碑、待建、调研、远期</h1>
-      <p class="subtitle">这份文档回答"项目现在在做什么、下一步做什么"。<strong>只登记关键节点</strong>——不是流水账。逐 session 的完成粒度看 <a href="progress.md"><code>progress.md</code></a>；文档索引看 <a href="index.html"><code>index.html</code></a>；调研原稿在 <code>docs/research/</code>；架构 spec 在 <code>docs/superpowers/specs/</code>；小型未实现需求登记在 <a href="planned-requirements.html"><code>planned-requirements.html</code></a>。</p>
+      <p class="subtitle">这份文档回答"项目现在在做什么、下一步做什么"。<strong>只登记关键节点</strong>——不是流水账。逐 session 的完成粒度看 <a href="progress.md"><code>progress.md</code></a>；文档索引看 <a href="index.html"><code>index.html</code></a>；调研原稿在 <code>docs/research/</code>；架构 spec 在 <code>docs/superpowers/specs/</code>；尚未升级为里程碑的局部需求登记在 <a href="planned-requirements.html"><code>planned-requirements.html</code></a>。</p>
       <div class="meta">
-        <span>Status: current · 2026-07-29</span>
+        <span>Status: current · 2026-08-02</span>
         <span>Scope: milestone-level only</span>
         <span>Updated: 手动维护 + session-end 补关键节点</span>
       </div>
@@ -155,6 +155,7 @@
               <tr><td><strong>Quick Search UI Polish（W1–W8 评估批次）</strong></td><td>2026-07-09 全流程 UI/UX 评估收敛 8 项表达层修正：<strong>W1</strong> 分数从"raw × 100"改相对归一（消除 148%）；<strong>W2</strong> Graph isolated 节点走 grid（避免文字堆叠，前置代码 already 在树里）；<strong>W3.1</strong> Inspector Connected 去 Check 图标；<strong>W3.2</strong> UNLINKED 徽章降噪（<em>owner 决策</em>：拒绝原方案 `+ Link` 动作按钮 — 从搜索 UI 直接改用户 vault 内容风险不值，只降视觉）；<strong>W3.3</strong> `↔` 双向合并 + SEM/CO-CITE/unlinked tooltip；<strong>W4</strong> snippet 高亮 cap=4（`SEARCH_SNIPPET_HIGHLIGHT_CAP`），标题不 cap；<strong>W5</strong> Tree 文件夹计数移到名后、文件行加三档相对强度点（`intensityTier` 拆出可测）；<strong>W6.1</strong> Graph 5 个 preset 名保留不动；<strong>W6.2</strong> Semantic 开关 tooltip 明说"pre-indexed embeddings, no AI credits, no network"（代码核对 `mobius_edge` 本地读）；<strong>W7</strong> List 密度切换（store 字段 <code>treeDensity → resultDensity</code>；toolbar Toggle 同时挂 List/Tree；默认从 compact 翻成 detailed 避免 List 用户被"没了 snippet"惊到）；<strong>W8</strong> `Suggest → Refine`、`AI Analysis → AI Search`（含 `templates/config/settings.json` 4 处 prose 同步）。新纯函数 3 个（<code>scoreNormalize</code> / <code>mergeConnectedLinks</code> / <code>intensityTier</code>），新单测 4 份共 31 case，197/197 test 全绿。</td><td>2026-07-09 · <a href="superpowers/specs/2026-07-09-quick-search-ui-polish.md">UI Polish spec</a></td><td><span class="pill green">shipped</span></td></tr>
               <tr><td><strong>Chat Studio 完整生产实现</strong></td><td>三栏、单一 Composer、消息/产物、Project home、Outline/Resources、模型/Assistant 持久状态全部从交互 mock 接到生产 runtime；Track A–G 全量落地 + 实机视觉对齐 + 全量 review 修复 + legacy Home 移除 + 全插件字体/语义色一致性专项。详见 <a href="superpowers/specs/2026-07-15-chat-studio-complete-implementation-spec.md">implementation spec</a> 与 <a href="progress.md"><code>progress.md</code></a> 2026-07-16..19 条目。<strong>2026-07-21 晚零缺口收口</strong>：9 track（Auto 真实路由 / Composer 单一真值 + 入口语义 / Assistant Builder + ephemeral preview / Artifact-Turn 关联 / 媒体全量含 image edit+mask + Sora native + fal edit codec + 音视频理解 / 结构化产物 5 producer / 消息 Retry variant + Branch 真分支 + permission 三态 / Detached+A11y）+ Runner 修复（`beforeExit` 自然退场 + 6 假绿修复含 `chunk_raw` 高亮生产 bug）；264/264 test files 绿 + Obsidian 1.12.7 实机核心面通过；未 commit，凭据阻塞项与人工矩阵未竟。见 <a href="superpowers/plans/2026-07-21-chat-zero-gap-closure-delivery.md">零缺口收口交付报告</a>。</td><td>2026-07-20 · commits <code>a7ad6cd1</code> / <code>70e3283d</code> / <code>726f494a</code>；2026-07-21 零缺口未 commit</td><td><span class="pill green">shipped</span></td></tr>
               <tr><td><strong>Debug Trace Infrastructure</strong></td><td>跨 Chat / Search / Agent Harness / Ambient Push / Analyze 的统一 debug span 基础设施：<code>DebugTraceRecorder</code>（in-memory + 环形缓冲 + off-mode 零分配）+ <code>DebugTraceFormatter</code>（Markdown + JSON appendix + FULL LOCAL banner + secret redaction）+ 5 个 surface adapter + Advanced tab UI（Off/Redacted/Full-local × retention × copy format）+ 4 处 UI Copy 按钮 + palette 命令 <code>Peak: Copy last debug trace</code>。Search receipt 覆盖 query.rewrite / per-retriever recall / RRF per-source contribution / rerank provider+model / boost delta / topK cutoff / exclude；Chat receipt 覆盖 context.assemble per-slot / budget drop / compact summaries / token usage / finishReason；Ambient receipt 覆盖 trigger / candidates with source signal / dedup context / chosen or skip reason；Analyze receipt 覆盖 plan / per-section model.call / skip fallback / artifact.write。默认 redacted，raw 模式仍过 7-pattern secret scrubber。spec 在 <a href="superpowers/specs/debug-trace-infrastructure.md">docs/superpowers/specs/debug-trace-infrastructure.md</a>。</td><td>2026-07-06 · session-in-progress</td><td><span class="pill green">shipped</span></td></tr>
+              <tr><td><strong>Planned Requirements 关闭批次</strong></td><td>九项局部能力已写回原工作区：Vault Intelligence 图谱、File Atlas 文档上下文与工作文件栏、原生 Markdown Copilot Intelligence、Atlas Copilot/flatten、共享 AI 指令输入、AI Search 统一模式、AI Graph 产物平台和 Folder tree 空目录折叠。Search Hub Drawer 合并为 Search → File Atlas handoff；Ambient floating panel 撤销，sensing/finding 归 Composer Intelligence。</td><td>2026-08-02 · commits <code>3dc93041</code> / <code>7d63b6ef</code> / <code>3d8f10c4</code><br><a href="planned-requirements.html#closed-2026-07">关闭批次与 owner review</a></td><td><span class="pill gold">implemented · owner interaction QA pending</span></td></tr>
             </tbody>
           </table>
 
@@ -287,12 +288,6 @@
                 <td><span class="pill gold">shell corrected · data/QA partial</span></td>
               </tr>
               <tr>
-                <td><strong>Copilot Intelligence Native Modal + Atlas Element Handoff</strong></td>
-                <td>新增当前文件级 Copilot Intelligence 弹窗，让用户留在 Obsidian 原生编辑器时也能使用同一 Document Intelligence 能力。顶层只保留 <code>Copilot / History</code>；<code>Copilot</code> 内部分为自动建议和对话两列，不暴露 <code>Ambient</code>、<code>Session</code> 或候选 tab；全面 review 直接升级到 Composer Review。File Atlas 只增加元素级 Copilot 建议呈现和 context handoff：建议生成器、preset、排序和卡片语义必须与 Composer Copilot 完全一致；Atlas 不维护自己的 Copilot action taxonomy，不直接写入正文。工具栏新增 icon-only filter / flatten 控制，flatten 后用 path crumb 保留原层级。</td>
-                <td><a href="superpowers/specs/2026-07-29-copilot-intelligence-native-editor-modal.md">正式设计</a><br><a href="gstack/copilot-intelligence-native-modal-2026-07-29/index.html">Native modal mock</a><br><a href="gstack/file-atlas-copilot-flatten-2026-07-29/index.html">Atlas handoff / flatten mock</a><br><a href="planned-requirements.html#pr-copilot-intelligence-native-modal">Planned Requirement</a></td>
-                <td><span class="pill gold">decided · design/spec ready · implementation pending</span></td>
-              </tr>
-              <tr>
                 <td><strong>Composer 多块选择、合并与上下文感知 AI 操作</strong></td>
                 <td>把公式拆分引出的需求收口成通用 Composer 能力：重新验收跨块文字选择，新增显式多块选择，并让兼容 block set 通过确定性或 AI capability 合并；一次接受仍是一个原子事务。复杂合并按 capability 装配上下文并进入共享 Agent Run。当前已有 <code>cross-block</code> selection core，但 multi-block target、真实交互、context slots 和 Agent 链路仍待统一实施。</td>
                 <td><a href="superpowers/specs/2026-07-28-composer-multi-block-selection-and-context-aware-ai-transforms.md">Requirements baseline</a><br><a href="superpowers/specs/2026-07-28-composer-agent-runs-and-generation-history.md">Agent Run / context contract</a></td>
@@ -305,27 +300,9 @@
                 <td><span class="pill gold">decided · design/spec ready · implementation pending</span></td>
               </tr>
               <tr>
-                <td><strong>Shared AI Instruction Composer · 跨 Surface 统一 AI 输入能力</strong></td>
-                <td>把现有 <code>PromptInput / PromptInputBody / PromptInputAttachments</code> primitives 收口为与 AI Graph Artifact Platform 平级的共享产品能力，供 Chat Studio、Composer Copilot、AI Graph Update 与后续 AI surface 共同消费。统一文本、<code>@</code> / <code>[[</code> / <code>/</code> context trigger、附件、draft / history、IME、键盘、focus、loading / streaming / error 和 submit / stop 行为；各 surface 只提供自动 context、chrome slots 与 submit adapter，并继续拥有自己的 runtime 和输出语义。当前 Chat Studio 与 Composer Copilot 只共享输入 primitives，draft/context shelf/stop/run state 等仍未形成完整 platform contract，AI Graph adapter 也尚未实现。</td>
-                <td><a href="superpowers/specs/2026-07-28-shared-ai-instruction-composer.md">正式设计</a><br><a href="planned-requirements.html#pr-shared-ai-instruction-composer">Planned Requirement</a><br><a href="index.html#docs">根级共享能力索引</a></td>
-                <td><span class="pill gold">decided · design/spec ready · implementation pending</span></td>
-              </tr>
-              <tr>
                 <td><strong>AI Control Center · Capability、Prompt、模型与 Run 管理</strong></td>
                 <td>原 Prompt Control Center 已合并升级。默认主对象改为用户可理解的 AI capability / action，系统梳理 Vault Search Refine、AI Search / Report、AI Graph、Vault Intelligence、Composer / Copilot、Chat / Generation、Ambient、Knowledge Index / Hub 与后台 AI helper。每项能力统一描述入口、预期行为、运行前 context / permission / budget / model 解析、运行中 Prompt / tool / AgentLoop 或 workflow、运行后 validation / candidate / artifact / review / writeback / receipt，并能跳到真实 recent runs 核对实际 Prompt 版本、Profile、model、tool 和结果。Prompt 正文 override 继续保留为子页，但模型 override 的 owner 改为真正发起模型调用的 capability step：companion template 不选模型，共享 Prompt 不得静默影响所有调用者。实施顺序锁定为：全量 AI touchpoint characterisation 与守卫 → app-owned 可查询 execution contract registry → Prompt / model resolver 与 receipt 关联收口 → 迁移旧 <code>promptModelMap</code> → 公共 <code>ProfileModelPicker</code> → 最后实现 Capabilities / Prompts / Models &amp; routing / Runs 四个工作区。禁止先做手写目录或“能保存但执行链不读取”的假设置页。</td>
                 <td><a href="superpowers/specs/2026-07-30-ai-control-center-design.md">正式设计</a><br><a href="superpowers/audits/2026-07-30-ai-capability-run-inventory.md">全仓 AI 运行链审计</a><br><a href="gstack/ai-control-center-2026-07-30/index.html">新版可交互 mock</a><br><a href="25-infra-prompt-catalog.html#control-center">Prompt 子目录 §8</a></td>
-                <td><span class="pill gold">decided · design/spec ready · implementation pending</span></td>
-              </tr>
-              <tr>
-                <td><strong>AI Search Unified Modes · 搜索、Graph 与 Intelligence 统一入口</strong></td>
-                <td>Quick Search modal 顶层只保留 <code>Vault Search</code> 与一个 AI workspace selector；普通打开默认 <code>AI Search</code>，低频的 <code>AI Graph</code> 和 <code>Vault Intelligence</code> 从同一下拉进入且不跨 modal sticky。移除输入框里的第二层 <code>Vault Analysis</code> mode pill、独立 Vault Intelligence 顶栏按钮和独立 All AI Graphs Library。AI Graph 的全部持久化内容改在该 mode 的紧凑 history list 中浏览，不再显示 Vault/Web/Mixed、Graph type filters 或 preview card grid；Vault Intelligence 在这里仅提供快捷提问与历史投影，完整维护仍属于 Copilot Vault workspace。切换后续接入全键盘体系：<code>Tab</code> 走组件，menu 使用方向键 / Enter / Escape，modifier shortcut 只作加速层且不能抢 input / IME。</td>
-                <td><a href="superpowers/specs/2026-07-28-ai-search-unified-modes.md">正式设计</a><br><a href="gstack/ai-search-unified-modes-2026-07-28/index.html">可交互 mock</a><br><a href="superpowers/specs/2026-07-24-peak-keyboard-navigation-system.md">键盘体系</a></td>
-                <td><span class="pill gold">decided · design/spec ready · implementation pending</span></td>
-              </tr>
-              <tr>
-                <td><strong>AI Graph Artifact Platform · 持久化与异构知识关系</strong></td>
-                <td>把当前绑定 AI Analysis、以 Vault 文件关系为主的临时 graph 升级成一等 artifact：每张图有稳定 <code>graphId</code>、immutable versions、来源、证据与 review 状态；全部 graph 通过 <code>AI Search → AI Graph</code> 的紧凑历史列表统一浏览，不再建设独立 Library 或多排 source/type filters。每行显示稳定创建来源与主要上下文，例如 <code>Created in File Atlas · AI 编辑器生态调研.md</code>；后续更新不覆盖创建来源。Vault、Web、词汇 / 概念、实体、事件、主张和 custom object 可共同成图。AI Search、Composer / File Atlas、Vault Search 与 Chat 共用 app-owned capability、Graph Detail 和 repository，不复制 runtime；JSON artifact 保存 graph body，JSONL 运行记录只引用 artifact，SQLite 提供可重建 projection。</td>
-                <td><a href="superpowers/specs/2026-07-28-ai-graph-artifact-platform.md">正式设计</a><br><a href="gstack/ai-graph-artifact-platform-2026-07-28/index.html">可交互产品原型</a><br><a href="gstack/ai-search-unified-modes-2026-07-28/index.html">统一入口 mock</a><br><a href="research/2026-07-28-ai-graph-artifact-platform/README.md">代码审计与外部研究</a></td>
                 <td><span class="pill gold">decided · design/spec ready · implementation pending</span></td>
               </tr>
               <tr>
@@ -509,7 +486,7 @@
         <section id="backlog">
           <h2>远期 Backlog</h2>
           <p class="lead">无 spec 的想法，不承担交付责任。要动之前必须先调研落 <code>docs/research/</code>，再升到"调研候选"。</p>
-          <p class="read-note"><b>局部 UI 小需求：</b>不够 roadmap 级别、但已经明确的 surface-level 需求登记在 <a href="planned-requirements.html">Planned Requirements</a>，例如 Vault graph segment、Document local graph、Search drawer hub context、Ambient floating panel。</p>
+          <p class="read-note"><b>局部 UI 小需求：</b>不够 roadmap 级别、但已经明确的 surface-level 需求登记在 <a href="planned-requirements.html#active-planned">局部需求登记</a>。当前开放项为 0；2026-07-31 批次已经关闭，验收入口保留在同一页面。</p>
           <table class="doc-table">
 <colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
             <thead>

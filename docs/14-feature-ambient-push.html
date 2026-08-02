@@ -118,9 +118,9 @@
       <h1>你在写笔记，Ambient 在旁边找关联，只有你看它一眼时才发言。</h1>
       <p class="subtitle">Ambient Push 是 Peak 唯一一条 <strong>用户没点也会发生</strong> 的 AI 通路。它在你写作、切文档或手动触发时读取当前段落，去找可能相关的笔记，并把结果放在固定、可忽略的位置：</p>
       <ul class="subtitle-list">
-        <li>当前实现：右侧 Related Notes 面板；规划形态：Obsidian 窗口内置顶的 Ambient floating panel</li>
+        <li>当前产品归属：Composer Intelligence 的 Copilot Brief；右侧 Related Notes leaf 只作为兼容入口</li>
         <li>可选的编辑器行首 <code>?</code> 提示（默认关闭，只适合极少数高置信度意外邻居）</li>
-        <li>规划中的面板内刷新入口，用来主动找当前段落邻居</li>
+        <li>Brief 内的显式刷新 / sensing control，用来主动更新当前段落邻居</li>
       </ul>
       <p class="subtitle">全程 <strong>不写你的文档</strong>——它只呈现，不落笔。这份文档讲这条通路里被推的是谁、什么信号让它排到前面、怎么关掉、以及维护者应该盯什么。</p>
       <div class="meta">
@@ -143,7 +143,7 @@
           <a href="#orientation">这页解决什么</a>
           <a href="#doc-map">相关文档地图</a>
           <a href="#surfaces">固定呈现通路</a>
-          <a href="#floating-panel">悬浮面板规划</a>
+          <a href="#floating-panel">已撤销的浮窗方案</a>
         </div>
         <div class="nav-group">
           <span class="nav-group-title">信号与排序</span>
@@ -172,15 +172,15 @@
           <p class="lead">Ambient Push 的争议不在“有没有用”，在 <strong>“它会不会烦我”</strong>。这页把这条通路拆开：什么时候触发、拿什么去搜、候选怎么打分、结果应该落到哪个固定位置，以及怎么全关或只留一部分。</p>
           <div class="claim">
             <strong>核心结论</strong>
-            Ambient Push 是只读 + 只呈现的通路。它不改任何笔记；只有当你按下推荐里的 <em>Link</em>，系统才会在当前段末尾插入 <code>[[wikilink]]</code>。主呈现应固定在 Related Notes / Ambient 面板里，行首 <code>?</code> 只是高置信度的辅助手势，不应该靠状态栏闪动或启动弹窗打断写作。
+            Ambient Push 是只读 + 只呈现的通路。它不改任何笔记；只有当你按下推荐里的 <em>Link</em>，系统才会在当前段末尾插入 <code>[[wikilink]]</code>。主呈现归 Composer Intelligence 的 Copilot Brief，行首 <code>?</code> 只是高置信度的辅助手势，不应该靠状态栏闪动或启动弹窗打断写作。
           </div>
           <div class="claim">
             <strong>本文读者</strong>
             正在写作、不确定“右下角那个提示是谁在推”的 Obsidian 用户；打算调 trigger 阈值或加一种新 signal 的维护者；正在排障“为什么一天了都没有推荐”的 coding agent。
           </div>
           <div class="claim warn">
-            <strong>当前产品缺口</strong>
-            现有代码里真正可找的入口是 Command Palette 的 <em>Open Related Notes panel</em>，它打开右侧 sidebar leaf；状态栏 <code>N related</code> 和行首 <code>?</code> 都不是主入口，默认也应保持安静。下一步需要补一个 Obsidian 窗口内置顶的 Ambient floating panel：写作时不消失，点 <code>×</code> 后关闭，只在 Obsidian 里悬浮，不变成系统级 always-on-top 窗口。需求登记在 <a href="planned-requirements.html#active-planned">Planned Requirements</a>，低保真稿见 <a href="superpowers/specs/2026-07-07-ambient-floating-panel.html">Ambient Floating Panel</a>。
+            <strong>当前产品归属</strong>
+            Ambient 的 sensing、候选、解释和 refresh 进入 Composer Intelligence 的 Copilot Brief，不增加第三个 tab，也不再建设 Obsidian 窗口内置顶浮窗。Command Palette 的 <em>Open Related Notes panel</em> 仍可打开右侧 sidebar leaf，但它是兼容入口，不是目标 IA。撤销记录见 <a href="planned-requirements.html#pr-ambient-floating-panel">PR-AMBIENT-FLOATING-PANEL</a>；旧低保真稿只保留为历史证据。
           </div>
           <div class="claim">
             <strong>本文不做什么</strong>
@@ -188,13 +188,13 @@
           </div>
           <div class="claim warn">
             <strong>产品形态</strong>
-            这条能力的主界面应该是固定位置的相关笔记面板，而不是反复出现的启动卡片或状态栏提示。本文按长期形态描述：一个可见、可关闭、可停靠的推荐面。
+            这条能力的主界面是 Composer Intelligence 中跟随当前文档的 Brief，而不是反复出现的启动卡片、状态栏提示或独立浮窗。Related Notes leaf 保留兼容，不建立第二套 surface lifecycle。
           </div>
         </section>
 
         <section id="doc-map">
           <h2>相关文档地图</h2>
-          <p class="lead">Ambient Push 已经有几代设计稿和执行记录。读的时候不要把它们当成同一层文档：本页是当前解释入口；低保真稿记录下一步 UI；早期 spec/plan 解释为什么会有这条能力；gstack 图是 Current Work State 方向的视觉证据。</p>
+          <p class="lead">Ambient Push 已经有几代设计稿和执行记录。读的时候不要把它们当成同一层文档：本页是当前解释入口；浮窗低保真稿是已撤销方案；早期 spec/plan 解释为什么会有这条能力；gstack 图是 Current Work State 方向的视觉证据。</p>
 
           <table class="doc-table">
 <colgroup><col style="width: 20%"><col style="width: 34%"><col></colgroup>
@@ -208,9 +208,9 @@
                 <td>当前产品心智、固定呈现通路、触发、信号、关闭方式、运行时装配。</td>
               </tr>
               <tr>
-                <td><strong>2 · 下一步 UI</strong></td>
+                <td><strong>2 · 已撤销方案</strong></td>
                 <td><a href="superpowers/specs/2026-07-07-ambient-floating-panel.html">Ambient Floating Panel</a><br><a href="planned-requirements.html#pr-ambient-floating-panel">Planned Requirements · PR-AMBIENT-FLOATING-PANEL</a></td>
-                <td>只悬在 Obsidian 内的 floating panel：不做系统级置顶，不做右下角短提示，必须有关闭和刷新入口。</td>
+                <td>曾设计过 Obsidian 内 floating panel；2026-08-02 决定撤销独立 surface，将 sensing、refresh 与候选解释投影到 Composer Intelligence。</td>
               </tr>
               <tr>
                 <td><strong>3 · 产品升级方向</strong></td>
@@ -247,17 +247,17 @@
 
           <div class="claim">
             <strong>维护规则</strong>
-            新增 Ambient 规划时，先判断它是当前解释、低保真需求、历史计划还是实现进度。小型未实现需求登记到 <a href="planned-requirements.html">Planned Requirements</a>；完整设计放到 <code>docs/superpowers/specs/</code>；本节只保留能帮助读者找到正确文档的入口。
+            新增 Ambient 规划时，先判断它是当前解释、已撤销方案、历史计划还是实现进度。小型开放需求才进入 <a href="planned-requirements.html#active-planned">Planned Requirements 的开放区</a>；完整设计放到 <code>docs/superpowers/specs/</code>；已关闭决策留在关闭批次，不重新写成 future work。
           </div>
           <div class="claim">
             <strong>与 Composer Intelligence 的边界</strong>
-            Ambient 可以把“用户可能正在整理 PKM 流程”“当前段落与 Base 使用判断强关联”这样的信号交给 Copilot，但它不拥有块级固定工具，也不保存编辑历史。Composer 右侧将 Copilot、Ambient、History 分成三个同级视图；具体能力分工见 <a href="superpowers/specs/2026-07-15-composer-block-ai-capability-contract.md">Block AI 能力契约</a>。
+            Ambient 可以把“用户可能正在整理 PKM 流程”“当前段落与 Base 使用判断强关联”这样的信号交给 Copilot，但它不拥有块级固定工具，也不保存编辑历史。Composer 右侧顶层只有 <strong>Copilot / History</strong>；Ambient 投影进 Copilot 的 Brief，不是第三个 tab。具体能力分工见 <a href="superpowers/specs/2026-07-15-composer-block-ai-capability-contract.md">Block AI 能力契约</a>。
           </div>
         </section>
 
         <section id="surfaces">
           <h2>固定呈现通路</h2>
-          <p class="lead">Ambient 计算得到的候选笔记应该先进入一个固定面板。用户想看的时候它一直在那里；用户不想看的时候，它不弹窗、不闪动、不抢编辑器焦点。当前实现是右侧 Related Notes leaf；更贴近写作场景的下一步是 Obsidian 窗口内置顶的 floating panel。</p>
+          <p class="lead">Ambient 计算得到的候选先进入 Composer Intelligence 的 Copilot Brief。用户想看时它与当前文档保持相邻；不看时不弹窗、不闪动、不抢编辑器焦点。右侧 Related Notes leaf 继续兼容已有工作区，但不再演化为独立 floating panel。</p>
 
           <div class="figure">
             <div class="figure-title">
@@ -271,8 +271,8 @@ flowchart LR
   Runtime["AmbientPushRuntime<br/>handleTrigger()"]
   Search["ambientSearch()<br/>vault + graph + patterns + serendipity"]
   Store["ambientPushStore<br/>(Zustand)"]
-  Panel["Related Notes panel<br/>当前右侧 leaf"]
-  Floating["Ambient floating panel<br/>规划中的 Obsidian 内置顶窗口"]
+  Brief["Composer Intelligence<br/>Copilot Brief"]
+  Panel["Related Notes panel<br/>兼容入口"]
   Gutter["行首 ? 提示<br/>高置信度意外邻居"]
   Manual["manual refresh<br/>用户主动刷新"]
 
@@ -280,12 +280,12 @@ flowchart LR
   Trigger --> Runtime
   Runtime --> Search
   Search --> Store
+  Store --> Brief
   Store --> Panel
-  Store --> Floating
   Store --> Gutter
   Manual --> Runtime
             </div>
-            <p class="read-note"><b>读图：</b>Runtime 负责什么时候搜、搜什么；UI 只订阅 store。当前 panel 是右侧 leaf；floating panel 是规划中的更强呈现层。行首 <code>?</code> 和状态栏只能当辅助提示，不能承担主入口。</p>
+            <p class="read-note"><b>读图：</b>Runtime 负责什么时候搜、搜什么；主产品投影在 Composer Intelligence 的 Copilot Brief，Related Notes leaf 只做兼容。行首 <code>?</code> 和状态栏只能当辅助提示，不能承担主入口。</p>
           </div>
 
           <table class="doc-table">
@@ -295,16 +295,16 @@ flowchart LR
             </thead>
             <tbody>
               <tr>
-                <td><strong>Related Notes / Ambient 面板</strong><br><span class="pill green">主通路</span></td>
-                <td>当前可通过 Command Palette → <em>Open Related Notes panel</em> 打开</td>
-                <td>候选笔记列表、原因、信号、打开/链接动作</td>
-                <td>关闭 Ambient Push，或隐藏/收起该 view</td>
+                <td><strong>Composer Intelligence · Copilot Brief</strong><br><span class="pill green">主通路</span></td>
+                <td>在 Composer 中跟随当前文档；Copilot 默认 stage 展示 Brief</td>
+                <td>候选笔记、原因、信号、refresh / sensing control 与 Ask Copilot</td>
+                <td>关闭 Intelligence sidecar，或在 sensing control 中调低 / 关闭感知</td>
               </tr>
               <tr>
-                <td><strong>Ambient floating panel</strong><br><span class="pill blue">规划中</span></td>
-                <td>用户打开后悬在 Obsidian 窗口内；写作时保持可见</td>
-                <td>当前段落邻居、刷新、收起、关闭、打开笔记动作</td>
-                <td>点 <code>×</code> 关闭；再次从 Copilot / command 打开</td>
+                <td><strong>Related Notes leaf</strong><br><span class="pill blue">兼容入口</span></td>
+                <td>已有工作区可通过 Command Palette → <em>Open Related Notes panel</em> 打开</td>
+                <td>候选笔记列表、原因、信号、打开 / 链接动作</td>
+                <td>关闭或收起该 leaf；不会影响 app-owned runtime</td>
               </tr>
               <tr>
                 <td><strong>行首 <code>?</code> 提示</strong><br><span class="pill gold">意外相关时才亮</span></td>
@@ -314,8 +314,8 @@ flowchart LR
               </tr>
               <tr>
                 <td><strong>手动刷新</strong><br><span class="pill blue">主动查找</span></td>
-                <td>Runtime 已有 <code>manual</code> trigger；当前缺清晰 UI 入口</td>
-                <td>围绕当前段落重新计算候选；应出现在 floating panel / Related Notes header</td>
+                <td>Runtime 已有 <code>manual</code> trigger；Composer Brief 提供显式 refresh</td>
+                <td>围绕当前段落重新计算候选，并更新 Brief projection</td>
                 <td>不需要关；这是显式动作，默认不自动打扰</td>
               </tr>
             </tbody>
@@ -328,41 +328,41 @@ flowchart LR
         </section>
 
         <section id="floating-panel">
-          <h2>悬浮面板规划</h2>
-          <p class="lead">可以做成“只悬在 Obsidian 里面”的窗口：实现上是 Obsidian 主窗口 DOM 内的 overlay / workspace companion surface，不是 macOS/Windows 的系统级 always-on-top。这样用户在 Obsidian 里写作时它不消失；切到别的应用时它不会盖住别的窗口。</p>
+          <h2>已撤销的悬浮面板方案</h2>
+          <p class="lead">2026-08-02 决定不保留 Ambient 独立浮窗。它会复制 Composer Intelligence 已有的文档跟随、关闭 / 重开、refresh、focus 与 lifecycle，形成第二套产品 chrome；真正需要的能力改由 Copilot Brief 承载。</p>
 
           <table class="doc-table">
 <colgroup><col style="width: 24%"><col style="width: 38%"><col></colgroup>
             <thead>
-              <tr><th>需求</th><th>设计约束</th><th>为什么</th></tr>
+              <tr><th>旧方案</th><th>当前决策</th><th>能力去向</th></tr>
             </thead>
             <tbody>
               <tr>
                 <td><strong>Obsidian 内置顶</strong></td>
-                <td>绑定在当前 Obsidian window / workspace root，不使用 OS-level always-on-top。</td>
-                <td>保持写作上下文，但不污染其它应用窗口。</td>
+                <td><span class="pill gold">Retired</span> 不创建 workspace-root overlay。</td>
+                <td>Composer Intelligence sidecar 已经跟随当前文档。</td>
               </tr>
               <tr>
                 <td><strong>可关闭、可重新打开</strong></td>
-                <td>面板右上角有 <code>×</code>；关闭只隐藏 UI，不停 runtime。Command Palette / Copilot 后续可以重新打开。</td>
-                <td>用户要有明确控制权，不要变成甩不掉的通知。</td>
+                <td><span class="pill gold">Retired</span> 不增加另一套显隐状态。</td>
+                <td>复用 Intelligence sidecar 的关闭、恢复与 focus contract。</td>
               </tr>
               <tr>
                 <td><strong>刷新入口可见</strong></td>
-                <td>header 放 Refresh / Find related；调用 runtime 的 <code>manual</code> trigger。</td>
-                <td>解决“我想主动触发，但找不到入口”。</td>
+                <td><span class="pill green">Kept</span> 保留显式 manual refresh。</td>
+                <td>Composer Copilot Brief 的 refresh / sensing control。</td>
               </tr>
               <tr>
-                <td><strong>替代右下角提示</strong></td>
-                <td>状态栏 <code>N related</code> 不作为主成功路径；最多保留为高级设置里的兼容开关。</td>
-                <td>右下角短文本不可解释、不可展开，也不适合承载推荐。</td>
+                <td><strong>候选、原因与动作</strong></td>
+                <td><span class="pill green">Kept</span> 保留可解释候选，不依赖状态栏短提示。</td>
+                <td>Brief 展示相关材料，并可继续 Ask Copilot。</td>
               </tr>
             </tbody>
           </table>
 
           <div class="claim">
-            <strong>低保真稿</strong>
-            详细线框图和验收点放在 <a href="superpowers/specs/2026-07-07-ambient-floating-panel.html">Ambient Floating Panel</a>。这仍是规划需求，不代表当前版本已经实现。
+            <strong>历史设计证据</strong>
+            旧线框图和验收点仍保留在 <a href="superpowers/specs/2026-07-07-ambient-floating-panel.html">Ambient Floating Panel</a>，但它已经被 Composer Intelligence 归属决策替代，不是当前 backlog。关闭记录见 <a href="planned-requirements.html#pr-ambient-floating-panel">Planned Requirements</a>。
           </div>
         </section>
 
@@ -400,7 +400,7 @@ flowchart LR
               </tr>
               <tr>
                 <td><code>manual</code></td>
-                <td>Runtime 支持手动触发；当前缺清晰 UI。规划入口是 floating panel / Related Notes header 的 Refresh。</td>
+                <td>用户在 Composer Copilot Brief 通过 refresh / sensing control 主动触发。</td>
                 <td>无 cooldown</td>
                 <td>逃生舱：任何情况下都能强触发一次。</td>
               </tr>
@@ -517,7 +517,7 @@ flowchart LR
 
           <div class="claim">
             <strong>不要把候选来源等同于通知形式</strong>
-            PageRank 高、长期未打开、hub 变化这些信号可以进入固定面板的候选解释，但不需要包装成一个每次启动都出现的卡片。用户要的是持续可见的相关笔记面板，不是打开 Obsidian 时再处理一张新任务。
+            PageRank 高、长期未打开、hub 变化这些信号可以进入 Copilot Brief 的候选解释，但不需要包装成一个每次启动都出现的卡片。用户要的是跟随当前文档、可忽略的 Brief，不是打开 Obsidian 时再处理一张新任务。
           </div>
         </section>
 
@@ -532,9 +532,9 @@ flowchart LR
             </thead>
             <tbody>
               <tr>
-                <td>面板一直占空间</td>
-                <td>主通路是固定面板；用户可以把它收起、停靠到右侧，或拆到独立 leaf。</td>
-                <td>隐藏 Ambient view，或关闭 <code>enabled</code>。</td>
+                <td>Brief 一直占空间</td>
+                <td>主通路在 Composer Intelligence sidecar；用户可以关闭 sidecar，Related Notes leaf 只是兼容入口。</td>
+                <td>关闭 Intelligence sidecar、调低 sensing，或关闭 <code>enabled</code>。</td>
               </tr>
               <tr>
                 <td>行首 <code>?</code> 老是跳出来</td>
@@ -543,8 +543,8 @@ flowchart LR
               </tr>
               <tr>
                 <td>启动时弹窗打断我</td>
-                <td>长期形态不依赖启动卡片。相关候选应该进入固定面板，不作为每次打开 Obsidian 的待处理任务。</td>
-                <td>关闭旧启动卡片入口；保留固定面板。</td>
+                <td>长期形态不依赖启动卡片。相关候选进入 Copilot Brief，不作为每次打开 Obsidian 的待处理任务。</td>
+                <td>关闭旧启动卡片入口；按需打开 Intelligence sidecar。</td>
               </tr>
               <tr>
                 <td>它会不会写我的笔记</td>
@@ -798,7 +798,7 @@ flowchart TD
             </div>
             <div class="note-item">
               <b>旧启动卡片入口没有出现。</b>
-              <span>把它当兼容入口排查即可，不要把它作为 Ambient 的主成功标准。主路径应该看固定面板是否有候选、候选是否能打开、信号解释是否合理。</span>
+              <span>把它当兼容入口排查即可，不要把它作为 Ambient 的主成功标准。主路径应该看 Copilot Brief 是否有候选、候选是否能打开、信号解释是否合理。</span>
             </div>
           </div>
 
@@ -819,9 +819,9 @@ flowchart TD
             </thead>
             <tbody>
               <tr>
-                <td>当前用户入口在哪里</td>
-                <td><code data-copy="main.ts">main.ts</code><br><code data-copy="src/app/ui-host/views/ViewManager.ts">ViewManager.ts</code></td>
-                <td>Command Palette 注册 <em>Open Related Notes panel</em>；当前实现打开右侧 sidebar leaf，不是 floating panel，也没有清晰的面板内 refresh。</td>
+                <td>当前产品投影在哪里</td>
+                <td><code data-copy="src/ui/view/composer/sidecar/CopilotView.tsx">CopilotView.tsx</code><br><code data-copy="src/ui/view/composer/sidecar/BriefView.tsx">BriefView.tsx</code><br><code data-copy="src/ui/view/composer/sidecar/IntelligenceSidecar.tsx">IntelligenceSidecar.tsx</code></td>
+                <td>顶层只有 Copilot / History；Copilot 默认 stage 呈现 Brief，Ambient 不创建第三个 tab 或 floating panel。</td>
               </tr>
               <tr>
                 <td>Trigger 何时发火 / 冷却</td>
@@ -883,7 +883,7 @@ flowchart TD
         </section>
 
         <div class="footer">
-          <p>相关文档：<a href="12-feature-search.html">12 Search</a>、<a href="13-feature-vault-intelligence.html">13 Vault Intelligence</a>、<a href="23-infra-search-index.html">23 Search Index</a>。产品背景参考 <a href="superpowers/specs/2026-06-02-ambient-push-current-work-state-product-technical-review.html">Ambient Push / Current Work State 设计稿</a>；新悬浮面板需求见 <a href="superpowers/specs/2026-07-07-ambient-floating-panel.html">Ambient Floating Panel</a>。</p>
+          <p>相关文档：<a href="12-feature-search.html">12 Search</a>、<a href="13-feature-vault-intelligence.html">13 Vault Intelligence</a>、<a href="23-infra-search-index.html">23 Search Index</a>。产品背景参考 <a href="superpowers/specs/2026-06-02-ambient-push-current-work-state-product-technical-review.html">Ambient Push / Current Work State 设计稿</a>；已撤销的独立浮窗方案保留在 <a href="superpowers/specs/2026-07-07-ambient-floating-panel.html">Ambient Floating Panel</a>。</p>
         </div>
       </div>
     </div>

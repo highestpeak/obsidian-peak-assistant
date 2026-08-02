@@ -1,11 +1,13 @@
 # Copilot Intelligence Native Editor Modal 设计
 
-**状态：** Design-only · implementation pending
+**状态：** Implemented in original workspace · owner interaction QA pending
 **日期：** 2026-07-29
 **范围：** 当前 Obsidian 原生编辑器中的当前文件 / 选区 / 光标上下文
 **不包含：** 本文不改代码，不新增 AI model，不把 Composer View 的完整编辑能力搬进原生 CodeMirror
 **配套 mock：** [Copilot Intelligence Native Editor Modal Mock](../../gstack/copilot-intelligence-native-modal-2026-07-29/index.html) · [File Atlas Copilot / Flatten Mock](../../gstack/file-atlas-copilot-flatten-2026-07-29/index.html)
-**Roadmap / 需求登记：** [roadmap.html §已决策待建](../../roadmap.html#decided) · [PR-COPILOT-INTELLIGENCE-NATIVE-MODAL](../../planned-requirements.html#pr-copilot-intelligence-native-modal) · [PR-FILE-ATLAS-COPILOT-SUGGESTIONS-FLATTEN](../../planned-requirements.html#pr-file-atlas-copilot-suggestions-flatten)
+**关闭记录：** [PR-COPILOT-INTELLIGENCE-NATIVE-MODAL](../../planned-requirements.html#pr-copilot-intelligence-native-modal) · [PR-FILE-ATLAS-COPILOT-SUGGESTIONS-FLATTEN](../../planned-requirements.html#pr-file-atlas-copilot-suggestions-flatten)
+
+> 2026-08-02 closure：Native modal、原生 editor context、Copilot / History、Composer handoff 与 focus restoration contract 已进入原工作区；选区、真实发送、handoff 和关闭后的 focus 仍需真实 Obsidian QA。本文保留为设计与验收依据。
 
 > 本文把这次讨论里的 “model 能单独弹出来” 理解为 **modal / pop-out surface**。AI 模型选择仍沿用现有 Copilot / model routing 配置；这里设计的是新的产品宿主，不是新的模型层。
 
@@ -564,9 +566,9 @@ Contract:
 - 对话区域复用共享 PromptInput / Prompt composer；
 - 全面 review 通过建议或对话 handoff 到 Composer Review，而不是在 modal 内保持一套 review 面板。
 
-## 14. 后续问题
+## 14. 原始后续问题与当前验收边界
 
-需要 owner 决策的问题：
+以下是实现前记录的问题；当前 UI / source 是行为真相，改名或扩大写回范围时再重新做 owner 决策：
 
 - 全局命令最终叫 `Open Copilot Intelligence` 还是 `Ask Copilot about Current File`？
 - v1 是否允许 `append below current heading`，还是只允许 replace selection / insert cursor？
@@ -575,7 +577,7 @@ Contract:
 
 已关闭的问题：
 
-- Native modal 与 Atlas element handoff 已写入 `docs/roadmap.html` 与 `docs/planned-requirements.html`，状态为 `decided · design/spec ready · implementation pending`。
+- Native modal 与 Atlas element handoff 已实现并进入 `docs/planned-requirements.html` 的关闭批次；不再作为 `roadmap.html#decided` 的待建项。
 
 ## 15. 参考资料
 

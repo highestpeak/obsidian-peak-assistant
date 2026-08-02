@@ -3,7 +3,7 @@
 日期：2026-07-28
 产品方向：**Decided**
 设计状态：**Owner-corrected**
-生产状态：**Implemented in isolated worktree; real Obsidian interaction pending**
+生产状态：**Implemented in original workspace · owner interaction QA pending**
 
 配套材料：
 
@@ -13,7 +13,7 @@
 - [Shared AI Instruction Composer](./2026-07-28-shared-ai-instruction-composer.md)
 - [Peak 全键盘导航系统](./2026-07-24-peak-keyboard-navigation-system.md)
 - [Vault Intelligence](../../13-feature-vault-intelligence.html#user-workflows)
-- [Roadmap](../../roadmap.html)
+- [Planned Requirements 关闭记录](../../planned-requirements.html#pr-ai-search-unified-modes)
 
 > 2026-08-02 owner correction：本文同时记录当前实现边界。Vault Intelligence 的完整 graph / health / review projection 归本 modal，不再转跳旧 Copilot Vault workspace；选择 mode 本身仍不启动扫描。
 

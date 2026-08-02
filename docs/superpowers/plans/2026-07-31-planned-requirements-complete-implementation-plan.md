@@ -3,7 +3,10 @@
 Date: 2026-07-31
 Branch: `codex/planned-requirements-20260731`
 Base: `ebb875f2c1ec60654d4889f295b2314182b80462`
-Source of truth: `docs/planned-requirements.html`
+Document status: **Historical execution plan · completed; product IA superseded on 2026-08-02**
+Execution-time source of truth: `docs/planned-requirements.html`
+
+> This plan records what the isolated worktree was instructed to build. It is not the current product backlog. The owner correction moved Vault Intelligence into Quick Search, moved document graph context into File Atlas, merged Search Hub Drawer into the File Atlas handoff, and retired Ambient Floating Panel. Use the [2026-08-02 correction audit](../audits/2026-08-02-planned-requirements-product-ia-correction.md) and the [closed requirements batch](../../planned-requirements.html#closed-2026-07) for current review.
 
 ## Outcome
 

@@ -272,16 +272,16 @@ flowchart LR
 
         <section id="user-workflows">
           <h2>用户如何触发</h2>
-          <p class="lead">Vault Intelligence 没有独立视图，也不要求用户记住额外命令。完整维护工作区仍是 <strong>Open Copilot（Vault tab）</strong> 里的 Vault Maintenance：用户在同一个面板里看 scan / 信号建议，也可以选择生成或更新 hub 综述。目标态的 Quick Search 只提供低频快捷提问与 review history 投影，不复制完整维护 UI。</p>
+          <p class="lead">Vault Intelligence 的主入口已经是 <strong>Quick Search → AI workspace selector → Vault Intelligence</strong>。进入该 mode 只读取结构摘要、hub、结构缺口与 review history，不会自动扫描；用户通过 <strong>Quick review</strong> 或 <strong>Complete review</strong> 显式启动复核。旧 Copilot Vault tab 不再承担这套产品界面。</p>
 
           <div class="claim">
-            <strong>2026-07-28 入口设计更新 · 未实现</strong>
-            Quick Search 顶层目标态只保留 <em>Vault Search</em> 与一个 AI workspace selector；普通打开默认 <em>AI Search</em>，<em>Vault Intelligence</em> 与 <em>AI Graph</em> 从同一下拉进入。选择 Vault Intelligence 只切换页面内容，不自动触发 complete review。详见 <a href="superpowers/specs/2026-07-28-ai-search-unified-modes.md">AI Search 统一模式入口设计</a>与<a href="gstack/ai-search-unified-modes-2026-07-28/index.html">可交互 mock</a>。
+            <strong>当前入口：AI Search → Vault Intelligence</strong>
+            Quick Search 顶层只保留 <em>Vault Search</em> 与一个 AI workspace selector；普通打开默认 <em>AI Search</em>，<em>Vault Intelligence</em> 与 <em>AI Graph</em> 从同一下拉进入。选择 Vault Intelligence 只切换页面内容，不自动触发 review。实现契约见 <a href="superpowers/specs/2026-07-28-ai-search-unified-modes.md">AI Search 统一模式入口</a>，关闭批次见 <a href="planned-requirements.html#pr-vault-graph-segment">PR-VAULT-GRAPH-SEGMENT</a>。
           </div>
 
           <div class="claim">
-            <strong>Vault Maintenance segment 草图</strong>
-            关于 Vault tab 里如何聚合 stats、overview graph、hubs、current note 位置和 last report，见 <a href="superpowers/specs/2026-07-07-vault-maintenance-graph-segment.html">Vault Maintenance Graph Segment 低保真设计</a>。Document tab / Search drawer 的 hub context 需求登记在 <a href="planned-requirements.html">Planned Requirements</a>；这类补充只定信息架构，不定最终 compare panel UI。
+            <strong>旧草图与当前归属</strong>
+            <a href="superpowers/specs/2026-07-07-vault-maintenance-graph-segment.html">Vault Maintenance Graph Segment</a> 记录了早期 Copilot Vault tab 草图；当前 stats、overview graph、hubs、current note 与 recent reviews 已归入 Vault Intelligence。当前文档的 hub / link / local graph 归 <a href="superpowers/specs/2026-07-08-file-atlas-design.md">File Atlas</a>；Vault Search inspector 只做结果解释与 handoff。
           </div>
 
           <table class="doc-table">
@@ -291,15 +291,9 @@ flowchart LR
             </thead>
             <tbody>
               <tr>
-                <td><strong>Open Copilot → Vault tab</strong><br><span class="pill green">主入口</span></td>
-                <td>Vault Maintenance：Vault Review 摘要、Scan now、信号复核、Hub 生成 / 更新综述。</td>
-                <td>手动触发；用户在同一个 Copilot Vault 面板里选择，不需要单独记一个 hub 命令。</td>
-                <td>Scan 结果落 <code>vault.sqlite</code>（<code>VaultLintRepo</code>）；报告落 Vault 里的 Copilot review 历史。</td>
-              </tr>
-              <tr>
-                <td><strong>Quick Search → Vault Intelligence</strong><br><span class="pill gold">目标态 · 未实现</span></td>
-                <td>快捷询问 Vault health / structure，查看高层摘要与最近 review；完整 finding review 仍回到 Copilot Vault workspace。</td>
-                <td>从 AI workspace selector 手动进入；选择 mode 本身不运行扫描。</td>
+                <td><strong>Quick Search → Vault Intelligence</strong><br><span class="pill green">主入口</span></td>
+                <td>查看 Vault stats、overview graph、hubs、structural holes 与最近 review；可显式进入 Quick / Complete review。</td>
+                <td>从 AI workspace selector 手动进入；选择 mode 本身不运行 review。</td>
                 <td>只有用户显式运行 review 才写 run / review record；切换 mode 无写入。</td>
               </tr>
               <tr>
@@ -321,9 +315,9 @@ flowchart LR
             <div class="recipe">
               <h3>Recipe A · 我想知道 Vault 现在有多健康</h3>
               <ol class="steps">
-                <li>Command Palette → <strong>Open Copilot</strong>，切到 <strong>Vault</strong> 标签。</li>
-                <li>Vault Context 一行会显示 fingerprint / 最近一次 review 的 freshness。</li>
-                <li>点 “Scan now” 触发一次 full lint。等 <code>scanning → cleared</code>。</li>
+                <li>Command Palette → <strong>Quick Search</strong>，从 AI workspace selector 选择 <strong>Vault Intelligence</strong>。</li>
+                <li>先看 stats、overview graph、hubs 与最近一次 review。</li>
+                <li>点 <strong>Complete review</strong> 触发完整复核；需要更轻量时选 <strong>Quick review</strong>。</li>
                 <li>查看 dimensions 分数 + 排序后的可修复建议（见 <a href="#fixable">Fixable</a>）。</li>
               </ol>
               <p class="outcome"><b>成功结果：</b>5 个 dimension 分数 + Health 综合分（0–100）+ 一组 <code>HealthInsight</code>（默认按 severity 排序）。</p>
@@ -331,7 +325,7 @@ flowchart LR
             <div class="recipe">
               <h3>Recipe B · 我想让 AI 围绕 Vault 做主题分析</h3>
               <ol class="steps">
-                <li>目标态：Command Palette → <strong>Quick Search</strong>；普通打开已在 <strong>AI Search</strong>。主题分析直接输入问题，不再选择 <strong>Vault Analysis</strong> 可见 preset。</li>
+                <li>Command Palette → <strong>Quick Search</strong>；普通打开 AI workspace 时默认是 <strong>AI Search</strong>。主题分析直接输入问题，不再选择旧的 <strong>Vault Analysis</strong> preset。</li>
                 <li>输入主题（例如“我关于 attention head 的笔记结构”）。</li>
                 <li>Peak 会调 <code>VaultDigestBuilder</code>：里面同时用 <em>lint 最新 snapshot</em>、<em>top hubs</em>、<em>top structural holes</em> 构造 digest 传给 meta-agent。</li>
                 <li>流式返回结构化报告；用户可选择保存到 <code>ChatFolder/AI-Analysis/</code>。</li>
@@ -341,7 +335,7 @@ flowchart LR
             <div class="recipe">
               <h3>Recipe C · 我想修一批 broken links</h3>
               <ol class="steps">
-                <li>在 Vault tab 跑一次 scan。</li>
+                <li>从 Vault Intelligence 运行一次 <strong>Complete review</strong>。</li>
                 <li>在 <em>Fixable</em> 区域找 “Broken-link repair” 或 “Missing targets are referenced repeatedly” insight。</li>
                 <li>点 <em>Ask AI to repair</em>：Peak 会用 <code>PromptId.LintBrokenLinkRepair</code> 组装 prompt 并交给 Copilot lane。</li>
                 <li>Copilot 提出改动，用户在 <em>acceptEdits</em> 或 <em>read</em> 模式下决定是否落地。</li>
@@ -351,8 +345,8 @@ flowchart LR
           </div>
 
           <div class="claim">
-            <strong>为什么合并到 Copilot Picker 而不是独立面板</strong>
-            用户不需要记住“扫 lint”或“整理 hub”这些内部动作，用户需要的是<em>“Vault 现在如何 + 下一步做什么”</em>。所以信号复核和 Hub 生成都应该作为 Vault Maintenance 的选项出现在 Copilot Vault tab 里；扫描、解释、修复、生成综述和后续对话在同一个入口衔接。
+            <strong>为什么归入 Quick Search 的 AI workspace</strong>
+            用户需要的是<em>“Vault 现在如何 + 下一步做什么”</em>，而不是再记一个 Copilot Vault 面板。Vault Intelligence 因而与 AI Search、AI Graph 共用 selector；结构摘要保持只读，复核必须由 Quick / Complete review 显式触发。
           </div>
         </section>
 
@@ -635,12 +629,12 @@ LintFinding {
         </section>
 
         <section id="hub-generation-agent">
-          <h2>Hub 生成：Vault Maintenance 的第二个能力</h2>
-          <p class="lead">Hub doc（社区综述文档）和“信号细看 / 可修复建议”是并列能力：前者把 community 写成可维护的综述，后者告诉用户哪里断了、哪里该修。产品入口仍然是 Copilot Vault tab 里的 Vault Maintenance 选项，不是另开一个命令体系。</p>
+          <h2>Hub 生成：Vault Intelligence review 的第二个能力</h2>
+          <p class="lead">Hub doc（社区综述文档）和“信号细看 / 可修复建议”是并列能力：前者把 community 写成可维护的综述，后者告诉用户哪里断了、哪里该修。产品入口跟随 Vault Intelligence 的显式 review 流程，不再另建 Copilot Vault tab。</p>
 
           <div class="claim">
             <strong>用户入口</strong>
-            用户通过 <strong>Open Copilot → Vault tab</strong> 进入 Vault Maintenance，然后选择“生成 / 更新 Hub 综述”。背后的实现可以调用 Curator 和 Materializer，但 UI 不应该要求用户理解这两个 agent 名字。
+            用户通过 <strong>Quick Search → Vault Intelligence → Complete review</strong> 进入完整复核，再处理“生成 / 更新 Hub 综述”类动作。背后的实现可以调用 Curator 和 Materializer，但 UI 不应该要求用户理解这两个 agent 名字。
           </div>
 
           <p class="prose">生成过程内部仍然分两段：Curator 先决定哪些 hub 应该存在、哪些该合并或归档；Materializer 再把单个 hub 写成一篇可维护的 Vault 笔记。</p>
@@ -700,15 +694,16 @@ LintFinding {
           <h3>入口和范围</h3>
           <div class="figure">
             <div class="figure-title">
-              <strong>图 2 · Hub 生成在 Vault Maintenance 里的位置</strong>
+              <strong>图 2 · Hub 生成在 Vault Intelligence review 里的位置</strong>
               <span>Mermaid · entry map</span>
             </div>
             <div class="mermaid">
 flowchart LR
-  Open["Open Copilot<br/>Cmd / Command palette"] --> Vault["Vault tab"]
-  Vault --> Maintenance["Vault Maintenance"]
-  Maintenance --> Signals["看 scan / 信号建议"]
-  Maintenance --> HubOption["生成 / 更新 Hub 综述"]
+  Open["Quick Search<br/>Command palette"] --> Selector["AI workspace selector"]
+  Selector --> Intelligence["Vault Intelligence"]
+  Intelligence --> Review["Complete review"]
+  Review --> Signals["看 scan / 信号建议"]
+  Review --> HubOption["生成 / 更新 Hub 综述"]
   HubOption --> Scope{"选择范围"}
   Scope --> Whole["整库 community<br/>Curator + Materializer"]
   Scope --> Active["当前 note 所在 community<br/>Materializer"]
@@ -719,7 +714,7 @@ flowchart LR
   Runtime --> HubDocs["Hub markdown docs"]
   Runtime --> Plan["Review curation plan"]
             </div>
-            <p class="read-note"><b>读图：</b>用户只需要进入 Copilot 的 Vault tab。Hub 生成是 Vault Maintenance 里的一个选项；范围可以是整库 community、当前 note 的 community，或只刷新一个过期 hub。Review curation plan 是复核结果，不是另一个生成入口。</p>
+            <p class="read-note"><b>读图：</b>用户从 Vault Intelligence 发起显式 Complete review。Hub 生成是 review 里的动作；范围可以是整库 community、当前 note 的 community，或只刷新一个过期 hub。Review curation plan 是复核结果，不是另一个生成入口。</p>
           </div>
 
           <h3>证据入口</h3>
@@ -811,7 +806,7 @@ flowchart TB
 
           <h3 style="margin-top: 24px;">一次 Scan now 会发生什么</h3>
           <ol class="steps-list">
-            <li>用户在 Copilot 的 Vault tab 点 <strong>Scan now</strong>。</li>
+            <li>用户在 Vault Intelligence 点 <strong>Complete review</strong>。</li>
             <li>UI 通过 <code>runVaultLintManualScan</code> 进入 RunEnvelope，scan 有统一状态和错误出口。</li>
             <li><code>VaultLintService</code> 调 <code>getNonLlm()</code>，只跑不需要 LLM 的 detector；<code>M-*</code> semantic stub 被跳过。</li>
             <li>detector 只读 adapter 给出的纯数据：Vault 文件、unresolved links、doc degree、communities、semantic neighbors。</li>
@@ -894,7 +889,7 @@ flowchart TB
               <tr>
                 <td>digest 显示 stale hubs 为 0，但你认为不是</td>
                 <td>Hub 材化尚是 stub（<code>regenerateHubByNodeId</code> 仅 warn）；staleness 检测跑，但 hub markdown 未生成</td>
-                <td>没有自动自愈入口；digest 数字随索引重跑刷新，hub 摘要从 Copilot Vault tab 的 Hub 生成 / 更新入口处理</td>
+                <td>没有自动自愈入口；digest 数字随索引重跑刷新，hub 摘要从 Vault Intelligence 的显式 review 动作处理</td>
               </tr>
               <tr>
                 <td>“Scan now” 一直转不出结果</td>
@@ -907,16 +902,16 @@ flowchart TB
                 <td>手动 dismiss 新路径；或标记 <code>wont_fix</code></td>
               </tr>
               <tr>
-                <td>AI Analysis 说“没看到你的 Vault 信息”</td>
+                <td>AI Search 说“没看到你的 Vault 信息”</td>
                 <td><code>getVaultHealth()</code> 在 <code>loadLatestScan()</code> 抛 / 返回 null 时 catch，报告不 fail，但 digest 少 lint 段</td>
-                <td>Copilot Vault tab 手动 “Scan now” 后重跑</td>
+                <td>从 Vault Intelligence 手动运行 <strong>Complete review</strong> 后重试</td>
               </tr>
             </tbody>
           </table>
 
           <div class="claim danger">
             <strong>不要清 vault.sqlite 来“重置”Vault Intelligence</strong>
-            <code>DataStore/vault.sqlite</code> 同时装载全部搜索索引、embedding、graph、lint scan、dismissal。删掉 = 前面所有指标一起归零、下次扫全部要重算。要“重来一次 lint”，正确做法是 Copilot Vault tab 里再点一次 “Scan now”，会重写 latest scan 但保留 dismissal 历史。
+            <code>DataStore/vault.sqlite</code> 同时装载全部搜索索引、embedding、graph、lint scan、dismissal。删掉 = 前面所有指标一起归零、下次扫全部要重算。要“重来一次 lint”，正确做法是从 Vault Intelligence 再运行一次 <strong>Complete review</strong>，会重写 latest scan 但保留 dismissal 历史。
           </div>
         </section>
 
@@ -1022,9 +1017,9 @@ flowchart TB
                 <td><code>IndexLevel = 'fast' | 'semantic' | 'full'</code>；<code>defaultIndexDocumentOptionsForLevel</code> 显示 semantic 加 embedding、full 加 LLM tags/summary。</td>
               </tr>
               <tr>
-                <td>Vault tab UI + Scan now 入口</td>
-                <td><code data-copy="src/ui/view/copilot/CopilotPickerContent.tsx">CopilotPickerContent.tsx</code><br><code data-copy="src/ui/view/copilot/vault/VaultPickerSections.tsx">VaultPickerSections.tsx</code><br><code data-copy="src/ui/view/copilot/vault/VaultAutoRunContent.tsx">VaultAutoRunContent.tsx</code></td>
-                <td>确认 <em>Vault Intelligence</em> 从 Copilot Vault tab 触发；freshness / fingerprint 面板。</td>
+                <td>Vault Intelligence workspace + review 入口</td>
+                <td><code data-copy="src/ui/view/quick-search/VaultIntelligenceWorkspace.tsx">VaultIntelligenceWorkspace.tsx</code><br><code data-copy="src/app/ui-host/modals/QuickSearchModal.tsx">QuickSearchModal.tsx</code><br><code data-copy="src/ui/view/copilot/vault/VaultAutoRunContent.tsx">VaultAutoRunContent.tsx</code></td>
+                <td>确认 Vault Intelligence 从 Quick Search 的 AI workspace selector 进入；mode 切换只读，Quick / Complete review 才打开 review runtime。</td>
               </tr>
               <tr>
                 <td>Bridge note 生成模板</td>
@@ -1032,9 +1027,9 @@ flowchart TB
                 <td>frontmatter + Community A/B top nodes；给 <code>bridge-to-main</code> / <code>create-hub</code> 类 fix action 用。</td>
               </tr>
               <tr>
-                <td>Quick Search 生产代码当前仍有 “Vault Analysis” preset；目标态会移除可见 mode pill</td>
+                <td>Quick Search 的统一 AI workspace selector</td>
                 <td><code data-copy="src/ui/view/quick-search/SearchModal.tsx">SearchModal.tsx</code></td>
-                <td>确认当前行为；目标入口与迁移边界见 <a href="superpowers/specs/2026-07-28-ai-search-unified-modes.md">AI Search 统一模式入口设计</a>。</td>
+                <td>确认 Vault Search 与 AI Search / AI Graph / Vault Intelligence 的当前 mode 组合。</td>
               </tr>
             </tbody>
           </table>

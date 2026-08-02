@@ -2,8 +2,8 @@
 
 日期：2026-07-28  
 产品方向：**Decided**  
-技术状态：**Review-ready design proposal**  
-生产状态：**Implementation pending**
+技术状态：**Implemented contract · design retained for review**
+生产状态：**Implemented in original workspace · owner interaction/provider QA pending**
 
 配套材料：
 
@@ -15,9 +15,9 @@
 - [机器运行记录 JSONL 设计](./2026-07-21-machine-record-storage-jsonl-design.md)
 - [生成产物注册表](../../conventions/generated-artifact-registry.md)
 - [生成产物与存储治理实现设计](./2026-08-02-generated-artifact-storage-governance-implementation-design.md)
-- [Roadmap](../../roadmap.html)
+- [Planned Requirements 关闭记录](../../planned-requirements.html#pr-composer-ai-graph)
 
-> 本文定义 AI Graph 的目标产品、数据和 runtime 边界。它不是当前生产行为说明，也不授权立即修改代码。
+> 本文最初定义 AI Graph 的目标产品、数据和 runtime 边界；对应生产 contract 已进入原工作区。本文继续作为设计与验收依据，真实 provider run、Web source、版本 round-trip 和 canvas interaction 仍需 owner QA。
 
 ## 1. 核心判断
 

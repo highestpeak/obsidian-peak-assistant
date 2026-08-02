@@ -2,8 +2,8 @@
 
 日期：2026-07-28  
 产品方向：**Decided**  
-技术状态：**Review-ready design proposal**  
-生产状态：**Partial shared primitives exist · platform capability pending**
+技术状态：**Implemented contract · design retained for review**
+生产状态：**Implemented in original workspace · owner interaction QA pending**
 
 配套入口：
 
@@ -14,6 +14,8 @@
 - [Composer Copilot](../../16-feature-document-copilot.html)
 
 > 这是与 AI Graph Artifact Platform、Peak File Workspace 平级的共享产品能力，不属于 Chat Studio、Composer Copilot 或 AI Graph 中的任何一个。
+
+> 2026-08-02 closure：Chat Studio、Composer Copilot 与 AI Search / AI Graph 已共用 `SharedAIInstructionController`、PromptInput primitives 和统一 attachment/context/submission contract。中文 IME、focus、stop / regenerate 仍需真实 Obsidian 交互复核；关闭记录见 [PR-SHARED-AI-INSTRUCTION-COMPOSER](../../planned-requirements.html#pr-shared-ai-instruction-composer)。
 
 ## 1. 核心判断
 
@@ -157,4 +159,4 @@ Shared composer 不理解 node、relation 或 version 的 canonical 语义。
 - 不强迫三个 surface 使用完全相同的尺寸和 chrome；
 - 不把各 surface 的 runtime、history 或 artifact 合并成一个系统；
 - 不让 shared composer 决定模型路由、permission 或 canonical persistence；
-- 本设计阶段不修改生产代码。
+- 本文不授权 consumer 绕过共享 contract 另建输入 runtime；后续改动仍需按对应 surface 单独验收。

@@ -3,7 +3,7 @@
 日期：2026-08-02
 分支：`codex/planned-requirements-20260731`
 对象：`docs/planned-requirements.html` 登记的 11 个需求 ID
-状态：9 个 active capability；1 个 merged；1 个 retired
+状态：9 个 implemented capability；1 个 merged；1 个 retired；开放需求 0
 真实 Obsidian：`INTERACTION NOT VERIFIED`
 
 ## 1. 本次纠偏结论
@@ -270,7 +270,7 @@
 
 ## 3. 建议的 Owner Review 顺序
 
-1. 先开 `docs/planned-requirements.html`，确认 9 active / 1 merged / 1 retired 的产品裁决。
+1. 先开 `docs/planned-requirements.html`，确认开放需求为 0，关闭批次是 9 implemented / 1 merged / 1 retired。
 2. Review 需求 9 的可视化正式设计与交互 Mock，先把 AI Search / AI Graph / Vault Intelligence 的关系看清。
 3. Review 需求 10 的 Graph Detail 与 Create Graph，两者是不同 screen，不再从同一个页面顶部猜入口。
 4. 在真实 Obsidian 依次验收需求 1、2、3、6、7；这些最依赖 surface ownership 和 handoff。

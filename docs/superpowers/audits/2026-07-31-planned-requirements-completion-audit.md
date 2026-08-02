@@ -2,7 +2,10 @@
 
 日期：2026-07-31
 分支：`codex/planned-requirements-20260731`
-Source of truth：`docs/planned-requirements.html`
+文档状态：**Historical audit · superseded by 2026-08-02 product IA correction**
+执行时的 Source of truth：`docs/planned-requirements.html`
+
+> 本文保留第一次 11 项实现审计的源码、测试与构建证据，但其中四个 surface 归属已被 owner 纠偏：Vault Graph Segment 迁到 Quick Search → Vault Intelligence；Document Local Graph 迁到 File Atlas；Search Hub Drawer 合并为 Search → File Atlas handoff；Ambient Floating Panel 撤销。当前决策与逐项 review 请读 [2026-08-02 产品 IA 纠偏](./2026-08-02-planned-requirements-product-ia-correction.md) 和 [Planned Requirements 关闭批次](../../planned-requirements.html#closed-2026-07)。
 
 ## 结论
 

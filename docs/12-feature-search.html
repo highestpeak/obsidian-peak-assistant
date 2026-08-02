@@ -155,12 +155,12 @@
             Hyper Search 是一个“多路召回 + 可降级增强”的 pipeline。任何一个 retriever、vector、PPR 或 LLM rerank 失败，都不应该让基础搜索不可用。
           </div>
           <div class="claim">
-            <strong>和 AI Analysis 的边界</strong>
-            <a href="13-feature-vault-intelligence.html">AI Analysis</a> 是 agent-driven 分析 workflow：它可以读取搜索结果、Vault Health、hub、graph 和外部工具，再生成报告。Hyper Search 只负责快速找回候选笔记和解释排序原因；它不负责写报告，也不要求 LLM 才能返回结果。
+            <strong>和 AI Search workspace 的边界</strong>
+            <em>AI Search</em> 是 agent-driven 分析 workflow：它可以读取搜索结果、Vault Health、hub、graph 和外部工具，再生成报告。Hyper Search 只负责快速找回候选笔记和解释排序原因；它不负责写报告，也不要求 LLM 才能返回结果。
           </div>
           <div class="claim">
-            <strong>规划中的结果侧栏上下文</strong>
-            General Search 的右侧 drawer 未来需要在选中文档时展示 hub context，并链接到 hub 文档或 hub local graph。这个需求还没有实现，登记在 <a href="planned-requirements.html#active-planned">Planned Requirements</a>，具体草图见 <a href="superpowers/specs/2026-07-07-contextual-hub-local-graph-surfaces.html#search-drawer">Search drawer hub context</a>。
+            <strong>结果侧栏与 File Atlas 的边界</strong>
+            Vault Search 的右侧 inspector 只解释当前选中结果，并呈现 Connected、Discovered 与 AI Graph。Hub 归属、入链 / 出链和局部图谱由 <a href="superpowers/specs/2026-07-08-file-atlas-design.md">File Atlas</a> 负责；Search 通过 <em>Open in File Atlas</em> 交接当前结果，不再建设第二套 Hub drawer。原草图保留在 <a href="superpowers/specs/2026-07-07-contextual-hub-local-graph-surfaces.html#search-handoff">Search handoff</a>，关闭决策见 <a href="planned-requirements.html#pr-search-hub-drawer">PR-SEARCH-HUB-DRAWER</a>。
           </div>
         </section>
 
@@ -193,7 +193,7 @@
 
         <section id="entry">
           <h2>入口和结果</h2>
-          <p class="lead">Search 的用户入口是 <strong>Quick Search</strong>。它有两个主要 tab：<strong>Vault Search</strong> 用来直接找笔记，<strong>AI Analysis</strong> 用来让 AI 围绕 Vault 做分析。</p>
+          <p class="lead">Search 的用户入口是 <strong>Quick Search</strong>。顶层保留 <strong>Vault Search</strong> 与一个 AI workspace selector；selector 里的 <strong>AI Search</strong>、<strong>AI Graph</strong>、<strong>Vault Intelligence</strong> 分别负责分析、版本化图谱和 Vault 结构 / review。</p>
           <table class="doc-table">
 <colgroup><col style="width: 20%"><col style="width: 30%"><col style="width: 20%"><col></colgroup>
             <thead>
@@ -214,7 +214,7 @@
               </tr>
               <tr>
                 <td>让 AI 做 Vault 分析</td>
-                <td>Quick Search → <strong>AI Analysis</strong>。</td>
+                <td>Quick Search → AI workspace selector → <strong>AI Search</strong>。</td>
                 <td>需要可用 AI profile；Web Search 还需要 Web Search profile。</td>
                 <td>进入分析输入和流式结果区域。</td>
               </tr>
@@ -256,9 +256,9 @@
               </tr>
               <tr>
                 <td>从结果进入 AI 分析</td>
-                <td>切换到 <strong>AI Analysis</strong> 或用界面里的 Ask AI 入口。</td>
-                <td>AI Analysis 输入会带入相关 query。</td>
-                <td>AI Analysis 是分析 workflow，不等同于基础 Search pipeline。</td>
+                <td>切换到 <strong>AI Search</strong> 或用界面里的 Ask AI 入口。</td>
+                <td>AI Search 输入会带入相关 query。</td>
+                <td>AI Search 是分析 workflow，不等同于基础 Search pipeline。</td>
               </tr>
             </tbody>
           </table>
@@ -711,7 +711,7 @@ flowchart LR
                 <td>看目标词是否出现在标题 token 里；没有命中时改用更接近标题的词，或用普通关键词/语义 query 扩宽搜索。</td>
               </tr>
               <tr>
-                <td>AI Analysis 里 Web Search 不可用。</td>
+                <td>AI Search 里 Web Search 不可用。</td>
                 <td>没有配置 Web Search profile。</td>
                 <td>到 Settings → Profiles 看是否有 profile 被设为 Web Search；配置后重试，没有 profile 时只使用 Vault/模型已有能力。</td>
               </tr>
@@ -832,7 +832,7 @@ flowchart LR
                 <td>更新 Merge / Rerank / Highlight 的已知问题，并同步 <a href="superpowers/specs/2026-07-06-search-highlight-original-text-repair.md">Highlight Original Text Repair</a>。</td>
               </tr>
               <tr>
-                <td>AI Analysis 和 Vault Search 的状态管理拆分或合并。</td>
+                <td>AI workspace selector 和 Vault Search 的状态管理拆分或合并。</td>
                 <td>更新用户任务，避免把基础搜索和 AI 分析混成同一个功能。</td>
               </tr>
             </tbody>
@@ -860,7 +860,7 @@ flowchart LR
               <tr>
                 <td><code data-copy="src/service/search/query/aiQueryParser.ts">aiQueryParser.ts</code></td>
                 <td><code>parseNaturalLanguageQuery()</code> 和 LLM response schema。</td>
-                <td>确认它把自然语言编译成 Hyper Search syntax，而不是执行 AI Analysis。</td>
+                <td>确认它把自然语言编译成 Hyper Search syntax，而不是执行 AI Search 分析。</td>
               </tr>
               <tr>
                 <td><code data-copy="src/service/search/query/queryService.ts">queryService.ts</code></td>

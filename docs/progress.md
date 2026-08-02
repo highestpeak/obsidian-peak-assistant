@@ -8,6 +8,13 @@
 
 Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding → 配置 → Chat → Search → Graph 每个环节都能跑通，体验完整。同时推进技术债清理和架构重构。
 
+## 2026-08-02 · Planned Requirements 文档关闭
+
+- [x] **登记页不再伪装 backlog**：`planned-requirements.html` 明确分成开放需求（当前 0）与 2026-07-31 关闭批次（9 implemented / 1 merged / 1 retired），保留全部稳定 PR anchor 和逐项 owner review。
+- [x] **当前入口同步**：Search 正稿改为 `Vault Search + AI workspace selector`；Vault Intelligence 正稿移除旧 Copilot Vault tab；文档 hub / link / local graph 归 File Atlas；Ambient sensing / refresh / 候选解释归 Composer Intelligence 的 Copilot Brief，独立浮窗明确退役。
+- [x] **文档层级收口**：Roadmap 把本批次移到 Done，删除 4 条重复的 implementation-pending 里程碑；根索引说明开放 / 关闭职责；Linked specs 更新为原工作区已实现或历史 / superseded 状态，旧审计和实施计划保留但不再冒充当前真值。
+- [x] **验证边界**：本轮只改文档；本地 HTML href / anchor、关键状态词、focused requirements contract 与 diff whitespace 检查通过后提交。真实 Obsidian 交互仍沿用逐项清单中的 `INTERACTION NOT VERIFIED`，没有升级为产品 E2E 验收。
+
 ## 2026-08-02 · 生成产物与存储治理 Phase 0
 
 - [x] **Typed Artifact Registry**：新增 app-owned `GeneratedOutputRegistry` 与按 domain 拆分的 49 项 catalog，和 `generated-artifact-registry.md` 的 UA/DR/LP/LG 49 个 ID 一一对应；descriptor 锁定 owner、lifecycle、carrier、sync、Peak index、materialization、retention、schema 与 path template。
