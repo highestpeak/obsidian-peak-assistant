@@ -96,6 +96,12 @@ const initial = await page.evaluate(() => ({
   toolbarDividerWidth: document.querySelector('.toolbar-divider')?.getBoundingClientRect().width ?? 0,
   searchLeft: document.querySelector('#record-search')?.getBoundingClientRect().left ?? Infinity,
   tableCommandBeforeStage: document.querySelector('#table-command-bar')?.nextElementSibling?.id === 'filter-line',
+  commandGroupGap: (() => {
+    const count = document.querySelector('#query-result')?.getBoundingClientRect();
+    const action = document.querySelector('#preview-dedupe')?.getBoundingClientRect();
+    return count && action ? action.left - count.right : Infinity;
+  })(),
+  commandGroupRight: document.querySelector('#open-ai')?.getBoundingClientRect().right ?? Infinity,
   fieldHeaderFontSize: getComputedStyle(document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(2)')).fontSize,
   textHeaderAlignment: getComputedStyle(document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(5) .field-heading')).justifyContent,
   numericHeaderAlignment: getComputedStyle(document.querySelector('.record-table thead tr:nth-child(2) th:nth-child(9) .field-heading')).justifyContent,
@@ -204,6 +210,8 @@ assert.ok(new Set(initial.headerBackgrounds).size <= 2, 'Header and command band
 assert.equal(initial.toolbarDividerWidth, 0, 'toolbar groups should use spacing instead of vertical divider cages');
 assert.ok(initial.searchLeft < 80, 'record search should sit on the table reading axis instead of the remote top-right corner');
 assert.equal(initial.tableCommandBeforeStage, true, 'search and data actions should remain directly above the table stage');
+assert.ok(initial.commandGroupGap >= 0 && initial.commandGroupGap <= 16, 'record count and table actions should form one continuous group without a meaningless middle void');
+assert.ok(initial.commandGroupRight < 760, 'table actions should remain with the left-side search group instead of becoming a remote right island');
 assert.equal(initial.fieldHeaderFontSize, '11.5px', 'field headers should use the same readable type scale as table metadata');
 assert.equal(initial.textHeaderAlignment, 'flex-start', 'text field headers should follow the left reading axis');
 assert.equal(initial.numericHeaderAlignment, 'flex-end', 'numeric field headers should follow the right reading axis');

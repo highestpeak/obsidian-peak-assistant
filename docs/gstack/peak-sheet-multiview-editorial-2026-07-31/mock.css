@@ -1799,6 +1799,7 @@ body[data-visual-version="editorial-v2"] .table-command-bar {
   display: flex;
   height: 36px;
   align-items: center;
+  justify-content: flex-start;
   gap: 8px;
   padding: 0 10px;
   border-bottom: 1px solid var(--line-soft);
@@ -1838,7 +1839,9 @@ body[data-visual-version="editorial-v2"] .table-command-bar kbd {
 }
 
 body[data-visual-version="editorial-v2"] .query-result {
-  margin-right: auto;
+  margin-right: 2px;
+  padding-right: 12px;
+  border-right: 1px solid var(--line);
   color: var(--muted);
   font: 9px var(--font-mono);
 }
@@ -1850,7 +1853,7 @@ body[data-visual-version="editorial-v2"] .table-ai-action {
   gap: 6px;
   padding: 0 8px;
   border: 0;
-  border-left: 1px solid var(--line);
+  border-left: 0;
   border-radius: 0;
   background: transparent;
   color: var(--text-soft);
