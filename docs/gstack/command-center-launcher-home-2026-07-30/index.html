@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Peak Command Center · V18</title>
+  <title>Peak Command Center · V19</title>
   <style>
     :root {
       color-scheme: light;
@@ -718,14 +718,20 @@
       gap: 12px;
     }
 
-    .launcher-dial-grid,
+    .launcher-link-grid,
     .launcher-command-grid {
       display: grid;
       gap: 4px;
     }
 
-    .launcher-dial-grid {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+    .launcher-link-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-auto-rows: 32px;
+      gap: 4px 6px;
+      max-height: 104px;
+      padding-bottom: 6px;
+      overflow-y: auto;
+      border-bottom: 1px solid #eef0f2;
     }
 
     .launcher-command-grid {
@@ -786,7 +792,6 @@
       white-space: nowrap;
     }
 
-    .launcher-dial-grid .action-tile,
     .launcher-command-grid .action-tile {
       height: 58px;
       display: flex;
@@ -798,27 +803,56 @@
       text-align: center;
     }
 
-    .launcher-dial-grid .action-tile {
-      background: #f7f7f8;
+    .launcher-link-grid .action-tile {
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 7px;
+      padding: 0 7px;
+      color: #686c73;
+      text-align: left;
+    }
+
+    .launcher-link-grid .action-tile::after {
+      content: "↗";
+      margin-left: auto;
+      color: #a0a3a9;
+      font-size: 11px;
+    }
+
+    .launcher-link-grid .action-tile .action-icon,
+    .launcher-link-grid .action-tile .action-icon .icon {
+      width: 14px;
+      height: 14px;
+    }
+
+    .launcher-link-grid .action-tile .action-name {
+      min-width: 0;
+      overflow: hidden;
     }
 
     .launcher-command-grid .action-tile {
       height: 62px;
     }
 
-    .launcher-dial-grid .action-tile .action-meta,
+    .launcher-link-grid .action-tile .action-meta,
     .launcher-command-grid .action-tile .action-meta,
-    .launcher-dial-grid .action-tile .tile-hotkey,
+    .launcher-link-grid .action-tile .tile-hotkey,
     .launcher-command-grid .action-tile .tile-hotkey {
       display: none;
     }
 
-    .launcher-dial-grid .action-tile.display-icon,
+    .launcher-link-grid .action-tile.display-icon,
     .launcher-command-grid .action-tile.display-icon,
-    .launcher-dial-grid .action-tile.display-text,
+    .launcher-link-grid .action-tile.display-text,
     .launcher-command-grid .action-tile.display-text {
       width: 100%;
       padding: 0 7px;
+    }
+
+    .launcher-link-grid .action-tile.display-icon::after {
+      display: none;
     }
 
     .launcher-overflow-list .action-tile {
@@ -2783,7 +2817,7 @@
       <span class="prototype-mark"><svg class="icon"><use href="#i-command"/></svg></span>
       <span>
         <strong>Peak Command Center</strong>
-        <small>V18 · layered dial and command grid</small>
+        <small>V19 · destination links, command grid and list</small>
       </span>
     </div>
     <nav class="state-switcher" aria-label="原型状态">
@@ -2792,11 +2826,11 @@
       <button class="state-tab" data-view="home" aria-pressed="false">Home</button>
       <button class="state-tab" data-view="manage" aria-pressed="false">Customize</button>
     </nav>
-    <span class="prototype-note">点击上方切换状态 · 这是设计原型，不是已实现功能</span>
+    <span class="prototype-note">点击上方切换状态 · 设计原型不等于真实 Obsidian 实机验收</span>
   </header>
 
   <main class="stage">
-    <section class="app-frame" aria-label="Command Center V18 原型">
+    <section class="app-frame" aria-label="Command Center V19 原型">
       <div class="app-titlebar">
         <span class="traffic-lights"><i></i><i></i><i></i></span>
         <span class="app-title">Peak Assistant · Product vault</span>
@@ -3275,10 +3309,10 @@
       </section>
     </section>
 
-    <section class="design-note" aria-label="V18 design principles">
+    <section class="design-note" aria-label="V19 design principles">
       <div class="note-item">
-        <strong>Destination 先形成速拨记忆</strong>
-        <span>Home、Dashboard、Pinned document、Bookmark 与 Workspace 进入四列 Dial；浅底大格提供类似浏览器新标签页的稳定位置。</span>
+        <strong>Destination 是链接，不再与命令争抢视觉重量</strong>
+        <span>Home、Dashboard、Pinned document、Bookmark 与 Workspace 进入最多三列、约三行的紧凑链接区；窄宽度可自然降为两列或一列。</span>
       </div>
       <div class="note-item">
         <strong>Command 保持二维，但限制高度</strong>
@@ -4099,9 +4133,9 @@
 
       if (destinations.length) {
         sections.push(createProjectionSection(
-          'launcher-dial-grid',
+          'launcher-link-grid',
           destinations,
-          'dial',
+          'links',
         ));
       }
 

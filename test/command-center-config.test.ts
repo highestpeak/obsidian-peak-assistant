@@ -1,6 +1,7 @@
 import assert from 'assert';
 import { readFileSync } from 'fs';
 import {
+	buildProjectionPositions,
 	commandCenterActionKey,
 	moveProjectionFocus,
 	normalizeCommandCenterBoardConfig,
@@ -70,12 +71,9 @@ assert.strictEqual(projection.destinations.length, 5);
 assert.strictEqual(projection.grid.length, 10, 'command grid must cap at two five-column rows');
 assert.strictEqual(projection.overflow.length, 3);
 
-const positions = [
-	...projection.destinations.map((item, index) => ({ id: item.id, layer: 'destination' as const, column: index % 4, columns: 4 })),
-	...projection.grid.map((item, index) => ({ id: item.id, layer: 'command' as const, column: index % 5, columns: 5 })),
-	...projection.overflow.map((item) => ({ id: item.id, layer: 'overflow' as const, column: 0, columns: 1 })),
-];
-assert.strictEqual(moveProjectionFocus(positions, 'd4', 'down'), 'c0', 'vertical navigation must cross layer boundaries');
+const positions = buildProjectionPositions(projection, 3);
+assert.strictEqual(positions.find((position) => position.id === 'd4')?.columns, 3, 'destination links use at most three columns');
+assert.strictEqual(moveProjectionFocus(positions, 'd4', 'down'), 'c1', 'vertical navigation must preserve the nearest column across layers');
 assert.strictEqual(moveProjectionFocus(positions, 'c9', 'right'), 'c10', 'horizontal navigation must enter overflow continuously');
 
 console.log('command-center-config: passed');

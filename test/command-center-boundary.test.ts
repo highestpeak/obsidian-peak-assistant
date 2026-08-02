@@ -43,7 +43,9 @@ assert.doesNotMatch(customize, /ADDED TO|AVAILABLE COMMANDS|window\.confirm/i, '
 
 const css = readFileSync('src/styles/command-center.css', 'utf8');
 assert.match(css, /peak-command-center-modal:has\(\.pk-cc-customize\)[\s\S]*?680px/);
-assert.match(css, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
+assert.match(css, /\.pk-cc-links[\s\S]*?grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+assert.match(css, /\.pk-cc-links[\s\S]*?max-height: 104px/, 'destination links must stay within roughly three rows');
+assert.match(css, /\.pk-cc-action--link[\s\S]*?height: 32px !important/, 'destinations must render as compact links rather than large tiles');
 assert.match(css, /grid-template-columns: repeat\(5, minmax\(0, 1fr\)\)/);
 assert.match(css, /\.pk-cc-action--grid[\s\S]*?height: 60px !important/);
 assert.match(css, /prefers-reduced-motion: reduce/);

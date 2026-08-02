@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, SlidersHorizontal, X } from 'lucide-react';
+import { ArrowUpRight, Search, SlidersHorizontal, X } from 'lucide-react';
 import {
 	buildProjectionPositions,
 	moveProjectionFocus,
@@ -47,13 +47,18 @@ function GroupTab({
 	);
 }
 
-function ActionContent({ item, overflow = false }: { item: ResolvedCommandCenterItem; overflow?: boolean }): React.ReactElement {
+type ProjectionKind = 'link' | 'grid' | 'overflow';
+
+function ActionContent({ item, kind }: { item: ResolvedCommandCenterItem; kind: ProjectionKind }): React.ReactElement {
+	const overflow = kind === 'overflow';
+	const link = kind === 'link';
 	const showIcon = item.display !== 'text-only' && item.icon;
 	const showLabel = item.display !== 'icon-only' || !item.icon;
 	return (
 		<>
-			{showIcon ? <CommandCenterIcon icon={item.icon} size={overflow ? 16 : 18} /> : null}
+			{showIcon ? <CommandCenterIcon icon={item.icon} size={link ? 14 : overflow ? 16 : 18} /> : null}
 			{showLabel ? <span className="pk-cc-action__label">{item.shortLabel}</span> : null}
+			{link && showLabel ? <ArrowUpRight className="pk-cc-action__link-arrow" size={12} aria-hidden="true" /> : null}
 			{overflow ? <span className="pk-cc-action__source">{item.fullLabel}</span> : null}
 			{overflow && item.hotkey ? <kbd>{item.hotkey}</kbd> : null}
 		</>
@@ -68,7 +73,7 @@ function ActionButton({
 	onInvoke,
 }: {
 	item: ResolvedCommandCenterItem;
-	kind: 'dial' | 'grid' | 'overflow';
+	kind: ProjectionKind;
 	active: boolean;
 	onFocus: () => void;
 	onInvoke: () => void;
@@ -89,7 +94,7 @@ function ActionButton({
 			onFocus={onFocus}
 			onClick={onInvoke}
 		>
-			<ActionContent item={item} overflow={kind === 'overflow'} />
+			<ActionContent item={item} kind={kind} />
 		</Button>
 	);
 }
@@ -101,6 +106,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 	const [query, setQuery] = useState('');
 	const [items, setItems] = useState<ResolvedCommandCenterItem[]>([]);
 	const [activeId, setActiveId] = useState<string | null>(null);
+	const [destinationColumns, setDestinationColumns] = useState(3);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const rootRef = useRef<HTMLDivElement>(null);
 
@@ -120,8 +126,23 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 	}, [runtime, scope, query, config]);
 
 	const projection = useMemo(() => projectCommandCenterItems(items), [items]);
-	const positions = useMemo(() => buildProjectionPositions(projection), [projection]);
+	const positions = useMemo(() => buildProjectionPositions(projection, destinationColumns), [projection, destinationColumns]);
 	const activeItem = items.find((item) => item.id === activeId) ?? null;
+
+	useEffect(() => {
+		const root = rootRef.current;
+		if (!root) return;
+		const updateColumns = (): void => {
+			const width = root.getBoundingClientRect().width;
+			setDestinationColumns(width < 340 ? 1 : width < 520 ? 2 : 3);
+		};
+		updateColumns();
+		const OwnerResizeObserver = root.ownerDocument.defaultView?.ResizeObserver ?? globalThis.ResizeObserver;
+		if (!OwnerResizeObserver) return;
+		const observer = new OwnerResizeObserver(updateColumns);
+		observer.observe(root);
+		return () => observer.disconnect();
+	}, []);
 
 	useEffect(() => {
 		if (!activeId) return;
@@ -214,9 +235,14 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 
 			<div className="pk-cc-projection" key={scope}>
 				{projection.destinations.length > 0 ? (
-					<div className="pk-cc-dial" role="group" aria-label="Destinations">
+					<div
+						className="pk-cc-links"
+						role="group"
+						aria-label="Destinations"
+						style={{ gridTemplateColumns: `repeat(${destinationColumns}, minmax(0, 1fr))` }}
+					>
 						{projection.destinations.map((item) => (
-							<ActionButton key={item.id} item={item} kind="dial" active={item.id === activeId} onFocus={() => setActiveId(item.id)} onInvoke={() => void invoke(item)} />
+							<ActionButton key={item.id} item={item} kind="link" active={item.id === activeId} onFocus={() => setActiveId(item.id)} onInvoke={() => void invoke(item)} />
 						))}
 					</div>
 				) : null}

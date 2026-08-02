@@ -6,7 +6,7 @@ Source of truth: [`2026-07-30-command-center-launcher-home-design.md`](../specs/
 
 ## Outcome contract
 
-Ship the V18 Command Center as a production Peak feature, not another static mock:
+Ship the Command Center as a production Peak feature, not another static mock:
 
 - one owner-approved Obsidian command opens the curated launcher and has no default hotkey;
 - the native Command Palette remains unchanged;
@@ -34,7 +34,7 @@ Ship the V18 Command Center as a production Peak feature, not another static moc
    - Keep all private Obsidian command/hotkey/bookmark/workspace access in app adapters.
    - Route Peak actions through `CommandGateway`; external commands execute by exact current command ID.
 3. **Launcher and Customize**
-   - Add a React modal with one group row and layered Destination Dial, bounded Command Grid and Overflow List.
+   - Add a React modal with one group row and layered Destination Links, bounded Command Grid and Overflow List.
    - Add configured-only search, two-stage Escape, continuous keyboard movement and live hotkey hints.
    - Add a unified directory, in-place membership switches, group/action rename, drag ordering, three display modes, Home pinning and a Lucide/Emoji/no-icon browser.
 4. **Home**
@@ -70,3 +70,7 @@ Verification:
 - full repository suite: 398 passed / 4 unrelated pre-existing failures (`chat-studio-message-state-ui`, `code-block-theme-settings`, `composer-architecture-source-guards`, `composer-frontmatter-inline-tag-candidate`);
 - task-path TypeScript diagnostic filter: no Command Center or `main.ts` errors;
 - real Obsidian interaction: `INTERACTION NOT VERIFIED` because no renderer CDP listener was available.
+
+### Visual hierarchy follow-up · 2026-08-02
+
+Owner feedback removed the second large-icon region. Home, dashboards, pinned documents, Bookmarks and Workspaces now occupy a compact one-to-three-column destination-link matrix with an approximately three-row viewport. Composer, Chat Studio and other commands retain the icon grid below it; overflow remains the final dense list. The production component and V19 interactive prototype share this hierarchy.

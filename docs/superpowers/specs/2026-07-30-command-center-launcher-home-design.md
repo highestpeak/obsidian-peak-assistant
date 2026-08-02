@@ -2,7 +2,7 @@
 
 Date: 2026-07-30
 
-Visual direction revised: 2026-08-02 · V18 layered launcher projection
+Visual direction revised: 2026-08-02 · V19 destination links + command grid + overflow list
 
 Status: Implemented in source · production build verified · real-Obsidian interaction pending
 
@@ -95,7 +95,7 @@ The exhaustive native Command Palette stays one keystroke away.
 CommandCenterBoardConfig
 ├─ Modal shell
 │  ├─ group scope tabs
-│  ├─ destination Dial
+│  ├─ destination Link Matrix
 │  ├─ bounded command Grid
 │  ├─ command Overflow List
 │  └─ explicit customize mode
@@ -209,11 +209,11 @@ There is no second type-navigation row. `AI`, `Create`, `Navigate` and `Visual` 
 
 The projection is not command-only. It separates two recognition tasks without adding a second navigation taxonomy:
 
-1. **Destination Dial** — Home, Dashboard, Base, Canvas, Vault document, Bookmark, Workspace and registered views use four-column speed-dial cells with a quiet inset fill. These targets depend on position recognition and can occupy multiple Dial rows.
-2. **Command Grid** — executable Peak, Obsidian and plugin commands use a compact icon-and-label grid. The default `dial-tiles` presentation uses five columns and never grows beyond two rows.
+1. **Destination Link Matrix** — Home, Dashboard, Base, Canvas, Vault document, Bookmark, Workspace and registered views use compact link rows. The matrix uses up to three columns, adapts to two or one at narrow widths, and keeps approximately three visible rows before internal scrolling. Destinations no longer repeat the visual weight of the command tiles.
+2. **Command Grid** — executable Peak, Obsidian and plugin commands use a compact icon-and-label grid. The default layered presentation uses five columns and never grows beyond two rows.
 3. **Overflow List** — commands beyond the two-row Grid keep their configured order and continue in one dense list with icon, short name, full source label and current hotkey.
 
-New items append inside their own layer. The system never reorders the stable Dial or the first two command rows. The Overflow List is a pressure-release layer, not the primary runtime shape and not a return to an all-command palette.
+New items append inside their own layer. The system never reorders the stable destination links or the first two command rows. The Overflow List is a pressure-release layer, not the primary runtime shape and not a return to an all-command palette.
 
 There is no permanent side rail, accordion stack, nested group card or vertically repeated group chrome.
 
@@ -236,7 +236,7 @@ Rules:
 2. Match user aliases second.
 3. Match group and plugin label third.
 4. Keep group scope tabs available while filtering.
-5. Show matches in the same Dial / Command Grid / Overflow hierarchy; search does not switch to a different result language.
+5. Show matches in the same Link Matrix / Command Grid / Overflow hierarchy; search does not switch to a different result language.
 6. Do not include unconfigured commands.
 
 The full registered-command catalog and addressable destination picker appear only inside Customize. A Vault file, Bookmark, Workspace or owner-registered view can also expose `Pin to Command Center` on its own surface. Runtime search never expands into the full command catalog; this is the main protection against the original “weird fuzzy matches” problem.
@@ -303,10 +303,10 @@ Destructive layout reset requires confirmation and export/import support before 
 - Height: approximately `448px`, capped by `calc(100vh - 72px)`.
 - Overlay: a light neutral wash, not a dark modal scrim.
 - One navigation row only: named user-owned group scopes, one quiet divider and `All`. Customize is a footer action. A group may use a trusted product mark or a user-selected system icon beside its short label. Arbitrary group colors are not an identity system.
-- Destination Dial: four columns, approximately `58px` high in compact density, with a quiet inset fill and icon above the short label.
+- Destination Link Matrix: up to three columns, responsive to two or one, approximately `32px` per row and about three visible rows. Each item is a quiet inline link with a small icon, label and trailing link cue; there is no resting card fill.
 - Command Grid: five columns in compact density, approximately `62px` high, limited to two rows. A row-style alternative may use three columns when command-name readability is more important than density.
 - Overflow List: one `32px` row per remaining command after the stable first two Grid rows.
-- Search, action title and filter label form an intentional compact type scale. Dial and Grid cells do not show a second provenance line; the Overflow List may show the full source label.
+- Search, action title and filter label form an intentional compact type scale. Destination Links and Grid cells do not show a second provenance line; the Overflow List may show the full source label.
 - Source marks render at approximately `16px`. Peak Assistant uses its trusted product mark; Workspaces and Visual use neutral semantic system icons, while Quick create demonstrates the no-icon text fallback.
 - The content canvas starts immediately after the group tabs; no `All commands`, group heading or item-count row is repeated. Layers are communicated through geometry and spacing, not headings.
 - Modal radius: approximately `12px`; action radius: approximately `6px`.
@@ -317,13 +317,13 @@ No group sidebar, vertical group stack, outlined card wall, gradient, availabili
 
 ### 9.2 Action tile anatomy
 
-Every item has an action identity, accessible name and tooltip. Dial and Command Grid use `icon + label` consistently at first run; Overflow List adds the full source label and current hotkey. The visible anatomy remains user-selectable:
+Every item has an action identity, accessible name and tooltip. Destination Links and Command Grid use `icon + label` consistently at first run; Overflow List adds the full source label and current hotkey. The visible anatomy remains user-selectable:
 
 1. `icon + label`: semantic action icon, short label and an optional real hotkey;
-2. `icon only`: centered icon with `aria-label` and tooltip;
-3. `text only`: centered short label without an icon.
+2. `icon only`: icon with `aria-label` and tooltip, aligned within the current layer;
+3. `text only`: short label without an icon, aligned within the current layer.
 
-All three modes preserve the geometry of the item's current layer. The presentation choice changes visible content, not row rhythm or spatial position. Icon-only and text-only remain explicit customization choices rather than mixed first-run defaults. Dial has a quiet inset surface; Command Grid stays borderless at rest; both use one restrained hover / keyboard-selection treatment. Unavailable actions keep their position and use a disabled treatment.
+All three modes preserve the geometry of the item's current layer. The presentation choice changes visible content, not row rhythm or spatial position. Icon-only and text-only remain explicit customization choices rather than mixed first-run defaults. Destination Links and the Command Grid stay borderless at rest and use one restrained hover / keyboard-selection treatment. Unavailable actions keep their position and use a disabled treatment.
 
 Long native command labels such as “Create new drawing — in the current active window” become a short tile title such as `Current window`; the tooltip preserves the full source label.
 
@@ -346,7 +346,7 @@ AI-generated icons are excluded because they are inconsistent at small sizes, ha
 
 ### 9.4 Motion
 
-- The selected group uses one restrained segmented fill. If an underline variant is evaluated, it must use one shared moving indicator rather than independent underline flashes; it is not the V18 default.
+- The selected group uses one restrained segmented fill. If an underline variant is evaluated, it must use one shared moving indicator rather than independent underline flashes; it is not the V19 default.
 - The newly active scope panel enters with `opacity` and at most `5px` of vertical travel over approximately `180ms`.
 - Query typing must not replay a full-page transition on every keystroke.
 - Motion never changes layout ownership or action order and must be disabled by `prefers-reduced-motion`.
@@ -536,7 +536,7 @@ This is an implementation sequence, not permission to ship incomplete UI as the 
 
 - React modal shell;
 - dynamic group scope tabs;
-- four-column Destination Dial;
+- responsive one-to-three-column Destination Link Matrix with an approximately three-row viewport;
 - bounded five-column Command Grid with a two-row cap;
 - ordered command Overflow List after the cap;
 - search over configured commands and destinations;
@@ -589,7 +589,7 @@ Use the canonical CDP protocol.
 
 1. Open from a user-bound hotkey.
 2. Verify board geometry and computed hit targets.
-3. Switch group scope and navigate Dial, Command Grid and Overflow List continuously in both axes.
+3. Switch group scope and navigate Destination Links, Command Grid and Overflow List continuously in both axes.
 4. Search a curated Excalidraw scope without replacing the layered projection with an unrelated result layout.
 5. Execute a Peak command, open Home, open a dashboard and open a pinned Vault document.
 6. Disable the third-party plugin and verify the unavailable state.
@@ -607,9 +607,9 @@ If CDP is unavailable, mark these interactions `INTERACTION NOT VERIFIED`; a sta
 - Empty query shows one selected scope as a stable layered projection.
 - All first-run groups are available as stable top-row scope tabs without a permanent group sidebar.
 - No second type-navigation row competes with the user-owned group scopes.
-- Destination Dial can open Home, registered dashboards, pinned Vault documents, Bookmarks and Workspaces.
+- Destination Links can open Home, registered dashboards, pinned Vault documents, Bookmarks and Workspaces.
 - Command Grid remains capped at two rows; excess commands continue in stable order in the Overflow List.
-- Adding an item never reorders existing Dial positions or the first two command rows.
+- Adding an item never reorders existing destination-link positions or the first two command rows.
 - Group order and action order remain stable.
 - Customize presents one stable item directory, can add and reorder groups/items, and persists all three display modes.
 - Every active item can choose a Lucide icon, an Emoji or no icon through one searchable browser; the result stays synchronized across Launcher, Search and Home.

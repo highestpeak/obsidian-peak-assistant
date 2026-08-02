@@ -27,9 +27,17 @@ export interface ProjectionPosition {
 	columns: number;
 }
 
-export function buildProjectionPositions(projection: CommandCenterProjection): ProjectionPosition[] {
+export function buildProjectionPositions(
+	projection: CommandCenterProjection,
+	destinationColumns = 3,
+): ProjectionPosition[] {
 	return [
-		...projection.destinations.map((item, index) => ({ id: item.id, layer: 'destination' as const, column: index % 4, columns: 4 })),
+		...projection.destinations.map((item, index) => ({
+			id: item.id,
+			layer: 'destination' as const,
+			column: index % destinationColumns,
+			columns: destinationColumns,
+		})),
 		...projection.grid.map((item, index) => ({ id: item.id, layer: 'command' as const, column: index % 5, columns: 5 })),
 		...projection.overflow.map((item) => ({ id: item.id, layer: 'overflow' as const, column: 0, columns: 1 })),
 	];
