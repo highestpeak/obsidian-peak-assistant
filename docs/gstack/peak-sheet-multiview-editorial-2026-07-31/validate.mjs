@@ -627,7 +627,42 @@ assert.equal(await page.locator('#generate-inline-formula').isVisible(), true, '
 assert.match(await page.textContent('.formula-state'), /AI 规则/);
 assert.match(await page.textContent('.formula-scope'), /Enter 生成候选/);
 assert.equal(await page.locator('#formula-panel').isHidden(), true, 'typing the rule should stay in place and not open a second composer');
+const formulaBarGeometry = await page.evaluate(() => {
+  const bar = document.querySelector('#formula-bar')?.getBoundingClientRect();
+  const input = document.querySelector('#formula-input')?.getBoundingClientRect();
+  const actions = document.querySelector('.formula-entry-actions')?.getBoundingClientRect();
+  const style = document.querySelector('#formula-input')
+    ? getComputedStyle(document.querySelector('#formula-input'))
+    : null;
+  return {
+    inputHeight: input?.height ?? 0,
+    inputBottomGap: bar && input ? bar.bottom - input.bottom : -1,
+    actionGap: input && actions ? actions.left - input.right : Infinity,
+    rightClearance: actions ? window.innerWidth - actions.right : -1,
+    borderBottomWidth: style?.borderBottomWidth ?? '0px',
+    focusEdge: style?.boxShadow ?? 'none',
+  };
+});
+assert.equal(formulaBarGeometry.inputHeight, 28, 'the formula input should leave room for a complete focus edge');
+assert.ok(formulaBarGeometry.inputBottomGap >= 1, 'the lower focus edge must remain inside the formula band');
+assert.ok(formulaBarGeometry.actionGap >= 4 && formulaBarGeometry.actionGap <= 6, 'AI actions should follow the formula input instead of floating at the far edge');
+assert.ok(formulaBarGeometry.rightClearance >= 360, 'AI actions should stay in the primary reading area on a wide table');
+assert.equal(formulaBarGeometry.borderBottomWidth, '1px');
+assert.notEqual(formulaBarGeometry.focusEdge, 'none', 'focused formula input should expose a complete inset edge');
 await page.screenshot({ path: path.join(dir, 'preview-formula-inline.png') });
+await page.setViewportSize({ width: 980, height: 1000 });
+const compactFormulaActions = await page.evaluate(() => {
+  const actions = document.querySelector('.formula-entry-actions')?.getBoundingClientRect();
+  const generate = document.querySelector('#generate-inline-formula')?.getBoundingClientRect();
+  return {
+    actionsRight: actions?.right ?? Infinity,
+    generateWidth: generate?.width ?? 0,
+  };
+});
+assert.ok(compactFormulaActions.actionsRight <= 972, 'formula actions should remain visible at the compact workspace width');
+assert.ok(compactFormulaActions.generateWidth >= 72, 'the compact formula action must remain a normal click target');
+await page.setViewportSize({ width: 1600, height: 1000 });
+await settleMotion();
 await page.press('#formula-input', 'Enter');
 await page.waitForSelector('#formula-panel:not([hidden])');
 await settleMotion();
@@ -861,6 +896,6 @@ console.log(JSON.stringify({
   },
   localLinks: localHrefs.length,
   viewsChecked: ['table', 'board', 'calendar', 'gallery', 'dashboard'],
-  flowsChecked: ['long-text-reader', 'bounded-row-wrap', 'independent-role-edit', 'inline-text-edit', 'typed-select-edit', 'numeric-edit', 'checkbox-toggle', 'keyboard-f2-cancel', 'keyboard-tab-commit', 'scroll-continuity', 'frozen-cell-selection', 'bounded-cell-editor', 'stable-row-hover', 'computed-cell-readonly', 'selection-stat-recompute', 'theme-switch', 'number-format', 'persistent-field-workbench', 'saved-custom-field', 'formula-bar-ai-entry', 'ai-formula-candidates', 'ai-filter-composition', 'multi-priority-sort', 'multi-level-group', 'compact-toolbar-search', 'configurable-dedupe-fields', 'dedupe-preview', 'editorial-analysis-drawer', 'selection-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
+  flowsChecked: ['long-text-reader', 'bounded-row-wrap', 'independent-role-edit', 'inline-text-edit', 'typed-select-edit', 'numeric-edit', 'checkbox-toggle', 'keyboard-f2-cancel', 'keyboard-tab-commit', 'scroll-continuity', 'frozen-cell-selection', 'bounded-cell-editor', 'stable-row-hover', 'computed-cell-readonly', 'selection-stat-recompute', 'theme-switch', 'number-format', 'persistent-field-workbench', 'saved-custom-field', 'formula-bar-ai-entry', 'bounded-formula-actions', 'ai-formula-candidates', 'ai-filter-composition', 'multi-priority-sort', 'multi-level-group', 'compact-toolbar-search', 'configurable-dedupe-fields', 'dedupe-preview', 'editorial-analysis-drawer', 'selection-statistics', 'compute-plan-accept', 'data-boundary', 'mobile-consumption'],
   screenshots: ['preview.png', 'preview-table.png', 'preview-table-types.png', 'preview-long-text.png', 'preview-long-text-wrap.png', 'preview-cell-edit.png', 'preview-frozen-selection.png', 'preview-dark.png', 'preview-format.png', 'preview-fields.png', 'preview-field-added.png', 'preview-formula-inline.png', 'preview-formula.png', 'preview-filter-panel.png', 'preview-filter-rule.png', 'preview-sort-panel.png', 'preview-group-panel.png', 'preview-group-rule.png', 'preview-dedupe-panel.png', 'preview-analysis.png', 'preview-gallery.png', 'preview-dashboard.png', 'preview-plan.png', 'preview-mobile.png'],
 }, null, 2));

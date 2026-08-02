@@ -130,10 +130,12 @@
         <button type="button" class="fx-button" id="formula-function-button" aria-label="聚焦公式栏">fx</button>
         <div class="formula-direct" id="formula-direct">
           <input id="formula-input" aria-label="公式栏：输入等号公式，或直接描述业务规则让 AI 生成" autocomplete="off" spellcheck="false" value='=IF(AND(H6&gt;=85,I6&gt;=7),"优先跟进","保持观察")'>
-          <span class="formula-entry-guide" id="formula-entry-guide"><svg><use href="#i-sparkles"/></svg><span>文字直接交给 AI</span></span>
-          <span class="formula-state"><svg><use href="#i-check"/></svg>公式有效</span>
-          <span class="formula-scope">计算列 · 20 条记录</span>
-          <button type="button" class="inline-ai-generate" id="generate-inline-formula" hidden>生成候选 <svg><use href="#i-arrow"/></svg></button>
+          <div class="formula-entry-actions">
+            <span class="formula-entry-guide" id="formula-entry-guide"><svg><use href="#i-sparkles"/></svg><span>文字直接交给 AI</span></span>
+            <span class="formula-state"><svg><use href="#i-check"/></svg>公式有效</span>
+            <span class="formula-scope">计算列 · 20 条记录</span>
+            <button type="button" class="inline-ai-generate" id="generate-inline-formula" hidden>生成候选 <svg><use href="#i-arrow"/></svg></button>
+          </div>
         </div>
       </section>
 

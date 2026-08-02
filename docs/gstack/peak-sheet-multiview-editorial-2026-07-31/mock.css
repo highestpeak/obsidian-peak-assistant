@@ -473,7 +473,9 @@ body[data-visual-version="editorial-v2"] .tool-button.is-applied {
 
 body[data-visual-version="editorial-v2"] .formula-bar {
   height: 32px;
-  border-bottom: 1px solid var(--line-soft);
+  grid-template-columns: 68px 34px minmax(0, 1fr);
+  padding: 0;
+  border-bottom: 1px solid var(--line);
   background: var(--surface);
 }
 
@@ -501,8 +503,10 @@ body[data-visual-version="editorial-v2"] .fx-button {
 }
 
 body[data-visual-version="editorial-v2"] .formula-bar input {
-  height: 32px;
-  border: 0;
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  outline: 0;
   background: transparent;
   color: var(--text);
   font-family: var(--font-mono);
@@ -510,8 +514,14 @@ body[data-visual-version="editorial-v2"] .formula-bar input {
   font-weight: 500;
 }
 
+body[data-visual-version="editorial-v2"] .formula-bar input:focus {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
 body[data-visual-version="editorial-v2"] .formula-state,
 body[data-visual-version="editorial-v2"] .formula-scope {
+  margin-left: 0;
   color: var(--muted);
   font-size: 9.5px;
 }
@@ -1722,13 +1732,23 @@ body[data-visual-version="editorial-v2"] .formula-direct {
   min-width: 0;
   flex: 1;
   align-items: center;
+  gap: 5px;
   transition: background-color var(--motion-fast) var(--ease-standard);
 }
 
 body[data-visual-version="editorial-v2"] .formula-direct input {
-  min-width: 0;
-  flex: 1;
+  width: clamp(320px, 48vw, 680px);
+  min-width: 280px;
+  flex: 0 1 680px;
   padding: 0 10px;
+}
+
+body[data-visual-version="editorial-v2"] .formula-entry-actions {
+  display: flex;
+  min-width: 0;
+  flex: none;
+  align-items: center;
+  gap: 5px;
 }
 
 body[data-visual-version="editorial-v2"] .formula-entry-guide {
@@ -1737,9 +1757,9 @@ body[data-visual-version="editorial-v2"] .formula-entry-guide {
   flex: none;
   align-items: center;
   gap: 4px;
-  margin-right: 8px;
-  padding: 0 7px;
-  border-left: 1px solid var(--line-soft);
+  margin-right: 0;
+  padding: 0 6px;
+  border-left: 0;
   color: var(--quiet);
   font-size: 9.5px;
   white-space: nowrap;
@@ -1756,7 +1776,7 @@ body[data-visual-version="editorial-v2"] .inline-ai-generate {
   flex: none;
   align-items: center;
   gap: 5px;
-  margin-right: 5px;
+  margin-right: 0;
   padding: 0 9px;
   border: 0;
   border-radius: 3px;
