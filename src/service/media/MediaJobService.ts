@@ -37,10 +37,15 @@ export interface UpdateMediaJobPatch {
 	error?: string;
 }
 
+export interface MediaJobEventSink {
+	append(job: MediaJob, event: 'created' | 'transitioned' | 'receipt-attached'): Promise<void>;
+}
+
 export class MediaJobService {
 	constructor(
 		private readonly repo: ChatMediaJobRepo,
 		private readonly now: () => number = Date.now,
+		private readonly eventSink?: MediaJobEventSink,
 	) {}
 
 	async createJob(input: CreateMediaJobInput): Promise<MediaJob> {
@@ -56,6 +61,7 @@ export class MediaJobService {
 			updatedAt: ts,
 			conversationId: input.conversationId,
 		};
+		await this.eventSink?.append(job, 'created');
 		await this.repo.upsert(job);
 		return job;
 	}
@@ -100,6 +106,7 @@ export class MediaJobService {
 			error: patch?.error ?? job.error,
 			updatedAt: this.now(),
 		};
+		await this.eventSink?.append(updated, 'transitioned');
 		await this.repo.upsert(updated);
 		return updated;
 	}
@@ -126,6 +133,7 @@ export class MediaJobService {
 			receiptIds: [...job.receiptIds, receiptId],
 			updatedAt: this.now(),
 		};
+		await this.eventSink?.append(updated, 'receipt-attached');
 		await this.repo.upsert(updated);
 		return updated;
 	}

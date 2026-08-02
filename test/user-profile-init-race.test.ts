@@ -3,16 +3,13 @@ import type { AppHandle } from '@/core/ports/AppHandle';
 import { UserProfileService } from '@/service/chat/context/UserProfileService';
 import type { PromptService } from '@/service/prompt/PromptService';
 
-async function testExistingFileRaceIsIdempotent(): Promise<void> {
+async function testInitDoesNotMaterializeProfile(): Promise<void> {
 	const created: string[] = [];
 	const app = {
 		vault: {
 			getAbstractFileByPath: () => null,
 			createFolder: async () => undefined,
-			create: async (path: string) => {
-				created.push(path);
-				throw new Error('File already exists.');
-			},
+			create: async (path: string) => { created.push(path); },
 		},
 	} as unknown as AppHandle;
 	const service = new UserProfileService(
@@ -22,17 +19,15 @@ async function testExistingFileRaceIsIdempotent(): Promise<void> {
 	);
 
 	await service.init();
-	assert.deepStrictEqual(created, ['ChatFolder/System/User-Profile.md']);
+	assert.deepStrictEqual(created, []);
 }
 
-async function testUnexpectedCreateFailureStillSurfaces(): Promise<void> {
+async function testInitDoesNotCreateFolders(): Promise<void> {
+	const createdFolders: string[] = [];
 	const app = {
 		vault: {
 			getAbstractFileByPath: () => null,
-			createFolder: async () => undefined,
-			create: async () => {
-				throw new Error('Permission denied');
-			},
+			createFolder: async (path: string) => { createdFolders.push(path); },
 		},
 	} as unknown as AppHandle;
 	const service = new UserProfileService(
@@ -41,12 +36,13 @@ async function testUnexpectedCreateFailureStillSurfaces(): Promise<void> {
 		'ChatFolder/System/User-Profile.md',
 	);
 
-	await assert.rejects(() => service.init(), /Permission denied/);
+	await service.init();
+	assert.deepStrictEqual(createdFolders, []);
 }
 
 async function main(): Promise<void> {
-	await testExistingFileRaceIsIdempotent();
-	await testUnexpectedCreateFailureStillSurfaces();
+	await testInitDoesNotMaterializeProfile();
+	await testInitDoesNotCreateFolders();
 	console.log('user-profile-init-race: all guards passed');
 }
 

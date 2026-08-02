@@ -10,6 +10,7 @@ import type { HubMaterializationPrepContext } from '@/service/agents/hub-materia
 
 async function main() {
 	await testHappyPath();
+	await testVirtualFirstPath();
 	await testUserOwnedSkips();
 	await testEmptyScopeFails();
 	console.log('hub-materialization-agent: ok');
@@ -79,7 +80,7 @@ async function testHappyPath() {
 			async read() { return null; },
 			async readPeakUserOwned() { return false; },
 			async extractUserPreservedContent() { return ''; },
-			async writeHubDoc(path, markdown) { written.push({ path, markdown }); },
+			async writeHubDoc(path: string, markdown: string) { written.push({ path, markdown }); },
 		} as any,
 	});
 
@@ -95,6 +96,7 @@ async function testHappyPath() {
 		decision,
 		planId: 'plan-1',
 		trigger: 'manual',
+		materializeMarkdown: true,
 		prepOverride: makePrep(),
 	});
 
@@ -104,6 +106,37 @@ async function testHappyPath() {
 	assert.strictEqual(written.length, 1);
 	assert.strictEqual(written[0].path, 'AI Hub/target.md');
 	console.log('  ✓ happy path writes to vault with critique coverage');
+}
+
+async function testVirtualFirstPath() {
+	const written: Array<{ path: string; markdown: string }> = [];
+	const agent = new HubMaterializationAgent({
+		aiServiceManager: makeAIStub(),
+		templateManager: makeTmStub(),
+		mobiusNodeRepo: {} as any,
+		vaultReader: {} as any,
+		vaultWritePort: {
+			async read() { return null; },
+			async readPeakUserOwned() { return false; },
+			async extractUserPreservedContent() { return ''; },
+			async writeHubDoc(path: string, markdown: string) { written.push({ path, markdown }); },
+		} as any,
+	});
+	const result = await agent.run({
+		decision: {
+			nodeId: 'hub-n',
+			hubPath: 'Hub-Summaries/target.md',
+			action: 'keep',
+			scope: { communityIds: [], memberNodeIds: ['n1', 'n2'] },
+			reason: 'test',
+		},
+		planId: 'plan-1',
+		trigger: 'scheduled',
+		prepOverride: makePrep(),
+	});
+	assert.strictEqual(result.status, 'virtualized');
+	assert.strictEqual(written.length, 0);
+	console.log('  ✓ scheduled path updates the virtual record without Markdown');
 }
 
 async function testUserOwnedSkips() {
@@ -117,7 +150,7 @@ async function testUserOwnedSkips() {
 			async read() { return null; },
 			async readPeakUserOwned() { return true; },
 			async extractUserPreservedContent() { return ''; },
-			async writeHubDoc(path) { written.push({ path }); },
+			async writeHubDoc(path: string) { written.push({ path }); },
 		} as any,
 	});
 
@@ -133,6 +166,7 @@ async function testUserOwnedSkips() {
 		decision,
 		planId: 'plan-1',
 		trigger: 'manual',
+		materializeMarkdown: true,
 		prepOverride: makePrep({ isUserOwned: true, hubPath: 'AI Hub/user-owned.md' }),
 	});
 

@@ -68,6 +68,7 @@ export interface VaultReviewReportPort {
 	listAll(limit?: number): Promise<VaultReviewHistoryRecord[]>;
 	load(record: VaultReviewHistoryRecord): Promise<VaultReviewSessionSnapshot | null>;
 	delete(record: VaultReviewHistoryRecord): Promise<void>;
+	migrateLegacy?(): Promise<{ imported: number; warnings: string[] }>;
 }
 
 /**

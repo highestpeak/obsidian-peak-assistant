@@ -162,7 +162,10 @@ export async function getHubsForDoc(currentPath: string): Promise<HubForDoc[]> {
  */
 export async function getHubMembers(hubNodeIdOrPath: string): Promise<string[]> {
 	let hubNodeId = hubNodeIdOrPath;
-	if (hubNodeIdOrPath.includes('/') || hubNodeIdOrPath.toLowerCase().endsWith('.md')) {
+	if (hubNodeIdOrPath.startsWith('peak-hub://')) {
+		hubNodeId = hubNodeIdOrPath.slice('peak-hub://'.length);
+	}
+	else if (hubNodeIdOrPath.includes('/') || hubNodeIdOrPath.toLowerCase().endsWith('.md')) {
 		const tenant: IndexTenant = getIndexTenantForPath(hubNodeIdOrPath);
 		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
 		const document = await indexedDocumentRepo.getByPath(hubNodeIdOrPath);

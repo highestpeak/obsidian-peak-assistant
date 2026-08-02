@@ -26,6 +26,7 @@ import { ContextUpdateService } from './context/ContextUpdateService';
 import { ContextPipeline } from './context/ContextPipeline';
 import { SystemPromptSlot } from './context/slots/SystemPromptSlot';
 import { UserProfileSlot } from './context/slots/UserProfileSlot';
+import type { GeneratedOutputPersistenceRuntime } from '@/core/storage/generated-output';
 import { ConvSummarySlot } from './context/slots/ConvSummarySlot';
 import { AssistantSlot } from './context/slots/AssistantSlot';
 import { RecentMessagesSlot } from './context/slots/RecentMessagesSlot';
@@ -70,6 +71,7 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 	private _assistantService?: AssistantService;
 	private resourceSummaryService: ResourceSummaryService;
 	private profileService?: UserProfileService;
+	private generatedOutputs?: GeneratedOutputPersistenceRuntime;
 	private contextUpdateService?: ContextUpdateService;
 
 	get proj(): ProjectService {
@@ -132,13 +134,14 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 		// Storage service for chat data
 		this.storage = new ChatStorageService(this.app, {
 			rootFolder: this.settings.rootFolder,
-		});
+		}, this.generatedOutputs);
 
 		// === Resource summary service ===
 		this.resourceSummaryService = new ResourceSummaryService(
 			this.app,
 			this.settings.rootFolder,
 			getAIResourcesSummaryFolder(this.settings.rootFolder),
+			this.generatedOutputs,
 		);
 
 		// === Service construction ===
@@ -153,6 +156,7 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 				this.app,
 				this.promptService,
 				getAIProfileFilePath(this.settings.rootFolder),
+				this.generatedOutputs,
 			);
 		}
 
@@ -163,6 +167,79 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 	/** For on-demand template loading (prompts, tool results, agent context). Cleared on plugin unload. */
 	getTemplateManager(): TemplateManager | undefined {
 		return this.templateManager;
+	}
+
+	/** Bound by main.ts immediately after the app-owned runtime is composed. */
+	setGeneratedOutputPersistenceRuntime(runtime: GeneratedOutputPersistenceRuntime): void {
+		this.generatedOutputs = runtime;
+		this.storage = new ChatStorageService(this.app, { rootFolder: this.settings.rootFolder }, runtime);
+		this.resourceSummaryService = new ResourceSummaryService(
+			this.app,
+			this.settings.rootFolder,
+			getAIResourcesSummaryFolder(this.settings.rootFolder),
+			runtime,
+		);
+		if (this.settings.profileEnabled) {
+			this.profileService = new UserProfileService(
+				this.app,
+				this.promptService,
+				getAIProfileFilePath(this.settings.rootFolder),
+				runtime,
+			);
+		}
+		runtime.projections.register({
+			projectionId: 'projection.chat',
+			sourceOutputIds: [
+				'chat.conversation-events',
+				'chat.project-state',
+				'run.events',
+				'chat.artifact-receipt',
+				'media.job-events',
+				'chat.assistant-definition',
+				'chat.project-plan-state',
+			],
+			rebuild: async (scope) => {
+				const startedAt = new Date().toISOString();
+				const report = await this.storage.rebuildChatProjection();
+				return {
+					projectionId: scope.projectionId,
+					sourceOutputIds: [
+						'chat.conversation-events',
+						'chat.project-state',
+						'run.events',
+						'chat.artifact-receipt',
+						'media.job-events',
+						'chat.assistant-definition',
+						'chat.project-plan-state',
+					],
+					recordsRead: report.recordsRead,
+					recordsWritten: report.recordsWritten,
+					startedAt,
+					completedAt: new Date().toISOString(),
+					warnings: report.warnings,
+				};
+			},
+		});
+	}
+
+	async migrateLegacyGeneratedOutputs(): Promise<{
+		conversationsImported: number;
+		projectsImported: number;
+		resourceSummariesAvailable: number;
+		warnings: string[];
+	}> {
+		const chat = await this.storage.migrateLegacyGeneratedOutputs();
+		const resourceSummariesAvailable = this.generatedOutputs
+			? (await this.resourceSummaryService.listResourceSummaries()).length
+			: 0;
+		return {
+			...chat,
+			resourceSummariesAvailable,
+		};
+	}
+
+	listDeletedCanonicalConversationIds(): Promise<Set<string>> {
+		return this.storage.listDeletedCanonicalConversationIds();
 	}
 
 	/**
@@ -295,7 +372,7 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 		this.settings = { ...DEFAULT_AI_SERVICE_SETTINGS, ...next };
 		this.storage = new ChatStorageService(this.app, {
 			rootFolder: this.settings.rootFolder,
-		});
+		}, this.generatedOutputs);
 		this.promptService.setPromptFolder(getAIPromptFolder(this.settings.rootFolder));
 		this.promptService.setSettings(this.settings);
 		this.refreshDefaultServices();
@@ -308,6 +385,7 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 				this.app,
 				this.promptService,
 				getAIProfileFilePath(this.settings.rootFolder),
+				this.generatedOutputs,
 			);
 		}
 
@@ -319,6 +397,7 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 			this.app,
 			this.settings.rootFolder,
 			getAIResourcesSummaryFolder(this.settings.rootFolder),
+			this.generatedOutputs,
 		);
 		this._conversationService = new ConversationService(
 			this.app,

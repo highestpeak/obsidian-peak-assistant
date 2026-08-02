@@ -15,15 +15,20 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] **文档层级收口**：Roadmap 记录已完成里程碑，Progress 保留历史流水，产品 IA 审计承接逐项 review；根索引明确 Planned Requirements 只放当前待办。Linked specs 更新为原工作区已实现或 historical / superseded 状态。
 - [x] **验证边界**：本轮只改文档；本地 HTML href / anchor、关键状态词、focused requirements contract 与 diff whitespace 检查通过后提交。真实 Obsidian 交互仍沿用逐项清单中的 `INTERACTION NOT VERIFIED`，没有升级为产品 E2E 验收。
 
-## 2026-08-02 · 生成产物与存储治理 Phase 0
+## 2026-08-02 · 生成产物与存储治理 Phase 0-5
 
-- [x] **Typed Artifact Registry**：新增 app-owned `GeneratedOutputRegistry` 与按 domain 拆分的 49 项 catalog，和 `generated-artifact-registry.md` 的 UA/DR/LP/LG 49 个 ID 一一对应；descriptor 锁定 owner、lifecycle、carrier、sync、Peak index、materialization、retention、schema 与 path template。
+- [x] **Typed Artifact Registry**：新增 app-owned `GeneratedOutputRegistry` 与按 domain 拆分的 52 项 catalog，和 `generated-artifact-registry.md` 的 UA/DR/LP/LG 52 个 ID 一一对应；descriptor 锁定 owner、lifecycle、carrier、sync、Peak index、materialization、retention、schema 与 path template。
 - [x] **策略与路径 fail-loud**：durable record 必须同步且不得物化；SQLite 只能是 projection；local projection/cache/telemetry 必须排除同步和 Peak index；非 legacy machine Markdown 直接拒绝。路径 resolver 校验缺失变量、绝对路径、反斜杠与 `..` traversal。
 - [x] **Writer coverage gate**：自动扫描 `src/` 的直接 Vault / adapter / fs writer，25 个直接 writer 全部映射到 catalog evidence 或 3 个通用 persistence adapter allowlist；新增未登记 writer 会让测试失败。
 - [x] **首个真实 adopter**：AI Graph artifact 与 run-event 目录从硬编码改为通过 app-owned registry 解析，物理路径保持 `DataStore/artifacts/ai-graphs` 与 `DataStore/records/analysis/runs`，没有数据迁移或用户文件改写。
 - [x] **验证边界**：2 个新 focused suites 与 AppRuntime/AI Graph 相关 4 suites 通过；生产 build、bundle check、simulator boundary 和 architecture audit 通过，boundary 维持 19、service→app/ui 为 0。全量为 `394/398`；4 个失败来自未触碰的 Chat Streamdown 与并行 Composer 共享选择器/标签候选变更。本 Phase 未迁移 Chat、Project、Resource Summary、Hub，也未删除任何 legacy Markdown。
 - [x] **Phase 1 已完成**：atomic JSON snapshot、partitioned JSONL、immutable artifact body、schema/checksum/quarantine、DR-17 migration journal、projection rebuild registry 与由 typed catalog 派生的 sync manifest 已接到 app-owned persistence runtime；focused tests、build 与 boundary audit 通过。详见 [`Phase 1 实施记录`](./superpowers/plans/2026-08-02-generated-artifact-storage-governance-phase-1-implementation-note.md)。
-- [ ] **下一步**：Phase 2 迁移 Resource Summary、User Profile、Project state/Brief 与 run/artifact/media receipts；所有 legacy source 先 import + checksum + parity，禁止自动删除。
+- [x] **Phase 2 已完成**：Resource Summary 改为 JSON snapshot；Profile 启动不再生成空 Markdown，AI proposal/accept/reject 写 JSONL；Project machine state 与可选 Brief 分离；turn/artifact/media receipts 拥有 canonical JSONL。
+- [x] **Phase 3 已完成**：Chat conversation 新写入只落分片 JSONL；旧 `Conv-*.md` 通过 dual-read/import 保留；assistant、project plan 与删除 tombstone 也有非 SQLite canonical state；Maintenance cleanup 不再用 Markdown 缺失判断 orphan。
+- [x] **Phase 4 已完成**：Hub manifest/events 成为事实源，SQLite 只做 projection；Peak Graph 支持 `peak-hub://` virtual detail，只有显式 Materialize 才创建 Markdown。AI Graph stable graph/version 与 immutable JSON artifact 已完成对齐。
+- [x] **Phase 5 安全收口**：旧 Auto Review / Vault Review 生产 writer 停止，legacy Markdown 只读导入 JSONL 并写 migration journal；Chat、Resource、Hub 与 Review 旧文件均不移动、不删除。物理 archive/delete 继续由独立 owner-approved 任务控制。
+- [x] **验证边界**：17 个 storage-focused suites 全通过；生产 build 通过；boundary audit 维持 19，service → UI/app 为 0。全量测试为 `395/399`，4 个失败来自未触碰的 Chat Streamdown、code theme 与并行 Composer guards。真实 Obsidian Hub 点击、原生 Graph 与 live migration 保持 `INTERACTION NOT VERIFIED`，第二 Vault 同步演练未执行。
+- [x] **实现记录**：最终数据流、迁移保护、验证与回滚见 [`Phase 2-5 实施记录`](./superpowers/plans/2026-08-02-generated-artifact-storage-governance-phases-2-5-implementation-note.md)。
 
 ## 2026-08-02 · Planned Requirements 产品归属纠偏
 

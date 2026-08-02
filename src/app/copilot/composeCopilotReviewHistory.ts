@@ -1,5 +1,6 @@
 import { Notice, type App } from 'obsidian';
 import { CopilotReviewHistoryService } from '@/service/copilot/CopilotReviewHistoryService';
+import type { GeneratedOutputPersistenceRuntime } from '@/core/storage/generated-output';
 
 /**
  * T11Q (Track B): app-owned composition of the Auto Review history service.
@@ -13,8 +14,11 @@ import { CopilotReviewHistoryService } from '@/service/copilot/CopilotReviewHist
  * materialized) lives in the app layer so the service never imports
  * Obsidian's `Notice`.
  */
-export function composeCopilotReviewHistory(app: App): CopilotReviewHistoryService {
+export function composeCopilotReviewHistory(
+	app: App,
+	generatedOutputs?: GeneratedOutputPersistenceRuntime,
+): CopilotReviewHistoryService {
 	return new CopilotReviewHistoryService(app, (message, durationMs) => {
 		new Notice(message, durationMs);
-	});
+	}, generatedOutputs);
 }

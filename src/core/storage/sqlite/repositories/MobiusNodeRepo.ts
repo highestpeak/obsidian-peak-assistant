@@ -505,6 +505,13 @@ export class MobiusNodeRepo {
 		return result;
 	}
 
+	/** Full projection rows for consumers that need indexed-note path columns. */
+	async getMobiusRowsByIds(ids: string[]): Promise<Map<string, MobiusNodeRow>> {
+		if (!ids.length) return new Map();
+		const rows = await this.db.selectFrom('mobius_node').selectAll().where('node_id', 'in', ids).execute();
+		return new Map(rows.map((row) => [row.node_id, row]));
+	}
+
 	async getByType(type: string): Promise<DbSchema['graph_nodes'][]> {
 		const rows = await this.db.selectFrom('mobius_node').selectAll().where('type', '=', type).execute();
 		return rows.map((r) => this.graphNodeFromMobius(r));

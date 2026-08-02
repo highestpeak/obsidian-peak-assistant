@@ -1,15 +1,22 @@
 import type { AppHandle } from '@/core/ports/AppHandle';
 import type { VaultFileRef, VaultFolderRef } from '@/core/ports/VaultFileRef';
-import { stringify as stringifyYaml } from 'yaml';
-import { buildFrontmatter, codeBlock } from '@/core/utils/markdown-utils';
 import type { ChatResourceRef, ResourceSummaryMeta, ParsedResourceSummaryFile } from '../types';
 import type { ResourceKind } from '@/core/document/types';
 import { parseFrontmatter } from '@/core/utils/markdown-utils';
 import { normalizeVaultPath } from '@/core/utils/path-utils';
-import { ensureFolderRecursive, getFileRef, getFolderRef, isFile, writeVaultFile } from '@/core/storage/vault/vault-ops';
+import { getFileRef, getFolderRef, isFile } from '@/core/storage/vault/vault-ops';
 import { ResourceKindDetector } from '@/core/document/resource/helper/ResourceKindDetector';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
-import { hashString } from '@/core/utils/hash-utils';
+import { hashSHA256, hashString } from '@/core/utils/hash-utils';
+import type { GeneratedOutputPersistenceRuntime } from '@/core/storage/generated-output';
+
+interface ResourceSummarySnapshot {
+	meta: ResourceSummaryMeta;
+	provenance: {
+		sourceFingerprint: string;
+		generatedBy: 'resource-summary-service';
+	};
+}
 
 /**
  * Service for managing resource summary notes.
@@ -25,18 +32,15 @@ export class ResourceSummaryService {
 	constructor(
 		private readonly app: AppHandle,
 		rootFolder: string,
-		resourcesSummaryFolderName: string
+		resourcesSummaryFolderName: string,
+		private readonly persistence?: GeneratedOutputPersistenceRuntime,
 	) {
 		this.resourcesFolder = normalizeVaultPath(`${resourcesSummaryFolderName}`);
 		this.kindDetector = new ResourceKindDetector(DocumentLoaderManager.getInstance().getVaultReader());
 	}
 
-	/**
-	 * Initialize resources folder
-	 */
-	async init(): Promise<void> {
-		await ensureFolderRecursive(this.resourcesFolder, this.app);
-	}
+	/** Machine summaries are lazy; boot must not create a Markdown cache folder. */
+	async init(): Promise<void> {}
 
 	createResourceRef(source: string, summaryNotePath?: string): ChatResourceRef {
 		const id = this.generateResourceId(source);
@@ -50,6 +54,9 @@ export class ResourceSummaryService {
 	}
 
 	getResourceSummaryPath(resourceId: string): string {
+		if (this.persistence) {
+			return this.persistence.resolvePath('resource.summary-snapshot', { resourceKey: resourceId });
+		}
 		return normalizeVaultPath(`${this.resourcesFolder}/Resource-${resourceId}.md`);
 	}
 
@@ -64,9 +71,6 @@ export class ResourceSummaryService {
 		mentionedInProjects?: string[];
 		mentionedInFiles?: string[];
 	}): Promise<VaultFileRef> {
-		const path = this.getResourceSummaryPath(params.resourceId);
-		const existingFile = getFileRef(path, this.app);
-
 		const meta: ResourceSummaryMeta = {
 			id: params.resourceId,
 			source: params.source,
@@ -79,13 +83,38 @@ export class ResourceSummaryService {
 			mentionedInProjects: params.mentionedInProjects ?? [],
 			mentionedInFiles: params.mentionedInFiles ?? [],
 		};
-
-		const markdown = this.buildResourceSummaryMarkdown(meta);
-		return writeVaultFile(existingFile, path, markdown, this.app);
+		if (!this.persistence) {
+			throw new Error('ResourceSummaryService: generated output persistence runtime is not bound.');
+		}
+		await this.persistence.snapshots.writeSnapshot<ResourceSummarySnapshot>({
+			outputId: 'resource.summary-snapshot',
+			recordKey: params.resourceId,
+			pathVariables: { resourceKey: params.resourceId },
+			payload: {
+				meta,
+				provenance: {
+					sourceFingerprint: hashSHA256(params.source),
+					generatedBy: 'resource-summary-service',
+				},
+			},
+		});
+		return this.buildMachineFileRef(this.getResourceSummaryPath(params.resourceId), meta.lastUpdatedTimestamp);
 	}
 
 	async readResourceSummary(resourceId: string): Promise<ParsedResourceSummaryFile | null> {
-		const path = this.getResourceSummaryPath(resourceId);
+		if (this.persistence) {
+			const current = await this.persistence.snapshots.readSnapshot<ResourceSummarySnapshot>({
+				outputId: 'resource.summary-snapshot',
+				recordKey: resourceId,
+				pathVariables: { resourceKey: resourceId },
+			});
+			if (current) return this.toParsedSnapshot(current.envelope.payload);
+		}
+		return this.readAndImportLegacySummary(resourceId);
+	}
+
+	private async readAndImportLegacySummary(resourceId: string): Promise<ParsedResourceSummaryFile | null> {
+		const path = normalizeVaultPath(`${this.resourcesFolder}/Resource-${resourceId}.md`);
 		const file = getFileRef(path, this.app);
 		if (!file) return null;
 
@@ -112,18 +141,31 @@ export class ResourceSummaryService {
 				: [],
 		};
 
-		return {
+		const parsed = {
 			meta,
 			content: frontmatter.body,
 			file,
 		};
+		if (this.persistence) await this.importLegacySummary(path, raw, meta);
+		return parsed;
 	}
 
 	async listResourceSummaries(): Promise<ParsedResourceSummaryFile[]> {
+		const byId = new Map<string, ParsedResourceSummaryFile>();
+		if (this.persistence) {
+			const samplePath = this.persistence.resolvePath('resource.summary-snapshot', { resourceKey: '__sample__' });
+			const directory = samplePath.slice(0, samplePath.lastIndexOf('/'));
+			const files = await this.persistence.snapshots.listSnapshotFiles(directory);
+			for (const path of files) {
+				const name = path.slice(path.lastIndexOf('/') + 1);
+				if (!name.endsWith('.json') || name.includes('.backup') || name.includes('.tmp')) continue;
+				const resourceId = name.slice(0, -'.json'.length);
+				const parsed = await this.readResourceSummary(resourceId);
+				if (parsed) byId.set(parsed.meta.id, parsed);
+			}
+		}
 		const folder = getFolderRef(this.resourcesFolder, this.app);
-		if (!folder) return [];
-
-		const results: ParsedResourceSummaryFile[] = [];
+		if (!folder) return [...byId.values()];
 		const children = (folder as VaultFolderRef & { children?: ReadonlyArray<unknown> }).children ?? [];
 		for (const child of children) {
 			if (isFile(child)) {
@@ -131,75 +173,62 @@ export class ResourceSummaryService {
 				if (f.name.startsWith('Resource-') && f.extension === 'md') {
 					const resourceId = f.basename.replace(/^Resource-/, '');
 					const parsed = await this.readResourceSummary(resourceId);
-					if (parsed) results.push(parsed);
+					if (parsed) byId.set(parsed.meta.id, parsed);
 				}
 			}
 		}
-		return results;
+		return [...byId.values()];
 	}
 
 	private generateResourceId(source: string): string {
 		return hashString(source, 8);
 	}
 
-	private buildResourceSummaryMarkdown(meta: ResourceSummaryMeta): string {
-		const frontmatter = buildFrontmatter(meta);
-		const sections: string[] = [];
+	private toParsedSnapshot(snapshot: ResourceSummarySnapshot): ParsedResourceSummaryFile {
+		return {
+			meta: snapshot.meta,
+			content: snapshot.meta.fullSummary ?? snapshot.meta.shortSummary ?? '',
+			file: this.buildMachineFileRef(
+				this.getResourceSummaryPath(snapshot.meta.id),
+				snapshot.meta.lastUpdatedTimestamp,
+			),
+		};
+	}
 
-		sections.push('# Original Resource');
-		sections.push('## Resource Link');
+	private async importLegacySummary(path: string, raw: string, meta: ResourceSummaryMeta): Promise<void> {
+		if (!this.persistence) return;
+		const targetPath = this.getResourceSummaryPath(meta.id);
+		const migration = {
+			migrationId: 'resource-summary-markdown-to-json-v1',
+			sourceOutputId: 'legacy.resource-summary-markdown',
+			targetOutputId: 'resource.summary-snapshot',
+			sourcePath: path,
+			targetPath,
+			sourceChecksum: hashSHA256(raw),
+		};
+		await this.persistence.migrations.append({ ...migration, status: 'discovered' });
+		const envelope = await this.persistence.snapshots.writeSnapshot<ResourceSummarySnapshot>({
+			outputId: 'resource.summary-snapshot',
+			recordKey: meta.id,
+			pathVariables: { resourceKey: meta.id },
+			payload: {
+				meta,
+				provenance: { sourceFingerprint: hashSHA256(meta.source), generatedBy: 'resource-summary-service' },
+			},
+		});
+		await this.persistence.migrations.append({ ...migration, status: 'imported', targetChecksum: envelope.checksum });
+		await this.persistence.migrations.append({ ...migration, status: 'validated', targetChecksum: envelope.checksum });
+	}
 
-		if (meta.kind === 'url') {
-			sections.push(`[${meta.source}](${meta.source})`);
-		} else if (meta.kind === 'tag') {
-			sections.push(`Tag: ${meta.source}`);
-		} else if (meta.kind === 'folder' || meta.kind === 'markdown') {
-			const normalizedPath = meta.source.replace(/^\[\[|\]\]$/g, '');
-			sections.push(`[[${normalizedPath}]]`);
-		} else {
-			if (meta.source.includes('/') && !meta.source.includes('://')) {
-				sections.push(`[[${meta.source}]]`);
-			} else {
-				sections.push(meta.source);
-			}
-		}
-
-		sections.push('# Summary');
-		sections.push('## meta');
-		sections.push(
-			codeBlock('resource-summary-meta', stringifyYaml({
-				id: meta.id,
-				kind: meta.kind,
-				lastUpdatedTimestamp: meta.lastUpdatedTimestamp,
-			}))
-		);
-		sections.push('## short');
-		sections.push(meta.shortSummary || 'No summary available yet.');
-		if (meta.fullSummary) {
-			sections.push('## full');
-			sections.push(meta.fullSummary);
-		}
-
-		const convLinks = (meta.mentionedInConversations || []).map(id => `- Conversation: ${id}`);
-		const projLinks = (meta.mentionedInProjects || []).map(id => `- Project: ${id}`);
-		const fileLinks = (meta.mentionedInFiles || []).map(path => `- [[${path}]]`);
-
-		if (convLinks.length > 0 || projLinks.length > 0 || fileLinks.length > 0) {
-			sections.push('# Referenced In');
-			if (convLinks.length > 0) {
-				sections.push('## Conversations');
-				sections.push(convLinks.join('\n'));
-			}
-			if (projLinks.length > 0) {
-				sections.push('## Projects');
-				sections.push(projLinks.join('\n'));
-			}
-			if (fileLinks.length > 0) {
-				sections.push('## Files');
-				sections.push(fileLinks.join('\n'));
-			}
-		}
-
-		return `${frontmatter}${sections.join('\n\n')}\n`;
+	private buildMachineFileRef(path: string, timestamp: number): VaultFileRef {
+		const name = path.slice(path.lastIndexOf('/') + 1);
+		const extension = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1) : '';
+		return {
+			path,
+			name,
+			basename: extension ? name.slice(0, -(extension.length + 1)) : name,
+			extension,
+			stat: { size: 0, ctime: timestamp, mtime: timestamp },
+		};
 	}
 }

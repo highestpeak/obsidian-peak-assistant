@@ -1347,7 +1347,7 @@ export class ConversationService {
 		}
 
 		// Update starred status with preview data
-		await this.storage.updateMessageStarred(messageId, starred, contentPreview, attachmentSummary);
+		await this.storage.updateMessageStarred(conversationId, messageId, starred, contentPreview, attachmentSummary);
 	}
 
 	async listStarredMessagesByProject(projectId: string): Promise<{
@@ -1363,8 +1363,12 @@ export class ConversationService {
 	 * round-trip finishes — keeps the chips alive across conversation reloads
 	 * so MessageSuggestedNext never re-generates.
 	 */
-	async updateMessageSuggestedFollowups(messageId: string, followups: string[]): Promise<void> {
-		await this.storage.updateMessageSuggestedFollowups(messageId, followups);
+	async updateMessageSuggestedFollowups(
+		conversationId: string,
+		messageId: string,
+		followups: string[],
+	): Promise<void> {
+		await this.storage.updateMessageSuggestedFollowups(conversationId, messageId, followups);
 	}
 
 	/**
@@ -1398,7 +1402,7 @@ export class ConversationService {
 		// needs an update, but a re-retry may touch several.
 		for (const m of plan.updatedMessages) {
 			if (m.variantGroupId !== plan.newVariantFields.variantGroupId) continue;
-			await this.storage.updateMessageVariantMeta(m.id, {
+			await this.storage.updateMessageVariantMeta(conversationId, m.id, {
 				variantGroupId: m.variantGroupId,
 				variantIndex: m.variantIndex,
 				isActiveVariant: m.isActiveVariant,
@@ -1429,7 +1433,7 @@ export class ConversationService {
 			if (m.variantGroupId !== variantGroupId) continue;
 			const nextActive = m.id === activeMessageId;
 			if (m.isActiveVariant === nextActive) continue;
-			await this.storage.updateMessageVariantMeta(m.id, {
+			await this.storage.updateMessageVariantMeta(conversationId, m.id, {
 				variantGroupId: m.variantGroupId,
 				variantIndex: m.variantIndex,
 				isActiveVariant: nextActive,

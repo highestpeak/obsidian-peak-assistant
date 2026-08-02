@@ -1,6 +1,10 @@
 import type { GeneratedOutputDataAdapter } from './GeneratedOutputDataAdapter';
 import { canonicalJson, sha256Text } from './GeneratedOutputIntegrity';
-import { generatedOutputDirectory, generatedOutputRecoverySuffix } from './GeneratedOutputPath';
+import {
+	assertSafeGeneratedOutputFilename,
+	generatedOutputDirectory,
+	generatedOutputRecoverySuffix,
+} from './GeneratedOutputPath';
 import type { GeneratedOutputRegistry } from './GeneratedOutputRegistry';
 import type { GeneratedOutputPathRoots, GeneratedOutputPathVariables } from './types';
 
@@ -17,6 +21,8 @@ export interface JsonlStreamInput {
 	readonly outputId: string;
 	readonly streamKey: string;
 	readonly pathVariables?: GeneratedOutputPathVariables;
+	/** Optional filename when the registered output path denotes a partition directory. */
+	readonly partitionFilename?: string;
 }
 
 export interface JsonlAppendInput<T> extends JsonlStreamInput {
@@ -53,7 +59,7 @@ export class PartitionedJsonlStore {
 
 	/** Returns false when the stable event ID already exists in this partition. */
 	async appendEvent<T>(input: JsonlAppendInput<T>): Promise<boolean> {
-		const path = this.resolveJsonlPath(input.outputId, input.pathVariables);
+		const path = this.resolveJsonlPath(input.outputId, input.pathVariables, input.partitionFilename);
 		let appended = false;
 		await this.enqueue(path, async () => {
 			const current = await this.readEvents<T>(input);
@@ -73,10 +79,26 @@ export class PartitionedJsonlStore {
 	}
 
 	async readEvents<T>(input: JsonlStreamInput): Promise<JsonlReadResult<T>> {
-		const path = this.resolveJsonlPath(input.outputId, input.pathVariables);
+		const path = this.resolveJsonlPath(input.outputId, input.pathVariables, input.partitionFilename);
 		if (!(await this.adapter.exists(path))) return { events: [] };
 		const content = await this.adapter.readText(path);
 		return this.parseStream<T>(content, input);
+	}
+
+	async listPartitionFiles(
+		outputId: string,
+		pathVariables: GeneratedOutputPathVariables = {},
+	): Promise<readonly string[]> {
+		const path = this.resolveJsonlPath(outputId, pathVariables);
+		return this.adapter.listFiles(path);
+	}
+
+	listFilesAt(directoryPath: string): Promise<readonly string[]> {
+		return this.adapter.listFiles(directoryPath);
+	}
+
+	listFilesRecursiveAt(directoryPath: string): Promise<readonly string[]> {
+		return this.adapter.listFilesRecursive(directoryPath);
 	}
 
 	/**
@@ -85,7 +107,7 @@ export class PartitionedJsonlStore {
 	 * prefix. Nothing is silently deleted.
 	 */
 	async quarantineCorruptTail<T>(input: JsonlStreamInput): Promise<JsonlQuarantineResult<T>> {
-		const path = this.resolveJsonlPath(input.outputId, input.pathVariables);
+		const path = this.resolveJsonlPath(input.outputId, input.pathVariables, input.partitionFilename);
 		const current = await this.readEvents<T>(input);
 		if (!current.corruption) return current;
 		const suffix = generatedOutputRecoverySuffix(this.now(), ++this.recoverySequence);
@@ -173,9 +195,15 @@ export class PartitionedJsonlStore {
 		return parsed as JsonlEventEnvelope<T>;
 	}
 
-	private resolveJsonlPath(outputId: string, variables: GeneratedOutputPathVariables = {}): string {
+	private resolveJsonlPath(
+		outputId: string,
+		variables: GeneratedOutputPathVariables = {},
+		partitionFilename?: string,
+	): string {
 		this.requireJsonlDescriptor(outputId);
-		return this.registry.resolvePath(outputId, this.roots, variables);
+		const path = this.registry.resolvePath(outputId, this.roots, variables);
+		if (!partitionFilename) return path;
+		return `${path}/${assertSafeGeneratedOutputFilename(partitionFilename, 'JSONL partition filename')}`;
 	}
 
 	private requireJsonlDescriptor(outputId: string) {

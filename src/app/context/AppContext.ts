@@ -512,12 +512,21 @@ export class AppContext {
 		this.vaultNavigation = composeVaultNavigation(
 			app,
 			() => this.runtimeRegistry.tryGetDocumentComposerRuntime()?.navigation ?? null,
+			async (hubId) => {
+				const runtime = this.runtimeRegistry.tryGetHubGenerationRuntime();
+				if (!runtime) throw new Error('Hub runtime is not ready.');
+				const { HubDetailModal } = await import('@/app/hub/HubDetailModal');
+				new HubDetailModal(this.app, runtime, hubId).open();
+			},
 		);
 		this.wikilink = composeWikilink(app);
 		this.editorCommands = composeEditorCommands(app);
 		this.chatVaultWriter = composeChatVaultWriter(app);
 		this.vaultStats = new AppVaultStatsAdapter(app);
-		this.copilotReviewHistory = composeCopilotReviewHistory(app);
+		this.copilotReviewHistory = composeCopilotReviewHistory(
+			app,
+			this.runtimeRegistry.getGeneratedOutputPersistenceRuntime(),
+		);
 		AppContext.instance = this;
 
 		this.handleDevToolsSettingChange(this.settings.enableDevTools ?? false);

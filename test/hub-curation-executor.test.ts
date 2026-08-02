@@ -6,9 +6,9 @@ import type { HubCurationPlanRow } from '@/core/storage/sqlite/repositories/HubC
 
 async function main() {
 	await testCreateAndKeepDispatchToMaterializer();
-	await testMergeArchivesSourcesAndMaterializes();
+	await testMergeRetiresSourcesWithoutArchivingAndMaterializes();
 	await testMergeBlockedByUserOwnedSource();
-	await testRetireArchives();
+	await testRetireKeepsMarkdown();
 	console.log('hub-curation-executor: ok');
 }
 
@@ -29,17 +29,23 @@ function makePlan(decisions: any[]): HubCurationPlanRow {
 }
 
 function makeStubMaterializer(runs: Array<{ decisionId: string; status: string }>): any {
+	const retiredPaths: string[] = [];
+	const retiredIds: string[] = [];
 	return {
+		retiredPaths,
+		retiredIds,
 		async run(opts: any) {
-			runs.push({ decisionId: opts.decision.nodeId, status: 'written' });
+			runs.push({ decisionId: opts.decision.nodeId, status: 'virtualized' });
 			return {
-				status: 'written',
+				status: 'virtualized',
 				hubPath: opts.decision.hubPath,
 				coverage: 0.8,
 				draftIterations: 1,
 				gapsRemaining: [],
 			};
 		},
+		async retire(decision: any) { retiredIds.push(decision.nodeId); },
+		async retireByPath(path: string) { retiredPaths.push(path); },
 	};
 }
 
@@ -84,11 +90,12 @@ async function testCreateAndKeepDispatchToMaterializer() {
 	console.log('  ✓ create + keep both call materializer');
 }
 
-async function testMergeArchivesSourcesAndMaterializes() {
+async function testMergeRetiresSourcesWithoutArchivingAndMaterializes() {
 	const runs: Array<{ decisionId: string; status: string }> = [];
 	const archived: string[] = [];
+	const materializer = makeStubMaterializer(runs);
 	const executor = new HubCurationExecutor({
-		materializationAgent: makeStubMaterializer(runs),
+		materializationAgent: materializer,
 		planRepo: makeStubPlanRepo(),
 		mobiusNodeRepo: makeStubMobiusRepo(),
 		vaultWritePort: { async readPeakUserOwned() { return false; } } as any,
@@ -106,10 +113,11 @@ async function testMergeArchivesSourcesAndMaterializes() {
 		},
 	]);
 	const result = await executor.execute(plan);
-	assert.deepStrictEqual(archived.sort(), ['src-a.md', 'src-b.md']);
+	assert.deepStrictEqual(materializer.retiredPaths.sort(), ['src-a.md', 'src-b.md']);
+	assert.deepStrictEqual(archived, [], 'legacy Markdown is never moved by background merge');
 	assert.strictEqual(runs.length, 1);
 	assert.strictEqual(result.decisions[0].outcome, 'merged');
-	console.log('  ✓ merge archives sources then materializes survivor');
+	console.log('  ✓ merge retires source manifests without moving Markdown');
 }
 
 async function testMergeBlockedByUserOwnedSource() {
@@ -142,10 +150,11 @@ async function testMergeBlockedByUserOwnedSource() {
 	console.log('  ✓ user-owned merge source blocks the whole merge');
 }
 
-async function testRetireArchives() {
+async function testRetireKeepsMarkdown() {
 	const archived: string[] = [];
+	const materializer = makeStubMaterializer([]);
 	const executor = new HubCurationExecutor({
-		materializationAgent: makeStubMaterializer([]),
+		materializationAgent: materializer,
 		planRepo: makeStubPlanRepo(),
 		mobiusNodeRepo: makeStubMobiusRepo(),
 		vaultWritePort: { async readPeakUserOwned() { return false; } } as any,
@@ -155,9 +164,10 @@ async function testRetireArchives() {
 		{ nodeId: 'gone', hubPath: 'ghost.md', action: 'retire', scope: { communityIds: [], memberNodeIds: [] }, reason: 'r' },
 	]);
 	const result = await executor.execute(plan);
-	assert.deepStrictEqual(archived, ['ghost.md']);
-	assert.strictEqual(result.decisions[0].outcome, 'archived');
-	console.log('  ✓ retire archives without materializer');
+	assert.deepStrictEqual(materializer.retiredIds, ['gone']);
+	assert.deepStrictEqual(archived, []);
+	assert.strictEqual(result.decisions[0].outcome, 'retired');
+	console.log('  ✓ retire updates manifest/projection without moving Markdown');
 }
 
 main().catch((err) => {

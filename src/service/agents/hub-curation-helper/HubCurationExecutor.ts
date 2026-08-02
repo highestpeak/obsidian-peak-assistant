@@ -27,12 +27,13 @@ export interface HubCurationExecutorDecisionOutcome {
 	action: HubCurationDecision['action'];
 	outcome:
 		| 'materialized'
+		| 'virtualized'
 		| 'skipped-user-owned'
 		| 'skipped-fresh'
 		| 'no-op'
 		| 'merged'
 		| 'merge-blocked'
-		| 'archived'
+		| 'retired'
 		| 'failed';
 	error?: string;
 	coverage?: number;
@@ -78,7 +79,12 @@ export class HubCurationExecutor {
 		return {
 			planId: plan.planId,
 			decisions: outcomes,
-			completedCount: outcomes.filter((o) => o.outcome === 'materialized').length,
+			completedCount: outcomes.filter((o) => (
+				o.outcome === 'materialized'
+				|| o.outcome === 'virtualized'
+				|| o.outcome === 'merged'
+				|| o.outcome === 'retired'
+			)).length,
 			failedCount,
 		};
 	}
@@ -88,8 +94,8 @@ export class HubCurationExecutor {
 		planId: string,
 	): Promise<HubCurationExecutorDecisionOutcome> {
 		if (d.action === 'retire') {
-			await this.deps.archivePort.archive(d.hubPath);
-			return { nodeId: d.nodeId, hubPath: d.hubPath, action: d.action, outcome: 'archived' };
+			await this.deps.materializationAgent.retire(d, planId);
+			return { nodeId: d.nodeId, hubPath: d.hubPath, action: d.action, outcome: 'retired' };
 		}
 
 		if (d.action === 'merge') {
@@ -105,7 +111,7 @@ export class HubCurationExecutor {
 			}
 			for (const src of d.mergeSourceHubs ?? []) {
 				if (src === d.hubPath) continue;
-				await this.deps.archivePort.archive(src);
+				await this.deps.materializationAgent.retireByPath(src, planId);
 			}
 			// Fall through to materialize the survivor with the merged scope.
 		}
@@ -131,6 +137,15 @@ export class HubCurationExecutor {
 				hubPath: d.hubPath,
 				action: d.action,
 				outcome: d.action === 'merge' ? 'merged' : 'materialized',
+				coverage: runResult.coverage,
+			};
+		}
+		if (runResult.status === 'virtualized') {
+			return {
+				nodeId: d.nodeId,
+				hubPath: runResult.hubPath,
+				action: d.action,
+				outcome: d.action === 'merge' ? 'merged' : 'virtualized',
 				coverage: runResult.coverage,
 			};
 		}

@@ -14,4 +14,6 @@ export interface GeneratedOutputDataAdapter {
 	rename(fromPath: string, toPath: string): Promise<void>;
 	remove(path: string): Promise<void>;
 	ensureDirectory(path: string): Promise<void>;
+	listFiles(path: string): Promise<readonly string[]>;
+	listFilesRecursive(path: string): Promise<readonly string[]>;
 }

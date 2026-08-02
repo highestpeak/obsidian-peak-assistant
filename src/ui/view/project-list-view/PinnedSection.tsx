@@ -53,7 +53,7 @@ export const PinnedSection: React.FC<PinnedSectionProps> = ({ pinnedMetas, onMen
 				icon: 'file-text',
 				onClick: async () => {
 					const conv = conversations.get(meta.id) ?? await manager.readConversation(meta.id, false);
-					if (conv) await vaultNavigation.openSourceFile(conv.file);
+					if (conv?.file) await vaultNavigation.openSourceFile(conv.file);
 				},
 			},
 		];

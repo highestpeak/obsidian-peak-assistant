@@ -1,7 +1,10 @@
 import type { GeneratedOutputDescriptor } from '../types';
 import { durableRecord, outputPath, userArtifact } from './helpers';
 
-const COMPOSER_HISTORY = ['src/app/composer/ObsidianComposerHistoryPersistence.ts'] as const;
+const COMPOSER_HISTORY = [
+	'src/app/composer/ObsidianComposerHistoryPersistence.ts',
+	'src/service/copilot/CopilotReviewRecordStore.ts',
+] as const;
 
 export const COMPOSER_MEDIA_GENERATED_OUTPUTS: readonly GeneratedOutputDescriptor[] = [
 	userArtifact({
@@ -29,7 +32,11 @@ export const COMPOSER_MEDIA_GENERATED_OUTPUTS: readonly GeneratedOutputDescripto
 	durableRecord({
 		documentationId: 'DR-07', id: 'media.job-events', owner: 'media', carrier: 'jsonl',
 		path: outputPath('data-store', 'records/media/jobs/{jobId}.jsonl'),
-		writerEvidence: ['src/service/media/MediaJobRunner.ts'],
+		writerEvidence: [
+			'src/service/media/MediaJobRunner.ts',
+			'src/app/media/composeMediaGenerationService.ts',
+			'src/core/storage/vault/ChatStore.ts',
+		],
 	}),
 	durableRecord({
 		documentationId: 'DR-11', id: 'run.artifact-body', owner: 'run-envelope', carrier: 'native',

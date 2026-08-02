@@ -66,6 +66,8 @@ export interface VaultReviewRuntime {
 	 */
 	deleteReport(record: VaultReviewHistoryRecord): Promise<void>;
 
+	migrateLegacyReports(): Promise<{ imported: number; warnings: string[] }>;
+
 	/**
 	 * Top-N members of a community, ordered by PageRank descending.
 	 * Used by the Clusters tab drill-down.

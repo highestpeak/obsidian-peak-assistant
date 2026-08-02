@@ -17,6 +17,7 @@ import type { VaultHubDocWritePort } from '@/core/ports/HubGenerationPorts';
 import { prepareHubCurationContext } from './hub-curation-helper/hubCurationPrep';
 import { runHubCurationLoop } from './hub-curation-helper/hubCurationRecon';
 import type { HubCurationRunOptions } from './hub-curation-helper/types';
+import type { HubRecordStore } from '@/service/hub/HubRecordStore';
 
 export interface HubCuratorAgentDeps {
 	aiServiceManager: AIServiceManager;
@@ -27,6 +28,7 @@ export interface HubCuratorAgentDeps {
 	planRepo: HubCurationPlanRepo;
 	vaultWritePort: VaultHubDocWritePort;
 	hubSummaryFolder: string;
+	recordStore?: HubRecordStore;
 }
 
 export class HubCuratorAgent {
@@ -72,6 +74,21 @@ export class HubCuratorAgent {
 			worldSummary: prep.worldSnapshotMarkdown.slice(0, 12000),
 		});
 		await this.deps.planRepo.pruneOlderThan(20);
+		for (const decision of memory.decisions) {
+			await this.deps.recordStore?.appendEvent({
+				kind: 'curated',
+				hubId: decision.nodeId,
+				planId,
+				at: curatedAt,
+				detail: {
+					trigger,
+					action: decision.action,
+					coveragePct: memory.coveragePct,
+					confidence: memory.confidence,
+					decision,
+				},
+			});
+		}
 
 		const row = await this.deps.planRepo.getById(planId);
 		if (!row) throw new Error(`HubCuratorAgent: plan ${planId} vanished after insert`);

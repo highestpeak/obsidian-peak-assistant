@@ -23,6 +23,9 @@ import {
 	uniqueId,
 	isoTimestamp,
 } from '@/service/copilot/vault/VaultReviewReportService';
+import type { GeneratedOutputPersistenceRuntime } from '@/core/storage/generated-output';
+import { CopilotReviewRecordStore } from '@/service/copilot/CopilotReviewRecordStore';
+import { hashSHA256 } from '@/core/utils/hash-utils';
 
 const README_FILE = 'peak-system/README.md';
 const FOLDER_NOTICE_FLAG = 'peak-assistant.notice.peakSystemFolder.v1';
@@ -43,7 +46,57 @@ Do not rename or move \`peak-system/\` or its children — the plugin looks for 
 `;
 
 export class ObsidianVaultReviewReportAdapter implements VaultReviewReportPort {
-	constructor(private readonly app: App) {}
+	private readonly records?: CopilotReviewRecordStore;
+
+	constructor(
+		private readonly app: App,
+		private readonly generatedOutputs?: GeneratedOutputPersistenceRuntime,
+	) {
+		this.records = generatedOutputs ? new CopilotReviewRecordStore(generatedOutputs) : undefined;
+	}
+
+	async migrateLegacy(): Promise<{ imported: number; warnings: string[] }> {
+		let imported = 0;
+		const warnings: string[] = [];
+		if (!this.records || !this.generatedOutputs) return { imported, warnings };
+		const folder = this.app.vault.getAbstractFileByPath(VAULT_REVIEW_FOLDER);
+		if (!folder || !('children' in folder)) return { imported, warnings };
+		for (const child of (folder as TFolder).children) {
+			if (!(child instanceof TFile) || child.extension !== 'md') continue;
+			try {
+				const record = await this.readMetadata(child);
+				if (!record) continue;
+				if (await this.records.read('vault-review', record.id)) continue;
+				const raw = await this.app.vault.read(child);
+				const snapshot = parseVaultReviewFenceJson<VaultReviewSessionSnapshot>(raw, SNAPSHOT_FENCE_TAG);
+				if (!snapshot) throw new Error('embedded vault review snapshot is missing');
+				const canonicalRecord = {
+					...record,
+					storagePath: this.records.storagePath('vault-review', record.id),
+				};
+				await this.records.save('vault-review', canonicalRecord, snapshot);
+				const targetPath = this.generatedOutputs.resolvePath('composer.generation-history', {
+					recordId: `vault-review-${record.id}`,
+				});
+				const migration = {
+					migrationId: 'vault-review-markdown-to-generation-jsonl-v1',
+					sourceOutputId: 'legacy.vault-review-report',
+					targetOutputId: 'composer.generation-history',
+					sourcePath: child.path,
+					targetPath,
+					sourceChecksum: hashSHA256(raw),
+					targetChecksum: hashSHA256(JSON.stringify({ canonicalRecord, snapshot })),
+				};
+				await this.generatedOutputs.migrations.append({ ...migration, status: 'imported' });
+				await this.generatedOutputs.migrations.append({ ...migration, status: 'validated' });
+				await this.generatedOutputs.migrations.append({ ...migration, status: 'write-retired' });
+				imported += 1;
+			} catch (error) {
+				warnings.push(`${child.path}: ${error instanceof Error ? error.message : String(error)}`);
+			}
+		}
+		return { imported, warnings };
+	}
 
 	async save(
 		snapshot: VaultReviewSessionSnapshot,
@@ -73,6 +126,11 @@ export class ObsidianVaultReviewReportAdapter implements VaultReviewReportPort {
 			turnCount: stats.turnCount,
 			fingerprint,
 		};
+		if (this.records) {
+			record.storagePath = this.records.storagePath('vault-review', id);
+			await this.records.save('vault-review', record, snapshot);
+			return record;
+		}
 
 		await ensureFolder(VAULT_REVIEW_FOLDER, this.app);
 		await this.ensureFolderReadme();
@@ -94,19 +152,31 @@ export class ObsidianVaultReviewReportAdapter implements VaultReviewReportPort {
 	}
 
 	async listAll(limit = 50): Promise<VaultReviewHistoryRecord[]> {
+		const canonical = this.records
+			? (await this.records.list<VaultReviewHistoryRecord, VaultReviewSessionSnapshot>('vault-review'))
+				.map((event) => event.record)
+			: [];
 		const folder = this.app.vault.getAbstractFileByPath(VAULT_REVIEW_FOLDER);
-		if (!folder || !('children' in folder)) return [];
+		if (!folder || !('children' in folder)) {
+			return canonical.sort((a, b) => b.completedAt - a.completedAt).slice(0, limit);
+		}
 		const records: VaultReviewHistoryRecord[] = [];
 		for (const child of (folder as TFolder).children) {
 			if (!(child instanceof TFile) || child.extension !== 'md') continue;
 			const rec = await this.readMetadata(child);
 			if (rec) records.push(rec);
 		}
-		records.sort((a, b) => b.completedAt - a.completedAt);
-		return records.slice(0, limit);
+		const byId = new Map(records.map((record) => [record.id, record]));
+		for (const record of canonical) byId.set(record.id, record);
+		return [...byId.values()].sort((a, b) => b.completedAt - a.completedAt).slice(0, limit);
 	}
 
 	async load(record: VaultReviewHistoryRecord): Promise<VaultReviewSessionSnapshot | null> {
+		if (this.records && record.storagePath.startsWith('peak-review://')) {
+			return (await this.records.read<VaultReviewHistoryRecord, VaultReviewSessionSnapshot>(
+				'vault-review', record.id,
+			))?.snapshot ?? null;
+		}
 		const file = this.app.vault.getAbstractFileByPath(record.storagePath);
 		if (!(file instanceof TFile)) return null;
 		const content = await this.app.vault.read(file);
@@ -114,6 +184,10 @@ export class ObsidianVaultReviewReportAdapter implements VaultReviewReportPort {
 	}
 
 	async delete(record: VaultReviewHistoryRecord): Promise<void> {
+		if (this.records && record.storagePath.startsWith('peak-review://')) {
+			await this.records.delete('vault-review', record);
+			return;
+		}
 		const file = this.app.vault.getAbstractFileByPath(record.storagePath);
 		if (file instanceof TFile) {
 			await this.app.fileManager.trashFile(file);

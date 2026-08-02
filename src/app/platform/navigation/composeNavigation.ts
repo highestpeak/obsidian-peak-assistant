@@ -18,8 +18,9 @@ import type { ComposerDocumentRouter } from '@/app/composer/ComposerDocumentRout
 export function composeVaultNavigation(
 	app: App,
 	getComposerRouter?: () => ComposerDocumentRouter | null,
+	openVirtualHub?: (hubId: string) => Promise<void>,
 ): VaultNavigationPort {
-	return new AppVaultNavigationAdapter(app, getComposerRouter);
+	return new AppVaultNavigationAdapter(app, getComposerRouter, openVirtualHub);
 }
 
 export function composeEditorCommands(app: App): EditorCommandsPort {

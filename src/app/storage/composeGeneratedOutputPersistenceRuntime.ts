@@ -7,6 +7,7 @@ import {
 	ProjectionRebuildRegistry,
 	buildGeneratedOutputSyncManifest,
 	type GeneratedOutputPathRoots,
+	type GeneratedOutputPathVariables,
 	type GeneratedOutputPersistenceRuntime,
 	type GeneratedOutputRegistry,
 } from '@/core/storage/generated-output';
@@ -26,5 +27,8 @@ export function composeGeneratedOutputPersistenceRuntime(
 		migrations: new GeneratedOutputMigrationJournal(events),
 		projections: new ProjectionRebuildRegistry(outputs),
 		syncManifest: buildGeneratedOutputSyncManifest(outputs),
+		resolvePath: (outputId: string, variables: GeneratedOutputPathVariables = {}) => (
+			outputs.resolvePath(outputId, roots, variables)
+		),
 	});
 }

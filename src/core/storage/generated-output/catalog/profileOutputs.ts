@@ -5,7 +5,7 @@ export const PROFILE_GENERATED_OUTPUTS: readonly GeneratedOutputDescriptor[] = [
 	userArtifact({
 		documentationId: 'UA-01', id: 'user-profile.markdown', owner: 'user-profile', carrier: 'markdown',
 		path: outputPath('ai-root', 'system/User-Profile.md'),
-		writerEvidence: ['src/service/chat/context/UserProfileService.ts'], peakIndexPolicy: 'exclude', lifecycle: 'planned',
+		writerEvidence: ['src/service/chat/context/UserProfileService.ts'], peakIndexPolicy: 'exclude', lifecycle: 'active',
 	}),
 	userArtifact({
 		documentationId: 'UA-02', id: 'prompt.override', owner: 'prompt', carrier: 'markdown',

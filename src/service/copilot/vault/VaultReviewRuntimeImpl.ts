@@ -54,6 +54,10 @@ export class VaultReviewRuntimeImpl implements VaultReviewRuntime {
 		return this.deps.reports.delete(record);
 	}
 
+	migrateLegacyReports(): Promise<{ imported: number; warnings: string[] }> {
+		return this.deps.reports.migrateLegacy?.() ?? Promise.resolve({ imported: 0, warnings: [] });
+	}
+
 	listClusterMembers(communityId: string, limit?: number): Promise<ClusterMember[]> {
 		return this.deps.digestData.listClusterMembers(communityId, limit);
 	}

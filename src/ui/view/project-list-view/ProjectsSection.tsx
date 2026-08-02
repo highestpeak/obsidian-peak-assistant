@@ -212,7 +212,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 				title: strings.menuOpenSource,
 				icon: 'file-text',
 				onClick: async () => {
-					await vaultNavigation.openSourceFile(conversation.file);
+					if (conversation.file) await vaultNavigation.openSourceFile(conversation.file);
 				},
 			},
 			{

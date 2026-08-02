@@ -68,6 +68,11 @@ export interface MaintenanceChatStarPort {
 	deleteByConversationIds(conversationIds: string[]): Promise<void>;
 }
 
+export interface MaintenanceCanonicalConversationPort {
+	/** JSONL tombstones are authoritative; missing Markdown is not. */
+	listDeletedConversationIds(): Promise<Set<string>>;
+}
+
 export interface MaintenanceCleanupDeps {
 	vaultPaths: MaintenanceVaultPathPort;
 	indexedDocuments: MaintenanceIndexedDocumentReader;
@@ -77,6 +82,7 @@ export interface MaintenanceCleanupDeps {
 	messages: MaintenanceChatMessageReader;
 	resources: MaintenanceChatResourcePort;
 	stars: MaintenanceChatStarPort;
+	canonicalConversations?: MaintenanceCanonicalConversationPort;
 }
 
 // ---------------------------------------------------------------------------
@@ -187,7 +193,12 @@ export class MaintenanceCleanupService {
 	): Promise<ChatCleanupReport> {
 		const allConvs = await this.deps.conversations.getAllWithFilePaths();
 		const orphanConvIds: string[] = [];
+		const deletedCanonicalIds = await this.deps.canonicalConversations?.listDeletedConversationIds();
 		for (const c of allConvs) {
+			if (deletedCanonicalIds) {
+				if (deletedCanonicalIds.has(c.conversation_id)) orphanConvIds.push(c.conversation_id);
+				continue;
+			}
 			const effectivePath = c.archived_rel_path ?? c.file_rel_path;
 			if (!vaultPathSet.has(effectivePath)) {
 				orphanConvIds.push(c.conversation_id);

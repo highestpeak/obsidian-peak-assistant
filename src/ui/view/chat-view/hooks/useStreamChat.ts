@@ -423,6 +423,7 @@ export function useStreamChat() {
 						if (finalMessage && !finalMessage.isErrorMessage && finalMessage.content) {
 							void generateAndPersistSuggestedFollowups(
 								manager,
+								conversation.meta.id,
 								assistantMessageId,
 								userContent,
 								finalMessage.content,
@@ -562,6 +563,7 @@ const SUGGEST_FOLLOWUPS_MAX = 5;
  */
 async function generateAndPersistSuggestedFollowups(
 	manager: AIServiceManager,
+	conversationId: string,
 	assistantMessageId: string,
 	userContent: string,
 	assistantContent: string,
@@ -583,7 +585,7 @@ async function generateAndPersistSuggestedFollowups(
 		useChatDataStore.getState().updateMessage(assistantMessageId, { suggestedFollowups: followups });
 
 		try {
-			await manager.conv.updateMessageSuggestedFollowups(assistantMessageId, followups);
+			await manager.conv.updateMessageSuggestedFollowups(conversationId, assistantMessageId, followups);
 		} catch (persistErr) {
 			console.debug('[useStreamChat] Failed to persist suggestedFollowups:', persistErr);
 		}
@@ -591,4 +593,3 @@ async function generateAndPersistSuggestedFollowups(
 		console.debug('[useStreamChat] Failed to generate suggestedFollowups:', genErr);
 	}
 }
-

@@ -40,12 +40,14 @@ export interface HubMaterializationRunOptions {
 	trigger: 'manual' | 'scheduled' | 'stale-triggered';
 	vaultName?: string;
 	budget?: Partial<HubMaterializationBudget>;
+	/** Markdown is an explicit user action. Scheduled/stale runs remain virtual. */
+	materializeMarkdown?: boolean;
 	/** Optional override so tests can skip Vault lookups. */
 	prepOverride?: HubMaterializationPrepContext;
 }
 
 export interface HubMaterializationRunResult {
-	status: 'written' | 'skipped-user-owned' | 'failed';
+	status: 'virtualized' | 'written' | 'skipped-user-owned' | 'failed';
 	hubPath: string;
 	coverage?: number;
 	draftIterations: number;

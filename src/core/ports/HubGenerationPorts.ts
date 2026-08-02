@@ -8,6 +8,8 @@
  */
 
 export interface VaultHubDocWritePort {
+	/** List existing Markdown hubs under a folder for no-delete legacy import. */
+	listMarkdownUnder(folderPath: string): Promise<string[]>;
 	/** Read the raw file contents (frontmatter + body). Returns `null` when the file does not exist. */
 	read(path: string): Promise<string | null>;
 

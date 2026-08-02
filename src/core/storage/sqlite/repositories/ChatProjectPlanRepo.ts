@@ -51,6 +51,14 @@ export class ChatProjectPlanRepo {
 		return query.orderBy('updated_at_ts', 'desc').execute();
 	}
 
+	async listAll(): Promise<DbSchema['chat_project_plan'][]> {
+		return this.db
+			.selectFrom('chat_project_plan')
+			.selectAll()
+			.orderBy('updated_at_ts', 'desc')
+			.execute();
+	}
+
 	async deleteById(planId: string): Promise<void> {
 		await this.db
 			.deleteFrom('chat_project_plan')

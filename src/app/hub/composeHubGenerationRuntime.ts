@@ -21,6 +21,8 @@ import {
 	ObsidianVaultHubDocAdapter,
 } from './ObsidianVaultHubDocAdapter';
 import { ObsidianHubMaterializationVaultReader } from './ObsidianHubMaterializationVaultReader';
+import type { GeneratedOutputPersistenceRuntime } from '@/core/storage/generated-output';
+import { HubRecordStore } from '@/service/hub/HubRecordStore';
 
 export interface HubGenerationCompositionDeps {
 	app: App;
@@ -28,6 +30,7 @@ export interface HubGenerationCompositionDeps {
 	templateManager: TemplateManager;
 	getSettings: () => SearchSettings;
 	rootFolder: string;
+	generatedOutputs: GeneratedOutputPersistenceRuntime;
 }
 
 export interface HubGenerationCompositionResult {
@@ -52,6 +55,8 @@ export function composeHubGenerationRuntime(
 	const structuralRepo = sqliteStoreManager.getStructuralAnalysisRepo();
 	const hubConstituentRepo = sqliteStoreManager.getHubConstituentRepo();
 	const planRepo = sqliteStoreManager.getHubCurationPlanRepo();
+	const recordStore = new HubRecordStore(deps.generatedOutputs);
+	const hubSummaryFolder = getAIHubSummaryFolder(deps.rootFolder);
 
 	const materializer = new HubMaterializationAgent({
 		aiServiceManager: deps.aiServiceManager,
@@ -59,6 +64,8 @@ export function composeHubGenerationRuntime(
 		mobiusNodeRepo,
 		vaultReader,
 		vaultWritePort,
+		recordStore,
+		hubConstituentRepo,
 	});
 
 	const curator = new HubCuratorAgent({
@@ -69,7 +76,8 @@ export function composeHubGenerationRuntime(
 		hubConstituentRepo,
 		planRepo,
 		vaultWritePort,
-		hubSummaryFolder: getAIHubSummaryFolder(deps.rootFolder),
+		hubSummaryFolder,
+		recordStore,
 	});
 
 	const executor = new HubCurationExecutor({
@@ -85,6 +93,26 @@ export function composeHubGenerationRuntime(
 		materializer,
 		executor,
 		planRepo,
+		recordStore,
+		hubConstituentRepo,
+		vaultWritePort,
+		hubSummaryFolder,
+		generatedOutputs: deps.generatedOutputs,
+	});
+	deps.generatedOutputs.projections.register({
+		projectionId: 'projection.hub-graph',
+		sourceOutputIds: ['hub.manifest', 'hub.events'],
+		rebuild: async () => {
+			const startedAt = new Date().toISOString();
+			const report = await runtime.rebuildProjection();
+			return {
+				projectionId: 'projection.hub-graph',
+				sourceOutputIds: ['hub.manifest', 'hub.events'],
+				...report,
+				startedAt,
+				completedAt: new Date().toISOString(),
+			};
+		},
 	});
 
 	// Install regenerate fn so HubRegenService drains hub_regen_queue through

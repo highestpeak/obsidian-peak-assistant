@@ -77,6 +77,14 @@ export class AtomicJsonSnapshotStore {
 		}
 	}
 
+	listSnapshotFiles(directoryPath: string): Promise<readonly string[]> {
+		return this.adapter.listFiles(directoryPath);
+	}
+
+	listSnapshotFilesRecursive(directoryPath: string): Promise<readonly string[]> {
+		return this.adapter.listFilesRecursive(directoryPath);
+	}
+
 	private createEnvelope<T>(input: JsonSnapshotWriteInput<T>): JsonSnapshotEnvelope<T> {
 		const descriptor = this.registry.require(input.outputId);
 		if (descriptor.carrier !== 'json' || descriptor.lifecycle === 'migration-source') {

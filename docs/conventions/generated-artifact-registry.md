@@ -12,7 +12,7 @@
 
 配套实施设计见 [生成产物与存储治理实现设计](../superpowers/specs/2026-08-02-generated-artifact-storage-governance-implementation-design.md)。较早的 [机器运行记录 JSONL 设计](../superpowers/specs/2026-07-21-machine-record-storage-jsonl-design.md) 仍保留历史背景；两者冲突时，以本文和 2026-08-02 实现设计为准。
 
-运行时 Phase 0–1 已落地：typed catalog 位于 `src/core/storage/generated-output/`，50 个 descriptor 与下方 50 个文档 ID 一一对应；`AppRuntimeRegistry` 拥有唯一 policy 与 persistence runtime，AI Graph artifact 与 run-event 路径是首个 adopter。原子 JSON、分区 JSONL、artifact body、迁移日志、sync manifest 与 projection rebuild 合同已经可用；当前 Chat、Project、Resource Summary 和 Hub 的领域格式迁移仍按后续阶段推进。
+运行时 typed catalog 位于 `src/core/storage/generated-output/`，52 个 descriptor 与下方 52 个文档 ID 一一对应；`AppRuntimeRegistry` 拥有唯一 policy 与 persistence runtime。原子 JSON、分区 JSONL、artifact body、迁移日志、sync manifest 与 projection rebuild 合同已经可用。Chat、Project、Resource Summary、Profile proposal、receipts、Hub 与旧 Review 已完成 canonical cutover；旧文件只读保留，不自动删除。
 
 ## Why
 
@@ -88,11 +88,11 @@ Peak index policy 不等于 Obsidian metadata policy。任何 Vault 内 Markdown
 
 | ID | 产物 / 触发方式 | 当前载体 | 目标裁决 | Peak index | Markdown / 原生文件门槛 |
 | --- | --- | --- | --- | --- | --- |
-| UA-01 | User Profile | `system/User-Profile.md`，启动时可能自动创建 | 保留 Markdown；改为用户启用、编辑或接受 AI proposal 时才创建 | 否，属于控制上下文 | 用户拥有的长期指令，可读可改 |
+| UA-01 | User Profile | `system/User-Profile.md`，按需创建 | 保留 Markdown；用户编辑或接受 AI proposal 时才创建 | 否，属于控制上下文 | 用户拥有的长期指令，可读可改 |
 | UA-02 | Prompt override | `Prompts/*.prompt.md` | 保持 Markdown | 否，属于控制定义 | 仅用户创建 override 时生成；bundled default 不复制 |
 | UA-03 | Vault Skill | `Skills/*.md` | 保持 Markdown | 否，属于能力定义 | 用户安装、创建或编辑 Skill 时生成 |
-| UA-04 | Project Brief / Bridge | 当前混在 `Project-Summary.md` | 只把用户选择维护的 Brief / Bridge 保留 Markdown；机器 project state 与 summary 拆到 JSON | 是 | 用户显式创建、编辑或 promote |
-| UA-05 | Materialized Hub Note | 当前后台自动写 `Hub-Summaries/*.md` | 默认 Hub 为 JSON + SQLite virtual node；仅用户要求原生 Graph / 可编辑笔记时物化 Markdown | 是 | 显式 Materialize / Promote；物化后受 user-owned 保护 |
+| UA-04 | Project Brief / Bridge | `Projects/<project-id>/Brief.md`，仅存在用户字段时创建 | 机器 project state 与 summary 已拆到 JSON；Brief 只保存用户维护字段 | 是 | 用户显式提供、编辑或 promote |
+| UA-05 | Materialized Hub Note | `Hub-Summaries/*.md`，显式物化 | Hub 默认由 JSON + SQLite virtual node 拥有；仅用户要求原生 Graph / 可编辑笔记时物化 Markdown | 是 | 显式 Materialize；物化后受 user-owned 保护 |
 | UA-06 | AI Analysis export | 显式保存的 `.md` | 保持独立 Export，不作为 analysis history 事实源 | 是 | 用户显式 Export |
 | UA-07 | AI Graph export | 显式保存的 `.md` | 保持独立 Export；graph body 仍由 JSON artifact 拥有 | 是 | 用户显式 Export |
 | UA-08 | Dataview artifact | `Artifacts/Dataview/*.md` | 保持 Markdown | 是 | 用户显式运行 `artifact_create` |
@@ -120,23 +120,25 @@ Peak index policy 不等于 Obsidian metadata policy。任何 Vault 内 Markdown
 
 | ID | 机器记录 | 当前事实 | 目标载体 / 分片 | 状态 |
 | --- | --- | --- | --- | --- |
-| DR-01 | Chat conversation | SQLite metadata + `Conv-*.md` 正文 | `records/chat/conversations/<conversation-id>.jsonl` | 待迁移 |
-| DR-02 | Chat project state / AI summary | `Project-Summary.md` 混合用户与机器字段 | `records/chat/projects/<project-id>/state.json`；需要审计时追加 `events.jsonl` | 待迁移 |
-| DR-03 | Resource summary | `resources-summary-cache/Resource-*.md` | `records/resources/<resource-id-or-hash>.json`，包含来源 hash、模型和 provenance | 待迁移 |
+| DR-01 | Chat conversation | 新写入以 JSONL 为 canonical；旧 `Conv-*.md` 只读导入 | `records/chat/conversations/<conversation-id>.jsonl` | 已实现 |
+| DR-02 | Chat project state / AI summary | machine state 已与可选 Brief 分离 | `records/chat/projects/<project-id>/state.json`；删除使用 tombstone | 已实现 |
+| DR-03 | Resource summary | 新写入不再创建机器 Markdown；旧文件只读导入 | `records/resources/<resource-id-or-hash>.json`，包含来源 hash、模型和 provenance | 已实现 |
 | DR-04 | AI Analysis snapshot | `DataStore/ai-analysis/*.json` | 保持分片 JSON；若需要完整运行时间线，再增加 per-run JSONL | 已部分符合 |
-| DR-05 | Chat turn / run receipt | 当前主要写 SQLite JSON 字段 | `records/runs/<run-id>/events.jsonl`，SQLite 只投影 | 待迁移 |
-| DR-06 | Chat artifact receipt | 当前 `chat.sqlite` 中的 receipt JSON | run JSONL 引用 UA artifact；SQLite 提供 Gallery / Resources 查询 | 待迁移 |
-| DR-07 | Media job lifecycle | 当前 SQLite job / receipt | per-job 或 per-run JSONL，binary body 仍指向 UA-13 | 待迁移 |
-| DR-08 | Hub manifest | 当前事实隐含在 Hub Markdown 与 `hub_constituent` | `records/hubs/<hub-id>/manifest.json`，稳定 hub ID、membership、summary version、materialized path | 待实现 |
-| DR-09 | Hub curation / materialization history | curation plan 仅在 SQLite 且会裁剪 | `records/hubs/<hub-id>/events.jsonl` 或 run JSONL；大 summary body 独立分片 | 待实现 |
-| DR-10 | AI Graph manifest / immutable versions | graph JSON 仍可能嵌在 analysis snapshot | `artifacts/ai-graphs/<graph-id>/manifest.json` + `versions/<version-id>.json` | 已设计、待实现 |
+| DR-05 | Chat turn / run receipt | canonical run JSONL；SQLite 仅保留查询投影 | `records/runs/<run-id>/events.jsonl` | 已实现 |
+| DR-06 | Chat artifact receipt | canonical JSONL 引用 UA artifact；SQLite 提供 Gallery / Resources 查询 | `records/chat/artifact-receipts/<conversation-id>.jsonl` | 已实现 |
+| DR-07 | Media job lifecycle | canonical per-job JSONL；binary body 仍指向 UA-13 | `records/media/jobs/<job-id>.jsonl` | 已实现 |
+| DR-08 | Hub manifest | JSON snapshot 拥有 stable ID、membership、summary 与物化状态 | `records/hubs/<hub-id>/manifest.json` | 已实现 |
+| DR-09 | Hub curation / materialization history | 每个 Hub 保存追加事件；SQLite plan 只是投影/调度输入 | `records/hubs/<hub-id>/events.jsonl` | 已实现 |
+| DR-10 | AI Graph manifest / immutable versions | 独立 graph artifact 已接生产 runtime | `artifacts/ai-graphs/<graph-id>/manifest.json` + `versions/<version-id>.json` | 已实现 |
 | DR-11 | 通用 Run artifact body | `VaultArtifactStore` 支持 `.peak/artifacts`，当前未接生产 runtime | `artifacts/runs/<run-id>/<artifact-id>.<ext>`；统一进入 registry | 基础类存在、未接线 |
 | DR-12 | Composer comments | `DataStore/composer/comments/*.json` | 保持 JSON snapshot | 已符合 |
 | DR-13 | Composer workspace state | `records/composer/workspaces/current.jsonl` | 保持 JSONL | 已符合 |
 | DR-14 | Document History | `records/document-history/<record-id>.jsonl` + identity index | 保持 JSONL；identity index 是可同步的小型映射 | 已符合 |
 | DR-15 | Composer Copilot generation history | `records/copilot/sessions/<record-id>.jsonl` | 保持 JSONL，包含失败、取消、stale、未采用候选 | 已符合 |
-| DR-16 | User Profile AI proposals | 当前可能直接覆盖 Profile Markdown | proposal / accept / reject 写 run JSONL；只有 accepted current content 写 UA-01 | 待收口 |
+| DR-16 | User Profile AI proposals | proposal / accept / reject 写 JSONL；只有 accepted current content 写 UA-01 | `records/user-profile/proposals.jsonl`，事件按 proposal ID 幂等 | 已实现 |
 | DR-17 | 生成产物迁移日志 | 无统一、可恢复的 migration checkpoint | `records/system/generated-output-migrations.jsonl`；记录 source/target、checksum 与 cutover 状态，稳定事件 ID 保证幂等 | 已实现 |
+| DR-18 | Chat Assistant definition | `chat.sqlite.chat_assistant` | `records/chat/assistants/<assistant-id>.json`；SQLite 仅作列表投影 | 已实现 |
+| DR-19 | Project Plan state | `chat.sqlite.chat_project_plan` | `records/chat/project-plans/<plan-id>.json`；删除用 tombstone，SQLite 可重建 | 已实现 |
 
 主要 writer 证据：
 
@@ -145,6 +147,9 @@ Peak index policy 不等于 Obsidian metadata policy。任何 Vault 内 Markdown
 - [`AiAnalysisJsonStore.ts`](../../src/core/storage/vault/search-docs/AiAnalysisJsonStore.ts)
 - [`ComposerStorageConfig.ts`](../../src/app/composer/ComposerStorageConfig.ts)
 - [`ObsidianComposerHistoryPersistence.ts`](../../src/app/composer/ObsidianComposerHistoryPersistence.ts)
+- [`ChatConversationRecordStore.ts`](../../src/core/storage/generated-output/ChatConversationRecordStore.ts)
+- [`HubRecordStore.ts`](../../src/service/hub/HubRecordStore.ts)
+- [`CopilotReviewRecordStore.ts`](../../src/service/copilot/CopilotReviewRecordStore.ts)
 - [`VaultArtifactStore.ts`](../../src/service/run-envelope/VaultArtifactStore.ts)
 - [AI Graph Artifact Platform](../superpowers/specs/2026-07-28-ai-graph-artifact-platform.md)
 
@@ -171,13 +176,13 @@ Peak index policy 不等于 Obsidian metadata policy。任何 Vault 内 Markdown
 
 | ID | 历史产物 | 当前处理 | 目标处理 |
 | --- | --- | --- | --- |
-| LG-01 | `Conv-*.md` Chat 历史 | 仍是当前正文事实之一 | JSONL 校验完成后停止新增；保留可回滚期，再由用户确认归档或清理 |
-| LG-02 | 混合式 `Project-Summary.md` | 用户字段与机器 summary 同文件 | 迁出 machine state；只有用户选择的 Brief/Bridge 留 Markdown |
-| LG-03 | `resources-summary-cache/Resource-*.md` | 机器摘要进入 Vault Markdown | 导入 JSON、校验 hash 后停止新增；旧文件不自动删除 |
-| LG-04 | 自动 Hub Markdown | Hub membership 依赖解析链接进入 SQLite | 导入 Hub manifest；默认改 virtual；已物化 note 保留并标记 ownership |
+| LG-01 | `Conv-*.md` Chat 历史 | 已停写；dual-read 会幂等导入 JSONL | 保留回滚期；只有后续 owner-approved 任务才能归档或清理 |
+| LG-02 | 混合式 `Project-Summary.md` | 已停写；用户字段迁入 Brief，machine state 迁入 JSON | 旧文件只读保留，不自动删除 |
+| LG-03 | `resources-summary-cache/Resource-*.md` | 已停写；读取时导入 JSON 并登记 migration journal | 旧文件只读保留，不自动删除 |
+| LG-04 | 自动 Hub Markdown | scheduler 已切 virtual-first；旧 note 导入 manifest 并登记 materialized path | 已物化 note 保留，不移动、不覆盖 |
 | LG-05 | 旧 AI Analysis Markdown | 历史版本可能仍存在 | 导入/确认 JSON 后仅作为用户 export 或 archive |
-| LG-06 | `peak-system/auto-review/*.md` | 旧 Copilot Auto Review 历史 | 随旧能力退役；不接入新 Composer ledger，不自动删除 |
-| LG-07 | `peak-system/vault-reviews/*.md` | 旧 Vault Review report | 同上，保留历史证据直到 owner 决定归档 |
+| LG-06 | `peak-system/auto-review/*.md` | 生产 writer 已停；旧记录幂等导入 Copilot JSONL | 源文件与 README 保留，不自动删除 |
+| LG-07 | `peak-system/vault-reviews/*.md` | 生产 writer 已停；旧 report 幂等导入 Copilot JSONL | 源文件保留，不自动删除 |
 | LG-08 | `.peak/artifacts/artifact-index.json` | store 实现存在但未发现生产 runtime owner | 不建立第二套 catalog；接线时迁入统一 artifact registry / projection |
 
 旧 writer 证据：

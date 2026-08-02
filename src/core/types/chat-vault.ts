@@ -18,7 +18,8 @@ export interface ChatConversation {
 	messages: ChatMessage[];
 	context?: ChatContextWindow;
 	content: string;
-	file: VaultFileRef;
+	/** Present only for legacy/materialized conversation Markdown. JSONL-native chats have no source note. */
+	file?: VaultFileRef;
 }
 
 export interface ParsedResourceSummaryFile {

@@ -6,10 +6,14 @@ import {
 	PartitionedJsonlStore,
 	ProjectionRebuildRegistry,
 	buildGeneratedOutputSyncManifest,
+	ChatConversationRecordStore,
 	createDefaultGeneratedOutputRegistry,
 	type GeneratedOutputDataAdapter,
+	type GeneratedOutputPersistenceRuntime,
 	sha256Bytes,
 } from '@/core/storage/generated-output';
+import { HubRecordStore, virtualHubPath } from '@/service/hub/HubRecordStore';
+import { CopilotReviewRecordStore } from '@/service/copilot/CopilotReviewRecordStore';
 
 class MemoryGeneratedOutputAdapter implements GeneratedOutputDataAdapter {
 	readonly files = new Map<string, Uint8Array>();
@@ -59,6 +63,19 @@ class MemoryGeneratedOutputAdapter implements GeneratedOutputDataAdapter {
 		this.directories.add(path);
 	}
 
+	async listFiles(path: string): Promise<readonly string[]> {
+		const prefix = path.endsWith('/') ? path : `${path}/`;
+		return [...this.files.keys()].filter((candidate) => {
+			if (!candidate.startsWith(prefix)) return false;
+			return !candidate.slice(prefix.length).includes('/');
+		});
+	}
+
+	async listFilesRecursive(path: string): Promise<readonly string[]> {
+		const prefix = path.endsWith('/') ? path : `${path}/`;
+		return [...this.files.keys()].filter((candidate) => candidate.startsWith(prefix));
+	}
+
 	private requireFile(path: string): Uint8Array {
 		const value = this.files.get(path);
 		if (!value) throw new Error(`missing file: ${path}`);
@@ -71,6 +88,20 @@ const ROOTS = {
 	dataStore: 'ChatFolder/DataStore',
 	pluginData: '.obsidian/plugins/obsidian-peak-assistant',
 } as const;
+
+function createMemoryRuntime(adapter: MemoryGeneratedOutputAdapter): GeneratedOutputPersistenceRuntime {
+	const outputs = createDefaultGeneratedOutputRegistry();
+	const events = new PartitionedJsonlStore(adapter, outputs, ROOTS, () => '2026-08-02T04:00:00.000Z');
+	return {
+		snapshots: new AtomicJsonSnapshotStore(adapter, outputs, ROOTS, () => '2026-08-02T04:00:00.000Z'),
+		events,
+		artifactBodies: new GeneratedArtifactBodyStore(adapter, outputs, ROOTS),
+		migrations: new GeneratedOutputMigrationJournal(events),
+		projections: new ProjectionRebuildRegistry(outputs),
+		syncManifest: buildGeneratedOutputSyncManifest(outputs),
+		resolvePath: (outputId, variables = {}) => outputs.resolvePath(outputId, ROOTS, variables),
+	};
+}
 
 async function testAtomicSnapshotAndCorruptionRecovery(): Promise<void> {
 	const adapter = new MemoryGeneratedOutputAdapter();
@@ -198,11 +229,67 @@ async function testMigrationJournalSyncManifestAndProjectionRegistry(): Promise<
 	console.log('PASS: migration journal, sync manifest, and projection rebuild contracts are complete');
 }
 
+async function testDomainRecordReplayAndTombstones(): Promise<void> {
+	const adapter = new MemoryGeneratedOutputAdapter();
+	const runtime = createMemoryRuntime(adapter);
+	const conversations = new ChatConversationRecordStore(runtime);
+	await conversations.appendMeta('conversation-1', {
+		id: 'conversation-1',
+		title: 'Canonical chat',
+		createdAtTimestamp: 1,
+		updatedAtTimestamp: 2,
+		activeModel: 'gpt-test',
+		activeProvider: 'openai',
+	});
+	await conversations.appendMessages('conversation-1', [{
+		id: 'message-1',
+		role: 'user',
+		content: 'hello',
+		createdAtTimestamp: 3,
+		createdAtZone: 'UTC',
+		starred: false,
+		model: 'gpt-test',
+		provider: 'openai',
+	}]);
+	assert.equal((await conversations.read('conversation-1'))?.messages[0]?.content, 'hello');
+	await conversations.markDeleted('conversation-1', 4);
+	assert.equal((await conversations.read('conversation-1'))?.deleted, true);
+
+	const hubs = new HubRecordStore(runtime);
+	await hubs.write({
+		hubId: 'hub-1',
+		label: 'Virtual hub',
+		status: 'active',
+		communityIds: ['community-1'],
+		decision: {
+			nodeId: 'hub-1', hubPath: 'ChatFolder/Hub-Summaries/hub-1.md', action: 'keep',
+			scope: { communityIds: ['community-1'], memberNodeIds: ['node-1'] }, reason: 'test',
+		},
+		members: [{ nodeId: 'node-1', path: 'Note.md', provenance: 'curator-scope' }],
+		summary: { version: 1 },
+		materialization: { state: 'virtual' },
+		planId: 'plan-1',
+		updatedAt: 5,
+	}, { kind: 'synthesized', hubId: 'hub-1', planId: 'plan-1', at: 5 });
+	assert.equal((await hubs.read('hub-1'))?.members[0]?.path, 'Note.md');
+	assert.deepEqual(await hubs.listHubIds(), ['hub-1']);
+	assert.equal(virtualHubPath('hub-1'), 'peak-hub://hub-1');
+
+	const reviews = new CopilotReviewRecordStore(runtime);
+	const review = { id: 'review-1', completedAt: 6 };
+	await reviews.save('document-review', review, { status: 'completed' }, { thread: [] });
+	assert.equal((await reviews.list('document-review')).length, 1);
+	await reviews.delete('document-review', review);
+	assert.equal(await reviews.read('document-review', review.id), null);
+	console.log('PASS: chat, Hub, and review canonical records replay and honor tombstones');
+}
+
 async function main(): Promise<void> {
 	await testAtomicSnapshotAndCorruptionRecovery();
 	await testJsonlIdempotenceAndExplicitQuarantine();
 	await testImmutableArtifactBodies();
 	await testMigrationJournalSyncManifestAndProjectionRegistry();
+	await testDomainRecordReplayAndTombstones();
 }
 
 main().catch((error) => {

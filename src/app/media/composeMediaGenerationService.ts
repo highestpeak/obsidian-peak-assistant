@@ -48,6 +48,8 @@ import type {
 	MediaUsageEmitter,
 	MediaUsageEventInput,
 } from '@/service/media/MediaUsageEmitter';
+import { canonicalJson, type GeneratedOutputPersistenceRuntime } from '@/core/storage/generated-output';
+import { hashSHA256 } from '@/core/utils/hash-utils';
 
 export interface ComposeMediaGenerationServiceDeps {
 	app: App;
@@ -71,6 +73,7 @@ export interface ComposeMediaGenerationServiceDeps {
 	 * input in a later edit). Absent = only vault-path references work.
 	 */
 	getArtifactReceipt?: (artifactId: string) => Promise<{ vaultPath?: string | null } | null>;
+	generatedOutputs?: GeneratedOutputPersistenceRuntime;
 }
 
 export interface ComposedMediaRuntime {
@@ -193,7 +196,17 @@ export async function composeMediaRuntime(
 	});
 	const writer = new ObsidianMediaAttachmentWriter(deps.app);
 	const jobRepo = sqliteStoreManager.getChatMediaJobRepo();
-	const jobService = new MediaJobService(jobRepo);
+	const jobService = new MediaJobService(jobRepo, Date.now, deps.generatedOutputs ? {
+		append: async (job, event) => {
+			await deps.generatedOutputs!.events.appendEvent({
+				outputId: 'media.job-events',
+				streamKey: job.jobId,
+				pathVariables: { jobId: job.jobId },
+				eventId: `${event}:${job.updatedAt}:${hashSHA256(canonicalJson(job))}`,
+				payload: { event, job },
+			});
+		},
+	} : undefined);
 	const receiptSink = makeChatArtifactReceiptSink(deps.saveArtifactReceipt);
 
 	// V1 §R2 — usage telemetry emitter. Dispatches the same

@@ -2,8 +2,8 @@
 
 - 日期：2026-08-02
 - 产品决定：**Accepted**
-- 技术状态：**Implementation design ready**
-- 生产状态：**Phase 0 registry/guard complete · Phase 1-5 pending**
+- 技术状态：**Implemented with explicit verification boundaries**
+- 生产状态：**Phase 0-4 complete · Phase 5 write retirement complete · physical deletion deferred by no-delete policy**
 
 配套材料：
 
@@ -13,7 +13,7 @@
 - [AI Graph Artifact Platform](./2026-07-28-ai-graph-artifact-platform.md)
 - [Roadmap](../../roadmap.html)
 
-> 本文定义实施顺序、目标架构、迁移保护和验收门槛。它不描述已经完成的生产行为，也不授权自动删除现有 Vault 文件。
+> 本文同时保留实施顺序与当前完成状态。2026-08-02 已完成 canonical cutover、projection rebuild 与 legacy write retirement；它仍不授权自动删除或移动现有 Vault 文件。
 
 ## 1. 决定摘要
 
@@ -431,6 +431,8 @@ Hub manifest 至少保存：
 
 ### Phase 2：低耦合高价值迁移
 
+状态：**已实现（2026-08-02）**。Resource、Profile、Project、receipts 与 Composer 分类均由 app-owned generated-output runtime 接管；legacy source 只读导入。
+
 按依赖顺序：
 
 1. Resource Summary Markdown -> JSON snapshot；
@@ -443,6 +445,8 @@ Hub manifest 至少保存：
 
 ### Phase 3：Chat JSONL cutover
 
+状态：**已实现（2026-08-02）**。新 conversation 只写 JSONL；旧 Markdown 通过 dual-read 幂等导入；SQLite projection 可重建；删除语义使用 canonical tombstone。
+
 - migration dry run；
 - 导入每个 conversation；
 - JSONL -> projection -> UI replay 对比；
@@ -452,6 +456,8 @@ Hub manifest 至少保存：
 - Maintenance cleanup 改为 canonical record 判断，不再以 Markdown path 判断 orphan。
 
 ### Phase 4：Hub virtual-first 与 AI Graph artifact 对齐
+
+状态：**已实现（2026-08-02）**。Hub scheduler 默认不创建 Markdown，Peak Graph 通过 `peak-hub://<hubId>` 打开 virtual detail；显式 Materialize 才写 Hub note。AI Graph 已使用 stable graph/version identity 与 immutable JSON versions。
 
 - 导入 Hub manifests；
 - Hub projection rebuilder；
@@ -464,12 +470,14 @@ Hub UI 没有稳定 identity、virtual detail 和 materialization state 之前�
 
 ### Phase 5：legacy retirement 与物理目录清理
 
-- old Copilot review/report 停写并输出 archive report；
+状态：**写入退役与迁移记录已实现；物理清理按设计明确延期。** 旧 Copilot/Vault Review、Chat、Resource 与 Hub 文件均可只读导入并记录 checksum，源文件不移动、不删除。
+
+- old Copilot review/report 停写并写 migration journal；
 - 旧 Chat / Resource / AI Analysis Markdown 标记 migrated；
 - owner 审批后才 archive 或 delete；
 - 可选移动 SQLite 到 `DataStore/projections/`；
 - 清理 `.peak/artifacts` 等未接线第二 catalog；
-- 由 typed registry 生成 docs / sync manifest，消除双维护。
+- typed registry 生成 sync manifest；文档通过稳定 ID completeness test 防漂移。
 
 ```text
 Phase 0 registry
@@ -631,14 +639,16 @@ coverage test 不能只靠易碎全文正则作为最终方案。Phase 0 可以�
 
 ## 15. Definition of Done
 
-- [ ] 所有当前持久化 writer 都能映射到注册表 ID。
+- [x] 所有当前持久化 writer 都能映射到注册表 ID。
 - [ ] 新 writer 无法绕过 typed registry / output router。
-- [ ] Project Brief、Hub Note、Profile 只在明确门槛下创建 Markdown。
-- [ ] Chat、run receipts、Hub identity/membership 和 AI Graph versions 有非 SQLite canonical truth。
-- [ ] Resource Summary 不再自动写 Markdown，且不会被当成可随意删除的 cheap cache。
-- [ ] Composer durable streams 与 telemetry 的同步边界有自动化守卫。
+- [x] Project Brief、Hub Note、Profile 只在明确门槛下创建 Markdown。
+- [x] Chat、run receipts、Hub identity/membership 和 AI Graph versions 有非 SQLite canonical truth。
+- [x] Resource Summary 不再自动写 Markdown，且不会被当成可随意删除的 cheap cache。
+- [x] Composer durable streams 与 telemetry 的同步边界有自动化守卫。
 - [ ] SQLite projection 可从 user artifacts + durable records 完整重建。
 - [ ] sync set 可在第二 Vault 恢复产品历史，而不携带 SQLite / FTS / embedding / telemetry。
-- [ ] 现有 Hub、Chat、Resource、AI Analysis、old Copilot 文件未被自动删除。
-- [ ] 领域 spec、roadmap、AGENTS/CLAUDE 和 docs index 已引用注册表与本设计。
+- [x] 现有 Hub、Chat、Resource、AI Analysis、old Copilot 文件未被自动删除。
+- [x] 领域 spec、roadmap、AGENTS/CLAUDE 和 docs index 已引用注册表与本设计。
 - [ ] docs 链接、Mermaid、migration fixtures、focused tests、build 与真实 Obsidian 验证按 phase 完成。
+
+未勾选项不是遗留 writer：完整跨域 projection 灾备、第二 Vault 同步演练与真实 Obsidian 交互仍需要脱敏副本或 live renderer 证据。当前自动化已经覆盖 Chat、Hub、AI Graph、Review 与 registry 的 canonical round-trip；Hub 点击、原生 Graph 和物化交互保持 `INTERACTION NOT VERIFIED`。

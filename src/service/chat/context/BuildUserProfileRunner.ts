@@ -131,7 +131,8 @@ export async function runBuildUserProfile(params: BuildUserProfileRunParams): Pr
 		}
 
 		try {
-			// Extract only from vault content; merge/dedupe is done in updateProfile (UserProfileOrganizeMarkdown).
+			// The command is an explicit user action. Persist the proposal receipt
+			// before applying it to the user-owned Markdown profile.
 			const content = await aiServiceManager.queryText(
 				PromptId.ProfileFromVaultJson,
 				{ vaultContent: trimmedVault } as any,
@@ -141,7 +142,7 @@ export async function runBuildUserProfile(params: BuildUserProfileRunParams): Pr
 			const rawItems: unknown[] = parseJsonFromLLM(content);
 			const validatedItems = validateProfileItems(rawItems);
 			if (validatedItems.length > 0) {
-				await profileService.updateProfile({ newItems: validatedItems });
+				await profileService.updateProfile({ newItems: validatedItems, proposalSource: 'vault-scan' });
 			}
 			if (processedHashRepo) {
 				const hashes = batch.map((b) => b.hash);

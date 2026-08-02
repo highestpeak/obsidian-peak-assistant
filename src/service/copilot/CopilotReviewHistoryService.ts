@@ -16,6 +16,9 @@ import type { VaultFileRef, VaultFolderRef } from '@/core/ports/VaultFileRef';
 import { joinPath } from '@/core/utils/path-utils';
 import { ensureFolderRecursive, getFileRef, getFolderRef, isFile } from '@/core/storage/vault/vault-ops';
 import type { ReviewSessionSnapshot } from './CopilotReviewSession';
+import type { GeneratedOutputPersistenceRuntime } from '@/core/storage/generated-output';
+import { CopilotReviewRecordStore } from './CopilotReviewRecordStore';
+import { hashSHA256 } from '@/core/utils/hash-utils';
 
 /**
  * Hook invoked once, the first time the `peak-system/` folder is
@@ -287,6 +290,7 @@ function parseChatsFromMarkdown(markdown: string): InsightChatHistories {
 }
 
 export class CopilotReviewHistoryService {
+	private readonly records?: CopilotReviewRecordStore;
 	/**
 	 * T11Q (Track B): app composes one instance via
 	 * `composeCopilotReviewHistory(appContext)` and threads it through
@@ -296,7 +300,55 @@ export class CopilotReviewHistoryService {
 	constructor(
 		private readonly app: AppHandle,
 		private readonly folderCreatedNotifier: CopilotReviewFolderCreatedNotifier | null = null,
-	) {}
+		private readonly generatedOutputs?: GeneratedOutputPersistenceRuntime,
+	) {
+		this.records = generatedOutputs ? new CopilotReviewRecordStore(generatedOutputs) : undefined;
+	}
+
+	async migrateLegacy(): Promise<{ imported: number; warnings: string[] }> {
+		let imported = 0;
+		const warnings: string[] = [];
+		if (!this.records || !this.generatedOutputs) return { imported, warnings };
+		const folder = getFolderRef(REVIEW_HISTORY_FOLDER, this.app);
+		if (!folder) return { imported, warnings };
+		const children = (folder as VaultFolderRef & { children?: ReadonlyArray<unknown> }).children ?? [];
+		for (const child of children) {
+			if (!isFile(child) || child.extension !== 'md') continue;
+			try {
+				const record = await this.readMetadata(child);
+				if (!record) continue;
+				if (await this.records.read('document-review', record.id)) continue;
+				const raw = await this.app.vault.read(child);
+				const snapshot = parseSnapshotFromMarkdown(raw);
+				if (!snapshot) throw new Error('embedded review snapshot is missing');
+				const canonicalRecord = {
+					...record,
+					storagePath: this.records.storagePath('document-review', record.id),
+				};
+				const chats = parseChatsFromMarkdown(raw);
+				await this.records.save('document-review', canonicalRecord, snapshot, chats);
+				const targetPath = this.generatedOutputs.resolvePath('composer.generation-history', {
+					recordId: `document-review-${record.id}`,
+				});
+				const migration = {
+					migrationId: 'copilot-review-markdown-to-generation-jsonl-v1',
+					sourceOutputId: 'legacy.copilot-auto-review',
+					targetOutputId: 'composer.generation-history',
+					sourcePath: child.path,
+					targetPath,
+					sourceChecksum: hashSHA256(raw),
+					targetChecksum: hashSHA256(JSON.stringify({ canonicalRecord, snapshot, chats })),
+				};
+				await this.generatedOutputs.migrations.append({ ...migration, status: 'imported' });
+				await this.generatedOutputs.migrations.append({ ...migration, status: 'validated' });
+				await this.generatedOutputs.migrations.append({ ...migration, status: 'write-retired' });
+				imported += 1;
+			} catch (error) {
+				warnings.push(`${child.path}: ${error instanceof Error ? error.message : String(error)}`);
+			}
+		}
+		return { imported, warnings };
+	}
 
 	/**
 	 * Save (create-or-update) a review session.
@@ -333,6 +385,11 @@ export class CopilotReviewHistoryService {
 			// Scope is fixed at first save and reused on subsequent upserts.
 			originScope: existingRecord?.originScope ?? originScope,
 		};
+		if (this.records) {
+			record.storagePath = this.records.storagePath('document-review', id);
+			await this.records.save('document-review', record, snapshot, chats ?? {});
+			return record;
+		}
 
 		await ensureFolderRecursive(REVIEW_HISTORY_FOLDER, this.app);
 		await this.ensureFolderReadme();
@@ -355,8 +412,13 @@ export class CopilotReviewHistoryService {
 	}
 
 	async listAll(limit = 100, scope?: ReviewOriginScope): Promise<CopilotReviewHistoryRecord[]> {
+		const canonical = this.records
+			? (await this.records.list<CopilotReviewHistoryRecord, ReviewSessionSnapshot, InsightChatHistories>('document-review'))
+				.map((event) => event.record)
+				.filter((record) => !scope || record.originScope === scope)
+			: [];
 		const folder = getFolderRef(REVIEW_HISTORY_FOLDER, this.app);
-		if (!folder) return [];
+		if (!folder) return canonical.sort((a, b) => b.completedAt - a.completedAt).slice(0, limit);
 		const records: CopilotReviewHistoryRecord[] = [];
 		const children = (folder as VaultFolderRef & { children?: ReadonlyArray<unknown> }).children ?? [];
 		for (const child of children) {
@@ -368,8 +430,9 @@ export class CopilotReviewHistoryService {
 			if (scope && rec.originScope !== scope) continue;
 			records.push(rec);
 		}
-		records.sort((a, b) => b.completedAt - a.completedAt);
-		return records.slice(0, limit);
+		const byId = new Map(records.map((record) => [record.id, record]));
+		for (const record of canonical) byId.set(record.id, record);
+		return [...byId.values()].sort((a, b) => b.completedAt - a.completedAt).slice(0, limit);
 	}
 
 	async listForSubject(subjectPath: string, limit = 20, scope?: ReviewOriginScope): Promise<CopilotReviewHistoryRecord[]> {
@@ -378,6 +441,11 @@ export class CopilotReviewHistoryService {
 	}
 
 	async load(record: CopilotReviewHistoryRecord): Promise<ReviewSessionSnapshot | null> {
+		if (this.records && record.storagePath.startsWith('peak-review://')) {
+			return (await this.records.read<CopilotReviewHistoryRecord, ReviewSessionSnapshot, InsightChatHistories>(
+				'document-review', record.id,
+			))?.snapshot ?? null;
+		}
 		const file = getFileRef(record.storagePath, this.app);
 		if (!file) return null;
 		const content = await this.app.vault.read(file);
@@ -389,6 +457,12 @@ export class CopilotReviewHistoryService {
 		snapshot: ReviewSessionSnapshot | null;
 		chats: InsightChatHistories;
 	}> {
+		if (this.records && record.storagePath.startsWith('peak-review://')) {
+			const stored = await this.records.read<CopilotReviewHistoryRecord, ReviewSessionSnapshot, InsightChatHistories>(
+				'document-review', record.id,
+			);
+			return { snapshot: stored?.snapshot ?? null, chats: stored?.chats ?? {} };
+		}
 		const file = getFileRef(record.storagePath, this.app);
 		if (!file) return { snapshot: null, chats: {} };
 		const content = await this.app.vault.read(file);
@@ -399,6 +473,10 @@ export class CopilotReviewHistoryService {
 	}
 
 	async delete(record: CopilotReviewHistoryRecord): Promise<void> {
+		if (this.records && record.storagePath.startsWith('peak-review://')) {
+			await this.records.delete('document-review', record);
+			return;
+		}
 		const file = getFileRef(record.storagePath, this.app);
 		if (file) {
 			await this.app.fileManager.trashFile(file);
@@ -469,4 +547,3 @@ export class CopilotReviewHistoryService {
 		};
 	}
 }
-

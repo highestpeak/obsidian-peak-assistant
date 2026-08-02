@@ -269,6 +269,24 @@ async function testOrphanedConversationsCascadeDelete(): Promise<void> {
 	console.log('PASS: orphanedConversationsCascadeDelete');
 }
 
+async function testCanonicalChatCleanupUsesTombstonesNotMissingMarkdown(): Promise<void> {
+	const { deps, calls } = makeDeps({
+		vaultPaths: new Set(),
+		conversations: [
+			{ conversation_id: 'c-active-jsonl', file_rel_path: 'missing-legacy.md', archived_rel_path: null },
+			{ conversation_id: 'c-deleted', file_rel_path: 'also-missing.md', archived_rel_path: null },
+		],
+	});
+	deps.canonicalConversations = {
+		listDeletedConversationIds: async () => new Set(['c-deleted']),
+	};
+	const { notifier } = recordingNotifier();
+	const report = await new MaintenanceCleanupService(deps).runCleanup(notifier);
+	assert.strictEqual(report.chat.orphanConversationsRemoved, 1);
+	assert.deepStrictEqual(calls.convsDeleted[0], ['c-deleted']);
+	console.log('PASS: canonicalChatCleanupUsesTombstonesNotMissingMarkdown');
+}
+
 async function testBothRepoSlicesCleanedInOnePass(): Promise<void> {
 	const { deps, calls } = makeDeps({
 		vaultPaths: new Set(['keep.md', 'chat/keep.md']),
@@ -367,6 +385,7 @@ async function main(): Promise<void> {
 	await testOrphanedSearchIndexRowsTriggerNotice();
 	await testVecEmbeddingsRemovalIsReported();
 	await testOrphanedConversationsCascadeDelete();
+	await testCanonicalChatCleanupUsesTombstonesNotMissingMarkdown();
 	await testBothRepoSlicesCleanedInOnePass();
 	testServiceFileImportsAreBoundaryClean();
 }

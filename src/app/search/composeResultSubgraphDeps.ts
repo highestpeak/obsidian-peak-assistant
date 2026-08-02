@@ -89,12 +89,12 @@ export function composeResultSubgraphDeps(): ResultSubgraphDeps {
             if (!hubIds.length) return out;
             if (!sqliteStoreManager.isInitialized()) return out;
             const nodeRepo = sqliteStoreManager.getMobiusNodeRepo('vault');
-            const rowMap = await nodeRepo.getByIds(hubIds);
+			const rowMap = await nodeRepo.getMobiusRowsByIds(hubIds);
             const hubRepo = sqliteStoreManager.getHubConstituentRepo();
             for (const id of hubIds) {
                 const node = rowMap.get(id);
-                const path = (node as { path?: string | null } | undefined)?.path ?? '';
-                const label = (node as { label?: string | null } | undefined)?.label ?? '';
+				const path = node?.path ?? '';
+				const label = node?.label ?? '';
                 let count = 0;
                 try { count = await hubRepo.countMembersForHub(id); } catch { count = 0; }
                 out.set(id, {

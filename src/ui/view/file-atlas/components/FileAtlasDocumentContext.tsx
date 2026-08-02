@@ -67,7 +67,7 @@ export const FileAtlasDocumentContext: React.FC<FileAtlasDocumentContextProps> =
 							variant="unstyled"
 							className="pkfa-context-chip is-primary"
 							title={hub.path}
-							onClick={() => void vaultNavigation.openVaultPath(hub.path)}
+							onClick={() => void vaultNavigation.openLink(hub.path)}
 						>
 							{hub.label}
 						</Button>
@@ -78,7 +78,7 @@ export const FileAtlasDocumentContext: React.FC<FileAtlasDocumentContextProps> =
 							variant="unstyled"
 							className="pkfa-context-chip is-candidate"
 							title={`${hub.path} · ${Math.round((hub.confidence ?? 0) * 100)}%`}
-							onClick={() => void vaultNavigation.openVaultPath(hub.path)}
+							onClick={() => void vaultNavigation.openLink(hub.path)}
 						>
 							{hub.label} · candidate
 						</Button>

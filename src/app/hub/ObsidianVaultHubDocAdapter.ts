@@ -34,6 +34,14 @@ function extractUserContent(raw: string): string {
 export class ObsidianVaultHubDocAdapter implements VaultHubDocWritePort {
 	constructor(private readonly app: App) {}
 
+	async listMarkdownUnder(folderPath: string): Promise<string[]> {
+		const prefix = folderPath.replace(/\/+$/, '');
+		return this.app.vault.getMarkdownFiles()
+			.map((file) => file.path)
+			.filter((path) => path === prefix || path.startsWith(`${prefix}/`))
+			.sort();
+	}
+
 	async read(path: string): Promise<string | null> {
 		const file = this.app.vault.getAbstractFileByPath(path);
 		if (!(file instanceof TFile)) return null;

@@ -300,6 +300,9 @@ export default class MyPlugin extends Plugin {
 			this.settings,
 			aiAnalysisHistoryService,
 		);
+		this.aiServiceManager.setGeneratedOutputPersistenceRuntime(
+			appContext.runtimeRegistry.getGeneratedOutputPersistenceRuntime(),
+		);
 
 		// T10: bind the Quick Search background-session runtime as
 		// soon as AppContext exists. The runtime is in-memory only —
@@ -768,6 +771,16 @@ export default class MyPlugin extends Plugin {
 					outcome: usageOutcome,
 					optimization: usageOptimization,
 				});
+				try {
+					const migration = await this.aiServiceManager.migrateLegacyGeneratedOutputs();
+					const reviewMigration = await this.appContext?.copilotReviewHistory.migrateLegacy();
+					const projection = await this.appContext?.runtimeRegistry
+						.getGeneratedOutputPersistenceRuntime()
+						.projections.rebuild({ projectionId: 'projection.chat', reason: 'migration' });
+					console.log('[Peak Assistant] Generated-output migration:', migration, reviewMigration, projection);
+				} catch (error) {
+					console.warn('[Peak Assistant] Generated-output migration/rebuild failed:', error);
+				}
 				console.log('[MEM] initSqlite: before initializeSearchService');
 				await this.initializeSearchService();
 				console.log('[MEM] initSqlite: after initializeSearchService');
@@ -790,7 +803,12 @@ export default class MyPlugin extends Plugin {
 				// reaches the runtime via `AppContext.tryGetVaultReviewRuntime()`.
 				{
 					const { composeVaultReviewRuntime } = await import('@/app/copilot/vault/composeVaultReviewRuntime');
-					AppContext.setVaultReviewRuntime(composeVaultReviewRuntime(this.app));
+					const vaultReviewRuntime = composeVaultReviewRuntime(this.app);
+					AppContext.setVaultReviewRuntime(vaultReviewRuntime);
+					const vaultReviewMigration = await vaultReviewRuntime.migrateLegacyReports();
+					if (vaultReviewMigration.warnings.length > 0) {
+						console.warn('[Peak] Vault Review migration warnings', vaultReviewMigration.warnings);
+					}
 				}
 				// Hub Generation runtime (Curator + Materializer + Executor + Scheduler).
 				// Must run after sqlite + AIServiceManager + TemplateManager are ready.
@@ -805,8 +823,19 @@ export default class MyPlugin extends Plugin {
 							templateManager,
 							getSettings: () => this.settings.search,
 							rootFolder: this.settings.ai?.rootFolder ?? '',
+							generatedOutputs: this.appContext!.runtimeRegistry.getGeneratedOutputPersistenceRuntime(),
 						});
 						this.appContext?.runtimeRegistry.setHubGenerationRuntime(runtime, scheduler);
+						const hubMigration = await runtime.migrateLegacyHubs();
+						const hubProjection = await this.appContext?.runtimeRegistry
+							.getGeneratedOutputPersistenceRuntime()
+							.projections.rebuild({ projectionId: 'projection.hub-graph', reason: 'boot-recovery' });
+						if (hubMigration.warnings.length > 0 || (hubProjection?.warnings.length ?? 0) > 0) {
+							console.warn('[Peak] Hub generated-output migration/rebuild warnings', {
+								migration: hubMigration.warnings,
+								projection: hubProjection?.warnings ?? [],
+							});
+						}
 					} else {
 						console.warn('[Peak] Hub Generation runtime skipped — TemplateManager not available.');
 					}
@@ -851,6 +880,7 @@ export default class MyPlugin extends Plugin {
 						getFalApiKey: () => this.settings.ai?.falApiKey,
 						getMediaAttachmentFolder: () => this.settings.ai?.mediaAttachmentFolder,
 						getRootFolder: () => this.settings.ai?.rootFolder ?? '',
+						generatedOutputs: this.appContext?.runtimeRegistry.getGeneratedOutputPersistenceRuntime(),
 						// Task E1 — settings.ai.mediaDefaults is the user overlay
 						// applied inside composeMediaRuntime's loadConfig closure.
 						getMediaSettingsOverride: () => this.settings.ai?.mediaDefaults,
@@ -1043,10 +1073,12 @@ export default class MyPlugin extends Plugin {
 		// startup, ballooning the renderer heap to multiple GB and OOM-aborting
 		// it (the white-screen crash loop). `onLayoutReady` fires after the
 		// initial scan, so only genuine post-startup edits are picked up.
+		const cascadeWorker = this.cascadeWorker;
+		const searchUpdateQueue = this.searchUpdateQueue;
 		this.app.workspace.onLayoutReady(() => {
 			console.log('[MEM] before cascadeWorker/searchUpdateQueue start');
-			this.cascadeWorker.start();
-			this.searchUpdateQueue.start();
+			cascadeWorker.start();
+			searchUpdateQueue.start();
 			console.log('[MEM] after cascadeWorker/searchUpdateQueue start');
 		});
 

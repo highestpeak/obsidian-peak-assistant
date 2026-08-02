@@ -3,6 +3,7 @@ import { DEFAULT_GENERATED_OUTPUTS } from './catalog';
 
 export * from './types';
 export * from './AtomicJsonSnapshotStore';
+export * from './ChatConversationRecordStore';
 export * from './GeneratedArtifactBodyStore';
 export * from './GeneratedOutputDataAdapter';
 export * from './GeneratedOutputIntegrity';

@@ -31,7 +31,10 @@ export function composeVaultReviewRuntime(app: App): VaultReviewRuntime {
 		profile: new AppVaultReviewProfileAdapter(),
 		digestData: digestBuilder,
 		agent: new AppVaultReviewAgentAdapter(app),
-		reports: new ObsidianVaultReviewReportAdapter(app),
+		reports: new ObsidianVaultReviewReportAdapter(
+			app,
+			AppContext.getInstance().runtimeRegistry.getGeneratedOutputPersistenceRuntime(),
+		),
 		vaultLintRuntime,
 	};
 	return new VaultReviewRuntimeImpl(deps);

@@ -19,6 +19,7 @@ import type {
 import type { SearchResultItem } from '@/core/search/searchTypes';
 import type { ComposerDocumentRouter } from '@/app/composer/ComposerDocumentRouter';
 import { revealMarkdownLocation } from '@/app/composer/DocumentLocationReveal';
+import { hubIdFromVirtualPath } from '@/service/hub/HubRecordStore';
 
 function isFile(f: unknown): f is TFile {
 	return !!f && typeof f === 'object' && 'extension' in (f as Record<string, unknown>);
@@ -28,9 +29,15 @@ export class AppVaultNavigationAdapter implements VaultNavigationPort {
 	constructor(
 		private readonly app: App,
 		private readonly getComposerRouter: () => ComposerDocumentRouter | null = () => null,
+		private readonly openVirtualHub: (hubId: string) => Promise<void> = async () => {},
 	) {}
 
 	async openLink(path: string, opts: VaultNavigationOpenOptions = {}): Promise<void> {
+		const virtualHubId = hubIdFromVirtualPath(path);
+		if (virtualHubId) {
+			await this.openVirtualHub(virtualHubId);
+			return;
+		}
 		const newLeaf = opts.newLeaf ?? 'tab';
 		const sourcePath = opts.sourcePath ?? this.app.workspace.getActiveFile()?.path ?? '';
 		const { linkPath, fragment } = splitVaultLinkTarget(path);
@@ -57,6 +64,11 @@ export class AppVaultNavigationAdapter implements VaultNavigationPort {
 	}
 
 	async openVaultPath(path: string, opts: VaultNavigationOpenOptions = {}): Promise<boolean> {
+		const virtualHubId = hubIdFromVirtualPath(path);
+		if (virtualHubId) {
+			await this.openVirtualHub(virtualHubId);
+			return true;
+		}
 		const file = this.app.vault.getAbstractFileByPath(path);
 		if (!isFile(file)) return false;
 		const newLeaf = opts.newLeaf ?? false;

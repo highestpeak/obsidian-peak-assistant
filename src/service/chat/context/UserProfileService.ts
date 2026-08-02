@@ -3,6 +3,8 @@ import { PromptService } from '@/service/prompt/PromptService';
 import { PromptId } from '@/core/types/prompt';
 import { ensureFolderRecursive, getFileRef } from '@/core/storage/vault/vault-ops';
 import { USER_PROFILE_MIN_CONFIDENCE_THRESHOLD } from '@/core/constant';
+import { canonicalJson, type GeneratedOutputPersistenceRuntime } from '@/core/storage/generated-output';
+import { hashSHA256 } from '@/core/utils/hash-utils';
 
 /**
  * Category is free-form: AI or user decides the name. Stored as markdown ## heading.
@@ -26,32 +28,13 @@ export class UserProfileService {
 		private readonly app: AppHandle,
 		private readonly promptService: PromptService,
 		private readonly contextFilePath: string,
+		private readonly persistence?: GeneratedOutputPersistenceRuntime,
 	) {}
 
 	/**
-	 * Initialize context service and ensure file exists.
+	 * Profile Markdown is user-owned and lazy. Boot never creates it.
 	 */
-	async init(): Promise<void> {
-		const folderPath = this.contextFilePath.substring(0, this.contextFilePath.lastIndexOf('/'));
-		if (folderPath) {
-			await ensureFolderRecursive(folderPath, this.app);
-		}
-		const file = getFileRef(this.contextFilePath, this.app);
-		if (!file) {
-			try {
-				await this.app.vault.create(this.contextFilePath, '# User Profile\n\n');
-			} catch (error) {
-				// During an Obsidian multi-window/full reload, the adapter can already
-				// see the file on disk before the Vault path cache exposes it here.
-				// Treat the resulting create race as success; initialization only needs
-				// the canonical file to exist and must remain idempotent across windows.
-				const message = error instanceof Error ? error.message : String(error);
-				if (/already exists?/i.test(message)) return;
-				if (getFileRef(this.contextFilePath, this.app)) return;
-				throw error;
-			}
-		}
-	}
+	async init(): Promise<void> {}
 
 	/**
 	 * Extract context candidates from a conversation exchange or other sources.
@@ -90,6 +73,7 @@ export class UserProfileService {
 				// Filter by confidence threshold if provided
 				.filter((c) => !c.confidence || c.confidence >= USER_PROFILE_MIN_CONFIDENCE_THRESHOLD);
 
+			await this.recordProposals(validatedCandidates, 'conversation-extraction');
 			return validatedCandidates;
 		} catch (error) {
 			console.warn('[UserProfileService] Failed to extract context candidates:', error);
@@ -102,6 +86,7 @@ export class UserProfileService {
 	 */
 	async updateProfile(params: {
 		newItems: UserProfileItem[];
+		proposalSource?: string;
 	}): Promise<UserProfileItem[]> {
 		try {
 			const existingMarkdown = await this.getProfileAsMarkdown();
@@ -123,7 +108,10 @@ export class UserProfileService {
 				console.warn('[UserProfileService] Parse returned no items; keeping existing profile.');
 				return existingItems;
 			}
+			const source = params.proposalSource ?? 'explicit-profile-update';
+			await this.recordProposals(params.newItems, source);
 			await this.saveContext(merged);
+			await this.recordProfileDecision('accepted', merged, source);
 			return merged;
 		} catch (error) {
 			console.warn('[UserProfileService] Failed to update context:', error);
@@ -215,7 +203,19 @@ export class UserProfileService {
 		if (organized.length > 0) {
 			organized = this.cleanProfileItemsBeforeSave(organized);
 			await this.saveContext(organized);
+			await this.recordProfileDecision('accepted', organized, 'explicit-organize');
 		}
+	}
+
+	async recordProposals(items: UserProfileItem[], source: string): Promise<void> {
+		if (!this.persistence || items.length === 0) return;
+		const payload = { action: 'proposed' as const, source, items };
+		await this.persistence.events.appendEvent({
+			outputId: 'user-profile.proposal-events',
+			streamKey: 'user-profile-proposals',
+			eventId: `proposal:${hashSHA256(canonicalJson(payload))}`,
+			payload,
+		});
 	}
 
 	/**
@@ -300,8 +300,25 @@ export class UserProfileService {
 		if (file) {
 			await this.app.vault.modify(file, content);
 		} else {
+			const folderPath = this.contextFilePath.substring(0, this.contextFilePath.lastIndexOf('/'));
+			if (folderPath) await ensureFolderRecursive(folderPath, this.app);
 			await this.app.vault.create(this.contextFilePath, content);
 		}
+	}
+
+	private async recordProfileDecision(
+		action: 'accepted' | 'rejected',
+		items: UserProfileItem[],
+		source: string,
+	): Promise<void> {
+		if (!this.persistence) return;
+		const payload = { action, source, items, profilePath: this.contextFilePath };
+		await this.persistence.events.appendEvent({
+			outputId: 'user-profile.proposal-events',
+			streamKey: 'user-profile-proposals',
+			eventId: `${action}:${hashSHA256(canonicalJson(payload))}`,
+			payload,
+		});
 	}
 
 }

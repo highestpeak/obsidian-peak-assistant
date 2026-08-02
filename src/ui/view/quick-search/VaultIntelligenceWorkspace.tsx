@@ -121,7 +121,7 @@ export const VaultIntelligenceWorkspace: React.FC<VaultIntelligenceWorkspaceProp
 										variant="unstyled"
 										className={`pk-vault-overview-node${index === 0 ? ' is-main' : ''}`}
 										title={hub.path}
-										onClick={() => void vaultNavigation.openVaultPath(hub.path)}
+										onClick={() => void vaultNavigation.openLink(hub.path)}
 									>
 										{hub.path.split('/').pop()?.replace(/\.md$/i, '') ?? hub.path}
 									</Button>
@@ -147,7 +147,7 @@ export const VaultIntelligenceWorkspace: React.FC<VaultIntelligenceWorkspaceProp
 									variant="unstyled"
 									className="pk-vault-hub-row"
 									title={hub.path}
-									onClick={() => void vaultNavigation.openVaultPath(hub.path)}
+									onClick={() => void vaultNavigation.openLink(hub.path)}
 								>
 									<span>{hub.path.split('/').pop()?.replace(/\.md$/i, '') ?? hub.path}</span>
 									<ExternalLink aria-hidden="true" />

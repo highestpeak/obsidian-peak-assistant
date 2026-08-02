@@ -7,7 +7,7 @@ const ARTIFACT_WRITER = ['src/app/chat/AppArtifactVaultWriterAdapter.ts'] as con
 export const CHAT_GENERATED_OUTPUTS: readonly GeneratedOutputDescriptor[] = [
 	userArtifact({
 		documentationId: 'UA-04', id: 'project.brief', owner: 'chat-project', carrier: 'markdown',
-		path: outputPath('ai-root', 'Projects/{projectId}/Brief.md'), writerEvidence: CHAT_STORE, lifecycle: 'planned',
+		path: outputPath('ai-root', 'Projects/{projectId}/Brief.md'), writerEvidence: CHAT_STORE, lifecycle: 'active',
 	}),
 	userArtifact({
 		documentationId: 'UA-08', id: 'artifact.dataview', owner: 'chat-artifact', carrier: 'markdown',
@@ -40,12 +40,28 @@ export const CHAT_GENERATED_OUTPUTS: readonly GeneratedOutputDescriptor[] = [
 	durableRecord({
 		documentationId: 'DR-05', id: 'run.events', owner: 'run-envelope', carrier: 'jsonl',
 		path: outputPath('data-store', 'records/{domain}/runs'),
-		writerEvidence: ['src/app/ai-graph/ObsidianAIGraphRunEventStore.ts'], lifecycle: 'active',
+		writerEvidence: [
+			'src/app/ai-graph/ObsidianAIGraphRunEventStore.ts',
+			'src/core/storage/vault/ChatStore.ts',
+		], lifecycle: 'active',
 	}),
 	durableRecord({
 		documentationId: 'DR-06', id: 'chat.artifact-receipt', owner: 'chat-artifact', carrier: 'jsonl',
 		path: outputPath('data-store', 'records/chat/artifact-receipts/{conversationId}.jsonl'),
-		writerEvidence: ['src/core/storage/sqlite/repositories/ChatArtifactReceiptRepo.ts'],
+		writerEvidence: [
+			'src/core/storage/sqlite/repositories/ChatArtifactReceiptRepo.ts',
+			'src/core/storage/vault/ChatStore.ts',
+		],
+	}),
+	durableRecord({
+		documentationId: 'DR-18', id: 'chat.assistant-definition', owner: 'chat-assistant', carrier: 'json',
+		path: outputPath('data-store', 'records/chat/assistants/{assistantId}.json'), writerEvidence: CHAT_STORE,
+		lifecycle: 'active',
+	}),
+	durableRecord({
+		documentationId: 'DR-19', id: 'chat.project-plan-state', owner: 'chat-project', carrier: 'json',
+		path: outputPath('data-store', 'records/chat/project-plans/{planId}.json'), writerEvidence: CHAT_STORE,
+		lifecycle: 'active',
 	}),
 	legacyOutput({
 		documentationId: 'LG-01', id: 'legacy.chat-markdown', owner: 'chat', outputClass: 'durable-record',

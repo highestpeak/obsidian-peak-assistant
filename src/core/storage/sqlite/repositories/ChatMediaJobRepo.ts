@@ -91,6 +91,15 @@ export class ChatMediaJobRepo {
 			.execute();
 		return rows.map(rowToJob);
 	}
+
+	async listAll(): Promise<MediaJob[]> {
+		const rows = await this.db
+			.selectFrom('chat_media_job')
+			.selectAll()
+			.orderBy('created_at_ts', 'asc')
+			.execute();
+		return rows.map(rowToJob);
+	}
 }
 
 function rowToJob(row: DbSchema['chat_media_job']): MediaJob {

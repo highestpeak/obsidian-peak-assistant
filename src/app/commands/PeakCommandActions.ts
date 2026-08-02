@@ -27,6 +27,7 @@ import { runStructuralAnalysis } from '@/service/search/index/helper/structural/
 import { MaintenanceCleanupService } from '@/service/maintenance/MaintenanceCleanupService';
 import { obsidianNotifier } from '@/app/platform/NoticeNotifier';
 import type { QuickSearchOpenOptions } from '@/core/ports/QuickSearchLauncherPort';
+import { getAIHubSummaryFolder } from '@/core/config/folderPaths';
 
 /**
  * Persistent bottom notice with updatable message (Obsidian 1.5+ `setMessage` when available).
@@ -205,7 +206,7 @@ export async function materializeHubForActiveNote(): Promise<void> {
 		const result = await runtime.materializer.run({
 			decision: {
 				nodeId: hubMember.node_id,
-				hubPath: `AI Hub/${signals.community_id}.md`,
+				hubPath: `${getAIHubSummaryFolder(ctx.plugin.settings.ai.rootFolder)}/${signals.community_id}.md`,
 				action: 'keep',
 				scope: {
 					communityIds: [signals.community_id],
@@ -215,6 +216,7 @@ export async function materializeHubForActiveNote(): Promise<void> {
 			},
 			planId: 'active-note-' + Date.now(),
 			trigger: 'manual',
+			materializeMarkdown: true,
 		});
 		ui.hide();
 		if (result.status === 'written') {
@@ -254,6 +256,7 @@ async function getOrBuildMediaGenerationService() {
 		getFalApiKey: () => ctx.plugin.settings.ai?.falApiKey,
 		getMediaAttachmentFolder: () => ctx.plugin.settings.ai?.mediaAttachmentFolder,
 		getRootFolder: () => ctx.plugin.settings.ai?.rootFolder ?? '',
+		generatedOutputs: ctx.runtimeRegistry.getGeneratedOutputPersistenceRuntime(),
 		getMediaSettingsOverride: () => ctx.plugin.settings.ai?.mediaDefaults,
 		saveArtifactReceipt: (r) => ctx.manager.conv.saveArtifactReceipt(r),
 	});
@@ -719,6 +722,9 @@ export async function cleanupUselessData(): Promise<void> {
 			messages: sqliteStoreManager.getChatMessageRepo(),
 			resources: sqliteStoreManager.getChatMessageResourceRepo(),
 			stars: sqliteStoreManager.getChatStarRepo(),
+			canonicalConversations: {
+				listDeletedConversationIds: () => ctx.manager.listDeletedCanonicalConversationIds(),
+			},
 		});
 		await service.runCleanup(obsidianNotifier);
 	} catch (error) {

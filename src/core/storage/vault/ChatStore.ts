@@ -22,6 +22,7 @@ import {
 import { ChatDocName } from './chat-docs/ChatDocName';
 import { ChatConversationDoc, ChatConversationDocModel } from './chat-docs/ChatConversationDoc';
 import { ChatProjectSummaryDoc } from './chat-docs/ChatProjectSummaryDoc';
+import { ChatProjectBriefDoc } from './chat-docs/ChatProjectBriefDoc';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import type { Database as DbSchema } from '@/core/storage/sqlite/ddl';
 import type { ChatResourceRef } from '@/core/types/chat';
@@ -36,12 +37,50 @@ import {
 	type ProjectPlanRef,
 	type TurnExecutionReceipt,
 } from '@/core/types/chat-studio';
+import {
+	canonicalJson,
+	ChatConversationRecordStore,
+	type GeneratedOutputPersistenceRuntime,
+} from '@/core/storage/generated-output';
+import { hashSHA256 } from '@/core/utils/hash-utils';
+import type { MediaJob } from '@/core/types/media-generation';
+
+interface ChatProjectStateSnapshot {
+	meta: ChatProjectMeta;
+	machineContext: Omit<ChatProjectContext, 'description' | 'instructions'>;
+	briefPath?: string;
+	legacySummaryPath?: string;
+	deleted?: boolean;
+	deletedAt?: number;
+}
+
+interface ChatAssistantStateSnapshot {
+	assistantId: string;
+	definition?: ChatAssistantDefinition;
+	deleted: boolean;
+	deletedAt?: number;
+}
+
+interface ChatProjectPlanStateSnapshot {
+	planId: string;
+	plan?: ProjectPlanRef;
+	deleted: boolean;
+	deletedAt?: number;
+}
 
 export class ChatStorageService {
 	private readonly rootFolder: string;
+	private readonly conversationRecords?: ChatConversationRecordStore;
 
-	constructor(private readonly app: AppHandle, paths: ChatFilePaths) {
+	constructor(
+		private readonly app: AppHandle,
+		paths: ChatFilePaths,
+		private readonly generatedOutputs?: GeneratedOutputPersistenceRuntime,
+	) {
 		this.rootFolder = normalizeVaultPath(paths.rootFolder);
+		this.conversationRecords = generatedOutputs
+			? new ChatConversationRecordStore(generatedOutputs)
+			: undefined;
 	}
 
 	private get dbReady(): boolean {
@@ -49,31 +88,18 @@ export class ChatStorageService {
 	}
 
 	async init(): Promise<void> {
+		if (this.generatedOutputs) return;
 		await ensureFolderRecursive(this.rootFolder, this.app);
 	}
 
 	async saveProject(project: ChatProjectMeta, context?: ChatProjectContext): Promise<ChatProject> {
-		await this.ensureProjectFolder(project);
 		const projectFolder = await this.getProjectFolderPath(project);
-
-		const summaryFilePath = joinPath(projectFolder, CHAT_PROJECT_SUMMARY_FILENAME);
-		const initSummaryFile = getFileRef(summaryFilePath, this.app);
-		// Preserve user-owned sections when the caller (e.g. system summary
-		// refresh) does not carry them: re-read the existing doc first.
-		let existingDescription = context?.description;
-		let existingInstructions = context?.instructions;
-		if (existingDescription === undefined || existingInstructions === undefined) {
-			const existing = initSummaryFile ? ChatProjectSummaryDoc.parse(await this.app.vault.read(initSummaryFile)) : null;
-			if (existingDescription === undefined) existingDescription = existing?.description ?? '';
-			if (existingInstructions === undefined) existingInstructions = existing?.instructions ?? '';
+		if (this.generatedOutputs) {
+			await this.saveProjectState(project, context, projectFolder);
+		} else {
+			await this.ensureProjectFolder(project);
+			await this.saveLegacyProjectSummary(projectFolder, context);
 		}
-		const summaryContent = ChatProjectSummaryDoc.buildMarkdown({
-			description: existingDescription,
-			instructions: existingInstructions,
-			shortSummary: context?.shortSummary ?? '',
-			fullSummary: context?.fullSummary ?? '',
-		});
-		await writeVaultFile(initSummaryFile, summaryFilePath, summaryContent, this.app);
 
 		if (!this.dbReady) {
 			console.warn('[ChatStore] SQLite not ready, skipping project DB write');
@@ -97,6 +123,20 @@ export class ChatStorageService {
 		context?: ChatContextWindow,
 		messages?: ChatMessage[]
 	): Promise<ChatConversation> {
+		if (this.conversationRecords && this.generatedOutputs) {
+			const canonicalPath = this.generatedOutputs.resolvePath('chat.conversation-events', {
+				conversationId: conversation.id,
+			});
+			await this.upsertConversationMeta(conversation.id, {
+				...conversation,
+				fileRelPath: getRelativePath(this.rootFolder, canonicalPath),
+			});
+			if (context) await this.conversationRecords.appendContext(conversation.id, context);
+			if (messages && messages.length > 0) await this.saveNewMessage(conversation.id, messages);
+			const stored = await this.readConversation(conversation.id, true);
+			if (!stored) throw new Error(`Conversation not found after JSONL save: ${conversation.id}`);
+			return stored;
+		}
 		const folder = project ? await this.getProjectFolderPath(project) : this.rootFolder;
 		await ensureFolderRecursive(folder, this.app);
 
@@ -159,6 +199,8 @@ export class ChatStorageService {
 			};
 		}
 
+		await this.conversationRecords?.appendMeta(conversationId, updatedMeta);
+
 		if (this.dbReady) {
 			// Pack ALL non-column meta into meta_json so nothing is lost on
 			// round-trip (chat-studio DATA-01). Every key here must be unpacked
@@ -197,6 +239,7 @@ export class ChatStorageService {
 					titleAutoUpdated: updatedMeta.titleAutoUpdated ?? false,
 					contextLastUpdatedTimestamp: updatedMeta.contextLastUpdatedTimestamp ?? null,
 					contextLastMessageIndex: updatedMeta.contextLastMessageIndex ?? null,
+					archivedRelPath: updatedMeta.archived ? updatedMeta.fileRelPath ?? '' : null,
 					metaJson,
 				});
 		}
@@ -213,13 +256,14 @@ export class ChatStorageService {
 			throw new Error(`Conversation not found: ${conversationId}`);
 		}
 
-		const contentFile = conversation.file ?? (await this.ensureConversationFile(conversation));
-
 		const messagesArray = Array.isArray(messages) ? messages : [messages];
 
 		const existingMessageIds = new Set(conversation.messages.map(m => m.id));
 		const newMessages = messagesArray.filter(m => !existingMessageIds.has(m.id));
 		if (newMessages.length === 0) return;
+		if (this.conversationRecords) {
+			await this.conversationRecords.appendMessages(conversationId, newMessages);
+		}
 
 		if (this.dbReady) {
 			await sqliteStoreManager
@@ -234,7 +278,8 @@ export class ChatStorageService {
 			}
 		}
 
-		if (newMessages.length > 0) {
+		if (!this.conversationRecords && newMessages.length > 0) {
+			const contentFile = conversation.file ?? (await this.ensureConversationFile(conversation));
 			const currentContent = await this.app.vault.read(contentFile);
 			const newContent = ChatConversationDoc.appendMessagesToContent(currentContent, {
 				messages: newMessages,
@@ -244,6 +289,18 @@ export class ChatStorageService {
 	}
 
 	async readConversation(conversationId: string, loadMessages: boolean = true): Promise<ChatConversation | null> {
+		if (this.conversationRecords) {
+			const record = await this.conversationRecords.read(conversationId);
+			if (record?.deleted) return null;
+			if (record) {
+				return {
+					meta: record.meta,
+					context: record.context,
+					messages: loadMessages ? record.messages : [],
+					content: '',
+				};
+			}
+		}
 		const meta = await this.readConversationMeta(conversationId);
 		if (!meta || !meta.fileRelPath) return null;
 
@@ -263,6 +320,9 @@ export class ChatStorageService {
 		}
 
 		const messages = await this.loadConversationMessages(conversationId, docModel);
+		if (this.conversationRecords && this.generatedOutputs) {
+			return this.importLegacyConversation(meta, context, messages, file, raw);
+		}
 		return { meta, context, messages, content: raw, file };
 	}
 
@@ -284,6 +344,8 @@ export class ChatStorageService {
 	}
 
 	async readConversationMeta(conversationId: string): Promise<ChatConversationMeta | null> {
+		const record = await this.conversationRecords?.read(conversationId);
+		if (record) return record.deleted ? null : record.meta;
 		if (!this.dbReady) return null;
 		const convRepo = sqliteStoreManager.getChatConversationRepo();
 		const convRow = await convRepo.getById(conversationId);
@@ -341,6 +403,8 @@ export class ChatStorageService {
 	}
 
 	async readProjectMeta(projectId: string): Promise<ChatProjectMeta | null> {
+		const state = await this.readProjectState(projectId);
+		if (state) return state.deleted ? null : state.meta;
 		if (!this.dbReady) return null;
 		try {
 			const projectRepo = sqliteStoreManager.getChatProjectRepo();
@@ -365,6 +429,15 @@ export class ChatStorageService {
 	async readProjectContext(projectId: string): Promise<ChatProjectContext | null> {
 		const projectMeta = await this.readProjectMeta(projectId);
 		if (!projectMeta) return null;
+		const state = await this.readProjectState(projectId);
+		if (state) {
+			const brief = await this.readProjectBrief(state.briefPath);
+			return {
+				...state.machineContext,
+				description: brief?.description || undefined,
+				instructions: brief?.instructions || undefined,
+			};
+		}
 
 		if (!projectMeta.folderPath) {
 			console.warn(`[ChatStore] Project folder path is not set for project: ${projectMeta.id}`);
@@ -374,17 +447,130 @@ export class ChatStorageService {
 		const summaryPath = joinPath(folderPath, CHAT_PROJECT_SUMMARY_FILENAME);
 		const summaryFile = getFileRef(summaryPath, this.app);
 		if (!summaryFile) {
-			throw new Error(`Project summary file not found: ${summaryPath}`);
+			const context: ChatProjectContext = {
+				lastUpdatedTimestamp: projectMeta.updatedAtTimestamp,
+			};
+			if (this.generatedOutputs) {
+				await this.saveProjectState(projectMeta, context, folderPath);
+			}
+			return context;
 		}
 		const summaryRaw = await this.app.vault.read(summaryFile);
 		const summaryDocModel = ChatProjectSummaryDoc.parse(summaryRaw);
-		return {
+		const legacyContext: ChatProjectContext = {
 			lastUpdatedTimestamp: projectMeta.updatedAtTimestamp,
 			description: summaryDocModel.description || undefined,
 			instructions: summaryDocModel.instructions || undefined,
 			shortSummary: summaryDocModel.shortSummary || undefined,
 			fullSummary: summaryDocModel.fullSummary || undefined,
 		};
+		if (this.generatedOutputs) {
+			await this.saveProjectState(projectMeta, legacyContext, folderPath, {
+				legacyPath: summaryPath,
+				legacyRaw: summaryRaw,
+			});
+		}
+		return legacyContext;
+	}
+
+	private async saveLegacyProjectSummary(
+		projectFolder: string,
+		context?: ChatProjectContext,
+	): Promise<void> {
+		const summaryFilePath = joinPath(projectFolder, CHAT_PROJECT_SUMMARY_FILENAME);
+		const initSummaryFile = getFileRef(summaryFilePath, this.app);
+		let existingDescription = context?.description;
+		let existingInstructions = context?.instructions;
+		if (existingDescription === undefined || existingInstructions === undefined) {
+			const existing = initSummaryFile ? ChatProjectSummaryDoc.parse(await this.app.vault.read(initSummaryFile)) : null;
+			if (existingDescription === undefined) existingDescription = existing?.description ?? '';
+			if (existingInstructions === undefined) existingInstructions = existing?.instructions ?? '';
+		}
+		const summaryContent = ChatProjectSummaryDoc.buildMarkdown({
+			description: existingDescription,
+			instructions: existingInstructions,
+			shortSummary: context?.shortSummary ?? '',
+			fullSummary: context?.fullSummary ?? '',
+		});
+		await writeVaultFile(initSummaryFile, summaryFilePath, summaryContent, this.app);
+	}
+
+	private async saveProjectState(
+		project: ChatProjectMeta,
+		context: ChatProjectContext | undefined,
+		projectFolder: string,
+		legacy?: { legacyPath: string; legacyRaw: string },
+	): Promise<void> {
+		if (!this.generatedOutputs) return;
+		const current = await this.readProjectState(project.id);
+		const legacyPath = legacy?.legacyPath ?? joinPath(projectFolder, CHAT_PROJECT_SUMMARY_FILENAME);
+		const legacyFile = getFileRef(legacyPath, this.app);
+		const legacyRaw = legacy?.legacyRaw ?? (legacyFile ? await this.app.vault.read(legacyFile) : undefined);
+		const legacyModel = legacyRaw === undefined ? null : ChatProjectSummaryDoc.parse(legacyRaw);
+		const currentBrief = await this.readProjectBrief(current?.briefPath);
+		const description = context?.description ?? currentBrief?.description ?? legacyModel?.description ?? '';
+		const instructions = context?.instructions ?? currentBrief?.instructions ?? legacyModel?.instructions ?? '';
+		let briefPath = current?.briefPath;
+		if (description || instructions) {
+			briefPath = this.generatedOutputs.resolvePath('project.brief', { projectId: project.id });
+			await ensureFolderRecursive(briefPath.slice(0, briefPath.lastIndexOf('/')), this.app);
+			const briefFile = getFileRef(briefPath, this.app);
+			await writeVaultFile(
+				briefFile,
+				briefPath,
+				ChatProjectBriefDoc.buildMarkdown({ description, instructions }),
+				this.app,
+			);
+		}
+		const { description: _description, instructions: _instructions, ...machineContext } = context ?? {
+			lastUpdatedTimestamp: project.updatedAtTimestamp,
+		};
+		const state: ChatProjectStateSnapshot = {
+			meta: project,
+			machineContext: {
+				...current?.machineContext,
+				...machineContext,
+				lastUpdatedTimestamp: context?.lastUpdatedTimestamp ?? project.updatedAtTimestamp,
+			},
+			briefPath,
+			legacySummaryPath: legacyRaw === undefined ? current?.legacySummaryPath : legacyPath,
+			deleted: false,
+		};
+		const envelope = await this.generatedOutputs.snapshots.writeSnapshot<ChatProjectStateSnapshot>({
+			outputId: 'chat.project-state',
+			recordKey: project.id,
+			pathVariables: { projectId: project.id },
+			payload: state,
+		});
+		if (legacyRaw === undefined) return;
+		const migration = {
+			migrationId: 'project-summary-to-state-and-brief-v1',
+			sourceOutputId: 'legacy.project-summary-markdown',
+			targetOutputId: 'chat.project-state',
+			sourcePath: legacyPath,
+			targetPath: this.generatedOutputs.resolvePath('chat.project-state', { projectId: project.id }),
+			sourceChecksum: hashSHA256(legacyRaw),
+			targetChecksum: envelope.checksum,
+		};
+		await this.generatedOutputs.migrations.append({ ...migration, status: 'imported' });
+		await this.generatedOutputs.migrations.append({ ...migration, status: 'validated' });
+	}
+
+	private async readProjectState(projectId: string): Promise<ChatProjectStateSnapshot | null> {
+		if (!this.generatedOutputs) return null;
+		const result = await this.generatedOutputs.snapshots.readSnapshot<ChatProjectStateSnapshot>({
+			outputId: 'chat.project-state',
+			recordKey: projectId,
+			pathVariables: { projectId },
+		});
+		return result?.envelope.payload ?? null;
+	}
+
+	private async readProjectBrief(path?: string): Promise<ReturnType<typeof ChatProjectBriefDoc.parse> | null> {
+		if (!path) return null;
+		const file = getFileRef(path, this.app);
+		if (!file) return null;
+		return ChatProjectBriefDoc.parse(await this.app.vault.read(file));
 	}
 
 	async listProjects(): Promise<ChatProject[]> {
@@ -444,17 +630,24 @@ export class ChatStorageService {
 	}
 
 	async updateMessageStarred(
+		conversationId: string,
 		messageId: string,
 		starred: boolean,
 		contentPreview?: string | null,
 		attachmentSummary?: string | null
 	): Promise<void> {
+		await this.updateCanonicalMessage(conversationId, messageId, { starred });
 		if (!this.dbReady) return;
 		const messageRepo = sqliteStoreManager.getChatMessageRepo();
 		await messageRepo.updateStarred(messageId, starred, contentPreview, attachmentSummary);
 	}
 
-	async updateMessageSuggestedFollowups(messageId: string, followups: string[]): Promise<void> {
+	async updateMessageSuggestedFollowups(
+		conversationId: string,
+		messageId: string,
+		followups: string[],
+	): Promise<void> {
+		await this.updateCanonicalMessage(conversationId, messageId, { suggestedFollowups: followups });
 		if (!this.dbReady) return;
 		const messageRepo = sqliteStoreManager.getChatMessageRepo();
 		await messageRepo.updateSuggestedFollowups(messageId, followups);
@@ -466,6 +659,7 @@ export class ChatStorageService {
 	 * intact. Undefined values remove the key.
 	 */
 	async updateMessageVariantMeta(
+		conversationId: string,
 		messageId: string,
 		patch: {
 			variantGroupId?: string | undefined;
@@ -473,6 +667,7 @@ export class ChatStorageService {
 			isActiveVariant?: boolean | undefined;
 		},
 	): Promise<void> {
+		await this.updateCanonicalMessage(conversationId, messageId, patch);
 		if (!this.dbReady) return;
 		const messageRepo = sqliteStoreManager.getChatMessageRepo();
 		await messageRepo.updateMetaJsonPatch(messageId, {
@@ -835,6 +1030,15 @@ export class ChatStorageService {
 	// Conversation file operations =================================================
 
 	async renameConversationFile(conversationId: string, title: string): Promise<string> {
+		if (this.generatedOutputs) {
+			const conversation = await this.readConversation(conversationId, false);
+			if (!conversation) throw new Error('Conversation not found');
+			return conversation.meta.fileRelPath
+				?? getRelativePath(
+					this.rootFolder,
+					this.generatedOutputs.resolvePath('chat.conversation-events', { conversationId }),
+				);
+		}
 		const conversation = await this.readConversation(conversationId, false);
 		if (!conversation || !conversation.file) {
 			throw new Error('Conversation not found');
@@ -869,7 +1073,7 @@ export class ChatStorageService {
 			if (!isFile(child)) continue;
 			const f = child as VaultFileRef;
 			if (f.extension !== 'md') continue;
-			if (f.basename === conversation.file.basename) {
+			if (conversation.file && f.basename === conversation.file.basename) {
 				return f;
 			}
 			if (f.basename.startsWith('Conv-') && f.basename.endsWith(suffix)) {
@@ -882,9 +1086,30 @@ export class ChatStorageService {
 
 	async deleteProject(projectId: string): Promise<void> {
 		if (!this.dbReady) return;
+		const folder = await this.getProjectFolder(projectId);
 		const convRepo = sqliteStoreManager.getChatConversationRepo();
 		const convRows = await convRepo.listByProject(projectId, true);
 		const conversationIds = convRows.map(r => r.conversation_id);
+		const projectState = await this.readProjectState(projectId);
+		const projectMeta = projectState?.meta ?? await this.readProjectMeta(projectId);
+		if (this.generatedOutputs && projectMeta) {
+			await this.generatedOutputs.snapshots.writeSnapshot<ChatProjectStateSnapshot>({
+				outputId: 'chat.project-state',
+				recordKey: projectId,
+				pathVariables: { projectId },
+				payload: {
+					...(projectState ?? {
+						meta: projectMeta,
+						machineContext: { lastUpdatedTimestamp: projectMeta.updatedAtTimestamp },
+					}),
+					deleted: true,
+					deletedAt: Date.now(),
+				},
+			});
+		}
+		for (const conversationId of conversationIds) {
+			await this.conversationRecords?.markDeleted(conversationId, Date.now());
+		}
 
 		if (conversationIds.length > 0) {
 			const messageRepo = sqliteStoreManager.getChatMessageRepo();
@@ -893,9 +1118,11 @@ export class ChatStorageService {
 			await sqliteStoreManager.getChatTurnReceiptRepo().deleteByConversationIds(conversationIds);
 			await sqliteStoreManager.getChatArtifactReceiptRepo().deleteByConversationIds(conversationIds);
 		}
+		for (const plan of await this.listProjectPlans(projectId, true)) {
+			await this.writeProjectPlanState({ planId: plan.id, plan, deleted: true, deletedAt: Date.now() });
+		}
 		await sqliteStoreManager.getChatProjectPlanRepo().deleteByProjectId(projectId);
 
-		const folder = await this.getProjectFolder(projectId);
 		if (folder) {
 			await this.app.vault.trash(folder, true);
 		}
@@ -905,6 +1132,7 @@ export class ChatStorageService {
 	}
 
 	async deleteConversation(conversationId: string): Promise<void> {
+		await this.conversationRecords?.markDeleted(conversationId, Date.now());
 		if (!this.dbReady) return;
 		const conversation = await this.readConversation(conversationId, false);
 		if (conversation?.file) {
@@ -924,6 +1152,282 @@ export class ChatStorageService {
 		return messageRepo.countByConversation(conversationId);
 	}
 
+	async listDeletedCanonicalConversationIds(): Promise<Set<string>> {
+		const result = new Set<string>();
+		if (!this.conversationRecords) return result;
+		for (const conversationId of await this.conversationRecords.listConversationIds()) {
+			const record = await this.conversationRecords.read(conversationId);
+			if (record?.deleted) result.add(conversationId);
+		}
+		return result;
+	}
+
+	async migrateLegacyGeneratedOutputs(): Promise<{
+		conversationsImported: number;
+		projectsImported: number;
+		warnings: string[];
+	}> {
+		const report = { conversationsImported: 0, projectsImported: 0, warnings: [] as string[] };
+		if (!this.generatedOutputs || !this.dbReady) return report;
+		const conversationRows = await sqliteStoreManager.getChatConversationRepo().listRecent(true);
+		for (const row of conversationRows) {
+			if (await this.conversationRecords?.read(row.conversation_id)) continue;
+			try {
+				const imported = await this.readConversation(row.conversation_id, true);
+				if (imported) report.conversationsImported += 1;
+			} catch (error) {
+				report.warnings.push(`conversation ${row.conversation_id}: ${error instanceof Error ? error.message : String(error)}`);
+			}
+			try {
+				const turnRows = await sqliteStoreManager.getChatTurnReceiptRepo().listByConversation(row.conversation_id);
+				for (const receiptRow of turnRows) {
+					const receipt = ChatStorageService.parseJsonOrNull<TurnExecutionReceipt>(receiptRow.receipt_json);
+					if (receipt) await this.saveTurnReceipt(receipt);
+				}
+				const artifactRows = await sqliteStoreManager.getChatArtifactReceiptRepo().listByConversation(row.conversation_id);
+				for (const receiptRow of artifactRows) {
+					const receipt = ChatStorageService.parseJsonOrNull<ChatArtifactReceipt>(receiptRow.receipt_json);
+					if (receipt) await this.saveArtifactReceipt(receipt);
+				}
+			} catch (error) {
+				report.warnings.push(`receipts ${row.conversation_id}: ${error instanceof Error ? error.message : String(error)}`);
+			}
+		}
+		const projects = await sqliteStoreManager.getChatProjectRepo().listProjects(true);
+		for (const row of projects) {
+			if (await this.readProjectState(row.project_id)) continue;
+			try {
+				const imported = await this.readProjectContext(row.project_id);
+				if (imported) report.projectsImported += 1;
+			} catch (error) {
+				report.warnings.push(`project ${row.project_id}: ${error instanceof Error ? error.message : String(error)}`);
+			}
+		}
+		for (const job of await sqliteStoreManager.getChatMediaJobRepo().listAll()) {
+			try {
+				await this.generatedOutputs.events.appendEvent({
+					outputId: 'media.job-events',
+					streamKey: job.jobId,
+					pathVariables: { jobId: job.jobId },
+					eventId: `imported:${job.updatedAt}:${hashSHA256(canonicalJson(job))}`,
+					payload: { event: 'imported', job },
+				});
+			} catch (error) {
+				report.warnings.push(`media job ${job.jobId}: ${error instanceof Error ? error.message : String(error)}`);
+			}
+		}
+		for (const assistantRow of await sqliteStoreManager.getChatAssistantRepo().list(true)) {
+			const definition = ChatStorageService.parseAssistantRow(assistantRow);
+			if (!definition) continue;
+			try {
+				await this.writeAssistantState({ assistantId: definition.id, definition, deleted: false });
+			} catch (error) {
+				report.warnings.push(`assistant ${assistantRow.assistant_id}: ${error instanceof Error ? error.message : String(error)}`);
+			}
+		}
+		for (const planRow of await sqliteStoreManager.getChatProjectPlanRepo().listAll()) {
+			const plan = ChatStorageService.parsePlanRow(planRow);
+			if (!plan) continue;
+			try {
+				await this.writeProjectPlanState({ planId: plan.id, plan, deleted: false });
+			} catch (error) {
+				report.warnings.push(`project plan ${planRow.plan_id}: ${error instanceof Error ? error.message : String(error)}`);
+			}
+		}
+		return report;
+	}
+
+	async rebuildChatProjection(): Promise<{
+		recordsRead: number;
+		recordsWritten: number;
+		warnings: string[];
+	}> {
+		const warnings: string[] = [];
+		if (!this.generatedOutputs || !this.conversationRecords || !this.dbReady) {
+			return { recordsRead: 0, recordsWritten: 0, warnings: ['chat projection runtime is not ready'] };
+		}
+		let recordsRead = 0;
+		let recordsWritten = 0;
+		const projectSample = this.generatedOutputs.resolvePath('chat.project-state', { projectId: '__sample__' });
+		const projectRoot = projectSample.slice(0, projectSample.indexOf('/__sample__/'));
+		const projectFiles = await this.generatedOutputs.snapshots.listSnapshotFilesRecursive(projectRoot);
+		for (const path of projectFiles) {
+			if (!path.endsWith('/state.json')) continue;
+			const segments = path.split('/');
+			const projectId = segments[segments.length - 2];
+			if (!projectId) continue;
+			try {
+				const state = await this.readProjectState(projectId);
+				if (!state) continue;
+				recordsRead += 1;
+				if (state.deleted) {
+					await sqliteStoreManager.getChatProjectPlanRepo().deleteByProjectId(projectId);
+					await sqliteStoreManager.getChatProjectRepo().deleteByProjectId(projectId);
+					recordsWritten += 1;
+					continue;
+				}
+				await sqliteStoreManager.getChatProjectRepo().upsertProject({
+					projectId: state.meta.id,
+					name: state.meta.name,
+					folderRelPath: state.meta.folderPath ?? '',
+					createdAtTs: state.meta.createdAtTimestamp,
+					updatedAtTs: state.meta.updatedAtTimestamp,
+				});
+				recordsWritten += 1;
+			} catch (error) {
+				warnings.push(`project projection ${projectId}: ${error instanceof Error ? error.message : String(error)}`);
+			}
+		}
+
+		for (const conversationId of await this.conversationRecords.listConversationIds()) {
+			try {
+				const record = await this.conversationRecords.read(conversationId);
+				if (!record) continue;
+				if (record.deleted) {
+					await sqliteStoreManager.getChatMessageRepo().deleteByConversationIds([conversationId]);
+					await sqliteStoreManager.getChatConversationRepo().deleteByConversationIds([conversationId]);
+					await sqliteStoreManager.getChatTurnReceiptRepo().deleteByConversationIds([conversationId]);
+					await sqliteStoreManager.getChatArtifactReceiptRepo().deleteByConversationIds([conversationId]);
+					recordsRead += 1;
+					recordsWritten += 1;
+					continue;
+				}
+				recordsRead += 1 + record.messages.length;
+				const metaExtras = ChatStorageService.buildConversationMetaExtras(record.meta);
+				await sqliteStoreManager.getChatConversationRepo().upsertConversation({
+					conversationId: record.meta.id,
+					projectId: record.meta.projectId ?? null,
+					title: record.meta.title,
+					fileRelPath: record.meta.fileRelPath ?? '',
+					createdAtTs: record.meta.createdAtTimestamp,
+					updatedAtTs: record.meta.updatedAtTimestamp,
+					activeModel: record.meta.activeModel,
+					activeProvider: record.meta.activeProvider,
+					tokenUsageTotal: record.meta.tokenUsageTotal ?? null,
+					titleManuallyEdited: record.meta.titleManuallyEdited ?? false,
+					titleAutoUpdated: record.meta.titleAutoUpdated ?? false,
+					contextLastUpdatedTimestamp: record.meta.contextLastUpdatedTimestamp ?? null,
+					contextLastMessageIndex: record.meta.contextLastMessageIndex ?? null,
+					archivedRelPath: record.meta.archived ? record.meta.fileRelPath ?? '' : null,
+					metaJson: Object.keys(metaExtras).length > 0 ? JSON.stringify(metaExtras) : null,
+				});
+				await sqliteStoreManager.getChatMessageRepo().upsertMessages(conversationId, record.messages);
+				const resourceRepo = sqliteStoreManager.getChatMessageResourceRepo();
+				for (const message of record.messages) {
+					if (message.resources?.length) await resourceRepo.replaceForMessage(message.id, message.resources);
+				}
+				const turnReceipts = await this.listTurnReceipts(conversationId);
+				for (const receipt of turnReceipts) {
+					await sqliteStoreManager.getChatTurnReceiptRepo().upsert({
+						request_id: receipt.requestId,
+						conversation_id: receipt.conversationId,
+						message_id: receipt.messageId,
+						run_id: receipt.runId ?? null,
+						status: receipt.status,
+						receipt_json: JSON.stringify(receipt),
+						started_at_ts: receipt.startedAt,
+						finished_at_ts: receipt.finishedAt ?? null,
+					});
+				}
+				const artifactReceipts = await this.listArtifactReceiptsByConversation(conversationId);
+				for (const receipt of artifactReceipts) {
+					await sqliteStoreManager.getChatArtifactReceiptRepo().upsert({
+						artifact_id: receipt.artifactId,
+						run_id: receipt.runId,
+						message_id: receipt.messageId,
+						conversation_id: receipt.conversationId,
+						project_id: receipt.projectId ?? null,
+						direction: receipt.direction,
+						kind: receipt.kind,
+						state: receipt.state,
+						title: receipt.title,
+						receipt_json: JSON.stringify(receipt),
+						created_at_ts: receipt.createdAt,
+					});
+				}
+				recordsRead += turnReceipts.length + artifactReceipts.length;
+				recordsWritten += 1 + record.messages.length + turnReceipts.length + artifactReceipts.length;
+			} catch (error) {
+				warnings.push(`conversation projection ${conversationId}: ${error instanceof Error ? error.message : String(error)}`);
+			}
+		}
+		const mediaSample = this.generatedOutputs.resolvePath('media.job-events', { jobId: '__sample__' });
+		const mediaRoot = mediaSample.slice(0, mediaSample.lastIndexOf('/'));
+		for (const path of await this.generatedOutputs.events.listFilesRecursiveAt(mediaRoot)) {
+			if (!path.endsWith('.jsonl') || path.includes('.corrupt-')) continue;
+			const filename = path.slice(path.lastIndexOf('/') + 1);
+			const jobId = filename.slice(0, -'.jsonl'.length);
+			try {
+				const stream = await this.generatedOutputs.events.readEvents<{
+					event: string;
+					job: MediaJob;
+				}>({
+					outputId: 'media.job-events',
+					streamKey: jobId,
+					pathVariables: { jobId },
+				});
+				if (stream.corruption) throw new Error(`corrupt at line ${stream.corruption.lineNumber}`);
+				const latest = stream.events[stream.events.length - 1]?.payload.job;
+				if (!latest) continue;
+				recordsRead += stream.events.length;
+				await sqliteStoreManager.getChatMediaJobRepo().upsert(latest);
+				recordsWritten += 1;
+			} catch (error) {
+				warnings.push(`media projection ${jobId}: ${error instanceof Error ? error.message : String(error)}`);
+			}
+		}
+		for (const assistantId of await this.listSnapshotRecordIds('chat.assistant-definition', 'assistantId')) {
+			try {
+				const state = await this.readAssistantState(assistantId);
+				if (!state) continue;
+				recordsRead += 1;
+				if (state.deleted || !state.definition) {
+					await sqliteStoreManager.getChatAssistantRepo().deleteById(assistantId);
+					recordsWritten += 1;
+					continue;
+				}
+				const definition = state.definition;
+				await sqliteStoreManager.getChatAssistantRepo().upsert({
+					assistant_id: definition.id,
+					name: definition.name,
+					definition_json: JSON.stringify(definition),
+					created_at_ts: definition.createdAt,
+					updated_at_ts: definition.updatedAt,
+					archived: definition.archived ? 1 : 0,
+				});
+				recordsWritten += 1;
+			} catch (error) {
+				warnings.push(`assistant projection ${assistantId}: ${error instanceof Error ? error.message : String(error)}`);
+			}
+		}
+		for (const planId of await this.listSnapshotRecordIds('chat.project-plan-state', 'planId')) {
+			try {
+				const state = await this.readProjectPlanState(planId);
+				if (!state) continue;
+				recordsRead += 1;
+				if (state.deleted || !state.plan) {
+					await sqliteStoreManager.getChatProjectPlanRepo().deleteById(planId);
+					recordsWritten += 1;
+					continue;
+				}
+				const plan = state.plan;
+				await sqliteStoreManager.getChatProjectPlanRepo().upsert({
+					plan_id: plan.id,
+					project_id: plan.projectId,
+					title: plan.title,
+					status: plan.status,
+					source_json: JSON.stringify(plan.source),
+					progress_json: plan.progress ? JSON.stringify(plan.progress) : null,
+					updated_at_ts: plan.updatedAt,
+				});
+				recordsWritten += 1;
+			} catch (error) {
+				warnings.push(`project plan projection ${planId}: ${error instanceof Error ? error.message : String(error)}`);
+			}
+		}
+		return { recordsRead, recordsWritten, warnings };
+	}
+
 	// Chat Studio durable contracts (2026-07-15 spec §12) ======================
 
 	/** Pin/unpin a conversation in the left column. */
@@ -940,16 +1444,16 @@ export class ChatStorageService {
 	 * rows out by default.
 	 */
 	async setConversationArchived(conversationId: string, archived: boolean): Promise<void> {
-		if (!this.dbReady) return;
-		const convRepo = sqliteStoreManager.getChatConversationRepo();
-		const row = await convRepo.getById(conversationId);
-		if (!row) throw new Error(`Conversation not found: ${conversationId}`);
-		await convRepo.updateFilePath(row.conversation_id, row.file_rel_path, archived ? row.file_rel_path : null);
+		const updated = await this.upsertConversationMeta(conversationId, {
+			archived: archived || undefined,
+		});
+		if (!updated) throw new Error(`Conversation not found: ${conversationId}`);
 	}
 
 	// Assistants ---------------------------------------------------------------
 
 	async saveAssistant(definition: ChatAssistantDefinition): Promise<void> {
+		await this.writeAssistantState({ assistantId: definition.id, definition, deleted: false });
 		if (!this.dbReady) return;
 		await sqliteStoreManager.getChatAssistantRepo().upsert({
 			assistant_id: definition.id,
@@ -962,12 +1466,24 @@ export class ChatStorageService {
 	}
 
 	async readAssistant(assistantId: string): Promise<ChatAssistantDefinition | null> {
+		const state = await this.readAssistantState(assistantId);
+		if (state) return state.deleted ? null : state.definition ?? null;
 		if (!this.dbReady) return null;
 		const row = await sqliteStoreManager.getChatAssistantRepo().getById(assistantId);
 		return row ? ChatStorageService.parseAssistantRow(row) : null;
 	}
 
 	async listAssistants(includeArchived: boolean = false): Promise<ChatAssistantDefinition[]> {
+		if (this.generatedOutputs) {
+			const result: ChatAssistantDefinition[] = [];
+			for (const assistantId of await this.listSnapshotRecordIds('chat.assistant-definition', 'assistantId')) {
+				const state = await this.readAssistantState(assistantId);
+				if (!state?.definition || state.deleted) continue;
+				if (!includeArchived && state.definition.archived) continue;
+				result.push(state.definition);
+			}
+			return result.sort((a, b) => b.updatedAt - a.updatedAt);
+		}
 		if (!this.dbReady) return [];
 		const rows = await sqliteStoreManager.getChatAssistantRepo().list(includeArchived);
 		return rows
@@ -976,6 +1492,13 @@ export class ChatStorageService {
 	}
 
 	async deleteAssistant(assistantId: string): Promise<void> {
+		const current = await this.readAssistant(assistantId);
+		await this.writeAssistantState({
+			assistantId,
+			definition: current ?? undefined,
+			deleted: true,
+			deletedAt: Date.now(),
+		});
 		if (!this.dbReady) return;
 		await sqliteStoreManager.getChatAssistantRepo().deleteById(assistantId);
 	}
@@ -993,6 +1516,7 @@ export class ChatStorageService {
 	// Project plans ------------------------------------------------------------
 
 	async saveProjectPlan(plan: ProjectPlanRef): Promise<void> {
+		await this.writeProjectPlanState({ planId: plan.id, plan, deleted: false });
 		if (!this.dbReady) return;
 		await sqliteStoreManager.getChatProjectPlanRepo().upsert({
 			plan_id: plan.id,
@@ -1006,6 +1530,16 @@ export class ChatStorageService {
 	}
 
 	async listProjectPlans(projectId: string, includeArchived: boolean = false): Promise<ProjectPlanRef[]> {
+		if (this.generatedOutputs) {
+			const result: ProjectPlanRef[] = [];
+			for (const planId of await this.listSnapshotRecordIds('chat.project-plan-state', 'planId')) {
+				const state = await this.readProjectPlanState(planId);
+				if (!state?.plan || state.deleted || state.plan.projectId !== projectId) continue;
+				if (!includeArchived && state.plan.status === 'archived') continue;
+				result.push(state.plan);
+			}
+			return result.sort((a, b) => b.updatedAt - a.updatedAt);
+		}
 		if (!this.dbReady) return [];
 		const rows = await sqliteStoreManager.getChatProjectPlanRepo().listByProject(projectId, includeArchived);
 		return rows
@@ -1014,6 +1548,13 @@ export class ChatStorageService {
 	}
 
 	async deleteProjectPlan(planId: string): Promise<void> {
+		const current = await this.readProjectPlanState(planId);
+		await this.writeProjectPlanState({
+			planId,
+			plan: current?.plan,
+			deleted: true,
+			deletedAt: Date.now(),
+		});
 		if (!this.dbReady) return;
 		await sqliteStoreManager.getChatProjectPlanRepo().deleteById(planId);
 	}
@@ -1034,9 +1575,73 @@ export class ChatStorageService {
 		}
 	}
 
+	private writeAssistantState(state: ChatAssistantStateSnapshot): Promise<unknown> {
+		if (!this.generatedOutputs) return Promise.resolve();
+		return this.generatedOutputs.snapshots.writeSnapshot<ChatAssistantStateSnapshot>({
+			outputId: 'chat.assistant-definition',
+			recordKey: state.assistantId,
+			pathVariables: { assistantId: state.assistantId },
+			payload: state,
+		});
+	}
+
+	private async readAssistantState(assistantId: string): Promise<ChatAssistantStateSnapshot | null> {
+		if (!this.generatedOutputs) return null;
+		const result = await this.generatedOutputs.snapshots.readSnapshot<ChatAssistantStateSnapshot>({
+			outputId: 'chat.assistant-definition',
+			recordKey: assistantId,
+			pathVariables: { assistantId },
+		});
+		return result?.envelope.payload ?? null;
+	}
+
+	private writeProjectPlanState(state: ChatProjectPlanStateSnapshot): Promise<unknown> {
+		if (!this.generatedOutputs) return Promise.resolve();
+		return this.generatedOutputs.snapshots.writeSnapshot<ChatProjectPlanStateSnapshot>({
+			outputId: 'chat.project-plan-state',
+			recordKey: state.planId,
+			pathVariables: { planId: state.planId },
+			payload: state,
+		});
+	}
+
+	private async readProjectPlanState(planId: string): Promise<ChatProjectPlanStateSnapshot | null> {
+		if (!this.generatedOutputs) return null;
+		const result = await this.generatedOutputs.snapshots.readSnapshot<ChatProjectPlanStateSnapshot>({
+			outputId: 'chat.project-plan-state',
+			recordKey: planId,
+			pathVariables: { planId },
+		});
+		return result?.envelope.payload ?? null;
+	}
+
+	private async listSnapshotRecordIds(
+		outputId: 'chat.assistant-definition' | 'chat.project-plan-state',
+		variable: 'assistantId' | 'planId',
+	): Promise<string[]> {
+		if (!this.generatedOutputs) return [];
+		const sample = this.generatedOutputs.resolvePath(outputId, { [variable]: '__sample__' });
+		const root = sample.slice(0, sample.lastIndexOf('/'));
+		const paths = await this.generatedOutputs.snapshots.listSnapshotFiles(root);
+		return paths
+			.filter((path) => path.endsWith('.json') && !path.includes('.tmp-'))
+			.map((path) => path.slice(path.lastIndexOf('/') + 1, -'.json'.length))
+			.sort();
+	}
+
 	// Turn receipts --------------------------------------------------------------
 
 	async saveTurnReceipt(receipt: TurnExecutionReceipt): Promise<void> {
+		if (this.generatedOutputs) {
+			await this.generatedOutputs.events.appendEvent({
+				outputId: 'run.events',
+				streamKey: receipt.conversationId,
+				pathVariables: { domain: 'chat' },
+				partitionFilename: `${receipt.conversationId}.jsonl`,
+				eventId: `turn-receipt:${receipt.requestId}:${hashSHA256(canonicalJson(receipt))}`,
+				payload: { kind: 'turn-receipt' as const, receipt },
+			});
+		}
 		if (!this.dbReady) return;
 		await sqliteStoreManager.getChatTurnReceiptRepo().upsert({
 			request_id: receipt.requestId,
@@ -1057,6 +1662,23 @@ export class ChatStorageService {
 	}
 
 	async listTurnReceipts(conversationId: string): Promise<TurnExecutionReceipt[]> {
+		if (this.generatedOutputs) {
+			const stream = await this.generatedOutputs.events.readEvents<{
+				kind: 'turn-receipt';
+				receipt: TurnExecutionReceipt;
+			}>({
+				outputId: 'run.events',
+				streamKey: conversationId,
+				pathVariables: { domain: 'chat' },
+				partitionFilename: `${conversationId}.jsonl`,
+			});
+			if (stream.corruption) throw new Error(`Chat turn receipt stream is corrupt at line ${stream.corruption.lineNumber}.`);
+			const latest = new Map<string, TurnExecutionReceipt>();
+			for (const event of stream.events) {
+				if (event.payload.kind === 'turn-receipt') latest.set(event.payload.receipt.requestId, event.payload.receipt);
+			}
+			if (latest.size > 0) return [...latest.values()].sort((a, b) => a.startedAt - b.startedAt);
+		}
 		if (!this.dbReady) return [];
 		const rows = await sqliteStoreManager.getChatTurnReceiptRepo().listByConversation(conversationId);
 		return rows
@@ -1067,6 +1689,15 @@ export class ChatStorageService {
 	// Artifact receipts ----------------------------------------------------------
 
 	async saveArtifactReceipt(receipt: ChatArtifactReceipt): Promise<void> {
+		if (this.generatedOutputs) {
+			await this.generatedOutputs.events.appendEvent({
+				outputId: 'chat.artifact-receipt',
+				streamKey: receipt.conversationId,
+				pathVariables: { conversationId: receipt.conversationId },
+				eventId: `artifact-receipt:${receipt.artifactId}:${hashSHA256(canonicalJson(receipt))}`,
+				payload: receipt,
+			});
+		}
 		if (!this.dbReady) return;
 		await sqliteStoreManager.getChatArtifactReceiptRepo().upsert({
 			artifact_id: receipt.artifactId,
@@ -1084,6 +1715,17 @@ export class ChatStorageService {
 	}
 
 	async listArtifactReceiptsByConversation(conversationId: string): Promise<ChatArtifactReceipt[]> {
+		if (this.generatedOutputs) {
+			const stream = await this.generatedOutputs.events.readEvents<ChatArtifactReceipt>({
+				outputId: 'chat.artifact-receipt',
+				streamKey: conversationId,
+				pathVariables: { conversationId },
+			});
+			if (stream.corruption) throw new Error(`Chat artifact receipt stream is corrupt at line ${stream.corruption.lineNumber}.`);
+			const latest = new Map<string, ChatArtifactReceipt>();
+			for (const event of stream.events) latest.set(event.payload.artifactId, event.payload);
+			if (latest.size > 0) return [...latest.values()].sort((a, b) => a.createdAt - b.createdAt);
+		}
 		if (!this.dbReady) return [];
 		const rows = await sqliteStoreManager.getChatArtifactReceiptRepo().listByConversation(conversationId);
 		return rows
@@ -1126,5 +1768,74 @@ export class ChatStorageService {
 		} catch {
 			return null;
 		}
+	}
+
+	private static buildConversationMetaExtras(meta: ChatConversationMeta): Record<string, unknown> {
+		const extras: Record<string, unknown> = {};
+		if (meta.customSystemPrompt) extras.customSystemPrompt = meta.customSystemPrompt;
+		if (meta.conversationType) extras.conversationType = meta.conversationType;
+		if (meta.focusFolder) extras.focusFolder = meta.focusFolder;
+		if (meta.outputControlOverride) extras.outputControlOverride = meta.outputControlOverride;
+		if (meta.attachmentHandlingOverride) extras.attachmentHandlingOverride = meta.attachmentHandlingOverride;
+		if (meta.assistantId) extras.assistantId = meta.assistantId;
+		if (meta.modelSelection) extras.modelSelection = meta.modelSelection;
+		if (meta.pinned) {
+			extras.pinned = true;
+			extras.pinnedAt = meta.pinnedAt;
+		}
+		if (meta.parentConversationId) extras.parentConversationId = meta.parentConversationId;
+		if (meta.parentMessageId) extras.parentMessageId = meta.parentMessageId;
+		return extras;
+	}
+
+	private async updateCanonicalMessage(
+		conversationId: string,
+		messageId: string,
+		patch: Partial<ChatMessage>,
+	): Promise<void> {
+		if (!this.conversationRecords) return;
+		const record = await this.conversationRecords.read(conversationId);
+		const message = record?.messages.find((candidate) => candidate.id === messageId);
+		if (!message) return;
+		await this.conversationRecords.appendMessages(conversationId, [{ ...message, ...patch }]);
+	}
+
+	private async importLegacyConversation(
+		meta: ChatConversationMeta,
+		context: ChatContextWindow,
+		messages: ChatMessage[],
+		legacyFile: VaultFileRef,
+		legacyRaw: string,
+	): Promise<ChatConversation> {
+		if (!this.conversationRecords || !this.generatedOutputs) {
+			return { meta, context, messages, content: legacyRaw, file: legacyFile };
+		}
+		const targetPath = this.generatedOutputs.resolvePath('chat.conversation-events', {
+			conversationId: meta.id,
+		});
+		const canonicalMeta = {
+			...meta,
+			fileRelPath: getRelativePath(this.rootFolder, targetPath),
+		};
+		const migration = {
+			migrationId: 'chat-markdown-to-jsonl-v1',
+			sourceOutputId: 'legacy.chat-markdown',
+			targetOutputId: 'chat.conversation-events',
+			sourcePath: legacyFile.path,
+			targetPath,
+			sourceChecksum: hashSHA256(legacyRaw),
+		};
+		await this.generatedOutputs.migrations.append({ ...migration, status: 'discovered' });
+		await this.conversationRecords.appendMeta(meta.id, canonicalMeta);
+		await this.conversationRecords.appendContext(meta.id, context);
+		await this.conversationRecords.appendMessages(meta.id, messages);
+		const targetChecksum = hashSHA256(canonicalJson({ meta: canonicalMeta, context, messages }));
+		await this.generatedOutputs.migrations.append({ ...migration, status: 'imported', targetChecksum });
+		const replay = await this.conversationRecords.read(meta.id);
+		if (!replay || replay.messages.length !== messages.length) {
+			throw new Error(`Chat JSONL replay mismatch for ${meta.id}.`);
+		}
+		await this.generatedOutputs.migrations.append({ ...migration, status: 'validated', targetChecksum });
+		return { meta: canonicalMeta, context, messages, content: '' };
 	}
 }

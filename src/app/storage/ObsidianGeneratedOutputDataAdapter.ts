@@ -42,4 +42,17 @@ export class ObsidianGeneratedOutputDataAdapter implements GeneratedOutputDataAd
 	ensureDirectory(path: string): Promise<void> {
 		return ensureAdapterDirectory(this.app, path);
 	}
+
+	async listFiles(path: string): Promise<readonly string[]> {
+		if (!(await this.app.vault.adapter.exists(path))) return [];
+		const listing = await this.app.vault.adapter.list(path);
+		return listing.files;
+	}
+
+	async listFilesRecursive(path: string): Promise<readonly string[]> {
+		if (!(await this.app.vault.adapter.exists(path))) return [];
+		const listing = await this.app.vault.adapter.list(path);
+		const nested = await Promise.all(listing.folders.map((folder) => this.listFilesRecursive(folder)));
+		return [...listing.files, ...nested.flat()];
+	}
 }
