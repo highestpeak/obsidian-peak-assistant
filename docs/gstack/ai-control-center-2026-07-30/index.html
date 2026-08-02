@@ -1380,7 +1380,6 @@
     function renderCapabilityInspector(item) {
       inspector.innerHTML = inspectorHeader(item, 'capability') + `
         <section class="panel active">
-          <div class="section"><h2>Expected behavior</h2><div class="cards"><div class="card"><strong>What you get</strong><span>${item.success}</span></div><div class="card"><strong>Safety boundary</strong><span>${item.mustNot}</span></div></div></div>
           <div class="section"><h2>At a glance</h2><dl class="facts"><dt>Available in</dt><dd>${item.surface}</dd><dt>Execution kind</dt><dd>${item.executionKind}</dd><dt>Response style</dt><dd>${item.shape}</dd><dt>Produces</dt><dd>${item.output}</dd><dt>You review it in</dt><dd>${item.review}</dd></dl></div>
           <div class="section configuration-start"><h2>Availability</h2><label class="route active"><input type="checkbox" checked><span><strong>Enable this action</strong><span>Applies to this capability-step owner without changing other actions.</span></span><span class="pill green">On</span></label></div>
           <div class="section"><h2>${item.executionKind === 'media' ? 'Route & model' : 'Model policy'}</h2>${renderModelControls(item)}</div>
