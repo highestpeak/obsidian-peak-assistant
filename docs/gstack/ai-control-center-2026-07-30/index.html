@@ -247,7 +247,6 @@
     .section { margin-bottom: 24px; }
     .section h2 { margin: 0 0 10px; font-size: 14px; }
     .section p { margin: 0; color: var(--muted); }
-    .configuration-start { margin-top: 32px; padding-top: 22px; border-top: 1px solid var(--line); }
     .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
     .card { padding: 13px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); }
     .card strong { display: block; margin-bottom: 4px; }
@@ -1380,12 +1379,10 @@
     function renderCapabilityInspector(item) {
       inspector.innerHTML = inspectorHeader(item, 'capability') + `
         <section class="panel active">
-          <div class="section"><h2>At a glance</h2><dl class="facts"><dt>Available in</dt><dd>${item.surface}</dd><dt>Execution kind</dt><dd>${item.executionKind}</dd><dt>Response style</dt><dd>${item.shape}</dd><dt>Produces</dt><dd>${item.output}</dd><dt>You review it in</dt><dd>${item.review}</dd></dl></div>
-          <div class="section configuration-start"><h2>Availability</h2><label class="route active"><input type="checkbox" checked><span><strong>Enable this action</strong><span>Applies to this capability-step owner without changing other actions.</span></span><span class="pill green">On</span></label></div>
+          <div class="section"><h2>Availability</h2><label class="route active"><input type="checkbox" checked><span><strong>Enable this action</strong><span>Applies to this capability-step owner without changing other actions.</span></span><span class="pill green">On</span></label></div>
           <div class="section"><h2>${item.executionKind === 'media' ? 'Route & model' : 'Model policy'}</h2>${renderModelControls(item)}</div>
           <div class="section"><h2>Prompt &amp; instructions</h2>${renderPromptControls(item)}</div>
           ${renderExecutionControls(item)}
-          <div class="section"><h2>Locked runtime contract</h2><dl class="facts"><dt>Input / output schema</dt><dd>Visible, versioned, not editable here</dd><dt>Safety &amp; validation</dt><dd>${item.mustNot}</dd><dt>Writeback / persistence</dt><dd>${item.review}</dd><dt>Tools declared</dt><dd>${item.tools.join(' · ')}</dd></dl></div>
         </section>`;
     }
 
