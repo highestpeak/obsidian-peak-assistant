@@ -3,7 +3,7 @@
 - 日期：2026-08-02
 - 产品决定：**Accepted**
 - 技术状态：**Implementation design ready**
-- 生产状态：**Implementation pending**
+- 生产状态：**Phase 0 registry/guard complete · Phase 1-5 pending**
 
 配套材料：
 

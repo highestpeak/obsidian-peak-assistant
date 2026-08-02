@@ -444,7 +444,11 @@ export default class MyPlugin extends Plugin {
 		try {
 			const { composeAIGraphArtifactRuntime } = await import('@/app/ai-graph');
 			appContext.runtimeRegistry.setAIGraphArtifactRuntime(
-				composeAIGraphArtifactRuntime(this.app, this.settings.dataStorageFolder),
+				composeAIGraphArtifactRuntime(
+					this.app,
+					this.settings.dataStorageFolder,
+					appContext.runtimeRegistry.getGeneratedOutputRegistry(),
+				),
 			);
 		} catch (e) {
 			console.warn('[Peak AI Graph] artifact runtime compose failed:', e);

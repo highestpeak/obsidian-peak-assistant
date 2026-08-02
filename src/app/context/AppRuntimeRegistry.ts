@@ -34,6 +34,8 @@ import type { HubCurationScheduler } from '@/service/hub/HubCurationScheduler';
 import type { DebugTracePort } from '@/core/debug-trace';
 import type { DocumentComposerRuntime } from '@/app/composer/DocumentComposerRuntime';
 import type { AIGraphArtifactRuntime } from '@/service/ai-graph';
+import { createDefaultGeneratedOutputRegistry } from '@/core/storage/generated-output';
+import type { GeneratedOutputRegistry } from '@/core/storage/generated-output';
 
 /**
  * Bundle of the three usage-telemetry services. They boot and dispose
@@ -47,6 +49,7 @@ export interface UsageServices {
 }
 
 export class AppRuntimeRegistry {
+	private readonly generatedOutputRegistry: GeneratedOutputRegistry;
 	private vaultLintRuntime: VaultLintRuntime | null = null;
 	private ambientRuntime: AmbientRuntime | null = null;
 	private vaultReviewRuntime: VaultReviewRuntime | null = null;
@@ -63,6 +66,18 @@ export class AppRuntimeRegistry {
 	private debugTracePort: DebugTracePort | null = null;
 	private documentComposerRuntime: DocumentComposerRuntime | null = null;
 	private aiGraphArtifactRuntime: AIGraphArtifactRuntime | null = null;
+
+	constructor(generatedOutputRegistry: GeneratedOutputRegistry = createDefaultGeneratedOutputRegistry()) {
+		this.generatedOutputRegistry = generatedOutputRegistry;
+	}
+
+	/**
+	 * Immutable policy catalog for every persistent generated output. It is
+	 * constructed once with the app runtime, never through a service singleton.
+	 */
+	getGeneratedOutputRegistry(): GeneratedOutputRegistry {
+		return this.generatedOutputRegistry;
+	}
 
 	/**
 	 * Bind the Vault Lint runtime. Called exactly once at plugin boot

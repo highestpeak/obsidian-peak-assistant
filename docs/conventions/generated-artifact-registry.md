@@ -12,6 +12,8 @@
 
 配套实施设计见 [生成产物与存储治理实现设计](../superpowers/specs/2026-08-02-generated-artifact-storage-governance-implementation-design.md)。较早的 [机器运行记录 JSONL 设计](../superpowers/specs/2026-07-21-machine-record-storage-jsonl-design.md) 仍保留历史背景；两者冲突时，以本文和 2026-08-02 实现设计为准。
 
+运行时 Phase 0 已落地：typed catalog 位于 `src/core/storage/generated-output/`，49 个 descriptor 与下方 49 个文档 ID 一一对应；`AppRuntimeRegistry` 拥有唯一实例，AI Graph artifact 与 run-event 路径是首个 adopter。当前 Chat、Project、Resource Summary 和 Hub 的格式迁移仍未开始，表中的“待迁移 / 待实现”状态继续有效。
+
 ## Why
 
 当前代码里，“AI 生成”“需要保留”“需要查询”“应该出现在 Vault”长期被混成了同一件事，结果产生四类问题：
