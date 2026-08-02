@@ -799,7 +799,7 @@
         }).join('') +
         `<div class="rail-separator"></div>
          <div class="rail-title">Prompt library</div>
-         <button class="rail-button ${workspace === 'prompts' ? 'active' : ''}" data-catalog="prompts">${icons.prompt}<span>All prompts</span><small>${prompts.length}</small></button>`;
+         <button class="rail-button ${workspace === 'prompts' ? 'active' : ''}" data-catalog="prompts">${icons.prompt}<span>All prompts</span></button>`;
     }
 
     function capabilityRow(item) {
@@ -838,7 +838,7 @@
       }
 
       listTitle.textContent = 'All prompts';
-      listDescription.textContent = 'Every shared instruction in one flat, searchable list.';
+      listDescription.textContent = 'All registered prompts are flat and searchable; this design fixture shows representative rows.';
       const filtered = prompts.filter(item => [item.id, item.title, item.group, item.kind].join(' ').toLowerCase().includes(query));
       rows.innerHTML = filtered.length ? filtered.map(promptRow).join('') : '<div class="empty">No prompt matches this search.</div>';
     }
