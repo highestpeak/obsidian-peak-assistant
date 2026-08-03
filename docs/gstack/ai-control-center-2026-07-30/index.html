@@ -322,6 +322,8 @@
     .prompt-box + .prompt-box { margin-top: 9px; }
     .prompt-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .prompt-body { margin-top: 9px; padding: 11px; border: 1px solid var(--line); border-radius: 6px; background: white; color: #50504b; font: 11px/1.55 var(--mono); white-space: pre-wrap; }
+    .prompt-history { margin-top: 12px; }
+    .prompt-history .history-heading { margin-bottom: 8px; }
 
     .prompt-editor {
       width: 100%;
@@ -1383,7 +1385,7 @@
       const promptList = item.prompts.map(id => {
         const prompt = prompts.find(candidate => candidate.id === id);
         const actionLabel = prompt?.status === 'migration' ? 'Review migration' : 'Edit prompt';
-        return `<div class="prompt-box"><div class="prompt-head"><strong>${prompt?.title ?? id}</strong><button class="link-button" data-editor="prompt" data-prompt-id="${id}">${actionLabel}</button></div><div class="prompt-body">${prompt?.kind ?? 'Capability prompt'} · ${prompt?.version ?? 'Built-in'}</div></div>`;
+        return `<div class="prompt-box"><div class="prompt-head"><strong>${prompt?.title ?? id}</strong><button class="link-button" data-editor="prompt" data-prompt-id="${id}">${actionLabel}</button></div><div class="prompt-body">${prompt?.kind ?? 'Capability prompt'} · ${prompt?.version ?? 'Built-in'}</div>${renderInlinePromptCallHistory(prompt)}</div>`;
       }).join('');
       const actionInstruction = item.actionInstruction
         ? `<div class="prompt-box"><div class="prompt-head"><strong>Action instruction</strong><button class="link-button" data-editor="instruction">Edit instruction</button></div><div class="prompt-body">${item.actionInstruction}</div></div>`
@@ -1463,12 +1465,8 @@
       return '<span class="pill red">Failed</span>';
     }
 
-    function renderPromptCallHistory(item) {
-      const history = item.callHistory ?? [];
-      if (!history.length) {
-        return `<div class="section"><div class="history-heading"><h2>Call history</h2><span class="pill">0 calls</span></div><div class="history-empty">No recorded calls use this Prompt yet.</div></div>`;
-      }
-      const entries = history.map(call => `<details class="history-entry">
+    function renderPromptHistoryEntries(history) {
+      return history.map(call => `<details class="history-entry">
         <summary>
           <span class="history-dot ${call.status.toLowerCase()}"></span>
           <span class="history-copy"><strong>${escapeHtml(call.actionTitle)}</strong><span>${escapeHtml(call.timestamp)} · ${escapeHtml(call.surface)} · ${escapeHtml(call.route)}</span></span>
@@ -1484,7 +1482,22 @@
           <div class="receipt-field"><span>Evidence</span><code>${escapeHtml(call.evidence)}</code></div>
         </div></div>
       </details>`).join('');
-      return `<div class="section"><div class="history-heading"><h2>Call history</h2><span class="pill">${history.length} recent</span></div><div class="history-list">${entries}</div></div>`;
+    }
+
+    function renderInlinePromptCallHistory(item) {
+      const history = item?.callHistory ?? [];
+      if (!history.length) {
+        return `<div class="prompt-history"><div class="history-heading"><strong>Call history</strong><span class="pill">0 calls</span></div><div class="history-empty">No recorded calls use this Prompt yet.</div></div>`;
+      }
+      return `<div class="prompt-history"><div class="history-heading"><strong>Call history</strong><span class="pill">${history.length} recent</span></div><div class="history-list">${renderPromptHistoryEntries(history)}</div></div>`;
+    }
+
+    function renderPromptCallHistory(item) {
+      const history = item.callHistory ?? [];
+      if (!history.length) {
+        return `<div class="section"><div class="history-heading"><h2>Call history</h2><span class="pill">0 calls</span></div><div class="history-empty">No recorded calls use this Prompt yet.</div></div>`;
+      }
+      return `<div class="section"><div class="history-heading"><h2>Call history</h2><span class="pill">${history.length} recent</span></div><div class="history-list">${renderPromptHistoryEntries(history)}</div></div>`;
     }
 
     function renderPromptInspector(item) {
