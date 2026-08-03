@@ -545,13 +545,6 @@ function SearchQualitySection({
                     right={<Switch checked={settings.search.enablePPR ?? true} onChange={(v) => updateSearch('enablePPR', v)} />}
                 />
 
-                <SettingsRow
-                    icon={Sparkles}
-                    title="AI query parser"
-                    desc="Compile natural-language search into Hyper Search syntax (phrases, filters, excludes) via the fast-role LLM before running retrievers. Falls back to raw text on failure."
-                    right={<Switch checked={settings.search.useAiQueryParser ?? false} onChange={(v) => updateSearch('useAiQueryParser', v)} />}
-                />
-
                 <SettingsDisclosure
                     icon={Cog}
                     title="Inspector links"

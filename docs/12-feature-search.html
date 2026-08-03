@@ -95,10 +95,10 @@
     <header>
       <div class="eyebrow">12 · Feature · Search</div>
       <h1>Search 的目标不是找“完全一样的词”，而是帮用户找回相关笔记。</h1>
-      <p class="subtitle">这份文档两条并行线索：面向用户解释搜索为什么混合六种信号，面向维护者讲清 query rewrite、parse、召回、合并、排序、高亮的边界。</p>
+      <p class="subtitle">这份文档两条并行线索：面向用户解释搜索为什么混合六种信号，面向维护者讲清 Refine、parse、召回、合并、排序、高亮的边界。</p>
       <ul class="subtitle-list">
         <li><strong>用户视角</strong>：关键词、语义、标题、图关系、点击反馈、高亮——为什么要混合。</li>
-        <li><strong>维护者视角</strong>：optional AI query parser → <code>parseQuery</code> → 多路 retriever → weighted RRF → PPR → ranking boost → highlight——每个阶段的顺序和边界。</li>
+        <li><strong>维护者视角</strong>：可选 Refine candidate → <code>parseQuery</code> → 多路 retriever → weighted RRF → PPR → ranking boost → highlight——每个阶段的顺序和边界。</li>
       </ul>
       <div class="meta">
         <span>Reference doc</span>
@@ -320,7 +320,7 @@
 
         <section id="pipeline">
           <h2>Search Pipeline</h2>
-          <p class="lead">从代码入口看，<code>SearchClient.search()</code> 先做可选的自然语言语法编译；真正的召回、排序和高亮 pipeline 在 <code>QueryService.textSearch()</code>。它 parse query，并行执行 active retrievers，用 RRF 合并，再叠加 PPR、ranking boost、exclude、topK 和 highlight。</p>
+          <p class="lead">从代码入口看，<code>SearchClient.search()</code> 把用户原始输入或用户选中的 Refine candidate 交给主 pipeline；真正的召回、排序和高亮在 <code>QueryService.textSearch()</code>。它 parse query，并行执行 active retrievers，用 RRF 合并，再叠加 PPR、ranking boost、exclude、topK 和 highlight。</p>
           <div class="figure">
             <div class="figure-title">
               <strong>图 1 · 一条 query 的主路径</strong>
@@ -329,7 +329,6 @@
             <div class="mermaid">
 flowchart LR
   User["用户 query"]
-  Rewrite["optional AI query parser<br/>natural language -> Hyper Search syntax"]
   Parse["parseQuery<br/>terms / phrases / excludes / filters / weights"]
   Registry["RetrieverRegistry.executeAll<br/>只跑 shouldActivate=true 的 retrievers"]
   FTS["fts"]
@@ -342,7 +341,7 @@ flowchart LR
   Boost["Ranking boosts<br/>frequency / recency / graph / hub / click"]
   Filter["exclude + topK"]
   Highlight["highlight final results"]
-  User --> Rewrite --> Parse --> Registry
+  User --> Parse --> Registry
   Registry --> FTS --> RRF
   Registry --> Stem --> RRF
   Registry --> Vector --> RRF
@@ -366,8 +365,8 @@ src/service/search/query/queryService.ts
           <h2>Query Parser：先把用户输入变成计划</h2>
           <p class="prose"><code>parseQuery</code> 会把原始文本拆成 terms、phrases、excludes、filters，并根据 query 形态计算 retriever weights。这个 plan 是后续多路召回和 RRF 的共同输入。</p>
           <div class="claim">
-            <strong>自然语言 query parser 的当前状态</strong>
-            这条能力已经作为可选增强接入：<code>SearchClient.search()</code> 会在 <code>settings.useAiQueryParser</code> 开启时调用 <code>maybeCompileWithAiParser()</code>，把自然语言编译成 <code>parseQuery</code> 能吃的 Hyper Search syntax。默认关闭；没有 fast-role invoker、LLM 调用失败或 schema 校验失败时，会回退原始 query。后续产品任务是补足改写解释、bad-case 收集、本地规则 fallback 和用户可见的开关/状态。
+            <strong>Refine 与 Parser 的边界</strong>
+            Refine 是用户明确点击的 Suggest 动作：它根据当前 query 与搜索行为给出可直接执行的候选。<code>parseQuery</code> 是本地语法解析器：它读取用户输入或所选候选，不再额外发起自动 LLM 编译，避免对 Refine 已给出的 <code>folder:</code>、<code>tag:</code>、<code>-term</code> 再处理一次。
           </div>
           <table class="doc-table">
 <colgroup><col style="width: 22%"><col style="width: 34%"><col></colgroup>
@@ -508,9 +507,8 @@ src/service/search/query/queryService.ts
               <li>Ranking boost 再叠加近期编辑、hub、click-through、当前文件 2-hop related 等信号。最后执行 <code>-draft</code> exclude、取 topK、生成高亮。</li>
             </ol>
           </div>
-          <pre class="code-box">function rankSearch(rawQuery, settings):
-  effectiveQuery = maybeCompileWithAiParser(rawQuery, settings)
-  plan = parseQuery(effectiveQuery)
+          <pre class="code-box">function rankSearch(rawQuery):
+  plan = parseQuery(rawQuery)
   retrieverResults = new Map()
 
   for retriever in registry:
@@ -798,10 +796,6 @@ flowchart LR
                 <td>更新 Retriever 表、pipeline 图和 RRF weight 说明。</td>
               </tr>
               <tr>
-                <td>AI query parser 的默认开关、fallback 策略或 rewrite receipt 改了。</td>
-                <td>更新 Pipeline、Query Parser 当前状态和排障说明，避免把 opt-in 能力写成默认能力。</td>
-              </tr>
-              <tr>
                 <td>Search index、embedding、PPR 或 click-through 存储结构变化。</td>
                 <td>更新本页相关限制，并在 <code>23-infra-search-index.html</code> 补完整 index-time 说明。</td>
               </tr>
@@ -828,17 +822,7 @@ flowchart LR
               <tr>
                 <td><code data-copy="src/service/search/SearchClient.ts">SearchClient.ts</code></td>
                 <td><code>search()</code>、<code>vectorSearch()</code>、<code>init()</code>。</td>
-                <td>确认 SearchClient 是入口，未 init 会 hard error，并且会在 <code>useAiQueryParser</code> 开启时先做 query rewrite。</td>
-              </tr>
-              <tr>
-                <td><code data-copy="src/service/search/query/aiQueryParserRuntime.ts">aiQueryParserRuntime.ts</code></td>
-                <td><code>maybeCompileWithAiParser()</code>。</td>
-                <td>确认自然语言 query parser 是 opt-in；默认关闭，缺少 invoker 或失败时回退 raw query。</td>
-              </tr>
-              <tr>
-                <td><code data-copy="src/service/search/query/aiQueryParser.ts">aiQueryParser.ts</code></td>
-                <td><code>parseNaturalLanguageQuery()</code> 和 LLM response schema。</td>
-                <td>确认它把自然语言编译成 Hyper Search syntax，而不是执行 AI Search 分析。</td>
+                <td>确认 SearchClient 是入口，未 init 会 hard error，并且会把原始输入或所选 Refine candidate 原样交给查询 pipeline。</td>
               </tr>
               <tr>
                 <td><code data-copy="src/service/search/query/queryService.ts">queryService.ts</code></td>

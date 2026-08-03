@@ -632,8 +632,7 @@
 
     const capabilities = [
       ...actionRows('search', 'Search assistance', [
-        ['search.query.refine', 'Vault Search · Refine query', 'Turn the current query and recent search behavior into grounded Hyper Search candidates.', ['query-rewrite-system', 'query-rewrite'], { shape: 'Single structured call', route: 'Fast Lookup', status: 'partial', output: 'Query candidates', review: 'Query candidate picker' }],
-        ['search.query.parse-language', 'Vault Search · Parse natural language', 'Compile a natural-language request into Hyper Search syntax and fall back to the original text when parsing fails.', ['hyper-search-query-parser-system', 'hyper-search-query-parser-user'], { shape: 'Single structured call', status: 'partial', output: 'Parsed search expression' }]
+        ['search.query.refine', 'Vault Search · Refine query', 'Turn the current query and recent search behavior into grounded Hyper Search candidates.', ['query-rewrite-system', 'query-rewrite'], { shape: 'Single structured call', route: 'Fast Lookup', status: 'partial', output: 'Query candidates', review: 'Query candidate picker' }]
       ], { surface: 'Vault Search' }),
 
       ...actionRows('search', 'AI Search', [

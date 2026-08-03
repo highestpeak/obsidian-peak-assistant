@@ -116,7 +116,7 @@
       "fastLookup": {
         "title": "Fast Lookup",
         "desc": "Single-step replies, ~1s (works well with small local models). Also drives the ✦ Refine button in Vault Search.",
-        "usedBy": "The ✦ Refine button and natural-language search parsing, the “Fast” mode of Auto/Vault Review, the follow-up chat tabs in AI Analysis results, and mid-run context compaction."
+        "usedBy": "The ✦ Refine button, the “Fast” mode of Auto/Vault Review, the follow-up chat tabs in AI Analysis results, and mid-run context compaction."
       },
       "research": {
         "title": "Research",

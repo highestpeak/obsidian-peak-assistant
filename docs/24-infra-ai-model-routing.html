@@ -588,7 +588,6 @@
             <thead><tr><th>AI 触点</th><th>当前 binding</th><th>代码入口</th></tr></thead>
             <tbody>
               <tr><td><strong>✦ Refine</strong>（Vault Search 查询改写）</td><td>Fast Lookup → Agent Fast → Conversation</td><td><code>AIQueryRewriteService.ts</code></td></tr>
-              <tr><td><strong>自然语言搜索解析</strong></td><td>active Agent Fast role</td><td><code>aiQueryParserRuntime.ts</code></td></tr>
               <tr><td><strong>Agent context 压缩摘要器</strong></td><td>active Agent Fast role</td><td><code>compactSummarizerRuntime.ts</code></td></tr>
               <tr><td><strong>Usage 优化建议</strong></td><td>active Agent profile 的 primary model</td><td><code>UsageOptimizationService.ts</code> · <code>useOptimization.ts</code></td></tr>
               <tr><td><strong>语义 / 向量搜索（查询时）</strong></td><td><code>knowledgeIndex</code>（embedding）</td><td><code>vector-retriever.ts</code> → <code>embedClient.ts</code></td></tr>
@@ -722,7 +721,7 @@ knowledgeIndex = active Embedding</code></pre>
             <li><code>src/service/agents/harness/HarnessModelRunner.ts</code> — 固定模型 Harness：单 binding、多步 tool loop、无 cascade。</li>
             <li><code>src/service/agents/harness/tier/TierController.ts</code> — 升级状态机（起步、<code>onStepFinish</code>、<code>tryUpgrade</code>、<code>escalateTool</code>）。</li>
             <li><code>src/service/agents/harness/tier/scoreStep.ts</code> — 打分公式（0.5/0.3/0.2）。</li>
-            <li><code>src/service/search/query/AIQueryRewriteService.ts</code>、<code>aiQueryParserRuntime.ts</code>、<code>compactSummarizerRuntime.ts</code> — 当前 provider-direct 例外，用来判断 Gateway 收敛缺口。</li>
+            <li><code>src/ui/view/quick-search/rewrite/AIQueryRewriteService.ts</code>、<code>compactSummarizerRuntime.ts</code> — 当前 provider-direct 例外，用来判断 Gateway 收敛缺口。</li>
             <li><code>src/main.ts</code> — bootstrap + <code>saveSettings</code> 调 <code>syncProfileRegistryTierConfigs()</code>。</li>
             <li>配置面：<code>src/ui/view/settings/tabs/AISetupTab.tsx</code>（五行 + 每行“Used by”悬浮）。</li>
           </ol>
