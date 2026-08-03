@@ -323,11 +323,6 @@
     .prompt-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .prompt-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
     .prompt-body { margin-top: 9px; padding: 11px; border: 1px solid var(--line); border-radius: 6px; background: white; color: #50504b; font: 11px/1.55 var(--mono); white-space: pre-wrap; }
-    .prompt-history-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 11px; padding-top: 11px; border-top: 1px solid var(--line); }
-    .prompt-history-summary.standalone { margin-top: 0; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); }
-    .prompt-history-copy { min-width: 0; }
-    .prompt-history-copy strong, .prompt-history-copy span { display: block; }
-    .prompt-history-copy span { margin-top: 2px; color: var(--muted); font-size: 11px; }
 
     .prompt-editor {
       width: 100%;
@@ -346,28 +341,6 @@
     .prompt-editor:focus { border-color: #aaa1dc; box-shadow: 0 0 0 2px var(--accent-soft); }
     .prompt-editor.compact { min-height: 112px; }
     .prompt-editor:disabled { color: var(--muted); background: var(--surface-3); }
-
-    .history-list { overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: white; }
-    .history-entry + .history-entry { border-top: 1px solid var(--line); }
-    .history-entry summary { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto 18px; gap: 10px; align-items: center; padding: 11px 12px; cursor: pointer; list-style: none; }
-    .history-entry summary::-webkit-details-marker { display: none; }
-    .history-entry summary:hover { background: var(--surface-2); }
-    .history-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
-    .history-dot.stopped { background: var(--amber); }
-    .history-dot.failed { background: var(--red); }
-    .history-copy { min-width: 0; }
-    .history-copy strong, .history-copy span { display: block; }
-    .history-copy strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-    .history-copy span { margin-top: 2px; overflow: hidden; color: var(--muted); font-size: 11px; white-space: nowrap; text-overflow: ellipsis; }
-    .history-disclosure { display: grid; place-items: center; color: var(--subtle); transition: transform .14s ease; }
-    .history-entry[open] .history-disclosure { transform: rotate(90deg); }
-    .history-detail { padding: 12px; border-top: 1px solid var(--line); background: var(--surface-2); }
-    .receipt-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-    .receipt-field { min-width: 0; }
-    .receipt-field span, .receipt-field code { display: block; }
-    .receipt-field span { margin-bottom: 3px; color: var(--muted); font-size: 10px; font-weight: 650; text-transform: uppercase; letter-spacing: .03em; }
-    .receipt-field code { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-    .history-empty { padding: 14px; border: 1px dashed var(--line-strong); border-radius: var(--radius); color: var(--muted); background: var(--surface-2); }
 
     .button-row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
     .action-button {
@@ -460,10 +433,6 @@
     .modal-body { min-height: 0; overflow: auto; padding: 16px; }
     .modal-footer { justify-content: flex-end; border-top: 1px solid var(--line); background: var(--surface-2); }
     .modal-copy { margin-bottom: 14px; color: var(--muted); }
-    .history-modal-intro { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; color: var(--muted); }
-    .history-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
-    .history-pagination span { color: var(--muted); font-size: 11px; }
-    .history-pagination-actions { display: flex; gap: 8px; }
     .field { display: grid; gap: 6px; margin-top: 12px; }
     .field:first-child { margin-top: 0; }
     .field > span { font-weight: 650; }
@@ -560,7 +529,7 @@
         <button class="action-button modal-close" id="editorModalClose" aria-label="Close editor"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       </div>
       <div class="modal-body" id="editorModalBody"></div>
-      <div class="modal-footer" id="editorModalFooter"><button class="action-button" id="editorModalCancel">Cancel</button><button class="action-button primary" id="editorModalSave">Save changes</button></div>
+      <div class="modal-footer"><button class="action-button" id="editorModalCancel">Cancel</button><button class="action-button primary" id="editorModalSave">Save changes</button></div>
     </div>
   </div>
 
@@ -969,44 +938,6 @@
       }
     }
 
-    function promptOwnerActions(prompt) {
-      const pairedPromptIds = prompts.filter(candidate => candidate.system === prompt.id).map(candidate => candidate.id);
-      const relatedPromptIds = new Set([prompt.id, ...pairedPromptIds]);
-      return capabilities.filter(action => action.prompts.some(id => relatedPromptIds.has(id)));
-    }
-
-    function buildPromptCallHistory(prompt) {
-      const owners = promptOwnerActions(prompt);
-      const directCaller = String(prompt.callers ?? '').split(',').map(value => value.trim()).find(Boolean);
-      if (!owners.length && !directCaller) return [];
-      const timestamps = [
-        'Aug 3, 10:18', 'Aug 3, 08:44', 'Aug 2, 16:42', 'Aug 2, 11:26', 'Aug 1, 17:03',
-        'Aug 1, 09:31', 'Jul 31, 18:15', 'Jul 31, 09:07', 'Jul 30, 15:54', 'Jul 29, 13:22',
-        'Jul 28, 16:08', 'Jul 27, 10:41'
-      ];
-      const promptSlug = prompt.id.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').slice(0, 18);
-      return timestamps.map((timestamp, index) => {
-        const action = owners[index % Math.max(owners.length, 1)];
-        const isAgent = action?.executionKind === 'agent';
-        return {
-          actionTitle: action?.title ?? directCaller ?? 'Direct runtime caller',
-          surface: action?.surface ?? 'Direct runtime binding',
-          route: action?.route ?? 'Owner-defined route',
-          timestamp,
-          status: 'Succeeded',
-          duration: isAgent ? `${38 + (index % 5) * 7}.${(index % 7) + 2}s` : `${1 + (index % 4)}.${8 - (index % 7)}s`,
-          tokens: `${1240 + index * 380} in · ${312 + index * 74} out`,
-          promptVersion: prompt.customized ? 'Vault override' : prompt.status === 'migration' ? 'Runtime source' : 'Built-in default',
-          runId: `run-${promptSlug}-${index + 1}`,
-          evidence: 'Representative receipt fixture'
-        };
-      });
-    }
-
-    for (const prompt of prompts) {
-      prompt.callHistory = buildPromptCallHistory(prompt);
-    }
-
     const outputOwnerSurfaces = {
       'user-profile': 'User Profile',
       prompt: 'Prompt Library',
@@ -1122,11 +1053,8 @@
     const editorModalClose = document.getElementById('editorModalClose');
     const editorModalCancel = document.getElementById('editorModalCancel');
     const editorModalSave = document.getElementById('editorModalSave');
-    const HISTORY_PAGE_SIZE = 5;
     let editorReturnFocus = null;
     let editorInspectorScrollTop = 0;
-    let historyModalPromptId = null;
-    let historyModalPage = 0;
 
     const groups = [
       ['all', 'all', 'All AI actions'],
@@ -1396,43 +1324,11 @@
       editorModalClose.focus();
     }
 
-    function renderHistoryModalPage() {
-      const prompt = prompts.find(candidate => candidate.id === historyModalPromptId);
-      if (!prompt) return;
-      const history = prompt.callHistory ?? [];
-      const totalPages = Math.max(1, Math.ceil(history.length / HISTORY_PAGE_SIZE));
-      historyModalPage = Math.min(totalPages - 1, Math.max(0, historyModalPage));
-      const start = historyModalPage * HISTORY_PAGE_SIZE;
-      const visibleHistory = history.slice(start, start + HISTORY_PAGE_SIZE);
-      const end = Math.min(start + visibleHistory.length, history.length);
-      editorModalBody.innerHTML = history.length
-        ? `<div class="history-modal-intro"><span>Invocation receipts</span><span class="pill">${history.length} total</span></div><div class="history-list">${renderPromptHistoryEntries(visibleHistory)}</div><div class="history-pagination"><span>${start + 1}–${end} of ${history.length} · Page ${historyModalPage + 1} of ${totalPages}</span><span class="history-pagination-actions"><button class="action-button" data-history-page="-1" ${historyModalPage === 0 ? 'disabled' : ''}>Previous</button><button class="action-button" data-history-page="1" ${historyModalPage === totalPages - 1 ? 'disabled' : ''}>Next</button></span></div>`
-        : '<div class="history-empty">No recorded calls use this Prompt yet.</div>';
-    }
-
-    function openHistoryModal(trigger, promptId) {
-      const prompt = prompts.find(candidate => candidate.id === promptId);
-      if (!prompt) return;
-      editorReturnFocus = trigger;
-      editorInspectorScrollTop = inspector.scrollTop;
-      historyModalPromptId = promptId;
-      historyModalPage = 0;
-      editorModalTitle.textContent = `Call history · ${prompt.title}`;
-      editorModalSubtitle.textContent = 'Invocation receipts for this Prompt across its mapped AI actions.';
-      renderHistoryModalPage();
-      editorModalCancel.textContent = 'Close';
-      editorModalSave.classList.add('hidden');
-      editorModal.classList.remove('hidden');
-      editorModalClose.focus();
-    }
-
     function closeEditorModal() {
       editorModal.classList.add('hidden');
       inspector.scrollTop = editorInspectorScrollTop;
       editorReturnFocus?.focus();
       editorReturnFocus = null;
-      historyModalPromptId = null;
-      historyModalPage = 0;
     }
 
     function promptRole(prompt) {
@@ -1446,7 +1342,7 @@
       const promptList = item.prompts.map(id => {
         const prompt = prompts.find(candidate => candidate.id === id);
         const actionLabel = prompt?.status === 'migration' ? 'Review migration' : 'Edit prompt';
-        return `<div class="prompt-box"><div class="prompt-head"><span class="prompt-title"><strong>${prompt?.title ?? id}</strong><span class="pill">${promptRole(prompt)}</span></span><button class="link-button" data-editor="prompt" data-prompt-id="${id}">${actionLabel}</button></div><div class="prompt-body">${prompt?.kind ?? 'Capability prompt'} · ${prompt?.version ?? 'Built-in'}</div>${renderPromptHistorySummary(prompt)}</div>`;
+        return `<div class="prompt-box"><div class="prompt-head"><span class="prompt-title"><strong>${prompt?.title ?? id}</strong><span class="pill">${promptRole(prompt)}</span></span><button class="link-button" data-editor="prompt" data-prompt-id="${id}">${actionLabel}</button></div><div class="prompt-body">${prompt?.kind ?? 'Capability prompt'} · ${prompt?.version ?? 'Built-in'}</div></div>`;
       }).join('');
       const actionInstruction = item.actionInstruction
         ? `<div class="prompt-box"><div class="prompt-head"><strong>Action instruction</strong><button class="link-button" data-editor="instruction">Edit instruction</button></div><div class="prompt-body">${item.actionInstruction}</div></div>`
@@ -1520,42 +1416,6 @@
         </section>`;
     }
 
-    function historyStatusPill(status) {
-      if (status === 'Succeeded') return '<span class="pill green">Succeeded</span>';
-      if (status === 'Stopped') return '<span class="pill amber">Stopped</span>';
-      return '<span class="pill red">Failed</span>';
-    }
-
-    function renderPromptHistoryEntries(history) {
-      return history.map(call => `<details class="history-entry">
-        <summary>
-          <span class="history-dot ${call.status.toLowerCase()}"></span>
-          <span class="history-copy"><strong>${escapeHtml(call.actionTitle)}</strong><span>${escapeHtml(call.timestamp)} · ${escapeHtml(call.surface)} · ${escapeHtml(call.route)}</span></span>
-          ${historyStatusPill(call.status)}
-          <span class="history-disclosure">${icons.chevron}</span>
-        </summary>
-        <div class="history-detail"><div class="receipt-grid">
-          <div class="receipt-field"><span>Run ID</span><code>${escapeHtml(call.runId)}</code></div>
-          <div class="receipt-field"><span>Actual route</span><code>${escapeHtml(call.route)}</code></div>
-          <div class="receipt-field"><span>Prompt version</span><code>${escapeHtml(call.promptVersion)}</code></div>
-          <div class="receipt-field"><span>Tokens</span><code>${escapeHtml(call.tokens)}</code></div>
-          <div class="receipt-field"><span>Duration</span><code>${escapeHtml(call.duration)}</code></div>
-          <div class="receipt-field"><span>Evidence</span><code>${escapeHtml(call.evidence)}</code></div>
-        </div></div>
-      </details>`).join('');
-    }
-
-    function renderPromptHistorySummary(item, standalone = false) {
-      const history = item?.callHistory ?? [];
-      const latest = history[0];
-      const summary = latest ? `${history.length} recent · Last call ${latest.timestamp}` : 'No recorded calls';
-      return `<div class="prompt-history-summary ${standalone ? 'standalone' : ''}"><span class="prompt-history-copy"><strong>Call history</strong><span>${summary}</span></span><button class="action-button" data-history-prompt-id="${escapeHtml(item?.id)}">View history</button></div>`;
-    }
-
-    function renderPromptCallHistory(item) {
-      return `<div class="section"><h2>Call history</h2>${renderPromptHistorySummary(item, true)}</div>`;
-    }
-
     function renderPromptInspector(item) {
       const migrating = item.status === 'migration';
       const editor = migrating
@@ -1563,7 +1423,6 @@
         : `<div class="prompt-box"><div class="prompt-head"><strong>Vault override</strong><button class="link-button">View built-in default</button></div><textarea class="prompt-editor" placeholder="No Vault override. Add instructions here to override the built-in default."></textarea><div class="button-row"><button class="action-button" disabled>Reset to default</button><button class="action-button primary">Save override</button></div></div>`;
       inspector.innerHTML = inspectorHeader(item, 'prompt') + `<section class="panel active">
         <div class="section"><h2>Usage</h2><dl class="facts"><dt>Category</dt><dd>${item.group}</dd><dt>Used by</dt><dd>${item.owners ? `${item.owners} AI action${item.owners === 1 ? '' : 's'}` : 'Direct runtime caller; no top-level action mapped'}</dd><dt>Runtime callers</dt><dd>${item.callers || 'Companion of an executable Prompt'}</dd><dt>Source</dt><dd>${item.version}</dd></dl></div>
-        ${renderPromptCallHistory(item)}
         <div class="section"><h2>Prompt instructions</h2>${editor}</div>
         ${item.owners > 1 ? `<div class="notice">${icons.prompt}<span>This prompt is shared. Saving an override changes the instructions for all ${item.owners} actions that use it.</span></div>` : ''}
       </section>`;
@@ -1653,19 +1512,6 @@
         const bounded = Math.min(Number.isFinite(maximum) ? maximum : requested, Math.max(Number.isFinite(minimum) ? minimum : requested, requested));
         input.value = String(bounded);
         input.dispatchEvent(new Event('input', { bubbles: true }));
-        return;
-      }
-
-      const historyButton = event.target.closest('[data-history-prompt-id]');
-      if (historyButton) {
-        openHistoryModal(historyButton, historyButton.dataset.historyPromptId);
-        return;
-      }
-
-      const historyPageButton = event.target.closest('[data-history-page]');
-      if (historyPageButton) {
-        historyModalPage += Number(historyPageButton.dataset.historyPage);
-        renderHistoryModalPage();
         return;
       }
 
