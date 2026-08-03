@@ -18,6 +18,8 @@ import {
 	type PluginCommandDescriptor,
 	type PluginCommandGatewayAuditReceipt,
 	type PluginCommandGatewayConfig,
+	type PluginCommandGatewayScanProgress,
+	type PluginCommandGatewayScanResult,
 	type PluginCommandGatewaySettings,
 	type PluginCommandGatewaySnapshot,
 	type PluginCommandInteraction,
@@ -74,6 +76,56 @@ export class PluginCommandGatewayRuntime implements PluginCommandGatewayPort {
 		return this.buildSnapshot();
 	}
 
+	async scan(
+		onProgress: (progress: PluginCommandGatewayScanProgress) => void = () => {},
+	): Promise<PluginCommandGatewayScanResult> {
+		onProgress({
+			phase: 'discovering',
+			processedCommands: 0,
+			totalCommands: 0,
+			pluginCount: 0,
+		});
+		const discovered = await this.refresh();
+		const totalCommands = discovered.commands.length;
+		const pluginCount = countPlugins(discovered.commands);
+		onProgress({
+			phase: 'checking',
+			processedCommands: 0,
+			totalCommands,
+			pluginCount,
+		});
+		try {
+			const snapshot = await this.curateDiscovered((processedCommands) => {
+				onProgress({
+					phase: 'explaining',
+					processedCommands,
+					totalCommands,
+					pluginCount,
+				});
+			});
+			onProgress({
+				phase: 'complete',
+				processedCommands: totalCommands,
+				totalCommands,
+				pluginCount,
+			});
+			return { snapshot, explanationStatus: 'ready' };
+		} catch (error) {
+			const snapshot = await this.buildSnapshot();
+			onProgress({
+				phase: 'complete',
+				processedCommands: totalCommands,
+				totalCommands,
+				pluginCount,
+			});
+			return {
+				snapshot,
+				explanationStatus: 'fallback',
+				warning: `curation-unavailable:${toErrorMessage(error)}`,
+			};
+		}
+	}
+
 	async refresh(): Promise<PluginCommandGatewaySnapshot> {
 		const config = await this.getConfig();
 		const discovered = await this.deps.commandPort.discover();
@@ -84,10 +136,17 @@ export class PluginCommandGatewayRuntime implements PluginCommandGatewayPort {
 
 	async curate(): Promise<PluginCommandGatewaySnapshot> {
 		await this.refresh();
+		return this.curateDiscovered();
+	}
+
+	private async curateDiscovered(
+		onBatch?: (processedCommands: number) => void,
+	): Promise<PluginCommandGatewaySnapshot> {
 		const config = await this.getConfig();
 		const findings: Record<string, PluginCommandCurationFinding> = {
 			...this.gatewaySettings().findings,
 		};
+		onBatch?.(0);
 		for (let index = 0; index < this.descriptors.length; index += config.curation.batchSize) {
 			const batch = this.descriptors.slice(index, index + config.curation.batchSize);
 			const raw = await this.deps.aiServiceManager.queryStructured<PluginCommandCurationResponse>(
@@ -125,6 +184,7 @@ export class PluginCommandGatewayRuntime implements PluginCommandGatewayPort {
 					curatedAt: this.now(),
 				};
 			}
+			onBatch?.(Math.min(index + batch.length, this.descriptors.length));
 		}
 		await this.deps.persistSettings({
 			reviews: { ...this.gatewaySettings().reviews },
@@ -169,6 +229,47 @@ export class PluginCommandGatewayRuntime implements PluginCommandGatewayPort {
 					reviewedAt: this.now(),
 				},
 			},
+		});
+		return this.buildSnapshot();
+	}
+
+	async allowMany(commandIds: readonly string[]): Promise<PluginCommandGatewaySnapshot> {
+		if (commandIds.length === 0) return this.getSnapshot();
+		await this.refresh();
+		const settings = this.gatewaySettings();
+		const items = new Map(
+			(await this.reviewItems()).map((item) => [item.descriptor.commandId, item]),
+		);
+		const descriptors = new Map(
+			this.descriptors.map((descriptor) => [descriptor.commandId, descriptor]),
+		);
+		const reviews = { ...settings.reviews };
+		for (const commandId of new Set(commandIds)) {
+			const item = items.get(commandId);
+			const descriptor = descriptors.get(commandId);
+			if (!item || !descriptor) throw new Error(`command-not-found:${commandId}`);
+			if (descriptor.availability !== 'available') {
+				throw new Error(`command-not-available:${commandId}`);
+			}
+			if (item.effectiveRisk === 'destructive' || item.effectiveRisk === 'unknown') {
+				throw new Error(`command-risk-blocked:${commandId}:${item.effectiveRisk}`);
+			}
+			if (item.descriptor.interaction === 'modal') {
+				throw new Error(`command-modal-only:${commandId}`);
+			}
+			const finding = currentFinding(settings, descriptor);
+			reviews[commandId] = {
+				decision: 'allow',
+				risk: item.effectiveRisk,
+				purpose: item.effectivePurpose,
+				sourceHash: descriptor.sourceHash,
+				curationHash: buildCurationHash(descriptor, finding),
+				reviewedAt: this.now(),
+			};
+		}
+		await this.deps.persistSettings({
+			findings: { ...settings.findings },
+			reviews,
 		});
 		return this.buildSnapshot();
 	}
@@ -584,6 +685,10 @@ function classifyCommand(
 		purpose,
 		interaction: matches(text, classification.modalPatterns) ? 'modal' : 'unknown',
 	};
+}
+
+function countPlugins(items: readonly PluginCommandReviewItem[]): number {
+	return new Set(items.map((item) => item.descriptor.pluginId)).size;
 }
 
 function effectiveInteraction(

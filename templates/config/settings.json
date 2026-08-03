@@ -241,43 +241,91 @@
     "pluginCommands": {
       "sectionTitle": "External plugin commands",
       "sectionSub": "Review commands contributed by enabled Obsidian plugins before Copilot can use them. Everything is off by default.",
-      "unavailable": "The command gateway is not available in this runtime.",
+      "runtimeUnavailable": "The command gateway is not available in this runtime.",
       "empty": "No commands from enabled external plugins were found.",
-      "scan": "Scan",
-      "analyze": "Analyze with AI",
-      "analyzing": "Analyzing…",
-      "searchPlaceholder": "Filter plugins or commands",
-      "approved": "Approved",
-      "blocked": "Blocked",
-      "stale": "Needs review",
-      "off": "Off",
-      "allow": "Allow",
-      "deny": "Block",
-      "clear": "Turn off",
-      "sourceChanged": "Plugin metadata, command metadata, or the AI draft changed. Review again.",
-      "systemBlocked": "Unknown, destructive, and modal-only commands cannot be exposed to Copilot.",
-      "commandUnavailable": "Unavailable",
-      "noFinding": "No AI explanation yet. Deterministic metadata hints are shown.",
-      "recentRuns": "Recent command runs",
-      "noRuns": "No external plugin command has run yet.",
-      "noObservableChange": "No observable workspace or vault change",
-      "riskLabel": "Risk",
-      "purposeLabel": "Purpose",
+      "scanCommands": "Scan commands",
+      "scanning": "Scanning…",
+      "scanFallback": "Command facts were refreshed, but some explanations could not be prepared. Access stayed unchanged.",
+      "scanNote": "Scan refreshes command facts and explanations. It never changes access.",
+      "scanPhases": {
+        "discovering": "Discovering enabled plugin commands",
+        "checking": "Checking command safety",
+        "explaining": "Preparing explanations for review",
+        "complete": "Review is ready"
+      },
+      "scanMeta": {
+        "plugins": "{count} plugins",
+        "commands": "{count} commands found",
+        "accessUnchanged": "Nothing is executed or authorized during Scan"
+      },
+      "filters": {
+        "searchPlaceholder": "Search plugin or command",
+        "pluginLabel": "Plugin",
+        "allPlugins": "All plugins",
+        "riskLabel": "Risk",
+        "allRisks": "All risks",
+        "accessLabel": "Access",
+        "allAccess": "All access",
+        "clear": "Clear"
+      },
+      "summary": {
+        "approved": "Approved",
+        "notAllowed": "Not allowed",
+        "systemExcluded": "System excluded"
+      },
+      "batch": {
+        "commandsShown": "{count} commands",
+        "eligibleForAllow": "{count} eligible for bulk Allow",
+        "currentFilterScope": "Batch actions apply to the current filter",
+        "allowFiltered": "Allow filtered · {count}",
+        "allowCurrentFilter": "Allow current filter",
+        "allowCurrentFilterHint": "Only eligible commands now visible",
+        "allowAll": "Allow all eligible commands",
+        "allowAllHint": "Across plugins; unsafe commands stay excluded",
+        "shown": "{count} shown",
+        "eligible": "{count} eligible",
+        "confirmTitle": "Allow {count} commands?",
+        "confirmFiltered": "This applies only to eligible commands in the current filter.",
+        "confirmAll": "This applies across every plugin, but only to currently eligible commands.",
+        "excluded": "{count} unknown, destructive, modal-only, or unavailable commands remain excluded.",
+        "more": "+ {count} more commands",
+        "cancel": "Cancel",
+        "confirm": "Allow commands"
+      },
+      "columns": {
+        "command": "Command",
+        "risk": "Risk",
+        "access": "Access"
+      },
+      "badges": {
+        "aiAnalyzed": "AI analyzed",
+        "metadataOnly": "Metadata only"
+      },
+      "access": {
+        "allowed": "Allowed",
+        "notAllowed": "Not allowed",
+        "unavailable": "Unavailable",
+        "toggleLabel": "Allow Copilot to use {command}"
+      },
+      "warnings": {
+        "sourceChanged": "Plugin or command metadata changed. Review again.",
+        "unavailable": "{reason}",
+        "modal": "This command requires an interactive modal.",
+        "destructive": "Destructive commands cannot be exposed to Copilot.",
+        "unknown": "This command's effects could not be classified safely."
+      },
+      "activity": {
+        "title": "Recent command activity",
+        "completed": "Completed",
+        "failed": "Failed",
+        "noObservableChange": "No observable change"
+      },
+      "noFinding": "No generated explanation is available; showing deterministic command metadata.",
       "risks": {
         "read": "Read / navigate",
         "edit": "Edits workspace or vault",
         "destructive": "Destructive",
         "unknown": "Unknown"
-      },
-      "purposes": {
-        "navigation": "Navigation",
-        "capture": "Capture",
-        "planning": "Planning",
-        "tasks": "Tasks",
-        "query": "Query",
-        "formatting": "Formatting",
-        "system": "System",
-        "other": "Other"
       }
     },
     "webAccess": {

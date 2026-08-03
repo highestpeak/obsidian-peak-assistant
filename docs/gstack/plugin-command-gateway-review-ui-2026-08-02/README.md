@@ -1,7 +1,8 @@
 # Plugin Command Gateway Review UI reference
 
-Status: design-only, high-fidelity production reference. This does not change
-the React implementation or merge the Gateway branch into the owner checkout.
+Status: approved high-fidelity production reference. The matching React
+implementation lives in this isolated Gateway branch and is not merged into the
+owner checkout.
 
 This focused mock replaces the earlier flow prototype as the visual source of
 truth for `Settings → Tools → External plugin commands`.

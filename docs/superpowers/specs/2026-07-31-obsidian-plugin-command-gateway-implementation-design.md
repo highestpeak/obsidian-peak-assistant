@@ -31,7 +31,8 @@ At least one command from another enabled Obsidian plugin can be discovered, rev
 - C1: external-plugin-only discovery with source metadata and preflight state.
 - C2: app-owned CommandPort, one guarded `obsidian_command_execute` ToolDef, and side-effect observation.
 - C3: schema-validated AI curator proposals that never change approval state.
-- C4: Settings → Tools review surface with explicit allow, block, and editable risk/purpose.
+- C4: Settings → Tools review surface with one unified scan workflow, filters,
+  batch Allow, a direct two-state Allowed switch, and system-owned unavailable states.
 - C5: immutable compiled command skill with approved command IDs, source hashes, and strict quarantine.
 - C6: golden run with permission events, RunEnvelope events, observation, and JSONL audit receipt.
 
@@ -189,18 +190,27 @@ The curator receives bounded batches of descriptors. Each finding contains:
 
 The response is parsed with Zod. Findings for unknown command IDs are dropped. The runtime persists findings separately and leaves every review unchanged. A materially changed finding does not inherit the old approval: its `curationHash` differs, so the row becomes stale until the user reviews the new draft.
 
-The review surface groups commands by source plugin. A row shows command name, availability, proposed purpose, risk, evidence, and current decision. The user can:
+The review surface groups commands by source plugin. `Scan commands` is the
+only owner action for refreshing the catalog: it discovers commands, compares
+current source facts, applies deterministic safety checks, and prepares concise
+explanations. AI may assist the final explanation phase, but that internal
+boundary is not exposed as a second button. If AI is unavailable, deterministic
+results remain reviewable and access stays unchanged.
 
-- allow a read/edit command;
-- block a command;
-- edit purpose and risk before allowing;
-- rescan after plugins change;
-- run AI analysis explicitly.
+A row shows command name, concise expected effect, risk, and a fixed far-right
+Access control. The user can:
 
-Unknown and destructive commands cannot be allowed. Changing their risk to
-read/edit is an explicit human edit recorded in the review. Modal-only commands
-remain visible as suggested user actions but cannot enter the automatic tool
-catalog, matching the capstone boundary.
+- filter by search, plugin, risk, and access;
+- allow one current read/edit command with a direct `Allowed` switch;
+- turn an allowed command back to `Not allowed`;
+- Allow every eligible command in the current filter or across all plugins
+  after reviewing an exact confirmation list.
+
+Purpose stays internal to curator/runtime policy instead of becoming an
+owner-editable field. Absence of approval is the owner-facing off state, so the
+primary UI does not expose a separate Block decision. Unknown, destructive,
+modal-only, and unavailable commands display a system-owned `Unavailable`
+status and never enter bulk Allow or the automatic tool catalog.
 
 ## 8. Execution, permission, and observation
 
@@ -280,7 +290,7 @@ Rejected because persisted runtime objects would drift from the live command reg
 | --- | --- | --- |
 | C0–C1 | fake host discovery and preflight tests | installed plugin commands appear by source plugin |
 | C2 | allow/source-stale/draft-stale/destructive/observation tests | approved command changes visible workspace state |
-| C3 | valid, malformed, unknown-ID curator tests | Analyze button shows proposals without enabling |
-| C4 | settings source/contract tests | allow, block, edit, rescan interaction |
+| C3 | valid, malformed, unknown-ID curator and scan-fallback tests | Scan keeps deterministic results when explanations are unavailable |
+| C4 | filter/model, rendered UI, alignment, batch atomicity, and settings contract tests | unified Scan, filters, batch confirmation, two-state switch, and Unavailable interaction |
 | C5 | compiler and quarantine tests | approved count matches exposed command catalog |
 | C6 | scripted Harness golden trace and JSONL receipt test | one approved plugin command run with receipt |

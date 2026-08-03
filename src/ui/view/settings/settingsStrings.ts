@@ -161,30 +161,80 @@ export interface SettingsStrings {
         pluginCommands: {
             sectionTitle: string;
             sectionSub: string;
-            unavailable: string;
+            runtimeUnavailable: string;
             empty: string;
-            scan: string;
-            analyze: string;
-            analyzing: string;
-            searchPlaceholder: string;
-            approved: string;
-            blocked: string;
-            stale: string;
-            off: string;
-            allow: string;
-            deny: string;
-            clear: string;
-            sourceChanged: string;
-            systemBlocked: string;
-            commandUnavailable: string;
+            scanCommands: string;
+            scanning: string;
+            scanFallback: string;
+            scanNote: string;
+            scanPhases: {
+                discovering: string;
+                checking: string;
+                explaining: string;
+                complete: string;
+            };
+            scanMeta: {
+                plugins: string;
+                commands: string;
+                accessUnchanged: string;
+            };
+            filters: {
+                searchPlaceholder: string;
+                pluginLabel: string;
+                allPlugins: string;
+                riskLabel: string;
+                allRisks: string;
+                accessLabel: string;
+                allAccess: string;
+                clear: string;
+            };
+            summary: {
+                approved: string;
+                notAllowed: string;
+                systemExcluded: string;
+            };
+            batch: {
+                commandsShown: string;
+                eligibleForAllow: string;
+                currentFilterScope: string;
+                allowFiltered: string;
+                allowCurrentFilter: string;
+                allowCurrentFilterHint: string;
+                allowAll: string;
+                allowAllHint: string;
+                shown: string;
+                eligible: string;
+                confirmTitle: string;
+                confirmFiltered: string;
+                confirmAll: string;
+                excluded: string;
+                more: string;
+                cancel: string;
+                confirm: string;
+            };
+            columns: { command: string; risk: string; access: string };
+            badges: { aiAnalyzed: string; metadataOnly: string };
+            access: {
+                allowed: string;
+                notAllowed: string;
+                unavailable: string;
+                toggleLabel: string;
+            };
+            warnings: {
+                sourceChanged: string;
+                unavailable: string;
+                modal: string;
+                destructive: string;
+                unknown: string;
+            };
+            activity: {
+                title: string;
+                completed: string;
+                failed: string;
+                noObservableChange: string;
+            };
             noFinding: string;
-            recentRuns: string;
-            noRuns: string;
-            noObservableChange: string;
-            riskLabel: string;
-            purposeLabel: string;
             risks: Record<import('@/core/types/plugin-command-gateway').PluginCommandRisk, string>;
-            purposes: Record<import('@/core/types/plugin-command-gateway').PluginCommandPurpose, string>;
         };
         webAccess: {
             sectionTitle: string;

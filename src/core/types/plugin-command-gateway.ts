@@ -161,6 +161,25 @@ export interface PluginCommandGatewaySnapshot {
 	readonly recentRuns: readonly PluginCommandGatewayAuditReceipt[];
 }
 
+export type PluginCommandGatewayScanPhase =
+	| 'discovering'
+	| 'checking'
+	| 'explaining'
+	| 'complete';
+
+export interface PluginCommandGatewayScanProgress {
+	readonly phase: PluginCommandGatewayScanPhase;
+	readonly processedCommands: number;
+	readonly totalCommands: number;
+	readonly pluginCount: number;
+}
+
+export interface PluginCommandGatewayScanResult {
+	readonly snapshot: PluginCommandGatewaySnapshot;
+	readonly explanationStatus: 'ready' | 'fallback';
+	readonly warning?: string;
+}
+
 export interface PluginCommandGatewayConfig {
 	readonly discovery: {
 		readonly maxCommands: number;

@@ -32,6 +32,9 @@ function testProductionWiringAndReviewSurface(): void {
 	const vaultComposition = read('src/app/copilot/vault/AppVaultReviewAgentAdapter.ts');
 	const tools = read('src/ui/view/settings/tabs/ToolsTab.tsx');
 	const surface = read('src/ui/view/settings/components/PluginCommandGatewaySection.tsx');
+	const reviewList = read('src/ui/view/settings/components/PluginCommandGatewayReviewList.tsx');
+	const settingsCopy = read('templates/config/settings.json');
+	const styles = read('src/styles/peak-components.css');
 	assert.match(main, /composePluginCommandGatewayRuntime/);
 	assert.match(chat, /loadApprovedPluginCommandTools/);
 	assert.match(documentCopilot, /pluginCommandTools/);
@@ -41,7 +44,15 @@ function testProductionWiringAndReviewSurface(): void {
 	assert.match(actionComposition, /tryGetPluginCommandGatewayRuntime/);
 	assert.match(vaultComposition, /tryGetPluginCommandGatewayRuntime/);
 	assert.match(tools, /PluginCommandGatewaySection/);
-	assert.match(surface, /Analyze with AI|tools\.pluginCommands/);
+	assert.match(surface, /pluginCommandGateway\.scan\(setScanProgress\)/);
+	assert.match(surface, /pluginCommandGateway\.allowMany/);
+	assert.match(surface, /RecentCommandActivity/);
+	assert.match(reviewList, /role="switch"/);
+	assert.match(reviewList, /pk-command-access-toggle__label/);
+	assert.match(styles, /grid-template-columns:\s*30px 58px/);
+	assert.doesNotMatch(surface, /pluginCommandGateway\.curate\(/);
+	assert.doesNotMatch(surface, /purposeLabel|onDeny|decision:\s*'deny'/);
+	assert.doesNotMatch(settingsCopy, /Analyze with AI|"purposeLabel"|"deny":\s*"Block"/);
 	assert.ok(!/addCommand\(/.test(surface), 'review UI must not register palette commands');
 	console.log('PASS: productionWiringAndReviewSurface');
 }

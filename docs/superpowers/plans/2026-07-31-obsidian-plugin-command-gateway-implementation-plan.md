@@ -65,10 +65,17 @@ C4 review surface ──> C5 compile/quarantine
 
 - [x] Bind runtime through AppRuntimeRegistry and ServiceContext.
 - [x] Add External plugin commands section to Settings → Tools.
-- [x] Group by plugin with scan and explicit AI analyze actions.
-- [x] Show evidence, availability, purpose, risk, and source/draft-change state.
-- [x] Implement allow, block, and human risk/purpose edits.
-- [x] Show recent run receipts and no-observable-change states.
+- [x] Group by plugin with one `Scan commands` action; discovery, deterministic
+  safety checks, and explanation preparation are one owner workflow.
+- [x] Emit real scan progress and retain deterministic results when optional AI
+  explanation preparation is unavailable.
+- [x] Add search plus plugin/risk/access filters and filter-scoped/all-eligible
+  atomic bulk Allow with a confirmation list.
+- [x] Use one fixed far-right `Allowed` switch; off is `Not allowed`, while
+  unknown, destructive, modal-only, and unavailable commands are system-owned
+  `Unavailable` states.
+- [x] Keep Purpose and explicit deny policy out of the primary Review UI;
+  summary text carries the expected effect and audit data remains durable.
 
 ### C5 — skill compile and quarantine
 
@@ -93,17 +100,18 @@ because no Obsidian CDP listener was available and the branch was intentionally
 not installed into the owner's main plugin directory.
 
 1. Open Settings → Tools → External plugin commands in real Obsidian.
-2. Scan and confirm enabled community-plugin commands are grouped by plugin;
+2. Run Scan commands and confirm enabled community-plugin commands are grouped by plugin;
    Peak, core, and disabled-plugin commands must be absent.
-3. Run Analyze with AI and confirm every row remains off until an explicit
-   human Allow action.
+3. Confirm discovery, safety checking, and explanation preparation appear as
+   one progress flow and every row remains Not allowed until an explicit human
+   Allow action. If AI is unavailable, deterministic results must remain visible.
 4. Approve one read command (for example Calendar navigation) and one direct
    edit command (for example Periodic Notes); confirm modal-only QuickAdd
    commands remain blocked from automatic execution.
 5. Ask Chat/Copilot to perform each intent; confirm the generic tool is visible,
    edit policy reaches PermissionGuard, and denied calls do not execute.
 6. Confirm the approved command changes the expected active file, leaf, modal,
-   or vault path and that Settings shows the same observation summary.
+   or vault path and that the JSONL receipt records the same observation.
 7. Re-run AI analysis with a materially changed draft or update the source
    plugin; confirm the approval becomes stale and the old tool call fails.
 8. Inspect `<DataStore>/command-gateway/runs.jsonl` for command ID, source and
@@ -112,16 +120,13 @@ not installed into the owner's main plugin directory.
 
 ## Verification result
 
-- Focused Command Gateway suites: 6/6 passed.
+- Focused Command Gateway and shared button-reset suites: 9/9 passed.
 - Affected Chat/Copilot/Harness/registry/RunEnvelope regression set: 22/22 passed.
 - Production build: passed.
-- Full suite: 390 passed / 4 unrelated pre-existing failures (Composer and
+- Full suite: 392 passed / 4 unrelated pre-existing failures (Composer and
   Streamdown source guards; no failed file overlaps this task's implementation).
 - `tsc --noEmit`: repository baseline remains red with 392 TypeScript errors
-  across 866 output lines. No diagnostic points into a newly added gateway
-  module. The only diagnostics in edited host files remain on pre-existing,
-  unchanged lines at `main.ts:1088-1089`, `PluginSettingsLoader.ts:110`, and
-  `TemplateRegistry.ts:296`.
+  across 866 output lines. No diagnostic points into a task-owned file.
 - Real Obsidian: `INTERACTION NOT VERIFIED` (no CDP listener; branch not merged
   or copied into the owner's active plugin).
 

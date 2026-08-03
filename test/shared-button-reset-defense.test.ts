@@ -113,6 +113,12 @@ assert.match(
 
 assert.match(
 	primitiveCss,
+	/\.pk-command-access-toggle\.pk-btn\s*\{[\s\S]*?width:\s*160px !important;[\s\S]*?min-width:\s*160px !important;[\s\S]*?max-width:\s*160px !important;[\s\S]*?height:\s*32px !important;[\s\S]*?min-height:\s*32px !important;[\s\S]*?max-height:\s*32px !important;[\s\S]*?padding:\s*4px 0 !important;/,
+	'Command Gateway access switch must keep its fixed alignment geometry under the reset',
+);
+
+assert.match(
+	primitiveCss,
 	/:is\(\.pktw-root, \.peak-design-root\) \.pk-button-geometry\s*\{[\s\S]*?width:\s*auto !important;[\s\S]*?min-width:\s*0 !important;[\s\S]*?max-width:\s*none !important;[\s\S]*?height:\s*var\(--pk-button-geometry-height\) !important;[\s\S]*?min-height:\s*var\(--pk-button-geometry-height\) !important;[\s\S]*?max-height:\s*var\(--pk-button-geometry-height\) !important;[\s\S]*?padding:\s*0 var\(--pk-button-geometry-padding-x\) !important;/,
 	'shared Button fixed geometry must defeat the peak-design-root reset',
 );

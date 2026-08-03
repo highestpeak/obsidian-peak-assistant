@@ -254,6 +254,42 @@ async function testMalformedCuratorOutputDoesNotPersist(): Promise<void> {
 	console.log('PASS: malformedCuratorOutputDoesNotPersist');
 }
 
+async function testUnifiedScanKeepsDeterministicFallback(): Promise<void> {
+	const harness = createHarness({
+		findings: [{ commandId: SAFE.commandId, recommend: true }],
+	});
+	const phases: string[] = [];
+	const result = await harness.runtime.scan((progress) => phases.push(progress.phase));
+	assert.strictEqual(result.explanationStatus, 'fallback');
+	assert.match(result.warning ?? '', /curation/);
+	assert.strictEqual(result.snapshot.commands.length, 4);
+	assert.strictEqual(result.snapshot.approvedCount, 0);
+	assert.deepStrictEqual(harness.getSettings(), { reviews: {}, findings: {} });
+	assert.strictEqual(phases[0], 'discovering');
+	assert.ok(phases.includes('checking'));
+	assert.ok(phases.includes('explaining'));
+	assert.strictEqual(phases.at(-1), 'complete');
+	console.log('PASS: unifiedScanKeepsDeterministicFallback');
+}
+
+async function testBulkAllowIsAtomicAndFailClosed(): Promise<void> {
+	const harness = createHarness();
+	await harness.runtime.curate();
+	const allowed = await harness.runtime.allowMany([SAFE.commandId, EDIT.commandId]);
+	assert.strictEqual(allowed.approvedCount, 2);
+	assert.strictEqual(harness.getSettings().reviews[SAFE.commandId]?.decision, 'allow');
+	assert.strictEqual(harness.getSettings().reviews[EDIT.commandId]?.decision, 'allow');
+
+	const blockedHarness = createHarness();
+	await blockedHarness.runtime.curate();
+	await assert.rejects(
+		() => blockedHarness.runtime.allowMany([SAFE.commandId, DESTRUCTIVE.commandId]),
+		/command-risk-blocked/,
+	);
+	assert.deepStrictEqual(blockedHarness.getSettings().reviews, {});
+	console.log('PASS: bulkAllowIsAtomicAndFailClosed');
+}
+
 async function testCompilePermissionAndGoldenRun(): Promise<void> {
 	const harness = createHarness();
 	await harness.runtime.curate();
@@ -396,6 +432,8 @@ async function run(): Promise<void> {
 	await testCuratorNeverAuthorizes();
 	await testCuratorCannotDowngradeModalBoundary();
 	await testMalformedCuratorOutputDoesNotPersist();
+	await testUnifiedScanKeepsDeterministicFallback();
+	await testBulkAllowIsAtomicAndFailClosed();
 	await testCompilePermissionAndGoldenRun();
 	await testStaleApprovalAndDestructiveInjectionFailClosed();
 	await testChangedCuratorDraftInvalidatesApproval();
