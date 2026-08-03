@@ -152,7 +152,7 @@
           <p class="prose">Peak Assistant 的 Search 选择了多路信号融合：关键词召回负责可解释性，vector 负责概念相近，metadata/fuzzy 负责标题路径和拼写容错，PPR 和 reranker 负责图关系、最近性、hub、点击反馈。最终结果再做高亮，让用户知道为什么这条结果出现。</p>
           <div class="claim">
             <strong>一句话结论</strong>
-            Hyper Search 是一个“多路召回 + 可降级增强”的 pipeline。任何一个 retriever、vector、PPR 或 LLM rerank 失败，都不应该让基础搜索不可用。
+            Hyper Search 是一个“多路召回 + 可降级增强”的 pipeline。任何一个 retriever、vector 或 PPR 失败，都不应该让基础搜索不可用。
           </div>
           <div class="claim">
             <strong>和 AI Search workspace 的边界</strong>
@@ -314,18 +314,13 @@
                 <td>exclude 会进入 query plan，并在排序后过滤结果。</td>
                 <td>不是每一路 retriever 都提前过滤；最终输出会过滤。</td>
               </tr>
-              <tr>
-                <td>打开 LLM rerank</td>
-                <td>只有 <code>enableLLMRerank</code> 为 true 时才跑 LLM rerank。</td>
-                <td>基础 search 不依赖 LLM 才能返回结果。</td>
-              </tr>
             </tbody>
           </table>
         </section>
 
         <section id="pipeline">
           <h2>Search Pipeline</h2>
-          <p class="lead">从代码入口看，<code>SearchClient.search()</code> 先做可选 query rewrite；真正的召回、排序和高亮 pipeline 在 <code>QueryService.textSearch()</code>。它 parse query，并行执行 active retrievers，用 RRF 合并，再叠加 PPR、ranking boost、exclude、topK、highlight 和可选 LLM rerank。</p>
+          <p class="lead">从代码入口看，<code>SearchClient.search()</code> 先做可选的自然语言语法编译；真正的召回、排序和高亮 pipeline 在 <code>QueryService.textSearch()</code>。它 parse query，并行执行 active retrievers，用 RRF 合并，再叠加 PPR、ranking boost、exclude、topK 和 highlight。</p>
           <div class="figure">
             <div class="figure-title">
               <strong>图 1 · 一条 query 的主路径</strong>
@@ -347,16 +342,15 @@ flowchart LR
   Boost["Ranking boosts<br/>frequency / recency / graph / hub / click"]
   Filter["exclude + topK"]
   Highlight["highlight final results"]
-  LLM["LLM rerank<br/>optional"]
   User --> Rewrite --> Parse --> Registry
   Registry --> FTS --> RRF
   Registry --> Stem --> RRF
   Registry --> Vector --> RRF
   Registry --> Meta --> RRF
   Registry --> Fuzzy --> RRF
-  RRF --> PPR --> Boost --> Filter --> Highlight --> LLM
+  RRF --> PPR --> Boost --> Filter --> Highlight
             </div>
-            <p class="read-note"><b>读图：</b>FTS/vector/fuzzy 等 retriever 是并行候选来源；RRF 是合并点；PPR、boost 和 LLM rerank 是增强层，不应该成为基础搜索的硬依赖。</p>
+            <p class="read-note"><b>读图：</b>FTS/vector/fuzzy 等 retriever 是并行候选来源；RRF 是合并点；PPR 和 boost 是增强层，不应该成为基础搜索的硬依赖。</p>
           </div>
           <div class="code-box" aria-label="existing code path">
 existing path:
@@ -463,13 +457,12 @@ src/service/search/query/queryService.ts
 
         <section id="merge">
           <h2>Merge / Rerank / Highlight：从候选变成用户看到的结果</h2>
-          <p class="prose">Search 的排序核心不是某一路 retriever 的 raw score，而是按 path 聚合后的分数账本。维护这段时先看公式和伪代码：RRF 负责多路召回融合，PPR 把图结果作为另一种 rank source 融入，ranking boost 叠加行为/图谱信号，LLM rerank 只在显式开启时做最后一层重排。</p>
+          <p class="prose">Search 的排序核心不是某一路 retriever 的 raw score，而是按 path 聚合后的分数账本。维护这段时先看公式和伪代码：RRF 负责多路召回融合，PPR 把图结果作为另一种 rank source 融入，ranking boost 叠加行为与图谱信号。</p>
           <div class="formula-box">
             <strong>排序公式：从多路候选到 final score</strong>
             <div class="formula"><code>rrf(path) = Σ sourceWeight[source] / (RRF_K + rank0(source, path) + 1)</code></div>
             <div class="formula"><code>pprFuse(path) = 0.7 / (RRF_K + cmRank0(path) + 1) + 0.3 / (RRF_K + pprRank1(path))</code></div>
             <div class="formula"><code>boosted(path) = base + freq + recency + graph + anchor + click + hubDoc</code></div>
-            <div class="formula"><code>llmFinal(path) = 0.7 * boosted(path) + 0.3 * normalizedRerankScore(path)</code></div>
             <ul>
               <li><code>RRF_K = 60</code>。普通 retriever merge 使用 0-based rank，所以代码里是 <code>60 + rank0 + 1</code>；人类看到的“第 1 名”对应 <code>rank0 = 0</code>，分母是 <code>61</code>。</li>
               <li><code>cmRank0</code> 是 PPR 前的候选排序位置；<code>pprRank1</code> 是 PPR 分数排序后的 1-based rank，所以 PPR 分量不再额外加 <code>+ 1</code>。</li>
@@ -560,22 +553,12 @@ src/service/search/query/queryService.ts
   visible = applyExcludesAndTopK(ranked, plan.excludes, plan.topK)
   visible = addHighlightSnippets(visible, plan)
 
-  if settings.enableLLMRerank and settings.rerankModel:
-    rerankScores = callRerankProvider(rawQuery, visible)
-    visible = visible.map(item =&gt; {
-      normalized = rerankScores[item].raw &gt; 1
-        ? rerankScores[item].raw / visible.length
-        : rerankScores[item].raw
-      return { ...item, score: item.score * 0.7 + normalized * 0.3 }
-    })
-    visible = sortByScoreDesc(visible)
-
   return visible</pre>
           <div class="formula-box">
             <strong>维护者读法</strong>
             <ol>
               <li>如果用户问“为什么这条出现”，先看 <code>sources</code> 和每路 RRF contribution。</li>
-              <li>如果用户问“为什么这条排这么高”，再看 PPR rank、ranking boost 分量和 LLM rerank 是否启用。</li>
+              <li>如果用户问“为什么这条排这么高”，再看 PPR rank 和 ranking boost 分量。</li>
               <li>如果用户问“为什么没出现”，看 retriever 是否激活、path 是否被 exclude、是否被 topK 截断。</li>
               <li>Highlight 只解释 final result 的可见匹配片段，不应该被当成排序分数来源。</li>
             </ol>
@@ -616,11 +599,6 @@ src/service/search/query/queryService.ts
                 <td>Highlight</td>
                 <td>只对 final topK 结果生成 snippet/title highlight；raw source 由 <code>HighlightSourceResolver</code> 决定——markdown-like 类型走 Vault 磁盘原文，binary 类走 <code>doc_chunk.content_raw</code>，无源时降级到 title/path 或 normalized。</td>
                 <td>不要在每一路 retriever 提前做高成本 highlight；不要为 Vault-readable 类型写回 <code>content_raw</code>——resolver 会实时读盘，避免 stale。新增 <code>DocumentType</code> 时到 <code>isVaultReadableSource()</code> 显式登记。</td>
-              </tr>
-              <tr>
-                <td>LLM rerank</td>
-                <td>只有 <code>enableLLMRerank</code> 为 true 才运行。</td>
-                <td>默认 search 不依赖 LLM。</td>
               </tr>
             </tbody>
           </table>
@@ -754,7 +732,7 @@ flowchart LR
                   完整的第一性原理拆解、学术界+产业界调研（Dumais SIS / Teevan re-finding thesis / Notion 2026 blog / Elastic multiplicative boost / Slack Personalized Search 等）、所有讨论过的方案矩阵及取舍见
                   <a href="research/2026-07-07-vault-search-ranking-first-principles/">2026-07-07 Vault Search 排序：第一性原理拆解</a>。
                   <br>
-                  <strong>核心结论</strong>：先做诊断层（debug trace 补记每一项 boost 贡献）+ UI 暗示 filter 语法；先看清楚，再改算法。BM25F / LLM rerank / 意图分流 / 反向 personalization 全部先搁置——都是过度设计或未验证猜想。
+                  <strong>核心结论</strong>：先做诊断层（debug trace 补记每一项 boost 贡献）+ UI 暗示 filter 语法；先看清楚，再改算法。BM25F / 意图分流 / 反向 personalization 先搁置；未接入生产入口的模型 rerank 已退役。
                 </td>
               </tr>
               <tr>
@@ -785,7 +763,7 @@ flowchart LR
                 <td>否则用户会得到两套不一致的搜索语义。</td>
               </tr>
               <tr>
-                <td>让 vector/PPR/LLM rerank 成为必选路径。</td>
+                <td>让 vector/PPR 成为必选路径。</td>
                 <td>保持它们 optional/failure-tolerant。</td>
                 <td>搜索是基础能力，不能因为增强项失效而不可用。</td>
               </tr>
@@ -865,7 +843,7 @@ flowchart LR
               <tr>
                 <td><code data-copy="src/service/search/query/queryService.ts">queryService.ts</code></td>
                 <td><code>textSearch()</code> 主 pipeline。</td>
-                <td>确认 parse、retriever、RRF、PPR、boost、exclude、highlight、LLM rerank 的顺序。</td>
+                <td>确认 parse、retriever、RRF、PPR、boost、exclude、topK、highlight 的顺序。</td>
               </tr>
               <tr>
                 <td><code data-copy="src/service/search/query/query-parser.ts">query-parser.ts</code></td>

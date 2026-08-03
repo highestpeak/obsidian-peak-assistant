@@ -35,7 +35,6 @@ export class SearchClient {
 
 	async search(
 		query: SearchQuery,
-		enableLLMRerank: boolean = false,
 		debugRun?: DebugRunHandle,
 	): Promise<SearchResponse & { duration: number }> {
 		if (!this.queryService) {
@@ -64,7 +63,7 @@ export class SearchClient {
 			span.finish();
 		}
 
-		return await this.queryService.textSearch(effectiveQuery, enableLLMRerank, debugRun);
+		return await this.queryService.textSearch(effectiveQuery, debugRun);
 	}
 
 	async vectorSearch(query: SearchQuery): Promise<SearchResponse & { duration: number }> {
@@ -114,5 +113,4 @@ export class SearchClient {
 		this.queryService = null;
 	}
 }
-
 

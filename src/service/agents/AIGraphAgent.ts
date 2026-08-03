@@ -57,7 +57,6 @@ export class AIGraphAgent {
 
 		const results = await this.searchClient.search(
 			{ text: userQuery, scopeMode: 'all', topK: 30, searchMode: 'hybrid' },
-			false,
 		);
 
 		yield { type: 'ui-signal', channel: 'search-stage', data: { stage: 'building-graph' } } as any;

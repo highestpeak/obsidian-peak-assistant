@@ -40,7 +40,6 @@ import {
 	recordRetrievalRecall,
 	recordRrfMerge,
 	recordRankingBoosts,
-	recordLlmRerank,
 	recordExcludeFilter,
 	recordTopKCutoff,
 	recordPprRerank,
@@ -60,7 +59,7 @@ export class QueryService {
 		private readonly aiServiceManager: AIServiceManager,
 		private readonly searchSettings: SearchSettings,
 	) {
-		this.reranker = new Reranker(aiServiceManager, searchSettings);
+		this.reranker = new Reranker();
 		this.registry = new RetrieverRegistry();
 		this.registry.register(new FtsRetriever());
 		this.registry.register(new FtsStemRetriever());
@@ -76,11 +75,10 @@ export class QueryService {
 	 * 3. Merge results with adaptive RRF (weights from QueryPlan)
 	 * 4. PPR graph-based reranking
 	 * 5. Ranking boosts (frequency, recency, graph, hub, click-through)
-	 * 6. Exclude filter, highlight, optional LLM rerank
+	 * 6. Exclude filter, topK, highlight, and score normalization
 	 */
 	async textSearch(
 		query: SearchQuery,
-		enableLLMRerank: boolean = false,
 		debugRun?: DebugRunHandle,
 	): Promise<SearchResponse & { duration: number }> {
 		const sw = new Stopwatch('SearchQuery');
@@ -295,32 +293,7 @@ export class QueryService {
 		}
 		sw.stop();
 
-		// Optional LLM rerank
-		if (enableLLMRerank) {
-			sw.start('llm_rerank');
-			const beforeRerank = resultItems;
-			resultItems = await this.reranker.rerank(
-				resultItems,
-				termRaw,
-				query.scopeValue,
-				true,
-				tenant,
-				pprActive,
-			);
-			sw.stop();
-			if (debugRun) {
-				const info = this.reranker.getRerankModelInfo();
-				recordLlmRerank(debugRun, {
-					before: beforeRerank,
-					after: resultItems,
-					provider: info?.provider,
-					model: info?.modelId,
-				});
-			}
-		}
-
-		// Relative-normalize score for UI display. Kept as the last step so
-		// LLM rerank (which can reorder but not rewrite scores) is respected.
+		// Relative-normalize the final deterministic/graph-enhanced score for UI display.
 		assignDisplayScorePercent(resultItems);
 
 		// Find fuzzy correction for UI
@@ -334,7 +307,6 @@ export class QueryService {
 				query: termRaw,
 				topK,
 				finalCount: resultItems.length,
-				llmRerank: enableLLMRerank,
 				durationMs: totalDuration,
 			});
 		}

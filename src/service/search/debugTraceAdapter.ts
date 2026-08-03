@@ -327,43 +327,6 @@ export function recordRetrieverFilterSettings(
 	span.finish();
 }
 
-/** Record the optional LLM rerank stage. */
-export function recordLlmRerank(
-	debugRun: DebugRunHandle,
-	input: {
-		before: readonly SearchResultItem[];
-		after: readonly SearchResultItem[];
-		provider?: string;
-		model?: string;
-	},
-	previewTopN = 10,
-): void {
-	const span = debugRun.startSpan({
-		kind: 'ranking.score',
-		name: 'llm-rerank',
-	});
-	span.setParams({
-		provider: input.provider,
-		model: input.model,
-	});
-	span.addMetric('inputCount', input.before.length);
-	span.addMetric('outputCount', input.after.length);
-	const beforeRank = new Map<string, number>();
-	input.before.forEach((it, i) => beforeRank.set(it.path, i));
-	const preview = input.after.slice(0, previewTopN);
-	preview.forEach((item, i) => {
-		const b = beforeRank.get(item.path);
-		span.addDecision({
-			decision: b === i ? 'keep' : b !== undefined && b > i ? 'promote' : 'demote',
-			target: item.path,
-			reason: 'llm-rerank',
-			score: item.score ?? 0,
-			meta: { rankAfter: i, rankBefore: b },
-		});
-	});
-	span.finish();
-}
-
 /** Record the topK cutoff (post-boost) filter.decision. */
 export function recordTopKCutoff(
 	debugRun: DebugRunHandle,
@@ -425,7 +388,6 @@ export function finalizeSearchSummary(
 		effectiveQuery?: string;
 		topK: number;
 		finalCount: number;
-		llmRerank: boolean;
 		durationMs: number;
 	},
 ): void {
@@ -436,7 +398,6 @@ export function finalizeSearchSummary(
 			: {}),
 		topK: summary.topK,
 		finalCount: summary.finalCount,
-		llmRerank: summary.llmRerank,
 		durationMs: summary.durationMs,
 	});
 }

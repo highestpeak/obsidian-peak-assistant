@@ -442,12 +442,8 @@ flowchart TB
             </tbody>
           </table>
 
-          <h3>Rerank / Vector Provider</h3>
-          <p class="prose">Rerank（<code>src/core/providers/rerank/</code>）目前有 2 层实现：</p>
-          <ul>
-            <li><strong>RankGPT</strong>（走上表的 <code>Rerank Role</code> 绑定 LLM Profile）——用 LLM 自身对搜索结果打分。适合精细但慢+贵。</li>
-            <li><strong>Cohere Rerank API</strong>（Backlog）——独立 rerank service，性价比高。当前用 RankGPT 替代。</li>
-          </ul>
+          <h3>Search ranking / Vector Provider</h3>
+          <p class="prose">未接入生产入口和设置项的 RankGPT、Cohere、Jina 模型 rerank 路径已经退役。当前 Search 排序使用 RRF、PPR 与确定性的行为/图谱 ranking boosts。</p>
           <p class="prose">Vector store 直接用 <code>sqlite-vec</code>（不走 provider 抽象）；用户不需要选。</p>
 
           <h3>Curator 推荐规则</h3>
@@ -477,11 +473,6 @@ flowchart TB
                 <td>Web Search</td>
                 <td><code>perplexity</code> sonar-large-online</td>
                 <td><code>perplexity</code> sonar-small-online → 关闭</td>
-              </tr>
-              <tr>
-                <td>Rerank</td>
-                <td>与 Agent Fast 同 Profile（RankGPT）</td>
-                <td>关闭 rerank，用 RRF 兜底</td>
               </tr>
               <tr>
                 <td>Media (TTS)</td>

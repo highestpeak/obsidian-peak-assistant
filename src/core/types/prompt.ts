@@ -22,8 +22,6 @@ export enum PromptId {
 	ProjectSummaryShort = 'project-summary-short',
 	ProjectSummaryFull = 'project-summary-full',
 
-	SearchRerankRankGpt = 'search-rerank-rank-gpt',
-
 	/** Query Rewrite: system prompt for behavior-driven structured query suggestions. */
 	QueryRewriteSystem = 'query-rewrite-system',
 	/** Query Rewrite: user prompt carrying behavior context + task. */
@@ -305,10 +303,6 @@ export const CONFIGURABLE_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.ProjectSummaryShort,
 	PromptId.ProjectSummaryFull,
 
-	// Search prompts - users may want specialized models for search
-	// AiAnalysis* prompts are in SEARCH_AI_ANALYSIS_PROMPT_IDS, not here
-	PromptId.SearchRerankRankGpt,
-
 	// Application prompts - title generation may benefit from different models
 	PromptId.ApplicationGenerateTitle,
 
@@ -354,10 +348,6 @@ export interface PromptVariables {
 		conversations: Array<{ title: string; shortSummary?: string; fullSummary?: string }>;
 		resources?: Array<{ title: string; source: string; shortSummary?: string }>;
 		shortSummary?: string;
-	};
-	[PromptId.SearchRerankRankGpt]: {
-		query: string;
-		documents: Array<{ index: number; text: string; boostInfo?: string }>;
 	};
 	[PromptId.ApplicationGenerateTitle]: {
 		messages: Array<{ role: string; content: string }>;

@@ -37,7 +37,6 @@ import { EventBus, UsageRecordedViewEvent } from '@/core/eventBus';
 import { setEmbeddingUsageReporter } from '@/service/search/embeddings/embedClient';
 import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import { registerTemplateEngineHelpers } from '@/core/template-engine-helper';
-import { RerankProviderManager } from '@/core/providers/rerank/factory';
 import { TemplateManager } from '@/core/template/TemplateManager';
 import { initPatternSystem } from '@/service/context/PatternDiscoveryTrigger';
 import { createPluginDirContentProvider } from '@/core/template/PluginDirContentProvider';
@@ -1336,8 +1335,6 @@ export default class MyPlugin extends Plugin {
 		SqliteStoreManager.clearInstance();
 		BetterSqliteStore.clearInstance();
 		NativeModuleManager.clearInstance();
-		RerankProviderManager.clearInstance();
-
 		this.uninstallHoverMenuGlobals?.();
 		clearFormatUtilsCaches();
 

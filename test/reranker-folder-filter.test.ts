@@ -26,7 +26,7 @@ function item(path: string): SearchResultItem {
     };
 }
 
-const reranker = new Reranker({} as any, {} as any);
+const reranker = new Reranker();
 const items = [
     item('kb1-life-notes/D-26/note.md'),
     item('kb1-life-notes/D-26/sub/deep.md'),

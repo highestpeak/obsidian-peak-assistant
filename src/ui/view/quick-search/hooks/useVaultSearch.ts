@@ -67,7 +67,7 @@ export const useVaultSearch = () => {
 			let cancelled = false;
 			(async () => {
 				try {
-					const res = await searchClient.search(parsedQuery, false);
+					const res = await searchClient.search(parsedQuery);
 					if (cancelled) return;
 					const filtered = res.items.filter((item) => pinSet.has(item.path));
 					setLastSearchData({
@@ -125,7 +125,7 @@ export const useVaultSearch = () => {
 				})
 				: null;
 			try {
-				const res = await searchClient.search(parsedQuery, false, debugRun ?? undefined);
+				const res = await searchClient.search(parsedQuery, debugRun ?? undefined);
 				if (debugRun) {
 					debugRun.finish('completed');
 					lastDebugRunIdRef.current = debugRun.runId;

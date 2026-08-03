@@ -27,7 +27,6 @@ export interface ChunkingSettings {
 	chunkOverlap: number;
 	minDocumentSizeForChunking: number;
 	embeddingModel?: { provider: string; modelId: string };
-	rerankModel?: { provider: string; modelId: string };
 	/** Replace fenced/indented code blocks before chunking to reduce noisy embeddings. */
 	skipCodeBlocksInChunking?: boolean;
 	/** Replacement string for omitted fenced blocks. Omit for per-block summaries. */

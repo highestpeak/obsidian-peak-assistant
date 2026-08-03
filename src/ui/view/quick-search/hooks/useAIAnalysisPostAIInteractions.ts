@@ -123,7 +123,7 @@ export async function consumeFollowupStream(
  * Run semantic search and return unique parent folders of hits (candidates for save location).
  */
 async function getCandidateFoldersFromSearch(
-    searchClient: { search: (q: any, enableLLMRerank?: boolean) => Promise<{ items: Array<{ path: string }> }> } | null,
+    searchClient: { search: (q: any) => Promise<{ items: Array<{ path: string }> }> } | null,
     searchText: string
 ): Promise<string[]> {
     if (!searchClient || !searchText.trim()) return [];
@@ -134,8 +134,7 @@ async function getCandidateFoldersFromSearch(
                 scopeMode: 'all',
                 topK: 24,
                 searchMode: 'hybrid',
-            },
-            false
+            }
         );
         const seen = new Set<string>();
         const folders: string[] = [];
@@ -223,4 +222,3 @@ export function useGenerateResultSaveField() {
         generateFolder,
     };
 }
-

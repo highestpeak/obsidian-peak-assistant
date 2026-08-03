@@ -11,7 +11,6 @@ import {
 	recordRetrievalRecall,
 	recordRrfMerge,
 	recordRankingBoosts,
-	recordLlmRerank,
 	recordExcludeFilter,
 	finalizeSearchSummary,
 } from '@/service/search/debugTraceAdapter';
@@ -101,23 +100,14 @@ console.log('debug-trace-search-adapter: full pipeline receipt');
 		relatedPathCount: 0,
 	});
 
-	const reranked: SearchResultItem[] = [boosted[1], boosted[0], boosted[2]];
-	recordLlmRerank(debugRun, {
-		before: boosted,
-		after: reranked,
-		provider: 'anthropic',
-		model: 'haiku-4-5',
-	});
-
-	const afterExclude = reranked.slice(0, 2);
-	recordExcludeFilter(debugRun, reranked, afterExclude, ['spam']);
+	const afterExclude = boosted.slice(0, 2);
+	recordExcludeFilter(debugRun, boosted, afterExclude, ['spam']);
 
 	finalizeSearchSummary(debugRun, {
 		query: 'raw query',
 		effectiveQuery: 'raw query AND syntax',
 		topK: 20,
 		finalCount: afterExclude.length,
-		llmRerank: true,
 		durationMs: 42,
 	});
 
@@ -152,16 +142,6 @@ console.log('debug-trace-search-adapter: full pipeline receipt');
 	assert.ok(boostDecision?.meta);
 	assert.strictEqual((boostDecision!.meta as any).delta, 0.05);
 
-	const rerankSpan = finished.spans.find(
-		(s) => s.kind === 'ranking.score' && s.name === 'llm-rerank',
-	)!;
-	assert.ok(rerankSpan);
-	// notes/a.md was rank 1 (index 1) before rerank, now rank 0 → promote
-	const aRerankDecision = rerankSpan.decisions?.find((d) => d.target === 'notes/a.md')!;
-	assert.strictEqual(aRerankDecision.decision, 'promote');
-	assert.strictEqual((aRerankDecision.meta as any).rankBefore, 1);
-	assert.strictEqual((aRerankDecision.meta as any).rankAfter, 0);
-
 	const filterSpan = finished.spans.find((s) => s.kind === 'filter.decision')!;
 	assert.ok(filterSpan);
 	assert.strictEqual(filterSpan.metrics?.droppedCount, 1);
@@ -170,7 +150,6 @@ console.log('debug-trace-search-adapter: full pipeline receipt');
 
 	assert.strictEqual(finished.summary?.query, 'raw query');
 	assert.strictEqual(finished.summary?.effectiveQuery, 'raw query AND syntax');
-	assert.strictEqual(finished.summary?.llmRerank, true);
 }
 
 console.log('debug-trace-search-adapter: empty retriever result is fine');
