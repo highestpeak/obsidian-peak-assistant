@@ -1149,6 +1149,10 @@
     }
 
     function groupedCapabilityRows(items) {
+      // The left rail already expresses product ownership. Within each family,
+      // keep the original action order inside a coverage state, but keep the
+      // same status pill together so gaps are scannable at a glance.
+      const statusOrder = { live: 0, partial: 1, support: 2, migration: 3, unwired: 4 };
       const sections = [];
       for (const item of items) {
         const key = `${item.group}:${item.family}`;
@@ -1162,7 +1166,11 @@
       return sections.map(section => {
         const groupLabel = groups.find(group => group[0] === section.group)?.[2] ?? section.group;
         const label = activeGroup === 'all' ? `${groupLabel} · ${section.family}` : section.family;
-        return `<div class="family-head"><span>${label}</span><small>${section.items.length}</small></div>${section.items.map(capabilityRow).join('')}`;
+        const orderedItems = section.items
+          .map((item, index) => ({ item, index }))
+          .sort((a, b) => (statusOrder[a.item.status] ?? 99) - (statusOrder[b.item.status] ?? 99) || a.index - b.index)
+          .map(({ item }) => item);
+        return `<div class="family-head"><span>${label}</span><small>${section.items.length}</small></div>${orderedItems.map(capabilityRow).join('')}`;
       }).join('');
     }
 
