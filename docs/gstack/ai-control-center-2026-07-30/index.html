@@ -321,9 +321,13 @@
 
     .prompt-box + .prompt-box { margin-top: 9px; }
     .prompt-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .prompt-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
     .prompt-body { margin-top: 9px; padding: 11px; border: 1px solid var(--line); border-radius: 6px; background: white; color: #50504b; font: 11px/1.55 var(--mono); white-space: pre-wrap; }
-    .prompt-history { margin-top: 12px; }
-    .prompt-history .history-heading { margin-bottom: 8px; }
+    .prompt-history-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 11px; padding-top: 11px; border-top: 1px solid var(--line); }
+    .prompt-history-summary.standalone { margin-top: 0; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); }
+    .prompt-history-copy { min-width: 0; }
+    .prompt-history-copy strong, .prompt-history-copy span { display: block; }
+    .prompt-history-copy span { margin-top: 2px; color: var(--muted); font-size: 11px; }
 
     .prompt-editor {
       width: 100%;
@@ -343,8 +347,6 @@
     .prompt-editor.compact { min-height: 112px; }
     .prompt-editor:disabled { color: var(--muted); background: var(--surface-3); }
 
-    .history-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
-    .history-heading h2 { margin: 0; }
     .history-list { overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: white; }
     .history-entry + .history-entry { border-top: 1px solid var(--line); }
     .history-entry summary { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto 18px; gap: 10px; align-items: center; padding: 11px 12px; cursor: pointer; list-style: none; }
@@ -458,6 +460,7 @@
     .modal-body { min-height: 0; overflow: auto; padding: 16px; }
     .modal-footer { justify-content: flex-end; border-top: 1px solid var(--line); background: var(--surface-2); }
     .modal-copy { margin-bottom: 14px; color: var(--muted); }
+    .history-modal-intro { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; color: var(--muted); }
     .field { display: grid; gap: 6px; margin-top: 12px; }
     .field:first-child { margin-top: 0; }
     .field > span { font-weight: 650; }
@@ -554,7 +557,7 @@
         <button class="action-button modal-close" id="editorModalClose" aria-label="Close editor"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       </div>
       <div class="modal-body" id="editorModalBody"></div>
-      <div class="modal-footer"><button class="action-button" id="editorModalCancel">Cancel</button><button class="action-button primary" id="editorModalSave">Save changes</button></div>
+      <div class="modal-footer" id="editorModalFooter"><button class="action-button" id="editorModalCancel">Cancel</button><button class="action-button primary" id="editorModalSave">Save changes</button></div>
     </div>
   </div>
 
@@ -664,7 +667,10 @@
 
       ...actionRows('search', 'AI Search', [
         ['analysis.vault.search', 'AI Search · Gather evidence', 'Plan a Vault investigation, use typed tools, collect sources, and submit a reviewable report plan.', ['ai-analysis-vault-harness-playbook', 'ai-analysis-proceed-nudge'], { shape: 'Multi-tier AgentLoop', route: 'Research → Stronger', output: 'Evidence set + report plan', review: 'Inline plan review' }],
-        ['analysis.report.generate', 'AI Search · Generate report', 'Generate approved report sections, summary, citations, and validated Mermaid from collected evidence.', ['ai-analysis-report-section', 'ai-analysis-vault-report-summary', 'ai-analysis-mermaid-fix-system', 'ai-analysis-mermaid-fix', 'report-assign-insights'], { shape: 'Multi-step workflow', route: 'Research', output: 'Versioned analysis report' }],
+        ['analysis.report.generate', 'AI Search · Generate report section', 'Generate one approved report section with citations from collected evidence.', ['ai-analysis-report-section-system', 'ai-analysis-report-section'], { shape: 'Single report call', route: 'Research', output: 'Report section' }],
+        ['analysis.report.summary', 'AI Search · Generate report summary', 'Generate the executive summary after approved report sections are available.', ['ai-analysis-vault-report-summary-system', 'ai-analysis-vault-report-summary'], { shape: 'Single report call', route: 'Research', output: 'Report summary' }],
+        ['analysis.report.mermaid-repair', 'AI Search · Repair report Mermaid', 'Repair one invalid Mermaid block without regenerating the surrounding report.', ['ai-analysis-mermaid-fix-system', 'ai-analysis-mermaid-fix'], { shape: 'Single repair call', route: 'Research', output: 'Validated Mermaid' }],
+        ['analysis.report.assign-insights', 'AI Search · Assign report insights', 'Assign collected user insights to existing or newly proposed report sections.', ['report-assign-insights'], { shape: 'Single structured call', route: 'Research', output: 'Insight assignments' }],
         ['analysis.continue', 'AI Search · Continue analysis', 'Start another evidence round from the existing analysis context and a focused follow-up request.', ['ai-analysis-continue-system', 'ai-analysis-continue'], { shape: 'Multi-tier AgentLoop', route: 'Research → Stronger', output: 'Additional evidence round' }],
         ['analysis.synthesize-rounds', 'AI Search · Synthesize rounds', 'Merge multiple analysis rounds into one coherent result without discarding their source receipts.', ['ai-analysis-synthesize-system', 'ai-analysis-synthesize'], { shape: 'Structured workflow step', status: 'support', output: 'Merged analysis state' }],
         ['analysis.followup', 'AI Search · Ask about results', 'Answer a question against the current report, sources, graph, blocks, and analysis history.', ['ai-analysis-followup-system', 'ai-analysis-followup'], { shape: 'Fixed-model tool loop', route: 'Agent Fast', output: 'Grounded follow-up answer' }],
@@ -673,14 +679,16 @@
       ], { surface: 'AI Search' }),
 
       ...actionRows('search', 'AI Graph', [
-        ['graph.generate', 'AI Graph · Generate graph', 'Transform selected Vault or Web sources into schema-valid nodes, directed relationships, and provenance.', ['graph-agent-system', 'graph-agent-user', 'ai-graph-artifact-extract'], { icon: 'graph', shape: 'Fixed-model Harness', route: 'Active Agent', output: 'Versioned AI Graph' }],
-        ['graph.update', 'AI Graph · Update graph', 'Apply a new instruction to an existing graph version while preserving graph identity, sources, and version history.', ['graph-agent-system', 'graph-agent-user', 'ai-graph-artifact-extract'], { icon: 'graph', shape: 'Fixed-model Harness', route: 'Active Agent', output: 'New AI Graph version' }],
+        ['graph.generate', 'AI Graph · Generate graph', 'Transform selected Vault or Web sources into schema-valid nodes, directed relationships, and provenance.', ['graph-agent-system', 'graph-agent-user'], { icon: 'graph', shape: 'Fixed-model Harness', route: 'Active Agent', output: 'Graph response' }],
+        ['graph.update', 'AI Graph · Update graph', 'Apply a new instruction to an existing graph version while preserving graph identity and sources.', ['graph-agent-system', 'graph-agent-user'], { icon: 'graph', shape: 'Fixed-model Harness', route: 'Active Agent', output: 'Updated graph response' }],
+        ['graph.artifact.extract', 'AI Graph · Extract artifact', 'Validate a graph response and extract the immutable artifact version used by Graph surfaces.', ['ai-graph-artifact-extract'], { icon: 'graph', shape: 'Single structured call', route: 'Active Agent', output: 'Versioned AI Graph' }],
         ['graph.thinking-tree', 'AI Graph · Infer thinking tree', 'Add an optional hierarchical reasoning lens from the graph source documents as a separate inference step.', ['graph-infer-thinking-tree-system', 'graph-infer-thinking-tree-user'], { icon: 'graph', shape: 'Single structured call', output: 'Thinking-tree lens' }]
       ], { surface: 'AI Graph' }),
 
       ...actionRows('search', 'Knowledge and hubs', [
         ['knowledge.pattern-discovery', 'Knowledge · Discover patterns', 'Detect reusable patterns from query and interaction history as structured candidates.', ['pattern-discovery'], { shape: 'Single text call', status: 'partial', output: 'Pattern candidates' }],
-        ['knowledge.intuition', 'Knowledge · Build intuition', 'Plan and investigate emerging Vault themes with tools before submitting a structured knowledge intuition.', ['knowledge-intuition-plan-system', 'knowledge-intuition-plan', 'knowledge-intuition-submit'], { shape: 'Agent workflow', status: 'partial', output: 'Knowledge intuition record' }],
+        ['knowledge.intuition', 'Knowledge · Plan intuition', 'Plan and investigate emerging Vault themes with tools.', ['knowledge-intuition-plan-system', 'knowledge-intuition-plan'], { shape: 'Agent workflow', status: 'partial', output: 'Knowledge investigation' }],
+        ['knowledge.intuition.submit', 'Knowledge · Submit intuition', 'Turn completed investigation evidence into a structured knowledge intuition record.', ['knowledge-intuition-submit'], { shape: 'Single structured call', status: 'partial', output: 'Knowledge intuition record' }],
         ['knowledge.hub.curate', 'Knowledge · Curate hubs', 'Decide which knowledge clusters should become, merge into, or retire as Hubs.', ['hub-curation-plan', 'hub-curation-submit'], { shape: 'Plan + structured submit', status: 'partial', output: 'Hub curation plan' }],
         ['knowledge.hub.materialize', 'Knowledge · Materialize hub', 'Draft and critique a Hub document from approved members before guarded persistence.', ['hub-materialization-draft', 'hub-materialization-critique'], { shape: 'Draft + critique workflow', status: 'partial', output: 'Hub draft and version' }]
       ], { surface: 'Knowledge Index / Hub workflow' }),
@@ -759,7 +767,8 @@
         ['copilot.write-article', 'Write Article', 'Synthesize an article from Vault notes with wikilink citations.', ['copilot-agent-write-article']]
       ]),
       ...actionRows('composer', 'Copilot review, chat, and Ambient', [
-        ['copilot.document.auto-review', 'Document Auto Review', 'Run a fast or complete tool loop that produces Changes, Insights, Sources, and Trace for the active note.', ['copilot-meta-agent-system-base', 'copilot-meta-agent-fast-mode-suffix', 'copilot-meta-agent-complete-mode-suffix'], { shape: 'Fixed-model tool loop', route: 'Agent / Agent Fast' }],
+        ['copilot.document.auto-review', 'Document Auto Review · Fast', 'Run the fast single-focus tool loop for the active note.', ['copilot-meta-agent-system-base', 'copilot-meta-agent-fast-mode-suffix'], { shape: 'Fixed-model tool loop', route: 'Agent Fast' }],
+        ['copilot.document.auto-review-complete', 'Document Auto Review · Complete', 'Run the complete multi-round tool loop for the active note.', ['copilot-meta-agent-system-base', 'copilot-meta-agent-complete-mode-suffix'], { shape: 'Fixed-model tool loop', route: 'Agent' }],
         ['copilot.insight.followup', 'Ask about an insight', 'Continue a grounded inline conversation about one Auto Review insight.', ['insight-inline-chat-followup-system'], { shape: 'Inline follow-up stream' }],
         ['copilot.insight.draft-proposal', 'Draft edits from insight', 'Turn one Auto Review insight into one to three concrete edit proposals.', ['insight-inline-chat-draft-proposal-system'], { shape: 'Inline proposal stream' }],
         ['copilot.custom-prompt', 'Run custom prompt action', 'Run a Vault-authored custom Copilot prompt with document, selection, tags, and tool access.', [], { status: 'partial', output: 'Custom action result' }],
@@ -771,7 +780,7 @@
       ]),
 
       ...actionRows('chat', 'Conversation', [
-        ['chat.conversation.run', 'Conversation turn', 'Assemble Assistant, context, sources, model, and tools into one recoverable streaming turn.', ['conversation-system', 'context-memory', 'user-profile-context', 'working-context-render', 'activity-index-render'], { shape: 'Fixed-model AgentLoop', route: 'Conversation / Assistant override' }],
+        ['chat.conversation.run', 'Conversation turn', 'Assemble Assistant, context, sources, model, and tools into one recoverable streaming turn.', ['conversation-system'], { shape: 'Fixed-model AgentLoop', route: 'Conversation / Assistant override' }],
         ['chat.plan-mode', 'Plan mode turn', 'Run one conversation turn with planning instructions and no implied execution.', ['conversation-system', 'plan-mode-system'], { shape: 'Fixed-model AgentLoop' }],
         ['chat.prompt-enhance', 'Enhance prompt', 'Rewrite a vague draft into a clearer, more specific prompt before sending.', ['prompt-enhance'], { shape: 'Single text call', route: 'Conversation' }],
         ['chat.suggest-followups', 'Suggest follow-up questions', 'Generate and persist next-question chips after a completed assistant message.', ['chat-suggest-followups'], { shape: 'Single structured call', route: 'Conversation' }],
@@ -823,7 +832,8 @@
         ['copilot.detect-and-file', 'Detect & File', 'Suggest which existing note should receive a piece of text.', ['copilot-agent-detect-and-file']]
       ]),
       ...actionRows('intelligence', 'Vault review', [
-        ['copilot.vault.review', 'Vault Auto Review', 'Run a fast or complete multi-round Vault review and collect findings, sources, clusters, gaps, actions, and trace.', ['vault-meta-agent-system-base', 'vault-meta-agent-fast-mode-suffix', 'vault-meta-agent-complete-mode-suffix'], { shape: 'Fixed-model tool loop', output: 'Vault review snapshot' }]
+        ['copilot.vault.review', 'Vault Auto Review · Fast', 'Run a fast Vault review and collect focused findings, sources, actions, and trace.', ['vault-meta-agent-system-base', 'vault-meta-agent-fast-mode-suffix'], { shape: 'Fixed-model tool loop', output: 'Vault review snapshot' }],
+        ['copilot.vault.review-complete', 'Vault Auto Review · Complete', 'Run a complete multi-round Vault review and collect findings, clusters, gaps, actions, and trace.', ['vault-meta-agent-system-base', 'vault-meta-agent-complete-mode-suffix'], { shape: 'Fixed-model tool loop', output: 'Vault review snapshot' }]
       ]),
       ...actionRows('intelligence', 'Vault Health AI follow-ups', [
         ['vault-health.repair-links', 'Ask AI to repair broken links', 'Draft a repair plan for the highest-impact unresolved links.', ['lint-broken-link-repair'], { status: 'partial' }],
@@ -1031,22 +1041,22 @@
       'chat.artifact-receipt': ['chat.artifact.document', 'chat.artifact.dataview', 'chat.artifact.excalidraw', 'chat.artifact.drawio', 'chat.artifact.extract', 'chat.artifact.reminder'],
       'chat.assistant-definition': ['chat.assistant.draft'],
       'chat.project-plan-state': ['chat.plan-mode'],
-      'analysis.markdown-export': ['analysis.report.generate'],
+      'analysis.markdown-export': ['analysis.report.generate', 'analysis.report.summary', 'analysis.report.mermaid-repair', 'analysis.report.assign-insights'],
       'resource.summary-snapshot': ['chat.conversation.summary', 'chat.project.summary'],
-      'analysis.snapshot': ['analysis.vault.search', 'analysis.report.generate', 'analysis.continue'],
+      'analysis.snapshot': ['analysis.vault.search', 'analysis.report.generate', 'analysis.report.summary', 'analysis.report.mermaid-repair', 'analysis.report.assign-insights', 'analysis.continue'],
       'hub.materialized-note': ['knowledge.hub.materialize'],
       'ai-graph.markdown-export': ['graph.generate', 'graph.update'],
       'hub.manifest': ['knowledge.hub.materialize'],
       'hub.events': ['knowledge.hub.curate', 'knowledge.hub.materialize'],
-      'ai-graph.artifact': ['graph.generate', 'graph.update', 'graph.thinking-tree'],
+      'ai-graph.artifact': ['graph.generate', 'graph.update', 'graph.artifact.extract', 'graph.thinking-tree'],
       'projection.hub-graph': ['knowledge.hub.curate'],
       'media.generated-attachment': ['media.image.generate', 'media.image.edit', 'media.video.generate', 'media.music.generate'],
       'document.accepted-writeback': ['composer.copilot.session', 'copilot.rewrite-selection', 'copilot.write-article'],
       'artifact.native-file': ['composer.image.edit', 'composer.canvas.edit', 'composer.excalidraw.edit'],
       'media.job-events': ['media.image.generate', 'media.image.edit', 'media.video.generate', 'media.music.generate'],
-      'run.artifact-body': ['analysis.report.generate', 'graph.generate', 'chat.artifact.document'],
-      'composer.document-history': ['copilot.document.auto-review', 'composer.copilot.session'],
-      'composer.generation-history': ['copilot.document.auto-review', 'copilot.insight.draft-proposal', 'composer.copilot.session'],
+      'run.artifact-body': ['analysis.report.generate', 'analysis.report.summary', 'graph.generate', 'chat.artifact.document'],
+      'composer.document-history': ['copilot.document.auto-review', 'copilot.document.auto-review-complete', 'composer.copilot.session'],
+      'composer.generation-history': ['copilot.document.auto-review', 'copilot.document.auto-review-complete', 'copilot.insight.draft-proposal', 'composer.copilot.session'],
       'index.embedding': ['knowledge.index.embedding'],
       'cache.summary-preview': ['knowledge.index.summary'],
       'telemetry.composer': ['ambient.push', 'composer.copilot.session']
@@ -1369,7 +1379,26 @@
       editorModalTitle.textContent = content.title;
       editorModalSubtitle.textContent = content.subtitle;
       editorModalBody.innerHTML = content.body;
+      editorModalCancel.textContent = 'Cancel';
+      editorModalSave.classList.remove('hidden');
       editorModalSave.disabled = Boolean(content.saveDisabled);
+      editorModal.classList.remove('hidden');
+      editorModalClose.focus();
+    }
+
+    function openHistoryModal(trigger, promptId) {
+      const prompt = prompts.find(candidate => candidate.id === promptId);
+      if (!prompt) return;
+      const history = prompt.callHistory ?? [];
+      editorReturnFocus = trigger;
+      editorInspectorScrollTop = inspector.scrollTop;
+      editorModalTitle.textContent = `Call history · ${prompt.title}`;
+      editorModalSubtitle.textContent = 'Invocation receipts for this Prompt across its mapped AI actions.';
+      editorModalBody.innerHTML = history.length
+        ? `<div class="history-modal-intro"><span>Recent calls</span><span class="pill">${history.length} shown</span></div><div class="history-list">${renderPromptHistoryEntries(history)}</div>`
+        : '<div class="history-empty">No recorded calls use this Prompt yet.</div>';
+      editorModalCancel.textContent = 'Close';
+      editorModalSave.classList.add('hidden');
       editorModal.classList.remove('hidden');
       editorModalClose.focus();
     }
@@ -1381,11 +1410,18 @@
       editorReturnFocus = null;
     }
 
+    function promptRole(prompt) {
+      if (prompt?.system) return 'User';
+      if (/suffix/i.test(prompt?.id ?? '')) return 'System extension';
+      if (/system|base/i.test(prompt?.id ?? '') || prompt?.kind === 'System prompt') return 'System';
+      return prompt?.variables ? 'User' : 'System';
+    }
+
     function renderPromptControls(item) {
       const promptList = item.prompts.map(id => {
         const prompt = prompts.find(candidate => candidate.id === id);
         const actionLabel = prompt?.status === 'migration' ? 'Review migration' : 'Edit prompt';
-        return `<div class="prompt-box"><div class="prompt-head"><strong>${prompt?.title ?? id}</strong><button class="link-button" data-editor="prompt" data-prompt-id="${id}">${actionLabel}</button></div><div class="prompt-body">${prompt?.kind ?? 'Capability prompt'} · ${prompt?.version ?? 'Built-in'}</div>${renderInlinePromptCallHistory(prompt)}</div>`;
+        return `<div class="prompt-box"><div class="prompt-head"><span class="prompt-title"><strong>${prompt?.title ?? id}</strong><span class="pill">${promptRole(prompt)}</span></span><button class="link-button" data-editor="prompt" data-prompt-id="${id}">${actionLabel}</button></div><div class="prompt-body">${prompt?.kind ?? 'Capability prompt'} · ${prompt?.version ?? 'Built-in'}</div>${renderPromptHistorySummary(prompt)}</div>`;
       }).join('');
       const actionInstruction = item.actionInstruction
         ? `<div class="prompt-box"><div class="prompt-head"><strong>Action instruction</strong><button class="link-button" data-editor="instruction">Edit instruction</button></div><div class="prompt-body">${item.actionInstruction}</div></div>`
@@ -1454,8 +1490,8 @@
         <section class="panel active">
           <div class="section"><h2>Availability</h2><label class="route active"><input type="checkbox" checked><span><strong>Enable this action</strong><span>Applies to this capability-step owner without changing other actions.</span></span><span class="pill green">On</span></label></div>
           <div class="section"><h2>${item.executionKind === 'media' ? 'Route & model' : 'Model policy'}</h2>${renderModelControls(item)}</div>
-          <div class="section"><h2>Prompt &amp; instructions</h2>${renderPromptControls(item)}</div>
           ${renderExecutionControls(item)}
+          <div class="section"><h2>Prompt &amp; instructions</h2>${renderPromptControls(item)}</div>
         </section>`;
     }
 
@@ -1484,20 +1520,15 @@
       </details>`).join('');
     }
 
-    function renderInlinePromptCallHistory(item) {
+    function renderPromptHistorySummary(item, standalone = false) {
       const history = item?.callHistory ?? [];
-      if (!history.length) {
-        return `<div class="prompt-history"><div class="history-heading"><strong>Call history</strong><span class="pill">0 calls</span></div><div class="history-empty">No recorded calls use this Prompt yet.</div></div>`;
-      }
-      return `<div class="prompt-history"><div class="history-heading"><strong>Call history</strong><span class="pill">${history.length} recent</span></div><div class="history-list">${renderPromptHistoryEntries(history)}</div></div>`;
+      const latest = history[0];
+      const summary = latest ? `${history.length} recent · Last call ${latest.timestamp}` : 'No recorded calls';
+      return `<div class="prompt-history-summary ${standalone ? 'standalone' : ''}"><span class="prompt-history-copy"><strong>Call history</strong><span>${summary}</span></span><button class="action-button" data-history-prompt-id="${escapeHtml(item?.id)}">View history</button></div>`;
     }
 
     function renderPromptCallHistory(item) {
-      const history = item.callHistory ?? [];
-      if (!history.length) {
-        return `<div class="section"><div class="history-heading"><h2>Call history</h2><span class="pill">0 calls</span></div><div class="history-empty">No recorded calls use this Prompt yet.</div></div>`;
-      }
-      return `<div class="section"><div class="history-heading"><h2>Call history</h2><span class="pill">${history.length} recent</span></div><div class="history-list">${renderPromptHistoryEntries(history)}</div></div>`;
+      return `<div class="section"><h2>Call history</h2>${renderPromptHistorySummary(item, true)}</div>`;
     }
 
     function renderPromptInspector(item) {
@@ -1597,6 +1628,12 @@
         const bounded = Math.min(Number.isFinite(maximum) ? maximum : requested, Math.max(Number.isFinite(minimum) ? minimum : requested, requested));
         input.value = String(bounded);
         input.dispatchEvent(new Event('input', { bubbles: true }));
+        return;
+      }
+
+      const historyButton = event.target.closest('[data-history-prompt-id]');
+      if (historyButton) {
+        openHistoryModal(historyButton, historyButton.dataset.historyPromptId);
         return;
       }
 
