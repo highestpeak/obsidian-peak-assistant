@@ -461,6 +461,9 @@
     .modal-footer { justify-content: flex-end; border-top: 1px solid var(--line); background: var(--surface-2); }
     .modal-copy { margin-bottom: 14px; color: var(--muted); }
     .history-modal-intro { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; color: var(--muted); }
+    .history-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+    .history-pagination span { color: var(--muted); font-size: 11px; }
+    .history-pagination-actions { display: flex; gap: 8px; }
     .field { display: grid; gap: 6px; margin-top: 12px; }
     .field:first-child { margin-top: 0; }
     .field > span { font-weight: 650; }
@@ -976,7 +979,11 @@
       const owners = promptOwnerActions(prompt);
       const directCaller = String(prompt.callers ?? '').split(',').map(value => value.trim()).find(Boolean);
       if (!owners.length && !directCaller) return [];
-      const timestamps = ['Aug 3, 10:18', 'Aug 2, 16:42', 'Jul 31, 09:07'];
+      const timestamps = [
+        'Aug 3, 10:18', 'Aug 3, 08:44', 'Aug 2, 16:42', 'Aug 2, 11:26', 'Aug 1, 17:03',
+        'Aug 1, 09:31', 'Jul 31, 18:15', 'Jul 31, 09:07', 'Jul 30, 15:54', 'Jul 29, 13:22',
+        'Jul 28, 16:08', 'Jul 27, 10:41'
+      ];
       const promptSlug = prompt.id.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').slice(0, 18);
       return timestamps.map((timestamp, index) => {
         const action = owners[index % Math.max(owners.length, 1)];
@@ -987,7 +994,7 @@
           route: action?.route ?? 'Owner-defined route',
           timestamp,
           status: 'Succeeded',
-          duration: isAgent ? `${38 + index * 7}.${index + 2}s` : `${1 + index}.${8 - index}s`,
+          duration: isAgent ? `${38 + (index % 5) * 7}.${(index % 7) + 2}s` : `${1 + (index % 4)}.${8 - (index % 7)}s`,
           tokens: `${1240 + index * 380} in · ${312 + index * 74} out`,
           promptVersion: prompt.customized ? 'Vault override' : prompt.status === 'migration' ? 'Runtime source' : 'Built-in default',
           runId: `run-${promptSlug}-${index + 1}`,
@@ -1115,8 +1122,11 @@
     const editorModalClose = document.getElementById('editorModalClose');
     const editorModalCancel = document.getElementById('editorModalCancel');
     const editorModalSave = document.getElementById('editorModalSave');
+    const HISTORY_PAGE_SIZE = 5;
     let editorReturnFocus = null;
     let editorInspectorScrollTop = 0;
+    let historyModalPromptId = null;
+    let historyModalPage = 0;
 
     const groups = [
       ['all', 'all', 'All AI actions'],
@@ -1386,17 +1396,30 @@
       editorModalClose.focus();
     }
 
+    function renderHistoryModalPage() {
+      const prompt = prompts.find(candidate => candidate.id === historyModalPromptId);
+      if (!prompt) return;
+      const history = prompt.callHistory ?? [];
+      const totalPages = Math.max(1, Math.ceil(history.length / HISTORY_PAGE_SIZE));
+      historyModalPage = Math.min(totalPages - 1, Math.max(0, historyModalPage));
+      const start = historyModalPage * HISTORY_PAGE_SIZE;
+      const visibleHistory = history.slice(start, start + HISTORY_PAGE_SIZE);
+      const end = Math.min(start + visibleHistory.length, history.length);
+      editorModalBody.innerHTML = history.length
+        ? `<div class="history-modal-intro"><span>Invocation receipts</span><span class="pill">${history.length} total</span></div><div class="history-list">${renderPromptHistoryEntries(visibleHistory)}</div><div class="history-pagination"><span>${start + 1}–${end} of ${history.length} · Page ${historyModalPage + 1} of ${totalPages}</span><span class="history-pagination-actions"><button class="action-button" data-history-page="-1" ${historyModalPage === 0 ? 'disabled' : ''}>Previous</button><button class="action-button" data-history-page="1" ${historyModalPage === totalPages - 1 ? 'disabled' : ''}>Next</button></span></div>`
+        : '<div class="history-empty">No recorded calls use this Prompt yet.</div>';
+    }
+
     function openHistoryModal(trigger, promptId) {
       const prompt = prompts.find(candidate => candidate.id === promptId);
       if (!prompt) return;
-      const history = prompt.callHistory ?? [];
       editorReturnFocus = trigger;
       editorInspectorScrollTop = inspector.scrollTop;
+      historyModalPromptId = promptId;
+      historyModalPage = 0;
       editorModalTitle.textContent = `Call history · ${prompt.title}`;
       editorModalSubtitle.textContent = 'Invocation receipts for this Prompt across its mapped AI actions.';
-      editorModalBody.innerHTML = history.length
-        ? `<div class="history-modal-intro"><span>Recent calls</span><span class="pill">${history.length} shown</span></div><div class="history-list">${renderPromptHistoryEntries(history)}</div>`
-        : '<div class="history-empty">No recorded calls use this Prompt yet.</div>';
+      renderHistoryModalPage();
       editorModalCancel.textContent = 'Close';
       editorModalSave.classList.add('hidden');
       editorModal.classList.remove('hidden');
@@ -1408,6 +1431,8 @@
       inspector.scrollTop = editorInspectorScrollTop;
       editorReturnFocus?.focus();
       editorReturnFocus = null;
+      historyModalPromptId = null;
+      historyModalPage = 0;
     }
 
     function promptRole(prompt) {
@@ -1634,6 +1659,13 @@
       const historyButton = event.target.closest('[data-history-prompt-id]');
       if (historyButton) {
         openHistoryModal(historyButton, historyButton.dataset.historyPromptId);
+        return;
+      }
+
+      const historyPageButton = event.target.closest('[data-history-page]');
+      if (historyPageButton) {
+        historyModalPage += Number(historyPageButton.dataset.historyPage);
+        renderHistoryModalPage();
         return;
       }
 
