@@ -330,17 +330,21 @@
     .variable-summary-copy { min-width: 0; }
     .variable-summary-copy strong { display: block; font-size: 12px; }
     .variable-summary-copy span { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; }
-    .variable-inline-list, .variable-editor-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; margin-top: 9px; }
-    .variable-inline-item, .variable-editor-item { display: flex; align-items: baseline; gap: 7px; min-width: 0; }
-    .variable-inline-item { padding: 5px 0; border-bottom: 1px solid var(--line); }
+    .variable-inline-list, .variable-editor-list { display: grid; grid-template-columns: 1fr; margin-top: 9px; }
+    .variable-inline-item, .variable-editor-item { display: grid; grid-template-columns: minmax(180px, 240px) minmax(0, 1fr); gap: 12px; align-items: start; min-width: 0; padding: 8px 0; border-bottom: 1px solid var(--line); }
+    .variable-inline-item:last-child, .variable-editor-item:last-child { border-bottom: 0; }
     .variable-inline-item code, .variable-editor-item code { flex: 0 0 auto; color: #5d53a7; font: 10px/1.4 var(--mono); }
     .variable-inline-item span, .variable-editor-item span { overflow: hidden; color: var(--muted); font-size: 11px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
-    .variable-more { margin-top: 8px; }
-    .variable-more summary { cursor: pointer; color: var(--accent); font-size: 11px; font-weight: 650; }
-    .variable-more summary .less { display: none; }
-    .variable-more[open] summary .more { display: none; }
-    .variable-more[open] summary .less { display: inline; }
-    .variable-editor-item { align-items: flex-start; }
+    .variable-disclosure-toggle { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+    .variable-extra { display: none; }
+    .variable-disclosure-toggle:checked + .variable-inline-list .variable-extra,
+    .variable-disclosure-toggle:checked + .variable-editor-list .variable-extra { display: grid; }
+    .variable-disclosure-label { display: inline-block; margin-top: 8px; color: var(--accent); cursor: pointer; font-size: 11px; font-weight: 650; }
+    .variable-disclosure-label .less { display: none; }
+    .variable-disclosure-toggle:checked + .variable-inline-list + .variable-disclosure-label .more,
+    .variable-disclosure-toggle:checked + .variable-editor-list + .variable-disclosure-label .more { display: none; }
+    .variable-disclosure-toggle:checked + .variable-inline-list + .variable-disclosure-label .less,
+    .variable-disclosure-toggle:checked + .variable-editor-list + .variable-disclosure-label .less { display: inline; }
     .variable-editor-item span { overflow: visible; text-overflow: clip; white-space: normal; }
     .variable-editor-note { margin: 0 0 12px; color: var(--muted); }
     .variable-editor-list { margin-top: 0; padding: 12px; border: 1px solid #ded9f3; border-radius: 6px; background: #fbfaff; }
@@ -508,7 +512,7 @@
     }
 
     @media (max-width: 700px) {
-      .variable-inline-list, .variable-editor-list { grid-template-columns: 1fr; }
+      .variable-inline-item, .variable-editor-item { grid-template-columns: 1fr; gap: 3px; }
     }
   </style>
 </head>
@@ -1358,9 +1362,18 @@
 
     const VARIABLE_PREVIEW_LIMIT = 4;
 
-    function renderVariableDisclosure(hiddenCount, noun, content) {
-      if (!hiddenCount) return '';
-      return `<details class="variable-more"><summary><span class="more">Show ${hiddenCount} more ${noun}</span><span class="less">Show fewer ${noun}</span></summary>${content}</details>`;
+    function variableDisclosureId(prompt, scope) {
+      const promptId = String(prompt?.id ?? 'unknown').replace(/[^a-z0-9_-]/gi, '-');
+      return `variable-disclosure-${scope}-${promptId}`;
+    }
+
+    function renderVariableList(prompt, scope, listClass, noun, field) {
+      const variables = templateVariables(prompt);
+      const hiddenCount = Math.max(0, variables.length - VARIABLE_PREVIEW_LIMIT);
+      const fields = variables.map((variable, index) => field(variable, index >= VARIABLE_PREVIEW_LIMIT)).join('');
+      if (!hiddenCount) return `<div class="${listClass}">${fields}</div>`;
+      const controlId = variableDisclosureId(prompt, scope);
+      return `<input class="variable-disclosure-toggle" id="${controlId}" type="checkbox"><div class="${listClass}">${fields}</div><label class="variable-disclosure-label" for="${controlId}"><span class="more">Show ${hiddenCount} more ${noun}</span><span class="less">Show fewer ${noun}</span></label>`;
     }
 
     function renderVariableSummary(prompt) {
@@ -1368,15 +1381,11 @@
       if (!variables.length) {
         return '';
       }
-      const hiddenCount = Math.max(0, variables.length - VARIABLE_PREVIEW_LIMIT);
-      const field = variable => {
+      const field = (variable, hidden) => {
         const definition = variableDefinition(variable);
-        return `<span class="variable-inline-item"><code>${escapeHtml(variableToken(variable))}</code><span>${escapeHtml(definition.label)}</span></span>`;
+        return `<span class="variable-inline-item${hidden ? ' variable-extra' : ''}"><code>${escapeHtml(variableToken(variable))}</code><span>${escapeHtml(definition.label)}</span></span>`;
       };
-      const visibleFields = variables.slice(0, VARIABLE_PREVIEW_LIMIT).map(field).join('');
-      const hiddenFields = variables.slice(VARIABLE_PREVIEW_LIMIT).map(field).join('');
-      const disclosure = renderVariableDisclosure(hiddenCount, 'inputs', `<div class="variable-inline-list">${hiddenFields}</div>`);
-      return `<div class="variable-summary"><div class="variable-summary-copy"><strong>Template inputs</strong><span>Peak fills these values through Handlebars when the action runs.</span></div><div class="variable-inline-list">${visibleFields}</div>${disclosure}</div>`;
+      return `<div class="variable-summary"><div class="variable-summary-copy"><strong>Template inputs</strong><span>Peak fills these values through Handlebars when the action runs.</span></div>${renderVariableList(prompt, 'summary', 'variable-inline-list', 'inputs', field)}</div>`;
     }
 
     function renderTemplatePreview(prompt) {
@@ -1392,17 +1401,13 @@
       if (!variables.length) {
         return `<div class="notice">${icons.prompt}<span>No Handlebars fields are declared for this Prompt. It is rendered from its saved text only.</span></div>`;
       }
-      const hiddenCount = Math.max(0, variables.length - VARIABLE_PREVIEW_LIMIT);
-      const field = variable => {
+      const field = (variable, hidden) => {
         const definition = variableDefinition(variable);
         const availability = definition.availability === 'Optional' ? ' It is supplied only when available.' : definition.availability === 'Helper' ? ' This is a registered Handlebars helper rather than a value.' : '';
         const description = `${definition.explanation ?? `${definition.label} comes from ${definition.source}.`}${availability}`;
-        return `<span class="variable-editor-item"><code>${escapeHtml(variableToken(variable))}</code><span>${escapeHtml(description)}</span></span>`;
+        return `<span class="variable-editor-item${hidden ? ' variable-extra' : ''}"><code>${escapeHtml(variableToken(variable))}</code><span>${escapeHtml(description)}</span></span>`;
       };
-      const visibleFields = variables.slice(0, VARIABLE_PREVIEW_LIMIT).map(field).join('');
-      const hiddenFields = variables.slice(VARIABLE_PREVIEW_LIMIT).map(field).join('');
-      const disclosure = renderVariableDisclosure(hiddenCount, 'variables', `<div class="variable-editor-list">${hiddenFields}</div>`);
-      return `<p class="variable-editor-note">Use these exact Handlebars fields in the template. Peak supplies the values at run time; the source context is fixed by the action and is not typed manually here.</p><div class="variable-editor-list">${visibleFields}</div>${disclosure}`;
+      return `<p class="variable-editor-note">Use these exact Handlebars fields in the template. Peak supplies the values at run time; the source context is fixed by the action and is not typed manually here.</p>${renderVariableList(prompt, 'editor', 'variable-editor-list', 'variables', field)}`;
     }
 
     function inspectorHeader(item, type) {
