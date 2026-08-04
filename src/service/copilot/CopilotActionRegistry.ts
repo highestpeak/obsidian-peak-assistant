@@ -1,5 +1,6 @@
 import type { VaultFileRef } from '@/core/ports/VaultFileRef';
 import type { LLMStreamEvent } from '@/core/providers/types';
+import type { PromptId } from '@/core/types/prompt';
 
 export interface DocumentContext {
 	file: VaultFileRef;
@@ -86,6 +87,12 @@ export interface CopilotAction {
 	category: 'document' | 'vault' | 'writing';
 	intentTab?: 'document' | 'vault' | 'setting';
 	requiresDocument?: boolean;
+	/**
+	 * Prompts that this action really renders at execution time. The Control
+	 * Center uses this to expose an editor only when saving an override changes
+	 * the next run; actions backed entirely by deterministic code stay absent.
+	 */
+	promptIds?: readonly PromptId[];
 	relevance(ctx: DocumentContext): number;
 	guard?(ctx: DocumentContext): string | null;
 	execute(ctx: DocumentContext, signal?: AbortSignal): AsyncGenerator<LLMStreamEvent, ActionResult | void>;

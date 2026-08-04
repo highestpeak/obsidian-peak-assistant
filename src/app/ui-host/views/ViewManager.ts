@@ -13,6 +13,8 @@ import { App, Notice, ViewCreator } from 'obsidian';
 import { AppContext } from '@/app/context/AppContext';
 import { DEFAULT_COMPOSER_NAVIGATION_STRINGS } from '@/app/composer/ComposerNavigationDefaults';
 import { CommandCenterHomeView, COMMAND_CENTER_HOME_VIEW_TYPE } from '@/app/ui-host/views/CommandCenterHomeView';
+import { AIControlCenterView, AI_CONTROL_CENTER_VIEW_TYPE } from '@/app/ui-host/views/AIControlCenterView';
+import { MyContentView, MY_CONTENT_VIEW_TYPE } from '@/app/ui-host/views/MyContentView';
 
 /**
  * Manages view registrations, related commands, and lifecycle cleanup.
@@ -51,6 +53,12 @@ export class ViewManager {
 		});
 		this.viewCreators.set(COMMAND_CENTER_HOME_VIEW_TYPE, (leaf) => {
 			return new CommandCenterHomeView(leaf, appContext);
+		});
+		this.viewCreators.set(AI_CONTROL_CENTER_VIEW_TYPE, (leaf) => {
+			return new AIControlCenterView(leaf, appContext);
+		});
+		this.viewCreators.set(MY_CONTENT_VIEW_TYPE, (leaf) => {
+			return new MyContentView(leaf, appContext);
 		});
 	}
 
@@ -107,6 +115,28 @@ export class ViewManager {
 		const leaf = this.plugin.app.workspace.getLeaf('tab');
 		await leaf.setViewState({ type: USAGE_DASHBOARD_VIEW_TYPE, active: true });
 		this.plugin.app.workspace.revealLeaf(leaf);
+	}
+
+	/** Open the user-facing controls for prompts, Custom Prompts and assistants. */
+	async activateAIControlCenterView(): Promise<void> {
+		await this.activateStandaloneView(AI_CONTROL_CENTER_VIEW_TYPE);
+	}
+
+	/** Open the explicitly saved Peak content browser. */
+	async activateMyContentView(): Promise<void> {
+		await this.activateStandaloneView(MY_CONTENT_VIEW_TYPE);
+	}
+
+	private async activateStandaloneView(type: string): Promise<void> {
+		const { workspace } = this.plugin.app;
+		const existing = workspace.getLeavesOfType(type);
+		if (existing.length > 0) {
+			workspace.revealLeaf(existing[0]);
+			return;
+		}
+		const leaf = workspace.getLeaf('tab');
+		await leaf.setViewState({ type, active: true });
+		workspace.revealLeaf(leaf);
 	}
 
 	/**

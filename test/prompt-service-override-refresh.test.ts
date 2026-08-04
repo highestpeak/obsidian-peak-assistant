@@ -47,7 +47,38 @@ async function testOverrideRefreshesAfterModifyAndDelete(): Promise<void> {
 	console.log('PASS: overrideRefreshesAfterModifyAndDelete');
 }
 
-testOverrideRefreshesAfterModifyAndDelete().then(() => process.exit(0)).catch((error) => {
+async function testSavePromptOverrideWritesThroughTheExistingVaultOwner(): Promise<void> {
+	let stored = '';
+	let createdPath = '';
+	const app = {
+		vault: {
+			getAbstractFileByPath: () => null,
+			async create(path: string, content: string) {
+				createdPath = path;
+				stored = content;
+				return { path, extension: 'md', stat: { mtime: 1 } };
+			},
+			async createFolder() {},
+		},
+	};
+	const service = new PromptService(
+		app as any,
+		{ rootFolder: 'Peak AI' } as any,
+		undefined,
+		{ getTemplate: async () => 'unused' } as any,
+	);
+
+	await service.savePromptOverride('query-rewrite' as any, 'Use {{subject}}.');
+	assert.strictEqual(createdPath, 'Peak AI/Prompts/query-rewrite.prompt.md');
+	assert.match(stored, /id: query-rewrite/);
+	assert.match(stored, /Use \{\{subject\}\}\./);
+	console.log('PASS: savePromptOverrideWritesThroughTheExistingVaultOwner');
+}
+
+Promise.all([
+	testOverrideRefreshesAfterModifyAndDelete(),
+	testSavePromptOverrideWritesThroughTheExistingVaultOwner(),
+]).then(() => process.exit(0)).catch((error) => {
 	console.error(error);
 	process.exit(1);
 });

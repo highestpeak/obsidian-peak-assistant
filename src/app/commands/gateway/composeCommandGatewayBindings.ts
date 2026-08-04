@@ -20,11 +20,13 @@ import type { CompiledSkill } from '@/core/types/compiled-skill';
 import type { GatewayBinding } from '@/service/capabilities/CommandGateway';
 import type { CapabilityRunContext, CapabilityExecutionOutput } from '@/service/capabilities/CapabilityRunner';
 import {
+	AI_CONTROL_CENTER_MANIFEST,
 	CHAT_STUDIO_MANIFEST,
 	COMMAND_CENTER_MANIFEST,
 	DOCUMENT_COMPOSER_MANIFEST,
 	FILE_ATLAS_MANIFEST,
 	HARNESS_WIZARD_MANIFEST,
+	MY_CONTENT_MANIFEST,
 	QUICK_SEARCH_MANIFEST,
 	SETTINGS_MODAL_MANIFEST,
 	USAGE_DASHBOARD_MANIFEST,
@@ -50,6 +52,8 @@ const SURFACE_OPEN_SKILL: CompiledSkill = {
  */
 export interface PaletteCommandActions {
 	readonly openCommandCenter: () => void | Promise<void>;
+	readonly openAIControlCenter: () => void | Promise<void>;
+	readonly openMyContent: () => void | Promise<void>;
 	readonly openSettingsModal: () => void | Promise<void>;
 	readonly openHarnessSetupWizard: () => void | Promise<void>;
 	readonly openQuickSearch: () => void | Promise<void>;
@@ -83,6 +87,22 @@ export function composeCommandGatewayBindings(
 			manifest: COMMAND_CENTER_MANIFEST,
 			compiledSkill: SURFACE_OPEN_SKILL,
 			execute: surfaceOpenStrategy(actions.openCommandCenter),
+			trigger: 'manual',
+		},
+		{
+			commandId: 'peak-open-ai-control-center',
+			commandLabel: 'Open AI Control Center',
+			manifest: AI_CONTROL_CENTER_MANIFEST,
+			compiledSkill: SURFACE_OPEN_SKILL,
+			execute: surfaceOpenStrategy(actions.openAIControlCenter),
+			trigger: 'manual',
+		},
+		{
+			commandId: 'peak-open-my-content',
+			commandLabel: 'Open My Content',
+			manifest: MY_CONTENT_MANIFEST,
+			compiledSkill: SURFACE_OPEN_SKILL,
+			execute: surfaceOpenStrategy(actions.openMyContent),
 			trigger: 'manual',
 		},
 		{

@@ -509,6 +509,8 @@ export default class MyPlugin extends Plugin {
 				}
 				runtime.openLauncher();
 			},
+			openAIControlCenter: () => this.viewManager.activateAIControlCenterView(),
+			openMyContent: () => this.viewManager.activateMyContentView(),
 			openSettingsModal,
 			openHarnessSetupWizard,
 			openQuickSearch,

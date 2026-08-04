@@ -136,6 +136,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 	const polishDocumentAction: CopilotAction = {
 		id: POLISH_COPILOT_ACTION_ID, label: 'Polish Document', description: 'Improve clarity and style',
 		iconId: 'sparkles', category: 'document',
+		promptIds: [POLISH_PROMPT_ID],
 		relevance: (ctx) => ctx.selection ? 0.8 : ctx.wordCount > 200 ? 0.5 : 0.2,
 		execute: (ctx, signal) => streamAction(
 			ai,
@@ -148,6 +149,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 	const formatDocumentAction: CopilotAction = {
 		id: 'format-polish', label: 'Format Polish', description: 'Fix heading hierarchy, list consistency, whitespace, and broken links',
 		iconId: 'wrap-text', category: 'document',
+		promptIds: [PromptId.DocFormatPolish],
 		relevance: (ctx) => ctx.selection ? 0.6 : ctx.wordCount > 200 ? 0.5 : 0.2,
 		execute: (ctx, signal) => streamAction(ai, PromptId.DocFormatPolish, { content: scopedContent(ctx), title: ctx.title, scope: ctx.scope }, signal),
 	};
@@ -155,6 +157,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 	const correctContentAction: CopilotAction = {
 		id: 'correct-content', label: 'Correct Content', description: 'Find factual errors, logical inconsistencies, broken references, and typos',
 		iconId: 'shield-check', category: 'document',
+		promptIds: [PromptId.DocCorrectContent],
 		guard: (ctx) => ctx.wordCount < 50 ? 'Document is too short to check for errors (minimum 50 words).' : null,
 		relevance: (ctx) => ctx.selection ? 0.7 : ctx.wordCount > 300 ? 0.6 : 0.3,
 		async *execute(ctx, signal) {
@@ -171,6 +174,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 	const reviewArticleAction: CopilotAction = {
 		id: 'review', label: 'Review Article', description: 'Get structural and content feedback',
 		iconId: 'message-square-text', category: 'document',
+		promptIds: [PromptId.DocReview],
 		relevance: (ctx) => ctx.wordCount > 500 ? 0.7 : ctx.wordCount > 300 ? 0.5 : 0.2,
 		async *execute(ctx, signal) {
 			let usage: ActionUsage | undefined;
@@ -186,6 +190,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 	const suggestLinksAction: CopilotAction = {
 		id: 'suggest-links', label: 'Suggest Links', description: 'Find potential wiki-link connections',
 		iconId: 'link-2', category: 'document',
+		promptIds: [PromptId.CopilotAgentSuggestLinks],
 		relevance: (ctx) => ctx.isOrphan ? 0.8 : ctx.links.length < 3 ? 0.5 : 0.2,
 		async *execute(ctx, signal) {
 			const cache = lookupFileCache(ctx.file);
@@ -249,6 +254,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 	const suggestSplitAction: CopilotAction = {
 		id: 'suggest-split', label: 'Suggest Split', description: 'Propose how to split a long document',
 		iconId: 'git-fork', category: 'document',
+		promptIds: [PromptId.DocSplitSuggestion],
 		relevance: (ctx) => ctx.wordCount > 2000 ? 0.8 : ctx.wordCount > 1000 ? 0.5 : 0.2,
 		guard: (ctx) => ctx.wordCount < 500 ? 'Document is too short to split (< 500 words)' : null,
 		async *execute(ctx, signal) {
@@ -305,6 +311,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 	const summarizeAction: CopilotAction = {
 		id: 'summarize', label: 'Summarize', description: 'Generate a concise summary of the document',
 		iconId: 'align-left', category: 'document',
+		promptIds: [PromptId.DocSummarize],
 		guard: (ctx) => ctx.wordCount < 100 ? 'Document is too short to summarize (minimum 100 words).' : null,
 		relevance: (ctx) => ctx.wordCount > 1500 ? 0.8 : ctx.wordCount > 800 ? 0.5 : 0.2,
 		execute: (ctx, signal) => streamAction(ai, PromptId.DocSummarize, { content: scopedContent(ctx), title: ctx.title, scope: ctx.scope, length: 'short' }, signal),
@@ -313,6 +320,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 	const extractConceptsAction: CopilotAction = {
 		id: 'extract-concepts', label: 'Extract Concepts', description: 'Identify key concepts and definitions',
 		iconId: 'lightbulb', category: 'document',
+		promptIds: [PromptId.DocExtractConcepts],
 		guard: (ctx) => ctx.wordCount < 100 ? 'Document is too short to extract concepts from (minimum 100 words).' : null,
 		relevance: (ctx) => ctx.wordCount > 1000 && ctx.tags.length < 2 ? 0.7 : ctx.wordCount > 500 ? 0.5 : 0.2,
 		async *execute(ctx, signal) {
@@ -329,6 +337,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 	const translateAction: CopilotAction = {
 		id: 'translate', label: 'Translate', description: 'Translate document content to another language',
 		iconId: 'languages', category: 'document',
+		promptIds: [PromptId.DocTranslate],
 		relevance(ctx) {
 			const content = ctx.scope === 'selection' ? ctx.selection ?? ctx.content : ctx.content;
 			return hasCJKMajority(content) ? 0.6 : 0.3;
@@ -373,6 +382,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 	const knowledgeGapsAction: CopilotAction = {
 		id: 'knowledge-gaps', label: 'Knowledge Gaps', description: 'Identify missing topics and knowledge gaps',
 		iconId: 'help-circle', category: 'vault',
+		promptIds: [PromptId.CopilotAgentKnowledgeGaps],
 		relevance: (ctx) => ctx.headingCount > 5 ? 0.7 : ctx.headingCount > 3 ? 0.5 : 0.2,
 		async *execute(ctx, signal) {
 			const systemPrompt = await ai.renderPrompt(PromptId.CopilotAgentKnowledgeGaps, {} as any);
@@ -392,6 +402,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 	const synthesizeTopicAction: CopilotAction = {
 		id: 'synthesize-topic', label: 'Synthesize Topic', description: 'Synthesize a topic overview from related notes',
 		iconId: 'layers', category: 'vault',
+		promptIds: [PromptId.CopilotAgentSynthesizeTopic],
 		relevance(ctx) {
 			const t = ctx.title.toLowerCase();
 			return /moc|overview|summary|index/.test(t) ? 0.8 : ctx.tags.length > 0 ? 0.4 : 0.2;
@@ -413,6 +424,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 	const vaultHealthAction: CopilotAction = {
 		id: 'vault-health', label: 'Vault Health', description: 'Analyze vault structure for orphans, duplicates, and stale notes',
 		iconId: 'activity', category: 'vault',
+		promptIds: [PromptId.VaultHealth],
 		relevance: () => 0.5,
 		async *execute(_ctx, signal) {
 			const files = listMarkdownFiles();
@@ -457,6 +469,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 	const vaultSummaryAction: CopilotAction = {
 		id: 'vault-summary', label: 'Vault Summary', description: 'Summarize recent vault activity over a time period',
 		iconId: 'calendar', category: 'vault',
+		promptIds: [PromptId.VaultSummary],
 		relevance: () => 0.5,
 		async *execute(_ctx, signal) {
 			const files = listMarkdownFiles();
@@ -497,6 +510,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 	const continueWritingAction: CopilotAction = {
 		id: 'continue-writing', label: 'Continue Writing', description: 'Continue writing from where you left off',
 		iconId: 'chevron-right', category: 'writing',
+		promptIds: [PromptId.WritingContinue],
 		guard: (ctx) => ctx.wordCount === 0 ? 'Document is empty — write something first' : null,
 		relevance: (ctx) => ctx.wordCount >= 50 && ctx.wordCount <= 2000 ? 0.6 : ctx.wordCount > 0 ? 0.4 : 0.1,
 		execute: (ctx, signal) => streamAction(ai, PromptId.WritingContinue, { content: ctx.content, title: ctx.title }, signal),
@@ -505,6 +519,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 	const rewriteSelectionAction: CopilotAction = {
 		id: 'rewrite-selection', label: 'Rewrite Selection', description: 'Rewrite selected text for clarity and style',
 		iconId: 'pen-line', category: 'writing',
+		promptIds: [PromptId.WritingRewrite],
 		guard: (ctx) => ctx.selection ? null : 'Select text to rewrite',
 		relevance: (ctx) => ctx.selection ? 0.8 : 0.1,
 		execute: (ctx, signal) => streamAction(ai, PromptId.WritingRewrite, { selection: ctx.selection!, content: ctx.content, title: ctx.title, style: 'concise' }, signal),
@@ -513,6 +528,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 	const addEvidenceAction: CopilotAction = {
 		id: 'add-evidence', label: 'Add Evidence', description: 'Find supporting evidence from your vault',
 		iconId: 'book-open', category: 'writing',
+		promptIds: [PromptId.CopilotAgentAddEvidence],
 		guard: (ctx) => ctx.wordCount < 50 ? 'Write at least 50 words before searching for evidence' : null,
 		relevance: (ctx) => ctx.wordCount > 500 ? 0.5 : 0.2,
 		async *execute(ctx, signal) {
@@ -571,6 +587,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 	const writingPlanAction: CopilotAction = {
 		id: 'writing-plan', label: 'Writing Plan', description: 'Create a structured writing plan for a topic, grounded in vault notes',
 		iconId: 'clipboard-list', category: 'writing',
+		promptIds: [PromptId.CopilotAgentWritingPlan],
 		relevance: () => 0.4,
 		async *execute(ctx, signal) {
 			const systemPrompt = await ai.renderPrompt(PromptId.CopilotAgentWritingPlan, {} as any);
@@ -592,6 +609,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 	const writeArticleAction: CopilotAction = {
 		id: 'write-article', label: 'Write Article', description: 'Find vault notes on a topic and synthesize an article with [[citations]]',
 		iconId: 'file-text', category: 'writing',
+		promptIds: [PromptId.CopilotAgentWriteArticle],
 		relevance: (ctx) => ctx.wordCount < 100 ? 0.6 : 0.3,
 		async *execute(ctx, signal) {
 			const systemPrompt = await ai.renderPrompt(PromptId.CopilotAgentWriteArticle, {} as any);
@@ -610,6 +628,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 	const detectAndFileAction: CopilotAction = {
 		id: 'detect-and-file', label: 'Detect & File', description: 'Analyze text and suggest which note to append it to',
 		iconId: 'inbox', category: 'vault',
+		promptIds: [PromptId.CopilotAgentDetectAndFile],
 		guard: (ctx) => !ctx.selection ? 'Select text to detect and file' : null,
 		relevance: (ctx) => ctx.selection ? 0.7 : 0.1,
 		async *execute(ctx, signal) {
@@ -630,6 +649,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 	const checkTaskListAction: CopilotAction = {
 		id: 'check-task-list', label: 'Check Task List', description: 'Analyze tasks for priority, overdue items, blockers, and staleness',
 		iconId: 'list-checks', category: 'document',
+		promptIds: [PromptId.CopilotAgentCheckTaskList],
 		guard: (ctx) => {
 			const hasTasks = /- \[[ x]\]/.test(ctx.content);
 			return hasTasks ? null : 'No task items found in document (need - [ ] or - [x])';
@@ -651,6 +671,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 	const promptAuditAction: CopilotAction = {
 		id: 'prompt-audit', label: 'Prompt Audit', description: 'Evaluate prompt templates for quality and suggest improvements',
 		iconId: 'clipboard-check', category: 'vault',
+		promptIds: [PromptId.CopilotAgentPromptAudit],
 		relevance: () => 0.3,
 		async *execute(_ctx, signal) {
 			const systemPrompt = await ai.renderPrompt(PromptId.CopilotAgentPromptAudit, {} as any);
@@ -716,6 +737,7 @@ export function createBuiltInCopilotActions(deps: CopilotActionPorts): CopilotAc
 	const findAndSolveTasksAction: CopilotAction = {
 		id: 'find-solve-tasks', label: 'Find & Solve Tasks', description: 'Find open tasks with questions and suggest answers from vault notes',
 		iconId: 'circle-help', category: 'vault',
+		promptIds: [PromptId.CopilotFindAndSolveTasksSystem, PromptId.CopilotFindAndSolveTasksUser],
 		relevance: () => 0.5,
 		async *execute(_ctx, signal) {
 			const systemPrompt = await ai.renderPrompt(PromptId.CopilotFindAndSolveTasksSystem, {} as any);

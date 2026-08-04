@@ -135,6 +135,32 @@ export const COMMAND_CENTER_MANIFEST: CapabilityManifest = {
 	surfaceBinding: ['chat'],
 };
 
+export const AI_CONTROL_CENTER_MANIFEST: CapabilityManifest = {
+	id: 'ui.open.ai-control-center',
+	title: 'Open AI Control Center',
+	description: 'Open prompts, Custom Prompts, and Chat Assistant controls that affect real Peak runs.',
+	inputContract: SURFACE_OPEN_INPUT,
+	outputContract: SURFACE_OPEN_OUTPUT,
+	permissionKind: 'read',
+	costTier: 'fast',
+	backendPolicy: DEFAULT_BACKEND,
+	skillRef: 'ui.surface-open.v1',
+	surfaceBinding: ['chat', 'copilot', 'vault-search'],
+};
+
+export const MY_CONTENT_MANIFEST: CapabilityManifest = {
+	id: 'ui.open.my-content',
+	title: 'Open My Content',
+	description: 'Open explicitly saved and materialized Peak content without exposing internal storage.',
+	inputContract: SURFACE_OPEN_INPUT,
+	outputContract: SURFACE_OPEN_OUTPUT,
+	permissionKind: 'read',
+	costTier: 'fast',
+	backendPolicy: DEFAULT_BACKEND,
+	skillRef: 'ui.surface-open.v1',
+	surfaceBinding: ['chat', 'vault-search'],
+};
+
 /**
  * All palette-command manifests keyed by their Obsidian command id.
  * Used by `composeCommandGatewayBindings` to build a GatewayBinding
@@ -143,6 +169,8 @@ export const COMMAND_CENTER_MANIFEST: CapabilityManifest = {
  */
 export const PALETTE_COMMAND_MANIFESTS: Readonly<Record<string, CapabilityManifest>> = Object.freeze({
 	'peak-open-command-center': COMMAND_CENTER_MANIFEST,
+	'peak-open-ai-control-center': AI_CONTROL_CENTER_MANIFEST,
+	'peak-open-my-content': MY_CONTENT_MANIFEST,
 	'peak-open-settings': SETTINGS_MODAL_MANIFEST,
 	'peak-harness-setup-wizard': HARNESS_WIZARD_MANIFEST,
 	'peak-quick-search': QUICK_SEARCH_MANIFEST,

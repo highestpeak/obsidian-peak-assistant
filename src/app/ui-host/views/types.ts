@@ -5,6 +5,8 @@ export const CONVERSATION_OUTLINE_VIEW_TYPE = 'peak-conversation-outline-view';
 export const CHAT_STUDIO_VIEW_TYPE = 'peak-chat-studio-view';
 export const RELATED_NOTES_VIEW_TYPE = 'peak-related-notes-view';
 export const COMMAND_CENTER_HOME_VIEW_TYPE = 'peak-command-center-home';
+export const AI_CONTROL_CENTER_VIEW_TYPE = 'peak-ai-control-center';
+export const MY_CONTENT_VIEW_TYPE = 'peak-my-content';
 
 export const TRACKED_VIEW_TYPES = new Set<string>([
 	CHAT_VIEW_TYPE,
@@ -24,4 +26,6 @@ export const STANDALONE_PEAK_VIEW_TYPES = new Set<string>([
 	// dismiss the legacy chat layout.
 	CHAT_STUDIO_VIEW_TYPE,
 	COMMAND_CENTER_HOME_VIEW_TYPE,
+	AI_CONTROL_CENTER_VIEW_TYPE,
+	MY_CONTENT_VIEW_TYPE,
 ]);

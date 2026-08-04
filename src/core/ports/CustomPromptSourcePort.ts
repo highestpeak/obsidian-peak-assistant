@@ -23,6 +23,8 @@ export interface CustomPromptDefShape {
 	category: 'document' | 'vault' | 'writing';
 	template: string;
 	filePath: string;
+	/** Optional action-local model within the active provider profile. */
+	modelId?: string;
 }
 
 /**
@@ -41,4 +43,28 @@ export interface CustomPromptSourcePort {
 	 * idempotent cleanup function that releases every host subscription.
 	 */
 	watch?(onChange: () => void): () => void;
+}
+
+/**
+ * A writable owner for Custom Prompt definitions. The read/watch contract
+ * above stays deliberately small because most consumers only need a catalog;
+ * the Control Center receives this extension from the app-owned Vault adapter.
+ */
+export interface CustomPromptEditorPort extends CustomPromptSourcePort {
+	create(input: {
+		label: string;
+		description?: string;
+		category?: CustomPromptDefShape['category'];
+		template: string;
+		modelId?: string;
+	}): Promise<CustomPromptDefShape>;
+	update(input: {
+		filePath: string;
+		label: string;
+		description?: string;
+		category?: CustomPromptDefShape['category'];
+		template: string;
+		modelId?: string;
+	}): Promise<CustomPromptDefShape>;
+	delete(filePath: string): Promise<void>;
 }

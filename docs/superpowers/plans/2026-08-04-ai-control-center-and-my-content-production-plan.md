@@ -35,7 +35,7 @@
 | 事实 | 证据 | 实施含义 |
 | --- | --- | --- |
 | 正常 `queryText` / `queryStream` / `queryStructured` 路径经 active profile resolver，而不是 `promptModelMap` | `src/service/chat/service-manager.ts` | 旧 per-prompt model map 不能直接做成可保存 UI；先引入 action-policy resolver 并让调用链消费。 |
-| Custom Prompt 在 action 内手工替换 `{{content}}`、`{{title}}` 等变量，并拼接 user prompt | `src/service/copilot/CustomPromptRegistry.ts` | 第一阶段必须迁至统一 Handlebars 渲染口，变量 schema 同时成为 UI 可展示的真值。 |
+| Custom Prompt 通过共享 PromptService Handlebars renderer 渲染声明变量，agent 收到已渲染 system/user prompt | `src/service/copilot/CustomPromptRegistry.ts` | 已完成统一渲染；后续 UI 可复用同一变量 schema，不得恢复 action 内手工替换。 |
 | `PromptService` 已是内置 Prompt 的 override + Handlebars owner | `src/service/prompt/PromptService.ts` | 动态 prompt renderer 由它提供；app composition 通过窄 port 注入 Copilot runtime。 |
 | `query-parser.ts` 是确定性语法解析，`reranker.ts` 是确定性分数调整 | `src/service/search/query/` | 两者均不进入 AI Control Center。 |
 | Chat Assistant 已有自己的 durable definition 与 runtime | `src/service/chat/service-assistant.ts` | Control Center 可做该 owner 的创建/编辑入口，不复制其 store。 |
@@ -136,3 +136,11 @@
 - The full action-policy schema and receipt shape are not chosen until Phase 2 completes its caller inventory.
 - Composer preset migration, Hyper Search context compact and all historic template deletion remain candidates, not authorized bulk deletions.
 - My Content pagination, cross-vault synchronization and bulk deletion must be designed against actual product records; this plan does not authorize an independent content store.
+
+## 7. 2026-08-04 生产入口闭环（已实现，仍非全局 action-policy 完成）
+
+- 新增两个真正的 Obsidian `ItemView`：**AI Control Center** 与 **My Content**；均通过 Command Gateway 的稳定 Command Palette 入口打开，也会出现在 Peak Command Center 的可添加页面目录。
+- AI Control Center 当前只投影会实际渲染 Prompt 的 Copilot actions；确定性 action 不出现。内置 Prompt 编辑通过 `PromptService.savePromptOverride()` 写入现有 Vault override，下一次 render 按文件版本读取；Custom Prompt 在页内创建/编辑/删除，Chat Assistant 复用现有 owner 的 builder 与持久化。
+- My Content 当前只列举 registry 可验证且路径确定的 materialized/user-owned 文件（例如 Profile、Hub、Chat artifact、媒体、Project Brief）；任意用户选择位置的 AI Search/AI Graph/Native export 尚没有 owner 写入的 user-surface receipt，因此故意不猜测或扫描普通 Vault Markdown。
+- 已验证：`test/ai-control-center-runtime.test.ts`、`test/my-content-runtime.test.ts`、Prompt override、Custom Prompt watcher、Command Gateway focused tests，以及 `npm run build`。
+- 仍缺：全产品 action-policy resolver（per-action model/output/tool/approval/budget），以及 user-selected export 的显式 record projection。没有把它们显示成可编辑或可列举的假功能。真实 Obsidian 打开/编辑/保存交互：`INTERACTION NOT VERIFIED`（本次无可用 CDP listener）。

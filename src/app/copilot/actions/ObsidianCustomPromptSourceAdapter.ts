@@ -12,10 +12,12 @@
 
 import { type App, type EventRef, TFile, TFolder, normalizePath } from 'obsidian';
 import {
+	normalizeCustomPromptSlug,
 	parseCustomPromptFile,
 	type CustomPromptDef,
 } from '@/service/copilot/CustomPromptRegistry';
-import type { CustomPromptSourcePort } from '@/core/ports/CustomPromptSourcePort';
+import type { CustomPromptEditorPort } from '@/core/ports/CustomPromptSourcePort';
+import { ensureFolderRecursive } from '@/core/storage/vault/vault-ops';
 
 export interface ObsidianCustomPromptSourceAdapterOptions {
 	app: App;
@@ -23,7 +25,7 @@ export interface ObsidianCustomPromptSourceAdapterOptions {
 	resolveFolder: () => string;
 }
 
-export class ObsidianCustomPromptSourceAdapter implements CustomPromptSourcePort {
+export class ObsidianCustomPromptSourceAdapter implements CustomPromptEditorPort {
 	constructor(private readonly opts: ObsidianCustomPromptSourceAdapterOptions) {}
 
 	async loadAll(): Promise<CustomPromptDef[]> {
@@ -69,6 +71,92 @@ export class ObsidianCustomPromptSourceAdapter implements CustomPromptSourcePort
 			app.vault.on('rename', (file, oldPath) => notifyIfRelevant(file.path, oldPath)),
 		];
 		return () => refs.forEach((ref) => app.vault.offref(ref));
+	}
+
+	async create(input: {
+		label: string;
+		description?: string;
+		category?: CustomPromptDef['category'];
+		template: string;
+		modelId?: string;
+	}): Promise<CustomPromptDef> {
+		const folder = normalizePath(this.opts.resolveFolder());
+		const label = input.label.trim();
+		const template = input.template.trim();
+		if (!label) throw new Error('A Custom Prompt needs a name.');
+		if (!template) throw new Error('A Custom Prompt cannot be empty.');
+		await this.ensureFolder(folder);
+		const slug = normalizeCustomPromptSlug(label);
+		const filePath = normalizePath(`${folder}/${slug}.md`);
+		if (this.opts.app.vault.getAbstractFileByPath(filePath)) {
+			throw new Error(`A Custom Prompt named "${label}" already exists.`);
+		}
+		await this.opts.app.vault.create(filePath, this.serialize(input));
+		return this.requireParsed(filePath, label, this.serialize(input));
+	}
+
+	async update(input: {
+		filePath: string;
+		label: string;
+		description?: string;
+		category?: CustomPromptDef['category'];
+		template: string;
+		modelId?: string;
+	}): Promise<CustomPromptDef> {
+		const file = this.opts.app.vault.getAbstractFileByPath(normalizePath(input.filePath));
+		if (!(file instanceof TFile)) throw new Error('This Custom Prompt no longer exists.');
+		const label = input.label.trim();
+		const template = input.template.trim();
+		if (!label) throw new Error('A Custom Prompt needs a name.');
+		if (!template) throw new Error('A Custom Prompt cannot be empty.');
+		const content = this.serialize(input);
+		const folder = normalizePath(this.opts.resolveFolder());
+		const nextPath = normalizePath(`${folder}/${normalizeCustomPromptSlug(label)}.md`);
+		const existing = this.opts.app.vault.getAbstractFileByPath(nextPath);
+		if (existing && existing !== file) {
+			throw new Error(`A Custom Prompt named "${label}" already exists.`);
+		}
+		if (file.path !== nextPath) await this.opts.app.vault.rename(file, nextPath);
+		await this.opts.app.vault.modify(file, content);
+		return this.requireParsed(nextPath, label, content);
+	}
+
+	async delete(filePath: string): Promise<void> {
+		const file = this.opts.app.vault.getAbstractFileByPath(normalizePath(filePath));
+		if (!(file instanceof TFile) || !this.isDirectPromptFile(file.path)) {
+			throw new Error('This Custom Prompt no longer exists in the configured folder.');
+		}
+		await this.opts.app.vault.delete(file);
+	}
+
+	private async ensureFolder(folder: string): Promise<void> {
+		const current = this.opts.app.vault.getAbstractFileByPath(folder);
+		if (current instanceof TFolder) return;
+		if (current) throw new Error('The Custom Prompts path is not a folder.');
+		await ensureFolderRecursive(folder, this.opts.app);
+	}
+
+	private serialize(input: {
+		label: string;
+		description?: string;
+		category?: CustomPromptDef['category'];
+		template: string;
+		modelId?: string;
+	}): string {
+		const frontmatter = [
+			'---',
+			`description: ${JSON.stringify(input.description?.trim() ?? '')}`,
+			`category: ${input.category ?? 'writing'}`,
+			input.modelId?.trim() ? `model: ${JSON.stringify(input.modelId.trim())}` : null,
+			'---',
+		].filter(Boolean).join('\n');
+		return `${frontmatter}\n\n${input.template.trim()}\n`;
+	}
+
+	private requireParsed(filePath: string, label: string, content: string): CustomPromptDef {
+		const parsed = parseCustomPromptFile(label, filePath, content);
+		if (!parsed) throw new Error('The Custom Prompt could not be parsed after saving.');
+		return parsed;
 	}
 
 	private isDirectPromptFile(path: string): boolean {

@@ -9,7 +9,12 @@ import {
 	type CommandCenterItemIcon,
 	type CommandCenterRecentTarget,
 } from '@/core/command-center';
-import { COMMAND_CENTER_HOME_VIEW_TYPE, USAGE_DASHBOARD_VIEW_TYPE } from '@/app/ui-host/views/types';
+import {
+	AI_CONTROL_CENTER_VIEW_TYPE,
+	COMMAND_CENTER_HOME_VIEW_TYPE,
+	MY_CONTENT_VIEW_TYPE,
+	USAGE_DASHBOARD_VIEW_TYPE,
+} from '@/app/ui-host/views/types';
 
 export { COMMAND_CENTER_HOME_VIEW_TYPE };
 
@@ -33,6 +38,8 @@ const VIEW_CATALOG: ReadonlyArray<{
 }> = [
 	{ viewType: COMMAND_CENTER_HOME_VIEW_TYPE, label: 'Home', icon: { kind: 'lucide', name: 'house' } },
 	{ viewType: USAGE_DASHBOARD_VIEW_TYPE, label: 'Usage Dashboard', icon: { kind: 'lucide', name: 'chart-no-axes-column' } },
+	{ viewType: AI_CONTROL_CENTER_VIEW_TYPE, label: 'AI Control Center', icon: { kind: 'lucide', name: 'sparkles' } },
+	{ viewType: MY_CONTENT_VIEW_TYPE, label: 'My Content', icon: { kind: 'lucide', name: 'folder-heart' } },
 ];
 
 function sourceFromCommandId(commandId: string, pluginId: string): string {

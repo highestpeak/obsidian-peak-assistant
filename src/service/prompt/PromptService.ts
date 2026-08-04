@@ -1,7 +1,7 @@
 import type { AppHandle } from '@/core/ports/AppHandle';
 import { PromptId, type PromptVariables, PromptInfo } from '@/core/types/prompt';
 import { normalizeVaultPath } from '@/core/utils/path-utils';
-import { ensureFolderRecursive, getFileRef, getFolderRef, isFile } from '@/core/storage/vault/vault-ops';
+import { ensureFolderRecursive, getFileRef, getFolderRef, isFile, writeVaultFile } from '@/core/storage/vault/vault-ops';
 import type { AIServiceSettings } from '@/core/config/settingsTypes';
 import { getAIPromptFolder } from '@/core/config/folderPaths';
 import type { CompiledTemplate } from '@/core/template-engine-helper';
@@ -186,6 +186,36 @@ export class PromptService {
 		return getFileRef(filePath, this.app) != null;
 	}
 
+	/**
+	 * Return the exact template a person is about to edit in AI Control Center.
+	 * The returned text is either the live Vault override or the bundled
+	 * default; callers never need to read the prompt folder themselves.
+	 */
+	async getEditablePrompt(id: PromptId): Promise<{ content: string; overridden: boolean }> {
+		const override = await this.loadOverride(id);
+		if (override !== undefined) return { content: override, overridden: true };
+		if (!this.templateManager) {
+			throw new Error('TemplateManager not set; cannot load a prompt for editing.');
+		}
+		return { content: await this.templateManager.getTemplate(id), overridden: false };
+	}
+
+	/**
+	 * Persist a Vault override for a built-in prompt. The next render re-reads
+	 * the file by mtime, so this is an actual runtime control rather than a
+	 * separate UI-only settings value.
+	 */
+	async savePromptOverride(id: PromptId, content: string): Promise<string> {
+		const trimmed = content.trim();
+		if (!trimmed) throw new Error('A prompt cannot be empty. Restore the default instead.');
+		const filePath = normalizeVaultPath(`${this.promptFolder}/${id}.prompt.md`);
+		await ensureFolderRecursive(this.promptFolder, this.app);
+		const file = getFileRef(filePath, this.app);
+		await writeVaultFile(file, filePath, `${this.buildPromptMetaBlock(id)}\n\n${trimmed}\n`, this.app);
+		this.clearOverrideCache(id);
+		return filePath;
+	}
+
 	/** Scan the prompts folder and return a set of template ids that have override files. */
 	scanOverrides(): Set<string> {
 		const folder = getFolderRef(this.promptFolder, this.app);
@@ -214,18 +244,7 @@ export class PromptService {
 			? await this.templateManager.getTemplate(id)
 			: '';
 
-		const meta = getTemplateMetadata(id);
-
-		const metaBlock = [
-			'```prompt-meta',
-			`id: ${id}`,
-			meta.label ? `label: ${meta.label}` : null,
-			meta.description ? `description: ${meta.description}` : null,
-			'note: Changes take effect immediately. Delete this file to restore the default.',
-			'```',
-		].filter(Boolean).join('\n');
-
-		const fileContent = `${metaBlock}\n\n${defaultContent}`;
+		const fileContent = `${this.buildPromptMetaBlock(id)}\n\n${defaultContent}`;
 
 		await ensureFolderRecursive(this.promptFolder, this.app);
 		await this.app.vault.create(filePath, fileContent);
@@ -274,6 +293,18 @@ export class PromptService {
 		const cached = this.overrideCache.get(cacheKey);
 		if (cached) this.overrideCompiledCache.delete(cached.content);
 		this.overrideCache.delete(cacheKey);
+	}
+
+	private buildPromptMetaBlock(id: TemplateId): string {
+		const meta = getTemplateMetadata(id);
+		return [
+			'```prompt-meta',
+			`id: ${id}`,
+			meta.label ? `label: ${meta.label}` : null,
+			meta.description ? `description: ${meta.description}` : null,
+			'note: Changes take effect immediately. Delete this file to restore the default.',
+			'```',
+		].filter(Boolean).join('\n');
 	}
 
 	private clearOverrideCaches(): void {
