@@ -1,11 +1,13 @@
 import { TFile, normalizePath, type App } from 'obsidian';
 import type { GeneratedOutputDescriptor, GeneratedOutputRegistry } from '@/core/storage/generated-output';
 import type { MyContentItem, MyContentPort } from '@/core/ports/MyContentPort';
+import type { HubGenerationRuntime } from '@/service/hub/HubGenerationRuntime';
 
 export interface MyContentRuntimeOptions {
 	app: App;
 	registry: GeneratedOutputRegistry;
 	resolveAiRoot: () => string;
+	getHubRuntime?: () => Pick<HubGenerationRuntime, 'listExplicitMaterializedHubs'> | null;
 }
 
 /**
@@ -23,7 +25,7 @@ export class MyContentRuntime implements MyContentPort {
 
 	async list(): Promise<readonly MyContentItem[]> {
 		const candidates = this.opts.registry.listMyContentTypes()
-			.filter((descriptor) => descriptor.path.scope === 'ai-root');
+			.filter((descriptor) => descriptor.path.scope === 'ai-root' && descriptor.id !== 'hub.materialized-note');
 		const items: MyContentItem[] = [];
 		for (const file of this.opts.app.vault.getFiles()) {
 			const descriptor = candidates.find((candidate) => matchesDescriptorPath(candidate, file.path, this.opts.resolveAiRoot()));
@@ -38,6 +40,25 @@ export class MyContentRuntime implements MyContentPort {
 				createdAt: file.stat.ctime,
 				updatedAt: file.stat.mtime,
 			});
+		}
+		const hubRuntime = this.opts.getHubRuntime?.();
+		if (hubRuntime) {
+			for (const hub of await hubRuntime.listExplicitMaterializedHubs()) {
+				const path = hub.manifest.materialization.path;
+				if (!path) continue;
+				const file = this.opts.app.vault.getAbstractFileByPath(path);
+				if (!(file instanceof TFile)) continue;
+				items.push({
+					id: `hub.materialized-note:${hub.manifest.hubId}`,
+					path,
+					title: hub.manifest.label,
+					typeLabel: 'Materialized Hub',
+					kind: 'hub',
+					source: 'hub',
+					createdAt: hub.materializedAt,
+					updatedAt: hub.materializedAt,
+				});
+			}
 		}
 		return items.sort((a, b) => b.updatedAt - a.updatedAt || a.title.localeCompare(b.title));
 	}

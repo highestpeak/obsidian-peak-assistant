@@ -141,6 +141,12 @@
 
 - 新增两个真正的 Obsidian `ItemView`：**AI Control Center** 与 **My Content**；均通过 Command Gateway 的稳定 Command Palette 入口打开，也会出现在 Peak Command Center 的可添加页面目录。
 - AI Control Center 当前只投影会实际渲染 Prompt 的 Copilot actions；确定性 action 不出现。内置 Prompt 编辑通过 `PromptService.savePromptOverride()` 写入现有 Vault override，下一次 render 按文件版本读取；Custom Prompt 在页内创建/编辑/删除，Chat Assistant 复用现有 owner 的 builder 与持久化。
-- My Content 当前只列举 registry 可验证且路径确定的 materialized/user-owned 文件（例如 Profile、Hub、Chat artifact、媒体、Project Brief）；任意用户选择位置的 AI Search/AI Graph/Native export 尚没有 owner 写入的 user-surface receipt，因此故意不猜测或扫描普通 Vault Markdown。
+- My Content 当前只列举 registry 可验证且路径确定的 materialized/user-owned 文件（例如 Profile、Chat artifact、媒体、Project Brief）；Hub 例外：只从 Hub manifest + `materialized` event 投影用户明确物化的 note，绝不按 `Hub-Summaries/` 路径扫描。旧 auto-generated Hub Markdown 只读迁移为 manifest，仍保留在 Vault 但不进入 My Content；virtual Hub 保持 `peak-hub://<hubId>` → Hub Detail。
 - 已验证：`test/ai-control-center-runtime.test.ts`、`test/my-content-runtime.test.ts`、Prompt override、Custom Prompt watcher、Command Gateway focused tests，以及 `npm run build`。
 - 仍缺：全产品 action-policy resolver（per-action model/output/tool/approval/budget），以及 user-selected export 的显式 record projection。没有把它们显示成可编辑或可列举的假功能。真实 Obsidian 打开/编辑/保存交互：`INTERACTION NOT VERIFIED`（本次无可用 CDP listener）。
+
+## 8. 2026-08-04 Hub virtual-first correction（已实现）
+
+- `Hub-Summaries/*.md` 不再因路径匹配进入 My Content。只有 active manifest、`materialization.state = materialized`、实际存在的 Vault file，且 Hub event 流中存在 `materialized`（非 `legacy-imported`）事件时才会出现。
+- My Content 中的 Hub 标题与日期取 canonical manifest 和 Materialize event，不再取 `Hub-<id>` 文件名或 filesystem mtime；点击已物化项只打开该明确的用户 Markdown。
+- virtual Hub 没有进入 My Content 的路径：Peak Graph 的 `peak-hub://<hubId>` 仍打开 Hub Detail，用户必须明确点击 `Materialize as Markdown` 才会写入原生 note。

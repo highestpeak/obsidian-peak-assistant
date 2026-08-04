@@ -87,6 +87,15 @@ export class HubRecordStore {
 		});
 	}
 
+	async readEvents(hubId: string): Promise<readonly HubRecordEvent[]> {
+		const stream = await this.runtime.events.readEvents<HubRecordEvent>({
+			outputId: 'hub.events',
+			streamKey: hubId,
+			pathVariables: { hubId },
+		});
+		return stream.events.map((event) => event.payload);
+	}
+
 	async listHubIds(): Promise<string[]> {
 		const sample = this.runtime.resolvePath('hub.manifest', { hubId: '__sample__' });
 		const root = sample.slice(0, sample.indexOf('/__sample__/'));

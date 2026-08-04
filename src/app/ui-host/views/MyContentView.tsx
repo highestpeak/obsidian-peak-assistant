@@ -19,6 +19,7 @@ export class MyContentView extends ReactItemViewHost {
 			app: this.appContext.app,
 			registry: this.appContext.runtimeRegistry.getGeneratedOutputRegistry(),
 			resolveAiRoot: () => this.appContext.settings.ai.rootFolder,
+			getHubRuntime: () => this.appContext.runtimeRegistry.tryGetHubGenerationRuntime(),
 		});
 		return createReactElementWithServices(MyContent, { runtime }, this.appContext);
 	}

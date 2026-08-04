@@ -29,6 +29,12 @@ export interface HubGenerationRuntimeDeps {
 	generatedOutputs: GeneratedOutputPersistenceRuntime;
 }
 
+export interface ExplicitMaterializedHub {
+	readonly manifest: HubManifest;
+	/** The user-initiated Materialize event, not the file's modified timestamp. */
+	readonly materializedAt: number;
+}
+
 export class HubGenerationRuntime {
 	constructor(private readonly deps: HubGenerationRuntimeDeps) {}
 
@@ -47,6 +53,27 @@ export class HubGenerationRuntime {
 
 	readManifest(hubId: string): Promise<HubManifest | null> {
 		return this.deps.recordStore.read(hubId);
+	}
+
+	/**
+	 * My Content uses this projection rather than scanning Hub-Summaries. A
+	 * migrated legacy Markdown note has a materialized path, but no
+	 * user-initiated `materialized` event, so it must remain outside the user
+	 * content surface.
+	 */
+	async listExplicitMaterializedHubs(): Promise<readonly ExplicitMaterializedHub[]> {
+		const items: ExplicitMaterializedHub[] = [];
+		for (const hubId of await this.deps.recordStore.listHubIds()) {
+			const manifest = await this.deps.recordStore.read(hubId);
+			if (!manifest || manifest.status !== 'active') continue;
+			if (manifest.materialization.state !== 'materialized' || !manifest.materialization.path) continue;
+			const materializedAt = [...await this.deps.recordStore.readEvents(hubId)]
+				.reverse()
+				.find((event) => event.kind === 'materialized')?.at;
+			if (materializedAt === undefined) continue;
+			items.push({ manifest, materializedAt });
+		}
+		return items.sort((a, b) => b.materializedAt - a.materializedAt || a.manifest.label.localeCompare(b.manifest.label));
 	}
 
 	async materializeHub(hubId: string): Promise<void> {

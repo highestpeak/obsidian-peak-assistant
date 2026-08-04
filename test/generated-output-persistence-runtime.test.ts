@@ -273,6 +273,7 @@ async function testDomainRecordReplayAndTombstones(): Promise<void> {
 	}, { kind: 'synthesized', hubId: 'hub-1', planId: 'plan-1', at: 5 });
 	assert.equal((await hubs.read('hub-1'))?.members[0]?.path, 'Note.md');
 	assert.deepEqual(await hubs.listHubIds(), ['hub-1']);
+	assert.equal((await hubs.readEvents('hub-1'))[0]?.kind, 'synthesized');
 	assert.equal(virtualHubPath('hub-1'), 'peak-hub://hub-1');
 
 	const reviews = new CopilotReviewRecordStore(runtime);
