@@ -21,7 +21,7 @@ import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
 export class PromptService {
 	private static readonly MAX_DYNAMIC_TEMPLATE_CACHE_SIZE = 64;
 	private promptFolder: string;
-	private readonly overrideCache = new Map<string, string>();
+	private readonly overrideCache = new Map<string, { content: string; mtime: number | null }>();
 	private readonly overrideCompiledCache = new Map<string, CompiledTemplate>();
 	private readonly dynamicCompiledCache = new Map<string, CompiledTemplate>();
 	private settings?: AIServiceSettings;
@@ -53,7 +53,7 @@ export class PromptService {
 
 	setPromptFolder(folder: string): void {
 		this.promptFolder = normalizeVaultPath(folder);
-		this.overrideCache.clear();
+		this.clearOverrideCaches();
 	}
 
 
@@ -239,31 +239,46 @@ export class PromptService {
 		if (file) {
 			await this.app.vault.delete(file);
 		}
-		this.overrideCache.delete(`override:${id}`);
-		this.overrideCompiledCache.delete(`override:${id}`);
+		this.clearOverrideCache(id);
 	}
 
 	private async loadOverride(id: PromptId): Promise<string | undefined> {
 		const cacheKey = `override:${id}`;
-		if (this.overrideCache.has(cacheKey)) {
-			return this.overrideCache.get(cacheKey);
-		}
-
 		const fileName = `${id}.prompt.md`;
 		const filePath = normalizeVaultPath(`${this.promptFolder}/${fileName}`);
 		const file = getFileRef(filePath, this.app);
 
-		if (!file) return undefined;
+		if (!file) {
+			this.clearOverrideCache(id);
+			return undefined;
+		}
+
+		const mtime = typeof file.stat?.mtime === 'number' ? file.stat.mtime : null;
+		const cached = this.overrideCache.get(cacheKey);
+		if (cached && cached.mtime === mtime) return cached.content;
+		if (cached) this.clearOverrideCache(id);
 
 		try {
 			const raw = (await this.app.vault.read(file)).trim();
 			const content = this.stripPromptMeta(raw);
-			this.overrideCache.set(cacheKey, content);
+			this.overrideCache.set(cacheKey, { content, mtime });
 			return content;
 		} catch (error) {
 			console.warn(`Failed to load prompt override for ${id}:`, error);
 			return undefined;
 		}
+	}
+
+	private clearOverrideCache(id: TemplateId): void {
+		const cacheKey = `override:${id}`;
+		const cached = this.overrideCache.get(cacheKey);
+		if (cached) this.overrideCompiledCache.delete(cached.content);
+		this.overrideCache.delete(cacheKey);
+	}
+
+	private clearOverrideCaches(): void {
+		this.overrideCache.clear();
+		this.overrideCompiledCache.clear();
 	}
 
 	private renderHandlebarsTemplate(

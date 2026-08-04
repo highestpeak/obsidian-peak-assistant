@@ -95,6 +95,8 @@
 4. Preserve existing Custom Prompt semantics: Markdown prompt values must remain literal text rather than become HTML-escaped by Handlebars.
 5. Add test cases for all legacy variables, conditionals, missing optional selection and literal angle-bracket content. A test must prove the injected renderer receives the declared variable set and the agent receives its output.
 
+内置 Prompt override 的缓存也必须以 Vault 文件版本为准：同一个 `PromptId` 的下一次 render 会在文件被修改或删除后读取新内容或回退 bundled default，不能把“即时生效”只写在 UI 文案里。
+
 ### Phase 2 — action policy resolver
 
 1. Inventory every action that actually calls a provider, agent loop or media provider; give each one action identity and execution shape.
