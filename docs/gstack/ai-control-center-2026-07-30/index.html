@@ -852,7 +852,6 @@
       ]),
 
       ...actionRows('system', 'Knowledge Index enrichment', [
-        ['knowledge.index.embedding', 'Generate embeddings', 'Create compatible vector representations for changed document chunks and semantic queries.', [], { shape: 'Embedding batch', route: 'Knowledge Index' }],
         ['knowledge.index.summary', 'Generate document summaries', 'Generate short and optional full summaries for indexed documents.', ['doc-summary-short', 'doc-summary-full'], { shape: 'One or two text calls' }],
         ['knowledge.index.tags', 'Generate document tags', 'Generate structured LLM tags while keeping deterministic and user tags distinguishable.', ['doc-tag-generate-json'], { shape: 'Single structured call' }],
         ['knowledge.index.image-description', 'Describe indexed image', 'Generate a description used for image indexing and retrieval.', ['image-description'], { shape: 'Vision helper', status: 'partial' }],
