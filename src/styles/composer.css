@@ -117,6 +117,12 @@
 	background: transparent;
 	box-shadow: none;
 }
+.peak-composer-root .pk-composer-block[data-unitized='true']:has(.pk-composer-rail:hover),
+.peak-composer-root .pk-composer-block[data-unitized='true']:has(.pk-composer-rail:focus-within),
+.peak-composer-root .pk-composer-block[data-unitized='true'][data-collection-action-active] {
+	background: var(--pkc-block-hover-bg);
+	box-shadow: var(--pkc-block-hover-shadow);
+}
 .peak-composer-root .pk-composer-rail {
 	flex: none;
 	display: flex;
@@ -353,11 +359,13 @@
 	position: absolute;
 	box-sizing: border-box;
 	border-radius: 2px;
-	background: color-mix(in srgb, var(--text-highlight-bg) 72%, transparent);
+	background: color-mix(in srgb, var(--text-highlight-bg) 42%, transparent);
+	box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--pk-warning) 72%, transparent);
 }
 .peak-composer-root .pk-composer-find-highlight[data-active='true'] {
 	outline: 2px solid color-mix(in srgb, var(--pk-accent) 78%, transparent);
-	background: color-mix(in srgb, var(--pk-accent) 28%, var(--text-highlight-bg));
+	background: color-mix(in srgb, var(--pk-accent) 18%, transparent);
+	box-shadow: inset 0 -2px 0 var(--pk-accent);
 }
 .peak-composer-root .pk-composer-blocks {
 	flex: 1 1 auto;
@@ -588,70 +596,6 @@
 	pointer-events: auto;
 	transform: translateY(0);
 	transition-delay: 0s;
-}
-/* Unitized blocks keep their existing per-item AI row directly below the
-   hovered item. Their unchanged collection-level BlockActionRow is portaled to
-   the owner document so it can sit beside the structural rail without being
-   clipped by the Composer scroll container. */
-.pk-collection-action-popover.peak-composer-root {
-	position: fixed;
-	z-index: 120;
-	display: block;
-	box-sizing: border-box;
-	width: min(240px, calc(100vw - 16px));
-	height: auto;
-	margin: 0;
-	padding: 0;
-	overflow: visible;
-	opacity: 0;
-	visibility: hidden;
-	pointer-events: none;
-	transform: translateY(-3px);
-	transition: opacity 120ms ease, transform 120ms ease, visibility 0s linear 120ms;
-}
-.pk-collection-action-popover.peak-composer-root[data-positioned='true'] {
-	opacity: 1;
-	visibility: visible;
-	pointer-events: auto;
-	transform: translateY(0);
-	transition-delay: 0s;
-}
-.pk-collection-action-popover.peak-composer-root::after {
-	content: '';
-	position: absolute;
-	top: 0;
-	width: 8px;
-	height: 38px;
-}
-.pk-collection-action-popover.peak-composer-root[data-placement='left']::after {
-	left: 100%;
-}
-.pk-collection-action-popover.peak-composer-root[data-placement='right']::after {
-	right: 100%;
-}
-.pk-collection-action-popover.peak-composer-root .pk-block-action-row {
-	position: relative;
-	height: auto;
-	margin: 0;
-	opacity: 1;
-	visibility: visible;
-	pointer-events: auto;
-	transform: none;
-	overflow: visible;
-}
-.pk-collection-action-popover.peak-composer-root .pk-block-action-row__shell {
-	width: 100%;
-	max-width: 100%;
-	flex-wrap: wrap;
-	white-space: normal;
-	overflow-x: visible;
-}
-.pk-collection-action-popover.peak-composer-root .pk-block-action-row__options,
-.pk-collection-action-popover.peak-composer-root
-	:is(.pk-action-core, .pk-action-ai, .pk-action-tail) {
-	max-width: 100%;
-	flex-wrap: wrap;
-	overflow: visible;
 }
 /* Selection toolbar has one clear owner: rows hide while a selection is live. */
 .peak-composer-root [data-has-selection] .pk-block-action-row {
@@ -1567,35 +1511,31 @@
 
 /* ── link preview popover ──────────────────────────────────────────────────── */
 .peak-composer-root .pk-composer-link {
-	color: var(--pk-accent-text);
+	color: var(--pk-info-text);
 	border-radius: 3px;
 	cursor: pointer;
+	text-decoration: none;
+	text-decoration-thickness: 1px;
+	text-underline-offset: 2px;
 }
 .peak-composer-root .pk-composer-link:hover,
 .peak-composer-root .pk-composer-link:focus-visible {
-	background: var(--pk-accent-tint);
+	background: transparent;
+	text-decoration: underline;
 }
 .peak-composer-root .pk-composer-wikilink {
-	display: inline-flex;
-	align-items: baseline;
-	gap: 0;
-	padding: 0 3px;
-	border: 1px solid color-mix(in srgb, var(--pk-accent-text) 32%, transparent);
-	border-radius: 5px;
-	background: color-mix(in srgb, var(--pk-accent-tint) 72%, transparent);
-	text-decoration: none;
+	color: var(--pk-accent-text);
 }
 .peak-composer-root .pk-composer-wikilink::before,
 .peak-composer-root .pk-composer-wikilink::after {
-	color: color-mix(in srgb, var(--pk-accent-text) 74%, var(--pk-text-secondary));
+	color: currentColor;
 	font-weight: 500;
 }
 .peak-composer-root .pk-composer-wikilink::before { content: '[['; }
 .peak-composer-root .pk-composer-wikilink::after { content: ']]'; }
 .peak-composer-root .pk-composer-wikilink:hover,
 .peak-composer-root .pk-composer-wikilink:focus-visible {
-	border-color: var(--pk-accent-text);
-	background: var(--pk-accent-tint);
+	background: transparent;
 	outline: none;
 }
 

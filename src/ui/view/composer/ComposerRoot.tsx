@@ -83,7 +83,6 @@ import {
 } from './chrome/ComposerChromeContext';
 import { BlockRail } from './chrome/BlockRail';
 import { BlockActionRow, type BlockPanelKind } from './chrome/BlockActionRow';
-import { CollectionActionPopover } from './chrome/CollectionActionPopover';
 import { EditableText } from './chrome/EditableText';
 import { forwardBlockClickToEditable } from './chrome/focusForwarding';
 import { EasyCopyMenu } from './chrome/EasyCopyMenu';
@@ -1096,7 +1095,6 @@ function ComposerBlockRow({
 	const chrome = useComposerChrome();
 	const folded = useStore(foldStore, (s) => s.folded.has(block.blockId));
 	const bodyRef = React.useRef<HTMLDivElement | null>(null);
-	const collectionActionAnchorRef = React.useRef<HTMLDivElement | null>(null);
 	const isHeading = block.kind === 'heading';
 	const showSummary = !isHeading && folded;
 	const raw = block.renderModel.raw;
@@ -1410,6 +1408,7 @@ function ComposerBlockRow({
 			data-unitized={unitized ? 'true' : undefined}
 			data-drop-before={dropBefore || undefined}
 			data-action-row-visible={actionRowDisplayed || undefined}
+			data-collection-action-active={unitized && actionRowDisplayed && !activeUnitAction || undefined}
 			// FIX-1 F2: a mousedown in the row's dead zone (right of the text edge,
 			// rail gutter padding, run gaps) targets this WRAPPER, so the browser
 			// never focuses the contenteditable leaf — typing then goes to the
@@ -1424,7 +1423,6 @@ function ComposerBlockRow({
 			}}
 		>
 			<BlockRail
-				railRef={collectionActionAnchorRef}
 				folded={folded}
 				foldLabel={foldLabel(config, isHeading, folded)}
 				dragLabel={config.chrome.actions.drag}
@@ -1435,15 +1433,6 @@ function ComposerBlockRow({
 				onPointerLeave={editing && unitized ? hideActionRow : undefined}
 				onFocusCapture={editing && unitized ? () => showActionRow(true, null) : undefined}
 			/>
-			{unitized && actionRowDisplayed && blockActionRow ? (
-				<CollectionActionPopover
-					anchorRef={collectionActionAnchorRef}
-					onPointerEnter={() => showActionRow(true, null)}
-					onPointerLeave={hideActionRow}
-				>
-					{blockActionRow}
-				</CollectionActionPopover>
-			) : null}
 			<div className="pk-composer-block__body" ref={bodyRef}>
 				<BlockFindingPanel
 					findings={findings}
@@ -1542,7 +1531,7 @@ function ComposerBlockRow({
 							{invokeError}
 						</div>
 					) : null}
-					{!unitized ? blockActionRow : null}
+					{blockActionRow}
 			</div>
 		</div>
 	);

@@ -44,10 +44,6 @@ assert.ok(
 );
 
 const root = readFileSync('src/ui/view/composer/ComposerRoot.tsx', 'utf8');
-const collectionPopover = readFileSync(
-	'src/ui/view/composer/chrome/CollectionActionPopover.tsx',
-	'utf8',
-);
 assert.ok(root.includes('EditableParagraphLinesBody'), 'multi-line paragraphs render their authored line units');
 assert.ok(root.includes('pk-composer-paragraph__line'), 'each paragraph line owns an interaction row');
 assert.ok(
@@ -71,21 +67,34 @@ assert.match(
 	'paragraph source lines own their hover feedback',
 );
 assert.ok(
-	collectionPopover.includes('createPortal') &&
-	collectionPopover.includes("querySelector<HTMLElement>('.pk-composer-drag')") &&
-	root.includes('unitized && actionRowDisplayed && blockActionRow') &&
-	root.includes('{!unitized ? blockActionRow : null}'),
-	'unitized block actions reuse the existing BlockActionRow through a side popover while ordinary blocks stay inline',
+	!root.includes('CollectionActionPopover') &&
+	root.includes('data-collection-action-active') &&
+	root.includes('{blockActionRow}'),
+	'unitized collection actions reuse the existing horizontal BlockActionRow inside the owning block',
 );
 assert.match(
 	css,
-	/\.pk-collection-action-popover\.peak-composer-root\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?width:\s*min\(240px, calc\(100vw - 16px\)\);[\s\S]*?overflow:\s*visible;/,
-	'the collection-level action row escapes the Composer scroll clip and remains beside the structural rail',
+	/\.pk-composer-block\[data-unitized='true'\]\[data-collection-action-active\]\s*\{[\s\S]*?background:\s*var\(--pkc-block-hover-bg\);[\s\S]*?box-shadow:\s*var\(--pkc-block-hover-shadow\);/,
+	'the owning block keeps its visual indicator while collection actions are active',
 );
 assert.match(
 	css,
-	/\.pk-collection-action-popover\.peak-composer-root \.pk-block-action-row__shell\s*\{[\s\S]*?width:\s*100%;[\s\S]*?flex-wrap:\s*wrap;[\s\S]*?overflow-x:\s*visible;/,
-	'the unchanged action capsules wrap inside the side surface instead of being clipped or replaced',
+	/\.pk-block-action-row__shell\s*\{[\s\S]*?white-space:\s*nowrap;[\s\S]*?overflow-x:\s*auto;/,
+	'the unchanged action capsules stay in one block-aligned horizontal strip',
+);
+assert.match(
+	css,
+	/\.pk-composer-find-highlight\s*\{[\s\S]*?42%[\s\S]*?box-shadow:\s*inset 0 -2px/,
+	'find highlights keep the matched text legible with a lighter fill and a strong underline',
+);
+const externalLinkRule = css.match(/\.pk-composer-link\s*\{([\s\S]*?)\}/)?.[1] ?? '';
+const wikilinkRule = css.match(/\.pk-composer-wikilink\s*\{([\s\S]*?)\}/)?.[1] ?? '';
+assert.ok(
+	externalLinkRule.includes('color: var(--pk-info-text)') &&
+	wikilinkRule.includes('color: var(--pk-accent-text)') &&
+	!wikilinkRule.includes('background:') &&
+	!wikilinkRule.includes('border:'),
+	'external links are blue while background-free wikilinks remain purple',
 );
 
 console.log('composer-paragraph-line-units: passed');
