@@ -12,7 +12,7 @@
 
 配套实施设计见 [生成产物与存储治理实现设计](../superpowers/specs/2026-08-02-generated-artifact-storage-governance-implementation-design.md)。较早的 [机器运行记录 JSONL 设计](../superpowers/specs/2026-07-21-machine-record-storage-jsonl-design.md) 仍保留历史背景；两者冲突时，以本文和 2026-08-02 实现设计为准。
 
-运行时 typed catalog 位于 `src/core/storage/generated-output/`，52 个 descriptor 与下方 52 个文档 ID 一一对应；`AppRuntimeRegistry` 拥有唯一 policy 与 persistence runtime。原子 JSON、分区 JSONL、artifact body、迁移日志、sync manifest 与 projection rebuild 合同已经可用。Chat、Project、Resource Summary、Profile proposal、receipts、Hub 与旧 Review 已完成 canonical cutover；旧文件只读保留，不自动删除。
+运行时 typed catalog 位于 `src/core/storage/generated-output/`，53 个 descriptor 与下方 53 个文档 ID 一一对应；`AppRuntimeRegistry` 拥有唯一 policy 与 persistence runtime。原子 JSON、分区 JSONL、artifact body、迁移日志、sync manifest 与 projection rebuild 合同已经可用。Chat、Project、Resource Summary、Profile proposal、receipts、Hub、旧 Review 与 Plugin Command Gateway audit 已登记 canonical carrier；旧文件只读保留，不自动删除。
 
 ## Why
 
@@ -139,6 +139,7 @@ Peak index policy 不等于 Obsidian metadata policy。任何 Vault 内 Markdown
 | DR-17 | 生成产物迁移日志 | 无统一、可恢复的 migration checkpoint | `records/system/generated-output-migrations.jsonl`；记录 source/target、checksum 与 cutover 状态，稳定事件 ID 保证幂等 | 已实现 |
 | DR-18 | Chat Assistant definition | `chat.sqlite.chat_assistant` | `records/chat/assistants/<assistant-id>.json`；SQLite 仅作列表投影 | 已实现 |
 | DR-19 | Project Plan state | `chat.sqlite.chat_project_plan` | `records/chat/project-plans/<plan-id>.json`；删除用 tombstone，SQLite 可重建 | 已实现 |
+| DR-20 | Plugin Command Gateway audit receipt | 人工授权后的第三方 command 执行结果、RunEnvelope 事件与副作用观测 | `records/command-gateway/runs.jsonl`，有界轮转；由 typed catalog 解析 canonical 路径 | 已实现 |
 
 主要 writer 证据：
 

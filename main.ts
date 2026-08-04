@@ -555,9 +555,9 @@ export default class MyPlugin extends Plugin {
 			pluginCommandGatewayRuntime = await composePluginCommandGatewayRuntime({
 				app: this.app,
 				pluginId: this.manifest.id,
-				dataStorageFolder: this.settings.dataStorageFolder,
 				aiServiceManager: this.aiServiceManager,
 				templateManager: this.templateManager,
+				generatedOutputs: appContext.runtimeRegistry.getGeneratedOutputPersistenceRuntime(),
 				getSettings: () => this.settings,
 				persistSettings: async (settings) => {
 					this.settings.pluginCommandGateway = settings;

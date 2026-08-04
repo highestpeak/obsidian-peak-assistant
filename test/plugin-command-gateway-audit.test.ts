@@ -67,7 +67,7 @@ async function testJsonlAppendAndRotation(): Promise<void> {
 	const adapter = new MemoryAdapter();
 	const audit = new ObsidianPluginCommandGatewayAudit(
 		{ vault: { adapter } } as any,
-		'DataStore/command-gateway',
+		'DataStore/records/command-gateway',
 		{
 			fileName: 'runs.jsonl',
 			rotationBytes: 350,
@@ -84,7 +84,7 @@ async function testJsonlAppendAndRotation(): Promise<void> {
 	assert.strictEqual(recent[1]!.runId, 'run-2');
 	const archives = [...adapter.files.keys()].filter((path) => /runs-\d+-\d+\.jsonl$/.test(path));
 	assert.ok(archives.length <= 1, 'retention must prune old archives');
-	const current = adapter.files.get('DataStore/command-gateway/runs.jsonl') ?? '';
+	const current = adapter.files.get('DataStore/records/command-gateway/runs.jsonl') ?? '';
 	assert.ok(current.endsWith('\n'));
 	console.log('PASS: jsonlAppendAndRotation');
 }

@@ -2709,7 +2709,7 @@ finding producer，并解释/修复真实 related refresh 为 0 的数据链路�
 与
 [`2026-07-25-composer-wave-execution-log.md`](./superpowers/plans/2026-07-25-composer-wave-execution-log.md)。
 
-## 2026-07-31 · T12 Obsidian Plugin Command Gateway（独立 worktree）
+## 2026-07-31 · T12 Obsidian Plugin Command Gateway（2026-08-04 写回 owner checkout）
 
 **范围纠正**：本任务不是 Command Center，也不是 Peak 自有 palette command
 的 dispatch 包装。正确目标是让现有 Chat/Copilot Harness 在人工授权后调用
@@ -2725,14 +2725,20 @@ finding producer，并解释/修复真实 related refresh 为 0 的数据链路�
   复用 PermissionGuard 与 RunEnvelope；unknown/destructive/modal-only 始终
   系统拒绝自动执行。
 - 每次调用记录 active file/leaf、modal、vault file count、changed path 总数
-  与有界样本；receipt 追加到 `<DataStore>/command-gateway/runs.jsonl` 并轮转。
-- 新增 6 个聚焦测试文件；聚焦套件 6/6、相关回归 22/22、build 通过。全量
-  390/394，4 个失败均为本任务未修改的既有 Composer/Streamdown 守卫。
+  与有界样本；receipt 追加到 `<DataStore>/records/command-gateway/runs.jsonl` 并轮转。
+- Review UI 已收敛为一个 Scan 流程、search/plugin/risk/access 筛选、当前筛选或
+  全部 eligible 的批量 Allow，以及固定在最右侧的 Allowed / Not allowed 开关；
+  unknown/destructive/modal-only/unavailable 由系统显示为 Unavailable。
+- 写回后的 Gateway、app runtime、ServiceContext 与 button-reset 聚焦套件 11/11，
+  production build、bundle 与 simulator boundary 通过。全量为 414/421；Gateway
+  suites 全绿，失败来自已有 Chat/Composer 改动以及 Custom Prompt writer 的注册表欠账。
 - `tsc --noEmit` 的仓库基线仍为 392 个错误（866 行输出）；新增 gateway
   模块无诊断，编辑过的 host 文件仅命中未修改的既有错误行。
-- 本工作只在 `codex/plugin-command-gateway-20260731` 独立分支；未 merge、
-  未 push、未改 owner 主 checkout。由于没有 Obsidian CDP listener，真实界面
-  与真实第三方 command 调用标记为 `INTERACTION NOT VERIFIED`。
+- 2026-08-04 已将隔离分支的 9 个提交按原顺序写回
+  `codex/peak-modernization-refactor`；原有 9 个未提交 Composer 文件未被覆盖。
+  Gateway audit 已登记为 generated-output catalog `DR-20`，canonical 路径由
+  app-owned persistence runtime 解析。没有 Obsidian CDP listener，因此真实界面
+  与真实第三方 command 调用继续标记为 `INTERACTION NOT VERIFIED`。
 
 设计与验收入口：
 [`2026-07-31-obsidian-plugin-command-gateway-implementation-design.md`](./superpowers/specs/2026-07-31-obsidian-plugin-command-gateway-implementation-design.md)

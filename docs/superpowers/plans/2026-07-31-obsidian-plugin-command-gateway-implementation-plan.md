@@ -114,21 +114,22 @@ not installed into the owner's main plugin directory.
    or vault path and that the JSONL receipt records the same observation.
 7. Re-run AI analysis with a materially changed draft or update the source
    plugin; confirm the approval becomes stale and the old tool call fails.
-8. Inspect `<DataStore>/command-gateway/runs.jsonl` for command ID, source and
+8. Inspect `<DataStore>/records/command-gateway/runs.jsonl` for command ID, source and
    curator hashes, compiled Skill ID, policy, RunEnvelope events, and observed
    effects.
 
 ## Verification result
 
-- Focused Command Gateway and shared button-reset suites: 9/9 passed.
+- Owner-checkout writeback Gateway/app-runtime/ServiceContext/button-reset suites: 11/11 passed.
 - Affected Chat/Copilot/Harness/registry/RunEnvelope regression set: 22/22 passed.
 - Production build: passed.
-- Full suite: 392 passed / 4 unrelated pre-existing failures (Composer and
-  Streamdown source guards; no failed file overlaps this task's implementation).
+- Current owner-checkout full suite: 414 passed / 7 failures. Gateway suites are
+  green; failures are existing Chat/Composer work plus the unrelated Custom
+  Prompt writer registration debt. Gateway audit itself is registered as DR-20.
 - `tsc --noEmit`: repository baseline remains red with 392 TypeScript errors
   across 866 output lines. No diagnostic points into a task-owned file.
-- Real Obsidian: `INTERACTION NOT VERIFIED` (no CDP listener; branch not merged
-  or copied into the owner's active plugin).
+- Real Obsidian: `INTERACTION NOT VERIFIED` (written back and built, but no CDP
+  listener was available for plugin reload and live interaction evidence).
 
 ## Verification
 

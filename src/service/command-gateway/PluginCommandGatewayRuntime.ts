@@ -782,9 +782,6 @@ function normalizeConfig(raw: PluginCommandGatewayConfig): PluginCommandGatewayC
 			),
 		},
 		audit: {
-			fileName: typeof raw.audit?.fileName === 'string' && raw.audit.fileName.trim()
-				? raw.audit.fileName.trim()
-				: defaults.audit.fileName,
 			rotationBytes: positiveInteger(
 				raw.audit?.rotationBytes,
 				defaults.audit.rotationBytes,

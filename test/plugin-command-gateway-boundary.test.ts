@@ -23,6 +23,7 @@ function testServiceBoundary(): void {
 
 function testProductionWiringAndReviewSurface(): void {
 	const main = read('main.ts');
+	const gatewayComposition = read('src/app/commands/gateway/composePluginCommandGatewayRuntime.ts');
 	const chat = read('src/service/chat/service-conversation.ts');
 	const documentCopilot = read('src/service/copilot/CopilotMetaAgentStream.ts');
 	const actionCopilot = read('src/service/copilot/actions/agent-actions.ts');
@@ -36,6 +37,7 @@ function testProductionWiringAndReviewSurface(): void {
 	const settingsCopy = read('templates/config/settings.json');
 	const styles = read('src/styles/peak-components.css');
 	assert.match(main, /composePluginCommandGatewayRuntime/);
+	assert.match(gatewayComposition, /generatedOutputs\.resolvePath\(PLUGIN_COMMAND_GATEWAY_AUDIT_OUTPUT_ID\)/);
 	assert.match(chat, /loadApprovedPluginCommandTools/);
 	assert.match(documentCopilot, /pluginCommandTools/);
 	assert.match(actionCopilot, /pluginCommandTools/);

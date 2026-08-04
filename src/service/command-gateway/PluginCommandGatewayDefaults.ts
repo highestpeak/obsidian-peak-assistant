@@ -17,7 +17,6 @@ export const DEFAULT_PLUGIN_COMMAND_GATEWAY_CONFIG: PluginCommandGatewayConfig =
 		maxChangedPaths: 30,
 	},
 	audit: {
-		fileName: 'runs.jsonl',
 		rotationBytes: 1048576,
 		retentionFiles: 4,
 		recentLimit: 12,

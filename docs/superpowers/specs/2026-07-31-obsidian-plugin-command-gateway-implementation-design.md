@@ -245,7 +245,7 @@ not a false success claim.
 
 Each terminal invocation appends one JSON object to:
 
-`<DataStore>/command-gateway/runs.jsonl`
+`<DataStore>/records/command-gateway/runs.jsonl`
 
 The receipt includes:
 

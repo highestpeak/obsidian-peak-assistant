@@ -180,6 +180,9 @@ export interface PluginCommandGatewayScanResult {
 	readonly warning?: string;
 }
 
+export const PLUGIN_COMMAND_GATEWAY_AUDIT_OUTPUT_ID =
+	'command-gateway.audit-events' as const;
+
 export interface PluginCommandGatewayConfig {
 	readonly discovery: {
 		readonly maxCommands: number;
@@ -192,7 +195,6 @@ export interface PluginCommandGatewayConfig {
 		readonly maxChangedPaths: number;
 	};
 	readonly audit: {
-		readonly fileName: string;
 		readonly rotationBytes: number;
 		readonly retentionFiles: number;
 		readonly recentLimit: number;
