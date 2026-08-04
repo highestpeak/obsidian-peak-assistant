@@ -639,15 +639,6 @@
         during: [['Run support step', 'Execute one helper, embedding batch, or configuration curator.']],
         after: [['Record projection', 'Persist rebuildable output, failures, model identity, and freshness.']]
       },
-      user: {
-        icon: 'spark', surface: 'User-defined registries', shape: 'Dynamic owner collection', status: 'partial', route: 'Owner-defined policy',
-        success: 'Shows live user-authored AI definitions together with the exact surface that owns and edits them.',
-        mustNot: 'Must not copy dynamic definitions into a second store or imply that a static design fixture is a live user instance.',
-        tools: ['Runtime registry', 'Owning editor', 'Capability projection'], output: 'Live user-defined actions', review: 'Owning editor',
-        before: [['Read owner registry', 'Resolve the current Custom Prompts, Skills, Assistants, Project, and Conversation definitions.']],
-        during: [['Project effective controls', 'Show content, model, tool, and approval settings supported by the owner.']],
-        after: [['Return to owner', 'Save in the owning surface and refresh the projected effective configuration.']]
-      }
     };
 
     function actionRows(group, family, rows, shared = {}) {
@@ -778,7 +769,6 @@
         ['copilot.document.auto-review-complete', 'Document Auto Review · Complete', 'Run the complete multi-round tool loop for the active note.', ['copilot-meta-agent-system-base', 'copilot-meta-agent-complete-mode-suffix'], { shape: 'Fixed-model tool loop', route: 'Agent' }],
         ['copilot.insight.followup', 'Ask about an insight', 'Continue a grounded inline conversation about one Auto Review insight.', ['insight-inline-chat-followup-system'], { shape: 'Inline follow-up stream' }],
         ['copilot.insight.draft-proposal', 'Draft edits from insight', 'Turn one Auto Review insight into one to three concrete edit proposals.', ['insight-inline-chat-draft-proposal-system'], { shape: 'Inline proposal stream' }],
-        ['copilot.custom-prompt', 'Run custom prompt action', 'Run a Vault-authored custom Copilot prompt with document, selection, tags, and tool access.', [], { status: 'partial', output: 'Custom action result' }],
         ['copilot.command-center.plan', 'Plan a command sequence', 'Turn a plain-language goal into a reviewable sequence of registered capability commands.', ['copilot-command-center-plan'], { shape: 'Structured planning call', status: 'partial', output: 'Capability plan' }],
         ['composer.copilot.session', 'Copilot · Custom instruction', 'Choose a Composer capability, add a custom instruction, and run it against the focused block or document.', [], { shape: 'Capability-backed Copilot session' }],
         ['ambient.push', 'Ambient Push · Related notes', 'Recall direct, semantic, recurring, and serendipitous notes from the paragraph currently being written.', ['ambient-explanation-system', 'ambient-explanation-user'], { icon: 'spark', shape: 'Hybrid retrieval + optional explanation', route: 'Search + Agent Fast', output: 'Related-note cards', review: 'Composer Brief / gutter' }],
@@ -865,11 +855,6 @@
         ['system.web-search.delegate', 'Delegate Web search', 'Run a web-search-capable helper when a parent Chat, AI Search, or Graph action requests Web evidence.', ['web-search-tool-system'], { shape: 'Tool sub-run', status: 'support' }]
       ]),
 
-      ...actionRows('user', 'Live registry collections', [
-        ['user.custom-prompts', 'Custom Prompts', 'List every Vault-authored custom prompt action and open its owning editor for prompt, variables, surface, and model policy.', [], { output: 'Dynamic Custom Prompt actions' }],
-        ['user.vault-skills', 'Vault Skills', 'List every Vault Skill and open its owning editor for instructions, phases, model preference, tools, and quarantine state.', [], { output: 'Dynamic Skill actions' }],
-        ['user.chat-assistants', 'Chat Assistants', 'List every Chat Assistant and open its owning editor for instructions, knowledge, model, tools, and approvals.', [], { output: 'Dynamic Assistant actions' }]
-      ])
     ];
 
     const actionInstructionDefaults = {
@@ -907,7 +892,6 @@
     ]);
 
     function getExecutionKind(item) {
-      if (item.group === 'user' || item.id === 'copilot.custom-prompt') return 'user';
       if (deterministicActionIds.has(item.id)) return 'deterministic';
       if (delegatedActionIds.has(item.id)) return 'delegated';
       if (item.id.includes('embedding')) return 'embedding';
@@ -999,8 +983,7 @@
       ['composer', 'file', 'Composer & Copilot'],
       ['chat', 'message', 'Chat & Generation'],
       ['intelligence', 'vault', 'Vault Intelligence'],
-      ['system', 'database', 'System & background'],
-      ['user', 'spark', 'User-defined']
+      ['system', 'database', 'System & background']
     ];
 
     function statusPill(status) {
@@ -1029,7 +1012,11 @@
         }).join('') +
         `<div class="rail-separator"></div>
          <div class="rail-title">Prompt library</div>
-         <button class="rail-button ${workspace === 'prompts' ? 'active' : ''}" data-catalog="prompts">${icons.prompt}<span>All prompts</span><small>${prompts.length}</small></button>`;
+         <button class="rail-button ${workspace === 'prompts' ? 'active' : ''}" data-catalog="prompts">${icons.prompt}<span>All prompts</span><small>${prompts.length}</small></button>
+         <button class="rail-button ${workspace === 'custom-prompts' ? 'active' : ''}" data-catalog="custom-prompts">${icons.prompt}<span>Custom prompts</span><small>Live</small></button>
+         <div class="rail-separator"></div>
+         <div class="rail-title">Chat Studio</div>
+         <button class="rail-button ${workspace === 'assistants' ? 'active' : ''}" data-catalog="assistants">${icons.message}<span>Chat Assistants</span><small>Live</small></button>`;
     }
 
     function capabilityRow(item) {
@@ -1116,6 +1103,19 @@
         const filtered = prompts.filter(item => [item.id, item.title, item.group, item.kind].join(' ').toLowerCase().includes(query));
         rows.innerHTML = filtered.length ? filtered.map(promptRow).join('') : '<div class="empty">No prompt matches this search.</div>';
         return;
+      }
+
+      if (workspace === 'custom-prompts') {
+        listTitle.textContent = 'Custom prompts';
+        listDescription.textContent = 'Your reusable Copilot prompts. Each saved prompt becomes its own available Copilot action.';
+        rows.innerHTML = '<div class="empty">No custom prompts in this design fixture.</div>';
+        return;
+      }
+
+      if (workspace === 'assistants') {
+        listTitle.textContent = 'Chat Assistants';
+        listDescription.textContent = 'Saved assistant identities for Chat Studio, each with its own instructions, model preference, knowledge, and tool policy.';
+        rows.innerHTML = '<div class="empty">No saved Chat Assistants in this design fixture.</div>';
       }
 
     }
@@ -1293,7 +1293,7 @@
       if (type === 'tool') {
         return { title: 'Edit parent tool policy', subtitle: sharedSubtitle, body: `<p class="modal-copy">This child action inherits the parent run model. Only availability and approval are editable here.</p><label class="field"><span>Availability</span><select><option>Allow for parent run</option><option>Ask before use</option><option>Disable</option></select></label><label class="field"><span>Persistent writes</span><select><option>Always ask</option><option>Disable</option></select></label>` };
       }
-      return { title: 'Edit definition', subtitle: sharedSubtitle, body: `<p class="modal-copy">This modal writes through the original owner adapter; Control Center does not create a second definition store.</p><label class="field"><span>Instructions</span><textarea placeholder="User-defined instructions"></textarea></label><label class="field"><span>Model policy</span><select><option>Use owner default</option><option>Override this definition</option></select></label><label class="field"><span>Tools and approval</span><select><option>Use owner policy</option><option>Review permissions…</option></select></label>` };
+      return { title: 'Edit settings', subtitle: sharedSubtitle, body: `<p class="modal-copy">This setting is edited in the owning configuration surface.</p>` };
     }
 
     function openEditorModal(trigger, type, promptId) {
@@ -1339,7 +1339,6 @@
       if (promptList || actionInstruction) return promptList + actionInstruction;
       if (item.executionKind === 'deterministic') return `<div class="notice">${icons.prompt}<span>No text Prompt by design. This action is deterministic; configure its scope and thresholds below.</span></div>`;
       if (item.executionKind === 'media') return `<div class="notice">${icons.prompt}<span>The user writes the generation Prompt when the job starts. Shared route, preset, quantity, duration, and cost controls live here.</span></div>`;
-      if (item.executionKind === 'user') return `<div class="notice">${icons.prompt}<span>Definitions are loaded from the live owner registry. Open the owner to edit content, variables, knowledge, and instructions.</span></div>`;
       return `<div class="notice">${icons.prompt}<span>No shared Prompt is registered for this action. It uses user input or a parent Agent tool request.</span></div>`;
     }
 
@@ -1349,9 +1348,6 @@
       }
       if (item.executionKind === 'delegated') {
         return `<div class="notice">${icons.model}<span>This action is a child tool or dispatcher. It inherits the parent Chat or Copilot route and has no separate model override.</span></div>`;
-      }
-      if (item.executionKind === 'user') {
-        return `<div class="route active">${icons.spark}<span><strong>Owner-defined policy</strong><span>Each live definition keeps its own model, tools, and approval policy.</span></span><button class="action-button" data-editor="owner">Edit definition</button></div>`;
       }
       if (item.executionKind === 'media') {
         return `<label class="route active"><input type="radio" name="model-policy" checked><span><strong>Use generation route</strong><span>Resolve a compatible provider, model, and preset at job preflight.</span></span><span class="route-effective">Current<code>${item.route}</code></span></label><div class="route"><span></span><span><strong>Choose route and model</strong><span>Override this media action only.</span></span><button class="action-button" data-editor="model">Choose route</button></div>`;
@@ -1389,9 +1385,6 @@
       if (item.executionKind === 'delegated') {
         return `<div class="section"><h2>Parent tool policy</h2><dl class="facts"><dt>Availability</dt><dd>Allow or deny this tool for the parent Assistant / Copilot run</dd><dt>Approval</dt><dd>Ask before persistent artifact creation</dd><dt>Model route</dt><dd>Inherited from the parent run</dd></dl><div class="button-row"><button class="action-button" data-editor="tool">Edit tool policy</button></div></div>`;
       }
-      if (item.executionKind === 'user') {
-        return `<div class="section"><h2>Dynamic owner</h2><dl class="facts"><dt>Source</dt><dd>Live runtime registry</dd><dt>Controls</dt><dd>Content, model, tools, approval, scope</dd><dt>Persistence</dt><dd>Saved through the original owner adapter</dd></dl><div class="button-row"><button class="action-button" data-editor="owner">Edit definition</button></div></div>`;
-      }
       return renderInlineOutputControls(item);
     }
 
@@ -1420,6 +1413,14 @@
 
     function renderInspector() {
       if (workspace === 'capabilities') return renderCapabilityInspector(activeItem);
+      if (workspace === 'custom-prompts') {
+        inspector.innerHTML = `<div class="inspector-head"><div class="breadcrumbs">Prompt Library</div><div class="inspector-title-row"><h1>Custom prompts</h1></div><p class="inspector-subtitle">Reusable Prompts you create for Copilot. They are not one shared action: every saved prompt has its own title, instructions, variables, and Copilot entry.</p></div><section class="panel active"><div class="section"><h2>Where they appear</h2><dl class="facts"><dt>Create and edit</dt><dd>Custom Prompts</dd><dt>Run from</dt><dd>Copilot actions for the current document or selection</dd><dt>Model and tools</dt><dd>Configured on the individual prompt action</dd><dt>Storage</dt><dd>Your Prompt definition</dd></dl></div><div class="notice">${icons.prompt}<span>This static design fixture does not load your Vault. In Peak, each saved Custom Prompt is listed here individually.</span></div></section>`;
+        return;
+      }
+      if (workspace === 'assistants') {
+        inspector.innerHTML = `<div class="inspector-head"><div class="breadcrumbs">Chat Studio</div><div class="inspector-title-row"><h1>Chat Assistants</h1></div><p class="inspector-subtitle">Saved Assistant identities for conversations. An Assistant supplies its own instructions, knowledge, model preference, tool policy, and approval boundaries.</p></div><section class="panel active"><div class="section"><h2>Where they appear</h2><dl class="facts"><dt>Create and edit</dt><dd>Chat Studio</dd><dt>Used in</dt><dd>New or existing conversations</dd><dt>Owns</dt><dd>Instructions, knowledge, model preference, tools, and approvals</dd><dt>Storage</dt><dd>Your saved Assistant definition</dd></dl></div><div class="notice">${icons.message}<span>This static design fixture does not load saved Assistants. In Peak, each Assistant is listed here individually.</span></div></section>`;
+        return;
+      }
       return renderPromptInspector(activeItem);
     }
 
@@ -1463,10 +1464,10 @@
         return;
       }
 
-      const catalogButton = event.target.closest('[data-catalog="prompts"]');
+      const catalogButton = event.target.closest('[data-catalog]');
       if (catalogButton) {
-        workspace = 'prompts';
-        activeItem = prompts[0];
+        workspace = catalogButton.dataset.catalog;
+        if (workspace === 'prompts') activeItem = prompts[0];
         searchInput.value = '';
         renderAll();
         return;
