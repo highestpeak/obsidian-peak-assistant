@@ -323,6 +323,21 @@
     .prompt-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .prompt-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
     .prompt-body { margin-top: 9px; padding: 11px; border: 1px solid var(--line); border-radius: 6px; background: white; color: #50504b; font: 11px/1.55 var(--mono); white-space: pre-wrap; }
+    .template-preview { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .template-preview > span { color: var(--muted); font-family: inherit; }
+    .template-token, .variable-code { padding: 2px 5px; border-radius: 4px; background: #f4f2fb; color: #5d53a7; font: 10px/1.45 var(--mono); }
+    .variable-summary { margin-top: 9px; }
+    .variable-summary-copy { min-width: 0; }
+    .variable-summary-copy strong { display: block; font-size: 12px; }
+    .variable-summary-copy span { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; }
+    .variable-inline-list, .variable-editor-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; margin-top: 9px; }
+    .variable-inline-item, .variable-editor-item { display: flex; align-items: baseline; gap: 7px; min-width: 0; }
+    .variable-inline-item { padding: 5px 0; border-bottom: 1px solid var(--line); }
+    .variable-inline-item code, .variable-editor-item code { flex: 0 0 auto; color: #5d53a7; font: 10px/1.4 var(--mono); }
+    .variable-inline-item span, .variable-editor-item span { overflow: hidden; color: var(--muted); font-size: 11px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+    .variable-editor-note { margin: 0 0 12px; color: var(--muted); }
+    .variable-editor-list { margin-top: 0; padding: 12px; border: 1px solid #ded9f3; border-radius: 6px; background: #fbfaff; }
+    .variable-editor-item { min-height: 28px; }
 
     .prompt-editor {
       width: 100%;
@@ -423,6 +438,7 @@
       background: var(--surface);
       box-shadow: 0 24px 70px rgba(28, 28, 25, .24);
     }
+    .modal.wide { width: min(900px, calc(100vw - 48px)); max-height: min(840px, calc(100vh - 48px)); }
 
     .modal-head, .modal-footer { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
     .modal-head { border-bottom: 1px solid var(--line); }
@@ -482,6 +498,10 @@
     @media (max-width: 1120px) {
       .body { grid-template-columns: 190px 340px minmax(460px, 1fr); }
       .cards { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 700px) {
+      .variable-inline-list, .variable-editor-list { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -1051,6 +1071,7 @@
     const editorModalClose = document.getElementById('editorModalClose');
     const editorModalCancel = document.getElementById('editorModalCancel');
     const editorModalSave = document.getElementById('editorModalSave');
+    const editorDialog = editorModal.querySelector('.modal');
     let editorReturnFocus = null;
     let editorInspectorScrollTop = 0;
 
@@ -1266,6 +1287,102 @@
         .replaceAll("'", '&#039;');
     }
 
+    // This is a presentation fixture for the declared Handlebars context.
+    // It deliberately shows field names and safe examples, never live Vault data.
+    const templateVariableDefinitions = {
+      currentQuery: { label: 'Current search query', source: 'Vault Search input', availability: 'Required', example: '"project planning"' },
+      activeFilePath: { label: 'Active note path', source: 'Current workspace context', availability: 'Optional', example: '"Projects/Planning.md"' },
+      currentResultView: { label: 'Current result view', source: 'Vault Search state', availability: 'Optional', example: '"files"' },
+      recentQueriesLine: { label: 'Recent searches', source: 'Vault Search history', availability: 'Optional', example: '"research, planning"' },
+      recentOpenedFilesLine: { label: 'Recently opened notes', source: 'Workspace history', availability: 'Optional', example: '"Projects/Planning.md"' },
+      pinnedLine: { label: 'Pinned context', source: 'Vault Search state', availability: 'Optional', example: '"Pinned: Roadmap"' },
+      knownTopFoldersLine: { label: 'Known top folders', source: 'Vault structure', availability: 'Optional', example: '"Projects, Notes"' },
+      typedTrail: { label: 'Typed query trail', source: 'Vault Search interaction', availability: 'Optional', example: '"pro → project"' },
+      firstScreenLine: { label: 'First visible results', source: 'Vault Search result view', availability: 'Optional', example: '"3 matching notes"' },
+      eventCount: { label: 'Interaction count', source: 'Vault Search interaction', availability: 'Optional', example: '3' },
+      sessionTimeline: { label: 'Search session timeline', source: 'Vault Search interaction', availability: 'Optional', example: '"typed → opened → pinned"' },
+      title: { label: 'Document title', source: 'Current document', availability: 'Required', example: '"Project plan"' },
+      content: { label: 'Source content', source: 'Frozen action input', availability: 'Required', example: '"Selected source text…"' },
+      selection: { label: 'Selected text', source: 'Current editor selection', availability: 'Optional', example: '"The selected paragraph…"' },
+      instruction: { label: 'Requested action', source: 'Action menu or user input', availability: 'Required', example: '"Make this clearer"' },
+      before: { label: 'Leading context', source: 'Composer block projection', availability: 'Optional', example: '"Previous block…"' },
+      after: { label: 'Trailing context', source: 'Composer block projection', availability: 'Optional', example: '"Next block…"' },
+      blockKind: { label: 'Current block type', source: 'Composer block projection', availability: 'Required', example: '"paragraph"' },
+      table: { label: 'Table source', source: 'Composer table projection', availability: 'Required', example: '"| Name | Status |"' },
+      language: { label: 'Code language', source: 'Native block metadata', availability: 'Optional', example: '"typescript"' },
+      searchQuery: { label: 'Graph search request', source: 'AI Graph input', availability: 'Required', example: '"Show related concepts"' },
+      sources: { label: 'Selected sources', source: 'AI Graph source set', availability: 'Required', example: '[{ title, content, path }]' },
+      sourceCount: { label: 'Source count', source: 'AI Graph source set', availability: 'Required', example: '4' },
+      userQuery: { label: 'Research question', source: 'AI Search input', availability: 'Required', example: '"What changed?"' },
+      originalQuery: { label: 'Original research question', source: 'AI Search session', availability: 'Required', example: '"Compare the options"' },
+      contextContent: { label: 'Bounded source context', source: 'AI Search session', availability: 'Required', example: '"Sources and report excerpts…"' },
+      question: { label: 'Follow-up question', source: 'AI Search input', availability: 'Required', example: '"What is the trade-off?"' },
+      period: { label: 'Reporting period', source: 'Skill input', availability: 'Required', example: '"This week"' },
+      topic: { label: 'Requested topic', source: 'Skill input', availability: 'Required', example: '"Knowledge graph"' },
+      scope: { label: 'Requested scope', source: 'Action or skill input', availability: 'Optional', example: '"Current document"' },
+      join: { label: 'Join helper', source: 'Registered Handlebars helper', availability: 'Helper', example: '{{join values ", "}}' }
+    };
+
+    function templateVariables(prompt) {
+      return String(prompt?.variables ?? '')
+        .split(',')
+        .map(variable => variable.trim())
+        .filter(Boolean);
+    }
+
+    function variableDefinition(variable) {
+      if (templateVariableDefinitions[variable]) return templateVariableDefinitions[variable];
+      const optional = /(?:selection|excerpt|path|before|after|pinned|recent|current|default|hint|note|comment)/i.test(variable);
+      const source = variable.startsWith('this.')
+        ? 'Current record in this prompt context'
+        : 'Action runtime context';
+      return {
+        label: variable.startsWith('this.') ? variable.slice(5) : variable,
+        source,
+        availability: optional ? 'Optional' : 'Required',
+        example: 'Value supplied when this action runs'
+      };
+    }
+
+    function variableToken(variable) {
+      return variable === 'join' ? '{{join …}}' : `{{${variable}}}`;
+    }
+
+    function renderVariableSummary(prompt) {
+      const variables = templateVariables(prompt);
+      if (!variables.length) {
+        return '';
+      }
+      const fields = variables.map(variable => {
+        const definition = variableDefinition(variable);
+        return `<span class="variable-inline-item"><code>${escapeHtml(variableToken(variable))}</code><span>${escapeHtml(definition.label)}</span></span>`;
+      }).join('');
+      return `<div class="variable-summary"><div class="variable-summary-copy"><strong>Template inputs</strong><span>Peak fills these values through Handlebars when the action runs.</span></div><div class="variable-inline-list">${fields}</div></div>`;
+    }
+
+    function renderTemplatePreview(prompt) {
+      const variables = templateVariables(prompt);
+      if (!variables.length) return '<span>No Handlebars slots declared</span>';
+      const visibleVariables = variables.slice(0, 3);
+      const moreCount = variables.length - visibleVariables.length;
+      return `<span>Template slots</span>${visibleVariables.map(variable => `<code class="template-token">${escapeHtml(variableToken(variable))}</code>`).join('')}${moreCount ? `<span>+${moreCount} more</span>` : ''}`;
+    }
+
+    function renderVariableEditorList(prompt) {
+      const variables = templateVariables(prompt);
+      if (!variables.length) {
+        return `<div class="notice">${icons.prompt}<span>No Handlebars fields are declared for this Prompt. It is rendered from its saved text only.</span></div>`;
+      }
+      const fields = variables.map(variable => {
+        const definition = variableDefinition(variable);
+        const description = definition.availability === 'Optional'
+          ? `${definition.label} — supplied when available`
+          : definition.label;
+        return `<span class="variable-editor-item" title="From ${escapeHtml(definition.source)}"><code>${escapeHtml(variableToken(variable))}</code><span>${escapeHtml(description)}</span></span>`;
+      }).join('');
+      return `<p class="variable-editor-note">Use these exact Handlebars fields in the template. Peak supplies the values at run time; the source context is fixed by the action and is not typed manually here.</p><div class="variable-editor-list">${fields}</div>`;
+    }
+
     function inspectorHeader(item, type) {
       const isCapability = type === 'capability';
       const isOutput = type === 'output';
@@ -1292,7 +1409,8 @@
           title: migrating ? `Review ${prompt?.title ?? promptId}` : `Edit ${prompt?.title ?? promptId}`,
           subtitle: migrating ? 'Registration is required before this runtime instruction can be overridden.' : sharedSubtitle,
           saveDisabled: migrating,
-          body: `${migrating ? `<div class="notice amber">${icons.alert}<span>Move this inline runtime instruction into Prompt Registry and the shared resolver first.</span></div>` : ''}<p class="modal-copy">Edit the Vault override here without leaving the current AI action. Saving or cancelling returns to the same action and scroll position.</p><label class="field"><span>Vault override</span><textarea ${migrating ? 'disabled' : ''} placeholder="No Vault override. Add instructions for this Prompt here."></textarea></label><label class="field"><span>Applies to</span><input value="${prompt?.owners ?? 0} mapped AI action${prompt?.owners === 1 ? '' : 's'}" disabled></label>`
+          wide: true,
+          body: `${migrating ? `<div class="notice amber">${icons.alert}<span>Move this inline runtime instruction into Prompt Registry and the shared resolver first.</span></div>` : ''}<p class="modal-copy">Use the declared variables directly in the Vault override. Saving or cancelling returns to the same action and scroll position.</p>${renderVariableEditorList(prompt)}<label class="field"><span>Vault override template</span><textarea ${migrating ? 'disabled' : ''} placeholder="No Vault override. Reference declared fields with {{variable}}."></textarea></label><label class="field"><span>Applies to</span><input value="${prompt?.owners ?? 0} mapped AI action${prompt?.owners === 1 ? '' : 's'}" disabled></label>`
         };
       }
       if (type === 'instruction') {
@@ -1323,15 +1441,17 @@
       editorModalTitle.textContent = content.title;
       editorModalSubtitle.textContent = content.subtitle;
       editorModalBody.innerHTML = content.body;
-      editorModalCancel.textContent = 'Cancel';
-      editorModalSave.classList.remove('hidden');
+      editorModalCancel.textContent = content.cancelText ?? 'Cancel';
+      editorModalSave.classList.toggle('hidden', Boolean(content.hideSave));
       editorModalSave.disabled = Boolean(content.saveDisabled);
+      editorDialog.classList.toggle('wide', Boolean(content.wide));
       editorModal.classList.remove('hidden');
       editorModalClose.focus();
     }
 
     function closeEditorModal() {
       editorModal.classList.add('hidden');
+      editorDialog.classList.remove('wide');
       inspector.scrollTop = editorInspectorScrollTop;
       editorReturnFocus?.focus();
       editorReturnFocus = null;
@@ -1348,7 +1468,8 @@
       const promptList = item.prompts.map(id => {
         const prompt = prompts.find(candidate => candidate.id === id);
         const actionLabel = prompt?.status === 'migration' ? 'Review migration' : 'Edit prompt';
-        return `<div class="prompt-box"><div class="prompt-head"><span class="prompt-title"><strong>${prompt?.title ?? id}</strong><span class="pill">${promptRole(prompt)}</span></span><button class="link-button" data-editor="prompt" data-prompt-id="${id}">${actionLabel}</button></div><div class="prompt-body">${prompt?.kind ?? 'Capability prompt'} · ${prompt?.version ?? 'Built-in'}</div></div>`;
+        const variableSummary = templateVariables(prompt).length ? renderVariableSummary(prompt) : '';
+        return `<div class="prompt-box"><div class="prompt-head"><span class="prompt-title"><strong>${prompt?.title ?? id}</strong><span class="pill">${promptRole(prompt)}</span></span><button class="link-button" data-editor="prompt" data-prompt-id="${id}">${actionLabel}</button></div><div class="prompt-body"><div>${prompt?.kind ?? 'Capability prompt'} · ${prompt?.version ?? 'Built-in'}</div><div class="template-preview">${renderTemplatePreview(prompt)}</div></div>${variableSummary}</div>`;
       }).join('');
       const actionInstruction = item.actionInstruction
         ? `<div class="prompt-box"><div class="prompt-head"><strong>Action instruction</strong><button class="link-button" data-editor="instruction">Edit instruction</button></div><div class="prompt-body">${item.actionInstruction}</div></div>`
@@ -1429,6 +1550,7 @@
         : `<div class="prompt-box"><div class="prompt-head"><strong>Vault override</strong><button class="link-button">View built-in default</button></div><textarea class="prompt-editor" placeholder="No Vault override. Add instructions here to override the built-in default."></textarea><div class="button-row"><button class="action-button" disabled>Reset to default</button><button class="action-button primary">Save override</button></div></div>`;
       inspector.innerHTML = inspectorHeader(item, 'prompt') + `<section class="panel active">
         <div class="section"><h2>Usage</h2><dl class="facts"><dt>Category</dt><dd>${item.group}</dd><dt>Used by</dt><dd>${item.owners ? `${item.owners} AI action${item.owners === 1 ? '' : 's'}` : 'Direct runtime caller; no top-level action mapped'}</dd><dt>Runtime callers</dt><dd>${item.callers || 'Companion of an executable Prompt'}</dd><dt>Source</dt><dd>${item.version}</dd></dl></div>
+        <div class="section"><h2>Runtime variables</h2>${renderVariableEditorList(item)}</div>
         <div class="section"><h2>Prompt instructions</h2>${editor}</div>
         ${item.owners > 1 ? `<div class="notice">${icons.prompt}<span>This prompt is shared. Saving an override changes the instructions for all ${item.owners} actions that use it.</span></div>` : ''}
       </section>`;
