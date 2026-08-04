@@ -4,7 +4,7 @@
 >
 > 产品状态：继续保持 Roadmap 中的 research candidate，不因本计划自动升级为实施承诺
 >
-> 依据：Peak Sheet Dataset / Compute 研究、2026-07-31 Editorial Mock，以及表格、看板、日历开源组件审查
+> 依据：Peak Sheet Dataset / Compute 研究、2026-07-31 Editorial Mock、表格 / 看板 / 日历开源组件审查，以及 2026-08-04 AI 创建入口需求
 >
 > 面向读者：产品 owner、后续实现者、负责真实 Obsidian 验收的维护者
 
@@ -18,7 +18,8 @@ Peak Sheet 的实现不能从“先画三个页面”开始，而应从同一份
 - **日历：先用 FullCalendar Standard 做隔离 Spike，通过后接入。** 只允许 MIT 的 Standard 插件；不引入 Premium / Scheduler、resource timeline 或其他付费能力。
 - **看板：保持自研。** 不使用 Atlassian Pragmatic Drag and Drop；先完成稳定的分组投影、显式 Move 操作和键盘路径，再补受控 pointer drag。
 - **现有 Composer Markdown 表格继续保留。** `TableBlockView` 是文档块编辑器，不改造成 Dataset grid，也不被 Peak Sheet 替换。
-- **AI 是计算与操作入口，不是第二套 runtime。** 自然语言公式、筛选和分析必须编译为可预览、可验证、可撤销的 Peak-owned plan 或 patch。
+- **AI 可以创建 Peak Sheet。** Copilot 可以生成 CSV 或扁平 JSON Array，经 `DatasetDraft` 解析、字段推断和预览确认后创建 revision 1；输入格式不是长期 Dataset 真值。
+- **创建后的 AI 操作必须增量化。** 自然语言公式、筛选、分析和数据修改必须编译为可预览、可验证、可撤销的 Peak-owned plan 或 patch，不能重新生成整份 CSV / JSON 覆盖用户修改。
 
 只有各项 Spike 的 GO gate 通过，才可进入对应 production adapter。Spike 失败时更换 renderer，不重写 Dataset、ViewDefinition 或 DatasetPatch 合同。
 
@@ -27,6 +28,7 @@ Peak Sheet 的实现不能从“先画三个页面”开始，而应从同一份
 ### 2.1 已有能力
 
 - Composer 已有 Markdown table model、选区、编辑、CSV 与图表相关基础；这些能力服务文档块，不等于生产级 Dataset runtime。
+- 现有 artifact 创建路径具备 validate、Vault write 与 receipt 的可复用形状；当前 Chat 中的 `dataset` artifact kind 仍不等于 Peak Dataset runtime。
 - Peak Sheet 研究已经提出 `Dataset`、稳定 record / field ID、`ComputePlan`、preview / accept 与 manual refresh 的窄闭环。
 - Editorial Mock 已表达 Table、Board、Calendar、字段类型、自由公式、计算列、选区统计、内联 AI 公式与侧栏 CRUD 的交互目标。
 
@@ -34,6 +36,7 @@ Peak Sheet 的实现不能从“先画三个页面”开始，而应从同一份
 
 - 没有可供三个视图共享的 production Dataset store 和 revision contract；
 - 没有稳定的 ViewDefinition / ViewAdapter registry；
+- 没有把 Copilot 生成的 CSV / JSON Array 提升为 `DatasetDraft`、`DatasetCreatePlan` 和 revision 1 的 production 入口；
 - 没有统一的 typed formula evaluator、依赖图、循环检测和错误类型；
 - 没有统一的 DatasetPatch 验证、写回、重算和回滚路径；
 - Mock、静态 HTML 与 build 都不能证明真实 Obsidian 中的编辑、IME、拖拽、焦点或跨视图同步。
@@ -44,28 +47,30 @@ Peak Sheet 的优先级仍是：
 
 1. 自由 Sheet 的单元格 / 区域计算与格式；
 2. 结构化字段与稳定 Dataset；
-3. 表格视图的编辑、筛选、排序、分组和统计；
-4. 看板与日历投影；
-5. 可验证的 AI 公式、筛选和分析入口。
+3. CSV / JSON Array 与 Copilot 生成结果的可确认 Dataset 创建入口；
+4. 表格视图的编辑、筛选、排序、分组和统计；
+5. 看板与日历投影；
+6. 可验证的 AI 公式、筛选和分析入口。
 
-本计划聚焦第 2–5 项的共享基础与视图适配，不重新定义自由 Sheet 的完整电子表格函数范围。
+AI 创建是共享合同成立后的第一条纵向产品闭环，不代表 AI 可以绕过第 1–4 层的数据合同。本计划聚焦第 2–6 项的共享基础、创建入口与视图适配，不重新定义自由 Sheet 的完整电子表格函数范围。
 
 ## 3. Impact Contract
 
 ### 3.1 Primary outcome
 
-同一个 `DatasetRevision` 必须能驱动 Table、Board、Calendar 三种视图；所有用户修改都转换为 typed `DatasetPatch`，经统一验证、持久化、重算后产生新 revision，再投影回所有打开的视图。
+Copilot 生成的 CSV / 扁平 JSON Array 必须能经 preview / accept 创建首个 `DatasetRevision`。同一个 revision 随后驱动 Table、Board、Calendar 三种视图；所有用户与 AI 修改都转换为 typed `DatasetPatch`，经统一验证、持久化、重算后产生新 revision，再投影回所有打开的视图。
 
 ### 3.2 Required tracks
 
 1. Dataset / Field / View / Patch 核心合同；
 2. app-owned Sheet runtime 与 revision 传播；
-3. Glide Data Grid 高保真隔离 Spike 与 GO / NO-GO gate；
-4. production Table adapter、字段编辑、组合筛选 / 排序 / 分组；
-5. typed formula、选区统计与内联 AI formula plan；
-6. FullCalendar Standard 隔离 Spike 与 Calendar adapter；
-7. 自研 Board adapter、显式移动与 pointer drag；
-8. 跨视图同步、回滚、真实 Obsidian interaction QA。
+3. Copilot → CSV / JSON Array → DatasetDraft → preview / accept → Dataset 的创建入口；
+4. Glide Data Grid 高保真隔离 Spike 与 GO / NO-GO gate；
+5. production Table adapter、字段编辑、组合筛选 / 排序 / 分组；
+6. typed formula、选区统计与内联 AI formula plan；
+7. FullCalendar Standard 隔离 Spike 与 Calendar adapter；
+8. 自研 Board adapter、显式移动与 pointer drag；
+9. 跨视图同步、回滚、真实 Obsidian interaction QA。
 
 ### 3.3 Forbidden scope
 
@@ -75,6 +80,8 @@ Peak Sheet 的优先级仍是：
 - 不替换或重写 Composer `TableBlockView`；
 - 不在本波实现 Gallery、Dashboard、Relation、Map、3D globe、automation、Portal 或多人协作；
 - 不执行任意 JavaScript / Python 公式；
+- 不把裸 CSV / JSON Array 或 AI field hint 直接当作 canonical Dataset schema；
+- 不允许 AI 静默创建持久文件，也不允许创建后通过重新生成整份 CSV / JSON 覆盖 Dataset；
 - 不创建 service-layer runtime singleton，不通过 `AppContext.getInstance()` 扩大隐式依赖；
 - 未在 generated artifact registry 明确 carrier、sync、index 与 materialization 规则前，不新增持久 writer；
 - 不用 Mock、单元测试、静态几何或绿色 build 冒充真实 Obsidian 验收。
@@ -84,6 +91,7 @@ Peak Sheet 的优先级仍是：
 本需求只有同时满足以下条件，才可从 planned requirement 移除：
 
 - Table、Board、Calendar 读取同一 Dataset revision，任一视图的合法修改能在另外两个视图中出现；
+- Copilot 能从 CSV 或扁平 JSON Array 生成可审阅 Draft，用户确认后只创建一个 revision 1 和对应 receipt；
 - 字段类型、公式结果和统计不由 renderer 私有状态决定；
 - Glide 与 FullCalendar 的采用均有独立 Spike 证据和明确 GO 结论；
 - 看板跨列移动、日历 range CRUD、表格 range selection 都有失败回滚路径；
@@ -98,6 +106,10 @@ Required tracks 的 skip budget 为 0。某项组件 Spike 未过 gate 时，允
 
 ```mermaid
 flowchart LR
+  AI["Copilot / AI run"]
+  RAW["CSV / flat JSON Array"]
+  DRAFT["DatasetDraft<br/>parse · infer · preview"]
+  CREATE["DatasetCreatePlan<br/>accept · receipt"]
   DS["Peak Dataset<br/>records · fields · revision"]
   CP["Compute runtime<br/>formula · dependency · stats"]
   VD["ViewDefinition<br/>table · board · calendar"]
@@ -107,6 +119,10 @@ flowchart LR
   UI["User interaction"]
   DP["DatasetPatch<br/>validate · persist · recompute"]
 
+  AI --> RAW
+  RAW --> DRAFT
+  DRAFT --> CREATE
+  CREATE --> DS
   DS --> CP
   DS --> VD
   CP --> TA
@@ -125,6 +141,8 @@ flowchart LR
 关键不变量：
 
 - Dataset 是记录与字段的 source of truth；
+- CSV / JSON Array 是创建入口，`DatasetDraft` 是确认前的暂态对象，二者都不是创建后的 Dataset 真值；
+- AI 推断只提供字段建议；只有用户接受的 `DatasetCreatePlan` 才能创建 revision 1；
 - ViewDefinition 只保存投影配置，不复制 records；
 - renderer 只接收 projection 并发出 intent；
 - DatasetPatch 是唯一 mutation boundary；
@@ -141,6 +159,26 @@ type RecordId = string;
 type FieldId = string;
 type ViewId = string;
 type DatasetRevision = number;
+
+interface DatasetDraft {
+  id: string;
+  source: {
+    kind: "ai" | "import" | "paste";
+    format: "csv" | "json-array";
+    runId?: string;
+    payloadHash: string;
+  };
+  rows: Array<Record<string, unknown>>;
+  inferredFields: FieldDefinitionDraft[];
+  diagnostics: DatasetDraftDiagnostic[];
+}
+
+interface DatasetCreatePlan {
+  draftId: string;
+  title: string;
+  acceptedFields: FieldDefinitionDraft[];
+  defaultView: TableViewDefinitionDraft;
+}
 
 interface DatasetSnapshot {
   id: DatasetId;
@@ -171,6 +209,10 @@ interface ViewAdapter<TView extends ViewDefinition, TProjection> {
 实现约束：
 
 - `DatasetPatch` 输入先按 FieldDefinition 解码和校验，再允许写入；
+- v1 只接受表头明确的 CSV 与扁平 JSON Array；嵌套对象 / 数组必须拒绝或经用户确认转成文本字段；
+- parsing、大小限制和类型推断必须 deterministic；AI field hint 只能建议，不能跳过 preview；
+- `DatasetCreatePlan` 是 Draft 进入 canonical Dataset 的唯一创建边界，成功后写入 revision 1 与 receipt；
+- Dataset 创建后的新增、修改、删除、公式和视图操作都走 plan / patch，不回写整份 AI source payload；
 - formula / lookup / rollup 等只读计算字段不得由 renderer 直接写入；
 - patch 必须带 base revision，revision 冲突时拒绝或显式 rebase，不能静默覆盖；
 - UI optimistic state 只用于短暂反馈，失败必须回到 authoritative snapshot；
@@ -184,6 +226,7 @@ interface ViewAdapter<TView extends ViewDefinition, TProjection> {
 | Calendar | FullCalendar Standard 候选 | month / week 布局、range select、event drag / resize 生命周期 | 日期字段映射、CRUD、sidecar、权限、patch、回滚、主题 | 免费依赖与 CRUD / rollback Spike 通过后 GO |
 | Board | Peak 自研 | 卡片、lane、drop placeholder、autoscroll | 分组语义、排序、Move fallback、patch、rollback | 无外部 DnD 依赖；交互 gate 通过后上线 |
 | Composer table | 保留现状 | Markdown 文档块编辑 | Composer 自有 model / serialization | 不进入 Peak Sheet adapter |
+| AI create | Peak 自研并复用现有 AI execution / receipt | CSV / JSON Array generation、Draft card | deterministic parse、schema confirmation、create plan、revision | preview / accept 与真实打开 Sheet 通过后上线 |
 | Formula / AI | Peak 自研 | — | parser、type check、dependency graph、preview / accept、receipt | deterministic 与可回滚 gate |
 
 参考：
@@ -208,7 +251,8 @@ interface ViewAdapter<TView extends ViewDefinition, TProjection> {
 3. 确认 Dataset canonical carrier、ViewDefinition carrier、revision 和 materialization 规则；
 4. 在 generated artifact registry 登记任何新增 writer；
 5. 记录未加组件前的 production bundle、CSS bundle、build 时间与当前依赖许可证基线；
-6. 冻结 5k 行 / 18 字段的统一 fixture，覆盖长文本、空值、中文、标签、日期区间、公式错误和只读字段。
+6. 冻结 5k 行 / 18 字段的统一 fixture，覆盖长文本、空值、中文、标签、日期区间、公式错误和只读字段；
+7. 冻结 AI 创建 fixture：合法 / 非法 CSV、键不一致 JSON Array、嵌套值、类型冲突、公式注入文本、重复记录与超限 payload。
 
 Gate G0：
 
@@ -222,14 +266,15 @@ Gate G0：
 
 任务：
 
-1. 定义 Dataset、Record、FieldDefinition、ViewDefinition 与 DatasetPatch；
-2. 建立 field codec、patch validator、base revision check 与 error taxonomy；
-3. 建立 ComputePlan 接口、derived-field 只读边界和 invalidation contract；
-4. 在 app layer 组合 Sheet runtime，通过 constructor / port 注入 service 与 UI；
-5. 实现 in-memory reference adapter，证明三个 ViewDefinition 共享 snapshot；
-6. 添加 contract tests：patch round-trip、revision conflict、invalid value、computed field rejection、rollback。
+1. 定义 DatasetDraft、DatasetCreatePlan、Dataset、Record、FieldDefinition、ViewDefinition 与 DatasetPatch；
+2. 建立 CSV / JSON Array parser、field inference、diagnostic 与可配置大小限制；
+3. 建立 field codec、patch validator、base revision check 与 error taxonomy；
+4. 建立 ComputePlan 接口、derived-field 只读边界和 invalidation contract；
+5. 在 app layer 组合 Sheet runtime，通过 constructor / port 注入 service 与 UI；
+6. 实现 in-memory reference adapter，证明三个 ViewDefinition 共享 snapshot；
+7. 添加 contract tests：Draft parse、create plan、patch round-trip、revision conflict、invalid value、computed field rejection、rollback。
 
-Gate G1：同一 fixture 经三种 reference projection 后，patch 能产生唯一新 revision；没有 UI 或 service 模块单例。
+Gate G1：同一 fixture 经 accepted create plan 产生唯一 revision 1，再经三种 reference projection 后由 patch 产生唯一新 revision；没有 UI 或 service 模块单例。
 
 ### Phase 2 · Glide Data Grid 隔离 Spike
 
@@ -246,7 +291,7 @@ Spike 页面不得接 production writer，只读取 Phase 0 fixture，并实现�
 - Obsidian light / dark theme、不同 zoom / DPR、窄 viewport；
 - portal / overlay、焦点恢复、screen reader 基础语义与 text-selection escape hatch。
 
-Glide GO gate：
+Gate G2 · Glide GO：
 
 - 字体、行高、线条、标签与长文本达到 Editorial baseline，不出现默认 demo 质感；
 - selection 与编辑事件能稳定转换为 adapter intent；
@@ -272,7 +317,26 @@ Glide NO-GO fallback：保留完全相同的 ViewAdapter 与 DatasetPatch，改�
 7. 长文本采用单行省略、hover preview 与显式展开 / 编辑，不因内容改变行高；
 8. 对 editable、computed、invalid、pending 与 conflict cell 使用稳定且克制的视觉状态。
 
-### Phase 4 · Formula、统计与 AI-native 入口
+Gate G3：Table adapter 的 edit / paste / fill / delete、筛选 / 排序 / 分组和 selection stats 均只读取 Dataset / ViewDefinition，并只通过 typed DatasetPatch 写回。
+
+### Phase 4 · Copilot AI 创建入口
+
+目标：用最简单的 AI 输出格式完成第一条 Copilot → Peak Sheet 纵向闭环。
+
+任务：
+
+1. 在现有 AI execution contract 中增加 Sheet Draft 结构化结果，不创建第二套 Copilot runtime；
+2. 默认让 AI 生成扁平 JSON Array，同时接受 CSV；两种格式进入同一个 deterministic parser；
+3. 在 Copilot 响应中渲染 Draft card，展示表名、记录数、字段建议、前几行预览、diagnostic 和来源；
+4. 用户可以修改字段名、字段类型和枚举值，也可以要求 Copilot 继续调整 Draft；
+5. `创建 Peak Sheet` 先生成可检查的 DatasetCreatePlan，确认后由 app-owned runtime 创建 revision 1、receipt 和默认 TableViewDefinition；
+6. 创建成功后直接打开 Peak Sheet Table，不要求用户先下载再导入；
+7. 提供导出 CSV / JSON 的旁路，但导出文件不反向成为隐藏 canonical store；
+8. Sheet 创建后的 Copilot 修改只生成 DatasetPatchPlan、FormulaPlan、FilterPlan、ViewPlan 或 ComputePlan。
+
+Gate G4：从 Copilot prompt 到 Dataset revision 1 只有一次显式 accept；解析错误、类型冲突、超限 payload 与取消操作均不产生持久写入；receipt 能关联 AI run、payload hash、accepted schema 和创建结果。
+
+### Phase 5 · Formula、统计与 AI-native 入口
 
 任务：
 
@@ -285,9 +349,9 @@ Glide NO-GO fallback：保留完全相同的 ViewAdapter 与 DatasetPatch，改�
 7. AI 将自然语言编译为多个可验证候选，展示字段引用、解释、样例结果与错误；
 8. 用户 preview / accept 后才写入 FormulaPlan；AI 分析复用 Copilot ComposerView 的 run / receipt / review 语言，不创建第二套分析 modal runtime。
 
-Gate G4：相同输入必得相同结果；AI 候选无法绕过 parser、type check、preview / accept 或 revision guard。
+Gate G5：相同输入必得相同结果；AI 候选无法绕过 parser、type check、preview / accept 或 revision guard。
 
-### Phase 5 · FullCalendar Standard Spike 与 Calendar adapter
+### Phase 6 · FullCalendar Standard Spike 与 Calendar adapter
 
 允许依赖仅包括：
 
@@ -307,9 +371,9 @@ Spike 与接入任务：
 6. Escape、焦点恢复、键盘打开与只读权限路径；
 7. 完成 Obsidian theme、zoom、窄 viewport 和大量 event 压力测试。
 
-Calendar GO gate：无需 Premium 插件即可完成目标交互；CRUD、range、drag / resize、revert、sidecar 和主题适配均通过真实 Obsidian QA。若不通过，保留 Calendar adapter 合同，回退自研 month / agenda renderer。
+Gate G6 · Calendar GO：无需 Premium 插件即可完成目标交互；CRUD、range、drag / resize、revert、sidecar 和主题适配均通过真实 Obsidian QA。若不通过，保留 Calendar adapter 合同，回退自研 month / agenda renderer。
 
-### Phase 6 · 自研 Board adapter
+### Phase 7 · 自研 Board adapter
 
 任务：
 
@@ -322,9 +386,9 @@ Calendar GO gate：无需 Premium 插件即可完成目标交互；CRUD、range�
 7. 无权限、校验失败或 revision 冲突时回滚卡片，不保留幽灵 placeholder；
 8. 对空 lane、长标题、大量卡片和窄 viewport 做视觉与交互 QA。
 
-Board gate：显式 Move 与 pointer drag 使用同一 patch 路径；没有拖拽也能完成 CRUD；不引入外部 DnD runtime。
+Gate G7 · Board GO：显式 Move 与 pointer drag 使用同一 patch 路径；没有拖拽也能完成 CRUD；不引入外部 DnD runtime。
 
-### Phase 7 · 跨视图集成、发布与清理
+### Phase 8 · 跨视图集成、发布与清理
 
 任务：
 
@@ -336,12 +400,16 @@ Board gate：显式 Move 与 pointer drag 使用同一 patch 路径；没有拖�
 6. 完成 focused tests、full build、真实 Obsidian CDP + Computer Use 证据；
 7. 在 implementation note 中逐项给出 COMPLETE / PARTIAL / NOT VERIFIED，不用 mock 代替产品验收。
 
+Gate G8：默认入口只暴露通过真实 Obsidian 验收的创建与视图能力；所有未完成项在 implementation note 中保持 PARTIAL / NOT VERIFIED，并可通过 feature flag 无损回退。
+
 ## 8. 拟议代码所有权
 
 最终目录名可在 Phase 0 调整；所有权不得跨层倒置。
 
 ```text
 src/core/sheet/
+  DatasetDraft.ts
+  DatasetCreatePlan.ts
   Dataset.ts
   FieldDefinition.ts
   ViewDefinition.ts
@@ -349,6 +417,7 @@ src/core/sheet/
   compute/
 
 src/service/sheet/
+  DatasetDraftService.ts
   DatasetPatchService.ts
   ComputeService.ts
   projection/
@@ -366,6 +435,7 @@ src/ui/view/peak-sheet/
   sidecar/
 
 test/
+  peak-sheet-ai-create-*.test.ts
   peak-sheet-contract-*.test.ts
   peak-sheet-table-*.test.ts
   peak-sheet-board-*.test.ts
@@ -379,22 +449,24 @@ test/
 
 | Requirement | Owner phase | 主要验证 |
 | --- | --- | --- |
-| 一份 Dataset，多种视图 | 1、7 | revision propagation、无 duplicate record store |
-| 字段类型与 cell 编辑 | 1、2、3 | codec、IME、clipboard、typed patch |
+| AI 从 CSV / JSON 创建 Sheet | 1、4 | Draft diagnostics、preview / accept、revision 1、receipt |
+| 一份 Dataset，多种视图 | 1、8 | revision propagation、无 duplicate record store |
+| 字段类型与 cell 编辑 | 1–4 | codec、inference、IME、clipboard、typed patch |
 | 多条件筛选 / 排序 / 分组 | 3 | ViewDefinition round-trip、组合条件测试 |
-| 自由公式与计算列共用内核 | 4 | deterministic evaluator、dependency、cycle tests |
-| 选区统计 | 2、4 | range selection 与 type-aware aggregate |
-| 原地 AI 公式输入 | 4 | candidate preview、validation、accept / cancel |
-| 日历 CRUD 与 range | 5 | create / edit / delete、select、drag / resize / revert |
-| 看板移动与分组 | 6 | Move fallback、cross-lane、order、rollback |
-| 统一 sidecar / review language | 3–6 | view context、focus restore、Copilot receipt consistency |
-| 真实 Obsidian 稳定性 | 2、5、6、7 | CDP DOM / state assertions + visible evidence |
+| 自由公式与计算列共用内核 | 5 | deterministic evaluator、dependency、cycle tests |
+| 选区统计 | 2、5 | range selection 与 type-aware aggregate |
+| 原地 AI 公式输入 | 5 | candidate preview、validation、accept / cancel |
+| 日历 CRUD 与 range | 6 | create / edit / delete、select、drag / resize / revert |
+| 看板移动与分组 | 7 | Move fallback、cross-lane、order、rollback |
+| 统一 sidecar / review language | 3–7 | view context、focus restore、Copilot receipt consistency |
+| 真实 Obsidian 稳定性 | 2、4、6–8 | CDP DOM / state assertions + visible evidence |
 
 ## 10. 验证矩阵
 
 ### 自动化
 
 - contract tests：field codec、patch validation、base revision、rollback、computed-field write rejection；
+- AI create tests：CSV / JSON Array parse、schema inference、diagnostics、preview / accept、cancel、limit、payload hash 与 receipt；
 - projection tests：同 snapshot 对 Table / Board / Calendar 的稳定投影；
 - formula tests：type、dependency、cycle、error、invalid reference、determinism；
 - adapter tests：renderer intent → DatasetPatch，不允许 renderer-owned mutation；
@@ -405,6 +477,14 @@ test/
 - 依赖 license、Premium package absence 和 bundle delta guard。
 
 ### 真实 Obsidian interaction
+
+AI 创建：
+
+- Copilot prompt 生成 CSV / JSON Array Draft card；
+- 预览字段、记录和 diagnostics，并修改字段名 / 类型；
+- 继续调整、取消和 `创建 Peak Sheet`；
+- accept 后只产生一个 revision 1 并直接打开 Table；
+- 创建后的 AI 修改进入增量 plan / patch，不覆盖整份 Dataset。
 
 Table：
 
@@ -440,7 +520,7 @@ Board：
 
 ## 11. 发布与回滚
 
-- Table、Calendar、Board adapter 独立 feature flag；先内部 fixture，再 owner fixture，再普通入口；
+- AI create、Table、Calendar、Board 分别使用可撤销 feature flag；先内部 fixture，再 owner fixture，再普通入口；
 - feature flag 只切 renderer / adapter，不切换 Dataset source of truth；
 - Glide 或 FullCalendar 回滚时移除对应 adapter 与依赖，Dataset、ViewDefinition 与用户数据保持不变；
 - storage migration 采用兼容读取、单一写入，禁止长期 dual-write；
@@ -454,6 +534,8 @@ Board：
 | Canvas grid 的字体、标签、a11y 与 IME 可能无法达到产品标准 | Phase 2 高保真 Spike；失败即 NO-GO，不污染合同 |
 | FullCalendar 默认视觉可能与 Editorial theme 冲突 | 只在通过 custom event / theme Spike 后采用 |
 | 不用 DnD 库会增加看板 pointer drag 工作量 | 先交付显式 Move 与键盘路径，再补共享 patch 上的 pointer drag |
+| AI 生成结果存在键不一致、类型冲突、公式注入文本或超限 payload | deterministic parser + diagnostics + configurable limits；accept 前不持久化 |
+| 裸 CSV / JSON 缺少稳定 ID、schema、revision 与 view | 只作为 DatasetDraft 输入；accept 后提升为正式 Dataset |
 | Dataset 与自由 Sheet 的 carrier / conversion 仍需冻结 | Phase 0 owner gate；未确定时禁止 production writer |
 | 公式函数范围可能无限扩张 | 首波只做 typed baseline；函数 catalog 独立受控扩展 |
 | AI 分析容易形成第二套 Composer | 复用现有 AI execution / receipt / review 语言，只增加 Sheet context adapter |
@@ -462,12 +544,14 @@ Board：
 
 满足以下条件后，才能将 `PR-PEAK-SHEET-VIEW-ADAPTER-SPIKES` 从 Planned Requirements 移除：
 
-1. G0–G7 均有证据，Glide / FullCalendar 分别有明确 GO 或已执行的 fallback；
-2. Table、Board、Calendar 共用 Dataset、Compute 与 DatasetPatch；
-3. 字段类型、组合筛选 / 排序 / 分组、公式、统计和 AI preview 均有 production 路径；
-4. 三视图 CRUD 与回滚完成自动化和真实 Obsidian 验收；
-5. 没有 Atlassian DnD、FullCalendar Premium、影子 Dataset、service runtime singleton 或 Composer table replacement；
-6. implementation note 对每项要求给出 source evidence 与 COMPLETE / PARTIAL / NOT VERIFIED；
-7. owner 明确批准从 research candidate 进入 Roadmap delivery，再执行 production rollout。
+1. G0–G8 均有证据，Glide / FullCalendar 分别有明确 GO 或已执行的 fallback；
+2. Copilot 可以从 CSV / 扁平 JSON Array 生成 Draft，经一次显式 accept 创建 revision 1、receipt 并打开 Table；
+3. 创建后的 AI 修改只走 DatasetPatchPlan、FormulaPlan、FilterPlan、ViewPlan 或 ComputePlan；
+4. Table、Board、Calendar 共用 Dataset、Compute 与 DatasetPatch；
+5. 字段类型、组合筛选 / 排序 / 分组、公式、统计和 AI preview 均有 production 路径；
+6. 三视图 CRUD 与回滚完成自动化和真实 Obsidian 验收；
+7. 没有 Atlassian DnD、FullCalendar Premium、影子 Dataset、service runtime singleton 或 Composer table replacement；
+8. implementation note 对每项要求给出 source evidence 与 COMPLETE / PARTIAL / NOT VERIFIED；
+9. owner 明确批准从 research candidate 进入 Roadmap delivery，再执行 production rollout。
 
-本计划本身只冻结实施方式和 adoption gates，不等于第 7 条批准已经发生。
+本计划本身只冻结实施方式和 adoption gates，不等于第 9 条批准已经发生。
