@@ -5,18 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
-<title>Composer Action Scope Comparison</title>
+<title>Composer List Actions Refined</title>
 <style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
 </head>
 <body>
-<iframe sandbox="allow-scripts" referrerpolicy="no-referrer" title="Composer Action Scope Comparison" srcdoc="&lt;!doctype html&gt;
+<iframe sandbox="allow-scripts" referrerpolicy="no-referrer" title="Composer List Actions Refined" srcdoc="&lt;!doctype html&gt;
 &lt;html lang=&quot;en&quot;&gt;
 &lt;head&gt;
 &lt;meta charset=&quot;utf-8&quot;&gt;
 &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
 &lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;&gt;
 &lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; &#x27;wasm-unsafe-eval&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src &#x27;unsafe-inline&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
-&lt;title&gt;Composer Action Scope Comparison&lt;/title&gt;
+&lt;title&gt;Composer List Actions Refined&lt;/title&gt;
 &lt;style&gt;:root {
   color-scheme: light dark;
   background-color: var(
@@ -884,674 +884,520 @@ svg.lucide {
 html&gt;body{padding:0}&lt;/style&gt;
 &lt;/head&gt;
 &lt;body&gt;
-&lt;div id=&quot;composer-action-scope-comparison&quot;&gt;
+&lt;div id=&quot;composer-list-actions-refined&quot;&gt;
   &lt;style&gt;
-    #composer-action-scope-comparison {
+    #composer-list-actions-refined {
       color-scheme: light dark;
-      --cm-canvas: light-dark(#eef1f6, #15171c);
-      --cm-paper: light-dark(#ffffff, #22252b);
-      --cm-surface: light-dark(#f7f8fa, #2a2d34);
-      --cm-text: light-dark(#263248, #edf1f7);
-      --cm-muted: light-dark(#747e8e, #aeb6c3);
-      --cm-border: light-dark(#d9dee8, #3d424d);
-      --cm-accent: light-dark(#8b5cf6, #a78bfa);
-      --cm-accent-soft: light-dark(#f1ebff, #382c55);
-      --cm-shadow: light-dark(rgba(29, 38, 54, 0.14), rgba(0, 0, 0, 0.44));
+      --re-canvas: light-dark(#eef1f6, #15171c);
+      --re-paper: light-dark(#ffffff, #22252b);
+      --re-surface: light-dark(#f7f8fa, #2a2d34);
+      --re-text: light-dark(#273249, #edf1f7);
+      --re-muted: light-dark(#747e8e, #aeb6c3);
+      --re-border: light-dark(#d9dee8, #3d424d);
+      --re-accent: light-dark(#8b5cf6, #a78bfa);
+      --re-accent-soft: light-dark(#f1ebff, #382c55);
+      --re-shadow: light-dark(rgba(29, 38, 54, 0.16), rgba(0, 0, 0, 0.48));
       width: 100%;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;
-      color: var(--cm-text);
+      color: var(--re-text);
     }
 
-    #composer-action-scope-comparison * {
+    #composer-list-actions-refined * {
       box-sizing: border-box;
     }
 
-    #composer-action-scope-comparison .cm-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
-      align-items: start;
-    }
-
-    #composer-action-scope-comparison .cm-scheme {
-      overflow: hidden;
-      border: 1px solid var(--cm-border);
+    #composer-list-actions-refined .re-stage {
+      width: 100%;
+      padding: 20px;
+      border: 1px solid var(--re-border);
       border-radius: 12px;
-      background: var(--cm-canvas);
-      box-shadow: 0 10px 28px var(--cm-shadow);
+      background: var(--re-canvas);
     }
 
-    #composer-action-scope-comparison .cm-scheme-head {
+    #composer-list-actions-refined .re-topbar {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: space-between;
       gap: 12px;
-      padding: 14px 16px 12px;
-      border-bottom: 1px solid var(--cm-border);
+      width: min(100%, 1080px);
+      margin: 0 auto 12px;
+      color: var(--re-muted);
     }
 
-    #composer-action-scope-comparison .cm-name {
+    #composer-list-actions-refined .re-version,
+    #composer-list-actions-refined .re-rules {
       display: flex;
       align-items: center;
-      gap: 8px;
-      min-width: 0;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    #composer-list-actions-refined .re-version strong {
+      color: var(--re-text);
       font-weight: 500;
     }
 
-    #composer-action-scope-comparison .cm-code {
-      flex: 0 0 auto;
-      padding: 2px 7px;
+    #composer-list-actions-refined .re-rule {
+      padding: 3px 8px;
+      border: 1px solid var(--re-border);
       border-radius: 999px;
-      background: var(--cm-accent-soft);
-      color: var(--cm-accent);
+      background: var(--re-paper);
     }
 
-    #composer-action-scope-comparison .cm-caption {
-      max-width: 52%;
-      color: var(--cm-muted);
-      text-align: right;
+    #composer-list-actions-refined .re-paper {
+      width: min(100%, 1080px);
+      min-height: 560px;
+      margin: 0 auto;
+      padding: 34px clamp(20px, 5vw, 54px) 54px;
+      border: 1px solid var(--re-border);
+      border-radius: 10px;
+      background: var(--re-paper);
+      box-shadow: 0 14px 36px var(--re-shadow);
     }
 
-    #composer-action-scope-comparison .cm-editor {
-      min-height: 324px;
-      padding: 18px 16px 16px;
-      background: var(--cm-paper);
-    }
-
-    #composer-action-scope-comparison .cm-doc-heading {
-      margin-bottom: 12px;
+    #composer-list-actions-refined .re-property {
+      margin-bottom: 28px;
+      color: var(--re-muted);
       font-weight: 500;
     }
 
-    #composer-action-scope-comparison .cm-list {
+    #composer-list-actions-refined .re-heading {
+      margin-bottom: 18px;
+      font-size: clamp(22px, 3vw, 30px);
+      font-weight: 500;
+      letter-spacing: -0.02em;
+    }
+
+    #composer-list-actions-refined .re-list-shell {
       position: relative;
-      padding: 26px 7px 7px;
+      width: min(100%, 680px);
+      margin-left: auto;
+      padding: 8px 10px;
       border: 1px solid transparent;
       border-radius: 9px;
-      transition: border-color 120ms ease, background 120ms ease;
+      transition: border-color 100ms ease, background 100ms ease;
     }
 
-    #composer-action-scope-comparison .cm-list:hover,
-    #composer-action-scope-comparison .cm-list[data-selected=&quot;true&quot;] {
-      border-color: var(--cm-border);
-      background: color-mix(in srgb, var(--cm-surface) 72%, transparent);
+    #composer-list-actions-refined .re-list-shell:hover,
+    #composer-list-actions-refined .re-list-shell[data-collection-open=&quot;true&quot;] {
+      border-color: var(--re-border);
+      background: color-mix(in srgb, var(--re-surface) 70%, transparent);
     }
 
-    #composer-action-scope-comparison .cm-row {
-      position: relative;
-      display: grid;
-      grid-template-columns: 16px minmax(0, 1fr) auto;
-      align-items: center;
-      min-height: 38px;
-      padding: 3px 4px 3px 7px;
+    #composer-list-actions-refined .re-item {
       border-radius: 7px;
-      transition: background 100ms ease, box-shadow 100ms ease;
     }
 
-    #composer-action-scope-comparison .cm-row:hover,
-    #composer-action-scope-comparison .cm-row[data-selected=&quot;true&quot;] {
-      background: var(--cm-surface);
-      box-shadow: inset 3px 0 0 var(--cm-accent);
+    #composer-list-actions-refined .re-row {
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr);
+      align-items: center;
+      min-height: 43px;
+      padding: 2px 8px;
+      border-radius: 7px;
+      transition: background 90ms ease, box-shadow 90ms ease;
     }
 
-    #composer-action-scope-comparison .cm-bullet {
-      color: var(--cm-muted);
+    #composer-list-actions-refined .re-item:hover .re-row,
+    #composer-list-actions-refined .re-item:focus-within .re-row,
+    #composer-list-actions-refined .re-item[data-active=&quot;true&quot;] .re-row {
+      background: var(--re-surface);
+      box-shadow: inset 3px 0 0 var(--re-accent);
     }
 
-    #composer-action-scope-comparison .cm-row-text,
-    #composer-action-scope-comparison .cm-row-select {
+    #composer-list-actions-refined .re-bullet {
+      color: var(--re-muted);
+    }
+
+    #composer-list-actions-refined .re-row-text {
       min-width: 0;
       overflow-wrap: anywhere;
+      font-size: clamp(16px, 2vw, 20px);
     }
 
-    #composer-action-scope-comparison .cm-row-select {
-      display: grid;
-      grid-column: 1 / -1;
-      grid-template-columns: 16px minmax(0, 1fr);
+    #composer-list-actions-refined .re-item-actions {
+      display: none;
       align-items: center;
-      width: 100%;
-      min-height: 34px;
-      padding: 0;
-      border: 0;
-      background: transparent;
-      color: inherit;
-      font: inherit;
-      text-align: left;
-      cursor: pointer;
+      flex-wrap: wrap;
+      gap: 4px;
+      width: fit-content;
+      max-width: calc(100% - 18px);
+      min-height: 38px;
+      margin: 5px 0 8px 18px;
+      padding: 4px 6px;
+      border: 1px solid var(--re-border);
+      border-radius: 9px;
+      background: var(--re-paper);
+      box-shadow: 0 9px 22px var(--re-shadow);
     }
 
-    #composer-action-scope-comparison .cm-icon-button,
-    #composer-action-scope-comparison .cm-list-button,
-    #composer-action-scope-comparison .cm-scope-button,
-    #composer-action-scope-comparison .cm-action,
-    #composer-action-scope-comparison .cm-palette-trigger {
-      border: 1px solid var(--cm-border);
-      border-radius: 7px;
-      background: var(--cm-paper);
-      color: var(--cm-text);
-      font: inherit;
-      cursor: pointer;
+    #composer-list-actions-refined .re-item:hover .re-item-actions,
+    #composer-list-actions-refined .re-item:focus-within .re-item-actions,
+    #composer-list-actions-refined .re-item[data-active=&quot;true&quot;] .re-item-actions {
+      display: flex;
     }
 
-    #composer-action-scope-comparison .cm-icon-button {
-      display: grid;
-      place-items: center;
-      width: 29px;
-      height: 29px;
-      padding: 0;
-      color: var(--cm-accent);
-      opacity: 0.42;
-      transition: opacity 100ms ease, background 100ms ease;
-    }
-
-    #composer-action-scope-comparison .cm-row:hover .cm-icon-button,
-    #composer-action-scope-comparison .cm-icon-button:focus-visible,
-    #composer-action-scope-comparison .cm-icon-button[aria-expanded=&quot;true&quot;] {
-      opacity: 1;
-      background: var(--cm-accent-soft);
-    }
-
-    #composer-action-scope-comparison .cm-list-button,
-    #composer-action-scope-comparison .cm-palette-trigger {
+    #composer-list-actions-refined .re-scope-mark {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      min-height: 29px;
-      padding: 4px 8px;
-    }
-
-    #composer-action-scope-comparison .cm-top-right {
-      position: absolute;
-      top: 4px;
-      right: 6px;
-      color: var(--cm-muted);
-      opacity: 0.58;
-    }
-
-    #composer-action-scope-comparison .cm-list:hover .cm-top-right,
-    #composer-action-scope-comparison .cm-top-right:focus-visible,
-    #composer-action-scope-comparison .cm-top-right[aria-expanded=&quot;true&quot;] {
-      opacity: 1;
-    }
-
-    #composer-action-scope-comparison .cm-left-handle {
-      position: absolute;
-      top: 40%;
-      left: -12px;
-      z-index: 2;
-      display: grid;
-      place-items: center;
-      width: 27px;
-      height: 34px;
-      padding: 0;
-      border: 1px solid var(--cm-border);
-      border-radius: 7px;
-      background: var(--cm-paper);
-      color: var(--cm-muted);
-      cursor: pointer;
-      opacity: 0.45;
-    }
-
-    #composer-action-scope-comparison .cm-list:hover .cm-left-handle,
-    #composer-action-scope-comparison .cm-left-handle:focus-visible,
-    #composer-action-scope-comparison .cm-left-handle[aria-expanded=&quot;true&quot;] {
-      opacity: 1;
-    }
-
-    #composer-action-scope-comparison .cm-menu,
-    #composer-action-scope-comparison .cm-toolbar {
-      margin-top: 10px;
-      padding: 10px;
-      border: 1px solid var(--cm-border);
-      border-radius: 9px;
-      background: var(--cm-paper);
-      box-shadow: 0 10px 24px var(--cm-shadow);
-    }
-
-    #composer-action-scope-comparison .cm-menu[hidden] {
-      display: none;
-    }
-
-    #composer-action-scope-comparison .cm-menu-head,
-    #composer-action-scope-comparison .cm-toolbar-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 8px;
-      color: var(--cm-muted);
-    }
-
-    #composer-action-scope-comparison .cm-menu-title,
-    #composer-action-scope-comparison .cm-current-target {
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      gap: 5px;
+      min-height: 28px;
+      padding: 0 6px 0 2px;
+      border-right: 1px solid var(--re-border);
+      color: var(--re-accent);
       font-weight: 500;
     }
 
-    #composer-action-scope-comparison .cm-scope-switch {
-      display: inline-flex;
+    #composer-list-actions-refined .re-action {
+      min-height: 28px;
+      padding: 4px 7px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--re-text);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    #composer-list-actions-refined .re-action:hover,
+    #composer-list-actions-refined .re-action:focus-visible {
+      background: var(--re-accent-soft);
+      color: var(--re-accent);
+    }
+
+    #composer-list-actions-refined .re-handle-zone {
+      position: absolute;
+      top: 35px;
+      left: -44px;
+      z-index: 30;
+      width: 34px;
+      height: 34px;
+    }
+
+    #composer-list-actions-refined .re-handle {
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      border: 1px solid var(--re-border);
+      border-radius: 7px;
+      background: var(--re-paper);
+      color: var(--re-muted);
+      box-shadow: 0 2px 8px var(--re-shadow);
+      cursor: grab;
+      opacity: 0.48;
+      transition: opacity 100ms ease, color 100ms ease, background 100ms ease;
+    }
+
+    #composer-list-actions-refined .re-list-shell:hover .re-handle,
+    #composer-list-actions-refined .re-handle:focus-visible,
+    #composer-list-actions-refined .re-handle-zone[data-pinned=&quot;true&quot;] .re-handle {
+      opacity: 1;
+    }
+
+    #composer-list-actions-refined .re-handle:hover,
+    #composer-list-actions-refined .re-handle-zone[data-pinned=&quot;true&quot;] .re-handle {
+      background: var(--re-accent-soft);
+      color: var(--re-accent);
+    }
+
+    #composer-list-actions-refined .re-handle-tip {
+      position: absolute;
+      top: 2px;
+      left: 39px;
+      z-index: 33;
+      width: max-content;
+      max-width: 220px;
+      padding: 5px 8px;
+      border: 1px solid var(--re-border);
+      border-radius: 7px;
+      background: var(--re-paper);
+      color: var(--re-muted);
+      box-shadow: 0 7px 18px var(--re-shadow);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translateX(-3px);
+      transition: opacity 90ms ease, transform 90ms ease, visibility 0s linear 90ms;
+    }
+
+    #composer-list-actions-refined .re-handle-zone:hover:not([data-pinned=&quot;true&quot;]) .re-handle-tip,
+    #composer-list-actions-refined .re-handle:focus-visible + .re-handle-tip {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(0);
+      transition-delay: 0s;
+    }
+
+    #composer-list-actions-refined .re-collection-menu {
+      position: absolute;
+      top: -10px;
+      right: 42px;
+      z-index: 32;
+      width: min(268px, calc(100vw - 82px));
+      padding: 10px;
+      border: 1px solid var(--re-border);
+      border-radius: 10px;
+      background: var(--re-paper);
+      box-shadow: 0 16px 36px var(--re-shadow);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translateX(5px);
+      transition: opacity 110ms ease, transform 110ms ease, visibility 0s linear 110ms;
+    }
+
+    #composer-list-actions-refined .re-handle-zone::after {
+      content: &#x27;&#x27;;
+      position: absolute;
+      top: -10px;
+      right: 30px;
+      width: 16px;
+      height: 52px;
+    }
+
+    #composer-list-actions-refined .re-handle-zone:hover .re-collection-menu,
+    #composer-list-actions-refined .re-handle-zone:focus-within .re-collection-menu,
+    #composer-list-actions-refined .re-handle-zone[data-pinned=&quot;true&quot;] .re-collection-menu {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: translateX(0);
+      transition-delay: 0s;
+    }
+
+    #composer-list-actions-refined .re-collection-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 9px;
+      padding: 2px 3px 8px;
+      border-bottom: 1px solid var(--re-border);
+    }
+
+    #composer-list-actions-refined .re-collection-title {
+      font-weight: 500;
+    }
+
+    #composer-list-actions-refined .re-collection-meta {
+      color: var(--re-muted);
+    }
+
+    #composer-list-actions-refined .re-collection-actions {
+      display: flex;
       flex-wrap: wrap;
       gap: 5px;
     }
 
-    #composer-action-scope-comparison .cm-scope-button {
-      min-height: 28px;
-      padding: 4px 8px;
-      color: var(--cm-muted);
+    #composer-list-actions-refined .re-collection-actions .re-action {
+      border: 1px solid var(--re-border);
+      border-radius: 7px;
+      background: var(--re-paper);
     }
 
-    #composer-action-scope-comparison .cm-scope-button[aria-pressed=&quot;true&quot;] {
-      border-color: var(--cm-accent);
-      background: var(--cm-accent-soft);
-      color: var(--cm-accent);
-    }
-
-    #composer-action-scope-comparison .cm-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-
-    #composer-action-scope-comparison .cm-action {
-      min-height: 29px;
-      padding: 4px 8px;
-    }
-
-    #composer-action-scope-comparison .cm-action:hover {
-      border-color: var(--cm-accent);
-      background: var(--cm-accent-soft);
-    }
-
-    #composer-action-scope-comparison .cm-divider {
-      height: 1px;
-      margin: 9px 0;
-      background: var(--cm-border);
-    }
-
-    #composer-action-scope-comparison .cm-result {
-      min-height: 22px;
-      margin-top: 10px;
-      color: var(--cm-muted);
-      text-align: center;
-    }
-
-    #composer-action-scope-comparison .cm-result strong {
-      color: var(--cm-text);
+    #composer-list-actions-refined .re-next-heading {
+      margin-top: 38px;
+      font-size: clamp(20px, 2.8vw, 27px);
       font-weight: 500;
     }
 
-    #composer-action-scope-comparison .cm-context-row {
-      cursor: pointer;
+    #composer-list-actions-refined .re-result {
+      min-height: 24px;
+      margin-top: 24px;
+      color: var(--re-muted);
+      text-align: center;
     }
 
-    #composer-action-scope-comparison .cm-palette-trigger {
-      width: 100%;
-      justify-content: center;
-      margin-top: 10px;
-      color: var(--cm-accent);
+    #composer-list-actions-refined .re-result strong {
+      color: var(--re-text);
+      font-weight: 500;
     }
 
-    #composer-action-scope-comparison .cm-search {
-      width: 100%;
-      min-height: 34px;
-      margin-bottom: 8px;
-      padding: 6px 9px;
-      border: 1px solid var(--cm-border);
-      border-radius: 7px;
-      background: var(--cm-paper);
-      color: var(--cm-text);
-      font: inherit;
-    }
-
-    #composer-action-scope-comparison .cm-empty {
-      padding: 8px 2px 2px;
-      color: var(--cm-muted);
-    }
-
-    #composer-action-scope-comparison .cm-empty[hidden] {
-      display: none;
-    }
-
-    @media (max-width: 660px) {
-      #composer-action-scope-comparison .cm-grid {
-        grid-template-columns: 1fr;
+    @media (max-width: 900px) {
+      #composer-list-actions-refined .re-list-shell {
+        width: calc(100% - 42px);
+        margin-left: 42px;
       }
 
-      #composer-action-scope-comparison .cm-caption {
-        max-width: 48%;
+      #composer-list-actions-refined .re-collection-menu {
+        right: auto;
+        left: 42px;
       }
 
-      #composer-action-scope-comparison .cm-left-handle {
-        left: -6px;
+      #composer-list-actions-refined .re-handle-zone::after {
+        right: auto;
+        left: 30px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      #composer-list-actions-refined .re-stage {
+        padding: 10px;
+      }
+
+      #composer-list-actions-refined .re-topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      #composer-list-actions-refined .re-paper {
+        min-height: 600px;
+        padding: 25px 14px 40px;
+      }
+
+      #composer-list-actions-refined .re-list-shell {
+        width: calc(100% - 34px);
+        margin-left: 34px;
+      }
+
+      #composer-list-actions-refined .re-handle-zone {
+        left: -37px;
+      }
+
+      #composer-list-actions-refined .re-item-actions {
+        max-width: calc(100% - 4px);
+        margin-left: 4px;
+      }
+
+      #composer-list-actions-refined .re-scope-mark {
+        width: 100%;
+        border-right: 0;
+        border-bottom: 1px solid var(--re-border);
       }
     }
   &lt;/style&gt;
 
-  &lt;div class=&quot;cm-grid&quot;&gt;
-    &lt;section class=&quot;cm-scheme&quot; data-scheme=&quot;a&quot; data-scope=&quot;item&quot; data-current-target=&quot;第 2 项&quot;&gt;
-      &lt;div class=&quot;cm-scheme-head&quot;&gt;
-        &lt;div class=&quot;cm-name&quot;&gt;&lt;span class=&quot;cm-code&quot;&gt;A&lt;/span&gt;双入口&lt;/div&gt;
-        &lt;div class=&quot;cm-caption&quot;&gt;行尾管单项，右上管整组&lt;/div&gt;
-      &lt;/div&gt;
-      &lt;div class=&quot;cm-editor&quot;&gt;
-        &lt;div class=&quot;cm-doc-heading&quot;&gt;常规思维（类比 / 经验）&lt;/div&gt;
-        &lt;div class=&quot;cm-list&quot;&gt;
-          &lt;button class=&quot;cm-list-button cm-top-right&quot; type=&quot;button&quot; data-a-block aria-expanded=&quot;false&quot;&gt;
-            &lt;i data-lucide=&quot;list-tree&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;列表操作
+  &lt;div class=&quot;re-stage&quot;&gt;
+    &lt;div class=&quot;re-topbar&quot;&gt;
+      &lt;div class=&quot;re-version&quot;&gt;&lt;strong&gt;方案 E · 修改版&lt;/strong&gt;&lt;span&gt;列表层级交互&lt;/span&gt;&lt;/div&gt;
+      &lt;div class=&quot;re-rules&quot;&gt;&lt;span class=&quot;re-rule&quot;&gt;单项：悬浮即出现&lt;/span&gt;&lt;span class=&quot;re-rule&quot;&gt;整组：手柄旁出现&lt;/span&gt;&lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;div class=&quot;re-paper&quot;&gt;
+      &lt;div class=&quot;re-property&quot;&gt;＋ 添加属性&lt;/div&gt;
+      &lt;div class=&quot;re-heading&quot;&gt;常规思维（类比 / 经验）&lt;/div&gt;
+
+      &lt;div class=&quot;re-list-shell&quot; data-list-shell&gt;
+        &lt;div class=&quot;re-handle-zone&quot; data-handle-zone data-pinned=&quot;false&quot;&gt;
+          &lt;button class=&quot;re-handle&quot; type=&quot;button&quot; aria-label=&quot;拖拽排序；点击打开整个列表操作&quot; aria-expanded=&quot;false&quot; data-list-handle&gt;
+            &lt;i data-lucide=&quot;grip-vertical&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;
           &lt;/button&gt;
-          &lt;div class=&quot;cm-row&quot;&gt;&lt;span class=&quot;cm-bullet&quot;&gt;•&lt;/span&gt;&lt;span class=&quot;cm-row-text&quot;&gt;大家一直都是这么做的&lt;/span&gt;&lt;button class=&quot;cm-icon-button&quot; type=&quot;button&quot; data-a-item=&quot;第 1 项&quot; aria-label=&quot;打开第 1 项动作&quot; aria-expanded=&quot;false&quot;&gt;&lt;i data-lucide=&quot;sparkles&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/div&gt;
-          &lt;div class=&quot;cm-row&quot;&gt;&lt;span class=&quot;cm-bullet&quot;&gt;•&lt;/span&gt;&lt;span class=&quot;cm-row-text&quot;&gt;行业里价格就该这么高&lt;/span&gt;&lt;button class=&quot;cm-icon-button&quot; type=&quot;button&quot; data-a-item=&quot;第 2 项&quot; aria-label=&quot;打开第 2 项动作&quot; aria-expanded=&quot;false&quot;&gt;&lt;i data-lucide=&quot;sparkles&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/div&gt;
-          &lt;div class=&quot;cm-row&quot;&gt;&lt;span class=&quot;cm-bullet&quot;&gt;•&lt;/span&gt;&lt;span class=&quot;cm-row-text&quot;&gt;以前成功的方法再用一次&lt;/span&gt;&lt;button class=&quot;cm-icon-button&quot; type=&quot;button&quot; data-a-item=&quot;第 3 项&quot; aria-label=&quot;打开第 3 项动作&quot; aria-expanded=&quot;false&quot;&gt;&lt;i data-lucide=&quot;sparkles&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/div&gt;
-        &lt;/div&gt;
-        &lt;div class=&quot;cm-menu&quot; hidden data-menu&gt;
-          &lt;div class=&quot;cm-menu-head&quot;&gt;&lt;span class=&quot;cm-menu-title&quot; data-menu-title&gt;&lt;/span&gt;&lt;/div&gt;
-          &lt;div data-scope-panel=&quot;item&quot;&gt;&lt;div class=&quot;cm-actions&quot;&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;润色&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;改短&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;扩写&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;续写&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;翻译&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;指令…&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;
-          &lt;div hidden data-scope-panel=&quot;list&quot;&gt;&lt;div class=&quot;cm-actions&quot;&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;补缺项&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;去重复&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;重排列表&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;统一语气&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;转成表格&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;指令…&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;
-        &lt;/div&gt;
-        &lt;div class=&quot;cm-result&quot; data-result&gt;分别点行尾图标和“列表操作”&lt;/div&gt;
-      &lt;/div&gt;
-    &lt;/section&gt;
-
-    &lt;section class=&quot;cm-scheme&quot; data-scheme=&quot;b&quot; data-scope=&quot;item&quot; data-current-target=&quot;第 2 项&quot;&gt;
-      &lt;div class=&quot;cm-scheme-head&quot;&gt;
-        &lt;div class=&quot;cm-name&quot;&gt;&lt;span class=&quot;cm-code&quot;&gt;B&lt;/span&gt;单入口 + 范围切换&lt;/div&gt;
-        &lt;div class=&quot;cm-caption&quot;&gt;先开菜单，再切单项 / 整组&lt;/div&gt;
-      &lt;/div&gt;
-      &lt;div class=&quot;cm-editor&quot;&gt;
-        &lt;div class=&quot;cm-doc-heading&quot;&gt;常规思维（类比 / 经验）&lt;/div&gt;
-        &lt;div class=&quot;cm-list&quot;&gt;
-          &lt;div class=&quot;cm-row&quot;&gt;&lt;span class=&quot;cm-bullet&quot;&gt;•&lt;/span&gt;&lt;span class=&quot;cm-row-text&quot;&gt;大家一直都是这么做的&lt;/span&gt;&lt;button class=&quot;cm-icon-button&quot; type=&quot;button&quot; data-b-item=&quot;第 1 项&quot; aria-label=&quot;打开第 1 项动作&quot; aria-expanded=&quot;false&quot;&gt;&lt;i data-lucide=&quot;sparkles&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/div&gt;
-          &lt;div class=&quot;cm-row&quot;&gt;&lt;span class=&quot;cm-bullet&quot;&gt;•&lt;/span&gt;&lt;span class=&quot;cm-row-text&quot;&gt;行业里价格就该这么高&lt;/span&gt;&lt;button class=&quot;cm-icon-button&quot; type=&quot;button&quot; data-b-item=&quot;第 2 项&quot; aria-label=&quot;打开第 2 项动作&quot; aria-expanded=&quot;false&quot;&gt;&lt;i data-lucide=&quot;sparkles&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/div&gt;
-          &lt;div class=&quot;cm-row&quot;&gt;&lt;span class=&quot;cm-bullet&quot;&gt;•&lt;/span&gt;&lt;span class=&quot;cm-row-text&quot;&gt;以前成功的方法再用一次&lt;/span&gt;&lt;button class=&quot;cm-icon-button&quot; type=&quot;button&quot; data-b-item=&quot;第 3 项&quot; aria-label=&quot;打开第 3 项动作&quot; aria-expanded=&quot;false&quot;&gt;&lt;i data-lucide=&quot;sparkles&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/div&gt;
-        &lt;/div&gt;
-        &lt;div class=&quot;cm-menu&quot; hidden data-menu&gt;
-          &lt;div class=&quot;cm-menu-head&quot;&gt;
-            &lt;span class=&quot;cm-menu-title&quot; data-menu-title&gt;&lt;/span&gt;
-            &lt;span class=&quot;cm-scope-switch&quot;&gt;&lt;button class=&quot;cm-scope-button&quot; type=&quot;button&quot; data-set-scope=&quot;item&quot; aria-pressed=&quot;true&quot;&gt;这一项&lt;/button&gt;&lt;button class=&quot;cm-scope-button&quot; type=&quot;button&quot; data-set-scope=&quot;list&quot; aria-pressed=&quot;false&quot;&gt;整个列表&lt;/button&gt;&lt;/span&gt;
+          &lt;div class=&quot;re-handle-tip&quot;&gt;拖拽排序 · 点击打开整个列表操作&lt;/div&gt;
+          &lt;div class=&quot;re-collection-menu&quot; role=&quot;dialog&quot; aria-label=&quot;整个列表操作&quot;&gt;
+            &lt;div class=&quot;re-collection-head&quot;&gt;
+              &lt;i data-lucide=&quot;list-tree&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;
+              &lt;div&gt;&lt;div class=&quot;re-collection-title&quot;&gt;整个列表&lt;/div&gt;&lt;div class=&quot;re-collection-meta&quot;&gt;作用于全部 3 项&lt;/div&gt;&lt;/div&gt;
+            &lt;/div&gt;
+            &lt;div class=&quot;re-collection-actions&quot;&gt;
+              &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;整个列表&quot;&gt;补缺项&lt;/button&gt;
+              &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;整个列表&quot;&gt;重排列表&lt;/button&gt;
+              &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;整个列表&quot;&gt;转成表格&lt;/button&gt;
+              &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;整个列表&quot;&gt;去重复&lt;/button&gt;
+              &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;整个列表&quot;&gt;统一语气&lt;/button&gt;
+              &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;整个列表&quot;&gt;总结列表&lt;/button&gt;
+              &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;整个列表&quot;&gt;指令…&lt;/button&gt;
+            &lt;/div&gt;
           &lt;/div&gt;
-          &lt;div data-scope-panel=&quot;item&quot;&gt;&lt;div class=&quot;cm-actions&quot;&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;润色&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;改短&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;扩写&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;续写&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;翻译&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;指令…&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;
-          &lt;div hidden data-scope-panel=&quot;list&quot;&gt;&lt;div class=&quot;cm-actions&quot;&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;补缺项&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;去重复&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;重排列表&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;统一语气&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;转成表格&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;指令…&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;
         &lt;/div&gt;
-        &lt;div class=&quot;cm-result&quot; data-result&gt;点任意行尾图标，再切换范围&lt;/div&gt;
-      &lt;/div&gt;
-    &lt;/section&gt;
 
-    &lt;section class=&quot;cm-scheme&quot; data-scheme=&quot;c&quot; data-scope=&quot;item&quot; data-current-target=&quot;第 2 项&quot;&gt;
-      &lt;div class=&quot;cm-scheme-head&quot;&gt;
-        &lt;div class=&quot;cm-name&quot;&gt;&lt;span class=&quot;cm-code&quot;&gt;C&lt;/span&gt;先选范围，再执行&lt;/div&gt;
-        &lt;div class=&quot;cm-caption&quot;&gt;选择态本身说明作用范围&lt;/div&gt;
-      &lt;/div&gt;
-      &lt;div class=&quot;cm-editor&quot;&gt;
-        &lt;div class=&quot;cm-doc-heading&quot;&gt;常规思维（类比 / 经验）&lt;/div&gt;
-        &lt;div class=&quot;cm-list&quot; data-c-list&gt;
-          &lt;button class=&quot;cm-list-button cm-top-right&quot; type=&quot;button&quot; data-c-select-list&gt;&lt;i data-lucide=&quot;scan&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;选整个列表&lt;/button&gt;
-          &lt;div class=&quot;cm-row&quot;&gt;&lt;button class=&quot;cm-row-select&quot; type=&quot;button&quot; data-c-select-item=&quot;第 1 项&quot;&gt;&lt;span class=&quot;cm-bullet&quot;&gt;•&lt;/span&gt;&lt;span&gt;大家一直都是这么做的&lt;/span&gt;&lt;/button&gt;&lt;/div&gt;
-          &lt;div class=&quot;cm-row&quot; data-selected=&quot;true&quot;&gt;&lt;button class=&quot;cm-row-select&quot; type=&quot;button&quot; data-c-select-item=&quot;第 2 项&quot;&gt;&lt;span class=&quot;cm-bullet&quot;&gt;•&lt;/span&gt;&lt;span&gt;行业里价格就该这么高&lt;/span&gt;&lt;/button&gt;&lt;/div&gt;
-          &lt;div class=&quot;cm-row&quot;&gt;&lt;button class=&quot;cm-row-select&quot; type=&quot;button&quot; data-c-select-item=&quot;第 3 项&quot;&gt;&lt;span class=&quot;cm-bullet&quot;&gt;•&lt;/span&gt;&lt;span&gt;以前成功的方法再用一次&lt;/span&gt;&lt;/button&gt;&lt;/div&gt;
-        &lt;/div&gt;
-        &lt;div class=&quot;cm-toolbar&quot;&gt;
-          &lt;div class=&quot;cm-toolbar-head&quot;&gt;&lt;span&gt;AI 动作&lt;/span&gt;&lt;span class=&quot;cm-current-target&quot; data-target-label&gt;作用于：第 2 项&lt;/span&gt;&lt;/div&gt;
-          &lt;div data-scope-panel=&quot;item&quot;&gt;&lt;div class=&quot;cm-actions&quot;&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;润色&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;改短&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;扩写&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;续写&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;翻译&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;指令…&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;
-          &lt;div hidden data-scope-panel=&quot;list&quot;&gt;&lt;div class=&quot;cm-actions&quot;&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;补缺项&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;去重复&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;重排列表&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;统一语气&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;转成表格&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;指令…&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;
-        &lt;/div&gt;
-        &lt;div class=&quot;cm-result&quot; data-result&gt;点某一行，或点“选整个列表”&lt;/div&gt;
-      &lt;/div&gt;
-    &lt;/section&gt;
-
-    &lt;section class=&quot;cm-scheme&quot; data-scheme=&quot;d&quot; data-scope=&quot;item&quot; data-current-target=&quot;第 2 项&quot;&gt;
-      &lt;div class=&quot;cm-scheme-head&quot;&gt;
-        &lt;div class=&quot;cm-name&quot;&gt;&lt;span class=&quot;cm-code&quot;&gt;D&lt;/span&gt;上下文菜单&lt;/div&gt;
-        &lt;div class=&quot;cm-caption&quot;&gt;一个固定入口，读取当前光标项&lt;/div&gt;
-      &lt;/div&gt;
-      &lt;div class=&quot;cm-editor&quot;&gt;
-        &lt;div class=&quot;cm-doc-heading&quot;&gt;常规思维（类比 / 经验）&lt;/div&gt;
-        &lt;div class=&quot;cm-list&quot;&gt;
-          &lt;button class=&quot;cm-list-button cm-top-right&quot; type=&quot;button&quot; data-d-open aria-expanded=&quot;false&quot;&gt;&lt;i data-lucide=&quot;sparkles&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;AI 动作&lt;/button&gt;
-          &lt;div class=&quot;cm-row cm-context-row&quot; data-d-context=&quot;第 1 项&quot;&gt;&lt;span class=&quot;cm-bullet&quot;&gt;•&lt;/span&gt;&lt;span class=&quot;cm-row-text&quot;&gt;大家一直都是这么做的&lt;/span&gt;&lt;/div&gt;
-          &lt;div class=&quot;cm-row cm-context-row&quot; data-d-context=&quot;第 2 项&quot; data-selected=&quot;true&quot;&gt;&lt;span class=&quot;cm-bullet&quot;&gt;•&lt;/span&gt;&lt;span class=&quot;cm-row-text&quot;&gt;行业里价格就该这么高&lt;/span&gt;&lt;/div&gt;
-          &lt;div class=&quot;cm-row cm-context-row&quot; data-d-context=&quot;第 3 项&quot;&gt;&lt;span class=&quot;cm-bullet&quot;&gt;•&lt;/span&gt;&lt;span class=&quot;cm-row-text&quot;&gt;以前成功的方法再用一次&lt;/span&gt;&lt;/div&gt;
-        &lt;/div&gt;
-        &lt;div class=&quot;cm-menu&quot; hidden data-menu&gt;
-          &lt;div class=&quot;cm-menu-head&quot;&gt;&lt;span class=&quot;cm-menu-title&quot;&gt;当前光标：&lt;span data-context-label&gt;第 2 项&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;
-          &lt;div class=&quot;cm-scope-switch&quot;&gt;&lt;button class=&quot;cm-scope-button&quot; type=&quot;button&quot; data-set-scope=&quot;item&quot; aria-pressed=&quot;true&quot;&gt;当前项&lt;/button&gt;&lt;button class=&quot;cm-scope-button&quot; type=&quot;button&quot; data-set-scope=&quot;list&quot; aria-pressed=&quot;false&quot;&gt;整个列表&lt;/button&gt;&lt;/div&gt;
-          &lt;div class=&quot;cm-divider&quot;&gt;&lt;/div&gt;
-          &lt;div data-scope-panel=&quot;item&quot;&gt;&lt;div class=&quot;cm-actions&quot;&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;润色&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;改短&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;扩写&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;续写&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;翻译&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;指令…&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;
-          &lt;div hidden data-scope-panel=&quot;list&quot;&gt;&lt;div class=&quot;cm-actions&quot;&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;补缺项&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;去重复&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;重排列表&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;统一语气&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;转成表格&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;指令…&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;
-        &lt;/div&gt;
-        &lt;div class=&quot;cm-result&quot; data-result&gt;先点一行，再点右上角“AI 动作”&lt;/div&gt;
-      &lt;/div&gt;
-    &lt;/section&gt;
-
-    &lt;section class=&quot;cm-scheme&quot; data-scheme=&quot;e&quot; data-scope=&quot;item&quot; data-current-target=&quot;第 2 项&quot;&gt;
-      &lt;div class=&quot;cm-scheme-head&quot;&gt;
-        &lt;div class=&quot;cm-name&quot;&gt;&lt;span class=&quot;cm-code&quot;&gt;E&lt;/span&gt;层级手柄&lt;/div&gt;
-        &lt;div class=&quot;cm-caption&quot;&gt;左侧手柄管整组，行尾管单项&lt;/div&gt;
-      &lt;/div&gt;
-      &lt;div class=&quot;cm-editor&quot;&gt;
-        &lt;div class=&quot;cm-doc-heading&quot;&gt;常规思维（类比 / 经验）&lt;/div&gt;
-        &lt;div class=&quot;cm-list&quot;&gt;
-          &lt;button class=&quot;cm-left-handle&quot; type=&quot;button&quot; data-e-block aria-label=&quot;打开整个列表动作&quot; aria-expanded=&quot;false&quot;&gt;&lt;i data-lucide=&quot;grip-vertical&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;
-          &lt;div class=&quot;cm-row&quot;&gt;&lt;span class=&quot;cm-bullet&quot;&gt;•&lt;/span&gt;&lt;span class=&quot;cm-row-text&quot;&gt;大家一直都是这么做的&lt;/span&gt;&lt;button class=&quot;cm-icon-button&quot; type=&quot;button&quot; data-e-item=&quot;第 1 项&quot; aria-label=&quot;打开第 1 项动作&quot; aria-expanded=&quot;false&quot;&gt;&lt;i data-lucide=&quot;sparkles&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/div&gt;
-          &lt;div class=&quot;cm-row&quot;&gt;&lt;span class=&quot;cm-bullet&quot;&gt;•&lt;/span&gt;&lt;span class=&quot;cm-row-text&quot;&gt;行业里价格就该这么高&lt;/span&gt;&lt;button class=&quot;cm-icon-button&quot; type=&quot;button&quot; data-e-item=&quot;第 2 项&quot; aria-label=&quot;打开第 2 项动作&quot; aria-expanded=&quot;false&quot;&gt;&lt;i data-lucide=&quot;sparkles&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/div&gt;
-          &lt;div class=&quot;cm-row&quot;&gt;&lt;span class=&quot;cm-bullet&quot;&gt;•&lt;/span&gt;&lt;span class=&quot;cm-row-text&quot;&gt;以前成功的方法再用一次&lt;/span&gt;&lt;button class=&quot;cm-icon-button&quot; type=&quot;button&quot; data-e-item=&quot;第 3 项&quot; aria-label=&quot;打开第 3 项动作&quot; aria-expanded=&quot;false&quot;&gt;&lt;i data-lucide=&quot;sparkles&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/div&gt;
-        &lt;/div&gt;
-        &lt;div class=&quot;cm-menu&quot; hidden data-menu&gt;
-          &lt;div class=&quot;cm-menu-head&quot;&gt;&lt;span class=&quot;cm-menu-title&quot; data-menu-title&gt;&lt;/span&gt;&lt;/div&gt;
-          &lt;div data-scope-panel=&quot;item&quot;&gt;&lt;div class=&quot;cm-actions&quot;&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;润色&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;改短&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;扩写&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;续写&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;翻译&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;指令…&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;
-          &lt;div hidden data-scope-panel=&quot;list&quot;&gt;&lt;div class=&quot;cm-actions&quot;&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;补缺项&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;去重复&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;重排列表&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;统一语气&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;转成表格&lt;/button&gt;&lt;button class=&quot;cm-action&quot; type=&quot;button&quot; data-action&gt;指令…&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;
-        &lt;/div&gt;
-        &lt;div class=&quot;cm-result&quot; data-result&gt;分别点左侧手柄和行尾图标&lt;/div&gt;
-      &lt;/div&gt;
-    &lt;/section&gt;
-
-    &lt;section class=&quot;cm-scheme&quot; data-scheme=&quot;f&quot; data-scope=&quot;item&quot; data-current-target=&quot;第 2 项&quot;&gt;
-      &lt;div class=&quot;cm-scheme-head&quot;&gt;
-        &lt;div class=&quot;cm-name&quot;&gt;&lt;span class=&quot;cm-code&quot;&gt;F&lt;/span&gt;动作面板&lt;/div&gt;
-        &lt;div class=&quot;cm-caption&quot;&gt;范围 + 搜索，适合很多 action&lt;/div&gt;
-      &lt;/div&gt;
-      &lt;div class=&quot;cm-editor&quot;&gt;
-        &lt;div class=&quot;cm-doc-heading&quot;&gt;常规思维（类比 / 经验）&lt;/div&gt;
-        &lt;div class=&quot;cm-list&quot;&gt;
-          &lt;div class=&quot;cm-row cm-context-row&quot; data-f-context=&quot;第 1 项&quot;&gt;&lt;span class=&quot;cm-bullet&quot;&gt;•&lt;/span&gt;&lt;span class=&quot;cm-row-text&quot;&gt;大家一直都是这么做的&lt;/span&gt;&lt;/div&gt;
-          &lt;div class=&quot;cm-row cm-context-row&quot; data-f-context=&quot;第 2 项&quot; data-selected=&quot;true&quot;&gt;&lt;span class=&quot;cm-bullet&quot;&gt;•&lt;/span&gt;&lt;span class=&quot;cm-row-text&quot;&gt;行业里价格就该这么高&lt;/span&gt;&lt;/div&gt;
-          &lt;div class=&quot;cm-row cm-context-row&quot; data-f-context=&quot;第 3 项&quot;&gt;&lt;span class=&quot;cm-bullet&quot;&gt;•&lt;/span&gt;&lt;span class=&quot;cm-row-text&quot;&gt;以前成功的方法再用一次&lt;/span&gt;&lt;/div&gt;
-        &lt;/div&gt;
-        &lt;button class=&quot;cm-palette-trigger&quot; type=&quot;button&quot; data-f-open aria-expanded=&quot;false&quot;&gt;&lt;i data-lucide=&quot;command&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;打开 AI 动作面板&lt;/button&gt;
-        &lt;div class=&quot;cm-menu&quot; hidden data-menu&gt;
-          &lt;input class=&quot;cm-search&quot; type=&quot;search&quot; placeholder=&quot;搜索动作，例如：翻译、重排…&quot; aria-label=&quot;搜索 AI 动作&quot; data-f-search&gt;
-          &lt;div class=&quot;cm-menu-head&quot;&gt;
-            &lt;span class=&quot;cm-current-target&quot;&gt;当前：&lt;span data-context-label&gt;第 2 项&lt;/span&gt;&lt;/span&gt;
-            &lt;span class=&quot;cm-scope-switch&quot;&gt;&lt;button class=&quot;cm-scope-button&quot; type=&quot;button&quot; data-set-scope=&quot;item&quot; aria-pressed=&quot;true&quot;&gt;这一项&lt;/button&gt;&lt;button class=&quot;cm-scope-button&quot; type=&quot;button&quot; data-set-scope=&quot;list&quot; aria-pressed=&quot;false&quot;&gt;整个列表&lt;/button&gt;&lt;/span&gt;
+        &lt;div class=&quot;re-item&quot; data-item=&quot;第 1 项&quot;&gt;
+          &lt;div class=&quot;re-row&quot;&gt;&lt;span class=&quot;re-bullet&quot;&gt;•&lt;/span&gt;&lt;span class=&quot;re-row-text&quot;&gt;“大家一直都是这么做的”&lt;/span&gt;&lt;/div&gt;
+          &lt;div class=&quot;re-item-actions&quot; role=&quot;toolbar&quot; aria-label=&quot;第 1 项 AI 操作&quot;&gt;
+            &lt;span class=&quot;re-scope-mark&quot;&gt;&lt;i data-lucide=&quot;sparkles&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;这一项&lt;/span&gt;
+            &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;第 1 项&quot;&gt;润色文本&lt;/button&gt;
+            &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;第 1 项&quot;&gt;改短&lt;/button&gt;
+            &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;第 1 项&quot;&gt;扩写&lt;/button&gt;
+            &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;第 1 项&quot;&gt;续写&lt;/button&gt;
+            &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;第 1 项&quot;&gt;翻译&lt;/button&gt;
+            &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;第 1 项&quot;&gt;解释&lt;/button&gt;
+            &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;第 1 项&quot;&gt;指令…&lt;/button&gt;
           &lt;/div&gt;
-          &lt;div data-scope-panel=&quot;item&quot;&gt;&lt;div class=&quot;cm-actions&quot;&gt;&lt;button class=&quot;cm-action cm-palette-action&quot; type=&quot;button&quot; data-action&gt;润色&lt;/button&gt;&lt;button class=&quot;cm-action cm-palette-action&quot; type=&quot;button&quot; data-action&gt;改短&lt;/button&gt;&lt;button class=&quot;cm-action cm-palette-action&quot; type=&quot;button&quot; data-action&gt;扩写&lt;/button&gt;&lt;button class=&quot;cm-action cm-palette-action&quot; type=&quot;button&quot; data-action&gt;续写&lt;/button&gt;&lt;button class=&quot;cm-action cm-palette-action&quot; type=&quot;button&quot; data-action&gt;翻译&lt;/button&gt;&lt;button class=&quot;cm-action cm-palette-action&quot; type=&quot;button&quot; data-action&gt;解释&lt;/button&gt;&lt;button class=&quot;cm-action cm-palette-action&quot; type=&quot;button&quot; data-action&gt;反驳&lt;/button&gt;&lt;button class=&quot;cm-action cm-palette-action&quot; type=&quot;button&quot; data-action&gt;提炼观点&lt;/button&gt;&lt;button class=&quot;cm-action cm-palette-action&quot; type=&quot;button&quot; data-action&gt;自定义指令…&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;
-          &lt;div hidden data-scope-panel=&quot;list&quot;&gt;&lt;div class=&quot;cm-actions&quot;&gt;&lt;button class=&quot;cm-action cm-palette-action&quot; type=&quot;button&quot; data-action&gt;补缺项&lt;/button&gt;&lt;button class=&quot;cm-action cm-palette-action&quot; type=&quot;button&quot; data-action&gt;去重复&lt;/button&gt;&lt;button class=&quot;cm-action cm-palette-action&quot; type=&quot;button&quot; data-action&gt;重排列表&lt;/button&gt;&lt;button class=&quot;cm-action cm-palette-action&quot; type=&quot;button&quot; data-action&gt;统一语气&lt;/button&gt;&lt;button class=&quot;cm-action cm-palette-action&quot; type=&quot;button&quot; data-action&gt;转成表格&lt;/button&gt;&lt;button class=&quot;cm-action cm-palette-action&quot; type=&quot;button&quot; data-action&gt;总结列表&lt;/button&gt;&lt;button class=&quot;cm-action cm-palette-action&quot; type=&quot;button&quot; data-action&gt;补充论据&lt;/button&gt;&lt;button class=&quot;cm-action cm-palette-action&quot; type=&quot;button&quot; data-action&gt;生成反例&lt;/button&gt;&lt;button class=&quot;cm-action cm-palette-action&quot; type=&quot;button&quot; data-action&gt;自定义指令…&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;
-          &lt;div class=&quot;cm-empty&quot; hidden data-f-empty&gt;没有匹配动作&lt;/div&gt;
         &lt;/div&gt;
-        &lt;div class=&quot;cm-result&quot; data-result&gt;点某一行，再打开动作面板&lt;/div&gt;
+
+        &lt;div class=&quot;re-item&quot; data-item=&quot;第 2 项&quot;&gt;
+          &lt;div class=&quot;re-row&quot;&gt;&lt;span class=&quot;re-bullet&quot;&gt;•&lt;/span&gt;&lt;span class=&quot;re-row-text&quot;&gt;“行业里价格就该这么高”&lt;/span&gt;&lt;/div&gt;
+          &lt;div class=&quot;re-item-actions&quot; role=&quot;toolbar&quot; aria-label=&quot;第 2 项 AI 操作&quot;&gt;
+            &lt;span class=&quot;re-scope-mark&quot;&gt;&lt;i data-lucide=&quot;sparkles&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;这一项&lt;/span&gt;
+            &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;第 2 项&quot;&gt;润色文本&lt;/button&gt;
+            &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;第 2 项&quot;&gt;改短&lt;/button&gt;
+            &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;第 2 项&quot;&gt;扩写&lt;/button&gt;
+            &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;第 2 项&quot;&gt;续写&lt;/button&gt;
+            &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;第 2 项&quot;&gt;翻译&lt;/button&gt;
+            &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;第 2 项&quot;&gt;解释&lt;/button&gt;
+            &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;第 2 项&quot;&gt;指令…&lt;/button&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;div class=&quot;re-item&quot; data-item=&quot;第 3 项&quot;&gt;
+          &lt;div class=&quot;re-row&quot;&gt;&lt;span class=&quot;re-bullet&quot;&gt;•&lt;/span&gt;&lt;span class=&quot;re-row-text&quot;&gt;“以前成功的方法再用一次”&lt;/span&gt;&lt;/div&gt;
+          &lt;div class=&quot;re-item-actions&quot; role=&quot;toolbar&quot; aria-label=&quot;第 3 项 AI 操作&quot;&gt;
+            &lt;span class=&quot;re-scope-mark&quot;&gt;&lt;i data-lucide=&quot;sparkles&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;这一项&lt;/span&gt;
+            &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;第 3 项&quot;&gt;润色文本&lt;/button&gt;
+            &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;第 3 项&quot;&gt;改短&lt;/button&gt;
+            &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;第 3 项&quot;&gt;扩写&lt;/button&gt;
+            &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;第 3 项&quot;&gt;续写&lt;/button&gt;
+            &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;第 3 项&quot;&gt;翻译&lt;/button&gt;
+            &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;第 3 项&quot;&gt;解释&lt;/button&gt;
+            &lt;button class=&quot;re-action&quot; type=&quot;button&quot; data-action data-scope=&quot;第 3 项&quot;&gt;指令…&lt;/button&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
       &lt;/div&gt;
-    &lt;/section&gt;
+
+      &lt;div class=&quot;re-next-heading&quot;&gt;第一性原理思维&lt;/div&gt;
+      &lt;div class=&quot;re-result&quot; aria-live=&quot;polite&quot; data-result&gt;悬浮任意一项；悬浮或点击左侧手柄&lt;/div&gt;
+    &lt;/div&gt;
   &lt;/div&gt;
 
   &lt;script&gt;
     (() =&gt; {
-      const root = document.getElementById(&#x27;composer-action-scope-comparison&#x27;);
-      const schemes = Array.from(root.querySelectorAll(&#x27;[data-scheme]&#x27;));
+      const root = document.getElementById(&#x27;composer-list-actions-refined&#x27;);
+      const listShell = root.querySelector(&#x27;[data-list-shell]&#x27;);
+      const handleZone = root.querySelector(&#x27;[data-handle-zone]&#x27;);
+      const handle = root.querySelector(&#x27;[data-list-handle]&#x27;);
+      const result = root.querySelector(&#x27;[data-result]&#x27;);
+      const items = Array.from(root.querySelectorAll(&#x27;[data-item]&#x27;));
 
-      const getScheme = (element) =&gt; element.closest(&#x27;[data-scheme]&#x27;);
-
-      const applyPaletteFilter = (scheme) =&gt; {
-        const search = scheme.querySelector(&#x27;[data-f-search]&#x27;);
-        if (!search) return;
-        const query = search.value.trim().toLocaleLowerCase();
-        const activePanel = scheme.querySelector(`[data-scope-panel=&quot;${scheme.dataset.scope}&quot;]`);
-        let visibleCount = 0;
-        activePanel.querySelectorAll(&#x27;.cm-palette-action&#x27;).forEach((button) =&gt; {
-          const visible = button.textContent.toLocaleLowerCase().includes(query);
-          button.hidden = !visible;
-          if (visible) visibleCount += 1;
+      items.forEach((item) =&gt; {
+        item.addEventListener(&#x27;pointerenter&#x27;, () =&gt; {
+          items.forEach((candidate) =&gt; candidate.dataset.active = &#x27;false&#x27;);
+          item.dataset.active = &#x27;true&#x27;;
         });
-        scheme.querySelector(&#x27;[data-f-empty]&#x27;).hidden = visibleCount !== 0;
-      };
-
-      const setPanels = (scheme, scope) =&gt; {
-        scheme.dataset.scope = scope;
-        scheme.querySelectorAll(&#x27;[data-scope-panel]&#x27;).forEach((panel) =&gt; {
-          panel.hidden = panel.dataset.scopePanel !== scope;
+        item.addEventListener(&#x27;pointerleave&#x27;, () =&gt; {
+          if (item.matches(&#x27;:focus-within&#x27;)) return;
+          item.dataset.active = &#x27;false&#x27;;
         });
-        scheme.querySelectorAll(&#x27;[data-set-scope]&#x27;).forEach((button) =&gt; {
-          button.setAttribute(&#x27;aria-pressed&#x27;, String(button.dataset.setScope === scope));
-        });
-        const targetLabel = scheme.querySelector(&#x27;[data-target-label]&#x27;);
-        if (targetLabel) {
-          const target = scope === &#x27;item&#x27; ? scheme.dataset.currentTarget : &#x27;整个列表&#x27;;
-          targetLabel.textContent = `作用于：${target}`;
-        }
-        applyPaletteFilter(scheme);
-      };
+      });
 
-      const showMenu = (scheme, trigger) =&gt; {
-        const menu = scheme.querySelector(&#x27;[data-menu]&#x27;);
-        menu.hidden = false;
-        scheme.querySelectorAll(&#x27;[aria-expanded]&#x27;).forEach((button) =&gt; {
-          button.setAttribute(&#x27;aria-expanded&#x27;, String(button === trigger));
-        });
-      };
+      handle.addEventListener(&#x27;click&#x27;, (event) =&gt; {
+        event.stopPropagation();
+        const pinned = handleZone.dataset.pinned !== &#x27;true&#x27;;
+        handleZone.dataset.pinned = String(pinned);
+        listShell.dataset.collectionOpen = String(pinned);
+        handle.setAttribute(&#x27;aria-expanded&#x27;, String(pinned));
+      });
 
-      const setResult = (scheme, action) =&gt; {
-        const target = scheme.dataset.scope === &#x27;item&#x27; ? scheme.dataset.currentTarget : &#x27;整个列表&#x27;;
-        const result = scheme.querySelector(&#x27;[data-result]&#x27;);
-        result.innerHTML = `&lt;strong&gt;${action}&lt;/strong&gt; · 作用于 ${target}`;
-      };
+      root.querySelectorAll(&#x27;[data-action]&#x27;).forEach((button) =&gt; {
+        button.addEventListener(&#x27;click&#x27;, (event) =&gt; {
+          event.stopPropagation();
+          result.innerHTML = `&lt;strong&gt;${button.textContent.trim()}&lt;/strong&gt; · 作用于 ${button.dataset.scope}`;
+        });
+      });
 
       root.addEventListener(&#x27;click&#x27;, (event) =&gt; {
-        const scopeButton = event.target.closest(&#x27;[data-set-scope]&#x27;);
-        if (scopeButton) {
-          const scheme = getScheme(scopeButton);
-          setPanels(scheme, scopeButton.dataset.setScope);
-          return;
-        }
-
-        const actionButton = event.target.closest(&#x27;[data-action]&#x27;);
-        if (actionButton) {
-          setResult(getScheme(actionButton), actionButton.textContent.trim());
-          return;
-        }
-
-        const aItem = event.target.closest(&#x27;[data-a-item]&#x27;);
-        if (aItem) {
-          const scheme = getScheme(aItem);
-          scheme.dataset.currentTarget = aItem.dataset.aItem;
-          setPanels(scheme, &#x27;item&#x27;);
-          scheme.querySelector(&#x27;[data-menu-title]&#x27;).textContent = `${aItem.dataset.aItem} · 这一项`;
-          showMenu(scheme, aItem);
-          return;
-        }
-
-        const aBlock = event.target.closest(&#x27;[data-a-block]&#x27;);
-        if (aBlock) {
-          const scheme = getScheme(aBlock);
-          setPanels(scheme, &#x27;list&#x27;);
-          scheme.querySelector(&#x27;[data-menu-title]&#x27;).textContent = &#x27;整个列表&#x27;;
-          showMenu(scheme, aBlock);
-          return;
-        }
-
-        const bItem = event.target.closest(&#x27;[data-b-item]&#x27;);
-        if (bItem) {
-          const scheme = getScheme(bItem);
-          scheme.dataset.currentTarget = bItem.dataset.bItem;
-          setPanels(scheme, &#x27;item&#x27;);
-          scheme.querySelector(&#x27;[data-menu-title]&#x27;).textContent = bItem.dataset.bItem;
-          showMenu(scheme, bItem);
-          return;
-        }
-
-        const cItem = event.target.closest(&#x27;[data-c-select-item]&#x27;);
-        if (cItem) {
-          const scheme = getScheme(cItem);
-          scheme.dataset.currentTarget = cItem.dataset.cSelectItem;
-          scheme.querySelector(&#x27;[data-c-list]&#x27;).dataset.selected = &#x27;false&#x27;;
-          scheme.querySelectorAll(&#x27;.cm-row&#x27;).forEach((row) =&gt; row.dataset.selected = &#x27;false&#x27;);
-          cItem.closest(&#x27;.cm-row&#x27;).dataset.selected = &#x27;true&#x27;;
-          setPanels(scheme, &#x27;item&#x27;);
-          return;
-        }
-
-        const cList = event.target.closest(&#x27;[data-c-select-list]&#x27;);
-        if (cList) {
-          const scheme = getScheme(cList);
-          scheme.querySelectorAll(&#x27;.cm-row&#x27;).forEach((row) =&gt; row.dataset.selected = &#x27;false&#x27;);
-          scheme.querySelector(&#x27;[data-c-list]&#x27;).dataset.selected = &#x27;true&#x27;;
-          setPanels(scheme, &#x27;list&#x27;);
-          return;
-        }
-
-        const dContext = event.target.closest(&#x27;[data-d-context]&#x27;);
-        if (dContext) {
-          const scheme = getScheme(dContext);
-          scheme.dataset.currentTarget = dContext.dataset.dContext;
-          scheme.querySelectorAll(&#x27;[data-d-context]&#x27;).forEach((row) =&gt; row.dataset.selected = &#x27;false&#x27;);
-          dContext.dataset.selected = &#x27;true&#x27;;
-          scheme.querySelectorAll(&#x27;[data-context-label]&#x27;).forEach((label) =&gt; label.textContent = dContext.dataset.dContext);
-          setPanels(scheme, &#x27;item&#x27;);
-          return;
-        }
-
-        const dOpen = event.target.closest(&#x27;[data-d-open]&#x27;);
-        if (dOpen) {
-          const scheme = getScheme(dOpen);
-          showMenu(scheme, dOpen);
-          return;
-        }
-
-        const eItem = event.target.closest(&#x27;[data-e-item]&#x27;);
-        if (eItem) {
-          const scheme = getScheme(eItem);
-          scheme.dataset.currentTarget = eItem.dataset.eItem;
-          setPanels(scheme, &#x27;item&#x27;);
-          scheme.querySelector(&#x27;[data-menu-title]&#x27;).textContent = `${eItem.dataset.eItem} · 这一项`;
-          showMenu(scheme, eItem);
-          return;
-        }
-
-        const eBlock = event.target.closest(&#x27;[data-e-block]&#x27;);
-        if (eBlock) {
-          const scheme = getScheme(eBlock);
-          setPanels(scheme, &#x27;list&#x27;);
-          scheme.querySelector(&#x27;[data-menu-title]&#x27;).textContent = &#x27;整个列表&#x27;;
-          showMenu(scheme, eBlock);
-          return;
-        }
-
-        const fContext = event.target.closest(&#x27;[data-f-context]&#x27;);
-        if (fContext) {
-          const scheme = getScheme(fContext);
-          scheme.dataset.currentTarget = fContext.dataset.fContext;
-          scheme.querySelectorAll(&#x27;[data-f-context]&#x27;).forEach((row) =&gt; row.dataset.selected = &#x27;false&#x27;);
-          fContext.dataset.selected = &#x27;true&#x27;;
-          scheme.querySelectorAll(&#x27;[data-context-label]&#x27;).forEach((label) =&gt; label.textContent = fContext.dataset.fContext);
-          setPanels(scheme, &#x27;item&#x27;);
-          return;
-        }
-
-        const fOpen = event.target.closest(&#x27;[data-f-open]&#x27;);
-        if (fOpen) {
-          const scheme = getScheme(fOpen);
-          showMenu(scheme, fOpen);
-          const search = scheme.querySelector(&#x27;[data-f-search]&#x27;);
-          search.focus();
-        }
+        if (handleZone.contains(event.target)) return;
+        handleZone.dataset.pinned = &#x27;false&#x27;;
+        listShell.dataset.collectionOpen = &#x27;false&#x27;;
+        handle.setAttribute(&#x27;aria-expanded&#x27;, &#x27;false&#x27;);
       });
 
-      root.addEventListener(&#x27;input&#x27;, (event) =&gt; {
-        if (!event.target.matches(&#x27;[data-f-search]&#x27;)) return;
-        applyPaletteFilter(getScheme(event.target));
+      root.addEventListener(&#x27;keydown&#x27;, (event) =&gt; {
+        if (event.key !== &#x27;Escape&#x27;) return;
+        handleZone.dataset.pinned = &#x27;false&#x27;;
+        listShell.dataset.collectionOpen = &#x27;false&#x27;;
+        handle.setAttribute(&#x27;aria-expanded&#x27;, &#x27;false&#x27;);
+        handle.focus();
       });
-
-      schemes.forEach((scheme) =&gt; setPanels(scheme, scheme.dataset.scope));
     })();
   &lt;/script&gt;
 &lt;/div&gt;
