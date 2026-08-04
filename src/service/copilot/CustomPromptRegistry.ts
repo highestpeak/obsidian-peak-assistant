@@ -23,6 +23,7 @@
  * description: "What this prompt does"
  * category: "document"  # document | vault | writing
  * icon: "wand"          # lucide icon name (optional)
+ * model: "gpt-5-mini"   # optional override within the active provider profile
  * ---
  * You are an assistant. Given the following document:
  *
@@ -46,6 +47,8 @@ export interface CustomPromptDef {
 	category: 'document' | 'vault' | 'writing';
 	template: string;
 	filePath: string;
+	/** Optional model override within the active Copilot provider profile. */
+	modelId?: string;
 }
 
 /**
@@ -103,6 +106,7 @@ export function parseCustomPromptFile(basename: string, filePath: string, conten
 	let description = 'Custom prompt';
 	let category: 'document' | 'vault' | 'writing' = 'document';
 	let template = content;
+	let modelId: string | undefined;
 
 	if (fmMatch) {
 		const fmBlock = fmMatch[1];
@@ -116,11 +120,14 @@ export function parseCustomPromptFile(basename: string, filePath: string, conten
 
 		const catMatch = fmBlock.match(/^category:\s*["']?(document|vault|writing)["']?\s*$/m);
 		if (catMatch) category = catMatch[1] as any;
+
+		const modelMatch = fmBlock.match(/^model:\s*["']?(.+?)["']?\s*$/m);
+		if (modelMatch?.[1].trim()) modelId = modelMatch[1].trim();
 	}
 
 	if (!template) return null;
 
-	return { id, label, description, category, template, filePath };
+	return { id, label, description, category, template, filePath, ...(modelId ? { modelId } : {}) };
 }
 
 /**
@@ -154,7 +161,12 @@ export function buildCustomPromptAction(
 			const systemPrompt = promptTemplates.render(def.template, variables);
 			const userPrompt = promptTemplates.render(CUSTOM_PROMPT_DOCUMENT_CONTEXT_TEMPLATE, variables);
 
-			yield* agent.runAgentStream({ systemPrompt, userPrompt, signal });
+			yield* agent.runAgentStream({
+				systemPrompt,
+				userPrompt,
+				signal,
+				...(def.modelId ? { modelId: def.modelId } : {}),
+			});
 		},
 	};
 }

@@ -102,6 +102,8 @@
 3. Migrate valid `promptModelMap` consumers; delete it only after all active readers are migrated and characterization tests pass.
 4. Register system/user pairings and variable schemas. Migrate stable inline prompts only after their caller, owner and tests are identified; do not blanket-convert internal strings.
 
+已开始的可验证子项：Custom Prompt 的 `model:` frontmatter 会透传到 Copilot agent 的实际 `streamHarnessModel` 调用；它只覆盖当前 active provider profile 中的 model，不承诺跨 provider routing。其余 action 的统一 policy 仍须先完成调用方 inventory，不能用这个单项冒充全局 resolver。
+
 ### Phase 3 — Control Center production UI
 
 1. Build the action list from the real action-policy registry, not from the HTML Mock fixture.

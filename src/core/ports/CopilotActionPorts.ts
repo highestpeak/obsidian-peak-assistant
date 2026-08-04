@@ -134,6 +134,8 @@ export interface CopilotActionAgentPort {
 		signal?: AbortSignal;
 		collector?: CopilotOutputCollector;
 		maxTurns?: number;
+		/** Optional action-owned model override within the active provider profile. */
+		modelId?: string;
 	}): AsyncGenerator<LLMStreamEvent, ActionResult | void>;
 }
 

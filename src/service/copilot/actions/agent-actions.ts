@@ -130,7 +130,7 @@ export function createCopilotAgentPort(deps: CopilotAgentPortDeps): CopilotActio
 				const stream = streamHarnessModel({
 					loopId: `copilot-action-${pluginId}-${Date.now()}`,
 					profile: binding.profile,
-					modelId: binding.modelId,
+					modelId: options.modelId ?? binding.modelId,
 					prompt: options.userPrompt,
 					systemPrompt: options.systemPrompt,
 					tools,

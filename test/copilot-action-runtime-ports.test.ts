@@ -236,7 +236,7 @@ async function testCustomPromptCatalogBuildsThroughRuntime(): Promise<void> {
 	const ports = basePorts({
 		customPrompts: {
 			loadAll: async () => [
-				{ id: 'rewrite-v2', label: 'Rewrite v2', description: 'Custom rewrite', category: 'document', template: 'sys', filePath: 'ChatFolder/Prompts/Custom/rewrite-v2.md' },
+				{ id: 'rewrite-v2', label: 'Rewrite v2', description: 'Custom rewrite', category: 'document', template: 'sys', filePath: 'ChatFolder/Prompts/Custom/rewrite-v2.md', modelId: 'gpt-5-mini' },
 			],
 		},
 		agent: {
@@ -271,6 +271,7 @@ async function testCustomPromptCatalogBuildsThroughRuntime(): Promise<void> {
 	});
 	assert.strictEqual(agentOptions.systemPrompt, 'system:Strategy');
 	assert.strictEqual(agentOptions.userPrompt, 'user:Strategy:Chosen:planning');
+	assert.strictEqual(agentOptions.modelId, 'gpt-5-mini', 'Custom Prompt model override reaches the agent execution port');
 	console.log('PASS: customPromptCatalogBuildsThroughRuntime');
 }
 
