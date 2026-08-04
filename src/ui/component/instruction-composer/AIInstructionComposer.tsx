@@ -39,6 +39,7 @@ export interface AIInstructionComposerProps {
 	onLoadContextItems?: (query: string, currentFolder?: string) => Promise<NavigableMenuItem[]>;
 	onMenuItemSelect?: (triggerChar: string, selectedItem: NavigableMenuItem, resolvedText?: string) => void;
 	compact?: boolean;
+	singleLine?: boolean;
 	autoFocus?: boolean;
 	draftKey?: string;
 	submitDisabled?: boolean;
@@ -68,6 +69,7 @@ export function AIInstructionComposer({
 	onLoadContextItems,
 	onMenuItemSelect,
 	compact = false,
+	singleLine = false,
 	autoFocus = false,
 	draftKey,
 	submitDisabled = false,
@@ -223,6 +225,7 @@ export function AIInstructionComposer({
 					<PromptInputBody
 						inputRef={inputRef}
 						placeholder={placeholder}
+						singleLine={singleLine}
 						slashItems={slashItems}
 						onTextChange={(text) => controller.setDraft(text)}
 					/>

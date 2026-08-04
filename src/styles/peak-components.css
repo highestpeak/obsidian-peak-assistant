@@ -10167,10 +10167,13 @@
   min-width: 0;
   flex: 1;
   align-self: stretch;
+  align-items: center;
+  color: var(--text-normal);
+  background: var(--background-secondary);
 }
 
 :is(.pktw-root, .peak-design-root) .pk-ai-workspace-trigger {
-  width: 100% !important;
+  width: auto !important;
   min-width: 0 !important;
   max-width: none !important;
   height: 100% !important;
@@ -10179,16 +10182,17 @@
   padding: 0 14px !important;
   border-radius: 0 !important;
   gap: 7px;
-  color: var(--text-normal);
-  background: var(--background-secondary);
+  flex: 1;
+  color: inherit;
+  background: transparent !important;
 }
 
-:is(.pktw-root, .peak-design-root) .pk-ai-workspace-trigger.is-active {
+:is(.pktw-root, .peak-design-root) .pk-ai-workspace-selector.is-active {
   color: var(--pk-accent, var(--interactive-accent));
   background: var(--background-primary);
 }
 
-:is(.pktw-root, .peak-design-root) .pk-ai-workspace-trigger.is-active::after {
+:is(.pktw-root, .peak-design-root) .pk-ai-workspace-selector.is-active::after {
   position: absolute;
   right: 0;
   bottom: 0;
@@ -10203,8 +10207,27 @@
   height: 15px;
 }
 
-.pk-ai-workspace-trigger svg:last-child {
-  margin-left: auto;
+:is(.pktw-root, .peak-design-root) .pk-ai-workspace-menu-trigger {
+  margin-right: 8px;
+  flex: 0 0 auto;
+  color: inherit;
+  background: transparent !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-ai-workspace-trigger:hover,
+:is(.pktw-root, .peak-design-root) .pk-ai-workspace-menu-trigger:hover {
+  color: var(--pk-accent, var(--interactive-accent));
+  background: var(--background-modifier-hover) !important;
+}
+
+.pk-ai-workspace-menu-trigger svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 120ms ease;
+}
+
+.pk-ai-workspace-menu-trigger[aria-expanded="true"] svg {
+  transform: rotate(180deg);
 }
 
 .pk-ai-workspace-menu {
@@ -10212,7 +10235,7 @@
   z-index: var(--pk-z-popover, 1200);
   top: calc(100% + 4px);
   right: 8px;
-  left: 8px;
+  width: min(264px, calc(100vw - 32px));
   overflow: hidden;
   padding: 4px;
   border: 1px solid var(--background-modifier-border);
@@ -10226,9 +10249,9 @@
   min-width: 0 !important;
   max-width: none !important;
   height: auto !important;
-  min-height: 46px !important;
+  min-height: 42px !important;
   max-height: none !important;
-  padding: 7px 9px !important;
+  padding: 6px 9px !important;
   align-items: flex-start;
   flex-direction: column;
   gap: 2px;

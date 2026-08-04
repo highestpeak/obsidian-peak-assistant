@@ -304,6 +304,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, mode }) => {
 								? PRESET_LABELS.aiGraph.placeholder
 								: 'Ask AI anything about your vault...'}
 							compact
+							singleLine
 							autoFocus
 							attachmentIcon={<Plus />}
 							trailingControls={!isMobile() ? (
@@ -485,7 +486,8 @@ function AIWorkspaceSelector({
 	const [open, setOpen] = useState(false);
 	const [activeIndex, setActiveIndex] = useState(() =>
 		Math.max(0, AI_WORKSPACE_OPTIONS.findIndex((item) => item.mode === mode)));
-	const triggerRef = useRef<HTMLButtonElement | null>(null);
+	const menuId = React.useId();
+	const menuTriggerRef = useRef<HTMLButtonElement | null>(null);
 	const menuRef = useRef<HTMLDivElement | null>(null);
 	const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
 	const selected = AI_WORKSPACE_OPTIONS.find((item) => item.mode === mode) ?? AI_WORKSPACE_OPTIONS[0];
@@ -494,7 +496,7 @@ function AIWorkspaceSelector({
 		menuRef,
 		'ai-workspace-selector',
 		() => setOpen(false),
-		triggerRef.current,
+		menuTriggerRef.current,
 	);
 	useRovingComposite(menuRef, {
 		itemSelector: '[role="option"]',
@@ -509,35 +511,46 @@ function AIWorkspaceSelector({
 	useEffect(() => {
 		if (open) optionRefs.current[activeIndex]?.focus();
 	}, [activeIndex, open]);
+	useEffect(() => {
+		if (!active) setOpen(false);
+	}, [active]);
+	useEffect(() => {
+		if (!open) return;
+		const ownerDocument = menuTriggerRef.current?.ownerDocument;
+		if (!ownerDocument) return;
+		const closeOutside = (event: PointerEvent): void => {
+			const NodeCtor = ownerDocument.defaultView?.Node;
+			if (!NodeCtor || !(event.target instanceof NodeCtor)) return;
+			if (menuRef.current?.contains(event.target)) return;
+			if (menuTriggerRef.current?.contains(event.target)) return;
+			setOpen(false);
+		};
+		ownerDocument.addEventListener('pointerdown', closeOutside, true);
+		return () => ownerDocument.removeEventListener('pointerdown', closeOutside, true);
+	}, [open]);
 
 	const closeAndRestore = (): void => {
 		setOpen(false);
-		triggerRef.current?.ownerDocument.defaultView?.requestAnimationFrame(() =>
-			triggerRef.current?.focus());
+		menuTriggerRef.current?.ownerDocument.defaultView?.requestAnimationFrame(() =>
+			menuTriggerRef.current?.focus());
 	};
 	const select = (nextMode: AIWorkspaceMode): void => {
 		onModeChange(nextMode);
 		closeAndRestore();
 	};
 	return (
-		<div className="pk-ai-workspace-selector">
+		<div className={cn('pk-ai-workspace-selector', active && 'is-active')}>
 			<Button
-				ref={triggerRef}
 				variant="ghost"
 				type="button"
-					className={cn('pk-ai-workspace-trigger', active && 'is-active')}
-					role="tab"
-					aria-selected={active}
-					tabIndex={active ? 0 : -1}
-					data-peak-focus-id="search-surface-ai"
-					aria-haspopup="listbox"
-				aria-expanded={open}
-				onClick={() => {
-					onActivate();
-					setOpen((current) => !current);
-				}}
+				className="pk-ai-workspace-trigger"
+				role="tab"
+				aria-selected={active}
+				tabIndex={active ? 0 : -1}
+				data-peak-focus-id="search-surface-ai"
+				onClick={onActivate}
 				onKeyDown={(event) => {
-					if (event.key !== 'ArrowDown' && event.key !== 'Enter' && event.key !== ' ') return;
+					if (event.key !== 'ArrowDown') return;
 					event.preventDefault();
 					onActivate();
 					setOpen(true);
@@ -545,12 +558,30 @@ function AIWorkspaceSelector({
 			>
 				{mode === 'graph' ? <Network /> : mode === 'vault-intelligence' ? <Sparkles /> : <Library />}
 				<span>{selected.label}</span>
+			</Button>
+			<Button
+				ref={menuTriggerRef}
+				variant="ghost"
+				geometry="toolbar-icon"
+				type="button"
+				className="pk-ai-workspace-menu-trigger"
+				aria-label={`Choose AI workspace. Current: ${selected.label}`}
+				aria-haspopup="listbox"
+				aria-expanded={open}
+				aria-controls={open ? menuId : undefined}
+				tabIndex={active ? 0 : -1}
+				onClick={() => {
+					onActivate();
+					setOpen((current) => !current);
+				}}
+			>
 				<ChevronDown aria-hidden />
 			</Button>
-				{open && (
-					<div
-						ref={menuRef}
-						className="pk-ai-workspace-menu"
+			{open && (
+				<div
+					id={menuId}
+					ref={menuRef}
+					className="pk-ai-workspace-menu"
 					role="listbox"
 					aria-label="AI workspace"
 					onKeyDown={(event) => {

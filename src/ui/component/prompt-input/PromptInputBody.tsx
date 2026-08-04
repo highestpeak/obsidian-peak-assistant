@@ -5,6 +5,7 @@ import { cn } from '@/ui/react/lib/utils';
 import { usePromptInputContext } from './PromptInput';
 import CodeMirror from '@uiw/react-codemirror';
 import { EditorView } from '@codemirror/view';
+import { EditorState } from '@codemirror/state';
 import { tagPlugin } from '@/ui/component/mine/tagPlugin';
 import { keymapExtension } from './keymap';
 import { parseTagsFromText } from '../mine/tagParser';
@@ -55,6 +56,7 @@ const MENU_SEARCH_DEBOUNCE_MS = 320;
 export interface PromptInputBodyProps extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'value' | 'onChange'> {
 	placeholder?: string;
 	inputRef?: React.Ref<{ focus: () => void }>;
+	singleLine?: boolean;
 	onTextChange?: (text: string, tags: Array<{ type: 'context' | 'prompt'; text: string; start: number; end: number }>) => void;
 	/**
 	 * Workflow palette entries for the `/` trigger (chat-studio §8.3). Only
@@ -88,6 +90,7 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 	className,
 	placeholder = 'What would you like to know?',
 	inputRef,
+	singleLine = false,
 	onTextChange,
 	slashItems,
 	...props
@@ -447,7 +450,6 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 		const exts = [
 			tagPlugin,
 			keymapExtension,
-			EditorView.lineWrapping,
 			EditorView.theme({
 				'&': { outline: 'none !important' },
 				'&.cm-focused': { outline: 'none !important', boxShadow: 'none !important' },
@@ -463,8 +465,14 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 				}
 			}),
 		];
+		if (singleLine) {
+			exts.splice(2, 0, EditorState.changeFilter.of((transaction) =>
+				transaction.newDoc.lines === 1));
+		} else {
+			exts.splice(2, 0, EditorView.lineWrapping);
+		}
 		return exts;
-	}, [tagPlugin, keymapExtension]);
+	}, [singleLine, tagPlugin, keymapExtension]);
 
 	// ----- Render -----
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -479,8 +487,8 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 				ref={codeMirrorRef}
 				value={textInput.value}
 				height="auto"
-				maxHeight="200px"
-				minHeight="60px"
+				maxHeight={singleLine ? undefined : '200px'}
+				minHeight={singleLine ? undefined : '60px'}
 				theme="none"
 				extensions={extensions}
 				onChange={handleChange}
@@ -493,6 +501,7 @@ export const PromptInputBody = forwardRef<PromptInputEditorHandle, PromptInputBo
 					// `.pkchat-composer__editor` — no `pktw-py-*` here, or the editor pads
 					// twice (mock wants a single ~12px top inset).
 					'pktw-w-full pktw-text-pk-md pktw-leading-[1.45] pktw-font-normal pktw-codemirror-custom peak-no-native-outline',
+					singleLine && 'cm-editor-single-line',
 					className,
 				)}
 				basicSetup={{

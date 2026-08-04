@@ -90,8 +90,8 @@ assert(
 const peakComponents = readFileSync('src/styles/peak-components.css', 'utf8');
 assert.match(
 	peakComponents,
-	/:is\(\.pktw-root, \.peak-design-root\) \.pk-ai-workspace-trigger\s*\{[\s\S]*?width:\s*100% !important;[\s\S]*?min-width:\s*0 !important;[\s\S]*?max-width:\s*none !important;/,
-	'the AI workspace selector must keep its full half-tab width under the Obsidian button reset',
+	/:is\(\.pktw-root, \.peak-design-root\) \.pk-ai-workspace-trigger\s*\{[\s\S]*?width:\s*auto !important;[\s\S]*?min-width:\s*0 !important;[\s\S]*?max-width:\s*none !important;[\s\S]*?height:\s*100% !important;/,
+	'the AI workspace main tab must fill the remaining half-tab beside its reset-safe menu button',
 );
 
 console.log('ai-search-button-geometry: passed');

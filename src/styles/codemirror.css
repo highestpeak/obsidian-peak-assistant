@@ -36,10 +36,10 @@
 /* Single line input override - constrain to single line height */
 .pktw-codemirror-custom.cm-editor.cm-editor-single-line .cm-content,
 .pktw-codemirror-custom .cm-editor.cm-editor-single-line .cm-content {
-  min-height: 1.2em !important;
-  max-height: 1.2em !important;
-  line-height: 1.2 !important;
-  overflow: hidden !important;
+  min-height: 1.45em !important;
+  max-height: 1.45em !important;
+  line-height: 1.45 !important;
+  white-space: pre !important;
 }
 
 /* Ensure single line editor container is properly sized */
@@ -52,9 +52,22 @@
 /* Override the scroller height for single line */
 .pktw-codemirror-custom.cm-editor.cm-editor-single-line .cm-scroller,
 .pktw-codemirror-custom .cm-editor.cm-editor-single-line .cm-scroller {
-  min-height: 1.2em !important;
-  max-height: 1.2em !important;
-  overflow: hidden !important;
+  min-height: 1.45em !important;
+  max-height: 1.45em !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: none;
+}
+
+.pktw-codemirror-custom.cm-editor.cm-editor-single-line .cm-scroller::-webkit-scrollbar,
+.pktw-codemirror-custom .cm-editor.cm-editor-single-line .cm-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.pktw-codemirror-custom.cm-editor.cm-editor-single-line .cm-line,
+.pktw-codemirror-custom .cm-editor.cm-editor-single-line .cm-line {
+  word-wrap: normal !important;
+  white-space: pre !important;
 }
 
 /* Focus states */
