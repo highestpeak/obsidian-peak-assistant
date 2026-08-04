@@ -11,7 +11,10 @@ const host = source('src/ui/view/file-atlas/FileAtlasHost.tsx');
 const adapter = source('src/app/file-atlas/composeFileAtlasHost.ts');
 const css = source('src/styles/file-atlas.css');
 
-assert.match(rail, /<Popover open=\{sortOpen\}/);
+assert.doesNotMatch(rail, /<Popover/);
+assert.match(rail, /className="pkfa-rail-sort-control"/);
+assert.match(rail, /onClick=\{\(\) => setSortOpen\(\(open\) => !open\)\}/);
+assert.match(rail, /\{sortOpen && \(/);
 assert.match(rail, /role="menuitemradio"/);
 assert.match(rail, /aria-expanded=\{sortOpen\}/);
 assert.match(rail, /onSortModeChange\(mode\)/);
@@ -35,6 +38,7 @@ assert.match(adapter, /workspace\.revealLeaf/);
 
 assert.match(css, /--pkfa-rail-width/);
 assert.match(css, /\.pkfa-rail-resizer/);
+assert.match(css, /\.pkfa-rail-sort-menu\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?z-index:\s*var\(--pk-z-popover\) !important;/);
 assert.doesNotMatch(
 	css,
 	/grid-template-columns:\s*224px/,

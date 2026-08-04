@@ -92,19 +92,20 @@
 	font-size: var(--pk-text-base);
 }
 
-/* content column (right of the rail): doc-context / tabs / body rows */
+/* Content column rows stay explicit even when the optional relationship slot
+   is empty: doc / relationships / tabs / search / controls / body / tray. */
 .pkfa-content {
 	min-width: 0;
 	min-height: 0;
 	display: grid;
-	grid-template-rows: 42px 42px auto 46px minmax(0, 1fr) auto;
+	grid-template-rows: 42px auto 42px auto 46px minmax(0, 1fr) auto;
 	background: var(--pk-surface);
 	overflow: hidden;
 }
 
-/* graph subview replaces the tree body: doc-context / tabs / graph */
+/* Graph keeps the same first three structural rows and owns the remainder. */
 .peak-file-atlas-modal.pkfa-root[data-subview="graph"] .pkfa-content {
-	grid-template-rows: 42px 42px minmax(0, 1fr);
+	grid-template-rows: 42px auto 42px minmax(0, 1fr);
 }
 
 /* ---------- left file rail ---------- */
@@ -138,6 +139,12 @@
 }
 
 .pkfa-rail-title svg { width: 14px; height: 14px; }
+
+.pkfa-rail-sort-control {
+	position: relative;
+	min-width: 0;
+	flex: 0 0 auto;
+}
 
 .peak-file-atlas-modal.pkfa-root .pkfa-rail-sort {
 	min-width: 0;
@@ -182,15 +189,18 @@
 }
 
 .pkfa-rail-sort-menu {
-	/*
-	 * Radix copies the content's computed z-index onto its fixed-position
-	 * wrapper when the popover mounts. Obsidian modals live at layer 50, so
-	 * the generic `pktw-z-50` would leave this menu behind the File Atlas
-	 * modal even though the trigger correctly entered its open state.
-	 */
+	position: absolute;
+	top: calc(100% + 6px);
+	right: 0;
 	z-index: var(--pk-z-popover) !important;
 	width: 152px !important;
 	padding: 5px !important;
+	display: grid;
+	gap: 2px;
+	border: 1px solid var(--pk-border-strong);
+	border-radius: var(--pk-radius-md);
+	background: var(--pk-surface-overlay);
+	box-shadow: var(--pk-shadow-popover);
 }
 
 .pkfa-rail-sort-option {
@@ -460,6 +470,10 @@
 
 /* Document hubs + link provenance. The actual neighborhood graph remains the
    Graph subview; this row only makes its ownership and entry explicit. */
+.pkfa-document-context-slot {
+	min-width: 0;
+}
+
 .pkfa-document-context {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) minmax(180px, auto) auto;
@@ -696,6 +710,38 @@
 	color: var(--pk-accent-fg) !important;
 	background: var(--pk-accent) !important;
 	box-shadow: var(--pk-shadow-sm) !important;
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-bar-icon-btn {
+	width: 30px !important;
+	min-width: 30px !important;
+	max-width: 30px !important;
+	height: 30px !important;
+	min-height: 30px !important;
+	max-height: 30px !important;
+	padding: 0 !important;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid var(--pk-border) !important;
+	border-radius: var(--pk-radius-md) !important;
+	background: var(--pk-surface) !important;
+	color: var(--pk-text-secondary) !important;
+	cursor: pointer;
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-bar-icon-btn:hover,
+.peak-file-atlas-modal.pkfa-root .pkfa-bar-icon-btn[aria-pressed="true"],
+.peak-file-atlas-modal.pkfa-root .pkfa-bar-icon-btn[aria-expanded="true"] {
+	border-color: var(--pk-border-accent) !important;
+	background: var(--pk-accent-tint) !important;
+	color: var(--pk-accent-text) !important;
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-bar-icon-btn svg {
+	width: 14px;
+	height: 14px;
+	stroke: currentColor;
 }
 
 .pkfa-mod-dot { width: 6px; height: 6px; border-radius: var(--pk-radius-full); background: var(--pk-warning); }

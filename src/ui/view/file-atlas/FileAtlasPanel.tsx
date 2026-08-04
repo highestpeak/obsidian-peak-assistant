@@ -84,7 +84,7 @@ type AtlasAction =
 	| { type: 'toggleFold'; id: string }
 	| { type: 'setCollapsed'; ids: string[] }
 	| { type: 'expandAll' }
-	| { type: 'select'; id: string }
+	| { type: 'select'; id: string | null }
 	| { type: 'addToTray'; item: TrayItem }
 	| { type: 'removeFromTray'; id: string };
 
@@ -237,28 +237,29 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 
 	const selectedBlock = state.selectedId ? blockById.get(state.selectedId) ?? null : null;
 	const trayIds = useMemo(() => new Set(state.tray.map((t) => t.id)), [state.tray]);
-
-	useEffect(() => {
-		if (
-			selectedBlock
-			&& visible.has(selectedBlock.id)
-			&& isProjectionRow(selectedBlock, state.visibleKinds, showFrontmatterSummary)
-		) {
-			return;
-		}
-		const nextId = firstProjectedId(
+	const projectedSelectedBlock = selectedBlock
+		&& visible.has(selectedBlock.id)
+		&& isProjectionRow(selectedBlock, state.visibleKinds, showFrontmatterSummary)
+		? selectedBlock
+		: null;
+	const firstVisibleId = useMemo(
+		() => firstProjectedId(
 			blocks,
 			visible,
 			state.visibleKinds,
 			showFrontmatterSummary,
-		);
-		if (nextId) dispatch({ type: 'select', id: nextId });
+		),
+		[blocks, showFrontmatterSummary, state.visibleKinds, visible],
+	);
+
+	useEffect(() => {
+		if (projectedSelectedBlock) return;
+		if (state.selectedId === firstVisibleId) return;
+		dispatch({ type: 'select', id: firstVisibleId });
 	}, [
-		blocks,
-		selectedBlock,
-		showFrontmatterSummary,
-		state.visibleKinds,
-		visible,
+		firstVisibleId,
+		projectedSelectedBlock,
+		state.selectedId,
 	]);
 
 	// Expand every group when a search term is entered so hits stay reachable.
@@ -344,10 +345,13 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 					</span>
 				</div>
 
-				<FileAtlasDocumentContext
-					filePath={activePath}
-					onOpenLocalGraph={() => setSubview('graph')}
-				/>
+				<div className="pkfa-document-context-slot">
+					<FileAtlasDocumentContext
+						key={activePath}
+						filePath={activePath}
+						onOpenLocalGraph={() => setSubview('graph')}
+					/>
+				</div>
 
 				{/* Tree / Graph subview tabs */}
 				<div className="pkfa-tab-row">
@@ -423,7 +427,7 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 						<section className="pkfa-main">
 							<div className="pkfa-tree-pane">
 								<div className="pkfa-tree-scroll">
-									<AtlasTree
+									{firstVisibleId ? <AtlasTree
 										blocks={blocks}
 										config={config}
 										visible={visible}
@@ -437,17 +441,19 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 										onToggleFold={(id) => dispatch({ type: 'toggleFold', id })}
 										onAddToTray={addToTray}
 										flattened={flattened}
-									/>
+									/> : (
+										<div className="pkfa-empty-state">{s.treeEmpty}</div>
+									)}
 								</div>
 							</div>
 							<aside className="pkfa-inspector">
 								<div className="pkfa-inspector-scroll">
 									<AtlasInspector
-										block={selectedBlock}
+										block={projectedSelectedBlock}
 										config={config}
 										host={host}
 										sourcePath={activePath}
-										inTray={selectedBlock ? trayIds.has(selectedBlock.id) : false}
+										inTray={projectedSelectedBlock ? trayIds.has(projectedSelectedBlock.id) : false}
 										onReveal={reveal}
 										onAddToTray={addToTray}
 										onCopyLink={copyLink}

@@ -191,6 +191,7 @@ export interface FileAtlasStrings {
 	reliabilityBasic: string;
 	reliabilityBasicHint: string;
 	inspectorEmpty: string;
+	treeEmpty: string;
 	reveal: string;
 	addToTray: string;
 	copyLink: string;
@@ -444,6 +445,7 @@ export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
 		reliabilityBasicHint:
 			'Anchors matched by content hash + heading + ordinal. Git-aware anchors arrive in a later phase.',
 		inspectorEmpty: 'Select a block, resource, or heading to inspect it.',
+		treeEmpty: 'No elements match this view.',
 		reveal: 'Reveal',
 		addToTray: 'Add to tray',
 		copyLink: 'Copy link',

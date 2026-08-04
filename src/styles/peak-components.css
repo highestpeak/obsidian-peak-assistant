@@ -8109,33 +8109,6 @@
   flex-direction: column;
   gap: var(--pk-space-1);
 }
-.pkfa-bar-icon-btn {
-  width: 28px !important;
-  min-width: 28px !important;
-  max-width: 28px !important;
-  height: 28px !important;
-  min-height: 28px !important;
-  max-height: 28px !important;
-  padding: 0 !important;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 5px;
-  color: var(--text-muted);
-}
-
-.pkfa-bar-icon-btn:hover,
-.pkfa-bar-icon-btn[aria-pressed="true"],
-.pkfa-bar-icon-btn[aria-expanded="true"] {
-  color: var(--text-normal);
-  background: var(--background-modifier-hover);
-}
-
-.pkfa-bar-icon-btn svg {
-  width: 15px;
-  height: 15px;
-}
-
 .pkfa-tree--flattened .pkfa-twisty {
   visibility: hidden;
 }

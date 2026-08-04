@@ -205,6 +205,7 @@
     "reliabilityBasic": "Basic anchors",
     "reliabilityBasicHint": "Anchors matched by content hash + heading + ordinal. Git-aware anchors arrive in a later phase.",
     "inspectorEmpty": "Select a block, resource, or heading to inspect it.",
+    "treeEmpty": "No elements match this view.",
     "reveal": "Reveal",
     "addToTray": "Add to tray",
     "copyLink": "Copy link",

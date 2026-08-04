@@ -3,6 +3,7 @@ import { ArrowRight, GitBranch, Layers, Network } from 'lucide-react';
 import type { DocumentGraphContext } from '@/core/ports/ContextualGraphPort';
 import { Button } from '@/ui/component/shared-ui/button';
 import { useServiceContext } from '@/ui/context/ServiceContext';
+import { isFileAtlasHubDocument } from '../documentContextPolicy';
 
 export interface FileAtlasDocumentContextProps {
 	filePath: string;
@@ -20,14 +21,15 @@ export const FileAtlasDocumentContext: React.FC<FileAtlasDocumentContextProps> =
 	filePath,
 	onOpenLocalGraph,
 }) => {
-	const { contextualGraph, vaultNavigation } = useServiceContext();
+	const { contextualGraph, settings, vaultNavigation } = useServiceContext();
 	const [context, setContext] = React.useState<DocumentGraphContext | null>(null);
 	const [loading, setLoading] = React.useState(true);
+	const isHubDocument = isFileAtlasHubDocument(filePath, settings.ai.rootFolder);
 
 	React.useEffect(() => {
 		let cancelled = false;
 		setLoading(true);
-		if (!contextualGraph) {
+		if (!contextualGraph || isHubDocument) {
 			setContext(null);
 			setLoading(false);
 			return;
@@ -44,8 +46,9 @@ export const FileAtlasDocumentContext: React.FC<FileAtlasDocumentContextProps> =
 		return () => {
 			cancelled = true;
 		};
-	}, [contextualGraph, filePath]);
+	}, [contextualGraph, filePath, isHubDocument]);
 
+	if (isHubDocument) return null;
 	if (loading) {
 		return <div className="pkfa-document-context is-loading">Loading document relationships…</div>;
 	}

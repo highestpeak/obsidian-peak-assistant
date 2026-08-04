@@ -6,14 +6,9 @@
  * between recency-weighted frequency and filename.
  */
 
-import React from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { ArrowUpDown, Check, ChevronDown, FileClock, FileText, X } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from '@/ui/component/shared-ui/popover';
 import type { OpenDocMeta } from '../FileAtlasHostPort';
 import type { FileRailSections, FileRailSortMode } from '../fileRailModel';
 import type { FileAtlasRailConfig } from '../config/fileAtlasConfig';
@@ -137,6 +132,30 @@ export const FileRail: React.FC<FileRailProps> = ({
 	onWidthCommit,
 }) => {
 	const [sortOpen, setSortOpen] = React.useState(false);
+	const sortMenuId = useId();
+	const sortControlRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		if (!sortOpen) return;
+		const ownerDocument = sortControlRef.current?.ownerDocument;
+		if (!ownerDocument) return;
+		const closeOutside = (event: PointerEvent): void => {
+			if (sortControlRef.current?.contains(event.target as Node)) return;
+			setSortOpen(false);
+		};
+		const closeWithEscape = (event: KeyboardEvent): void => {
+			if (event.key !== 'Escape') return;
+			setSortOpen(false);
+			sortControlRef.current?.querySelector<HTMLButtonElement>('.pkfa-rail-sort')?.focus();
+		};
+		ownerDocument.addEventListener('pointerdown', closeOutside, true);
+		ownerDocument.addEventListener('keydown', closeWithEscape);
+		return () => {
+			ownerDocument.removeEventListener('pointerdown', closeOutside, true);
+			ownerDocument.removeEventListener('keydown', closeWithEscape);
+		};
+	}, [sortOpen]);
+
 	const clampWidth = (value: number): number =>
 		Math.round(Math.min(widthLimits.maxWidthPx, Math.max(widthLimits.minWidthPx, value)));
 
@@ -183,47 +202,49 @@ export const FileRail: React.FC<FileRailProps> = ({
 					<FileText />
 					{title}
 				</span>
-				<Popover open={sortOpen} onOpenChange={setSortOpen}>
-					<PopoverTrigger asChild>
-						<Button
-							variant="unstyled"
-							type="button"
-							className="pkfa-rail-sort"
-							aria-haspopup="menu"
-							aria-expanded={sortOpen}
-							aria-label={`${sortLabel}: ${sortLabels[sortMode]}`}
-						>
-							<ArrowUpDown aria-hidden="true" />
-							<span>{sortLabels[sortMode]}</span>
-							<ChevronDown aria-hidden="true" />
-						</Button>
-					</PopoverTrigger>
-					<PopoverContent
-						className="pkfa-rail-sort-menu"
-						align="end"
-						sideOffset={6}
-						role="menu"
+				<div className="pkfa-rail-sort-control" ref={sortControlRef}>
+					<Button
+						variant="unstyled"
+						type="button"
+						className="pkfa-rail-sort"
+						aria-haspopup="menu"
+						aria-expanded={sortOpen}
+						aria-controls={sortOpen ? sortMenuId : undefined}
+						aria-label={`${sortLabel}: ${sortLabels[sortMode]}`}
+						onClick={() => setSortOpen((open) => !open)}
 					>
-						{(['recent', 'frequent', 'name'] as const).map((mode) => (
-							<Button
-								key={mode}
-								variant="unstyled"
-								type="button"
-								role="menuitemradio"
-								aria-checked={sortMode === mode}
-								className="pkfa-rail-sort-option"
-								data-selected={sortMode === mode ? 'true' : undefined}
-								onClick={() => {
-									onSortModeChange(mode);
-									setSortOpen(false);
-								}}
-							>
-								<span>{sortLabels[mode]}</span>
-								{sortMode === mode && <Check aria-hidden="true" />}
-							</Button>
-						))}
-					</PopoverContent>
-				</Popover>
+						<ArrowUpDown aria-hidden="true" />
+						<span>{sortLabels[sortMode]}</span>
+						<ChevronDown aria-hidden="true" />
+					</Button>
+					{sortOpen && (
+						<div
+							id={sortMenuId}
+							className="pkfa-rail-sort-menu"
+							role="menu"
+							aria-label={sortLabel}
+						>
+							{(['recent', 'frequent', 'name'] as const).map((mode) => (
+								<Button
+									key={mode}
+									variant="unstyled"
+									type="button"
+									role="menuitemradio"
+									aria-checked={sortMode === mode}
+									className="pkfa-rail-sort-option"
+									data-selected={sortMode === mode ? 'true' : undefined}
+									onClick={() => {
+										onSortModeChange(mode);
+										setSortOpen(false);
+									}}
+								>
+									<span>{sortLabels[mode]}</span>
+									{sortMode === mode && <Check aria-hidden="true" />}
+								</Button>
+							))}
+						</div>
+					)}
+				</div>
 			</div>
 			<div className="pkfa-rail-list">
 				<FileRailGroup

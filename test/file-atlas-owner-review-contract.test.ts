@@ -82,8 +82,19 @@ assert.match(
 );
 assert.match(
 	css,
-	/\.pkfa-rail-sort-menu\s*\{[\s\S]*?z-index: var\(--pk-z-popover\) !important/,
-	'portaled sort menu must mount above Obsidian modal layer 50',
+	/\.pkfa-rail-sort-menu\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?z-index: var\(--pk-z-popover\) !important/,
+	'sort menu must stay inside File Atlas and above its content',
+);
+assert.match(css, /grid-template-rows:\s*42px auto 42px auto 46px minmax\(0, 1fr\) auto;/);
+assert.match(css, /\[data-subview="graph"\] \.pkfa-content\s*\{[\s\S]*?grid-template-rows:\s*42px auto 42px minmax\(0, 1fr\);/);
+assert.match(panel, /className="pkfa-document-context-slot"/);
+assert.match(panel, /type: 'select'; id: string \| null/);
+assert.match(panel, /dispatch\(\{ type: 'select', id: firstVisibleId \}\)/);
+assert.match(panel, /<div className="pkfa-empty-state">\{s\.treeEmpty\}<\/div>/);
+assert.match(
+	css,
+	/\.peak-file-atlas-modal\.pkfa-root \.pkfa-bar-icon-btn\s*\{[\s\S]*?width:\s*30px !important;[\s\S]*?height:\s*30px !important;[\s\S]*?border:\s*1px solid var\(--pk-border\) !important;[\s\S]*?color:\s*var\(--pk-text-secondary\) !important;/,
+	'File Atlas icon controls must defeat the Obsidian reset and remain visible',
 );
 
 console.log('PASS: File Atlas owner-review interaction and layout contract');
