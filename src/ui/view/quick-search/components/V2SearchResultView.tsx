@@ -5,6 +5,7 @@ import { V2ProcessView } from './V2ProcessView';
 import { V2ReportView } from './V2ReportView';
 import { V2SourcesView } from './V2SourcesView';
 import { V2ScrollButtons } from './V2ScrollButtons';
+import { cn } from '@/ui/react/lib/utils';
 
 interface V2SearchResultViewProps {
     onClose?: () => void;
@@ -38,7 +39,15 @@ export const V2SearchResultView: React.FC<V2SearchResultViewProps> = ({ onClose,
 
     return (
         <div className="pktw-flex pktw-flex-col pktw-h-full pktw-relative">
-            <div ref={containerRef} className="pktw-flex-1 pktw-overflow-y-auto pktw-min-h-0">
+            <div
+                ref={containerRef}
+                className={cn(
+                    'pktw-flex-1 pktw-min-h-0',
+                    activeView === 'sources'
+                        ? 'pktw-flex pktw-flex-col pktw-overflow-hidden'
+                        : 'pktw-overflow-y-auto',
+                )}
+            >
                 <AnimatePresence mode="wait">
                     {activeView === 'process' && <V2ProcessView key="process" onApprove={onApprove} />}
                     {activeView === 'report' && <V2ReportView key="report" onRegenerateSection={onRegenerateSection} onAskSection={onAskSection} />}

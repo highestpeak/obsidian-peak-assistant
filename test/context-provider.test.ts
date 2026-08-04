@@ -163,6 +163,34 @@ test('fillVaultContext: null activeFile returns minimal context', () => {
 	assert.equal(ctx.recentFolders, 'notes');
 });
 
+test('fillVaultContext: ignored machine records never enter user-facing context', () => {
+	const machineFile = mockFile({
+		basename: 'events',
+		path: 'ChatFolder/DataStore/records/hubs/legacy/events.jsonl',
+		parentPath: 'ChatFolder/DataStore/records/hubs/legacy',
+	});
+	const ctx = fillVaultContext({
+		activeFile: machineFile,
+		metadata: null,
+		backlinks: [
+			'ChatFolder/DataStore/records/hubs/legacy/manifest.json',
+			'Notes/Visible backlink.md',
+		],
+		recentFiles: [
+			'ChatFolder/DataStore/records/hubs/legacy/events.jsonl',
+			'Notes/Visible note.md',
+		],
+		vaultName: 'TestVault',
+		ignorePatterns: ['ChatFolder/DataStore/'],
+	});
+
+	assert.equal(ctx.activeDocumentTitle, null);
+	assert.equal(ctx.activeDocumentPath, null);
+	assert.equal(ctx.recentDocuments, 'Notes/Visible note.md');
+	assert.equal(ctx.recentFolders, 'Notes');
+	assert.equal(ctx.backlinks, 'Notes/Visible backlink.md');
+});
+
 // ---------------------------------------------------------------------------
 // Tests: tags as string (not array)
 // ---------------------------------------------------------------------------

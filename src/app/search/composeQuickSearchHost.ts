@@ -253,7 +253,7 @@ export function composeQuickSearchHost(
 			aiServiceManager: manager,
 		}),
 		createGraphAgent: () => new GraphAgent(app, plugin.manifest.id),
-		createContextProvider: () => new ContextProvider(app),
+		createContextProvider: () => new ContextProvider(app, search.ignorePatterns),
 		// Debug trace plumbing: remember the most recently constructed
 		// orchestrator so explicit Markdown export can attach an artifact span.
 		// Final sealing remains with useSearchSession.handleApprovePlan.

@@ -87,4 +87,11 @@ assert(
 	'Sources graph-kind and scope segments must align with Result Browser toolbar geometry',
 );
 
+const peakComponents = readFileSync('src/styles/peak-components.css', 'utf8');
+assert.match(
+	peakComponents,
+	/:is\(\.pktw-root, \.peak-design-root\) \.pk-ai-workspace-trigger\s*\{[\s\S]*?width:\s*100% !important;[\s\S]*?min-width:\s*0 !important;[\s\S]*?max-width:\s*none !important;/,
+	'the AI workspace selector must keep its full half-tab width under the Obsidian button reset',
+);
+
 console.log('ai-search-button-geometry: passed');

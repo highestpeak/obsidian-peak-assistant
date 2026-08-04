@@ -10,6 +10,7 @@ export type V2TimelineItem =
 export interface V2Source {
 	path: string;
 	title: string;
+	/** Agent evidence-read timestamp. Never present this as the Vault file modification time. */
 	readAt: number;
 	reasoning?: string;
 }

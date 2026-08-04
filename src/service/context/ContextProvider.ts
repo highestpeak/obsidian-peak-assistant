@@ -1,6 +1,7 @@
 import type { AppHandle as App } from '@/core/ports/AppHandle';
 import type { VaultFileRef as TFile } from '@/core/ports/VaultFileRef';
 import type { CachedMetadataSnapshot as CachedMetadata } from '@/core/ports/HostMetadataPort';
+import { createIgnoreMatcher } from '@/core/utils/IgnoreMatcher';
 
 export interface VaultContext {
 	activeDocumentTitle: string | null;
@@ -26,6 +27,7 @@ export interface FillParams {
 	backlinks: string[];
 	recentFiles: string[];
 	vaultName: string;
+	ignorePatterns?: string[];
 }
 
 function dedupe<T>(items: T[]): T[] {
@@ -38,17 +40,23 @@ function folderOf(filePath: string): string {
 }
 
 export function fillVaultContext(params: FillParams): VaultContext {
-	const { activeFile, metadata, backlinks, recentFiles, vaultName } = params;
+	const { activeFile, metadata, backlinks, recentFiles, vaultName, ignorePatterns = [] } = params;
+	const ignoreMatcher = createIgnoreMatcher(ignorePatterns);
+	const contextFile = activeFile && !ignoreMatcher.shouldIgnore(activeFile.path)
+		? activeFile
+		: null;
+	const visibleRecentFiles = ignoreMatcher.filterPaths(recentFiles);
+	const visibleBacklinks = ignoreMatcher.filterPaths(backlinks);
 
 	// recentDocuments — top 5 paths
-	const top5Recent = recentFiles.slice(0, 5);
+	const top5Recent = visibleRecentFiles.slice(0, 5);
 	const recentDocuments = top5Recent.length > 0 ? top5Recent.join(', ') : null;
 
 	// recentFolders — deduplicated folders from recentFiles, top 5
-	const recentFolderList = dedupe(recentFiles.map(folderOf).filter((f) => f !== '')).slice(0, 5);
+	const recentFolderList = dedupe(visibleRecentFiles.map(folderOf).filter((f) => f !== '')).slice(0, 5);
 	const recentFolders = recentFolderList.length > 0 ? recentFolderList.join(', ') : null;
 
-	if (!activeFile) {
+	if (!contextFile) {
 		return {
 			activeDocumentTitle: null,
 			activeDocumentPath: null,
@@ -60,7 +68,7 @@ export function fillVaultContext(params: FillParams): VaultContext {
 			frontmatterProperties: null,
 			documentType: null,
 			outgoingLinks: null,
-			backlinks: backlinks.length > 0 ? backlinks.join(', ') : null,
+			backlinks: visibleBacklinks.length > 0 ? visibleBacklinks.join(', ') : null,
 			linkContext: null,
 			recentDocuments,
 			recentFolders,
@@ -85,7 +93,7 @@ export function fillVaultContext(params: FillParams): VaultContext {
 	const headingTexts = headings
 		.filter((h) => h.level === 1 || h.level === 2)
 		.map((h) => h.heading);
-	const keywordCandidates = dedupe([activeFile.basename, ...headingTexts]).slice(0, 5);
+	const keywordCandidates = dedupe([contextFile.basename, ...headingTexts]).slice(0, 5);
 	const documentKeywords = keywordCandidates.length > 0 ? keywordCandidates.join(', ') : null;
 
 	// firstHeading — first H1
@@ -109,22 +117,22 @@ export function fillVaultContext(params: FillParams): VaultContext {
 	const outgoingLinks = links.length > 0 ? links.map((l) => l.link).join(', ') : null;
 
 	// backlinks
-	const backlinkStr = backlinks.length > 0 ? backlinks.join(', ') : null;
+	const backlinkStr = visibleBacklinks.length > 0 ? visibleBacklinks.join(', ') : null;
 
 	// documentAge — days since ctime
 	let documentAge: string | null = null;
-	if (activeFile.stat?.ctime != null) {
+	if (contextFile.stat?.ctime != null) {
 		const msPerDay = 1000 * 60 * 60 * 24;
-		const days = Math.floor((Date.now() - activeFile.stat.ctime) / msPerDay);
+		const days = Math.floor((Date.now() - contextFile.stat.ctime) / msPerDay);
 		documentAge = String(days);
 	}
 
 	// currentFolder
-	const currentFolder = activeFile.parent?.path ?? folderOf(activeFile.path) ?? null;
+	const currentFolder = contextFile.parent?.path ?? folderOf(contextFile.path) ?? null;
 
 	return {
-		activeDocumentTitle: activeFile.basename,
-		activeDocumentPath: activeFile.path,
+		activeDocumentTitle: contextFile.basename,
+		activeDocumentPath: contextFile.path,
 		currentFolder: currentFolder || null,
 		documentTags,
 		vaultName,
@@ -142,7 +150,10 @@ export function fillVaultContext(params: FillParams): VaultContext {
 }
 
 export class ContextProvider {
-	constructor(private readonly app: App) {}
+	constructor(
+		private readonly app: App,
+		private readonly ignorePatterns: string[] = [],
+	) {}
 
 	collect(): VaultContext {
 		const activeFile = this.app.workspace.getActiveFile();
@@ -172,6 +183,7 @@ export class ContextProvider {
 			backlinks,
 			recentFiles,
 			vaultName,
+			ignorePatterns: this.ignorePatterns,
 		});
 	}
 }

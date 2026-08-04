@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Notice } from 'obsidian';
 import { motion } from 'framer-motion';
-import { Check, Copy, Database, FileText, Loader2, Pencil } from 'lucide-react';
-import type { SearchResultItem } from '@/core/search/searchTypes';
+import { Check, Copy, Database, FileText, Loader2, Network, Pencil } from 'lucide-react';
 import type { ResultSubgraphOutput } from '@/service/search/graph/resultSubgraph';
 import {
 	ResultBrowserDensityToggle,
@@ -31,33 +30,15 @@ import {
 	isSourcesDensityVisible,
 	resolveSourcesKeyboardIntent,
 } from './v2SourcesInteraction';
+import { sourcesToResultItems } from './sourceEvidenceAdapter';
+
+export { sourcesToResultItems } from './sourceEvidenceAdapter';
 
 type GraphKind = 'vault' | 'ai';
 type VaultGraphScope = 'evidence' | 'one-hop' | 'two-hop';
 
 interface V2SourcesViewProps {
 	onClose?: () => void;
-}
-
-/** Adapter only: the shared Result Browser remains the single projection UI. */
-export function sourcesToResultItems(sources: readonly V2Source[]): SearchResultItem[] {
-	const total = Math.max(1, sources.length);
-	return sources.map((source, index) => {
-		const score = (total - index) / total;
-		return {
-			id: source.path,
-			type: 'markdown',
-			title: source.title,
-			path: source.path,
-			lastModified: source.readAt,
-			content: source.reasoning,
-			highlight: source.reasoning ? { text: source.reasoning } : null,
-			score,
-			finalScore: score,
-			displayScorePercent: Math.round(score * 100),
-			source: 'local',
-		};
-	});
 }
 
 const SegmentedButton: React.FC<{
@@ -140,10 +121,9 @@ const AIRelationshipMap: React.FC<{
 		[sources, selectedPaths],
 	);
 	const sourceItems = useMemo(
-		() => selectedSources.map((source, index) => ({
+		() => selectedSources.map((source) => ({
 			path: source.path,
 			title: source.title,
-			score: selectedSources.length - index,
 		})),
 		[selectedSources],
 	);
@@ -248,6 +228,43 @@ const AIRelationshipMap: React.FC<{
 	);
 };
 
+function VaultRelationshipEmptyState({
+	sourceCount,
+	scope,
+	onExpand,
+	onOpenAIMap,
+}: {
+	sourceCount: number;
+	scope: VaultGraphScope;
+	onExpand(): void;
+	onOpenAIMap(): void;
+}): React.ReactElement {
+	const canExpand = scope !== 'two-hop';
+	return (
+		<div className="pk-ai-sources-empty-graph">
+			<div className="pk-ai-sources-empty-graph-icon" aria-hidden>
+				<Network />
+			</div>
+			<span className="pk-ai-sources-empty-graph-title">
+				{sourceCount} sources · 0 Vault relationships
+			</span>
+			<span className="pk-ai-sources-empty-graph-copy">
+				No links were found in the current scope. Expand the Vault neighborhood or generate an AI relationship map.
+			</span>
+			<div className="pk-ai-sources-empty-graph-actions">
+				{canExpand && (
+					<Button variant="outline" geometry="action" onClick={onExpand}>
+						Explore {scope === 'evidence' ? '1-hop' : '2-hop'}
+					</Button>
+				)}
+				<Button variant="outline" geometry="action" onClick={onOpenAIMap}>
+					AI relationship map
+				</Button>
+			</div>
+		</div>
+	);
+}
+
 export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 	const { vaultNavigation } = useServiceContext();
 	const host = useQuickSearchHost();
@@ -271,13 +288,23 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 	const rootRef = useRef<HTMLDivElement>(null);
 	const projectionRef = useRef<HTMLDivElement>(null);
 	const itemRefs = useRef<Map<number, HTMLDivElement | null>>(new Map());
-	const results = useMemo(() => sourcesToResultItems(sources), [sources]);
+	const lastModifiedByPath = useMemo(() => new Map(
+		sources.map((source) => [
+			source.path,
+			host.findFileByPath(source.path)?.stat.mtime ?? 0,
+		]),
+	), [host, sources]);
+	const results = useMemo(
+		() => sourcesToResultItems(sources, lastModifiedByPath),
+		[lastModifiedByPath, sources],
+	);
 	const pathsKey = sources.map((source) => source.path).join('|');
 	const selectedPath = view === 'tree'
 		? cursor ?? results[0]?.path ?? null
 		: view === 'graph'
 			? graphSelectedPath ?? results[0]?.path ?? null
 			: results[selectedIndex]?.path ?? results[0]?.path ?? null;
+	const hasVaultRelationships = (subgraph?.edges.length ?? 0) > 0;
 
 	const focusSourcesProjection = useCallback((): void => {
 		projectionRef.current?.focus({ preventScroll: true });
@@ -426,49 +453,64 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 			initial={{ opacity: 0 }}
 			animate={{ opacity: 1 }}
 			exit={{ opacity: 0 }}
-			className="pktw-flex pktw-min-h-0 pktw-flex-col pktw-gap-2 pktw-px-1 pktw-py-1"
+			className="pktw-flex pktw-min-h-0 pktw-flex-1 pktw-flex-col pktw-gap-2 pktw-px-1 pktw-py-1"
 		>
-			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-pk-surface-raised pktw-p-1.5">
-				<ResultBrowserViewToggle view={view} onViewChange={setView} />
-				{view === 'graph' && <GraphKindToggle value={graphKind} onChange={setGraphKind} />}
-				<div className="pktw-flex-1" />
-				{isSourcesDensityVisible(view) && (
-					<ResultBrowserDensityToggle density={density} onDensityChange={setDensity} />
-				)}
+			<div className="pk-ai-sources-toolbar">
+				<div className="pk-ai-sources-summary">
+					<FileText aria-hidden />
+					<div>
+						<span>{sources.length} cited files</span>
+						<small>Evidence used by this analysis</small>
+					</div>
+				</div>
+				<div className="pk-ai-sources-toolbar-controls">
+					<ResultBrowserViewToggle view={view} onViewChange={setView} />
+					{view === 'graph' && <GraphKindToggle value={graphKind} onChange={setGraphKind} />}
+					{isSourcesDensityVisible(view) && (
+						<ResultBrowserDensityToggle density={density} onDensityChange={setDensity} />
+					)}
+					<Button
+						variant="ghost"
+						geometry="toolbar-icon"
+						onClick={() => void copySourcePaths()}
+						title="Copy source links"
+						aria-label="Copy source links"
+					>
+						<Copy />
+					</Button>
+				</div>
 			</div>
 
 			{view === 'graph' && graphKind === 'vault' && (
 				<div className="pktw-flex pktw-flex-wrap pktw-items-center pktw-gap-3 pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-pk-background pktw-p-2">
 					<ScopeToggle value={graphScope} onChange={setGraphScope} />
 					<div className="pktw-flex-1" />
-					<ResultBrowserGraphControls
-						preset={graphPreset}
-						onPresetChange={setGraphPreset}
-						semantic={semantic}
-						onSemanticChange={setSemantic}
-					/>
-					<Button
-						variant="ghost"
-						size="sm"
-						geometry="toolbar"
-						onClick={() => void copySourcePaths()}
-						className="pktw-gap-1.5 pktw-rounded-md"
-					>
-						<Copy className="pktw-h-4 pktw-w-4" />
-						Copy source links
-					</Button>
+					{hasVaultRelationships && (
+						<ResultBrowserGraphControls
+							preset={graphPreset}
+							onPresetChange={setGraphPreset}
+							semantic={semantic}
+							onSemanticChange={setSemantic}
+						/>
+					)}
 				</div>
 			)}
 
 			<div
 				ref={projectionRef}
 				data-v2-sources-projection
+				data-view={view}
 				tabIndex={0}
-				className="pktw-flex pktw-h-[540px] pktw-min-h-0 pktw-overflow-hidden pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-pk-background focus-visible:pktw-outline-none focus-visible:pktw-ring-2 focus-visible:pktw-ring-pk-accent/30"
+				className={cn(
+					'pk-ai-sources-projection pktw-flex pktw-min-h-0 pktw-overflow-hidden pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-pk-background focus-visible:pktw-outline-none focus-visible:pktw-ring-2 focus-visible:pktw-ring-pk-accent/30',
+					view === 'graph'
+						? 'pk-ai-sources-projection--graph'
+						: 'pk-ai-sources-projection--content',
+				)}
 			>
 				<div className="pktw-min-w-0 pktw-flex-1 pktw-overflow-hidden">
 					{view === 'list' && (
-						<div className="pktw-h-full pktw-overflow-y-auto pktw-py-2">
+						<div className="pk-ai-sources-list pktw-overflow-y-auto pktw-py-2">
 							{results.map((result, index) => (
 								<ResultBrowserListRow
 									key={result.path}
@@ -514,16 +556,27 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 									<span className="pktw-text-xs pktw-text-pk-foreground-muted">Resolving Vault relations…</span>
 								</div>
 							)}
-							<ResultBrowserGraph
-								subgraph={subgraph}
-								preset={graphPreset}
-								semantic={semantic}
-								onNodeTap={(node) => {
-									selectPath(node.path);
-									projectionRef.current?.focus();
-								}}
-								onNodeDblTap={(node) => handleOpen(node.path)}
-							/>
+							{!graphLoading && subgraph && !hasVaultRelationships ? (
+								<VaultRelationshipEmptyState
+									sourceCount={sources.length}
+									scope={graphScope}
+									onExpand={() => setGraphScope(
+										graphScope === 'evidence' ? 'one-hop' : 'two-hop',
+									)}
+									onOpenAIMap={() => setGraphKind('ai')}
+								/>
+							) : (
+								<ResultBrowserGraph
+									subgraph={subgraph}
+									preset={graphPreset}
+									semantic={semantic}
+									onNodeTap={(node) => {
+										selectPath(node.path);
+										projectionRef.current?.focus();
+									}}
+									onNodeDblTap={(node) => handleOpen(node.path)}
+								/>
+							)}
 						</div>
 					)}
 

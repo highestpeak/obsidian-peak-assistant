@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { VaultSearchTab, VaultSearchFooterHints } from './tab-VaultSearch';
 import { AISearchTab } from './tab-AISearch';
 import type { VaultReviewHistoryRecord } from '@/service/copilot/vault/VaultReviewReportService';
-import { Search, Sparkles, Globe, X, RotateCcw, Library, Network, ChevronDown, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Search, Sparkles, Globe, X, Library, Network, ChevronDown, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { suggestHistoryStore, type SuggestHistoryEntry } from '@/ui/view/quick-search/rewrite/SuggestHistoryStore';
 import { Button } from '@/ui/component/shared-ui/button';
 import { CodeMirrorInput } from '@/ui/component/mine/codemirror-input';
@@ -11,7 +11,7 @@ import { useServiceContext } from '@/ui/context/ServiceContext';
 import { GlobeOff } from '@/ui/component/icon';
 import { useSharedStore, useVaultSearchStore } from './store';
 import { loadCompletedAnalysisSnapshot } from './store/aiAnalysisStore';
-import { useSearchSessionStore } from './store/searchSessionStore';
+import { useSearchSessionStore, type SessionStatus } from './store/searchSessionStore';
 import { useAIGraphStore } from './store/aiGraphStore';
 import type { AnalysisMode } from './store/aiAnalysisStore';
 import type { QuickSearchMode } from './store/vaultSearchStore';
@@ -92,13 +92,67 @@ interface AITabContentProps {
 	mode: Exclude<AIWorkspaceMode, 'vault-intelligence'>;
 }
 
-/**
- * AI Analysis tab: input row (mode, web, Clear/Re-analyze/Cancel/Analyze) + AISearchTab content.
- */
+/** AI workspace with an editable landing composer and compact in-run context. */
 export const PRESET_LABELS: Record<AnalysisMode, { short: string; full: string; placeholder: string }> = {
 	vaultFull: { short: 'Vault analysis', full: 'Vault analysis · Deep analysis of the whole vault.', placeholder: 'Ask AI anything about your vault...' },
 	aiGraph: { short: 'AI graph', full: 'AI graph · Build an interactive knowledge graph.', placeholder: 'Describe the knowledge graph you want to build...' },
 };
+
+function AIAnalysisQueryBar({
+	mode,
+	query,
+	status,
+	webEnabled,
+	onCancel,
+	onNewAnalysis,
+}: {
+	mode: Exclude<AIWorkspaceMode, 'vault-intelligence'>;
+	query: string;
+	status: SessionStatus;
+	webEnabled: boolean;
+	onCancel(): void;
+	onNewAnalysis(): void;
+}): React.ReactElement {
+	const running = status === 'starting' || status === 'streaming';
+	return (
+		<div className="pk-ai-analysis-query-bar" aria-label="Current AI analysis">
+			<div className="pk-ai-analysis-query-icon" aria-hidden>
+				<Sparkles />
+			</div>
+			<div className="pk-ai-analysis-query-copy">
+				<div className="pk-ai-analysis-query-meta">
+					<span>{mode === 'graph' ? 'AI graph' : 'Vault analysis'}</span>
+					<span>{running ? 'Analysis in progress' : 'Analysis context'}</span>
+					{webEnabled && <span>Web enabled</span>}
+				</div>
+				<span className="pk-ai-analysis-query-text" title={query}>{query}</span>
+			</div>
+			{running ? (
+				<Button
+					variant="outline"
+					geometry="action"
+					type="button"
+					onClick={onCancel}
+					className="pk-ai-analysis-query-action"
+				>
+					<X />
+					Cancel
+				</Button>
+			) : (
+				<Button
+					variant="outline"
+					geometry="action"
+					type="button"
+					onClick={onNewAnalysis}
+					className="pk-ai-analysis-query-action"
+				>
+					<Sparkles />
+					New analysis
+				</Button>
+			)}
+		</div>
+	);
+}
 
 const AITabContent: React.FC<AITabContentProps> = ({ onClose, mode }) => {
 	const { eventBus } = useServiceContext();
@@ -113,8 +167,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, mode }) => {
 	const webEnabled = useSearchSessionStore((s) => s.webEnabled);
 	const toggleWeb = useSearchSessionStore((s) => s.toggleWeb);
 	const sessionStatus = useSearchSessionStore((s) => s.status);
-	const isInputFrozen = useSearchSessionStore((s) => s.isInputFrozen);
-	const hasAnalyzed = useSearchSessionStore((s) => s.hasAnalyzed);
+	const runQuery = useSearchSessionStore((s) => s.query);
 	const setAiModalOpen = useSearchSessionStore((s) => s.setAiModalOpen);
 	const setAnalysisMode = useSearchSessionStore((s) => s.setAnalysisMode);
 	const { performAnalysis, cancel, restoreFromBackground } = useSearchSession();
@@ -129,9 +182,6 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, mode }) => {
 		if (pendingId) restoreFromBackground(pendingId);
 	}, [restoreFromBackground, host.quickSearchRuntime]);
 
-	const isAnalyzing = sessionStatus === 'starting' || sessionStatus === 'streaming';
-	const analysisCompleted = sessionStatus === 'completed';
-	const hasResult = hasAnalyzed || analysisCompleted;
 	const handleAnalyze = () => {
 		if (!searchQuery.trim()) return;
 		useSharedStore.getState().addRecentQuery(searchQuery.trim());
@@ -139,6 +189,10 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, mode }) => {
 			eventBus.dispatch(new SearchQueryEvent({ query: searchQuery.trim() }));
 		} catch { /* EventBus may not be initialized */ }
 		performAnalysis(undefined);
+	};
+	const handleNewAnalysis = (): void => {
+		useSearchSessionStore.getState().resetAll();
+		useSharedStore.getState().setSearchQuery('');
 	};
 
 	useEffect(() => {
@@ -217,29 +271,29 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, mode }) => {
 	}, []);
 
 	return (
-			<>
+		<>
+			{sessionStatus === 'idle' ? (
 				<div className="pktw-flex-shrink-0 pktw-p-2 pktw-bg-pk-background pktw-border-b pktw-border-pk-border">
-					<div className="pktw-flex pktw-gap-2 pktw-items-center">
-						<div className="pktw-relative pktw-flex-1 pktw-min-w-0">
-							<AIInstructionComposer
-								surface={mode === 'graph' ? 'ai-graph' : 'ai-search'}
-								capabilityId={mode === 'graph' ? 'ai-graph.create' : 'ai-search.run'}
-								value={searchQuery}
-								onValueChange={setSearchQuery}
-								onSubmit={() => handleAnalyze()}
-								onStop={cancel}
-								status={isAnalyzing ? 'streaming' : isInputFrozen ? 'submitting' : 'idle'}
-								placeholder={mode === 'graph'
-									? PRESET_LABELS.aiGraph.placeholder
-									: 'Ask AI anything about your vault...'}
-								compact
-								autoFocus
-								trailingControls={!isMobile() ? (
-									<>
-										{mode === 'graph' && (
-											<label className="pk-ai-graph-type-field">
-												<span className="sr-only">Graph type</span>
-												<select
+					<div className="pktw-relative pktw-min-w-0">
+						<AIInstructionComposer
+							surface={mode === 'graph' ? 'ai-graph' : 'ai-search'}
+							capabilityId={mode === 'graph' ? 'ai-graph.create' : 'ai-search.run'}
+							value={searchQuery}
+							onValueChange={setSearchQuery}
+							onSubmit={() => handleAnalyze()}
+							onStop={cancel}
+							status="idle"
+							placeholder={mode === 'graph'
+								? PRESET_LABELS.aiGraph.placeholder
+								: 'Ask AI anything about your vault...'}
+							compact
+							autoFocus
+							trailingControls={!isMobile() ? (
+								<>
+									{mode === 'graph' && (
+										<label className="pk-ai-graph-type-field">
+											<span className="sr-only">Graph type</span>
+											<select
 													aria-label="Graph type"
 													value={graphType}
 													onChange={(event) => setGraphType(
@@ -252,10 +306,10 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, mode }) => {
 													<option value="evidence">Evidence</option>
 													<option value="causal">Causal</option>
 													<option value="timeline">Timeline</option>
-												</select>
-											</label>
-										)}
-										<Button
+											</select>
+										</label>
+									)}
+									<Button
 											variant="ghost"
 											geometry="action-icon"
 											type="button"
@@ -270,56 +324,10 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, mode }) => {
 											aria-label={webEnabled ? 'Disable Web search' : 'Enable Web search'}
 										>
 											{webEnabled ? <Globe className="pktw-w-5 pktw-h-5" /> : <GlobeOff className="pktw-w-5 pktw-h-5" />}
-										</Button>
-									</>
-								) : undefined}
-							/>
-							</div>
-							<div className="pktw-flex pktw-items-center pktw-gap-2">
-						{!isAnalyzing && hasResult && (
-							<Button
-								onClick={() => { useSearchSessionStore.getState().resetAll(); useSharedStore.getState().setSearchQuery(''); }}
-								variant="outline"
-								className="pktw-shadow-none pktw-px-4 pktw-py-2.5 pktw-whitespace-nowrap !pktw-rounded-md pktw-border-pk-border pktw-bg-pk-background pktw-text-pk-text-secondary pktw-cursor-pointer"
-								title="Clear current AI analysis result (in-memory)"
-							>
-								Clear
-							</Button>
-						)}
-						{!isAnalyzing && hasResult && (
-							<Button
-								onClick={handleAnalyze}
-								disabled={!searchQuery.trim()}
-								variant="outline"
-								className="pktw-shadow-none pktw-px-3 pktw-py-2.5 pktw-whitespace-nowrap !pktw-rounded-md pktw-border-pk-accent/25 pktw-bg-pk-background pktw-text-pk-accent pktw-cursor-pointer"
-								title="Re-run AI analysis"
-							>
-								<RotateCcw className="pktw-w-4 pktw-h-4" />
-								<span className="pktw-ml-2">Re-analyze</span>
-							</Button>
-						)}
-						{isAnalyzing && (
-							<Button
-								onClick={cancel}
-								className="pktw-shadow-none pktw-px-5 pktw-py-2.5 pktw-whitespace-nowrap !pktw-rounded-md pktw-bg-pk-background pktw-text-pk-accent pktw-border pktw-border-pk-accent/30 hover:pktw-bg-pk-highlight pktw-cursor-pointer"
-								title="Cancel analysis"
-							>
-								<X className="pktw-w-4 pktw-h-4" />
-								<span className="pktw-ml-2">Cancel</span>
-							</Button>
-						)}
-						{!isAnalyzing && !hasResult && searchQuery.trim() && (
-							<Button
-								onClick={handleAnalyze}
-								geometry="prominent"
-								className="pktw-shadow-none !pktw-rounded-full pktw-whitespace-nowrap pktw-bg-pk-accent pktw-text-pk-text-inverted hover:pktw-bg-pk-accent-hover pktw-cursor-pointer"
-								title="Start AI analysis"
-							>
-								<Sparkles className="pktw-w-4 pktw-h-4" />
-								<span className="pktw-ml-2">Analyze</span>
-							</Button>
-						)}
-						</div>
+									</Button>
+								</>
+							) : undefined}
+						/>
 					</div>
 					{mode === 'graph' && (
 						<div className="pk-ai-graph-create-policy" role="status">
@@ -345,12 +353,22 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, mode }) => {
 						/>
 					)}
 				</div>
-				{sessionStatus === 'idle' && (
-					<div className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto pktw-py-3">
-						{mode === 'graph' ? (
-							<AIGraphHistoryPanel />
-						) : (
-							<>
+			) : (
+				<AIAnalysisQueryBar
+					mode={mode}
+					query={runQuery || searchQuery}
+					status={sessionStatus}
+					webEnabled={webEnabled}
+					onCancel={cancel}
+					onNewAnalysis={handleNewAnalysis}
+				/>
+			)}
+			{sessionStatus === 'idle' && (
+				<div className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto pktw-py-3">
+					{mode === 'graph' ? (
+						<AIGraphHistoryPanel />
+					) : (
+						<>
 								<ActiveSessionsList onRestore={restoreFromBackground} />
 								{!searchQuery.trim() && (
 									<RecentQueriesDropdown
@@ -392,10 +410,10 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, mode }) => {
 									}}
 									onSelectRecord={openSavedAnalysis}
 								/>
-							</>
-						)}
-					</div>
-				)}
+						</>
+					)}
+				</div>
+			)}
 			{/* Only render AISearchTab when NOT showing the idle landing — avoids competing scroll zones */}
 			{sessionStatus !== 'idle' && (
 				<div className="pktw-flex-1 pktw-min-h-0 pktw-bg-pk-background pktw-overflow-visible pktw-flex pktw-flex-col">
@@ -407,7 +425,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, mode }) => {
 					<div className="pktw-flex pktw-items-center pktw-gap-4 pktw-text-xs pktw-text-pk-text-tertiary">
 						<span>↑↓ Navigate</span>
 						<span>↵ Run</span>
-							<span>Tab Navigate</span>
+						<span>Tab Navigate</span>
 					</div>
 					<span className="pktw-text-xs pktw-text-pk-foreground-muted">
 						Current context stays visible before the run
