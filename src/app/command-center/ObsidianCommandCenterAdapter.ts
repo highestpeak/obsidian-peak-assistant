@@ -1,9 +1,11 @@
 import { Notice, TFile, type App, type Command } from 'obsidian';
 import type MyPlugin from 'main';
 import {
+	COMMAND_CENTER_CATALOG_DEFAULTS,
 	commandCenterActionKey,
 	type CommandCenterAction,
 	type CommandCenterCatalogEntry,
+	type CommandCenterCatalogScope,
 	type CommandCenterItemIcon,
 	type CommandCenterRecentTarget,
 } from '@/core/command-center';
@@ -100,46 +102,81 @@ export class ObsidianCommandCenterAdapter {
 		return this.getCommand(action) !== null;
 	}
 
-	listCatalog(query = ''): CommandCenterCatalogEntry[] {
+	destinationAvailable(action: CommandCenterAction): boolean {
+		if (action.kind === 'vault-target') {
+			return this.app.vault.getAbstractFileByPath(action.path) instanceof TFile;
+		}
+		if (action.kind === 'bookmark') {
+			if (action.path) return this.app.vault.getAbstractFileByPath(action.path) instanceof TFile;
+			const plugin = (this.app as App & { internalPlugins?: any }).internalPlugins?.getPluginById?.('bookmarks');
+			const roots = plugin?.instance?.items;
+			if (!Array.isArray(roots)) return false;
+			const records: BookmarkRecord[] = [];
+			flattenBookmarks(roots, records);
+			return records.some((record) => (record.id || record.path) === action.bookmarkId);
+		}
+		if (action.kind === 'workspace') {
+			const plugin = (this.app as App & { internalPlugins?: any }).internalPlugins?.getPluginById?.('workspaces');
+			return Boolean(plugin?.instance?.workspaces?.[action.workspaceName]);
+		}
+		if (action.kind === 'view') return true;
+		return this.commandAvailable(action);
+	}
+
+	listCatalog(
+		query = '',
+		scope: CommandCenterCatalogScope | 'all' = 'all',
+	): CommandCenterCatalogEntry[] {
 		const normalizedQuery = query.trim().toLocaleLowerCase();
 		const entries: CommandCenterCatalogEntry[] = [];
-		for (const command of this.commandMap().values()) {
-			const peakPrefix = `${this.plugin.manifest.id}:`;
-			const isPeak = command.id.startsWith(peakPrefix);
-			const action: CommandCenterAction = isPeak
-				? { kind: 'peak-command', commandId: command.id.slice(peakPrefix.length) }
-				: { kind: 'obsidian-command', commandId: command.id, pluginId: command.id.split(':')[0] };
-			const sourceLabel = sourceFromCommandId(command.id, this.plugin.manifest.id);
-			if (!this.matches(normalizedQuery, command.name, sourceLabel, command.id)) continue;
-			entries.push({
-				key: commandCenterActionKey(action),
-				action,
-				label: command.name,
-				sourceLabel,
-				layer: 'command',
-				available: true,
-				hotkey: this.resolveHotkey(action),
-			});
+		if (scope === 'all' || scope === 'commands') {
+			for (const command of this.commandMap().values()) {
+				const peakPrefix = `${this.plugin.manifest.id}:`;
+				const isPeak = command.id.startsWith(peakPrefix);
+				const action: CommandCenterAction = isPeak
+					? { kind: 'peak-command', commandId: command.id.slice(peakPrefix.length) }
+					: { kind: 'obsidian-command', commandId: command.id, pluginId: command.id.split(':')[0] };
+				const sourceLabel = sourceFromCommandId(command.id, this.plugin.manifest.id);
+				if (!this.matches(normalizedQuery, command.name, sourceLabel, command.id)) continue;
+				entries.push({
+					key: commandCenterActionKey(action),
+					action,
+					label: command.name,
+					sourceLabel,
+					layer: 'command',
+					available: true,
+					hotkey: this.resolveHotkey(action),
+				});
+			}
 		}
 
-		for (const view of VIEW_CATALOG) {
-			const action: CommandCenterAction = { kind: 'view', viewType: view.viewType };
-			if (!this.matches(normalizedQuery, view.label, 'Peak view', view.viewType)) continue;
-			entries.push({
-				key: commandCenterActionKey(action),
-				action,
-				label: view.label,
-				sourceLabel: 'Peak view',
-				icon: view.icon,
-				layer: 'destination',
-				available: true,
-				hotkey: null,
-			});
+		if (scope === 'all' || scope === 'workspaces-views') {
+			for (const view of VIEW_CATALOG) {
+				const action: CommandCenterAction = { kind: 'view', viewType: view.viewType };
+				if (!this.matches(normalizedQuery, view.label, 'Peak view', view.viewType)) continue;
+				entries.push({
+					key: commandCenterActionKey(action),
+					action,
+					label: view.label,
+					sourceLabel: 'Peak view',
+					icon: view.icon,
+					layer: 'destination',
+					available: true,
+					hotkey: null,
+				});
+			}
+			this.appendWorkspaceEntries(entries, normalizedQuery);
 		}
 
-		this.appendWorkspaceEntries(entries, normalizedQuery);
-		this.appendBookmarkEntries(entries, normalizedQuery);
-		if (normalizedQuery.length >= 2) this.appendVaultEntries(entries, normalizedQuery);
+		if (scope === 'all' || scope === 'bookmarks') {
+			this.appendBookmarkEntries(entries, normalizedQuery);
+		}
+		if (
+			(scope === 'all' || scope === 'documents')
+			&& normalizedQuery.length >= COMMAND_CENTER_CATALOG_DEFAULTS.minimumDocumentQueryLength
+		) {
+			this.appendVaultEntries(entries, normalizedQuery);
+		}
 		return entries.sort((a, b) => {
 			if (a.layer !== b.layer) return a.layer === 'destination' ? -1 : 1;
 			return a.label.localeCompare(b.label);
@@ -194,8 +231,18 @@ export class ObsidianCommandCenterAdapter {
 	}
 
 	private appendVaultEntries(entries: CommandCenterCatalogEntry[], query: string): void {
-		for (const file of this.app.vault.getFiles()) {
-			if (!this.matches(query, file.basename, file.path)) continue;
+		const matches = this.app.vault.getFiles()
+			.filter((file) => COMMAND_CENTER_CATALOG_DEFAULTS.documentExtensions.has(file.extension.toLocaleLowerCase()))
+			.filter((file) => this.matches(query, file.basename, file.path))
+			.map((file) => {
+				const basename = file.basename.toLocaleLowerCase();
+				const path = file.path.toLocaleLowerCase();
+				const score = basename === query ? 0 : basename.startsWith(query) ? 1 : basename.includes(query) ? 2 : path.includes(query) ? 3 : 4;
+				return { file, score };
+			})
+			.sort((a, b) => a.score - b.score || a.file.basename.localeCompare(b.file.basename) || a.file.path.localeCompare(b.file.path))
+			.slice(0, COMMAND_CENTER_CATALOG_DEFAULTS.maximumDocumentResults);
+		for (const { file } of matches) {
 			const action: CommandCenterAction = { kind: 'vault-target', path: file.path };
 			entries.push({
 				key: commandCenterActionKey(action),
@@ -283,7 +330,7 @@ export class ObsidianCommandCenterAdapter {
 	}
 
 	private async openBookmark(bookmarkId: string): Promise<boolean> {
-		const entry = this.listCatalog(bookmarkId).find((candidate) =>
+		const entry = this.listCatalog(bookmarkId, 'bookmarks').find((candidate) =>
 			candidate.action.kind === 'bookmark' && candidate.action.bookmarkId === bookmarkId,
 		);
 		if (entry?.action.kind !== 'bookmark' || !entry.action.path) {

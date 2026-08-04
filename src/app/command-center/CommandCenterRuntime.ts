@@ -3,10 +3,12 @@ import type { CommandGateway } from '@/service/capabilities/CommandGateway';
 import {
 	cloneCommandCenterConfig,
 	commandCenterActionKey,
+	commandCenterCatalogScopeForAction,
 	normalizeCommandCenterBoardConfig,
 	type CommandCenterActionItem,
 	type CommandCenterBoardConfig,
 	type CommandCenterCatalogEntry,
+	type CommandCenterCatalogScope,
 	type CommandCenterRecentTarget,
 	type CommandCenterRuntimePort,
 	type ResolvedCommandCenterItem,
@@ -80,7 +82,7 @@ export class CommandCenterRuntime implements CommandCenterRuntimePort {
 				if (groupId === 'all' && seen.has(identity)) continue;
 				seen.add(identity);
 				const command = this.adapter.getCommand(item.action);
-				const available = isDestination(item) ? this.destinationAvailable(item) : command !== null;
+				const available = isDestination(item) ? this.adapter.destinationAvailable(item.action) : command !== null;
 				const fullLabel = command?.name ?? item.shortLabel;
 				const sourceLabel = sourceForItem(item, this.adapter);
 				const searchable = [item.shortLabel, fullLabel, sourceLabel, group.label, ...item.aliases]
@@ -103,12 +105,13 @@ export class CommandCenterRuntime implements CommandCenterRuntimePort {
 		return resolved;
 	}
 
-	async getCatalog(query = ''): Promise<CommandCenterCatalogEntry[]> {
-		const catalog = this.adapter.listCatalog(query);
+	async getCatalog(query = '', scope: CommandCenterCatalogScope = 'commands'): Promise<CommandCenterCatalogEntry[]> {
+		const catalog = this.adapter.listCatalog(query, scope);
 		const normalizedQuery = query.trim().toLocaleLowerCase();
 		const existingKeys = new Set(catalog.map((entry) => entry.key));
 		for (const group of this.config.groups) {
 			for (const item of group.actions) {
+				if (commandCenterCatalogScopeForAction(item.action) !== scope) continue;
 				const key = commandCenterActionKey(item.action);
 				if (existingKeys.has(key)) continue;
 				const sourceLabel = sourceForItem(item, this.adapter);
@@ -180,15 +183,5 @@ export class CommandCenterRuntime implements CommandCenterRuntimePort {
 
 	openNativeCommandPalette(): void {
 		this.adapter.openNativeCommandPalette();
-	}
-
-	private destinationAvailable(item: CommandCenterActionItem): boolean {
-		if (item.action.kind === 'vault-target') {
-			return this.adapter.listCatalog(item.action.path).some((entry) => entry.key === commandCenterActionKey(item.action));
-		}
-		if (item.action.kind === 'bookmark' || item.action.kind === 'workspace') {
-			return this.adapter.listCatalog(item.shortLabel).some((entry) => entry.key === commandCenterActionKey(item.action));
-		}
-		return true;
 	}
 }

@@ -21,6 +21,9 @@ export type { PillProps } from './Pill';
 export { Segmented } from './Segmented';
 export type { SegmentedOption, SegmentedProps } from './Segmented';
 
+export { Toggle } from './Toggle';
+export type { ToggleProps } from './Toggle';
+
 export {
 	Popover,
 	PopoverTrigger,

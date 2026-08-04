@@ -5,7 +5,7 @@ import type {
 	CommandCenterRuntimePort,
 	ResolvedCommandCenterItem,
 } from '@/core/command-center';
-import { Button } from '@/ui/component/shared-ui/button';
+import { Button } from '@/ui/components/primitives';
 import { CommandCenterIcon } from './CommandCenterIcon';
 
 function useHomeData(runtime: CommandCenterRuntimePort) {
@@ -71,11 +71,11 @@ export function CommandCenterHome({ runtime }: { runtime: CommandCenterRuntimePo
 				<section className="pk-cc-home-section" aria-labelledby="pk-cc-quick-title">
 					<div className="pk-cc-home-section__head">
 						<span id="pk-cc-quick-title">Quick access</span>
-						<Button variant="unstyled" size="xs" onClick={() => runtime.openCustomize()}><SlidersHorizontal size={14} /><span>Customize</span></Button>
+						<Button variant="ghost" size="sm" onClick={() => runtime.openCustomize()}><SlidersHorizontal size={14} /><span>Customize</span></Button>
 					</div>
 					<div className="pk-cc-home-quick">
 						{quickAccess.map((item) => (
-							<Button key={item.id} variant="unstyled" size="xs" className="pk-cc-home-quick__item" disabled={!item.available} onClick={() => void runtime.invokeItem(item)}>
+							<Button key={item.id} variant="ghost" size="sm" className="pk-cc-home-quick__item" disabled={!item.available} onClick={() => void runtime.invokeItem(item)}>
 								<span className="pk-cc-home-quick__icon"><CommandCenterIcon icon={item.icon} size={19} /></span>
 								<span>{item.shortLabel}</span>
 								<ArrowRight size={14} />
@@ -89,7 +89,7 @@ export function CommandCenterHome({ runtime }: { runtime: CommandCenterRuntimePo
 					<div className="pk-cc-home-section__head"><span id="pk-cc-continue-title">Continue</span><Clock3 size={14} /></div>
 					<div className="pk-cc-home-recents">
 						{recent.map((target) => (
-							<Button key={target.path} variant="unstyled" size="xs" className="pk-cc-home-recent" onClick={() => openRecent(target.path, target.label)}>
+							<Button key={target.path} variant="ghost" size="sm" className="pk-cc-home-recent" onClick={() => openRecent(target.path, target.label)}>
 								<FileText size={16} />
 								<span className="pk-cc-home-recent__copy"><span>{target.label}</span><span>{target.parentPath || 'Vault'}</span></span>
 								<ArrowRight size={14} />
@@ -103,7 +103,7 @@ export function CommandCenterHome({ runtime }: { runtime: CommandCenterRuntimePo
 					<div className="pk-cc-home-section__head"><span id="pk-cc-pages-title">Pinned pages</span></div>
 					<div className="pk-cc-home-pages">
 						{pinnedPages.map((item) => (
-							<Button key={item.id} variant="unstyled" size="xs" className="pk-cc-home-page" onClick={() => void runtime.invokeItem(item)}>
+							<Button key={item.id} variant="ghost" size="sm" className="pk-cc-home-page" onClick={() => void runtime.invokeItem(item)}>
 								<CommandCenterIcon icon={item.icon} size={18} />
 								<span><span>{item.shortLabel}</span><span>{item.sourceLabel}</span></span>
 								<ArrowRight size={14} />

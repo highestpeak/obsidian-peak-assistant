@@ -48,6 +48,19 @@ export interface CommandCenterBoardConfig {
 
 export type CommandCenterLayer = 'destination' | 'command';
 
+export type CommandCenterCatalogScope =
+	| 'commands'
+	| 'documents'
+	| 'bookmarks'
+	| 'workspaces-views';
+
+export function commandCenterCatalogScopeForAction(action: CommandCenterAction): CommandCenterCatalogScope {
+	if (action.kind === 'peak-command' || action.kind === 'obsidian-command') return 'commands';
+	if (action.kind === 'vault-target') return 'documents';
+	if (action.kind === 'bookmark') return 'bookmarks';
+	return 'workspaces-views';
+}
+
 export interface ResolvedCommandCenterItem extends CommandCenterActionItem {
 	groupId: string;
 	groupLabel: string;
@@ -82,7 +95,7 @@ export interface CommandCenterRuntimePort {
 	subscribe(listener: () => void): () => void;
 	saveConfig(config: CommandCenterBoardConfig): Promise<void>;
 	resolveItems(groupId: string | 'all', query?: string): Promise<ResolvedCommandCenterItem[]>;
-	getCatalog(query?: string): Promise<CommandCenterCatalogEntry[]>;
+	getCatalog(query?: string, scope?: CommandCenterCatalogScope): Promise<CommandCenterCatalogEntry[]>;
 	invokeItem(item: CommandCenterActionItem): Promise<boolean>;
 	invokeCatalogEntry(entry: CommandCenterCatalogEntry): Promise<boolean>;
 	getRecentTargets(): CommandCenterRecentTarget[];

@@ -3,6 +3,8 @@ import { readFileSync } from 'fs';
 import {
 	buildProjectionPositions,
 	commandCenterActionKey,
+	commandCenterCatalogScopeForAction,
+	COMMAND_CENTER_CATALOG_DEFAULTS,
 	moveProjectionFocus,
 	normalizeCommandCenterBoardConfig,
 	projectCommandCenterItems,
@@ -43,6 +45,14 @@ assert.strictEqual(
 	commandCenterActionKey({ kind: 'vault-target', path: 'Dashboards/Home.md', subpath: 'Today' }),
 	'vault:Dashboards/Home.md#Today',
 );
+assert.strictEqual(commandCenterCatalogScopeForAction({ kind: 'peak-command', commandId: 'open' }), 'commands');
+assert.strictEqual(commandCenterCatalogScopeForAction({ kind: 'obsidian-command', commandId: 'app:open' }), 'commands');
+assert.strictEqual(commandCenterCatalogScopeForAction({ kind: 'vault-target', path: 'Home.md' }), 'documents');
+assert.strictEqual(commandCenterCatalogScopeForAction({ kind: 'bookmark', bookmarkId: 'home' }), 'bookmarks');
+assert.strictEqual(commandCenterCatalogScopeForAction({ kind: 'workspace', workspaceName: 'Research' }), 'workspaces-views');
+assert.strictEqual(commandCenterCatalogScopeForAction({ kind: 'view', viewType: 'peak-home' }), 'workspaces-views');
+assert.strictEqual(COMMAND_CENTER_CATALOG_DEFAULTS.minimumDocumentQueryLength, 2);
+assert.ok(COMMAND_CENTER_CATALOG_DEFAULTS.maximumDocumentResults <= 100, 'document search must remain bounded');
 
 function resolved(id: string, layer: 'destination' | 'command'): ResolvedCommandCenterItem {
 	return {

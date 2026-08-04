@@ -20,6 +20,7 @@ const BUTTON_PRIMITIVE_CLASSES = [
 	'.pk-pill',
 	'.pk-pop-item',
 	'.pk-segmented__opt',
+	'.pk-toggle',
 	'.pk-result-browser-toolbar__option',
 	'.pk-button-geometry',
 ] as const;
@@ -65,6 +66,7 @@ function parseRules(css: string): CssRule[] {
 
 function targetsButtonPrimitive(selector: string): boolean {
 	if (/\bsvg\b|\.icon\b|::before|::after/.test(selector)) return false;
+	if (selector.includes('.pk-toggle__thumb')) return false;
 	return BUTTON_PRIMITIVE_CLASSES.some((className) => selector.includes(className));
 }
 
@@ -95,6 +97,12 @@ assert.deepStrictEqual(
 		'Add !important to effective dimensions and padding.',
 		...violations,
 	].join('\n'),
+);
+
+assert.match(
+	primitiveCss,
+	/\.pk-toggle__thumb\s*\{[\s\S]*?width:\s*16px;[\s\S]*?height:\s*16px;/,
+	'Toggle must use a real thumb element because the design reset removes button pseudo-elements',
 );
 
 assert.match(

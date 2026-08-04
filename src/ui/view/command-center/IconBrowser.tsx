@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import type { CommandCenterItemIcon } from '@/core/command-center';
-import { Button } from '@/ui/component/shared-ui/button';
+import { Button, IconButton, Segmented } from '@/ui/components/primitives';
 import {
 	COMMAND_CENTER_EMOJI,
 	COMMAND_CENTER_LUCIDE_ICONS,
@@ -23,13 +23,16 @@ export function IconBrowser({ value, onChange, onClose }: IconBrowserProps): Rea
 	return (
 		<div className="pk-cc-icon-browser" role="dialog" aria-label="Choose icon">
 			<div className="pk-cc-icon-browser__head">
-				<div className="pk-cc-segmented" role="tablist" aria-label="Icon source">
-					<Button variant="unstyled" size="xs" role="tab" aria-selected={source === 'lucide'} onClick={() => setSource('lucide')}>Lucide</Button>
-					<Button variant="unstyled" size="xs" role="tab" aria-selected={source === 'emoji'} onClick={() => setSource('emoji')}>Emoji</Button>
-				</div>
-				<Button variant="unstyled" size="xs" className="pk-cc-icon-button" aria-label="Close icon browser" onClick={onClose}>
+				<Segmented
+					value={source}
+					onValueChange={setSource}
+					options={[{ value: 'lucide', label: 'Lucide' }, { value: 'emoji', label: 'Emoji' }]}
+					size="sm"
+					aria-label="Icon source"
+				/>
+				<IconButton className="pk-cc-icon-button" label="Close icon browser" onClick={onClose}>
 					<X size={15} />
-				</Button>
+				</IconButton>
 			</div>
 			{source === 'lucide' ? (
 				<label className="pk-cc-icon-search">
@@ -39,8 +42,8 @@ export function IconBrowser({ value, onChange, onClose }: IconBrowserProps): Rea
 			) : null}
 			<div className="pk-cc-icon-options">
 				<Button
-					variant="unstyled"
-					size="xs"
+					variant="ghost"
+					size="sm"
 					className="pk-cc-icon-option pk-cc-icon-option--none"
 					aria-label="No icon"
 					aria-pressed={!value}
@@ -49,30 +52,26 @@ export function IconBrowser({ value, onChange, onClose }: IconBrowserProps): Rea
 					<span>None</span>
 				</Button>
 				{source === 'lucide' ? lucideNames.map((name) => (
-					<Button
+					<IconButton
 						key={name}
-						variant="unstyled"
-						size="xs"
 						className="pk-cc-icon-option"
-						aria-label={name}
+						label={name}
 						aria-pressed={value?.kind === 'lucide' && value.name === name}
 						title={name}
 						onClick={() => onChange({ kind: 'lucide', name })}
 					>
 						<CommandCenterIcon icon={{ kind: 'lucide', name }} size={17} />
-					</Button>
+					</IconButton>
 				)) : COMMAND_CENTER_EMOJI.map((emoji) => (
-					<Button
+					<IconButton
 						key={emoji}
-						variant="unstyled"
-						size="xs"
 						className="pk-cc-icon-option"
-						aria-label={`Use ${emoji}`}
+						label={`Use ${emoji}`}
 						aria-pressed={value?.kind === 'emoji' && value.value === emoji}
 						onClick={() => onChange({ kind: 'emoji', value: emoji })}
 					>
 						<span className="pk-cc-emoji">{emoji}</span>
-					</Button>
+					</IconButton>
 				))}
 			</div>
 		</div>

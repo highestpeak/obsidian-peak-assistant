@@ -8,7 +8,7 @@ import {
 	type CommandCenterRuntimePort,
 	type ResolvedCommandCenterItem,
 } from '@/core/command-center';
-import { Button } from '@/ui/component/shared-ui/button';
+import { Button, IconButton, Pill } from '@/ui/components/primitives';
 import { CommandCenterIcon } from './CommandCenterIcon';
 
 export interface CommandCenterLauncherProps {
@@ -33,17 +33,16 @@ function GroupTab({
 	onSelect: () => void;
 }): React.ReactElement {
 	return (
-		<Button
-			variant="unstyled"
-			size="xs"
+		<Pill
 			className="pk-cc-group-tab"
+			selected={selected}
 			role="tab"
 			aria-selected={selected}
 			onClick={onSelect}
 		>
 			<CommandCenterIcon icon={group.icon} size={15} />
 			<span>{group.label}</span>
-		</Button>
+		</Pill>
 	);
 }
 
@@ -81,8 +80,8 @@ function ActionButton({
 	const title = [item.fullLabel, item.hotkey, item.unavailableReason].filter(Boolean).join(' · ');
 	return (
 		<Button
-			variant="unstyled"
-			size="xs"
+			variant="ghost"
+			size="sm"
 			className={`pk-cc-action pk-cc-action--${kind}`}
 			data-action-id={item.id}
 			data-active={active ? 'true' : 'false'}
@@ -216,13 +215,13 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 					autoFocus
 				/>
 				{query ? (
-					<Button variant="unstyled" size="xs" className="pk-cc-icon-button" aria-label="Clear search" onClick={() => setQuery('')}>
+					<IconButton className="pk-cc-icon-button" label="Clear search" onClick={() => setQuery('')}>
 						<X size={14} />
-					</Button>
+					</IconButton>
 				) : null}
-				<Button variant="unstyled" size="xs" className="pk-cc-icon-button" aria-label="Close Command Center" onClick={onClose}>
+				<IconButton className="pk-cc-icon-button" label="Close Command Center" onClick={onClose}>
 					<X size={16} />
-				</Button>
+				</IconButton>
 			</div>
 
 			<div className="pk-cc-groups" role="tablist" aria-label="Command groups">
@@ -230,7 +229,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 					<GroupTab key={group.id} group={group} selected={scope === group.id} onSelect={() => setScope(group.id)} />
 				))}
 				<span className="pk-cc-groups__divider" aria-hidden="true" />
-				<Button variant="unstyled" size="xs" className="pk-cc-group-tab" role="tab" aria-selected={scope === 'all'} onClick={() => setScope('all')}>All</Button>
+				<Pill className="pk-cc-group-tab" selected={scope === 'all'} role="tab" aria-selected={scope === 'all'} onClick={() => setScope('all')}>All</Pill>
 			</div>
 
 			<div className="pk-cc-projection" key={scope}>
@@ -263,7 +262,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 				{items.length === 0 ? (
 					<div className="pk-cc-empty">
 						<span>{query ? 'No configured actions match this search.' : 'This group is empty.'}</span>
-						<Button variant="unstyled" size="xs" onClick={onCustomize}>Customize</Button>
+						<Button variant="secondary" size="sm" onClick={onCustomize}>Customize</Button>
 					</div>
 				) : null}
 			</div>
@@ -271,7 +270,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 			<div className="pk-cc-footer">
 				<span className="pk-cc-footer__hint"><kbd>↑↓←→</kbd> move <kbd>↵</kbd> open <kbd>esc</kbd> close</span>
 				<span className="pk-cc-footer__scope">{query ? `${items.length} in ${scope === 'all' ? 'All' : sortedGroups.find((group) => group.id === scope)?.label}` : ''}</span>
-				<Button variant="unstyled" size="xs" className="pk-cc-footer__action" onClick={onCustomize}>
+				<Button variant="ghost" size="sm" className="pk-cc-footer__action" onClick={onCustomize}>
 					<SlidersHorizontal size={14} />
 					<span>Customize</span>
 				</Button>

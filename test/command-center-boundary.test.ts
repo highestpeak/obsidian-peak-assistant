@@ -35,19 +35,33 @@ assert.deepStrictEqual(
 const modal = readFileSync('src/ui/view/command-center/CommandCenterSurface.tsx', 'utf8');
 const home = readFileSync('src/ui/view/command-center/CommandCenterHome.tsx', 'utf8');
 const customize = readFileSync('src/ui/view/command-center/CommandCenterCustomize.tsx', 'utf8');
+const launcher = readFileSync('src/ui/view/command-center/CommandCenterLauncher.tsx', 'utf8');
+const iconBrowser = readFileSync('src/ui/view/command-center/IconBrowser.tsx', 'utf8');
+const adapter = readFileSync('src/app/command-center/ObsidianCommandCenterAdapter.ts', 'utf8');
 assert.match(modal, /runtime: CommandCenterRuntimePort/);
 assert.match(home, /runtime: CommandCenterRuntimePort/);
 assert.match(home, /runtime\.openCustomize\(\)/, 'Home must enter Customize directly');
 assert.match(customize, /pk-cc-directory/, 'Customize must keep one continuous catalog');
 assert.doesNotMatch(customize, /ADDED TO|AVAILABLE COMMANDS|window\.confirm/i, 'Customize must not split or jump between membership regions');
+assert.match(customize, /runtime\.getCatalog\(debouncedQuery, catalogScope\)/, 'Customize catalog search must be scoped and debounced');
+assert.match(customize, /pk-cc-directory-row__copy/, 'directory rows must keep label and source in a stable two-line copy column');
+assert.match(adapter, /scope === 'all' \|\| scope === 'documents'/, 'Vault scanning must only run in the documents scope');
+assert.match(adapter, /maximumDocumentResults/, 'document results must be ranked and capped');
+assert.match(adapter, /destinationAvailable\(action: CommandCenterAction\)/, 'configured destinations must use direct availability checks');
+assert.doesNotMatch(resolveSection, /destinationAvailable[\s\S]*?listCatalog/, 'launcher availability must not rescan the full catalog');
+for (const source of [home, customize, launcher, iconBrowser]) {
+	assert.doesNotMatch(source, /ui\/component\/shared-ui\/(button|switch)/, 'Command Center must use public Peak primitives');
+}
 
 const css = readFileSync('src/styles/command-center.css', 'utf8');
 assert.match(css, /peak-command-center-modal:has\(\.pk-cc-customize\)[\s\S]*?680px/);
 assert.match(css, /\.pk-cc-links[\s\S]*?grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
-assert.match(css, /\.pk-cc-links[\s\S]*?max-height: 104px/, 'destination links must stay within roughly three rows');
-assert.match(css, /\.pk-cc-action--link[\s\S]*?height: 32px !important/, 'destinations must render as compact links rather than large tiles');
+assert.match(css, /\.pk-cc-links[\s\S]*?max-height: 106px/, 'destination links must stay within roughly three rows');
+assert.match(css, /\.pk-cc-action--link[\s\S]*?height: 34px !important/, 'destinations must render as compact links rather than large tiles');
 assert.match(css, /grid-template-columns: repeat\(5, minmax\(0, 1fr\)\)/);
 assert.match(css, /\.pk-cc-action--grid[\s\S]*?height: 60px !important/);
+assert.match(css, /var\(--pk-surface\)/, 'Command Center must consume Peak design tokens');
+assert.doesNotMatch(css, /var\(--(?:background|text|interactive|font)-/, 'Command Center CSS must not bypass Peak tokens with Obsidian theme variables');
 assert.match(css, /prefers-reduced-motion: reduce/);
 
 console.log('command-center-boundary: passed');
