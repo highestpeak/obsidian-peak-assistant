@@ -6,6 +6,12 @@ import { CommandCenterSurface } from '@/ui/view/command-center';
 
 export class CommandCenterModal extends ReactModalHost {
 	private previouslyFocused: HTMLElement | null = null;
+	private readonly containKeyEvent = (event: KeyboardEvent): void => {
+		// React handles Command Center shortcuts on the content root first. Stop
+		// the same event at the modal shell so document-level application
+		// listeners cannot react to a modal-owned key afterwards.
+		event.stopPropagation();
+	};
 
 	protected readonly shell: ReactModalShellOptions = {
 		contentClasses: ['peak-command-center', 'peak-design-root', 'pktw-root'],
@@ -26,10 +32,14 @@ export class CommandCenterModal extends ReactModalHost {
 	onOpen(): void {
 		this.previouslyFocused = this.contentEl.ownerDocument.activeElement as HTMLElement | null;
 		super.onOpen();
+		this.modalEl.addEventListener('keydown', this.containKeyEvent);
+		this.modalEl.addEventListener('keyup', this.containKeyEvent);
 	}
 
 	onClose(): void {
 		const ownerWindow = this.contentEl.ownerDocument.defaultView;
+		this.modalEl.removeEventListener('keydown', this.containKeyEvent);
+		this.modalEl.removeEventListener('keyup', this.containKeyEvent);
 		super.onClose();
 		const focusTarget = this.previouslyFocused;
 		this.previouslyFocused = null;

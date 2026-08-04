@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowDown, ArrowUp, GripVertical, House } from 'lucide-react';
 import type {
 	CommandCenterActionItem,
@@ -12,10 +13,14 @@ import { CommandCenterIcon } from './CommandCenterIcon';
 import { IconBrowser } from './IconBrowser';
 
 const DISPLAY_OPTIONS: ReadonlyArray<{ value: CommandCenterDisplayMode; label: string }> = [
-	{ value: 'icon-label', label: 'Icon + label' },
-	{ value: 'icon-only', label: 'Icon only' },
-	{ value: 'text-only', label: 'Text only' },
+	{ value: 'icon-label', label: 'Grid' },
+	{ value: 'icon-only', label: 'Icon' },
+	{ value: 'text-only', label: 'List' },
 ];
+
+function isDestinationItem(item: CommandCenterActionItem): boolean {
+	return ['vault-target', 'bookmark', 'workspace', 'view'].includes(item.action.kind);
+}
 
 function commitTextDraft(
 	draft: string,
@@ -41,6 +46,8 @@ export function CommandCenterItemEditor({
 	onUpdate: (mutate: (target: CommandCenterActionItem) => void) => void;
 	onPin: (checked: boolean) => void;
 }): React.ReactElement {
+	const editorRef = React.useRef<HTMLDivElement>(null);
+	const reducedMotion = useReducedMotion();
 	const [nameDraft, setNameDraft] = useState(item.shortLabel);
 	const [aliasesDraft, setAliasesDraft] = useState(item.aliases.join(', '));
 	const [iconOpen, setIconOpen] = useState(false);
@@ -49,6 +56,14 @@ export function CommandCenterItemEditor({
 		setAliasesDraft(item.aliases.join(', '));
 		setIconOpen(false);
 	}, [item.id]);
+	useEffect(() => {
+		if (!iconOpen) return;
+		const ownerWindow = editorRef.current?.ownerDocument.defaultView;
+		ownerWindow?.requestAnimationFrame(() => editorRef.current?.querySelector('.pk-cc-icon-browser')?.scrollIntoView({
+			block: 'nearest',
+			behavior: reducedMotion ? 'auto' : 'smooth',
+		}));
+	}, [iconOpen, reducedMotion]);
 
 	const commitName = (): void => {
 		commitTextDraft(nameDraft, item.shortLabel, (value) => onUpdate((target) => { target.shortLabel = value; }), setNameDraft);
@@ -67,22 +82,33 @@ export function CommandCenterItemEditor({
 		event.preventDefault();
 		reset();
 	};
-	const displayOptions = DISPLAY_OPTIONS.filter((option) => option.value !== 'icon-only' || item.icon);
+	const destination = isDestinationItem(item);
+	const displayOptions = DISPLAY_OPTIONS.filter((option) => option.value === 'text-only' || Boolean(item.icon));
 
 	return (
-		<div className="pk-cc-item-editor">
-			<label>
-				<span>Name</span>
-				<input value={nameDraft} onChange={(event) => setNameDraft(event.target.value)} onBlur={commitName} onKeyDown={(event) => onDraftKeyDown(event, () => setNameDraft(item.shortLabel))} />
-			</label>
-			<label>
-				<span>Aliases</span>
-				<input value={aliasesDraft} placeholder="Separate with commas" onChange={(event) => setAliasesDraft(event.target.value)} onBlur={commitAliases} onKeyDown={(event) => onDraftKeyDown(event, () => setAliasesDraft(item.aliases.join(', ')))} />
-			</label>
-			<div className="pk-cc-item-editor__row">
-				<span>Display</span>
-				<Segmented value={item.display} onValueChange={(mode) => onUpdate((target) => { target.display = mode; })} options={displayOptions} size="sm" aria-label="Display mode" />
+		<div ref={editorRef} className="pk-cc-item-editor">
+			<div className="pk-cc-item-editor__head">
+				<span>Customize action</span>
+				<span>{destination ? 'Compact link' : item.display === 'text-only' ? 'List row' : item.display === 'icon-only' ? 'Icon tile' : 'Grid tile'}</span>
 			</div>
+			<div className="pk-cc-item-editor__fields">
+				<label>
+					<span>Name</span>
+					<input value={nameDraft} onChange={(event) => setNameDraft(event.target.value)} onBlur={commitName} onKeyDown={(event) => onDraftKeyDown(event, () => setNameDraft(item.shortLabel))} />
+				</label>
+				<label>
+					<span>Search aliases</span>
+					<input value={aliasesDraft} placeholder="Separate with commas" onChange={(event) => setAliasesDraft(event.target.value)} onBlur={commitAliases} onKeyDown={(event) => onDraftKeyDown(event, () => setAliasesDraft(item.aliases.join(', ')))} />
+				</label>
+			</div>
+			{destination ? (
+				<div className="pk-cc-item-editor__rule"><span>Placement</span><span>Documents, bookmarks, workspaces and views always stay in the compact link section.</span></div>
+			) : (
+				<div className="pk-cc-item-editor__row">
+					<span>Placement</span>
+					<span className="pk-cc-item-editor__control"><Segmented value={item.display} onValueChange={(mode) => onUpdate((target) => { target.display = mode; })} options={displayOptions} variant="animated-pill" size="sm" aria-label="Display mode" /><span>Grid centers icon and label. List uses a full-width text row.</span></span>
+				</div>
+			)}
 			<div className="pk-cc-item-editor__row">
 				<span>Icon</span>
 				<Button variant="secondary" size="sm" className="pk-cc-icon-picker-trigger" onClick={() => setIconOpen((open) => !open)}>
@@ -90,16 +116,17 @@ export function CommandCenterItemEditor({
 					<span>{item.icon?.kind === 'lucide' ? item.icon.name : item.icon?.value ?? 'Choose icon'}</span>
 				</Button>
 			</div>
-			<div className="pk-cc-item-editor__row">
-				<span>Pin to Home</span>
-				<Toggle checked={item.pinnedToHome} label={`Pin ${item.shortLabel} to Home`} onCheckedChange={onPin} />
+			<div className="pk-cc-item-editor__row pk-cc-item-editor__home-row">
+				<span>Show on Home</span>
+				<span className="pk-cc-item-editor__control"><Toggle checked={item.pinnedToHome} label={`Show ${item.shortLabel} on Command Center Home`} onCheckedChange={onPin} /><span>Also place this action in the full Command Center Home workspace.</span></span>
 			</div>
 			{iconOpen ? (
 				<IconBrowser
 					value={item.icon}
 					onChange={(icon: CommandCenterItemIcon | undefined) => onUpdate((target) => {
 						target.icon = icon;
-						if (!icon && target.display === 'icon-only') target.display = 'text-only';
+						if (!icon) target.display = 'text-only';
+						else if (target.display === 'text-only' && !destination) target.display = 'icon-label';
 					})}
 					onClose={() => setIconOpen(false)}
 				/>
@@ -126,6 +153,8 @@ export function CommandCenterArrangeItems({
 }): React.ReactElement {
 	const items = useMemo(() => group.actions.slice().sort((a, b) => a.order - b.order), [group.actions]);
 	const [draggedId, setDraggedId] = useState<string | null>(null);
+	const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+	const reducedMotion = useReducedMotion();
 	const move = (itemId: string, delta: number): void => {
 		const index = items.findIndex((item) => item.id === itemId);
 		const target = items[index + delta];
@@ -138,16 +167,32 @@ export function CommandCenterArrangeItems({
 			</div>
 			<div className="pk-cc-arrange-list" role="list" aria-label={`Action order for ${group.label}`}>
 				{items.map((item, index) => (
-					<div
+					<motion.div
 						key={item.id}
 						className="pk-cc-arrange-row"
+						layout="position"
+						transition={reducedMotion ? { duration: 0 } : { layout: { type: 'spring', stiffness: 520, damping: 42 } }}
+						data-dragging={draggedId === item.id ? 'true' : undefined}
+						data-drop-target={dropTargetId === item.id && draggedId !== item.id ? 'true' : undefined}
+						data-drop-position={dropTargetId === item.id && draggedId !== item.id && items.findIndex((candidate) => candidate.id === draggedId) < index ? 'after' : 'before'}
 						draggable
-						onDragStart={() => setDraggedId(item.id)}
-						onDragEnd={() => setDraggedId(null)}
-						onDragOver={(event) => event.preventDefault()}
-						onDrop={() => {
+						onDragStart={(event) => {
+							event.dataTransfer.effectAllowed = 'move';
+							event.dataTransfer.setData('text/plain', item.id);
+							event.dataTransfer.setDragImage(event.currentTarget, 24, 24);
+							setDraggedId(item.id);
+						}}
+						onDragEnd={() => { setDraggedId(null); setDropTargetId(null); }}
+						onDragOver={(event) => {
+							event.preventDefault();
+							event.dataTransfer.dropEffect = 'move';
+							if (draggedId !== item.id) setDropTargetId(item.id);
+						}}
+						onDrop={(event) => {
+							event.preventDefault();
 							if (draggedId && draggedId !== item.id) onReorder(draggedId, item.id);
 							setDraggedId(null);
+							setDropTargetId(null);
 						}}
 						role="listitem"
 					>
@@ -155,7 +200,7 @@ export function CommandCenterArrangeItems({
 						<span className="pk-cc-arrange-row__icon"><CommandCenterIcon icon={item.icon} size={16} /></span>
 						<span className="pk-cc-arrange-row__copy"><span>{item.shortLabel}</span><span>{['vault-target', 'bookmark', 'workspace', 'view'].includes(item.action.kind) ? 'Link' : item.display === 'text-only' ? 'Text row' : item.display === 'icon-only' ? 'Icon only' : 'Icon grid'}</span></span>
 						<MoveButtons index={index} count={items.length} onMove={(delta) => move(item.id, delta)} />
-					</div>
+					</motion.div>
 				))}
 				{items.length === 0 ? <span className="pk-cc-secondary-panel__empty">Add actions from the directory first.</span> : null}
 			</div>
@@ -173,6 +218,8 @@ export function CommandCenterArrangeTabs({
 	const groupById = useMemo(() => new Map(config.groups.map((group) => [group.id, group])), [config.groups]);
 	const tabs = config.modal.tabOrder.filter((tab) => tab === 'all' || groupById.has(tab));
 	const [draggedId, setDraggedId] = useState<string | 'all' | null>(null);
+	const [dropTargetId, setDropTargetId] = useState<string | 'all' | null>(null);
+	const reducedMotion = useReducedMotion();
 	const move = (tabId: string | 'all', delta: number): void => {
 		const index = tabs.indexOf(tabId);
 		const target = tabs[index + delta];
@@ -187,16 +234,32 @@ export function CommandCenterArrangeTabs({
 				{tabs.map((tabId, index) => {
 					const group = tabId === 'all' ? null : groupById.get(tabId);
 					return (
-						<div
+						<motion.div
 							key={tabId}
 							className="pk-cc-arrange-row"
+							layout="position"
+							transition={reducedMotion ? { duration: 0 } : { layout: { type: 'spring', stiffness: 520, damping: 42 } }}
+							data-dragging={draggedId === tabId ? 'true' : undefined}
+							data-drop-target={dropTargetId === tabId && draggedId !== tabId ? 'true' : undefined}
+							data-drop-position={dropTargetId === tabId && draggedId !== tabId && tabs.indexOf(draggedId ?? 'all') < index ? 'after' : 'before'}
 							draggable
-							onDragStart={() => setDraggedId(tabId)}
-							onDragEnd={() => setDraggedId(null)}
-							onDragOver={(event) => event.preventDefault()}
-							onDrop={() => {
+							onDragStart={(event) => {
+								event.dataTransfer.effectAllowed = 'move';
+								event.dataTransfer.setData('text/plain', tabId);
+								event.dataTransfer.setDragImage(event.currentTarget, 24, 24);
+								setDraggedId(tabId);
+							}}
+							onDragEnd={() => { setDraggedId(null); setDropTargetId(null); }}
+							onDragOver={(event) => {
+								event.preventDefault();
+								event.dataTransfer.dropEffect = 'move';
+								if (draggedId !== tabId) setDropTargetId(tabId);
+							}}
+							onDrop={(event) => {
+								event.preventDefault();
 								if (draggedId && draggedId !== tabId) onReorder(draggedId, tabId);
 								setDraggedId(null);
+								setDropTargetId(null);
 							}}
 							role="listitem"
 						>
@@ -204,7 +267,7 @@ export function CommandCenterArrangeTabs({
 							<span className="pk-cc-arrange-row__icon">{group ? <CommandCenterIcon icon={group.icon} size={16} /> : <House size={16} />}</span>
 							<span className="pk-cc-arrange-row__copy"><span>{group?.label ?? 'All'}</span><span>{index === 0 ? 'Opens first' : tabId === 'all' ? 'Combined groups' : 'Command group'}</span></span>
 							<MoveButtons index={index} count={tabs.length} onMove={(delta) => move(tabId, delta)} />
-						</div>
+						</motion.div>
 					);
 				})}
 			</div>

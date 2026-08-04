@@ -2572,6 +2572,10 @@ function makeBlockSnapshot(snapshot: ComposerDocumentSnapshot, block: ComposerBl
 function ownsComposerFindShortcut(root: HTMLElement): boolean {
 	const composerRoot = root.closest<HTMLElement>('.peak-composer-root');
 	if (!composerRoot) return false;
+	// A modal is a separate keyboard layer. In particular, Command Center owns
+	// Mod+F while it is open; the active Composer leaf behind it must not open a
+	// second find bar for the same key event.
+	if (root.ownerDocument.querySelector('.modal-container .peak-command-center')) return false;
 	const active = root.ownerDocument.activeElement;
 	if (active && composerRoot.contains(active)) return true;
 	const leaf = composerRoot.closest<HTMLElement>('.workspace-leaf');

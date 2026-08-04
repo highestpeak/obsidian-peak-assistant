@@ -33,6 +33,8 @@ assert.deepStrictEqual(
 );
 
 const modal = readFileSync('src/ui/view/command-center/CommandCenterSurface.tsx', 'utf8');
+const modalHost = readFileSync('src/app/command-center/CommandCenterModal.tsx', 'utf8');
+const composer = readFileSync('src/ui/view/composer/ComposerRoot.tsx', 'utf8');
 const home = readFileSync('src/ui/view/command-center/CommandCenterHome.tsx', 'utf8');
 const customize = readFileSync('src/ui/view/command-center/CommandCenterCustomize.tsx', 'utf8');
 const launcher = readFileSync('src/ui/view/command-center/CommandCenterLauncher.tsx', 'utf8');
@@ -49,6 +51,10 @@ assert.match(customize, /onBlur=\{commitGroupLabel\}/, 'group renaming must comm
 assert.doesNotMatch(customize, /onDone|>Done</, 'autosaving customization must not expose a fake Done action');
 assert.match(customize, /pk-cc-directory-row__copy/, 'directory rows must keep label and source in a stable two-line copy column');
 assert.match(customize, /CommandCenterArrangeItems/, 'membership and arrangement must be separate tasks without splitting the catalog');
+assert.match(customize, /container=\{modalPortal\}/, 'scope picker must remain inside the active Obsidian modal');
+assert.match(customize, /onCloseAutoFocus/, 'scope selection must restore focus to catalog search instead of the closed trigger');
+assert.match(modalHost, /modalEl\.addEventListener\('keydown', this\.containKeyEvent\)/, 'Command Center keys must not bubble into the workspace behind the modal');
+assert.match(composer, /modal-container \.peak-command-center/, 'Composer find must yield to a foreground Command Center modal');
 assert.match(adapter, /scope === 'all' \|\| scope === 'documents'/, 'Vault scanning must only run in the documents scope');
 assert.match(adapter, /maximumDocumentResults/, 'document results must be ranked and capped');
 assert.match(adapter, /searchClient\.search\(/, 'document queries must use the existing indexed SearchClient when available');
@@ -58,9 +64,11 @@ assert.doesNotMatch(resolveSection, /destinationAvailable[\s\S]*?listCatalog/, '
 for (const source of [home, customize, launcher, iconBrowser]) {
 	assert.doesNotMatch(source, /ui\/component\/shared-ui\/(button|switch)/, 'Command Center must use public Peak primitives');
 }
+assert.match(iconBrowser, /getCommandCenterLucideNames/, 'icon search must read the complete registered icon catalog');
+assert.match(iconBrowser, /Type or paste any emoji/, 'emoji customization must accept arbitrary Unicode emoji beyond the common shortcuts');
 
 const css = readFileSync('src/styles/command-center.css', 'utf8');
-assert.match(css, /peak-command-center-modal:has\(\.pk-cc-customize\)[\s\S]*?680px/);
+assert.match(css, /peak-command-center-modal:has\(\.pk-cc-customize\)[\s\S]*?720px/);
 assert.match(css, /\.pk-cc-links[\s\S]*?grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
 assert.match(css, /\.pk-cc-links[\s\S]*?max-height: 106px/, 'destination links must stay within roughly three rows');
 assert.match(css, /\.pk-cc-action--link[\s\S]*?height: 34px !important/, 'destinations must render as compact links rather than large tiles');
@@ -68,6 +76,8 @@ assert.match(css, /grid-template-columns: repeat\(5, minmax\(0, 1fr\)\)/);
 assert.match(css, /\.pk-cc-action--grid[\s\S]*?height: 60px !important/);
 assert.match(css, /\.pk-cc-action--row[\s\S]*?height: 34px !important/, 'text commands must have a dedicated row presentation');
 assert.match(css, /\.pk-cc-action__label[\s\S]*?max-width: 100%/, 'command labels must be contained within their cells');
+assert.match(css, /\.pk-cc-action--grid \.pk-cc-action__label[\s\S]*?text-align: center/, 'grid icons and labels must share one centered alignment rule');
+assert.match(css, /\.pk-cc-arrange-row\[data-drop-target="true"\]::before/, 'drag reorder must expose a visible drop target');
 assert.match(css, /var\(--pk-surface\)/, 'Command Center must consume Peak design tokens');
 assert.doesNotMatch(css, /var\(--(?:background|text|interactive|font)-/, 'Command Center CSS must not bypass Peak tokens with Obsidian theme variables');
 assert.match(css, /prefers-reduced-motion: reduce/);

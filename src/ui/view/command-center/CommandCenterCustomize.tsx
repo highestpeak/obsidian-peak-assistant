@@ -3,10 +3,10 @@ import {
 	ArrowLeft,
 	ChevronDown,
 	ChevronRight,
-	House,
 	ListOrdered,
 	Plus,
 	Search,
+	Settings2,
 	Trash2,
 	X,
 } from 'lucide-react';
@@ -83,6 +83,8 @@ export function CommandCenterCustomize({ runtime, onBack, onClose }: CommandCent
 	const [query, setQuery] = useState('');
 	const [debouncedQuery, setDebouncedQuery] = useState('');
 	const [catalogScope, setCatalogScope] = useState<CommandCenterCatalogScope>('commands');
+	const [scopeMenuOpen, setScopeMenuOpen] = useState(false);
+	const [modalPortal, setModalPortal] = useState<HTMLDivElement | null>(null);
 	const [catalog, setCatalog] = useState<CommandCenterCatalogEntry[]>([]);
 	const [catalogLoading, setCatalogLoading] = useState(false);
 	const [expandedKey, setExpandedKey] = useState<string | null>(null);
@@ -271,6 +273,7 @@ export function CommandCenterCustomize({ runtime, onBack, onClose }: CommandCent
 
 	return (
 		<div className="pk-cc-customize" onKeyDown={handleKeyDown}>
+			<div ref={setModalPortal} className="pk-cc-local-portal" />
 			<div className="pk-cc-customize__head">
 				<IconButton className="pk-cc-icon-button pk-cc-customize__back" label={panel === 'catalog' ? 'Back to Command Center' : 'Back to customization'} onClick={() => panel === 'catalog' ? onBack() : setPanel('catalog')}><ArrowLeft size={16} /></IconButton>
 				<span className="pk-cc-customize__title">{panelTitle}</span>
@@ -292,7 +295,7 @@ export function CommandCenterCustomize({ runtime, onBack, onClose }: CommandCent
 				</div>
 				<span className="pk-cc-manage-groups__actions">
 					<IconButton className="pk-cc-icon-button" label="Arrange launcher tabs" title="Arrange launcher tabs" onClick={() => setPanel('arrange-tabs')}><ListOrdered size={15} /></IconButton>
-					<IconButton className="pk-cc-icon-button" label="Command Center Home settings" title="Command Center Home settings" onClick={() => setPanel('home-settings')}><House size={15} /></IconButton>
+					<IconButton className="pk-cc-icon-button" label="Command Center Home settings" title="Command Center Home settings" onClick={() => setPanel('home-settings')}><Settings2 size={15} /></IconButton>
 					<IconButton className="pk-cc-icon-button" label="New group" title="New group" onClick={createGroup}><Plus size={16} /></IconButton>
 				</span>
 			</div> : null}
@@ -341,12 +344,19 @@ export function CommandCenterCustomize({ runtime, onBack, onClose }: CommandCent
 			{panel === 'catalog' ? (
 				<>
 					<div className="pk-cc-catalog-tools">
-						<Popover>
+						<Popover open={scopeMenuOpen} onOpenChange={setScopeMenuOpen}>
 							<PopoverTrigger asChild>
 								<Button variant="ghost" size="sm" className="pk-cc-scope-trigger"><span>{scopeLabel}</span><ChevronDown size={13} /></Button>
 							</PopoverTrigger>
-							<PopoverContent className="pk-cc-scope-menu" align="start">
-								{CATALOG_SCOPES.map((scope) => <PopoverItem key={scope.value} data-selected={catalogScope === scope.value ? 'true' : undefined} onClick={() => changeCatalogScope(scope.value)}>{scope.label}</PopoverItem>)}
+							<PopoverContent className="pk-cc-scope-menu" align="start" container={modalPortal} onCloseAutoFocus={(event) => {
+								event.preventDefault();
+								searchRef.current?.focus();
+								searchRef.current?.select();
+							}}>
+								{CATALOG_SCOPES.map((scope) => <PopoverItem key={scope.value} data-selected={catalogScope === scope.value ? 'true' : undefined} onClick={() => {
+									changeCatalogScope(scope.value);
+									setScopeMenuOpen(false);
+								}}>{scope.label}</PopoverItem>)}
 							</PopoverContent>
 						</Popover>
 						<label className="pk-cc-directory-search">
