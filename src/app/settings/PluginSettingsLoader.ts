@@ -59,16 +59,6 @@ function normalizeAIServiceSettings(raw: Record<string, unknown>): AIServiceSett
 		};
 	}
 
-	// Analysis model (optional override for AI Analysis prompts)
-	if (rawAI.analysisModel && typeof rawAI.analysisModel === 'object') {
-		const model = rawAI.analysisModel as { provider?: unknown; modelId?: unknown };
-		const provider = typeof model.provider === 'string' ? model.provider : undefined;
-		const modelId = typeof model.modelId === 'string' ? model.modelId : undefined;
-		if (provider && modelId) {
-			settings.analysisModel = { provider, modelId };
-		}
-	}
-
 	// Provider configs
 	if (rawAI.llmProviderConfigs && typeof rawAI.llmProviderConfigs === 'object') {
 		settings.llmProviderConfigs = rawAI.llmProviderConfigs as Record<string, ProviderConfig>;
@@ -76,14 +66,6 @@ function normalizeAIServiceSettings(raw: Record<string, unknown>): AIServiceSett
 
 	// Profile settings
 	settings.profileEnabled = getBoolean(rawAI.profileEnabled, settings.profileEnabled ?? true);
-
-	// Prompt model map — merge saved entries ON TOP of defaults (so new PromptIds get default models)
-	if (rawAI.promptModelMap && typeof rawAI.promptModelMap === 'object') {
-		settings.promptModelMap = {
-			...settings.promptModelMap,
-			...rawAI.promptModelMap as Partial<Record<string, { provider: string; modelId: string }>>,
-		};
-	}
 
 	// Default output control settings
 	if (rawAI.defaultOutputControl && typeof rawAI.defaultOutputControl === 'object') {

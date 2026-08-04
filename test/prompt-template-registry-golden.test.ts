@@ -17,9 +17,6 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
 	PromptId,
-	SEARCH_AI_ANALYSIS_PROMPT_IDS,
-	INDEXING_AND_HUB_PROMPT_IDS,
-	CONFIGURABLE_PROMPT_IDS,
 } from '@/core/types/prompt';
 import {
 	TEMPLATE_METADATA,
@@ -91,25 +88,7 @@ function enumValues<T extends Record<string, string>>(e: T): string[] {
 	console.log('PASS: every systemPromptId target exists');
 }
 
-// 4. The three list constants only contain valid PromptId values.
-{
-	const promptIdSet = new Set(enumValues(PromptId));
-	for (const [listName, list] of [
-		['SEARCH_AI_ANALYSIS_PROMPT_IDS', SEARCH_AI_ANALYSIS_PROMPT_IDS],
-		['INDEXING_AND_HUB_PROMPT_IDS', INDEXING_AND_HUB_PROMPT_IDS],
-		['CONFIGURABLE_PROMPT_IDS', CONFIGURABLE_PROMPT_IDS],
-	] as const) {
-		for (const id of list) {
-			assert.ok(
-				promptIdSet.has(id as string),
-				`${listName} contains invalid PromptId: ${id}`,
-			);
-		}
-		console.log(`PASS: ${listName} (${list.length} entries) only references valid PromptIds`);
-	}
-}
-
-// 5. Every metadata `path` that points into templates/prompts/ resolves to a real file.
+// 4. Every metadata `path` that points into templates/prompts/ resolves to a real file.
 {
 	const missingFiles: string[] = [];
 	for (const [id, meta] of Object.entries(TEMPLATE_METADATA)) {

@@ -9,7 +9,6 @@ import { USER_PROFILE_MIN_CONFIDENCE_THRESHOLD } from '@/core/constant';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { UserProfileProcessedHashRepo } from '@/core/storage/sqlite/repositories/UserProfileProcessedHashRepo';
 import { hashSHA256 } from '@/core/utils/hash-utils';
-import type { AIServiceSettings } from '@/core/config/settingsTypes';
 import type { ModelTokenLimits } from '@/core/providers/types';
 
 const DEFAULT_BATCH_SIZE = 8;
@@ -99,9 +98,8 @@ export async function runBuildUserProfile(params: BuildUserProfileRunParams): Pr
 		return;
 	}
 
-	const settings = aiServiceManager.getSettings();
-	const { provider, model } = resolveProfileFromVaultModel(settings);
-	const tokenLimits = await aiServiceManager.getModelTokenLimits(model, provider);
+	const activeModel = aiServiceManager.getActiveAgentModel();
+	const tokenLimits = await aiServiceManager.getModelTokenLimits(activeModel.modelId, activeModel.provider);
 	const maxInputChars = computeMaxInputChars(tokenLimits);
 
 	const totalBatches = Math.ceil(toProcess.length / batchSize);
@@ -166,15 +164,6 @@ export async function runBuildUserProfile(params: BuildUserProfileRunParams): Pr
 		console.warn('[BuildUserProfileRunner] Organize failed:', e);
 	}
 	onNotice('Build user profile completed.');
-}
-
-function resolveProfileFromVaultModel(settings: AIServiceSettings): { provider: string; model: string } {
-	const promptModel = settings.promptModelMap?.[PromptId.ProfileFromVaultJson];
-	if (promptModel) return { provider: promptModel.provider, model: promptModel.modelId };
-	const defaultModel = settings.defaultModel;
-	if (!defaultModel)
-		throw new Error('No AI model configured. Open Settings → Model Config to set a default model and enter your API key.');
-	return { provider: defaultModel.provider, model: defaultModel.modelId };
 }
 
 function computeMaxInputChars(limits: ModelTokenLimits | undefined): number {

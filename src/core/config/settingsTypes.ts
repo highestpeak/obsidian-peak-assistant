@@ -5,7 +5,6 @@
 
 import { ProviderConfig, LLMOutputControlSettings } from '@/core/providers/types';
 import type { DocumentType } from '@/core/document/types';
-import { PromptId, CONFIGURABLE_PROMPT_IDS, INDEXING_AND_HUB_PROMPT_IDS, SEARCH_AI_ANALYSIS_PROMPT_IDS } from '@/core/types/prompt';
 import type { ProfileSettings, RoleConfig } from '@/core/profiles/types';
 import type { AmbientPushSettings } from '@/core/types/ambient';
 import type { MCPServerConfig } from '@/core/types/mcp';
@@ -138,13 +137,9 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 export interface AIServiceSettings {
 	rootFolder: string;
 	defaultModel: { provider: string; modelId: string };
-	/** Override model for AI Analysis (search analysis, report generation). */
-	analysisModel?: { provider: string; modelId: string };
 	llmProviderConfigs: Record<string, ProviderConfig>;
 	profileEnabled?: boolean;
 	defaultOutputControl?: LLMOutputControlSettings;
-	/** Model config per prompt ID. Falls back to defaultModel (see PromptService). */
-	promptModelMap?: Partial<Record<PromptId, { provider: string; modelId: string }>>;
 	/** 'direct': send attachments to model; 'degrade_to_text': convert via OCR/parsing. */
 	attachmentHandlingDefault?: 'direct' | 'degrade_to_text';
 	/**
@@ -216,14 +211,6 @@ export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
 	defaultModel: { provider: 'openai', modelId: 'gpt-4o-mini' },
 	llmProviderConfigs: {},
 	profileEnabled: true,
-	promptModelMap: (() => {
-		const defaultModel = { provider: 'openai', modelId: 'gpt-4o-mini' };
-		const map: Partial<Record<PromptId, { provider: string; modelId: string }>> = {};
-		for (const promptId of [...CONFIGURABLE_PROMPT_IDS, ...INDEXING_AND_HUB_PROMPT_IDS, ...SEARCH_AI_ANALYSIS_PROMPT_IDS]) {
-			map[promptId] = { ...defaultModel };
-		}
-		return map;
-	})(),
 	attachmentHandlingDefault: 'direct',
 	falApiKey: '',
 	mediaAttachmentFolder: '_attachments/media',

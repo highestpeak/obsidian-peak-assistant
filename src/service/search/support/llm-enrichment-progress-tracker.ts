@@ -1,6 +1,5 @@
 import type { SearchSettings } from '@/core/config/settingsTypes';
 import type { LLMUsage } from '@/core/providers/types';
-import { PromptId } from '@/core/types/prompt';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { computeUsdFromUsage, normalizeUsageTokens } from '@/service/search/support/llm-cost-utils';
 
@@ -45,19 +44,19 @@ export class LlmEnrichmentProgressTracker {
 		const tagIn = contentTokens + TAG_OVERHEAD, shortIn = contentTokens + SHORT_OVERHEAD, fullIn = contentTokens + FULL_OVERHEAD;
 		const shortOut = wordsToTokens(this.settings.shortSummaryLength), fullOut = wordsToTokens(this.settings.fullSummaryLength), tagOut = TAG_OUTPUT_AVG;
 
-		const costFor = async (promptId: PromptId, inT: number, outT: number) => {
-			const m = this.ai.getModelForPrompt(promptId);
+		const costFor = async (inT: number, outT: number) => {
+			const m = this.ai.getActiveAgentModel();
 			const info = await this.ai.getModelInfo(m.modelId, m.provider);
 			return computeUsdFromUsage({ inputTokens: inT, outputTokens: outT, totalTokens: inT + outT }, info);
 		};
 
 		let plannedIn = tagIn + shortIn, plannedOut = tagOut + shortOut;
-		let plannedCost = await costFor(PromptId.DocTagGenerateJson, tagIn, tagOut) + await costFor(PromptId.DocSummaryShort, shortIn, shortOut);
+		let plannedCost = await costFor(tagIn, tagOut) + await costFor(shortIn, shortOut);
 		let maxPhaseMs = Math.max(phaseMs(tagIn, tagOut), phaseMs(shortIn, shortOut));
 
 		if (needsSummaryFull) {
 			plannedIn += fullIn; plannedOut += fullOut;
-			plannedCost += await costFor(PromptId.DocSummaryFull, fullIn, fullOut);
+			plannedCost += await costFor(fullIn, fullOut);
 			maxPhaseMs = Math.max(maxPhaseMs, phaseMs(fullIn, fullOut));
 		}
 

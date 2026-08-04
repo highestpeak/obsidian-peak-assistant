@@ -250,68 +250,6 @@ export enum PromptId {
 }
 
 /**
- * Search AI Analysis–specific prompt IDs. Each can have its own provider/model in promptModelMap.
- * Shown in a dedicated "Search AI Analysis" section with a "Set All" control.
- */
-export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
-	PromptId.AiAnalysisTitle,
-	PromptId.AiAnalysisFollowup,
-	PromptId.AiAnalysisFollowupSystem,
-	PromptId.AiAnalysisSaveFileName,
-	PromptId.AiAnalysisSaveFolder,
-
-	// Vault pipeline
-	PromptId.AiAnalysisVaultReportSummary,
-	PromptId.AiAnalysisReportSection,
-	PromptId.AiAnalysisMermaidFix,
-	PromptId.AiAnalysisContinueSystem,
-	PromptId.AiAnalysisContinue,
-	PromptId.AiAnalysisSynthesize,
-] as const;
-
-/**
- * Indexing and Hub–related prompt IDs. Each can have its own provider/model in promptModelMap.
- * Shown in a dedicated "Indexing & Hub Prompts" section with a "Set All" control.
- */
-export const INDEXING_AND_HUB_PROMPT_IDS: readonly PromptId[] = [
-	PromptId.DocSummaryShort,
-	PromptId.DocSummaryFull,
-	PromptId.ImageDescription,
-	PromptId.ImageSummary,
-	PromptId.DocTagGenerateJson,
-	PromptId.KnowledgeIntuitionPlan,
-	PromptId.KnowledgeIntuitionSubmit,
-	PromptId.HubCurationPlan,
-	PromptId.HubCurationSubmit,
-	PromptId.HubMaterializationDraft,
-	PromptId.HubMaterializationCritique,
-] as const;
-
-/**
- * Prompt IDs that allow model configuration in settings.
- * Only prompts listed here will appear in the Model Configuration UI.
- *
- * Search AI Analysis prompts are listed in {@link SEARCH_AI_ANALYSIS_PROMPT_IDS};
- * indexing/Hub prompts are listed in {@link INDEXING_AND_HUB_PROMPT_IDS}.
- *
- * Prompts not listed here (e.g., internal/system prompts) will always use the default model.
- */
-export const CONFIGURABLE_PROMPT_IDS: readonly PromptId[] = [
-	// Chat summary prompts - users may want different models for summaries
-	PromptId.ConversationSummaryShort,
-	PromptId.ConversationSummaryFull,
-	PromptId.ProjectSummaryShort,
-	PromptId.ProjectSummaryFull,
-
-	// Application prompts - title generation may benefit from different models
-	PromptId.ApplicationGenerateTitle,
-
-	// Memory/Profile prompts
-	PromptId.MemoryExtractCandidatesJson,
-
-] as const;
-
-/**
  * Variable schemas for each prompt type.
  * Used for type-safe rendering.
  * // todo some prompts may have expected output format, we should add it to the interface. maybe turn into an agent
