@@ -10,6 +10,7 @@ import { IconButton } from '@/ui/components/primitives';
  * drag owned by the root (drop target rendering + moveBlock commit).
  */
 export interface BlockRailProps {
+	railRef?: React.Ref<HTMLDivElement>;
 	folded: boolean;
 	foldLabel: string;
 	dragLabel: string;
@@ -23,6 +24,7 @@ export interface BlockRailProps {
 }
 
 export function BlockRail({
+	railRef,
 	folded,
 	foldLabel,
 	dragLabel,
@@ -36,6 +38,7 @@ export function BlockRail({
 	const Icon = folded ? ChevronDown : ChevronUp;
 	return (
 		<div
+			ref={railRef}
 			className="pk-composer-rail"
 			data-chrome="true"
 			onPointerEnter={onPointerEnter}

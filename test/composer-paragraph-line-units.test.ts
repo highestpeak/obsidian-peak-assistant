@@ -44,6 +44,10 @@ assert.ok(
 );
 
 const root = readFileSync('src/ui/view/composer/ComposerRoot.tsx', 'utf8');
+const collectionPopover = readFileSync(
+	'src/ui/view/composer/chrome/CollectionActionPopover.tsx',
+	'utf8',
+);
 assert.ok(root.includes('EditableParagraphLinesBody'), 'multi-line paragraphs render their authored line units');
 assert.ok(root.includes('pk-composer-paragraph__line'), 'each paragraph line owns an interaction row');
 assert.ok(
@@ -65,6 +69,23 @@ assert.match(
 	css,
 	/\.pk-composer-paragraph__line:hover[\s\S]*?var\(--pkc-block-hover-bg\)/,
 	'paragraph source lines own their hover feedback',
+);
+assert.ok(
+	collectionPopover.includes('createPortal') &&
+	collectionPopover.includes("querySelector<HTMLElement>('.pk-composer-drag')") &&
+	root.includes('unitized && actionRowDisplayed && blockActionRow') &&
+	root.includes('{!unitized ? blockActionRow : null}'),
+	'unitized block actions reuse the existing BlockActionRow through a side popover while ordinary blocks stay inline',
+);
+assert.match(
+	css,
+	/\.pk-collection-action-popover\.peak-composer-root\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?width:\s*min\(240px, calc\(100vw - 16px\)\);[\s\S]*?overflow:\s*visible;/,
+	'the collection-level action row escapes the Composer scroll clip and remains beside the structural rail',
+);
+assert.match(
+	css,
+	/\.pk-collection-action-popover\.peak-composer-root \.pk-block-action-row__shell\s*\{[\s\S]*?width:\s*100%;[\s\S]*?flex-wrap:\s*wrap;[\s\S]*?overflow-x:\s*visible;/,
+	'the unchanged action capsules wrap inside the side surface instead of being clipped or replaced',
 );
 
 console.log('composer-paragraph-line-units: passed');

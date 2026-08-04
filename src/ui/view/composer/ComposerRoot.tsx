@@ -83,6 +83,7 @@ import {
 } from './chrome/ComposerChromeContext';
 import { BlockRail } from './chrome/BlockRail';
 import { BlockActionRow, type BlockPanelKind } from './chrome/BlockActionRow';
+import { CollectionActionPopover } from './chrome/CollectionActionPopover';
 import { EditableText } from './chrome/EditableText';
 import { forwardBlockClickToEditable } from './chrome/focusForwarding';
 import { EasyCopyMenu } from './chrome/EasyCopyMenu';
@@ -1095,6 +1096,7 @@ function ComposerBlockRow({
 	const chrome = useComposerChrome();
 	const folded = useStore(foldStore, (s) => s.folded.has(block.blockId));
 	const bodyRef = React.useRef<HTMLDivElement | null>(null);
+	const collectionActionAnchorRef = React.useRef<HTMLDivElement | null>(null);
 	const isHeading = block.kind === 'heading';
 	const showSummary = !isHeading && folded;
 	const raw = block.renderModel.raw;
@@ -1348,6 +1350,54 @@ function ComposerBlockRow({
 			return current;
 		});
 	};
+	const blockActionRow = editing && !showInlineCandidate && !activeUnitAction ? (
+		<BlockActionRow
+			snapshot={aiSnapshot}
+			onInsertBelow={onInsertBelow}
+			onSelectInsertType={onSelectInsertType}
+			copySurface={(dismissPreview) => (
+				<div data-composer-surface-owner={block.blockId}>
+					<EasyCopyMenu
+						markdown={raw}
+						blockKind={block.kind}
+						rasterTargetRef={bodyRef}
+						onClose={() => {
+							dismissPreview();
+							setPanel(null);
+						}}
+					/>
+				</div>
+			)}
+			historySurface={(dismissPreview) => (
+				<div data-composer-surface-owner={block.blockId}>
+					<BlockHistoryPanel
+						blockId={block.blockId}
+						onClose={() => {
+							dismissPreview();
+							setPanel(null);
+						}}
+						onViewAll={onViewHistory
+							? () => {
+									dismissPreview();
+									onViewHistory();
+								}
+							: undefined}
+						onOpenActivity={(activity) => {
+							dismissPreview();
+							onOpenHistoryActivity(activity);
+						}}
+					/>
+				</div>
+			)}
+			onOpenPanel={openPanel}
+			onPreviewPanel={previewPanel}
+			openPanel={ownPanel?.panel ?? null}
+			panelPinned={ownPanel?.pinned ?? false}
+			writeDisabledReason={chrome.runtime.hub ? undefined : config.chrome.actions.disabledNoRuntime}
+			hiddenQuickCapabilityIds={hiddenQuickCapabilities(block.kind)}
+			onInvoke={(d, instruction) => onInvoke(d, aiSnapshot, instruction)}
+		/>
+	) : null;
 
 	return (
 		<div
@@ -1374,6 +1424,7 @@ function ComposerBlockRow({
 			}}
 		>
 			<BlockRail
+				railRef={collectionActionAnchorRef}
 				folded={folded}
 				foldLabel={foldLabel(config, isHeading, folded)}
 				dragLabel={config.chrome.actions.drag}
@@ -1384,6 +1435,15 @@ function ComposerBlockRow({
 				onPointerLeave={editing && unitized ? hideActionRow : undefined}
 				onFocusCapture={editing && unitized ? () => showActionRow(true, null) : undefined}
 			/>
+			{unitized && actionRowDisplayed && blockActionRow ? (
+				<CollectionActionPopover
+					anchorRef={collectionActionAnchorRef}
+					onPointerEnter={() => showActionRow(true, null)}
+					onPointerLeave={hideActionRow}
+				>
+					{blockActionRow}
+				</CollectionActionPopover>
+			) : null}
 			<div className="pk-composer-block__body" ref={bodyRef}>
 				<BlockFindingPanel
 					findings={findings}
@@ -1482,54 +1542,7 @@ function ComposerBlockRow({
 							{invokeError}
 						</div>
 					) : null}
-					{editing && !showInlineCandidate && !activeUnitAction && (
-					<BlockActionRow
-						snapshot={aiSnapshot}
-						onInsertBelow={onInsertBelow}
-						onSelectInsertType={onSelectInsertType}
-						copySurface={(dismissPreview) => (
-							<div data-composer-surface-owner={block.blockId}>
-								<EasyCopyMenu
-									markdown={raw}
-									blockKind={block.kind}
-									rasterTargetRef={bodyRef}
-									onClose={() => {
-										dismissPreview();
-										setPanel(null);
-									}}
-								/>
-							</div>
-						)}
-						historySurface={(dismissPreview) => (
-							<div data-composer-surface-owner={block.blockId}>
-								<BlockHistoryPanel
-									blockId={block.blockId}
-									onClose={() => {
-										dismissPreview();
-										setPanel(null);
-									}}
-									onViewAll={onViewHistory
-										? () => {
-												dismissPreview();
-												onViewHistory();
-											}
-										: undefined}
-									onOpenActivity={(activity) => {
-										dismissPreview();
-										onOpenHistoryActivity(activity);
-									}}
-								/>
-							</div>
-						)}
-						onOpenPanel={openPanel}
-						onPreviewPanel={previewPanel}
-						openPanel={ownPanel?.panel ?? null}
-						panelPinned={ownPanel?.pinned ?? false}
-						writeDisabledReason={chrome.runtime.hub ? undefined : config.chrome.actions.disabledNoRuntime}
-						hiddenQuickCapabilityIds={hiddenQuickCapabilities(block.kind)}
-						onInvoke={(d, instruction) => onInvoke(d, aiSnapshot, instruction)}
-					/>
-				)}
+					{!unitized ? blockActionRow : null}
 			</div>
 		</div>
 	);

@@ -589,6 +589,70 @@
 	transform: translateY(0);
 	transition-delay: 0s;
 }
+/* Unitized blocks keep their existing per-item AI row directly below the
+   hovered item. Their unchanged collection-level BlockActionRow is portaled to
+   the owner document so it can sit beside the structural rail without being
+   clipped by the Composer scroll container. */
+.pk-collection-action-popover.peak-composer-root {
+	position: fixed;
+	z-index: 120;
+	display: block;
+	box-sizing: border-box;
+	width: min(240px, calc(100vw - 16px));
+	height: auto;
+	margin: 0;
+	padding: 0;
+	overflow: visible;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transform: translateY(-3px);
+	transition: opacity 120ms ease, transform 120ms ease, visibility 0s linear 120ms;
+}
+.pk-collection-action-popover.peak-composer-root[data-positioned='true'] {
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+	transform: translateY(0);
+	transition-delay: 0s;
+}
+.pk-collection-action-popover.peak-composer-root::after {
+	content: '';
+	position: absolute;
+	top: 0;
+	width: 8px;
+	height: 38px;
+}
+.pk-collection-action-popover.peak-composer-root[data-placement='left']::after {
+	left: 100%;
+}
+.pk-collection-action-popover.peak-composer-root[data-placement='right']::after {
+	right: 100%;
+}
+.pk-collection-action-popover.peak-composer-root .pk-block-action-row {
+	position: relative;
+	height: auto;
+	margin: 0;
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+	transform: none;
+	overflow: visible;
+}
+.pk-collection-action-popover.peak-composer-root .pk-block-action-row__shell {
+	width: 100%;
+	max-width: 100%;
+	flex-wrap: wrap;
+	white-space: normal;
+	overflow-x: visible;
+}
+.pk-collection-action-popover.peak-composer-root .pk-block-action-row__options,
+.pk-collection-action-popover.peak-composer-root
+	:is(.pk-action-core, .pk-action-ai, .pk-action-tail) {
+	max-width: 100%;
+	flex-wrap: wrap;
+	overflow: visible;
+}
 /* Selection toolbar has one clear owner: rows hide while a selection is live. */
 .peak-composer-root [data-has-selection] .pk-block-action-row {
 	height: 0 !important;
