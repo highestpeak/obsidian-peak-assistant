@@ -73,6 +73,23 @@ export function restoreDomSelectionFromSource(
 export function domRangeForSource(root: HTMLElement, mapped: MappedRange): Range | null {
 	const start = domPointForSource(root, Math.min(mapped.from, mapped.to));
 	const end = domPointForSource(root, Math.max(mapped.from, mapped.to));
+	return createDomRange(root, start, end);
+}
+
+/**
+ * Resolve only source offsets that are represented by visible DOM text.
+ *
+ * Find highlights must never use the general selection mapper's nearest-run
+ * fallback: a structural block such as a table can otherwise turn one source
+ * match into a Range spanning every rendered object between its neighbours.
+ */
+export function domRangeForVisibleSource(root: HTMLElement, mapped: MappedRange): Range | null {
+	const start = exactDomPointForSource(root, Math.min(mapped.from, mapped.to));
+	const end = exactDomPointForSource(root, Math.max(mapped.from, mapped.to));
+	return createDomRange(root, start, end);
+}
+
+function createDomRange(root: HTMLElement, start: DomPoint | null, end: DomPoint | null): Range | null {
 	if (!start || !end) return null;
 	const range = root.ownerDocument.createRange();
 	try {
@@ -117,13 +134,7 @@ interface DomPoint {
 }
 
 function domPointForSource(root: HTMLElement, sourceOffset: number): DomPoint | null {
-	const runs = Array.from(root.querySelectorAll<HTMLElement>('[data-src-text-from]'))
-		.filter((run) => !run.closest('[data-inline-math-atom]'))
-		.map((run) => {
-			const from = Number(run.dataset.srcTextFrom);
-			return { run, from, to: from + (run.textContent ?? '').length };
-		})
-		.filter((entry) => Number.isFinite(entry.from));
+	const runs = sourceRuns(root);
 	if (runs.length === 0) return pointAtTextOffset(root, Math.max(0, sourceOffset - Number(root.dataset.srcTextFrom ?? 0)));
 
 	// At a run boundary, prefer the run that STARTS at the requested offset.
@@ -147,6 +158,25 @@ function domPointForSource(root: HTMLElement, sourceOffset: number): DomPoint | 
 		nearestOffset = startDistance <= endDistance ? 0 : entry.to - entry.from;
 	}
 	return pointAtTextOffset(nearest.run, nearestOffset);
+}
+
+function exactDomPointForSource(root: HTMLElement, sourceOffset: number): DomPoint | null {
+	const runs = sourceRuns(root);
+	const starting = runs.find((entry) => entry.from === sourceOffset);
+	if (starting) return pointAtTextOffset(starting.run, 0);
+	const containing = runs.find((entry) => entry.from < sourceOffset && sourceOffset <= entry.to);
+	if (!containing) return null;
+	return pointAtTextOffset(containing.run, sourceOffset - containing.from);
+}
+
+function sourceRuns(root: HTMLElement): Array<{ run: HTMLElement; from: number; to: number }> {
+	return Array.from(root.querySelectorAll<HTMLElement>('[data-src-text-from]'))
+		.filter((run) => !run.closest('[data-inline-math-atom]'))
+		.map((run) => {
+			const from = Number(run.dataset.srcTextFrom);
+			return { run, from, to: from + (run.textContent ?? '').length };
+		})
+		.filter((entry) => Number.isFinite(entry.from));
 }
 
 function pointAtTextOffset(root: HTMLElement, requestedOffset: number): DomPoint {

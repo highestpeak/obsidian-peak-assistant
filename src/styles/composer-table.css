@@ -41,16 +41,14 @@
 .peak-composer-root .pk-table-surface {
 	position: relative;
 	container-type: inline-size;
-	/* Keep the toolbar clearance inside the hover owner. A margin creates a
-	 * dead strip between table and absolutely positioned toolbar, so the toolbar
-	 * vanishes before the pointer can reach it. Padding preserves the exact table
-	 * position in document flow while making that strip hover-safe. */
-	padding-top: 50px;
+	/* The toolbar is an absolutely positioned child, so it remains inside the
+	 * table's hover ownership without reserving a permanently empty header row. */
+	padding-top: 0;
 }
 
 .peak-composer-root .pk-table-toolbar {
 	position: absolute;
-	top: 4px;
+	top: -34px;
 	left: 0;
 	z-index: 4;
 	display: flex;

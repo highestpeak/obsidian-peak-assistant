@@ -3,7 +3,7 @@ import { ChevronDown, ChevronUp, Search, X } from 'lucide-react';
 import { findComposerMatches, type ComposerFindMatch } from '@/service/composer';
 import { IconButton } from '@/ui/components/primitives';
 import type { ComposerChromeConfig } from '../config/composerConfig';
-import { domRangeForSource } from './selectionMapping';
+import { domRangeForVisibleSource } from './selectionMapping';
 
 export interface ComposerFindBarHandle {
 	focusAndSelect(): void;
@@ -77,7 +77,7 @@ export const ComposerFindBar = React.forwardRef<ComposerFindBarHandle, ComposerF
 			const rootRect = root.getBoundingClientRect();
 			const next: HighlightRect[] = [];
 			matches.forEach((match, matchIndex) => {
-				const range = domRangeForSource(root, match);
+				const range = domRangeForVisibleSource(root, match);
 				if (!range) return;
 				Array.from(range.getClientRects()).forEach((rect, rectIndex) => {
 					if (rect.width <= 0 || rect.height <= 0) return;
@@ -107,7 +107,7 @@ export const ComposerFindBar = React.forwardRef<ComposerFindBarHandle, ComposerF
 			let secondFrame = 0;
 			const firstFrame = ownerWindow.requestAnimationFrame(() => {
 				secondFrame = ownerWindow.requestAnimationFrame(() => {
-					const range = activeMatch ? domRangeForSource(root, activeMatch) : null;
+					const range = activeMatch ? domRangeForVisibleSource(root, activeMatch) : null;
 					const owner = range?.startContainer.parentElement?.closest<HTMLElement>('[data-src-text-from]');
 					owner?.scrollIntoView({ block: 'center', inline: 'nearest' });
 					measure();

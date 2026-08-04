@@ -17,11 +17,19 @@ assert.deepEqual(findComposerMatches('text', '   '), [], 'blank queries do not c
 
 const root = readFileSync('src/ui/view/composer/ComposerRoot.tsx', 'utf8');
 const bar = readFileSync('src/ui/view/composer/chrome/ComposerFindBar.tsx', 'utf8');
+const table = readFileSync('src/ui/view/composer/blocks/table/TableBlockView.tsx', 'utf8');
 assert.ok(root.includes("event.key.toLocaleLowerCase() !== 'f'"), 'Composer owns Mod+F in capture phase');
 assert.ok(root.includes('await chrome.flushAll()'), 'find flushes the active editor before searching');
 assert.ok(bar.includes("event.key !== 'Enter'"), 'Enter navigation is handled by the find input');
 assert.ok(bar.includes('event.shiftKey ? -1 : 1'), 'Shift+Enter navigates to the previous match');
 assert.ok(bar.includes("event.key === 'Escape'"), 'Escape closes the find bar');
-assert.ok(bar.includes('domRangeForSource'), 'find highlights use source-mapped overlays, not innerHTML mutation');
+assert.ok(
+	bar.includes('domRangeForVisibleSource'),
+	'find highlights require an exact visible source mapping instead of snapping across structural blocks',
+);
+assert.ok(
+	table.includes('data-src-text-from={sourceFrom}'),
+	'table cells expose their source anchors so a match paints only the matching cell text',
+);
 
 console.log('composer-find: passed');

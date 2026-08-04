@@ -1270,6 +1270,7 @@ function ComposerBlockRow({
 	const actionRowDisplayed =
 		actionRowVisible &&
 		(!activeSurface || activeSurface.id === actionSurfaceId);
+	const collectionActionActive = unitized && actionRowDisplayed && !activeUnitAction;
 	const renderUnitAction = (anchor: ComposerUnitActionAnchor): React.ReactNode => {
 		if (!editing || showInlineCandidate || activeUnitAction?.unitId !== anchor.unitId) return null;
 		const unitSnapshot = createUnitActionSnapshot(snapshot, block, anchor);
@@ -1319,8 +1320,14 @@ function ComposerBlockRow({
 	const unitActions: ComposerUnitActions | undefined = unitized
 		? {
 				activeUnitId: activeUnitAction?.unitId ?? null,
-				onPointerEnter: (anchor) => showActionRow(false, anchor),
-				onPointerLeave: hideActionRow,
+				onPointerEnter: (anchor) => {
+					if (collectionActionActive) {
+						clearActionClose();
+						return;
+					}
+					showActionRow(false, anchor);
+				},
+				onPointerLeave: collectionActionActive ? clearActionClose : hideActionRow,
 				onFocus: (anchor) => showActionRow(true, anchor),
 				render: renderUnitAction,
 			}
@@ -1408,20 +1415,29 @@ function ComposerBlockRow({
 			data-unitized={unitized ? 'true' : undefined}
 			data-drop-before={dropBefore || undefined}
 			data-action-row-visible={actionRowDisplayed || undefined}
-			data-collection-action-active={unitized && actionRowDisplayed && !activeUnitAction || undefined}
+			data-collection-action-active={collectionActionActive || undefined}
 			// FIX-1 F2: a mousedown in the row's dead zone (right of the text edge,
 			// rail gutter padding, run gaps) targets this WRAPPER, so the browser
 			// never focuses the contenteditable leaf — typing then goes to the
 			// workspace. Forward such clicks: focus the nearest leaf and place the
 			// caret at the closest text position (line-end for past-the-edge clicks).
 			onMouseDown={editing ? (ev) => forwardBlockClickToEditable(ev.currentTarget, ev) : undefined}
-			onPointerEnter={editing && !unitized ? () => showActionRow(false) : undefined}
+			onPointerEnter={editing ? () => {
+				if (unitized) {
+					clearActionClose();
+					return;
+				}
+				showActionRow(false);
+			} : undefined}
 			onPointerLeave={editing ? hideActionRow : undefined}
 			onFocusCapture={editing && !unitized ? () => showActionRow(true) : undefined}
 			onMouseLeave={() => {
 				if (ownPanel?.panel === 'instruction') setPanel(null);
 			}}
 		>
+			{collectionActionActive ? (
+				<span className="pk-collection-action-corridor" data-chrome="true" aria-hidden="true" />
+			) : null}
 			<BlockRail
 				folded={folded}
 				foldLabel={foldLabel(config, isHeading, folded)}
@@ -1430,7 +1446,6 @@ function ComposerBlockRow({
 				onDragStart={onDragStart}
 				dragDisabledReason={onDragStart ? undefined : config.chrome.actions.disabledNoRuntime}
 				onPointerEnter={editing && unitized ? () => showActionRow(false, null) : undefined}
-				onPointerLeave={editing && unitized ? hideActionRow : undefined}
 				onFocusCapture={editing && unitized ? () => showActionRow(true, null) : undefined}
 			/>
 			<div className="pk-composer-block__body" ref={bodyRef}>
@@ -1571,6 +1586,7 @@ function blockSpacingRole(block: ComposerBlock, previous?: ComposerBlock): strin
 	if (block.kind === 'task') return 'task';
 	if (block.kind === 'math') return 'math';
 	if (block.kind === 'quote') return 'quote';
+	if (block.kind === 'callout') return 'callout';
 	if (block.kind === 'table') return 'table';
 	return 'object';
 }

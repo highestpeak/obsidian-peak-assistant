@@ -57,8 +57,13 @@ check('block action row matches the selection toolbar compact spacing rhythm', (
 check('table toolbar shell uses the panel radius rung', () => {
 	expectRule(
 		tableCss,
-		/\.pk-table-toolbar\s*\{[\s\S]*?border-radius:\s*var\(--pk-radius-lg,\s*12px\);/,
-		'table toolbar shell must use radius-lg',
+		/\.pk-table-toolbar\s*\{[\s\S]*?top:\s*-34px;[\s\S]*?border-radius:\s*var\(--pk-radius-lg,\s*12px\);/,
+		'table toolbar shell must float above the grid without reserving an empty internal row',
+	);
+	expectRule(
+		tableCss,
+		/\.pk-table-surface\s*\{[\s\S]*?padding-top:\s*0;/,
+		'table surface must not keep a permanent 50px toolbar spacer',
 	);
 });
 

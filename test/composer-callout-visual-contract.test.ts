@@ -104,7 +104,7 @@ async function main(): Promise<void> {
 {
 	const css = readFileSync('src/styles/composer.css', 'utf8');
 	check('callout CSS matches the design shell border and light surface', css.includes('--pkc-callout-border: rgb(191, 208, 251)') && css.includes('--pkc-callout-bg: rgb(247, 250, 255)'));
-	check('callout CSS matches the 41px title and 15px/1.82 body rhythm', css.includes('min-height: 41px') && css.includes('font-size: 14px') && css.includes('line-height: 1.82'));
+	check('callout CSS keeps a compact 34px title and 1.65 body rhythm', /\.pk-composer-callout__title\s*\{[\s\S]*?min-height:\s*34px;[\s\S]*?padding:\s*7px 10px;/.test(css) && /\.pk-composer-callout__body-text\s*\{[\s\S]*?min-height:\s*1\.65em;[\s\S]*?line-height:\s*1\.65;/.test(css));
 }
 
 console.log(`composer-callout-visual-contract: ${checks}/${checks} checks passed`);

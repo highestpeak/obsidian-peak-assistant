@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { ExternalLink } from 'lucide-react';
 import {
 	DirectEditController,
 	projectSourceVisualParts,
@@ -183,6 +184,13 @@ export function SourceVisualPartView({
 				tabIndex={0}
 			>
 				{part.text}
+				{part.linkKind !== 'wikilink' && (
+					<ExternalLink
+						className="pk-composer-external-link-icon"
+						size={12}
+						aria-label="外部链接"
+					/>
+				)}
 			</span>
 		);
 	}

@@ -115,6 +115,7 @@ function TableBlockBody({ block, model }: { block: ComposerBlock; model: TableMo
 				onReason={setReason}
 			/>
 			<TableGrid
+				block={block}
 				tableRef={tableRef}
 				model={model}
 				selection={selection.state}
@@ -135,6 +136,7 @@ function TableBlockBody({ block, model }: { block: ComposerBlock; model: TableMo
 // ── grid ────────────────────────────────────────────────────────────────────
 
 function TableGrid({
+	block,
 	tableRef,
 	model,
 	selection,
@@ -143,6 +145,7 @@ function TableGrid({
 	onCellPointerDown,
 	onKeyDown,
 }: {
+	block: ComposerBlock;
 	tableRef: React.RefObject<HTMLTableElement>;
 	model: TableModel;
 	selection: TableSelectionState;
@@ -168,6 +171,7 @@ function TableGrid({
 					col={c}
 					model={model}
 					selection={selection}
+					sourceFrom={tableCellSourceFrom(block, rowIndex, c, g.cell.text)}
 					onCellPointerDown={onCellPointerDown}
 				/>,
 			);
@@ -204,6 +208,7 @@ function TableCellView({
 	col,
 	model,
 	selection,
+	sourceFrom,
 	onCellPointerDown,
 }: {
 	tag: 'th' | 'td';
@@ -211,6 +216,7 @@ function TableCellView({
 	col: number;
 	model: TableModel;
 	selection: TableSelectionState;
+	sourceFrom?: number;
 	onCellPointerDown: (row: number, col: number, ev: React.PointerEvent<HTMLElement>) => 'text' | 'object';
 }): React.ReactElement {
 	const g = resolveGrid(model).grid[row][col]!;
@@ -230,9 +236,22 @@ function TableCellView({
 			{...(cell.rowspan > 1 ? { rowSpan: cell.rowspan } : {})}
 			onPointerDown={(ev) => onCellPointerDown(row, col, ev)}
 		>
-			<span className="pk-tcell-text">{cell.text}</span>
+			<span className="pk-tcell-text" data-src-text-from={sourceFrom}>{cell.text}</span>
 		</Tag>
 	);
+}
+
+function tableCellSourceFrom(block: ComposerBlock, row: number, col: number, visibleText: string): number | undefined {
+	const unit = block.units.find(
+		(unit) => unit.unitKind === 'table-cell' && unit.row === row && unit.col === col,
+	);
+	if (!unit) return undefined;
+	const localFrom = unit.from - block.source.from;
+	const localTo = unit.to - block.source.from;
+	const unitSource = block.renderModel.raw.slice(localFrom, localTo);
+	const visibleFrom = unitSource.indexOf(visibleText);
+	if (visibleFrom < 0) return undefined;
+	return unit.from + visibleFrom;
 }
 
 /** Perimeter edge classes so the selection outline hugs its outer boundary. */

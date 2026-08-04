@@ -72,6 +72,11 @@ assert.ok(
 	root.includes('{blockActionRow}'),
 	'unitized collection actions reuse the existing horizontal BlockActionRow inside the owning block',
 );
+assert.ok(
+	root.includes('if (collectionActionActive)') &&
+	!root.includes('onPointerLeave={editing && unitized ? hideActionRow : undefined}'),
+	'the collection action row owns the pointer path from the six-dot rail through the whole block',
+);
 assert.match(
 	css,
 	/\.pk-composer-block\[data-unitized='true'\]\[data-collection-action-active\]\s*\{[\s\S]*?background:\s*var\(--pkc-block-hover-bg\);[\s\S]*?box-shadow:\s*var\(--pkc-block-hover-shadow\);/,
@@ -79,12 +84,18 @@ assert.match(
 );
 assert.match(
 	css,
+	/\.pk-collection-action-corridor\s*\{[\s\S]*?left:\s*-43px;[\s\S]*?width:\s*43px;[\s\S]*?pointer-events:\s*auto;/,
+	'the active collection owns a transparent pointer corridor below the offset six-dot rail',
+);
+assert.ok(root.includes('className="pk-collection-action-corridor"'));
+assert.match(
+	css,
 	/\.pk-block-action-row__shell\s*\{[\s\S]*?white-space:\s*nowrap;[\s\S]*?overflow-x:\s*auto;/,
 	'the unchanged action capsules stay in one block-aligned horizontal strip',
 );
 assert.match(
 	css,
-	/\.pk-composer-find-highlight\s*\{[\s\S]*?42%[\s\S]*?box-shadow:\s*inset 0 -2px/,
+	/\.pk-composer-find-highlight\s*\{[\s\S]*?28%[\s\S]*?box-shadow:\s*inset 0 -2px/,
 	'find highlights keep the matched text legible with a lighter fill and a strong underline',
 );
 const externalLinkRule = css.match(/\.pk-composer-link\s*\{([\s\S]*?)\}/)?.[1] ?? '';
@@ -95,6 +106,16 @@ assert.ok(
 	!wikilinkRule.includes('background:') &&
 	!wikilinkRule.includes('border:'),
 	'external links are blue while background-free wikilinks remain purple',
+);
+assert.match(
+	css,
+	/\.pk-composer-editable\[contenteditable='true'\][\s\S]*?pk-composer-link:not\(\.pk-composer-wikilink\)::after[\s\S]*?mask-image:/,
+	'editable external links keep the same up-right icon semantics without mutating source text',
+);
+assert.match(
+	css,
+	/\.pk-composer-display-switch\.pk-segmented\[data-variant='animated-pill'\][\s\S]*?border-radius:\s*var\(--pk-radius-md\)/,
+	'the nested display switch uses a smaller radius rung than the floating control bar',
 );
 
 console.log('composer-paragraph-line-units: passed');

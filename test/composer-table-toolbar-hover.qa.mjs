@@ -1,9 +1,9 @@
 /**
  * Peak Composer — table object-toolbar hover transfer regression.
  *
- * The toolbar is visually above the table, so a pointer can leave the table
- * before it reaches a toolbar control. The surface clearance must therefore be
- * inside the hover owner, without making the toolbar permanently visible.
+ * The toolbar is visually above the table without reserving a blank internal
+ * row. It remains an absolutely positioned child and overlaps the table edge,
+ * so the pointer transfer stays inside one continuous hover owner.
  *
  * Run: node test/composer-table-toolbar-hover.qa.mjs
  */
@@ -80,7 +80,7 @@ try {
 			marginTop: style.marginTop,
 		};
 	});
-	assert.ok(Number.parseFloat(safeZone.paddingTop) >= 40, `surface padding owns the hover-safe clearance; got ${safeZone.paddingTop}`);
+	assert.equal(safeZone.paddingTop, '0px', 'surface does not reserve a permanently empty toolbar row');
 	assert.equal(safeZone.marginTop, '0px', 'surface does not leave clearance outside its hover box');
 
 	const toolbarBox = await toolbar.boundingBox();
@@ -89,15 +89,15 @@ try {
 	assert.ok(surfaceBox, 'surface has layout before pointer transfer');
 	const tableBox = await surface.locator('.pk-composer-table').boundingBox();
 	assert.ok(tableBox, 'table has layout before pointer transfer');
-	assert.ok(toolbarBox.y >= surfaceBox.y, 'toolbar remains inside the surface hover owner');
+	assert.ok(toolbarBox.y < surfaceBox.y, 'toolbar floats above the grid while remaining a surface child');
 	const visualGap = tableBox.y - (toolbarBox.y + toolbarBox.height);
-	assert.ok(visualGap >= 8 && visualGap <= 16, `toolbar keeps its intended visual air gap; got ${visualGap}px`);
+	assert.ok(visualGap >= -6 && visualGap <= 0, `toolbar overlaps the table edge to keep a continuous pointer path; got ${visualGap}px`);
 	const bridgePoint = { x: toolbarBox.x + Math.min(16, toolbarBox.width / 2), y: surfaceBox.y + 2 };
 	const bridgeTarget = await page.evaluate(({ x, y }) => {
 		const el = document.elementFromPoint(x, y);
-		return { isSurface: el?.classList.contains('pk-table-surface'), className: el?.className, tagName: el?.tagName };
+		return { inSurface: Boolean(el?.closest('.pk-table-surface')), className: el?.className, tagName: el?.tagName };
 	}, bridgePoint);
-	assert.equal(bridgeTarget.isSurface, true, `the clearance resolves pointer hit-testing to the table surface; got ${JSON.stringify(bridgeTarget)}`);
+	assert.equal(bridgeTarget.inSurface, true, `the overlap resolves pointer hit-testing inside the table surface; got ${JSON.stringify(bridgeTarget)}`);
 	await page.mouse.move(bridgePoint.x, bridgePoint.y);
 	await page.waitForTimeout(100);
 	assert.equal(await toolbar.evaluate((el) => getComputedStyle(el).opacity), '1', 'pointer can cross the safe zone without hiding the toolbar');

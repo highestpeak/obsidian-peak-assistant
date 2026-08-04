@@ -94,7 +94,8 @@
 .peak-composer-root .pk-composer-block[data-spacing='lead'] { margin-top: 18px; }
 .peak-composer-root .pk-composer-block[data-spacing='detail'] { margin-top: 8px; }
 .peak-composer-root .pk-composer-block[data-spacing='quote'] { margin-top: 16px; }
-.peak-composer-root .pk-composer-block[data-spacing='table'],
+.peak-composer-root .pk-composer-block[data-spacing='callout'] { margin-top: 14px; }
+.peak-composer-root .pk-composer-block[data-spacing='table'] { margin-top: 36px; }
 .peak-composer-root .pk-composer-block[data-spacing='chart'] { margin-top: 56px; }
 .peak-composer-root .pk-composer-blocks > .pk-composer-block:first-child {
 	margin-top: 0;
@@ -122,6 +123,18 @@
 .peak-composer-root .pk-composer-block[data-unitized='true'][data-collection-action-active] {
 	background: var(--pkc-block-hover-bg);
 	box-shadow: var(--pkc-block-hover-shadow);
+}
+.peak-composer-root .pk-collection-action-corridor {
+	/* The six-dot rail sits outside the block at left:-43px. Keep that gutter in
+	 * the same pointer owner while collection actions are open, so a deliberate
+	 * diagonal move toward the bottom action row cannot fall through the gap. */
+	position: absolute;
+	z-index: 14;
+	top: 0;
+	bottom: 0;
+	left: -43px;
+	width: 43px;
+	pointer-events: auto;
 }
 .peak-composer-root .pk-composer-rail {
 	flex: none;
@@ -359,12 +372,12 @@
 	position: absolute;
 	box-sizing: border-box;
 	border-radius: 2px;
-	background: color-mix(in srgb, var(--text-highlight-bg) 42%, transparent);
-	box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--pk-warning) 72%, transparent);
+	background: color-mix(in srgb, var(--text-highlight-bg) 28%, transparent);
+	box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--pk-warning) 64%, transparent);
 }
 .peak-composer-root .pk-composer-find-highlight[data-active='true'] {
-	outline: 2px solid color-mix(in srgb, var(--pk-accent) 78%, transparent);
-	background: color-mix(in srgb, var(--pk-accent) 18%, transparent);
+	outline: 1px solid color-mix(in srgb, var(--pk-accent) 74%, transparent);
+	background: color-mix(in srgb, var(--pk-accent) 12%, transparent);
 	box-shadow: inset 0 -2px 0 var(--pk-accent);
 }
 .peak-composer-root .pk-composer-blocks {
@@ -1631,6 +1644,25 @@
 	vertical-align: -1px;
 	color: currentColor;
 }
+.peak-composer-root .pk-composer-editable[contenteditable='true']
+	.pk-composer-link:not(.pk-composer-wikilink)::after {
+	content: '';
+	display: inline-block;
+	width: 12px;
+	height: 12px;
+	margin-left: 3px;
+	vertical-align: -1px;
+	background: currentColor;
+	-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 3h6v6'/%3E%3Cpath d='M10 14 21 3'/%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/%3E%3C/svg%3E");
+	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 3h6v6'/%3E%3Cpath d='M10 14 21 3'/%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/%3E%3C/svg%3E");
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
+	-webkit-mask-position: center;
+	mask-position: center;
+	-webkit-mask-size: contain;
+	mask-size: contain;
+	pointer-events: none;
+}
 .peak-composer-root .pk-link-popover__head {
 	display: grid;
 	grid-template-columns: 14px minmax(0, 1fr) auto;
@@ -1730,13 +1762,13 @@
 .peak-composer-root .pk-heading-2 { font-size: var(--pkc-h2-size); font-weight: var(--pkc-h2-weight); line-height: 1.35; }
 .peak-composer-root .pk-heading-3 { font-size: var(--pkc-h3-size); font-weight: var(--pkc-h3-weight); }
 .peak-composer-root .pk-composer-quote {
-	border-left: 4px solid var(--pk-accent, #5d70e8);
+	border-left: 3px solid var(--pk-accent, #5d70e8);
 	border-radius: 0 var(--pk-radius-md) var(--pk-radius-md) 0;
 	background: color-mix(in srgb, var(--pk-accent, #5d70e8) 5%, var(--pk-bg-primary, #fff));
-	padding: 16px 24px;
+	padding: 9px 14px;
 	color: var(--pk-text-secondary);
 	font-size: 15px;
-	line-height: 1.8;
+	line-height: 1.65;
 }
 .peak-composer-root .pk-composer-callout {
 	overflow: hidden;
@@ -1749,8 +1781,8 @@
 	display: flex;
 	align-items: center;
 	gap: var(--pk-space-2);
-	min-height: 41px;
-	padding: 10px 12px;
+	min-height: 34px;
+	padding: 7px 10px;
 	border-bottom: 1px solid var(--pkc-callout-divider);
 	color: var(--pkc-callout-accent);
 	font-size: 14px;
@@ -1767,13 +1799,13 @@
 .peak-composer-root .pk-composer-callout__body {
 	display: grid;
 	gap: 2px;
-	padding: 12px;
+	padding: 8px 10px;
 }
 .peak-composer-root .pk-composer-callout__body-text {
-	min-height: 1.82em;
+	min-height: 1.65em;
 	color: var(--pkc-prose);
 	font-size: var(--pkc-prose-size);
-	line-height: 1.82;
+	line-height: 1.65;
 }
 .peak-composer-root .pk-composer-list__row {
 	display: flex;
@@ -2683,6 +2715,13 @@
 }
 .peak-composer-root .pk-composer-display-switch {
 	margin-left: 0;
+}
+.peak-composer-root .pk-composer-display-switch.pk-segmented[data-variant='animated-pill'] {
+	border-radius: var(--pk-radius-md);
+}
+.peak-composer-root .pk-composer-display-switch.pk-segmented[data-variant='animated-pill']
+	.pk-segmented__opt {
+	border-radius: var(--pk-radius-sm) !important;
 }
 
 /* ── focus-visible ring (all interactive families) ─────────────────────────── */
