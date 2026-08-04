@@ -1,0 +1,1273 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak Command Center · Mixed display V21</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #303338;
+      --muted: #777c83;
+      --faint: #a2a6ac;
+      --line: #e7e8eb;
+      --line-soft: #eef0f2;
+      --surface: rgba(255, 255, 255, 0.99);
+      --hover: #f3f2f6;
+      --selected: #efedf6;
+      --accent: #7353c4;
+      --accent-line: #d9d1ed;
+      --shadow: 0 26px 68px rgba(31, 34, 40, 0.18), 0 3px 12px rgba(31, 34, 40, 0.07);
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "SF Pro Text", "Segoe UI", sans-serif;
+      font-synthesis: none;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-width: 720px;
+      min-height: 560px;
+      margin: 0;
+      color: var(--ink);
+      background: #f1f2f4;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      color: inherit;
+    }
+
+    .icon {
+      width: 17px;
+      height: 17px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.75;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .app {
+      min-height: 100vh;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .workspace {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-columns: 44px 210px minmax(0, 1fr) 230px;
+      grid-template-rows: 36px minmax(0, 1fr);
+      color: #8b8f95;
+      background: #f8f8f9;
+      filter: saturate(0.65);
+    }
+
+    .titlebar {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 13px;
+      border-bottom: 1px solid #e2e4e7;
+      background: #f0f1f3;
+      font-size: 11px;
+    }
+
+    .traffic {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #d5d7da;
+    }
+
+    .titlebar strong {
+      margin-left: 8px;
+      color: #7c8087;
+      font-size: 11px;
+      font-weight: 570;
+    }
+
+    .rail {
+      padding-top: 12px;
+      border-right: 1px solid #e3e5e7;
+      background: #edeef0;
+    }
+
+    .rail-icon {
+      width: 27px;
+      height: 27px;
+      display: grid;
+      place-items: center;
+      margin: 0 auto 7px;
+      border-radius: 6px;
+      color: #a0a4aa;
+    }
+
+    .rail-icon.active {
+      color: #777c83;
+      background: #e1e3e6;
+    }
+
+    .sidebar,
+    .outline {
+      padding: 13px 11px;
+      background: #f4f5f6;
+    }
+
+    .sidebar {
+      border-right: 1px solid #e5e6e8;
+    }
+
+    .outline {
+      border-left: 1px solid #e5e6e8;
+    }
+
+    .pane-title {
+      margin-bottom: 12px;
+      color: #858990;
+      font-size: 9.5px;
+      font-weight: 680;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .pane-row {
+      height: 27px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 7px;
+      border-radius: 5px;
+      color: #91959b;
+      font-size: 10.5px;
+    }
+
+    .pane-row.active {
+      color: #6c7178;
+      background: #e9eaed;
+    }
+
+    .pane-row .icon {
+      width: 13px;
+      height: 13px;
+    }
+
+    .editor {
+      min-width: 0;
+      padding: 56px 8vw;
+      background: #fcfcfd;
+    }
+
+    .document {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .document-title {
+      width: 52%;
+      height: 23px;
+      margin-bottom: 26px;
+      border-radius: 4px;
+      background: #dddfe2;
+    }
+
+    .document-line {
+      width: 100%;
+      height: 7px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background: #e9eaed;
+    }
+
+    .document-line.mid { width: 76%; }
+    .document-line.short { width: 46%; }
+
+    .scrim {
+      position: relative;
+      z-index: 2;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 34px;
+      background: rgba(231, 232, 235, 0.67);
+      backdrop-filter: blur(1.5px);
+    }
+
+    .launcher {
+      position: relative;
+      width: 640px;
+      height: 448px;
+      display: grid;
+      grid-template-rows: 46px 34px minmax(0, 1fr) 34px;
+      overflow: hidden;
+      border: 1px solid #e3e5e8;
+      border-radius: 10px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .search-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 8px 5px 16px;
+    }
+
+    .search-field {
+      min-width: 0;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #858990;
+    }
+
+    .search-field > .icon {
+      width: 15px;
+      height: 15px;
+      flex: none;
+    }
+
+    .search-field input {
+      width: 100%;
+      height: 30px;
+      padding: 0;
+      border: 0;
+      outline: 0;
+      color: var(--ink);
+      background: transparent;
+      font-size: 12px;
+      font-weight: 420;
+      letter-spacing: -0.008em;
+    }
+
+    .search-field input::placeholder {
+      color: #9a9ea4;
+    }
+
+    .close-button {
+      width: 27px;
+      height: 27px;
+      display: grid;
+      flex: none;
+      place-items: center;
+      padding: 0;
+      border: 0;
+      border-radius: 6px;
+      color: #898d93;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .close-button:hover {
+      color: #61666d;
+      background: #f2f3f4;
+    }
+
+    .close-button .icon {
+      width: 13px;
+      height: 13px;
+    }
+
+    .tabs {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      padding: 0 14px 3px;
+      overflow-x: auto;
+      border-bottom: 1px solid var(--line-soft);
+      scrollbar-width: none;
+    }
+
+    .tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tab {
+      position: relative;
+      height: 29px;
+      display: inline-flex;
+      flex: none;
+      align-items: center;
+      gap: 6px;
+      padding: 0 8px;
+      border: 0;
+      border-radius: 5px;
+      color: #777c83;
+      background: transparent;
+      font-size: 10.5px;
+      font-weight: 540;
+      cursor: pointer;
+      transition: color 120ms ease, background-color 120ms ease;
+    }
+
+    .tab:hover {
+      color: #4e535a;
+      background: #f5f5f7;
+    }
+
+    .tab.active {
+      color: #30343a;
+    }
+
+    .tab.active::after {
+      content: "";
+      position: absolute;
+      right: 7px;
+      bottom: -3px;
+      left: 7px;
+      height: 1.5px;
+      border-radius: 2px;
+      background: #2e3136;
+    }
+
+    .tab .icon {
+      width: 13px;
+      height: 13px;
+      color: #858a91;
+    }
+
+    .tab.active .icon {
+      color: #6750a7;
+    }
+
+    .content {
+      min-width: 0;
+      min-height: 0;
+      padding: 9px 9px 11px;
+      overflow-y: auto;
+      scrollbar-color: #d8dade transparent;
+      scrollbar-width: thin;
+    }
+
+    .content::-webkit-scrollbar {
+      width: 9px;
+    }
+
+    .content::-webkit-scrollbar-thumb {
+      border: 3px solid transparent;
+      border-radius: 10px;
+      background: #d8dade;
+      background-clip: padding-box;
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      animation: panel-enter 160ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .group {
+      min-width: 0;
+    }
+
+    .group-header {
+      height: 21px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 6px;
+      color: #898d94;
+    }
+
+    .group-header .icon {
+      width: 12px;
+      height: 12px;
+    }
+
+    .group-header strong {
+      color: #7a7e85;
+      font-size: 9.5px;
+      font-weight: 670;
+      letter-spacing: 0.075em;
+      text-transform: uppercase;
+    }
+
+    .group-count {
+      color: #b0b3b8;
+      font-size: 9px;
+    }
+
+    .mixed-grid {
+      display: grid;
+      grid-template-columns: repeat(30, minmax(0, 1fr));
+      grid-auto-flow: row dense;
+      grid-auto-rows: 31px;
+      gap: 4px;
+    }
+
+    .mixed-item {
+      min-width: 0;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      color: #34373c;
+      background: transparent;
+      cursor: pointer;
+      transition: background-color 110ms ease, box-shadow 110ms ease, transform 110ms ease;
+    }
+
+    .mixed-item:hover,
+    .mixed-item.selected {
+      background: var(--hover);
+      box-shadow: inset 0 0 0 1px #e4e1e9;
+    }
+
+    .mixed-item.selected {
+      color: #2f2a3e;
+      background: var(--selected);
+      box-shadow: inset 0 0 0 1px var(--accent-line);
+    }
+
+    .mixed-item:active {
+      transform: scale(0.985);
+    }
+
+    .mode-icon {
+      grid-column: span 6;
+      grid-row: span 2;
+      height: 66px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 5px 6px 4px;
+      text-align: center;
+    }
+
+    .mode-compact {
+      grid-column: span 10;
+    }
+
+    .mode-wide {
+      grid-column: span 15;
+    }
+
+    .mode-full {
+      grid-column: span 30;
+    }
+
+    .mode-compact,
+    .mode-wide,
+    .mode-full {
+      height: 31px;
+      display: grid;
+      grid-template-columns: 14px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 7px;
+      padding: 0 7px;
+      color: #656a71;
+      text-align: left;
+    }
+
+    .item-icon {
+      display: grid;
+      place-items: center;
+      color: #666b72;
+    }
+
+    .mode-icon .item-icon {
+      width: 18px;
+      height: 18px;
+    }
+
+    .mode-icon .item-icon .icon {
+      width: 17px;
+      height: 17px;
+    }
+
+    .mode-compact .item-icon .icon,
+    .mode-wide .item-icon .icon,
+    .mode-full .item-icon .icon {
+      width: 14px;
+      height: 14px;
+    }
+
+    .mixed-item.selected .item-icon {
+      color: var(--accent);
+    }
+
+    .icon-label {
+      min-width: 0;
+      max-width: 100%;
+      min-height: 26px;
+      display: -webkit-box;
+      overflow: hidden;
+      color: inherit;
+      font-size: 10.75px;
+      font-weight: 530;
+      line-height: 1.2;
+      letter-spacing: -0.008em;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    .row-label {
+      min-width: 0;
+      overflow: hidden;
+      color: inherit;
+      font-size: 10.5px;
+      font-weight: 510;
+      letter-spacing: -0.008em;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .mode-full .row-label {
+      font-weight: 500;
+    }
+
+    .item-trailing {
+      color: #a2a6ac;
+      font-size: 9px;
+      white-space: nowrap;
+    }
+
+    .empty {
+      min-height: 220px;
+      display: grid;
+      place-items: center;
+      color: #989ca2;
+      font-size: 11px;
+    }
+
+    .footer {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 9px;
+      padding: 0 8px 0 12px;
+      border-top: 1px solid var(--line-soft);
+      color: #969aa0;
+      font-size: 9px;
+    }
+
+    .key-hints {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .key-hint {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    kbd {
+      min-width: 15px;
+      height: 15px;
+      display: inline-grid;
+      place-items: center;
+      padding: 0 3px;
+      border: 1px solid #e1e2e5;
+      border-radius: 3px;
+      color: #8d9197;
+      background: #fff;
+      font-family: inherit;
+      font-size: 8px;
+      line-height: 1;
+    }
+
+    .selection-label {
+      min-width: 0;
+      overflow: hidden;
+      color: #5f646b;
+      font-size: 9px;
+      text-align: center;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .customize-button {
+      width: 26px;
+      height: 26px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 0;
+      border-radius: 6px;
+      color: #8b8f96;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .customize-button:hover,
+    .customize-button.active {
+      color: #5f646b;
+      background: #f2f3f4;
+    }
+
+    .customize-button .icon {
+      width: 13px;
+      height: 13px;
+    }
+
+    .display-editor {
+      position: absolute;
+      z-index: 5;
+      right: 10px;
+      bottom: 41px;
+      width: 352px;
+      padding: 12px;
+      border: 1px solid #dedfe4;
+      border-radius: 9px;
+      background: rgba(255, 255, 255, 0.99);
+      box-shadow: 0 18px 46px rgba(31, 34, 40, 0.18), 0 2px 8px rgba(31, 34, 40, 0.08);
+      transform-origin: right bottom;
+      animation: editor-enter 140ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .display-editor[hidden] {
+      display: none;
+    }
+
+    .editor-heading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 9px;
+    }
+
+    .editor-heading .item-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 5px;
+      color: #666b72;
+      background: #f5f5f7;
+    }
+
+    .editor-heading .item-icon .icon {
+      width: 13px;
+      height: 13px;
+    }
+
+    .editor-heading-copy {
+      min-width: 0;
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .editor-heading-copy strong {
+      overflow: hidden;
+      color: #34373c;
+      font-size: 10.5px;
+      font-weight: 620;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .editor-heading-copy span {
+      overflow: hidden;
+      color: #999da3;
+      font-size: 9px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .editor-close {
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 0;
+      border-radius: 5px;
+      color: #90949a;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .editor-close:hover {
+      color: #5e636a;
+      background: #f2f3f4;
+    }
+
+    .editor-close .icon {
+      width: 12px;
+      height: 12px;
+    }
+
+    .field-label {
+      display: block;
+      margin-bottom: 5px;
+      color: #8a8e95;
+      font-size: 9px;
+      font-weight: 590;
+    }
+
+    .rename-input {
+      width: 100%;
+      height: 30px;
+      margin-bottom: 10px;
+      padding: 0 8px;
+      border: 1px solid #dfe1e4;
+      outline: 0;
+      border-radius: 6px;
+      color: #34373c;
+      background: #fff;
+      font-size: 10.5px;
+    }
+
+    .rename-input:focus {
+      border-color: #bcaee0;
+      box-shadow: 0 0 0 2px rgba(115, 83, 196, 0.1);
+    }
+
+    .display-options {
+      display: grid;
+      grid-template-columns: 1.15fr repeat(4, 1fr);
+      gap: 4px;
+    }
+
+    .display-option {
+      height: 29px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 0 5px;
+      border: 1px solid #e2e3e6;
+      border-radius: 6px;
+      color: #747980;
+      background: #fff;
+      font-size: 9px;
+      font-weight: 540;
+      cursor: pointer;
+    }
+
+    .display-option:hover {
+      border-color: #d6d2df;
+      color: #4f545b;
+      background: #f7f6f9;
+    }
+
+    .display-option.active {
+      border-color: #cfc4e8;
+      color: #5f43ae;
+      background: #f3f0fa;
+    }
+
+    .display-option .icon {
+      width: 11px;
+      height: 11px;
+    }
+
+    .auto-note {
+      min-height: 14px;
+      margin-top: 7px;
+      color: #989ca2;
+      font-size: 8.75px;
+      line-height: 1.35;
+    }
+
+    .auto-note strong {
+      color: #696e75;
+      font-weight: 600;
+    }
+
+    .toast {
+      position: absolute;
+      z-index: 6;
+      bottom: 46px;
+      left: 50%;
+      max-width: 430px;
+      padding: 8px 11px;
+      border: 1px solid #dedfe3;
+      border-radius: 7px;
+      color: #555a61;
+      background: rgba(255, 255, 255, 0.97);
+      box-shadow: 0 12px 30px rgba(34, 38, 44, 0.14);
+      font-size: 10px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 5px);
+      transition: opacity 130ms ease, transform 130ms ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    @keyframes panel-enter {
+      from { opacity: 0; transform: translateY(3px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes editor-enter {
+      from { opacity: 0; transform: scale(0.97) translateY(4px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    @media (max-width: 780px) {
+      .workspace {
+        grid-template-columns: 44px 190px minmax(0, 1fr);
+      }
+
+      .outline {
+        display: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3 1.2 3.3L16.5 7.5l-3.3 1.2L12 12l-1.2-3.3-3.3-1.2 3.3-1.2L12 3Z"/><path d="m18 13 .8 2.2 2.2.8-2.2.8L18 19l-.8-2.2L15 16l2.2-.8L18 13Z"/></symbol>
+    <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5 5-2Z"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="m12 17 0 5M6.5 4.5h11l-2 5v3l2 2h-11l2-2v-3l-2-5Z"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.6-2-3.4-2.5 1A7 7 0 0 0 14.7 6L14.3 3h-4.6L9.3 6A7 7 0 0 0 7.6 7L5.1 6l-2 3.4 2 1.6a7 7 0 0 0 0 2L3.1 14.6l2 3.4 2.5-1a7 7 0 0 0 1.7 1l.4 3h4.6l.4-3a7 7 0 0 0 1.7-1l2.5 1 2-3.4-2-1.6a7 7 0 0 0 .1-1Z"/></symbol>
+    <symbol id="i-pen" viewBox="0 0 24 24"><path d="m4 20 4.4-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z"/><path d="m13.8 7.7 3 3"/></symbol>
+    <symbol id="i-message" viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3V5Z"/></symbol>
+    <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Z"/><path d="M9 3v15M15 6v15"/></symbol>
+    <symbol id="i-file-search" viewBox="0 0 24 24"><path d="M14 2H6v20h12V6l-4-4Z"/><path d="M14 2v4h4"/><circle cx="10" cy="13" r="2.5"/><path d="m12 15 2 2"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 11 9-8 9 8M5 10v11h14V10M9 21v-7h6v7"/></symbol>
+    <symbol id="i-content" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></symbol>
+    <symbol id="i-command" viewBox="0 0 24 24"><path d="M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6Z"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+    <symbol id="i-layout" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M10 9v12"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 2h8l4 4v16H6V2Z"/><path d="M14 2v5h5M9 12h6M9 16h6"/></symbol>
+    <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4V3Z"/></symbol>
+    <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M10 13h.01M14 13h4M7 16h10"/></symbol>
+    <symbol id="i-wand" viewBox="0 0 24 24"><path d="m4 20 11-11M13 5l2-2 6 6-2 2M6 4v3M4.5 5.5h3M18 16v4M16 18h4"/></symbol>
+    <symbol id="i-sidebar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6h7l2 2h9v11H3V6Z"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5L5 20"/></symbol>
+  </svg>
+
+  <main class="app">
+    <section class="workspace" aria-hidden="true">
+      <div class="titlebar"><i class="traffic"></i><i class="traffic"></i><i class="traffic"></i><strong>Peak Assistant · Product vault</strong></div>
+      <aside class="rail">
+        <span class="rail-icon active"><svg class="icon"><use href="#i-file"/></svg></span>
+        <span class="rail-icon"><svg class="icon"><use href="#i-search"/></svg></span>
+        <span class="rail-icon"><svg class="icon"><use href="#i-bookmark"/></svg></span>
+      </aside>
+      <aside class="sidebar">
+        <div class="pane-title">Files</div>
+        <div class="pane-row active"><svg class="icon"><use href="#i-file"/></svg>Command Center</div>
+        <div class="pane-row"><svg class="icon"><use href="#i-folder"/></svg>Product</div>
+        <div class="pane-row"><svg class="icon"><use href="#i-folder"/></svg>Research</div>
+        <div class="pane-row"><svg class="icon"><use href="#i-file"/></svg>Daily note</div>
+      </aside>
+      <section class="editor">
+        <div class="document">
+          <div class="document-title"></div>
+          <div class="document-line"></div><div class="document-line"></div><div class="document-line mid"></div>
+          <div class="document-line"></div><div class="document-line short"></div>
+        </div>
+      </section>
+      <aside class="outline">
+        <div class="pane-title">Outline</div>
+        <div class="pane-row active">Command Center</div>
+        <div class="pane-row">Navigation</div>
+        <div class="pane-row">Pinned</div>
+      </aside>
+    </section>
+
+    <section class="scrim">
+      <section class="launcher" aria-label="Peak Command Center mixed display V21 mock">
+        <header class="search-header">
+          <label class="search-field">
+            <svg class="icon"><use href="#i-search"/></svg>
+            <input id="search" type="text" autocomplete="off" placeholder="Search your Command Center" aria-label="Search your Command Center">
+          </label>
+          <button class="close-button" type="button" aria-label="Close"><svg class="icon"><use href="#i-x"/></svg></button>
+        </header>
+
+        <nav class="tabs" id="tabs" aria-label="Command Center groups"></nav>
+        <div class="content" id="content"></div>
+
+        <footer class="footer">
+          <div class="key-hints">
+            <span class="key-hint"><kbd>↑</kbd><kbd>↓</kbd> move</span>
+            <span class="key-hint"><kbd>↵</kbd> open</span>
+            <span class="key-hint"><kbd>Esc</kbd> close</span>
+          </div>
+          <span class="selection-label" id="selection-label"></span>
+          <button class="customize-button" id="customize" type="button" aria-label="Customize selected item" title="Customize selected item"><svg class="icon"><use href="#i-settings"/></svg></button>
+        </footer>
+
+        <aside class="display-editor" id="display-editor" hidden aria-label="Item display editor"></aside>
+      </section>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <script>
+    const groups = [
+      {
+        id: 'peak',
+        label: 'Peak Assistant',
+        icon: 'i-sparkles',
+        items: [
+          { id: 'composer', label: 'Composer', full: 'Peak Assistant: Open document in Peak Composer', icon: 'i-pen', mode: 'icon' },
+          { id: 'chat-studio', label: 'Chat Studio', full: 'Peak Assistant: Open Chat Studio', icon: 'i-message', mode: 'icon' },
+          { id: 'file-atlas', label: 'File Atlas', full: 'Peak Assistant: Open File Atlas', icon: 'i-map', mode: 'icon' },
+          { id: 'quick-search', label: 'Quick Search', full: 'Peak Assistant: Quick Search', icon: 'i-file-search', mode: 'icon' },
+          { id: 'settings', label: 'Settings', full: 'Peak Assistant: Settings', icon: 'i-settings', mode: 'icon' },
+          { id: 'my-content', label: 'Open My Content', full: 'Peak Assistant: Open My Content', icon: 'i-content', mode: 'compact' },
+          { id: 'keyboard-map', label: 'Show keyboard map', full: 'Peak Assistant: Show keyboard map', icon: 'i-keyboard', mode: 'compact' },
+          { id: 'setup-wizard', label: 'Setup Wizard', full: 'Peak Assistant: Setup Wizard', icon: 'i-wand', mode: 'compact' },
+          { id: 'command-center', label: 'Open Peak Command Center', full: 'Peak Assistant: Open Peak Command Center', icon: 'i-command', mode: 'wide' },
+          { id: 'excalidraw-pane', label: 'Excalidraw: Open drawing in a new pane', full: 'Excalidraw: Open drawing in a new pane', icon: 'i-image', mode: 'wide' },
+          { id: 'excalidraw-embed', label: 'Excalidraw: Create a new drawing and embed it into the active document at the current cursor position', full: 'Excalidraw: Create a new drawing and embed it into the active document at the current cursor position', icon: 'i-image', mode: 'auto' },
+        ],
+      },
+      {
+        id: 'navigation',
+        label: 'Navigation',
+        icon: 'i-compass',
+        items: [
+          { id: 'home', label: 'Home', full: 'Open Peak Home', icon: 'i-home', mode: 'icon' },
+          { id: 'usage', label: 'Usage Dashboard', full: 'Peak Assistant: Usage Dashboard', icon: 'i-chart', mode: 'compact' },
+          { id: 'research', label: 'Research Dashboard', full: 'Open Research Dashboard', icon: 'i-layout', mode: 'compact' },
+          { id: 'bookmarks', label: 'Bookmarks', full: 'Open Obsidian Bookmarks', icon: 'i-bookmark', mode: 'compact' },
+        ],
+      },
+      {
+        id: 'pinned',
+        label: 'Pinned',
+        icon: 'i-pin',
+        items: [
+          { id: 'pkm-analysis', label: 'PKM Product Analysis', full: 'PKM Product Analysis · 01 Projects', icon: 'i-file', mode: 'compact' },
+          { id: 'cc-research', label: 'Command Center Research', full: 'Command Center Research · 02 Research', icon: 'i-file', mode: 'wide' },
+          { id: 'ai-hub', label: 'AI Research Hub', full: 'AI Research Hub · Bookmark', icon: 'i-bookmark', mode: 'compact' },
+        ],
+      },
+      {
+        id: 'system',
+        label: 'System',
+        icon: 'i-settings',
+        items: [
+          { id: 'left-sidebar', label: 'Toggle left sidebar', full: 'Obsidian: Toggle left sidebar', icon: 'i-sidebar', mode: 'icon' },
+          { id: 'right-sidebar', label: 'Toggle right sidebar', full: 'Obsidian: Toggle right sidebar', icon: 'i-sidebar', mode: 'icon' },
+          { id: 'reload', label: 'Reload app without saving', full: 'Obsidian: Reload app without saving', icon: 'i-command', mode: 'auto' },
+        ],
+      },
+    ];
+
+    const state = {
+      scope: 'all',
+      query: '',
+      selectedId: 'excalidraw-embed',
+      editorOpen: false,
+    };
+
+    const search = document.getElementById('search');
+    const tabs = document.getElementById('tabs');
+    const content = document.getElementById('content');
+    const selectionLabel = document.getElementById('selection-label');
+    const customize = document.getElementById('customize');
+    const displayEditor = document.getElementById('display-editor');
+    const toast = document.getElementById('toast');
+    const measuringCanvas = document.createElement('canvas');
+    const measuringContext = measuringCanvas.getContext('2d');
+    let toastTimer = 0;
+
+    function iconMarkup(id) {
+      return `<svg class="icon" aria-hidden="true"><use href="#${id}"/></svg>`;
+    }
+
+    function escapeText(value) {
+      return value
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;');
+    }
+
+    function escapeAttribute(value) {
+      return escapeText(value).replaceAll('"', '&quot;');
+    }
+
+    function allItems() {
+      return groups.flatMap((group) => group.items.map((item) => ({ item, group })));
+    }
+
+    function selectedEntry() {
+      return allItems().find(({ item }) => item.id === state.selectedId) || allItems()[0];
+    }
+
+    function measureLabel(label) {
+      if (!measuringContext) return label.length * 6;
+      measuringContext.font = '510 10.5px -apple-system, BlinkMacSystemFont, Inter, sans-serif';
+      return measuringContext.measureText(label || '').width;
+    }
+
+    function resolveMode(item) {
+      if (item.mode !== 'auto') return item.mode;
+      const gridWidth = Math.max(560, content.clientWidth - 12);
+      const iconAndSpacing = 38;
+      const compactBudget = gridWidth / 3 - iconAndSpacing;
+      const wideBudget = gridWidth / 2 - iconAndSpacing;
+      const textWidth = measureLabel(item.label);
+      if (textWidth <= compactBudget) return 'compact';
+      if (textWidth <= wideBudget) return 'wide';
+      return 'full';
+    }
+
+    function renderTabs() {
+      const scopes = [
+        { id: 'all', label: 'All', icon: null },
+        ...groups.map(({ id, label, icon }) => ({ id, label, icon })),
+      ];
+
+      tabs.innerHTML = scopes.map((scope) => `
+        <button class="tab${state.scope === scope.id ? ' active' : ''}" type="button" data-scope="${scope.id}" aria-pressed="${state.scope === scope.id}">
+          ${scope.icon ? iconMarkup(scope.icon) : ''}<span>${scope.label}</span>
+        </button>
+      `).join('');
+    }
+
+    function itemMatches(item, group) {
+      if (!state.query) return true;
+      return `${item.label} ${item.full} ${group.label}`.toLowerCase().includes(state.query);
+    }
+
+    function visibleGroups() {
+      const source = state.scope === 'all'
+        ? groups
+        : groups.filter((group) => group.id === state.scope);
+
+      return source
+        .map((group) => ({ ...group, items: group.items.filter((item) => itemMatches(item, group)) }))
+        .filter((group) => group.items.length);
+    }
+
+    function itemMarkup(item) {
+      const resolved = resolveMode(item);
+      const selected = item.id === state.selectedId ? ' selected' : '';
+      const common = `class="mixed-item mode-${resolved}${selected}" type="button" data-item-id="${item.id}" data-full="${escapeAttribute(item.full)}" title="${escapeAttribute(item.full)}"`;
+      if (resolved === 'icon') {
+        return `<button ${common}>
+          <span class="item-icon">${iconMarkup(item.icon || 'i-command')}</span>
+          <span class="icon-label">${escapeText(item.label)}</span>
+        </button>`;
+      }
+
+      const trailing = item.mode === 'auto' ? `Auto · ${resolved === 'compact' ? '3' : resolved === 'wide' ? '2' : '1'}` : '';
+      return `<button ${common}>
+        <span class="item-icon">${iconMarkup(item.icon || 'i-command')}</span>
+        <span class="row-label">${escapeText(item.label)}</span>
+        <span class="item-trailing">${trailing}</span>
+      </button>`;
+    }
+
+    function renderContent() {
+      const source = visibleGroups();
+      if (!source.length) {
+        content.innerHTML = '<div class="empty">No configured item matches this search.</div>';
+        selectionLabel.textContent = 'Search still uses the full command name';
+        return;
+      }
+
+      content.innerHTML = `<div class="panel">${source.map((group) => `
+        <section class="group" data-group="${group.id}">
+          <header class="group-header">
+            ${iconMarkup(group.icon)}
+            <strong>${group.label}</strong>
+            <span class="group-count">${group.items.length}</span>
+          </header>
+          <div class="mixed-grid">${group.items.map(itemMarkup).join('')}</div>
+        </section>
+      `).join('')}</div>`;
+
+      updateSelectionLabel();
+    }
+
+    function render() {
+      renderTabs();
+      renderContent();
+      if (state.editorOpen) renderDisplayEditor();
+    }
+
+    function updateSelectionLabel() {
+      const entry = selectedEntry();
+      if (!entry) {
+        selectionLabel.textContent = 'Select an item';
+        return;
+      }
+      const resolved = resolveMode(entry.item);
+      selectionLabel.textContent = `${entry.item.full} · ${entry.item.mode === 'auto' ? `Auto → ${resolved}` : entry.item.mode}`;
+    }
+
+    function selectItem(itemId) {
+      state.selectedId = itemId;
+      content.querySelectorAll('[data-item-id]').forEach((item) => {
+        item.classList.toggle('selected', item.dataset.itemId === itemId);
+      });
+      updateSelectionLabel();
+      if (state.editorOpen) renderDisplayEditor();
+    }
+
+    function displayOption(mode, label, icon = null) {
+      const item = selectedEntry().item;
+      return `<button class="display-option${item.mode === mode ? ' active' : ''}" type="button" data-display-mode="${mode}">
+        ${icon ? iconMarkup(icon) : ''}<span>${label}</span>
+      </button>`;
+    }
+
+    function renderDisplayEditor() {
+      const entry = selectedEntry();
+      if (!entry) return;
+      const resolved = resolveMode(entry.item);
+      displayEditor.hidden = false;
+      customize.classList.add('active');
+      displayEditor.innerHTML = `
+        <div class="editor-heading">
+          <span class="item-icon">${iconMarkup(entry.item.icon || 'i-command')}</span>
+          <span class="editor-heading-copy">
+            <strong>${escapeText(entry.item.label || 'Untitled action')}</strong>
+            <span>${escapeText(entry.item.full)}</span>
+          </span>
+          <button class="editor-close" type="button" aria-label="Close display editor">${iconMarkup('i-x')}</button>
+        </div>
+        <label class="field-label" for="rename-input">Name</label>
+        <input class="rename-input" id="rename-input" type="text" value="${escapeAttribute(entry.item.label)}" autocomplete="off">
+        <span class="field-label">Display</span>
+        <div class="display-options">
+          ${displayOption('auto', 'Auto')}
+          ${displayOption('icon', 'Icon', 'i-layout')}
+          ${displayOption('compact', '3')}
+          ${displayOption('wide', '2')}
+          ${displayOption('full', '1')}
+        </div>
+        <div class="auto-note"><strong>${entry.item.mode === 'auto' ? `Auto currently uses ${resolved === 'compact' ? '3 columns' : resolved === 'wide' ? '2 columns' : 'full width'}.` : `Fixed display: ${entry.item.mode}.`}</strong> Auto measures rendered text; it never rewrites the command name.</div>
+      `;
+    }
+
+    function closeDisplayEditor() {
+      state.editorOpen = false;
+      displayEditor.hidden = true;
+      customize.classList.remove('active');
+    }
+
+    function showToast(message) {
+      window.clearTimeout(toastTimer);
+      toast.textContent = message;
+      toast.classList.add('show');
+      toastTimer = window.setTimeout(() => toast.classList.remove('show'), 1500);
+    }
+
+    tabs.addEventListener('click', (event) => {
+      const tab = event.target.closest('[data-scope]');
+      if (!tab) return;
+      state.scope = tab.dataset.scope;
+      closeDisplayEditor();
+      render();
+    });
+
+    content.addEventListener('click', (event) => {
+      const item = event.target.closest('[data-item-id]');
+      if (!item) return;
+      selectItem(item.dataset.itemId);
+    });
+
+    content.addEventListener('dblclick', (event) => {
+      const item = event.target.closest('[data-item-id]');
+      if (!item) return;
+      showToast(`Would open: ${item.dataset.full}`);
+    });
+
+    search.addEventListener('input', () => {
+      state.query = search.value.trim().toLowerCase();
+      closeDisplayEditor();
+      renderContent();
+    });
+
+    search.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && search.value) {
+        event.preventDefault();
+        search.value = '';
+        state.query = '';
+        renderContent();
+      }
+    });
+
+    customize.addEventListener('click', () => {
+      if (state.editorOpen) {
+        closeDisplayEditor();
+        return;
+      }
+      state.editorOpen = true;
+      renderDisplayEditor();
+      document.getElementById('rename-input')?.focus();
+    });
+
+    displayEditor.addEventListener('click', (event) => {
+      if (event.target.closest('.editor-close')) {
+        closeDisplayEditor();
+        return;
+      }
+
+      const option = event.target.closest('[data-display-mode]');
+      if (!option) return;
+      const entry = selectedEntry();
+      entry.item.mode = option.dataset.displayMode;
+      renderContent();
+      renderDisplayEditor();
+    });
+
+    displayEditor.addEventListener('input', (event) => {
+      if (!event.target.matches('#rename-input')) return;
+      const entry = selectedEntry();
+      entry.item.label = event.target.value;
+      renderContent();
+      const resolved = resolveMode(entry.item);
+      const note = displayEditor.querySelector('.auto-note');
+      const heading = displayEditor.querySelector('.editor-heading-copy strong');
+      if (heading) heading.textContent = entry.item.label || 'Untitled action';
+      if (note && entry.item.mode === 'auto') {
+        note.innerHTML = `<strong>Auto currently uses ${resolved === 'compact' ? '3 columns' : resolved === 'wide' ? '2 columns' : 'full width'}.</strong> Auto measures rendered text; it never rewrites the command name.`;
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') {
+        event.preventDefault();
+        closeDisplayEditor();
+        search.focus();
+        search.select();
+      }
+      if (event.key === 'Escape' && state.editorOpen) {
+        event.preventDefault();
+        closeDisplayEditor();
+      }
+    });
+
+    document.querySelector('.close-button').addEventListener('click', () => {
+      showToast('Close Command Center');
+    });
+
+    render();
+    search.focus();
+  </script>
+</body>
+</html>
