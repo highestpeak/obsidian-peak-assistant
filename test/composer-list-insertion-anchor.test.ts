@@ -167,8 +167,17 @@ assert.ok(
 const actionRow = readFileSync('src/ui/view/composer/chrome/BlockActionRow.tsx', 'utf8');
 assert.ok(
 	actionRow.includes("variant?: 'block' | 'unit-ai'") &&
-		actionRow.includes('allowedCapabilityIds'),
-	'unit rows project an allow-listed AI-only action surface without block transforms',
+		actionRow.includes('instructionCapabilityId'),
+	'unit rows keep the AI-only shell while selecting an explicit instruction capability',
+);
+assert.ok(
+	root.includes('snapshot={aiSnapshot}') &&
+		root.includes('hiddenQuickCapabilityIds={hiddenQuickCapabilities(block.kind)}'),
+	'unit rows project the normal block AI action set instead of a one-action allow-list',
+);
+assert.ok(
+	root.includes("instruction !== undefined ? unitSnapshot : aiSnapshot"),
+	'custom instruction keeps the exact item range while preset list transforms keep block scope',
 );
 assert.ok(
 	root.includes('await chrome.flushAll();') &&

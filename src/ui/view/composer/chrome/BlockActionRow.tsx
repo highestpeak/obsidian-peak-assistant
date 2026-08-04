@@ -36,10 +36,10 @@ export type BlockPanelKind =
 
 export interface BlockActionRowProps {
 	snapshot: ComposerContextSnapshot;
-	/** Unit rows expose only AI rewrite actions; block rows keep the full toolbar. */
+	/** Unit rows expose only AI actions; block rows keep the full toolbar. */
 	variant?: 'block' | 'unit-ai';
-	/** Optional allow-list applied before quick-action and instruction projection. */
-	allowedCapabilityIds?: readonly string[];
+	/** Fail-closed capability used by the free-form instruction input. */
+	instructionCapabilityId?: string;
 	onInsertBelow?: () => void;
 	onSelectInsertType?: (typeId: string) => void;
 	copySurface?: (dismissPreview: () => void) => React.ReactNode;
@@ -58,7 +58,7 @@ export interface BlockActionRowProps {
 export function BlockActionRow({
 	snapshot,
 	variant = 'block',
-	allowedCapabilityIds,
+	instructionCapabilityId,
 	onInsertBelow,
 	onSelectInsertType,
 	copySurface,
@@ -76,13 +76,15 @@ export function BlockActionRow({
 	const a = config.chrome.actions;
 	const unitOnly = variant === 'unit-ai';
 	const canComment = Boolean(chrome.runtime.comments);
-	const allowedIds = allowedCapabilityIds ? new Set(allowedCapabilityIds) : null;
-	const aiActions = projection
-		.actionsFor(snapshot, 'block-row')
-		.filter((descriptor) => !allowedIds || allowedIds.has(descriptor.capabilityId));
+	const aiActions = projection.actionsFor(snapshot, 'block-row');
 	const hiddenQuickIds = new Set(hiddenQuickCapabilityIds);
 	const quickAiActions = aiActions.filter((descriptor) => !hiddenQuickIds.has(descriptor.capabilityId));
-	const hasInstruction = aiActions.some((d) => d.acceptsInstruction && !d.disabledReason);
+	const instructionAction = instructionCapabilityId
+		? aiActions.find((descriptor) => descriptor.capabilityId === instructionCapabilityId)
+		: aiActions.find((descriptor) => descriptor.acceptsInstruction && !descriptor.disabledReason);
+	const hasInstruction = Boolean(
+		instructionAction?.acceptsInstruction && !instructionAction.disabledReason,
+	);
 	const [instruction, setInstruction] = React.useState('');
 	const inputRef = React.useRef<HTMLInputElement | null>(null);
 	const instructionOpen = openPanel === 'instruction';
@@ -128,8 +130,9 @@ export function BlockActionRow({
 		onOpenPanel('instruction');
 	};
 	const submitInstruction = () => {
-		const target = aiActions.find((d) => d.acceptsInstruction && !d.disabledReason);
-		if (target && instruction.trim()) onInvoke(target, instruction.trim());
+		if (hasInstruction && instructionAction && instruction.trim()) {
+			onInvoke(instructionAction, instruction.trim());
+		}
 		closeInstruction();
 	};
 

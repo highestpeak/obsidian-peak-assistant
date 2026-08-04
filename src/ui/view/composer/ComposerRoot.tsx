@@ -1285,9 +1285,10 @@ function ComposerBlockRow({
 				onPointerLeave={hideActionRow}
 			>
 				<BlockActionRow
-					snapshot={unitSnapshot}
+					snapshot={aiSnapshot}
 					variant="unit-ai"
-					allowedCapabilityIds={[POLISH_CAPABILITY_ID]}
+					instructionCapabilityId={POLISH_CAPABILITY_ID}
+					hiddenQuickCapabilityIds={hiddenQuickCapabilities(block.kind)}
 					onOpenPanel={(kind) => {
 						if (kind !== 'instruction') return;
 						if (unitPanel?.panel === kind && unitPanel.pinned) {
@@ -1306,7 +1307,11 @@ function ComposerBlockRow({
 					openPanel={unitPanel?.panel ?? null}
 					panelPinned={unitPanel?.pinned ?? false}
 					writeDisabledReason={chrome.runtime.hub ? undefined : config.chrome.actions.disabledNoRuntime}
-					onInvoke={(descriptor, instruction) => onInvoke(descriptor, unitSnapshot, instruction)}
+					onInvoke={(descriptor, instruction) => onInvoke(
+						descriptor,
+						instruction !== undefined ? unitSnapshot : aiSnapshot,
+						instruction,
+					)}
 				/>
 			</div>
 		);
