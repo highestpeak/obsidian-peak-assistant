@@ -345,7 +345,7 @@
     .variable-disclosure-toggle:checked + .variable-editor-list + .variable-disclosure-label .more { display: none; }
     .variable-disclosure-toggle:checked + .variable-inline-list + .variable-disclosure-label .less,
     .variable-disclosure-toggle:checked + .variable-editor-list + .variable-disclosure-label .less { display: inline; }
-    .variable-editor-item span { overflow: visible; text-overflow: clip; white-space: normal; }
+    .variable-inline-item span, .variable-editor-item span { overflow: visible; text-overflow: clip; white-space: normal; }
     .variable-editor-note { margin: 0 0 12px; color: var(--muted); }
     .variable-editor-list { margin-top: 0; padding: 12px; border: 1px solid #ded9f3; border-radius: 6px; background: #fbfaff; }
     .variable-editor-item { min-height: 28px; }
@@ -1360,6 +1360,15 @@
       return variable === 'join' ? '{{join …}}' : `{{${variable}}}`;
     }
 
+    function variableDescription(definition) {
+      const availability = definition.availability === 'Optional'
+        ? ' It is supplied only when available.'
+        : definition.availability === 'Helper'
+          ? ' This is a registered Handlebars helper rather than a value.'
+          : '';
+      return `${definition.explanation ?? `${definition.label} comes from ${definition.source}.`}${availability}`;
+    }
+
     const VARIABLE_PREVIEW_LIMIT = 4;
 
     function variableDisclosureId(prompt, scope) {
@@ -1383,7 +1392,7 @@
       }
       const field = (variable, hidden) => {
         const definition = variableDefinition(variable);
-        return `<span class="variable-inline-item${hidden ? ' variable-extra' : ''}"><code>${escapeHtml(variableToken(variable))}</code><span>${escapeHtml(definition.label)}</span></span>`;
+        return `<span class="variable-inline-item${hidden ? ' variable-extra' : ''}"><code>${escapeHtml(variableToken(variable))}</code><span>${escapeHtml(variableDescription(definition))}</span></span>`;
       };
       return `<div class="variable-summary"><div class="variable-summary-copy"><strong>Template inputs</strong><span>Peak fills these values through Handlebars when the action runs.</span></div>${renderVariableList(prompt, 'summary', 'variable-inline-list', 'inputs', field)}</div>`;
     }
@@ -1403,9 +1412,7 @@
       }
       const field = (variable, hidden) => {
         const definition = variableDefinition(variable);
-        const availability = definition.availability === 'Optional' ? ' It is supplied only when available.' : definition.availability === 'Helper' ? ' This is a registered Handlebars helper rather than a value.' : '';
-        const description = `${definition.explanation ?? `${definition.label} comes from ${definition.source}.`}${availability}`;
-        return `<span class="variable-editor-item${hidden ? ' variable-extra' : ''}"><code>${escapeHtml(variableToken(variable))}</code><span>${escapeHtml(description)}</span></span>`;
+        return `<span class="variable-editor-item${hidden ? ' variable-extra' : ''}"><code>${escapeHtml(variableToken(variable))}</code><span>${escapeHtml(variableDescription(definition))}</span></span>`;
       };
       return `<p class="variable-editor-note">Use these exact Handlebars fields in the template. Peak supplies the values at run time; the source context is fixed by the action and is not typed manually here.</p>${renderVariableList(prompt, 'editor', 'variable-editor-list', 'variables', field)}`;
     }
