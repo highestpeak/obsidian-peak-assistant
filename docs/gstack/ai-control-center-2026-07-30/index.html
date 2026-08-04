@@ -335,6 +335,13 @@
     .variable-inline-item { padding: 5px 0; border-bottom: 1px solid var(--line); }
     .variable-inline-item code, .variable-editor-item code { flex: 0 0 auto; color: #5d53a7; font: 10px/1.4 var(--mono); }
     .variable-inline-item span, .variable-editor-item span { overflow: hidden; color: var(--muted); font-size: 11px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+    .variable-more { margin-top: 8px; }
+    .variable-more summary { cursor: pointer; color: var(--accent); font-size: 11px; font-weight: 650; }
+    .variable-more summary .less { display: none; }
+    .variable-more[open] summary .more { display: none; }
+    .variable-more[open] summary .less { display: inline; }
+    .variable-editor-item { align-items: flex-start; }
+    .variable-editor-item span { overflow: visible; text-overflow: clip; white-space: normal; }
     .variable-editor-note { margin: 0 0 12px; color: var(--muted); }
     .variable-editor-list { margin-top: 0; padding: 12px; border: 1px solid #ded9f3; border-radius: 6px; background: #fbfaff; }
     .variable-editor-item { min-height: 28px; }
@@ -1290,23 +1297,23 @@
     // This is a presentation fixture for the declared Handlebars context.
     // It deliberately shows field names and safe examples, never live Vault data.
     const templateVariableDefinitions = {
-      currentQuery: { label: 'Current search query', source: 'Vault Search input', availability: 'Required', example: '"project planning"' },
-      activeFilePath: { label: 'Active note path', source: 'Current workspace context', availability: 'Optional', example: '"Projects/Planning.md"' },
-      currentResultView: { label: 'Current result view', source: 'Vault Search state', availability: 'Optional', example: '"files"' },
-      recentQueriesLine: { label: 'Recent searches', source: 'Vault Search history', availability: 'Optional', example: '"research, planning"' },
-      recentOpenedFilesLine: { label: 'Recently opened notes', source: 'Workspace history', availability: 'Optional', example: '"Projects/Planning.md"' },
-      pinnedLine: { label: 'Pinned context', source: 'Vault Search state', availability: 'Optional', example: '"Pinned: Roadmap"' },
-      knownTopFoldersLine: { label: 'Known top folders', source: 'Vault structure', availability: 'Optional', example: '"Projects, Notes"' },
-      typedTrail: { label: 'Typed query trail', source: 'Vault Search interaction', availability: 'Optional', example: '"pro → project"' },
-      firstScreenLine: { label: 'First visible results', source: 'Vault Search result view', availability: 'Optional', example: '"3 matching notes"' },
-      eventCount: { label: 'Interaction count', source: 'Vault Search interaction', availability: 'Optional', example: '3' },
-      sessionTimeline: { label: 'Search session timeline', source: 'Vault Search interaction', availability: 'Optional', example: '"typed → opened → pinned"' },
-      title: { label: 'Document title', source: 'Current document', availability: 'Required', example: '"Project plan"' },
-      content: { label: 'Source content', source: 'Frozen action input', availability: 'Required', example: '"Selected source text…"' },
-      selection: { label: 'Selected text', source: 'Current editor selection', availability: 'Optional', example: '"The selected paragraph…"' },
-      instruction: { label: 'Requested action', source: 'Action menu or user input', availability: 'Required', example: '"Make this clearer"' },
-      before: { label: 'Leading context', source: 'Composer block projection', availability: 'Optional', example: '"Previous block…"' },
-      after: { label: 'Trailing context', source: 'Composer block projection', availability: 'Optional', example: '"Next block…"' },
+      currentQuery: { label: 'Current search query', source: 'Vault Search input', availability: 'Required', explanation: 'The exact words in the Vault Search box. Use this as the main subject when proposing a clearer or broader query.', example: '"project planning"' },
+      activeFilePath: { label: 'Active note path', source: 'Current workspace context', availability: 'Optional', explanation: 'The path of the note currently open in Obsidian. It is only a contextual hint and can be absent when search was opened without a note.', example: '"Projects/Planning.md"' },
+      currentResultView: { label: 'Current result view', source: 'Vault Search state', availability: 'Optional', explanation: 'The results tab the person is looking at, such as files or content. It describes their browsing state, not source evidence.', example: '"files"' },
+      recentQueriesLine: { label: 'Recent searches', source: 'Vault Search history', availability: 'Optional', explanation: 'A compact list of the person’s recent searches in this session. It helps avoid suggesting wording they already tried.', example: '"research, planning"' },
+      recentOpenedFilesLine: { label: 'Recently opened notes', source: 'Workspace history', availability: 'Optional', explanation: 'Recently opened Vault notes. Use only as a weak context clue; these notes are not automatically evidence for the answer.', example: '"Projects/Planning.md"' },
+      pinnedLine: { label: 'Pinned context', source: 'Vault Search state', availability: 'Optional', explanation: 'Notes or results the person explicitly pinned while searching. This is the strongest optional signal of what they want to keep in view.', example: '"Pinned: Roadmap"' },
+      knownTopFoldersLine: { label: 'Known top folders', source: 'Vault structure', availability: 'Optional', explanation: 'A short summary of top-level Vault folders. It keeps folder-oriented suggestions grounded in folders that actually exist.', example: '"Projects, Notes"' },
+      typedTrail: { label: 'Typed query trail', source: 'Vault Search interaction', availability: 'Optional', explanation: 'How the query changed while the person typed. It reveals abandoned terms so the suggestion does not simply repeat them.', example: '"pro → project"' },
+      firstScreenLine: { label: 'First visible results', source: 'Vault Search result view', availability: 'Optional', explanation: 'A compact description of the first results already visible. It helps judge whether the current query is too broad or too narrow.', example: '"3 matching notes"' },
+      eventCount: { label: 'Interaction count', source: 'Vault Search interaction', availability: 'Optional', explanation: 'The number of relevant search interactions in this session. It gives only session depth, never document content.', example: '3' },
+      sessionTimeline: { label: 'Search session timeline', source: 'Vault Search interaction', availability: 'Optional', explanation: 'An ordered summary of query edits, opens, and pins during this search. It captures intent progression without becoming a chat transcript.', example: '"typed → opened → pinned"' },
+      title: { label: 'Document title', source: 'Current document', availability: 'Required', explanation: 'The title of the document or block owner being processed. Use it to preserve the subject and to name output clearly.', example: '"Project plan"' },
+      content: { label: 'Source content', source: 'Frozen action input', availability: 'Required', explanation: 'The exact frozen source text the action is allowed to transform or analyse. It is captured before the run so edits cannot drift mid-generation.', example: '"Selected source text…"' },
+      selection: { label: 'Selected text', source: 'Current editor selection', availability: 'Optional', explanation: 'The text the person explicitly selected. When it is absent, the action falls back to its documented document or block scope.', example: '"The selected paragraph…"' },
+      instruction: { label: 'Requested action', source: 'Action menu or user input', availability: 'Required', explanation: 'The instruction chosen in the action menu or typed by the person. It states the requested transformation while the source stays in its own field.', example: '"Make this clearer"' },
+      before: { label: 'Leading context', source: 'Composer block projection', availability: 'Optional', explanation: 'Text immediately before the target block. It helps preserve transitions but is not part of the requested replacement.', example: '"Previous block…"' },
+      after: { label: 'Trailing context', source: 'Composer block projection', availability: 'Optional', explanation: 'Text immediately after the target block. It helps maintain continuity without authorizing a change outside the target.', example: '"Next block…"' },
       blockKind: { label: 'Current block type', source: 'Composer block projection', availability: 'Required', example: '"paragraph"' },
       table: { label: 'Table source', source: 'Composer table projection', availability: 'Required', example: '"| Name | Status |"' },
       language: { label: 'Code language', source: 'Native block metadata', availability: 'Optional', example: '"typescript"' },
@@ -1340,6 +1347,7 @@
         label: variable.startsWith('this.') ? variable.slice(5) : variable,
         source,
         availability: optional ? 'Optional' : 'Required',
+        explanation: `A run-specific value named “${variable}” assembled by the owning action. It may change on every run and should not be treated as a saved setting.`,
         example: 'Value supplied when this action runs'
       };
     }
@@ -1348,16 +1356,27 @@
       return variable === 'join' ? '{{join …}}' : `{{${variable}}}`;
     }
 
+    const VARIABLE_PREVIEW_LIMIT = 4;
+
+    function renderVariableDisclosure(hiddenCount, noun, content) {
+      if (!hiddenCount) return '';
+      return `<details class="variable-more"><summary><span class="more">Show ${hiddenCount} more ${noun}</span><span class="less">Show fewer ${noun}</span></summary>${content}</details>`;
+    }
+
     function renderVariableSummary(prompt) {
       const variables = templateVariables(prompt);
       if (!variables.length) {
         return '';
       }
-      const fields = variables.map(variable => {
+      const hiddenCount = Math.max(0, variables.length - VARIABLE_PREVIEW_LIMIT);
+      const field = variable => {
         const definition = variableDefinition(variable);
         return `<span class="variable-inline-item"><code>${escapeHtml(variableToken(variable))}</code><span>${escapeHtml(definition.label)}</span></span>`;
-      }).join('');
-      return `<div class="variable-summary"><div class="variable-summary-copy"><strong>Template inputs</strong><span>Peak fills these values through Handlebars when the action runs.</span></div><div class="variable-inline-list">${fields}</div></div>`;
+      };
+      const visibleFields = variables.slice(0, VARIABLE_PREVIEW_LIMIT).map(field).join('');
+      const hiddenFields = variables.slice(VARIABLE_PREVIEW_LIMIT).map(field).join('');
+      const disclosure = renderVariableDisclosure(hiddenCount, 'inputs', `<div class="variable-inline-list">${hiddenFields}</div>`);
+      return `<div class="variable-summary"><div class="variable-summary-copy"><strong>Template inputs</strong><span>Peak fills these values through Handlebars when the action runs.</span></div><div class="variable-inline-list">${visibleFields}</div>${disclosure}</div>`;
     }
 
     function renderTemplatePreview(prompt) {
@@ -1373,14 +1392,17 @@
       if (!variables.length) {
         return `<div class="notice">${icons.prompt}<span>No Handlebars fields are declared for this Prompt. It is rendered from its saved text only.</span></div>`;
       }
-      const fields = variables.map(variable => {
+      const hiddenCount = Math.max(0, variables.length - VARIABLE_PREVIEW_LIMIT);
+      const field = variable => {
         const definition = variableDefinition(variable);
-        const description = definition.availability === 'Optional'
-          ? `${definition.label} — supplied when available`
-          : definition.label;
-        return `<span class="variable-editor-item" title="From ${escapeHtml(definition.source)}"><code>${escapeHtml(variableToken(variable))}</code><span>${escapeHtml(description)}</span></span>`;
-      }).join('');
-      return `<p class="variable-editor-note">Use these exact Handlebars fields in the template. Peak supplies the values at run time; the source context is fixed by the action and is not typed manually here.</p><div class="variable-editor-list">${fields}</div>`;
+        const availability = definition.availability === 'Optional' ? ' It is supplied only when available.' : definition.availability === 'Helper' ? ' This is a registered Handlebars helper rather than a value.' : '';
+        const description = `${definition.explanation ?? `${definition.label} comes from ${definition.source}.`}${availability}`;
+        return `<span class="variable-editor-item"><code>${escapeHtml(variableToken(variable))}</code><span>${escapeHtml(description)}</span></span>`;
+      };
+      const visibleFields = variables.slice(0, VARIABLE_PREVIEW_LIMIT).map(field).join('');
+      const hiddenFields = variables.slice(VARIABLE_PREVIEW_LIMIT).map(field).join('');
+      const disclosure = renderVariableDisclosure(hiddenCount, 'variables', `<div class="variable-editor-list">${hiddenFields}</div>`);
+      return `<p class="variable-editor-note">Use these exact Handlebars fields in the template. Peak supplies the values at run time; the source context is fixed by the action and is not typed manually here.</p><div class="variable-editor-list">${visibleFields}</div>${disclosure}`;
     }
 
     function inspectorHeader(item, type) {
