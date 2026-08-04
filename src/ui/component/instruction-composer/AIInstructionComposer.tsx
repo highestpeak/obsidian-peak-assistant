@@ -43,6 +43,7 @@ export interface AIInstructionComposerProps {
 	draftKey?: string;
 	submitDisabled?: boolean;
 	trailingControls?: React.ReactNode;
+	attachmentIcon?: React.ReactNode;
 }
 
 /**
@@ -71,6 +72,7 @@ export function AIInstructionComposer({
 	draftKey,
 	submitDisabled = false,
 	trailingControls,
+	attachmentIcon,
 }: AIInstructionComposerProps): React.ReactElement {
 	const inputRef = React.useRef<PromptInputEditorHandle | null>(null);
 	const submitRef = React.useRef(onSubmit);
@@ -216,7 +218,7 @@ export function AIInstructionComposer({
 			)}
 			<PromptInputAttachments />
 			<div className="pk-ai-instruction-row">
-				<AttachmentTrigger />
+				<AttachmentTrigger icon={attachmentIcon} />
 				<div className="pk-ai-instruction-editor">
 					<PromptInputBody
 						inputRef={inputRef}
@@ -297,7 +299,7 @@ function AIInstructionDraftSync({ value }: { value: string }): null {
 	return null;
 }
 
-function AttachmentTrigger(): React.ReactElement {
+function AttachmentTrigger({ icon }: { icon?: React.ReactNode }): React.ReactElement {
 	const { attachments } = usePromptInputContext();
 	return (
 		<Button
@@ -309,7 +311,7 @@ function AttachmentTrigger(): React.ReactElement {
 			title="Add attachment"
 			onClick={() => attachments.openFileDialog()}
 		>
-			<Paperclip />
+			{icon ?? <Paperclip />}
 		</Button>
 	);
 }

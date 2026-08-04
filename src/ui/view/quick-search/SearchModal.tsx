@@ -2,13 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { VaultSearchTab, VaultSearchFooterHints } from './tab-VaultSearch';
 import { AISearchTab } from './tab-AISearch';
 import type { VaultReviewHistoryRecord } from '@/service/copilot/vault/VaultReviewReportService';
-import { Search, Sparkles, Globe, X, Library, Network, ChevronDown, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Search, Sparkles, Globe, Plus, X, Library, Network, ChevronDown, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { suggestHistoryStore, type SuggestHistoryEntry } from '@/ui/view/quick-search/rewrite/SuggestHistoryStore';
 import { Button } from '@/ui/component/shared-ui/button';
 import { CodeMirrorInput } from '@/ui/component/mine/codemirror-input';
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { GlobeOff } from '@/ui/component/icon';
 import { useSharedStore, useVaultSearchStore } from './store';
 import { loadCompletedAnalysisSnapshot } from './store/aiAnalysisStore';
 import { useSearchSessionStore, type SessionStatus } from './store/searchSessionStore';
@@ -306,6 +305,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, mode }) => {
 								: 'Ask AI anything about your vault...'}
 							compact
 							autoFocus
+							attachmentIcon={<Plus />}
 							trailingControls={!isMobile() ? (
 								<>
 									{mode === 'graph' && (
@@ -331,6 +331,8 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, mode }) => {
 											variant="ghost"
 											geometry="action-icon"
 											type="button"
+											className={cn('pk-ai-search-web-toggle', webEnabled && 'is-active')}
+											aria-pressed={webEnabled}
 											onClick={() => {
 												if (!webEnabled && !ProfileRegistry.getInstance().getActiveWebSearchProfile()) {
 													new Notice('No Web Search profile configured. Go to Settings → Profiles and assign a profile as "Web Search".', 5000);
@@ -341,7 +343,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, mode }) => {
 											title={webEnabled ? 'Web: ON' : 'Web: OFF'}
 											aria-label={webEnabled ? 'Disable Web search' : 'Enable Web search'}
 										>
-											{webEnabled ? <Globe className="pktw-w-5 pktw-h-5" /> : <GlobeOff className="pktw-w-5 pktw-h-5" />}
+											<Globe />
 									</Button>
 								</>
 							) : undefined}

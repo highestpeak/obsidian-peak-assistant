@@ -9192,6 +9192,45 @@
   border-radius: 999px;
 }
 
+.pk-ai-instruction[data-instruction-surface="ai-search"] .pk-ai-instruction-row,
+.pk-ai-instruction[data-instruction-surface="ai-graph"] .pk-ai-instruction-row {
+  align-items: center;
+  gap: 4px;
+  padding: 5px 7px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-ai-instruction[data-instruction-surface="ai-search"] :is(.pk-ai-instruction-attach, .pk-ai-instruction-submit, .pk-ai-search-web-toggle),
+:is(.pktw-root, .peak-design-root) .pk-ai-instruction[data-instruction-surface="ai-graph"] :is(.pk-ai-instruction-attach, .pk-ai-instruction-submit, .pk-ai-search-web-toggle) {
+  width: 28px !important;
+  min-width: 28px !important;
+  max-width: 28px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  padding: 0 !important;
+  border-radius: 999px !important;
+  color: var(--text-muted);
+}
+
+.pk-ai-instruction[data-instruction-surface="ai-search"] :is(.pk-ai-instruction-attach, .pk-ai-instruction-submit, .pk-ai-search-web-toggle) svg,
+.pk-ai-instruction[data-instruction-surface="ai-graph"] :is(.pk-ai-instruction-attach, .pk-ai-instruction-submit, .pk-ai-search-web-toggle) svg {
+  width: 14px !important;
+  height: 14px !important;
+  stroke-width: 1.8;
+}
+
+.pk-ai-instruction[data-instruction-surface="ai-search"] :is(.pk-ai-instruction-attach, .pk-ai-search-web-toggle):hover,
+.pk-ai-instruction[data-instruction-surface="ai-graph"] :is(.pk-ai-instruction-attach, .pk-ai-search-web-toggle):hover {
+  color: var(--text-normal);
+  background: var(--background-secondary);
+}
+
+.pk-ai-instruction[data-instruction-surface="ai-search"] .pk-ai-search-web-toggle.is-active,
+.pk-ai-instruction[data-instruction-surface="ai-graph"] .pk-ai-search-web-toggle.is-active {
+  color: var(--pk-accent, var(--interactive-accent));
+  background: var(--pk-accent-tint, var(--background-secondary));
+}
+
 .pk-ai-instruction[data-instruction-surface="ai-search"]:focus-within,
 .pk-ai-instruction[data-instruction-surface="ai-graph"]:focus-within {
   border-color: var(--pk-accent, var(--interactive-accent));
@@ -9207,6 +9246,12 @@
 .pk-ai-instruction[data-instruction-surface="ai-search"] .pk-ai-instruction-editor .cm-scroller,
 .pk-ai-instruction[data-instruction-surface="ai-graph"] .pk-ai-instruction-editor .cm-scroller {
   overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.pk-ai-instruction[data-instruction-surface="ai-search"] .pk-ai-instruction-editor .cm-scroller::-webkit-scrollbar,
+.pk-ai-instruction[data-instruction-surface="ai-graph"] .pk-ai-instruction-editor .cm-scroller::-webkit-scrollbar {
+  display: none;
 }
 
 .pk-ai-instruction[data-instruction-surface="ai-search"] .pk-ai-instruction-submit:not(:disabled),
