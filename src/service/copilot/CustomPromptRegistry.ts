@@ -36,7 +36,8 @@
 
 import type { CopilotAction, DocumentContext, ActionResult } from './CopilotActionRegistry';
 import type { LLMStreamEvent } from '@/core/providers/types';
-import type { CopilotActionAgentPort } from './actions/CopilotActionPorts';
+import type { CopilotActionAgentPort } from '@/core/ports/CopilotActionPorts';
+import type { PromptTemplateRendererPort } from '@/core/ports/PromptTemplateRendererPort';
 
 export interface CustomPromptDef {
 	id: string;
@@ -46,6 +47,36 @@ export interface CustomPromptDef {
 	template: string;
 	filePath: string;
 }
+
+/**
+ * Variables supplied to every Custom Prompt at run time. The editor can use
+ * this declaration to explain exactly what each Handlebars field means.
+ */
+export const CUSTOM_PROMPT_TEMPLATE_VARIABLES = [
+	{
+		name: 'title',
+		description: 'The title of the note where the action was started.',
+	},
+	{
+		name: 'content',
+		description: 'The full current Markdown content of that note.',
+	},
+	{
+		name: 'selection',
+		description: 'The selected text, or an empty string when nothing is selected.',
+	},
+	{
+		name: 'tags',
+		description: 'The note tags as a comma-separated list, or an empty string when there are none.',
+	},
+] as const;
+
+const CUSTOM_PROMPT_DOCUMENT_CONTEXT_TEMPLATE = [
+	'## Document: "{{title}}"',
+	'{{#if selection}}\n## Selected Text\n{{selection}}\n{{/if}}',
+	'## Content',
+	'{{content}}',
+].join('\n\n');
 
 /**
  * Slug a custom prompt id from a basename. Keeps the legacy
@@ -95,10 +126,15 @@ export function parseCustomPromptFile(basename: string, filePath: string, conten
 /**
  * Build a {@link CopilotAction} from a parsed custom prompt definition.
  * The agent port closes over Obsidian / profile / pluginId so this
- * function stays pure orchestration: it only formats prompts and yields
- * the agent stream.
+ * function stays pure orchestration: it delegates both system and user
+ * prompt rendering to the injected PromptService-owned Handlebars port and
+ * yields the agent stream. No action-local placeholder replacement is allowed.
  */
-export function buildCustomPromptAction(def: CustomPromptDef, agent: CopilotActionAgentPort): CopilotAction {
+export function buildCustomPromptAction(
+	def: CustomPromptDef,
+	agent: CopilotActionAgentPort,
+	promptTemplates: PromptTemplateRendererPort,
+): CopilotAction {
 	return {
 		id: `custom-${def.id}`,
 		label: def.label,
@@ -114,21 +150,20 @@ export function buildCustomPromptAction(def: CustomPromptDef, agent: CopilotActi
 			return 0.4;
 		},
 		async *execute(ctx: DocumentContext, signal?: AbortSignal): AsyncGenerator<LLMStreamEvent, ActionResult | void> {
-			let systemPrompt = def.template;
-			systemPrompt = systemPrompt.replace(/\{\{content\}\}/g, ctx.content);
-			systemPrompt = systemPrompt.replace(/\{\{title\}\}/g, ctx.title);
-			systemPrompt = systemPrompt.replace(/\{\{selection\}\}/g, ctx.selection ?? '');
-			systemPrompt = systemPrompt.replace(/\{\{tags\}\}/g, ctx.tags.join(', '));
-
-			const userPrompt = [
-				`## Document: "${ctx.title}"`,
-				ctx.selection ? `## Selected Text\n${ctx.selection}` : '',
-				'',
-				'## Content',
-				ctx.content,
-			].filter(Boolean).join('\n');
+			const variables = customPromptVariables(ctx);
+			const systemPrompt = promptTemplates.render(def.template, variables);
+			const userPrompt = promptTemplates.render(CUSTOM_PROMPT_DOCUMENT_CONTEXT_TEMPLATE, variables);
 
 			yield* agent.runAgentStream({ systemPrompt, userPrompt, signal });
 		},
+	};
+}
+
+function customPromptVariables(ctx: DocumentContext): Record<string, string> {
+	return {
+		title: ctx.title,
+		content: ctx.content,
+		selection: ctx.selection ?? '',
+		tags: ctx.tags.join(', '),
 	};
 }

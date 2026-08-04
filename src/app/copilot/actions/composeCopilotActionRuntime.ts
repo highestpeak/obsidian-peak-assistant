@@ -79,6 +79,10 @@ export function composeCopilotActionRuntime(app: App): CopilotActionRuntime {
 			resolveSearchClient: () => safeGetSearchClient(),
 			analysisHistory: appContext.aiAnalysisHistoryService,
 		}),
+		promptTemplates: {
+			render: (template, variables) =>
+				appContext.manager.renderDynamicPromptTemplate(template, variables),
+		},
 		customPrompts: new ObsidianCustomPromptSourceAdapter({
 			app,
 			resolveFolder: () => {

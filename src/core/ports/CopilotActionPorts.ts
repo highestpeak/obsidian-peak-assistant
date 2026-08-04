@@ -29,6 +29,7 @@ import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
 import type { ActionResult } from '@/service/copilot/CopilotActionRegistry';
 import type { RankedTagSuggestion } from '@/service/copilot/TagSuggestionEngine';
 import type { CopilotOutputCollector } from '@/service/copilot/CopilotOutputCollector';
+import type { PromptTemplateRendererPort } from '@/core/ports/PromptTemplateRendererPort';
 
 /**
  * Talk to the AI provider. Service-side actions consume the general
@@ -165,5 +166,7 @@ export interface CopilotActionPorts {
 	semanticGraph: CopilotActionSemanticGraphPort;
 	tags: CopilotActionTagsPort;
 	agent: CopilotActionAgentPort;
+	/** Shared Handlebars owner for user-authored Custom Prompt templates. */
+	promptTemplates: PromptTemplateRendererPort;
 	customPrompts: CopilotCustomPromptPort;
 }

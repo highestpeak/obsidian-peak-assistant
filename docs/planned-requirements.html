@@ -101,21 +101,20 @@
     <section id="active-planned">
       <h2>开放需求</h2>
       <article class="requirement-card" id="pr-ai-control-center-configuration-closure">
-        <span class="requirement-status">design ready · production implementation pending</span>
-        <h3>AI Control Center 全量配置闭环</h3>
+        <span class="requirement-status">implementation started · production closure pending</span>
+        <h3>AI Control Center 与 My Content 生产闭环</h3>
         <code class="requirement-id">PR-AI-CONTROL-CENTER-CONFIGURATION-CLOSURE</code>
-        <p>所有生成式 AI、AgentLoop、embedding、rerank、media、deterministic helper、delegated child/tool 与 User-defined 行为，都必须拥有明确的 capability-step owner 和适合其执行类型的真实配置；不能继续存在“能保存但运行时不读取”的假设置。</p>
+        <p>AI Control Center 只管理真正影响下一次 AI 运行的 owner-backed 配置；My Content 只管理用户明确创建、保存、导出或 materialize 的 Peak 产物。两者都不能暴露“能保存但运行时不读取”的假设置，或把内部运行与存储细节交给用户。</p>
         <ul class="requirement-list">
-          <li>完整删除无生产 caller 的 <code>ai-analysis-title</code>、<code>message-resources</code>、<code>chat-suggest-actions</code> 与 <code>gap-explanation</code>。</li>
-          <li>把 Hyper Search parser 与 Agent context compact 的 system/user instruction 迁入 Prompt Registry，并补全 <code>analysis.followup</code> 的 user/system 映射。</li>
-          <li>把 Composer 的 21 个 preset instruction 与 Link Tidy 默认 instruction 纳入各自 action Configuration。</li>
-          <li>动态汇总 Custom Prompt、Vault Skill、Chat Assistant、Project / Conversation instruction 与 MCP tool policy，不复制第二份 owner state。</li>
-          <li>按 execution kind 提供 Prompt、model、output、tools、approval、budget、route、scope 或 threshold；schema、安全边界、writeback 与 stop condition 保持只读。</li>
-          <li>Configuration 内所有 secondary edit action 使用原地 modal；Save、Cancel、遮罩关闭或 Escape 后恢复同一 action、tab、滚动位置与触发按钮焦点，不自动跳转 Prompt Library。</li>
-          <li>每个 Save 控件必须有 resolver-consumption test，receipt 同时记录 requested 与 effective configuration，并完成真实 Obsidian 修改后下一次 run 的消费验证。</li>
+          <li>统一 Custom Prompt 的 Handlebars 渲染：禁止 action 内手工变量替换或拼接用户可编辑模板；变量说明来自同一声明。</li>
+          <li>先建立真正被 query / agent route 消费的 action-policy resolver，再迁移旧 <code>promptModelMap</code>；没有消费者就不显示可保存控件。</li>
+          <li>内置 prompt 只在所属 AI action 中编辑；移除全局 <code>All prompts</code>、<code>Behavior / Configuration</code> 双 tab、普通用户可见的 run history 与 effective routing。</li>
+          <li>Custom Prompt 与 Chat Assistant 分别提供真实创建/编辑入口；Vault Skill、embedding、确定性 parser/reranker、trace 与内部 background job 不进入普通用户 Control Center。</li>
+          <li>My Content 仅投影 Profile、保存的 AI Search/Graph/Chat 产物、materialized Hub、生成媒体与明确保存的项目文件；提供类型、来源和时间范围筛选。</li>
+          <li>每个保存项必须有 resolver-consumption test；真实 Obsidian 的 modify-save-next-run/open 验证不能以 Mock 代替。</li>
         </ul>
-        <p><strong>完成条件：</strong>0 个无 owner Prompt、0 个稳定 inline instruction 绕过 resolver、0 个无消费证明的可保存配置；旧 <code>promptModelMap</code> 与绕过 PromptService 的兼容路径完成迁移和清理。</p>
-        <p class="links"><a href="superpowers/plans/2026-08-02-ai-control-center-configuration-closure-plan.md">配置闭环计划</a> · <a href="superpowers/specs/2026-07-30-ai-control-center-design.md">正式设计</a> · <a href="gstack/ai-control-center-2026-07-30/index.html">交互 Mock</a> · <a href="roadmap.html">Roadmap</a></p>
+        <p><strong>完成条件：</strong>0 个无消费证明的可保存 AI 配置；Custom Prompt 统一经 PromptService/Handlebars 渲染；Control Center 和 My Content 都由真实 registry / owner records 驱动，并通过 focused tests、build 与真实 Obsidian 验证。</p>
+        <p class="links"><a href="superpowers/plans/2026-08-04-ai-control-center-and-my-content-production-plan.md">当前生产实施计划</a> · <a href="superpowers/specs/2026-07-30-ai-control-center-design.md">正式设计</a> · <a href="gstack/ai-control-center-2026-07-30/index.html">交互 Mock</a> · <a href="gstack/data-storage-2026-08-04/index.html">My Content Mock</a> · <a href="roadmap.html">Roadmap</a></p>
       </article>
 
       <article class="requirement-card" id="pr-peak-sheet-view-adapter-spikes">

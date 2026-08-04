@@ -47,6 +47,7 @@ function noopPorts(): CopilotActionPorts {
 			persistSuggestionBatch: unreachable('tags.persistSuggestionBatch') as any,
 		},
 		agent: { runAgentStream: unreachable('agent.runAgentStream') as any },
+		promptTemplates: { render: unreachable('promptTemplates.render') as any },
 		customPrompts: { loadAll: async () => [] },
 	};
 }

@@ -61,6 +61,7 @@ function basePorts(overrides: Partial<CopilotActionPorts> = {}): CopilotActionPo
 			persistSuggestionBatch: unreachable('tags.persistSuggestionBatch') as any,
 		},
 		agent: { runAgentStream: unreachable('agent.runAgentStream') as any },
+		promptTemplates: { render: unreachable('promptTemplates.render') as any },
 		customPrompts: { loadAll: async () => [] },
 	};
 	return { ...base, ...overrides };
@@ -230,6 +231,8 @@ async function testSemanticLinksUsesSemanticGraphPort(): Promise<void> {
 
 async function testCustomPromptCatalogBuildsThroughRuntime(): Promise<void> {
 	let agentCalled = false;
+	let rendered: Array<{ template: string; variables: Record<string, unknown> }> = [];
+	let agentOptions: any = null;
 	const ports = basePorts({
 		customPrompts: {
 			loadAll: async () => [
@@ -237,9 +240,18 @@ async function testCustomPromptCatalogBuildsThroughRuntime(): Promise<void> {
 			],
 		},
 		agent: {
-			async *runAgentStream(_opts) {
+			async *runAgentStream(options) {
 				agentCalled = true;
+				agentOptions = options;
 				return { type: 'structured' as const, data: {} };
+			},
+		},
+		promptTemplates: {
+			render(template, variables) {
+				rendered.push({ template, variables });
+				return template === 'sys'
+					? `system:${variables.title}`
+					: `user:${variables.title}:${variables.selection}:${variables.tags}`;
 			},
 		},
 	});
@@ -248,8 +260,17 @@ async function testCustomPromptCatalogBuildsThroughRuntime(): Promise<void> {
 	const custom = runtime.get('custom-rewrite-v2');
 	assert.ok(custom, 'runtime must register custom-rewrite-v2');
 	assert.strictEqual(custom.label, 'Rewrite v2');
-	await drainGenerator(custom.execute(fakeDoc(), undefined));
+	await drainGenerator(custom.execute(fakeDoc({ selection: 'Chosen', tags: ['planning'] }), undefined));
 	assert.ok(agentCalled, 'custom prompt action must invoke the injected agent port');
+	assert.strictEqual(rendered.length, 2, 'system and document-context templates must use the injected renderer');
+	assert.deepStrictEqual(rendered[0]?.variables, {
+		title: 'Strategy',
+		content: fakeDoc().content,
+		selection: 'Chosen',
+		tags: 'planning',
+	});
+	assert.strictEqual(agentOptions.systemPrompt, 'system:Strategy');
+	assert.strictEqual(agentOptions.userPrompt, 'user:Strategy:Chosen:planning');
 	console.log('PASS: customPromptCatalogBuildsThroughRuntime');
 }
 

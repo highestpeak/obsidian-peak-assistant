@@ -55,6 +55,7 @@ function basePorts(overrides: Partial<CopilotActionPorts> = {}): CopilotActionPo
 			persistSuggestionBatch: unreachable('tags.persistSuggestionBatch') as any,
 		},
 		agent: { runAgentStream: unreachable('agent.runAgentStream') as any },
+		promptTemplates: { render: unreachable('promptTemplates.render') as any },
 		customPrompts: { loadAll: async () => [] },
 	};
 	return { ...base, ...overrides };

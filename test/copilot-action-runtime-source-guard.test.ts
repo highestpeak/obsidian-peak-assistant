@@ -113,6 +113,8 @@ function testServiceCustomPromptRegistryIsPlainParser(): void {
 	if (specifiers.includes('obsidian')) violations.push('imports obsidian (should live behind an app adapter)');
 	if (/static\s+getInstance\s*\(/.test(code)) violations.push('static getInstance(');
 	if (/private\s+static\s+instance\b/.test(code)) violations.push('private static instance');
+	if (/\.replace\s*\(\s*\/\\\{\\\{/.test(code)) violations.push('hand-replaces Handlebars variables');
+	if (!/promptTemplates\.render\s*\(/.test(code)) violations.push('does not render through PromptTemplateRendererPort');
 	if (violations.length > 0) {
 		assert.fail(`T11B closure violated: CustomPromptRegistry must be a plain parser:\n  ${violations.join('\n  ')}`);
 	}

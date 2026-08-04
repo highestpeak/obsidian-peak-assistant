@@ -52,7 +52,9 @@ export class CopilotActionRuntimeImpl implements CopilotActionRuntime {
 			console.warn('[CopilotActionRuntime] custom prompt load failed:', err);
 			defs = [];
 		}
-		this.customPromptActions = defs.map(def => buildCustomPromptAction(def, this.ports.agent));
+		this.customPromptActions = defs.map(def =>
+			buildCustomPromptAction(def, this.ports.agent, this.ports.promptTemplates),
+		);
 	}
 
 	dispose(): void {

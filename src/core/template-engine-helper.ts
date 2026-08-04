@@ -6,13 +6,23 @@ import yaml from 'js-yaml';
 /** Compiled template function. Single type for all callers so they need not import Handlebars. */
 export type CompiledTemplate = (data: Record<string, unknown>) => string;
 
+/** Rendering options deliberately exposed by the shared Handlebars owner. */
+export interface TemplateCompileOptions {
+	/**
+	 * Keep text literal when the target is an LLM prompt instead of HTML.
+	 * Custom Prompt files historically inserted `{{content}}` verbatim, so
+	 * their migration must not turn Markdown or angle brackets into entities.
+	 */
+	noEscape?: boolean;
+}
+
 /**
  * Compile a Handlebars template string. Callers may cache the result.
  * Ensures registerTemplateEngineHelpers() has run (helpers are used by templates).
  */
-export function compileTemplate(template: string): CompiledTemplate {
+export function compileTemplate(template: string, options?: TemplateCompileOptions): CompiledTemplate {
 	registerTemplateEngineHelpers();
-	return Handlebars.compile(template) as CompiledTemplate;
+	return Handlebars.compile(template, options) as CompiledTemplate;
 }
 
 /** Bounded cache for tool buildResponse to avoid re-compiling the same template every call. */

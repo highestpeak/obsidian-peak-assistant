@@ -19,9 +19,11 @@ import type { IAgentPrompter } from '@/core/llm/IAgentPrompter';
  * The active Profile determines the model.
  */
 export class PromptService {
+	private static readonly MAX_DYNAMIC_TEMPLATE_CACHE_SIZE = 64;
 	private promptFolder: string;
 	private readonly overrideCache = new Map<string, string>();
 	private readonly overrideCompiledCache = new Map<string, CompiledTemplate>();
+	private readonly dynamicCompiledCache = new Map<string, CompiledTemplate>();
 	private settings?: AIServiceSettings;
 	private prompter?: IAgentPrompter;
 
@@ -154,6 +156,28 @@ export class PromptService {
 		}
 		const data = (variables ?? {}) as Record<string, unknown>;
 		return this.templateManager.render(id, data);
+	}
+
+	/**
+	 * Render a caller-owned dynamic template through the same Handlebars owner
+	 * as built-in PromptId templates and Vault overrides.
+	 *
+	 * Dynamic definitions (currently Custom Prompts) already own their source
+	 * file, so this method intentionally does not invent a second override
+	 * store. It preserves the legacy literal-text behaviour of `{{content}}`:
+	 * these strings are sent to an LLM, not inserted into an HTML document.
+	 */
+	renderDynamicTemplate(template: string, variables: Record<string, unknown>): string {
+		let compiled = this.dynamicCompiledCache.get(template);
+		if (!compiled) {
+			if (this.dynamicCompiledCache.size >= PromptService.MAX_DYNAMIC_TEMPLATE_CACHE_SIZE) {
+				const oldestTemplate = this.dynamicCompiledCache.keys().next().value;
+				if (oldestTemplate !== undefined) this.dynamicCompiledCache.delete(oldestTemplate);
+			}
+			compiled = compileTemplate(template, { noEscape: true });
+			this.dynamicCompiledCache.set(template, compiled);
+		}
+		return compiled(variables).trim();
 	}
 
 	/** Check if an override file exists for the given template id. */

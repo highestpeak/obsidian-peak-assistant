@@ -1,6 +1,7 @@
 # AI Control Center 配置闭环计划
 
-> 状态：Owner requirement captured；implementation not started
+> 状态：已被 2026-08-04 的执行计划取代。此文保留 2026-08-02 审计上下文，不再代表当前产品范围。
+> 当前依据：[AI Control Center 与 My Content 生产实施计划](2026-08-04-ai-control-center-and-my-content-production-plan.md)
 > 依据：2026-08-02 对模型调用、AgentLoop、Prompt、embedding、rerank、media 与动态 instruction 的反向覆盖审计
 > 产品入口：Settings → AI Setup → AI Control Center
 

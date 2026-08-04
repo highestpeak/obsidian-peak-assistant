@@ -583,6 +583,15 @@ ${sourcesList}${topicsList}
 		return this.promptService.render(promptId, variables);
 	}
 
+	/**
+	 * App-composed dynamic prompt renderer for user-owned definitions such as
+	 * Custom Prompts. Callers receive this through a narrow port rather than
+	 * importing Handlebars or PromptService directly.
+	 */
+	renderDynamicPromptTemplate(template: string, variables: Record<string, unknown>): string {
+		return this.promptService.renderDynamicTemplate(template, variables);
+	}
+
 
 
 	/**
