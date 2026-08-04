@@ -6,8 +6,28 @@ export interface AIControlActionSummary {
 	readonly id: string;
 	readonly label: string;
 	readonly description: string;
-	readonly category: 'document' | 'vault' | 'writing';
-	readonly promptIds: readonly PromptId[];
+	readonly area: AIControlProductArea;
+	readonly promptSlots: readonly AIControlPromptSlot[];
+}
+
+export type AIControlProductArea =
+	| 'search-knowledge'
+	| 'ai-search-graph'
+	| 'composer-copilot'
+	| 'chat-generation'
+	| 'vault-intelligence';
+
+export interface AIControlPromptInput {
+	readonly name: string;
+	readonly description: string;
+}
+
+export interface AIControlPromptSlot {
+	readonly id: PromptId;
+	readonly role: 'system' | 'user' | 'instruction';
+	readonly label: string;
+	readonly description: string;
+	readonly inputs: readonly AIControlPromptInput[];
 }
 
 export interface EditableBuiltInPrompt {
@@ -16,6 +36,7 @@ export interface EditableBuiltInPrompt {
 	readonly description: string;
 	readonly content: string;
 	readonly overridden: boolean;
+	readonly inputs: readonly AIControlPromptInput[];
 }
 
 export interface CustomPromptDraft {

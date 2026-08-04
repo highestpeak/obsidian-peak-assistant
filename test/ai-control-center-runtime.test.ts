@@ -22,7 +22,10 @@ async function testOnlyPromptBackedActionsAppearAsControls(): Promise<void> {
 	});
 
 	const actions = await runtime.listActions();
-	assert.deepStrictEqual(actions.map((action) => action.id), ['prompt-backed']);
+	assert(actions.some((action) => action.id === 'prompt-backed'), 'prompt-backed runtime action should appear');
+	assert(!actions.some((action) => action.id === 'deterministic'), 'deterministic runtime action must stay hidden');
+	const action = actions.find((item) => item.id === 'prompt-backed');
+	assert.deepStrictEqual(action?.promptSlots.map((slot) => slot.id), ['doc-polish-system', 'doc-polish']);
 	const prompt = await runtime.readBuiltInPrompt('doc-polish' as any);
 	assert.strictEqual(prompt.content, 'Base {{content}}');
 	assert.strictEqual(prompt.overridden, false);

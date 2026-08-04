@@ -35,6 +35,7 @@ export class PromptService {
 	) {
 		this.promptFolder = getAIPromptFolder(settings.rootFolder);
 		this.settings = settings;
+		this.templateManager?.setPromptOverrideResolver?.((id) => this.loadOverride(id));
 	}
 
 	/**

@@ -1,8 +1,10 @@
 import type { CompiledTemplate } from '@/core/template-engine-helper';
 import { compileTemplate } from '@/core/template-engine-helper';
+import type { PromptId } from '@/core/types/prompt';
 import type { TemplateId } from '@/core/template/TemplateRegistry';
 import {
 	getTemplateMetadata,
+	isPromptTemplateId,
 	TEMPLATE_METADATA,
 	type TemplateMetadata,
 } from '@/core/template/TemplateRegistry';
@@ -15,6 +17,13 @@ export interface TemplateContentProvider {
 }
 
 /**
+ * App-owned prompt override lookup. It is installed by PromptService after
+ * both owners have been composed, so direct TemplateManager callers and
+ * PromptService callers resolve the same live Vault override.
+ */
+export type PromptOverrideResolver = (id: PromptId) => Promise<string | undefined>;
+
+/**
  * On-demand template loader with caching and Handlebars rendering.
  * Use clear() on plugin unload to release memory.
  *
@@ -25,8 +34,9 @@ export interface TemplateContentProvider {
  */
 export class TemplateManager {
 	private readonly contentCache = new Map<TemplateId, string>();
-	private readonly compiledCache = new Map<TemplateId, CompiledTemplate>();
+	private readonly compiledCache = new Map<TemplateId, { raw: string; compiled: CompiledTemplate }>();
 	private customOverrides: Partial<Record<TemplateId, string>> = {};
+	private promptOverrideResolver?: PromptOverrideResolver;
 
 	private static instance: TemplateManager | null = null;
 
@@ -56,6 +66,17 @@ export class TemplateManager {
 	/** Set user overrides (e.g. from settings). Replaces existing overrides. */
 	setCustomOverrides(overrides: Partial<Record<TemplateId, string>>): void {
 		this.customOverrides = overrides;
+		this.compiledCache.clear();
+	}
+
+	/**
+	 * Bind or release the live Vault PromptService resolver. This is deliberately
+	 * not a second override store: the PromptService remains the sole owner of
+	 * override files, mtime refresh, and Handlebars semantics.
+	 */
+	setPromptOverrideResolver(resolver?: PromptOverrideResolver): void {
+		this.promptOverrideResolver = resolver;
+		this.compiledCache.clear();
 	}
 
 	/**
@@ -64,6 +85,10 @@ export class TemplateManager {
 	async getTemplate(id: TemplateId): Promise<string> {
 		const override = this.customOverrides[id];
 		if (override !== undefined && override !== '') return override;
+		if (isPromptTemplateId(id) && this.promptOverrideResolver) {
+			const promptOverride = await this.promptOverrideResolver(id);
+			if (promptOverride !== undefined && promptOverride !== '') return promptOverride;
+		}
 
 		const cached = this.contentCache.get(id);
 		if (cached !== undefined) return cached;
@@ -80,12 +105,12 @@ export class TemplateManager {
 	 */
 	async render(id: TemplateId, data: Record<string, unknown> = {}): Promise<string> {
 		const raw = await this.getTemplate(id);
-		let compiled = this.compiledCache.get(id);
-		if (!compiled) {
-			compiled = compileTemplate(raw);
-			this.compiledCache.set(id, compiled);
+		let cached = this.compiledCache.get(id);
+		if (!cached || cached.raw !== raw) {
+			cached = { raw, compiled: compileTemplate(raw) };
+			this.compiledCache.set(id, cached);
 		}
-		return compiled(data).trim();
+		return cached.compiled(data).trim();
 	}
 
 	/** Metadata for a template (path, category, options). */

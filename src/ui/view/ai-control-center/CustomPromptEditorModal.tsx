@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Button, Modal } from '@/ui/components/primitives';
 import type { CustomPromptDraft } from '@/core/ports/AIControlCenterPort';
 import { CUSTOM_PROMPT_TEMPLATE_VARIABLES } from '@/service/copilot/CustomPromptRegistry';
+import { PromptInputsTable } from './PromptInputsTable';
 
 export interface CustomPromptEditorModalProps {
 	draft: CustomPromptDraft | null;
@@ -21,12 +22,10 @@ export function CustomPromptEditorModal({ draft, onOpenChange, onSave }: CustomP
 	const [form, setForm] = useState<CustomPromptDraft>(EMPTY_DRAFT);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const [showInputs, setShowInputs] = useState(false);
 
 	useEffect(() => {
 		setForm(draft ?? EMPTY_DRAFT);
 		setError(null);
-		setShowInputs(false);
 	}, [draft]);
 
 	const update = <K extends keyof CustomPromptDraft>(key: K, value: CustomPromptDraft[K]): void => {
@@ -50,7 +49,7 @@ export function CustomPromptEditorModal({ draft, onOpenChange, onSave }: CustomP
 	const fieldClass = 'pktw-w-full pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-surface pktw-px-2 pktw-py-1.5 pktw-text-sm pktw-text-pk-text-primary';
 	return (
 		<Modal open={Boolean(draft)} onOpenChange={onOpenChange}>
-			<Modal.Content width="wide" portalClassName="peak-design-root">
+			<Modal.Content width="wide" portalClassName="peak-design-root" className="pktw-max-h-[90vh]">
 				<Modal.Header>
 					<div className="pktw-flex pktw-flex-col pktw-gap-1">
 						<Modal.Title>{draft?.filePath ? 'Edit Custom Prompt' : 'New Custom Prompt'}</Modal.Title>
@@ -58,15 +57,15 @@ export function CustomPromptEditorModal({ draft, onOpenChange, onSave }: CustomP
 					</div>
 					<Modal.Close aria-label="Close Custom Prompt editor" />
 				</Modal.Header>
-				<Modal.Body className="pktw-flex pktw-flex-col pktw-gap-3">
+				<Modal.Body className="pktw-flex pktw-flex-col pktw-gap-3 pktw-overflow-y-auto">
 					<label className="pktw-flex pktw-flex-col pktw-gap-1"><span className="pktw-text-xs pktw-font-medium">Name</span><input className={fieldClass} value={form.label} onChange={(event) => update('label', event.target.value)} /></label>
 					<label className="pktw-flex pktw-flex-col pktw-gap-1"><span className="pktw-text-xs pktw-font-medium">Description</span><input className={fieldClass} value={form.description ?? ''} onChange={(event) => update('description', event.target.value)} /></label>
 					<div className="pktw-grid pktw-grid-cols-2 pktw-gap-3">
 						<label className="pktw-flex pktw-flex-col pktw-gap-1"><span className="pktw-text-xs pktw-font-medium">Where it appears</span><select className={fieldClass} value={form.category} onChange={(event) => update('category', event.target.value as CustomPromptDraft['category'])}><option value="document">Document</option><option value="vault">Vault</option><option value="writing">Writing</option></select></label>
 						<label className="pktw-flex pktw-flex-col pktw-gap-1"><span className="pktw-text-xs pktw-font-medium">Model override (optional)</span><input className={fieldClass} placeholder="Use current AI setup default" value={form.modelId ?? ''} onChange={(event) => update('modelId', event.target.value)} /></label>
 					</div>
-					<label className="pktw-flex pktw-flex-col pktw-gap-1"><span className="pktw-text-xs pktw-font-medium">Prompt template</span><textarea aria-label="Custom Prompt template" className="pktw-min-h-[260px] pktw-w-full pktw-resize-y pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-surface pktw-p-3 pktw-font-mono pktw-text-xs" value={form.template} onChange={(event) => update('template', event.target.value)} /></label>
-					<div className="pktw-rounded-md pktw-border pktw-border-pk-border"><div className="pktw-grid pktw-grid-cols-[180px_minmax(0,1fr)] pktw-border-b pktw-border-pk-border pktw-bg-pk-surface-muted pktw-px-3 pktw-py-2 pktw-text-xs pktw-font-medium"><span>Template field</span><span>What Peak supplies at run time</span></div>{CUSTOM_PROMPT_TEMPLATE_VARIABLES.slice(0, showInputs ? undefined : 3).map((field) => <div key={field.name} className="pktw-grid pktw-grid-cols-[180px_minmax(0,1fr)] pktw-border-b pktw-border-pk-border last:pktw-border-b-0 pktw-px-3 pktw-py-2 pktw-text-xs"><code className="pktw-text-pk-accent">{'{{'}{field.name}{'}}'}</code><span className="pktw-text-pk-text-secondary">{field.description}</span></div>)}<div className="pktw-px-3 pktw-py-2"><Button size="sm" variant="ghost" onClick={() => setShowInputs((current) => !current)}>{showInputs ? 'Show fewer fields' : `Show ${CUSTOM_PROMPT_TEMPLATE_VARIABLES.length - 3} more fields`}</Button></div></div>
+					<label className="pktw-flex pktw-flex-col pktw-gap-1"><span className="pktw-text-xs pktw-font-medium">Prompt template</span><textarea aria-label="Custom Prompt template" className="pktw-min-h-[420px] pktw-w-full pktw-resize-y pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-surface pktw-p-3 pktw-font-mono pktw-text-xs" value={form.template} onChange={(event) => update('template', event.target.value)} /></label>
+					<div className="pktw-rounded-md pktw-border pktw-border-pk-border"><div className="pktw-px-4 pktw-py-3"><span className="pktw-block pktw-text-sm pktw-font-medium">Template inputs</span><span className="pktw-mt-1 pktw-block pktw-text-xs pktw-text-pk-text-tertiary">Peak supplies these values when this Custom Prompt runs.</span></div><PromptInputsTable inputs={CUSTOM_PROMPT_TEMPLATE_VARIABLES} /></div>
 					{error ? <span className="pktw-text-xs pktw-text-red-500">{error}</span> : null}
 				</Modal.Body>
 				<Modal.Footer>
