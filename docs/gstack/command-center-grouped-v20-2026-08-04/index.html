@@ -1,0 +1,1034 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peak Command Center · Grouped V20</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #303338;
+      --muted: #777c83;
+      --faint: #9da1a7;
+      --line: #e8e9ec;
+      --soft-line: #eff0f2;
+      --surface: rgba(255, 255, 255, 0.99);
+      --hover: #f3f2f6;
+      --selected: #efedf6;
+      --accent: #7657c7;
+      --accent-line: #d9d2eb;
+      --shadow: 0 26px 68px rgba(31, 34, 40, 0.18), 0 3px 12px rgba(31, 34, 40, 0.07);
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "SF Pro Text", "Segoe UI", sans-serif;
+      font-synthesis: none;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-width: 720px;
+      min-height: 560px;
+      margin: 0;
+      color: var(--ink);
+      background: #f1f2f4;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      color: inherit;
+    }
+
+    .icon {
+      width: 17px;
+      height: 17px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.75;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .app {
+      min-height: 100vh;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .workspace {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-columns: 44px 210px minmax(0, 1fr) 230px;
+      grid-template-rows: 36px minmax(0, 1fr);
+      color: #8b8f95;
+      background: #f8f8f9;
+      filter: saturate(0.65);
+    }
+
+    .titlebar {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 13px;
+      border-bottom: 1px solid #e2e4e7;
+      background: #f0f1f3;
+      font-size: 11px;
+    }
+
+    .traffic {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #d5d7da;
+    }
+
+    .titlebar strong {
+      margin-left: 8px;
+      color: #7c8087;
+      font-size: 11px;
+      font-weight: 570;
+    }
+
+    .rail {
+      border-right: 1px solid #e3e5e7;
+      background: #edeef0;
+      padding-top: 12px;
+    }
+
+    .rail-icon {
+      width: 27px;
+      height: 27px;
+      display: grid;
+      place-items: center;
+      margin: 0 auto 7px;
+      border-radius: 6px;
+      color: #a0a4aa;
+    }
+
+    .rail-icon.active {
+      color: #777c83;
+      background: #e1e3e6;
+    }
+
+    .sidebar,
+    .outline {
+      padding: 13px 11px;
+      background: #f4f5f6;
+    }
+
+    .sidebar {
+      border-right: 1px solid #e5e6e8;
+    }
+
+    .outline {
+      border-left: 1px solid #e5e6e8;
+    }
+
+    .pane-title {
+      margin-bottom: 12px;
+      color: #858990;
+      font-size: 9.5px;
+      font-weight: 680;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .pane-row {
+      height: 27px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 7px;
+      border-radius: 5px;
+      color: #91959b;
+      font-size: 10.5px;
+    }
+
+    .pane-row.active {
+      color: #6c7178;
+      background: #e9eaed;
+    }
+
+    .pane-row .icon {
+      width: 13px;
+      height: 13px;
+    }
+
+    .editor {
+      min-width: 0;
+      padding: 56px 8vw;
+      background: #fcfcfd;
+    }
+
+    .document {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .document-title {
+      width: 52%;
+      height: 23px;
+      margin-bottom: 26px;
+      border-radius: 4px;
+      background: #dddfe2;
+    }
+
+    .document-line {
+      width: 100%;
+      height: 7px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      background: #e9eaed;
+    }
+
+    .document-line.mid { width: 76%; }
+    .document-line.short { width: 46%; }
+
+    .scrim {
+      position: relative;
+      z-index: 2;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 34px;
+      background: rgba(231, 232, 235, 0.67);
+      backdrop-filter: blur(1.5px);
+    }
+
+    .launcher {
+      width: 640px;
+      height: 448px;
+      display: grid;
+      grid-template-rows: 46px 34px minmax(0, 1fr) 34px;
+      overflow: hidden;
+      border: 1px solid #e3e5e8;
+      border-radius: 10px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .search-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 8px 5px 16px;
+    }
+
+    .search-field {
+      min-width: 0;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #858990;
+    }
+
+    .search-field > .icon {
+      width: 15px;
+      height: 15px;
+      flex: none;
+    }
+
+    .search-field input {
+      width: 100%;
+      height: 30px;
+      padding: 0;
+      border: 0;
+      outline: 0;
+      color: var(--ink);
+      background: transparent;
+      font-size: 12px;
+      font-weight: 420;
+      letter-spacing: -0.008em;
+    }
+
+    .search-field input::placeholder {
+      color: #9a9ea4;
+    }
+
+    .close-button {
+      width: 27px;
+      height: 27px;
+      display: grid;
+      flex: none;
+      place-items: center;
+      padding: 0;
+      border: 0;
+      border-radius: 6px;
+      color: #898d93;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .close-button:hover {
+      color: #61666d;
+      background: #f2f3f4;
+    }
+
+    .close-button .icon {
+      width: 13px;
+      height: 13px;
+    }
+
+    .tabs {
+      position: relative;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      padding: 0 14px 3px;
+      overflow-x: auto;
+      border-bottom: 1px solid var(--soft-line);
+      scrollbar-width: none;
+    }
+
+    .tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tab {
+      position: relative;
+      height: 29px;
+      display: inline-flex;
+      flex: none;
+      align-items: center;
+      gap: 6px;
+      padding: 0 8px;
+      border: 0;
+      border-radius: 5px;
+      color: #777c83;
+      background: transparent;
+      font-size: 10.5px;
+      font-weight: 540;
+      cursor: pointer;
+      transition: color 120ms ease, background-color 120ms ease;
+    }
+
+    .tab:hover {
+      color: #4e535a;
+      background: #f5f5f7;
+    }
+
+    .tab.active {
+      color: #30343a;
+    }
+
+    .tab.active::after {
+      content: "";
+      position: absolute;
+      right: 7px;
+      bottom: -3px;
+      left: 7px;
+      height: 1.5px;
+      border-radius: 2px;
+      background: #2e3136;
+    }
+
+    .tab .icon {
+      width: 13px;
+      height: 13px;
+      color: #858a91;
+    }
+
+    .tab.active .icon {
+      color: #6750a7;
+    }
+
+    .content {
+      min-width: 0;
+      min-height: 0;
+      padding: 9px 9px 11px;
+      overflow-y: auto;
+      scrollbar-color: #d8dade transparent;
+      scrollbar-width: thin;
+    }
+
+    .content::-webkit-scrollbar {
+      width: 9px;
+    }
+
+    .content::-webkit-scrollbar-thumb {
+      border: 3px solid transparent;
+      border-radius: 10px;
+      background: #d8dade;
+      background-clip: padding-box;
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      animation: panel-enter 160ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .group {
+      min-width: 0;
+    }
+
+    .group-header {
+      height: 21px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 6px;
+      color: #898d94;
+    }
+
+    .group-header .icon {
+      width: 12px;
+      height: 12px;
+    }
+
+    .group-header strong {
+      color: #7a7e85;
+      font-size: 9.5px;
+      font-weight: 670;
+      letter-spacing: 0.075em;
+      text-transform: uppercase;
+    }
+
+    .group-count {
+      color: #b0b3b8;
+      font-size: 9px;
+    }
+
+    .action-shelf {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 3px;
+    }
+
+    .action-tile {
+      min-width: 0;
+      height: 66px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 5px 6px 4px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      color: #33373c;
+      background: transparent;
+      text-align: center;
+      cursor: pointer;
+      transition: background-color 110ms ease, box-shadow 110ms ease, transform 110ms ease;
+    }
+
+    .action-tile:hover,
+    .action-tile.selected {
+      background: var(--hover);
+      box-shadow: inset 0 0 0 1px #e4e1e9;
+    }
+
+    .action-tile.selected {
+      color: #2f2a3e;
+      background: var(--selected);
+      box-shadow: inset 0 0 0 1px var(--accent-line);
+    }
+
+    .action-tile:active,
+    .link-tile:active {
+      transform: scale(0.985);
+    }
+
+    .action-icon {
+      width: 18px;
+      height: 18px;
+      display: grid;
+      place-items: center;
+      color: #62676e;
+    }
+
+    .action-icon .icon {
+      width: 17px;
+      height: 17px;
+    }
+
+    .action-tile.selected .action-icon {
+      color: var(--accent);
+    }
+
+    .action-label {
+      min-width: 0;
+      max-width: 100%;
+      min-height: 26px;
+      display: -webkit-box;
+      overflow: hidden;
+      color: inherit;
+      font-size: 10.75px;
+      font-weight: 530;
+      line-height: 1.2;
+      letter-spacing: -0.008em;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    .link-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 3px 5px;
+    }
+
+    .link-tile {
+      min-width: 0;
+      height: 31px;
+      display: grid;
+      grid-template-columns: 14px minmax(0, 1fr) 10px;
+      align-items: center;
+      gap: 7px;
+      padding: 0 7px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      color: #656a71;
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+      transition: background-color 110ms ease, box-shadow 110ms ease, transform 110ms ease;
+    }
+
+    .link-tile:hover,
+    .link-tile.selected {
+      color: #373b41;
+      background: var(--hover);
+      box-shadow: inset 0 0 0 1px #e4e2e8;
+    }
+
+    .link-tile.selected {
+      background: var(--selected);
+      box-shadow: inset 0 0 0 1px var(--accent-line);
+    }
+
+    .link-tile > .icon {
+      width: 14px;
+      height: 14px;
+      color: #7b8087;
+    }
+
+    .link-label {
+      min-width: 0;
+      overflow: hidden;
+      font-size: 10.5px;
+      font-weight: 510;
+      letter-spacing: -0.008em;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .link-arrow {
+      color: #a4a7ac;
+      font-size: 10px;
+      text-align: right;
+    }
+
+    .empty {
+      min-height: 220px;
+      display: grid;
+      place-items: center;
+      color: #989ca2;
+      font-size: 11px;
+    }
+
+    .footer {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      padding: 0 8px 0 12px;
+      border-top: 1px solid var(--soft-line);
+      color: #969aa0;
+      font-size: 9px;
+    }
+
+    .key-hints {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      white-space: nowrap;
+    }
+
+    .key-hint {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    kbd {
+      min-width: 15px;
+      height: 15px;
+      display: inline-grid;
+      place-items: center;
+      padding: 0 3px;
+      border: 1px solid #e1e2e5;
+      border-radius: 3px;
+      color: #8d9197;
+      background: #fff;
+      font-family: inherit;
+      font-size: 8px;
+      line-height: 1;
+    }
+
+    .selection-label {
+      min-width: 0;
+      overflow: hidden;
+      color: #7f838a;
+      font-size: 9.25px;
+      text-align: center;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      transition: color 100ms ease;
+    }
+
+    .selection-label.has-value {
+      color: #5c6168;
+    }
+
+    .customize-button {
+      width: 26px;
+      height: 26px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 0;
+      border-radius: 6px;
+      color: #93979d;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .customize-button:hover {
+      color: #5f646b;
+      background: #f2f3f4;
+    }
+
+    .customize-button .icon {
+      width: 13px;
+      height: 13px;
+    }
+
+    .toast {
+      position: absolute;
+      z-index: 4;
+      bottom: 46px;
+      left: 50%;
+      max-width: 430px;
+      padding: 8px 11px;
+      border: 1px solid #dedfe3;
+      border-radius: 7px;
+      color: #555a61;
+      background: rgba(255, 255, 255, 0.97);
+      box-shadow: 0 12px 30px rgba(34, 38, 44, 0.14);
+      font-size: 10px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 5px);
+      transition: opacity 130ms ease, transform 130ms ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    @keyframes panel-enter {
+      from {
+        opacity: 0;
+        transform: translateY(3px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 780px) {
+      .workspace {
+        grid-template-columns: 44px 190px minmax(0, 1fr);
+      }
+
+      .outline {
+        display: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3 1.2 3.3L16.5 7.5l-3.3 1.2L12 12l-1.2-3.3-3.3-1.2 3.3-1.2L12 3Z"/><path d="m18 13 .8 2.2 2.2.8-2.2.8L18 19l-.8-2.2L15 16l2.2-.8L18 13Z"/></symbol>
+    <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5 5-2Z"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="m12 17 0 5M6.5 4.5h11l-2 5v3l2 2h-11l2-2v-3l-2-5Z"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.6-2-3.4-2.5 1A7 7 0 0 0 14.7 6L14.3 3h-4.6L9.3 6A7 7 0 0 0 7.6 7L5.1 6l-2 3.4 2 1.6a7 7 0 0 0 0 2L3.1 14.6l2 3.4 2.5-1a7 7 0 0 0 1.7 1l.4 3h4.6l.4-3a7 7 0 0 0 1.7-1l2.5 1 2-3.4-2-1.6a7 7 0 0 0 .1-1Z"/></symbol>
+    <symbol id="i-pen" viewBox="0 0 24 24"><path d="m4 20 4.4-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z"/><path d="m13.8 7.7 3 3"/></symbol>
+    <symbol id="i-message" viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3V5Z"/></symbol>
+    <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Z"/><path d="M9 3v15M15 6v15"/></symbol>
+    <symbol id="i-file-search" viewBox="0 0 24 24"><path d="M14 2H6v20h12V6l-4-4Z"/><path d="M14 2v4h4"/><circle cx="10" cy="13" r="2.5"/><path d="m12 15 2 2"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 11 9-8 9 8M5 10v11h14V10M9 21v-7h6v7"/></symbol>
+    <symbol id="i-content" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></symbol>
+    <symbol id="i-command" viewBox="0 0 24 24"><path d="M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6Z"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+    <symbol id="i-layout" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M10 9v12"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 2h8l4 4v16H6V2Z"/><path d="M14 2v5h5M9 12h6M9 16h6"/></symbol>
+    <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4V3Z"/></symbol>
+    <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M10 13h.01M14 13h4M7 16h10"/></symbol>
+    <symbol id="i-wand" viewBox="0 0 24 24"><path d="m4 20 11-11M13 5l2-2 6 6-2 2M6 4v3M4.5 5.5h3M18 16v4M16 18h4"/></symbol>
+    <symbol id="i-sidebar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6h7l2 2h9v11H3V6Z"/></symbol>
+  </svg>
+
+  <main class="app">
+    <section class="workspace" aria-hidden="true">
+      <div class="titlebar"><i class="traffic"></i><i class="traffic"></i><i class="traffic"></i><strong>Peak Assistant · Product vault</strong></div>
+      <aside class="rail">
+        <span class="rail-icon active"><svg class="icon"><use href="#i-file"/></svg></span>
+        <span class="rail-icon"><svg class="icon"><use href="#i-search"/></svg></span>
+        <span class="rail-icon"><svg class="icon"><use href="#i-bookmark"/></svg></span>
+      </aside>
+      <aside class="sidebar">
+        <div class="pane-title">Files</div>
+        <div class="pane-row active"><svg class="icon"><use href="#i-file"/></svg>Command Center</div>
+        <div class="pane-row"><svg class="icon"><use href="#i-folder"/></svg>Product</div>
+        <div class="pane-row"><svg class="icon"><use href="#i-folder"/></svg>Research</div>
+        <div class="pane-row"><svg class="icon"><use href="#i-file"/></svg>Daily note</div>
+      </aside>
+      <section class="editor">
+        <div class="document">
+          <div class="document-title"></div>
+          <div class="document-line"></div><div class="document-line"></div><div class="document-line mid"></div>
+          <div class="document-line"></div><div class="document-line short"></div>
+        </div>
+      </section>
+      <aside class="outline">
+        <div class="pane-title">Outline</div>
+        <div class="pane-row active">Command Center</div>
+        <div class="pane-row">Navigation</div>
+        <div class="pane-row">Pinned</div>
+      </aside>
+    </section>
+
+    <section class="scrim">
+      <section class="launcher" aria-label="Peak Command Center grouped V20 mock">
+        <header class="search-header">
+          <label class="search-field">
+            <svg class="icon"><use href="#i-search"/></svg>
+            <input id="search" type="text" autocomplete="off" placeholder="Search your Command Center" aria-label="Search your Command Center">
+          </label>
+          <button class="close-button" type="button" aria-label="Close"><svg class="icon"><use href="#i-x"/></svg></button>
+        </header>
+
+        <nav class="tabs" id="tabs" aria-label="Command Center groups"></nav>
+        <div class="content" id="content"></div>
+
+        <footer class="footer">
+          <div class="key-hints">
+            <span class="key-hint"><kbd>↑</kbd><kbd>↓</kbd> move</span>
+            <span class="key-hint"><kbd>↵</kbd> open</span>
+            <span class="key-hint"><kbd>Esc</kbd> close</span>
+          </div>
+          <span class="selection-label" id="selection-label">Hover or select an item to see its full name</span>
+          <button class="customize-button" id="customize" type="button" aria-label="Customize"><svg class="icon"><use href="#i-settings"/></svg></button>
+        </footer>
+      </section>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <script>
+    const groups = [
+      {
+        id: 'peak',
+        label: 'Peak Assistant',
+        icon: 'i-sparkles',
+        layout: 'shelf',
+        items: [
+          { label: 'Composer', full: 'Peak Assistant: Open document in Peak Composer', meta: 'Command', icon: 'i-pen' },
+          { label: 'Chat Studio', full: 'Peak Assistant: Open Chat Studio', meta: 'Command', icon: 'i-message' },
+          { label: 'File Atlas', full: 'Peak Assistant: Open File Atlas', meta: 'Command', icon: 'i-map' },
+          { label: 'Quick Search', full: 'Peak Assistant: Quick Search', meta: 'Command', icon: 'i-file-search' },
+          { label: 'Settings', full: 'Peak Assistant: Settings', meta: 'Settings', icon: 'i-settings' },
+        ],
+      },
+      {
+        id: 'navigation',
+        label: 'Navigation',
+        icon: 'i-compass',
+        layout: 'links',
+        items: [
+          { label: 'Home', full: 'Open Peak Home', meta: 'Peak view', icon: 'i-home' },
+          { label: 'Open My Content', full: 'Peak Assistant: Open My Content', meta: 'Peak view', icon: 'i-content' },
+          { label: 'Open Peak Command Center', full: 'Peak Assistant: Open Peak Command Center', meta: 'Peak view', icon: 'i-command' },
+          { label: 'Usage Dashboard', full: 'Peak Assistant: Usage Dashboard', meta: 'Peak view', icon: 'i-chart' },
+          { label: 'Research Dashboard', full: 'Open Research Dashboard', meta: 'Pinned Base', icon: 'i-layout' },
+          { label: 'Bookmarks', full: 'Open Obsidian Bookmarks', meta: 'Obsidian collection', icon: 'i-bookmark' },
+        ],
+      },
+      {
+        id: 'pinned',
+        label: 'Pinned',
+        icon: 'i-pin',
+        layout: 'links',
+        items: [
+          { label: 'PKM Product Analysis', full: 'PKM Product Analysis · 01 Projects', meta: 'Pinned document', icon: 'i-file' },
+          { label: 'Command Center Research', full: 'Command Center Research · 02 Research', meta: 'Pinned document', icon: 'i-file' },
+          { label: 'AI Research Hub', full: 'AI Research Hub · Bookmark', meta: 'Bookmark', icon: 'i-bookmark' },
+        ],
+      },
+      {
+        id: 'system',
+        label: 'System',
+        icon: 'i-settings',
+        layout: 'shelf',
+        items: [
+          { label: 'Show keyboard map', full: 'Peak Assistant: Show keyboard map', meta: 'Command', icon: 'i-keyboard' },
+          { label: 'Peak Assistant: Setup Wizard', full: 'Peak Assistant: Setup Wizard', meta: 'Command', icon: 'i-wand' },
+          { label: 'Toggle left sidebar', full: 'Obsidian: Toggle left sidebar', meta: 'Command', icon: 'i-sidebar' },
+          { label: 'Toggle right sidebar', full: 'Obsidian: Toggle right sidebar', meta: 'Command', icon: 'i-sidebar' },
+          { label: 'Reload app without saving', full: 'Obsidian: Reload app without saving', meta: 'Command', icon: 'i-command' },
+        ],
+      },
+    ];
+
+    const state = {
+      scope: 'all',
+      query: '',
+      selectedIndex: 0,
+    };
+
+    const search = document.getElementById('search');
+    const tabs = document.getElementById('tabs');
+    const content = document.getElementById('content');
+    const selectionLabel = document.getElementById('selection-label');
+    const toast = document.getElementById('toast');
+    let toastTimer = 0;
+
+    function iconMarkup(id) {
+      return `<svg class="icon" aria-hidden="true"><use href="#${id}"/></svg>`;
+    }
+
+    function escapeAttribute(value) {
+      return value.replaceAll('&', '&amp;').replaceAll('"', '&quot;');
+    }
+
+    function renderTabs() {
+      const scopes = [
+        { id: 'all', label: 'All', icon: null },
+        ...groups.map(({ id, label, icon }) => ({ id, label, icon })),
+      ];
+
+      tabs.innerHTML = scopes.map((scope) => `
+        <button class="tab${state.scope === scope.id ? ' active' : ''}" type="button" data-scope="${scope.id}" aria-pressed="${state.scope === scope.id}">
+          ${scope.icon ? iconMarkup(scope.icon) : ''}<span>${scope.label}</span>
+        </button>
+      `).join('');
+    }
+
+    function itemMatches(item, group) {
+      if (!state.query) return true;
+      return `${item.label} ${item.full} ${item.meta} ${group.label}`.toLowerCase().includes(state.query);
+    }
+
+    function getVisibleGroups() {
+      const source = state.scope === 'all'
+        ? groups
+        : groups.filter((group) => group.id === state.scope);
+
+      return source
+        .map((group) => ({ ...group, items: group.items.filter((item) => itemMatches(item, group)) }))
+        .filter((group) => group.items.length);
+    }
+
+    function actionMarkup(item, index) {
+      return `
+        <button class="action-tile${index === state.selectedIndex ? ' selected' : ''}" type="button" data-index="${index}" data-full="${escapeAttribute(item.full)}" title="${escapeAttribute(item.full)}">
+          <span class="action-icon">${iconMarkup(item.icon || 'i-command')}</span>
+          <span class="action-label">${item.label}</span>
+        </button>
+      `;
+    }
+
+    function linkMarkup(item, index) {
+      return `
+        <button class="link-tile${index === state.selectedIndex ? ' selected' : ''}" type="button" data-index="${index}" data-full="${escapeAttribute(item.full)}" title="${escapeAttribute(item.full)}">
+          ${iconMarkup(item.icon || 'i-file')}
+          <span class="link-label">${item.label}</span>
+          <span class="link-arrow">↗</span>
+        </button>
+      `;
+    }
+
+    function renderContent() {
+      const visibleGroups = getVisibleGroups();
+      let flatIndex = 0;
+
+      if (!visibleGroups.length) {
+        content.innerHTML = '<div class="empty">No pinned item matches this search.</div>';
+        selectionLabel.textContent = 'Search uses the full command name';
+        selectionLabel.classList.remove('has-value');
+        return;
+      }
+
+      const groupMarkup = visibleGroups.map((group) => {
+        const items = group.items.map((item) => {
+          const index = flatIndex++;
+          return group.layout === 'links'
+            ? linkMarkup(item, index)
+            : actionMarkup(item, index);
+        }).join('');
+
+        return `
+          <section class="group" data-group="${group.id}">
+            <header class="group-header">
+              ${iconMarkup(group.icon)}
+              <strong>${group.label}</strong>
+              <span class="group-count">${group.items.length}</span>
+            </header>
+            <div class="${group.layout === 'links' ? 'link-grid' : 'action-shelf'}">${items}</div>
+          </section>
+        `;
+      }).join('');
+
+      content.innerHTML = `<div class="panel">${groupMarkup}</div>`;
+      updateSelectionLabel();
+    }
+
+    function render() {
+      renderTabs();
+      renderContent();
+    }
+
+    function selectableItems() {
+      return [...content.querySelectorAll('[data-index]')];
+    }
+
+    function updateSelectionLabel(item = null) {
+      const selected = item || selectableItems().find((candidate) => candidate.classList.contains('selected'));
+      if (!selected) {
+        selectionLabel.textContent = 'Hover or select an item to see its full name';
+        selectionLabel.classList.remove('has-value');
+        return;
+      }
+
+      selectionLabel.textContent = selected.dataset.full;
+      selectionLabel.classList.add('has-value');
+    }
+
+    function selectScope(scope) {
+      state.scope = scope;
+      state.selectedIndex = 0;
+      render();
+    }
+
+    function selectIndex(index) {
+      const items = selectableItems();
+      if (!items.length) return;
+      state.selectedIndex = Math.max(0, Math.min(index, items.length - 1));
+      items.forEach((item, itemIndex) => item.classList.toggle('selected', itemIndex === state.selectedIndex));
+      items[state.selectedIndex].scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      updateSelectionLabel(items[state.selectedIndex]);
+    }
+
+    function showToast(message) {
+      window.clearTimeout(toastTimer);
+      toast.textContent = message;
+      toast.classList.add('show');
+      toastTimer = window.setTimeout(() => toast.classList.remove('show'), 1500);
+    }
+
+    tabs.addEventListener('click', (event) => {
+      const tab = event.target.closest('[data-scope]');
+      if (!tab) return;
+      selectScope(tab.dataset.scope);
+    });
+
+    content.addEventListener('pointerover', (event) => {
+      const item = event.target.closest('[data-index]');
+      if (!item) return;
+      updateSelectionLabel(item);
+    });
+
+    content.addEventListener('pointerleave', () => updateSelectionLabel());
+
+    content.addEventListener('focusin', (event) => {
+      const item = event.target.closest('[data-index]');
+      if (!item) return;
+      updateSelectionLabel(item);
+    });
+
+    content.addEventListener('click', (event) => {
+      const item = event.target.closest('[data-index]');
+      if (!item) return;
+      state.selectedIndex = Number(item.dataset.index);
+      selectIndex(state.selectedIndex);
+      showToast(`Would open: ${item.dataset.full}`);
+    });
+
+    search.addEventListener('input', () => {
+      state.query = search.value.trim().toLowerCase();
+      state.selectedIndex = 0;
+      renderContent();
+    });
+
+    search.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+        event.preventDefault();
+        selectIndex(state.selectedIndex + 1);
+      }
+      if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+        event.preventDefault();
+        selectIndex(state.selectedIndex - 1);
+      }
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        selectableItems()[state.selectedIndex]?.click();
+      }
+      if (event.key === 'Escape' && search.value) {
+        event.preventDefault();
+        search.value = '';
+        state.query = '';
+        state.selectedIndex = 0;
+        renderContent();
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') {
+        event.preventDefault();
+        search.focus();
+        search.select();
+      }
+    });
+
+    document.getElementById('customize').addEventListener('click', () => {
+      showToast('Customize keeps the existing searchable directory.');
+    });
+
+    document.querySelector('.close-button').addEventListener('click', () => {
+      showToast('Close Command Center');
+    });
+
+    render();
+    search.focus();
+  </script>
+</body>
+</html>
