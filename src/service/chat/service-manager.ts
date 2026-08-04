@@ -833,19 +833,22 @@ ${sourcesList}${topicsList}
 		feature: UsageFeature = 'internal',
 		action: string = 'unknown',
 		sessionId?: string,
+		executedModel?: { provider: string; modelId: string },
 	): void {
 		try {
 			if (!usage) return;
-			const profile = ProfileRegistry.getInstance().getActiveAgentProfile();
-			if (!profile) return;
-			void this.getModelInfo(profile.primaryModel, profile.kind).then(modelInfo => {
+			const activeProfile = ProfileRegistry.getInstance().getActiveAgentProfile();
+			const provider = executedModel?.provider ?? activeProfile?.kind;
+			const modelId = executedModel?.modelId ?? activeProfile?.primaryModel;
+			if (!provider || !modelId) return;
+			void this.getModelInfo(modelId, provider).then(modelInfo => {
 				const costUsd = computeUsdFromUsage(usage, modelInfo);
 				EventBus.getInstance(this.app).dispatch(new UsageRecordedViewEvent({
 					sessionId: sessionId ?? crypto.randomUUID(),
 					feature,
 					action,
-					provider: profile.kind,
-					model: profile.primaryModel,
+					provider,
+					model: modelId,
 					inputTokens: usage.inputTokens ?? 0,
 					outputTokens: usage.outputTokens ?? 0,
 					cachedTokens: usage.cachedInputTokens ?? 0,
@@ -875,10 +878,12 @@ ${sourcesList}${topicsList}
 	async queryText(
 		promptOrText: string,
 		variables?: Record<string, unknown>,
-		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string },
+		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string; modelId?: string },
 	): Promise<string> {
 		const startMs = Date.now();
-		const { profile, modelId } = this.resolveAgentProfileAndModel();
+		const resolved = this.resolveAgentProfileAndModel();
+		const profile = resolved.profile;
+		const modelId = opts?.modelId ?? resolved.modelId;
 		const { userPrompt, systemPrompt } = await this.resolvePromptPair(
 			promptOrText,
 			variables,
@@ -894,7 +899,15 @@ ${sourcesList}${topicsList}
 			maxSteps: 1,
 			signal: opts?.signal,
 		});
-		this.emitUsage(usage, startMs, false, opts?.usageFeature, opts?.usageAction, opts?.usageSessionId);
+		this.emitUsage(
+			usage,
+			startMs,
+			false,
+			opts?.usageFeature,
+			opts?.usageAction,
+			opts?.usageSessionId,
+			{ provider: profile.kind, modelId },
+		);
 		return text;
 	}
 
@@ -906,10 +919,12 @@ ${sourcesList}${topicsList}
 	async *queryTextStream(
 		promptOrText: string,
 		variables?: Record<string, unknown>,
-		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string },
+		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string; modelId?: string },
 	): AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; fullText: string; usage?: LLMUsage }> {
 		const startMs = Date.now();
-		const { profile, modelId } = this.resolveCopilotProfileAndModel();
+		const resolved = this.resolveCopilotProfileAndModel();
+		const profile = resolved.profile;
+		const modelId = opts?.modelId ?? resolved.modelId;
 		const { userPrompt, systemPrompt } = await this.resolvePromptPair(
 			promptOrText,
 			variables,
@@ -936,7 +951,15 @@ ${sourcesList}${topicsList}
 		}
 		yield { type: 'done', fullText, usage: capturedUsage };
 
-		this.emitUsage(capturedUsage, startMs, true, opts?.usageFeature, opts?.usageAction, opts?.usageSessionId);
+		this.emitUsage(
+			capturedUsage,
+			startMs,
+			true,
+			opts?.usageFeature,
+			opts?.usageAction,
+			opts?.usageSessionId,
+			{ provider: profile.kind, modelId },
+		);
 	}
 
 	/**
@@ -980,7 +1003,15 @@ ${sourcesList}${topicsList}
 			yield event;
 		}
 
-		this.emitUsage(capturedUsage, startMs, true, opts?.usageFeature, opts?.usageAction, opts?.usageSessionId);
+		this.emitUsage(
+			capturedUsage,
+			startMs,
+			true,
+			opts?.usageFeature,
+			opts?.usageAction,
+			opts?.usageSessionId,
+			{ provider: profile.kind, modelId },
+		);
 	}
 
 	/**
@@ -998,10 +1029,12 @@ ${sourcesList}${topicsList}
 		promptOrText: string,
 		variables?: Record<string, unknown>,
 		schema?: unknown,
-		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string; usageCallback?: (usage: LLMUsage) => void },
+		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string; usageCallback?: (usage: LLMUsage) => void; modelId?: string },
 	): Promise<T> {
 		const startMs = Date.now();
-		const { profile, modelId } = this.resolveCopilotProfileAndModel();
+		const resolved = this.resolveCopilotProfileAndModel();
+		const profile = resolved.profile;
+		const modelId = opts?.modelId ?? resolved.modelId;
 		const { userPrompt, systemPrompt } = await this.resolvePromptPair(
 			promptOrText,
 			variables,
@@ -1020,7 +1053,15 @@ ${sourcesList}${topicsList}
 			maxSteps: 1,
 			signal: opts?.signal,
 		});
-		this.emitUsage(usage, startMs, false, opts?.usageFeature, opts?.usageAction, opts?.usageSessionId);
+		this.emitUsage(
+			usage,
+			startMs,
+			false,
+			opts?.usageFeature,
+			opts?.usageAction,
+			opts?.usageSessionId,
+			{ provider: profile.kind, modelId },
+		);
 		if (usage && opts?.usageCallback) opts.usageCallback(usage);
 		// Extract JSON from potential markdown code fences
 		const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/) ?? [null, text];
