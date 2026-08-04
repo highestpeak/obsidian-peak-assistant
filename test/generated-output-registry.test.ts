@@ -56,6 +56,35 @@ function testPolicyPartitions(): void {
 	console.log('PASS: generated output policy partitions');
 }
 
+function testMyContentProjectionOnlyIncludesExplicitUserOutputs(): void {
+	const registry = createDefaultGeneratedOutputRegistry();
+	const ids = registry.listMyContentTypes().map((entry) => entry.id).sort();
+	assert.deepEqual(ids, [
+		'ai-graph.markdown-export',
+		'analysis.markdown-export',
+		'artifact.dataview',
+		'artifact.drawio',
+		'artifact.excalidraw',
+		'artifact.extract',
+		'artifact.native-file',
+		'artifact.reminder',
+		'hub.materialized-note',
+		'media.generated-attachment',
+		'project.brief',
+		'user-profile.markdown',
+	]);
+	for (const entry of registry.listMyContentTypes()) {
+		assert.equal(entry.outputClass, 'user-artifact');
+		assert.equal(entry.userSurface?.visibility, 'my-content');
+		assert.ok(entry.userSurface?.kind);
+		assert.ok(entry.userSurface?.source);
+	}
+	for (const hiddenId of ['prompt.override', 'skill.vault-definition', 'document.accepted-writeback']) {
+		assert.ok(!ids.includes(hiddenId), `${hiddenId} must stay in its owning surface, not My Content`);
+	}
+	console.log('PASS: My Content projection only includes explicit user outputs');
+}
+
 function testPathResolutionAndTraversalDefense(): void {
 	const registry = createDefaultGeneratedOutputRegistry();
 	assert.equal(
@@ -179,6 +208,7 @@ function testDirectWriterCoverage(): void {
 
 testCatalogMatchesCanonicalDocumentation();
 testPolicyPartitions();
+testMyContentProjectionOnlyIncludesExplicitUserOutputs();
 testPathResolutionAndTraversalDefense();
 testInvalidDescriptorsFailLoud();
 testDirectWriterCoverage();

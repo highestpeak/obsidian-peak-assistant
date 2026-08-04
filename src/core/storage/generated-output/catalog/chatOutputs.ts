@@ -8,26 +8,32 @@ export const CHAT_GENERATED_OUTPUTS: readonly GeneratedOutputDescriptor[] = [
 	userArtifact({
 		documentationId: 'UA-04', id: 'project.brief', owner: 'chat-project', carrier: 'markdown',
 		path: outputPath('ai-root', 'Projects/{projectId}/Brief.md'), writerEvidence: CHAT_STORE, lifecycle: 'active',
+		userSurface: { visibility: 'my-content', kind: 'project-file', source: 'project', label: 'Project Brief' },
 	}),
 	userArtifact({
 		documentationId: 'UA-08', id: 'artifact.dataview', owner: 'chat-artifact', carrier: 'markdown',
 		path: outputPath('ai-root', 'Artifacts/Dataview/{slug}.md'), writerEvidence: ARTIFACT_WRITER,
+		userSurface: { visibility: 'my-content', kind: 'chat-save', source: 'chat', label: 'Saved Chat Dataview' },
 	}),
 	userArtifact({
 		documentationId: 'UA-09', id: 'artifact.excalidraw', owner: 'chat-artifact', carrier: 'native',
 		path: outputPath('ai-root', 'Artifacts/Excalidraw/{slug}.excalidraw.md'), writerEvidence: ARTIFACT_WRITER,
+		userSurface: { visibility: 'my-content', kind: 'chat-save', source: 'chat', label: 'Saved Chat Excalidraw' },
 	}),
 	userArtifact({
 		documentationId: 'UA-10', id: 'artifact.drawio', owner: 'chat-artifact', carrier: 'native',
 		path: outputPath('ai-root', 'Artifacts/DrawIO/{slug}.drawio'), writerEvidence: ARTIFACT_WRITER, peakIndexPolicy: 'exclude',
+		userSurface: { visibility: 'my-content', kind: 'chat-save', source: 'chat', label: 'Saved Chat DrawIO' },
 	}),
 	userArtifact({
 		documentationId: 'UA-11', id: 'artifact.extract', owner: 'chat-artifact', carrier: 'markdown',
 		path: outputPath('ai-root', 'Artifacts/Extracts/{slug}.md'), writerEvidence: ARTIFACT_WRITER,
+		userSurface: { visibility: 'my-content', kind: 'chat-save', source: 'chat', label: 'Saved Chat Extract' },
 	}),
 	userArtifact({
 		documentationId: 'UA-12', id: 'artifact.reminder', owner: 'chat-artifact', carrier: 'markdown',
 		path: outputPath('ai-root', 'Artifacts/Reminders/{slug}.md'), writerEvidence: ARTIFACT_WRITER,
+		userSurface: { visibility: 'my-content', kind: 'chat-save', source: 'chat', label: 'Saved Chat Reminder' },
 	}),
 	durableRecord({
 		documentationId: 'DR-01', id: 'chat.conversation-events', owner: 'chat', carrier: 'jsonl',

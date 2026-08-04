@@ -9,6 +9,7 @@ export const ANALYSIS_GENERATED_OUTPUTS: readonly GeneratedOutputDescriptor[] = 
 			'src/app/search/AppAnalysisDocVaultWriterAdapter.ts',
 			'src/ui/view/quick-search/callbacks/save-ai-analyze-to-md.ts',
 		],
+		userSurface: { visibility: 'my-content', kind: 'ai-result', source: 'ai-search', label: 'Saved AI Search result' },
 	}),
 	durableRecord({
 		documentationId: 'DR-03', id: 'resource.summary-snapshot', owner: 'chat-context', carrier: 'json',

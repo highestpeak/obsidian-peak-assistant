@@ -7,11 +7,13 @@ export const GRAPH_GENERATED_OUTPUTS: readonly GeneratedOutputDescriptor[] = [
 	userArtifact({
 		documentationId: 'UA-05', id: 'hub.materialized-note', owner: 'hub', carrier: 'markdown',
 		path: outputPath('ai-root', 'Hub-Summaries/{slug}.md'), writerEvidence: HUB_WRITER, lifecycle: 'active',
+		userSurface: { visibility: 'my-content', kind: 'hub', source: 'hub', label: 'Materialized Hub' },
 	}),
 	userArtifact({
 		documentationId: 'UA-07', id: 'ai-graph.markdown-export', owner: 'ai-graph', carrier: 'markdown',
 		path: outputPath('user-selected', '<user-selected>.md'),
 		writerEvidence: ['src/ui/view/quick-search/callbacks/save-ai-analyze-to-md.ts'],
+		userSurface: { visibility: 'my-content', kind: 'ai-graph', source: 'ai-graph', label: 'AI Graph export' },
 	}),
 	durableRecord({
 		documentationId: 'DR-08', id: 'hub.manifest', owner: 'hub', carrier: 'json',

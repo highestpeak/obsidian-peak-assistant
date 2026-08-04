@@ -7,6 +7,7 @@ import type {
 	GeneratedOutputPathScope,
 	GeneratedOutputPeakIndexPolicy,
 	GeneratedOutputRetentionPolicy,
+	GeneratedOutputUserSurface,
 } from '../types';
 
 export function outputPath(
@@ -28,6 +29,7 @@ interface CommonOutputInput {
 
 interface UserArtifactInput extends CommonOutputInput {
 	peakIndexPolicy?: GeneratedOutputPeakIndexPolicy;
+	userSurface: GeneratedOutputUserSurface;
 }
 
 export function userArtifact(input: UserArtifactInput): GeneratedOutputDescriptor {

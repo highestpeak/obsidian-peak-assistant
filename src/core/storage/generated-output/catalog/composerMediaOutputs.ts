@@ -11,6 +11,7 @@ export const COMPOSER_MEDIA_GENERATED_OUTPUTS: readonly GeneratedOutputDescripto
 		documentationId: 'UA-13', id: 'media.generated-attachment', owner: 'media', carrier: 'binary',
 		path: outputPath('ai-root', 'Attachments/media/{filename}'),
 		writerEvidence: ['src/app/platform/media/ObsidianMediaAttachmentWriter.ts'], peakIndexPolicy: 'exclude',
+		userSurface: { visibility: 'my-content', kind: 'media', source: 'media', label: 'Generated media' },
 	}),
 	userArtifact({
 		documentationId: 'UA-14', id: 'document.accepted-writeback', owner: 'copilot-composer', carrier: 'markdown',
@@ -19,6 +20,7 @@ export const COMPOSER_MEDIA_GENERATED_OUTPUTS: readonly GeneratedOutputDescripto
 			'src/app/chat/AppChatVaultWriterAdapter.ts',
 			'src/app/copilot/panels/AppCopilotPanelVaultAdapter.ts',
 		],
+		userSurface: { visibility: 'hidden' },
 	}),
 	userArtifact({
 		documentationId: 'UA-15', id: 'artifact.native-file', owner: 'composer-file-workspace', carrier: 'native',
@@ -28,6 +30,7 @@ export const COMPOSER_MEDIA_GENERATED_OUTPUTS: readonly GeneratedOutputDescripto
 			'src/app/composer/ObsidianComposerImageAdapters.ts',
 		],
 		peakIndexPolicy: 'exclude',
+		userSurface: { visibility: 'my-content', kind: 'project-file', source: 'project', label: 'Saved native file' },
 	}),
 	durableRecord({
 		documentationId: 'DR-07', id: 'media.job-events', owner: 'media', carrier: 'jsonl',

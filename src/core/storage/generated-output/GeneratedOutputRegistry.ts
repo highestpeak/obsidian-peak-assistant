@@ -32,6 +32,15 @@ export class GeneratedOutputRegistry {
 		return this.entries.filter((entry) => entry.syncPolicy === syncPolicy);
 	}
 
+	/**
+	 * Registered output types that belong in the user-facing My Content page.
+	 * Internal records, cache/projections, legacy sources and user-owned
+	 * configuration deliberately stay out of this projection.
+	 */
+	listMyContentTypes(): readonly GeneratedOutputDescriptor[] {
+		return this.entries.filter((entry) => entry.userSurface?.visibility === 'my-content');
+	}
+
 	get(id: string): GeneratedOutputDescriptor | undefined {
 		return this.byId.get(id);
 	}
@@ -100,6 +109,24 @@ function validateDescriptor(descriptor: GeneratedOutputDescriptor): void {
 	validateOwnershipPolicy(descriptor);
 	if (descriptor.writerEvidence.length === 0) {
 		throw new Error(`GeneratedOutputRegistry: output "${descriptor.id}" has no writer evidence.`);
+	}
+	validateUserSurface(descriptor);
+}
+
+function validateUserSurface(descriptor: GeneratedOutputDescriptor): void {
+	if (descriptor.outputClass !== 'user-artifact') {
+		if (descriptor.userSurface) {
+			throw new Error(`GeneratedOutputRegistry: non-user artifact "${descriptor.id}" cannot declare a user surface.`);
+		}
+		return;
+	}
+	if (!descriptor.userSurface) {
+		throw new Error(`GeneratedOutputRegistry: user artifact "${descriptor.id}" must declare a user surface.`);
+	}
+	if (descriptor.userSurface.visibility === 'hidden') return;
+	const { kind, source, label } = descriptor.userSurface;
+	if (!kind || !source || !label?.trim()) {
+		throw new Error(`GeneratedOutputRegistry: My Content artifact "${descriptor.id}" needs kind, source and label.`);
 	}
 }
 

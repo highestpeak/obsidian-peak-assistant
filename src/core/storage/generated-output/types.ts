@@ -30,6 +30,38 @@ export type GeneratedOutputPathScope =
 	| 'plugin-data'
 	| 'user-selected';
 
+/** User-facing category used by the My Content page. */
+export type MyContentKind =
+	| 'profile'
+	| 'ai-result'
+	| 'chat-save'
+	| 'ai-graph'
+	| 'hub'
+	| 'media'
+	| 'project-file';
+
+/** Product area that explicitly produced a My Content item. */
+export type MyContentSource =
+	| 'profile-settings'
+	| 'ai-search'
+	| 'chat'
+	| 'ai-graph'
+	| 'hub'
+	| 'media'
+	| 'project';
+
+/**
+ * Controls whether a user-owned output belongs in My Content. User ownership
+ * alone is not enough: prompt overrides and in-place writeback remain owned
+ * by their editor/document surface and must not appear as new Peak content.
+ */
+export interface GeneratedOutputUserSurface {
+	readonly visibility: 'my-content' | 'hidden';
+	readonly kind?: MyContentKind;
+	readonly source?: MyContentSource;
+	readonly label?: string;
+}
+
 export interface GeneratedOutputPathPolicy {
 	readonly scope: GeneratedOutputPathScope;
 	/** Relative path template. Placeholders use `{name}` and are resolved safely. */
@@ -49,6 +81,8 @@ export interface GeneratedOutputDescriptor {
 	readonly peakIndexPolicy: GeneratedOutputPeakIndexPolicy;
 	readonly materializationPolicy: GeneratedOutputMaterializationPolicy;
 	readonly retentionPolicy: GeneratedOutputRetentionPolicy;
+	/** Required for every user-artifact; My Content reads this instead of storage internals. */
+	readonly userSurface?: GeneratedOutputUserSurface;
 	readonly path: GeneratedOutputPathPolicy;
 	readonly schemaVersion?: number;
 	/** Required when lifecycle is migration-source. */
