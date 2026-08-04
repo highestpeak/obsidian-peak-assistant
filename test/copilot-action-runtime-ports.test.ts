@@ -274,6 +274,46 @@ async function testCustomPromptCatalogBuildsThroughRuntime(): Promise<void> {
 	console.log('PASS: customPromptCatalogBuildsThroughRuntime');
 }
 
+async function testCustomPromptSourceChangesRefreshRuntime(): Promise<void> {
+	let definitions = [
+		{ id: 'first', label: 'First', description: 'First custom prompt', category: 'document' as const, template: 'first', filePath: 'ChatFolder/Prompts/Custom/first.md' },
+	];
+	let onChange: (() => void) | undefined;
+	let stopped = 0;
+	const runtime = new CopilotActionRuntimeImpl(basePorts({
+		customPrompts: {
+			loadAll: async () => definitions,
+			watch(listener) {
+				onChange = listener;
+				return () => { stopped++; };
+			},
+		},
+	}));
+
+	await runtime.refreshCustomPrompts();
+	assert.ok(runtime.get('custom-first'), 'initial source definition is available');
+	definitions = [
+		{ id: 'second', label: 'Second', description: 'Second custom prompt', category: 'writing' as const, template: 'second', filePath: 'ChatFolder/Prompts/Custom/second.md' },
+	];
+	onChange?.();
+	onChange?.();
+	await waitFor(() => Boolean(runtime.get('custom-second')));
+	assert.strictEqual(runtime.get('custom-first'), undefined, 'a source update replaces the old custom catalog');
+
+	runtime.dispose();
+	runtime.dispose();
+	assert.strictEqual(stopped, 1, 'dispose releases the source watcher exactly once');
+	console.log('PASS: customPromptSourceChangesRefreshRuntime');
+}
+
+async function waitFor(condition: () => boolean): Promise<void> {
+	for (let attempt = 0; attempt < 10; attempt++) {
+		if (condition()) return;
+		await new Promise<void>(resolve => setTimeout(resolve, 0));
+	}
+	assert.fail('timed out waiting for the custom prompt source update');
+}
+
 async function testRuntimeCatalogShape(): Promise<void> {
 	const runtime = new CopilotActionRuntimeImpl(basePorts());
 	const all = runtime.getAll();
@@ -329,6 +369,7 @@ async function main(): Promise<void> {
 	await testKnowledgeGapsRunsThroughAgentPort();
 	await testSemanticLinksUsesSemanticGraphPort();
 	await testCustomPromptCatalogBuildsThroughRuntime();
+	await testCustomPromptSourceChangesRefreshRuntime();
 	await testRuntimeCatalogShape();
 	testRuntimeOwnershipBindClearSemantics();
 	testRuntimeOwnershipDisposeCalled();

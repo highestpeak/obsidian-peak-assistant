@@ -32,8 +32,8 @@ export interface CopilotActionRuntime {
 
 	/**
 	 * Re-read the custom prompt source (vault folder) and rebuild the
-	 * `custom-*` action list. Called on plugin boot after sqlite + lint
-	 * are ready and from a future settings-refresh flow.
+	 * `custom-*` action list. Called on plugin boot and after source
+	 * watcher notifications; it never depends on sqlite availability.
 	 */
 	refreshCustomPrompts(): Promise<void>;
 

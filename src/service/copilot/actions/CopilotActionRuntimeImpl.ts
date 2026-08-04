@@ -21,9 +21,14 @@ import { createBuiltInCopilotActions } from './index';
 export class CopilotActionRuntimeImpl implements CopilotActionRuntime {
 	private readonly builtIns: CopilotAction[];
 	private customPromptActions: CopilotAction[] = [];
+	private customPromptRefreshChain: Promise<void> = Promise.resolve();
+	private stopWatchingCustomPrompts: (() => void) | undefined;
+	private refreshQueued = false;
+	private disposed = false;
 
 	constructor(private readonly ports: CopilotActionPorts) {
 		this.builtIns = createBuiltInCopilotActions(ports);
+		this.stopWatchingCustomPrompts = ports.customPrompts.watch?.(() => this.queueCustomPromptRefresh());
 	}
 
 	getAll(): CopilotAction[] {
@@ -45,6 +50,25 @@ export class CopilotActionRuntimeImpl implements CopilotActionRuntime {
 	}
 
 	async refreshCustomPrompts(): Promise<void> {
+		const refresh = this.customPromptRefreshChain.then(() => this.loadCustomPrompts());
+		this.customPromptRefreshChain = refresh.catch((err) => {
+			console.warn('[CopilotActionRuntime] custom prompt refresh failed:', err);
+		});
+		return refresh;
+	}
+
+	private queueCustomPromptRefresh(): void {
+		if (this.disposed || this.refreshQueued) return;
+		this.refreshQueued = true;
+		void Promise.resolve().then(async () => {
+			this.refreshQueued = false;
+			if (this.disposed) return;
+			await this.refreshCustomPrompts();
+		});
+	}
+
+	private async loadCustomPrompts(): Promise<void> {
+		if (this.disposed) return;
 		let defs: CustomPromptDef[] = [];
 		try {
 			defs = await this.ports.customPrompts.loadAll();
@@ -52,12 +76,17 @@ export class CopilotActionRuntimeImpl implements CopilotActionRuntime {
 			console.warn('[CopilotActionRuntime] custom prompt load failed:', err);
 			defs = [];
 		}
+		if (this.disposed) return;
 		this.customPromptActions = defs.map(def =>
 			buildCustomPromptAction(def, this.ports.agent, this.ports.promptTemplates),
 		);
 	}
 
 	dispose(): void {
+		if (this.disposed) return;
+		this.disposed = true;
+		this.stopWatchingCustomPrompts?.();
+		this.stopWatchingCustomPrompts = undefined;
 		this.customPromptActions = [];
 	}
 }

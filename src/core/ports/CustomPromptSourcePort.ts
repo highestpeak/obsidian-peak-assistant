@@ -32,4 +32,13 @@ export interface CustomPromptDefShape {
  */
 export interface CustomPromptSourcePort {
 	loadAll(): Promise<CustomPromptDefShape[]>;
+
+	/**
+	 * Observe source changes that can alter the parsed definition list.
+	 *
+	 * A source may not be live (for example, a static test fixture), so
+	 * consumers must treat this as optional. Live adapters must return an
+	 * idempotent cleanup function that releases every host subscription.
+	 */
+	watch?(onChange: () => void): () => void;
 }
