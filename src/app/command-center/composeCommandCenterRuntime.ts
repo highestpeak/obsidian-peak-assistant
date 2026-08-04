@@ -18,7 +18,7 @@ export async function composeCommandCenterRuntime(
 	const runtime = new CommandCenterRuntime(
 		defaults,
 		plugin.settings.commandCenter,
-		new ObsidianCommandCenterAdapter(plugin.app, plugin),
+		new ObsidianCommandCenterAdapter(plugin.app, plugin, () => plugin.searchClient),
 		gateway,
 		async (config) => {
 			plugin.settings.commandCenter = config;

@@ -110,6 +110,21 @@ function normalizeGroup(value: unknown, index: number): CommandCenterGroup | nul
 	};
 }
 
+function normalizeTabOrder(value: unknown, groups: CommandCenterGroup[]): Array<string | 'all'> {
+	const groupIds = groups.map((group) => group.id);
+	const valid = new Set<string>(['all', ...groupIds]);
+	const requested = Array.isArray(value)
+		? value.map((item) => cleanText(item)).filter((item) => valid.has(item))
+		: [];
+	const ordered = Array.from(new Set(requested)) as Array<string | 'all'>;
+	if (ordered.length === 0) return ['all', ...groupIds];
+	if (!ordered.includes('all')) ordered.unshift('all');
+	for (const groupId of groupIds) {
+		if (!ordered.includes(groupId)) ordered.push(groupId);
+	}
+	return ordered;
+}
+
 export function normalizeCommandCenterBoardConfig(
 	value: unknown,
 	fallback: CommandCenterBoardConfig,
@@ -120,20 +135,27 @@ export function normalizeCommandCenterBoardConfig(
 		? raw.groups.map(normalizeGroup).filter((group): group is CommandCenterGroup => group !== null)
 		: [];
 	if (groups.length === 0) return cloneCommandCenterConfig(fallback);
+	const orderedGroups = groups.sort((a, b) => a.order - b.order);
+	const rawModal = raw.modal && typeof raw.modal === 'object' ? raw.modal as Record<string, unknown> : {};
+	const tabOrder = normalizeTabOrder(rawModal.tabOrder, orderedGroups);
+	const groupOrder = tabOrder.filter((scope) => scope !== 'all');
+	const orderByGroupId = new Map(groupOrder.map((groupId, order) => [groupId, order]));
 	const rawHome = raw.home && typeof raw.home === 'object' ? raw.home as Record<string, unknown> : {};
 	const strings = (entry: unknown): string[] => Array.isArray(entry)
 		? entry.map((item) => cleanText(item)).filter(Boolean)
 		: [];
 	return {
 		version: 1,
-		modal: { density: 'compact' },
+		modal: { density: 'compact', tabOrder },
 		home: {
 			openOnStartup: rawHome.openOnStartup === true,
 			replaceEmptyTab: rawHome.replaceEmptyTab === true,
 			quickAccessActionIds: strings(rawHome.quickAccessActionIds),
 			pinnedTargetIds: strings(rawHome.pinnedTargetIds),
 		},
-		groups: groups.sort((a, b) => a.order - b.order).map((group, order) => ({ ...group, order })),
+		groups: orderedGroups
+			.sort((a, b) => (orderByGroupId.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (orderByGroupId.get(b.id) ?? Number.MAX_SAFE_INTEGER))
+			.map((group, order) => ({ ...group, order })),
 	};
 }
 

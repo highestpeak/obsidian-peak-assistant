@@ -25,7 +25,7 @@ export function IconBrowser({ value, onChange, onClose }: IconBrowserProps): Rea
 			<div className="pk-cc-icon-browser__head">
 				<Segmented
 					value={source}
-					onValueChange={setSource}
+					onValueChange={(next) => setSource(next === 'emoji' ? 'emoji' : 'lucide')}
 					options={[{ value: 'lucide', label: 'Lucide' }, { value: 'emoji', label: 'Emoji' }]}
 					size="sm"
 					aria-label="Icon source"

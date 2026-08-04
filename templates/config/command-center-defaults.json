@@ -1,7 +1,8 @@
 {
   "version": 1,
   "modal": {
-    "density": "compact"
+    "density": "compact",
+    "tabOrder": ["all", "pinned", "peak-assistant", "navigation"]
   },
   "home": {
     "openOnStartup": false,

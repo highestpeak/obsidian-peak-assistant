@@ -23,54 +23,38 @@ function useRuntimeConfig(runtime: CommandCenterRuntimePort) {
 	return config;
 }
 
-function GroupTab({
-	group,
-	selected,
-	onSelect,
-}: {
+function GroupTab({ group, selected, onSelect }: {
 	group: CommandCenterGroup;
 	selected: boolean;
 	onSelect: () => void;
 }): React.ReactElement {
 	return (
-		<Pill
-			className="pk-cc-group-tab"
-			selected={selected}
-			role="tab"
-			aria-selected={selected}
-			onClick={onSelect}
-		>
+		<Pill className="pk-cc-group-tab" selected={selected} role="tab" aria-selected={selected} onClick={onSelect}>
 			<CommandCenterIcon icon={group.icon} size={15} />
 			<span>{group.label}</span>
 		</Pill>
 	);
 }
 
-type ProjectionKind = 'link' | 'grid' | 'overflow';
+type ProjectionKind = 'link' | 'grid' | 'row';
 
 function ActionContent({ item, kind }: { item: ResolvedCommandCenterItem; kind: ProjectionKind }): React.ReactElement {
-	const overflow = kind === 'overflow';
+	const row = kind === 'row';
 	const link = kind === 'link';
 	const showIcon = item.display !== 'text-only' && item.icon;
 	const showLabel = item.display !== 'icon-only' || !item.icon;
 	return (
 		<>
-			{showIcon ? <CommandCenterIcon icon={item.icon} size={link ? 14 : overflow ? 16 : 18} /> : null}
+			{showIcon ? <CommandCenterIcon icon={item.icon} size={link ? 14 : row ? 16 : 19} /> : null}
 			{showLabel ? <span className="pk-cc-action__label">{item.shortLabel}</span> : null}
 			{link && showLabel ? <ArrowUpRight className="pk-cc-action__link-arrow" size={12} aria-hidden="true" /> : null}
-			{overflow ? <span className="pk-cc-action__source">{item.fullLabel}</span> : null}
-			{overflow && item.hotkey ? <kbd>{item.hotkey}</kbd> : null}
+			{row ? <span className="pk-cc-action__source">{item.sourceLabel}</span> : null}
+			{row && item.hotkey ? <kbd>{item.hotkey}</kbd> : null}
 		</>
 	);
 }
 
-function ActionButton({
-	item,
-	kind,
-	active,
-	onFocus,
-	onInvoke,
-}: {
+function ActionButton({ item, kind, active, onFocus, onInvoke }: {
 	item: ResolvedCommandCenterItem;
 	kind: ProjectionKind;
 	active: boolean;
@@ -98,10 +82,53 @@ function ActionButton({
 	);
 }
 
+function ProjectionSection({
+	group,
+	items,
+	showGroupLabel,
+	destinationColumns,
+	activeId,
+	onFocus,
+	onInvoke,
+}: {
+	group: CommandCenterGroup;
+	items: ResolvedCommandCenterItem[];
+	showGroupLabel: boolean;
+	destinationColumns: number;
+	activeId: string | null;
+	onFocus: (id: string) => void;
+	onInvoke: (item: ResolvedCommandCenterItem) => void;
+}): React.ReactElement | null {
+	if (items.length === 0) return null;
+	const projection = projectCommandCenterItems(items, group.actionLayout);
+	const render = (item: ResolvedCommandCenterItem, kind: ProjectionKind): React.ReactElement => (
+		<ActionButton
+			key={item.id}
+			item={item}
+			kind={kind}
+			active={item.id === activeId}
+			onFocus={() => onFocus(item.id)}
+			onInvoke={() => onInvoke(item)}
+		/>
+	);
+	return (
+		<div className="pk-cc-section" data-group-id={group.id}>
+			{showGroupLabel ? <span className="pk-cc-section__label">{group.label}</span> : null}
+			{projection.blocks.map((block, index) => {
+				if (block.kind === 'destination') return <div key={`destination-${index}`} className="pk-cc-links" role="group" aria-label={`${group.label} destinations`} style={{ gridTemplateColumns: `repeat(${destinationColumns}, minmax(0, 1fr))` }}>{block.items.map((item) => render(item, 'link'))}</div>;
+				if (block.kind === 'grid') return <div key={`grid-${index}`} className="pk-cc-grid" role="group" aria-label={`${group.label} visual commands`}>{block.items.map((item) => render(item, 'grid'))}</div>;
+				return <div key={`row-${index}`} className="pk-cc-rows" role="group" aria-label={`${group.label} commands`}>{block.items.map((item) => render(item, 'row'))}</div>;
+			})}
+		</div>
+	);
+}
+
 export function CommandCenterLauncher({ runtime, onCustomize, onClose }: CommandCenterLauncherProps): React.ReactElement {
 	const config = useRuntimeConfig(runtime);
-	const sortedGroups = useMemo(() => config.groups.slice().sort((a, b) => a.order - b.order), [config.groups]);
-	const [scope, setScope] = useState<string | 'all'>(() => sortedGroups[0]?.id ?? 'all');
+	const groups = useMemo(() => config.groups.slice().sort((a, b) => a.order - b.order), [config.groups]);
+	const groupById = useMemo(() => new Map(groups.map((group) => [group.id, group])), [groups]);
+	const tabOrder = useMemo(() => config.modal.tabOrder.filter((scope) => scope === 'all' || groupById.has(scope)), [config.modal.tabOrder, groupById]);
+	const [scope, setScope] = useState<string | 'all'>(() => tabOrder[0] ?? 'all');
 	const [query, setQuery] = useState('');
 	const [items, setItems] = useState<ResolvedCommandCenterItem[]>([]);
 	const [activeId, setActiveId] = useState<string | null>(null);
@@ -110,9 +137,9 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 	const rootRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
-		if (scope === 'all' || sortedGroups.some((group) => group.id === scope)) return;
-		setScope(sortedGroups[0]?.id ?? 'all');
-	}, [scope, sortedGroups]);
+		if (tabOrder.includes(scope)) return;
+		setScope(tabOrder[0] ?? 'all');
+	}, [scope, tabOrder]);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -124,8 +151,16 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 		return () => { cancelled = true; };
 	}, [runtime, scope, query, config]);
 
-	const projection = useMemo(() => projectCommandCenterItems(items), [items]);
-	const positions = useMemo(() => buildProjectionPositions(projection, destinationColumns), [projection, destinationColumns]);
+	const sections = useMemo(() => {
+		const visibleGroups = scope === 'all' ? groups : groups.filter((group) => group.id === scope);
+		return visibleGroups.map((group) => ({
+			group,
+			items: items.filter((item) => item.groupId === group.id),
+		}));
+	}, [groups, items, scope]);
+	const positions = useMemo(() => sections.flatMap(({ group, items: groupItems }) =>
+		buildProjectionPositions(projectCommandCenterItems(groupItems, group.actionLayout), destinationColumns, group.id)),
+	[sections, destinationColumns]);
 	const activeItem = items.find((item) => item.id === activeId) ?? null;
 
 	useEffect(() => {
@@ -154,8 +189,19 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 		if (invoked) onClose();
 	};
 
+	const focusSearch = (): void => {
+		inputRef.current?.focus();
+	};
+
 	const handleKeyDown = (event: React.KeyboardEvent): void => {
-		if ((event.metaKey || event.ctrlKey) && event.key.toLocaleLowerCase() === 'p') {
+		const commandKey = event.metaKey || event.ctrlKey;
+		if (commandKey && event.key.toLocaleLowerCase() === 'f') {
+			event.preventDefault();
+			event.stopPropagation();
+			focusSearch();
+			return;
+		}
+		if (commandKey && event.key.toLocaleLowerCase() === 'p') {
 			event.preventDefault();
 			onClose();
 			window.setTimeout(() => runtime.openNativeCommandPalette(), 0);
@@ -178,11 +224,10 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 		}
 		if (event.key === 'Tab') {
 			event.preventDefault();
-			const scopes: Array<string | 'all'> = [...sortedGroups.map((group) => group.id), 'all'];
-			const current = Math.max(0, scopes.indexOf(scope));
+			const current = Math.max(0, tabOrder.indexOf(scope));
 			const delta = event.shiftKey ? -1 : 1;
-			const next = (current + delta + scopes.length) % scopes.length;
-			setScope(scopes[next]!);
+			const next = (current + delta + tabOrder.length) % tabOrder.length;
+			setScope(tabOrder[next] ?? 'all');
 			return;
 		}
 		const direction = ({ ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' } as const)[event.key];
@@ -193,12 +238,12 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 		}
 		if (event.key === '/') {
 			event.preventDefault();
-			inputRef.current?.focus();
+			focusSearch();
 			return;
 		}
-		if (event.key.length !== 1 || event.metaKey || event.ctrlKey || event.altKey) return;
+		if (event.key.length !== 1 || commandKey || event.altKey) return;
 		if (event.target === inputRef.current) return;
-		inputRef.current?.focus();
+		focusSearch();
 		setQuery((current) => `${current}${event.key}`);
 	};
 
@@ -206,59 +251,23 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 		<div className="pk-cc-launcher" ref={rootRef} onKeyDown={handleKeyDown} tabIndex={-1}>
 			<div className="pk-cc-search-row">
 				<Search size={16} aria-hidden="true" />
-				<input
-					ref={inputRef}
-					value={query}
-					onChange={(event) => setQuery(event.target.value)}
-					placeholder="Search your Command Center"
-					aria-label="Search configured actions"
-					autoFocus
-				/>
-				{query ? (
-					<IconButton className="pk-cc-icon-button" label="Clear search" onClick={() => setQuery('')}>
-						<X size={14} />
-					</IconButton>
-				) : null}
-				<IconButton className="pk-cc-icon-button" label="Close Command Center" onClick={onClose}>
-					<X size={16} />
-				</IconButton>
+				<input ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search your Command Center" aria-label="Search configured actions" autoFocus />
+				{query ? <IconButton className="pk-cc-icon-button" label="Clear search" onClick={() => setQuery('')}><X size={14} /></IconButton> : null}
+				<IconButton className="pk-cc-icon-button" label="Close Command Center" onClick={onClose}><X size={16} /></IconButton>
 			</div>
 
 			<div className="pk-cc-groups" role="tablist" aria-label="Command groups">
-				{sortedGroups.map((group) => (
-					<GroupTab key={group.id} group={group} selected={scope === group.id} onSelect={() => setScope(group.id)} />
-				))}
-				<span className="pk-cc-groups__divider" aria-hidden="true" />
-				<Pill className="pk-cc-group-tab" selected={scope === 'all'} role="tab" aria-selected={scope === 'all'} onClick={() => setScope('all')}>All</Pill>
+				{tabOrder.map((tab) => tab === 'all' ? (
+					<Pill key="all" className="pk-cc-group-tab" selected={scope === 'all'} role="tab" aria-selected={scope === 'all'} onClick={() => setScope('all')}>All</Pill>
+				) : groupById.get(tab) ? (
+					<GroupTab key={tab} group={groupById.get(tab)!} selected={scope === tab} onSelect={() => setScope(tab)} />
+				) : null)}
 			</div>
 
 			<div className="pk-cc-projection" key={scope}>
-				{projection.destinations.length > 0 ? (
-					<div
-						className="pk-cc-links"
-						role="group"
-						aria-label="Destinations"
-						style={{ gridTemplateColumns: `repeat(${destinationColumns}, minmax(0, 1fr))` }}
-					>
-						{projection.destinations.map((item) => (
-							<ActionButton key={item.id} item={item} kind="link" active={item.id === activeId} onFocus={() => setActiveId(item.id)} onInvoke={() => void invoke(item)} />
-						))}
-					</div>
-				) : null}
-				{projection.grid.length > 0 ? (
-					<div className="pk-cc-grid" role="group" aria-label="Commands">
-						{projection.grid.map((item) => (
-							<ActionButton key={item.id} item={item} kind="grid" active={item.id === activeId} onFocus={() => setActiveId(item.id)} onInvoke={() => void invoke(item)} />
-						))}
-					</div>
-				) : null}
-				{projection.overflow.length > 0 ? (
-					<div className="pk-cc-overflow" role="group" aria-label="More commands">
-						{projection.overflow.map((item) => (
-							<ActionButton key={item.id} item={item} kind="overflow" active={item.id === activeId} onFocus={() => setActiveId(item.id)} onInvoke={() => void invoke(item)} />
-						))}
-					</div>
-				) : null}
+				{sections.map(({ group, items: groupItems }) => (
+					<ProjectionSection key={group.id} group={group} items={groupItems} showGroupLabel={scope === 'all'} destinationColumns={destinationColumns} activeId={activeId} onFocus={setActiveId} onInvoke={(item) => void invoke(item)} />
+				))}
 				{items.length === 0 ? (
 					<div className="pk-cc-empty">
 						<span>{query ? 'No configured actions match this search.' : 'This group is empty.'}</span>
@@ -269,11 +278,8 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 
 			<div className="pk-cc-footer">
 				<span className="pk-cc-footer__hint"><kbd>↑↓←→</kbd> move <kbd>↵</kbd> open <kbd>esc</kbd> close</span>
-				<span className="pk-cc-footer__scope">{query ? `${items.length} in ${scope === 'all' ? 'All' : sortedGroups.find((group) => group.id === scope)?.label}` : ''}</span>
-				<Button variant="ghost" size="sm" className="pk-cc-footer__action" onClick={onCustomize}>
-					<SlidersHorizontal size={14} />
-					<span>Customize</span>
-				</Button>
+				<span className="pk-cc-footer__scope">{query ? `${items.length} in ${scope === 'all' ? 'All' : groupById.get(scope)?.label}` : ''}</span>
+				<Button variant="ghost" size="sm" className="pk-cc-footer__action" onClick={onCustomize}><SlidersHorizontal size={14} /><span>Customize</span></Button>
 			</div>
 		</div>
 	);

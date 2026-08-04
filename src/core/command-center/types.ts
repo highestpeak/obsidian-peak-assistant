@@ -36,6 +36,7 @@ export interface CommandCenterBoardConfig {
 	version: 1;
 	modal: {
 		density: 'compact';
+		tabOrder: Array<string | 'all'>;
 	};
 	home: {
 		openOnStartup: boolean;

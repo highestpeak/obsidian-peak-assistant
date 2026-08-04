@@ -44,9 +44,15 @@ assert.match(home, /runtime\.openCustomize\(\)/, 'Home must enter Customize dire
 assert.match(customize, /pk-cc-directory/, 'Customize must keep one continuous catalog');
 assert.doesNotMatch(customize, /ADDED TO|AVAILABLE COMMANDS|window\.confirm/i, 'Customize must not split or jump between membership regions');
 assert.match(customize, /runtime\.getCatalog\(debouncedQuery, catalogScope\)/, 'Customize catalog search must be scoped and debounced');
+assert.match(customize, /metaKey \|\| event\.ctrlKey/, 'Customize must route Cmd\/Ctrl+F to its current search field');
+assert.match(customize, /onBlur=\{commitGroupLabel\}/, 'group renaming must commit a local draft instead of normalizing every keystroke');
+assert.doesNotMatch(customize, /onDone|>Done</, 'autosaving customization must not expose a fake Done action');
 assert.match(customize, /pk-cc-directory-row__copy/, 'directory rows must keep label and source in a stable two-line copy column');
+assert.match(customize, /CommandCenterArrangeItems/, 'membership and arrangement must be separate tasks without splitting the catalog');
 assert.match(adapter, /scope === 'all' \|\| scope === 'documents'/, 'Vault scanning must only run in the documents scope');
 assert.match(adapter, /maximumDocumentResults/, 'document results must be ranked and capped');
+assert.match(adapter, /searchClient\.search\(/, 'document queries must use the existing indexed SearchClient when available');
+assert.match(adapter, /searchClient\.getRecent\(/, 'empty document queries must show indexed recents when available');
 assert.match(adapter, /destinationAvailable\(action: CommandCenterAction\)/, 'configured destinations must use direct availability checks');
 assert.doesNotMatch(resolveSection, /destinationAvailable[\s\S]*?listCatalog/, 'launcher availability must not rescan the full catalog');
 for (const source of [home, customize, launcher, iconBrowser]) {
@@ -60,6 +66,8 @@ assert.match(css, /\.pk-cc-links[\s\S]*?max-height: 106px/, 'destination links m
 assert.match(css, /\.pk-cc-action--link[\s\S]*?height: 34px !important/, 'destinations must render as compact links rather than large tiles');
 assert.match(css, /grid-template-columns: repeat\(5, minmax\(0, 1fr\)\)/);
 assert.match(css, /\.pk-cc-action--grid[\s\S]*?height: 60px !important/);
+assert.match(css, /\.pk-cc-action--row[\s\S]*?height: 34px !important/, 'text commands must have a dedicated row presentation');
+assert.match(css, /\.pk-cc-action__label[\s\S]*?max-width: 100%/, 'command labels must be contained within their cells');
 assert.match(css, /var\(--pk-surface\)/, 'Command Center must consume Peak design tokens');
 assert.doesNotMatch(css, /var\(--(?:background|text|interactive|font)-/, 'Command Center CSS must not bypass Peak tokens with Obsidian theme variables');
 assert.match(css, /prefers-reduced-motion: reduce/);

@@ -15,11 +15,11 @@ export function CommandCenterSurface({
 	const [mode, setMode] = useState<'launcher' | 'customize'>(initialMode);
 	if (mode === 'customize') {
 		return (
-			<CommandCenterCustomize
-				runtime={runtime}
-				onBack={() => setMode('launcher')}
-				onDone={() => setMode('launcher')}
-			/>
+				<CommandCenterCustomize
+					runtime={runtime}
+					onBack={() => setMode('launcher')}
+					onClose={onClose}
+				/>
 		);
 	}
 	return <CommandCenterLauncher runtime={runtime} onCustomize={() => setMode('customize')} onClose={onClose} />;

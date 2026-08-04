@@ -15,6 +15,7 @@ import {
 	MY_CONTENT_VIEW_TYPE,
 	USAGE_DASHBOARD_VIEW_TYPE,
 } from '@/app/ui-host/views/types';
+import type { SearchClient } from '@/service/search/SearchClient';
 
 export { COMMAND_CENTER_HOME_VIEW_TYPE };
 
@@ -74,6 +75,7 @@ export class ObsidianCommandCenterAdapter {
 	constructor(
 		private readonly app: App,
 		private readonly plugin: MyPlugin,
+		private readonly resolveSearchClient: () => SearchClient | null,
 	) {}
 
 	toRuntimeCommandId(action: CommandCenterAction): string | null {
@@ -130,10 +132,10 @@ export class ObsidianCommandCenterAdapter {
 		return this.commandAvailable(action);
 	}
 
-	listCatalog(
+	async listCatalog(
 		query = '',
 		scope: CommandCenterCatalogScope | 'all' = 'all',
-	): CommandCenterCatalogEntry[] {
+	): Promise<CommandCenterCatalogEntry[]> {
 		const normalizedQuery = query.trim().toLocaleLowerCase();
 		const entries: CommandCenterCatalogEntry[] = [];
 		if (scope === 'all' || scope === 'commands') {
@@ -178,12 +180,10 @@ export class ObsidianCommandCenterAdapter {
 		if (scope === 'all' || scope === 'bookmarks') {
 			this.appendBookmarkEntries(entries, normalizedQuery);
 		}
-		if (
-			(scope === 'all' || scope === 'documents')
-			&& normalizedQuery.length >= COMMAND_CENTER_CATALOG_DEFAULTS.minimumDocumentQueryLength
-		) {
-			this.appendVaultEntries(entries, normalizedQuery);
+		if (scope === 'all' || scope === 'documents') {
+			await this.appendDocumentEntries(entries, normalizedQuery);
 		}
+		if (scope === 'documents') return entries;
 		return entries.sort((a, b) => {
 			if (a.layer !== b.layer) return a.layer === 'destination' ? -1 : 1;
 			return a.label.localeCompare(b.label);
@@ -237,6 +237,76 @@ export class ObsidianCommandCenterAdapter {
 		return fields.some((field) => field.toLocaleLowerCase().includes(query));
 	}
 
+	private async appendDocumentEntries(entries: CommandCenterCatalogEntry[], query: string): Promise<void> {
+		const searchClient = this.resolveSearchClient();
+		if (!query) {
+			if (searchClient) {
+				try {
+					const recent = await searchClient.getRecent(20);
+					this.appendSearchResultEntries(entries, recent.map((item) => ({ path: item.path, title: item.title })));
+				} catch (error) {
+					console.warn('[Peak Command Center] Recent document search unavailable; using workspace recents.', error);
+				}
+			}
+			if (entries.length === 0) this.appendWorkspaceRecentEntries(entries);
+			return;
+		}
+
+		if (searchClient) {
+			try {
+				const response = await searchClient.search({
+					text: query,
+					scopeMode: 'all',
+					topK: COMMAND_CENTER_CATALOG_DEFAULTS.maximumDocumentResults,
+					searchMode: 'fulltext',
+					enablePPR: false,
+				});
+				this.appendSearchResultEntries(entries, response.items.map((item) => ({ path: item.path, title: item.title })));
+			} catch (error) {
+				console.warn('[Peak Command Center] Indexed document search unavailable; using filename fallback.', error);
+			}
+		}
+		if (entries.length === 0) this.appendVaultEntries(entries, query);
+	}
+
+	private appendSearchResultEntries(
+		entries: CommandCenterCatalogEntry[],
+		results: Array<{ path: string; title: string }>,
+	): void {
+		const seen = new Set(entries.map((entry) => entry.action.kind === 'vault-target' ? entry.action.path : ''));
+		for (const result of results) {
+			if (seen.has(result.path)) continue;
+			const file = this.app.vault.getAbstractFileByPath(result.path);
+			if (!(file instanceof TFile)) continue;
+			if (!COMMAND_CENTER_CATALOG_DEFAULTS.documentExtensions.has(file.extension.toLocaleLowerCase())) continue;
+			this.appendFileEntry(entries, file, result.title || file.basename);
+			seen.add(file.path);
+			if (entries.length >= COMMAND_CENTER_CATALOG_DEFAULTS.maximumDocumentResults) return;
+		}
+	}
+
+	private appendWorkspaceRecentEntries(entries: CommandCenterCatalogEntry[]): void {
+		for (const target of this.getRecentTargets()) {
+			const file = this.app.vault.getAbstractFileByPath(target.path);
+			if (!(file instanceof TFile)) continue;
+			this.appendFileEntry(entries, file, target.label);
+		}
+	}
+
+	private appendFileEntry(entries: CommandCenterCatalogEntry[], file: TFile, label = file.basename): void {
+		const action: CommandCenterAction = { kind: 'vault-target', path: file.path };
+		entries.push({
+			key: commandCenterActionKey(action),
+			action,
+			label,
+			sourceLabel: file.parent?.path || 'Vault',
+			icon: { kind: 'lucide', name: file.extension === 'canvas' ? 'layout-dashboard' : 'file-text' },
+			layer: 'destination',
+			available: true,
+			hotkey: null,
+		});
+	}
+
 	private appendVaultEntries(entries: CommandCenterCatalogEntry[], query: string): void {
 		const matches = this.app.vault.getFiles()
 			.filter((file) => COMMAND_CENTER_CATALOG_DEFAULTS.documentExtensions.has(file.extension.toLocaleLowerCase()))
@@ -250,17 +320,7 @@ export class ObsidianCommandCenterAdapter {
 			.sort((a, b) => a.score - b.score || a.file.basename.localeCompare(b.file.basename) || a.file.path.localeCompare(b.file.path))
 			.slice(0, COMMAND_CENTER_CATALOG_DEFAULTS.maximumDocumentResults);
 		for (const { file } of matches) {
-			const action: CommandCenterAction = { kind: 'vault-target', path: file.path };
-			entries.push({
-				key: commandCenterActionKey(action),
-				action,
-				label: file.basename,
-				sourceLabel: file.parent?.path || 'Vault',
-				icon: { kind: 'lucide', name: file.extension === 'canvas' ? 'layout-dashboard' : 'file-text' },
-				layer: 'destination',
-				available: true,
-				hotkey: null,
-			});
+			this.appendFileEntry(entries, file);
 		}
 	}
 
@@ -337,7 +397,8 @@ export class ObsidianCommandCenterAdapter {
 	}
 
 	private async openBookmark(bookmarkId: string): Promise<boolean> {
-		const entry = this.listCatalog(bookmarkId, 'bookmarks').find((candidate) =>
+		const catalog = await this.listCatalog(bookmarkId, 'bookmarks');
+		const entry = catalog.find((candidate) =>
 			candidate.action.kind === 'bookmark' && candidate.action.bookmarkId === bookmarkId,
 		);
 		if (entry?.action.kind !== 'bookmark' || !entry.action.path) {

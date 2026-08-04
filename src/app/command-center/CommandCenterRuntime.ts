@@ -106,7 +106,7 @@ export class CommandCenterRuntime implements CommandCenterRuntimePort {
 	}
 
 	async getCatalog(query = '', scope: CommandCenterCatalogScope = 'commands'): Promise<CommandCenterCatalogEntry[]> {
-		const catalog = this.adapter.listCatalog(query, scope);
+		const catalog = await this.adapter.listCatalog(query, scope);
 		const normalizedQuery = query.trim().toLocaleLowerCase();
 		const existingKeys = new Set(catalog.map((entry) => entry.key));
 		for (const group of this.config.groups) {
