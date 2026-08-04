@@ -38,20 +38,26 @@ assert.doesNotMatch(
 	'editor reveal feedback must use host-scoped Obsidian tokens, not Peak-root-only tokens',
 );
 
-assert.match(inspector, /cardPolicy\.keywords && <KeywordCard/);
-assert.match(inspector, /cardPolicy\.statistics && <StatisticsCard/);
-assert.match(inspector, /<SourceDetails block=\{block\} config=\{config\} \/>/);
+assert.match(inspector, /cardPolicy\.keywords && <KeywordSection/);
+assert.match(inspector, /cardPolicy\.statistics && <FactsSection/);
+assert.match(inspector, /<TechnicalDetails block=\{block\} config=\{config\} \/>/);
 assert.match(inspector, /displayIdentity\(block, config\)/);
 assert.match(inspector, /keywordsEmpty/);
 assert.match(inspector, /keywords\.map\(/);
 assert.doesNotMatch(inspector, /keywordsShowAll|pkfa-kw-toggle/);
+assert.doesNotMatch(inspector, /AIGraphContextArtifacts|Use this \{/);
+assert.match(inspector, /if \(!loading && suggestions\.length === 0\) return null/);
+assert.match(inspector, /IDENTITY_TITLE_KINDS\.has\(block\.kind\)/);
+assert.match(inspector, /className="pkfa-inspector-actions"/);
 assert.match(
 	css,
-	/\.pkfa-inspector-scroll[\s\S]*?overflow-y:\s*auto[\s\S]*?display:\s*flex[\s\S]*?flex-direction:\s*column/,
+	/\.pkfa-inspector-scroll[\s\S]*?overflow-y:\s*auto[\s\S]*?display:\s*block/,
 );
-assert.match(css, /\.pkfa-card\s*\{[\s\S]*?flex:\s*0 0 auto/);
+assert.match(css, /\.pkfa-inspector-surface\s*\{[\s\S]*?border:\s*1px solid/);
 assert.match(css, /\.pkfa-preview-render[\s\S]*?max-height:[\s\S]*?overflow:\s*auto/);
 assert.doesNotMatch(css, /\.pkfa-kw-list\s*\{[^}]*max-height:/);
+assert.match(css, /\.pkfa-kw-meter/);
+assert.doesNotMatch(css, /--kw-w|\.pkfa-kw-chip/);
 assert.match(treeModel, /limit = 8/);
 assert.doesNotMatch(inspector, /\{!isGroup && \(/);
 assert.match(atlasBar, /cfg\.filterable !== false/);
@@ -68,6 +74,8 @@ assert.doesNotMatch(graph, /pkfa-graph-chip/);
 assert.match(canvas, /summary\?: string/);
 assert.match(canvas, /Copy graph as Mermaid/);
 assert.match(canvas, /Copy graph as image/);
+assert.match(canvas, /edge\.hub_constituent/);
+assert.doesNotMatch(canvas, /edge\.kind !== 'hub_constituent'/);
 
 assert.match(
 	css,
@@ -85,9 +93,9 @@ assert.match(
 	/\.pkfa-rail-sort-menu\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?z-index: var\(--pk-z-popover\) !important/,
 	'sort menu must stay inside File Atlas and above its content',
 );
-assert.match(css, /grid-template-rows:\s*42px auto 42px auto 46px minmax\(0, 1fr\) auto;/);
-assert.match(css, /\[data-subview="graph"\] \.pkfa-content\s*\{[\s\S]*?grid-template-rows:\s*42px auto 42px minmax\(0, 1fr\);/);
-assert.match(panel, /className="pkfa-document-context-slot"/);
+assert.match(css, /grid-template-rows:\s*42px 42px auto 46px minmax\(0, 1fr\) auto;/);
+assert.match(css, /\[data-subview="graph"\] \.pkfa-content\s*\{[\s\S]*?grid-template-rows:\s*42px 42px minmax\(0, 1fr\);/);
+assert.doesNotMatch(panel, /pkfa-document-context-slot|FileAtlasDocumentContext/);
 assert.match(panel, /type: 'select'; id: string \| null/);
 assert.match(panel, /dispatch\(\{ type: 'select', id: firstVisibleId \}\)/);
 assert.match(panel, /<div className="pkfa-empty-state">\{s\.treeEmpty\}<\/div>/);

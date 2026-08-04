@@ -79,8 +79,8 @@ function makeFolderColorPicker(): (folder: string) => string {
 }
 
 /**
- * Turn subgraph → cytoscape elements. Isolation is decided by reference edges
- * only (hub_constituent is dropped from render + isolation logic altogether).
+ * Turn subgraph → cytoscape elements. Physical reference and Hub membership
+ * edges both establish visible structure; semantic edges remain optional.
  */
 function buildElements(
 	sub: ResultSubgraphOutput,
@@ -90,15 +90,14 @@ function buildElements(
 	const els: ElementDefinition[] = [];
 	const visibleEdges = coalesceGraphEdges(
 		sub.edges.filter((edge) => (
-			edge.kind !== 'hub_constituent'
-			&& (edge.kind !== 'semantic' || opts.showSemantic)
+			(edge.kind !== 'semantic' || opts.showSemantic)
 			&& edge.from !== edge.to
 		)),
 	);
 
 	const refEndpoints = new Set<string>();
 	for (const e of visibleEdges) {
-		if (e.kind !== 'reference') continue;
+		if (e.kind !== 'reference' && e.kind !== 'hub_constituent') continue;
 		refEndpoints.add(e.from);
 		refEndpoints.add(e.to);
 	}
@@ -197,6 +196,7 @@ const CYTOSCAPE_STYLES: cytoscape.Stylesheet[] = [
 	{ selector: 'edge[directionality = "bidirectional"]', style: { 'source-arrow-shape': 'triangle', 'target-arrow-shape': 'triangle' } as never },
 	{ selector: 'edge[directionality = "undirected"]', style: { 'source-arrow-shape': 'none', 'target-arrow-shape': 'none' } as never },
 	{ selector: 'edge.reference', style: { 'line-color': '#334155', 'source-arrow-color': '#334155', 'target-arrow-color': '#334155', width: 1.4 } as never },
+	{ selector: 'edge.hub_constituent', style: { 'line-color': '#8b5cf6', 'source-arrow-color': '#8b5cf6', 'target-arrow-color': '#8b5cf6', 'line-style': 'dotted', width: 1.8, opacity: 0.85 } as never },
 	{ selector: 'edge.semantic', style: { 'line-color': '#cbd5e1', 'source-arrow-color': '#cbd5e1', 'target-arrow-color': '#cbd5e1', 'line-style': 'dashed', width: 0.8, opacity: 0.7 } as never },
 	{ selector: 'node', style: { 'transition-property': 'background-color, border-color, border-width, opacity', 'transition-duration': 260, 'transition-timing-function': 'ease-out' } as never },
 	{ selector: 'edge', style: { 'transition-property': 'line-color, source-arrow-color, target-arrow-color, width, opacity', 'transition-duration': 260, 'transition-timing-function': 'ease-out' } as never },
@@ -263,16 +263,16 @@ function subgraphToMermaid(sub: ResultSubgraphOutput): string {
 		lines.push(`  ${sid(n.id)}["${escape(n.title || n.path || n.id)}"]${cls}`);
 	}
 	for (const e of coalesceGraphEdges(sub.edges)) {
-		if (e.from === e.to || e.kind === 'hub_constituent') continue;
+		if (e.from === e.to) continue;
 		if (e.directionality === 'bidirectional') {
-			lines.push(`  ${sid(e.from)} <-->|${e.kind === 'semantic' ? 'sem' : 'ref'}| ${sid(e.to)}`);
+			lines.push(`  ${sid(e.from)} <-->|${e.kind === 'semantic' ? 'sem' : e.kind === 'hub_constituent' ? 'member' : 'ref'}| ${sid(e.to)}`);
 			continue;
 		}
 		if (e.directionality === 'undirected') {
 			lines.push(`  ${sid(e.from)} -.- ${sid(e.to)}`);
 			continue;
 		}
-		lines.push(`  ${sid(e.from)} -->|${e.kind === 'semantic' ? 'sem' : 'ref'}| ${sid(e.to)}`);
+		lines.push(`  ${sid(e.from)} -->|${e.kind === 'semantic' ? 'sem' : e.kind === 'hub_constituent' ? 'member' : 'ref'}| ${sid(e.to)}`);
 	}
 	lines.push('  classDef hub fill:#ede9fe,stroke:#7c3aed,stroke-width:2px,color:#4c1d95');
 	lines.push('  classDef iso fill:#f5f5f5,stroke:#cbd5e1,stroke-dasharray:3 3,color:#64748b');
@@ -458,6 +458,26 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 			dblRef.current?.({ id: n.id(), path: (n.data('path') as string | undefined) ?? '' });
 		});
 	}, [subgraph, preset, showSemantic]);
+
+	useEffect(() => {
+		const container = containerRef.current;
+		if (!container || typeof ResizeObserver === 'undefined') return;
+		let frame = 0;
+		const observer = new ResizeObserver(() => {
+			cancelAnimationFrame(frame);
+			frame = requestAnimationFrame(() => {
+				const cy = cyRef.current;
+				if (!cy || container.clientWidth === 0 || container.clientHeight === 0) return;
+				cy.resize();
+				cy.fit(undefined, 40);
+			});
+		});
+		observer.observe(container);
+		return () => {
+			cancelAnimationFrame(frame);
+			observer.disconnect();
+		};
+	}, []);
 
 	useEffect(() => {
 		const cy = cyRef.current;

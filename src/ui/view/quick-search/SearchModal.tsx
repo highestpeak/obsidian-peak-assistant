@@ -49,7 +49,7 @@ import {
 	stableAIGraphId,
 } from '@/service/ai-graph';
 import { MultiLensGraph } from '@/ui/component/mine/multi-lens-graph/MultiLensGraph';
-import type { LensGraphData } from '@/core/types/lens-graph';
+import { canonicalAIGraphData } from '@/ui/component/ai-graph';
 import {
 	usePeakEscapeLayer,
 	usePeakKeyboardSurface,
@@ -855,48 +855,6 @@ function AIGraphHistoryPanel(): React.ReactElement {
 	);
 }
 
-function canonicalGraphData(view: AIGraphArtifactView): LensGraphData {
-	const nodeById = new Map(view.version.nodes.map((node) => [node.nodeId, node]));
-	return {
-		nodes: view.version.nodes
-			.filter((node) => node.reviewStatus !== 'rejected')
-			.map((node) => ({
-				label: node.label,
-				path: node.canonicalRef?.replace(/^vault:\/\//, '') ?? node.nodeId,
-				summary: node.description,
-				role: node.kind === 'claim' ? 'bridge' : 'leaf',
-			})),
-		edges: view.version.relations
-			.filter((relation) => relation.reviewStatus !== 'rejected')
-				.map((relation) => ({
-				source: nodeById.get(relation.sourceNodeId)?.canonicalRef?.replace(/^vault:\/\//, '')
-					?? relation.sourceNodeId,
-				target: nodeById.get(relation.targetNodeId)?.canonicalRef?.replace(/^vault:\/\//, '')
-					?? relation.targetNodeId,
-					kind: relation.family === 'temporal'
-						? 'temporal'
-						: relation.family === 'causal'
-							? 'derives'
-							: relation.family === 'taxonomic'
-								? 'builds_on'
-								: relation.family === 'structural'
-									? 'link'
-									: 'references',
-				label: relation.label,
-				directionality: relation.directed ? 'directed' : 'undirected',
-				canonicalRelationId: relation.relationId,
-				accessibleLabel: `${nodeById.get(relation.sourceNodeId)?.label ?? relation.sourceNodeId} → ${relation.predicate} → ${nodeById.get(relation.targetNodeId)?.label ?? relation.targetNodeId}`,
-				reviewStatus: relation.reviewStatus,
-				confidence: relation.confidence,
-					evidenceCount: relation.evidenceIds.length,
-					predicate: relation.predicate,
-					relationFamily: relation.family,
-					qualifiers: relation.qualifiers,
-				})),
-		availableLenses: ['topology', 'thinking-tree', 'timeline'],
-	};
-}
-
 function AIGraphDetail({
 	initialView,
 	onBack,
@@ -1101,7 +1059,7 @@ function AIGraphDetail({
 			<div className="pk-ai-graph-detail-body">
 				<div className="pk-ai-graph-canvas">
 					<MultiLensGraph
-						graphData={canonicalGraphData(view)}
+						graphData={canonicalAIGraphData(view)}
 						defaultLens="topology"
 						showControls
 						className="pktw-h-full"

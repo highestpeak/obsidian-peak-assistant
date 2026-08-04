@@ -22,25 +22,6 @@ const now = 1_000_000;
 {
 	const sections = buildFileRailSections({
 		openDocs: [
-			doc('Old.md', { open: true, lastViewedAt: 100 }),
-			doc('Active.md', { open: true, active: true, lastViewedAt: 300 }),
-		],
-		historyDocs: [
-			doc('ClosedOld.md', { lastViewedAt: 50 }),
-			doc('ClosedRecent.md', { lastViewedAt: 250 }),
-		],
-		capacity: 4,
-		sortMode: 'recent',
-		now,
-		frequencyHalfLifeDays: 30,
-	});
-	assert.deepStrictEqual(sections.open.map((item) => item.path), ['Active.md', 'Old.md']);
-	assert.deepStrictEqual(sections.recent.map((item) => item.path), ['ClosedRecent.md', 'ClosedOld.md']);
-}
-
-{
-	const sections = buildFileRailSections({
-		openDocs: [
 			doc('A.md', { open: true, lastViewedAt: 900 }),
 			doc('B.md', { open: true, active: true, lastViewedAt: 1_000 }),
 		],

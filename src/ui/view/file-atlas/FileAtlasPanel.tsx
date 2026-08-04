@@ -37,7 +37,6 @@ import { AtlasInspector } from './components/AtlasInspector';
 import { AtlasTray, type TrayItem } from './components/AtlasTray';
 import { FileRail } from './components/FileRail';
 import { FileAtlasGraph } from './components/FileAtlasGraph';
-import { FileAtlasDocumentContext } from './components/FileAtlasDocumentContext';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { FileAtlasHostPort } from './FileAtlasHostPort';
 import type { FileRailSections, FileRailSortMode } from './fileRailModel';
@@ -326,11 +325,10 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 				openTitle={s.railOpenTitle}
 				recentTitle={s.railRecentTitle}
 				sortLabel={s.railSortLabel}
-				sortLabels={{
-					recent: s.railSortRecent,
-					frequent: s.railSortFrequent,
-					name: s.railSortName,
-				}}
+					sortLabels={{
+						frequent: s.railSortFrequent,
+						name: s.railSortName,
+					}}
 				resizeLabel={s.railResizeLabel}
 				sections={railSections}
 				sortMode={railPreference.sortMode}
@@ -359,14 +357,6 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 						<span>{doc.stats.blocks} blocks</span>
 						<span>{doc.stats.resources} resources</span>
 					</span>
-				</div>
-
-				<div className="pkfa-document-context-slot">
-					<FileAtlasDocumentContext
-						key={activePath}
-						filePath={activePath}
-						onOpenLocalGraph={() => setSubview('graph')}
-					/>
 				</div>
 
 				{/* Tree / Graph subview tabs */}
@@ -442,11 +432,8 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 							onExpandAll={() => dispatch({ type: 'expandAll' })}
 							onCollapseAll={() => dispatch({ type: 'setCollapsed', ids: collectGroupIds(blocks) })}
 							flattened={flattened}
-							onFlattenChange={setFlattened}
-							onOpenAIGraphs={host.openAIGraphs
-								? () => host.openAIGraphs?.()
-								: undefined}
-						/>
+								onFlattenChange={setFlattened}
+							/>
 
 						{/* main split */}
 						<section className="pkfa-main">

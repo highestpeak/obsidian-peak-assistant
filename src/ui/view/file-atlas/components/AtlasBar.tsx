@@ -7,7 +7,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { ListFilter, FoldVertical, UnfoldVertical, Check, Rows3, ListTree, Network } from 'lucide-react';
+import { ListFilter, FoldVertical, UnfoldVertical, Check, Rows3, ListTree } from 'lucide-react';
 import type { RawBlockKind } from '@/core/document/atlas/types';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { FileAtlasConfig } from '../config/fileAtlasConfig';
@@ -27,7 +27,6 @@ interface AtlasBarProps {
 	onCollapseAll: () => void;
 	flattened: boolean;
 	onFlattenChange: (flattened: boolean) => void;
-	onOpenAIGraphs?: () => void;
 }
 
 export const AtlasBar: React.FC<AtlasBarProps> = ({
@@ -42,7 +41,6 @@ export const AtlasBar: React.FC<AtlasBarProps> = ({
 	onCollapseAll,
 	flattened,
 	onFlattenChange,
-	onOpenAIGraphs,
 }) => {
 	const [filterOpen, setFilterOpen] = useState(false);
 	const menuRef = useRef<HTMLDivElement>(null);
@@ -223,18 +221,6 @@ export const AtlasBar: React.FC<AtlasBarProps> = ({
 			</div>
 
 			<div className="pkfa-fold-actions">
-				{onOpenAIGraphs && (
-					<Button
-						variant="unstyled"
-						type="button"
-						className="pkfa-bar-icon-btn"
-						aria-label={config.strings.aiGraphsButton}
-						title={config.strings.aiGraphsButton}
-						onClick={onOpenAIGraphs}
-					>
-						<Network />
-					</Button>
-				)}
 				<Button
 					variant="unstyled"
 					type="button"

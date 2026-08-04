@@ -110,14 +110,14 @@ assert(sourceView.includes('ResultBrowserViewToggle'));
 assert(sourceView.includes('ResultBrowserListRow'));
 assert(sourceView.includes('ResultBrowserTree'));
 assert(sourceView.includes('ResultBrowserGraph'));
-assert(sourceView.includes('MultiLensGraph'));
+assert(sourceView.includes('ContextualAIGraphView'));
 assert(sourceView.includes('InspectorSidePanel'));
 assert(!sourceView.includes('useOwnerDocumentListener'));
 assert(sourceView.includes('data-v2-sources-projection'));
 assert(sourceView.includes('<aside'));
 assert(!sourceView.includes('Shared Result Browser ·'));
 assert(!sourceView.includes('Sources · {sources.length} cited files'));
-assert(sourceView.indexOf('<ResultBrowserViewToggle') < sourceView.indexOf('<GraphKindToggle'));
+assert(sourceView.indexOf('<ResultBrowserViewToggle') < sourceView.indexOf('<ScopeToggle'));
 assert(sourceView.includes('isSourcesDensityVisible(view)'));
 assert(sourceView.includes('resolveSourcesKeyboardIntent'));
 assert(sourceView.includes('focusSourcesProjection'));
@@ -136,12 +136,11 @@ assert(resultListRow.includes("e.key === 'ArrowRight'"));
 assert(resultListRow.includes('onInspect?.(result)'));
 assert(resultListRow.includes('if (e.defaultPrevented) return'));
 
-const aiMapBody = sourceView.match(
-	/const AIRelationshipMap[\s\S]*?export const V2SourcesView/,
-)?.[0] ?? '';
-assert(aiMapBody.includes('Relationship inputs'));
-assert(!aiMapBody.includes('ResultBrowserGraphControls'));
-assert(!aiMapBody.includes('ScopeToggle'));
+assert(sourceView.includes('One hop'));
+assert(sourceView.includes('Two hop'));
+assert(sourceView.includes('AI Graph'));
+assert(!sourceView.includes('AIRelationshipMap'));
+assert(!sourceView.includes('saveGraphToVault'));
 
 const reportView = readFileSync(
 	'src/ui/view/quick-search/components/V2ReportView.tsx',

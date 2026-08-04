@@ -73,6 +73,7 @@ async function run(): Promise<void> {
 		1,
 		'bidirectional first-ring note should only be expanded once',
 	);
+	assert.deepEqual(graph.hubAnchors, [], 'pure neighborhood builder leaves Hub enrichment to app composition');
 
 	console.log('PASS: File Atlas preserves incoming, outgoing, bidirectional, two-hop, and semantic directionality');
 }

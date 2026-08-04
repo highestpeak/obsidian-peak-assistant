@@ -20,13 +20,13 @@ import type {
 	OpenDocMeta,
 } from '@/ui/view/file-atlas/FileAtlasHostPort';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { getConnectedLinks, getDiscoveredConnections } from '@/service/search/inspectorService';
+import { getConnectedLinks, getDiscoveredConnections, getHubsForDoc } from '@/service/search/inspectorService';
 import { DOCUMENT_COMPOSER_VIEW_TYPE } from '@/app/composer/viewType';
 import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
 import { buildFileAtlasNeighborhood } from './buildFileAtlasNeighborhood';
 import { composerTargetBlockId } from '@/core/composer';
 import { NativeMarkdownIntelligenceModal } from '@/app/composer/NativeMarkdownIntelligenceModal';
-import { openQuickSearch } from '@/app/commands/PeakCommandActions';
+import { virtualHubPath } from '@/service/hub/HubRecordStore';
 
 /** Strip `![[ ]]` / `![]()` wrappers and any `|alias` so we have a bare link target. */
 function cleanImageTarget(raw: string): string {
@@ -356,11 +356,35 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 			path: string,
 			opts: { hops: 1 | 2; semantic: boolean },
 		): Promise<AtlasGraphData> {
-			if (!sqliteStoreManager.isInitialized()) return { nodes: [], edges: [] };
-			return buildFileAtlasNeighborhood(path, opts, {
+			if (!sqliteStoreManager.isInitialized()) return { nodes: [], hubAnchors: [], edges: [] };
+			const neighborhood = await buildFileAtlasNeighborhood(path, opts, {
 				getConnectedLinks,
 				getDiscoveredConnections,
 			});
+			const hubs = await getHubsForDoc(path).catch(() => []);
+			const hubRuntime = appContext.runtimeRegistry.tryGetHubGenerationRuntime();
+			const resolvedHubs = await Promise.all(hubs.map(async (hub) => {
+				const manifest = await hubRuntime?.readManifest(hub.hubId).catch(() => null) ?? null;
+				return {
+					id: hub.hubId,
+					path: manifest?.materialization.path ?? virtualHubPath(hub.hubId),
+					label: manifest?.label?.trim() || hub.label || hub.hubId,
+					constituentCount: manifest?.members.length ?? 1,
+				};
+			}));
+			return {
+				...neighborhood,
+				hubAnchors: resolvedHubs,
+				edges: [
+					...neighborhood.edges,
+					...resolvedHubs.map((hub) => ({
+						from: hub.id,
+						to: path,
+						kind: 'hub_constituent' as const,
+						directionality: 'undirected' as const,
+					})),
+				],
+			};
 		},
 
 		async loadCopilotSuggestions(path: string): Promise<AtlasCopilotSuggestion[]> {
@@ -403,29 +427,5 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 			new NativeMarkdownIntelligenceModal(appContext, path, context).open();
 		},
 
-		openAIGraphs(graphId?: string): void {
-			const path = activeFileContextPath();
-			const file = path ? app.vault.getAbstractFileByPath(path) : null;
-			openQuickSearch({
-				aiMode: 'graph',
-				...(graphId ? { graphId } : {}),
-				...(path
-					? {
-						selectedVaultPaths: [path],
-						graphCreateOrigin: {
-								surface: 'file-atlas',
-								contextRef: {
-									kind: 'atlas-file',
-									ref: file instanceof TFile
-										? `vault-file:${file.stat.ctime}`
-										: path,
-									label: file instanceof TFile ? file.basename : path,
-									locator: path,
-							},
-						},
-					}
-					: {}),
-			});
-		},
 	};
 }

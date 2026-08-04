@@ -1,6 +1,6 @@
 import type { OpenDocMeta } from './FileAtlasHostPort';
 
-export type FileRailSortMode = 'recent' | 'frequent' | 'name';
+export type FileRailSortMode = 'frequent' | 'name';
 
 export interface FileRailSections {
 	open: OpenDocMeta[];
@@ -44,7 +44,6 @@ function sortDocs(
 ): OpenDocMeta[] {
 	const copy = [...docs];
 	if (mode === 'name') return copy.sort(compareName);
-	if (mode === 'recent') return copy.sort(compareRecent);
 	const halfLifeMs = Math.max(1, frequencyHalfLifeDays) * 24 * 60 * 60 * 1000;
 	return copy.sort((a, b) => {
 		const delta = frequencyScore(b, now, halfLifeMs) - frequencyScore(a, now, halfLifeMs);

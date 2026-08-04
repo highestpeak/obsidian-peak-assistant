@@ -44,13 +44,19 @@ export interface AtlasGraphEdge {
 	from: string;
 	to: string;
 	/** Reference link vs. semantic (index-discovered) relation. */
-	kind: 'reference' | 'semantic';
+	kind: 'reference' | 'semantic' | 'hub_constituent';
 	/** Whether the renderer uses an end arrow, no arrow, or arrows at both ends. */
 	directionality?: GraphEdgeDirectionality;
 }
 
 export interface AtlasGraphData {
 	nodes: AtlasGraphNode[];
+	hubAnchors: Array<{
+		id: string;
+		path: string;
+		label: string;
+		constituentCount: number;
+	}>;
 	edges: AtlasGraphEdge[];
 }
 
@@ -139,6 +145,4 @@ export interface FileAtlasHostPort {
 		sourceFrom?: number;
 		sourceTo?: number;
 	}): void;
-	/** Open the canonical AI Graph workspace; Atlas owns no graph runtime. */
-	openAIGraphs?(graphId?: string): void;
 }

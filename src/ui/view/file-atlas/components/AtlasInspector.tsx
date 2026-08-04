@@ -26,16 +26,11 @@ import type {
 import { iconForKind } from '../config/kindIcons';
 import {
 	analysisText,
-	isGroupNode,
 	keywordsOf,
 	sectionText,
 	statisticsOf,
 } from '../atlasTreeModel';
-import {
-	displayIdentity,
-	inspectorCardPolicy,
-} from '../atlasDisplayModel';
-import { AIGraphContextArtifacts } from '@/ui/component/ai-graph';
+import { displayIdentity, inspectorCardPolicy } from '../atlasDisplayModel';
 import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
 
 interface AtlasInspectorProps {
@@ -71,6 +66,16 @@ const RENDERED_KINDS = new Set<string>([
 	RawBlockKind.Code,
 ]);
 
+const IDENTITY_TITLE_KINDS = new Set<string>([
+	RawBlockKind.Frontmatter,
+	RawBlockKind.Heading,
+	RawBlockKind.Image,
+	RawBlockKind.Embed,
+	RawBlockKind.Attachment,
+	RawBlockKind.VaultLink,
+	RawBlockKind.ExternalLink,
+]);
+
 export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 	block,
 	config,
@@ -89,11 +94,9 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 	});
 	if (!block) {
 		return (
-			<div ref={inspectorRef}>
-				<section className="pkfa-card" tabIndex={-1}>
-					<div className="pkfa-card-body">
-						<span className="pkfa-selected-sub">{config.strings.inspectorEmpty}</span>
-					</div>
+			<div ref={inspectorRef} className="pkfa-inspector-surface">
+				<section className="pkfa-inspector-empty" tabIndex={-1}>
+					<span className="pkfa-selected-sub">{config.strings.inspectorEmpty}</span>
 				</section>
 			</div>
 		);
@@ -101,7 +104,6 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 
 	const kindCfg = config.kinds[block.kind];
 	const Icon = iconForKind(block.kind);
-	const isGroup = isGroupNode(block);
 	const identity = displayIdentity(block, config);
 	const cardPolicy = inspectorCardPolicy(block);
 	const label =
@@ -113,57 +115,61 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 	const keywordText = analysisText(block);
 
 	return (
-		<div ref={inspectorRef}>
-			<section className="pkfa-card">
-				<div className="pkfa-card-body">
-					<div className="pkfa-selected-top">
-						<span className="pkfa-selected-kind">
-							<Icon />
-							<span>{label}</span>
-						</span>
+		<div ref={inspectorRef} className="pkfa-inspector-surface">
+			<section className="pkfa-inspector-primary">
+				<div className="pkfa-selected-top">
+					<span className="pkfa-selected-kind">
+						<Icon />
+						<span>{label}</span>
+					</span>
+					<Button
+						variant="unstyled"
+						type="button"
+						className="pkfa-ghost-btn"
+						onClick={() => onReveal(block)}
+						title={config.strings.reveal}
+					>
+						<Eye />
+						{config.strings.reveal}
+					</Button>
+				</div>
+				{IDENTITY_TITLE_KINDS.has(block.kind) && (
+					<div className="pkfa-inspector-identity">
+						<span className="pkfa-selected-title">{identity.primary}</span>
+						{identity.secondary && <span className="pkfa-selected-sub">{identity.secondary}</span>}
+					</div>
+				)}
+				<SourcePreview block={block} config={config} host={host} sourcePath={sourcePath} />
+				<div className="pkfa-inspector-actions" aria-label="Block actions">
+					<Button
+						variant="unstyled"
+						type="button"
+						className={`pkfa-ghost-btn${inTray ? ' is-in-tray' : ''}`}
+						onClick={() => onAddToTray(block)}
+					>
+						<Plus />
+						{config.strings.addToTray}
+					</Button>
+					<Button variant="unstyled" type="button" className="pkfa-ghost-btn" onClick={() => onCopyLink(block)}>
+						<LinkIcon />
+						{config.strings.copyLink}
+					</Button>
+					{host.openCopilot && (
 						<Button
 							variant="unstyled"
 							type="button"
 							className="pkfa-ghost-btn"
-							onClick={() => onReveal(block)}
-							title={config.strings.reveal}
+							onClick={() => host.openCopilot?.(sourcePath, {
+								sourceFrom: block.anchor.sourceFrom,
+								sourceTo: block.anchor.sourceTo,
+							})}
 						>
-							<Eye />
-							{config.strings.reveal}
+							<Send />
+							{config.strings.sendToCopilot}
 						</Button>
-					</div>
-					<span className="pkfa-selected-title">{identity.primary}</span>
-					{identity.secondary && <span className="pkfa-selected-sub">{identity.secondary}</span>}
-					<SourcePreview block={block} config={config} host={host} sourcePath={sourcePath} />
+					)}
 				</div>
 			</section>
-
-			{cardPolicy.keywords && <KeywordCard text={keywordText} config={config} />}
-
-			{cardPolicy.statistics && <StatisticsCard block={block} config={config} />}
-
-			<section className="pkfa-card">
-				<div className="pkfa-card-body">
-					<span className="pkfa-selected-kind">
-						<FileText />
-						<span>{config.strings.locationCard}</span>
-					</span>
-					<div className="pkfa-meta-rows">
-						<div className="pkfa-meta-row">
-							<span className="pkfa-k">{config.strings.lines}</span>
-							<span className="pkfa-v pkfa-mono">{lineRange(block)}</span>
-						</div>
-						<div className="pkfa-meta-row">
-							<span className="pkfa-k">{config.strings.nearestHeading}</span>
-							<span className="pkfa-v">{block.anchor.nearestHeading ?? '—'}</span>
-						</div>
-					</div>
-				</div>
-			</section>
-
-			{cardPolicy.sourceDetails && (
-				<SourceDetails block={block} config={config} />
-			)}
 
 			<AtlasCopilotSuggestions
 				block={block}
@@ -172,35 +178,9 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 				sourcePath={sourcePath}
 			/>
 
-			<AIGraphContextArtifacts
-				contextRefs={[sourcePath]}
-				label="AI Graph artifacts"
-				className="pkfa-card pk-ai-graph-context-artifacts"
-			/>
-
-			<section className="pkfa-card">
-				<div className="pkfa-card-body">
-					<span className="pkfa-selected-kind">
-						<Send />
-						<span>Use this {isGroup ? 'section' : 'block'}</span>
-					</span>
-					<div className="pkfa-actions">
-						<Button
-							variant="unstyled"
-							type="button"
-							className={`pkfa-ghost-btn${inTray ? ' is-in-tray' : ''}`}
-							onClick={() => onAddToTray(block)}
-						>
-							<Plus />
-							{config.strings.addToTray}
-						</Button>
-						<Button variant="unstyled" type="button" className="pkfa-ghost-btn" onClick={() => onCopyLink(block)}>
-							<LinkIcon />
-							{config.strings.copyLink}
-						</Button>
-					</div>
-				</div>
-			</section>
+			{cardPolicy.keywords && <KeywordSection text={keywordText} config={config} />}
+			{cardPolicy.statistics && <FactsSection block={block} config={config} />}
+			<TechnicalDetails block={block} config={config} />
 		</div>
 	);
 };
@@ -238,20 +218,17 @@ const AtlasCopilotSuggestions: React.FC<{
 		return () => {
 			active = false;
 		};
-	}, [host, sourcePath]);
+	}, [block, host, sourcePath]);
+
+	if (!loading && suggestions.length === 0) return null;
 
 	return (
-		<section className="pkfa-card pkfa-copilot-suggestions">
-			<div className="pkfa-card-body">
+		<section className="pkfa-inspector-section pkfa-copilot-suggestions">
 				<span className="pkfa-selected-kind">
 					<Sparkles />
 					<span>{config.strings.copilotSuggestionsTitle}</span>
 				</span>
-				<span className="pkfa-selected-sub">{config.strings.sendToCopilotHint}</span>
 				{loading && <span className="pkfa-selected-sub">{config.strings.copilotSuggestionsLoading}</span>}
-				{!loading && suggestions.length === 0 && (
-					<span className="pkfa-selected-sub">{config.strings.copilotSuggestionsEmpty}</span>
-				)}
 				{suggestions.map((suggestion, index) => (
 					<div
 						key={suggestion.findingId}
@@ -280,21 +257,6 @@ const AtlasCopilotSuggestions: React.FC<{
 						</Button>
 					</div>
 				))}
-				{host.openCopilot && (
-					<Button
-						variant="unstyled"
-						type="button"
-						className="pkfa-ghost-btn"
-						onClick={() => host.openCopilot?.(sourcePath, {
-							sourceFrom: block.anchor.sourceFrom,
-							sourceTo: block.anchor.sourceTo,
-						})}
-					>
-						<Send />
-						{config.strings.sendToCopilot}
-					</Button>
-				)}
-			</div>
 		</section>
 	);
 };
@@ -485,41 +447,35 @@ const ImagePreview: React.FC<{
 };
 
 /** Program-computed term-frequency keywords for every addressable block. */
-const KeywordCard: React.FC<{ text: string; config: FileAtlasConfig }> = ({ text, config }) => {
+const KeywordSection: React.FC<{ text: string; config: FileAtlasConfig }> = ({ text, config }) => {
 	const keywords = keywordsOf(text, config.keywordStopwords);
-	// keywordsOf returns counts descending, so the first entry is the max. Size each
-	// chip by a linear weight (count / max, floored so the rarest term stays legible)
-	// — frequency should read directly by size. CSS maps `--kw-w` to font + badge.
 	const max = keywords[0]?.[1] ?? 1;
 	return (
-		<section className="pkfa-card">
-			<div className="pkfa-card-body">
-				<span className="pkfa-selected-kind">
-					<Hash />
-					<span>{config.strings.keywordsTitle}</span>
-				</span>
-				{keywords.length ? (
-					<div className="pkfa-kw-list">
-						{keywords.map(([word, count]) => (
-							<span
-								key={word}
-								className="pkfa-kw-chip"
-								style={{ '--kw-w': Math.max(0.12, count / max).toFixed(3) } as React.CSSProperties}
-							>
-								{word}
-								<b>×{count}</b>
+		<section className="pkfa-inspector-section">
+			<span className="pkfa-selected-kind">
+				<Hash />
+				<span>{config.strings.keywordsTitle}</span>
+			</span>
+			{keywords.length ? (
+				<div className="pkfa-kw-list" role="list">
+					{keywords.map(([word, count]) => (
+						<div key={word} className="pkfa-kw-row" role="listitem">
+							<span className="pkfa-kw-word">{word}</span>
+							<span className="pkfa-kw-meter" aria-hidden="true">
+								<span style={{ width: `${Math.max(12, (count / max) * 100)}%` }} />
 							</span>
-						))}
-					</div>
-				) : (
-					<span className="pkfa-selected-sub">{config.strings.keywordsEmpty}</span>
-				)}
-			</div>
+							<span className="pkfa-kw-count">{count}</span>
+						</div>
+					))}
+				</div>
+			) : (
+				<span className="pkfa-selected-sub">{config.strings.keywordsEmpty}</span>
+			)}
 		</section>
 	);
 };
 
-const StatisticsCard: React.FC<{ block: DocumentBlock; config: FileAtlasConfig }> = ({
+const FactsSection: React.FC<{ block: DocumentBlock; config: FileAtlasConfig }> = ({
 	block,
 	config,
 }) => {
@@ -530,7 +486,6 @@ const StatisticsCard: React.FC<{ block: DocumentBlock; config: FileAtlasConfig }
 		rows = [
 			[s.statParagraphs, stats.paragraphs],
 			[s.statResources, stats.resources],
-			[s.statLines, stats.lines],
 		];
 	} else if (block.kind === RawBlockKind.List) {
 		rows = [
@@ -556,42 +511,40 @@ const StatisticsCard: React.FC<{ block: DocumentBlock; config: FileAtlasConfig }
 		rows = [
 			[s.statParagraphs, stats.paragraphs],
 			[s.statResources, stats.resources],
-			[s.statLines, stats.lines],
 		];
 	} else {
 		rows = [
 			[s.statWords, stats.words],
 			[s.statCharacters, stats.characters],
-			[s.statLines, stats.lines],
 		];
 	}
+	const visibleRows = rows.filter(([, value]) => value !== undefined);
+	if (visibleRows.length === 0) return null;
 	return (
-		<section className="pkfa-card">
-			<div className="pkfa-card-body">
-				<span className="pkfa-selected-kind">
-					<BarChart3 />
-					<span>{s.statisticsTitle}</span>
-				</span>
-				<div className="pkfa-meta-rows">
-					{rows
-						.filter(([, value]) => value !== undefined)
-						.map(([label, value]) => (
-							<div className="pkfa-meta-row" key={label}>
-								<span className="pkfa-k">{label}</span>
-								<span className="pkfa-v pkfa-mono">{value}</span>
-							</div>
-						))}
-				</div>
+		<section className="pkfa-inspector-section">
+			<span className="pkfa-selected-kind">
+				<BarChart3 />
+				<span>{s.locationCard}</span>
+			</span>
+			<div className="pkfa-meta-rows">
+				{visibleRows.map(([label, value]) => (
+					<div className="pkfa-meta-row" key={label}>
+						<span className="pkfa-k">{label}</span>
+						<span className="pkfa-v pkfa-mono">{value}</span>
+					</div>
+				))}
 			</div>
 		</section>
 	);
 };
 
-const SourceDetails: React.FC<{
+const TechnicalDetails: React.FC<{
 	block: DocumentBlock;
 	config: FileAtlasConfig;
 }> = ({ block, config }) => {
 	const rows: Array<[string, string | undefined]> = [
+		[config.strings.lines, lineRange(block)],
+		[config.strings.nearestHeading, block.anchor.nearestHeading ?? undefined],
 		[
 			config.strings.typeLabel,
 			block.detail?.propertyValueType
@@ -600,16 +553,12 @@ const SourceDetails: React.FC<{
 		],
 		[config.strings.targetLabel, block.detail?.target],
 		[config.strings.pathLabel, block.detail?.fileTarget],
-		[
-			config.strings.ownerContextLabel,
-			block.anchor.nearestHeading ?? undefined,
-		],
 	];
 	return (
-		<section className="pkfa-card pkfa-source-details-card">
+		<section className="pkfa-inspector-section pkfa-source-details-card">
 			<details className="pkfa-source-details">
-				<summary>{config.strings.sourceDetails}</summary>
-				<div className="pkfa-card-body">
+				<summary><FileText />{config.strings.sourceDetails}</summary>
+				<div className="pkfa-technical-details-body">
 					{rows
 						.filter(([, value]) => Boolean(value))
 						.map(([label, value]) => (
@@ -618,7 +567,6 @@ const SourceDetails: React.FC<{
 								<span className="pkfa-v pkfa-mono">{value}</span>
 							</div>
 						))}
-					<div className="pkfa-source-snippet">{block.source}</div>
 				</div>
 			</details>
 		</section>

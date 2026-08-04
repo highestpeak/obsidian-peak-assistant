@@ -3,7 +3,9 @@
  *
  * Open files are always included and appear before bounded recent history.
  * Ordering is independent of Obsidian's tab-strip order and can be switched
- * between recency-weighted frequency and filename.
+ * between recency-weighted frequency and filename. Frequency order is frozen
+ * by the host for the lifetime of the modal so selecting a file never makes the
+ * rail jump underneath the pointer.
  */
 
 import React, { useEffect, useId, useRef } from 'react';
@@ -249,7 +251,7 @@ export const FileRail: React.FC<FileRailProps> = ({
 							role="menu"
 							aria-label={sortLabel}
 						>
-							{(['recent', 'frequent', 'name'] as const).map((mode) => (
+							{(['frequent', 'name'] as const).map((mode) => (
 								<Button
 									key={mode}
 									variant="unstyled"

@@ -92,20 +92,19 @@
 	font-size: var(--pk-text-base);
 }
 
-/* Content column rows stay explicit even when the optional relationship slot
-   is empty: doc / relationships / tabs / search / controls / body / tray. */
+/* doc / tabs / search / controls / body / tray */
 .pkfa-content {
 	min-width: 0;
 	min-height: 0;
 	display: grid;
-	grid-template-rows: 42px auto 42px auto 46px minmax(0, 1fr) auto;
+	grid-template-rows: 42px 42px auto 46px minmax(0, 1fr) auto;
 	background: var(--pk-surface);
 	overflow: hidden;
 }
 
-/* Graph keeps the same first three structural rows and owns the remainder. */
+/* doc / tabs / graph */
 .peak-file-atlas-modal.pkfa-root[data-subview="graph"] .pkfa-content {
-	grid-template-rows: 42px auto 42px minmax(0, 1fr);
+	grid-template-rows: 42px 42px minmax(0, 1fr);
 }
 
 /* ---------- left file rail ---------- */
@@ -147,14 +146,17 @@
 }
 
 .peak-file-atlas-modal.pkfa-root .pkfa-rail-sort {
-	min-width: 0;
-	height: 28px;
+	min-width: 0 !important;
+	height: 28px !important;
+	min-height: 28px !important;
+	max-height: 28px !important;
 	display: grid;
 	grid-template-columns: 14px minmax(0, 1fr) 12px;
 	align-items: center;
 	gap: 5px;
-	width: 132px;
-	padding: 0 7px;
+	width: 112px !important;
+	max-width: 112px !important;
+	padding: 0 7px !important;
 	border: 1px solid var(--pk-border-soft);
 	border-radius: var(--pk-radius-sm);
 	background: var(--pk-surface) !important;
@@ -466,102 +468,6 @@
 	background: var(--pk-surface);
 	border: 1px solid var(--pk-border);
 	border-radius: var(--pk-radius-pill);
-}
-
-/* Document hubs + link provenance. The actual neighborhood graph remains the
-   Graph subview; this row only makes its ownership and entry explicit. */
-.pkfa-document-context-slot {
-	min-width: 0;
-}
-
-.pkfa-document-context {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(180px, auto) auto;
-	align-items: center;
-	gap: 12px;
-	min-height: 46px;
-	padding: 7px var(--pk-space-6);
-	border-bottom: 1px solid var(--pk-border-soft);
-	background: var(--pk-surface-sunken);
-}
-
-.pkfa-document-context.is-loading {
-	display: flex;
-	color: var(--pk-text-tertiary);
-	font-size: var(--pk-text-xs);
-}
-
-.pkfa-context-group,
-.pkfa-context-values {
-	display: flex;
-	min-width: 0;
-	align-items: center;
-	gap: 6px;
-}
-
-.pkfa-context-label {
-	display: inline-flex;
-	flex: 0 0 auto;
-	align-items: center;
-	gap: 5px;
-	color: var(--pk-text-tertiary);
-	font-size: var(--pk-text-xs);
-	font-weight: 720;
-}
-
-.pkfa-context-label svg,
-.pkfa-context-values > svg {
-	width: 12px;
-	height: 12px;
-}
-
-.pkfa-context-values {
-	overflow: hidden;
-	color: var(--pk-text-secondary);
-	font-size: var(--pk-text-xs);
-	white-space: nowrap;
-}
-
-.peak-file-atlas-modal.pkfa-root .pkfa-context-chip {
-	max-width: 160px;
-	height: 24px !important;
-	min-height: 24px !important;
-	padding: 0 8px !important;
-	overflow: hidden;
-	border: 1px solid var(--pk-border) !important;
-	border-radius: var(--pk-radius-pill) !important;
-	background: var(--pk-surface) !important;
-	color: var(--pk-text-secondary) !important;
-	font-size: var(--pk-text-xs);
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.peak-file-atlas-modal.pkfa-root .pkfa-context-chip.is-primary {
-	border-color: var(--pk-border-accent) !important;
-	background: var(--pk-accent-tint) !important;
-	color: var(--pk-accent-fg) !important;
-}
-
-.peak-file-atlas-modal.pkfa-root .pkfa-context-chip.is-candidate {
-	border-style: dashed !important;
-}
-
-.peak-file-atlas-modal.pkfa-root .pkfa-context-graph-action {
-	height: 28px !important;
-	min-height: 28px !important;
-	padding: 0 9px !important;
-	white-space: nowrap;
-}
-
-@media (max-width: 960px) {
-	.pkfa-document-context {
-		grid-template-columns: minmax(0, 1fr) auto;
-	}
-
-	.pkfa-document-context .pkfa-context-group:nth-child(2) {
-		display: none;
-	}
 }
 
 /* ---------- tab row: Tree / Graph subviews ---------- */
@@ -1088,26 +994,39 @@
 	overscroll-behavior: contain;
 	scrollbar-gutter: stable;
 	padding: 14px 14px 24px;
-	display: flex;
-	flex-direction: column;
-	gap: var(--pk-space-3);
-	align-items: stretch;
+	display: block;
 }
 
-.pkfa-card {
-	flex: 0 0 auto;
+.pkfa-inspector-surface {
 	min-width: 0;
 	border: 1px solid var(--pk-border);
 	background: var(--pk-surface);
-	border-radius: var(--pk-radius-lg);
+	border-radius: var(--pk-radius-md);
 	overflow: hidden;
 }
 
-.pkfa-card-body {
+.pkfa-inspector-primary,
+.pkfa-inspector-section,
+.pkfa-inspector-empty {
 	min-width: 0;
 	padding: 14px 14px 16px;
 	display: grid;
 	gap: var(--pk-space-3);
+}
+
+.pkfa-inspector-section {
+	border-top: 1px solid var(--pk-border-soft);
+}
+
+.pkfa-inspector-identity {
+	display: grid;
+	gap: 4px;
+}
+
+.pkfa-inspector-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
 }
 
 .pkfa-selected-top { display: flex; align-items: center; justify-content: space-between; gap: var(--pk-space-3); }
@@ -1182,14 +1101,28 @@
 	overflow-wrap: anywhere;
 }
 
-.pkfa-source-details-card { overflow: visible; }
+.pkfa-source-details-card { overflow: visible; padding: 0; }
 
 .pkfa-source-details > summary {
 	padding: 12px 14px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
 	color: var(--pk-text-secondary);
 	font-size: var(--pk-text-base);
 	font-weight: 760;
 	cursor: pointer;
+}
+
+.pkfa-source-details > summary svg {
+	width: 14px;
+	height: 14px;
+}
+
+.pkfa-technical-details-body {
+	display: grid;
+	gap: 7px;
+	padding: 12px 14px 14px;
 }
 
 .pkfa-source-details[open] > summary {
@@ -1431,36 +1364,51 @@
 
 .pkfa-dim-chip.pkfa-mono { font-family: var(--pk-font-mono); font-size: 10.5px; }
 
-/* ---------- keyword frequency card ---------- */
-/* Chips are sized by term frequency: `--kw-w` (0..1, set inline per chip) scales
-   height, word size, and the count badge so magnitude reads at a glance. Baselines
-   below correspond to the least-frequent term; the deltas add up toward the top. */
+/* ---------- keyword frequency ranking ---------- */
 .pkfa-kw-list {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	align-content: flex-start;
-	gap: 7px;
+	display: grid;
+	gap: 6px;
 	min-height: 0;
-	padding: 2px 2px 4px;
 }
 
-.pkfa-kw-chip {
-	--kw-w: 0.5;
-	display: inline-flex; align-items: center; gap: 5px;
-	/* Chip sizes itself off its font (padding, not a fixed height) so bigger words
-	   read as bigger chips without ragged rows. `--kw-w` = count / max. */
-	padding: calc(3px + var(--kw-w) * 3px) calc(8px + var(--kw-w) * 4px);
-	border: 1px solid var(--pk-border); border-radius: var(--pk-radius-pill);
-	background: var(--pk-surface); color: var(--pk-text-primary);
-	font-size: calc(var(--pk-text-sm) + var(--kw-w) * 9px); font-weight: 680; line-height: 1.15;
+.pkfa-kw-row {
+	display: grid;
+	grid-template-columns: minmax(88px, 0.8fr) minmax(60px, 1fr) 28px;
+	align-items: center;
+	gap: 8px;
+	min-height: 24px;
+	font-size: var(--pk-text-base);
 }
 
-.pkfa-kw-chip b {
-	display: inline-grid; place-items: center;
-	padding: 1px 6px;
-	border-radius: var(--pk-radius-pill); background: var(--pk-accent); color: var(--pk-accent-fg);
-	font-size: calc(9px + var(--kw-w) * 4px); font-weight: 820;
+.pkfa-kw-word {
+	min-width: 0;
+	overflow: hidden;
+	color: var(--pk-text-primary);
+	font-weight: 680;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pkfa-kw-meter {
+	height: 5px;
+	overflow: hidden;
+	border-radius: var(--pk-radius-pill);
+	background: var(--pk-surface-sunken);
+}
+
+.pkfa-kw-meter > span {
+	display: block;
+	height: 100%;
+	border-radius: inherit;
+	background: var(--pk-accent);
+}
+
+.pkfa-kw-count {
+	color: var(--pk-text-secondary);
+	font-family: var(--pk-font-mono);
+	font-size: var(--pk-text-xs);
+	font-weight: 760;
+	text-align: right;
 }
 
 /* ---------- graph subview ---------- */
@@ -1536,7 +1484,9 @@
 .pkfa-semantic-toggle.is-on .pkfa-semantic-switch::after { transform: translateX(14px); }
 
 /* Canvas host for the shared cytoscape renderer (AtlasGraphCanvas). */
-.pkfa-graph-canvas { position: relative; min-height: 0; overflow: hidden; background: var(--pk-surface); }
+.pkfa-graph-canvas { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--pk-surface); }
+
+.pkfa-graph-canvas > * { width: 100%; height: 100%; min-height: 0; }
 
 .pkfa-graph-empty {
 	position: absolute; inset: 0;

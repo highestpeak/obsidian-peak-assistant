@@ -8,7 +8,8 @@ function source(relativePath: string): string {
 
 const contextualPort = source('src/core/ports/ContextualGraphPort.ts');
 const vaultWorkspace = source('src/ui/view/quick-search/VaultIntelligenceWorkspace.tsx');
-const documentContext = source('src/ui/view/file-atlas/components/FileAtlasDocumentContext.tsx');
+const atlasPanel = source('src/ui/view/file-atlas/FileAtlasPanel.tsx');
+const atlasGraph = source('src/ui/view/file-atlas/components/FileAtlasGraph.tsx');
 const searchInspector = source('src/ui/view/quick-search/components/inspector/InspectorSidePanel.tsx');
 const ambientPanel = source('src/ui/view/ambient-panel/RelatedNotesPanel.tsx');
 const productCss = source('src/styles/peak-components.css');
@@ -32,16 +33,17 @@ const graphEvents = source('src/app/ai-graph/ObsidianAIGraphRunEventStore.ts');
 const graphProjection = source('src/app/ai-graph/SqliteAIGraphProjection.ts');
 const graphAgent = source('src/service/agents/AIGraphAgent.ts');
 const graphContextArtifacts = source('src/ui/component/ai-graph/AIGraphContextArtifacts.tsx');
+const contextualAIGraph = source('src/ui/component/ai-graph/ContextualAIGraphView.tsx');
 const folderModel = source('src/ui/component/graph/folderCompoundModel.ts');
 const timelineLayout = source('src/ui/component/mine/multi-lens-graph/layouts/timeline-layout.ts');
 
 assert.match(contextualPort, /loadDocumentContext/);
 assert.match(vaultWorkspace, /Vault graph overview/);
 assert.match(vaultWorkspace, /Opening this mode never starts a scan/);
-assert.match(documentContext, /Open local graph/);
-assert.match(documentContext, /hub\.status === 'primary'/);
-assert.match(documentContext, /candidate/);
-assert.match(documentContext, /orphanStatus/);
+assert.doesNotMatch(atlasPanel, /FileAtlasDocumentContext|pkfa-document-context-slot/);
+assert.match(atlasGraph, /data-graph-scope="one-hop"/);
+assert.match(atlasGraph, /data-graph-scope="two-hop"/);
+assert.match(atlasGraph, /data-graph-scope="ai"/);
 assert.match(searchInspector, /Open in File Atlas/);
 assert.doesNotMatch(searchInspector, /<HubSection/);
 
@@ -52,7 +54,9 @@ assert.doesNotMatch(productCss, /\.peak-ambient-floating-host/);
 
 assert.match(atlasHost, /getMostUsed/);
 assert.match(atlasHost, /loadCopilotSuggestions/);
-assert.match(atlasHost, /openAIGraphs/);
+assert.match(atlasHost, /getHubsForDoc/);
+assert.match(atlasHost, /readManifest/);
+assert.doesNotMatch(atlasHost, /openAIGraphs/);
 assert.match(atlasBar, /onFlattenChange/);
 assert.match(atlasBar, /aria-label=\{config\.strings\.filtersButton\}/);
 
@@ -112,6 +116,9 @@ assert.match(quickHost, /Web relations require a fetched Web source/);
 assert.match(quickHost, /resolveAIGraphSourceContents/);
 assert.match(graphAgent, /AIGraphArtifactExtract/);
 assert.match(graphContextArtifacts, /graphVersionId: row\.versionId/);
+assert.match(contextualAIGraph, /listAIGraphArtifacts/);
+assert.match(contextualAIGraph, /Create AI Graph/);
+assert.match(contextualAIGraph, /graphVersionId: row\.versionId/);
 assert.match(timelineLayout, /No date \/ Unassigned/);
 
 assert.match(folderModel, /directFolders/);

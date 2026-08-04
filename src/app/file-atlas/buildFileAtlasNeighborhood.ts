@@ -95,6 +95,7 @@ export async function buildFileAtlasNeighborhood(
 
 	return {
 		nodes: [...nodes.values()],
+		hubAnchors: [],
 		edges: coalesceGraphEdges(rawEdges),
 	};
 }

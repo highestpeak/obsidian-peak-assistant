@@ -139,13 +139,13 @@ export interface FileAtlasStrings {
 	treeHint: string;
 	graphScopeLocal: string;
 	graphScopeTwoHop: string;
+	graphScopeAI: string;
 	graphSemanticLabel: string;
 	graphSearchPlaceholder: string;
 	graphSearchScope: string;
 	searchPlaceholder: string;
 	searchScope: string;
 	filtersButton: string;
-	aiGraphsButton: string;
 	flattenView: string;
 	treeView: string;
 	/** Filter popover header title. */
@@ -181,7 +181,6 @@ export interface FileAtlasStrings {
 	railOpenTitle: string;
 	railRecentTitle: string;
 	railSortLabel: string;
-	railSortRecent: string;
 	railSortFrequent: string;
 	railSortName: string;
 	railResizeLabel: string;
@@ -395,15 +394,15 @@ export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
 		graphDisabledHint: 'Graph subview arrives in a later phase',
 		graphReadonlyHint: 'Read-only neighborhood from vault links around this note',
 		treeHint: 'Outline of every block, resource & heading in this note',
-		graphScopeLocal: 'Local neighborhood',
-		graphScopeTwoHop: 'Two-hop expansion',
+		graphScopeLocal: 'One hop',
+		graphScopeTwoHop: 'Two hop',
+		graphScopeAI: 'AI Graph',
 		graphSemanticLabel: 'Semantic links',
 		graphSearchPlaceholder: 'Search notes in this graph...',
 		graphSearchScope: 'graph notes',
 		searchPlaceholder: "Search this document's blocks, links, and headings...",
 		searchScope: 'document',
 		filtersButton: 'Filters',
-		aiGraphsButton: 'Open AI Graphs',
 		flattenView: 'Flatten document order',
 		treeView: 'Restore hierarchy',
 		filtersTitle: 'Visible block types',
@@ -435,7 +434,6 @@ export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
 		railOpenTitle: 'Open',
 		railRecentTitle: 'Recent',
 		railSortLabel: 'Sort files',
-		railSortRecent: 'Recently viewed',
 		railSortFrequent: 'Most used',
 		railSortName: 'Name',
 		railResizeLabel: 'Resize file rail',
@@ -450,14 +448,14 @@ export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
 		addToTray: 'Add to tray',
 		copyLink: 'Copy link',
 		openTarget: 'Open target',
-		sourceDetails: 'Source details',
+		sourceDetails: 'Technical details',
 		valueLabel: 'Value',
 		typeLabel: 'Type',
 		targetLabel: 'Target',
 		pathLabel: 'Path',
 		ownerContextLabel: 'Owner context',
 		occurrencesLabel: 'Occurrences',
-		locationCard: 'Location',
+		locationCard: 'Facts',
 		lines: 'Lines',
 		nearestHeading: 'Nearest heading',
 		trayTitle: 'Tray',

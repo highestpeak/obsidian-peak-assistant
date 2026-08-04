@@ -23,6 +23,7 @@ import type { AtlasGraphData, FileAtlasHostPort } from '../FileAtlasHostPort';
 import type { FileAtlasConfig } from '../config/fileAtlasConfig';
 import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
 import { PEAK_KEYBOARD_ZONE_LABELS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
+import { ContextualAIGraphView } from '@/ui/component/ai-graph';
 
 interface FileAtlasGraphProps {
 	path: string;
@@ -31,7 +32,7 @@ interface FileAtlasGraphProps {
 	onAddToTray: (block: DocumentBlock) => void;
 }
 
-type Scope = 'local' | 'two-hop';
+type Scope = 'one-hop' | 'two-hop' | 'ai';
 
 // Full preset parity with the Vault Search Result Graph — both feed the same
 // shared canvas, and the neighborhood subgraph carries real note paths (so folder
@@ -58,7 +59,12 @@ function toSubgraph(data: AtlasGraphData): ResultSubgraphOutput {
 			communityId: null,
 			folder: n.path ? n.path.split('/')[0] ?? '' : '',
 		})),
-		hubAnchors: [],
+		hubAnchors: data.hubAnchors.map((hub) => ({
+			id: hub.id,
+			path: hub.path,
+			title: hub.label,
+			constituentCount: hub.constituentCount,
+		})),
 		edges: data.edges.map((e) => ({
 			from: e.from,
 			to: e.to,
@@ -92,7 +98,7 @@ function trayBlockForNode(id: string, label: string, nodePath: string): Document
 
 export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, config, onAddToTray }) => {
 	const s = config.strings;
-	const [scope, setScope] = useState<Scope>('local');
+	const [scope, setScope] = useState<Scope>('one-hop');
 	const [semantic, setSemantic] = useState(false);
 	const [layout, setLayout] = useState<AtlasGraphPreset>('constellation');
 	const [data, setData] = useState<AtlasGraphData | null>(null);
@@ -120,6 +126,7 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, conf
 	// Fetch both reference + semantic edges up front; the semantic toggle is a
 	// render-only concern the canvas handles, so scope is the only refetch key.
 	useEffect(() => {
+		if (scope === 'ai') return;
 		if (!host.loadNeighborhood) {
 			setData(null);
 			return;
@@ -137,15 +144,16 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, conf
 
 	const subgraph = useMemo(() => (data ? toSubgraph(data) : null), [data]);
 	const meta = data
-		? `${data.nodes.length} notes · ${data.edges.filter((edge) => semantic || edge.kind !== 'semantic').length} links`
+		? `${data.nodes.length} notes · ${data.hubAnchors.length} hubs · ${data.edges.filter((edge) => semantic || edge.kind !== 'semantic').length} links`
 		: '';
 	const labelById = useMemo(() => {
 		const m = new Map<string, string>();
 		data?.nodes.forEach((n) => m.set(n.id, n.label));
+		data?.hubAnchors.forEach((hub) => m.set(hub.id, hub.label));
 		return m;
 	}, [data]);
 
-	const unavailable = !host.loadNeighborhood || error;
+	const unavailable = scope !== 'ai' && (!host.loadNeighborhood || error);
 
 	return (
 		<div
@@ -160,12 +168,12 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, conf
 						variant="unstyled"
 						type="button"
 						role="tab"
-						aria-selected={scope === 'local'}
-						tabIndex={scope === 'local' ? 0 : -1}
-						data-graph-scope="local"
-						data-peak-focus-id="file-atlas-graph-local"
-						className={`pkfa-graph-scope-tab${scope === 'local' ? ' is-active' : ''}`}
-						onClick={() => setScope('local')}
+						aria-selected={scope === 'one-hop'}
+						tabIndex={scope === 'one-hop' ? 0 : -1}
+						data-graph-scope="one-hop"
+						data-peak-focus-id="file-atlas-graph-one-hop"
+						className={`pkfa-graph-scope-tab${scope === 'one-hop' ? ' is-active' : ''}`}
+						onClick={() => setScope('one-hop')}
 					>
 						{s.graphScopeLocal}
 					</Button>
@@ -182,9 +190,22 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, conf
 					>
 						{s.graphScopeTwoHop}
 					</Button>
+					<Button
+						variant="unstyled"
+						type="button"
+						role="tab"
+						aria-selected={scope === 'ai'}
+						tabIndex={scope === 'ai' ? 0 : -1}
+						data-graph-scope="ai"
+						data-peak-focus-id="file-atlas-graph-ai"
+						className={`pkfa-graph-scope-tab${scope === 'ai' ? ' is-active' : ''}`}
+						onClick={() => setScope('ai')}
+					>
+						{s.graphScopeAI}
+					</Button>
 				</div>
 
-				<div ref={layoutRef} className="pkfa-graph-scope" role="tablist" aria-label="Graph layout">
+				{scope !== 'ai' && <div ref={layoutRef} className="pkfa-graph-scope" role="tablist" aria-label="Graph layout">
 					{LAYOUTS.map((l) => (
 						<Button
 							key={l.id}
@@ -201,9 +222,9 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, conf
 							{l.label}
 						</Button>
 					))}
-				</div>
+				</div>}
 
-				<Button
+				{scope !== 'ai' && <Button
 					variant="unstyled"
 					type="button"
 					aria-pressed={semantic}
@@ -212,11 +233,25 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, conf
 				>
 					<span className="pkfa-semantic-switch" aria-hidden="true" />
 					{s.graphSemanticLabel}
-				</Button>
+				</Button>}
 			</div>
 
 			<div className="pkfa-graph-canvas">
-				{unavailable ? (
+				{scope === 'ai' ? (
+					<ContextualAIGraphView
+						contextRefs={[path]}
+						selectedVaultPaths={[path]}
+						createOrigin={{
+							surface: 'file-atlas',
+							contextRef: {
+								kind: 'atlas-file',
+								ref: path,
+								label: path.split('/').pop()?.replace(/\.md$/i, '') ?? path,
+								locator: path,
+							},
+						}}
+					/>
+				) : unavailable ? (
 					<div className="pkfa-graph-empty">
 						<Network />
 						<span>Neighborhood graph unavailable — index this note to see its links.</span>
@@ -229,8 +264,8 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, conf
 						summary={meta}
 						buildingLabel="Loading neighborhood…"
 						emptyLabel="No linked notes around this document yet."
-						onNodeTap={({ id, path: nodePath }) => {
-							if (!nodePath || nodePath === path) return;
+						onNodeTap={({ id, path: nodePath, isHub }) => {
+							if (isHub || !nodePath || nodePath === path) return;
 							onAddToTray(trayBlockForNode(id, labelById.get(id) ?? nodePath, nodePath));
 							host.notify('Note added to tray');
 						}}

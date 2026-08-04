@@ -125,6 +125,7 @@ export function filterLinksByQuery(links: ConnectedLink[], query: string): Conne
 // ─── Hubs ────────────────────────────────────────────────────────────────────
 
 export interface HubForDoc {
+	hubId: string;
 	path: string;
 	label: string;
 }
@@ -149,7 +150,7 @@ export async function getHubsForDoc(currentPath: string): Promise<HubForDoc[]> {
 		const label = node?.label
 			|| hub.hub_path.split('/').pop()?.replace(/\.md$/, '')
 			|| hub.hub_path;
-		return { path: hub.hub_path, label };
+		return { hubId: hub.hub_node_id, path: hub.hub_path, label };
 	});
 }
 

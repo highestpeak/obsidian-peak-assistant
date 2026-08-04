@@ -38,7 +38,13 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = (props) => {
 			cancelled = true;
 		};
 	}, [Impl]);
-	if (!Impl) return <div className="pktw-relative pktw-w-full pktw-h-full pktw-min-h-[420px]" />;
+	if (!Impl) {
+		return (
+			<div className="pktw-flex pktw-h-full pktw-min-h-[240px] pktw-w-full pktw-items-center pktw-justify-center pktw-text-sm pktw-text-pk-foreground-muted">
+				{props.buildingLabel ?? 'Building graph…'}
+			</div>
+		);
+	}
 	return <Impl {...props} />;
 };
 

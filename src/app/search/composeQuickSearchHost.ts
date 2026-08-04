@@ -307,6 +307,7 @@ export function composeQuickSearchHost(
 					});
 				}
 				for (const edge of graph.edges) {
+					if (edge.kind === 'hub_constituent') continue;
 					if (!nodes.has(edge.from) || !nodes.has(edge.to)) continue;
 					const key = `${edge.from}|${edge.to}|${edge.kind}`;
 					edges.set(key, { from: edge.from, to: edge.to, kind: edge.kind });

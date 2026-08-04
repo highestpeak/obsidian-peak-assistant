@@ -19,7 +19,8 @@ assert.match(rail, /role="menuitemradio"/);
 assert.match(rail, /aria-expanded=\{sortOpen\}/);
 assert.match(rail, /onSortModeChange\(mode\)/);
 assert.doesNotMatch(rail, /<select/);
-assert.match(rail, /\['recent', 'frequent', 'name'\]/);
+assert.match(rail, /\['frequent', 'name'\]/);
+assert.doesNotMatch(rail, /'recent'/);
 assert.match(rail, /ArrowUpDown/);
 assert.match(rail, /ChevronDown/);
 assert.match(rail, /role="separator"/);
@@ -37,6 +38,7 @@ assert.match(adapter, /DOCUMENT_COMPOSER_VIEW_TYPE/);
 assert.match(adapter, /workspace\.revealLeaf/);
 
 assert.match(css, /--pkfa-rail-width/);
+assert.match(css, /\.pkfa-rail-sort\s*\{[\s\S]*?height:\s*28px !important;[\s\S]*?width:\s*112px !important;/);
 assert.match(css, /\.pkfa-rail-resizer/);
 assert.match(css, /\.pkfa-rail-sort-menu\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?z-index:\s*var\(--pk-z-popover\) !important;/);
 assert.doesNotMatch(

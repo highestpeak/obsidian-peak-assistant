@@ -13,6 +13,7 @@ import {
 	getHubsForDoc,
 } from '@/service/search/inspectorService';
 import { composeFileAtlasHost } from '@/app/file-atlas/composeFileAtlasHost';
+import type { AtlasGraphData } from '@/ui/view/file-atlas/FileAtlasHostPort';
 
 interface CandidateHubAccumulator {
 	path: string;
@@ -30,7 +31,7 @@ export function composeContextualGraphPort(appContext: AppContext): ContextualGr
 				getConnectedLinks(filePath),
 				getDiscoveredConnections(filePath, 8),
 				atlas.loadNeighborhood?.(filePath, { hops: 1, semantic: true })
-					?? Promise.resolve({ nodes: [], edges: [] }),
+					?? Promise.resolve<AtlasGraphData>({ nodes: [], hubAnchors: [], edges: [] }),
 			]);
 
 			const primaryPaths = new Set(primary.map((hub) => hub.path));
@@ -117,7 +118,7 @@ export function composeContextualGraphPort(appContext: AppContext): ContextualGr
 			const edges: ContextualGraphEdge[] = neighborhood.edges.map((edge) => ({
 				source: edge.from,
 				target: edge.to,
-				kind: edge.kind,
+				kind: edge.kind === 'hub_constituent' ? 'hub' : edge.kind,
 				directionality: edge.directionality ?? 'directed',
 			}));
 			for (const hub of hubs.filter((item) => item.status === 'primary')) {
