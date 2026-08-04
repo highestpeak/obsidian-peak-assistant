@@ -39,6 +39,8 @@ export * from './render/inlineRuns';
 export * from './render/inlineMathProjection';
 export * from './render/sourceVisualProjection';
 export * from './render/wordDiff';
+export * from './findMatches';
+export * from './unitActionSnapshot';
 
 // WP8 — native objects (Code / Mermaid / Base / Canvas / Excalidraw) + link
 // analysis. Framework-neutral parse/patch/preview cores; no obsidian imports.

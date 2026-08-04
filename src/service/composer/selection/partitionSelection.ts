@@ -153,6 +153,32 @@ export function listItemContentStart(source: string, unit: { from: number; to: n
 	return unit.from + markerLength(source, unit.from, unit.to);
 }
 
+/**
+ * End of the text owned by one list/task item, excluding nested child rows.
+ *
+ * mdast anchors a nested child at its list marker, after that source line's
+ * indentation. Therefore `child.from` leaves the parent's editable slice ending
+ * in `\n\t` / `\n  `. Remove only that structural indentation + line break;
+ * spaces authored at the end of the parent's text remain part of the item.
+ */
+export function listItemOwnContentEnd(
+	source: string,
+	unit: { from: number; to: number; unitId: string },
+	items: readonly { from: number; parentUnitId?: string }[],
+): number {
+	const firstChild = items
+		.filter((candidate) => candidate.parentUnitId === unit.unitId)
+		.sort((left, right) => left.from - right.from)[0];
+	let to = firstChild?.from ?? unit.to;
+	if (firstChild) {
+		const lineBreak = source.lastIndexOf('\n', Math.max(unit.from, to - 1));
+		const lineStart = lineBreak >= unit.from ? lineBreak + 1 : unit.from;
+		if (/^[\t ]*$/.test(source.slice(lineStart, to))) to = lineStart;
+	}
+	while (to > unit.from && (source[to - 1] === '\n' || source[to - 1] === '\r')) to -= 1;
+	return to;
+}
+
 /** Heading text start — the offset after the `#…# ` marker. */
 export function headingTextStart(source: string, block: { from: number; to: number }): number {
 	const m = HEADING_MARKER_RE.exec(source.slice(block.from, block.to));

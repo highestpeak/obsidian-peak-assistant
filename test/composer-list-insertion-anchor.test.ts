@@ -6,6 +6,8 @@ import {
 	buildInsertListItemOps,
 	createListItemPatchMaterializer,
 	insertValidatedListItem,
+	listItemContentStart,
+	listItemOwnContentEnd,
 	parseComposerDocument,
 } from '@/service/composer';
 
@@ -116,6 +118,34 @@ assert.deepEqual(
 	'the first item retains focus when it cannot be nested',
 );
 
+for (const indent of ['\t', '  ', '    ']) {
+	const nestedSource = `- Parent  \n${indent}- Child\n${indent}${indent}- Grandchild`;
+	const parsed = parseComposerDocument(nestedSource, { filePath: `nested-${indent.length}.md` });
+	const list = parsed.blocks[0];
+	const nestedItems = list?.units.filter((unit) => unit.unitKind === 'list-item') ?? [];
+	const parent = nestedItems.find((unit) => !unit.parentUnitId);
+	const child = nestedItems.find((unit) => unit.parentUnitId === parent?.unitId);
+	assert.ok(parent && child, `nested ${JSON.stringify(indent)} items remain addressable`);
+	assert.equal(
+		nestedSource.slice(
+			listItemContentStart(nestedSource, parent!),
+			listItemOwnContentEnd(nestedSource, parent!, nestedItems),
+		),
+		'Parent  ',
+		`parent editor excludes the child line break and ${JSON.stringify(indent)} indentation`,
+	);
+	assert.equal(
+		nestedSource.slice(child!.from, child!.to).startsWith('- Child'),
+		true,
+		'child source anchor still begins at its marker',
+	);
+	assert.equal(
+		nestedSource.slice(child!.from - indent.length, child!.from),
+		indent,
+		'structural indentation remains byte-identical before the child anchor',
+	);
+}
+
 const root = readFileSync('src/ui/view/composer/ComposerRoot.tsx', 'utf8');
 const editable = readFileSync(
 	'src/ui/view/composer/chrome/EditableText.tsx',
@@ -129,6 +159,17 @@ assert.equal(
 assert.equal(root.includes('<ListItemInsertGap'), false, 'list rendering exposes no hover insertion gap');
 assert.ok(root.includes('buildInsertListItemOps'), 'direct insertion goes through Composer transactions');
 assert.ok(root.includes('data-unit-id={unit.unitId}'), 'each list item is exposed as an addressable UI unit');
+assert.ok(
+	root.includes('{unitActions?.render(actionAnchor)}') &&
+		root.includes('to: contentEnd'),
+	'each list item owns an AI action target bounded to its editable text',
+);
+const actionRow = readFileSync('src/ui/view/composer/chrome/BlockActionRow.tsx', 'utf8');
+assert.ok(
+	actionRow.includes("variant?: 'block' | 'unit-ai'") &&
+		actionRow.includes('allowedCapabilityIds'),
+	'unit rows project an allow-listed AI-only action surface without block transforms',
+);
 assert.ok(
 	root.includes('await chrome.flushAll();') &&
 		root.indexOf('await chrome.flushAll();') < root.indexOf('chrome.runtime.session?.snapshot'),

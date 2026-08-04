@@ -39,6 +39,11 @@ function main(): void {
 	const fbSel = Object.keys(DEFAULT_COMPOSER_CONFIG.chrome.selection).sort();
 	const jsonSel = Object.keys(json.chrome?.selection ?? {}).sort();
 	check('chrome.selection keys match', fbSel.join(',') === jsonSel.join(','), `fb=${fbSel.join(',')} json=${jsonSel.join(',')}`);
+	check(
+		'chrome.find keys match',
+		Object.keys(DEFAULT_COMPOSER_CONFIG.chrome.find).sort().join(',') ===
+			Object.keys(json.chrome?.find ?? {}).sort().join(','),
+	);
 	const fbComment = DEFAULT_COMPOSER_CONFIG.chrome.comment;
 	const jsonComment = json.chrome?.comment ?? {};
 	check(

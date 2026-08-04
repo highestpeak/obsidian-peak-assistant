@@ -36,6 +36,10 @@ export type BlockPanelKind =
 
 export interface BlockActionRowProps {
 	snapshot: ComposerContextSnapshot;
+	/** Unit rows expose only AI rewrite actions; block rows keep the full toolbar. */
+	variant?: 'block' | 'unit-ai';
+	/** Optional allow-list applied before quick-action and instruction projection. */
+	allowedCapabilityIds?: readonly string[];
 	onInsertBelow?: () => void;
 	onSelectInsertType?: (typeId: string) => void;
 	copySurface?: (dismissPreview: () => void) => React.ReactNode;
@@ -53,6 +57,8 @@ export interface BlockActionRowProps {
 
 export function BlockActionRow({
 	snapshot,
+	variant = 'block',
+	allowedCapabilityIds,
 	onInsertBelow,
 	onSelectInsertType,
 	copySurface,
@@ -68,8 +74,12 @@ export function BlockActionRow({
 	const chrome = useComposerChrome();
 	const { projection, config } = chrome;
 	const a = config.chrome.actions;
+	const unitOnly = variant === 'unit-ai';
 	const canComment = Boolean(chrome.runtime.comments);
-	const aiActions = projection.actionsFor(snapshot, 'block-row');
+	const allowedIds = allowedCapabilityIds ? new Set(allowedCapabilityIds) : null;
+	const aiActions = projection
+		.actionsFor(snapshot, 'block-row')
+		.filter((descriptor) => !allowedIds || allowedIds.has(descriptor.capabilityId));
 	const hiddenQuickIds = new Set(hiddenQuickCapabilityIds);
 	const quickAiActions = aiActions.filter((descriptor) => !hiddenQuickIds.has(descriptor.capabilityId));
 	const hasInstruction = aiActions.some((d) => d.acceptsInstruction && !d.disabledReason);
@@ -128,6 +138,7 @@ export function BlockActionRow({
 			className="pk-block-action-row"
 			data-chrome="true"
 			data-mode={instructionOpen ? 'instruction' : 'actions'}
+			data-variant={variant}
 			data-floating-surface={insertOpen || copyOpen || historyOpen || undefined}
 			data-composer-surface-owner={surfaceBlockId}
 			onKeyDown={(event) => {
@@ -160,7 +171,7 @@ export function BlockActionRow({
 					role="toolbar"
 				>
 				<span className="pk-block-action-row__options" aria-hidden={instructionOpen || undefined}>
-					<span className="pk-action-core">
+					{!unitOnly && <span className="pk-action-core">
 						<span
 							className="pk-insert-trigger"
 							onPointerEnter={() => showPreview('insert-menu')}
@@ -204,10 +215,10 @@ export function BlockActionRow({
 							tabIndex={actionTabIndex}
 							data-action="comment"
 						/>
-					</span>
+					</span>}
 					{quickAiActions.length > 0 && (
 						<>
-							<span className="pk-action-divider" role="separator" />
+							{!unitOnly && <span className="pk-action-divider" role="separator" />}
 							<span className="pk-action-ai">
 								<Sparkles size={13} className="pk-block-action-row__spark" aria-hidden />
 								{quickAiActions.map((d) => (
@@ -224,8 +235,9 @@ export function BlockActionRow({
 							</span>
 						</>
 					)}
-					<span className="pk-action-divider" role="separator" />
+					{!unitOnly && <span className="pk-action-divider" role="separator" />}
 					<span className="pk-action-tail">
+						{!unitOnly && (
 						<span
 							className="pk-action-surface-trigger"
 							onPointerEnter={() => showPreview('history')}
@@ -243,6 +255,7 @@ export function BlockActionRow({
 								<HistoryIcon size={13} />
 							</IconButton>
 							</span>
+						)}
 						{hasInstruction && (
 							<CapsuleButton
 								label={a.instruction}
@@ -255,7 +268,7 @@ export function BlockActionRow({
 				</span>
 				<span className="pk-block-action-row__instruction-shell" aria-hidden={!instructionOpen || undefined}>
 					<Sparkles size={13} className="pk-block-action-row__spark" aria-hidden />
-					<HistoryIcon size={13} className="pk-block-action-row__instruction-history" aria-hidden />
+					{!unitOnly && <HistoryIcon size={13} className="pk-block-action-row__instruction-history" aria-hidden />}
 					<input
 						ref={inputRef}
 						className="pk-block-action-row__instruction"

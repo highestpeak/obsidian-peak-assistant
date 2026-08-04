@@ -34,12 +34,14 @@ import {
 	buildInsertListItemOps,
 	buildMoveBlockOps,
 	buildToggleTaskOps,
+	createUnitActionSnapshot,
 	POLISH_CAPABILITY_ID,
 	CODE_EXPLAIN_CAPABILITY_ID,
 	MERMAID_EXPLAIN_CAPABILITY_ID,
 	SUGGEST_PROPERTIES_CAPABILITY_ID,
 	headingTextStart,
 	listItemContentStart,
+	listItemOwnContentEnd,
 	matchBlocks,
 	originalTextForTextPatchCandidate,
 	partitionSourceRange,
@@ -96,6 +98,7 @@ import { useCrossBlockTextSelection } from './chrome/useCrossBlockTextSelection'
 import { LinkPreviewLayer } from './chrome/LinkPreviewLayer';
 import { InlineStyleLayer } from './chrome/InlineStyleLayer';
 import { UndoRedoBar } from './chrome/UndoRedoBar';
+import { ComposerFindBar, type ComposerFindBarHandle } from './chrome/ComposerFindBar';
 import { TransactionNotice } from './chrome/TransactionNotice';
 import { BlockFindingPanel } from './chrome/BlockFindingPanel';
 import { NewBlockDraft } from './chrome/NewBlockDraft';
@@ -176,6 +179,7 @@ interface PanelState {
 	panel: BlockPanelKind;
 	pinned: boolean;
 	range?: { from: number; to: number };
+	unitId?: string;
 	initialTypeId?: string;
 }
 
@@ -489,6 +493,9 @@ function ComposerDocument({
 	const snapshot = state.snapshot as ComposerDocumentSnapshot;
 	const containerRef = React.useRef<HTMLDivElement | null>(null);
 	const workspaceRef = React.useRef<HTMLDivElement | null>(null);
+	const findBarRef = React.useRef<ComposerFindBarHandle | null>(null);
+	const findRestoreFocusRef = React.useRef<HTMLElement | null>(null);
+	const [findOpen, setFindOpen] = React.useState(false);
 
 	const [displayState, setDisplayState] = React.useState<ComposerDisplayState>(
 		hub ? initialDisplayMode : 'clean',
@@ -552,6 +559,44 @@ function ComposerDocument({
 		setCommentSurfaceOpen(false);
 		setHistoryActivity(null);
 	}, [hub, initialDisplayMode, snapshot.documentId]);
+	React.useEffect(() => {
+		setFindOpen(false);
+		findRestoreFocusRef.current = null;
+	}, [snapshot.documentId]);
+	const closeFind = React.useCallback(() => {
+		setFindOpen(false);
+		const restore = findRestoreFocusRef.current;
+		findRestoreFocusRef.current = null;
+		const ownerWindow = containerRef.current?.ownerDocument.defaultView;
+		if (!restore || !ownerWindow) return;
+		ownerWindow.requestAnimationFrame(() => {
+			if (!restore.isConnected) return;
+			restore.focus({ preventScroll: true });
+		});
+	}, []);
+	React.useEffect(() => {
+		const root = containerRef.current;
+		const ownerWindow = root?.ownerDocument.defaultView;
+		if (!root || !ownerWindow) return;
+		const openFind = async (event: KeyboardEvent) => {
+			if ((!event.metaKey && !event.ctrlKey) || event.altKey) return;
+			if (event.key.toLocaleLowerCase() !== 'f') return;
+			if (!ownsComposerFindShortcut(root)) return;
+			event.preventDefault();
+			event.stopPropagation();
+			if (findOpen) {
+				findBarRef.current?.focusAndSelect();
+				return;
+			}
+			const active = root.ownerDocument.activeElement;
+			findRestoreFocusRef.current = active instanceof HTMLElement ? active : null;
+			await chrome.flushAll();
+			setFindOpen(true);
+		};
+		const onKeyDown = (event: KeyboardEvent) => void openFind(event);
+		ownerWindow.addEventListener('keydown', onKeyDown, true);
+		return () => ownerWindow.removeEventListener('keydown', onKeyDown, true);
+	}, [chrome, findOpen, snapshot.documentId]);
 	React.useEffect(() => {
 		let alive = true;
 		void loadSidecarConfig().then((loaded) => {
@@ -779,6 +824,22 @@ function ComposerDocument({
 				data-dragging={drag ? 'true' : undefined}
 				onPaste={(ev) => void onPaste(ev)}
 			>
+			<ComposerFindBar
+				ref={findBarRef}
+				open={findOpen}
+				sourceText={snapshot.sourceText}
+				revision={snapshot.revision}
+				rootRef={containerRef}
+				strings={config.chrome.find}
+				onClose={closeFind}
+				onReveal={(match) => {
+					const target = snapshot.blocks.find(
+						(block) => block.source.from <= match.from && block.source.to >= match.to,
+					);
+					if (!target) return;
+					unfoldForDocumentLocation(foldStore, snapshot.blocks, target.blockId);
+				}}
+			/>
 			{state.status === 'stale' && <StaleBanner strings={config.strings} onRevalidate={onRevalidate} />}
 			<AddFrontmatterEntry editing={editing} />
 			<div className="pk-composer-blocks">
@@ -958,6 +1019,21 @@ function ComposerDocument({
 
 const TEXT_EDIT_KINDS = new Set(['paragraph', 'heading', 'quote', 'callout']);
 
+interface ComposerUnitActionAnchor {
+	unitId: string;
+	from: number;
+	to: number;
+	depth?: number;
+}
+
+interface ComposerUnitActions {
+	activeUnitId: string | null;
+	onPointerEnter: (anchor: ComposerUnitActionAnchor) => void;
+	onPointerLeave: () => void;
+	onFocus: (anchor: ComposerUnitActionAnchor) => void;
+	render: (anchor: ComposerUnitActionAnchor) => React.ReactNode;
+}
+
 function ComposerBlockRow({
 	block,
 	previousBlock,
@@ -1023,6 +1099,10 @@ function ComposerBlockRow({
 	const showSummary = !isHeading && folded;
 	const raw = block.renderModel.raw;
 	const aiSnapshot = makeBlockSnapshot(snapshot, block);
+	const unitized =
+		block.kind === 'list' ||
+		block.kind === 'task' ||
+		(block.kind === 'paragraph' && block.units.length > 1);
 	const candidateRuntime = chrome.runtime.candidateRuntime;
 	const candidates = useBlockCandidates(candidateRuntime, block.blockId);
 	const newestActiveCandidate = activeCandidateOf(candidates);
@@ -1102,6 +1182,7 @@ function ComposerBlockRow({
 	const actionOpenTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 	const actionCloseTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 	const [actionRowVisible, setActionRowVisible] = React.useState(false);
+	const [activeUnitAction, setActiveUnitAction] = React.useState<ComposerUnitActionAnchor | null>(null);
 	const clearActionOpen = () => {
 		if (!actionOpenTimer.current) return;
 		clearTimeout(actionOpenTimer.current);
@@ -1112,10 +1193,12 @@ function ComposerBlockRow({
 		clearTimeout(actionCloseTimer.current);
 		actionCloseTimer.current = null;
 	};
-	const showActionRow = (immediate = false) => {
+	const showActionRow = (immediate = false, unit: ComposerUnitActionAnchor | null = null) => {
 		clearActionClose();
 		if (ownPanel?.panel === 'insert-draft') return;
+		if (ownPanel?.pinned) return;
 		if (!canClaimSurface('block-actions', actionSurfaceId)) return;
+		setActiveUnitAction(unit);
 		const reveal = () => {
 			actionOpenTimer.current = null;
 			if (!canClaimSurface('block-actions', actionSurfaceId)) return;
@@ -1187,6 +1270,56 @@ function ComposerBlockRow({
 	const actionRowDisplayed =
 		actionRowVisible &&
 		(!activeSurface || activeSurface.id === actionSurfaceId);
+	const renderUnitAction = (anchor: ComposerUnitActionAnchor): React.ReactNode => {
+		if (!editing || showInlineCandidate || activeUnitAction?.unitId !== anchor.unitId) return null;
+		const unitSnapshot = createUnitActionSnapshot(snapshot, block, anchor);
+		const unitPanel = ownPanel?.unitId === anchor.unitId ? ownPanel : null;
+		return (
+			<div
+				className="pk-composer-unit-action-slot"
+				data-unit-action-for={anchor.unitId}
+				style={anchor.depth === undefined
+					? undefined
+					: { '--pk-composer-row-depth': anchor.depth } as React.CSSProperties}
+				onPointerEnter={() => showActionRow(true, anchor)}
+				onPointerLeave={hideActionRow}
+			>
+				<BlockActionRow
+					snapshot={unitSnapshot}
+					variant="unit-ai"
+					allowedCapabilityIds={[POLISH_CAPABILITY_ID]}
+					onOpenPanel={(kind) => {
+						if (kind !== 'instruction') return;
+						if (unitPanel?.panel === kind && unitPanel.pinned) {
+							setPanel(null);
+							return;
+						}
+						setPanel({
+							blockId: block.blockId,
+							panel: kind,
+							pinned: true,
+							unitId: anchor.unitId,
+							range: { from: anchor.from, to: anchor.to },
+						});
+					}}
+					onPreviewPanel={() => undefined}
+					openPanel={unitPanel?.panel ?? null}
+					panelPinned={unitPanel?.pinned ?? false}
+					writeDisabledReason={chrome.runtime.hub ? undefined : config.chrome.actions.disabledNoRuntime}
+					onInvoke={(descriptor, instruction) => onInvoke(descriptor, unitSnapshot, instruction)}
+				/>
+			</div>
+		);
+	};
+	const unitActions: ComposerUnitActions | undefined = unitized
+		? {
+				activeUnitId: activeUnitAction?.unitId ?? null,
+				onPointerEnter: (anchor) => showActionRow(false, anchor),
+				onPointerLeave: hideActionRow,
+				onFocus: (anchor) => showActionRow(true, anchor),
+				render: renderUnitAction,
+			}
+		: undefined;
 
 	const openPanel = (kind: BlockPanelKind) => {
 		if (kind === 'comment') {
@@ -1219,13 +1352,7 @@ function ComposerBlockRow({
 			data-folded={folded}
 			data-level={block.kind === 'heading' ? block.renderModel.level ?? 1 : undefined}
 			data-spacing={spacing}
-			data-unitized={
-				block.kind === 'list' ||
-				block.kind === 'task' ||
-				(block.kind === 'paragraph' && block.units.length > 1)
-					? 'true'
-					: undefined
-			}
+			data-unitized={unitized ? 'true' : undefined}
 			data-drop-before={dropBefore || undefined}
 			data-action-row-visible={actionRowDisplayed || undefined}
 			// FIX-1 F2: a mousedown in the row's dead zone (right of the text edge,
@@ -1234,9 +1361,9 @@ function ComposerBlockRow({
 			// workspace. Forward such clicks: focus the nearest leaf and place the
 			// caret at the closest text position (line-end for past-the-edge clicks).
 			onMouseDown={editing ? (ev) => forwardBlockClickToEditable(ev.currentTarget, ev) : undefined}
-			onPointerEnter={editing ? () => showActionRow(false) : undefined}
+			onPointerEnter={editing && !unitized ? () => showActionRow(false) : undefined}
 			onPointerLeave={editing ? hideActionRow : undefined}
-			onFocusCapture={editing ? () => showActionRow(true) : undefined}
+			onFocusCapture={editing && !unitized ? () => showActionRow(true) : undefined}
 			onMouseLeave={() => {
 				if (ownPanel?.panel === 'instruction') setPanel(null);
 			}}
@@ -1248,6 +1375,9 @@ function ComposerBlockRow({
 				onToggle={() => foldStore.getState().toggle(block.blockId)}
 				onDragStart={onDragStart}
 				dragDisabledReason={onDragStart ? undefined : config.chrome.actions.disabledNoRuntime}
+				onPointerEnter={editing && unitized ? () => showActionRow(false, null) : undefined}
+				onPointerLeave={editing && unitized ? hideActionRow : undefined}
+				onFocusCapture={editing && unitized ? () => showActionRow(true, null) : undefined}
 			/>
 			<div className="pk-composer-block__body" ref={bodyRef}>
 				<BlockFindingPanel
@@ -1287,6 +1417,7 @@ function ComposerBlockRow({
 						candidateRuntime={candidateRuntime}
 						candidateRegistry={chrome.candidateRegistry}
 						aiSnapshot={aiSnapshot}
+						unitActions={unitActions}
 						onInvoke={onInvoke}
 						onFrontmatterLibraryOpenChange={(open) => {
 							if (open === frontmatterLibraryOpen) return;
@@ -1346,7 +1477,7 @@ function ComposerBlockRow({
 							{invokeError}
 						</div>
 					) : null}
-					{editing && !showInlineCandidate && (
+					{editing && !showInlineCandidate && !activeUnitAction && (
 					<BlockActionRow
 						snapshot={aiSnapshot}
 						onInsertBelow={onInsertBelow}
@@ -1565,6 +1696,7 @@ function BlockBody({
 	candidateRuntime,
 	candidateRegistry,
 	aiSnapshot,
+	unitActions,
 	onInvoke,
 	onFrontmatterLibraryOpenChange,
 }: {
@@ -1577,6 +1709,7 @@ function BlockBody({
 	candidateRuntime?: ComposerCandidateRuntimePort;
 	candidateRegistry: CandidateRendererRegistry;
 	aiSnapshot: ComposerContextSnapshot;
+	unitActions?: ComposerUnitActions;
 	onInvoke: (
 		d: ComposerActionDescriptor,
 		snapshot: ComposerContextSnapshot,
@@ -1595,6 +1728,7 @@ function BlockBody({
 				candidateRuntime={candidateRuntime}
 				candidateRegistry={candidateRegistry}
 				aiSnapshot={aiSnapshot}
+				unitActions={unitActions}
 				onInvoke={onInvoke}
 			/>
 		);
@@ -1606,7 +1740,14 @@ function BlockBody({
 		block.kind === 'paragraph' &&
 		block.units.filter((unit) => unit.unitKind === 'paragraph-line').length > 1
 	) {
-		return <EditableParagraphLinesBody block={block} snapshot={snapshot} editing={editing} />;
+		return (
+			<EditableParagraphLinesBody
+				block={block}
+				snapshot={snapshot}
+				editing={editing}
+				unitActions={unitActions}
+			/>
+		);
 	}
 	if (TEXT_EDIT_KINDS.has(block.kind)) {
 		return <EditableTextBody block={block} snapshot={snapshot} editing={editing} />;
@@ -1632,19 +1773,27 @@ function EditableParagraphLinesBody({
 	block,
 	snapshot,
 	editing,
+	unitActions,
 }: {
 	block: ComposerBlock;
 	snapshot: ComposerDocumentSnapshot;
 	editing: boolean;
+	unitActions?: ComposerUnitActions;
 }): React.ReactElement {
 	const lines = block.units.filter((unit) => unit.unitKind === 'paragraph-line');
 	return (
 		<div className="pk-composer-paragraph-lines" data-block-id={block.blockId}>
-			{lines.map((line) => (
+			{lines.map((line) => {
+				const anchor = { unitId: line.unitId, from: line.from, to: line.to };
+				return (
 				<div
 					key={line.unitId}
 					className="pk-composer-paragraph__line"
 					data-unit-id={line.unitId}
+					data-unit-action-active={unitActions?.activeUnitId === line.unitId || undefined}
+					onPointerEnter={() => unitActions?.onPointerEnter(anchor)}
+					onPointerLeave={unitActions?.onPointerLeave}
+					onFocusCapture={() => unitActions?.onFocus(anchor)}
 				>
 					<EditableText
 						blockId={block.blockId}
@@ -1671,8 +1820,10 @@ function EditableParagraphLinesBody({
 						}}
 						className="pk-composer-prose pk-composer-paragraph__line-text"
 					/>
+					{unitActions?.render(anchor)}
 				</div>
-			))}
+				);
+			})}
 		</div>
 	);
 }
@@ -1744,6 +1895,7 @@ function EditableListBody({
 	candidateRuntime,
 	candidateRegistry,
 	aiSnapshot,
+	unitActions,
 	onInvoke,
 }: {
 	block: ComposerBlock;
@@ -1753,6 +1905,7 @@ function EditableListBody({
 	candidateRuntime?: ComposerCandidateRuntimePort;
 	candidateRegistry: CandidateRendererRegistry;
 	aiSnapshot: ComposerContextSnapshot;
+	unitActions?: ComposerUnitActions;
 	onInvoke: (
 		d: ComposerActionDescriptor,
 		snapshot: ComposerContextSnapshot,
@@ -1904,6 +2057,12 @@ function EditableListBody({
 				const slice = snapshot.sourceText.slice(unit.from, contentStart);
 				const checkbox = /^(\s*(?:[-*+]|\d+[.)])\s+\[)([ xX])\]/.exec(slice);
 				const text = snapshot.sourceText.slice(contentStart, contentEnd);
+				const actionAnchor = {
+					unitId: unit.unitId,
+					from: contentStart,
+					to: contentEnd,
+					depth,
+				};
 				return (
 					<React.Fragment key={unit.unitId}>
 						{topLevel ? renderCandidatesAt(topIndex) : null}
@@ -1912,7 +2071,11 @@ function EditableListBody({
 							data-unit-id={unit.unitId}
 							data-list-top-level={topLevel ? 'true' : 'false'}
 							data-list-depth={depth}
+							data-unit-action-active={unitActions?.activeUnitId === unit.unitId || undefined}
 							style={{ '--pk-composer-row-depth': depth } as React.CSSProperties}
+							onPointerEnter={() => unitActions?.onPointerEnter(actionAnchor)}
+							onPointerLeave={unitActions?.onPointerLeave}
+							onFocusCapture={() => unitActions?.onFocus(actionAnchor)}
 						>
 							{checkbox ? (
 								<input
@@ -1969,6 +2132,7 @@ function EditableListBody({
 								}
 							/>
 						</div>
+						{unitActions?.render(actionAnchor)}
 					</React.Fragment>
 				);
 			})}
@@ -1990,19 +2154,6 @@ function listItemDepth(
 		parentId = items.find((candidate) => candidate.unitId === parentId)?.parentUnitId;
 	}
 	return depth;
-}
-
-function listItemOwnContentEnd(
-	source: string,
-	unit: ComposerBlock['units'][number],
-	items: readonly ComposerBlock['units'][number][],
-): number {
-	const firstChild = items
-		.filter((candidate) => candidate.parentUnitId === unit.unitId)
-		.sort((left, right) => left.from - right.from)[0];
-	let to = firstChild?.from ?? unit.to;
-	while (to > unit.from && (source[to - 1] === '\n' || source[to - 1] === '\r')) to -= 1;
-	return to;
 }
 
 function listItemInsertionIndex(candidate: ComposerCandidate, itemCount: number): number {
@@ -2398,6 +2549,15 @@ function makeBlockSnapshot(snapshot: ComposerDocumentSnapshot, block: ComposerBl
 			after: snapshot.sourceText.slice(block.source.to, block.source.to + 400),
 		},
 	};
+}
+
+function ownsComposerFindShortcut(root: HTMLElement): boolean {
+	const composerRoot = root.closest<HTMLElement>('.peak-composer-root');
+	if (!composerRoot) return false;
+	const active = root.ownerDocument.activeElement;
+	if (active && composerRoot.contains(active)) return true;
+	const leaf = composerRoot.closest<HTMLElement>('.workspace-leaf');
+	return Boolean(leaf?.classList.contains('mod-active'));
 }
 
 /** Block ids hidden because their owning heading section is folded. */

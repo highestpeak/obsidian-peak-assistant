@@ -291,6 +291,74 @@
 	border-radius: var(--pkc-paper-radius);
 	box-shadow: var(--pkc-paper-shadow);
 }
+.peak-composer-root .pk-composer-find {
+	position: sticky;
+	top: 8px;
+	z-index: 90;
+	align-self: flex-end;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	box-sizing: border-box;
+	min-height: 38px;
+	margin: 0 0 10px;
+	padding: 4px 6px;
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-lg);
+	background: var(--pk-surface-overlay);
+	box-shadow: var(--pk-shadow-popover);
+	color: var(--pk-fg-muted);
+}
+.peak-composer-root input.pk-composer-find__input {
+	box-sizing: border-box !important;
+	width: min(260px, 34vw) !important;
+	height: 28px !important;
+	min-height: 28px !important;
+	max-height: 28px !important;
+	padding: 0 7px !important;
+	border: 0 !important;
+	box-shadow: none !important;
+	background: transparent !important;
+	color: var(--pk-fg) !important;
+}
+.peak-composer-root input.pk-composer-find__input:focus,
+.peak-composer-root input.pk-composer-find__input:focus-visible {
+	outline: none !important;
+	box-shadow: none !important;
+}
+.peak-composer-root .pk-composer-find__count {
+	min-width: 42px;
+	color: var(--pk-text-secondary);
+	font-size: var(--pk-text-xs);
+	font-variant-numeric: tabular-nums;
+	text-align: center;
+}
+.peak-composer-root .pk-composer-find button {
+	box-sizing: border-box !important;
+	width: 28px !important;
+	height: 28px !important;
+	min-width: 28px !important;
+	min-height: 28px !important;
+	max-width: 28px !important;
+	max-height: 28px !important;
+	padding: 0 !important;
+}
+.peak-composer-root .pk-composer-find-highlights {
+	position: absolute;
+	inset: 0;
+	z-index: 10;
+	pointer-events: none;
+}
+.peak-composer-root .pk-composer-find-highlight {
+	position: absolute;
+	box-sizing: border-box;
+	border-radius: 2px;
+	background: color-mix(in srgb, var(--text-highlight-bg) 72%, transparent);
+}
+.peak-composer-root .pk-composer-find-highlight[data-active='true'] {
+	outline: 2px solid color-mix(in srgb, var(--pk-accent) 78%, transparent);
+	background: color-mix(in srgb, var(--pk-accent) 28%, var(--text-highlight-bg));
+}
 .peak-composer-root .pk-composer-blocks {
 	flex: 1 1 auto;
 	padding-bottom: var(--pk-space-10);
@@ -1756,6 +1824,15 @@
 .peak-composer-root .pk-composer-list__text {
 	flex: 1;
 	min-width: 0;
+}
+.peak-composer-root .pk-composer-unit-action-slot {
+	margin-left: calc(var(--pk-composer-row-depth, 0) * 18px);
+}
+.peak-composer-root .pk-composer-paragraph__line > .pk-composer-unit-action-slot {
+	margin-left: 0;
+}
+.peak-composer-root .pk-block-action-row[data-variant='unit-ai'] .pk-block-action-row__shell {
+	min-height: 34px;
 }
 /* ── full-width live-rendered new-block draft ─────────────────────────────── */
 .peak-composer-root .pk-new-block-draft {

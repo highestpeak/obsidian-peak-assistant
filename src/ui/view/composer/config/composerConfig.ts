@@ -81,6 +81,12 @@ export interface ComposerChromeConfig {
 		directEdit: string;
 		disabledNoRuntime: string;
 	};
+	find: {
+		placeholder: string;
+		previous: string;
+		next: string;
+		close: string;
+	};
 	insertDraft: {
 		chooserLabel: string;
 		commit: string;
@@ -323,6 +329,12 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 				directEdit: '直接编辑',
 				disabledNoRuntime: '编辑运行时未接入',
 			},
+			find: {
+				placeholder: '在当前文档中查找…',
+				previous: '上一个匹配',
+				next: '下一个匹配',
+				close: '关闭查找',
+			},
 			insertDraft: {
 				chooserLabel: '在下方插入',
 				commit: '写入为块',
@@ -545,6 +557,7 @@ function mergeChrome(parsed?: Partial<ComposerChromeConfig>): ComposerChromeConf
 		surfacePointerTravelTolerancePx:
 			parsed.surfacePointerTravelTolerancePx ?? base.surfacePointerTravelTolerancePx,
 		actions: { ...base.actions, ...parsed.actions },
+		find: { ...base.find, ...parsed.find },
 		insertDraft: {
 			...base.insertDraft,
 			...parsed.insertDraft,

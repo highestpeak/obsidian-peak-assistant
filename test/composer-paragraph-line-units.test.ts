@@ -1,6 +1,7 @@
 import assert from 'assert';
 import { readFileSync } from 'fs';
 import {
+	createUnitActionSnapshot,
 	parseComposerDocument,
 	partitionSourceRange,
 } from '@/service/composer';
@@ -16,6 +17,20 @@ assert.deepEqual(
 	['VimWiki', 'Google Keep', 'pkm · GitHub Topics'],
 	'each authored source line is an independently addressable paragraph unit',
 );
+const secondLine = lines[1]!;
+const unitSnapshot = createUnitActionSnapshot(snapshot, paragraph!, secondLine);
+assert.deepEqual(
+	unitSnapshot.target,
+	{
+		kind: 'selection',
+		blockId: paragraph!.blockId,
+		unitId: secondLine.unitId,
+		from: secondLine.from,
+		to: secondLine.to,
+	},
+	'line AI action freezes an exact selection target',
+);
+assert.equal(unitSnapshot.selectionText, 'Google Keep');
 
 const selection = partitionSourceRange(
 	snapshot,
@@ -31,6 +46,14 @@ assert.ok(
 const root = readFileSync('src/ui/view/composer/ComposerRoot.tsx', 'utf8');
 assert.ok(root.includes('EditableParagraphLinesBody'), 'multi-line paragraphs render their authored line units');
 assert.ok(root.includes('pk-composer-paragraph__line'), 'each paragraph line owns an interaction row');
+assert.ok(
+	root.includes('{unitActions?.render(anchor)}') && root.includes('createUnitActionSnapshot'),
+	'each authored line can render an AI action row against its own source range',
+);
+assert.ok(
+	unitSnapshot.target.kind === 'selection' && unitSnapshot.selectionText === 'Google Keep',
+	'unit AI actions freeze an exact selection target instead of rewriting the whole paragraph block',
+);
 
 const css = readFileSync('src/styles/composer.css', 'utf8');
 assert.match(

@@ -17,6 +17,9 @@ export interface BlockRailProps {
 	/** Absent ⇒ drag unavailable (no hub); the handle renders disabled + reason. */
 	onDragStart?: (ev: React.PointerEvent<HTMLButtonElement>) => void;
 	dragDisabledReason?: string;
+	onPointerEnter?: () => void;
+	onPointerLeave?: () => void;
+	onFocusCapture?: () => void;
 }
 
 export function BlockRail({
@@ -26,10 +29,19 @@ export function BlockRail({
 	onToggle,
 	onDragStart,
 	dragDisabledReason,
+	onPointerEnter,
+	onPointerLeave,
+	onFocusCapture,
 }: BlockRailProps): React.ReactElement {
 	const Icon = folded ? ChevronDown : ChevronUp;
 	return (
-		<div className="pk-composer-rail" data-chrome="true">
+		<div
+			className="pk-composer-rail"
+			data-chrome="true"
+			onPointerEnter={onPointerEnter}
+			onPointerLeave={onPointerLeave}
+			onFocusCapture={onFocusCapture}
+		>
 			<IconButton
 				label={foldLabel}
 				aria-expanded={!folded}
