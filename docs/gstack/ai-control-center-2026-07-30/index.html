@@ -496,6 +496,7 @@
     .stepper-button svg { width: 14px; height: 14px; }
 
     .empty { padding: 30px 18px; color: var(--muted); text-align: center; }
+    .registry-create { display: flex; justify-content: flex-end; padding: 8px 6px 4px; }
     .design-note {
       position: fixed;
       right: 12px;
@@ -536,7 +537,7 @@
       <header class="topbar">
         <div class="title">
           <strong>AI Control Center</strong>
-          <span>Manage AI actions and shared prompts</span>
+          <span>Manage AI actions and your AI configuration</span>
         </div>
       </header>
 
@@ -548,7 +549,7 @@
             <span id="listDescription">Choose an action to review its behavior and configuration.</span>
             <label class="search">
               <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
-              <input id="searchInput" type="search" placeholder="Search AI actions or prompts…">
+              <input id="searchInput" type="search" placeholder="Search AI configuration…">
             </label>
           </div>
           <div class="rows" id="rows"></div>
@@ -959,6 +960,11 @@
     let workspace = 'capabilities';
     let activeGroup = 'all';
     let activeItem = capabilities[0];
+    const customPromptDefinitions = [];
+    const chatAssistantDefinitions = [];
+    let activeCustomPromptId = null;
+    let activeAssistantId = null;
+    let editorMode = null;
 
     const rail = document.getElementById('rail');
     const rows = document.getElementById('rows');
@@ -1004,19 +1010,13 @@
     }
 
     function renderRail() {
-      rail.innerHTML = `<div class="rail-title">AI actions</div>` +
-        groups.map(([id, icon, label]) => {
+      rail.innerHTML = groups.map(([id, icon, label]) => {
           const count = id === 'all' ? capabilities.length : capabilities.filter(item => item.group === id).length;
           const active = workspace === 'capabilities' && activeGroup === id;
           return `<button class="rail-button ${active ? 'active' : ''}" data-group="${id}">${icons[icon]}<span>${label}</span><small>${count}</small></button>`;
         }).join('') +
-        `<div class="rail-separator"></div>
-         <div class="rail-title">Prompt library</div>
-         <button class="rail-button ${workspace === 'prompts' ? 'active' : ''}" data-catalog="prompts">${icons.prompt}<span>All prompts</span><small>${prompts.length}</small></button>
-         <button class="rail-button ${workspace === 'custom-prompts' ? 'active' : ''}" data-catalog="custom-prompts">${icons.prompt}<span>Custom prompts</span><small>Live</small></button>
-         <div class="rail-separator"></div>
-         <div class="rail-title">Chat Studio</div>
-         <button class="rail-button ${workspace === 'assistants' ? 'active' : ''}" data-catalog="assistants">${icons.message}<span>Chat Assistants</span><small>Live</small></button>`;
+        `<button class="rail-button ${workspace === 'custom-prompts' ? 'active' : ''}" data-catalog="custom-prompts">${icons.prompt}<span>Custom prompts</span><small>${customPromptDefinitions.length}</small></button>
+         <button class="rail-button ${workspace === 'assistants' ? 'active' : ''}" data-catalog="assistants">${icons.message}<span>Chat Assistants</span><small>${chatAssistantDefinitions.length}</small></button>`;
     }
 
     function capabilityRow(item) {
@@ -1027,6 +1027,22 @@
           <span class="row-meta">${item.shape} · ${item.route}</span>
         </span>
         ${statusPill(item.status)}
+      </button>`;
+    }
+
+    function customPromptRow(item) {
+      return `<button class="row ${activeCustomPromptId === item.id ? 'active' : ''}" data-custom-prompt-id="${item.id}">
+        <span class="row-icon">${icons.prompt}</span>
+        <span class="row-copy"><span class="row-title">${escapeHtml(item.title)}</span><span class="row-meta">Copilot action · ${escapeHtml(item.description || 'Custom Prompt')}</span></span>
+        <span class="pill purple">Custom</span>
+      </button>`;
+    }
+
+    function assistantRow(item) {
+      return `<button class="row ${activeAssistantId === item.id ? 'active' : ''}" data-assistant-id="${item.id}">
+        <span class="row-icon">${icons.message}</span>
+        <span class="row-copy"><span class="row-title">${escapeHtml(item.title)}</span><span class="row-meta">Chat Assistant · ${escapeHtml(item.modelPreference)}</span></span>
+        <span class="pill purple">Assistant</span>
       </button>`;
     }
 
@@ -1072,16 +1088,20 @@
       listDescription.classList.remove('hidden');
       if (query) {
         const matchedCapabilities = capabilities.filter(item => [item.id, item.title, item.surface, item.shape, item.route].join(' ').toLowerCase().includes(query));
-        const matchedPrompts = prompts.filter(item => [item.id, item.title, item.group, item.kind, item.callers].join(' ').toLowerCase().includes(query));
+        const matchedCustomPrompts = customPromptDefinitions.filter(item => [item.title, item.description, item.template].join(' ').toLowerCase().includes(query));
+        const matchedAssistants = chatAssistantDefinitions.filter(item => [item.title, item.instructions, item.knowledge].join(' ').toLowerCase().includes(query));
         listTitle.textContent = 'Search results';
-        listDescription.textContent = `${matchedCapabilities.length} AI actions · ${matchedPrompts.length} prompts`;
+        listDescription.textContent = `${matchedCapabilities.length} AI actions · ${matchedCustomPrompts.length} custom prompts · ${matchedAssistants.length} Chat Assistants`;
         const capabilityResults = matchedCapabilities.length
           ? `<div class="family-head"><span>AI actions</span><small>${matchedCapabilities.length}</small></div>${matchedCapabilities.map(capabilityRow).join('')}`
           : '';
-        const promptResults = matchedPrompts.length
-          ? `<div class="family-head"><span>Prompts</span><small>${matchedPrompts.length}</small></div>${matchedPrompts.map(promptRow).join('')}`
+        const customPromptResults = matchedCustomPrompts.length
+          ? `<div class="family-head"><span>Custom prompts</span><small>${matchedCustomPrompts.length}</small></div>${matchedCustomPrompts.map(customPromptRow).join('')}`
           : '';
-        rows.innerHTML = capabilityResults + promptResults || '<div class="empty">No AI action or prompt matches this search.</div>';
+        const assistantResults = matchedAssistants.length
+          ? `<div class="family-head"><span>Chat Assistants</span><small>${matchedAssistants.length}</small></div>${matchedAssistants.map(assistantRow).join('')}`
+          : '';
+        rows.innerHTML = capabilityResults + customPromptResults + assistantResults || '<div class="empty">No AI configuration matches this search.</div>';
         return;
       }
       if (workspace === 'capabilities') {
@@ -1096,26 +1116,18 @@
         return;
       }
 
-      if (workspace === 'prompts') {
-        listTitle.textContent = 'All prompts';
-        listDescription.textContent = '';
-        listDescription.classList.add('hidden');
-        const filtered = prompts.filter(item => [item.id, item.title, item.group, item.kind].join(' ').toLowerCase().includes(query));
-        rows.innerHTML = filtered.length ? filtered.map(promptRow).join('') : '<div class="empty">No prompt matches this search.</div>';
-        return;
-      }
-
       if (workspace === 'custom-prompts') {
         listTitle.textContent = 'Custom prompts';
         listDescription.textContent = 'Your reusable Copilot prompts. Each saved prompt becomes its own available Copilot action.';
-        rows.innerHTML = '<div class="empty">No custom prompts in this design fixture.</div>';
+        rows.innerHTML = `<div class="registry-create"><button class="action-button primary" data-editor="custom-prompt">New Custom Prompt</button></div>${customPromptDefinitions.length ? customPromptDefinitions.map(customPromptRow).join('') : '<div class="empty">No custom prompts yet.</div>'}`;
         return;
       }
 
       if (workspace === 'assistants') {
         listTitle.textContent = 'Chat Assistants';
         listDescription.textContent = 'Saved assistant identities for Chat Studio, each with its own instructions, model preference, knowledge, and tool policy.';
-        rows.innerHTML = '<div class="empty">No saved Chat Assistants in this design fixture.</div>';
+        rows.innerHTML = `<div class="registry-create"><button class="action-button primary" data-editor="assistant">New Chat Assistant</button></div>${chatAssistantDefinitions.length ? chatAssistantDefinitions.map(assistantRow).join('') : '<div class="empty">No saved Chat Assistants yet.</div>'}`;
+        return;
       }
 
     }
@@ -1265,6 +1277,24 @@
     function editorContent(type, promptId) {
       const prompt = promptId ? prompts.find(candidate => candidate.id === promptId) : null;
       const sharedSubtitle = `${activeItem.title} · changes stay scoped to this Configuration view.`;
+      if (type === 'custom-prompt') {
+        const definition = customPromptDefinitions.find(item => item.id === promptId);
+        return {
+          title: definition ? `Edit ${definition.title}` : 'New Custom Prompt',
+          subtitle: 'Create a reusable Prompt that appears as its own Copilot action.',
+          wide: true,
+          body: `<label class="field"><span>Name</span><input data-registry-name value="${escapeHtml(definition?.title ?? '')}" placeholder="For example, Extract decisions"></label><label class="field"><span>What it does</span><input data-registry-description value="${escapeHtml(definition?.description ?? '')}" placeholder="Shown in the Copilot action list"></label><label class="field"><span>Prompt template</span><textarea data-registry-template placeholder="Write the instructions for this action. You can use the action's declared Handlebars variables.">${escapeHtml(definition?.template ?? '')}</textarea></label><label class="field"><span>Model policy</span><select data-registry-model><option ${definition?.modelPolicy === 'Use AI Setup default' || !definition ? 'selected' : ''}>Use AI Setup default</option><option ${definition?.modelPolicy === 'Choose a model for this Prompt' ? 'selected' : ''}>Choose a model for this Prompt</option></select></label>`
+        };
+      }
+      if (type === 'assistant') {
+        const definition = chatAssistantDefinitions.find(item => item.id === promptId);
+        return {
+          title: definition ? `Edit ${definition.title}` : 'New Chat Assistant',
+          subtitle: 'Create a reusable Assistant identity for Chat Studio conversations.',
+          wide: true,
+          body: `<label class="field"><span>Name</span><input data-registry-name value="${escapeHtml(definition?.title ?? '')}" placeholder="For example, Research assistant"></label><label class="field"><span>Instructions</span><textarea data-registry-instructions placeholder="Describe how this Assistant should work.">${escapeHtml(definition?.instructions ?? '')}</textarea></label><label class="field"><span>Model preference</span><select data-registry-model><option ${definition?.modelPreference === 'Use AI Setup default' || !definition ? 'selected' : ''}>Use AI Setup default</option><option ${definition?.modelPreference === 'Research' ? 'selected' : ''}>Research</option><option ${definition?.modelPreference === 'Fast Lookup' ? 'selected' : ''}>Fast Lookup</option></select></label><label class="field"><span>Knowledge</span><input data-registry-knowledge value="${escapeHtml(definition?.knowledge ?? '')}" placeholder="Optional files, folders, or sources"></label><label class="field"><span>Tools and approval</span><select data-registry-tools><option ${definition?.toolPolicy === 'Ask before write-capable tools' || !definition ? 'selected' : ''}>Ask before write-capable tools</option><option ${definition?.toolPolicy === 'Allow listed read tools' ? 'selected' : ''}>Allow listed read tools</option><option ${definition?.toolPolicy === 'Disable tools' ? 'selected' : ''}>Disable tools</option></select></label>`
+        };
+      }
       if (type === 'prompt') {
         const migrating = prompt?.status === 'migration';
         return {
@@ -1298,6 +1328,7 @@
 
     function openEditorModal(trigger, type, promptId) {
       const content = editorContent(type, promptId);
+      editorMode = { type, promptId };
       editorReturnFocus = trigger;
       editorInspectorScrollTop = inspector.scrollTop;
       editorModalTitle.textContent = content.title;
@@ -1317,6 +1348,7 @@
       inspector.scrollTop = editorInspectorScrollTop;
       editorReturnFocus?.focus();
       editorReturnFocus = null;
+      editorMode = null;
     }
 
     function promptRole(prompt) {
@@ -1414,11 +1446,21 @@
     function renderInspector() {
       if (workspace === 'capabilities') return renderCapabilityInspector(activeItem);
       if (workspace === 'custom-prompts') {
-        inspector.innerHTML = `<div class="inspector-head"><div class="breadcrumbs">Prompt Library</div><div class="inspector-title-row"><h1>Custom prompts</h1></div><p class="inspector-subtitle">Reusable Prompts you create for Copilot. They are not one shared action: every saved prompt has its own title, instructions, variables, and Copilot entry.</p></div><section class="panel active"><div class="section"><h2>Where they appear</h2><dl class="facts"><dt>Create and edit</dt><dd>Custom Prompts</dd><dt>Run from</dt><dd>Copilot actions for the current document or selection</dd><dt>Model and tools</dt><dd>Configured on the individual prompt action</dd><dt>Storage</dt><dd>Your Prompt definition</dd></dl></div><div class="notice">${icons.prompt}<span>This static design fixture does not load your Vault. In Peak, each saved Custom Prompt is listed here individually.</span></div></section>`;
+        const definition = customPromptDefinitions.find(item => item.id === activeCustomPromptId);
+        if (!definition) {
+          inspector.innerHTML = `<div class="inspector-head"><div class="breadcrumbs">AI Control Center</div><div class="inspector-title-row"><h1>Custom prompts</h1></div><p class="inspector-subtitle">Reusable Prompts you create for Copilot. Each saved Prompt becomes a named action for the current document or selection.</p></div><section class="panel active"><div class="section"><h2>Create a reusable action</h2><p class="modal-copy">A Custom Prompt keeps its own instructions and model policy. It uses the context declared by the Copilot action when it runs.</p><div class="button-row"><button class="action-button primary" data-editor="custom-prompt">New Custom Prompt</button></div></div></section>`;
+          return;
+        }
+        inspector.innerHTML = `<div class="inspector-head"><div class="breadcrumbs">Custom prompts · Copilot action</div><div class="inspector-title-row"><h1>${escapeHtml(definition.title)}</h1><span class="pill purple">Custom</span></div><p class="inspector-subtitle">${escapeHtml(definition.description || 'Reusable Copilot Prompt')}</p></div><section class="panel active"><div class="section"><h2>Prompt &amp; instructions</h2><div class="prompt-box"><div class="prompt-head"><strong>Prompt template</strong><button class="link-button" data-editor="custom-prompt" data-registry-id="${definition.id}">Edit prompt</button></div><div class="prompt-body">${escapeHtml(definition.template || 'No instructions yet.')}</div></div></div><div class="section"><h2>Model policy</h2><dl class="facts"><dt>Policy</dt><dd>${escapeHtml(definition.modelPolicy)}</dd><dt>Runs in</dt><dd>Copilot action menu</dd></dl></div></section>`;
         return;
       }
       if (workspace === 'assistants') {
-        inspector.innerHTML = `<div class="inspector-head"><div class="breadcrumbs">Chat Studio</div><div class="inspector-title-row"><h1>Chat Assistants</h1></div><p class="inspector-subtitle">Saved Assistant identities for conversations. An Assistant supplies its own instructions, knowledge, model preference, tool policy, and approval boundaries.</p></div><section class="panel active"><div class="section"><h2>Where they appear</h2><dl class="facts"><dt>Create and edit</dt><dd>Chat Studio</dd><dt>Used in</dt><dd>New or existing conversations</dd><dt>Owns</dt><dd>Instructions, knowledge, model preference, tools, and approvals</dd><dt>Storage</dt><dd>Your saved Assistant definition</dd></dl></div><div class="notice">${icons.message}<span>This static design fixture does not load saved Assistants. In Peak, each Assistant is listed here individually.</span></div></section>`;
+        const definition = chatAssistantDefinitions.find(item => item.id === activeAssistantId);
+        if (!definition) {
+          inspector.innerHTML = `<div class="inspector-head"><div class="breadcrumbs">AI Control Center</div><div class="inspector-title-row"><h1>Chat Assistants</h1></div><p class="inspector-subtitle">Reusable Assistant identities for conversations. Each Assistant owns its own instructions, knowledge, model preference, tool policy, and approval boundaries.</p></div><section class="panel active"><div class="section"><h2>Create an Assistant</h2><p class="modal-copy">A Chat Assistant is selected when starting or continuing a conversation. It is not a single Chat action or a Prompt template.</p><div class="button-row"><button class="action-button primary" data-editor="assistant">New Chat Assistant</button></div></div></section>`;
+          return;
+        }
+        inspector.innerHTML = `<div class="inspector-head"><div class="breadcrumbs">Chat Assistants · Chat Studio</div><div class="inspector-title-row"><h1>${escapeHtml(definition.title)}</h1><span class="pill purple">Assistant</span></div><p class="inspector-subtitle">A saved conversation identity with its own behavior and permissions.</p></div><section class="panel active"><div class="section"><h2>Instructions</h2><div class="prompt-box"><div class="prompt-head"><strong>Assistant instructions</strong><button class="link-button" data-editor="assistant" data-registry-id="${definition.id}">Edit Assistant</button></div><div class="prompt-body">${escapeHtml(definition.instructions || 'No instructions yet.')}</div></div></div><div class="section"><h2>Configuration</h2><dl class="facts"><dt>Model preference</dt><dd>${escapeHtml(definition.modelPreference)}</dd><dt>Knowledge</dt><dd>${escapeHtml(definition.knowledge || 'No additional knowledge')}</dd><dt>Tools and approval</dt><dd>${escapeHtml(definition.toolPolicy)}</dd></dl></div></section>`;
         return;
       }
       return renderPromptInspector(activeItem);
@@ -1428,6 +1470,47 @@
       renderRail();
       renderRows();
       renderInspector();
+    }
+
+    function saveRegistryDefinition() {
+      const mode = editorMode;
+      if (mode?.type !== 'custom-prompt' && mode?.type !== 'assistant') return false;
+      const nameField = editorModalBody.querySelector('[data-registry-name]');
+      const title = nameField?.value.trim();
+      if (!title) {
+        nameField?.focus();
+        return false;
+      }
+      const findValue = selector => editorModalBody.querySelector(selector)?.value.trim() ?? '';
+      if (mode.type === 'custom-prompt') {
+        const existing = customPromptDefinitions.find(item => item.id === mode.promptId);
+        const definition = {
+          id: existing?.id ?? `custom-prompt-${Date.now()}`,
+          title,
+          description: findValue('[data-registry-description]'),
+          template: findValue('[data-registry-template]'),
+          modelPolicy: findValue('[data-registry-model]') || 'Use AI Setup default'
+        };
+        if (existing) Object.assign(existing, definition);
+        else customPromptDefinitions.push(definition);
+        workspace = 'custom-prompts';
+        activeCustomPromptId = definition.id;
+        return true;
+      }
+      const existing = chatAssistantDefinitions.find(item => item.id === mode.promptId);
+      const definition = {
+        id: existing?.id ?? `chat-assistant-${Date.now()}`,
+        title,
+        instructions: findValue('[data-registry-instructions]'),
+        modelPreference: findValue('[data-registry-model]') || 'Use AI Setup default',
+        knowledge: findValue('[data-registry-knowledge]'),
+        toolPolicy: findValue('[data-registry-tools]') || 'Ask before write-capable tools'
+      };
+      if (existing) Object.assign(existing, definition);
+      else chatAssistantDefinitions.push(definition);
+      workspace = 'assistants';
+      activeAssistantId = definition.id;
+      return true;
     }
 
     document.addEventListener('click', event => {
@@ -1460,14 +1543,13 @@
 
       const editorButton = event.target.closest('[data-editor]');
       if (editorButton) {
-        openEditorModal(editorButton, editorButton.dataset.editor, editorButton.dataset.promptId);
+        openEditorModal(editorButton, editorButton.dataset.editor, editorButton.dataset.promptId ?? editorButton.dataset.registryId);
         return;
       }
 
       const catalogButton = event.target.closest('[data-catalog]');
       if (catalogButton) {
         workspace = catalogButton.dataset.catalog;
-        if (workspace === 'prompts') activeItem = prompts[0];
         searchInput.value = '';
         renderAll();
         return;
@@ -1484,6 +1566,26 @@
         return;
       }
 
+      const customPromptButton = event.target.closest('[data-custom-prompt-id]');
+      if (customPromptButton) {
+        workspace = 'custom-prompts';
+        activeCustomPromptId = customPromptButton.dataset.customPromptId;
+        renderRail();
+        renderRows();
+        renderInspector();
+        return;
+      }
+
+      const assistantButton = event.target.closest('[data-assistant-id]');
+      if (assistantButton) {
+        workspace = 'assistants';
+        activeAssistantId = assistantButton.dataset.assistantId;
+        renderRail();
+        renderRows();
+        renderInspector();
+        return;
+      }
+
       const row = event.target.closest('[data-id]');
       if (row) {
         workspace = 'capabilities';
@@ -1494,21 +1596,20 @@
         return;
       }
 
-      const promptRowButton = event.target.closest('[data-prompt-id]');
-      if (promptRowButton) {
-        workspace = 'prompts';
-        activeItem = prompts.find(item => item.id === promptRowButton.dataset.promptId);
-        renderRail();
-        renderRows();
-        renderInspector();
-        return;
-      }
-
     });
 
     editorModalClose.addEventListener('click', closeEditorModal);
     editorModalCancel.addEventListener('click', closeEditorModal);
-    editorModalSave.addEventListener('click', closeEditorModal);
+    editorModalSave.addEventListener('click', () => {
+      const savedRegistryDefinition = saveRegistryDefinition();
+      if (editorMode?.type === 'custom-prompt' || editorMode?.type === 'assistant') {
+        if (!savedRegistryDefinition) return;
+        closeEditorModal();
+        renderAll();
+        return;
+      }
+      closeEditorModal();
+    });
     editorModal.addEventListener('click', event => {
       if (event.target === editorModal) closeEditorModal();
     });
