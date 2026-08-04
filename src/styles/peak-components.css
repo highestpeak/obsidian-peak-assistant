@@ -4200,11 +4200,6 @@
   transition: opacity 140ms ease;
 }
 
-:is(.pktw-root, .peak-design-root) .pk-command-gateway-list[data-scanning="true"] {
-  opacity: 0.45;
-  pointer-events: none;
-}
-
 :is(.pktw-root, .peak-design-root) .pk-command-plugin-group {
   overflow: hidden;
   border-radius: var(--pk-radius-md);
@@ -4589,6 +4584,491 @@
 
   :is(.pktw-root, .peak-design-root) .pk-command-activity__summary {
     grid-column: 2;
+  }
+}
+
+/* Command Gateway dedicated workspace. Settings only keeps the compact entry
+   card below; review, filtering and authorization live in this ItemView. */
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 16px;
+  overflow: hidden;
+  color: var(--pk-text-primary);
+  background: var(--pk-bg);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view__header,
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view__summary-row,
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-toolbar,
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view__identity,
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-toolbar__filters,
+:is(.pktw-root, .peak-design-root) .pk-command-access-filter {
+  display: flex;
+  align-items: center;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view__header,
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view__summary-row,
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-toolbar {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view__header {
+  flex: 0 0 auto;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view__identity {
+  gap: 10px;
+  min-width: 0;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view__icon,
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-settings-card__icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid color-mix(in srgb, var(--pk-accent) 30%, var(--pk-border-soft));
+  border-radius: var(--pk-radius-md);
+  color: var(--pk-accent-text);
+  background: color-mix(in srgb, var(--pk-accent) 9%, var(--pk-surface-raised));
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view__icon svg,
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-settings-card__icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view__title-copy,
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-settings-card__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view__title {
+  font-size: var(--pk-text-lg);
+  font-weight: 650;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view__sub,
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view__last-scan {
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-xs);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view .pk-command-gateway-summary {
+  grid-template-columns: repeat(3, minmax(96px, 1fr));
+  min-width: min(480px, 100%);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view .pk-command-gateway-summary__stat:last-child {
+  border-right: 0;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view .pk-command-scan-progress {
+  grid-template-columns: 18px minmax(0, 1fr);
+  padding: 10px 12px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view .pk-command-scan-progress > svg {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  color: var(--pk-accent-text);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-scan-progress__track[data-indeterminate="true"] > span {
+  width: 34%;
+  animation: pk-command-gateway-progress 1.2s ease-in-out infinite;
+}
+
+@keyframes pk-command-gateway-progress {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(300%); }
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-toolbar {
+  flex: 0 0 auto;
+  padding: 8px;
+  border: 1px solid var(--pk-border-soft);
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-surface-raised);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-toolbar__filters {
+  flex: 1 1 auto;
+  gap: 7px;
+  min-width: 0;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view .pk-command-gateway-search {
+  flex: 1 1 240px;
+  max-width: 420px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view .pk-command-gateway-select {
+  display: grid;
+  width: 174px;
+  flex: 0 1 174px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-access-filter {
+  flex: 0 0 auto;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--pk-border-soft);
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-surface-sunken);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-access-filter .pk-btn {
+  white-space: nowrap;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view > .pk-command-gateway-batch {
+  min-height: 42px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--pk-border-soft);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view__workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 12px;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view__catalog {
+  min-width: 0;
+  min-height: 0;
+  padding-right: 3px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view .pk-command-gateway-columns,
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view .pk-command-review-row {
+  grid-template-columns: minmax(260px, 1fr) 116px 160px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view .pk-command-review-row {
+  min-height: 58px;
+  padding: 5px 10px;
+  transition: background 120ms ease;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view .pk-command-review-row[data-selected="true"] {
+  background: color-mix(in srgb, var(--pk-accent) 8%, var(--pk-surface-raised));
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-review-row__main-action.pk-btn {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: auto !important;
+  min-height: 46px !important;
+  max-height: none !important;
+  padding: 4px !important;
+  border: 0 !important;
+  border-radius: var(--pk-radius-sm) !important;
+  text-align: left;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-review-row__main-action > svg {
+  width: 15px;
+  height: 15px;
+  color: var(--pk-text-tertiary);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-review-row__main-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-review-row__title-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-review-row__id {
+  overflow: hidden;
+  color: var(--pk-text-tertiary);
+  font: 10px/1.3 var(--font-monospace);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-plugin-group__head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--pk-surface-raised);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-detail {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  overflow-y: auto;
+  border: 1px solid var(--pk-border-soft);
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-surface-raised);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-detail--empty {
+  align-items: center;
+  justify-content: center;
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-sm);
+  text-align: center;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-detail--empty svg {
+  width: 20px;
+  height: 20px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-detail__eyebrow {
+  color: var(--pk-text-tertiary);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-detail__title {
+  font-size: var(--pk-text-lg);
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-detail__plugin {
+  margin-top: -8px;
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-xs);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-detail__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-detail__field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 10px;
+  border-top: 1px solid var(--pk-border-soft);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-detail__field > span:first-child {
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-xs);
+  font-weight: 600;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-detail__field > span:last-child {
+  color: var(--pk-text-secondary);
+  font-size: var(--pk-text-sm);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-detail__field > span[data-mono="true"] {
+  font-family: var(--font-monospace);
+  font-size: 10px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-empty {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-sm);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-view > .pk-command-activity {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-activity__toggle.pk-btn {
+  display: flex;
+  width: max-content !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  max-height: 30px !important;
+  padding: 0 6px !important;
+  gap: 6px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-activity__toggle svg {
+  width: 13px;
+  height: 13px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-settings-card {
+  container-type: inline-size;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--pk-border-soft);
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-surface-raised);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-settings-card__main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-settings-card__summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--pk-border-soft);
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-xs);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-settings-card__summary > span:not(.pk-command-gateway-settings-card__scan) {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-settings-card__summary strong {
+  color: var(--pk-text-primary);
+  font-size: var(--pk-text-sm);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-settings-card__scan {
+  margin-left: auto;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-settings-card__status,
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-settings-card__error {
+  color: var(--pk-text-tertiary);
+  font-size: var(--pk-text-xs);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-command-gateway-settings-card__error {
+  color: var(--pk-danger);
+}
+
+@container (max-width: 980px) {
+  :is(.pktw-root, .peak-design-root) .pk-command-gateway-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  :is(.pktw-root, .peak-design-root) .pk-command-access-filter {
+    align-self: flex-start;
+  }
+
+  :is(.pktw-root, .peak-design-root) .pk-command-gateway-view__workspace {
+    grid-template-columns: minmax(0, 1fr) 260px;
+  }
+}
+
+@container (max-width: 760px) {
+  :is(.pktw-root, .peak-design-root) .pk-command-gateway-view {
+    padding: 12px;
+  }
+
+  :is(.pktw-root, .peak-design-root) .pk-command-gateway-view__summary-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  :is(.pktw-root, .peak-design-root) .pk-command-gateway-view .pk-command-gateway-summary {
+    min-width: 0;
+    width: 100%;
+  }
+
+  :is(.pktw-root, .peak-design-root) .pk-command-gateway-toolbar__filters {
+    flex-wrap: wrap;
+  }
+
+  :is(.pktw-root, .peak-design-root) .pk-command-gateway-view .pk-command-gateway-search {
+    max-width: none;
+    flex-basis: 100%;
+  }
+
+  :is(.pktw-root, .peak-design-root) .pk-command-gateway-view .pk-command-gateway-select {
+    display: grid;
+    flex: 1 1 160px;
+    width: auto;
+  }
+
+  :is(.pktw-root, .peak-design-root) .pk-command-gateway-view__workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  :is(.pktw-root, .peak-design-root) .pk-command-detail {
+    display: none;
+  }
+}
+
+@container (max-width: 580px) {
+  :is(.pktw-root, .peak-design-root) .pk-command-gateway-view__header,
+  :is(.pktw-root, .peak-design-root) .pk-command-gateway-view > .pk-command-gateway-batch {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  :is(.pktw-root, .peak-design-root) .pk-command-access-filter {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  :is(.pktw-root, .peak-design-root) .pk-command-gateway-view .pk-command-gateway-columns {
+    display: none;
+  }
+
+  :is(.pktw-root, .peak-design-root) .pk-command-gateway-view .pk-command-review-row {
+    grid-template-columns: minmax(0, 1fr) 150px;
+  }
+
+  :is(.pktw-root, .peak-design-root) .pk-command-gateway-view .pk-command-review-row__risk {
+    display: none;
+  }
+
+  :is(.pktw-root, .peak-design-root) .pk-command-gateway-settings-card__main {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  :is(.pktw-root, .peak-design-root) .pk-command-gateway-settings-card__main > .pk-btn {
+    grid-column: 1 / -1;
+    justify-self: end;
   }
 }
 

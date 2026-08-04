@@ -32,7 +32,13 @@ import { MediaGenerationTab } from './settings/tabs/MediaGenerationTab';
 import { AdvancedTab } from './settings/tabs/AdvancedTab';
 import type { TabId } from './settings/types';
 
-export function SettingsRoot({ initialTab }: { initialTab?: TabId } = {}) {
+export function SettingsRoot({
+	initialTab,
+	onOpenCommandGateway = () => {},
+}: {
+	initialTab?: TabId;
+	onOpenCommandGateway?: () => void | Promise<void>;
+} = {}) {
     const { eventBus, plugin } = useServiceContext();
     const [activeTab, setActiveTab] = useState<TabId>(initialTab ?? 'overview');
     const [settings, setSettings] = useState<MyPluginSettings>(plugin.settings);
@@ -109,7 +115,11 @@ export function SettingsRoot({ initialTab }: { initialTab?: TabId } = {}) {
                         <KnowledgeIndexTab settings={settings} settingsUpdates={settingsUpdates} />
                     )}
                     {activeTab === 'tools' && (
-                        <ToolsTab settings={settings} settingsUpdates={settingsUpdates} />
+                        <ToolsTab
+							settings={settings}
+							settingsUpdates={settingsUpdates}
+							onOpenCommandGateway={onOpenCommandGateway}
+						/>
                     )}
                     {activeTab === 'mediaGeneration' && (
                         <MediaGenerationTab

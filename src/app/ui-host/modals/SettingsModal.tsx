@@ -16,6 +16,12 @@ export class SettingsModal extends ReactModalHost {
 	}
 
 	protected renderElement(): React.ReactElement {
-		return createReactElementWithServices(SettingsRoot, { initialTab: this.initialTab }, this.appContext);
+		return createReactElementWithServices(SettingsRoot, {
+			initialTab: this.initialTab,
+			onOpenCommandGateway: async () => {
+				this.close();
+				await this.appContext.viewManager.activatePluginCommandGatewayView();
+			},
+		}, this.appContext);
 	}
 }

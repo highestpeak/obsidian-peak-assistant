@@ -64,6 +64,9 @@ class FakeCommandPort implements PluginCommandPort {
 
 	async preflight(commandId: string) {
 		const found = this.descriptors.find((entry) => entry.commandId === commandId);
+		if (found?.availability === 'conditional') {
+			return { commandId, availability: 'unavailable' as const, reason: 'active-editor-required' };
+		}
 		return found
 			? { commandId, availability: found.availability }
 			: { commandId, availability: 'unavailable' as const, reason: 'missing' };
@@ -142,7 +145,13 @@ function curatorFinding(commandId: string) {
 	};
 }
 
-function createHarness(curateResponse?: unknown) {
+function createHarness(
+	curateResponse?: unknown,
+	options: {
+		queryStructured?: () => Promise<unknown>;
+		config?: PluginCommandGatewayConfig;
+	} = {},
+) {
 	const commandPort = new FakeCommandPort();
 	const auditPort = new FakeAuditPort();
 	let gatewaySettings: PluginCommandGatewaySettings = { reviews: {}, findings: {} };
@@ -152,6 +161,7 @@ function createHarness(curateResponse?: unknown) {
 		auditPort,
 		aiServiceManager: {
 			async queryStructured() {
+				if (options.queryStructured) return options.queryStructured();
 				return curateResponse ?? {
 					findings: [
 						curatorFinding(SAFE.commandId),
@@ -163,7 +173,7 @@ function createHarness(curateResponse?: unknown) {
 		} as any,
 		templateManager: {
 			async loadJson(): Promise<PluginCommandGatewayConfig> {
-				return DEFAULT_PLUGIN_COMMAND_GATEWAY_CONFIG;
+				return options.config ?? DEFAULT_PLUGIN_COMMAND_GATEWAY_CONFIG;
 			},
 		} as any,
 		getSettings: () => ({ pluginCommandGateway: gatewaySettings }) as any,
@@ -270,6 +280,53 @@ async function testUnifiedScanKeepsDeterministicFallback(): Promise<void> {
 	assert.ok(phases.includes('explaining'));
 	assert.strictEqual(phases.at(-1), 'complete');
 	console.log('PASS: unifiedScanKeepsDeterministicFallback');
+}
+
+async function testScanTimesOutWithoutHidingDeterministicFacts(): Promise<void> {
+	const config: PluginCommandGatewayConfig = {
+		...DEFAULT_PLUGIN_COMMAND_GATEWAY_CONFIG,
+		curation: {
+			...DEFAULT_PLUGIN_COMMAND_GATEWAY_CONFIG.curation,
+			batchTimeoutMs: 1,
+		},
+	};
+	const harness = createHarness(undefined, {
+		config,
+		queryStructured: () => new Promise(() => {}),
+	});
+	let deterministicCount = 0;
+	const result = await harness.runtime.scan((progress) => {
+		if (progress.snapshot) deterministicCount = progress.snapshot.commands.length;
+	});
+	assert.strictEqual(deterministicCount, 4);
+	assert.strictEqual(result.explanationStatus, 'fallback');
+	assert.match(result.warning ?? '', /timeout/);
+	assert.strictEqual(result.snapshot.commands.length, 4);
+	console.log('PASS: scanTimesOutWithoutHidingDeterministicFacts');
+}
+
+async function testContextualCommandCanBeReviewedButStillPreflightsStrictly(): Promise<void> {
+	const harness = createHarness();
+	const contextual: PluginCommandDescriptor = {
+		...SAFE,
+		commandId: 'editor-tools:open-current-heading',
+		commandName: 'Open current heading',
+		pluginId: 'editor-tools',
+		pluginName: 'Editor Tools',
+		sourceHash: 'editor-context-v1',
+		availability: 'conditional',
+		availabilityReason: 'active-editor-required',
+	};
+	harness.commandPort.descriptors.push(contextual);
+	await harness.runtime.allowMany([contextual.commandId]);
+	const compiled = await harness.runtime.compileApprovedSkill();
+	assert.ok(compiled.approvedCommands[contextual.commandId]);
+	const [tool] = await harness.runtime.getToolDefinitions();
+	const result = await tool!.execute({ commandId: contextual.commandId }, toolCtx());
+	assert.strictEqual(result.ok, false);
+	assert.match(result.error ?? '', /active-editor-required/);
+	assert.deepStrictEqual(harness.commandPort.executed, []);
+	console.log('PASS: contextualCommandCanBeReviewedButStillPreflightsStrictly');
 }
 
 async function testBulkAllowIsAtomicAndFailClosed(): Promise<void> {
@@ -433,6 +490,8 @@ async function run(): Promise<void> {
 	await testCuratorCannotDowngradeModalBoundary();
 	await testMalformedCuratorOutputDoesNotPersist();
 	await testUnifiedScanKeepsDeterministicFallback();
+	await testScanTimesOutWithoutHidingDeterministicFacts();
+	await testContextualCommandCanBeReviewedButStillPreflightsStrictly();
 	await testBulkAllowIsAtomicAndFailClosed();
 	await testCompilePermissionAndGoldenRun();
 	await testStaleApprovalAndDestructiveInjectionFailClosed();

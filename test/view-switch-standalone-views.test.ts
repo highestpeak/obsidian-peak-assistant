@@ -1,6 +1,7 @@
 import { ViewSwitchConsistentHandler } from '@/app/ui-host/views/ViewSwitchConsistentHandler';
 import {
 	CHAT_VIEW_TYPE,
+	PLUGIN_COMMAND_GATEWAY_VIEW_TYPE,
 	PROJECT_LIST_VIEW_TYPE,
 	STANDALONE_PEAK_VIEW_TYPES,
 	USAGE_DASHBOARD_VIEW_TYPE,
@@ -8,6 +9,13 @@ import {
 
 function assert(condition: boolean, message: string): void {
 	if (!condition) throw new Error(message);
+}
+
+{
+	assert(
+		STANDALONE_PEAK_VIEW_TYPES.has(PLUGIN_COMMAND_GATEWAY_VIEW_TYPE),
+		'Command Gateway must be treated as a standalone Peak view',
+	);
 }
 
 function mockLeaf(viewType: string) {

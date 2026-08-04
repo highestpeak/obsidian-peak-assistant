@@ -123,6 +123,10 @@ async function testDiscoveryAndObservation(): Promise<void> {
 	const editorCommand = descriptors.find((entry) => entry.pluginId === 'editor-tools')!;
 	assert.strictEqual(editorCommand.availability, 'available');
 	(app.workspace as any).activeEditor = null;
+	const conditionalWithoutEditor = (await port.discover())
+		.find((entry) => entry.commandId === editorCommand.commandId)!;
+	assert.strictEqual(conditionalWithoutEditor.availability, 'conditional');
+	assert.strictEqual(conditionalWithoutEditor.availabilityReason, 'active-editor-required');
 	const unavailableWithoutEditor = await port.preflight(editorCommand.commandId);
 	assert.strictEqual(unavailableWithoutEditor.availability, 'unavailable');
 	assert.strictEqual(unavailableWithoutEditor.reason, 'active-editor-required');

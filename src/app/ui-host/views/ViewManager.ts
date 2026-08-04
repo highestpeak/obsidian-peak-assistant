@@ -15,6 +15,10 @@ import { DEFAULT_COMPOSER_NAVIGATION_STRINGS } from '@/app/composer/ComposerNavi
 import { CommandCenterHomeView, COMMAND_CENTER_HOME_VIEW_TYPE } from '@/app/ui-host/views/CommandCenterHomeView';
 import { AIControlCenterView, AI_CONTROL_CENTER_VIEW_TYPE } from '@/app/ui-host/views/AIControlCenterView';
 import { MyContentView, MY_CONTENT_VIEW_TYPE } from '@/app/ui-host/views/MyContentView';
+import {
+	PluginCommandGatewayView,
+	PLUGIN_COMMAND_GATEWAY_VIEW_TYPE,
+} from '@/app/ui-host/views/PluginCommandGatewayView';
 
 /**
  * Manages view registrations, related commands, and lifecycle cleanup.
@@ -59,6 +63,9 @@ export class ViewManager {
 		});
 		this.viewCreators.set(MY_CONTENT_VIEW_TYPE, (leaf) => {
 			return new MyContentView(leaf, appContext);
+		});
+		this.viewCreators.set(PLUGIN_COMMAND_GATEWAY_VIEW_TYPE, (leaf) => {
+			return new PluginCommandGatewayView(leaf, appContext);
 		});
 	}
 
@@ -125,6 +132,11 @@ export class ViewManager {
 	/** Open the explicitly saved Peak content browser. */
 	async activateMyContentView(): Promise<void> {
 		await this.activateStandaloneView(MY_CONTENT_VIEW_TYPE);
+	}
+
+	/** Open the human-review control plane for external plugin commands. */
+	async activatePluginCommandGatewayView(): Promise<void> {
+		await this.activateStandaloneView(PLUGIN_COMMAND_GATEWAY_VIEW_TYPE);
 	}
 
 	private async activateStandaloneView(type: string): Promise<void> {

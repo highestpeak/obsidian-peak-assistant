@@ -70,6 +70,9 @@ export class ObsidianPluginCommandPort implements PluginCommandPort {
 			const pluginName = manifest?.name?.trim() || pluginId;
 			const pluginVersion = manifest?.version?.trim() || 'unknown';
 			const preflight = this.check(command);
+			const discoveredAvailability = preflight.reason === 'active-editor-required'
+				? 'conditional' as const
+				: preflight.availability;
 			const callbackShape = [
 				command.callback ? 'callback' : '',
 				command.checkCallback ? 'check' : '',
@@ -91,7 +94,7 @@ export class ObsidianPluginCommandPort implements PluginCommandPort {
 				pluginName,
 				pluginVersion,
 				sourceHash,
-				availability: preflight.availability,
+				availability: discoveredAvailability,
 				interaction: 'unknown',
 				...(preflight.reason ? { availabilityReason: preflight.reason } : {}),
 			});

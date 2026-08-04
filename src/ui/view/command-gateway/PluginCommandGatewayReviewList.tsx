@@ -1,10 +1,11 @@
 import React from 'react';
-import { LockKeyhole, PlugZap } from 'lucide-react';
+import { FileText, LockKeyhole, PlugZap } from 'lucide-react';
 import { Button, Chip } from '@/ui/components/primitives';
 import type { PluginCommandReviewItem } from '@/core/types/plugin-command-gateway';
-import type { SettingsStrings } from '../settingsStrings';
+import type { SettingsStrings } from '@/ui/view/settings/settingsStrings';
 import {
 	formatPluginCommandCopy,
+	isPluginCommandContextual,
 	isPluginCommandUnavailable,
 	type PluginCommandReviewGroup,
 } from './pluginCommandGatewayReviewModel';
@@ -16,21 +17,20 @@ export function PluginCommandGatewayReviewList(props: {
 	copy: PluginCommandCopy;
 	busyKey: string | null;
 	scanning: boolean;
+	selectedCommandId: string | null;
+	onSelect: (item: PluginCommandReviewItem) => void;
 	onToggle: (item: PluginCommandReviewItem) => void;
 }): React.ReactElement {
 	return (
-		<div
-			className="pk-command-gateway-list"
-			data-scanning={props.scanning}
-			aria-busy={props.scanning}
-		>
+		<div className="pk-command-gateway-list" aria-busy={props.scanning}>
 			{props.groups.map((group) => (
 				<CommandPluginGroup
 					key={group.pluginId}
 					group={group}
 					copy={props.copy}
-					busyKey={props.busyKey}
-					scanning={props.scanning}
+					busy={props.busyKey !== null}
+					selectedCommandId={props.selectedCommandId}
+					onSelect={props.onSelect}
 					onToggle={props.onToggle}
 				/>
 			))}
@@ -41,8 +41,9 @@ export function PluginCommandGatewayReviewList(props: {
 function CommandPluginGroup(props: {
 	group: PluginCommandReviewGroup;
 	copy: PluginCommandCopy;
-	busyKey: string | null;
-	scanning: boolean;
+	busy: boolean;
+	selectedCommandId: string | null;
+	onSelect: (item: PluginCommandReviewItem) => void;
 	onToggle: (item: PluginCommandReviewItem) => void;
 }): React.ReactElement {
 	const { group, copy } = props;
@@ -53,7 +54,7 @@ function CommandPluginGroup(props: {
 					<PlugZap size={14} aria-hidden="true" />
 					<span className="pk-command-plugin-group__name">{group.pluginName}</span>
 					<span className="pk-command-plugin-group__meta">
-						{group.pluginId} · {group.pluginVersion}
+						{group.pluginVersion}
 					</span>
 				</div>
 				<div className="pk-command-plugin-group__counts">
@@ -71,8 +72,9 @@ function CommandPluginGroup(props: {
 						key={item.descriptor.commandId}
 						item={item}
 						copy={copy}
-						busy={props.busyKey !== null}
-						scanning={props.scanning}
+						busy={props.busy}
+						selected={props.selectedCommandId === item.descriptor.commandId}
+						onSelect={props.onSelect}
 						onToggle={props.onToggle}
 					/>
 				))}
@@ -85,28 +87,36 @@ function CommandReviewRow(props: {
 	item: PluginCommandReviewItem;
 	copy: PluginCommandCopy;
 	busy: boolean;
-	scanning: boolean;
+	selected: boolean;
+	onSelect: (item: PluginCommandReviewItem) => void;
 	onToggle: (item: PluginCommandReviewItem) => void;
 }): React.ReactElement {
 	const { item, copy } = props;
 	const unavailable = isPluginCommandUnavailable(item);
 	return (
-		<div className="pk-command-review-row" data-command-id={item.descriptor.commandId}>
-			<div className="pk-command-review-row__main">
-				<div className="pk-command-review-row__title-line">
-					<span className="pk-command-review-row__title">{item.descriptor.commandName}</span>
-					<Chip variant={item.finding ? 'accent' : 'neutral'}>
-						{item.finding ? copy.badges.aiAnalyzed : copy.badges.metadataOnly}
-					</Chip>
-				</div>
-				<span className="pk-command-review-row__id">{item.descriptor.commandId}</span>
-				<span className="pk-command-review-row__summary">
-					{item.finding?.summary ?? copy.noFinding}
+		<div
+			className="pk-command-review-row"
+			data-command-id={item.descriptor.commandId}
+			data-selected={props.selected}
+		>
+			<Button
+				variant="ghost"
+				className="pk-command-review-row__main-action"
+				aria-pressed={props.selected}
+				onClick={() => props.onSelect(item)}
+			>
+				<FileText aria-hidden="true" />
+				<span className="pk-command-review-row__main-copy">
+					<span className="pk-command-review-row__title-line">
+						<span className="pk-command-review-row__title">{item.descriptor.commandName}</span>
+						{isPluginCommandContextual(item) && (
+							<Chip variant="neutral">{copy.badges.requiresEditor}</Chip>
+						)}
+						{item.stale && <Chip variant="warning">{copy.badges.reviewAgain}</Chip>}
+					</span>
+					<span className="pk-command-review-row__id">{item.descriptor.commandId}</span>
 				</span>
-				{item.stale && (
-					<span className="pk-command-review-row__warning">{copy.warnings.sourceChanged}</span>
-				)}
-			</div>
+			</Button>
 			<div className="pk-command-review-row__risk">
 				<span className="pk-command-risk" data-risk={item.effectiveRisk}>
 					{copy.risks[item.effectiveRisk]}
@@ -116,7 +126,7 @@ function CommandReviewRow(props: {
 				item={item}
 				copy={copy}
 				unavailable={unavailable}
-				disabled={props.busy || props.scanning}
+				disabled={props.busy}
 				onToggle={props.onToggle}
 			/>
 		</div>
@@ -170,11 +180,14 @@ function CommandAccessCell(props: {
 	);
 }
 
-function unavailableReason(
+export function unavailableReason(
 	item: PluginCommandReviewItem,
 	copy: PluginCommandCopy,
 ): string {
-	if (item.descriptor.availability !== 'available') {
+	if (item.descriptor.availabilityReason === 'active-editor-required') {
+		return copy.warnings.editorRequired;
+	}
+	if (item.descriptor.availability !== 'available' && item.descriptor.availability !== 'conditional') {
 		return formatPluginCommandCopy(copy.warnings.unavailable, {
 			reason: item.descriptor.availabilityReason ?? item.descriptor.availability,
 		});

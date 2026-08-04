@@ -241,8 +241,14 @@
     "pluginCommands": {
       "sectionTitle": "External plugin commands",
       "sectionSub": "Review commands contributed by enabled Obsidian plugins before Copilot can use them. Everything is off by default.",
+	  "viewTitle": "Command Gateway",
+	  "viewSub": "Choose exactly which external plugin commands Copilot may use. Scan never changes access.",
+	  "openManager": "Open Command Gateway",
+	  "lastScanned": "Last scan: {time}",
+	  "neverScanned": "Not scanned yet",
       "runtimeUnavailable": "The command gateway is not available in this runtime.",
       "empty": "No commands from enabled external plugins were found.",
+	  "noMatches": "No commands match the current filters.",
       "scanCommands": "Scan commands",
       "scanning": "Scanning…",
       "scanFallback": "Command facts were refreshed, but some explanations could not be prepared. Access stayed unchanged.",
@@ -256,6 +262,8 @@
       "scanMeta": {
         "plugins": "{count} plugins",
         "commands": "{count} commands found",
+		"explanations": "{processed} of {total} explained",
+		"waiting": "Waiting for the first explanation batch",
         "accessUnchanged": "Nothing is executed or authorized during Scan"
       },
       "filters": {
@@ -271,7 +279,7 @@
       "summary": {
         "approved": "Approved",
         "notAllowed": "Not allowed",
-        "systemExcluded": "System excluded"
+		"systemExcluded": "Unavailable"
       },
       "batch": {
         "commandsShown": "{count} commands",
@@ -299,21 +307,33 @@
       },
       "badges": {
         "aiAnalyzed": "AI analyzed",
-        "metadataOnly": "Metadata only"
+		"metadataOnly": "Metadata only",
+		"requiresEditor": "Needs editor",
+		"reviewAgain": "Review again"
       },
       "access": {
         "allowed": "Allowed",
         "notAllowed": "Not allowed",
         "unavailable": "Unavailable",
+		"reviewNeeded": "Review",
         "toggleLabel": "Allow Copilot to use {command}"
       },
       "warnings": {
         "sourceChanged": "Plugin or command metadata changed. Review again.",
         "unavailable": "{reason}",
+		"editorRequired": "Available when a Markdown editor is active.",
         "modal": "This command requires an interactive modal.",
         "destructive": "Destructive commands cannot be exposed to Copilot.",
         "unknown": "This command's effects could not be classified safely."
       },
+	  "details": {
+		"title": "Command details",
+		"selectPrompt": "Select a command to inspect its explanation and requirements.",
+		"explanation": "What it does",
+		"commandId": "Command ID",
+		"context": "Runtime requirement",
+		"metadataFallback": "No generated explanation is available. Review the command name, plugin, risk and runtime requirement before allowing it."
+	  },
       "activity": {
         "title": "Recent command activity",
         "completed": "Completed",

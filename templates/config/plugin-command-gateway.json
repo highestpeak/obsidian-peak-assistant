@@ -3,7 +3,8 @@
     "maxCommands": 400
   },
   "curation": {
-    "batchSize": 60
+	"batchSize": 60,
+	"batchTimeoutMs": 20000
   },
   "observation": {
     "settleDelayMs": 120,

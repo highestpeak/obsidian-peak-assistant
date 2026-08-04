@@ -14,7 +14,11 @@ export type PluginCommandPurpose =
 	| 'system'
 	| 'other';
 
-export type PluginCommandAvailability = 'available' | 'unavailable' | 'unknown';
+export type PluginCommandAvailability =
+	| 'available'
+	| 'conditional'
+	| 'unavailable'
+	| 'unknown';
 export type PluginCommandInteraction = 'direct' | 'modal' | 'unknown';
 export type PluginCommandObservationChannel = 'workspace' | 'vault' | 'modal' | 'none' | 'unknown';
 
@@ -172,6 +176,8 @@ export interface PluginCommandGatewayScanProgress {
 	readonly processedCommands: number;
 	readonly totalCommands: number;
 	readonly pluginCount: number;
+	/** Fresh deterministic facts become reviewable before AI explanations finish. */
+	readonly snapshot?: PluginCommandGatewaySnapshot;
 }
 
 export interface PluginCommandGatewayScanResult {
@@ -189,6 +195,7 @@ export interface PluginCommandGatewayConfig {
 	};
 	readonly curation: {
 		readonly batchSize: number;
+		readonly batchTimeoutMs: number;
 	};
 	readonly observation: {
 		readonly settleDelayMs: number;

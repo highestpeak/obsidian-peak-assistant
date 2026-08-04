@@ -2,8 +2,8 @@ import assert from 'assert';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { PluginCommandReviewItem } from '@/core/types/plugin-command-gateway';
-import { PluginCommandGatewayReviewList } from '@/ui/view/settings/components/PluginCommandGatewayReviewList';
-import { groupPluginCommandItems } from '@/ui/view/settings/components/pluginCommandGatewayReviewModel';
+import { PluginCommandGatewayReviewList } from '@/ui/view/command-gateway/PluginCommandGatewayReviewList';
+import { groupPluginCommandItems } from '@/ui/view/command-gateway/pluginCommandGatewayReviewModel';
 import { DEFAULT_SETTINGS_STRINGS } from '@/ui/view/settings/settingsStrings';
 
 function command(
@@ -39,6 +39,8 @@ const html = renderToStaticMarkup(React.createElement(PluginCommandGatewayReview
 	copy: DEFAULT_SETTINGS_STRINGS.tools.pluginCommands,
 	busyKey: null,
 	scanning: false,
+	selectedCommandId: null,
+	onSelect: () => {},
 	onToggle: () => {},
 }));
 
@@ -48,6 +50,7 @@ assert.match(html, /aria-checked="false"/);
 assert.match(html, /pk-command-access-toggle__track/);
 assert.match(html, /pk-command-access-unavailable/);
 assert.match(html, />Unavailable</);
+assert.doesNotMatch(html, />Metadata only</);
 assert.doesNotMatch(html, />Block</);
 assert.doesNotMatch(html, />Purpose</);
 

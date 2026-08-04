@@ -31,8 +31,14 @@ export interface PluginCommandReviewSummary {
 	readonly unavailable: number;
 }
 
+export function isPluginCommandContextual(item: PluginCommandReviewItem): boolean {
+	return item.descriptor.availability === 'conditional';
+}
+
 export function isPluginCommandUnavailable(item: PluginCommandReviewItem): boolean {
-	return item.systemBlocked || item.descriptor.availability !== 'available';
+	return item.systemBlocked ||
+		item.descriptor.availability === 'unavailable' ||
+		item.descriptor.availability === 'unknown';
 }
 
 export function isPluginCommandBulkEligible(item: PluginCommandReviewItem): boolean {
@@ -101,15 +107,18 @@ export function summarizePluginCommandItems(
 	}, { approved: 0, notAllowed: 0, unavailable: 0 });
 }
 
-export function pluginCommandScanPercent(progress: PluginCommandGatewayScanProgress): number {
-	if (progress.phase === 'discovering') return 8;
-	if (progress.phase === 'checking') return 30;
-	if (progress.phase === 'complete') return 100;
-	if (progress.totalCommands === 0) return 90;
-	return Math.min(
-		95,
-		35 + Math.round((progress.processedCommands / progress.totalCommands) * 60),
-	);
+/**
+ * A Scan has no honest percentage until at least one explanation batch has
+ * completed. Returning null lets the UI show an indeterminate activity bar
+ * instead of pretending that an unresolved provider request is "35%" done.
+ */
+export function pluginCommandScanRatio(
+	progress: PluginCommandGatewayScanProgress,
+): number | null {
+	if (progress.phase === 'complete') return 1;
+	if (progress.phase !== 'explaining') return null;
+	if (progress.totalCommands <= 0 || progress.processedCommands <= 0) return null;
+	return Math.min(1, progress.processedCommands / progress.totalCommands);
 }
 
 export function formatPluginCommandCopy(

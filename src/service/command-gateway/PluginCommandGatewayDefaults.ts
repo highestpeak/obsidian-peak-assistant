@@ -11,6 +11,7 @@ export const DEFAULT_PLUGIN_COMMAND_GATEWAY_CONFIG: PluginCommandGatewayConfig =
 	},
 	curation: {
 		batchSize: 60,
+		batchTimeoutMs: 20000,
 	},
 	observation: {
 		settleDelayMs: 120,

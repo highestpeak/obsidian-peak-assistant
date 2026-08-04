@@ -8,14 +8,19 @@ import {
 	formatPluginCommandCopy,
 	groupPluginCommandItems,
 	isPluginCommandBulkEligible,
-	pluginCommandScanPercent,
+	pluginCommandScanRatio,
 	summarizePluginCommandItems,
-} from '@/ui/view/settings/components/pluginCommandGatewayReviewModel';
+} from '@/ui/view/command-gateway/pluginCommandGatewayReviewModel';
 
 function item(
 	commandId: string,
 	risk: PluginCommandRisk,
-	options: { approved?: boolean; systemBlocked?: boolean; pluginId?: string } = {},
+	options: {
+		approved?: boolean;
+		systemBlocked?: boolean;
+		pluginId?: string;
+		availability?: 'available' | 'conditional' | 'unavailable';
+	} = {},
 ): PluginCommandReviewItem {
 	const pluginId = options.pluginId ?? commandId.split(':')[0]!;
 	return {
@@ -26,7 +31,7 @@ function item(
 			pluginName: pluginId,
 			pluginVersion: '1.0.0',
 			sourceHash: `${commandId}-hash`,
-			availability: 'available',
+			availability: options.availability ?? 'available',
 			interaction: 'direct',
 		},
 		effectiveRisk: risk,
@@ -71,20 +76,26 @@ function testFilteringAndSummary(): void {
 }
 
 function testGroupingAndEligibility(): void {
-	const groups = groupPluginCommandItems(ITEMS);
-	assert.strictEqual(groups.length, 3);
+	const conditional = item('editor-tools:sort-selection', 'edit', {
+		availability: 'conditional',
+	});
+	const groups = groupPluginCommandItems([...ITEMS, conditional]);
+	assert.strictEqual(groups.length, 4);
 	assert.strictEqual(groups[0]?.eligibleCount, 1);
 	assert.strictEqual(isPluginCommandBulkEligible(ITEMS[0]!), false);
 	assert.strictEqual(isPluginCommandBulkEligible(ITEMS[2]!), true);
 	assert.strictEqual(isPluginCommandBulkEligible(ITEMS[3]!), false);
+	assert.strictEqual(isPluginCommandBulkEligible(conditional), true);
+	assert.strictEqual(summarizePluginCommandItems([conditional]).notAllowed, 1);
 	console.log('PASS: groupingAndEligibility');
 }
 
 function testScanProgress(): void {
-	assert.strictEqual(pluginCommandScanPercent({ phase: 'discovering', processedCommands: 0, totalCommands: 0, pluginCount: 0 }), 8);
-	assert.strictEqual(pluginCommandScanPercent({ phase: 'checking', processedCommands: 0, totalCommands: 10, pluginCount: 3 }), 30);
-	assert.strictEqual(pluginCommandScanPercent({ phase: 'explaining', processedCommands: 5, totalCommands: 10, pluginCount: 3 }), 65);
-	assert.strictEqual(pluginCommandScanPercent({ phase: 'complete', processedCommands: 10, totalCommands: 10, pluginCount: 3 }), 100);
+	assert.strictEqual(pluginCommandScanRatio({ phase: 'discovering', processedCommands: 0, totalCommands: 0, pluginCount: 0 }), null);
+	assert.strictEqual(pluginCommandScanRatio({ phase: 'checking', processedCommands: 0, totalCommands: 10, pluginCount: 3 }), null);
+	assert.strictEqual(pluginCommandScanRatio({ phase: 'explaining', processedCommands: 0, totalCommands: 10, pluginCount: 3 }), null);
+	assert.strictEqual(pluginCommandScanRatio({ phase: 'explaining', processedCommands: 5, totalCommands: 10, pluginCount: 3 }), 0.5);
+	assert.strictEqual(pluginCommandScanRatio({ phase: 'complete', processedCommands: 10, totalCommands: 10, pluginCount: 3 }), 1);
 	assert.strictEqual(
 		formatPluginCommandCopy('{count} commands from {plugin}', { count: 3, plugin: 'Calendar' }),
 		'3 commands from Calendar',

@@ -161,8 +161,14 @@ export interface SettingsStrings {
         pluginCommands: {
             sectionTitle: string;
             sectionSub: string;
+			viewTitle: string;
+			viewSub: string;
+			openManager: string;
+			lastScanned: string;
+			neverScanned: string;
             runtimeUnavailable: string;
             empty: string;
+			noMatches: string;
             scanCommands: string;
             scanning: string;
             scanFallback: string;
@@ -176,6 +182,8 @@ export interface SettingsStrings {
             scanMeta: {
                 plugins: string;
                 commands: string;
+				explanations: string;
+				waiting: string;
                 accessUnchanged: string;
             };
             filters: {
@@ -213,20 +221,35 @@ export interface SettingsStrings {
                 confirm: string;
             };
             columns: { command: string; risk: string; access: string };
-            badges: { aiAnalyzed: string; metadataOnly: string };
+            badges: {
+				aiAnalyzed: string;
+				metadataOnly: string;
+				requiresEditor: string;
+				reviewAgain: string;
+			};
             access: {
                 allowed: string;
                 notAllowed: string;
                 unavailable: string;
+				reviewNeeded: string;
                 toggleLabel: string;
             };
             warnings: {
                 sourceChanged: string;
                 unavailable: string;
+				editorRequired: string;
                 modal: string;
                 destructive: string;
                 unknown: string;
             };
+			details: {
+				title: string;
+				selectPrompt: string;
+				explanation: string;
+				commandId: string;
+				context: string;
+				metadataFallback: string;
+			};
             activity: {
                 title: string;
                 completed: string;

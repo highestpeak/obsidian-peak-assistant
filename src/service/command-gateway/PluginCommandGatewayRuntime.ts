@@ -23,6 +23,7 @@ import {
 	type PluginCommandGatewaySettings,
 	type PluginCommandGatewaySnapshot,
 	type PluginCommandInteraction,
+	type PluginCommandAvailability,
 	type PluginCommandPurpose,
 	type PluginCommandReviewInput,
 	type PluginCommandReviewItem,
@@ -93,6 +94,7 @@ export class PluginCommandGatewayRuntime implements PluginCommandGatewayPort {
 			processedCommands: 0,
 			totalCommands,
 			pluginCount,
+			snapshot: discovered,
 		});
 		try {
 			const snapshot = await this.curateDiscovered((processedCommands) => {
@@ -149,29 +151,33 @@ export class PluginCommandGatewayRuntime implements PluginCommandGatewayPort {
 		onBatch?.(0);
 		for (let index = 0; index < this.descriptors.length; index += config.curation.batchSize) {
 			const batch = this.descriptors.slice(index, index + config.curation.batchSize);
-			const raw = await this.deps.aiServiceManager.queryStructured<PluginCommandCurationResponse>(
-				PromptId.PluginCommandGatewayCurate,
-				{
-					commands: batch.map((descriptor) => {
-						const deterministic = classifyCommand(descriptor, config);
-						return {
-							commandId: descriptor.commandId,
-							commandName: descriptor.commandName,
-							pluginId: descriptor.pluginId,
-							pluginName: descriptor.pluginName,
-							pluginVersion: descriptor.pluginVersion,
-							availability: descriptor.availability,
-							deterministicRisk: deterministic.risk,
-							deterministicPurpose: deterministic.purpose,
-							deterministicInteraction: deterministic.interaction,
-						};
-					}),
-				},
-				undefined,
-				{
-					usageFeature: 'copilot',
-					usageAction: 'plugin-command-gateway-curate',
-				},
+			const raw = await withTimeout(
+				this.deps.aiServiceManager.queryStructured<PluginCommandCurationResponse>(
+					PromptId.PluginCommandGatewayCurate,
+					{
+						commands: batch.map((descriptor) => {
+							const deterministic = classifyCommand(descriptor, config);
+							return {
+								commandId: descriptor.commandId,
+								commandName: descriptor.commandName,
+								pluginId: descriptor.pluginId,
+								pluginName: descriptor.pluginName,
+								pluginVersion: descriptor.pluginVersion,
+								availability: descriptor.availability,
+								deterministicRisk: deterministic.risk,
+								deterministicPurpose: deterministic.purpose,
+								deterministicInteraction: deterministic.interaction,
+							};
+						}),
+					},
+					undefined,
+					{
+						usageFeature: 'copilot',
+						usageAction: 'plugin-command-gateway-curate',
+					},
+				),
+				config.curation.batchTimeoutMs,
+				`plugin-command-curation-timeout:${index}:${batch.length}`,
 			);
 			const parsed = pluginCommandCurationResponseSchema.parse(raw);
 			const batchById = new Map(batch.map((descriptor) => [descriptor.commandId, descriptor]));
@@ -184,12 +190,12 @@ export class PluginCommandGatewayRuntime implements PluginCommandGatewayPort {
 					curatedAt: this.now(),
 				};
 			}
+			await this.deps.persistSettings({
+				reviews: { ...this.gatewaySettings().reviews },
+				findings: { ...findings },
+			});
 			onBatch?.(Math.min(index + batch.length, this.descriptors.length));
 		}
-		await this.deps.persistSettings({
-			reviews: { ...this.gatewaySettings().reviews },
-			findings,
-		});
 		return this.buildSnapshot();
 	}
 
@@ -208,7 +214,7 @@ export class PluginCommandGatewayRuntime implements PluginCommandGatewayPort {
 			classifyCommand(descriptor, config),
 		);
 		if (input.decision === 'allow') {
-			if (descriptor.availability !== 'available') {
+			if (!isReviewableAvailability(descriptor.availability)) {
 				throw new Error(`command-not-available:${commandId}`);
 			}
 			if (input.risk === 'destructive' || input.risk === 'unknown') {
@@ -248,7 +254,7 @@ export class PluginCommandGatewayRuntime implements PluginCommandGatewayPort {
 			const item = items.get(commandId);
 			const descriptor = descriptors.get(commandId);
 			if (!item || !descriptor) throw new Error(`command-not-found:${commandId}`);
-			if (descriptor.availability !== 'available') {
+			if (!isReviewableAvailability(descriptor.availability)) {
 				throw new Error(`command-not-available:${commandId}`);
 			}
 			if (item.effectiveRisk === 'destructive' || item.effectiveRisk === 'unknown') {
@@ -300,7 +306,7 @@ export class PluginCommandGatewayRuntime implements PluginCommandGatewayPort {
 			const review = settings.reviews[descriptor.commandId];
 			if (!review || review.decision !== 'allow') continue;
 			if (review.sourceHash !== descriptor.sourceHash) continue;
-			if (descriptor.availability !== 'available') continue;
+			if (!isReviewableAvailability(descriptor.availability)) continue;
 			if (review.risk !== 'read' && review.risk !== 'edit') continue;
 			const finding = currentFinding(settings, descriptor);
 			const interaction = effectiveInteraction(
@@ -611,7 +617,7 @@ export class PluginCommandGatewayRuntime implements PluginCommandGatewayPort {
 				review?.decision === 'allow' &&
 				!stale &&
 				!systemBlocked &&
-				descriptor.availability === 'available';
+				isReviewableAvailability(descriptor.availability);
 			return {
 				descriptor: {
 					...descriptor,
@@ -751,6 +757,28 @@ function effectiveConfirmation(
 	return finding?.confirmation ?? 'none';
 }
 
+function isReviewableAvailability(availability: PluginCommandAvailability): boolean {
+	return availability === 'available' || availability === 'conditional';
+}
+
+async function withTimeout<T>(
+	promise: Promise<T>,
+	timeoutMs: number,
+	message: string,
+): Promise<T> {
+	let timer: ReturnType<typeof setTimeout> | null = null;
+	try {
+		return await Promise.race([
+			promise,
+			new Promise<T>((_resolve, reject) => {
+				timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+			}),
+		]);
+	} finally {
+		if (timer !== null) clearTimeout(timer);
+	}
+}
+
 function matches(value: string, patterns: readonly string[]): boolean {
 	return patterns.some((pattern) => {
 		try {
@@ -770,6 +798,10 @@ function normalizeConfig(raw: PluginCommandGatewayConfig): PluginCommandGatewayC
 		},
 		curation: {
 			batchSize: positiveInteger(raw.curation?.batchSize, defaults.curation.batchSize),
+			batchTimeoutMs: positiveInteger(
+				raw.curation?.batchTimeoutMs,
+				defaults.curation.batchTimeoutMs,
+			),
 		},
 		observation: {
 			settleDelayMs: nonNegativeInteger(

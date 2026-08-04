@@ -18,9 +18,10 @@ import { PluginCommandGatewaySection } from '../components/PluginCommandGatewayS
 interface ToolsTabProps {
     settings: MyPluginSettings;
     settingsUpdates: SettingsUpdates;
+	onOpenCommandGateway: () => void | Promise<void>;
 }
 
-export function ToolsTab({ settings, settingsUpdates }: ToolsTabProps) {
+export function ToolsTab({ settings, settingsUpdates, onOpenCommandGateway }: ToolsTabProps) {
     const strings = useSettingsStrings();
     const toolsCopy = strings.tools;
 
@@ -34,7 +35,7 @@ export function ToolsTab({ settings, settingsUpdates }: ToolsTabProps) {
                 <MCPServerSection settings={settings} settingsUpdates={settingsUpdates} />
             </div>
 
-            <PluginCommandGatewaySection />
+            <PluginCommandGatewaySection onOpenManager={onOpenCommandGateway} />
 
             <div className="pkset-section">
                 <div className="pkset-section__head">
