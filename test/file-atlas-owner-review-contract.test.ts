@@ -14,6 +14,7 @@ const atlasBar = source('src/ui/view/file-atlas/components/AtlasBar.tsx');
 const panel = source('src/ui/view/file-atlas/FileAtlasPanel.tsx');
 const treeModel = source('src/ui/view/file-atlas/atlasTreeModel.ts');
 const displayModel = source('src/ui/view/file-atlas/atlasDisplayModel.ts');
+const inspectorModel = source('src/ui/view/file-atlas/atlasInspectorModel.ts');
 const graph = source('src/ui/view/file-atlas/components/FileAtlasGraph.tsx');
 const canvas = source('src/ui/component/graph/AtlasGraphCanvasImpl.tsx');
 const css = source('src/styles/file-atlas.css');
@@ -43,10 +44,16 @@ assert.match(inspector, /cardPolicy\.statistics && <FactsSection/);
 assert.match(inspector, /<TechnicalDetails block=\{block\} config=\{config\} \/>/);
 assert.match(inspector, /displayIdentity\(block, config\)/);
 assert.match(inspector, /keywordsEmpty/);
-assert.match(inspector, /keywords\.map\(/);
-assert.doesNotMatch(inspector, /keywordsShowAll|pkfa-kw-toggle/);
-assert.doesNotMatch(inspector, /AIGraphContextArtifacts|Use this \{/);
-assert.match(inspector, /if \(!loading && suggestions\.length === 0\) return null/);
+assert.match(inspector, /visibleKeywords\.map\(/);
+assert.match(inspector, /keywordsShowAll|pkfa-inline-toggle/);
+assert.match(inspector, /AIGraphContextArtifacts/);
+assert.match(inspector, /scopeActionLabel\(block, config\)/);
+assert.doesNotMatch(inspector, /if \(!loading && suggestions\.length === 0\) return null/);
+assert.match(inspector, /groupAtlasCopilotSuggestions/);
+assert.match(inspector, /\[host, sourcePath\]/);
+assert.match(inspector, /ElementContextSection/);
+assert.match(inspectorModel, /buildAtlasElementContext/);
+assert.match(inspectorModel, /atlasBlockForSuggestion/);
 assert.match(inspector, /IDENTITY_TITLE_KINDS\.has\(block\.kind\)/);
 assert.match(inspector, /className="pkfa-inspector-actions"/);
 assert.match(
@@ -64,6 +71,8 @@ assert.match(atlasBar, /cfg\.filterable !== false/);
 assert.match(atlasBar, /filterLabel \?\? config\.kinds\[kind\]\.label/);
 assert.match(panel, /case 'toggleKind'[\s\S]*?collapsed: new Set\(\)/);
 assert.match(panel, /visibleKinds=\{state\.visibleKinds\}/);
+assert.match(panel, /case 'revealSelection'/);
+assert.match(panel, /inspectorScrollRef\.current\.scrollTop = 0/);
 assert.match(tree, /isProjectionRow\(block, visibleKinds, showFrontmatterSummary\)/);
 assert.match(tree, /displayIdentity\(block, config, \{ ownerContext \}\)/);
 assert.match(displayModel, /companionTitle[\s\S]*githubIdentity[\s\S]*decodedSlug/);
@@ -103,6 +112,16 @@ assert.match(
 	css,
 	/\.peak-file-atlas-modal\.pkfa-root \.pkfa-bar-icon-btn\s*\{[\s\S]*?width:\s*30px !important;[\s\S]*?height:\s*30px !important;[\s\S]*?border:\s*1px solid var\(--pk-border\) !important;[\s\S]*?color:\s*var\(--pk-text-secondary\) !important;/,
 	'File Atlas icon controls must defeat the Obsidian reset and remain visible',
+);
+assert.match(
+	css,
+	/\.peak-file-atlas-modal\.pkfa-root \.pkfa-context-row\s*\{[\s\S]*?height:\s*30px !important;[\s\S]*?min-height:\s*30px !important;[\s\S]*?max-height:\s*30px !important;[\s\S]*?padding:\s*0 8px !important;/,
+	'Inspector navigation rows must retain fixed geometry under the Obsidian reset',
+);
+assert.match(
+	css,
+	/\.peak-file-atlas-modal\.pkfa-root \.pkfa-copilot-discuss\s*\{[\s\S]*?height:\s*30px !important;[\s\S]*?min-height:\s*30px !important;[\s\S]*?max-height:\s*30px !important;[\s\S]*?padding:\s*0 10px !important;/,
+	'Copilot handoff must retain fixed geometry under the Obsidian reset',
 );
 
 console.log('PASS: File Atlas owner-review interaction and layout contract');

@@ -212,6 +212,30 @@ export interface FileAtlasStrings {
 	copilotSuggestionsEmpty: string;
 	copilotSuggestionsLoading: string;
 	copilotOpen: string;
+	inspectorCurrentScope: string;
+	useScopeBlock: string;
+	useScopeSection: string;
+	useScopeItem: string;
+	useScopeResource: string;
+	copilotNavigatorTitle: string;
+	copilotNavigatorHint: string;
+	copilotUnavailable: string;
+	copilotLoadFailed: string;
+	copilotSelectionGroup: string;
+	copilotSectionGroup: string;
+	copilotDocumentGroup: string;
+	copilotSelectionEmpty: string;
+	copilotDocumentEmpty: string;
+	copilotNavigate: string;
+	elementContextTitle: string;
+	contextParent: string;
+	contextNearby: string;
+	contextChildren: string;
+	contextResources: string;
+	contextEmpty: string;
+	keywordsShowAll: string;
+	keywordsShowLess: string;
+	relatedAIGraphs: string;
 }
 
 /**
@@ -465,6 +489,30 @@ export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
 		copilotSuggestionsEmpty: 'No current suggestions for this note.',
 		copilotSuggestionsLoading: 'Loading document suggestions…',
 		copilotOpen: 'Discuss in Copilot',
+		inspectorCurrentScope: 'Current scope',
+		useScopeBlock: 'Use selected block',
+		useScopeSection: 'Use this section',
+		useScopeItem: 'Use this item',
+		useScopeResource: 'Use this resource',
+		copilotNavigatorTitle: 'Copilot navigator',
+		copilotNavigatorHint: 'Findings stay connected to the selected element and its section.',
+		copilotUnavailable: 'Copilot Intelligence is unavailable for this document.',
+		copilotLoadFailed: 'Copilot findings could not be loaded.',
+		copilotSelectionGroup: 'This selection',
+		copilotSectionGroup: 'This section',
+		copilotDocumentGroup: 'Elsewhere in document',
+		copilotSelectionEmpty: 'No direct findings for this selection.',
+		copilotDocumentEmpty: 'No current findings for this document.',
+		copilotNavigate: 'Show in Atlas',
+		elementContextTitle: 'Element context',
+		contextParent: 'Parent',
+		contextNearby: 'Nearby',
+		contextChildren: 'Children',
+		contextResources: 'Resources',
+		contextEmpty: 'No nearby structural elements.',
+		keywordsShowAll: 'Show all',
+		keywordsShowLess: 'Show less',
+		relatedAIGraphs: 'Related AI Graphs',
 	},
 	keywordStopwords: {
 		latin: ['the', 'and', 'for', 'that', 'this', 'with', 'you', 'are', 'but', 'not', 'can', 'has', 'was', 'from', 'into', 'per', 'its'],

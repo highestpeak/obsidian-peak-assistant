@@ -24,6 +24,7 @@ import {
 import {
 	collectGroupIds,
 	computeVisibility,
+	ancestorGroupsOf,
 	blockIdAtLine,
 	defaultCollapsedIds,
 	documentLocationForAtlasBlock,
@@ -87,6 +88,7 @@ type AtlasAction =
 	| { type: 'setCollapsed'; ids: string[] }
 	| { type: 'expandAll' }
 	| { type: 'select'; id: string | null }
+	| { type: 'revealSelection'; id: string; kind: RawBlockKind; ancestorIds: string[] }
 	| { type: 'addToTray'; item: TrayItem }
 	| { type: 'removeFromTray'; id: string };
 
@@ -138,6 +140,19 @@ function reducer(state: AtlasState, action: AtlasAction): AtlasState {
 			return { ...state, collapsed: new Set() };
 		case 'select':
 			return { ...state, selectedId: action.id };
+		case 'revealSelection': {
+			const visibleKinds = new Set(state.visibleKinds);
+			visibleKinds.add(action.kind === RawBlockKind.ListItem ? RawBlockKind.List : action.kind);
+			const collapsed = new Set(state.collapsed);
+			action.ancestorIds.forEach((id) => collapsed.delete(id));
+			return {
+				...state,
+				visibleKinds,
+				collapsed,
+				selectedId: action.id,
+				presetModified: true,
+			};
+		}
 		case 'addToTray':
 			if (state.tray.some((t) => t.id === action.item.id)) return state;
 			return { ...state, tray: [...state.tray, action.item] };
@@ -168,6 +183,7 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 	const [flattened, setFlattened] = useState(false);
 	const rootRef = useRef<HTMLDivElement>(null);
 	const viewTabsRef = useRef<HTMLDivElement>(null);
+	const inspectorScrollRef = useRef<HTMLDivElement>(null);
 	usePeakKeyboardSurface('file-atlas', rootRef);
 	useRovingComposite(viewTabsRef, {
 		itemSelector: '[role="tab"]',
@@ -303,6 +319,27 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 		host.notify('Link copied');
 	};
 
+	const selectFromInspector = (block: DocumentBlock): void => {
+		dispatch({
+			type: 'revealSelection',
+			id: block.id,
+			kind: block.kind,
+			ancestorIds: ancestorGroupsOf(blocks, block.id).map((ancestor) => ancestor.id),
+		});
+		const view = rootRef.current?.ownerDocument.defaultView;
+		view?.requestAnimationFrame(() => {
+			view.requestAnimationFrame(() => {
+				const rows = rootRef.current?.querySelectorAll<HTMLElement>('[data-block-id]') ?? [];
+				const target = [...rows].find((row) => row.dataset.blockId === block.id);
+				target?.scrollIntoView({ block: 'nearest' });
+			});
+		});
+	};
+
+	useEffect(() => {
+		if (inspectorScrollRef.current) inspectorScrollRef.current.scrollTop = 0;
+	}, [activePath, state.selectedId]);
+
 	const groupKinds = (groupId: string): RawBlockKind[] =>
 		Object.entries(config.kinds)
 			.filter(([, cfg]) => cfg.group === groupId && cfg.filterable !== false)
@@ -432,8 +469,8 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 							onExpandAll={() => dispatch({ type: 'expandAll' })}
 							onCollapseAll={() => dispatch({ type: 'setCollapsed', ids: collectGroupIds(blocks) })}
 							flattened={flattened}
-								onFlattenChange={setFlattened}
-							/>
+							onFlattenChange={setFlattened}
+						/>
 
 						{/* main split */}
 						<section className="pkfa-main">
@@ -444,21 +481,23 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 								data-peak-keyboard-order="3"
 							>
 								<div className="pkfa-tree-scroll">
-									{firstVisibleId ? <AtlasTree
-										blocks={blocks}
-										config={config}
-										visible={visible}
-										visibleKinds={state.visibleKinds}
-										showFrontmatterSummary={showFrontmatterSummary}
-										collapsed={state.collapsed}
-										selectedId={state.selectedId}
-										trayIds={trayIds}
-										onSelect={(b) => dispatch({ type: 'select', id: b.id })}
-										onOpenInEditor={reveal}
-										onToggleFold={(id) => dispatch({ type: 'toggleFold', id })}
-										onAddToTray={addToTray}
-										flattened={flattened}
-									/> : (
+									{firstVisibleId ? (
+										<AtlasTree
+											blocks={blocks}
+											config={config}
+											visible={visible}
+											visibleKinds={state.visibleKinds}
+											showFrontmatterSummary={showFrontmatterSummary}
+											collapsed={state.collapsed}
+											selectedId={state.selectedId}
+											trayIds={trayIds}
+											onSelect={(b) => dispatch({ type: 'select', id: b.id })}
+											onOpenInEditor={reveal}
+											onToggleFold={(id) => dispatch({ type: 'toggleFold', id })}
+											onAddToTray={addToTray}
+											flattened={flattened}
+										/>
+									) : (
 										<div className="pkfa-empty-state">{s.treeEmpty}</div>
 									)}
 								</div>
@@ -469,9 +508,10 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 								data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['fa-inspector']}
 								data-peak-keyboard-order="4"
 							>
-								<div className="pkfa-inspector-scroll">
+								<div ref={inspectorScrollRef} className="pkfa-inspector-scroll">
 									<AtlasInspector
 										block={projectedSelectedBlock}
+										blocks={blocks}
 										config={config}
 										host={host}
 										sourcePath={activePath}
@@ -479,6 +519,7 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 										onReveal={reveal}
 										onAddToTray={addToTray}
 										onCopyLink={copyLink}
+										onSelect={selectFromInspector}
 									/>
 								</div>
 							</aside>

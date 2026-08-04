@@ -9,6 +9,8 @@ function source(relativePath: string): string {
 const contextualPort = source('src/core/ports/ContextualGraphPort.ts');
 const vaultWorkspace = source('src/ui/view/quick-search/VaultIntelligenceWorkspace.tsx');
 const atlasPanel = source('src/ui/view/file-atlas/FileAtlasPanel.tsx');
+const atlasInspector = source('src/ui/view/file-atlas/components/AtlasInspector.tsx');
+const atlasInspectorModel = source('src/ui/view/file-atlas/atlasInspectorModel.ts');
 const atlasGraph = source('src/ui/view/file-atlas/components/FileAtlasGraph.tsx');
 const searchInspector = source('src/ui/view/quick-search/components/inspector/InspectorSidePanel.tsx');
 const ambientPanel = source('src/ui/view/ambient-panel/RelatedNotesPanel.tsx');
@@ -54,6 +56,11 @@ assert.doesNotMatch(productCss, /\.peak-ambient-floating-host/);
 
 assert.match(atlasHost, /getMostUsed/);
 assert.match(atlasHost, /loadCopilotSuggestions/);
+assert.match(atlasHost, /status: 'unavailable'/);
+assert.match(atlasInspector, /CopilotFindingGroup/);
+assert.match(atlasInspector, /ElementContextSection/);
+assert.match(atlasInspector, /AIGraphContextArtifacts/);
+assert.match(atlasInspectorModel, /groupAtlasCopilotSuggestions/);
 assert.match(atlasHost, /getHubsForDoc/);
 assert.match(atlasHost, /readManifest/);
 assert.doesNotMatch(atlasHost, /openAIGraphs/);

@@ -86,6 +86,11 @@ export interface AtlasCopilotSuggestion {
 	priority: number;
 }
 
+export interface AtlasCopilotSuggestionSnapshot {
+	status: 'ready' | 'unavailable';
+	suggestions: AtlasCopilotSuggestion[];
+}
+
 export interface FileAtlasHostPort {
 	/** File identity owned by the active Markdown or Composer leaf. */
 	getActiveDocumentPath(): string | null;
@@ -137,7 +142,7 @@ export interface FileAtlasHostPort {
 	 * Read suggestions from the same per-document IntelligenceRuntime used by
 	 * Composer and the native Markdown companion. File Atlas owns no generator.
 	 */
-	loadCopilotSuggestions?(path: string): Promise<AtlasCopilotSuggestion[]>;
+	loadCopilotSuggestions?(path: string): Promise<AtlasCopilotSuggestionSnapshot>;
 	/** Escalate to the shared native Copilot surface; File Atlas never writes. */
 	openCopilot?(path: string, context?: {
 		blockId?: string;

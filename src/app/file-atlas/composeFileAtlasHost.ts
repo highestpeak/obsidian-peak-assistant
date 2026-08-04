@@ -16,6 +16,7 @@ import type {
 	AtlasGraphData,
 	AtlasImageInfo,
 	AtlasCopilotSuggestion,
+	AtlasCopilotSuggestionSnapshot,
 	FileAtlasHostPort,
 	OpenDocMeta,
 } from '@/ui/view/file-atlas/FileAtlasHostPort';
@@ -387,17 +388,17 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 			};
 		},
 
-		async loadCopilotSuggestions(path: string): Promise<AtlasCopilotSuggestion[]> {
+		async loadCopilotSuggestions(path: string): Promise<AtlasCopilotSuggestionSnapshot> {
 			const owner = appContext.runtimeRegistry.tryGetDocumentComposerRuntime();
-			if (!owner) return [];
+			if (!owner) return { status: 'unavailable', suggestions: [] };
 			const controller = owner.createController(`file-atlas-${crypto.randomUUID()}`);
-			controller.start(path);
 			try {
+				controller.start(path);
 				await controller.settled();
 				const intelligence = controller.getIntelligence();
-				if (!intelligence) return [];
+				if (!intelligence) return { status: 'unavailable', suggestions: [] };
 				intelligence.refreshBrief();
-				return intelligence.findings.briefItems().map((finding): AtlasCopilotSuggestion => {
+				const suggestions = intelligence.findings.briefItems().map((finding): AtlasCopilotSuggestion => {
 					const targetBlockId = composerTargetBlockId(finding.target);
 					const targetBlock = targetBlockId
 						? controller.getRuntime()?.session.snapshot.blocks.find(
@@ -418,6 +419,7 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 						priority: finding.brief?.priority ?? Number.MAX_SAFE_INTEGER,
 					};
 				}).sort((left, right) => left.priority - right.priority);
+				return { status: 'ready', suggestions };
 			} finally {
 				controller.stop();
 			}

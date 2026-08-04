@@ -5,14 +5,28 @@
  * toolbar → Copy). Renderable blocks (mermaid / math / tables / code / prose)
  * render for real through the shared StreamdownIsolated renderer — no raw source
  * dumps, no vendored libs. Images preview inline with dimensions / format / size
- * and a Copy-image action. Paragraphs get a program-computed term-frequency
- * keyword card. Long preview and keyword content stay bounded inside their own
- * scroll regions while the full Inspector column scrolls independently.
- * Insight / anchor provenance cards remain Phase 2.
+ * and a Copy-image action. The pane also acts as a stable navigation dashboard:
+ * one document-level Composer finding snapshot is projected into selection,
+ * section, and document groups, while deterministic parent/nearby/child/resource
+ * context keeps every row navigable back into the Atlas tree. Paragraphs get a
+ * compact term-frequency card; technical provenance stays collapsed.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
-import { BarChart3, Eye, Plus, Link as LinkIcon, FileText, Send, Copy, Check, Hash, Sparkles } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+	BarChart3,
+	Check,
+	ChevronRight,
+	Copy,
+	Eye,
+	FileText,
+	Hash,
+	Link as LinkIcon,
+	ListTree,
+	Plus,
+	Send,
+	Sparkles,
+} from 'lucide-react';
 import type { DocumentBlock } from '@/core/document/atlas/types';
 import { RawBlockKind } from '@/core/document/atlas/types';
 import { Button } from '@/ui/component/shared-ui/button';
@@ -20,6 +34,7 @@ import { StreamdownIsolated } from '@/ui/component/mine';
 import type { FileAtlasConfig } from '../config/fileAtlasConfig';
 import type {
 	AtlasCopilotSuggestion,
+	AtlasCopilotSuggestionSnapshot,
 	AtlasImageInfo,
 	FileAtlasHostPort,
 } from '../FileAtlasHostPort';
@@ -32,9 +47,18 @@ import {
 } from '../atlasTreeModel';
 import { displayIdentity, inspectorCardPolicy } from '../atlasDisplayModel';
 import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
+import { AIGraphContextArtifacts } from '@/ui/component/ai-graph';
+import {
+	atlasBlockForSuggestion,
+	atlasScopeKind,
+	buildAtlasElementContext,
+	groupAtlasCopilotSuggestions,
+	type AtlasElementContext,
+} from '../atlasInspectorModel';
 
 interface AtlasInspectorProps {
 	block: DocumentBlock | null;
+	blocks: DocumentBlock[];
 	config: FileAtlasConfig;
 	host: FileAtlasHostPort;
 	sourcePath: string;
@@ -42,6 +66,7 @@ interface AtlasInspectorProps {
 	onReveal: (block: DocumentBlock) => void;
 	onAddToTray: (block: DocumentBlock) => void;
 	onCopyLink: (block: DocumentBlock) => void;
+	onSelect: (block: DocumentBlock) => void;
 }
 
 /**
@@ -78,6 +103,7 @@ const IDENTITY_TITLE_KINDS = new Set<string>([
 
 export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 	block,
+	blocks,
 	config,
 	host,
 	sourcePath,
@@ -85,8 +111,13 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 	onReveal,
 	onAddToTray,
 	onCopyLink,
+	onSelect,
 }) => {
 	const inspectorRef = useRef<HTMLDivElement>(null);
+	const elementContext = useMemo(
+		() => block ? buildAtlasElementContext(blocks, block.id) : null,
+		[block, blocks],
+	);
 	useRovingComposite(inspectorRef, {
 		itemSelector: 'button:not([disabled]), [tabindex="0"]',
 		orientation: 'vertical',
@@ -113,14 +144,15 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 				? config.strings.frontmatterTitle
 				: kindCfg?.label ?? block.kind;
 	const keywordText = analysisText(block);
+	const scopeLabel = scopeActionLabel(block, config);
 
 	return (
 		<div ref={inspectorRef} className="pkfa-inspector-surface">
-			<section className="pkfa-inspector-primary">
+			<section className="pkfa-inspector-scope">
 				<div className="pkfa-selected-top">
 					<span className="pkfa-selected-kind">
 						<Icon />
-						<span>{label}</span>
+						<span>{config.strings.inspectorCurrentScope}</span>
 					</span>
 					<Button
 						variant="unstyled"
@@ -133,6 +165,16 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 						{config.strings.reveal}
 					</Button>
 				</div>
+				{elementContext && (
+					<ScopeBreadcrumb
+						context={elementContext}
+						config={config}
+						onSelect={onSelect}
+					/>
+				)}
+			</section>
+			<section className="pkfa-inspector-primary">
+				<span className="pkfa-inspector-object-kind">{label}</span>
 				{IDENTITY_TITLE_KINDS.has(block.kind) && (
 					<div className="pkfa-inspector-identity">
 						<span className="pkfa-selected-title">{identity.primary}</span>
@@ -140,6 +182,7 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 					</div>
 				)}
 				<SourcePreview block={block} config={config} host={host} sourcePath={sourcePath} />
+				<span className="pkfa-action-scope">{scopeLabel}</span>
 				<div className="pkfa-inspector-actions" aria-label="Block actions">
 					<Button
 						variant="unstyled"
@@ -173,13 +216,29 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 
 			<AtlasCopilotSuggestions
 				block={block}
+				blocks={blocks}
 				config={config}
+				context={elementContext}
 				host={host}
+				onSelect={onSelect}
 				sourcePath={sourcePath}
 			/>
 
+			{elementContext && (
+				<ElementContextSection
+					context={elementContext}
+					config={config}
+					onSelect={onSelect}
+				/>
+			)}
 			{cardPolicy.keywords && <KeywordSection text={keywordText} config={config} />}
 			{cardPolicy.statistics && <FactsSection block={block} config={config} />}
+			<AIGraphContextArtifacts
+				contextRefs={[sourcePath]}
+				label={config.strings.relatedAIGraphs}
+				limit={1}
+				className="pkfa-inspector-section pkfa-ai-graph-summary"
+			/>
 			<TechnicalDetails block={block} config={config} />
 		</div>
 	);
@@ -187,90 +246,276 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 
 const AtlasCopilotSuggestions: React.FC<{
 	block: DocumentBlock;
+	blocks: DocumentBlock[];
 	config: FileAtlasConfig;
+	context: AtlasElementContext | null;
 	host: FileAtlasHostPort;
+	onSelect: (block: DocumentBlock) => void;
 	sourcePath: string;
-}> = ({ block, config, host, sourcePath }) => {
-	const [suggestions, setSuggestions] = useState<AtlasCopilotSuggestion[]>([]);
-	const [loading, setLoading] = useState(Boolean(host.loadCopilotSuggestions));
+}> = ({ block, blocks, config, context, host, onSelect, sourcePath }) => {
+	const [snapshot, setSnapshot] = useState<{
+		status: 'loading' | 'ready' | 'unavailable' | 'error';
+		suggestions: AtlasCopilotSuggestion[];
+	}>(() => ({
+		status: host.loadCopilotSuggestions ? 'loading' : 'unavailable',
+		suggestions: [],
+	}));
 	useEffect(() => {
 		let active = true;
 		if (!host.loadCopilotSuggestions) {
-			setLoading(false);
-			setSuggestions([]);
+			setSnapshot({ status: 'unavailable', suggestions: [] });
 			return () => {
 				active = false;
 			};
 		}
-		setLoading(true);
+		setSnapshot({ status: 'loading', suggestions: [] });
 		void host.loadCopilotSuggestions(sourcePath)
-			.then((next) => {
+			.then((next: AtlasCopilotSuggestionSnapshot) => {
 				if (!active) return;
-				const range = atlasSelectionRange(block);
-				setSuggestions(next.filter((suggestion) => {
-					if (suggestion.targetFrom === null || suggestion.targetTo === null) return false;
-					return suggestion.targetTo >= range.from && suggestion.targetFrom <= range.to;
-				}).slice(0, 3));
+				setSnapshot({
+					status: next.status,
+					suggestions: next.suggestions,
+				});
 			})
-			.finally(() => {
-				if (active) setLoading(false);
+			.catch(() => {
+				if (active) setSnapshot({ status: 'error', suggestions: [] });
 			});
 		return () => {
 			active = false;
 		};
-	}, [block, host, sourcePath]);
-
-	if (!loading && suggestions.length === 0) return null;
+	}, [host, sourcePath]);
+	const groups = useMemo(
+		() => groupAtlasCopilotSuggestions(snapshot.suggestions, block, context?.section ?? null),
+		[block, context?.section, snapshot.suggestions],
+	);
+	const total = snapshot.suggestions.length;
+	const openFinding = (suggestion: AtlasCopilotSuggestion): void => {
+		host.openCopilot?.(sourcePath, {
+			...(suggestion.targetBlockId ? { blockId: suggestion.targetBlockId } : {}),
+			findingId: suggestion.findingId,
+			...(suggestion.targetFrom !== null ? { sourceFrom: suggestion.targetFrom } : {}),
+			...(suggestion.targetTo !== null ? { sourceTo: suggestion.targetTo } : {}),
+		});
+	};
 
 	return (
 		<section className="pkfa-inspector-section pkfa-copilot-suggestions">
+			<div className="pkfa-section-heading">
 				<span className="pkfa-selected-kind">
 					<Sparkles />
-					<span>{config.strings.copilotSuggestionsTitle}</span>
+					<span>{config.strings.copilotNavigatorTitle}</span>
 				</span>
-				{loading && <span className="pkfa-selected-sub">{config.strings.copilotSuggestionsLoading}</span>}
-				{suggestions.map((suggestion, index) => (
+				{snapshot.status === 'ready' && <span className="pkfa-section-count">{total}</span>}
+			</div>
+			<span className="pkfa-selected-sub">{config.strings.copilotNavigatorHint}</span>
+			{snapshot.status === 'loading' && (
+				<div className="pkfa-copilot-loading" aria-busy="true">
+					<span>{config.strings.copilotSuggestionsLoading}</span>
+					<i /><i /><i />
+				</div>
+			)}
+			{snapshot.status === 'unavailable' && (
+				<span className="pkfa-copilot-state">{config.strings.copilotUnavailable}</span>
+			)}
+			{snapshot.status === 'error' && (
+				<span className="pkfa-copilot-state is-error">{config.strings.copilotLoadFailed}</span>
+			)}
+			{snapshot.status === 'ready' && total === 0 && (
+				<span className="pkfa-copilot-state">{config.strings.copilotDocumentEmpty}</span>
+			)}
+			{snapshot.status === 'ready' && total > 0 && groups.selection.length === 0 && (
+				<span className="pkfa-copilot-state">{config.strings.copilotSelectionEmpty}</span>
+			)}
+			{snapshot.status === 'ready' && (
+				<>
+					<CopilotFindingGroup
+						label={config.strings.copilotSelectionGroup}
+						suggestions={groups.selection}
+						blocks={blocks}
+						config={config}
+						onOpen={openFinding}
+						onSelect={onSelect}
+					/>
+					<CopilotFindingGroup
+						label={config.strings.copilotSectionGroup}
+						suggestions={groups.section}
+						blocks={blocks}
+						config={config}
+						onOpen={openFinding}
+						onSelect={onSelect}
+					/>
+					<CopilotFindingGroup
+						label={config.strings.copilotDocumentGroup}
+						suggestions={groups.document}
+						blocks={blocks}
+						config={config}
+						onOpen={openFinding}
+						onSelect={onSelect}
+					/>
+				</>
+			)}
+			{host.openCopilot && (
+				<Button
+					variant="unstyled"
+					type="button"
+					className="pkfa-copilot-discuss"
+					onClick={() => host.openCopilot?.(sourcePath, {
+						sourceFrom: block.anchor.sourceFrom,
+						sourceTo: block.anchor.sourceTo,
+					})}
+				>
+					<Send />
+					{config.strings.copilotOpen}
+				</Button>
+			)}
+		</section>
+	);
+};
+
+const ScopeBreadcrumb: React.FC<{
+	context: AtlasElementContext;
+	config: FileAtlasConfig;
+	onSelect: (block: DocumentBlock) => void;
+}> = ({ context, config, onSelect }) => (
+	<nav className="pkfa-scope-breadcrumb" aria-label={config.strings.inspectorCurrentScope}>
+		{context.breadcrumb.map((candidate, index) => {
+			const current = index === context.breadcrumb.length - 1;
+			const label = displayIdentity(candidate, config).primary;
+			return (
+				<React.Fragment key={candidate.id}>
+					{index > 0 && <ChevronRight aria-hidden />}
+					{current ? (
+						<span title={label}>{label}</span>
+					) : (
+						<Button
+							variant="unstyled"
+							type="button"
+							title={label}
+							onClick={() => onSelect(candidate)}
+						>
+							{label}
+						</Button>
+					)}
+				</React.Fragment>
+			);
+		})}
+	</nav>
+);
+
+const CopilotFindingGroup: React.FC<{
+	label: string;
+	suggestions: AtlasCopilotSuggestion[];
+	blocks: DocumentBlock[];
+	config: FileAtlasConfig;
+	onOpen: (suggestion: AtlasCopilotSuggestion) => void;
+	onSelect: (block: DocumentBlock) => void;
+}> = ({ label, suggestions, blocks, config, onOpen, onSelect }) => {
+	if (suggestions.length === 0) return null;
+	return (
+		<div className="pkfa-copilot-group">
+			<div className="pkfa-copilot-group-heading">
+				<span>{label}</span>
+				<small>{suggestions.length}</small>
+			</div>
+			{suggestions.slice(0, 3).map((suggestion, index) => {
+				const target = atlasBlockForSuggestion(blocks, suggestion);
+				const targetLabel = target
+					? displayIdentity(target, config).primary
+					: suggestion.targetLabel;
+				return (
 					<div
 						key={suggestion.findingId}
 						className={`pkfa-copilot-suggestion${suggestion.state === 'stale' ? ' is-stale' : ''}`}
 					>
 						<span className="pkfa-suggestion-index">{String(index + 1).padStart(2, '0')}</span>
-						<span className="pkfa-suggestion-copy">
-							<strong>{suggestion.title}</strong>
-							{suggestion.summary && <small>{suggestion.summary}</small>}
-							<small>{suggestion.targetLabel} · {suggestion.evidenceLabel}</small>
-						</span>
+						<Button
+							variant="unstyled"
+							type="button"
+							className="pkfa-copilot-finding-main"
+							onClick={() => target ? onSelect(target) : onOpen(suggestion)}
+							title={target ? config.strings.copilotNavigate : config.strings.copilotOpen}
+						>
+							<span className="pkfa-suggestion-copy">
+								<strong>{suggestion.title}</strong>
+								{suggestion.summary && <small>{suggestion.summary}</small>}
+								<small>{targetLabel} · {suggestion.evidenceLabel}</small>
+							</span>
+							<ChevronRight aria-hidden />
+						</Button>
 						<Button
 							variant="unstyled"
 							type="button"
 							className="pkfa-copilot-open"
-							onClick={() => host.openCopilot?.(sourcePath, {
-								...(suggestion.targetBlockId
-									? { blockId: suggestion.targetBlockId }
-									: {}),
-								findingId: suggestion.findingId,
-								sourceFrom: block.anchor.sourceFrom,
-								sourceTo: block.anchor.sourceTo,
-							})}
+							onClick={() => onOpen(suggestion)}
 						>
 							{config.strings.copilotOpen}
 						</Button>
 					</div>
-				))}
+				);
+			})}
+		</div>
+	);
+};
+
+const ElementContextSection: React.FC<{
+	context: AtlasElementContext;
+	config: FileAtlasConfig;
+	onSelect: (block: DocumentBlock) => void;
+}> = ({ context, config, onSelect }) => {
+	const groups: Array<{ label: string; blocks: DocumentBlock[] }> = [
+		{ label: config.strings.contextParent, blocks: context.parent ? [context.parent] : [] },
+		{ label: config.strings.contextNearby, blocks: context.nearby },
+		{ label: config.strings.contextChildren, blocks: context.children },
+		{ label: config.strings.contextResources, blocks: context.resources },
+	].filter((group) => group.blocks.length > 0);
+	return (
+		<section className="pkfa-inspector-section pkfa-element-context">
+			<div className="pkfa-section-heading">
+				<span className="pkfa-selected-kind">
+					<ListTree />
+					<span>{config.strings.elementContextTitle}</span>
+				</span>
+				<span className="pkfa-section-count">
+					{groups.reduce((total, group) => total + group.blocks.length, 0)}
+				</span>
+			</div>
+			{groups.length === 0 && (
+				<span className="pkfa-selected-sub">{config.strings.contextEmpty}</span>
+			)}
+			{groups.map((group) => (
+				<div className="pkfa-context-group" key={group.label}>
+					<span className="pkfa-context-label">{group.label}</span>
+					<div className="pkfa-context-items">
+						{group.blocks.slice(0, 4).map((candidate) => {
+							const identity = displayIdentity(candidate, config);
+							return (
+								<Button
+									key={candidate.id}
+									variant="unstyled"
+									type="button"
+									className="pkfa-context-row"
+									onClick={() => onSelect(candidate)}
+									title={identity.primary}
+								>
+									<span>{identity.primary}</span>
+									<small>{config.kinds[candidate.kind]?.label ?? candidate.kind}</small>
+									<ChevronRight aria-hidden />
+								</Button>
+							);
+						})}
+					</div>
+				</div>
+			))}
 		</section>
 	);
 };
 
-function atlasSelectionRange(block: DocumentBlock): { from: number; to: number } {
-	let from = block.anchor.sourceFrom ?? 0;
-	let to = block.anchor.sourceTo ?? from;
-	const visit = (candidate: DocumentBlock): void => {
-		from = Math.min(from, candidate.anchor.sourceFrom ?? from);
-		to = Math.max(to, candidate.anchor.sourceTo ?? to);
-		for (const child of candidate.children ?? []) visit(child);
-	};
-	visit(block);
-	return { from, to };
+function scopeActionLabel(block: DocumentBlock, config: FileAtlasConfig): string {
+	const scope = atlasScopeKind(block);
+	if (scope === 'section') return config.strings.useScopeSection;
+	if (scope === 'item') return config.strings.useScopeItem;
+	if (scope === 'resource') return config.strings.useScopeResource;
+	return config.strings.useScopeBlock;
 }
 
 function lineRange(block: DocumentBlock): string {
@@ -448,17 +693,32 @@ const ImagePreview: React.FC<{
 
 /** Program-computed term-frequency keywords for every addressable block. */
 const KeywordSection: React.FC<{ text: string; config: FileAtlasConfig }> = ({ text, config }) => {
+	const [expanded, setExpanded] = useState(false);
 	const keywords = keywordsOf(text, config.keywordStopwords);
+	const visibleKeywords = expanded ? keywords : keywords.slice(0, 5);
 	const max = keywords[0]?.[1] ?? 1;
 	return (
-		<section className="pkfa-inspector-section">
-			<span className="pkfa-selected-kind">
-				<Hash />
-				<span>{config.strings.keywordsTitle}</span>
-			</span>
+		<section className="pkfa-inspector-section pkfa-keyword-section">
+			<div className="pkfa-section-heading">
+				<span className="pkfa-selected-kind">
+					<Hash />
+					<span>{config.strings.keywordsTitle}</span>
+				</span>
+				{keywords.length > 5 && (
+					<Button
+						variant="unstyled"
+						type="button"
+						className="pkfa-inline-toggle"
+						onClick={() => setExpanded((current) => !current)}
+						aria-expanded={expanded}
+					>
+						{expanded ? config.strings.keywordsShowLess : config.strings.keywordsShowAll}
+					</Button>
+				)}
+			</div>
 			{keywords.length ? (
 				<div className="pkfa-kw-list" role="list">
-					{keywords.map(([word, count]) => (
+					{visibleKeywords.map(([word, count]) => (
 						<div key={word} className="pkfa-kw-row" role="listitem">
 							<span className="pkfa-kw-word">{word}</span>
 							<span className="pkfa-kw-meter" aria-hidden="true">
@@ -521,7 +781,7 @@ const FactsSection: React.FC<{ block: DocumentBlock; config: FileAtlasConfig }> 
 	const visibleRows = rows.filter(([, value]) => value !== undefined);
 	if (visibleRows.length === 0) return null;
 	return (
-		<section className="pkfa-inspector-section">
+		<section className="pkfa-inspector-section pkfa-facts-section">
 			<span className="pkfa-selected-kind">
 				<BarChart3 />
 				<span>{s.locationCard}</span>
