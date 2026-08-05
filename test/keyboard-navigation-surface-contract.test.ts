@@ -40,6 +40,7 @@ assert.match(runtime, /state\.compositionActive \|\| event\.isComposing \|\| eve
 assert.match(runtime, /\[data-peak-keyboard-zone\]/);
 assert.match(runtime, /focusNextZone\(event\.shiftKey\)/);
 assert.match(runtime, /registerEscapeLayer/);
+assert.match(runtime, /event\.stopImmediatePropagation\(\)/);
 
 assert.match(roving, /item\.tabIndex = item === active \? 0 : -1/);
 assert.match(roving, /root\.ownerDocument\.defaultView\?\.MutationObserver/);

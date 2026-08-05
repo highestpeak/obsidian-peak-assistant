@@ -150,7 +150,7 @@ assert.match(
 
 for (const [selector, height] of [
 	['pkfa-quick-action', '30px'],
-	['pkfa-review-document-link', '24px'],
+	['pkfa-compact-link-open', '26px'],
 ] as const) {
 	assert.match(
 		fileAtlasCss,

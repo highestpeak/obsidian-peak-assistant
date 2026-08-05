@@ -30,9 +30,11 @@ import {
 import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
 import type { ComposerCapabilityId } from '@/core/composer';
 import type { RawBlockKind } from '@/core/document/atlas/types';
+import type { FileAtlasSessionPort } from './FileAtlasSessionPort';
 
 interface FileAtlasHostProps {
 	host: FileAtlasHostPort;
+	session: FileAtlasSessionPort;
 	initialPath: string | null;
 	initialContent: string;
 	ownerDocument?: Document | null;
@@ -46,6 +48,7 @@ interface FileAtlasHostProps {
 
 export const FileAtlasHost: React.FC<FileAtlasHostProps> = ({
 	host,
+	session,
 	initialPath,
 	initialContent,
 	ownerDocument,
@@ -64,8 +67,8 @@ export const FileAtlasHost: React.FC<FileAtlasHostProps> = ({
 	const [openDocs, setOpenDocs] = useState<OpenDocMeta[]>(() => host.listOpenDocs());
 	const [historyDocs, setHistoryDocs] = useState<OpenDocMeta[]>([]);
 	const [activePath, setActivePath] = useState<string | null>(initialPath);
-	const [content, setContent] = useState<string | null>(
-		initialPath ? initialContent : null
+	const [loadedDocument, setLoadedDocument] = useState<{ path: string; content: string } | null>(
+		initialPath ? { path: initialPath, content: initialContent } : null,
 	);
 
 	useEffect(() => {
@@ -151,19 +154,18 @@ export const FileAtlasHost: React.FC<FileAtlasHostProps> = ({
 	// Load the active document's content (fresh) whenever it changes.
 	useEffect(() => {
 		if (!activePath) {
-			setContent(null);
+			setLoadedDocument(null);
 			return;
 		}
-		if (activePath === initialPath && content === initialContent) return;
+		if (loadedDocument?.path === activePath) return;
 		let alive = true;
 		host.readDoc(activePath).then((c) => {
-			if (alive) setContent(c);
+			if (alive) setLoadedDocument({ path: activePath, content: c });
 		});
 		return () => {
 			alive = false;
 		};
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [activePath, host]);
+	}, [activePath, host, loadedDocument?.path]);
 
 	const onSelectDoc = (path: string): void => {
 		const viewedAt = Date.now();
@@ -227,18 +229,20 @@ export const FileAtlasHost: React.FC<FileAtlasHostProps> = ({
 			<div className="pkfa-empty-state">Open a note to use File Atlas.</div>
 		);
 	}
-	if (content === null) {
+	if (!loadedDocument || loadedDocument.path !== activePath) {
 		return <div className="pkfa-empty-state">Loading…</div>;
 	}
 
 	return (
 		<FileAtlasPanel
+			key={activePath}
 			config={config}
+			session={session}
 			railSections={sections}
 			railPreference={preference}
 			activePath={activePath}
 			displayPath={activePath}
-			content={content}
+			content={loadedDocument.content}
 			host={host}
 			onOpenBlock={onOpenBlock}
 			onRunQuickAction={onRunQuickAction}

@@ -8,11 +8,21 @@
  * Ambient moved out to the Composer View, so there is no mode-nav here.
  *
  * The panel is presentational: `FileAtlasHost` owns which document is active and
- * feeds `content`; the panel re-seeds its tree state whenever content changes.
- * Everything touching the Obsidian runtime goes through the injected host port.
+ * feeds `content`; an app-owned, session-only port restores each document's
+ * interaction state. Everything touching the Obsidian runtime goes through the
+ * injected host port.
  */
 
-import React, { type CSSProperties, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import React, {
+	type CSSProperties,
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useReducer,
+	useRef,
+	useState,
+} from 'react';
 import { Search, Network, ListTree } from 'lucide-react';
 import { parseDocumentBlocks } from '@/core/document/atlas/documentBlockParser';
 import { RawBlockKind } from '@/core/document/atlas/types';
@@ -30,6 +40,8 @@ import {
 	firstSelectableId,
 	FRONTMATTER_GROUP_ID,
 	groupFrontmatter,
+	restoreSelectionId,
+	selectionSnapshotForBlock,
 } from './atlasTreeModel';
 import { AtlasBar } from './components/AtlasBar';
 import { AtlasTree } from './components/AtlasTree';
@@ -51,11 +63,17 @@ import {
 import { usePeakKeyboardSurface } from '@/ui/keyboard/usePeakKeyboardSurface';
 import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
 import { PEAK_KEYBOARD_ZONE_LABELS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
-
-type Subview = 'tree' | 'graph';
+import {
+	defaultFileAtlasGraphSessionState,
+	type FileAtlasDocumentSessionState,
+	type FileAtlasGraphSessionState,
+	type FileAtlasSessionPort,
+	type FileAtlasSubview,
+} from './FileAtlasSessionPort';
 
 export interface FileAtlasPanelProps {
 	config: FileAtlasConfig;
+	session: FileAtlasSessionPort;
 	railSections: FileRailSections;
 	railPreference: FileRailPreference;
 	activePath: string;
@@ -88,7 +106,6 @@ interface AtlasState {
 }
 
 type AtlasAction =
-	| { type: 'reseed'; preset: string; kinds: RawBlockKind[]; collapsed: string[]; selectedId: string | null }
 	| { type: 'applyPreset'; id: string; kinds: RawBlockKind[] }
 	| { type: 'markPresetSaved' }
 	| { type: 'toggleKind'; kind: RawBlockKind }
@@ -102,17 +119,6 @@ type AtlasAction =
 
 function reducer(state: AtlasState, action: AtlasAction): AtlasState {
 	switch (action.type) {
-		case 'reseed':
-			return {
-				activePreset: action.preset,
-				presetModified: false,
-				visibleKinds: new Set(action.kinds),
-				collapsed: new Set(action.collapsed),
-				selectedId: action.selectedId,
-				// Preserve the tray across document switches — it's a cross-document
-				// context-prep surface, not per-document state.
-				tray: state.tray,
-			};
 		case 'applyPreset':
 			return {
 				...state,
@@ -162,6 +168,7 @@ function reducer(state: AtlasState, action: AtlasAction): AtlasState {
 
 export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 	config,
+	session,
 	railSections,
 	railPreference,
 	activePath,
@@ -179,14 +186,21 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 	onRailWidthChange,
 	onRailWidthCommit,
 }) => {
-	const [searchTerm, setSearchTerm] = useState('');
-	const [subview, setSubview] = useState<Subview>('tree');
-	const [flattened, setFlattened] = useState(false);
+	const [initialSession] = useState(() => session.readDocument(activePath));
+	const [searchTerm, setSearchTerm] = useState(initialSession?.searchTerm ?? '');
+	const [subview, setSubview] = useState<FileAtlasSubview>(initialSession?.subview ?? 'tree');
+	const [flattened, setFlattened] = useState(initialSession?.flattened ?? false);
+	const [graphState, setGraphState] = useState<FileAtlasGraphSessionState>(
+		() => initialSession?.graph ?? defaultFileAtlasGraphSessionState(),
+	);
 	const rootRef = useRef<HTMLDivElement>(null);
 	const searchInputRef = useRef<HTMLInputElement>(null);
 	const searchRestoreFocusRef = useRef<HTMLElement | null>(null);
 	const viewTabsRef = useRef<HTMLDivElement>(null);
+	const treeScrollRef = useRef<HTMLDivElement>(null);
 	const inspectorScrollRef = useRef<HTMLDivElement>(null);
+	const treeScrollTopRef = useRef(initialSession?.treeScrollTop ?? 0);
+	const inspectorScrollTopRef = useRef(initialSession?.inspectorScrollTop ?? 0);
 	usePeakKeyboardSurface('file-atlas', rootRef);
 	useRovingComposite(viewTabsRef, {
 		itemSelector: '[role="tab"]',
@@ -252,34 +266,24 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 		[config]
 	);
 
-	const [state, dispatch] = useReducer(reducer, undefined, () => ({
-		activePreset: DEFAULT_PRESET_ID,
-		presetModified: false,
-		visibleKinds: new Set<RawBlockKind>(defaultKinds),
-		collapsed: new Set<string>(),
-		selectedId: null,
-		tray: [],
-	}));
-
-	// Re-seed whenever the parsed active document changes: reset to the
-	// default preset, frame the block at the editor's cursor (falling back to the
-	// first heading), and default-fold so only that block's ancestor path is open.
-	// Preset overrides intentionally do not re-seed this state: saving a default
-	// must not move the current selection or collapse the list.
-	useEffect(() => {
+	const [state, dispatch] = useReducer(reducer, undefined, () => {
 		const cursorLine = host.getCursorLine?.(activePath);
-		const cursorId = cursorLine != null ? blockIdAtLine(blocks, cursorLine) : null;
-		const initialId = cursorId ?? firstSelectableId(blocks);
-		dispatch({
-			type: 'reseed',
-			preset: DEFAULT_PRESET_ID,
-			kinds: defaultKinds,
-			collapsed: [...defaultCollapsedIds(blocks, initialId)],
-			selectedId: initialId,
-		});
-		setSearchTerm('');
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [blocks]);
+		const defaultSelectionId = cursorLine == null
+			? firstSelectableId(blocks)
+			: blockIdAtLine(blocks, cursorLine);
+		const groupIds = new Set(collectGroupIds(blocks));
+		return {
+			activePreset: initialSession?.activePreset ?? DEFAULT_PRESET_ID,
+			presetModified: initialSession?.presetModified ?? false,
+			visibleKinds: new Set<RawBlockKind>(initialSession?.visibleKinds ?? defaultKinds),
+			collapsed: new Set<string>(initialSession
+				? initialSession.collapsedIds.filter((id) => groupIds.has(id))
+				: defaultCollapsedIds(blocks, defaultSelectionId)),
+			selectedId: restoreSelectionId(blocks, initialSession?.selection ?? null)
+				?? defaultSelectionId,
+			tray: session.readTray(),
+		};
+	});
 
 	const showFrontmatterSummary =
 		state.activePreset === 'overview'
@@ -310,6 +314,36 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 	}, [blocks]);
 
 	const selectedBlock = state.selectedId ? blockById.get(state.selectedId) ?? null : null;
+	const liveSessionRef = useRef<FileAtlasDocumentSessionState | null>(null);
+	liveSessionRef.current = {
+		subview,
+		searchTerm,
+		flattened,
+		activePreset: state.activePreset,
+		presetModified: state.presetModified,
+		visibleKinds: [...state.visibleKinds],
+		collapsedIds: [...state.collapsed],
+		selection: selectedBlock ? selectionSnapshotForBlock(selectedBlock) : null,
+		treeScrollTop: treeScrollTopRef.current,
+		inspectorScrollTop: inspectorScrollTopRef.current,
+		graph: graphState,
+	};
+	useEffect(() => () => {
+		const snapshot = liveSessionRef.current;
+		if (snapshot) session.writeDocument(activePath, {
+			...snapshot,
+			treeScrollTop: treeScrollTopRef.current,
+			inspectorScrollTop: inspectorScrollTopRef.current,
+		});
+	}, [activePath, session]);
+	useEffect(() => {
+		session.writeTray(state.tray);
+	}, [session, state.tray]);
+	useLayoutEffect(() => {
+		if (subview !== 'tree') return;
+		if (treeScrollRef.current) treeScrollRef.current.scrollTop = treeScrollTopRef.current;
+		if (inspectorScrollRef.current) inspectorScrollRef.current.scrollTop = inspectorScrollTopRef.current;
+	}, [subview]);
 	const trayIds = useMemo(() => new Set(state.tray.map((t) => t.id)), [state.tray]);
 	const projectedSelectedBlock = selectedBlock
 		&& visible.has(selectedBlock.id)
@@ -364,9 +398,16 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 		host.notify('Link copied');
 	};
 
+	const priorSelectionRef = useRef(state.selectedId);
 	useEffect(() => {
+		if (priorSelectionRef.current === state.selectedId) return;
+		priorSelectionRef.current = state.selectedId;
+		inspectorScrollTopRef.current = 0;
 		if (inspectorScrollRef.current) inspectorScrollRef.current.scrollTop = 0;
-	}, [activePath, state.selectedId]);
+	}, [state.selectedId]);
+	const updateGraphState = useCallback((next: FileAtlasGraphSessionState): void => {
+		setGraphState(next);
+	}, []);
 
 	const groupKinds = (groupId: string): RawBlockKind[] =>
 		Object.entries(config.kinds)
@@ -463,7 +504,14 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 				</div>
 
 				{subview === 'graph' ? (
-					<FileAtlasGraph path={activePath} host={host} config={config} onAddToTray={addToTray} />
+					<FileAtlasGraph
+						path={activePath}
+						host={host}
+						config={config}
+						onAddToTray={addToTray}
+						initialState={graphState}
+						onStateChange={updateGraphState}
+					/>
 				) : (
 					<>
 						{/* search band */}
@@ -519,7 +567,13 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 								data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['fa-atlas-tree']}
 								data-peak-keyboard-order="3"
 							>
-								<div className="pkfa-tree-scroll">
+								<div
+									ref={treeScrollRef}
+									className="pkfa-tree-scroll"
+									onScroll={(event) => {
+										treeScrollTopRef.current = event.currentTarget.scrollTop;
+									}}
+								>
 									{firstVisibleId ? (
 										<AtlasTree
 											blocks={blocks}
@@ -547,7 +601,13 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 								data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['fa-inspector']}
 								data-peak-keyboard-order="4"
 							>
-								<div ref={inspectorScrollRef} className="pkfa-inspector-scroll">
+								<div
+									ref={inspectorScrollRef}
+									className="pkfa-inspector-scroll"
+									onScroll={(event) => {
+										inspectorScrollTopRef.current = event.currentTarget.scrollTop;
+									}}
+								>
 									<AtlasInspector
 										block={projectedSelectedBlock}
 										blocks={blocks}
@@ -555,7 +615,6 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 										host={host}
 										sourcePath={activePath}
 										inTray={projectedSelectedBlock ? trayIds.has(projectedSelectedBlock.id) : false}
-										onReveal={reveal}
 										onAddToTray={addToTray}
 										onCopyLink={copyLink}
 										onRunQuickAction={(block, capabilityId) => {

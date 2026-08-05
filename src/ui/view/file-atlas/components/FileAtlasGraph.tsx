@@ -24,15 +24,21 @@ import type { FileAtlasConfig } from '../config/fileAtlasConfig';
 import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
 import { PEAK_KEYBOARD_ZONE_LABELS } from '@/ui/keyboard/config/KeyboardNavigationDefaults';
 import { ContextualAIGraphView } from '@/ui/component/ai-graph';
+import type {
+	FileAtlasGraphScope,
+	FileAtlasGraphSessionState,
+} from '../FileAtlasSessionPort';
 
 interface FileAtlasGraphProps {
 	path: string;
 	host: FileAtlasHostPort;
 	config: FileAtlasConfig;
 	onAddToTray: (block: DocumentBlock) => void;
+	initialState: FileAtlasGraphSessionState;
+	onStateChange: (state: FileAtlasGraphSessionState) => void;
 }
 
-type Scope = 'one-hop' | 'two-hop' | 'ai';
+type Scope = FileAtlasGraphScope;
 
 // Full preset parity with the Vault Search Result Graph — both feed the same
 // shared canvas, and the neighborhood subgraph carries real note paths (so folder
@@ -96,22 +102,41 @@ function trayBlockForNode(id: string, label: string, nodePath: string): Document
 	};
 }
 
-export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, config, onAddToTray }) => {
+export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({
+	path,
+	host,
+	config,
+	onAddToTray,
+	initialState,
+	onStateChange,
+}) => {
 	const s = config.strings;
-	const [scope, setScope] = useState<Scope>('one-hop');
-	const [semantic, setSemantic] = useState(false);
-	const [layout, setLayout] = useState<AtlasGraphPreset>('constellation');
+	const [scope, setScope] = useState<Scope>(initialState.scope);
+	const [semantic, setSemantic] = useState(initialState.semantic);
+	const [layout, setLayout] = useState<AtlasGraphPreset>(initialState.layout);
+	const [viewport, setViewport] = useState(initialState.viewport);
 	const [data, setData] = useState<AtlasGraphData | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState(false);
 	const scopeRef = useRef<HTMLDivElement>(null);
 	const layoutRef = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		onStateChange({ scope, semantic, layout, viewport });
+	}, [layout, onStateChange, scope, semantic, viewport]);
+	const selectScope = (next: Scope): void => {
+		setScope(next);
+		setViewport(null);
+	};
+	const selectLayout = (next: AtlasGraphPreset): void => {
+		setLayout(next);
+		setViewport(null);
+	};
 	useRovingComposite(scopeRef, {
 		itemSelector: '[role="tab"]',
 		orientation: 'horizontal',
 		onActiveItem: (item) => {
 			const nextScope = item.dataset.graphScope as Scope | undefined;
-			if (nextScope) setScope(nextScope);
+			if (nextScope) selectScope(nextScope);
 		},
 	});
 	useRovingComposite(layoutRef, {
@@ -119,7 +144,7 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, conf
 		orientation: 'horizontal',
 		onActiveItem: (item) => {
 			const nextLayout = item.dataset.graphLayout as AtlasGraphPreset | undefined;
-			if (nextLayout) setLayout(nextLayout);
+			if (nextLayout) selectLayout(nextLayout);
 		},
 	});
 
@@ -173,7 +198,7 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, conf
 						data-graph-scope="one-hop"
 						data-peak-focus-id="file-atlas-graph-one-hop"
 						className={`pkfa-graph-scope-tab${scope === 'one-hop' ? ' is-active' : ''}`}
-						onClick={() => setScope('one-hop')}
+						onClick={() => selectScope('one-hop')}
 					>
 						{s.graphScopeLocal}
 					</Button>
@@ -186,7 +211,7 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, conf
 						data-graph-scope="two-hop"
 						data-peak-focus-id="file-atlas-graph-two-hop"
 						className={`pkfa-graph-scope-tab${scope === 'two-hop' ? ' is-active' : ''}`}
-						onClick={() => setScope('two-hop')}
+						onClick={() => selectScope('two-hop')}
 					>
 						{s.graphScopeTwoHop}
 					</Button>
@@ -199,7 +224,7 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, conf
 						data-graph-scope="ai"
 						data-peak-focus-id="file-atlas-graph-ai"
 						className={`pkfa-graph-scope-tab${scope === 'ai' ? ' is-active' : ''}`}
-						onClick={() => setScope('ai')}
+						onClick={() => selectScope('ai')}
 					>
 						{s.graphScopeAI}
 					</Button>
@@ -217,7 +242,7 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, conf
 							data-graph-layout={l.id}
 							data-peak-focus-id={`file-atlas-layout-${l.id}`}
 							className={`pkfa-graph-scope-tab${layout === l.id ? ' is-active' : ''}`}
-							onClick={() => setLayout(l.id)}
+							onClick={() => selectLayout(l.id)}
 						>
 							{l.label}
 						</Button>
@@ -261,6 +286,8 @@ export const FileAtlasGraph: React.FC<FileAtlasGraphProps> = ({ path, host, conf
 						subgraph={loading ? null : subgraph}
 						preset={layout}
 						showSemantic={semantic}
+						initialViewport={viewport}
+						onViewportChange={setViewport}
 						summary={meta}
 						buildingLabel="Loading neighborhood…"
 						emptyLabel="No linked notes around this document yet."

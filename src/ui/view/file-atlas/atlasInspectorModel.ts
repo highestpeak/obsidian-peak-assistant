@@ -39,15 +39,20 @@ export function filterAtlasQuickActions(
  * Flatten structural list containers into compact, one-line preview rows while
  * excluding extracted resources that would repeat their owning prose/list item.
  */
-export function compactStructuredPreviewRows(root: DocumentBlock): DocumentBlock[] {
-	const rows: DocumentBlock[] = [];
-	const visit = (block: DocumentBlock): void => {
+export interface AtlasStructuredPreviewRow {
+	block: DocumentBlock;
+	depth: number;
+}
+
+export function compactStructuredPreviewRows(root: DocumentBlock): AtlasStructuredPreviewRow[] {
+	const rows: AtlasStructuredPreviewRow[] = [];
+	const visit = (block: DocumentBlock, depth: number): void => {
 		if (RESOURCE_KINDS.has(block.kind)) return;
 		if (block.kind === Kind.List) {
-			for (const child of block.children ?? []) visit(child);
+			for (const child of block.children ?? []) visit(child, depth);
 			return;
 		}
-		rows.push(block);
+		rows.push({ block, depth });
 		if (block.kind !== Kind.ListItem && block.kind !== Kind.Task) return;
 		for (const child of block.children ?? []) {
 			if (
@@ -55,11 +60,15 @@ export function compactStructuredPreviewRows(root: DocumentBlock): DocumentBlock
 				child.kind === Kind.ListItem ||
 				child.kind === Kind.Task
 			) {
-				visit(child);
+				visit(child, depth + 1);
 			}
 		}
 	};
-	for (const child of root.children ?? []) visit(child);
+	if (root.kind === Kind.ListItem || root.kind === Kind.Task) {
+		visit(root, 0);
+		return rows;
+	}
+	for (const child of root.children ?? []) visit(child, 0);
 	return rows;
 }
 

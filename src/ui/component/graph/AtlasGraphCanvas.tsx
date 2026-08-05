@@ -5,6 +5,7 @@ export type {
 	AtlasGraphCanvasProps,
 	AtlasGraphNodeTap,
 	AtlasGraphPreset,
+	AtlasGraphViewport,
 } from './AtlasGraphCanvasImpl';
 
 type ImplModule = typeof import('./AtlasGraphCanvasImpl');

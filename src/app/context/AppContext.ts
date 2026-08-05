@@ -40,6 +40,7 @@ import { composeCopilotReviewHistory } from '@/app/copilot/composeCopilotReviewH
 import type { CopilotReviewHistoryService } from '@/service/copilot/CopilotReviewHistoryService';
 import type { ProgressReporterPort } from '@/core/ports/ProgressReporterPort';
 import { ObsidianProgressReporter } from '@/app/platform/ObsidianProgressReporter';
+import { FileAtlasSessionStore } from '@/app/file-atlas/FileAtlasSessionStore';
 
 /**
  * Application context containing all global dependencies.
@@ -56,6 +57,8 @@ export class AppContext {
 	 * capability runtimes plug in here too.
 	 */
 	public readonly runtimeRegistry: AppRuntimeRegistry;
+	/** Modal-lifetime bridge for session-only, per-document File Atlas UI state. */
+	public readonly fileAtlasSessionStore: FileAtlasSessionStore;
 
 	/** App-owned progress notification reporter. Passed to service consumers via constructor injection. */
 	public readonly progressReporter: ProgressReporterPort;
@@ -516,6 +519,7 @@ export class AppContext {
 		this.eventBus = EventBus.getInstance(app);
 		this._bridge = new HarnessRunBridge();
 		this.runtimeRegistry = new AppRuntimeRegistry();
+		this.fileAtlasSessionStore = new FileAtlasSessionStore();
 		this.runtimeRegistry.setGeneratedOutputPersistenceRuntime(
 			composeGeneratedOutputPersistenceRuntime(
 				app,

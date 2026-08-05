@@ -155,7 +155,7 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({
 	const isGroup = isGroupNode(block) && hasChildren;
 	const kindCfg = config.kinds[block.kind];
 	const isCollapsed = collapsed.has(block.id);
-	const Icon = iconForKind(block.kind);
+	const Icon = iconForKind(block.kind, block.level);
 
 	const badgeText = isHeading ? `H${block.level}` : kindCfg?.badge ?? block.kind;
 	const badgeClass = isHeading ? 'pkfa-badge--h' : `pkfa-badge--${kindCfg?.badgeClass ?? 'block'}`;
@@ -241,7 +241,7 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({
 				}}
 			>
 				<span className="pkfa-line-ref">{block.anchor.lineStart}</span>
-				<div className="pkfa-node-body" style={{ paddingLeft: `${6 + depth * 16}px` }}>
+				<div className="pkfa-node-body" style={{ paddingLeft: `${4 + depth * 10}px` }}>
 					{isGroup && hasChildren ? (
 						<Button
 							variant="unstyled"
@@ -300,7 +300,10 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({
 						<AtlasNode
 							key={child.id}
 							block={child}
-							depth={depth + 1}
+							depth={(
+								(block.kind === RawBlockKind.ListItem || block.kind === RawBlockKind.Task)
+								&& child.kind === RawBlockKind.List
+							) ? depth : depth + 1}
 							parentId={block.id}
 							{...props}
 						/>

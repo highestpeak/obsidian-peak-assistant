@@ -15,6 +15,7 @@ import type { ChatVaultWriterPort } from '@/core/ports/ChatVaultWriterPort';
 import { SettingsUpdatedEvent, ViewEventType } from '@/core/eventBus';
 import { normalizeCodeBlockTheme, type CodeBlockThemeId } from '@/core/config/settingsTypes';
 import { useServiceContext } from '@/ui/context/ServiceContext';
+import { usePeakEscapeLayer } from '@/ui/keyboard/usePeakKeyboardSurface';
 import { portalHostForDocument } from '@/ui/react/ReactRenderer';
 import { STREAMDOWN_ISOLATED_CSS } from '@/styles/streamdown-isolated-css';
 import { remarkWikilink } from './streamdown';
@@ -443,7 +444,12 @@ const HOVER_DEBOUNCE_MS = 180;
 const HOVER_CLOSE_DELAY_MS = 100;
 
 type HoverState = { path: string; rect: DOMRect; preview: PreviewResult | null; loading: boolean };
-type MermaidFullscreenState = { svg: string; label: string; ownerDocument: Document };
+type MermaidFullscreenState = {
+	svg: string;
+	label: string;
+	ownerDocument: Document;
+	trigger: HTMLElement;
+};
 const MERMAID_KEYBOARD_PAN_STEP = 40;
 
 const MERMAID_FULLSCREEN_BOUND_FLAG = 'peakMermaidFullscreenBound';
@@ -475,7 +481,7 @@ function setupMermaidFullscreenButtons(
 				if (!svg || !label) return;
 				event.preventDefault();
 				event.stopImmediatePropagation();
-				open({ svg: svg.outerHTML, label, ownerDocument });
+				open({ svg: svg.outerHTML, label, ownerDocument, trigger: button });
 			};
 			button.addEventListener('click', listener, true);
 			listeners.set(button, listener);
@@ -515,7 +521,7 @@ function fullscreenMermaidFromEvent(
 	if (!svg || !label) return false;
 	event.preventDefault();
 	event.stopImmediatePropagation();
-	open({ svg: svg.outerHTML, label, ownerDocument });
+	open({ svg: svg.outerHTML, label, ownerDocument, trigger: button });
 	return true;
 }
 
@@ -526,6 +532,7 @@ const MermaidFullscreenDialog: React.FC<{
 	const strings = useChatStudioStrings().mermaidFullscreen;
 	const [viewport, setViewport] = useState<MermaidViewport>(MERMAID_INITIAL_VIEWPORT);
 	const [dragging, setDragging] = useState(false);
+	const dialogRef = useRef<HTMLDivElement | null>(null);
 	const canvasRef = useRef<HTMLDivElement | null>(null);
 	const viewportRef = useRef(viewport);
 	const dragRef = useRef<{
@@ -536,20 +543,69 @@ const MermaidFullscreenDialog: React.FC<{
 		originY: number;
 	} | null>(null);
 	viewportRef.current = viewport;
+	const closeAndRestoreFocus = useCallback(() => {
+		onClose();
+		const ownerWindow = state.ownerDocument.defaultView;
+		const restore = (): void => {
+			if (state.trigger.isConnected) state.trigger.focus({ preventScroll: true });
+		};
+		if (ownerWindow) ownerWindow.setTimeout(restore, 0);
+		else restore();
+	}, [onClose, state.ownerDocument, state.trigger]);
+	usePeakEscapeLayer(
+		true,
+		dialogRef,
+		'mermaid-fullscreen',
+		closeAndRestoreFocus,
+		state.trigger,
+		true,
+	);
+	useEffect(() => {
+		const ownerWindow = state.ownerDocument.defaultView;
+		if (!ownerWindow) return;
+		const closeTopLayer = (event: KeyboardEvent): void => {
+			if (event.key !== 'Escape') return;
+			event.preventDefault();
+			event.stopPropagation();
+			event.stopImmediatePropagation();
+			closeAndRestoreFocus();
+		};
+		// Window capture runs before Obsidian's document-level Modal scope. This
+		// guarantees the fullscreen diagram consumes the first Escape instead of
+		// allowing the File Atlas modal behind it to close first.
+		ownerWindow.addEventListener('keydown', closeTopLayer, true);
+		return () => ownerWindow.removeEventListener('keydown', closeTopLayer, true);
+	}, [closeAndRestoreFocus, state.ownerDocument]);
 
 	useEffect(() => {
 		const body = state.ownerDocument.body;
 		const previousOverflow = body.style.overflow;
 		body.style.overflow = 'hidden';
-		const handleKeyDown = (event: KeyboardEvent) => {
-			if (event.key === 'Escape') onClose();
-		};
-		state.ownerDocument.addEventListener('keydown', handleKeyDown);
+		state.ownerDocument.defaultView?.requestAnimationFrame(() => canvasRef.current?.focus());
 		return () => {
 			body.style.overflow = previousOverflow;
-			state.ownerDocument.removeEventListener('keydown', handleKeyDown);
 		};
-	}, [state.ownerDocument, onClose]);
+	}, [state.ownerDocument]);
+
+	const trapFocus = (event: React.KeyboardEvent<HTMLDivElement>): void => {
+		if (event.key !== 'Tab') return;
+		const focusable = [...(dialogRef.current?.querySelectorAll<HTMLElement>(
+			'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+		) ?? [])].filter((element) => element.offsetParent !== null);
+		if (focusable.length === 0) return;
+		const first = focusable[0];
+		const last = focusable[focusable.length - 1];
+		const active = state.ownerDocument.activeElement;
+		if (event.shiftKey && active === first) {
+			event.preventDefault();
+			last.focus();
+			return;
+		}
+		if (!event.shiftKey && active === last) {
+			event.preventDefault();
+			first.focus();
+		}
+	};
 
 	const zoomTo = useCallback((requestedScale: number, anchor?: { clientX: number; clientY: number }) => {
 		setViewport((current) => {
@@ -622,11 +678,13 @@ const MermaidFullscreenDialog: React.FC<{
 
 	return (
 		<div
+			ref={dialogRef}
 			className="pkchat-mermaid-fullscreen"
 			role="dialog"
 			aria-modal="true"
 			aria-label={state.label}
-			onClick={onClose}
+			onClick={closeAndRestoreFocus}
+			onKeyDown={trapFocus}
 		>
 			<div
 				className="pkchat-mermaid-fullscreen__toolbar"
@@ -676,7 +734,7 @@ const MermaidFullscreenDialog: React.FC<{
 				title={strings.closeLabel}
 				onClick={(event) => {
 					event.stopPropagation();
-					onClose();
+					closeAndRestoreFocus();
 				}}
 			>
 				<X />

@@ -214,7 +214,6 @@ export interface FileAtlasStrings {
 	copilotSuggestionsEmpty: string;
 	copilotSuggestionsLoading: string;
 	copilotOpen: string;
-	inspectorCurrentScope: string;
 	useScopeBlock: string;
 	useScopeSection: string;
 	useScopeItem: string;
@@ -231,8 +230,6 @@ export interface FileAtlasStrings {
 	copilotNavigate: string;
 	quickActionsTitle: string;
 	reviewSuggestionsTitle: string;
-	reviewDocumentSuggestions: string;
-	externalPreviewUnavailable: string;
 	elementContextTitle: string;
 	contextParent: string;
 	contextNearby: string;
@@ -497,7 +494,6 @@ export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
 		copilotSuggestionsEmpty: 'No current suggestions for this note.',
 		copilotSuggestionsLoading: 'Loading document suggestions…',
 		copilotOpen: 'Discuss in Copilot',
-		inspectorCurrentScope: 'Current scope',
 		useScopeBlock: 'Use selected block',
 		useScopeSection: 'Use this section',
 		useScopeItem: 'Use this item',
@@ -514,8 +510,6 @@ export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
 		copilotNavigate: 'Show in Atlas',
 		quickActionsTitle: 'Quick actions',
 		reviewSuggestionsTitle: 'Copilot findings',
-		reviewDocumentSuggestions: 'View all findings',
-		externalPreviewUnavailable: 'Page preview unavailable',
 		elementContextTitle: 'Element context',
 		contextParent: 'Parent',
 		contextNearby: 'Nearby',

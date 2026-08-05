@@ -54,12 +54,13 @@ assert.match(inspector, /AtlasReviewSuggestions/);
 assert.match(inspector, /groupAtlasCopilotSuggestions/);
 assert.match(inspector, /filterAtlasQuickActions/);
 assert.match(inspector, /StructuredPreview/);
-assert.match(inspector, /VaultLinkPreview/);
-assert.match(inspector, /loadVaultLinkPreview/);
+assert.match(inspector, /CompactLinkPreview/);
+assert.doesNotMatch(inspector, /loadVaultLinkPreview|loadExternalLinkPreview/);
 assert.match(inspectorModel, /compactStructuredPreviewRows/);
 assert.match(inspectorModel, /composer\.link\./);
 assert.match(inspector, /\[host, sourcePath\]/);
 assert.doesNotMatch(inspector, /ElementContextSection|ScopeBreadcrumb/);
+assert.doesNotMatch(inspector, /View all findings|reviewDocumentSuggestions/);
 assert.match(inspectorModel, /buildAtlasElementContext/);
 assert.match(inspectorModel, /atlasBlockForSuggestion/);
 assert.doesNotMatch(inspector, /IDENTITY_TITLE_KINDS|pkfa-inspector-object-kind/);
@@ -70,12 +71,14 @@ assert.match(
 );
 assert.match(
 	css,
-	/\.peak-file-atlas-modal\.pkfa-root \.pkfa-vault-preview\s*\{[\s\S]*?grid-template-columns:\s*54px minmax\(0, 1fr\);[\s\S]*?width:\s*100% !important;/,
-	'Vault notes use a transient page-preview card instead of a lone link icon',
+	/\.pkfa-compact-link-preview\s*\{[\s\S]*?overflow-x:\s*auto;[\s\S]*?user-select:\s*text;/,
+	'links use a compact selectable identity preview without a fake thumbnail',
 );
 assert.match(css, /\.pkfa-inspector-surface\s*\{[\s\S]*?border:\s*1px solid/);
 assert.match(css, /\.pkfa-preview-render[\s\S]*?max-height:[\s\S]*?overflow:\s*auto/);
 assert.match(css, /\.pkfa-structured-preview-row[\s\S]*?white-space:\s*nowrap/);
+assert.match(css, /\.pkfa-structured-preview-list[\s\S]*?width:\s*max-content/);
+assert.doesNotMatch(inspector, /pkfa-structured-preview-title/);
 assert.match(
 	css,
 	/\.peak-file-atlas-modal\.pkfa-root \.pkfa-preview-link\.is-clickable\s*\{[\s\S]*?display:\s*grid !important;[\s\S]*?width:\s*100% !important;[\s\S]*?justify-content:\s*stretch !important;/,
@@ -145,7 +148,7 @@ assert.match(atlasBar, /filtersSaveDefault/);
 assert.match(atlasBar, /filtersResetDefault/);
 assert.match(panel, /case 'markPresetSaved':[\s\S]*?presetModified: false/);
 assert.match(panel, /onSavePreset\(state\.activePreset,[\s\S]*?type: 'markPresetSaved'/);
-assert.match(inspector, /loadExternalLinkPreview/);
-assert.match(inspector, /pkfa-external-preview/);
+assert.match(inspector, /pkfa-compact-link-preview/);
+assert.doesNotMatch(inspector, /pkfa-external-preview|pkfa-vault-preview-sheet/);
 
 console.log('PASS: File Atlas owner-review interaction and layout contract');

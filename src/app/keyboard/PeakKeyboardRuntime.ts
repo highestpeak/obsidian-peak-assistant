@@ -258,6 +258,7 @@ export class PeakKeyboardRuntime implements PeakKeyboardNavigationPort {
 			if (!layer) return;
 			event.preventDefault();
 			event.stopPropagation();
+			event.stopImmediatePropagation();
 			layer.close();
 			const restoreFocus = (): void => {
 				const trigger = layer.trigger;

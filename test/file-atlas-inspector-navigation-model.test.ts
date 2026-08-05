@@ -107,7 +107,7 @@ assert.deepEqual(
 );
 
 assert.deepEqual(
-	compactStructuredPreviewRows(section).map((candidate) => candidate.id),
+	compactStructuredPreviewRows(section).map((candidate) => candidate.block.id),
 	['intro', 'item-a', 'item-b'],
 	'compact previews flatten list containers and omit repeated extracted resources',
 );

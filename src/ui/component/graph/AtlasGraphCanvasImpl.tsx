@@ -286,6 +286,11 @@ export interface AtlasGraphNodeTap {
 	modKey: boolean;
 }
 
+export interface AtlasGraphViewport {
+	zoom: number;
+	pan: { x: number; y: number };
+}
+
 export interface AtlasGraphCanvasProps {
 	subgraph: ResultSubgraphOutput | null;
 	preset: AtlasGraphPreset;
@@ -304,6 +309,10 @@ export interface AtlasGraphCanvasProps {
 	onNodeDblTap?: (node: { id: string; path: string }) => void;
 	/** Immediate hover in/out on real-file nodes (null = out). For recorders. */
 	onNodeHover?: (node: { id: string; path: string } | null) => void;
+	/** Optional session-only viewport restored after layout completes. */
+	initialViewport?: AtlasGraphViewport | null;
+	/** Emitted for user and keyboard pan/zoom changes. */
+	onViewportChange?: (viewport: AtlasGraphViewport) => void;
 }
 
 export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
@@ -318,6 +327,8 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	onNodeTap,
 	onNodeDblTap,
 	onNodeHover,
+	initialViewport,
+	onViewportChange,
 }) => {
 	const [copiedMode, setCopiedMode] = useState<'mermaid' | 'image' | null>(null);
 	const [hoveredLabel, setHoveredLabel] = useState<{ label: string; path: string } | null>(null);
@@ -334,9 +345,13 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 	const tapRef = useRef(onNodeTap);
 	const dblRef = useRef(onNodeDblTap);
 	const hoverRef = useRef(onNodeHover);
+	const initialViewportRef = useRef(initialViewport);
+	const viewportChangeRef = useRef(onViewportChange);
 	tapRef.current = onNodeTap;
 	dblRef.current = onNodeDblTap;
 	hoverRef.current = onNodeHover;
+	initialViewportRef.current = initialViewport;
+	viewportChangeRef.current = onViewportChange;
 	useRovingComposite(nodeListRef, {
 		itemSelector: '[role="option"]',
 		enabled: nodeListOpen,
@@ -381,9 +396,18 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 		const layoutObj = connectedEles.layout(layoutConfig(bundle.layout));
 		layoutObj.one('layoutstop', () => {
 			if (shouldSplitIsolated) layoutIsolatedGrid(cy);
+			const restored = initialViewportRef.current;
+			if (restored) {
+				cy.zoom(restored.zoom);
+				cy.pan(restored.pan);
+				return;
+			}
 			cy.fit(undefined, 40);
 		});
 		layoutObj.run();
+		cy.on('pan zoom', () => {
+			viewportChangeRef.current?.({ zoom: cy.zoom(), pan: cy.pan() });
+		});
 
 		let hoverTimer: ReturnType<typeof setTimeout> | null = null;
 		const startEdgeAnimation = () => {
@@ -469,7 +493,7 @@ export const AtlasGraphCanvas: React.FC<AtlasGraphCanvasProps> = ({
 				const cy = cyRef.current;
 				if (!cy || container.clientWidth === 0 || container.clientHeight === 0) return;
 				cy.resize();
-				cy.fit(undefined, 40);
+				if (!viewportChangeRef.current) cy.fit(undefined, 40);
 			});
 		});
 		observer.observe(container);

@@ -102,7 +102,8 @@ function frontmatterIdentity(
 	config: FileAtlasConfig,
 ): AtlasDisplayIdentity {
 	const properties = (block.children ?? []).filter((child) => child.kind === Kind.Property).length;
-	const tags = (block.children ?? []).filter((child) => child.kind === Kind.Tag).length;
+	const tags = block.detail?.frontmatterTagCount
+		?? (block.children ?? []).filter((child) => child.kind === Kind.Tag).length;
 	return {
 		primary: config.strings.frontmatterTitle,
 		secondary: joinParts(

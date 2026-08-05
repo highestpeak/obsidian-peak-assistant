@@ -19,6 +19,7 @@ import {
 } from './config/fileAtlasConfig';
 import { atlasSearchText } from './atlasDisplayModel';
 import { displayIdentity } from './atlasDisplayModel';
+import type { FileAtlasSelectionSnapshot } from './FileAtlasSessionPort';
 
 const ANALYSIS_METADATA_KINDS = new Set<RawBlockKind>([
 	Kind.Image,
@@ -82,11 +83,17 @@ export function groupFrontmatter(blocks: DocumentBlock[], title: string): Docume
 	}
 	if (end === 0) return blocks;
 
-	const children = blocks.slice(0, end);
-	const lineStart = children[0].anchor.lineStart;
-	const lineEnd = children[children.length - 1].anchor.lineEnd;
+	const sourceChildren = blocks.slice(0, end);
+	const frontmatterTags = sourceChildren.filter((child) =>
+		child.kind === Kind.Tag && child.detail?.tagSource === 'frontmatter');
+	// A frontmatter tag is a value of the Tags property, not a second standalone
+	// document element. Keep it in the parser model for indexing, but suppress the
+	// duplicate row from File Atlas' presentation tree.
+	const children = sourceChildren.filter((child) => !frontmatterTags.includes(child));
+	const lineStart = sourceChildren[0].anchor.lineStart;
+	const lineEnd = sourceChildren[sourceChildren.length - 1].anchor.lineEnd;
 	const anchor: FileAtlasAnchor = {
-		filePath: children[0].anchor.filePath,
+		filePath: sourceChildren[0].anchor.filePath,
 		blockId: FRONTMATTER_GROUP_ID,
 		nearestHeading: null,
 		blockType: Kind.Frontmatter,
@@ -94,17 +101,18 @@ export function groupFrontmatter(blocks: DocumentBlock[], title: string): Docume
 		contentHash: '',
 		lineStart,
 		lineEnd,
-		sourceFrom: children[0].anchor.sourceFrom,
-		sourceTo: children[children.length - 1].anchor.sourceTo,
+		sourceFrom: sourceChildren[0].anchor.sourceFrom,
+		sourceTo: sourceChildren[sourceChildren.length - 1].anchor.sourceTo,
 		status: 'active',
 	};
 	const group: DocumentBlock = {
 		id: FRONTMATTER_GROUP_ID,
 		kind: Kind.Frontmatter,
 		title,
-		source: children.map((c) => c.source).join('\n'),
+		source: sourceChildren.map((c) => c.source).join('\n'),
 		anchor,
 		children,
+		detail: { frontmatterTagCount: frontmatterTags.length },
 	};
 	return [group, ...blocks.slice(end)];
 }
@@ -394,6 +402,44 @@ export function firstSelectableId(blocks: DocumentBlock[]): string | null {
 		return null;
 	};
 	return visit(blocks) ?? firstLeaf;
+}
+
+export function selectionSnapshotForBlock(block: DocumentBlock): FileAtlasSelectionSnapshot {
+	return {
+		id: block.id,
+		kind: block.kind,
+		contentHash: block.anchor.contentHash,
+		lineStart: block.anchor.lineStart,
+		title: block.title,
+	};
+}
+
+/** Resolve a session snapshot against the latest parse without trusting stale IDs. */
+export function restoreSelectionId(
+	blocks: DocumentBlock[],
+	snapshot: FileAtlasSelectionSnapshot | null,
+): string | null {
+	if (!snapshot) return null;
+	const flattened: DocumentBlock[] = [];
+	const visit = (items: DocumentBlock[]): void => {
+		for (const item of items) {
+			flattened.push(item);
+			visit(item.children ?? []);
+		}
+	};
+	visit(blocks);
+	if (flattened.some((block) => block.id === snapshot.id)) return snapshot.id;
+	if (snapshot.contentHash) {
+		const hashMatch = flattened.find((block) =>
+			block.kind === snapshot.kind && block.anchor.contentHash === snapshot.contentHash);
+		if (hashMatch) return hashMatch.id;
+	}
+	const titleMatches = flattened.filter((block) =>
+		block.kind === snapshot.kind && block.title === snapshot.title);
+	if (titleMatches.length === 0) return null;
+	return titleMatches.sort((left, right) =>
+		Math.abs(left.anchor.lineStart - snapshot.lineStart)
+		- Math.abs(right.anchor.lineStart - snapshot.lineStart))[0].id;
 }
 
 /**

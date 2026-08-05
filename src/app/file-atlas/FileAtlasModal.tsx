@@ -78,6 +78,7 @@ export class FileAtlasModal extends Modal {
 				FileAtlasHost,
 				{
 					host,
+					session: this.appContext.fileAtlasSessionStore,
 					initialPath,
 					initialContent,
 					ownerDocument: this.contentEl.ownerDocument,

@@ -8,14 +8,13 @@
  * of this surface.
  */
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import {
 	BarChart3,
 	Check,
 	Copy,
 	Eye,
 	ExternalLink,
-	Globe2,
 	Hash,
 	Link as LinkIcon,
 	Plus,
@@ -31,10 +30,8 @@ import type { FileAtlasConfig } from '../config/fileAtlasConfig';
 import type {
 	AtlasCopilotSuggestion,
 	AtlasCopilotSuggestionSnapshot,
-	AtlasExternalLinkPreview,
 	AtlasImageInfo,
 	AtlasQuickAction,
-	AtlasVaultLinkPreview as AtlasVaultLinkPreviewData,
 	FileAtlasHostPort,
 } from '../FileAtlasHostPort';
 import { iconForKind } from '../config/kindIcons';
@@ -66,7 +63,6 @@ interface AtlasInspectorProps {
 	host: FileAtlasHostPort;
 	sourcePath: string;
 	inTray: boolean;
-	onReveal: (block: DocumentBlock) => void;
 	onAddToTray: (block: DocumentBlock) => void;
 	onCopyLink: (block: DocumentBlock) => void;
 	onRunQuickAction: (block: DocumentBlock, capabilityId: ComposerCapabilityId) => void;
@@ -86,9 +82,6 @@ const RENDERED_KINDS = new Set<string>([
 	RawBlockKind.Math,
 	RawBlockKind.Mermaid,
 	RawBlockKind.Paragraph,
-	RawBlockKind.List,
-	RawBlockKind.ListItem,
-	RawBlockKind.Task,
 	RawBlockKind.Quote,
 	RawBlockKind.Callout,
 	RawBlockKind.Code,
@@ -101,7 +94,6 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 	host,
 	sourcePath,
 	inTray,
-	onReveal,
 	onAddToTray,
 	onCopyLink,
 	onRunQuickAction,
@@ -126,30 +118,11 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 		);
 	}
 
-	const Icon = iconForKind(block.kind);
 	const cardPolicy = inspectorCardPolicy(block);
 	const keywordText = analysisText(block);
 
 	return (
 		<div ref={inspectorRef} className="pkfa-inspector-surface">
-			<section className="pkfa-inspector-scope">
-				<div className="pkfa-selected-top">
-					<span className="pkfa-selected-kind">
-						<Icon />
-						<span>{config.strings.inspectorCurrentScope}</span>
-					</span>
-					<Button
-						variant="unstyled"
-						type="button"
-						className="pkfa-ghost-btn"
-						onClick={() => onReveal(block)}
-						title={config.strings.reveal}
-					>
-						<Eye />
-						{config.strings.reveal}
-					</Button>
-				</div>
-			</section>
 			<section className="pkfa-inspector-primary">
 				<SourcePreview block={block} config={config} host={host} sourcePath={sourcePath} />
 				<div className="pkfa-inspector-actions" aria-label="Block actions">
@@ -309,9 +282,7 @@ const AtlasReviewSuggestions: React.FC<{
 		() => groupAtlasCopilotSuggestions(snapshot.suggestions, block, context?.section ?? null),
 		[block, context?.section, snapshot.suggestions],
 	);
-	const visibleSelection = groups.selection.slice(0, 3);
-	const totalCount = groups.selection.length + groups.section.length + groups.document.length;
-	const hiddenCount = totalCount - visibleSelection.length;
+	const visibleSelection = groups.selection;
 	const openFinding = (suggestion: AtlasCopilotSuggestion): void => {
 		host.openCopilot?.(sourcePath, {
 			...(suggestion.targetBlockId ? { blockId: suggestion.targetBlockId } : {}),
@@ -322,7 +293,7 @@ const AtlasReviewSuggestions: React.FC<{
 	};
 
 	if (snapshot.status !== 'ready') return null;
-	if (totalCount === 0) return null;
+	if (visibleSelection.length === 0) return null;
 	return (
 		<section className="pkfa-inspector-section pkfa-review-suggestions">
 			<div className="pkfa-section-heading">
@@ -330,7 +301,7 @@ const AtlasReviewSuggestions: React.FC<{
 					<Sparkles />
 					<span>{config.strings.reviewSuggestionsTitle}</span>
 				</span>
-				<span className="pkfa-section-count">{totalCount}</span>
+				<span className="pkfa-section-count">{visibleSelection.length}</span>
 			</div>
 			{visibleSelection.map((suggestion) => (
 				<Button
@@ -347,20 +318,6 @@ const AtlasReviewSuggestions: React.FC<{
 					<ExternalLink aria-hidden />
 				</Button>
 			))}
-			{hiddenCount > 0 && host.openCopilot && (
-				<Button
-					variant="unstyled"
-					type="button"
-					className="pkfa-review-document-link"
-					onClick={() => host.openCopilot?.(sourcePath, {
-						blockId: block.id,
-						sourceFrom: block.anchor.sourceFrom,
-						sourceTo: block.anchor.sourceTo,
-					})}
-				>
-					{config.strings.reviewDocumentSuggestions} · {hiddenCount}
-				</Button>
-			)}
 		</section>
 	);
 };
@@ -444,22 +401,21 @@ const StructuredPreview: React.FC<{
 	config: FileAtlasConfig;
 }> = ({ block, config }) => {
 	const rows = compactStructuredPreviewRows(block);
-	const identity = displayIdentity(block, config);
 	return (
 		<div className="pkfa-structured-preview" tabIndex={0} aria-label="Section preview">
-			{block.kind === RawBlockKind.Heading && (
-				<span className="pkfa-structured-preview-title" title={identity.primary}>
-					{identity.primary}
-				</span>
-			)}
 			<div className="pkfa-structured-preview-list" role="list">
-				{rows.map((row) => {
-					const RowIcon = iconForKind(row.kind);
+				{rows.map(({ block: row, depth }) => {
+					const RowIcon = iconForKind(row.kind, row.level);
 					const rowIdentity = displayIdentity(row, config);
 					return (
-						<div className="pkfa-structured-preview-row" role="listitem" key={row.id}>
+						<div
+							className="pkfa-structured-preview-row"
+							role="listitem"
+							key={row.id}
+							style={{ '--pkfa-preview-depth': depth } as CSSProperties}
+						>
 							<RowIcon aria-hidden />
-							<span title={rowIdentity.primary}>{rowIdentity.primary}</span>
+							<span>{rowIdentity.primary}</span>
 						</div>
 					);
 				})}
@@ -564,137 +520,37 @@ const ImagePreview: React.FC<{
 	);
 };
 
-const ExternalLinkPreview: React.FC<{
+const CompactLinkPreview: React.FC<{
+	primary: string;
+	secondary?: string;
 	target: string;
-	config: FileAtlasConfig;
+	external: boolean;
 	host: FileAtlasHostPort;
 	sourcePath: string;
-}> = ({ target, config, host, sourcePath }) => {
-	const [preview, setPreview] = useState<AtlasExternalLinkPreview | null>(null);
-	const [ready, setReady] = useState(false);
-	const [imageFailed, setImageFailed] = useState(false);
-	const [faviconFailed, setFaviconFailed] = useState(false);
-	useEffect(() => {
-		let active = true;
-		setPreview(null);
-		setReady(false);
-		setImageFailed(false);
-		setFaviconFailed(false);
-		if (!host.loadExternalLinkPreview) {
-			setReady(true);
-			return () => {
-				active = false;
-			};
-		}
-		void host.loadExternalLinkPreview(target)
-			.then((next) => {
-				if (!active) return;
-				setPreview(next);
-				setReady(true);
-			})
-			.catch(() => {
-				if (active) setReady(true);
-			});
-		return () => {
-			active = false;
-		};
-	}, [host, target]);
-	let domain = target;
-	try {
-		domain = new URL(target).hostname;
-	} catch {
-		// Keep the literal target when it is not a valid absolute URL.
-	}
+}> = ({ primary, secondary, target, external, host, sourcePath }) => {
+	const normalizedPrimary = cleanInlineMarkdown(primary).trim();
+	const normalizedSecondary = cleanInlineMarkdown(secondary ?? '').trim();
+	const normalizedTarget = target.trim();
+	const showSecondary = normalizedSecondary
+		&& normalizedSecondary.toLocaleLowerCase() !== normalizedPrimary.toLocaleLowerCase();
+	const showTarget = normalizedTarget.toLocaleLowerCase() !== normalizedPrimary.toLocaleLowerCase()
+		&& normalizedTarget.toLocaleLowerCase() !== normalizedSecondary.toLocaleLowerCase();
 	return (
-		<Button
-			variant="unstyled"
-			type="button"
-			className="pkfa-external-preview is-clickable"
-			title={`Open ${target}`}
-			onClick={() => host.openLink(target, sourcePath, true)}
-		>
-			{preview?.imageUrl && !imageFailed && (
-				<img
-					className="pkfa-external-preview-image"
-					src={preview.imageUrl}
-					alt=""
-					loading="lazy"
-					referrerPolicy="no-referrer"
-					onError={() => setImageFailed(true)}
-				/>
-			)}
-			<div className="pkfa-external-preview-body">
-				<span className="pkfa-external-preview-site">
-					{preview?.faviconUrl && !faviconFailed ? (
-						<img
-							src={preview.faviconUrl}
-							alt=""
-							loading="lazy"
-							referrerPolicy="no-referrer"
-							onError={() => setFaviconFailed(true)}
-						/>
-					) : (
-						<Globe2 aria-hidden />
-					)}
-					<span>{preview?.siteName ?? preview?.domain ?? domain}</span>
-				</span>
-				<strong>{preview?.title ?? (ready ? config.strings.externalPreviewUnavailable : domain)}</strong>
-				{preview?.description && <small>{preview.description}</small>}
-				<span className="pkfa-external-preview-url">{target}</span>
-			</div>
-			<ExternalLink className="pkfa-external-preview-open" aria-hidden />
-		</Button>
-	);
-};
-
-const VaultLinkPreview: React.FC<{
-	block: DocumentBlock;
-	target: string;
-	config: FileAtlasConfig;
-	host: FileAtlasHostPort;
-	sourcePath: string;
-}> = ({ block, target, config, host, sourcePath }) => {
-	const identity = displayIdentity(block, config);
-	const [preview, setPreview] = useState<AtlasVaultLinkPreviewData | null>(null);
-	useEffect(() => {
-		let active = true;
-		setPreview(null);
-		if (!host.loadVaultLinkPreview) {
-			return () => {
-				active = false;
-			};
-		}
-		void host.loadVaultLinkPreview(target, sourcePath)
-			.then((next) => {
-				if (active) setPreview(next);
-			})
-			.catch(() => {
-				if (active) setPreview(null);
-			});
-		return () => {
-			active = false;
-		};
-	}, [host, sourcePath, target]);
-	const excerpt = preview?.excerpt ? cleanInlineMarkdown(preview.excerpt) : '';
-	const secondary = excerpt || identity.secondary;
-	return (
-		<Button
-			variant="unstyled"
-			type="button"
-			className="pkfa-vault-preview is-clickable"
-			title={`Open note: ${preview?.title ?? target}`}
-			onClick={() => host.openLink(target, sourcePath, false)}
-		>
-			<span className="pkfa-vault-preview-sheet" aria-hidden>
-				<span />
-				<span />
-				<span />
-			</span>
-			<span className="pkfa-vault-preview-body">
-				<strong>{identity.primary}</strong>
-				{secondary && <small>{secondary}</small>}
-			</span>
-		</Button>
+		<div className="pkfa-compact-link-preview">
+			<strong>{normalizedPrimary || target}</strong>
+			<Button
+				variant="unstyled"
+				type="button"
+				className="pkfa-compact-link-open"
+				title={`Open ${target}`}
+				aria-label={`Open ${target}`}
+				onClick={() => host.openLink(target, sourcePath, external)}
+			>
+				<ExternalLink aria-hidden />
+			</Button>
+			{showSecondary && <span className="pkfa-compact-link-secondary">{normalizedSecondary}</span>}
+			{showTarget && <span className="pkfa-compact-link-target">{normalizedTarget}</span>}
+		</div>
 	);
 };
 
@@ -866,7 +722,11 @@ const SourcePreview: React.FC<{
 		);
 	}
 
-	if (kind === RawBlockKind.List) {
+	if (
+		kind === RawBlockKind.List
+		|| kind === RawBlockKind.ListItem
+		|| kind === RawBlockKind.Task
+	) {
 		return (
 			<CopyablePreview
 				config={config}
@@ -931,22 +791,14 @@ const SourcePreview: React.FC<{
 				copyText={target}
 				copyMessage={isExternal ? 'URL copied' : 'Link copied'}
 			>
-				{isExternal ? (
-					<ExternalLinkPreview
-						target={target}
-						config={config}
-						host={host}
-						sourcePath={sourcePath}
-					/>
-				) : (
-					<VaultLinkPreview
-						block={block}
-						target={target}
-						config={config}
-						host={host}
-						sourcePath={sourcePath}
-					/>
-				)}
+				<CompactLinkPreview
+					primary={identity.primary}
+					secondary={identity.secondary}
+					target={target}
+					external={isExternal}
+					host={host}
+					sourcePath={sourcePath}
+				/>
 			</CopyablePreview>
 		);
 	}

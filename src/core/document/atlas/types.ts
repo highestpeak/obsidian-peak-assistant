@@ -141,6 +141,8 @@ export interface BlockDetail {
 	/** Tags: where the tag originated and how many times it occurs. */
 	tagSource?: 'frontmatter' | 'inline';
 	occurrenceCount?: number;
+	/** Frontmatter group: number of tag values represented by the Tags property. */
+	frontmatterTagCount?: number;
 	/** Footnote definition text and number of source references. */
 	definitionText?: string;
 	referenceCount?: number;

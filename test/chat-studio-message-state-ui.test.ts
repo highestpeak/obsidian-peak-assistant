@@ -96,7 +96,7 @@ function testMermaidControlsDoNotInheritDiagramSizing(): void {
 function testRichContentAndContextPreviewRepairs(): void {
 	const messageItem = read('src/ui/view/chat-view/components/messages/MessageViewItem.tsx');
 	const shelf = read('src/ui/view/chat-view/components/composer/ComposerContextShelf.tsx');
-	const streamdown = read('src/ui/component/mine/StreamdownIsolated.tsx');
+	const streamdown = read('src/ui/component/mine/StreamdownIsolatedImpl.tsx');
 	const streamdownStyles = read('src/styles/streamdown-shadow-host.css');
 
 	assert(messageItem.includes("message.reasoning?.content"), 'persisted reasoning renders after reload');
@@ -117,6 +117,8 @@ function testRichContentAndContextPreviewRepairs(): void {
 	assert(streamdown.includes("button.addEventListener('click', listener, true)"));
 	assert(streamdown.includes("button.getAttribute('aria-label')?.trim()"));
 	assert(streamdown.includes('portalHostForDocument(mermaidFullscreen.ownerDocument)'));
+	assert(streamdown.includes("ownerWindow.addEventListener('keydown', closeTopLayer, true)"));
+	assert(streamdown.includes('event.stopImmediatePropagation()'));
 	assert(streamdown.includes('setupReadableTableLinks'));
 	assert(streamdown.includes('components={STREAMDOWN_COMPONENTS}'));
 	assert(streamdown.includes("style={{ ...style, minWidth: '220px' }}"));
@@ -140,7 +142,7 @@ function testRichContentAndContextPreviewRepairs(): void {
 }
 
 function testCodeWorkbenchMatchesShikiPalette(): void {
-	const streamdown = read('src/ui/component/mine/StreamdownIsolated.tsx');
+	const streamdown = read('src/ui/component/mine/StreamdownIsolatedImpl.tsx');
 	const styles = read('src/styles/streamdown-shadow-host.css');
 
 	assert(streamdown.includes('const codeBlockTheme = useLiveCodeBlockTheme();'));

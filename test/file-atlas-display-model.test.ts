@@ -119,6 +119,11 @@ const blocks = groupFrontmatter(parsed.blocks, config.strings.frontmatterTitle);
 const metadata = blocks[0];
 assert.strictEqual(displayIdentity(metadata, config).primary, 'Metadata');
 assert.strictEqual(displayIdentity(metadata, config).secondary, '4 properties · 2 tags');
+assert.strictEqual(metadata.detail?.frontmatterTagCount, 2);
+assert.ok(
+	(metadata.children ?? []).every((block) => block.kind !== Kind.Tag),
+	'frontmatter tag values remain summarized by the Tags property instead of repeating as rows',
+);
 
 const properties = find(blocks, Kind.Property);
 const created = properties.find((block) => block.detail?.propertyKey === 'created')!;
@@ -126,10 +131,6 @@ const published = properties.find((block) => block.detail?.propertyKey === 'publ
 assert.strictEqual(displayIdentity(created, config).primary, 'Created');
 assert.match(displayIdentity(created, config).secondary ?? '', /30 Jul 2026/);
 assert.strictEqual(displayIdentity(published, config).secondary, 'No');
-
-const tags = find(blocks, Kind.Tag);
-assert.strictEqual(displayIdentity(tags[0], config).primary, '#peak/file-atlas');
-assert.match(displayIdentity(tags[0], config).secondary ?? '', /Frontmatter · tags · 1 occurrence/);
 
 const heading = find(blocks, Kind.Heading)[0];
 assert.strictEqual(displayIdentity(heading, config).primary, 'Heading 视觉基准');
