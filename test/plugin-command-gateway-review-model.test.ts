@@ -8,6 +8,7 @@ import {
 	formatPluginCommandCopy,
 	groupPluginCommandItems,
 	isPluginCommandBulkEligible,
+	pluginCommandAttentionKind,
 	pluginCommandScanRatio,
 	summarizePluginCommandItems,
 } from '@/ui/view/command-gateway/pluginCommandGatewayReviewModel';
@@ -103,6 +104,26 @@ function testScanProgress(): void {
 	console.log('PASS: scanProgress');
 }
 
+function testAttentionReasonsStayDistinct(): void {
+	const contextualUnknown = item('templater:jump-to-next-cursor-location', 'unknown', {
+		availability: 'conditional',
+		systemBlocked: true,
+	});
+	const interactiveBase = item('templater:insert-templater', 'edit', { systemBlocked: true });
+	const interactive = {
+		...interactiveBase,
+		descriptor: { ...interactiveBase.descriptor, interaction: 'modal' as const },
+	};
+	const unavailable = item('plugin:refused', 'read', { availability: 'unavailable' });
+	const destructive = item('cleaner:delete-all', 'destructive', { systemBlocked: true });
+	assert.strictEqual(pluginCommandAttentionKind(contextualUnknown), 'unclassified');
+	assert.strictEqual(pluginCommandAttentionKind(interactive), 'interactive');
+	assert.strictEqual(pluginCommandAttentionKind(unavailable), 'unavailable');
+	assert.strictEqual(pluginCommandAttentionKind(destructive), 'unsafe');
+	console.log('PASS: attentionReasonsStayDistinct');
+}
+
 testFilteringAndSummary();
 testGroupingAndEligibility();
 testScanProgress();
+testAttentionReasonsStayDistinct();

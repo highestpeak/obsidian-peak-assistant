@@ -39,7 +39,7 @@ const html = renderToStaticMarkup(React.createElement(PluginCommandGatewayReview
 	copy: DEFAULT_SETTINGS_STRINGS.tools.pluginCommands,
 	busyKey: null,
 	scanning: false,
-	selectedCommandId: null,
+	selectedCommandId: 'calendar:modal',
 	onSelect: () => {},
 	onToggle: () => {},
 }));
@@ -49,7 +49,11 @@ assert.match(html, /aria-checked="true"/);
 assert.match(html, /aria-checked="false"/);
 assert.match(html, /pk-command-access-toggle__track/);
 assert.match(html, /pk-command-access-unavailable/);
-assert.match(html, />Unavailable</);
+assert.match(html, />Interactive only</);
+assert.match(html, /aria-expanded="true"/);
+assert.match(html, /pk-command-review-row__details/);
+assert.match(html, /opens an interactive dialog/);
+assert.doesNotMatch(html, /pk-command-access-reason/);
 assert.doesNotMatch(html, />Metadata only</);
 assert.doesNotMatch(html, />Block</);
 assert.doesNotMatch(html, />Purpose</);

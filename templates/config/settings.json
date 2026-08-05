@@ -242,7 +242,8 @@
       "sectionTitle": "External plugin commands",
       "sectionSub": "Review commands contributed by enabled Obsidian plugins before Copilot can use them. Everything is off by default.",
 	  "viewTitle": "Command Gateway",
-	  "viewSub": "Choose exactly which external plugin commands Copilot may use. Scan never changes access.",
+	  "viewSub": "Review which external plugin commands Copilot may use. Everything stays off until you allow it.",
+	  "scopeNote": "External plugins only. Obsidian core commands are not listed.",
 	  "openManager": "Open Command Gateway",
 	  "lastScanned": "Last scan: {time}",
 	  "neverScanned": "Not scanned yet",
@@ -279,13 +280,13 @@
       "summary": {
         "approved": "Approved",
         "notAllowed": "Not allowed",
-		"systemExcluded": "Unavailable"
+		"systemExcluded": "Needs attention"
       },
       "batch": {
         "commandsShown": "{count} commands",
         "eligibleForAllow": "{count} eligible for bulk Allow",
         "currentFilterScope": "Batch actions apply to the current filter",
-        "allowFiltered": "Allow filtered · {count}",
+		"allowFiltered": "Allow shown · {count}",
         "allowCurrentFilter": "Allow current filter",
         "allowCurrentFilterHint": "Only eligible commands now visible",
         "allowAll": "Allow all eligible commands",
@@ -295,7 +296,8 @@
         "confirmTitle": "Allow {count} commands?",
         "confirmFiltered": "This applies only to eligible commands in the current filter.",
         "confirmAll": "This applies across every plugin, but only to currently eligible commands.",
-        "excluded": "{count} unknown, destructive, modal-only, or unavailable commands remain excluded.",
+		"excluded": "{count} interactive, unsafe, unclassified, or unavailable commands remain excluded.",
+		"bulkPaused": "Bulk Allow is paused until command explanations are ready.",
         "more": "+ {count} more commands",
         "cancel": "Cancel",
         "confirm": "Allow commands"
@@ -314,10 +316,28 @@
       "access": {
         "allowed": "Allowed",
         "notAllowed": "Not allowed",
-        "unavailable": "Unavailable",
+		"unavailable": "Needs attention",
 		"reviewNeeded": "Review",
-        "toggleLabel": "Allow Copilot to use {command}"
-      },
+		"toggleLabel": "Allow Copilot to use {command}"
+	  },
+	  "attention": {
+		"interactive": {
+		  "label": "Interactive only",
+		  "description": "This command opens an interactive dialog that Copilot cannot complete reliably."
+		},
+		"unsafe": {
+		  "label": "Unsafe",
+		  "description": "This command can perform destructive changes and cannot be exposed to Copilot."
+		},
+		"unclassified": {
+		  "label": "Unclassified",
+		  "description": "The command's effects could not be classified safely. Scan again or review the plugin command directly."
+		},
+		"unavailable": {
+		  "label": "Unavailable",
+		  "description": "The plugin command is not callable in the current context or runtime."
+		}
+	  },
       "warnings": {
         "sourceChanged": "Plugin or command metadata changed. Review again.",
         "unavailable": "{reason}",
@@ -341,13 +361,19 @@
         "noObservableChange": "No observable change"
       },
       "noFinding": "No generated explanation is available; showing deterministic command metadata.",
-      "risks": {
-        "read": "Read / navigate",
-        "edit": "Edits workspace or vault",
-        "destructive": "Destructive",
-        "unknown": "Unknown"
-      }
-    },
+	  "risks": {
+		"read": "Read",
+		"edit": "Edit",
+		"destructive": "Destructive",
+		"unknown": "Unknown"
+	  },
+	  "riskDescriptions": {
+		"read": "Reads information or navigates without intentionally changing vault content.",
+		"edit": "May create or change workspace or vault content and requires per-run confirmation.",
+		"destructive": "May delete, reset, or irreversibly remove content.",
+		"unknown": "The command's effect is not classified well enough to authorize."
+	  }
+	},
     "webAccess": {
       "sectionTitle": "Web Access",
       "provider": {

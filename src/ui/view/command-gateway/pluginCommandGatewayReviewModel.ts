@@ -10,6 +10,12 @@ export type PluginCommandAccessFilter =
 	| 'not-allowed'
 	| 'unavailable';
 
+export type PluginCommandAttentionKind =
+	| 'interactive'
+	| 'unsafe'
+	| 'unclassified'
+	| 'unavailable';
+
 export interface PluginCommandReviewFilters {
 	readonly query: string;
 	readonly pluginId: string;
@@ -35,10 +41,23 @@ export function isPluginCommandContextual(item: PluginCommandReviewItem): boolea
 	return item.descriptor.availability === 'conditional';
 }
 
-export function isPluginCommandUnavailable(item: PluginCommandReviewItem): boolean {
-	return item.systemBlocked ||
+export function pluginCommandAttentionKind(
+	item: PluginCommandReviewItem,
+): PluginCommandAttentionKind | null {
+	if (item.effectiveRisk === 'destructive') return 'unsafe';
+	if (item.descriptor.interaction === 'modal') return 'interactive';
+	if (
 		item.descriptor.availability === 'unavailable' ||
-		item.descriptor.availability === 'unknown';
+		item.descriptor.availability === 'unknown'
+	) {
+		return 'unavailable';
+	}
+	if (item.effectiveRisk === 'unknown') return 'unclassified';
+	return null;
+}
+
+export function isPluginCommandUnavailable(item: PluginCommandReviewItem): boolean {
+	return pluginCommandAttentionKind(item) !== null;
 }
 
 export function isPluginCommandBulkEligible(item: PluginCommandReviewItem): boolean {

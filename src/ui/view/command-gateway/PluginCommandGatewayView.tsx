@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
 	Activity,
+	AlertTriangle,
 	Check,
 	ChevronDown,
 	ChevronRight,
@@ -24,13 +25,12 @@ import {
 	loadSettingsStrings,
 	type SettingsStrings,
 } from '@/ui/view/settings/settingsStrings';
-import { PluginCommandGatewayReviewList, unavailableReason } from './PluginCommandGatewayReviewList';
+import { PluginCommandGatewayReviewList } from './PluginCommandGatewayReviewList';
 import {
 	filterPluginCommandItems,
 	formatPluginCommandCopy,
 	groupPluginCommandItems,
 	isPluginCommandBulkEligible,
-	isPluginCommandContextual,
 	isPluginCommandUnavailable,
 	pluginCommandScanRatio,
 	summarizePluginCommandItems,
@@ -61,6 +61,7 @@ export function PluginCommandGatewayView(props: {
 	const [bulkSelection, setBulkSelection] = useState<BulkSelection | null>(null);
 	const [selectedCommandId, setSelectedCommandId] = useState<string | null>(null);
 	const [activityOpen, setActivityOpen] = useState(false);
+	const [bulkPaused, setBulkPaused] = useState(false);
 	const [warning, setWarning] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
@@ -100,17 +101,10 @@ export function PluginCommandGatewayView(props: {
 		])).entries()].sort((left, right) => left[1].localeCompare(right[1])),
 		[items],
 	);
-	const selectedItem = items.find(
-		(item) => item.descriptor.commandId === selectedCommandId,
-	) ?? null;
-
 	useEffect(() => {
-		if (filteredItems.length === 0) {
-			setSelectedCommandId(null);
-			return;
-		}
+		if (!selectedCommandId) return;
 		if (filteredItems.some((item) => item.descriptor.commandId === selectedCommandId)) return;
-		setSelectedCommandId(filteredItems[0]!.descriptor.commandId);
+		setSelectedCommandId(null);
 	}, [filteredItems, selectedCommandId]);
 
 	const runMutation = async (
@@ -135,6 +129,7 @@ export function PluginCommandGatewayView(props: {
 
 	const runScan = async (): Promise<void> => {
 		setBusyKey('scan');
+		setBulkPaused(false);
 		setWarning(null);
 		setError(null);
 		setScanProgress({
@@ -146,8 +141,12 @@ export function PluginCommandGatewayView(props: {
 		try {
 			const result = await pluginCommandGateway.scan(onScanProgress);
 			setSnapshot(result.snapshot);
-			if (result.explanationStatus === 'fallback') setWarning(copy.scanFallback);
+			if (result.explanationStatus === 'fallback') {
+				setBulkPaused(true);
+				setWarning(copy.scanFallback);
+			}
 		} catch (reason) {
+			setBulkPaused(true);
 			setError(toErrorMessage(reason));
 		} finally {
 			setBusyKey(null);
@@ -211,61 +210,68 @@ export function PluginCommandGatewayView(props: {
 				</Button>
 			</div>
 
-			<div className="pk-command-gateway-view__summary-row">
-				<GatewaySummary copy={copy} summary={summary} />
-				<span className="pk-command-gateway-view__last-scan">
-					{formatLastScan(snapshot?.lastScannedAt ?? 0, copy)}
-				</span>
-			</div>
+			<GatewaySummary
+				copy={copy}
+				summary={summary}
+				lastScan={formatLastScan(snapshot?.lastScannedAt ?? 0, copy)}
+			/>
 
 			{scanProgress && <GatewayScanProgress copy={copy} progress={scanProgress} />}
-			{warning && <div className="pk-command-gateway-warning" role="status">{warning}</div>}
+			{warning && (
+				<div className="pk-command-gateway-warning" role="status">
+					<AlertTriangle aria-hidden="true" />
+					<span>{warning} {copy.batch.bulkPaused}</span>
+				</div>
+			)}
 			{error && <div className="pk-command-gateway-error" role="alert">{error}</div>}
 
 			<div className="pk-command-gateway-toolbar">
-				<div className="pk-command-gateway-toolbar__filters">
-					<label className="pk-command-gateway-search">
-						<Search aria-hidden="true" />
-						<input
-							type="search"
-							value={query}
-							aria-label={copy.filters.searchPlaceholder}
-							placeholder={copy.filters.searchPlaceholder}
-							onChange={(event) => setQuery(event.currentTarget.value)}
-						/>
-					</label>
-					<GatewaySelect
-						label={copy.filters.pluginLabel}
-						value={pluginId}
-						options={[
-							{ value: 'all', label: copy.filters.allPlugins },
-							...plugins.map(([value, label]) => ({ value, label })),
-						]}
-						onChange={setPluginId}
+				<label className="pk-command-gateway-search">
+					<Search aria-hidden="true" />
+					<input
+						type="search"
+						value={query}
+						aria-label={copy.filters.searchPlaceholder}
+						placeholder={copy.filters.searchPlaceholder}
+						onChange={(event) => setQuery(event.currentTarget.value)}
 					/>
-					<GatewaySelect
-						label={copy.filters.riskLabel}
-						value={risk}
-						options={[
-							{ value: 'all', label: copy.filters.allRisks },
-							...Object.entries(copy.risks).map(([value, label]) => ({ value, label })),
-						]}
-						onChange={(value) => setRisk(value as 'all' | PluginCommandRisk)}
-					/>
-					<Button size="sm" variant="ghost" onClick={clearFilters}>{copy.filters.clear}</Button>
-				</div>
+				</label>
+				<GatewaySelect
+					label={copy.filters.pluginLabel}
+					value={pluginId}
+					options={[
+						{ value: 'all', label: copy.filters.allPlugins },
+						...plugins.map(([value, label]) => ({ value, label })),
+					]}
+					onChange={setPluginId}
+				/>
+				<GatewaySelect
+					label={copy.filters.riskLabel}
+					value={risk}
+					options={[
+						{ value: 'all', label: copy.filters.allRisks },
+						...Object.entries(copy.risks).map(([value, label]) => ({ value, label })),
+					]}
+					onChange={(value) => setRisk(value as 'all' | PluginCommandRisk)}
+				/>
 				<AccessFilter value={access} copy={copy} onChange={setAccess} />
+				<Button className="pk-command-gateway-toolbar__clear" size="sm" variant="ghost" onClick={clearFilters}>
+					{copy.filters.clear}
+				</Button>
 			</div>
 
 			<div className="pk-command-gateway-batch">
 				<div className="pk-command-gateway-batch__summary">
 					<strong>{formatPluginCommandCopy(copy.batch.commandsShown, { count: filteredItems.length })}</strong>
 					<span>{formatPluginCommandCopy(copy.batch.eligibleForAllow, { count: eligibleFiltered.length })}</span>
+					<span className="pk-command-gateway-batch__scope" data-paused={bulkPaused}>
+						{bulkPaused ? copy.batch.bulkPaused : copy.batch.currentFilterScope}
+					</span>
 				</div>
 				<Button
 					size="sm"
-					variant="primary"
-					disabled={busyKey !== null || eligibleFiltered.length === 0}
+					variant="secondary"
+					disabled={busyKey !== null || eligibleFiltered.length === 0 || bulkPaused}
 					onClick={openBulk}
 				>
 					<Check aria-hidden="true" />
@@ -273,8 +279,7 @@ export function PluginCommandGatewayView(props: {
 				</Button>
 			</div>
 
-			<div className="pk-command-gateway-view__workspace">
-				<div className="pk-command-gateway-view__catalog">
+			<div className="pk-command-gateway-view__catalog">
 					<div className="pk-command-gateway-columns" aria-hidden="true">
 						<span>{copy.columns.command}</span>
 						<span>{copy.columns.risk}</span>
@@ -291,11 +296,10 @@ export function PluginCommandGatewayView(props: {
 						busyKey={busyKey}
 						scanning={scanning}
 						selectedCommandId={selectedCommandId}
-						onSelect={(item) => setSelectedCommandId(item.descriptor.commandId)}
+						onSelect={(item) => setSelectedCommandId((current) =>
+							current === item.descriptor.commandId ? null : item.descriptor.commandId)}
 						onToggle={toggleAccess}
 					/>
-				</div>
-				<CommandDetailPanel item={selectedItem} copy={copy} />
 			</div>
 
 			<RecentCommandActivity
@@ -319,12 +323,20 @@ export function PluginCommandGatewayView(props: {
 function GatewaySummary(props: {
 	copy: PluginCommandCopy;
 	summary: ReturnType<typeof summarizePluginCommandItems>;
+	lastScan: string;
 }): React.ReactElement {
 	return (
 		<div className="pk-command-gateway-summary">
 			<SummaryStat label={props.copy.summary.approved} value={props.summary.approved} />
 			<SummaryStat label={props.copy.summary.notAllowed} value={props.summary.notAllowed} />
 			<SummaryStat label={props.copy.summary.systemExcluded} value={props.summary.unavailable} />
+			<span className="pk-command-gateway-summary__note">
+				<Info aria-hidden="true" />
+				<span>
+					<span>{props.copy.scopeNote}</span>
+					<span>{props.lastScan}</span>
+				</span>
+			</span>
 		</div>
 	);
 }
@@ -412,52 +424,6 @@ function AccessFilter(props: {
 				</Button>
 			))}
 		</div>
-	);
-}
-
-function CommandDetailPanel(props: {
-	item: PluginCommandReviewItem | null;
-	copy: PluginCommandCopy;
-}): React.ReactElement {
-	if (!props.item) {
-		return (
-			<div className="pk-command-detail pk-command-detail--empty">
-				<Info aria-hidden="true" />
-				<span>{props.copy.details.selectPrompt}</span>
-			</div>
-		);
-	}
-	const { item, copy } = props;
-	const unavailable = isPluginCommandUnavailable(item);
-	return (
-		<div className="pk-command-detail">
-			<span className="pk-command-detail__eyebrow">{copy.details.title}</span>
-			<span className="pk-command-detail__title">{item.descriptor.commandName}</span>
-			<span className="pk-command-detail__plugin">{item.descriptor.pluginName} · {item.descriptor.pluginVersion}</span>
-			<div className="pk-command-detail__chips">
-				<Chip variant={item.effectiveRisk === 'read' ? 'neutral' : item.effectiveRisk === 'edit' ? 'warning' : 'danger'}>
-					{copy.risks[item.effectiveRisk]}
-				</Chip>
-				<Chip variant={item.approved ? 'success' : unavailable ? 'danger' : 'neutral'}>
-					{item.approved ? copy.access.allowed : unavailable ? copy.access.unavailable : copy.access.notAllowed}
-				</Chip>
-				{isPluginCommandContextual(item) && <Chip variant="info">{copy.badges.requiresEditor}</Chip>}
-			</div>
-			<DetailField label={copy.details.explanation} value={item.finding?.summary ?? copy.details.metadataFallback} />
-			<DetailField label={copy.details.commandId} value={item.descriptor.commandId} mono />
-			{(unavailable || isPluginCommandContextual(item)) && (
-				<DetailField label={copy.details.context} value={unavailableReason(item, copy)} />
-			)}
-		</div>
-	);
-}
-
-function DetailField(props: { label: string; value: string; mono?: boolean }): React.ReactElement {
-	return (
-		<span className="pk-command-detail__field">
-			<span>{props.label}</span>
-			<span data-mono={props.mono}>{props.value}</span>
-		</span>
 	);
 }
 

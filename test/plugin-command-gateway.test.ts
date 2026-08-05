@@ -222,6 +222,36 @@ async function testDefaultOffAndSystemBlock(): Promise<void> {
 	console.log('PASS: defaultOffAndSystemBlock');
 }
 
+async function testTemplaterCommandsUseActionVerbFallbacks(): Promise<void> {
+	const harness = createHarness();
+	harness.commandPort.descriptors.push(
+		{
+			...SAFE,
+			commandId: 'templater-obsidian:jump-to-next-cursor-location',
+			commandName: 'Jump to next cursor location',
+			pluginId: 'templater-obsidian',
+			pluginName: 'Templater',
+			sourceHash: 'templater-jump-v1',
+		},
+		{
+			...EDIT,
+			commandId: 'templater-obsidian:replace-in-file-templater',
+			commandName: 'Replace templates in the active file',
+			pluginId: 'templater-obsidian',
+			pluginName: 'Templater',
+			sourceHash: 'templater-replace-v1',
+		},
+	);
+	const snapshot = await harness.runtime.refresh();
+	const jump = snapshot.commands.find((entry) => entry.descriptor.commandId.endsWith('jump-to-next-cursor-location'));
+	const replace = snapshot.commands.find((entry) => entry.descriptor.commandId.endsWith('replace-in-file-templater'));
+	assert.strictEqual(jump?.effectiveRisk, 'read');
+	assert.strictEqual(jump?.systemBlocked, false);
+	assert.strictEqual(replace?.effectiveRisk, 'edit');
+	assert.strictEqual(replace?.systemBlocked, false);
+	console.log('PASS: templaterCommandsUseActionVerbFallbacks');
+}
+
 async function testCuratorNeverAuthorizes(): Promise<void> {
 	const harness = createHarness();
 	const snapshot = await harness.runtime.curate();
@@ -486,6 +516,7 @@ async function testAuditFailureIsExplicitButNonFatal(): Promise<void> {
 
 async function run(): Promise<void> {
 	await testDefaultOffAndSystemBlock();
+	await testTemplaterCommandsUseActionVerbFallbacks();
 	await testCuratorNeverAuthorizes();
 	await testCuratorCannotDowngradeModalBoundary();
 	await testMalformedCuratorOutputDoesNotPersist();

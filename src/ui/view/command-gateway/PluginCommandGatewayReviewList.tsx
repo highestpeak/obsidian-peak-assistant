@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, LockKeyhole, PlugZap } from 'lucide-react';
+import { AlertTriangle, FileText, LockKeyhole, PlugZap } from 'lucide-react';
 import { Button, Chip } from '@/ui/components/primitives';
 import type { PluginCommandReviewItem } from '@/core/types/plugin-command-gateway';
 import type { SettingsStrings } from '@/ui/view/settings/settingsStrings';
@@ -7,6 +7,7 @@ import {
 	formatPluginCommandCopy,
 	isPluginCommandContextual,
 	isPluginCommandUnavailable,
+	pluginCommandAttentionKind,
 	type PluginCommandReviewGroup,
 } from './pluginCommandGatewayReviewModel';
 
@@ -98,27 +99,30 @@ function CommandReviewRow(props: {
 			className="pk-command-review-row"
 			data-command-id={item.descriptor.commandId}
 			data-selected={props.selected}
+			data-attention={pluginCommandAttentionKind(item) ?? undefined}
 		>
 			<Button
 				variant="ghost"
 				className="pk-command-review-row__main-action"
 				aria-pressed={props.selected}
+				aria-expanded={props.selected}
 				onClick={() => props.onSelect(item)}
 			>
 				<FileText aria-hidden="true" />
 				<span className="pk-command-review-row__main-copy">
 					<span className="pk-command-review-row__title-line">
 						<span className="pk-command-review-row__title">{item.descriptor.commandName}</span>
-						{isPluginCommandContextual(item) && (
-							<Chip variant="neutral">{copy.badges.requiresEditor}</Chip>
-						)}
 						{item.stale && <Chip variant="warning">{copy.badges.reviewAgain}</Chip>}
 					</span>
 					<span className="pk-command-review-row__id">{item.descriptor.commandId}</span>
 				</span>
 			</Button>
 			<div className="pk-command-review-row__risk">
-				<span className="pk-command-risk" data-risk={item.effectiveRisk}>
+				<span
+					className="pk-command-risk"
+					data-risk={item.effectiveRisk}
+					title={copy.riskDescriptions[item.effectiveRisk]}
+				>
 					{copy.risks[item.effectiveRisk]}
 				</span>
 			</div>
@@ -129,6 +133,38 @@ function CommandReviewRow(props: {
 				disabled={props.busy}
 				onToggle={props.onToggle}
 			/>
+			{props.selected && (
+				<CommandRowDetails item={item} copy={copy} unavailable={unavailable} />
+			)}
+		</div>
+	);
+}
+
+function CommandRowDetails(props: {
+	item: PluginCommandReviewItem;
+	copy: PluginCommandCopy;
+	unavailable: boolean;
+}): React.ReactElement {
+	const { item, copy } = props;
+	return (
+		<div className="pk-command-review-row__details">
+			<span className="pk-command-review-row__detail-copy">
+				{item.finding?.summary ?? copy.details.metadataFallback}
+			</span>
+			<span className="pk-command-review-row__detail-meta">
+				<span>{copy.riskDescriptions[item.effectiveRisk]}</span>
+				{isPluginCommandContextual(item) && !props.unavailable && (
+					<span className="pk-command-review-row__context">
+						{copy.badges.requiresEditor} · {copy.warnings.editorRequired}
+					</span>
+				)}
+				{props.unavailable && (
+					<span className="pk-command-review-row__context" data-tone="attention">
+						<AlertTriangle aria-hidden="true" />
+						{unavailableReason(item, copy)}
+					</span>
+				)}
+			</span>
 		</div>
 	);
 }
@@ -142,15 +178,13 @@ function CommandAccessCell(props: {
 }): React.ReactElement {
 	const { item, copy } = props;
 	if (props.unavailable) {
+		const attention = pluginCommandAttentionKind(item) ?? 'unavailable';
 		return (
 			<div className="pk-command-access-cell">
-				<div className="pk-command-access-state">
-					<span className="pk-command-access-unavailable">
-						<LockKeyhole aria-hidden="true" />
-						<span>{copy.access.unavailable}</span>
-					</span>
-					<span className="pk-command-access-reason">{unavailableReason(item, copy)}</span>
-				</div>
+				<span className="pk-command-access-unavailable" data-attention={attention}>
+					<LockKeyhole aria-hidden="true" />
+					<span>{copy.attention[attention].label}</span>
+				</span>
 			</div>
 		);
 	}
@@ -184,15 +218,10 @@ export function unavailableReason(
 	item: PluginCommandReviewItem,
 	copy: PluginCommandCopy,
 ): string {
-	if (item.descriptor.availabilityReason === 'active-editor-required') {
-		return copy.warnings.editorRequired;
-	}
-	if (item.descriptor.availability !== 'available' && item.descriptor.availability !== 'conditional') {
-		return formatPluginCommandCopy(copy.warnings.unavailable, {
-			reason: item.descriptor.availabilityReason ?? item.descriptor.availability,
-		});
-	}
-	if (item.descriptor.interaction === 'modal') return copy.warnings.modal;
-	if (item.effectiveRisk === 'destructive') return copy.warnings.destructive;
-	return copy.warnings.unknown;
+	const attention = pluginCommandAttentionKind(item);
+	if (attention) return copy.attention[attention].description;
+	if (item.descriptor.availabilityReason === 'active-editor-required') return copy.warnings.editorRequired;
+	return formatPluginCommandCopy(copy.warnings.unavailable, {
+		reason: item.descriptor.availabilityReason ?? item.descriptor.availability,
+	});
 }

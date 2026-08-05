@@ -28,12 +28,12 @@ export const DEFAULT_PLUGIN_COMMAND_GATEWAY_CONFIG: PluginCommandGatewayConfig =
 			'删除|移除|清空|重置',
 		],
 		editPatterns: [
-			'\\b(create|insert|append|write|update|rename|move|format|toggle|capture|add|apply)\\b',
-			'创建|插入|追加|写入|更新|重命名|移动|格式化|切换|添加|应用',
+			'\\b(create|insert|append|write|update|replace|rename|move|format|toggle|capture|add|apply|duplicate|paste|sort|reorder|save|import|restore)\\b',
+			'创建|插入|追加|写入|更新|替换|重命名|移动|格式化|切换|添加|应用|复制|粘贴|排序|保存|导入|恢复',
 		],
 		readPatterns: [
-			'\\b(open|show|reveal|search|find|view|preview|focus|navigate|copy)\\b',
-			'打开|显示|查找|搜索|预览|定位|复制',
+			'\\b(open|show|reveal|search|find|view|preview|focus|navigate|copy|jump|go|select|expand|collapse)\\b',
+			'打开|显示|查找|搜索|预览|定位|复制|跳转|选择|展开|折叠',
 		],
 		modalPatterns: [
 			'\\b(modal|dialog|prompt|picker|quickadd)\\b',

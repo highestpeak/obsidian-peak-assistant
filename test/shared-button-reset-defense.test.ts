@@ -113,7 +113,7 @@ assert.match(
 
 assert.match(
 	primitiveCss,
-	/\.pk-command-access-toggle\.pk-btn\s*\{[\s\S]*?width:\s*160px !important;[\s\S]*?min-width:\s*160px !important;[\s\S]*?max-width:\s*160px !important;[\s\S]*?height:\s*32px !important;[\s\S]*?min-height:\s*32px !important;[\s\S]*?max-height:\s*32px !important;[\s\S]*?padding:\s*4px 0 !important;/,
+	/\.pk-command-access-toggle\.pk-btn\s*\{[\s\S]*?width:\s*144px !important;[\s\S]*?min-width:\s*144px !important;[\s\S]*?max-width:\s*144px !important;[\s\S]*?height:\s*28px !important;[\s\S]*?min-height:\s*28px !important;[\s\S]*?max-height:\s*28px !important;[\s\S]*?padding:\s*2px 0 !important;/,
 	'Command Gateway access switch must keep its fixed alignment geometry under the reset',
 );
 

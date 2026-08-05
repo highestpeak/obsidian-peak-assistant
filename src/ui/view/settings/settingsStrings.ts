@@ -163,6 +163,7 @@ export interface SettingsStrings {
             sectionSub: string;
 			viewTitle: string;
 			viewSub: string;
+			scopeNote: string;
 			openManager: string;
 			lastScanned: string;
 			neverScanned: string;
@@ -216,6 +217,7 @@ export interface SettingsStrings {
                 confirmFiltered: string;
                 confirmAll: string;
                 excluded: string;
+				bulkPaused: string;
                 more: string;
                 cancel: string;
                 confirm: string;
@@ -234,6 +236,10 @@ export interface SettingsStrings {
 				reviewNeeded: string;
                 toggleLabel: string;
             };
+			attention: Record<
+				import('@/ui/view/command-gateway/pluginCommandGatewayReviewModel').PluginCommandAttentionKind,
+				{ label: string; description: string }
+			>;
             warnings: {
                 sourceChanged: string;
                 unavailable: string;
@@ -258,6 +264,7 @@ export interface SettingsStrings {
             };
             noFinding: string;
             risks: Record<import('@/core/types/plugin-command-gateway').PluginCommandRisk, string>;
+			riskDescriptions: Record<import('@/core/types/plugin-command-gateway').PluginCommandRisk, string>;
         };
         webAccess: {
             sectionTitle: string;

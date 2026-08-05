@@ -62,11 +62,17 @@ function testProductionWiringAndReviewSurface(): void {
 	assert.match(surface, /pluginCommandGateway\.scan\(onScanProgress\)/);
 	assert.match(surface, /pluginCommandGateway\.allowMany/);
 	assert.match(surface, /RecentCommandActivity/);
+	assert.match(surface, /bulkPaused/);
+	assert.match(surface, /result\.explanationStatus === 'fallback'[\s\S]*?setBulkPaused\(true\)/);
+	assert.match(surface, /catch \(reason\) \{[\s\S]*?setBulkPaused\(true\)/);
+	assert.doesNotMatch(surface, /CommandDetailPanel|pk-command-detail/);
 	assert.doesNotMatch(surface, /PopoverTrigger/);
 	assert.doesNotMatch(surface, /pluginCommandScanPercent/);
 	assert.match(reviewList, /role="switch"/);
 	assert.match(reviewList, /pk-command-access-toggle__label/);
+	assert.match(reviewList, /pluginCommandAttentionKind/);
 	assert.match(styles, /grid-template-columns:\s*30px 58px/);
+	assert.match(styles, /width:\s*74px;[\s\S]*?white-space:\s*nowrap/);
 	assert.doesNotMatch(styles, /pk-command-gateway-list\[data-scanning="true"\][^{]*\{[^}]*opacity:\s*0\.45/);
 	assert.doesNotMatch(surface, /pluginCommandGateway\.curate\(/);
 	assert.doesNotMatch(surface, /purposeLabel|onDeny|decision:\s*'deny'/);
