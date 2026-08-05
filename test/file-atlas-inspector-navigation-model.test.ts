@@ -6,6 +6,8 @@ import {
 	atlasBlockForSuggestion,
 	atlasScopeKind,
 	buildAtlasElementContext,
+	compactStructuredPreviewRows,
+	filterAtlasQuickActions,
 	groupAtlasCopilotSuggestions,
 } from '@/ui/view/file-atlas/atlasInspectorModel';
 
@@ -63,8 +65,8 @@ const itemA = block('item-a', Kind.ListItem, 24, 35, [resource]);
 const itemB = block('item-b', Kind.Task, 36, 45);
 const list = block('list', Kind.List, 22, 48, [itemA, itemB]);
 const intro = block('intro', Kind.Paragraph, 10, 20);
-const section = block('section', Kind.Heading, 0, 100, [intro, list]);
-const other = block('other', Kind.Heading, 101, 200, [
+const section = block('section', Kind.Heading, 0, 9, [intro, list]);
+const other = block('other', Kind.Heading, 101, 109, [
 	block('other-copy', Kind.Paragraph, 110, 150),
 ]);
 const blocks = [section, other];
@@ -92,6 +94,34 @@ assert.deepEqual(
 	groups.document.map((candidate) => candidate.findingId),
 	['elsewhere', 'document-only'],
 );
+
+const sectionGroups = groupAtlasCopilotSuggestions([direct, sameSection], section, section);
+assert.deepEqual(
+	sectionGroups.selection.map((candidate) => candidate.findingId),
+	[],
+	'a heading selection owns only its heading line, not every descendant finding',
+);
+assert.deepEqual(
+	sectionGroups.section.map((candidate) => candidate.findingId),
+	['direct', 'same-section'],
+);
+
+assert.deepEqual(
+	compactStructuredPreviewRows(section).map((candidate) => candidate.id),
+	['intro', 'item-a', 'item-b'],
+	'compact previews flatten list containers and omit repeated extracted resources',
+);
+
+const quickActions = [
+	{ capabilityId: 'composer.prose.polish', title: '润色文本' },
+	{ capabilityId: 'composer.link.tidy', title: '整理链接' },
+] as const;
+assert.deepEqual(
+	filterAtlasQuickActions([...quickActions], Kind.VaultLink).map((action) => action.capabilityId),
+	['composer.link.tidy'],
+	'a Vault Link does not expose owner-paragraph prose actions as element actions',
+);
+assert.equal(filterAtlasQuickActions([...quickActions], Kind.Paragraph).length, 2);
 
 assert.equal(atlasBlockForSuggestion(blocks, direct)?.id, resource.id);
 assert.equal(atlasBlockForSuggestion(blocks, suggestion('exact', 0, 200, itemB.id))?.id, itemB.id);

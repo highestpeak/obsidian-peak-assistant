@@ -1130,7 +1130,12 @@
 	min-height: 24px !important;
 	max-height: 24px !important;
 	padding: 0 2px !important;
+	display: inline-flex !important;
+	align-items: center;
+	justify-content: flex-start !important;
+	align-self: start;
 	justify-self: start;
+	margin: 0 !important;
 	border: 0 !important;
 	background: transparent !important;
 	color: var(--pk-accent-text);
@@ -1580,11 +1585,105 @@
 .pkfa-preview-media svg, .pkfa-preview-link svg { width: 22px; height: 22px; color: var(--pk-accent); }
 
 /* Link cards are real buttons — open the note / URL on click. */
-.pkfa-preview-link.is-clickable {
-	display: grid; width: 100%; text-align: left; cursor: pointer; font: inherit;
+.peak-file-atlas-modal.pkfa-root .pkfa-preview-link.is-clickable {
+	display: grid !important;
+	grid-template-columns: 34px minmax(0, 1fr);
+	width: 100% !important;
+	min-width: 0 !important;
+	max-width: none !important;
+	height: auto !important;
+	min-height: 64px !important;
+	max-height: none !important;
+	padding: 12px !important;
+	align-items: center;
+	justify-content: stretch !important;
+	justify-items: stretch;
+	text-align: left;
+	cursor: pointer;
+	font: inherit;
 	transition: background 120ms ease, border-color 120ms ease;
 }
-.pkfa-preview-link.is-clickable:hover { border-color: var(--pk-border-accent); background: var(--pk-accent-soft); }
+.peak-file-atlas-modal.pkfa-root .pkfa-preview-link.is-clickable > svg {
+	justify-self: center;
+}
+.peak-file-atlas-modal.pkfa-root .pkfa-preview-link.is-clickable > div {
+	min-width: 0;
+}
+.peak-file-atlas-modal.pkfa-root .pkfa-preview-link.is-clickable:hover { border-color: var(--pk-border-accent); background: var(--pk-accent-soft); }
+
+.peak-file-atlas-modal.pkfa-root .pkfa-vault-preview {
+	display: grid !important;
+	grid-template-columns: 54px minmax(0, 1fr);
+	align-items: center;
+	gap: 12px;
+	width: 100% !important;
+	min-width: 0 !important;
+	max-width: none !important;
+	height: auto !important;
+	min-height: 86px !important;
+	max-height: none !important;
+	padding: 12px !important;
+	border: 1px solid var(--pk-border-soft) !important;
+	border-radius: var(--pk-radius-md) !important;
+	background: var(--pk-surface) !important;
+	color: var(--pk-text-primary);
+	text-align: left;
+	cursor: pointer;
+}
+
+.peak-file-atlas-modal.pkfa-root .pkfa-vault-preview:hover {
+	border-color: var(--pk-border-accent) !important;
+	background: var(--pk-accent-soft) !important;
+}
+
+.pkfa-vault-preview-sheet {
+	display: grid;
+	width: 48px;
+	height: 58px;
+	padding: 13px 8px 8px;
+	align-content: start;
+	gap: 6px;
+	border: 1px solid var(--pk-border-accent);
+	border-radius: var(--pk-radius-sm);
+	background: var(--pk-surface-raised);
+	box-shadow: var(--pk-shadow-sm);
+}
+
+.pkfa-vault-preview-sheet > span {
+	display: block;
+	height: 3px;
+	border-radius: var(--pk-radius-pill);
+	background: var(--pk-border);
+}
+
+.pkfa-vault-preview-sheet > span:first-child {
+	width: 72%;
+	background: var(--pk-accent);
+}
+
+.pkfa-vault-preview-body {
+	display: grid;
+	min-width: 0;
+	gap: 5px;
+}
+
+.pkfa-vault-preview-body > strong {
+	overflow: hidden;
+	font-size: var(--pk-text-md);
+	font-weight: 760;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pkfa-vault-preview-body > small {
+	display: -webkit-box;
+	overflow: hidden;
+	color: var(--pk-text-secondary);
+	font-size: var(--pk-text-base);
+	line-height: 1.4 !important;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+}
 
 .peak-file-atlas-modal.pkfa-root .pkfa-external-preview {
 	width: 100% !important;
@@ -1847,6 +1946,64 @@
 
 .pkfa-preview-render svg { width: auto; height: auto; }
 .pkfa-preview-render [data-streamdown-root] { max-width: 100%; }
+
+.pkfa-structured-preview {
+	max-height: clamp(140px, 28vh, 260px);
+	padding: 10px;
+	overflow: auto;
+	overscroll-behavior: contain;
+	scrollbar-gutter: stable;
+	border: 1px solid var(--pk-border-soft);
+	border-radius: var(--pk-radius-md);
+	background: var(--pk-surface-raised);
+}
+
+.pkfa-structured-preview-title {
+	display: block;
+	min-width: 0;
+	padding: 2px 5px 8px;
+	overflow: hidden;
+	color: var(--pk-text-primary);
+	font-size: var(--pk-text-md);
+	font-weight: 780;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pkfa-structured-preview-list {
+	display: grid;
+	gap: 2px;
+}
+
+.pkfa-structured-preview-row {
+	display: grid;
+	grid-template-columns: 18px minmax(0, 1fr);
+	align-items: center;
+	gap: 7px;
+	min-height: 28px;
+	padding: 3px 5px;
+	border-radius: var(--pk-radius-sm);
+	color: var(--pk-text-primary);
+}
+
+.pkfa-structured-preview-row:hover {
+	background: var(--pk-surface);
+}
+
+.pkfa-structured-preview-row > svg {
+	width: 14px;
+	height: 14px;
+	color: var(--pk-text-faint);
+}
+
+.pkfa-structured-preview-row > span {
+	min-width: 0;
+	overflow: hidden;
+	font-size: var(--pk-text-base);
+	font-weight: 660;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
 
 /* ---------- image preview ---------- */
 .pkfa-preview-image {

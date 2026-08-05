@@ -1,6 +1,6 @@
 import type { DocumentBlock } from '@/core/document/atlas/types';
 import { RawBlockKind as Kind } from '@/core/document/atlas/types';
-import type { AtlasCopilotSuggestion } from './FileAtlasHostPort';
+import type { AtlasCopilotSuggestion, AtlasQuickAction } from './FileAtlasHostPort';
 
 const RESOURCE_KINDS = new Set<DocumentBlock['kind']>([
 	Kind.Image,
@@ -24,6 +24,43 @@ export interface AtlasCopilotSuggestionGroups {
 	selection: AtlasCopilotSuggestion[];
 	section: AtlasCopilotSuggestion[];
 	document: AtlasCopilotSuggestion[];
+}
+
+/** Keep resource rows scoped to actions that actually operate on that resource. */
+export function filterAtlasQuickActions(
+	actions: AtlasQuickAction[],
+	kind: DocumentBlock['kind'],
+): AtlasQuickAction[] {
+	if (kind !== Kind.VaultLink && kind !== Kind.ExternalLink) return actions;
+	return actions.filter((action) => action.capabilityId.startsWith('composer.link.'));
+}
+
+/**
+ * Flatten structural list containers into compact, one-line preview rows while
+ * excluding extracted resources that would repeat their owning prose/list item.
+ */
+export function compactStructuredPreviewRows(root: DocumentBlock): DocumentBlock[] {
+	const rows: DocumentBlock[] = [];
+	const visit = (block: DocumentBlock): void => {
+		if (RESOURCE_KINDS.has(block.kind)) return;
+		if (block.kind === Kind.List) {
+			for (const child of block.children ?? []) visit(child);
+			return;
+		}
+		rows.push(block);
+		if (block.kind !== Kind.ListItem && block.kind !== Kind.Task) return;
+		for (const child of block.children ?? []) {
+			if (
+				child.kind === Kind.List ||
+				child.kind === Kind.ListItem ||
+				child.kind === Kind.Task
+			) {
+				visit(child);
+			}
+		}
+	};
+	for (const child of root.children ?? []) visit(child);
+	return rows;
 }
 
 interface LocatedBlock {
@@ -96,7 +133,7 @@ export function groupAtlasCopilotSuggestions(
 	selected: DocumentBlock,
 	section: DocumentBlock | null,
 ): AtlasCopilotSuggestionGroups {
-	const selectionRange = blockRange(selected);
+	const selectionRange = ownBlockRange(selected);
 	const sectionRange = section ? blockRange(section) : null;
 	const selection: AtlasCopilotSuggestion[] = [];
 	const sectionSuggestions: AtlasCopilotSuggestion[] = [];
@@ -104,7 +141,10 @@ export function groupAtlasCopilotSuggestions(
 
 	for (const suggestion of suggestions) {
 		const range = suggestionRange(suggestion);
-		if (range && overlaps(range, selectionRange)) {
+		if (
+			suggestion.targetBlockId === selected.id ||
+			(range && overlaps(range, selectionRange))
+		) {
 			selection.push(suggestion);
 			continue;
 		}
@@ -163,8 +203,7 @@ function collectResources(root: DocumentBlock | null): DocumentBlock[] {
 }
 
 function blockRange(block: DocumentBlock): { from: number; to: number } {
-	let from = block.anchor.sourceFrom ?? 0;
-	let to = block.anchor.sourceTo ?? from;
+	let { from, to } = ownBlockRange(block);
 	const visit = (candidate: DocumentBlock): void => {
 		from = Math.min(from, candidate.anchor.sourceFrom ?? from);
 		to = Math.max(to, candidate.anchor.sourceTo ?? to);
@@ -172,6 +211,11 @@ function blockRange(block: DocumentBlock): { from: number; to: number } {
 	};
 	visit(block);
 	return { from, to };
+}
+
+function ownBlockRange(block: DocumentBlock): { from: number; to: number } {
+	const from = block.anchor.sourceFrom ?? 0;
+	return { from, to: block.anchor.sourceTo ?? from };
 }
 
 function suggestionRange(
@@ -188,7 +232,7 @@ function overlaps(
 	left: { from: number; to: number },
 	right: { from: number; to: number },
 ): boolean {
-	return left.to >= right.from && left.from <= right.to;
+	return left.to > right.from && left.from < right.to;
 }
 
 function rangeSpan(range: { from: number; to: number }): number {

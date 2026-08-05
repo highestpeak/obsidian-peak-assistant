@@ -1,5 +1,35 @@
 import type { ComposerBlock, ComposerDocumentSnapshot } from '@/core/composer';
 import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
+import type { AtlasQuickAction } from '@/ui/view/file-atlas/FileAtlasHostPort';
+
+const FILE_ATLAS_ACTION_ALIASES = new Map<string, string>([
+	['composer.prose.polish-block', 'composer.prose.polish'],
+]);
+
+function normalizedActionTitle(title: string): string {
+	return title.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+}
+
+/**
+ * Present one user-facing action for one intent. Composer retains compatibility
+ * capability IDs, but those aliases must not become duplicate Inspector buttons.
+ */
+export function projectFileAtlasQuickActions(
+	actions: AtlasQuickAction[],
+): AtlasQuickAction[] {
+	const capabilityIds = new Set(actions.map((action) => action.capabilityId));
+	const seenTitles = new Set<string>();
+	return actions.filter((action) => {
+		const canonicalId = FILE_ATLAS_ACTION_ALIASES.get(action.capabilityId);
+		if (canonicalId && capabilityIds.has(canonicalId as AtlasQuickAction['capabilityId'])) {
+			return false;
+		}
+		const title = normalizedActionTitle(action.title);
+		if (seenTitles.has(title)) return false;
+		seenTitles.add(title);
+		return true;
+	});
+}
 
 function overlapSize(
 	left: { from: number; to: number },

@@ -34,6 +34,7 @@ import type {
 	AtlasExternalLinkPreview,
 	AtlasImageInfo,
 	AtlasQuickAction,
+	AtlasVaultLinkPreview as AtlasVaultLinkPreviewData,
 	FileAtlasHostPort,
 } from '../FileAtlasHostPort';
 import { iconForKind } from '../config/kindIcons';
@@ -43,11 +44,17 @@ import {
 	sectionText,
 	statisticsOf,
 } from '../atlasTreeModel';
-import { displayIdentity, inspectorCardPolicy } from '../atlasDisplayModel';
+import {
+	cleanInlineMarkdown,
+	displayIdentity,
+	inspectorCardPolicy,
+} from '../atlasDisplayModel';
 import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
 import { AIGraphContextArtifacts } from '@/ui/component/ai-graph';
 import {
 	buildAtlasElementContext,
+	compactStructuredPreviewRows,
+	filterAtlasQuickActions,
 	groupAtlasCopilotSuggestions,
 	type AtlasElementContext,
 } from '../atlasInspectorModel';
@@ -226,8 +233,12 @@ const AtlasQuickActions: React.FC<{
 			active = false;
 		};
 	}, [block, host, sourcePath]);
+	const visibleActions = useMemo(
+		() => filterAtlasQuickActions(snapshot.actions, block.kind),
+		[block.kind, snapshot.actions],
+	);
 
-	if (snapshot.status !== 'ready' || snapshot.actions.length === 0) return null;
+	if (snapshot.status !== 'ready' || visibleActions.length === 0) return null;
 	return (
 		<section className="pkfa-inspector-section pkfa-quick-actions">
 			<div className="pkfa-section-heading">
@@ -237,7 +248,7 @@ const AtlasQuickActions: React.FC<{
 				</span>
 			</div>
 			<div className="pkfa-quick-action-list">
-				{snapshot.actions.slice(0, 5).map((action) => (
+				{visibleActions.slice(0, 5).map((action) => (
 					<Button
 						key={action.capabilityId}
 						variant="unstyled"
@@ -298,7 +309,9 @@ const AtlasReviewSuggestions: React.FC<{
 		() => groupAtlasCopilotSuggestions(snapshot.suggestions, block, context?.section ?? null),
 		[block, context?.section, snapshot.suggestions],
 	);
-	const otherCount = groups.section.length + groups.document.length;
+	const visibleSelection = groups.selection.slice(0, 3);
+	const totalCount = groups.selection.length + groups.section.length + groups.document.length;
+	const hiddenCount = totalCount - visibleSelection.length;
 	const openFinding = (suggestion: AtlasCopilotSuggestion): void => {
 		host.openCopilot?.(sourcePath, {
 			...(suggestion.targetBlockId ? { blockId: suggestion.targetBlockId } : {}),
@@ -309,7 +322,7 @@ const AtlasReviewSuggestions: React.FC<{
 	};
 
 	if (snapshot.status !== 'ready') return null;
-	if (groups.selection.length === 0 && otherCount === 0) return null;
+	if (totalCount === 0) return null;
 	return (
 		<section className="pkfa-inspector-section pkfa-review-suggestions">
 			<div className="pkfa-section-heading">
@@ -317,11 +330,9 @@ const AtlasReviewSuggestions: React.FC<{
 					<Sparkles />
 					<span>{config.strings.reviewSuggestionsTitle}</span>
 				</span>
-				{groups.selection.length > 0 && (
-					<span className="pkfa-section-count">{groups.selection.length}</span>
-				)}
+				<span className="pkfa-section-count">{totalCount}</span>
 			</div>
-			{groups.selection.slice(0, 3).map((suggestion) => (
+			{visibleSelection.map((suggestion) => (
 				<Button
 					key={suggestion.findingId}
 					variant="unstyled"
@@ -336,14 +347,18 @@ const AtlasReviewSuggestions: React.FC<{
 					<ExternalLink aria-hidden />
 				</Button>
 			))}
-			{otherCount > 0 && host.openCopilot && (
+			{hiddenCount > 0 && host.openCopilot && (
 				<Button
 					variant="unstyled"
 					type="button"
 					className="pkfa-review-document-link"
-					onClick={() => host.openCopilot?.(sourcePath)}
+					onClick={() => host.openCopilot?.(sourcePath, {
+						blockId: block.id,
+						sourceFrom: block.anchor.sourceFrom,
+						sourceTo: block.anchor.sourceTo,
+					})}
 				>
-					{config.strings.reviewDocumentSuggestions} · {otherCount}
+					{config.strings.reviewDocumentSuggestions} · {hiddenCount}
 				</Button>
 			)}
 		</section>
@@ -422,6 +437,36 @@ const RenderedPreview: React.FC<{ source: string }> = ({ source }) => (
 		<StreamdownIsolated>{dedent(source)}</StreamdownIsolated>
 	</div>
 );
+
+/** Compact structural preview for headings and lists; every content unit stays on one line. */
+const StructuredPreview: React.FC<{
+	block: DocumentBlock;
+	config: FileAtlasConfig;
+}> = ({ block, config }) => {
+	const rows = compactStructuredPreviewRows(block);
+	const identity = displayIdentity(block, config);
+	return (
+		<div className="pkfa-structured-preview" tabIndex={0} aria-label="Section preview">
+			{block.kind === RawBlockKind.Heading && (
+				<span className="pkfa-structured-preview-title" title={identity.primary}>
+					{identity.primary}
+				</span>
+			)}
+			<div className="pkfa-structured-preview-list" role="list">
+				{rows.map((row) => {
+					const RowIcon = iconForKind(row.kind);
+					const rowIdentity = displayIdentity(row, config);
+					return (
+						<div className="pkfa-structured-preview-row" role="listitem" key={row.id}>
+							<RowIcon aria-hidden />
+							<span title={rowIdentity.primary}>{rowIdentity.primary}</span>
+						</div>
+					);
+				})}
+			</div>
+		</div>
+	);
+};
 
 function humanBytes(bytes: number | null): string {
 	if (bytes === null) return '—';
@@ -602,6 +647,57 @@ const ExternalLinkPreview: React.FC<{
 	);
 };
 
+const VaultLinkPreview: React.FC<{
+	block: DocumentBlock;
+	target: string;
+	config: FileAtlasConfig;
+	host: FileAtlasHostPort;
+	sourcePath: string;
+}> = ({ block, target, config, host, sourcePath }) => {
+	const identity = displayIdentity(block, config);
+	const [preview, setPreview] = useState<AtlasVaultLinkPreviewData | null>(null);
+	useEffect(() => {
+		let active = true;
+		setPreview(null);
+		if (!host.loadVaultLinkPreview) {
+			return () => {
+				active = false;
+			};
+		}
+		void host.loadVaultLinkPreview(target, sourcePath)
+			.then((next) => {
+				if (active) setPreview(next);
+			})
+			.catch(() => {
+				if (active) setPreview(null);
+			});
+		return () => {
+			active = false;
+		};
+	}, [host, sourcePath, target]);
+	const excerpt = preview?.excerpt ? cleanInlineMarkdown(preview.excerpt) : '';
+	const secondary = excerpt || identity.secondary;
+	return (
+		<Button
+			variant="unstyled"
+			type="button"
+			className="pkfa-vault-preview is-clickable"
+			title={`Open note: ${preview?.title ?? target}`}
+			onClick={() => host.openLink(target, sourcePath, false)}
+		>
+			<span className="pkfa-vault-preview-sheet" aria-hidden>
+				<span />
+				<span />
+				<span />
+			</span>
+			<span className="pkfa-vault-preview-body">
+				<strong>{identity.primary}</strong>
+				{secondary && <small>{secondary}</small>}
+			</span>
+		</Button>
+	);
+};
+
 /** Program-computed term-frequency keywords for every addressable block. */
 const KeywordSection: React.FC<{ text: string; config: FileAtlasConfig }> = ({ text, config }) => {
 	const [expanded, setExpanded] = useState(false);
@@ -653,7 +749,12 @@ const FactsSection: React.FC<{ block: DocumentBlock; config: FileAtlasConfig }> 
 	const stats = statisticsOf(block);
 	const s = config.strings;
 	let rows: Array<[string, string | number | undefined]>;
-	if (block.kind === RawBlockKind.List) {
+	if (block.kind === RawBlockKind.Heading) {
+		rows = [
+			[s.statParagraphs, stats.paragraphs],
+			[s.statResources, stats.resources],
+		];
+	} else if (block.kind === RawBlockKind.List) {
 		rows = [
 			[s.statItems, stats.items],
 			[s.statNestedLists, stats.nestedLists],
@@ -661,6 +762,8 @@ const FactsSection: React.FC<{ block: DocumentBlock; config: FileAtlasConfig }> 
 			[s.statChecked, stats.checked],
 			[s.statUnchecked, stats.unchecked],
 		];
+	} else if (block.kind === RawBlockKind.Task) {
+		rows = [[s.statStatus, stats.status]];
 	} else if (block.kind === RawBlockKind.Table) {
 		rows = [
 			[s.statRows, stats.rows],
@@ -671,8 +774,16 @@ const FactsSection: React.FC<{ block: DocumentBlock; config: FileAtlasConfig }> 
 			[s.statCodeLines, stats.codeLines],
 			[s.statLanguage, stats.language],
 		];
+	} else if (block.kind === RawBlockKind.Callout) {
+		rows = [
+			[s.statParagraphs, stats.paragraphs],
+			[s.statResources, stats.resources],
+		];
 	} else {
-		rows = [];
+		rows = [
+			[s.statWords, stats.words],
+			[s.statCharacters, stats.characters],
+		];
 	}
 	const visibleRows = rows.filter(([, value]) => value !== undefined);
 	if (visibleRows.length === 0) return null;
@@ -680,7 +791,7 @@ const FactsSection: React.FC<{ block: DocumentBlock; config: FileAtlasConfig }> 
 		<section className="pkfa-inspector-section pkfa-facts-section">
 			<span className="pkfa-selected-kind">
 				<BarChart3 />
-				<span>{s.locationCard}</span>
+				<span>{s.statisticsTitle}</span>
 			</span>
 			<div className="pkfa-meta-rows">
 				{visibleRows.map(([label, value]) => (
@@ -750,7 +861,20 @@ const SourcePreview: React.FC<{
 				copyText={sectionText(block)}
 				copyMessage="Section copied"
 			>
-				<RenderedPreview source={sectionText(block)} />
+				<StructuredPreview block={block} config={config} />
+			</CopyablePreview>
+		);
+	}
+
+	if (kind === RawBlockKind.List) {
+		return (
+			<CopyablePreview
+				config={config}
+				host={host}
+				copyText={block.source}
+				copyMessage="List copied"
+			>
+				<StructuredPreview block={block} config={config} />
 			</CopyablePreview>
 		);
 	}
@@ -798,7 +922,6 @@ const SourcePreview: React.FC<{
 	}
 
 	if (kind === RawBlockKind.VaultLink || kind === RawBlockKind.ExternalLink) {
-		const LinkKindIcon = iconForKind(kind);
 		const isExternal = kind === RawBlockKind.ExternalLink;
 		const target = detail?.target ?? block.source;
 		return (
@@ -816,19 +939,13 @@ const SourcePreview: React.FC<{
 						sourcePath={sourcePath}
 					/>
 				) : (
-					<Button
-						variant="unstyled"
-						type="button"
-						className="pkfa-preview-link is-clickable"
-						title={`Open note: ${target}`}
-						onClick={() => host.openLink(target, sourcePath, false)}
-					>
-						<LinkKindIcon />
-						<div>
-							<div className="pkfa-preview-title">{identity.primary}</div>
-							<div className="pkfa-preview-sub">{identity.secondary ?? target}</div>
-						</div>
-					</Button>
+					<VaultLinkPreview
+						block={block}
+						target={target}
+						config={config}
+						host={host}
+						sourcePath={sourcePath}
+					/>
 				)}
 			</CopyablePreview>
 		);

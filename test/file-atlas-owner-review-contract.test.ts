@@ -52,6 +52,12 @@ assert.match(inspector, /loadQuickActions/);
 assert.match(inspector, /runQuickAction|onRunQuickAction/);
 assert.match(inspector, /AtlasReviewSuggestions/);
 assert.match(inspector, /groupAtlasCopilotSuggestions/);
+assert.match(inspector, /filterAtlasQuickActions/);
+assert.match(inspector, /StructuredPreview/);
+assert.match(inspector, /VaultLinkPreview/);
+assert.match(inspector, /loadVaultLinkPreview/);
+assert.match(inspectorModel, /compactStructuredPreviewRows/);
+assert.match(inspectorModel, /composer\.link\./);
 assert.match(inspector, /\[host, sourcePath\]/);
 assert.doesNotMatch(inspector, /ElementContextSection|ScopeBreadcrumb/);
 assert.match(inspectorModel, /buildAtlasElementContext/);
@@ -62,8 +68,19 @@ assert.match(
 	css,
 	/\.pkfa-inspector-scroll[\s\S]*?overflow-y:\s*auto[\s\S]*?display:\s*block/,
 );
+assert.match(
+	css,
+	/\.peak-file-atlas-modal\.pkfa-root \.pkfa-vault-preview\s*\{[\s\S]*?grid-template-columns:\s*54px minmax\(0, 1fr\);[\s\S]*?width:\s*100% !important;/,
+	'Vault notes use a transient page-preview card instead of a lone link icon',
+);
 assert.match(css, /\.pkfa-inspector-surface\s*\{[\s\S]*?border:\s*1px solid/);
 assert.match(css, /\.pkfa-preview-render[\s\S]*?max-height:[\s\S]*?overflow:\s*auto/);
+assert.match(css, /\.pkfa-structured-preview-row[\s\S]*?white-space:\s*nowrap/);
+assert.match(
+	css,
+	/\.peak-file-atlas-modal\.pkfa-root \.pkfa-preview-link\.is-clickable\s*\{[\s\S]*?display:\s*grid !important;[\s\S]*?width:\s*100% !important;[\s\S]*?justify-content:\s*stretch !important;/,
+	'Vault Link cards must fill the preview width instead of inheriting centered shared-button layout',
+);
 assert.doesNotMatch(css, /\.pkfa-kw-list\s*\{[^}]*max-height:/);
 assert.match(css, /\.pkfa-kw-meter/);
 assert.doesNotMatch(css, /--kw-w|\.pkfa-kw-chip/);

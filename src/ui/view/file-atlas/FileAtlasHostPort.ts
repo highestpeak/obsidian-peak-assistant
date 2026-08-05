@@ -82,6 +82,13 @@ export interface AtlasExternalLinkPreview {
 	faviconUrl?: string;
 }
 
+/** Transient content preview for a linked Vault note; never persisted. */
+export interface AtlasVaultLinkPreview {
+	path: string;
+	title: string;
+	excerpt: string;
+}
+
 /** A real Composer block-row capability projected onto a File Atlas element. */
 export interface AtlasQuickAction {
 	capabilityId: ComposerCapabilityId;
@@ -160,6 +167,8 @@ export interface FileAtlasHostPort {
 	copyImage?(target: string, sourcePath: string): Promise<void>;
 	/** Load remote metadata in memory for an external-link preview card. */
 	loadExternalLinkPreview?(url: string): Promise<AtlasExternalLinkPreview | null>;
+	/** Read a linked Vault note into a transient page preview; never stores an image. */
+	loadVaultLinkPreview?(target: string, sourcePath: string): Promise<AtlasVaultLinkPreview | null>;
 	/** Project the exact Composer block-row actions for an Atlas source range. */
 	loadQuickActions?(
 		path: string,

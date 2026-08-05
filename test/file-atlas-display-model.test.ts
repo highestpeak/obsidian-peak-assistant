@@ -90,6 +90,8 @@ const markdown = [
 	'',
 	'[[Target Note|PKM 产品分析]]',
 	'',
+	'[[Plain Note]]',
+	'',
 	'[[Target Note#Graph formulas|图算法与公式]]',
 	'',
 	'[Obsidian API repository](https://github.com/obsidianmd/obsidian-api)',
@@ -200,10 +202,24 @@ assert.strictEqual(displayIdentity(attachment, config).secondary, 'PDF · A-reso
 
 const vaultLinks = find(blocks, Kind.VaultLink);
 const alias = vaultLinks.find((block) => block.detail?.authoredLabel === 'PKM 产品分析')!;
+const plain = vaultLinks.find((block) => block.detail?.target === 'Plain Note')!;
 const fragment = vaultLinks.find((block) => block.detail?.authoredLabel === '图算法与公式')!;
 assert.strictEqual(displayIdentity(alias, config).primary, 'PKM 产品分析');
 assert.strictEqual(displayIdentity(alias, config).secondary, 'Target Note · Vault note');
+assert.strictEqual(displayIdentity(plain, config).primary, 'Plain Note');
+assert.strictEqual(displayIdentity(plain, config).secondary, undefined);
 assert.strictEqual(displayIdentity(fragment, config).secondary, 'Target Note · Heading');
+
+assert.deepStrictEqual(inspectorCardPolicy(heading), {
+	keywords: true,
+	statistics: true,
+	sourceDetails: true,
+});
+assert.deepStrictEqual(inspectorCardPolicy(paragraph), {
+	keywords: true,
+	statistics: true,
+	sourceDetails: true,
+});
 
 const externalLinks = find(blocks, Kind.ExternalLink);
 const github = externalLinks.find((block) => block.detail?.target?.includes('obsidian-api'))!;

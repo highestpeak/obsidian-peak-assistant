@@ -331,14 +331,19 @@ function vaultLinkIdentity(
 	const target = block.detail?.target ?? block.title;
 	const noteTarget = target.split('#')[0];
 	const fragment = readableFragment(block.detail?.linkFragment);
+	const primary = block.detail?.authoredLabel || fragment || stem(noteTarget);
 	const fragmentType = block.detail?.linkFragment?.startsWith('#^')
 		? config.identity.labels.block
 		: block.detail?.linkFragment
 			? config.identity.labels.heading
 			: config.identity.labels.vaultNote;
+	const targetTitle = stem(noteTarget);
+	const secondary = !fragment && primary === targetTitle
+		? undefined
+		: joinParts(targetTitle, fragmentType);
 	return {
-		primary: block.detail?.authoredLabel || fragment || stem(noteTarget),
-		secondary: joinParts(stem(noteTarget), fragmentType),
+		primary,
+		secondary,
 		provenance: target,
 	};
 }
@@ -415,12 +420,23 @@ export function atlasSearchText(
 
 export function inspectorCardPolicy(block: DocumentBlock): InspectorCardPolicy {
 	const proseLength = cleanInlineMarkdown(block.source).length;
-	const proseAnalysis = (
-		block.kind === Kind.Paragraph ||
-		block.kind === Kind.Quote
-	) && proseLength >= 90;
-	const statistics = new Set<DocumentBlock['kind']>([
+	const proseAnalysis = new Set<DocumentBlock['kind']>([
+		Kind.Heading,
+		Kind.Paragraph,
 		Kind.List,
+		Kind.ListItem,
+		Kind.Task,
+		Kind.Quote,
+		Kind.Callout,
+	]).has(block.kind) && proseLength > 0;
+	const statistics = new Set<DocumentBlock['kind']>([
+		Kind.Heading,
+		Kind.Paragraph,
+		Kind.List,
+		Kind.ListItem,
+		Kind.Task,
+		Kind.Quote,
+		Kind.Callout,
 		Kind.Table,
 		Kind.Code,
 		Kind.Mermaid,

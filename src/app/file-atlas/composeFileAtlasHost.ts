@@ -16,6 +16,7 @@ import type {
 	AtlasGraphData,
 	AtlasExternalLinkPreview,
 	AtlasImageInfo,
+	AtlasVaultLinkPreview,
 	AtlasCopilotSuggestion,
 	AtlasCopilotSuggestionSnapshot,
 	AtlasQuickActionSnapshot,
@@ -32,8 +33,23 @@ import type { ComposerCapabilityId } from '@/core/composer';
 import { assembleComposerContextSnapshot } from '@/service/composer/capabilities/contextAssembler';
 import { NativeMarkdownIntelligenceModal } from '@/app/composer/NativeMarkdownIntelligenceModal';
 import { virtualHubPath } from '@/service/hub/HubRecordStore';
-import { composerBlockForAtlasLocation } from './fileAtlasComposerActions';
+import {
+	composerBlockForAtlasLocation,
+	projectFileAtlasQuickActions,
+} from './fileAtlasComposerActions';
 import type { DocumentComposerController } from '@/app/composer/DocumentComposerController';
+import { parseDocumentBlocks } from '@/core/document/atlas/documentBlockParser';
+import type { DocumentBlock } from '@/core/document/atlas/types';
+import { RawBlockKind } from '@/core/document/atlas/types';
+
+const VAULT_PREVIEW_CONTENT_KINDS = new Set<DocumentBlock['kind']>([
+	RawBlockKind.Paragraph,
+	RawBlockKind.List,
+	RawBlockKind.ListItem,
+	RawBlockKind.Task,
+	RawBlockKind.Quote,
+	RawBlockKind.Callout,
+]);
 
 /** Strip `![[ ]]` / `![]()` wrappers and any `|alias` so we have a bare link target. */
 function cleanImageTarget(raw: string): string {
@@ -54,6 +70,17 @@ function safeExternalUrl(raw: string, base?: string): URL | null {
 	} catch {
 		return null;
 	}
+}
+
+function firstVaultPreviewSource(blocks: DocumentBlock[]): string {
+	for (const block of blocks) {
+		if (VAULT_PREVIEW_CONTENT_KINDS.has(block.kind) && block.source.trim()) {
+			return block.source;
+		}
+		const nested = firstVaultPreviewSource(block.children ?? []);
+		if (nested) return nested;
+	}
+	return '';
 }
 
 function metadataContent(doc: Document, selectors: string[]): string | undefined {
@@ -466,6 +493,23 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 			}
 		},
 
+		async loadVaultLinkPreview(
+			target: string,
+			sourcePath: string,
+		): Promise<AtlasVaultLinkPreview | null> {
+			const cleanTarget = cleanImageTarget(target).split('#')[0];
+			const file = app.metadataCache.getFirstLinkpathDest(cleanTarget, sourcePath);
+			if (!(file instanceof TFile) || file.extension.toLowerCase() !== 'md') return null;
+			const content = await app.vault.cachedRead(file);
+			const parsed = parseDocumentBlocks(content, file.path);
+			const firstHeading = parsed.blocks.find((block) => block.kind === RawBlockKind.Heading);
+			return {
+				path: file.path,
+				title: firstHeading?.title ?? file.basename,
+				excerpt: firstVaultPreviewSource(parsed.blocks),
+			};
+		},
+
 		async loadQuickActions(
 			path: string,
 			location: DocumentSourceLocation,
@@ -478,7 +522,7 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 					{ kind: 'block', blockId },
 					{ nearbyChars: 400 },
 				);
-				return runtime.projection.actionsFor(snapshot, 'block-row')
+				const projected = runtime.projection.actionsFor(snapshot, 'block-row')
 					.filter((action) => action.group === 'ai')
 					.map((action) => ({
 						capabilityId: action.capabilityId,
@@ -487,6 +531,7 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 						...(action.lucideIcon ? { lucideIcon: action.lucideIcon } : {}),
 						...(action.disabledReason ? { disabledReason: action.disabledReason } : {}),
 					}));
+				return projectFileAtlasQuickActions(projected);
 			});
 			return actions ? { status: 'ready', actions } : { status: 'unavailable', actions: [] };
 		},
