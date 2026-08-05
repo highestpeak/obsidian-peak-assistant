@@ -74,6 +74,8 @@ export interface CollectionActionHandleProps {
 	pinned: boolean;
 	onPointerEnter: () => void;
 	onPointerLeave: () => void;
+	onFocusCapture: () => void;
+	onBlurCapture: () => void;
 	onPointerDown?: (event: React.PointerEvent<HTMLButtonElement>) => void;
 	onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }
@@ -88,23 +90,31 @@ export function CollectionActionHandle({
 	pinned,
 	onPointerEnter,
 	onPointerLeave,
+	onFocusCapture,
+	onBlurCapture,
 	onPointerDown,
 	onClick,
 }: CollectionActionHandleProps): React.ReactElement {
 	return (
-		<IconButton
-			label={accessibleLabel}
-			className="pk-composer-collection-handle"
-			aria-pressed={pinned}
+		<span
+			className="pk-composer-collection-handle-zone"
 			data-collection-handle="true"
 			data-pinned={pinned || undefined}
 			onPointerEnter={onPointerEnter}
 			onPointerLeave={onPointerLeave}
-			onPointerDown={onPointerDown}
-			onClick={onClick}
+			onFocusCapture={onFocusCapture}
+			onBlurCapture={onBlurCapture}
 		>
-			<GripVertical size={15} strokeWidth={2} aria-hidden />
-			<span className="pk-composer-collection-handle__label">{label}</span>
-		</IconButton>
+			<IconButton
+				label={accessibleLabel}
+				className="pk-composer-collection-handle"
+				aria-pressed={pinned}
+				onPointerDown={onPointerDown}
+				onClick={onClick}
+			>
+				<GripVertical size={15} strokeWidth={2} aria-hidden />
+				<span className="pk-composer-collection-handle__label">{label}</span>
+			</IconButton>
+		</span>
 	);
 }

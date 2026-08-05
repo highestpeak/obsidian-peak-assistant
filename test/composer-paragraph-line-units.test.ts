@@ -51,6 +51,12 @@ assert.ok(
 	'each authored line can render an AI action row against its own source range',
 );
 assert.ok(
+	root.includes('{unitActions?.renderBefore?.(anchor)}') &&
+	root.includes('data-unit-collection-anchor') &&
+	root.includes("unit.unitKind === 'paragraph-line'"),
+	'the one paragraph-level rail handle and collection row must follow the active authored line',
+);
+assert.ok(
 	unitSnapshot.target.kind === 'selection' && unitSnapshot.selectionText === 'Google Keep',
 	'unit AI actions freeze an exact selection target instead of rewriting the whole paragraph block',
 );
@@ -84,10 +90,9 @@ assert.match(
 );
 assert.match(
 	css,
-	/\.pk-collection-action-corridor\s*\{[\s\S]*?left:\s*-43px;[\s\S]*?width:\s*43px;[\s\S]*?pointer-events:\s*auto;/,
-	'the active collection owns a transparent pointer corridor below the offset six-dot rail',
+	/\.pk-composer-collection-handle-zone::before\s*\{[\s\S]*?inset:\s*-3px -13px -3px -6px;[\s\S]*?pointer-events:\s*auto;/,
+	'the active line, dynamic rail handle, and action row share a reachable transparent interaction island',
 );
-assert.ok(root.includes('className="pk-collection-action-corridor"'));
 assert.match(
 	css,
 	/\.pk-block-action-row__shell\s*\{[\s\S]*?white-space:\s*nowrap;[\s\S]*?overflow-x:\s*auto;/,

@@ -86,6 +86,9 @@ export interface ComposerChromeConfig {
 		/** `{count}` is replaced with the number of list items in the block. */
 		collectionScope: string;
 		unitScope: string;
+		paragraphHandle: string;
+		paragraphScope: string;
+		lineScope: string;
 		directEdit: string;
 		disabledNoRuntime: string;
 	};
@@ -339,6 +342,9 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 				collectionHandle: '列表',
 				collectionScope: '整个列表 · {count} 项',
 				unitScope: '当前一项',
+				paragraphHandle: '段落',
+				paragraphScope: '整个段落',
+				lineScope: '当前一行',
 				directEdit: '直接编辑',
 				disabledNoRuntime: '编辑运行时未接入',
 			},

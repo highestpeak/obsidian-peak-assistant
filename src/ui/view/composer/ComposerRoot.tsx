@@ -1132,11 +1132,9 @@ function ComposerBlockRow({
 		block.kind === 'list' ||
 		block.kind === 'task' ||
 		(block.kind === 'paragraph' && block.units.length > 1);
-	const collectionFollowsUnit = block.kind === 'list' || block.kind === 'task';
+	const collectionFollowsUnit = unitized;
 	const [collectionActionAnchor, setCollectionActionAnchor] =
-		React.useState<ComposerUnitActionAnchor | null>(() =>
-			firstCollectionActionAnchor(block, snapshot),
-		);
+		React.useState<ComposerUnitActionAnchor | null>(null);
 	const [collectionActionAnchorTop, setCollectionActionAnchorTop] = React.useState<number | null>(null);
 	const [collectionActionPlacement, setCollectionActionPlacement] =
 		React.useState<'before' | 'after'>('after');
@@ -1144,14 +1142,15 @@ function ComposerBlockRow({
 	const pinnedCollectionViewportY = React.useRef<number | null>(null);
 	React.useEffect(() => {
 		setCollectionActionAnchor((current) =>
-			(current
+			current
 				? collectionActionAnchorForUnit(block, snapshot, current.unitId)
-				: null)
-			?? firstCollectionActionAnchor(block, snapshot),
+				: null,
 		);
 	}, [block, snapshot]);
 	React.useEffect(() => {
 		setCollectionActionPinned(false);
+		setCollectionActionAnchor(null);
+		setCollectionActionAnchorTop(null);
 		pinnedCollectionViewportY.current = null;
 	}, [block.blockId]);
 	const candidateRuntime = chrome.runtime.candidateRuntime;
@@ -1259,17 +1258,9 @@ function ComposerBlockRow({
 		const update = () => {
 			const blockRect = blockElement.getBoundingClientRect();
 			const rowRect = row.getBoundingClientRect();
-			const rail = blockElement.querySelector<HTMLElement>(':scope > .pk-composer-rail');
-			const disclosure = rail?.querySelector<HTMLElement>('.pk-composer-disclosure');
-			const railStyle = rail ? ownerWindow.getComputedStyle(rail) : null;
-			const railGap = Number.parseFloat(railStyle?.rowGap ?? '0') || 0;
-			const disclosureClearance = disclosure
-				? disclosure.getBoundingClientRect().bottom - blockRect.top + railGap
-				: 0;
 			setCollectionActionAnchorTop(Math.max(
 				0,
-				rowRect.top - blockRect.top,
-				disclosureClearance,
+				rowRect.top - blockRect.top + (rowRect.height - 30) / 2,
 			));
 			const scroller = scrollerOf(blockElement);
 			const scrollerRect = scroller?.getBoundingClientRect();
@@ -1329,14 +1320,23 @@ function ComposerBlockRow({
 		actionCloseTimer.current = setTimeout(() => {
 			actionCloseTimer.current = null;
 			setActionRowVisible(false);
+			setActiveUnitAction(null);
+			if (!collectionActionPinned) {
+				setCollectionActionAnchor(null);
+				setCollectionActionAnchorTop(null);
+			}
 			releaseSurface(actionSurfaceId);
 		}, config.chrome.surfacePreviewCloseDelayMs);
 	};
-	const closeActionRowImmediately = () => {
+	const closeActionRowImmediately = (clearCollectionAnchor = false) => {
 		clearActionOpen();
 		clearActionClose();
 		setActionRowVisible(false);
 		setActiveUnitAction(null);
+		if (clearCollectionAnchor) {
+			setCollectionActionAnchor(null);
+			setCollectionActionAnchorTop(null);
+		}
 		releaseSurface(actionSurfaceId);
 	};
 	React.useEffect(() => {
@@ -1394,7 +1394,7 @@ function ComposerBlockRow({
 			if (target.closest('[data-collection-handle="true"], .pk-block-action-row')) return;
 			setCollectionActionPinned(false);
 			pinnedCollectionViewportY.current = null;
-			closeActionRowImmediately();
+			closeActionRowImmediately(true);
 		};
 		ownerDocument.addEventListener('pointerdown', closeOnOutsidePointer, true);
 		return () => ownerDocument.removeEventListener('pointerdown', closeOnOutsidePointer, true);
@@ -1420,7 +1420,7 @@ function ComposerBlockRow({
 			if (!next) {
 				setCollectionActionPinned(false);
 				pinnedCollectionViewportY.current = null;
-				closeActionRowImmediately();
+				closeActionRowImmediately(true);
 				return;
 			}
 			setCollectionActionAnchor((current) =>
@@ -1442,10 +1442,19 @@ function ComposerBlockRow({
 		(!activeSurface || activeSurface.id === actionSurfaceId);
 	const collectionActionActive = unitized && actionRowDisplayed && !activeUnitAction;
 	const collectionItemCount = block.units.filter((unit) => unit.unitKind === 'list-item').length;
-	const collectionScopeLabel = config.chrome.actions.collectionScope.replace(
-		'{count}',
-		String(collectionItemCount),
-	);
+	const paragraphCollection = block.kind === 'paragraph';
+	const collectionScopeLabel = paragraphCollection
+		? config.chrome.actions.paragraphScope
+		: config.chrome.actions.collectionScope.replace(
+				'{count}',
+				String(collectionItemCount),
+			);
+	const collectionHandleLabel = paragraphCollection
+		? config.chrome.actions.paragraphHandle
+		: config.chrome.actions.collectionHandle;
+	const unitScopeLabel = paragraphCollection
+		? config.chrome.actions.lineScope
+		: config.chrome.actions.unitScope;
 	const renderUnitAction = (
 		anchor: ComposerUnitActionAnchor,
 		placement: 'before' | 'after' = 'after',
@@ -1488,7 +1497,7 @@ function ComposerBlockRow({
 				<BlockActionRow
 					snapshot={aiSnapshot}
 					variant="unit-ai"
-					scopeLabel={config.chrome.actions.unitScope}
+					scopeLabel={unitScopeLabel}
 					scopeKind="unit"
 					instructionCapabilityId={POLISH_CAPABILITY_ID}
 					hiddenQuickCapabilityIds={hiddenQuickCapabilities(block.kind)}
@@ -1630,6 +1639,13 @@ function ComposerBlockRow({
 		if (!collectionActionAnchor) return;
 		showActionRow(immediate, null);
 	};
+	const previewCollectionActions = () => {
+		if (collectionActionPinned) {
+			clearActionClose();
+			return;
+		}
+		showCollectionActions(true);
+	};
 	const toggleCollectionActions = (event: React.MouseEvent<HTMLButtonElement>) => {
 		if (event.currentTarget.dataset.dragMoved === 'true') {
 			event.currentTarget.dataset.dragMoved = 'false';
@@ -1638,7 +1654,7 @@ function ComposerBlockRow({
 		if (collectionActionPinned) {
 			setCollectionActionPinned(false);
 			pinnedCollectionViewportY.current = null;
-			closeActionRowImmediately();
+			closeActionRowImmediately(true);
 			return;
 		}
 		const row = collectionActionAnchor
@@ -1698,12 +1714,9 @@ function ComposerBlockRow({
 				event.preventDefault();
 				setCollectionActionPinned(false);
 				pinnedCollectionViewportY.current = null;
-				closeActionRowImmediately();
+				closeActionRowImmediately(true);
 			}}
 		>
-			{collectionActionActive && !collectionFollowsUnit ? (
-				<span className="pk-collection-action-corridor" data-chrome="true" aria-hidden="true" />
-			) : null}
 			<BlockRail
 				folded={folded}
 				foldLabel={foldLabel(config, isHeading, folded)}
@@ -1711,27 +1724,17 @@ function ComposerBlockRow({
 				onToggle={() => foldStore.getState().toggle(block.blockId)}
 				onDragStart={onDragStart}
 				dragDisabledReason={onDragStart ? undefined : config.chrome.actions.disabledNoRuntime}
-				onPointerEnter={editing && unitized && !collectionFollowsUnit
-					? () => showActionRow(false, null)
-					: undefined}
-				onFocusCapture={editing && unitized && !collectionFollowsUnit
-					? () => showActionRow(true, null)
-					: undefined}
-				hideDrag={editing && collectionFollowsUnit}
+				hideDrag={editing && unitized}
 			/>
 			{editing && collectionFollowsUnit && collectionActionAnchorTop !== null ? (
 				<CollectionActionHandle
-					label={config.chrome.actions.collectionHandle}
+					label={collectionHandleLabel}
 					accessibleLabel={`${collectionScopeLabel} — ${config.chrome.actions.drag}`}
 					pinned={collectionActionPinned}
-					onPointerEnter={() => {
-						if (collectionActionPinned) {
-							clearActionClose();
-							return;
-						}
-						showCollectionActions(false);
-					}}
+					onPointerEnter={previewCollectionActions}
 					onPointerLeave={hideActionRow}
+					onFocusCapture={previewCollectionActions}
+					onBlurCapture={hideActionRow}
 					onPointerDown={onDragStart ? beginCollectionDrag : undefined}
 					onClick={toggleCollectionActions}
 				/>
@@ -2097,42 +2100,48 @@ function EditableParagraphLinesBody({
 			{lines.map((line) => {
 				const anchor = { unitId: line.unitId, from: line.from, to: line.to };
 				return (
-				<div
-					key={line.unitId}
-					className="pk-composer-paragraph__line"
-					data-unit-id={line.unitId}
-					data-unit-action-active={unitActions?.activeUnitId === line.unitId || undefined}
-					onPointerEnter={() => unitActions?.onPointerEnter(anchor)}
-					onPointerLeave={unitActions?.onPointerLeave}
-					onFocusCapture={() => unitActions?.onFocus(anchor)}
-				>
-					<EditableText
-						blockId={block.blockId}
-						unitId={line.unitId}
-						text={snapshot.sourceText.slice(line.from, line.to)}
-						sourceFrom={line.from}
-						editable={editing}
-						resolveRange={() => {
-							const current = locateBlock(snapshot, block.blockId);
-							const currentLine = current?.units.find(
-								(unit) => unit.unitId === line.unitId && unit.unitKind === 'paragraph-line',
-							);
-							if (!current || !currentLine) return null;
-							return {
-								from: currentLine.from,
-								to: currentLine.to,
-								current: snapshot.sourceText.slice(currentLine.from, currentLine.to),
-								target: {
-									kind: 'unit' as const,
-									blockId: current.blockId,
-									unitId: currentLine.unitId,
-								},
-							};
-						}}
-						className="pk-composer-prose pk-composer-paragraph__line-text"
-					/>
-					{unitActions?.render(anchor)}
-				</div>
+					<React.Fragment key={line.unitId}>
+						{unitActions?.renderBefore?.(anchor)}
+						<div
+							className="pk-composer-paragraph__line"
+							data-unit-id={line.unitId}
+							data-unit-action-active={unitActions?.activeUnitId === line.unitId || undefined}
+							data-unit-collection-anchor={(
+								unitActions?.collectionActive &&
+								unitActions.collectionAnchorUnitId === line.unitId
+							) || undefined}
+							onPointerEnter={() => unitActions?.onPointerEnter(anchor)}
+							onPointerLeave={unitActions?.onPointerLeave}
+							onFocusCapture={() => unitActions?.onFocus(anchor)}
+						>
+							<EditableText
+								blockId={block.blockId}
+								unitId={line.unitId}
+								text={snapshot.sourceText.slice(line.from, line.to)}
+								sourceFrom={line.from}
+								editable={editing}
+								resolveRange={() => {
+									const current = locateBlock(snapshot, block.blockId);
+									const currentLine = current?.units.find(
+										(unit) => unit.unitId === line.unitId && unit.unitKind === 'paragraph-line',
+									);
+									if (!current || !currentLine) return null;
+									return {
+										from: currentLine.from,
+										to: currentLine.to,
+										current: snapshot.sourceText.slice(currentLine.from, currentLine.to),
+										target: {
+											kind: 'unit' as const,
+											blockId: current.blockId,
+											unitId: currentLine.unitId,
+										},
+									};
+								}}
+								className="pk-composer-prose pk-composer-paragraph__line-text"
+							/>
+						</div>
+						{unitActions?.render(anchor)}
+					</React.Fragment>
 				);
 			})}
 		</div>
@@ -2478,7 +2487,7 @@ function collectionAnchorElement(
 ): HTMLElement | null {
 	if (!blockElement) return null;
 	return blockElement.querySelector<HTMLElement>(
-		`.pk-composer-list__row[data-unit-id="${CSS.escape(unitId)}"]`,
+		`:is(.pk-composer-list__row, .pk-composer-paragraph__line)[data-unit-id="${CSS.escape(unitId)}"]`,
 	);
 }
 
@@ -2487,6 +2496,14 @@ function collectionActionAnchorForUnit(
 	snapshot: ComposerDocumentSnapshot,
 	unitId: string,
 ): ComposerUnitActionAnchor | null {
+	if (block.kind === 'paragraph') {
+		const unit = block.units.find(
+			(candidate) => candidate.unitKind === 'paragraph-line' && candidate.unitId === unitId,
+		);
+		return unit
+			? { unitId: unit.unitId, from: unit.from, to: unit.to }
+			: null;
+	}
 	if (block.kind !== 'list' && block.kind !== 'task') return null;
 	const items = block.units.filter((unit) => unit.unitKind === 'list-item');
 	const unit = items.find((candidate) => candidate.unitId === unitId);
@@ -2497,14 +2514,6 @@ function collectionActionAnchorForUnit(
 		to: listItemOwnContentEnd(snapshot.sourceText, unit, items),
 		depth: listItemDepth(unit, items),
 	};
-}
-
-function firstCollectionActionAnchor(
-	block: ComposerBlock,
-	snapshot: ComposerDocumentSnapshot,
-): ComposerUnitActionAnchor | null {
-	const first = block.units.find((unit) => unit.unitKind === 'list-item');
-	return first ? collectionActionAnchorForUnit(block, snapshot, first.unitId) : null;
 }
 
 function closestVisibleCollectionAnchor(
@@ -2518,7 +2527,9 @@ function closestVisibleCollectionAnchor(
 	const blockRect = blockElement.getBoundingClientRect();
 	if (blockRect.bottom <= viewport.top || blockRect.top >= viewport.bottom) return null;
 	const rows = Array.from(
-		blockElement.querySelectorAll<HTMLElement>('.pk-composer-list__row[data-unit-id]'),
+		blockElement.querySelectorAll<HTMLElement>(
+			':is(.pk-composer-list__row, .pk-composer-paragraph__line)[data-unit-id]',
+		),
 	).filter((row) => {
 		const rect = row.getBoundingClientRect();
 		return rect.bottom > viewport.top && rect.top < viewport.bottom;

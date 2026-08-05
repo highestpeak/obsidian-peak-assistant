@@ -9,16 +9,23 @@ const config = readFileSync('src/ui/view/composer/config/composerConfig.ts', 'ut
 const configJson = JSON.parse(readFileSync('templates/config/composer.json', 'utf8'));
 
 assert.ok(
-	root.includes("const collectionFollowsUnit = block.kind === 'list' || block.kind === 'task'") &&
+	root.includes('const collectionFollowsUnit = unitized;') &&
 	root.includes('collectionActionAnchor') &&
 	root.includes('collectionActionAnchorTop'),
-	'list and task collections must keep one viewport-local anchor separate from item AI targets',
+	'list items and paragraph lines must share one viewport-local collection anchor separate from unit AI targets',
 );
 assert.ok(
 	root.includes('<CollectionActionHandle') &&
 	root.includes('data-collection-anchor-unit') &&
-	root.includes("'--pk-composer-collection-anchor-top'"),
+	root.includes("'--pk-composer-collection-anchor-top'") &&
+	root.includes('React.useState<ComposerUnitActionAnchor | null>(null)') &&
+	!root.includes('firstCollectionActionAnchor(block, snapshot)'),
 	'the single collection handle must be projected beside the current visible item',
+);
+assert.ok(
+	root.includes('(rowRect.height - 30) / 2') &&
+	!root.includes('disclosureClearance'),
+	'the handle must follow the active unit center instead of being clamped to the block-top disclosure',
 );
 assert.ok(
 	root.includes('data-unit-collection-action-for') &&
@@ -35,9 +42,10 @@ assert.ok(
 
 assert.ok(
 	rail.includes('export function CollectionActionHandle') &&
+	rail.includes('pk-composer-collection-handle-zone') &&
 	rail.includes('aria-pressed={pinned}') &&
 	rail.includes('data-collection-handle="true"'),
-	'the collection trigger must expose one accessible pressed state without duplicating handles per item',
+	'the collection trigger must expose one accessible pressed state inside a single enlarged interaction zone',
 );
 assert.ok(
 	actionRow.includes('scopeLabel?: string') &&
@@ -48,8 +56,18 @@ assert.ok(
 
 assert.match(
 	css,
-	/\.pk-composer-collection-handle\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?top:\s*var\(--pk-composer-collection-anchor-top\);[\s\S]*?height:\s*30px !important;/,
-	'the collection handle must follow the measured unit while defending its hit target',
+	/\.pk-composer-collection-handle-zone\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?top:\s*var\(--pk-composer-collection-anchor-top\);[\s\S]*?left:\s*-43px;[\s\S]*?width:\s*30px;[\s\S]*?height:\s*30px;/,
+	'the collection handle zone must reuse the original rail x-coordinate while following the measured unit',
+);
+assert.match(
+	css,
+	/\.pk-composer-collection-handle-zone::before\s*\{[\s\S]*?inset:\s*-3px -13px -3px -6px;/,
+	'the rail control must have a transparent pointer bridge that reaches the block edge without changing visible geometry',
+);
+assert.equal(
+	css.includes('.pk-composer-block[data-collection-anchor-unit]:hover > .pk-composer-collection-handle'),
+	false,
+	'block hover alone must never reveal a stale first-item handle',
 );
 assert.match(
 	css,
@@ -62,7 +80,14 @@ assert.match(
 	'a visible left rail must communicate whole-list scope even when the list edges are off-screen',
 );
 
-for (const key of ['collectionHandle', 'collectionScope', 'unitScope']) {
+for (const key of [
+	'collectionHandle',
+	'collectionScope',
+	'unitScope',
+	'paragraphHandle',
+	'paragraphScope',
+	'lineScope',
+]) {
 	assert.ok(
 		key in configJson.chrome.actions && config.includes(`${key}: string;`),
 		`Composer action copy must configure ${key}`,

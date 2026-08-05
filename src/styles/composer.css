@@ -136,18 +136,6 @@
 	background: var(--pk-accent);
 	pointer-events: none;
 }
-.peak-composer-root .pk-collection-action-corridor {
-	/* The six-dot rail sits outside the block at left:-43px. Keep that gutter in
-	 * the same pointer owner while collection actions are open, so a deliberate
-	 * diagonal move toward the bottom action row cannot fall through the gap. */
-	position: absolute;
-	z-index: 14;
-	top: 0;
-	bottom: 0;
-	left: -43px;
-	width: 43px;
-	pointer-events: auto;
-}
 .peak-composer-root .pk-composer-rail {
 	flex: none;
 	display: flex;
@@ -473,15 +461,32 @@
 .peak-composer-root [data-dragging] .pk-composer-drag {
 	cursor: grabbing;
 }
-.peak-composer-root .pk-composer-collection-handle {
+.peak-composer-root .pk-composer-collection-handle-zone {
 	position: absolute;
 	z-index: 18;
 	top: var(--pk-composer-collection-anchor-top);
-	right: calc(100% + 13px);
+	left: -43px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	width: 30px;
+	height: 30px;
+	pointer-events: auto;
+}
+.peak-composer-root .pk-composer-collection-handle-zone::before {
+	content: '';
+	position: absolute;
+	z-index: 0;
+	inset: -3px -13px -3px -6px;
+	pointer-events: auto;
+}
+.peak-composer-root .pk-composer-collection-handle {
+	position: relative;
+	z-index: 1;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	gap: 4px;
 	box-sizing: border-box;
 	width: 30px !important;
 	height: 30px !important;
@@ -495,58 +500,50 @@
 	background: var(--pk-surface) !important;
 	box-shadow: var(--pk-shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.06));
 	color: var(--pk-fg-muted);
+	transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+	cursor: grab;
+	touch-action: none;
+	overflow: visible;
+}
+.peak-composer-root .pk-composer-collection-handle:hover,
+.peak-composer-root .pk-composer-collection-handle:focus-visible,
+.peak-composer-root .pk-composer-collection-handle-zone[data-pinned] .pk-composer-collection-handle {
+	color: var(--pk-accent-text);
+	background: var(--pk-accent-tint) !important;
+	border-color: color-mix(in srgb, var(--pk-accent) 36%, var(--pk-border)) !important;
+}
+.peak-composer-root .pk-composer-collection-handle__label {
+	position: absolute;
+	top: 50%;
+	right: calc(100% + 7px);
+	box-sizing: border-box;
+	width: max-content;
+	max-width: 120px;
+	padding: 5px 7px;
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-sm);
+	background: var(--pk-surface-overlay);
+	box-shadow: var(--pk-shadow-popover);
+	color: var(--pk-fg-muted);
 	opacity: 0;
 	visibility: hidden;
 	pointer-events: none;
-	transform: translateX(6px);
-	transition:
-		opacity 130ms ease 80ms,
-		transform 130ms ease 80ms,
-		visibility 0s linear 210ms,
-		width 120ms ease,
-		max-width 120ms ease;
-	cursor: grab;
-	touch-action: none;
-	overflow: hidden;
-}
-.peak-composer-root .pk-composer-block[data-collection-anchor-unit]:hover > .pk-composer-collection-handle,
-.peak-composer-root .pk-composer-block[data-collection-action-active] > .pk-composer-collection-handle,
-.peak-composer-root .pk-composer-collection-handle:hover,
-.peak-composer-root .pk-composer-collection-handle:focus-visible,
-.peak-composer-root .pk-composer-collection-handle[data-pinned] {
-	opacity: 1;
-	visibility: visible;
-	pointer-events: auto;
-	transform: translateX(0);
-	transition-delay: 0ms;
-}
-.peak-composer-root .pk-composer-collection-handle:hover,
-.peak-composer-root .pk-composer-collection-handle:focus-visible,
-.peak-composer-root .pk-composer-collection-handle[data-pinned] {
-	width: 62px !important;
-	min-width: 62px !important;
-	max-width: 62px !important;
-	padding: 0 8px !important;
-	color: var(--pk-accent-text);
-	background: var(--pk-accent-tint) !important;
-}
-.peak-composer-root .pk-composer-collection-handle__label {
-	max-width: 0;
-	opacity: 0;
-	overflow: hidden;
+	transform: translate(3px, -50%);
 	font-size: 12px;
 	font-weight: 600;
 	line-height: 1;
 	white-space: nowrap;
-	transition: max-width 120ms ease, opacity 90ms ease;
+	transition: opacity 90ms ease, transform 120ms ease, visibility 0s linear 120ms;
 }
-.peak-composer-root .pk-composer-collection-handle:hover .pk-composer-collection-handle__label,
-.peak-composer-root .pk-composer-collection-handle:focus-visible .pk-composer-collection-handle__label,
-.peak-composer-root .pk-composer-collection-handle[data-pinned] .pk-composer-collection-handle__label {
-	max-width: 28px;
+.peak-composer-root .pk-composer-collection-handle-zone:hover .pk-composer-collection-handle__label,
+.peak-composer-root .pk-composer-collection-handle-zone:focus-within .pk-composer-collection-handle__label,
+.peak-composer-root .pk-composer-collection-handle-zone[data-pinned] .pk-composer-collection-handle__label {
 	opacity: 1;
+	visibility: visible;
+	transform: translate(0, -50%);
+	transition-delay: 0ms;
 }
-.peak-composer-root [data-dragging] .pk-composer-collection-handle {
+.peak-composer-root [data-dragging] .pk-composer-collection-handle-zone {
 	cursor: grabbing;
 }
 .peak-composer-root .pk-composer-block[data-drop-before] {
