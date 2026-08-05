@@ -19,6 +19,10 @@ const defaults = normalizeCommandCenterBoardConfig(rawDefaults, rawDefaults);
 assert.strictEqual(defaults.version, 1);
 assert.deepStrictEqual(defaults.modal.tabOrder, ['all', 'pinned', 'peak-assistant', 'navigation']);
 assert.deepStrictEqual(defaults.groups.map((group) => group.label), ['Pinned', 'Peak Assistant', 'Navigation']);
+assert.ok(
+	defaults.groups.flatMap((group) => group.actions).every((item) => item.display === 'auto'),
+	'first-run actions must all default to Auto while preserving item-level overrides',
+);
 assert.deepStrictEqual(
 	defaults.groups.find((group) => group.id === 'peak-assistant')?.actions.map((item) => item.action.kind === 'peak-command' ? item.action.commandId : ''),
 	[

@@ -26,7 +26,7 @@
           "shortLabel": "Home",
           "aliases": ["start", "dashboard"],
           "icon": { "kind": "lucide", "name": "house" },
-          "display": "compact",
+          "display": "auto",
           "pinnedToHome": true,
           "order": 0
         },
@@ -36,7 +36,7 @@
           "shortLabel": "Usage",
           "aliases": ["dashboard", "tokens"],
           "icon": { "kind": "lucide", "name": "chart-no-axes-column" },
-          "display": "compact",
+          "display": "auto",
           "pinnedToHome": true,
           "order": 1
         }
@@ -54,7 +54,7 @@
           "shortLabel": "Composer",
           "aliases": ["write", "document"],
           "icon": { "kind": "lucide", "name": "pen-line" },
-          "display": "icon",
+          "display": "auto",
           "pinnedToHome": false,
           "order": 0
         },
@@ -64,7 +64,7 @@
           "shortLabel": "Chat Studio",
           "aliases": ["chat", "conversation"],
           "icon": { "kind": "lucide", "name": "message-square" },
-          "display": "icon",
+          "display": "auto",
           "pinnedToHome": false,
           "order": 1
         },
@@ -74,7 +74,7 @@
           "shortLabel": "File Atlas",
           "aliases": ["map", "document graph"],
           "icon": { "kind": "lucide", "name": "map" },
-          "display": "icon",
+          "display": "auto",
           "pinnedToHome": false,
           "order": 2
         },
@@ -84,7 +84,7 @@
           "shortLabel": "Quick Search",
           "aliases": ["vault search", "find"],
           "icon": { "kind": "lucide", "name": "search" },
-          "display": "icon",
+          "display": "auto",
           "pinnedToHome": false,
           "order": 3
         },
@@ -94,7 +94,7 @@
           "shortLabel": "Settings",
           "aliases": ["preferences", "configure"],
           "icon": { "kind": "lucide", "name": "settings-2" },
-          "display": "icon",
+          "display": "auto",
           "pinnedToHome": false,
           "order": 4
         }
@@ -112,7 +112,7 @@
           "shortLabel": "Daily note",
           "aliases": ["today"],
           "icon": { "kind": "lucide", "name": "calendar-days" },
-          "display": "icon",
+          "display": "auto",
           "pinnedToHome": false,
           "order": 0
         }
