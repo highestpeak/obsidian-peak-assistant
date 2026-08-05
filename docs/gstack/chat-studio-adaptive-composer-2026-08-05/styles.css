@@ -753,8 +753,8 @@ kbd {
   position: absolute;
   inset: 0;
   display: grid;
-  grid-template-rows: auto minmax(42px, 1fr) 42px;
-  padding: 8px 8px 7px;
+  grid-template-rows: auto minmax(38px, 1fr) 38px;
+  padding: 6px 8px 5px;
   opacity: 1;
   transform: translateY(0);
   transition: opacity 150ms ease 45ms, transform 210ms var(--ease-out) 30ms;
@@ -834,9 +834,9 @@ kbd {
 
 #composer-input {
   width: 100%;
-  min-height: 42px;
+  min-height: 38px;
   max-height: 116px;
-  padding: 8px 10px 5px;
+  padding: 6px 10px 3px;
   overflow-y: auto;
   resize: none;
   border: 0;

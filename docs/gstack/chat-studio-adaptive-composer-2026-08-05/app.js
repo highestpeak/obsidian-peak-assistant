@@ -101,9 +101,14 @@
   }
 
   function setComposerHeight() {
-    const textGrowth = Math.max(0, Math.min(82, input.scrollHeight - 42));
+    const previousInputHeight = input.style.height;
+    input.style.height = '1px';
+    const naturalInputHeight = input.scrollHeight;
+    input.style.height = previousInputHeight;
+
+    const textGrowth = Math.max(0, Math.min(82, naturalInputHeight - 42));
     const shelfGrowth = hasAttachments() ? 31 : 0;
-    const nextHeight = 122 + textGrowth + shelfGrowth;
+    const nextHeight = 96 + textGrowth + shelfGrowth;
     composerStack.style.setProperty('--composer-height', `${nextHeight}px`);
   }
 
