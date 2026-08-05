@@ -513,6 +513,66 @@ kbd {
   max-width: 690px;
 }
 
+.context-receipt {
+  display: inline-grid;
+  grid-template-columns: 24px minmax(0, 1fr) 14px;
+  align-items: center;
+  min-width: 210px;
+  min-height: 38px;
+  margin-top: 10px;
+  padding: 5px 7px;
+  gap: 7px;
+  border: 1px solid #e3e5e9;
+  border-radius: 10px;
+  background: #fafafb;
+  color: #5e6470;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+.context-receipt:hover,
+.context-receipt[aria-expanded="true"] {
+  border-color: #d7daf1;
+  background: #f5f5fb;
+  color: #363b49;
+}
+
+.context-receipt > span:nth-child(2) {
+  min-width: 0;
+}
+
+.context-receipt strong,
+.context-receipt small {
+  display: block;
+}
+
+.context-receipt strong {
+  font-size: 9px;
+  font-weight: 680;
+}
+
+.context-receipt small {
+  margin-top: 1px;
+  color: #9297a1;
+  font-size: 7px;
+}
+
+.receipt-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.context-receipt .icon {
+  width: 12px;
+  height: 12px;
+}
+
 .principle-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -691,7 +751,7 @@ kbd {
 .composer-frame.is-focused,
 .composer-frame.has-menu {
   border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
-  box-shadow: 0 0 0 3px rgba(91, 97, 214, 0.08), var(--shadow-soft);
+  box-shadow: 0 0 0 1px rgba(91, 97, 214, 0.07), var(--shadow-soft);
 }
 
 .composer-frame.is-compact {
@@ -1014,7 +1074,8 @@ kbd {
 }
 
 .identity-chip {
-  color: #626876;
+  padding-right: 6px;
+  color: #737985;
 }
 
 .model-chip {
@@ -1339,7 +1400,8 @@ kbd {
   border-bottom: 1px solid #eceef1;
 }
 
-.context-stack-metrics > span {
+.context-stack-metrics > span,
+.context-stack-metrics > button {
   display: inline-flex;
   align-items: center;
   height: 25px;
@@ -1352,10 +1414,43 @@ kbd {
   white-space: nowrap;
 }
 
+.context-stack-metrics > button {
+  margin-left: auto;
+  background: #fafafb;
+  font-family: inherit;
+  font-size: 8px;
+  cursor: pointer;
+}
+
+.context-stack-metrics > button:hover,
+.context-stack-metrics > button.is-active {
+  border-color: #d9dcf4;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .context-stack-metrics > span.is-active {
   border-color: #d9dcf4;
   background: var(--accent-soft);
   color: var(--accent);
+}
+
+.context-phase-chip.is-preview {
+  border-color: #d9dcf4;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.context-phase-chip.is-frozen {
+  border-color: #e1d6c2;
+  background: #faf5eb;
+  color: #846b47;
+}
+
+.context-phase-chip.is-actual {
+  border-color: #cfe4da;
+  background: #edf7f2;
+  color: #40765e;
 }
 
 .context-stack-metrics strong {
@@ -1404,17 +1499,33 @@ kbd {
   scrollbar-color: #d5d8de transparent;
 }
 
+.context-slot-group {
+  display: flex;
+  align-items: center;
+  height: 15px;
+  padding: 1px 5px 0;
+  color: #a0a4ad;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
 .context-slot-row {
   display: grid;
   grid-template-columns: 23px minmax(0, 1fr) auto;
   align-items: center;
-  min-height: 42px;
-  padding: 4px;
+  min-height: 36px;
+  padding: 2px 4px;
   gap: 7px;
   border-top: 1px solid #eff0f2;
 }
 
 .context-slot-row:first-child {
+  border-top: 0;
+}
+
+.context-slot-group + .context-slot-row {
   border-top: 0;
 }
 
@@ -1462,6 +1573,26 @@ kbd {
   font-size: 7px;
 }
 
+.slot-technical {
+  display: none;
+  margin-top: 4px;
+  color: #858b97;
+  font-size: 7px;
+  line-height: 1.35;
+}
+
+.context-popover.show-technical .slot-copy small {
+  white-space: normal;
+}
+
+.context-popover.show-technical .slot-technical {
+  display: block;
+}
+
+.context-popover.show-technical .context-slot-row {
+  min-height: 54px;
+}
+
 .slot-state {
   display: inline-flex;
   align-items: center;
@@ -1485,6 +1616,16 @@ kbd {
 .slot-state.is-pending {
   background: #f5f1e9;
   color: #8b7353;
+}
+
+.slot-state.is-compressed {
+  background: #faf3e8;
+  color: #8a6c3f;
+}
+
+.slot-state.is-used {
+  background: #edf3fb;
+  color: #486f9f;
 }
 
 .context-slot-row.is-absent .slot-copy {

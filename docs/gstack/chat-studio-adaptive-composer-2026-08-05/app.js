@@ -15,10 +15,18 @@
   const dynamicMessages = document.getElementById('dynamic-messages');
   const stateReadout = document.getElementById('state-readout');
   const contextLabel = document.getElementById('context-label');
+  const contextPreviewTitle = document.getElementById('context-preview-title');
   const contextTotal = document.getElementById('context-total');
   const contextIncludedCount = document.getElementById('context-included-count');
   const contextPreviewSummary = document.getElementById('context-preview-summary');
+  const contextMenuTitle = document.getElementById('context-menu-title');
+  const contextMenuSubtitle = document.getElementById('context-menu-subtitle');
+  const contextPhaseChip = document.getElementById('context-phase-chip');
+  const contextPhaseLabel = document.getElementById('context-phase-label');
+  const contextTechnicalToggle = document.getElementById('context-technical-toggle');
   const resourceSlotDetail = document.getElementById('resource-slot-detail');
+  const resourceSlotState = document.getElementById('resource-slot-state');
+  const activitySlotState = document.getElementById('activity-slot-state');
   const currentMessageDetail = document.getElementById('current-message-detail');
   const currentMessageState = document.getElementById('current-message-state');
   const compactSourceCount = document.getElementById('compact-source-count');
@@ -58,7 +66,12 @@
     activeLayerCount: 9,
     sourceCount: 6,
     attachmentCount: 0,
-    statusTimer: null
+    statusTimer: null,
+    contextViewMode: 'preview',
+    showTechnicalContext: false,
+    menuReturnFocus: null,
+    lastRunSnapshot: null,
+    contextSnapshot: null
   };
 
   const attachmentCatalog = {
@@ -127,11 +140,80 @@
     const draftLength = input.value.trim().length;
     const attachmentCopy = state.attachmentCount > 0 ? ` · ${state.attachmentCount} attachment${state.attachmentCount === 1 ? '' : 's'}` : '';
     currentMessageDetail.textContent = draftLength > 0
-      ? `${draftLength} draft characters${attachmentCopy} · exact text is added at send time`
-      : `Exact draft text${attachmentCopy} · added at send time · never replaced by a summary`;
-    currentMessageState.textContent = draftLength > 0 || state.attachmentCount > 0 ? 'Ready' : 'At send';
-    currentMessageState.classList.toggle('is-included', draftLength > 0 || state.attachmentCount > 0);
-    currentMessageState.classList.toggle('is-pending', draftLength === 0 && state.attachmentCount === 0);
+      ? `${draftLength} draft characters${attachmentCopy} are ready for this turn.`
+      : `Exact draft text${attachmentCopy} will be added when you send.`;
+    const hasTurnInput = draftLength > 0 || state.attachmentCount > 0;
+    setSlotState(currentMessageState, hasTurnInput ? 'Ready' : 'At send', hasTurnInput ? 'is-included' : 'is-pending');
+  }
+
+  function setSlotState(element, text, tone) {
+    element.textContent = text;
+    element.classList.remove('is-included', 'is-excluded', 'is-pending', 'is-compressed', 'is-used');
+    element.classList.add(tone);
+  }
+
+  function renderContextView(mode = 'preview', runSnapshot = null) {
+    state.contextViewMode = mode;
+    if (mode === 'preview') state.contextSnapshot = null;
+    if (runSnapshot) state.contextSnapshot = runSnapshot;
+    const snapshot = runSnapshot || state.contextSnapshot || state.lastRunSnapshot || {
+      layers: state.activeLayerCount,
+      sources: state.sourceCount,
+      attachments: state.attachmentCount,
+      message: input.value.trim()
+    };
+    const sourceWord = snapshot.sources === 1 ? 'resource' : 'resources';
+
+    contextPhaseChip.classList.remove('is-preview', 'is-frozen', 'is-actual');
+    contextPhaseChip.classList.add(`is-${mode}`);
+
+    if (mode === 'frozen') {
+      contextPreviewTitle.textContent = 'Context snapshot';
+      contextPreviewSummary.textContent = `Frozen at send · ${snapshot.sources} ${sourceWord} · ${snapshot.attachments} attachments`;
+      contextLabel.textContent = 'Snapshot frozen';
+      contextMenuTitle.textContent = 'Context snapshot for this run';
+      contextMenuSubtitle.textContent = 'Frozen when the message was sent; later edits do not change this run';
+      contextPhaseLabel.textContent = 'Frozen';
+      contextTotal.textContent = `${snapshot.layers} / 10`;
+      contextIncludedCount.textContent = String(snapshot.layers);
+      resourceSlotDetail.textContent = `${snapshot.sources} references and summaries were frozen for this run.`;
+      setSlotState(resourceSlotState, 'Included', 'is-included');
+      setSlotState(activitySlotState, 'Included', 'is-included');
+      currentMessageDetail.textContent = `${snapshot.message.length} characters and ${snapshot.attachments} attachments were captured at send.`;
+      setSlotState(currentMessageState, 'Included', 'is-included');
+      return;
+    }
+
+    if (mode === 'actual') {
+      const usedSources = Math.min(4, snapshot.sources);
+      contextPreviewTitle.textContent = 'Context receipt';
+      contextPreviewSummary.textContent = `Budget fitted · ${usedSources} of ${snapshot.sources} resources used`;
+      contextLabel.textContent = `${snapshot.layers} layers used`;
+      contextMenuTitle.textContent = 'Context actually used';
+      contextMenuSubtitle.textContent = 'Recorded after retrieval and token-budget fitting completed';
+      contextPhaseLabel.textContent = 'Actually used';
+      contextTotal.textContent = `${snapshot.layers} / 10`;
+      contextIncludedCount.textContent = String(snapshot.layers);
+      resourceSlotDetail.textContent = `${usedSources} of ${snapshot.sources} resource summaries were selected after retrieval.`;
+      setSlotState(resourceSlotState, `${usedSources} / ${snapshot.sources} used`, 'is-used');
+      setSlotState(activitySlotState, 'Compressed', 'is-compressed');
+      currentMessageDetail.textContent = `${snapshot.message.length} submitted characters and ${snapshot.attachments} attachments were used.`;
+      setSlotState(currentMessageState, 'Used', 'is-used');
+      return;
+    }
+
+    contextPreviewTitle.textContent = 'Context stack';
+    contextPreviewSummary.textContent = `History · Summary · Working context · User profile · ${state.sourceCount} resources`;
+    contextLabel.textContent = `${state.activeLayerCount} layers ready`;
+    contextMenuTitle.textContent = 'Context for next message';
+    contextMenuSubtitle.textContent = 'What will be assembled if you send now';
+    contextPhaseLabel.textContent = 'Will include';
+    contextTotal.textContent = `${state.activeLayerCount} / 10`;
+    contextIncludedCount.textContent = String(state.activeLayerCount);
+    resourceSlotDetail.textContent = `${state.sourceCount} references and summaries selected for this turn.`;
+    setSlotState(resourceSlotState, 'Included', 'is-included');
+    setSlotState(activitySlotState, 'Included', 'is-included');
+    updateDraftContext();
   }
 
   function renderComposerState() {
@@ -144,7 +226,7 @@
     composerFrame.classList.toggle('has-menu', Boolean(state.openMenu));
     composerFrame.dataset.state = name.toLowerCase().replace(' ', '-');
     stateReadout.textContent = name;
-    updateDraftContext();
+    if (state.contextViewMode === 'preview') updateDraftContext();
     updateDemoButtons(name);
 
     const showSuggestions = expanded && state.nearBottom && !state.focused && !hasDraft() && !hasAttachments() && !state.openMenu && !state.running;
@@ -158,26 +240,36 @@
     setComposerHeight();
   }
 
-  function closeMenus() {
+  function closeMenus(restoreFocus = false) {
+    const returnFocus = state.menuReturnFocus;
     state.openMenu = null;
+    state.menuReturnFocus = null;
     Object.entries(menus).forEach(([name, menu]) => {
       menu.classList.remove('is-open');
       menu.setAttribute('aria-hidden', 'true');
       triggers[name].setAttribute('aria-expanded', 'false');
     });
+    if (returnFocus && returnFocus !== triggers.context) returnFocus.setAttribute('aria-expanded', 'false');
+    if (!state.running && state.contextViewMode !== 'preview') renderContextView('preview');
     renderComposerState();
+    if (restoreFocus && returnFocus) {
+      window.setTimeout(() => returnFocus.focus({ preventScroll: true }), 0);
+    }
   }
 
-  function openMenu(name) {
-    if (state.openMenu === name) {
-      closeMenus();
+  function openMenu(name, returnFocus = triggers[name], contextMode = null, contextSnapshot = null) {
+    if (state.openMenu === name && state.menuReturnFocus === returnFocus) {
+      closeMenus(true);
       return;
     }
     closeMenus();
+    if (name === 'context') renderContextView(contextMode || (state.running ? 'frozen' : 'preview'), contextSnapshot);
     state.openMenu = name;
+    state.menuReturnFocus = returnFocus;
     menus[name].classList.add('is-open');
     menus[name].setAttribute('aria-hidden', 'false');
     triggers[name].setAttribute('aria-expanded', 'true');
+    if (returnFocus !== triggers[name]) returnFocus.setAttribute('aria-expanded', 'true');
     renderComposerState();
     window.setTimeout(() => {
       const focusTarget = menus[name].querySelector('input');
@@ -232,8 +324,7 @@
   function updateSourceCount(delta) {
     state.sourceCount = Math.max(3, state.sourceCount + delta);
     compactSourceCount.textContent = String(state.sourceCount);
-    resourceSlotDetail.textContent = `${state.sourceCount} resource references and summaries · optional · max 300 · raw files are not preloaded`;
-    contextPreviewSummary.textContent = `History · Summary · Working context · User profile · ${state.sourceCount} resources`;
+    if (state.contextViewMode === 'preview') renderContextView('preview');
   }
 
   function updateAssistantContext(name) {
@@ -243,15 +334,13 @@
     const assistantRow = assistantSlotTitle.closest('.context-slot-row');
     assistantSlotTitle.textContent = `Assistant · ${name}`;
     assistantSlotDetail.textContent = usesAssistantSlot
-      ? 'Persona and authored instructions · optional · max 2,000 · compress framing only'
-      : 'No authored Assistant instructions · optional empty slot renders nothing';
+      ? 'Conversation identity and authored guidance for future turns.'
+      : 'No authored Assistant guidance will be added.';
     assistantSlotState.textContent = usesAssistantSlot ? 'Included' : 'Not added';
     assistantSlotState.classList.toggle('is-included', usesAssistantSlot);
     assistantSlotState.classList.toggle('is-excluded', !usesAssistantSlot);
     assistantRow.classList.toggle('is-absent', !usesAssistantSlot);
-    contextLabel.textContent = `${activeLayers} / 10 active`;
-    contextTotal.textContent = `${activeLayers} / 10`;
-    contextIncludedCount.textContent = String(activeLayers);
+    if (state.contextViewMode === 'preview') renderContextView('preview');
   }
 
   function addAttachment(type) {
@@ -292,8 +381,11 @@
     send.setAttribute('aria-label', running ? 'Stop response' : 'Send message');
     send.disabled = false;
     if (running) {
-      showStatus('Research partner is working', `Assembling ${state.activeLayerCount} context layers · ${state.sourceCount} resource references`, 0);
+      renderContextView('frozen');
+      const snapshot = state.lastRunSnapshot;
+      showStatus('Research partner is working', `Using the frozen ${snapshot.layers}-layer snapshot · ${snapshot.sources} resource references`, 0);
     } else {
+      renderContextView('preview');
       hideStatus();
       send.disabled = !hasDraft();
     }
@@ -309,16 +401,25 @@
   }
 
   function appendAssistantMessage() {
+    const snapshot = { ...state.lastRunSnapshot };
     const article = document.createElement('article');
     article.className = 'message message-assistant dynamic-assistant';
-    article.innerHTML = `<div class="assistant-avatar">${icon('sparkles')}</div><div class="assistant-copy"><div class="message-author">${assistantLabel.textContent}</div><span>The adaptive shell now preserves your reading space, the explicit context for this turn, and the conversation identity without turning the toolbar into a dashboard.</span></div>`;
+    article.innerHTML = `<div class="assistant-avatar">${icon('sparkles')}</div><div class="assistant-copy"><div class="message-author">${assistantLabel.textContent}</div><span>The adaptive shell now preserves your reading space, the explicit context for this turn, and the conversation identity without turning the toolbar into a dashboard.</span><button class="context-receipt" type="button" aria-expanded="false"><span class="receipt-icon">${icon('eye')}</span><span><strong>Context used</strong><small>${snapshot.layers} layers · ${Math.min(4, snapshot.sources)} of ${snapshot.sources} resources</small></span>${icon('chevron-down')}</button></div>`;
+    const receipt = article.querySelector('.context-receipt');
+    receipt.addEventListener('click', (event) => {
+      event.stopPropagation();
+      openMenu('context', receipt, 'actual', snapshot);
+    });
     dynamicMessages.append(article);
   }
 
   function finishRun() {
     window.clearTimeout(state.runTimer);
+    const keepContextOpen = state.openMenu === 'context';
+    const completedSnapshot = { ...state.lastRunSnapshot };
     appendAssistantMessage();
     setRunning(false);
+    if (keepContextOpen) renderContextView('actual', completedSnapshot);
     scrollToLatest();
   }
 
@@ -331,6 +432,14 @@
     }
 
     const message = text || 'Turn this direction into a complete interaction specification.';
+    state.lastRunSnapshot = {
+      message,
+      layers: state.activeLayerCount,
+      sources: state.sourceCount,
+      attachments: state.attachmentCount,
+      assistant: assistantLabel.textContent,
+      model: modelLabel.textContent
+    };
     appendUserMessage(message);
     input.value = '';
     input.style.height = `${BASE_INPUT_HEIGHT}px`;
@@ -362,7 +471,11 @@
       event.preventDefault();
       if (hasDraft()) startRun(input.value.trim());
     }
-    if (event.key === 'Escape') closeMenus();
+    if (event.key === 'Escape' && state.openMenu) {
+      event.preventDefault();
+      event.stopPropagation();
+      closeMenus(true);
+    }
   });
 
   compactTrigger.addEventListener('click', () => {
@@ -376,8 +489,16 @@
   Object.entries(triggers).forEach(([name, trigger]) => {
     trigger.addEventListener('click', (event) => {
       event.stopPropagation();
-      openMenu(name);
+      openMenu(name, trigger);
     });
+  });
+
+  contextTechnicalToggle.addEventListener('click', () => {
+    state.showTechnicalContext = !state.showTechnicalContext;
+    menus.context.classList.toggle('show-technical', state.showTechnicalContext);
+    contextTechnicalToggle.classList.toggle('is-active', state.showTechnicalContext);
+    contextTechnicalToggle.setAttribute('aria-pressed', String(state.showTechnicalContext));
+    contextTechnicalToggle.textContent = state.showTechnicalContext ? 'Hide details' : 'Technical details';
   });
 
   document.querySelectorAll('[data-suggestion]').forEach((button) => {
@@ -472,7 +593,10 @@
   });
 
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') closeMenus();
+    if (event.key === 'Escape' && state.openMenu) {
+      event.preventDefault();
+      closeMenus(true);
+    }
   });
 
   window.addEventListener('resize', () => {
@@ -485,6 +609,7 @@
     window.requestAnimationFrame(() => {
       state.nearBottom = true;
       input.style.height = `${BASE_INPUT_HEIGHT}px`;
+      renderContextView('preview');
       renderComposerState();
     });
   });

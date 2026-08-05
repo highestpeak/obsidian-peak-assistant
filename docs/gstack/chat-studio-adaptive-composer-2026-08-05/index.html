@@ -161,7 +161,6 @@
               <span>Try</span>
               <button type="button" data-suggestion="Turn this into an implementation-ready interaction spec.">Write the interaction spec</button>
               <button type="button" data-suggestion="Compare the compact and expanded states side by side.">Compare both states</button>
-              <button type="button" data-suggestion="List every edge case before implementation.">Review edge cases</button>
             </div>
 
             <div id="composer-frame" class="composer-frame is-expanded" data-state="ready">
@@ -173,9 +172,9 @@
               <div class="expanded-composer">
                 <div id="attachment-shelf" class="attachment-shelf" hidden></div>
                 <button id="context-trigger" class="context-preview" type="button" aria-expanded="false" data-menu="context">
-                  <span class="context-preview-title"><svg class="icon"><use href="#icon-eye"></use></svg><strong>Context stack</strong></span>
+                  <span class="context-preview-title"><svg class="icon"><use href="#icon-eye"></use></svg><strong id="context-preview-title">Context stack</strong></span>
                   <span id="context-preview-summary" class="context-preview-summary">History · Summary · Working context · User profile · 6 resources</span>
-                  <span class="context-preview-count"><strong id="context-label">9 / 10 active</strong><svg class="icon chevron"><use href="#icon-chevron-down"></use></svg></span>
+                  <span class="context-preview-count"><strong id="context-label">9 layers ready</strong><svg class="icon chevron"><use href="#icon-chevron-down"></use></svg></span>
                 </button>
                 <textarea id="composer-input" rows="1" placeholder="Ask about your project, notes, or current work…" aria-label="Message"></textarea>
                 <div class="composer-footer">
@@ -209,48 +208,53 @@
 
             <section id="context-menu" class="popover context-popover" aria-label="Turn context" aria-hidden="true">
               <div class="popover-heading context-heading">
-                <span><strong>Context for next message</strong><small>Ordered exactly as the Chat context pipeline assembles this turn</small></span>
+                <span><strong id="context-menu-title">Context for next message</strong><small id="context-menu-subtitle">What will be assembled if you send now</small></span>
                 <span id="context-total" class="count-badge">9 / 10</span>
               </div>
               <div class="context-stack-metrics" aria-label="Context stack summary">
+                <span id="context-phase-chip" class="context-phase-chip is-preview"><strong id="context-phase-label">Will include</strong></span>
                 <span><strong>10</strong> layers</span>
                 <span class="is-active"><strong id="context-included-count">9</strong> active</span>
-                <span><strong>Auto</strong> token budget</span>
-                <span><strong>L1–L3</strong> compression</span>
+                <span><strong>Auto</strong> budget</span>
+                <button id="context-technical-toggle" class="context-technical-toggle" type="button" aria-pressed="false">Technical details</button>
               </div>
               <div class="context-stack-layout">
                 <div class="context-stack-panel">
                   <div class="context-stack-heading"><span>First instruction</span><strong>Pipeline order</strong><span>Closest to your message ↓</span></div>
                   <div class="context-slot-list">
+                    <div class="context-slot-group">Foundation</div>
                     <div class="context-slot-row is-required">
-                      <span class="slot-order">01</span><span class="slot-copy"><strong>System prompt</strong><small>Base rules, capability flags, custom prompt and focus folder · required · max 1,500 · never dropped</small></span><span class="slot-state is-included">Included</span>
+                      <span class="slot-order">01</span><span class="slot-copy"><strong>System prompt</strong><small>How this conversation should behave and what it can do.</small><span class="slot-technical">Required · max 1,500 · never dropped</span></span><span class="slot-state is-included">Included</span>
                     </div>
                     <div class="context-slot-row">
-                      <span class="slot-order">02</span><span class="slot-copy"><strong id="assistant-slot-title">Assistant · Research partner</strong><small id="assistant-slot-detail">Persona and authored instructions · optional · max 2,000 · compress framing only</small></span><span id="assistant-slot-state" class="slot-state is-included">Included</span>
+                      <span class="slot-order">02</span><span class="slot-copy"><strong id="assistant-slot-title">Assistant · Research partner</strong><small id="assistant-slot-detail">Evidence-first product and architecture guidance.</small><span id="assistant-slot-technical" class="slot-technical">Optional · max 2,000 · compress framing only</span></span><span id="assistant-slot-state" class="slot-state is-included">Included</span>
                     </div>
+                    <div class="context-slot-group">Conversation &amp; work</div>
                     <div class="context-slot-row is-required">
-                      <span class="slot-order">03</span><span class="slot-copy"><strong>Conversation history</strong><small>18 active messages of max 20 · required · active variants only · compression up to L3</small></span><span class="slot-state is-included">Included</span>
+                      <span class="slot-order">03</span><span class="slot-copy"><strong>Conversation history</strong><small>18 recent active messages, so this turn keeps continuity.</small><span class="slot-technical">Required · max 20 · active variants only · compression up to L3</span></span><span class="slot-state is-included">Included</span>
                     </div>
                     <div class="context-slot-row">
-                      <span class="slot-order">04</span><span class="slot-copy"><strong>Working context</strong><small>Active note, focus folder, working theme and recent local activity · optional · max 500</small></span><span class="slot-state is-included">Included</span>
+                      <span class="slot-order">04</span><span class="slot-copy"><strong>Working context</strong><small>Active note, focus folder, working theme, and recent local activity.</small><span class="slot-technical">Optional · max 500</span></span><span class="slot-state is-included">Included</span>
                     </div>
                     <div class="context-slot-row">
-                      <span class="slot-order">05</span><span class="slot-copy"><strong>Conversation summary</strong><small>Older turns plus project description and instructions · optional · max 800 · recoverable</small></span><span class="slot-state is-included">Included</span>
+                      <span class="slot-order">05</span><span class="slot-copy"><strong>Conversation summary</strong><small>Older turns, project description, and durable instructions.</small><span class="slot-technical">Optional · max 800 · recoverable</span></span><span class="slot-state is-included">Included</span>
                     </div>
                     <div class="context-slot-row">
-                      <span class="slot-order">06</span><span class="slot-copy"><strong>Activity index</strong><small>8 recent opens, searches and actions · optional · max 200 · reduced to a count at L1</small></span><span class="slot-state is-included">Included</span>
+                      <span class="slot-order">06</span><span class="slot-copy"><strong>Activity index</strong><small>8 recent opens, searches, and actions.</small><span class="slot-technical">Optional · max 200 · reduced to a count at L1</span></span><span id="activity-slot-state" class="slot-state is-included">Included</span>
                     </div>
+                    <div class="context-slot-group">Personal context</div>
                     <div class="context-slot-row">
-                      <span class="slot-order">07</span><span class="slot-copy"><strong>User profile</strong><small>Language, writing and project preferences · optional · max 400 · top 3 categories at L1</small></span><span class="slot-state is-included">Included</span>
+                      <span class="slot-order">07</span><span class="slot-copy"><strong>User profile</strong><small>Language, writing style, and project preferences.</small><span class="slot-technical">Optional · max 400 · top 3 categories at L1</span></span><span class="slot-state is-included">Included</span>
                     </div>
                     <div class="context-slot-row is-absent">
-                      <span class="slot-order">08</span><span class="slot-copy"><strong>Previous analyses</strong><small>No recent analysis record for this turn · optional · empty slots render nothing</small></span><span class="slot-state is-excluded">Not added</span>
+                      <span class="slot-order">08</span><span class="slot-copy"><strong>Previous analyses</strong><small>No recent analysis record is relevant to this turn.</small><span class="slot-technical">Optional · empty slots render nothing</span></span><span class="slot-state is-excluded">Not added</span>
                     </div>
+                    <div class="context-slot-group">Retrieval &amp; this turn</div>
                     <div class="context-slot-row">
-                      <span class="slot-order">09</span><span class="slot-copy"><strong>Resource index</strong><small id="resource-slot-detail">6 resource references and summaries · optional · max 300 · raw files are not preloaded</small></span><span class="slot-state is-included">Included</span>
+                      <span class="slot-order">09</span><span class="slot-copy"><strong>Resource index</strong><small id="resource-slot-detail">6 references and summaries selected for this turn.</small><span class="slot-technical">Optional · max 300 · raw files are not preloaded</span></span><span id="resource-slot-state" class="slot-state is-included">Included</span>
                     </div>
                     <div class="context-slot-row is-message">
-                      <span class="slot-order">10</span><span class="slot-copy"><strong>Current user message</strong><small id="current-message-detail">Exact draft text and this-turn attachments · added at send time · never replaced by a summary</small></span><span id="current-message-state" class="slot-state is-pending">At send</span>
+                      <span class="slot-order">10</span><span class="slot-copy"><strong>Current user message</strong><small id="current-message-detail">Exact draft text will be added when you send.</small><span class="slot-technical">Required · never replaced by a summary</span></span><span id="current-message-state" class="slot-state is-pending">At send</span>
                     </div>
                   </div>
                 </div>
