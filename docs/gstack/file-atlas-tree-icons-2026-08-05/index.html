@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>File Atlas · Atlas Tree icon directions</title>
+  <style>
+    :root {
+      --page: #f5f6f8;
+      --panel: #ffffff;
+      --panel-2: #fafbfc;
+      --line: #e5e8ee;
+      --line-strong: #d9dde6;
+      --text: #222631;
+      --muted: #697180;
+      --faint: #a2a8b3;
+      --accent: #7c3aed;
+      --accent-soft: #f2ebff;
+      --accent-line: #d9c8ff;
+      --blue: #2563c7;
+      --blue-soft: #eef5ff;
+      --green: #13795b;
+      --green-soft: #eaf7f1;
+      --amber: #9a6700;
+      --amber-soft: #fff6df;
+      --rose: #b84258;
+      --rose-soft: #fff0f3;
+      --slate: #5e6877;
+      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      --shadow: 0 18px 54px rgba(24, 28, 42, .11), 0 2px 8px rgba(24, 28, 42, .05);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-width: 1180px;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 12% 0%, rgba(124, 58, 237, .055), transparent 24%),
+        var(--page);
+      font-family: var(--font);
+    }
+    button { font: inherit; }
+    svg { width: 16px; height: 16px; stroke-width: 1.85; }
+
+    .page { width: min(1560px, calc(100vw - 48px)); margin: 0 auto; padding: 32px 0 52px; }
+    .topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 28px; margin-bottom: 22px; }
+    .eyebrow { display: block; margin-bottom: 6px; color: var(--accent); font-size: 11px; font-weight: 760; letter-spacing: .04em; }
+    .title { display: block; font-size: 25px; line-height: 1.22; font-weight: 720; letter-spacing: -.02em; }
+    .subtitle { display: block; max-width: 760px; margin-top: 8px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .scope-note { padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.72); color: var(--muted); font-size: 11px; white-space: nowrap; }
+
+    .direction-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+    .direction-card { position: relative; padding: 15px 16px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.75); cursor: pointer; text-align: left; transition: .14s ease; }
+    .direction-card:hover { border-color: #cfd4de; background: #fff; }
+    .direction-card.is-active { border-color: var(--accent-line); background: #fff; box-shadow: inset 0 0 0 1px var(--accent-line), 0 6px 18px rgba(124,58,237,.07); }
+    .direction-card strong { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .direction-card small { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+    .recommend { padding: 2px 6px; border-radius: 99px; color: var(--accent); background: var(--accent-soft); font-size: 9px; font-weight: 760; }
+
+    .workspace { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(440px, .75fr); gap: 18px; align-items: start; }
+    .surface { overflow: hidden; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--panel); box-shadow: var(--shadow); }
+    .surface-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 54px; padding: 0 17px; border-bottom: 1px solid var(--line); }
+    .surface-head strong { font-size: 13px; }
+    .surface-head span { color: var(--muted); font-size: 11px; }
+    .surface-head code { color: var(--faint); font: 10px var(--mono); }
+
+    .catalog { padding: 12px; }
+    .group + .group { margin-top: 14px; }
+    .group-label { display: flex; align-items: center; gap: 8px; margin: 0 2px 7px; color: var(--muted); font-size: 10px; font-weight: 720; }
+    .group-label::after { content: ""; height: 1px; flex: 1; background: var(--line); }
+    .catalog-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+    .catalog-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 9px; min-height: 52px; padding: 7px 9px; border: 1px solid transparent; border-radius: 8px; background: var(--panel-2); }
+    .catalog-row:hover { border-color: var(--line); background: #fff; }
+    .icon-slot { display: grid; place-items: center; width: 26px; height: 26px; color: var(--slate); }
+    .icon-slot svg { width: 17px; height: 17px; }
+    .icon-slot[data-family="metadata"] { color: #687386; }
+    .icon-slot[data-family="content"] { color: #475569; }
+    .icon-slot[data-family="action"] { color: var(--green); }
+    .icon-slot[data-family="structured"] { color: #6d49bf; }
+    .icon-slot[data-family="media"] { color: var(--blue); }
+    .icon-slot[data-family="link"] { color: #15758a; }
+    .set-b .icon-slot { border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+    .set-b .icon-slot[data-family="action"] { border-color: #cfe9dc; background: var(--green-soft); }
+    .set-b .icon-slot[data-family="structured"] { border-color: #ded2f7; background: #f6f1ff; }
+    .set-b .icon-slot[data-family="media"] { border-color: #d2e2fb; background: var(--blue-soft); }
+    .set-b .icon-slot[data-family="link"] { border-color: #cbe7ea; background: #eefafb; }
+    .set-c .icon-slot { color: #647082 !important; }
+    .set-c .icon-slot svg { stroke-width: 1.65; }
+    .catalog-copy { min-width: 0; }
+    .catalog-copy strong { display: block; font-size: 12px; font-weight: 680; }
+    .catalog-copy small { display: block; margin-top: 2px; overflow: hidden; color: var(--muted); font: 9.5px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+    .kind-code { padding: 2px 5px; border: 1px solid var(--line); border-radius: 5px; color: var(--faint); background: #fff; font: 9px var(--mono); }
+
+    .preview { position: sticky; top: 18px; }
+    .atlas-chrome { padding: 12px 14px 10px; border-bottom: 1px solid var(--line); }
+    .tabs { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 999px; background: #f6f7f9; }
+    .tab { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 0; border-radius: 999px; color: var(--muted); background: transparent; font-size: 11px; }
+    .tab.is-active { color: #fff; background: var(--accent); }
+    .preset-row { display: flex; align-items: center; gap: 4px; margin-top: 10px; }
+    .preset { padding: 5px 9px; border: 0; border-radius: 999px; color: var(--muted); background: transparent; font-size: 10px; }
+    .preset.is-active { color: var(--accent); background: var(--accent-soft); font-weight: 680; }
+    .tree { padding: 9px 10px 14px; }
+    .tree-row { position: relative; display: grid; grid-template-columns: 26px 14px 26px minmax(0,1fr) auto; align-items: center; gap: 5px; min-height: 38px; padding: 3px 7px 3px 0; border: 1px solid transparent; border-radius: 7px; }
+    .tree-row:hover { background: #f8f9fb; }
+    .tree-row.is-selected { border-color: var(--accent-line); background: var(--accent-soft); }
+    .tree-row.is-selected::before { content: ""; position: absolute; left: -1px; top: 7px; bottom: 7px; width: 3px; border-radius: 3px; background: var(--accent); }
+    .line-no { color: var(--faint); font: 9.5px var(--mono); text-align: right; }
+    .twisty { color: var(--faint); font-size: 11px; text-align: center; }
+    .row-icon { display: grid; place-items: center; width: 24px; height: 24px; color: var(--slate); }
+    .row-icon svg { width: 15px; height: 15px; }
+    .set-b .row-icon { border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+    .set-c .row-icon { color: #647082 !important; }
+    .set-c .row-icon svg { stroke-width: 1.65; }
+    .tree-row.is-selected .row-icon { color: var(--accent) !important; }
+    .row-copy { min-width: 0; }
+    .row-copy strong { display: block; overflow: hidden; font-size: 11.5px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+    .row-copy small { display: block; margin-top: 1px; overflow: hidden; color: var(--faint); font-size: 9.5px; text-overflow: ellipsis; white-space: nowrap; }
+    .badge { padding: 2px 5px; border: 1px solid var(--line); border-radius: 99px; color: var(--muted); background: #fff; font-size: 8.5px; }
+    .depth-1 { padding-left: 14px; }
+    .depth-2 { padding-left: 28px; }
+    .tree-caption { padding: 10px 14px; border-top: 1px solid var(--line); color: var(--muted); background: var(--panel-2); font-size: 10px; line-height: 1.55; }
+
+    .matrix { margin-top: 18px; }
+    .matrix-grid { padding: 12px; }
+    .matrix-head, .matrix-row { display: grid; grid-template-columns: minmax(150px, .8fr) repeat(3, minmax(0, 1fr)); align-items: center; gap: 8px; }
+    .matrix-head { padding: 0 8px 8px; color: var(--muted); font-size: 10px; font-weight: 700; }
+    .matrix-row { min-height: 46px; padding: 5px 8px; border-top: 1px solid var(--line); }
+    .matrix-kind strong { display: block; font-size: 11px; }
+    .matrix-kind small { color: var(--faint); font: 9px var(--mono); }
+    .matrix-choice { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .matrix-choice .icon-slot { flex: 0 0 auto; }
+    .matrix-choice code { overflow: hidden; color: var(--muted); font: 9px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+
+    .notes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+    .note { padding: 12px 13px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255,255,255,.74); }
+    .note strong { display: block; font-size: 11px; }
+    .note span { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="topbar">
+      <div>
+        <span class="eyebrow">File Atlas / Atlas Tree</span>
+        <span class="title">每一种元素的图标重新选型</span>
+        <span class="subtitle">三套都保持 Lucide 体系。重点不是让图标更“花”，而是让 Heading、内容、结构化块、媒体和链接在长树里一眼分组，同时减少现在每行一个浅色圆角方块造成的噪音。</span>
+      </div>
+      <div class="scope-note">Mock only · 不修改生产 UI</div>
+    </div>
+
+    <div class="direction-strip" role="tablist" aria-label="Icon direction">
+      <button class="direction-card is-active" type="button" data-set="a">
+        <strong>A · Editorial outline <span class="recommend">推荐</span></strong>
+        <small>无常驻底框；每种元素独立图形，只在语义家族和选中状态上使用颜色。</small>
+      </button>
+      <button class="direction-card" type="button" data-set="b">
+        <strong>B · Compact tiles</strong>
+        <small>保留 26px 小方框，但圆角和颜色更克制；最接近当前实现，迁移风险最低。</small>
+      </button>
+      <button class="direction-card" type="button" data-set="c">
+        <strong>C · Quiet monochrome</strong>
+        <small>全灰单色、细描边；最安静，适合超长文档，但不同资源之间的扫描速度稍弱。</small>
+      </button>
+    </div>
+
+    <div class="workspace">
+      <section class="surface" aria-label="Complete icon catalog">
+        <div class="surface-head"><strong>全部 Atlas Tree 元素</strong><span>20 kinds · 当前方向 <code id="activeSetName">A / Editorial outline</code></span></div>
+        <div class="catalog" id="catalog"></div>
+      </section>
+
+      <section class="surface preview" aria-label="Atlas Tree preview">
+        <div class="surface-head"><strong>真实树行预览</strong><span>图标 15px · 点击上方切换方案</span></div>
+        <div class="atlas-chrome">
+          <div class="tabs"><button class="tab is-active"><i data-lucide="list-tree"></i> Tree</button><button class="tab"><i data-lucide="network"></i> Graph</button></div>
+          <div class="preset-row"><button class="preset">Overview</button><button class="preset">Read</button><button class="preset">Actions</button><button class="preset">Resources</button><button class="preset is-active">All elements</button></div>
+        </div>
+        <div class="tree" id="tree"></div>
+        <div class="tree-caption">推荐原则：Twisty 只负责层级；icon 只负责类型；右侧 badge 负责精确标签。三者不要重复表达同一件事。</div>
+      </section>
+    </div>
+
+    <section class="surface matrix">
+      <div class="surface-head"><strong>逐项横向比较</strong><span>同一个 kind 的三种候选 icon</span></div>
+      <div class="matrix-grid" id="matrix"></div>
+    </section>
+
+    <div class="notes">
+      <div class="note"><strong>为什么推荐 A</strong><span>它把“图标”和“圆角容器”分开，树行更轻；媒体、链接、任务仍有足够的扫描提示，不会全变成一片灰。</span></div>
+      <div class="note"><strong>不会再重复</strong><span>List container 使用 ListTree，List item 使用 List；Vault link 使用 FileSymlink，External link 使用 ExternalLink，语义不再撞车。</span></div>
+      <div class="note"><strong>选中状态</strong><span>所有类型在选中时统一转成紫色，避免同时出现“类型颜色 + 紫色背景 + 右侧 badge”三重强调。</span></div>
+    </div>
+  </main>
+
+  <script src="../../../node_modules/lucide/dist/umd/lucide.js"></script>
+  <script>
+    const SETS = {
+      a: {
+        label: 'A / Editorial outline',
+        icons: {
+          frontmatter: 'braces', property: 'file-key-2', tag: 'tag', heading: 'heading-2',
+          paragraph: 'pilcrow', list: 'list-tree', 'list-item': 'list', task: 'list-checks',
+          quote: 'text-quote', callout: 'message-square-warning', table: 'table-2', code: 'file-code-2',
+          math: 'sigma', mermaid: 'workflow', image: 'image', embed: 'panels-top-left',
+          attachment: 'paperclip', 'vault-link': 'file-symlink', 'external-link': 'external-link', footnote: 'superscript'
+        }
+      },
+      b: {
+        label: 'B / Compact tiles',
+        icons: {
+          frontmatter: 'file-json-2', property: 'file-text', tag: 'tags', heading: 'heading',
+          paragraph: 'text', list: 'list-collapse', 'list-item': 'rows-3', task: 'square-check-big',
+          quote: 'quote', callout: 'badge-alert', table: 'grid-3x3', code: 'square-code',
+          math: 'radical', mermaid: 'git-fork', image: 'images', embed: 'file-input',
+          attachment: 'files', 'vault-link': 'link-2', 'external-link': 'globe-2', footnote: 'asterisk'
+        }
+      },
+      c: {
+        label: 'C / Quiet monochrome',
+        icons: {
+          frontmatter: 'brackets', property: 'file-spreadsheet', tag: 'hash', heading: 'heading-1',
+          paragraph: 'align-left', list: 'list', 'list-item': 'minus', task: 'check',
+          quote: 'quote', callout: 'circle-alert', table: 'table', code: 'code-2',
+          math: 'function-square', mermaid: 'git-branch', image: 'image', embed: 'app-window',
+          attachment: 'paperclip', 'vault-link': 'link', 'external-link': 'move-up-right', footnote: 'badge-info'
+        }
+      }
+    };
+
+    const ITEMS = [
+      { group: 'Metadata', family: 'metadata', kind: 'frontmatter', label: 'Frontmatter', sample: 'Metadata · 12 properties' },
+      { group: 'Metadata', family: 'metadata', kind: 'property', label: 'Property', sample: 'status · review' },
+      { group: 'Metadata', family: 'metadata', kind: 'tag', label: 'Tag', sample: '#peak/file-atlas' },
+      { group: 'Content structure', family: 'content', kind: 'heading', label: 'Heading', sample: 'File Atlas 全类型审查基准', badge: 'H2' },
+      { group: 'Content structure', family: 'content', kind: 'paragraph', label: 'Paragraph', sample: '这一节用于检查树行的阅读密度。', badge: 'text' },
+      { group: 'Content structure', family: 'content', kind: 'list', label: 'List container', sample: 'Bulleted list · 4 items', badge: 'list' },
+      { group: 'Content structure', family: 'content', kind: 'list-item', label: 'List item', sample: '第一条普通项目：先识别内容', badge: 'item' },
+      { group: 'Content structure', family: 'action', kind: 'task', label: 'Task', sample: '检查 Inspector 的状态和动作', badge: 'task' },
+      { group: 'Content structure', family: 'content', kind: 'quote', label: 'Quote', sample: '真正自然的预览应该优先呈现内容。', badge: 'quote' },
+      { group: 'Content structure', family: 'action', kind: 'callout', label: 'Callout', sample: '审查提示 · 注意链接身份', badge: 'callout' },
+      { group: 'Structured blocks', family: 'structured', kind: 'table', label: 'Table', sample: '能力 × 当前对象 × 审查重点', badge: 'table' },
+      { group: 'Structured blocks', family: 'structured', kind: 'code', label: 'Code', sample: 'AtlasDisplayIdentity interface', badge: 'code' },
+      { group: 'Structured blocks', family: 'structured', kind: 'math', label: 'Math', sample: 'E = mc²', badge: 'math' },
+      { group: 'Structured blocks', family: 'structured', kind: 'mermaid', label: 'Mermaid', sample: 'Source → Parsed object → Inspector', badge: 'diagram' },
+      { group: 'Media & files', family: 'media', kind: 'image', label: 'Image', sample: 'atlas-tree-reference.png', badge: 'image' },
+      { group: 'Media & files', family: 'media', kind: 'embed', label: 'Embed', sample: 'Composer 视觉基准 · embedded note', badge: 'embed' },
+      { group: 'Media & files', family: 'media', kind: 'attachment', label: 'Attachment', sample: 'visual-review.pdf', badge: 'file' },
+      { group: 'Links & references', family: 'link', kind: 'vault-link', label: 'Vault link', sample: 'Peak Composer Visual Parity QA', badge: 'vault' },
+      { group: 'Links & references', family: 'link', kind: 'external-link', label: 'External link', sample: 'Obsidian Help · help.obsidian.md', badge: 'external' },
+      { group: 'Links & references', family: 'metadata', kind: 'footnote', label: 'Footnote', sample: 'Reference note · 1 occurrence', badge: 'note' }
+    ];
+
+    const TREE_KINDS = ['frontmatter','heading','paragraph','list','list-item','vault-link','task','callout','table','mermaid','image','external-link','footnote'];
+    let activeSet = 'a';
+
+    function iconMarkup(name, family, cls = 'icon-slot') {
+      return `<span class="${cls}" data-family="${family}"><i data-lucide="${name}"></i></span>`;
+    }
+
+    function renderCatalog() {
+      const host = document.getElementById('catalog');
+      const groups = [...new Set(ITEMS.map(item => item.group))];
+      host.innerHTML = groups.map(group => {
+        const rows = ITEMS.filter(item => item.group === group).map(item => `
+          <div class="catalog-row">
+            ${iconMarkup(SETS[activeSet].icons[item.kind], item.family)}
+            <span class="catalog-copy"><strong>${item.label}</strong><small>${SETS[activeSet].icons[item.kind]}</small></span>
+            <span class="kind-code">${item.kind}</span>
+          </div>`).join('');
+        return `<section class="group"><div class="group-label">${group}</div><div class="catalog-grid">${rows}</div></section>`;
+      }).join('');
+    }
+
+    function renderTree() {
+      const host = document.getElementById('tree');
+      const visible = TREE_KINDS.map(kind => ITEMS.find(item => item.kind === kind)).filter(Boolean);
+      host.innerHTML = visible.map((item, index) => {
+        const depth = ['paragraph','list','callout','table','mermaid','image','external-link','footnote'].includes(item.kind) ? 1
+          : ['list-item','vault-link','task'].includes(item.kind) ? 2 : 0;
+        const group = ['frontmatter','heading','list','callout'].includes(item.kind);
+        return `<div class="tree-row depth-${depth}${item.kind === 'vault-link' ? ' is-selected' : ''}">
+          <span class="line-no">${index === 0 ? 2 : 20 + index * 2}</span>
+          <span class="twisty">${group ? '⌄' : ''}</span>
+          ${iconMarkup(SETS[activeSet].icons[item.kind], item.family, 'row-icon')}
+          <span class="row-copy"><strong>${item.sample}</strong><small>${item.label}</small></span>
+          <span class="badge">${item.badge || item.kind}</span>
+        </div>`;
+      }).join('');
+    }
+
+    function renderMatrix() {
+      const host = document.getElementById('matrix');
+      host.innerHTML = `<div class="matrix-head"><span>Element</span><span>A · Editorial</span><span>B · Tiles</span><span>C · Monochrome</span></div>` + ITEMS.map(item => `
+        <div class="matrix-row">
+          <span class="matrix-kind"><strong>${item.label}</strong><small>${item.kind}</small></span>
+          ${['a','b','c'].map(set => `<span class="matrix-choice set-${set}">${iconMarkup(SETS[set].icons[item.kind], item.family)}<code>${SETS[set].icons[item.kind]}</code></span>`).join('')}
+        </div>`).join('');
+    }
+
+    function refreshIcons() {
+      document.body.classList.remove('set-a', 'set-b', 'set-c');
+      document.body.classList.add(`set-${activeSet}`);
+      document.getElementById('activeSetName').textContent = SETS[activeSet].label;
+      renderCatalog();
+      renderTree();
+      lucide.createIcons({ attrs: { 'aria-hidden': 'true' } });
+    }
+
+    document.querySelectorAll('.direction-card').forEach(button => {
+      button.addEventListener('click', () => {
+        activeSet = button.dataset.set;
+        document.querySelectorAll('.direction-card').forEach(item => item.classList.toggle('is-active', item === button));
+        refreshIcons();
+      });
+    });
+
+    renderMatrix();
+    refreshIcons();
+  </script>
+</body>
+</html>
