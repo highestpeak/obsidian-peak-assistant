@@ -839,6 +839,15 @@
 	flex: 1;
 }
 
+.peak-command-center .pk-cc-active-filter {
+	flex: 0 0 auto;
+}
+
+.peak-command-center .pk-cc-active-filter[aria-pressed="true"] {
+	background: var(--pk-state-selected) !important;
+	color: var(--pk-accent);
+}
+
 .peak-command-center .pk-cc-scope-trigger {
 	width: auto !important;
 	min-width: 116px !important;

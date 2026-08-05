@@ -46,6 +46,8 @@ assert.match(home, /runtime\.openCustomize\(\)/, 'Home must enter Customize dire
 assert.match(customize, /pk-cc-directory/, 'Customize must keep one continuous catalog');
 assert.doesNotMatch(customize, /ADDED TO|AVAILABLE COMMANDS|window\.confirm/i, 'Customize must not split or jump between membership regions');
 assert.match(customize, /runtime\.getCatalog\(debouncedQuery, catalogScope\)/, 'Customize catalog search must be scoped and debounced');
+assert.match(customize, /aria-pressed=\{showActiveOnly\}/, 'Customize must expose one in-place active-only filter button');
+assert.match(customize, /catalog\.filter\(\(entry\) => activeKeys\.has\(entry\.key\)\)/, 'active-only filtering must keep the continuous catalog and filter it in place');
 assert.match(customize, /metaKey \|\| event\.ctrlKey/, 'Customize must route Cmd\/Ctrl+F to its current search field');
 assert.match(customize, /onBlur=\{commitGroupLabel\}/, 'group renaming must commit a local draft instead of normalizing every keystroke');
 assert.doesNotMatch(customize, /onDone|>Done</, 'autosaving customization must not expose a fake Done action');

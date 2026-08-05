@@ -3,6 +3,7 @@ import {
 	ArrowLeft,
 	ChevronDown,
 	ChevronRight,
+	ListFilter,
 	ListOrdered,
 	Plus,
 	Search,
@@ -77,6 +78,7 @@ export function CommandCenterCustomize({ runtime, onBack, onClose }: CommandCent
 	const [query, setQuery] = useState('');
 	const [debouncedQuery, setDebouncedQuery] = useState('');
 	const [catalogScope, setCatalogScope] = useState<CommandCenterCatalogScope>('commands');
+	const [showActiveOnly, setShowActiveOnly] = useState(false);
 	const [scopeMenuOpen, setScopeMenuOpen] = useState(false);
 	const [modalPortal, setModalPortal] = useState<HTMLDivElement | null>(null);
 	const [catalog, setCatalog] = useState<CommandCenterCatalogEntry[]>([]);
@@ -87,6 +89,11 @@ export function CommandCenterCustomize({ runtime, onBack, onClose }: CommandCent
 	const [groupLabelDraft, setGroupLabelDraft] = useState('');
 	const searchRef = useRef<HTMLInputElement>(null);
 	const activeGroup = groups.find((group) => group.id === groupId) ?? groups[0];
+	const visibleCatalog = useMemo(() => {
+		if (!showActiveOnly || !activeGroup) return catalog;
+		const activeKeys = new Set(activeGroup.actions.map((item) => commandCenterActionKey(item.action)));
+		return catalog.filter((entry) => activeKeys.has(entry.key));
+	}, [activeGroup, catalog, showActiveOnly]);
 
 	useEffect(() => runtime.subscribe(() => setConfig(runtime.getConfig())), [runtime]);
 	useEffect(() => {
@@ -243,6 +250,9 @@ export function CommandCenterCustomize({ runtime, onBack, onClose }: CommandCent
 	const emptyMessage = catalogScope === 'documents' && !debouncedQuery.trim()
 		? 'Recent documents will appear here when they are available.'
 		: `No ${scopeLabel.toLocaleLowerCase()} match.`;
+	const visibleEmptyMessage = showActiveOnly
+		? `No active ${scopeLabel.toLocaleLowerCase()} match in ${activeGroup.label}.`
+		: emptyMessage;
 
 	return (
 		<div className="pk-cc-customize" onKeyDown={handleKeyDown}>
@@ -334,10 +344,19 @@ export function CommandCenterCustomize({ runtime, onBack, onClose }: CommandCent
 							<Search size={15} aria-hidden="true" />
 							<input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={SEARCH_PLACEHOLDERS[catalogScope]} autoFocus />
 						</label>
+						<IconButton
+							className="pk-cc-icon-button pk-cc-active-filter"
+							label={showActiveOnly ? 'Show all items' : `Show active ${scopeLabel.toLocaleLowerCase()} only`}
+							title={showActiveOnly ? 'Show all' : 'Active only'}
+							aria-pressed={showActiveOnly}
+							onClick={() => setShowActiveOnly((current) => !current)}
+						>
+							<ListFilter size={15} />
+						</IconButton>
 					</div>
 
 					<div className="pk-cc-directory" role="list" aria-label={`Items for ${activeGroup.label}`} aria-busy={catalogLoading}>
-						{catalog.map((entry) => {
+						{visibleCatalog.map((entry) => {
 							const item = findItem(activeGroup, entry.key);
 							const expanded = Boolean(item && expandedKey === entry.key);
 							return (
@@ -365,7 +384,7 @@ export function CommandCenterCustomize({ runtime, onBack, onClose }: CommandCent
 							);
 						})}
 						{catalogLoading ? <div className="pk-cc-directory__empty">Searching…</div> : null}
-						{!catalogLoading && catalog.length === 0 ? <div className="pk-cc-directory__empty">{emptyMessage}</div> : null}
+						{!catalogLoading && visibleCatalog.length === 0 ? <div className="pk-cc-directory__empty">{visibleEmptyMessage}</div> : null}
 					</div>
 				</>
 			) : null}
