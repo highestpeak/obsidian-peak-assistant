@@ -19,6 +19,8 @@ into Chat Studio semantics:
 - long layers show an explicit inline range, then open into a full-width exact-
   content reader with search, copy, wrapping, character count, token estimate,
   and completeness status;
+- the Context-stack hover rail uses concentric elliptical end caps, so its left
+  and right curves share the Composer shell's corner centers;
 - the context view mirrors `docs/11-feature-chat-context.html` and the current
   `ChatProfile` order: required, optional, compressed, empty, and explicitly
   excluded inputs are shown separately;
@@ -47,9 +49,9 @@ preview threshold shows `Showing N of M characters` and an **Open full content**
 action. The full reader temporarily replaces the stack and exclusions with one
 primary scroll region; Back or Escape returns to the same expanded stack item.
 
-Static review captures are included for the expanded, context-evidence, compact,
-Add-menu, running, and narrow-window states. The live HTML is the design source;
-the PNGs are only checkpoints.
+Static review captures are included for the expanded, Context-hover,
+context-evidence, compact, Add-menu, running, and narrow-window states. The live
+HTML is the design source; the PNGs are only checkpoints.
 
 ## Open
 

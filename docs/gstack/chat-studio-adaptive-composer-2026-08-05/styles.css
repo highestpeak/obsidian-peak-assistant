@@ -911,11 +911,12 @@ kbd {
   color: #666b76;
   text-align: left;
   cursor: pointer;
-  transition: background 140ms ease, color 140ms ease;
+  transition: background 140ms ease, border-radius 160ms var(--ease-out), color 140ms ease;
 }
 
 .context-preview:hover,
 .context-preview[aria-expanded="true"] {
+  border-radius: 9px / 14px;
   background: #f5f5fb;
   color: #3d4150;
 }
