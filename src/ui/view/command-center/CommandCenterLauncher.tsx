@@ -8,6 +8,7 @@ import {
 	type CommandCenterDropPlacement,
 	type CommandCenterGroup,
 	type CommandCenterRuntimePort,
+	type CommandCenterTabId,
 	type ResolvedCommandCenterDisplayMode,
 	type ResolvedCommandCenterItem,
 } from '@/core/command-center';
@@ -27,23 +28,15 @@ interface DropTarget {
 	axis: 'column' | 'row';
 }
 
+interface TabDropTarget {
+	tabId: CommandCenterTabId;
+	placement: CommandCenterDropPlacement;
+}
+
 function useRuntimeConfig(runtime: CommandCenterRuntimePort) {
 	const [config, setConfig] = useState(() => runtime.getConfig());
 	useEffect(() => runtime.subscribe(() => setConfig(runtime.getConfig())), [runtime]);
 	return config;
-}
-
-function GroupTab({ group, selected, onSelect }: {
-	group: CommandCenterGroup;
-	selected: boolean;
-	onSelect: () => void;
-}): React.ReactElement {
-	return (
-		<Pill className="pk-cc-group-tab" selected={selected} role="tab" aria-selected={selected} onClick={onSelect}>
-			<CommandCenterIcon icon={group.icon} size={15} />
-			<span>{group.label}</span>
-		</Pill>
-	);
 }
 
 function modeColumnLabel(mode: ResolvedCommandCenterDisplayMode): string {
@@ -192,10 +185,13 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 	const [gridWidth, setGridWidth] = useState(560);
 	const [draggedId, setDraggedId] = useState<string | null>(null);
 	const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
+	const [draggedTabId, setDraggedTabId] = useState<CommandCenterTabId | null>(null);
+	const [tabDropTarget, setTabDropTarget] = useState<TabDropTarget | null>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const rootRef = useRef<HTMLDivElement>(null);
 	const projectionRef = useRef<HTMLDivElement>(null);
 	const dragGhostRef = useRef<HTMLElement | null>(null);
+	const tabDragGhostRef = useRef<HTMLElement | null>(null);
 	const suppressClickRef = useRef(false);
 
 	useEffect(() => {
@@ -272,6 +268,13 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 		setDropTarget(null);
 	};
 
+	const clearTabDragState = (): void => {
+		tabDragGhostRef.current?.remove();
+		tabDragGhostRef.current = null;
+		setDraggedTabId(null);
+		setTabDropTarget(null);
+	};
+
 	const invoke = async (item: ResolvedCommandCenterItem): Promise<void> => {
 		if (suppressClickRef.current) return;
 		const invoked = await runtime.invokeItem(item);
@@ -339,6 +342,47 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 		clearDragState();
 	};
 
+	const handleTabDragStart = (event: React.DragEvent<HTMLDivElement>, tabId: CommandCenterTabId): void => {
+		setDraggedTabId(tabId);
+		event.dataTransfer.effectAllowed = 'move';
+		event.dataTransfer.setData('text/plain', tabId);
+		const ghost = event.currentTarget.cloneNode(true) as HTMLElement;
+		ghost.className = 'pk-cc-tab-drag-ghost';
+		ghost.style.width = `${event.currentTarget.getBoundingClientRect().width}px`;
+		event.currentTarget.ownerDocument.body.appendChild(ghost);
+		tabDragGhostRef.current = ghost;
+		event.dataTransfer.setDragImage(ghost, Math.min(40, ghost.getBoundingClientRect().width / 2), 18);
+	};
+
+	const handleTabDragOver = (event: React.DragEvent<HTMLDivElement>, tabId: CommandCenterTabId): void => {
+		if (!draggedTabId) return;
+		event.preventDefault();
+		event.stopPropagation();
+		event.dataTransfer.dropEffect = 'move';
+		if (draggedTabId === tabId) {
+			setTabDropTarget(null);
+			return;
+		}
+		const rect = event.currentTarget.getBoundingClientRect();
+		setTabDropTarget({ tabId, placement: event.clientX > rect.left + rect.width / 2 ? 'after' : 'before' });
+	};
+
+	const handleTabDrop = (event: React.DragEvent<HTMLDivElement>): void => {
+		event.preventDefault();
+		event.stopPropagation();
+		if (!draggedTabId || !tabDropTarget) {
+			clearTabDragState();
+			return;
+		}
+		const { tabId: targetTabId, placement } = tabDropTarget;
+		suppressClickRef.current = true;
+		void runtime.moveTab(draggedTabId, targetTabId, placement).catch((error) => {
+			console.error('[Peak Command Center] Failed to reorder launcher tab.', error);
+		});
+		rootRef.current?.ownerDocument.defaultView?.setTimeout(() => { suppressClickRef.current = false; }, 120);
+		clearTabDragState();
+	};
+
 	const focusSearch = (): void => inputRef.current?.focus();
 
 	const handleKeyDown = (event: React.KeyboardEvent): void => {
@@ -404,11 +448,34 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 			</div>
 
 			<div className="pk-cc-groups" role="tablist" aria-label="Command groups">
-				{tabOrder.map((tab) => tab === 'all' ? (
-					<Pill key="all" className="pk-cc-group-tab" selected={scope === 'all'} role="tab" aria-selected={scope === 'all'} onClick={() => setScope('all')}>All</Pill>
-				) : groupById.get(tab) ? (
-					<GroupTab key={tab} group={groupById.get(tab)!} selected={scope === tab} onSelect={() => setScope(tab)} />
-				) : null)}
+				{tabOrder.map((tab) => {
+					const group = tab === 'all' ? null : groupById.get(tab);
+					if (tab !== 'all' && !group) return null;
+					const dropPlacement = tabDropTarget?.tabId === tab ? tabDropTarget.placement : null;
+					return (
+						<motion.div
+							key={tab}
+							className="pk-cc-tab-slot"
+							layout="position"
+							transition={reducedMotion ? { duration: 0 } : { layout: { type: 'spring', stiffness: 520, damping: 42 } }}
+							data-dragging={draggedTabId === tab ? 'true' : undefined}
+							data-drop-placement={dropPlacement ?? undefined}
+							draggable
+							onDragStart={(event) => handleTabDragStart(event as unknown as React.DragEvent<HTMLDivElement>, tab)}
+							onDragOver={(event) => handleTabDragOver(event, tab)}
+							onDrop={handleTabDrop}
+							onDragEnd={clearTabDragState}
+						>
+							<Pill className="pk-cc-group-tab" selected={scope === tab} role="tab" aria-selected={scope === tab} onClick={() => {
+								if (!suppressClickRef.current) setScope(tab);
+							}}>
+								{group ? <CommandCenterIcon icon={group.icon} size={15} /> : null}
+								<span>{group?.label ?? 'All'}</span>
+								<GripVertical className="pk-cc-group-tab__grip" size={11} aria-hidden="true" />
+							</Pill>
+						</motion.div>
+					);
+				})}
 			</div>
 
 			<div className="pk-cc-projection" ref={projectionRef} key={scope}>

@@ -35,7 +35,6 @@ import { CommandCenterIcon } from './CommandCenterIcon';
 import { IconBrowser } from './IconBrowser';
 import {
 	CommandCenterArrangeItems,
-	CommandCenterArrangeTabs,
 	CommandCenterHomeSettings,
 	CommandCenterItemEditor,
 } from './CommandCenterCustomizePanels';
@@ -46,7 +45,7 @@ export interface CommandCenterCustomizeProps {
 	onClose: () => void;
 }
 
-type CustomizePanel = 'catalog' | 'arrange-items' | 'arrange-tabs' | 'home-settings';
+type CustomizePanel = 'catalog' | 'arrange-items' | 'home-settings';
 
 const CATALOG_SCOPES: ReadonlyArray<{ value: CommandCenterCatalogScope; label: string }> = [
 	{ value: 'commands', label: 'Commands' },
@@ -183,25 +182,6 @@ export function CommandCenterCustomize({ runtime, onBack, onClose }: CommandCent
 		});
 	};
 
-	const reorderTabs = (fromId: string | 'all', toId: string | 'all'): void => {
-		if (fromId === toId) return;
-		updateConfig((next) => {
-			const tabs = next.modal.tabOrder.slice();
-			const from = tabs.indexOf(fromId);
-			const to = tabs.indexOf(toId);
-			if (from < 0 || to < 0) return;
-			const [moved] = tabs.splice(from, 1);
-			tabs.splice(to, 0, moved!);
-			next.modal.tabOrder = tabs;
-			const groupOrder = tabs.filter((tab) => tab !== 'all');
-			const orderById = new Map(groupOrder.map((id, order) => [id, order]));
-			next.groups = next.groups
-				.slice()
-				.sort((a, b) => (orderById.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (orderById.get(b.id) ?? Number.MAX_SAFE_INTEGER))
-				.map((group, order) => ({ ...group, order }));
-		});
-	};
-
 	const createGroup = (): void => {
 		const id = newId('group');
 		updateConfig((next) => {
@@ -256,11 +236,9 @@ export function CommandCenterCustomize({ runtime, onBack, onClose }: CommandCent
 
 	const panelTitle = panel === 'arrange-items'
 		? `Arrange ${activeGroup.label}`
-		: panel === 'arrange-tabs'
-			? 'Launcher tabs'
-			: panel === 'home-settings'
-				? 'Command Center Home'
-				: 'Customize Command Center';
+		: panel === 'home-settings'
+			? 'Command Center Home'
+			: 'Customize Command Center';
 	const scopeLabel = CATALOG_SCOPES.find((scope) => scope.value === catalogScope)?.label ?? 'Commands';
 	const emptyMessage = catalogScope === 'documents' && !debouncedQuery.trim()
 		? 'Recent documents will appear here when they are available.'
@@ -289,7 +267,6 @@ export function CommandCenterCustomize({ runtime, onBack, onClose }: CommandCent
 					))}
 				</div>
 				<span className="pk-cc-manage-groups__actions">
-					<IconButton className="pk-cc-icon-button" label="Arrange launcher tabs" title="Arrange launcher tabs" onClick={() => setPanel('arrange-tabs')}><ListOrdered size={15} /></IconButton>
 					<IconButton className="pk-cc-icon-button" label="Command Center Home settings" title="Command Center Home settings" onClick={() => setPanel('home-settings')}><Settings2 size={15} /></IconButton>
 					<IconButton className="pk-cc-icon-button" label="New group" title="New group" onClick={createGroup}><Plus size={16} /></IconButton>
 				</span>
@@ -333,7 +310,6 @@ export function CommandCenterCustomize({ runtime, onBack, onClose }: CommandCent
 			) : null}
 
 			{panel === 'arrange-items' ? <CommandCenterArrangeItems group={activeGroup} onReorder={reorderActions} /> : null}
-			{panel === 'arrange-tabs' ? <CommandCenterArrangeTabs config={config} onReorder={reorderTabs} /> : null}
 			{panel === 'home-settings' ? <CommandCenterHomeSettings config={config} onChange={updateConfig} /> : null}
 
 			{panel === 'catalog' ? (

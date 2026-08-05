@@ -6,6 +6,7 @@ import type {
 	CommandCenterDisplayMode,
 	CommandCenterGroup,
 	CommandCenterItemIcon,
+	CommandCenterTabId,
 } from './types';
 
 const DISPLAY_MODES = new Set<CommandCenterDisplayMode>(['auto', 'icon', 'compact', 'wide', 'full']);
@@ -196,5 +197,30 @@ export function moveCommandCenterItem(
 	for (const group of next.groups) {
 		group.actions = group.actions.map((item, order) => ({ ...item, order }));
 	}
+	return next;
+}
+
+export function moveCommandCenterTab(
+	config: CommandCenterBoardConfig,
+	tabId: CommandCenterTabId,
+	targetTabId: CommandCenterTabId,
+	placement: CommandCenterDropPlacement,
+): CommandCenterBoardConfig {
+	const next = cloneCommandCenterConfig(config);
+	if (tabId === targetTabId) return next;
+	const tabs = next.modal.tabOrder.slice();
+	const sourceIndex = tabs.indexOf(tabId);
+	if (sourceIndex < 0 || !tabs.includes(targetTabId)) return next;
+	const [moved] = tabs.splice(sourceIndex, 1);
+	if (!moved) return next;
+	const targetIndex = tabs.indexOf(targetTabId);
+	tabs.splice(targetIndex + (placement === 'after' ? 1 : 0), 0, moved);
+	next.modal.tabOrder = tabs;
+	const groupOrder = tabs.filter((entry): entry is string => entry !== 'all');
+	const orderByGroupId = new Map(groupOrder.map((groupId, order) => [groupId, order]));
+	next.groups = next.groups
+		.slice()
+		.sort((left, right) => (orderByGroupId.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (orderByGroupId.get(right.id) ?? Number.MAX_SAFE_INTEGER))
+		.map((group, order) => ({ ...group, order }));
 	return next;
 }

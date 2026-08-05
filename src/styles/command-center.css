@@ -138,6 +138,42 @@
 	display: none;
 }
 
+.pk-cc-tab-slot {
+	position: relative;
+	display: flex;
+	height: 38px;
+	min-height: 38px;
+	align-items: flex-start;
+	flex: 0 0 auto;
+	cursor: grab;
+	user-select: none;
+}
+
+.pk-cc-tab-slot[data-dragging="true"] {
+	opacity: 0.24;
+}
+
+.pk-cc-tab-slot[data-drop-placement]::after {
+	position: absolute;
+	z-index: 3;
+	top: 5px;
+	bottom: 7px;
+	width: 2px;
+	border-radius: 2px;
+	background: var(--pk-accent);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--pk-accent) 12%, transparent);
+	content: '';
+	pointer-events: none;
+}
+
+.pk-cc-tab-slot[data-drop-placement="before"]::after {
+	left: -3px;
+}
+
+.pk-cc-tab-slot[data-drop-placement="after"]::after {
+	right: -3px;
+}
+
 .peak-command-center .pk-cc-group-tab {
 	width: auto !important;
 	min-width: 0 !important;
@@ -155,6 +191,20 @@
 	font-size: var(--pk-text-base);
 	font-weight: 500;
 	letter-spacing: -0.005em;
+	cursor: inherit;
+}
+
+.pk-cc-group-tab__grip {
+	margin-left: -2px;
+	color: var(--pk-text-faint);
+	opacity: 0;
+	transition: opacity var(--pk-transition-fast);
+}
+
+.pk-cc-tab-slot:hover .pk-cc-group-tab__grip,
+.pk-cc-group-tab:focus-visible .pk-cc-group-tab__grip,
+.pk-cc-tab-slot[data-dragging="true"] .pk-cc-group-tab__grip {
+	opacity: 0.8;
 }
 
 .peak-command-center .pk-cc-group-tab:hover {
@@ -462,6 +512,40 @@
 }
 
 .pk-cc-drag-ghost .pk-cc-action__grip {
+	display: none;
+}
+
+.pk-cc-tab-drag-ghost {
+	position: fixed;
+	z-index: 9999;
+	top: -10000px;
+	left: -10000px;
+	height: 38px;
+	padding: 0;
+	border: 1px solid var(--pk-border);
+	border-radius: var(--pk-radius-md);
+	background: var(--pk-surface-overlay);
+	box-shadow: var(--pk-shadow-popover);
+	opacity: 0.92;
+	pointer-events: none;
+}
+
+.pk-cc-tab-drag-ghost .pk-cc-group-tab {
+	display: flex !important;
+	width: 100% !important;
+	min-width: 0 !important;
+	height: 36px !important;
+	min-height: 36px !important;
+	max-height: 36px !important;
+	align-items: center;
+	gap: 6px;
+	padding: 0 8px !important;
+	border: 0 !important;
+	background: transparent !important;
+	color: var(--pk-text-primary);
+}
+
+.pk-cc-tab-drag-ghost .pk-cc-group-tab__grip {
 	display: none;
 }
 
@@ -1459,5 +1543,6 @@
 @media (prefers-reduced-motion: reduce) {
 	.pk-cc-projection { animation: none; }
 	.peak-command-center .pk-cc-action,
-	.pk-cc-arrange-row { transition: none; }
+	.pk-cc-arrange-row,
+	.pk-cc-group-tab__grip { transition: none; }
 }

@@ -13,6 +13,7 @@ export type CommandCenterItemIcon =
 export type CommandCenterDisplayMode = 'auto' | 'icon' | 'compact' | 'wide' | 'full';
 export type ResolvedCommandCenterDisplayMode = Exclude<CommandCenterDisplayMode, 'auto'>;
 export type CommandCenterDropPlacement = 'before' | 'after';
+export type CommandCenterTabId = string | 'all';
 
 export interface CommandCenterActionItem {
 	id: string;
@@ -37,7 +38,7 @@ export interface CommandCenterBoardConfig {
 	version: 1;
 	modal: {
 		density: 'compact';
-		tabOrder: Array<string | 'all'>;
+		tabOrder: CommandCenterTabId[];
 	};
 	home: {
 		openOnStartup: boolean;
@@ -97,6 +98,7 @@ export interface CommandCenterRuntimePort {
 	subscribe(listener: () => void): () => void;
 	saveConfig(config: CommandCenterBoardConfig): Promise<void>;
 	moveItem(itemId: string, targetGroupId: string, targetItemId: string | null, placement: CommandCenterDropPlacement): Promise<void>;
+	moveTab(tabId: CommandCenterTabId, targetTabId: CommandCenterTabId, placement: CommandCenterDropPlacement): Promise<void>;
 	resolveItems(groupId: string | 'all', query?: string): Promise<ResolvedCommandCenterItem[]>;
 	getCatalog(query?: string, scope?: CommandCenterCatalogScope): Promise<CommandCenterCatalogEntry[]>;
 	invokeItem(item: CommandCenterActionItem): Promise<boolean>;

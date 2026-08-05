@@ -5,6 +5,7 @@ import {
 	commandCenterActionKey,
 	commandCenterCatalogScopeForAction,
 	moveCommandCenterItem,
+	moveCommandCenterTab,
 	normalizeCommandCenterBoardConfig,
 	type CommandCenterActionItem,
 	type CommandCenterBoardConfig,
@@ -13,6 +14,7 @@ import {
 	type CommandCenterDropPlacement,
 	type CommandCenterRecentTarget,
 	type CommandCenterRuntimePort,
+	type CommandCenterTabId,
 	type ResolvedCommandCenterItem,
 } from '@/core/command-center';
 import type { ObsidianCommandCenterAdapter } from './ObsidianCommandCenterAdapter';
@@ -78,6 +80,14 @@ export class CommandCenterRuntime implements CommandCenterRuntimePort {
 		placement: CommandCenterDropPlacement,
 	): Promise<void> {
 		await this.saveConfig(moveCommandCenterItem(this.config, itemId, targetGroupId, targetItemId, placement));
+	}
+
+	async moveTab(
+		tabId: CommandCenterTabId,
+		targetTabId: CommandCenterTabId,
+		placement: CommandCenterDropPlacement,
+	): Promise<void> {
+		await this.saveConfig(moveCommandCenterTab(this.config, tabId, targetTabId, placement));
 	}
 
 	async resolveItems(groupId: string | 'all', query = ''): Promise<ResolvedCommandCenterItem[]> {

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ArrowDown, ArrowUp, GripVertical, House } from 'lucide-react';
+import { ArrowDown, ArrowUp, GripVertical } from 'lucide-react';
 import type {
 	CommandCenterActionItem,
 	CommandCenterBoardConfig,
@@ -204,74 +204,6 @@ export function CommandCenterArrangeItems({
 					</motion.div>
 				))}
 				{items.length === 0 ? <span className="pk-cc-secondary-panel__empty">Add actions from the directory first.</span> : null}
-			</div>
-		</div>
-	);
-}
-
-export function CommandCenterArrangeTabs({
-	config,
-	onReorder,
-}: {
-	config: CommandCenterBoardConfig;
-	onReorder: (fromId: string | 'all', toId: string | 'all') => void;
-}): React.ReactElement {
-	const groupById = useMemo(() => new Map(config.groups.map((group) => [group.id, group])), [config.groups]);
-	const tabs = config.modal.tabOrder.filter((tab) => tab === 'all' || groupById.has(tab));
-	const [draggedId, setDraggedId] = useState<string | 'all' | null>(null);
-	const [dropTargetId, setDropTargetId] = useState<string | 'all' | null>(null);
-	const reducedMotion = useReducedMotion();
-	const move = (tabId: string | 'all', delta: number): void => {
-		const index = tabs.indexOf(tabId);
-		const target = tabs[index + delta];
-		if (target) onReorder(tabId, target);
-	};
-	return (
-		<div className="pk-cc-secondary-panel">
-			<div className="pk-cc-secondary-panel__intro">
-				<span>The first tab opens by default. Drag All and your groups into the order you want.</span>
-			</div>
-			<div className="pk-cc-arrange-list" role="list" aria-label="Launcher tab order">
-				{tabs.map((tabId, index) => {
-					const group = tabId === 'all' ? null : groupById.get(tabId);
-					return (
-						<motion.div
-							key={tabId}
-							className="pk-cc-arrange-row"
-							layout="position"
-							transition={reducedMotion ? { duration: 0 } : { layout: { type: 'spring', stiffness: 520, damping: 42 } }}
-							data-dragging={draggedId === tabId ? 'true' : undefined}
-							data-drop-target={dropTargetId === tabId && draggedId !== tabId ? 'true' : undefined}
-							data-drop-position={dropTargetId === tabId && draggedId !== tabId && tabs.indexOf(draggedId ?? 'all') < index ? 'after' : 'before'}
-							draggable
-							onDragStart={(event) => {
-								const dragEvent = event as unknown as React.DragEvent<HTMLDivElement>;
-								dragEvent.dataTransfer.effectAllowed = 'move';
-								dragEvent.dataTransfer.setData('text/plain', tabId);
-								dragEvent.dataTransfer.setDragImage(dragEvent.currentTarget, 24, 24);
-								setDraggedId(tabId);
-							}}
-							onDragEnd={() => { setDraggedId(null); setDropTargetId(null); }}
-							onDragOver={(event) => {
-								event.preventDefault();
-								event.dataTransfer.dropEffect = 'move';
-								if (draggedId !== tabId) setDropTargetId(tabId);
-							}}
-							onDrop={(event) => {
-								event.preventDefault();
-								if (draggedId && draggedId !== tabId) onReorder(draggedId, tabId);
-								setDraggedId(null);
-								setDropTargetId(null);
-							}}
-							role="listitem"
-						>
-							<span className="pk-cc-arrange-row__handle"><GripVertical size={15} /><span>{index + 1}</span></span>
-							<span className="pk-cc-arrange-row__icon">{group ? <CommandCenterIcon icon={group.icon} size={16} /> : <House size={16} />}</span>
-							<span className="pk-cc-arrange-row__copy"><span>{group?.label ?? 'All'}</span><span>{index === 0 ? 'Opens first' : tabId === 'all' ? 'Combined groups' : 'Command group'}</span></span>
-							<MoveButtons index={index} count={tabs.length} onMove={(delta) => move(tabId, delta)} />
-						</motion.div>
-					);
-				})}
 			</div>
 		</div>
 	);

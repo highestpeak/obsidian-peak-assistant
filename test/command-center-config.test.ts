@@ -7,6 +7,7 @@ import {
 	commandCenterCatalogScopeForAction,
 	COMMAND_CENTER_CATALOG_DEFAULTS,
 	moveCommandCenterItem,
+	moveCommandCenterTab,
 	moveProjectionFocus,
 	normalizeCommandCenterBoardConfig,
 	resolveAutoCommandCenterDisplayMode,
@@ -98,5 +99,10 @@ const moved = moveCommandCenterItem(defaults, 'peak-settings', 'pinned', 'pinned
 assert.deepStrictEqual(moved.groups.find((group) => group.id === 'pinned')?.actions.map((item) => item.id), ['peak-settings', 'pinned-home', 'pinned-usage']);
 assert.strictEqual(moved.groups.find((group) => group.id === 'peak-assistant')?.actions.some((item) => item.id === 'peak-settings'), false, 'direct drag must support moving an item across groups');
 assert.deepStrictEqual(moved.groups.find((group) => group.id === 'pinned')?.actions.map((item) => item.order), [0, 1, 2], 'cross-group moves must normalize persisted order');
+
+const movedTabs = moveCommandCenterTab(defaults, 'all', 'peak-assistant', 'after');
+assert.deepStrictEqual(movedTabs.modal.tabOrder, ['pinned', 'peak-assistant', 'all', 'navigation']);
+assert.deepStrictEqual(movedTabs.groups.map((group) => group.id), ['pinned', 'peak-assistant', 'navigation'], 'direct tab drag must keep group order aligned with the launcher rail');
+assert.deepStrictEqual(moveCommandCenterTab(movedTabs, 'navigation', 'pinned', 'before').modal.tabOrder, ['navigation', 'pinned', 'peak-assistant', 'all']);
 
 console.log('command-center-config: passed');
