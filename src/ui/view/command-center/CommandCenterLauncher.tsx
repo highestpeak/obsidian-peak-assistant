@@ -3,16 +3,26 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { GripVertical, Search, SlidersHorizontal, X } from 'lucide-react';
 import {
 	buildProjectionPositions,
+	COMMAND_CENTER_CATALOG_DEFAULTS,
+	commandCenterActionKey,
 	moveProjectionFocus,
+	prepareCommandCenterGlobalMatches,
 	resolveAutoCommandCenterDisplayMode,
+	type CommandCenterCatalogEntry,
 	type CommandCenterDropPlacement,
 	type CommandCenterGroup,
 	type CommandCenterRuntimePort,
 	type CommandCenterTabId,
+	type ProjectionPosition,
 	type ResolvedCommandCenterDisplayMode,
 	type ResolvedCommandCenterItem,
 } from '@/core/command-center';
 import { Button, IconButton, Pill } from '@/ui/components/primitives';
+import {
+	CommandCenterGlobalResults,
+	SHOW_ALL_COMMANDS_ID,
+	commandCenterCatalogFocusId,
+} from './CommandCenterGlobalResults';
 import { CommandCenterIcon } from './CommandCenterIcon';
 
 export interface CommandCenterLauncherProps {
@@ -181,18 +191,27 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 	const [scope, setScope] = useState<string | 'all'>(() => tabOrder[0] ?? 'all');
 	const [query, setQuery] = useState('');
 	const [items, setItems] = useState<ResolvedCommandCenterItem[]>([]);
+	const [allCommandMatches, setAllCommandMatches] = useState<CommandCenterCatalogEntry[]>([]);
+	const [showAllCommands, setShowAllCommands] = useState(false);
+	const [searchLoading, setSearchLoading] = useState(false);
 	const [activeId, setActiveId] = useState<string | null>(null);
 	const [gridWidth, setGridWidth] = useState(560);
 	const [draggedId, setDraggedId] = useState<string | null>(null);
 	const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
 	const [draggedTabId, setDraggedTabId] = useState<CommandCenterTabId | null>(null);
 	const [tabDropTarget, setTabDropTarget] = useState<TabDropTarget | null>(null);
+	const searchActive = Boolean(query.trim());
 	const inputRef = useRef<HTMLInputElement>(null);
 	const rootRef = useRef<HTMLDivElement>(null);
 	const projectionRef = useRef<HTMLDivElement>(null);
 	const dragGhostRef = useRef<HTMLElement | null>(null);
 	const tabDragGhostRef = useRef<HTMLElement | null>(null);
 	const suppressClickRef = useRef(false);
+	const changeQuery = (nextQuery: string): void => {
+		setQuery(nextQuery);
+		setShowAllCommands(false);
+		setSearchLoading(Boolean(nextQuery.trim()));
+	};
 
 	useEffect(() => {
 		if (tabOrder.includes(scope)) return;
@@ -201,14 +220,31 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 
 	useEffect(() => {
 		let cancelled = false;
-		void runtime.resolveItems(scope, query).then((next) => {
-			if (cancelled) return;
-			setItems(next);
-			setActiveId((current) => next.some((item) => item.id === current) ? current : next[0]?.id ?? null);
-		});
+		const normalizedQuery = query.trim();
+		setSearchLoading(Boolean(normalizedQuery));
+		const catalogPromise = normalizedQuery
+			? runtime.getCatalog(query, 'commands').catch((error) => {
+				console.error('[Peak Command Center] Failed to search the complete command catalog.', error);
+				return [] as CommandCenterCatalogEntry[];
+			})
+			: Promise.resolve([] as CommandCenterCatalogEntry[]);
+		void Promise.all([runtime.resolveItems(scope, query), catalogPromise])
+			.then(([nextItems, catalog]) => {
+				if (cancelled) return;
+				const configuredKeys = new Set(nextItems.map((item) => commandCenterActionKey(item.action)));
+				setItems(nextItems);
+				setAllCommandMatches(prepareCommandCenterGlobalMatches(catalog, configuredKeys, query));
+				setSearchLoading(false);
+			})
+			.catch((error) => {
+				if (cancelled) return;
+				console.error('[Peak Command Center] Failed to resolve launcher search.', error);
+				setItems([]);
+				setAllCommandMatches([]);
+				setSearchLoading(false);
+			});
 		return () => { cancelled = true; };
 	}, [runtime, scope, query, config]);
-
 	const sections = useMemo(() => {
 		const visibleGroups = scope === 'all' ? groups : groups.filter((group) => group.id === scope);
 		return visibleGroups.map((group) => ({ group, items: items.filter((item) => item.groupId === group.id) }));
@@ -233,11 +269,43 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 		return resolved;
 	}, [gridWidth, items]);
 
-	const positions = useMemo(() => buildProjectionPositions(sections.map(({ group, items: groupItems }) => ({
-		sectionId: group.id,
-		items: groupItems.map((item) => ({ id: item.id, mode: resolvedModes.get(item.id) ?? 'full' })),
-	}))), [resolvedModes, sections]);
+	const visibleGlobalMatches = useMemo(() => showAllCommands
+		? allCommandMatches
+		: allCommandMatches.slice(0, COMMAND_CENTER_CATALOG_DEFAULTS.launcherCommandPreviewLimit), [allCommandMatches, showAllCommands]);
+	const canToggleGlobalMatches = allCommandMatches.length > COMMAND_CENTER_CATALOG_DEFAULTS.launcherCommandPreviewLimit;
+	const positions = useMemo(() => {
+		const configuredPositions = buildProjectionPositions(sections.map(({ group, items: groupItems }) => ({
+			sectionId: group.id,
+			items: groupItems.map((item) => ({ id: item.id, mode: resolvedModes.get(item.id) ?? 'full' })),
+		})));
+		const rowOffset = configuredPositions.reduce((maximum, position) => Math.max(maximum, position.row + position.rowSpan), 0) + 1;
+		const globalPositions: ProjectionPosition[] = visibleGlobalMatches.map((entry, index) => ({
+			id: commandCenterCatalogFocusId(entry),
+			sectionId: 'all-commands',
+			row: rowOffset + index,
+			rowSpan: 1,
+			column: 0,
+			columnSpan: 30,
+		}));
+		if (canToggleGlobalMatches) {
+			globalPositions.push({
+				id: SHOW_ALL_COMMANDS_ID,
+				sectionId: 'all-commands',
+				row: rowOffset + visibleGlobalMatches.length,
+				rowSpan: 1,
+				column: 0,
+				columnSpan: 30,
+			});
+		}
+		return [...configuredPositions, ...globalPositions];
+	}, [canToggleGlobalMatches, resolvedModes, sections, visibleGlobalMatches]);
 	const activeItem = items.find((item) => item.id === activeId) ?? null;
+	const activeCatalogEntry = visibleGlobalMatches.find((entry) => commandCenterCatalogFocusId(entry) === activeId) ?? null;
+
+	useEffect(() => {
+		const selectableIds = new Set(positions.map((position) => position.id));
+		setActiveId((current) => current && selectableIds.has(current) ? current : positions[0]?.id ?? null);
+	}, [positions]);
 
 	useEffect(() => {
 		const projection = projectionRef.current;
@@ -259,7 +327,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 		const OwnerCSS = rootRef.current?.ownerDocument.defaultView?.CSS;
 		const escaped = OwnerCSS?.escape ? OwnerCSS.escape(activeId) : activeId.replace(/"/g, '\\"');
 		rootRef.current?.querySelector<HTMLElement>(`[data-action-id="${escaped}"]`)?.scrollIntoView({ block: 'nearest' });
-	}, [activeId]);
+	}, [activeId, showAllCommands]);
 
 	const clearDragState = (): void => {
 		dragGhostRef.current?.remove();
@@ -281,8 +349,13 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 		if (invoked) onClose();
 	};
 
+	const invokeCatalogEntry = async (entry: CommandCenterCatalogEntry): Promise<void> => {
+		const invoked = await runtime.invokeCatalogEntry(entry);
+		if (invoked) onClose();
+	};
+
 	const handleDragStart = (event: React.DragEvent<HTMLDivElement>, item: ResolvedCommandCenterItem): void => {
-		if (query) {
+		if (searchActive) {
 			event.preventDefault();
 			return;
 		}
@@ -303,7 +376,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 		item: ResolvedCommandCenterItem,
 		mode: ResolvedCommandCenterDisplayMode,
 	): void => {
-		if (!draggedId || query) return;
+		if (!draggedId || searchActive) return;
 		event.preventDefault();
 		event.stopPropagation();
 		event.dataTransfer.dropEffect = 'move';
@@ -320,7 +393,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 	};
 
 	const handleDragOverGrid = (event: React.DragEvent<HTMLDivElement>, groupId: string): void => {
-		if (!draggedId || query || event.target !== event.currentTarget) return;
+		if (!draggedId || searchActive || event.target !== event.currentTarget) return;
 		event.preventDefault();
 		event.dataTransfer.dropEffect = 'move';
 		setDropTarget({ groupId, itemId: null, placement: 'after', axis: 'row' });
@@ -329,7 +402,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 	const handleDrop = (event: React.DragEvent<HTMLDivElement>): void => {
 		event.preventDefault();
 		event.stopPropagation();
-		if (!draggedId || !dropTarget || query) {
+		if (!draggedId || !dropTarget || searchActive) {
 			clearDragState();
 			return;
 		}
@@ -403,16 +476,32 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 			event.preventDefault();
 			event.stopPropagation();
 			if (query) {
-				setQuery('');
+				changeQuery('');
 				return;
 			}
 			onClose();
 			return;
 		}
-		if (event.key === 'Enter' && activeItem) {
-			event.preventDefault();
-			void invoke(activeItem);
-			return;
+		if (event.key === 'Enter') {
+			if (searchLoading) {
+				event.preventDefault();
+				return;
+			}
+			if (activeItem) {
+				event.preventDefault();
+				void invoke(activeItem);
+				return;
+			}
+			if (activeCatalogEntry) {
+				event.preventDefault();
+				void invokeCatalogEntry(activeCatalogEntry);
+				return;
+			}
+			if (activeId === SHOW_ALL_COMMANDS_ID) {
+				event.preventDefault();
+				setShowAllCommands((current) => !current);
+				return;
+			}
 		}
 		if (event.key === 'Tab') {
 			event.preventDefault();
@@ -435,15 +524,15 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 		}
 		if (event.key.length !== 1 || commandKey || event.altKey || event.target === inputRef.current) return;
 		focusSearch();
-		setQuery((current) => `${current}${event.key}`);
+		changeQuery(`${query}${event.key}`);
 	};
 
 	return (
 		<div className="pk-cc-launcher" ref={rootRef} onKeyDown={handleKeyDown} tabIndex={-1}>
 			<div className="pk-cc-search-row">
 				<Search size={16} aria-hidden="true" />
-				<input ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search your Command Center" aria-label="Search configured actions" autoFocus />
-				{query ? <IconButton className="pk-cc-icon-button" label="Clear search" onClick={() => setQuery('')}><X size={14} /></IconButton> : null}
+				<input ref={inputRef} value={query} onChange={(event) => changeQuery(event.target.value)} placeholder="Search commands and your Command Center" aria-label="Search configured and all commands" autoFocus />
+				{query ? <IconButton className="pk-cc-icon-button" label="Clear search" onClick={() => changeQuery('')}><X size={14} /></IconButton> : null}
 				<IconButton className="pk-cc-icon-button" label="Close Command Center" onClick={onClose}><X size={16} /></IconButton>
 			</div>
 
@@ -479,6 +568,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 			</div>
 
 			<div className="pk-cc-projection" ref={projectionRef} key={scope}>
+				{searchActive && items.length > 0 ? <span className="pk-cc-query-section-head"><span>Your Command Center</span><span>{items.length}</span></span> : null}
 				{sections.map(({ group, items: groupItems }) => (
 					<ProjectionSection
 						key={group.id}
@@ -489,7 +579,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 						activeId={activeId}
 						draggedId={draggedId}
 						dropTarget={dropTarget}
-						dragEnabled={!query}
+						dragEnabled={!searchActive}
 						reducedMotion={Boolean(reducedMotion)}
 						onFocus={setActiveId}
 						onInvoke={(item) => void invoke(item)}
@@ -500,9 +590,21 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 						onDragEnd={clearDragState}
 					/>
 				))}
-				{items.length === 0 ? (
+				{searchActive ? (
+					<CommandCenterGlobalResults
+						entries={visibleGlobalMatches}
+						total={allCommandMatches.length}
+						expanded={showAllCommands}
+						activeId={activeId}
+						onFocus={setActiveId}
+						onInvoke={(entry) => void invokeCatalogEntry(entry)}
+						onToggle={() => setShowAllCommands((current) => !current)}
+					/>
+				) : null}
+				{searchLoading && items.length === 0 && allCommandMatches.length === 0 ? <div className="pk-cc-empty"><span>Searching commands…</span></div> : null}
+				{!searchLoading && items.length === 0 && allCommandMatches.length === 0 ? (
 					<div className="pk-cc-empty">
-						<span>{query ? 'No configured actions match this search.' : 'This group is empty.'}</span>
+						<span>{searchActive ? 'No commands match this search.' : 'This group is empty.'}</span>
 						<Button variant="secondary" size="sm" onClick={onCustomize}>Customize</Button>
 					</div>
 				) : null}
@@ -510,7 +612,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 
 			<div className="pk-cc-footer">
 				<span className="pk-cc-footer__hint"><kbd>↑↓←→</kbd> move <span className="pk-cc-footer__drag"><GripVertical size={12} /> drag to reorder</span> <kbd>↵</kbd> open <kbd>esc</kbd> close</span>
-				<span className="pk-cc-footer__scope">{query ? 'Clear search to reorder' : activeItem?.fullLabel ?? ''}</span>
+				<span className="pk-cc-footer__scope">{activeItem?.fullLabel ?? activeCatalogEntry?.label ?? (searchActive ? 'Clear search to reorder' : '')}</span>
 				<Button variant="ghost" size="sm" className="pk-cc-footer__action" onClick={onCustomize}><SlidersHorizontal size={14} /><span>Customize</span></Button>
 			</div>
 		</div>

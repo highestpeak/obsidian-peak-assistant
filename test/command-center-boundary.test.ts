@@ -38,6 +38,7 @@ const composer = readFileSync('src/ui/view/composer/ComposerRoot.tsx', 'utf8');
 const home = readFileSync('src/ui/view/command-center/CommandCenterHome.tsx', 'utf8');
 const customize = readFileSync('src/ui/view/command-center/CommandCenterCustomize.tsx', 'utf8');
 const launcher = readFileSync('src/ui/view/command-center/CommandCenterLauncher.tsx', 'utf8');
+const globalResults = readFileSync('src/ui/view/command-center/CommandCenterGlobalResults.tsx', 'utf8');
 const iconBrowser = readFileSync('src/ui/view/command-center/IconBrowser.tsx', 'utf8');
 const adapter = readFileSync('src/app/command-center/ObsidianCommandCenterAdapter.ts', 'utf8');
 assert.match(modal, /runtime: CommandCenterRuntimePort/);
@@ -74,6 +75,10 @@ assert.match(iconBrowser, /Type or paste any emoji/, 'emoji customization must a
 assert.match(launcher, /draggable=\{dragEnabled\}/, 'configured items must be directly draggable in the launcher');
 assert.match(launcher, /runtime\.moveItem\(draggedId, groupId, itemId, placement\)/, 'launcher drag must persist through the runtime instead of remaining a visual mock');
 assert.match(launcher, /runtime\.moveTab\(draggedTabId, targetTabId, placement\)/, 'top-level tabs must persist direct drag ordering in place');
+assert.match(launcher, /runtime\.getCatalog\(query, 'commands'\)/, 'launcher search must query the complete command-only catalog');
+assert.doesNotMatch(launcher, /runtime\.getCatalog\(query, 'all'\)/, 'launcher fallback must never expand into documents or other catalog scopes');
+assert.match(launcher, /runtime\.invokeCatalogEntry\(entry\)/, 'global fallback results must execute through the existing runtime boundary');
+assert.match(globalResults, /Show all \{total\} commands/, 'global command preview must expand in place');
 assert.match(launcher, /className="pk-cc-tab-slot"/, 'All and group tabs must share one directly draggable rail primitive');
 assert.match(launcher, /setDragImage\(ghost/, 'direct drag must provide a dedicated visual ghost');
 assert.match(launcher, /resolveAutoCommandCenterDisplayMode/, 'Auto display must measure and resolve the rendered label');
@@ -91,6 +96,7 @@ assert.match(css, /\.pk-cc-action__label[\s\S]*?max-width: 100%/, 'command label
 assert.match(css, /\.pk-cc-action--icon \.pk-cc-action__label[\s\S]*?text-align: center/, 'icon tiles must center icon and label together');
 assert.match(css, /\.pk-cc-item-slot--drop-before-column::after/, 'direct drag must expose an insertion target in the mixed grid');
 assert.match(css, /\.pk-cc-tab-slot\[data-drop-placement\]::after/, 'tab drag must expose an insertion target in the launcher rail');
+assert.match(css, /\.pk-cc-global-result[\s\S]*?height:\s*40px !important;[\s\S]*?min-height:\s*40px !important;[\s\S]*?max-height:\s*40px !important;/, 'global command rows must retain compact fixed geometry under the Obsidian reset');
 assert.match(css, /\.pk-cc-arrange-row\[data-drop-target="true"\]::before/, 'drag reorder must expose a visible drop target');
 assert.match(css, /var\(--pk-surface\)/, 'Command Center must consume Peak design tokens');
 assert.doesNotMatch(css, /var\(--(?:background|text|interactive|font)-/, 'Command Center CSS must not bypass Peak tokens with Obsidian theme variables');

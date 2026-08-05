@@ -4,6 +4,7 @@
  */
 export const COMMAND_CENTER_CATALOG_DEFAULTS = {
 	searchDebounceMs: 160,
+	launcherCommandPreviewLimit: 6,
 	minimumDocumentQueryLength: 2,
 	maximumDocumentResults: 80,
 	documentExtensions: new Set(['md', 'canvas', 'base', 'pdf']),

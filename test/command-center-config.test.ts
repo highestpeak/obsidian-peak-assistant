@@ -10,8 +10,10 @@ import {
 	moveCommandCenterTab,
 	moveProjectionFocus,
 	normalizeCommandCenterBoardConfig,
+	prepareCommandCenterGlobalMatches,
 	resolveAutoCommandCenterDisplayMode,
 	type CommandCenterBoardConfig,
+	type CommandCenterCatalogEntry,
 } from '@/core/command-center';
 
 const rawDefaults = JSON.parse(readFileSync('templates/config/command-center-defaults.json', 'utf8')) as CommandCenterBoardConfig;
@@ -71,6 +73,31 @@ assert.strictEqual(commandCenterCatalogScopeForAction({ kind: 'workspace', works
 assert.strictEqual(commandCenterCatalogScopeForAction({ kind: 'view', viewType: 'peak-home' }), 'workspaces-views');
 assert.strictEqual(COMMAND_CENTER_CATALOG_DEFAULTS.minimumDocumentQueryLength, 2);
 assert.ok(COMMAND_CENTER_CATALOG_DEFAULTS.maximumDocumentResults <= 100, 'document search must remain bounded');
+assert.strictEqual(COMMAND_CENTER_CATALOG_DEFAULTS.launcherCommandPreviewLimit, 6);
+
+const commandEntry = (key: string, label: string, sourceLabel = 'Excalidraw', available = true): CommandCenterCatalogEntry => ({
+	key,
+	action: { kind: 'obsidian-command', commandId: key.slice('command:'.length) },
+	label,
+	sourceLabel,
+	layer: 'command',
+	available,
+	hotkey: null,
+});
+const globalMatches = prepareCommandCenterGlobalMatches([
+	commandEntry('command:source', 'Create drawing'),
+	commandEntry('command:contains', 'Open Excalidraw drawing'),
+	commandEntry('command:prefix', 'Excalidraw: New drawing'),
+	commandEntry('command:exact', 'Excalidraw'),
+	commandEntry('command:configured', 'Excalidraw configured'),
+	commandEntry('command:missing', 'Excalidraw missing', 'Excalidraw', false),
+	commandEntry('command:exact', 'Excalidraw duplicate'),
+], new Set(['command:configured']), 'excalidraw');
+assert.deepStrictEqual(
+	globalMatches.map((entry) => entry.key),
+	['command:exact', 'command:prefix', 'command:contains', 'command:source'],
+	'global fallback must rank deterministic name matches, deduplicate, and exclude configured or unavailable commands',
+);
 
 assert.deepStrictEqual(commandCenterGridSpan('icon'), { columnSpan: 6, rowSpan: 2 });
 assert.deepStrictEqual(commandCenterGridSpan('compact'), { columnSpan: 10, rowSpan: 1 });
