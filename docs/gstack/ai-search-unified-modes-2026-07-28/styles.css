@@ -136,7 +136,13 @@ main { margin-top: 22px; }
 .surface-button.active { background: var(--paper); color: var(--accent); }
 .surface-button.active::after { content: ""; position: absolute; right: 0; bottom: 0; left: 0; height: 2px; background: var(--accent); }
 .chevron { width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg) translateY(-2px); }
-.ai-mode-anchor { position: relative; height: 54px; }
+.ai-mode-anchor { position: relative; display: flex; height: 54px; align-items: stretch; }
+.ai-mode-anchor.active { background: var(--paper); color: var(--accent); }
+.ai-mode-anchor.active::after { content: ""; position: absolute; right: 0; bottom: 0; left: 0; height: 2px; background: var(--accent); }
+.ai-surface-button { min-width: 0; flex: 1; }
+.ai-surface-button.active::after { display: none; }
+.mode-trigger { display: grid; width: 42px; border: 0; place-items: center; background: transparent; color: currentColor; cursor: pointer; }
+.mode-trigger:hover, .mode-trigger[aria-expanded="true"] { background: rgba(95, 67, 198, .08); color: var(--accent); }
 .mode-menu {
   position: absolute;
   z-index: 5;
@@ -174,18 +180,24 @@ main { margin-top: 22px; }
 
 .modal-body { min-height: 0; flex: 1; overflow-y: auto; background: var(--paper); }
 .content-shell { display: flex; min-height: 100%; flex-direction: column; padding: 20px; }
-.composer-shell { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 7px; }
-.composer-shell input {
+.composer-shell { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: end; gap: 7px; }
+.composer-shell textarea {
   height: 42px;
+  min-height: 42px;
+  max-height: 78px;
   min-width: 0;
-  padding: 0 13px;
+  padding: 10px 13px;
   border: 1px solid #cfd7d2;
   border-radius: 8px;
   outline: 0;
+  resize: none;
+  overflow-y: auto;
   background: var(--paper);
   color: var(--ink);
+  font: inherit;
+  line-height: 20px;
 }
-.composer-shell input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(95, 67, 198, .11); }
+.composer-shell textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(95, 67, 198, .11); }
 .web-toggle, .composer-action { height: 42px; }
 .mode-intro, .list-heading {
   display: flex;

@@ -40,8 +40,9 @@ const folderModel = source('src/ui/component/graph/folderCompoundModel.ts');
 const timelineLayout = source('src/ui/component/mine/multi-lens-graph/layouts/timeline-layout.ts');
 
 assert.match(contextualPort, /loadDocumentContext/);
-assert.match(vaultWorkspace, /Vault graph overview/);
-assert.match(vaultWorkspace, /Opening this mode never starts a scan/);
+assert.match(vaultWorkspace, /Community overview/);
+assert.match(vaultWorkspace, /Review work starts only from explicit actions/);
+assert.doesNotMatch(vaultWorkspace, /Opening this mode never starts a scan/);
 assert.doesNotMatch(atlasPanel, /FileAtlasDocumentContext|pkfa-document-context-slot/);
 assert.match(atlasGraph, /data-graph-scope="one-hop"/);
 assert.match(atlasGraph, /data-graph-scope="two-hop"/);

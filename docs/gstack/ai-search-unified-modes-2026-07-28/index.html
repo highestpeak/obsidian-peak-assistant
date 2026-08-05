@@ -9,13 +9,13 @@
 <body>
   <div class="page-shell">
     <header class="report-head">
-      <div class="report-kicker">Peak Assistant · Interactive review mock · corrected 2026-08-02</div>
+      <div class="report-kicker">Peak Assistant · Interactive review mock · corrected 2026-08-05</div>
       <div class="report-title-row">
         <div>
-          <h1>AI Search 成为统一的 AI 查询与历史入口</h1>
+          <h1>Quick Search 以搜索优先，并保留连续工作上下文</h1>
           <p>
-            保留一个高频的 AI Search 默认入口，把 AI Graph 与 Vault Intelligence 收进同一个模式下拉；
-            三种模式复用输入框、历史列表和键盘语法，不再维护独立 Graph Library。
+            冷启动先进入 Vault Search；本次插件运行内恢复上次 surface / AI mode。
+            AI Graph 与 Vault Intelligence 收进显式模式菜单，菜单本身不跨 modal 保留。
           </p>
         </div>
         <button class="quiet-button" id="reset-demo" type="button">Reset demo</button>
@@ -35,7 +35,7 @@
             <span class="section-number">01</span>
             <h2>统一 modal · 可点击原型</h2>
           </div>
-          <span class="status-pill">Default · AI Search</span>
+          <span class="status-pill">Cold start · Vault Search</span>
         </div>
 
         <div class="desktop-stage">
@@ -46,27 +46,34 @@
             <span class="ghost-line long"></span>
           </div>
 
-          <div class="search-modal" id="search-modal" data-active-surface="ai">
+          <div class="search-modal" id="search-modal" data-active-surface="vault">
             <header class="surface-switcher" aria-label="Search surface">
               <button
-                class="surface-button"
+                class="surface-button active"
                 id="vault-search-tab"
                 type="button"
-                aria-pressed="false"
+                aria-pressed="true"
               >
                 Vault Search
               </button>
 
               <div class="ai-mode-anchor">
                 <button
-                  class="surface-button active"
+                  class="surface-button ai-surface-button"
+                  id="ai-surface-tab"
+                  type="button"
+                  aria-pressed="false"
+                >
+                  <span id="ai-mode-trigger-label">AI Search</span>
+                </button>
+                <button
+                  class="mode-trigger"
                   id="ai-mode-trigger"
                   type="button"
                   aria-haspopup="listbox"
                   aria-expanded="false"
                   aria-controls="ai-mode-menu"
                 >
-                  <span id="ai-mode-trigger-label">AI Search</span>
                   <span class="chevron" aria-hidden="true"></span>
                 </button>
 
@@ -84,7 +91,7 @@
                       <strong>AI Search</strong>
                       <small>提问、分析并重开最近结果</small>
                     </span>
-                    <span class="default-label">Default</span>
+                    <span class="default-label">AI fallback</span>
                   </button>
                   <button class="mode-option" type="button" role="option" aria-selected="false" data-mode="graph">
                     <span class="mode-mark" aria-hidden="true"></span>
@@ -138,8 +145,8 @@
             <p>Vault Search 负责确定性找回；右侧 AI 工作区通过下拉在 AI Search、AI Graph 和 Vault Intelligence 之间切换。两侧保持原有等分布局并严格垂直居中。</p>
           </article>
           <article>
-            <h3>每次普通打开回到 AI Search</h3>
-            <p>低频模式不跨 modal 记忆。只有正在运行的 session、历史记录或 graph deep link 可以直接恢复对应模式。</p>
+            <h3>冷启动搜索优先，连续工作不丢状态</h3>
+            <p>冷启动进入 Vault Search；同一次插件 runtime 内恢复上次精确 surface / AI mode，但不会自动重新打开模式菜单。</p>
           </article>
           <article>
             <h3>模式只改变任务，不改变输入习惯</h3>

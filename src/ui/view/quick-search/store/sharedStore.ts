@@ -41,7 +41,7 @@ interface SharedStore {
 }
 
 export const useSharedStore = create<SharedStore>((set) => ({
-	activeTab: 'ai',
+	activeTab: 'vault',
 	aiWorkspaceMode: 'search',
 	aiGraphDeepLinkId: null,
 	aiGraphDeepLinkVersionId: null,
@@ -69,8 +69,6 @@ export const useSharedStore = create<SharedStore>((set) => ({
 			: {}),
 	})),
 	beginOrdinaryOpen: () => set({
-		activeTab: 'ai',
-		aiWorkspaceMode: 'search',
 		aiGraphDeepLinkId: null,
 		aiGraphDeepLinkVersionId: null,
 		aiGraphCreateOrigin: null,
@@ -98,7 +96,7 @@ export const useSharedStore = create<SharedStore>((set) => ({
 	}),
 	clearRecentQueries: () => set({ recentQueries: [] }),
 	reset: () => set({
-		activeTab: 'ai',
+		activeTab: 'vault',
 		aiWorkspaceMode: 'search',
 		aiGraphDeepLinkId: null,
 		aiGraphDeepLinkVersionId: null,

@@ -33,41 +33,37 @@
   max-height: 200px !important;
 }
 
-/* Single line input override - constrain to single line height */
-.pktw-codemirror-custom.cm-editor.cm-editor-single-line .cm-content,
-.pktw-codemirror-custom .cm-editor.cm-editor-single-line .cm-content {
-  min-height: 1.45em !important;
-  max-height: 1.45em !important;
-  line-height: 1.45 !important;
-  white-space: pre !important;
+/* Quick Search uses a compact adaptive composer: one line is optically centered,
+   while wrapping and Shift+Enter can grow the field to roughly three lines. */
+:is(
+  .pk-ai-instruction[data-instruction-surface="ai-search"],
+  .pk-ai-instruction[data-instruction-surface="ai-graph"]
+) .pk-ai-instruction-editor .pktw-codemirror-custom .cm-content {
+  min-height: 28px !important;
+  max-height: 72px !important;
+  padding: 4px 0 !important;
 }
 
-/* Ensure single line editor container is properly sized */
-.pktw-codemirror-custom.cm-editor.cm-editor-single-line,
-.pktw-codemirror-custom .cm-editor.cm-editor-single-line {
+:is(
+  .pk-ai-instruction[data-instruction-surface="ai-search"],
+  .pk-ai-instruction[data-instruction-surface="ai-graph"]
+) .pk-ai-instruction-editor .pktw-codemirror-custom.cm-editor,
+:is(
+  .pk-ai-instruction[data-instruction-surface="ai-search"],
+  .pk-ai-instruction[data-instruction-surface="ai-graph"]
+) .pk-ai-instruction-editor .pktw-codemirror-custom .cm-editor {
   height: auto !important;
-  min-height: auto !important;
+  min-height: 28px !important;
+  max-height: 72px !important;
 }
 
-/* Override the scroller height for single line */
-.pktw-codemirror-custom.cm-editor.cm-editor-single-line .cm-scroller,
-.pktw-codemirror-custom .cm-editor.cm-editor-single-line .cm-scroller {
-  min-height: 1.45em !important;
-  max-height: 1.45em !important;
-  overflow-x: auto !important;
-  overflow-y: hidden !important;
-  scrollbar-width: none;
-}
-
-.pktw-codemirror-custom.cm-editor.cm-editor-single-line .cm-scroller::-webkit-scrollbar,
-.pktw-codemirror-custom .cm-editor.cm-editor-single-line .cm-scroller::-webkit-scrollbar {
-  display: none;
-}
-
-.pktw-codemirror-custom.cm-editor.cm-editor-single-line .cm-line,
-.pktw-codemirror-custom .cm-editor.cm-editor-single-line .cm-line {
-  word-wrap: normal !important;
-  white-space: pre !important;
+:is(
+  .pk-ai-instruction[data-instruction-surface="ai-search"],
+  .pk-ai-instruction[data-instruction-surface="ai-graph"]
+) .pk-ai-instruction-editor .cm-scroller {
+  min-height: 28px !important;
+  max-height: 72px !important;
+  overflow-y: auto !important;
 }
 
 /* Focus states */

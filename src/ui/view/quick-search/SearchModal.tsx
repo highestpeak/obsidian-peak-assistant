@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { VaultSearchTab, VaultSearchFooterHints } from './tab-VaultSearch';
 import { AISearchTab } from './tab-AISearch';
 import type { VaultReviewHistoryRecord } from '@/service/copilot/vault/VaultReviewReportService';
-import { Search, Sparkles, Globe, Plus, X, Library, Network, ChevronDown, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Search, Sparkles, Globe, Plus, X, Network, ChevronDown, Clock, CheckCircle2, AlertTriangle, Gauge, Check } from 'lucide-react';
 import { suggestHistoryStore, type SuggestHistoryEntry } from '@/ui/view/quick-search/rewrite/SuggestHistoryStore';
 import { Button } from '@/ui/component/shared-ui/button';
 import { CodeMirrorInput } from '@/ui/component/mine/codemirror-input';
@@ -170,8 +170,6 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, mode }) => {
 	const { eventBus } = useServiceContext();
 	const host = useQuickSearchHost();
 	const { searchQuery, setSearchQuery, recentQueries, clearRecentQueries } = useSharedStore();
-	const graphType = useSharedStore((state) => state.aiGraphCreateType);
-	const setGraphType = useSharedStore((state) => state.setAIGraphCreateType);
 	const selectedGraphPaths = useAIGraphStore((state) => state.selectedPaths);
 	const initialGraphSources = useAIGraphStore((state) => state.initialSources);
 	const addInitialGraphSource = useAIGraphStore((state) => state.addInitialSource);
@@ -304,47 +302,27 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, mode }) => {
 								? PRESET_LABELS.aiGraph.placeholder
 								: 'Ask AI anything about your vault...'}
 							compact
-							singleLine
 							autoFocus
 							attachmentIcon={<Plus />}
 							trailingControls={!isMobile() ? (
 								<>
-									{mode === 'graph' && (
-										<label className="pk-ai-graph-type-field">
-											<span className="sr-only">Graph type</span>
-											<select
-													aria-label="Graph type"
-													value={graphType}
-													onChange={(event) => setGraphType(
-														event.target.value as typeof graphType,
-													)}
-												>
-													<option value="free">Free</option>
-													<option value="concept">Concept</option>
-													<option value="entity">Entity</option>
-													<option value="evidence">Evidence</option>
-													<option value="causal">Causal</option>
-													<option value="timeline">Timeline</option>
-											</select>
-										</label>
-									)}
 									<Button
-											variant="ghost"
-											geometry="action-icon"
-											type="button"
-											className={cn('pk-ai-search-web-toggle', webEnabled && 'is-active')}
-											aria-pressed={webEnabled}
-											onClick={() => {
-												if (!webEnabled && !ProfileRegistry.getInstance().getActiveWebSearchProfile()) {
-													new Notice('No Web Search profile configured. Go to Settings → Profiles and assign a profile as "Web Search".', 5000);
-													return;
-												}
-												setSearchQuery(toggleWeb(searchQuery));
-											}}
-											title={webEnabled ? 'Web: ON' : 'Web: OFF'}
-											aria-label={webEnabled ? 'Disable Web search' : 'Enable Web search'}
-										>
-											<Globe />
+										variant="ghost"
+										geometry="action-icon"
+										type="button"
+										className={cn('pk-ai-search-web-toggle', webEnabled && 'is-active')}
+										aria-pressed={webEnabled}
+										onClick={() => {
+											if (!webEnabled && !ProfileRegistry.getInstance().getActiveWebSearchProfile()) {
+												new Notice('No Web Search profile configured. Go to Settings → Profiles and assign a profile as "Web Search".', 5000);
+												return;
+											}
+											setSearchQuery(toggleWeb(searchQuery));
+										}}
+										title={webEnabled ? 'Web: ON' : 'Web: OFF'}
+										aria-label={webEnabled ? 'Disable Web search' : 'Enable Web search'}
+									>
+										<Globe />
 									</Button>
 								</>
 							) : undefined}
@@ -472,6 +450,12 @@ const AI_WORKSPACE_OPTIONS: Array<{
 	{ mode: 'vault-intelligence', label: 'Vault Intelligence', description: 'Health summary and recent reviews' },
 ];
 
+function AIWorkspaceIcon({ mode }: { mode: AIWorkspaceMode }): React.ReactElement {
+	if (mode === 'graph') return <Network aria-hidden />;
+	if (mode === 'vault-intelligence') return <Gauge aria-hidden />;
+	return <Sparkles aria-hidden />;
+}
+
 function AIWorkspaceSelector({
 	mode,
 	active,
@@ -556,7 +540,7 @@ function AIWorkspaceSelector({
 					setOpen(true);
 				}}
 			>
-				{mode === 'graph' ? <Network /> : mode === 'vault-intelligence' ? <Sparkles /> : <Library />}
+				<AIWorkspaceIcon mode={mode} />
 				<span>{selected.label}</span>
 			</Button>
 			<Button
@@ -617,8 +601,14 @@ function AIWorkspaceSelector({
 							onFocus={() => setActiveIndex(index)}
 							onClick={() => select(item.mode)}
 						>
-							<span>{item.label}</span>
-							<small>{item.description}</small>
+							<span className="pk-ai-workspace-option-icon">
+								<AIWorkspaceIcon mode={item.mode} />
+							</span>
+							<span className="pk-ai-workspace-option-copy">
+								<strong>{item.label}</strong>
+								<small>{item.description}</small>
+							</span>
+							{item.mode === mode ? <Check className="pk-ai-workspace-option-check" aria-hidden /> : null}
 						</Button>
 					))}
 				</div>

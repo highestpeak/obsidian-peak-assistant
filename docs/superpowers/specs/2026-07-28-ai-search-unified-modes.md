@@ -15,14 +15,14 @@
 - [Vault Intelligence](../../13-feature-vault-intelligence.html#user-workflows)
 - [产品 IA 纠偏与 Review 清单](../audits/2026-08-02-planned-requirements-product-ia-correction.md)
 
-> 2026-08-02 owner correction：本文同时记录当前实现边界。Vault Intelligence 的完整 graph / health / review projection 归本 modal，不再转跳旧 Copilot Vault workspace；选择 mode 本身仍不启动扫描。
+> 2026-08-05 owner correction：Quick Search 冷启动默认 `Vault Search`；同一次插件 runtime 内再次打开恢复上次精确 surface / AI mode，但 menu 展开态不恢复。Vault Intelligence 的完整 graph / health / review projection 归本 modal，不再转跳旧 Copilot Vault workspace；选择 mode 本身仍不启动扫描。
 
 ## 1. 核心裁决
 
 Quick Search modal 顶层只保留两个位置：
 
 1. `Vault Search`：确定性搜索。
-2. AI workspace selector：默认显示 `AI Search`，下拉可切换 `AI Graph` 与 `Vault Intelligence`。
+2. AI workspace selector：AI 子工作区以 `AI Search` 为冷启动 fallback，下拉可切换 `AI Graph` 与 `Vault Intelligence`。
 
 不再提供独立的 All AI Graphs Library，也不再让 Vault Intelligence 独占顶栏按钮。AI Graph 的全量浏览就是 `AI Search → AI Graph` 模式下的紧凑历史列表；artifact repository、版本和 Graph Detail 继续保持独立事实边界。
 
@@ -50,7 +50,8 @@ Quick Search modal 顶层只保留两个位置：
 
 ### 3.1 目标
 
-- 正常打开时默认进入 AI Search。
+- 插件冷启动后第一次普通打开默认进入 Vault Search。
+- 同一次插件 runtime 内普通关闭再打开时，恢复上次精确 surface / AI mode。
 - AI Graph 与 Vault Intelligence 可发现，但不与高频入口争抢视觉空间。
 - 三种 AI mode 复用 Shared AI Instruction Composer、历史列表和键盘语法。
 - 所有已持久化 graph 都能在 AI Graph mode 找到并重开。
@@ -64,15 +65,15 @@ Quick Search modal 顶层只保留两个位置：
 - 不删除 AI Graph artifact repository、version、source、evidence 或 Graph Detail。
 - 不让 mode selection 自动触发 Web、Vault scan 或昂贵 AI run。
 - 不为三个 mode 新增 Command Palette 命令。
-- 本轮不修改生产代码。
+- 不通过持久化 settings 记忆上次 surface / mode。
 
 ## 4. 目标信息架构
 
 ```text
 Quick Search modal
-├── Vault Search
+├── Vault Search · cold-start default
 └── AI workspace selector
-    ├── AI Search · default
+    ├── AI Search · AI fallback
     ├── AI Graph
     └── Vault Intelligence
 ```
@@ -88,14 +89,16 @@ Quick Search modal
 
 ### 4.2 正常打开与恢复
 
-- 普通打开：默认 `AI Search`。
-- 关闭后再次普通打开：仍回到 `AI Search`，不跨 modal 记住低频 mode。
+- 插件冷启动后的第一次普通打开：默认 `Vault Search`。
+- 同一次插件 runtime 内关闭后再次普通打开：恢复关闭前的精确 surface；如果在 AI workspace，也恢复 `AI Search` / `AI Graph` / `Vault Intelligence` 的精确 mode。
+- menu 是否展开、menu 活动行和 hover 都是一次性视觉状态，关闭 modal 后不恢复。
+- plugin unload / reload、Obsidian 重启或重新开机：session memory 清空，下次从 `Vault Search` 开始。
 - 恢复正在运行的 session：打开该 session 所属 mode。
 - 从 AI Graph history、related graph 或 artifact link 打开：直接进入 Graph Detail。
 - 从 Vault Intelligence review history 打开：直接进入相应 review detail。
 - 返回列表时：恢复进入 detail 前的 mode、滚动和活动行。
 
-这个规则防止“上次偶尔看了一次 Vault Intelligence，下一次普通搜索却落在低频页面”的意外。
+这个规则同时满足两件事：冷启动遵守“先搜索”的高频意图；连续工作期间不会因为关闭 modal 而丢失用户刚才选择的任务页面。
 
 ## 5. 三种 AI mode
 
@@ -239,8 +242,9 @@ mode adapter 拥有：
 - AI Graph history 读取 artifact repository 的 browse projection；
 - Vault Intelligence history 读取 vault review records；
 - UI 可以把三者投影成相同 row component，但不能把 graph body 塞回 analysis snapshot；
-- normal modal mode 是 transient UI state，不写入 artifact 或 machine record；
-- run / deep-link restore 可以携带 mode，但不能改变普通打开的默认值。
+- 当前 surface / AI mode 只保存在 plugin runtime 的内存 store，不写入 artifact、machine record 或磁盘 settings；
+- menu open / focus / hover 永远是单次 modal 的 transient UI state；
+- run / deep-link restore 可以携带 mode，但不能改变下一次冷启动的 Vault Search 默认值。
 
 ## 10. 被拒绝的方案
 
@@ -256,19 +260,22 @@ mode adapter 拥有：
 
 拒绝。它继续让 surface、preset 和 expensive review 混在输入组件内部，也与顶栏 AI Search 名称重复。
 
-### 10.4 跨次记忆最后 mode
+### 10.4 跨重启持久化最后 mode
 
-拒绝作为默认。它优化了极少数连续工作，却让绝大多数普通打开失去可预测性。恢复 run 或 deep link 是明确例外。
+拒绝。连续关闭/打开只使用 runtime 内存；不能把低频 mode 写入磁盘并影响下一次插件冷启动。冷启动始终回到 Vault Search。
 
 ## 11. 验收标准
 
 设计实施完成后，必须同时满足：
 
-- 普通打开默认 AI Search。
+- 插件冷启动后的第一次普通打开默认 Vault Search。
+- 同一 plugin runtime 内关闭再打开恢复上次精确 surface / AI mode；menu 展开态不恢复。
 - 顶层只显示 Vault Search 与一个 AI workspace selector。
 - 输入框内不再出现 Vault Analysis / AI Graph 的重复 selector。
 - AI Graph mode 以单列 history 展示全部 persisted graphs。
 - AI Graph history 没有 source/type filter chip rows 和 preview card grid。
+- AI Graph 首页输入框不显示 Graph Type；Graph Type 只属于显式 Create Graph 流程。
+- AI Search / AI Graph 空态与单行输入严格垂直居中，长文本自然换行并最多增长约三行。
 - 顶栏保持原有左右等分布局，Vault Search 与 AI workspace selector 高度一致、严格垂直居中。
 - 每个 graph row 显示不可变的创建 surface 与主要创建上下文；File Atlas 来源必须显示精确文件名。
 - graph row 可打开同一个 Graph Detail，并能返回原列表位置。

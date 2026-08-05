@@ -7,7 +7,7 @@
   };
 
   const state = {
-    surface: "ai",
+    surface: "vault",
     mode: "search",
     web: false,
     menuOpen: false,
@@ -20,6 +20,8 @@
   const modal = byId("search-modal");
   const modalBody = byId("modal-body");
   const trigger = byId("ai-mode-trigger");
+  const aiSurfaceTab = byId("ai-surface-tab");
+  const aiModeAnchor = document.querySelector(".ai-mode-anchor");
   const menu = byId("ai-mode-menu");
   const vaultTab = byId("vault-search-tab");
   const footerCount = byId("footer-count");
@@ -83,7 +85,7 @@
   function composer({ placeholder, action, web = false }) {
     return `
       <form class="composer-shell" id="workspace-composer">
-        <input id="workspace-input" autocomplete="off" placeholder="${placeholder}" aria-label="${placeholder}">
+        <textarea id="workspace-input" rows="1" autocomplete="off" placeholder="${placeholder}" aria-label="${placeholder}"></textarea>
         ${web ? `<button class="web-toggle" id="web-toggle" type="button" aria-pressed="${state.web}">Web ${state.web ? "on" : "off"}</button>` : ""}
         <button class="composer-action" type="submit">${action}</button>
       </form>
@@ -269,6 +271,13 @@
     const input = byId("workspace-input");
     const webToggle = byId("web-toggle");
 
+    const resizeInput = () => {
+      input.style.height = "auto";
+      input.style.height = `${Math.min(input.scrollHeight, 78)}px`;
+    };
+    input?.addEventListener("input", resizeInput);
+    if (input) resizeInput();
+
     form?.addEventListener("submit", (event) => {
       event.preventDefault();
       const query = input.value.trim();
@@ -334,7 +343,9 @@
     const onVault = state.surface === "vault";
     vaultTab.classList.toggle("active", onVault);
     vaultTab.setAttribute("aria-pressed", String(onVault));
-    trigger.classList.toggle("active", !onVault);
+    aiModeAnchor.classList.toggle("active", !onVault);
+    aiSurfaceTab.classList.toggle("active", !onVault);
+    aiSurfaceTab.setAttribute("aria-pressed", String(!onVault));
     byId("ai-mode-trigger-label").textContent = MODE_LABELS[state.mode];
 
     all(".mode-option").forEach((option) => {
@@ -396,7 +407,17 @@
       closeMenu({ restoreFocus: true });
       return;
     }
+    if (state.surface === "vault") {
+      state.surface = "ai";
+      render();
+    }
     openMenu();
+  });
+
+  aiSurfaceTab.addEventListener("click", () => {
+    closeMenu();
+    state.surface = "ai";
+    render();
   });
 
   trigger.addEventListener("keydown", (event) => {
@@ -452,12 +473,12 @@
   });
 
   byId("reset-demo").addEventListener("click", () => {
-    state.surface = "ai";
+    state.surface = "vault";
     state.mode = "search";
     state.web = false;
     closeMenu();
     render();
-    showToast("已恢复普通打开状态：AI Search");
+    showToast("已恢复冷启动状态：Vault Search");
   });
 
   render();

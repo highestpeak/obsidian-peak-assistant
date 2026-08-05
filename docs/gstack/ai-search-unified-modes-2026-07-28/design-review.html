@@ -48,7 +48,7 @@
 <body>
   <main class="design-shell">
     <header class="design-hero">
-      <div class="report-kicker">Peak Assistant · Formal visual design · 2026-08-02 correction</div>
+      <div class="report-kicker">Peak Assistant · Formal visual design · 2026-08-05 correction</div>
       <h1>Quick Search 只有两个顶层位置，AI 工作区有三种明确任务。</h1>
       <p>这页用于 review 信息架构与 surface ownership；真正点击和键盘行为请进入交互 Mock。Vault Intelligence 在这里是完整 Vault graph / health projection，不再是旧 Copilot Vault panel 的跳板。</p>
       <nav class="design-links">
@@ -59,11 +59,11 @@
 
     <section class="design-section">
       <h2>信息架构</h2>
-      <p>顶层不是四个 tab；Vault Search 与 AI workspace selector 左右等分。AI selector 默认 AI Search，低频任务从同一个菜单进入。</p>
+      <p>顶层不是四个 tab；Vault Search 与 AI workspace selector 左右等分。冷启动先进入 Vault Search；同一次插件 runtime 内恢复上次选中的 AI mode，低频任务从显式菜单进入。</p>
       <div class="ia-flow">
         <article class="ia-node"><strong>Vault Search</strong><span>确定性找回：files、headings、blocks、properties。搜索结果的 hub / local graph 通过 Open in File Atlas handoff。</span></article>
         <div class="mode-stack">
-          <article class="mode-card"><b>AI</b><span><strong>AI Search</strong><small>向 Vault 提问、分析、重开 recent analyses。</small></span><em>Default</em></article>
+          <article class="mode-card"><b>AI</b><span><strong>AI Search</strong><small>向 Vault 提问、分析、重开 recent analyses。</small></span><em>AI fallback</em></article>
           <article class="mode-card"><b>G</b><span><strong>AI Graph</strong><small>创建、浏览和维护持久化 graph artifacts。</small></span><em>Artifact</em></article>
           <article class="mode-card"><b>VI</b><span><strong>Vault Intelligence</strong><small>Vault graph overview、hubs、health、recent reviews。</small></span><em>Read until run</em></article>
         </div>

@@ -63,10 +63,11 @@ function validateLocalLinks(filePath) {
 ].forEach(validateLocalLinks);
 
 assert(await page.locator("#ai-mode-trigger-label").textContent() === "AI Search", "normal open must default to AI Search");
+assert(await page.locator("#search-modal").getAttribute("data-active-surface") === "vault", "cold open must start on Vault Search");
 assert(await page.locator(".mode-option").count() === 3, "mode menu must expose exactly three AI modes");
 
 const vaultTabBox = await page.locator("#vault-search-tab").boundingBox();
-const modeTriggerBox = await page.locator("#ai-mode-trigger").boundingBox();
+const modeTriggerBox = await page.locator("#ai-surface-tab").boundingBox();
 const modalBox = await page.locator("#search-modal").boundingBox();
 assert(vaultTabBox && modeTriggerBox && modalBox, "top-level switcher controls must have measurable geometry");
 const vaultTabCenterY = vaultTabBox.y + vaultTabBox.height / 2;
@@ -110,10 +111,13 @@ assert(await page.locator("#ai-mode-trigger-label").textContent() === "AI Search
 
 await page.locator("#vault-search-tab").click();
 assert(await page.locator("#search-modal").getAttribute("data-active-surface") === "vault", "Vault Search surface did not activate");
+await page.locator("#ai-surface-tab").click();
+assert(await page.locator("#search-modal").getAttribute("data-active-surface") === "ai", "AI main tab must restore the in-session AI workspace");
+assert(await page.locator("#ai-mode-trigger").getAttribute("aria-expanded") === "false", "AI main tab must not reopen the mode menu");
 
 await page.locator("#reset-demo").click();
 assert(await page.locator("#ai-mode-trigger-label").textContent() === "AI Search", "reset must restore AI Search");
-assert(await page.locator("#search-modal").getAttribute("data-active-surface") === "ai", "reset must restore the AI surface");
+assert(await page.locator("#search-modal").getAttribute("data-active-surface") === "vault", "reset must restore the cold-start Vault Search surface");
 await page.waitForTimeout(2500);
 
 const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
@@ -136,6 +140,7 @@ await page.locator("#create").scrollIntoViewIfNeeded();
 await page.locator("#create").screenshot({ path: graphCreateScreenshotPath });
 const embedded = page.frameLocator(".unified-search-frame");
 assert(await embedded.locator("#ai-mode-trigger-label").textContent() === "AI Search", "AI Graph prototype must embed the same default AI Search mock");
+assert(await embedded.locator("#search-modal").getAttribute("data-active-surface") === "vault", "embedded Quick Search must use the cold-start Vault surface");
 const parentOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
 assert(!parentOverflow, "AI Graph prototype has horizontal overflow after embedding the unified mock");
 assert(errors.length === 0, `browser errors after embedded verification: ${errors.join(" | ")}`);
