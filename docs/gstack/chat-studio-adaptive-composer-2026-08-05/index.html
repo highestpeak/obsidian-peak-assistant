@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Chat Studio · Adaptive Composer</title>
-  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./styles.css?v=20260806-4">
 </head>
 <body>
   <svg class="icon-sprite" aria-hidden="true">
@@ -20,6 +20,8 @@
     <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
     <symbol id="icon-eye" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></symbol>
     <symbol id="icon-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v5h5"/></symbol>
+    <symbol id="icon-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></symbol>
+    <symbol id="icon-wrap" viewBox="0 0 24 24"><path d="M4 6h16M4 10h12a4 4 0 0 1 0 8h-2m0 0 2-2m-2 2 2 2M4 14h7M4 18h6"/></symbol>
     <symbol id="icon-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15-5-5L5 20"/></symbol>
     <symbol id="icon-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.07.07l2-2a5 5 0 0 0-7.07-7.07l-1.15 1.15M14 11a5 5 0 0 0-7.07-.07l-2 2A5 5 0 0 0 12 20l1.15-1.15"/></symbol>
     <symbol id="icon-book" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5zM20 5.5A2.5 2.5 0 0 0 17.5 3H13v16h4.5a2.5 2.5 0 0 1 2.5 2.5z"/></symbol>
@@ -268,8 +270,9 @@
                         <span><small>Treatment</small><strong id="context-detail-treatment">—</strong></span>
                       </div>
                       <div class="context-detail-body">
-                        <span>Content preview</span>
-                        <pre id="context-detail-content"></pre>
+                        <div class="context-detail-body-heading"><span>Content preview</span><strong id="context-detail-completeness">Complete</strong></div>
+                        <div class="context-detail-preview-shell"><pre id="context-detail-content"></pre><span class="context-detail-fade" aria-hidden="true"></span></div>
+                        <div class="context-detail-actions"><span id="context-detail-range">Complete content</span><button id="context-detail-open-full" type="button" hidden>Open full content<svg class="icon"><use href="#icon-arrow-up"></use></svg></button></div>
                       </div>
                       <small class="context-detail-note">Design sample. Production should render the exact serialized layer recorded by the run.</small>
                     </section>
@@ -284,6 +287,22 @@
                   <div class="context-exclusion-row"><svg class="icon"><use href="#icon-file"></use></svg><span><strong>Raw attachment bodies</strong><small>Refs or summaries unless direct mode is supported.</small></span></div>
                 </aside>
               </div>
+              <section id="context-full-view" class="context-full-view" role="region" aria-labelledby="context-full-title" hidden>
+                <div class="context-full-header">
+                  <button id="context-full-back" class="context-full-back" type="button"><svg class="icon"><use href="#icon-chevron-down"></use></svg><span>Back to stack</span></button>
+                  <span class="context-full-heading"><small id="context-full-phase">Will include</small><strong id="context-full-title">Conversation history</strong></span>
+                  <div class="context-full-actions">
+                    <button id="context-full-wrap" type="button" aria-pressed="true"><svg class="icon"><use href="#icon-wrap"></use></svg><span>Wrap</span></button>
+                    <button id="context-full-copy" type="button"><svg class="icon"><use href="#icon-copy"></use></svg><span>Copy exact</span></button>
+                  </div>
+                </div>
+                <div class="context-full-toolbar">
+                  <label class="context-full-search"><svg class="icon"><use href="#icon-search"></use></svg><input id="context-full-search" type="search" placeholder="Search this context layer" aria-label="Search this context layer"><span id="context-full-search-status">Search exact content</span></label>
+                  <div class="context-full-stats"><span id="context-full-completeness">Complete layer</span><span id="context-full-chars">0 characters</span><span id="context-full-tokens">~0 tokens</span></div>
+                </div>
+                <div class="context-full-content-shell"><pre id="context-full-content" tabindex="0"></pre></div>
+                <div class="context-full-foot"><span><small>Source</small><strong id="context-full-source">—</strong></span><span><small>Treatment</small><strong id="context-full-treatment">—</strong></span></div>
+              </section>
               <div class="context-foot context-foot-detailed">
                 <span><svg class="icon"><use href="#icon-sparkles"></use></svg><span><strong>Budget rule</strong><small>Required layers survive. Optional layers compress by priority and may be omitted when empty or over budget.</small></span></span>
               </div>
@@ -365,6 +384,6 @@
     </aside>
   </div>
 
-  <script src="./app.js"></script>
+  <script src="./app.js?v=20260806-4"></script>
 </body>
 </html>

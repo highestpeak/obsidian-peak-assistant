@@ -1,6 +1,7 @@
 (() => {
   const BASE_COMPOSER_HEIGHT = 100;
   const BASE_INPUT_HEIGHT = 30;
+  const CONTEXT_PREVIEW_LIMIT = 420;
   const timeline = document.getElementById('timeline');
   const composerStack = document.getElementById('composer-stack');
   const composerFrame = document.getElementById('composer-frame');
@@ -45,6 +46,23 @@
   const contextDetailTreatment = document.getElementById('context-detail-treatment');
   const contextDetailContent = document.getElementById('context-detail-content');
   const contextDetailClose = document.getElementById('context-detail-close');
+  const contextDetailCompleteness = document.getElementById('context-detail-completeness');
+  const contextDetailRange = document.getElementById('context-detail-range');
+  const contextDetailOpenFull = document.getElementById('context-detail-open-full');
+  const contextFullView = document.getElementById('context-full-view');
+  const contextFullBack = document.getElementById('context-full-back');
+  const contextFullPhase = document.getElementById('context-full-phase');
+  const contextFullTitle = document.getElementById('context-full-title');
+  const contextFullWrap = document.getElementById('context-full-wrap');
+  const contextFullCopy = document.getElementById('context-full-copy');
+  const contextFullSearch = document.getElementById('context-full-search');
+  const contextFullSearchStatus = document.getElementById('context-full-search-status');
+  const contextFullCompleteness = document.getElementById('context-full-completeness');
+  const contextFullChars = document.getElementById('context-full-chars');
+  const contextFullTokens = document.getElementById('context-full-tokens');
+  const contextFullContent = document.getElementById('context-full-content');
+  const contextFullSource = document.getElementById('context-full-source');
+  const contextFullTreatment = document.getElementById('context-full-treatment');
 
   const menus = {
     plus: document.getElementById('plus-menu'),
@@ -82,7 +100,11 @@
     lastRunSnapshot: null,
     contextSnapshot: null,
     activeContextSlot: null,
-    contextDetailReturnFocus: null
+    contextDetailReturnFocus: null,
+    fullContextSlot: null,
+    fullViewReturnFocus: null,
+    fullContentWrap: true,
+    copyStatusTimer: null
   };
 
   const attachmentCatalog = {
@@ -116,7 +138,26 @@
       reason: 'Preserve turn continuity',
       budget: '~2,960 tokens',
       treatment: 'Active variants only · up to L3',
-      content: 'You: Review the current Chat Studio composer…\nAssistant: I mapped the current controls before changing the shell…\nYou: Keep all the real controls…\nAssistant: The controls stay; their hierarchy changes…\nYou: The motion in the reference is important…\n[…13 earlier active messages]'
+      content: [
+        'You: Review the current Chat Studio composer. I want it to stay quiet while I read, then open naturally when I reach the latest turn.',
+        'Assistant: I mapped the current controls before changing the shell. The useful capabilities are already present; the missing piece is a clear interaction rhythm.',
+        'You: Keep all the real controls. I do not want a simplified demo that hides what the product can do.',
+        'Assistant: The controls stay; their hierarchy changes. Primary intent remains in the text field. Turn context, identity, and routing become compact status chips.',
+        'You: The motion in the reference is important. It feels like one object changing state, not two components replacing each other.',
+        'Assistant: Scroll upward and the composer becomes a compact reading pill. Return to the latest turn and the same shell expands with one shared easing curve.',
+        'You: The bottom of the input still has too much empty space. It should feel compact and intentional.',
+        'Assistant: The idle composer is now 100px high, grows only with actual text or attachments, and returns to its base height when cleared.',
+        'You: I also need to know the context for the next message, including history, summary, working context, and user profile.',
+        'Assistant: The composer now exposes the ordered context stack and distinguishes what will be included, what is frozen at send, and what was actually used.',
+        'You: Every context item should be inspectable so I can see the concrete content.',
+        'Assistant: Each layer opens into one inline inspector with its source, inclusion reason, token budget, treatment, and serialized content preview.',
+        'You: Some content previews will be much longer. How should those behave?',
+        'Assistant: Keep a short inline preview, disclose the visible range, and move the exact payload into a full-width reader with search, copy, and wrapping controls.',
+        'System event: Active variant 2 replaced an earlier retry. Only the active variant remains in the history layer.',
+        'System event: Context budget fitting retained required layers and compressed optional activity signals.',
+        'Assistant note: Parent-branch history, inactive variants, and unretrieved web results remain explicitly excluded.',
+        'Current state: The next-message composer is ready for an implementation-oriented design review.'
+      ].join('\n\n')
     },
     working: {
       title: 'Working context',
@@ -304,7 +345,86 @@
     if (phase === 'frozen') detail.treatment = `Frozen at send · ${detail.treatment}`;
     if (phase === 'actual' && slot !== 'activity' && slot !== 'resources') detail.treatment = `Recorded receipt · ${detail.treatment}`;
 
+    detail.completeness = 'Complete layer';
+    if (slot === 'analyses') detail.completeness = 'Omitted · empty';
+    if (slot === 'activity' && phase === 'actual') detail.completeness = 'Compressed at L1';
+    if (slot === 'resources' && phase === 'actual') detail.completeness = `Filtered · ${Math.min(4, snapshot.sources)} / ${snapshot.sources}`;
+
     return detail;
+  }
+
+  function renderContextFullContent(content) {
+    const query = contextFullSearch.value.trim();
+    contextFullContent.replaceChildren();
+    if (!query) {
+      contextFullContent.textContent = content;
+      contextFullSearchStatus.textContent = 'Search exact content';
+      return;
+    }
+
+    const lowerContent = content.toLowerCase();
+    const lowerQuery = query.toLowerCase();
+    let cursor = 0;
+    let matchCount = 0;
+    while (cursor < content.length) {
+      const matchIndex = lowerContent.indexOf(lowerQuery, cursor);
+      if (matchIndex === -1) {
+        contextFullContent.append(document.createTextNode(content.slice(cursor)));
+        break;
+      }
+      if (matchIndex > cursor) contextFullContent.append(document.createTextNode(content.slice(cursor, matchIndex)));
+      const mark = document.createElement('mark');
+      mark.textContent = content.slice(matchIndex, matchIndex + query.length);
+      contextFullContent.append(mark);
+      matchCount += 1;
+      cursor = matchIndex + query.length;
+    }
+    contextFullSearchStatus.textContent = matchCount === 1 ? '1 match' : `${matchCount} matches`;
+  }
+
+  function refreshContextFullViewer() {
+    if (!state.fullContextSlot || contextFullView.hidden) return;
+    const detail = getContextSlotDetail(state.fullContextSlot);
+    const phaseLabels = {
+      preview: 'Will include',
+      frozen: 'Frozen snapshot',
+      actual: 'Actually used'
+    };
+    contextFullPhase.textContent = phaseLabels[state.contextViewMode];
+    contextFullTitle.textContent = detail.title;
+    contextFullCompleteness.textContent = detail.completeness;
+    contextFullChars.textContent = `${detail.content.length.toLocaleString()} characters`;
+    contextFullTokens.textContent = `~${Math.max(1, Math.ceil(detail.content.length / 4)).toLocaleString()} tokens`;
+    contextFullSource.textContent = detail.source;
+    contextFullTreatment.textContent = detail.treatment;
+    contextFullContent.classList.toggle('is-nowrap', !state.fullContentWrap);
+    contextFullWrap.classList.toggle('is-active', state.fullContentWrap);
+    contextFullWrap.setAttribute('aria-pressed', String(state.fullContentWrap));
+    renderContextFullContent(detail.content);
+  }
+
+  function openContextFullViewer() {
+    if (!state.activeContextSlot) return;
+    state.fullContextSlot = state.activeContextSlot;
+    state.fullViewReturnFocus = contextDetailOpenFull;
+    contextFullSearch.value = '';
+    menus.context.classList.add('is-full-view');
+    contextFullView.hidden = false;
+    refreshContextFullViewer();
+    window.setTimeout(() => contextFullSearch.focus({ preventScroll: true }), 0);
+  }
+
+  function closeContextFullViewer(restoreFocus = false) {
+    if (contextFullView.hidden) return;
+    const returnFocus = state.fullViewReturnFocus;
+    menus.context.classList.remove('is-full-view');
+    contextFullView.hidden = true;
+    contextFullSearch.value = '';
+    state.fullContextSlot = null;
+    state.fullViewReturnFocus = null;
+    if (restoreFocus && returnFocus) {
+      window.setTimeout(() => returnFocus.focus({ preventScroll: true }), 0);
+    }
   }
 
   function refreshContextInspector() {
@@ -322,11 +442,21 @@
     contextDetailReason.textContent = detail.reason;
     contextDetailBudget.textContent = detail.budget;
     contextDetailTreatment.textContent = detail.treatment;
-    contextDetailContent.textContent = detail.content;
+    const hasLongContent = detail.content.length > CONTEXT_PREVIEW_LIMIT;
+    const previewContent = hasLongContent ? detail.content.slice(0, CONTEXT_PREVIEW_LIMIT).trimEnd() : detail.content;
+    contextInspector.classList.toggle('has-long-content', hasLongContent);
+    contextDetailCompleteness.textContent = hasLongContent ? 'Preview truncated' : detail.completeness;
+    contextDetailContent.textContent = previewContent;
+    contextDetailRange.textContent = hasLongContent
+      ? `Showing ${previewContent.length.toLocaleString()} of ${detail.content.length.toLocaleString()} characters`
+      : `${detail.content.length.toLocaleString()} characters · complete`;
+    contextDetailOpenFull.hidden = !hasLongContent;
+    refreshContextFullViewer();
   }
 
   function closeContextInspector(restoreFocus = false) {
     const returnFocus = state.contextDetailReturnFocus;
+    closeContextFullViewer();
     if (returnFocus) {
       returnFocus.setAttribute('aria-expanded', 'false');
       returnFocus.classList.remove('is-inspected');
@@ -742,6 +872,38 @@
     closeContextInspector(true);
   });
 
+  contextDetailOpenFull.addEventListener('click', (event) => {
+    event.stopPropagation();
+    openContextFullViewer();
+  });
+
+  contextFullBack.addEventListener('click', () => closeContextFullViewer(true));
+
+  contextFullSearch.addEventListener('input', () => {
+    if (!state.fullContextSlot) return;
+    renderContextFullContent(getContextSlotDetail(state.fullContextSlot).content);
+  });
+
+  contextFullWrap.addEventListener('click', () => {
+    state.fullContentWrap = !state.fullContentWrap;
+    refreshContextFullViewer();
+  });
+
+  contextFullCopy.addEventListener('click', async () => {
+    if (!state.fullContextSlot) return;
+    const copyLabel = contextFullCopy.querySelector('span');
+    window.clearTimeout(state.copyStatusTimer);
+    try {
+      await navigator.clipboard.writeText(getContextSlotDetail(state.fullContextSlot).content);
+      copyLabel.textContent = 'Copied';
+    } catch {
+      copyLabel.textContent = 'Copy unavailable';
+    }
+    state.copyStatusTimer = window.setTimeout(() => {
+      copyLabel.textContent = 'Copy exact';
+    }, 1600);
+  });
+
   document.querySelectorAll('[data-suggestion]').forEach((button) => {
     button.addEventListener('click', () => {
       input.value = button.dataset.suggestion;
@@ -834,6 +996,11 @@
   });
 
   document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !contextFullView.hidden) {
+      event.preventDefault();
+      closeContextFullViewer(true);
+      return;
+    }
     if (event.key === 'Escape' && state.activeContextSlot) {
       event.preventDefault();
       closeContextInspector(true);

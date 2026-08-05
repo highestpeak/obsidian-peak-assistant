@@ -16,6 +16,9 @@ into Chat Studio semantics:
   completed assistant message;
 - every stack layer opens into one inline inspector showing its concrete content,
   source, inclusion reason, budget, and compression or omission treatment;
+- long layers show an explicit inline range, then open into a full-width exact-
+  content reader with search, copy, wrapping, character count, token estimate,
+  and completeness status;
 - the context view mirrors `docs/11-feature-chat-context.html` and the current
   `ChatProfile` order: required, optional, compressed, empty, and explicitly
   excluded inputs are shown separately;
@@ -38,6 +41,11 @@ Click any numbered layer to inspect it. Only one layer stays open at a time.
 Arrow keys move through the stack, Enter or Space opens the focused layer, and
 Escape closes the layer before it closes the whole Context popover. Empty layers
 remain inspectable so the omission reason is explicit.
+
+The inline inspector never becomes an unbounded nested scroller. Content over the
+preview threshold shows `Showing N of M characters` and an **Open full content**
+action. The full reader temporarily replaces the stack and exclusions with one
+primary scroll region; Back or Escape returns to the same expanded stack item.
 
 Static review captures are included for the expanded, context-evidence, compact,
 Add-menu, running, and narrow-window states. The live HTML is the design source;
