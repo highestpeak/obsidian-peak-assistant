@@ -10,13 +10,15 @@
  * this composition layer only supplies the live index readers.
  */
 
-import { MarkdownView, Notice, TFile } from 'obsidian';
+import { MarkdownView, Notice, requestUrl, TFile } from 'obsidian';
 import type { AppContext } from '@/app/context/AppContext';
 import type {
 	AtlasGraphData,
+	AtlasExternalLinkPreview,
 	AtlasImageInfo,
 	AtlasCopilotSuggestion,
 	AtlasCopilotSuggestionSnapshot,
+	AtlasQuickActionSnapshot,
 	FileAtlasHostPort,
 	OpenDocMeta,
 } from '@/ui/view/file-atlas/FileAtlasHostPort';
@@ -26,8 +28,12 @@ import { DOCUMENT_COMPOSER_VIEW_TYPE } from '@/app/composer/viewType';
 import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
 import { buildFileAtlasNeighborhood } from './buildFileAtlasNeighborhood';
 import { composerTargetBlockId } from '@/core/composer';
+import type { ComposerCapabilityId } from '@/core/composer';
+import { assembleComposerContextSnapshot } from '@/service/composer/capabilities/contextAssembler';
 import { NativeMarkdownIntelligenceModal } from '@/app/composer/NativeMarkdownIntelligenceModal';
 import { virtualHubPath } from '@/service/hub/HubRecordStore';
+import { composerBlockForAtlasLocation } from './fileAtlasComposerActions';
+import type { DocumentComposerController } from '@/app/composer/DocumentComposerController';
 
 /** Strip `![[ ]]` / `![]()` wrappers and any `|alias` so we have a bare link target. */
 function cleanImageTarget(raw: string): string {
@@ -40,9 +46,66 @@ function cleanImageTarget(raw: string): string {
 		.trim();
 }
 
+function safeExternalUrl(raw: string, base?: string): URL | null {
+	try {
+		const url = base ? new URL(raw, base) : new URL(raw);
+		if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+		return url;
+	} catch {
+		return null;
+	}
+}
+
+function metadataContent(doc: Document, selectors: string[]): string | undefined {
+	for (const selector of selectors) {
+		const value = doc.querySelector<HTMLMetaElement>(selector)?.content?.trim();
+		if (value) return value;
+	}
+	return undefined;
+}
+
+function externalLinkPreview(
+	url: URL,
+	html: string,
+	ownerDocument: Document,
+): AtlasExternalLinkPreview {
+	const DOMParserCtor = ownerDocument.defaultView?.DOMParser ?? DOMParser;
+	const doc = new DOMParserCtor().parseFromString(html, 'text/html');
+	const title = metadataContent(doc, [
+		'meta[property="og:title"]',
+		'meta[name="twitter:title"]',
+	]) ?? doc.querySelector('title')?.textContent?.trim() ?? url.hostname;
+	const description = metadataContent(doc, [
+		'meta[property="og:description"]',
+		'meta[name="twitter:description"]',
+		'meta[name="description"]',
+	]);
+	const siteName = metadataContent(doc, ['meta[property="og:site_name"]']);
+	const rawImage = metadataContent(doc, [
+		'meta[property="og:image"]',
+		'meta[name="twitter:image"]',
+		'meta[name="twitter:image:src"]',
+	]);
+	const rawFavicon = doc.querySelector<HTMLLinkElement>(
+		'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]',
+	)?.href;
+	const imageUrl = rawImage ? safeExternalUrl(rawImage, url.href)?.href : undefined;
+	const faviconUrl = safeExternalUrl(rawFavicon ?? '/favicon.ico', url.href)?.href;
+	return {
+		url: url.href,
+		domain: url.hostname.startsWith('www.') ? url.hostname.slice(4) : url.hostname,
+		title,
+		...(description ? { description } : {}),
+		...(siteName ? { siteName } : {}),
+		...(imageUrl ? { imageUrl } : {}),
+		...(faviconUrl ? { faviconUrl } : {}),
+	};
+}
+
 export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort {
 	const app = appContext.app;
 	const sessionViews = new Map<string, { lastViewedAt: number; viewCount: number }>();
+	const externalPreviewCache = new Map<string, AtlasExternalLinkPreview | null>();
 	let lastActivePath: string | null = null;
 
 	const sourcePathForView = (view: unknown): string | null => {
@@ -109,6 +172,29 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 		if (dest) return dest;
 		const byPath = app.vault.getAbstractFileByPath(clean);
 		return byPath instanceof TFile ? byPath : null;
+	};
+
+	const withComposerBlock = async <T>(
+		path: string,
+		location: DocumentSourceLocation,
+		project: (
+			controller: DocumentComposerController,
+			blockId: string,
+		) => T | Promise<T>,
+	): Promise<T | null> => {
+		const owner = appContext.runtimeRegistry.tryGetDocumentComposerRuntime();
+		if (!owner) return null;
+		const controller = owner.createController(`file-atlas-action-${crypto.randomUUID()}`);
+		try {
+			controller.start(path);
+			await controller.settled();
+			const snapshot = controller.getState().snapshot;
+			const block = snapshot ? composerBlockForAtlasLocation(snapshot, location) : null;
+			if (!block) return null;
+			return await project(controller, block.blockId);
+		} finally {
+			controller.stop();
+		}
 	};
 
 	return {
@@ -351,6 +437,96 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 			} catch {
 				new Notice('Copying images to the clipboard is not supported here.');
 			}
+		},
+
+		async loadExternalLinkPreview(rawUrl: string): Promise<AtlasExternalLinkPreview | null> {
+			const url = safeExternalUrl(rawUrl);
+			if (!url) return null;
+			if (externalPreviewCache.has(url.href)) return externalPreviewCache.get(url.href) ?? null;
+			try {
+				const response = await requestUrl({
+					url: url.href,
+					method: 'GET',
+					headers: {
+						Accept: 'text/html,application/xhtml+xml',
+						'Cache-Control': 'no-store',
+					},
+					throw: false,
+				});
+				if (response.status < 200 || response.status >= 400) {
+					externalPreviewCache.set(url.href, null);
+					return null;
+				}
+				const preview = externalLinkPreview(url, response.text, app.workspace.containerEl.ownerDocument);
+				externalPreviewCache.set(url.href, preview);
+				return preview;
+			} catch {
+				externalPreviewCache.set(url.href, null);
+				return null;
+			}
+		},
+
+		async loadQuickActions(
+			path: string,
+			location: DocumentSourceLocation,
+		): Promise<AtlasQuickActionSnapshot> {
+			const actions = await withComposerBlock(path, location, (controller, blockId) => {
+				const runtime = controller.getRuntime();
+				if (!runtime?.projection) return null;
+				const snapshot = assembleComposerContextSnapshot(
+					runtime.session,
+					{ kind: 'block', blockId },
+					{ nearbyChars: 400 },
+				);
+				return runtime.projection.actionsFor(snapshot, 'block-row')
+					.filter((action) => action.group === 'ai')
+					.map((action) => ({
+						capabilityId: action.capabilityId,
+						title: action.title,
+						...(action.description ? { description: action.description } : {}),
+						...(action.lucideIcon ? { lucideIcon: action.lucideIcon } : {}),
+						...(action.disabledReason ? { disabledReason: action.disabledReason } : {}),
+					}));
+			});
+			return actions ? { status: 'ready', actions } : { status: 'unavailable', actions: [] };
+		},
+
+		async runQuickAction(
+			path: string,
+			location: DocumentSourceLocation,
+			capabilityId: ComposerCapabilityId,
+		): Promise<boolean> {
+			const owner = appContext.runtimeRegistry.tryGetDocumentComposerRuntime();
+			const router = owner?.navigation;
+			if (!owner || !router) return false;
+			const leaf = await router.open({
+				filePath: path,
+				view: 'composer',
+				disposition: 'reuse-existing',
+				reason: 'file-atlas',
+			});
+			if (!leaf) return false;
+			await router.revealLocation({
+				filePath: path,
+				location,
+				disposition: 'reuse-existing',
+				reason: 'file-atlas',
+			});
+			const invoked = await withComposerBlock(path, location, (controller, blockId) => {
+				const runtime = controller.getRuntime();
+				if (!runtime?.projection) return false;
+				const snapshot = assembleComposerContextSnapshot(
+					runtime.session,
+					{ kind: 'block', blockId },
+					{ nearbyChars: 400 },
+				);
+				const action = runtime.projection.actionsFor(snapshot, 'block-row')
+					.find((candidate) => candidate.capabilityId === capabilityId);
+				if (!action || action.disabledReason) return false;
+				runtime.projection.invoke(capabilityId, snapshot);
+				return true;
+			});
+			return invoked ?? false;
 		},
 
 		async loadNeighborhood(

@@ -21,7 +21,15 @@ import {
 	writeFileRailPreference,
 	type FileRailPreference,
 } from './fileRailPreference';
+import {
+	applyFileAtlasPresetOverrides,
+	readFileAtlasPresetOverrides,
+	writeFileAtlasPresetOverrides,
+	type FileAtlasPresetOverrides,
+} from './fileAtlasPresetPreference';
 import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
+import type { ComposerCapabilityId } from '@/core/composer';
+import type { RawBlockKind } from '@/core/document/atlas/types';
 
 interface FileAtlasHostProps {
 	host: FileAtlasHostPort;
@@ -29,6 +37,11 @@ interface FileAtlasHostProps {
 	initialContent: string;
 	ownerDocument?: Document | null;
 	onOpenBlock: (path: string, location: DocumentSourceLocation) => void;
+	onRunQuickAction?: (
+		path: string,
+		location: DocumentSourceLocation,
+		capabilityId: ComposerCapabilityId,
+	) => void;
 }
 
 export const FileAtlasHost: React.FC<FileAtlasHostProps> = ({
@@ -37,8 +50,14 @@ export const FileAtlasHost: React.FC<FileAtlasHostProps> = ({
 	initialContent,
 	ownerDocument,
 	onOpenBlock,
+	onRunQuickAction,
 }) => {
-	const [config, setConfig] = useState<FileAtlasConfig>(DEFAULT_FILE_ATLAS_CONFIG);
+	const [baseConfig, setBaseConfig] = useState<FileAtlasConfig>(DEFAULT_FILE_ATLAS_CONFIG);
+	const [presetOverrides, setPresetOverrides] = useState<FileAtlasPresetOverrides>({});
+	const config = useMemo(
+		() => applyFileAtlasPresetOverrides(baseConfig, presetOverrides),
+		[baseConfig, presetOverrides],
+	);
 	const [preference, setPreference] = useState<FileRailPreference>(
 		() => defaultFileRailPreference(DEFAULT_FILE_ATLAS_CONFIG.rail),
 	);
@@ -53,7 +72,8 @@ export const FileAtlasHost: React.FC<FileAtlasHostProps> = ({
 		let alive = true;
 		void loadFileAtlasConfig().then((next) => {
 			if (!alive) return;
-			setConfig(next);
+			setBaseConfig(next);
+			setPresetOverrides(readFileAtlasPresetOverrides(next, ownerDocument));
 			setPreference(readFileRailPreference(next.rail, ownerDocument));
 		});
 		return () => {
@@ -187,6 +207,21 @@ export const FileAtlasHost: React.FC<FileAtlasHostProps> = ({
 		writeFileRailPreference(next, config.rail, ownerDocument);
 	};
 
+	const onSavePreset = (presetId: string, kinds: RawBlockKind[]): void => {
+		if (presetId === 'all') return;
+		const next = { ...presetOverrides, [presetId]: [...kinds] };
+		setPresetOverrides(next);
+		writeFileAtlasPresetOverrides(next, baseConfig, ownerDocument);
+	};
+
+	const onResetPreset = (presetId: string): RawBlockKind[] => {
+		const next = { ...presetOverrides };
+		delete next[presetId];
+		setPresetOverrides(next);
+		writeFileAtlasPresetOverrides(next, baseConfig, ownerDocument);
+		return baseConfig.presets.find((preset) => preset.id === presetId)?.kinds ?? [];
+	};
+
 	if (!activePath) {
 		return (
 			<div className="pkfa-empty-state">Open a note to use File Atlas.</div>
@@ -206,6 +241,10 @@ export const FileAtlasHost: React.FC<FileAtlasHostProps> = ({
 			content={content}
 			host={host}
 			onOpenBlock={onOpenBlock}
+			onRunQuickAction={onRunQuickAction}
+			presetHasOverride={(presetId) => Boolean(presetOverrides[presetId])}
+			onSavePreset={onSavePreset}
+			onResetPreset={onResetPreset}
 			onSelectDoc={onSelectDoc}
 			onCloseDoc={onCloseDoc}
 			onSortModeChange={onSortModeChange}

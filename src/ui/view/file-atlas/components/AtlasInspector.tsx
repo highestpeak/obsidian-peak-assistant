@@ -1,32 +1,28 @@
 /**
  * File Atlas — Inspector (Phase 1).
  *
- * Right pane detail for the selected node. Every preview is copyable (hover
- * toolbar → Copy). Renderable blocks (mermaid / math / tables / code / prose)
- * render for real through the shared StreamdownIsolated renderer — no raw source
- * dumps, no vendored libs. Images preview inline with dimensions / format / size
- * and a Copy-image action. The pane also acts as a stable navigation dashboard:
- * one document-level Composer finding snapshot is projected into selection,
- * section, and document groups, while deterministic parent/nearby/child/resource
- * context keeps every row navigable back into the Atlas tree. Paragraphs get a
- * compact term-frequency card; technical provenance stays collapsed.
+ * Right pane detail for the selected node. Each selection has one canonical
+ * preview, followed only by actions that operate on that block and compact
+ * review evidence when it exists. Composer quick actions reuse the Composer
+ * runtime; generic element counts and duplicated identity/context rows stay out
+ * of this surface.
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
 	BarChart3,
 	Check,
-	ChevronRight,
 	Copy,
 	Eye,
-	FileText,
+	ExternalLink,
+	Globe2,
 	Hash,
 	Link as LinkIcon,
-	ListTree,
 	Plus,
-	Send,
 	Sparkles,
+	WandSparkles,
 } from 'lucide-react';
+import type { ComposerCapabilityId } from '@/core/composer';
 import type { DocumentBlock } from '@/core/document/atlas/types';
 import { RawBlockKind } from '@/core/document/atlas/types';
 import { Button } from '@/ui/component/shared-ui/button';
@@ -35,7 +31,9 @@ import type { FileAtlasConfig } from '../config/fileAtlasConfig';
 import type {
 	AtlasCopilotSuggestion,
 	AtlasCopilotSuggestionSnapshot,
+	AtlasExternalLinkPreview,
 	AtlasImageInfo,
+	AtlasQuickAction,
 	FileAtlasHostPort,
 } from '../FileAtlasHostPort';
 import { iconForKind } from '../config/kindIcons';
@@ -49,8 +47,6 @@ import { displayIdentity, inspectorCardPolicy } from '../atlasDisplayModel';
 import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
 import { AIGraphContextArtifacts } from '@/ui/component/ai-graph';
 import {
-	atlasBlockForSuggestion,
-	atlasScopeKind,
 	buildAtlasElementContext,
 	groupAtlasCopilotSuggestions,
 	type AtlasElementContext,
@@ -66,7 +62,7 @@ interface AtlasInspectorProps {
 	onReveal: (block: DocumentBlock) => void;
 	onAddToTray: (block: DocumentBlock) => void;
 	onCopyLink: (block: DocumentBlock) => void;
-	onSelect: (block: DocumentBlock) => void;
+	onRunQuickAction: (block: DocumentBlock, capabilityId: ComposerCapabilityId) => void;
 }
 
 /**
@@ -91,16 +87,6 @@ const RENDERED_KINDS = new Set<string>([
 	RawBlockKind.Code,
 ]);
 
-const IDENTITY_TITLE_KINDS = new Set<string>([
-	RawBlockKind.Frontmatter,
-	RawBlockKind.Heading,
-	RawBlockKind.Image,
-	RawBlockKind.Embed,
-	RawBlockKind.Attachment,
-	RawBlockKind.VaultLink,
-	RawBlockKind.ExternalLink,
-]);
-
 export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 	block,
 	blocks,
@@ -111,7 +97,7 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 	onReveal,
 	onAddToTray,
 	onCopyLink,
-	onSelect,
+	onRunQuickAction,
 }) => {
 	const inspectorRef = useRef<HTMLDivElement>(null);
 	const elementContext = useMemo(
@@ -133,18 +119,9 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 		);
 	}
 
-	const kindCfg = config.kinds[block.kind];
 	const Icon = iconForKind(block.kind);
-	const identity = displayIdentity(block, config);
 	const cardPolicy = inspectorCardPolicy(block);
-	const label =
-		block.kind === RawBlockKind.Heading
-			? `Heading H${block.level}`
-			: block.kind === RawBlockKind.Frontmatter
-				? config.strings.frontmatterTitle
-				: kindCfg?.label ?? block.kind;
 	const keywordText = analysisText(block);
-	const scopeLabel = scopeActionLabel(block, config);
 
 	return (
 		<div ref={inspectorRef} className="pkfa-inspector-surface">
@@ -165,24 +142,9 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 						{config.strings.reveal}
 					</Button>
 				</div>
-				{elementContext && (
-					<ScopeBreadcrumb
-						context={elementContext}
-						config={config}
-						onSelect={onSelect}
-					/>
-				)}
 			</section>
 			<section className="pkfa-inspector-primary">
-				<span className="pkfa-inspector-object-kind">{label}</span>
-				{IDENTITY_TITLE_KINDS.has(block.kind) && (
-					<div className="pkfa-inspector-identity">
-						<span className="pkfa-selected-title">{identity.primary}</span>
-						{identity.secondary && <span className="pkfa-selected-sub">{identity.secondary}</span>}
-					</div>
-				)}
 				<SourcePreview block={block} config={config} host={host} sourcePath={sourcePath} />
-				<span className="pkfa-action-scope">{scopeLabel}</span>
 				<div className="pkfa-inspector-actions" aria-label="Block actions">
 					<Button
 						variant="unstyled"
@@ -197,40 +159,24 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 						<LinkIcon />
 						{config.strings.copyLink}
 					</Button>
-					{host.openCopilot && (
-						<Button
-							variant="unstyled"
-							type="button"
-							className="pkfa-ghost-btn"
-							onClick={() => host.openCopilot?.(sourcePath, {
-								sourceFrom: block.anchor.sourceFrom,
-								sourceTo: block.anchor.sourceTo,
-							})}
-						>
-							<Send />
-							{config.strings.sendToCopilot}
-						</Button>
-					)}
 				</div>
 			</section>
 
-			<AtlasCopilotSuggestions
+			<AtlasQuickActions
 				block={block}
-				blocks={blocks}
+				config={config}
+				host={host}
+				sourcePath={sourcePath}
+				onRun={onRunQuickAction}
+			/>
+
+			<AtlasReviewSuggestions
+				block={block}
 				config={config}
 				context={elementContext}
 				host={host}
-				onSelect={onSelect}
 				sourcePath={sourcePath}
 			/>
-
-			{elementContext && (
-				<ElementContextSection
-					context={elementContext}
-					config={config}
-					onSelect={onSelect}
-				/>
-			)}
 			{cardPolicy.keywords && <KeywordSection text={keywordText} config={config} />}
 			{cardPolicy.statistics && <FactsSection block={block} config={config} />}
 			<AIGraphContextArtifacts
@@ -239,20 +185,84 @@ export const AtlasInspector: React.FC<AtlasInspectorProps> = ({
 				limit={1}
 				className="pkfa-inspector-section pkfa-ai-graph-summary"
 			/>
-			<TechnicalDetails block={block} config={config} />
 		</div>
 	);
 };
 
-const AtlasCopilotSuggestions: React.FC<{
+const AtlasQuickActions: React.FC<{
 	block: DocumentBlock;
-	blocks: DocumentBlock[];
+	config: FileAtlasConfig;
+	host: FileAtlasHostPort;
+	sourcePath: string;
+	onRun: (block: DocumentBlock, capabilityId: ComposerCapabilityId) => void;
+}> = ({ block, config, host, sourcePath, onRun }) => {
+	const [snapshot, setSnapshot] = useState<{
+		status: 'loading' | 'ready' | 'unavailable';
+		actions: AtlasQuickAction[];
+	}>(() => ({
+		status: host.loadQuickActions ? 'loading' : 'unavailable',
+		actions: [],
+	}));
+	useEffect(() => {
+		let active = true;
+		if (!host.loadQuickActions) {
+			setSnapshot({ status: 'unavailable', actions: [] });
+			return () => {
+				active = false;
+			};
+		}
+		setSnapshot({ status: 'loading', actions: [] });
+		void host.loadQuickActions(sourcePath, {
+			line: Math.max(0, block.anchor.lineStart - 1),
+			from: block.anchor.sourceFrom,
+			to: block.anchor.sourceTo,
+			text: block.source,
+		}).then((next) => {
+			if (active) setSnapshot(next);
+		}).catch(() => {
+			if (active) setSnapshot({ status: 'unavailable', actions: [] });
+		});
+		return () => {
+			active = false;
+		};
+	}, [block, host, sourcePath]);
+
+	if (snapshot.status !== 'ready' || snapshot.actions.length === 0) return null;
+	return (
+		<section className="pkfa-inspector-section pkfa-quick-actions">
+			<div className="pkfa-section-heading">
+				<span className="pkfa-selected-kind">
+					<WandSparkles />
+					<span>{config.strings.quickActionsTitle}</span>
+				</span>
+			</div>
+			<div className="pkfa-quick-action-list">
+				{snapshot.actions.slice(0, 5).map((action) => (
+					<Button
+						key={action.capabilityId}
+						variant="unstyled"
+						type="button"
+						className="pkfa-quick-action"
+						disabled={Boolean(action.disabledReason)}
+						title={action.disabledReason ?? action.description ?? action.title}
+						onClick={() => onRun(block, action.capabilityId)}
+					>
+						<Sparkles aria-hidden />
+						<span>{action.title}</span>
+					</Button>
+				))}
+			</div>
+		</section>
+	);
+};
+
+const AtlasReviewSuggestions: React.FC<{
+	block: DocumentBlock;
 	config: FileAtlasConfig;
 	context: AtlasElementContext | null;
 	host: FileAtlasHostPort;
-	onSelect: (block: DocumentBlock) => void;
 	sourcePath: string;
-}> = ({ block, blocks, config, context, host, onSelect, sourcePath }) => {
+}> = ({ block, config, context, host, sourcePath }) => {
 	const [snapshot, setSnapshot] = useState<{
 		status: 'loading' | 'ready' | 'unavailable' | 'error';
 		suggestions: AtlasCopilotSuggestion[];
@@ -288,7 +298,7 @@ const AtlasCopilotSuggestions: React.FC<{
 		() => groupAtlasCopilotSuggestions(snapshot.suggestions, block, context?.section ?? null),
 		[block, context?.section, snapshot.suggestions],
 	);
-	const total = snapshot.suggestions.length;
+	const otherCount = groups.section.length + groups.document.length;
 	const openFinding = (suggestion: AtlasCopilotSuggestion): void => {
 		host.openCopilot?.(sourcePath, {
 			...(suggestion.targetBlockId ? { blockId: suggestion.targetBlockId } : {}),
@@ -298,230 +308,47 @@ const AtlasCopilotSuggestions: React.FC<{
 		});
 	};
 
+	if (snapshot.status !== 'ready') return null;
+	if (groups.selection.length === 0 && otherCount === 0) return null;
 	return (
-		<section className="pkfa-inspector-section pkfa-copilot-suggestions">
+		<section className="pkfa-inspector-section pkfa-review-suggestions">
 			<div className="pkfa-section-heading">
 				<span className="pkfa-selected-kind">
 					<Sparkles />
-					<span>{config.strings.copilotNavigatorTitle}</span>
+					<span>{config.strings.reviewSuggestionsTitle}</span>
 				</span>
-				{snapshot.status === 'ready' && <span className="pkfa-section-count">{total}</span>}
+				{groups.selection.length > 0 && (
+					<span className="pkfa-section-count">{groups.selection.length}</span>
+				)}
 			</div>
-			<span className="pkfa-selected-sub">{config.strings.copilotNavigatorHint}</span>
-			{snapshot.status === 'loading' && (
-				<div className="pkfa-copilot-loading" aria-busy="true">
-					<span>{config.strings.copilotSuggestionsLoading}</span>
-					<i /><i /><i />
-				</div>
-			)}
-			{snapshot.status === 'unavailable' && (
-				<span className="pkfa-copilot-state">{config.strings.copilotUnavailable}</span>
-			)}
-			{snapshot.status === 'error' && (
-				<span className="pkfa-copilot-state is-error">{config.strings.copilotLoadFailed}</span>
-			)}
-			{snapshot.status === 'ready' && total === 0 && (
-				<span className="pkfa-copilot-state">{config.strings.copilotDocumentEmpty}</span>
-			)}
-			{snapshot.status === 'ready' && total > 0 && groups.selection.length === 0 && (
-				<span className="pkfa-copilot-state">{config.strings.copilotSelectionEmpty}</span>
-			)}
-			{snapshot.status === 'ready' && (
-				<>
-					<CopilotFindingGroup
-						label={config.strings.copilotSelectionGroup}
-						suggestions={groups.selection}
-						blocks={blocks}
-						config={config}
-						onOpen={openFinding}
-						onSelect={onSelect}
-					/>
-					<CopilotFindingGroup
-						label={config.strings.copilotSectionGroup}
-						suggestions={groups.section}
-						blocks={blocks}
-						config={config}
-						onOpen={openFinding}
-						onSelect={onSelect}
-					/>
-					<CopilotFindingGroup
-						label={config.strings.copilotDocumentGroup}
-						suggestions={groups.document}
-						blocks={blocks}
-						config={config}
-						onOpen={openFinding}
-						onSelect={onSelect}
-					/>
-				</>
-			)}
-			{host.openCopilot && (
+			{groups.selection.slice(0, 3).map((suggestion) => (
+				<Button
+					key={suggestion.findingId}
+					variant="unstyled"
+					type="button"
+					className={`pkfa-review-suggestion${suggestion.state === 'stale' ? ' is-stale' : ''}`}
+					onClick={() => openFinding(suggestion)}
+				>
+					<span>
+						<strong>{suggestion.title}</strong>
+						{suggestion.summary && <small>{suggestion.summary}</small>}
+					</span>
+					<ExternalLink aria-hidden />
+				</Button>
+			))}
+			{otherCount > 0 && host.openCopilot && (
 				<Button
 					variant="unstyled"
 					type="button"
-					className="pkfa-copilot-discuss"
-					onClick={() => host.openCopilot?.(sourcePath, {
-						sourceFrom: block.anchor.sourceFrom,
-						sourceTo: block.anchor.sourceTo,
-					})}
+					className="pkfa-review-document-link"
+					onClick={() => host.openCopilot?.(sourcePath)}
 				>
-					<Send />
-					{config.strings.copilotOpen}
+					{config.strings.reviewDocumentSuggestions} · {otherCount}
 				</Button>
 			)}
 		</section>
 	);
 };
-
-const ScopeBreadcrumb: React.FC<{
-	context: AtlasElementContext;
-	config: FileAtlasConfig;
-	onSelect: (block: DocumentBlock) => void;
-}> = ({ context, config, onSelect }) => (
-	<nav className="pkfa-scope-breadcrumb" aria-label={config.strings.inspectorCurrentScope}>
-		{context.breadcrumb.map((candidate, index) => {
-			const current = index === context.breadcrumb.length - 1;
-			const label = displayIdentity(candidate, config).primary;
-			return (
-				<React.Fragment key={candidate.id}>
-					{index > 0 && <ChevronRight aria-hidden />}
-					{current ? (
-						<span title={label}>{label}</span>
-					) : (
-						<Button
-							variant="unstyled"
-							type="button"
-							title={label}
-							onClick={() => onSelect(candidate)}
-						>
-							{label}
-						</Button>
-					)}
-				</React.Fragment>
-			);
-		})}
-	</nav>
-);
-
-const CopilotFindingGroup: React.FC<{
-	label: string;
-	suggestions: AtlasCopilotSuggestion[];
-	blocks: DocumentBlock[];
-	config: FileAtlasConfig;
-	onOpen: (suggestion: AtlasCopilotSuggestion) => void;
-	onSelect: (block: DocumentBlock) => void;
-}> = ({ label, suggestions, blocks, config, onOpen, onSelect }) => {
-	if (suggestions.length === 0) return null;
-	return (
-		<div className="pkfa-copilot-group">
-			<div className="pkfa-copilot-group-heading">
-				<span>{label}</span>
-				<small>{suggestions.length}</small>
-			</div>
-			{suggestions.slice(0, 3).map((suggestion, index) => {
-				const target = atlasBlockForSuggestion(blocks, suggestion);
-				const targetLabel = target
-					? displayIdentity(target, config).primary
-					: suggestion.targetLabel;
-				return (
-					<div
-						key={suggestion.findingId}
-						className={`pkfa-copilot-suggestion${suggestion.state === 'stale' ? ' is-stale' : ''}`}
-					>
-						<span className="pkfa-suggestion-index">{String(index + 1).padStart(2, '0')}</span>
-						<Button
-							variant="unstyled"
-							type="button"
-							className="pkfa-copilot-finding-main"
-							onClick={() => target ? onSelect(target) : onOpen(suggestion)}
-							title={target ? config.strings.copilotNavigate : config.strings.copilotOpen}
-						>
-							<span className="pkfa-suggestion-copy">
-								<strong>{suggestion.title}</strong>
-								{suggestion.summary && <small>{suggestion.summary}</small>}
-								<small>{targetLabel} · {suggestion.evidenceLabel}</small>
-							</span>
-							<ChevronRight aria-hidden />
-						</Button>
-						<Button
-							variant="unstyled"
-							type="button"
-							className="pkfa-copilot-open"
-							onClick={() => onOpen(suggestion)}
-						>
-							{config.strings.copilotOpen}
-						</Button>
-					</div>
-				);
-			})}
-		</div>
-	);
-};
-
-const ElementContextSection: React.FC<{
-	context: AtlasElementContext;
-	config: FileAtlasConfig;
-	onSelect: (block: DocumentBlock) => void;
-}> = ({ context, config, onSelect }) => {
-	const groups: Array<{ label: string; blocks: DocumentBlock[] }> = [
-		{ label: config.strings.contextParent, blocks: context.parent ? [context.parent] : [] },
-		{ label: config.strings.contextNearby, blocks: context.nearby },
-		{ label: config.strings.contextChildren, blocks: context.children },
-		{ label: config.strings.contextResources, blocks: context.resources },
-	].filter((group) => group.blocks.length > 0);
-	return (
-		<section className="pkfa-inspector-section pkfa-element-context">
-			<div className="pkfa-section-heading">
-				<span className="pkfa-selected-kind">
-					<ListTree />
-					<span>{config.strings.elementContextTitle}</span>
-				</span>
-				<span className="pkfa-section-count">
-					{groups.reduce((total, group) => total + group.blocks.length, 0)}
-				</span>
-			</div>
-			{groups.length === 0 && (
-				<span className="pkfa-selected-sub">{config.strings.contextEmpty}</span>
-			)}
-			{groups.map((group) => (
-				<div className="pkfa-context-group" key={group.label}>
-					<span className="pkfa-context-label">{group.label}</span>
-					<div className="pkfa-context-items">
-						{group.blocks.slice(0, 4).map((candidate) => {
-							const identity = displayIdentity(candidate, config);
-							return (
-								<Button
-									key={candidate.id}
-									variant="unstyled"
-									type="button"
-									className="pkfa-context-row"
-									onClick={() => onSelect(candidate)}
-									title={identity.primary}
-								>
-									<span>{identity.primary}</span>
-									<small>{config.kinds[candidate.kind]?.label ?? candidate.kind}</small>
-									<ChevronRight aria-hidden />
-								</Button>
-							);
-						})}
-					</div>
-				</div>
-			))}
-		</section>
-	);
-};
-
-function scopeActionLabel(block: DocumentBlock, config: FileAtlasConfig): string {
-	const scope = atlasScopeKind(block);
-	if (scope === 'section') return config.strings.useScopeSection;
-	if (scope === 'item') return config.strings.useScopeItem;
-	if (scope === 'resource') return config.strings.useScopeResource;
-	return config.strings.useScopeBlock;
-}
-
-function lineRange(block: DocumentBlock): string {
-	const { lineStart, lineEnd } = block.anchor;
-	return lineStart === lineEnd ? String(lineStart) : `${lineStart}–${lineEnd}`;
-}
 
 /** A copy-to-clipboard button with a transient "Copied" state. */
 const CopyButton: React.FC<{
@@ -682,12 +509,96 @@ const ImagePreview: React.FC<{
 					)}
 				</div>
 				<div className="pkfa-preview-image-meta">
+					<span className="pkfa-preview-image-identity" title={identity.primary}>{identity.primary}</span>
 					<span className="pkfa-dim-chip pkfa-mono">{dims ? `${dims.w} × ${dims.h}` : '…'}</span>
 					{info && <span className="pkfa-dim-chip">{info.format}</span>}
 					{info && <span className="pkfa-dim-chip">{humanBytes(info.sizeBytes)}</span>}
 				</div>
 			</div>
 		</CopyablePreview>
+	);
+};
+
+const ExternalLinkPreview: React.FC<{
+	target: string;
+	config: FileAtlasConfig;
+	host: FileAtlasHostPort;
+	sourcePath: string;
+}> = ({ target, config, host, sourcePath }) => {
+	const [preview, setPreview] = useState<AtlasExternalLinkPreview | null>(null);
+	const [ready, setReady] = useState(false);
+	const [imageFailed, setImageFailed] = useState(false);
+	const [faviconFailed, setFaviconFailed] = useState(false);
+	useEffect(() => {
+		let active = true;
+		setPreview(null);
+		setReady(false);
+		setImageFailed(false);
+		setFaviconFailed(false);
+		if (!host.loadExternalLinkPreview) {
+			setReady(true);
+			return () => {
+				active = false;
+			};
+		}
+		void host.loadExternalLinkPreview(target)
+			.then((next) => {
+				if (!active) return;
+				setPreview(next);
+				setReady(true);
+			})
+			.catch(() => {
+				if (active) setReady(true);
+			});
+		return () => {
+			active = false;
+		};
+	}, [host, target]);
+	let domain = target;
+	try {
+		domain = new URL(target).hostname;
+	} catch {
+		// Keep the literal target when it is not a valid absolute URL.
+	}
+	return (
+		<Button
+			variant="unstyled"
+			type="button"
+			className="pkfa-external-preview is-clickable"
+			title={`Open ${target}`}
+			onClick={() => host.openLink(target, sourcePath, true)}
+		>
+			{preview?.imageUrl && !imageFailed && (
+				<img
+					className="pkfa-external-preview-image"
+					src={preview.imageUrl}
+					alt=""
+					loading="lazy"
+					referrerPolicy="no-referrer"
+					onError={() => setImageFailed(true)}
+				/>
+			)}
+			<div className="pkfa-external-preview-body">
+				<span className="pkfa-external-preview-site">
+					{preview?.faviconUrl && !faviconFailed ? (
+						<img
+							src={preview.faviconUrl}
+							alt=""
+							loading="lazy"
+							referrerPolicy="no-referrer"
+							onError={() => setFaviconFailed(true)}
+						/>
+					) : (
+						<Globe2 aria-hidden />
+					)}
+					<span>{preview?.siteName ?? preview?.domain ?? domain}</span>
+				</span>
+				<strong>{preview?.title ?? (ready ? config.strings.externalPreviewUnavailable : domain)}</strong>
+				{preview?.description && <small>{preview.description}</small>}
+				<span className="pkfa-external-preview-url">{target}</span>
+			</div>
+			<ExternalLink className="pkfa-external-preview-open" aria-hidden />
+		</Button>
 	);
 };
 
@@ -742,12 +653,7 @@ const FactsSection: React.FC<{ block: DocumentBlock; config: FileAtlasConfig }> 
 	const stats = statisticsOf(block);
 	const s = config.strings;
 	let rows: Array<[string, string | number | undefined]>;
-	if (block.kind === RawBlockKind.Heading) {
-		rows = [
-			[s.statParagraphs, stats.paragraphs],
-			[s.statResources, stats.resources],
-		];
-	} else if (block.kind === RawBlockKind.List) {
+	if (block.kind === RawBlockKind.List) {
 		rows = [
 			[s.statItems, stats.items],
 			[s.statNestedLists, stats.nestedLists],
@@ -755,8 +661,6 @@ const FactsSection: React.FC<{ block: DocumentBlock; config: FileAtlasConfig }> 
 			[s.statChecked, stats.checked],
 			[s.statUnchecked, stats.unchecked],
 		];
-	} else if (block.kind === RawBlockKind.Task) {
-		rows = [[s.statStatus, stats.status]];
 	} else if (block.kind === RawBlockKind.Table) {
 		rows = [
 			[s.statRows, stats.rows],
@@ -767,16 +671,8 @@ const FactsSection: React.FC<{ block: DocumentBlock; config: FileAtlasConfig }> 
 			[s.statCodeLines, stats.codeLines],
 			[s.statLanguage, stats.language],
 		];
-	} else if (block.kind === RawBlockKind.Callout) {
-		rows = [
-			[s.statParagraphs, stats.paragraphs],
-			[s.statResources, stats.resources],
-		];
 	} else {
-		rows = [
-			[s.statWords, stats.words],
-			[s.statCharacters, stats.characters],
-		];
+		rows = [];
 	}
 	const visibleRows = rows.filter(([, value]) => value !== undefined);
 	if (visibleRows.length === 0) return null;
@@ -794,41 +690,6 @@ const FactsSection: React.FC<{ block: DocumentBlock; config: FileAtlasConfig }> 
 					</div>
 				))}
 			</div>
-		</section>
-	);
-};
-
-const TechnicalDetails: React.FC<{
-	block: DocumentBlock;
-	config: FileAtlasConfig;
-}> = ({ block, config }) => {
-	const rows: Array<[string, string | undefined]> = [
-		[config.strings.lines, lineRange(block)],
-		[config.strings.nearestHeading, block.anchor.nearestHeading ?? undefined],
-		[
-			config.strings.typeLabel,
-			block.detail?.propertyValueType
-				? config.identity.valueTypes[block.detail.propertyValueType]
-				: undefined,
-		],
-		[config.strings.targetLabel, block.detail?.target],
-		[config.strings.pathLabel, block.detail?.fileTarget],
-	];
-	return (
-		<section className="pkfa-inspector-section pkfa-source-details-card">
-			<details className="pkfa-source-details">
-				<summary><FileText />{config.strings.sourceDetails}</summary>
-				<div className="pkfa-technical-details-body">
-					{rows
-						.filter(([, value]) => Boolean(value))
-						.map(([label, value]) => (
-							<div className="pkfa-meta-row" key={label}>
-								<span className="pkfa-k">{label}</span>
-								<span className="pkfa-v pkfa-mono">{value}</span>
-							</div>
-						))}
-				</div>
-			</details>
 		</section>
 	);
 };
@@ -865,7 +726,7 @@ const SourcePreview: React.FC<{
 	if (kind === RawBlockKind.Property) {
 		return (
 			<div className="pkfa-object-value">
-				<span className="pkfa-k">{config.strings.valueLabel}</span>
+				<span className="pkfa-preview-title">{identity.primary}</span>
 				<span className="pkfa-v">{identity.secondary || '—'}</span>
 			</div>
 		);
@@ -874,6 +735,7 @@ const SourcePreview: React.FC<{
 	if (kind === RawBlockKind.Tag) {
 		return (
 			<div className="pkfa-object-value">
+				<span className="pkfa-preview-title">{identity.primary}</span>
 				<span className="pkfa-k">{config.strings.occurrencesLabel}</span>
 				<span className="pkfa-v pkfa-mono">{detail?.occurrenceCount ?? 1}</span>
 			</div>
@@ -946,19 +808,28 @@ const SourcePreview: React.FC<{
 				copyText={target}
 				copyMessage={isExternal ? 'URL copied' : 'Link copied'}
 			>
-				<Button
-					variant="unstyled"
-					type="button"
-					className="pkfa-preview-link is-clickable"
-					title={isExternal ? `Open ${target}` : `Open note: ${target}`}
-					onClick={() => host.openLink(target, sourcePath, isExternal)}
-				>
-					<LinkKindIcon />
-					<div>
-						<div className="pkfa-preview-title">{config.strings.openTarget}</div>
-						<div className="pkfa-preview-sub">{target}</div>
-					</div>
-				</Button>
+				{isExternal ? (
+					<ExternalLinkPreview
+						target={target}
+						config={config}
+						host={host}
+						sourcePath={sourcePath}
+					/>
+				) : (
+					<Button
+						variant="unstyled"
+						type="button"
+						className="pkfa-preview-link is-clickable"
+						title={`Open note: ${target}`}
+						onClick={() => host.openLink(target, sourcePath, false)}
+					>
+						<LinkKindIcon />
+						<div>
+							<div className="pkfa-preview-title">{identity.primary}</div>
+							<div className="pkfa-preview-sub">{identity.secondary ?? target}</div>
+						</div>
+					</Button>
+				)}
 			</CopyablePreview>
 		);
 	}

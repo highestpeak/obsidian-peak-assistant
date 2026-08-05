@@ -420,12 +420,7 @@ export function inspectorCardPolicy(block: DocumentBlock): InspectorCardPolicy {
 		block.kind === Kind.Quote
 	) && proseLength >= 90;
 	const statistics = new Set<DocumentBlock['kind']>([
-		Kind.Heading,
-		Kind.Paragraph,
 		Kind.List,
-		Kind.Task,
-		Kind.Quote,
-		Kind.Callout,
 		Kind.Table,
 		Kind.Code,
 		Kind.Mermaid,

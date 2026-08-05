@@ -9,6 +9,7 @@
 import type { GraphEdgeDirectionality } from '@/core/types/graph-edge';
 
 import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
+import type { ComposerCapabilityId } from '@/core/composer';
 
 /** One entry in the left rail: an open or recently viewed Markdown document. */
 export interface OpenDocMeta {
@@ -68,6 +69,31 @@ export interface AtlasImageInfo {
 	sizeBytes: number | null;
 	/** Uppercase extension, e.g. "PNG". */
 	format: string;
+}
+
+/** Transient, network-backed metadata for an external link. Never persisted. */
+export interface AtlasExternalLinkPreview {
+	url: string;
+	domain: string;
+	title: string;
+	description?: string;
+	siteName?: string;
+	imageUrl?: string;
+	faviconUrl?: string;
+}
+
+/** A real Composer block-row capability projected onto a File Atlas element. */
+export interface AtlasQuickAction {
+	capabilityId: ComposerCapabilityId;
+	title: string;
+	description?: string;
+	lucideIcon?: string;
+	disabledReason?: string;
+}
+
+export interface AtlasQuickActionSnapshot {
+	status: 'ready' | 'unavailable';
+	actions: AtlasQuickAction[];
 }
 
 /** Read-only projection of the canonical Composer Intelligence finding. */
@@ -132,6 +158,19 @@ export interface FileAtlasHostPort {
 	resolveImage?(target: string, sourcePath: string): Promise<AtlasImageInfo | null>;
 	/** Copy the resolved image bytes to the clipboard. Optional. */
 	copyImage?(target: string, sourcePath: string): Promise<void>;
+	/** Load remote metadata in memory for an external-link preview card. */
+	loadExternalLinkPreview?(url: string): Promise<AtlasExternalLinkPreview | null>;
+	/** Project the exact Composer block-row actions for an Atlas source range. */
+	loadQuickActions?(
+		path: string,
+		location: DocumentSourceLocation,
+	): Promise<AtlasQuickActionSnapshot>;
+	/** Open Composer at the source range and invoke the same canonical capability. */
+	runQuickAction?(
+		path: string,
+		location: DocumentSourceLocation,
+		capabilityId: ComposerCapabilityId,
+	): Promise<boolean>;
 	/**
 	 * Load the read-only neighborhood graph around `path`, out to `hops` hops,
 	 * optionally including index-discovered semantic edges. Optional so Phase 1

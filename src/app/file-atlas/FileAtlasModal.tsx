@@ -18,6 +18,7 @@ import { AppContext } from '@/app/context/AppContext';
 import { FileAtlasHost } from '@/ui/view/file-atlas/FileAtlasHost';
 import { composeFileAtlasHost } from './composeFileAtlasHost';
 import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
+import type { ComposerCapabilityId } from '@/core/composer';
 
 export class FileAtlasModal extends Modal {
 	private reactRenderer: ReactRenderer | null = null;
@@ -59,6 +60,18 @@ export class FileAtlasModal extends Modal {
 				void host.revealLocation(path, location);
 			}, 0);
 		};
+		const runQuickAction = (
+			path: string,
+			location: DocumentSourceLocation,
+			capabilityId: ComposerCapabilityId,
+		): void => {
+			this.close();
+			(ownerWindow ?? window).setTimeout(() => {
+				void host.runQuickAction?.(path, location, capabilityId).then((invoked) => {
+					if (!invoked) host.notify('This Composer action is no longer available.');
+				});
+			}, 0);
+		};
 		this.reactRenderer = new ReactRenderer(this.containerEl);
 		this.reactRenderer.render(
 			createReactElementWithServices(
@@ -69,6 +82,7 @@ export class FileAtlasModal extends Modal {
 					initialContent,
 					ownerDocument: this.contentEl.ownerDocument,
 					onOpenBlock: openBlock,
+					onRunQuickAction: runQuickAction,
 				},
 				this.appContext,
 			),

@@ -153,6 +153,8 @@ export interface FileAtlasStrings {
 	filtersHeadingHint: string;
 	filtersSelectAll: string;
 	filtersClearAll: string;
+	filtersSaveDefault: string;
+	filtersResetDefault: string;
 	expandAll: string;
 	collapseAll: string;
 	/** Synthetic frontmatter group row title. */
@@ -227,6 +229,10 @@ export interface FileAtlasStrings {
 	copilotSelectionEmpty: string;
 	copilotDocumentEmpty: string;
 	copilotNavigate: string;
+	quickActionsTitle: string;
+	reviewSuggestionsTitle: string;
+	reviewDocumentSuggestions: string;
+	externalPreviewUnavailable: string;
 	elementContextTitle: string;
 	contextParent: string;
 	contextNearby: string;
@@ -433,6 +439,8 @@ export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
 		filtersHeadingHint: 'Headings always stay visible',
 		filtersSelectAll: 'Select all',
 		filtersClearAll: 'Clear all',
+		filtersSaveDefault: 'Save as default',
+		filtersResetDefault: 'Reset to built-in',
 		expandAll: 'Expand all',
 		collapseAll: 'Collapse all',
 		frontmatterTitle: 'Metadata',
@@ -504,6 +512,10 @@ export const DEFAULT_FILE_ATLAS_CONFIG: FileAtlasConfig = {
 		copilotSelectionEmpty: 'No direct findings for this selection.',
 		copilotDocumentEmpty: 'No current findings for this document.',
 		copilotNavigate: 'Show in Atlas',
+		quickActionsTitle: 'Quick actions',
+		reviewSuggestionsTitle: 'Review suggestions',
+		reviewDocumentSuggestions: 'View document suggestions',
+		externalPreviewUnavailable: 'Page preview unavailable',
 		elementContextTitle: 'Element context',
 		contextParent: 'Parent',
 		contextNearby: 'Nearby',

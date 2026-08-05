@@ -41,20 +41,22 @@ assert.doesNotMatch(
 
 assert.match(inspector, /cardPolicy\.keywords && <KeywordSection/);
 assert.match(inspector, /cardPolicy\.statistics && <FactsSection/);
-assert.match(inspector, /<TechnicalDetails block=\{block\} config=\{config\} \/>/);
+assert.doesNotMatch(inspector, /TechnicalDetails|pkfa-source-details-card/);
 assert.match(inspector, /displayIdentity\(block, config\)/);
 assert.match(inspector, /keywordsEmpty/);
 assert.match(inspector, /visibleKeywords\.map\(/);
 assert.match(inspector, /keywordsShowAll|pkfa-inline-toggle/);
 assert.match(inspector, /AIGraphContextArtifacts/);
-assert.match(inspector, /scopeActionLabel\(block, config\)/);
-assert.doesNotMatch(inspector, /if \(!loading && suggestions\.length === 0\) return null/);
+assert.match(inspector, /AtlasQuickActions/);
+assert.match(inspector, /loadQuickActions/);
+assert.match(inspector, /runQuickAction|onRunQuickAction/);
+assert.match(inspector, /AtlasReviewSuggestions/);
 assert.match(inspector, /groupAtlasCopilotSuggestions/);
 assert.match(inspector, /\[host, sourcePath\]/);
-assert.match(inspector, /ElementContextSection/);
+assert.doesNotMatch(inspector, /ElementContextSection|ScopeBreadcrumb/);
 assert.match(inspectorModel, /buildAtlasElementContext/);
 assert.match(inspectorModel, /atlasBlockForSuggestion/);
-assert.match(inspector, /IDENTITY_TITLE_KINDS\.has\(block\.kind\)/);
+assert.doesNotMatch(inspector, /IDENTITY_TITLE_KINDS|pkfa-inspector-object-kind/);
 assert.match(inspector, /className="pkfa-inspector-actions"/);
 assert.match(
 	css,
@@ -71,10 +73,12 @@ assert.match(atlasBar, /cfg\.filterable !== false/);
 assert.match(atlasBar, /filterLabel \?\? config\.kinds\[kind\]\.label/);
 assert.match(panel, /case 'toggleKind'[\s\S]*?collapsed: new Set\(\)/);
 assert.match(panel, /visibleKinds=\{state\.visibleKinds\}/);
-assert.match(panel, /case 'revealSelection'/);
+assert.doesNotMatch(panel, /case 'revealSelection'/);
 assert.match(panel, /inspectorScrollRef\.current\.scrollTop = 0/);
 assert.match(tree, /isProjectionRow\(block, visibleKinds, showFrontmatterSummary\)/);
 assert.match(tree, /displayIdentity\(block, config, \{ ownerContext \}\)/);
+assert.doesNotMatch(tree, /flatBreadcrumb|row\.ownerContext/);
+assert.doesNotMatch(treeModel, /breadcrumb: owners|ownerContext \? \{ ownerContext \}/);
 assert.match(displayModel, /companionTitle[\s\S]*githubIdentity[\s\S]*decodedSlug/);
 
 assert.match(graph, /data\.edges\.filter\(\(edge\) => semantic \|\| edge\.kind !== 'semantic'\)/);
@@ -115,13 +119,16 @@ assert.match(
 );
 assert.match(
 	css,
-	/\.peak-file-atlas-modal\.pkfa-root \.pkfa-context-row\s*\{[\s\S]*?height:\s*30px !important;[\s\S]*?min-height:\s*30px !important;[\s\S]*?max-height:\s*30px !important;[\s\S]*?padding:\s*0 8px !important;/,
-	'Inspector navigation rows must retain fixed geometry under the Obsidian reset',
+	/\.peak-file-atlas-modal\.pkfa-root \.pkfa-quick-action\s*\{[\s\S]*?height:\s*30px !important;[\s\S]*?min-height:\s*30px !important;[\s\S]*?max-height:\s*30px !important;[\s\S]*?padding:\s*0 10px !important;/,
+	'Composer quick actions must retain fixed geometry under the Obsidian reset',
 );
-assert.match(
-	css,
-	/\.peak-file-atlas-modal\.pkfa-root \.pkfa-copilot-discuss\s*\{[\s\S]*?height:\s*30px !important;[\s\S]*?min-height:\s*30px !important;[\s\S]*?max-height:\s*30px !important;[\s\S]*?padding:\s*0 10px !important;/,
-	'Copilot handoff must retain fixed geometry under the Obsidian reset',
-);
+assert.match(panel, /ownerWindow\.addEventListener\('keydown', onKeyDown, true\)/);
+assert.match(panel, /event\.key\.toLocaleLowerCase\(\) === 'f'/);
+assert.match(atlasBar, /filtersSaveDefault/);
+assert.match(atlasBar, /filtersResetDefault/);
+assert.match(panel, /case 'markPresetSaved':[\s\S]*?presetModified: false/);
+assert.match(panel, /onSavePreset\(state\.activePreset,[\s\S]*?type: 'markPresetSaved'/);
+assert.match(inspector, /loadExternalLinkPreview/);
+assert.match(inspector, /pkfa-external-preview/);
 
 console.log('PASS: File Atlas owner-review interaction and layout contract');

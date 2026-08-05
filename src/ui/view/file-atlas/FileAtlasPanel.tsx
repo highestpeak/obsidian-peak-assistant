@@ -24,7 +24,6 @@ import {
 import {
 	collectGroupIds,
 	computeVisibility,
-	ancestorGroupsOf,
 	blockIdAtLine,
 	defaultCollapsedIds,
 	documentLocationForAtlasBlock,
@@ -43,6 +42,7 @@ import type { FileAtlasHostPort } from './FileAtlasHostPort';
 import type { FileRailSections, FileRailSortMode } from './fileRailModel';
 import type { FileRailPreference } from './fileRailPreference';
 import type { DocumentSourceLocation } from '@/core/ports/VaultNavigationPort';
+import type { ComposerCapabilityId } from '@/core/composer';
 import {
 	displayIdentity,
 	firstProjectedId,
@@ -63,6 +63,14 @@ export interface FileAtlasPanelProps {
 	content: string;
 	host: FileAtlasHostPort;
 	onOpenBlock: (path: string, location: DocumentSourceLocation) => void;
+	onRunQuickAction?: (
+		path: string,
+		location: DocumentSourceLocation,
+		capabilityId: ComposerCapabilityId,
+	) => void;
+	presetHasOverride: (presetId: string) => boolean;
+	onSavePreset: (presetId: string, kinds: RawBlockKind[]) => void;
+	onResetPreset: (presetId: string) => RawBlockKind[];
 	onSelectDoc: (path: string) => void;
 	onCloseDoc: (path: string) => void;
 	onSortModeChange: (mode: FileRailSortMode) => void;
@@ -82,13 +90,13 @@ interface AtlasState {
 type AtlasAction =
 	| { type: 'reseed'; preset: string; kinds: RawBlockKind[]; collapsed: string[]; selectedId: string | null }
 	| { type: 'applyPreset'; id: string; kinds: RawBlockKind[] }
+	| { type: 'markPresetSaved' }
 	| { type: 'toggleKind'; kind: RawBlockKind }
 	| { type: 'groupSet'; kinds: RawBlockKind[]; on: boolean }
 	| { type: 'toggleFold'; id: string }
 	| { type: 'setCollapsed'; ids: string[] }
 	| { type: 'expandAll' }
 	| { type: 'select'; id: string | null }
-	| { type: 'revealSelection'; id: string; kind: RawBlockKind; ancestorIds: string[] }
 	| { type: 'addToTray'; item: TrayItem }
 	| { type: 'removeFromTray'; id: string };
 
@@ -117,6 +125,8 @@ function reducer(state: AtlasState, action: AtlasAction): AtlasState {
 					? new Set([FRONTMATTER_GROUP_ID])
 					: new Set(),
 			};
+		case 'markPresetSaved':
+			return { ...state, presetModified: false };
 		case 'toggleKind': {
 			const next = new Set(state.visibleKinds);
 			if (next.has(action.kind)) next.delete(action.kind);
@@ -140,19 +150,6 @@ function reducer(state: AtlasState, action: AtlasAction): AtlasState {
 			return { ...state, collapsed: new Set() };
 		case 'select':
 			return { ...state, selectedId: action.id };
-		case 'revealSelection': {
-			const visibleKinds = new Set(state.visibleKinds);
-			visibleKinds.add(action.kind === RawBlockKind.ListItem ? RawBlockKind.List : action.kind);
-			const collapsed = new Set(state.collapsed);
-			action.ancestorIds.forEach((id) => collapsed.delete(id));
-			return {
-				...state,
-				visibleKinds,
-				collapsed,
-				selectedId: action.id,
-				presetModified: true,
-			};
-		}
 		case 'addToTray':
 			if (state.tray.some((t) => t.id === action.item.id)) return state;
 			return { ...state, tray: [...state.tray, action.item] };
@@ -172,6 +169,10 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 	content,
 	host,
 	onOpenBlock,
+	onRunQuickAction,
+	presetHasOverride,
+	onSavePreset,
+	onResetPreset,
 	onSelectDoc,
 	onCloseDoc,
 	onSortModeChange,
@@ -182,6 +183,8 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 	const [subview, setSubview] = useState<Subview>('tree');
 	const [flattened, setFlattened] = useState(false);
 	const rootRef = useRef<HTMLDivElement>(null);
+	const searchInputRef = useRef<HTMLInputElement>(null);
+	const searchRestoreFocusRef = useRef<HTMLElement | null>(null);
 	const viewTabsRef = useRef<HTMLDivElement>(null);
 	const inspectorScrollRef = useRef<HTMLDivElement>(null);
 	usePeakKeyboardSurface('file-atlas', rootRef);
@@ -193,6 +196,46 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 			if (item.dataset.peakFocusId === 'file-atlas-graph-view') setSubview('graph');
 		},
 	});
+	useEffect(() => {
+		const root = rootRef.current;
+		const ownerWindow = root?.ownerDocument.defaultView;
+		if (!root || !ownerWindow) return;
+		const onKeyDown = (event: KeyboardEvent): void => {
+			const active = root.ownerDocument.activeElement;
+			const target = event.target;
+			if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLocaleLowerCase() === 'f') {
+				event.preventDefault();
+				event.stopPropagation();
+				searchRestoreFocusRef.current = active instanceof ownerWindow.HTMLElement ? active : null;
+				setSubview('tree');
+				ownerWindow.requestAnimationFrame(() => {
+					ownerWindow.requestAnimationFrame(() => {
+						searchInputRef.current?.focus();
+						searchInputRef.current?.select();
+					});
+				});
+				return;
+			}
+			const ownsEvent = root.contains(active)
+				|| (target instanceof ownerWindow.Node && root.contains(target));
+			if (!ownsEvent) return;
+			if (event.key !== 'Escape' || root.ownerDocument.activeElement !== searchInputRef.current) return;
+			if (searchTerm) {
+				event.preventDefault();
+				event.stopPropagation();
+				setSearchTerm('');
+				return;
+			}
+			const restore = searchRestoreFocusRef.current;
+			searchRestoreFocusRef.current = null;
+			if (!restore?.isConnected) return;
+			event.preventDefault();
+			event.stopPropagation();
+			restore.focus({ preventScroll: true });
+		};
+		ownerWindow.addEventListener('keydown', onKeyDown, true);
+		return () => ownerWindow.removeEventListener('keydown', onKeyDown, true);
+	}, [searchTerm]);
 
 	const doc: AtlasDocument = useMemo(
 		() => parseDocumentBlocks(content, activePath),
@@ -218,9 +261,11 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 		tray: [],
 	}));
 
-	// Re-seed whenever the active document (or config) changes: reset to the
+	// Re-seed whenever the parsed active document changes: reset to the
 	// default preset, frame the block at the editor's cursor (falling back to the
 	// first heading), and default-fold so only that block's ancestor path is open.
+	// Preset overrides intentionally do not re-seed this state: saving a default
+	// must not move the current selection or collapse the list.
 	useEffect(() => {
 		const cursorLine = host.getCursorLine?.(activePath);
 		const cursorId = cursorLine != null ? blockIdAtLine(blocks, cursorLine) : null;
@@ -234,7 +279,7 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 		});
 		setSearchTerm('');
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [blocks, defaultKinds]);
+	}, [blocks]);
 
 	const showFrontmatterSummary =
 		state.activePreset === 'overview'
@@ -317,23 +362,6 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 		const base = displayPath.replace(/\.md$/i, '');
 		void host.copyToClipboard(`[[${base}${frag}]]`);
 		host.notify('Link copied');
-	};
-
-	const selectFromInspector = (block: DocumentBlock): void => {
-		dispatch({
-			type: 'revealSelection',
-			id: block.id,
-			kind: block.kind,
-			ancestorIds: ancestorGroupsOf(blocks, block.id).map((ancestor) => ancestor.id),
-		});
-		const view = rootRef.current?.ownerDocument.defaultView;
-		view?.requestAnimationFrame(() => {
-			view.requestAnimationFrame(() => {
-				const rows = rootRef.current?.querySelectorAll<HTMLElement>('[data-block-id]') ?? [];
-				const target = [...rows].find((row) => row.dataset.blockId === block.id);
-				target?.scrollIntoView({ block: 'nearest' });
-			});
-		});
 	};
 
 	useEffect(() => {
@@ -443,6 +471,7 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 							<label className="pkfa-search-box">
 								<Search />
 								<input
+									ref={searchInputRef}
 									type="text"
 									placeholder={s.searchPlaceholder}
 									autoComplete="off"
@@ -459,6 +488,8 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 							config={config}
 							activePreset={state.activePreset}
 							presetModified={state.presetModified}
+							presetHasOverride={presetHasOverride(state.activePreset)}
+							presetCustomizable={state.activePreset !== 'all'}
 							visibleKinds={state.visibleKinds}
 							onApplyPreset={(id) => {
 								const preset = config.presets.find((p) => p.id === id);
@@ -466,6 +497,14 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 							}}
 							onToggleKind={(kind) => dispatch({ type: 'toggleKind', kind })}
 							onGroupSet={(groupId, on) => dispatch({ type: 'groupSet', kinds: groupKinds(groupId), on })}
+							onSavePreset={() => {
+								onSavePreset(state.activePreset, [...state.visibleKinds]);
+								dispatch({ type: 'markPresetSaved' });
+							}}
+							onResetPreset={() => {
+								const kinds = onResetPreset(state.activePreset);
+								dispatch({ type: 'applyPreset', id: state.activePreset, kinds });
+							}}
 							onExpandAll={() => dispatch({ type: 'expandAll' })}
 							onCollapseAll={() => dispatch({ type: 'setCollapsed', ids: collectGroupIds(blocks) })}
 							flattened={flattened}
@@ -519,7 +558,14 @@ export const FileAtlasPanel: React.FC<FileAtlasPanelProps> = ({
 										onReveal={reveal}
 										onAddToTray={addToTray}
 										onCopyLink={copyLink}
-										onSelect={selectFromInspector}
+										onRunQuickAction={(block, capabilityId) => {
+											const location = documentLocationForAtlasBlock(block);
+											if (onRunQuickAction) {
+												onRunQuickAction(activePath, location, capabilityId);
+												return;
+											}
+											void host.runQuickAction?.(activePath, location, capabilityId);
+										}}
 									/>
 								</div>
 							</aside>

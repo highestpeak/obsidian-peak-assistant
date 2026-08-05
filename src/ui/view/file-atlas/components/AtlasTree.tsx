@@ -78,9 +78,7 @@ export const AtlasTree: React.FC<AtlasTreeProps> = (props) => {
 						key={row.block.id}
 						block={row.block}
 						depth={0}
-						ownerContext={row.ownerContext}
 						parentId={null}
-						flatBreadcrumb={row.breadcrumb}
 						suppressChildren
 						{...props}
 					/>
@@ -106,7 +104,6 @@ interface AtlasNodeProps extends AtlasTreeProps {
 	block: DocumentBlock;
 	depth: number;
 	ownerContext?: string;
-	flatBreadcrumb?: string;
 	suppressChildren?: boolean;
 	parentId: string | null;
 }
@@ -115,7 +112,6 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({
 	block,
 	depth,
 	ownerContext,
-	flatBreadcrumb,
 	suppressChildren = false,
 	parentId,
 	...props
@@ -268,9 +264,10 @@ const AtlasNode: React.FC<AtlasNodeProps> = ({
 						<Icon />
 					</span>
 					<span className="pkfa-label">
-						{flatBreadcrumb && <span className="pkfa-breadcrumb">{flatBreadcrumb}</span>}
 						<span className="pkfa-name">{display.primary}</span>
-						{display.secondary && <span className="pkfa-sub">{display.secondary}</span>}
+						{!suppressChildren && display.secondary && (
+							<span className="pkfa-sub">{display.secondary}</span>
+						)}
 					</span>
 					{summary && <span className="pkfa-fold-sum">{summary}</span>}
 					<Button

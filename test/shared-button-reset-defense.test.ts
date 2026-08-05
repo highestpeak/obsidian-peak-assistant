@@ -3,6 +3,7 @@ import { readFileSync } from 'fs';
 
 const resetCss = readFileSync('src/styles/obsidian-reset.css', 'utf8');
 const primitiveCss = readFileSync('src/styles/peak-components.css', 'utf8');
+const fileAtlasCss = readFileSync('src/styles/file-atlas.css', 'utf8');
 
 assert.match(
 	resetCss,
@@ -128,6 +129,17 @@ assert.match(
 	/:is\(\.pktw-root, \.peak-design-root\) \.pk-button-geometry\[data-geometry\$="-icon"\]\s*\{[\s\S]*?width:\s*var\(--pk-button-geometry-height\) !important;[\s\S]*?min-width:\s*var\(--pk-button-geometry-height\) !important;[\s\S]*?max-width:\s*var\(--pk-button-geometry-height\) !important;[\s\S]*?padding:\s*0 !important;/,
 	'shared Button icon geometry must remain square under the reset',
 );
+
+for (const [selector, height] of [
+	['pkfa-quick-action', '30px'],
+	['pkfa-review-document-link', '24px'],
+] as const) {
+	assert.match(
+		fileAtlasCss,
+		new RegExp(`\\.peak-file-atlas-modal\\.pkfa-root \\.${selector}\\s*\\{[\\s\\S]*?height:\\s*${height} !important;[\\s\\S]*?min-height:\\s*${height} !important;[\\s\\S]*?max-height:\\s*${height} !important;[\\s\\S]*?padding:[^;]+!important;`),
+		`${selector} must retain fixed geometry under the Obsidian button reset`,
+	);
+}
 
 for (const [geometry, height] of [
 	['toolbar', '32px'],

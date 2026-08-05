@@ -19,10 +19,14 @@ interface AtlasBarProps {
 	config: FileAtlasConfig;
 	activePreset: string;
 	presetModified: boolean;
+	presetHasOverride: boolean;
+	presetCustomizable: boolean;
 	visibleKinds: Set<RawBlockKind>;
 	onApplyPreset: (id: string) => void;
 	onToggleKind: (kind: RawBlockKind) => void;
 	onGroupSet: (groupId: string, on: boolean) => void;
+	onSavePreset: () => void;
+	onResetPreset: () => void;
 	onExpandAll: () => void;
 	onCollapseAll: () => void;
 	flattened: boolean;
@@ -33,10 +37,14 @@ export const AtlasBar: React.FC<AtlasBarProps> = ({
 	config,
 	activePreset,
 	presetModified,
+	presetHasOverride,
+	presetCustomizable,
 	visibleKinds,
 	onApplyPreset,
 	onToggleKind,
 	onGroupSet,
+	onSavePreset,
+	onResetPreset,
 	onExpandAll,
 	onCollapseAll,
 	flattened,
@@ -207,13 +215,39 @@ export const AtlasBar: React.FC<AtlasBarProps> = ({
 							<span className="pkfa-filter-foot-count">
 								{onCount} of {allKinds.length} types visible
 							</span>
-							<span className="pkfa-filter-actions">
+							<span className="pkfa-filter-footer-actions">
+								{presetCustomizable && (presetModified || presetHasOverride) && (
+									<span className="pkfa-filter-actions">
+										{presetModified && (
+											<Button
+												variant="unstyled"
+												type="button"
+												className="pkfa-filter-action is-primary"
+												onClick={onSavePreset}
+											>
+												{config.strings.filtersSaveDefault}
+											</Button>
+										)}
+										{presetHasOverride && (
+											<Button
+												variant="unstyled"
+												type="button"
+												className="pkfa-filter-action"
+												onClick={onResetPreset}
+											>
+												{config.strings.filtersResetDefault}
+											</Button>
+										)}
+									</span>
+								)}
+								<span className="pkfa-filter-actions">
 								<Button variant="unstyled" type="button" className="pkfa-filter-action" onClick={() => setAll(true)}>
 									{config.strings.filtersSelectAll}
 								</Button>
 								<Button variant="unstyled" type="button" className="pkfa-filter-action" onClick={() => setAll(false)}>
 									{config.strings.filtersClearAll}
 								</Button>
+								</span>
 							</span>
 						</div>
 					</div>

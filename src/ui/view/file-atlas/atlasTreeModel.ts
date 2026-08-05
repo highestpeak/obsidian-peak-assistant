@@ -173,13 +173,12 @@ export interface VisibilityResult {
 
 export interface FlattenedAtlasRow {
 	block: DocumentBlock;
-	/** Structural owners, in document order, retained after hierarchy is flattened. */
-	breadcrumb: string;
-	ownerContext?: string;
 }
 
 /**
- * Project the visible tree into source order without losing structural context.
+ * Project the visible tree into source order. Headings already remain as their
+ * own source-order rows, so repeating owner breadcrumbs on every descendant
+ * makes the flat list harder to scan without adding navigation value.
  * The canonical block tree remains untouched; this is a read-only presentation
  * projection used by File Atlas' explicit flatten control.
  */
@@ -188,35 +187,22 @@ export function flattenAtlasRows(
 	visible: Set<string>,
 	visibleKinds: Set<RawBlockKind>,
 	showFrontmatterSummary: boolean,
-	config: FileAtlasConfig = DEFAULT_FILE_ATLAS_CONFIG,
+	_config: FileAtlasConfig = DEFAULT_FILE_ATLAS_CONFIG,
 ): FlattenedAtlasRow[] {
 	const rows: FlattenedAtlasRow[] = [];
-	const visit = (
-		node: DocumentBlock,
-		owners: string[],
-		ownerContext?: string,
-	): void => {
+	const visit = (node: DocumentBlock): void => {
 		if (!visible.has(node.id)) return;
-		const display = displayIdentity(node, config, { ownerContext });
 		const projects = node.kind === Kind.Heading
 			|| (node.kind === Kind.Frontmatter && showFrontmatterSummary)
 			|| (node.kind === Kind.ListItem
 				? visibleKinds.has(Kind.List)
 				: visibleKinds.has(node.kind));
-		if (projects) {
-			rows.push({
-				block: node,
-				breadcrumb: owners.join(' / '),
-				...(ownerContext ? { ownerContext } : {}),
-			});
-		}
-		const nextOwners = isGroupNode(node) ? [...owners, display.primary] : owners;
-		const nextOwnerContext = isGroupNode(node) ? display.primary : ownerContext;
+		if (projects) rows.push({ block: node });
 		for (const child of node.children ?? []) {
-			visit(child, nextOwners, nextOwnerContext);
+			visit(child);
 		}
 	};
-	for (const block of blocks) visit(block, []);
+	for (const block of blocks) visit(block);
 	return rows.sort((left, right) =>
 		left.block.anchor.lineStart - right.block.anchor.lineStart
 		|| left.block.anchor.lineEnd - right.block.anchor.lineEnd);
