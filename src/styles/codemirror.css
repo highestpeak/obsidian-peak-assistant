@@ -66,6 +66,64 @@
   overflow-y: auto !important;
 }
 
+/* Result Browser query geometry is explicit because the shared CodeMirror base
+   is intentionally roomy. Filters stay one line; Vault Search starts compact,
+   wraps naturally, and grows downward to roughly three lines. */
+.pktw-codemirror-custom.cm-editor.cm-editor-compact-single-line .cm-content,
+.pktw-codemirror-custom .cm-editor.cm-editor-compact-single-line .cm-content {
+  min-height: 1.45em !important;
+  max-height: 1.45em !important;
+  padding: 0 !important;
+  white-space: pre !important;
+}
+
+.pktw-codemirror-custom.cm-editor.cm-editor-compact-single-line,
+.pktw-codemirror-custom .cm-editor.cm-editor-compact-single-line {
+  height: auto !important;
+  min-height: auto !important;
+}
+
+.pktw-codemirror-custom.cm-editor.cm-editor-compact-single-line .cm-scroller,
+.pktw-codemirror-custom .cm-editor.cm-editor-compact-single-line .cm-scroller {
+  min-height: 1.45em !important;
+  max-height: 1.45em !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: none;
+}
+
+.pktw-codemirror-custom.cm-editor.cm-editor-compact-single-line .cm-scroller::-webkit-scrollbar,
+.pktw-codemirror-custom .cm-editor.cm-editor-compact-single-line .cm-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.pktw-codemirror-custom.cm-editor.cm-editor-compact-single-line .cm-line,
+.pktw-codemirror-custom .cm-editor.cm-editor-compact-single-line .cm-line {
+  word-wrap: normal !important;
+  white-space: pre !important;
+}
+
+.pktw-codemirror-custom.cm-editor.cm-editor-compact-adaptive .cm-content,
+.pktw-codemirror-custom .cm-editor.cm-editor-compact-adaptive .cm-content {
+  min-height: 28px !important;
+  max-height: 72px !important;
+  padding: 4px 0 !important;
+}
+
+.pktw-codemirror-custom.cm-editor.cm-editor-compact-adaptive,
+.pktw-codemirror-custom .cm-editor.cm-editor-compact-adaptive {
+  height: auto !important;
+  min-height: 28px !important;
+  max-height: 72px !important;
+}
+
+.pktw-codemirror-custom.cm-editor.cm-editor-compact-adaptive .cm-scroller,
+.pktw-codemirror-custom .cm-editor.cm-editor-compact-adaptive .cm-scroller {
+  min-height: 28px !important;
+  max-height: 72px !important;
+  overflow-y: auto !important;
+}
+
 /* Focus states */
 .pktw-codemirror-custom.cm-focused,
 .pktw-codemirror-custom .cm-focused,

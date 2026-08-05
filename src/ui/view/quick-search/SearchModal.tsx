@@ -1879,13 +1879,14 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 				data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['vs-query']}
 				data-peak-keyboard-order="2"
 			>
-				<div className="pktw-flex pktw-gap-3 pktw-items-center">
+				<div className="pktw-flex pktw-gap-3 pktw-items-end">
 					<div className="pktw-relative pktw-flex-1 pktw-min-w-0">
 						<ResultBrowserSearchInput
 							ref={inputRef}
 							value={vaultSearchQuery}
 							onChange={setVaultSearchQuery}
 							onKeyDown={handleInputKeyDown}
+							layout="adaptive"
 							placeholder="Search your vault…"
 						/>
 					</div>

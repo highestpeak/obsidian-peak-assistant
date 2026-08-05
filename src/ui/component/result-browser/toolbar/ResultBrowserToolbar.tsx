@@ -38,6 +38,7 @@ export interface ResultBrowserSearchInputProps {
 	value: string;
 	onChange: (value: string) => void;
 	placeholder: string;
+	layout?: 'single-line' | 'adaptive';
 	onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>;
 	className?: string;
 	ariaLabel?: string;
@@ -51,7 +52,7 @@ export interface ResultBrowserSearchInputProps {
 export const ResultBrowserSearchInput = React.forwardRef<
 	{ focus: () => void; select: () => void },
 	ResultBrowserSearchInputProps
->(({ value, onChange, placeholder, onKeyDown, className, ariaLabel }, ref) => (
+>(({ value, onChange, placeholder, layout = 'single-line', onKeyDown, className, ariaLabel }, ref) => (
 	<CodeMirrorInput
 		ref={ref}
 		value={value}
@@ -60,9 +61,10 @@ export const ResultBrowserSearchInput = React.forwardRef<
 		placeholder={placeholder}
 		aria-label={ariaLabel ?? placeholder}
 		enableSearchTags={false}
-		singleLine
+		heightMode={layout === 'adaptive' ? 'compact-adaptive' : 'compact-single-line'}
 		containerClassName={cn(
-			'pktw-flex-1 pktw-min-w-0 pktw-px-4 pktw-py-2.5',
+			'pktw-flex-1 pktw-min-w-0 pktw-px-4',
+			layout === 'adaptive' ? 'pktw-py-1' : 'pktw-py-2.5',
 			'pktw-bg-pk-surface-raised pktw-border pktw-border-pk-border',
 			'focus-within:pktw-border-pk-accent focus-within:pktw-shadow-sm',
 			'pktw-rounded-full pktw-transition-all pktw-z-0',

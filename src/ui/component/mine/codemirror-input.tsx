@@ -17,8 +17,8 @@ export interface CodeMirrorInputProps extends Omit<React.InputHTMLAttributes<HTM
   placeholder?: string;
   /** Whether to enable search tag highlighting (@web@, @number@) */
   enableSearchTags?: boolean;
-  /** Whether this is a single line input (affects height styling) */
-  singleLine?: boolean;
+  /** Explicit editor geometry; callers choose query behavior instead of inheriting global sizing. */
+  heightMode?: 'default' | 'compact-single-line' | 'compact-adaptive';
   /** When provided: Enter triggers this callback, Ctrl+Enter inserts newline */
   onEnterSubmit?: () => void;
 }
@@ -30,7 +30,7 @@ const CodeMirrorInputComponent = React.forwardRef<{ focus: () => void; select: (
     containerClassName,
     placeholder,
     enableSearchTags = false,
-    singleLine = false,
+    heightMode = 'default',
     onEnterSubmit,
     className,
     disabled,
@@ -137,8 +137,8 @@ const CodeMirrorInputComponent = React.forwardRef<{ focus: () => void; select: (
             // Apply similar styling to match input appearance
             'pktw-bg-transparent pktw-border-0 pktw-outline-none',
             'focus-visible:pktw-ring-0 focus-visible:pktw-ring-offset-0',
-            // Single line specific styling
-            singleLine && 'cm-editor-single-line',
+            heightMode === 'compact-single-line' && 'cm-editor-compact-single-line',
+            heightMode === 'compact-adaptive' && 'cm-editor-compact-adaptive',
             className
           )}
           theme="none" // Use custom CSS theming
