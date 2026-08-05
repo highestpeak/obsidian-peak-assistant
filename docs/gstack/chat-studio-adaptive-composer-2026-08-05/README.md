@@ -11,6 +11,9 @@ into Chat Studio semantics:
 - focus, drafts, attachments, open menus, and active runs keep the composer open;
 - the next message's concrete context remains visible while typing and opens into
   an evidence-style provenance view;
+- the context view mirrors `docs/11-feature-chat-context.html` and the current
+  `ChatProfile` order: required, optional, compressed, empty, and explicitly
+  excluded inputs are shown separately;
 - Add, Context, Assistant, and Model use one popover family and one spatial anchor;
 - run feedback and contextual suggestions live above the composer instead of
   permanently occupying its toolbar.
@@ -18,6 +21,11 @@ into Chat Studio semantics:
 The page contains a small **Interaction demo** panel on the right. Use it to move
 between Reading, Latest, and Running states. The real scroll container also drives
 the compact/expanded transition.
+
+The Context popover deliberately matches the composer width. Its left side is the
+ordered slot stack; its right side lists data that is not part of the next turn,
+including the full Vault, inactive variants, parent-branch history, and web results
+that have not been retrieved yet.
 
 Static review captures are included for the expanded, context-evidence, compact,
 Add-menu, running, and narrow-window states. The live HTML is the design source;

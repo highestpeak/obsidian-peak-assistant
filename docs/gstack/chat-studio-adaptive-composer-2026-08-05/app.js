@@ -1,4 +1,6 @@
 (() => {
+  const BASE_COMPOSER_HEIGHT = 100;
+  const BASE_INPUT_HEIGHT = 30;
   const timeline = document.getElementById('timeline');
   const composerStack = document.getElementById('composer-stack');
   const composerFrame = document.getElementById('composer-frame');
@@ -16,9 +18,14 @@
   const contextTotal = document.getElementById('context-total');
   const contextIncludedCount = document.getElementById('context-included-count');
   const contextPreviewSummary = document.getElementById('context-preview-summary');
-  const dynamicContextItems = document.getElementById('dynamic-context-items');
+  const resourceSlotDetail = document.getElementById('resource-slot-detail');
+  const currentMessageDetail = document.getElementById('current-message-detail');
+  const currentMessageState = document.getElementById('current-message-state');
   const compactSourceCount = document.getElementById('compact-source-count');
   const assistantLabel = document.getElementById('assistant-label');
+  const assistantSlotTitle = document.getElementById('assistant-slot-title');
+  const assistantSlotDetail = document.getElementById('assistant-slot-detail');
+  const assistantSlotState = document.getElementById('assistant-slot-state');
   const identityName = document.getElementById('identity-name');
   const modelLabel = document.getElementById('model-label');
 
@@ -48,6 +55,7 @@
     openMenu: null,
     running: false,
     runTimer: null,
+    activeLayerCount: 9,
     sourceCount: 6,
     attachmentCount: 0,
     statusTimer: null
@@ -109,10 +117,21 @@
     const naturalInputHeight = input.scrollHeight;
     input.style.height = previousInputHeight;
 
-    const textGrowth = Math.max(0, Math.min(82, naturalInputHeight - 42));
+    const textGrowth = Math.max(0, Math.min(82, naturalInputHeight - BASE_INPUT_HEIGHT));
     const shelfGrowth = hasAttachments() ? 31 : 0;
-    const nextHeight = 122 + textGrowth + shelfGrowth;
+    const nextHeight = BASE_COMPOSER_HEIGHT + textGrowth + shelfGrowth;
     composerStack.style.setProperty('--composer-height', `${nextHeight}px`);
+  }
+
+  function updateDraftContext() {
+    const draftLength = input.value.trim().length;
+    const attachmentCopy = state.attachmentCount > 0 ? ` · ${state.attachmentCount} attachment${state.attachmentCount === 1 ? '' : 's'}` : '';
+    currentMessageDetail.textContent = draftLength > 0
+      ? `${draftLength} draft characters${attachmentCopy} · exact text is added at send time`
+      : `Exact draft text${attachmentCopy} · added at send time · never replaced by a summary`;
+    currentMessageState.textContent = draftLength > 0 || state.attachmentCount > 0 ? 'Ready' : 'At send';
+    currentMessageState.classList.toggle('is-included', draftLength > 0 || state.attachmentCount > 0);
+    currentMessageState.classList.toggle('is-pending', draftLength === 0 && state.attachmentCount === 0);
   }
 
   function renderComposerState() {
@@ -125,6 +144,7 @@
     composerFrame.classList.toggle('has-menu', Boolean(state.openMenu));
     composerFrame.dataset.state = name.toLowerCase().replace(' ', '-');
     stateReadout.textContent = name;
+    updateDraftContext();
     updateDemoButtons(name);
 
     const showSuggestions = expanded && state.nearBottom && !state.focused && !hasDraft() && !hasAttachments() && !state.openMenu && !state.running;
@@ -184,7 +204,7 @@
 
   function autoSizeInput() {
     input.style.height = 'auto';
-    input.style.height = `${Math.min(116, Math.max(42, input.scrollHeight))}px`;
+    input.style.height = `${Math.min(116, Math.max(BASE_INPUT_HEIGHT, input.scrollHeight))}px`;
     send.disabled = !hasDraft() && !state.running;
     setComposerHeight();
     renderComposerState();
@@ -211,31 +231,36 @@
 
   function updateSourceCount(delta) {
     state.sourceCount = Math.max(3, state.sourceCount + delta);
-    contextLabel.textContent = `${state.sourceCount} items`;
-    contextTotal.textContent = String(state.sourceCount);
-    contextIncludedCount.textContent = String(state.sourceCount);
     compactSourceCount.textContent = String(state.sourceCount);
-    const attachmentSummary = state.attachmentCount > 0 ? ` · ${state.attachmentCount} newly added` : '';
-    contextPreviewSummary.textContent = `Active note · Project brief · Recording · 3 vault notes${attachmentSummary}`;
+    resourceSlotDetail.textContent = `${state.sourceCount} resource references and summaries · optional · max 300 · raw files are not preloaded`;
+    contextPreviewSummary.textContent = `History · Summary · Working context · User profile · ${state.sourceCount} resources`;
   }
 
-  function addContextEvidence(iconName, label) {
-    const row = document.createElement('div');
-    row.className = 'context-evidence-row is-dynamic';
-    row.innerHTML = `<span class="evidence-mark is-added">${icon(iconName)}</span><span><strong>${label}</strong><small>Explicit attachment · added to this draft</small></span><span class="inclusion-state">${icon('check')}Included</span>`;
-    dynamicContextItems.append(row);
-    return row;
+  function updateAssistantContext(name) {
+    const usesAssistantSlot = name !== 'Default assistant';
+    const activeLayers = usesAssistantSlot ? 9 : 8;
+    state.activeLayerCount = activeLayers;
+    const assistantRow = assistantSlotTitle.closest('.context-slot-row');
+    assistantSlotTitle.textContent = `Assistant · ${name}`;
+    assistantSlotDetail.textContent = usesAssistantSlot
+      ? 'Persona and authored instructions · optional · max 2,000 · compress framing only'
+      : 'No authored Assistant instructions · optional empty slot renders nothing';
+    assistantSlotState.textContent = usesAssistantSlot ? 'Included' : 'Not added';
+    assistantSlotState.classList.toggle('is-included', usesAssistantSlot);
+    assistantSlotState.classList.toggle('is-excluded', !usesAssistantSlot);
+    assistantRow.classList.toggle('is-absent', !usesAssistantSlot);
+    contextLabel.textContent = `${activeLayers} / 10 active`;
+    contextTotal.textContent = `${activeLayers} / 10`;
+    contextIncludedCount.textContent = String(activeLayers);
   }
 
   function addAttachment(type) {
     const [iconName, label] = attachmentCatalog[type] || attachmentCatalog.file;
-    const contextEvidence = addContextEvidence(iconName, label);
     const chip = document.createElement('span');
     chip.className = 'attachment-chip';
     chip.innerHTML = `${icon(iconName)}<span>${label}</span><button type="button" aria-label="Remove ${label}">${icon('x')}</button>`;
     chip.querySelector('button').addEventListener('click', () => {
       chip.remove();
-      contextEvidence.remove();
       state.attachmentCount = Math.max(0, state.attachmentCount - 1);
       updateSourceCount(-1);
       attachmentShelf.hidden = state.attachmentCount === 0;
@@ -254,7 +279,6 @@
   function clearAttachments() {
     const removed = state.attachmentCount;
     attachmentShelf.innerHTML = '';
-    dynamicContextItems.innerHTML = '';
     attachmentShelf.hidden = true;
     state.attachmentCount = 0;
     if (removed > 0) updateSourceCount(-removed);
@@ -268,7 +292,7 @@
     send.setAttribute('aria-label', running ? 'Stop response' : 'Send message');
     send.disabled = false;
     if (running) {
-      showStatus('Research partner is working', `Reading ${state.sourceCount} context items for this turn`, 0);
+      showStatus('Research partner is working', `Assembling ${state.activeLayerCount} context layers · ${state.sourceCount} resource references`, 0);
     } else {
       hideStatus();
       send.disabled = !hasDraft();
@@ -309,7 +333,7 @@
     const message = text || 'Turn this direction into a complete interaction specification.';
     appendUserMessage(message);
     input.value = '';
-    input.style.height = '42px';
+    input.style.height = `${BASE_INPUT_HEIGHT}px`;
     clearAttachments();
     closeMenus();
     setRunning(true);
@@ -387,6 +411,7 @@
         row.querySelector('.row-check').innerHTML = row === button ? icon('check') : '';
       });
       assistantLabel.textContent = name;
+      updateAssistantContext(name);
       identityName.textContent = name;
       closeMenus();
       showStatus('Conversation identity updated', `${name} will guide future turns`);
@@ -459,7 +484,7 @@
     scrollToLatest('auto');
     window.requestAnimationFrame(() => {
       state.nearBottom = true;
-      input.style.height = '42px';
+      input.style.height = `${BASE_INPUT_HEIGHT}px`;
       renderComposerState();
     });
   });
