@@ -8,7 +8,7 @@ const composerCss = readFileSync('src/styles/composer.css', 'utf8');
 
 assert.match(
 	resetCss,
-	/\.peak-design-root button,[\s\S]*?height:\s*auto !important;[\s\S]*?min-height:\s*0 !important;[\s\S]*?max-height:\s*none !important;/,
+	/\.peak-design-root button\s*\{[\s\S]*?height:\s*auto !important;[\s\S]*?min-height:\s*0 !important;[\s\S]*?max-height:\s*none !important;/,
 	'the guard must track the real Obsidian button reset contract',
 );
 
@@ -65,6 +65,17 @@ function parseRules(css: string): CssRule[] {
 			.filter((entry): entry is { property: string; value: string } => entry !== null),
 	}));
 }
+
+const textareaHeightResetRules = parseRules(resetCss).filter((rule) =>
+	rule.selector.includes('.peak-design-root textarea') &&
+	rule.declarations.some(({ property, value }) => property === 'height' && value === 'auto !important'),
+);
+
+assert.deepStrictEqual(
+	textareaHeightResetRules,
+	[],
+	'textareas must not inherit the button-only height reset because native resize writes their height dynamically',
+);
 
 function targetsButtonPrimitive(selector: string): boolean {
 	if (/\bsvg\b|\.icon\b|::before|::after/.test(selector)) return false;

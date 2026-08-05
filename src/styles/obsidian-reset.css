@@ -52,18 +52,20 @@
 	appearance: none;
 	transform: none;
 	transition: none;
-	/*
-	 * Obsidian's global `.modal button { height: var(--input-height); ... }`
-	 * locks every <button> inside a modal to 32px tall and force-centers
-	 * its children — that hijacks card-style custom buttons (whose height
-	 * should grow with content). Force these back to their defaults so
-	 * Tailwind layout works.
-	 */
+	width: auto;
+	justify-content: flex-start;
+}
+
+/*
+ * Obsidian's global `.modal button { height: var(--input-height); ... }`
+ * locks every <button> inside a modal to 32px tall and force-centers its
+ * children. That defense belongs to buttons only: applying it to textarea
+ * prevents the browser from committing a user drag-resize height.
+ */
+.peak-design-root button {
 	height: auto !important;
 	min-height: 0 !important;
 	max-height: none !important;
-	width: auto;
-	justify-content: flex-start;
 }
 
 /*
