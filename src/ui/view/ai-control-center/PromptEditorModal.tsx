@@ -50,7 +50,7 @@ export function PromptEditorModal({ prompt, onOpenChange, onSave, onReset }: Pro
 
 	return (
 		<Modal open={Boolean(prompt)} onOpenChange={onOpenChange}>
-			<Modal.Content width="wide" portalClassName="peak-design-root" className="pktw-max-h-[90vh]">
+			<Modal.Content width="wide" portalClassName="peak-design-root" className="pk-ai-control-center__prompt-modal">
 				<Modal.Header>
 					<div className="pktw-flex pktw-flex-col pktw-gap-1">
 						<Modal.Title>Edit {prompt?.label}</Modal.Title>
@@ -64,9 +64,10 @@ export function PromptEditorModal({ prompt, onOpenChange, onSave, onReset }: Pro
 					</span>
 					<label className="pktw-flex pktw-flex-col pktw-gap-1"><span className="pktw-text-xs pktw-font-medium">Vault override template</span><textarea
 						aria-label="Prompt template"
+						rows={28}
 						value={content}
 						onChange={(event) => setContent(event.target.value)}
-						className="pktw-min-h-[420px] pktw-w-full pktw-resize-y pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-surface pktw-p-3 pktw-font-mono pktw-text-xs pktw-text-pk-text-primary"
+						className="pk-ai-control-center__prompt-textarea pktw-w-full pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-surface pktw-p-3 pktw-font-mono pktw-text-xs pktw-text-pk-text-primary"
 					/></label>
 					<div className="pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-surface"><div className="pktw-px-4 pktw-py-3"><span className="pktw-block pktw-text-sm pktw-font-medium">Template inputs</span><span className="pktw-mt-1 pktw-block pktw-text-xs pktw-text-pk-text-tertiary">These values are supplied by Peak when this action runs. They are not settings to fill in here.</span></div><PromptInputsTable inputs={prompt?.inputs ?? []} /></div>
 					{error ? <span className="pktw-text-xs pktw-text-red-500">{error}</span> : null}

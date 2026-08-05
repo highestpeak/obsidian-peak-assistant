@@ -1,5 +1,25 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Bot, FileText, MessageSquareText, Plus, Search, Sparkles, UserRound } from 'lucide-react';
+import {
+	Bot,
+	Brain,
+	ChartNoAxesCombined,
+	Code2,
+	FilePenLine,
+	FileText,
+	Image,
+	LayoutGrid,
+	MessageSquareText,
+	Network,
+	Plus,
+	Search,
+	SearchCheck,
+	Sigma,
+	Sparkles,
+	Table2,
+	UserRound,
+	Vault,
+	Workflow,
+} from 'lucide-react';
 import { Button } from '@/ui/components/primitives';
 import type {
 	AIControlActionSummary,
@@ -37,6 +57,14 @@ const PRODUCT_AREAS: ReadonlyArray<{ id: AIControlProductArea; label: string }> 
 	{ id: 'chat-generation', label: 'Chat & Generation' },
 	{ id: 'vault-intelligence', label: 'Vault Intelligence' },
 ];
+
+const PRODUCT_AREA_ICONS: Record<AIControlProductArea, React.ComponentType<{ size?: number }>> = {
+	'search-knowledge': Search,
+	'ai-search-graph': Network,
+	'composer-copilot': FilePenLine,
+	'chat-generation': MessageSquareText,
+	'vault-intelligence': Vault,
+};
 
 function areaLabel(area: AIControlProductArea): string {
 	return PRODUCT_AREAS.find((item) => item.id === area)?.label ?? area;
@@ -164,25 +192,30 @@ export function AIControlCenter({ runtime }: AIControlCenterProps): React.ReactE
 			: scope === 'chat-assistants'
 				? 'Chat Assistants'
 				: areaLabel(scope);
+	const createRow = scope === 'custom-prompts'
+		? <ListCreateRow label="New Custom Prompt" onClick={() => setCustomEditor({ label: '', description: '', category: 'writing', template: '', modelId: '' })} />
+		: scope === 'chat-assistants'
+			? <ListCreateRow label="New Chat Assistant" onClick={() => setAssistantEditor('new')} />
+			: null;
 
 	return (
 		<ChatStudioStringsProvider>
-			<div className="pktw-flex pktw-h-full pktw-min-h-0 pktw-flex-col pktw-bg-pk-background">
+			<div className="pk-ai-control-center pktw-flex pktw-h-full pktw-min-h-0 pktw-flex-col pktw-bg-pk-surface">
 				<div className="pktw-flex pktw-items-center pktw-justify-between pktw-border-b pktw-border-pk-border pktw-px-5 pktw-py-3">
 					<div className="pktw-flex pktw-flex-col pktw-gap-0.5"><span className="pktw-text-lg pktw-font-semibold">AI Control Center</span><span className="pktw-text-xs pktw-text-pk-text-tertiary">Edit the AI actions and prompts Peak uses on a later run.</span></div>
-					<div className="pktw-flex pktw-items-center pktw-gap-2"><Button size="sm" variant="secondary" onClick={() => setAssistantEditor('new')}><Plus size={14} /> New assistant</Button><Button size="sm" variant="primary" onClick={() => setCustomEditor({ label: '', description: '', category: 'writing', template: '', modelId: '' })}><Plus size={14} /> New Custom Prompt</Button></div>
 				</div>
 				<div className="pktw-grid pktw-min-h-0 pktw-flex-1 pktw-grid-cols-[220px_330px_minmax(0,1fr)]">
 					<BrowseRail scope={scope} onSelect={selectScope} actions={actions} customPrompts={customPrompts} assistants={assistants} />
-					<div className="pktw-flex pktw-min-h-0 pktw-flex-col pktw-border-r pktw-border-pk-border">
+					<div className="pk-ai-control-center__list pktw-flex pktw-min-h-0 pktw-flex-col pktw-border-r pktw-border-pk-border">
 						<div className="pktw-border-b pktw-border-pk-border pktw-p-3"><span className="pktw-block pktw-text-sm pktw-font-semibold">{scopeTitle}</span><label className="pktw-mt-3 pktw-flex pktw-items-center pktw-gap-2 pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-surface pktw-px-2"><Search size={14} className="pktw-text-pk-text-tertiary" /><input aria-label="Search AI controls" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search actions or prompts…" className="pktw-w-full pktw-border-0 pktw-bg-transparent pktw-py-1.5 pktw-text-sm pktw-outline-none" /></label></div>
 						<div className="pktw-min-h-0 pktw-flex-1 pktw-overflow-y-auto pktw-p-2">
 							{loading ? <span className="pktw-block pktw-p-3 pktw-text-sm pktw-text-pk-text-tertiary">Loading controls…</span> : null}
+							{createRow}
 							{visibleRows.map((row) => <ControlRow key={row.key} row={row} active={selected?.kind === row.kind && selected.id === row.item.id} onSelect={() => setSelected({ kind: row.kind, id: row.item.id })} />)}
 							{!loading && visibleRows.length === 0 ? <span className="pktw-block pktw-p-3 pktw-text-sm pktw-text-pk-text-tertiary">No configurable controls match this view.</span> : null}
 						</div>
 					</div>
-					<div className="pktw-min-h-0 pktw-overflow-y-auto pktw-p-6">
+					<div className="pk-ai-control-center__inspector pktw-min-h-0 pktw-overflow-y-auto pktw-p-6">
 						{error ? <div className="pktw-mb-4 pktw-rounded-md pktw-border pktw-border-red-300 pktw-bg-red-50 pktw-p-3 pktw-text-sm pktw-text-red-700">{error}</div> : null}
 						{selectedAction ? <ActionDetail action={selectedAction} onEditPrompt={openBuiltInPrompt} /> : null}
 						{selectedCustom ? <CustomPromptDetail prompt={selectedCustom} onEdit={() => setCustomEditor({ filePath: selectedCustom.filePath, label: selectedCustom.label, description: selectedCustom.description, category: selectedCustom.category, template: selectedCustom.template, modelId: selectedCustom.modelId })} onDelete={() => void removeCustomPrompt()} /> : null}
@@ -201,7 +234,7 @@ export function AIControlCenter({ runtime }: AIControlCenterProps): React.ReactE
 function BrowseRail({ scope, onSelect, actions, customPrompts, assistants }: { scope: BrowseScope; onSelect: (scope: BrowseScope) => void; actions: readonly AIControlActionSummary[]; customPrompts: readonly CustomPromptDefShape[]; assistants: readonly ChatAssistantDefinition[] }): React.ReactElement {
 	const actionCount = actions.length;
 	const countFor = (area: AIControlProductArea): number => actions.filter((action) => action.area === area).length;
-	return <nav aria-label="AI Control Center sections" className="pktw-flex pktw-min-h-0 pktw-flex-col pktw-border-r pktw-border-pk-border pktw-p-2"><span className="pktw-px-2 pktw-py-2 pktw-text-xs pktw-font-medium pktw-text-pk-text-tertiary">Peak AI</span><RailButton active={scope === 'all'} icon={<Sparkles size={15} />} label="All controls" count={actionCount + customPrompts.length + assistants.length} onClick={() => onSelect('all')} />{PRODUCT_AREAS.map((area) => <RailButton key={area.id} active={scope === area.id} icon={<Bot size={15} />} label={area.label} count={countFor(area.id)} onClick={() => onSelect(area.id)} />)}<div className="pktw-mx-2 pktw-my-3 pktw-border-t pktw-border-pk-border" /><span className="pktw-px-2 pktw-pb-2 pktw-text-xs pktw-font-medium pktw-text-pk-text-tertiary">Your AI</span><RailButton active={scope === 'custom-prompts'} icon={<FileText size={15} />} label="Custom Prompts" count={customPrompts.length} onClick={() => onSelect('custom-prompts')} /><RailButton active={scope === 'chat-assistants'} icon={<UserRound size={15} />} label="Chat Assistants" count={assistants.length} onClick={() => onSelect('chat-assistants')} /></nav>;
+	return <nav aria-label="AI Control Center sections" className="pk-ai-control-center__rail pktw-flex pktw-min-h-0 pktw-flex-col pktw-border-r pktw-border-pk-border pktw-p-2"><RailButton active={scope === 'all'} icon={<LayoutGrid size={15} />} label="All controls" count={actionCount + customPrompts.length + assistants.length} onClick={() => onSelect('all')} />{PRODUCT_AREAS.map((area) => { const Icon = PRODUCT_AREA_ICONS[area.id]; return <RailButton key={area.id} active={scope === area.id} icon={<Icon size={15} />} label={area.label} count={countFor(area.id)} onClick={() => onSelect(area.id)} />; })}<RailButton active={scope === 'custom-prompts'} icon={<FileText size={15} />} label="Custom Prompts" count={customPrompts.length} onClick={() => onSelect('custom-prompts')} /><RailButton active={scope === 'chat-assistants'} icon={<UserRound size={15} />} label="Chat Assistants" count={assistants.length} onClick={() => onSelect('chat-assistants')} /></nav>;
 }
 
 function RailButton({ active, icon, label, count, onClick }: { active: boolean; icon: React.ReactNode; label: string; count: number; onClick: () => void }): React.ReactElement {
@@ -209,10 +242,31 @@ function RailButton({ active, icon, label, count, onClick }: { active: boolean; 
 }
 
 function ControlRow({ row, active, onSelect }: { row: { kind: Selection['kind']; item: AIControlActionSummary | CustomPromptDefShape | ChatAssistantDefinition }; active: boolean; onSelect: () => void }): React.ReactElement {
-	const icon = row.kind === 'action' ? <Sparkles size={16} /> : row.kind === 'custom' ? <FileText size={16} /> : <MessageSquareText size={16} />;
+	const icon = row.kind === 'action' ? actionIcon(row.item) : row.kind === 'custom' ? <FileText size={16} /> : <MessageSquareText size={16} />;
 	const title = row.kind === 'assistant' ? row.item.name : row.item.label;
 	const description = row.kind === 'assistant' ? row.item.summary : row.item.description;
-	return <Button variant="ghost" className={`pktw-mb-1 pktw-flex pktw-h-auto pktw-w-full pktw-items-start pktw-gap-2 pktw-p-2.5 pktw-text-left ${active ? 'pktw-bg-pk-accent/10' : ''}`} onClick={onSelect}><span className="pktw-mt-0.5 pktw-text-pk-text-tertiary">{icon}</span><span className="pktw-flex pktw-min-w-0 pktw-flex-1 pktw-flex-col pktw-gap-0.5"><span className="pktw-text-sm pktw-font-medium">{title}</span><span className="pktw-line-clamp-2 pktw-text-xs pktw-text-pk-text-tertiary">{description || 'No description yet.'}</span></span></Button>;
+	return <Button variant="ghost" className={`pktw-mb-1 pktw-flex pktw-h-auto pktw-w-full pktw-items-start pktw-gap-2.5 pktw-rounded-md pktw-p-2.5 pktw-text-left hover:pktw-bg-pk-background-secondary ${active ? 'pktw-bg-pk-accent/10' : ''}`} onClick={onSelect}><span className={`pktw-grid pktw-h-8 pktw-w-8 pktw-shrink-0 pktw-place-items-center pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-surface ${active ? 'pktw-border-pk-accent/30 pktw-text-pk-accent' : 'pktw-text-pk-text-tertiary'}`}>{icon}</span><span className="pktw-flex pktw-min-w-0 pktw-flex-1 pktw-flex-col pktw-gap-0.5"><span className="pktw-text-sm pktw-font-medium">{title}</span><span className="pktw-line-clamp-2 pktw-text-xs pktw-text-pk-text-tertiary">{description || 'No description yet.'}</span></span></Button>;
+}
+
+function ListCreateRow({ label, onClick }: { label: string; onClick: () => void }): React.ReactElement {
+	return <div className="pktw-flex pktw-justify-end pktw-px-1 pktw-py-1"><Button size="sm" variant="primary" onClick={onClick}><Plus size={14} /> {label}</Button></div>;
+}
+
+function actionIcon(action: AIControlActionSummary): React.ReactElement {
+	const { id, area } = action;
+	if (id.startsWith('ai-graph-')) return <Network size={16} />;
+	if (id.includes('chart')) return <ChartNoAxesCombined size={16} />;
+	if (id.includes('image')) return <Image size={16} />;
+	if (id.includes('table')) return <Table2 size={16} />;
+	if (id.includes('formula')) return <Sigma size={16} />;
+	if (id.includes('code')) return <Code2 size={16} />;
+	if (id.includes('mermaid') || id.includes('diagram')) return <Workflow size={16} />;
+	if (id.startsWith('ai-search-')) return <SearchCheck size={16} />;
+	if (id.startsWith('vault-')) return <Brain size={16} />;
+	if (id.startsWith('ambient-')) return <Sparkles size={16} />;
+	if (id.startsWith('composer-') || id.startsWith('copilot-')) return <FilePenLine size={16} />;
+	const Icon = PRODUCT_AREA_ICONS[area] ?? Bot;
+	return <Icon size={16} />;
 }
 
 function ActionDetail({ action, onEditPrompt }: { action: AIControlActionSummary; onEditPrompt: (id: PromptId) => Promise<void> }): React.ReactElement {

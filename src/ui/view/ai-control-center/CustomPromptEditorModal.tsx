@@ -49,7 +49,7 @@ export function CustomPromptEditorModal({ draft, onOpenChange, onSave }: CustomP
 	const fieldClass = 'pktw-w-full pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-surface pktw-px-2 pktw-py-1.5 pktw-text-sm pktw-text-pk-text-primary';
 	return (
 		<Modal open={Boolean(draft)} onOpenChange={onOpenChange}>
-			<Modal.Content width="wide" portalClassName="peak-design-root" className="pktw-max-h-[90vh]">
+			<Modal.Content width="wide" portalClassName="peak-design-root" className="pk-ai-control-center__prompt-modal">
 				<Modal.Header>
 					<div className="pktw-flex pktw-flex-col pktw-gap-1">
 						<Modal.Title>{draft?.filePath ? 'Edit Custom Prompt' : 'New Custom Prompt'}</Modal.Title>
@@ -64,7 +64,7 @@ export function CustomPromptEditorModal({ draft, onOpenChange, onSave }: CustomP
 						<label className="pktw-flex pktw-flex-col pktw-gap-1"><span className="pktw-text-xs pktw-font-medium">Where it appears</span><select className={fieldClass} value={form.category} onChange={(event) => update('category', event.target.value as CustomPromptDraft['category'])}><option value="document">Document</option><option value="vault">Vault</option><option value="writing">Writing</option></select></label>
 						<label className="pktw-flex pktw-flex-col pktw-gap-1"><span className="pktw-text-xs pktw-font-medium">Model override (optional)</span><input className={fieldClass} placeholder="Use current AI setup default" value={form.modelId ?? ''} onChange={(event) => update('modelId', event.target.value)} /></label>
 					</div>
-					<label className="pktw-flex pktw-flex-col pktw-gap-1"><span className="pktw-text-xs pktw-font-medium">Prompt template</span><textarea aria-label="Custom Prompt template" className="pktw-min-h-[420px] pktw-w-full pktw-resize-y pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-surface pktw-p-3 pktw-font-mono pktw-text-xs" value={form.template} onChange={(event) => update('template', event.target.value)} /></label>
+					<label className="pktw-flex pktw-flex-col pktw-gap-1"><span className="pktw-text-xs pktw-font-medium">Prompt template</span><textarea aria-label="Custom Prompt template" rows={28} className="pk-ai-control-center__prompt-textarea pktw-w-full pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-surface pktw-p-3 pktw-font-mono pktw-text-xs" value={form.template} onChange={(event) => update('template', event.target.value)} /></label>
 					<div className="pktw-rounded-md pktw-border pktw-border-pk-border"><div className="pktw-px-4 pktw-py-3"><span className="pktw-block pktw-text-sm pktw-font-medium">Template inputs</span><span className="pktw-mt-1 pktw-block pktw-text-xs pktw-text-pk-text-tertiary">Peak supplies these values when this Custom Prompt runs.</span></div><PromptInputsTable inputs={CUSTOM_PROMPT_TEMPLATE_VARIABLES} /></div>
 					{error ? <span className="pktw-text-xs pktw-text-red-500">{error}</span> : null}
 				</Modal.Body>

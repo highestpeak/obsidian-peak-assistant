@@ -1,0 +1,48 @@
+/* AI Control Center owns a deliberate three-column visual hierarchy:
+   the browse rail is contextual navigation, while the list and inspector are
+   the working surface. Keep this separate from the generic settings panels. */
+.pktw-root .pk-ai-control-center,
+.peak-design-root .pk-ai-control-center {
+	background: var(--pk-surface) !important;
+}
+
+.pktw-root .pk-ai-control-center__rail,
+.peak-design-root .pk-ai-control-center__rail {
+	background: var(--pk-bg-secondary) !important;
+	border-color: var(--pk-border) !important;
+}
+
+.pktw-root .pk-ai-control-center__list,
+.pktw-root .pk-ai-control-center__inspector,
+.peak-design-root .pk-ai-control-center__list,
+.peak-design-root .pk-ai-control-center__inspector {
+	background: var(--pk-surface) !important;
+	border-color: var(--pk-border) !important;
+}
+
+/* Prompt templates are written, inspected and revised in this dialog. Give
+   the editor enough room by default and keep its resize handle functional
+   despite host textarea rules. The body scrolls once the editor grows. */
+:is(.pktw-root, .peak-design-root) .pk-ai-control-center__prompt-modal.pk-modal-shell[data-state] {
+	top: 36px;
+	width: min(920px, calc(100vw - 48px)) !important;
+	height: min(86vh, 920px) !important;
+	max-height: calc(100vh - 72px) !important;
+	overflow: hidden !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-ai-control-center__prompt-modal .pk-modal-shell__body {
+	min-height: 0;
+	max-height: none;
+	flex: 1 1 auto;
+	overflow-y: auto;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-ai-control-center__prompt-textarea {
+	display: block !important;
+	min-height: 360px !important;
+	resize: vertical !important;
+	overflow: auto !important;
+	cursor: text !important;
+	flex: 0 0 auto !important;
+}
