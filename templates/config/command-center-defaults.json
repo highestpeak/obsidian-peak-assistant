@@ -18,7 +18,6 @@
       "id": "pinned",
       "label": "Pinned",
       "icon": { "kind": "lucide", "name": "pin" },
-      "actionLayout": "layered",
       "order": 0,
       "actions": [
         {
@@ -27,7 +26,7 @@
           "shortLabel": "Home",
           "aliases": ["start", "dashboard"],
           "icon": { "kind": "lucide", "name": "house" },
-          "display": "icon-label",
+          "display": "compact",
           "pinnedToHome": true,
           "order": 0
         },
@@ -37,7 +36,7 @@
           "shortLabel": "Usage",
           "aliases": ["dashboard", "tokens"],
           "icon": { "kind": "lucide", "name": "chart-no-axes-column" },
-          "display": "icon-label",
+          "display": "compact",
           "pinnedToHome": true,
           "order": 1
         }
@@ -47,7 +46,6 @@
       "id": "peak-assistant",
       "label": "Peak Assistant",
       "icon": { "kind": "lucide", "name": "sparkles" },
-      "actionLayout": "layered",
       "order": 1,
       "actions": [
         {
@@ -56,7 +54,7 @@
           "shortLabel": "Composer",
           "aliases": ["write", "document"],
           "icon": { "kind": "lucide", "name": "pen-line" },
-          "display": "icon-label",
+          "display": "icon",
           "pinnedToHome": false,
           "order": 0
         },
@@ -66,7 +64,7 @@
           "shortLabel": "Chat Studio",
           "aliases": ["chat", "conversation"],
           "icon": { "kind": "lucide", "name": "message-square" },
-          "display": "icon-label",
+          "display": "icon",
           "pinnedToHome": false,
           "order": 1
         },
@@ -76,7 +74,7 @@
           "shortLabel": "File Atlas",
           "aliases": ["map", "document graph"],
           "icon": { "kind": "lucide", "name": "map" },
-          "display": "icon-label",
+          "display": "icon",
           "pinnedToHome": false,
           "order": 2
         },
@@ -86,7 +84,7 @@
           "shortLabel": "Quick Search",
           "aliases": ["vault search", "find"],
           "icon": { "kind": "lucide", "name": "search" },
-          "display": "icon-label",
+          "display": "icon",
           "pinnedToHome": false,
           "order": 3
         },
@@ -96,7 +94,7 @@
           "shortLabel": "Settings",
           "aliases": ["preferences", "configure"],
           "icon": { "kind": "lucide", "name": "settings-2" },
-          "display": "icon-label",
+          "display": "icon",
           "pinnedToHome": false,
           "order": 4
         }
@@ -106,7 +104,6 @@
       "id": "navigation",
       "label": "Navigation",
       "icon": { "kind": "lucide", "name": "compass" },
-      "actionLayout": "layered",
       "order": 2,
       "actions": [
         {
@@ -115,7 +112,7 @@
           "shortLabel": "Daily note",
           "aliases": ["today"],
           "icon": { "kind": "lucide", "name": "calendar-days" },
-          "display": "icon-label",
+          "display": "icon",
           "pinnedToHome": false,
           "order": 0
         }

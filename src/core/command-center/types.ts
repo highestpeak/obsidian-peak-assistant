@@ -10,7 +10,9 @@ export type CommandCenterItemIcon =
 	| { kind: 'lucide'; name: string }
 	| { kind: 'emoji'; value: string };
 
-export type CommandCenterDisplayMode = 'icon-label' | 'icon-only' | 'text-only';
+export type CommandCenterDisplayMode = 'auto' | 'icon' | 'compact' | 'wide' | 'full';
+export type ResolvedCommandCenterDisplayMode = Exclude<CommandCenterDisplayMode, 'auto'>;
+export type CommandCenterDropPlacement = 'before' | 'after';
 
 export interface CommandCenterActionItem {
 	id: string;
@@ -27,7 +29,6 @@ export interface CommandCenterGroup {
 	id: string;
 	label: string;
 	icon?: CommandCenterItemIcon;
-	actionLayout: 'layered' | 'rows';
 	order: number;
 	actions: CommandCenterActionItem[];
 }
@@ -95,6 +96,7 @@ export interface CommandCenterRuntimePort {
 	getConfig(): CommandCenterBoardConfig;
 	subscribe(listener: () => void): () => void;
 	saveConfig(config: CommandCenterBoardConfig): Promise<void>;
+	moveItem(itemId: string, targetGroupId: string, targetItemId: string | null, placement: CommandCenterDropPlacement): Promise<void>;
 	resolveItems(groupId: string | 'all', query?: string): Promise<ResolvedCommandCenterItem[]>;
 	getCatalog(query?: string, scope?: CommandCenterCatalogScope): Promise<CommandCenterCatalogEntry[]>;
 	invokeItem(item: CommandCenterActionItem): Promise<boolean>;

@@ -2,12 +2,22 @@ import type {
 	CommandCenterAction,
 	CommandCenterActionItem,
 	CommandCenterBoardConfig,
+	CommandCenterDropPlacement,
 	CommandCenterDisplayMode,
 	CommandCenterGroup,
 	CommandCenterItemIcon,
 } from './types';
 
-const DISPLAY_MODES = new Set<CommandCenterDisplayMode>(['icon-label', 'icon-only', 'text-only']);
+const DISPLAY_MODES = new Set<CommandCenterDisplayMode>(['auto', 'icon', 'compact', 'wide', 'full']);
+
+function normalizeDisplayMode(value: unknown, icon: CommandCenterItemIcon | undefined): CommandCenterDisplayMode {
+	let display: CommandCenterDisplayMode;
+	if (DISPLAY_MODES.has(value as CommandCenterDisplayMode)) display = value as CommandCenterDisplayMode;
+	else if (value === 'icon-label' || value === 'icon-only') display = 'icon';
+	else if (value === 'text-only') display = 'full';
+	else display = 'auto';
+	return display === 'icon' && !icon ? 'auto' : display;
+}
 
 function cleanText(value: unknown, fallback = ''): string {
 	return typeof value === 'string' && value.trim() ? value.trim() : fallback;
@@ -73,9 +83,6 @@ function normalizeItem(value: unknown, index: number): CommandCenterActionItem |
 	const id = cleanText(raw.id);
 	const shortLabel = cleanText(raw.shortLabel, 'Untitled action');
 	if (!action || !id) return null;
-	const display = DISPLAY_MODES.has(raw.display as CommandCenterDisplayMode)
-		? raw.display as CommandCenterDisplayMode
-		: 'icon-label';
 	const icon = normalizeIcon(raw.icon);
 	return {
 		id,
@@ -85,7 +92,7 @@ function normalizeItem(value: unknown, index: number): CommandCenterActionItem |
 			? raw.aliases.map((alias) => cleanText(alias)).filter(Boolean).slice(0, 12)
 			: [],
 		icon,
-		display: display === 'icon-only' && !icon ? 'text-only' : display,
+		display: normalizeDisplayMode(raw.display, icon),
 		pinnedToHome: raw.pinnedToHome === true,
 		order: typeof raw.order === 'number' && Number.isFinite(raw.order) ? raw.order : index,
 	};
@@ -104,7 +111,6 @@ function normalizeGroup(value: unknown, index: number): CommandCenterGroup | nul
 		id,
 		label,
 		icon: normalizeIcon(raw.icon),
-		actionLayout: raw.actionLayout === 'rows' ? 'rows' : 'layered',
 		order: typeof raw.order === 'number' && Number.isFinite(raw.order) ? raw.order : index,
 		actions: actions.sort((a, b) => a.order - b.order).map((item, order) => ({ ...item, order })),
 	};
@@ -161,4 +167,34 @@ export function normalizeCommandCenterBoardConfig(
 
 export function cloneCommandCenterConfig(config: CommandCenterBoardConfig): CommandCenterBoardConfig {
 	return JSON.parse(JSON.stringify(config)) as CommandCenterBoardConfig;
+}
+
+export function moveCommandCenterItem(
+	config: CommandCenterBoardConfig,
+	itemId: string,
+	targetGroupId: string,
+	targetItemId: string | null,
+	placement: CommandCenterDropPlacement,
+): CommandCenterBoardConfig {
+	const next = cloneCommandCenterConfig(config);
+	if (targetItemId === itemId) return next;
+	const sourceGroup = next.groups.find((group) => group.actions.some((item) => item.id === itemId));
+	const targetGroup = next.groups.find((group) => group.id === targetGroupId);
+	if (!sourceGroup || !targetGroup) return next;
+
+	const sourceIndex = sourceGroup.actions.findIndex((item) => item.id === itemId);
+	const [moved] = sourceGroup.actions.splice(sourceIndex, 1);
+	if (!moved) return next;
+
+	const targetIndex = targetItemId
+		? targetGroup.actions.findIndex((item) => item.id === targetItemId)
+		: -1;
+	const insertionIndex = targetIndex < 0
+		? targetGroup.actions.length
+		: targetIndex + (placement === 'after' ? 1 : 0);
+	targetGroup.actions.splice(insertionIndex, 0, moved);
+	for (const group of next.groups) {
+		group.actions = group.actions.map((item, order) => ({ ...item, order }));
+	}
+	return next;
 }

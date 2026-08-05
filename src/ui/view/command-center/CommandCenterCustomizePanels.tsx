@@ -13,14 +13,20 @@ import { CommandCenterIcon } from './CommandCenterIcon';
 import { IconBrowser } from './IconBrowser';
 
 const DISPLAY_OPTIONS: ReadonlyArray<{ value: CommandCenterDisplayMode; label: string }> = [
-	{ value: 'icon-label', label: 'Grid' },
-	{ value: 'icon-only', label: 'Icon' },
-	{ value: 'text-only', label: 'List' },
+	{ value: 'auto', label: 'Auto' },
+	{ value: 'icon', label: 'Icon' },
+	{ value: 'compact', label: '3' },
+	{ value: 'wide', label: '2' },
+	{ value: 'full', label: '1' },
 ];
 
-function isDestinationItem(item: CommandCenterActionItem): boolean {
-	return ['vault-target', 'bookmark', 'workspace', 'view'].includes(item.action.kind);
-}
+const DISPLAY_LABELS: Record<CommandCenterDisplayMode, string> = {
+	auto: 'Auto width',
+	icon: 'Icon tile',
+	compact: '3 per row',
+	wide: '2 per row',
+	full: 'Full width',
+};
 
 function commitTextDraft(
 	draft: string,
@@ -82,14 +88,13 @@ export function CommandCenterItemEditor({
 		event.preventDefault();
 		reset();
 	};
-	const destination = isDestinationItem(item);
-	const displayOptions = DISPLAY_OPTIONS.filter((option) => option.value === 'text-only' || Boolean(item.icon));
+	const displayOptions = DISPLAY_OPTIONS.filter((option) => option.value !== 'icon' || Boolean(item.icon));
 
 	return (
 		<div ref={editorRef} className="pk-cc-item-editor">
 			<div className="pk-cc-item-editor__head">
 				<span>Customize action</span>
-				<span>{destination ? 'Compact link' : item.display === 'text-only' ? 'List row' : item.display === 'icon-only' ? 'Icon tile' : 'Grid tile'}</span>
+				<span>{DISPLAY_LABELS[item.display]}</span>
 			</div>
 			<div className="pk-cc-item-editor__fields">
 				<label>
@@ -101,14 +106,10 @@ export function CommandCenterItemEditor({
 					<input value={aliasesDraft} placeholder="Separate with commas" onChange={(event) => setAliasesDraft(event.target.value)} onBlur={commitAliases} onKeyDown={(event) => onDraftKeyDown(event, () => setAliasesDraft(item.aliases.join(', ')))} />
 				</label>
 			</div>
-			{destination ? (
-				<div className="pk-cc-item-editor__rule"><span>Placement</span><span>Documents, bookmarks, workspaces and views always stay in the compact link section.</span></div>
-			) : (
-				<div className="pk-cc-item-editor__row">
-					<span>Placement</span>
-					<span className="pk-cc-item-editor__control"><Segmented value={item.display} onValueChange={(mode) => onUpdate((target) => { target.display = mode; })} options={displayOptions} variant="animated-pill" size="sm" aria-label="Display mode" /><span>Grid centers icon and label. List uses a full-width text row.</span></span>
-				</div>
-			)}
+			<div className="pk-cc-item-editor__row">
+				<span>Display</span>
+				<span className="pk-cc-item-editor__control"><Segmented value={item.display} onValueChange={(mode) => onUpdate((target) => { target.display = mode; })} options={displayOptions} variant="animated-pill" size="sm" aria-label="Display mode" /><span>Auto measures the rendered name and selects 3, 2, or 1 column without rewriting it.</span></span>
+			</div>
 			<div className="pk-cc-item-editor__row">
 				<span>Icon</span>
 				<Button variant="secondary" size="sm" className="pk-cc-icon-picker-trigger" onClick={() => setIconOpen((open) => !open)}>
@@ -125,8 +126,7 @@ export function CommandCenterItemEditor({
 					value={item.icon}
 					onChange={(icon: CommandCenterItemIcon | undefined) => onUpdate((target) => {
 						target.icon = icon;
-						if (!icon) target.display = 'text-only';
-						else if (target.display === 'text-only' && !destination) target.display = 'icon-label';
+						if (!icon && target.display === 'icon') target.display = 'auto';
 					})}
 					onClose={() => setIconOpen(false)}
 				/>
@@ -177,9 +177,10 @@ export function CommandCenterArrangeItems({
 						data-drop-position={dropTargetId === item.id && draggedId !== item.id && items.findIndex((candidate) => candidate.id === draggedId) < index ? 'after' : 'before'}
 						draggable
 						onDragStart={(event) => {
-							event.dataTransfer.effectAllowed = 'move';
-							event.dataTransfer.setData('text/plain', item.id);
-							event.dataTransfer.setDragImage(event.currentTarget, 24, 24);
+							const dragEvent = event as unknown as React.DragEvent<HTMLDivElement>;
+							dragEvent.dataTransfer.effectAllowed = 'move';
+							dragEvent.dataTransfer.setData('text/plain', item.id);
+							dragEvent.dataTransfer.setDragImage(dragEvent.currentTarget, 24, 24);
 							setDraggedId(item.id);
 						}}
 						onDragEnd={() => { setDraggedId(null); setDropTargetId(null); }}
@@ -198,7 +199,7 @@ export function CommandCenterArrangeItems({
 					>
 						<span className="pk-cc-arrange-row__handle"><GripVertical size={15} /><span>{index + 1}</span></span>
 						<span className="pk-cc-arrange-row__icon"><CommandCenterIcon icon={item.icon} size={16} /></span>
-						<span className="pk-cc-arrange-row__copy"><span>{item.shortLabel}</span><span>{['vault-target', 'bookmark', 'workspace', 'view'].includes(item.action.kind) ? 'Link' : item.display === 'text-only' ? 'Text row' : item.display === 'icon-only' ? 'Icon only' : 'Icon grid'}</span></span>
+						<span className="pk-cc-arrange-row__copy"><span>{item.shortLabel}</span><span>{DISPLAY_LABELS[item.display]}</span></span>
 						<MoveButtons index={index} count={items.length} onMove={(delta) => move(item.id, delta)} />
 					</motion.div>
 				))}
@@ -244,9 +245,10 @@ export function CommandCenterArrangeTabs({
 							data-drop-position={dropTargetId === tabId && draggedId !== tabId && tabs.indexOf(draggedId ?? 'all') < index ? 'after' : 'before'}
 							draggable
 							onDragStart={(event) => {
-								event.dataTransfer.effectAllowed = 'move';
-								event.dataTransfer.setData('text/plain', tabId);
-								event.dataTransfer.setDragImage(event.currentTarget, 24, 24);
+								const dragEvent = event as unknown as React.DragEvent<HTMLDivElement>;
+								dragEvent.dataTransfer.effectAllowed = 'move';
+								dragEvent.dataTransfer.setData('text/plain', tabId);
+								dragEvent.dataTransfer.setDragImage(dragEvent.currentTarget, 24, 24);
 								setDraggedId(tabId);
 							}}
 							onDragEnd={() => { setDraggedId(null); setDropTargetId(null); }}

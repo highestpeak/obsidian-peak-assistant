@@ -62,11 +62,6 @@ const SEARCH_PLACEHOLDERS: Record<CommandCenterCatalogScope, string> = {
 	'workspaces-views': 'Find a workspace or view',
 };
 
-function compactCommandLabel(label: string): string {
-	const pieces = label.split(':').map((piece) => piece.trim()).filter(Boolean);
-	return pieces.length > 1 ? pieces[pieces.length - 1]! : label;
-}
-
 function newId(prefix: string): string {
 	return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
@@ -165,10 +160,10 @@ export function CommandCenterCustomize({ runtime, onBack, onClose }: CommandCent
 			group.actions.push({
 				id: newId('action'),
 				action: entry.action,
-				shortLabel: compactCommandLabel(entry.label),
+				shortLabel: entry.label,
 				aliases: [],
 				icon: entry.icon,
-				display: entry.icon ? 'icon-label' : 'text-only',
+				display: 'auto',
 				pinnedToHome: false,
 				order: group.actions.length,
 			});
@@ -210,7 +205,7 @@ export function CommandCenterCustomize({ runtime, onBack, onClose }: CommandCent
 	const createGroup = (): void => {
 		const id = newId('group');
 		updateConfig((next) => {
-			next.groups.push({ id, label: 'New group', actionLayout: 'layered', order: next.groups.length, actions: [] });
+			next.groups.push({ id, label: 'New group', order: next.groups.length, actions: [] });
 			next.modal.tabOrder.push(id);
 		});
 		setGroupId(id);

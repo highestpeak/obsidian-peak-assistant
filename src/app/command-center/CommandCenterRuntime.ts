@@ -4,11 +4,13 @@ import {
 	cloneCommandCenterConfig,
 	commandCenterActionKey,
 	commandCenterCatalogScopeForAction,
+	moveCommandCenterItem,
 	normalizeCommandCenterBoardConfig,
 	type CommandCenterActionItem,
 	type CommandCenterBoardConfig,
 	type CommandCenterCatalogEntry,
 	type CommandCenterCatalogScope,
+	type CommandCenterDropPlacement,
 	type CommandCenterRecentTarget,
 	type CommandCenterRuntimePort,
 	type ResolvedCommandCenterItem,
@@ -67,6 +69,15 @@ export class CommandCenterRuntime implements CommandCenterRuntimePort {
 			.catch(() => undefined)
 			.then(() => this.persist(snapshot));
 		await this.persistTail;
+	}
+
+	async moveItem(
+		itemId: string,
+		targetGroupId: string,
+		targetItemId: string | null,
+		placement: CommandCenterDropPlacement,
+	): Promise<void> {
+		await this.saveConfig(moveCommandCenterItem(this.config, itemId, targetGroupId, targetItemId, placement));
 	}
 
 	async resolveItems(groupId: string | 'all', query = ''): Promise<ResolvedCommandCenterItem[]> {
@@ -159,7 +170,7 @@ export class CommandCenterRuntime implements CommandCenterRuntimePort {
 			shortLabel: entry.label,
 			aliases: [],
 			icon: entry.icon,
-			display: entry.icon ? 'icon-label' : 'text-only',
+			display: 'auto',
 			pinnedToHome: false,
 			order: 0,
 		});

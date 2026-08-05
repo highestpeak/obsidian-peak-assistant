@@ -51,6 +51,8 @@ assert.match(customize, /onBlur=\{commitGroupLabel\}/, 'group renaming must comm
 assert.doesNotMatch(customize, /onDone|>Done</, 'autosaving customization must not expose a fake Done action');
 assert.match(customize, /pk-cc-directory-row__copy/, 'directory rows must keep label and source in a stable two-line copy column');
 assert.match(customize, /CommandCenterArrangeItems/, 'membership and arrangement must be separate tasks without splitting the catalog');
+assert.match(customize, /shortLabel: entry\.label/, 'new items must preserve the complete source command name');
+assert.doesNotMatch(customize, /compactCommandLabel|actionLayout/, 'Customize must not shorten names or impose a group-wide layout');
 assert.match(customize, /container=\{modalPortal\}/, 'scope picker must remain inside the active Obsidian modal');
 assert.match(customize, /onCloseAutoFocus/, 'scope selection must restore focus to catalog search instead of the closed trigger');
 assert.match(modalHost, /modalEl\.addEventListener\('keydown', this\.containKeyEvent\)/, 'Command Center keys must not bubble into the workspace behind the modal');
@@ -66,17 +68,23 @@ for (const source of [home, customize, launcher, iconBrowser]) {
 }
 assert.match(iconBrowser, /getCommandCenterLucideNames/, 'icon search must read the complete registered icon catalog');
 assert.match(iconBrowser, /Type or paste any emoji/, 'emoji customization must accept arbitrary Unicode emoji beyond the common shortcuts');
+assert.match(launcher, /draggable=\{dragEnabled\}/, 'configured items must be directly draggable in the launcher');
+assert.match(launcher, /runtime\.moveItem\(draggedId, groupId, itemId, placement\)/, 'launcher drag must persist through the runtime instead of remaining a visual mock');
+assert.match(launcher, /setDragImage\(ghost/, 'direct drag must provide a dedicated visual ghost');
+assert.match(launcher, /resolveAutoCommandCenterDisplayMode/, 'Auto display must measure and resolve the rendered label');
 
 const css = readFileSync('src/styles/command-center.css', 'utf8');
 assert.match(css, /peak-command-center-modal:has\(\.pk-cc-customize\)[\s\S]*?720px/);
-assert.match(css, /\.pk-cc-links[\s\S]*?grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
-assert.match(css, /\.pk-cc-links[\s\S]*?max-height: 106px/, 'destination links must stay within roughly three rows');
-assert.match(css, /\.pk-cc-action--link[\s\S]*?height: 34px !important/, 'destinations must render as compact links rather than large tiles');
-assert.match(css, /grid-template-columns: repeat\(5, minmax\(0, 1fr\)\)/);
-assert.match(css, /\.pk-cc-action--grid[\s\S]*?height: 60px !important/);
-assert.match(css, /\.pk-cc-action--row[\s\S]*?height: 34px !important/, 'text commands must have a dedicated row presentation');
+assert.match(css, /\.pk-cc-mixed-grid[\s\S]*?grid-template-columns: repeat\(30, minmax\(0, 1fr\)\)/);
+assert.match(css, /\.pk-cc-item-slot--icon[\s\S]*?grid-column: span 6[\s\S]*?grid-row: span 2/);
+assert.match(css, /\.pk-cc-item-slot--compact[\s\S]*?grid-column: span 10/);
+assert.match(css, /\.pk-cc-item-slot--wide[\s\S]*?grid-column: span 15/);
+assert.match(css, /\.pk-cc-item-slot--full[\s\S]*?grid-column: span 30/);
+assert.match(css, /\.pk-cc-action--icon[\s\S]*?height: 66px !important/);
+assert.match(css, /\.pk-cc-action--compact,[\s\S]*?height: 31px !important/);
 assert.match(css, /\.pk-cc-action__label[\s\S]*?max-width: 100%/, 'command labels must be contained within their cells');
-assert.match(css, /\.pk-cc-action--grid \.pk-cc-action__label[\s\S]*?text-align: center/, 'grid icons and labels must share one centered alignment rule');
+assert.match(css, /\.pk-cc-action--icon \.pk-cc-action__label[\s\S]*?text-align: center/, 'icon tiles must center icon and label together');
+assert.match(css, /\.pk-cc-item-slot--drop-before-column::after/, 'direct drag must expose an insertion target in the mixed grid');
 assert.match(css, /\.pk-cc-arrange-row\[data-drop-target="true"\]::before/, 'drag reorder must expose a visible drop target');
 assert.match(css, /var\(--pk-surface\)/, 'Command Center must consume Peak design tokens');
 assert.doesNotMatch(css, /var\(--(?:background|text|interactive|font)-/, 'Command Center CSS must not bypass Peak tokens with Obsidian theme variables');

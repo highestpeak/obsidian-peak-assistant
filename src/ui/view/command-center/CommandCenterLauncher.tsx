@@ -1,11 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUpRight, Search, SlidersHorizontal, X } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
+import { GripVertical, Search, SlidersHorizontal, X } from 'lucide-react';
 import {
 	buildProjectionPositions,
 	moveProjectionFocus,
-	projectCommandCenterItems,
+	resolveAutoCommandCenterDisplayMode,
+	type CommandCenterDropPlacement,
 	type CommandCenterGroup,
 	type CommandCenterRuntimePort,
+	type ResolvedCommandCenterDisplayMode,
 	type ResolvedCommandCenterItem,
 } from '@/core/command-center';
 import { Button, IconButton, Pill } from '@/ui/components/primitives';
@@ -15,6 +18,13 @@ export interface CommandCenterLauncherProps {
 	runtime: CommandCenterRuntimePort;
 	onCustomize: () => void;
 	onClose: () => void;
+}
+
+interface DropTarget {
+	groupId: string;
+	itemId: string | null;
+	placement: CommandCenterDropPlacement;
+	axis: 'column' | 'row';
 }
 
 function useRuntimeConfig(runtime: CommandCenterRuntimePort) {
@@ -36,27 +46,35 @@ function GroupTab({ group, selected, onSelect }: {
 	);
 }
 
-type ProjectionKind = 'link' | 'grid' | 'row';
+function modeColumnLabel(mode: ResolvedCommandCenterDisplayMode): string {
+	if (mode === 'compact') return '3';
+	if (mode === 'wide') return '2';
+	if (mode === 'full') return '1';
+	return 'icon';
+}
 
-function ActionContent({ item, kind }: { item: ResolvedCommandCenterItem; kind: ProjectionKind }): React.ReactElement {
-	const row = kind === 'row';
-	const link = kind === 'link';
-	const showIcon = item.display !== 'text-only' && item.icon;
-	const showLabel = item.display !== 'icon-only' || !item.icon;
+function ActionContent({ item, mode }: {
+	item: ResolvedCommandCenterItem;
+	mode: ResolvedCommandCenterDisplayMode;
+}): React.ReactElement {
+	const iconMode = mode === 'icon';
+	const trailing = item.hotkey
+		? <kbd>{item.hotkey}</kbd>
+		: item.display === 'auto'
+			? <span className="pk-cc-action__auto">Auto · {modeColumnLabel(mode)}</span>
+			: null;
 	return (
 		<>
-			{showIcon ? <CommandCenterIcon icon={item.icon} size={link ? 14 : row ? 16 : 19} /> : null}
-			{showLabel ? <span className="pk-cc-action__label">{item.shortLabel}</span> : null}
-			{link && showLabel ? <ArrowUpRight className="pk-cc-action__link-arrow" size={12} aria-hidden="true" /> : null}
-			{row ? <span className="pk-cc-action__source">{item.sourceLabel}</span> : null}
-			{row && item.hotkey ? <kbd>{item.hotkey}</kbd> : null}
+			{item.icon ? <span className="pk-cc-action__icon"><CommandCenterIcon icon={item.icon} size={iconMode ? 19 : 15} /></span> : null}
+			<span className="pk-cc-action__label">{item.shortLabel}</span>
+			<span className="pk-cc-action__end">{trailing}<GripVertical className="pk-cc-action__grip" size={13} aria-hidden="true" /></span>
 		</>
 	);
 }
 
-function ActionButton({ item, kind, active, onFocus, onInvoke }: {
+function ActionButton({ item, mode, active, onFocus, onInvoke }: {
 	item: ResolvedCommandCenterItem;
-	kind: ProjectionKind;
+	mode: ResolvedCommandCenterDisplayMode;
 	active: boolean;
 	onFocus: () => void;
 	onInvoke: () => void;
@@ -66,9 +84,10 @@ function ActionButton({ item, kind, active, onFocus, onInvoke }: {
 		<Button
 			variant="ghost"
 			size="sm"
-			className={`pk-cc-action pk-cc-action--${kind}`}
+			className={`pk-cc-action pk-cc-action--${mode}`}
 			data-action-id={item.id}
 			data-active={active ? 'true' : 'false'}
+			data-has-icon={item.icon ? 'true' : undefined}
 			aria-label={item.shortLabel}
 			aria-disabled={!item.available}
 			disabled={!item.available}
@@ -77,64 +96,107 @@ function ActionButton({ item, kind, active, onFocus, onInvoke }: {
 			onFocus={onFocus}
 			onClick={onInvoke}
 		>
-			<ActionContent item={item} kind={kind} />
+			<ActionContent item={item} mode={mode} />
 		</Button>
 	);
+}
+
+function dropClassName(dropTarget: DropTarget | null, item: ResolvedCommandCenterItem): string {
+	if (dropTarget?.itemId !== item.id) return '';
+	return ` pk-cc-item-slot--drop-${dropTarget.placement}-${dropTarget.axis}`;
 }
 
 function ProjectionSection({
 	group,
 	items,
+	resolvedModes,
 	showGroupLabel,
-	destinationColumns,
 	activeId,
+	draggedId,
+	dropTarget,
+	dragEnabled,
+	reducedMotion,
 	onFocus,
 	onInvoke,
+	onDragStart,
+	onDragOverItem,
+	onDragOverGrid,
+	onDrop,
+	onDragEnd,
 }: {
 	group: CommandCenterGroup;
 	items: ResolvedCommandCenterItem[];
+	resolvedModes: Map<string, ResolvedCommandCenterDisplayMode>;
 	showGroupLabel: boolean;
-	destinationColumns: number;
 	activeId: string | null;
+	draggedId: string | null;
+	dropTarget: DropTarget | null;
+	dragEnabled: boolean;
+	reducedMotion: boolean;
 	onFocus: (id: string) => void;
 	onInvoke: (item: ResolvedCommandCenterItem) => void;
+	onDragStart: (event: React.DragEvent<HTMLDivElement>, item: ResolvedCommandCenterItem) => void;
+	onDragOverItem: (event: React.DragEvent<HTMLDivElement>, item: ResolvedCommandCenterItem, mode: ResolvedCommandCenterDisplayMode) => void;
+	onDragOverGrid: (event: React.DragEvent<HTMLDivElement>, groupId: string) => void;
+	onDrop: (event: React.DragEvent<HTMLDivElement>) => void;
+	onDragEnd: () => void;
 }): React.ReactElement | null {
-	if (items.length === 0) return null;
-	const projection = projectCommandCenterItems(items, group.actionLayout);
-	const render = (item: ResolvedCommandCenterItem, kind: ProjectionKind): React.ReactElement => (
-		<ActionButton
-			key={item.id}
-			item={item}
-			kind={kind}
-			active={item.id === activeId}
-			onFocus={() => onFocus(item.id)}
-			onInvoke={() => onInvoke(item)}
-		/>
-	);
+	if (items.length === 0 && !draggedId) return null;
 	return (
 		<div className="pk-cc-section" data-group-id={group.id}>
-			{showGroupLabel ? <span className="pk-cc-section__label">{group.label}</span> : null}
-			{projection.blocks.map((block, index) => {
-				if (block.kind === 'destination') return <div key={`destination-${index}`} className="pk-cc-links" role="group" aria-label={`${group.label} destinations`} style={{ gridTemplateColumns: `repeat(${destinationColumns}, minmax(0, 1fr))` }}>{block.items.map((item) => render(item, 'link'))}</div>;
-				if (block.kind === 'grid') return <div key={`grid-${index}`} className="pk-cc-grid" role="group" aria-label={`${group.label} visual commands`}>{block.items.map((item) => render(item, 'grid'))}</div>;
-				return <div key={`row-${index}`} className="pk-cc-rows" role="group" aria-label={`${group.label} commands`}>{block.items.map((item) => render(item, 'row'))}</div>;
-			})}
+			{showGroupLabel ? <span className="pk-cc-section__label"><span>{group.label}</span><span>{items.length}</span></span> : null}
+			<div
+				className={`pk-cc-mixed-grid${dropTarget?.groupId === group.id && dropTarget.itemId === null ? ' pk-cc-mixed-grid--drop-target' : ''}`}
+				role="group"
+				aria-label={`${group.label} actions`}
+				onDragOver={(event) => onDragOverGrid(event, group.id)}
+				onDrop={onDrop}
+			>
+				{items.map((item) => {
+					const mode = resolvedModes.get(item.id) ?? 'full';
+					return (
+						<motion.div
+							key={item.id}
+							layoutId={`command-center-item-${item.id}`}
+							className={`pk-cc-item-slot pk-cc-item-slot--${mode}${dropClassName(dropTarget, item)}`}
+							layout="position"
+							transition={reducedMotion ? { duration: 0 } : { layout: { type: 'spring', stiffness: 520, damping: 42 } }}
+							data-item-id={item.id}
+							data-group-id={group.id}
+							data-dragging={draggedId === item.id ? 'true' : undefined}
+							draggable={dragEnabled}
+							onDragStart={(event) => onDragStart(event as unknown as React.DragEvent<HTMLDivElement>, item)}
+							onDragOver={(event) => onDragOverItem(event, item, mode)}
+							onDrop={onDrop}
+							onDragEnd={onDragEnd}
+						>
+							<ActionButton item={item} mode={mode} active={item.id === activeId} onFocus={() => onFocus(item.id)} onInvoke={() => onInvoke(item)} />
+						</motion.div>
+					);
+				})}
+			</div>
 		</div>
 	);
 }
 
 export function CommandCenterLauncher({ runtime, onCustomize, onClose }: CommandCenterLauncherProps): React.ReactElement {
 	const config = useRuntimeConfig(runtime);
+	const reducedMotion = useReducedMotion();
 	const groups = useMemo(() => config.groups.slice().sort((a, b) => a.order - b.order), [config.groups]);
 	const groupById = useMemo(() => new Map(groups.map((group) => [group.id, group])), [groups]);
-	const tabOrder = useMemo(() => config.modal.tabOrder.filter((scope) => scope === 'all' || groupById.has(scope)), [config.modal.tabOrder, groupById]);
+	const tabOrder = useMemo(() => config.modal.tabOrder.filter((entry) => entry === 'all' || groupById.has(entry)), [config.modal.tabOrder, groupById]);
 	const [scope, setScope] = useState<string | 'all'>(() => tabOrder[0] ?? 'all');
 	const [query, setQuery] = useState('');
 	const [items, setItems] = useState<ResolvedCommandCenterItem[]>([]);
 	const [activeId, setActiveId] = useState<string | null>(null);
-	const [destinationColumns, setDestinationColumns] = useState(3);
+	const [gridWidth, setGridWidth] = useState(560);
+	const [draggedId, setDraggedId] = useState<string | null>(null);
+	const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const rootRef = useRef<HTMLDivElement>(null);
+	const projectionRef = useRef<HTMLDivElement>(null);
+	const dragGhostRef = useRef<HTMLElement | null>(null);
+	const suppressClickRef = useRef(false);
 
 	useEffect(() => {
 		if (tabOrder.includes(scope)) return;
@@ -153,45 +215,131 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 
 	const sections = useMemo(() => {
 		const visibleGroups = scope === 'all' ? groups : groups.filter((group) => group.id === scope);
-		return visibleGroups.map((group) => ({
-			group,
-			items: items.filter((item) => item.groupId === group.id),
-		}));
+		return visibleGroups.map((group) => ({ group, items: items.filter((item) => item.groupId === group.id) }));
 	}, [groups, items, scope]);
-	const positions = useMemo(() => sections.flatMap(({ group, items: groupItems }) =>
-		buildProjectionPositions(projectCommandCenterItems(groupItems, group.actionLayout), destinationColumns, group.id)),
-	[sections, destinationColumns]);
+
+	const resolvedModes = useMemo(() => {
+		const resolved = new Map<string, ResolvedCommandCenterDisplayMode>();
+		const ownerDocument = rootRef.current?.ownerDocument;
+		const context = ownerDocument?.createElement('canvas').getContext('2d') ?? null;
+		if (context) {
+			const rootStyle = rootRef.current ? ownerDocument?.defaultView?.getComputedStyle(rootRef.current) : null;
+			context.font = `510 11px ${rootStyle?.fontFamily ?? '-apple-system, BlinkMacSystemFont, Inter, sans-serif'}`;
+		}
+		for (const item of items) {
+			if (item.display !== 'auto') {
+				resolved.set(item.id, item.display);
+				continue;
+			}
+			const textWidth = context?.measureText(item.shortLabel).width ?? item.shortLabel.length * 6;
+			resolved.set(item.id, resolveAutoCommandCenterDisplayMode(textWidth, gridWidth));
+		}
+		return resolved;
+	}, [gridWidth, items]);
+
+	const positions = useMemo(() => buildProjectionPositions(sections.map(({ group, items: groupItems }) => ({
+		sectionId: group.id,
+		items: groupItems.map((item) => ({ id: item.id, mode: resolvedModes.get(item.id) ?? 'full' })),
+	}))), [resolvedModes, sections]);
 	const activeItem = items.find((item) => item.id === activeId) ?? null;
 
 	useEffect(() => {
-		const root = rootRef.current;
-		if (!root) return;
-		const updateColumns = (): void => {
-			const width = root.getBoundingClientRect().width;
-			setDestinationColumns(width < 340 ? 1 : width < 520 ? 2 : 3);
+		const projection = projectionRef.current;
+		if (!projection) return;
+		const updateWidth = (): void => {
+			const mixedGrid = projection.querySelector<HTMLElement>('.pk-cc-mixed-grid');
+			setGridWidth(Math.max(280, mixedGrid?.getBoundingClientRect().width ?? projection.clientWidth - 24));
 		};
-		updateColumns();
-		const OwnerResizeObserver = root.ownerDocument.defaultView?.ResizeObserver ?? globalThis.ResizeObserver;
+		updateWidth();
+		const OwnerResizeObserver = projection.ownerDocument.defaultView?.ResizeObserver ?? globalThis.ResizeObserver;
 		if (!OwnerResizeObserver) return;
-		const observer = new OwnerResizeObserver(updateColumns);
-		observer.observe(root);
+		const observer = new OwnerResizeObserver(updateWidth);
+		observer.observe(projection);
 		return () => observer.disconnect();
-	}, []);
+	}, [items.length, scope]);
 
 	useEffect(() => {
 		if (!activeId) return;
-		const escaped = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(activeId) : activeId.replace(/"/g, '\\"');
+		const OwnerCSS = rootRef.current?.ownerDocument.defaultView?.CSS;
+		const escaped = OwnerCSS?.escape ? OwnerCSS.escape(activeId) : activeId.replace(/"/g, '\\"');
 		rootRef.current?.querySelector<HTMLElement>(`[data-action-id="${escaped}"]`)?.scrollIntoView({ block: 'nearest' });
 	}, [activeId]);
 
+	const clearDragState = (): void => {
+		dragGhostRef.current?.remove();
+		dragGhostRef.current = null;
+		setDraggedId(null);
+		setDropTarget(null);
+	};
+
 	const invoke = async (item: ResolvedCommandCenterItem): Promise<void> => {
+		if (suppressClickRef.current) return;
 		const invoked = await runtime.invokeItem(item);
 		if (invoked) onClose();
 	};
 
-	const focusSearch = (): void => {
-		inputRef.current?.focus();
+	const handleDragStart = (event: React.DragEvent<HTMLDivElement>, item: ResolvedCommandCenterItem): void => {
+		if (query) {
+			event.preventDefault();
+			return;
+		}
+		setActiveId(item.id);
+		setDraggedId(item.id);
+		event.dataTransfer.effectAllowed = 'move';
+		event.dataTransfer.setData('text/plain', item.id);
+		const ghost = event.currentTarget.cloneNode(true) as HTMLElement;
+		ghost.className = 'pk-cc-drag-ghost';
+		ghost.style.width = `${event.currentTarget.getBoundingClientRect().width}px`;
+		event.currentTarget.ownerDocument.body.appendChild(ghost);
+		dragGhostRef.current = ghost;
+		event.dataTransfer.setDragImage(ghost, Math.min(46, ghost.getBoundingClientRect().width / 2), 20);
 	};
+
+	const handleDragOverItem = (
+		event: React.DragEvent<HTMLDivElement>,
+		item: ResolvedCommandCenterItem,
+		mode: ResolvedCommandCenterDisplayMode,
+	): void => {
+		if (!draggedId || query) return;
+		event.preventDefault();
+		event.stopPropagation();
+		event.dataTransfer.dropEffect = 'move';
+		if (item.id === draggedId) {
+			setDropTarget(null);
+			return;
+		}
+		const rect = event.currentTarget.getBoundingClientRect();
+		const axis = mode === 'full' ? 'row' : 'column';
+		const after = axis === 'row'
+			? event.clientY > rect.top + rect.height / 2
+			: event.clientX > rect.left + rect.width / 2;
+		setDropTarget({ groupId: item.groupId, itemId: item.id, placement: after ? 'after' : 'before', axis });
+	};
+
+	const handleDragOverGrid = (event: React.DragEvent<HTMLDivElement>, groupId: string): void => {
+		if (!draggedId || query || event.target !== event.currentTarget) return;
+		event.preventDefault();
+		event.dataTransfer.dropEffect = 'move';
+		setDropTarget({ groupId, itemId: null, placement: 'after', axis: 'row' });
+	};
+
+	const handleDrop = (event: React.DragEvent<HTMLDivElement>): void => {
+		event.preventDefault();
+		event.stopPropagation();
+		if (!draggedId || !dropTarget || query) {
+			clearDragState();
+			return;
+		}
+		const { groupId, itemId, placement } = dropTarget;
+		suppressClickRef.current = true;
+		void runtime.moveItem(draggedId, groupId, itemId, placement).catch((error) => {
+			console.error('[Peak Command Center] Failed to reorder launcher item.', error);
+		});
+		rootRef.current?.ownerDocument.defaultView?.setTimeout(() => { suppressClickRef.current = false; }, 120);
+		clearDragState();
+	};
+
+	const focusSearch = (): void => inputRef.current?.focus();
 
 	const handleKeyDown = (event: React.KeyboardEvent): void => {
 		const commandKey = event.metaKey || event.ctrlKey;
@@ -204,7 +352,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 		if (commandKey && event.key.toLocaleLowerCase() === 'p') {
 			event.preventDefault();
 			onClose();
-			window.setTimeout(() => runtime.openNativeCommandPalette(), 0);
+			rootRef.current?.ownerDocument.defaultView?.setTimeout(() => runtime.openNativeCommandPalette(), 0);
 			return;
 		}
 		if (event.key === 'Escape') {
@@ -241,8 +389,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 			focusSearch();
 			return;
 		}
-		if (event.key.length !== 1 || commandKey || event.altKey) return;
-		if (event.target === inputRef.current) return;
+		if (event.key.length !== 1 || commandKey || event.altKey || event.target === inputRef.current) return;
 		focusSearch();
 		setQuery((current) => `${current}${event.key}`);
 	};
@@ -264,9 +411,27 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 				) : null)}
 			</div>
 
-			<div className="pk-cc-projection" key={scope}>
+			<div className="pk-cc-projection" ref={projectionRef} key={scope}>
 				{sections.map(({ group, items: groupItems }) => (
-					<ProjectionSection key={group.id} group={group} items={groupItems} showGroupLabel={scope === 'all'} destinationColumns={destinationColumns} activeId={activeId} onFocus={setActiveId} onInvoke={(item) => void invoke(item)} />
+					<ProjectionSection
+						key={group.id}
+						group={group}
+						items={groupItems}
+						resolvedModes={resolvedModes}
+						showGroupLabel={scope === 'all'}
+						activeId={activeId}
+						draggedId={draggedId}
+						dropTarget={dropTarget}
+						dragEnabled={!query}
+						reducedMotion={Boolean(reducedMotion)}
+						onFocus={setActiveId}
+						onInvoke={(item) => void invoke(item)}
+						onDragStart={handleDragStart}
+						onDragOverItem={handleDragOverItem}
+						onDragOverGrid={handleDragOverGrid}
+						onDrop={handleDrop}
+						onDragEnd={clearDragState}
+					/>
 				))}
 				{items.length === 0 ? (
 					<div className="pk-cc-empty">
@@ -277,8 +442,8 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 			</div>
 
 			<div className="pk-cc-footer">
-				<span className="pk-cc-footer__hint"><kbd>↑↓←→</kbd> move <kbd>↵</kbd> open <kbd>esc</kbd> close</span>
-				<span className="pk-cc-footer__scope">{query ? `${items.length} in ${scope === 'all' ? 'All' : groupById.get(scope)?.label}` : ''}</span>
+				<span className="pk-cc-footer__hint"><kbd>↑↓←→</kbd> move <span className="pk-cc-footer__drag"><GripVertical size={12} /> drag to reorder</span> <kbd>↵</kbd> open <kbd>esc</kbd> close</span>
+				<span className="pk-cc-footer__scope">{query ? 'Clear search to reorder' : activeItem?.fullLabel ?? ''}</span>
 				<Button variant="ghost" size="sm" className="pk-cc-footer__action" onClick={onCustomize}><SlidersHorizontal size={14} /><span>Customize</span></Button>
 			</div>
 		</div>
