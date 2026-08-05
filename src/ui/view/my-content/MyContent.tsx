@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, FileOutput, Filter, FolderOpen, Search } from 'lucide-react';
-import { Button, Popover, PopoverContent, PopoverTrigger } from '@/ui/components/primitives';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { FileOutput, Filter, FolderOpen, Search } from 'lucide-react';
+import { Button, Pill } from '@/ui/components/primitives';
 import type { MyContentItem, MyContentPort } from '@/core/ports/MyContentPort';
 import type { MyContentKind, MyContentSource } from '@/core/storage/generated-output';
 
@@ -29,6 +29,13 @@ const SOURCE_LABELS: Record<MyContentSource, string> = {
 	media: 'Media',
 	project: 'Project',
 };
+
+const QUICK_RANGES: ReadonlyArray<{ value: QuickRange; label: string }> = [
+	{ value: 'all', label: 'Any time' },
+	{ value: 'today', label: 'Today' },
+	{ value: 'week', label: 'Last 7 days' },
+	{ value: 'month', label: 'Last 30 days' },
+];
 
 function startForRange(range: QuickRange, now: Date): number | null {
 	if (range === 'all') return null;
@@ -94,11 +101,138 @@ export function MyContent({ runtime }: MyContentProps): React.ReactElement {
 
 	const activeFilterCount = Number(kind !== 'all') + Number(source !== 'all') + Number(range !== 'all' || Boolean(from) || Boolean(to));
 	const selected = filtered.find((item) => item.id === selectedId) ?? null;
-	return <div className="pktw-flex pktw-h-full pktw-min-h-0 pktw-flex-col pktw-bg-pk-background"><div className="pktw-flex pktw-items-center pktw-justify-between pktw-border-b pktw-border-pk-border pktw-px-5 pktw-py-3"><div className="pktw-flex pktw-flex-col pktw-gap-0.5"><span className="pktw-text-lg pktw-font-semibold">My Content</span><span className="pktw-text-xs pktw-text-pk-text-tertiary">Things you explicitly saved or materialized with Peak. Ordinary Vault files remain managed in Obsidian.</span></div><Button size="sm" variant="secondary" onClick={() => void refresh()}>Refresh</Button></div><div className="pktw-grid pktw-min-h-0 pktw-flex-1 pktw-grid-cols-[390px_minmax(0,1fr)]"><div className="pktw-flex pktw-min-h-0 pktw-flex-col pktw-border-r pktw-border-pk-border"><div className="pktw-flex pktw-items-center pktw-gap-2 pktw-border-b pktw-border-pk-border pktw-p-3"><label className="pktw-flex pktw-min-w-0 pktw-flex-1 pktw-items-center pktw-gap-2 pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-surface pktw-px-2"><Search size={14} className="pktw-text-pk-text-tertiary" /><input aria-label="Search saved Peak content" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search Peak content…" className="pktw-w-full pktw-border-0 pktw-bg-transparent pktw-py-1.5 pktw-text-sm pktw-outline-none" /></label><FilterMenu activeCount={activeFilterCount} kind={kind} source={source} range={range} from={from} to={to} availableKinds={availableKinds} availableSources={availableSources} onKind={setKind} onSource={setSource} onRange={setRange} onFrom={setFrom} onTo={setTo} onClear={() => { setKind('all'); setSource('all'); setRange('all'); setFrom(''); setTo(''); }} /></div><div className="pktw-min-h-0 pktw-flex-1 pktw-overflow-y-auto pktw-p-2">{error ? <div className="pktw-m-2 pktw-rounded-md pktw-border pktw-border-red-300 pktw-bg-red-50 pktw-p-3 pktw-text-sm pktw-text-red-700">{error}</div> : null}{loading ? <span className="pktw-block pktw-p-3 pktw-text-sm pktw-text-pk-text-tertiary">Finding your saved Peak content…</span> : null}{!loading && filtered.length === 0 ? <ListEmpty hasItems={items.length > 0} /> : null}{filtered.map((item) => <ContentRow key={item.id} item={item} active={item.id === selectedId} onSelect={() => setSelectedId(item.id)} />)}</div></div><div className="pktw-min-h-0 pktw-overflow-y-auto pktw-p-6">{selected ? <ContentInspector item={selected} onOpen={() => void runtime.open(selected.path)} /> : !loading ? <InspectorEmpty /> : null}</div></div></div>;
+
+	return (
+		<div className="pk-my-content pktw-flex pktw-h-full pktw-min-h-0 pktw-flex-col pktw-bg-pk-background">
+			<div className="pktw-flex pktw-items-center pktw-justify-between pktw-border-b pktw-border-pk-border pktw-px-5 pktw-py-3">
+				<div className="pktw-flex pktw-flex-col pktw-gap-0.5">
+					<span className="pktw-text-lg pktw-font-semibold">My Content</span>
+					<span className="pktw-text-xs pktw-text-pk-text-tertiary">Things you explicitly saved or materialized with Peak. Ordinary Vault files remain managed in Obsidian.</span>
+				</div>
+				<Button size="sm" variant="secondary" onClick={() => void refresh()}>Refresh</Button>
+			</div>
+			<div className="pktw-grid pktw-min-h-0 pktw-flex-1 pktw-grid-cols-[390px_minmax(0,1fr)]">
+				<div className="pktw-flex pktw-min-h-0 pktw-flex-col pktw-border-r pktw-border-pk-border">
+					<div className="pktw-relative pktw-z-10 pktw-flex pktw-items-center pktw-gap-2 pktw-border-b pktw-border-pk-border pktw-p-3">
+						<label className="pktw-flex pktw-min-w-0 pktw-flex-1 pktw-items-center pktw-gap-2 pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-surface pktw-px-2">
+							<Search size={14} className="pktw-text-pk-text-tertiary" />
+							<input aria-label="Search saved Peak content" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search Peak content…" className="pktw-w-full pktw-border-0 pktw-bg-transparent pktw-py-1.5 pktw-text-sm pktw-outline-none" />
+						</label>
+						<FilterMenu activeCount={activeFilterCount} kind={kind} source={source} range={range} from={from} to={to} availableKinds={availableKinds} availableSources={availableSources} onKind={setKind} onSource={setSource} onRange={setRange} onFrom={setFrom} onTo={setTo} onClear={() => { setKind('all'); setSource('all'); setRange('all'); setFrom(''); setTo(''); }} />
+					</div>
+					<div className="pktw-min-h-0 pktw-flex-1 pktw-overflow-y-auto pktw-p-2">
+						{error ? <div className="pktw-m-2 pktw-rounded-md pktw-border pktw-border-red-300 pktw-bg-red-50 pktw-p-3 pktw-text-sm pktw-text-red-700">{error}</div> : null}
+						{loading ? <span className="pktw-block pktw-p-3 pktw-text-sm pktw-text-pk-text-tertiary">Finding your saved Peak content…</span> : null}
+						{!loading && filtered.length === 0 ? <ListEmpty hasItems={items.length > 0} /> : null}
+						{filtered.map((item) => <ContentRow key={item.id} item={item} active={item.id === selectedId} onSelect={() => setSelectedId(item.id)} />)}
+					</div>
+				</div>
+				<div className="pktw-min-h-0 pktw-overflow-y-auto pktw-p-6">
+					{selected ? <ContentInspector item={selected} onOpen={() => void runtime.open(selected.path)} /> : !loading ? <InspectorEmpty /> : null}
+				</div>
+			</div>
+		</div>
+	);
 }
 
-function FilterMenu({ activeCount, kind, source, range, from, to, availableKinds, availableSources, onKind, onSource, onRange, onFrom, onTo, onClear }: { activeCount: number; kind: MyContentKind | 'all'; source: MyContentSource | 'all'; range: QuickRange; from: string; to: string; availableKinds: readonly MyContentKind[]; availableSources: readonly MyContentSource[]; onKind: (value: MyContentKind | 'all') => void; onSource: (value: MyContentSource | 'all') => void; onRange: (value: QuickRange) => void; onFrom: (value: string) => void; onTo: (value: string) => void; onClear: () => void }): React.ReactElement {
-	return <Popover><PopoverTrigger asChild><Button size="sm" variant="secondary" aria-label="Filter saved Peak content"><Filter size={14} />{activeCount ? ` ${activeCount}` : ''}</Button></PopoverTrigger><PopoverContent align="end" className="pktw-w-[360px] pktw-p-3"><div className="pktw-flex pktw-flex-col pktw-gap-3"><FilterSelect label="Output type" value={kind} values={availableKinds} labels={KIND_LABELS} onChange={onKind} /><FilterSelect label="Created by" value={source} values={availableSources} labels={SOURCE_LABELS} onChange={onSource} /><div className="pktw-flex pktw-flex-col pktw-gap-1"><span className="pktw-text-xs pktw-font-medium">Created or saved</span><div className="pktw-flex pktw-flex-wrap pktw-gap-1">{(['all', 'today', 'week', 'month'] as QuickRange[]).map((value) => <Button key={value} size="sm" variant={range === value ? 'primary' : 'secondary'} onClick={() => onRange(value)}>{value === 'all' ? 'Any time' : value === 'today' ? 'Today' : value === 'week' ? 'Last 7 days' : 'Last 30 days'}</Button>)}</div></div><div className="pktw-grid pktw-grid-cols-2 pktw-gap-2"><label className="pktw-flex pktw-flex-col pktw-gap-1"><span className="pktw-text-xs pktw-text-pk-text-tertiary">From</span><input type="date" value={from} onChange={(event) => onFrom(event.target.value)} className="pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-surface pktw-px-2 pktw-py-1.5 pktw-text-xs" /></label><label className="pktw-flex pktw-flex-col pktw-gap-1"><span className="pktw-text-xs pktw-text-pk-text-tertiary">To</span><input type="date" value={to} onChange={(event) => onTo(event.target.value)} className="pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-surface pktw-px-2 pktw-py-1.5 pktw-text-xs" /></label></div><Button size="sm" variant="ghost" onClick={onClear}>Clear filters</Button></div></PopoverContent></Popover>;
+interface FilterMenuProps {
+	activeCount: number;
+	kind: MyContentKind | 'all';
+	source: MyContentSource | 'all';
+	range: QuickRange;
+	from: string;
+	to: string;
+	availableKinds: readonly MyContentKind[];
+	availableSources: readonly MyContentSource[];
+	onKind: (value: MyContentKind | 'all') => void;
+	onSource: (value: MyContentSource | 'all') => void;
+	onRange: (value: QuickRange) => void;
+	onFrom: (value: string) => void;
+	onTo: (value: string) => void;
+	onClear: () => void;
+}
+
+function FilterMenu({ activeCount, kind, source, range, from, to, availableKinds, availableSources, onKind, onSource, onRange, onFrom, onTo, onClear }: FilterMenuProps): React.ReactElement {
+	const [open, setOpen] = useState(false);
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	const panelRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		const ownerDocument = triggerRef.current?.ownerDocument;
+		if (!open || !ownerDocument) return;
+		const closeWhenOutside = (event: PointerEvent): void => {
+			const target = event.target as Node | null;
+			if (!target) return;
+			if (triggerRef.current?.contains(target) || panelRef.current?.contains(target)) return;
+			setOpen(false);
+		};
+		const closeOnEscape = (event: KeyboardEvent): void => {
+			if (event.key === 'Escape') setOpen(false);
+		};
+		ownerDocument.addEventListener('pointerdown', closeWhenOutside);
+		ownerDocument.addEventListener('keydown', closeOnEscape);
+		return () => {
+			ownerDocument.removeEventListener('pointerdown', closeWhenOutside);
+			ownerDocument.removeEventListener('keydown', closeOnEscape);
+		};
+	}, [open]);
+
+	const selectQuickRange = (value: QuickRange): void => {
+		onRange(value);
+		if (value === 'all') return;
+		onFrom('');
+		onTo('');
+	};
+	const updateDate = (side: 'from' | 'to', value: string): void => {
+		onRange('all');
+		if (side === 'from') onFrom(value);
+		else onTo(value);
+	};
+	const clearDates = (): void => {
+		onFrom('');
+		onTo('');
+	};
+
+	return (
+		<>
+			<Button ref={triggerRef} size="sm" variant="secondary" className="pk-my-content__filter-trigger" aria-label="Filter saved Peak content" aria-controls="my-content-filter-panel" aria-expanded={open} onClick={() => setOpen((current) => !current)}>
+				<Filter size={14} />
+				<span>Filters</span>
+				{activeCount > 0 ? <span className="pk-my-content__filter-summary">{activeCount}</span> : null}
+			</Button>
+			{open ? <div ref={panelRef} id="my-content-filter-panel" className="pk-my-content__filter-panel" role="region" aria-label="Content filters">
+				<FilterSet label="Output type">
+					<FilterPill selected={kind === 'all'} onClick={() => onKind('all')}>All types</FilterPill>
+					{availableKinds.map((entry) => <FilterPill key={entry} selected={kind === entry} onClick={() => onKind(entry)}>{KIND_LABELS[entry]}</FilterPill>)}
+				</FilterSet>
+				<FilterSet label="Created in">
+					<FilterPill selected={source === 'all'} onClick={() => onSource('all')}>All locations</FilterPill>
+					{availableSources.map((entry) => <FilterPill key={entry} selected={source === entry} onClick={() => onSource(entry)}>{SOURCE_LABELS[entry]}</FilterPill>)}
+				</FilterSet>
+				<FilterSet label="Created or saved">
+					{QUICK_RANGES.map(({ value, label }) => <FilterPill key={value} selected={range === value} onClick={() => selectQuickRange(value)}>{label}</FilterPill>)}
+					<div className="pk-my-content__date-range">
+						<label className="pk-my-content__date-field"><span>From</span><input type="date" aria-label="Created or saved from" value={from} onChange={(event) => updateDate('from', event.target.value)} /></label>
+						<span className="pk-my-content__date-separator" aria-hidden="true">–</span>
+						<label className="pk-my-content__date-field"><span>To</span><input type="date" aria-label="Created or saved to" value={to} onChange={(event) => updateDate('to', event.target.value)} /></label>
+						<Button size="sm" variant="ghost" className="pk-my-content__clear-dates" onClick={clearDates}>Clear</Button>
+					</div>
+				</FilterSet>
+				<div className="pk-my-content__filter-footer">
+					<Button size="sm" variant="ghost" className="pk-my-content__filter-reset" onClick={onClear}>Reset</Button>
+					<Button size="sm" variant="primary" className="pk-my-content__filter-done" onClick={() => setOpen(false)}>Done</Button>
+				</div>
+			</div> : null}
+		</>
+	);
+}
+
+function FilterSet({ label, children }: { label: string; children: React.ReactNode }): React.ReactElement {
+	return <div className="pk-my-content__filter-set"><span className="pk-my-content__filter-label">{label}</span><div className="pk-my-content__filter-chips">{children}</div></div>;
+}
+
+function FilterPill({ selected, children, onClick }: { selected: boolean; children: React.ReactNode; onClick: () => void }): React.ReactElement {
+	return <Pill selected={selected} className="pk-my-content__filter-chip" onClick={onClick}>{children}</Pill>;
 }
 
 function ContentRow({ item, active, onSelect }: { item: MyContentItem; active: boolean; onSelect: () => void }): React.ReactElement {
@@ -111,10 +245,6 @@ function ContentInspector({ item, onOpen }: { item: MyContentItem; onOpen: () =>
 
 function DetailRow({ label, value, mono = false }: { label: string; value: string; mono?: boolean }): React.ReactElement {
 	return <div className="pktw-grid pktw-grid-cols-[180px_minmax(0,1fr)] pktw-border-b pktw-border-pk-border last:pktw-border-b-0"><span className="pktw-bg-pk-surface-muted pktw-px-4 pktw-py-3 pktw-text-xs pktw-text-pk-text-tertiary">{label}</span><span className={`pktw-break-words pktw-px-4 pktw-py-3 pktw-text-sm ${mono ? 'pktw-font-mono pktw-text-xs' : ''}`}>{value}</span></div>;
-}
-
-function FilterSelect<T extends string>({ label, value, values, labels, onChange }: { label: string; value: T | 'all'; values: readonly T[]; labels: Record<T, string>; onChange: (value: T | 'all') => void }): React.ReactElement {
-	return <label className="pktw-flex pktw-flex-col pktw-gap-1"><span className="pktw-text-xs pktw-font-medium">{label}</span><select value={value} onChange={(event) => onChange(event.target.value as T | 'all')} className="pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-surface pktw-px-2 pktw-py-1.5 pktw-text-sm"><option value="all">All</option>{values.map((entry) => <option key={entry} value={entry}>{labels[entry]}</option>)}</select></label>;
 }
 
 function ListEmpty({ hasItems }: { hasItems: boolean }): React.ReactElement {

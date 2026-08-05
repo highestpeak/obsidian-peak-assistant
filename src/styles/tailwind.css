@@ -17,6 +17,7 @@
 @import "./composer-image.css";    /* Peak Composer image pack (WP7); scoped .peak-composer-root */
 @import "./command-center.css";    /* Peak Command Center launcher, Customize and Home */
 @import "./ai-control-center.css"; /* AI Control Center three-column surface + prompt editor */
+@import "./my-content.css";        /* My Content list-scoped filter panel */
 @import "./peak-style-settings.css";
 @import "./obsidian-reset.css";
 @import "./codemirror.css";        /* Composer CM6 skin (.pktw-codemirror-custom) — was orphaned from the bundle; every rule here is scoped + !important-defended */
