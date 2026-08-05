@@ -9,9 +9,13 @@ assert.equal(state().aiWorkspaceMode, 'search');
 
 state().setAIWorkspaceMode('graph');
 state().beginIntentOpen('graph', 'graph-1', 'version-2');
+state().setVaultSearchQuery('in-session vault draft');
+state().setSearchQuery('in-session AI draft');
 state().beginOrdinaryOpen();
 assert.equal(state().activeTab, 'ai', 'ordinary reopen must preserve the session surface');
 assert.equal(state().aiWorkspaceMode, 'graph', 'ordinary reopen must preserve the exact AI workspace');
+assert.equal(state().vaultSearchQuery, 'in-session vault draft');
+assert.equal(state().searchQuery, 'in-session AI draft');
 assert.equal(state().aiGraphDeepLinkId, null, 'ordinary reopen must clear one-shot deep links');
 assert.equal(state().aiGraphDeepLinkVersionId, null, 'ordinary reopen must clear one-shot version links');
 
@@ -25,8 +29,14 @@ state().beginOrdinaryOpen();
 assert.equal(state().activeTab, 'ai');
 assert.equal(state().aiWorkspaceMode, 'vault-intelligence');
 
+state().setVaultSearchQuery('stale vault draft');
+state().setSearchQuery('stale AI draft');
+state().addRecentQuery('session-only query');
 state().reset();
 assert.equal(state().activeTab, 'vault', 'plugin unload/reset must restore the cold-start surface');
 assert.equal(state().aiWorkspaceMode, 'search', 'plugin unload/reset must restore the default AI submode');
+assert.equal(state().vaultSearchQuery, '', 'plugin restart must clear the Vault Search draft');
+assert.equal(state().searchQuery, '', 'plugin restart must clear the AI Search draft');
+assert.deepEqual(state().recentQueries, [], 'session-only recent queries must not leak across plugin restarts');
 
 console.log('quick-search-session-surface-state: passed');

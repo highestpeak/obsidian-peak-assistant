@@ -49,9 +49,9 @@ import {
 } from '@/core/utils/markdown-utils';
 import { hydrateTextStopwordsFromTemplateManager } from '@/core/utils/stopword-utils';
 import { installHoverMenuGlobals } from '@/ui/component/mine/hover-menu-manager';
-import { useVaultSearchStore } from '@/ui/view/quick-search/store/vaultSearchStore';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { useSharedStore } from '@/ui/view/quick-search/store/sharedStore';
+import { resetQuickSearchPluginSession } from '@/app/search/resetQuickSearchPluginSession';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useGraphAnimationStore } from '@/ui/store/graphAnimationStore';
@@ -126,6 +126,7 @@ export default class MyPlugin extends Plugin {
 	 * Bootstraps services, views, commands, and layout handling.
 	 */
 	async onload() {
+		resetQuickSearchPluginSession();
 		// ── TEMP startup mem diagnostic ──
 		try {
 			const _fs = require('fs') as typeof import('fs');
@@ -1252,6 +1253,9 @@ export default class MyPlugin extends Plugin {
 	 * Note: Error.__BluebirdErrorTypes__ is set configurable:false in bundle (main.js:32754-32758) so we cannot delete it; we still try for other envs.
 	 */
 	async onunload() {
+		// Obsidian's unload lifecycle is synchronous. Clear session-only UI state
+		// before any awaited teardown so hot reload cannot expose the old draft.
+		resetQuickSearchPluginSession();
 		// Remove Mermaid zombie load listeners (Streamdown/Mermaid register window.load regardless of startOnLoad)
 		// getEventListeners is DevTools-only; when available (e.g. console open), remove by function body signature
 		try {
@@ -1373,8 +1377,6 @@ export default class MyPlugin extends Plugin {
 
 		// Reset all Zustand stores to release state and break references to plugin bundle
 		try {
-			useVaultSearchStore.getState().reset();
-			useSharedStore.getState().reset();
 			useUIEventStore.getState().reset();
 			useChatDataStore.getState().reset();
 			useGraphAnimationStore.getState().reset();

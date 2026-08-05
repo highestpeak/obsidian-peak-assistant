@@ -104,5 +104,6 @@ export const useSharedStore = create<SharedStore>((set) => ({
 		aiGraphCreateType: 'free',
 		vaultSearchQuery: '',
 		searchQuery: '',
+		recentQueries: [],
 	}),
 }));

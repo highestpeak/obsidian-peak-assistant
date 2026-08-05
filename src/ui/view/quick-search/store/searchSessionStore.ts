@@ -223,6 +223,7 @@ interface SearchSessionActions {
 
 	// Reset
 	resetAll: () => void;
+	resetForPluginSession: () => void;
 
 	// Computed
 	getIsCompleted: () => boolean;
@@ -789,6 +790,11 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 			analysisMode,
 			webEnabled,
 		});
+	},
+	resetForPluginSession: () => {
+		_resetTimelineBuffer();
+		_resetSectionBuffers();
+		set({ ...INITIAL_STATE });
 	},
 
 	// -----------------------------------------------------------------------
