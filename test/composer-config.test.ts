@@ -44,6 +44,11 @@ function main(): void {
 		Object.keys(DEFAULT_COMPOSER_CONFIG.chrome.find).sort().join(',') ===
 			Object.keys(json.chrome?.find ?? {}).sort().join(','),
 	);
+	check(
+		'chrome.actions keys match',
+		Object.keys(DEFAULT_COMPOSER_CONFIG.chrome.actions).sort().join(',') ===
+			Object.keys(json.chrome?.actions ?? {}).sort().join(','),
+	);
 	const fbComment = DEFAULT_COMPOSER_CONFIG.chrome.comment;
 	const jsonComment = json.chrome?.comment ?? {};
 	check(

@@ -38,6 +38,9 @@ export interface BlockActionRowProps {
 	snapshot: ComposerContextSnapshot;
 	/** Unit rows expose only AI actions; block rows keep the full toolbar. */
 	variant?: 'block' | 'unit-ai';
+	/** Visible target label; actions still come from the existing projection. */
+	scopeLabel?: string;
+	scopeKind?: 'unit' | 'collection';
 	/** Fail-closed capability used by the free-form instruction input. */
 	instructionCapabilityId?: string;
 	onInsertBelow?: () => void;
@@ -58,6 +61,8 @@ export interface BlockActionRowProps {
 export function BlockActionRow({
 	snapshot,
 	variant = 'block',
+	scopeLabel,
+	scopeKind,
 	instructionCapabilityId,
 	onInsertBelow,
 	onSelectInsertType,
@@ -174,6 +179,11 @@ export function BlockActionRow({
 					role="toolbar"
 				>
 				<span className="pk-block-action-row__options" aria-hidden={instructionOpen || undefined}>
+					{scopeLabel ? (
+						<span className="pk-block-action-row__scope" data-scope-kind={scopeKind}>
+							{scopeLabel}
+						</span>
+					) : null}
 					{!unitOnly && <span className="pk-action-core">
 						<span
 							className="pk-insert-trigger"

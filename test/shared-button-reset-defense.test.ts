@@ -4,6 +4,7 @@ import { readFileSync } from 'fs';
 const resetCss = readFileSync('src/styles/obsidian-reset.css', 'utf8');
 const primitiveCss = readFileSync('src/styles/peak-components.css', 'utf8');
 const fileAtlasCss = readFileSync('src/styles/file-atlas.css', 'utf8');
+const composerCss = readFileSync('src/styles/composer.css', 'utf8');
 
 assert.match(
 	resetCss,
@@ -128,6 +129,12 @@ assert.match(
 	primitiveCss,
 	/:is\(\.pktw-root, \.peak-design-root\) \.pk-button-geometry\[data-geometry\$="-icon"\]\s*\{[\s\S]*?width:\s*var\(--pk-button-geometry-height\) !important;[\s\S]*?min-width:\s*var\(--pk-button-geometry-height\) !important;[\s\S]*?max-width:\s*var\(--pk-button-geometry-height\) !important;[\s\S]*?padding:\s*0 !important;/,
 	'shared Button icon geometry must remain square under the reset',
+);
+
+assert.match(
+	composerCss,
+	/\.peak-composer-root \.pk-composer-collection-handle\s*\{[\s\S]*?width:\s*30px !important;[\s\S]*?height:\s*30px !important;[\s\S]*?min-width:\s*30px !important;[\s\S]*?min-height:\s*30px !important;[\s\S]*?max-width:\s*30px !important;[\s\S]*?max-height:\s*30px !important;[\s\S]*?padding:\s*0 !important;/,
+	'Composer collection handle must retain its 30px hit target under the Obsidian button reset',
 );
 
 for (const [selector, height] of [

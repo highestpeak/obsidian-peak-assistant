@@ -62,6 +62,8 @@
 		"surfacePreviewOpenDelayMs": 360,
 		"surfacePreviewCloseDelayMs": 180,
 		"surfacePointerTravelTolerancePx": 6,
+		"blockDragThresholdPx": 6,
+		"collectionActionFlipSpacePx": 52,
 		"actions": {
 			"insertBelow": "在下方插入",
 			"copy": "复制",
@@ -69,6 +71,9 @@
 			"history": "生成历史",
 			"instruction": "指令",
 			"drag": "拖动块",
+			"collectionHandle": "列表",
+			"collectionScope": "整个列表 · {count} 项",
+			"unitScope": "当前一项",
 			"instructionPlaceholder": "让 AI 对这个块做什么？",
 			"instructionSubmitHint": "按 Enter 执行",
 			"instructionClose": "返回操作",

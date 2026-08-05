@@ -20,6 +20,8 @@ export interface BlockRailProps {
 	onPointerEnter?: () => void;
 	onPointerLeave?: () => void;
 	onFocusCapture?: () => void;
+	/** A unitized list renders its one drag/action handle at the active item. */
+	hideDrag?: boolean;
 }
 
 export function BlockRail({
@@ -32,6 +34,7 @@ export function BlockRail({
 	onPointerEnter,
 	onPointerLeave,
 	onFocusCapture,
+	hideDrag = false,
 }: BlockRailProps): React.ReactElement {
 	const Icon = folded ? ChevronDown : ChevronUp;
 	return (
@@ -50,15 +53,58 @@ export function BlockRail({
 			>
 				<Icon size={15} strokeWidth={2} />
 			</IconButton>
-			<IconButton
-				label={dragDisabledReason ? `${dragLabel} — ${dragDisabledReason}` : dragLabel}
-				title={dragDisabledReason}
-				className="pk-rail-control pk-composer-drag"
-				disabled={!onDragStart}
-				onPointerDown={onDragStart}
-			>
-				<GripVertical size={15} strokeWidth={2} />
-			</IconButton>
+			{!hideDrag ? (
+				<IconButton
+					label={dragDisabledReason ? `${dragLabel} — ${dragDisabledReason}` : dragLabel}
+					title={dragDisabledReason}
+					className="pk-rail-control pk-composer-drag"
+					disabled={!onDragStart}
+					onPointerDown={onDragStart}
+				>
+					<GripVertical size={15} strokeWidth={2} />
+				</IconButton>
+			) : null}
 		</div>
+	);
+}
+
+export interface CollectionActionHandleProps {
+	label: string;
+	accessibleLabel: string;
+	pinned: boolean;
+	onPointerEnter: () => void;
+	onPointerLeave: () => void;
+	onPointerDown?: (event: React.PointerEvent<HTMLButtonElement>) => void;
+	onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+}
+
+/**
+ * One list-level handle projected beside the current item. It is not repeated
+ * per item: ComposerRoot measures one active unit and moves this single button.
+ */
+export function CollectionActionHandle({
+	label,
+	accessibleLabel,
+	pinned,
+	onPointerEnter,
+	onPointerLeave,
+	onPointerDown,
+	onClick,
+}: CollectionActionHandleProps): React.ReactElement {
+	return (
+		<IconButton
+			label={accessibleLabel}
+			className="pk-composer-collection-handle"
+			aria-pressed={pinned}
+			data-collection-handle="true"
+			data-pinned={pinned || undefined}
+			onPointerEnter={onPointerEnter}
+			onPointerLeave={onPointerLeave}
+			onPointerDown={onPointerDown}
+			onClick={onClick}
+		>
+			<GripVertical size={15} strokeWidth={2} aria-hidden />
+			<span className="pk-composer-collection-handle__label">{label}</span>
+		</IconButton>
 	);
 }

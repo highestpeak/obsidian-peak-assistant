@@ -68,6 +68,10 @@ export interface ComposerChromeConfig {
 	surfacePreviewCloseDelayMs: number;
 	/** Movement beyond this distance restarts hover intent acquisition. */
 	surfacePointerTravelTolerancePx: number;
+	/** Pointer travel required before the shared six-dot control becomes a drag. */
+	blockDragThresholdPx: number;
+	/** Minimum space below a unit before its local collection row flips above. */
+	collectionActionFlipSpacePx: number;
 	actions: {
 		insertBelow: string;
 		copy: string;
@@ -78,6 +82,10 @@ export interface ComposerChromeConfig {
 		instructionSubmitHint: string;
 		instructionClose: string;
 		drag: string;
+		collectionHandle: string;
+		/** `{count}` is replaced with the number of list items in the block. */
+		collectionScope: string;
+		unitScope: string;
 		directEdit: string;
 		disabledNoRuntime: string;
 	};
@@ -316,6 +324,8 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 		surfacePreviewOpenDelayMs: 360,
 		surfacePreviewCloseDelayMs: 180,
 		surfacePointerTravelTolerancePx: 6,
+		blockDragThresholdPx: 6,
+		collectionActionFlipSpacePx: 52,
 		actions: {
 				insertBelow: '在下方插入',
 			copy: '复制',
@@ -326,6 +336,9 @@ export const DEFAULT_COMPOSER_CONFIG: ComposerConfig = {
 			instructionSubmitHint: '按 Enter 执行',
 			instructionClose: '返回操作',
 				drag: '拖动块',
+				collectionHandle: '列表',
+				collectionScope: '整个列表 · {count} 项',
+				unitScope: '当前一项',
 				directEdit: '直接编辑',
 				disabledNoRuntime: '编辑运行时未接入',
 			},
@@ -556,6 +569,10 @@ function mergeChrome(parsed?: Partial<ComposerChromeConfig>): ComposerChromeConf
 			parsed.surfacePreviewCloseDelayMs ?? base.surfacePreviewCloseDelayMs,
 		surfacePointerTravelTolerancePx:
 			parsed.surfacePointerTravelTolerancePx ?? base.surfacePointerTravelTolerancePx,
+		blockDragThresholdPx:
+			parsed.blockDragThresholdPx ?? base.blockDragThresholdPx,
+		collectionActionFlipSpacePx:
+			parsed.collectionActionFlipSpacePx ?? base.collectionActionFlipSpacePx,
 		actions: { ...base.actions, ...parsed.actions },
 		find: { ...base.find, ...parsed.find },
 		insertDraft: {

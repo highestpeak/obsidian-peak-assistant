@@ -81,7 +81,7 @@ import {
 	type ComposerChromeRuntime,
 	type ComposerChromeValue,
 } from './chrome/ComposerChromeContext';
-import { BlockRail } from './chrome/BlockRail';
+import { BlockRail, CollectionActionHandle } from './chrome/BlockRail';
 import { BlockActionRow, type BlockPanelKind } from './chrome/BlockActionRow';
 import { EditableText } from './chrome/EditableText';
 import { forwardBlockClickToEditable } from './chrome/focusForwarding';
@@ -685,11 +685,16 @@ function ComposerDocument({
 	// ── drag reorder (owner-scoped pointer capture, drop commits moveBlock) ──
 	const startDrag = (blockId: string) => (ev: React.PointerEvent<HTMLButtonElement>) => {
 		if (!hub) return;
+		const activeHub = hub;
 		ev.preventDefault();
 		const rootEl = containerRef.current;
 		if (!rootEl) return;
 		const doc = rootEl.ownerDocument;
-		setDrag({ blockId, dropIndex: null });
+		const trigger = ev.currentTarget;
+		const startX = ev.clientX;
+		const startY = ev.clientY;
+		let dragStarted = false;
+		trigger.dataset.dragMoved = 'false';
 
 		const indexAt = (clientY: number): number => {
 			const rows = Array.from(rootEl.querySelectorAll<HTMLElement>('.pk-composer-block'));
@@ -699,16 +704,31 @@ function ComposerDocument({
 			}
 			return rows.length;
 		};
-		const move = (pe: PointerEvent) => setDrag({ blockId, dropIndex: indexAt(pe.clientY) });
-		const up = async (pe: PointerEvent) => {
+		const move = (pe: PointerEvent) => {
+			if (!dragStarted) {
+				const distance = Math.hypot(pe.clientX - startX, pe.clientY - startY);
+				if (distance < config.chrome.blockDragThresholdPx) return;
+				dragStarted = true;
+				trigger.dataset.dragMoved = 'true';
+				setDrag({ blockId, dropIndex: indexAt(pe.clientY) });
+				return;
+			}
+			setDrag({ blockId, dropIndex: indexAt(pe.clientY) });
+		};
+		function cleanup(): void {
 			doc.removeEventListener('pointermove', move);
 			doc.removeEventListener('pointerup', up);
+			doc.removeEventListener('pointercancel', cancel);
+		}
+		async function up(pe: PointerEvent): Promise<void> {
+			cleanup();
+			if (!dragStarted) return;
 			const index = indexAt(pe.clientY);
 			setDrag(null);
 			const built = buildMoveBlockOps(snapshot, blockId, index);
 			if (!built) return;
 			try {
-				await hub.commit({
+				await activeHub.commit({
 					origin: 'direct',
 					label: config.chrome.actions.drag,
 					operations: built.operations,
@@ -718,9 +738,14 @@ function ComposerDocument({
 			} catch {
 				// conflict — surfaced via lifecycle staleness
 			}
-		};
+		}
+		function cancel(): void {
+			cleanup();
+			if (dragStarted) setDrag(null);
+		}
 		doc.addEventListener('pointermove', move);
 		doc.addEventListener('pointerup', up);
+		doc.addEventListener('pointercancel', cancel);
 	};
 
 	// ── paste bitmap → image coordinator (WP7), else URL over a selection (§7.5) ─
@@ -1028,9 +1053,12 @@ interface ComposerUnitActionAnchor {
 
 interface ComposerUnitActions {
 	activeUnitId: string | null;
+	collectionAnchorUnitId: string | null;
+	collectionActive: boolean;
 	onPointerEnter: (anchor: ComposerUnitActionAnchor) => void;
 	onPointerLeave: () => void;
 	onFocus: (anchor: ComposerUnitActionAnchor) => void;
+	renderBefore?: (anchor: ComposerUnitActionAnchor) => React.ReactNode;
 	render: (anchor: ComposerUnitActionAnchor) => React.ReactNode;
 }
 
@@ -1094,6 +1122,7 @@ function ComposerBlockRow({
 }): React.ReactElement {
 	const chrome = useComposerChrome();
 	const folded = useStore(foldStore, (s) => s.folded.has(block.blockId));
+	const blockRef = React.useRef<HTMLDivElement | null>(null);
 	const bodyRef = React.useRef<HTMLDivElement | null>(null);
 	const isHeading = block.kind === 'heading';
 	const showSummary = !isHeading && folded;
@@ -1103,6 +1132,28 @@ function ComposerBlockRow({
 		block.kind === 'list' ||
 		block.kind === 'task' ||
 		(block.kind === 'paragraph' && block.units.length > 1);
+	const collectionFollowsUnit = block.kind === 'list' || block.kind === 'task';
+	const [collectionActionAnchor, setCollectionActionAnchor] =
+		React.useState<ComposerUnitActionAnchor | null>(() =>
+			firstCollectionActionAnchor(block, snapshot),
+		);
+	const [collectionActionAnchorTop, setCollectionActionAnchorTop] = React.useState<number | null>(null);
+	const [collectionActionPlacement, setCollectionActionPlacement] =
+		React.useState<'before' | 'after'>('after');
+	const [collectionActionPinned, setCollectionActionPinned] = React.useState(false);
+	const pinnedCollectionViewportY = React.useRef<number | null>(null);
+	React.useEffect(() => {
+		setCollectionActionAnchor((current) =>
+			(current
+				? collectionActionAnchorForUnit(block, snapshot, current.unitId)
+				: null)
+			?? firstCollectionActionAnchor(block, snapshot),
+		);
+	}, [block, snapshot]);
+	React.useEffect(() => {
+		setCollectionActionPinned(false);
+		pinnedCollectionViewportY.current = null;
+	}, [block.blockId]);
 	const candidateRuntime = chrome.runtime.candidateRuntime;
 	const candidates = useBlockCandidates(candidateRuntime, block.blockId);
 	const newestActiveCandidate = activeCandidateOf(candidates);
@@ -1193,11 +1244,69 @@ function ComposerBlockRow({
 		clearTimeout(actionCloseTimer.current);
 		actionCloseTimer.current = null;
 	};
+	React.useLayoutEffect(() => {
+		if (!collectionFollowsUnit || !collectionActionAnchor) {
+			setCollectionActionAnchorTop(null);
+			return;
+		}
+		const blockElement = blockRef.current;
+		const row = collectionAnchorElement(blockElement, collectionActionAnchor.unitId);
+		const ownerWindow = blockElement?.ownerDocument.defaultView;
+		if (!blockElement || !row || !ownerWindow) {
+			setCollectionActionAnchorTop(null);
+			return;
+		}
+		const update = () => {
+			const blockRect = blockElement.getBoundingClientRect();
+			const rowRect = row.getBoundingClientRect();
+			const rail = blockElement.querySelector<HTMLElement>(':scope > .pk-composer-rail');
+			const disclosure = rail?.querySelector<HTMLElement>('.pk-composer-disclosure');
+			const railStyle = rail ? ownerWindow.getComputedStyle(rail) : null;
+			const railGap = Number.parseFloat(railStyle?.rowGap ?? '0') || 0;
+			const disclosureClearance = disclosure
+				? disclosure.getBoundingClientRect().bottom - blockRect.top + railGap
+				: 0;
+			setCollectionActionAnchorTop(Math.max(
+				0,
+				rowRect.top - blockRect.top,
+				disclosureClearance,
+			));
+			const scroller = scrollerOf(blockElement);
+			const scrollerRect = scroller?.getBoundingClientRect();
+			const viewportTop = Math.max(0, scrollerRect?.top ?? 0);
+			const viewportBottom = Math.min(
+				ownerWindow.innerHeight,
+				scrollerRect?.bottom ?? ownerWindow.innerHeight,
+			);
+			const below = viewportBottom - rowRect.bottom;
+			const above = rowRect.top - viewportTop;
+			setCollectionActionPlacement(
+				below >= config.chrome.collectionActionFlipSpacePx || below >= above
+					? 'after'
+					: 'before',
+			);
+		};
+		update();
+		const resizeObserver = ownerWindow.ResizeObserver
+			? new ownerWindow.ResizeObserver(update)
+			: null;
+		resizeObserver?.observe(blockElement);
+		resizeObserver?.observe(row);
+		return () => resizeObserver?.disconnect();
+	}, [
+		collectionActionAnchor?.unitId,
+		collectionFollowsUnit,
+		config.chrome.collectionActionFlipSpacePx,
+		snapshot.revision,
+	]);
 	const showActionRow = (immediate = false, unit: ComposerUnitActionAnchor | null = null) => {
 		clearActionClose();
 		if (ownPanel?.panel === 'insert-draft') return;
 		if (ownPanel?.pinned) return;
 		if (!canClaimSurface('block-actions', actionSurfaceId)) return;
+		if (unit && collectionFollowsUnit && !collectionActionPinned) {
+			setCollectionActionAnchor(unit);
+		}
 		setActiveUnitAction(unit);
 		const reveal = () => {
 			actionOpenTimer.current = null;
@@ -1215,13 +1324,20 @@ function ComposerBlockRow({
 	};
 	const hideActionRow = () => {
 		clearActionOpen();
-		if (ownPanel?.pinned) return;
+		if (ownPanel?.pinned || collectionActionPinned) return;
 		clearActionClose();
 		actionCloseTimer.current = setTimeout(() => {
 			actionCloseTimer.current = null;
 			setActionRowVisible(false);
 			releaseSurface(actionSurfaceId);
 		}, config.chrome.surfacePreviewCloseDelayMs);
+	};
+	const closeActionRowImmediately = () => {
+		clearActionOpen();
+		clearActionClose();
+		setActionRowVisible(false);
+		setActiveUnitAction(null);
+		releaseSurface(actionSurfaceId);
 	};
 	React.useEffect(() => {
 		if (!ownPanel) {
@@ -1267,12 +1383,96 @@ function ComposerBlockRow({
 		clearActionClose();
 		releaseSurface(actionSurfaceId);
 	}, [actionSurfaceId, releaseSurface]);
+	React.useEffect(() => {
+		if (!collectionActionPinned) return;
+		const blockElement = blockRef.current;
+		const ownerDocument = blockElement?.ownerDocument;
+		if (!blockElement || !ownerDocument) return;
+		const closeOnOutsidePointer = (event: PointerEvent) => {
+			const target = event.target as Element | null;
+			if (!target || typeof target.closest !== 'function') return;
+			if (target.closest('[data-collection-handle="true"], .pk-block-action-row')) return;
+			setCollectionActionPinned(false);
+			pinnedCollectionViewportY.current = null;
+			closeActionRowImmediately();
+		};
+		ownerDocument.addEventListener('pointerdown', closeOnOutsidePointer, true);
+		return () => ownerDocument.removeEventListener('pointerdown', closeOnOutsidePointer, true);
+	}, [collectionActionPinned]);
+	React.useEffect(() => {
+		if (!collectionActionPinned || !collectionFollowsUnit) return;
+		const blockElement = blockRef.current;
+		const scroller = scrollerOf(blockElement);
+		const ownerWindow = blockElement?.ownerDocument.defaultView;
+		if (!blockElement || !scroller || !ownerWindow) return;
+		let frame: number | null = null;
+		const updateAnchor = () => {
+			frame = null;
+			const viewportY = pinnedCollectionViewportY.current;
+			if (viewportY === null) return;
+			const next = closestVisibleCollectionAnchor(
+				blockElement,
+				block,
+				snapshot,
+				scroller,
+				viewportY,
+			);
+			if (!next) {
+				setCollectionActionPinned(false);
+				pinnedCollectionViewportY.current = null;
+				closeActionRowImmediately();
+				return;
+			}
+			setCollectionActionAnchor((current) =>
+				current?.unitId === next.unitId ? current : next,
+			);
+		};
+		const onScroll = () => {
+			if (frame !== null) return;
+			frame = ownerWindow.requestAnimationFrame(updateAnchor);
+		};
+		scroller.addEventListener('scroll', onScroll, { passive: true });
+		return () => {
+			scroller.removeEventListener('scroll', onScroll);
+			if (frame !== null) ownerWindow.cancelAnimationFrame(frame);
+		};
+	}, [block, collectionActionPinned, collectionFollowsUnit, snapshot]);
 	const actionRowDisplayed =
 		actionRowVisible &&
 		(!activeSurface || activeSurface.id === actionSurfaceId);
 	const collectionActionActive = unitized && actionRowDisplayed && !activeUnitAction;
-	const renderUnitAction = (anchor: ComposerUnitActionAnchor): React.ReactNode => {
-		if (!editing || showInlineCandidate || activeUnitAction?.unitId !== anchor.unitId) return null;
+	const collectionItemCount = block.units.filter((unit) => unit.unitKind === 'list-item').length;
+	const collectionScopeLabel = config.chrome.actions.collectionScope.replace(
+		'{count}',
+		String(collectionItemCount),
+	);
+	const renderUnitAction = (
+		anchor: ComposerUnitActionAnchor,
+		placement: 'before' | 'after' = 'after',
+	): React.ReactNode => {
+		if (!editing || showInlineCandidate) return null;
+		if (
+			collectionFollowsUnit &&
+			collectionActionActive &&
+			collectionActionAnchor?.unitId === anchor.unitId
+		) {
+			if (placement !== collectionActionPlacement || !blockActionRow) return null;
+			return (
+				<div
+					className="pk-composer-unit-action-slot"
+					data-unit-collection-action-for={anchor.unitId}
+					data-collection-placement={collectionActionPlacement}
+					style={anchor.depth === undefined
+						? undefined
+						: { '--pk-composer-row-depth': anchor.depth } as React.CSSProperties}
+					onPointerEnter={clearActionClose}
+					onPointerLeave={hideActionRow}
+				>
+					{blockActionRow}
+				</div>
+			);
+		}
+		if (placement === 'before' || activeUnitAction?.unitId !== anchor.unitId) return null;
 		const unitSnapshot = createUnitActionSnapshot(snapshot, block, anchor);
 		const unitPanel = ownPanel?.unitId === anchor.unitId ? ownPanel : null;
 		return (
@@ -1288,6 +1488,8 @@ function ComposerBlockRow({
 				<BlockActionRow
 					snapshot={aiSnapshot}
 					variant="unit-ai"
+					scopeLabel={config.chrome.actions.unitScope}
+					scopeKind="unit"
 					instructionCapabilityId={POLISH_CAPABILITY_ID}
 					hiddenQuickCapabilityIds={hiddenQuickCapabilities(block.kind)}
 					onOpenPanel={(kind) => {
@@ -1320,7 +1522,12 @@ function ComposerBlockRow({
 	const unitActions: ComposerUnitActions | undefined = unitized
 		? {
 				activeUnitId: activeUnitAction?.unitId ?? null,
+				collectionAnchorUnitId: collectionActionAnchor?.unitId ?? null,
+				collectionActive: collectionActionActive,
 				onPointerEnter: (anchor) => {
+					if (collectionFollowsUnit && !collectionActionPinned) {
+						setCollectionActionAnchor(anchor);
+					}
 					if (collectionActionActive) {
 						clearActionClose();
 						return;
@@ -1328,7 +1535,13 @@ function ComposerBlockRow({
 					showActionRow(false, anchor);
 				},
 				onPointerLeave: collectionActionActive ? clearActionClose : hideActionRow,
-				onFocus: (anchor) => showActionRow(true, anchor),
+				onFocus: (anchor) => {
+					if (collectionFollowsUnit && !collectionActionPinned) {
+						setCollectionActionAnchor(anchor);
+					}
+					showActionRow(true, anchor);
+				},
+				renderBefore: (anchor) => renderUnitAction(anchor, 'before'),
 				render: renderUnitAction,
 			}
 		: undefined;
@@ -1355,57 +1568,101 @@ function ComposerBlockRow({
 			return current;
 		});
 	};
-	const blockActionRow = editing && !showInlineCandidate && !activeUnitAction ? (
-		<BlockActionRow
-			snapshot={aiSnapshot}
-			onInsertBelow={onInsertBelow}
-			onSelectInsertType={onSelectInsertType}
-			copySurface={(dismissPreview) => (
-				<div data-composer-surface-owner={block.blockId}>
-					<EasyCopyMenu
-						markdown={raw}
-						blockKind={block.kind}
-						rasterTargetRef={bodyRef}
-						onClose={() => {
-							dismissPreview();
-							setPanel(null);
-						}}
+	const blockActionRow = (
+		<>
+			{editing && !showInlineCandidate && (
+				!activeUnitAction ? (
+					<BlockActionRow
+						snapshot={aiSnapshot}
+						scopeLabel={collectionFollowsUnit ? collectionScopeLabel : undefined}
+						scopeKind={collectionFollowsUnit ? 'collection' : undefined}
+						onInsertBelow={onInsertBelow}
+						onSelectInsertType={onSelectInsertType}
+						copySurface={(dismissPreview) => (
+							<div data-composer-surface-owner={block.blockId}>
+								<EasyCopyMenu
+									markdown={raw}
+									blockKind={block.kind}
+									rasterTargetRef={bodyRef}
+									onClose={() => {
+										dismissPreview();
+										setPanel(null);
+									}}
+								/>
+							</div>
+						)}
+						historySurface={(dismissPreview) => (
+							<div data-composer-surface-owner={block.blockId}>
+								<BlockHistoryPanel
+									blockId={block.blockId}
+									onClose={() => {
+										dismissPreview();
+										setPanel(null);
+									}}
+									onViewAll={onViewHistory
+										? () => {
+												dismissPreview();
+												onViewHistory();
+											}
+										: undefined}
+									onOpenActivity={(activity) => {
+										dismissPreview();
+										onOpenHistoryActivity(activity);
+									}}
+								/>
+							</div>
+						)}
+						onOpenPanel={openPanel}
+						onPreviewPanel={previewPanel}
+						openPanel={ownPanel?.panel ?? null}
+						panelPinned={ownPanel?.pinned ?? false}
+						writeDisabledReason={chrome.runtime.hub
+							? undefined
+							: config.chrome.actions.disabledNoRuntime}
+						hiddenQuickCapabilityIds={hiddenQuickCapabilities(block.kind)}
+						onInvoke={(d, instruction) => onInvoke(d, aiSnapshot, instruction)}
 					/>
-				</div>
+				) : null
 			)}
-			historySurface={(dismissPreview) => (
-				<div data-composer-surface-owner={block.blockId}>
-					<BlockHistoryPanel
-						blockId={block.blockId}
-						onClose={() => {
-							dismissPreview();
-							setPanel(null);
-						}}
-						onViewAll={onViewHistory
-							? () => {
-									dismissPreview();
-									onViewHistory();
-								}
-							: undefined}
-						onOpenActivity={(activity) => {
-							dismissPreview();
-							onOpenHistoryActivity(activity);
-						}}
-					/>
-				</div>
-			)}
-			onOpenPanel={openPanel}
-			onPreviewPanel={previewPanel}
-			openPanel={ownPanel?.panel ?? null}
-			panelPinned={ownPanel?.pinned ?? false}
-			writeDisabledReason={chrome.runtime.hub ? undefined : config.chrome.actions.disabledNoRuntime}
-			hiddenQuickCapabilityIds={hiddenQuickCapabilities(block.kind)}
-			onInvoke={(d, instruction) => onInvoke(d, aiSnapshot, instruction)}
-		/>
-	) : null;
+		</>
+	);
+	const showCollectionActions = (immediate: boolean) => {
+		if (!collectionActionAnchor) return;
+		showActionRow(immediate, null);
+	};
+	const toggleCollectionActions = (event: React.MouseEvent<HTMLButtonElement>) => {
+		if (event.currentTarget.dataset.dragMoved === 'true') {
+			event.currentTarget.dataset.dragMoved = 'false';
+			return;
+		}
+		if (collectionActionPinned) {
+			setCollectionActionPinned(false);
+			pinnedCollectionViewportY.current = null;
+			closeActionRowImmediately();
+			return;
+		}
+		const row = collectionActionAnchor
+			? collectionAnchorElement(blockRef.current, collectionActionAnchor.unitId)
+			: null;
+		pinnedCollectionViewportY.current = row?.getBoundingClientRect().top ?? null;
+		setCollectionActionPinned(true);
+		showCollectionActions(true);
+	};
+	const beginCollectionDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
+		setCollectionActionPinned(false);
+		pinnedCollectionViewportY.current = null;
+		closeActionRowImmediately();
+		onDragStart?.(event);
+	};
+	const collectionAnchorStyle = collectionActionAnchorTop === null
+		? undefined
+		: {
+				'--pk-composer-collection-anchor-top': `${collectionActionAnchorTop}px`,
+			} as React.CSSProperties;
 
 	return (
 		<div
+			ref={blockRef}
 			className="pk-composer-block"
 			data-kind={block.kind}
 			data-block-id={block.blockId}
@@ -1416,6 +1673,8 @@ function ComposerBlockRow({
 			data-drop-before={dropBefore || undefined}
 			data-action-row-visible={actionRowDisplayed || undefined}
 			data-collection-action-active={collectionActionActive || undefined}
+			data-collection-anchor-unit={collectionFollowsUnit ? collectionActionAnchor?.unitId : undefined}
+			style={collectionAnchorStyle}
 			// FIX-1 F2: a mousedown in the row's dead zone (right of the text edge,
 			// rail gutter padding, run gaps) targets this WRAPPER, so the browser
 			// never focuses the contenteditable leaf — typing then goes to the
@@ -1434,8 +1693,15 @@ function ComposerBlockRow({
 			onMouseLeave={() => {
 				if (ownPanel?.panel === 'instruction') setPanel(null);
 			}}
+			onKeyDown={(event) => {
+				if (event.key !== 'Escape' || event.defaultPrevented || !collectionActionPinned) return;
+				event.preventDefault();
+				setCollectionActionPinned(false);
+				pinnedCollectionViewportY.current = null;
+				closeActionRowImmediately();
+			}}
 		>
-			{collectionActionActive ? (
+			{collectionActionActive && !collectionFollowsUnit ? (
 				<span className="pk-collection-action-corridor" data-chrome="true" aria-hidden="true" />
 			) : null}
 			<BlockRail
@@ -1445,9 +1711,31 @@ function ComposerBlockRow({
 				onToggle={() => foldStore.getState().toggle(block.blockId)}
 				onDragStart={onDragStart}
 				dragDisabledReason={onDragStart ? undefined : config.chrome.actions.disabledNoRuntime}
-				onPointerEnter={editing && unitized ? () => showActionRow(false, null) : undefined}
-				onFocusCapture={editing && unitized ? () => showActionRow(true, null) : undefined}
+				onPointerEnter={editing && unitized && !collectionFollowsUnit
+					? () => showActionRow(false, null)
+					: undefined}
+				onFocusCapture={editing && unitized && !collectionFollowsUnit
+					? () => showActionRow(true, null)
+					: undefined}
+				hideDrag={editing && collectionFollowsUnit}
 			/>
+			{editing && collectionFollowsUnit && collectionActionAnchorTop !== null ? (
+				<CollectionActionHandle
+					label={config.chrome.actions.collectionHandle}
+					accessibleLabel={`${collectionScopeLabel} — ${config.chrome.actions.drag}`}
+					pinned={collectionActionPinned}
+					onPointerEnter={() => {
+						if (collectionActionPinned) {
+							clearActionClose();
+							return;
+						}
+						showCollectionActions(false);
+					}}
+					onPointerLeave={hideActionRow}
+					onPointerDown={onDragStart ? beginCollectionDrag : undefined}
+					onClick={toggleCollectionActions}
+				/>
+			) : null}
 			<div className="pk-composer-block__body" ref={bodyRef}>
 				<BlockFindingPanel
 					findings={findings}
@@ -1546,7 +1834,7 @@ function ComposerBlockRow({
 							{invokeError}
 						</div>
 					) : null}
-					{blockActionRow}
+					{!collectionFollowsUnit ? blockActionRow : null}
 			</div>
 		</div>
 	);
@@ -2089,12 +2377,17 @@ function EditableListBody({
 				return (
 					<React.Fragment key={unit.unitId}>
 						{topLevel ? renderCandidatesAt(topIndex) : null}
+						{unitActions?.renderBefore?.(actionAnchor)}
 						<div
 							className="pk-composer-list__row"
 							data-unit-id={unit.unitId}
 							data-list-top-level={topLevel ? 'true' : 'false'}
 							data-list-depth={depth}
 							data-unit-action-active={unitActions?.activeUnitId === unit.unitId || undefined}
+							data-unit-collection-anchor={(
+								unitActions?.collectionActive &&
+								unitActions.collectionAnchorUnitId === unit.unitId
+							) || undefined}
 							style={{ '--pk-composer-row-depth': depth } as React.CSSProperties}
 							onPointerEnter={() => unitActions?.onPointerEnter(actionAnchor)}
 							onPointerLeave={unitActions?.onPointerLeave}
@@ -2177,6 +2470,69 @@ function listItemDepth(
 		parentId = items.find((candidate) => candidate.unitId === parentId)?.parentUnitId;
 	}
 	return depth;
+}
+
+function collectionAnchorElement(
+	blockElement: HTMLElement | null,
+	unitId: string,
+): HTMLElement | null {
+	if (!blockElement) return null;
+	return blockElement.querySelector<HTMLElement>(
+		`.pk-composer-list__row[data-unit-id="${CSS.escape(unitId)}"]`,
+	);
+}
+
+function collectionActionAnchorForUnit(
+	block: ComposerBlock,
+	snapshot: ComposerDocumentSnapshot,
+	unitId: string,
+): ComposerUnitActionAnchor | null {
+	if (block.kind !== 'list' && block.kind !== 'task') return null;
+	const items = block.units.filter((unit) => unit.unitKind === 'list-item');
+	const unit = items.find((candidate) => candidate.unitId === unitId);
+	if (!unit) return null;
+	return {
+		unitId: unit.unitId,
+		from: listItemContentStart(snapshot.sourceText, unit),
+		to: listItemOwnContentEnd(snapshot.sourceText, unit, items),
+		depth: listItemDepth(unit, items),
+	};
+}
+
+function firstCollectionActionAnchor(
+	block: ComposerBlock,
+	snapshot: ComposerDocumentSnapshot,
+): ComposerUnitActionAnchor | null {
+	const first = block.units.find((unit) => unit.unitKind === 'list-item');
+	return first ? collectionActionAnchorForUnit(block, snapshot, first.unitId) : null;
+}
+
+function closestVisibleCollectionAnchor(
+	blockElement: HTMLElement,
+	block: ComposerBlock,
+	snapshot: ComposerDocumentSnapshot,
+	scroller: HTMLElement,
+	viewportY: number,
+): ComposerUnitActionAnchor | null {
+	const viewport = scroller.getBoundingClientRect();
+	const blockRect = blockElement.getBoundingClientRect();
+	if (blockRect.bottom <= viewport.top || blockRect.top >= viewport.bottom) return null;
+	const rows = Array.from(
+		blockElement.querySelectorAll<HTMLElement>('.pk-composer-list__row[data-unit-id]'),
+	).filter((row) => {
+		const rect = row.getBoundingClientRect();
+		return rect.bottom > viewport.top && rect.top < viewport.bottom;
+	});
+	let closest: HTMLElement | null = null;
+	let closestDistance = Number.POSITIVE_INFINITY;
+	for (const row of rows) {
+		const distance = Math.abs(row.getBoundingClientRect().top - viewportY);
+		if (distance >= closestDistance) continue;
+		closest = row;
+		closestDistance = distance;
+	}
+	const unitId = closest?.dataset.unitId;
+	return unitId ? collectionActionAnchorForUnit(block, snapshot, unitId) : null;
 }
 
 function listItemInsertionIndex(candidate: ComposerCandidate, itemCount: number): number {
