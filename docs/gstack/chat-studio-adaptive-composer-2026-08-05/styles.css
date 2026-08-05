@@ -1515,10 +1515,18 @@ kbd {
   display: grid;
   grid-template-columns: 23px minmax(0, 1fr) auto;
   align-items: center;
+  width: 100%;
   min-height: 36px;
   padding: 2px 4px;
   gap: 7px;
+  border: 0;
   border-top: 1px solid #eff0f2;
+  border-radius: 7px;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 130ms ease, box-shadow 130ms ease;
 }
 
 .context-slot-row:first-child {
@@ -1527,6 +1535,20 @@ kbd {
 
 .context-slot-group + .context-slot-row {
   border-top: 0;
+}
+
+.context-slot-row:hover {
+  background: #f7f7fa;
+}
+
+.context-slot-row:focus-visible {
+  outline: 0;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, #dfe1e6);
+}
+
+.context-slot-row.is-inspected {
+  background: #f4f4fb;
+  box-shadow: inset 0 0 0 1px #dde0f3;
 }
 
 .slot-order {
@@ -1547,6 +1569,24 @@ kbd {
   border-color: #d9dcf4;
   background: var(--accent-soft);
   color: var(--accent);
+}
+
+.slot-tail {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.slot-chevron {
+  width: 10px;
+  height: 10px;
+  color: #a1a5ae;
+  transition: transform 160ms var(--ease-out);
+}
+
+.context-slot-row[aria-expanded="true"] .slot-chevron {
+  color: var(--accent);
+  transform: rotate(180deg);
 }
 
 .slot-copy {
@@ -1630,6 +1670,147 @@ kbd {
 
 .context-slot-row.is-absent .slot-copy {
   opacity: .65;
+}
+
+.context-item-inspector {
+  margin: 4px 2px 8px;
+  overflow: hidden;
+  border: 1px solid #dfe1f3;
+  border-radius: 10px;
+  background: #fbfbfe;
+  box-shadow: 0 6px 16px rgba(45, 50, 83, .06);
+  animation: context-detail-in 170ms var(--ease-out) both;
+}
+
+.context-item-inspector[hidden] {
+  display: none;
+}
+
+.context-inspector-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 43px;
+  padding: 7px 8px 7px 10px;
+  border-bottom: 1px solid #e7e8f1;
+}
+
+.context-inspector-heading small,
+.context-inspector-heading strong {
+  display: block;
+}
+
+.context-inspector-heading small {
+  color: var(--accent);
+  font-size: 7px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.context-inspector-heading strong {
+  margin-top: 2px;
+  color: #30333b;
+  font-size: 10px;
+}
+
+.context-inspector-heading button {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #868b95;
+  cursor: pointer;
+}
+
+.context-inspector-heading button:hover,
+.context-inspector-heading button:focus-visible {
+  outline: 0;
+  background: #ececf4;
+  color: #40444d;
+}
+
+.context-inspector-heading .icon {
+  width: 12px;
+  height: 12px;
+}
+
+.context-detail-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 7px 9px;
+  gap: 7px;
+  border-bottom: 1px solid #e9eaf1;
+}
+
+.context-detail-meta > span {
+  min-width: 0;
+  padding: 5px 6px;
+  border: 1px solid #e8e9ef;
+  border-radius: 7px;
+  background: white;
+}
+
+.context-detail-meta small,
+.context-detail-meta strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.context-detail-meta small {
+  color: #9a9ea7;
+  font-size: 6px;
+  text-transform: uppercase;
+}
+
+.context-detail-meta strong {
+  margin-top: 2px;
+  color: #565b66;
+  font-size: 7px;
+  font-weight: 650;
+}
+
+.context-detail-body {
+  padding: 8px 10px 7px;
+}
+
+.context-detail-body > span {
+  display: block;
+  margin-bottom: 5px;
+  color: #8b909a;
+  font-size: 7px;
+  font-weight: 700;
+}
+
+.context-detail-body pre {
+  max-height: 146px;
+  margin: 0;
+  padding: 8px;
+  overflow: auto;
+  border: 1px solid #e5e7ed;
+  border-radius: 8px;
+  background: #f5f6f8;
+  color: #434852;
+  font: 7px/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  white-space: pre-wrap;
+}
+
+.context-detail-note {
+  display: block;
+  padding: 0 10px 9px;
+  color: #9a9ea8;
+  font-size: 6px;
+  line-height: 1.35;
+}
+
+@keyframes context-detail-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .context-exclusion-panel {

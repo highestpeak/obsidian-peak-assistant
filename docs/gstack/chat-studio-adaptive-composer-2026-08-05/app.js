@@ -36,6 +36,15 @@
   const assistantSlotState = document.getElementById('assistant-slot-state');
   const identityName = document.getElementById('identity-name');
   const modelLabel = document.getElementById('model-label');
+  const contextInspector = document.getElementById('context-item-inspector');
+  const contextDetailPhase = document.getElementById('context-detail-phase');
+  const contextDetailTitle = document.getElementById('context-detail-title');
+  const contextDetailSource = document.getElementById('context-detail-source');
+  const contextDetailReason = document.getElementById('context-detail-reason');
+  const contextDetailBudget = document.getElementById('context-detail-budget');
+  const contextDetailTreatment = document.getElementById('context-detail-treatment');
+  const contextDetailContent = document.getElementById('context-detail-content');
+  const contextDetailClose = document.getElementById('context-detail-close');
 
   const menus = {
     plus: document.getElementById('plus-menu'),
@@ -71,7 +80,9 @@
     showTechnicalContext: false,
     menuReturnFocus: null,
     lastRunSnapshot: null,
-    contextSnapshot: null
+    contextSnapshot: null,
+    activeContextSlot: null,
+    contextDetailReturnFocus: null
   };
 
   const attachmentCatalog = {
@@ -80,6 +91,89 @@
     link: ['link', 'Product reference link'],
     active: ['file', 'Active note selection'],
     canvas: ['canvas', 'Adaptive composer canvas']
+  };
+
+  const contextSlotCatalog = {
+    system: {
+      title: 'System prompt',
+      source: 'Template + conversation settings',
+      reason: 'Required base behaviour',
+      budget: '~420 / 1,500 tokens',
+      treatment: 'Never dropped',
+      content: 'You are Peak Assistant inside the current Vault.\nFollow the active conversation instructions.\nAvailable capabilities: Vault Search, file references, and artifacts.\nFocus folder: Peak Assistant.\n[Secrets and provider credentials are never included.]'
+    },
+    assistant: {
+      title: 'Assistant · Research partner',
+      source: 'Assistant profile · Research partner',
+      reason: 'Selected conversation identity',
+      budget: '~138 / 2,000 tokens',
+      treatment: 'Framing may compress',
+      content: 'Role: Research partner\nPrioritize evidence-backed product and architecture guidance.\nChallenge unclear assumptions before proposing implementation.\nKeep decisions traceable to the current project context.'
+    },
+    history: {
+      title: 'Conversation history',
+      source: 'Active conversation · 18 messages',
+      reason: 'Preserve turn continuity',
+      budget: '~2,960 tokens',
+      treatment: 'Active variants only · up to L3',
+      content: 'You: Review the current Chat Studio composer…\nAssistant: I mapped the current controls before changing the shell…\nYou: Keep all the real controls…\nAssistant: The controls stay; their hierarchy changes…\nYou: The motion in the reference is important…\n[…13 earlier active messages]'
+    },
+    working: {
+      title: 'Working context',
+      source: 'Current Obsidian workspace',
+      reason: 'Ground the answer in current work',
+      budget: '~186 / 500 tokens',
+      treatment: 'Optional · priority compressed',
+      content: 'Active note: Chat Studio redesign.md\nFocus folder: Peak Assistant\nWorking theme: Adaptive composer and message-context audit\nRecent activity: reviewed composer spacing and context pipeline docs'
+    },
+    summary: {
+      title: 'Conversation summary',
+      source: 'Durable conversation summary',
+      reason: 'Recover older decisions',
+      budget: '~312 / 800 tokens',
+      treatment: 'Recoverable · may compress',
+      content: 'The user is redesigning Chat Studio around a quiet reading state and an adaptive composer. Preserve all real controls, expose the next-message context, align popovers to the composer width, and avoid excess vertical whitespace. The context surface must distinguish predicted, frozen, and actually used inputs.'
+    },
+    activity: {
+      title: 'Activity index',
+      source: 'Local activity index · 8 events',
+      reason: 'Add lightweight recency signals',
+      budget: '~74 / 200 tokens',
+      treatment: 'Reduced to counts at L1',
+      content: 'Opened: Chat Studio redesign.md\nViewed: chat-context pipeline document\nSearched: conversation summary, user profile\nReviewed: 2 composer recordings\n[…4 more local events]'
+    },
+    profile: {
+      title: 'User profile',
+      source: 'Accepted user-profile facts',
+      reason: 'Respect durable preferences',
+      budget: '~96 / 400 tokens',
+      treatment: 'Top categories survive at L1',
+      content: 'Language: Chinese-first\nCommunication: direct, owner-facing, evidence-bound\nDesign preference: restrained, modern, compact\nProject preference: durable artifacts and explicit verification boundaries'
+    },
+    analyses: {
+      title: 'Previous analyses',
+      source: 'Analysis record index',
+      reason: 'No matching record',
+      budget: '0 tokens',
+      treatment: 'Empty slot omitted',
+      content: '[No content included]\nNo recent analysis record matched this turn.'
+    },
+    resources: {
+      title: 'Resource index',
+      source: 'This-turn resource references',
+      reason: 'Ground claims in selected evidence',
+      budget: '~224 / 300 tokens',
+      treatment: 'References + summaries only',
+      content: '1. Chat Studio UX direction · design convention\n2. Reference recording · 32 seconds\n3. Runtime boundaries · implementation spec\n4. Composer spacing feedback.png · visual evidence\n5. Active note selection · explicit context\n6. Context pipeline document · architecture reference'
+    },
+    message: {
+      title: 'Current user message',
+      source: 'Composer draft',
+      reason: 'Required current instruction',
+      budget: 'Exact text · outside optional budget',
+      treatment: 'Never summarized',
+      content: '[Captured when the message is sent]'
+    }
   };
 
   function icon(name) {
@@ -144,12 +238,123 @@
       : `Exact draft text${attachmentCopy} will be added when you send.`;
     const hasTurnInput = draftLength > 0 || state.attachmentCount > 0;
     setSlotState(currentMessageState, hasTurnInput ? 'Ready' : 'At send', hasTurnInput ? 'is-included' : 'is-pending');
+    if (state.activeContextSlot === 'message') refreshContextInspector();
   }
 
   function setSlotState(element, text, tone) {
     element.textContent = text;
     element.classList.remove('is-included', 'is-excluded', 'is-pending', 'is-compressed', 'is-used');
     element.classList.add(tone);
+  }
+
+  function getDetailSnapshot() {
+    if (state.contextViewMode === 'preview') {
+      return {
+        message: input.value.trim(),
+        sources: state.sourceCount,
+        attachments: state.attachmentCount
+      };
+    }
+    return state.contextSnapshot || state.lastRunSnapshot || {
+      message: '',
+      sources: state.sourceCount,
+      attachments: state.attachmentCount
+    };
+  }
+
+  function getContextSlotDetail(slot) {
+    const base = contextSlotCatalog[slot];
+    const detail = { ...base };
+    const snapshot = getDetailSnapshot();
+    const phase = state.contextViewMode;
+
+    if (slot === 'assistant') {
+      const selectedAssistant = assistantLabel.textContent;
+      detail.title = `Assistant · ${selectedAssistant}`;
+      detail.source = `Assistant profile · ${selectedAssistant}`;
+      if (selectedAssistant === 'Default assistant') {
+        detail.reason = 'No authored identity selected';
+        detail.budget = '0 tokens';
+        detail.treatment = 'Empty slot omitted';
+        detail.content = '[No assistant-specific content included]';
+      }
+    }
+
+    if (slot === 'message') {
+      const message = snapshot.message || '[No draft text yet]\nExact text will be captured when you send.';
+      detail.source = phase === 'preview' ? 'Composer draft' : 'Submitted message snapshot';
+      detail.content = message;
+      if (snapshot.attachments > 0) detail.content += `\n\nAttachments: ${snapshot.attachments} explicit this-turn reference${snapshot.attachments === 1 ? '' : 's'}`;
+    }
+
+    if (slot === 'resources') {
+      const resourceLines = base.content.split('\n');
+      const visibleCount = phase === 'actual' ? Math.min(4, snapshot.sources) : Math.min(resourceLines.length, snapshot.sources);
+      detail.content = resourceLines.slice(0, visibleCount).join('\n');
+      if (snapshot.sources > resourceLines.length) detail.content += `\n+ ${snapshot.sources - resourceLines.length} explicit attachment reference${snapshot.sources - resourceLines.length === 1 ? '' : 's'}`;
+      if (phase === 'actual') detail.treatment = `${visibleCount} of ${snapshot.sources} summaries used`;
+    }
+
+    if (slot === 'activity' && phase === 'actual') {
+      detail.budget = '~18 tokens after L1';
+      detail.treatment = 'Compressed to counts';
+      detail.content = '8 recent local events · 2 opens · 2 searches · 2 reviews · 2 actions';
+    }
+
+    if (phase === 'frozen') detail.treatment = `Frozen at send · ${detail.treatment}`;
+    if (phase === 'actual' && slot !== 'activity' && slot !== 'resources') detail.treatment = `Recorded receipt · ${detail.treatment}`;
+
+    return detail;
+  }
+
+  function refreshContextInspector() {
+    if (!state.activeContextSlot || contextInspector.hidden) return;
+    const detail = getContextSlotDetail(state.activeContextSlot);
+    const phaseLabels = {
+      preview: 'Will include',
+      frozen: 'Frozen snapshot',
+      actual: 'Actually used'
+    };
+    contextInspector.dataset.phase = state.contextViewMode;
+    contextDetailPhase.textContent = phaseLabels[state.contextViewMode];
+    contextDetailTitle.textContent = detail.title;
+    contextDetailSource.textContent = detail.source;
+    contextDetailReason.textContent = detail.reason;
+    contextDetailBudget.textContent = detail.budget;
+    contextDetailTreatment.textContent = detail.treatment;
+    contextDetailContent.textContent = detail.content;
+  }
+
+  function closeContextInspector(restoreFocus = false) {
+    const returnFocus = state.contextDetailReturnFocus;
+    if (returnFocus) {
+      returnFocus.setAttribute('aria-expanded', 'false');
+      returnFocus.classList.remove('is-inspected');
+    }
+    state.activeContextSlot = null;
+    state.contextDetailReturnFocus = null;
+    contextInspector.hidden = true;
+    if (restoreFocus && returnFocus) {
+      window.setTimeout(() => returnFocus.focus({ preventScroll: true }), 0);
+    }
+  }
+
+  function openContextInspector(trigger) {
+    const slot = trigger.dataset.contextSlot;
+    if (state.activeContextSlot === slot) {
+      closeContextInspector(true);
+      return;
+    }
+
+    closeContextInspector();
+    state.activeContextSlot = slot;
+    state.contextDetailReturnFocus = trigger;
+    trigger.setAttribute('aria-expanded', 'true');
+    trigger.classList.add('is-inspected');
+    trigger.insertAdjacentElement('afterend', contextInspector);
+    contextInspector.hidden = false;
+    refreshContextInspector();
+    window.requestAnimationFrame(() => contextInspector.scrollIntoView({ block: 'nearest' }));
   }
 
   function renderContextView(mode = 'preview', runSnapshot = null) {
@@ -181,6 +386,7 @@
       setSlotState(activitySlotState, 'Included', 'is-included');
       currentMessageDetail.textContent = `${snapshot.message.length} characters and ${snapshot.attachments} attachments were captured at send.`;
       setSlotState(currentMessageState, 'Included', 'is-included');
+      refreshContextInspector();
       return;
     }
 
@@ -199,6 +405,7 @@
       setSlotState(activitySlotState, 'Compressed', 'is-compressed');
       currentMessageDetail.textContent = `${snapshot.message.length} submitted characters and ${snapshot.attachments} attachments were used.`;
       setSlotState(currentMessageState, 'Used', 'is-used');
+      refreshContextInspector();
       return;
     }
 
@@ -214,6 +421,7 @@
     setSlotState(resourceSlotState, 'Included', 'is-included');
     setSlotState(activitySlotState, 'Included', 'is-included');
     updateDraftContext();
+    refreshContextInspector();
   }
 
   function renderComposerState() {
@@ -242,6 +450,7 @@
 
   function closeMenus(restoreFocus = false) {
     const returnFocus = state.menuReturnFocus;
+    closeContextInspector();
     state.openMenu = null;
     state.menuReturnFocus = null;
     Object.entries(menus).forEach(([name, menu]) => {
@@ -447,7 +656,7 @@
     closeMenus();
     setRunning(true);
     scrollToLatest();
-    state.runTimer = window.setTimeout(finishRun, 2200);
+    state.runTimer = window.setTimeout(finishRun, 5200);
   }
 
   timeline.addEventListener('scroll', updateBottomState, { passive: true });
@@ -470,6 +679,12 @@
     if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
       event.preventDefault();
       if (hasDraft()) startRun(input.value.trim());
+    }
+    if (event.key === 'Escape' && state.activeContextSlot) {
+      event.preventDefault();
+      event.stopPropagation();
+      closeContextInspector(true);
+      return;
     }
     if (event.key === 'Escape' && state.openMenu) {
       event.preventDefault();
@@ -499,6 +714,32 @@
     contextTechnicalToggle.classList.toggle('is-active', state.showTechnicalContext);
     contextTechnicalToggle.setAttribute('aria-pressed', String(state.showTechnicalContext));
     contextTechnicalToggle.textContent = state.showTechnicalContext ? 'Hide details' : 'Technical details';
+  });
+
+  const contextSlotRows = Array.from(document.querySelectorAll('[data-context-slot]'));
+  contextSlotRows.forEach((row, index) => {
+    row.addEventListener('click', () => openContextInspector(row));
+    row.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openContextInspector(row);
+        return;
+      }
+      let targetIndex = null;
+      if (event.key === 'ArrowDown') targetIndex = Math.min(contextSlotRows.length - 1, index + 1);
+      if (event.key === 'ArrowUp') targetIndex = Math.max(0, index - 1);
+      if (event.key === 'Home') targetIndex = 0;
+      if (event.key === 'End') targetIndex = contextSlotRows.length - 1;
+      if (targetIndex === null) return;
+      event.preventDefault();
+      contextSlotRows[targetIndex].focus({ preventScroll: true });
+      contextSlotRows[targetIndex].scrollIntoView({ block: 'nearest' });
+    });
+  });
+
+  contextDetailClose.addEventListener('click', (event) => {
+    event.stopPropagation();
+    closeContextInspector(true);
   });
 
   document.querySelectorAll('[data-suggestion]').forEach((button) => {
@@ -593,6 +834,11 @@
   });
 
   document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && state.activeContextSlot) {
+      event.preventDefault();
+      closeContextInspector(true);
+      return;
+    }
     if (event.key === 'Escape' && state.openMenu) {
       event.preventDefault();
       closeMenus(true);

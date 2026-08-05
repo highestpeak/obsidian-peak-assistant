@@ -14,6 +14,8 @@ into Chat Studio semantics:
 - that view follows the whole lifecycle: **Will include** before send, a **Frozen**
   snapshot while the run is active, and an **Actually used** receipt on the
   completed assistant message;
+- every stack layer opens into one inline inspector showing its concrete content,
+  source, inclusion reason, budget, and compression or omission treatment;
 - the context view mirrors `docs/11-feature-chat-context.html` and the current
   `ChatProfile` order: required, optional, compressed, empty, and explicitly
   excluded inputs are shown separately;
@@ -31,6 +33,11 @@ including the full Vault, inactive variants, parent-branch history, and web resu
 that have not been retrieved yet. Human-readable descriptions are the default;
 the token limits and compression rules remain available behind **Technical
 details** instead of dominating the first view.
+
+Click any numbered layer to inspect it. Only one layer stays open at a time.
+Arrow keys move through the stack, Enter or Space opens the focused layer, and
+Escape closes the layer before it closes the whole Context popover. Empty layers
+remain inspectable so the omission reason is explicit.
 
 Static review captures are included for the expanded, context-evidence, compact,
 Add-menu, running, and narrow-window states. The live HTML is the design source;

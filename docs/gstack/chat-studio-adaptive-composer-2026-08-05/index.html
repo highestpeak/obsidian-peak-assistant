@@ -223,39 +223,56 @@
                   <div class="context-stack-heading"><span>First instruction</span><strong>Pipeline order</strong><span>Closest to your message ↓</span></div>
                   <div class="context-slot-list">
                     <div class="context-slot-group">Foundation</div>
-                    <div class="context-slot-row is-required">
-                      <span class="slot-order">01</span><span class="slot-copy"><strong>System prompt</strong><small>How this conversation should behave and what it can do.</small><span class="slot-technical">Required · max 1,500 · never dropped</span></span><span class="slot-state is-included">Included</span>
-                    </div>
-                    <div class="context-slot-row">
-                      <span class="slot-order">02</span><span class="slot-copy"><strong id="assistant-slot-title">Assistant · Research partner</strong><small id="assistant-slot-detail">Evidence-first product and architecture guidance.</small><span id="assistant-slot-technical" class="slot-technical">Optional · max 2,000 · compress framing only</span></span><span id="assistant-slot-state" class="slot-state is-included">Included</span>
-                    </div>
+                    <button class="context-slot-row is-required" type="button" data-context-slot="system" aria-expanded="false" aria-controls="context-item-inspector">
+                      <span class="slot-order">01</span><span class="slot-copy"><strong>System prompt</strong><small>How this conversation should behave and what it can do.</small><span class="slot-technical">Required · max 1,500 · never dropped</span></span><span class="slot-tail"><span class="slot-state is-included">Included</span><svg class="icon slot-chevron"><use href="#icon-chevron-down"></use></svg></span>
+                    </button>
+                    <button class="context-slot-row" type="button" data-context-slot="assistant" aria-expanded="false" aria-controls="context-item-inspector">
+                      <span class="slot-order">02</span><span class="slot-copy"><strong id="assistant-slot-title">Assistant · Research partner</strong><small id="assistant-slot-detail">Evidence-first product and architecture guidance.</small><span id="assistant-slot-technical" class="slot-technical">Optional · max 2,000 · compress framing only</span></span><span class="slot-tail"><span id="assistant-slot-state" class="slot-state is-included">Included</span><svg class="icon slot-chevron"><use href="#icon-chevron-down"></use></svg></span>
+                    </button>
                     <div class="context-slot-group">Conversation &amp; work</div>
-                    <div class="context-slot-row is-required">
-                      <span class="slot-order">03</span><span class="slot-copy"><strong>Conversation history</strong><small>18 recent active messages, so this turn keeps continuity.</small><span class="slot-technical">Required · max 20 · active variants only · compression up to L3</span></span><span class="slot-state is-included">Included</span>
-                    </div>
-                    <div class="context-slot-row">
-                      <span class="slot-order">04</span><span class="slot-copy"><strong>Working context</strong><small>Active note, focus folder, working theme, and recent local activity.</small><span class="slot-technical">Optional · max 500</span></span><span class="slot-state is-included">Included</span>
-                    </div>
-                    <div class="context-slot-row">
-                      <span class="slot-order">05</span><span class="slot-copy"><strong>Conversation summary</strong><small>Older turns, project description, and durable instructions.</small><span class="slot-technical">Optional · max 800 · recoverable</span></span><span class="slot-state is-included">Included</span>
-                    </div>
-                    <div class="context-slot-row">
-                      <span class="slot-order">06</span><span class="slot-copy"><strong>Activity index</strong><small>8 recent opens, searches, and actions.</small><span class="slot-technical">Optional · max 200 · reduced to a count at L1</span></span><span id="activity-slot-state" class="slot-state is-included">Included</span>
-                    </div>
+                    <button class="context-slot-row is-required" type="button" data-context-slot="history" aria-expanded="false" aria-controls="context-item-inspector">
+                      <span class="slot-order">03</span><span class="slot-copy"><strong>Conversation history</strong><small>18 recent active messages, so this turn keeps continuity.</small><span class="slot-technical">Required · max 20 · active variants only · compression up to L3</span></span><span class="slot-tail"><span class="slot-state is-included">Included</span><svg class="icon slot-chevron"><use href="#icon-chevron-down"></use></svg></span>
+                    </button>
+                    <button class="context-slot-row" type="button" data-context-slot="working" aria-expanded="false" aria-controls="context-item-inspector">
+                      <span class="slot-order">04</span><span class="slot-copy"><strong>Working context</strong><small>Active note, focus folder, working theme, and recent local activity.</small><span class="slot-technical">Optional · max 500</span></span><span class="slot-tail"><span class="slot-state is-included">Included</span><svg class="icon slot-chevron"><use href="#icon-chevron-down"></use></svg></span>
+                    </button>
+                    <button class="context-slot-row" type="button" data-context-slot="summary" aria-expanded="false" aria-controls="context-item-inspector">
+                      <span class="slot-order">05</span><span class="slot-copy"><strong>Conversation summary</strong><small>Older turns, project description, and durable instructions.</small><span class="slot-technical">Optional · max 800 · recoverable</span></span><span class="slot-tail"><span class="slot-state is-included">Included</span><svg class="icon slot-chevron"><use href="#icon-chevron-down"></use></svg></span>
+                    </button>
+                    <button class="context-slot-row" type="button" data-context-slot="activity" aria-expanded="false" aria-controls="context-item-inspector">
+                      <span class="slot-order">06</span><span class="slot-copy"><strong>Activity index</strong><small>8 recent opens, searches, and actions.</small><span class="slot-technical">Optional · max 200 · reduced to a count at L1</span></span><span class="slot-tail"><span id="activity-slot-state" class="slot-state is-included">Included</span><svg class="icon slot-chevron"><use href="#icon-chevron-down"></use></svg></span>
+                    </button>
                     <div class="context-slot-group">Personal context</div>
-                    <div class="context-slot-row">
-                      <span class="slot-order">07</span><span class="slot-copy"><strong>User profile</strong><small>Language, writing style, and project preferences.</small><span class="slot-technical">Optional · max 400 · top 3 categories at L1</span></span><span class="slot-state is-included">Included</span>
-                    </div>
-                    <div class="context-slot-row is-absent">
-                      <span class="slot-order">08</span><span class="slot-copy"><strong>Previous analyses</strong><small>No recent analysis record is relevant to this turn.</small><span class="slot-technical">Optional · empty slots render nothing</span></span><span class="slot-state is-excluded">Not added</span>
-                    </div>
+                    <button class="context-slot-row" type="button" data-context-slot="profile" aria-expanded="false" aria-controls="context-item-inspector">
+                      <span class="slot-order">07</span><span class="slot-copy"><strong>User profile</strong><small>Language, writing style, and project preferences.</small><span class="slot-technical">Optional · max 400 · top 3 categories at L1</span></span><span class="slot-tail"><span class="slot-state is-included">Included</span><svg class="icon slot-chevron"><use href="#icon-chevron-down"></use></svg></span>
+                    </button>
+                    <button class="context-slot-row is-absent" type="button" data-context-slot="analyses" aria-expanded="false" aria-controls="context-item-inspector">
+                      <span class="slot-order">08</span><span class="slot-copy"><strong>Previous analyses</strong><small>No recent analysis record is relevant to this turn.</small><span class="slot-technical">Optional · empty slots render nothing</span></span><span class="slot-tail"><span class="slot-state is-excluded">Not added</span><svg class="icon slot-chevron"><use href="#icon-chevron-down"></use></svg></span>
+                    </button>
                     <div class="context-slot-group">Retrieval &amp; this turn</div>
-                    <div class="context-slot-row">
-                      <span class="slot-order">09</span><span class="slot-copy"><strong>Resource index</strong><small id="resource-slot-detail">6 references and summaries selected for this turn.</small><span class="slot-technical">Optional · max 300 · raw files are not preloaded</span></span><span id="resource-slot-state" class="slot-state is-included">Included</span>
-                    </div>
-                    <div class="context-slot-row is-message">
-                      <span class="slot-order">10</span><span class="slot-copy"><strong>Current user message</strong><small id="current-message-detail">Exact draft text will be added when you send.</small><span class="slot-technical">Required · never replaced by a summary</span></span><span id="current-message-state" class="slot-state is-pending">At send</span>
-                    </div>
+                    <button class="context-slot-row" type="button" data-context-slot="resources" aria-expanded="false" aria-controls="context-item-inspector">
+                      <span class="slot-order">09</span><span class="slot-copy"><strong>Resource index</strong><small id="resource-slot-detail">6 references and summaries selected for this turn.</small><span class="slot-technical">Optional · max 300 · raw files are not preloaded</span></span><span class="slot-tail"><span id="resource-slot-state" class="slot-state is-included">Included</span><svg class="icon slot-chevron"><use href="#icon-chevron-down"></use></svg></span>
+                    </button>
+                    <button class="context-slot-row is-message" type="button" data-context-slot="message" aria-expanded="false" aria-controls="context-item-inspector">
+                      <span class="slot-order">10</span><span class="slot-copy"><strong>Current user message</strong><small id="current-message-detail">Exact draft text will be added when you send.</small><span class="slot-technical">Required · never replaced by a summary</span></span><span class="slot-tail"><span id="current-message-state" class="slot-state is-pending">At send</span><svg class="icon slot-chevron"><use href="#icon-chevron-down"></use></svg></span>
+                    </button>
+                    <section id="context-item-inspector" class="context-item-inspector" role="region" aria-live="polite" aria-labelledby="context-detail-title" hidden>
+                      <div class="context-inspector-heading">
+                        <span><small id="context-detail-phase">Will include</small><strong id="context-detail-title">System prompt</strong></span>
+                        <button id="context-detail-close" type="button" aria-label="Close item detail"><svg class="icon"><use href="#icon-x"></use></svg></button>
+                      </div>
+                      <div class="context-detail-meta">
+                        <span><small>Source</small><strong id="context-detail-source">—</strong></span>
+                        <span><small>Why included</small><strong id="context-detail-reason">—</strong></span>
+                        <span><small>Budget</small><strong id="context-detail-budget">—</strong></span>
+                        <span><small>Treatment</small><strong id="context-detail-treatment">—</strong></span>
+                      </div>
+                      <div class="context-detail-body">
+                        <span>Content preview</span>
+                        <pre id="context-detail-content"></pre>
+                      </div>
+                      <small class="context-detail-note">Design sample. Production should render the exact serialized layer recorded by the run.</small>
+                    </section>
                   </div>
                 </div>
                 <aside class="context-exclusion-panel" aria-label="Not included in this turn">
