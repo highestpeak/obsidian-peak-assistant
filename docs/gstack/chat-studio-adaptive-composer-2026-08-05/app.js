@@ -14,6 +14,9 @@
   const stateReadout = document.getElementById('state-readout');
   const contextLabel = document.getElementById('context-label');
   const contextTotal = document.getElementById('context-total');
+  const contextIncludedCount = document.getElementById('context-included-count');
+  const contextPreviewSummary = document.getElementById('context-preview-summary');
+  const dynamicContextItems = document.getElementById('dynamic-context-items');
   const compactSourceCount = document.getElementById('compact-source-count');
   const assistantLabel = document.getElementById('assistant-label');
   const identityName = document.getElementById('identity-name');
@@ -51,7 +54,7 @@
   };
 
   const attachmentCatalog = {
-    file: ['image', 'Reference recording.mp4'],
+    file: ['image', 'Composer spacing feedback.png'],
     vault: ['file', 'Chat Studio UX direction.md'],
     link: ['link', 'Product reference link'],
     active: ['file', 'Active note selection'],
@@ -108,7 +111,7 @@
 
     const textGrowth = Math.max(0, Math.min(82, naturalInputHeight - 42));
     const shelfGrowth = hasAttachments() ? 31 : 0;
-    const nextHeight = 96 + textGrowth + shelfGrowth;
+    const nextHeight = 122 + textGrowth + shelfGrowth;
     composerStack.style.setProperty('--composer-height', `${nextHeight}px`);
   }
 
@@ -208,19 +211,31 @@
 
   function updateSourceCount(delta) {
     state.sourceCount = Math.max(3, state.sourceCount + delta);
-    const label = `${state.sourceCount} sources`;
-    contextLabel.textContent = label;
+    contextLabel.textContent = `${state.sourceCount} items`;
     contextTotal.textContent = String(state.sourceCount);
+    contextIncludedCount.textContent = String(state.sourceCount);
     compactSourceCount.textContent = String(state.sourceCount);
+    const attachmentSummary = state.attachmentCount > 0 ? ` · ${state.attachmentCount} newly added` : '';
+    contextPreviewSummary.textContent = `Active note · Project brief · Recording · 3 vault notes${attachmentSummary}`;
+  }
+
+  function addContextEvidence(iconName, label) {
+    const row = document.createElement('div');
+    row.className = 'context-evidence-row is-dynamic';
+    row.innerHTML = `<span class="evidence-mark is-added">${icon(iconName)}</span><span><strong>${label}</strong><small>Explicit attachment · added to this draft</small></span><span class="inclusion-state">${icon('check')}Included</span>`;
+    dynamicContextItems.append(row);
+    return row;
   }
 
   function addAttachment(type) {
     const [iconName, label] = attachmentCatalog[type] || attachmentCatalog.file;
+    const contextEvidence = addContextEvidence(iconName, label);
     const chip = document.createElement('span');
     chip.className = 'attachment-chip';
     chip.innerHTML = `${icon(iconName)}<span>${label}</span><button type="button" aria-label="Remove ${label}">${icon('x')}</button>`;
     chip.querySelector('button').addEventListener('click', () => {
       chip.remove();
+      contextEvidence.remove();
       state.attachmentCount = Math.max(0, state.attachmentCount - 1);
       updateSourceCount(-1);
       attachmentShelf.hidden = state.attachmentCount === 0;
@@ -239,6 +254,7 @@
   function clearAttachments() {
     const removed = state.attachmentCount;
     attachmentShelf.innerHTML = '';
+    dynamicContextItems.innerHTML = '';
     attachmentShelf.hidden = true;
     state.attachmentCount = 0;
     if (removed > 0) updateSourceCount(-removed);
@@ -252,7 +268,7 @@
     send.setAttribute('aria-label', running ? 'Stop response' : 'Send message');
     send.disabled = false;
     if (running) {
-      showStatus('Research partner is working', `Reading ${state.sourceCount} sources for this turn`, 0);
+      showStatus('Research partner is working', `Reading ${state.sourceCount} context items for this turn`, 0);
     } else {
       hideStatus();
       send.disabled = !hasDraft();

@@ -18,6 +18,7 @@
     <symbol id="icon-arrow-up" viewBox="0 0 24 24"><path d="m12 19V5m-6 6 6-6 6 6"/></symbol>
     <symbol id="icon-square" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="1"/></symbol>
     <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+    <symbol id="icon-eye" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></symbol>
     <symbol id="icon-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v5h5"/></symbol>
     <symbol id="icon-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15-5-5L5 20"/></symbol>
     <symbol id="icon-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.07.07l2-2a5 5 0 0 0-7.07-7.07l-1.15 1.15M14 11a5 5 0 0 0-7.07-.07l-2 2A5 5 0 0 0 12 20l1.15-1.15"/></symbol>
@@ -149,7 +150,7 @@
         </button>
 
         <div class="composer-dock">
-          <div id="composer-stack" class="composer-stack" style="--composer-height: 96px">
+          <div id="composer-stack" class="composer-stack" style="--composer-height: 122px">
             <div id="status-strip" class="status-strip" aria-live="polite" hidden>
               <span class="status-icon"><svg class="icon"><use href="#icon-sparkles"></use></svg></span>
               <span id="status-copy"><strong>Research partner is working</strong><small>Reading 6 sources for this turn</small></span>
@@ -171,13 +172,15 @@
 
               <div class="expanded-composer">
                 <div id="attachment-shelf" class="attachment-shelf" hidden></div>
+                <button id="context-trigger" class="context-preview" type="button" aria-expanded="false" data-menu="context">
+                  <span class="context-preview-title"><svg class="icon"><use href="#icon-eye"></use></svg><strong>Next message context</strong></span>
+                  <span id="context-preview-summary" class="context-preview-summary">Active note · Project brief · Recording · 3 vault notes</span>
+                  <span class="context-preview-count"><strong id="context-label">6 items</strong><svg class="icon chevron"><use href="#icon-chevron-down"></use></svg></span>
+                </button>
                 <textarea id="composer-input" rows="1" placeholder="Ask about your project, notes, or current work…" aria-label="Message"></textarea>
                 <div class="composer-footer">
                   <div class="tool-group tool-group-left">
                     <button id="plus-trigger" class="icon-button" type="button" aria-label="Add to this turn" aria-expanded="false" data-menu="plus"><svg class="icon"><use href="#icon-plus"></use></svg></button>
-                    <button id="context-trigger" class="tool-chip" type="button" aria-expanded="false" data-menu="context">
-                      <svg class="icon"><use href="#icon-database"></use></svg><span id="context-label">6 sources</span><svg class="icon chevron"><use href="#icon-chevron-down"></use></svg>
-                    </button>
                     <button id="assistant-trigger" class="tool-chip identity-chip" type="button" aria-expanded="false" data-menu="assistant">
                       <svg class="icon"><use href="#icon-bot"></use></svg><span id="assistant-label">Research partner</span><svg class="icon chevron"><use href="#icon-chevron-down"></use></svg>
                     </button>
@@ -206,19 +209,39 @@
 
             <section id="context-menu" class="popover context-popover" aria-label="Turn context" aria-hidden="true">
               <div class="popover-heading context-heading">
-                <span><strong>Available this turn</strong><small>Explicit items always travel with the message</small></span>
+                <span><strong>Context for next message</strong><small>What the assistant can actually see on this turn</small></span>
                 <span id="context-total" class="count-badge">6</span>
               </div>
-              <button class="toggle-row is-on is-locked" type="button" data-context="project" aria-pressed="true">
-                <span class="menu-icon"><svg class="icon"><use href="#icon-file"></use></svg></span><span><strong>Project context</strong><small>Current project and explicit resources</small></span><span class="switch-control"></span>
-              </button>
-              <button class="toggle-row is-on" type="button" data-context="vault" aria-pressed="true">
-                <span class="menu-icon"><svg class="icon"><use href="#icon-database"></use></svg></span><span><strong>Vault Search</strong><small>Retrieve related notes from your knowledge base</small></span><span class="switch-control"></span>
-              </button>
-              <button class="toggle-row is-on" type="button" data-context="web" aria-pressed="true">
-                <span class="menu-icon"><svg class="icon"><use href="#icon-globe"></use></svg></span><span><strong>Web Search</strong><small>Use current or external information when needed</small></span><span class="switch-control"></span>
-              </button>
-              <div class="context-foot"><span><svg class="icon"><use href="#icon-check"></use></svg>3 explicit resources</span><button type="button">Review sources</button></div>
+              <div class="context-scope-tabs" aria-label="Context scope">
+                <span class="is-active"><svg class="icon"><use href="#icon-check"></use></svg>Included now · <strong id="context-included-count">6</strong></span>
+                <span>Available tools · 2</span>
+              </div>
+              <div class="context-evidence-list">
+                <div class="context-evidence-row">
+                  <span class="evidence-mark is-note"><svg class="icon"><use href="#icon-file"></use></svg></span>
+                  <span><strong>Chat Studio redesign.md</strong><small>Active note · selected paragraph</small></span>
+                  <span class="inclusion-state"><svg class="icon"><use href="#icon-check"></use></svg>Included</span>
+                </div>
+                <div class="context-evidence-row">
+                  <span class="evidence-mark is-project"><svg class="icon"><use href="#icon-book"></use></svg></span>
+                  <span><strong>Adaptive composer direction</strong><small>Project brief · pinned for this conversation</small></span>
+                  <span class="inclusion-state"><svg class="icon"><use href="#icon-check"></use></svg>Included</span>
+                </div>
+                <div class="context-evidence-row">
+                  <span class="evidence-mark is-media"><svg class="icon"><use href="#icon-image"></use></svg></span>
+                  <span><strong>Reference recording.mp4</strong><small>Explicit attachment · added by you</small></span>
+                  <span class="inclusion-state"><svg class="icon"><use href="#icon-check"></use></svg>Included</span>
+                </div>
+                <div class="context-evidence-row">
+                  <span class="evidence-mark is-retrieval"><svg class="icon"><use href="#icon-database"></use></svg></span>
+                  <span><strong>3 related vault notes</strong><small>Retrieved for this draft · refreshed when sent</small></span>
+                  <span class="inclusion-state is-dynamic">Dynamic</span>
+                </div>
+                <div id="dynamic-context-items"></div>
+              </div>
+              <div class="context-foot context-foot-detailed">
+                <span><svg class="icon"><use href="#icon-sparkles"></use></svg><span><strong>Available at send time</strong><small>Vault Search and Web Search may add relevant evidence.</small></span></span>
+              </div>
             </section>
 
             <section id="assistant-menu" class="popover assistant-popover" aria-label="Choose assistant" aria-hidden="true">

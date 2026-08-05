@@ -9,6 +9,8 @@ into Chat Studio semantics:
 - reading older messages collapses the composer into a single-line floating pill;
 - returning to the latest turn morphs the same shell into the full composer;
 - focus, drafts, attachments, open menus, and active runs keep the composer open;
+- the next message's concrete context remains visible while typing and opens into
+  an evidence-style provenance view;
 - Add, Context, Assistant, and Model use one popover family and one spatial anchor;
 - run feedback and contextual suggestions live above the composer instead of
   permanently occupying its toolbar.
@@ -17,9 +19,9 @@ The page contains a small **Interaction demo** panel on the right. Use it to mov
 between Reading, Latest, and Running states. The real scroll container also drives
 the compact/expanded transition.
 
-Static review captures are included for the expanded, compact, Add-menu, running,
-and narrow-window states. The live HTML is the design source; the PNGs are only
-checkpoints.
+Static review captures are included for the expanded, context-evidence, compact,
+Add-menu, running, and narrow-window states. The live HTML is the design source;
+the PNGs are only checkpoints.
 
 ## Open
 
