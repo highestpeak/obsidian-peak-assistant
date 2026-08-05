@@ -34,11 +34,11 @@ import type { TabId } from './settings/types';
 
 export function SettingsRoot({
 	initialTab,
-	onOpenCommandGateway = () => {},
+	onOpenCommandGateway,
 }: {
 	initialTab?: TabId;
-	onOpenCommandGateway?: () => void | Promise<void>;
-} = {}) {
+	onOpenCommandGateway: () => void | Promise<void>;
+}) {
     const { eventBus, plugin } = useServiceContext();
     const [activeTab, setActiveTab] = useState<TabId>(initialTab ?? 'overview');
     const [settings, setSettings] = useState<MyPluginSettings>(plugin.settings);

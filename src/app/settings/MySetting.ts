@@ -5,6 +5,12 @@ import { SettingsRoot } from '@/ui/view/SettingsView';
 import { AppContext } from '@/app/context/AppContext';
 import { createReactElementWithServices } from '@/app/ui-host/ReactElementFactory';
 
+type AppWithSettingsHost = App & {
+	readonly setting: {
+		close(): void;
+	};
+};
+
 /**
  * Renders plugin settings UI with multiple tabs.
  */
@@ -36,7 +42,12 @@ export class MySettings extends PluginSettingTab {
 		// Render the complete settings UI using SettingsRoot component with service context
 		this.settingsRenderer = new ReactRenderer(containerEl);
 		this.settingsRenderer.render(
-			createReactElementWithServices(SettingsRoot, {}, this.appContext)
+			createReactElementWithServices(SettingsRoot, {
+				onOpenCommandGateway: async () => {
+					(this.app as AppWithSettingsHost).setting.close();
+					await this.appContext.viewManager.activatePluginCommandGatewayView();
+				},
+			}, this.appContext)
 		);
 	}
 

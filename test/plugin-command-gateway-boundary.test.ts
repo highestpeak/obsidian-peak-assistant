@@ -37,6 +37,8 @@ function testProductionWiringAndReviewSurface(): void {
 	const reviewList = read('src/ui/view/command-gateway/PluginCommandGatewayReviewList.tsx');
 	const viewManager = read('src/app/ui-host/views/ViewManager.ts');
 	const settingsModal = read('src/app/ui-host/modals/SettingsModal.tsx');
+	const nativeSettings = read('src/app/settings/MySetting.ts');
+	const settingsRoot = read('src/ui/view/SettingsView.tsx');
 	const settingsCopy = read('templates/config/settings.json');
 	const styles = read('src/styles/peak-components.css');
 	assert.match(main, /composePluginCommandGatewayRuntime/);
@@ -53,6 +55,9 @@ function testProductionWiringAndReviewSurface(): void {
 	assert.doesNotMatch(settingsEntry, /pluginCommandGateway\.scan/);
 	assert.doesNotMatch(settingsEntry, /pluginCommandGateway\.allowMany/);
 	assert.match(settingsModal, /activatePluginCommandGatewayView/);
+	assert.match(nativeSettings, /activatePluginCommandGatewayView/);
+	assert.match(nativeSettings, /setting\.close\(\)/);
+	assert.doesNotMatch(settingsRoot, /onOpenCommandGateway\s*=\s*\(\)\s*=>\s*\{\}/);
 	assert.match(viewManager, /PLUGIN_COMMAND_GATEWAY_VIEW_TYPE/);
 	assert.match(surface, /pluginCommandGateway\.scan\(onScanProgress\)/);
 	assert.match(surface, /pluginCommandGateway\.allowMany/);
