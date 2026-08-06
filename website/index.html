@@ -3,24 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0b0b0e">
-  <meta name="description" content="Peak Assistant is an evidence-aware AI workspace for Obsidian: Search, File Atlas, Graph, Vault Intelligence, Composer, Chat Studio, media generation, multi-provider routing, and more.">
+  <meta name="theme-color" content="#08080a">
+  <meta name="description" content="Peak Assistant turns an Obsidian vault into one connected workspace for search, graph intelligence, writing, agents, media, and model control.">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Peak Assistant — the AI workspace for your whole vault">
-  <meta property="og:description" content="Search it. Map it. Understand it. Write with it. Keep the evidence in view.">
+  <meta property="og:title" content="Peak Assistant — your vault, understood">
+  <meta property="og:description" content="Search every note. See how ideas connect. Create and run agents without losing the source.">
   <meta property="og:url" content="https://highestpeak.github.io/obsidian-peak-assistant/">
-  <meta property="og:image" content="https://highestpeak.github.io/obsidian-peak-assistant/assets/og.png">
+  <meta property="og:image" content="https://highestpeak.github.io/obsidian-peak-assistant/assets/og-cosmos.png">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Peak Assistant — the AI workspace for your whole vault">
-  <meta name="twitter:description" content="Search it. Map it. Understand it. Write with it. Keep the evidence in view.">
-  <meta name="twitter:image" content="https://highestpeak.github.io/obsidian-peak-assistant/assets/og.png">
-  <title>Peak Assistant — the AI workspace for your whole vault</title>
+  <meta name="twitter:title" content="Peak Assistant — your vault, understood">
+  <meta name="twitter:description" content="Search every note. See how ideas connect. Create and run agents without losing the source.">
+  <meta name="twitter:image" content="https://highestpeak.github.io/obsidian-peak-assistant/assets/og-cosmos.png">
+  <title>Peak Assistant — your vault, understood</title>
   <link rel="stylesheet" href="site.css">
   <script src="site.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
-  <div class="pointer-glow" aria-hidden="true"></div>
 
   <header class="site-header">
     <a class="brand" href="#top" aria-label="Peak Assistant home">
@@ -28,9 +27,9 @@
       <span>Peak Assistant</span>
     </a>
     <nav aria-label="Primary navigation">
-      <a href="#vision">Vision</a>
-      <a href="#capabilities">Capabilities</a>
+      <a href="#capabilities">What it does</a>
       <a href="#graph">Graph</a>
+      <a href="#product">Product</a>
       <a href="#roadmap">Roadmap</a>
       <a class="nav-cta" href="https://github.com/highestpeak/obsidian-peak-assistant">GitHub <span aria-hidden="true">↗</span></a>
     </nav>
@@ -38,474 +37,176 @@
 
   <main id="main">
     <section class="hero" id="top">
-      <canvas class="hero-field" aria-hidden="true"></canvas>
-      <div class="hero-orbits" aria-hidden="true"><i></i><i></i><i></i></div>
-
-      <div class="hero-art" data-tilt="soft">
-        <div class="hero-art-glow" aria-hidden="true"></div>
-        <img src="assets/peak-product-universe.webp" width="1731" height="909" fetchpriority="high" decoding="async" alt="Peak Assistant vision showing Copilot, knowledge connections, graph intelligence, and agents connected to one Obsidian vault">
-        <span class="hero-art-label">Product universe · visual direction</span>
+      <div class="hero-backdrop" aria-hidden="true">
+        <img src="assets/peak-cosmos-hero.webp" width="1672" height="941" fetchpriority="high" decoding="async" alt="">
       </div>
-
-      <div class="hero-dock">
-        <h1 class="visually-hidden">Peak Assistant — Copilot, connections, and agents for your whole Obsidian vault.</h1>
-        <div>
-          <div class="status"><span></span> Development preview · Obsidian desktop</div>
-          <p class="hero-lede">Search. Connect. Understand. Create. Keep the evidence in view.</p>
-        </div>
+      <div class="hero-copy">
+        <span class="hero-kicker">Peak Assistant for Obsidian</span>
+        <h1>Your vault,<br><em>understood.</em></h1>
+        <p>Search every note. See how ideas connect. Write, create, and run agents without losing the source.</p>
         <div class="hero-actions">
-          <a class="button button-primary" href="https://github.com/highestpeak/obsidian-peak-assistant">View on GitHub <span aria-hidden="true">↗</span></a>
-          <a class="button button-secondary" href="#capabilities">Explore every capability <span aria-hidden="true">↓</span></a>
+          <a class="button button-primary" href="https://github.com/highestpeak/obsidian-peak-assistant">Explore on GitHub <span aria-hidden="true">↗</span></a>
+          <a class="button button-quiet" href="#capabilities">See what Peak does <span aria-hidden="true">↓</span></a>
         </div>
-        <div class="hero-proof" aria-label="Project facts">
-          <span>Open source · GPL-3.0</span>
-          <span>No Peak subscription</span>
-          <span>Bring your own models</span>
-          <span>Markdown-first</span>
+        <div class="hero-facts" aria-label="Project facts">
+          <span>Open source</span><span>Local core is free</span><span>Bring your own models</span>
         </div>
       </div>
-
-      <div class="hero-capability-rail" aria-label="Major Peak Assistant capabilities">
-        <span>Vault + AI Search</span>
-        <span>Smart connections</span>
-        <span>File Atlas</span>
-        <span>Knowledge Graph</span>
-        <span>Vault Intelligence</span>
-        <span>Peak Composer</span>
-        <span>Chat Studio</span>
-        <span>Media Generation</span>
-        <span>Multi-provider AI</span>
-      </div>
+      <ol class="hero-journey" aria-label="Peak Assistant workflow">
+        <li><b>01</b><span>Find</span><small>Search + Atlas</small></li>
+        <li><b>02</b><span>Connect</span><small>Graph + Intelligence</small></li>
+        <li><b>03</b><span>Create</span><small>Composer + Media</small></li>
+        <li><b>04</b><span>Run</span><small>Studio + Agents</small></li>
+      </ol>
     </section>
 
-    <section class="statement" aria-label="Product position">
-      <p>Not another chat window.</p>
-      <h2>One workspace for every layer of your vault.</h2>
-      <div class="statement-grid">
-        <span>Find the right material</span>
-        <span>See how it connects</span>
-        <span>Act with context</span>
-        <span>Keep the evidence</span>
-      </div>
-    </section>
-
-    <section class="vision-showcase section" id="vision">
-      <div class="vision-heading">
-        <span class="eyebrow">The whole-vault view</span>
-        <p>One source of truth, connected across Search, Graph, Intelligence, Composer, and Chat.</p>
-      </div>
-      <figure>
-        <img src="assets/connected-vault-vision.webp" width="1731" height="909" loading="lazy" alt="Peak Assistant product vision showing a central vault connected to clusters of documents across Search, Graph, Intelligence, Composer, and Chat">
-        <figcaption>
-          <b>One source of truth.</b>
-          <span>Many ways to find, understand, and act.</span>
-        </figcaption>
-      </figure>
-    </section>
-
-    <section class="capability-universe section" id="capabilities">
-      <div class="section-heading capability-heading">
+    <section class="capabilities section" id="capabilities">
+      <header class="section-intro">
+        <span class="section-number">01</span>
         <div>
-          <span class="eyebrow">The complete capability map</span>
-          <h2>One vault. Twelve connected systems.</h2>
+          <p>What Peak does</p>
+          <h2>From a question to a source-backed result.</h2>
         </div>
-        <p>Every system shares the same vault context and evidence trail.</p>
-      </div>
+        <p class="section-summary">Six connected stages. One vault context. No separate tool for every step.</p>
+      </header>
 
-      <div class="status-legend" aria-label="Capability status legend">
-        <span><i class="legend-current"></i> In current source</span>
-        <span><i class="legend-preview"></i> Preview / QA closing</span>
-        <span><i class="legend-building"></i> In development</span>
-        <span><i class="legend-research"></i> Designed / research</span>
-      </div>
-
-      <div class="capability-map">
-        <div class="map-grid" aria-hidden="true"></div>
-        <div class="capability-center">
-          <span class="center-kicker">Your source of truth</span>
-          <b>Your Obsidian Vault</b>
-          <small>Markdown · files · links · context · history</small>
-        </div>
-
-        <article class="capability-node node-search" data-status="current">
-          <span class="node-no">01</span><h3>Search</h3>
-          <p>Vault · AI · List · Tree · Graph</p>
+      <div class="capability-lanes">
+        <article>
+          <span class="lane-number">01</span>
+          <div><h3>Find the right material.</h3><p>Search the vault, ask in natural language, or move through a file’s neighbourhood.</p></div>
+          <div class="capability-list"><span>Vault Search</span><span>AI Search</span><span>File Atlas</span></div>
         </article>
-        <article class="capability-node node-atlas" data-status="preview">
-          <span class="node-no">02</span><h3>File Atlas</h3>
-          <p>Files · structure · links · neighbourhoods</p>
+        <article>
+          <span class="lane-number">02</span>
+          <div><h3>See the structure.</h3><p>Separate authored links from semantic relationships. Find hubs, gaps, bridges, orphans, and drift.</p></div>
+          <div class="capability-list"><span>Knowledge Graph</span><span>Vault Intelligence</span><span>Find hubs</span><span>Find gaps</span></div>
         </article>
-        <article class="capability-node node-graph" data-status="preview">
-          <span class="node-no">03</span><h3>Graph</h3>
-          <p>Results · semantic edges · hubs · gaps</p>
+        <article>
+          <span class="lane-number">03</span>
+          <div><h3>Create with context.</h3><p>Work from a selection, block, document, or native Obsidian object and review the result beside its source.</p></div>
+          <div class="capability-list"><span>Peak Composer</span><span>Copilot</span><span>Image</span><span>Video</span><span>Music</span><span>Voice</span></div>
         </article>
-        <article class="capability-node node-intelligence" data-status="current">
-          <span class="node-no">04</span><h3>Vault Intelligence</h3>
-          <p>Hubs · gaps · bridges · drift</p>
+        <article>
+          <span class="lane-number">04</span>
+          <div><h3>Run longer work.</h3><p>Give a project files, tools, skills, permissions, and a result that stays available for review.</p></div>
+          <div class="capability-list"><span>Chat Studio</span><span>Multi-provider AI</span><span>MCP</span><span>Skills</span><span>Plugin Commands</span></div>
         </article>
-        <article class="capability-node node-composer" data-status="preview">
-          <span class="node-no">05</span><h3>Peak Composer</h3>
-          <p>Markdown · Copilot · native objects · review</p>
+        <article>
+          <span class="lane-number">05</span>
+          <div><h3>Shape data.</h3><p>Move from tables and files toward revision-safe datasets, formulas, charts, and AI compute plans.</p></div>
+          <div class="capability-list"><span>Peak Sheet</span><span>Datasets</span><span>Charts</span><span>ComputePlan</span><em>Research</em></div>
         </article>
-        <article class="capability-node node-chat" data-status="current">
-          <span class="node-no">06</span><h3>Chat Studio</h3>
-          <p>Projects · agents · artifacts · branching</p>
+        <article>
+          <span class="lane-number">06</span>
+          <div><h3>Control the system.</h3><p>Choose entry points, models, tools, approvals, budgets, indexes, and what becomes durable.</p></div>
+          <div class="capability-list"><span>Command Center</span><span>AI Control Center</span><span>Setup</span><span>Index</span><span>Usage</span></div>
         </article>
-        <article class="capability-node node-command" data-status="preview">
-          <span class="node-no">07</span><h3>Command Center</h3>
-          <p>Files · workspaces · actions · Home</p>
-        </article>
-        <article class="capability-node node-control" data-status="building">
-          <span class="node-no">08</span><h3>AI Control Center</h3>
-          <p>Models · tools · budgets · approvals</p>
-        </article>
-        <article class="capability-node node-media" data-status="preview">
-          <span class="node-no">09</span><h3>Media</h3>
-          <p>Image · video · music · voice</p>
-        </article>
-        <article class="capability-node node-provider" data-status="current">
-          <span class="node-no">10</span><h3>AI Platform</h3>
-          <p>Providers · MCP · skills · traces</p>
-        </article>
-        <article class="capability-node node-sheet" data-status="research">
-          <span class="node-no">11</span><h3>Peak Sheet</h3>
-          <p>Datasets · formulas · charts · views</p>
-        </article>
-        <article class="capability-node node-operations" data-status="current">
-          <span class="node-no">12</span><h3>Operations</h3>
-          <p>Setup · index · usage · storage</p>
-        </article>
-      </div>
-      <p class="map-note"><b>Status matters:</b> source, preview, development, and research are not release claims.</p>
-    </section>
-
-    <section class="interaction-models section" id="intelligence-modes">
-      <div class="models-heading">
-        <div>
-          <span class="eyebrow">Three kinds of intelligence · one product</span>
-          <h2>Write with a Copilot. Discover smart connections. Delegate to an agent.</h2>
-        </div>
-        <p>One vault context moves from writing, to discovery, to longer agent work.</p>
-      </div>
-
-      <div class="model-grid">
-        <article class="model-card model-copilot">
-          <div class="model-card-head">
-            <span class="model-index">01 · In the document</span>
-            <span class="status-chip is-preview">In source · QA closing</span>
-          </div>
-          <h3>A Copilot that understands the exact scope.</h3>
-          <p>Ask, transform, compare, and review beside the exact source.</p>
-          <div class="model-demo copilot-demo" aria-label="Illustration of a source-aware Copilot edit">
-            <div class="demo-document">
-              <span class="demo-line is-long"></span><span class="demo-line is-medium"></span>
-              <span class="demo-selection">Selected source remains the anchor</span>
-              <span class="demo-line is-short"></span>
-            </div>
-            <div class="demo-review"><span>Candidate change</span><b>Review</b><b>Accept</b></div>
-          </div>
-          <div class="model-tags" aria-label="Copilot capabilities">
-            <span>Selection</span><span>Block</span><span>Document</span><span>Native objects</span><span>Candidates</span><span>History</span>
-          </div>
-        </article>
-
-        <article class="model-card model-connections">
-          <div class="model-card-head">
-            <span class="model-index">02 · Around the work</span>
-            <span class="status-chip is-preview">In source · data closing</span>
-          </div>
-          <h3>Smart connections that follow what you are doing.</h3>
-          <p>See what is related, why it matters, and where it connects.</p>
-          <div class="model-demo connection-demo" aria-label="Illustration of related notes and a semantic neighbourhood">
-            <div class="connection-list">
-              <span><i>.92</i><b>Prior decision</b></span>
-              <span><i>.87</i><b>Research source</b></span>
-              <span><i>.81</i><b>Missing perspective</b></span>
-            </div>
-            <div class="mini-graph" aria-hidden="true">
-              <i class="dot dot-a"></i><i class="dot dot-b"></i><i class="dot dot-c"></i><i class="dot dot-d"></i><i class="dot dot-e"></i>
-              <span class="edge edge-a"></span><span class="edge edge-b"></span><span class="edge edge-c"></span><span class="edge edge-d"></span>
-            </div>
-          </div>
-          <div class="model-tags" aria-label="Smart connection capabilities">
-            <span>Related notes</span><span>Semantic lookup</span><span>List</span><span>Tree</span><span>Graph</span><span>Hubs + gaps</span>
-          </div>
-        </article>
-
-        <article class="model-card model-agent">
-          <div class="model-card-head">
-            <span class="model-index">03 · Across the task</span>
-            <span class="status-chip is-current">In current source</span>
-          </div>
-          <h3>An agent workspace with visible work, not invisible magic.</h3>
-          <p>Plan, search, use tools, and create reviewable artifacts.</p>
-          <div class="model-demo agent-demo" aria-label="Illustration of a permissioned multi-step agent run">
-            <span class="agent-step"><i>✓</i><b>Inspect current scope</b><small>4 sources</small></span>
-            <span class="agent-step"><i>✓</i><b>Search the vault</b><small>evidence kept</small></span>
-            <span class="agent-step is-active"><i>03</i><b>Prepare artifact</b><small>review required</small></span>
-          </div>
-          <div class="model-tags" aria-label="Agent workspace capabilities">
-            <span>Projects</span><span>Skills</span><span>MCP</span><span>Permissions</span><span>Artifacts</span><span>Recovery</span>
-          </div>
-        </article>
-      </div>
-
-      <div class="peak-difference">
-        <span class="difference-label">What makes it Peak</span>
-        <div>
-          <span>Vault + AI Search</span><span>File Atlas</span><span>Actionable Graph</span><span>Vault Intelligence</span><span>Peak Composer</span><span>Chat Studio</span><span>Media generation</span><span>AI Control Center</span><span>Peak Sheet</span>
-        </div>
       </div>
     </section>
 
     <section class="graph-section section" id="graph">
-      <div class="graph-heading">
+      <header class="section-intro graph-intro">
+        <span class="section-number">02</span>
         <div>
-          <span class="eyebrow">Graph is a first-class workspace</span>
-          <h2>Peak does not just retrieve notes. It reveals their shape.</h2>
+          <p>Graph intelligence</p>
+          <h2>See where knowledge gathers — and where it breaks.</h2>
         </div>
-        <p>Authored links, semantic relationships, direction, communities, hubs, and gaps stay distinguishable.</p>
-      </div>
+        <p class="section-summary">The graph is not decoration. It answers what to open, what is missing, and what deserves attention.</p>
+      </header>
 
-      <figure class="graph-visual">
-        <div class="graph-window-bar">
-          <span>File Atlas · Local neighbourhood</span>
-          <span class="status-chip is-preview">Design preview</span>
+      <div class="graph-story">
+        <div class="graph-questions">
+          <article><b>Find hubs</b><p>Which notes organise the rest of the vault?</p></article>
+          <article><b>Find gaps</b><p>Which ideas should connect, but do not yet?</p></article>
+          <article><b>Follow evidence</b><p>Which sources support this result or recommendation?</p></article>
         </div>
-        <img src="assets/file-atlas-graph-preview.webp" width="1440" height="900" loading="lazy" alt="File Atlas graph design showing a current note connected to a local neighbourhood of related notes">
-        <figcaption>Design reference · Graph source exists · live interaction QA is closing.</figcaption>
-      </figure>
-
-      <div class="graph-modes">
-        <article>
-          <span class="status-chip is-current">In source</span>
-          <h3>Search Result Graph</h3>
-          <p>Results become an evidence map.</p>
-        </article>
-        <article>
-          <span class="status-chip is-preview">Preview / QA</span>
-          <h3>File Atlas Graph</h3>
-          <p>Local and two-hop neighbourhoods.</p>
-        </article>
-        <article>
-          <span class="status-chip is-preview">Preview / QA</span>
-          <h3>Vault Intelligence Graph</h3>
-          <p>Hubs · gaps · bridges · orphans · drift</p>
-        </article>
-        <article>
-          <span class="status-chip is-current">Foundation</span>
-          <h3>AI Graph Artifacts</h3>
-          <p>Immutable versions with evidence.</p>
-        </article>
-        <article>
-          <span class="status-chip is-research">Research</span>
-          <h3>Advanced Graph Views</h3>
-          <p>Nebula · Source–Sink · Healing Ray</p>
-        </article>
+        <div class="semantic-map" aria-label="Animated semantic map with a current note, a hub, a gap, and evidence sources">
+          <canvas class="knowledge-field" aria-hidden="true"></canvas>
+          <span class="map-label label-current"><i></i>Current note</span>
+          <span class="map-label label-hub"><i></i>Hub</span>
+          <span class="map-label label-gap"><i></i>Gap</span>
+          <span class="map-label label-source"><i></i>Sources</span>
+        </div>
       </div>
     </section>
 
-    <section class="workflow section" id="workflow">
-      <div class="section-heading">
-        <span class="eyebrow">One continuous workflow</span>
-        <h2>From task to evidence to action.</h2>
-      </div>
-
-      <ol class="workflow-steps">
-        <li><span class="step-no">01</span><div><b>Ask</b><p>Start with the real task.</p></div></li>
-        <li><span class="step-no">02</span><div><b>Search</b><p>Gather notes and paths.</p></div></li>
-        <li><span class="step-no">03</span><div><b>Inspect</b><p>Check reports, graphs, and sources.</p></div></li>
-        <li><span class="step-no">04</span><div><b>Continue</b><p>Open Chat, Composer, or Atlas.</p></div></li>
-      </ol>
-
-      <div class="evidence-stage">
-        <article class="evidence-card evidence-report">
-          <div class="evidence-topline"><span>AI Search</span><span>Report · live sources</span></div>
-          <div class="report-body">
-            <span class="report-kicker">Executive summary</span>
-            <h3>Your vault already contains the answer.</h3>
-            <div class="report-lines" aria-hidden="true"><i></i><i></i><i></i></div>
-            <div class="report-finding"><span>01</span><b>A strong hub connects six decisions.</b></div>
-            <div class="report-finding"><span>02</span><b>One missing link creates a blind spot.</b></div>
-          </div>
-          <div class="evidence-footer"><span>Process</span><b>Report</b><span>Sources</span></div>
-        </article>
-        <div class="evidence-connector" aria-hidden="true"><span>same run</span><i>→</i></div>
-        <article class="evidence-card evidence-sources">
-          <div class="evidence-topline"><span>Evidence</span><span>6 source files</span></div>
-          <div class="source-body">
-            <div class="source-row"><i>.94</i><span><b>Architecture decision</b><small>Projects / Peak</small></span><em>3×</em></div>
-            <div class="source-row"><i>.88</i><span><b>Graph research</b><small>Research / Knowledge</small></span><em>2×</em></div>
-            <div class="source-row"><i>.82</i><span><b>Composer brief</b><small>Delivery / Current work</small></span><em>1×</em></div>
-            <div class="source-network" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><span></span><span></span><span></span></div>
-          </div>
-          <div class="evidence-footer"><span>List</span><b>Graph</b><span>Open in Chat</span></div>
-        </article>
-      </div>
-    </section>
-
-    <section class="surfaces section" id="surfaces">
-      <div class="section-heading capability-heading">
+    <section class="product section" id="product">
+      <header class="section-intro">
+        <span class="section-number">03</span>
         <div>
-          <span class="eyebrow">Major product surfaces</span>
-          <h2>Each surface owns a real part of the work.</h2>
+          <p>Three work modes</p>
+          <h2>The right kind of intelligence for the work in front of you.</h2>
         </div>
-        <p>Focused surfaces, one shared vault context.</p>
+      </header>
+
+      <div class="work-modes">
+        <article><span>A</span><h3>Copilot</h3><p>Inside the note. Exact scope, explicit context, reviewable changes.</p><small>Selection · Block · Document · History</small></article>
+        <article><span>B</span><h3>Connections</h3><p>Around the note. Related material, neighbourhoods, hubs, and gaps.</p><small>List · Tree · Graph · Intelligence</small></article>
+        <article><span>C</span><h3>Agent</h3><p>Across the task. Projects, tools, permissions, artifacts, and recovery.</p><small>Studio · Skills · MCP · Providers</small></article>
       </div>
 
-      <div class="surface-showcase-grid">
-        <figure class="surface-showcase">
-          <img src="assets/chat-studio-preview.webp" width="1440" height="810" loading="lazy" alt="Chat Studio project home design with project conversations, resources, and a context-aware composer">
-          <figcaption>
-            <span class="status-chip is-current">In source</span>
-            <h3>Chat Studio</h3>
-            <p>Projects, conversations, agents, resources, artifacts, and media.</p>
-            <small>Product design reference · status tracked in the roadmap.</small>
-          </figcaption>
+      <div class="product-tour">
+        <div class="tour-tabs" role="tablist" aria-label="Product surfaces">
+          <button type="button" role="tab" aria-selected="true" data-tour="graph" data-image="assets/file-atlas-graph-preview.webp" data-width="1440" data-height="900" data-title="Graph" data-copy="Move from one note to its local neighbourhood, then into the structure of the vault." data-alt="File Atlas graph showing the current note and its local knowledge neighbourhood">Graph</button>
+          <button type="button" role="tab" aria-selected="false" data-tour="studio" data-image="assets/chat-studio-preview.webp" data-width="1440" data-height="810" data-title="Chat Studio" data-copy="Keep projects, conversations, resources, artifacts, and agent runs in one workspace." data-alt="Chat Studio project workspace with conversations and project context">Chat Studio</button>
+          <button type="button" role="tab" aria-selected="false" data-tour="command" data-image="assets/command-center-preview.webp" data-width="1220" data-height="810" data-title="Command Center" data-copy="Return to files, workspaces, dashboards, bookmarks, and trusted actions." data-alt="Command Center home with files, destinations, and grouped actions">Command Center</button>
+          <button type="button" role="tab" aria-selected="false" data-tour="sheet" data-image="assets/peak-sheet-preview.webp" data-width="1440" data-height="900" data-title="Peak Sheet" data-copy="A designed-next data surface for datasets, formulas, charts, and revision-safe AI plans." data-alt="Peak Sheet design with a dataset and an AI formula plan">Peak Sheet</button>
+        </div>
+        <figure class="tour-visual">
+          <img src="assets/file-atlas-graph-preview.webp" width="1440" height="900" loading="lazy" alt="File Atlas graph showing the current note and its local knowledge neighbourhood">
+          <figcaption><b>Graph</b><span>Move from one note to its local neighbourhood, then into the structure of the vault.</span></figcaption>
         </figure>
-        <figure class="surface-showcase">
-          <img src="assets/command-center-preview.webp" width="1220" height="810" loading="lazy" alt="Command Center and Home design with recent files, fixed destinations, a daily note, and command groups">
-          <figcaption>
-            <span class="status-chip is-preview">Build verified · live QA pending</span>
-            <h3>Command Center + Home</h3>
-            <p>Files, workspaces, dashboards, bookmarks, and grouped actions.</p>
-            <small>Accepted design reference.</small>
-          </figcaption>
-        </figure>
-      </div>
-
-      <div class="capability-index" aria-label="Capability index">
-        <article><span>Find</span><div><b>Vault Search</b><b>AI Search</b><b>File Atlas</b><b>Vault Intelligence</b></div></article>
-        <article><span>Create</span><div><b>Peak Composer</b><b>Copilot</b><b>Image</b><b>Video</b><b>Music</b><b>Voice</b></div></article>
-        <article><span>Run</span><div><b>Chat Studio</b><b>Multi-provider AI</b><b>MCP</b><b>Skills</b><b>Plugin Commands</b></div></article>
-        <article><span>Control</span><div><b>AI Control Center</b><b>Setup</b><b>Index</b><b>Usage</b><b>Ambient</b></div></article>
       </div>
     </section>
 
     <section class="roadmap section" id="roadmap">
-      <div class="section-heading capability-heading roadmap-heading">
+      <header class="section-intro">
+        <span class="section-number">04</span>
         <div>
-          <span class="eyebrow">Where Peak is going next</span>
-          <h2>What comes next.</h2>
+          <p>Roadmap</p>
+          <h2>What exists, what closes next, and what remains research.</h2>
         </div>
-        <p>Built next, designed next, and research stay visibly separate.</p>
-      </div>
+      </header>
 
-      <div class="sheet-feature">
-        <div class="sheet-copy">
-          <span class="status-chip is-research">Research candidate</span>
-          <span class="future-index">Future system · Peak Sheet</span>
-          <h3>Datasets, formulas, charts, and AI ComputePlans.</h3>
-          <p>A revision-safe spreadsheet and data surface for the vault.</p>
-          <div class="sheet-tags">
-            <span>CSV / JSON ingress</span><span>Table + Chart</span><span>Preview + accept</span><span>Revision history</span>
-          </div>
-          <small>Design mock · no production Dataset runtime yet.</small>
-        </div>
-        <figure>
-          <img src="assets/peak-sheet-preview.webp" width="1440" height="900" loading="lazy" alt="Peak Sheet design showing a spreadsheet and an AI formula plan preview">
-        </figure>
-      </div>
-
-      <div class="roadmap-lanes">
-        <article class="roadmap-lane">
-          <div class="lane-head"><span class="status-chip is-building">In development</span><h3>Closing the product</h3></div>
-          <ul>
-            <li><b>AI Control Center + My Content</b></li>
-            <li><b>Provider Capability Gateway</b></li>
-            <li><b>Composer Intelligence closure</b></li>
-            <li><b>Command Center live acceptance</b></li>
-            <li><b>Chat + media closure</b></li>
-          </ul>
-        </article>
-        <article class="roadmap-lane">
-          <div class="lane-head"><span class="status-chip is-research">Designed next</span><h3>Approved directions</h3></div>
-          <ul>
-            <li><b>Peak File Workspace</b></li>
-            <li><b>Keyboard navigation system</b></li>
-            <li><b>Ambient Current Work State</b></li>
-            <li><b>Storage governance closure</b></li>
-          </ul>
-        </article>
-        <article class="roadmap-lane">
-          <div class="lane-head"><span class="status-chip is-research">Research horizon</span><h3>Product candidates</h3></div>
-          <ul>
-            <li><b>Advanced Graph</b></li>
-            <li><b>Peak Share</b></li>
-            <li><b>External source sync</b></li>
-            <li><b>Context Inspector</b></li>
-            <li><b>Conversation intelligence</b></li>
-            <li><b>Workflow + ecosystem</b></li>
-          </ul>
-        </article>
+      <div class="roadmap-columns">
+        <article><span>Now</span><h3>In the current source</h3><p>Search · File Atlas · Graph · Vault Intelligence · Composer · Chat Studio · providers · media</p></article>
+        <article><span>Next</span><h3>Closing the product</h3><p>AI Control Center · Composer Intelligence · Command Center acceptance · durable media jobs</p></article>
+        <article><span>Later</span><h3>Designed and researched</h3><p>Peak Sheet · File Workspace · Peak Share · advanced graph · external source sync</p></article>
       </div>
     </section>
 
     <section class="trust section" id="trust">
-      <div class="trust-intro">
-        <span class="eyebrow">Trust is part of the interface</span>
-        <h2>Your vault is not a black box.</h2>
-        <p>Files stay yours. Indexes stay rebuildable. Provider boundaries stay explicit.</p>
-        <a class="text-link" href="https://github.com/highestpeak/obsidian-peak-assistant/blob/master/docs/conventions/generated-artifact-registry.md">Read the storage model <span aria-hidden="true">↗</span></a>
-      </div>
-      <div class="trust-ledger">
-        <article><span class="ledger-status local">Free core</span><div><h3>No Peak subscription</h3><p>Local-first features carry no Peak fee.</p></div></article>
-        <article><span class="ledger-status local">Local</span><div><h3>Your source files</h3><p>Markdown remains the source of truth.</p></div></article>
-        <article><span class="ledger-status local">Local</span><div><h3>Fast search and projections</h3><p>Indexes and caches stay on device.</p></div></article>
-        <article><span class="ledger-status choice">Your choice</span><div><h3>AI, media, and tools</h3><p>Only configured services receive selected context.</p></div></article>
-        <article><span class="ledger-status review">Review</span><div><h3>Changes to notes</h3><p>Candidates and history keep edits reviewable.</p></div></article>
-      </div>
-    </section>
-
-    <section class="preview section" id="preview">
-      <div class="preview-panel">
+      <header class="section-intro trust-intro">
+        <span class="section-number">05</span>
         <div>
-          <span class="eyebrow">Development preview</span>
-          <h2>Ambitious in scope. Honest about the edges.</h2>
-          <p>Open source, desktop-only, and currently built from source.</p>
+          <p>Trust</p>
+          <h2>Your vault remains the source of truth.</h2>
         </div>
-        <div class="preview-facts">
-          <div><b>Desktop only</b><span>Current manifest.</span></div>
-          <div><b>Markdown-first</b><span>Other formats use read/index paths.</span></div>
-          <div><b>Status-labeled</b><span>Preview and research stay separate.</span></div>
-        </div>
+        <p class="section-summary">Local-first features carry no Peak fee. Provider-backed AI only uses the services you configure.</p>
+      </header>
+      <div class="trust-lines">
+        <span><b>Local core</b> No Peak subscription</span>
+        <span><b>Your files</b> Markdown stays yours</span>
+        <span><b>Your models</b> Local or cloud</span>
+        <span><b>Your changes</b> Review before accepting</span>
       </div>
-    </section>
-
-    <section class="sustainability section" id="sustainability">
-      <div class="sustainability-compact">
-        <div>
-          <span class="eyebrow">Free by default · supported by choice</span>
-          <h2>Local core. No Peak subscription.</h2>
-        </div>
-        <p>Bring your own models. Provider costs stay yours. Optional support may come later; there is no payment link today.</p>
-        <a class="button button-secondary" href="https://github.com/highestpeak/obsidian-peak-assistant">Star on GitHub <span aria-hidden="true">↗</span></a>
-      </div>
+      <p class="support-line">There is no payment link today. Stars, reproducible feedback, and focused contributions help the project move forward.</p>
     </section>
 
     <section class="final-cta section">
-      <span class="eyebrow">See the whole project</span>
-      <h2>Search it. Map it. Understand it. Build with it.</h2>
-      <p>Build the preview or follow the roadmap.</p>
+      <p>Peak Assistant is an open-source development preview for Obsidian desktop.</p>
+      <h2>Make the whole vault useful.</h2>
       <div class="hero-actions centered">
         <a class="button button-light" href="https://github.com/highestpeak/obsidian-peak-assistant">Explore on GitHub <span aria-hidden="true">↗</span></a>
-        <a class="button button-ghost" href="https://github.com/highestpeak/obsidian-peak-assistant#quick-start">Build the preview</a>
+        <a class="button button-quiet" href="https://github.com/highestpeak/obsidian-peak-assistant#quick-start">Build the preview</a>
       </div>
     </section>
   </main>
 
   <footer>
-    <a class="brand footer-brand" href="#top">
-      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
-      <span>Peak Assistant</span>
-    </a>
-    <p>The connected AI workspace for your Obsidian vault.</p>
-    <div>
-      <a href="https://github.com/highestpeak/obsidian-peak-assistant">GitHub</a>
-      <a href="https://github.com/highestpeak/obsidian-peak-assistant/tree/master/docs">Documentation</a>
-      <a href="https://github.com/highestpeak/obsidian-peak-assistant/issues">Issues</a>
-      <a href="https://github.com/highestpeak/obsidian-peak-assistant/blob/master/LICENSE">GPL-3.0</a>
-    </div>
+    <a class="brand" href="#top"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>Peak Assistant</span></a>
+    <p>Open source · GPL-3.0 · Obsidian desktop</p>
+    <div><a href="https://github.com/highestpeak/obsidian-peak-assistant">GitHub</a><a href="https://github.com/highestpeak/obsidian-peak-assistant/tree/master/docs">Docs</a><a href="https://github.com/highestpeak/obsidian-peak-assistant/issues">Issues</a></div>
   </footer>
 </body>
 </html>
