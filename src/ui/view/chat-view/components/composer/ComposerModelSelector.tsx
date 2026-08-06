@@ -42,6 +42,7 @@ export interface ComposerModelSelectorProps {
 	 * the Profiles their runtime can actually execute.
 	 */
 	profiles?: readonly Profile[];
+	onSurfaceOpenChange?: (open: boolean) => void;
 }
 
 function triggerLabel(selection: ModelSelection, items: ProfileModelItem[], autoLabel: string): string {
@@ -60,11 +61,19 @@ export const ComposerModelSelector: React.FC<ComposerModelSelectorProps> = ({
 	selection,
 	onSelect,
 	profiles,
+	onSurfaceOpenChange,
 }) => {
 	const strings = useChatStudioStrings();
 	const [open, setOpen] = useState(false);
 	const [filterOpen, setFilterOpen] = useState(false);
 	const [filter, setFilter] = useState<ModelFilterState>(emptyModelFilter());
+	const changeOpen = (next: boolean) => {
+		setOpen(next);
+		onSurfaceOpenChange?.(next);
+		if (!next) return;
+		setFilter(emptyModelFilter());
+		setFilterOpen(false);
+	};
 
 	const allItems = useMemo(
 		() => buildProfileModelItems(profiles ?? ProfileRegistry.getInstance().getAllProfiles()),
@@ -113,19 +122,19 @@ export const ComposerModelSelector: React.FC<ComposerModelSelectorProps> = ({
 
 	const pick = (item: ProfileModelItem) => {
 		onSelect({ mode: 'fixed', profileId: item.profileId, modelId: item.modelId });
-		setOpen(false);
+		changeOpen(false);
 	};
 
 	const useAuto = () => {
 		onSelect({ mode: 'auto' });
-		setOpen(false);
+		changeOpen(false);
 	};
 
 	const isSelected = (item: ProfileModelItem) =>
 		selection.mode === 'fixed' && selection.profileId === item.profileId && selection.modelId === item.modelId;
 
 	return (
-		<Popover open={open} onOpenChange={(next) => { setOpen(next); if (next) { setFilter(emptyModelFilter()); setFilterOpen(false); } }}>
+		<Popover open={open} onOpenChange={changeOpen}>
 			<PopoverTrigger asChild>
 				<button
 					type="button"

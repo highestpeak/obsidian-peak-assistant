@@ -56,10 +56,16 @@ function useSourceSummary(projectIncluded: boolean, vault: boolean, web: boolean
 	return parts.length > 0 ? parts.join(' + ') : strings.composer.sourceSummaryNone;
 }
 
-export const ComposerSourcesPopover: React.FC = () => {
+export const ComposerSourcesPopover: React.FC<{
+	onSurfaceOpenChange?: (open: boolean) => void;
+}> = ({ onSurfaceOpenChange }) => {
 	const strings = useChatStudioStrings();
 	const { manager } = useServiceContext();
 	const [open, setOpen] = useState(false);
+	const changeOpen = (next: boolean) => {
+		setOpen(next);
+		onSurfaceOpenChange?.(next);
+	};
 
 	const activeKey = useComposerStore((s) => s.activeKey);
 	const draft = useComposerStore((s) => s.drafts[activeKey]);
@@ -83,7 +89,7 @@ export const ComposerSourcesPopover: React.FC = () => {
 	};
 
 	return (
-		<Popover open={open} onOpenChange={setOpen}>
+		<Popover open={open} onOpenChange={changeOpen}>
 			<PopoverTrigger asChild>
 				<button
 					type="button"

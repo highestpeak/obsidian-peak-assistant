@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUp, FileText, ImagePlus, Loader2, Music as MusicIcon, Network, Pencil, Video as VideoIcon, Workflow } from 'lucide-react';
+import { ArrowUp, FileText, ImagePlus, Layers3, Loader2, MessageSquare, Music as MusicIcon, Network, Pencil, Video as VideoIcon, Workflow } from 'lucide-react';
 import { useComposerEditImageStore } from '../store/composerEditImageStore';
 import {
 	PromptInput,
 	PromptInputBody,
 	PromptInputAttachments,
 	type PromptInputEditorHandle,
+	usePromptInputContext,
 } from '@/ui/component/prompt-input';
 import { cn } from '@/ui/react/lib/utils';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
@@ -41,6 +42,14 @@ import {
 } from '@/core/instruction-composer';
 import { IconButton } from '@/ui/components/primitives';
 import { AIGraphContextArtifacts } from '@/ui/component/ai-graph';
+import { Button } from '@/ui/component/shared-ui/button';
+import { ComposerContextStack } from './composer/ComposerContextStack';
+import {
+	canScrollInDirection,
+	isTimelineNearBottom,
+	metricsForElement,
+	resolveAdaptiveComposerDisplay,
+} from './composer/composerAdaptiveState';
 
 /**
  * Composer V2 — the single live editor of Chat Studio (chat-studio §8).
@@ -126,11 +135,26 @@ function useCurrentModelSelection(): ModelSelection {
 // Composer — root composer for Chat Studio.
 // ---------------------------------------------------------------------------
 
-export const Composer: React.FC = () => {
+interface ComposerProps {
+	scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
+}
+
+const ComposerAttachmentStateBridge: React.FC<{ onCountChange: (count: number) => void }> = ({
+	onCountChange,
+}) => {
+	const { attachments } = usePromptInputContext();
+	useEffect(() => {
+		onCountChange(attachments.files.length);
+	}, [attachments.files.length, onCountChange]);
+	return null;
+};
+
+export const Composer: React.FC<ComposerProps> = ({ scrollContainerRef }) => {
 	const strings = useChatStrings();
 	const studioStrings = useChatStudioStrings();
 	const { manager, quickSearchLauncher } = useServiceContext();
 	const activeConversation = useChatDataStore((s) => s.activeConversation);
+	const activePlacement = Boolean(activeConversation && scrollContainerRef);
 
 	const textareaRef = useRef<PromptInputEditorHandle>(null);
 	const inputFocusRef = useRef<{ focus: () => void } | null>(null);
@@ -198,6 +222,53 @@ export const Composer: React.FC = () => {
 	const activeKey = useComposerStore((s) => s.activeKey);
 	const draftText = useComposerStore((s) => s.drafts[s.activeKey]?.text ?? '');
 	const hasInput = draftText.trim().length > 0;
+	const hasDraftContext = useComposerStore((state) => {
+		const draft = state.drafts[state.activeKey];
+		if (!draft) return false;
+		return draft.explicitRefs.length > 0
+			|| Boolean(draft.replyAnchor)
+			|| Boolean(draft.workflowId)
+			|| draft.vaultSearch
+			|| draft.webSearch
+			|| Boolean(draft.revisionOfMessageId);
+	});
+	const [attachmentCount, setAttachmentCount] = useState(0);
+	const [focused, setFocused] = useState(false);
+	const [contextOpen, setContextOpen] = useState(false);
+	const [openSurfaceIds, setOpenSurfaceIds] = useState<Set<string>>(() => new Set());
+	const [nearBottom, setNearBottom] = useState(true);
+	const setComposerSurfaceOpen = (surfaceId: string, open: boolean) => {
+		setOpenSurfaceIds((current) => {
+			if (current.has(surfaceId) === open) return current;
+			const next = new Set(current);
+			if (open) next.add(surfaceId);
+			else next.delete(surfaceId);
+			return next;
+		});
+	};
+
+	useEffect(() => {
+		const container = scrollContainerRef?.current;
+		if (!activePlacement || !container) {
+			setNearBottom(true);
+			return;
+		}
+		const update = () => {
+			setNearBottom(isTimelineNearBottom(
+				metricsForElement(container),
+				studioStrings.density.composerBottomThresholdPx,
+			));
+		};
+		update();
+		container.addEventListener('scroll', update, { passive: true });
+		const ResizeObserverCtor = container.ownerDocument.defaultView?.ResizeObserver;
+		const observer = ResizeObserverCtor ? new ResizeObserverCtor(update) : null;
+		observer?.observe(container);
+		return () => {
+			container.removeEventListener('scroll', update);
+			observer?.disconnect();
+		};
+	}, [activePlacement, scrollContainerRef, studioStrings.density.composerBottomThresholdPx]);
 
 	// `/` slash palette owns BOTH workflows (research/plan/…) and generation
 	// actions (image/video/music). Selecting a workflow adds a context chip;
@@ -206,6 +277,15 @@ export const Composer: React.FC = () => {
 	// probed for tool availability and either disabled with an honest reason
 	// or omitted so we never render a "fake-clickable" action (RUN-07).
 	const [generateOpen, setGenerateOpen] = useState<{ kind: GenerateKind; mode: 'generate' | 'edit' } | null>(null);
+	const composerDisplay = resolveAdaptiveComposerDisplay({
+		activePlacement,
+		nearBottom,
+		focused,
+		hasDraft: hasInput || hasDraftContext,
+		hasAttachments: attachmentCount > 0,
+		hasOpenSurface: contextOpen || openSurfaceIds.size > 0 || Boolean(generateOpen),
+		hasActiveRun: status !== 'ready',
+	});
 
 	// Insert-as-reference from an artifact card fires this store; when it
 	// ticks, open the Edit form. The form itself calls consumeIntent() so
@@ -425,10 +505,33 @@ export const Composer: React.FC = () => {
 		handleTextChange(text, tags);
 	};
 
+	const handleWheelCapture = (event: React.WheelEvent<HTMLFormElement>) => {
+		const timeline = scrollContainerRef?.current;
+		if (!activePlacement || !timeline || event.deltaY === 0) return;
+		const target = event.target as Element | null;
+		const innerScrollRegion = typeof target?.closest === 'function'
+			? target.closest('[data-composer-scroll-region], .cm-scroller')
+			: null;
+		if (innerScrollRegion && canScrollInDirection(
+			metricsForElement(innerScrollRegion),
+			event.deltaY,
+			studioStrings.density.composerWheelEdgePx,
+		)) return;
+		if (!canScrollInDirection(
+			metricsForElement(timeline),
+			event.deltaY,
+			studioStrings.density.composerWheelEdgePx,
+		)) return;
+		event.preventDefault();
+		timeline.scrollTop += event.deltaY;
+	};
+
 	return (
 		<div
 			className="pkchat-composer-wrap"
 			data-composer-root="true"
+			data-composer-placement={activePlacement ? 'active' : 'start'}
+			data-composer-display={composerDisplay}
 			data-peak-keyboard-zone="cs-composer"
 			data-peak-keyboard-zone-label={PEAK_KEYBOARD_ZONE_LABELS['cs-composer']}
 			data-peak-keyboard-order="3"
@@ -448,6 +551,12 @@ export const Composer: React.FC = () => {
 			)}
 			<PromptInput
 				className={cn('pkchat-composer', `pkchat-composer--${status}`)}
+				onFocusCapture={() => setFocused(true)}
+				onBlurCapture={(event) => {
+					if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+					setFocused(false);
+				}}
+				onWheelCapture={handleWheelCapture}
 				globalDrop
 				multiple
 				inputFocusRef={inputFocusRef}
@@ -487,75 +596,102 @@ export const Composer: React.FC = () => {
 				onFolderUp={handleFolderUp}
 				onTextChange={onTextChange}
 			>
-				<ComposerDraftSync />
-				<ComposerContextShelf />
-				{generateOpen && (
-					<ComposerGenerateActions
-						kind={generateOpen.kind}
-						mode={generateOpen.mode}
-						onClose={() => setGenerateOpen(null)}
-					/>
-				)}
-				<PromptInputAttachments />
-				{status === 'streaming' && (
-					<div className="pkchat-composer__status" role="status" aria-live="polite">
-						<Loader2 className="pkchat-composer__status-spinner" />
-						<span>{strings.composer.streamingStatus}</span>
-						{hasInput && (
-							<span className="pktw-text-pk-xs pktw-text-pk-muted-foreground">
-								{studioStrings.composer.queuedHint}
-							</span>
-						)}
-					</div>
-				)}
-				<div className="pkchat-composer__editor">
-					<PromptInputBody
-						ref={textareaRef}
-						inputRef={inputFocusRef}
-						placeholder={studioStrings.composer.placeholder}
-						slashItems={slashItems}
-						onTextChange={onTextChange}
-					/>
-					<PromptEnhanceSuggestion />
-				</div>
-
-				<div className="pkchat-composer__foot">
-					<div className="pkchat-composer__foot-left">
-						<ComposerPlusMenu insertAtCaret={(text) => textareaRef.current?.insertText(text)} />
-						<ComposerSourcesPopover />
-						{quickSearchLauncher && (
-							<IconButton
-								label={studioStrings.composer.openAIGraphsLabel}
-								title={studioStrings.composer.openAIGraphsLabel}
-								onClick={() => quickSearchLauncher.open({
-									aiMode: 'graph',
-									...(activeConversation
-										? {
-											graphCreateOrigin: {
-												surface: 'chat-studio',
-												contextRef: {
-													kind: 'conversation',
-													ref: activeConversation.meta.id,
-													label: activeConversation.meta.title
-														?? activeConversation.meta.id,
-												},
-											},
-										}
-										: {}),
-								})}
-							>
-								<Network />
-							</IconButton>
-						)}
-					</div>
-					<div className="pkchat-composer__foot-right">
-						<ComposerAssistantSelector assistantId={assistantId} onSelect={onAssistantSelect} />
-						<ComposerModelSelector selection={modelSelection} onSelect={onModelSelect} />
-						<SendButton
-							status={status}
-							hasInput={hasInput}
-							onCancel={() => instructionController.stop()}
+				<ComposerAttachmentStateBridge onCountChange={setAttachmentCount} />
+				<Button
+					variant="unstyled"
+					type="button"
+					className="pkchat-composer__compact"
+					aria-label={studioStrings.composerContext.compactExpandLabel}
+					onFocus={() => inputFocusRef.current?.focus()}
+					onClick={() => inputFocusRef.current?.focus()}
+				>
+					<MessageSquare />
+					<span>{studioStrings.composer.placeholder}</span>
+					<small><Layers3 />{studioStrings.composerContext.railTitle}</small>
+				</Button>
+				<div className="pkchat-composer__expanded">
+					<ComposerDraftSync />
+					{activePlacement ? <ComposerContextStack status={status} onOpenChange={setContextOpen} /> : null}
+					<ComposerContextShelf />
+					{generateOpen && (
+						<ComposerGenerateActions
+							kind={generateOpen.kind}
+							mode={generateOpen.mode}
+							onClose={() => setGenerateOpen(null)}
 						/>
+					)}
+					<PromptInputAttachments />
+					{status === 'streaming' && (
+						<div className="pkchat-composer__status" role="status" aria-live="polite">
+							<Loader2 className="pkchat-composer__status-spinner" />
+							<span>{strings.composer.streamingStatus}</span>
+							{hasInput && (
+								<span className="pktw-text-pk-xs pktw-text-pk-muted-foreground">
+									{studioStrings.composer.queuedHint}
+								</span>
+							)}
+						</div>
+					)}
+					<div className="pkchat-composer__editor">
+						<PromptInputBody
+							ref={textareaRef}
+							inputRef={inputFocusRef}
+							placeholder={studioStrings.composer.placeholder}
+							slashItems={slashItems}
+							onTextChange={onTextChange}
+						/>
+						<PromptEnhanceSuggestion />
+					</div>
+
+					<div className="pkchat-composer__foot">
+						<div className="pkchat-composer__foot-left">
+							<ComposerPlusMenu
+								insertAtCaret={(text) => textareaRef.current?.insertText(text)}
+								onSurfaceOpenChange={(open) => setComposerSurfaceOpen('plus', open)}
+							/>
+							<ComposerSourcesPopover onSurfaceOpenChange={(open) => setComposerSurfaceOpen('sources', open)} />
+							{quickSearchLauncher && (
+								<IconButton
+									label={studioStrings.composer.openAIGraphsLabel}
+									title={studioStrings.composer.openAIGraphsLabel}
+									onClick={() => quickSearchLauncher.open({
+										aiMode: 'graph',
+										...(activeConversation
+											? {
+												graphCreateOrigin: {
+													surface: 'chat-studio',
+													contextRef: {
+														kind: 'conversation',
+														ref: activeConversation.meta.id,
+														label: activeConversation.meta.title
+															?? activeConversation.meta.id,
+													},
+												},
+											}
+											: {}),
+									})}
+								>
+									<Network />
+								</IconButton>
+							)}
+						</div>
+						<div className="pkchat-composer__foot-right">
+							<ComposerAssistantSelector
+								assistantId={assistantId}
+								onSelect={onAssistantSelect}
+								onSurfaceOpenChange={(open) => setComposerSurfaceOpen('assistant', open)}
+							/>
+							<ComposerModelSelector
+								selection={modelSelection}
+								onSelect={onModelSelect}
+								onSurfaceOpenChange={(open) => setComposerSurfaceOpen('model', open)}
+							/>
+							<SendButton
+								status={status}
+								hasInput={hasInput}
+								onCancel={() => instructionController.stop()}
+							/>
+						</div>
 					</div>
 				</div>
 			</PromptInput>

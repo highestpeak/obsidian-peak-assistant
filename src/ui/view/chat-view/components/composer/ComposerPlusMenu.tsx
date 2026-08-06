@@ -21,6 +21,7 @@ import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 export interface ComposerPlusMenuProps {
 	/** Inserts text at the caret in the editor (used to open the `[[` picker). */
 	insertAtCaret: (text: string) => void;
+	onSurfaceOpenChange?: (open: boolean) => void;
 }
 
 const MenuRow: React.FC<{
@@ -45,12 +46,19 @@ const MenuRow: React.FC<{
 	</button>
 );
 
-export const ComposerPlusMenu: React.FC<ComposerPlusMenuProps> = ({ insertAtCaret }) => {
+export const ComposerPlusMenu: React.FC<ComposerPlusMenuProps> = ({ insertAtCaret, onSurfaceOpenChange }) => {
 	const strings = useChatStudioStrings();
 	const { attachments } = usePromptInputContext();
 	const [open, setOpen] = useState(false);
 	const [linkMode, setLinkMode] = useState(false);
 	const [linkValue, setLinkValue] = useState('');
+	const changeOpen = (next: boolean) => {
+		setOpen(next);
+		onSurfaceOpenChange?.(next);
+		if (next) return;
+		setLinkMode(false);
+		setLinkValue('');
+	};
 
 	const addLink = () => {
 		const url = linkValue.trim();
@@ -65,19 +73,13 @@ export const ComposerPlusMenu: React.FC<ComposerPlusMenuProps> = ({ insertAtCare
 		});
 		setLinkValue('');
 		setLinkMode(false);
-		setOpen(false);
+		changeOpen(false);
 	};
 
 	return (
 		<Popover
 			open={open}
-			onOpenChange={(next) => {
-				setOpen(next);
-				if (!next) {
-					setLinkMode(false);
-					setLinkValue('');
-				}
-			}}
+			onOpenChange={changeOpen}
 		>
 			<PopoverTrigger asChild>
 				<IconButton label={strings.composer.attachMenuLabel} title={strings.composer.attachMenuLabel}>
@@ -90,13 +92,13 @@ export const ComposerPlusMenu: React.FC<ComposerPlusMenuProps> = ({ insertAtCare
 						icon={<Paperclip className="pktw-w-3.5 pktw-h-3.5" />}
 						title={strings.composer.attachFilesLabel}
 						description={strings.composer.attachFilesDescription}
-						onClick={() => { attachments.openFileDialog(); setOpen(false); }}
+						onClick={() => { attachments.openFileDialog(); changeOpen(false); }}
 					/>
 					<MenuRow
 						icon={<BookOpen className="pktw-w-3.5 pktw-h-3.5" />}
 						title={strings.composer.attachVaultDocLabel}
 						description={strings.composer.attachVaultDocDescription}
-						onClick={() => { insertAtCaret('[['); setOpen(false); }}
+						onClick={() => { insertAtCaret('[['); changeOpen(false); }}
 					/>
 					{!linkMode && (
 						<MenuRow

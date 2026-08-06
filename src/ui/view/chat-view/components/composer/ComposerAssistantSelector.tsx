@@ -23,9 +23,10 @@ import { useEphemeralAssistantStore } from '../../store/ephemeralAssistantStore'
 export interface ComposerAssistantSelectorProps {
 	assistantId: string | undefined;
 	onSelect: (assistantId: string | undefined) => void;
+	onSurfaceOpenChange?: (open: boolean) => void;
 }
 
-export const ComposerAssistantSelector: React.FC<ComposerAssistantSelectorProps> = ({ assistantId, onSelect }) => {
+export const ComposerAssistantSelector: React.FC<ComposerAssistantSelectorProps> = ({ assistantId, onSelect, onSurfaceOpenChange }) => {
 	const strings = useChatStudioStrings();
 	const { manager } = useServiceContext();
 	const activeConversationId = useChatDataStore((s) => s.activeConversation?.meta.id ?? null);
@@ -38,6 +39,11 @@ export const ComposerAssistantSelector: React.FC<ComposerAssistantSelectorProps>
 	const [builderOpen, setBuilderOpen] = useState(false);
 	const [editing, setEditing] = useState<ChatAssistantDefinition | null>(null);
 	const [showArchived, setShowArchived] = useState(false);
+	const changeOpen = (next: boolean) => {
+		setOpen(next);
+		onSurfaceOpenChange?.(next);
+		if (next) setQuery('');
+	};
 
 	const refresh = async () => {
 		const list = await manager.assistant.list(showArchived);
@@ -76,7 +82,7 @@ export const ComposerAssistantSelector: React.FC<ComposerAssistantSelectorProps>
 
 	return (
 		<>
-			<Popover open={open} onOpenChange={(next) => { setOpen(next); if (next) setQuery(''); }}>
+			<Popover open={open} onOpenChange={changeOpen}>
 				<PopoverTrigger asChild>
 					<button
 						type="button"
@@ -114,7 +120,7 @@ export const ComposerAssistantSelector: React.FC<ComposerAssistantSelectorProps>
 								<button
 									type="button"
 									className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-pk-xs pktw-text-pk-accent-text pktw-mt-1"
-									onClick={() => { exitPreview(); setOpen(false); }}
+									onClick={() => { exitPreview(); changeOpen(false); }}
 								>
 									<Eye className="pktw-w-3 pktw-h-3" />
 									{strings.composer.assistantPreviewClearLabel}
@@ -152,7 +158,7 @@ export const ComposerAssistantSelector: React.FC<ComposerAssistantSelectorProps>
 								type="button"
 								className="pkchat-assist__row"
 								data-selected={isDefault ? 'true' : undefined}
-								onClick={() => { onSelect(undefined); setOpen(false); }}
+								onClick={() => { onSelect(undefined); changeOpen(false); }}
 							>
 								<span className="pkchat-assist__mono"><MessageSquare className="pktw-w-3.5 pktw-h-3.5" /></span>
 								<span className="pktw-min-w-0">
@@ -173,8 +179,8 @@ export const ComposerAssistantSelector: React.FC<ComposerAssistantSelectorProps>
 									tabIndex={0}
 									className="pkchat-assist__row pktw-group"
 									data-selected={assistantId === assistant.id ? 'true' : undefined}
-									onClick={() => { onSelect(assistant.id); setOpen(false); }}
-									onKeyDown={(e) => { if (e.key === 'Enter') { onSelect(assistant.id); setOpen(false); } }}
+									onClick={() => { onSelect(assistant.id); changeOpen(false); }}
+									onKeyDown={(e) => { if (e.key === 'Enter') { onSelect(assistant.id); changeOpen(false); } }}
 								>
 									<span className="pkchat-assist__mono"><Bot className="pktw-w-3.5 pktw-h-3.5" /></span>
 									<span className="pktw-min-w-0 pktw-flex-1">
@@ -184,7 +190,7 @@ export const ComposerAssistantSelector: React.FC<ComposerAssistantSelectorProps>
 										)}
 									</span>
 									<span className="pktw-hidden group-hover:pktw-flex pktw-items-center pktw-gap-0.5">
-										{rowAction(strings.leftColumn.menuRename, <Pencil />, () => { setEditing(assistant); setBuilderOpen(true); setOpen(false); })}
+										{rowAction(strings.leftColumn.menuRename, <Pencil />, () => { setEditing(assistant); setBuilderOpen(true); changeOpen(false); })}
 										{rowAction(strings.composer.assistantDuplicate, <Copy />, async () => { await manager.assistant.duplicate(assistant.id); void refresh(); })}
 										{rowAction(
 											assistant.archived ? strings.leftColumn.menuRestore : strings.leftColumn.menuArchive,
@@ -209,7 +215,7 @@ export const ComposerAssistantSelector: React.FC<ComposerAssistantSelectorProps>
 							<button
 								type="button"
 								className="pkchat-assist-create"
-								onClick={() => { setEditing(null); setBuilderOpen(true); setOpen(false); }}
+								onClick={() => { setEditing(null); setBuilderOpen(true); changeOpen(false); }}
 							>
 								<Sparkles className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0" />
 								<span className="pktw-min-w-0">

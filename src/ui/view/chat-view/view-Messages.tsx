@@ -185,7 +185,7 @@ const MessagesViewInner: React.FC = () => {
 				  full-width row that fights composer for vertical space.
 				*/}
 
-				<Composer />
+				<Composer scrollContainerRef={bodyScrollRef} />
 			</div>
 
 			{/*

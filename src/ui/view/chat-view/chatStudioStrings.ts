@@ -21,6 +21,128 @@ export interface ChatStudioStarter {
 	icon: string;
 }
 
+export interface ChatStudioComposerContextLayerStrings {
+	title: string;
+	description: string;
+	source: string;
+	reason: string;
+	treatment: string;
+}
+
+export interface ChatStudioComposerContextStrings {
+	compactExpandLabel: string;
+	compactContextItemsTemplate: string;
+	railTitle: string;
+	railSummaryTemplate: string;
+	railCountTemplate: string;
+	popoverTitle: string;
+	popoverSubtitle: string;
+	nextMessageTab: string;
+	lastReceiptTab: string;
+	phaseExpected: string;
+	phaseFrozen: string;
+	phaseReceipt: string;
+	metricsTemplate: string;
+	autoBudget: string;
+	technicalDetails: string;
+	required: string;
+	optional: string;
+	included: string;
+	empty: string;
+	previewOnly: string;
+	exactContent: string;
+	notRecorded: string;
+	requestScopeTitle: string;
+	requestScopeSubtitle: string;
+	requestScopeEmpty: string;
+	contentPreview: string;
+	openFullContent: string;
+	closeDetailLabel: string;
+	shownRangeTemplate: string;
+	completeContent: string;
+	backToStack: string;
+	searchPlaceholder: string;
+	searchIdle: string;
+	searchResultsTemplate: string;
+	wrap: string;
+	unwrap: string;
+	copyExact: string;
+	copied: string;
+	charactersTemplate: string;
+	tokensTemplate: string;
+	sourceLabel: string;
+	whyIncludedLabel: string;
+	budgetLabel: string;
+	treatmentLabel: string;
+	technicalTemplate: string;
+	noReceipt: string;
+	receiptTitle: string;
+	receiptSubtitle: string;
+	receiptStatus: string;
+	receiptModel: string;
+	receiptAssistant: string;
+	receiptWorkflow: string;
+	receiptRequestedSources: string;
+	receiptActualSources: string;
+	receiptArtifacts: string;
+	receiptNone: string;
+	receiptProject: string;
+	receiptVault: string;
+	receiptWeb: string;
+	receiptExplicit: string;
+	receiptSlotNotice: string;
+	excludedTitle: string;
+	excludedSubtitle: string;
+	excludedVaultTitle: string;
+	excludedVaultDetail: string;
+	excludedWebTitle: string;
+	excludedWebDetail: string;
+	excludedVariantsTitle: string;
+	excludedVariantsDetail: string;
+	excludedBranchTitle: string;
+	excludedBranchDetail: string;
+	systemBaseNotice: string;
+	customPromptLabel: string;
+	focusFolderLabel: string;
+	sourceScopeLabel: string;
+	projectSourceLabel: string;
+	vaultSourceLabel: string;
+	webSourceLabel: string;
+	explicitRefsLabel: string;
+	activeFileLabel: string;
+	workingThemeLabel: string;
+	recentActivityLabel: string;
+	projectDescriptionLabel: string;
+	projectInstructionsLabel: string;
+	projectSummaryLabel: string;
+	conversationSummaryLabel: string;
+	conversationTopicsLabel: string;
+	userRoleLabel: string;
+	assistantRoleLabel: string;
+	analysisFallbackTitle: string;
+	resourceFallbackTitle: string;
+	emptyContent: string;
+	requestProject: string;
+	requestVault: string;
+	requestWeb: string;
+	requestExplicitRef: string;
+	requestAttachment: string;
+	requestDraft: string;
+	requestAssistantKnowledge: string;
+	assistantFrameTemplate: string;
+	layers: {
+		'system-prompt': ChatStudioComposerContextLayerStrings;
+		assistant: ChatStudioComposerContextLayerStrings;
+		'recent-messages': ChatStudioComposerContextLayerStrings;
+		'working-context': ChatStudioComposerContextLayerStrings;
+		'conv-summary': ChatStudioComposerContextLayerStrings;
+		'activity-index': ChatStudioComposerContextLayerStrings;
+		'user-profile': ChatStudioComposerContextLayerStrings;
+		'prev-analysis': ChatStudioComposerContextLayerStrings;
+		'resource-index': ChatStudioComposerContextLayerStrings;
+	};
+}
+
 export interface ChatStudioStrings {
 	greeting: {
 		newChat: string;
@@ -251,6 +373,7 @@ export interface ChatStudioStrings {
 		pickerLoading: string;
 		pickerNoMatch: string;
 	};
+	composerContext: ChatStudioComposerContextStrings;
 	/** Assistant builder modal (§8.6) — prompt placeholder, field labels, options. */
 	assistantBuilder: {
 		promptPlaceholder: string;
@@ -529,6 +652,9 @@ export interface ChatStudioStrings {
 		narrowCollapsePx: number;
 		messageActionMinInlinePx: number;
 		messageActionCorePx: number;
+		composerBottomThresholdPx: number;
+		composerWheelEdgePx: number;
+		contextInlinePreviewChars: number;
 	};
 }
 
@@ -565,6 +691,14 @@ function mergeChatStudioStrings(
 		leftColumn: { ...base.leftColumn, ...(override.leftColumn ?? {}) },
 		shell: { ...base.shell, ...(override.shell ?? {}) },
 		composer: { ...base.composer, ...(override.composer ?? {}) },
+		composerContext: {
+			...base.composerContext,
+			...(override.composerContext ?? {}),
+			layers: {
+				...base.composerContext.layers,
+				...(override.composerContext?.layers ?? {}),
+			},
+		},
 		assistantBuilder: { ...base.assistantBuilder, ...(override.assistantBuilder ?? {}) },
 		projectPlans: { ...base.projectPlans, ...(override.projectPlans ?? {}) },
 		artifactReceipt: { ...base.artifactReceipt, ...(override.artifactReceipt ?? {}) },

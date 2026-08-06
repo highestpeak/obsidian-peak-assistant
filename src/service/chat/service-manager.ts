@@ -54,6 +54,8 @@ import {
 import type { IDocSummarizer } from '@/core/llm/IDocSummarizer';
 import type { IDocTagClassifier } from '@/core/llm/IDocTagClassifier';
 import type { HarnessSettings } from '@/core/config/settingsTypes';
+import { SessionContextService } from '@/service/context/SessionContextService';
+import type { WorkingContext } from '@/service/context/types';
 
 /**
  * Manage AI conversations, storage, and model interactions.
@@ -249,6 +251,19 @@ export class AIServiceManager implements IDocSummarizer, IDocTagClassifier {
 	 */
 	getAnalysisHistory(): AnalysisHistoryPort {
 		return this.analysisHistory;
+	}
+
+	/**
+	 * Read-only snapshot source for the Chat Composer context inspector.
+	 * The Composer never assembles prompts; it only projects the same working
+	 * context instance that the production Chat slots read at send time.
+	 */
+	getWorkingContextSnapshot(): WorkingContext | null {
+		try {
+			return SessionContextService.getInstance().getWorkingContext();
+		} catch {
+			return null;
+		}
 	}
 
 	/**
