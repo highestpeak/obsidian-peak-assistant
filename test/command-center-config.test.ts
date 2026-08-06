@@ -96,6 +96,8 @@ assert.strictEqual(commandCenterCatalogScopeForAction({ kind: 'view', viewType: 
 assert.strictEqual(COMMAND_CENTER_CATALOG_DEFAULTS.minimumDocumentQueryLength, 2);
 assert.ok(COMMAND_CENTER_CATALOG_DEFAULTS.maximumDocumentResults <= 100, 'document search must remain bounded');
 assert.strictEqual(COMMAND_CENTER_CATALOG_DEFAULTS.launcherCommandPreviewLimit, 6);
+assert.ok(COMMAND_CENTER_CATALOG_DEFAULTS.submenuHoverOpenDelayMs <= 150, 'destination submenus must feel immediate on hover');
+assert.ok(COMMAND_CENTER_CATALOG_DEFAULTS.submenuHoverCloseDelayMs >= 180, 'destination submenus must preserve a usable pointer corridor');
 
 const commandEntry = (key: string, label: string, sourceLabel = 'Excalidraw', available = true): CommandCenterCatalogEntry => ({
 	key,

@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-	ArrowLeft,
 	Check,
 	ChevronRight,
 	House,
@@ -12,8 +11,10 @@ import {
 	Trash2,
 } from 'lucide-react';
 import {
+	COMMAND_CENTER_CATALOG_DEFAULTS,
 	getCommandCenterItemMembership,
 	type CommandCenterBoardConfig,
+	type CommandCenterItemMembership,
 	type CommandCenterRuntimePort,
 	type CommandCenterTabId,
 	type ResolvedCommandCenterItem,
@@ -26,8 +27,12 @@ import {
 	PopoverTrigger,
 } from '@/ui/components/primitives';
 import { useRovingComposite } from '@/ui/keyboard/useRovingComposite';
+import {
+	createCommandCenterCustomizeIntent,
+	type CommandCenterCustomizeIntent,
+} from './commandCenterCustomizeIntent';
 
-type ItemMenuPanel = 'main' | 'add' | 'move';
+type DestinationMode = 'add' | 'move';
 
 export interface CommandCenterItemMenuProps {
 	runtime: CommandCenterRuntimePort;
@@ -38,11 +43,180 @@ export interface CommandCenterItemMenuProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	onInvoke: () => void;
-	onCustomize: () => void;
+	onCustomize: (intent: CommandCenterCustomizeIntent) => void;
 }
 
 function MenuCheck({ visible }: { visible: boolean }): React.ReactElement {
 	return <Check size={14} data-visible={visible ? 'true' : undefined} aria-hidden="true" />;
+}
+
+function isDestinationSubmenuTarget(target: EventTarget | null): boolean {
+	return Boolean((target as Element | null)?.closest?.('.pk-cc-item-submenu'));
+}
+
+function CommandCenterDestinationSubmenu({
+	mode,
+	groups,
+	currentGroupId,
+	portalContainer,
+	open,
+	saving,
+	onOpenChange,
+	onSelect,
+}: {
+	mode: DestinationMode;
+	groups: CommandCenterItemMembership['groups'];
+	currentGroupId: string;
+	portalContainer: HTMLElement | null;
+	open: boolean;
+	saving: boolean;
+	onOpenChange: (open: boolean) => void;
+	onSelect: (groupId: string) => void;
+}): React.ReactElement {
+	const triggerRef = useRef<HTMLButtonElement | null>(null);
+	const contentRef = useRef<HTMLDivElement | null>(null);
+	const timerRef = useRef<number | null>(null);
+	const timerWindowRef = useRef<Window | null>(null);
+	const keyboardOpenRef = useRef(false);
+	useRovingComposite(contentRef, {
+		itemSelector: '[role="menuitem"]:not([disabled]), [role="menuitemcheckbox"]:not([disabled])',
+		enabled: open,
+		orientation: 'vertical',
+	});
+
+	const clearTimer = (): void => {
+		if (timerRef.current === null) return;
+		timerWindowRef.current?.clearTimeout(timerRef.current);
+		timerRef.current = null;
+		timerWindowRef.current = null;
+	};
+	const scheduleOpen = (): void => {
+		clearTimer();
+		const ownerWindow = triggerRef.current?.ownerDocument.defaultView;
+		if (!ownerWindow) return;
+		timerWindowRef.current = ownerWindow;
+		timerRef.current = ownerWindow.setTimeout(() => {
+			timerRef.current = null;
+			timerWindowRef.current = null;
+			keyboardOpenRef.current = false;
+			onOpenChange(true);
+		}, COMMAND_CENTER_CATALOG_DEFAULTS.submenuHoverOpenDelayMs);
+	};
+	const scheduleClose = (): void => {
+		clearTimer();
+		const ownerWindow = triggerRef.current?.ownerDocument.defaultView;
+		if (!ownerWindow) return;
+		timerWindowRef.current = ownerWindow;
+		timerRef.current = ownerWindow.setTimeout(
+			() => {
+				timerRef.current = null;
+				timerWindowRef.current = null;
+				onOpenChange(false);
+			},
+			COMMAND_CENTER_CATALOG_DEFAULTS.submenuHoverCloseDelayMs,
+		);
+	};
+	const openFromKeyboard = (): void => {
+		clearTimer();
+		keyboardOpenRef.current = true;
+		onOpenChange(true);
+	};
+
+	useEffect(() => () => {
+		if (timerRef.current === null) return;
+		timerWindowRef.current?.clearTimeout(timerRef.current);
+	}, []);
+
+	const focusSubmenu = (event: Event): void => {
+		event.preventDefault();
+		if (!keyboardOpenRef.current) return;
+		contentRef.current?.ownerDocument.defaultView?.requestAnimationFrame(() => {
+			contentRef.current?.querySelector<HTMLElement>('[role="menuitem"], [role="menuitemcheckbox"]')?.focus();
+		});
+	};
+	const restoreTriggerFocus = (event: Event): void => {
+		event.preventDefault();
+		if (!keyboardOpenRef.current) return;
+		keyboardOpenRef.current = false;
+		triggerRef.current?.focus();
+	};
+	const label = mode === 'add' ? 'Add to tab' : 'Move to tab';
+	const TriggerIcon = mode === 'add' ? Plus : MoveRight;
+
+	return (
+		<Popover open={open} onOpenChange={onOpenChange}>
+			<PopoverTrigger asChild>
+				<PopoverItem
+					ref={triggerRef}
+					role="menuitem"
+					aria-haspopup="menu"
+					aria-expanded={open}
+					disabled={mode === 'move' && groups.length < 2}
+					onPointerEnter={scheduleOpen}
+					onPointerLeave={scheduleClose}
+					onClick={(event) => {
+						event.preventDefault();
+						keyboardOpenRef.current = false;
+						onOpenChange(true);
+					}}
+					onKeyDown={(event) => {
+						if (event.key !== 'ArrowRight' && event.key !== 'Enter' && event.key !== ' ') return;
+						event.preventDefault();
+						event.stopPropagation();
+						openFromKeyboard();
+					}}
+				>
+					<TriggerIcon size={14} /><span>{label}…</span><ChevronRight size={13} />
+				</PopoverItem>
+			</PopoverTrigger>
+			<PopoverContent
+				ref={contentRef}
+				container={portalContainer}
+				className="pk-cc-item-menu pk-cc-item-submenu"
+				role="menu"
+				aria-label={label}
+				side="right"
+				align="start"
+				sideOffset={4}
+				collisionPadding={8}
+				onOpenAutoFocus={focusSubmenu}
+				onCloseAutoFocus={restoreTriggerFocus}
+				onPointerEnter={clearTimer}
+				onPointerLeave={scheduleClose}
+				onKeyDown={(event) => {
+					event.stopPropagation();
+					if (event.key !== 'ArrowLeft') return;
+					event.preventDefault();
+					onOpenChange(false);
+					keyboardOpenRef.current = false;
+					triggerRef.current?.focus();
+				}}
+			>
+				<span className="pk-cc-item-menu__label">{label}</span>
+				{groups.map((group) => {
+					const current = group.id === currentGroupId;
+					const disabled = saving || (mode === 'add' && group.included) || (mode === 'move' && current);
+					return (
+						<PopoverItem
+							key={group.id}
+							role={mode === 'add' ? 'menuitemcheckbox' : 'menuitem'}
+							aria-checked={mode === 'add' ? group.included : undefined}
+							disabled={disabled}
+							className="pk-cc-item-menu__destination"
+							onClick={() => onSelect(group.id)}
+						>
+							<span>{group.label}</span>
+							{mode === 'add'
+								? <MenuCheck visible={group.included} />
+								: current
+									? <span className="pk-cc-item-menu__meta">Current</span>
+									: group.included ? <span className="pk-cc-item-menu__meta">Merge</span> : null}
+						</PopoverItem>
+					);
+				})}
+			</PopoverContent>
+		</Popover>
+	);
 }
 
 export function CommandCenterItemMenu({
@@ -56,7 +230,7 @@ export function CommandCenterItemMenu({
 	onInvoke,
 	onCustomize,
 }: CommandCenterItemMenuProps): React.ReactElement | null {
-	const [panel, setPanel] = useState<ItemMenuPanel>('main');
+	const [submenu, setSubmenu] = useState<DestinationMode | null>(null);
 	const [saving, setSaving] = useState(false);
 	const contentRef = useRef<HTMLDivElement | null>(null);
 	const membership = getCommandCenterItemMembership(config, item.id);
@@ -68,7 +242,7 @@ export function CommandCenterItemMenu({
 
 	useEffect(() => {
 		if (open) return;
-		setPanel('main');
+		setSubmenu(null);
 	}, [open]);
 
 	if (!membership) return null;
@@ -97,38 +271,6 @@ export function CommandCenterItemMenu({
 		});
 	};
 
-	const renderDestinationPanel = (mode: 'add' | 'move'): React.ReactElement => (
-		<>
-			<PopoverItem role="menuitem" onClick={() => setPanel('main')}>
-				<ArrowLeft size={14} /><span>Back</span>
-			</PopoverItem>
-			<span className="pk-cc-item-menu__label">{mode === 'add' ? 'Add to tab' : 'Move to tab'}</span>
-			{groups.map((group) => {
-				const current = group.id === currentGroupId;
-				const disabled = saving || (mode === 'add' && group.included) || (mode === 'move' && current);
-				return (
-					<PopoverItem
-						key={group.id}
-						role={mode === 'add' ? 'menuitemcheckbox' : 'menuitem'}
-						aria-checked={mode === 'add' ? group.included : undefined}
-						disabled={disabled}
-						className="pk-cc-item-menu__destination"
-						onClick={() => {
-							if (mode === 'add') {
-								void run(() => runtime.setItemGroup(item.id, group.id, true));
-								return;
-							}
-							void run(() => runtime.moveItemToGroup(item.id, group.id), true);
-						}}
-					>
-						<span>{group.label}</span>
-						{mode === 'add' ? <MenuCheck visible={group.included} /> : group.included ? <span className="pk-cc-item-menu__meta">Merge</span> : null}
-					</PopoverItem>
-				);
-			})}
-		</>
-	);
-
 	const renderMainPanel = (): React.ReactElement => (
 		<>
 			<span className="pk-cc-item-menu__title">{item.shortLabel}</span>
@@ -136,9 +278,27 @@ export function CommandCenterItemMenu({
 				onOpenChange(false);
 				onInvoke();
 			}}><Play size={14} /><span>Open</span></PopoverItem>
-			<PopoverItem role="menuitem" onClick={() => setPanel('add')}><Plus size={14} /><span>Add to tab…</span><ChevronRight size={13} /></PopoverItem>
+			<CommandCenterDestinationSubmenu
+				mode="add"
+				groups={groups}
+				currentGroupId={currentGroupId}
+				portalContainer={portalContainer}
+				open={submenu === 'add'}
+				saving={saving}
+				onOpenChange={(nextOpen) => setSubmenu(nextOpen ? 'add' : null)}
+				onSelect={(groupId) => void run(() => runtime.setItemGroup(item.id, groupId, true))}
+			/>
 			{scope === 'home' ? null : (
-				<PopoverItem role="menuitem" disabled={groups.length < 2} onClick={() => setPanel('move')}><MoveRight size={14} /><span>Move to tab…</span><ChevronRight size={13} /></PopoverItem>
+				<CommandCenterDestinationSubmenu
+					mode="move"
+					groups={groups}
+					currentGroupId={currentGroupId}
+					portalContainer={portalContainer}
+					open={submenu === 'move'}
+					saving={saving}
+					onOpenChange={(nextOpen) => setSubmenu(nextOpen ? 'move' : null)}
+					onSelect={(groupId) => void run(() => runtime.moveItemToGroup(item.id, groupId), true)}
+				/>
 			)}
 			{scope === 'home' ? null : (
 				<PopoverItem
@@ -167,7 +327,7 @@ export function CommandCenterItemMenu({
 			</PopoverItem>
 			<PopoverItem role="menuitem" onClick={() => {
 				onOpenChange(false);
-				onCustomize();
+				onCustomize(createCommandCenterCustomizeIntent(item, currentGroupId));
 			}}><Settings2 size={14} /><span>Customize…</span></PopoverItem>
 			<span className="pk-cc-item-menu__hint">Right-click or Shift+F10</span>
 		</>
@@ -197,9 +357,12 @@ export function CommandCenterItemMenu({
 				role="menu"
 				aria-label={`Manage ${item.shortLabel}`}
 				onOpenAutoFocus={focusFirstItem}
+				onInteractOutside={(event) => {
+					if (isDestinationSubmenuTarget(event.target)) event.preventDefault();
+				}}
 				onKeyDown={(event) => event.stopPropagation()}
 			>
-				{panel === 'main' ? renderMainPanel() : renderDestinationPanel(panel)}
+				{renderMainPanel()}
 			</PopoverContent>
 		</Popover>
 	);

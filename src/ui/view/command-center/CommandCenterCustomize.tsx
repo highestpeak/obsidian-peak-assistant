@@ -39,9 +39,11 @@ import {
 	CommandCenterHomeSettings,
 	CommandCenterItemEditor,
 } from './CommandCenterCustomizePanels';
+import type { CommandCenterCustomizeIntent } from './commandCenterCustomizeIntent';
 
 export interface CommandCenterCustomizeProps {
 	runtime: CommandCenterRuntimePort;
+	intent?: CommandCenterCustomizeIntent | null;
 	onBack: () => void;
 	onClose: () => void;
 }
@@ -77,30 +79,58 @@ function removeHomeItem(config: CommandCenterBoardConfig, itemId: string): void 
 	config.home.quickAccessActionIds = config.home.layout.map((item) => item.sourceItemId);
 }
 
-export function CommandCenterCustomize({ runtime, onBack, onClose }: CommandCenterCustomizeProps): React.ReactElement {
+export function CommandCenterCustomize({ runtime, intent, onBack, onClose }: CommandCenterCustomizeProps): React.ReactElement {
 	const [config, setConfig] = useState(() => runtime.getConfig());
 	const groups = useMemo(() => config.groups.slice().sort((a, b) => a.order - b.order), [config.groups]);
-	const [groupId, setGroupId] = useState(() => groups[0]?.id ?? '');
+	const [groupId, setGroupId] = useState(() => {
+		if (intent && groups.some((group) => group.id === intent.groupId)) return intent.groupId;
+		return groups[0]?.id ?? '';
+	});
 	const [panel, setPanel] = useState<CustomizePanel>('catalog');
-	const [query, setQuery] = useState('');
-	const [debouncedQuery, setDebouncedQuery] = useState('');
-	const [catalogScope, setCatalogScope] = useState<CommandCenterCatalogScope>('commands');
+	const [query, setQuery] = useState(() => intent?.query ?? '');
+	const [debouncedQuery, setDebouncedQuery] = useState(() => intent?.query ?? '');
+	const [catalogScope, setCatalogScope] = useState<CommandCenterCatalogScope>(() => intent?.catalogScope ?? 'commands');
 	const [showActiveOnly, setShowActiveOnly] = useState(false);
 	const [scopeMenuOpen, setScopeMenuOpen] = useState(false);
 	const [modalPortal, setModalPortal] = useState<HTMLDivElement | null>(null);
 	const [catalog, setCatalog] = useState<CommandCenterCatalogEntry[]>([]);
 	const [catalogLoading, setCatalogLoading] = useState(false);
-	const [expandedKey, setExpandedKey] = useState<string | null>(null);
+	const [expandedKey, setExpandedKey] = useState<string | null>(() => intent?.actionKey ?? null);
 	const [groupIconOpen, setGroupIconOpen] = useState(false);
 	const [deleteConfirmGroupId, setDeleteConfirmGroupId] = useState<string | null>(null);
 	const [groupLabelDraft, setGroupLabelDraft] = useState('');
 	const searchRef = useRef<HTMLInputElement>(null);
+	const targetEntryRef = useRef<HTMLDivElement>(null);
+	const targetFocusedRef = useRef(false);
 	const activeGroup = groups.find((group) => group.id === groupId) ?? groups[0];
+	const targetedItem = intent && activeGroup?.id === intent.groupId
+		? activeGroup.actions.find((item) => item.id === intent.itemId)
+		: undefined;
+	const targetedEntry = useMemo<CommandCenterCatalogEntry | null>(() => {
+		if (!targetedItem || !intent) return null;
+		return {
+			key: intent.actionKey,
+			action: targetedItem.action,
+			label: intent.query,
+			sourceLabel: intent.sourceLabel,
+			icon: targetedItem.icon,
+			layer: targetedItem.action.kind === 'peak-command' || targetedItem.action.kind === 'obsidian-command'
+				? 'command'
+				: 'destination',
+			available: true,
+			hotkey: null,
+		};
+	}, [intent, targetedItem]);
 	const visibleCatalog = useMemo(() => {
-		if (!showActiveOnly || !activeGroup) return catalog;
+		const entries = targetedEntry
+			&& query === intent?.query
+			&& !catalog.some((entry) => entry.key === targetedEntry.key)
+			? [targetedEntry, ...catalog]
+			: catalog;
+		if (!showActiveOnly || !activeGroup) return entries;
 		const activeKeys = new Set(activeGroup.actions.map((item) => commandCenterActionKey(item.action)));
-		return catalog.filter((entry) => activeKeys.has(entry.key));
-	}, [activeGroup, catalog, showActiveOnly]);
+		return entries.filter((entry) => activeKeys.has(entry.key));
+	}, [activeGroup, catalog, intent?.query, query, showActiveOnly, targetedEntry]);
 
 	useEffect(() => runtime.subscribe(() => setConfig(runtime.getConfig())), [runtime]);
 	useEffect(() => {
@@ -134,8 +164,25 @@ export function CommandCenterCustomize({ runtime, onBack, onClose }: CommandCent
 	}, [runtime, debouncedQuery, catalogScope, panel]);
 	useEffect(() => {
 		if (panel !== 'catalog') return;
+		if (intent) return;
 		window.requestAnimationFrame(() => searchRef.current?.focus());
-	}, [panel]);
+	}, [intent, panel]);
+	useEffect(() => {
+		targetFocusedRef.current = false;
+	}, [intent?.itemId]);
+	useEffect(() => {
+		if (!intent || expandedKey !== intent.actionKey || targetFocusedRef.current) return;
+		const target = targetEntryRef.current;
+		if (!target) return;
+		const ownerWindow = target.ownerDocument.defaultView;
+		ownerWindow?.requestAnimationFrame(() => {
+			target.scrollIntoView({ block: 'nearest' });
+			const nameInput = target.querySelector<HTMLInputElement>('.pk-cc-item-editor__fields input');
+			nameInput?.focus();
+			nameInput?.select();
+			targetFocusedRef.current = true;
+		});
+	}, [expandedKey, intent, targetedEntry?.key]);
 
 	const updateConfig = (mutate: (next: CommandCenterBoardConfig) => void): void => {
 		const next = cloneCommandCenterConfig(runtime.getConfig());
@@ -352,7 +399,11 @@ export function CommandCenterCustomize({ runtime, onBack, onClose }: CommandCent
 						</Popover>
 						<label className="pk-cc-directory-search">
 							<Search size={15} aria-hidden="true" />
-							<input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={SEARCH_PLACEHOLDERS[catalogScope]} autoFocus />
+							<input ref={searchRef} value={query} onChange={(event) => {
+								const nextQuery = event.target.value;
+								setQuery(nextQuery);
+								if (nextQuery !== intent?.query) setExpandedKey(null);
+							}} placeholder={SEARCH_PLACEHOLDERS[catalogScope]} autoFocus={!intent} />
 						</label>
 						<IconButton
 							className="pk-cc-icon-button pk-cc-active-filter"
@@ -371,7 +422,14 @@ export function CommandCenterCustomize({ runtime, onBack, onClose }: CommandCent
 							const homeLayoutItem = item ? config.home.layout.find((candidate) => candidate.sourceItemId === item.id) : undefined;
 							const expanded = Boolean(item && expandedKey === entry.key);
 							return (
-								<div key={entry.key} className="pk-cc-directory-entry" data-active={item ? 'true' : 'false'} role="listitem">
+								<div
+									key={entry.key}
+									ref={entry.key === intent?.actionKey ? targetEntryRef : undefined}
+									className="pk-cc-directory-entry"
+									data-entry-key={entry.key}
+									data-active={item ? 'true' : 'false'}
+									role="listitem"
+								>
 									<div className="pk-cc-directory-row">
 										<span className="pk-cc-directory-row__icon"><CommandCenterIcon icon={item?.icon ?? entry.icon} size={16} /></span>
 										<Button variant="ghost" size="sm" className="pk-cc-directory-row__main" disabled={!item} onClick={() => item && setExpandedKey(expanded ? null : entry.key)}>

@@ -28,10 +28,18 @@ import {
 import { CommandCenterIcon } from './CommandCenterIcon';
 import { CommandCenterItemMenu } from './CommandCenterItemMenu';
 import { CommandCenterViewResults } from './CommandCenterViewResults';
+import type {
+	CommandCenterCustomizeIntent,
+	CommandCenterLauncherRestoreState,
+} from './commandCenterCustomizeIntent';
 
 export interface CommandCenterLauncherProps {
 	runtime: CommandCenterRuntimePort;
-	onCustomize: () => void;
+	restoreState?: CommandCenterLauncherRestoreState | null;
+	onCustomize: (
+		intent?: CommandCenterCustomizeIntent,
+		restoreState?: CommandCenterLauncherRestoreState,
+	) => void;
 	onClose: () => void;
 }
 
@@ -163,7 +171,7 @@ function ProjectionSection({
 	onDragOverGrid: (event: React.DragEvent<HTMLDivElement>, groupId: string) => void;
 	onDrop: (event: React.DragEvent<HTMLDivElement>) => void;
 	onDragEnd: () => void;
-	onCustomize: () => void;
+	onCustomize: (intent: CommandCenterCustomizeIntent) => void;
 }): React.ReactElement | null {
 	const [openMenuItemId, setOpenMenuItemId] = useState<string | null>(null);
 	if (items.length === 0 && !draggedId) return null;
@@ -222,20 +230,20 @@ function ProjectionSection({
 	);
 }
 
-export function CommandCenterLauncher({ runtime, onCustomize, onClose }: CommandCenterLauncherProps): React.ReactElement {
+export function CommandCenterLauncher({ runtime, restoreState, onCustomize, onClose }: CommandCenterLauncherProps): React.ReactElement {
 	const config = useRuntimeConfig(runtime);
 	const reducedMotion = useReducedMotion();
 	const groups = useMemo(() => config.groups.slice().sort((a, b) => a.order - b.order), [config.groups]);
 	const groupById = useMemo(() => new Map(groups.map((group) => [group.id, group])), [groups]);
 	const tabOrder = useMemo(() => config.modal.tabOrder.filter((entry) => entry === 'home' || groupById.has(entry)), [config.modal.tabOrder, groupById]);
-	const [scope, setScope] = useState<string | 'home'>(() => tabOrder[0] ?? 'home');
-	const [query, setQuery] = useState('');
+	const [scope, setScope] = useState<string | 'home'>(() => restoreState?.scope ?? tabOrder[0] ?? 'home');
+	const [query, setQuery] = useState(() => restoreState?.query ?? '');
 	const [items, setItems] = useState<ResolvedCommandCenterItem[]>([]);
 	const [viewMatches, setViewMatches] = useState<CommandCenterCatalogEntry[]>([]);
 	const [allCommandMatches, setAllCommandMatches] = useState<CommandCenterCatalogEntry[]>([]);
 	const [showAllCommands, setShowAllCommands] = useState(false);
-	const [searchLoading, setSearchLoading] = useState(false);
-	const [activeId, setActiveId] = useState<string | null>(null);
+	const [searchLoading, setSearchLoading] = useState(() => Boolean(restoreState?.query.trim()));
+	const [activeId, setActiveId] = useState<string | null>(() => restoreState?.activeId ?? null);
 	const [gridWidth, setGridWidth] = useState(560);
 	const [draggedId, setDraggedId] = useState<string | null>(null);
 	const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
@@ -249,6 +257,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 	const dragGhostRef = useRef<HTMLElement | null>(null);
 	const tabDragGhostRef = useRef<HTMLElement | null>(null);
 	const suppressClickRef = useRef(false);
+	const restoreActiveIdRef = useRef(restoreState?.activeId ?? null);
 	const changeQuery = (nextQuery: string): void => {
 		setQuery(nextQuery);
 		setShowAllCommands(false);
@@ -367,7 +376,15 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 
 	useEffect(() => {
 		const selectableIds = new Set(positions.map((position) => position.id));
-		setActiveId((current) => current && selectableIds.has(current) ? current : positions[0]?.id ?? null);
+		setActiveId((current) => {
+			if (positions.length === 0) return current;
+			const restored = restoreActiveIdRef.current;
+			if (restored && selectableIds.has(restored)) {
+				restoreActiveIdRef.current = null;
+				return restored;
+			}
+			return current && selectableIds.has(current) ? current : positions[0]?.id ?? null;
+		});
 	}, [positions]);
 
 	useEffect(() => {
@@ -527,6 +544,9 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 	};
 
 	const focusSearch = (): void => inputRef.current?.focus();
+	const enterCustomize = (intent?: CommandCenterCustomizeIntent): void => {
+		onCustomize(intent, { scope, query, activeId });
+	};
 
 	const handleKeyDown = (event: React.KeyboardEvent): void => {
 		const commandKey = event.metaKey || event.ctrlKey;
@@ -681,7 +701,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 						onDragOverGrid={handleDragOverGrid}
 						onDrop={handleDrop}
 						onDragEnd={clearDragState}
-						onCustomize={onCustomize}
+						onCustomize={enterCustomize}
 					/>
 				))}
 				{searchActive ? (
@@ -709,7 +729,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 				{!searchLoading && items.length === 0 && viewMatches.length === 0 && allCommandMatches.length === 0 ? (
 					<div className="pk-cc-empty">
 						<span>{searchActive ? 'No Command Center items match this search.' : 'This group is empty.'}</span>
-						<Button variant="secondary" size="sm" onClick={onCustomize}>Customize</Button>
+						<Button variant="secondary" size="sm" onClick={() => enterCustomize()}>Customize</Button>
 					</div>
 				) : null}
 			</div>
@@ -717,7 +737,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 			<div className="pk-cc-footer">
 				<span className="pk-cc-footer__hint"><kbd>↑↓←→</kbd> move <span className="pk-cc-footer__drag"><GripVertical size={12} /> drag to reorder</span> <kbd>⇧F10</kbd> manage <kbd>↵</kbd> open <kbd>esc</kbd> close</span>
 				<span className="pk-cc-footer__scope">{activeItem?.fullLabel ?? activeCatalogEntry?.label ?? (searchActive ? 'Clear search to reorder' : '')}</span>
-				<Button variant="ghost" size="sm" className="pk-cc-footer__action" onClick={onCustomize}><SlidersHorizontal size={14} /><span>Customize</span></Button>
+				<Button variant="ghost" size="sm" className="pk-cc-footer__action" onClick={() => enterCustomize()}><SlidersHorizontal size={14} /><span>Customize</span></Button>
 			</div>
 		</div>
 	);

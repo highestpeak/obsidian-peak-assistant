@@ -4,6 +4,8 @@
  */
 export const COMMAND_CENTER_CATALOG_DEFAULTS = {
 	searchDebounceMs: 160,
+	submenuHoverOpenDelayMs: 100,
+	submenuHoverCloseDelayMs: 220,
 	launcherCommandPreviewLimit: 6,
 	minimumDocumentQueryLength: 2,
 	maximumDocumentResults: 80,
