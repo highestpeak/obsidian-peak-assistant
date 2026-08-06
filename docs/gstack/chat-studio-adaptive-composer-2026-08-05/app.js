@@ -225,6 +225,26 @@
     return timeline.scrollHeight - timeline.clientHeight - timeline.scrollTop;
   }
 
+  function canScrollVertically(element, deltaY) {
+    if (element.scrollHeight <= element.clientHeight + 1) return false;
+    if (deltaY < 0) return element.scrollTop > 0;
+    return element.scrollTop + element.clientHeight < element.scrollHeight - 1;
+  }
+
+  function routeComposerWheelToTimeline(event) {
+    if (event.ctrlKey || event.deltaY === 0) return;
+    const inputTarget = event.target instanceof Element ? event.target.closest('#composer-input') : null;
+    if (inputTarget && canScrollVertically(inputTarget, event.deltaY)) return;
+
+    event.preventDefault();
+    const deltaScale = event.deltaMode === WheelEvent.DOM_DELTA_LINE
+      ? 16
+      : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+        ? timeline.clientHeight
+        : 1;
+    timeline.scrollTop += event.deltaY * deltaScale;
+  }
+
   function updateBottomState() {
     const distance = distanceFromBottom();
     if (state.nearBottom && distance > 160) state.nearBottom = false;
@@ -790,6 +810,7 @@
   }
 
   timeline.addEventListener('scroll', updateBottomState, { passive: true });
+  composerFrame.addEventListener('wheel', routeComposerWheelToTimeline, { passive: false });
 
   input.addEventListener('focus', () => {
     state.focused = true;
