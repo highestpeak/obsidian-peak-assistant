@@ -6,7 +6,7 @@ import {
 	WorkspaceLeaf,
 	type ViewStateResult,
 } from 'obsidian';
-import { ReactItemViewHost } from '@/app/ui-host/ReactItemViewHost';
+import { ReactFileViewHost } from '@/app/ui-host/ReactFileViewHost';
 import { createReactElementWithServices } from '@/app/ui-host/ReactElementFactory';
 import type { AppContext } from '@/app/context/AppContext';
 import {
@@ -42,7 +42,7 @@ const EMPTY_STATE: DocumentComposerState = { status: 'empty', filePath: null, sn
  * read-only {@link ComposerRoot}. CodeMirror is never touched; the Chat Studio
  * input `Composer` is a different component (handoff §2.3 / §4.3).
  */
-export class DocumentComposerView extends ReactItemViewHost {
+export class DocumentComposerView extends ReactFileViewHost {
 	protected readonly viewType = DOCUMENT_COMPOSER_VIEW_TYPE;
 	protected readonly displayText = 'Composer';
 	protected readonly icon: IconName = 'file-text';
@@ -128,7 +128,10 @@ export class DocumentComposerView extends ReactItemViewHost {
 
 	/** Vault file currently bound to this product view, for workspace file navigators. */
 	getSourceFilePath(): string | null {
-		return this.viewState?.filePath ?? this.controller?.getState().filePath ?? null;
+		return this.file?.path
+			?? this.controller?.getState().filePath
+			?? this.viewState?.filePath
+			?? null;
 	}
 
 	/** Wait for the current source binding without exposing the controller itself. */
@@ -160,7 +163,8 @@ export class DocumentComposerView extends ReactItemViewHost {
 	}
 
 	getState(): Record<string, unknown> {
-		return this.viewState ? { ...this.viewState } : {};
+		const filePath = this.getSourceFilePath();
+		return this.viewState && filePath ? { ...this.viewState, filePath } : {};
 	}
 
 	async setState(state: unknown, result: ViewStateResult): Promise<void> {
@@ -172,6 +176,7 @@ export class DocumentComposerView extends ReactItemViewHost {
 			runtime?.navigation?.getLegacyActiveMarkdownPath(),
 		);
 		if (normalized) {
+			await super.setState({ ...normalized, file: normalized.filePath }, result);
 			if (previousFilePath && previousFilePath !== normalized.filePath) {
 				result.history = true;
 			}
@@ -184,8 +189,13 @@ export class DocumentComposerView extends ReactItemViewHost {
 			else if (runtime) this.ensureController(runtime);
 			this.requestHeaderRefresh();
 			this.getReactRenderer()?.render(this.renderElement());
+			return;
 		}
 		await super.setState(state, result);
+	}
+
+	canAcceptExtension(extension: string): boolean {
+		return extension === 'md';
 	}
 
 	onPaneMenu(menu: Menu, source: 'more-options' | 'tab-header' | string): void {
