@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Chat Studio · Adaptive Composer</title>
-  <link rel="stylesheet" href="./styles.css?v=20260806-7">
+  <link rel="stylesheet" href="./styles.css?v=20260806-8">
 </head>
 <body>
   <svg class="icon-sprite" aria-hidden="true">
@@ -119,6 +119,63 @@
                     <div class="source-mini"><svg class="icon"><use href="#icon-image"></use></svg><span><strong>Reference recording</strong><small>32 seconds</small></span></div>
                     <div class="source-mini"><svg class="icon"><use href="#icon-file"></use></svg><span><strong>Runtime boundaries</strong><small>Implementation spec</small></span></div>
                   </div>
+                </div>
+              </div>
+            </article>
+
+            <article class="message message-user">
+              <div class="message-author">You</div>
+              <div class="user-bubble">The bottom of the input still feels too empty. It should be compact by default and grow only when the message actually needs more room.</div>
+            </article>
+
+            <article class="message message-assistant">
+              <div class="assistant-avatar"><svg class="icon"><use href="#icon-sparkles"></use></svg></div>
+              <div class="assistant-copy">
+                <div class="message-author">Research partner</div>
+                <span>The idle shell now reserves space for one text line and one tool row. Content—not a fixed oversized box—drives every additional pixel.</span>
+                <div class="principle-grid">
+                  <div><span class="principle-index">01</span><strong>100px at rest</strong><small>No decorative dead zone below the controls.</small></div>
+                  <div><span class="principle-index">02</span><strong>Content grows it</strong><small>Text and attachments expand the same shell.</small></div>
+                  <div><span class="principle-index">03</span><strong>Clear returns</strong><small>Removing the draft restores the base height.</small></div>
+                </div>
+              </div>
+            </article>
+
+            <article class="message message-user">
+              <div class="message-author">You</div>
+              <div class="user-bubble">While I type, I need to see the context for the next message—history, summary, working context, profile, and selected resources.</div>
+            </article>
+
+            <article class="message message-assistant">
+              <div class="assistant-avatar"><svg class="icon"><use href="#icon-sparkles"></use></svg></div>
+              <div class="assistant-copy">
+                <div class="message-author">Research partner</div>
+                <span>The Context stack stays visible as a quiet first row. It tells you what is ready without forcing the full provenance surface open.</span>
+                <div class="source-preview">
+                  <div class="source-preview-head"><span>Context for next message</span><strong>9 layers ready</strong></div>
+                  <div class="source-card-row">
+                    <div class="source-mini"><svg class="icon"><use href="#icon-message"></use></svg><span><strong>History + summary</strong><small>Continuity and durable decisions</small></span></div>
+                    <div class="source-mini"><svg class="icon"><use href="#icon-file"></use></svg><span><strong>Working context</strong><small>Active note and local activity</small></span></div>
+                    <div class="source-mini"><svg class="icon"><use href="#icon-database"></use></svg><span><strong>Profile + resources</strong><small>Preferences and 6 references</small></span></div>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article class="message message-user">
+              <div class="message-author">You</div>
+              <div class="user-bubble">Each Context item should be inspectable, but long content cannot turn the small preview into another scroll box.</div>
+            </article>
+
+            <article class="message message-assistant">
+              <div class="assistant-avatar"><svg class="icon"><use href="#icon-sparkles"></use></svg></div>
+              <div class="assistant-copy">
+                <div class="message-author">Research partner</div>
+                <span>Short layers stay inline. Long layers disclose the visible character range, then open into a full-width reader with search, exact copy, wrapping, and completeness metadata.</span>
+                <div class="motion-note">
+                  <span class="motion-kicker">Context contract</span>
+                  <span><strong>Inline preview</strong> · bounded, readable, and never independently scrollable</span>
+                  <span><strong>Full reader</strong> · one primary scroll region with Back and Escape restoration</span>
                 </div>
               </div>
             </article>
@@ -384,6 +441,6 @@
     </aside>
   </div>
 
-  <script src="./app.js?v=20260806-7"></script>
+  <script src="./app.js?v=20260806-8"></script>
 </body>
 </html>

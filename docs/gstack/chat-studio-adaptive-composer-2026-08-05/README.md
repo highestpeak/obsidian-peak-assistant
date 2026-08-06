@@ -33,6 +33,10 @@ The page contains a small **Interaction demo** panel on the right. Use it to mov
 between Reading, Latest, and Running states. The real scroll container also drives
 the compact/expanded transition.
 
+The fixture includes enough meaningful conversation history to preserve a real
+scroll range on tall desktop viewports; the state transition does not depend on
+blank spacer content.
+
 Vertical wheel and trackpad gestures over the Composer surface are forwarded to
 the conversation timeline, so the transition remains testable without moving the
 pointer away. A genuinely overflowing message field keeps its own scroll until it
