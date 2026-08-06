@@ -1,6 +1,71 @@
-import { createRoot, Root } from 'react-dom/client';
+import { createRoot, type Root } from 'react-dom/client';
 import React from 'react';
 import { PortalContainerProvider } from './PortalContainerContext';
+
+interface TrackedReactDocumentListener {
+	listener: EventListenerOrEventListenerObject;
+	capture: boolean;
+}
+
+const reactDocumentListeners = new Map<
+	Document,
+	Map<EventListenerOrEventListenerObject, TrackedReactDocumentListener>
+>();
+
+/**
+ * ReactDOM installs one document-level `selectionchange` event delegate per
+ * bundled ReactDOM generation and does not remove it when the last root
+ * unmounts. During an Obsidian plugin reload that listener otherwise retains
+ * the old bundle's ReactDOM closure graph. Capture the synchronous install so
+ * plugin unload can release only the listener owned by this bundle generation.
+ */
+export function createTrackedRoot(
+	container: Parameters<typeof createRoot>[0],
+	createRootImpl: typeof createRoot = createRoot,
+): Root {
+	const ownerDocument = container.ownerDocument;
+	if (!ownerDocument) return createRootImpl(container);
+	const ownDescriptor = Object.getOwnPropertyDescriptor(ownerDocument, 'addEventListener');
+	const originalAddEventListener = ownerDocument.addEventListener;
+	const trackedAddEventListener = function (
+		this: Document,
+		type: string,
+		listener: EventListenerOrEventListenerObject | null,
+		options?: boolean | AddEventListenerOptions,
+	): void {
+		if (type === 'selectionchange' && listener) {
+			const capture = typeof options === 'boolean' ? options : Boolean(options?.capture);
+			const listeners = reactDocumentListeners.get(ownerDocument) ?? new Map();
+			listeners.set(listener, { listener, capture });
+			reactDocumentListeners.set(ownerDocument, listeners);
+		}
+		originalAddEventListener.call(this, type, listener, options);
+	};
+	Object.defineProperty(ownerDocument, 'addEventListener', {
+		configurable: true,
+		writable: true,
+		value: trackedAddEventListener,
+	});
+	try {
+		return createRootImpl(container);
+	} finally {
+		if (ownDescriptor) {
+			Object.defineProperty(ownerDocument, 'addEventListener', ownDescriptor);
+		} else {
+			Reflect.deleteProperty(ownerDocument, 'addEventListener');
+		}
+	}
+}
+
+/** Remove ReactDOM document delegates captured for this plugin generation. */
+export function clearReactDocumentListenersForUnload(): void {
+	for (const [ownerDocument, listeners] of reactDocumentListeners) {
+		for (const { listener, capture } of listeners.values()) {
+			ownerDocument.removeEventListener('selectionchange', listener, capture);
+		}
+	}
+	reactDocumentListeners.clear();
+}
 
 /**
  * Stable per-`Document` identity counter. When a leaf is adopted into a
@@ -168,7 +233,7 @@ export class ReactRenderer {
 		// button chrome (mod-cta/mod-warning) must NOT come through here — they
 		// add only `pktw-root` themselves (see HubCurationPlanModal et al.).
 		targetContainer.classList.add('pktw-root', 'peak-design-root');
-		this.root = createRoot(targetContainer);
+		this.root = createTrackedRoot(targetContainer);
 		this.root.render(wrapped);
 	}
 

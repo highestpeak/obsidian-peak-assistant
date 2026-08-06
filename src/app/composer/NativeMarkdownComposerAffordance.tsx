@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { createRoot, type Root } from 'react-dom/client';
+import type { Root } from 'react-dom/client';
 import {
 	App,
 	MarkdownView,
@@ -9,6 +9,7 @@ import {
 } from 'obsidian';
 import { PanelsTopLeft } from 'lucide-react';
 import { Button } from '@/ui/components/primitives';
+import { createTrackedRoot } from '@/ui/react/ReactRenderer';
 
 export interface NativeMarkdownComposerAffordanceOptions {
 	label: string;
@@ -85,7 +86,7 @@ export class NativeMarkdownComposerAffordance {
 		container.className = 'peak-design-root pk-native-composer-affordance';
 		contentEl.classList.add('pk-native-composer-affordance-host');
 		contentEl.appendChild(container);
-		const root = createRoot(container);
+		const root = createTrackedRoot(container);
 		root.render(
 			<Button
 				className="pk-native-composer-affordance__button"

@@ -74,7 +74,10 @@ import { openSettingsModal } from '@/app/commands/PeakCommandActions';
 import { composePluginCommandGatewayRuntime } from '@/app/commands/gateway/composePluginCommandGatewayRuntime';
 import type { PluginCommandGatewayRuntime } from '@/service/command-gateway/PluginCommandGatewayRuntime';
 import { composePeakKeyboardRuntime } from '@/app/keyboard/composePeakKeyboardRuntime';
-import { clearPortalHostsForUnload } from '@/ui/react/ReactRenderer';
+import {
+	clearPortalHostsForUnload,
+	clearReactDocumentListenersForUnload,
+} from '@/ui/react/ReactRenderer';
 // Note: `openSettingsModal` is also passed into `composeCommandGatewayBindings`
 // (below) via the same import binding; a second import would collide.
 
@@ -1292,6 +1295,7 @@ export default class MyPlugin extends Plugin {
 		clearPendingConversationTimeouts();
 		this.viewManager?.unload();
 		clearPortalHostsForUnload();
+		clearReactDocumentListenersForUnload();
 		removeAllChatViewButtons();
 		if (this.templateManager) {
 			this.templateManager.clear();

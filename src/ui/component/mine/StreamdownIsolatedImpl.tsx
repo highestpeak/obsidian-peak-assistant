@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { createRoot, type Root } from 'react-dom/client';
+import type { Root } from 'react-dom/client';
 import { Notice } from 'obsidian';
 import {
 	Streamdown,
@@ -16,7 +16,7 @@ import { SettingsUpdatedEvent, ViewEventType } from '@/core/eventBus';
 import { normalizeCodeBlockTheme, type CodeBlockThemeId } from '@/core/config/settingsTypes';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { usePeakEscapeLayer } from '@/ui/keyboard/usePeakKeyboardSurface';
-import { portalHostForDocument } from '@/ui/react/ReactRenderer';
+import { createTrackedRoot, portalHostForDocument } from '@/ui/react/ReactRenderer';
 import { STREAMDOWN_ISOLATED_CSS } from '@/styles/streamdown-isolated-css';
 import { remarkWikilink } from './streamdown';
 import { getAIBasesFolder } from '@/core/config/folderPaths';
@@ -831,7 +831,7 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 		if (!shadow || !container) return;
 
 		try {
-			const root = createRoot(container);
+			const root = createTrackedRoot(container);
 			(rootRef as React.MutableRefObject<Root | null>).current = root;
 			const cleanupFullscreen = setupMermaidFullscreenEscape(shadow);
 			const cleanupFullscreenButtons = setupMermaidFullscreenButtons(
