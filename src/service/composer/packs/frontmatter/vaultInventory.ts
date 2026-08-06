@@ -30,6 +30,8 @@ export interface VaultFrontmatterRecord {
 export interface VaultPropertyScanPort {
 	/** Every note's parsed frontmatter map. */
 	scanFrontmatter(): VaultFrontmatterRecord[];
+	/** Release host subscriptions and cached inventory owned by this port. */
+	dispose(): void;
 }
 
 /** Per-field statistics across the vault. */

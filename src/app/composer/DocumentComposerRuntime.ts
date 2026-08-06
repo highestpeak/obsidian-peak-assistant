@@ -555,6 +555,7 @@ export class DocumentComposerRuntime {
 		}
 		this.documentEntries.clear();
 		this.navigation?.dispose();
+		this.vaultInventory?.dispose();
 		this.events.dispose();
 	}
 
