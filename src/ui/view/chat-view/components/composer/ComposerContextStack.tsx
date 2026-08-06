@@ -339,7 +339,7 @@ const Exclusions: React.FC = () => {
 		{ icon: <GitBranch />, title: copy.excludedBranchTitle, detail: copy.excludedBranchDetail },
 	];
 	return (
-		<aside className="pkchat-context-exclusions">
+		<aside className="pkchat-context-exclusions" data-composer-scroll-region="true">
 			<div><strong>{copy.excludedTitle}</strong><small>{copy.excludedSubtitle}</small></div>
 			{rows.map((row) => (
 				<span key={row.title}>{row.icon}<span><strong>{row.title}</strong><small>{row.detail}</small></span></span>
@@ -470,7 +470,7 @@ const ActiveComposerContextStack: React.FC<ActiveComposerContextStackProps> = ({
 							<Button variant="unstyled" geometry="toolbar" aria-pressed={technical} onClick={() => setTechnical((value) => !value)}>{copy.technicalDetails}</Button>
 						</div>
 						<div className="pkchat-context-layout">
-							<div className="pkchat-context-stack" ref={listRef} onKeyDown={moveLayerFocus}>
+							<div className="pkchat-context-stack" data-composer-scroll-region="true" ref={listRef} onKeyDown={moveLayerFocus}>
 								{model.layers.map((layer) => (
 									<React.Fragment key={layer.id}>
 										<Button

@@ -1648,36 +1648,45 @@
 }
 
 :is(.pktw-root, .peak-design-root) [data-composer-root][data-composer-placement="active"] .pkchat-composer {
+  position: relative;
+  height: calc(var(--pkchat-expanded-height, 116px) + 2px);
+  min-height: 50px;
+  overflow: hidden;
   border-radius: 16px;
-  transition: border-color 160ms ease,
+  transform-origin: 50% 100%;
+  transition: width 250ms cubic-bezier(.22, .75, .2, 1),
+              height 250ms cubic-bezier(.22, .75, .2, 1),
+              border-color 160ms ease,
               border-radius 220ms cubic-bezier(.2, .8, .2, 1),
               box-shadow 160ms ease;
 }
 
 :is(.pktw-root, .peak-design-root) .pkchat-composer__compact {
-  display: none;
+  display: none !important;
 }
 
 :is(.pktw-root, .peak-design-root) [data-composer-root][data-composer-placement="active"] .pkchat-composer__compact {
+  position: absolute;
+  inset: 0;
   width: 100% !important;
-  height: 0 !important;
-  min-height: 0 !important;
-  max-height: 0 !important;
+  height: 50px !important;
+  min-height: 50px !important;
+  max-height: 50px !important;
   padding: 0 15px !important;
   border: 0 !important;
   border-radius: 16px !important;
   background: transparent !important;
   color: var(--pk-text-secondary);
-  display: flex;
+  display: flex !important;
   align-items: center;
   gap: 9px;
   overflow: hidden;
   opacity: 0;
+  pointer-events: none;
+  transform: translateY(5px);
   cursor: text;
-  transition: height 220ms cubic-bezier(.2, .8, .2, 1),
-              min-height 220ms cubic-bezier(.2, .8, .2, 1),
-              max-height 220ms cubic-bezier(.2, .8, .2, 1),
-              opacity 120ms ease;
+  transition: opacity 110ms ease,
+              transform 180ms cubic-bezier(.22, .75, .2, 1);
 }
 
 :is(.pktw-root, .peak-design-root) [data-composer-root][data-composer-placement="active"] .pkchat-composer__compact > svg {
@@ -1711,14 +1720,19 @@
 }
 
 :is(.pktw-root, .peak-design-root) [data-composer-root][data-composer-placement="active"] .pkchat-composer__expanded {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  max-height: 1200px;
   opacity: 1;
+  overflow: hidden;
   transform: translateY(0);
-  overflow: visible;
-  transition: max-height 260ms cubic-bezier(.2, .8, .2, 1),
-              opacity 160ms ease,
-              transform 220ms cubic-bezier(.2, .8, .2, 1);
+  transition: opacity 140ms ease 55ms,
+              transform 220ms cubic-bezier(.22, .75, .2, 1) 25ms;
+}
+
+:is(.pktw-root, .peak-design-root) [data-composer-root][data-composer-placement="active"] .pkchat-composer__expanded-inner {
+  width: 100%;
+  min-height: 0;
 }
 
 :is(.pktw-root, .peak-design-root) [data-composer-root][data-composer-placement="active"] .pkchat-composer__editor {
@@ -1749,6 +1763,8 @@
 }
 
 :is(.pktw-root, .peak-design-root) [data-composer-root][data-composer-placement="active"][data-composer-display="compact"] .pkchat-composer {
+  width: min(430px, calc(100% - 24px));
+  height: 50px;
   border-radius: var(--pk-radius-pill);
   box-shadow: 0 4px 16px rgb(15 23 42 / 7%);
 }
@@ -1758,14 +1774,17 @@
   min-height: 50px !important;
   max-height: 50px !important;
   opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+  transition-delay: 75ms;
 }
 
 :is(.pktw-root, .peak-design-root) [data-composer-root][data-composer-placement="active"][data-composer-display="compact"] .pkchat-composer__expanded {
-  max-height: 0;
   opacity: 0;
-  transform: translateY(5px);
-  overflow: hidden;
+  transform: translateY(8px);
   pointer-events: none;
+  transition: opacity 90ms ease,
+              transform 200ms cubic-bezier(.4, 0, .3, 1);
 }
 
 /* Context rail: top corners continue the outer shell; lower corners are
@@ -1780,7 +1799,7 @@
   border: 0 !important;
   border-bottom: 1px solid var(--pk-border-soft) !important;
   border-radius: 16px 16px 0 0 !important;
-  background: color-mix(in srgb, var(--pk-surface) 94%, var(--pk-accent) 6%) !important;
+  background: color-mix(in srgb, var(--pk-surface) 97%, var(--pk-text-primary) 3%) !important;
   color: var(--pk-text-secondary);
   display: flex;
   align-items: center;
@@ -1792,7 +1811,7 @@
 
 :is(.pktw-root, .peak-design-root) .pkchat-context-rail:hover,
 :is(.pktw-root, .peak-design-root) .pkchat-context-rail[data-state="open"] {
-  background: var(--pk-accent-tint) !important;
+  background: var(--pk-state-hover) !important;
   color: var(--pk-text-primary);
 }
 
@@ -1837,7 +1856,7 @@
   width: var(--radix-popover-trigger-width) !important;
   min-width: var(--radix-popover-trigger-width) !important;
   max-width: calc(100vw - 24px) !important;
-  max-height: min(72vh, 680px);
+  max-height: min(calc(100vh - 24px), 680px);
   padding: 0 !important;
   overflow: hidden;
   border: 1px solid var(--pk-border-strong) !important;
@@ -1931,8 +1950,8 @@
 .pkchat-context-metrics > button { margin-left: auto; }
 
 .pkchat-context-layout {
-  min-height: 220px;
-  max-height: min(45vh, 390px);
+  height: clamp(220px, 45vh, 390px);
+  min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 220px;
   overflow: hidden;
@@ -1940,21 +1959,24 @@
 
 .pkchat-context-stack {
   min-width: 0;
+  min-height: 0;
+  max-height: 100%;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   padding: 6px;
 }
 
 .pkchat-context-layer {
   width: 100% !important;
-  min-height: 52px !important;
-  padding: 7px 8px !important;
+  min-height: 40px !important;
+  padding: 4px 6px !important;
   border: 0 !important;
   border-radius: 9px !important;
   background: transparent !important;
   color: var(--pk-text-primary);
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) auto;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   text-align: left;
@@ -1968,9 +1990,9 @@
 .pkchat-context-layer[data-active="false"] { opacity: .62; }
 
 .pkchat-context-layer__order {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
   background: var(--pk-surface-sunken);
   display: grid;
   place-items: center;
@@ -2023,6 +2045,8 @@
 }
 
 .pkchat-context-exclusions {
+  min-height: 0;
+  max-height: 100%;
   padding: 10px;
   border-left: 1px solid var(--pk-border-soft);
   background: var(--pk-surface-sunken);
@@ -2049,11 +2073,13 @@
 .pkchat-context-exclusions small { color: var(--pk-text-tertiary); font-size: 10px; line-height: 1.35; }
 
 .pkchat-context-detail {
-  margin: 0 6px 6px;
-  border: 1px solid var(--pk-border-soft);
-  border-radius: 10px;
-  background: var(--pk-surface);
-  overflow: hidden;
+  margin: 0 8px 8px 38px;
+  padding: 2px 0 4px 11px;
+  border: 0;
+  border-left: 2px solid var(--pk-accent-tint);
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
 }
 
 .pkchat-context-detail__head,
@@ -2081,6 +2107,11 @@
 .pkchat-context-detail__head strong,
 .pkchat-context-reader__title strong { font-size: var(--pk-text-sm); }
 
+.pkchat-context-detail .pkchat-context-detail__head {
+  padding: 5px 0;
+  border-bottom: 0;
+}
+
 .pkchat-context-detail__close {
   width: 28px !important;
   height: 28px !important;
@@ -2097,29 +2128,31 @@
 .pkchat-context-detail__close svg { width: 14px; height: 14px; }
 
 .pkchat-context-detail__meta {
-  padding: 8px 10px;
+  padding: 4px 0 8px;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
-  background: var(--pk-surface-sunken);
+  background: transparent;
 }
 .pkchat-context-detail__meta > span,
 .pkchat-context-reader__foot > span { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .pkchat-context-detail__meta strong,
 .pkchat-context-reader__foot strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
 
-.pkchat-context-detail__body { padding: 9px 10px; }
+.pkchat-context-detail__body { padding: 0; }
 .pkchat-context-detail__label,
 .pkchat-context-detail__actions { display: flex; align-items: center; gap: 8px; font-size: 10px; color: var(--pk-text-tertiary); }
 .pkchat-context-detail__label strong { margin-left: auto; color: var(--pk-accent-text); }
 .pkchat-context-detail__body pre {
   max-height: 130px;
   margin: 7px 0;
-  padding: 9px;
+  padding: 8px 9px;
   overflow: auto;
   overscroll-behavior: contain;
-  border-radius: 8px;
-  background: var(--pk-surface-sunken);
+  border: 0 !important;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--pk-surface-sunken) 72%, transparent);
+  box-shadow: none !important;
   color: var(--pk-text-primary);
   font: 11px/1.5 var(--pk-font-mono);
   white-space: pre-wrap;

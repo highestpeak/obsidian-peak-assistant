@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUp, FileText, ImagePlus, Layers3, Loader2, MessageSquare, Music as MusicIcon, Network, Pencil, Video as VideoIcon, Workflow } from 'lucide-react';
 import { useComposerEditImageStore } from '../store/composerEditImageStore';
 import {
@@ -158,6 +158,8 @@ export const Composer: React.FC<ComposerProps> = ({ scrollContainerRef }) => {
 
 	const textareaRef = useRef<PromptInputEditorHandle>(null);
 	const inputFocusRef = useRef<{ focus: () => void } | null>(null);
+	const expandedContentRef = useRef<HTMLDivElement>(null);
+	const [expandedHeight, setExpandedHeight] = useState<number | null>(null);
 
 	const {
 		isSending,
@@ -269,6 +271,24 @@ export const Composer: React.FC<ComposerProps> = ({ scrollContainerRef }) => {
 			observer?.disconnect();
 		};
 	}, [activePlacement, scrollContainerRef, studioStrings.density.composerBottomThresholdPx]);
+
+	useLayoutEffect(() => {
+		const content = expandedContentRef.current;
+		if (!activePlacement || !content) {
+			setExpandedHeight(null);
+			return;
+		}
+		const update = () => {
+			const next = Math.ceil(content.scrollHeight);
+			if (next <= 0) return;
+			setExpandedHeight((current) => current === next ? current : next);
+		};
+		update();
+		const ResizeObserverCtor = content.ownerDocument.defaultView?.ResizeObserver;
+		const observer = ResizeObserverCtor ? new ResizeObserverCtor(update) : null;
+		observer?.observe(content);
+		return () => observer?.disconnect();
+	}, [activePlacement]);
 
 	// `/` slash palette owns BOTH workflows (research/plan/…) and generation
 	// actions (image/video/music). Selecting a workflow adds a context chip;
@@ -551,6 +571,9 @@ export const Composer: React.FC<ComposerProps> = ({ scrollContainerRef }) => {
 			)}
 			<PromptInput
 				className={cn('pkchat-composer', `pkchat-composer--${status}`)}
+				style={activePlacement && expandedHeight
+					? { '--pkchat-expanded-height': `${expandedHeight}px` } as React.CSSProperties
+					: undefined}
 				onFocusCapture={() => setFocused(true)}
 				onBlurCapture={(event) => {
 					if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
@@ -610,87 +633,89 @@ export const Composer: React.FC<ComposerProps> = ({ scrollContainerRef }) => {
 					<small><Layers3 />{studioStrings.composerContext.railTitle}</small>
 				</Button>
 				<div className="pkchat-composer__expanded">
-					<ComposerDraftSync />
-					{activePlacement ? <ComposerContextStack status={status} onOpenChange={setContextOpen} /> : null}
-					<ComposerContextShelf />
-					{generateOpen && (
-						<ComposerGenerateActions
-							kind={generateOpen.kind}
-							mode={generateOpen.mode}
-							onClose={() => setGenerateOpen(null)}
-						/>
-					)}
-					<PromptInputAttachments />
-					{status === 'streaming' && (
-						<div className="pkchat-composer__status" role="status" aria-live="polite">
-							<Loader2 className="pkchat-composer__status-spinner" />
-							<span>{strings.composer.streamingStatus}</span>
-							{hasInput && (
-								<span className="pktw-text-pk-xs pktw-text-pk-muted-foreground">
-									{studioStrings.composer.queuedHint}
-								</span>
-							)}
+					<div ref={expandedContentRef} className="pkchat-composer__expanded-inner">
+						<ComposerDraftSync />
+						{activePlacement ? <ComposerContextStack status={status} onOpenChange={setContextOpen} /> : null}
+						<ComposerContextShelf />
+						{generateOpen && (
+							<ComposerGenerateActions
+								kind={generateOpen.kind}
+								mode={generateOpen.mode}
+								onClose={() => setGenerateOpen(null)}
+							/>
+						)}
+						<PromptInputAttachments />
+						{status === 'streaming' && (
+							<div className="pkchat-composer__status" role="status" aria-live="polite">
+								<Loader2 className="pkchat-composer__status-spinner" />
+								<span>{strings.composer.streamingStatus}</span>
+								{hasInput && (
+									<span className="pktw-text-pk-xs pktw-text-pk-muted-foreground">
+										{studioStrings.composer.queuedHint}
+									</span>
+								)}
+							</div>
+						)}
+						<div className="pkchat-composer__editor">
+							<PromptInputBody
+								ref={textareaRef}
+								inputRef={inputFocusRef}
+								placeholder={studioStrings.composer.placeholder}
+								slashItems={slashItems}
+								onTextChange={onTextChange}
+							/>
+							<PromptEnhanceSuggestion />
 						</div>
-					)}
-					<div className="pkchat-composer__editor">
-						<PromptInputBody
-							ref={textareaRef}
-							inputRef={inputFocusRef}
-							placeholder={studioStrings.composer.placeholder}
-							slashItems={slashItems}
-							onTextChange={onTextChange}
-						/>
-						<PromptEnhanceSuggestion />
-					</div>
 
-					<div className="pkchat-composer__foot">
-						<div className="pkchat-composer__foot-left">
-							<ComposerPlusMenu
-								insertAtCaret={(text) => textareaRef.current?.insertText(text)}
-								onSurfaceOpenChange={(open) => setComposerSurfaceOpen('plus', open)}
-							/>
-							<ComposerSourcesPopover onSurfaceOpenChange={(open) => setComposerSurfaceOpen('sources', open)} />
-							{quickSearchLauncher && (
-								<IconButton
-									label={studioStrings.composer.openAIGraphsLabel}
-									title={studioStrings.composer.openAIGraphsLabel}
-									onClick={() => quickSearchLauncher.open({
-										aiMode: 'graph',
-										...(activeConversation
-											? {
-												graphCreateOrigin: {
-													surface: 'chat-studio',
-													contextRef: {
-														kind: 'conversation',
-														ref: activeConversation.meta.id,
-														label: activeConversation.meta.title
-															?? activeConversation.meta.id,
+						<div className="pkchat-composer__foot">
+							<div className="pkchat-composer__foot-left">
+								<ComposerPlusMenu
+									insertAtCaret={(text) => textareaRef.current?.insertText(text)}
+									onSurfaceOpenChange={(open) => setComposerSurfaceOpen('plus', open)}
+								/>
+								<ComposerSourcesPopover onSurfaceOpenChange={(open) => setComposerSurfaceOpen('sources', open)} />
+								{quickSearchLauncher && (
+									<IconButton
+										label={studioStrings.composer.openAIGraphsLabel}
+										title={studioStrings.composer.openAIGraphsLabel}
+										onClick={() => quickSearchLauncher.open({
+											aiMode: 'graph',
+											...(activeConversation
+												? {
+													graphCreateOrigin: {
+														surface: 'chat-studio',
+														contextRef: {
+															kind: 'conversation',
+															ref: activeConversation.meta.id,
+															label: activeConversation.meta.title
+																?? activeConversation.meta.id,
+														},
 													},
-												},
-											}
-											: {}),
-									})}
-								>
-									<Network />
-								</IconButton>
-							)}
-						</div>
-						<div className="pkchat-composer__foot-right">
-							<ComposerAssistantSelector
-								assistantId={assistantId}
-								onSelect={onAssistantSelect}
-								onSurfaceOpenChange={(open) => setComposerSurfaceOpen('assistant', open)}
-							/>
-							<ComposerModelSelector
-								selection={modelSelection}
-								onSelect={onModelSelect}
-								onSurfaceOpenChange={(open) => setComposerSurfaceOpen('model', open)}
-							/>
-							<SendButton
-								status={status}
-								hasInput={hasInput}
-								onCancel={() => instructionController.stop()}
-							/>
+												}
+												: {}),
+										})}
+									>
+										<Network />
+									</IconButton>
+								)}
+							</div>
+							<div className="pkchat-composer__foot-right">
+								<ComposerAssistantSelector
+									assistantId={assistantId}
+									onSelect={onAssistantSelect}
+									onSurfaceOpenChange={(open) => setComposerSurfaceOpen('assistant', open)}
+								/>
+								<ComposerModelSelector
+									selection={modelSelection}
+									onSelect={onModelSelect}
+									onSurfaceOpenChange={(open) => setComposerSurfaceOpen('model', open)}
+								/>
+								<SendButton
+									status={status}
+									hasInput={hasInput}
+									onCancel={() => instructionController.stop()}
+								/>
+							</div>
 						</div>
 					</div>
 				</div>

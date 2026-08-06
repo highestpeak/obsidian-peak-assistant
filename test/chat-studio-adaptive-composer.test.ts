@@ -176,6 +176,7 @@ function testScopeGuards(): void {
 	const messages = readFileSync(join(ROOT, 'src/ui/view/chat-view/view-Messages.tsx'), 'utf8');
 	const projectHome = readFileSync(join(ROOT, 'src/ui/view/chat-view/view-ProjectOverview.tsx'), 'utf8');
 	const composer = readFileSync(join(ROOT, 'src/ui/view/chat-view/components/Composer.tsx'), 'utf8');
+	const contextStack = readFileSync(join(ROOT, 'src/ui/view/chat-view/components/composer/ComposerContextStack.tsx'), 'utf8');
 	const styles = readFileSync(join(ROOT, 'src/styles/peak-components.css'), 'utf8');
 	assert.match(messages, /<Composer[^>]*scrollContainerRef=\{bodyScrollRef\}/,
 		'only the active conversation passes the timeline bridge');
@@ -183,6 +184,13 @@ function testScopeGuards(): void {
 	assert.match(composer, /data-composer-placement=\{activePlacement \? ['"]active['"] : ['"]start['"]\}/);
 	assert.strictEqual((composer.match(/onSurfaceOpenChange=/g) ?? []).length, 4,
 		'all existing Composer menus keep the shell expanded while open');
+	assert.match(composer, /--pkchat-expanded-height/,
+		'expanded height is measured instead of approximated with a large max-height');
+	assert.ok(!styles.includes('max-height: 1200px'), 'animation must not use a delayed max-height collapse');
+	assert.match(styles, /\.pkchat-composer__compact\s*\{\s*display:\s*none !important;/,
+		'compact-only controls cannot leak into New Chat or Project Home');
+	assert.ok((contextStack.match(/data-composer-scroll-region="true"/g) ?? []).length >= 4,
+		'portalled stack, exclusions, inline preview, and full reader own their scrolling');
 	assert.match(styles, /\.pkchat-context-rail\s*\{[\s\S]*?border-radius:\s*16px 16px 0 0 !important;/,
 		'context hover rail follows the shell on top and stays square below');
 	assert.match(styles, /\.pkchat-context-popover\s*\{[\s\S]*?width:\s*var\(--radix-popover-trigger-width\) !important;/,
