@@ -22,43 +22,10 @@ export interface KeyboardMapDefinition {
 
 export const KEYBOARD_MAP_DEFINITIONS: readonly KeyboardMapDefinition[] = [
 	{
-		id: 'focus-vault-search',
-		label: 'Focus Vault Search',
-		category: 'Navigation',
-		binding: '',
-		commandId: 'peak-focus-vault-search',
-		context: 'Global Obsidian command',
-	},
-	{
-		id: 'focus-ai-search',
-		label: 'Focus AI Search',
-		category: 'Navigation',
-		binding: '',
-		commandId: 'peak-focus-ai-search',
-		context: 'Global Obsidian command',
-	},
-	{
-		id: 'focus-file-atlas',
-		label: 'Focus File Atlas',
-		category: 'Navigation',
-		binding: '',
-		commandId: 'peak-focus-file-atlas',
-		context: 'Global Obsidian command',
-	},
-	{
-		id: 'focus-chat-studio',
-		label: 'Focus Chat Studio',
-		category: 'Navigation',
-		binding: '',
-		commandId: 'peak-focus-chat-studio',
-		context: 'Global Obsidian command',
-	},
-	{
 		id: 'focus-next-zone',
 		label: 'Focus next zone',
 		category: 'Navigation',
 		binding: 'F6',
-		commandId: 'peak-focus-next-zone',
 		context: 'Current Peak surface',
 	},
 	{
@@ -66,7 +33,6 @@ export const KEYBOARD_MAP_DEFINITIONS: readonly KeyboardMapDefinition[] = [
 		label: 'Focus previous zone',
 		category: 'Navigation',
 		binding: 'Shift+F6',
-		commandId: 'peak-focus-previous-zone',
 		context: 'Current Peak surface',
 	},
 	{
@@ -132,14 +98,6 @@ export const KEYBOARD_MAP_DEFINITIONS: readonly KeyboardMapDefinition[] = [
 		binding: '?',
 		commandId: 'peak-show-keyboard-map',
 		context: 'Peak surface outside text editing',
-	},
-	{
-		id: 'return-last-focus',
-		label: 'Return to last Peak focus',
-		category: 'Navigation',
-		binding: '',
-		commandId: 'peak-return-last-focus',
-		context: 'Global Obsidian command',
 	},
 	{
 		id: 'vault-open-new-tab',

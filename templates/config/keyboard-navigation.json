@@ -70,13 +70,6 @@
     "toggleSelection": "Space"
   },
   "commands": {
-    "focusVaultSearch": "peak-focus-vault-search",
-    "focusAISearch": "peak-focus-ai-search",
-    "focusFileAtlas": "peak-focus-file-atlas",
-    "focusChatStudio": "peak-focus-chat-studio",
-    "focusNextZone": "peak-focus-next-zone",
-    "focusPreviousZone": "peak-focus-previous-zone",
-    "returnToLastFocus": "peak-return-last-focus",
     "showKeyboardMap": "peak-show-keyboard-map"
   }
 }

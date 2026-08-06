@@ -105,16 +105,8 @@ for (const zone of [
 assert.ok(template.a11y.graphInstructions);
 assert.deepStrictEqual(
 	Object.values(template.commands).sort(),
-	[
-		'peak-focus-ai-search',
-		'peak-focus-chat-studio',
-		'peak-focus-file-atlas',
-		'peak-focus-next-zone',
-		'peak-focus-previous-zone',
-		'peak-focus-vault-search',
-		'peak-return-last-focus',
-		'peak-show-keyboard-map',
-	].sort(),
+	['peak-show-keyboard-map'],
+	'keyboard config must not re-expose local navigation actions as global Obsidian commands',
 );
 
 console.log('keyboard-navigation-surface-contract: passed');

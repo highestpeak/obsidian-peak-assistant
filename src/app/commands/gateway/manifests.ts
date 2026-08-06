@@ -181,48 +181,6 @@ function keyboardNavigationManifest(
 	};
 }
 
-export const FOCUS_VAULT_SEARCH_MANIFEST = keyboardNavigationManifest(
-	'ui.keyboard.focus-vault-search',
-	'Focus Vault Search',
-	'Open Vault Search and focus its query zone.',
-	['vault-search'],
-);
-export const FOCUS_AI_SEARCH_MANIFEST = keyboardNavigationManifest(
-	'ui.keyboard.focus-ai-search',
-	'Focus AI Search',
-	'Open AI Search and focus its mode and query zone.',
-	['ai-analysis'],
-);
-export const FOCUS_FILE_ATLAS_MANIFEST = keyboardNavigationManifest(
-	'ui.keyboard.focus-file-atlas',
-	'Focus File Atlas',
-	'Open File Atlas and focus its file rail.',
-	['copilot'],
-);
-export const FOCUS_CHAT_STUDIO_MANIFEST = keyboardNavigationManifest(
-	'ui.keyboard.focus-chat-studio',
-	'Focus Chat Studio',
-	'Open Chat Studio and focus its first available zone.',
-	['chat'],
-);
-export const FOCUS_NEXT_ZONE_MANIFEST = keyboardNavigationManifest(
-	'ui.keyboard.focus-next-zone',
-	'Focus next zone',
-	'Move focus to the next logical zone in the current Peak surface.',
-	['chat', 'vault-search', 'ai-analysis', 'copilot'],
-);
-export const FOCUS_PREVIOUS_ZONE_MANIFEST = keyboardNavigationManifest(
-	'ui.keyboard.focus-previous-zone',
-	'Focus previous zone',
-	'Move focus to the previous logical zone in the current Peak surface.',
-	['chat', 'vault-search', 'ai-analysis', 'copilot'],
-);
-export const RETURN_LAST_FOCUS_MANIFEST = keyboardNavigationManifest(
-	'ui.keyboard.return-last-focus',
-	'Return to last Peak focus',
-	'Restore the most recent connected focus target in a Peak surface.',
-	['chat', 'vault-search', 'ai-analysis', 'copilot'],
-);
 export const SHOW_KEYBOARD_MAP_MANIFEST = keyboardNavigationManifest(
 	'ui.keyboard.show-map',
 	'Show keyboard map',
@@ -247,12 +205,5 @@ export const PALETTE_COMMAND_MANIFESTS: Readonly<Record<string, CapabilityManife
 	'peak-usage-dashboard': USAGE_DASHBOARD_MANIFEST,
 	'peak-open-chat-studio': CHAT_STUDIO_MANIFEST,
 	'peak-open-document-composer': DOCUMENT_COMPOSER_MANIFEST,
-	'peak-focus-vault-search': FOCUS_VAULT_SEARCH_MANIFEST,
-	'peak-focus-ai-search': FOCUS_AI_SEARCH_MANIFEST,
-	'peak-focus-file-atlas': FOCUS_FILE_ATLAS_MANIFEST,
-	'peak-focus-chat-studio': FOCUS_CHAT_STUDIO_MANIFEST,
-	'peak-focus-next-zone': FOCUS_NEXT_ZONE_MANIFEST,
-	'peak-focus-previous-zone': FOCUS_PREVIOUS_ZONE_MANIFEST,
-	'peak-return-last-focus': RETURN_LAST_FOCUS_MANIFEST,
 	'peak-show-keyboard-map': SHOW_KEYBOARD_MAP_MANIFEST,
 });

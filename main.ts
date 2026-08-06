@@ -50,7 +50,6 @@ import {
 import { hydrateTextStopwordsFromTemplateManager } from '@/core/utils/stopword-utils';
 import { installHoverMenuGlobals } from '@/ui/component/mine/hover-menu-manager';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import { useSharedStore } from '@/ui/view/quick-search/store/sharedStore';
 import { resetQuickSearchPluginSession } from '@/app/search/resetQuickSearchPluginSession';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
@@ -515,33 +514,6 @@ export default class MyPlugin extends Plugin {
 			openUsageDashboard,
 			openChatStudio,
 			openDocumentComposer,
-			focusVaultSearch: () => {
-				useSharedStore.getState().setActiveTab('vault');
-				openQuickSearch();
-				keyboardNavigation.requestSurfaceFocus('vault-search', 'vs-query');
-			},
-			focusAISearch: () => {
-				useSharedStore.getState().setActiveTab('ai');
-				openQuickSearch();
-				keyboardNavigation.requestSurfaceFocus('ai-search', 'as-mode-query');
-			},
-			focusFileAtlas: async () => {
-				await openFileAtlas();
-				keyboardNavigation.requestSurfaceFocus('file-atlas', 'fa-file-rail');
-			},
-			focusChatStudio: async () => {
-				await appContext.viewManager.openChatStudio();
-				keyboardNavigation.requestSurfaceFocus('chat-studio', 'cs-left-navigation');
-			},
-			focusNextZone: () => {
-				keyboardNavigation.focusNextZone(false);
-			},
-			focusPreviousZone: () => {
-				keyboardNavigation.focusNextZone(true);
-			},
-			returnToLastPeakFocus: () => {
-				keyboardNavigation.returnToLastPeakFocus();
-			},
 			showKeyboardMap: () => {
 				keyboardNavigation.showKeyboardMap();
 			},

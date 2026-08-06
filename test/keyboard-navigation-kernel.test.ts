@@ -117,9 +117,9 @@ assert.ok(
 		entry.id === 'show-keyboard-map' && entry.binding === '?'),
 );
 assert.ok(
-	KEYBOARD_MAP_DEFINITIONS.some((entry) =>
-		entry.commandId === 'peak-focus-chat-studio' && entry.binding === ''),
-	'unbound global commands must not display invented default bindings',
+	KEYBOARD_MAP_DEFINITIONS.every((entry) =>
+		entry.commandId === undefined || entry.commandId === 'peak-show-keyboard-map'),
+	'local focus actions must not be exposed as global Obsidian commands',
 );
 
 console.log('keyboard-navigation-kernel: passed');

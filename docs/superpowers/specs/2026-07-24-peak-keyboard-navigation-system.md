@@ -173,46 +173,27 @@ IME composition
 - 所有全局监听挂到 surface 的 `ownerDocument` / `defaultView`，不能假设主 `window`；
 - macOS 显示 `⌘ / ⌥ / ⇧`，Windows/Linux 显示 `Ctrl / Alt / Shift`；
 - `event.key` 用于语义键，`event.code` 只用于明确的物理布局 preset；
-- Obsidian Hotkeys 是全局键位 source of truth；
+- 已注册的全局产品命令以 Obsidian Hotkeys 为键位 source of truth；`F6`、
+  `Shift+F6`、`?` 等 surface-local grammar 由 Peak 键盘配置与运行时拥有；
 - 命令注册不得覆盖已有绑定，preset 应先显示冲突并允许逐项跳过。
 
 ## 6. 进入工作区与键位发现
 
-### 6.1 必须注册的 Obsidian commands
+### 6.1 Obsidian commands 边界
 
-这些命令必须可在 Obsidian Command Palette 中搜索和绑定，但默认不抢占全局组合键：
+键盘系统只保留一个独立的全局入口：`Peak: Show keyboard map`。打开 Vault Search、
+File Atlas、Chat Studio、Composer 等 surface 时，复用 Command Palette 中已批准的
+产品入口，不再额外注册一组 `Focus …` 重复命令。
 
-- `Peak: Focus Vault Search`
-- `Peak: Focus AI Search`
-- `Peak: Focus File Atlas`
-- `Peak: Focus Composer View`
-- `Peak: Focus Chat Studio`
-- `Peak: Focus next zone`
-- `Peak: Focus previous zone`
-- `Peak: Return to last Peak focus`
-- `Peak: Show keyboard map`
+`Focus next zone`、`Focus previous zone` 和 `Return to last Peak focus` 是
+surface-local 导航动作，不进入 Obsidian Command Palette。`F6` / `Shift+F6`
+由当前 Peak surface 直接处理；用户无需先创建全局 hotkey 才能获得基本可达性。
 
-这些是稳定、owner-facing 的全局入口；feature-local 动作仍留在各自 surface 和上下文菜单中。
+### 6.2 Direct-focus preset 边界
 
-### 6.2 可选 Peak Workspace preset
-
-用户可以显式安装一组可撤销、冲突检查后的 direct-focus preset：
-
-| 工作流顺序 | macOS | Windows / Linux | Surface |
-|---:|---|---|---|
-| 1 | `⌥⌘1` | `Alt+Ctrl+1` | Vault Search |
-| 2 | `⌥⌘2` | `Alt+Ctrl+2` | AI Search |
-| 3 | `⌥⌘3` | `Alt+Ctrl+3` | File Atlas |
-| 4 | `⌥⌘4` | `Alt+Ctrl+4` | Composer View |
-| 5 | `⌥⌘5` | `Alt+Ctrl+5` | Chat Studio |
-
-排序表达“找 → 理解 → 看结构 → 编辑 → 对话”。此 preset：
-
-- 默认关闭；
-- 安装前列出 Obsidian/OS 冲突；
-- 可以只安装部分；
-- 后续在 Obsidian Hotkeys 中正常编辑；
-- 不作为基本可达性的依赖。
+不提供基于一组全局 `Focus …` commands 的 direct-focus preset。若未来要恢复
+跨 surface 数字键 preset，必须重新经过 Command Palette owner 审批，并明确接受
+“可在 Obsidian Hotkeys 中绑定”必然意味着“同时出现在 Command Palette”这一产品代价。
 
 ### 6.3 Searchable keyboard map
 
@@ -223,7 +204,8 @@ IME composition
 - 显示当前实际绑定，不显示假定默认；
 - 区分 Navigation、Action、Editing、Surface-specific；
 - 标出冲突、未绑定和仅在何种上下文生效；
-- 每一行可以跳到 Obsidian Hotkeys 对应 command；
+- 只有实际注册为全局 command 的行可以跳到 Obsidian Hotkeys；surface-local
+  grammar 直接显示 Peak 当前绑定；
 - `Escape` 关闭并恢复原焦点。
 
 ### 6.4 渐进学习

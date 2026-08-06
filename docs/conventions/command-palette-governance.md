@@ -19,15 +19,25 @@ Obsidian Command Palette 是稳定的产品级全局导航，不是功能开发�
 
 ## Approved Production Surface
 
-当前 owner-approved Command Palette 只有以下七项，顺序也属于产品清单：
+当前 owner-approved Command Palette 只有以下十一项，顺序也属于产品清单：
 
-1. `Settings`
-2. `Setup Wizard`
-3. `Quick Search`
-4. `Open File Atlas`
-5. `Usage Dashboard`
-6. `Open Chat Studio`
-7. `Open document in Peak Composer`
+1. `Open Peak Command Center`
+2. `Open AI Control Center`
+3. `Open My Content`
+4. `Settings`
+5. `Setup Wizard`
+6. `Quick Search`
+7. `Open File Atlas`
+8. `Usage Dashboard`
+9. `Open Chat Studio`
+10. `Open document in Peak Composer`
+11. `Show keyboard map`
+
+`Show keyboard map` 是唯一批准的键盘帮助入口。`Focus Vault Search`、
+`Focus AI Search`、`Focus File Atlas`、`Focus Chat Studio`、`Focus next zone`、
+`Focus previous zone` 和 `Return to last Peak focus` 属于 surface-local 导航动作，
+不得注册为全局 Obsidian command。`F6`、`Shift+F6` 和 `?` 由 Peak surface 的
+键盘运行时直接处理，不依赖这些全局命令。
 
 代码唯一真值是：
 
@@ -46,6 +56,7 @@ Obsidian Command Palette 是稳定的产品级全局导航，不是功能开发�
 - 文档局部动作放在 active-note toolbar、context menu、slash menu 或 Composer action。
 - Maintenance 放在 `Settings → Advanced → Maintenance`。
 - Debug / QA 通过测试、fixture script、development-only harness 或明确的非生产入口调用。
+- surface-local 键盘导航由所属 surface 直接处理，不为改键便利重复注册全局命令。
 - 用户可发现性不足时，先修所属 surface 的导航，不要直接用 Command Palette 补洞。
 
 ### 临时入口必须同时定义退场

@@ -25,18 +25,11 @@ import {
 	COMMAND_CENTER_MANIFEST,
 	DOCUMENT_COMPOSER_MANIFEST,
 	FILE_ATLAS_MANIFEST,
-	FOCUS_AI_SEARCH_MANIFEST,
-	FOCUS_CHAT_STUDIO_MANIFEST,
-	FOCUS_FILE_ATLAS_MANIFEST,
-	FOCUS_NEXT_ZONE_MANIFEST,
-	FOCUS_PREVIOUS_ZONE_MANIFEST,
-	FOCUS_VAULT_SEARCH_MANIFEST,
 	HARNESS_WIZARD_MANIFEST,
 	MY_CONTENT_MANIFEST,
 	QUICK_SEARCH_MANIFEST,
 	SETTINGS_MODAL_MANIFEST,
 	SHOW_KEYBOARD_MAP_MANIFEST,
-	RETURN_LAST_FOCUS_MANIFEST,
 	USAGE_DASHBOARD_MANIFEST,
 } from './manifests';
 
@@ -76,13 +69,6 @@ export interface PaletteCommandActions {
 	readonly openUsageDashboard: () => void | Promise<void>;
 	readonly openChatStudio: () => void | Promise<void>;
 	readonly openDocumentComposer: () => void | Promise<void>;
-	readonly focusVaultSearch: () => void | Promise<void>;
-	readonly focusAISearch: () => void | Promise<void>;
-	readonly focusFileAtlas: () => void | Promise<void>;
-	readonly focusChatStudio: () => void | Promise<void>;
-	readonly focusNextZone: () => void | Promise<void>;
-	readonly focusPreviousZone: () => void | Promise<void>;
-	readonly returnToLastPeakFocus: () => void | Promise<void>;
 	readonly showKeyboardMap: () => void | Promise<void>;
 }
 
@@ -182,62 +168,6 @@ export function composeCommandGatewayBindings(
 			manifest: DOCUMENT_COMPOSER_MANIFEST,
 			compiledSkill: SURFACE_OPEN_SKILL,
 			execute: surfaceOpenStrategy(actions.openDocumentComposer),
-			trigger: 'manual',
-		},
-		{
-			commandId: 'peak-focus-vault-search',
-			commandLabel: 'Focus Vault Search',
-			manifest: FOCUS_VAULT_SEARCH_MANIFEST,
-			compiledSkill: KEYBOARD_NAVIGATION_SKILL,
-			execute: surfaceOpenStrategy(actions.focusVaultSearch),
-			trigger: 'manual',
-		},
-		{
-			commandId: 'peak-focus-ai-search',
-			commandLabel: 'Focus AI Search',
-			manifest: FOCUS_AI_SEARCH_MANIFEST,
-			compiledSkill: KEYBOARD_NAVIGATION_SKILL,
-			execute: surfaceOpenStrategy(actions.focusAISearch),
-			trigger: 'manual',
-		},
-		{
-			commandId: 'peak-focus-file-atlas',
-			commandLabel: 'Focus File Atlas',
-			manifest: FOCUS_FILE_ATLAS_MANIFEST,
-			compiledSkill: KEYBOARD_NAVIGATION_SKILL,
-			execute: surfaceOpenStrategy(actions.focusFileAtlas),
-			trigger: 'manual',
-		},
-		{
-			commandId: 'peak-focus-chat-studio',
-			commandLabel: 'Focus Chat Studio',
-			manifest: FOCUS_CHAT_STUDIO_MANIFEST,
-			compiledSkill: KEYBOARD_NAVIGATION_SKILL,
-			execute: surfaceOpenStrategy(actions.focusChatStudio),
-			trigger: 'manual',
-		},
-		{
-			commandId: 'peak-focus-next-zone',
-			commandLabel: 'Focus next zone',
-			manifest: FOCUS_NEXT_ZONE_MANIFEST,
-			compiledSkill: KEYBOARD_NAVIGATION_SKILL,
-			execute: surfaceOpenStrategy(actions.focusNextZone),
-			trigger: 'manual',
-		},
-		{
-			commandId: 'peak-focus-previous-zone',
-			commandLabel: 'Focus previous zone',
-			manifest: FOCUS_PREVIOUS_ZONE_MANIFEST,
-			compiledSkill: KEYBOARD_NAVIGATION_SKILL,
-			execute: surfaceOpenStrategy(actions.focusPreviousZone),
-			trigger: 'manual',
-		},
-		{
-			commandId: 'peak-return-last-focus',
-			commandLabel: 'Return to last Peak focus',
-			manifest: RETURN_LAST_FOCUS_MANIFEST,
-			compiledSkill: KEYBOARD_NAVIGATION_SKILL,
-			execute: surfaceOpenStrategy(actions.returnToLastPeakFocus),
 			trigger: 'manual',
 		},
 		{

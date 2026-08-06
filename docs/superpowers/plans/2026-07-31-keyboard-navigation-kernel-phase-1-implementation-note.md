@@ -21,10 +21,11 @@ Phase 1 delivers:
 - LIFO Escape layers with trigger restoration for mode/filter menus, the
   keyboard map, and the narrow Chat Studio drawer;
 - IME and editor-first guards;
-- a searchable, context-filtered keyboard map showing current Obsidian command
-  bindings, conflicts, and unbound commands;
-- stable Command Palette entry points for the four phase-1 surfaces, next /
-  previous zone, last focus, and the keyboard map;
+- a searchable, context-filtered keyboard map showing fixed surface-local
+  grammar plus the current Obsidian binding and conflicts for its global entry;
+- one stable Command Palette entry for the keyboard map; direct surface focus,
+  next / previous zone, and last-focus restoration stay outside the global
+  command surface;
 - owner-document-aware listeners and focus operations for detached windows.
 
 ## 2. Surface migration
@@ -32,8 +33,8 @@ Phase 1 delivers:
 ### Vault Search
 
 `Tab` no longer switches Vault Search and AI Search. It follows the normal
-component order. Surface switching remains available from the Search tablist,
-Obsidian commands, and the keyboard map. Results now expose one roving tab stop;
+component order. Surface switching remains available from the Search tablist
+and approved product-open commands. Results now expose one roving tab stop;
 arrow keys move rows, `Enter` opens, `Cmd/Ctrl+Enter` opens a new tab, `Space`
 selects, and `ArrowRight` opens the inspector.
 
