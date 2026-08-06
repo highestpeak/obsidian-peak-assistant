@@ -118,16 +118,17 @@ export const DiscoveredSection: React.FC<DiscoveredSectionProps> = ({
 							</span>
 
 							<Button
-								variant="ghost"
+								variant="unstyled"
 								size="xs"
-								className="pktw-shadow-none !pktw-w-5 !pktw-h-5 pktw-ml-auto pktw-shrink-0"
+								className="pk-inspector-mini-icon-button pktw-ml-auto pktw-shrink-0"
 								title="Inspect in panel"
+								aria-label={`Inspect ${item.label} in panel`}
 								onClick={(e) => {
 									e.stopPropagation();
 									onInspectInPanel(item.path);
 								}}
 							>
-								<Eye className="pktw-w-3 pktw-h-3 pktw-text-pk-foreground-muted" />
+								<Eye className="pktw-w-3 pktw-h-3" />
 							</Button>
 						</div>
 
@@ -142,9 +143,9 @@ export const DiscoveredSection: React.FC<DiscoveredSectionProps> = ({
 
 			{!expanded && remaining > 0 && (
 				<Button
-					variant="ghost"
+					variant="unstyled"
 					size="xs"
-					className="pktw-shadow-none pktw-h-5 pktw-px-0 pktw-text-pk-xs pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground-muted pktw-self-start"
+					className="pk-inspector-text-button pktw-self-start"
 					onClick={() => setExpanded(true)}
 				>
 					See {remaining} more ↓

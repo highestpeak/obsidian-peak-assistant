@@ -117,6 +117,11 @@ export interface CommandCenterVaultTargetMembership extends Omit<CommandCenterCa
 	path: string;
 }
 
+export interface CommandCenterItemMembership extends CommandCenterCatalogEntryMembership {
+	itemId: string;
+	sourceGroupId: string;
+}
+
 export interface CommandCenterRuntimePort {
 	getConfig(): CommandCenterBoardConfig;
 	subscribe(listener: () => void): () => void;
@@ -132,6 +137,10 @@ export interface CommandCenterRuntimePort {
 	getCatalogEntryMembership(entry: CommandCenterCatalogEntry): CommandCenterCatalogEntryMembership;
 	setCatalogEntryGroup(entry: CommandCenterCatalogEntry, groupId: string, included: boolean): Promise<CommandCenterCatalogEntryMembership>;
 	setCatalogEntryHome(entry: CommandCenterCatalogEntry, included: boolean): Promise<CommandCenterCatalogEntryMembership>;
+	getItemMembership(itemId: string): CommandCenterItemMembership | null;
+	setItemGroup(itemId: string, groupId: string, included: boolean): Promise<CommandCenterItemMembership | null>;
+	setItemHome(itemId: string, included: boolean): Promise<CommandCenterItemMembership | null>;
+	moveItemToGroup(itemId: string, targetGroupId: string): Promise<CommandCenterItemMembership | null>;
 	getVaultTargetMembership(path: string): CommandCenterVaultTargetMembership;
 	setVaultTargetGroup(path: string, groupId: string, included: boolean): Promise<CommandCenterVaultTargetMembership>;
 	setVaultTargetHome(path: string, included: boolean): Promise<CommandCenterVaultTargetMembership>;

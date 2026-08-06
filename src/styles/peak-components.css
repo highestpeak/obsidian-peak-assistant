@@ -400,6 +400,127 @@
   color: var(--pk-text-primary);
 }
 
+/* Vault Search Inspector toolbar. Icons inherit currentColor so hover and
+   active states cannot leave a muted glyph on an accent background. */
+:is(.pktw-root, .peak-design-root) .pk-inspector-icon-button[data-active="true"] {
+  background: var(--pk-accent-tint) !important;
+  color: var(--pk-accent-text) !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-inspector-icon-button[data-active="true"]:hover {
+  background: var(--pk-accent-soft) !important;
+  color: var(--pk-accent-text) !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-inspector-icon-button > svg {
+  color: currentColor !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-inspector-mini-icon-button {
+  width: 20px !important;
+  min-width: 20px !important;
+  max-width: 20px !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  max-height: 20px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: var(--pk-radius-sm) !important;
+  background: transparent !important;
+  color: var(--pk-text-tertiary);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-inspector-mini-icon-button:hover,
+:is(.pktw-root, .peak-design-root) .pk-inspector-mini-icon-button:focus-visible {
+  background: var(--pk-surface-sunken) !important;
+  color: var(--pk-text-primary) !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-inspector-mini-icon-button > svg {
+  color: currentColor !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-inspector-text-button {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 22px !important;
+  min-height: 22px !important;
+  max-height: 22px !important;
+  padding: 0 4px !important;
+  border: 0 !important;
+  border-radius: var(--pk-radius-sm) !important;
+  background: transparent !important;
+  color: var(--pk-text-tertiary) !important;
+  font-size: var(--pk-text-xs);
+}
+
+:is(.pktw-root, .peak-design-root) .pk-inspector-text-button:hover,
+:is(.pktw-root, .peak-design-root) .pk-inspector-text-button:focus-visible {
+  background: var(--pk-surface-sunken) !important;
+  color: var(--pk-text-primary) !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-inspector-row-button {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  padding: 8px !important;
+  border: 0 !important;
+  border-radius: var(--pk-radius-md) !important;
+  background: transparent !important;
+  color: var(--pk-text-primary) !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-inspector-row-button:hover,
+:is(.pktw-root, .peak-design-root) .pk-inspector-row-button:focus-visible {
+  background: var(--pk-surface-sunken) !important;
+  color: var(--pk-text-primary) !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-inspector-action-button {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  padding: 0 10px !important;
+  border: 1px solid var(--pk-border) !important;
+  border-radius: var(--pk-radius-md) !important;
+  background: var(--pk-surface) !important;
+  color: var(--pk-text-primary) !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-inspector-action-button:hover,
+:is(.pktw-root, .peak-design-root) .pk-inspector-action-button:focus-visible {
+  background: var(--pk-surface-sunken) !important;
+  border-color: var(--pk-border-strong) !important;
+  color: var(--pk-text-primary) !important;
+}
+
+:is(.pktw-root, .peak-design-root) .pk-inspector-action-button > svg {
+  color: var(--pk-accent) !important;
+}
+
+.pk-inspector-local-portal {
+  position: absolute;
+  z-index: var(--pk-z-popover);
+  inset: 0;
+  pointer-events: none;
+}
+
+.pk-inspector-local-portal > .peak-design-root {
+  pointer-events: none;
+}
+
+.pk-inspector-local-portal .pk-popover {
+  pointer-events: auto;
+}
+
 .pktw-root .pk-icon-btn > svg,
 .peak-design-root .pk-icon-btn > svg,
 :is(.pktw-root, .peak-design-root) .pk-icon-btn .icon {

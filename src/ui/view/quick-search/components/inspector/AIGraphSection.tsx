@@ -74,9 +74,9 @@ export const AIGraphSection: React.FC<AIGraphSectionProps> = ({
 			{rows.map((row) => (
 				<Button
 					key={row.graphId}
-					variant="ghost"
+					variant="unstyled"
 					type="button"
-					className="pktw-h-auto pktw-min-h-0 pktw-w-full pktw-flex-col pktw-items-start pktw-gap-0.5 pktw-p-2"
+					className="pk-inspector-row-button pktw-flex-col pktw-items-start pktw-gap-0.5"
 					onClick={() => openRow(row)}
 				>
 					<span className="pktw-text-xs pktw-font-medium">{row.title}</span>
@@ -87,12 +87,12 @@ export const AIGraphSection: React.FC<AIGraphSectionProps> = ({
 				</Button>
 			))}
 			<Button
-				variant="outline"
+				variant="unstyled"
 				size="sm"
-				className="pktw-shadow-none pktw-w-full pktw-justify-start pktw-gap-1.5 pktw-bg-pk-background"
+				className="pk-inspector-action-button pktw-justify-start pktw-gap-1.5"
 				onClick={createForCurrentSearch}
 			>
-				<Network className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" />
+				<Network className="pktw-w-3.5 pktw-h-3.5" />
 				Create AI Graph from this search
 			</Button>
 		</div>

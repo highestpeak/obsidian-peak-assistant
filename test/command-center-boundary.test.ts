@@ -40,6 +40,8 @@ const customize = readFileSync('src/ui/view/command-center/CommandCenterCustomiz
 const launcher = readFileSync('src/ui/view/command-center/CommandCenterLauncher.tsx', 'utf8');
 const globalResults = readFileSync('src/ui/view/command-center/CommandCenterGlobalResults.tsx', 'utf8');
 const viewResults = readFileSync('src/ui/view/command-center/CommandCenterViewResults.tsx', 'utf8');
+const catalogPin = readFileSync('src/ui/view/command-center/CommandCenterCatalogPinControl.tsx', 'utf8');
+const itemMenu = readFileSync('src/ui/view/command-center/CommandCenterItemMenu.tsx', 'utf8');
 const iconBrowser = readFileSync('src/ui/view/command-center/IconBrowser.tsx', 'utf8');
 const adapter = readFileSync('src/app/command-center/ObsidianCommandCenterAdapter.ts', 'utf8');
 assert.match(modal, /runtime: CommandCenterRuntimePort/);
@@ -85,6 +87,18 @@ assert.match(launcher, /draggable=\{!isHome\}/, 'Home must be fixed while ordina
 assert.match(launcher, /if \(scope === 'home'\) return \[\{ group: HOME_GROUP, items \}\]/, 'Home must render one independent mixed layout instead of aggregating groups');
 assert.doesNotMatch(launcher, /scope === 'all'/, 'launcher must not retain the old All aggregation branch');
 assert.match(launcher, /runtime\.moveHomeItem\(draggedId, itemId, placement\)/, 'direct Home drag must persist through its independent order');
+assert.match(launcher, /onContextMenu=\{openItemMenu\}/, 'configured tiles must expose direct right-click membership management');
+assert.match(itemMenu, /pk-cc-item-menu-trigger/, 'configured tiles must expose a discoverable hover and focus menu trigger');
+assert.match(launcher, /className="pk-cc-local-portal"/, 'launcher must own a modal-local portal');
+assert.match(itemMenu, /container=\{portalContainer\}/, 'item menus must remain inside the active Obsidian modal');
+assert.match(itemMenu, /Add to tab/, 'item menu must expose additive multi-tab membership');
+assert.match(itemMenu, /Move to tab/, 'item menu must expose direct transfer between tabs');
+assert.match(itemMenu, /Remove from/, 'item menu must remove only the current membership');
+assert.match(itemMenu, /Show on Home/, 'item menu must manage Home as an independent projection');
+assert.match(launcher, /event\.shiftKey && event\.key === 'F10'/, 'Shift+F10 must open the active item menu instead of being documentation-only');
+assert.match(launcher, /new MouseEventCtor\('contextmenu'/, 'keyboard context-menu access must use the same item path as right click');
+assert.match(itemMenu, /Shift\+F10/, 'item menu accessibility copy must disclose the keyboard context-menu shortcut');
+assert.doesNotMatch(itemMenu, /Delete command/, 'Command Center never owns or deletes the underlying command');
 assert.match(launcher, /runtime\.getCatalog\(query, 'commands'\)/, 'launcher search must query the complete command-only catalog');
 assert.match(launcher, /runtime\.getCatalog\(query, 'workspaces-views'\)/, 'launcher search must query the destination catalog separately for stable Peak views');
 assert.doesNotMatch(launcher, /runtime\.getCatalog\(query, 'all'\)/, 'launcher fallback must never expand into documents or other catalog scopes');
@@ -92,6 +106,8 @@ assert.match(launcher, /runtime\.invokeCatalogEntry\(entry\)/, 'global fallback 
 assert.match(globalResults, /Show all \{total\} commands/, 'global command preview must expand in place');
 assert.match(viewResults, />Peak views</, 'launcher must expose a dedicated Peak view result section without flattening curated groups into commands');
 assert.match(viewResults, /CommandCenterCatalogPinControl/, 'Peak view results must let users choose their Command Center destinations in place');
+assert.match(viewResults, /portalContainer={portalContainer}/, 'Peak view pin controls must receive the launcher-local portal');
+assert.match(catalogPin, /container={portalContainer}/, 'Peak view pin menus must remain inside the active Obsidian modal');
 assert.match(launcher, /className="pk-cc-tab-slot"/, 'Home and group tabs must share one rail primitive while retaining distinct drag behavior');
 assert.match(launcher, /setDragImage\(ghost/, 'direct drag must provide a dedicated visual ghost');
 assert.match(launcher, /resolveAutoCommandCenterDisplayMode/, 'Auto display must measure and resolve the rendered label');

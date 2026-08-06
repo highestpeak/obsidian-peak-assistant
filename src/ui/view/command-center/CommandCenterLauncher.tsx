@@ -9,6 +9,7 @@ import {
 	prepareCommandCenterGlobalMatches,
 	prepareCommandCenterViewMatches,
 	resolveAutoCommandCenterDisplayMode,
+	type CommandCenterBoardConfig,
 	type CommandCenterCatalogEntry,
 	type CommandCenterDropPlacement,
 	type CommandCenterGroup,
@@ -25,6 +26,7 @@ import {
 	commandCenterCatalogFocusId,
 } from './CommandCenterGlobalResults';
 import { CommandCenterIcon } from './CommandCenterIcon';
+import { CommandCenterItemMenu } from './CommandCenterItemMenu';
 import { CommandCenterViewResults } from './CommandCenterViewResults';
 
 export interface CommandCenterLauncherProps {
@@ -119,6 +121,10 @@ function dropClassName(dropTarget: DropTarget | null, item: ResolvedCommandCente
 }
 
 function ProjectionSection({
+	runtime,
+	config,
+	scope,
+	portalContainer,
 	group,
 	items,
 	resolvedModes,
@@ -135,7 +141,12 @@ function ProjectionSection({
 	onDragOverGrid,
 	onDrop,
 	onDragEnd,
+	onCustomize,
 }: {
+	runtime: CommandCenterRuntimePort;
+	config: CommandCenterBoardConfig;
+	scope: CommandCenterTabId;
+	portalContainer: HTMLElement | null;
 	group: CommandCenterGroup;
 	items: ResolvedCommandCenterItem[];
 	resolvedModes: Map<string, ResolvedCommandCenterDisplayMode>;
@@ -152,7 +163,9 @@ function ProjectionSection({
 	onDragOverGrid: (event: React.DragEvent<HTMLDivElement>, groupId: string) => void;
 	onDrop: (event: React.DragEvent<HTMLDivElement>) => void;
 	onDragEnd: () => void;
+	onCustomize: () => void;
 }): React.ReactElement | null {
+	const [openMenuItemId, setOpenMenuItemId] = useState<string | null>(null);
 	if (items.length === 0 && !draggedId) return null;
 	return (
 		<div className="pk-cc-section" data-group-id={group.id}>
@@ -166,6 +179,12 @@ function ProjectionSection({
 			>
 				{items.map((item) => {
 					const mode = resolvedModes.get(item.id) ?? 'full';
+					const openItemMenu = (event: React.MouseEvent<HTMLDivElement>): void => {
+						event.preventDefault();
+						event.stopPropagation();
+						onFocus(item.id);
+						setOpenMenuItemId(item.id);
+					};
 					return (
 						<motion.div
 							key={item.id}
@@ -181,8 +200,20 @@ function ProjectionSection({
 							onDragOver={(event) => onDragOverItem(event, item, mode)}
 							onDrop={onDrop}
 							onDragEnd={onDragEnd}
+							onContextMenu={openItemMenu}
 						>
 							<ActionButton item={item} mode={mode} active={item.id === activeId} onFocus={() => onFocus(item.id)} onInvoke={() => onInvoke(item)} />
+							<CommandCenterItemMenu
+								runtime={runtime}
+								config={config}
+								item={item}
+								scope={scope}
+								portalContainer={portalContainer}
+								open={openMenuItemId === item.id}
+								onOpenChange={(nextOpen) => setOpenMenuItemId(nextOpen ? item.id : null)}
+								onInvoke={() => onInvoke(item)}
+								onCustomize={onCustomize}
+							/>
 						</motion.div>
 					);
 				})}
@@ -210,6 +241,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 	const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
 	const [draggedTabId, setDraggedTabId] = useState<CommandCenterTabId | null>(null);
 	const [tabDropTarget, setTabDropTarget] = useState<TabDropTarget | null>(null);
+	const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
 	const searchActive = Boolean(query.trim());
 	const inputRef = useRef<HTMLInputElement>(null);
 	const rootRef = useRef<HTMLDivElement>(null);
@@ -520,6 +552,22 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 			onClose();
 			return;
 		}
+		if ((event.shiftKey && event.key === 'F10') || event.key === 'ContextMenu') {
+			if (!activeId) return;
+			const OwnerCSS = rootRef.current?.ownerDocument.defaultView?.CSS;
+			const escaped = OwnerCSS?.escape ? OwnerCSS.escape(activeId) : activeId.replace(/"/g, '\\"');
+			const slot = rootRef.current?.querySelector<HTMLElement>(`[data-item-id="${escaped}"]`);
+			const MouseEventCtor = slot?.ownerDocument.defaultView?.MouseEvent;
+			if (!slot || !MouseEventCtor) return;
+			event.preventDefault();
+			event.stopPropagation();
+			slot.dispatchEvent(new MouseEventCtor('contextmenu', {
+				bubbles: true,
+				cancelable: true,
+				view: slot.ownerDocument.defaultView ?? undefined,
+			}));
+			return;
+		}
 		if (event.key === 'Enter') {
 			if (searchLoading) {
 				event.preventDefault();
@@ -567,6 +615,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 
 	return (
 		<div className="pk-cc-launcher" ref={rootRef} onKeyDown={handleKeyDown} tabIndex={-1}>
+			<div ref={setPortalContainer} className="pk-cc-local-portal" />
 			<div className="pk-cc-search-row">
 				<Search size={16} aria-hidden="true" />
 				<input ref={inputRef} value={query} onChange={(event) => changeQuery(event.target.value)} placeholder="Search views, commands, and your Command Center" aria-label="Search configured items, Peak views, and all commands" autoFocus />
@@ -612,6 +661,10 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 				{sections.map(({ group, items: groupItems }) => (
 					<ProjectionSection
 						key={group.id}
+						runtime={runtime}
+						config={config}
+						scope={scope}
+						portalContainer={portalContainer}
 						group={group}
 						items={groupItems}
 						resolvedModes={resolvedModes}
@@ -628,6 +681,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 						onDragOverGrid={handleDragOverGrid}
 						onDrop={handleDrop}
 						onDragEnd={clearDragState}
+						onCustomize={onCustomize}
 					/>
 				))}
 				{searchActive ? (
@@ -635,6 +689,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 						runtime={runtime}
 						entries={viewMatches}
 						activeId={activeId}
+						portalContainer={portalContainer}
 						onFocus={setActiveId}
 						onInvoke={(entry) => void invokeCatalogEntry(entry)}
 					/>
@@ -660,7 +715,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 			</div>
 
 			<div className="pk-cc-footer">
-				<span className="pk-cc-footer__hint"><kbd>↑↓←→</kbd> move <span className="pk-cc-footer__drag"><GripVertical size={12} /> drag to reorder</span> <kbd>↵</kbd> open <kbd>esc</kbd> close</span>
+				<span className="pk-cc-footer__hint"><kbd>↑↓←→</kbd> move <span className="pk-cc-footer__drag"><GripVertical size={12} /> drag to reorder</span> <kbd>⇧F10</kbd> manage <kbd>↵</kbd> open <kbd>esc</kbd> close</span>
 				<span className="pk-cc-footer__scope">{activeItem?.fullLabel ?? activeCatalogEntry?.label ?? (searchActive ? 'Clear search to reorder' : '')}</span>
 				<Button variant="ghost" size="sm" className="pk-cc-footer__action" onClick={onCustomize}><SlidersHorizontal size={14} /><span>Customize</span></Button>
 			</div>

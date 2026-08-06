@@ -16,9 +16,11 @@ import {
 export function CommandCenterCatalogPinControl({
 	runtime,
 	entry,
+	portalContainer,
 }: {
 	runtime: CommandCenterRuntimePort;
 	entry: CommandCenterCatalogEntry;
+	portalContainer: HTMLElement | null;
 }): React.ReactElement {
 	const [membership, setMembership] = useState<CommandCenterCatalogEntryMembership>(() =>
 		runtime.getCatalogEntryMembership(entry)
@@ -73,6 +75,7 @@ export function CommandCenterCatalogPinControl({
 				</IconButton>
 			</PopoverTrigger>
 			<PopoverContent
+				container={portalContainer}
 				align="end"
 				side="right"
 				sideOffset={6}

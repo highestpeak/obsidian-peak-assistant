@@ -9,12 +9,14 @@ export function CommandCenterViewResults({
 	runtime,
 	entries,
 	activeId,
+	portalContainer,
 	onFocus,
 	onInvoke,
 }: {
 	runtime: CommandCenterRuntimePort;
 	entries: CommandCenterCatalogEntry[];
 	activeId: string | null;
+	portalContainer: HTMLElement | null;
 	onFocus: (id: string) => void;
 	onInvoke: (entry: CommandCenterCatalogEntry) => void;
 }): React.ReactElement | null {
@@ -45,7 +47,7 @@ export function CommandCenterViewResults({
 									<span className="pk-cc-global-result__source">{entry.sourceLabel}</span>
 								</span>
 							</Button>
-							<CommandCenterCatalogPinControl runtime={runtime} entry={entry} />
+							<CommandCenterCatalogPinControl runtime={runtime} entry={entry} portalContainer={portalContainer} />
 						</div>
 					);
 				})}

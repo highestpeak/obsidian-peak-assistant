@@ -81,6 +81,7 @@ export const InspectorSidePanel: React.FC<InspectorSidePanelProps> = ({
 	currentPath, searchQuery, onClose, showSearchSnippet = true, onOpenDocument, onInspectInPanel,
 	onOpenFileAtlas, showCommandCenterPin = false,
 }) => {
+	const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
 	if (!currentPath) {
 		return (
 			<div className="pktw-flex pktw-flex-col pktw-h-full pktw-items-center pktw-justify-center pktw-text-sm pktw-text-pk-foreground-muted pktw-p-4">
@@ -92,7 +93,8 @@ export const InspectorSidePanel: React.FC<InspectorSidePanelProps> = ({
 	const title = currentPath.split('/').pop()?.replace(/\.md$/, '') ?? currentPath;
 
 	return (
-		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-min-h-0">
+		<div className="pktw-relative pktw-flex pktw-flex-col pktw-h-full pktw-min-h-0">
+			<div ref={setPortalContainer} className="pk-inspector-local-portal" />
 			{/* Sticky header */}
 			<div className="pktw-sticky pktw-top-0 pktw-z-10 pktw-flex pktw-items-center pktw-gap-2 pktw-px-4 pktw-py-2.5 pktw-bg-pk-background pktw-border-b pktw-border-pk-border">
 				<FileText className="pktw-w-4 pktw-h-4 pktw-text-pk-accent" />
@@ -102,27 +104,28 @@ export const InspectorSidePanel: React.FC<InspectorSidePanelProps> = ({
 				>
 					{title}
 				</span>
-				{showCommandCenterPin ? <CommandCenterPinControl path={currentPath} /> : null}
+				{showCommandCenterPin ? <CommandCenterPinControl path={currentPath} portalContainer={portalContainer} /> : null}
 				<Button
-					variant="ghost"
+					variant="unstyled"
 					size="icon"
 					geometry="toolbar-icon"
 					title="Open in File Atlas"
 					aria-label="Open in File Atlas"
-					className="pktw-shadow-none"
+					className="pk-icon-btn pk-inspector-icon-button pktw-shadow-none"
 					onClick={() => onOpenFileAtlas(currentPath)}
 				>
-					<Map className="pktw-h-4 pktw-w-4 pktw-text-pk-foreground-muted" />
+					<Map className="pktw-h-4 pktw-w-4" />
 				</Button>
 				<Button
-					variant="ghost"
+					variant="unstyled"
 					size="icon"
 					geometry="toolbar-icon"
 					title="Close inspector"
-					className="pktw-shadow-none"
+					aria-label="Close inspector"
+					className="pk-icon-btn pk-inspector-icon-button pktw-shadow-none"
 					onClick={onClose}
 				>
-					<X className="pktw-h-4 pktw-w-4 pktw-text-pk-foreground-muted" />
+					<X className="pktw-h-4 pktw-w-4" />
 				</Button>
 			</div>
 

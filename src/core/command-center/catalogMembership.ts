@@ -5,7 +5,14 @@ import type {
 	CommandCenterBoardConfig,
 	CommandCenterCatalogEntry,
 	CommandCenterCatalogEntryMembership,
+	CommandCenterGroup,
+	CommandCenterItemMembership,
 } from './types';
+
+interface LocatedItem {
+	group: CommandCenterGroup;
+	item: CommandCenterActionItem;
+}
 
 function defaultGroupId(config: CommandCenterBoardConfig): string | null {
 	return config.groups.find((group) => group.id === 'pinned')?.id
@@ -32,6 +39,22 @@ function createEntryItem(entry: CommandCenterCatalogEntry, itemId: string, order
 		pinnedToHome: false,
 		order,
 	};
+}
+
+function findItem(config: CommandCenterBoardConfig, itemId: string): LocatedItem | null {
+	for (const group of config.groups) {
+		const item = group.actions.find((candidate) => candidate.id === itemId);
+		if (item) return { group, item };
+	}
+	return null;
+}
+
+function matchesAction(item: CommandCenterActionItem, actionKey: string): boolean {
+	return commandCenterActionKey(item.action) === actionKey;
+}
+
+function findActionItems(config: CommandCenterBoardConfig, actionKey: string): CommandCenterActionItem[] {
+	return config.groups.flatMap((group) => group.actions.filter((item) => matchesAction(item, actionKey)));
 }
 
 export function normalizeCommandCenterMemberships(
@@ -146,6 +169,124 @@ export function setCommandCenterCatalogEntryHome(
 			order: existing?.order ?? next.home.layout.length,
 		});
 	}
+	normalizeCommandCenterMemberships(next);
+	return next;
+}
+
+export function getCommandCenterItemMembership(
+	config: CommandCenterBoardConfig,
+	itemId: string,
+): CommandCenterItemMembership | null {
+	const located = findItem(config, itemId);
+	if (!located) return null;
+	const key = commandCenterActionKey(located.item.action);
+	const homeIds = new Set(config.home.layout.map((item) => item.sourceItemId));
+	const items = findActionItems(config, key);
+	return {
+		itemId,
+		sourceGroupId: located.group.id,
+		key,
+		defaultGroupId: defaultGroupId(config),
+		configured: true,
+		shownOnHome: items.some((item) => homeIds.has(item.id)),
+		groups: config.groups
+			.slice()
+			.sort((left, right) => left.order - right.order)
+			.map((group) => ({
+				id: group.id,
+				label: group.label,
+				included: group.actions.some((item) => matchesAction(item, key)),
+			})),
+	};
+}
+
+export function setCommandCenterItemGroup(
+	config: CommandCenterBoardConfig,
+	itemId: string,
+	groupId: string,
+	included: boolean,
+	newItemId: string,
+): CommandCenterBoardConfig {
+	const next = cloneCommandCenterConfig(config);
+	const located = findItem(next, itemId);
+	const targetGroup = next.groups.find((group) => group.id === groupId);
+	if (!located || !targetGroup) return next;
+
+	const actionKey = commandCenterActionKey(located.item.action);
+	const matches = targetGroup.actions.filter((item) => matchesAction(item, actionKey));
+	const replacements = new Map<string, string>();
+
+	if (included && matches.length === 0) {
+		targetGroup.actions.push({
+			...located.item,
+			id: newItemId,
+			pinnedToHome: false,
+			order: targetGroup.actions.length,
+		});
+	}
+
+	if (included && matches.length > 1) {
+		const [survivor, ...duplicates] = matches;
+		for (const duplicate of duplicates) replacements.set(duplicate.id, survivor!.id);
+		const duplicateIds = new Set(duplicates.map((item) => item.id));
+		targetGroup.actions = targetGroup.actions.filter((item) => !duplicateIds.has(item.id));
+	}
+
+	if (!included && matches.length > 0) {
+		const removedIds = new Set(matches.map((item) => item.id));
+		targetGroup.actions = targetGroup.actions.filter((item) => !removedIds.has(item.id));
+		const fallback = findActionItems(next, actionKey)[0];
+		if (fallback) {
+			for (const removedId of removedIds) replacements.set(removedId, fallback.id);
+		}
+	}
+
+	normalizeCommandCenterMemberships(next, replacements);
+	return next;
+}
+
+export function setCommandCenterItemHome(
+	config: CommandCenterBoardConfig,
+	itemId: string,
+	included: boolean,
+): CommandCenterBoardConfig {
+	const next = cloneCommandCenterConfig(config);
+	const located = findItem(next, itemId);
+	if (!located) return next;
+	const actionKey = commandCenterActionKey(located.item.action);
+	const actionIds = new Set(findActionItems(next, actionKey).map((item) => item.id));
+	const existing = next.home.layout.find((item) => actionIds.has(item.sourceItemId));
+	next.home.layout = next.home.layout.filter((item) => !actionIds.has(item.sourceItemId));
+	if (included) {
+		next.home.layout.push({
+			sourceItemId: itemId,
+			display: existing?.display ?? 'auto',
+			order: existing?.order ?? next.home.layout.length,
+		});
+	}
+	normalizeCommandCenterMemberships(next);
+	return next;
+}
+
+export function moveCommandCenterItemToGroup(
+	config: CommandCenterBoardConfig,
+	itemId: string,
+	targetGroupId: string,
+): CommandCenterBoardConfig {
+	const next = cloneCommandCenterConfig(config);
+	const located = findItem(next, itemId);
+	const targetGroup = next.groups.find((group) => group.id === targetGroupId);
+	if (!located || !targetGroup || located.group.id === targetGroupId) return next;
+
+	const actionKey = commandCenterActionKey(located.item.action);
+	const existing = targetGroup.actions.find((item) => matchesAction(item, actionKey));
+	located.group.actions = located.group.actions.filter((item) => item.id !== itemId);
+	if (existing) {
+		normalizeCommandCenterMemberships(next, new Map([[itemId, existing.id]]));
+		return next;
+	}
+
+	targetGroup.actions.push({ ...located.item, order: targetGroup.actions.length });
 	normalizeCommandCenterMemberships(next);
 	return next;
 }

@@ -5,7 +5,9 @@ import {
 	commandCenterActionKey,
 	commandCenterCatalogScopeForAction,
 	getCommandCenterCatalogEntryMembership,
+	getCommandCenterItemMembership,
 	moveCommandCenterItem,
+	moveCommandCenterItemToGroup,
 	moveCommandCenterHomeItem,
 	moveCommandCenterTab,
 	normalizeCommandCenterBoardConfig,
@@ -15,10 +17,13 @@ import {
 	setCommandCenterVaultTargetHome,
 	setCommandCenterCatalogEntryGroup,
 	setCommandCenterCatalogEntryHome,
+	setCommandCenterItemGroup,
+	setCommandCenterItemHome,
 	type CommandCenterActionItem,
 	type CommandCenterBoardConfig,
 	type CommandCenterCatalogEntry,
 	type CommandCenterCatalogEntryMembership,
+	type CommandCenterItemMembership,
 	type CommandCenterCatalogScope,
 	type CommandCenterDropPlacement,
 	type CommandCenterRecentTarget,
@@ -280,6 +285,46 @@ export class CommandCenterRuntime implements CommandCenterRuntimePort {
 		return this.getCatalogEntryMembership(entry);
 	}
 
+	getItemMembership(itemId: string): CommandCenterItemMembership | null {
+		return getCommandCenterItemMembership(this.config, itemId);
+	}
+
+	async setItemGroup(
+		itemId: string,
+		groupId: string,
+		included: boolean,
+	): Promise<CommandCenterItemMembership | null> {
+		const before = this.getItemMembership(itemId);
+		if (!before) return null;
+		const next = setCommandCenterItemGroup(
+			this.config,
+			itemId,
+			groupId,
+			included,
+			this.createActionId(),
+		);
+		if (JSON.stringify(next) !== JSON.stringify(this.config)) await this.saveConfig(next);
+		return this.getItemMembership(itemId)
+			?? this.findMembershipByKey(before.key);
+	}
+
+	async setItemHome(itemId: string, included: boolean): Promise<CommandCenterItemMembership | null> {
+		const before = this.getItemMembership(itemId);
+		if (!before) return null;
+		const next = setCommandCenterItemHome(this.config, itemId, included);
+		if (JSON.stringify(next) !== JSON.stringify(this.config)) await this.saveConfig(next);
+		return this.getItemMembership(itemId);
+	}
+
+	async moveItemToGroup(itemId: string, targetGroupId: string): Promise<CommandCenterItemMembership | null> {
+		const before = this.getItemMembership(itemId);
+		if (!before) return null;
+		const next = moveCommandCenterItemToGroup(this.config, itemId, targetGroupId);
+		if (JSON.stringify(next) !== JSON.stringify(this.config)) await this.saveConfig(next);
+		return this.getItemMembership(itemId)
+			?? this.findMembershipByKey(before.key);
+	}
+
 	openLauncher(): void {
 		new CommandCenterModal(this.appContext, this, 'launcher').open();
 	}
@@ -301,5 +346,13 @@ export class CommandCenterRuntime implements CommandCenterRuntimePort {
 		const randomId = globalThis.crypto?.randomUUID?.()
 			?? `${Date.now().toString(36)}-${this.idSequence.toString(36)}`;
 		return `action-${randomId}`;
+	}
+
+	private findMembershipByKey(key: string): CommandCenterItemMembership | null {
+		for (const group of this.config.groups) {
+			const item = group.actions.find((candidate) => commandCenterActionKey(candidate.action) === key);
+			if (item) return this.getItemMembership(item.id);
+		}
+		return null;
 	}
 }

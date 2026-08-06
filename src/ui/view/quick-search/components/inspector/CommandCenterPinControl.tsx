@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Check, ChevronDown, House, Pin } from 'lucide-react';
+import { Check, House, Pin } from 'lucide-react';
 import type { CommandCenterVaultTargetMembership } from '@/core/command-center';
 import { Button } from '@/ui/component/shared-ui/button';
 import {
@@ -11,7 +11,13 @@ import {
 import { cn } from '@/ui/react/lib/utils';
 import { useQuickSearchHost } from '../../hooks/useQuickSearchHost';
 
-export function CommandCenterPinControl({ path }: { path: string }): React.ReactElement {
+export function CommandCenterPinControl({
+	path,
+	portalContainer,
+}: {
+	path: string;
+	portalContainer: HTMLElement | null;
+}): React.ReactElement {
 	const host = useQuickSearchHost();
 	const [membership, setMembership] = useState<CommandCenterVaultTargetMembership | null>(() =>
 		host.getCommandCenterDocumentMembership(path)
@@ -25,7 +31,7 @@ export function CommandCenterPinControl({ path }: { path: string }): React.React
 		setMembership(host.getCommandCenterDocumentMembership(path));
 		setOpen(false);
 		setSaving(false);
-	}, [host, path]);
+	}, [path]);
 
 	const refresh = (): void => {
 		setMembership(host.getCommandCenterDocumentMembership(path));
@@ -52,83 +58,81 @@ export function CommandCenterPinControl({ path }: { path: string }): React.React
 	if (!membership) {
 		return (
 			<Button
-				variant="ghost"
+				variant="unstyled"
 				size="icon"
 				geometry="toolbar-icon"
 				title="Peak Command Center is still loading"
 				aria-label="Peak Command Center is still loading"
-				className="pktw-shadow-none"
+				className="pk-icon-btn pk-inspector-icon-button pktw-shadow-none"
 				disabled
 			>
-				<Pin className="pktw-h-4 pktw-w-4 pktw-text-pk-foreground-muted" />
+				<Pin className="pktw-h-4 pktw-w-4" />
 			</Button>
 		);
 	}
 
 	const includedGroups = membership.groups.filter((group) => group.included);
-	const defaultGroup = membership.groups.find((group) => group.id === membership.defaultGroupId);
-	const title = membership.configured
-		? `In Command Center · ${includedGroups.map((group) => group.label).join(', ')}`
-		: `Add to Command Center · ${defaultGroup?.label ?? 'Pinned'}`;
-
-	const handlePrimaryClick = (): void => {
-		if (membership.configured) {
-			setOpen(true);
-			return;
-		}
-		if (!membership.defaultGroupId) return;
-		void update(() => host.setCommandCenterDocumentGroup(path, membership.defaultGroupId!, true));
-	};
+	const destinations = [
+		...(membership.shownOnHome ? ['Home'] : []),
+		...includedGroups.map((group) => group.label),
+	];
+	const active = membership.configured || membership.shownOnHome;
+	const title = active
+		? `Manage Command Center destinations · ${destinations.join(', ')}`
+		: 'Pin to Peak Command Center';
 
 	return (
 		<Popover open={open} onOpenChange={(nextOpen) => {
 			setOpen(nextOpen);
 			if (nextOpen) refresh();
 		}}>
-			<div className="pktw-flex pktw-items-center pktw-gap-0.5" aria-busy={saving}>
+			<PopoverTrigger asChild>
 				<Button
-					variant="ghost"
+					variant="unstyled"
 					size="icon"
 					geometry="toolbar-icon"
 					title={title}
 					aria-label={title}
-					aria-pressed={membership.configured}
-					className={cn(
-						'pktw-shadow-none',
-						membership.configured && 'pktw-bg-pk-surface-raised pktw-text-pk-accent',
-					)}
-					disabled={saving || !membership.defaultGroupId}
-					onClick={handlePrimaryClick}
+					aria-pressed={active}
+					aria-busy={saving}
+					data-active={active ? 'true' : undefined}
+					className="pk-icon-btn pk-inspector-icon-button pktw-shadow-none"
+					disabled={saving}
 				>
 					<Pin
-						className={cn('pktw-h-4 pktw-w-4', membership.configured ? 'pktw-text-pk-accent' : 'pktw-text-pk-foreground-muted')}
-						fill={membership.configured ? 'currentColor' : 'none'}
+						className="pktw-h-4 pktw-w-4"
+						fill={active ? 'currentColor' : 'none'}
 					/>
 				</Button>
-				<PopoverTrigger asChild>
-					<Button
-						variant="ghost"
-						size="icon"
-						geometry="toolbar-icon"
-						title="Choose Command Center groups"
-						aria-label="Choose Command Center groups"
-						className="pktw-shadow-none pktw-opacity-60 hover:pktw-opacity-100 focus-visible:pktw-opacity-100"
-						disabled={saving}
-					>
-						<ChevronDown className="pktw-h-3.5 pktw-w-3.5 pktw-text-pk-foreground-muted" />
-					</Button>
-				</PopoverTrigger>
-			</div>
+			</PopoverTrigger>
 			<PopoverContent
+				container={portalContainer}
 				align="end"
 				side="bottom"
 				sideOffset={6}
-				className="pktw-min-w-[220px] pktw-p-1"
+				className="pk-inspector-pin-menu pktw-min-w-[236px] pktw-p-1"
 				role="group"
 				aria-label="Command Center document destinations"
 			>
 				<div className="pktw-px-3 pktw-py-2 pktw-text-xs pktw-font-medium pktw-text-pk-foreground-muted">
-					Command Center groups
+					Pin to Peak Command Center
+				</div>
+				<PopoverItem
+					role="checkbox"
+					aria-checked={membership.shownOnHome}
+					disabled={saving}
+					className="pktw-justify-between"
+					onClick={() => void update(() => host.setCommandCenterDocumentHome(path, !membership.shownOnHome))}
+				>
+					<span className="pktw-flex pktw-min-w-0 pktw-flex-1 pktw-items-center pktw-gap-2">
+						<House className="pktw-h-3.5 pktw-w-3.5" />
+						<span className="pktw-min-w-0 pktw-flex-1"><span className="pktw-block">Home · Recommended</span><span className="pktw-block pktw-text-[10px] pktw-text-pk-foreground-muted">Keep it in your launcher overview</span></span>
+					</span>
+					<Check className={cn('pktw-h-3.5 pktw-w-3.5', membership.shownOnHome ? 'pktw-opacity-100 pktw-text-pk-accent' : 'pktw-opacity-0')} />
+				</PopoverItem>
+				<div className="pktw-my-1 pktw-border-t pktw-border-pk-border" />
+				<div className="pktw-px-3 pktw-py-1.5 pktw-text-[10px] pktw-font-semibold pktw-uppercase pktw-tracking-wide pktw-text-pk-foreground-muted">
+					Tabs
 				</div>
 				{membership.groups.map((group) => (
 					<PopoverItem
@@ -143,17 +147,6 @@ export function CommandCenterPinControl({ path }: { path: string }): React.React
 						<Check className={cn('pktw-h-3.5 pktw-w-3.5', group.included ? 'pktw-opacity-100 pktw-text-pk-accent' : 'pktw-opacity-0')} />
 					</PopoverItem>
 				))}
-				<div className="pktw-my-1 pktw-border-t pktw-border-pk-border" />
-				<PopoverItem
-					role="checkbox"
-					aria-checked={membership.shownOnHome}
-					disabled={saving}
-					className="pktw-justify-between"
-					onClick={() => void update(() => host.setCommandCenterDocumentHome(path, !membership.shownOnHome))}
-				>
-					<span className="pktw-flex pktw-min-w-0 pktw-flex-1 pktw-items-center pktw-gap-2"><House className="pktw-h-3.5 pktw-w-3.5" />Show on Home</span>
-					<Check className={cn('pktw-h-3.5 pktw-w-3.5', membership.shownOnHome ? 'pktw-opacity-100 pktw-text-pk-accent' : 'pktw-opacity-0')} />
-				</PopoverItem>
 			</PopoverContent>
 		</Popover>
 	);
