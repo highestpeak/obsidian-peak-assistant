@@ -1967,7 +1967,7 @@
   padding: 6px;
 }
 
-.pkchat-context-layer {
+:is(.pktw-root, .peak-design-root) .pkchat-context-layer {
   width: 100% !important;
   min-height: 40px !important;
   padding: 4px 6px !important;
@@ -1975,7 +1975,11 @@
   border-radius: 9px !important;
   background: transparent !important;
   color: var(--pk-text-primary);
-  display: grid;
+  /* Shared Button ships inline-flex + justify-center as !important Tailwind
+     utilities. Override both so every layer uses the same three grid tracks
+     instead of centering a differently sized content cluster. */
+  display: grid !important;
+  justify-content: stretch !important;
   grid-template-columns: 26px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;

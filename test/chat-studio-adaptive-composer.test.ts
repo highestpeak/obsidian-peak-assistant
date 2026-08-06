@@ -191,6 +191,8 @@ function testScopeGuards(): void {
 		'compact-only controls cannot leak into New Chat or Project Home');
 	assert.ok((contextStack.match(/data-composer-scroll-region="true"/g) ?? []).length >= 4,
 		'portalled stack, exclusions, inline preview, and full reader own their scrolling');
+	assert.match(styles, /:is\(\.pktw-root, \.peak-design-root\) \.pkchat-context-layer\s*\{[\s\S]*?display:\s*grid !important;[\s\S]*?justify-content:\s*stretch !important;/,
+		'context layers must beat the shared Button flex-center utilities and retain common grid tracks');
 	assert.match(styles, /\.pkchat-context-rail\s*\{[\s\S]*?border-radius:\s*16px 16px 0 0 !important;/,
 		'context hover rail follows the shell on top and stays square below');
 	assert.match(styles, /\.pkchat-context-popover\s*\{[\s\S]*?width:\s*var\(--radix-popover-trigger-width\) !important;/,
