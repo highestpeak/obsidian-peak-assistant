@@ -4,9 +4,9 @@
 
 # Peak Assistant
 
-### 把散落的笔记，变成可以核查的工作成果。
+### 让整个 Vault 真正连接起来。
 
-Peak Assistant 是为 Obsidian 设计的证据感知 AI 工作台。它能跨 Vault 搜索、保留答案背后的笔记来源，并让你在不放弃 Markdown 所有权的前提下审阅改动。
+Peak Assistant 是为 Obsidian 设计的证据感知 AI 工作台：搜索并绘制知识图谱、发现 Hub 与 Gap、用 Copilot 写作、运行项目对话、生成媒体，并把不同 AI 任务路由到你选择的 Provider，同时不放弃 Markdown 所有权。
 
 [![开发预览](https://img.shields.io/badge/状态-开发预览-c98225?style=flat-square)](#项目状态)
 [![Obsidian 桌面端](https://img.shields.io/badge/Obsidian-仅桌面端-7c3aed?style=flat-square)](https://obsidian.md/)
@@ -16,24 +16,27 @@ Peak Assistant 是为 Obsidian 设计的证据感知 AI 工作台。它能跨 Va
 
 </div>
 
-![在 Obsidian 中打开的 Peak Composer：左侧是 Markdown 文档，右侧是 Intelligence 侧栏](website/assets/peak-composer.webp)
+![File Atlas 图谱设计：当前笔记与它的局部知识邻域](website/assets/file-atlas-graph-preview.webp)
+
+<p align="center"><sub>File Atlas 设计参考图。Graph 模式已存在于当前源码，真实 Obsidian 交互 QA 仍在收口。</sub></p>
 
 > [!IMPORTANT]
 > Peak Assistant 当前处于开发预览阶段，尚未提供官方二进制包，也尚未进入 Obsidian Community Plugins。现阶段面向早期用户和贡献者的安装方式是从源码构建。
 
 ## 为什么是 Peak Assistant
 
-大多数 AI 工具停在“给出一个回答”。Peak Assistant 则把回答周围的工作过程继续留在视野里：
+大多数 AI 工具只是增加一个聊天框。Peak Assistant 连接的是 Vault 周围的整套工作：
 
-- **理解整个 Vault，而不只是一篇笔记。** 先用全文、模糊、语义、树和图视图查找，再按需进入更深入的分析。
+- **看见整个 Vault，而不只是一列结果。** 在 Search Graph、File Atlas 邻域、语义边、Hub、Gap、Bridge 与版本化 AI Graph artifact 之间继续探索。
 - **让证据始终跟着结论。** AI Search 把运行过程、报告和来源列表分开呈现，你可以检查哪些笔记真正影响了结果。
-- **在源文件所在的位置继续工作。** Peak Composer 仍以 Markdown 为主工作面，Copilot、Intelligence 和 History 就在文档旁边。
-- **自己决定模型与边界。** 可按角色连接本地或云端 provider；Fast Index 保持本地，语义和完整索引则是需要明确配置 provider 的可选能力。
+- **把知识结构变成行动。** Vault Intelligence 会发现 Hub、结构洞、缺失链接、陈旧 Cluster、脆弱 Bridge、孤立笔记与维护机会。
+- **在源文件所在的位置继续。** 把证据带进 Peak Composer、Chat Studio、File Atlas 或持久 artifact。
+- **自己决定模型与边界。** 把文本、Agent、Embedding、Rerank、图片、视频、音乐与语音任务路由到本地或云端 Provider。
 
 核心闭环只有一条：
 
 ```text
-提出真实任务 → 搜索 Vault → 检查报告与来源 → 审阅或继续行动
+提出任务 → 搜索 → 检查证据 → 探索图谱 → 进入 Composer 或 Chat
 ```
 
 <table>
@@ -47,33 +50,51 @@ Peak Assistant 是为 Obsidian 设计的证据感知 AI 工作台。它能跨 Va
   </tr>
 </table>
 
-## 当前预览包含什么
+## Peak 完整能力地图
 
-### 搜索与调查
+| 系统 | 它负责什么 | 当前成熟度 |
+| --- | --- | --- |
+| **Vault Search + AI Search** | 全文、模糊、向量、Metadata、PPR 与 Co-citation 检索；List、Tree、Graph；Query Parser、报告、来源与 Chat handoff | 当前源码已有 |
+| **File Atlas** | 工作文件 rail、文档结构、Heading、Block、Link、Resource、局部邻域与 reveal-to-editor | Preview / 真实 QA 收口中 |
+| **Knowledge Graph** | Search Result Graph、Atlas Graph、语义边、方向、Community、Evidence 与不可变 AI Graph 历史 | 基础能力已有；交互 QA 收口中 |
+| **Vault Intelligence** | 发现 Hub、Gap、结构洞、缺失 Backlink、陈旧 Hub、脆弱 Bridge、孤立笔记、废弃 Cluster 与 Drift | 当前源码已有 |
+| **Peak Composer + Copilot** | 无损 Markdown 编辑、选区/Block/文档 AI、原生对象、Candidate、Receipt、History 与 Intelligence | Preview；数据与 QA 继续收口 |
+| **Chat Studio** | Project、Conversation、Assistant、Resource、Artifact、Attachment、Branch 与长运行 Agent 工作 | 当前源码已有 |
+| **Command Center + Home** | 面向 File、Workspace、Bookmark、Dashboard 与分组 Peak Action 的精选 Launcher | Build 已验证；真实 QA 待完成 |
+| **AI Control Center + My Content** | Action 级模型、Tool、Approval、Budget、Output 与保存内容治理 | 开发中 |
+| **图片、视频、音乐与语音** | 图片生成/编辑与 Mask、异步 Video/Music/TTS，以及 Audio/Video 理解 | 路径已构建；付费 Provider 验证未完整 |
+| **Multi-provider AI Platform** | Provider Profile、角色路由、Embedding、Rerank、Peak Harness、MCP、Skill、Permission、Budget 与 Trace | 当前源码已有 |
+| **Peak Sheet** | Spreadsheet、Dataset、ComputePlan、AI Formula、Chart、View 与 revision-safe 更新 | 研究候选；尚无 Dataset runtime |
+| **Operations** | Onboarding、Fast/Semantic/Full Index、Usage Dashboard、成本控制、存储治理与 Debug Receipt | 当前源码已有 |
 
-- Vault Search：紧凑/详细列表、目录树和图谱探索
-- AI Search：进度、报告、来源检查、已保存快照，以及继续进入 Chat
-- Vault Intelligence：hub、知识缺口、陈旧结构、链接等知识健康信号
+### Graph 是一等工作空间
 
-### 写作与审阅
+Peak 不会把所有关系压扁成同一种边。Graph 方向会明确区分物理链接、语义关系、Co-citation、Evidence、Community、Direction、Hub 与 Gap：
 
-- 以 Markdown 为主工作面的 Peak Composer
-- 面向选区、block 和整篇文档的 Document Copilot
-- 紧贴源文档的 Intelligence 与 History
-- 以 candidate、receipt 和 history 路径保持改动可检查
+- **Search Result Graph**：把一次结果集变成可导航的证据地图。
+- **File Atlas Graph**：探索一跳/两跳邻域、多种 Layout、Link Direction 与 Semantic Toggle。
+- **Vault Intelligence Graph**：暴露结构洞、脆弱 Bridge、废弃 Cluster、缺失 Backlink 与 Review 机会。
+- **AI Graph Artifact**：保存不可变、带 Parent 历史和 Evidence Edge 的 Graph Version，SQLite 只是可重建投影。
+- **Advanced Graph 研究**：继续探索 Nebula、Source–Sink 与 Vault Intelligence “Healing Ray” Overlay；这些是研究方向，不是已交付声明。
 
-### 带上下文对话
+<table>
+  <tr>
+    <td width="50%"><img src="website/assets/chat-studio-preview.webp" alt="包含会话、资源和上下文 Composer 的 Chat Studio 设计"></td>
+    <td width="50%"><img src="website/assets/command-center-preview.webp" alt="包含最近文件和分组 Action 的 Command Center 与 Home 设计"></td>
+  </tr>
+  <tr>
+    <td><b>Chat Studio</b> — 项目对话、资源、Artifact、Agent 与媒体工作。</td>
+    <td><b>Command Center + Home</b> — 与原生 Cmd/Ctrl+P 并存的精选空间 Launcher。</td>
+  </tr>
+</table>
 
-- 支持项目、会话、附件与 Vault 上下文的 Chat Studio
-- 统一管理工具、权限、trace、预算和取消的 agent runtime
-- OpenAI、Anthropic、Google、Perplexity、OpenRouter、Ollama 与兼容自定义端点的 provider profile
+### 后续能力
 
-### 保持控制权
+路线图会让未来系统可见，但不会把它们伪装成已经发布的功能：
 
-- 本地 Fast Index 与本地 SQLite read model
-- 按角色显式绑定本地/云端模型
-- 可查看运行成本和 runtime 行为的 Usage / Diagnostic 界面
-- External tools 与外部插件命令默认受权限控制
+- **当前收口：** AI Control Center + My Content、Provider Capability Gateway、Composer Intelligence、Command Center 真实交互验收，以及 Chat/Media Provider 验证。
+- **已设计方向：** 面向 Image/HTML/PDF 的 Peak File Workspace、共享键盘导航系统、Ambient Current Work State 与存储治理闭环。
+- **研究地平线：** Peak Sheet、Advanced Graph、Peak Share、外部来源同步、Context Inspector、Conversation Intelligence，以及本地 Workflow/Template/Focus 系统。
 
 实际可用能力取决于你的配置。Provider 驱动的 AI、embedding、Web Search、媒体生成和外部工具都需要相应凭据或本地端点。
 

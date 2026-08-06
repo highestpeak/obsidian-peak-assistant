@@ -4,9 +4,9 @@
 
 # Peak Assistant
 
-### Turn scattered notes into work you can verify.
+### Your whole vault. Connected.
 
-Peak Assistant is an evidence-aware AI workspace for Obsidian. Search across your vault, inspect the notes behind each answer, and review changes without giving up your Markdown.
+Peak Assistant is an evidence-aware AI workspace for Obsidian. Search and map knowledge, find hubs and gaps, write with Copilot, run project conversations, generate media, and route AI work across the providers you choose—without giving up your Markdown.
 
 [![Development Preview](https://img.shields.io/badge/status-development_preview-c98225?style=flat-square)](#project-status)
 [![Obsidian Desktop](https://img.shields.io/badge/Obsidian-desktop_only-7c3aed?style=flat-square)](https://obsidian.md/)
@@ -16,24 +16,27 @@ Peak Assistant is an evidence-aware AI workspace for Obsidian. Search across you
 
 </div>
 
-![Peak Composer open in Obsidian with a Markdown document and its Intelligence sidecar](website/assets/peak-composer.webp)
+![File Atlas graph design showing the current note and its local knowledge neighbourhood](website/assets/file-atlas-graph-preview.webp)
+
+<p align="center"><sub>File Atlas design reference. Graph mode exists in the current source; live Obsidian interaction QA is still closing.</sub></p>
 
 > [!IMPORTANT]
 > Peak Assistant is a development preview. There is no official binary or Obsidian Community Plugins release yet. The current installation path is a source build for early users and contributors.
 
 ## Why Peak Assistant
 
-Most AI tools stop at an answer. Peak Assistant keeps the work around that answer visible:
+Most AI tools add a chat box. Peak Assistant connects the layers of work around your vault:
 
-- **Understand the vault, not just one note.** Search with full-text, fuzzy, semantic, tree, and graph-oriented views, then continue into deeper analysis when needed.
+- **See the vault, not just a result list.** Move between Search graphs, File Atlas neighbourhoods, semantic edges, hubs, gaps, bridges, and versioned AI Graph artifacts.
 - **Keep evidence attached.** AI Search separates the run, report, and source list so you can inspect which notes shaped the result.
-- **Work where the source lives.** Peak Composer keeps Markdown as the primary surface, with Copilot, Intelligence, and History next to the document.
-- **Choose the model and the boundary.** Connect local or cloud providers by role; Fast Index stays local, while semantic and full indexing are explicit opt-ins that require a configured provider.
+- **Turn structure into action.** Vault Intelligence finds hubs, structural holes, missing links, stale clusters, fragile bridges, orphan notes, and maintenance opportunities.
+- **Continue where the source lives.** Carry evidence into Peak Composer, Chat Studio, File Atlas, or a saved artifact.
+- **Choose the model and the boundary.** Route text, agents, embeddings, reranking, image, video, music, and voice work across local or cloud providers.
 
 The core loop is deliberately simple:
 
 ```text
-Ask a real task → search the vault → inspect report + sources → review or continue the work
+Ask → search → inspect evidence → explore the graph → continue in Composer or Chat
 ```
 
 <table>
@@ -47,33 +50,51 @@ Ask a real task → search the vault → inspect report + sources → review or 
   </tr>
 </table>
 
-## What is in the preview
+## The Peak capability map
 
-### Search and investigate
+| System | What it is for | Current maturity |
+| --- | --- | --- |
+| **Vault Search + AI Search** | Full-text, fuzzy, vector, metadata, PPR and co-citation retrieval; List, Tree and Graph; query parsing, reports, sources and Chat handoff | In current source |
+| **File Atlas** | Work-file rail, document structure, headings, blocks, links, resources, local neighbourhoods and reveal-to-editor paths | Preview / live QA closing |
+| **Knowledge Graph** | Search Result Graph, Atlas Graph, semantic edges, link direction, communities, evidence and immutable AI Graph history | Foundation in source; interaction QA closing |
+| **Vault Intelligence** | Find hubs, gaps, structural holes, missing backlinks, stale hubs, fragile bridges, orphans, abandoned clusters and drift | In current source |
+| **Peak Composer + Copilot** | Lossless Markdown editing, selection/block/document AI, native objects, candidates, receipts, History and Intelligence | Preview; data and QA closure ongoing |
+| **Chat Studio** | Projects, conversations, assistants, resources, artifacts, attachments, branching and long-running agent work | In current source |
+| **Command Center + Home** | A curated launcher for files, workspaces, bookmarks, dashboards and grouped Peak actions | Build verified; live QA pending |
+| **AI Control Center + My Content** | Action-level model, tool, approval, budget, output and saved-content governance | In development |
+| **Image, video, music + voice** | Image generation/editing and masks, async video/music/TTS jobs, and audio/video understanding | Built paths; paid-provider validation incomplete |
+| **Multi-provider AI Platform** | Provider profiles, role routing, embeddings, reranking, Peak Harness, MCP, skills, permissions, budgets and traces | In current source |
+| **Peak Sheet** | Spreadsheet work, Datasets, ComputePlan, AI formulas, charts, views and revision-safe updates | Research candidate; no Dataset runtime yet |
+| **Operations** | Onboarding, Fast/Semantic/Full index modes, Usage Dashboard, cost controls, storage governance and debug receipts | In current source |
 
-- Vault Search with compact/detailed list, tree, and graph-oriented exploration
-- AI Search runs with progress, report, source inspection, saved snapshots, and handoff into Chat
-- Vault Intelligence signals for hubs, gaps, stale structure, links, and other knowledge-health patterns
+### Graph is a first-class workspace
 
-### Write and review
+Peak does not flatten every relationship into one undifferentiated edge. The graph direction separates physical links, semantic relationships, co-citation, evidence, communities, direction, hubs, and gaps:
 
-- Peak Composer as a Markdown-first writing surface
-- Document Copilot for selection, block, and document-level work
-- Intelligence and History alongside the source document
-- Candidate, receipt, and history paths designed to make note changes inspectable
+- **Search Result Graph** turns a result set into a navigable evidence map.
+- **File Atlas Graph** explores local and two-hop neighbourhoods with multiple layouts and semantic toggles.
+- **Vault Intelligence Graph** reveals structural holes, fragile bridges, abandoned clusters, missing backlinks, and review opportunities.
+- **AI Graph artifacts** preserve immutable, parent-linked graph versions with evidence-bearing edges and rebuildable projections.
+- **Advanced Graph research** explores Nebula, Source–Sink, and a Vault Intelligence “Healing Ray” overlay. These are research directions, not shipped claims.
 
-### Chat with context
+<table>
+  <tr>
+    <td width="50%"><img src="website/assets/chat-studio-preview.webp" alt="Chat Studio design with conversations, resources, and a context-aware composer"></td>
+    <td width="50%"><img src="website/assets/command-center-preview.webp" alt="Command Center and Home design with recent files and grouped actions"></td>
+  </tr>
+  <tr>
+    <td><b>Chat Studio</b> — project conversations, resources, artifacts, agents, and media.</td>
+    <td><b>Command Center + Home</b> — a curated spatial launcher alongside native Cmd/Ctrl+P.</td>
+  </tr>
+</table>
 
-- Chat Studio with projects, conversations, attachments, and vault context
-- A shared agent runtime for tools, permissions, traces, budgets, and cancellation
-- Provider profiles for OpenAI, Anthropic, Google, Perplexity, OpenRouter, Ollama, and compatible custom endpoints
+### What comes next
 
-### Stay in control
+The roadmap keeps future systems visible without presenting them as released features:
 
-- Local Fast Index and local SQLite read models
-- Explicit local/cloud model bindings by role
-- Usage and diagnostic views that keep run cost and runtime behavior visible
-- External tools and external plugin commands remain permission-gated
+- **Closing now:** AI Control Center + My Content, Provider Capability Gateway, Composer Intelligence, Command Center live acceptance, and Chat/media provider validation.
+- **Designed next:** Peak File Workspace for Image/HTML/PDF, the shared keyboard navigation system, Ambient Current Work State, and storage-governance closure.
+- **Research horizon:** Peak Sheet, advanced Graph views, Peak Share, external source sync, Context Inspector, conversation intelligence, and local workflow/template/focus systems.
 
 Capability availability depends on your configuration. Provider-backed AI, embeddings, web search, media generation, and external tools need their own credentials or local endpoints.
 
