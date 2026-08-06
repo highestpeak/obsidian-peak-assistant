@@ -35,12 +35,13 @@ interface BookmarkRecord {
 const VIEW_CATALOG: ReadonlyArray<{
 	viewType: string;
 	label: string;
+	aliases: readonly string[];
 	icon: CommandCenterItemIcon;
 }> = [
-	{ viewType: COMMAND_CENTER_HOME_VIEW_TYPE, label: 'Home', icon: { kind: 'lucide', name: 'house' } },
-	{ viewType: USAGE_DASHBOARD_VIEW_TYPE, label: 'Usage Dashboard', icon: { kind: 'lucide', name: 'chart-no-axes-column' } },
-	{ viewType: AI_CONTROL_CENTER_VIEW_TYPE, label: 'AI Control Center', icon: { kind: 'lucide', name: 'sparkles' } },
-	{ viewType: MY_CONTENT_VIEW_TYPE, label: 'My Content', icon: { kind: 'lucide', name: 'folder-heart' } },
+	{ viewType: COMMAND_CENTER_HOME_VIEW_TYPE, label: 'Peak Home', aliases: ['Home', 'Command Center Home'], icon: { kind: 'lucide', name: 'house' } },
+	{ viewType: USAGE_DASHBOARD_VIEW_TYPE, label: 'Token Usage', aliases: ['Usage Dashboard', 'Tokens'], icon: { kind: 'lucide', name: 'chart-no-axes-column' } },
+	{ viewType: AI_CONTROL_CENTER_VIEW_TYPE, label: 'AI Control Center', aliases: ['AI settings'], icon: { kind: 'lucide', name: 'sparkles' } },
+	{ viewType: MY_CONTENT_VIEW_TYPE, label: 'My Content', aliases: ['Generated content'], icon: { kind: 'lucide', name: 'folder-heart' } },
 ];
 
 function sourceFromCommandId(commandId: string, pluginId: string): string {
@@ -162,7 +163,7 @@ export class ObsidianCommandCenterAdapter {
 		if (scope === 'all' || scope === 'workspaces-views') {
 			for (const view of VIEW_CATALOG) {
 				const action: CommandCenterAction = { kind: 'view', viewType: view.viewType };
-				if (!this.matches(normalizedQuery, view.label, 'Peak view', view.viewType)) continue;
+				if (!this.matches(normalizedQuery, view.label, 'Peak view', view.viewType, ...view.aliases)) continue;
 				entries.push({
 					key: commandCenterActionKey(action),
 					action,

@@ -39,3 +39,27 @@ export function prepareCommandCenterGlobalMatches(
 			return left.sourceLabel.localeCompare(right.sourceLabel);
 		});
 }
+
+/**
+ * Keep stable Peak views discoverable beside the command fallback without
+ * pulling saved workspaces or document-like destinations into launcher search.
+ */
+export function prepareCommandCenterViewMatches(
+	entries: CommandCenterCatalogEntry[],
+	query: string,
+): CommandCenterCatalogEntry[] {
+	const normalizedQuery = query.trim().toLocaleLowerCase();
+	if (!normalizedQuery) return [];
+	const seen = new Set<string>();
+	return entries
+		.filter((entry) => {
+			if (entry.action.kind !== 'view' || entry.layer !== 'destination' || !entry.available || seen.has(entry.key)) return false;
+			seen.add(entry.key);
+			return true;
+		})
+		.sort((left, right) => {
+			const rankDelta = catalogMatchRank(left, normalizedQuery) - catalogMatchRank(right, normalizedQuery);
+			if (rankDelta !== 0) return rankDelta;
+			return left.label.localeCompare(right.label);
+		});
+}

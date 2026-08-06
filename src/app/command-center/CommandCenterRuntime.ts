@@ -4,6 +4,7 @@ import {
 	cloneCommandCenterConfig,
 	commandCenterActionKey,
 	commandCenterCatalogScopeForAction,
+	getCommandCenterCatalogEntryMembership,
 	moveCommandCenterItem,
 	moveCommandCenterHomeItem,
 	moveCommandCenterTab,
@@ -12,9 +13,12 @@ import {
 	renameCommandCenterVaultTargets,
 	setCommandCenterVaultTargetGroup,
 	setCommandCenterVaultTargetHome,
+	setCommandCenterCatalogEntryGroup,
+	setCommandCenterCatalogEntryHome,
 	type CommandCenterActionItem,
 	type CommandCenterBoardConfig,
 	type CommandCenterCatalogEntry,
+	type CommandCenterCatalogEntryMembership,
 	type CommandCenterCatalogScope,
 	type CommandCenterDropPlacement,
 	type CommandCenterRecentTarget,
@@ -240,6 +244,40 @@ export class CommandCenterRuntime implements CommandCenterRuntimePort {
 
 	getRecentTargets(): CommandCenterRecentTarget[] {
 		return this.adapter.getRecentTargets();
+	}
+
+	getCatalogEntryMembership(entry: CommandCenterCatalogEntry): CommandCenterCatalogEntryMembership {
+		return getCommandCenterCatalogEntryMembership(this.config, entry);
+	}
+
+	async setCatalogEntryGroup(
+		entry: CommandCenterCatalogEntry,
+		groupId: string,
+		included: boolean,
+	): Promise<CommandCenterCatalogEntryMembership> {
+		const next = setCommandCenterCatalogEntryGroup(
+			this.config,
+			entry,
+			groupId,
+			included,
+			this.createActionId(),
+		);
+		if (JSON.stringify(next) !== JSON.stringify(this.config)) await this.saveConfig(next);
+		return this.getCatalogEntryMembership(entry);
+	}
+
+	async setCatalogEntryHome(
+		entry: CommandCenterCatalogEntry,
+		included: boolean,
+	): Promise<CommandCenterCatalogEntryMembership> {
+		const next = setCommandCenterCatalogEntryHome(
+			this.config,
+			entry,
+			included,
+			this.createActionId(),
+		);
+		if (JSON.stringify(next) !== JSON.stringify(this.config)) await this.saveConfig(next);
+		return this.getCatalogEntryMembership(entry);
 	}
 
 	openLauncher(): void {

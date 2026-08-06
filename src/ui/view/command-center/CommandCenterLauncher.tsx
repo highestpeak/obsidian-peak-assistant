@@ -7,6 +7,7 @@ import {
 	commandCenterActionKey,
 	moveProjectionFocus,
 	prepareCommandCenterGlobalMatches,
+	prepareCommandCenterViewMatches,
 	resolveAutoCommandCenterDisplayMode,
 	type CommandCenterCatalogEntry,
 	type CommandCenterDropPlacement,
@@ -24,6 +25,7 @@ import {
 	commandCenterCatalogFocusId,
 } from './CommandCenterGlobalResults';
 import { CommandCenterIcon } from './CommandCenterIcon';
+import { CommandCenterViewResults } from './CommandCenterViewResults';
 
 export interface CommandCenterLauncherProps {
 	runtime: CommandCenterRuntimePort;
@@ -198,6 +200,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 	const [scope, setScope] = useState<string | 'home'>(() => tabOrder[0] ?? 'home');
 	const [query, setQuery] = useState('');
 	const [items, setItems] = useState<ResolvedCommandCenterItem[]>([]);
+	const [viewMatches, setViewMatches] = useState<CommandCenterCatalogEntry[]>([]);
 	const [allCommandMatches, setAllCommandMatches] = useState<CommandCenterCatalogEntry[]>([]);
 	const [showAllCommands, setShowAllCommands] = useState(false);
 	const [searchLoading, setSearchLoading] = useState(false);
@@ -229,24 +232,34 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 		let cancelled = false;
 		const normalizedQuery = query.trim();
 		setSearchLoading(Boolean(normalizedQuery));
-		const catalogPromise = normalizedQuery
+		const commandCatalogPromise = normalizedQuery
 			? runtime.getCatalog(query, 'commands').catch((error) => {
 				console.error('[Peak Command Center] Failed to search the complete command catalog.', error);
 				return [] as CommandCenterCatalogEntry[];
 			})
 			: Promise.resolve([] as CommandCenterCatalogEntry[]);
-		void Promise.all([runtime.resolveItems(scope, query), catalogPromise])
-			.then(([nextItems, catalog]) => {
+		const viewCatalogPromise = normalizedQuery
+			? runtime.getCatalog(query, 'workspaces-views').catch((error) => {
+				console.error('[Peak Command Center] Failed to search the Peak view catalog.', error);
+				return [] as CommandCenterCatalogEntry[];
+			})
+			: Promise.resolve([] as CommandCenterCatalogEntry[]);
+		void Promise.all([runtime.resolveItems(scope, query), commandCatalogPromise, viewCatalogPromise])
+			.then(([nextItems, commandCatalog, viewCatalog]) => {
 				if (cancelled) return;
 				const configuredKeys = new Set(nextItems.map((item) => commandCenterActionKey(item.action)));
-				setItems(nextItems);
-				setAllCommandMatches(prepareCommandCenterGlobalMatches(catalog, configuredKeys, query));
+				const nextViewMatches = prepareCommandCenterViewMatches(viewCatalog, query);
+				const viewKeys = new Set(nextViewMatches.map((entry) => entry.key));
+				setItems(nextItems.filter((item) => !viewKeys.has(commandCenterActionKey(item.action))));
+				setViewMatches(nextViewMatches);
+				setAllCommandMatches(prepareCommandCenterGlobalMatches(commandCatalog, configuredKeys, query));
 				setSearchLoading(false);
 			})
 			.catch((error) => {
 				if (cancelled) return;
 				console.error('[Peak Command Center] Failed to resolve launcher search.', error);
 				setItems([]);
+				setViewMatches([]);
 				setAllCommandMatches([]);
 				setSearchLoading(false);
 			});
@@ -287,10 +300,19 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 			items: groupItems.map((item) => ({ id: item.id, mode: resolvedModes.get(item.id) ?? 'full' })),
 		})));
 		const rowOffset = configuredPositions.reduce((maximum, position) => Math.max(maximum, position.row + position.rowSpan), 0) + 1;
+		const viewPositions: ProjectionPosition[] = viewMatches.map((entry, index) => ({
+			id: commandCenterCatalogFocusId(entry),
+			sectionId: 'peak-views',
+			row: rowOffset + index,
+			rowSpan: 1,
+			column: 0,
+			columnSpan: 30,
+		}));
+		const commandRowOffset = rowOffset + viewPositions.length;
 		const globalPositions: ProjectionPosition[] = visibleGlobalMatches.map((entry, index) => ({
 			id: commandCenterCatalogFocusId(entry),
 			sectionId: 'all-commands',
-			row: rowOffset + index,
+			row: commandRowOffset + index,
 			rowSpan: 1,
 			column: 0,
 			columnSpan: 30,
@@ -299,16 +321,17 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 			globalPositions.push({
 				id: SHOW_ALL_COMMANDS_ID,
 				sectionId: 'all-commands',
-				row: rowOffset + visibleGlobalMatches.length,
+				row: commandRowOffset + visibleGlobalMatches.length,
 				rowSpan: 1,
 				column: 0,
 				columnSpan: 30,
 			});
 		}
-		return [...configuredPositions, ...globalPositions];
-	}, [canToggleGlobalMatches, resolvedModes, sections, visibleGlobalMatches]);
+		return [...configuredPositions, ...viewPositions, ...globalPositions];
+	}, [canToggleGlobalMatches, resolvedModes, sections, viewMatches, visibleGlobalMatches]);
 	const activeItem = items.find((item) => item.id === activeId) ?? null;
-	const activeCatalogEntry = visibleGlobalMatches.find((entry) => commandCenterCatalogFocusId(entry) === activeId) ?? null;
+	const activeCatalogEntry = [...viewMatches, ...visibleGlobalMatches]
+		.find((entry) => commandCenterCatalogFocusId(entry) === activeId) ?? null;
 
 	useEffect(() => {
 		const selectableIds = new Set(positions.map((position) => position.id));
@@ -546,7 +569,7 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 		<div className="pk-cc-launcher" ref={rootRef} onKeyDown={handleKeyDown} tabIndex={-1}>
 			<div className="pk-cc-search-row">
 				<Search size={16} aria-hidden="true" />
-				<input ref={inputRef} value={query} onChange={(event) => changeQuery(event.target.value)} placeholder="Search commands and your Command Center" aria-label="Search configured and all commands" autoFocus />
+				<input ref={inputRef} value={query} onChange={(event) => changeQuery(event.target.value)} placeholder="Search views, commands, and your Command Center" aria-label="Search configured items, Peak views, and all commands" autoFocus />
 				{query ? <IconButton className="pk-cc-icon-button" label="Clear search" onClick={() => changeQuery('')}><X size={14} /></IconButton> : null}
 				<IconButton className="pk-cc-icon-button" label="Close Command Center" onClick={onClose}><X size={16} /></IconButton>
 			</div>
@@ -608,6 +631,15 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 					/>
 				))}
 				{searchActive ? (
+					<CommandCenterViewResults
+						runtime={runtime}
+						entries={viewMatches}
+						activeId={activeId}
+						onFocus={setActiveId}
+						onInvoke={(entry) => void invokeCatalogEntry(entry)}
+					/>
+				) : null}
+				{searchActive ? (
 					<CommandCenterGlobalResults
 						entries={visibleGlobalMatches}
 						total={allCommandMatches.length}
@@ -618,10 +650,10 @@ export function CommandCenterLauncher({ runtime, onCustomize, onClose }: Command
 						onToggle={() => setShowAllCommands((current) => !current)}
 					/>
 				) : null}
-				{searchLoading && items.length === 0 && allCommandMatches.length === 0 ? <div className="pk-cc-empty"><span>Searching commands…</span></div> : null}
-				{!searchLoading && items.length === 0 && allCommandMatches.length === 0 ? (
+				{searchLoading && items.length === 0 && viewMatches.length === 0 && allCommandMatches.length === 0 ? <div className="pk-cc-empty"><span>Searching Command Center…</span></div> : null}
+				{!searchLoading && items.length === 0 && viewMatches.length === 0 && allCommandMatches.length === 0 ? (
 					<div className="pk-cc-empty">
-						<span>{searchActive ? 'No commands match this search.' : 'This group is empty.'}</span>
+						<span>{searchActive ? 'No Command Center items match this search.' : 'This group is empty.'}</span>
 						<Button variant="secondary" size="sm" onClick={onCustomize}>Customize</Button>
 					</div>
 				) : null}

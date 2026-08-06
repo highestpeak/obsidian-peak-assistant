@@ -39,6 +39,7 @@ const home = readFileSync('src/ui/view/command-center/CommandCenterHome.tsx', 'u
 const customize = readFileSync('src/ui/view/command-center/CommandCenterCustomize.tsx', 'utf8');
 const launcher = readFileSync('src/ui/view/command-center/CommandCenterLauncher.tsx', 'utf8');
 const globalResults = readFileSync('src/ui/view/command-center/CommandCenterGlobalResults.tsx', 'utf8');
+const viewResults = readFileSync('src/ui/view/command-center/CommandCenterViewResults.tsx', 'utf8');
 const iconBrowser = readFileSync('src/ui/view/command-center/IconBrowser.tsx', 'utf8');
 const adapter = readFileSync('src/app/command-center/ObsidianCommandCenterAdapter.ts', 'utf8');
 assert.match(modal, /runtime: CommandCenterRuntimePort/);
@@ -69,6 +70,8 @@ assert.match(adapter, /maximumDocumentResults/, 'document results must be ranked
 assert.match(adapter, /searchClient\.search\(/, 'document queries must use the existing indexed SearchClient when available');
 assert.match(adapter, /searchClient\.getRecent\(/, 'empty document queries must show indexed recents when available');
 assert.match(adapter, /destinationAvailable\(action: CommandCenterAction\)/, 'configured destinations must use direct availability checks');
+assert.match(adapter, /label: 'Peak Home'/, 'view catalog labels must match the visible Obsidian tab title');
+assert.match(adapter, /\.\.\.view\.aliases/, 'stable Peak views must remain searchable by their product aliases');
 assert.doesNotMatch(resolveSection, /destinationAvailable[\s\S]*?listCatalog/, 'launcher availability must not rescan the full catalog');
 for (const source of [home, customize, launcher, iconBrowser]) {
 	assert.doesNotMatch(source, /ui\/component\/shared-ui\/(button|switch)/, 'Command Center must use public Peak primitives');
@@ -83,9 +86,12 @@ assert.match(launcher, /if \(scope === 'home'\) return \[\{ group: HOME_GROUP, i
 assert.doesNotMatch(launcher, /scope === 'all'/, 'launcher must not retain the old All aggregation branch');
 assert.match(launcher, /runtime\.moveHomeItem\(draggedId, itemId, placement\)/, 'direct Home drag must persist through its independent order');
 assert.match(launcher, /runtime\.getCatalog\(query, 'commands'\)/, 'launcher search must query the complete command-only catalog');
+assert.match(launcher, /runtime\.getCatalog\(query, 'workspaces-views'\)/, 'launcher search must query the destination catalog separately for stable Peak views');
 assert.doesNotMatch(launcher, /runtime\.getCatalog\(query, 'all'\)/, 'launcher fallback must never expand into documents or other catalog scopes');
 assert.match(launcher, /runtime\.invokeCatalogEntry\(entry\)/, 'global fallback results must execute through the existing runtime boundary');
 assert.match(globalResults, /Show all \{total\} commands/, 'global command preview must expand in place');
+assert.match(viewResults, />Peak views</, 'launcher must expose a dedicated Peak view result section without flattening curated groups into commands');
+assert.match(viewResults, /CommandCenterCatalogPinControl/, 'Peak view results must let users choose their Command Center destinations in place');
 assert.match(launcher, /className="pk-cc-tab-slot"/, 'Home and group tabs must share one rail primitive while retaining distinct drag behavior');
 assert.match(launcher, /setDragImage\(ghost/, 'direct drag must provide a dedicated visual ghost');
 assert.match(launcher, /resolveAutoCommandCenterDisplayMode/, 'Auto display must measure and resolve the rendered label');

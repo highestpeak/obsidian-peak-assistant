@@ -101,8 +101,8 @@ export interface CommandCenterRecentTarget {
 	parentPath: string;
 }
 
-export interface CommandCenterVaultTargetMembership {
-	path: string;
+export interface CommandCenterCatalogEntryMembership {
+	key: string;
 	defaultGroupId: string | null;
 	configured: boolean;
 	shownOnHome: boolean;
@@ -111,6 +111,10 @@ export interface CommandCenterVaultTargetMembership {
 		label: string;
 		included: boolean;
 	}>;
+}
+
+export interface CommandCenterVaultTargetMembership extends Omit<CommandCenterCatalogEntryMembership, 'key'> {
+	path: string;
 }
 
 export interface CommandCenterRuntimePort {
@@ -125,6 +129,9 @@ export interface CommandCenterRuntimePort {
 	invokeItem(item: CommandCenterActionItem): Promise<boolean>;
 	invokeCatalogEntry(entry: CommandCenterCatalogEntry): Promise<boolean>;
 	getRecentTargets(): CommandCenterRecentTarget[];
+	getCatalogEntryMembership(entry: CommandCenterCatalogEntry): CommandCenterCatalogEntryMembership;
+	setCatalogEntryGroup(entry: CommandCenterCatalogEntry, groupId: string, included: boolean): Promise<CommandCenterCatalogEntryMembership>;
+	setCatalogEntryHome(entry: CommandCenterCatalogEntry, included: boolean): Promise<CommandCenterCatalogEntryMembership>;
 	getVaultTargetMembership(path: string): CommandCenterVaultTargetMembership;
 	setVaultTargetGroup(path: string, groupId: string, included: boolean): Promise<CommandCenterVaultTargetMembership>;
 	setVaultTargetHome(path: string, included: boolean): Promise<CommandCenterVaultTargetMembership>;

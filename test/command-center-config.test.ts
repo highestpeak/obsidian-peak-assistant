@@ -12,6 +12,7 @@ import {
 	moveProjectionFocus,
 	normalizeCommandCenterBoardConfig,
 	prepareCommandCenterGlobalMatches,
+	prepareCommandCenterViewMatches,
 	resolveAutoCommandCenterDisplayMode,
 	type CommandCenterBoardConfig,
 	type CommandCenterCatalogEntry,
@@ -118,6 +119,29 @@ assert.deepStrictEqual(
 	globalMatches.map((entry) => entry.key),
 	['command:exact', 'command:prefix', 'command:contains', 'command:source'],
 	'global fallback must rank deterministic name matches, deduplicate, and exclude configured or unavailable commands',
+);
+
+const viewEntry = (key: string, label: string, available = true): CommandCenterCatalogEntry => ({
+	key,
+	action: key.startsWith('view:')
+		? { kind: 'view', viewType: key.slice('view:'.length) }
+		: { kind: 'workspace', workspaceName: label },
+	label,
+	sourceLabel: key.startsWith('view:') ? 'Peak view' : 'Workspace',
+	layer: 'destination',
+	available,
+	hotkey: null,
+});
+const viewMatches = prepareCommandCenterViewMatches([
+	viewEntry('view:peak-home', 'Home'),
+	viewEntry('workspace:home', 'Home workspace'),
+	viewEntry('view:missing', 'Missing view', false),
+	viewEntry('view:peak-home', 'Home duplicate'),
+], 'home');
+assert.deepStrictEqual(
+	viewMatches.map((entry) => entry.key),
+	['view:peak-home'],
+	'launcher view search must only surface available deduplicated Peak views, not saved workspaces',
 );
 
 assert.deepStrictEqual(commandCenterGridSpan('icon'), { columnSpan: 6, rowSpan: 2 });
