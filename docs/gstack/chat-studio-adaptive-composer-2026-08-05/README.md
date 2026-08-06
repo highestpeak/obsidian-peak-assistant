@@ -19,8 +19,9 @@ into Chat Studio semantics:
 - long layers show an explicit inline range, then open into a full-width exact-
   content reader with search, copy, wrapping, character count, token estimate,
   and completeness status;
-- the Context-stack hover rail uses concentric elliptical end caps, so its left
-  and right curves share the Composer shell's corner centers;
+- the Context-stack hover rail uses concentric elliptical top corners aligned
+  with the Composer shell, while both lower corners stay square against the
+  message field;
 - the context view mirrors `docs/11-feature-chat-context.html` and the current
   `ChatProfile` order: required, optional, compressed, empty, and explicitly
   excluded inputs are shown separately;
