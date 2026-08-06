@@ -74,6 +74,11 @@ async function main(): Promise<void> {
 	controller.subscribe((s) => seen.push(s.status));
 
 	controller.start('A.md');
+	check(
+		'known file binds to loading synchronously, never empty',
+		controller.getState().status === 'loading' && controller.getState().filePath === 'A.md',
+		`${controller.getState().status}:${controller.getState().filePath ?? 'null'}`,
+	);
 	await controller.settled();
 	check('opens active file → loaded', controller.getState().status === 'loaded', controller.getState().status);
 	check('loaded snapshot has blocks', (controller.getState().snapshot?.blocks.length ?? 0) > 0);

@@ -10,7 +10,7 @@
  * this composition layer only supplies the live index readers.
  */
 
-import { MarkdownView, Notice, requestUrl, TFile } from 'obsidian';
+import { MarkdownView, Notice, requestUrl, TFile, type WorkspaceLeaf } from 'obsidian';
 import type { AppContext } from '@/app/context/AppContext';
 import type {
 	AtlasGraphData,
@@ -136,7 +136,6 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 	const externalPreviewCache = new Map<string, AtlasExternalLinkPreview | null>();
 	let cacheCapacity = DEFAULT_FILE_ATLAS_CONFIG.rail.capacity;
 	let lastActivePath: string | null = null;
-	let activationVersion = 0;
 	let activationQueue: Promise<void> = Promise.resolve();
 	let documentReadQueue: Promise<void> = Promise.resolve();
 
@@ -384,31 +383,38 @@ export function composeFileAtlasHost(appContext: AppContext): FileAtlasHostPort 
 		},
 
 		activateDoc(path: string): Promise<void> {
-			const version = ++activationVersion;
 			const activate = async (): Promise<void> => {
-				if (version !== activationVersion) return;
 				for (const leaf of fileContextLeaves()) {
 					if (leaf.path !== path) continue;
 					await leaf.reveal();
-					if (version === activationVersion) recordActiveView();
+					recordActiveView();
 					return;
 				}
 
 				const file = app.vault.getAbstractFileByPath(path);
-				if (!(file instanceof TFile) || version !== activationVersion) return;
+				if (!(file instanceof TFile)) return;
 				const router = appContext.runtimeRegistry.tryGetDocumentComposerRuntime()?.navigation;
 				if (router && file.extension === 'md') {
-					await router.open({
+					const openedLeaf = await router.open({
 						filePath: file.path,
-						disposition: 'reuse-existing',
+						disposition: 'new-tab',
 						reason: 'file-atlas',
 					});
-					if (version === activationVersion) recordActiveView();
+					const openedView = openedLeaf?.view as {
+						whenDocumentSettled?: () => Promise<void>;
+					} | undefined;
+					await openedView?.whenDocumentSettled?.();
+					recordActiveView();
 					return;
 				}
-				const leaf = app.workspace.activeLeaf ?? app.workspace.getLeaf(false);
+				let leaf: WorkspaceLeaf;
+				try {
+					leaf = app.workspace.getLeaf('tab');
+				} catch {
+					leaf = app.workspace.getLeaf(false);
+				}
 				await leaf.openFile(file, { active: true });
-				if (version === activationVersion) recordActiveView();
+				recordActiveView();
 			};
 			activationQueue = activationQueue.then(activate, activate);
 			return activationQueue;

@@ -122,6 +122,11 @@ assert.match(view, /replace\(\/\\\.md\$\/i, ''\)/, 'Composer tab titles must der
 assert.match(navigation, /await router\.open/, 'Vault navigation must delegate exact Markdown opens');
 assert.match(quickSearch, /vaultNavigation\.openVaultPath/, 'Quick Search must use the central file router');
 assert.match(fileAtlas, /vaultNavigation\.openLink/, 'File Atlas must use the central file router');
+assert.match(
+	fileAtlas,
+	/disposition: 'new-tab',\s*reason: 'file-atlas'/,
+	'File Atlas must reveal an existing document leaf or create a dedicated tab for a new document',
+);
 assert.match(nativeCompanion, /owner\.createController/, 'Native Markdown must acquire the app-owned document runtime');
 assert.doesNotMatch(
 	nativeCompanion,

@@ -31,12 +31,8 @@ import { ObsidianWorkspaceHistoryNavigation } from './ObsidianWorkspaceHistoryNa
 
 export { DOCUMENT_COMPOSER_VIEW_TYPE };
 
-/** Static empty source used before the runtime binds (early startup restore). */
+/** Static empty source used only by a genuinely file-unbound Composer leaf. */
 const EMPTY_STATE: DocumentComposerState = { status: 'empty', filePath: null, snapshot: null };
-const EMPTY_SOURCE: ComposerStateSource = {
-	getState: () => EMPTY_STATE,
-	subscribe: () => () => undefined,
-};
 
 /**
  * Peak Composer — standalone main-area document host (WP1).
@@ -55,6 +51,16 @@ export class DocumentComposerView extends ReactItemViewHost {
 	private controller: DocumentComposerController | null = null;
 	private config: ComposerConfig = DEFAULT_COMPOSER_CONFIG;
 	private viewState: ComposerViewStateV2 | null = null;
+	private pendingState: DocumentComposerState = EMPTY_STATE;
+	/**
+	 * Defensive first-paint projection for a restored leaf. A persisted filePath
+	 * is already a document binding, even if app composition has not handed this
+	 * view its controller yet; it must never regress to "No document open".
+	 */
+	private readonly pendingSource: ComposerStateSource = {
+		getState: () => this.pendingState,
+		subscribe: () => () => undefined,
+	};
 	private pendingRawState: unknown = null;
 	private controllerSubscription: (() => void) | null = null;
 	private readonly originHostId = `composer-leaf-${crypto.randomUUID()}`;
@@ -97,6 +103,7 @@ export class DocumentComposerView extends ReactItemViewHost {
 				this.viewState ?? this.pendingRawState,
 				runtime.navigation?.getLegacyActiveMarkdownPath(),
 			);
+			this.updatePendingState();
 			this.ensureController(runtime);
 		}
 		await super.onOpen();
@@ -122,6 +129,11 @@ export class DocumentComposerView extends ReactItemViewHost {
 	/** Vault file currently bound to this product view, for workspace file navigators. */
 	getSourceFilePath(): string | null {
 		return this.viewState?.filePath ?? this.controller?.getState().filePath ?? null;
+	}
+
+	/** Wait for the current source binding without exposing the controller itself. */
+	async whenDocumentSettled(): Promise<void> {
+		await this.controller?.settled();
 	}
 
 	/** Queue a one-shot source reveal without changing this leaf into Markdown. */
@@ -167,6 +179,7 @@ export class DocumentComposerView extends ReactItemViewHost {
 				this.lastFocusedSourceOffset = null;
 			}
 			this.viewState = normalized;
+			this.updatePendingState();
 			if (this.controller) this.controller.bindFile(normalized.filePath);
 			else if (runtime) this.ensureController(runtime);
 			this.requestHeaderRefresh();
@@ -193,7 +206,7 @@ export class DocumentComposerView extends ReactItemViewHost {
 
 	protected renderElement(): React.ReactElement {
 		const controller = this.controller;
-		const source: ComposerStateSource = controller ?? EMPTY_SOURCE;
+		const source: ComposerStateSource = controller ?? this.pendingSource;
 		const onRevalidate = controller ? () => controller.revalidate() : undefined;
 		const runtimeSource = controller ? { getRuntime: () => this.getChromeRuntime() } : undefined;
 		const intelligenceSource = controller ? { getIntelligence: () => controller.getIntelligence() } : undefined;
@@ -263,9 +276,18 @@ export class DocumentComposerView extends ReactItemViewHost {
 			const currentViewState = this.viewState;
 			if (!state.filePath || !currentViewState || currentViewState.filePath === state.filePath) return;
 			this.viewState = { ...currentViewState, filePath: state.filePath };
+			this.updatePendingState();
 			this.requestHeaderRefresh();
 		});
 		this.controller.start(this.viewState.filePath);
+	}
+
+	private updatePendingState(): void {
+		this.pendingState = this.viewState ? {
+			status: 'loading',
+			filePath: this.viewState.filePath,
+			snapshot: null,
+		} : EMPTY_STATE;
 	}
 
 	private openLink(kind: 'vault' | 'external', target: string): void {

@@ -426,18 +426,11 @@ export default class MyPlugin extends Plugin {
 			}
 		}
 
-		// Create ViewManager with AppContext
-		this.viewManager = new ViewManager(this, appContext);
-		// Set viewManager in AppContext after creation
-		appContext.viewManager = this.viewManager;
-
-		this.viewManager.init();
-
 		// Peak Composer (WP1): compose the app-owned Document Composer runtime
-		// and bind it on the registry BEFORE workspace layout restore can
-		// re-open a Composer leaf. This only awaits template-backed storage
-		// policy (no sqlite dependency), so it is safe to bind here; released in
-		// onunload via clearDocumentComposerRuntime.
+		// and bind it on the registry BEFORE registering the Composer view. Obsidian
+		// can restore an existing leaf synchronously from registerView(); binding the
+		// runtime first keeps that leaf's persisted filePath and content controller
+		// in one lifecycle from its first paint.
 		try {
 			const { composeDocumentComposerRuntime } = await import('@/app/composer');
 			appContext.runtimeRegistry.setDocumentComposerRuntime(
@@ -458,6 +451,12 @@ export default class MyPlugin extends Plugin {
 		} catch (e) {
 			console.warn('[Peak Composer] runtime compose failed:', e);
 		}
+
+		// Create ViewManager with AppContext only after file-bound view runtimes are
+		// ready. This registration point may immediately instantiate restored leaves.
+		this.viewManager = new ViewManager(this, appContext);
+		appContext.viewManager = this.viewManager;
+		this.viewManager.init();
 
 		try {
 			const { composeAIGraphArtifactRuntime } = await import('@/app/ai-graph');

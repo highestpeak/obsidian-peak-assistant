@@ -86,18 +86,29 @@ export const FileAtlasHost: React.FC<FileAtlasHostProps> = ({
 
 	useEffect(() => {
 		let alive = true;
-		let requestId = 0;
-		const refresh = async (): Promise<void> => {
-			const currentRequest = ++requestId;
-			setOpenDocs(host.listOpenDocs());
-			const history = await host.listHistoryDocs(config.rail.capacity);
-			if (!alive || currentRequest !== requestId) return;
-			setHistoryDocs(history);
+		let refreshPending = false;
+		let refreshRunning = false;
+		const flushRefresh = async (): Promise<void> => {
+			if (refreshRunning) return;
+			refreshRunning = true;
+			try {
+				while (alive && refreshPending) {
+					refreshPending = false;
+					setOpenDocs(host.listOpenDocs());
+					const history = await host.listHistoryDocs(config.rail.capacity);
+					if (alive) setHistoryDocs(history);
+				}
+			} finally {
+				refreshRunning = false;
+			}
 		};
-		void refresh();
-		const unsubscribe = host.subscribeOpenDocs(() => {
-			void refresh();
-		});
+		const requestRefresh = (): void => {
+			if (!alive) return;
+			refreshPending = true;
+			void flushRefresh();
+		};
+		requestRefresh();
+		const unsubscribe = host.subscribeOpenDocs(requestRefresh);
 		return () => {
 			alive = false;
 			unsubscribe();
